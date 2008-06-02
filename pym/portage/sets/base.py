@@ -61,13 +61,18 @@ class PackageSet(object):
 		self._atoms.clear()
 		self._nonatoms.clear()
 		for a in atoms:
-			a = a.strip()
-			if not a:
-				continue
-			try:
-				self._atoms.add(Atom(a))
-			except InvalidAtom:
-				self._nonatoms.add(a)
+			if not isinstance(a, Atom):
+				if isinstance(a, basestring):
+					a = a.strip()
+				if not a:
+					continue
+				try:
+					a = Atom(a)
+				except InvalidAtom:
+					self._nonatoms.add(a)
+					continue
+			self._atoms.add(a)
+
 		self._updateAtomMap()
 
 	def load(self):
@@ -153,11 +158,15 @@ class EditablePackageSet(PackageSet):
 		modified = False
 		normal_atoms = []
 		for a in atoms:
-			if isvalidatom(a):
-				normal_atoms.append(a)
-			else:
-				modified = True
-				self._nonatoms.add(a)
+			if not isinstance(a, Atom):
+				try:
+					a = Atom(a)
+				except InvalidAtom:
+					modified = True
+					self._nonatoms.add(a)
+					continue
+			normal_atoms.append(a)
+
 		if normal_atoms:
 			modified = True
 			self._atoms.update(normal_atoms)

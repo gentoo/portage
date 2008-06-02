@@ -5264,7 +5264,7 @@ class depgraph(object):
 				continue
 
 			try:
-				myfavkey = create_world_atom(pkg, args_set, root_config)
+				myfavkey = create_world_atom(x, args_set, root_config)
 				if myfavkey:
 					if myfavkey in added_favorites:
 						continue
@@ -5305,9 +5305,11 @@ class depgraph(object):
 		if not isinstance(mergelist, list):
 			mergelist = []
 
+		skipfirst = "--skipfirst" in self.myopts
 		fakedb = self.mydbapi
 		trees = self.trees
 		serialized_tasks = []
+		masked_tasks = []
 		for x in mergelist:
 			if not (isinstance(x, list) and len(x) == 4):
 				continue
@@ -5341,8 +5343,11 @@ class depgraph(object):
 			root_config = self.roots[pkg.root]
 			if "merge" == pkg.operation and \
 				not visible(root_config.settings, pkg):
-				self._unsatisfied_deps_for_display.append(
-					((pkg.root, "="+pkg.cpv), {"myparent":None}))
+				if skipfirst:
+					masked_tasks.append(Dependency(root=pkg.root, parent=pkg))
+				else:
+					self._unsatisfied_deps_for_display.append(
+						((pkg.root, "="+pkg.cpv), {"myparent":None}))
 
 			fakedb[myroot].cpv_inject(pkg)
 			serialized_tasks.append(pkg)
@@ -5358,6 +5363,7 @@ class depgraph(object):
 			self.myparams.add("selective")
 
 			favorites = resume_data.get("favorites")
+			args_set = self._sets["args"]
 			if isinstance(favorites, list):
 				args = self._load_favorites(favorites)
 			else:
@@ -5386,13 +5392,13 @@ class depgraph(object):
 			# masked.
 			if not self._create_graph(allow_unsatisfied=True):
 				return False
-			if self._unsatisfied_deps:
+			if masked_tasks or self._unsatisfied_deps:
 				# This probably means that a required package
 				# was dropped via --skipfirst. It makes the
 				# resume list invalid, so convert it to a
 				# UnsatisfiedResumeDep exception.
 				raise self.UnsatisfiedResumeDep(
-					self._unsatisfied_deps)
+					masked_tasks + self._unsatisfied_deps)
 			self._serialized_tasks_cache = None
 			try:
 				self.altlist()
@@ -8506,7 +8512,7 @@ def action_build(settings, trees, mtimedb,
 				else:
 					break
 		except (portage.exception.PackageNotFound,
-			mydepgraph.UnsatisfiedResumeDep), e:
+			depgraph.UnsatisfiedResumeDep), e:
 			if show_spinner:
 				print
 			from textwrap import wrap
@@ -8526,21 +8532,28 @@ def action_build(settings, trees, mtimedb,
 						out.eerror(indent + str(tuple(task)))
 				out.eerror("")
 
-			if isinstance(e, mydepgraph.UnsatisfiedResumeDep):
-				out.eerror("One or more expected dependencies " + \
-					"are not installed:")
+			if isinstance(e, depgraph.UnsatisfiedResumeDep):
+				out.eerror("One or packages are either masked or " + \
+					"have missing dependencies:")
 				out.eerror("")
 				indent = "  "
 				for dep in e.value:
-					out.eerror(indent + str(dep.atom) + " pulled in by:")
-					out.eerror(2 * indent + str(dep.parent))
-					out.eerror("")
+					if dep.atom is None:
+						out.eerror(indent + "Masked package:")
+						out.eerror(2 * indent + str(dep.parent))
+						out.eerror("")
+					else:
+						out.eerror(indent + str(dep.atom) + " pulled in by:")
+						out.eerror(2 * indent + str(dep.parent))
+						out.eerror("")
 				msg = "The resume list contains packages " + \
-					"with dependencies that have not been " + \
-					"installed yet. Please restart/continue " + \
+					"that are either masked or have " + \
+					"unsatisfied dependencies. " + \
+					"Please restart/continue " + \
 					"the operation manually, or use --skipfirst " + \
 					"to skip the first package in the list and " + \
-					"any other packages that may have missing dependencies."
+					"any other packages that may be " + \
+					"masked or have missing dependencies."
 				for line in wrap(msg, 72):
 					out.eerror(line)
 			elif isinstance(e, portage.exception.PackageNotFound):
@@ -8560,7 +8573,8 @@ def action_build(settings, trees, mtimedb,
 		if success:
 			if dropped_tasks:
 				portage.writemsg("!!! One or more packages have been " + \
-					"dropped due to unsatisfied dependencies:\n\n",
+					"dropped due to\n" + \
+					"!!! masking or unsatisfied dependencies:\n\n",
 					noiselevel=-1)
 				for task in dropped_tasks:
 					portage.writemsg("  " + str(task) + "\n", noiselevel=-1)
