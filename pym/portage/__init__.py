@@ -3416,7 +3416,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		size = orig_digests.get("size")
 		pruned_digests = orig_digests
 		if parallel_fetchonly:
-			pruned_digests = pruned_digests.copy()
+			pruned_digests = {}
 			if size is not None:
 				pruned_digests["size"] = size
 
