@@ -1310,7 +1310,7 @@ class config(object):
 			# lead to unexpected results.
 			expand_map = {}
 
-			env_d = getconfig(os.path.join(target_root + EPREFIX_LSTRIP, "etc", "profile.env"),
+			env_d = getconfig(os.path.join(target_root, EPREFIX_LSTRIP, "etc", "profile.env"),
 				expand=expand_map)
 			# env_d will be None if profile.env doesn't exist.
 			if env_d:
@@ -1401,7 +1401,8 @@ class config(object):
 			# Blacklist vars that could interfere with portage internals.
 			for blacklisted in "CATEGORY", "EBUILD_PHASE", \
 				"PKGUSE", "PORTAGE_CONFIGROOT", \
-				"PORTAGE_IUSE", "PORTAGE_USE", "ROOT", "EPREFIX", "EROOT":
+				"PORTAGE_IUSE", "PORTAGE_USE", "ROOT",
+				"EPREFIX", "EROOT":
 				for cfg in self.lookuplist:
 					cfg.pop(blacklisted, None)
 			del blacklisted, cfg
