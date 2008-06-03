@@ -21,6 +21,7 @@ except KeyboardInterrupt:
 	sys.exit(1)
 
 import os, stat
+import platform
 
 os.environ["PORTAGE_LEGACY_GLOBALS"] = "false"
 
@@ -80,7 +81,7 @@ except ImportError:
 
 class stdout_spinner(object):
 	scroll_msgs = [
-		"Gentoo Rocks ("+os.uname()[0]+")",
+		"Gentoo Rocks ("+platform.system()+")",
 		"Thank you for using Gentoo. :)",
 		"Are you actually trying to read this?",
 		"How many times have you stared at this?",
@@ -362,7 +363,7 @@ def getportageversion(portdir, target_root, profile, chost, vardb):
 		libcver="unavailable"
 
 	gccver = getgccversion(chost)
-	unameout=os.uname()[2]+" "+os.uname()[4]
+	unameout=platform.release()+" "+platform.machine()
 
 	return "Portage " + portage.VERSION +" ("+profilever+", "+gccver+", "+libcver+", "+unameout+")"
 
@@ -7726,7 +7727,6 @@ def action_config(settings, trees, myopts, myfiles):
 	print
 
 def action_info(settings, trees, myopts, myfiles):
-	unameout=commands.getstatusoutput("uname -mrp")[1]
 	print getportageversion(settings["PORTDIR"], settings["ROOT"],
 		settings.profile_path, settings["CHOST"],
 		trees[settings["ROOT"]]["vartree"].dbapi)
@@ -7736,7 +7736,7 @@ def action_info(settings, trees, myopts, myfiles):
 		print header_width * "="
 		print header_title.rjust(int(header_width/2 + len(header_title)/2))
 	print header_width * "="
-	print "System uname: "+unameout
+	print "System uname: "+platform.platform(aliased=1)
 
 	lastSync = portage.grabfile(os.path.join(
 		settings["PORTDIR"], "metadata", "timestamp.chk"))
@@ -9102,7 +9102,7 @@ def emerge_main():
 	if "moo" in myfiles:
 		print """
 
-  Larry loves Gentoo (""" + os.uname()[0] + """)
+  Larry loves Gentoo (""" + platform.system() + """)
 
  _______________________
 < Have you mooed today? >
