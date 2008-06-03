@@ -1682,15 +1682,15 @@ class config(object):
 
 		#                                     gid, mode, mask, preserve_perms
 		dir_mode_map = {
-			EPREFIX_LSTRIP+"tmp" : (                   -1, 01777,  0,  True),
-			EPREFIX_LSTRIP+"var/tmp" : (               -1, 01777,  0,  True),
+			EPREFIX_LSTRIP+"/tmp" : (                  -1, 01777,  0,  True),
+			EPREFIX_LSTRIP+"/var/tmp" : (              -1, 01777,  0,  True),
 			PRIVATE_PATH      : (             portage_gid, 02750, 02,  False),
-			CACHE_PATH.lstrip(os.path.sep) : (portage_gid,  0755, 02,  False)
+			CACHE_PATH                     : (portage_gid,  0755, 02,  False)
 		}
 
 		for mypath, (gid, mode, modemask, preserve_perms) \
 			in dir_mode_map.iteritems():
-			mydir = os.path.join(self["ROOT"], mypath)
+			mydir = os.path.join(self["ROOT"], mypath.lstrip(os.path.sep))
 			if preserve_perms and os.path.isdir(mydir):
 				# Only adjust permissions on some directories if
 				# they don't exist yet. This gives freedom to the
