@@ -29,6 +29,7 @@ try:
 	from random import shuffle
 	import UserDict
 	from itertools import chain, izip
+	import platform
 except ImportError, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete python imports. These are internal modules for\n")
@@ -41,7 +42,7 @@ except ImportError, e:
 	raise
 
 bsd_chflags = None
-if os.uname()[0] in ["FreeBSD"]:
+if platform.system() in ["FreeBSD"]:
 	def bsd_chflags():
 		pass
 	def _chflags(path, flags, opts=""):

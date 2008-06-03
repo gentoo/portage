@@ -3,14 +3,14 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import os, sys, pwd, grp
+import os, sys, pwd, grp, platform
 from portage.util import writemsg
 from portage.const import rootuid, portageuser, portagegroup, EPREFIX
 from portage.output import green,red
 from portage.output import create_color_func
 bad = create_color_func("BAD")
 
-ostype=os.uname()[0]
+ostype=platform.system()
 userland = None
 # Prefix always has USERLAND=GNU, even on
 # FreeBSD, OpenBSD and Darwin (thank the lord!).

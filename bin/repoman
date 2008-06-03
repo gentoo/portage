@@ -20,6 +20,7 @@ import stat
 import sys
 import tempfile
 import time
+import platform
 
 from itertools import izip
 from stat import S_ISDIR, ST_CTIME
@@ -1752,7 +1753,11 @@ else:
 		sys.stderr.write("Failed to insert portage version in message!\n")
 		sys.stderr.flush()
 		portage_version = "Unknown"
-	unameout = commands.getstatusoutput("uname -srp")[1]
+	unameout = platform.system() + " " + platform.release() + " "
+	if platform.system() in ["Darwin", "SunOS"]:
+		unameout += platform.processor()
+	else:
+		unameout += platform.machine()
 	commitmessage+="\n(Portage version: "+str(portage_version)+"/"+vcs+"/"+unameout
 	if options.force:
 		commitmessage += ", RepoMan options: --force"
