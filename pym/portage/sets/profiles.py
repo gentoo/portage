@@ -16,6 +16,9 @@ class PackagesSystemSet(PackageSet):
 		self._profile_paths = profile_paths
 		if profile_paths:
 			description = self._profile_paths[-1]
+			if description == "/etc/portage/profile" and \
+				len(self._profile_paths) > 1:
+				description = self._profile_paths[-2]
 		else:
 			description = None
 		self.description = "System packages for profile %s" % description
