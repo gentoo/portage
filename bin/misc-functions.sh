@@ -49,8 +49,7 @@ install_qa_check() {
 	ecompress --dequeue
 
 	# Now we look for all world writable files.
-	find "${ED%/}" -type f -perm -2 | \
-	while read i ; do
+	for i in $(find "${ED}/" -type f -perm -2); do
 		vecho -ne '\a'
 		vecho "QA Security Notice:"
 		vecho "- ${i:${#ED}:${#i}} will be a world writable file."
@@ -486,8 +485,7 @@ install_qa_check() {
 		MULTILIB_STRICT_EXEMPT=$(echo ${MULTILIB_STRICT_EXEMPT} | sed -e 's:\([(|)]\):\\\1:g')
 		for dir in ${MULTILIB_STRICT_DIRS} ; do
 			[[ -d ${ED}/${dir} ]] || continue
-			find ${ED}/${dir} -type f | grep -v "^${ED}/${dir}/${MULTILIB_STRICT_EXEMPT}" | \
-			while read file ; do
+			for file in $(find ${ED}/${dir} -type f | grep -v "^${ED}/${dir}/${MULTILIB_STRICT_EXEMPT}"); do
 				if file ${file} | egrep -q "${MULTILIB_STRICT_DENY}" ; then
 					if [[ ${firstrun} == yes ]] ; then
 						echo "Files matching a file type that is not allowed:"
@@ -612,14 +610,12 @@ preinst_suid_scan() {
 	# total suid control.
 	if hasq suidctl $FEATURES; then
 		local sfconf
-#TODO: not sure if PORTAGE_CONFIGROOT includes EPREFIX
-		sfconf=${PORTAGE_CONFIGROOT}etc/portage/suidctl.conf
+		sfconf=${PORTAGE_CONFIGROOT}${EPREFIX#/}/etc/portage/suidctl.conf
 		# sandbox prevents us from writing directly
 		# to files outside of the sandbox, but this
 		# can easly be bypassed using the addwrite() function
 		addwrite "${sfconf}"
 		vecho ">>> Performing suid scan in ${D}"
-#note not space-safe
 		for i in $(find "${ED}" -type f \( -perm -4000 -o -perm -2000 \) ); do
 			if [ -s "${sfconf}" ]; then
 				install_path=/${i#${D}}
