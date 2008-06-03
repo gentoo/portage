@@ -3412,12 +3412,13 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		"""
 		fetched = 0
 
-		digests = mydigests.get(myfile, {})
-		size = digests.get("size")
+		orig_digests = mydigests.get(myfile, {})
+		size = orig_digests.get("size")
+		pruned_digests = orig_digests
 		if parallel_fetchonly:
-			digests.clear()
+			pruned_digests = pruned_digests.copy()
 			if size is not None:
-				digests["size"] = size
+				pruned_digests["size"] = size
 
 		myfile_path = os.path.join(mysettings["DISTDIR"], myfile)
 		has_space = True
@@ -3468,7 +3469,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 				eout = portage.output.EOutput()
 				eout.quiet = mysettings.get("PORTAGE_QUIET") == "1"
-				match, mystat = _check_distfile(myfile_path, digests, eout)
+				match, mystat = _check_distfile(
+					myfile_path, pruned_digests, eout)
 				if match:
 					if can_fetch and not fetch_to_ro:
 						try:
@@ -3520,7 +3522,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					readonly_file = None
 					for x in ro_distdirs:
 						filename = os.path.join(x, myfile)
-						match, mystat = _check_distfile(filename, digests, eout)
+						match, mystat = _check_distfile(
+							filename, pruned_digests, eout)
 						if match:
 							readonly_file = filename
 							break
