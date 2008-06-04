@@ -3538,6 +3538,7 @@ class depgraph(object):
 				for pkg in vardb:
 					cpv = pkg.cpv
 					stale_cache.discard(cpv)
+					pkg_in_graph = self.digraph.contains(pkg)
 
 					# Check for masked installed packages. For keyword
 					# mask there are a couple of common cases that are
@@ -3563,18 +3564,18 @@ class depgraph(object):
 					#    TODO: Share visibility code to fix this inconsistency.
 
 					if pkg in final_db:
-						if not visible(pkgsettings, pkg):
+						if pkg_in_graph and not visible(pkgsettings, pkg):
 							self._masked_installed.add(pkg)
 						elif graph_complete_for_root and \
 							pkgsettings._getMissingKeywords(
 							pkg.cpv, pkg.metadata) and \
 							pkg.metadata["KEYWORDS"].split() and \
-							not self.digraph.contains(pkg):
+							not pkg_in_graph:
 							self._masked_installed.add(pkg)
 
 					blocker_atoms = None
 					blockers = None
-					if self.digraph.contains(pkg):
+					if pkg_in_graph:
 						blockers = []
 						try:
 							blockers.extend(
