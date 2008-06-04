@@ -560,7 +560,7 @@ class vardbapi(dbapi):
 		users have read access and benefit from faster metadata lookups (as
 		long as at least part of the cache is still valid)."""
 		if self._aux_cache is not None and \
-			self._aux_cache["modified"] >= self._aux_cache_threshold and \
+			len(self._aux_cache["modified"]) >= self._aux_cache_threshold and \
 			secpass >= 2:
 			valid_nodes = set(self.cpv_all())
 			for cpv in self._aux_cache["packages"].keys():
@@ -575,7 +575,7 @@ class vardbapi(dbapi):
 					self._aux_cache_filename, gid=portage_gid, mode=0644)
 			except (IOError, OSError), e:
 				pass
-			self._aux_cache["modified"] = 0
+			self._aux_cache["modified"] = set()
 
 	def aux_get(self, mycpv, wants):
 		"""This automatically caches selected keys that are frequently needed
@@ -620,7 +620,7 @@ class vardbapi(dbapi):
 				not self._aux_cache.get("packages"):
 				self._aux_cache = {"version": self._aux_cache_version}
 				self._aux_cache["packages"] = {}
-			self._aux_cache["modified"] = 0
+			self._aux_cache["modified"] = set()
 		mydir = self.getpath(mycpv)
 		mydir_stat = None
 		try:
@@ -665,7 +665,7 @@ class vardbapi(dbapi):
 				for aux_key in cache_these:
 					cache_data[aux_key] = mydata[aux_key]
 				self._aux_cache["packages"][mycpv] = (mydir_mtime, cache_data)
-				self._aux_cache["modified"] += 1
+				self._aux_cache["modified"].add(mycpv)
 		return [mydata[x] for x in wants]
 
 	def _aux_get(self, mycpv, wants):

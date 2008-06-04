@@ -1470,7 +1470,7 @@ class BlockerCache(DictMixin):
 			portage.CACHE_PATH.lstrip(os.path.sep), "vdb_blockers.pickle")
 		self._cache_version = "1"
 		self._cache_data = None
-		self._modified = 0
+		self._modified = set()
 		self._load()
 
 	def _load(self):
@@ -1540,7 +1540,7 @@ class BlockerCache(DictMixin):
 			self._cache_data = {"version":self._cache_version}
 			self._cache_data["blockers"] = {}
 			self._cache_data["virtuals"] = self._virtuals
-		self._modified = 0
+		self._modified.clear()
 
 	def flush(self):
 		"""If the current user has permission and the internal blocker cache
@@ -1558,7 +1558,7 @@ class BlockerCache(DictMixin):
 			"virtuals" : vardb.settings.getvirtuals()
 		}
 		"""
-		if self._modified >= self._cache_threshold and \
+		if len(self._modified) >= self._cache_threshold and \
 			secpass >= 2:
 			try:
 				f = portage.util.atomic_ofstream(self._cache_filename)
@@ -1568,7 +1568,7 @@ class BlockerCache(DictMixin):
 					self._cache_filename, gid=portage.portage_gid, mode=0644)
 			except (IOError, OSError), e:
 				pass
-			self._modified = 0
+			self._modified.clear()
 
 	def __setitem__(self, cpv, blocker_data):
 		"""
@@ -1582,7 +1582,7 @@ class BlockerCache(DictMixin):
 		"""
 		self._cache_data["blockers"][cpv] = \
 			(blocker_data.counter, tuple(str(x) for x in blocker_data.atoms))
-		self._modified += 1
+		self._modified.add(cpv)
 
 	def __iter__(self):
 		return iter(self._cache_data["blockers"])
