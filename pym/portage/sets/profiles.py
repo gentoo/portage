@@ -5,6 +5,7 @@
 import os
 from portage.util import grabfile_package, stack_lists
 from portage.sets.base import PackageSet
+from portage.const import EPREFIX
 
 __all__ = ["PackagesSystemSet"]
 
@@ -14,8 +15,15 @@ class PackagesSystemSet(PackageSet):
 	def __init__(self, profile_paths):
 		super(PackagesSystemSet, self).__init__()
 		self._profile_paths = profile_paths
-		self.description = "System packages for profile %s" % self._profile_paths[-1]
-	
+		if profile_paths:
+			description = self._profile_paths[-1]
+			if description == EPREFIX+"/etc/portage/profile" and \
+				len(self._profile_paths) > 1:
+				description = self._profile_paths[-2]
+		else:
+			description = None
+		self.description = "System packages for profile %s" % description
+
 	def load(self):
 		mylist = [grabfile_package(os.path.join(x, "packages")) for x in self._profile_paths]
 		mylist = stack_lists(mylist, incremental=1)

@@ -213,14 +213,19 @@ useful for stage builders.
 .TP
 .BR package.provided
 A list of packages (one per line) that portage should assume have been 
-provided.  Useful for porting to non-Linux systems.  Portage will not 
-attempt to update a package that is listed here unless another package 
-explicitly requires a version that is newer than what has been listed.  
-Basically, it's a list that replaces the \fBemerge \-\-inject\fR syntax.
+provided.  Useful for porting to non-Linux systems. Basically, it's a
+list that replaces the \fBemerge \-\-inject\fR syntax.
 
 For example, if you manage your own copy of a 2.6 kernel, then you can 
 tell portage that 'sys-kernel/development-sources-2.6.7' is already taken 
 care of and it should get off your back about it.
+
+Portage will not attempt to update a package that is listed here unless
+another package explicitly requires a version that is newer than what
+has been listed. Dependencies that are satisfied by package.provided
+entries may cause installed packages satisfying equivalent dependencies
+to be removed by \fBemerge\fR(1) \fB\-\-depclean\fR actions (see the
+\fBACTIONS\fR section of the \fBemerge\fR(1) man page for more information).
 
 Virtual packages (virtual/*) should not be specified in package.provided.
 Depending on the type of virtual, it may be necessary to add an entry to the

@@ -97,17 +97,23 @@ setups that the user may wish to run.
 .BR \-\-depclean
 Cleans the system by removing packages that are not associated
 with explicitly merged packages. Depclean works by creating the
-full dependency tree from the system list and the world file,
+full dependency tree from the system and world sets,
 then comparing it to installed packages. Packages installed, but
-not associated with an explicit merge are listed as candidates
-for unmerging. Inexperienced users are advised to use \fB\-\-pretend\fR
+not part of the dependency tree, will be uninstalled by depclean.
+Inexperienced users are advised to use \fB\-\-pretend\fR
 with this option in order to see a preview of which packages
-will be uninstalled. \fBWARNING: Removing some
+will be uninstalled.
+
+\fBWARNING: Removing some
 packages may cause packages which link to the removed package 
 to stop working and complain about missing libraries.\fR
 Rebuild the complaining package to fix this issue.  Also see
 \fB\-\-with\-bdeps\fR for behavior with respect to build time dependencies that
-are not strictly required. Depclean serves as a dependency aware
+are not strictly required. Note that packages listed in
+package.provided (see \fBportage\fR(5)) may be removed by
+depclean, even if they are part of the world set.
+
+Depclean serves as a dependency aware
 version of \fB\-\-unmerge\fR. When given one or more atoms, it will
 unmerge matched packages that have no reverse dependencies. Use
 \fB\-\-depclean\fR together with \fB\-\-verbose\fR to show reverse
