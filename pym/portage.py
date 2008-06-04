@@ -3110,7 +3110,7 @@ def _checksum_failure_temp_file(distdir, basename):
 
 def _check_digests(filename, digests):
 	"""
-	Check digests and displey a message if an error occurs.
+	Check digests and display a message if an error occurs.
 	@return True if all digests match, False otherwise.
 	"""
 	verified_ok, reason = portage_checksum.verify_all(filename, digests)
