@@ -3403,6 +3403,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				return 0
 			del distlocks_subdir
 
+	distdir_writable = can_fetch and not fetch_to_ro
+
 	for myfile in filedict:
 		"""
 		fetched  status
@@ -3443,7 +3445,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					writemsg("!!! Insufficient space to store %s in %s\n" % (myfile, mysettings["DISTDIR"]), noiselevel=-1)
 					has_space = False
 
-			if use_locks and can_fetch:
+			if distdir_writable and use_locks:
 				waiting_msg = None
 				if not parallel_fetchonly and "parallel-fetch" in features:
 					waiting_msg = ("Fetching '%s' " + \
@@ -3472,7 +3474,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				match, mystat = _check_distfile(
 					myfile_path, pruned_digests, eout)
 				if match:
-					if can_fetch and not fetch_to_ro:
+					if distdir_writable:
 						try:
 							apply_secpass_permissions(myfile_path,
 								gid=portage_gid, mode=0664, mask=02,
@@ -3484,7 +3486,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							del e
 					continue
 
-				if can_fetch and mystat is None:
+				if distdir_writable and mystat is None:
 					# Remove broken symlinks if necessary.
 					try:
 						os.unlink(myfile_path)
@@ -3493,12 +3495,12 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 				if mystat is not None:
 					if mystat.st_size == 0:
-						if can_fetch:
+						if distdir_writable:
 							try:
 								os.unlink(myfile_path)
 							except OSError:
 								pass
-					elif can_fetch:
+					elif distdir_writable:
 						if mystat.st_size < fetch_resume_size and \
 							mystat.st_size < size:
 							writemsg((">>> Deleting distfile with size " + \
@@ -3518,7 +3520,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								"File renamed to '%s'\n\n" % \
 								temp_filename, noiselevel=-1)
 
-				if can_fetch and ro_distdirs:
+				if distdir_writable and ro_distdirs:
 					readonly_file = None
 					for x in ro_distdirs:
 						filename = os.path.join(x, myfile)
@@ -3569,7 +3571,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					# If the file is empty then it's obviously invalid. Remove
 					# the empty file and try to download if possible.
 					if mystat.st_size == 0:
-						if can_fetch:
+						if distdir_writable:
 							try:
 								os.unlink(myfile_path)
 							except EnvironmentError:
@@ -3604,7 +3606,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 									(reason[1], reason[2]), noiselevel=-1)
 								if reason[0] == "Insufficient data for checksum verification":
 									return 0
-								if can_fetch and not restrict_fetch:
+								if distdir_writable:
 									temp_filename = \
 										_checksum_failure_temp_file(
 										mysettings["DISTDIR"], myfile)
