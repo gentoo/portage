@@ -65,22 +65,37 @@ def help(myaction,myopts,havecolor=1):
 		print "              file setup or other similar setups that the user may wish to run."
 		print
 		print "       "+green("--depclean")
-		print "              Cleans the system by removing packages that are not associated"
-		print "              with explicitly merged packages. Depclean works by creating the"
-		print "              full dependency tree from the system list and the world file,"
-		print "              then comparing it to installed packages. Packages installed, but"
-		print "              not associated with an explicit merge are listed as candidates"
-		print "              for unmerging. Inexperienced users are advised to use --pretend"
-		print "              with this option in order to see a preview of which packages will"
-		print "              be uninstalled. "+turquoise(" WARNING: Removing some packages may cause")
-		print "              "+turquoise("packages which link to the removed package to stop working and")
-		print "              "+turquoise("complain about missing libraries. Rebuild the complaining package")
-		print "              "+turquoise("to fix this issue.")+" Also see --with-bdeps for behavior with"
-		print "              respect to build time dependencies that are not strictly"
-		print "              required. Depclean serves as a dependency aware version of"
-		print "              --unmerge. When given one or more atoms, it will unmerge matched"
-		print "              packages that have no reverse dependencies. Use --depclean"
-		print "              together with --verbose to show reverse dependencies."
+		paragraph = "Cleans the system by removing packages that are not associated " + \
+			"with explicitly merged packages. Depclean works by creating the " + \
+			"full dependency tree from the system and world sets, " + \
+			"then comparing it to installed packages. Packages installed, but " + \
+			"not part of the dependency tree, will be uninstalled by depclean. " + \
+			"Inexperienced users are advised to use --pretend " + \
+			"with this option in order to see a preview of which packages " + \
+			"will be uninstalled."
+		for line in wrap(paragraph, desc_width):
+			print desc_indent + line
+		print
+
+		paragraph =  "WARNING: Removing some " + \
+			"packages may cause packages which link to the removed package  " + \
+			"to stop working and complain about missing libraries. " + \
+			"Rebuild the complaining package to fix this issue.  Also see " + \
+			"--with-bdeps for behavior with respect to build time dependencies that " + \
+			"are not strictly required. Note that packages listed in " + \
+			"package.provided (see portage(5)) may be removed by " + \
+			"depclean, even if they are part of the world set."
+		for line in wrap(paragraph, desc_width):
+			print desc_indent + line
+		print
+
+		paragraph = "Depclean serves as a dependency aware " + \
+			"version of --unmerge. When given one or more atoms, it will " + \
+			"unmerge matched packages that have no reverse dependencies. Use " + \
+			"--depclean together with --verbose to show reverse " + \
+			"dependencies."
+		for line in wrap(paragraph, desc_width):
+			print desc_indent + line
 		print
 		print "       "+green("--info")
 		print "              Displays important portage variables that will be exported to"
