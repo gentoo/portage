@@ -1150,6 +1150,7 @@ class config:
 		"PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS", "PORTAGE_FETCH_RESUME_MIN_SIZE",
 		"PORTAGE_GPG_DIR",
 		"PORTAGE_GPG_KEY", "PORTAGE_PACKAGE_EMPTY_ABORT",
+		"PORTAGE_RO_DISTDIRS",
 		"PORTAGE_RSYNC_EXTRA_OPTS", "PORTAGE_RSYNC_OPTS",
 		"PORTAGE_RSYNC_RETRIES", "PORTAGE_USE", "PORT_LOGDIR",
 		"QUICKPKG_DEFAULT_OPTS",
@@ -3107,6 +3108,54 @@ def _checksum_failure_temp_file(distdir, basename):
 	os.rename(filename, temp_filename)
 	return temp_filename
 
+def _check_digests(filename, digests):
+	"""
+	Check digests and displey a message if an error occurs.
+	@return True if all digests match, False otherwise.
+	"""
+	verified_ok, reason = portage_checksum.verify_all(filename, digests)
+	if not verified_ok:
+		writemsg("!!! Previously fetched" + \
+			" file: '%s'\n" % filename, noiselevel=-1)
+		writemsg("!!! Reason: %s\n" % reason[0],
+			noiselevel=-1)
+		writemsg(("!!! Got:      %s\n" + \
+			"!!! Expected: %s\n") % \
+			(reason[1], reason[2]), noiselevel=-1)
+		return False
+	return True
+
+def _check_distfile(filename, digests, eout):
+	"""
+	@return a tuple of (match, stat_obj) where match is True if filename
+	matches all given digests (if any) and stat_obj is a stat result, or
+	None if the file does not exist.
+	"""
+	if digests is None:
+		digests = {}
+	size = digests.get("size")
+	if size is not None and len(digests) == 1:
+		digests = None
+
+	try:
+		st = os.stat(filename)
+	except OSError:
+		return (False, None)
+	if size is not None and size != st.st_size:
+		return (False, st)
+	if not digests:
+		if size is not None:
+			eout.ebegin("%s %s ;-)" % (os.path.basename(filename), "size"))
+			eout.eend(0)
+	else:
+		if _check_digests(filename, digests):
+			eout.ebegin("%s %s ;-)" % (os.path.basename(filename),
+				" ".join(sorted(digests))))
+			eout.eend(0)
+		else:
+			return (False, st)
+	return (True, st)
+
 _fetch_resume_size_re = re.compile('(^[\d]+)([KMGTPEZY]?$)')
 
 _size_suffix_map = {
@@ -3240,6 +3289,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		# no digests because fetch was not called for a specific package
 		mydigests = {}
 
+	import shlex
+	ro_distdirs = [x for x in \
+		shlex.split(mysettings.get("PORTAGE_RO_DISTDIRS", "")) \
+		if os.path.isdir(x)]
+
 	fsmirrors = []
 	for x in range(len(mymirrors)-1,-1,-1):
 		if mymirrors[x] and mymirrors[x][0]=='/':
@@ -3360,6 +3414,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				return 0
 			del distlocks_subdir
 
+	distdir_writable = can_fetch and not fetch_to_ro
+
 	for myfile in filedict:
 		"""
 		fetched  status
@@ -3367,8 +3423,17 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		1        partially downloaded
 		2        completely downloaded
 		"""
+		fetched = 0
+
+		orig_digests = mydigests.get(myfile, {})
+		size = orig_digests.get("size")
+		pruned_digests = orig_digests
+		if parallel_fetchonly:
+			pruned_digests = {}
+			if size is not None:
+				pruned_digests["size"] = size
+
 		myfile_path = os.path.join(mysettings["DISTDIR"], myfile)
-		fetched=0
 		has_space = True
 		file_lock = None
 		if listonly:
@@ -3391,7 +3456,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					writemsg("!!! Insufficient space to store %s in %s\n" % (myfile, mysettings["DISTDIR"]), noiselevel=-1)
 					has_space = False
 
-			if use_locks and can_fetch:
+			if distdir_writable and use_locks:
 				waiting_msg = None
 				if not parallel_fetchonly and "parallel-fetch" in features:
 					waiting_msg = ("Fetching '%s' " + \
@@ -3414,6 +3479,77 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						waiting_msg=waiting_msg)
 		try:
 			if not listonly:
+
+				eout = output.EOutput()
+				eout.quiet = mysettings.get("PORTAGE_QUIET") == "1"
+				match, mystat = _check_distfile(
+					myfile_path, pruned_digests, eout)
+				if match:
+					if distdir_writable:
+						try:
+							apply_secpass_permissions(myfile_path,
+								gid=portage_gid, mode=0664, mask=02,
+								stat_cached=mystat)
+						except portage_exception.PortageException, e:
+							if not os.access(myfile_path, os.R_OK):
+								writemsg("!!! Failed to adjust permissions:" + \
+									" %s\n" % str(e), noiselevel=-1)
+							del e
+					continue
+
+				if distdir_writable and mystat is None:
+					# Remove broken symlinks if necessary.
+					try:
+						os.unlink(myfile_path)
+					except OSError:
+						pass
+
+				if mystat is not None:
+					if mystat.st_size == 0:
+						if distdir_writable:
+							try:
+								os.unlink(myfile_path)
+							except OSError:
+								pass
+					elif distdir_writable:
+						if mystat.st_size < fetch_resume_size and \
+							mystat.st_size < size:
+							writemsg((">>> Deleting distfile with size " + \
+								"%d (smaller than " "PORTAGE_FETCH_RESU" + \
+								"ME_MIN_SIZE)\n") % mystat.st_size)
+							try:
+								os.unlink(myfile_path)
+							except OSError, e:
+								if e.errno != errno.ENOENT:
+									raise
+								del e
+						elif mystat.st_size >= size:
+							temp_filename = \
+								_checksum_failure_temp_file(
+								mysettings["DISTDIR"], myfile)
+							writemsg_stdout("Refetching... " + \
+								"File renamed to '%s'\n\n" % \
+								temp_filename, noiselevel=-1)
+
+				if distdir_writable and ro_distdirs:
+					readonly_file = None
+					for x in ro_distdirs:
+						filename = os.path.join(x, myfile)
+						match, mystat = _check_distfile(
+							filename, pruned_digests, eout)
+						if match:
+							readonly_file = filename
+							break
+					if readonly_file is not None:
+						try:
+							os.unlink(myfile_path)
+						except OSError, e:
+							if e.errno != errno.ENOENT:
+								raise
+							del e
+						os.symlink(readonly_file, myfile_path)
+						continue
+
 				if fsmirrors and not os.path.exists(myfile_path) and has_space:
 					for mydir in fsmirrors:
 						mirror_file = os.path.join(mydir, myfile)
@@ -3446,7 +3582,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					# If the file is empty then it's obviously invalid. Remove
 					# the empty file and try to download if possible.
 					if mystat.st_size == 0:
-						if can_fetch:
+						if distdir_writable:
 							try:
 								os.unlink(myfile_path)
 							except EnvironmentError:
@@ -3481,7 +3617,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 									(reason[1], reason[2]), noiselevel=-1)
 								if reason[0] == "Insufficient data for checksum verification":
 									return 0
-								if can_fetch and not restrict_fetch:
+								if distdir_writable:
 									temp_filename = \
 										_checksum_failure_temp_file(
 										mysettings["DISTDIR"], myfile)

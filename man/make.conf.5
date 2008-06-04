@@ -438,6 +438,12 @@ emerge is running at.  In other words, this will not set the nice level,
 it will increment it.  For more information about nice levels and what
 are acceptable ranges, see \fBnice\fR(1).
 .TP
+\fBPORTAGE_RO_DISTDIRS\fR = \fI[space delimited list of directories]\fR
+When a given file does not exist in \fBDISTDIR\fR, search for the file
+in this list of directories. Search order is from left to right. Note
+that the current implementation works by creating a symlink inside
+\fBDISTDIR\fR, but that may change in the future.
+.TP
 \fBPORTAGE_RSYNC_INITIAL_TIMEOUT\fR = \fIinteger\fR
 Used by \fBemerge \-\-sync\fR as a timeout for the initial connection to an
 rsync server.
