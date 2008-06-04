@@ -102,7 +102,12 @@ Defines the location of your local source file repository. After packages
 are built, it is safe to remove any and all files from this directory since
 they will be automatically fetched on demand for a given build. If you would
 like to selectively prune obsolete files from this directory, see
-\fBeclean\fR(1) from the gentoolkit package. Note
+\fBeclean\fR(1) from the gentoolkit package.
+
+Use the \fBPORTAGE_RO_DISTDIRS\fR variable to specify one or
+more read-only directories containing distfiles.
+
+Note
 that locations under /usr/portage are not necessarily safe for data storage.
 See the \fBPORTDIR\fR documentation for more information.
 .br
