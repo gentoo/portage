@@ -1401,7 +1401,7 @@ class config(object):
 			# Blacklist vars that could interfere with portage internals.
 			for blacklisted in "CATEGORY", "EBUILD_PHASE", \
 				"PKGUSE", "PORTAGE_CONFIGROOT", \
-				"PORTAGE_IUSE", "PORTAGE_USE", "ROOT",
+				"PORTAGE_IUSE", "PORTAGE_USE", "ROOT", \
 				"EPREFIX", "EROOT":
 				for cfg in self.lookuplist:
 					cfg.pop(blacklisted, None)
