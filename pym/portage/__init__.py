@@ -1279,6 +1279,8 @@ class config(object):
 			make_conf = getconfig(
 				os.path.join(config_root, MAKE_CONF_FILE.lstrip(os.path.sep)),
 				tolerant=tolerant, allow_sourcing=True)
+			if make_conf is None:
+				make_conf = {}
 
 			# Allow ROOT setting to come from make.conf if it's not overridden
 			# by the constructor argument (from the calling environment).
