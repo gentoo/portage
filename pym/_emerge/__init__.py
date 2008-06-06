@@ -1788,6 +1788,21 @@ class PackageVirtualDbapi(portage.dbapi):
 			return True
 		return False
 
+	def __getitem__(self, k):
+		cpv = getattr(k, "cpv", None)
+		if cpv is None:
+			try:
+				cpv = k[2]
+			except (TypeError, IndexError):
+				raise KeyError(k)
+		if cpv is None:
+			raise KeyError(k)
+		existing = self._cpv_map.get(cpv)
+		if existing is not None and \
+			existing == k:
+			return existing
+		raise KeyError(k)
+
 	def match_pkgs(self, atom):
 		return [self._cpv_map[cpv] for cpv in self.match(atom)]
 
