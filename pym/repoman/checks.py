@@ -241,6 +241,6 @@ def run_checks(contents, st_mtime, inherited=None):
 				if e:
 					yield lc.repoman_check_name, e % (num + 1)
 	if iuse_def is None:
-		yield 'ebuild.minorsyn', 'IUSE is not defined'
+		yield 'IUSE.undefined', 'IUSE is not defined'
 	if inherit_autotools and autotools_func_call is None:
 		yield 'inherit.autotools', 'no eauto* function called'
