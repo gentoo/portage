@@ -8842,7 +8842,9 @@ def validate_ebuild_environment(trees):
 def load_emerge_config(trees=None):
 	kwargs = {}
 	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT")):
-		kwargs[k] = os.environ.get(envvar, None)
+		v = os.environ.get(envvar, None)
+		if v and v.strip():
+			kwargs[k] = v
 	trees = portage.create_trees(trees=trees, **kwargs)
 
 	for root, root_trees in trees.iteritems():
