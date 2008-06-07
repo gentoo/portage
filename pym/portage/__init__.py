@@ -6757,7 +6757,7 @@ def create_trees(config_root=None, target_root=None, trees=None):
 
 	myroots = [(settings["ROOT"], settings)]
 	if settings["ROOT"] != "/":
-		settings = config(config_root=None, target_root=None,
+		settings = config(config_root=None, target_root="/",
 			config_incrementals=portage.const.INCREMENTALS)
 		# When ROOT != "/" we only want overrides from the calling
 		# environment to apply to the config that's associated
