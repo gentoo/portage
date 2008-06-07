@@ -614,15 +614,6 @@ src_test() {
 	fi
 }
 
-# Used to generate the /lib/cpp and /usr/bin/cc wrappers
-gen_wrapper() {
-	cat > "$1" <<-EOF
-	#!/bin/sh
-	exec $2 "\$@"
-	EOF
-	chmod 0755 "$1"
-}
-
 ebuild_phase() {
 	[ "$(type -t ${1})" == "function" ] && qa_call ${1}
 }
