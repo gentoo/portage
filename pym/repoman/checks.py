@@ -217,13 +217,20 @@ _constant_checks = tuple((c() for c in (
 	EbuildUselessCdS, EbuildNestedDie,
 	EbuildPatches, EbuildQuotedA)))
 
+_iuse_def_re = re.compile(r'^IUSE=.*')
+
 def run_checks(contents, st_mtime):
 	checks = list(_constant_checks)
 	checks.append(EbuildHeader(st_mtime))
+	iuse_def = None
 	for num, line in enumerate(contents):
+		if iuse_def is None:
+			iuse_def = _iuse_def_re.match(line)
 		for lc in checks:
 			ignore = lc.ignore_line
 			if not ignore or not ignore.match(line):
 				e = lc.check(num, line)
 				if e:
 					yield lc.repoman_check_name, e % (num + 1)
+	if iuse_def is None:
+		yield 'ebuild.minorsyn', 'IUSE is not defined'
