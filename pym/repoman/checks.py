@@ -218,14 +218,22 @@ _constant_checks = tuple((c() for c in (
 	EbuildPatches, EbuildQuotedA)))
 
 _iuse_def_re = re.compile(r'^IUSE=.*')
+_comment_re = re.compile(r'(^|\s*)#')
+_autotools_func_re = re.compile(r'(^|\s)(eautomake|eautoconf|eautoreconf)(\s|$)')
 
-def run_checks(contents, st_mtime):
+def run_checks(contents, st_mtime, inherited=None):
 	checks = list(_constant_checks)
 	checks.append(EbuildHeader(st_mtime))
 	iuse_def = None
+	inherit_autotools = inherited and "autotools" in inherited
+	autotools_func_call = None
 	for num, line in enumerate(contents):
-		if iuse_def is None:
-			iuse_def = _iuse_def_re.match(line)
+		comment = _comment_re.match(line)
+		if comment is None:
+			if inherit_autotools and autotools_func_call is None:
+				autotools_func_call = _autotools_func_re.search(line)
+			if iuse_def is None:
+				iuse_def = _iuse_def_re.match(line)
 		for lc in checks:
 			ignore = lc.ignore_line
 			if not ignore or not ignore.match(line):
@@ -234,3 +242,5 @@ def run_checks(contents, st_mtime):
 					yield lc.repoman_check_name, e % (num + 1)
 	if iuse_def is None:
 		yield 'ebuild.minorsyn', 'IUSE is not defined'
+	if inherit_autotools and autotools_func_call is None:
+		yield 'inherit.autotools', 'no eauto* function called'
