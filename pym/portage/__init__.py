@@ -1279,6 +1279,8 @@ class config(object):
 			# by the constructor argument (from the calling environment).
 			if target_root is None and "ROOT" in make_conf:
 				target_root = make_conf["ROOT"]
+				if not target_root.strip():
+					target_root = None
 			if target_root is None:
 				target_root = "/"
 
