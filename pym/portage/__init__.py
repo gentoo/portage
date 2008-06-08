@@ -4042,6 +4042,8 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 			noiselevel=-1)
 		if strict:
 			return 0
+		else:
+			return 1
 	mf = Manifest(pkgdir, mysettings["DISTDIR"])
 	eout = portage.output.EOutput()
 	eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
