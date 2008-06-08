@@ -518,7 +518,7 @@ trees["/"]["porttree"].settings = repoman_settings
 portdb = trees["/"]["porttree"].dbapi
 portdb.mysettings = repoman_settings
 setconfig = load_default_config(repoman_settings, trees["/"])
-root_config = RootConfig(repoman_settings, trees, setconfig)
+root_config = RootConfig(repoman_settings, trees["/"], setconfig)
 # We really only need to cache the metadata that's necessary for visibility
 # filtering. Anything else can be discarded to reduce memory consumption.
 for k in ("DEPEND", "LICENCE", "PDEPEND",
