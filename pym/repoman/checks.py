@@ -221,11 +221,11 @@ _iuse_def_re = re.compile(r'^IUSE=.*')
 _comment_re = re.compile(r'(^|\s*)#')
 _autotools_func_re = re.compile(r'(^|\s)(eautomake|eautoconf|eautoreconf)(\s|$)')
 
-def run_checks(contents, st_mtime, inherited=None):
+def run_checks(contents, pkg):
 	checks = list(_constant_checks)
-	checks.append(EbuildHeader(st_mtime))
+	checks.append(EbuildHeader(pkg.mtime))
 	iuse_def = None
-	inherit_autotools = inherited and "autotools" in inherited
+	inherit_autotools = "autotools" in pkg.inherited
 	autotools_func_call = None
 	for num, line in enumerate(contents):
 		comment = _comment_re.match(line)

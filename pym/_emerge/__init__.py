@@ -1274,7 +1274,8 @@ class Package(Task):
 	__slots__ = ("built", "cpv", "depth",
 		"installed", "metadata", "onlydeps", "operation",
 		"root_config", "type_name",
-		"category", "counter", "cp", "cpv_split", "iuse", "mtime",
+		"category", "counter", "cp", "cpv_split",
+		"inherited", "iuse", "mtime",
 		"pf", "pv_split", "root", "slot", "slot_atom", "use")
 
 	metadata_keys = [
@@ -1337,7 +1338,7 @@ class Package(Task):
 		Detect metadata updates and synchronize Package attributes.
 		"""
 		_wrapped_keys = frozenset(
-			["COUNTER", "IUSE", "SLOT", "USE", "_mtime_"])
+			["COUNTER", "INHERITED", "IUSE", "SLOT", "USE", "_mtime_"])
 
 		def __init__(self, pkg, metadata):
 			dict.__init__(self)
@@ -1354,6 +1355,11 @@ class Package(Task):
 			dict.__setitem__(self, k, v)
 			if k in self._wrapped_keys:
 				getattr(self, "_set_" + k.lower())(k, v)
+
+		def _set_inherited(self, k, v):
+			if isinstance(v, basestring):
+				v = frozenset(v.split())
+			self._pkg.inherited = v
 
 		def _set_iuse(self, k, v):
 			self._pkg.iuse = self._pkg._iuse(
