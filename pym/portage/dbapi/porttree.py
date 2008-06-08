@@ -283,7 +283,8 @@ class portdbapi(dbapi):
 
 
 		try:
-			emtime = os.stat(myebuild)[stat.ST_MTIME]
+			st = os.stat(myebuild)
+			emtime = st[stat.ST_MTIME]
 		except OSError:
 			writemsg("!!! aux_get(): ebuild for '%(cpv)s' does not exist at:\n" % {"cpv":mycpv},
 				noiselevel=-1)
@@ -379,6 +380,8 @@ class portdbapi(dbapi):
 		for x in mylist:
 			if x == "INHERITED":
 				returnme.append(' '.join(mydata.get("_eclasses_", [])))
+			elif x == "_mtime_":
+				returnme.append(st.st_mtime)
 			else:
 				returnme.append(mydata.get(x,""))
 
