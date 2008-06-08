@@ -147,9 +147,9 @@ class LinkageMap(object):
 		# have to call scanelf for preserved libs here as they aren't 
 		# registered in NEEDED.ELF.2 files
 		if self._dbapi.plib_registry and self._dbapi.plib_registry.getPreservedLibs():
-			args = ["/usr/bin/scanelf", "-yqF", "%a;%F;%S;%r;%n"]
+			args = ["/usr/bin/scanelf", "-qF", "%a;%F;%S;%r;%n"]
 			for items in self._dbapi.plib_registry.getPreservedLibs().values():
-				args += items
+				args += [x.lstrip(".") for x in items]
 			proc = subprocess.Popen(args, stdout=subprocess.PIPE)
 			output = [l[3:] for l in proc.communicate()[0].split("\n")]
 			lines += output
@@ -1812,18 +1812,16 @@ class dblink(object):
 		
 		# inject files that should be preserved into our image dir
 		import shutil
-		missing_paths = []
+		preserve_paths = []
 		candidates_stack = list(candidates)
 		while candidates_stack:
 			x = candidates_stack.pop()
 			# skip existing files so the 'new' libs aren't overwritten
 			if os.path.exists(os.path.join(srcroot, x.lstrip(os.sep))):
-				missing_paths.append(x)
 				continue
 			print "injecting %s into %s" % (x, srcroot)
 			if not os.path.exists(os.path.join(destroot, x.lstrip(os.sep))):
 				print "%s does not exist so can't be preserved" % x
-				missing_paths.append(x)
 				continue
 			mydir = os.path.join(srcroot, os.path.dirname(x).lstrip(os.sep))
 			if not os.path.exists(mydir):
@@ -1842,10 +1840,9 @@ class dblink(object):
 			else:
 				shutil.copy2(os.path.join(destroot, x.lstrip(os.sep)),
 					os.path.join(srcroot, x.lstrip(os.sep)))
-
-		preserve_paths = [x for x in candidates if x not in missing_paths]
-
-		del missing_paths, candidates
+			preserve_paths.append(x)
+			
+		del candidates
 
 		# keep track of the libs we preserved
 		self.vartree.dbapi.plib_registry.register(self.mycpv, self.settings["SLOT"], counter, preserve_paths)
