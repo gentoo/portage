@@ -219,7 +219,11 @@ _constant_checks = tuple((c() for c in (
 
 _iuse_def_re = re.compile(r'^IUSE=.*')
 _comment_re = re.compile(r'(^|\s*)#')
-_autotools_func_re = re.compile(r'(^|\s)(eautomake|eautoconf|eautoreconf)(\s|$)')
+_autotools_funcs = (
+	"eaclocal", "eautoconf", "eautoheader",
+	"eautomake", "eautoreconf", "_elibtoolize")
+_autotools_func_re = re.compile(r'(^|\s)(' + \
+	"|".join(_autotools_funcs) + ')(\s|$)')
 
 def run_checks(contents, pkg):
 	checks = list(_constant_checks)
