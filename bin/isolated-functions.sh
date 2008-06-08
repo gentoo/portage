@@ -467,7 +467,7 @@ save_ebuild_env() {
 			hasv hasq qa_source qa_call addread addwrite adddeny addpredict \
 			lchown lchgrp esyslog use usev useq has_version portageq \
 			best_version use_with use_enable register_die_hook check_KV \
-			keepdir unpack strip_duplicate_slashes econf einstall gen_wrapper \
+			keepdir unpack strip_duplicate_slashes econf einstall \
 			dyn_setup dyn_unpack dyn_clean into insinto exeinto docinto \
 			insopts diropts exeopts libopts abort_handler abort_compile \
 			abort_test abort_install dyn_compile dyn_test dyn_install \

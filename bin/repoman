@@ -54,6 +54,9 @@ del os.environ["PORTAGE_LEGACY_GLOBALS"]
 from repoman.checks import run_checks
 from repoman import utilities
 
+from _emerge import Package, RootConfig
+from portage.sets import load_default_config
+
 import portage.checksum
 import portage.const
 import portage.dep
@@ -253,6 +256,7 @@ qahelp={
 	"file.size":"Files in the files directory must be under 20k",
 	"file.name":"File/dir name must be composed of only the following chars: %s " % allowed_filename_chars,
 	"file.UTF8":"File is not UTF8 compliant",
+	"inherit.autotools":"Ebuild inherits autotools but does not call eautomake, eautoconf or eautoreconf",
 	"java.eclassesnotused":"With virtual/jdk in DEPEND you must inherit a java eclass",
 	"KEYWORDS.dropped":"Ebuilds that appear to have dropped KEYWORDS for some arch",
 	"KEYWORDS.missing":"Ebuilds that have a missing or empty KEYWORDS variable",
@@ -290,6 +294,7 @@ qahelp={
 	"variable.readonly":"Assigning a readonly variable",
 	"LIVEVCS.stable":"This ebuild is a live checkout from a VCS but has stable keywords.",
 	"IUSE.invalid":"This ebuild has a variable in IUSE that is not in the use.desc or use.local.desc file",
+	"IUSE.undefined":"This ebuild does not define IUSE (style guideline says to define IUSE even when empty)",
 	"LICENSE.invalid":"This ebuild is listing a license that doesnt exist in portages license/ dir.",
 	"KEYWORDS.invalid":"This ebuild contains KEYWORDS that are not listed in profiles/arch.list or for which no valid profile was found",
 	"RDEPEND.suspect":"RDEPEND contains a package that usually only belongs in DEPEND.",
@@ -327,12 +332,14 @@ qawarnings=[
 "KEYWORDS.dropped",
 "KEYWORDS.stupid",
 "KEYWORDS.missing",
+"IUSE.undefined",
 "RDEPEND.suspect",
 "RESTRICT.invalid",
 "ebuild.minorsyn",
 "ebuild.badheader",
 "ebuild.patches",
 "file.size",
+"inherit.autotools",
 "java.eclassesnotused",
 "metadata.missing",
 "metadata.bad",
@@ -344,7 +351,9 @@ qawarnings=[
 ]
 
 missingvars=["KEYWORDS","LICENSE","DESCRIPTION","HOMEPAGE","SLOT"]
-allvars=portage.auxdbkeys
+allvars = set(portage.auxdbkeys)
+allvars.update(Package.metadata_keys)
+allvars = sorted(allvars)
 commitmessage=None
 for x in missingvars:
 	x += ".missing"
@@ -506,6 +515,8 @@ trees = portage.create_trees()
 trees["/"]["porttree"].settings = repoman_settings
 portdb = trees["/"]["porttree"].dbapi
 portdb.mysettings = repoman_settings
+setconfig = load_default_config(repoman_settings, trees["/"])
+root_config = RootConfig(repoman_settings, trees["/"], setconfig)
 # We really only need to cache the metadata that's necessary for visibility
 # filtering. Anything else can be discarded to reduce memory consumption.
 for k in ("DEPEND", "LICENCE", "PDEPEND",
@@ -774,7 +785,7 @@ for x in scanlist:
 
 	checkdirlist=os.listdir(checkdir)
 	ebuildlist=[]
-	ebuild_metadata = {}
+	pkgs = {}
 	for y in checkdirlist:
 		if y in no_exec and \
 			stat.S_IMODE(os.stat(os.path.join(checkdir, y)).st_mode) & 0111:
@@ -798,7 +809,8 @@ for x in scanlist:
 				stats["EAPI.unsupported"] += 1
 				fails["EAPI.unsupported"].append(os.path.join(x, y))
 				continue
-			ebuild_metadata[pf] = myaux
+			pkgs[pf] = Package(cpv=cpv, metadata=myaux,
+				root_config=root_config)
 
 	# Sort ebuilds in ascending order for the KEYWORDS.dropped check.
 	pkgsplits = {}
@@ -813,7 +825,7 @@ for x in scanlist:
 
 	slot_keywords = {}
 
-	if len(ebuild_metadata) != len(ebuildlist):
+	if len(pkgs) != len(ebuildlist):
 		# If we can't access all the metadata then it's totally unsafe to
 		# commit since there's no way to generate a correct Manifest.
 		# Do not try to do any more QA checks on this package since missing
@@ -1069,9 +1081,10 @@ for x in scanlist:
 			fails["ebuild.namenomatch"].append(x+"/"+y+".ebuild")
 			continue
 
-		myaux = ebuild_metadata[y]
+		pkg = pkgs[y]
+		myaux = pkg.metadata
 		eapi = myaux["EAPI"]
-		inherited = myaux["INHERITED"].split()
+		inherited = pkg.inherited
 
 		# Test for negative logic and bad words in the RESTRICT var.
 		#for x in myaux[allvars.index("RESTRICT")].split():
@@ -1379,7 +1392,7 @@ for x in scanlist:
 		full_path = os.path.join(repodir, relative_path)
 		f = open(full_path, 'rb')
 		try:
-			for check_name, e in run_checks(f, os.stat(full_path).st_mtime):
+			for check_name, e in run_checks(f, pkg):
 				stats[check_name] += 1
 				fails[check_name].append(relative_path + ': %s' % e)
 		finally:

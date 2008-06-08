@@ -1301,13 +1301,14 @@ class Package(Task):
 	__slots__ = ("built", "cpv", "depth",
 		"installed", "metadata", "onlydeps", "operation",
 		"root_config", "type_name",
-		"category", "cp", "cpv_split", "iuse",
+		"category", "counter", "cp", "cpv_split",
+		"inherited", "iuse", "mtime",
 		"pf", "pv_split", "root", "slot", "slot_atom", "use")
 
 	metadata_keys = [
 		"CHOST", "COUNTER", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
 		"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
-		"repository", "RESTRICT", "SLOT", "USE"]
+		"repository", "RESTRICT", "SLOT", "USE", "_mtime_"]
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
@@ -1363,7 +1364,8 @@ class Package(Task):
 		"""
 		Detect metadata updates and synchronize Package attributes.
 		"""
-		_wrapped_keys = frozenset(["IUSE", "SLOT", "USE"])
+		_wrapped_keys = frozenset(
+			["COUNTER", "INHERITED", "IUSE", "SLOT", "USE", "_mtime_"])
 
 		def __init__(self, pkg, metadata):
 			dict.__init__(self)
@@ -1381,6 +1383,11 @@ class Package(Task):
 			if k in self._wrapped_keys:
 				getattr(self, "_set_" + k.lower())(k, v)
 
+		def _set_inherited(self, k, v):
+			if isinstance(v, basestring):
+				v = frozenset(v.split())
+			self._pkg.inherited = v
+
 		def _set_iuse(self, k, v):
 			self._pkg.iuse = self._pkg._iuse(
 				v.split(), self._pkg.root_config.iuse_implicit)
@@ -1390,6 +1397,22 @@ class Package(Task):
 
 		def _set_use(self, k, v):
 			self._pkg.use = self._pkg._use(v.split())
+
+		def _set_counter(self, k, v):
+			if isinstance(v, basestring):
+				try:
+					v = int(v.strip())
+				except ValueError:
+					v = 0
+			self._pkg.counter = v
+
+		def _set__mtime_(self, k, v):
+			if isinstance(v, basestring):
+				try:
+					v = float(v.strip())
+				except ValueError:
+					v = 0
+			self._pkg.mtime = v
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
@@ -1797,6 +1820,21 @@ class PackageVirtualDbapi(portage.dbapi):
 			existing == item:
 			return True
 		return False
+
+	def __getitem__(self, k):
+		cpv = getattr(k, "cpv", None)
+		if cpv is None:
+			try:
+				cpv = k[2]
+			except (TypeError, IndexError):
+				raise KeyError(k)
+		if cpv is None:
+			raise KeyError(k)
+		existing = self._cpv_map.get(cpv)
+		if existing is not None and \
+			existing == k:
+			return existing
+		raise KeyError(k)
 
 	def match_pkgs(self, atom):
 		return [self._cpv_map[cpv] for cpv in self.match(atom)]
@@ -8900,7 +8938,9 @@ def validate_ebuild_environment(trees):
 def load_emerge_config(trees=None):
 	kwargs = {}
 	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT")):
-		kwargs[k] = os.environ.get(envvar, None)
+		v = os.environ.get(envvar, None)
+		if v and v.strip():
+			kwargs[k] = v
 	trees = portage.create_trees(trees=trees, **kwargs)
 
 	for root, root_trees in trees.iteritems():

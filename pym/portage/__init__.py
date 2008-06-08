@@ -1286,6 +1286,8 @@ class config(object):
 			# by the constructor argument (from the calling environment).
 			if target_root is None and "ROOT" in make_conf:
 				target_root = make_conf["ROOT"]
+				if not target_root.strip():
+					target_root = None
 			if target_root is None:
 				target_root = "/"
 
@@ -4060,6 +4062,8 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 			noiselevel=-1)
 		if strict:
 			return 0
+		else:
+			return 1
 	mf = Manifest(pkgdir, mysettings["DISTDIR"])
 	eout = portage.output.EOutput()
 	eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
@@ -6841,7 +6845,7 @@ def create_trees(config_root=None, target_root=None, trees=None):
 
 	myroots = [(settings["ROOT"], settings)]
 	if settings["ROOT"] != "/":
-		settings = config(config_root=None, target_root=None,
+		settings = config(config_root=None, target_root="/",
 			config_incrementals=portage.const.INCREMENTALS)
 		# When ROOT != "/" we only want overrides from the calling
 		# environment to apply to the config that's associated
