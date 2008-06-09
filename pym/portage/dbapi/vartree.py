@@ -253,9 +253,9 @@ class LinkageMapMachO(object):
 		# registered in NEEDED.MACHO.2 files
 # TODO: FIXME: ETC.
 #		if self._dbapi.plib_registry and self._dbapi.plib_registry.getPreservedLibs():
-#			args = [EPREFIX+"/usr/bin/scanelf", "-yqF", "%a;%F;%S;%r;%n"]
+#			args = [EPREFIX+"/usr/bin/scanelf", "-qF", "%a;%F;%S;%r;%n"]
 #			for items in self._dbapi.plib_registry.getPreservedLibs().values():
-#				args += items
+#				args += [x.lstrip(".") for x in items]
 #			proc = subprocess.Popen(args, stdout=subprocess.PIPE)
 #			output = [l[3:] for l in proc.communicate()[0].split("\n")]
 #			lines += output
