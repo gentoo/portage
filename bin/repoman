@@ -168,6 +168,7 @@ qahelp={
 	"file.size":"Files in the files directory must be under 20k",
 	"file.name":"File/dir name must be composed of only the following chars: %s " % allowed_filename_chars,
 	"file.UTF8":"File is not UTF8 compliant",
+	"inherit.autotools":"Ebuild inherits autotools but does not call eautomake, eautoconf or eautoreconf",
 	"java.eclassesnotused":"With virtual/jdk in DEPEND you must inherit a java eclass",
 	"KEYWORDS.dropped":"Ebuilds that appear to have dropped KEYWORDS for some arch",
 	"KEYWORDS.missing":"Ebuilds that have a missing or empty KEYWORDS variable",
@@ -249,6 +250,7 @@ qawarnings=[
 "ebuild.badheader",
 "ebuild.patches",
 "file.size",
+"inherit.autotools",
 "java.eclassesnotused",
 "metadata.missing",
 "metadata.bad",
@@ -1109,12 +1111,20 @@ _constant_checks = tuple((c() for c in (
 	EbuildPatches, EbuildQuotedA)))
 
 _iuse_def_re = re.compile(r'^IUSE=.*')
+_comment_re = re.compile(r'(^|\s*)#')
+_autotools_func_re = re.compile(r'(^|\s)(eautomake|eautoconf|eautoreconf)(\s|$)')
 
-def run_checks(contents):
+def run_checks(contents, inherited=None):
 	iuse_def = None
+	inherit_autotools = inherited and "autotools" in inherited
+	autotools_func_call = None
 	for num, line in enumerate(contents):
-		if iuse_def is None:
-			iuse_def = _iuse_def_re.match(line)
+		comment = _comment_re.match(line)
+		if comment is None:
+			if inherit_autotools and autotools_func_call is None:
+				autotools_func_call = _autotools_func_re.search(line)
+			if iuse_def is None:
+				iuse_def = _iuse_def_re.match(line)
 		for lc in _constant_checks:
 			ignore = lc.ignore_line
 			if not ignore or not ignore.match(line):
@@ -1123,6 +1133,8 @@ def run_checks(contents):
 					yield lc.repoman_check_name, e % (num + 1)
 	if iuse_def is None:
 		yield 'ebuild.minorsyn', 'IUSE is not defined'
+	if inherit_autotools and autotools_func_call is None:
+		yield 'inherit.autotools', 'no eauto* function called'
 
 if mymode == "commit":
 	retval = ("","")
@@ -1530,7 +1542,7 @@ for x in scanlist:
 
 		myaux = ebuild_metadata[y]
 		eapi = myaux["EAPI"]
-		inherited = myaux["INHERITED"].split()
+		inherited = frozenset(myaux["INHERITED"].split())
 
 		# Test for negative logic and bad words in the RESTRICT var.
 		#for x in myaux[allvars.index("RESTRICT")].split():
@@ -1831,7 +1843,7 @@ for x in scanlist:
 		f = open(full_path, 'rb')
 		try:
 			contents = f.readlines()
-			for check_name, e in run_checks(contents):
+			for check_name, e in run_checks(contents, inherited=inherited):
 				stats[check_name] += 1
 				fails[check_name].append(relative_path + ': %s' % e)
 		finally:
