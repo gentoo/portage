@@ -588,6 +588,7 @@ class vardbapi(dbapi):
 		return self._aux_cache_obj
 
 	def _aux_cache_init(self):
+		aux_cache = None
 		try:
 			f = open(self._aux_cache_filename)
 			mypickle = cPickle.Unpickler(f)
