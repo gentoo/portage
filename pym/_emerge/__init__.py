@@ -1821,21 +1821,6 @@ class PackageVirtualDbapi(portage.dbapi):
 			return True
 		return False
 
-	def __getitem__(self, k):
-		cpv = getattr(k, "cpv", None)
-		if cpv is None:
-			try:
-				cpv = k[2]
-			except (TypeError, IndexError):
-				raise KeyError(k)
-		if cpv is None:
-			raise KeyError(k)
-		existing = self._cpv_map.get(cpv)
-		if existing is not None and \
-			existing == k:
-			return existing
-		raise KeyError(k)
-
 	def match_pkgs(self, atom):
 		return [self._cpv_map[cpv] for cpv in self.match(atom)]
 
@@ -2587,6 +2572,7 @@ class depgraph(object):
 		myroot = self.target_root
 		dbs = self._filtered_trees[myroot]["dbs"]
 		vardb = self.trees[myroot]["vartree"].dbapi
+		real_vardb = self._trees_orig[myroot]["vartree"].dbapi
 		portdb = self.trees[myroot]["porttree"].dbapi
 		bindb = self.trees[myroot]["bintree"].dbapi
 		pkgsettings = self.pkgsettings[myroot]
@@ -2665,16 +2651,12 @@ class depgraph(object):
 						" $ROOT.\n") % x, noiselevel=-1)
 					return 0, []
 				relative_path = x[len(myroot):]
-				vartree = self._trees_orig[myroot]["vartree"]
 				owner_cpv = None
-				for cpv in vardb.cpv_all():
-					self.spinner.update()
-					cat, pf = portage.catsplit(cpv)
-					if portage.dblink(cat, pf, myroot,
-						pkgsettings, vartree=vartree).isowner(
-						relative_path, myroot):
-						owner_cpv = cpv
-						break
+				for pkg, relative_path in \
+					real_vardb._owners.iter_owners([relative_path]):
+					owner_cpv = pkg.mycpv
+					break
+
 				if owner_cpv is None:
 					portage.writemsg(("\n\n!!! '%s' is not claimed " + \
 						"by any package.\n") % x, noiselevel=-1)

@@ -147,9 +147,9 @@ class LinkageMap(object):
 		# have to call scanelf for preserved libs here as they aren't 
 		# registered in NEEDED.ELF.2 files
 		if self._dbapi.plib_registry and self._dbapi.plib_registry.getPreservedLibs():
-			args = [EPREFIX+"/usr/bin/scanelf", "-yqF", "%a;%F;%S;%r;%n"]
+			args = [EPREFIX+"/usr/bin/scanelf", "-qF", "%a;%F;%S;%r;%n"]
 			for items in self._dbapi.plib_registry.getPreservedLibs().values():
-				args += items
+				args += [x.lstrip(".") for x in items]
 			proc = subprocess.Popen(args, stdout=subprocess.PIPE)
 			output = [l[3:] for l in proc.communicate()[0].split("\n")]
 			lines += output
@@ -338,6 +338,9 @@ class vardbapi(dbapi):
 	_excluded_dirs = re.compile(r'^(\..*|-MERGING-.*|' + \
 		"|".join(_excluded_dirs) + r')$')
 
+	_aux_cache_version        = "1"
+	_owners_cache_version     = "1"
+
 	# Number of uncached packages to trigger cache update, since
 	# it's wasteful to update it for every vdb change.
 	_aux_cache_threshold = 5
@@ -375,8 +378,7 @@ class vardbapi(dbapi):
 			"EAPI", "HOMEPAGE", "IUSE", "KEYWORDS",
 			"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
 			"repository", "RESTRICT" , "SLOT", "USE"])
-		self._aux_cache = None
-		self._aux_cache_version = "1"
+		self._aux_cache_obj = None
 		self._aux_cache_filename = os.path.join(self.root,
 			CACHE_PATH.lstrip(os.path.sep), "vdb_metadata.pickle")
 		self._counter_path = os.path.join(root,
@@ -393,6 +395,7 @@ class vardbapi(dbapi):
 			self.linkmap = LinkageMapMachO(self)
 		else:
 			self.linkmap = LinkageMap(self)
+		self._owners = self._owners_db(self)
 
 	def getpath(self, mykey, filename=None):
 		rValue = os.path.join(self.root, VDB_PATH, mykey)
@@ -665,6 +668,7 @@ class vardbapi(dbapi):
 		if self._aux_cache is not None and \
 			len(self._aux_cache["modified"]) >= self._aux_cache_threshold and \
 			secpass >= 2:
+			self._owners.populate() # index any unindexed contents
 			valid_nodes = set(self.cpv_all())
 			for cpv in self._aux_cache["packages"].keys():
 				if cpv not in valid_nodes:
@@ -679,6 +683,54 @@ class vardbapi(dbapi):
 			except (IOError, OSError), e:
 				pass
 			self._aux_cache["modified"] = set()
+
+	@property
+	def _aux_cache(self):
+		if self._aux_cache_obj is None:
+			self._aux_cache_init()
+		return self._aux_cache_obj
+
+	def _aux_cache_init(self):
+		try:
+			f = open(self._aux_cache_filename)
+			mypickle = cPickle.Unpickler(f)
+			mypickle.find_global = None
+			aux_cache = mypickle.load()
+			f.close()
+			del f
+		except (IOError, OSError, EOFError, cPickle.UnpicklingError), e:
+			if isinstance(e, cPickle.UnpicklingError):
+				writemsg("!!! Error loading '%s': %s\n" % \
+					(self._aux_cache_filename, str(e)), noiselevel=-1)
+			del e
+
+		if not aux_cache or \
+			not isinstance(aux_cache, dict) or \
+			aux_cache.get("version") != self._aux_cache_version or \
+			not aux_cache.get("packages"):
+			aux_cache = {"version": self._aux_cache_version}
+			aux_cache["packages"] = {}
+
+		owners = aux_cache.get("owners")
+		if owners is not None:
+			if not isinstance(owners, dict):
+				owners = None
+			elif "version" not in owners:
+				owners = None
+			elif owners["version"] != self._owners_cache_version:
+				owners = None
+			elif "base_names" not in owners:
+				owners = None
+
+		if owners is None:
+			owners = {
+				"base_names" : {},
+				"version"    : self._owners_cache_version
+			}
+			aux_cache["owners"] = owners
+
+		aux_cache["modified"] = set()
+		self._aux_cache_obj = aux_cache
 
 	def aux_get(self, mycpv, wants):
 		"""This automatically caches selected keys that are frequently needed
@@ -704,26 +756,6 @@ class vardbapi(dbapi):
 		cache_these = set(self._aux_cache_keys)
 		cache_these.update(cache_these_wants)
 
-		if self._aux_cache is None:
-			try:
-				f = open(self._aux_cache_filename)
-				mypickle = cPickle.Unpickler(f)
-				mypickle.find_global = None
-				self._aux_cache = mypickle.load()
-				f.close()
-				del f
-			except (IOError, OSError, EOFError, cPickle.UnpicklingError), e:
-				if isinstance(e, cPickle.UnpicklingError):
-					writemsg("!!! Error loading '%s': %s\n" % \
-						(self._aux_cache_filename, str(e)), noiselevel=-1)
-				del e
-			if not self._aux_cache or \
-				not isinstance(self._aux_cache, dict) or \
-				self._aux_cache.get("version") != self._aux_cache_version or \
-				not self._aux_cache.get("packages"):
-				self._aux_cache = {"version": self._aux_cache_version}
-				self._aux_cache["packages"] = {}
-			self._aux_cache["modified"] = set()
 		mydir = self.getpath(mycpv)
 		mydir_stat = None
 		try:
@@ -903,6 +935,173 @@ class vardbapi(dbapi):
 			# update new global counter file
 			write_atomic(self._counter_path, str(counter))
 		return counter
+
+	def _dblink(self, cpv):
+		category, pf = catsplit(cpv)
+		return dblink(category, pf, self.root,
+			self.settings, vartree=self.vartree)
+
+	class _owners_cache(object):
+		"""
+		This class maintains an hash table that serves to index package
+		contents by mapping the basename of file to a list of possible
+		packages that own it. This is used to optimize owner lookups
+		by narrowing the search down to a smaller number of packages.
+		"""
+		try:
+			from hashlib import md5 as _new_hash
+		except ImportError:
+			from md5 import new as _new_hash
+
+		_hash_bits = 16
+		_hex_chars = _hash_bits / 4
+
+		def __init__(self, vardb):
+			self._vardb = vardb
+
+		def add(self, cpv):
+			root_len = len(self._vardb.root)
+			contents = self._vardb._dblink(cpv).getcontents()
+			pkg_hash = self._hash_pkg(cpv)
+			if not contents:
+				# Empty path is a code used to represent empty contents.
+				self._add_path("", pkg_hash)
+			for x in contents:
+				relative_path = x[root_len:]
+				self._add_path(x, pkg_hash)
+			self._vardb._aux_cache["modified"].add(cpv)
+
+		def _add_path(self, path, pkg_hash):
+			"""
+			Empty path is a code that represents empty contents.
+			"""
+			if path:
+				name = os.path.basename(path.rstrip(os.path.sep))
+				if not name:
+					return
+			else:
+				name = path
+			name_hash = self._hash_str(name)
+			base_names = self._vardb._aux_cache["owners"]["base_names"]
+			pkgs = base_names.get(name_hash)
+			if pkgs is None:
+				pkgs = {}
+				base_names[name_hash] = pkgs
+			pkgs[pkg_hash] = None
+
+		def _hash_str(self, s):
+			h = self._new_hash()
+			h.update(s)
+			h = h.hexdigest()
+			h = h[-self._hex_chars:]
+			h = int(h, 16)
+			return h
+
+		def _hash_pkg(self, cpv):
+			counter, mtime = self._vardb.aux_get(
+				cpv, ["COUNTER", "_mtime_"])
+			try:
+				counter = int(counter)
+			except ValueError:
+				counter = 0
+			return (cpv, counter, mtime)
+
+	class _owners_db(object):
+
+		def __init__(self, vardb):
+			self._vardb = vardb
+
+		def populate(self):
+			self._populate()
+
+		def _populate(self):
+			owners_cache = vardbapi._owners_cache(self._vardb)
+			cached_hashes = set()
+			base_names = self._vardb._aux_cache["owners"]["base_names"]
+
+			# Take inventory of all cached package hashes.
+			for hash_values in base_names.itervalues():
+				cached_hashes.update(hash_values)
+
+			# Create sets of valid package hashes and uncached packages.
+			uncached_pkgs = set()
+			hash_pkg = owners_cache._hash_pkg
+			valid_pkg_hashes = set()
+			for cpv in self._vardb.cpv_all():
+				hash_value = hash_pkg(cpv)
+				valid_pkg_hashes.add(hash_value)
+				if hash_value not in cached_hashes:
+					uncached_pkgs.add(cpv)
+
+			# Cache any missing packages.
+			for cpv in uncached_pkgs:
+				owners_cache.add(cpv)
+
+			# Delete any stale cache.
+			stale_hashes = cached_hashes.difference(valid_pkg_hashes)
+			if stale_hashes:
+				for base_name_hash, bucket in base_names.items():
+					for hash_value in stale_hashes.intersection(bucket):
+						del bucket[hash_value]
+					if not bucket:
+						del base_names[base_name_hash]
+
+			return owners_cache
+
+		def get_owners(self, path_iter):
+			"""
+			@return the owners as a dblink -> set(files) mapping.
+			"""
+			owners = {}
+			for owner, f in self.iter_owners(path_iter):
+				owned_files = owners.get(owner)
+				if owned_files is None:
+					owned_files = set()
+					owners[owner] = owned_files
+				owned_files.add(f)
+			return owners
+
+		def iter_owners(self, path_iter):
+			"""
+			Iterate over tuples of (dblink, path). In order to avoid
+			consuming too many resources for too much time, resources
+			are only allocated for the duration of a given iter_owners()
+			call. Therefore, to maximize reuse of resources when searching
+			for multiple files, it's best to search for them all in a single
+			call.
+			"""
+
+			owners_cache = self._populate()
+
+			vardb = self._vardb
+			root = vardb.root
+			hash_pkg = owners_cache._hash_pkg
+			hash_str = owners_cache._hash_str
+			base_names = self._vardb._aux_cache["owners"]["base_names"]
+
+			dblink_cache = {}
+
+			def dblink(cpv):
+				x = dblink_cache.get(cpv)
+				if x is None:
+					x = self._vardb._dblink(cpv)
+					dblink_cache[cpv] = x
+				return x
+
+			for path in path_iter:
+				name = os.path.basename(path.rstrip(os.path.sep))
+				if not name:
+					continue
+
+				name_hash = hash_str(name)
+				pkgs = base_names.get(name_hash)
+				if pkgs is not None:
+					for hash_value in pkgs:
+						cpv, counter, mtime = hash_value
+						if hash_pkg(cpv) != hash_value:
+							continue
+						if dblink(cpv).isowner(path, root):
+							yield dblink(cpv), path
 
 class vartree(object):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
@@ -1918,18 +2117,16 @@ class dblink(object):
 		
 		# inject files that should be preserved into our image dir
 		import shutil
-		missing_paths = []
+		preserve_paths = []
 		candidates_stack = list(candidates)
 		while candidates_stack:
 			x = candidates_stack.pop()
 			# skip existing files so the 'new' libs aren't overwritten
 			if os.path.exists(os.path.join(srcroot, x.lstrip(os.sep))):
-				missing_paths.append(x)
 				continue
 			print "injecting %s into %s" % (x, srcroot)
 			if not os.path.exists(os.path.join(destroot, x.lstrip(os.sep))):
 				print "%s does not exist so can't be preserved" % x
-				missing_paths.append(x)
 				continue
 			mydir = os.path.join(srcroot, os.path.dirname(x).lstrip(os.sep))
 			if not os.path.exists(mydir):
@@ -1948,10 +2145,9 @@ class dblink(object):
 			else:
 				shutil.copy2(os.path.join(destroot, x.lstrip(os.sep)),
 					os.path.join(srcroot, x.lstrip(os.sep)))
-
-		preserve_paths = [x for x in candidates if x not in missing_paths]
-
-		del missing_paths, candidates
+			preserve_paths.append(x)
+			
+		del candidates
 
 		# keep track of the libs we preserved
 		self.vartree.dbapi.plib_registry.register(self.mycpv, self.settings["SLOT"], counter, preserve_paths)
@@ -2311,36 +2507,30 @@ class dblink(object):
 
 			eerror(msg)
 
-			if collision_protect:
-				msg = []
-				msg.append("")
-				msg.append("Searching all installed" + \
-					" packages for file collisions...")
-				msg.append("")
-				msg.append("Press Ctrl-C to Stop")
-				msg.append("")
-				eerror(msg)
+			msg = []
+			msg.append("")
+			msg.append("Searching all installed" + \
+				" packages for file collisions...")
+			msg.append("")
+			msg.append("Press Ctrl-C to Stop")
+			msg.append("")
+			eerror(msg)
 
-				found_owner = False
-				for cpv in self.vartree.dbapi.cpv_all():
-					cat, pkg = catsplit(cpv)
-					mylink = dblink(cat, pkg, destroot, self.settings,
-						vartree=self.vartree)
-					mycollisions = []
-					for f in collisions:
-						if mylink.isowner(f, destroot):
-							mycollisions.append(f)
-					if mycollisions:
-						found_owner = True
-						msg = []
-						msg.append("%s" % cpv)
-						for f in mycollisions:
-							msg.append("\t%s" % os.path.join(destroot,
-								f.lstrip(os.path.sep)))
-						eerror(msg)
-				if not found_owner:
-					eerror(["None of the installed" + \
-						" packages claim the file(s)."])
+			owners = self.vartree.dbapi._owners.get_owners(files)
+			self.vartree.dbapi.flush_cache()
+
+			for pkg, owned_files in owners.iteritems():
+				cpv = pkg.mycpv
+				msg = []
+				msg.append("%s" % cpv)
+				for f in sorted(owned_files):
+					msg.append("\t%s" % os.path.join(destroot,
+						f.lstrip(os.path.sep)))
+				eerror(msg)
+			if not owners:
+				eerror(["None of the installed" + \
+					" packages claim the file(s)."])
+			if collision_protect:
 				return 1
 
 		writemsg_stdout(">>> Merging %s to %s\n" % (self.mycpv, destroot))

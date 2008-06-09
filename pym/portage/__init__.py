@@ -3390,6 +3390,13 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		dirmode  = 02070
 		filemode =   060
 		modemask =    02
+		dir_gid = portage_gid
+		if "FAKED_MODE" in mysettings:
+			# When inside fakeroot, directories with portage's gid appear
+			# to have root's gid. Therefore, use root's gid instead of
+			# portage's gid to avoid spurrious permissions adjustments
+			# when inside fakeroot.
+			dir_gid = 0
 		distdir_dirs = [""]
 		if "distlocks" in features:
 			distdir_dirs.append(".locks")
@@ -3397,13 +3404,13 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			
 			for x in distdir_dirs:
 				mydir = os.path.join(mysettings["DISTDIR"], x)
-				if portage.util.ensure_dirs(mydir, gid=portage_gid, mode=dirmode, mask=modemask):
+				if portage.util.ensure_dirs(mydir, gid=dir_gid, mode=dirmode, mask=modemask):
 					writemsg("Adjusting permissions recursively: '%s'\n" % mydir,
 						noiselevel=-1)
 					def onerror(e):
 						raise # bail out on the first error that occurs during recursion
 					if not apply_recursive_permissions(mydir,
-						gid=portage_gid, dirmode=dirmode, dirmask=modemask,
+						gid=dir_gid, dirmode=dirmode, dirmask=modemask,
 						filemode=filemode, filemask=modemask, onerror=onerror):
 						raise portage.exception.OperationNotPermitted(
 							"Failed to apply recursive permissions for the portage group.")
