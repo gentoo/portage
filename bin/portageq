@@ -188,26 +188,21 @@ def owners(argv):
 			return 2
 		files.append(f[len(root):])
 
-	found_owner = False
-	for cpv in vardb.cpv_all():
-		cat, pkg = catsplit(cpv)
-		mylink = dblink(cat, pkg, root, settings, vartree=vardb.vartree)
-		myfiles = []
-		for f in files:
-			if mylink.isowner(f, root):
-				myfiles.append(f)
-		if myfiles:
-			found_owner = True
-			sys.stdout.write("%s\n" % cpv)
-			for f in myfiles:
-				sys.stdout.write("\t%s\n" % \
-					os.path.join(root, f.lstrip(os.path.sep)))
-			sys.stdout.flush()
-	if not found_owner:
-		sys.stderr.write("None of the installed packages claim the file(s).\n")
-		sys.stderr.flush()
-		return 1
-	return 0
+	owners = vardb._owners.get_owners(files)
+
+	for pkg, owned_files in owners.iteritems():
+		cpv = pkg.mycpv
+		sys.stdout.write("%s\n" % cpv)
+		for f in sorted(owned_files):
+			sys.stdout.write("\t%s\n" % \
+				os.path.join(root, f.lstrip(os.path.sep)))
+	if owners:
+		sys.stdout.flush()
+		return 0
+
+	sys.stderr.write("None of the installed packages claim the file(s).\n")
+	sys.stderr.flush()
+	return 1
 
 owners.uses_root = True
 
