@@ -93,7 +93,7 @@ try:
 		DEPRECATED_PROFILE_FILE, USER_VIRTUALS_FILE, EBUILD_SH_ENV_FILE, \
 		INVALID_ENV_FILE, CUSTOM_MIRRORS_FILE, CONFIG_MEMORY_FILE,\
 		INCREMENTALS, EAPI, MISC_SH_BINARY, REPO_NAME_LOC, REPO_NAME_FILE, \
-		EPREFIX, EPREFIX_LSTRIP, BPREFIX
+		EPREFIX, EPREFIX_LSTRIP, BPREFIX, rootgid
 
 	from portage.data import ostype, lchown, userland, secpass, uid, wheelgid, \
 	                         portage_uid, portage_gid, userpriv_groups
@@ -3396,7 +3396,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			# to have root's gid. Therefore, use root's gid instead of
 			# portage's gid to avoid spurrious permissions adjustments
 			# when inside fakeroot.
-			dir_gid = 0
+			dir_gid = rootgid
 		distdir_dirs = [""]
 		if "distlocks" in features:
 			distdir_dirs.append(".locks")
