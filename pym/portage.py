@@ -7100,7 +7100,7 @@ class vardbapi(dbapi):
 		mydir_mtime = long(mydir_stat.st_mtime)
 		pkg_data = self._aux_cache["packages"].get(mycpv)
 		pull_me = cache_these.union(wants)
-		mydata = {}
+		mydata = {"_mtime_" : mydir_mtime}
 		cache_valid = False
 		cache_incomplete = False
 		cache_mtime = None
@@ -7124,7 +7124,8 @@ class vardbapi(dbapi):
 		if pull_me:
 			# pull any needed data and cache it
 			aux_keys = list(pull_me)
-			for k, v in izip(aux_keys, self._aux_get(mycpv, aux_keys)):
+			for k, v in izip(aux_keys,
+				self._aux_get(mycpv, aux_keys, st=mydir_stat)):
 				mydata[k] = v
 			if not cache_valid or cache_these.difference(metadata):
 				cache_data = {}
@@ -7136,18 +7137,25 @@ class vardbapi(dbapi):
 				self._aux_cache["modified"].add(mycpv)
 		return [mydata[x] for x in wants]
 
-	def _aux_get(self, mycpv, wants):
+	def _aux_get(self, mycpv, wants, st=None):
 		mydir = os.path.join(self.root, VDB_PATH, mycpv)
-		try:
-			if not stat.S_ISDIR(os.stat(mydir).st_mode):
-				raise KeyError(mycpv)
-		except OSError, e:
-			if e.errno == errno.ENOENT:
-				raise KeyError(mycpv)
-			del e
-			raise
+		if st is None:
+			try:
+				st = os.stat(mydir)
+			except OSError, e:
+				if e.errno == errno.ENOENT:
+					raise KeyError(mycpv)
+				elif e.errno == portage_exception.PermissionDenied.errno:
+					raise portage_exception.PermissionDenied(mydir)
+				else:
+					raise
+		if not stat.S_ISDIR(st.st_mode):
+			raise KeyError(mycpv)
 		results = []
 		for x in wants:
+			if x == "_mtime_":
+				results.append(st.st_mtime)
+				continue
 			try:
 				myf = open(os.path.join(mydir, x), "r")
 				try:
