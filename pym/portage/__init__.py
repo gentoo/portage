@@ -4052,6 +4052,18 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 		else:
 			return 1
 	mf = Manifest(pkgdir, mysettings["DISTDIR"])
+	manifest_empty = True
+	for d in mf.fhashdict.itervalues():
+		if d:
+			manifest_empty = False
+			break
+	if manifest_empty:
+		writemsg("!!! Manifest is empty: '%s'\n" % manifest_path,
+			noiselevel=-1)
+		if strict:
+			return 0
+		else:
+			return 1
 	eout = portage.output.EOutput()
 	eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
 	try:
