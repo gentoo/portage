@@ -7479,10 +7479,8 @@ class vardbapi(dbapi):
 				pkgs = base_names.get(name_hash)
 				if pkgs is not None:
 					for hash_value in pkgs:
-						try:
-							if len(hash_value) != 3:
-								continue
-						except TypeError:
+						if not isinstance(hash_value, tuple) or \
+							len(hash_value) != 3:
 							continue
 						cpv, counter, mtime = hash_value
 						if not isinstance(cpv, basestring):
