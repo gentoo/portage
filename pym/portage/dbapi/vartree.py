@@ -919,7 +919,10 @@ class vardbapi(dbapi):
 			base_names = self._vardb._aux_cache["owners"]["base_names"]
 
 			# Take inventory of all cached package hashes.
-			for hash_values in base_names.itervalues():
+			for name, hash_values in base_names.items():
+				if not isinstance(hash_values, dict):
+					del base_names[name]
+					continue
 				cached_hashes.update(hash_values)
 
 			# Create sets of valid package hashes and uncached packages.
