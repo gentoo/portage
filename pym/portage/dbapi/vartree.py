@@ -2411,7 +2411,7 @@ class dblink(object):
 			msg.append("")
 			eerror(msg)
 
-			owners = self.vartree.dbapi._owners.get_owners(files)
+			owners = self.vartree.dbapi._owners.get_owners(collisions)
 			self.vartree.dbapi.flush_cache()
 
 			for pkg, owned_files in owners.iteritems():
