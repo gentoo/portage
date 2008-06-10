@@ -7099,6 +7099,8 @@ class vardbapi(dbapi):
 				owners = None
 			elif "base_names" not in owners:
 				owners = None
+			elif not isinstance(owners["base_names"], dict):
+				owners = None
 
 		if owners is None:
 			owners = {
@@ -7465,8 +7467,20 @@ class vardbapi(dbapi):
 				pkgs = base_names.get(name_hash)
 				if pkgs is not None:
 					for hash_value in pkgs:
+						try:
+							if len(hash_value) != 3:
+								continue
+						except TypeError:
+							continue
 						cpv, counter, mtime = hash_value
-						if hash_pkg(cpv) != hash_value:
+						if not isinstance(cpv, basestring):
+							continue
+						try:
+							current_hash = hash_pkg(cpv)
+						except KeyError:
+							continue
+
+						if current_hash != hash_value:
 							continue
 						if dblink(cpv).isowner(path, root):
 							yield dblink(cpv), path
