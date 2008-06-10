@@ -865,8 +865,7 @@ class vardbapi(dbapi):
 				# Empty path is a code used to represent empty contents.
 				self._add_path("", pkg_hash)
 			for x in contents:
-				relative_path = x[root_len:]
-				self._add_path(x, pkg_hash)
+				self._add_path(x[root_len:], pkg_hash)
 			self._vardb._aux_cache["modified"].add(cpv)
 
 		def _add_path(self, path, pkg_hash):
