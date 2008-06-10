@@ -1868,7 +1868,7 @@ for x in scanlist:
 			f.close()
 			del f
 
-		myear = time.gmtime(os.stat(full_path)[ST_MTIME])[0]
+		myear = time.gmtime(pkg.mtime)[0]
 		gentoo_copyright = re.compile(r'^# Copyright ((1999|200\d)-)?' + str(myear) + r' Gentoo Foundation')
 		gentoo_license = re.compile(r'^# Distributed under the terms of the GNU General Public License v2$')
 		cvs_header = re.compile(r'^#\s*\$Header.*\$$')
