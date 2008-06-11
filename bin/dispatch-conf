@@ -217,10 +217,12 @@ class dispatch:
             while 1:
                 clear_screen()
                 if show_new_diff:
-                    os.system((self.options['diff']) % (conf['new'], mrgconf))
+                    cmd = self.options['diff'] % (conf['new'], mrgconf)
+                    spawn_shell(cmd)
                     show_new_diff = 0
                 else:
-                    os.system((self.options['diff']) % (conf['current'], newconf))
+                    cmd = self.options['diff'] % (conf['current'], newconf)
+                    spawn_shell(cmd)
 
                 print
                 print '>> (%i of %i) -- %s' % (count, len(confs), conf ['current'])
@@ -391,6 +393,20 @@ def clear_screen():
     except ImportError:
         pass
     os.system("clear 2>/dev/null")
+
+from portage_exec import find_binary, spawn
+shell = os.environ.get("SHELL")
+if not shell or not os.access(shell, os.EX_OK):
+    shell = find_binary("sh")
+
+def spawn_shell(cmd):
+    if shell:
+        spawn([shell, "-c", cmd], env=os.environ,
+            fd_pipes = {  0 : sys.stdin.fileno(),
+                          1 : sys.stdout.fileno(),
+                          2 : sys.stderr.fileno()})
+    else:
+        os.system(cmd)
 
 # run
 d = dispatch ()
