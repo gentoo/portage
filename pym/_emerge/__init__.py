@@ -3543,7 +3543,7 @@ class depgraph(object):
 									if not visible(pkgsettings, ebuild):
 										ebuild = None
 								except portage.exception.InvalidDependString:
-										ebuild = None
+									ebuild = None
 							if ebuild is None:
 								self._masked_installed.add(pkg)
 
