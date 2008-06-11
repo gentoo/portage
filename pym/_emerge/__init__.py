@@ -3538,8 +3538,13 @@ class depgraph(object):
 									"ebuild", pkg.root_config)
 							except KeyError:
 								ebuild = None
-							if ebuild is None or \
-								not visible(pkgsettings, ebuild):
+							else:
+								try:
+									if not visible(pkgsettings, ebuild):
+										ebuild = None
+								except portage.exception.InvalidDependString:
+										ebuild = None
+							if ebuild is None:
 								self._masked_installed.add(pkg)
 
 					blocker_atoms = None
