@@ -230,6 +230,11 @@ def run_checks(contents, pkg):
 	checks.append(EbuildHeader(pkg.mtime))
 	iuse_def = None
 	inherit_autotools = "autotools" in pkg.inherited
+	if inherit_autotools:
+		if "apache-2" in pkg.inherited:
+			# eautoreconf is called by apache-2_src_unpack(),
+			# so the ebuild doesn't need to call it.
+			inherit_autotools = False
 	autotools_func_call = None
 	for num, line in enumerate(contents):
 		comment = _comment_re.match(line)
