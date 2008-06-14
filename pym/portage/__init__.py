@@ -4162,6 +4162,57 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 			filemode=060, filemask=0)
 
 	if phase_retval == os.EX_OK:
+		if mydo == "install" and logfile:
+			try:
+				f = open(logfile, 'rb')
+			except EnvironmentError:
+				pass
+			else:
+				am_maintainer_mode = []
+				configure_opts_warn = []
+				configure_opts_warn_re = re.compile(
+					r'^configure: WARNING: Unrecognized options: .*')
+				am_maintainer_mode_re = re.compile(r'.*/missing --run .*')
+				try:
+					for line in f:
+						if am_maintainer_mode_re.search(line) is not None:
+							am_maintainer_mode.append(line.rstrip("\n"))
+						if configure_opts_warn_re.match(line) is not None:
+							configure_opts_warn.append(line.rstrip("\n"))
+				finally:
+					f.close()
+
+				from portage.elog.messages import eqawarn
+				def _eqawarn(lines):
+					for line in lines:
+						eqawarn(line, phase=mydo, key=mysettings.mycpv)
+				from textwrap import wrap
+				wrap_width = 70
+
+				if am_maintainer_mode:
+					msg = ["QA Notice: Automake \"maintainer mode\" detected:"]
+					msg.append("")
+					msg.extend("\t" + line for line in am_maintainer_mode)
+					msg.append("")
+					msg.extend(wrap(
+						"If you patch Makefile.am, " + \
+						"configure.in,  or configure.ac then you " + \
+						"should use autotools.eclass and " + \
+						"eautomake or eautoreconf. Exceptions " + \
+						"are limited to system packages " + \
+						"for which it is impossible to run " + \
+						"autotools during stage building. " + \
+						"See http://www.gentoo.org/p" + \
+						"roj/en/qa/autofailure.xml for more information.",
+						wrap_width))
+					_eqawarn(msg)
+
+				if configure_opts_warn:
+					msg = ["QA Notice: Unrecognized configure options:"]
+					msg.append("")
+					msg.extend("\t" + line for line in configure_opts_warn)
+					_eqawarn(msg)
+
 		if mydo == "install":
 			# User and group bits that match the "portage" user or group are
 			# automatically mapped to PORTAGE_INST_UID and PORTAGE_INST_GID if
