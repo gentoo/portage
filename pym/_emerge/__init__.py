@@ -1114,9 +1114,8 @@ def visible(pkgsettings, pkg):
 	"""
 	if not pkg.metadata["SLOT"]:
 		return False
-	if pkg.built and not pkg.installed:
-		pkg_chost = pkg.metadata.get("CHOST")
-		if pkg_chost and pkg_chost != pkgsettings["CHOST"]:
+	if pkg.built and not pkg.installed and "CHOST" in pkg.metadata:
+		if not pkgsettings._accept_chost(pkg):
 			return False
 	if not portage.eapi_is_supported(pkg.metadata["EAPI"]):
 		return False
@@ -1140,9 +1139,8 @@ def get_masking_status(pkg, pkgsettings, root_config):
 		pkg, settings=pkgsettings,
 		portdb=root_config.trees["porttree"].dbapi)
 
-	if pkg.built and not pkg.installed:
-		pkg_chost = pkg.metadata.get("CHOST")
-		if pkg_chost and pkg_chost != pkgsettings["CHOST"]:
+	if pkg.built and not pkg.installed and "CHOST" in pkg.metadata:
+		if not pkgsettings._accept_chost(pkg):
 			mreasons.append("CHOST: %s" % \
 				pkg.metadata["CHOST"])
 

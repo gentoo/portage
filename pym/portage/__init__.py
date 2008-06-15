@@ -998,6 +998,7 @@ class config(object):
 	]
 
 	_environ_filter = frozenset(_environ_filter)
+	_accept_chost_re = None
 
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
@@ -2380,6 +2381,26 @@ class config(object):
 				if element not in acceptable_licenses:
 					ret.append(element)
 		return ret
+
+	def _accept_chost(self, pkg):
+		"""
+		@return True if pkg CHOST is accepted, False otherwise.
+		"""
+		if self._accept_chost_re is None:
+			accept_chost = self.get("ACCEPT_CHOSTS", "").split()
+			if not accept_chost:
+				chost = self.get("CHOST")
+				if chost:
+					accept_chost.append(chost)
+			if not accept_chost:
+				self._accept_chost_re = re.compile(".*")
+			elif len(accept_chost) == 1:
+				self._accept_chost_re = re.compile(accept_chost[0])
+			else:
+				self._accept_chost_re = re.compile(
+					r'^(%s)$' % "|".join(accept_chost))
+		return self._accept_chost_re.match(
+			pkg.metadata.get("CHOST", "")) is not None
 
 	def setinst(self,mycpv,mydbapi):
 		"""This updates the preferences for old-style virtuals,
