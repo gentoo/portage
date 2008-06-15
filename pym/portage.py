@@ -1159,7 +1159,6 @@ class config:
 	]
 
 	_environ_filter = frozenset(_environ_filter)
-	_accept_chost_re = None
 
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
@@ -1197,6 +1196,7 @@ class config:
 		self.puse     = []
 		self.modifiedkeys = []
 		self.uvlist = []
+		self._accept_chost_re = None
 
 		self.virtuals = {}
 		self.virts_p = {}
