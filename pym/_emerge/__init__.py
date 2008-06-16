@@ -6766,7 +6766,8 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 				if inforoot=='':
 					continue
 
-				if not os.path.isdir(inforoot):
+				if not os.path.isdir(inforoot) or \
+					not os.access(inforoot, os.W_OK):
 					continue
 				errmsg = ""
 				file_list = os.listdir(inforoot)
@@ -6929,13 +6930,16 @@ def post_emerge(trees, mtimedb, retval):
 
 	vdb_path = os.path.join(target_root, portage.VDB_PATH)
 	portage.util.ensure_dirs(vdb_path)
-	vdb_lock = portage.locks.lockdir(vdb_path)
+	vdb_lock = None
+	if os.access(vdb_path, os.W_OK):
+		vdb_lock = portage.locks.lockdir(vdb_path)
 	try:
 		if "noinfo" not in settings.features:
 			chk_updated_info_files(target_root, infodirs, info_mtimes, retval)
 		mtimedb.commit()
 	finally:
-		portage.locks.unlockdir(vdb_lock)
+		if vdb_lock:
+			portage.locks.unlockdir(vdb_lock)
 
 	chk_updated_cfg_files(target_root, config_protect)
 	
