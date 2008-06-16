@@ -524,6 +524,22 @@ class vardbapi(dbapi):
 	def checkblockers(self, origdep):
 		pass
 
+	def _add(self, pkg_dblink):
+		self._clear_cache(pkg_dblink)
+
+	def _remove(self, pkg_dblink):
+		self._clear_cache(pkg_dblink)
+
+	def _clear_cache(self, pkg_dblink):
+		# Due to 1 second mtime granularity in < python-1.5, mtime checks
+		# are not always sufficient to invalidate vardbapi caches. Therefore,
+		# the caches need to be actively invalidated here.
+		self.mtdircache.pop(pkg_dblink.cat, None)
+		self.matchcache.pop(pkg_dblink.cat, None)
+		self.cpcache.pop(pkg_dblink.mysplit[0], None)
+		from portage import dircache
+		dircache.pop(pkg_dblink.dbcatdir, None)
+
 	def match(self, origdep, use_cache=1):
 		"caching match function"
 		mydep = dep_expand(
@@ -1277,24 +1293,15 @@ class dblink(object):
 		"""
 		if not os.path.exists(self.dbdir):
 			return
-		try:
-			for x in os.listdir(self.dbdir):
-				os.unlink(self.dbdir+"/"+x)
-			os.rmdir(self.dbdir)
-		except OSError, e:
-			print "!!! Unable to remove db entry for this package."
-			print "!!! It is possible that a directory is in this one. Portage will still"
-			print "!!! register this package as installed as long as this directory exists."
-			print "!!! You may delete this directory with 'rm -Rf "+self.dbdir+"'"
-			print "!!! "+str(e)
-			print
-			sys.exit(1)
 
-		# Due to mtime granularity, mtime checks do not always properly
-		# invalidate vardbapi caches.
-		self.vartree.dbapi.mtdircache.pop(self.cat, None)
-		self.vartree.dbapi.matchcache.pop(self.cat, None)
-		self.vartree.dbapi.cpcache.pop(self.mysplit[0], None)
+		# Check validity of self.dbdir before attempting to remove it.
+		if not self.dbdir.startswith(self.dbroot):
+			writemsg("portage.dblink.delete(): invalid dbdir: %s\n" % \
+				self.dbdir, noiselevel=-1)
+			return
+		import shutil
+		shutil.rmtree(self.dbdir)
+		self.vartree.dbapi._remove(self)
 
 	def clearcontents(self):
 		"""
@@ -2629,11 +2636,7 @@ class dblink(object):
 				f.write(line)
 			f.close()
 
-		# Due to mtime granularity, mtime checks do not always properly
-		# invalidate vardbapi caches.
-		self.vartree.dbapi.mtdircache.pop(self.cat, None)
-		self.vartree.dbapi.matchcache.pop(self.cat, None)
-		self.vartree.dbapi.cpcache.pop(self.mysplit[0], None)
+		self.vartree.dbapi._add(self)
 		contents = self.getcontents()
 
 		# regenerate reverse NEEDED map
