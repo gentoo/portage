@@ -3540,7 +3540,7 @@ class depgraph(object):
 			metadata = izip(Package.metadata_keys,
 				db.aux_get(cpv, Package.metadata_keys))
 			pkg = Package(cpv=cpv, metadata=metadata,
-				root_config=root_config)
+				root_config=root_config, installed=installed)
 			if type_name == "ebuild":
 				settings = self.pkgsettings[root_config.root]
 				settings.setcpv(pkg)
