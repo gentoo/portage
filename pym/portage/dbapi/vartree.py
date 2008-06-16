@@ -136,7 +136,7 @@ class LinkageMap(object):
 		libs = {}
 		obj_properties = {}
 		lines = []
-		for cpv in self._dbapi.cpv_all(use_cache=0):
+		for cpv in self._dbapi.cpv_all():
 			lines += self._dbapi.aux_get(cpv, ["NEEDED.ELF.2"])[0].split('\n')
 		# Cache NEEDED.* files avoid doing excessive IO for every rebuild.
 		self._dbapi.flush_cache()
