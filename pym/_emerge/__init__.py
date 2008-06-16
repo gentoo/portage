@@ -6933,13 +6933,16 @@ def post_emerge(trees, mtimedb, retval):
 	vdb_lock = None
 	if os.access(vdb_path, os.W_OK):
 		vdb_lock = portage.locks.lockdir(vdb_path)
-	try:
-		if "noinfo" not in settings.features:
-			chk_updated_info_files(target_root, infodirs, info_mtimes, retval)
-		mtimedb.commit()
-	finally:
-		if vdb_lock:
-			portage.locks.unlockdir(vdb_lock)
+
+	if vdb_lock:
+		try:
+			if "noinfo" not in settings.features:
+				chk_updated_info_files(target_root,
+					infodirs, info_mtimes, retval)
+			mtimedb.commit()
+		finally:
+			if vdb_lock:
+				portage.locks.unlockdir(vdb_lock)
 
 	chk_updated_cfg_files(target_root, config_protect)
 	
