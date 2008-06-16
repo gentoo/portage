@@ -531,7 +531,7 @@ class vardbapi(dbapi):
 		self._clear_cache(pkg_dblink)
 
 	def _clear_cache(self, pkg_dblink):
-		# Due to 1 second mtime granularity in < python-1.5, mtime checks
+		# Due to 1 second mtime granularity in <python-2.5, mtime checks
 		# are not always sufficient to invalidate vardbapi caches. Therefore,
 		# the caches need to be actively invalidated here.
 		self.mtdircache.pop(pkg_dblink.cat, None)
