@@ -2395,7 +2395,7 @@ class config(object):
 			if not accept_chost:
 				self._accept_chost_re = re.compile(".*")
 			elif len(accept_chost) == 1:
-				self._accept_chost_re = re.compile(accept_chost[0])
+				self._accept_chost_re = re.compile(r'^%s$' % accept_chost[0])
 			else:
 				self._accept_chost_re = re.compile(
 					r'^(%s)$' % "|".join(accept_chost))
