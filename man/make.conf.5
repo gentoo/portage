@@ -21,6 +21,13 @@ settings.  Clearing these variables requires a clear\-all as in:
 export USE="\-*"
 .SH "VARIABLES"
 .TP
+\fBACCEPT_CHOSTS\fR = \fI[space delimited list of CHOST values]\fR
+Specifies acceptable \fBCHOST\fR values for binary packages. Regular
+expression syntax is supported, so it is necessary to escape
+\fBCHOST\fR characters if they have special meaning in regular expressions.
+.br
+Defaults to the value of $CHOST.
+.TP
 \fBACCEPT_KEYWORDS\fR = \fI[space delimited list of KEYWORDS]\fR
 Enable testing of ebuilds that have not yet been deemed 'stable'.  Users
 of the 'x86' architecture would set this to '~x86' while ppc users would
