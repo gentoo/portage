@@ -565,10 +565,8 @@ problems or are known to have issues on different systems.  It resides in
 \fI/usr/portage/profiles\fR.
 .TP
 .BR CHOST
-The \CHOST\fR variable in \fBmake.conf\fR(5) is used to mask binary packages
-that have been built with a different \CHOST\fR setting. The only
-way to unmask such a binary package is to change the \CHOST\fR environment
-variable so that it exactly matches that of the binary package.
+Use the \fBACCEPT_CHOSTS\fR variable in \fBmake.conf\fR(5) to control
+\fBCHOST\fR acceptance for binary packages.
 .TP
 .BR EAPI
 The \fBEAPI\fR variable in an \fBebuild\fR(5) file is used to mask packages
