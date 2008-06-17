@@ -4462,7 +4462,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 
 	# Allow color.map to control colors associated with einfo, ewarn, etc...
 	mycolors = []
-	for c in ("BLANK", "GOOD", "WARN", "BAD", "HILITE", "BRACKET"):
+	for c in ("GOOD", "WARN", "BAD", "HILITE", "BRACKET"):
 		mycolors.append("%s=$'%s'" % (c, output.codes[c]))
 	mysettings["PORTAGE_COLORMAP"] = "\n".join(mycolors)
 
