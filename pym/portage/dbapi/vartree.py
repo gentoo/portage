@@ -280,8 +280,8 @@ class LinkageMapMachO(object):
 
 			# Linking an object to a library is registered by recording
 			# the install_name of the library in the object.
-			obj = os.path.realpath(fields[0])
-			install_name = os.path.realpath(fields[1])
+			obj = os.path.normpath(fields[0])
+			install_name = os.path.normpath(fields[1])
 			needed = fields[2].split(",")
 
 			# build an internal structure that contains for each
@@ -300,6 +300,15 @@ class LinkageMapMachO(object):
 		self._libs = libs
 		self._obj_properties = obj_properties
 
+	def isMasterLink(self, obj):
+		basename = os.path.basename(obj)
+		if os.path.normpath(obj) not in self._obj_properties:
+			obj = os.path.realpath(obj)
+			if obj not in self._obj_properties:
+				raise KeyError("%s not in object list" % obj)
+		install_name = self._obj_properties[obj][2]
+		return (len(basename) < len(os.path.basename(install_name)))
+		
 	def listLibraryObjects(self):
 		rValue = []
 		if not self._libs:
@@ -314,10 +323,12 @@ class LinkageMapMachO(object):
 	def findProviders(self, obj):
 		if not self._libs:
 			self.rebuild()
-		obj = os.path.realpath(obj)
+		obj = os.path.normpath(obj)
 		rValue = {}
 		if obj not in self._obj_properties:
-			raise KeyError("%s not in object list" % obj)
+			obj = os.path.realpath(obj)
+			if obj not in self._obj_properties:
+				raise KeyError("%s not in object list" % obj)
 		needed, install_name = self._obj_properties[obj]
 
 		for x in needed:
@@ -325,14 +336,18 @@ class LinkageMapMachO(object):
 			if x not in self._libs:
 				continue
 			for y in self._libs[x]["providers"]:
-				if os.path.realpath(x) == y:
+				if os.path.realpath(x) == os.path.realpath(y):
 					rValue[x].add(y)
 		return rValue
 	
 	def findConsumers(self, obj):
 		if not self._libs:
 			self.rebuild()
-		obj = os.path.realpath(obj)
+		obj = os.path.normpath(obj)
+		if obj not in self._obj_properties:
+			obj = os.path.realpath(obj)
+			if obj not in self._obj_properties:
+				raise KeyError("%s not in object list" % obj)
 		rValue = set()
 		for install_name in self._libs:
 			if obj in self._libs[install_name]["providers"]:
