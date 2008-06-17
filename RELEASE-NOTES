@@ -35,6 +35,15 @@ portage-2.2
 portage-2.1.5
 ==================================
 
+* The pkg_postinst phase is now called after the previous version of a
+  package has been removed. As a consequence, it is no longer possible
+  to call has_version in pkg_postinst to detect whether the current
+  install operation is an upgrade or downgrade. If this information is
+  needed during the pkg_postinst phase, do the has_version call in an
+  earlier phase (such as pkg_preinst) and store the result in a global
+  variable to be accessed by pkg_postinst when it is called. Bug #226505
+  tracks all issues related to this phase execution order change.
+
 * Blockers are now resolved automatically in many more cases
   than before.  When it's safe, blocked packages are uninstalled
   automatically so that users are no longer inconvenienced with the
