@@ -33,8 +33,7 @@ def finalize(mysettings=None):
 						"WARN": printer.ewarn,
 						"ERROR": printer.eerror,
 						"LOG": printer.einfo,
-						"QA": printer.ewarn,
-						"BLANK": printer.eblank}
+						"QA": printer.ewarn}
 				for line in msgcontent:
 					fmap[msgtype](line.strip("\n"))
 	_items = []
