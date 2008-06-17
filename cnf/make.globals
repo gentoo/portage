@@ -91,7 +91,7 @@ DEFAULT_PATH="@DEFAULT_PATH@"
 PORTAGE_WORKDIR_MODE="0700"
 
 # Some defaults for elog
-PORTAGE_ELOG_CLASSES="log warn error"
+PORTAGE_ELOG_CLASSES="blank log warn error"
 PORTAGE_ELOG_SYSTEM="save_summary echo"
 
 PORTAGE_ELOG_MAILURI="@rootuser@"

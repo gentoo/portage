@@ -1005,7 +1005,6 @@ class config(object):
 	]
 
 	_environ_filter = frozenset(_environ_filter)
-	_accept_chost_re = None
 
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
@@ -1043,6 +1042,7 @@ class config(object):
 		self.puse     = []
 		self.modifiedkeys = []
 		self.uvlist = []
+		self._accept_chost_re = None
 
 		self.virtuals = {}
 		self.virts_p = {}
@@ -2415,7 +2415,7 @@ class config(object):
 			if not accept_chost:
 				self._accept_chost_re = re.compile(".*")
 			elif len(accept_chost) == 1:
-				self._accept_chost_re = re.compile(accept_chost[0])
+				self._accept_chost_re = re.compile(r'^%s$' % accept_chost[0])
 			else:
 				self._accept_chost_re = re.compile(
 					r'^(%s)$' % "|".join(accept_chost))
@@ -4501,7 +4501,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 
 	# Allow color.map to control colors associated with einfo, ewarn, etc...
 	mycolors = []
-	for c in ("GOOD", "WARN", "BAD", "HILITE", "BRACKET"):
+	for c in ("BLANK", "GOOD", "WARN", "BAD", "HILITE", "BRACKET"):
 		mycolors.append("%s=$'%s'" % (c, portage.output.codes[c]))
 	mysettings["PORTAGE_COLORMAP"] = "\n".join(mycolors)
 

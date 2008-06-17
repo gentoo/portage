@@ -33,7 +33,8 @@ def finalize(mysettings=None):
 						"WARN": printer.ewarn,
 						"ERROR": printer.eerror,
 						"LOG": printer.einfo,
-						"QA": printer.ewarn}
+						"QA": printer.ewarn,
+						"BLANK": printer.eblank}
 				if isinstance(msgcontent, basestring):
 					msgcontent = [msgcontent]
 				for line in msgcontent:

@@ -168,7 +168,7 @@ elog_base() {
 	local messagetype
 	[ -z "${1}" -o -z "${T}" -o ! -d "${T}/logging" ] && return 1
 	case "${1}" in
-		INFO|WARN|ERROR|LOG|QA)
+		BLANK|INFO|WARN|ERROR|LOG|QA)
 			messagetype="${1}"
 			shift
 			;;
@@ -181,15 +181,28 @@ elog_base() {
 	return 0
 }
 
+eblank() {
+	[[ ${LAST_E_CMD} == "eblank" ]] && return 0
+	elog_base BLANK
+	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
+	echo -e " ${BLANK}*${NORMAL}"
+	LAST_E_CMD="eblank"
+	return 0
+}
+
 eqawarn() {
 	elog_base QA "$*"
+	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
 	vecho -e " ${WARN}*${NORMAL} $*" >&2
+	LAST_E_CMD="eqawarn"
 	return 0
 }
 
 elog() {
 	elog_base LOG "$*"
+	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
 	echo -e " ${GOOD}*${NORMAL} $*"
+	LAST_E_CMD="elog"
 	return 0
 }
 
@@ -290,6 +303,7 @@ eend() {
 
 	_eend ${retval} eerror "$*"
 
+	LAST_E_CMD="eend"
 	return ${retval}
 }
 
@@ -348,6 +362,7 @@ unset_colors() {
 	COLS="25 80"
 	ENDCOL=
 
+	BLANK=
 	GOOD=
 	WARN=
 	BAD=
@@ -370,6 +385,7 @@ set_colors() {
 	if [ -n "${PORTAGE_COLORMAP}" ] ; then
 		eval ${PORTAGE_COLORMAP}
 	else
+		BLANK=$'\e[37m'
 		GOOD=$'\e[32;01m'
 		WARN=$'\e[33;01m'
 		BAD=$'\e[31;01m'

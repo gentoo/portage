@@ -1020,7 +1020,7 @@ class FakeVartree(portage.vartree):
 				vdb_lock = portage.locks.lockdir(vdb_path)
 			real_dbapi = real_vartree.dbapi
 			slot_counters = {}
-			for cpv in real_dbapi.cpv_all(use_cache=0):
+			for cpv in real_dbapi.cpv_all():
 				cache_key = ("installed", self.root, cpv, "nomerge")
 				pkg = self._pkg_cache.get(cache_key)
 				if pkg is not None:
@@ -6807,7 +6807,8 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 				if inforoot=='':
 					continue
 
-				if not os.path.isdir(inforoot):
+				if not os.path.isdir(inforoot) or \
+					not os.access(inforoot, os.W_OK):
 					continue
 				errmsg = ""
 				file_list = os.listdir(inforoot)
@@ -6971,15 +6972,21 @@ def post_emerge(trees, mtimedb, retval):
 
 	vdb_path = os.path.join(target_root, portage.VDB_PATH)
 	portage.util.ensure_dirs(vdb_path)
-	vdb_lock = portage.locks.lockdir(vdb_path)
-	try:
-		if "noinfo" not in settings.features:
-			chk_updated_info_files(target_root + EPREFIX, infodirs, info_mtimes, retval)
-		mtimedb.commit()
-	finally:
-		portage.locks.unlockdir(vdb_lock)
+	vdb_lock = None
+	if os.access(vdb_path, os.W_OK):
+		vdb_lock = portage.locks.lockdir(vdb_path)
 
-	chk_updated_cfg_files(target_root + EPREFIX, config_protect)
+	if vdb_lock:
+		try:
+			if "noinfo" not in settings.features:
+				chk_updated_info_files(target_root, EPREFIX_LSTRIP
+					infodirs, info_mtimes, retval)
+			mtimedb.commit()
+		finally:
+			if vdb_lock:
+				portage.locks.unlockdir(vdb_lock)
+
+	chk_updated_cfg_files(target_root, EPREFIX_LSTRIP, config_protect)
 	
 	display_news_notification(trees)
 	
@@ -9233,8 +9240,8 @@ def emerge_main():
 				setconfig.active.append(s)
 				if myaction in unmerge_actions and \
 						not sets[s].supportsOperation("unmerge"):
-					sys.stderr.write("emerge: the given set %s does " + \
-						"not support unmerge operations\n" % s)
+					sys.stderr.write("emerge: the given set '%s' does " % s + \
+						"not support unmerge operations\n")
 					return 1
 				if not setconfig.getSetAtoms(s):
 					print "emerge: '%s' is an empty set" % s

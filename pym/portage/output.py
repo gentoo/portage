@@ -138,6 +138,7 @@ codes["bg_darkyellow"] = codes["bg_brown"]
 
 # Colors from /etc/init.d/functions.sh
 codes["NORMAL"]     = esc_seq + "0m"
+codes["BLANK"]      = codes["lightgray"]
 codes["GOOD"]       = codes["green"]
 codes["WARN"]       = codes["yellow"]
 codes["BAD"]        = codes["red"]
@@ -542,6 +543,20 @@ class EOutput(object):
 			print colorize("WARN", " * ") + msg
 			sys.stdout.flush()
 		self.__last_e_cmd = "ewarn"
+
+	def eblank(self, msg):
+		"""
+		Shows a blank line. Consecutive eblank calls are all collapsed
+		into a single blank line.
+		"""
+		if self.__last_e_cmd == "eblank":
+			return
+		if not self.quiet:
+			if self.__last_e_cmd == "ebegin":
+				sys.stdout.write("\n")
+			sys.stdout.write(colorize("BLANK", " * ") + "\n")
+			sys.stdout.flush()
+		self.__last_e_cmd = "eblank"
 
 	def ewend(self, errno, *msg):
 		"""

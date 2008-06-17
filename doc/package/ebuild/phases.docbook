@@ -40,4 +40,61 @@
 	</listitem>
 	</itemizedlist>
 	</para>
+	<sect2 id='package-ebuild-phases-previous-installed'>
+	<title>Interaction with previous installed version</title>
+	<para>
+	The order for upgrade and downgrade operations changed in
+	version 2.1.5, but the order for reinstall operations remained unchanged.
+	</para>
+	<sect3 id='package-ebuild-phases-before-2.1.5'>
+	<title>Upgrade/downgrade order used by versions less than 2.1.5 (deprecated)</title>
+	<para>
+	<itemizedlist>
+	<listitem>
+		pkg_preinst
+	</listitem>
+	<listitem>
+		pkg_postinst
+	</listitem>
+	<listitem>
+		pkg_prerm
+	</listitem>
+	<listitem>
+		pkg_postrm
+	</listitem>
+	</itemizedlist>
+	</para>
+	</sect3>
+	<sect3 id='package-ebuild-phases-after-2.1.5'>
+	<title>Upgrade/downgrade order starting with version 2.1.5</title>
+	<para>
+	The new order for upgrades and downgrades is identical to the order used
+	for reinstall operations:
+	</para>
+	<para>
+	<itemizedlist>
+	<listitem>
+		pkg_preinst
+	</listitem>
+	<listitem>
+		pkg_prerm
+	</listitem>
+	<listitem>
+		pkg_postrm
+	</listitem>
+	<listitem>
+		pkg_postinst
+	</listitem>
+	</itemizedlist>
+	</para>
+	<para>
+	Now that pkg_postinst is called after all other phases, it's not possible to
+	call has_version in pkg_postinst to detect whether the current install
+	operation is an upgrade or downgrade. If this information is needed during the
+	pkg_postinst phase, do the has_version call in an earlier phase (such as
+	pkg_preinst) and store the result in a global variable to be accessed by
+	pkg_postinst when it is called.
+	</para>
+	</sect3>
+	</sect2>
 </sect1>

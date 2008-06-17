@@ -580,6 +580,10 @@ VERINS="$(best_version net\-ftp/glftpd)"
 .RE
 .SH "HELPER FUNCTIONS: OUTPUT"
 .TP
+\fBeblank\fR
+Show a blank line. Consecutive eblank calls collapse into
+a single blank line.
+.TP
 \fBeinfo\fR \fI"disposable message"\fR
 Same as \fBelog\fR, but should be used when the message isn't important to the
 user (like progress or status messages during the build process).
@@ -592,6 +596,9 @@ will also be logged by portage for later review.
 .TP
 \fBewarn\fR \fI"warning message"\fR
 Same as \fBeinfo\fR, but should be used when showing a warning to the user.
+.TP
+\fBeqawarn\fR \fI"QA warning message"\fR
+Same as \fBeinfo\fR, but should be used when showing a QA warning to the user.
 .TP
 \fBeerror\fR \fI"error message"\fR
 Same as \fBeinfo\fR, but should be used when showing an error to the user.
