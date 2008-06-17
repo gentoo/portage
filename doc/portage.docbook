@@ -14,6 +14,7 @@
 	<!ENTITY package SYSTEM "package.docbook">
 	<!ENTITY package_ebuild SYSTEM "package/ebuild.docbook">
 	<!ENTITY package_ebuild_phases SYSTEM "package/ebuild/phases.docbook">
+	<!ENTITY package_ebuild_helper_functions SYSTEM "package/ebuild/helper_functions.docbook">
 	<!ENTITY qa SYSTEM "qa.docbook">
 	<!ENTITY config SYSTEM "config.docbook">
 	<!ENTITY config_bashrc SYSTEM "config/bashrc.docbook">
