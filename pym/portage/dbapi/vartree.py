@@ -180,6 +180,15 @@ class LinkageMap(object):
 		self._libs = libs
 		self._obj_properties = obj_properties
 
+	def isMasterLink(self, obj):
+		basename = os.path.basename(obj)
+		if obj not in self._obj_properties:
+			obj = os.path.realpath(obj)
+			if obj not in self._obj_properties:
+				raise KeyError("%s not in object list" % obj)
+		soname = self._obj_properties[obj][3]
+		return (len(basename) < len(soname))
+		
 	def listLibraryObjects(self):
 		rValue = []
 		if not self._libs:
@@ -2114,6 +2123,9 @@ class dblink(object):
 
 		for lib in list(candidates):
 			if not has_external_consumers(lib, old_contents, candidates):
+				candidates.remove(lib)
+				continue
+			if linkmap.isMasterLink(lib):
 				candidates.remove(lib)
 				continue
 			# only preserve the lib if there is no other copy to use for each consumer
