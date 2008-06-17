@@ -180,8 +180,6 @@ class LinkageMap(object):
 		self._libs = libs
 		self._obj_properties = obj_properties
 
-		return self._obj_properties[obj]
-
 	def isMasterLink(self, obj):
 		basename = os.path.basename(obj)
 		if obj not in self._obj_properties:
