@@ -10,13 +10,6 @@
 	need to call eend.
 	</para>
 	</sect3>
-	<sect3 id='package-ebuild-helper-functions-output-eblank'>
-	<title>eblank</title>
-	<para>
-	Show a blank line. Consecutive eblank calls collapse into
-	a single blank line.
-	</para>
-	</sect3>
 	<sect3 id='package-ebuild-helper-functions-output-eend'>
 	<title>eend</title>
 	<para>
