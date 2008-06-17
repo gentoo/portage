@@ -178,7 +178,7 @@ eblank() {
 	[[ ${LAST_E_CMD} == "eblank" ]] && return 0
 	elog_base BLANK
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo -e " ${NEUTRAL}*${NORMAL}"
+	echo -e " ${BLANK}*${NORMAL}"
 	LAST_E_CMD="eblank"
 	return 0
 }
@@ -353,7 +353,7 @@ unset_colors() {
 	COLS="25 80"
 	ENDCOL=
 
-	NEUTRAL=
+	BLANK=
 	GOOD=
 	WARN=
 	BAD=
@@ -376,7 +376,7 @@ set_colors() {
 	if [ -n "${PORTAGE_COLORMAP}" ] ; then
 		eval ${PORTAGE_COLORMAP}
 	else
-		NEUTRAL=$'\e[37m'
+		BLANK=$'\e[37m'
 		GOOD=$'\e[32;01m'
 		WARN=$'\e[33;01m'
 		BAD=$'\e[31;01m'
