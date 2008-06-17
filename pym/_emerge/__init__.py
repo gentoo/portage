@@ -64,7 +64,7 @@ portage.dep._dep_check_strict = True
 import portage.util
 import portage.locks
 import portage.exception
-from portage.const import EPREFIX, EPREFIX_LSTRIP, BPREFIX
+from portage.const import EPREFIX, BPREFIX
 from portage.data import secpass
 from portage.util import normalize_path as normpath
 from portage.util import writemsg
@@ -6979,14 +6979,14 @@ def post_emerge(trees, mtimedb, retval):
 	if vdb_lock:
 		try:
 			if "noinfo" not in settings.features:
-				chk_updated_info_files(target_root, EPREFIX_LSTRIP,
+				chk_updated_info_files(target_root + EPREFIX,
 					infodirs, info_mtimes, retval)
 			mtimedb.commit()
 		finally:
 			if vdb_lock:
 				portage.locks.unlockdir(vdb_lock)
 
-	chk_updated_cfg_files(target_root, EPREFIX_LSTRIP, config_protect)
+	chk_updated_cfg_files(target_root + EPREFIX, config_protect)
 	
 	display_news_notification(trees)
 	
