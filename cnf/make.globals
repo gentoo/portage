@@ -85,7 +85,7 @@ PORTAGE_INST_GID="0"
 PORTAGE_WORKDIR_MODE="0700"
 
 # Some defaults for elog
-PORTAGE_ELOG_CLASSES="log warn error"
+PORTAGE_ELOG_CLASSES="blank log warn error"
 PORTAGE_ELOG_SYSTEM="save_summary echo"
 
 PORTAGE_ELOG_MAILURI="root"
