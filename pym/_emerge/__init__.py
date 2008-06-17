@@ -6979,7 +6979,7 @@ def post_emerge(trees, mtimedb, retval):
 	if vdb_lock:
 		try:
 			if "noinfo" not in settings.features:
-				chk_updated_info_files(target_root, EPREFIX_LSTRIP
+				chk_updated_info_files(target_root, EPREFIX_LSTRIP,
 					infodirs, info_mtimes, retval)
 			mtimedb.commit()
 		finally:
