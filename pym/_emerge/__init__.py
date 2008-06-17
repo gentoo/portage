@@ -9150,8 +9150,8 @@ def emerge_main():
 				setconfig.active.append(s)
 				if myaction in unmerge_actions and \
 						not sets[s].supportsOperation("unmerge"):
-					sys.stderr.write("emerge: the given set %s does " + \
-						"not support unmerge operations\n" % s)
+					sys.stderr.write("emerge: the given set '%s' does " % s + \
+						"not support unmerge operations\n")
 					return 1
 				if not setconfig.getSetAtoms(s):
 					print "emerge: '%s' is an empty set" % s
