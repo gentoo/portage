@@ -43,8 +43,10 @@ def collect_ebuild_messages(path):
 				writemsg("!!! malformed entry in " + \
 					"log file: '%s'\n" % filename, noiselevel=-1)
 				continue
+
 			if lastmsgtype is None:
 				lastmsgtype = msgtype
+			
 			if msgtype == lastmsgtype:
 				msgcontent.append(msg)
 			else:
