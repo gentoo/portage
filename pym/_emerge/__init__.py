@@ -1129,9 +1129,8 @@ def visible(pkgsettings, pkg):
 	"""
 	if not pkg.metadata["SLOT"]:
 		return False
-	if pkg.built and not pkg.installed:
-		pkg_chost = pkg.metadata.get("CHOST")
-		if pkg_chost and pkg_chost != pkgsettings["CHOST"]:
+	if pkg.built and not pkg.installed and "CHOST" in pkg.metadata:
+		if not pkgsettings._accept_chost(pkg):
 			return False
 	if pkg.built and not pkg.installed:
 		# we can have an old binary which has no EPREFIX information
@@ -1161,9 +1160,8 @@ def get_masking_status(pkg, pkgsettings, root_config):
 		pkg, settings=pkgsettings,
 		portdb=root_config.trees["porttree"].dbapi)
 
-	if pkg.built and not pkg.installed:
-		pkg_chost = pkg.metadata.get("CHOST")
-		if pkg_chost and pkg_chost != pkgsettings["CHOST"]:
+	if pkg.built and not pkg.installed and "CHOST" in pkg.metadata:
+		if not pkgsettings._accept_chost(pkg):
 			mreasons.append("CHOST: %s" % \
 				pkg.metadata["CHOST"])
 
@@ -3471,6 +3469,32 @@ class depgraph(object):
 					return 0
 		return 1
 
+	def _pkg(self, cpv, type_name, root_config, installed=False):
+		"""
+		Get a package instance from the cache, or create a new
+		one if necessary. Raises KeyError from aux_get if it
+		failures for some reason (package does not exist or is
+		corrupt).
+		"""
+		operation = "merge"
+		if installed:
+			operation = "nomerge"
+		pkg = self._pkg_cache.get(
+			(type_name, root_config.root, cpv, operation))
+		if pkg is None:
+			db = root_config.trees[
+				self.pkg_tree_map[type_name]].dbapi
+			metadata = izip(Package.metadata_keys,
+				db.aux_get(cpv, Package.metadata_keys))
+			pkg = Package(cpv=cpv, metadata=metadata,
+				root_config=root_config, installed=installed)
+			if type_name == "ebuild":
+				settings = self.pkgsettings[root_config.root]
+				settings.setcpv(pkg)
+				pkg.metadata["USE"] = settings["PORTAGE_USE"]
+			self._pkg_cache[pkg] = pkg
+		return pkg
+
 	def validate_blockers(self):
 		"""Remove any blockers from the digraph that do not match any of the
 		packages within the graph.  If necessary, create hard deps to ensure
@@ -3538,7 +3562,19 @@ class depgraph(object):
 							pkg.cpv, pkg.metadata) and \
 							pkg.metadata["KEYWORDS"].split() and \
 							not pkg_in_graph:
-							self._masked_installed.add(pkg)
+							try:
+								ebuild = self._pkg(pkg.cpv,
+									"ebuild", pkg.root_config)
+							except KeyError:
+								ebuild = None
+							else:
+								try:
+									if not visible(pkgsettings, ebuild):
+										ebuild = None
+								except portage.exception.InvalidDependString:
+									ebuild = None
+							if ebuild is None:
+								self._masked_installed.add(pkg)
 
 					blocker_atoms = None
 					blockers = None
@@ -5653,10 +5689,13 @@ class depgraph(object):
 		def __setitem__(self, k, v):
 			dict.__setitem__(self, k, v)
 			root_config = self._depgraph.roots[v.root]
-			if visible(root_config.settings, v) and \
-				not (v.installed and \
-				v.root_config.settings.getMissingKeywords(v.cpv, v.metadata)):
-				root_config.visible_pkgs.cpv_inject(v)
+			try:
+				if visible(root_config.settings, v) and \
+					not (v.installed and \
+					v.root_config.settings.getMissingKeywords(v.cpv, v.metadata)):
+					root_config.visible_pkgs.cpv_inject(v)
+			except portage.exception.InvalidDependString:
+				pass
 
 class RepoDisplay(object):
 	def __init__(self, roots):

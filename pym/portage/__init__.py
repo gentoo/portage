@@ -1005,6 +1005,7 @@ class config(object):
 	]
 
 	_environ_filter = frozenset(_environ_filter)
+	_accept_chost_re = None
 
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
@@ -2400,6 +2401,26 @@ class config(object):
 				if element not in acceptable_licenses:
 					ret.append(element)
 		return ret
+
+	def _accept_chost(self, pkg):
+		"""
+		@return True if pkg CHOST is accepted, False otherwise.
+		"""
+		if self._accept_chost_re is None:
+			accept_chost = self.get("ACCEPT_CHOSTS", "").split()
+			if not accept_chost:
+				chost = self.get("CHOST")
+				if chost:
+					accept_chost.append(chost)
+			if not accept_chost:
+				self._accept_chost_re = re.compile(".*")
+			elif len(accept_chost) == 1:
+				self._accept_chost_re = re.compile(accept_chost[0])
+			else:
+				self._accept_chost_re = re.compile(
+					r'^(%s)$' % "|".join(accept_chost))
+		return self._accept_chost_re.match(
+			pkg.metadata.get("CHOST", "")) is not None
 
 	def setinst(self,mycpv,mydbapi):
 		"""This updates the preferences for old-style virtuals,
@@ -4072,6 +4093,18 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 		else:
 			return 1
 	mf = Manifest(pkgdir, mysettings["DISTDIR"])
+	manifest_empty = True
+	for d in mf.fhashdict.itervalues():
+		if d:
+			manifest_empty = False
+			break
+	if manifest_empty:
+		writemsg("!!! Manifest is empty: '%s'\n" % manifest_path,
+			noiselevel=-1)
+		if strict:
+			return 0
+		else:
+			return 1
 	eout = portage.output.EOutput()
 	eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
 	try:
@@ -4170,6 +4203,57 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 			filemode=060, filemask=0)
 
 	if phase_retval == os.EX_OK:
+		if mydo == "install" and logfile:
+			try:
+				f = open(logfile, 'rb')
+			except EnvironmentError:
+				pass
+			else:
+				am_maintainer_mode = []
+				configure_opts_warn = []
+				configure_opts_warn_re = re.compile(
+					r'^configure: WARNING: Unrecognized options: .*')
+				am_maintainer_mode_re = re.compile(r'.*/missing --run .*')
+				try:
+					for line in f:
+						if am_maintainer_mode_re.search(line) is not None:
+							am_maintainer_mode.append(line.rstrip("\n"))
+						if configure_opts_warn_re.match(line) is not None:
+							configure_opts_warn.append(line.rstrip("\n"))
+				finally:
+					f.close()
+
+				from portage.elog.messages import eqawarn
+				def _eqawarn(lines):
+					for line in lines:
+						eqawarn(line, phase=mydo, key=mysettings.mycpv)
+				from textwrap import wrap
+				wrap_width = 70
+
+				if am_maintainer_mode:
+					msg = ["QA Notice: Automake \"maintainer mode\" detected:"]
+					msg.append("")
+					msg.extend("\t" + line for line in am_maintainer_mode)
+					msg.append("")
+					msg.extend(wrap(
+						"If you patch Makefile.am, " + \
+						"configure.in,  or configure.ac then you " + \
+						"should use autotools.eclass and " + \
+						"eautomake or eautoreconf. Exceptions " + \
+						"are limited to system packages " + \
+						"for which it is impossible to run " + \
+						"autotools during stage building. " + \
+						"See http://www.gentoo.org/p" + \
+						"roj/en/qa/autofailure.xml for more information.",
+						wrap_width))
+					_eqawarn(msg)
+
+				if configure_opts_warn:
+					msg = ["QA Notice: Unrecognized configure options:"]
+					msg.append("")
+					msg.extend("\t" + line for line in configure_opts_warn)
+					_eqawarn(msg)
+
 		if mydo == "install":
 			# User and group bits that match the "portage" user or group are
 			# automatically mapped to PORTAGE_INST_UID and PORTAGE_INST_GID if

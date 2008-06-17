@@ -691,6 +691,7 @@ class vardbapi(dbapi):
 		return self._aux_cache_obj
 
 	def _aux_cache_init(self):
+		aux_cache = None
 		try:
 			f = open(self._aux_cache_filename)
 			mypickle = cPickle.Unpickler(f)
@@ -720,6 +721,8 @@ class vardbapi(dbapi):
 			elif owners["version"] != self._owners_cache_version:
 				owners = None
 			elif "base_names" not in owners:
+				owners = None
+			elif not isinstance(owners["base_names"], dict):
 				owners = None
 
 		if owners is None:
@@ -967,8 +970,7 @@ class vardbapi(dbapi):
 				# Empty path is a code used to represent empty contents.
 				self._add_path("", pkg_hash)
 			for x in contents:
-				relative_path = x[root_len:]
-				self._add_path(x, pkg_hash)
+				self._add_path(x[root_len:], pkg_hash)
 			self._vardb._aux_cache["modified"].add(cpv)
 
 		def _add_path(self, path, pkg_hash):
@@ -1020,7 +1022,10 @@ class vardbapi(dbapi):
 			base_names = self._vardb._aux_cache["owners"]["base_names"]
 
 			# Take inventory of all cached package hashes.
-			for hash_values in base_names.itervalues():
+			for name, hash_values in base_names.items():
+				if not isinstance(hash_values, dict):
+					del base_names[name]
+					continue
 				cached_hashes.update(hash_values)
 
 			# Create sets of valid package hashes and uncached packages.
@@ -1097,8 +1102,18 @@ class vardbapi(dbapi):
 				pkgs = base_names.get(name_hash)
 				if pkgs is not None:
 					for hash_value in pkgs:
+						if not isinstance(hash_value, tuple) or \
+							len(hash_value) != 3:
+							continue
 						cpv, counter, mtime = hash_value
-						if hash_pkg(cpv) != hash_value:
+						if not isinstance(cpv, basestring):
+							continue
+						try:
+							current_hash = hash_pkg(cpv)
+						except KeyError:
+							continue
+
+						if current_hash != hash_value:
 							continue
 						if dblink(cpv).isowner(path, root):
 							yield dblink(cpv), path
@@ -2516,7 +2531,7 @@ class dblink(object):
 			msg.append("")
 			eerror(msg)
 
-			owners = self.vartree.dbapi._owners.get_owners(files)
+			owners = self.vartree.dbapi._owners.get_owners(collisions)
 			self.vartree.dbapi.flush_cache()
 
 			for pkg, owned_files in owners.iteritems():
