@@ -353,7 +353,6 @@ unset_colors() {
 	COLS="25 80"
 	ENDCOL=
 
-	BLANK=
 	GOOD=
 	WARN=
 	BAD=
@@ -376,7 +375,6 @@ set_colors() {
 	if [ -n "${PORTAGE_COLORMAP}" ] ; then
 		eval ${PORTAGE_COLORMAP}
 	else
-		BLANK=$'\e[37m'
 		GOOD=$'\e[32;01m'
 		WARN=$'\e[33;01m'
 		BAD=$'\e[31;01m'
