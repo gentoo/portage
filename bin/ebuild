@@ -17,7 +17,7 @@ force_help = "When used together with the digest or manifest " + \
 	"that do not already exist in ${DISTDIR} will be automatically fetched."
 
 parser.add_option("--force", help=force_help, action="store_true", dest="force")
-parser.add_option("--debug", action="store_true", dest="debug")
+parser.add_option("--debug", help="show debug output", action="store_true", dest="debug")
 
 opts, pargs = parser.parse_args(args=sys.argv[1:])
 
