@@ -19,6 +19,9 @@ force_help = "When used together with the digest or manifest " + \
 parser.add_option("--force", help=force_help, action="store_true", dest="force")
 parser.add_option("--debug", help="show debug output",
 	action="store_true", dest="debug")
+parser.add_option("--ignore-default-opts",
+	action="store_true",
+	help="do not use the EBUILD_DEFAULT_OPTS environment variable")
 parser.add_option("--skip-manifest", help="skip all manifest checks",
 	action="store_true", dest="skip_manifest")
 
@@ -26,9 +29,6 @@ opts, pargs = parser.parse_args(args=sys.argv[1:])
 
 if len(pargs) < 2:
 	parser.error("missing required args")
-
-debug = opts.debug
-force = opts.force
 
 if "merge" in pargs:
 	print "Disabling noauto in features... merge disables it. (qmerge doesn't)"
@@ -41,6 +41,13 @@ except ImportError:
 	from os import path as osp
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
+
+if not opts.ignore_default_opts:
+	default_opts = portage.settings.get("EBUILD_DEFAULT_OPTS", "").split()
+	opts, pargs = parser.parse_args(default_opts + sys.argv[1:])
+
+debug = opts.debug
+force = opts.force
 
 import portage.util, portage.const
 import portage.dep
