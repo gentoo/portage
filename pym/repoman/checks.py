@@ -225,15 +225,16 @@ _autotools_funcs = (
 _autotools_func_re = re.compile(r'(^|\s)(' + \
 	"|".join(_autotools_funcs) + ')(\s|$)')
 
+# eclasses that inherit autotools and call it's functions
+_autotools_eclasses = frozenset(["apache-2", "x-modular"])
+
 def run_checks(contents, pkg):
 	checks = list(_constant_checks)
 	checks.append(EbuildHeader(pkg.mtime))
 	iuse_def = None
 	inherit_autotools = "autotools" in pkg.inherited
 	if inherit_autotools:
-		if "apache-2" in pkg.inherited:
-			# eautoreconf is called by apache-2_src_unpack(),
-			# so the ebuild doesn't need to call it.
+		if _autotools_eclasses.intersection(pkg.inherited):
 			inherit_autotools = False
 	autotools_func_call = None
 	for num, line in enumerate(contents):
