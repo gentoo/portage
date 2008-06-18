@@ -219,28 +219,26 @@ _constant_checks = tuple((c() for c in (
 
 _iuse_def_re = re.compile(r'^IUSE=.*')
 _comment_re = re.compile(r'(^|\s*)#')
+_inherit_autotools_re = re.compile(r'^\s*inherit\s(.*\s)?autotools(\s|$)')
 _autotools_funcs = (
 	"eaclocal", "eautoconf", "eautoheader",
 	"eautomake", "eautoreconf", "_elibtoolize")
 _autotools_func_re = re.compile(r'(^|\s)(' + \
 	"|".join(_autotools_funcs) + ')(\s|$)')
 
-# eclasses that inherit autotools and call it's functions
-_autotools_eclasses = frozenset(["apache-2", "x-modular"])
-
 def run_checks(contents, pkg):
 	checks = list(_constant_checks)
 	checks.append(EbuildHeader(pkg.mtime))
 	iuse_def = None
-	inherit_autotools = "autotools" in pkg.inherited
-	if inherit_autotools:
-		if _autotools_eclasses.intersection(pkg.inherited):
-			inherit_autotools = False
+	inherit_autotools = None
 	autotools_func_call = None
 	for num, line in enumerate(contents):
 		comment = _comment_re.match(line)
 		if comment is None:
-			if inherit_autotools and autotools_func_call is None:
+			if inherit_autotools is None:
+				inherit_autotools = _inherit_autotools_re.match(line)
+			if inherit_autotools is not None and \
+				autotools_func_call is None:
 				autotools_func_call = _autotools_func_re.search(line)
 			if iuse_def is None:
 				iuse_def = _iuse_def_re.match(line)
