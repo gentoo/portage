@@ -5825,6 +5825,12 @@ class MergeTask(object):
 		if self._opts_ignore_blockers.intersection(self.myopts):
 			return None
 
+		# Call gc.collect() here to avoid heap overflow that
+		# triggers 'Cannot allocate memory' errors (reported
+		# with python-2.5).
+		import gc
+		gc.collect()
+
 		blocker_dblinks = []
 		for blocking_pkg in self._blocker_db[
 			new_pkg.root].findInstalledBlockers(new_pkg,
@@ -5837,6 +5843,8 @@ class MergeTask(object):
 				blocking_pkg.category, blocking_pkg.pf, blocking_pkg.root,
 				self.pkgsettings[blocking_pkg.root], treetype="vartree",
 				vartree=self.trees[blocking_pkg.root]["vartree"]))
+
+		gc.collect()
 
 		return blocker_dblinks
 
