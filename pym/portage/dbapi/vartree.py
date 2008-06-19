@@ -306,7 +306,7 @@ class LinkageMapMachO(object):
 			obj = os.path.realpath(obj)
 			if obj not in self._obj_properties:
 				raise KeyError("%s not in object list" % obj)
-		install_name = self._obj_properties[obj][2]
+		install_name = self._obj_properties[obj][1]
 		return (len(basename) < len(os.path.basename(install_name)))
 		
 	def listLibraryObjects(self):
