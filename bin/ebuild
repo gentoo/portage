@@ -17,7 +17,10 @@ force_help = "When used together with the digest or manifest " + \
 	"that do not already exist in ${DISTDIR} will be automatically fetched."
 
 parser.add_option("--force", help=force_help, action="store_true", dest="force")
-parser.add_option("--debug", help="show debug output", action="store_true", dest="debug")
+parser.add_option("--debug", help="show debug output",
+	action="store_true", dest="debug")
+parser.add_option("--skip-manifest", help="skip all manifest checks",
+	action="store_true", dest="skip_manifest")
 
 opts, pargs = parser.parse_args(args=sys.argv[1:])
 
@@ -152,6 +155,11 @@ if "test" in pargs:
 		tmpsettings.features.sort()
 		tmpsettings["FEATURES"] = " ".join(tmpsettings.features)
 		tmpsettings.backup_changes("FEATURES")
+
+if opts.skip_manifest:
+	tmpsettings["EBUILD_SKIP_MANIFEST"] = "1"
+	tmpsettings.backup_changes("EBUILD_SKIP_MANIFEST")
+	portage._doebuild_manifest_exempt_depend += 1
 
 build_dir_phases = set(["setup", "unpack", "compile",
 	"test", "install", "package", "rpm"])

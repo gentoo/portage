@@ -3309,8 +3309,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		if try_mirrors:
 			mymirrors += [x.rstrip("/") for x in mysettings["GENTOO_MIRRORS"].split() if x]
 
+	skip_manifest = mysettings.get("EBUILD_SKIP_MANIFEST") == "1"
 	pkgdir = mysettings.get("O")
-	if pkgdir is not None:
+	if not (pkgdir is None or skip_manifest):
 		mydigests = Manifest(
 			pkgdir, mysettings["DISTDIR"]).getTypeDigests("DIST")
 	else:
@@ -4076,6 +4077,8 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	"""Verifies checksums.  Assumes all files have been downloaded.
 	DEPRECATED: this is now only a compability wrapper for 
 	            portage_manifest.Manifest()."""
+	if mysettings.get("EBUILD_SKIP_MANIFEST") == "1":
+		return 1
 	pkgdir = mysettings["O"]
 	manifest_path = os.path.join(pkgdir, "Manifest")
 	if not os.path.exists(manifest_path):
