@@ -16,7 +16,7 @@ class LineCheck(object):
 	"""A regular expression to determine whether to ignore the line"""
 	ignore_line = False
 
-	def new(self):
+	def new(self, pkg):
 		pass
 
 	def check(self, num, line):
@@ -45,9 +45,10 @@ class EbuildHeader(LineCheck):
 	gentoo_license = r'# Distributed under the terms of the GNU General Public License v2'
 	cvs_header = re.compile(r'^#\s*\$Header.*\$$')
 
-	def __init__(self, st_mtime):
-		self.modification_year = str(time.gmtime(st_mtime)[0])
-		self.gentoo_copyright_re = re.compile(self.gentoo_copyright % self.modification_year)
+	def new(self, pkg):
+		self.modification_year = str(time.gmtime(pkg.mtime)[0])
+		self.gentoo_copyright_re = re.compile(
+			self.gentoo_copyright % self.modification_year)
 
 	def check(self, num, line):
 		if num > 2:
@@ -232,7 +233,7 @@ class InheritAutotools(LineCheck):
 	_autotools_func_re = re.compile(r'(^|\s)(' + \
 		"|".join(_autotools_funcs) + ')(\s|$)')
 
-	def new(self):
+	def new(self, pkg):
 		self._inherit_autotools = None
 		self._autotools_func_call = None
 
@@ -256,7 +257,7 @@ class IUseUndefined(LineCheck):
 	repoman_check_name = 'IUSE.undefined'
 	_iuse_def_re = re.compile(r'^IUSE=.*')
 
-	def new(self):
+	def new(self, pkg):
 		self._iuse_def = None
 
 	def check(self, num, line):
@@ -268,18 +269,17 @@ class IUseUndefined(LineCheck):
 			yield 'IUSE is not defined'
 
 _constant_checks = tuple((c() for c in (
-	EbuildWhitespace, EbuildQuote,
+	EbuildHeader, EbuildWhitespace, EbuildQuote,
 	EbuildAssignment, EbuildUselessDodoc,
 	EbuildUselessCdS, EbuildNestedDie,
 	EbuildPatches, EbuildQuotedA,
 	IUseUndefined, InheritAutotools)))
 
 def run_checks(contents, pkg):
-	checks = list(_constant_checks)
-	checks.append(EbuildHeader(pkg.mtime))
+	checks = _constant_checks
 
 	for lc in checks:
-		lc.new()
+		lc.new(pkg)
 	for num, line in enumerate(contents):
 		for lc in checks:
 			ignore = lc.ignore_line
