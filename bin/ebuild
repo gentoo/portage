@@ -3,22 +3,29 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header: /var/cvsroot/gentoo-src/portage/bin/ebuild,v 1.18.2.3 2005/05/07 04:32:59 ferringb Exp $
 
-import getopt, os, sys
+import optparse
+import os
+import sys
 
-if len(sys.argv) <= 2:
-	print "Usage: ebuild <ebuild file> <command> [command] ..."
-	print ""
-	print "See the ebuild(1) man page for more info"
-	sys.exit(1)
+description = "See the ebuild(1) man page for more info"
+usage = "Usage: ebuild <ebuild file> <command> [command] ..."
+parser = optparse.OptionParser(description=description, usage=usage)
 
+force_help = "When used together with the digest or manifest " + \
+	"command, this option forces regeneration of digests for all " + \
+	"distfiles associated with the current ebuild. Any distfiles " + \
+	"that do not already exist in ${DISTDIR} will be automatically fetched."
 
-try:
-	opts, pargs = getopt.getopt(sys.argv[1:], '', ['debug', 'force'])
-except getopt.GetoptError, e:
-	print e
-	sys.exit(1)
-debug = ("--debug",'') in opts
-force = ("--force",'') in opts
+parser.add_option("--force", help=force_help, action="store_true", dest="force")
+parser.add_option("--debug", help="show debug output", action="store_true", dest="debug")
+
+opts, pargs = parser.parse_args(args=sys.argv[1:])
+
+if len(pargs) < 2:
+	parser.error("missing required args")
+
+debug = opts.debug
+force = opts.force
 
 if "merge" in pargs:
 	print "Disabling noauto in features... merge disables it. (qmerge doesn't)"
