@@ -997,7 +997,7 @@ class LineCheck(object):
 	"""A regular expression to determine whether to ignore the line"""
 	ignore_line = False
 
-	def new(self):
+	def new(self, pkg):
 		pass
 
 	def check(self, num, line):
@@ -1138,7 +1138,7 @@ class InheritAutotools(LineCheck):
 	_autotools_func_re = re.compile(r'(^|\s)(' + \
 		"|".join(_autotools_funcs) + ')(\s|$)')
 
-	def new(self):
+	def new(self, pkg):
 		self._inherit_autotools = None
 		self._autotools_func_call = None
 
@@ -1162,7 +1162,7 @@ class IUseUndefined(LineCheck):
 	repoman_check_name = 'IUSE.undefined'
 	_iuse_def_re = re.compile(r'^IUSE=.*')
 
-	def new(self):
+	def new(self, pkg):
 		self._iuse_def = None
 
 	def check(self, num, line):
@@ -1183,7 +1183,7 @@ def run_checks(contents, pkg):
 	checks = _constant_checks
 
 	for lc in checks:
-		lc.new()
+		lc.new(pkg)
 	for num, line in enumerate(contents):
 		for lc in checks:
 			ignore = lc.ignore_line
