@@ -416,7 +416,7 @@ class Atom(object):
 
 	_str_methods = ("endswith", "find", "index", "lstrip", "replace",
 		"startswith", "strip", "rindex", "rfind", "rstrip", "__getitem__",
-		"__hash__", "__len__", "__repr__", "__str__")
+		"__eq__", "__hash__", "__len__", "__ne__", "__repr__", "__str__")
 
 	__slots__ = ("__weakref__", "blocker", "cp", "cpv", "operator",
 		"slot", "string", "use") + _str_methods
