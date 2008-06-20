@@ -4,7 +4,7 @@ emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
 .TP
 .BR emerge
-[\fIoptions\fR] [\fIaction\fR] [\fIebuild\fR | \fItbz2file\fR | \fI@set\fR | \fIatom\fR] ...
+[\fIoptions\fR] [\fIaction\fR] [\fIebuild\fR | \fItbz2file\fR | \fIfile\fR | \fI@set\fR | \fIatom\fR] ...
 .TP
 .BR emerge
 \fB\-\-sync\fR | \fB\-\-version\fR
@@ -49,6 +49,12 @@ so this syntax shouldn't be used.
 A \fItbz2file\fR must be a valid .tbz2 created with \fBebuild
 <package>\-<version>.ebuild package\fR or \fBemerge \-\-buildpkg 
 [category/]<package>\fR or \fBquickpkg /var/db/pkg/<category>/<package>\fR.
+.TP
+.BR file
+A \fIfile\fR must be a file or directory that has been installed by one or
+more packages. For directories that are owned by multiple packages, all
+owning packages to be selected. See the portageq(1) owners command if you
+would like to query the owners of one or more files or directories.
 .TP
 .BR set
 A \fIset\fR is a convenient shorthand for a large group of
