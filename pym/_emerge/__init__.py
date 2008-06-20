@@ -9076,6 +9076,7 @@ def emerge_main():
 			if "porttree" in trees[root]:
 				db = trees[root]["porttree"].dbapi
 				paths = (db.mysettings["PORTDIR"]+" "+db.mysettings["PORTDIR_OVERLAY"]).split()
+				paths = [os.path.realpath(p) for p in paths]
 				repos = db.getRepositories()
 				for r in repos:
 					p = db.getRepositoryPath(r)
