@@ -3,6 +3,7 @@ News (mainly features/major bug fixes)
 portage-2.2
 -------------
 
+* Add subversion support for repoman.
 * It is now possible to use `emerge <file>` to reinstall the package that
   installed a particular file. Package contents entries are indexed to
   improve performance. A command such as `emerge /lib/modules` can serve
