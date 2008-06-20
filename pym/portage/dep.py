@@ -611,6 +611,9 @@ def isvalidatom(atom, allow_blockers=False):
 		1) 0 if the atom is invalid
 		2) 1 if the atom is valid
 	"""
+	existing_atom = Atom._atoms.get(atom)
+	if existing_atom is not None:
+		atom = existing_atom
 	if isinstance(atom, Atom):
 		if atom.blocker and not allow_blockers:
 			return 0
