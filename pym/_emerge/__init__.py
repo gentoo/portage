@@ -2701,7 +2701,7 @@ class depgraph(object):
 		if lookup_owners:
 			relative_paths = []
 			search_for_multiple = False
-			if len(relative_paths) > 1:
+			if len(lookup_owners) > 1:
 				search_for_multiple = True
 
 			for x in lookup_owners:
