@@ -2549,6 +2549,7 @@ class depgraph(object):
 		pkgsettings = self.pkgsettings[myroot]
 		args = []
 		onlydeps = "--onlydeps" in self.myopts
+		lookup_owners = []
 		for x in myfiles:
 			ext = os.path.splitext(x)[1]
 			if ext==".tbz2":
@@ -2621,26 +2622,9 @@ class depgraph(object):
 					portage.writemsg(("\n\n!!! '%s' does not start with" + \
 						" $ROOT.\n") % x, noiselevel=-1)
 					return 0, []
-				relative_path = x[len(myroot):]
-				owner_cpv = None
-				for pkg, relative_path in \
-					real_vardb._owners.iter_owners([relative_path]):
-					owner_cpv = pkg.mycpv
-					break
-
-				if owner_cpv is None:
-					portage.writemsg(("\n\n!!! '%s' is not claimed " + \
-						"by any package.\n") % x, noiselevel=-1)
-					return 0, []
-				slot = vardb.aux_get(owner_cpv, ["SLOT"])[0]
-				if not slot:
-					# portage now masks packages with missing slot, but it's
-					# possible that one was installed by an older version
-					atom = portage.cpv_getkey(owner_cpv)
-				else:
-					atom = "%s:%s" % (portage.cpv_getkey(owner_cpv), slot)
-				args.append(AtomArg(arg=atom, atom=atom,
-					root_config=root_config))
+				# Queue these up since it's most efficient to handle
+				# multiple files in a single iter_owners() call.
+				lookup_owners.append(x)
 			else:
 				if x in ("system", "world"):
 					x = SETPREFIX + x
@@ -2712,6 +2696,40 @@ class depgraph(object):
 						atom = insert_category_into_atom(x, "null")
 
 				args.append(AtomArg(arg=x, atom=atom,
+					root_config=root_config))
+
+		if lookup_owners:
+			relative_paths = []
+			search_for_multiple = False
+			if len(relative_paths) > 1:
+				search_for_multiple = True
+
+			for x in lookup_owners:
+				if not search_for_multiple and os.path.isdir(x):
+					search_for_multiple = True
+				relative_paths.append(x[len(myroot):])
+
+			owners = set()
+			for pkg, relative_path in \
+				real_vardb._owners.iter_owners(relative_paths):
+				owners.add(pkg.mycpv)
+				if not search_for_multiple:
+					break
+
+			if not owners:
+				portage.writemsg(("\n\n!!! '%s' is not claimed " + \
+					"by any package.\n") % lookup_owners[0], noiselevel=-1)
+				return 0, []
+
+			for cpv in owners:
+				slot = vardb.aux_get(cpv, ["SLOT"])[0]
+				if not slot:
+					# portage now masks packages with missing slot, but it's
+					# possible that one was installed by an older version
+					atom = portage.cpv_getkey(cpv)
+				else:
+					atom = "%s:%s" % (portage.cpv_getkey(cpv), slot)
+				args.append(AtomArg(arg=atom, atom=atom,
 					root_config=root_config))
 
 		if "--update" in self.myopts:
