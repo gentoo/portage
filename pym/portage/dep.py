@@ -392,12 +392,23 @@ class _use_dep(object):
 		tokens.extend(self.conditional_disabled.difference(use))
 		return _use_dep(tokens)
 
+class _AtomCache(type):
+	atoms = {}
+	def __call__(cls, s):
+		instance = cls.atoms.get(s)
+		if instance is None:
+			instance = super(_AtomCache, cls).__call__(s)
+			cls.atoms[s] = instance
+		return instance
+
 class Atom(object):
 
 	"""
 	For compatibility with existing atom string manipulation code, this
 	class emulates most of the str methods that are useful with atoms.
 	"""
+
+	__metaclass__ = _AtomCache
 
 	_str_methods = ("endswith", "find", "index", "lstrip", "replace",
 		"startswith", "strip", "rindex", "rfind", "rstrip", "__getitem__",
