@@ -419,7 +419,7 @@ class Atom(object):
 		"__eq__", "__hash__", "__len__", "__ne__", "__repr__", "__str__")
 
 	__slots__ = ("__weakref__", "blocker", "cp", "cpv", "operator",
-		"slot", "string", "use") + _str_methods
+		"slot", "use") + _str_methods
 
 	def __init__(self, s):
 		if not isvalidatom(s, allow_blockers=True):
