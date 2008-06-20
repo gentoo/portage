@@ -260,14 +260,26 @@ class LinkageMapMachO(object):
 
 		# have to call otool for preserved libs here as they aren't 
 		# registered in NEEDED.MACHO.2 files
-# TODO: FIXME: ETC.
-#		if self._dbapi.plib_registry and self._dbapi.plib_registry.getPreservedLibs():
-#			args = [EPREFIX+"/usr/bin/scanelf", "-qF", "%a;%F;%S;%r;%n"]
-#			for items in self._dbapi.plib_registry.getPreservedLibs().values():
-#				args += [x.lstrip(".") for x in items]
-#			proc = subprocess.Popen(args, stdout=subprocess.PIPE)
-#			output = [l[3:] for l in proc.communicate()[0].split("\n")]
-#			lines += output
+		if self._dbapi.plib_registry and self._dbapi.plib_registry.getPreservedLibs():
+			otool = EPREFIX+"/usr/bin/otool"
+			for items in self._dbapi.plib_registry.getPreservedLibs().values():
+				for x in items:
+					proc = subprocess.Popen([otool, "-DX", x.lstrip(".")],
+							stdout=subprocess.PIPE)
+					install_name = proc.communicate()[0].split("\n")[0]
+					proc = subprocess.Popen([otool, "-LX", x.lstrip(".")],
+							stdout=subprocess.PIPE)
+					output = [l.lstrip() for l in proc.communicate()[0].split("\n")]
+					n = ""
+					for l in output:
+						if l == '':
+							continue
+						p = l.rfind(" (compatibility")
+						if p != -1:
+							l = l[:p]
+						n += "," + l
+
+					lines += [x + ";" + install_name + ";" + n.lstrip(",") + "\n"]
 
 		for l in lines:
 			if l.strip() == "":
