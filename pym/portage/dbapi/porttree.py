@@ -654,11 +654,11 @@ class portdbapi(dbapi):
 					continue
 				if mydep.slot and mydep.slot != metadata["SLOT"]:
 					continue
-				if settings.getMissingKeywords(cpv, metadata):
+				if settings._getMissingKeywords(cpv, metadata):
 					continue
-				if settings.getMaskAtom(cpv, metadata):
+				if settings._getMaskAtom(cpv, metadata):
 					continue
-				if settings.getProfileMaskAtom(cpv, metadata):
+				if settings._getProfileMaskAtom(cpv, metadata):
 					continue
 				if local_config:
 					metadata["USE"] = ""
@@ -666,7 +666,7 @@ class portdbapi(dbapi):
 						self.doebuild_settings.setcpv(cpv, mydb=metadata)
 						metadata["USE"] = self.doebuild_settings.get("USE", "")
 					try:
-						if settings.getMissingLicenses(cpv, metadata):
+						if settings._getMissingLicenses(cpv, metadata):
 							continue
 					except InvalidDependString:
 						continue
@@ -721,8 +721,8 @@ class portdbapi(dbapi):
 
 		db_keys = ["SLOT"]
 		visible = []
-		getMaskAtom = self.mysettings.getMaskAtom
-		getProfileMaskAtom = self.mysettings.getProfileMaskAtom
+		getMaskAtom = self.mysettings._getMaskAtom
+		getProfileMaskAtom = self.mysettings._getProfileMaskAtom
 		for cpv in mylist:
 			try:
 				metadata = dict(izip(db_keys, self.aux_get(cpv, db_keys)))
@@ -761,7 +761,7 @@ class portdbapi(dbapi):
 				continue
 			if not eapi_is_supported(metadata["EAPI"]):
 				continue
-			if self.mysettings.getMissingKeywords(mycpv, metadata):
+			if self.mysettings._getMissingKeywords(mycpv, metadata):
 				continue
 			if local_config:
 				metadata["USE"] = ""
@@ -769,7 +769,7 @@ class portdbapi(dbapi):
 					self.doebuild_settings.setcpv(mycpv, mydb=metadata)
 					metadata["USE"] = self.doebuild_settings.get("USE", "")
 				try:
-					if self.mysettings.getMissingLicenses(mycpv, metadata):
+					if self.mysettings._getMissingLicenses(mycpv, metadata):
 						continue
 				except InvalidDependString:
 					continue

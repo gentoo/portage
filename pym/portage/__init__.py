@@ -2191,7 +2191,7 @@ class config(object):
 		iuse_implicit.add("bootstrap")
 		return iuse_implicit
 
-	def getMaskAtom(self, cpv, metadata):
+	def _getMaskAtom(self, cpv, metadata):
 		"""
 		Take a package and return a matching package.mask atom, or None if no
 		such atom exists or it has been cancelled by package.unmask. PROVIDE
@@ -2220,7 +2220,7 @@ class config(object):
 				return x
 		return None
 
-	def getProfileMaskAtom(self, cpv, metadata):
+	def _getProfileMaskAtom(self, cpv, metadata):
 		"""
 		Take a package and return a matching profile atom, or None if no
 		such atom exists. Note that a profile atom may or may not have a "*"
@@ -2245,7 +2245,7 @@ class config(object):
 				return x
 		return None
 
-	def getMissingKeywords(self, cpv, metadata):
+	def _getMissingKeywords(self, cpv, metadata):
 		"""
 		Take a package and return a list of any KEYWORDS that the user may
 		may need to accept for the given package. If the KEYWORDS are empty
@@ -2322,7 +2322,7 @@ class config(object):
 			missing = mygroups
 		return missing
 
-	def getMissingLicenses(self, cpv, metadata):
+	def _getMissingLicenses(self, cpv, metadata):
 		"""
 		Take a LICENSE string and return a list any licenses that the user may
 		may need to accept for the given package.  The returned list will not
@@ -2349,9 +2349,9 @@ class config(object):
 		license_struct = portage.dep.use_reduce(
 			license_struct, uselist=metadata["USE"].split())
 		license_struct = portage.dep.dep_opconvert(license_struct)
-		return self._getMissingLicenses(license_struct, acceptable_licenses)
+		return self._getMaskedLicenses(license_struct, acceptable_licenses)
 
-	def _getMissingLicenses(self, license_struct, acceptable_licenses):
+	def _getMaskedLicenses(self, license_struct, acceptable_licenses):
 		if not license_struct:
 			return []
 		if license_struct[0] == "||":
@@ -2359,7 +2359,7 @@ class config(object):
 			for element in license_struct[1:]:
 				if isinstance(element, list):
 					if element:
-						ret.append(self._getMissingLicenses(
+						ret.append(self._getMaskedLicenses(
 							element, acceptable_licenses))
 						if not ret[-1]:
 							return []
@@ -2375,7 +2375,7 @@ class config(object):
 		for element in license_struct:
 			if isinstance(element, list):
 				if element:
-					ret.extend(self._getMissingLicenses(element,
+					ret.extend(self._getMaskedLicenses(element,
 						acceptable_licenses))
 			else:
 				if element not in acceptable_licenses:
@@ -6349,11 +6349,11 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 	rValue = []
 
 	# profile checking
-	if settings.getProfileMaskAtom(mycpv, metadata):
+	if settings._getProfileMaskAtom(mycpv, metadata):
 		rValue.append("profile")
 
 	# package.mask checking
-	if settings.getMaskAtom(mycpv, metadata):
+	if settings._getMaskAtom(mycpv, metadata):
 		rValue.append("package.mask")
 
 	# keywords checking
@@ -6418,7 +6418,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 				break
 
 	try:
-		missing_licenses = settings.getMissingLicenses(mycpv, metadata)
+		missing_licenses = settings._getMissingLicenses(mycpv, metadata)
 		if missing_licenses:
 			allowed_tokens = set(["||", "(", ")"])
 			allowed_tokens.update(missing_licenses)

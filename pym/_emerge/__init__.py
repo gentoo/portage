@@ -1120,14 +1120,14 @@ def visible(pkgsettings, pkg):
 	if not portage.eapi_is_supported(pkg.metadata["EAPI"]):
 		return False
 	if not pkg.installed and \
-		pkgsettings.getMissingKeywords(pkg.cpv, pkg.metadata):
+		pkgsettings._getMissingKeywords(pkg.cpv, pkg.metadata):
 		return False
-	if pkgsettings.getMaskAtom(pkg.cpv, pkg.metadata):
+	if pkgsettings._getMaskAtom(pkg.cpv, pkg.metadata):
 		return False
-	if pkgsettings.getProfileMaskAtom(pkg.cpv, pkg.metadata):
+	if pkgsettings._getProfileMaskAtom(pkg.cpv, pkg.metadata):
 		return False
 	try:
-		if pkgsettings.getMissingLicenses(pkg.cpv, pkg.metadata):
+		if pkgsettings._getMissingLicenses(pkg.cpv, pkg.metadata):
 			return False
 	except portage.exception.InvalidDependString:
 		return False
@@ -1194,7 +1194,7 @@ def show_masked_packages(masked_packages):
 				have_eapi_mask = True
 			try:
 				missing_licenses = \
-					pkgsettings.getMissingLicenses(
+					pkgsettings._getMissingLicenses(
 						cpv, metadata)
 			except portage.exception.InvalidDependString:
 				# This will have already been reported
@@ -3196,7 +3196,7 @@ class depgraph(object):
 						# reinstall the same exact version only due
 						# to a KEYWORDS mask.
 						if installed and matched_packages and \
-							pkgsettings.getMissingKeywords(
+							pkgsettings._getMissingKeywords(
 							pkg.cpv, pkg.metadata):
 							different_version = None
 							for avail_pkg in matched_packages:
@@ -3545,7 +3545,7 @@ class depgraph(object):
 						if pkg_in_graph and not visible(pkgsettings, pkg):
 							self._masked_installed.add(pkg)
 						elif graph_complete_for_root and \
-							pkgsettings.getMissingKeywords(
+							pkgsettings._getMissingKeywords(
 							pkg.cpv, pkg.metadata) and \
 							pkg.metadata["KEYWORDS"].split() and \
 							not pkg_in_graph:
@@ -5674,7 +5674,7 @@ class depgraph(object):
 			try:
 				if visible(root_config.settings, v) and \
 					not (v.installed and \
-					v.root_config.settings.getMissingKeywords(v.cpv, v.metadata)):
+					v.root_config.settings._getMissingKeywords(v.cpv, v.metadata)):
 					root_config.visible_pkgs.cpv_inject(v)
 			except portage.exception.InvalidDependString:
 				pass
