@@ -9072,6 +9072,20 @@ def emerge_main():
 
 	if "--quiet" not in myopts:
 		portage.deprecated_profile_check()
+		for root in trees:
+			if "porttree" in trees[root]:
+				db = trees[root]["porttree"].dbapi
+				paths = (db.mysettings["PORTDIR"]+" "+db.mysettings["PORTDIR_OVERLAY"]).split()
+				repos = db.getRepositories()
+				for r in repos:
+					p = db.getRepositoryPath(r)
+					try:
+						paths.remove(p)
+					except ValueError:
+						pass
+				for p in paths:
+					writemsg("WARNING: repository at %s is missing a repo_name entry\n" % p)
+					
 
 	eclasses_overridden = {}
 	for mytrees in trees.itervalues():
