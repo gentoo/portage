@@ -392,12 +392,25 @@ class _use_dep(object):
 		tokens.extend(self.conditional_disabled.difference(use))
 		return _use_dep(tokens)
 
-class Atom(str):
+class Atom(object):
+
+	"""
+	For compatibility with existing atom string manipulation code, this
+	class emulates most of the str methods that are useful with atoms.
+	"""
+
+	_str_methods = ("endswith", "find", "index", "lstrip", "replace",
+		"startswith", "strip", "rindex", "rfind", "rstrip", "__getitem__",
+		"__len__", "__repr__", "__str__")
+
+	__slots__ = ("__weakref__", "blocker", "cp", "cpv", "operator",
+		"slot", "string", "use") + _str_methods
 
 	def __init__(self, s):
-		str.__init__(self, s)
 		if not isvalidatom(s, allow_blockers=True):
 			raise InvalidAtom(s)
+		for x in self._str_methods:
+			setattr(self, x, getattr(s, x))
 		self.blocker = "!" == s[:1]
 		if self.blocker:
 			s = s[1:]
