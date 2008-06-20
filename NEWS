@@ -3,21 +3,28 @@ News (mainly features/major bug fixes)
 portage-2.2
 -------------
 
+* It is now possible to use `emerge <file>` to reinstall the package that
+  installed a particular file. Package contents entries are indexed to
+  improve performance. A command such as `emerge /lib/modules` can serve
+  as a decent substitute for module-rebuild.
 * Namespace sanitizing: move all portage related code into portage.* namespace,
   rename portage_foo modules to portage.foo (but keep symlinks for compability)
 * Add license visibility filtering (GLEP 23)
-* Enable "echo" and "save_summary" elog modules by default
-* Fix -* handling in package.keywords to work as intended (reset the accepted 
-  keywords list), also see RELEASE-NOTES.
 * Experimental support for preserving old library files on package upgrades
   based on FEATURES=preserve-libs
-* Make elog functionality available to python code
 * Add support for news items (GLEP 42)
 * Add support for generic package sets (also see RELEASE-NOTES)
 
 portage-2.1.5
-==================================
+-------------
 
+* Blockers are now resolved automatically in many more cases
+  than before.  When it's safe, blocked packages are uninstalled
+  automatically so that users are no longer inconvenienced with the
+  task. Automatically uninstalled packages are displayed in the merge
+  list, marked "uninstall" and highlighted in red. With the --tree
+  option enabled, it's possible to see which package(s) caused other
+  ones to be automatically uninstalled.
 * The dependency resolver now has a feedback mechanism that helps make atom
   selections more consistent with previous selections that have been added to
   the graph. This solves some common cases of bug #1343.
@@ -28,6 +35,8 @@ portage-2.1.4
 * After the initial setup phase, the original ebuild and eclasses are no
   longer needed because the same ebuild environment is reused for the
   entire lifecycle of the package, including uninstallation.
+* The emerge --search action supports searching of both installed and binary packages
+  The --usepkg and --usepkgonly options control which repositories are searched.
 
 portage-2.1.3
 -------------
@@ -44,6 +53,10 @@ portage-2.1.3
 * PDEPEND is now installed as soon as possible so that it behaves more like
   RDEPEND.  This makes PDEPEND more useful for breaking the dependency cycles
   that are sometimes triggered by RDEPEND and DEPEND.
+* Enable "echo" and "save_summary" elog modules by default
+* Fix -* handling in package.keywords to work as intended (reset the accepted 
+  keywords list), also see RELEASE-NOTES.
+* Make elog functionality available to python code
 
 portage-2.1.2
 -------------
