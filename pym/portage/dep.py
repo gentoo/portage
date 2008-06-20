@@ -393,12 +393,15 @@ class _use_dep(object):
 		return _use_dep(tokens)
 
 class _AtomCache(type):
-	atoms = {}
+	"""
+	Cache Atom instances from constructor calls and reuse
+	identical instances when available.
+	"""
 	def __call__(cls, s):
-		instance = cls.atoms.get(s)
+		instance = cls._atoms.get(s)
 		if instance is None:
 			instance = super(_AtomCache, cls).__call__(s)
-			cls.atoms[s] = instance
+			cls._atoms[s] = instance
 		return instance
 
 class Atom(object):
@@ -409,6 +412,7 @@ class Atom(object):
 	"""
 
 	__metaclass__ = _AtomCache
+	_atoms = {}
 
 	_str_methods = ("endswith", "find", "index", "lstrip", "replace",
 		"startswith", "strip", "rindex", "rfind", "rstrip", "__getitem__",
