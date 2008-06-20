@@ -22,23 +22,16 @@ portage-2.2
     used without the prefix)
   - they may currently only include simple and versioned atoms or other sets, use
     conditionals or any-of constructs aren't possible yet
-  - emerge makes no difference atm whether you pass a setname or all atoms contained
-    in the set to it, this means that without options packages will be remerged if 
-	already installed, or in the case of --unmerge all atoms in a set will be 
-	unmerged even if they are depended upon by other packages. This may change in 
-	future versions.
   - sets can be referenced either in other file-based sets or as argument to emerge, but
     not in ebuilds, config files or other tools at this time.
+  - packages won't be unmerged if they are referenced by an installed package
+    set (with the exception of the world set, and installed being determined
+	by the world_sets file).
 * "world" does no longer include "system" unconditionally, but you can add
-  "@system" to the worldfile to restore the old state.
+  "@system" to the world_sets file to restore the old state.
 
 portage-2.1.5
 ==================================
-
-* It is now possible to use `emerge <file>` to reinstall the package that
-  installed a particular file. Package contents entries are indexed to
-  improve performance. A command such as `emerge /lib/modules` can serve
-  as a decent substitute for module-rebuild.
 
 * The pkg_postinst phase is now called after the previous version of a
   package has been removed. As a consequence, it is no longer possible
@@ -48,14 +41,6 @@ portage-2.1.5
   earlier phase (such as pkg_preinst) and store the result in a global
   variable to be accessed by pkg_postinst when it is called. Bug #226505
   tracks all issues related to this phase execution order change.
-
-* Blockers are now resolved automatically in many more cases
-  than before.  When it's safe, blocked packages are uninstalled
-  automatically so that users are no longer inconvenienced with the
-  task. Automatically uninstalled packages are displayed in the merge
-  list, marked "uninstall" and highlighted in red. With the --tree
-  option enabled, it's possible to see which package(s) caused other
-  ones to be automatically uninstalled.
 
 * The metadata-transfer feature is now disabled by default. This disables the
   "Updating Portage cache" routine that used to run at the tail end of each
@@ -99,8 +84,6 @@ portage-2.1.4
 * There is no need to have a complete portage tree available when installing binary
   packages or uninstalling packages, but a warning message will still be displayed if
   it appears that a valid profile is not available.
-* The emerge --search action supports searching of both installed and binary packages
-  The --usepkg and --usepkgonly options control which repositories are searched.
 
 portage-2.1.3
 ==================================
