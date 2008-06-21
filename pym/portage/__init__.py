@@ -4197,9 +4197,12 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 				configure_opts_warn_re = re.compile(
 					r'^configure: WARNING: Unrecognized options: .*')
 				am_maintainer_mode_re = re.compile(r'.*/missing --run .*')
+				am_maintainer_mode_exclude_re = \
+					re.compile(r'.*/missing --run (autoheader|makeinfo)')
 				try:
 					for line in f:
-						if am_maintainer_mode_re.search(line) is not None:
+						if am_maintainer_mode_re.search(line) is not None and \
+							am_maintainer_mode_exclude_re.search(line) is None:
 							am_maintainer_mode.append(line.rstrip("\n"))
 						if configure_opts_warn_re.match(line) is not None:
 							configure_opts_warn.append(line.rstrip("\n"))
