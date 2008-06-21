@@ -2049,7 +2049,7 @@ class depgraph(object):
 		# Max number of parents shown, to avoid flooding the display.
 		max_parents = 3
 		for slot_atom, root in self._slot_collision_info:
-			msg.append(slot_atom)
+			msg.append(str(slot_atom))
 			msg.append("\n\n")
 			slot_nodes = []
 			for node in self._slot_collision_nodes:
