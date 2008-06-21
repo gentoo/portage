@@ -5176,7 +5176,7 @@ class depgraph(object):
 				" Ebuilds for the following packages are either all\n")
 			sys.stderr.write(colorize("BAD", "!!!") + \
 				" masked or don't exist:\n")
-			sys.stderr.write(" ".join(atom for arg, atom in \
+			sys.stderr.write(" ".join(str(atom) for arg, atom in \
 				self._missing_args) + "\n")
 
 		if self._pprovided_args:
