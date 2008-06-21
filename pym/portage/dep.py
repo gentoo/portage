@@ -440,6 +440,15 @@ class Atom(object):
 		else:
 			self.use = None
 
+	def __cmp__(self, other):
+		self_str = str(self)
+		other_str = str(other)
+		if self_str == other_str:
+			return 0
+		if self_str > other_str:
+			return 1
+		return -1
+
 def get_operator(mydep):
 	"""
 	Return the operator used in a depstring.
