@@ -17,7 +17,7 @@ import re
 import sys
 
 implicit_pattern = re.compile("([^:]*):(\d+): warning: implicit declaration "
-                              + "of function `([^']*)'")
+                              + "of function [`']([^']*)'")
 pointer_pattern = re.compile(
     "([^:]*):(\d+): warning: "
     + "("

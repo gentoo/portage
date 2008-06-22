@@ -145,6 +145,7 @@ def ParseArgs(args, qahelp):
 
 	modes = {
 		'commit' : 'Run a scan then commit changes',
+		'ci' : 'Run a scan then commit changes',
 		'fix' : 'Fix simple QA issues (stray digests, missing digests)',
 		'full' : 'Scan directory tree and print all issues (not a summary)',
 		'help' : 'Show this screen',
@@ -223,6 +224,9 @@ def ParseArgs(args, qahelp):
 
 	if not opts.mode:
 		opts.mode = 'full'	#default to full
+	
+	if opts.mode == 'ci':
+		opts.mode = 'commit'  # backwards compat shortcut
 
 	if opts.mode == 'commit' and not (opts.force or opts.pretend):
 		if opts.ignore_masked:

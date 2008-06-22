@@ -392,12 +392,40 @@ class _use_dep(object):
 		tokens.extend(self.conditional_disabled.difference(use))
 		return _use_dep(tokens)
 
-class Atom(str):
+class _AtomCache(type):
+	"""
+	Cache Atom instances from constructor calls and reuse
+	identical instances when available.
+	"""
+	def __call__(cls, s):
+		instance = cls._atoms.get(s)
+		if instance is None:
+			instance = super(_AtomCache, cls).__call__(s)
+			cls._atoms[s] = instance
+		return instance
+
+class Atom(object):
+
+	"""
+	For compatibility with existing atom string manipulation code, this
+	class emulates most of the str methods that are useful with atoms.
+	"""
+
+	__metaclass__ = _AtomCache
+	_atoms = {}
+
+	_str_methods = ("endswith", "find", "index", "lstrip", "replace",
+		"startswith", "strip", "rindex", "rfind", "rstrip", "__getitem__",
+		"__eq__", "__hash__", "__len__", "__ne__", "__repr__", "__str__")
+
+	__slots__ = ("__weakref__", "blocker", "cp", "cpv", "operator",
+		"slot", "use") + _str_methods
 
 	def __init__(self, s):
-		str.__init__(self, s)
 		if not isvalidatom(s, allow_blockers=True):
 			raise InvalidAtom(s)
+		for x in self._str_methods:
+			setattr(self, x, getattr(s, x))
 		self.blocker = "!" == s[:1]
 		if self.blocker:
 			s = s[1:]
@@ -411,6 +439,15 @@ class Atom(str):
 			self.use = _use_dep(self.use)
 		else:
 			self.use = None
+
+	def __cmp__(self, other):
+		self_str = str(self)
+		other_str = str(other)
+		if self_str == other_str:
+			return 0
+		if self_str > other_str:
+			return 1
+		return -1
 
 def get_operator(mydep):
 	"""
@@ -583,6 +620,9 @@ def isvalidatom(atom, allow_blockers=False):
 		1) 0 if the atom is invalid
 		2) 1 if the atom is valid
 	"""
+	existing_atom = Atom._atoms.get(atom)
+	if existing_atom is not None:
+		atom = existing_atom
 	if isinstance(atom, Atom):
 		if atom.blocker and not allow_blockers:
 			return 0

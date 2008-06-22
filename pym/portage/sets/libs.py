@@ -4,10 +4,7 @@
 
 from portage.sets.base import PackageSet
 from portage.sets import get_boolean
-from portage.dbapi.vartree import dblink
-from portage.versions import catsplit, catpkgsplit
-
-import os
+from portage.versions import catpkgsplit
 
 class LibraryConsumerSet(PackageSet):
 	_operations = ["merge", "unmerge"]
@@ -19,17 +16,11 @@ class LibraryConsumerSet(PackageSet):
 
 	def mapPathsToAtoms(self, paths):
 		rValue = set()
-		for cpv in self.dbapi.cpv_all():
-			mysplit = catsplit(cpv)
-			link = dblink(mysplit[0], mysplit[1], myroot=self.dbapi.root, \
-					mysettings=self.dbapi.settings, treetype='vartree', \
-					vartree=self.dbapi.vartree)
-			if paths.intersection(link.getcontents()):
-				cat, pn = catpkgsplit(cpv)[:2]
-				slot = self.dbapi.aux_get(cpv, ["SLOT"])[0]
-				rValue.add("%s/%s:%s" % (cat, pn, slot))
+		for link, p in self.dbapi._owners.iter_owners(paths):
+			cat, pn = catpkgsplit(link.mycpv)[:2]
+			slot = self.dbapi.aux_get(link.mycpv, ["SLOT"])[0]
+			rValue.add("%s/%s:%s" % (cat, pn, slot))
 		return rValue
-	
 
 class PreservedLibraryConsumerSet(LibraryConsumerSet):
 	def load(self):

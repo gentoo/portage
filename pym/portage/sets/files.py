@@ -184,7 +184,8 @@ class WorldSet(EditablePackageSet):
 		return setname.startswith(SETPREFIX)
 
 	def write(self):
-		write_atomic(self._filename, "\n".join(sorted(self._atoms))+"\n")
+		write_atomic(self._filename,
+			"".join(sorted("%s\n" % x for x in self._atoms)))
 		write_atomic(self._filename2, "\n".join(sorted(self._nonatoms))+"\n")
 	
 	def load(self):

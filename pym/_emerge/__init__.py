@@ -1141,14 +1141,14 @@ def visible(pkgsettings, pkg):
 	if not portage.eapi_is_supported(pkg.metadata["EAPI"]):
 		return False
 	if not pkg.installed and \
-		pkgsettings.getMissingKeywords(pkg.cpv, pkg.metadata):
+		pkgsettings._getMissingKeywords(pkg.cpv, pkg.metadata):
 		return False
-	if pkgsettings.getMaskAtom(pkg.cpv, pkg.metadata):
+	if pkgsettings._getMaskAtom(pkg.cpv, pkg.metadata):
 		return False
-	if pkgsettings.getProfileMaskAtom(pkg.cpv, pkg.metadata):
+	if pkgsettings._getProfileMaskAtom(pkg.cpv, pkg.metadata):
 		return False
 	try:
-		if pkgsettings.getMissingLicenses(pkg.cpv, pkg.metadata):
+		if pkgsettings._getMissingLicenses(pkg.cpv, pkg.metadata):
 			return False
 	except portage.exception.InvalidDependString:
 		return False
@@ -1221,7 +1221,7 @@ def show_masked_packages(masked_packages):
 				have_eapi_mask = True
 			try:
 				missing_licenses = \
-					pkgsettings.getMissingLicenses(
+					pkgsettings._getMissingLicenses(
 						cpv, metadata)
 			except portage.exception.InvalidDependString:
 				# This will have already been reported
@@ -2076,7 +2076,7 @@ class depgraph(object):
 		# Max number of parents shown, to avoid flooding the display.
 		max_parents = 3
 		for slot_atom, root in self._slot_collision_info:
-			msg.append(slot_atom)
+			msg.append(str(slot_atom))
 			msg.append("\n\n")
 			slot_nodes = []
 			for node in self._slot_collision_nodes:
@@ -3227,7 +3227,7 @@ class depgraph(object):
 						# reinstall the same exact version only due
 						# to a KEYWORDS mask.
 						if installed and matched_packages and \
-							pkgsettings.getMissingKeywords(
+							pkgsettings._getMissingKeywords(
 							pkg.cpv, pkg.metadata):
 							different_version = None
 							for avail_pkg in matched_packages:
@@ -3576,7 +3576,7 @@ class depgraph(object):
 						if pkg_in_graph and not visible(pkgsettings, pkg):
 							self._masked_installed.add(pkg)
 						elif graph_complete_for_root and \
-							pkgsettings.getMissingKeywords(
+							pkgsettings._getMissingKeywords(
 							pkg.cpv, pkg.metadata) and \
 							pkg.metadata["KEYWORDS"].split() and \
 							not pkg_in_graph:
@@ -5212,7 +5212,7 @@ class depgraph(object):
 				" Ebuilds for the following packages are either all\n")
 			sys.stderr.write(colorize("BAD", "!!!") + \
 				" masked or don't exist:\n")
-			sys.stderr.write(" ".join(atom for arg, atom in \
+			sys.stderr.write(" ".join(str(atom) for arg, atom in \
 				self._missing_args) + "\n")
 
 		if self._pprovided_args:
@@ -5710,7 +5710,7 @@ class depgraph(object):
 			try:
 				if visible(root_config.settings, v) and \
 					not (v.installed and \
-					v.root_config.settings.getMissingKeywords(v.cpv, v.metadata)):
+					v.root_config.settings._getMissingKeywords(v.cpv, v.metadata)):
 					root_config.visible_pkgs.cpv_inject(v)
 			except portage.exception.InvalidDependString:
 				pass
@@ -9166,6 +9166,7 @@ def emerge_main():
 			if "porttree" in trees[root]:
 				db = trees[root]["porttree"].dbapi
 				paths = (db.mysettings["PORTDIR"]+" "+db.mysettings["PORTDIR_OVERLAY"]).split()
+				paths = [os.path.realpath(p) for p in paths]
 				repos = db.getRepositories()
 				for r in repos:
 					p = db.getRepositoryPath(r)
