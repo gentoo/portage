@@ -4405,7 +4405,10 @@ class depgraph(object):
 
 	def _show_merge_list(self):
 		if self._serialized_tasks_cache is not None and \
-			self._serialized_tasks_cache != self._displayed_list:
+			not (self._displayed_list and \
+			(self._displayed_list == self._serialized_tasks_cache or \
+			self._displayed_list == \
+				list(reversed(self._serialized_tasks_cache)))):
 			display_list = self._serialized_tasks_cache[:]
 			if "--tree" in self.myopts:
 				display_list.reverse()
