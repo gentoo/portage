@@ -16,9 +16,7 @@ class LibraryConsumerSet(PackageSet):
 
 	def mapPathsToAtoms(self, paths):
 		rValue = set()
-		root_len = len(self.dbapi.root)
-		for link, relative_p in self.dbapi._owners.iter_owners(
-			p[root_len:] for p in paths):
+		for link, p in self.dbapi._owners.iter_owners(paths):
 			cat, pn = catpkgsplit(link.mycpv)[:2]
 			slot = self.dbapi.aux_get(link.mycpv, ["SLOT"])[0]
 			rValue.add("%s/%s:%s" % (cat, pn, slot))
