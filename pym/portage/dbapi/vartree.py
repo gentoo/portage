@@ -2068,8 +2068,9 @@ class dblink(object):
 				os.symlink(linktarget, os.path.join(srcroot, x.lstrip(os.sep)))
 				if linktarget[0] != os.sep:
 					linktarget = os.path.join(os.path.dirname(x), linktarget)
-				candidates.add(linktarget)
-				candidates_stack.append(linktarget)
+				if linktarget not in candidates:
+					candidates.add(linktarget)
+					candidates_stack.append(linktarget)
 			else:
 				shutil.copy2(os.path.join(destroot, x.lstrip(os.sep)),
 					os.path.join(srcroot, x.lstrip(os.sep)))
