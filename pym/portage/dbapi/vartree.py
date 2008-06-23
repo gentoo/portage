@@ -201,30 +201,48 @@ class LinkageMap(object):
 	def findProviders(self, obj):
 		if not self._libs:
 			self.rebuild()
+
+		realpath_cache = {}
+		def realpath(p):
+			real_path = realpath_cache.get(p)
+			if real_path is None:
+				real_path = os.path.realpath(p)
+				realpath_cache[p] = real_path
+			return real_path
+
 		rValue = {}
 		if obj not in self._obj_properties:
-			obj = os.path.realpath(obj)
+			obj = realpath(obj)
 			if obj not in self._obj_properties:
 				raise KeyError("%s not in object list" % obj)
 		arch, needed, path, soname = self._obj_properties[obj]
 		path.extend(self._defpath)
-		path = [os.path.realpath(x) for x in path]
+		path = set(realpath(x) for x in path)
 		for x in needed:
 			rValue[x] = set()
 			if x not in self._libs or arch not in self._libs[x]:
 				continue
 			for y in self._libs[x][arch]["providers"]:
-				if x[0] == os.sep and os.path.realpath(x) == os.path.realpath(y):
+				if x[0] == os.sep and realpath(x) == realpath(y):
 					rValue[x].add(y)
-				elif os.path.realpath(os.path.dirname(y)) in path:
+				elif realpath(os.path.dirname(y)) in path:
 					rValue[x].add(y)
 		return rValue
 	
 	def findConsumers(self, obj):
 		if not self._libs:
 			self.rebuild()
+
+		realpath_cache = {}
+		def realpath(p):
+			real_path = realpath_cache.get(p)
+			if real_path is None:
+				real_path = os.path.realpath(p)
+				realpath_cache[p] = real_path
+			return real_path
+
 		if obj not in self._obj_properties:
-			obj = os.path.realpath(obj)
+			obj = realpath(obj)
 			if obj not in self._obj_properties:
 				raise KeyError("%s not in object list" % obj)
 		rValue = set()
@@ -233,10 +251,10 @@ class LinkageMap(object):
 				if obj in self._libs[soname][arch]["providers"]:
 					for x in self._libs[soname][arch]["consumers"]:
 						path = self._obj_properties[x][2]
-						path = [os.path.realpath(y) for y in path+self._defpath]
-						if soname[0] == os.sep and os.path.realpath(soname) == os.path.realpath(obj):
+						path = [realpath(y) for y in path+self._defpath]
+						if soname[0] == os.sep and realpath(soname) == realpath(obj):
 							rValue.add(x)
-						elif os.path.realpath(os.path.dirname(obj)) in path:
+						elif realpath(os.path.dirname(obj)) in path:
 							rValue.add(x)
 		return rValue
 					
@@ -335,10 +353,19 @@ class LinkageMapMachO(object):
 	def findProviders(self, obj):
 		if not self._libs:
 			self.rebuild()
+
+		realpath_cache = {}
+		def realpath(p):
+			real_path = realpath_cache.get(p)
+			if real_path is None:
+				real_path = os.path.realpath(p)
+				realpath_cache[p] = real_path
+			return real_path
+
 		obj = os.path.normpath(obj)
 		rValue = {}
 		if obj not in self._obj_properties:
-			obj = os.path.realpath(obj)
+			obj = realpath(obj)
 			if obj not in self._obj_properties:
 				raise KeyError("%s not in object list" % obj)
 		needed, install_name = self._obj_properties[obj]
@@ -348,13 +375,14 @@ class LinkageMapMachO(object):
 			if x not in self._libs:
 				continue
 			for y in self._libs[x]["providers"]:
-				if os.path.realpath(x) == os.path.realpath(y):
+				if realpath(x) == realpath(y):
 					rValue[x].add(y)
 		return rValue
 	
 	def findConsumers(self, obj):
 		if not self._libs:
 			self.rebuild()
+
 		obj = os.path.normpath(obj)
 		if obj not in self._obj_properties:
 			obj = os.path.realpath(obj)
@@ -2128,9 +2156,15 @@ class dblink(object):
 			if os.path.islink(x) and os.path.realpath(x) in candidates and x not in mycontents:
 				candidates.add(x)
 
+		provider_cache = {}
+		consumer_cache = {}
+
 		# ignore any libs that are only internally used by the package
 		def has_external_consumers(lib, contents, otherlibs):
-			consumers = linkmap.findConsumers(lib)
+			consumers = consumer_cache.get(lib)
+			if consumers is None:
+				consumers = linkmap.findConsumers(lib)
+				consumer_cache[lib] = consumers
 			contents_without_libs = [x for x in contents if x not in otherlibs]
 			
 			# just used by objects that will be autocleaned
@@ -2157,10 +2191,19 @@ class dblink(object):
 				continue
 			# only preserve the lib if there is no other copy to use for each consumer
 			keep = False
-			for c in linkmap.findConsumers(lib):
+
+			lib_consumers = consumer_cache.get(lib)
+			if lib_consumers is None:
+				lib_consumers = linkmap.findConsumers(lib)
+				consumer_cache[lib] = lib_consumers
+
+			for c in lib_consumers:
 				localkeep = True
-				providers = linkmap.findProviders(c)
-				
+				providers = provider_cache.get(c)
+				if providers is None:
+					providers = linkmap.findProviders(c)
+					provider_cache[c] = providers
+
 				for soname in providers:
 					if lib in providers[soname]:
 						for p in providers[soname]:
@@ -2201,8 +2244,9 @@ class dblink(object):
 				os.symlink(linktarget, os.path.join(srcroot, x.lstrip(os.sep)))
 				if linktarget[0] != os.sep:
 					linktarget = os.path.join(os.path.dirname(x), linktarget)
-				candidates.add(linktarget)
-				candidates_stack.append(linktarget)
+				if linktarget not in candidates:
+					candidates.add(linktarget)
+					candidates_stack.append(linktarget)
 			else:
 				shutil.copy2(os.path.join(destroot, x.lstrip(os.sep)),
 					os.path.join(srcroot, x.lstrip(os.sep)))
