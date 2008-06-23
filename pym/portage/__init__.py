@@ -4193,6 +4193,11 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 				pass
 			else:
 				am_maintainer_mode = []
+
+				bash_command_not_found = []
+				bash_command_not_found_re = re.compile(
+					r'(.*): line (\d*): (.*): command not found$')
+
 				configure_opts_warn = []
 				configure_opts_warn_re = re.compile(
 					r'^configure: WARNING: Unrecognized options: .*')
@@ -4204,6 +4209,10 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 						if am_maintainer_mode_re.search(line) is not None and \
 							am_maintainer_mode_exclude_re.search(line) is None:
 							am_maintainer_mode.append(line.rstrip("\n"))
+
+						if bash_command_not_found_re.match(line) is not None:
+							bash_command_not_found.append(line.rstrip("\n"))
+
 						if configure_opts_warn_re.match(line) is not None:
 							configure_opts_warn.append(line.rstrip("\n"))
 				finally:
@@ -4232,6 +4241,12 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 						"See http://www.gentoo.org/p" + \
 						"roj/en/qa/autofailure.xml for more information.",
 						wrap_width))
+					_eqawarn(msg)
+
+				if bash_command_not_found:
+					msg = ["QA Notice: command not found:"]
+					msg.append("")
+					msg.extend("\t" + line for line in bash_command_not_found)
 					_eqawarn(msg)
 
 				if configure_opts_warn:
