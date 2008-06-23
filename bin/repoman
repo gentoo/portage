@@ -416,10 +416,10 @@ def last(full=False):
 		Doesn't return (invokes sys.exit()
 	"""
 	#Retrieve and unpickle stats and fails from saved files
-	savedf=open('/var/cache/edb/repo.stats','r')
+	savedf=open(os.path.join(portage.const.CACHE_PATH, 'repo.stats'),'r')
 	stats = pickle.load(savedf)
 	savedf.close()
-	savedf=open('/var/cache/edb/repo.fails','r')
+	savedf=open(os.path.join(portage.const.CACHE_PATH, 'repo.fails'),'r')
 	fails = pickle.load(savedf)
 	savedf.close()
 
