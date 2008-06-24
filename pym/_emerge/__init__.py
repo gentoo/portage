@@ -5213,7 +5213,7 @@ class depgraph(object):
 					refs.sort()
 					ref_string = ", ".join(["'%s'" % name for name in refs])
 					ref_string = " pulled in by " + ref_string
-				msg.append("  %s%s\n" % (colorize("INFORM", arg), ref_string))
+				msg.append("  %s%s\n" % (colorize("INFORM", str(arg)), ref_string))
 			msg.append("\n")
 			if "world" in problems_sets:
 				msg.append("This problem can be solved in one of the following ways:\n\n")
