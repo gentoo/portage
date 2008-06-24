@@ -1881,7 +1881,14 @@ class depgraph(object):
 
 	_dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 
+	# If dep calculation time exceeds this value then automatically
+	# enable "complete" mode since any performance difference is
+	# not as likely to be noticed by the user after this much time
+	# has passed.
+	_complete_thresold = 20
+
 	def __init__(self, settings, trees, myopts, myparams, spinner):
+		self._creation_time = time.time()
 		self.settings = settings
 		self.target_root = settings["ROOT"]
 		self.myopts = myopts
@@ -3378,15 +3385,19 @@ class depgraph(object):
 		intially satisfied.
 
 		Since this method can consume enough time to disturb users, it is
-		currently only enabled by the --complete-graph option.
+		currently only enabled by the --complete-graph option, or when
+		dep calculation time exceeds self._complete_thresold.
 		"""
-		if "complete" not in self.myparams:
-			# Skip this to avoid consuming enough time to disturb users.
-			return 1
-
 		if "--buildpkgonly" in self.myopts or \
 			"recurse" not in self.myparams:
 			return 1
+
+		if "complete" not in self.myparams:
+			if time.time() - self._creation_time > self._complete_thresold:
+				self.myparams.add("complete")
+			else:
+				# Skip this to avoid consuming enough time to disturb users.
+				return 1
 
 		# Put the depgraph into a mode that causes it to only
 		# select packages that have already been added to the
