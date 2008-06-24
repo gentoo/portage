@@ -20,6 +20,7 @@ try:
 except KeyboardInterrupt:
 	sys.exit(1)
 
+import gc
 import os, stat
 import platform
 
@@ -8739,6 +8740,8 @@ def action_build(settings, trees, mtimedb,
 				time.sleep(3) # allow the parent to have first fetch
 			mymergelist = mydepgraph.altlist()
 			del mydepgraph
+			clear_caches(trees)
+
 			retval = mergetask.merge(mymergelist, favorites, mtimedb)
 			merge_count = mergetask.curval
 		else:
@@ -8780,6 +8783,8 @@ def action_build(settings, trees, mtimedb,
 			pkglist = mydepgraph.altlist()
 			mydepgraph.saveNomergeFavorites()
 			del mydepgraph
+			clear_caches(trees)
+
 			mergetask = MergeTask(settings, trees, myopts)
 			retval = mergetask.merge(pkglist, favorites, mtimedb)
 			merge_count = mergetask.curval
@@ -8902,6 +8907,14 @@ def validate_ebuild_environment(trees):
 	for myroot in trees:
 		settings = trees[myroot]["vartree"].settings
 		settings.validate()
+
+def clear_caches(trees):
+	for d in trees.itervalues():
+		d["porttree"].dbapi.melt()
+		d["porttree"].dbapi._aux_cache.clear()
+		d["bintree"].dbapi._aux_cache.clear()
+		d["bintree"].dbapi._clear_cache()
+	gc.collect()
 
 def load_emerge_config(trees=None):
 	kwargs = {}
