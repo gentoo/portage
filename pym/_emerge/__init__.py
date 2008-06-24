@@ -3109,21 +3109,22 @@ class depgraph(object):
 				# the newly built package still won't have the expected slot.
 				# Therefore, assume that such SLOT dependencies are already
 				# satisfied rather than forcing a rebuild.
-				if installed and not cpv_list and \
-					matched_packages and atom.slot:
-					for pkg in matched_packages:
-						if not vardb.cpv_exists(pkg.cpv):
+				if installed and not cpv_list and atom.slot:
+					for cpv in db.match(atom.cp):
+						slot_available = False
+						for other_db, other_type, other_built, \
+							other_installed, other_keys in dbs:
+							try:
+								if atom.slot == \
+									other_db.aux_get(cpv, ["SLOT"])[0]:
+									slot_available = True
+									break
+							except KeyError:
+								pass
+						if not slot_available:
 							continue
-						inst_pkg = self._pkg_cache.get(
-							(pkg_type, root, pkg.cpv, "nomerge"))
-						if inst_pkg is None:
-							metadata = izip(self._mydbapi_keys,
-								vardb.aux_get(pkg.cpv, self._mydbapi_keys))
-							inst_pkg = Package(built=built, cpv=pkg.cpv,
-								installed=installed, metadata=metadata,
-								onlydeps=onlydeps, root_config=root_config,
-								type_name=pkg_type)
-							self._pkg_cache[inst_pkg] = inst_pkg
+						inst_pkg = self._pkg(cpv, "installed",
+							root_config, installed=installed)
 						# Remove the slot from the atom and verify that
 						# the package matches the resulting atom.
 						atom_without_slot = portage.dep.remove_slot(atom)
