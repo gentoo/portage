@@ -2025,6 +2025,14 @@ class depgraph(object):
 					# This triggers metadata updates via FakeVartree.
 					vardb.aux_get(pkg.cpv, [])
 					fakedb.cpv_inject(pkg)
+
+			# Now that the vardb state is cached in our FakeVartree,
+			# we won't be needing the real vartree cache for awhile.
+			# To make some room on the heap, clear the vardbapi
+			# caches.
+			trees[myroot]["vartree"].dbapi._clear_cache()
+			gc.collect()
+
 			self.mydbapi[myroot] = fakedb
 			def graph_tree():
 				pass

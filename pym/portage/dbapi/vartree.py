@@ -551,13 +551,19 @@ class vardbapi(dbapi):
 	def checkblockers(self, origdep):
 		pass
 
+	def _clear_cache(self):
+		self.mtdircache.clear()
+		self.matchcache.clear()
+		self.cpcache.clear()
+		self._aux_cache_obj = None
+
 	def _add(self, pkg_dblink):
-		self._clear_cache(pkg_dblink)
+		self._clear_pkg_cache(pkg_dblink)
 
 	def _remove(self, pkg_dblink):
-		self._clear_cache(pkg_dblink)
+		self._clear_pkg_cache(pkg_dblink)
 
-	def _clear_cache(self, pkg_dblink):
+	def _clear_pkg_cache(self, pkg_dblink):
 		# Due to 1 second mtime granularity in <python-2.5, mtime checks
 		# are not always sufficient to invalidate vardbapi caches. Therefore,
 		# the caches need to be actively invalidated here.
