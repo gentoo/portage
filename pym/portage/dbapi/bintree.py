@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from portage.cache.mappings import slot_dict_class
 from portage.dep import isvalidatom, isjustname, dep_getkey, match_from_list
 from portage.dbapi.virtual import fakedbapi
 from portage.exception import InvalidPackageName, InvalidAtom, \
@@ -33,6 +34,7 @@ class bindbapi(fakedbapi):
 			["CHOST", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
 			"LICENSE", "PDEPEND", "PROVIDE",
 			"RDEPEND", "repository", "RESTRICT", "SLOT", "USE"])
+		self._aux_cache_slot_dict = slot_dict_class(self._aux_cache_keys)
 		self._aux_cache = {}
 
 	def match(self, *pargs, **kwargs):
@@ -75,7 +77,7 @@ class bindbapi(fakedbapi):
 			if not mydata.setdefault("EAPI", "0"):
 				mydata["EAPI"] = "0"
 		if cache_me:
-			aux_cache = {}
+			aux_cache = self._aux_cache_slot_dict()
 			for x in self._aux_cache_keys:
 				aux_cache[x] = mydata.get(x, "")
 			self._aux_cache[mycpv] = aux_cache
