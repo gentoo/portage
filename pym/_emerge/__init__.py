@@ -1774,6 +1774,15 @@ class PackageVirtualDbapi(portage.dbapi):
 		self._cp_map = {}
 		self._cpv_map = {}
 
+	def clear(self):
+		"""
+		Remove all packages.
+		"""
+		if self._cpv_map:
+			self._clear_cache()
+			self._cp_map.clear()
+			self._cpv_map.clear()
+
 	def copy(self):
 		obj = PackageVirtualDbapi(self.settings)
 		obj._match_cache = self._match_cache.copy()
@@ -3839,6 +3848,29 @@ class depgraph(object):
 		if reversed:
 			retlist.reverse()
 		return retlist
+
+	def break_refs(self, mergelist):
+		"""
+		Take a mergelist like that returned from self.altlist() and
+		break any references that lead back to the depgraph. This is
+		useful if you want to hold references to packages without
+		also holding the depgraph on the heap.
+		"""
+		for node in mergelist:
+			if not isinstance(node, Package):
+				continue
+
+			# The visible packages cache has fullfilled it's purpose
+			# and it's no longer needed, so free the memory.
+			node.root_config.visible_pkgs.clear()
+
+			if isinstance(node.root_config.trees["vartree"], FakeVartree):
+				# The FakeVartree references the _package_cache which
+				# references the depgraph. So that Package instances don't
+				# hold the depgraph and FakeVartree on the heap, replace
+				# the FakeVartree reference with the real vartree.
+				node.root_config.trees["vartree"] = \
+					self._trees_orig[node.root]["vartree"]
 
 	def _resolve_conflicts(self):
 		if not self._complete_graph():
@@ -8750,6 +8782,7 @@ def action_build(settings, trees, mtimedb,
 				mtimedb.filename = None
 				time.sleep(3) # allow the parent to have first fetch
 			mymergelist = mydepgraph.altlist()
+			mydepgraph.break_refs(mymergelist)
 			del mydepgraph
 			clear_caches(trees)
 
@@ -8793,6 +8826,7 @@ def action_build(settings, trees, mtimedb,
 
 			pkglist = mydepgraph.altlist()
 			mydepgraph.saveNomergeFavorites()
+			mydepgraph.break_refs(pkglist)
 			del mydepgraph
 			clear_caches(trees)
 
