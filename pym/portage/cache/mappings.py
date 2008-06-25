@@ -152,7 +152,7 @@ def slot_dict_class(keys):
 				return list(self.iteritems())
 
 			def itervalues(self):
-				for k, v in self.itervalues():
+				for k, v in self.iteritems():
 					yield v
 
 			def values(self):
