@@ -1446,6 +1446,29 @@ class _PackageMetadataWrapper(object):
 		except KeyError:
 			return default
 
+	def __contains__(self, k):
+		return hasattr(self, "_val_" + k)
+
+	def pop(self, key, *args):
+		if len(args) > 1:
+			raise TypeError("pop expected at most 2 arguments, got " + \
+				repr(1 + len(args)))
+		try:
+			value = self[key]
+		except KeyError:
+			if args:
+				return args[0]
+			raise
+		del self[key]
+		return value
+
+	def clear(self):
+		for k in self._keys:
+			try:
+				delattr(self, "_val_" + k)
+			except AttributError:
+				pass
+
 	def _set_inherited(self, k, v):
 		if isinstance(v, basestring):
 			v = frozenset(v.split())
