@@ -1285,7 +1285,7 @@ class Package(Task):
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
 		self.root = self.root_config.root
-		self.metadata = self._metadata_wrapper(self, self.metadata)
+		self.metadata = _PackageMetadataWrapper(self, self.metadata)
 		self.cp = portage.cpv_getkey(self.cpv)
 		self.slot_atom = portage.dep.Atom("%s:%s" % (self.cp, self.slot))
 		self.category, self.pf = portage.catsplit(self.cpv)
@@ -1332,60 +1332,6 @@ class Package(Task):
 						chain((re.escape(x) for x in all), iuse_implicit)))
 			return object.__getattribute__(self, name)
 
-	class _metadata_wrapper(dict):
-		"""
-		Detect metadata updates and synchronize Package attributes.
-		"""
-		_wrapped_keys = frozenset(
-			["COUNTER", "INHERITED", "IUSE", "SLOT", "USE", "_mtime_"])
-
-		def __init__(self, pkg, metadata):
-			dict.__init__(self)
-			self._pkg = pkg
-			i = getattr(metadata, "iteritems", None)
-			if i is None:
-				i = metadata
-			else:
-				i = i()
-			for k, v in i:
-				self[k] = v
-
-		def __setitem__(self, k, v):
-			dict.__setitem__(self, k, v)
-			if k in self._wrapped_keys:
-				getattr(self, "_set_" + k.lower())(k, v)
-
-		def _set_inherited(self, k, v):
-			if isinstance(v, basestring):
-				v = frozenset(v.split())
-			self._pkg.inherited = v
-
-		def _set_iuse(self, k, v):
-			self._pkg.iuse = self._pkg._iuse(
-				v.split(), self._pkg.root_config.iuse_implicit)
-
-		def _set_slot(self, k, v):
-			self._pkg.slot = v
-
-		def _set_use(self, k, v):
-			self._pkg.use = self._pkg._use(v.split())
-
-		def _set_counter(self, k, v):
-			if isinstance(v, basestring):
-				try:
-					v = int(v.strip())
-				except ValueError:
-					v = 0
-			self._pkg.counter = v
-
-		def _set__mtime_(self, k, v):
-			if isinstance(v, basestring):
-				try:
-					v = float(v.strip())
-				except ValueError:
-					v = 0
-			self._pkg.mtime = v
-
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
 		if hash_key is None:
@@ -1424,6 +1370,112 @@ class Package(Task):
 		if portage.pkgcmp(self.pv_split, other.pv_split) >= 0:
 			return True
 		return False
+
+class _PackageMetadataWrapper(object):
+	"""
+	Detect metadata updates and synchronize Package attributes.
+	"""
+	_keys = Package.metadata_keys
+	__slots__ = ("__weakref__", "_pkg") + tuple("_val_" + k for k in _keys)
+	_wrapped_keys = frozenset(
+		["COUNTER", "INHERITED", "IUSE", "SLOT", "USE", "_mtime_"])
+
+	def __init__(self, pkg, metadata):
+		self._pkg = pkg
+		self.update(metadata)
+
+	def __iter__(self):
+		for k, v in self.iteritems():
+			yield k
+
+	def __len__(self):
+		l = 0
+		for i in self.iteritems():
+			l += 1
+		return l
+
+	def keys(self):
+		return list(self)
+
+	def iteritems(self):
+		for k in self._keys:
+			try:
+				yield (k, getattr(self, "_val_" + k))
+			except AttributeError:
+				pass
+
+	def items(self):
+		return list(self.iteritems())
+
+	def itervalues(self):
+		for k, v in self.itervalues():
+			yield v
+
+	def values(self):
+		return list(self.itervalues())
+
+	def __delitem__(self, k):
+		try:
+			delattr(self, "_val_" + k)
+		except AttributeError:
+			raise KeyError(k)
+
+	def __setitem__(self, k, v):
+		setattr(self, "_val_" + k, v)
+		if k in self._wrapped_keys:
+			getattr(self, "_set_" + k.lower())(k, v)
+
+	def update(self, d):
+		i = getattr(d, "iteritems", None)
+		if i is None:
+			i = d
+		else:
+			i = i()
+		for k, v in i:
+			self[k] = v
+
+	def __getitem__(self, k):
+		try:
+			return getattr(self, "_val_" + k)
+		except AttributeError:
+			raise KeyError(k)
+
+	def get(self, key, default=None):
+		try:
+			return self[key]
+		except KeyError:
+			return default
+
+	def _set_inherited(self, k, v):
+		if isinstance(v, basestring):
+			v = frozenset(v.split())
+		self._pkg.inherited = v
+
+	def _set_iuse(self, k, v):
+		self._pkg.iuse = self._pkg._iuse(
+			v.split(), self._pkg.root_config.iuse_implicit)
+
+	def _set_slot(self, k, v):
+		self._pkg.slot = v
+
+	def _set_use(self, k, v):
+		self._pkg.use = self._pkg._use(v.split())
+
+	def _set_counter(self, k, v):
+		if isinstance(v, basestring):
+			try:
+				v = int(v.strip())
+			except ValueError:
+				v = 0
+		self._pkg.counter = v
+
+	def _set__mtime_(self, k, v):
+		if isinstance(v, basestring):
+			try:
+				v = float(v.strip())
+			except ValueError:
+				v = 0
+		self._pkg.mtime = v
 
 class DependencyArg(object):
 	def __init__(self, arg=None, root_config=None):
