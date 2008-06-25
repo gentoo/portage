@@ -1682,15 +1682,14 @@ class BlockerDB(object):
 		self._root_config = root_config
 		self._vartree = root_config.trees["vartree"]
 		self._portdb = root_config.trees["porttree"].dbapi
-		self._blocker_cache = \
-			BlockerCache(self._vartree.root, self._vartree.dbapi)
+			
 		self._dep_check_trees = { self._vartree.root : {
 			"porttree"    :  self._vartree,
 			"vartree"     :  self._vartree,
 		}}
 
 	def findInstalledBlockers(self, new_pkg, acquire_lock=0):
-		blocker_cache = self._blocker_cache
+		blocker_cache = BlockerCache(self._vartree.root, self._vartree.dbapi)
 		dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 		dep_check_trees = self._dep_check_trees
 		settings = self._vartree.settings
@@ -1739,7 +1738,7 @@ class BlockerDB(object):
 		blocker_parents = digraph()
 		blocker_atoms = []
 		for pkg in installed_pkgs:
-			for blocker_atom in self._blocker_cache[pkg.cpv].atoms:
+			for blocker_atom in blocker_cache[pkg.cpv].atoms:
 				blocker_atom = blocker_atom[1:]
 				blocker_atoms.append(blocker_atom)
 				blocker_parents.add(blocker_atom, pkg)
