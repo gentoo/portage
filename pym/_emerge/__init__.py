@@ -1375,7 +1375,11 @@ class _PackageMetadataWrapper(object):
 	"""
 	Detect metadata updates and synchronize Package attributes.
 	"""
-	_keys = Package.metadata_keys
+	_keys = set(x for x in portage.auxdbkeys \
+		if not x.startswith("UNUSED_"))
+	_keys.discard("CDEPEND")
+	_keys.update(Package.metadata_keys)
+	_keys = tuple(sorted(_keys))
 	__slots__ = ("__weakref__", "_pkg") + tuple("_val_" + k for k in _keys)
 	_wrapped_keys = frozenset(
 		["COUNTER", "INHERITED", "IUSE", "SLOT", "USE", "_mtime_"])
