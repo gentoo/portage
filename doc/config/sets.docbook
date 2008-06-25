@@ -443,7 +443,7 @@
 		<title>portage.sets.dbapi.EverythingSet</title>
 		<para>
 		A superset of the classic <parameter>world</parameter> target, a set created
-		by this class contains all installed packages.
+		by this class contains SLOT atoms to match all installed packages.
 		</para>
 
 			<sect3>
