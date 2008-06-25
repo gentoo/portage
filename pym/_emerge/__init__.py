@@ -5465,7 +5465,7 @@ class depgraph(object):
 		all_added.sort()
 		for a in all_added:
 			print ">>> Recording %s in \"world\" favorites file..." % \
-				colorize("INFORM", a)
+				colorize("INFORM", str(a))
 		if all_added:
 			world_set.update(all_added)
 		world_set.unlock()
