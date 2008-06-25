@@ -355,7 +355,8 @@ qawarnings=[
 ]
 
 missingvars=["KEYWORDS","LICENSE","DESCRIPTION","HOMEPAGE","SLOT"]
-allvars = set(portage.auxdbkeys)
+allvars = set(x for x in portage.auxdbkeys if not x.startswith("UNUSED_"))
+allvars.discard("CDEPEND")
 allvars.update(Package.metadata_keys)
 allvars = sorted(allvars)
 commitmessage=None
