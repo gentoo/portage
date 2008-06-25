@@ -10,8 +10,9 @@ __all__ = ["CategorySet", "EverythingSet"]
 
 class EverythingSet(PackageSet):
 	_operations = ["merge", "unmerge"]
-	description = "Package set containing all installed packages"
-	
+	description = "Package set which contains SLOT " + \
+		"atoms to match all installed packages"
+
 	def __init__(self, vdbapi):
 		super(EverythingSet, self).__init__()
 		self._db = vdbapi
