@@ -3946,17 +3946,14 @@ class depgraph(object):
 			if not isinstance(node, Package):
 				continue
 
-			# The visible packages cache has fullfilled it's purpose
-			# and it's no longer needed, so free the memory.
-			node.root_config.visible_pkgs.clear()
-
-			if isinstance(node.root_config.trees["vartree"], FakeVartree):
-				# The FakeVartree references the _package_cache which
-				# references the depgraph. So that Package instances don't
-				# hold the depgraph and FakeVartree on the heap, replace
-				# the FakeVartree reference with the real vartree.
-				node.root_config.trees["vartree"] = \
-					self._trees_orig[node.root]["vartree"]
+			# The FakeVartree references the _package_cache which
+			# references the depgraph. So that Package instances don't
+			# hold the depgraph and FakeVartree on the heap, replace
+			# the RootConfig that references the FakeVartree with the
+			# original RootConfig instance which references the actual
+			# vartree.
+			node.root_config = \
+				self._trees_orig[node.root]["root_config"]
 
 	def _resolve_conflicts(self):
 		if not self._complete_graph():
