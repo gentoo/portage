@@ -105,6 +105,17 @@ class LazyLoad(UserDict.DictMixin):
 _slot_dict_classes = weakref.WeakValueDictionary()
 
 def slot_dict_class(keys):
+	"""
+	Generates mapping classes that behave similar to a dict but store values
+	as object attributes that are allocated via __slots__. Instances of these
+	objects have a smaller memory footprint than a normal dict object.
+
+	@param keys: Fixed set of allowed keys
+	@type keys: iterable
+	@rtype: SlotDict
+	@returns: A class that constructs SlotDict instances
+		having the specified keys.
+	"""
 	if isinstance(keys, frozenset):
 		keys_set = keys
 	else:
