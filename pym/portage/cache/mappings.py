@@ -221,7 +221,7 @@ def slot_dict_class(keys):
 				for k in self._keys:
 					try:
 						delattr(self, "_val_" + k)
-					except AttributError:
+					except AttributeError:
 						pass
 
 		v = SlotDict
