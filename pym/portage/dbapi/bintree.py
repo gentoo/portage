@@ -478,7 +478,7 @@ class binarytree(object):
 									update_pkgindex = True
 							self.dbapi.cpv_inject(mycpv)
 							if not self.dbapi._aux_cache_keys.difference(d):
-								aux_cache = {}
+								aux_cache = self.dbapi._aux_cache_slot_dict()
 								for k in self.dbapi._aux_cache_keys:
 									aux_cache[k] = d[k]
 								self.dbapi._aux_cache[mycpv] = aux_cache
@@ -575,7 +575,7 @@ class binarytree(object):
 						d.pop("PATH", None)
 					metadata[mycpv] = d
 					if not self.dbapi._aux_cache_keys.difference(d):
-						aux_cache = {}
+						aux_cache = self.dbapi._aux_cache_slot_dict()
 						for k in self.dbapi._aux_cache_keys:
 							aux_cache[k] = d[k]
 						self.dbapi._aux_cache[mycpv] = aux_cache
