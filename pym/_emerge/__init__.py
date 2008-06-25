@@ -1312,7 +1312,7 @@ class Package(Task):
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
 		self.root = self.root_config.root
-		self.metadata = self._metadata_wrapper(self, self.metadata)
+		self.metadata = _PackageMetadataWrapper(self, self.metadata)
 		self.cp = portage.cpv_getkey(self.cpv)
 		self.slot_atom = portage.dep.Atom("%s:%s" % (self.cp, self.slot))
 		self.category, self.pf = portage.catsplit(self.cpv)
@@ -1359,60 +1359,6 @@ class Package(Task):
 						chain((re.escape(x) for x in all), iuse_implicit)))
 			return object.__getattribute__(self, name)
 
-	class _metadata_wrapper(dict):
-		"""
-		Detect metadata updates and synchronize Package attributes.
-		"""
-		_wrapped_keys = frozenset(
-			["COUNTER", "INHERITED", "IUSE", "SLOT", "USE", "_mtime_"])
-
-		def __init__(self, pkg, metadata):
-			dict.__init__(self)
-			self._pkg = pkg
-			i = getattr(metadata, "iteritems", None)
-			if i is None:
-				i = metadata
-			else:
-				i = i()
-			for k, v in i:
-				self[k] = v
-
-		def __setitem__(self, k, v):
-			dict.__setitem__(self, k, v)
-			if k in self._wrapped_keys:
-				getattr(self, "_set_" + k.lower())(k, v)
-
-		def _set_inherited(self, k, v):
-			if isinstance(v, basestring):
-				v = frozenset(v.split())
-			self._pkg.inherited = v
-
-		def _set_iuse(self, k, v):
-			self._pkg.iuse = self._pkg._iuse(
-				v.split(), self._pkg.root_config.iuse_implicit)
-
-		def _set_slot(self, k, v):
-			self._pkg.slot = v
-
-		def _set_use(self, k, v):
-			self._pkg.use = self._pkg._use(v.split())
-
-		def _set_counter(self, k, v):
-			if isinstance(v, basestring):
-				try:
-					v = int(v.strip())
-				except ValueError:
-					v = 0
-			self._pkg.counter = v
-
-		def _set__mtime_(self, k, v):
-			if isinstance(v, basestring):
-				try:
-					v = float(v.strip())
-				except ValueError:
-					v = 0
-			self._pkg.mtime = v
-
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
 		if hash_key is None:
@@ -1451,6 +1397,135 @@ class Package(Task):
 		if portage.pkgcmp(self.pv_split, other.pv_split) >= 0:
 			return True
 		return False
+
+class _PackageMetadataWrapper(object):
+	"""
+	Detect metadata updates and synchronize Package attributes.
+	"""
+	_keys = Package.metadata_keys
+	__slots__ = ("__weakref__", "_pkg") + tuple("_val_" + k for k in _keys)
+	_wrapped_keys = frozenset(
+		["COUNTER", "INHERITED", "IUSE", "SLOT", "USE", "_mtime_"])
+
+	def __init__(self, pkg, metadata):
+		self._pkg = pkg
+		self.update(metadata)
+
+	def __iter__(self):
+		for k, v in self.iteritems():
+			yield k
+
+	def __len__(self):
+		l = 0
+		for i in self.iteritems():
+			l += 1
+		return l
+
+	def keys(self):
+		return list(self)
+
+	def iteritems(self):
+		for k in self._keys:
+			try:
+				yield (k, getattr(self, "_val_" + k))
+			except AttributeError:
+				pass
+
+	def items(self):
+		return list(self.iteritems())
+
+	def itervalues(self):
+		for k, v in self.itervalues():
+			yield v
+
+	def values(self):
+		return list(self.itervalues())
+
+	def __delitem__(self, k):
+		try:
+			delattr(self, "_val_" + k)
+		except AttributeError:
+			raise KeyError(k)
+
+	def __setitem__(self, k, v):
+		setattr(self, "_val_" + k, v)
+		if k in self._wrapped_keys:
+			getattr(self, "_set_" + k.lower())(k, v)
+
+	def update(self, d):
+		i = getattr(d, "iteritems", None)
+		if i is None:
+			i = d
+		else:
+			i = i()
+		for k, v in i:
+			self[k] = v
+
+	def __getitem__(self, k):
+		try:
+			return getattr(self, "_val_" + k)
+		except AttributeError:
+			raise KeyError(k)
+
+	def get(self, key, default=None):
+		try:
+			return self[key]
+		except KeyError:
+			return default
+
+	def __contains__(self, k):
+		return hasattr(self, "_val_" + k)
+
+	def pop(self, key, *args):
+		if len(args) > 1:
+			raise TypeError("pop expected at most 2 arguments, got " + \
+				repr(1 + len(args)))
+		try:
+			value = self[key]
+		except KeyError:
+			if args:
+				return args[0]
+			raise
+		del self[key]
+		return value
+
+	def clear(self):
+		for k in self._keys:
+			try:
+				delattr(self, "_val_" + k)
+			except AttributError:
+				pass
+
+	def _set_inherited(self, k, v):
+		if isinstance(v, basestring):
+			v = frozenset(v.split())
+		self._pkg.inherited = v
+
+	def _set_iuse(self, k, v):
+		self._pkg.iuse = self._pkg._iuse(
+			v.split(), self._pkg.root_config.iuse_implicit)
+
+	def _set_slot(self, k, v):
+		self._pkg.slot = v
+
+	def _set_use(self, k, v):
+		self._pkg.use = self._pkg._use(v.split())
+
+	def _set_counter(self, k, v):
+		if isinstance(v, basestring):
+			try:
+				v = int(v.strip())
+			except ValueError:
+				v = 0
+		self._pkg.counter = v
+
+	def _set__mtime_(self, k, v):
+		if isinstance(v, basestring):
+			try:
+				v = float(v.strip())
+			except ValueError:
+				v = 0
+		self._pkg.mtime = v
 
 class DependencyArg(object):
 	def __init__(self, arg=None, root_config=None):
@@ -1657,15 +1732,14 @@ class BlockerDB(object):
 		self._root_config = root_config
 		self._vartree = root_config.trees["vartree"]
 		self._portdb = root_config.trees["porttree"].dbapi
-		self._blocker_cache = \
-			BlockerCache(self._vartree.root, self._vartree.dbapi)
+			
 		self._dep_check_trees = { self._vartree.root : {
 			"porttree"    :  self._vartree,
 			"vartree"     :  self._vartree,
 		}}
 
 	def findInstalledBlockers(self, new_pkg, acquire_lock=0):
-		blocker_cache = self._blocker_cache
+		blocker_cache = BlockerCache(self._vartree.root, self._vartree.dbapi)
 		dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 		dep_check_trees = self._dep_check_trees
 		settings = self._vartree.settings
@@ -1714,7 +1788,7 @@ class BlockerDB(object):
 		blocker_parents = digraph()
 		blocker_atoms = []
 		for pkg in installed_pkgs:
-			for blocker_atom in self._blocker_cache[pkg.cpv].atoms:
+			for blocker_atom in blocker_cache[pkg.cpv].atoms:
 				blocker_atom = blocker_atom[1:]
 				blocker_atoms.append(blocker_atom)
 				blocker_parents.add(blocker_atom, pkg)
@@ -1800,6 +1874,15 @@ class PackageVirtualDbapi(portage.dbapi):
 		self._match_cache = {}
 		self._cp_map = {}
 		self._cpv_map = {}
+
+	def clear(self):
+		"""
+		Remove all packages.
+		"""
+		if self._cpv_map:
+			self._clear_cache()
+			self._cp_map.clear()
+			self._cpv_map.clear()
 
 	def copy(self):
 		obj = PackageVirtualDbapi(self.settings)
@@ -1908,7 +1991,14 @@ class depgraph(object):
 
 	_dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 
+	# If dep calculation time exceeds this value then automatically
+	# enable "complete" mode since any performance difference is
+	# not as likely to be noticed by the user after this much time
+	# has passed.
+	_complete_threshold = 20
+
 	def __init__(self, settings, trees, myopts, myparams, spinner):
+		self._creation_time = time.time()
 		self.settings = settings
 		self.target_root = settings["ROOT"]
 		self.myopts = myopts
@@ -3409,15 +3499,19 @@ class depgraph(object):
 		intially satisfied.
 
 		Since this method can consume enough time to disturb users, it is
-		currently only enabled by the --complete-graph option.
+		currently only enabled by the --complete-graph option, or when
+		dep calculation time exceeds self._complete_threshold.
 		"""
-		if "complete" not in self.myparams:
-			# Skip this to avoid consuming enough time to disturb users.
-			return 1
-
 		if "--buildpkgonly" in self.myopts or \
 			"recurse" not in self.myparams:
 			return 1
+
+		if "complete" not in self.myparams:
+			if time.time() - self._creation_time > self._complete_threshold:
+				self.myparams.add("complete")
+			else:
+				# Skip this to avoid consuming enough time to disturb users.
+				return 1
 
 		# Put the depgraph into a mode that causes it to only
 		# select packages that have already been added to the
@@ -3859,6 +3953,29 @@ class depgraph(object):
 		if reversed:
 			retlist.reverse()
 		return retlist
+
+	def break_refs(self, mergelist):
+		"""
+		Take a mergelist like that returned from self.altlist() and
+		break any references that lead back to the depgraph. This is
+		useful if you want to hold references to packages without
+		also holding the depgraph on the heap.
+		"""
+		for node in mergelist:
+			if not isinstance(node, Package):
+				continue
+
+			# The visible packages cache has fullfilled it's purpose
+			# and it's no longer needed, so free the memory.
+			node.root_config.visible_pkgs.clear()
+
+			if isinstance(node.root_config.trees["vartree"], FakeVartree):
+				# The FakeVartree references the _package_cache which
+				# references the depgraph. So that Package instances don't
+				# hold the depgraph and FakeVartree on the heap, replace
+				# the FakeVartree reference with the real vartree.
+				node.root_config.trees["vartree"] = \
+					self._trees_orig[node.root]["vartree"]
 
 	def _resolve_conflicts(self):
 		if not self._complete_graph():
@@ -5249,7 +5366,7 @@ class depgraph(object):
 					refs.sort()
 					ref_string = ", ".join(["'%s'" % name for name in refs])
 					ref_string = " pulled in by " + ref_string
-				msg.append("  %s%s\n" % (colorize("INFORM", arg), ref_string))
+				msg.append("  %s%s\n" % (colorize("INFORM", str(arg)), ref_string))
 			msg.append("\n")
 			if "world" in problems_sets:
 				msg.append("This problem can be solved in one of the following ways:\n\n")
@@ -8829,6 +8946,7 @@ def action_build(settings, trees, mtimedb,
 				mtimedb.filename = None
 				time.sleep(3) # allow the parent to have first fetch
 			mymergelist = mydepgraph.altlist()
+			mydepgraph.break_refs(mymergelist)
 			del mydepgraph
 			clear_caches(trees)
 
@@ -8872,6 +8990,7 @@ def action_build(settings, trees, mtimedb,
 
 			pkglist = mydepgraph.altlist()
 			mydepgraph.saveNomergeFavorites()
+			mydepgraph.break_refs(pkglist)
 			del mydepgraph
 			clear_caches(trees)
 
@@ -9004,6 +9123,7 @@ def clear_caches(trees):
 		d["porttree"].dbapi._aux_cache.clear()
 		d["bintree"].dbapi._aux_cache.clear()
 		d["bintree"].dbapi._clear_cache()
+	portage.dircache.clear()
 	gc.collect()
 
 def load_emerge_config(trees=None):

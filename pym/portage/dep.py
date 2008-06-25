@@ -19,6 +19,7 @@
 #
 
 import re, sys, types
+import weakref
 from itertools import chain
 import portage.exception
 from portage.exception import InvalidData, InvalidAtom
@@ -412,7 +413,7 @@ class Atom(object):
 	"""
 
 	__metaclass__ = _AtomCache
-	_atoms = {}
+	_atoms = weakref.WeakValueDictionary()
 
 	_str_methods = ("endswith", "find", "index", "lstrip", "replace",
 		"startswith", "strip", "rindex", "rfind", "rstrip", "__getitem__",

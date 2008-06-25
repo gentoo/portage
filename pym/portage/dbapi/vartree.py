@@ -1630,7 +1630,7 @@ class dblink(object):
 		# name of the dir; the package may have been moved.
 		myebuildpath = None
 		ebuild_phase = "prerm"
-		mystuff = listdir(self.dbdir, EmptyOnError=1)
+		mystuff = os.listdir(self.dbdir)
 		for x in mystuff:
 			if x.endswith(".ebuild"):
 				myebuildpath = os.path.join(self.dbdir, self.pkg + ".ebuild")
@@ -2665,7 +2665,7 @@ class dblink(object):
 			return a
 
 		# copy "info" files (like SLOT, CFLAGS, etc.) into the database
-		for x in listdir(inforoot):
+		for x in os.listdir(inforoot):
 			self.copyfile(inforoot+"/"+x)
 
 		# write local package counter for recording

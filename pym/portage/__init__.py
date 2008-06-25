@@ -1956,7 +1956,7 @@ class config(object):
 		pkginternaluse = ""
 		iuse = ""
 		if mydb:
-			if isinstance(mydb, dict):
+			if not hasattr(mydb, "aux_get"):
 				slot = mydb["SLOT"]
 				iuse = mydb["IUSE"]
 			else:
@@ -2434,7 +2434,7 @@ class config(object):
 		if len(self.virtuals) == 0:
 			self.getvirtuals()
 		# Grab the virtuals this package provides and add them into the tree virtuals.
-		if isinstance(mydbapi, dict):
+		if not hasattr(mydbapi, "aux_get"):
 			provides = mydbapi["PROVIDE"]
 		else:
 			provides = mydbapi.aux_get(mycpv, ["PROVIDE"])[0]
@@ -2443,7 +2443,7 @@ class config(object):
 		if isinstance(mydbapi, portdbapi):
 			self.setcpv(mycpv, mydb=mydbapi)
 			myuse = self["PORTAGE_USE"]
-		elif isinstance(mydbapi, dict):
+		elif not hasattr(mydbapi, "aux_get"):
 			myuse = mydbapi["USE"]
 		else:
 			myuse = mydbapi.aux_get(mycpv, ["USE"])[0]
