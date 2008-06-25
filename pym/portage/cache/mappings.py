@@ -208,7 +208,7 @@ def slot_dict_class(keys):
 				try:
 					k, v = self.iteritems().next()
 				except StopIteration:
-					raise KeyError, 'container is empty'
+					raise KeyError('container is empty')
 				del self[k]
 				return (k, v)
 
