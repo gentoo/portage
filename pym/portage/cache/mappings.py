@@ -226,4 +226,4 @@ def slot_dict_class(keys):
 
 		v = SlotDict
 		_slot_dict_classes[keys_set] = v
-		return v
+	return v
