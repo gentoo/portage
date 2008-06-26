@@ -1249,7 +1249,7 @@ for x in scanlist:
 				mydeplist = []
 
 			try:
-				portage.dep.use_reduce(mydeplist, excludeall=myiuse)
+				portage.dep.use_reduce(mydeplist, matchall=1)
 			except portage.exception.InvalidDependString, e:
 				badsyntax.append(str(e))
 
