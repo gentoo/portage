@@ -462,23 +462,15 @@ def main():
 
 	global portage
 
-	# First import the main portage module without legacy globals since it
-	# is almost certain to succeed in that case. This provides access to
-	# the portage.exception namespace which is needed for later exception
-	# handling, like if portage.exception.PermissionDenied is raised when
-	# constructing the legacy global config instance.
-	os.environ["PORTAGE_LEGACY_GLOBALS"] = "false"
-	import portage
-	del os.environ["PORTAGE_LEGACY_GLOBALS"]
 	try:
 		try:
-			reload(portage)
+			import portage
 		except ImportError:
 			from os import path as osp
 			sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 			import portage
 		if uses_root:
-			sys.argv[2] = portage.root
+			sys.argv[2] = portage.settings["ROOT"]
 		retval = function(sys.argv[2:])
 		if retval:
 			sys.exit(retval)
