@@ -18,7 +18,7 @@ import portage.xpak, portage.getbinpkg
 
 import os, errno, stat
 import re
-from itertools import izip
+from itertools import chain, izip
 
 class bindbapi(fakedbapi):
 	_known_keys = frozenset(list(fakedbapi._known_keys) + \
@@ -181,6 +181,16 @@ class binarytree(object):
 				("DESCRIPTION"   ,   "DESC"),
 				("repository"    ,   "REPO"),
 			)
+
+			self._pkgindex_allowed_pkg_keys = set(chain(
+				self._pkgindex_keys,
+				self._pkgindex_aux_keys,
+				self._pkgindex_hashes,
+				self._pkgindex_default_pkg_data,
+				self._pkgindex_inherited_keys,
+				self._pkgindex_default_header_data,
+				chain(*self._pkgindex_translated_keys)
+			))
 
 	def move_ent(self, mylist):
 		if not self.populated:
@@ -827,6 +837,7 @@ class binarytree(object):
 
 	def _new_pkgindex(self):
 		return portage.getbinpkg.PackageIndex(
+			allowed_pkg_keys=self._pkgindex_allowed_pkg_keys,
 			default_header_data=self._pkgindex_default_header_data,
 			default_pkg_data=self._pkgindex_default_pkg_data,
 			inherited_keys=self._pkgindex_inherited_keys,

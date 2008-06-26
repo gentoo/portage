@@ -125,8 +125,9 @@ def slot_dict_class(keys):
 
 		class SlotDict(object):
 
-			_keys = keys_set
-			__slots__ = ("__weakref__",) + tuple("_val_" + k for k in _keys)
+			allowed_keys = keys_set
+			__slots__ = ("__weakref__",) + \
+				tuple("_val_" + k for k in allowed_keys)
 
 			def __iter__(self):
 				for k, v in self.iteritems():
@@ -142,7 +143,7 @@ def slot_dict_class(keys):
 				return list(self)
 
 			def iteritems(self):
-				for k in self._keys:
+				for k in self.allowed_keys:
 					try:
 						yield (k, getattr(self, "_val_" + k))
 					except AttributeError:
@@ -229,12 +230,12 @@ def slot_dict_class(keys):
 				return c
 
 			def clear(self):
-				for k in self._keys:
+				for k in self.allowed_keys:
 					try:
 						delattr(self, "_val_" + k)
 					except AttributeError:
 						pass
 
 		v = SlotDict
-		_slot_dict_classes[keys_set] = v
+		_slot_dict_classes[v.allowed_keys] = v
 	return v

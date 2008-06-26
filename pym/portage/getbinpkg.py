@@ -4,6 +4,7 @@
 # $Id$
 
 from portage.output import red, yellow, green
+from portage.cache.mappings import slot_dict_class
 import portage.xpak
 import HTMLParser
 import sys
@@ -680,8 +681,17 @@ def _cmp_cpv(d1, d2):
 
 class PackageIndex(object):
 
-	def __init__(self, default_header_data=None, default_pkg_data=None,
-		inherited_keys=None, translated_keys=None):
+	def __init__(self,
+		allowed_pkg_keys=None,
+		default_header_data=None,
+		default_pkg_data=None,
+		inherited_keys=None,
+		translated_keys=None):
+
+		self._pkg_slot_dict = None
+		if allowed_pkg_keys is not None:
+			self._pkg_slot_dict = slot_dict_class(allowed_pkg_keys)
+
 		self._default_header_data = default_header_data
 		self._default_pkg_data = default_pkg_data
 		self._inherited_keys = inherited_keys
@@ -696,8 +706,15 @@ class PackageIndex(object):
 		self.packages = []
 		self.modified = True
 
-	def _readpkgindex(self, pkgfile):
-		d = {}
+	def _readpkgindex(self, pkgfile, pkg_entry=True):
+
+		allowed_keys = None
+		if self._pkg_slot_dict is None or not pkg_entry:
+			d = {}
+		else:
+			d = self._pkg_slot_dict()
+			allowed_keys = d.allowed_keys
+
 		for line in pkgfile:
 			line = line.rstrip("\n")
 			if not line:
@@ -708,7 +725,11 @@ class PackageIndex(object):
 			k, v = line
 			if v:
 				v = v[1:]
-			d[self._read_translation_map.get(k, k)] = v
+			k = self._read_translation_map.get(k, k)
+			if allowed_keys is not None and \
+				k not in allowed_keys:
+				continue
+			d[k] = v
 		return d
 
 	def _writepkgindex(self, pkgfile, items):
@@ -722,7 +743,7 @@ class PackageIndex(object):
 		self.readBody(pkgfile)
 
 	def readHeader(self, pkgfile):
-		self.header.update(self._readpkgindex(pkgfile))
+		self.header.update(self._readpkgindex(pkgfile, pkg_entry=False))
 
 	def readBody(self, pkgfile):
 		while True:
