@@ -6930,10 +6930,30 @@ class _PortdbProxy(portage.util.ObjectProxy):
 
 	def _get_target(self):
 		init_legacy_globals()
-		global db, portdb, root
-		if portdb is self:
+		global db, portdb, root, _portdb_initialized
+		if not _portdb_initialized:
 			portdb = db[root]["porttree"].dbapi
+			_portdb_initialized = True
 		return portdb
+
+class _MtimedbProxy(portage.util.ObjectProxy):
+	"""
+	The mtimedb is independent from the portdb and other globals.
+	"""
+
+	def __init__(self, name):
+		portage.util.ObjectProxy.__init__(self)
+		object.__setattr__(self, '_name', name)
+
+	def _get_target(self):
+		global mtimedb, mtimedbfile, _mtimedb_initialized
+		if not _mtimedb_initialized:
+			mtimedbfile = os.path.join("/",
+				CACHE_PATH.lstrip(os.path.sep), "mtimedb")
+			mtimedb = MtimeDB(mtimedbfile)
+			_mtimedb_initialized = True
+		name = object.__getattribute__(self, '_name')
+		return globals()[name]
 
 # Initialization of legacy globals.  No functions/classes below this point
 # please!  When the above functions and classes become independent of the
@@ -6942,8 +6962,6 @@ class _PortdbProxy(portage.util.ObjectProxy):
 # be disabled via an environment variable, for example).  This will enable new
 # code that is aware of this flag to import portage without the unnecessary
 # overhead (and other issues!) of initializing the legacy globals.
-
-_globals_initialized = False
 
 def init_legacy_globals():
 	global _globals_initialized
@@ -6976,8 +6994,6 @@ def init_legacy_globals():
 
 	root = settings["ROOT"]
 
-	mtimedbfile = os.path.join("/", CACHE_PATH.lstrip(os.path.sep), "mtimedb")
-	mtimedb = MtimeDB(mtimedbfile)
 
 	# ========================================================================
 	# COMPATIBILITY
@@ -7007,9 +7023,18 @@ def init_legacy_globals():
 # use within Portage.  External use of this variable is unsupported because
 # it is experimental and it's behavior is likely to change.
 if "PORTAGE_LEGACY_GLOBALS" not in os.environ:
+
+	_mtimedb_initialized = False
+	mtimedb     = _MtimedbProxy("mtimedb")
+	mtimedbfile = _MtimedbProxy("mtimedbfile")
+
+	_portdb_initialized  = False
 	portdb = _PortdbProxy()
+
+	_globals_initialized = False
+
 	for k in ("db", "settings", "root", "selinux_enabled",
-		"mtimedbfile", "mtimedb", "archlist", "features", "groups",
+		"archlist", "features", "groups",
 		"pkglines", "thirdpartymirrors", "usedefaults", "profiledir",
 		"flushmtimedb"):
 		globals()[k] = _LegacyGlobalProxy(k)
