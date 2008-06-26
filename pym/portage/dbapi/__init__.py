@@ -135,8 +135,11 @@ class dbapi(object):
 
 	def _iter_match_slot(self, atom, cpv_iter):
 		for cpv in cpv_iter:
-			if self.aux_get(cpv, ["SLOT"])[0] == atom.slot:
-				yield cpv
+			try:
+				if self.aux_get(cpv, ["SLOT"])[0] == atom.slot:
+					yield cpv
+			except KeyError:
+				continue
 
 	def _iter_match_use(self, atom, cpv_iter):
 		"""
@@ -146,7 +149,10 @@ class dbapi(object):
 		if self._iuse_implicit is None:
 			self._iuse_implicit = self.settings._get_implicit_iuse()
 		for cpv in cpv_iter:
-			iuse, use = self.aux_get(cpv, ["IUSE", "USE"])
+			try:
+				iuse, use = self.aux_get(cpv, ["IUSE", "USE"])
+			except KeyError:
+				continue
 			use = use.split()
 			iuse = self._iuse_implicit.union(
 				re.escape(x.lstrip("+-")) for x in iuse.split())
