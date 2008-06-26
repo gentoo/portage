@@ -6921,6 +6921,20 @@ class _LegacyGlobalProxy(portage.util.ObjectProxy):
 		name = object.__getattribute__(self, '_name')
 		return globals()[name]
 
+class _PortdbProxy(portage.util.ObjectProxy):
+	"""
+	The portdb is initialized separately from the rest
+	of the variables, since sometimes the other variables
+	are needed while the portdb is not.
+	"""
+
+	def _get_target(self):
+		init_legacy_globals()
+		global db, portdb, root
+		if portdb is self:
+			portdb = db[root]["porttree"].dbapi
+		return portdb
+
 # Initialization of legacy globals.  No functions/classes below this point
 # please!  When the above functions and classes become independent of the
 # below global variables, it will be possible to make the below code
@@ -6954,12 +6968,10 @@ def init_legacy_globals():
 	del _initializing_globals
 
 	settings = db["/"]["vartree"].settings
-	portdb = db["/"]["porttree"].dbapi
 
 	for myroot in db:
 		if myroot != "/":
 			settings = db[myroot]["vartree"].settings
-			portdb = db[myroot]["porttree"].dbapi
 			break
 
 	root = settings["ROOT"]
@@ -6995,7 +7007,8 @@ def init_legacy_globals():
 # use within Portage.  External use of this variable is unsupported because
 # it is experimental and it's behavior is likely to change.
 if "PORTAGE_LEGACY_GLOBALS" not in os.environ:
-	for k in ("db", "settings", "root", "portdb", "selinux_enabled",
+	portdb = _PortdbProxy()
+	for k in ("db", "settings", "root", "selinux_enabled",
 		"mtimedbfile", "mtimedb", "archlist", "features", "groups",
 		"pkglines", "thirdpartymirrors", "usedefaults", "profiledir",
 		"flushmtimedb"):
