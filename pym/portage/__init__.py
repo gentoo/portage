@@ -6907,6 +6907,20 @@ def create_trees(config_root=None, target_root=None, trees=None):
 			binarytree, myroot, mysettings["PKGDIR"], settings=mysettings)
 	return trees
 
+class _LegacyGlobalProxy(portage.util.ObjectProxy):
+	"""
+	Instances of these serve as proxies to global variables
+	that are initialized on demand.
+	"""
+	def __init__(self, name):
+		portage.util.ObjectProxy.__init__(self)
+		object.__setattr__(self, '_name', name)
+
+	def _get_target(self):
+		init_legacy_globals()
+		name = object.__getattribute__(self, '_name')
+		return globals()[name]
+
 # Initialization of legacy globals.  No functions/classes below this point
 # please!  When the above functions and classes become independent of the
 # below global variables, it will be possible to make the below code
@@ -6915,7 +6929,14 @@ def create_trees(config_root=None, target_root=None, trees=None):
 # code that is aware of this flag to import portage without the unnecessary
 # overhead (and other issues!) of initializing the legacy globals.
 
+_globals_initialized = False
+
 def init_legacy_globals():
+	global _globals_initialized
+	if _globals_initialized:
+		return
+	_globals_initialized = True
+
 	global db, settings, root, portdb, selinux_enabled, mtimedbfile, mtimedb, \
 	archlist, features, groups, pkglines, thirdpartymirrors, usedefaults, \
 	profiledir, flushmtimedb
@@ -6974,7 +6995,11 @@ def init_legacy_globals():
 # use within Portage.  External use of this variable is unsupported because
 # it is experimental and it's behavior is likely to change.
 if "PORTAGE_LEGACY_GLOBALS" not in os.environ:
-	init_legacy_globals()
+	for k in ("db", "settings", "root", "portdb", "selinux_enabled",
+		"mtimedbfile", "mtimedb", "archlist", "features", "groups",
+		"pkglines", "thirdpartymirrors", "usedefaults", "profiledir",
+		"flushmtimedb"):
+		globals()[k] = _LegacyGlobalProxy(k)
 
 # Clear the cache
 dircache={}
