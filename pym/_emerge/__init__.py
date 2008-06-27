@@ -3862,25 +3862,23 @@ class depgraph(object):
 			retlist.reverse()
 		return retlist
 
-	def break_refs(self, mergelist):
+	def break_refs(self, nodes):
 		"""
 		Take a mergelist like that returned from self.altlist() and
 		break any references that lead back to the depgraph. This is
 		useful if you want to hold references to packages without
 		also holding the depgraph on the heap.
 		"""
-		for node in mergelist:
-			if not isinstance(node, Package):
-				continue
-
-			# The FakeVartree references the _package_cache which
-			# references the depgraph. So that Package instances don't
-			# hold the depgraph and FakeVartree on the heap, replace
-			# the RootConfig that references the FakeVartree with the
-			# original RootConfig instance which references the actual
-			# vartree.
-			node.root_config = \
-				self._trees_orig[node.root]["root_config"]
+		for node in nodes:
+			if hasattr(node, "root_config"):
+				# The FakeVartree references the _package_cache which
+				# references the depgraph. So that Package instances don't
+				# hold the depgraph and FakeVartree on the heap, replace
+				# the RootConfig that references the FakeVartree with the
+				# original RootConfig instance which references the actual
+				# vartree.
+				node.root_config = \
+					self._trees_orig[node.root_config.root]["root_config"]
 
 	def _resolve_conflicts(self):
 		if not self._complete_graph():
