@@ -969,9 +969,7 @@ class ObjectProxy(object):
 		return object.__getattribute__(self, '_get_target')() != other
 
 	def __nonzero__(self):
-		if object.__getattribute__(self, '_get_target')():
-			return True
-		return False
+		return bool(object.__getattribute__(self, '_get_target')())
 
 class LazyItemsDict(dict):
 	"""A mapping object that behaves like a standard dict except that it allows
