@@ -5874,7 +5874,7 @@ class MergeTask(object):
 		"--nodeps", "--pretend"])
 
 	def __init__(self, settings, trees, mtimedb, myopts,
-		spinner, mergelist, favorites):
+		spinner, mergelist, favorites, digraph):
 		self.settings = settings
 		self.target_root = settings["ROOT"]
 		self.trees = trees
@@ -8909,11 +8909,11 @@ def action_build(settings, trees, mtimedb,
 				time.sleep(3) # allow the parent to have first fetch
 			mymergelist = mydepgraph.altlist()
 			mydepgraph.break_refs(mymergelist)
+			mergetask = MergeTask(settings, trees, mtimedb, myopts,
+				spinner, mymergelist, favorites, mydepgraph.digraph)
 			del mydepgraph
 			clear_caches(trees)
 
-			mergetask = MergeTask(settings, trees, mtimedb, myopts,
-				spinner, mymergelist, favorites)
 			retval = mergetask.merge()
 			merge_count = mergetask.curval
 		else:
@@ -8955,11 +8955,11 @@ def action_build(settings, trees, mtimedb,
 			pkglist = mydepgraph.altlist()
 			mydepgraph.saveNomergeFavorites()
 			mydepgraph.break_refs(pkglist)
+			mergetask = MergeTask(settings, trees, mtimedb, myopts,
+				spinner, pkglist, favorites, mydepgraph.digraph)
 			del mydepgraph
 			clear_caches(trees)
 
-			mergetask = MergeTask(settings, trees, mtimedb, myopts,
-				spinner, pkglist, favorites)
 			retval = mergetask.merge()
 			merge_count = mergetask.curval
 
