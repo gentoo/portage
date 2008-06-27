@@ -15,8 +15,8 @@ def shorthelp():
 	print "   "+turquoise("emerge")+" "+turquoise("--resume")+" [ "+green("--pretend")+" | "+green("--ask")+" | "+green("--skipfirst")+" ]"
 	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("system")+" | "+green("world")+" | "+green("--sync")+" ] "
 	print bold("Options:")+" "+green("-")+"["+green("abBcCdDefgGhkKlnNoOpqPsStuvV")+"]"
-	print "          [ "+green("--columns")+"   ] [ "+green("--deep")+"      ] [ "+green("--newuse")+"    ]"
-	print "          [ "+green("--noconfmem")+" ] [ "+green("--nospinner")+" ] [ "+green("--oneshot")+"   ]"
+	print "          [ "+green("--columns")+"   ] [ "+green("--deep")+"      ] [ "+green("--keep-going")+" ] [ "+green("--newuse")+"   ]"
+	print "          [ "+green("--noconfmem")+" ] [ "+green("--nospinner")+" ] [ "+green("--oneshot")+"    ]"
 	print "          [ " + green("--color")+" < " + turquoise("y") + " | "+ turquoise("n")+" >           ] [ "+green("--complete-graph")+"            ]"
 	print "          [ "+green("--reinstall ")+turquoise("changed-use")+"     ] [ " + green("--with-bdeps")+" < " + turquoise("y") + " | "+ turquoise("n")+" >      ]"
 	print bold("Actions:")+"  [ "+green("--clean")+" | "+green("--depclean")+" | "+green("--prune")+" | "+green("--regen")+" | "+green("--search")+" | "+green("--unmerge")+" ]"
@@ -292,6 +292,17 @@ def help(myaction,myopts,havecolor=1):
 		print "              downloaded from the remote server without consulting packages"
 		print "              existing in the packages directory."
 		print
+		print "       "+green("--keep-going")
+		desc = "Continue as much as possible after " + \
+			"an error. When an error occurs, " + \
+			"dependencies are recalculated for " + \
+			"remaining packages and any with " + \
+			"unsatisfied dependencies are " + \
+			"automatically dropped. Also see " + \
+			"the related --skipfirst option."
+		for line in wrap(desc, desc_width):
+			print desc_indent + line
+		print
 		print "       "+green("--newuse")+" ("+green("-N")+" short option)"
 		print "              Tells emerge to include installed packages where USE flags have "
 		print "              changed since installation."
@@ -349,11 +360,17 @@ def help(myaction,myopts,havecolor=1):
 		print "              enabled are added or removed."
 		print
 		print "       "+green("--skipfirst")
-		print "              This option is only valid in a resume situation. It removes the"
-		print "              first package in the resume list so that a merge may continue in"
-		print "              the presence of an uncorrectable or inconsequential error. This"
-		print "              should only be used in cases where skipping the package will not"
-		print "              result in failed dependencies."
+		desc = "This option is only valid when " + \
+			"used with --resume.  It removes the " + \
+			"first package in the resume list. " + \
+			"Dependencies are recalculated for " + \
+			"remaining packages and any that " + \
+			"have unsatisfied dependencies or are " + \
+			"masked will be automatically dropped. " + \
+			"Also see the related " + \
+			"--keep-going option."
+		for line in wrap(desc, desc_width):
+			print desc_indent + line
 		print
 		print "       "+green("--tree")+" ("+green("-t")+" short option)"
 		print "              Shows the dependency tree using indentation for dependencies."

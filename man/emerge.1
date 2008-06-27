@@ -321,6 +321,12 @@ directory.
 .BR "\-\-ignore-default-opts"
 Causes \fIEMERGE_DEFAULT_OPTS\fR (see \fBmake.conf\fR(5)) to be ignored.
 .TP
+.BR "\-\-keep\-going"
+Continue as much as possible after an error. When an error occurs,
+dependencies are recalculated for remaining packages and any with
+unsatisfied dependencies are automatically dropped. Also see
+the related \fB\-\-skipfirst\fR option.
+.TP
 .BR "\-\-newuse " (\fB\-N\fR)
 Tells emerge to include installed packages where USE flags have changed since 
 compilation.  USE flag changes include:
@@ -399,9 +405,10 @@ enabled are added or removed.
 .TP
 .BR "\-\-skipfirst"
 This option is only valid when used with \fB\-\-resume\fR.  It removes the 
-first package in the resume list so that a merge may continue in the presence 
-of an uncorrectable or inconsequential error.  This should only be used in 
-cases where skipping the package will not result in failed dependencies.
+first package in the resume list. Dependencies are recalculated for
+remaining packages and any that have unsatisfied dependencies or are
+masked will be automatically dropped. Also see the related
+\fB\-\-keep\-going\fR option.
 .TP
 .BR "\-\-tree " (\fB\-t\fR)
 Shows the dependency tree for the given target by indenting dependencies.

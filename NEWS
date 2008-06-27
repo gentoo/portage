@@ -3,6 +3,11 @@ News (mainly features/major bug fixes)
 portage-2.2
 -------------
 
+* Add emerge --keep-going option to continue as much as possible after
+  an error. When an error occurs, dependencies are recalculated for
+  remaining packages and any with unsatisfied dependencies are
+  automatically dropped. The --skipfirst option automatically drops
+  packages in the same way, and also drops and masked packages.
 * Add subversion support for repoman.
 * It is now possible to use `emerge <file>` to reinstall the package that
   installed a particular file. Package contents entries are indexed to
