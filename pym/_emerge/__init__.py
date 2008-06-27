@@ -5392,7 +5392,7 @@ class depgraph(object):
 			world_set.update(all_added)
 		world_set.unlock()
 
-	def loadResumeCommand(self, resume_data):
+	def loadResumeCommand(self, resume_data, skip_masked=False):
 		"""
 		Add a resume command to the graph and validate it in the process.  This
 		will raise a PackageNotFound exception if a package is not available.
@@ -5405,7 +5405,6 @@ class depgraph(object):
 		if not isinstance(mergelist, list):
 			mergelist = []
 
-		skipfirst = "--skipfirst" in self.myopts
 		fakedb = self.mydbapi
 		trees = self.trees
 		serialized_tasks = []
@@ -5443,7 +5442,7 @@ class depgraph(object):
 			root_config = self.roots[pkg.root]
 			if "merge" == pkg.operation and \
 				not visible(root_config.settings, pkg):
-				if skipfirst:
+				if skip_masked:
 					masked_tasks.append(Dependency(root=pkg.root, parent=pkg))
 				else:
 					self._unsatisfied_deps_for_display.append(
@@ -5497,7 +5496,7 @@ class depgraph(object):
 				# was dropped via --skipfirst. It makes the
 				# resume list invalid, so convert it to a
 				# UnsatisfiedResumeDep exception.
-				raise self.UnsatisfiedResumeDep(
+				raise self.UnsatisfiedResumeDep(self,
 					masked_tasks + self._unsatisfied_deps)
 			self._serialized_tasks_cache = None
 			try:
@@ -5574,6 +5573,9 @@ class depgraph(object):
 		can occur when a required package is dropped from the
 		merge list via --skipfirst.
 		"""
+		def __init__(self, depgraph, value):
+			portage.exception.PortageException.__init__(self, value)
+			self.depgraph = depgraph
 
 	class _internal_exception(portage.exception.PortageException):
 		def __init__(self, value=""):
@@ -8393,6 +8395,73 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	else:
 		print "Number removed:       "+str(len(cleanlist))
 
+def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner,
+	skip_masked=False, skip_unsatisfied=False):
+	"""
+	Construct a depgraph for the given resume list. This will raise
+	PackageNotFound or depgraph.UnsatisfiedResumeDep when necessary.
+	@rtype: tuple
+	@returns: (success, depgraph, dropped_tasks)
+	"""
+	mergelist = mtimedb["resume"]["mergelist"]
+	dropped_tasks = set()
+	while True:
+		mydepgraph = depgraph(settings, trees,
+			myopts, myparams, spinner)
+		try:
+			success = mydepgraph.loadResumeCommand(mtimedb["resume"],
+				skip_masked=skip_masked)
+		except depgraph.UnsatisfiedResumeDep, e:
+			if not skip_unsatisfied:
+				raise
+
+			graph = mydepgraph.digraph
+			unsatisfied_parents = dict((dep.parent, dep.parent) \
+				for dep in e.value)
+			traversed_nodes = set()
+			unsatisfied_stack = list(unsatisfied_parents)
+			while unsatisfied_stack:
+				pkg = unsatisfied_stack.pop()
+				if pkg in traversed_nodes:
+					continue
+				traversed_nodes.add(pkg)
+
+				# If this package was pulled in by a parent
+				# package scheduled for merge, removing this
+				# package may cause the the parent package's
+				# dependency to become unsatisfied.
+				for parent_node in graph.parent_nodes(pkg):
+					if not isinstance(parent_node, Package) \
+						or parent_node.operation != "merge":
+						continue
+					unsatisfied = \
+						graph.child_nodes(parent_node,
+						ignore_priority=DepPriority.SOFT)
+					if pkg in unsatisfied:
+						unsatisfied_parents[parent_node] = parent_node
+						unsatisfied_stack.append(parent_node)
+
+			pruned_mergelist = [x for x in mergelist \
+				if isinstance(x, list) and \
+				tuple(x) not in unsatisfied_parents]
+
+			# It shouldn't happen, but if the size of mergelist
+			# does not decrease for some reason then the loop
+			# will be infinite. Therefore, if that case ever
+			# occurs for some reason, raise the exception to
+			# break out of the loop.
+			if not pruned_mergelist or \
+				len(pruned_mergelist) == len(mergelist):
+				raise
+			mergelist[:] = pruned_mergelist
+			dropped_tasks.update(unsatisfied_parents)
+			del e, graph, traversed_nodes, \
+				unsatisfied_parents, unsatisfied_stack
+			continue
+		else:
+			break
+	return (success, mydepgraph, dropped_tasks)
+
 def action_build(settings, trees, mtimedb,
 	myopts, myaction, myfiles, spinner):
 
@@ -8516,66 +8585,18 @@ def action_build(settings, trees, mtimedb,
 					del mergelist[i]
 					break
 
-		dropped_tasks = set()
-
+		skip_masked      = "--skipfirst" in myopts
+		skip_unsatisfied = "--skipfirst" in myopts
 		success = False
+		mydepgraph = None
 		try:
-			while True:
-				mydepgraph = depgraph(settings, trees,
-					myopts, myparams, spinner)
-				try:
-					success = mydepgraph.loadResumeCommand(mtimedb["resume"])
-				except depgraph.UnsatisfiedResumeDep, e:
-					if "--skipfirst" not in myopts:
-						raise
-
-					graph = mydepgraph.digraph
-					unsatisfied_parents = dict((dep.parent, dep.parent) \
-						for dep in e.value)
-					traversed_nodes = set()
-					unsatisfied_stack = list(unsatisfied_parents)
-					while unsatisfied_stack:
-						pkg = unsatisfied_stack.pop()
-						if pkg in traversed_nodes:
-							continue
-						traversed_nodes.add(pkg)
-
-						# If this package was pulled in by a parent
-						# package scheduled for merge, removing this
-						# package may cause the the parent package's
-						# dependency to become unsatisfied.
-						for parent_node in graph.parent_nodes(pkg):
-							if not isinstance(parent_node, Package) \
-								or parent_node.operation != "merge":
-								continue
-							unsatisfied = \
-								graph.child_nodes(parent_node,
-								ignore_priority=DepPriority.SOFT)
-							if pkg in unsatisfied:
-								unsatisfied_parents[parent_node] = parent_node
-								unsatisfied_stack.append(parent_node)
-
-					pruned_mergelist = [x for x in mergelist \
-						if isinstance(x, list) and \
-						tuple(x) not in unsatisfied_parents]
-
-					# It shouldn't happen, but if the size of mergelist
-					# does not decrease for some reason then the loop
-					# will be infinite. Therefore, if that case ever
-					# occurs for some reason, raise the exception to
-					# break out of the loop.
-					if not pruned_mergelist or \
-						len(pruned_mergelist) == len(mergelist):
-						raise
-					mergelist[:] = pruned_mergelist
-					dropped_tasks.update(unsatisfied_parents)
-					del e, graph, traversed_nodes, \
-						unsatisfied_parents, unsatisfied_stack
-					continue
-				else:
-					break
+			success, mydepgraph, dropped_tasks = resume_depgraph(
+				settings, trees, mtimedb, myopts, myparams, spinner,
+				skip_masked=skip_masked, skip_unsatisfied=skip_unsatisfied)
 		except (portage.exception.PackageNotFound,
 			depgraph.UnsatisfiedResumeDep), e:
+			if isinstance(e, depgraph.UnsatisfiedResumeDep):
+				mydepgraph = e.depgraph
 			if show_spinner:
 				print
 			from textwrap import wrap
@@ -8644,7 +8665,8 @@ def action_build(settings, trees, mtimedb,
 				portage.writemsg("\n", noiselevel=-1)
 			del dropped_tasks
 		else:
-			mydepgraph.display_problems()
+			if mydepgraph is not None:
+				mydepgraph.display_problems()
 			if not (ask or pretend):
 				# delete the current list and also the backup
 				# since it's probably stale too.
