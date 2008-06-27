@@ -41,12 +41,12 @@ list_sourcedir = \
 all:
 
 install:
-	$(INSTALL) -d -m 755 -o $(portageuser) -g $(portagegroup) $(DESTDIR)$(PORTAGE_BIN)
+	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(PORTAGE_BIN)
 	$(list_sourcedir) | while read f \
 	; do echo "$(INSTALL_scriptsubst) ${srcdir}/$${f} $(DESTDIR)$(PORTAGE_BIN)/$${f}" \
 	   ; $(INSTALL_scriptsubst) ${srcdir}/$${f} $(DESTDIR)$(PORTAGE_BIN)/$${f} \
 	; done
-	$(INSTALL) -d -m 755 -o $(portageuser) -g $(portagegroup) $(DESTDIR)$(prefix)/bin
+	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(prefix)/bin
 	cd $(DESTDIR)$(prefix)/bin \
 	; for p in $(user_binprogs) \
 	; do test -f $(DESTDIR)$(PORTAGE_BIN)/$${p} \
@@ -56,7 +56,7 @@ install:
 	   ; echo "$(LN_S) ../lib/portage/bin/$${p} $${p}" \
 	   ; $(LN_S) ../lib/portage/bin/$${p} $${p} || exit 1 \
 	; done
-	$(INSTALL) -d -m 755 -o $(portageuser) -g $(portagegroup) $(DESTDIR)$(prefix)/sbin
+	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(prefix)/sbin
 	cd $(DESTDIR)$(prefix)/sbin \
 	; for p in $(user_sbinprogs) \
 	; do test -f $(DESTDIR)$(PORTAGE_BIN)/$${p} \
