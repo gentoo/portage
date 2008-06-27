@@ -197,6 +197,7 @@ options=[
 "--fetchonly",    "--fetch-all-uri",
 "--getbinpkg",    "--getbinpkgonly",
 "--help",         "--ignore-default-opts",
+"--keep-going",
 "--noconfmem",
 "--newuse",       "--nocolor",
 "--nodeps",       "--noreplace",
@@ -5871,11 +5872,16 @@ class MergeTask(object):
 		"--fetchonly", "--fetch-all-uri",
 		"--nodeps", "--pretend"])
 
-	def __init__(self, settings, trees, myopts):
+	def __init__(self, settings, trees, mtimedb, myopts,
+		spinner, mergelist, favorites):
 		self.settings = settings
 		self.target_root = settings["ROOT"]
 		self.trees = trees
 		self.myopts = myopts
+		self._spinner = spinner
+		self._mtimedb = mtimedb
+		self._mergelist = mergelist
+		self._favorites = favorites
 		self.edebug = 0
 		if settings.get("PORTAGE_DEBUG", "") == "1":
 			self.edebug = 1
@@ -5924,14 +5930,85 @@ class MergeTask(object):
 
 		return blocker_dblinks
 
-	def merge(self, mylist, favorites, mtimedb):
-		try:
-			return self._merge(mylist, favorites, mtimedb)
-		finally:
-			if self._spawned_pids:
-				from portage import process
-				process.spawned_pids.extend(self._spawned_pids)
-				self._spawned_pids = []
+	def merge(self):
+
+		keep_going = "--keep-going" in self.myopts
+
+		while True:
+			try:
+				rval = self._merge()
+			finally:
+				spawned_pids = self._spawned_pids
+				while spawned_pids:
+					pid = spawned_pids.pop()
+					try:
+						if os.waitpid(pid, os.WNOHANG) == (0, 0):
+							os.kill(pid, signal.SIGTERM)
+							os.waitpid(pid, 0)
+					except OSError:
+						pass # cleaned up elsewhere.
+
+			if rval == os.EX_OK or not keep_going:
+				break
+			mtimedb = self._mtimedb
+			if "resume" not in mtimedb:
+				break
+			mergelist = self._mtimedb["resume"].get("mergelist")
+			if not mergelist:
+				break
+			if mergelist[0][-1] != "merge":
+				break
+			# Skip the first one because it failed to build or install.
+			del mergelist[0]
+			if not mergelist:
+				break
+			mylist = self._calc_resume_list()
+			if not mylist:
+				break
+			self.curval += 1
+			self._mergelist = mylist
+
+		return rval
+
+	def _calc_resume_list(self):
+		"""
+		Use the current resume list to calculate a new one,
+		dropping any packages with unsatisfied deps.
+		"""
+		print colorize("GOOD", "*** Resuming merge...")
+
+		show_spinner = "--quiet" not in self.myopts and \
+			"--nodeps" not in self.myopts
+
+		if show_spinner:
+			print "Calculating dependencies  ",
+
+		myparams = create_depgraph_params(self.myopts, None)
+		success, mydepgraph, dropped_tasks = resume_depgraph(
+			self.settings, self.trees, self._mtimedb, self.myopts,
+			myparams, self._spinner, skip_unsatisfied=True)
+
+		if show_spinner:
+			print "\b\b... done!"
+
+		if not success:
+			mydepgraph.display_problems()
+			return None
+
+		if dropped_tasks:
+			portage.writemsg("!!! One or more packages have been " + \
+				"dropped due to\n" + \
+				"!!! masking or unsatisfied dependencies:\n\n",
+				noiselevel=-1)
+			for task in dropped_tasks:
+				portage.writemsg("  " + str(task) + "\n", noiselevel=-1)
+			portage.writemsg("\n", noiselevel=-1)
+
+		mylist = mydepgraph.altlist()
+		mydepgraph.break_refs(mylist)
+		del mydepgraph
+		clear_caches(self.trees)
+		return mylist
 
 	def _poll_child_processes(self):
 		"""
@@ -5952,7 +6029,10 @@ class MergeTask(object):
 				pass
 			spawned_pids.remove(pid)
 
-	def _merge(self, mylist, favorites, mtimedb):
+	def _merge(self):
+		mylist = self._mergelist
+		favorites = self._favorites
+		mtimedb = self._mtimedb
 		from portage.elog import elog_process
 		from portage.elog.filtering import filter_mergephases
 		buildpkgonly = "--buildpkgonly" in self.myopts
@@ -8805,7 +8885,6 @@ def action_build(settings, trees, mtimedb,
 
 		if ("--resume" in myopts):
 			favorites=mtimedb["resume"]["favorites"]
-			mergetask = MergeTask(settings, trees, myopts)
 			if "PORTAGE_PARALLEL_FETCHONLY" in settings:
 				""" parallel-fetch uses --resume --fetchonly and we don't want
 				it to write the mtimedb"""
@@ -8816,7 +8895,9 @@ def action_build(settings, trees, mtimedb,
 			del mydepgraph
 			clear_caches(trees)
 
-			retval = mergetask.merge(mymergelist, favorites, mtimedb)
+			mergetask = MergeTask(settings, trees, mtimedb, myopts,
+				spinner, mymergelist, favorites)
+			retval = mergetask.merge()
 			merge_count = mergetask.curval
 		else:
 			if "resume" in mtimedb and \
@@ -8860,8 +8941,9 @@ def action_build(settings, trees, mtimedb,
 			del mydepgraph
 			clear_caches(trees)
 
-			mergetask = MergeTask(settings, trees, myopts)
-			retval = mergetask.merge(pkglist, favorites, mtimedb)
+			mergetask = MergeTask(settings, trees, mtimedb, myopts,
+				spinner, pkglist, favorites)
+			retval = mergetask.merge()
 			merge_count = mergetask.curval
 
 		if retval == os.EX_OK and not (buildpkgonly or fetchonly or pretend):
