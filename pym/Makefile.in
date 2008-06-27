@@ -32,10 +32,10 @@ list_sourcedir = \
 all:
 
 install:
-	$(INSTALL) -d -m 755 -o $(portageuser) -g $(portagegroup) $(DESTDIR)$(PORTAGE_PYM)
+	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(PORTAGE_PYM)
 	$(list_sourcedir_dirs) | while read f \
-	; do echo $(INSTALL) -d -m 755 -o $(portageuser) -g $(portagegroup) $(DESTDIR)$(PORTAGE_PYM)/$${f} \
-	   ; $(INSTALL) -d -m 755 -o $(portageuser) -g $(portagegroup) $(DESTDIR)$(PORTAGE_PYM)/$${f} \
+	; do echo $(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(PORTAGE_PYM)/$${f} \
+	   ; $(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(PORTAGE_PYM)/$${f} \
 	; done
 	$(list_sourcedir) | while read f \
 	; do echo $(INSTALL_PYsubst) ${srcdir}/$${f} $(DESTDIR)$(PORTAGE_PYM)/$${f} \
