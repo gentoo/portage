@@ -8909,6 +8909,7 @@ def action_build(settings, trees, mtimedb,
 				time.sleep(3) # allow the parent to have first fetch
 			mymergelist = mydepgraph.altlist()
 			mydepgraph.break_refs(mymergelist)
+			mydepgraph.break_refs(mydepgraph.digraph.order)
 			mergetask = MergeTask(settings, trees, mtimedb, myopts,
 				spinner, mymergelist, favorites, mydepgraph.digraph)
 			del mydepgraph
@@ -8955,6 +8956,7 @@ def action_build(settings, trees, mtimedb,
 			pkglist = mydepgraph.altlist()
 			mydepgraph.saveNomergeFavorites()
 			mydepgraph.break_refs(pkglist)
+			mydepgraph.break_refs(mydepgraph.digraph.order)
 			mergetask = MergeTask(settings, trees, mtimedb, myopts,
 				spinner, pkglist, favorites, mydepgraph.digraph)
 			del mydepgraph
