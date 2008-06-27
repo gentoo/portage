@@ -52,6 +52,7 @@ import portage.util
 import portage.locks
 import portage.exception
 from portage.data import secpass
+from portage.elog.messages import eerror
 from portage.util import normalize_path as normpath
 from portage.util import writemsg
 from portage.sets import load_default_config, SETPREFIX
@@ -5958,15 +5959,40 @@ class MergeTask(object):
 				break
 			if mergelist[0][-1] != "merge":
 				break
+
 			# Skip the first one because it failed to build or install.
+			pkg_key = tuple(mergelist[0])
 			del mergelist[0]
+			failed_pkg = None
+			for task in self._mergelist:
+				if task == pkg_key:
+					failed_pkg = task
+					break
+			if failed_pkg is None:
+				break
 			if not mergelist:
 				break
-			mylist = self._calc_resume_list()
+
+			mylist, dropped_tasks = self._calc_resume_list()
 			clear_caches(self.trees)
 			if not mylist:
 				break
-			self.curval += 1
+
+			if dropped_tasks:
+
+				def _eerror(lines):
+					for l in lines:
+						eerror(l, phase="other", key=failed_pkg.cpv)
+
+				msg = []
+				msg.append("One or more packages have been " + \
+					"dropped due to unsatisfied dependencies:")
+				msg.append("")
+				msg.extend("  " + str(task) for task in dropped_tasks)
+				msg.append("")
+				_eerror(msg)
+				del _eerror, msg
+			del dropped_tasks
 			self._mergelist = mylist
 
 		return rval
@@ -5994,20 +6020,12 @@ class MergeTask(object):
 
 		if not success:
 			mydepgraph.display_problems()
-			return None
-
-		if dropped_tasks:
-			portage.writemsg("!!! One or more packages have been " + \
-				"dropped due to\n" + \
-				"!!! masking or unsatisfied dependencies:\n\n",
-				noiselevel=-1)
-			for task in dropped_tasks:
-				portage.writemsg("  " + str(task) + "\n", noiselevel=-1)
-			portage.writemsg("\n", noiselevel=-1)
+			return (None, None)
 
 		mylist = mydepgraph.altlist()
 		mydepgraph.break_refs(mylist)
-		return mylist
+		mydepgraph.break_refs(dropped_tasks)
+		return (mylist, dropped_tasks)
 
 	def _poll_child_processes(self):
 		"""
