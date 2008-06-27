@@ -173,6 +173,7 @@ class binarytree(object):
 				"IUSE"    : "",
 				"KEYWORDS": "",
 				"LICENSE" : "",
+				"PATH"    : "",
 				"PDEPEND" : "",
 				"PROVIDE" : "",
 				"RDEPEND" : "",

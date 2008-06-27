@@ -231,8 +231,11 @@ try:
 	parse_color_map(onerror=lambda e: writemsg("%s\n" % str(e), noiselevel=-1))
 except FileNotFound:
 	pass
+except PermissionDenied, e:
+	writemsg("Permission denied: '%s'\n" % str(e), noiselevel=-1)
+	del e
 except PortageException, e:
-	writemsg("%s\n" % str(e))
+	writemsg("%s\n" % str(e), noiselevel=-1)
 	del e
 
 def nc_len(mystr):

@@ -542,8 +542,8 @@ class digraph(object):
 def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 	env=None):
 	if target_root is None:
-		global root
-		target_root = root
+		global settings
+		target_root = settings["ROOT"]
 	if prev_mtimes is None:
 		global mtimedb
 		prev_mtimes = mtimedb["ldpath"]
