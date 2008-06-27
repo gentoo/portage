@@ -5887,11 +5887,9 @@ class MergeTask(object):
 		if settings.get("PORTAGE_DEBUG", "") == "1":
 			self.edebug = 1
 		self.pkgsettings = {}
-		self._blocker_db = {}
 		for root in trees:
 			self.pkgsettings[root] = portage.config(
 				clone=trees[root]["vartree"].settings)
-			self._blocker_db[root] = BlockerDB(trees[root]["root_config"])
 		self.curval = 0
 		self._spawned_pids = []
 
@@ -5914,10 +5912,11 @@ class MergeTask(object):
 		import gc
 		gc.collect()
 
+		blocker_db = BlockerDB(self.trees[new_pkg.root]["root_config"])
+
 		blocker_dblinks = []
-		for blocking_pkg in self._blocker_db[
-			new_pkg.root].findInstalledBlockers(new_pkg,
-			acquire_lock=acquire_lock):
+		for blocking_pkg in blocker_db.findInstalledBlockers(
+			new_pkg, acquire_lock=acquire_lock):
 			if new_pkg.slot_atom == blocking_pkg.slot_atom:
 				continue
 			if new_pkg.cpv == blocking_pkg.cpv:
