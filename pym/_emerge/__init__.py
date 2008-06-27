@@ -1398,107 +1398,32 @@ class Package(Task):
 			return True
 		return False
 
-class _PackageMetadataWrapper(object):
+_all_metadata_keys = set(x for x in portage.auxdbkeys \
+	if not x.startswith("UNUSED_"))
+_all_metadata_keys.discard("CDEPEND")
+_all_metadata_keys.update(Package.metadata_keys)
+
+from portage.cache.mappings import slot_dict_class
+_PackageMetadataWrapperBase = slot_dict_class(_all_metadata_keys)
+
+class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 	"""
 	Detect metadata updates and synchronize Package attributes.
 	"""
-	_keys = set(x for x in portage.auxdbkeys \
-		if not x.startswith("UNUSED_"))
-	_keys.discard("CDEPEND")
-	_keys.update(Package.metadata_keys)
-	_keys = tuple(sorted(_keys))
-	__slots__ = ("__weakref__", "_pkg") + tuple("_val_" + k for k in _keys)
+
+	__slots__ = ("_pkg",)
 	_wrapped_keys = frozenset(
 		["COUNTER", "INHERITED", "IUSE", "SLOT", "USE", "_mtime_"])
 
 	def __init__(self, pkg, metadata):
+		_PackageMetadataWrapperBase.__init__(self)
 		self._pkg = pkg
 		self.update(metadata)
 
-	def __iter__(self):
-		for k, v in self.iteritems():
-			yield k
-
-	def __len__(self):
-		l = 0
-		for i in self.iteritems():
-			l += 1
-		return l
-
-	def keys(self):
-		return list(self)
-
-	def iteritems(self):
-		for k in self._keys:
-			try:
-				yield (k, getattr(self, "_val_" + k))
-			except AttributeError:
-				pass
-
-	def items(self):
-		return list(self.iteritems())
-
-	def itervalues(self):
-		for k, v in self.itervalues():
-			yield v
-
-	def values(self):
-		return list(self.itervalues())
-
-	def __delitem__(self, k):
-		try:
-			delattr(self, "_val_" + k)
-		except AttributeError:
-			raise KeyError(k)
-
 	def __setitem__(self, k, v):
-		setattr(self, "_val_" + k, v)
+		_PackageMetadataWrapperBase.__setitem__(self, k, v)
 		if k in self._wrapped_keys:
 			getattr(self, "_set_" + k.lower())(k, v)
-
-	def update(self, d):
-		i = getattr(d, "iteritems", None)
-		if i is None:
-			i = d
-		else:
-			i = i()
-		for k, v in i:
-			self[k] = v
-
-	def __getitem__(self, k):
-		try:
-			return getattr(self, "_val_" + k)
-		except AttributeError:
-			raise KeyError(k)
-
-	def get(self, key, default=None):
-		try:
-			return self[key]
-		except KeyError:
-			return default
-
-	def __contains__(self, k):
-		return hasattr(self, "_val_" + k)
-
-	def pop(self, key, *args):
-		if len(args) > 1:
-			raise TypeError("pop expected at most 2 arguments, got " + \
-				repr(1 + len(args)))
-		try:
-			value = self[key]
-		except KeyError:
-			if args:
-				return args[0]
-			raise
-		del self[key]
-		return value
-
-	def clear(self):
-		for k in self._keys:
-			try:
-				delattr(self, "_val_" + k)
-			except AttributError:
-				pass
 
 	def _set_inherited(self, k, v):
 		if isinstance(v, basestring):
@@ -3977,17 +3902,14 @@ class depgraph(object):
 			if not isinstance(node, Package):
 				continue
 
-			# The visible packages cache has fullfilled it's purpose
-			# and it's no longer needed, so free the memory.
-			node.root_config.visible_pkgs.clear()
-
-			if isinstance(node.root_config.trees["vartree"], FakeVartree):
-				# The FakeVartree references the _package_cache which
-				# references the depgraph. So that Package instances don't
-				# hold the depgraph and FakeVartree on the heap, replace
-				# the FakeVartree reference with the real vartree.
-				node.root_config.trees["vartree"] = \
-					self._trees_orig[node.root]["vartree"]
+			# The FakeVartree references the _package_cache which
+			# references the depgraph. So that Package instances don't
+			# hold the depgraph and FakeVartree on the heap, replace
+			# the RootConfig that references the FakeVartree with the
+			# original RootConfig instance which references the actual
+			# vartree.
+			node.root_config = \
+				self._trees_orig[node.root]["root_config"]
 
 	def _resolve_conflicts(self):
 		if not self._complete_graph():

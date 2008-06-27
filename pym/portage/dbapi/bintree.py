@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from portage.cache.mappings import slot_dict_class
 from portage.dep import isvalidatom, isjustname, dep_getkey, match_from_list
 from portage.dbapi.virtual import fakedbapi
 from portage.exception import InvalidPackageName, InvalidAtom, \
@@ -18,7 +19,7 @@ import portage.xpak, portage.getbinpkg
 
 import os, errno, stat
 import re
-from itertools import izip
+from itertools import chain, izip
 
 class bindbapi(fakedbapi):
 	_known_keys = frozenset(list(fakedbapi._known_keys) + \
@@ -35,6 +36,7 @@ class bindbapi(fakedbapi):
 			"LICENSE", "PDEPEND", "PROVIDE",
 			"RDEPEND", "repository", "RESTRICT", "SLOT", "USE",
 			"EPREFIX"])
+		self._aux_cache_slot_dict = slot_dict_class(self._aux_cache_keys)
 		self._aux_cache = {}
 
 	def match(self, *pargs, **kwargs):
@@ -77,7 +79,7 @@ class bindbapi(fakedbapi):
 			if not mydata.setdefault("EAPI", "0"):
 				mydata["EAPI"] = "0"
 		if cache_me:
-			aux_cache = {}
+			aux_cache = self._aux_cache_slot_dict()
 			for x in self._aux_cache_keys:
 				aux_cache[x] = mydata.get(x, "")
 			self._aux_cache[mycpv] = aux_cache
@@ -186,6 +188,16 @@ class binarytree(object):
 				("DESCRIPTION"   ,   "DESC"),
 				("repository"    ,   "REPO"),
 			)
+
+			self._pkgindex_allowed_pkg_keys = set(chain(
+				self._pkgindex_keys,
+				self._pkgindex_aux_keys,
+				self._pkgindex_hashes,
+				self._pkgindex_default_pkg_data,
+				self._pkgindex_inherited_keys,
+				self._pkgindex_default_header_data,
+				chain(*self._pkgindex_translated_keys)
+			))
 
 	def move_ent(self, mylist):
 		if not self.populated:
@@ -483,7 +495,7 @@ class binarytree(object):
 									update_pkgindex = True
 							self.dbapi.cpv_inject(mycpv)
 							if not self.dbapi._aux_cache_keys.difference(d):
-								aux_cache = {}
+								aux_cache = self.dbapi._aux_cache_slot_dict()
 								for k in self.dbapi._aux_cache_keys:
 									aux_cache[k] = d[k]
 								self.dbapi._aux_cache[mycpv] = aux_cache
@@ -580,7 +592,7 @@ class binarytree(object):
 						d.pop("PATH", None)
 					metadata[mycpv] = d
 					if not self.dbapi._aux_cache_keys.difference(d):
-						aux_cache = {}
+						aux_cache = self.dbapi._aux_cache_slot_dict()
 						for k in self.dbapi._aux_cache_keys:
 							aux_cache[k] = d[k]
 						self.dbapi._aux_cache[mycpv] = aux_cache
@@ -835,6 +847,7 @@ class binarytree(object):
 
 	def _new_pkgindex(self):
 		return portage.getbinpkg.PackageIndex(
+			allowed_pkg_keys=self._pkgindex_allowed_pkg_keys,
 			default_header_data=self._pkgindex_default_header_data,
 			default_pkg_data=self._pkgindex_default_pkg_data,
 			inherited_keys=self._pkgindex_inherited_keys,

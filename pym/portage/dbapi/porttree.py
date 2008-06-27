@@ -3,6 +3,7 @@
 # $Id$
 
 from portage.cache.cache_errors import CacheError
+from portage.cache.mappings import slot_dict_class
 from portage.const import REPO_NAME_LOC
 from portage.data import portage_gid, secpass
 from portage.dbapi import dbapi
@@ -138,6 +139,10 @@ class portdbapi(dbapi):
 			["DEPEND", "EAPI", "IUSE", "KEYWORDS", "LICENSE",
 			"PDEPEND", "PROVIDE", "RDEPEND", "repository",
 			"RESTRICT", "SLOT"])
+
+		# Repoman modifies _aux_cache_keys, so delay _aux_cache_slot_dict
+		# initialization until the first aux_get call.
+		self._aux_cache_slot_dict = None
 		self._aux_cache = {}
 		self._broken_ebuilds = set()
 
@@ -386,7 +391,10 @@ class portdbapi(dbapi):
 				returnme.append(mydata.get(x,""))
 
 		if cache_me:
-			aux_cache = {}
+			if self._aux_cache_slot_dict is None:
+				self._aux_cache_slot_dict = \
+					slot_dict_class(self._aux_cache_keys)
+			aux_cache = self._aux_cache_slot_dict()
 			for x in self._aux_cache_keys:
 				aux_cache[x] = mydata.get(x, "")
 			self._aux_cache[mycpv] = aux_cache
@@ -866,4 +874,3 @@ class portagetree(object):
 		except Exception, e:
 			pass
 		return myslot
-

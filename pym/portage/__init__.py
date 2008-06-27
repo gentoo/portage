@@ -6993,6 +6993,54 @@ def create_trees(config_root=None, target_root=None, trees=None):
 			binarytree, myroot, mysettings["PKGDIR"], settings=mysettings)
 	return trees
 
+class _LegacyGlobalProxy(portage.util.ObjectProxy):
+	"""
+	Instances of these serve as proxies to global variables
+	that are initialized on demand.
+	"""
+	def __init__(self, name):
+		portage.util.ObjectProxy.__init__(self)
+		object.__setattr__(self, '_name', name)
+
+	def _get_target(self):
+		init_legacy_globals()
+		name = object.__getattribute__(self, '_name')
+		return globals()[name]
+
+class _PortdbProxy(portage.util.ObjectProxy):
+	"""
+	The portdb is initialized separately from the rest
+	of the variables, since sometimes the other variables
+	are needed while the portdb is not.
+	"""
+
+	def _get_target(self):
+		init_legacy_globals()
+		global db, portdb, root, _portdb_initialized
+		if not _portdb_initialized:
+			portdb = db[root]["porttree"].dbapi
+			_portdb_initialized = True
+		return portdb
+
+class _MtimedbProxy(portage.util.ObjectProxy):
+	"""
+	The mtimedb is independent from the portdb and other globals.
+	"""
+
+	def __init__(self, name):
+		portage.util.ObjectProxy.__init__(self)
+		object.__setattr__(self, '_name', name)
+
+	def _get_target(self):
+		global mtimedb, mtimedbfile, _mtimedb_initialized
+		if not _mtimedb_initialized:
+			mtimedbfile = os.path.join("/",
+				CACHE_PATH.lstrip(os.path.sep), "mtimedb")
+			mtimedb = MtimeDB(mtimedbfile)
+			_mtimedb_initialized = True
+		name = object.__getattribute__(self, '_name')
+		return globals()[name]
+
 # Initialization of legacy globals.  No functions/classes below this point
 # please!  When the above functions and classes become independent of the
 # below global variables, it will be possible to make the below code
@@ -7002,6 +7050,11 @@ def create_trees(config_root=None, target_root=None, trees=None):
 # overhead (and other issues!) of initializing the legacy globals.
 
 def init_legacy_globals():
+	global _globals_initialized
+	if _globals_initialized:
+		return
+	_globals_initialized = True
+
 	global db, settings, root, portdb, selinux_enabled, mtimedbfile, mtimedb, \
 	archlist, features, groups, pkglines, thirdpartymirrors, usedefaults, \
 	profiledir, flushmtimedb
@@ -7019,18 +7072,14 @@ def init_legacy_globals():
 	del _initializing_globals
 
 	settings = db["/"]["vartree"].settings
-	portdb = db["/"]["porttree"].dbapi
 
 	for myroot in db:
 		if myroot != "/":
 			settings = db[myroot]["vartree"].settings
-			portdb = db[myroot]["porttree"].dbapi
 			break
 
 	root = settings["ROOT"]
 
-	mtimedbfile = os.path.join("/", CACHE_PATH.lstrip(os.path.sep), "mtimedb")
-	mtimedb = MtimeDB(mtimedbfile)
 
 	# ========================================================================
 	# COMPATIBILITY
@@ -7060,7 +7109,21 @@ def init_legacy_globals():
 # use within Portage.  External use of this variable is unsupported because
 # it is experimental and it's behavior is likely to change.
 if "PORTAGE_LEGACY_GLOBALS" not in os.environ:
-	init_legacy_globals()
+
+	_mtimedb_initialized = False
+	mtimedb     = _MtimedbProxy("mtimedb")
+	mtimedbfile = _MtimedbProxy("mtimedbfile")
+
+	_portdb_initialized  = False
+	portdb = _PortdbProxy()
+
+	_globals_initialized = False
+
+	for k in ("db", "settings", "root", "selinux_enabled",
+		"archlist", "features", "groups",
+		"pkglines", "thirdpartymirrors", "usedefaults", "profiledir",
+		"flushmtimedb"):
+		globals()[k] = _LegacyGlobalProxy(k)
 
 # Clear the cache
 dircache={}
