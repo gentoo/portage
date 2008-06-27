@@ -5963,6 +5963,7 @@ class MergeTask(object):
 			if not mergelist:
 				break
 			mylist = self._calc_resume_list()
+			clear_caches(self.trees)
 			if not mylist:
 				break
 			self.curval += 1
@@ -6006,8 +6007,6 @@ class MergeTask(object):
 
 		mylist = mydepgraph.altlist()
 		mydepgraph.break_refs(mylist)
-		del mydepgraph
-		clear_caches(self.trees)
 		return mylist
 
 	def _poll_child_processes(self):
