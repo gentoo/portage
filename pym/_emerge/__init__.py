@@ -5891,6 +5891,17 @@ class MergeTask(object):
 		self.curval = 0
 		self._spawned_pids = []
 
+	class _pkg_failure(portage.exception.PortageException):
+		"""
+		An instance of this class is raised by unmerge() when
+		an uninstallation fails.
+		"""
+		status = 1
+		def __init__(self, *pargs):
+			portage.exception.PortageException.__init__(self, pargs)
+			if pargs:
+				self.status = pargs[0]
+
 	def _find_blockers(self, new_pkg):
 		"""
 		Returns a callable which should be called only when
@@ -6047,8 +6058,6 @@ class MergeTask(object):
 		mylist = self._mergelist
 		favorites = self._favorites
 		mtimedb = self._mtimedb
-		from portage.elog import elog_process
-		from portage.elog.filtering import filter_mergephases
 		buildpkgonly = "--buildpkgonly" in self.myopts
 		failed_fetches = []
 		fetchonly = "--fetchonly" in self.myopts or \
@@ -6100,10 +6109,6 @@ class MergeTask(object):
 			del shown_verifying_msg, quiet_settings
 
 		root_config = self.trees[self.target_root]["root_config"]
-		system_set = root_config.sets["system"]
-		args_set = InternalPackageSet(favorites)
-		world_set = root_config.sets["world"]
-
 		mymergelist = mylist
 		myfeat = self.settings.features[:]
 		bad_resume_opts = set(["--ask", "--changelog", "--skipfirst",
@@ -6163,7 +6168,6 @@ class MergeTask(object):
 			if x[0] == "blocks":
 				continue
 			pkg_type, myroot, pkg_key, operation = x
-			pkgindex=2
 			built = pkg_type != "ebuild"
 			installed = pkg_type == "installed"
 			portdb = self.trees[myroot]["porttree"].dbapi
@@ -6171,7 +6175,6 @@ class MergeTask(object):
 			vartree = self.trees[myroot]["vartree"]
 			vardb = vartree.dbapi
 			root_config = self.trees[myroot]["root_config"]
-			pkgsettings = self.pkgsettings[myroot]
 			if pkg_type == "blocks":
 				pass
 			elif pkg_type == "ebuild":
@@ -6183,11 +6186,45 @@ class MergeTask(object):
 					mydbapi = vardb
 				else:
 					raise AssertionError("Package type: '%s'" % pkg_type)
-			if not installed:
+			if not x.installed:
 				mergecount += 1
-			pkg = x
-			metadata = pkg.metadata
+			try:
+				self._execute_task(bad_resume_opts,
+					failed_fetches,
+					mydbapi, mergecount,
+					myfeat, mymergelist, x, xterm_titles)
+			except self._pkg_failure, e:
+				return e.status
+		return self._post_merge(mtimedb, xterm_titles, failed_fetches)
 
+	def _execute_task(self, bad_resume_opts,
+		failed_fetches, mydbapi, mergecount, myfeat,
+		mymergelist, pkg, xterm_titles):
+			favorites = self._favorites
+			mtimedb = self._mtimedb
+			from portage.elog import elog_process
+			from portage.elog.filtering import filter_mergephases
+			pkgsettings = self.pkgsettings[pkg.root]
+			buildpkgonly = "--buildpkgonly" in self.myopts
+			fetchonly = "--fetchonly" in self.myopts or \
+				"--fetch-all-uri" in self.myopts
+			oneshot = "--oneshot" in self.myopts or \
+				"--onlydeps" in self.myopts
+			pretend = "--pretend" in self.myopts
+			ldpath_mtimes = mtimedb["ldpath"]
+			xterm_titles = "notitles" not in self.settings.features
+
+			x = pkg
+			root_config = pkg.root_config
+			system_set = root_config.sets["system"]
+			args_set = InternalPackageSet(favorites)
+			world_set = root_config.sets["world"]
+			vartree = self.trees[pkg.root]["vartree"]
+			portdb = root_config.trees["porttree"].dbapi
+			bindb = root_config.trees["bintree"].dbapi
+			pkg_type, myroot, pkg_key, operation = x
+			pkgindex = 2
+			metadata = pkg.metadata
 			if pkg.installed:
 				if not (buildpkgonly or fetchonly or pretend):
 					try:
@@ -6195,8 +6232,8 @@ class MergeTask(object):
 							[pkg.cpv], mtimedb["ldpath"], clean_world=0,
 							raise_on_error=1)
 					except UninstallFailure, e:
-						return e.status
-				continue
+						raise self._pkg_failure(e.status)
+				return
 
 			if x[0]=="blocks":
 				pkgindex=3
@@ -6240,7 +6277,7 @@ class MergeTask(object):
 						print
 						failed_fetches.append(pkg_key)
 					self.curval += 1
-					continue
+					return
 
 				portage.doebuild_environment(y, "setup", myroot,
 					pkgsettings, self.edebug, 1, portdb)
@@ -6270,7 +6307,8 @@ class MergeTask(object):
 						pkgsettings, self.edebug, cleanup=1,
 						mydbapi=portdb, tree="porttree")
 					if retval != os.EX_OK:
-						return retval
+						raise self._pkg_failure(retval)
+
 					if "--buildpkg" in self.myopts or issyspkg:
 						if issyspkg:
 							print ">>> This is a system package, " + \
@@ -6290,7 +6328,8 @@ class MergeTask(object):
 							tree="porttree")
 						del pkgsettings["PORTAGE_BINPKG_TMPFILE"]
 						if retval != os.EX_OK:
-							return retval
+							raise self._pkg_failure(retval)
+
 						bintree = self.trees[myroot]["bintree"]
 						bintree.inject(pkg_key, filename=binpkg_tmpfile)
 
@@ -6310,7 +6349,7 @@ class MergeTask(object):
 								vartree=vartree, prev_mtimes=ldpath_mtimes,
 								blockers=self._find_blockers(pkg))
 							if retval != os.EX_OK:
-								return retval
+								raise self._pkg_failure(retval)
 						elif "noclean" not in pkgsettings.features:
 							portage.doebuild(y, "clean", myroot,
 								pkgsettings, self.edebug, mydbapi=portdb,
@@ -6326,7 +6365,7 @@ class MergeTask(object):
 							mydbapi=portdb, tree="porttree",
 							prev_mtimes=ldpath_mtimes)
 						if retval != os.EX_OK:
-							return retval
+							raise self._pkg_failure(retval)
 
 						retval = portage.merge(pkgsettings["CATEGORY"],
 							pkgsettings["PF"], pkgsettings["D"],
@@ -6337,7 +6376,7 @@ class MergeTask(object):
 							vartree=vartree, prev_mtimes=ldpath_mtimes,
 							blockers=self._find_blockers(pkg))
 						if retval != os.EX_OK:
-							return retval
+							raise self._pkg_failure(retval)
 				finally:
 					if builddir_lock:
 						elog_process(pkg.cpv, pkgsettings,
@@ -6381,7 +6420,7 @@ class MergeTask(object):
 								writemsg("!!! Fetching Binary failed " + \
 									"for '%s'\n" % pkg_key, noiselevel=-1)
 								if not fetchonly:
-									return 1
+									raise self._pkg_failure()
 								failed_fetches.append(pkg_key)
 							except portage.exception.DigestException, e:
 								writemsg("\n!!! Digest verification failed:\n",
@@ -6396,7 +6435,7 @@ class MergeTask(object):
 									noiselevel=-1)
 								os.unlink(mytbz2)
 								if not fetchonly:
-									return 1
+									raise self._pkg_failure()
 								failed_fetches.append(pkg_key)
 					finally:
 						if tbz2_lock:
@@ -6405,7 +6444,7 @@ class MergeTask(object):
 				if "--fetchonly" in self.myopts or \
 					"--fetch-all-uri" in self.myopts:
 					self.curval += 1
-					continue
+					return
 
 				short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Merge Binary"
 				emergelog(xterm_titles, " === ("+str(mergecount)+\
@@ -6417,7 +6456,7 @@ class MergeTask(object):
 					prev_mtimes=ldpath_mtimes,
 					blockers=self._find_blockers(pkg))
 				if retval != os.EX_OK:
-					return retval
+					raise self._pkg_failure(retval)
 				#need to check for errors
 			if not buildpkgonly:
 				if not (fetchonly or oneshot or pretend) and \
@@ -6491,6 +6530,7 @@ class MergeTask(object):
 			self.curval += 1
 			self._poll_child_processes()
 
+	def _post_merge(self, mtimedb, xterm_titles, failed_fetches):
 		if "--pretend" not in self.myopts:
 			emergelog(xterm_titles, " *** Finished. Cleaning up...")
 
