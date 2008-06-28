@@ -1453,8 +1453,7 @@ class EbuildFetcher(Task):
 
 class EbuildBuild(Task):
 
-	__slots__ = ("ldpath_mtimes",
-		"pkg", "pretend", "settings")
+	__slots__ = ("pkg", "pretend", "settings")
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
@@ -1471,8 +1470,45 @@ class EbuildBuild(Task):
 
 		retval = portage.doebuild(ebuild_path, "install",
 			root_config.root, self.settings, debug, vartree=vartree,
-			mydbapi=portdb, tree="porttree",
-			prev_mtimes=self.ldpath_mtimes)
+			mydbapi=portdb, tree="porttree")
+		return retval
+
+class EbuildBinpkg(Task):
+
+	__slots__ = ("pkg", "pretend", "settings")
+
+	def _get_hash_key(self):
+		hash_key = getattr(self, "_hash_key", None)
+		if hash_key is None:
+			self._hash_key = ("EbuildBinpkg", self.pkg._get_hash_key())
+		return self._hash_key
+
+	def execute(self):
+		pkg = self.pkg
+		root_config = pkg.root_config
+		portdb = root_config.trees["porttree"].dbapi
+		bintree = root_config.trees["bintree"]
+		ebuild_path = portdb.findname(self.pkg.cpv)
+		settings = self.settings
+		debug = settings.get("PORTAGE_DEBUG") == "1"
+
+		bintree.prevent_collision(pkg.cpv)
+		binpkg_tmpfile = os.path.join(bintree.pkgdir,
+			pkg.cpv + ".tbz2." + str(os.getpid()))
+		settings["PORTAGE_BINPKG_TMPFILE"] = binpkg_tmpfile
+		settings.backup_changes("PORTAGE_BINPKG_TMPFILE")
+
+		try:
+			retval = portage.doebuild(ebuild_path,
+				"package", root_config.root,
+				settings, debug, mydbapi=portdb,
+				tree="porttree")
+		finally:
+			self.settings.pop("PORTAGE_BINPKG_TMPFILE", None)
+
+		if retval == os.EX_OK:
+			bintree.inject(pkg.cpv, filename=binpkg_tmpfile)
+
 		return retval
 
 class EbuildMerge(Task):
@@ -6460,20 +6496,12 @@ class MergeTask(object):
 						short_msg = "emerge: (%s of %s) %s Compile" % \
 							(mergecount, len(mymergelist), pkg_key)
 						emergelog(xterm_titles, msg, short_msg=short_msg)
-						self.trees[myroot]["bintree"].prevent_collision(pkg_key)
-						binpkg_tmpfile = os.path.join(pkgsettings["PKGDIR"],
-							pkg_key + ".tbz2." + str(os.getpid()))
-						pkgsettings["PORTAGE_BINPKG_TMPFILE"] = binpkg_tmpfile
-						pkgsettings.backup_changes("PORTAGE_BINPKG_TMPFILE")
-						retval = portage.doebuild(y, "package", myroot,
-							pkgsettings, self.edebug, mydbapi=portdb,
-							tree="porttree")
-						del pkgsettings["PORTAGE_BINPKG_TMPFILE"]
+
+						build = EbuildBinpkg(pkg=pkg, pretend=pretend,
+							settings=pkgsettings)
+						retval = build.execute()
 						if retval != os.EX_OK:
 							raise self._pkg_failure(retval)
-
-						bintree = self.trees[myroot]["bintree"]
-						bintree.inject(pkg_key, filename=binpkg_tmpfile)
 
 						if "--buildpkgonly" not in self.myopts:
 							msg = " === (%s of %s) Merging (%s::%s)" % \
