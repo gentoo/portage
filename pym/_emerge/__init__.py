@@ -1451,6 +1451,30 @@ class EbuildFetcher(Task):
 			mydbapi=portdb, tree="porttree")
 		return retval
 
+class EbuildMerge(Task):
+
+	__slots__ = ("find_blockers", "ldpath_mtimes",
+		"pkg", "pretend", "settings")
+
+	def _get_hash_key(self):
+		hash_key = getattr(self, "_hash_key", None)
+		if hash_key is None:
+			self._hash_key = ("EbuildMerge", self.pkg._get_hash_key())
+		return self._hash_key
+
+	def execute(self):
+		root_config = self.pkg.root_config
+		settings = self.settings
+		retval = portage.merge(settings["CATEGORY"],
+			settings["PF"], settings["D"],
+			os.path.join(settings["PORTAGE_BUILDDIR"],
+			"build-info"), root_config.root, settings,
+			myebuild=settings["EBUILD"],
+			mytree="porttree", mydbapi=root_config.trees["porttree"].dbapi,
+			vartree=vartree, prev_mtimes=self.ldpath_mtimes,
+			blockers=self.find_blockers)
+		return retval
+
 class BinpkgFetcher(Task):
 
 	__slots__ = ("use_locks", "pkg", "pretend",
@@ -6460,14 +6484,12 @@ class MergeTask(object):
 						if retval != os.EX_OK:
 							raise self._pkg_failure(retval)
 
-						retval = portage.merge(pkgsettings["CATEGORY"],
-							pkgsettings["PF"], pkgsettings["D"],
-							os.path.join(pkgsettings["PORTAGE_BUILDDIR"],
-							"build-info"), myroot, pkgsettings,
-							myebuild=pkgsettings["EBUILD"],
-							mytree="porttree", mydbapi=portdb,
-							vartree=vartree, prev_mtimes=ldpath_mtimes,
-							blockers=self._find_blockers(pkg))
+						merge = EbuildMerge(
+							find_blockers=self._find_blockers(pkg),
+							ldpath_mtimes=ldpath_mtimes,
+							pkg=pkg, pretend=pretend, settings=pkgsettings)
+						retval = merge.execute()
+
 						if retval != os.EX_OK:
 							raise self._pkg_failure(retval)
 				finally:
