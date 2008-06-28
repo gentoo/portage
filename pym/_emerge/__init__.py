@@ -1452,8 +1452,10 @@ class EbuildFetcher(Task):
 		return retval
 
 class EbuildBuild(Task):
-
-	__slots__ = ("pkg", "pretend", "settings")
+	"""
+	TODO: Support asynchronous execution, to implement parallel builds.
+	"""
+	__slots__ = ("pkg", "settings")
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
@@ -1475,7 +1477,7 @@ class EbuildBuild(Task):
 
 class EbuildBinpkg(Task):
 
-	__slots__ = ("pkg", "pretend", "settings")
+	__slots__ = ("pkg", "settings")
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
@@ -6515,8 +6517,7 @@ class MergeTask(object):
 							(mergecount, len(mymergelist), pkg_key)
 						emergelog(xterm_titles, msg, short_msg=short_msg)
 
-						build = EbuildBinpkg(pkg=pkg, pretend=pretend,
-							settings=pkgsettings)
+						build = EbuildBinpkg(pkg=pkg, settings=pkgsettings)
 						retval = build.execute()
 						if retval != os.EX_OK:
 							raise self._pkg_failure(retval)
@@ -6546,8 +6547,7 @@ class MergeTask(object):
 							(mergecount, len(mymergelist), pkg_key)
 						emergelog(xterm_titles, msg, short_msg=short_msg)
 
-						build = EbuildBuild(ldpath_mtimes=ldpath_mtimes,
-							pkg=pkg, pretend=pretend, settings=pkgsettings)
+						build = EbuildBuild(pkg=pkg, settings=pkgsettings)
 						retval = build.execute()
 						if retval != os.EX_OK:
 							raise self._pkg_failure(retval)
