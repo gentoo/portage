@@ -1451,6 +1451,66 @@ class EbuildFetcher(Task):
 			mydbapi=portdb, tree="porttree")
 		return retval
 
+class BinpkgFetcher(Task):
+
+	__slots__ = ("use_locks", "pkg", "pretend",
+	"pkg_path", "remote")
+
+	def __init__(self, **kwargs):
+		Task.__init__(self, **kwargs)
+		pkg = self.pkg
+		self.pkg_path = pkg.root_config.trees["bintree"].getname(pkg.cpv)
+
+	def _get_hash_key(self):
+		hash_key = getattr(self, "_hash_key", None)
+		if hash_key is None:
+			self._hash_key = ("BinpkgFetcher", self.ebuild._get_hash_key())
+		return self._hash_key
+
+	def execute(self):
+		tbz2_lock = None
+		use_locks = self.use_locks
+		pkg = self.pkg
+		pretend = self.pretend
+		bintree = pkg.root_config.trees["bintree"]
+		pkgdir = bintree.pkgdir
+		pkg_path = self.pkg_path
+		rval = os.EX_OK
+
+		try:
+			try:
+				if not pretend and use_locks and os.access(pkgdir, os.W_OK):
+					portage.util.ensure_dirs(os.path.dirname(pkg_path))
+					tbz2_lock = portage.locks.lockfile(pkg_path,
+						wantnewlockfile=1)
+				if bintree.isremote(pkg.cpv):
+					self.remote = True
+					if not pretend:
+						bintree.gettbz2(pkg.cpv)
+			finally:
+				if tbz2_lock is not None:
+					portage.locks.unlockfile(tbz2_lock)
+		except portage.exception.FileNotFound:
+			writemsg("!!! Fetching Binary failed " + \
+				"for '%s'\n" % pkg.cpv, noiselevel=-1)
+			rval = 1
+		except portage.exception.DigestException, e:
+			writemsg("\n!!! Digest verification failed:\n",
+				noiselevel=-1)
+			writemsg("!!! %s\n" % e.value[0],
+				noiselevel=-1)
+			writemsg("!!! Reason: %s\n" % e.value[1],
+				noiselevel=-1)
+			writemsg("!!! Got: %s\n" % e.value[2],
+				noiselevel=-1)
+			writemsg("!!! Expected: %s\n" % e.value[3],
+				noiselevel=-1)
+			if not pretend:
+				os.unlink(pkg_path)
+			rval = 1
+		return rval
+
+
 class DependencyArg(object):
 	def __init__(self, arg=None, root_config=None):
 		self.arg = arg
@@ -6412,47 +6472,22 @@ class MergeTask(object):
 
 			elif x[0]=="binary":
 				#merge the tbz2
-				mytbz2 = self.trees[myroot]["bintree"].getname(pkg_key)
+				fetcher = BinpkgFetcher(pkg=pkg, pretend=pretend,
+					use_locks=("distlocks" in pkgsettings.features))
+				mytbz2 = fetcher.pkg_path
 				if "--getbinpkg" in self.myopts:
-					tbz2_lock = None
-					try:
-						if "distlocks" in pkgsettings.features and \
-							os.access(pkgsettings["PKGDIR"], os.W_OK):
-							portage.util.ensure_dirs(os.path.dirname(mytbz2))
-							tbz2_lock = portage.locks.lockfile(mytbz2,
-								wantnewlockfile=1)
-						if self.trees[myroot]["bintree"].isremote(pkg_key):
-							msg = " --- (%s of %s) Fetching Binary (%s::%s)" %\
-								(mergecount, len(mymergelist), pkg_key, mytbz2)
-							short_msg = "emerge: (%s of %s) %s Fetch" % \
-								(mergecount, len(mymergelist), pkg_key)
-							emergelog(xterm_titles, msg, short_msg=short_msg)
-							try:
-								self.trees[myroot]["bintree"].gettbz2(pkg_key)
-							except portage.exception.FileNotFound:
-								writemsg("!!! Fetching Binary failed " + \
-									"for '%s'\n" % pkg_key, noiselevel=-1)
-								if not fetchonly:
-									raise self._pkg_failure()
-								failed_fetches.append(pkg_key)
-							except portage.exception.DigestException, e:
-								writemsg("\n!!! Digest verification failed:\n",
-									noiselevel=-1)
-								writemsg("!!! %s\n" % e.value[0],
-									noiselevel=-1)
-								writemsg("!!! Reason: %s\n" % e.value[1],
-									noiselevel=-1)
-								writemsg("!!! Got: %s\n" % e.value[2],
-									noiselevel=-1)
-								writemsg("!!! Expected: %s\n" % e.value[3],
-									noiselevel=-1)
-								os.unlink(mytbz2)
-								if not fetchonly:
-									raise self._pkg_failure()
-								failed_fetches.append(pkg_key)
-					finally:
-						if tbz2_lock:
-							portage.locks.unlockfile(tbz2_lock)
+					retval = fetcher.execute()
+					if fetcher.remote:
+						msg = " --- (%s of %s) Fetching Binary (%s::%s)" %\
+							(mergecount, len(mymergelist), pkg_key, mytbz2)
+						short_msg = "emerge: (%s of %s) %s Fetch" % \
+							(mergecount, len(mymergelist), pkg_key)
+						emergelog(xterm_titles, msg, short_msg=short_msg)
+
+					if retval != os.EX_OK:
+						failed_fetches.append(pkg.cpv)
+						if not fetchonly:
+							raise self._pkg_failure()
 
 				if "--fetchonly" in self.myopts or \
 					"--fetch-all-uri" in self.myopts:
