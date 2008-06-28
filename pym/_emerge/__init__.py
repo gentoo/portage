@@ -1451,6 +1451,30 @@ class EbuildFetcher(Task):
 			mydbapi=portdb, tree="porttree")
 		return retval
 
+class EbuildBuild(Task):
+
+	__slots__ = ("ldpath_mtimes",
+		"pkg", "pretend", "settings")
+
+	def _get_hash_key(self):
+		hash_key = getattr(self, "_hash_key", None)
+		if hash_key is None:
+			self._hash_key = ("EbuildBuild", self.pkg._get_hash_key())
+		return self._hash_key
+
+	def execute(self):
+		root_config = self.pkg.root_config
+		portdb = root_config.trees["porttree"].dbapi
+		vartree = root_config.trees["vartree"]
+		ebuild_path = portdb.findname(self.pkg.cpv)
+		debug = self.settings.get("PORTAGE_DEBUG") == "1"
+
+		retval = portage.doebuild(ebuild_path, "install",
+			root_config.root, self.settings, debug, vartree=vartree,
+			mydbapi=portdb, tree="porttree",
+			prev_mtimes=self.ldpath_mtimes)
+		return retval
+
 class EbuildMerge(Task):
 
 	__slots__ = ("find_blockers", "ldpath_mtimes",
@@ -6478,10 +6502,10 @@ class MergeTask(object):
 						short_msg = "emerge: (%s of %s) %s Compile" % \
 							(mergecount, len(mymergelist), pkg_key)
 						emergelog(xterm_titles, msg, short_msg=short_msg)
-						retval = portage.doebuild(y, "install", myroot,
-							pkgsettings, self.edebug, vartree=vartree,
-							mydbapi=portdb, tree="porttree",
-							prev_mtimes=ldpath_mtimes)
+
+						build = EbuildBuild(ldpath_mtimes=ldpath_mtimes,
+							pkg=pkg, pretend=pretend, settings=pkgsettings)
+						retval = build.execute()
 						if retval != os.EX_OK:
 							raise self._pkg_failure(retval)
 
