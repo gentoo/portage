@@ -2395,10 +2395,21 @@ class config(object):
 			if not accept_chost:
 				self._accept_chost_re = re.compile(".*")
 			elif len(accept_chost) == 1:
-				self._accept_chost_re = re.compile(r'^%s$' % accept_chost[0])
+				try:
+					self._accept_chost_re = re.compile(r'^%s$' % accept_chost[0])
+				except re.error, e:
+					writemsg("!!! Invalid ACCEPT_CHOSTS value: '%s': %s\n" % \
+						(accept_chost[0], e), noiselevel=-1)
+					self._accept_chost_re = re.compile("^$")
 			else:
-				self._accept_chost_re = re.compile(
-					r'^(%s)$' % "|".join(accept_chost))
+				try:
+					self._accept_chost_re = re.compile(
+						r'^(%s)$' % "|".join(accept_chost))
+				except re.error, e:
+					writemsg("!!! Invalid ACCEPT_CHOSTS value: '%s': %s\n" % \
+						(" ".join(accept_chost), e), noiselevel=-1)
+					self._accept_chost_re = re.compile("^$")
+
 		return self._accept_chost_re.match(
 			pkg.metadata.get("CHOST", "")) is not None
 
