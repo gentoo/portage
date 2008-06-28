@@ -1431,6 +1431,26 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 				v = 0
 		self._pkg.mtime = v
 
+class EbuildFetcher(Task):
+
+	__slots__ = ("fetch_all", "pkg", "pretend", "settings")
+
+	def _get_hash_key(self):
+		hash_key = getattr(self, "_hash_key", None)
+		if hash_key is None:
+			self._hash_key = ("EbuildFetcher", self.ebuild._get_hash_key())
+		return self._hash_key
+
+	def execute(self):
+		portdb = self.pkg.root_config.trees["porttree"].dbapi
+		ebuild_path = portdb.findname(self.pkg.cpv)
+		debug = self.settings.get("PORTAGE_DEBUG") == "1"
+		retval = portage.doebuild(ebuild_path, "fetch",
+			self.settings["ROOT"], self.settings, debug,
+			self.pretend, fetchonly=1, fetchall=self.fetch_all,
+			mydbapi=portdb, tree="porttree")
+		return retval
+
 class DependencyArg(object):
 	def __init__(self, arg=None, root_config=None):
 		self.arg = arg
@@ -6206,8 +6226,9 @@ class MergeTask(object):
 			from portage.elog.filtering import filter_mergephases
 			pkgsettings = self.pkgsettings[pkg.root]
 			buildpkgonly = "--buildpkgonly" in self.myopts
-			fetchonly = "--fetchonly" in self.myopts or \
-				"--fetch-all-uri" in self.myopts
+			fetch_all = "--fetch-all-uri" in self.myopts
+			fetchonly = fetch_all or "--fetchonly" in self.myopts
+			
 			oneshot = "--oneshot" in self.myopts or \
 				"--onlydeps" in self.myopts
 			pretend = "--pretend" in self.myopts
@@ -6259,18 +6280,10 @@ class MergeTask(object):
 			if x[0] in ["ebuild","blocks"]:
 				if x[0] == "blocks" and "--fetchonly" not in self.myopts:
 					raise Exception, "Merging a blocker"
-				elif "--fetchonly" in self.myopts or \
-					"--fetch-all-uri" in self.myopts:
-					if "--fetch-all-uri" in self.myopts:
-						retval = portage.doebuild(y, "fetch", myroot,
-							pkgsettings, self.edebug,
-							"--pretend" in self.myopts, fetchonly=1,
-							fetchall=1, mydbapi=portdb, tree="porttree")
-					else:
-						retval = portage.doebuild(y, "fetch", myroot,
-							pkgsettings, self.edebug,
-							"--pretend" in self.myopts, fetchonly=1,
-							mydbapi=portdb, tree="porttree")
+				elif fetchonly:
+					fetcher = EbuildFetcher(fetch_all=fetch_all,
+						pkg=pkg, pretend=pretend, settings=pkgsettings)
+					retval = fetcher.execute()
 					if (retval is None) or retval:
 						print
 						print "!!! Fetch for",y,"failed, continuing..."
