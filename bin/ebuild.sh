@@ -204,6 +204,18 @@ best_version() {
 	# Takes single depend-type atoms.
 	PYTHONPATH="${PORTAGE_PYM_PATH}:${PYTHONPATH}" \
 	"${PORTAGE_BIN_PATH}/portageq" 'best_version' "${ROOT}" "$1"
+	local retval=$?
+	case "${retval}" in
+		0)
+			return 0
+			;;
+		1)
+			return 1
+			;;
+		*)
+			die "unexpected portageq exit code: ${retval}"
+			;;
+	esac
 }
 
 use_with() {
