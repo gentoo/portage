@@ -1471,7 +1471,8 @@ class EbuildMerge(Task):
 			"build-info"), root_config.root, settings,
 			myebuild=settings["EBUILD"],
 			mytree="porttree", mydbapi=root_config.trees["porttree"].dbapi,
-			vartree=vartree, prev_mtimes=self.ldpath_mtimes,
+			vartree=root_config.trees["vartree"],
+			prev_mtimes=self.ldpath_mtimes,
 			blockers=self.find_blockers)
 		return retval
 
