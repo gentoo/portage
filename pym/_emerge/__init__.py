@@ -6528,14 +6528,11 @@ class MergeTask(object):
 								(mergecount, len(mymergelist), pkg_key)
 							emergelog(xterm_titles, msg, short_msg=short_msg)
 
-							retval = portage.merge(pkgsettings["CATEGORY"],
-								pkgsettings["PF"], pkgsettings["D"],
-								os.path.join(pkgsettings["PORTAGE_BUILDDIR"],
-								"build-info"), myroot, pkgsettings,
-								myebuild=pkgsettings["EBUILD"],
-								mytree="porttree", mydbapi=portdb,
-								vartree=vartree, prev_mtimes=ldpath_mtimes,
-								blockers=self._find_blockers(pkg))
+							merge = EbuildMerge(
+								find_blockers=self._find_blockers(pkg),
+								ldpath_mtimes=ldpath_mtimes,
+								pkg=pkg, pretend=pretend, settings=pkgsettings)
+							retval = merge.execute()
 							if retval != os.EX_OK:
 								raise self._pkg_failure(retval)
 						elif "noclean" not in pkgsettings.features:
