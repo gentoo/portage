@@ -6536,6 +6536,19 @@ def unmerge(root_config, myopts, unmerge_action,
 	global_unmerge=0
 	xterm_titles = "notitles" not in settings.features
 
+	pkg_cache = {}
+
+	def _pkg(cpv):
+		pkg = pkg_cache.get(cpv)
+		if pkg is None:
+			pkg = Package(cpv=cpv, installed=True,
+				metadata=izip(Package.metadata_keys,
+					vartree.dbapi.aux_get(cpv, Package.metadata_keys)),
+				root_config=root_config,
+				type_name="installed")
+			pkg_cache[cpv] = pkg
+		return pkg
+
 	vdb_path = os.path.join(settings["ROOT"], portage.VDB_PATH)
 	try:
 		# At least the parent needs to exist for the lock file.
@@ -6778,6 +6791,12 @@ def unmerge(root_config, myopts, unmerge_action,
 	# relevant package sets.
 	for cp in xrange(len(pkgmap)):
 		for cpv in pkgmap[cp]["selected"].copy():
+			try:
+				pkg = _pkg(cpv)
+			except KeyError:
+				# It could have been uninstalled
+				# by a concurrent process.
+				continue
 			parents = []
 			for s in installed_sets:
 				# skip sets that the user requested to unmerge, and skip world 
@@ -6788,9 +6807,34 @@ def unmerge(root_config, myopts, unmerge_action,
 				# only check instances of EditablePackageSet as other classes are generally used for
 				# special purposes and can be ignored here (and are usually generated dynamically, so the
 				# user can't do much about them anyway)
-				elif sets[s].containsCPV(cpv) \
-					and isinstance(sets[s], EditablePackageSet):
-					parents.append(s)
+				if isinstance(sets[s], EditablePackageSet):
+
+					# This is derived from a snippet of code in the
+					# depgraph._iter_atoms_for_pkg() method.
+					for atom in sets[s].iterAtomsForPackage(pkg):
+						inst_matches = vartree.dbapi.match(atom)
+						inst_matches.reverse() # descending order
+						higher_slot = None
+						for inst_cpv in inst_matches:
+							try:
+								inst_pkg = _pkg(inst_cpv)
+							except KeyError:
+								# It could have been uninstalled
+								# by a concurrent process.
+								continue
+
+							if inst_pkg.cp != atom.cp:
+								continue
+							if pkg >= inst_pkg:
+								# This is descending order, and we're not
+								# interested in any versions <= pkg given.
+								break
+							if pkg.slot_atom != inst_pkg.slot_atom:
+								higher_slot = inst_pkg
+								break
+						if higher_slot is None:
+							parents.append(s)
+							break
 			if parents:
 				#print colorize("WARN", "Package %s is going to be unmerged," % cpv)
 				#print colorize("WARN", "but still listed in the following package sets:")
