@@ -1536,6 +1536,25 @@ class EbuildMerge(Task):
 			blockers=self.find_blockers)
 		return retval
 
+class PackageUninstall(Task):
+
+	__slots__ = ("ldpath_mtimes", "opts", "pkg", "settings")
+
+	def _get_hash_key(self):
+		hash_key = getattr(self, "_hash_key", None)
+		if hash_key is None:
+			self._hash_key = ("PackageUninstall", self.pkg._get_hash_key())
+		return self._hash_key
+
+	def execute(self):
+		try:
+			unmerge(self.pkg.root_config, self.opts, "unmerge",
+				[self.pkg.cpv], self.ldpath_mtimes, clean_world=0,
+				raise_on_error=1)
+		except UninstallFailure, e:
+			return e.status
+		return os.EX_OK
+
 class BinpkgFetcher(Task):
 
 	__slots__ = ("use_locks", "pkg", "pretend",
@@ -6413,12 +6432,11 @@ class MergeTask(object):
 			metadata = pkg.metadata
 			if pkg.installed:
 				if not (buildpkgonly or fetchonly or pretend):
-					try:
-						unmerge(root_config, self.myopts, "unmerge",
-							[pkg.cpv], mtimedb["ldpath"], clean_world=0,
-							raise_on_error=1)
-					except UninstallFailure, e:
-						raise self._pkg_failure(e.status)
+					uninstall = PackageUninstall(ldpath_mtimes=ldpath_mtimes,
+						opts=self.myopts, pkg=pkg, settings=pkgsettings)
+					retval = uninstall.execute()
+					if retval != os.EX_OK:
+						raise self._pkg_failure(retval)
 				return
 
 			if x[0]=="blocks":
