@@ -1476,7 +1476,9 @@ class EbuildBuild(Task):
 		return retval
 
 class EbuildBinpkg(Task):
-
+	"""
+	This assumes that src_install() has successfully completed.
+	"""
 	__slots__ = ("pkg", "settings")
 
 	def _get_hash_key(self):
@@ -1500,13 +1502,21 @@ class EbuildBinpkg(Task):
 		settings["PORTAGE_BINPKG_TMPFILE"] = binpkg_tmpfile
 		settings.backup_changes("PORTAGE_BINPKG_TMPFILE")
 
+		# Earlier phases should already be done, so
+		# use "noauto" to quietly skip them.
+		settings.features.append("noauto")
+
 		try:
 			retval = portage.doebuild(ebuild_path,
 				"package", root_config.root,
 				settings, debug, mydbapi=portdb,
 				tree="porttree")
 		finally:
-			self.settings.pop("PORTAGE_BINPKG_TMPFILE", None)
+			settings.pop("PORTAGE_BINPKG_TMPFILE", None)
+			try:
+				settings.features.remove("noauto")
+			except ValueError:
+				pass
 
 		if retval == os.EX_OK:
 			bintree.inject(pkg.cpv, filename=binpkg_tmpfile)
@@ -6516,6 +6526,11 @@ class MergeTask(object):
 						short_msg = "emerge: (%s of %s) %s Compile" % \
 							(mergecount, len(mymergelist), pkg_key)
 						emergelog(xterm_titles, msg, short_msg=short_msg)
+
+						build = EbuildBuild(pkg=pkg, settings=pkgsettings)
+						retval = build.execute()
+						if retval != os.EX_OK:
+							raise self._pkg_failure(retval)
 
 						build = EbuildBinpkg(pkg=pkg, settings=pkgsettings)
 						retval = build.execute()
