@@ -1438,7 +1438,7 @@ class EbuildFetcher(Task):
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
 		if hash_key is None:
-			self._hash_key = ("EbuildFetcher", self.ebuild._get_hash_key())
+			self._hash_key = ("EbuildFetcher", self.pkg._get_hash_key())
 		return self._hash_key
 
 	def execute(self):
@@ -1464,7 +1464,7 @@ class BinpkgFetcher(Task):
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
 		if hash_key is None:
-			self._hash_key = ("BinpkgFetcher", self.ebuild._get_hash_key())
+			self._hash_key = ("BinpkgFetcher", self.pkg._get_hash_key())
 		return self._hash_key
 
 	def execute(self):
@@ -1510,6 +1510,26 @@ class BinpkgFetcher(Task):
 			rval = 1
 		return rval
 
+class BinpkgMerge(Task):
+
+	__slots__ = ("find_blockers", "ldpath_mtimes",
+		"pkg", "pretend", "pkg_path", "settings")
+
+	def _get_hash_key(self):
+		hash_key = getattr(self, "_hash_key", None)
+		if hash_key is None:
+			self._hash_key = ("BinpkgMerge", self.pkg._get_hash_key())
+		return self._hash_key
+
+	def execute(self):
+		root_config = self.pkg.root_config
+		retval = portage.pkgmerge(self.pkg_path, root_config.root,
+			self.settings,
+			mydbapi=root_config.trees["bintree"].dbapi,
+			vartree=root_config.trees["vartree"],
+			prev_mtimes=self.ldpath_mtimes,
+			blockers=self.find_blockers)
+		return retval
 
 class DependencyArg(object):
 	def __init__(self, arg=None, root_config=None):
@@ -6498,11 +6518,10 @@ class MergeTask(object):
 				emergelog(xterm_titles, " === ("+str(mergecount)+\
 					" of "+str(len(mymergelist))+") Merging Binary ("+\
 					x[pkgindex]+"::"+mytbz2+")", short_msg=short_msg)
-				retval = portage.pkgmerge(mytbz2, x[1], pkgsettings,
-					mydbapi=bindb,
-					vartree=self.trees[myroot]["vartree"],
-					prev_mtimes=ldpath_mtimes,
-					blockers=self._find_blockers(pkg))
+				merge = BinpkgMerge(find_blockers=self._find_blockers(pkg),
+					ldpath_mtimes=ldpath_mtimes, pkg=pkg, pretend=pretend,
+					pkg_path=fetcher.pkg_path, settings=pkgsettings)
+				retval = merge.execute()
 				if retval != os.EX_OK:
 					raise self._pkg_failure(retval)
 				#need to check for errors
