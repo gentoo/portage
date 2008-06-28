@@ -276,6 +276,10 @@ def match(argv):
 		sys.exit(2)
 	root, atom = argv
 	if atom:
+		if atom_validate_strict and not portage.isvalidatom(atom):
+			portage.writemsg("ERROR: Invalid atom: '%s'\n" % atom,
+				noiselevel=-1)
+			return 2
 		results = portage.db[root]["vartree"].dbapi.match(atom)
 	else:
 		results = portage.db[root]["vartree"].dbapi.cpv_all()
