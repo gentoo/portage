@@ -4817,6 +4817,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		vartree = db[myroot]["vartree"]
 
 	features = mysettings.features
+	noauto = "noauto" in features
 	from portage.data import secpass
 
 	validcommands = ["help","clean","prerm","postrm","cleanrm","preinst","postinst",
@@ -4931,6 +4932,20 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		doebuild_environment(myebuild, mydo, myroot, mysettings, debug,
 			use_cache, mydbapi)
+
+		clean_phases = ("clean", "cleanrm")
+		if mydo in clean_phases or \
+			(not noauto and mydo in actionmap_deps and \
+			mysettings.get("EMERGE_FROM") == "ebuild"):
+			if mydo not in clean_phases:
+				mysettings["EBUILD_PHASE"] = "clean"
+			try:
+				retval = spawn(_shell_quote(ebuild_sh_binary) + " clean",
+					mysettings, debug=debug, free=1, logfile=None)
+			finally:
+				mysettings["EBUILD_PHASE"] = mydo
+			if mydo in clean_phases or retval != os.EX_OK:
+				return retval
 
 		# get possible slot information from the deps file
 		if mydo == "depend":
@@ -5144,10 +5159,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		# if any of these are being called, handle them -- running them out of
 		# the sandbox -- and stop now.
-		if mydo in ["clean","cleanrm"]:
-			return spawn(_shell_quote(ebuild_sh_binary) + " clean", mysettings,
-				debug=debug, free=1, logfile=None)
-		elif mydo == "help":
+		if mydo == "help":
 			return spawn(_shell_quote(ebuild_sh_binary) + " " + mydo,
 				mysettings, debug=debug, free=1, logfile=logfile)
 		elif mydo == "setup":

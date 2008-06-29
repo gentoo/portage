@@ -6562,16 +6562,13 @@ class MergeTask(object):
 				build_dir = EbuildBuildDir(pkg=pkg, settings=pkgsettings)
 				try:
 					build_dir.lock()
+					# Cleaning is triggered before the setup
+					# phase, in portage.doebuild().
 					msg = " === (%s of %s) Cleaning (%s::%s)" % \
 						(mergecount, len(mymergelist), pkg_key, y)
 					short_msg = "emerge: (%s of %s) %s Clean" % \
 						(mergecount, len(mymergelist), pkg_key)
 					emergelog(xterm_titles, msg, short_msg=short_msg)
-					retval = portage.doebuild(y, "clean", myroot,
-						pkgsettings, self.edebug, cleanup=1,
-						mydbapi=portdb, tree="porttree")
-					if retval != os.EX_OK:
-						raise self._pkg_failure(retval)
 
 					if "--buildpkg" in self.myopts or issyspkg:
 						if issyspkg:
