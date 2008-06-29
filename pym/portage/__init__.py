@@ -4289,36 +4289,51 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 					apply_secpass_permissions(fpath, uid=myuid, gid=mygid,
 						mode=mystat.st_mode, stat_cached=mystat,
 						follow_links=False)
-			# Note: PORTAGE_BIN_PATH may differ from the global
-			# constant when portage is reinstalling itself.
-			portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
-			misc_sh_binary = os.path.join(portage_bin_path,
-				os.path.basename(MISC_SH_BINARY))
-			mycommand = " ".join([_shell_quote(misc_sh_binary),
-				"install_qa_check", "install_symlink_html_docs"])
-			_doebuild_exit_status_unlink(
-				mysettings.get("EBUILD_EXIT_STATUS_FILE"))
-			filter_calling_env_state = mysettings._filter_calling_env
-			if os.path.exists(os.path.join(mysettings["T"], "environment")):
-				mysettings._filter_calling_env = True
-			try:
-				qa_retval = spawn(mycommand, mysettings, debug=debug,
-					logfile=logfile, **kwargs)
-			finally:
-				mysettings._filter_calling_env = filter_calling_env_state
-			msg = _doebuild_exit_status_check(mydo, mysettings)
-			if msg:
-				qa_retval = 1
-				from textwrap import wrap
-				from portage.elog.messages import eerror
-				for l in wrap(msg, 72):
-					eerror(l, phase=mydo, key=mysettings.mycpv)
+			qa_retval = _spawn_misc_sh(mysettings, ["install_qa_check",
+				"install_symlink_html_docs"], **kwargs)
 			if qa_retval != os.EX_OK:
 				writemsg("!!! install_qa_check failed; exiting.\n",
 					noiselevel=-1)
-			return qa_retval
+				return qa_retval
 	return phase_retval
 
+def _spawn_misc_sh(mysettings, commands, **kwargs):
+	"""
+	@param mysettings: the ebuild config
+	@type mysettings: config
+	@param commands: a list of function names to call in misc-functions.sh
+	@type commands: list
+	@rtype: int
+	@returns: the return value from the spawn() call
+	"""
+
+	# Note: PORTAGE_BIN_PATH may differ from the global
+	# constant when portage is reinstalling itself.
+	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
+	misc_sh_binary = os.path.join(portage_bin_path,
+		os.path.basename(MISC_SH_BINARY))
+	mycommand = " ".join([_shell_quote(misc_sh_binary)] + commands)
+	_doebuild_exit_status_unlink(
+		mysettings.get("EBUILD_EXIT_STATUS_FILE"))
+	filter_calling_env_state = mysettings._filter_calling_env
+	if os.path.exists(os.path.join(mysettings["T"], "environment")):
+		mysettings._filter_calling_env = True
+	debug = mysettings.get("PORTAGE_DEBUG") == "1"
+	logfile = mysettings.get("PORTAGE_LOG_FILE")
+	mydo = mysettings["EBUILD_PHASE"]
+	try:
+		rval = spawn(mycommand, mysettings, debug=debug,
+			logfile=logfile, **kwargs)
+	finally:
+		mysettings._filter_calling_env = filter_calling_env_state
+	msg = _doebuild_exit_status_check(mydo, mysettings)
+	if msg:
+		rval = 1
+		from textwrap import wrap
+		from portage.elog.messages import eerror
+		for l in wrap(msg, 72):
+			eerror(l, phase=mydo, key=mysettings.mycpv)
+	return rval
 
 def eapi_is_supported(eapi):
 	try:
