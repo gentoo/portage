@@ -4267,28 +4267,7 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 					_eqawarn(msg)
 
 		if mydo == "install":
-			# User and group bits that match the "portage" user or group are
-			# automatically mapped to PORTAGE_INST_UID and PORTAGE_INST_GID if
-			# necessary.  The chown system call may clear S_ISUID and S_ISGID
-			# bits, so those bits are restored if necessary.
-			inst_uid = int(mysettings["PORTAGE_INST_UID"])
-			inst_gid = int(mysettings["PORTAGE_INST_GID"])
-			for parent, dirs, files in os.walk(mysettings["D"]):
-				for fname in chain(dirs, files):
-					fpath = os.path.join(parent, fname)
-					mystat = os.lstat(fpath)
-					if mystat.st_uid != portage_uid and \
-						mystat.st_gid != portage_gid:
-						continue
-					myuid = -1
-					mygid = -1
-					if mystat.st_uid == portage_uid:
-						myuid = inst_uid
-					if mystat.st_gid == portage_gid:
-						mygid = inst_gid
-					apply_secpass_permissions(fpath, uid=myuid, gid=mygid,
-						mode=mystat.st_mode, stat_cached=mystat,
-						follow_links=False)
+			_post_src_install_uid_fix(mysettings)
 			qa_retval = _spawn_misc_sh(mysettings, ["install_qa_check",
 				"install_symlink_html_docs"], **kwargs)
 			if qa_retval != os.EX_OK:
@@ -4296,6 +4275,33 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 					noiselevel=-1)
 				return qa_retval
 	return phase_retval
+
+def _post_src_install_uid_fix(mysettings):
+	"""
+	Files in $D with user and group bits that match the "portage"
+	user or group are automatically mapped to PORTAGE_INST_UID and
+	PORTAGE_INST_GID if necessary. The chown system call may clear
+	S_ISUID and S_ISGID bits, so those bits are restored if
+	necessary.
+	"""
+	inst_uid = int(mysettings["PORTAGE_INST_UID"])
+	inst_gid = int(mysettings["PORTAGE_INST_GID"])
+	for parent, dirs, files in os.walk(mysettings["D"]):
+		for fname in chain(dirs, files):
+			fpath = os.path.join(parent, fname)
+			mystat = os.lstat(fpath)
+			if mystat.st_uid != portage_uid and \
+				mystat.st_gid != portage_gid:
+				continue
+			myuid = -1
+			mygid = -1
+			if mystat.st_uid == portage_uid:
+				myuid = inst_uid
+			if mystat.st_gid == portage_gid:
+				mygid = inst_gid
+			apply_secpass_permissions(fpath, uid=myuid, gid=mygid,
+				mode=mystat.st_mode, stat_cached=mystat,
+				follow_links=False)
 
 def _spawn_misc_sh(mysettings, commands, **kwargs):
 	"""
