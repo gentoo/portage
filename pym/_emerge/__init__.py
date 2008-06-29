@@ -2749,6 +2749,13 @@ class depgraph(object):
 				if debug:
 					print "Candidates:", selected_atoms
 				for atom in selected_atoms:
+					if isinstance(atom, basestring) \
+						and not portage.isvalidatom(atom):
+						show_invalid_depstring_notice(
+							pkg, dep_string, str(atom))
+						if not pkg.installed:
+							return 0
+						continue
 					blocker = atom.startswith("!")
 					if blocker:
 						atom = atom[1:]
