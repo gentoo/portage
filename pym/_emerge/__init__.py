@@ -1538,12 +1538,17 @@ class EbuildBuild(Task):
 	def execute(self):
 		root_config = self.pkg.root_config
 		portdb = root_config.trees["porttree"].dbapi
-		vartree = root_config.trees["vartree"]
 		ebuild_path = portdb.findname(self.pkg.cpv)
 		debug = self.settings.get("PORTAGE_DEBUG") == "1"
 
+		retval = portage.doebuild(ebuild_path, "clean",
+			root_config.root, self.settings, debug, cleanup=1,
+			mydbapi=portdb, tree="porttree")
+		if retval != os.EX_OK:
+			return retval
+
 		retval = portage.doebuild(ebuild_path, "install",
-			root_config.root, self.settings, debug, vartree=vartree,
+			root_config.root, self.settings, debug,
 			mydbapi=portdb, tree="porttree")
 		return retval
 

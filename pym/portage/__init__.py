@@ -4934,18 +4934,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			use_cache, mydbapi)
 
 		clean_phases = ("clean", "cleanrm")
-		if mydo in clean_phases or \
-			(not noauto and mydo in actionmap_deps and \
-			mysettings.get("EMERGE_FROM") == "ebuild"):
-			if mydo not in clean_phases:
-				mysettings["EBUILD_PHASE"] = "clean"
-			try:
-				retval = spawn(_shell_quote(ebuild_sh_binary) + " clean",
-					mysettings, debug=debug, free=1, logfile=None)
-			finally:
-				mysettings["EBUILD_PHASE"] = mydo
-			if mydo in clean_phases or retval != os.EX_OK:
-				return retval
+		if mydo in clean_phases:
+			retval = spawn(_shell_quote(ebuild_sh_binary) + " clean",
+				mysettings, debug=debug, free=1, logfile=None)
+			return retval
 
 		# get possible slot information from the deps file
 		if mydo == "depend":
