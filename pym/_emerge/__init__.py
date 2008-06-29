@@ -1451,6 +1451,78 @@ class EbuildFetcher(Task):
 			mydbapi=portdb, tree="porttree")
 		return retval
 
+class EbuildBuildDir(SlotObject):
+
+	__slots__ = ("pkg", "settings",
+		"locked", "_catdir", "_lock_obj")
+
+	def __init__(self, **kwargs):
+		SlotObject.__init__(self, **kwargs)
+		self.locked = False
+
+	def lock(self):
+		"""
+		This raises an AlreadyLocked exception if lock() is called
+		while a lock is already held. In order to avoid this, call
+		unlock() or check whether the "locked" attribute is True
+		or False before calling lock().
+		"""
+		if self._lock_obj is not None:
+			raise self.AlreadyLocked((self._lock_obj,))
+
+		root_config = self.pkg.root_config
+		portdb = root_config.trees["porttree"].dbapi
+		ebuild_path = portdb.findname(self.pkg.cpv)
+		settings = self.settings
+		debug = settings.get("PORTAGE_DEBUG") == "1"
+		use_cache = 1 # always true
+
+		portage.doebuild_environment(ebuild_path, "setup", root_config.root,
+			self.settings, debug, use_cache, portdb)
+		catdir = os.path.dirname(settings["PORTAGE_BUILDDIR"])
+		self._catdir = catdir
+		portage.util.ensure_dirs(os.path.dirname(catdir),
+			uid=portage.portage_uid, gid=portage.portage_gid,
+			mode=070, mask=0)
+		catdir_lock = None
+		try:
+			catdir_lock = portage.locks.lockdir(catdir)
+			portage.util.ensure_dirs(catdir,
+				gid=portage.portage_gid,
+				mode=070, mask=0)
+			self._lock_obj = portage.locks.lockdir(
+				self.settings["PORTAGE_BUILDDIR"])
+		finally:
+			self.locked = self._lock_obj is not None
+			if catdir_lock is not None:
+				portage.locks.unlockdir(catdir_lock)
+
+	def unlock(self):
+		if self._lock_obj is None:
+			return
+
+		portage.locks.unlockdir(self._lock_obj)
+		self._lock_obj = None
+		self.locked = False
+
+		catdir = self._catdir
+		catdir_lock = None
+		try:
+			catdir_lock = portage.locks.lockdir(catdir)
+		finally:
+			if catdir_lock:
+				try:
+					os.rmdir(catdir)
+				except OSError, e:
+					if e.errno not in (errno.ENOENT,
+						errno.ENOTEMPTY, errno.EEXIST):
+						raise
+					del e
+				portage.locks.unlockdir(catdir_lock)
+
+	class AlreadyLocked(portage.exception.PortageException):
+		pass
+
 class EbuildBuild(Task):
 	"""
 	TODO: Support asynchronous execution, to implement parallel builds.
@@ -6487,25 +6559,9 @@ class MergeTask(object):
 					self.curval += 1
 					return
 
-				portage.doebuild_environment(y, "setup", myroot,
-					pkgsettings, self.edebug, 1, portdb)
-				catdir = os.path.dirname(pkgsettings["PORTAGE_BUILDDIR"])
-				portage.util.ensure_dirs(os.path.dirname(catdir),
-					uid=portage.portage_uid, gid=portage.portage_gid,
-					mode=070, mask=0)
-				builddir_lock = None
-				catdir_lock = None
+				build_dir = EbuildBuildDir(pkg=pkg, settings=pkgsettings)
 				try:
-					catdir_lock = portage.locks.lockdir(catdir)
-					portage.util.ensure_dirs(catdir,
-						gid=portage.portage_gid,
-						mode=070, mask=0)
-					builddir_lock = portage.locks.lockdir(
-						pkgsettings["PORTAGE_BUILDDIR"])
-					try:
-						portage.locks.unlockdir(catdir_lock)
-					finally:
-						catdir_lock = None
+					build_dir.lock()
 					msg = " === (%s of %s) Cleaning (%s::%s)" % \
 						(mergecount, len(mymergelist), pkg_key, y)
 					short_msg = "emerge: (%s of %s) %s Clean" % \
@@ -6576,24 +6632,10 @@ class MergeTask(object):
 						if retval != os.EX_OK:
 							raise self._pkg_failure(retval)
 				finally:
-					if builddir_lock:
+					if build_dir.locked:
 						elog_process(pkg.cpv, pkgsettings,
 							phasefilter=filter_mergephases)
-						portage.locks.unlockdir(builddir_lock)
-					try:
-						if not catdir_lock:
-							# Lock catdir for removal if empty.
-							catdir_lock = portage.locks.lockdir(catdir)
-					finally:
-						if catdir_lock:
-							try:
-								os.rmdir(catdir)
-							except OSError, e:
-								if e.errno not in (errno.ENOENT,
-									errno.ENOTEMPTY, errno.EEXIST):
-									raise
-								del e
-							portage.locks.unlockdir(catdir_lock)
+						build_dir.unlock()
 
 			elif x[0]=="binary":
 				#merge the tbz2
