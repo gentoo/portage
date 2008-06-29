@@ -1529,6 +1529,8 @@ class EbuildBuild(Task):
 	"""
 	__slots__ = ("pkg", "settings")
 
+	_phases = ("setup", "unpack", "compile", "test", "install")
+
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
 		if hash_key is None:
@@ -1547,10 +1549,13 @@ class EbuildBuild(Task):
 		if retval != os.EX_OK:
 			return retval
 
-		retval = portage.doebuild(ebuild_path, "install",
-			root_config.root, self.settings, debug,
-			mydbapi=portdb, tree="porttree")
-		return retval
+		for mydo in self._phases:
+			retval = portage.doebuild(ebuild_path, mydo,
+				root_config.root, self.settings, debug,
+				mydbapi=portdb, tree="porttree")
+			if retval != os.EX_OK:
+				return retval
+		return os.EX_OK
 
 class EbuildBinpkg(Task):
 	"""

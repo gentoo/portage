@@ -4161,7 +4161,8 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 
 # parse actionmap to spawn ebuild with the appropriate args
 def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
-	if alwaysdep or "noauto" not in mysettings.features:
+	if "EMERGE_FROM" not in mysettings and \
+		(alwaysdep or "noauto" not in mysettings.features):
 		# process dependency first
 		if "dep" in actionmap[mydo]:
 			retval=spawnebuild(actionmap[mydo]["dep"],actionmap,mysettings,debug,alwaysdep=alwaysdep,logfile=logfile)
@@ -5298,7 +5299,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# unpack compile install`, we will try and fetch 4 times :/
 		need_distfiles = (mydo in ("fetch", "unpack") or \
 			mydo not in ("digest", "manifest") and "noauto" not in features)
-		if need_distfiles and not fetch(
+		if not ("EMERGE_FROM" in mysettings and mydo != "unpack") and \
+			need_distfiles and not fetch(
 			fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
 			if have_build_dirs:
 				# Create an elog message for this fetch failure since the
@@ -5330,10 +5332,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				return 1
 
 		# See above comment about fetching only when needed
-		if not digestcheck(checkme, mysettings, ("strict" in features),
-			(mydo not in ["digest","fetch","unpack"] and \
-			mysettings.get("PORTAGE_CALLER", None) == "ebuild" and \
-			"noauto" in features)):
+		if not ("EMERGE_FROM" in mysettings and mydo != "unpack") and \
+			not digestcheck(checkme, mysettings, "strict" in features):
 			return 1
 
 		if mydo == "fetch":
