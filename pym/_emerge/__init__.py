@@ -1541,21 +1541,183 @@ class EbuildBuild(Task):
 		root_config = self.pkg.root_config
 		portdb = root_config.trees["porttree"].dbapi
 		ebuild_path = portdb.findname(self.pkg.cpv)
-		debug = self.settings.get("PORTAGE_DEBUG") == "1"
+		settings = self.settings
+		debug = settings.get("PORTAGE_DEBUG") == "1"
+		cleanup = 1
 
 		retval = portage.doebuild(ebuild_path, "clean",
-			root_config.root, self.settings, debug, cleanup=1,
+			root_config.root, settings, debug, cleanup=cleanup,
 			mydbapi=portdb, tree="porttree")
 		if retval != os.EX_OK:
 			return retval
 
+		# This initializes PORTAGE_LOG_FILE.
+		portage.prepare_build_dirs(root_config.root, settings, cleanup)
+
+		fd_pipes = {
+			0 : sys.stdin.fileno(),
+			1 : sys.stdout.fileno(),
+			2 : sys.stderr.fileno(),
+		}
+
 		for mydo in self._phases:
-			retval = portage.doebuild(ebuild_path, mydo,
-				root_config.root, self.settings, debug,
-				mydbapi=portdb, tree="porttree")
+			ebuild_phase = EbuildPhase(fd_pipes=fd_pipes,
+				pkg=self.pkg, phase=mydo, settings=settings)
+			ebuild_phase.start()
+			ebuild_phase._output_handler()
+			retval = ebuild_phase.wait()
+
+			portage._post_phase_userpriv_perms(settings)
+			if mydo == "install":
+				portage._check_build_log(settings)
+				if retval == os.EX_OK:
+					retval = portage._post_src_install_checks(settings)
+
 			if retval != os.EX_OK:
 				return retval
+
 		return os.EX_OK
+
+class EbuildPhase(SlotObject):
+
+	__slots__ = ("fd_pipes", "phase", "pkg", "settings",
+		"pid", "returncode", "files")
+
+	_file_names = ("log", "stdout", "ebuild")
+	_files_dict = slot_dict_class(_file_names)
+	_bufsize = 4096
+
+	def start(self):
+		root_config = self.pkg.root_config
+		portdb = root_config.trees["porttree"].dbapi
+		ebuild_path = portdb.findname(self.pkg.cpv)
+		settings = self.settings
+		debug = settings.get("PORTAGE_DEBUG") == "1"
+		logfile = settings.get("PORTAGE_LOG_FILE")
+		master_fd = None
+		slave_fd = None
+		fd_pipes = self.fd_pipes.copy()
+
+		# flush any pending output
+		for fd in fd_pipes.itervalues():
+			if fd == sys.stdout.fileno():
+				sys.stdout.flush()
+			if fd == sys.stderr.fileno():
+				sys.stderr.flush()
+
+		fd_pipes_orig = None
+		self.files = self._files_dict()
+		files = self.files
+		got_pty = False
+
+		portage._doebuild_exit_status_unlink(
+			settings.get("EBUILD_EXIT_STATUS_FILE"))
+
+		if logfile:
+			if portage._disable_openpty:
+				master_fd, slave_fd = os.pipe()
+			else:
+				from pty import openpty
+				try:
+					master_fd, slave_fd = openpty()
+					got_pty = True
+				except EnvironmentError, e:
+					portage._disable_openpty = True
+					portage.writemsg("openpty failed: '%s'\n" % str(e),
+						noiselevel=-1)
+					del e
+					master_fd, slave_fd = os.pipe()
+
+			if got_pty:
+				# Disable post-processing of output since otherwise weird
+				# things like \n -> \r\n transformations may occur.
+				import termios
+				mode = termios.tcgetattr(slave_fd)
+				mode[1] &= ~termios.OPOST
+				termios.tcsetattr(slave_fd, termios.TCSANOW, mode)
+
+			import fcntl
+			fcntl.fcntl(master_fd, fcntl.F_SETFL,
+				fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+
+			fd_pipes.setdefault(0, sys.stdin.fileno())
+			fd_pipes_orig = fd_pipes.copy()
+			if got_pty and os.isatty(fd_pipes_orig[1]):
+				from portage.output import get_term_size, set_term_size
+				rows, columns = get_term_size()
+				set_term_size(rows, columns, slave_fd)
+			fd_pipes[0] = fd_pipes_orig[0]
+			fd_pipes[1] = slave_fd
+			fd_pipes[2] = slave_fd
+
+		retval = portage.doebuild(ebuild_path, self.phase,
+			root_config.root, settings, debug,
+			mydbapi=portdb, tree="porttree",
+			fd_pipes=fd_pipes, returnpid=True)
+
+		self.pid = retval[0]
+
+		if logfile:
+			os.close(slave_fd)
+			files["log"] = open(logfile, 'a')
+			files["stdout"] = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
+			files["ebuild"] = os.fdopen(master_fd, 'r')
+
+	def _output_handler(self):
+		log_file = self.files.get("log")
+		if log_file is None:
+			return
+		ebuild_file = self.files["ebuild"]
+		stdout_file = self.files["stdout"]
+		iwtd = [ebuild_file]
+		owtd = []
+		ewtd = []
+		import array, select
+		buffsize = self._bufsize
+		eof = False
+		while not eof:
+			events = select.select(iwtd, owtd, ewtd)
+			for f in events[0]:
+				# Use non-blocking mode to prevent read
+				# calls from blocking indefinitely.
+				buf = array.array('B')
+				try:
+					buf.fromfile(f, buffsize)
+				except EOFError:
+					pass
+				if not buf:
+					eof = True
+					break
+				if f is ebuild_file:
+					buf.tofile(stdout_file)
+					stdout_file.flush()
+					buf.tofile(log_file)
+					log_file.flush()
+		log_file.close()
+		stdout_file.close()
+		ebuild_file.close()
+
+	def wait(self):
+		pid = self.pid
+		retval = os.waitpid(pid, 0)[1]
+		portage.process.spawned_pids.remove(pid)
+		if retval != os.EX_OK:
+			if retval & 0xff:
+				retval = (retval & 0xff) << 8
+			else:
+				retval = retval >> 8
+
+		msg = portage._doebuild_exit_status_check(
+			self.phase, self.settings)
+		if msg:
+			retval = 1
+			from textwrap import wrap
+			from portage.elog.messages import eerror
+			for l in wrap(msg, 72):
+				eerror(l, phase=self.phase, key=self.pkg.cpv)
+
+		self.returncode = retval
+		return self.returncode
 
 class EbuildBinpkg(Task):
 	"""

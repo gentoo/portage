@@ -2940,6 +2940,10 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		env=mysettings.environ()
 		keywords["opt_name"]="[%s]" % mysettings["PF"]
 
+	if "EMERGE_FROM" in mysettings:
+		# emerge handles logging externally
+		keywords.pop("logfile", None)
+
 	fd_pipes = keywords.get("fd_pipes")
 	if fd_pipes is None:
 		fd_pipes = {
@@ -4160,12 +4164,15 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	return 1
 
 # parse actionmap to spawn ebuild with the appropriate args
-def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
+def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
+	logfile=None, fd_pipes=None, returnpid=False):
 	if "EMERGE_FROM" not in mysettings and \
 		(alwaysdep or "noauto" not in mysettings.features):
 		# process dependency first
 		if "dep" in actionmap[mydo]:
-			retval=spawnebuild(actionmap[mydo]["dep"],actionmap,mysettings,debug,alwaysdep=alwaysdep,logfile=logfile)
+			retval = spawnebuild(actionmap[mydo]["dep"], actionmap,
+				mysettings, debug, alwaysdep=alwaysdep, logfile=logfile,
+				fd_pipes=fd_pipes, returnpid=returnpid)
 			if retval:
 				return retval
 	kwargs = actionmap[mydo]["args"]
@@ -4177,10 +4184,13 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 		mysettings._filter_calling_env = True
 	try:
 		phase_retval = spawn(actionmap[mydo]["cmd"] % mydo,
-			mysettings, debug=debug, logfile=logfile, **kwargs)
+			mysettings, debug=debug, logfile=logfile,
+			fd_pipes=fd_pipes, returnpid=returnpid, **kwargs)
 	finally:
 		mysettings["EBUILD_PHASE"] = ""
 		mysettings._filter_calling_env = filter_calling_env_state
+	if returnpid:
+		return phase_retval
 	msg = _doebuild_exit_status_check(mydo, mysettings)
 	if msg:
 		phase_retval = 1
@@ -4189,27 +4199,29 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 		for l in wrap(msg, 72):
 			eerror(l, phase=mydo, key=mysettings.mycpv)
 
-	if "userpriv" in mysettings.features and \
-		not kwargs["droppriv"] and secpass >= 2:
+	_post_phase_userpriv_perms(mysettings)
+	if mydo == "install":
+		_check_build_log(mysettings)
+		if phase_retval == os.EX_OK:
+			phase_retval = _post_src_install_checks(mysettings)
+	return phase_retval
+
+def _post_phase_userpriv_perms(mysettings):
+	if "userpriv" in mysettings.features and secpass >= 2:
 		""" Privileged phases may have left files that need to be made
 		writable to a less privileged user."""
 		apply_recursive_permissions(mysettings["T"],
 			uid=portage_uid, gid=portage_gid, dirmode=070, dirmask=0,
 			filemode=060, filemask=0)
 
-	if phase_retval == os.EX_OK:
-		if mydo == "install" and logfile:
-			_check_build_log(mysettings)
-
-		if mydo == "install":
-			_post_src_install_uid_fix(mysettings)
-			qa_retval = _spawn_misc_sh(mysettings, ["install_qa_check",
-				"install_symlink_html_docs"], **kwargs)
-			if qa_retval != os.EX_OK:
-				writemsg("!!! install_qa_check failed; exiting.\n",
-					noiselevel=-1)
-				return qa_retval
-	return phase_retval
+def _post_src_install_checks(mysettings):
+	_post_src_install_uid_fix(mysettings)
+	retval = _spawn_misc_sh(mysettings, ["install_qa_check",
+		"install_symlink_html_docs"])
+	if retval != os.EX_OK:
+		writemsg("!!! install_qa_check failed; exiting.\n",
+			noiselevel=-1)
+	return retval
 
 def _check_build_log(mysettings):
 	"""
@@ -4220,7 +4232,9 @@ def _check_build_log(mysettings):
 	  * command not found
 	  * Unrecognized configure options
 	"""
-	logfile = mysettings.get("PORTAGE_LOG_FILE", None)
+	logfile = mysettings.get("PORTAGE_LOG_FILE")
+	if logfile is None:
+		return
 	try:
 		f = open(logfile, 'rb')
 	except EnvironmentError:
@@ -4777,8 +4791,9 @@ _doebuild_broken_manifests = set()
 
 def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	fetchonly=0, cleanup=0, dbkey=None, use_cache=1, fetchall=0, tree=None,
-	mydbapi=None, vartree=None, prev_mtimes=None):
-	
+	mydbapi=None, vartree=None, prev_mtimes=None,
+	fd_pipes=None, returnpid=False):
+
 	"""
 	Wrapper function that invokes specific ebuild phases through the spawning
 	of ebuild.sh
@@ -5190,7 +5205,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		elif mydo == "setup":
 			retval = spawn(
 				_shell_quote(ebuild_sh_binary) + " " + mydo, mysettings,
-				debug=debug, free=1, logfile=logfile)
+				debug=debug, free=1, logfile=logfile, fd_pipes=fd_pipes,
+				returnpid=returnpid)
+			if returnpid:
+				return retval
 			retval = exit_status_check(retval)
 			if secpass >= 2:
 				""" Privileged phases may have left files that need to be made
@@ -5418,7 +5436,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					raise portage.exception.PermissionDenied(
 						"access('%s', os.W_OK)" % parent_dir)
 			retval = spawnebuild(mydo,
-				actionmap, mysettings, debug, logfile=logfile)
+				actionmap, mysettings, debug, logfile=logfile,
+				fd_pipes=fd_pipes, returnpid=returnpid)
 		elif mydo=="qmerge":
 			# check to ensure install was run.  this *only* pops up when users
 			# forget it and are using ebuild
@@ -5438,7 +5457,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mydbapi=mydbapi, vartree=vartree, prev_mtimes=prev_mtimes)
 		elif mydo=="merge":
 			retval = spawnebuild("install", actionmap, mysettings, debug,
-				alwaysdep=1, logfile=logfile)
+				alwaysdep=1, logfile=logfile, fd_pipes=fd_pipes,
+				returnpid=returnpid)
 			retval = exit_status_check(retval)
 			if retval != os.EX_OK:
 				# The merge phase handles this already.  Callers don't know how
