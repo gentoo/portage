@@ -187,7 +187,7 @@ Provides the list of packages that compose the special \fIsystem\fR set.
 
 .I Format:
 .nf
-\- comments begin with #
+\- comments begin with # (no inline comments)
 \- one DEPEND atom per line
 \- packages to be added to the system set begin with a *
 .fi
@@ -234,7 +234,7 @@ package.provided.
 
 .I Format:
 .nf
-\- comments begin with #
+\- comments begin with # (no inline comments)
 \- one DEPEND atom per line
 \- relational operators are not allowed
 \- must include a version
@@ -262,7 +262,7 @@ a '\-'.
 
 .I Format:
 .nf
-\- comments begin with #
+\- comments begin with # (no inline comments)
 \- one DEPEND atom per line with space-delimited USE flags
 .fi
 
@@ -284,7 +284,7 @@ a '\-'.
 
 .I Format:
 .nf
-\- comments begin with #
+\- comments begin with # (no inline comments)
 \- one DEPEND atom per line with space-delimited USE flags
 .fi
 
@@ -318,7 +318,7 @@ a '\-'.
 
 .I Format:
 .nf
-\- comments begin with #
+\- comments begin with # (no inline comments)
 \- one USE flag per line
 .fi
 .TP
@@ -334,7 +334,7 @@ a '\-'.
 
 .I Format:
 .nf
-\- comments begin with #
+\- comments begin with # (no inline comments)
 \- one USE flag per line
 .fi
 .TP
@@ -348,7 +348,7 @@ the package that does the very bare minimum to send e\-mail.
 
 .I Format:
 .nf
-\- comments begin with #
+\- comments begin with # (no inline comments)
 \- one virtual and DEPEND atom base pair per line
 .fi
 
@@ -478,7 +478,7 @@ documentation for QT.  Easy as pie my friend!
 
 .I Format:
 .nf
-\- comments begin with #
+\- comments begin with # (no inline comments)
 \- one DEPEND atom per line with space-delimited USE flags
 .fi
 
@@ -500,7 +500,7 @@ RESTRICT="mirror" or RESTRICT="fetch".
 
 .I Format:
 .nf
-\- comments begin with #
+\- comments begin with # (no inline comments)
 \- mirror type followed by a list of hosts
 .fi
 
@@ -585,7 +585,7 @@ package has been masked and WHO is doing the masking.
 
 .I Format:
 .nf
-\- comments begin with #
+\- comments begin with # (no inline comments)
 \- one DEPEND atom per line
 .fi
 
@@ -606,7 +606,7 @@ allowed per stable/dev/KEYWORD; the last one found is the last one used.
 
 .I Format:
 .nf
-\- comments begin with #
+\- comments begin with # (no inline comments)
 \- one profile list per line in format: arch dir status
 \- arch must be listed in arch.list
 \- dir is relative to profiles.desc
@@ -631,7 +631,7 @@ mirrors.  Keeps us from overloading a single server.
 
 .I Format:
 .nf
-\- comments begin with #
+\- comments begin with # (no inline comments)
 \- mirror type followed by a list of hosts
 .fi
 
@@ -649,7 +649,7 @@ All global USE flags must be listed here with a description of what they do.
 
 .I Format:
 .nf
-\- comments begin with #
+\- comments begin with # (no inline comments)
 \- use flag \- some description
 .fi
 
@@ -666,7 +666,7 @@ description.
 
 .nf
 .I Format:
-\- comments begin with #
+\- comments begin with # (no inline comments)
 \- package:use flag \- description
 
 .I Example:
