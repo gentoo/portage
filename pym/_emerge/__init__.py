@@ -6570,6 +6570,7 @@ class Scheduler(object):
 				rval = self._merge()
 			finally:
 				# clean up child process if necessary
+				self._task_queue.clear()
 				while running_tasks:
 					task = running_tasks.pop()
 					if task.poll() is None:
