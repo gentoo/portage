@@ -3274,8 +3274,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	# file size. The parent process will verify their checksums prior to
 	# the unpack phase.
 
-	parallel_fetchonly = fetchonly and \
-		"PORTAGE_PARALLEL_FETCHONLY" in mysettings
+	parallel_fetchonly = "PORTAGE_PARALLEL_FETCHONLY" in mysettings
+	if parallel_fetchonly:
+		fetchonly = 1
 
 	check_config_instance(mysettings)
 
