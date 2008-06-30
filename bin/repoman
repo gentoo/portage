@@ -771,6 +771,12 @@ arch_caches={}
 arch_xmatch_caches = {}
 shared_xmatch_caches = {"cp-list":{}}
 
+# Disable the "ebuild.notadded" check when not in commit mode and
+# running `svn list` and `svn status` calls in every package dir
+# will be too expensive.
+enable_ebuild_notadded = not \
+	(vcs == "svn" and repolevel < 3 and options.mode != "commit")
+
 for x in scanlist:
 	#ebuilds and digests added to cvs respectively.
 	logging.info("checking package %s" % x)
@@ -867,7 +873,7 @@ for x in scanlist:
 	if not os.path.isdir(os.path.join(checkdir, "files")):
 		has_filesdir = False
 
-	if vcs:
+	if vcs and check_ebuild_notadded:
 		try:
 			if vcs == "cvs":
 				myf=open(checkdir+"/CVS/Entries","r")
@@ -1070,7 +1076,7 @@ for x in scanlist:
 		if stat.S_IMODE(os.stat(full_path).st_mode) & 0111:
 			stats["file.executable"] += 1
 			fails["file.executable"].append(x+"/"+y+".ebuild")
-		if vcs and y not in eadded:
+		if vcs and check_ebuild_notadded and y not in eadded:
 			#ebuild not added to vcs
 			stats["ebuild.notadded"]=stats["ebuild.notadded"]+1
 			fails["ebuild.notadded"].append(x+"/"+y+".ebuild")
