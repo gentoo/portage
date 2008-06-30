@@ -2940,7 +2940,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		env=mysettings.environ()
 		keywords["opt_name"]="[%s]" % mysettings["PF"]
 
-	if "EMERGE_FROM" in mysettings:
+	if keywords.get("returnpid"):
 		# emerge handles logging externally
 		keywords.pop("logfile", None)
 
@@ -4166,7 +4166,7 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 # parse actionmap to spawn ebuild with the appropriate args
 def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 	logfile=None, fd_pipes=None, returnpid=False):
-	if "EMERGE_FROM" not in mysettings and \
+	if not returnpid and \
 		(alwaysdep or "noauto" not in mysettings.features):
 		# process dependency first
 		if "dep" in actionmap[mydo]:
@@ -5317,7 +5317,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# unpack compile install`, we will try and fetch 4 times :/
 		need_distfiles = (mydo in ("fetch", "unpack") or \
 			mydo not in ("digest", "manifest") and "noauto" not in features)
-		if not ("EMERGE_FROM" in mysettings and mydo != "unpack") and \
+		emerge_skip_distfiles = "EMERGE_FROM" in mysettings and \
+			mydo not in ("fetch", "unpack")
+		if not emerge_skip_distfiles and \
 			need_distfiles and not fetch(
 			fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
 			if have_build_dirs:
@@ -5350,7 +5352,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				return 1
 
 		# See above comment about fetching only when needed
-		if not ("EMERGE_FROM" in mysettings and mydo != "unpack") and \
+		if not emerge_skip_distfiles and \
 			not digestcheck(checkme, mysettings, "strict" in features):
 			return 1
 
