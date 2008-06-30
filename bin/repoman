@@ -774,7 +774,7 @@ shared_xmatch_caches = {"cp-list":{}}
 # Disable the "ebuild.notadded" check when not in commit mode and
 # running `svn list` and `svn status` calls in every package dir
 # will be too expensive.
-enable_ebuild_notadded = not \
+check_ebuild_notadded = not \
 	(vcs == "svn" and repolevel < 3 and options.mode != "commit")
 
 for x in scanlist:
