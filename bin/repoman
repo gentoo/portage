@@ -889,7 +889,7 @@ for x in scanlist:
 					if l[-1:] == "/":
 						continue
 					if l[-7:] == ".ebuild":
-						eadded.append(l[:-7])
+						eadded.append(os.path.basename(l[:-7]))
 			if vcs == "svn":
 				myf = os.popen("svn status " + checkdir)
 				myl=myf.readlines()
@@ -898,7 +898,7 @@ for x in scanlist:
 					if l[0] == "A":
 						l = l.rstrip().split(' ')[-1]
 						if l[-7:] == ".ebuild":
-							eadded.append(l[:-7])
+							eadded.append(os.path.basename(l[:-7]))
 		except IOError:
 			if options.mode == 'commit' and vcs == "cvs":
 				stats["CVS/Entries.IO_error"] += 1
