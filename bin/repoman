@@ -872,7 +872,7 @@ for x in scanlist:
 			if vcs == "cvs":
 				myf=open(checkdir+"/CVS/Entries","r")
 			if vcs == "svn":
-				myf=os.popen("svn list")
+				myf = os.popen("svn list " + checkdir)
 			myl=myf.readlines()	
 			myf.close()
 			for l in myl:
@@ -891,7 +891,7 @@ for x in scanlist:
 					if l[-7:] == ".ebuild":
 						eadded.append(l[:-7])
 			if vcs == "svn":
-				myf=os.popen("svn status")
+				myf = os.popen("svn status " + checkdir)
 				myl=myf.readlines()
 				myf.close()
 				for l in myl:
