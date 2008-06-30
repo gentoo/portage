@@ -6320,7 +6320,7 @@ class PackageCounters(object):
 					(self.blocks - self.blocks_satisfied))
 		return "".join(myoutput)
 
-class MergeTask(object):
+class Scheduler(object):
 
 	_opts_ignore_blockers = \
 		frozenset(["--buildpkgonly",
@@ -9389,7 +9389,7 @@ def action_build(settings, trees, mtimedb,
 			mymergelist = mydepgraph.altlist()
 			mydepgraph.break_refs(mymergelist)
 			mydepgraph.break_refs(mydepgraph.digraph.order)
-			mergetask = MergeTask(settings, trees, mtimedb, myopts,
+			mergetask = Scheduler(settings, trees, mtimedb, myopts,
 				spinner, mymergelist, favorites, mydepgraph.digraph)
 			del mydepgraph
 			clear_caches(trees)
@@ -9436,7 +9436,7 @@ def action_build(settings, trees, mtimedb,
 			mydepgraph.saveNomergeFavorites()
 			mydepgraph.break_refs(pkglist)
 			mydepgraph.break_refs(mydepgraph.digraph.order)
-			mergetask = MergeTask(settings, trees, mtimedb, myopts,
+			mergetask = Scheduler(settings, trees, mtimedb, myopts,
 				spinner, pkglist, favorites, mydepgraph.digraph)
 			del mydepgraph
 			clear_caches(trees)
