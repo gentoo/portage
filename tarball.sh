@@ -26,6 +26,7 @@ rsync -a --exclude='.svn' . ${DEST}
 sed -i -e '/^VERSION=/s/^.*$/VERSION="'${V}-prefix'"/' ${DEST}/pym/portage/__init__.py
 sed -i -e "s/##VERSION##/${V}-prefix/g" ${DEST}/man/emerge.1
 sed -i -e "s/@version@/${V}/" ${DEST}/configure.in
+touch ${DEST}/subst-install.vars.in.in
 
 cd ${DEST}
 find -name '*~' | xargs --no-run-if-empty rm -f

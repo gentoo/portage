@@ -19,14 +19,14 @@ AC_DEFUN([GENTOO_PATH_PYTHON],
   AC_PATH_PROG([PORTAGE_PYTHON], [python], no, $2)
 
   dnl is is there at all?
-  if test "$PYTHON" = "no" ; then
+  if test "$PORTAGE_PYTHON" = "no" ; then
     AC_MSG_ERROR([no python found in your path])
   fi
 
   dnl is it the version we want?
-  ver=`$PYTHON -c 'import sys; print sys.version.split(" ")[[0]]'`
-  AC_MSG_CHECKING([whether $PYTHON $ver >= $1])
-  cmp=`$PYTHON -c 'import sys; print sys.version.split(" ")[[0]] >= "$1"'`
+  ver=`$PORTAGE_PYTHON -c 'import sys; print sys.version.split(" ")[[0]]'`
+  AC_MSG_CHECKING([whether $PORTAGE_PYTHON $ver >= $1])
+  cmp=`$PORTAGE_PYTHON -c 'import sys; print sys.version.split(" ")[[0]] >= "$1"'`
   if test "$cmp" = "True" ; then
     AC_MSG_RESULT([yes])
   else
