@@ -46,7 +46,8 @@ class PreservedLibsRegistry(object):
 		self._filename = filename
 		self._autocommit = autocommit
 		self.load()
-	
+		self.pruneNonExisting()
+
 	def load(self):
 		""" Reload the registry data from file """
 		try:
