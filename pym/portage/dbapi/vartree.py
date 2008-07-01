@@ -64,6 +64,8 @@ class PreservedLibsRegistry(object):
 		""" Store the registry data to file. No need to call this if autocommit
 		    was enabled.
 		"""
+		if os.environ.get("SANDBOX_ON") == "1":
+			return
 		try:
 			f = atomic_ofstream(self._filename)
 			cPickle.dump(self._data, f)
