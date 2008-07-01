@@ -12,7 +12,7 @@ from portage.const_autotool import *
 # save the original prefix
 BPREFIX = EPREFIX
 # pick up EPREFIX from the environment if set
-if os.environ.has_key("EPREFIX"):
+if "EPREFIX" in os.environ:
 	EPREFIX = os.path.normpath(os.environ["EPREFIX"])
 
 # ===========================================================================
