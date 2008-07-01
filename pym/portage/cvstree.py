@@ -17,13 +17,13 @@ def pathdata(entries, path):
 	mytarget=mysplit[-1]
 	mysplit=mysplit[:-1]
 	for mys in mysplit:
-		if myentries["dirs"].has_key(mys):
+		if mys in myentries["dirs"]:
 			myentries=myentries["dirs"][mys]
 		else:
 			return None
-	if myentries["dirs"].has_key(mytarget):
+	if mytarget in myentries["dirs"]:
 		return myentries["dirs"][mytarget]
-	elif myentries["files"].has_key(mytarget):
+	elif mytarget in myentries["files"]:
 		return myentries["files"][mytarget]
 	else:
 		return None
@@ -242,9 +242,9 @@ def getentries(mydir,recursive=0):
 		if file=="digest-framerd-2.4.3":
 			print mydir,file
 		if os.path.isdir(mydir+"/"+file):
-			if not entries["dirs"].has_key(file):
+			if file not in entries["dirs"]:
 				entries["dirs"][file]={"dirs":{},"files":{}}
-			if entries["dirs"][file].has_key("status"):
+			if "status" in entries["dirs"][file]:
 				if "exists" not in entries["dirs"][file]["status"]:
 					entries["dirs"][file]["status"]+=["exists"]
 			else:
@@ -252,9 +252,9 @@ def getentries(mydir,recursive=0):
 		elif os.path.isfile(mydir+"/"+file):
 			if file=="digest-framerd-2.4.3":
 				print "isfile"
-			if not entries["files"].has_key(file):
+			if file not in entries["files"]:
 				entries["files"][file]={"revision":"","date":"","flags":"","tags":""}
-			if entries["files"][file].has_key("status"):
+			if "status" in entries["files"][file]:
 				if file=="digest-framerd-2.4.3":
 					print "has status"
 				if "exists" not in entries["files"][file]["status"]:
@@ -270,7 +270,7 @@ def getentries(mydir,recursive=0):
 					print "stat'ing"
 				mystat=os.stat(mydir+"/"+file)
 				mytime=time.asctime(time.gmtime(mystat[ST_MTIME]))
-				if not entries["files"][file].has_key("status"):
+				if "status" not in entries["files"][file]:
 					if file=="digest-framerd-2.4.3":
 						print "status not set"
 					entries["files"][file]["status"]=[]

@@ -419,9 +419,9 @@ class Manifest(object):
 		""" Regenerate hashes for the given file """
 		if checkExisting:
 			self.checkFileHashes(ftype, fname, ignoreMissing=ignoreMissing)
-		if not ignoreMissing and not self.fhashdict[ftype].has_key(fname):
+		if not ignoreMissing and fname not in self.fhashdict[ftype]:
 			raise FileNotInManifestException(fname)
-		if not self.fhashdict[ftype].has_key(fname):
+		if fname not in self.fhashdict[ftype]:
 			self.fhashdict[ftype][fname] = {}
 		myhashkeys = list(self.hashes)
 		if reuseExisting:

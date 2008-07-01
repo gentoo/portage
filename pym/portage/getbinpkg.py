@@ -478,15 +478,15 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 		metadatafile.close()
 	except (cPickle.UnpicklingError, OSError, IOError, EOFError):
 		metadata = {}
-	if not metadata.has_key(baseurl):
+	if baseurl not in metadata:
 		metadata[baseurl]={}
-	if not metadata[baseurl].has_key("indexname"):
+	if "indexname" not in metadata[baseurl]:
 		metadata[baseurl]["indexname"]=""
-	if not metadata[baseurl].has_key("timestamp"):
+	if "timestamp" not in metadata[baseurl]:
 		metadata[baseurl]["timestamp"]=0
-	if not metadata[baseurl].has_key("unmodified"):
+	if "unmodified" not in metadata[baseurl]:
 		metadata[baseurl]["unmodified"]=0
-	if not metadata[baseurl].has_key("data"):
+	if "data" not in metadata[baseurl]:
 		metadata[baseurl]["data"]={}
 
 	if not os.access(cache_path, os.W_OK):
@@ -648,7 +648,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	out.flush()
 
 	try:
-		if metadata[baseurl].has_key("modified") and metadata[baseurl]["modified"]:
+		if "modified" in metadata[baseurl] and metadata[baseurl]["modified"]:
 			metadata[baseurl]["timestamp"] = int(time.time())
 			metadatafile = open("/var/cache/edb/remote_metadata.pickle", "w+")
 			cPickle.dump(metadata,metadatafile)

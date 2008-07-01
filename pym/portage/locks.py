@@ -289,9 +289,9 @@ def hardlock_cleanup(path, remove_all_locks=False):
 				host  = "-".join(hostpid[:-1])
 				pid   = hostpid[-1]
 				
-				if not mylist.has_key(filename):
+				if filename not in mylist:
 					mylist[filename] = {}
-				if not mylist[filename].has_key(host):
+				if host not in mylist[filename]:
 					mylist[filename][host] = []
 				mylist[filename][host].append(pid)
 
@@ -301,7 +301,7 @@ def hardlock_cleanup(path, remove_all_locks=False):
 	results.append("Found %(count)s locks" % {"count":mycount})
 	
 	for x in mylist:
-		if mylist[x].has_key(myhost) or remove_all_locks:
+		if myhost in mylist[x] or remove_all_locks:
 			mylockname = hardlock_name(path+"/"+x)
 			if hardlink_is_mine(mylockname, path+"/"+x) or \
 			   not os.path.exists(path+"/"+x) or \

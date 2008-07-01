@@ -160,7 +160,7 @@ def load_mod(name):
 
 def best_from_dict(key, top_dict, key_order, EmptyOnError=1, FullCopy=1, AllowEmpty=1):
 	for x in key_order:
-		if top_dict.has_key(x) and top_dict[x].has_key(key):
+		if x in top_dict and key in top_dict[x]:
 			if FullCopy:
 				return copy.deepcopy(top_dict[x][key])
 			else:
@@ -194,7 +194,7 @@ cacheStale=0
 def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymlinks=True):
 	global cacheHit,cacheMiss,cacheStale
 	mypath = normalize_path(my_original_path)
-	if dircache.has_key(mypath):
+	if mypath in dircache:
 		cacheHit += 1
 		cached_mtime, list, ftype = dircache[mypath]
 	else:
@@ -219,7 +219,7 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 		return None, None
 	# Python retuns mtime in seconds, so if it was changed in the last few seconds, it could be invalid
 	if mtime != cached_mtime or time.time() - mtime < 4:
-		if dircache.has_key(mypath):
+		if mypath in dircache:
 			cacheStale += 1
 		try:
 			list = os.listdir(mypath)
@@ -851,7 +851,7 @@ def ExtractKernelVersion(base_dir):
 
 	# Check the .config for a CONFIG_LOCALVERSION and append that too, also stripping whitespace
 	kernelconfig = getconfig(base_dir+"/.config")
-	if kernelconfig and kernelconfig.has_key("CONFIG_LOCALVERSION"):
+	if kernelconfig and "CONFIG_LOCALVERSION" in kernelconfig:
 		version += "".join(kernelconfig["CONFIG_LOCALVERSION"].split())
 
 	return (version,None)
@@ -1218,7 +1218,7 @@ class config(object):
 			self.prevmaskdict={}
 			for x in self.packages:
 				mycatpkg=dep_getkey(x)
-				if not self.prevmaskdict.has_key(mycatpkg):
+				if mycatpkg not in self.prevmaskdict:
 					self.prevmaskdict[mycatpkg]=[x]
 				else:
 					self.prevmaskdict[mycatpkg].append(x)
@@ -1440,7 +1440,7 @@ class config(object):
 					os.path.join(abs_user_config, "package.use"), recursive=1)
 				for key in pusedict.keys():
 					cp = dep_getkey(key)
-					if not self.pusedict.has_key(cp):
+					if cp not in self.pusedict:
 						self.pusedict[cp] = {}
 					self.pusedict[cp][key] = pusedict[key]
 
@@ -1452,7 +1452,8 @@ class config(object):
 					# default to ~arch if no specific keyword is given
 					if not pkgdict[key]:
 						mykeywordlist = []
-						if self.configdict["defaults"] and self.configdict["defaults"].has_key("ACCEPT_KEYWORDS"):
+						if self.configdict["defaults"] and \
+							"ACCEPT_KEYWORDS" in self.configdict["defaults"]:
 							groups = self.configdict["defaults"]["ACCEPT_KEYWORDS"].split()
 						else:
 							groups = []
@@ -1461,7 +1462,7 @@ class config(object):
 								mykeywordlist.append("~"+keyword)
 						pkgdict[key] = mykeywordlist
 					cp = dep_getkey(key)
-					if not self.pkeywordsdict.has_key(cp):
+					if cp not in self.pkeywordsdict:
 						self.pkeywordsdict[cp] = {}
 					self.pkeywordsdict[cp][key] = pkgdict[key]
 				
@@ -1482,7 +1483,7 @@ class config(object):
 					recursive=1)
 				for x in pkgunmasklines:
 					mycatpkg=dep_getkey(x)
-					if self.punmaskdict.has_key(mycatpkg):
+					if mycatpkg in self.punmaskdict:
 						self.punmaskdict[mycatpkg].append(x)
 					else:
 						self.punmaskdict[mycatpkg]=[x]
@@ -1506,7 +1507,7 @@ class config(object):
 			self.pmaskdict = {}
 			for x in pkgmasklines:
 				mycatpkg=dep_getkey(x)
-				if self.pmaskdict.has_key(mycatpkg):
+				if mycatpkg in self.pmaskdict:
 					self.pmaskdict[mycatpkg].append(x)
 				else:
 					self.pmaskdict[mycatpkg]=[x]
@@ -1544,7 +1545,7 @@ class config(object):
 				if not x:
 					continue
 				mycatpkg=dep_getkey(x)
-				if self.pprovideddict.has_key(mycatpkg):
+				if mycatpkg in self.pprovideddict:
 					self.pprovideddict[mycatpkg].append(x)
 				else:
 					self.pprovideddict[mycatpkg]=[x]
@@ -1806,7 +1807,7 @@ class config(object):
 
 	def backup_changes(self,key=None):
 		self.modifying()
-		if key and self.configdict["env"].has_key(key):
+		if key and key in self.configdict["env"]:
 			self.backupenv[key] = copy.deepcopy(self.configdict["env"][key])
 		else:
 			raise KeyError, "No such key defined in environment: %s" % key
@@ -2646,7 +2647,7 @@ class config(object):
 		if virts:
 			for x in virts:
 				vkeysplit = x.split("/")
-				if not self.virts_p.has_key(vkeysplit[1]):
+				if vkeysplit[1] not in self.virts_p:
 					self.virts_p[vkeysplit[1]] = virts[x]
 		return self.virts_p
 
@@ -2819,7 +2820,7 @@ class config(object):
 				# remain unset.
 				continue
 			mydict[x] = myvalue
-		if not mydict.has_key("HOME") and mydict.has_key("BUILD_PREFIX"):
+		if "HOME" not in mydict and "BUILD_PREFIX" in mydict:
 			writemsg("*** HOME not set. Setting to "+mydict["BUILD_PREFIX"]+"\n")
 			mydict["HOME"]=mydict["BUILD_PREFIX"][:]
 
@@ -3301,7 +3302,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 #			use_locks = 0
 
 	# local mirrors are always added
-	if custommirrors.has_key("local"):
+	if "local" in custommirrors:
 		mymirrors += custommirrors["local"]
 
 	if "nomirror" in restrict or \
@@ -3348,7 +3349,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	primaryuri_dict = {}
 	for myuri in myuris:
 		myfile=os.path.basename(myuri)
-		if not filedict.has_key(myfile):
+		if myfile not in filedict:
 			filedict[myfile]=[]
 			for y in range(0,len(locations)):
 				filedict[myfile].append(locations[y]+"/distfiles/"+myfile)
@@ -3358,14 +3359,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				mirrorname = myuri[9:eidx]
 
 				# Try user-defined mirrors first
-				if custommirrors.has_key(mirrorname):
+				if mirrorname in custommirrors:
 					for cmirr in custommirrors[mirrorname]:
 						filedict[myfile].append(cmirr+"/"+myuri[eidx+1:])
 						# remove the mirrors we tried from the list of official mirrors
 						if cmirr.strip() in thirdpartymirrors[mirrorname]:
 							thirdpartymirrors[mirrorname].remove(cmirr)
 				# now try the official mirrors
-				if thirdpartymirrors.has_key(mirrorname):
+				if mirrorname in thirdpartymirrors:
 					shuffle(thirdpartymirrors[mirrorname])
 
 					for locmirr in thirdpartymirrors[mirrorname]:
@@ -3382,7 +3383,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				continue
 			if "primaryuri" in restrict:
 				# Use the source site first.
-				if primaryuri_indexes.has_key(myfile):
+				if myfile in primaryuri_indexes:
 					primaryuri_indexes[myfile] += 1
 				else:
 					primaryuri_indexes[myfile] = 0
@@ -3693,11 +3694,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					continue
 				# allow different fetchcommands per protocol
 				protocol = loc[0:loc.find("://")]
-				if mysettings.has_key("FETCHCOMMAND_"+protocol.upper()):
+				if "FETCHCOMMAND_" + protocol.upper() in mysettings:
 					fetchcommand=mysettings["FETCHCOMMAND_"+protocol.upper()]
 				else:
 					fetchcommand=mysettings["FETCHCOMMAND"]
-				if mysettings.has_key("RESUMECOMMAND_"+protocol.upper()):
+				if "RESUMECOMMAND_" + protocol.upper() in mysettings:
 					resumecommand=mysettings["RESUMECOMMAND_"+protocol.upper()]
 				else:
 					resumecommand=mysettings["RESUMECOMMAND"]
@@ -3814,7 +3815,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					except EnvironmentError:
 						pass
 
-					if mydigests!=None and mydigests.has_key(myfile):
+					if mydigests is not None and myfile in mydigests:
 						try:
 							mystat = os.stat(myfile_path)
 						except OSError, e:
@@ -4382,7 +4383,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	ebuild_path = os.path.abspath(myebuild)
 	pkg_dir     = os.path.dirname(ebuild_path)
 
-	if mysettings.configdict["pkg"].has_key("CATEGORY"):
+	if "CATEGORY" in mysettings.configdict["pkg"]:
 		cat = mysettings.configdict["pkg"]["CATEGORY"]
 	else:
 		cat = os.path.basename(normalize_path(os.path.join(pkg_dir, "..")))
@@ -4483,7 +4484,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	else:
 		mysettings["PVR"]=mysplit[1]+"-"+mysplit[2]
 
-	if mysettings.has_key("PATH"):
+	if "PATH" in mysettings:
 		mysplit=mysettings["PATH"].split(":")
 	else:
 		mysplit=[]
@@ -6191,7 +6192,7 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 			pass
 		else:
 			mykey = dep_getkey(deplist[mypos])
-			if mysettings and mysettings.pprovideddict.has_key(mykey) and \
+			if mysettings and mykey in mysettings.pprovideddict and \
 			        match_from_list(deplist[mypos], mysettings.pprovideddict[mykey]):
 				deplist[mypos]=True
 			elif mydbapi is None:
@@ -6242,12 +6243,13 @@ def key_expand(mykey, mydb=None, use_cache=1, settings=None):
 			for x in mydb.categories:
 				if mydb.cp_list(x+"/"+mykey,use_cache=use_cache):
 					return x+"/"+mykey
-			if virts_p.has_key(mykey):
+			if mykey in virts_p:
 				return(virts_p[mykey][0])
 		return "null/"+mykey
 	elif mydb:
 		if hasattr(mydb, "cp_list"):
-			if (not mydb.cp_list(mykey,use_cache=use_cache)) and virts and virts.has_key(mykey):
+			if not mydb.cp_list(mykey, use_cache=use_cache) and \
+				virts and mykey in virts:
 				return virts[mykey][0]
 		return mykey
 
@@ -6321,7 +6323,7 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 			mykey=matches[0]
 
 		if not mykey and not isinstance(mydb, list):
-			if virts_p.has_key(myp):
+			if myp in virts_p:
 				mykey=virts_p[myp][0]
 			#again, we only perform virtual expansion if we have a dbapi (not a list)
 		if not mykey:
@@ -6369,7 +6371,7 @@ def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_lo
 	locations.reverse()
 	pmasklists = [(x, grablines(os.path.join(x, "package.mask"), recursive=1)) for x in locations]
 
-	if settings.pmaskdict.has_key(mycp):
+	if mycp in settings.pmaskdict:
 		for x in settings.pmaskdict[mycp]:
 			if match_from_list(x, cpv_slot_list):
 				comment = ""
@@ -6750,7 +6752,7 @@ def commit_mtimedb(mydict=None, filename=None):
 
 def portageexit():
 	global uid,portage_gid,portdb,db
-	if secpass and not os.environ.has_key("SANDBOX_ACTIVE"):
+	if secpass and os.environ.get("SANDBOX_ON") != "1":
 		close_portdbapi_caches()
 		commit_mtimedb()
 
