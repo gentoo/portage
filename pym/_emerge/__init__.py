@@ -1459,7 +1459,7 @@ class EbuildFetcherAsync(SlotObject):
 		"pid", "returncode", "files")
 
 	_file_names = ("fetcher", "out")
-	_files_dict = slot_dict_class(_file_names)
+	_files_dict = slot_dict_class(_file_names, prefix="")
 	_bufsize = 4096
 
 	def start(self):
@@ -1477,7 +1477,7 @@ class EbuildFetcherAsync(SlotObject):
 		files = self.files
 
 		if log_file is not None:
-			files["out"] = open(log_file, "a")
+			files.out = open(log_file, "a")
 			portage.util.apply_secpass_permissions(log_file,
 				uid=portage.portage_uid, gid=portage.portage_gid,
 				mode=0660)
@@ -1488,7 +1488,7 @@ class EbuildFetcherAsync(SlotObject):
 				if fd == sys.stderr.fileno():
 					sys.stderr.flush()
 
-			files["out"] = os.fdopen(os.dup(fd_pipes[1]), 'w')
+			files.out = os.fdopen(os.dup(fd_pipes[1]), 'w')
 
 		master_fd, slave_fd = os.pipe()
 
@@ -1526,22 +1526,22 @@ class EbuildFetcherAsync(SlotObject):
 		self.pid = retval[0]
 
 		os.close(slave_fd)
-		files["fetcher"] = os.fdopen(master_fd, 'r')
-		self.register(files["fetcher"].fileno(),
+		files.fetcher = os.fdopen(master_fd, 'r')
+		self.register(files.fetcher.fileno(),
 			select.POLLIN, self._output_handler)
 
 	def _output_handler(self, fd, event):
 		files = self.files
 		buf = array.array('B')
 		try:
-			buf.fromfile(files["fetcher"], self._bufsize)
+			buf.fromfile(files.fetcher, self._bufsize)
 		except EOFError:
 			pass
 		if buf:
-			buf.tofile(files["out"])
-			files["out"].flush()
+			buf.tofile(files.out)
+			files.out.flush()
 		else:
-			self.unregister(files["fetcher"].fileno())
+			self.unregister(files.fetcher.fileno())
 			for f in files.values():
 				f.close()
 
@@ -1710,7 +1710,7 @@ class EbuildPhase(SlotObject):
 		"pid", "returncode", "files")
 
 	_file_names = ("log", "stdout", "ebuild")
-	_files_dict = slot_dict_class(_file_names)
+	_files_dict = slot_dict_class(_file_names, prefix="")
 	_bufsize = 4096
 
 	def start(self):
@@ -1785,26 +1785,26 @@ class EbuildPhase(SlotObject):
 
 		if logfile:
 			os.close(slave_fd)
-			files["log"] = open(logfile, 'a')
-			files["stdout"] = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
-			files["ebuild"] = os.fdopen(master_fd, 'r')
-			self.register(files["ebuild"].fileno(),
+			files.log = open(logfile, 'a')
+			files.stdout = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
+			files.ebuild = os.fdopen(master_fd, 'r')
+			self.register(files.ebuild.fileno(),
 				select.POLLIN, self._output_handler)
 
 	def _output_handler(self, fd, event):
 		files = self.files
 		buf = array.array('B')
 		try:
-			buf.fromfile(files["ebuild"], self._bufsize)
+			buf.fromfile(files.ebuild, self._bufsize)
 		except EOFError:
 			pass
 		if buf:
-			buf.tofile(files["stdout"])
-			files["stdout"].flush()
-			buf.tofile(files["log"])
-			files["log"].flush()
+			buf.tofile(files.stdout)
+			files.stdout.flush()
+			buf.tofile(files.log)
+			files.log.flush()
 		else:
-			self.unregister(files["ebuild"].fileno())
+			self.unregister(files.ebuild.fileno())
 			for f in files.values():
 				f.close()
 
@@ -2002,7 +2002,7 @@ class BinpkgFetcherAsync(SlotObject):
 		"locked", "files", "pid", "pkg_path", "returncode", "_lock_obj")
 
 	_file_names = ("fetcher", "out")
-	_files_dict = slot_dict_class(_file_names)
+	_files_dict = slot_dict_class(_file_names, prefix="")
 	_bufsize = 4096
 
 	def __init__(self, **kwargs):
@@ -2029,7 +2029,7 @@ class BinpkgFetcherAsync(SlotObject):
 		files = self.files
 
 		if log_file is not None:
-			files["out"] = open(log_file, "a")
+			files.out = open(log_file, "a")
 			portage.util.apply_secpass_permissions(log_file,
 				uid=portage.portage_uid, gid=portage.portage_gid,
 				mode=0660)
@@ -2041,7 +2041,7 @@ class BinpkgFetcherAsync(SlotObject):
 				if fd == sys.stderr.fileno():
 					sys.stderr.flush()
 
-			files["out"] = os.fdopen(os.dup(fd_pipes[1]), 'w')
+			files.out = os.fdopen(os.dup(fd_pipes[1]), 'w')
 
 		master_fd, slave_fd = os.pipe()
 		fcntl.fcntl(master_fd, fcntl.F_SETFL,
@@ -2100,22 +2100,22 @@ class BinpkgFetcherAsync(SlotObject):
 		self.pid = retval[0]
 
 		os.close(slave_fd)
-		files["fetcher"] = os.fdopen(master_fd, 'r')
-		self.register(files["fetcher"].fileno(),
+		files.fetcher = os.fdopen(master_fd, 'r')
+		self.register(files.fetcher.fileno(),
 			select.POLLIN, self._output_handler)
 
 	def _output_handler(self, fd, event):
 		files = self.files
 		buf = array.array('B')
 		try:
-			buf.fromfile(files["fetcher"], self._bufsize)
+			buf.fromfile(files.fetcher, self._bufsize)
 		except EOFError:
 			pass
 		if buf:
-			buf.tofile(files["out"])
-			files["out"].flush()
+			buf.tofile(files.out)
+			files.out.flush()
 		else:
-			self.unregister(files["fetcher"].fileno())
+			self.unregister(files.fetcher.fileno())
 			for f in files.values():
 				f.close()
 			if self.locked:

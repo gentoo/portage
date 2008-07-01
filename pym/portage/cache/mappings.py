@@ -104,14 +104,17 @@ class LazyLoad(UserDict.DictMixin):
 
 _slot_dict_classes = weakref.WeakValueDictionary()
 
-def slot_dict_class(keys):
+def slot_dict_class(keys, prefix="_val_"):
 	"""
 	Generates mapping classes that behave similar to a dict but store values
 	as object attributes that are allocated via __slots__. Instances of these
 	objects have a smaller memory footprint than a normal dict object.
 
 	@param keys: Fixed set of allowed keys
-	@type keys: iterable
+	@type keys: Iterable
+	@param prefix: a prefix to use when mapping
+		attribute names from keys
+	@type prefix: String
 	@rtype: SlotDict
 	@returns: A class that constructs SlotDict instances
 		having the specified keys.
@@ -120,14 +123,15 @@ def slot_dict_class(keys):
 		keys_set = keys
 	else:
 		keys_set = frozenset(keys)
-	v = _slot_dict_classes.get(keys_set)
+	v = _slot_dict_classes.get((keys_set, prefix))
 	if v is None:
 
 		class SlotDict(object):
 
 			allowed_keys = keys_set
+			_prefix = prefix
 			__slots__ = ("__weakref__",) + \
-				tuple("_val_" + k for k in allowed_keys)
+				tuple(prefix + k for k in allowed_keys)
 
 			def __iter__(self):
 				for k, v in self.iteritems():
@@ -145,7 +149,7 @@ def slot_dict_class(keys):
 			def iteritems(self):
 				for k in self.allowed_keys:
 					try:
-						yield (k, getattr(self, "_val_" + k))
+						yield (k, getattr(self, self._prefix + k))
 					except AttributeError:
 						pass
 
@@ -161,12 +165,12 @@ def slot_dict_class(keys):
 
 			def __delitem__(self, k):
 				try:
-					delattr(self, "_val_" + k)
+					delattr(self, self._prefix + k)
 				except AttributeError:
 					raise KeyError(k)
 
 			def __setitem__(self, k, v):
-				setattr(self, "_val_" + k, v)
+				setattr(self, self._prefix + k, v)
 
 			def setdefault(self, key, default=None):
 				try:
@@ -186,7 +190,7 @@ def slot_dict_class(keys):
 
 			def __getitem__(self, k):
 				try:
-					return getattr(self, "_val_" + k)
+					return getattr(self, self._prefix + k)
 				except AttributeError:
 					raise KeyError(k)
 
@@ -197,7 +201,7 @@ def slot_dict_class(keys):
 					return default
 
 			def __contains__(self, k):
-				return hasattr(self, "_val_" + k)
+				return hasattr(self, self._prefix + k)
 
 			def has_key(self, k):
 				return k in self
@@ -232,7 +236,7 @@ def slot_dict_class(keys):
 			def clear(self):
 				for k in self.allowed_keys:
 					try:
-						delattr(self, "_val_" + k)
+						delattr(self, self._prefix + k)
 					except AttributeError:
 						pass
 
