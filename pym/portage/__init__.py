@@ -2415,10 +2415,21 @@ class config(object):
 			if not accept_chost:
 				self._accept_chost_re = re.compile(".*")
 			elif len(accept_chost) == 1:
-				self._accept_chost_re = re.compile(r'^%s$' % accept_chost[0])
+				try:
+					self._accept_chost_re = re.compile(r'^%s$' % accept_chost[0])
+				except re.error, e:
+					writemsg("!!! Invalid ACCEPT_CHOSTS value: '%s': %s\n" % \
+						(accept_chost[0], e), noiselevel=-1)
+					self._accept_chost_re = re.compile("^$")
 			else:
-				self._accept_chost_re = re.compile(
-					r'^(%s)$' % "|".join(accept_chost))
+				try:
+					self._accept_chost_re = re.compile(
+						r'^(%s)$' % "|".join(accept_chost))
+				except re.error, e:
+					writemsg("!!! Invalid ACCEPT_CHOSTS value: '%s': %s\n" % \
+						(" ".join(accept_chost), e), noiselevel=-1)
+					self._accept_chost_re = re.compile("^$")
+
 		return self._accept_chost_re.match(
 			pkg.metadata.get("CHOST", "")) is not None
 
@@ -4855,6 +4866,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		vartree = db[myroot]["vartree"]
 
 	features = mysettings.features
+	noauto = "noauto" in features
 	from portage.data import secpass
 
 	validcommands = ["help","clean","prerm","postrm","cleanrm","preinst","postinst",
@@ -4969,6 +4981,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		doebuild_environment(myebuild, mydo, myroot, mysettings, debug,
 			use_cache, mydbapi)
+
+		clean_phases = ("clean", "cleanrm")
+		if mydo in clean_phases:
+			retval = spawn(_shell_quote(ebuild_sh_binary) + " clean",
+				mysettings, debug=debug, free=1, logfile=None)
+			return retval
 
 		# get possible slot information from the deps file
 		if mydo == "depend":
@@ -5182,10 +5200,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		# if any of these are being called, handle them -- running them out of
 		# the sandbox -- and stop now.
-		if mydo in ["clean","cleanrm"]:
-			return spawn(_shell_quote(ebuild_sh_binary) + " clean", mysettings,
-				debug=debug, free=1, logfile=None)
-		elif mydo == "help":
+		if mydo == "help":
 			return spawn(_shell_quote(ebuild_sh_binary) + " " + mydo,
 				mysettings, debug=debug, free=1, logfile=logfile)
 		elif mydo == "setup":

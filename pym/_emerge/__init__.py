@@ -1478,9 +1478,83 @@ class EbuildFetcher(Task):
 			mydbapi=portdb, tree="porttree")
 		return retval
 
-class EbuildBuild(Task):
+class EbuildBuildDir(SlotObject):
 
-	__slots__ = ("pkg", "pretend", "settings")
+	__slots__ = ("pkg", "settings",
+		"locked", "_catdir", "_lock_obj")
+
+	def __init__(self, **kwargs):
+		SlotObject.__init__(self, **kwargs)
+		self.locked = False
+
+	def lock(self):
+		"""
+		This raises an AlreadyLocked exception if lock() is called
+		while a lock is already held. In order to avoid this, call
+		unlock() or check whether the "locked" attribute is True
+		or False before calling lock().
+		"""
+		if self._lock_obj is not None:
+			raise self.AlreadyLocked((self._lock_obj,))
+
+		root_config = self.pkg.root_config
+		portdb = root_config.trees["porttree"].dbapi
+		ebuild_path = portdb.findname(self.pkg.cpv)
+		settings = self.settings
+		debug = settings.get("PORTAGE_DEBUG") == "1"
+		use_cache = 1 # always true
+
+		portage.doebuild_environment(ebuild_path, "setup", root_config.root,
+			self.settings, debug, use_cache, portdb)
+		catdir = os.path.dirname(settings["PORTAGE_BUILDDIR"])
+		self._catdir = catdir
+		portage.util.ensure_dirs(os.path.dirname(catdir),
+			uid=portage.portage_uid, gid=portage.portage_gid,
+			mode=070, mask=0)
+		catdir_lock = None
+		try:
+			catdir_lock = portage.locks.lockdir(catdir)
+			portage.util.ensure_dirs(catdir,
+				gid=portage.portage_gid,
+				mode=070, mask=0)
+			self._lock_obj = portage.locks.lockdir(
+				self.settings["PORTAGE_BUILDDIR"])
+		finally:
+			self.locked = self._lock_obj is not None
+			if catdir_lock is not None:
+				portage.locks.unlockdir(catdir_lock)
+
+	def unlock(self):
+		if self._lock_obj is None:
+			return
+
+		portage.locks.unlockdir(self._lock_obj)
+		self._lock_obj = None
+		self.locked = False
+
+		catdir = self._catdir
+		catdir_lock = None
+		try:
+			catdir_lock = portage.locks.lockdir(catdir)
+		finally:
+			if catdir_lock:
+				try:
+					os.rmdir(catdir)
+				except OSError, e:
+					if e.errno not in (errno.ENOENT,
+						errno.ENOTEMPTY, errno.EEXIST):
+						raise
+					del e
+				portage.locks.unlockdir(catdir_lock)
+
+	class AlreadyLocked(portage.exception.PortageException):
+		pass
+
+class EbuildBuild(Task):
+	"""
+	TODO: Support asynchronous execution, to implement parallel builds.
+	"""
+	__slots__ = ("pkg", "settings")
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
@@ -1491,18 +1565,25 @@ class EbuildBuild(Task):
 	def execute(self):
 		root_config = self.pkg.root_config
 		portdb = root_config.trees["porttree"].dbapi
-		vartree = root_config.trees["vartree"]
 		ebuild_path = portdb.findname(self.pkg.cpv)
 		debug = self.settings.get("PORTAGE_DEBUG") == "1"
 
+		retval = portage.doebuild(ebuild_path, "clean",
+			root_config.root, self.settings, debug, cleanup=1,
+			mydbapi=portdb, tree="porttree")
+		if retval != os.EX_OK:
+			return retval
+
 		retval = portage.doebuild(ebuild_path, "install",
-			root_config.root, self.settings, debug, vartree=vartree,
+			root_config.root, self.settings, debug,
 			mydbapi=portdb, tree="porttree")
 		return retval
 
 class EbuildBinpkg(Task):
-
-	__slots__ = ("pkg", "pretend", "settings")
+	"""
+	This assumes that src_install() has successfully completed.
+	"""
+	__slots__ = ("pkg", "settings")
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
@@ -1525,13 +1606,21 @@ class EbuildBinpkg(Task):
 		settings["PORTAGE_BINPKG_TMPFILE"] = binpkg_tmpfile
 		settings.backup_changes("PORTAGE_BINPKG_TMPFILE")
 
+		# Earlier phases should already be done, so
+		# use "noauto" to quietly skip them.
+		settings.features.append("noauto")
+
 		try:
 			retval = portage.doebuild(ebuild_path,
 				"package", root_config.root,
 				settings, debug, mydbapi=portdb,
 				tree="porttree")
 		finally:
-			self.settings.pop("PORTAGE_BINPKG_TMPFILE", None)
+			settings.pop("PORTAGE_BINPKG_TMPFILE", None)
+			try:
+				settings.features.remove("noauto")
+			except ValueError:
+				pass
 
 		if retval == os.EX_OK:
 			bintree.inject(pkg.cpv, filename=binpkg_tmpfile)
@@ -6516,35 +6605,16 @@ class MergeTask(object):
 					self.curval += 1
 					return
 
-				portage.doebuild_environment(y, "setup", myroot,
-					pkgsettings, self.edebug, 1, portdb)
-				catdir = os.path.dirname(pkgsettings["PORTAGE_BUILDDIR"])
-				portage.util.ensure_dirs(os.path.dirname(catdir),
-					uid=portage.portage_uid, gid=portage.portage_gid,
-					mode=070, mask=0)
-				builddir_lock = None
-				catdir_lock = None
+				build_dir = EbuildBuildDir(pkg=pkg, settings=pkgsettings)
 				try:
-					catdir_lock = portage.locks.lockdir(catdir)
-					portage.util.ensure_dirs(catdir,
-						gid=portage.portage_gid,
-						mode=070, mask=0)
-					builddir_lock = portage.locks.lockdir(
-						pkgsettings["PORTAGE_BUILDDIR"])
-					try:
-						portage.locks.unlockdir(catdir_lock)
-					finally:
-						catdir_lock = None
+					build_dir.lock()
+					# Cleaning is triggered before the setup
+					# phase, in portage.doebuild().
 					msg = " === (%s of %s) Cleaning (%s::%s)" % \
 						(mergecount, len(mymergelist), pkg_key, y)
 					short_msg = "emerge: (%s of %s) %s Clean" % \
 						(mergecount, len(mymergelist), pkg_key)
 					emergelog(xterm_titles, msg, short_msg=short_msg)
-					retval = portage.doebuild(y, "clean", myroot,
-						pkgsettings, self.edebug, cleanup=1,
-						mydbapi=portdb, tree="porttree")
-					if retval != os.EX_OK:
-						raise self._pkg_failure(retval)
 
 					if "--buildpkg" in self.myopts or issyspkg:
 						if issyspkg:
@@ -6556,8 +6626,12 @@ class MergeTask(object):
 							(mergecount, len(mymergelist), pkg_key)
 						emergelog(xterm_titles, msg, short_msg=short_msg)
 
-						build = EbuildBinpkg(pkg=pkg, pretend=pretend,
-							settings=pkgsettings)
+						build = EbuildBuild(pkg=pkg, settings=pkgsettings)
+						retval = build.execute()
+						if retval != os.EX_OK:
+							raise self._pkg_failure(retval)
+
+						build = EbuildBinpkg(pkg=pkg, settings=pkgsettings)
 						retval = build.execute()
 						if retval != os.EX_OK:
 							raise self._pkg_failure(retval)
@@ -6569,14 +6643,11 @@ class MergeTask(object):
 								(mergecount, len(mymergelist), pkg_key)
 							emergelog(xterm_titles, msg, short_msg=short_msg)
 
-							retval = portage.merge(pkgsettings["CATEGORY"],
-								pkgsettings["PF"], pkgsettings["D"],
-								os.path.join(pkgsettings["PORTAGE_BUILDDIR"],
-								"build-info"), myroot, pkgsettings,
-								myebuild=pkgsettings["EBUILD"],
-								mytree="porttree", mydbapi=portdb,
-								vartree=vartree, prev_mtimes=ldpath_mtimes,
-								blockers=self._find_blockers(pkg))
+							merge = EbuildMerge(
+								find_blockers=self._find_blockers(pkg),
+								ldpath_mtimes=ldpath_mtimes,
+								pkg=pkg, pretend=pretend, settings=pkgsettings)
+							retval = merge.execute()
 							if retval != os.EX_OK:
 								raise self._pkg_failure(retval)
 						elif "noclean" not in pkgsettings.features:
@@ -6590,8 +6661,7 @@ class MergeTask(object):
 							(mergecount, len(mymergelist), pkg_key)
 						emergelog(xterm_titles, msg, short_msg=short_msg)
 
-						build = EbuildBuild(ldpath_mtimes=ldpath_mtimes,
-							pkg=pkg, pretend=pretend, settings=pkgsettings)
+						build = EbuildBuild(pkg=pkg, settings=pkgsettings)
 						retval = build.execute()
 						if retval != os.EX_OK:
 							raise self._pkg_failure(retval)
@@ -6605,24 +6675,10 @@ class MergeTask(object):
 						if retval != os.EX_OK:
 							raise self._pkg_failure(retval)
 				finally:
-					if builddir_lock:
+					if build_dir.locked:
 						elog_process(pkg.cpv, pkgsettings,
 							phasefilter=filter_mergephases)
-						portage.locks.unlockdir(builddir_lock)
-					try:
-						if not catdir_lock:
-							# Lock catdir for removal if empty.
-							catdir_lock = portage.locks.lockdir(catdir)
-					finally:
-						if catdir_lock:
-							try:
-								os.rmdir(catdir)
-							except OSError, e:
-								if e.errno not in (errno.ENOENT,
-									errno.ENOTEMPTY, errno.EEXIST):
-									raise
-								del e
-							portage.locks.unlockdir(catdir_lock)
+						build_dir.unlock()
 
 			elif x[0]=="binary":
 				#merge the tbz2
