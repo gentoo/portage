@@ -2,7 +2,7 @@ prefix = @prefix@
 exec_prefix = @exec_prefix@
 sysconfdir = @sysconfdir@
 libdir = @libdir@
-PYTHON = @PYTHON@
+PYTHON = @PORTAGE_PYTHON@
 
 srcdir=@srcdir@
 top_builddir=@top_builddir@

@@ -14,7 +14,7 @@ export TMP="/var/tmp"
 export V="$1"
 export DEST="${TMP}/${PKG}-${V}"
 
-./tabcheck.py `grep "#\!@PYTHON@" bin/* | cut -d: -f1` `find ./ -type f -name '*.py'`
+./tabcheck.py `grep "#\!@PORTAGE_PYTHON@" bin/* | cut -d: -f1` `find ./ -type f -name '*.py'`
 
 if [ -e ${DEST} ]; then
 	echo EXISTS ALREADY

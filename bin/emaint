@@ -1,4 +1,4 @@
-#!@PYTHON@ -O
+#!@PORTAGE_PYTHON@ -O
 # vim: noet :
 import os
 import re

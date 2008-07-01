@@ -1,4 +1,4 @@
-#!@PYTHON@ -O
+#!@PORTAGE_PYTHON@ -O
 
 import profile,time,sys,os
 sys.path = ["@PORTAGE_BASE@/bin","@PORTAGE_BASE@/pym"]+sys.path

@@ -16,7 +16,7 @@ dnl GENTOO_PATH_PYTHON([minimum-version], [path])
 dnl author: Fabian Groffen <grobian a gentoo.org>
 AC_DEFUN([GENTOO_PATH_PYTHON],
 [
-  AC_PATH_PROG([PYTHON], [python], no, $2)
+  AC_PATH_PROG([PORTAGE_PYTHON], [python], no, $2)
 
   dnl is is there at all?
   if test "$PYTHON" = "no" ; then

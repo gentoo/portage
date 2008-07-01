@@ -1,4 +1,4 @@
-#!@PYTHON@
+#!@PORTAGE_PYTHON@
 # Copyright Gentoo Foundation 2006
 # Portage Emerge bits
 # $Id$
