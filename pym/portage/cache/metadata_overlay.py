@@ -61,7 +61,7 @@ class database(template.database):
 
 	def _delitem(self, cpv):
 		value = self[cpv] # validates whiteout and/or raises a KeyError when necessary
-		if self.db_ro.has_key(cpv):
+		if cpv in self.db_ro:
 			self.db_rw[cpv] = self._create_whiteout(value)
 		else:
 			del self.db_rw[cpv]

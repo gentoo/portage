@@ -31,7 +31,7 @@ def read_config(mandatory_opts):
         sys.exit(1)
 
     for key in mandatory_opts:
-        if not opts.has_key(key):
+        if key not in opts:
             if key == "merge":
                 opts["merge"] = "sdiff --suppress-common-lines --output='%s' '%s' '%s'"
             else:

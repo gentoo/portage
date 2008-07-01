@@ -4,6 +4,7 @@
 # $Id$
 
 import UserDict
+import warnings
 import weakref
 
 class ProtectedDict(UserDict.DictMixin):
@@ -55,9 +56,14 @@ class ProtectedDict(UserDict.DictMixin):
 		return list(self.__iter__())
 
 
-	def has_key(self, key):
+	def __contains__(self, key):
 		return key in self.new or (key not in self.blacklist and key in self.orig)
 
+	def has_key(self, key):
+		warnings.warn("portage.cache.mapping.ProtectedDict.has_key() is"
+			" deprecated, use the in operator instead",
+			DeprecationWarning)
+		return key in self
 
 class LazyLoad(UserDict.DictMixin):
 	"""
@@ -91,6 +97,9 @@ class LazyLoad(UserDict.DictMixin):
 
 
 	def has_key(self, key):
+		warnings.warn("portage.cache.mappings.LazyLoad.has_key() is "
+			"deprecated, use the in operator instead",
+			DeprecationWarning)
 		return key in self
 
 

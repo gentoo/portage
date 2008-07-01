@@ -86,11 +86,11 @@ class OptionsClass:
 		self.ED = ""
 		self.DOCDESTTREE = ""
 		
-		if os.environ.has_key("PF"):
+		if "PF" in os.environ:
 			self.PF = os.environ["PF"]
 		if os.environ.has_key("ED"):
 			self.ED = os.environ["ED"]
-		if os.environ.has_key("_E_DOCDESTTREE_"):
+		if "_E_DOCDESTTREE_" in os.environ:
 			self.DOCDESTTREE = os.environ["_E_DOCDESTTREE_"]
 		
 		self.allowed_exts = [ 'htm', 'html', 'css', 'js',

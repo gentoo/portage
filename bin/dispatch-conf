@@ -75,7 +75,7 @@ class dispatch:
 
         self.options = portage.dispatch_conf.read_config(MANDATORY_OPTS)
 
-        if self.options.has_key("log-file"):
+        if "log-file" in self.options:
             if os.path.isfile(self.options["log-file"]):
                 shutil.copy(self.options["log-file"], self.options["log-file"] + '.old')
             if os.path.isfile(self.options["log-file"]) \
@@ -273,7 +273,7 @@ class dispatch:
                     show_new_diff = 1
                     continue
                 elif c == 'e':
-                    if not os.environ.has_key('EDITOR'):
+                    if 'EDITOR' not in os.environ:
                         os.environ['EDITOR']='nano'
                     os.system(os.environ['EDITOR'] + ' ' + newconf)
                     continue
@@ -337,7 +337,7 @@ class dispatch:
             conf  = re.sub (r'\._cfg\d+_', '', nconf)
             dir   = re.match (r'^(.+)/', nconf).group (1)
 
-            if h.has_key (conf):
+            if conf in h:
                 mrgconf = re.sub(r'\._cfg', '._mrg', h[conf]['new'])
                 if os.path.exists(mrgconf):
                     os.unlink(mrgconf)

@@ -173,7 +173,7 @@ class dbapi(object):
 
 	def invalidentry(self, mypath):
 		if mypath.endswith('portage_lockfile'):
-			if not os.environ.has_key("PORTAGE_MASTER_PID"):
+			if "PORTAGE_MASTER_PID" not in os.environ:
 				writemsg("Lockfile removed: %s\n" % mypath, 1)
 				unlockfile((mypath, None, None))
 			else:

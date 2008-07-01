@@ -7340,7 +7340,7 @@ class Scheduler(object):
 			emergelog(xterm_titles, " *** Finished. Cleaning up...")
 
 		# We're out of the loop... We're done. Delete the resume data.
-		if mtimedb.has_key("resume"):
+		if "resume" in mtimedb:
 			del mtimedb["resume"]
 		mtimedb.commit()
 
@@ -7578,7 +7578,7 @@ def unmerge(root_config, myopts, unmerge_action,
 						# since we're pruning, we don't care about slots
 						# and put all the pkgs in together
 						myslot = 0
-					if not slotmap.has_key(myslot):
+					if myslot not in slotmap:
 						slotmap[myslot] = {}
 					slotmap[myslot][localtree.dbapi.cpv_counter(mypkg)] = mypkg
 				
@@ -8283,7 +8283,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			rsync_initial_timeout = 15
 
 		try:
-			if settings.has_key("RSYNC_RETRIES"):
+			if "RSYNC_RETRIES" in settings:
 				print yellow("WARNING:")+" usage of RSYNC_RETRIES is deprecated, use PORTAGE_RSYNC_RETRIES instead"
 				maxretries=int(settings["RSYNC_RETRIES"])				
 			else:

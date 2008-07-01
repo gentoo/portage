@@ -33,7 +33,7 @@ def _finalize(mysettings, items):
 		count = "one package"
 	else:
 		count = "multiple packages"
-	if mysettings.has_key("PORTAGE_ELOG_MAILURI"):
+	if "PORTAGE_ELOG_MAILURI" in mysettings:
 		myrecipient = mysettings["PORTAGE_ELOG_MAILURI"].split()[0]
 	else:
 		myrecipient = "root@localhost"

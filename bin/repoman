@@ -660,7 +660,7 @@ if os.path.exists(descfile):
 		if not os.path.isdir(portdir+"/profiles/"+arch[1]):
 			print "Invalid "+arch[2]+" profile ("+arch[1]+") for arch "+arch[0]
 			continue
-		if profiles.has_key(arch[0]):
+		if arch[0] in profiles:
 			profiles[arch[0]]+= [[arch[1], arch[2]]]
 		else:
 			profiles[arch[0]] = [[arch[1], arch[2]]]
@@ -668,7 +668,7 @@ if os.path.exists(descfile):
 	for x in repoman_settings.archlist():
 		if x[0] == "~":
 			continue
-		if not profiles.has_key(x):
+		if x not in profiles:
 			print red("\""+x+"\" doesn't have a valid profile listed in profiles.desc.")
 			print red("You need to either \"cvs update\" your profiles dir or follow this")
 			print red("up with the "+x+" team.")
@@ -1333,7 +1333,7 @@ for x in scanlist:
 
 		# uselist checks - local
 		mykey = portage.dep_getkey(catpkg)
-		if luselist.has_key(mykey):
+		if mykey in luselist:
 			for mypos in range(len(myuse)-1,-1,-1):
 				if myuse[mypos] and (myuse[mypos] in luselist[mykey]):
 					del myuse[mypos]
@@ -1378,7 +1378,7 @@ for x in scanlist:
 				if myskey not in kwlist:
 					stats["KEYWORDS.invalid"] += 1
 					fails["KEYWORDS.invalid"].append(x+"/"+y+".ebuild: %s" % mykey)
-				elif not profiles.has_key(myskey):
+				elif myskey not in profiles:
 					stats["KEYWORDS.invalid"] += 1
 					fails["KEYWORDS.invalid"].append(x+"/"+y+".ebuild: %s (profile invalid)" % mykey)
 
@@ -1418,7 +1418,7 @@ for x in scanlist:
 
 		for keyword,arch,groups in arches:
 
-			if not profiles.has_key(arch):
+			if arch not in profiles:
 				# A missing profile will create an error further down
 				# during the KEYWORDS verification.
 				continue
@@ -1831,7 +1831,7 @@ else:
 		if "PORTAGE_GPG_KEY" not in repoman_settings:
 			raise portage.exception.MissingParameter("PORTAGE_GPG_KEY is unset!")
 		if "PORTAGE_GPG_DIR" not in repoman_settings:
-			if os.environ.has_key("HOME"):
+			if "HOME" in os.environ:
 				repoman_settings["PORTAGE_GPG_DIR"] = os.path.join(os.environ["HOME"], ".gnupg")
 				logging.info("Automatically setting PORTAGE_GPG_DIR to %s" % repoman_settings["PORTAGE_GPG_DIR"])
 			else:
@@ -1846,7 +1846,7 @@ else:
 				repoman_settings["PORTAGE_GPG_DIR"])
 		gpgcmd = "gpg --sign --clearsign --yes "
 		gpgcmd+= "--default-key "+repoman_settings["PORTAGE_GPG_KEY"]
-		if repoman_settings.has_key("PORTAGE_GPG_DIR"):
+		if "PORTAGE_GPG_DIR" in repoman_settings:
 			gpgcmd += " --homedir "+repoman_settings["PORTAGE_GPG_DIR"]
 		if options.pretend:
 			print "("+gpgcmd+" "+filename+")"

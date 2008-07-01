@@ -175,7 +175,7 @@ def stack_dicts(dicts, incremental=0, incrementals=[], ignore_none=0):
 			final_dict = {}
 		for y in mydict.keys():
 			if True:
-				if final_dict.has_key(y) and (incremental or (y in incrementals)):
+				if y in final_dict and (incremental or (y in incrementals)):
 					final_dict[y] += " "+mydict[y][:]
 				else:
 					final_dict[y]  = mydict[y][:]
@@ -494,7 +494,7 @@ def varexpand(mystring, mydict={}):
 					cexpand[mystring]=""
 					return ""
 				numvars=numvars+1
-				if mydict.has_key(myvarname):
+				if myvarname in mydict:
 					newstring=newstring+mydict[myvarname] 
 			else:
 				newstring=newstring+mystring[pos]

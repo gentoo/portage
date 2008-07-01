@@ -92,7 +92,7 @@ def get_glsa_list(myconfig):
 	"""
 	rValue = []
 
-	if myconfig.has_key("GLSA_DIR"):
+	if "GLSA_DIR" in myconfig:
 		repository = myconfig["GLSA_DIR"]
 	else:
 		repository = os.path.join(myconfig["PORTDIR"], "metadata", "glsa")
@@ -407,7 +407,7 @@ class Glsa:
 		@rtype:		None
 		@return:	None
 		"""
-		if self.config.has_key("GLSA_DIR"):
+		if "GLSA_DIR" in self.config:
 			repository = "file://" + self.config["GLSA_DIR"]+"/"
 		else:
 			repository = "file://" + self.config["PORTDIR"] + "/metadata/glsa/"
@@ -470,7 +470,7 @@ class Glsa:
 		self.packages = {}
 		for p in self.affected.getElementsByTagName("package"):
 			name = p.getAttribute("name")
-			if not self.packages.has_key(name):
+			if name not in self.packages:
 				self.packages[name] = []
 			tmp = {}
 			tmp["arch"] = p.getAttribute("arch")
