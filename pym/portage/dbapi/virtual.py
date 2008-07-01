@@ -40,7 +40,7 @@ class fakedbapi(dbapi):
 		return result[:]
 
 	def cpv_exists(self, mycpv):
-		return self.cpvdict.has_key(mycpv)
+		return mycpv in self.cpvdict
 
 	def cp_list(self, mycp, use_cache=1):
 		cachelist = self._match_cache.get(mycp)
@@ -94,9 +94,9 @@ class fakedbapi(dbapi):
 		"""Removes a cpv from the list of available packages."""
 		self._clear_cache()
 		mycp = cpv_getkey(mycpv)
-		if self.cpvdict.has_key(mycpv):
+		if mycpv in self.cpvdict:
 			del	self.cpvdict[mycpv]
-		if not self.cpdict.has_key(mycp):
+		if mycp not in self.cpdict:
 			return
 		while mycpv in self.cpdict[mycp]:
 			del self.cpdict[mycp][self.cpdict[mycp].index(mycpv)]

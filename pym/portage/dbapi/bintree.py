@@ -696,7 +696,7 @@ class binarytree(object):
 			#writemsg(green("  -- DONE!\n\n"))
 
 			for mypkg in self.remotepkgs.keys():
-				if not self.remotepkgs[mypkg].has_key("CATEGORY"):
+				if "CATEGORY" not in self.remotepkgs[mypkg]:
 					#old-style or corrupt package
 					writemsg("!!! Invalid remote binary package: "+mypkg+"\n",
 						noiselevel=-1)

@@ -89,7 +89,7 @@ class PreservedLibsRegistry(object):
 		"""
 		cp = "/".join(catpkgsplit(cpv)[:2])
 		cps = cp+":"+slot
-		if len(paths) == 0 and self._data.has_key(cps) \
+		if len(paths) == 0 and cps in self._data \
 				and self._data[cps][0] == cpv and int(self._data[cps][1]) == int(counter):
 			del self._data[cps]
 		elif len(paths) > 0:
@@ -463,7 +463,7 @@ class vardbapi(dbapi):
 			mystat = os.stat(self.getpath(mysplit[0]))[stat.ST_MTIME]
 		except OSError:
 			mystat = 0
-		if use_cache and self.cpcache.has_key(mycp):
+		if use_cache and mycp in self.cpcache:
 			cpc = self.cpcache[mycp]
 			if cpc[0] == mystat:
 				return cpc[1][:]
@@ -491,7 +491,7 @@ class vardbapi(dbapi):
 		self._cpv_sort_ascending(returnme)
 		if use_cache:
 			self.cpcache[mycp] = [mystat, returnme[:]]
-		elif self.cpcache.has_key(mycp):
+		elif mycp in self.cpcache:
 			del self.cpcache[mycp]
 		return returnme
 
@@ -587,7 +587,7 @@ class vardbapi(dbapi):
 		mykey = dep_getkey(mydep)
 		mycat = catsplit(mykey)[0]
 		if not use_cache:
-			if self.matchcache.has_key(mycat):
+			if mycat in self.matchcache:
 				del self.mtdircache[mycat]
 				del self.matchcache[mycat]
 			return list(self._iter_match(mydep,
@@ -597,11 +597,12 @@ class vardbapi(dbapi):
 		except (IOError, OSError):
 			curmtime=0
 
-		if not self.matchcache.has_key(mycat) or not self.mtdircache[mycat]==curmtime:
+		if mycat not in self.matchcache or \
+			self.mtdircache[mycat] != curmtime:
 			# clear cache entry
 			self.mtdircache[mycat] = curmtime
 			self.matchcache[mycat] = {}
-		if not self.matchcache[mycat].has_key(mydep):
+		if mydep not in self.matchcache[mycat]:
 			mymatch = list(self._iter_match(mydep,
 				self.cp_list(mydep.cp, use_cache=use_cache)))
 			self.matchcache[mycat][mydep] = mymatch
@@ -1162,7 +1163,7 @@ class vartree(object):
 		myprovides = {}
 		for node in self.getallcpv():
 			for mykey in self.get_provide(node):
-				if myprovides.has_key(mykey):
+				if mykey in myprovides:
 					myprovides[mykey] += [node]
 				else:
 					myprovides[mykey] = [node]
@@ -2593,7 +2594,7 @@ class dblink(object):
 		#if we have a file containing previously-merged config file md5sums, grab it.
 		conf_mem_file = os.path.join(destroot, CONFIG_MEMORY_FILE)
 		cfgfiledict = grabdict(conf_mem_file)
-		if self.settings.has_key("NOCONFMEM"):
+		if "NOCONFMEM" in self.settings:
 			cfgfiledict["IGNORE"]=1
 		else:
 			cfgfiledict["IGNORE"]=0
