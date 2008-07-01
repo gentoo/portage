@@ -12,7 +12,7 @@ def filter_loglevels(logentries, loglevels):
 	for phase in logentries:
 		for msgtype, msgcontent in logentries[phase]:
 			if msgtype.upper() in loglevels or "*" in loglevels:
-				if not rValue.has_key(phase):
+				if phase not in rValue:
 					rValue[phase] = []
 				rValue[phase].append((msgtype, msgcontent))
 	return rValue

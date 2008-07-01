@@ -76,9 +76,9 @@ def _elog_base(level, msg, phase="other", key=None, color=None):
 	if color == None:
 		color = "GOOD"
 	print colorize(color, " * ")+msg
-	if not _msgbuffer.has_key(key):
+	if key not in _msgbuffer:
 		_msgbuffer[key] = {}
-	if not _msgbuffer[key].has_key(phase):
+	if phase not in _msgbuffer[key]:
 		_msgbuffer[key][phase] = []
 	_msgbuffer[key][phase].append((level, msg))
 

@@ -73,13 +73,13 @@ def elog_process(cpv, mysettings, phasefilter=None):
 
 	ebuild_logentries = collect_ebuild_messages(os.path.join(mysettings["T"], "logging"))
 	all_logentries = collect_messages()
-	if all_logentries.has_key(cpv):
+	if cpv in all_logentries:
 		all_logentries[cpv] = _merge_logentries(ebuild_logentries, all_logentries[cpv])
 	else:
 		all_logentries[cpv] = ebuild_logentries
 
 	for key in _preserve_logentries.keys():
-		if all_logentries.has_key(key):
+		if key in all_logentries:
 			all_logentries[key] = _merge_logentries(_preserve_logentries[key], all_logentries[key])
 		else:
 			all_logentries[key] = _preserve_logentries[key]
