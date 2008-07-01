@@ -293,12 +293,12 @@ if mode == "mail":
 	# color doesn't make any sense for mail
 	nocolor()
 
-	if portage.settings.has_key("PORTAGE_ELOG_MAILURI"):
+	if "PORTAGE_ELOG_MAILURI" in portage.settings:
 		myrecipient = portage.settings["PORTAGE_ELOG_MAILURI"].split()[0]
 	else:
 		myrecipient = "root@localhost"
 	
-	if portage.settings.has_key("PORTAGE_ELOG_MAILFROM"):
+	if "PORTAGE_ELOG_MAILFROM" in portage.settings:
 		myfrom = portage.settings["PORTAGE_ELOG_MAILFROM"]
 	else:
 		myfrom = "glsa-check"
