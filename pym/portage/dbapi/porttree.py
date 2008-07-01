@@ -63,7 +63,9 @@ class portdbapi(dbapi):
 				self.manifestVerifier = portage.gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", minimumTrust=self.manifestVerifyLevel)
 
 		#self.root=settings["PORTDIR"]
-		self.porttree_root = os.path.realpath(porttree_root)
+		self.porttree_root = porttree_root
+		if porttree_root:
+			self.porttree_root = os.path.realpath(porttree_root)
 
 		self.depcachedir = os.path.realpath(self.mysettings.depcachedir)
 
