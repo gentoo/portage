@@ -20,6 +20,8 @@ try:
 except KeyboardInterrupt:
 	sys.exit(1)
 
+import array
+import select
 import gc
 import os, stat
 import platform
@@ -1554,7 +1556,9 @@ class EbuildBuild(Task):
 	"""
 	TODO: Support asynchronous execution, to implement parallel builds.
 	"""
-	__slots__ = ("pkg", "settings")
+	__slots__ = ("pkg", "register", "schedule", "settings", "unregister")
+
+	_phases = ("setup", "unpack", "compile", "test", "install")
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
@@ -1566,18 +1570,170 @@ class EbuildBuild(Task):
 		root_config = self.pkg.root_config
 		portdb = root_config.trees["porttree"].dbapi
 		ebuild_path = portdb.findname(self.pkg.cpv)
-		debug = self.settings.get("PORTAGE_DEBUG") == "1"
+		settings = self.settings
+		debug = settings.get("PORTAGE_DEBUG") == "1"
+		cleanup = 1
 
 		retval = portage.doebuild(ebuild_path, "clean",
-			root_config.root, self.settings, debug, cleanup=1,
+			root_config.root, settings, debug, cleanup=cleanup,
 			mydbapi=portdb, tree="porttree")
 		if retval != os.EX_OK:
 			return retval
 
-		retval = portage.doebuild(ebuild_path, "install",
-			root_config.root, self.settings, debug,
-			mydbapi=portdb, tree="porttree")
-		return retval
+		# This initializes PORTAGE_LOG_FILE.
+		portage.prepare_build_dirs(root_config.root, settings, cleanup)
+
+		fd_pipes = {
+			0 : sys.stdin.fileno(),
+			1 : sys.stdout.fileno(),
+			2 : sys.stderr.fileno(),
+		}
+
+		for mydo in self._phases:
+			ebuild_phase = EbuildPhase(fd_pipes=fd_pipes,
+				pkg=self.pkg, phase=mydo, register=self.register,
+				settings=settings, unregister=self.unregister)
+			ebuild_phase.start()
+			self.schedule()
+			retval = ebuild_phase.wait()
+
+			portage._post_phase_userpriv_perms(settings)
+			if mydo == "install":
+				portage._check_build_log(settings)
+				if retval == os.EX_OK:
+					retval = portage._post_src_install_checks(settings)
+
+			if retval != os.EX_OK:
+				return retval
+
+		return os.EX_OK
+
+class EbuildPhase(SlotObject):
+
+	__slots__ = ("fd_pipes", "phase", "pkg",
+		"register", "settings", "unregister",
+		"pid", "returncode", "files")
+
+	_file_names = ("log", "stdout", "ebuild")
+	_files_dict = slot_dict_class(_file_names)
+	_bufsize = 4096
+
+	def start(self):
+		root_config = self.pkg.root_config
+		portdb = root_config.trees["porttree"].dbapi
+		ebuild_path = portdb.findname(self.pkg.cpv)
+		settings = self.settings
+		debug = settings.get("PORTAGE_DEBUG") == "1"
+		logfile = settings.get("PORTAGE_LOG_FILE")
+		master_fd = None
+		slave_fd = None
+		fd_pipes = self.fd_pipes.copy()
+
+		# flush any pending output
+		for fd in fd_pipes.itervalues():
+			if fd == sys.stdout.fileno():
+				sys.stdout.flush()
+			if fd == sys.stderr.fileno():
+				sys.stderr.flush()
+
+		fd_pipes_orig = None
+		self.files = self._files_dict()
+		files = self.files
+		got_pty = False
+
+		portage._doebuild_exit_status_unlink(
+			settings.get("EBUILD_EXIT_STATUS_FILE"))
+
+		if logfile:
+			if portage._disable_openpty:
+				master_fd, slave_fd = os.pipe()
+			else:
+				from pty import openpty
+				try:
+					master_fd, slave_fd = openpty()
+					got_pty = True
+				except EnvironmentError, e:
+					portage._disable_openpty = True
+					portage.writemsg("openpty failed: '%s'\n" % str(e),
+						noiselevel=-1)
+					del e
+					master_fd, slave_fd = os.pipe()
+
+			if got_pty:
+				# Disable post-processing of output since otherwise weird
+				# things like \n -> \r\n transformations may occur.
+				import termios
+				mode = termios.tcgetattr(slave_fd)
+				mode[1] &= ~termios.OPOST
+				termios.tcsetattr(slave_fd, termios.TCSANOW, mode)
+
+			import fcntl
+			fcntl.fcntl(master_fd, fcntl.F_SETFL,
+				fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+
+			fd_pipes.setdefault(0, sys.stdin.fileno())
+			fd_pipes_orig = fd_pipes.copy()
+			if got_pty and os.isatty(fd_pipes_orig[1]):
+				from portage.output import get_term_size, set_term_size
+				rows, columns = get_term_size()
+				set_term_size(rows, columns, slave_fd)
+			fd_pipes[0] = fd_pipes_orig[0]
+			fd_pipes[1] = slave_fd
+			fd_pipes[2] = slave_fd
+
+		retval = portage.doebuild(ebuild_path, self.phase,
+			root_config.root, settings, debug,
+			mydbapi=portdb, tree="porttree",
+			fd_pipes=fd_pipes, returnpid=True)
+
+		self.pid = retval[0]
+
+		if logfile:
+			os.close(slave_fd)
+			files["log"] = open(logfile, 'a')
+			files["stdout"] = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
+			files["ebuild"] = os.fdopen(master_fd, 'r')
+			self.register(files["ebuild"].fileno(),
+				select.POLLIN, self._output_handler)
+
+	def _output_handler(self, fd, event):
+		files = self.files
+		buf = array.array('B')
+		try:
+			buf.fromfile(files["ebuild"], self._bufsize)
+		except EOFError:
+			pass
+		if buf:
+			buf.tofile(files["stdout"])
+			files["stdout"].flush()
+			buf.tofile(files["log"])
+			files["log"].flush()
+		else:
+			self.unregister(files["ebuild"].fileno())
+			for f in files.values():
+				f.close()
+
+	def wait(self):
+		pid = self.pid
+		retval = os.waitpid(pid, 0)[1]
+		portage.process.spawned_pids.remove(pid)
+		if retval != os.EX_OK:
+			if retval & 0xff:
+				retval = (retval & 0xff) << 8
+			else:
+				retval = retval >> 8
+
+		msg = portage._doebuild_exit_status_check(
+			self.phase, self.settings)
+		if msg:
+			retval = 1
+			from textwrap import wrap
+			from portage.elog.messages import eerror
+			for l in wrap(msg, 72):
+				eerror(l, phase=self.phase, key=self.pkg.cpv)
+
+		self.returncode = retval
+		return self.returncode
 
 class EbuildBinpkg(Task):
 	"""
@@ -2776,6 +2932,13 @@ class depgraph(object):
 				if debug:
 					print "Candidates:", selected_atoms
 				for atom in selected_atoms:
+					if isinstance(atom, basestring) \
+						and not portage.isvalidatom(atom):
+						show_invalid_depstring_notice(
+							pkg, dep_string, str(atom))
+						if not pkg.installed:
+							return 0
+						continue
 					blocker = atom.startswith("!")
 					if blocker:
 						atom = atom[1:]
@@ -6198,7 +6361,7 @@ class PackageCounters(object):
 					(self.blocks - self.blocks_satisfied))
 		return "".join(myoutput)
 
-class MergeTask(object):
+class Scheduler(object):
 
 	_opts_ignore_blockers = \
 		frozenset(["--buildpkgonly",
@@ -6224,6 +6387,8 @@ class MergeTask(object):
 				clone=trees[root]["vartree"].settings)
 		self.curval = 0
 		self._spawned_pids = []
+		self._poll_event_handlers = {}
+		self._poll = select.poll()
 
 	class _pkg_failure(portage.exception.PortageException):
 		"""
@@ -6387,6 +6552,19 @@ class MergeTask(object):
 				# so remove it from our list.
 				pass
 			spawned_pids.remove(pid)
+
+	def _register(self, f, eventmask, handler):
+		self._poll_event_handlers[f] = handler
+		self._poll.register(f, eventmask)
+
+	def _unregister(self, f):
+		self._poll.unregister(f)
+		del self._poll_event_handlers[f]
+
+	def _schedule(self):
+		while self._poll_event_handlers:
+			for f, event in self._poll.poll():
+				self._poll_event_handlers[f](f, event)
 
 	def _merge(self):
 		mylist = self._mergelist
@@ -6626,7 +6804,9 @@ class MergeTask(object):
 							(mergecount, len(mymergelist), pkg_key)
 						emergelog(xterm_titles, msg, short_msg=short_msg)
 
-						build = EbuildBuild(pkg=pkg, settings=pkgsettings)
+						build = EbuildBuild(pkg=pkg, register=self._register,
+							schedule=self._schedule, settings=pkgsettings,
+							unregister=self._unregister)
 						retval = build.execute()
 						if retval != os.EX_OK:
 							raise self._pkg_failure(retval)
@@ -6661,7 +6841,9 @@ class MergeTask(object):
 							(mergecount, len(mymergelist), pkg_key)
 						emergelog(xterm_titles, msg, short_msg=short_msg)
 
-						build = EbuildBuild(pkg=pkg, settings=pkgsettings)
+						build = EbuildBuild(pkg=pkg, register=self._register,
+							schedule=self._schedule, settings=pkgsettings,
+							unregister=self._unregister)
 						retval = build.execute()
 						if retval != os.EX_OK:
 							raise self._pkg_failure(retval)
@@ -9297,7 +9479,7 @@ def action_build(settings, trees, mtimedb,
 			mymergelist = mydepgraph.altlist()
 			mydepgraph.break_refs(mymergelist)
 			mydepgraph.break_refs(mydepgraph.digraph.order)
-			mergetask = MergeTask(settings, trees, mtimedb, myopts,
+			mergetask = Scheduler(settings, trees, mtimedb, myopts,
 				spinner, mymergelist, favorites, mydepgraph.digraph)
 			del mydepgraph
 			clear_caches(trees)
@@ -9344,7 +9526,7 @@ def action_build(settings, trees, mtimedb,
 			mydepgraph.saveNomergeFavorites()
 			mydepgraph.break_refs(pkglist)
 			mydepgraph.break_refs(mydepgraph.digraph.order)
-			mergetask = MergeTask(settings, trees, mtimedb, myopts,
+			mergetask = Scheduler(settings, trees, mtimedb, myopts,
 				spinner, pkglist, favorites, mydepgraph.digraph)
 			del mydepgraph
 			clear_caches(trees)

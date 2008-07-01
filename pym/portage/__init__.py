@@ -1405,7 +1405,7 @@ class config(object):
 
 			# Blacklist vars that could interfere with portage internals.
 			for blacklisted in "CATEGORY", "EBUILD_PHASE", \
-				"PKGUSE", "PORTAGE_CONFIGROOT", \
+				"EMERGE_FROM", "PKGUSE", "PORTAGE_CONFIGROOT", \
 				"PORTAGE_IUSE", "PORTAGE_USE", "ROOT", \
 				"EPREFIX", "EROOT":
 				for cfg in self.lookuplist:
@@ -2960,6 +2960,10 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		env=mysettings.environ()
 		keywords["opt_name"]="[%s]" % mysettings["PF"]
 
+	if keywords.get("returnpid"):
+		# emerge handles logging externally
+		keywords.pop("logfile", None)
+
 	fd_pipes = keywords.get("fd_pipes")
 	if fd_pipes is None:
 		fd_pipes = {
@@ -4180,11 +4184,15 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	return 1
 
 # parse actionmap to spawn ebuild with the appropriate args
-def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
-	if alwaysdep or "noauto" not in mysettings.features:
+def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
+	logfile=None, fd_pipes=None, returnpid=False):
+	if not returnpid and \
+		(alwaysdep or "noauto" not in mysettings.features):
 		# process dependency first
 		if "dep" in actionmap[mydo]:
-			retval=spawnebuild(actionmap[mydo]["dep"],actionmap,mysettings,debug,alwaysdep=alwaysdep,logfile=logfile)
+			retval = spawnebuild(actionmap[mydo]["dep"], actionmap,
+				mysettings, debug, alwaysdep=alwaysdep, logfile=logfile,
+				fd_pipes=fd_pipes, returnpid=returnpid)
 			if retval:
 				return retval
 	kwargs = actionmap[mydo]["args"]
@@ -4196,10 +4204,13 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 		mysettings._filter_calling_env = True
 	try:
 		phase_retval = spawn(actionmap[mydo]["cmd"] % mydo,
-			mysettings, debug=debug, logfile=logfile, **kwargs)
+			mysettings, debug=debug, logfile=logfile,
+			fd_pipes=fd_pipes, returnpid=returnpid, **kwargs)
 	finally:
 		mysettings["EBUILD_PHASE"] = ""
 		mysettings._filter_calling_env = filter_calling_env_state
+	if returnpid:
+		return phase_retval
 	msg = _doebuild_exit_status_check(mydo, mysettings)
 	if msg:
 		phase_retval = 1
@@ -4208,137 +4219,173 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 		for l in wrap(msg, 72):
 			eerror(l, phase=mydo, key=mysettings.mycpv)
 
-	if "userpriv" in mysettings.features and \
-		not kwargs["droppriv"] and secpass >= 2:
+	_post_phase_userpriv_perms(mysettings)
+	if mydo == "install":
+		_check_build_log(mysettings)
+		if phase_retval == os.EX_OK:
+			phase_retval = _post_src_install_checks(mysettings)
+	return phase_retval
+
+def _post_phase_userpriv_perms(mysettings):
+	if "userpriv" in mysettings.features and secpass >= 2:
 		""" Privileged phases may have left files that need to be made
 		writable to a less privileged user."""
 		apply_recursive_permissions(mysettings["T"],
 			uid=portage_uid, gid=portage_gid, dirmode=070, dirmask=0,
 			filemode=060, filemask=0)
 
-	if phase_retval == os.EX_OK:
-		if mydo == "install" and logfile:
-			try:
-				f = open(logfile, 'rb')
-			except EnvironmentError:
-				pass
-			else:
-				am_maintainer_mode = []
+def _post_src_install_checks(mysettings):
+	_post_src_install_uid_fix(mysettings)
+	retval = _spawn_misc_sh(mysettings, ["install_qa_check",
+		"install_symlink_html_docs"])
+	if retval != os.EX_OK:
+		writemsg("!!! install_qa_check failed; exiting.\n",
+			noiselevel=-1)
+	return retval
 
-				bash_command_not_found = []
-				bash_command_not_found_re = re.compile(
-					r'(.*): line (\d*): (.*): command not found$')
+def _check_build_log(mysettings):
+	"""
+	Search the content of $PORTAGE_LOG_FILE if it exists
+	and generate the following QA Notices when appropriate:
 
-				configure_opts_warn = []
-				configure_opts_warn_re = re.compile(
-					r'^configure: WARNING: Unrecognized options: .*')
-				am_maintainer_mode_re = re.compile(r'.*/missing --run .*')
-				am_maintainer_mode_exclude_re = \
-					re.compile(r'.*/missing --run (autoheader|makeinfo)')
-				try:
-					for line in f:
-						if am_maintainer_mode_re.search(line) is not None and \
-							am_maintainer_mode_exclude_re.search(line) is None:
-							am_maintainer_mode.append(line.rstrip("\n"))
+	  * Automake "maintainer mode"
+	  * command not found
+	  * Unrecognized configure options
+	"""
+	logfile = mysettings.get("PORTAGE_LOG_FILE")
+	if logfile is None:
+		return
+	try:
+		f = open(logfile, 'rb')
+	except EnvironmentError:
+		return
 
-						if bash_command_not_found_re.match(line) is not None:
-							bash_command_not_found.append(line.rstrip("\n"))
+	am_maintainer_mode = []
+	bash_command_not_found = []
+	bash_command_not_found_re = re.compile(
+		r'(.*): line (\d*): (.*): command not found$')
 
-						if configure_opts_warn_re.match(line) is not None:
-							configure_opts_warn.append(line.rstrip("\n"))
-				finally:
-					f.close()
+	configure_opts_warn = []
+	configure_opts_warn_re = re.compile(
+		r'^configure: WARNING: Unrecognized options: .*')
+	am_maintainer_mode_re = re.compile(r'.*/missing --run .*')
+	am_maintainer_mode_exclude_re = \
+		re.compile(r'.*/missing --run (autoheader|makeinfo)')
+	try:
+		for line in f:
+			if am_maintainer_mode_re.search(line) is not None and \
+				am_maintainer_mode_exclude_re.search(line) is None:
+				am_maintainer_mode.append(line.rstrip("\n"))
 
-				from portage.elog.messages import eqawarn
-				def _eqawarn(lines):
-					for line in lines:
-						eqawarn(line, phase=mydo, key=mysettings.mycpv)
-				from textwrap import wrap
-				wrap_width = 70
+			if bash_command_not_found_re.match(line) is not None:
+				bash_command_not_found.append(line.rstrip("\n"))
 
-				if am_maintainer_mode:
-					msg = ["QA Notice: Automake \"maintainer mode\" detected:"]
-					msg.append("")
-					msg.extend("\t" + line for line in am_maintainer_mode)
-					msg.append("")
-					msg.extend(wrap(
-						"If you patch Makefile.am, " + \
-						"configure.in,  or configure.ac then you " + \
-						"should use autotools.eclass and " + \
-						"eautomake or eautoreconf. Exceptions " + \
-						"are limited to system packages " + \
-						"for which it is impossible to run " + \
-						"autotools during stage building. " + \
-						"See http://www.gentoo.org/p" + \
-						"roj/en/qa/autofailure.xml for more information.",
-						wrap_width))
-					_eqawarn(msg)
+			if configure_opts_warn_re.match(line) is not None:
+				configure_opts_warn.append(line.rstrip("\n"))
+	finally:
+		f.close()
 
-				if bash_command_not_found:
-					msg = ["QA Notice: command not found:"]
-					msg.append("")
-					msg.extend("\t" + line for line in bash_command_not_found)
-					_eqawarn(msg)
+	from portage.elog.messages import eqawarn
+	def _eqawarn(lines):
+		for line in lines:
+			eqawarn(line, phase="install", key=mysettings.mycpv)
+	from textwrap import wrap
+	wrap_width = 70
 
-				if configure_opts_warn:
-					msg = ["QA Notice: Unrecognized configure options:"]
-					msg.append("")
-					msg.extend("\t" + line for line in configure_opts_warn)
-					_eqawarn(msg)
+	if am_maintainer_mode:
+		msg = ["QA Notice: Automake \"maintainer mode\" detected:"]
+		msg.append("")
+		msg.extend("\t" + line for line in am_maintainer_mode)
+		msg.append("")
+		msg.extend(wrap(
+			"If you patch Makefile.am, " + \
+			"configure.in,  or configure.ac then you " + \
+			"should use autotools.eclass and " + \
+			"eautomake or eautoreconf. Exceptions " + \
+			"are limited to system packages " + \
+			"for which it is impossible to run " + \
+			"autotools during stage building. " + \
+			"See http://www.gentoo.org/p" + \
+			"roj/en/qa/autofailure.xml for more information.",
+			wrap_width))
+		_eqawarn(msg)
 
-		if mydo == "install":
-			# User and group bits that match the "portage" user or group are
-			# automatically mapped to PORTAGE_INST_UID and PORTAGE_INST_GID if
-			# necessary.  The chown system call may clear S_ISUID and S_ISGID
-			# bits, so those bits are restored if necessary.
-			inst_uid = int(mysettings["PORTAGE_INST_UID"])
-			inst_gid = int(mysettings["PORTAGE_INST_GID"])
-			for parent, dirs, files in os.walk(mysettings["D"]):
-				for fname in chain(dirs, files):
-					fpath = os.path.join(parent, fname)
-					mystat = os.lstat(fpath)
-					if mystat.st_uid != portage_uid and \
-						mystat.st_gid != portage_gid:
-						continue
-					myuid = -1
-					mygid = -1
-					if mystat.st_uid == portage_uid:
-						myuid = inst_uid
-					if mystat.st_gid == portage_gid:
-						mygid = inst_gid
-					apply_secpass_permissions(fpath, uid=myuid, gid=mygid,
-						mode=mystat.st_mode, stat_cached=mystat,
-						follow_links=False)
-			# Note: PORTAGE_BIN_PATH may differ from the global
-			# constant when portage is reinstalling itself.
-			portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
-			misc_sh_binary = os.path.join(portage_bin_path,
-				os.path.basename(MISC_SH_BINARY))
-			mycommand = " ".join([_shell_quote(misc_sh_binary),
-				"install_qa_check", "install_symlink_html_docs"])
-			_doebuild_exit_status_unlink(
-				mysettings.get("EBUILD_EXIT_STATUS_FILE"))
-			filter_calling_env_state = mysettings._filter_calling_env
-			if os.path.exists(os.path.join(mysettings["T"], "environment")):
-				mysettings._filter_calling_env = True
-			try:
-				qa_retval = spawn(mycommand, mysettings, debug=debug,
-					logfile=logfile, **kwargs)
-			finally:
-				mysettings._filter_calling_env = filter_calling_env_state
-			msg = _doebuild_exit_status_check(mydo, mysettings)
-			if msg:
-				qa_retval = 1
-				from textwrap import wrap
-				from portage.elog.messages import eerror
-				for l in wrap(msg, 72):
-					eerror(l, phase=mydo, key=mysettings.mycpv)
-			if qa_retval != os.EX_OK:
-				writemsg("!!! install_qa_check failed; exiting.\n",
-					noiselevel=-1)
-			return qa_retval
-	return phase_retval
+	if bash_command_not_found:
+		msg = ["QA Notice: command not found:"]
+		msg.append("")
+		msg.extend("\t" + line for line in bash_command_not_found)
+		_eqawarn(msg)
 
+	if configure_opts_warn:
+		msg = ["QA Notice: Unrecognized configure options:"]
+		msg.append("")
+		msg.extend("\t" + line for line in configure_opts_warn)
+		_eqawarn(msg)
+
+def _post_src_install_uid_fix(mysettings):
+	"""
+	Files in $D with user and group bits that match the "portage"
+	user or group are automatically mapped to PORTAGE_INST_UID and
+	PORTAGE_INST_GID if necessary. The chown system call may clear
+	S_ISUID and S_ISGID bits, so those bits are restored if
+	necessary.
+	"""
+	inst_uid = int(mysettings["PORTAGE_INST_UID"])
+	inst_gid = int(mysettings["PORTAGE_INST_GID"])
+	for parent, dirs, files in os.walk(mysettings["D"]):
+		for fname in chain(dirs, files):
+			fpath = os.path.join(parent, fname)
+			mystat = os.lstat(fpath)
+			if mystat.st_uid != portage_uid and \
+				mystat.st_gid != portage_gid:
+				continue
+			myuid = -1
+			mygid = -1
+			if mystat.st_uid == portage_uid:
+				myuid = inst_uid
+			if mystat.st_gid == portage_gid:
+				mygid = inst_gid
+			apply_secpass_permissions(fpath, uid=myuid, gid=mygid,
+				mode=mystat.st_mode, stat_cached=mystat,
+				follow_links=False)
+
+def _spawn_misc_sh(mysettings, commands, **kwargs):
+	"""
+	@param mysettings: the ebuild config
+	@type mysettings: config
+	@param commands: a list of function names to call in misc-functions.sh
+	@type commands: list
+	@rtype: int
+	@returns: the return value from the spawn() call
+	"""
+
+	# Note: PORTAGE_BIN_PATH may differ from the global
+	# constant when portage is reinstalling itself.
+	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
+	misc_sh_binary = os.path.join(portage_bin_path,
+		os.path.basename(MISC_SH_BINARY))
+	mycommand = " ".join([_shell_quote(misc_sh_binary)] + commands)
+	_doebuild_exit_status_unlink(
+		mysettings.get("EBUILD_EXIT_STATUS_FILE"))
+	filter_calling_env_state = mysettings._filter_calling_env
+	if os.path.exists(os.path.join(mysettings["T"], "environment")):
+		mysettings._filter_calling_env = True
+	debug = mysettings.get("PORTAGE_DEBUG") == "1"
+	logfile = mysettings.get("PORTAGE_LOG_FILE")
+	mydo = mysettings["EBUILD_PHASE"]
+	try:
+		rval = spawn(mycommand, mysettings, debug=debug,
+			logfile=logfile, **kwargs)
+	finally:
+		mysettings._filter_calling_env = filter_calling_env_state
+	msg = _doebuild_exit_status_check(mydo, mysettings)
+	if msg:
+		rval = 1
+		from textwrap import wrap
+		from portage.elog.messages import eerror
+		for l in wrap(msg, 72):
+			eerror(l, phase=mydo, key=mysettings.mycpv)
+	return rval
 
 _eapi_prefix_re = re.compile("(^|\s*)%s($|\s*)" % portage.const.EAPIPREFIX)
 _eapi_num_re    = re.compile("(^|\s*)[0-9]+($|\s*)")
@@ -4793,8 +4840,9 @@ _doebuild_broken_manifests = set()
 
 def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	fetchonly=0, cleanup=0, dbkey=None, use_cache=1, fetchall=0, tree=None,
-	mydbapi=None, vartree=None, prev_mtimes=None):
-	
+	mydbapi=None, vartree=None, prev_mtimes=None,
+	fd_pipes=None, returnpid=False):
+
 	"""
 	Wrapper function that invokes specific ebuild phases through the spawning
 	of ebuild.sh
@@ -5206,7 +5254,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		elif mydo == "setup":
 			retval = spawn(
 				_shell_quote(ebuild_sh_binary) + " " + mydo, mysettings,
-				debug=debug, free=1, logfile=logfile)
+				debug=debug, free=1, logfile=logfile, fd_pipes=fd_pipes,
+				returnpid=returnpid)
+			if returnpid:
+				return retval
 			retval = exit_status_check(retval)
 			if secpass >= 2:
 				""" Privileged phases may have left files that need to be made
@@ -5315,7 +5366,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# unpack compile install`, we will try and fetch 4 times :/
 		need_distfiles = (mydo in ("fetch", "unpack") or \
 			mydo not in ("digest", "manifest") and "noauto" not in features)
-		if need_distfiles and not fetch(
+		emerge_skip_distfiles = "EMERGE_FROM" in mysettings and \
+			mydo not in ("fetch", "unpack")
+		if not emerge_skip_distfiles and \
+			need_distfiles and not fetch(
 			fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
 			if have_build_dirs:
 				# Create an elog message for this fetch failure since the
@@ -5347,10 +5401,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				return 1
 
 		# See above comment about fetching only when needed
-		if not digestcheck(checkme, mysettings, ("strict" in features),
-			(mydo not in ["digest","fetch","unpack"] and \
-			mysettings.get("PORTAGE_CALLER", None) == "ebuild" and \
-			"noauto" in features)):
+		if not emerge_skip_distfiles and \
+			not digestcheck(checkme, mysettings, "strict" in features):
 			return 1
 
 		if mydo == "fetch":
@@ -5435,7 +5487,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					raise portage.exception.PermissionDenied(
 						"access('%s', os.W_OK)" % parent_dir)
 			retval = spawnebuild(mydo,
-				actionmap, mysettings, debug, logfile=logfile)
+				actionmap, mysettings, debug, logfile=logfile,
+				fd_pipes=fd_pipes, returnpid=returnpid)
 		elif mydo=="qmerge":
 			# check to ensure install was run.  this *only* pops up when users
 			# forget it and are using ebuild
@@ -5455,7 +5508,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mydbapi=mydbapi, vartree=vartree, prev_mtimes=prev_mtimes)
 		elif mydo=="merge":
 			retval = spawnebuild("install", actionmap, mysettings, debug,
-				alwaysdep=1, logfile=logfile)
+				alwaysdep=1, logfile=logfile, fd_pipes=fd_pipes,
+				returnpid=returnpid)
 			retval = exit_status_check(retval)
 			if retval != os.EX_OK:
 				# The merge phase handles this already.  Callers don't know how
