@@ -67,6 +67,7 @@ import portage.locks
 import portage.exception
 from portage.const import EPREFIX, BPREFIX
 from portage.data import secpass
+from portage.elog.messages import eerror
 from portage.util import normalize_path as normpath
 from portage.util import writemsg
 from portage.sets import load_default_config, SETPREFIX
@@ -3892,25 +3893,23 @@ class depgraph(object):
 			retlist.reverse()
 		return retlist
 
-	def break_refs(self, mergelist):
+	def break_refs(self, nodes):
 		"""
 		Take a mergelist like that returned from self.altlist() and
 		break any references that lead back to the depgraph. This is
 		useful if you want to hold references to packages without
 		also holding the depgraph on the heap.
 		"""
-		for node in mergelist:
-			if not isinstance(node, Package):
-				continue
-
-			# The FakeVartree references the _package_cache which
-			# references the depgraph. So that Package instances don't
-			# hold the depgraph and FakeVartree on the heap, replace
-			# the RootConfig that references the FakeVartree with the
-			# original RootConfig instance which references the actual
-			# vartree.
-			node.root_config = \
-				self._trees_orig[node.root]["root_config"]
+		for node in nodes:
+			if hasattr(node, "root_config"):
+				# The FakeVartree references the _package_cache which
+				# references the depgraph. So that Package instances don't
+				# hold the depgraph and FakeVartree on the heap, replace
+				# the RootConfig that references the FakeVartree with the
+				# original RootConfig instance which references the actual
+				# vartree.
+				node.root_config = \
+					self._trees_orig[node.root_config.root]["root_config"]
 
 	def _resolve_conflicts(self):
 		if not self._complete_graph():
@@ -5914,7 +5913,7 @@ class MergeTask(object):
 		"--nodeps", "--pretend"])
 
 	def __init__(self, settings, trees, mtimedb, myopts,
-		spinner, mergelist, favorites):
+		spinner, mergelist, favorites, digraph):
 		self.settings = settings
 		self.target_root = settings["ROOT"]
 		self.trees = trees
@@ -5927,11 +5926,9 @@ class MergeTask(object):
 		if settings.get("PORTAGE_DEBUG", "") == "1":
 			self.edebug = 1
 		self.pkgsettings = {}
-		self._blocker_db = {}
 		for root in trees:
 			self.pkgsettings[root] = portage.config(
 				clone=trees[root]["vartree"].settings)
-			self._blocker_db[root] = BlockerDB(trees[root]["root_config"])
 		self.curval = 0
 		self._spawned_pids = []
 
@@ -5954,10 +5951,11 @@ class MergeTask(object):
 		import gc
 		gc.collect()
 
+		blocker_db = BlockerDB(self.trees[new_pkg.root]["root_config"])
+
 		blocker_dblinks = []
-		for blocking_pkg in self._blocker_db[
-			new_pkg.root].findInstalledBlockers(new_pkg,
-			acquire_lock=acquire_lock):
+		for blocking_pkg in blocker_db.findInstalledBlockers(
+			new_pkg, acquire_lock=acquire_lock):
 			if new_pkg.slot_atom == blocking_pkg.slot_atom:
 				continue
 			if new_pkg.cpv == blocking_pkg.cpv:
@@ -5999,15 +5997,40 @@ class MergeTask(object):
 				break
 			if mergelist[0][-1] != "merge":
 				break
+
 			# Skip the first one because it failed to build or install.
+			pkg_key = tuple(mergelist[0])
 			del mergelist[0]
+			failed_pkg = None
+			for task in self._mergelist:
+				if task == pkg_key:
+					failed_pkg = task
+					break
+			if failed_pkg is None:
+				break
 			if not mergelist:
 				break
-			mylist = self._calc_resume_list()
+
+			mylist, dropped_tasks = self._calc_resume_list()
 			clear_caches(self.trees)
 			if not mylist:
 				break
-			self.curval += 1
+
+			if dropped_tasks:
+
+				def _eerror(lines):
+					for l in lines:
+						eerror(l, phase="other", key=failed_pkg.cpv)
+
+				msg = []
+				msg.append("One or more packages have been " + \
+					"dropped due to unsatisfied dependencies:")
+				msg.append("")
+				msg.extend("  " + str(task) for task in dropped_tasks)
+				msg.append("")
+				_eerror(msg)
+				del _eerror, msg
+			del dropped_tasks
 			self._mergelist = mylist
 
 		return rval
@@ -6035,20 +6058,12 @@ class MergeTask(object):
 
 		if not success:
 			mydepgraph.display_problems()
-			return None
-
-		if dropped_tasks:
-			portage.writemsg("!!! One or more packages have been " + \
-				"dropped due to\n" + \
-				"!!! masking or unsatisfied dependencies:\n\n",
-				noiselevel=-1)
-			for task in dropped_tasks:
-				portage.writemsg("  " + str(task) + "\n", noiselevel=-1)
-			portage.writemsg("\n", noiselevel=-1)
+			return (None, None)
 
 		mylist = mydepgraph.altlist()
 		mydepgraph.break_refs(mylist)
-		return mylist
+		mydepgraph.break_refs(dropped_tasks)
+		return (mylist, dropped_tasks)
 
 	def _poll_child_processes(self):
 		"""
@@ -6562,6 +6577,19 @@ def unmerge(root_config, myopts, unmerge_action,
 	global_unmerge=0
 	xterm_titles = "notitles" not in settings.features
 
+	pkg_cache = {}
+
+	def _pkg(cpv):
+		pkg = pkg_cache.get(cpv)
+		if pkg is None:
+			pkg = Package(cpv=cpv, installed=True,
+				metadata=izip(Package.metadata_keys,
+					vartree.dbapi.aux_get(cpv, Package.metadata_keys)),
+				root_config=root_config,
+				type_name="installed")
+			pkg_cache[cpv] = pkg
+		return pkg
+
 	vdb_path = os.path.join(settings["ROOT"], portage.VDB_PATH)
 	try:
 		# At least the parent needs to exist for the lock file.
@@ -6804,6 +6832,12 @@ def unmerge(root_config, myopts, unmerge_action,
 	# relevant package sets.
 	for cp in xrange(len(pkgmap)):
 		for cpv in pkgmap[cp]["selected"].copy():
+			try:
+				pkg = _pkg(cpv)
+			except KeyError:
+				# It could have been uninstalled
+				# by a concurrent process.
+				continue
 			parents = []
 			for s in installed_sets:
 				# skip sets that the user requested to unmerge, and skip world 
@@ -6814,9 +6848,34 @@ def unmerge(root_config, myopts, unmerge_action,
 				# only check instances of EditablePackageSet as other classes are generally used for
 				# special purposes and can be ignored here (and are usually generated dynamically, so the
 				# user can't do much about them anyway)
-				elif sets[s].containsCPV(cpv) \
-					and isinstance(sets[s], EditablePackageSet):
-					parents.append(s)
+				if isinstance(sets[s], EditablePackageSet):
+
+					# This is derived from a snippet of code in the
+					# depgraph._iter_atoms_for_pkg() method.
+					for atom in sets[s].iterAtomsForPackage(pkg):
+						inst_matches = vartree.dbapi.match(atom)
+						inst_matches.reverse() # descending order
+						higher_slot = None
+						for inst_cpv in inst_matches:
+							try:
+								inst_pkg = _pkg(inst_cpv)
+							except KeyError:
+								# It could have been uninstalled
+								# by a concurrent process.
+								continue
+
+							if inst_pkg.cp != atom.cp:
+								continue
+							if pkg >= inst_pkg:
+								# This is descending order, and we're not
+								# interested in any versions <= pkg given.
+								break
+							if pkg.slot_atom != inst_pkg.slot_atom:
+								higher_slot = inst_pkg
+								break
+						if higher_slot is None:
+							parents.append(s)
+							break
 			if parents:
 				#print colorize("WARN", "Package %s is going to be unmerged," % cpv)
 				#print colorize("WARN", "but still listed in the following package sets:")
@@ -8981,11 +9040,12 @@ def action_build(settings, trees, mtimedb,
 				time.sleep(3) # allow the parent to have first fetch
 			mymergelist = mydepgraph.altlist()
 			mydepgraph.break_refs(mymergelist)
+			mydepgraph.break_refs(mydepgraph.digraph.order)
+			mergetask = MergeTask(settings, trees, mtimedb, myopts,
+				spinner, mymergelist, favorites, mydepgraph.digraph)
 			del mydepgraph
 			clear_caches(trees)
 
-			mergetask = MergeTask(settings, trees, mtimedb, myopts,
-				spinner, mymergelist, favorites)
 			retval = mergetask.merge()
 			merge_count = mergetask.curval
 		else:
@@ -9027,11 +9087,12 @@ def action_build(settings, trees, mtimedb,
 			pkglist = mydepgraph.altlist()
 			mydepgraph.saveNomergeFavorites()
 			mydepgraph.break_refs(pkglist)
+			mydepgraph.break_refs(mydepgraph.digraph.order)
+			mergetask = MergeTask(settings, trees, mtimedb, myopts,
+				spinner, pkglist, favorites, mydepgraph.digraph)
 			del mydepgraph
 			clear_caches(trees)
 
-			mergetask = MergeTask(settings, trees, mtimedb, myopts,
-				spinner, pkglist, favorites)
 			retval = mergetask.merge()
 			merge_count = mergetask.curval
 
