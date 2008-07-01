@@ -891,6 +891,35 @@ class vardbapi(dbapi):
 		return dblink(category, pf, self.root,
 			self.settings, vartree=self.vartree)
 
+	def removeFromContents(self, pkg, paths, relative_paths=True):
+		"""
+		@param pkg: cpv for an installed package
+		@type pkg: string
+		@param paths: paths of files to remove from contents
+		@type paths: iterable
+		"""
+		if not hasattr(pkg, "getcontents"):
+			pkg = self._dblink(pkg)
+		root = self.root
+		root_len = len(root) - 1
+		new_contents = pkg.getcontents().copy()
+		contents_key = None
+
+		for filename in paths:
+			filename = normalize_path(filename)
+			if relative_paths:
+				relative_filename = filename
+			else:
+				relative_filename = filename[root_len:]
+			contents_key = pkg._match_contents(relative_filename, root)
+			if contents_key:
+				del new_contents[contents_key]
+
+		if contents_key:
+			f = atomic_ofstream(os.path.join(pkg.dbdir, "CONTENTS"))
+			write_contents(new_contents, root, f)
+			f.close()
+
 	class _owners_cache(object):
 		"""
 		This class maintains an hash table that serves to index package
@@ -1922,7 +1951,7 @@ class dblink(object):
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
 		self.vartree.zap(self.mycpv)
 
-	def isowner(self,filename, destroot):
+	def isowner(self, filename, destroot):
 		""" 
 		Check if a file belongs to this package. This may
 		result in a stat call for the parent directory of
@@ -1941,12 +1970,25 @@ class dblink(object):
 		1. True if this package owns the file.
 		2. False if this package does not own the file.
 		"""
+		return bool(self._match_contents(filename, destroot))
+
+	def _match_contents(self, filename, destroot):
+		"""
+		The matching contents entry is returned, which is useful
+		since the path may differ from the one given by the caller,
+		due to symlinks.
+
+		@rtype: String
+		@return: the contents entry corresponding to the given path, or False
+			if the file is not owned by this package.
+		"""
+
 		destfile = normalize_path(
 			os.path.join(destroot, filename.lstrip(os.path.sep)))
 
 		pkgfiles = self.getcontents()
 		if pkgfiles and destfile in pkgfiles:
-			return True
+			return destfile
 		if pkgfiles:
 			basename = os.path.basename(destfile)
 			if self._contents_basenames is None:
@@ -1996,7 +2038,7 @@ class dblink(object):
 				for p_path in p_path_list:
 					x = os.path.join(p_path, basename)
 					if x in pkgfiles:
-						return True
+						return x
 
 		return False
 
@@ -2661,33 +2703,8 @@ class dblink(object):
 		contents = self.getcontents()
 		destroot_len = len(destroot) - 1
 		for blocker in blockers:
-			blocker_contents = blocker.getcontents()
-			collisions = []
-			for filename in blocker_contents:
-				relative_filename = filename[destroot_len:]
-				if self.isowner(relative_filename, destroot):
-					collisions.append(filename)
-			if not collisions:
-				continue
-			for filename in collisions:
-				del blocker_contents[filename]
-			f = atomic_ofstream(os.path.join(blocker.dbdir, "CONTENTS"))
-			for filename in sorted(blocker_contents):
-				entry_data = blocker_contents[filename]
-				entry_type = entry_data[0]
-				relative_filename = filename[destroot_len:]
-				if entry_type == "obj":
-					entry_type, mtime, md5sum = entry_data
-					line = "%s %s %s %s\n" % \
-						(entry_type, relative_filename, md5sum, mtime)
-				elif entry_type == "sym":
-					entry_type, mtime, link = entry_data
-					line = "%s %s -> %s %s\n" % \
-						(entry_type, relative_filename, link, mtime)
-				else: # dir, dev, fif
-					line = "%s %s\n" % (entry_type, relative_filename)
-				f.write(line)
-			f.close()
+			self.vartree.dbapi.removeFromContents(blocker, iter(contents),
+				relative_paths=False)
 
 		self.vartree.dbapi._add(self)
 		contents = self.getcontents()
@@ -3097,6 +3114,27 @@ class dblink(object):
 	def isregular(self):
 		"Is this a regular package (does it have a CATEGORY file?  A dblink can be virtual *and* regular)"
 		return os.path.exists(os.path.join(self.dbdir, "CATEGORY"))
+
+def write_contents(contents, root, f):
+	"""
+	Write contents to any file like object. The file will be left open.
+	"""
+	root_len = len(root) - 1
+	for filename in sorted(contents):
+		entry_data = contents[filename]
+		entry_type = entry_data[0]
+		relative_filename = filename[root_len:]
+		if entry_type == "obj":
+			entry_type, mtime, md5sum = entry_data
+			line = "%s %s %s %s\n" % \
+				(entry_type, relative_filename, md5sum, mtime)
+		elif entry_type == "sym":
+			entry_type, mtime, link = entry_data
+			line = "%s %s -> %s %s\n" % \
+				(entry_type, relative_filename, link, mtime)
+		else: # dir, dev, fif
+			line = "%s %s\n" % (entry_type, relative_filename)
+		f.write(line)
 
 def tar_contents(contents, root, tar, protect=None, onProgress=None):
 	from portage.util import normalize_path
