@@ -64,9 +64,13 @@ class PreservedLibsRegistry(object):
 		""" Store the registry data to file. No need to call this if autocommit
 		    was enabled.
 		"""
-		f = atomic_ofstream(self._filename)
-		cPickle.dump(self._data, f)
-		f.close()
+		try:
+			f = atomic_ofstream(self._filename)
+			cPickle.dump(self._data, f)
+			f.close()
+		except EnvironmentError, e:
+			if e.errno != PermissionDenied.errno:
+				writemsg("!!! %s %s\n" % (e, self._filename), noiselevel=-1)
 
 	def register(self, cpv, slot, counter, paths):
 		""" Register new objects in the registry. If there is a record with the
