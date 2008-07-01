@@ -21,7 +21,11 @@ except KeyboardInterrupt:
 	sys.exit(1)
 
 import array
+import fcntl
 import select
+import shlex
+import urlparse
+import weakref
 import gc
 import os, stat
 import platform
@@ -1460,25 +1464,140 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 				v = 0
 		self._pkg.mtime = v
 
-class EbuildFetcher(Task):
+class EbuildFetcher(SlotObject):
 
 	__slots__ = ("fetch_all", "pkg", "pretend", "settings")
-
-	def _get_hash_key(self):
-		hash_key = getattr(self, "_hash_key", None)
-		if hash_key is None:
-			self._hash_key = ("EbuildFetcher", self.pkg._get_hash_key())
-		return self._hash_key
 
 	def execute(self):
 		portdb = self.pkg.root_config.trees["porttree"].dbapi
 		ebuild_path = portdb.findname(self.pkg.cpv)
 		debug = self.settings.get("PORTAGE_DEBUG") == "1"
+
 		retval = portage.doebuild(ebuild_path, "fetch",
-			self.settings["ROOT"], self.settings, debug,
-			self.pretend, fetchonly=1, fetchall=self.fetch_all,
+			self.settings["ROOT"], self.settings, debug=debug,
+			listonly=self.pretend, fetchonly=1, fetchall=self.fetch_all,
 			mydbapi=portdb, tree="porttree")
 		return retval
+
+class EbuildFetcherAsync(SlotObject):
+
+	__slots__ = ("log_file", "fd_pipes", "pkg",
+		"register", "unregister",
+		"pid", "returncode", "files")
+
+	_file_names = ("fetcher", "out")
+	_files_dict = slot_dict_class(_file_names, prefix="")
+	_bufsize = 4096
+
+	def start(self):
+		# flush any pending output
+		fd_pipes = self.fd_pipes
+		if fd_pipes is None:
+			fd_pipes = {
+				0 : sys.stdin.fileno(),
+				1 : sys.stdout.fileno(),
+				2 : sys.stderr.fileno(),
+			}
+
+		log_file = self.log_file
+		self.files = self._files_dict()
+		files = self.files
+
+		if log_file is not None:
+			files.out = open(log_file, "a")
+			portage.util.apply_secpass_permissions(log_file,
+				uid=portage.portage_uid, gid=portage.portage_gid,
+				mode=0660)
+		else:
+			for fd in fd_pipes.itervalues():
+				if fd == sys.stdout.fileno():
+					sys.stdout.flush()
+				if fd == sys.stderr.fileno():
+					sys.stderr.flush()
+
+			files.out = os.fdopen(os.dup(fd_pipes[1]), 'w')
+
+		master_fd, slave_fd = os.pipe()
+
+		import fcntl
+		fcntl.fcntl(master_fd, fcntl.F_SETFL,
+			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+
+		fd_pipes.setdefault(0, sys.stdin.fileno())
+		fd_pipes_orig = fd_pipes.copy()
+		fd_pipes[0] = fd_pipes_orig[0]
+		fd_pipes[1] = slave_fd
+		fd_pipes[2] = slave_fd
+
+		root_config = self.pkg.root_config
+		portdb = root_config.trees["porttree"].dbapi
+		ebuild_path = portdb.findname(self.pkg.cpv)
+		settings = root_config.settings
+
+		fetch_env = dict((k, settings[k]) for k in settings)
+		fetch_env["FEATURES"] = fetch_env.get("FEATURES", "") + " -cvs"
+		fetch_env["PORTAGE_NICENESS"] = "0"
+		fetch_env["PORTAGE_PARALLEL_FETCHONLY"] = "1"
+
+		ebuild_binary = os.path.join(
+			settings["EBUILD_BIN_PATH"], "ebuild")
+
+		fetch_args = [ebuild_binary, ebuild_path, "fetch"]
+		debug = settings.get("PORTAGE_DEBUG") == "1"
+		if debug:
+			fetch_args.append("--debug")
+
+		retval = portage.process.spawn(fetch_args, env=fetch_env,
+			fd_pipes=fd_pipes, returnpid=True)
+
+		self.pid = retval[0]
+
+		os.close(slave_fd)
+		files.fetcher = os.fdopen(master_fd, 'r')
+		self.register(files.fetcher.fileno(),
+			select.POLLIN, self._output_handler)
+
+	def _output_handler(self, fd, event):
+		files = self.files
+		buf = array.array('B')
+		try:
+			buf.fromfile(files.fetcher, self._bufsize)
+		except EOFError:
+			pass
+		if buf:
+			buf.tofile(files.out)
+			files.out.flush()
+		else:
+			self.unregister(files.fetcher.fileno())
+			for f in files.values():
+				f.close()
+
+	def poll(self):
+		if self.returncode is not None:
+			return self.returncode
+		retval = os.waitpid(self.pid, os.WNOHANG)
+		if retval == (0, 0):
+			return None
+		self._set_returncode(retval)
+		return self.returncode
+
+	def wait(self):
+		if self.returncode is not None:
+			return self.returncode
+		self._set_returncode(os.waitpid(self.pid, 0))
+		return self.returncode
+
+	def _set_returncode(self, wait_retval):
+
+		retval = wait_retval[1]
+		portage.process.spawned_pids.remove(self.pid)
+		if retval != os.EX_OK:
+			if retval & 0xff:
+				retval = (retval & 0xff) << 8
+			else:
+				retval = retval >> 8
+
+		self.returncode = retval
 
 class EbuildBuildDir(SlotObject):
 
@@ -1593,9 +1712,12 @@ class EbuildBuild(Task):
 			ebuild_phase = EbuildPhase(fd_pipes=fd_pipes,
 				pkg=self.pkg, phase=mydo, register=self.register,
 				settings=settings, unregister=self.unregister)
+
 			ebuild_phase.start()
-			self.schedule()
-			retval = ebuild_phase.wait()
+			retval = None
+			while retval is None:
+				self.schedule()
+				retval = ebuild_phase.poll()
 
 			portage._post_phase_userpriv_perms(settings)
 			if mydo == "install":
@@ -1615,7 +1737,7 @@ class EbuildPhase(SlotObject):
 		"pid", "returncode", "files")
 
 	_file_names = ("log", "stdout", "ebuild")
-	_files_dict = slot_dict_class(_file_names)
+	_files_dict = slot_dict_class(_file_names, prefix="")
 	_bufsize = 4096
 
 	def start(self):
@@ -1690,33 +1812,48 @@ class EbuildPhase(SlotObject):
 
 		if logfile:
 			os.close(slave_fd)
-			files["log"] = open(logfile, 'a')
-			files["stdout"] = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
-			files["ebuild"] = os.fdopen(master_fd, 'r')
-			self.register(files["ebuild"].fileno(),
+			files.log = open(logfile, 'a')
+			files.stdout = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
+			files.ebuild = os.fdopen(master_fd, 'r')
+			self.register(files.ebuild.fileno(),
 				select.POLLIN, self._output_handler)
 
 	def _output_handler(self, fd, event):
 		files = self.files
 		buf = array.array('B')
 		try:
-			buf.fromfile(files["ebuild"], self._bufsize)
+			buf.fromfile(files.ebuild, self._bufsize)
 		except EOFError:
 			pass
 		if buf:
-			buf.tofile(files["stdout"])
-			files["stdout"].flush()
-			buf.tofile(files["log"])
-			files["log"].flush()
+			buf.tofile(files.stdout)
+			files.stdout.flush()
+			buf.tofile(files.log)
+			files.log.flush()
 		else:
-			self.unregister(files["ebuild"].fileno())
+			self.unregister(files.ebuild.fileno())
 			for f in files.values():
 				f.close()
 
+	def poll(self):
+		if self.returncode is not None:
+			return self.returncode
+		retval = os.waitpid(self.pid, os.WNOHANG)
+		if retval == (0, 0):
+			return None
+		self._set_returncode(retval)
+		return self.returncode
+
 	def wait(self):
-		pid = self.pid
-		retval = os.waitpid(pid, 0)[1]
-		portage.process.spawned_pids.remove(pid)
+		if self.returncode is not None:
+			return self.returncode
+		self._set_returncode(os.waitpid(self.pid, 0))
+		return self.returncode
+
+	def _set_returncode(self, wait_retval):
+
+		retval = wait_retval[1]
+		portage.process.spawned_pids.remove(self.pid)
 		if retval != os.EX_OK:
 			if retval & 0xff:
 				retval = (retval & 0xff) << 8
@@ -1733,7 +1870,6 @@ class EbuildPhase(SlotObject):
 				eerror(l, phase=self.phase, key=self.pkg.cpv)
 
 		self.returncode = retval
-		return self.returncode
 
 class EbuildBinpkg(Task):
 	"""
@@ -1885,6 +2021,195 @@ class BinpkgFetcher(Task):
 				os.unlink(pkg_path)
 			rval = 1
 		return rval
+
+class BinpkgFetcherAsync(SlotObject):
+
+	__slots__ = ("cancelled", "log_file", "fd_pipes", "pkg",
+		"register", "unregister",
+		"locked", "files", "pid", "pkg_path", "returncode", "_lock_obj")
+
+	_file_names = ("fetcher", "out")
+	_files_dict = slot_dict_class(_file_names, prefix="")
+	_bufsize = 4096
+
+	def __init__(self, **kwargs):
+		SlotObject.__init__(self, **kwargs)
+		pkg = self.pkg
+		self.pkg_path = pkg.root_config.trees["bintree"].getname(pkg.cpv)
+
+	def start(self):
+
+		if self.cancelled:
+			self.pid = -1
+			return
+
+		fd_pipes = self.fd_pipes
+		if fd_pipes is None:
+			fd_pipes = {
+				0 : sys.stdin.fileno(),
+				1 : sys.stdout.fileno(),
+				2 : sys.stderr.fileno(),
+			}
+
+		log_file = self.log_file
+		self.files = self._files_dict()
+		files = self.files
+
+		if log_file is not None:
+			files.out = open(log_file, "a")
+			portage.util.apply_secpass_permissions(log_file,
+				uid=portage.portage_uid, gid=portage.portage_gid,
+				mode=0660)
+		else:
+			# flush any pending output
+			for fd in fd_pipes.itervalues():
+				if fd == sys.stdout.fileno():
+					sys.stdout.flush()
+				if fd == sys.stderr.fileno():
+					sys.stderr.flush()
+
+			files.out = os.fdopen(os.dup(fd_pipes[1]), 'w')
+
+		master_fd, slave_fd = os.pipe()
+		fcntl.fcntl(master_fd, fcntl.F_SETFL,
+			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+
+		fd_pipes.setdefault(0, sys.stdin.fileno())
+		fd_pipes_orig = fd_pipes.copy()
+		fd_pipes[0] = fd_pipes_orig[0]
+		fd_pipes[1] = slave_fd
+		fd_pipes[2] = slave_fd
+
+		pkg = self.pkg
+		bintree = pkg.root_config.trees["bintree"]
+		settings = bintree.settings
+		use_locks = "distlocks" in settings.features
+		pkg_path = self.pkg_path
+		resume = os.path.exists(pkg_path)
+
+		# urljoin doesn't work correctly with
+		# unrecognized protocols like sftp
+		if bintree._remote_has_index:
+			rel_uri = bintree._remotepkgs[pkg.cpv].get("PATH")
+			if not rel_uri:
+				rel_uri = pkg.cpv + ".tbz2"
+			uri = bintree._remote_base_uri.rstrip("/") + \
+				"/" + rel_uri.lstrip("/")
+		else:
+			uri = settings["PORTAGE_BINHOST"].rstrip("/") + \
+				"/" + pkg.pf + ".tbz2"
+
+		protocol = urlparse.urlparse(uri)[0]
+		fcmd_prefix = "FETCHCOMMAND"
+		if resume:
+			fcmd_prefix = "RESUMECOMMAND"
+		fcmd = settings.get(fcmd_prefix + "_" + protocol.upper())
+		if not fcmd:
+			fcmd = settings.get(fcmd_prefix)
+
+		fcmd_vars = {
+			"DISTDIR" : os.path.dirname(pkg_path),
+			"URI"     : uri,
+			"FILE"    : os.path.basename(pkg_path)
+		}
+
+		fetch_env = dict((k, settings[k]) for k in settings)
+		fetch_args = [portage.util.varexpand(x, mydict=fcmd_vars) \
+			for x in shlex.split(fcmd)]
+
+		portage.util.ensure_dirs(os.path.dirname(pkg_path))
+		if use_locks:
+			self.lock()
+
+		retval = portage.process.spawn(fetch_args, env=fetch_env,
+			fd_pipes=fd_pipes, returnpid=True)
+
+		self.pid = retval[0]
+
+		os.close(slave_fd)
+		files.fetcher = os.fdopen(master_fd, 'r')
+		self.register(files.fetcher.fileno(),
+			select.POLLIN, self._output_handler)
+
+	def _output_handler(self, fd, event):
+		files = self.files
+		buf = array.array('B')
+		try:
+			buf.fromfile(files.fetcher, self._bufsize)
+		except EOFError:
+			pass
+		if buf:
+			buf.tofile(files.out)
+			files.out.flush()
+		else:
+			self.unregister(files.fetcher.fileno())
+			for f in files.values():
+				f.close()
+			if self.locked:
+				self.unlock()
+
+	def lock(self):
+		"""
+		This raises an AlreadyLocked exception if lock() is called
+		while a lock is already held. In order to avoid this, call
+		unlock() or check whether the "locked" attribute is True
+		or False before calling lock().
+		"""
+		if self._lock_obj is not None:
+			raise self.AlreadyLocked((self._lock_obj,))
+
+		self._lock_obj = portage.locks.lockfile(
+			self.pkg_path, wantnewlockfile=1)
+		self.locked = True
+
+	class AlreadyLocked(portage.exception.PortageException):
+		pass
+
+	def unlock(self):
+		if self._lock_obj is None:
+			return
+		portage.locks.unlockfile(self._lock_obj)
+		self._lock_obj = None
+		self.locked = False
+
+	def poll(self):
+		if self.returncode is not None:
+			return self.returncode
+		retval = os.waitpid(self.pid, os.WNOHANG)
+		if retval == (0, 0):
+			return None
+		self._set_returncode(retval)
+		return self.returncode
+
+	def cancel(self):
+		if self.isAlive():
+			os.kill(self.pid, signal.SIGTERM)
+		self.cancelled = True
+		if self.pid is not None:
+			self.wait()
+		return self.returncode
+
+	def isAlive(self):
+		return self.pid is not None and \
+			self.returncode is None
+
+	def wait(self):
+		if self.returncode is not None:
+			return self.returncode
+		self._set_returncode(os.waitpid(self.pid, 0))
+		return self.returncode
+
+	def _set_returncode(self, wait_retval):
+
+		retval = wait_retval[1]
+		portage.process.spawned_pids.remove(self.pid)
+		if retval != os.EX_OK:
+			if retval & 0xff:
+				retval = (retval & 0xff) << 8
+			else:
+				retval = retval >> 8
+
+		self.returncode = retval
 
 class BinpkgMerge(Task):
 
@@ -6368,6 +6693,8 @@ class Scheduler(object):
 		"--fetchonly", "--fetch-all-uri",
 		"--nodeps", "--pretend"])
 
+	_fetch_log = EPREFIX + "/var/log/emerge-fetch.log"
+
 	def __init__(self, settings, trees, mtimedb, myopts,
 		spinner, mergelist, favorites, digraph):
 		self.settings = settings
@@ -6386,9 +6713,38 @@ class Scheduler(object):
 			self.pkgsettings[root] = portage.config(
 				clone=trees[root]["vartree"].settings)
 		self.curval = 0
-		self._spawned_pids = []
 		self._poll_event_handlers = {}
 		self._poll = select.poll()
+		from collections import deque
+		self._task_queue = deque()
+		self._running_tasks = set()
+		self._max_jobs = 1
+		self._parallel_fetch = False
+		features = self.settings.features
+		if "parallel-fetch" in features and \
+			not ("--pretend" in self.myopts or \
+			"--fetch-all-uri" in self.myopts or \
+			"--fetchonly" in self.myopts):
+			if "distlocks" not in features:
+				portage.writemsg(red("!!!")+"\n", noiselevel=-1)
+				portage.writemsg(red("!!!")+" parallel-fetching " + \
+					"requires the distlocks feature enabled"+"\n",
+					noiselevel=-1)
+				portage.writemsg(red("!!!")+" you have it disabled, " + \
+					"thus parallel-fetching is being disabled"+"\n",
+					noiselevel=-1)
+				portage.writemsg(red("!!!")+"\n", noiselevel=-1)
+			elif len(mergelist) > 1:
+				self._parallel_fetch = True
+
+				# clear out existing fetch log if it exists
+				try:
+					open(self._fetch_log, 'w')
+				except EnvironmentError:
+					pass
+
+	def _add_task(self, task):
+		self._task_queue.append(task)
 
 	class _pkg_failure(portage.exception.PortageException):
 		"""
@@ -6441,20 +6797,17 @@ class Scheduler(object):
 	def merge(self):
 
 		keep_going = "--keep-going" in self.myopts
+		running_tasks = self._running_tasks
 
 		while True:
 			try:
 				rval = self._merge()
 			finally:
-				spawned_pids = self._spawned_pids
-				while spawned_pids:
-					pid = spawned_pids.pop()
-					try:
-						if os.waitpid(pid, os.WNOHANG) == (0, 0):
-							os.kill(pid, signal.SIGTERM)
-							os.waitpid(pid, 0)
-					except OSError:
-						pass # cleaned up elsewhere.
+				# clean up child process if necessary
+				self._task_queue.clear()
+				while running_tasks:
+					task = running_tasks.pop()
+					task.cancel()
 
 			if rval == os.EX_OK or not keep_going:
 				break
@@ -6534,25 +6887,6 @@ class Scheduler(object):
 		mydepgraph.break_refs(dropped_tasks)
 		return (mylist, dropped_tasks)
 
-	def _poll_child_processes(self):
-		"""
-		After each merge, collect status from child processes
-		in order to clean up zombies (such as the parallel-fetch
-		process).
-		"""
-		spawned_pids = self._spawned_pids
-		if not spawned_pids:
-			return
-		for pid in list(spawned_pids):
-			try:
-				if os.waitpid(pid, os.WNOHANG) == (0, 0):
-					continue
-			except OSError:
-				# This pid has been cleaned up elsewhere,
-				# so remove it from our list.
-				pass
-			spawned_pids.remove(pid)
-
 	def _register(self, f, eventmask, handler):
 		self._poll_event_handlers[f] = handler
 		self._poll.register(f, eventmask)
@@ -6560,11 +6894,45 @@ class Scheduler(object):
 	def _unregister(self, f):
 		self._poll.unregister(f)
 		del self._poll_event_handlers[f]
+		self._schedule_tasks()
 
 	def _schedule(self):
-		while self._poll_event_handlers:
-			for f, event in self._poll.poll():
-				self._poll_event_handlers[f](f, event)
+		event_handlers = self._poll_event_handlers
+		running_tasks = self._running_tasks
+		poll = self._poll.poll
+
+		self._schedule_tasks()
+
+		while event_handlers:
+			for f, event in poll():
+				event_handlers[f](f, event)
+
+			if len(event_handlers) <= len(running_tasks):
+				# Assuming one handler per task, this
+				# means the caller has unregistered it's
+				# handler, so it's time to yield.
+				break
+
+	def _schedule_tasks(self):
+		task_queue = self._task_queue
+		running_tasks = self._running_tasks
+		max_jobs = self._max_jobs
+		state_changed = False
+
+		for task in list(running_tasks):
+			if task.poll() is not None:
+				running_tasks.remove(task)
+				state_changed = True
+
+		while task_queue and (len(running_tasks) < max_jobs):
+			task = task_queue.popleft()
+			cancelled = getattr(task, "cancelled", None)
+			if not cancelled:
+				task.start()
+				running_tasks.add(task)
+			state_changed = True
+
+		return state_changed
 
 	def _merge(self):
 		mylist = self._mergelist
@@ -6591,6 +6959,28 @@ class Scheduler(object):
 		mtimedb["resume"]["mergelist"] = [list(x) for x in mylist \
 			if isinstance(x, Package) and x.operation == "merge"]
 		mtimedb.commit()
+
+		prefetchers = weakref.WeakValueDictionary()
+		getbinpkg = "--getbinpkg" in self.myopts
+
+		if self._parallel_fetch:
+			for pkg in mylist:
+				if not isinstance(pkg, Package):
+					continue
+				if pkg.type_name == "ebuild":
+					self._add_task(EbuildFetcherAsync(
+						log_file=self._fetch_log,
+						pkg=pkg, register=self._register,
+						unregister=self._unregister))
+				elif pkg.type_name == "binary" and getbinpkg and \
+					pkg.root_config.trees["bintree"].isremote(pkg.cpv):
+					prefetcher = BinpkgFetcherAsync(
+						log_file=self._fetch_log,
+						pkg=pkg, register=self._register,
+						unregister=self._unregister)
+					prefetchers[pkg] = prefetcher
+					self._add_task(prefetcher)
+					del prefetcher
 
 		# Verify all the manifests now so that the user is notified of failure
 		# as soon as possible.
@@ -6625,49 +7015,6 @@ class Scheduler(object):
 		myfeat = self.settings.features[:]
 		bad_resume_opts = set(["--ask", "--changelog", "--skipfirst",
 			"--resume"])
-		if "parallel-fetch" in myfeat and \
-			not ("--pretend" in self.myopts or \
-			"--fetch-all-uri" in self.myopts or \
-			"--fetchonly" in self.myopts):
-			if "distlocks" not in myfeat:
-				print red("!!!")
-				print red("!!!")+" parallel-fetching requires the distlocks feature enabled"
-				print red("!!!")+" you have it disabled, thus parallel-fetching is being disabled"
-				print red("!!!")
-			elif len(mymergelist) > 1:
-				fetch_log = EPREFIX+"/var/log/emerge-fetch.log"
-				logfile = open(fetch_log, "w")
-				fd_pipes = {1:logfile.fileno(), 2:logfile.fileno()}
-				portage.util.apply_secpass_permissions(fetch_log,
-					uid=portage.portage_uid, gid=portage.portage_gid,
-					mode=0660)
-				fetch_env = os.environ.copy()
-				fetch_env["FEATURES"] = fetch_env.get("FEATURES", "") + " -cvs"
-				fetch_env["PORTAGE_NICENESS"] = "0"
-				fetch_env["PORTAGE_PARALLEL_FETCHONLY"] = "1"
-				fetch_args = [sys.argv[0], "--resume",
-					"--fetchonly", "--nodeps"]
-				resume_opts = self.myopts.copy()
-				# For automatic resume, we need to prevent
-				# any of bad_resume_opts from leaking in
-				# via EMERGE_DEFAULT_OPTS.
-				resume_opts["--ignore-default-opts"] = True
-				for myopt, myarg in resume_opts.iteritems():
-					if myopt not in bad_resume_opts:
-						if myarg is True:
-							fetch_args.append(myopt)
-						else:
-							fetch_args.append(myopt +"="+ myarg)
-				self._spawned_pids.extend(
-					portage.process.spawn(
-					fetch_args, env=fetch_env,
-					fd_pipes=fd_pipes, returnpid=True))
-				logfile.close() # belongs to the spawned process
-				del fetch_log, logfile, fd_pipes, fetch_env, fetch_args, \
-					resume_opts
-				print ">>> starting parallel fetching pid %d" % \
-					self._spawned_pids[-1]
-
 		metadata_keys = [k for k in portage.auxdbkeys \
 			if not k.startswith("UNUSED_")] + ["USE"]
 
@@ -6704,14 +7051,15 @@ class Scheduler(object):
 				self._execute_task(bad_resume_opts,
 					failed_fetches,
 					mydbapi, mergecount,
-					myfeat, mymergelist, x, xterm_titles)
+					myfeat, mymergelist, x,
+					prefetchers, xterm_titles)
 			except self._pkg_failure, e:
 				return e.status
 		return self._post_merge(mtimedb, xterm_titles, failed_fetches)
 
 	def _execute_task(self, bad_resume_opts,
 		failed_fetches, mydbapi, mergecount, myfeat,
-		mymergelist, pkg, xterm_titles):
+		mymergelist, pkg, prefetchers, xterm_titles):
 			favorites = self._favorites
 			mtimedb = self._mtimedb
 			from portage.elog import elog_process
@@ -6862,8 +7210,27 @@ class Scheduler(object):
 							phasefilter=filter_mergephases)
 						build_dir.unlock()
 
-			elif x[0]=="binary":
-				#merge the tbz2
+			elif x.type_name == "binary":
+				# The prefetcher have already completed or it
+				# could be running now. If it's running now,
+				# wait for it to complete since it holds
+				# a lock on the file being fetched. The
+				# portage.locks functions are only designed
+				# to work between separate processes. Since
+				# the lock is held by the current process,
+				# use the scheduler and fetcher methods to
+				# synchronize with the fetcher.
+				prefetcher = prefetchers.get(pkg)
+				if prefetcher is not None:
+					if not prefetcher.isAlive():
+						prefetcher.cancel()
+					else:
+						retval = None
+						while retval is None:
+							self._schedule()
+							retval = prefetcher.poll()
+					del prefetcher
+
 				fetcher = BinpkgFetcher(pkg=pkg, pretend=pretend,
 					use_locks=("distlocks" in pkgsettings.features))
 				mytbz2 = fetcher.pkg_path
@@ -6967,7 +7334,6 @@ class Scheduler(object):
 			# due to power failure, SIGKILL, etc...
 			mtimedb.commit()
 			self.curval += 1
-			self._poll_child_processes()
 
 	def _post_merge(self, mtimedb, xterm_titles, failed_fetches):
 		if "--pretend" not in self.myopts:

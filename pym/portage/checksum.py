@@ -11,7 +11,6 @@ import tempfile
 import portage.exception
 import portage.process
 import commands
-import md5, sha
 
 #dict of all available hash functions
 hashfunc_map = {}
@@ -46,8 +45,19 @@ def _generate_hash_function(hashtype, hashobject, origin="unknown"):
 # override earlier ones
 
 # Use the internal modules as last fallback
-md5hash = _generate_hash_function("MD5", md5.new, origin="internal")
-sha1hash = _generate_hash_function("SHA1", sha.new, origin="internal")
+try:
+	from hashlib import md5 as _new_md5
+except ImportError:
+	from md5 import new as _new_md5
+
+md5hash = _generate_hash_function("MD5", _new_md5, origin="internal")
+
+try:
+	from hashlib import sha1 as _new_sha1
+except ImportError:
+	from sha import new as _new_sha1
+
+sha1hash = _generate_hash_function("SHA1", _new_sha1, origin="internal")
 
 # Use pycrypto when available, prefer it over the internal fallbacks
 try:
