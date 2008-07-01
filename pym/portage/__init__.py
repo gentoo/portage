@@ -30,6 +30,7 @@ try:
 	import UserDict
 	from itertools import chain, izip
 	import platform
+	import warnings
 except ImportError, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete python imports. These are internal modules for\n")
@@ -2759,6 +2760,9 @@ class config(object):
 		return v
 
 	def has_key(self,mykey):
+		warnings.warn("portage.config.has_key() is deprecated, "
+			"use the in operator instead",
+			DeprecationWarning)
 		return mykey in self
 
 	def __contains__(self, mykey):

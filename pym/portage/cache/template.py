@@ -6,6 +6,7 @@
 from portage.cache import cache_errors
 from portage.cache.cache_errors import InvalidRestriction
 from portage.cache.mappings import ProtectedDict
+import warnings
 
 class database(object):
 	# this is for metadata/cache transfer.
@@ -121,6 +122,9 @@ class database(object):
 		if self.has_key is database.has_key:
 			# prevent a possible recursive loop
 			raise NotImplementedError
+		warnings.warn("portage.cache.template.database.has_key() is "
+			"deprecated, override __contains__ instead",
+			DeprecationWarning)
 		return self.has_key(cpv)
 
 	def __iter__(self):
