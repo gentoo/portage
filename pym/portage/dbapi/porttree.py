@@ -263,11 +263,15 @@ class portdbapi(dbapi):
 				elif self.manifestVerifier:
 					if not self.manifestVerifier.verify(myManifestPath):
 						# Verification failed the desired level.
-						raise UntrustedSignature, "Untrusted Manifest: %(manifest)s" % {"manifest":myManifestPath}
+						raise UntrustedSignature(
+							"Untrusted Manifest: %(manifest)s" % \
+							{"manifest" : myManifestPath})
 
 				if ("severe" in self.mysettings.features) and \
 				   (mys != portage.gpg.fileStats(myManifestPath)):
-					raise SecurityViolation, "Manifest changed: %(manifest)s" % {"manifest":myManifestPath}
+					raise SecurityViolation(
+						"Manifest changed: %(manifest)s" % \
+						{"manifest":myManifestPath})
 
 			except InvalidSignature, e:
 				if ("strict" in self.mysettings.features) or \
@@ -284,7 +288,9 @@ class portdbapi(dbapi):
 			except (OSError, FileNotFound), e:
 				if ("strict" in self.mysettings.features) or \
 				   ("severe" in self.mysettings.features):
-					raise SecurityViolation, "Error in verification of signatures: %(errormsg)s" % {"errormsg":str(e)}
+					raise SecurityViolation(
+						"Error in verification of signatures: " + \
+						"%(errormsg)s" % {"errormsg" : str(e)})
 				writemsg("!!! Manifest is missing or inaccessable: %(manifest)s\n" % {"manifest":myManifestPath},
 					noiselevel=-1)
 

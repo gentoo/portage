@@ -10,6 +10,10 @@ import types
 import commands
 import portage.exception
 import portage.checksum
+from portage.exception import CommandNotFound, \
+	DirectoryNotFound, FileNotFound, \
+	InvalidData, InvalidDataType, InvalidSignature, MissingParameter, \
+	MissingSignature, PortageException, SecurityViolation
 
 GPG_BINARY       = "/usr/bin/gpg"
 GPG_OPTIONS      = " --lock-never --no-random-seed-file --no-greeting --no-sig-cache "
@@ -42,34 +46,38 @@ class FileChecker(object):
 		if (keydir != None):
 			# Verify that the keydir is valid.
 			if type(keydir) != types.StringType:
-				raise portage.exception.InvalidDataType, "keydir argument: %s" % keydir
+				raise InvalidDataType(
+					"keydir argument: %s" % keydir)
 			if not os.path.isdir(keydir):
-				raise portage.exception.DirectoryNotFound, "keydir: %s" % keydir
+				raise DirectoryNotFound("keydir: %s" % keydir)
 			self.keydir = copy.deepcopy(keydir)
 
 		if (keyring != None):
 			# Verify that the keyring is a valid filename and exists.
 			if type(keyring) != types.StringType:
-				raise portage.exception.InvalidDataType, "keyring argument: %s" % keyring
+				raise InvalidDataType("keyring argument: %s" % keyring)
 			if keyring.find("/") != -1:
-				raise portage.exception.InvalidData, "keyring: %s" % keyring
+				raise InvalidData("keyring: %s" % keyring)
 			pathname = ""
 			if keydir:
 				pathname = keydir + "/" + keyring
 			if not os.path.isfile(pathname):
-				raise portage.exception.FileNotFound, "keyring missing: %s (dev.gentoo.org/~carpaski/gpg/)" % pathname
+				raise FileNotFound(
+					"keyring missing: %s (dev.gentoo.org/~carpaski/gpg/)" % \
+					pathname)
 
 		keyringPath = keydir+"/"+keyring
 
 		if not keyring or not keyringPath and requireSignedRing:
-			raise portage.exception.MissingParameter
+			raise MissingParameter((keyring, keyringPath))
 
 		self.keyringStats = fileStats(keyringPath)
 		self.minimumTrust = TRUSTED
 		if not self.verify(keyringPath, keyringPath+".asc"):
 			self.keyringIsTrusted = False
 			if requireSignedRing:
-				raise portage.exception.InvalidSignature, "Required keyring verification: "+keyringPath
+				raise InvalidSignature(
+					"Required keyring verification: " + keyringPath)
 		else:
 			self.keyringIsTrusted = True
 		
@@ -81,27 +89,27 @@ class FileChecker(object):
 		if self.keyringStats and self.keyringPath:
 			new_stats = fileStats(self.keyringPath)
 			if new_stats != self.keyringStats:
-				raise portage.exception.SecurityViolation, "GPG keyring changed!"
+				raise SecurityViolation("GPG keyring changed!")
 
 	def verify(self, filename, sigfile=None):
 		"""Uses minimumTrust to determine if it is Valid/True or Invalid/False"""
 		self._verifyKeyring()
 
 		if not os.path.isfile(filename):
-			raise portage.exception.FileNotFound, filename
+			raise FileNotFound, filename
 		
 		if sigfile and not os.path.isfile(sigfile):
-			raise portage.exception.FileNotFound, sigfile
+			raise FileNotFound, sigfile
 		
 		if self.keydir and not os.path.isdir(self.keydir):
-			raise portage.exception.DirectoryNotFound, filename
+			raise DirectoryNotFound, filename
 		
 		if self.keyringPath:
 			if not os.path.isfile(self.keyringPath):
-				raise portage.exception.FileNotFound, self.keyringPath
+				raise FileNotFound, self.keyringPath
 
 		if not os.path.isfile(filename):
-			raise portage.exception.CommandNotFound, filename
+			raise CommandNotFound(filename)
 
 		command = GPG_BINARY + GPG_VERIFY_FLAGS + GPG_OPTIONS
 		if self.keydir:
@@ -119,7 +127,7 @@ class FileChecker(object):
 		result = (result >> 8)
 	
 		if signal:
-			raise SignalCaught, "Signal: %d" % (signal)
+			raise PortageException("Signal: %d" % (signal))
 	
 		trustLevel     = UNTRUSTED
 		if result == 0:
@@ -127,22 +135,22 @@ class FileChecker(object):
 			#if portage.output.find("WARNING") != -1:
 			#	trustLevel = MARGINAL
 			if portage.output.find("BAD") != -1:
-				raise portage.exception.InvalidSignature, filename
+				raise InvalidSignature(filename)
 		elif result == 1:
 			trustLevel   = EXISTS
 			if portage.output.find("BAD") != -1:
-				raise portage.exception.InvalidSignature, filename
+				raise InvalidSignature(filename)
 		elif result == 2:
 			trustLevel   = UNTRUSTED
 			if portage.output.find("could not be verified") != -1:
-				raise portage.exception.MissingSignature, filename
+				raise MissingSignature(filename)
 			if portage.output.find("public key not found") != -1:
 				if self.keyringIsTrusted: # We trust the ring, but not the key specifically.
 					trustLevel = MARGINAL
 				else:
-					raise portage.exception.InvalidSignature, filename+" (Unknown Signature)"
+					raise InvalidSignature(filename+"(Unknown Signature)")
 		else:
-			raise portage.exception.UnknownCondition, "GPG returned unknown result: %d" % (result)
+			raise PortageException("GPG returned unknown result: %d" % (result))
 	
 		if trustLevel >= self.minimumTrust:
 			return True

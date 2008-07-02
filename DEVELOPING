@@ -94,6 +94,18 @@ except KeyError:
 
 The get call is nicer (compact) and faster (try,except are slow).
 
+Exceptions
+----------
+
+Don't use the format raise Exception, "string"
+It will be removed in py3k.
+
+YES:
+  raise KeyError("No key")
+
+NO:
+  raise KeyError, "No key"
+
 Imports
 -------
 

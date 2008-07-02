@@ -246,7 +246,7 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 					if mydeparray:
 						newdeparray.append(mydeparray.pop(0))
 					else:
-						raise ValueError, "Conditional with no target."
+						raise ValueError("Conditional with no target.")
 
 				# Deprecation checks
 				warned = 0

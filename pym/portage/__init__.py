@@ -169,7 +169,7 @@ def best_from_dict(key, top_dict, key_order, EmptyOnError=1, FullCopy=1, AllowEm
 	if EmptyOnError:
 		return ""
 	else:
-		raise KeyError, "Key not found in list; '%s'" % key
+		raise KeyError("Key not found in list; '%s'" % key)
 
 def getcwd():
 	"this fixes situations where the current directory doesn't exist"
@@ -1804,14 +1804,14 @@ class config(object):
 
 	def modifying(self):
 		if self.locked:
-			raise Exception, "Configuration is locked."
+			raise Exception("Configuration is locked.")
 
 	def backup_changes(self,key=None):
 		self.modifying()
 		if key and key in self.configdict["env"]:
 			self.backupenv[key] = copy.deepcopy(self.configdict["env"][key])
 		else:
-			raise KeyError, "No such key defined in environment: %s" % key
+			raise KeyError("No such key defined in environment: %s" % key)
 
 	def reset(self,keeping_pkg=0,use_cache=1):
 		"""

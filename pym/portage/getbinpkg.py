@@ -82,7 +82,8 @@ def create_conn(baseurl,conn=None):
 
 	parts = baseurl.split("://",1)
 	if len(parts) != 2:
-		raise ValueError, "Provided URL does not contain protocol identifier. '%s'" % baseurl
+		raise ValueError("Provided URL does not " + \
+			"contain protocol identifier. '%s'" % baseurl)
 	protocol,url_parts = parts
 	del parts
 
@@ -104,7 +105,7 @@ def create_conn(baseurl,conn=None):
 	del userpass_host
 
 	if len(userpass) > 2:
-		raise ValueError, "Unable to interpret username/password provided."
+		raise ValueError("Unable to interpret username/password provided.")
 	elif len(userpass) == 2:
 		username = userpass[0]
 		password = userpass[1]
@@ -323,7 +324,7 @@ def dir_get_list(baseurl,conn=None):
 	elif protocol == "sftp":
 		listing = conn.listdir(address)
 	else:
-		raise TypeError, "Unknown protocol. '%s'" % protocol
+		raise TypeError("Unknown protocol. '%s'" % protocol)
 
 	if not keepconnection:
 		conn.close()
@@ -355,7 +356,7 @@ def file_get_metadata(baseurl,conn=None, chunk_size=3000):
 		finally:
 			f.close()
 	else:
-		raise TypeError, "Unknown protocol. '%s'" % protocol
+		raise TypeError("Unknown protocol. '%s'" % protocol)
 	
 	if data:
 		xpaksize = portage.xpak.decodeint(data[-8:-4])
@@ -447,7 +448,7 @@ def file_get_lib(baseurl,dest,conn=None):
 			finally:
 				f.close()
 	else:
-		raise TypeError, "Unknown protocol. '%s'" % protocol
+		raise TypeError("Unknown protocol. '%s'" % protocol)
 	
 	if not keepconnection:
 		conn.close()
