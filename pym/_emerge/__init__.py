@@ -1785,6 +1785,7 @@ class EbuildBuild(SlotObject):
 			if build_dir.locked:
 				portage.elog.elog_process(pkg.cpv, settings)
 				build_dir.unlock()
+		return os.EX_OK
 
 class EbuildExecuter(SlotObject):
 
