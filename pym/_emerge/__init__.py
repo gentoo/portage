@@ -1453,11 +1453,53 @@ class EbuildFetcher(SlotObject):
 			mydbapi=portdb, tree="porttree")
 		return retval
 
-class EbuildFetcherAsync(SlotObject):
+class SubProcess(SlotObject):
+	__slots__ = ("cancelled", "pid", "returncode")
 
-	__slots__ = ("cancelled", "log_file", "fd_pipes", "pkg",
+	def poll(self):
+		if self.returncode is not None:
+			return self.returncode
+		retval = os.waitpid(self.pid, os.WNOHANG)
+		if retval == (0, 0):
+			return None
+		self._set_returncode(retval)
+		return self.returncode
+
+	def cancel(self):
+		if self.isAlive():
+			os.kill(self.pid, signal.SIGTERM)
+		self.cancelled = True
+		if self.pid is not None:
+			self.wait()
+		return self.returncode
+
+	def isAlive(self):
+		return self.pid is not None and \
+			self.returncode is None
+
+	def wait(self):
+		if self.returncode is not None:
+			return self.returncode
+		self._set_returncode(os.waitpid(self.pid, 0))
+		return self.returncode
+
+	def _set_returncode(self, wait_retval):
+
+		retval = wait_retval[1]
+		portage.process.spawned_pids.remove(self.pid)
+		if retval != os.EX_OK:
+			if retval & 0xff:
+				retval = (retval & 0xff) << 8
+			else:
+				retval = retval >> 8
+
+		self.returncode = retval
+
+class EbuildFetcherAsync(SubProcess):
+
+	__slots__ = ("log_file", "fd_pipes", "pkg",
 		"register", "unregister",
-		"pid", "returncode", "files")
+		"files")
 
 	_file_names = ("fetcher", "out")
 	_files_dict = slot_dict_class(_file_names, prefix="")
@@ -1549,45 +1591,6 @@ class EbuildFetcherAsync(SlotObject):
 			self.unregister(files.fetcher.fileno())
 			for f in files.values():
 				f.close()
-
-	def poll(self):
-		if self.returncode is not None:
-			return self.returncode
-		retval = os.waitpid(self.pid, os.WNOHANG)
-		if retval == (0, 0):
-			return None
-		self._set_returncode(retval)
-		return self.returncode
-
-	def cancel(self):
-		if self.isAlive():
-			os.kill(self.pid, signal.SIGTERM)
-		self.cancelled = True
-		if self.pid is not None:
-			self.wait()
-		return self.returncode
-
-	def isAlive(self):
-		return self.pid is not None and \
-			self.returncode is None
-
-	def wait(self):
-		if self.returncode is not None:
-			return self.returncode
-		self._set_returncode(os.waitpid(self.pid, 0))
-		return self.returncode
-
-	def _set_returncode(self, wait_retval):
-
-		retval = wait_retval[1]
-		portage.process.spawned_pids.remove(self.pid)
-		if retval != os.EX_OK:
-			if retval & 0xff:
-				retval = (retval & 0xff) << 8
-			else:
-				retval = retval >> 8
-
-		self.returncode = retval
 
 class EbuildBuildDir(SlotObject):
 
@@ -1838,11 +1841,11 @@ class EbuildExecuter(SlotObject):
 
 		return os.EX_OK
 
-class EbuildPhase(SlotObject):
+class EbuildPhase(SubProcess):
 
 	__slots__ = ("fd_pipes", "phase", "pkg",
 		"register", "settings", "unregister",
-		"pid", "returncode", "files")
+		"files")
 
 	_file_names = ("log", "stdout", "ebuild")
 	_files_dict = slot_dict_class(_file_names, prefix="")
@@ -1943,41 +1946,16 @@ class EbuildPhase(SlotObject):
 			for f in files.values():
 				f.close()
 
-	def poll(self):
-		if self.returncode is not None:
-			return self.returncode
-		retval = os.waitpid(self.pid, os.WNOHANG)
-		if retval == (0, 0):
-			return None
-		self._set_returncode(retval)
-		return self.returncode
-
-	def wait(self):
-		if self.returncode is not None:
-			return self.returncode
-		self._set_returncode(os.waitpid(self.pid, 0))
-		return self.returncode
-
 	def _set_returncode(self, wait_retval):
-
-		retval = wait_retval[1]
-		portage.process.spawned_pids.remove(self.pid)
-		if retval != os.EX_OK:
-			if retval & 0xff:
-				retval = (retval & 0xff) << 8
-			else:
-				retval = retval >> 8
-
+		SubProcess._set_returncode(self, wait_retval)
 		msg = portage._doebuild_exit_status_check(
 			self.phase, self.settings)
 		if msg:
-			retval = 1
+			self.returncode = 1
 			from textwrap import wrap
 			from portage.elog.messages import eerror
 			for l in wrap(msg, 72):
 				eerror(l, phase=self.phase, key=self.pkg.cpv)
-
-		self.returncode = retval
 
 class EbuildBinpkg(Task):
 	"""
@@ -2213,18 +2191,18 @@ class BinpkgFetcher(Task):
 			rval = 1
 		return rval
 
-class BinpkgFetcherAsync(SlotObject):
+class BinpkgFetcherAsync(SubProcess):
 
-	__slots__ = ("cancelled", "log_file", "fd_pipes", "pkg",
+	__slots__ = ("log_file", "fd_pipes", "pkg",
 		"register", "unregister",
-		"locked", "files", "pid", "pkg_path", "returncode", "_lock_obj")
+		"locked", "files", "pkg_path", "_lock_obj")
 
 	_file_names = ("fetcher", "out")
 	_files_dict = slot_dict_class(_file_names, prefix="")
 	_bufsize = 4096
 
 	def __init__(self, **kwargs):
-		SlotObject.__init__(self, **kwargs)
+		SubProcess.__init__(self, **kwargs)
 		pkg = self.pkg
 		self.pkg_path = pkg.root_config.trees["bintree"].getname(pkg.cpv)
 
@@ -2361,45 +2339,6 @@ class BinpkgFetcherAsync(SlotObject):
 		portage.locks.unlockfile(self._lock_obj)
 		self._lock_obj = None
 		self.locked = False
-
-	def poll(self):
-		if self.returncode is not None:
-			return self.returncode
-		retval = os.waitpid(self.pid, os.WNOHANG)
-		if retval == (0, 0):
-			return None
-		self._set_returncode(retval)
-		return self.returncode
-
-	def cancel(self):
-		if self.isAlive():
-			os.kill(self.pid, signal.SIGTERM)
-		self.cancelled = True
-		if self.pid is not None:
-			self.wait()
-		return self.returncode
-
-	def isAlive(self):
-		return self.pid is not None and \
-			self.returncode is None
-
-	def wait(self):
-		if self.returncode is not None:
-			return self.returncode
-		self._set_returncode(os.waitpid(self.pid, 0))
-		return self.returncode
-
-	def _set_returncode(self, wait_retval):
-
-		retval = wait_retval[1]
-		portage.process.spawned_pids.remove(self.pid)
-		if retval != os.EX_OK:
-			if retval & 0xff:
-				retval = (retval & 0xff) << 8
-			else:
-				retval = retval >> 8
-
-		self.returncode = retval
 
 class BinpkgMerge(Task):
 
