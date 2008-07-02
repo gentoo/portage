@@ -1594,7 +1594,7 @@ class EbuildFetcherAsync(SubProcess):
 
 class EbuildBuildDir(SlotObject):
 
-	__slots__ = ("pkg", "settings",
+	__slots__ = ("dir_path", "pkg", "settings",
 		"locked", "_catdir", "_lock_obj")
 
 	def __init__(self, **kwargs):
@@ -1611,17 +1611,21 @@ class EbuildBuildDir(SlotObject):
 		if self._lock_obj is not None:
 			raise self.AlreadyLocked((self._lock_obj,))
 
-		root_config = self.pkg.root_config
-		portdb = root_config.trees["porttree"].dbapi
-		ebuild_path = portdb.findname(self.pkg.cpv)
-		settings = self.settings
-		debug = settings.get("PORTAGE_DEBUG") == "1"
-		use_cache = 1 # always true
+		dir_path = self.dir_path
+		if dir_path is None:
+			root_config = self.pkg.root_config
+			portdb = root_config.trees["porttree"].dbapi
+			ebuild_path = portdb.findname(self.pkg.cpv)
+			settings = self.settings
+			debug = settings.get("PORTAGE_DEBUG") == "1"
+			use_cache = 1 # always true
+			portage.doebuild_environment(ebuild_path, "setup", root_config.root,
+				self.settings, debug, use_cache, portdb)
+			dir_path = self.settings["PORTAGE_BUILDDIR"]
 
-		portage.doebuild_environment(ebuild_path, "setup", root_config.root,
-			self.settings, debug, use_cache, portdb)
-		catdir = os.path.dirname(settings["PORTAGE_BUILDDIR"])
+		catdir = os.path.dirname(dir_path)
 		self._catdir = catdir
+
 		portage.util.ensure_dirs(os.path.dirname(catdir),
 			uid=portage.portage_uid, gid=portage.portage_gid,
 			mode=070, mask=0)
@@ -1631,8 +1635,7 @@ class EbuildBuildDir(SlotObject):
 			portage.util.ensure_dirs(catdir,
 				gid=portage.portage_gid,
 				mode=070, mask=0)
-			self._lock_obj = portage.locks.lockdir(
-				self.settings["PORTAGE_BUILDDIR"])
+			self._lock_obj = portage.locks.lockdir(dir_path)
 		finally:
 			self.locked = self._lock_obj is not None
 			if catdir_lock is not None:
@@ -2125,7 +2128,11 @@ class Binpkg(SlotObject):
 			(pkg_count.curval, pkg_count.maxval, pkg.cpv)
 		logger.log(msg, short_msg=short_msg)
 
-		build_dir = EbuildBuildDir(pkg=pkg, settings=settings)
+		dir_path = os.path.join(settings["PORTAGE_TMPDIR"],
+			"portage", pkg.category, pkg.pf)
+		build_dir = EbuildBuildDir(dir_path=dir_path,
+			pkg=pkg, settings=settings)
+
 		try:
 			build_dir.lock()
 			merge = BinpkgMerge(find_blockers=find_blockers,
