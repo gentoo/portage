@@ -6589,8 +6589,6 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 		return 1
 
 	tbz2_lock = None
-	builddir_lock = None
-	catdir_lock = None
 	mycat = None
 	mypkg = None
 	did_merge_phase = False
@@ -6622,11 +6620,6 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 		catdir_lock = portage.locks.lockdir(catdir)
 		portage.util.ensure_dirs(catdir,
 			uid=portage_uid, gid=portage_gid, mode=070, mask=0)
-		builddir_lock = portage.locks.lockdir(builddir)
-		try:
-			portage.locks.unlockdir(catdir_lock)
-		finally:
-			catdir_lock = None
 		try:
 			shutil.rmtree(builddir)
 		except (IOError, OSError), e:
@@ -6678,7 +6671,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 		mysettings.pop("PORTAGE_BINPKG_FILE", None)
 		if tbz2_lock:
 			portage.locks.unlockfile(tbz2_lock)
-		if builddir_lock:
+		if True:
 			if not did_merge_phase:
 				# The merge phase handles this already.  Callers don't know how
 				# far this function got, so we have to call elog_process() here
@@ -6692,21 +6685,6 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 				if e.errno != errno.ENOENT:
 					raise
 				del e
-			portage.locks.unlockdir(builddir_lock)
-			try:
-				if not catdir_lock:
-					# Lock catdir for removal if empty.
-					catdir_lock = portage.locks.lockdir(catdir)
-			finally:
-				if catdir_lock:
-					try:
-						os.rmdir(catdir)
-					except OSError, e:
-						if e.errno not in (errno.ENOENT,
-							errno.ENOTEMPTY, errno.EEXIST):
-							raise
-						del e
-					portage.locks.unlockdir(catdir_lock)
 
 def deprecated_profile_check():
 	if not os.access(DEPRECATED_PROFILE_FILE, os.R_OK):

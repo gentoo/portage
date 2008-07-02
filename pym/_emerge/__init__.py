@@ -2124,12 +2124,18 @@ class Binpkg(SlotObject):
 		short_msg = "emerge: (%s of %s) %s Merge Binary" % \
 			(pkg_count.curval, pkg_count.maxval, pkg.cpv)
 		logger.log(msg, short_msg=short_msg)
-		merge = BinpkgMerge(find_blockers=find_blockers,
-			ldpath_mtimes=ldpath_mtimes, pkg=pkg, pretend=opts.pretend,
-			pkg_path=pkg_path, settings=settings)
-		retval = merge.execute()
-		if retval != os.EX_OK:
-			return retval
+
+		build_dir = EbuildBuildDir(pkg=pkg, settings=settings)
+		try:
+			build_dir.lock()
+			merge = BinpkgMerge(find_blockers=find_blockers,
+				ldpath_mtimes=ldpath_mtimes, pkg=pkg, pretend=opts.pretend,
+				pkg_path=pkg_path, settings=settings)
+			retval = merge.execute()
+			if retval != os.EX_OK:
+				return retval
+		finally:
+			build_dir.unlock()
 		return os.EX_OK
 
 class BinpkgFetcher(Task):
