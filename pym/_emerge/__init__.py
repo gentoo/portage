@@ -7260,17 +7260,13 @@ class Scheduler(object):
 				prefetcher = prefetchers.get(pkg)
 				if prefetcher is not None:
 					if not prefetcher.isAlive():
-						writemsg(">>> prefetcher not alive, cancelling\n")
 						prefetcher.cancel()
 					else:
-						writemsg(">>> prefetcher alive, waiting\n")
 						retval = None
 						while retval is None:
 							self._schedule()
 							retval = prefetcher.poll()
 					del prefetcher
-				else:
-					writemsg(">>> prefetcher does not exist\n")
 
 				fetcher = BinpkgFetcher(pkg=pkg, pretend=pretend,
 					use_locks=("distlocks" in pkgsettings.features))
