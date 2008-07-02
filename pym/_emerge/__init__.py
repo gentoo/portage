@@ -6813,6 +6813,61 @@ class PackageCounters(object):
 					(self.blocks - self.blocks_satisfied))
 		return "".join(myoutput)
 
+class PollSelectFallback(object):
+
+	"""
+	Use select to emulate a poll object, for
+	systems that don't support poll().
+	"""
+
+	def __init__(self):
+		self._registered = {}
+		self._select_args = [[], [], []]
+
+	def register(self, fd, *args):
+		"""
+		Only select.POLLIN is currently supported!
+		"""
+		if len(args) > 1:
+			raise TypeError(
+				"register expected at most 2 arguments, got " + \
+				repr(1 + len(args)))
+
+		eventmask = select.POLLIN | select.POLLPRI | select.POLLOUT
+		if args:
+			eventmask = args[0]
+
+		self._registered[fd] = eventmask
+		self._select_args = None
+
+	def unregister(self, fd):
+		self._select_args = None
+		del self._registered[fd]
+
+	def poll(self, *args):
+		if len(args) > 1:
+			raise TypeError(
+				"poll expected at most 2 arguments, got " + \
+				repr(1 + len(args)))
+
+		timeout = None
+		if args:
+			timeout = args[0]
+
+		select_args = self._select_args
+		if select_args is None:
+			select_args = [self._registered.keys(), [], []]
+
+		if timeout is not None:
+			select_args = select_args[:]
+			select_args.append(timeout)
+
+		select_events = select.select(*select_args)
+		poll_events = []
+		for fd in select_events[0]:
+			poll_events.append((fd, select.POLLIN))
+		return poll_events
+
 class Scheduler(object):
 
 	_opts_ignore_blockers = \
@@ -6873,7 +6928,12 @@ class Scheduler(object):
 			register=self._register, schedule=self._schedule,
 				unregister=self._unregister)
 		self._poll_event_handlers = {}
-		self._poll = select.poll()
+
+		try:
+			self._poll = select.poll()
+		except AttributeError:
+			self._poll = PollSelectFallback()
+
 		from collections import deque
 		self._task_queue = deque()
 		self._running_tasks = set()
