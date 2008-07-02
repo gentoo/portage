@@ -2070,6 +2070,89 @@ class PackageUninstall(Task):
 			return e.status
 		return os.EX_OK
 
+class Binpkg(SlotObject):
+
+	__slots__ = ("find_blockers",
+		"ldpath_mtimes", "logger", "opts",
+		"pkg", "pkg_count", "prefetcher", "scheduler",
+		"settings")
+
+	def execute(self):
+
+		find_blockers = self.find_blockers
+		ldpath_mtimes = self.ldpath_mtimes
+		logger = self.logger
+		opts = self.opts
+		pkg = self.pkg
+		pkg_count = self.pkg_count
+		scheduler = self.scheduler
+		settings = self.settings
+
+		# The prefetcher has already completed or it
+		# could be running now. If it's running now,
+		# wait for it to complete since it holds
+		# a lock on the file being fetched. The
+		# portage.locks functions are only designed
+		# to work between separate processes. Since
+		# the lock is held by the current process,
+		# use the scheduler and fetcher methods to
+		# synchronize with the fetcher.
+		prefetcher = self.prefetcher
+		if prefetcher is not None:
+			if not prefetcher.isAlive():
+				prefetcher.cancel()
+			else:
+				retval = prefetcher.poll()
+
+				if retval is None:
+					waiting_msg = ("Fetching '%s' " + \
+						"in the background. " + \
+						"To view fetch progress, run `tail -f " + \
+						"/var/log/emerge-fetch.log` in another " + \
+						"terminal.") % prefetcher.pkg_path
+					msg_prefix = colorize("GOOD", " * ")
+					from textwrap import wrap
+					waiting_msg = "".join("%s%s\n" % (msg_prefix, line) \
+						for line in wrap(waiting_msg, 65))
+					writemsg(waiting_msg, noiselevel=-1)
+
+				while retval is None:
+					scheduler.schedule()
+					retval = prefetcher.poll()
+			del prefetcher
+
+		fetcher = BinpkgFetcher(pkg=pkg, pretend=opts.pretend,
+			use_locks=("distlocks" in settings.features))
+		pkg_path = fetcher.pkg_path
+
+		if opts.getbinpkg:
+			retval = fetcher.execute()
+			if fetcher.remote:
+				msg = " --- (%s of %s) Fetching Binary (%s::%s)" %\
+					(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg_path)
+				short_msg = "emerge: (%s of %s) %s Fetch" % \
+					(pkg_count.curval, pkg_count.maxval, pkg.cpv)
+				logger.log(msg, short_msg=short_msg)
+
+			if retval != os.EX_OK:
+				return retval
+
+		if opts.fetchonly:
+			return os.EX_OK
+
+		msg = " === (%s of %s) Merging Binary (%s::%s)" % \
+			(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg_path)
+		short_msg = "emerge: (%s of %s) %s Merge Binary" % \
+			(pkg_count.curval, pkg_count.maxval, pkg.cpv)
+		logger.log(msg, short_msg=short_msg)
+		merge = BinpkgMerge(find_blockers=find_blockers,
+			ldpath_mtimes=ldpath_mtimes, pkg=pkg, pretend=opts.pretend,
+			pkg_path=pkg_path, settings=settings)
+		retval = merge.execute()
+		if retval != os.EX_OK:
+			return retval
+		return os.EX_OK
+
 class BinpkgFetcher(Task):
 
 	__slots__ = ("use_locks", "pkg", "pretend",
@@ -2148,7 +2231,6 @@ class BinpkgFetcherAsync(SlotObject):
 
 		if self.cancelled:
 			return
-		writemsg(">>> starting parallel binpkg fetcher\n")
 
 		fd_pipes = self.fd_pipes
 		if fd_pipes is None:
@@ -6801,6 +6883,9 @@ class Scheduler(object):
 		__slots__ = ("buildpkg", "buildpkgonly",
 			"fetch_all_uri", "fetchonly", "pretend")
 
+	class _binpkg_opts_class(SlotObject):
+		__slots__ = ("fetchonly", "getbinpkg", "pretend")
+
 	class _pkg_count_class(SlotObject):
 		__slots__ = ("curval", "maxval")
 
@@ -6824,6 +6909,10 @@ class Scheduler(object):
 		self._build_opts = self._build_opts_class()
 		for k in self._build_opts.__slots__:
 			setattr(self._build_opts, k, "--" + k.replace("_", "-") in myopts)
+		self._binpkg_opts = self._binpkg_opts_class()
+		for k in self._binpkg_opts.__slots__:
+			setattr(self._binpkg_opts, k, "--" + k.replace("_", "-") in myopts)
+
 		self.edebug = 0
 		if settings.get("PORTAGE_DEBUG", "") == "1":
 			self.edebug = 1
@@ -7245,63 +7334,24 @@ class Scheduler(object):
 					settings=pkgsettings, scheduler=self._sched_iface)
 				retval = build.execute()
 				if retval != os.EX_OK:
-					raise self._pkg_failure(retval)
+					if fetchonly:
+						failed_fetches.append(pkg.cpv)
+					else:
+						raise self._pkg_failure(retval)
 
 			elif x.type_name == "binary":
-				# The prefetcher have already completed or it
-				# could be running now. If it's running now,
-				# wait for it to complete since it holds
-				# a lock on the file being fetched. The
-				# portage.locks functions are only designed
-				# to work between separate processes. Since
-				# the lock is held by the current process,
-				# use the scheduler and fetcher methods to
-				# synchronize with the fetcher.
-				prefetcher = prefetchers.get(pkg)
-				if prefetcher is not None:
-					if not prefetcher.isAlive():
-						prefetcher.cancel()
-					else:
-						retval = None
-						while retval is None:
-							self._schedule()
-							retval = prefetcher.poll()
-					del prefetcher
-
-				fetcher = BinpkgFetcher(pkg=pkg, pretend=pretend,
-					use_locks=("distlocks" in pkgsettings.features))
-				mytbz2 = fetcher.pkg_path
-				y = mytbz2
-				if "--getbinpkg" in self.myopts:
-					retval = fetcher.execute()
-					if fetcher.remote:
-						msg = " --- (%s of %s) Fetching Binary (%s::%s)" %\
-							(mergecount, len(mymergelist), pkg_key, mytbz2)
-						short_msg = "emerge: (%s of %s) %s Fetch" % \
-							(mergecount, len(mymergelist), pkg_key)
-						emergelog(xterm_titles, msg, short_msg=short_msg)
-
-					if retval != os.EX_OK:
-						failed_fetches.append(pkg.cpv)
-						if not fetchonly:
-							raise self._pkg_failure()
-
-				if "--fetchonly" in self.myopts or \
-					"--fetch-all-uri" in self.myopts:
-					self.curval += 1
-					return
-
-				short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Merge Binary"
-				emergelog(xterm_titles, " === ("+str(mergecount)+\
-					" of "+str(len(mymergelist))+") Merging Binary ("+\
-					x[pkgindex]+"::"+mytbz2+")", short_msg=short_msg)
-				merge = BinpkgMerge(find_blockers=self._find_blockers(pkg),
-					ldpath_mtimes=ldpath_mtimes, pkg=pkg, pretend=pretend,
-					pkg_path=fetcher.pkg_path, settings=pkgsettings)
-				retval = merge.execute()
+				binpkg = Binpkg(find_blockers=self._find_blockers(pkg),
+					ldpath_mtimes=ldpath_mtimes, logger=self._logger,
+					opts=self._binpkg_opts, pkg=pkg, pkg_count=pkg_count,
+					prefetcher=prefetchers.get(pkg), settings=pkgsettings,
+					scheduler=self._sched_iface)
+				retval = binpkg.execute()
 				if retval != os.EX_OK:
-					raise self._pkg_failure(retval)
-				#need to check for errors
+					if fetchonly:
+						failed_fetches.append(pkg.cpv)
+					else:
+						raise self._pkg_failure(retval)
+
 			if not buildpkgonly:
 				if not (fetchonly or oneshot or pretend) and \
 					args_set.findAtomForPackage(pkg):
