@@ -186,7 +186,10 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 			myhash = perform_checksum(filename, x, calc_prelink=calc_prelink)[0]
 			if mydict[x] != myhash:
 				if strict:
-					raise portage.exception.DigestException, "Failed to verify '$(file)s' on checksum type '%(type)s'" % {"file":filename, "type":x}
+					raise portage.exception.DigestException(
+						("Failed to verify '$(file)s' on " + \
+						"checksum type '%(type)s'") % \
+						{"file" : filename, "type" : x})
 				else:
 					file_is_ok = False
 					reason     = (("Failed on %s verification" % x), myhash,mydict[x])

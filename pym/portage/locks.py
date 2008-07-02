@@ -24,7 +24,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0, waiting_msg=None):
 	import fcntl
 
 	if not mypath:
-		raise InvalidData, "Empty path given"
+		raise InvalidData("Empty path given")
 
 	if type(mypath) == types.StringType and mypath[-1] == '/':
 		mypath = mypath[:-1]
@@ -45,7 +45,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0, waiting_msg=None):
 	
 	if type(mypath) == types.StringType:
 		if not os.path.exists(os.path.dirname(mypath)):
-			raise DirectoryNotFound, os.path.dirname(mypath)
+			raise DirectoryNotFound(os.path.dirname(mypath))
 		if not os.path.exists(lockfilename):
 			old_mask=os.umask(000)
 			myfd = os.open(lockfilename, os.O_CREAT|os.O_RDWR,0660)
@@ -66,7 +66,8 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0, waiting_msg=None):
 		myfd = mypath
 
 	else:
-		raise ValueError, "Unknown type passed in '%s': '%s'" % (type(mypath),mypath)
+		raise ValueError("Unknown type passed in '%s': '%s'" % \
+			(type(mypath), mypath))
 
 	# try for a non-blocking lock, if it's held, throw a message
 	# we're waiting on lockfile and use a blocking attempt.
@@ -166,7 +167,7 @@ def unlockfile(mytuple):
 	except OSError:
 		if type(lockfilename) == types.StringType:
 			os.close(myfd)
-		raise IOError, "Failed to unlock file '%s'\n" % lockfilename
+		raise IOError("Failed to unlock file '%s'\n" % lockfilename)
 
 	try:
 		# This sleep call was added to allow other processes that are
@@ -231,7 +232,9 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 		os.close(myfd)
 	
 		if not os.path.exists(myhardlock):
-			raise FileNotFound, _("Created lockfile is missing: %(filename)s") % {"filename":myhardlock}
+			raise FileNotFound(
+				_("Created lockfile is missing: %(filename)s") % \
+				{"filename" : myhardlock})
 
 		try:
 			res = os.link(myhardlock, lockfilename)
