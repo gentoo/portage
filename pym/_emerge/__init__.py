@@ -1740,7 +1740,7 @@ class EbuildBuild(SlotObject):
 				if retval != os.EX_OK:
 					return retval
 
-				if opts.buildpkgonly:
+				if not opts.buildpkgonly:
 					msg = " === (%s of %s) Merging (%s::%s)" % \
 						(pkg_count.curval, pkg_count.maxval,
 						pkg.cpv, ebuild_path)
