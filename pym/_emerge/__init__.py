@@ -24,6 +24,7 @@ import array
 import fcntl
 import select
 import shlex
+import shutil
 import urlparse
 import weakref
 import gc
@@ -1565,7 +1566,7 @@ class SpawnProcess(SubProcess):
 
 		kwargs["fd_pipes"] = fd_pipes
 		kwargs["returnpid"] = True
-		del kwargs["logfile"]
+		kwargs.pop("logfile", None)
 
 		retval = portage.process.spawn(self.args, **kwargs)
 
@@ -2104,6 +2105,8 @@ class Binpkg(SlotObject):
 		pkg_count = self.pkg_count
 		scheduler = self.scheduler
 		settings = self.settings
+		settings.setcpv(pkg)
+		debug = settings.get("PORTAGE_DEBUG") == "1"
 
 		# The prefetcher has already completed or it
 		# could be running now. If it's running now,
@@ -2167,16 +2170,122 @@ class Binpkg(SlotObject):
 			"portage", pkg.category, pkg.pf)
 		build_dir = EbuildBuildDir(dir_path=dir_path,
 			pkg=pkg, settings=settings)
+		image_dir = os.path.join(dir_path, "image")
+		infloc = os.path.join(dir_path, "build-info")
+
+		fd_pipes = {
+			0 : sys.stdin.fileno(),
+			1 : sys.stdout.fileno(),
+			2 : sys.stderr.fileno(),
+		}
 
 		try:
 			build_dir.lock()
-			merge = BinpkgMerge(find_blockers=find_blockers,
-				ldpath_mtimes=ldpath_mtimes, pkg=pkg, pretend=opts.pretend,
-				pkg_path=pkg_path, settings=settings)
+
+			root_config = self.pkg.root_config
+			ebuild_path = os.path.join(infloc, pkg.pf + ".ebuild")
+			cleanup = 1
+			tree = "bintree"
+			mydbapi = root_config.trees[tree].dbapi
+
+			retval = portage.doebuild(ebuild_path, "clean",
+				root_config.root, settings, debug, cleanup=cleanup,
+				mydbapi=mydbapi, tree=tree)
+			if retval != os.EX_OK:
+				return retval
+
+			try:
+				shutil.rmtree(dir_path)
+			except (IOError, OSError), e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
+
+			# This initializes PORTAGE_LOG_FILE.
+			portage.prepare_build_dirs(root_config.root, settings, cleanup)
+
+			dir_mode = 0755
+			for mydir in (dir_path, image_dir, infloc):
+				portage.util.ensure_dirs(mydir, uid=portage.data.portage_uid,
+					gid=portage.data.portage_gid, mode=dir_mode)
+
+			portage.writemsg_stdout(">>> Extracting info\n")
+
+			pkg_xpak = portage.xpak.tbz2(pkg_path)
+			check_missing_metadata = ("CATEGORY", "PF")
+			missing_metadata = set()
+			for k in check_missing_metadata:
+				v = pkg_xpak.getfile(k)
+				if not v:
+					missing_metadata.add(k)
+
+			pkg_xpak.unpackinfo(infloc)
+			for k in missing_metadata:
+				if k == "CATEGORY":
+					v = pkg.category
+				elif k == "PF":
+					v = pkg.pf
+				else:
+					continue
+
+				f = open(os.path.join(infloc, k), 'wb')
+				try:
+					f.write(v + "\n")
+				finally:
+					f.close()
+
+			# Store the md5sum in the vdb.
+			f = open(os.path.join(infloc, "BINPKGMD5"), "w")
+			try:
+				f.write(str(portage.checksum.perform_md5(pkg_path)) + "\n")
+			finally:
+				f.close()
+
+			# This gives bashrc users an opportunity to do various things
+			# such as remove binary packages after they're installed.
+			settings["PORTAGE_BINPKG_FILE"] = pkg_path
+			settings.backup_changes("PORTAGE_BINPKG_FILE")
+
+			phase = "setup"
+			ebuild_phase = EbuildPhase(fd_pipes=fd_pipes,
+				pkg=pkg, phase=phase, register=scheduler.register,
+				settings=settings, unregister=scheduler.unregister)
+
+			ebuild_phase.start()
+			retval = None
+			while retval is None:
+				scheduler.schedule()
+				retval = ebuild_phase.poll()
+
+ 			if retval != os.EX_OK:
+ 				return retval
+
+			extractor = BinpkgExtractorAsync(image_dir=image_dir,
+				pkg=pkg, pkg_path=pkg_path, register=scheduler.register,
+				unregister=scheduler.unregister)
+			portage.writemsg_stdout(">>> Extracting %s\n" % pkg.cpv)
+			extractor.start()
+			retval = None
+			while retval is None:
+				scheduler.schedule()
+				retval = extractor.poll()
+
+			if retval != os.EX_OK:
+				writemsg("!!! Error Extracting '%s'\n" % pkg_path,
+					noiselevel=-1)
+				return retval
+
+			merge = EbuildMerge(
+				find_blockers=find_blockers,
+				ldpath_mtimes=ldpath_mtimes,
+				pkg=pkg, settings=settings)
+
 			retval = merge.execute()
 			if retval != os.EX_OK:
 				return retval
+
 		finally:
+			settings.pop("PORTAGE_BINPKG_FILE", None)
 			build_dir.unlock()
 		return os.EX_OK
 
@@ -2327,6 +2436,21 @@ class BinpkgFetcherAsync(SpawnProcess):
 		portage.locks.unlockfile(self._lock_obj)
 		self._lock_obj = None
 		self.locked = False
+
+class BinpkgExtractorAsync(SpawnProcess):
+
+	__slots__ = ("image_dir", "pkg", "pkg_path")
+
+	_shell_binary = portage.const.BASH_BINARY
+
+	def start(self):
+		self.args = [self._shell_binary, "-c",
+			"bzip2 -dqc -- %s | tar -xp -C %s -f -" % \
+			(portage._shell_quote(self.pkg_path),
+			portage._shell_quote(self.image_dir))]
+
+		self.env = self.pkg.root_config.settings.environ()
+		SpawnProcess.start(self)
 
 class BinpkgMerge(Task):
 

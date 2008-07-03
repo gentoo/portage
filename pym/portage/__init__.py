@@ -4874,6 +4874,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	noauto = "noauto" in features
 	from portage.data import secpass
 
+	clean_phases = ("clean", "cleanrm")
 	validcommands = ["help","clean","prerm","postrm","cleanrm","preinst","postinst",
 	                "config","info","setup","depend","fetch","digest",
 	                "unpack","compile","test","install","rpm","qmerge","merge",
@@ -4890,7 +4891,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		writemsg("\n", noiselevel=-1)
 		return 1
 
-	if not os.path.exists(myebuild):
+	if mydo not in clean_phases and not os.path.exists(myebuild):
 		writemsg("!!! doebuild: %s not found for %s\n" % (myebuild, mydo),
 			noiselevel=-1)
 		return 1
@@ -4987,7 +4988,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		doebuild_environment(myebuild, mydo, myroot, mysettings, debug,
 			use_cache, mydbapi)
 
-		clean_phases = ("clean", "cleanrm")
 		if mydo in clean_phases:
 			retval = spawn(_shell_quote(ebuild_sh_binary) + " clean",
 				mysettings, debug=debug, free=1, logfile=None)
