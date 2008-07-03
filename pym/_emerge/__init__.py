@@ -2452,33 +2452,6 @@ class BinpkgExtractorAsync(SpawnProcess):
 		self.env = self.pkg.root_config.settings.environ()
 		SpawnProcess.start(self)
 
-class BinpkgMerge(Task):
-
-	__slots__ = ("find_blockers", "ldpath_mtimes",
-		"pkg", "pretend", "pkg_path", "settings")
-
-	def _get_hash_key(self):
-		hash_key = getattr(self, "_hash_key", None)
-		if hash_key is None:
-			self._hash_key = ("BinpkgMerge", self.pkg._get_hash_key())
-		return self._hash_key
-
-	def execute(self):
-
-		settings = self.settings
-		settings["EMERGE_FROM"] = self.pkg.type_name
-		settings.backup_changes("EMERGE_FROM")
-		settings.reset()
-
-		root_config = self.pkg.root_config
-		retval = portage.pkgmerge(self.pkg_path, root_config.root,
-			self.settings,
-			mydbapi=root_config.trees["bintree"].dbapi,
-			vartree=root_config.trees["vartree"],
-			prev_mtimes=self.ldpath_mtimes,
-			blockers=self.find_blockers)
-		return retval
-
 class DependencyArg(object):
 	def __init__(self, arg=None, root_config=None):
 		self.arg = arg
