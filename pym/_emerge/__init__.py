@@ -7465,36 +7465,19 @@ class Scheduler(object):
 			world_set.unlock()
 
 	def _execute_task(self, pkg):
-			favorites = self._favorites
-			mtimedb = self._mtimedb
-			prefetchers = self._prefetchers
-			pkg_count = self._pkg_count
-			mergecount = pkg_count.curval
-			mymergelist = self._mergelist
-			pkgsettings = self.pkgsettings[pkg.root]
+
 			buildpkgonly = "--buildpkgonly" in self.myopts
 			fetch_all = "--fetch-all-uri" in self.myopts
 			fetchonly = fetch_all or "--fetchonly" in self.myopts
-			failed_fetches = self._failed_fetches
-			
-			oneshot = "--oneshot" in self.myopts or \
-				"--onlydeps" in self.myopts
 			pretend = "--pretend" in self.myopts
-			ldpath_mtimes = mtimedb["ldpath"]
-			xterm_titles = "notitles" not in self.settings.features
 
-			x = pkg
-			y = None
-			root_config = pkg.root_config
-			system_set = root_config.sets["system"]
-			args_set = InternalPackageSet(favorites)
-			world_set = root_config.sets["world"]
-			vartree = self.trees[pkg.root]["vartree"]
-			portdb = root_config.trees["porttree"].dbapi
-			bindb = root_config.trees["bintree"].dbapi
-			pkg_type, myroot, pkg_key, operation = x
-			pkgindex = 2
-			metadata = pkg.metadata
+			pkgsettings = self.pkgsettings[pkg.root]
+			mtimedb = self._mtimedb
+			ldpath_mtimes = mtimedb["ldpath"]
+			failed_fetches = self._failed_fetches
+			pkg_count = self._pkg_count
+			prefetchers = self._prefetchers
+
 			if not pkg.installed:
 				pkg_count.curval += 1
 				mergecount = pkg_count.curval
@@ -7507,22 +7490,18 @@ class Scheduler(object):
 						raise self._pkg_failure(retval)
 				return
 
-			if x[0]=="blocks":
-				pkgindex=3
-
-			if "--pretend" not in self.myopts:
-				print "\n>>> Emerging (" + \
-					colorize("MERGE_LIST_PROGRESS", str(mergecount)) + " of " + \
-					colorize("MERGE_LIST_PROGRESS", str(len(mymergelist))) + ") " + \
-					colorize("GOOD", x[pkgindex]) + " to " + x[1]
-				emergelog(xterm_titles, " >>> emerge ("+\
-					str(mergecount)+" of "+str(len(mymergelist))+\
-					") "+x[pkgindex]+" to "+x[1])
+			if not pretend:
+				portage.writemsg_stdout(
+					"\n>>> Emerging (%s of %s) %s to %s\n" % \
+					(colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
+					colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)),
+					colorize("GOOD", pkg.cpv), pkg.root), noiselevel=-1)
+				self._logger.log(" >>> emerge (%s of %s) %s to %s" % \
+					(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root))
 
 			self._schedule()
 
-			if x.type_name == "ebuild":
-				y = portdb.findname(pkg.cpv)
+			if pkg.type_name == "ebuild":
 				build = EbuildBuild(args_set=self._args_set,
 					find_blockers=self._find_blockers(pkg),
 					ldpath_mtimes=ldpath_mtimes, logger=self._logger,
@@ -7536,7 +7515,7 @@ class Scheduler(object):
 					else:
 						raise self._pkg_failure(retval)
 
-			elif x.type_name == "binary":
+			elif pkg.type_name == "binary":
 				binpkg = Binpkg(find_blockers=self._find_blockers(pkg),
 					ldpath_mtimes=ldpath_mtimes, logger=self._logger,
 					opts=self._binpkg_opts, pkg=pkg, pkg_count=pkg_count,
