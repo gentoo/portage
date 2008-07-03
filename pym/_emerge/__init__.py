@@ -1863,12 +1863,6 @@ class EbuildExecuter(SlotObject):
 				self.schedule()
 				retval = ebuild_phase.poll()
 
-			portage._post_phase_userpriv_perms(settings)
-			if mydo == "install":
-				portage._check_build_log(settings)
-				if retval == os.EX_OK:
-					retval = portage._post_src_install_checks(settings)
-
 			if retval != os.EX_OK:
 				return retval
 
@@ -1992,6 +1986,14 @@ class EbuildPhase(SubProcess):
 			from portage.elog.messages import eerror
 			for l in wrap(msg, 72):
 				eerror(l, phase=self.phase, key=self.pkg.cpv)
+
+		returncode = self.returncode
+		settings = self.settings
+		portage._post_phase_userpriv_perms(settings)
+		if self.phase == "install":
+			portage._check_build_log(settings)
+			if returncode == os.EX_OK:
+				returncode = portage._post_src_install_checks(settings)
 
 class EbuildBinpkg(Task):
 	"""
