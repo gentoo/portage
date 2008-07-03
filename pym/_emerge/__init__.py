@@ -2243,7 +2243,7 @@ class BinpkgFetcherAsync(SubProcess):
 
 	__slots__ = ("log_file", "fd_pipes", "pkg",
 		"register", "unregister",
-		"locked", "files", "pkg_path", "_lock_obj")
+		"locked", "files", "pkg_path", "registered", "_lock_obj")
 
 	_file_names = ("fetcher", "out")
 	_files_dict = slot_dict_class(_file_names, prefix="")
