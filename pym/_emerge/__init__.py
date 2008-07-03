@@ -1702,7 +1702,7 @@ class EbuildBuild(SlotObject):
 	__slots__ = ("args_set", "find_blockers",
 		"ldpath_mtimes", "logger", "opts",
 		"pkg", "pkg_count", "scheduler",
-		"settings")
+		"settings", "world_atom")
 
 	def execute(self):
 
@@ -1715,12 +1715,14 @@ class EbuildBuild(SlotObject):
 		pkg_count = self.pkg_count
 		scheduler = self.scheduler
 		settings = self.settings
+		world_atom = self.world_atom
 		root_config = pkg.root_config
 		root = root_config.root
 		system_set = root_config.sets["system"]
 		world_set = root_config.sets["world"]
 		vartree = root_config.trees["vartree"]
-		portdb = root_config.trees["porttree"].dbapi
+		tree = "porttree"
+		portdb = root_config.trees[tree].dbapi
 		debug = settings.get("PORTAGE_DEBUG") == "1"
 		features = self.settings.features
 		settings["EMERGE_FROM"] = pkg.type_name
@@ -1784,17 +1786,17 @@ class EbuildBuild(SlotObject):
 						(pkg_count.curval, pkg_count.maxval, pkg.cpv)
 					logger.log(msg, short_msg=short_msg)
 
-					merge = EbuildMerge(
-						find_blockers=find_blockers,
-						ldpath_mtimes=ldpath_mtimes,
-						pkg=pkg, settings=settings)
+					merge = EbuildMerge(find_blockers=find_blockers,
+						ldpath_mtimes=ldpath_mtimes, logger=logger, pkg=pkg,
+						pkg_count=pkg_count, pkg_path=ebuild_path,
+						settings=settings, tree=tree, world_atom=world_atom)
 					retval = merge.execute()
 					if retval != os.EX_OK:
 						return retval
 				elif "noclean" not in settings.features:
 					portage.doebuild(ebuild_path, "clean", root,
 						settings, debug=debug, mydbapi=portdb,
-						tree="porttree")
+						tree=tree)
 			else:
 				msg = " === (%s of %s) Compiling/Merging (%s::%s)" % \
 					(pkg_count.curval, pkg_count.maxval, pkg.cpv, ebuild_path)
@@ -1809,10 +1811,10 @@ class EbuildBuild(SlotObject):
 				if retval != os.EX_OK:
 					return retval
 
-				merge = EbuildMerge(
-					find_blockers=self.find_blockers,
-					ldpath_mtimes=ldpath_mtimes,
-					pkg=pkg, settings=settings)
+				merge = EbuildMerge(find_blockers=self.find_blockers,
+					ldpath_mtimes=ldpath_mtimes, logger=logger, pkg=pkg,
+					pkg_count=pkg_count, pkg_path=ebuild_path,
+					settings=settings, tree=tree, world_atom=world_atom)
 				retval = merge.execute()
 
 				if retval != os.EX_OK:
@@ -1831,7 +1833,8 @@ class EbuildExecuter(SlotObject):
 
 	def execute(self):
 		root_config = self.pkg.root_config
-		portdb = root_config.trees["porttree"].dbapi
+		tree = "porttree"
+		portdb = root_config.trees[tree].dbapi
 		ebuild_path = portdb.findname(self.pkg.cpv)
 		settings = self.settings
 		debug = settings.get("PORTAGE_DEBUG") == "1"
@@ -1855,7 +1858,7 @@ class EbuildExecuter(SlotObject):
 		for mydo in self._phases:
 			ebuild_phase = EbuildPhase(fd_pipes=fd_pipes,
 				pkg=self.pkg, phase=mydo, register=self.register,
-				settings=settings, unregister=self.unregister)
+				settings=settings, tree=tree, unregister=self.unregister)
 
 			ebuild_phase.start()
 			retval = None
@@ -1871,7 +1874,7 @@ class EbuildExecuter(SlotObject):
 class EbuildPhase(SubProcess):
 
 	__slots__ = ("fd_pipes", "phase", "pkg",
-		"register", "settings", "unregister",
+		"register", "settings", "tree", "unregister",
 		"files", "registered")
 
 	_file_names = ("log", "stdout", "ebuild")
@@ -1880,9 +1883,10 @@ class EbuildPhase(SubProcess):
 
 	def start(self):
 		root_config = self.pkg.root_config
-		portdb = root_config.trees["porttree"].dbapi
-		ebuild_path = portdb.findname(self.pkg.cpv)
+		tree = self.tree
+		mydbapi = root_config.trees[tree].dbapi
 		settings = self.settings
+		ebuild_path = settings["EBUILD"]
 		debug = settings.get("PORTAGE_DEBUG") == "1"
 		logfile = settings.get("PORTAGE_LOG_FILE")
 		master_fd = None
@@ -1943,7 +1947,7 @@ class EbuildPhase(SubProcess):
 
 		retval = portage.doebuild(ebuild_path, self.phase,
 			root_config.root, settings, debug,
-			mydbapi=portdb, tree="porttree",
+			mydbapi=mydbapi, tree=tree,
 			fd_pipes=fd_pipes, returnpid=True)
 
 		self.pid = retval[0]
@@ -2043,16 +2047,11 @@ class EbuildBinpkg(Task):
 
 		return retval
 
-class EbuildMerge(Task):
+class EbuildMerge(SlotObject):
 
-	__slots__ = ("find_blockers", "ldpath_mtimes",
-		"pkg", "pretend", "settings")
-
-	def _get_hash_key(self):
-		hash_key = getattr(self, "_hash_key", None)
-		if hash_key is None:
-			self._hash_key = ("EbuildMerge", self.pkg._get_hash_key())
-		return self._hash_key
+	__slots__ = ("find_blockers", "logger", "ldpath_mtimes",
+		"pkg", "pkg_count", "pkg_path", "pretend",
+		"settings", "tree", "world_atom")
 
 	def execute(self):
 		root_config = self.pkg.root_config
@@ -2062,11 +2061,31 @@ class EbuildMerge(Task):
 			os.path.join(settings["PORTAGE_BUILDDIR"],
 			"build-info"), root_config.root, settings,
 			myebuild=settings["EBUILD"],
-			mytree="porttree", mydbapi=root_config.trees["porttree"].dbapi,
+			mytree=self.tree, mydbapi=root_config.trees[self.tree].dbapi,
 			vartree=root_config.trees["vartree"],
 			prev_mtimes=self.ldpath_mtimes,
 			blockers=self.find_blockers)
+
+		if retval == os.EX_OK:
+			self.world_atom(self.pkg)
+			self._log_success()
+
 		return retval
+
+	def _log_success(self):
+		pkg = self.pkg
+		pkg_count = self.pkg_count
+		pkg_path = self.pkg_path
+		logger = self.logger
+		if "noclean" not in self.settings.features:
+			short_msg = "emerge: (%s of %s) %s Clean Post" % \
+				(pkg_count.curval, pkg_count.maxval, pkg.cpv)
+			logger.log((" === (%s of %s) " + \
+				"Post-Build Cleaning (%s::%s)") % \
+				(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg_path),
+				short_msg=short_msg)
+		logger.log(" ::: completed emerge (%s of %s) %s to %s" % \
+			(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root))
 
 class PackageUninstall(Task):
 
@@ -2092,7 +2111,7 @@ class Binpkg(SlotObject):
 	__slots__ = ("find_blockers",
 		"ldpath_mtimes", "logger", "opts",
 		"pkg", "pkg_count", "prefetcher", "scheduler",
-		"settings")
+		"settings", "world_atom")
 
 	def execute(self):
 
@@ -2104,6 +2123,8 @@ class Binpkg(SlotObject):
 		pkg_count = self.pkg_count
 		scheduler = self.scheduler
 		settings = self.settings
+		world_atom = self.world_atom
+		tree = "bintree"
 		settings.setcpv(pkg)
 		debug = settings.get("PORTAGE_DEBUG") == "1"
 
@@ -2184,7 +2205,6 @@ class Binpkg(SlotObject):
 			root_config = self.pkg.root_config
 			ebuild_path = os.path.join(infloc, pkg.pf + ".ebuild")
 			cleanup = 1
-			tree = "bintree"
 			mydbapi = root_config.trees[tree].dbapi
 
 			retval = portage.doebuild(ebuild_path, "clean",
@@ -2248,7 +2268,7 @@ class Binpkg(SlotObject):
 			phase = "setup"
 			ebuild_phase = EbuildPhase(fd_pipes=fd_pipes,
 				pkg=pkg, phase=phase, register=scheduler.register,
-				settings=settings, unregister=scheduler.unregister)
+				settings=settings, tree=tree, unregister=scheduler.unregister)
 
 			ebuild_phase.start()
 			retval = None
@@ -2274,10 +2294,10 @@ class Binpkg(SlotObject):
 					noiselevel=-1)
 				return retval
 
-			merge = EbuildMerge(
-				find_blockers=find_blockers,
-				ldpath_mtimes=ldpath_mtimes,
-				pkg=pkg, settings=settings)
+			merge = EbuildMerge(find_blockers=find_blockers,
+				ldpath_mtimes=ldpath_mtimes, logger=logger, pkg=pkg,
+				pkg_count=pkg_count, pkg_path=pkg_path,
+				settings=settings, tree=tree, world_atom=world_atom)
 
 			retval = merge.execute()
 			if retval != os.EX_OK:
@@ -7415,6 +7435,35 @@ class Scheduler(object):
 
 		return state_changed
 
+	def _world_atom(self, pkg):
+		"""
+		Add the package to the world file, but only if
+		it's supposed to be added. Otherwise, do nothing.
+		"""
+		if pkg.root != self.target_root:
+			return
+
+		args_set = self._args_set
+		if not args_set.findAtomForPackage(pkg):
+			return
+
+		logger = self._logger
+		pkg_count = self._pkg_count
+		root_config = pkg.root_config
+		world_set = root_config.sets["world"]
+		world_set.lock()
+		try:
+			world_set.load() # maybe it's changed on disk
+			atom = create_world_atom(pkg, args_set, root_config)
+			if atom:
+				portage.writemsg_stdout(('>>> Recording %s in "world" ' + \
+					'favorites file...\n') % atom)
+				logger.log(" === (%s of %s) Updating world file (%s)" % \
+					(pkg_count.curval, pkg_count.maxval, pkg.cpv))
+				world_set.add(atom)
+		finally:
+			world_set.unlock()
+
 	def _execute_task(self, pkg):
 			favorites = self._favorites
 			mtimedb = self._mtimedb
@@ -7478,7 +7527,8 @@ class Scheduler(object):
 					find_blockers=self._find_blockers(pkg),
 					ldpath_mtimes=ldpath_mtimes, logger=self._logger,
 					opts=self._build_opts, pkg=pkg, pkg_count=pkg_count,
-					settings=pkgsettings, scheduler=self._sched_iface)
+					settings=pkgsettings, scheduler=self._sched_iface,
+					world_atom=self._world_atom)
 				retval = build.execute()
 				if retval != os.EX_OK:
 					if fetchonly:
@@ -7491,42 +7541,13 @@ class Scheduler(object):
 					ldpath_mtimes=ldpath_mtimes, logger=self._logger,
 					opts=self._binpkg_opts, pkg=pkg, pkg_count=pkg_count,
 					prefetcher=prefetchers.get(pkg), settings=pkgsettings,
-					scheduler=self._sched_iface)
+					scheduler=self._sched_iface, world_atom=self._world_atom)
 				retval = binpkg.execute()
 				if retval != os.EX_OK:
 					if fetchonly:
 						failed_fetches.append(pkg.cpv)
 					else:
 						raise self._pkg_failure(retval)
-
-			if not buildpkgonly:
-				if not (fetchonly or oneshot or pretend) and \
-					args_set.findAtomForPackage(pkg):
-					world_set.lock()
-					world_set.load() # maybe it's changed on disk
-					myfavkey = create_world_atom(pkg, args_set, root_config)
-					if myfavkey:
-						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
-						emergelog(xterm_titles, " === ("+\
-							str(mergecount)+" of "+\
-							str(len(mymergelist))+\
-							") Updating world file ("+x[pkgindex]+")")
-						world_set.add(myfavkey)
-					world_set.unlock()
-
-			if "--pretend" not in self.myopts and \
-				"--fetchonly" not in self.myopts and \
-				"--fetch-all-uri" not in self.myopts:
-				if "noclean" not in self.settings.features:
-					short_msg = "emerge: (%s of %s) %s Clean Post" % \
-						(mergecount, len(mymergelist), x[pkgindex])
-					emergelog(xterm_titles, (" === (%s of %s) " + \
-						"Post-Build Cleaning (%s::%s)") % \
-						(mergecount, len(mymergelist), pkg.cpv, y),
-						short_msg=short_msg)
-				emergelog(xterm_titles, " ::: completed emerge ("+\
-					str(mergecount)+" of "+str(len(mymergelist))+") "+\
-					x[2]+" to "+x[1])
 
 			self._restart_if_necessary(pkg)
 			del mtimedb["resume"]["mergelist"][0]
