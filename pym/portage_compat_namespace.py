@@ -28,7 +28,7 @@ else:
 try:
 	__package = __import__(__newname, globals(), locals())
 	__realmodule = getattr(__package, __newname[8:])
-except ImportError, AttributeError:
+except (ImportError, AttributeError):
 	raise ImportError("No module named %s" % __oldname)
 
 def _formatwarning(message, category, filename, lineno):

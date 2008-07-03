@@ -24,6 +24,7 @@ import array
 import fcntl
 import select
 import shlex
+import shutil
 import urlparse
 import weakref
 import gc
@@ -1522,13 +1523,22 @@ class SubProcess(SlotObject):
 
 		self.returncode = retval
 
-class EbuildFetcherAsync(SubProcess):
+class SpawnProcess(SubProcess):
 
-	__slots__ = ("log_file", "fd_pipes", "pkg",
-		"register", "unregister",
-		"files")
+	"""
+	Constructor keyword args are passed into portage.process.spawn().
+	The required "args" keyword argument will be passed as the first
+	spawn() argument.
+	"""
 
-	_file_names = ("fetcher", "out")
+	_spawn_kwarg_names = ("env", "opt_name", "fd_pipes",
+		"uid", "gid", "groups", "umask", "logfile",
+		"path_lookup", "pre_exec")
+
+	__slots__ = ("args", "files", "register", "unregister", "registered") + \
+		_spawn_kwarg_names
+
+	_file_names = ("process", "out")
 	_files_dict = slot_dict_class(_file_names, prefix="")
 	_bufsize = 4096
 
@@ -1546,27 +1556,26 @@ class EbuildFetcherAsync(SubProcess):
 				2 : sys.stderr.fileno(),
 			}
 
-		log_file = self.log_file
+		logfile = self.logfile
 		self.files = self._files_dict()
 		files = self.files
 
-		if log_file is not None:
-			files.out = open(log_file, "a")
-			portage.util.apply_secpass_permissions(log_file,
+		if logfile is not None:
+			files.out = open(logfile, "a")
+			portage.util.apply_secpass_permissions(logfile,
 				uid=portage.portage_uid, gid=portage.portage_gid,
 				mode=0660)
 		else:
+			fd_pipes.setdefault(1, sys.stdout.fileno())
 			for fd in fd_pipes.itervalues():
 				if fd == sys.stdout.fileno():
 					sys.stdout.flush()
 				if fd == sys.stderr.fileno():
 					sys.stderr.flush()
-
 			files.out = os.fdopen(os.dup(fd_pipes[1]), 'w')
 
 		master_fd, slave_fd = os.pipe()
 
-		import fcntl
 		fcntl.fcntl(master_fd, fcntl.F_SETFL,
 			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 
@@ -1576,13 +1585,56 @@ class EbuildFetcherAsync(SubProcess):
 		fd_pipes[1] = slave_fd
 		fd_pipes[2] = slave_fd
 
+		kwargs = {}
+		for k in self._spawn_kwarg_names:
+			v = getattr(self, k)
+			if v is not None:
+				kwargs[k] = v
+
+		kwargs["fd_pipes"] = fd_pipes
+		kwargs["returnpid"] = True
+		kwargs.pop("logfile", None)
+
+		retval = portage.process.spawn(self.args, **kwargs)
+
+		self.pid = retval[0]
+
+		os.close(slave_fd)
+		files.process = os.fdopen(master_fd, 'r')
+		self.registered = True
+		self.register(files.process.fileno(),
+			select.POLLIN, self._output_handler)
+
+	def _output_handler(self, fd, event):
+		files = self.files
+		buf = array.array('B')
+		try:
+			buf.fromfile(files.process, self._bufsize)
+		except EOFError:
+			pass
+		if buf:
+			buf.tofile(files.out)
+			files.out.flush()
+		else:
+			fd = files.process.fileno()
+			for f in files.values():
+				f.flush()
+				f.close()
+			self.registered = False
+			self.unregister(fd)
+
+class EbuildFetcherAsync(SpawnProcess):
+
+	__slots__ = ("pkg",)
+
+	def start(self):
+
 		root_config = self.pkg.root_config
 		portdb = root_config.trees["porttree"].dbapi
 		ebuild_path = portdb.findname(self.pkg.cpv)
 		settings = root_config.settings
 
-		fetch_env = dict((k, settings[k]) for k in settings)
-		fetch_env["FEATURES"] = fetch_env.get("FEATURES", "") + " -cvs"
+		fetch_env = settings.environ()
 		fetch_env["PORTAGE_NICENESS"] = "0"
 		fetch_env["PORTAGE_PARALLEL_FETCHONLY"] = "1"
 
@@ -1594,34 +1646,13 @@ class EbuildFetcherAsync(SubProcess):
 		if debug:
 			fetch_args.append("--debug")
 
-		retval = portage.process.spawn(fetch_args, env=fetch_env,
-			fd_pipes=fd_pipes, returnpid=True)
-
-		self.pid = retval[0]
-
-		os.close(slave_fd)
-		files.fetcher = os.fdopen(master_fd, 'r')
-		self.register(files.fetcher.fileno(),
-			select.POLLIN, self._output_handler)
-
-	def _output_handler(self, fd, event):
-		files = self.files
-		buf = array.array('B')
-		try:
-			buf.fromfile(files.fetcher, self._bufsize)
-		except EOFError:
-			pass
-		if buf:
-			buf.tofile(files.out)
-			files.out.flush()
-		else:
-			self.unregister(files.fetcher.fileno())
-			for f in files.values():
-				f.close()
+		self.args = fetch_args
+		self.env = fetch_env
+		SpawnProcess.start(self)
 
 class EbuildBuildDir(SlotObject):
 
-	__slots__ = ("pkg", "settings",
+	__slots__ = ("dir_path", "pkg", "settings",
 		"locked", "_catdir", "_lock_obj")
 
 	def __init__(self, **kwargs):
@@ -1638,17 +1669,21 @@ class EbuildBuildDir(SlotObject):
 		if self._lock_obj is not None:
 			raise self.AlreadyLocked((self._lock_obj,))
 
-		root_config = self.pkg.root_config
-		portdb = root_config.trees["porttree"].dbapi
-		ebuild_path = portdb.findname(self.pkg.cpv)
-		settings = self.settings
-		debug = settings.get("PORTAGE_DEBUG") == "1"
-		use_cache = 1 # always true
+		dir_path = self.dir_path
+		if dir_path is None:
+			root_config = self.pkg.root_config
+			portdb = root_config.trees["porttree"].dbapi
+			ebuild_path = portdb.findname(self.pkg.cpv)
+			settings = self.settings
+			debug = settings.get("PORTAGE_DEBUG") == "1"
+			use_cache = 1 # always true
+			portage.doebuild_environment(ebuild_path, "setup", root_config.root,
+				self.settings, debug, use_cache, portdb)
+			dir_path = self.settings["PORTAGE_BUILDDIR"]
 
-		portage.doebuild_environment(ebuild_path, "setup", root_config.root,
-			self.settings, debug, use_cache, portdb)
-		catdir = os.path.dirname(settings["PORTAGE_BUILDDIR"])
+		catdir = os.path.dirname(dir_path)
 		self._catdir = catdir
+
 		portage.util.ensure_dirs(os.path.dirname(catdir),
 			uid=portage.portage_uid, gid=portage.portage_gid,
 			mode=070, mask=0)
@@ -1658,8 +1693,7 @@ class EbuildBuildDir(SlotObject):
 			portage.util.ensure_dirs(catdir,
 				gid=portage.portage_gid,
 				mode=070, mask=0)
-			self._lock_obj = portage.locks.lockdir(
-				self.settings["PORTAGE_BUILDDIR"])
+			self._lock_obj = portage.locks.lockdir(dir_path)
 		finally:
 			self.locked = self._lock_obj is not None
 			if catdir_lock is not None:
@@ -1857,12 +1891,6 @@ class EbuildExecuter(SlotObject):
 				self.schedule()
 				retval = ebuild_phase.poll()
 
-			portage._post_phase_userpriv_perms(settings)
-			if mydo == "install":
-				portage._check_build_log(settings)
-				if retval == os.EX_OK:
-					retval = portage._post_src_install_checks(settings)
-
 			if retval != os.EX_OK:
 				return retval
 
@@ -1872,7 +1900,7 @@ class EbuildPhase(SubProcess):
 
 	__slots__ = ("fd_pipes", "phase", "pkg",
 		"register", "settings", "unregister",
-		"files")
+		"files", "registered")
 
 	_file_names = ("log", "stdout", "ebuild")
 	_files_dict = slot_dict_class(_file_names, prefix="")
@@ -1953,6 +1981,7 @@ class EbuildPhase(SubProcess):
 			files.log = open(logfile, 'a')
 			files.stdout = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
 			files.ebuild = os.fdopen(master_fd, 'r')
+			self.registered = True
 			self.register(files.ebuild.fileno(),
 				select.POLLIN, self._output_handler)
 
@@ -1969,9 +1998,11 @@ class EbuildPhase(SubProcess):
 			buf.tofile(files.log)
 			files.log.flush()
 		else:
-			self.unregister(files.ebuild.fileno())
+			fd = files.ebuild.fileno()
 			for f in files.values():
 				f.close()
+			self.registered = False
+			self.unregister(fd)
 
 	def _set_returncode(self, wait_retval):
 		SubProcess._set_returncode(self, wait_retval)
@@ -1983,6 +2014,14 @@ class EbuildPhase(SubProcess):
 			from portage.elog.messages import eerror
 			for l in wrap(msg, 72):
 				eerror(l, phase=self.phase, key=self.pkg.cpv)
+
+		returncode = self.returncode
+		settings = self.settings
+		portage._post_phase_userpriv_perms(settings)
+		if self.phase == "install":
+			portage._check_build_log(settings)
+			if returncode == os.EX_OK:
+				returncode = portage._post_src_install_checks(settings)
 
 class EbuildBinpkg(Task):
 	"""
@@ -2093,6 +2132,8 @@ class Binpkg(SlotObject):
 		pkg_count = self.pkg_count
 		scheduler = self.scheduler
 		settings = self.settings
+		settings.setcpv(pkg)
+		debug = settings.get("PORTAGE_DEBUG") == "1"
 
 		# The prefetcher has already completed or it
 		# could be running now. If it's running now,
@@ -2152,16 +2193,126 @@ class Binpkg(SlotObject):
 			(pkg_count.curval, pkg_count.maxval, pkg.cpv)
 		logger.log(msg, short_msg=short_msg)
 
-		build_dir = EbuildBuildDir(pkg=pkg, settings=settings)
+		dir_path = os.path.join(settings["PORTAGE_TMPDIR"],
+			"portage", pkg.category, pkg.pf)
+		build_dir = EbuildBuildDir(dir_path=dir_path,
+			pkg=pkg, settings=settings)
+		image_dir = os.path.join(dir_path, "image")
+		infloc = os.path.join(dir_path, "build-info")
+
+		fd_pipes = {
+			0 : sys.stdin.fileno(),
+			1 : sys.stdout.fileno(),
+			2 : sys.stderr.fileno(),
+		}
+
 		try:
 			build_dir.lock()
-			merge = BinpkgMerge(find_blockers=find_blockers,
-				ldpath_mtimes=ldpath_mtimes, pkg=pkg, pretend=opts.pretend,
-				pkg_path=pkg_path, settings=settings)
+
+			root_config = self.pkg.root_config
+			ebuild_path = os.path.join(infloc, pkg.pf + ".ebuild")
+			cleanup = 1
+			tree = "bintree"
+			mydbapi = root_config.trees[tree].dbapi
+
+			retval = portage.doebuild(ebuild_path, "clean",
+				root_config.root, settings, debug, cleanup=cleanup,
+				mydbapi=mydbapi, tree=tree)
+			if retval != os.EX_OK:
+				return retval
+
+			try:
+				shutil.rmtree(dir_path)
+			except (IOError, OSError), e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
+
+			# This initializes PORTAGE_LOG_FILE.
+			portage.prepare_build_dirs(root_config.root, settings, cleanup)
+
+			dir_mode = 0755
+			for mydir in (dir_path, image_dir, infloc):
+				portage.util.ensure_dirs(mydir, uid=portage.data.portage_uid,
+					gid=portage.data.portage_gid, mode=dir_mode)
+
+			portage.writemsg_stdout(">>> Extracting info\n")
+
+			pkg_xpak = portage.xpak.tbz2(pkg_path)
+			check_missing_metadata = ("CATEGORY", "PF")
+			missing_metadata = set()
+			for k in check_missing_metadata:
+				v = pkg_xpak.getfile(k)
+				if not v:
+					missing_metadata.add(k)
+
+			pkg_xpak.unpackinfo(infloc)
+			for k in missing_metadata:
+				if k == "CATEGORY":
+					v = pkg.category
+				elif k == "PF":
+					v = pkg.pf
+				else:
+					continue
+
+				f = open(os.path.join(infloc, k), 'wb')
+				try:
+					f.write(v + "\n")
+				finally:
+					f.close()
+
+			# Store the md5sum in the vdb.
+			f = open(os.path.join(infloc, "BINPKGMD5"), "w")
+			try:
+				f.write(str(portage.checksum.perform_md5(pkg_path)) + "\n")
+			finally:
+				f.close()
+
+			# This gives bashrc users an opportunity to do various things
+			# such as remove binary packages after they're installed.
+			settings["PORTAGE_BINPKG_FILE"] = pkg_path
+			settings.backup_changes("PORTAGE_BINPKG_FILE")
+
+			phase = "setup"
+			ebuild_phase = EbuildPhase(fd_pipes=fd_pipes,
+				pkg=pkg, phase=phase, register=scheduler.register,
+				settings=settings, unregister=scheduler.unregister)
+
+			ebuild_phase.start()
+			retval = None
+			while retval is None:
+				scheduler.schedule()
+				retval = ebuild_phase.poll()
+
+ 			if retval != os.EX_OK:
+ 				return retval
+
+			extractor = BinpkgExtractorAsync(image_dir=image_dir,
+				pkg=pkg, pkg_path=pkg_path, register=scheduler.register,
+				unregister=scheduler.unregister)
+			portage.writemsg_stdout(">>> Extracting %s\n" % pkg.cpv)
+			extractor.start()
+			retval = None
+			while retval is None:
+				scheduler.schedule()
+				retval = extractor.poll()
+
+			if retval != os.EX_OK:
+				writemsg("!!! Error Extracting '%s'\n" % pkg_path,
+					noiselevel=-1)
+				return retval
+
+			merge = EbuildMerge(
+				find_blockers=find_blockers,
+				ldpath_mtimes=ldpath_mtimes,
+				pkg=pkg, settings=settings)
+
 			retval = merge.execute()
 			if retval != os.EX_OK:
 				return retval
+
 		finally:
+			settings.pop("PORTAGE_BINPKG_FILE", None)
 			build_dir.unlock()
 		return os.EX_OK
 
@@ -2224,15 +2375,10 @@ class BinpkgFetcher(Task):
 			rval = 1
 		return rval
 
-class BinpkgFetcherAsync(SubProcess):
+class BinpkgFetcherAsync(SpawnProcess):
 
-	__slots__ = ("log_file", "fd_pipes", "pkg",
-		"register", "unregister",
-		"locked", "files", "pkg_path", "_lock_obj")
-
-	_file_names = ("fetcher", "out")
-	_files_dict = slot_dict_class(_file_names, prefix="")
-	_bufsize = 4096
+	__slots__ = ("pkg",
+		"locked", "pkg_path", "_lock_obj")
 
 	def __init__(self, **kwargs):
 		SubProcess.__init__(self, **kwargs)
@@ -2243,43 +2389,6 @@ class BinpkgFetcherAsync(SubProcess):
 
 		if self.cancelled:
 			return
-
-		fd_pipes = self.fd_pipes
-		if fd_pipes is None:
-			fd_pipes = {
-				0 : sys.stdin.fileno(),
-				1 : sys.stdout.fileno(),
-				2 : sys.stderr.fileno(),
-			}
-
-		log_file = self.log_file
-		self.files = self._files_dict()
-		files = self.files
-
-		if log_file is not None:
-			files.out = open(log_file, "a")
-			portage.util.apply_secpass_permissions(log_file,
-				uid=portage.portage_uid, gid=portage.portage_gid,
-				mode=0660)
-		else:
-			# flush any pending output
-			for fd in fd_pipes.itervalues():
-				if fd == sys.stdout.fileno():
-					sys.stdout.flush()
-				if fd == sys.stderr.fileno():
-					sys.stderr.flush()
-
-			files.out = os.fdopen(os.dup(fd_pipes[1]), 'w')
-
-		master_fd, slave_fd = os.pipe()
-		fcntl.fcntl(master_fd, fcntl.F_SETFL,
-			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
-
-		fd_pipes.setdefault(0, sys.stdin.fileno())
-		fd_pipes_orig = fd_pipes.copy()
-		fd_pipes[0] = fd_pipes_orig[0]
-		fd_pipes[1] = slave_fd
-		fd_pipes[2] = slave_fd
 
 		pkg = self.pkg
 		bintree = pkg.root_config.trees["bintree"]
@@ -2322,32 +2431,14 @@ class BinpkgFetcherAsync(SubProcess):
 		if use_locks:
 			self.lock()
 
-		retval = portage.process.spawn(fetch_args, env=fetch_env,
-			fd_pipes=fd_pipes, returnpid=True)
+		self.args = fetch_args
+		self.env = fetch_env
+		SpawnProcess.start(self)
 
-		self.pid = retval[0]
-
-		os.close(slave_fd)
-		files.fetcher = os.fdopen(master_fd, 'r')
-		self.register(files.fetcher.fileno(),
-			select.POLLIN, self._output_handler)
-
-	def _output_handler(self, fd, event):
-		files = self.files
-		buf = array.array('B')
-		try:
-			buf.fromfile(files.fetcher, self._bufsize)
-		except EOFError:
-			pass
-		if buf:
-			buf.tofile(files.out)
-			files.out.flush()
-		else:
-			self.unregister(files.fetcher.fileno())
-			for f in files.values():
-				f.close()
-			if self.locked:
-				self.unlock()
+	def _set_returncode(self, wait_retval):
+		SpawnProcess._set_returncode(self, wait_retval)
+		if self.locked:
+			self.unlock()
 
 	def lock(self):
 		"""
@@ -2372,6 +2463,21 @@ class BinpkgFetcherAsync(SubProcess):
 		portage.locks.unlockfile(self._lock_obj)
 		self._lock_obj = None
 		self.locked = False
+
+class BinpkgExtractorAsync(SpawnProcess):
+
+	__slots__ = ("image_dir", "pkg", "pkg_path")
+
+	_shell_binary = portage.const.BASH_BINARY
+
+	def start(self):
+		self.args = [self._shell_binary, "-c",
+			"bzip2 -dqc -- %s | tar -xp -C %s -f -" % \
+			(portage._shell_quote(self.pkg_path),
+			portage._shell_quote(self.image_dir))]
+
+		self.env = self.pkg.root_config.settings.environ()
+		SpawnProcess.start(self)
 
 class BinpkgMerge(Task):
 
@@ -6854,6 +6960,61 @@ class PackageCounters(object):
 					(self.blocks - self.blocks_satisfied))
 		return "".join(myoutput)
 
+class PollSelectFallback(object):
+
+	"""
+	Use select to emulate a poll object, for
+	systems that don't support poll().
+	"""
+
+	def __init__(self):
+		self._registered = {}
+		self._select_args = [[], [], []]
+
+	def register(self, fd, *args):
+		"""
+		Only select.POLLIN is currently supported!
+		"""
+		if len(args) > 1:
+			raise TypeError(
+				"register expected at most 2 arguments, got " + \
+				repr(1 + len(args)))
+
+		eventmask = select.POLLIN | select.POLLPRI | select.POLLOUT
+		if args:
+			eventmask = args[0]
+
+		self._registered[fd] = eventmask
+		self._select_args = None
+
+	def unregister(self, fd):
+		self._select_args = None
+		del self._registered[fd]
+
+	def poll(self, *args):
+		if len(args) > 1:
+			raise TypeError(
+				"poll expected at most 2 arguments, got " + \
+				repr(1 + len(args)))
+
+		timeout = None
+		if args:
+			timeout = args[0]
+
+		select_args = self._select_args
+		if select_args is None:
+			select_args = [self._registered.keys(), [], []]
+
+		if timeout is not None:
+			select_args = select_args[:]
+			select_args.append(timeout)
+
+		select_events = select.select(*select_args)
+		poll_events = []
+		for fd in select_events[0]:
+			poll_events.append((fd, select.POLLIN))
+		return poll_events
+
 class Scheduler(object):
 
 	_opts_ignore_blockers = \
@@ -6914,7 +7075,12 @@ class Scheduler(object):
 			register=self._register, schedule=self._schedule,
 				unregister=self._unregister)
 		self._poll_event_handlers = {}
-		self._poll = select.poll()
+
+		try:
+			self._poll = select.poll()
+		except AttributeError:
+			self._poll = PollSelectFallback()
+
 		from collections import deque
 		self._task_queue = deque()
 		self._running_tasks = set()
@@ -6994,12 +7160,67 @@ class Scheduler(object):
 
 		return blocker_dblinks
 
+	def _check_manifests(self):
+		# Verify all the manifests now so that the user is notified of failure
+		# as soon as possible.
+		if "strict" not in self.settings.features or \
+			"--fetchonly" in self.myopts or \
+			"--fetch-all-uri" in self.myopts:
+			return os.EX_OK
+
+		shown_verifying_msg = False
+		quiet_settings = {}
+		for myroot, pkgsettings in self.pkgsettings.iteritems():
+			quiet_config = portage.config(clone=pkgsettings)
+			quiet_config["PORTAGE_QUIET"] = "1"
+			quiet_config.backup_changes("PORTAGE_QUIET")
+			quiet_settings[myroot] = quiet_config
+			del quiet_config
+
+		for x in self._mergelist:
+			if x.type_name != "ebuild":
+				continue
+
+			if not shown_verifying_msg:
+				shown_verifying_msg = True
+				print ">>> Verifying ebuild Manifests..."
+
+			root_config = x.root_config
+			portdb = root_config.trees["porttree"].dbapi
+			quiet_config = quiet_settings[root_config.root]
+			quiet_config["O"] = os.path.dirname(portdb.findname(x.cpv))
+			if not portage.digestcheck([], quiet_config, strict=True):
+				return 1
+
+		return os.EX_OK
+
 	def merge(self):
+
+		if "--resume" in self.myopts:
+			# We're resuming.
+			portage.writemsg_stdout(
+				colorize("GOOD", "*** Resuming merge...\n"), noiselevel=-1)
+			self._logger.log(" *** Resuming merge...")
+
+		rval = self._check_manifests()
+		if rval != os.EX_OK:
+			return rval
 
 		keep_going = "--keep-going" in self.myopts
 		running_tasks = self._running_tasks
+		mtimedb = self._mtimedb
 
 		while True:
+
+			# Do this before verifying the ebuild Manifests since it might
+			# be possible for the user to use --resume --skipfirst get past
+			# a non-essential package with a broken digest.
+			mtimedb["resume"]["mergelist"] = [list(x) \
+				for x in self._mergelist \
+				if isinstance(x, Package) and x.operation == "merge"]
+
+			mtimedb.commit()
+
 			try:
 				rval = self._merge()
 			finally:
@@ -7011,7 +7232,6 @@ class Scheduler(object):
 
 			if rval == os.EX_OK or not keep_going:
 				break
-			mtimedb = self._mtimedb
 			if "resume" not in mtimedb:
 				break
 			mergelist = self._mtimedb["resume"].get("mergelist")
@@ -7120,7 +7340,7 @@ class Scheduler(object):
 		state_changed = False
 
 		for task in list(running_tasks):
-			if task.poll() is not None:
+			if not task.registered and task.poll() is not None:
 				running_tasks.remove(task)
 				state_changed = True
 
@@ -7148,18 +7368,6 @@ class Scheduler(object):
 		ldpath_mtimes = mtimedb["ldpath"]
 		logger = self._logger
 
-		if "--resume" in self.myopts:
-			# We're resuming.
-			print colorize("GOOD", "*** Resuming merge...")
-			self._logger.log(" *** Resuming merge...")
-
-		# Do this before verifying the ebuild Manifests since it might
-		# be possible for the user to use --resume --skipfirst get past
-		# a non-essential package with a broken digest.
-		mtimedb["resume"]["mergelist"] = [list(x) for x in mylist \
-			if isinstance(x, Package) and x.operation == "merge"]
-		mtimedb.commit()
-
 		prefetchers = weakref.WeakValueDictionary()
 		getbinpkg = "--getbinpkg" in self.myopts
 
@@ -7170,46 +7378,18 @@ class Scheduler(object):
 					continue
 				if pkg.type_name == "ebuild":
 					self._add_task(EbuildFetcherAsync(
-						log_file=self._fetch_log,
+						logfile=self._fetch_log,
 						pkg=pkg, register=self._register,
 						unregister=self._unregister))
 				elif pkg.type_name == "binary" and getbinpkg and \
 					pkg.root_config.trees["bintree"].isremote(pkg.cpv):
 					prefetcher = BinpkgFetcherAsync(
-						log_file=self._fetch_log,
+						logfile=self._fetch_log,
 						pkg=pkg, register=self._register,
 						unregister=self._unregister)
 					prefetchers[pkg] = prefetcher
 					self._add_task(prefetcher)
 					del prefetcher
-
-		# Verify all the manifests now so that the user is notified of failure
-		# as soon as possible.
-		if "--fetchonly" not in self.myopts and \
-			"--fetch-all-uri" not in self.myopts and \
-			"strict" in self.settings.features:
-			shown_verifying_msg = False
-			quiet_settings = {}
-			for myroot, pkgsettings in self.pkgsettings.iteritems():
-				quiet_config = portage.config(clone=pkgsettings)
-				quiet_config["PORTAGE_QUIET"] = "1"
-				quiet_config.backup_changes("PORTAGE_QUIET")
-				quiet_settings[myroot] = quiet_config
-				del quiet_config
-			for x in mylist:
-				if x[0] != "ebuild" or x[-1] == "nomerge":
-					continue
-				if not shown_verifying_msg:
-					shown_verifying_msg = True
-					print ">>> Verifying ebuild Manifests..."
-				mytype, myroot, mycpv, mystatus = x
-				portdb = self.trees[myroot]["porttree"].dbapi
-				quiet_config = quiet_settings[myroot]
-				quiet_config["O"] = os.path.dirname(portdb.findname(mycpv))
-				if not portage.digestcheck([], quiet_config, strict=True):
-					return 1
-				del x, mytype, myroot, mycpv, mystatus, quiet_config
-			del shown_verifying_msg, quiet_settings
 
 		root_config = self.trees[self.target_root]["root_config"]
 		mymergelist = mylist

@@ -461,8 +461,10 @@ class EOutput(object):
 					self.ewarn(msg[0])
 		if self.__last_e_cmd != "ebegin":
 			self.__last_e_len = 0
-		print "%*s%s" % ((self.term_columns - self.__last_e_len - 6), "", status_brackets)
-		sys.stdout.flush()
+		out = sys.stdout
+		out.write("%*s%s\n" % \
+			((self.term_columns - self.__last_e_len - 6), "", status_brackets))
+		out.flush()
 
 	def ebegin(self, msg):
 		"""
@@ -501,10 +503,12 @@ class EOutput(object):
 		@param msg: A very brief (shorter than one line) error message.
 		@type msg: StringType
 		"""
+		out = sys.stdout
 		if not self.quiet:
-			if self.__last_e_cmd == "ebegin": print
-			print colorize("BAD", " * ") + msg
-			sys.stdout.flush()
+			if self.__last_e_cmd == "ebegin":
+				out.write("\n")
+			out.write(colorize("BAD", " * ") + msg + "\n")
+			out.flush()
 		self.__last_e_cmd = "eerror"
 
 	def einfo(self, msg):
@@ -514,10 +518,12 @@ class EOutput(object):
 		@param msg: A very brief (shorter than one line) informative message.
 		@type msg: StringType
 		"""
+		out = sys.stdout
 		if not self.quiet:
-			if self.__last_e_cmd == "ebegin": print
-			print colorize("GOOD", " * ") + msg
-			sys.stdout.flush()
+			if self.__last_e_cmd == "ebegin":
+				out.write("\n")
+			out.write(colorize("GOOD", " * ") + msg + "\n")
+			out.flush()
 		self.__last_e_cmd = "einfo"
 
 	def einfon(self, msg):
@@ -527,10 +533,12 @@ class EOutput(object):
 		@param msg: A very brief (shorter than one line) informative message.
 		@type msg: StringType
 		"""
+		out = sys.stdout
 		if not self.quiet:
-			if self.__last_e_cmd == "ebegin": print
-			print colorize("GOOD", " * ") + msg ,
-			sys.stdout.flush()
+			if self.__last_e_cmd == "ebegin":
+				out.write("\n")
+			out.write(colorize("GOOD", " * ") + msg)
+			out.flush()
 		self.__last_e_cmd = "einfon"
 
 	def ewarn(self, msg):
@@ -540,10 +548,12 @@ class EOutput(object):
 		@param msg: A very brief (shorter than one line) warning message.
 		@type msg: StringType
 		"""
+		out = sys.stdout
 		if not self.quiet:
-			if self.__last_e_cmd == "ebegin": print
-			print colorize("WARN", " * ") + msg
-			sys.stdout.flush()
+			if self.__last_e_cmd == "ebegin":
+				out.write("\n")
+			out.write(colorize("WARN", " * ") + msg + "\n")
+			out.flush()
 		self.__last_e_cmd = "ewarn"
 
 	def ewend(self, errno, *msg):
