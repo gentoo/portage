@@ -3512,15 +3512,27 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					from textwrap import wrap
 					waiting_msg = "\n".join(msg_prefix + line \
 						for line in wrap(waiting_msg, 65))
+
 				if locks_in_subdir:
-					file_lock = portage.locks.lockfile(
-						os.path.join(mysettings["DISTDIR"],
-						locks_in_subdir, myfile), wantnewlockfile=1,
-						waiting_msg=waiting_msg)
+					lock_file = os.path.join(mysettings["DISTDIR"],
+						locks_in_subdir, myfile)
 				else:
-					file_lock = portage.locks.lockfile(
-						myfile_path, wantnewlockfile=1,
-						waiting_msg=waiting_msg)
+					lock_file = myfile_path
+
+				lock_kwargs = {}
+				if fetchonly:
+					lock_kwargs["flags"] = os.O_NONBLOCK
+				else:
+					lock_kwargs["waiting_msg"] = waiting_msg
+
+				try:
+					file_lock = portage.locks.lockfile(myfile_path,
+						wantnewlockfile=1, **lock_kwargs)
+				except portage.exception.TryAgain:
+					writemsg((">>> File '%s' is already locked by " + \
+						"another fetcher. Continuing...\n") % myfile,
+						noiselevel=-1)
+					continue
 		try:
 			if not listonly:
 
