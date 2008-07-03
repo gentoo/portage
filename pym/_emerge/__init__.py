@@ -7241,36 +7241,16 @@ class Scheduler(object):
 				colorize("GOOD", "*** Resuming merge...\n"), noiselevel=-1)
 			self._logger.log(" *** Resuming merge...")
 
+		self._save_resume_list()
 		rval = self._check_manifests()
 		if rval != os.EX_OK:
 			return rval
 
 		keep_going = "--keep-going" in self.myopts
-		running_tasks = self._running_tasks
 		mtimedb = self._mtimedb
 
 		while True:
-
-			# Do this before verifying the ebuild Manifests since it might
-			# be possible for the user to use --resume --skipfirst get past
-			# a non-essential package with a broken digest.
-			mtimedb["resume"]["mergelist"] = [list(x) \
-				for x in self._mergelist \
-				if isinstance(x, Package) and x.operation == "merge"]
-
-			mtimedb.commit()
-
-			self._add_prefetchers()
-
-			try:
-				rval = self._merge()
-			finally:
-				# clean up child process if necessary
-				self._task_queue.clear()
-				while running_tasks:
-					task = running_tasks.pop()
-					task.cancel()
-
+			self._merge()
 			self._show_failed_fetches()
 			del self._failed_fetches[:]
 
@@ -7318,12 +7298,45 @@ class Scheduler(object):
 				del _eerror, msg
 			del dropped_tasks
 			self._mergelist = mylist
+			self._save_resume_list()
 			self._pkg_count.curval = 0
 			self._pkg_count.maxval = len(mylist)
 
 		self._logger.log(" *** Finished. Cleaning up...")
 
 		return rval
+
+	def _merge(self):
+
+		self._add_prefetchers()
+
+		try:
+			for task in self._mergelist:
+				try:
+					self._execute_task(task)
+				except self._pkg_failure, e:
+					return e.status
+		finally:
+			# clean up child process if necessary
+			self._task_queue.clear()
+			running_tasks = self._running_tasks
+			while running_tasks:
+				task = running_tasks.pop()
+				task.cancel()
+		return os.EX_OK
+
+	def _save_resume_list(self):
+		"""
+		Do this before verifying the ebuild Manifests since it might
+		be possible for the user to use --resume --skipfirst get past
+		a non-essential package with a broken digest.
+		"""
+		mtimedb = self._mtimedb
+		mtimedb["resume"]["mergelist"] = [list(x) \
+			for x in self._mergelist \
+			if isinstance(x, Package) and x.operation == "merge"]
+
+		mtimedb.commit()
 
 	def _calc_resume_list(self):
 		"""
@@ -7401,60 +7414,6 @@ class Scheduler(object):
 			state_changed = True
 
 		return state_changed
-
-	def _merge(self):
-		mylist = self._mergelist
-		favorites = self._favorites
-		mtimedb = self._mtimedb
-		buildpkgonly = "--buildpkgonly" in self.myopts
-		fetchonly = "--fetchonly" in self.myopts or \
-			"--fetch-all-uri" in self.myopts
-		oneshot = "--oneshot" in self.myopts or \
-			"--onlydeps" in self.myopts
-		pretend = "--pretend" in self.myopts
-		ldpath_mtimes = mtimedb["ldpath"]
-		logger = self._logger
-
-		root_config = self.trees[self.target_root]["root_config"]
-		mymergelist = mylist
-		myfeat = self.settings.features[:]
-		metadata_keys = [k for k in portage.auxdbkeys \
-			if not k.startswith("UNUSED_")] + ["USE"]
-
-		task_list = mymergelist
-		# Filter mymergelist so that all the len(mymergelist) calls
-		# below (for display) do not count Uninstall instances.
-		mymergelist = [x for x in mymergelist if x[-1] == "merge"]
-
-		for x in task_list:
-			if x[0] == "blocks":
-				continue
-			pkg_type, myroot, pkg_key, operation = x
-			built = pkg_type != "ebuild"
-			installed = pkg_type == "installed"
-			portdb = self.trees[myroot]["porttree"].dbapi
-			bindb  = self.trees[myroot]["bintree"].dbapi
-			vartree = self.trees[myroot]["vartree"]
-			vardb = vartree.dbapi
-			root_config = self.trees[myroot]["root_config"]
-			if pkg_type == "blocks":
-				pass
-			elif pkg_type == "ebuild":
-				mydbapi = portdb
-			else:
-				if pkg_type == "binary":
-					mydbapi = bindb
-				elif pkg_type == "installed":
-					mydbapi = vardb
-				else:
-					raise AssertionError("Package type: '%s'" % pkg_type)
-
-			try:
-				self._execute_task(x)
-			except self._pkg_failure, e:
-				return e.status
-
-		return os.EX_OK
 
 	def _execute_task(self, pkg):
 			favorites = self._favorites
