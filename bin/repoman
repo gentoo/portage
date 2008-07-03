@@ -38,7 +38,6 @@ except ImportError:
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
 
-os.environ["PORTAGE_LEGACY_GLOBALS"] = "false"
 
 # for an explanation on this logic, see pym/_emerge/__init__.py
 import os
@@ -49,7 +48,7 @@ else:
 	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
 import portage
 
-del os.environ["PORTAGE_LEGACY_GLOBALS"]
+portage._disable_legacy_globals()
 
 from repoman.checks import run_checks
 from repoman import utilities
