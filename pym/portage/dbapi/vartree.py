@@ -53,7 +53,7 @@ class PreservedLibsRegistry(object):
 		try:
 			self._data = cPickle.load(open(self._filename, "r"))
 		except (EOFError, IOError), e:
-			if isintance(e, EOFError) or e.errno == errno.ENOENT:
+			if isinstance(e, EOFError) or e.errno == errno.ENOENT:
 				self._data = {}
 			elif e.errno == PermissionDenied.errno:
 				raise PermissionDenied(self._filename)
