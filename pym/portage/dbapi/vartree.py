@@ -52,8 +52,8 @@ class PreservedLibsRegistry(object):
 		""" Reload the registry data from file """
 		try:
 			self._data = cPickle.load(open(self._filename, "r"))
-		except IOError, e:
-			if e.errno == errno.ENOENT:
+		except (EOFError, IOError), e:
+			if isintance(e, EOFError) or e.errno == errno.ENOENT:
 				self._data = {}
 			elif e.errno == PermissionDenied.errno:
 				raise PermissionDenied(self._filename)
