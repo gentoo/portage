@@ -7044,6 +7044,7 @@ class Scheduler(object):
 		self._task_queue = deque()
 		self._running_tasks = set()
 		self._max_jobs = 1
+		self._prefetchers = weakref.WeakValueDictionary()
 		self._parallel_fetch = False
 		features = self.settings.features
 		if "parallel-fetch" in features and \
@@ -7153,6 +7154,34 @@ class Scheduler(object):
 
 		return os.EX_OK
 
+	def _add_prefetchers(self):
+
+		if not self._parallel_fetch:
+			return
+
+		if self._parallel_fetch:
+			portage.writemsg(">>> starting parallel fetch\n")
+
+			prefetchers = self._prefetchers
+			getbinpkg = "--getbinpkg" in self.myopts
+
+			for pkg in self._mergelist:
+				if not isinstance(pkg, Package):
+					continue
+				if pkg.type_name == "ebuild":
+					self._add_task(EbuildFetcherAsync(
+						logfile=self._fetch_log,
+						pkg=pkg, register=self._register,
+						unregister=self._unregister))
+				elif pkg.type_name == "binary" and getbinpkg and \
+					pkg.root_config.trees["bintree"].isremote(pkg.cpv):
+					prefetcher = BinpkgFetcherAsync(
+						logfile=self._fetch_log,
+						pkg=pkg, register=self._register,
+						unregister=self._unregister)
+					prefetchers[pkg] = prefetcher
+					self._add_task(prefetcher)
+
 	def merge(self):
 
 		if "--resume" in self.myopts:
@@ -7179,6 +7208,8 @@ class Scheduler(object):
 				if isinstance(x, Package) and x.operation == "merge"]
 
 			mtimedb.commit()
+
+			self._add_prefetchers()
 
 			try:
 				rval = self._merge()
@@ -7327,29 +7358,6 @@ class Scheduler(object):
 		ldpath_mtimes = mtimedb["ldpath"]
 		logger = self._logger
 
-		prefetchers = weakref.WeakValueDictionary()
-		getbinpkg = "--getbinpkg" in self.myopts
-
-		if self._parallel_fetch:
-			portage.writemsg(">>> starting parallel fetch\n")
-			for pkg in mylist:
-				if not isinstance(pkg, Package):
-					continue
-				if pkg.type_name == "ebuild":
-					self._add_task(EbuildFetcherAsync(
-						logfile=self._fetch_log,
-						pkg=pkg, register=self._register,
-						unregister=self._unregister))
-				elif pkg.type_name == "binary" and getbinpkg and \
-					pkg.root_config.trees["bintree"].isremote(pkg.cpv):
-					prefetcher = BinpkgFetcherAsync(
-						logfile=self._fetch_log,
-						pkg=pkg, register=self._register,
-						unregister=self._unregister)
-					prefetchers[pkg] = prefetcher
-					self._add_task(prefetcher)
-					del prefetcher
-
 		root_config = self.trees[self.target_root]["root_config"]
 		mymergelist = mylist
 		myfeat = self.settings.features[:]
@@ -7392,8 +7400,7 @@ class Scheduler(object):
 				self._execute_task(bad_resume_opts,
 					failed_fetches,
 					mydbapi, pkg_count,
-					myfeat, mymergelist, x,
-					prefetchers)
+					myfeat, mymergelist, x)
 			except self._pkg_failure, e:
 				return e.status
 		return self._post_merge(mtimedb,
@@ -7401,9 +7408,10 @@ class Scheduler(object):
 
 	def _execute_task(self, bad_resume_opts,
 		failed_fetches, mydbapi, pkg_count, myfeat,
-		mymergelist, pkg, prefetchers):
+		mymergelist, pkg):
 			favorites = self._favorites
 			mtimedb = self._mtimedb
+			prefetchers = self._prefetchers
 			mergecount = pkg_count.curval
 			pkgsettings = self.pkgsettings[pkg.root]
 			buildpkgonly = "--buildpkgonly" in self.myopts
