@@ -7045,6 +7045,7 @@ class Scheduler(object):
 		self._running_tasks = set()
 		self._max_jobs = 1
 		self._prefetchers = weakref.WeakValueDictionary()
+		self._failed_fetches = []
 		self._parallel_fetch = False
 		features = self.settings.features
 		if "parallel-fetch" in features and \
@@ -7182,6 +7183,23 @@ class Scheduler(object):
 					prefetchers[pkg] = prefetcher
 					self._add_task(prefetcher)
 
+	def _show_failed_fetches(self):
+		failed_fetches = self._failed_fetches
+		if not failed_fetches or not \
+			("--fetchonly" in self.myopts or \
+			"--fetch-all-uri" in self.myopts):
+			return
+
+		sys.stderr.write("\n\n!!! Some fetch errors were " + \
+			"encountered.  Please see above for details.\n\n")
+
+		for cpv in failed_fetches:
+			sys.stderr.write("   ")
+			sys.stderr.write(cpv)
+			sys.stderr.write("\n")
+
+		sys.stderr.write("\n")
+
 	def merge(self):
 
 		if "--resume" in self.myopts:
@@ -7219,6 +7237,9 @@ class Scheduler(object):
 				while running_tasks:
 					task = running_tasks.pop()
 					task.cancel()
+
+			self._show_failed_fetches()
+			del self._failed_fetches[:]
 
 			if rval == os.EX_OK or not keep_going:
 				break
@@ -7264,6 +7285,8 @@ class Scheduler(object):
 				del _eerror, msg
 			del dropped_tasks
 			self._mergelist = mylist
+
+		self._logger.log(" *** Finished. Cleaning up...")
 
 		return rval
 
@@ -7349,7 +7372,6 @@ class Scheduler(object):
 		favorites = self._favorites
 		mtimedb = self._mtimedb
 		buildpkgonly = "--buildpkgonly" in self.myopts
-		failed_fetches = []
 		fetchonly = "--fetchonly" in self.myopts or \
 			"--fetch-all-uri" in self.myopts
 		oneshot = "--oneshot" in self.myopts or \
@@ -7398,16 +7420,15 @@ class Scheduler(object):
 				pkg_count.curval += 1
 			try:
 				self._execute_task(bad_resume_opts,
-					failed_fetches,
 					mydbapi, pkg_count,
 					myfeat, mymergelist, x)
 			except self._pkg_failure, e:
 				return e.status
-		return self._post_merge(mtimedb,
-			self._logger.xterm_titles, failed_fetches)
+
+		return os.EX_OK
 
 	def _execute_task(self, bad_resume_opts,
-		failed_fetches, mydbapi, pkg_count, myfeat,
+		mydbapi, pkg_count, myfeat,
 		mymergelist, pkg):
 			favorites = self._favorites
 			mtimedb = self._mtimedb
@@ -7417,6 +7438,7 @@ class Scheduler(object):
 			buildpkgonly = "--buildpkgonly" in self.myopts
 			fetch_all = "--fetch-all-uri" in self.myopts
 			fetchonly = fetch_all or "--fetchonly" in self.myopts
+			failed_fetches = self._failed_fetches
 			
 			oneshot = "--oneshot" in self.myopts or \
 				"--onlydeps" in self.myopts
@@ -7551,36 +7573,13 @@ class Scheduler(object):
 
 			# Unsafe for parallel merges
 			del mtimedb["resume"]["mergelist"][0]
+			if not mtimedb["resume"]["mergelist"]:
+				del mtimedb["resume"]
 			# Commit after each merge so that --resume may still work in
 			# in the event that portage is not allowed to exit normally
 			# due to power failure, SIGKILL, etc...
 			mtimedb.commit()
 			self.curval += 1
-
-	def _post_merge(self, mtimedb, xterm_titles, failed_fetches):
-		if "--pretend" not in self.myopts:
-			emergelog(xterm_titles, " *** Finished. Cleaning up...")
-
-		# We're out of the loop... We're done. Delete the resume data.
-		if "resume" in mtimedb:
-			del mtimedb["resume"]
-		mtimedb.commit()
-
-		#by doing an exit this way, --fetchonly can continue to try to
-		#fetch everything even if a particular download fails.
-		if "--fetchonly" in self.myopts or "--fetch-all-uri" in self.myopts:
-			if failed_fetches:
-				sys.stderr.write("\n\n!!! Some fetch errors were " + \
-					"encountered.  Please see above for details.\n\n")
-				for cpv in failed_fetches:
-					sys.stderr.write("   ")
-					sys.stderr.write(cpv)
-					sys.stderr.write("\n")
-				sys.stderr.write("\n")
-				sys.exit(1)
-			else:
-				sys.exit(0)
-		return os.EX_OK
 
 class UninstallFailure(portage.exception.PortageException):
 	"""
