@@ -7168,21 +7168,33 @@ class Scheduler(object):
 			getbinpkg = "--getbinpkg" in self.myopts
 
 			for pkg in self._mergelist:
-				if not isinstance(pkg, Package):
-					continue
-				if pkg.type_name == "ebuild":
-					self._add_task(EbuildFetcherAsync(
-						logfile=self._fetch_log,
-						pkg=pkg, register=self._register,
-						unregister=self._unregister))
-				elif pkg.type_name == "binary" and getbinpkg and \
-					pkg.root_config.trees["bintree"].isremote(pkg.cpv):
-					prefetcher = BinpkgFetcherAsync(
-						logfile=self._fetch_log,
-						pkg=pkg, register=self._register,
-						unregister=self._unregister)
-					prefetchers[pkg] = prefetcher
+				prefetcher = self._create_prefetcher(pkg)
+				if prefetcher is not None:
 					self._add_task(prefetcher)
+					prefetchers[pkg] = prefetcher
+
+	def _create_prefetcher(self, pkg):
+		"""
+		@return: a prefetcher, or None if not applicable
+		"""
+		prefetcher = None
+
+		if not isinstance(pkg, Package):
+			pass
+
+		elif pkg.type_name == "ebuild":
+
+			prefetcher = EbuildFetcherAsync(logfile=self._fetch_log, pkg=pkg,
+				register=self._register, unregister=self._unregister)
+
+		elif pkg.type_name == "binary" and \
+			"--getbinpkg" in self.myopts and \
+			pkg.root_config.trees["bintree"].isremote(pkg.cpv):
+
+			prefetcher = BinpkgFetcherAsync(logfile=self._fetch_log,
+				pkg=pkg, register=self._register, unregister=self._unregister)
+
+		return prefetcher
 
 	def _show_failed_fetches(self):
 		failed_fetches = self._failed_fetches
