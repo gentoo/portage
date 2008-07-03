@@ -2239,15 +2239,10 @@ class BinpkgFetcher(Task):
 			rval = 1
 		return rval
 
-class BinpkgFetcherAsync(SubProcess):
+class BinpkgFetcherAsync(SpawnProcess):
 
-	__slots__ = ("log_file", "fd_pipes", "pkg",
-		"register", "unregister",
-		"locked", "files", "pkg_path", "registered", "_lock_obj")
-
-	_file_names = ("fetcher", "out")
-	_files_dict = slot_dict_class(_file_names, prefix="")
-	_bufsize = 4096
+	__slots__ = ("pkg",
+		"locked", "pkg_path", "_lock_obj")
 
 	def __init__(self, **kwargs):
 		SubProcess.__init__(self, **kwargs)
@@ -2258,43 +2253,6 @@ class BinpkgFetcherAsync(SubProcess):
 
 		if self.cancelled:
 			return
-
-		fd_pipes = self.fd_pipes
-		if fd_pipes is None:
-			fd_pipes = {
-				0 : sys.stdin.fileno(),
-				1 : sys.stdout.fileno(),
-				2 : sys.stderr.fileno(),
-			}
-
-		log_file = self.log_file
-		self.files = self._files_dict()
-		files = self.files
-
-		if log_file is not None:
-			files.out = open(log_file, "a")
-			portage.util.apply_secpass_permissions(log_file,
-				uid=portage.portage_uid, gid=portage.portage_gid,
-				mode=0660)
-		else:
-			# flush any pending output
-			for fd in fd_pipes.itervalues():
-				if fd == sys.stdout.fileno():
-					sys.stdout.flush()
-				if fd == sys.stderr.fileno():
-					sys.stderr.flush()
-
-			files.out = os.fdopen(os.dup(fd_pipes[1]), 'w')
-
-		master_fd, slave_fd = os.pipe()
-		fcntl.fcntl(master_fd, fcntl.F_SETFL,
-			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
-
-		fd_pipes.setdefault(0, sys.stdin.fileno())
-		fd_pipes_orig = fd_pipes.copy()
-		fd_pipes[0] = fd_pipes_orig[0]
-		fd_pipes[1] = slave_fd
-		fd_pipes[2] = slave_fd
 
 		pkg = self.pkg
 		bintree = pkg.root_config.trees["bintree"]
@@ -2337,35 +2295,14 @@ class BinpkgFetcherAsync(SubProcess):
 		if use_locks:
 			self.lock()
 
-		retval = portage.process.spawn(fetch_args, env=fetch_env,
-			fd_pipes=fd_pipes, returnpid=True)
+		self.args = fetch_args
+		self.env = fetch_env
+		SpawnProcess.start(self)
 
-		self.pid = retval[0]
-
-		os.close(slave_fd)
-		files.fetcher = os.fdopen(master_fd, 'r')
-		self.registered = True
-		self.register(files.fetcher.fileno(),
-			select.POLLIN, self._output_handler)
-
-	def _output_handler(self, fd, event):
-		files = self.files
-		buf = array.array('B')
-		try:
-			buf.fromfile(files.fetcher, self._bufsize)
-		except EOFError:
-			pass
-		if buf:
-			buf.tofile(files.out)
-			files.out.flush()
-		else:
-			fd = files.fetcher.fileno()
-			for f in files.values():
-				f.close()
-			if self.locked:
-				self.unlock()
-			self.registered = False
-			self.unregister(fd)
+	def _set_returncode(self, wait_retval):
+		SpawnProcess._set_returncode(self, wait_retval)
+		if self.locked:
+			self.unlock()
 
 	def lock(self):
 		"""
@@ -7240,7 +7177,7 @@ class Scheduler(object):
 				elif pkg.type_name == "binary" and getbinpkg and \
 					pkg.root_config.trees["bintree"].isremote(pkg.cpv):
 					prefetcher = BinpkgFetcherAsync(
-						log_file=self._fetch_log,
+						logfile=self._fetch_log,
 						pkg=pkg, register=self._register,
 						unregister=self._unregister)
 					prefetchers[pkg] = prefetcher
