@@ -7119,12 +7119,67 @@ class Scheduler(object):
 
 		return blocker_dblinks
 
+	def _check_manifests(self):
+		# Verify all the manifests now so that the user is notified of failure
+		# as soon as possible.
+		if "strict" not in self.settings.features or \
+			"--fetchonly" in self.myopts or \
+			"--fetch-all-uri" in self.myopts:
+			return os.EX_OK
+
+		shown_verifying_msg = False
+		quiet_settings = {}
+		for myroot, pkgsettings in self.pkgsettings.iteritems():
+			quiet_config = portage.config(clone=pkgsettings)
+			quiet_config["PORTAGE_QUIET"] = "1"
+			quiet_config.backup_changes("PORTAGE_QUIET")
+			quiet_settings[myroot] = quiet_config
+			del quiet_config
+
+		for x in self._mergelist:
+			if x.type_name != "ebuild":
+				continue
+
+			if not shown_verifying_msg:
+				shown_verifying_msg = True
+				print ">>> Verifying ebuild Manifests..."
+
+			root_config = x.root_config
+			portdb = root_config.trees["porttree"].dbapi
+			quiet_config = quiet_settings[root_config.root]
+			quiet_config["O"] = os.path.dirname(portdb.findname(x.cpv))
+			if not portage.digestcheck([], quiet_config, strict=True):
+				return 1
+
+		return os.EX_OK
+
 	def merge(self):
+
+		if "--resume" in self.myopts:
+			# We're resuming.
+			portage.writemsg_stdout(
+				colorize("GOOD", "*** Resuming merge...\n"), noiselevel=-1)
+			self._logger.log(" *** Resuming merge...")
+
+		rval = self._check_manifests()
+		if rval != os.EX_OK:
+			return rval
 
 		keep_going = "--keep-going" in self.myopts
 		running_tasks = self._running_tasks
+		mtimedb = self._mtimedb
 
 		while True:
+
+			# Do this before verifying the ebuild Manifests since it might
+			# be possible for the user to use --resume --skipfirst get past
+			# a non-essential package with a broken digest.
+			mtimedb["resume"]["mergelist"] = [list(x) \
+				for x in self._mergelist \
+				if isinstance(x, Package) and x.operation == "merge"]
+
+			mtimedb.commit()
+
 			try:
 				rval = self._merge()
 			finally:
@@ -7136,7 +7191,6 @@ class Scheduler(object):
 
 			if rval == os.EX_OK or not keep_going:
 				break
-			mtimedb = self._mtimedb
 			if "resume" not in mtimedb:
 				break
 			mergelist = self._mtimedb["resume"].get("mergelist")
@@ -7273,18 +7327,6 @@ class Scheduler(object):
 		ldpath_mtimes = mtimedb["ldpath"]
 		logger = self._logger
 
-		if "--resume" in self.myopts:
-			# We're resuming.
-			print colorize("GOOD", "*** Resuming merge...")
-			self._logger.log(" *** Resuming merge...")
-
-		# Do this before verifying the ebuild Manifests since it might
-		# be possible for the user to use --resume --skipfirst get past
-		# a non-essential package with a broken digest.
-		mtimedb["resume"]["mergelist"] = [list(x) for x in mylist \
-			if isinstance(x, Package) and x.operation == "merge"]
-		mtimedb.commit()
-
 		prefetchers = weakref.WeakValueDictionary()
 		getbinpkg = "--getbinpkg" in self.myopts
 
@@ -7307,34 +7349,6 @@ class Scheduler(object):
 					prefetchers[pkg] = prefetcher
 					self._add_task(prefetcher)
 					del prefetcher
-
-		# Verify all the manifests now so that the user is notified of failure
-		# as soon as possible.
-		if "--fetchonly" not in self.myopts and \
-			"--fetch-all-uri" not in self.myopts and \
-			"strict" in self.settings.features:
-			shown_verifying_msg = False
-			quiet_settings = {}
-			for myroot, pkgsettings in self.pkgsettings.iteritems():
-				quiet_config = portage.config(clone=pkgsettings)
-				quiet_config["PORTAGE_QUIET"] = "1"
-				quiet_config.backup_changes("PORTAGE_QUIET")
-				quiet_settings[myroot] = quiet_config
-				del quiet_config
-			for x in mylist:
-				if x[0] != "ebuild" or x[-1] == "nomerge":
-					continue
-				if not shown_verifying_msg:
-					shown_verifying_msg = True
-					print ">>> Verifying ebuild Manifests..."
-				mytype, myroot, mycpv, mystatus = x
-				portdb = self.trees[myroot]["porttree"].dbapi
-				quiet_config = quiet_settings[myroot]
-				quiet_config["O"] = os.path.dirname(portdb.findname(mycpv))
-				if not portage.digestcheck([], quiet_config, strict=True):
-					return 1
-				del x, mytype, myroot, mycpv, mystatus, quiet_config
-			del shown_verifying_msg, quiet_settings
 
 		root_config = self.trees[self.target_root]["root_config"]
 		mymergelist = mylist
