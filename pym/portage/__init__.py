@@ -7009,6 +7009,22 @@ class _MtimedbProxy(portage.util.ObjectProxy):
 		name = object.__getattribute__(self, '_name')
 		return globals()[name]
 
+_legacy_global_var_names = ("archlist", "db", "features",
+	"groups", "mtimedb", "mtimedbfile", "pkglines",
+	"portdb", "profiledir", "root", "selinux_enabled",
+	"settings", "thirdpartymirrors", "usedefaults")
+
+def _disable_legacy_globals():
+	"""
+	This deletes the ObjectProxy instances that are used
+	for lazy initialization of legacy global variables.
+	The purpose of deleting them is to prevent new code
+	from referencing these deprecated variables.
+	"""
+	global _legacy_global_var_names
+	for k in _legacy_global_var_names:
+		globals().pop(k, None)
+
 # Initialization of legacy globals.  No functions/classes below this point
 # please!  When the above functions and classes become independent of the
 # below global variables, it will be possible to make the below code
@@ -7072,11 +7088,7 @@ def init_legacy_globals():
 	# within Portage under any circumstances.
 	# ========================================================================
 
-# WARNING!
-# The PORTAGE_LEGACY_GLOBALS environment variable is reserved for internal
-# use within Portage.  External use of this variable is unsupported because
-# it is experimental and it's behavior is likely to change.
-if "PORTAGE_LEGACY_GLOBALS" not in os.environ:
+if True:
 
 	_mtimedb_initialized = False
 	mtimedb     = _MtimedbProxy("mtimedb")

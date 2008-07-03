@@ -31,14 +31,13 @@ import gc
 import os, stat
 import platform
 
-os.environ["PORTAGE_LEGACY_GLOBALS"] = "false"
 try:
 	import portage
 except ImportError:
 	from os import path as osp
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
-del os.environ["PORTAGE_LEGACY_GLOBALS"]
+portage._disable_legacy_globals()
 from portage import digraph, portdbapi
 from portage.const import NEWS_LIB_PATH, CACHE_PATH, PRIVATE_PATH, USER_CONFIG_PATH, GLOBAL_CONFIG_PATH
 
