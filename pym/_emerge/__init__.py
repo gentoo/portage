@@ -6954,6 +6954,9 @@ class Scheduler(object):
 		"--fetchonly", "--fetch-all-uri",
 		"--nodeps", "--pretend"])
 
+	_bad_resume_opts = set(["--ask", "--changelog",
+		"--resume", "--skipfirst"])
+
 	_fetch_log = "/var/log/emerge-fetch.log"
 
 	class _iface_class(SlotObject):
@@ -6993,6 +6996,9 @@ class Scheduler(object):
 		for k in self._binpkg_opts.__slots__:
 			setattr(self._binpkg_opts, k, "--" + k.replace("_", "-") in myopts)
 
+		# The root where the currently running
+		# portage instance is installed.
+		self._running_root = trees["/"]["root_config"]
 		self.edebug = 0
 		if settings.get("PORTAGE_DEBUG", "") == "1":
 			self.edebug = 1
@@ -7020,6 +7026,9 @@ class Scheduler(object):
 		self._prefetchers = weakref.WeakValueDictionary()
 		self._failed_fetches = []
 		self._parallel_fetch = False
+		self._pkg_count = self._pkg_count_class(
+			curval=0, maxval=len(mergelist))
+
 		features = self.settings.features
 		if "parallel-fetch" in features and \
 			not ("--pretend" in self.myopts or \
@@ -7173,6 +7182,58 @@ class Scheduler(object):
 
 		sys.stderr.write("\n")
 
+	def _restart_if_necessary(self, pkg):
+		"""
+		Use execv() to restart emerge. This happens
+		if portage upgrades itself and there are
+		remaining packages in the list.
+		"""
+
+		if "--pretend" in self.myopts or \
+			"--fetchonly" in self.myopts or \
+			"--fetch-all-uri" in self.myopts:
+			return
+
+		# Figure out if we need a restart.
+		if pkg.root != self._running_root.root or \
+			not portage.match_from_list(
+			portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
+			return
+
+		if self._pkg_count.curval >= self._pkg_count.maxval:
+			return
+
+		logger = self._logger
+		pkg_count = self._pkg_count
+		mtimedb = self._mtimedb
+		bad_resume_opts = self._bad_resume_opts
+
+		logger.log(" ::: completed emerge (%s of %s) %s to %s" % \
+			(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root))
+
+		logger.log(" *** RESTARTING " + \
+			"emerge via exec() after change of " + \
+			"portage version.")
+
+		del mtimedb["resume"]["mergelist"][0]
+		mtimedb.commit()
+		portage.run_exitfuncs()
+		mynewargv = [sys.argv[0], "--resume"]
+		resume_opts = self.myopts.copy()
+		# For automatic resume, we need to prevent
+		# any of bad_resume_opts from leaking in
+		# via EMERGE_DEFAULT_OPTS.
+		resume_opts["--ignore-default-opts"] = True
+		for myopt, myarg in resume_opts.iteritems():
+			if myopt not in bad_resume_opts:
+				if myarg is True:
+					mynewargv.append(myopt)
+				else:
+					mynewargv.append(myopt +"="+ myarg)
+		# priority only needs to be adjusted on the first run
+		os.environ["PORTAGE_NICENESS"] = "0"
+		os.execv(mynewargv[0], mynewargv)
+
 	def merge(self):
 
 		if "--resume" in self.myopts:
@@ -7258,6 +7319,8 @@ class Scheduler(object):
 				del _eerror, msg
 			del dropped_tasks
 			self._mergelist = mylist
+			self._pkg_count.curval = 0
+			self._pkg_count.maxval = len(mylist)
 
 		self._logger.log(" *** Finished. Cleaning up...")
 
@@ -7356,8 +7419,6 @@ class Scheduler(object):
 		root_config = self.trees[self.target_root]["root_config"]
 		mymergelist = mylist
 		myfeat = self.settings.features[:]
-		bad_resume_opts = set(["--ask", "--changelog", "--skipfirst",
-			"--resume"])
 		metadata_keys = [k for k in portage.auxdbkeys \
 			if not k.startswith("UNUSED_")] + ["USE"]
 
@@ -7365,8 +7426,7 @@ class Scheduler(object):
 		# Filter mymergelist so that all the len(mymergelist) calls
 		# below (for display) do not count Uninstall instances.
 		mymergelist = [x for x in mymergelist if x[-1] == "merge"]
-		pkg_count = self._pkg_count_class(
-			curval=0, maxval=len(mymergelist))
+
 		for x in task_list:
 			if x[0] == "blocks":
 				continue
@@ -7389,24 +7449,21 @@ class Scheduler(object):
 					mydbapi = vardb
 				else:
 					raise AssertionError("Package type: '%s'" % pkg_type)
-			if not x.installed:
-				pkg_count.curval += 1
+
 			try:
-				self._execute_task(bad_resume_opts,
-					mydbapi, pkg_count,
-					myfeat, mymergelist, x)
+				self._execute_task(x)
 			except self._pkg_failure, e:
 				return e.status
 
 		return os.EX_OK
 
-	def _execute_task(self, bad_resume_opts,
-		mydbapi, pkg_count, myfeat,
-		mymergelist, pkg):
+	def _execute_task(self, pkg):
 			favorites = self._favorites
 			mtimedb = self._mtimedb
 			prefetchers = self._prefetchers
+			pkg_count = self._pkg_count
 			mergecount = pkg_count.curval
+			mymergelist = self._mergelist
 			pkgsettings = self.pkgsettings[pkg.root]
 			buildpkgonly = "--buildpkgonly" in self.myopts
 			fetch_all = "--fetch-all-uri" in self.myopts
@@ -7431,7 +7488,10 @@ class Scheduler(object):
 			pkg_type, myroot, pkg_key, operation = x
 			pkgindex = 2
 			metadata = pkg.metadata
-			if pkg.installed:
+			if not pkg.installed:
+				pkg_count.curval += 1
+				mergecount = pkg_count.curval
+			else:
 				if not (buildpkgonly or fetchonly or pretend):
 					uninstall = PackageUninstall(ldpath_mtimes=ldpath_mtimes,
 						opts=self.myopts, pkg=pkg, settings=pkgsettings)
@@ -7496,40 +7556,6 @@ class Scheduler(object):
 						world_set.add(myfavkey)
 					world_set.unlock()
 
-				if "--pretend" not in self.myopts and \
-					"--fetchonly" not in self.myopts and \
-					"--fetch-all-uri" not in self.myopts:
-
-					# Figure out if we need a restart.
-					if myroot == "/" and pkg.cp == "sys-apps/portage":
-						if len(mymergelist) > mergecount:
-							emergelog(xterm_titles,
-								" ::: completed emerge ("+ \
-								str(mergecount)+" of "+ \
-								str(len(mymergelist))+") "+ \
-								x[2]+" to "+x[1])
-							emergelog(xterm_titles, " *** RESTARTING " + \
-								"emerge via exec() after change of " + \
-								"portage version.")
-							del mtimedb["resume"]["mergelist"][0]
-							mtimedb.commit()
-							portage.run_exitfuncs()
-							mynewargv=[sys.argv[0],"--resume"]
-							resume_opts = self.myopts.copy()
-							# For automatic resume, we need to prevent
-							# any of bad_resume_opts from leaking in
-							# via EMERGE_DEFAULT_OPTS.
-							resume_opts["--ignore-default-opts"] = True
-							for myopt, myarg in resume_opts.iteritems():
-								if myopt not in bad_resume_opts:
-									if myarg is True:
-										mynewargv.append(myopt)
-									else:
-										mynewargv.append(myopt +"="+ myarg)
-							# priority only needs to be adjusted on the first run
-							os.environ["PORTAGE_NICENESS"] = "0"
-							os.execv(mynewargv[0], mynewargv)
-
 			if "--pretend" not in self.myopts and \
 				"--fetchonly" not in self.myopts and \
 				"--fetch-all-uri" not in self.myopts:
@@ -7544,7 +7570,7 @@ class Scheduler(object):
 					str(mergecount)+" of "+str(len(mymergelist))+") "+\
 					x[2]+" to "+x[1])
 
-			# Unsafe for parallel merges
+			self._restart_if_necessary(pkg)
 			del mtimedb["resume"]["mergelist"][0]
 			if not mtimedb["resume"]["mergelist"]:
 				del mtimedb["resume"]
