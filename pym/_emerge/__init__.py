@@ -7113,10 +7113,12 @@ class Scheduler(object):
 		except AttributeError:
 			self._poll = PollSelectFallback()
 
-		self._prefetch_queue = SequentialTaskQueue()
-		self._add_task = self._prefetch_queue.add
-		self._schedule_tasks = self._prefetch_queue.schedule
+		self._task_queues = slot_dict_class(("build", "prefetch"), prefix="")
+		for k in self._task_queues.allowed_keys:
+			setattr(self._task_queues, k, SequentialTaskQueue())
 
+		self._add_task = self._task_queues.prefetch.add
+		self._schedule_tasks = self._task_queues.prefetch.schedule
 		self._prefetchers = weakref.WeakValueDictionary()
 		self._failed_fetches = []
 		self._parallel_fetch = False
@@ -7422,7 +7424,7 @@ class Scheduler(object):
 					return e.status
 		finally:
 			# clean up child process if necessary
-			self._prefetch_queue.clear()
+			self._task_queues.prefetch.clear()
 		return os.EX_OK
 
 	def _save_resume_list(self):
