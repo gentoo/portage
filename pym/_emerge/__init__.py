@@ -7603,6 +7603,17 @@ class Scheduler(object):
 		"""
 		print colorize("GOOD", "*** Resuming merge...")
 
+		if self._show_list():
+			if "--tree" in self.myopts:
+				portage.writemsg_stdout("\n" + \
+					darkgreen("These are the packages that " + \
+					"would be merged, in reverse order:\n\n"))
+
+			else:
+				portage.writemsg_stdout("\n" + \
+					darkgreen("These are the packages that " + \
+					"would be merged, in order:\n\n"))
+
 		show_spinner = "--quiet" not in self.myopts and \
 			"--nodeps" not in self.myopts
 
@@ -7617,14 +7628,28 @@ class Scheduler(object):
 		if show_spinner:
 			print "\b\b... done!"
 
+		if self._show_list():
+			mylist = mydepgraph.altlist()
+			if "--tree" in self.myopts:
+				mylist.reverse()
+			mydepgraph.display(mylist, favorites=self._favorites)
+
+		mydepgraph.display_problems()
 		if not success:
-			mydepgraph.display_problems()
 			return (None, None)
 
 		mylist = mydepgraph.altlist()
 		mydepgraph.break_refs(mylist)
 		mydepgraph.break_refs(dropped_tasks)
 		return (mylist, dropped_tasks)
+
+	def _show_list(self):
+		myopts = self.myopts
+		if "--quiet" not in myopts and \
+			("--ask" in myopts or "--tree" in myopts or \
+			"--verbose" in myopts):
+			return True
+		return False
 
 	def _register(self, f, eventmask, handler):
 		"""
