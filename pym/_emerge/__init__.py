@@ -21,6 +21,7 @@ except KeyboardInterrupt:
 	sys.exit(1)
 
 import array
+from collections import deque
 import fcntl
 import select
 import shlex
@@ -7079,7 +7080,6 @@ class SequentialTaskQueue(SlotObject):
 
 	def __init__(self, **kwargs):
 		SlotObject.__init__(self, **kwargs)
-		from collections import deque
 		self._task_queue = deque()
 		self.running_tasks = set()
 		if self.max_jobs is None:
@@ -7197,6 +7197,8 @@ class Scheduler(object):
 		self._add_task = self._task_queues.prefetch.add
 		self._schedule_tasks = self._task_queues.prefetch.schedule
 		self._prefetchers = weakref.WeakValueDictionary()
+		self._pkg_queue = deque()
+		self._failed_pkgs = []
 		self._failed_fetches = []
 		self._parallel_fetch = False
 		merge_count = len([x for x in mergelist \
@@ -7493,41 +7495,69 @@ class Scheduler(object):
 
 		return rval
 
+	def _add_packages(self):
+		pkg_queue = self._pkg_queue
+		for pkg in self._mergelist:
+			if isinstance(pkg, Package):
+				pkg_queue.append(pkg)
+			elif isinstance(pkg, Blocker):
+				pass
+
+	def _choose_pkg(self):
+		return self._pkg_queue.popleft()
+
+	def _main_loop(self):
+
+		pkg_queue = self._pkg_queue
+
+		while pkg_queue:
+			pkg = self._choose_pkg()
+			retval = self._execute_pkg(pkg)
+
+			if retval != os.EX_OK:
+				self._failed_pkgs.append((pkg, retval))
+				if not self._build_opts.fetchonly:
+					return
+
+			if pkg.installed:
+				continue
+
+			self._restart_if_necessary(pkg)
+
+			# Call mtimedb.commit() after each merge so that
+			# --resume still works after being interrupted
+			# by reboot, sigkill or similar.
+			mtimedb = self._mtimedb
+			del mtimedb["resume"]["mergelist"][0]
+			if not mtimedb["resume"]["mergelist"]:
+				del mtimedb["resume"]
+			mtimedb.commit()
+
 	def _merge(self):
 
 		self._add_prefetchers()
+		self._add_packages()
+		pkg_queue = self._pkg_queue
+		failed_pkgs = self._failed_pkgs
+		rval = os.EX_OK
 
 		try:
-			for pkg in self._mergelist:
-
-				if not isinstance(pkg, Package):
-					# blockers
-					continue
-
-				retval = self._execute_pkg(pkg)
-
-				if retval != os.EX_OK:
-					if not self._build_opts.fetchonly:
-						return retval
-
-				if pkg.installed:
-					continue
-
-				self._restart_if_necessary(pkg)
-
-				# Call mtimedb.commit() after each merge so that
-				# --resume still works after being interrupted
-				# by reboot, sigkill or similar.
-				mtimedb = self._mtimedb
-				del mtimedb["resume"]["mergelist"][0]
-				if not mtimedb["resume"]["mergelist"]:
-					del mtimedb["resume"]
-				mtimedb.commit()
-
+			self._main_loop()
 		finally:
+			# discard remaining packages if necessary
+			pkg_queue.clear()
+
 			# clean up child process if necessary
 			self._task_queues.prefetch.clear()
-		return os.EX_OK
+
+			# discard any failures and return the
+			# exist status of the last one
+			if failed_pkgs:
+				pkg, rval = failed_pkgs[-1]
+
+			del failed_pkgs[:]
+
+		return rval
 
 	def _execute_pkg(self, pkg):
 
