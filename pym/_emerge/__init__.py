@@ -2154,7 +2154,7 @@ class PackageUninstall(Task):
 			return e.status
 		return os.EX_OK
 
-class Binpkg(SlotObject):
+class Binpkg(EbuildBuildDir):
 
 	__slots__ = ("find_blockers",
 		"ldpath_mtimes", "logger", "opts",
@@ -2247,7 +2247,7 @@ class Binpkg(SlotObject):
 		}
 
 		try:
-			build_dir.lock()
+			self.lock()
 
 			root_config = self.pkg.root_config
 			ebuild_path = os.path.join(infloc, pkg.pf + ".ebuild")
@@ -2347,7 +2347,7 @@ class Binpkg(SlotObject):
 
 		finally:
 			settings.pop("PORTAGE_BINPKG_FILE", None)
-			build_dir.unlock()
+			self.unlock()
 		return os.EX_OK
 
 class BinpkgFetcher(Task):
