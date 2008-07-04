@@ -1439,9 +1439,9 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 				v = 0
 		self._pkg.mtime = v
 
-class EbuildFetcher(SlotObject):
+class EbuildFetchPretend(SlotObject):
 
-	__slots__ = ("cancelled", "fetch_all", "pkg", "pretend", "settings")
+	__slots__ = ("fetch_all", "pkg", "settings")
 
 	def execute(self):
 		portdb = self.pkg.root_config.trees["porttree"].dbapi
@@ -1450,7 +1450,7 @@ class EbuildFetcher(SlotObject):
 
 		retval = portage.doebuild(ebuild_path, "fetch",
 			self.settings["ROOT"], self.settings, debug=debug,
-			listonly=self.pretend, fetchonly=1, fetchall=self.fetch_all,
+			listonly=1, fetchonly=1, fetchall=self.fetch_all,
 			mydbapi=portdb, tree="porttree")
 		return retval
 
@@ -1596,7 +1596,7 @@ class SpawnProcess(SubProcess):
 			self.registered = False
 		return self.registered
 
-class EbuildFetcherAsync(SpawnProcess):
+class EbuildFetcher(SpawnProcess):
 
 	__slots__ = ("pkg",)
 
@@ -1737,9 +1737,21 @@ class EbuildBuild(SlotObject):
 				not opts.buildpkg
 
 		if opts.fetchonly:
-			fetcher = EbuildFetcher(fetch_all=opts.fetch_all_uri,
-				pkg=pkg, pretend=opts.pretend, settings=settings)
-			retval = fetcher.execute()
+			if opts.pretend:
+
+				fetcher = EbuildFetchPretend(
+					fetch_all=opts.fetch_all_uri,
+					pkg=pkg, settings=settings)
+
+				retval = fetcher.execute()
+
+			else:
+
+				fetcher = EbuildFetcher(pkg=pkg, scheduler=scheduler)
+				fetcher.start()
+				scheduler.schedule(fetcher.reg_id)
+				retval = fetcher.wait()
+
 			if retval != os.EX_OK:
 				from portage.elog.messages import eerror
 				eerror("!!! Fetch for %s failed, continuing..." % pkg.cpv,
@@ -7360,7 +7372,7 @@ class Scheduler(object):
 
 		elif pkg.type_name == "ebuild":
 
-			prefetcher = EbuildFetcherAsync(logfile=self._fetch_log, pkg=pkg,
+			prefetcher = EbuildFetcher(logfile=self._fetch_log, pkg=pkg,
 				scheduler=self._sched_iface)
 
 		elif pkg.type_name == "binary" and \
