@@ -2504,6 +2504,11 @@ class BinpkgExtractorAsync(SpawnProcess):
 
 class MergeListItem(SlotObject):
 
+	"""
+	TODO: For parallel scheduling, everything here needs asynchronous
+	execution support (start, poll, and wait methods).
+	"""
+
 	__slots__ = ("args_set", "binpkg_opts", "build_opts", "emerge_opts",
 		"failed_fetches", "find_blockers", "logger", "mtimedb", "pkg",
 		"pkg_count", "prefetcher", "scheduler", "settings", "world_atom")
