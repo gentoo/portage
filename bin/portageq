@@ -475,14 +475,15 @@ def main():
 		os.environ["ROOT"] = sys.argv[2]
 
 	global portage
+	try:
+		import portage
+	except ImportError:
+		from os import path as osp
+		sys.path.insert(0, osp.join(osp.dirname(
+			osp.dirname(osp.realpath(__file__))), "pym"))
+		import portage
 
 	try:
-		try:
-			import portage
-		except ImportError:
-			from os import path as osp
-			sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-			import portage
 		if uses_root:
 			sys.argv[2] = portage.settings["ROOT"]
 		retval = function(sys.argv[2:])
