@@ -1698,7 +1698,7 @@ class EbuildBuildDir(SlotObject):
 	class AlreadyLocked(portage.exception.PortageException):
 		pass
 
-class EbuildBuild(SlotObject):
+class EbuildBuild(EbuildBuildDir):
 
 	__slots__ = ("args_set", "find_blockers",
 		"ldpath_mtimes", "logger", "opts",
@@ -1758,9 +1758,8 @@ class EbuildBuild(SlotObject):
 					phase="unpack", key=pkg.cpv)
 			return retval
 
-		build_dir = EbuildBuildDir(pkg=pkg, settings=settings)
 		try:
-			build_dir.lock()
+			self.lock()
 			# Cleaning is triggered before the setup
 			# phase, in portage.doebuild().
 			msg = " === (%s of %s) Cleaning (%s::%s)" % \
@@ -1831,9 +1830,9 @@ class EbuildBuild(SlotObject):
 				if retval != os.EX_OK:
 					return retval
 		finally:
-			if build_dir.locked:
+			if self.locked:
 				portage.elog.elog_process(pkg.cpv, settings)
-				build_dir.unlock()
+				self.unlock()
 		return os.EX_OK
 
 class EbuildExecuter(SlotObject):
