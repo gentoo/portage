@@ -1881,6 +1881,11 @@ class EbuildPhase(SubProcess):
 	_files_dict = slot_dict_class(_file_names, prefix="")
 	_bufsize = 4096
 
+	# A file descriptor is required for the scheduler to monitor changes from
+	# inside a poll() loop. When logging is not enabled, create a pipe just to
+	# serve this purpose alone.
+	_dummy_pipe_fd = 9
+
 	def start(self):
 		root_config = self.pkg.root_config
 		tree = self.tree
@@ -1931,7 +1936,6 @@ class EbuildPhase(SubProcess):
 				mode[1] &= ~termios.OPOST
 				termios.tcsetattr(slave_fd, termios.TCSANOW, mode)
 
-			import fcntl
 			fcntl.fcntl(master_fd, fcntl.F_SETFL,
 				fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 
@@ -1945,6 +1949,17 @@ class EbuildPhase(SubProcess):
 			fd_pipes[1] = slave_fd
 			fd_pipes[2] = slave_fd
 
+		else:
+			# Create a dummy pipe so the scheduler can monitor
+			# the process from inside a poll() loop.
+			master_fd, slave_fd = os.pipe()
+			fcntl.fcntl(master_fd, fcntl.F_SETFL,
+				fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+			fd_pipes.setdefault(0, sys.stdin.fileno())
+			fd_pipes.setdefault(1, sys.stdout.fileno())
+			fd_pipes.setdefault(2, sys.stderr.fileno())
+			fd_pipes[self._dummy_pipe_fd] = slave_fd
+
 		retval = portage.doebuild(ebuild_path, self.phase,
 			root_config.root, settings, debug,
 			mydbapi=mydbapi, tree=tree,
@@ -1953,13 +1968,16 @@ class EbuildPhase(SubProcess):
 		self.pid = retval[0]
 
 		if logfile:
-			os.close(slave_fd)
 			files.log = open(logfile, 'a')
 			files.stdout = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
-			files.ebuild = os.fdopen(master_fd, 'r')
-			self.registered = True
-			self.register(files.ebuild.fileno(),
-				select.POLLIN, self._output_handler)
+			output_handler = self._output_handler
+		else:
+			output_handler = self._dummy_handler
+
+		os.close(slave_fd)
+		files.ebuild = os.fdopen(master_fd, 'r')
+		self.registered = True
+		self.register(files.ebuild.fileno(), select.POLLIN, output_handler)
 
 	def _output_handler(self, fd, event):
 		files = self.files
@@ -1973,6 +1991,27 @@ class EbuildPhase(SubProcess):
 			files.stdout.flush()
 			buf.tofile(files.log)
 			files.log.flush()
+		else:
+			fd = files.ebuild.fileno()
+			for f in files.values():
+				f.close()
+			self.registered = False
+			self.unregister(fd)
+
+	def _dummy_handler(self, fd, event):
+		"""
+		This method is mainly interested in detecting EOF, since
+		the only purpose of the pipe is to allow the scheduler to
+		monitor the process from inside a poll() loop.
+		"""
+		files = self.files
+		buf = array.array('B')
+		try:
+			buf.fromfile(files.ebuild, self._bufsize)
+		except EOFError:
+			pass
+		if buf:
+			pass
 		else:
 			fd = files.ebuild.fileno()
 			for f in files.values():
