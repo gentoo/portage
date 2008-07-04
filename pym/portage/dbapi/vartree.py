@@ -471,7 +471,6 @@ class vardbapi(dbapi):
 		try:
 			dir_list = os.listdir(cat_dir)
 		except EnvironmentError, e:
-			from portage.exception import PermissionDenied
 			if e.errno == PermissionDenied.errno:
 				raise PermissionDenied(cat_dir)
 			del e
@@ -532,7 +531,7 @@ class vardbapi(dbapi):
 					if catpkgsplit(subpath) is None:
 						self.invalidentry(os.path.join(self.root, subpath))
 						continue
-				except portage.exception.InvalidData:
+				except InvalidData:
 					self.invalidentry(os.path.join(self.root, subpath))
 					continue
 				returnme.append(subpath)
@@ -546,7 +545,7 @@ class vardbapi(dbapi):
 				y = y[1:]
 			try:
 				mysplit = catpkgsplit(y)
-			except portage.exception.InvalidData:
+			except InvalidData:
 				self.invalidentry(self.getpath(y))
 				continue
 			if not mysplit:
