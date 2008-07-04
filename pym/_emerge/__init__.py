@@ -1575,7 +1575,7 @@ class SpawnProcess(SubProcess):
 		os.close(slave_fd)
 		files.process = os.fdopen(master_fd, 'r')
 		self.reg_id = self.scheduler.register(files.process.fileno(),
-			select.POLLIN, self._output_handler)
+			PollConstants.POLLIN, self._output_handler)
 		self.registered = True
 
 	def _output_handler(self, fd, event):
@@ -1974,7 +1974,7 @@ class EbuildPhase(SubProcess):
 		os.close(slave_fd)
 		files.ebuild = os.fdopen(master_fd, 'r')
 		self.reg_id = self.scheduler.register(files.ebuild.fileno(),
-			select.POLLIN, output_handler)
+			PollConstants.POLLIN, output_handler)
 		self.registered = True
 
 	def _output_handler(self, fd, event):
@@ -7019,7 +7019,21 @@ class PackageCounters(object):
 					(self.blocks - self.blocks_satisfied))
 		return "".join(myoutput)
 
-class PollSelectAdapter(object):
+class PollConstants(object):
+
+	"""
+	Provides POLL* constants that are equivalent to those from the
+	select module, for use by PollSelectAdapter.
+	"""
+
+	names = ("POLLIN", "POLLPRI", "POLLOUT", "POLLERR", "POLLHUP", "POLLNVAL")
+	v = 1
+	for k in names:
+		locals()[k] = getattr(select, k, v)
+		v *= 2
+	del k, v
+
+class PollSelectAdapter(PollConstants):
 
 	"""
 	Use select to emulate a poll object, for
@@ -7032,14 +7046,15 @@ class PollSelectAdapter(object):
 
 	def register(self, fd, *args):
 		"""
-		Only select.POLLIN is currently supported!
+		Only POLLIN is currently supported!
 		"""
 		if len(args) > 1:
 			raise TypeError(
 				"register expected at most 2 arguments, got " + \
 				repr(1 + len(args)))
 
-		eventmask = select.POLLIN | select.POLLPRI | select.POLLOUT
+		eventmask = PollConstants.POLLIN | \
+			PollConstants.POLLPRI | PollConstants.POLLOUT
 		if args:
 			eventmask = args[0]
 
@@ -7071,7 +7086,7 @@ class PollSelectAdapter(object):
 		select_events = select.select(*select_args)
 		poll_events = []
 		for fd in select_events[0]:
-			poll_events.append((fd, select.POLLIN))
+			poll_events.append((fd, PollConstants.POLLIN))
 		return poll_events
 
 class SequentialTaskQueue(SlotObject):
