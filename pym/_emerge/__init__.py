@@ -2501,6 +2501,83 @@ class BinpkgExtractorAsync(SpawnProcess):
 		self.env = self.pkg.root_config.settings.environ()
 		SpawnProcess.start(self)
 
+class MergeListItem(SlotObject):
+
+	__slots__ = ("args_set", "binpkg_opts", "build_opts", "emerge_opts",
+		"failed_fetches", "find_blockers", "logger", "mtimedb", "pkg",
+		"pkg_count", "prefetcher", "scheduler", "settings", "world_atom")
+
+	def execute(self):
+
+		args_set = self.args_set
+		binpkg_opts = self.binpkg_opts
+		build_opts = self.build_opts
+		emerge_opts = self.emerge_opts
+		failed_fetches = self.failed_fetches
+		find_blockers = self.find_blockers
+		logger = self.logger
+		mtimedb = self.mtimedb
+		pkg = self.pkg
+		pkg_count = self.pkg_count
+		prefetcher = self.prefetcher
+		scheduler = self.scheduler
+		settings = self.settings
+		world_atom = self.world_atom
+		ldpath_mtimes = mtimedb["ldpath"]
+
+		if pkg.installed:
+			if not (build_opts.buildpkgonly or \
+				build_opts.fetchonly or build_opts.pretend):
+
+				uninstall = PackageUninstall(ldpath_mtimes=ldpath_mtimes,
+					opts=emerge_opts, pkg=pkg, settings=settings)
+
+				retval = uninstall.execute()
+				if retval != os.EX_OK:
+					return retval
+
+			return os.EX_OK
+
+		if not build_opts.pretend:
+			portage.writemsg_stdout(
+				"\n>>> Emerging (%s of %s) %s to %s\n" % \
+				(colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
+				colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)),
+				colorize("GOOD", pkg.cpv), pkg.root), noiselevel=-1)
+			logger.log(" >>> emerge (%s of %s) %s to %s" % \
+				(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root))
+
+		if pkg.type_name == "ebuild":
+
+			build = EbuildBuild(args_set=args_set,
+				find_blockers=find_blockers,
+				ldpath_mtimes=ldpath_mtimes, logger=logger,
+				opts=build_opts, pkg=pkg, pkg_count=pkg_count,
+				settings=settings, scheduler=scheduler,
+				world_atom=world_atom)
+
+			retval = build.execute()
+
+			if retval != os.EX_OK:
+				if build_opts.fetchonly:
+					failed_fetches.append(pkg.cpv)
+				return retval
+
+		elif pkg.type_name == "binary":
+
+			binpkg = Binpkg(find_blockers=find_blockers,
+				ldpath_mtimes=ldpath_mtimes, logger=logger,
+				opts=binpkg_opts, pkg=pkg, pkg_count=pkg_count,
+				prefetcher=prefetcher, settings=settings,
+				scheduler=scheduler, world_atom=world_atom)
+
+			retval = binpkg.execute()
+
+			if retval != os.EX_OK:
+				return retval
+
+		return os.EX_OK
+
 class DependencyArg(object):
 	def __init__(self, arg=None, root_config=None):
 		self.arg = arg
@@ -7122,8 +7199,10 @@ class Scheduler(object):
 		self._prefetchers = weakref.WeakValueDictionary()
 		self._failed_fetches = []
 		self._parallel_fetch = False
+		merge_count = len([x for x in mergelist \
+			if isinstance(x, Package) and x.operation == "merge"])
 		self._pkg_count = self._pkg_count_class(
-			curval=0, maxval=len(mergelist))
+			curval=0, maxval=merge_count)
 
 		features = self.settings.features
 		if "parallel-fetch" in features and \
@@ -7214,7 +7293,8 @@ class Scheduler(object):
 			del quiet_config
 
 		for x in self._mergelist:
-			if x.type_name != "ebuild":
+			if not isinstance(x, Package) or \
+				x.type_name != "ebuild":
 				continue
 
 			if not shown_verifying_msg:
@@ -7406,7 +7486,8 @@ class Scheduler(object):
 			self._mergelist = mylist
 			self._save_resume_list()
 			self._pkg_count.curval = 0
-			self._pkg_count.maxval = len(mylist)
+			self._pkg_count.maxval = len([x for x in mylist \
+				if isinstance(x, Package) and x.operation == "merge"])
 
 		self._logger.log(" *** Finished. Cleaning up...")
 
@@ -7417,11 +7498,50 @@ class Scheduler(object):
 		self._add_prefetchers()
 
 		try:
-			for task in self._mergelist:
-				try:
-					self._execute_task(task)
-				except self._pkg_failure, e:
-					return e.status
+			for pkg in self._mergelist:
+
+				if not isinstance(pkg, Package):
+					# blockers
+					continue
+
+				if not pkg.installed:
+					self._pkg_count.curval += 1
+
+				merge = MergeListItem(args_set=self._args_set,
+					binpkg_opts=self._binpkg_opts,
+					build_opts=self._build_opts,
+					emerge_opts=self.myopts,
+					failed_fetches=self._failed_fetches,
+					find_blockers=self._find_blockers(pkg), logger=self._logger,
+					mtimedb=self._mtimedb, pkg=pkg, pkg_count=self._pkg_count,
+					prefetcher=self._prefetchers.get(pkg),
+					scheduler=self._sched_iface,
+					settings=self.pkgsettings[pkg.root],
+					world_atom=self._world_atom)
+
+				retval = merge.execute()
+
+				if retval != os.EX_OK:
+					if not self._build_opts.fetchonly:
+						return retval
+
+				self.curval += 1
+
+				if pkg.installed:
+					# There's nothing left to do for uninstall.
+					continue
+
+				self._restart_if_necessary(pkg)
+
+				# Call mtimedb.commit() after each merge so that
+				# --resume still works after being interrupted
+				# by reboot, sigkill or similar.
+				mtimedb = self._mtimedb
+				del mtimedb["resume"]["mergelist"][0]
+				if not mtimedb["resume"]["mergelist"]:
+					del mtimedb["resume"]
+				mtimedb.commit()
+
 		finally:
 			# clean up child process if necessary
 			self._task_queues.prefetch.clear()
@@ -7514,6 +7634,13 @@ class Scheduler(object):
 		Add the package to the world file, but only if
 		it's supposed to be added. Otherwise, do nothing.
 		"""
+
+		if set(("--buildpkgonly", "--fetchonly",
+			"--fetch-all-uri",
+			"--oneshot", "--onlydeps",
+			"--pretend")).intersection(self.myopts):
+			return
+
 		if pkg.root != self.target_root:
 			return
 
@@ -7537,78 +7664,6 @@ class Scheduler(object):
 				world_set.add(atom)
 		finally:
 			world_set.unlock()
-
-	def _execute_task(self, pkg):
-
-			buildpkgonly = "--buildpkgonly" in self.myopts
-			fetch_all = "--fetch-all-uri" in self.myopts
-			fetchonly = fetch_all or "--fetchonly" in self.myopts
-			pretend = "--pretend" in self.myopts
-
-			pkgsettings = self.pkgsettings[pkg.root]
-			mtimedb = self._mtimedb
-			ldpath_mtimes = mtimedb["ldpath"]
-			failed_fetches = self._failed_fetches
-			pkg_count = self._pkg_count
-			prefetchers = self._prefetchers
-
-			if not pkg.installed:
-				pkg_count.curval += 1
-				mergecount = pkg_count.curval
-			else:
-				if not (buildpkgonly or fetchonly or pretend):
-					uninstall = PackageUninstall(ldpath_mtimes=ldpath_mtimes,
-						opts=self.myopts, pkg=pkg, settings=pkgsettings)
-					retval = uninstall.execute()
-					if retval != os.EX_OK:
-						raise self._pkg_failure(retval)
-				return
-
-			if not pretend:
-				portage.writemsg_stdout(
-					"\n>>> Emerging (%s of %s) %s to %s\n" % \
-					(colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
-					colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)),
-					colorize("GOOD", pkg.cpv), pkg.root), noiselevel=-1)
-				self._logger.log(" >>> emerge (%s of %s) %s to %s" % \
-					(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root))
-
-			if pkg.type_name == "ebuild":
-				build = EbuildBuild(args_set=self._args_set,
-					find_blockers=self._find_blockers(pkg),
-					ldpath_mtimes=ldpath_mtimes, logger=self._logger,
-					opts=self._build_opts, pkg=pkg, pkg_count=pkg_count,
-					settings=pkgsettings, scheduler=self._sched_iface,
-					world_atom=self._world_atom)
-				retval = build.execute()
-				if retval != os.EX_OK:
-					if fetchonly:
-						failed_fetches.append(pkg.cpv)
-					else:
-						raise self._pkg_failure(retval)
-
-			elif pkg.type_name == "binary":
-				binpkg = Binpkg(find_blockers=self._find_blockers(pkg),
-					ldpath_mtimes=ldpath_mtimes, logger=self._logger,
-					opts=self._binpkg_opts, pkg=pkg, pkg_count=pkg_count,
-					prefetcher=prefetchers.get(pkg), settings=pkgsettings,
-					scheduler=self._sched_iface, world_atom=self._world_atom)
-				retval = binpkg.execute()
-				if retval != os.EX_OK:
-					if fetchonly:
-						failed_fetches.append(pkg.cpv)
-					else:
-						raise self._pkg_failure(retval)
-
-			self._restart_if_necessary(pkg)
-			del mtimedb["resume"]["mergelist"][0]
-			if not mtimedb["resume"]["mergelist"]:
-				del mtimedb["resume"]
-			# Commit after each merge so that --resume may still work in
-			# in the event that portage is not allowed to exit normally
-			# due to power failure, SIGKILL, etc...
-			mtimedb.commit()
-			self.curval += 1
 
 class UninstallFailure(portage.exception.PortageException):
 	"""
