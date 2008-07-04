@@ -7504,31 +7504,13 @@ class Scheduler(object):
 					# blockers
 					continue
 
-				if not pkg.installed:
-					self._pkg_count.curval += 1
-
-				merge = MergeListItem(args_set=self._args_set,
-					binpkg_opts=self._binpkg_opts,
-					build_opts=self._build_opts,
-					emerge_opts=self.myopts,
-					failed_fetches=self._failed_fetches,
-					find_blockers=self._find_blockers(pkg), logger=self._logger,
-					mtimedb=self._mtimedb, pkg=pkg, pkg_count=self._pkg_count,
-					prefetcher=self._prefetchers.get(pkg),
-					scheduler=self._sched_iface,
-					settings=self.pkgsettings[pkg.root],
-					world_atom=self._world_atom)
-
-				retval = merge.execute()
+				retval = self._execute_pkg(pkg)
 
 				if retval != os.EX_OK:
 					if not self._build_opts.fetchonly:
 						return retval
 
-				self.curval += 1
-
 				if pkg.installed:
-					# There's nothing left to do for uninstall.
 					continue
 
 				self._restart_if_necessary(pkg)
@@ -7546,6 +7528,30 @@ class Scheduler(object):
 			# clean up child process if necessary
 			self._task_queues.prefetch.clear()
 		return os.EX_OK
+
+	def _execute_pkg(self, pkg):
+
+		if not pkg.installed:
+			self._pkg_count.curval += 1
+
+		merge = MergeListItem(args_set=self._args_set,
+			binpkg_opts=self._binpkg_opts,
+			build_opts=self._build_opts,
+			emerge_opts=self.myopts,
+			failed_fetches=self._failed_fetches,
+			find_blockers=self._find_blockers(pkg), logger=self._logger,
+			mtimedb=self._mtimedb, pkg=pkg, pkg_count=self._pkg_count,
+			prefetcher=self._prefetchers.get(pkg),
+			scheduler=self._sched_iface,
+			settings=self.pkgsettings[pkg.root],
+			world_atom=self._world_atom)
+
+		retval = merge.execute()
+
+		if retval == os.EX_OK:
+			self.curval += 1
+
+		return retval
 
 	def _save_resume_list(self):
 		"""
