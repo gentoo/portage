@@ -294,8 +294,10 @@ def vdb_path(argv):
 	Returns the path used for the var(installed) package database for the
 	set environment/configuration options.
 	"""
-	print portage.root+portage.VDB_PATH
-
+	out = sys.stdout
+	out.write(os.path.join(portage.settings["ROOT"], portage.VDB_PATH) + "\n")
+	out.flush()
+	return os.EX_OK
 
 def gentoo_mirrors(argv):
 	"""
