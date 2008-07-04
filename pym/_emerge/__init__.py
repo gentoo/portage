@@ -7018,7 +7018,7 @@ class PackageCounters(object):
 					(self.blocks - self.blocks_satisfied))
 		return "".join(myoutput)
 
-class PollSelectFallback(object):
+class PollSelectAdapter(object):
 
 	"""
 	Use select to emulate a poll object, for
@@ -7188,7 +7188,7 @@ class Scheduler(object):
 		try:
 			self._poll = select.poll()
 		except AttributeError:
-			self._poll = PollSelectFallback()
+			self._poll = PollSelectAdapter()
 
 		self._task_queues = slot_dict_class(("build", "prefetch"), prefix="")
 		for k in self._task_queues.allowed_keys:
