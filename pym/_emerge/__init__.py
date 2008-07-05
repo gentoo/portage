@@ -2269,8 +2269,6 @@ class Binpkg(EbuildBuildDir):
 
 		dir_path = os.path.join(settings["PORTAGE_TMPDIR"],
 			"portage", pkg.category, pkg.pf)
-		build_dir = EbuildBuildDir(dir_path=dir_path,
-			pkg=pkg, settings=settings)
 		image_dir = os.path.join(dir_path, "image")
 		infloc = os.path.join(dir_path, "build-info")
 
