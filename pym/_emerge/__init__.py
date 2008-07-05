@@ -1883,7 +1883,8 @@ class EbuildBuild(EbuildBuildDir):
 
 				build = EbuildExecuter(pkg=pkg, scheduler=scheduler,
 					settings=settings)
-				retval = build.execute()
+				build.start()
+				retval = build.wait()
 				if retval != os.EX_OK:
 					return retval
 
@@ -1925,7 +1926,8 @@ class EbuildBuild(EbuildBuildDir):
 
 				build = EbuildExecuter(pkg=pkg, scheduler=scheduler,
 					settings=settings)
-				retval = build.execute()
+				build.start()
+				retval = build.wait()
 				if retval != os.EX_OK:
 					return retval
 
@@ -1943,37 +1945,40 @@ class EbuildBuild(EbuildBuildDir):
 				self.unlock()
 		return os.EX_OK
 
-class EbuildExecuter(SlotObject):
+class EbuildExecuter(AsynchronousTask):
 
-	__slots__ = ("pkg", "scheduler", "settings")
+	__slots__ = ("pkg", "scheduler", "settings") + ("_current_task",)
 
 	_phases = ("setup", "unpack", "compile", "test", "install")
 
-	def execute(self):
+	def start(self):
 		pkg = self.pkg
 		scheduler = self.scheduler
-		root_config = self.pkg.root_config
 		tree = "porttree"
-		portdb = root_config.trees[tree].dbapi
-		ebuild_path = portdb.findname(self.pkg.cpv)
 		settings = self.settings
-		debug = settings.get("PORTAGE_DEBUG") == "1"
-		cleanup = 1
 
 		phase = "clean"
-		ebuild_phase = EbuildPhase(
-			pkg=pkg, phase=phase, scheduler=scheduler,
-			settings=settings, tree=tree)
+		clean_phase = EbuildPhase(pkg=pkg, phase=phase,
+			scheduler=scheduler, settings=settings, tree=tree)
+		clean_phase.addExitListener(self._clean_phase_exit)
+		self._current_task = clean_phase
+		clean_phase.start()
 
-		ebuild_phase.start()
-		scheduler.schedule(ebuild_phase.reg_id)
-		retval = ebuild_phase.wait()
+	def _clean_phase_exit(self, clean_phase):
 
-		if retval != os.EX_OK:
-			return retval
+		if clean_phase.returncode != os.EX_OK:
+			self.returncode = clean_phase.returncode
+			self._current_task = None
+			return
+
+		pkg = self.pkg
+		scheduler = self.scheduler
+		tree = "porttree"
+		settings = self.settings
+		cleanup = 1
 
 		# This initializes PORTAGE_LOG_FILE.
-		portage.prepare_build_dirs(root_config.root, settings, cleanup)
+		portage.prepare_build_dirs(pkg.root, settings, cleanup)
 
 		fd_pipes = {
 			0 : sys.stdin.fileno(),
@@ -1981,17 +1986,41 @@ class EbuildExecuter(SlotObject):
 			2 : sys.stderr.fileno(),
 		}
 
-		composite_task = CompositeTask(scheduler=scheduler)
+		ebuild_phases = CompositeTask(scheduler=scheduler)
 
 		for phase in self._phases:
-			composite_task.add(EbuildPhase(fd_pipes=fd_pipes,
-				pkg=self.pkg, phase=phase, scheduler=self.scheduler,
+			ebuild_phases.add(EbuildPhase(fd_pipes=fd_pipes,
+				pkg=pkg, phase=phase, scheduler=scheduler,
 				settings=settings, tree=tree))
 
-		composite_task.start()
-		retval = composite_task.wait()
+		ebuild_phases.addExitListener(self._ebuild_phases_exit)
+		self._current_task = ebuild_phases
+		ebuild_phases.start()
 
-		return retval
+	def _ebuild_phases_exit(self, ebuild_phases):
+		self.returncode = ebuild_phases.returncode
+		self._current_task = None
+
+	def isAlive(self):
+		return self._current_task is not None
+
+	def cancel(self):
+		self.cancelled = True
+		if self._current_task is not None:
+			self._current_task.cancel()
+
+	def wait(self):
+
+		while True:
+			task = self._current_task
+			if task is None:
+				break
+			if hasattr(task, "reg_id"):
+				self.scheduler.schedule(task.reg_id)
+			task.wait()
+
+		self._wait_hook()
+		return self.returncode
 
 class EbuildPhase(SubProcess):
 
