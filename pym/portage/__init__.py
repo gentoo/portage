@@ -5003,7 +5003,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		if mydo in clean_phases:
 			retval = spawn(_shell_quote(ebuild_sh_binary) + " clean",
-				mysettings, debug=debug, free=1, logfile=None)
+				mysettings, debug=debug, fd_pipes=fd_pipes, free=1,
+				logfile=None, returnpid=returnpid)
 			return retval
 
 		# get possible slot information from the deps file

@@ -1863,6 +1863,8 @@ class EbuildExecuter(SlotObject):
 	_phases = ("setup", "unpack", "compile", "test", "install")
 
 	def execute(self):
+		pkg = self.pkg
+		scheduler = self.scheduler
 		root_config = self.pkg.root_config
 		tree = "porttree"
 		portdb = root_config.trees[tree].dbapi
@@ -1871,9 +1873,15 @@ class EbuildExecuter(SlotObject):
 		debug = settings.get("PORTAGE_DEBUG") == "1"
 		cleanup = 1
 
-		retval = portage.doebuild(ebuild_path, "clean",
-			root_config.root, settings, debug, cleanup=cleanup,
-			mydbapi=portdb, tree="porttree")
+		phase = "clean"
+		ebuild_phase = EbuildPhase(
+			pkg=pkg, phase=phase, scheduler=scheduler,
+			settings=settings, tree=tree)
+
+		ebuild_phase.start()
+		scheduler.schedule(ebuild_phase.reg_id)
+		retval = ebuild_phase.wait()
+
 		if retval != os.EX_OK:
 			return retval
 
@@ -1925,7 +1933,15 @@ class EbuildPhase(SubProcess):
 		logfile = settings.get("PORTAGE_LOG_FILE")
 		master_fd = None
 		slave_fd = None
-		fd_pipes = self.fd_pipes.copy()
+		fd_pipes = None
+		if self.fd_pipes is not None:
+			fd_pipes = self.fd_pipes.copy()
+		else:
+			fd_pipes = {}
+
+		fd_pipes.setdefault(0, sys.stdin.fileno())
+		fd_pipes.setdefault(1, sys.stdout.fileno())
+		fd_pipes.setdefault(2, sys.stderr.fileno())
 
 		# flush any pending output
 		for fd in fd_pipes.itervalues():
@@ -1984,9 +2000,6 @@ class EbuildPhase(SubProcess):
 			master_fd, slave_fd = os.pipe()
 			fcntl.fcntl(master_fd, fcntl.F_SETFL,
 				fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
-			fd_pipes.setdefault(0, sys.stdin.fileno())
-			fd_pipes.setdefault(1, sys.stdout.fileno())
-			fd_pipes.setdefault(2, sys.stderr.fileno())
 			fd_pipes[self._dummy_pipe_fd] = slave_fd
 
 		retval = portage.doebuild(ebuild_path, self.phase,
@@ -2051,14 +2064,15 @@ class EbuildPhase(SubProcess):
 
 	def _set_returncode(self, wait_retval):
 		SubProcess._set_returncode(self, wait_retval)
-		msg = portage._doebuild_exit_status_check(
-			self.phase, self.settings)
-		if msg:
-			self.returncode = 1
-			from textwrap import wrap
-			from portage.elog.messages import eerror
-			for l in wrap(msg, 72):
-				eerror(l, phase=self.phase, key=self.pkg.cpv)
+		if self.phase != "clean":
+			msg = portage._doebuild_exit_status_check(
+				self.phase, self.settings)
+			if msg:
+				self.returncode = 1
+				from textwrap import wrap
+				from portage.elog.messages import eerror
+				for l in wrap(msg, 72):
+					eerror(l, phase=self.phase, key=self.pkg.cpv)
 
 		returncode = self.returncode
 		settings = self.settings
@@ -2286,9 +2300,15 @@ class Binpkg(EbuildBuildDir):
 			cleanup = 1
 			mydbapi = root_config.trees[tree].dbapi
 
-			retval = portage.doebuild(ebuild_path, "clean",
-				root_config.root, settings, debug, cleanup=cleanup,
-				mydbapi=mydbapi, tree=tree)
+			phase = "clean"
+			ebuild_phase = EbuildPhase(fd_pipes=fd_pipes,
+				pkg=pkg, phase=phase, scheduler=scheduler,
+				settings=settings, tree=tree)
+
+			ebuild_phase.start()
+			scheduler.schedule(ebuild_phase.reg_id)
+			retval = ebuild_phase.wait()
+
 			if retval != os.EX_OK:
 				return retval
 
