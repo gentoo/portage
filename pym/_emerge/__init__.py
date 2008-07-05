@@ -1467,6 +1467,8 @@ class AsynchronousTask(SlotObject):
 		return self.returncode is None
 
 	def poll(self):
+		if self.returncode is not None:
+			self._wait_hook()
 		return self.returncode
 
 	def wait(self):
@@ -1474,7 +1476,8 @@ class AsynchronousTask(SlotObject):
 		return self.returncode
 
 	def cancel(self):
-		pass
+		self.cancelled = True
+		self.wait()
 
 	def addExitListener(self, f):
 		"""
@@ -2618,12 +2621,6 @@ class BinpkgVerifier(AsynchronousTask):
 			rval = 1
 
 		self.returncode = rval
-
-	def cancel(self):
-		self.cancelled = True
-
-	def poll(self):
-		return self.returncode
 
 class BinpkgExtractorAsync(SpawnProcess):
 
