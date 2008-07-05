@@ -1526,7 +1526,7 @@ class CompositeTask(AsynchronousTask):
 class TaskSequence(CompositeTask):
 	"""
 	A collection of tasks that executes sequentially. Each task
-	must have a _set_returncode() method that can be wrapped as
+	must have a addExitListener() method that can be used as
 	a means to trigger movement from one task to the next.
 	"""
 
