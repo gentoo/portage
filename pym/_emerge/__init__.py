@@ -1499,13 +1499,38 @@ class AsynchronousTask(SlotObject):
 			self._exit_listeners = None
 
 class CompositeTask(AsynchronousTask):
+
+	__slots__ = ("scheduler",) + ("_current_task",)
+
+	def isAlive(self):
+		return self._current_task is not None
+
+	def cancel(self):
+		self.cancelled = True
+		if self._current_task is not None:
+			self._current_task.cancel()
+
+	def wait(self):
+
+		while True:
+			task = self._current_task
+			if task is None:
+				break
+			if hasattr(task, "reg_id"):
+				self.scheduler.schedule(task.reg_id)
+			task.wait()
+
+		self._wait_hook()
+		return self.returncode
+
+class TaskSequence(CompositeTask):
 	"""
 	A collection of tasks that executes sequentially. Each task
 	must have a _set_returncode() method that can be wrapped as
 	a means to trigger movement from one task to the next.
 	"""
 
-	__slots__ = ("scheduler",) + ("_current_task", "_task_queue")
+	__slots__ = ("_task_queue",)
 
 	def __init__(self, **kwargs):
 		AsynchronousTask.__init__(self, **kwargs)
@@ -1517,26 +1542,9 @@ class CompositeTask(AsynchronousTask):
 	def start(self):
 		self._start_next_task()
 
-	def isAlive(self):
-		return self._current_task is not None
-
 	def cancel(self):
 		self._task_queue.clear()
-		self.cancelled = True
-		if self._current_task is not None:
-			self._current_task.cancel()
-
-	def wait(self):
-
-		while True:
-			task = self._current_task
-			if task is None:
-				break
-			self.scheduler.schedule(task.reg_id)
-			task.wait()
-
-		self._wait_hook()
-		return self.returncode
+		CompositeTask.cancel(self)
 
 	def _start_next_task(self):
 		self._current_task = self._task_queue.popleft()
@@ -1945,9 +1953,9 @@ class EbuildBuild(EbuildBuildDir):
 				self.unlock()
 		return os.EX_OK
 
-class EbuildExecuter(AsynchronousTask):
+class EbuildExecuter(CompositeTask):
 
-	__slots__ = ("pkg", "scheduler", "settings") + ("_current_task",)
+	__slots__ = ("pkg", "scheduler", "settings")
 
 	_phases = ("setup", "unpack", "compile", "test", "install")
 
@@ -1986,7 +1994,7 @@ class EbuildExecuter(AsynchronousTask):
 			2 : sys.stderr.fileno(),
 		}
 
-		ebuild_phases = CompositeTask(scheduler=scheduler)
+		ebuild_phases = TaskSequence(scheduler=scheduler)
 
 		for phase in self._phases:
 			ebuild_phases.add(EbuildPhase(fd_pipes=fd_pipes,
@@ -2000,27 +2008,6 @@ class EbuildExecuter(AsynchronousTask):
 	def _ebuild_phases_exit(self, ebuild_phases):
 		self.returncode = ebuild_phases.returncode
 		self._current_task = None
-
-	def isAlive(self):
-		return self._current_task is not None
-
-	def cancel(self):
-		self.cancelled = True
-		if self._current_task is not None:
-			self._current_task.cancel()
-
-	def wait(self):
-
-		while True:
-			task = self._current_task
-			if task is None:
-				break
-			if hasattr(task, "reg_id"):
-				self.scheduler.schedule(task.reg_id)
-			task.wait()
-
-		self._wait_hook()
-		return self.returncode
 
 class EbuildPhase(SubProcess):
 
