@@ -1805,8 +1805,13 @@ class EbuildBuild(EbuildBuildDir):
 				if retval != os.EX_OK:
 					return retval
 
-				build = EbuildBinpkg(pkg=pkg, settings=settings)
-				retval = build.execute()
+				build = EbuildBinpkg(pkg=pkg,
+					scheduler=scheduler, settings=settings)
+
+				build.start()
+				scheduler.schedule(build.reg_id)
+				retval = build.wait()
+
 				if retval != os.EX_OK:
 					return retval
 
@@ -2082,19 +2087,15 @@ class EbuildPhase(SubProcess):
 			if returncode == os.EX_OK:
 				returncode = portage._post_src_install_checks(settings)
 
-class EbuildBinpkg(Task):
+class EbuildBinpkg(EbuildPhase):
 	"""
 	This assumes that src_install() has successfully completed.
 	"""
-	__slots__ = ("pkg", "settings")
+	__slots__ = ("_binpkg_tmpfile",)
 
-	def _get_hash_key(self):
-		hash_key = getattr(self, "_hash_key", None)
-		if hash_key is None:
-			self._hash_key = ("EbuildBinpkg", self.pkg._get_hash_key())
-		return self._hash_key
-
-	def execute(self):
+	def start(self):
+		self.phase = "package"
+		self.tree = "porttree"
 		pkg = self.pkg
 		root_config = pkg.root_config
 		portdb = root_config.trees["porttree"].dbapi
@@ -2106,29 +2107,23 @@ class EbuildBinpkg(Task):
 		bintree.prevent_collision(pkg.cpv)
 		binpkg_tmpfile = os.path.join(bintree.pkgdir,
 			pkg.cpv + ".tbz2." + str(os.getpid()))
+		self._binpkg_tmpfile = binpkg_tmpfile
 		settings["PORTAGE_BINPKG_TMPFILE"] = binpkg_tmpfile
 		settings.backup_changes("PORTAGE_BINPKG_TMPFILE")
 
-		# Earlier phases should already be done, so
-		# use "noauto" to quietly skip them.
-		settings.features.append("noauto")
-
 		try:
-			retval = portage.doebuild(ebuild_path,
-				"package", root_config.root,
-				settings, debug, mydbapi=portdb,
-				tree="porttree")
+			EbuildPhase.start(self)
 		finally:
 			settings.pop("PORTAGE_BINPKG_TMPFILE", None)
-			try:
-				settings.features.remove("noauto")
-			except ValueError:
-				pass
 
-		if retval == os.EX_OK:
+	def _set_returncode(self, wait_retval):
+		EbuildPhase._set_returncode(self, wait_retval)
+
+		pkg = self.pkg
+		bintree = pkg.root_config.trees["bintree"]
+		binpkg_tmpfile = self._binpkg_tmpfile
+		if self.returncode == os.EX_OK:
 			bintree.inject(pkg.cpv, filename=binpkg_tmpfile)
-
-		return retval
 
 class EbuildMerge(SlotObject):
 
