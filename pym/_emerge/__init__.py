@@ -1454,8 +1454,29 @@ class EbuildFetchPretend(SlotObject):
 			mydbapi=portdb, tree="porttree")
 		return retval
 
-class SubProcess(SlotObject):
-	__slots__ = ("cancelled", "pid", "returncode")
+class AsynchronousTask(SlotObject):
+	__slots__ = ("cancelled", "returncode")
+
+	def start(self):
+		"""
+		Start an asynchronous task and then return as soon as possible.
+		"""
+		pass
+
+	def isAlive(self):
+		return self.returncode is None
+
+	def poll(self):
+		return self.returncode
+
+	def wait(self):
+		return self.returncode
+
+	def cancel(self):
+		pass
+
+class SubProcess(AsynchronousTask):
+	__slots__ = ("pid",)
 
 	def poll(self):
 		if self.returncode is not None:
@@ -2175,6 +2196,8 @@ class Binpkg(EbuildBuildDir):
 		tree = "bintree"
 		settings.setcpv(pkg)
 		debug = settings.get("PORTAGE_DEBUG") == "1"
+		verify = "strict" in settings.features and \
+			not opts.pretend
 
 		# The prefetcher has already completed or it
 		# could be running now. If it's running now,
@@ -2226,6 +2249,13 @@ class Binpkg(EbuildBuildDir):
 
 		if opts.fetchonly:
 			return os.EX_OK
+
+		if verify:
+			verifier = BinpkgVerifier(pkg=pkg)
+			verifier.start()
+			retval = verifier.wait()
+			if retval != os.EX_OK:
+				return retval
 
 		msg = " === (%s of %s) Merging Binary (%s::%s)" % \
 			(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg_path)
@@ -2352,8 +2382,7 @@ class Binpkg(EbuildBuildDir):
 
 class BinpkgFetcher(Task):
 
-	__slots__ = ("use_locks", "pkg", "pretend",
-	"pkg_path", "remote")
+	__slots__ = ("use_locks", "pkg", "pretend", "pkg_path", "remote")
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
@@ -2497,6 +2526,47 @@ class BinpkgFetcherAsync(SpawnProcess):
 		portage.locks.unlockfile(self._lock_obj)
 		self._lock_obj = None
 		self.locked = False
+
+class BinpkgVerifier(AsynchronousTask):
+	__slots__ = ("pkg",)
+
+	def start(self):
+		"""
+		Note: Unlike a normal AsynchronousTask.start() method,
+		this one does all work is synchronously. The returncode
+		attribute will be set before it returns.
+		"""
+
+		pkg = self.pkg
+		root_config = pkg.root_config
+		bintree = root_config.trees["bintree"]
+		rval = os.EX_OK
+		try:
+			bintree.digestCheck(pkg)
+		except portage.exception.FileNotFound:
+			writemsg("!!! Fetching Binary failed " + \
+				"for '%s'\n" % pkg.cpv, noiselevel=-1)
+			rval = 1
+		except portage.exception.DigestException, e:
+			writemsg("\n!!! Digest verification failed:\n",
+				noiselevel=-1)
+			writemsg("!!! %s\n" % e.value[0],
+				noiselevel=-1)
+			writemsg("!!! Reason: %s\n" % e.value[1],
+				noiselevel=-1)
+			writemsg("!!! Got: %s\n" % e.value[2],
+				noiselevel=-1)
+			writemsg("!!! Expected: %s\n" % e.value[3],
+				noiselevel=-1)
+			rval = 1
+
+		self.returncode = rval
+
+	def cancel(self):
+		self.cancelled = True
+
+	def poll(self):
+		return self.returncode
 
 class BinpkgExtractorAsync(SpawnProcess):
 

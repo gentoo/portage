@@ -3143,24 +3143,25 @@ def _checksum_failure_temp_file(distdir, basename):
 	os.rename(filename, temp_filename)
 	return temp_filename
 
-def _check_digests(filename, digests):
+def _check_digests(filename, digests, show_errors=1):
 	"""
 	Check digests and display a message if an error occurs.
 	@return True if all digests match, False otherwise.
 	"""
 	verified_ok, reason = portage.checksum.verify_all(filename, digests)
 	if not verified_ok:
-		writemsg("!!! Previously fetched" + \
-			" file: '%s'\n" % filename, noiselevel=-1)
-		writemsg("!!! Reason: %s\n" % reason[0],
-			noiselevel=-1)
-		writemsg(("!!! Got:      %s\n" + \
-			"!!! Expected: %s\n") % \
-			(reason[1], reason[2]), noiselevel=-1)
+		if show_errors:
+			writemsg("!!! Previously fetched" + \
+				" file: '%s'\n" % filename, noiselevel=-1)
+			writemsg("!!! Reason: %s\n" % reason[0],
+				noiselevel=-1)
+			writemsg(("!!! Got:      %s\n" + \
+				"!!! Expected: %s\n") % \
+				(reason[1], reason[2]), noiselevel=-1)
 		return False
 	return True
 
-def _check_distfile(filename, digests, eout):
+def _check_distfile(filename, digests, eout, show_errors=1):
 	"""
 	@return a tuple of (match, stat_obj) where match is True if filename
 	matches all given digests (if any) and stat_obj is a stat result, or
@@ -3183,7 +3184,7 @@ def _check_distfile(filename, digests, eout):
 			eout.ebegin("%s %s ;-)" % (os.path.basename(filename), "size"))
 			eout.eend(0)
 	else:
-		if _check_digests(filename, digests):
+		if _check_digests(filename, digests, show_errors=show_errors):
 			eout.ebegin("%s %s ;-)" % (os.path.basename(filename),
 				" ".join(sorted(digests))))
 			eout.eend(0)
