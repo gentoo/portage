@@ -1523,7 +1523,8 @@ class CompositeTask(AsynchronousTask):
 	def cancel(self):
 		self._task_queue.clear()
 		self.cancelled = True
-		self._current_task.cancel()
+		if self._current_task is not None:
+			self._current_task.cancel()
 
 	def wait(self):
 
