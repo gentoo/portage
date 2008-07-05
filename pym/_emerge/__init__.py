@@ -2194,6 +2194,8 @@ class Binpkg(EbuildBuildDir):
 		settings = self.settings
 		world_atom = self.world_atom
 		tree = "bintree"
+		root_config = pkg.root_config
+		bintree = root_config.trees[tree]
 		settings.setcpv(pkg)
 		debug = settings.get("PORTAGE_DEBUG") == "1"
 		verify = "strict" in settings.features and \
@@ -2231,18 +2233,20 @@ class Binpkg(EbuildBuildDir):
 					retval = prefetcher.wait()
 			del prefetcher
 
-		fetcher = BinpkgFetcher(pkg=pkg, pretend=opts.pretend,
-			use_locks=("distlocks" in settings.features))
+		fetcher = BinpkgFetcher(pkg=pkg, scheduler=scheduler)
 		pkg_path = fetcher.pkg_path
 
-		if opts.getbinpkg:
-			retval = fetcher.execute()
-			if fetcher.remote:
-				msg = " --- (%s of %s) Fetching Binary (%s::%s)" %\
-					(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg_path)
-				short_msg = "emerge: (%s of %s) %s Fetch" % \
-					(pkg_count.curval, pkg_count.maxval, pkg.cpv)
-				logger.log(msg, short_msg=short_msg)
+		if opts.getbinpkg and bintree.isremote(pkg.cpv):
+
+			msg = " --- (%s of %s) Fetching Binary (%s::%s)" %\
+				(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg_path)
+			short_msg = "emerge: (%s of %s) %s Fetch" % \
+				(pkg_count.curval, pkg_count.maxval, pkg.cpv)
+			logger.log(msg, short_msg=short_msg)
+
+			fetcher.start()
+			scheduler.schedule(fetcher.reg_id)
+			retval = fetcher.wait()
 
 			if retval != os.EX_OK:
 				return retval
@@ -2380,65 +2384,7 @@ class Binpkg(EbuildBuildDir):
 			self.unlock()
 		return os.EX_OK
 
-class BinpkgFetcher(Task):
-
-	__slots__ = ("use_locks", "pkg", "pretend", "pkg_path", "remote")
-
-	def __init__(self, **kwargs):
-		Task.__init__(self, **kwargs)
-		pkg = self.pkg
-		self.pkg_path = pkg.root_config.trees["bintree"].getname(pkg.cpv)
-
-	def _get_hash_key(self):
-		hash_key = getattr(self, "_hash_key", None)
-		if hash_key is None:
-			self._hash_key = ("BinpkgFetcher", self.pkg._get_hash_key())
-		return self._hash_key
-
-	def execute(self):
-		tbz2_lock = None
-		use_locks = self.use_locks
-		pkg = self.pkg
-		pretend = self.pretend
-		bintree = pkg.root_config.trees["bintree"]
-		pkgdir = bintree.pkgdir
-		pkg_path = self.pkg_path
-		rval = os.EX_OK
-
-		try:
-			try:
-				if not pretend and use_locks and os.access(pkgdir, os.W_OK):
-					portage.util.ensure_dirs(os.path.dirname(pkg_path))
-					tbz2_lock = portage.locks.lockfile(pkg_path,
-						wantnewlockfile=1)
-				if bintree.isremote(pkg.cpv):
-					self.remote = True
-					if not pretend:
-						bintree.gettbz2(pkg.cpv)
-			finally:
-				if tbz2_lock is not None:
-					portage.locks.unlockfile(tbz2_lock)
-		except portage.exception.FileNotFound:
-			writemsg("!!! Fetching Binary failed " + \
-				"for '%s'\n" % pkg.cpv, noiselevel=-1)
-			rval = 1
-		except portage.exception.DigestException, e:
-			writemsg("\n!!! Digest verification failed:\n",
-				noiselevel=-1)
-			writemsg("!!! %s\n" % e.value[0],
-				noiselevel=-1)
-			writemsg("!!! Reason: %s\n" % e.value[1],
-				noiselevel=-1)
-			writemsg("!!! Got: %s\n" % e.value[2],
-				noiselevel=-1)
-			writemsg("!!! Expected: %s\n" % e.value[3],
-				noiselevel=-1)
-			if not pretend:
-				os.unlink(pkg_path)
-			rval = 1
-		return rval
-
-class BinpkgFetcherAsync(SpawnProcess):
+class BinpkgFetcher(SpawnProcess):
 
 	__slots__ = ("pkg",
 		"locked", "pkg_path", "_lock_obj")
@@ -7448,7 +7394,7 @@ class Scheduler(object):
 			"--getbinpkg" in self.myopts and \
 			pkg.root_config.trees["bintree"].isremote(pkg.cpv):
 
-			prefetcher = BinpkgFetcherAsync(logfile=self._fetch_log,
+			prefetcher = BinpkgFetcher(logfile=self._fetch_log,
 				pkg=pkg, scheduler=self._sched_iface)
 
 		return prefetcher
