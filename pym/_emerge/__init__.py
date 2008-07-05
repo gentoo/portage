@@ -1489,7 +1489,8 @@ class AsynchronousTask(SlotObject):
 
 	def _wait_hook(self):
 		"""
-		Call this method before returning from wait. This hook is
+		Call this method after the task completes, just before returning
+		the returncode from wait() or poll(). This hook is
 		used to trigger exit listeners when the returncode first
 		becomes available.
 		"""
@@ -1574,6 +1575,7 @@ class SubProcess(AsynchronousTask):
 		if retval == (0, 0):
 			return None
 		self._set_returncode(retval)
+		self._wait_hook()
 		return self.returncode
 
 	def cancel(self):
