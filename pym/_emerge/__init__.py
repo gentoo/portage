@@ -1564,6 +1564,7 @@ class CompositeTask(AsynchronousTask):
 		self._default_exit(task)
 		self._current_task = None
 		self.returncode = task.returncode
+		return self.returncode
 
 	def _start_task(self, task, exit_handler):
 		"""
@@ -1858,14 +1859,14 @@ class EbuildBuildDir(SlotObject):
 	class AlreadyLocked(portage.exception.PortageException):
 		pass
 
-class EbuildBuild(EbuildBuildDir):
+class EbuildBuild(CompositeTask):
 
 	__slots__ = ("args_set", "find_blockers",
-		"ldpath_mtimes", "logger", "opts",
-		"pkg", "pkg_count", "scheduler",
-		"settings", "world_atom")
+		"ldpath_mtimes", "logger", "opts", "pkg", "pkg_count",
+		"settings", "world_atom") + \
+		("_build_dir", "_buildpkg", "_ebuild_path", "_tree")
 
-	def execute(self):
+	def start(self):
 
 		args_set = self.args_set
 		find_blockers = self.find_blockers
@@ -1883,6 +1884,7 @@ class EbuildBuild(EbuildBuildDir):
 		world_set = root_config.sets["world"]
 		vartree = root_config.trees["vartree"]
 		tree = "porttree"
+		self._tree = tree
 		portdb = root_config.trees[tree].dbapi
 		debug = settings.get("PORTAGE_DEBUG") == "1"
 		features = self.settings.features
@@ -1890,6 +1892,7 @@ class EbuildBuild(EbuildBuildDir):
 		settings.backup_changes("EMERGE_FROM")
 		settings.reset()
 		ebuild_path = portdb.findname(self.pkg.cpv)
+		self._ebuild_path = ebuild_path
 
 		#buildsyspkg: Check if we need to _force_ binary package creation
 		issyspkg = "buildsyspkg" in features and \
@@ -1898,109 +1901,142 @@ class EbuildBuild(EbuildBuildDir):
 
 		if opts.fetchonly:
 			if opts.pretend:
-
 				fetcher = EbuildFetchPretend(
 					fetch_all=opts.fetch_all_uri,
 					pkg=pkg, settings=settings)
-
 				retval = fetcher.execute()
+				self.returncode = retval
+				self._wait_hook()
 
 			else:
-
 				fetcher = EbuildFetcher(pkg=pkg, scheduler=scheduler)
-				fetcher.start()
-				scheduler.schedule(fetcher.reg_id)
-				retval = fetcher.wait()
+				self._start_task(fetcher, self._fetchonly_exit)
 
-			if retval != os.EX_OK:
-				from portage.elog.messages import eerror
-				eerror("!!! Fetch for %s failed, continuing..." % pkg.cpv,
-					phase="unpack", key=pkg.cpv)
-			return retval
+			return
 
-		try:
-			self.lock()
-			# Cleaning is triggered before the setup
-			# phase, in portage.doebuild().
-			msg = " === (%s of %s) Cleaning (%s::%s)" % \
+		self._build_dir = EbuildBuildDir(pkg=pkg, settings=settings)
+		self._build_dir.lock()
+
+		# Cleaning is triggered before the setup
+		# phase, in portage.doebuild().
+		msg = " === (%s of %s) Cleaning (%s::%s)" % \
+			(pkg_count.curval, pkg_count.maxval, pkg.cpv, ebuild_path)
+		short_msg = "emerge: (%s of %s) %s Clean" % \
+			(pkg_count.curval, pkg_count.maxval, pkg.cpv)
+		logger.log(msg, short_msg=short_msg)
+
+		if opts.buildpkg or issyspkg:
+
+			self._buildpkg = True
+			if issyspkg:
+				portage.writemsg_stdout(">>> This is a system package, " + \
+					"let's pack a rescue tarball.\n", noiselevel=-1)
+
+			msg = " === (%s of %s) Compiling/Packaging (%s::%s)" % \
 				(pkg_count.curval, pkg_count.maxval, pkg.cpv, ebuild_path)
-			short_msg = "emerge: (%s of %s) %s Clean" % \
+			short_msg = "emerge: (%s of %s) %s Compile" % \
 				(pkg_count.curval, pkg_count.maxval, pkg.cpv)
 			logger.log(msg, short_msg=short_msg)
 
-			if opts.buildpkg or issyspkg:
-				if issyspkg:
-					portage.writemsg(">>> This is a system package, " + \
-						"let's pack a rescue tarball.\n", noiselevel=-1)
-				msg = " === (%s of %s) Compiling/Packaging (%s::%s)" % \
-					(pkg_count.curval, pkg_count.maxval, pkg.cpv, ebuild_path)
-				short_msg = "emerge: (%s of %s) %s Compile" % \
-					(pkg_count.curval, pkg_count.maxval, pkg.cpv)
-				logger.log(msg, short_msg=short_msg)
+		else:
+			msg = " === (%s of %s) Compiling/Merging (%s::%s)" % \
+				(pkg_count.curval, pkg_count.maxval, pkg.cpv, ebuild_path)
+			short_msg = "emerge: (%s of %s) %s Compile" % \
+				(pkg_count.curval, pkg_count.maxval, pkg.cpv)
+			logger.log(msg, short_msg=short_msg)
 
-				build = EbuildExecuter(pkg=pkg, scheduler=scheduler,
-					settings=settings)
-				build.start()
-				retval = build.wait()
-				if retval != os.EX_OK:
-					return retval
+		build = EbuildExecuter(pkg=pkg, scheduler=scheduler,
+			settings=settings)
+		self._start_task(build, self._build_exit)
 
-				build = EbuildBinpkg(pkg=pkg,
-					scheduler=scheduler, settings=settings)
+	def _fetchonly_exit(self, fetcher):
+		if self._final_exit(fetcher) != os.EX_OK:
+			pkg = self.pkg
+			eerror("!!! Fetch for %s failed, continuing..." % pkg.cpv,
+				phase="unpack", key=pkg.cpv)
 
-				build.start()
-				scheduler.schedule(build.reg_id)
-				retval = build.wait()
+	def _unlock_builddir(self):
+		portage.elog.elog_process(self.pkg.cpv, self.settings)
+		self._build_dir.unlock()
 
-				if retval != os.EX_OK:
-					return retval
+	def _build_exit(self, build):
+		if self._default_exit(build) != os.EX_OK:
+			self._unlock_builddir()
+			return
 
-				if not opts.buildpkgonly:
-					msg = " === (%s of %s) Merging (%s::%s)" % \
-						(pkg_count.curval, pkg_count.maxval,
-						pkg.cpv, ebuild_path)
-					short_msg = "emerge: (%s of %s) %s Merge" % \
-						(pkg_count.curval, pkg_count.maxval, pkg.cpv)
-					logger.log(msg, short_msg=short_msg)
+		opts = self.opts
+		buildpkg = self._buildpkg
 
-					merge = EbuildMerge(find_blockers=find_blockers,
-						ldpath_mtimes=ldpath_mtimes, logger=logger, pkg=pkg,
-						pkg_count=pkg_count, pkg_path=ebuild_path,
-						settings=settings, tree=tree, world_atom=world_atom)
-					retval = merge.execute()
-					if retval != os.EX_OK:
-						return retval
-				elif "noclean" not in settings.features:
-					portage.doebuild(ebuild_path, "clean", root,
-						settings, debug=debug, mydbapi=portdb,
-						tree=tree)
-			else:
-				msg = " === (%s of %s) Compiling/Merging (%s::%s)" % \
-					(pkg_count.curval, pkg_count.maxval, pkg.cpv, ebuild_path)
-				short_msg = "emerge: (%s of %s) %s Compile" % \
-					(pkg_count.curval, pkg_count.maxval, pkg.cpv)
-				logger.log(msg, short_msg=short_msg)
+		if not buildpkg:
+			self._final_exit(build)
+			return
 
-				build = EbuildExecuter(pkg=pkg, scheduler=scheduler,
-					settings=settings)
-				build.start()
-				retval = build.wait()
-				if retval != os.EX_OK:
-					return retval
+		packager = EbuildBinpkg(pkg=self.pkg,
+			scheduler=self.scheduler, settings=self.settings)
 
-				merge = EbuildMerge(find_blockers=self.find_blockers,
-					ldpath_mtimes=ldpath_mtimes, logger=logger, pkg=pkg,
-					pkg_count=pkg_count, pkg_path=ebuild_path,
-					settings=settings, tree=tree, world_atom=world_atom)
-				retval = merge.execute()
+		self._start_task(packager, self._buildpkg_exit)
 
-				if retval != os.EX_OK:
-					return retval
+	def _buildpkg_exit(self, packager):
+		"""
+		Released build dir lock when there is a failure or
+		when in buildpkgonly mode. Otherwise, the lock will
+		be released when merge() is called.
+		"""
+
+		if self._default_exit(packager) == os.EX_OK and \
+			self.opts.buildpkgonly:
+			# Need to call "clean" phase for buildpkgonly mode
+			phase = "clean"
+			clean_phase = EbuildPhase(pkg=self.pkg, phase=phase,
+				scheduler=self.scheduler, settings=self.settings,
+				tree=self._tree)
+			self._start_task(clean_phase, self._clean_exit)
+			return
+
+		if self._final_exit(packager) != os.EX_OK or \
+			self.opts.buildpkgonly:
+			self._unlock_builddir()
+
+	def _clean_exit(self, clean_phase):
+		if self._final_exit(clean_phase) != os.EX_OK or \
+			self.opts.buildpkgonly:
+			self._unlock_builddir()
+
+	def install(self):
+		"""
+		Install the package and then clean up and release locks.
+		Only call this after the build has completed successfully
+		and neither fetchonly nor buildpkgonly mode are enabled.
+		"""
+
+		find_blockers = self.find_blockers
+		ldpath_mtimes = self.ldpath_mtimes
+		logger = self.logger
+		pkg = self.pkg
+		pkg_count = self.pkg_count
+		settings = self.settings
+		world_atom = self.world_atom
+		ebuild_path = self._ebuild_path
+		tree = self._tree
+
+		merge = EbuildMerge(find_blockers=self.find_blockers,
+			ldpath_mtimes=ldpath_mtimes, logger=logger, pkg=pkg,
+			pkg_count=pkg_count, pkg_path=ebuild_path,
+			settings=settings, tree=tree, world_atom=world_atom)
+
+		msg = " === (%s of %s) Merging (%s::%s)" % \
+			(pkg_count.curval, pkg_count.maxval,
+			pkg.cpv, ebuild_path)
+		short_msg = "emerge: (%s of %s) %s Merge" % \
+			(pkg_count.curval, pkg_count.maxval, pkg.cpv)
+		logger.log(msg, short_msg=short_msg)
+
+		try:
+			rval = merge.execute()
 		finally:
-			if self.locked:
-				portage.elog.elog_process(pkg.cpv, settings)
-				self.unlock()
-		return os.EX_OK
+			self._unlock_builddir()
+
+		return rval
 
 class EbuildExecuter(CompositeTask):
 
@@ -2731,12 +2767,19 @@ class MergeListItem(SlotObject):
 				settings=settings, scheduler=scheduler,
 				world_atom=world_atom)
 
-			retval = build.execute()
+			build.start()
+			retval = build.wait()
 
 			if retval != os.EX_OK:
 				if build_opts.fetchonly:
 					failed_fetches.append(pkg.cpv)
 				return retval
+
+			if build_opts.fetchonly or \
+				build_opts.buildpkgonly:
+				return retval
+
+			retval = build.install()
 
 		elif pkg.type_name == "binary":
 
