@@ -1527,6 +1527,15 @@ class CompositeTask(AsynchronousTask):
 		self._wait_hook()
 		return self.returncode
 
+	def _assert_current(self, task):
+		"""
+		Raises an AssertionError if the given task is not the
+		same one as self._current_task. This can be useful
+		for detecting bugs.
+		"""
+		if task is not self._current_task:
+			raise AssertionError("Unrecognized task: %s" % (task,))
+
 class TaskSequence(CompositeTask):
 	"""
 	A collection of tasks that executes sequentially. Each task
@@ -1557,9 +1566,8 @@ class TaskSequence(CompositeTask):
 		task.start()
 
 	def _task_exit_handler(self, task):
-		if task is not self._current_task:
-			raise AssertionError("Unrecognized task: %s" % (task,))
 
+		self._assert_current(task)
 		if self._task_queue and \
 			task.returncode == os.EX_OK:
 			self._start_next_task()
@@ -1979,6 +1987,7 @@ class EbuildExecuter(CompositeTask):
 
 	def _clean_phase_exit(self, clean_phase):
 
+		self._assert_current(clean_phase)
 		if clean_phase.returncode != os.EX_OK:
 			self.returncode = clean_phase.returncode
 			self._current_task = None
@@ -2011,6 +2020,8 @@ class EbuildExecuter(CompositeTask):
 		ebuild_phases.start()
 
 	def _ebuild_phases_exit(self, ebuild_phases):
+
+		self._assert_current(ebuild_phases)
 		self.returncode = ebuild_phases.returncode
 		self._current_task = None
 
