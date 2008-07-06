@@ -2587,7 +2587,7 @@ class BinpkgFetcher(SpawnProcess):
 		"locked", "pkg_path", "_lock_obj")
 
 	def __init__(self, **kwargs):
-		SubProcess.__init__(self, **kwargs)
+		SpawnProcess.__init__(self, **kwargs)
 		pkg = self.pkg
 		self.pkg_path = pkg.root_config.trees["bintree"].getname(pkg.cpv)
 
