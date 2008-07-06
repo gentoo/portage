@@ -1536,6 +1536,22 @@ class CompositeTask(AsynchronousTask):
 		if task is not self._current_task:
 			raise AssertionError("Unrecognized task: %s" % (task,))
 
+	def _default_exit(self, task):
+		"""
+		Calls _assert_current() on the given task and then sets the
+		composite returncode attribute if task.returncode != os.EX_OK.
+		If the task failed then self._current_task will be set to None.
+		Subclasses can use this as a generic task exit callback.
+
+		@rtype: int
+		@returns: The task.returncode attribute.
+		"""
+		self._assert_current(task)
+		if task.returncode != os.EX_OK:
+			self.returncode = task.returncode
+			self._current_task = None
+		return task.returncode
+
 class TaskSequence(CompositeTask):
 	"""
 	A collection of tasks that executes sequentially. Each task
@@ -1566,15 +1582,9 @@ class TaskSequence(CompositeTask):
 		task.start()
 
 	def _task_exit_handler(self, task):
-
-		self._assert_current(task)
-		if self._task_queue and \
-			task.returncode == os.EX_OK:
+		if self._default_exit(task) == os.EX_OK and \
+			self._task_queue:
 			self._start_next_task()
-			return
-
-		self._current_task = None
-		self.returncode = task.returncode
 
 class SubProcess(AsynchronousTask):
 	__slots__ = ("pid",)
@@ -1987,10 +1997,7 @@ class EbuildExecuter(CompositeTask):
 
 	def _clean_phase_exit(self, clean_phase):
 
-		self._assert_current(clean_phase)
-		if clean_phase.returncode != os.EX_OK:
-			self.returncode = clean_phase.returncode
-			self._current_task = None
+		if self._default_exit(clean_phase) != os.EX_OK:
 			return
 
 		pkg = self.pkg
@@ -2015,15 +2022,9 @@ class EbuildExecuter(CompositeTask):
 				pkg=pkg, phase=phase, scheduler=scheduler,
 				settings=settings, tree=tree))
 
-		ebuild_phases.addExitListener(self._ebuild_phases_exit)
+		ebuild_phases.addExitListener(self._default_exit)
 		self._current_task = ebuild_phases
 		ebuild_phases.start()
-
-	def _ebuild_phases_exit(self, ebuild_phases):
-
-		self._assert_current(ebuild_phases)
-		self.returncode = ebuild_phases.returncode
-		self._current_task = None
 
 class EbuildPhase(SubProcess):
 
