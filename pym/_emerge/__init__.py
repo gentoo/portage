@@ -2393,31 +2393,31 @@ class PackageUninstall(Task):
 			return e.status
 		return os.EX_OK
 
-class Binpkg(EbuildBuildDir):
+class Binpkg(CompositeTask):
 
 	__slots__ = ("find_blockers",
 		"ldpath_mtimes", "logger", "opts",
-		"pkg", "pkg_count", "prefetcher", "scheduler",
-		"settings", "world_atom")
+		"pkg", "pkg_count", "prefetcher", "settings", "world_atom") + \
+		("_bintree", "_build_dir", "_ebuild_path", "_fetched_pkg",
+		"_image_dir", "_infloc", "_pkg_path", "_tree", "_verify")
 
-	def execute(self):
+	def start(self):
 
-		find_blockers = self.find_blockers
-		ldpath_mtimes = self.ldpath_mtimes
-		logger = self.logger
-		opts = self.opts
 		pkg = self.pkg
-		pkg_count = self.pkg_count
-		scheduler = self.scheduler
 		settings = self.settings
-		world_atom = self.world_atom
-		tree = "bintree"
-		root_config = pkg.root_config
-		bintree = root_config.trees[tree]
 		settings.setcpv(pkg)
-		debug = settings.get("PORTAGE_DEBUG") == "1"
-		verify = "strict" in settings.features and \
-			not opts.pretend
+		self._tree = "bintree"
+		self._bintree = self.pkg.root_config.trees[self._tree]
+		self._verify = "strict" in self.settings.features and \
+			not self.opts.pretend
+
+		dir_path = os.path.join(settings["PORTAGE_TMPDIR"],
+			"portage", pkg.category, pkg.pf)
+		self._build_dir = EbuildBuildDir(dir_path=dir_path,
+			pkg=pkg, settings=settings)
+		self._image_dir = os.path.join(dir_path, "image")
+		self._infloc = os.path.join(dir_path, "build-info")
+		self._ebuild_path = os.path.join(self._infloc, pkg.pf + ".ebuild")
 
 		# The prefetcher has already completed or it
 		# could be running now. If it's running now,
@@ -2429,56 +2429,82 @@ class Binpkg(EbuildBuildDir):
 		# use the scheduler and fetcher methods to
 		# synchronize with the fetcher.
 		prefetcher = self.prefetcher
-		if prefetcher is not None:
-			if not prefetcher.isAlive():
-				prefetcher.cancel()
-			else:
-				retval = prefetcher.poll()
+		if prefetcher is None:
+			pass
+		elif prefetcher.isAlive():
+			prefetcher.cancel()
+		elif prefetcher.poll() is None:
 
-				if retval is None:
-					waiting_msg = ("Fetching '%s' " + \
-						"in the background. " + \
-						"To view fetch progress, run `tail -f " + \
-						"/var/log/emerge-fetch.log` in another " + \
-						"terminal.") % prefetcher.pkg_path
-					msg_prefix = colorize("GOOD", " * ")
-					from textwrap import wrap
-					waiting_msg = "".join("%s%s\n" % (msg_prefix, line) \
-						for line in wrap(waiting_msg, 65))
-					writemsg(waiting_msg, noiselevel=-1)
+			waiting_msg = ("Fetching '%s' " + \
+				"in the background. " + \
+				"To view fetch progress, run `tail -f " + \
+				"/var/log/emerge-fetch.log` in another " + \
+				"terminal.") % prefetcher.pkg_path
+			msg_prefix = colorize("GOOD", " * ")
+			from textwrap import wrap
+			waiting_msg = "".join("%s%s\n" % (msg_prefix, line) \
+				for line in wrap(waiting_msg, 65))
+			writemsg(waiting_msg, noiselevel=-1)
 
-					scheduler.schedule(prefetcher.reg_id)
-					retval = prefetcher.wait()
-			del prefetcher
+			self._current_task = prefetcher
+			prefetcher.addExitListener(self._prefetch_exit)
+			return
 
-		fetcher = BinpkgFetcher(pkg=pkg, scheduler=scheduler)
+		self._prefetch_exit(prefetcher)
+
+	def _prefetch_exit(self, prefetcher):
+
+		pkg = self.pkg
+		pkg_count = self.pkg_count
+		fetcher = BinpkgFetcher(pkg=self.pkg, scheduler=self.scheduler)
 		pkg_path = fetcher.pkg_path
+		self._pkg_path = pkg_path
 
-		if opts.getbinpkg and bintree.isremote(pkg.cpv):
+		if self.opts.getbinpkg and self._bintree.isremote(pkg.cpv):
 
 			msg = " --- (%s of %s) Fetching Binary (%s::%s)" %\
 				(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg_path)
 			short_msg = "emerge: (%s of %s) %s Fetch" % \
 				(pkg_count.curval, pkg_count.maxval, pkg.cpv)
-			logger.log(msg, short_msg=short_msg)
+			self.logger.log(msg, short_msg=short_msg)
 
-			fetcher.start()
-			scheduler.schedule(fetcher.reg_id)
-			retval = fetcher.wait()
+			self._start_task(fetcher, self._fetcher_exit)
+			return
 
-			if retval != os.EX_OK:
-				return retval
+		self._fetcher_exit(fetcher)
 
-		if opts.fetchonly:
-			return os.EX_OK
+	def _fetcher_exit(self, fetcher):
 
-		if verify:
-			verifier = BinpkgVerifier(pkg=pkg)
-			verifier.start()
-			retval = verifier.wait()
-			if retval != os.EX_OK:
-				return retval
-			bintree.inject(pkg.cpv, filename=pkg_path)
+		# The fetcher only has a returncode when
+		# --getbinpkg is enabled.
+		if fetcher.returncode is not None:
+			self._fetched_pkg = True
+			if self.opts.fetchonly:
+				self._final_exit(fetcher)
+				return
+			elif self._default_exit(fetcher) != os.EX_OK:
+				return
+
+		verifier = None
+		if self._verify:
+			verifier = BinpkgVerifier(pkg=self.pkg)
+			self._start_task(verifier, self._verifier_exit)
+			return
+
+		self._verifier_exit(verifier)
+
+	def _verifier_exit(self, verifier):
+		if verifier is not None and \
+			self._default_exit(verifier) != os.EX_OK:
+				return
+
+		logger = self.logger
+		pkg = self.pkg
+		pkg_count = self.pkg_count
+		pkg_path = self._pkg_path
+
+		if self._fetched_pkg:
+			self._bintree.inject(pkg.cpv, filename=pkg_path)
 
 		msg = " === (%s of %s) Merging Binary (%s::%s)" % \
 			(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg_path)
@@ -2486,126 +2512,130 @@ class Binpkg(EbuildBuildDir):
 			(pkg_count.curval, pkg_count.maxval, pkg.cpv)
 		logger.log(msg, short_msg=short_msg)
 
-		dir_path = os.path.join(settings["PORTAGE_TMPDIR"],
-			"portage", pkg.category, pkg.pf)
-		image_dir = os.path.join(dir_path, "image")
-		infloc = os.path.join(dir_path, "build-info")
+		self._build_dir.lock()
 
-		fd_pipes = {
-			0 : sys.stdin.fileno(),
-			1 : sys.stdout.fileno(),
-			2 : sys.stderr.fileno(),
-		}
+		phase = "clean"
+		settings = self.settings
+		settings.setcpv(pkg)
+		settings["EBUILD"] = self._ebuild_path
+		ebuild_phase = EbuildPhase(
+			pkg=pkg, phase=phase, scheduler=self.scheduler,
+			settings=settings, tree=self._tree)
+
+		self._start_task(ebuild_phase, self._clean_exit)
+
+	def _clean_exit(self, clean_phase):
+		if self._default_exit(clean_phase) != os.EX_OK:
+			self._unlock_builddir()
+			return
+
+		dir_path = self._build_dir.dir_path
 
 		try:
-			self.lock()
+			shutil.rmtree(dir_path)
+		except (IOError, OSError), e:
+			if e.errno != errno.ENOENT:
+				raise
+			del e
 
-			root_config = self.pkg.root_config
-			ebuild_path = os.path.join(infloc, pkg.pf + ".ebuild")
-			cleanup = 1
-			mydbapi = root_config.trees[tree].dbapi
+		infloc = self._infloc
+		pkg = self.pkg
+		pkg_path = self._pkg_path
 
-			phase = "clean"
-			ebuild_phase = EbuildPhase(fd_pipes=fd_pipes,
-				pkg=pkg, phase=phase, scheduler=scheduler,
-				settings=settings, tree=tree)
+		dir_mode = 0755
+		for mydir in (dir_path, self._image_dir, infloc):
+			portage.util.ensure_dirs(mydir, uid=portage.data.portage_uid,
+				gid=portage.data.portage_gid, mode=dir_mode)
 
-			ebuild_phase.start()
-			scheduler.schedule(ebuild_phase.reg_id)
-			retval = ebuild_phase.wait()
+		portage.writemsg_stdout(">>> Extracting info\n")
 
-			if retval != os.EX_OK:
-				return retval
+		# This initializes PORTAGE_LOG_FILE.
+		portage.prepare_build_dirs(self.settings["ROOT"], self.settings, 1)
 
+		pkg_xpak = portage.xpak.tbz2(self._pkg_path)
+		check_missing_metadata = ("CATEGORY", "PF")
+		missing_metadata = set()
+		for k in check_missing_metadata:
+			v = pkg_xpak.getfile(k)
+			if not v:
+				missing_metadata.add(k)
+
+		pkg_xpak.unpackinfo(infloc)
+		for k in missing_metadata:
+			if k == "CATEGORY":
+				v = pkg.category
+			elif k == "PF":
+				v = pkg.pf
+			else:
+				continue
+
+			f = open(os.path.join(infloc, k), 'wb')
 			try:
-				shutil.rmtree(dir_path)
-			except (IOError, OSError), e:
-				if e.errno != errno.ENOENT:
-					raise
-				del e
-
-			# This initializes PORTAGE_LOG_FILE.
-			portage.prepare_build_dirs(root_config.root, settings, cleanup)
-
-			dir_mode = 0755
-			for mydir in (dir_path, image_dir, infloc):
-				portage.util.ensure_dirs(mydir, uid=portage.data.portage_uid,
-					gid=portage.data.portage_gid, mode=dir_mode)
-
-			portage.writemsg_stdout(">>> Extracting info\n")
-
-			pkg_xpak = portage.xpak.tbz2(pkg_path)
-			check_missing_metadata = ("CATEGORY", "PF")
-			missing_metadata = set()
-			for k in check_missing_metadata:
-				v = pkg_xpak.getfile(k)
-				if not v:
-					missing_metadata.add(k)
-
-			pkg_xpak.unpackinfo(infloc)
-			for k in missing_metadata:
-				if k == "CATEGORY":
-					v = pkg.category
-				elif k == "PF":
-					v = pkg.pf
-				else:
-					continue
-
-				f = open(os.path.join(infloc, k), 'wb')
-				try:
-					f.write(v + "\n")
-				finally:
-					f.close()
-
-			# Store the md5sum in the vdb.
-			f = open(os.path.join(infloc, "BINPKGMD5"), "w")
-			try:
-				f.write(str(portage.checksum.perform_md5(pkg_path)) + "\n")
+				f.write(v + "\n")
 			finally:
 				f.close()
 
-			# This gives bashrc users an opportunity to do various things
-			# such as remove binary packages after they're installed.
-			settings["PORTAGE_BINPKG_FILE"] = pkg_path
-			settings.backup_changes("PORTAGE_BINPKG_FILE")
+		# Store the md5sum in the vdb.
+		f = open(os.path.join(infloc, "BINPKGMD5"), "w")
+		try:
+			f.write(str(portage.checksum.perform_md5(pkg_path)) + "\n")
+		finally:
+			f.close()
 
-			phase = "setup"
-			ebuild_phase = EbuildPhase(fd_pipes=fd_pipes,
-				pkg=pkg, phase=phase, scheduler=scheduler,
-				settings=settings, tree=tree)
+		# This gives bashrc users an opportunity to do various things
+		# such as remove binary packages after they're installed.
+		settings = self.settings
+		settings.setcpv(self.pkg)
+		settings["PORTAGE_BINPKG_FILE"] = pkg_path
+		settings.backup_changes("PORTAGE_BINPKG_FILE")
 
-			ebuild_phase.start()
-			scheduler.schedule(ebuild_phase.reg_id)
-			retval = ebuild_phase.wait()
+		phase = "setup"
+		ebuild_phase = EbuildPhase(
+			pkg=self.pkg, phase=phase, scheduler=self.scheduler,
+			settings=settings, tree=self._tree)
 
- 			if retval != os.EX_OK:
- 				return retval
+		self._start_task(ebuild_phase, self._setup_exit)
 
-			extractor = BinpkgExtractorAsync(image_dir=image_dir,
-				pkg=pkg, pkg_path=pkg_path, scheduler=scheduler)
-			portage.writemsg_stdout(">>> Extracting %s\n" % pkg.cpv)
-			extractor.start()
-			scheduler.schedule(extractor.reg_id)
-			retval = extractor.wait()
+	def _setup_exit(self, setup_phase):
+		if self._default_exit(setup_phase) != os.EX_OK:
+			self._unlock_builddir()
+			return
 
-			if retval != os.EX_OK:
-				writemsg("!!! Error Extracting '%s'\n" % pkg_path,
-					noiselevel=-1)
-				return retval
+		extractor = BinpkgExtractorAsync(image_dir=self._image_dir,
+			pkg=self.pkg, pkg_path=self._pkg_path, scheduler=self.scheduler)
+		portage.writemsg_stdout(">>> Extracting %s\n" % self.pkg.cpv)
+		self._start_task(extractor, self._extractor_exit)
 
-			merge = EbuildMerge(find_blockers=find_blockers,
-				ldpath_mtimes=ldpath_mtimes, logger=logger, pkg=pkg,
-				pkg_count=pkg_count, pkg_path=pkg_path,
-				settings=settings, tree=tree, world_atom=world_atom)
+	def _extractor_exit(self, extractor):
+		if self._final_exit(extractor) != os.EX_OK:
+			self._unlock_builddir()
+			writemsg("!!! Error Extracting '%s'\n" % self._pkg_path,
+				noiselevel=-1)
 
+	def _unlock_builddir(self):
+		portage.elog.elog_process(self.pkg.cpv, self.settings)
+		self._build_dir.unlock()
+
+	def install(self):
+
+		# This gives bashrc users an opportunity to do various things
+		# such as remove binary packages after they're installed.
+		settings = self.settings
+		settings["PORTAGE_BINPKG_FILE"] = self._pkg_path
+		settings.backup_changes("PORTAGE_BINPKG_FILE")
+
+		merge = EbuildMerge(find_blockers=self.find_blockers,
+			ldpath_mtimes=self.ldpath_mtimes, logger=self.logger,
+			pkg=self.pkg, pkg_count=self.pkg_count,
+			pkg_path=self._pkg_path, settings=settings,
+			tree=self._tree, world_atom=self.world_atom)
+
+		try:
 			retval = merge.execute()
-			if retval != os.EX_OK:
-				return retval
-
 		finally:
 			settings.pop("PORTAGE_BINPKG_FILE", None)
-			self.unlock()
-		return os.EX_OK
+			self._unlock_builddir()
+		return retval
 
 class BinpkgFetcher(SpawnProcess):
 
@@ -2842,7 +2872,13 @@ class MergeListItem(SlotObject):
 				prefetcher=prefetcher, settings=settings,
 				scheduler=scheduler, world_atom=world_atom)
 
-			retval = binpkg.execute()
+			binpkg.start()
+			retval = binpkg.wait()
+
+			if retval != os.EX_OK:
+				return retval
+
+			retval = binpkg.install()
 
 			if retval != os.EX_OK:
 				return retval
