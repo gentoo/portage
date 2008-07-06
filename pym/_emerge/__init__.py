@@ -2441,6 +2441,7 @@ class Binpkg(EbuildBuildDir):
 			retval = verifier.wait()
 			if retval != os.EX_OK:
 				return retval
+			bintree.inject(pkg.cpv, filename=pkg_path)
 
 		msg = " === (%s of %s) Merging Binary (%s::%s)" % \
 			(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg_path)
