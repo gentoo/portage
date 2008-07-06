@@ -2893,6 +2893,18 @@ class MergeListItem(CompositeTask):
 		retval = self._install_task.install()
 		return retval
 
+class PackageMerge(CompositeTask):
+	"""
+	TODO: Implement asynchronous merge so that the scheduler can
+	run while a merge is executing.
+	"""
+
+	__slots__ = ("merge",)
+
+	def start(self):
+		self.returncode = self.merge.merge()
+		self.wait()
+
 class DependencyArg(object):
 	def __init__(self, arg=None, root_config=None):
 		self.arg = arg
@@ -7850,7 +7862,9 @@ class Scheduler(object):
 			retval = task.wait()
 
 			if retval == os.EX_OK:
-				retval = task.merge()
+				task = PackageMerge(merge=task)
+				task.start()
+				retval = task.wait()
 
 			if retval == os.EX_OK:
 				self.curval += 1
