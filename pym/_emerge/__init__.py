@@ -1934,7 +1934,7 @@ class EbuildBuild(EbuildBuildDir):
 				msg = " === (%s of %s) Compiling/Merging (%s::%s)" % \
 					(pkg_count.curval, pkg_count.maxval, pkg.cpv, ebuild_path)
 				short_msg = "emerge: (%s of %s) %s Compile" % \
-					(pkg_count.curval, pkg_count.curval, pkg.cpv)
+					(pkg_count.curval, pkg_count.maxval, pkg.cpv)
 				logger.log(msg, short_msg=short_msg)
 
 				build = EbuildExecuter(pkg=pkg, scheduler=scheduler,
