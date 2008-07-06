@@ -1607,8 +1607,9 @@ class TaskSequence(CompositeTask):
 			self._task_exit_handler)
 
 	def _task_exit_handler(self, task):
-		if self._default_exit(task) == os.EX_OK and \
-			self._task_queue:
+		if self._default_exit(task) != os.EX_OK:
+			pass
+		elif self._task_queue:
 			self._start_next_task()
 		else:
 			self._final_exit(task)
@@ -2780,6 +2781,9 @@ class MergeListItem(SlotObject):
 				return retval
 
 			retval = build.install()
+
+			if retval != os.EX_OK:
+				return retval
 
 		elif pkg.type_name == "binary":
 
