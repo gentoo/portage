@@ -1565,6 +1565,19 @@ class CompositeTask(AsynchronousTask):
 		self._current_task = None
 		self.returncode = task.returncode
 
+	def _start_task(self, task, exit_handler):
+		"""
+		Register exit handler for the given task, set it
+		as self._current_task, and call task.start().
+
+		Subclasses can use this as a generic way to start
+		a task.
+
+		"""
+		task.addExitListener(exit_handler)
+		self._current_task = task
+		task.start()
+
 class TaskSequence(CompositeTask):
 	"""
 	A collection of tasks that executes sequentially. Each task
@@ -1589,10 +1602,8 @@ class TaskSequence(CompositeTask):
 		CompositeTask.cancel(self)
 
 	def _start_next_task(self):
-		self._current_task = self._task_queue.popleft()
-		task = self._current_task
-		task.addExitListener(self._task_exit_handler)
-		task.start()
+		self._start_task(self._task_queue.popleft(),
+			self._task_exit_handler)
 
 	def _task_exit_handler(self, task):
 		if self._default_exit(task) == os.EX_OK and \
@@ -2006,9 +2017,7 @@ class EbuildExecuter(CompositeTask):
 		phase = "clean"
 		clean_phase = EbuildPhase(pkg=pkg, phase=phase,
 			scheduler=scheduler, settings=settings, tree=tree)
-		clean_phase.addExitListener(self._clean_phase_exit)
-		self._current_task = clean_phase
-		clean_phase.start()
+		self._start_task(clean_phase, self._clean_phase_exit)
 
 	def _clean_phase_exit(self, clean_phase):
 
@@ -2037,9 +2046,7 @@ class EbuildExecuter(CompositeTask):
 				pkg=pkg, phase=phase, scheduler=scheduler,
 				settings=settings, tree=tree))
 
-		ebuild_phases.addExitListener(self._final_exit)
-		self._current_task = ebuild_phases
-		ebuild_phases.start()
+		self._start_task(ebuild_phases, self._final_exit)
 
 class EbuildPhase(SubProcess):
 
