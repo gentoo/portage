@@ -2787,7 +2787,7 @@ class BinpkgExtractorAsync(SpawnProcess):
 		self.env = self.pkg.root_config.settings.environ()
 		SpawnProcess.start(self)
 
-class MergeListItem(SlotObject):
+class MergeListItem(CompositeTask):
 
 	"""
 	TODO: For parallel scheduling, everything here needs asynchronous
@@ -2796,38 +2796,29 @@ class MergeListItem(SlotObject):
 
 	__slots__ = ("args_set", "binpkg_opts", "build_opts", "emerge_opts",
 		"failed_fetches", "find_blockers", "logger", "mtimedb", "pkg",
-		"pkg_count", "prefetcher", "scheduler", "settings", "world_atom")
+		"pkg_count", "prefetcher", "settings", "world_atom") + \
+		("_install_task",)
 
-	def execute(self):
+	def start(self):
+
+		pkg = self.pkg
+		build_opts = self.build_opts
+
+		if pkg.installed:
+			# uninstall,  executed by self.merge()
+			self.returncode = os.EX_OK
+			self.wait()
+			return
 
 		args_set = self.args_set
-		binpkg_opts = self.binpkg_opts
-		build_opts = self.build_opts
-		emerge_opts = self.emerge_opts
-		failed_fetches = self.failed_fetches
 		find_blockers = self.find_blockers
 		logger = self.logger
 		mtimedb = self.mtimedb
-		pkg = self.pkg
 		pkg_count = self.pkg_count
-		prefetcher = self.prefetcher
 		scheduler = self.scheduler
 		settings = self.settings
 		world_atom = self.world_atom
 		ldpath_mtimes = mtimedb["ldpath"]
-
-		if pkg.installed:
-			if not (build_opts.buildpkgonly or \
-				build_opts.fetchonly or build_opts.pretend):
-
-				uninstall = PackageUninstall(ldpath_mtimes=ldpath_mtimes,
-					opts=emerge_opts, pkg=pkg, settings=settings)
-
-				retval = uninstall.execute()
-				if retval != os.EX_OK:
-					return retval
-
-			return os.EX_OK
 
 		if not build_opts.pretend:
 			portage.writemsg_stdout(
@@ -2847,43 +2838,60 @@ class MergeListItem(SlotObject):
 				settings=settings, scheduler=scheduler,
 				world_atom=world_atom)
 
-			build.start()
-			retval = build.wait()
-
-			if retval != os.EX_OK:
-				if build_opts.fetchonly:
-					failed_fetches.append(pkg.cpv)
-				return retval
-
-			if build_opts.fetchonly or \
-				build_opts.buildpkgonly:
-				return retval
-
-			retval = build.install()
-
-			if retval != os.EX_OK:
-				return retval
+			self._install_task = build
+			self._start_task(build, self._ebuild_exit)
+			return
 
 		elif pkg.type_name == "binary":
 
 			binpkg = Binpkg(find_blockers=find_blockers,
 				ldpath_mtimes=ldpath_mtimes, logger=logger,
-				opts=binpkg_opts, pkg=pkg, pkg_count=pkg_count,
-				prefetcher=prefetcher, settings=settings,
+				opts=self.binpkg_opts, pkg=pkg, pkg_count=pkg_count,
+				prefetcher=self.prefetcher, settings=settings,
 				scheduler=scheduler, world_atom=world_atom)
 
-			binpkg.start()
-			retval = binpkg.wait()
+			self._install_task = binpkg
+			self._start_task(binpkg, self._final_exit)
+			return
 
-			if retval != os.EX_OK:
-				return retval
+	def _ebuild_exit(self, build):
+		if self._final_exit(build) != os.EX_OK:
+			if self.build_opts.fetchonly:
+				self.failed_fetches.append(self.pkg.cpv)
 
-			retval = binpkg.install()
+	def merge(self):
 
-			if retval != os.EX_OK:
-				return retval
+		pkg = self.pkg
+		build_opts = self.build_opts
+		failed_fetches = self.failed_fetches
+		find_blockers = self.find_blockers
+		logger = self.logger
+		mtimedb = self.mtimedb
+		pkg_count = self.pkg_count
+		prefetcher = self.prefetcher
+		scheduler = self.scheduler
+		settings = self.settings
+		world_atom = self.world_atom
+		ldpath_mtimes = mtimedb["ldpath"]
 
-		return os.EX_OK
+		if pkg.installed:
+			if not (build_opts.buildpkgonly or \
+				build_opts.fetchonly or build_opts.pretend):
+
+				uninstall = PackageUninstall(ldpath_mtimes=ldpath_mtimes,
+					opts=self.emerge_opts, pkg=pkg, settings=settings)
+
+				retval = uninstall.execute()
+				if retval != os.EX_OK:
+					return retval
+			return os.EX_OK
+
+		if build_opts.fetchonly or \
+			build_opts.buildpkgonly:
+			return self.returncode
+
+		retval = self._install_task.install()
+		return retval
 
 class DependencyArg(object):
 	def __init__(self, arg=None, root_config=None):
@@ -7833,9 +7841,20 @@ class Scheduler(object):
 
 		while pkg_queue:
 			pkg = self._choose_pkg()
-			retval = self._execute_pkg(pkg)
 
-			if retval != os.EX_OK:
+			if not pkg.installed:
+				self._pkg_count.curval += 1
+
+			task = self._task(pkg)
+			task.start()
+			retval = task.wait()
+
+			if retval == os.EX_OK:
+				retval = task.merge()
+
+			if retval == os.EX_OK:
+				self.curval += 1
+			else:
 				self._failed_pkgs.append((pkg, retval))
 				if not self._build_opts.fetchonly:
 					return
@@ -7880,12 +7899,9 @@ class Scheduler(object):
 
 		return rval
 
-	def _execute_pkg(self, pkg):
+	def _task(self, pkg):
 
-		if not pkg.installed:
-			self._pkg_count.curval += 1
-
-		merge = MergeListItem(args_set=self._args_set,
+		task = MergeListItem(args_set=self._args_set,
 			binpkg_opts=self._binpkg_opts,
 			build_opts=self._build_opts,
 			emerge_opts=self.myopts,
@@ -7897,12 +7913,7 @@ class Scheduler(object):
 			settings=self.pkgsettings[pkg.root],
 			world_atom=self._world_atom)
 
-		retval = merge.execute()
-
-		if retval == os.EX_OK:
-			self.curval += 1
-
-		return retval
+		return task
 
 	def _save_resume_list(self):
 		"""
