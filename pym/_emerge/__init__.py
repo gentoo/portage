@@ -1630,6 +1630,11 @@ class TaskSequence(CompositeTask):
 class SubProcess(AsynchronousTask):
 	__slots__ = ("pid",)
 
+	# A file descriptor is required for the scheduler to monitor changes from
+	# inside a poll() loop. When logging is not enabled, create a pipe just to
+	# serve this purpose alone.
+	_dummy_pipe_fd = 9
+
 	def _poll(self):
 		if self.returncode is not None:
 			return self.returncode
@@ -1693,43 +1698,48 @@ class SpawnProcess(SubProcess):
 		if self.cancelled:
 			return
 
-		# flush any pending output
+		if self.fd_pipes is None:
+			self.fd_pipes = {}
 		fd_pipes = self.fd_pipes
-		if fd_pipes is None:
-			fd_pipes = {
-				0 : sys.stdin.fileno(),
-				1 : sys.stdout.fileno(),
-				2 : sys.stderr.fileno(),
-			}
+		fd_pipes.setdefault(0, sys.stdin.fileno())
+		fd_pipes.setdefault(1, sys.stdout.fileno())
+		fd_pipes.setdefault(2, sys.stderr.fileno())
+
+		# flush any pending output
+		for fd in fd_pipes.itervalues():
+			if fd == sys.stdout.fileno():
+				sys.stdout.flush()
+			if fd == sys.stderr.fileno():
+				sys.stderr.flush()
 
 		logfile = self.logfile
 		self.files = self._files_dict()
 		files = self.files
 
+		master_fd, slave_fd = os.pipe()
+		fcntl.fcntl(master_fd, fcntl.F_SETFL,
+			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+
 		if logfile is not None:
+
+			fd_pipes_orig = fd_pipes.copy()
+			fd_pipes[0] = fd_pipes_orig[0]
+			fd_pipes[1] = slave_fd
+			fd_pipes[2] = slave_fd
+
 			files.out = open(logfile, "a")
 			portage.util.apply_secpass_permissions(logfile,
 				uid=portage.portage_uid, gid=portage.portage_gid,
 				mode=0660)
+
+			output_handler = self._output_handler
+
 		else:
-			fd_pipes.setdefault(1, sys.stdout.fileno())
-			for fd in fd_pipes.itervalues():
-				if fd == sys.stdout.fileno():
-					sys.stdout.flush()
-				if fd == sys.stderr.fileno():
-					sys.stderr.flush()
-			files.out = os.fdopen(os.dup(fd_pipes[1]), 'w')
 
-		master_fd, slave_fd = os.pipe()
-
-		fcntl.fcntl(master_fd, fcntl.F_SETFL,
-			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
-
-		fd_pipes.setdefault(0, sys.stdin.fileno())
-		fd_pipes_orig = fd_pipes.copy()
-		fd_pipes[0] = fd_pipes_orig[0]
-		fd_pipes[1] = slave_fd
-		fd_pipes[2] = slave_fd
+			# Create a dummy pipe so the scheduler can monitor
+			# the process from inside a poll() loop.
+			fd_pipes[self._dummy_pipe_fd] = slave_fd
+			output_handler = self._dummy_handler
 
 		kwargs = {}
 		for k in self._spawn_kwarg_names:
@@ -1748,7 +1758,7 @@ class SpawnProcess(SubProcess):
 		os.close(slave_fd)
 		files.process = os.fdopen(master_fd, 'r')
 		self.reg_id = self.scheduler.register(files.process.fileno(),
-			PollConstants.POLLIN, self._output_handler)
+			PollConstants.POLLIN, output_handler)
 		self.registered = True
 
 	def _output_handler(self, fd, event):
@@ -1765,6 +1775,27 @@ class SpawnProcess(SubProcess):
 			fd = files.process.fileno()
 			for f in files.values():
 				f.flush()
+				f.close()
+			self.registered = False
+		return self.registered
+
+	def _dummy_handler(self, fd, event):
+		"""
+		This method is mainly interested in detecting EOF, since
+		the only purpose of the pipe is to allow the scheduler to
+		monitor the process from inside a poll() loop.
+		"""
+		files = self.files
+		buf = array.array('B')
+		try:
+			buf.fromfile(files.process, self._bufsize)
+		except EOFError:
+			pass
+		if buf:
+			pass
+		else:
+			fd = files.process.fileno()
+			for f in files.values():
 				f.close()
 			self.registered = False
 		return self.registered
@@ -2105,11 +2136,6 @@ class EbuildPhase(SubProcess):
 	_file_names = ("log", "stdout", "ebuild")
 	_files_dict = slot_dict_class(_file_names, prefix="")
 	_bufsize = 4096
-
-	# A file descriptor is required for the scheduler to monitor changes from
-	# inside a poll() loop. When logging is not enabled, create a pipe just to
-	# serve this purpose alone.
-	_dummy_pipe_fd = 9
 
 	def start(self):
 		root_config = self.pkg.root_config
@@ -2636,6 +2662,17 @@ class BinpkgFetcher(SpawnProcess):
 		portage.util.ensure_dirs(os.path.dirname(pkg_path))
 		if use_locks:
 			self.lock()
+
+		if self.fd_pipes is None:
+			self.fd_pipes = {}
+		fd_pipes = self.fd_pipes
+
+		# Redirect all output to stdout since some fetchers like
+		# wget pollute stderr (if portage detects a problem then it
+		# can send it's own message to stderr).
+		fd_pipes.setdefault(0, sys.stdin.fileno())
+		fd_pipes.setdefault(1, sys.stdout.fileno())
+		fd_pipes.setdefault(2, sys.stdout.fileno())
 
 		self.args = fetch_args
 		self.env = fetch_env
