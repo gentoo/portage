@@ -1455,6 +1455,12 @@ class EbuildFetchPretend(SlotObject):
 		return retval
 
 class AsynchronousTask(SlotObject):
+	"""
+	Subclasses override _wait() and _poll() so that calls
+	to public methods can be wrapped for implementing
+	hooks such as exit listener notification.
+	"""
+
 	__slots__ = ("cancelled", "returncode") + ("_exit_listeners",)
 
 	def start(self):
@@ -1467,12 +1473,19 @@ class AsynchronousTask(SlotObject):
 		return self.returncode is None
 
 	def poll(self):
-		if self.returncode is not None:
-			self._wait_hook()
+		return self._poll
+
+	def _poll(self):
+		self._wait_hook()
 		return self.returncode
 
 	def wait(self):
+		if self.returncode is None:
+			self._wait()
 		self._wait_hook()
+		return self.returncode
+
+	def _wait(self):
 		return self.returncode
 
 	def cancel(self):
@@ -1497,7 +1510,8 @@ class AsynchronousTask(SlotObject):
 		used to trigger exit listeners when the returncode first
 		becomes available.
 		"""
-		if self._exit_listeners is not None:
+		if self.returncode is not None and \
+			self._exit_listeners is not None:
 			for f in self._exit_listeners:
 				f(self)
 			self._exit_listeners = None
@@ -1514,7 +1528,7 @@ class CompositeTask(AsynchronousTask):
 		if self._current_task is not None:
 			self._current_task.cancel()
 
-	def wait(self):
+	def _wait(self):
 
 		while True:
 			task = self._current_task
@@ -1524,7 +1538,6 @@ class CompositeTask(AsynchronousTask):
 				self.scheduler.schedule(task.reg_id)
 			task.wait()
 
-		self._wait_hook()
 		return self.returncode
 
 	def _assert_current(self, task):
@@ -1617,14 +1630,13 @@ class TaskSequence(CompositeTask):
 class SubProcess(AsynchronousTask):
 	__slots__ = ("pid",)
 
-	def poll(self):
+	def _poll(self):
 		if self.returncode is not None:
 			return self.returncode
 		retval = os.waitpid(self.pid, os.WNOHANG)
 		if retval == (0, 0):
 			return None
 		self._set_returncode(retval)
-		self._wait_hook()
 		return self.returncode
 
 	def cancel(self):
@@ -1639,11 +1651,10 @@ class SubProcess(AsynchronousTask):
 		return self.pid is not None and \
 			self.returncode is None
 
-	def wait(self):
+	def _wait(self):
 		if self.returncode is not None:
 			return self.returncode
 		self._set_returncode(os.waitpid(self.pid, 0))
-		self._wait_hook()
 		return self.returncode
 
 	def _set_returncode(self, wait_retval):
@@ -1907,7 +1918,7 @@ class EbuildBuild(CompositeTask):
 					pkg=pkg, settings=settings)
 				retval = fetcher.execute()
 				self.returncode = retval
-				self._wait_hook()
+				self.wait()
 
 			else:
 				fetcher = EbuildFetcher(pkg=pkg, scheduler=scheduler)
