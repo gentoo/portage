@@ -2771,6 +2771,7 @@ class BinpkgVerifier(AsynchronousTask):
 			rval = 1
 
 		self.returncode = rval
+		self.wait()
 
 class BinpkgExtractorAsync(SpawnProcess):
 
@@ -2858,6 +2859,14 @@ class MergeListItem(CompositeTask):
 		if self._final_exit(build) != os.EX_OK:
 			if self.build_opts.fetchonly:
 				self.failed_fetches.append(self.pkg.cpv)
+
+	def _poll(self):
+		self._install_task.poll()
+		return self.returncode
+
+	def _wait(self):
+		self._install_task.wait()
+		return self.returncode
 
 	def merge(self):
 
