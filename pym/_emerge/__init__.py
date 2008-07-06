@@ -1552,6 +1552,19 @@ class CompositeTask(AsynchronousTask):
 			self._current_task = None
 		return task.returncode
 
+	def _final_exit(self, task):
+		"""
+		Assumes that task is the final task of this composite task.
+		Calls _default_exit() and sets self.returncode to the task's
+		returncode and sets self._current_task to None.
+
+		Subclasses can use this as a generic final task exit callback.
+
+		"""
+		self._default_exit(task)
+		self._current_task = None
+		self.returncode = task.returncode
+
 class TaskSequence(CompositeTask):
 	"""
 	A collection of tasks that executes sequentially. Each task
@@ -1585,6 +1598,8 @@ class TaskSequence(CompositeTask):
 		if self._default_exit(task) == os.EX_OK and \
 			self._task_queue:
 			self._start_next_task()
+		else:
+			self._final_exit(task)
 
 class SubProcess(AsynchronousTask):
 	__slots__ = ("pid",)
@@ -2022,7 +2037,7 @@ class EbuildExecuter(CompositeTask):
 				pkg=pkg, phase=phase, scheduler=scheduler,
 				settings=settings, tree=tree))
 
-		ebuild_phases.addExitListener(self._default_exit)
+		ebuild_phases.addExitListener(self._final_exit)
 		self._current_task = ebuild_phases
 		ebuild_phases.start()
 
