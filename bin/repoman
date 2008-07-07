@@ -293,6 +293,7 @@ qahelp={
 	"PROVIDE.syntax":"Syntax error in PROVIDE (usually an extra/missing space/parenthesis)",
 	"RESTRICT.syntax":"Syntax error in RESTRICT (usually an extra/missing space/parenthesis)",
 	"SRC_URI.syntax":"Syntax error in SRC_URI (usually an extra/missing space/parenthesis)",
+	"SRC_URI.mirror":"A uri listed in profiles/thirdpartymirrors is found in SRC_URI",
 	"ebuild.syntax":"Error generating cache entry for ebuild; typically caused by ebuild syntax error or digest verification failure",
 	"ebuild.output":"A simple sourcing of the ebuild produces output; this breaks ebuild policy.",
 	"ebuild.nesteddie":"Placing 'die' inside ( ) prints an error, but doesn't stop the ebuild.",
@@ -340,6 +341,7 @@ qawarnings=[
 "IUSE.undefined",
 "RDEPEND.suspect",
 "RESTRICT.invalid",
+"SRC_URI.mirror",
 "ebuild.minorsyn",
 "ebuild.badheader",
 "ebuild.patches",
@@ -776,6 +778,11 @@ shared_xmatch_caches = {"cp-list":{}}
 check_ebuild_notadded = not \
 	(vcs == "svn" and repolevel < 3 and options.mode != "commit")
 
+# Build a regex from thirdpartymirrors for the SRC_URI.mirror check.
+thirdpartymirrors = portage.flatten(repoman_settings.thirdpartymirrors().values())
+thirdpartymirrors = re.compile(r'^(%s)' % \
+	"|".join(re.escape(x) for x in thirdpartymirrors))
+
 for x in scanlist:
 	#ebuilds and digests added to cvs respectively.
 	logging.info("checking package %s" % x)
@@ -1097,6 +1104,18 @@ for x in scanlist:
 		myaux = pkg.metadata
 		eapi = myaux["EAPI"]
 		inherited = pkg.inherited
+
+		if not src_uri_error:
+			# Check that URIs don't reference a server from thirdpartymirrors.
+			for uri in portage.flatten(portage.dep.use_reduce(
+				portage.dep.paren_reduce(myaux["SRC_URI"]), matchall=True)):
+				m = thirdpartymirrors.match(uri)
+				if m is None:
+					continue
+				stats["SRC_URI.mirror"] += 1
+				fails["SRC_URI.mirror"].append(
+					"%s: '%s' found in thirdpartymirrors" % \
+					(relative_path, m.group(0)))
 
 		# Test for negative logic and bad words in the RESTRICT var.
 		#for x in myaux[allvars.index("RESTRICT")].split():
