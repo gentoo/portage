@@ -57,6 +57,10 @@ class PermissionDenied(PortageException):
 	from errno import EACCES as errno
 	"""Permission denied"""
 
+class TryAgain(PortageException):
+	from errno import EAGAIN as errno
+	"""Try again"""
+
 class ReadOnlyFileSystem(PortageException):
 	"""Read-only file system"""
 

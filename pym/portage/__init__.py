@@ -3163,24 +3163,25 @@ def _checksum_failure_temp_file(distdir, basename):
 	os.rename(filename, temp_filename)
 	return temp_filename
 
-def _check_digests(filename, digests):
+def _check_digests(filename, digests, show_errors=1):
 	"""
 	Check digests and display a message if an error occurs.
 	@return True if all digests match, False otherwise.
 	"""
 	verified_ok, reason = portage.checksum.verify_all(filename, digests)
 	if not verified_ok:
-		writemsg("!!! Previously fetched" + \
-			" file: '%s'\n" % filename, noiselevel=-1)
-		writemsg("!!! Reason: %s\n" % reason[0],
-			noiselevel=-1)
-		writemsg(("!!! Got:      %s\n" + \
-			"!!! Expected: %s\n") % \
-			(reason[1], reason[2]), noiselevel=-1)
+		if show_errors:
+			writemsg("!!! Previously fetched" + \
+				" file: '%s'\n" % filename, noiselevel=-1)
+			writemsg("!!! Reason: %s\n" % reason[0],
+				noiselevel=-1)
+			writemsg(("!!! Got:      %s\n" + \
+				"!!! Expected: %s\n") % \
+				(reason[1], reason[2]), noiselevel=-1)
 		return False
 	return True
 
-def _check_distfile(filename, digests, eout):
+def _check_distfile(filename, digests, eout, show_errors=1):
 	"""
 	@return a tuple of (match, stat_obj) where match is True if filename
 	matches all given digests (if any) and stat_obj is a stat result, or
@@ -3203,7 +3204,7 @@ def _check_distfile(filename, digests, eout):
 			eout.ebegin("%s %s ;-)" % (os.path.basename(filename), "size"))
 			eout.eend(0)
 	else:
-		if _check_digests(filename, digests):
+		if _check_digests(filename, digests, show_errors=show_errors):
 			eout.ebegin("%s %s ;-)" % (os.path.basename(filename),
 				" ".join(sorted(digests))))
 			eout.eend(0)
@@ -3532,15 +3533,27 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					from textwrap import wrap
 					waiting_msg = "\n".join(msg_prefix + line \
 						for line in wrap(waiting_msg, 65))
+
 				if locks_in_subdir:
-					file_lock = portage.locks.lockfile(
-						os.path.join(mysettings["DISTDIR"],
-						locks_in_subdir, myfile), wantnewlockfile=1,
-						waiting_msg=waiting_msg)
+					lock_file = os.path.join(mysettings["DISTDIR"],
+						locks_in_subdir, myfile)
 				else:
-					file_lock = portage.locks.lockfile(
-						myfile_path, wantnewlockfile=1,
-						waiting_msg=waiting_msg)
+					lock_file = myfile_path
+
+				lock_kwargs = {}
+				if fetchonly:
+					lock_kwargs["flags"] = os.O_NONBLOCK
+				else:
+					lock_kwargs["waiting_msg"] = waiting_msg
+
+				try:
+					file_lock = portage.locks.lockfile(myfile_path,
+						wantnewlockfile=1, **lock_kwargs)
+				except portage.exception.TryAgain:
+					writemsg((">>> File '%s' is already locked by " + \
+						"another fetcher. Continuing...\n") % myfile,
+						noiselevel=-1)
+					continue
 		try:
 			if not listonly:
 
@@ -5039,7 +5052,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		if mydo in clean_phases:
 			retval = spawn(_shell_quote(ebuild_sh_binary) + " clean",
-				mysettings, debug=debug, free=1, logfile=None)
+				mysettings, debug=debug, fd_pipes=fd_pipes, free=1,
+				logfile=None, returnpid=returnpid)
 			return retval
 
 		# get possible slot information from the deps file

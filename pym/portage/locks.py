@@ -5,7 +5,8 @@
 
 
 import errno, os, stat, time, types
-from portage.exception import InvalidData, DirectoryNotFound, FileNotFound
+from portage.exception import DirectoryNotFound, FileNotFound, \
+	InvalidData, TryAgain
 from portage.data import portage_gid
 from portage.util import writemsg
 from portage.localization import _
@@ -18,7 +19,8 @@ def lockdir(mydir):
 def unlockdir(mylock):
 	return unlockfile(mylock)
 
-def lockfile(mypath, wantnewlockfile=0, unlinkfile=0, waiting_msg=None):
+def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
+	waiting_msg=None, flags=0):
 	"""Creates all dirs upto, the given dir. Creates a lockfile
 	for the given directory as the file: directoryname+'.portage_lockfile'."""
 	import fcntl
@@ -55,7 +57,8 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0, waiting_msg=None):
 			except OSError, e:
 				if e[0] == 2: # No such file or directory
 					return lockfile(mypath, wantnewlockfile=wantnewlockfile,
-						unlinkfile=unlinkfile, waiting_msg=waiting_msg)
+						unlinkfile=unlinkfile, waiting_msg=waiting_msg,
+						flags=flags)
 				else:
 					writemsg("Cannot chown a lockfile. This could cause inconvenience later.\n");
 			os.umask(old_mask)
@@ -79,6 +82,8 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0, waiting_msg=None):
 			raise
 		if e.errno in (errno.EACCES, errno.EAGAIN):
 			# resource temp unavailable; eg, someone beat us to the lock.
+			if flags & os.O_NONBLOCK:
+				raise TryAgain(mypath)
 			if waiting_msg is None:
 				if isinstance(mypath, int):
 					print "waiting for lock on fd %i" % myfd
@@ -115,7 +120,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0, waiting_msg=None):
 		writemsg("lockfile recurse\n",1)
 		lockfilename, myfd, unlinkfile, locking_method = lockfile(
 			mypath, wantnewlockfile=wantnewlockfile, unlinkfile=unlinkfile,
-			waiting_msg=waiting_msg)
+			waiting_msg=waiting_msg, flags=flags)
 
 	writemsg(str((lockfilename,myfd,unlinkfile))+"\n",1)
 	return (lockfilename,myfd,unlinkfile,locking_method)

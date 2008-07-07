@@ -294,8 +294,10 @@ def vdb_path(argv):
 	Returns the path used for the var(installed) package database for the
 	set environment/configuration options.
 	"""
-	print portage.root+portage.VDB_PATH
-
+	out = sys.stdout
+	out.write(os.path.join(portage.settings["ROOT"], portage.VDB_PATH) + "\n")
+	out.flush()
+	return os.EX_OK
 
 def gentoo_mirrors(argv):
 	"""
@@ -475,18 +477,18 @@ def main():
 		os.environ["ROOT"] = sys.argv[2]
 
 	global portage
+	try:
+		import portage
+	except ImportError:
+		from os import path as osp
+		# for an explanation on this logic, see pym/_emerge/__init__.py
+		if os.environ.__contains__("PORTAGE_PYTHONPATH"):
+			sys.path.insert(0, os.environ["PORTAGE_PYTHONPATH"])
+		else:
+			sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
+		import portage
 
 	try:
-		try:
-			import portage
-		except ImportError:
-			from os import path as osp
-			# for an explanation on this logic, see pym/_emerge/__init__.py
-			if os.environ.__contains__("PORTAGE_PYTHONPATH"):
-				sys.path.insert(0, os.environ["PORTAGE_PYTHONPATH"])
-			else:
-				sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
-			import portage
 		if uses_root:
 			sys.argv[2] = portage.settings["ROOT"]
 		retval = function(sys.argv[2:])

@@ -7,13 +7,13 @@ from portage.dep import isvalidatom, isjustname, dep_getkey, match_from_list
 from portage.dbapi.virtual import fakedbapi
 from portage.exception import InvalidPackageName, InvalidAtom, \
 	PermissionDenied, PortageException
-from portage.output import green
+from portage.output import green, EOutput
 from portage.util import ensure_dirs, normalize_path, writemsg, writemsg_stdout
 from portage.versions import best, catpkgsplit, catsplit
 from portage.update import update_dbentries
 from portage.const import EAPI, EAPIPREFIX
 
-from portage import dep_expand, listdir, _movefile
+from portage import dep_expand, listdir, _check_distfile, _movefile
 
 import portage.xpak, portage.getbinpkg
 
@@ -1001,26 +1001,6 @@ class binarytree(object):
 		if not fcmd:
 			fcmd = self.settings.get(fcmd_prefix)
 		success = portage.getbinpkg.file_get(url, mydest, fcmd=fcmd)
-		if success and "strict" in self.settings.features:
-			metadata = self._remotepkgs[pkgname]
-			digests = {}
-			from portage.checksum import hashfunc_map, verify_all
-			for k in hashfunc_map:
-				v = metadata.get(k)
-				if not v:
-					continue
-				digests[k] = v
-			if "SIZE" in metadata:
-				try:
-					digests["size"] = long(self._remotepkgs[pkgname]["SIZE"])
-				except ValueError:
-					writemsg("!!! Malformed SIZE attribute in remote " + \
-					"metadata for '%s'\n" % pkgname)
-			if digests:
-				ok, reason = verify_all(tbz2_path, digests)
-				if not ok:
-					raise portage.exception.DigestException(
-						tuple([tbz2_path]+list(reason)))
 		if not success:
 			try:
 				os.unlink(self.getname(pkgname))
@@ -1028,6 +1008,72 @@ class binarytree(object):
 				pass
 			raise portage.exception.FileNotFound(mydest)
 		self.inject(pkgname)
+
+	def _load_pkgindex(self):
+		pkgindex = self._new_pkgindex()
+		try:
+			f = open(self._pkgindex_file)
+		except EnvironmentError:
+			pass
+		else:
+			try:
+				pkgindex.read(f)
+			finally:
+				f.close()
+		return pkgindex
+
+	def digestCheck(self, pkg):
+		"""
+		Verify digests for the given package and raise DigestException
+		if verification fails.
+		@rtype: bool
+		@returns: True if digests could be located, False otherwise.
+		"""
+		cpv = pkg
+		if not isinstance(cpv, basestring):
+			cpv = pkg.cpv
+			pkg = None
+
+		pkg_path = self.getname(cpv)
+		metadata = None
+		if self._remotepkgs is None or cpv not in self._remotepkgs:
+			for d in self._load_pkgindex().packages:
+				if d["CPV"] == cpv:
+					metadata = d
+					break
+		else:
+			metadata = self._remotepkgs[cpv]
+		if metadata is None:
+			return False
+
+		digests = {}
+		from portage.checksum import hashfunc_map, verify_all
+		for k in hashfunc_map:
+			v = metadata.get(k)
+			if not v:
+				continue
+			digests[k] = v
+
+		if "SIZE" in metadata:
+			try:
+				digests["size"] = int(metadata["SIZE"])
+			except ValueError:
+				writemsg("!!! Malformed SIZE attribute in remote " + \
+				"metadata for '%s'\n" % cpv)
+
+		if not digests:
+			return False
+
+		eout = EOutput()
+		eout.quiet = self.settings.get("PORTAGE_QUIET") == "1"
+		ok, st = _check_distfile(pkg_path, digests, eout, show_errors=0)
+		if not ok:
+			ok, reason = verify_all(pkg_path, digests)
+			if not ok:
+				raise portage.exception.DigestException(
+					(pkg_path,) + tuple(reason))
+
+		return True
 
 	def getslot(self, mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
