@@ -1473,10 +1473,10 @@ class AsynchronousTask(SlotObject):
 		return self.returncode is None
 
 	def poll(self):
-		return self._poll
+		self._wait_hook()
+		return self._poll()
 
 	def _poll(self):
-		self._wait_hook()
 		return self.returncode
 
 	def wait(self):
