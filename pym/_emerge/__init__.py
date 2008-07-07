@@ -1660,7 +1660,8 @@ class TaskSequence(CompositeTask):
 			self.wait()
 
 class SubProcess(AsynchronousTask):
-	__slots__ = ("pid", "registered", "reg_id", "scheduler")
+
+	__slots__ = ("scheduler",) + ("pid", "registered", "_reg_id")
 
 	# A file descriptor is required for the scheduler to monitor changes from
 	# inside a poll() loop. When logging is not enabled, create a pipe just to
@@ -1691,7 +1692,7 @@ class SubProcess(AsynchronousTask):
 	def _wait(self):
 		if self.returncode is not None:
 			return self.returncode
-		self.scheduler.schedule(self.reg_id)
+		self.scheduler.schedule(self._reg_id)
 		self._set_returncode(os.waitpid(self.pid, 0))
 		return self.returncode
 
@@ -1790,7 +1791,7 @@ class SpawnProcess(SubProcess):
 
 		os.close(slave_fd)
 		files.process = os.fdopen(master_fd, 'r')
-		self.reg_id = self.scheduler.register(files.process.fileno(),
+		self._reg_id = self.scheduler.register(files.process.fileno(),
 			PollConstants.POLLIN, output_handler)
 		self.registered = True
 
@@ -2269,7 +2270,7 @@ class EbuildPhase(SubProcess):
 
 		os.close(slave_fd)
 		files.ebuild = os.fdopen(master_fd, 'r')
-		self.reg_id = self.scheduler.register(files.ebuild.fileno(),
+		self._reg_id = self.scheduler.register(files.ebuild.fileno(),
 			PollConstants.POLLIN, output_handler)
 		self.registered = True
 
