@@ -7610,6 +7610,7 @@ class Scheduler(object):
 		self._pkg_count = self._pkg_count_class(
 			curval=0, maxval=merge_count)
 		self._max_jobs = 1
+		self._set_digraph(digraph)
 		self._jobs = 0
 
 		features = self.settings.features
@@ -7634,6 +7635,13 @@ class Scheduler(object):
 					open(self._fetch_log, 'w')
 				except EnvironmentError:
 					pass
+
+	def _set_digraph(self, digraph):
+		if self._max_jobs < 2:
+			# save some memory
+			self._digraph = None
+		else:
+			self._digraph = digraph
 
 	class _pkg_failure(portage.exception.PortageException):
 		"""
@@ -8103,6 +8111,8 @@ class Scheduler(object):
 		mylist = mydepgraph.altlist()
 		mydepgraph.break_refs(mylist)
 		mydepgraph.break_refs(dropped_tasks)
+		mydepgraph.break_refs(mydepgraph.digraph.order)
+		self._set_digraph(mydepgraph.digraph)
 		return (mylist, dropped_tasks)
 
 	def _show_list(self):
