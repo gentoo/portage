@@ -2288,13 +2288,12 @@ class EbuildPhase(SubProcess):
 				for l in wrap(msg, 72):
 					eerror(l, phase=self.phase, key=self.pkg.cpv)
 
-		returncode = self.returncode
 		settings = self.settings
 		portage._post_phase_userpriv_perms(settings)
 		if self.phase == "install":
 			portage._check_build_log(settings)
-			if returncode == os.EX_OK:
-				returncode = portage._post_src_install_checks(settings)
+			if self.returncode == os.EX_OK:
+				self.returncode = portage._post_src_install_checks(settings)
 
 class EbuildBinpkg(EbuildPhase):
 	"""
