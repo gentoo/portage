@@ -1653,7 +1653,7 @@ class TaskSequence(CompositeTask):
 			self.wait()
 
 class SubProcess(AsynchronousTask):
-	__slots__ = ("pid", "reg_id", "scheduler")
+	__slots__ = ("pid", "registered", "reg_id", "scheduler")
 
 	# A file descriptor is required for the scheduler to monitor changes from
 	# inside a poll() loop. When logging is not enabled, create a pipe just to
@@ -1712,7 +1712,7 @@ class SpawnProcess(SubProcess):
 		"uid", "gid", "groups", "umask", "logfile",
 		"path_lookup", "pre_exec")
 
-	__slots__ = ("args", "files", "registered") + \
+	__slots__ = ("args", "files") + \
 		_spawn_kwarg_names
 
 	_file_names = ("process", "out")
@@ -2161,7 +2161,7 @@ class EbuildPhase(SubProcess):
 
 	__slots__ = ("fd_pipes", "phase", "pkg",
 		"settings", "tree",
-		"files", "registered")
+		"files")
 
 	_file_names = ("log", "stdout", "ebuild")
 	_files_dict = slot_dict_class(_file_names, prefix="")
