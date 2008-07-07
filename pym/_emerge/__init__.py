@@ -1587,8 +1587,6 @@ class CompositeTask(AsynchronousTask):
 			task = self._current_task
 			if task is None:
 				break
-			if hasattr(task, "reg_id"):
-				self.scheduler.schedule(task.reg_id)
 			task.wait()
 
 		return self.returncode
@@ -1682,7 +1680,7 @@ class TaskSequence(CompositeTask):
 			self.wait()
 
 class SubProcess(AsynchronousTask):
-	__slots__ = ("pid",)
+	__slots__ = ("pid", "registered", "reg_id", "scheduler")
 
 	# A file descriptor is required for the scheduler to monitor changes from
 	# inside a poll() loop. When logging is not enabled, create a pipe just to
@@ -1713,6 +1711,7 @@ class SubProcess(AsynchronousTask):
 	def _wait(self):
 		if self.returncode is not None:
 			return self.returncode
+		self.scheduler.schedule(self.reg_id)
 		self._set_returncode(os.waitpid(self.pid, 0))
 		return self.returncode
 
@@ -1740,7 +1739,7 @@ class SpawnProcess(SubProcess):
 		"uid", "gid", "groups", "umask", "logfile",
 		"path_lookup", "pre_exec")
 
-	__slots__ = ("args", "files", "registered", "reg_id", "scheduler") + \
+	__slots__ = ("args", "files") + \
 		_spawn_kwarg_names
 
 	_file_names = ("process", "out")
@@ -2188,8 +2187,8 @@ class EbuildExecuter(CompositeTask):
 class EbuildPhase(SubProcess):
 
 	__slots__ = ("fd_pipes", "phase", "pkg",
-		"scheduler", "settings", "tree",
-		"files", "registered", "reg_id")
+		"settings", "tree",
+		"files")
 
 	_file_names = ("log", "stdout", "ebuild")
 	_files_dict = slot_dict_class(_file_names, prefix="")
