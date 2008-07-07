@@ -2431,7 +2431,7 @@ class Binpkg(CompositeTask):
 		prefetcher = self.prefetcher
 		if prefetcher is None:
 			pass
-		elif prefetcher.isAlive():
+		elif not prefetcher.isAlive():
 			prefetcher.cancel()
 		elif prefetcher.poll() is None:
 
