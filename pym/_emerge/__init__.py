@@ -1938,7 +1938,7 @@ class EbuildBuildDir(SlotObject):
 
 class EbuildBuild(CompositeTask):
 
-	__slots__ = ("args_set", "find_blockers",
+	__slots__ = ("args_set", "background", "find_blockers",
 		"ldpath_mtimes", "logger", "opts", "pkg", "pkg_count",
 		"settings", "world_atom") + \
 		("_build_dir", "_buildpkg", "_ebuild_path", "_tree")
@@ -2432,7 +2432,7 @@ class PackageUninstall(Task):
 
 class Binpkg(CompositeTask):
 
-	__slots__ = ("find_blockers",
+	__slots__ = ("background", "find_blockers",
 		"ldpath_mtimes", "logger", "opts",
 		"pkg", "pkg_count", "prefetcher", "settings", "world_atom") + \
 		("_bintree", "_build_dir", "_ebuild_path", "_fetched_pkg",
@@ -2873,6 +2873,7 @@ class MergeListItem(CompositeTask):
 		if pkg.type_name == "ebuild":
 
 			build = EbuildBuild(args_set=args_set,
+				background=self.background,
 				find_blockers=find_blockers,
 				ldpath_mtimes=ldpath_mtimes, logger=logger,
 				opts=build_opts, pkg=pkg, pkg_count=pkg_count,
@@ -2885,7 +2886,8 @@ class MergeListItem(CompositeTask):
 
 		elif pkg.type_name == "binary":
 
-			binpkg = Binpkg(find_blockers=find_blockers,
+			binpkg = Binpkg(background=self.background,
+				find_blockers=find_blockers,
 				ldpath_mtimes=ldpath_mtimes, logger=logger,
 				opts=self.binpkg_opts, pkg=pkg, pkg_count=pkg_count,
 				prefetcher=self.prefetcher, settings=settings,
