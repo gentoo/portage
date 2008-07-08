@@ -2834,7 +2834,8 @@ class MergeListItem(CompositeTask):
 	execution support (start, poll, and wait methods).
 	"""
 
-	__slots__ = ("args_set", "binpkg_opts", "build_opts", "emerge_opts",
+	__slots__ = ("args_set", "background",
+		"binpkg_opts", "build_opts", "emerge_opts",
 		"failed_fetches", "find_blockers", "logger", "mtimedb", "pkg",
 		"pkg_count", "prefetcher", "settings", "world_atom") + \
 		("_install_task",)
@@ -7987,6 +7988,7 @@ class Scheduler(object):
 		failed_pkgs = self._failed_pkgs
 		task_queues = self._task_queues
 		max_jobs = self._max_jobs
+		background = max_jobs > 1
 
 		while pkg_queue and not failed_pkgs:
 
@@ -7999,7 +8001,7 @@ class Scheduler(object):
 			if not pkg.installed:
 				self._pkg_count.curval += 1
 
-			task = self._task(pkg)
+			task = self._task(pkg, background)
 
 			self._jobs += 1
 			if pkg.installed:
@@ -8042,10 +8044,10 @@ class Scheduler(object):
 			if not wait and self._jobs < max_jobs:
 				break
 
-	def _task(self, pkg):
+	def _task(self, pkg, background):
 
 		task = MergeListItem(args_set=self._args_set,
-			binpkg_opts=self._binpkg_opts,
+			background=background, binpkg_opts=self._binpkg_opts,
 			build_opts=self._build_opts,
 			emerge_opts=self.myopts,
 			failed_fetches=self._failed_fetches,
