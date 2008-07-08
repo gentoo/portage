@@ -1774,6 +1774,9 @@ class SpawnProcess(SubProcess):
 			# Create a dummy pipe so the scheduler can monitor
 			# the process from inside a poll() loop.
 			fd_pipes[self._dummy_pipe_fd] = slave_fd
+			if self.background:
+				fd_pipes[1] = slave_fd
+				fd_pipes[2] = slave_fd
 			output_handler = self._dummy_handler
 
 		kwargs = {}
@@ -2499,7 +2502,8 @@ class Binpkg(CompositeTask):
 
 		pkg = self.pkg
 		pkg_count = self.pkg_count
-		fetcher = BinpkgFetcher(pkg=self.pkg, scheduler=self.scheduler)
+		fetcher = BinpkgFetcher(background=self.background,
+			pkg=self.pkg, scheduler=self.scheduler)
 		pkg_path = fetcher.pkg_path
 		self._pkg_path = pkg_path
 
@@ -2531,7 +2535,7 @@ class Binpkg(CompositeTask):
 
 		verifier = None
 		if self._verify:
-			verifier = BinpkgVerifier(pkg=self.pkg)
+			verifier = BinpkgVerifier(background=self.background, pkg=self.pkg)
 			self._start_task(verifier, self._verifier_exit)
 			return
 
@@ -2562,7 +2566,7 @@ class Binpkg(CompositeTask):
 		settings = self.settings
 		settings.setcpv(pkg)
 		settings["EBUILD"] = self._ebuild_path
-		ebuild_phase = EbuildPhase(
+		ebuild_phase = EbuildPhase(background=self.background,
 			pkg=pkg, phase=phase, scheduler=self.scheduler,
 			settings=settings, tree=self._tree)
 
@@ -2634,7 +2638,7 @@ class Binpkg(CompositeTask):
 		settings.backup_changes("PORTAGE_BINPKG_FILE")
 
 		phase = "setup"
-		ebuild_phase = EbuildPhase(
+		ebuild_phase = EbuildPhase(background=self.background,
 			pkg=self.pkg, phase=phase, scheduler=self.scheduler,
 			settings=settings, tree=self._tree)
 
@@ -2645,7 +2649,8 @@ class Binpkg(CompositeTask):
 			self._unlock_builddir()
 			return
 
-		extractor = BinpkgExtractorAsync(image_dir=self._image_dir,
+		extractor = BinpkgExtractorAsync(background=self.background,
+			image_dir=self._image_dir,
 			pkg=self.pkg, pkg_path=self._pkg_path, scheduler=self.scheduler)
 		portage.writemsg_stdout(">>> Extracting %s\n" % self.pkg.cpv)
 		self._start_task(extractor, self._extractor_exit)
