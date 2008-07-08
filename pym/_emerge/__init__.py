@@ -7986,8 +7986,13 @@ class Scheduler(object):
 		pkg_queue = self._pkg_queue
 		failed_pkgs = self._failed_pkgs
 		task_queues = self._task_queues
+		max_jobs = self._max_jobs
 
 		while pkg_queue and not failed_pkgs:
+
+			if self._jobs >= max_jobs:
+				self._schedule_main()
+				continue
 
 			pkg = self._choose_pkg()
 
