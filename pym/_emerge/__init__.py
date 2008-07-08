@@ -2987,7 +2987,7 @@ class MergeListItem(CompositeTask):
 		retval = self._install_task.install()
 		return retval
 
-class PackageMerge(CompositeTask):
+class PackageMerge(AsynchronousTask):
 	"""
 	TODO: Implement asynchronous merge so that the scheduler can
 	run while a merge is executing.
