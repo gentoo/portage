@@ -780,8 +780,6 @@ check_ebuild_notadded = not \
 
 # Build a regex from thirdpartymirrors for the SRC_URI.mirror check.
 thirdpartymirrors = portage.flatten(repoman_settings.thirdpartymirrors().values())
-thirdpartymirrors = re.compile(r'^(%s)' % \
-	"|".join(re.escape(x) for x in thirdpartymirrors))
 
 for x in scanlist:
 	#ebuilds and digests added to cvs respectively.
@@ -1109,13 +1107,18 @@ for x in scanlist:
 			# Check that URIs don't reference a server from thirdpartymirrors.
 			for uri in portage.flatten(portage.dep.use_reduce(
 				portage.dep.paren_reduce(myaux["SRC_URI"]), matchall=True)):
-				m = thirdpartymirrors.match(uri)
-				if m is None:
+				contains_mirror = False
+				for mirror in thirdpartymirrors:
+					if uri.startswith(mirror):
+						contains_mirror = True
+						break
+				if not contains_mirror:
 					continue
+
 				stats["SRC_URI.mirror"] += 1
 				fails["SRC_URI.mirror"].append(
 					"%s: '%s' found in thirdpartymirrors" % \
-					(relative_path, m.group(0)))
+					(relative_path, mirror))
 
 		# Test for negative logic and bad words in the RESTRICT var.
 		#for x in myaux[allvars.index("RESTRICT")].split():
