@@ -1579,11 +1579,14 @@ class CompositeTask(AsynchronousTask):
 
 	def _wait(self):
 
+		prev = None
 		while True:
 			task = self._current_task
-			if task is None:
+			if task is None or task is prev:
+				# don't wait for the same task more than once
 				break
 			task.wait()
+			prev = task
 
 		return self.returncode
 
