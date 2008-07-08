@@ -1724,7 +1724,8 @@ class SubProcess(AsynchronousTask):
 	def _wait(self):
 		if self.returncode is not None:
 			return self.returncode
-		self.scheduler.schedule(self._reg_id)
+		if self.registered:
+			self.scheduler.schedule(self._reg_id)
 		self._set_returncode(os.waitpid(self.pid, 0))
 		return self.returncode
 
@@ -1846,6 +1847,7 @@ class SpawnProcess(SubProcess):
 				f.flush()
 				f.close()
 			self.registered = False
+			self._wait()
 		return self.registered
 
 	def _dummy_handler(self, fd, event):
@@ -1867,6 +1869,7 @@ class SpawnProcess(SubProcess):
 			for f in files.values():
 				f.close()
 			self.registered = False
+			self._wait()
 		return self.registered
 
 class EbuildFetcher(SpawnProcess):
@@ -2331,6 +2334,7 @@ class EbuildPhase(SubProcess):
 			for f in files.values():
 				f.close()
 			self.registered = False
+			self._wait()
 		return self.registered
 
 	def _dummy_handler(self, fd, event):
@@ -2352,6 +2356,7 @@ class EbuildPhase(SubProcess):
 			for f in files.values():
 				f.close()
 			self.registered = False
+			self._wait()
 		return self.registered
 
 	def _set_returncode(self, wait_retval):
@@ -8033,7 +8038,7 @@ class Scheduler(object):
 		self._job_exit(merge.merge)
 		pkg = merge.merge.pkg
 		if merge.returncode != os.EX_OK:
-			self._failed_pkgs.append((pkg, retval))
+			self._failed_pkgs.append((pkg, merge.returncode))
 			return
 
 		self._completed_tasks.add(pkg)
@@ -8223,12 +8228,16 @@ class Scheduler(object):
 		poll = self._poll.poll
 		max_jobs = self._max_jobs
 
-		self._schedule_tasks()
+		state_change = 0
+
+		if self._schedule_tasks():
+			state_change += 1
 
 		while event_handlers:
 			jobs = self._jobs
 
 			for f, event in poll():
+				state_change += 1
 				handler, reg_id = event_handlers[f]
 				if not handler(f, event):
 					self._unregister(reg_id)
@@ -8236,10 +8245,21 @@ class Scheduler(object):
 			if jobs == self._jobs:
 				continue
 
-			self._schedule_tasks()
+			if self._schedule_tasks():
+				state_change += 1
 
 			if not wait and self._jobs < max_jobs:
 				break
+
+		if not state_change and not event_handlers and self._jobs:
+			raise AssertionError("tight loop")
+
+	def _schedule_tasks(self):
+		state_change = 0
+		for x in self._task_queues.values():
+			if x.schedule():
+				state_change += 1
+		return bool(state_change)
 
 	def _task(self, pkg, background):
 
@@ -8346,10 +8366,6 @@ class Scheduler(object):
 		del self._poll_event_handlers[f]
 		del self._poll_event_handler_ids[reg_id]
 		self._schedule_tasks()
-
-	def _schedule_tasks(self):
-		for x in self._task_queues.values():
-			x.schedule()
 
 	def _schedule(self, wait_id):
 		"""
