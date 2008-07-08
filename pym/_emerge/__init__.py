@@ -8217,8 +8217,6 @@ class Scheduler(object):
 				task.addExitListener(self._build_exit)
 				task_queues.build.add(task)
 
-			self._schedule_main()
-
 		while self._jobs:
 			self._schedule_main(wait=True)
 
