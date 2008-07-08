@@ -8138,7 +8138,7 @@ class Scheduler(object):
 			if node in traversed_nodes:
 				continue
 			traversed_nodes.add(node)
-			if not node.installed and \
+			if not (node.installed and node.operation == "nomerge") and \
 				node not in completed_tasks:
 				dependent = True
 				break
