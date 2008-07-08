@@ -7642,7 +7642,7 @@ class Scheduler(object):
 
 		self._add_task = self._task_queues.prefetch.add
 		self._prefetchers = weakref.WeakValueDictionary()
-		self._pkg_queue = deque()
+		self._pkg_queue = []
 		self._completed_tasks = set()
 		self._failed_pkgs = []
 		self._failed_fetches = []
@@ -8073,7 +8073,7 @@ class Scheduler(object):
 			self._main_loop()
 		finally:
 			# discard remaining packages if necessary
-			pkg_queue.clear()
+			del pkg_queue[:]
 			self._completed_tasks.clear()
 			self._digraph = None
 			self._task_queues.prefetch.clear()
@@ -8089,7 +8089,7 @@ class Scheduler(object):
 
 	def _choose_pkg(self):
 		if self._max_jobs < 2:
-			return self._pkg_queue.popleft()
+			return self._pkg_queue.pop(0)
 
 		self._prune_digraph()
 
