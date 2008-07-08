@@ -8249,7 +8249,7 @@ class Scheduler(object):
 			if not wait and self._jobs < max_jobs:
 				break
 
-		if not state_change and not event_handlers and self._jobs:
+		if not state_change:
 			raise AssertionError("tight loop")
 
 	def _schedule_tasks(self):
