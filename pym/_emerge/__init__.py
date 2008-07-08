@@ -8102,7 +8102,11 @@ class Scheduler(object):
 		return rval
 
 	def _choose_pkg(self):
-		if self._max_jobs < 2:
+		"""
+		TODO: fix order for uninstall operations
+		"""
+		if self._max_jobs < 2 or self._jobs == 0 or \
+			self._pkg_queue[0].operation == "uninstall":
 			return self._pkg_queue.pop(0)
 
 		self._prune_digraph()
@@ -8131,7 +8135,7 @@ class Scheduler(object):
 		completed_tasks = self._completed_tasks
 
 		dependent = False
-		traversed_nodes = set()
+		traversed_nodes = set([pkg])
 		node_stack = graph.child_nodes(pkg)
 		while node_stack:
 			node = node_stack.pop()
