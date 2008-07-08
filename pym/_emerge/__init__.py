@@ -8101,7 +8101,8 @@ class Scheduler(object):
 				chosen_pkg = pkg
 				break
 
-		self._pkg_queue.remove(chosen_pkg)
+		if chosen_pkg is not None:
+			self._pkg_queue.remove(chosen_pkg)
 		return chosen_pkg
 
 	def _dependent_on_scheduled_merges(self, pkg):
