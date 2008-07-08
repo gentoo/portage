@@ -1582,9 +1582,15 @@ class CompositeTask(AsynchronousTask):
 		prev = None
 		while True:
 			task = self._current_task
-			if task is None or task is prev:
+			if task is None:
 				# don't wait for the same task more than once
 				break
+			if task is prev:
+				# Before the task.wait() method returned, an exit
+				# listener should have set self._current_task to either
+				# a different task or None. Something is wrong.
+				raise AssertionError("self._current_task has not " + \
+					"changed since calling wait", self, task)
 			task.wait()
 			prev = task
 
