@@ -1464,7 +1464,8 @@ class AsynchronousTask(SlotObject):
 	the task is complete and self.returncode has been set.
 	"""
 
-	__slots__ = ("cancelled", "returncode") + ("_exit_listeners",)
+	__slots__ = ("background", "cancelled", "returncode") + \
+		("_exit_listeners",)
 
 	def start(self):
 		"""
@@ -2022,8 +2023,8 @@ class EbuildBuild(CompositeTask):
 				(pkg_count.curval, pkg_count.maxval, pkg.cpv)
 			logger.log(msg, short_msg=short_msg)
 
-		build = EbuildExecuter(pkg=pkg, scheduler=scheduler,
-			settings=settings)
+		build = EbuildExecuter(background=self.background, pkg=pkg,
+			scheduler=scheduler, settings=settings)
 		self._start_task(build, self._build_exit)
 
 	def _fetchonly_exit(self, fetcher):
@@ -2050,7 +2051,7 @@ class EbuildBuild(CompositeTask):
 			self.wait()
 			return
 
-		packager = EbuildBinpkg(pkg=self.pkg,
+		packager = EbuildBinpkg(background=self.background, pkg=self.pkg,
 			scheduler=self.scheduler, settings=self.settings)
 
 		self._start_task(packager, self._buildpkg_exit)
@@ -2066,7 +2067,8 @@ class EbuildBuild(CompositeTask):
 			self.opts.buildpkgonly:
 			# Need to call "clean" phase for buildpkgonly mode
 			phase = "clean"
-			clean_phase = EbuildPhase(pkg=self.pkg, phase=phase,
+			clean_phase = EbuildPhase(background=self.background,
+				pkg=self.pkg, phase=phase,
 				scheduler=self.scheduler, settings=self.settings,
 				tree=self._tree)
 			self._start_task(clean_phase, self._clean_exit)
@@ -2132,7 +2134,7 @@ class EbuildExecuter(CompositeTask):
 		settings = self.settings
 
 		phase = "clean"
-		clean_phase = EbuildPhase(pkg=pkg, phase=phase,
+		clean_phase = EbuildPhase(background=self.background, pkg=pkg, phase=phase,
 			scheduler=scheduler, settings=settings, tree=tree)
 		self._start_task(clean_phase, self._clean_phase_exit)
 
@@ -2159,7 +2161,8 @@ class EbuildExecuter(CompositeTask):
 		ebuild_phases = TaskSequence(scheduler=scheduler)
 
 		for phase in self._phases:
-			ebuild_phases.add(EbuildPhase(fd_pipes=fd_pipes,
+			ebuild_phases.add(EbuildPhase(background=self.background,
+				fd_pipes=fd_pipes,
 				pkg=pkg, phase=phase, scheduler=scheduler,
 				settings=settings, tree=tree))
 
@@ -2202,7 +2205,7 @@ class EbuildPhase(SubProcess):
 			if fd == sys.stderr.fileno():
 				sys.stderr.flush()
 
-		fd_pipes_orig = None
+		fd_pipes_orig = fd_pipes.copy()
 		self.files = self._files_dict()
 		files = self.files
 		got_pty = False
@@ -2236,8 +2239,6 @@ class EbuildPhase(SubProcess):
 			fcntl.fcntl(master_fd, fcntl.F_SETFL,
 				fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 
-			fd_pipes.setdefault(0, sys.stdin.fileno())
-			fd_pipes_orig = fd_pipes.copy()
 			if got_pty and os.isatty(fd_pipes_orig[1]):
 				from portage.output import get_term_size, set_term_size
 				rows, columns = get_term_size()
@@ -2253,6 +2254,9 @@ class EbuildPhase(SubProcess):
 			fcntl.fcntl(master_fd, fcntl.F_SETFL,
 				fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 			fd_pipes[self._dummy_pipe_fd] = slave_fd
+			if self.background:
+				fd_pipes[1] = slave_fd
+				fd_pipes[2] = slave_fd
 
 		retval = portage.doebuild(ebuild_path, self.phase,
 			root_config.root, settings, debug,
@@ -2263,7 +2267,8 @@ class EbuildPhase(SubProcess):
 
 		if logfile:
 			files.log = open(logfile, 'a')
-			files.stdout = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
+			if not self.background:
+				files.stdout = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
 			output_handler = self._output_handler
 		else:
 			output_handler = self._dummy_handler
@@ -2282,8 +2287,9 @@ class EbuildPhase(SubProcess):
 		except EOFError:
 			pass
 		if buf:
-			buf.tofile(files.stdout)
-			files.stdout.flush()
+			if not self.background:
+				buf.tofile(files.stdout)
+				files.stdout.flush()
 			buf.tofile(files.log)
 			files.log.flush()
 		else:
@@ -2432,7 +2438,7 @@ class PackageUninstall(Task):
 
 class Binpkg(CompositeTask):
 
-	__slots__ = ("background", "find_blockers",
+	__slots__ = ("find_blockers",
 		"ldpath_mtimes", "logger", "opts",
 		"pkg", "pkg_count", "prefetcher", "settings", "world_atom") + \
 		("_bintree", "_build_dir", "_ebuild_path", "_fetched_pkg",
@@ -2834,7 +2840,7 @@ class MergeListItem(CompositeTask):
 	execution support (start, poll, and wait methods).
 	"""
 
-	__slots__ = ("args_set", "background",
+	__slots__ = ("args_set",
 		"binpkg_opts", "build_opts", "emerge_opts",
 		"failed_fetches", "find_blockers", "logger", "mtimedb", "pkg",
 		"pkg_count", "prefetcher", "settings", "world_atom") + \
