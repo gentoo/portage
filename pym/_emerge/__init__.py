@@ -8235,9 +8235,9 @@ class Scheduler(object):
 			jobs = self._jobs
 
 			for f, event in poll():
-				state_change += 1
 				handler, reg_id = event_handlers[f]
 				if not handler(f, event):
+					state_change += 1
 					self._unregister(reg_id)
 
 			if jobs == self._jobs:
