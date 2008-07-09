@@ -1876,7 +1876,7 @@ class SpawnProcess(SubProcess):
 
 class EbuildFetcher(SpawnProcess):
 
-	__slots__ = ("pkg",)
+	__slots__ = ("fetchonly", "pkg",)
 
 	def start(self):
 
@@ -1887,7 +1887,8 @@ class EbuildFetcher(SpawnProcess):
 
 		fetch_env = settings.environ()
 		fetch_env["PORTAGE_NICENESS"] = "0"
-		fetch_env["PORTAGE_PARALLEL_FETCHONLY"] = "1"
+		if self.fetchonly:
+			fetch_env["PORTAGE_PARALLEL_FETCHONLY"] = "1"
 
 		ebuild_binary = os.path.join(
 			settings["EBUILD_BIN_PATH"], "ebuild")
@@ -1985,51 +1986,69 @@ class EbuildBuild(CompositeTask):
 
 	def start(self):
 
-		args_set = self.args_set
-		find_blockers = self.find_blockers
-		ldpath_mtimes = self.ldpath_mtimes
 		logger = self.logger
 		opts = self.opts
 		pkg = self.pkg
-		pkg_count = self.pkg_count
-		scheduler = self.scheduler
 		settings = self.settings
 		world_atom = self.world_atom
 		root_config = pkg.root_config
-		root = root_config.root
-		system_set = root_config.sets["system"]
-		world_set = root_config.sets["world"]
-		vartree = root_config.trees["vartree"]
 		tree = "porttree"
 		self._tree = tree
 		portdb = root_config.trees[tree].dbapi
-		debug = settings.get("PORTAGE_DEBUG") == "1"
-		features = self.settings.features
 		settings["EMERGE_FROM"] = pkg.type_name
 		settings.backup_changes("EMERGE_FROM")
 		settings.reset()
 		ebuild_path = portdb.findname(self.pkg.cpv)
 		self._ebuild_path = ebuild_path
 
-		#buildsyspkg: Check if we need to _force_ binary package creation
-		issyspkg = "buildsyspkg" in features and \
-				system_set.findAtomForPackage(pkg) and \
-				not opts.buildpkg
-
-		if opts.fetchonly:
-			if opts.pretend:
+		if opts.fetchonly and opts.pretend:
 				fetcher = EbuildFetchPretend(
 					fetch_all=opts.fetch_all_uri,
 					pkg=pkg, settings=settings)
 				retval = fetcher.execute()
 				self.returncode = retval
 				self.wait()
+				return
 
-			else:
-				fetcher = EbuildFetcher(pkg=pkg, scheduler=scheduler)
-				self._start_task(fetcher, self._fetchonly_exit)
+		fetch_log = None
+		if self.background:
+			fetch_log = self.scheduler.fetch.log_file
 
+		fetcher = EbuildFetcher(fetchonly=opts.fetchonly,
+			background=self.background, logfile=fetch_log,
+			pkg=pkg, scheduler=self.scheduler)
+
+		if self.background:
+			fetcher.addExitListener(self._fetch_exit)
+			self._current_task = fetcher
+			self.scheduler.fetch.schedule(fetcher)
+		else:
+			self._start_task(fetcher, self._fetch_exit)
+
+	def _fetch_exit(self, fetcher):
+
+		opts = self.opts
+		pkg = self.pkg
+
+		if opts.fetchonly:
+			if self._final_exit(fetcher) != os.EX_OK:
+				eerror("!!! Fetch for %s failed, continuing..." % pkg.cpv,
+					phase="unpack", key=pkg.cpv)
+			self.wait()
 			return
+
+		if self._default_exit(fetcher) != os.EX_OK:
+			self.wait()
+			return
+
+		logger = self.logger
+		opts = self.opts
+		pkg_count = self.pkg_count
+		scheduler = self.scheduler
+		settings = self.settings
+		features = settings.features
+		ebuild_path = self._ebuild_path
+		system_set = pkg.root_config.sets["system"]
 
 		self._build_dir = EbuildBuildDir(pkg=pkg, settings=settings)
 		self._build_dir.lock()
@@ -2041,6 +2060,11 @@ class EbuildBuild(CompositeTask):
 		short_msg = "emerge: (%s of %s) %s Clean" % \
 			(pkg_count.curval, pkg_count.maxval, pkg.cpv)
 		logger.log(msg, short_msg=short_msg)
+
+		#buildsyspkg: Check if we need to _force_ binary package creation
+		issyspkg = "buildsyspkg" in features and \
+				system_set.findAtomForPackage(pkg) and \
+				not opts.buildpkg
 
 		if opts.buildpkg or issyspkg:
 
@@ -2065,13 +2089,6 @@ class EbuildBuild(CompositeTask):
 		build = EbuildExecuter(background=self.background, pkg=pkg,
 			scheduler=scheduler, settings=settings)
 		self._start_task(build, self._build_exit)
-
-	def _fetchonly_exit(self, fetcher):
-		if self._final_exit(fetcher) != os.EX_OK:
-			pkg = self.pkg
-			eerror("!!! Fetch for %s failed, continuing..." % pkg.cpv,
-				phase="unpack", key=pkg.cpv)
-		self.wait()
 
 	def _unlock_builddir(self):
 		portage.elog.elog_process(self.pkg.cpv, self.settings)

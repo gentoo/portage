@@ -5337,8 +5337,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# unpack compile install`, we will try and fetch 4 times :/
 		need_distfiles = (mydo in ("fetch", "unpack") or \
 			mydo not in ("digest", "manifest") and "noauto" not in features)
-		emerge_skip_distfiles = "EMERGE_FROM" in mysettings and \
-			mydo not in ("fetch", "unpack")
+		emerge_skip_distfiles = returnpid
 		if not emerge_skip_distfiles and \
 			need_distfiles and not fetch(
 			fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
