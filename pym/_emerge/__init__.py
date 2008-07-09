@@ -1981,7 +1981,7 @@ class EbuildBuild(CompositeTask):
 
 	__slots__ = ("args_set", "background", "find_blockers",
 		"ldpath_mtimes", "logger", "opts", "pkg", "pkg_count",
-		"settings", "world_atom") + \
+		"prefetcher", "settings", "world_atom") + \
 		("_build_dir", "_buildpkg", "_ebuild_path", "_tree")
 
 	def start(self):
@@ -2000,6 +2000,37 @@ class EbuildBuild(CompositeTask):
 		settings.reset()
 		ebuild_path = portdb.findname(self.pkg.cpv)
 		self._ebuild_path = ebuild_path
+
+		prefetcher = self.prefetcher
+		if prefetcher is None:
+			pass
+		elif not prefetcher.isAlive():
+			prefetcher.cancel()
+		elif prefetcher.poll() is None:
+
+			waiting_msg = ("Fetching '%s' " + \
+				"in the background. " + \
+				"To view fetch progress, run `tail -f " + \
+				"/var/log/emerge-fetch.log` in another " + \
+				"terminal.") % prefetcher.pkg_path
+			msg_prefix = colorize("GOOD", " * ")
+			from textwrap import wrap
+			waiting_msg = "".join("%s%s\n" % (msg_prefix, line) \
+				for line in wrap(waiting_msg, 65))
+			if not self.background:
+				writemsg(waiting_msg, noiselevel=-1)
+
+			self._current_task = prefetcher
+			prefetcher.addExitListener(self._prefetch_exit)
+			return
+
+		self._prefetch_exit(prefetcher)
+
+	def _prefetch_exit(self, prefetcher):
+
+		opts = self.opts
+		pkg = self.pkg
+		settings = self.settings
 
 		if opts.fetchonly and opts.pretend:
 				fetcher = EbuildFetchPretend(
@@ -2545,7 +2576,8 @@ class Binpkg(CompositeTask):
 			from textwrap import wrap
 			waiting_msg = "".join("%s%s\n" % (msg_prefix, line) \
 				for line in wrap(waiting_msg, 65))
-			writemsg(waiting_msg, noiselevel=-1)
+			if not self.background:
+				writemsg(waiting_msg, noiselevel=-1)
 
 			self._current_task = prefetcher
 			prefetcher.addExitListener(self._prefetch_exit)
@@ -2949,8 +2981,8 @@ class MergeListItem(CompositeTask):
 				find_blockers=find_blockers,
 				ldpath_mtimes=ldpath_mtimes, logger=logger,
 				opts=build_opts, pkg=pkg, pkg_count=pkg_count,
-				settings=settings, scheduler=scheduler,
-				world_atom=world_atom)
+				prefetcher=self.prefetcher, scheduler=scheduler,
+				settings=settings, world_atom=world_atom)
 
 			self._install_task = build
 			self._start_task(build, self._ebuild_exit)
