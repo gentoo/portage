@@ -7710,7 +7710,30 @@ class Scheduler(object):
 			return
 
 		self._digraph = digraph
+		self._reverse_uninstall_edges()
 		self._prune_digraph()
+
+	def _reverse_uninstall_edges(self):
+		"""
+		The uninstall is performed only after blocking packages have been
+		merged on top of it (similar to how a normal upgrade is performed
+		by first merging the new version on top of the onld version). This
+		is implemented by reversing the the parent -> uninstall edges in
+		the graph.
+		"""
+
+		graph = self._digraph
+
+		for node in self._mergelist:
+			if not isinstance(node, Package) or \
+				node.operation != "uninstall":
+				continue
+
+			parent_nodes = graph.parent_nodes(node)
+			graph.remove(node)
+			for blocked_pkg in parent_nodes:
+				graph.add(blocked_pkg, node,
+					priority=BlockerDepPriority.instance)
 
 	def _prune_digraph(self):
 		"""
@@ -8104,18 +8127,15 @@ class Scheduler(object):
 
 	def _choose_pkg(self):
 		"""
-		TODO: fix order for uninstall operations
+		Choose a task that has all it's dependencies satisfied.
 		"""
-		if self._max_jobs < 2 or self._jobs == 0 or \
-			self._pkg_queue[0].operation == "uninstall":
+		if self._max_jobs < 2 or self._jobs == 0:
 			return self._pkg_queue.pop(0)
 
 		self._prune_digraph()
 
 		chosen_pkg = None
 		for pkg in self._pkg_queue:
-			if pkg.operation == "uninstall":
-				continue
 			if not self._dependent_on_scheduled_merges(pkg):
 				chosen_pkg = pkg
 				break
