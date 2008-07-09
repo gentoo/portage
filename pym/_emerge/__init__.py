@@ -870,6 +870,28 @@ class SlotObject(object):
 				myvalue = kwargs.get(myattr, None)
 				setattr(self, myattr, myvalue)
 
+	def copy(self):
+		"""
+		Create a new instance and copy all attributes
+		defined from __slots__ (including those from
+		inherited classes).
+		"""
+		obj = self.__class__()
+
+		classes = [self.__class__]
+		while classes:
+			c = classes.pop()
+			if c is SlotObject:
+				continue
+			classes.extend(c.__bases__)
+			slots = getattr(c, "__slots__", None)
+			if not slots:
+				continue
+			for myattr in slots:
+				setattr(obj, myattr, getattr(self, myattr))
+
+		return obj
+
 class AbstractDepPriority(SlotObject):
 	__slots__ = ("buildtime", "runtime", "runtime_post")
 
@@ -1491,7 +1513,8 @@ class AsynchronousTask(SlotObject):
 	the task is complete and self.returncode has been set.
 	"""
 
-	__slots__ = ("cancelled", "returncode") + ("_exit_listeners",)
+	__slots__ = ("background", "cancelled", "returncode") + \
+		("_exit_listeners",)
 
 	def start(self):
 		"""
@@ -1583,11 +1606,20 @@ class CompositeTask(AsynchronousTask):
 
 	def _wait(self):
 
+		prev = None
 		while True:
 			task = self._current_task
 			if task is None:
+				# don't wait for the same task more than once
 				break
+			if task is prev:
+				# Before the task.wait() method returned, an exit
+				# listener should have set self._current_task to either
+				# a different task or None. Something is wrong.
+				raise AssertionError("self._current_task has not " + \
+					"changed since calling wait", self, task)
 			task.wait()
+			prev = task
 
 		return self.returncode
 
@@ -1621,14 +1653,21 @@ class CompositeTask(AsynchronousTask):
 		Assumes that task is the final task of this composite task.
 		Calls _default_exit() and sets self.returncode to the task's
 		returncode and sets self._current_task to None.
-
-		Subclasses can use this as a generic final task exit callback.
-
 		"""
 		self._default_exit(task)
 		self._current_task = None
 		self.returncode = task.returncode
 		return self.returncode
+
+	def _default_final_exit(self, task):
+		"""
+		This calls _final_exit() and then wait().
+
+		Subclasses can use this as a generic final task exit callback.
+
+		"""
+		self._final_exit(task)
+		return self.wait()
 
 	def _start_task(self, task, exit_handler):
 		"""
@@ -1680,7 +1719,8 @@ class TaskSequence(CompositeTask):
 			self.wait()
 
 class SubProcess(AsynchronousTask):
-	__slots__ = ("pid", "registered", "reg_id", "scheduler")
+
+	__slots__ = ("scheduler",) + ("pid", "registered", "_reg_id")
 
 	# A file descriptor is required for the scheduler to monitor changes from
 	# inside a poll() loop. When logging is not enabled, create a pipe just to
@@ -1711,7 +1751,7 @@ class SubProcess(AsynchronousTask):
 	def _wait(self):
 		if self.returncode is not None:
 			return self.returncode
-		self.scheduler.schedule(self.reg_id)
+		self.scheduler.schedule(self._reg_id)
 		self._set_returncode(os.waitpid(self.pid, 0))
 		return self.returncode
 
@@ -1792,6 +1832,9 @@ class SpawnProcess(SubProcess):
 			# Create a dummy pipe so the scheduler can monitor
 			# the process from inside a poll() loop.
 			fd_pipes[self._dummy_pipe_fd] = slave_fd
+			if self.background:
+				fd_pipes[1] = slave_fd
+				fd_pipes[2] = slave_fd
 			output_handler = self._dummy_handler
 
 		kwargs = {}
@@ -1810,7 +1853,7 @@ class SpawnProcess(SubProcess):
 
 		os.close(slave_fd)
 		files.process = os.fdopen(master_fd, 'r')
-		self.reg_id = self.scheduler.register(files.process.fileno(),
+		self._reg_id = self.scheduler.register(files.process.fileno(),
 			PollConstants.POLLIN, output_handler)
 		self.registered = True
 
@@ -1957,7 +2000,7 @@ class EbuildBuildDir(SlotObject):
 
 class EbuildBuild(CompositeTask):
 
-	__slots__ = ("args_set", "find_blockers",
+	__slots__ = ("args_set", "background", "find_blockers",
 		"ldpath_mtimes", "logger", "opts", "pkg", "pkg_count",
 		"settings", "world_atom") + \
 		("_build_dir", "_buildpkg", "_ebuild_path", "_tree")
@@ -2041,8 +2084,8 @@ class EbuildBuild(CompositeTask):
 				(pkg_count.curval, pkg_count.maxval, pkg.cpv)
 			logger.log(msg, short_msg=short_msg)
 
-		build = EbuildExecuter(pkg=pkg, scheduler=scheduler,
-			settings=settings)
+		build = EbuildExecuter(background=self.background, pkg=pkg,
+			scheduler=scheduler, settings=settings)
 		self._start_task(build, self._build_exit)
 
 	def _fetchonly_exit(self, fetcher):
@@ -2069,7 +2112,7 @@ class EbuildBuild(CompositeTask):
 			self.wait()
 			return
 
-		packager = EbuildBinpkg(pkg=self.pkg,
+		packager = EbuildBinpkg(background=self.background, pkg=self.pkg,
 			scheduler=self.scheduler, settings=self.settings)
 
 		self._start_task(packager, self._buildpkg_exit)
@@ -2085,7 +2128,8 @@ class EbuildBuild(CompositeTask):
 			self.opts.buildpkgonly:
 			# Need to call "clean" phase for buildpkgonly mode
 			phase = "clean"
-			clean_phase = EbuildPhase(pkg=self.pkg, phase=phase,
+			clean_phase = EbuildPhase(background=self.background,
+				pkg=self.pkg, phase=phase,
 				scheduler=self.scheduler, settings=self.settings,
 				tree=self._tree)
 			self._start_task(clean_phase, self._clean_exit)
@@ -2151,7 +2195,7 @@ class EbuildExecuter(CompositeTask):
 		settings = self.settings
 
 		phase = "clean"
-		clean_phase = EbuildPhase(pkg=pkg, phase=phase,
+		clean_phase = EbuildPhase(background=self.background, pkg=pkg, phase=phase,
 			scheduler=scheduler, settings=settings, tree=tree)
 		self._start_task(clean_phase, self._clean_phase_exit)
 
@@ -2178,11 +2222,12 @@ class EbuildExecuter(CompositeTask):
 		ebuild_phases = TaskSequence(scheduler=scheduler)
 
 		for phase in self._phases:
-			ebuild_phases.add(EbuildPhase(fd_pipes=fd_pipes,
+			ebuild_phases.add(EbuildPhase(background=self.background,
+				fd_pipes=fd_pipes,
 				pkg=pkg, phase=phase, scheduler=scheduler,
 				settings=settings, tree=tree))
 
-		self._start_task(ebuild_phases, self._final_exit)
+		self._start_task(ebuild_phases, self._default_final_exit)
 
 class EbuildPhase(SubProcess):
 
@@ -2221,7 +2266,7 @@ class EbuildPhase(SubProcess):
 			if fd == sys.stderr.fileno():
 				sys.stderr.flush()
 
-		fd_pipes_orig = None
+		fd_pipes_orig = fd_pipes.copy()
 		self.files = self._files_dict()
 		files = self.files
 		got_pty = False
@@ -2255,8 +2300,6 @@ class EbuildPhase(SubProcess):
 			fcntl.fcntl(master_fd, fcntl.F_SETFL,
 				fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 
-			fd_pipes.setdefault(0, sys.stdin.fileno())
-			fd_pipes_orig = fd_pipes.copy()
 			if got_pty and os.isatty(fd_pipes_orig[1]):
 				from portage.output import get_term_size, set_term_size
 				rows, columns = get_term_size()
@@ -2272,6 +2315,9 @@ class EbuildPhase(SubProcess):
 			fcntl.fcntl(master_fd, fcntl.F_SETFL,
 				fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 			fd_pipes[self._dummy_pipe_fd] = slave_fd
+			if self.background:
+				fd_pipes[1] = slave_fd
+				fd_pipes[2] = slave_fd
 
 		retval = portage.doebuild(ebuild_path, self.phase,
 			root_config.root, settings, debug,
@@ -2282,14 +2328,15 @@ class EbuildPhase(SubProcess):
 
 		if logfile:
 			files.log = open(logfile, 'a')
-			files.stdout = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
+			if not self.background:
+				files.stdout = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
 			output_handler = self._output_handler
 		else:
 			output_handler = self._dummy_handler
 
 		os.close(slave_fd)
 		files.ebuild = os.fdopen(master_fd, 'r')
-		self.reg_id = self.scheduler.register(files.ebuild.fileno(),
+		self._reg_id = self.scheduler.register(files.ebuild.fileno(),
 			PollConstants.POLLIN, output_handler)
 		self.registered = True
 
@@ -2301,8 +2348,9 @@ class EbuildPhase(SubProcess):
 		except EOFError:
 			pass
 		if buf:
-			buf.tofile(files.stdout)
-			files.stdout.flush()
+			if not self.background:
+				buf.tofile(files.stdout)
+				files.stdout.flush()
 			buf.tofile(files.log)
 			files.log.flush()
 		else:
@@ -2512,7 +2560,8 @@ class Binpkg(CompositeTask):
 
 		pkg = self.pkg
 		pkg_count = self.pkg_count
-		fetcher = BinpkgFetcher(pkg=self.pkg, scheduler=self.scheduler)
+		fetcher = BinpkgFetcher(background=self.background,
+			pkg=self.pkg, scheduler=self.scheduler)
 		pkg_path = fetcher.pkg_path
 		self._pkg_path = pkg_path
 
@@ -2544,7 +2593,7 @@ class Binpkg(CompositeTask):
 
 		verifier = None
 		if self._verify:
-			verifier = BinpkgVerifier(pkg=self.pkg)
+			verifier = BinpkgVerifier(background=self.background, pkg=self.pkg)
 			self._start_task(verifier, self._verifier_exit)
 			return
 
@@ -2575,7 +2624,7 @@ class Binpkg(CompositeTask):
 		settings = self.settings
 		settings.setcpv(pkg)
 		settings["EBUILD"] = self._ebuild_path
-		ebuild_phase = EbuildPhase(
+		ebuild_phase = EbuildPhase(background=self.background,
 			pkg=pkg, phase=phase, scheduler=self.scheduler,
 			settings=settings, tree=self._tree)
 
@@ -2647,7 +2696,7 @@ class Binpkg(CompositeTask):
 		settings.backup_changes("PORTAGE_BINPKG_FILE")
 
 		phase = "setup"
-		ebuild_phase = EbuildPhase(
+		ebuild_phase = EbuildPhase(background=self.background,
 			pkg=self.pkg, phase=phase, scheduler=self.scheduler,
 			settings=settings, tree=self._tree)
 
@@ -2658,7 +2707,8 @@ class Binpkg(CompositeTask):
 			self._unlock_builddir()
 			return
 
-		extractor = BinpkgExtractorAsync(image_dir=self._image_dir,
+		extractor = BinpkgExtractorAsync(background=self.background,
+			image_dir=self._image_dir,
 			pkg=self.pkg, pkg_path=self._pkg_path, scheduler=self.scheduler)
 		portage.writemsg_stdout(">>> Extracting %s\n" % self.pkg.cpv)
 		self._start_task(extractor, self._extractor_exit)
@@ -2853,7 +2903,8 @@ class MergeListItem(CompositeTask):
 	execution support (start, poll, and wait methods).
 	"""
 
-	__slots__ = ("args_set", "binpkg_opts", "build_opts", "emerge_opts",
+	__slots__ = ("args_set",
+		"binpkg_opts", "build_opts", "emerge_opts",
 		"failed_fetches", "find_blockers", "logger", "mtimedb", "pkg",
 		"pkg_count", "prefetcher", "settings", "world_atom") + \
 		("_install_task",)
@@ -2891,6 +2942,7 @@ class MergeListItem(CompositeTask):
 		if pkg.type_name == "ebuild":
 
 			build = EbuildBuild(args_set=args_set,
+				background=self.background,
 				find_blockers=find_blockers,
 				ldpath_mtimes=ldpath_mtimes, logger=logger,
 				opts=build_opts, pkg=pkg, pkg_count=pkg_count,
@@ -2899,20 +2951,19 @@ class MergeListItem(CompositeTask):
 
 			self._install_task = build
 			self._start_task(build, self._ebuild_exit)
-			self.wait()
 			return
 
 		elif pkg.type_name == "binary":
 
-			binpkg = Binpkg(find_blockers=find_blockers,
+			binpkg = Binpkg(background=self.background,
+				find_blockers=find_blockers,
 				ldpath_mtimes=ldpath_mtimes, logger=logger,
 				opts=self.binpkg_opts, pkg=pkg, pkg_count=pkg_count,
 				prefetcher=self.prefetcher, settings=settings,
 				scheduler=scheduler, world_atom=world_atom)
 
 			self._install_task = binpkg
-			self._start_task(binpkg, self._final_exit)
-			self.wait()
+			self._start_task(binpkg, self._default_final_exit)
 			return
 
 	def _ebuild_exit(self, build):
@@ -2963,7 +3014,7 @@ class MergeListItem(CompositeTask):
 		retval = self._install_task.install()
 		return retval
 
-class PackageMerge(CompositeTask):
+class PackageMerge(AsynchronousTask):
 	"""
 	TODO: Implement asynchronous merge so that the scheduler can
 	run while a merge is executing.
@@ -7560,6 +7611,9 @@ class Scheduler(object):
 		"--fetchonly", "--fetch-all-uri",
 		"--nodeps", "--pretend"])
 
+	_opts_no_restart = frozenset(["--buildpkgonly",
+		"--fetchonly", "--fetch-all-uri", "--pretend"])
+
 	_bad_resume_opts = set(["--ask", "--changelog",
 		"--resume", "--skipfirst"])
 
@@ -7612,9 +7666,11 @@ class Scheduler(object):
 		if settings.get("PORTAGE_DEBUG", "") == "1":
 			self.edebug = 1
 		self.pkgsettings = {}
+		self._config_pool = {}
 		for root in trees:
 			self.pkgsettings[root] = portage.config(
 				clone=trees[root]["vartree"].settings)
+			self._config_pool[root] = []
 		self.curval = 0
 		self._logger = self._emerge_log_class(
 			xterm_titles=("notitles" not in settings.features))
@@ -7636,7 +7692,8 @@ class Scheduler(object):
 
 		self._add_task = self._task_queues.prefetch.add
 		self._prefetchers = weakref.WeakValueDictionary()
-		self._pkg_queue = deque()
+		self._pkg_queue = []
+		self._completed_tasks = set()
 		self._failed_pkgs = []
 		self._failed_fetches = []
 		self._parallel_fetch = False
@@ -7644,7 +7701,15 @@ class Scheduler(object):
 			if isinstance(x, Package) and x.operation == "merge"])
 		self._pkg_count = self._pkg_count_class(
 			curval=0, maxval=merge_count)
-		self._max_jobs = 1
+
+		max_jobs = myopts.get("--jobs")
+		if max_jobs is None:
+			max_jobs = 1
+		self._set_max_jobs(max_jobs)
+
+		self._max_load = myopts.get("--load-average")
+
+		self._set_digraph(digraph)
 		self._jobs = 0
 
 		features = self.settings.features
@@ -7669,6 +7734,39 @@ class Scheduler(object):
 					open(self._fetch_log, 'w')
 				except EnvironmentError:
 					pass
+
+	def _set_max_jobs(self, max_jobs):
+		self._max_jobs = max_jobs
+		self._task_queues.build.max_jobs = max_jobs
+
+	def _set_digraph(self, digraph):
+		if self._max_jobs < 2:
+			# save some memory
+			self._digraph = None
+			return
+
+		self._digraph = digraph
+		self._prune_digraph()
+
+	def _prune_digraph(self):
+		"""
+		Prune any root nodes that are irrelevant.
+		"""
+
+		graph = self._digraph
+		completed_tasks = self._completed_tasks
+		removed_nodes = set()
+		while True:
+			for node in graph.root_nodes():
+				if not isinstance(node, Package) or \
+					node.installed or node.onlydeps or \
+					node in completed_tasks:
+					removed_nodes.add(node)
+			if removed_nodes:
+				graph.difference_update(removed_nodes)
+			if not removed_nodes:
+				break
+			removed_nodes.clear()
 
 	class _pkg_failure(portage.exception.PortageException):
 		"""
@@ -7810,6 +7908,40 @@ class Scheduler(object):
 
 		sys.stderr.write("\n")
 
+	def _is_restart_scheduled(self):
+		"""
+		Check if the merge list contains a replacement
+		for the current running instance, that will result
+		in restart after merge.
+		@rtype: bool
+		@returns: True if a restart is scheduled, False otherwise.
+		"""
+		if self._opts_no_restart.intersection(self.myopts):
+			return False
+
+		mergelist = self._mergelist
+
+		for i, pkg in enumerate(mergelist):
+			if self._is_restart_necessary(pkg) and \
+				i != len(mergelist) - 1:
+				return True
+
+		return False
+
+	def _is_restart_necessary(self, pkg):
+		"""
+		@return: True if merging the given package
+			requires restart, False otherwise.
+		"""
+
+		# Figure out if we need a restart.
+		if pkg.root == self._running_root.root and \
+			EPREFIX == BPREFIX and \
+			portage.match_from_list(
+			portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
+			return True
+		return False
+
 	def _restart_if_necessary(self, pkg):
 		"""
 		Use execv() to restart emerge. This happens
@@ -7817,16 +7949,10 @@ class Scheduler(object):
 		remaining packages in the list.
 		"""
 
-		if "--pretend" in self.myopts or \
-			"--fetchonly" in self.myopts or \
-			"--fetch-all-uri" in self.myopts:
+		if self._opts_no_restart.intersection(self.myopts):
 			return
 
-		# Figure out if we need a restart.
-		if pkg.root != self._running_root.root or \
-			EPREFIX != BPREFIX or \
-			not portage.match_from_list(
-			portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
+		if not self._is_restart_necessary(pkg):
 			return
 
 		if self._pkg_count.curval >= self._pkg_count.maxval:
@@ -7858,7 +7984,7 @@ class Scheduler(object):
 				if myarg is True:
 					mynewargv.append(myopt)
 				else:
-					mynewargv.append(myopt +"="+ myarg)
+					mynewargv.append(myopt +"="+ str(myarg))
 		# priority only needs to be adjusted on the first run
 		os.environ["PORTAGE_NICENESS"] = "0"
 		os.execv(mynewargv[0], mynewargv)
@@ -7946,11 +8072,13 @@ class Scheduler(object):
 				pass
 
 	def _merge_exit(self, merge):
-		self._jobs -= 1
+		self._job_exit(merge.merge)
 		pkg = merge.merge.pkg
 		if merge.returncode != os.EX_OK:
 			self._failed_pkgs.append((pkg, retval))
 			return
+
+		self._completed_tasks.add(pkg)
 
 		if pkg.installed:
 			return
@@ -7975,10 +8103,14 @@ class Scheduler(object):
 			self._task_queues.merge.schedule()
 		else:
 			self._failed_pkgs.append((build.pkg, build.returncode))
-			self._jobs -= 1
+			self._job_exit(build)
 
 	def _extract_exit(self, build):
 		self._build_exit(build)
+
+	def _job_exit(self, job):
+		self._jobs -= 1
+		self._deallocate_config(job.settings)
 
 	def _merge(self):
 
@@ -7992,9 +8124,9 @@ class Scheduler(object):
 			self._main_loop()
 		finally:
 			# discard remaining packages if necessary
-			pkg_queue.clear()
-
-			# clean up child process if necessary
+			del pkg_queue[:]
+			self._completed_tasks.clear()
+			self._digraph = None
 			self._task_queues.prefetch.clear()
 
 			# discard any failures and return the
@@ -8007,22 +8139,108 @@ class Scheduler(object):
 		return rval
 
 	def _choose_pkg(self):
-		return self._pkg_queue.popleft()
+		if self._max_jobs < 2:
+			return self._pkg_queue.pop(0)
+
+		self._prune_digraph()
+
+		chosen_pkg = None
+		for pkg in self._pkg_queue:
+			if pkg.operation == "uninstall":
+				continue
+			if not self._dependent_on_scheduled_merges(pkg):
+				chosen_pkg = pkg
+				break
+
+		if chosen_pkg is not None:
+			self._pkg_queue.remove(chosen_pkg)
+		return chosen_pkg
+
+	def _dependent_on_scheduled_merges(self, pkg):
+		"""
+		Traverse the subgraph of the given packages deep dependencies
+		to see if it contains any scheduled merges.
+		@rtype: bool
+		@returns: True if the package is dependent, False otherwise.
+		"""
+
+		graph = self._digraph
+		completed_tasks = self._completed_tasks
+
+		dependent = False
+		traversed_nodes = set()
+		node_stack = graph.child_nodes(pkg)
+		while node_stack:
+			node = node_stack.pop()
+			if node in traversed_nodes:
+				continue
+			traversed_nodes.add(node)
+			if not node.installed and \
+				node not in completed_tasks:
+				dependent = True
+				break
+			node_stack.extend(graph.child_nodes(node))
+
+		return dependent
+
+	def _allocate_config(self, root):
+		"""
+		Allocate a unique config instance for a task in order
+		to prevent interference between parallel tasks.
+		"""
+		if self._config_pool[root]:
+			temp_settings = self._config_pool[root].pop()
+		else:
+			temp_settings = portage.config(clone=self.pkgsettings[root])
+		return temp_settings
+
+	def _deallocate_config(self, settings):
+		self._config_pool[settings["ROOT"]].append(settings)
 
 	def _main_loop(self):
+
+		# Only allow 1 job max if a restart is scheduled
+		# due to portage update.
+		if self._is_restart_scheduled():
+			self._set_max_jobs(1)
 
 		pkg_queue = self._pkg_queue
 		failed_pkgs = self._failed_pkgs
 		task_queues = self._task_queues
+		max_jobs = self._max_jobs
+		max_load = self._max_load
+		background = max_jobs > 1
 
 		while pkg_queue and not failed_pkgs:
 
+			if self._jobs >= max_jobs:
+				self._schedule_main()
+				continue
+
+			if max_load is not None and max_jobs > 1 and self._jobs > 1:
+				try:
+					avg1, avg5, avg15 = os.getloadavg()
+				except OSError, e:
+					writemsg("!!! getloadavg() failed: %s\n" % (e,),
+						noiselevel=-1)
+					del e
+					self._schedule_main()
+					continue
+
+				if avg1 >= max_load:
+					self._schedule_main()
+					continue
+
 			pkg = self._choose_pkg()
+
+			if pkg is None:
+				self._schedule_main()
+				continue
 
 			if not pkg.installed:
 				self._pkg_count.curval += 1
 
-			task = self._task(pkg)
+			task = self._task(pkg, background)
 
 			self._jobs += 1
 			if pkg.installed:
@@ -8065,18 +8283,18 @@ class Scheduler(object):
 			if not wait and self._jobs < max_jobs:
 				break
 
-	def _task(self, pkg):
+	def _task(self, pkg, background):
 
 		task = MergeListItem(args_set=self._args_set,
-			binpkg_opts=self._binpkg_opts,
+			background=background, binpkg_opts=self._binpkg_opts,
 			build_opts=self._build_opts,
 			emerge_opts=self.myopts,
 			failed_fetches=self._failed_fetches,
 			find_blockers=self._find_blockers(pkg), logger=self._logger,
-			mtimedb=self._mtimedb, pkg=pkg, pkg_count=self._pkg_count,
+			mtimedb=self._mtimedb, pkg=pkg, pkg_count=self._pkg_count.copy(),
 			prefetcher=self._prefetchers.get(pkg),
 			scheduler=self._sched_iface,
-			settings=self.pkgsettings[pkg.root],
+			settings=self._allocate_config(pkg.root),
 			world_atom=self._world_atom)
 
 		return task
@@ -8139,6 +8357,8 @@ class Scheduler(object):
 		mylist = mydepgraph.altlist()
 		mydepgraph.break_refs(mylist)
 		mydepgraph.break_refs(dropped_tasks)
+		mydepgraph.break_refs(mydepgraph.digraph.order)
+		self._set_digraph(mydepgraph.digraph)
 		return (mylist, dropped_tasks)
 
 	def _show_list(self):
@@ -10807,6 +11027,24 @@ def parse_opts(tmpcmdline, silent=False):
 			"type":"choice",
 			"choices":("y", "n")
 		},
+
+		"--jobs": {
+
+			"help"   : "Specifies the number of packages to build " + \
+				"simultaneously.",
+
+			"action" : "store"
+		},
+
+		"--load-average": {
+
+			"help"   :"Specifies that no new builds should be started " + \
+				"if there are other builds running and the load average " + \
+				"is at least LOAD (a floating-point number).",
+
+			"action" : "store"
+		},
+
 		"--with-bdeps": {
 			"help":"include unnecessary build time dependencies",
 			"type":"choice",
@@ -10842,6 +11080,34 @@ def parse_opts(tmpcmdline, silent=False):
 			dest=myopt.lstrip("--").replace("-", "_"), **kwargs)
 
 	myoptions, myargs = parser.parse_args(args=tmpcmdline)
+
+	if myoptions.jobs:
+		try:
+			jobs = int(myoptions.jobs)
+		except ValueError:
+			jobs = 0
+
+		if jobs < 1:
+			jobs = None
+			if not silent:
+				writemsg("!!! Invalid --jobs parameter: '%s'\n" % \
+					(myoptions.jobs,), noiselevel=-1)
+
+		myoptions.jobs = jobs
+
+	if myoptions.load_average:
+		try:
+			load_average = float(myoptions.load_average)
+		except ValueError:
+			load_average = 0.0
+
+		if load_average <= 0.0:
+			load_average = None
+			if not silent:
+				writemsg("!!! Invalid --load-average parameter: '%s'\n" % \
+					(myoptions.load_average,), noiselevel=-1)
+
+		myoptions.load_average = load_average
 
 	for myopt in options:
 		v = getattr(myoptions, myopt.lstrip("--").replace("-", "_"))
