@@ -7723,7 +7723,8 @@ class Scheduler(object):
 		while True:
 			for node in graph.root_nodes():
 				if not isinstance(node, Package) or \
-					node.installed or node.onlydeps or \
+					(node.installed and node.operation == "nomerge") or \
+					node.onlydeps or \
 					node in completed_tasks:
 					removed_nodes.add(node)
 			if removed_nodes:
