@@ -7909,7 +7909,8 @@ class Scheduler(object):
 
 		elif pkg.type_name == "ebuild":
 
-			prefetcher = EbuildFetcher(logfile=self._fetch_log, pkg=pkg,
+			prefetcher = EbuildFetcher(fetchonly=1,
+				logfile=self._fetch_log, pkg=pkg,
 				scheduler=self._sched_iface)
 
 		elif pkg.type_name == "binary" and \
