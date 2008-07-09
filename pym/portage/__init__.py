@@ -6447,7 +6447,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 				raise
 			return ["corruption"]
 		if "?" in metadata["LICENSE"]:
-			settings.setcpv(p, mydb=metadata)
+			settings.setcpv(mycpv, mydb=metadata)
 			metadata["USE"] = settings["PORTAGE_USE"]
 		else:
 			metadata["USE"] = ""
