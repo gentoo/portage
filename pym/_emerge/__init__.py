@@ -1751,7 +1751,8 @@ class SubProcess(AsynchronousTask):
 	def _wait(self):
 		if self.returncode is not None:
 			return self.returncode
-		self.scheduler.schedule(self._reg_id)
+		if self.registered:
+			self.scheduler.schedule(self._reg_id)
 		self._set_returncode(os.waitpid(self.pid, 0))
 		return self.returncode
 
@@ -1873,6 +1874,7 @@ class SpawnProcess(SubProcess):
 				f.flush()
 				f.close()
 			self.registered = False
+			self._wait()
 		return self.registered
 
 	def _dummy_handler(self, fd, event):
@@ -1894,6 +1896,7 @@ class SpawnProcess(SubProcess):
 			for f in files.values():
 				f.close()
 			self.registered = False
+			self._wait()
 		return self.registered
 
 class EbuildFetcher(SpawnProcess):
@@ -2358,6 +2361,7 @@ class EbuildPhase(SubProcess):
 			for f in files.values():
 				f.close()
 			self.registered = False
+			self._wait()
 		return self.registered
 
 	def _dummy_handler(self, fd, event):
@@ -2379,6 +2383,7 @@ class EbuildPhase(SubProcess):
 			for f in files.values():
 				f.close()
 			self.registered = False
+			self._wait()
 		return self.registered
 
 	def _set_returncode(self, wait_retval):
@@ -7746,7 +7751,30 @@ class Scheduler(object):
 			return
 
 		self._digraph = digraph
+		self._reverse_uninstall_edges()
 		self._prune_digraph()
+
+	def _reverse_uninstall_edges(self):
+		"""
+		The uninstall is performed only after blocking packages have been
+		merged on top of it (similar to how a normal upgrade is performed
+		by first merging the new version on top of the onld version). This
+		is implemented by reversing the the parent -> uninstall edges in
+		the graph.
+		"""
+
+		graph = self._digraph
+
+		for node in self._mergelist:
+			if not isinstance(node, Package) or \
+				node.operation != "uninstall":
+				continue
+
+			parent_nodes = graph.parent_nodes(node)
+			graph.remove(node)
+			for blocked_pkg in parent_nodes:
+				graph.add(blocked_pkg, node,
+					priority=BlockerDepPriority.instance)
 
 	def _prune_digraph(self):
 		"""
@@ -7759,7 +7787,8 @@ class Scheduler(object):
 		while True:
 			for node in graph.root_nodes():
 				if not isinstance(node, Package) or \
-					node.installed or node.onlydeps or \
+					(node.installed and node.operation == "nomerge") or \
+					node.onlydeps or \
 					node in completed_tasks:
 					removed_nodes.add(node)
 			if removed_nodes:
@@ -8075,7 +8104,7 @@ class Scheduler(object):
 		self._job_exit(merge.merge)
 		pkg = merge.merge.pkg
 		if merge.returncode != os.EX_OK:
-			self._failed_pkgs.append((pkg, retval))
+			self._failed_pkgs.append((pkg, merge.returncode))
 			return
 
 		self._completed_tasks.add(pkg)
@@ -8139,15 +8168,16 @@ class Scheduler(object):
 		return rval
 
 	def _choose_pkg(self):
-		if self._max_jobs < 2:
+		"""
+		Choose a task that has all it's dependencies satisfied.
+		"""
+		if self._max_jobs < 2 or self._jobs == 0:
 			return self._pkg_queue.pop(0)
 
 		self._prune_digraph()
 
 		chosen_pkg = None
 		for pkg in self._pkg_queue:
-			if pkg.operation == "uninstall":
-				continue
 			if not self._dependent_on_scheduled_merges(pkg):
 				chosen_pkg = pkg
 				break
@@ -8168,14 +8198,14 @@ class Scheduler(object):
 		completed_tasks = self._completed_tasks
 
 		dependent = False
-		traversed_nodes = set()
+		traversed_nodes = set([pkg])
 		node_stack = graph.child_nodes(pkg)
 		while node_stack:
 			node = node_stack.pop()
 			if node in traversed_nodes:
 				continue
 			traversed_nodes.add(node)
-			if not node.installed and \
+			if not (node.installed and node.operation == "nomerge") and \
 				node not in completed_tasks:
 				dependent = True
 				break
@@ -8254,8 +8284,6 @@ class Scheduler(object):
 				task.addExitListener(self._build_exit)
 				task_queues.build.add(task)
 
-			self._schedule_main()
-
 		while self._jobs:
 			self._schedule_main(wait=True)
 
@@ -8265,7 +8293,10 @@ class Scheduler(object):
 		poll = self._poll.poll
 		max_jobs = self._max_jobs
 
-		self._schedule_tasks()
+		state_change = 0
+
+		if self._schedule_tasks():
+			state_change += 1
 
 		while event_handlers:
 			jobs = self._jobs
@@ -8273,15 +8304,27 @@ class Scheduler(object):
 			for f, event in poll():
 				handler, reg_id = event_handlers[f]
 				if not handler(f, event):
+					state_change += 1
 					self._unregister(reg_id)
 
 			if jobs == self._jobs:
 				continue
 
-			self._schedule_tasks()
+			if self._schedule_tasks():
+				state_change += 1
 
 			if not wait and self._jobs < max_jobs:
 				break
+
+		if not state_change:
+			raise AssertionError("tight loop")
+
+	def _schedule_tasks(self):
+		state_change = 0
+		for x in self._task_queues.values():
+			if x.schedule():
+				state_change += 1
+		return bool(state_change)
 
 	def _task(self, pkg, background):
 
@@ -8388,10 +8431,6 @@ class Scheduler(object):
 		del self._poll_event_handlers[f]
 		del self._poll_event_handler_ids[reg_id]
 		self._schedule_tasks()
-
-	def _schedule_tasks(self):
-		for x in self._task_queues.values():
-			x.schedule()
 
 	def _schedule(self, wait_id):
 		"""
