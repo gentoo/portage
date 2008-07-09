@@ -1703,6 +1703,8 @@ class SubProcess(AsynchronousTask):
 	def _poll(self):
 		if self.returncode is not None:
 			return self.returncode
+		if self.pid is None:
+			return self.returncode
 		retval = os.waitpid(self.pid, os.WNOHANG)
 		if retval == (0, 0):
 			return None
