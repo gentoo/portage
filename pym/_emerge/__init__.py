@@ -2979,7 +2979,8 @@ class MergeListItem(CompositeTask):
 	__slots__ = ("args_set",
 		"binpkg_opts", "build_opts", "emerge_opts",
 		"failed_fetches", "find_blockers", "logger", "mtimedb", "pkg",
-		"pkg_count", "prefetcher", "settings", "world_atom") + \
+		"pkg_count", "pkg_to_replace", "prefetcher",
+		"settings", "world_atom") + \
 		("_install_task",)
 
 	def start(self):
@@ -8202,6 +8203,13 @@ class Scheduler(object):
 			return
 
 		self._completed_tasks.add(pkg)
+		pkg_to_replace = merge.merge.pkg_to_replace
+		if pkg_to_replace is not None:
+			# When a package is replaced, mark it's uninstall
+			# task complete (if any).
+			uninst_hash_key = \
+				("installed", pkg.root, pkg_to_replace.cpv, "uninstall")
+			self._completed_tasks.add(uninst_hash_key)
 
 		if pkg.installed:
 			return
@@ -8422,6 +8430,15 @@ class Scheduler(object):
 
 	def _task(self, pkg, background):
 
+		pkg_to_replace = None
+		if pkg.operation != "uninstall":
+			vardb = pkg.root_config.trees["vartree"].dbapi
+			previous_cpv = vardb.match(pkg.slot_atom)
+			if previous_cpv:
+				previous_cpv = previous_cpv.pop()
+				pkg_to_replace = self._pkg(previous_cpv,
+					"installed", pkg.root_config, installed=True)
+
 		task = MergeListItem(args_set=self._args_set,
 			background=background, binpkg_opts=self._binpkg_opts,
 			build_opts=self._build_opts,
@@ -8429,6 +8446,7 @@ class Scheduler(object):
 			failed_fetches=self._failed_fetches,
 			find_blockers=self._find_blockers(pkg), logger=self._logger,
 			mtimedb=self._mtimedb, pkg=pkg, pkg_count=self._pkg_count.copy(),
+			pkg_to_replace=pkg_to_replace,
 			prefetcher=self._prefetchers.get(pkg),
 			scheduler=self._sched_iface,
 			settings=self._allocate_config(pkg.root),
