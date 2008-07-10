@@ -5011,7 +5011,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if mydo == "depend":
 			writemsg("!!! DEBUG: dbkey: %s\n" % str(dbkey), 2)
 			droppriv = "userpriv" in mysettings.features
-			if isinstance(dbkey, dict):
+			if returnpid:
+				mypids = spawn(_shell_quote(ebuild_sh_binary) + " depend",
+					mysettings, fd_pipes=fd_pipes, returnpid=True,
+					droppriv=droppriv)
+				return mypids
+			elif isinstance(dbkey, dict):
 				mysettings["dbkey"] = ""
 				pr, pw = os.pipe()
 				fd_pipes = {

@@ -229,6 +229,104 @@ class portdbapi(dbapi):
 					return[file, x]
 		return None, 0
 
+	def _metadata_process(self, cpv, ebuild_path, repo_path):
+		"""
+		Create an EbuildMetadataPhase instance to generate metadata for the
+		give ebuild.
+		@rtype: EbuildMetadataPhase
+		@returns: A new EbuildMetadataPhase instance, or None if the
+			metadata cache is already valid.
+		"""
+		metadata, st, emtime = self._pull_valid_cache(cpv, ebuild_path, repo_path)
+		if metadata is not None:
+			return None
+
+		import _emerge
+		process = _emerge.EbuildMetadataPhase(cpv=cpv, ebuild_path=ebuild_path,
+			ebuild_mtime=emtime, metadata_callback=self._metadata_callback,
+			portdb=self, repo_path=repo_path, settings=self.doebuild_settings)
+		return process
+
+	def _metadata_callback(self, cpv, ebuild_path, repo_path, metadata, mtime):
+
+		i = metadata
+		if hasattr(metadata, "iteritems"):
+			i = metadata.iteritems()
+		metadata = dict(i)
+
+		if "EAPI" not in metadata or not metadata["EAPI"].strip():
+			metadata["EAPI"] = "0"
+
+		if not eapi_is_supported(metadata["EAPI"]):
+			# if newer version, wipe everything and negate eapi
+			eapi = metadata["EAPI"]
+			metadata = {}
+			map(lambda x: metadata.setdefault(x, ""), auxdbkeys)
+			metadata["EAPI"] = "-" + eapi
+
+		if metadata.get("INHERITED", False):
+			metadata["_eclasses_"] = \
+				self.eclassdb.get_eclass_data(metadata["INHERITED"].split())
+		else:
+			metadata["_eclasses_"] = {}
+
+		metadata.pop("INHERITED", None)
+		metadata["_mtime_"] = mtime
+		self.auxdb[repo_path][cpv] = metadata
+
+	def _pull_valid_cache(self, cpv, ebuild_path, repo_path):
+
+		try:
+			st = os.stat(ebuild_path)
+			emtime = st[stat.ST_MTIME]
+		except OSError:
+			writemsg("!!! aux_get(): ebuild for " + \
+				"'%s' does not exist at:\n" % (cpv,), noiselevel=-1)
+			writemsg("!!!            %s\n" % ebuild_path, noiselevel=-1)
+			raise KeyError(cpv)
+
+		# Pull pre-generated metadata from the metadata/cache/
+		# directory if it exists and is valid, otherwise fall
+		# back to the normal writable cache.
+		auxdbs = []
+		pregen_auxdb = self._pregen_auxdb.get(repo_path)
+		if pregen_auxdb is not None:
+			auxdbs.append(pregen_auxdb)
+		auxdbs.append(self.auxdb[repo_path])
+
+		doregen = True
+		for auxdb in auxdbs:
+			try:
+				metadata = auxdb[cpv]
+				eapi = metadata.get("EAPI","").strip()
+				if not eapi:
+					eapi = "0"
+				if eapi.startswith("-") and eapi_is_supported(eapi[1:]):
+					pass
+				elif emtime != int(metadata.get("_mtime_", 0)):
+					pass
+				elif len(metadata.get("_eclasses_", [])) > 0:
+					if self.eclassdb.is_eclass_data_valid(
+						metadata["_eclasses_"]):
+						doregen = False
+				else:
+					doregen = False
+			except KeyError:
+				pass
+			except CacheError:
+				if auxdb is not pregen_auxdb:
+					try:
+						del auxdb[cpv]
+					except KeyError:
+						pass
+			if not doregen:
+				break
+
+		if doregen:
+			metadata = None
+
+		return (metadata, st, emtime)
+
 	def aux_get(self, mycpv, mylist, mytree=None):
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
@@ -294,52 +392,8 @@ class portdbapi(dbapi):
 				writemsg("!!! Manifest is missing or inaccessable: %(manifest)s\n" % {"manifest":myManifestPath},
 					noiselevel=-1)
 
-
-		try:
-			st = os.stat(myebuild)
-			emtime = st[stat.ST_MTIME]
-		except OSError:
-			writemsg("!!! aux_get(): ebuild for '%(cpv)s' does not exist at:\n" % {"cpv":mycpv},
-				noiselevel=-1)
-			writemsg("!!!            %s\n" % myebuild,
-				noiselevel=-1)
-			raise KeyError(mycpv)
-
-		# Pull pre-generated metadata from the metadata/cache/
-		# directory if it exists and is valid, otherwise fall
-		# back to the normal writable cache.
-		auxdbs = []
-		pregen_auxdb = self._pregen_auxdb.get(mylocation)
-		if pregen_auxdb is not None:
-			auxdbs.append(pregen_auxdb)
-		auxdbs.append(self.auxdb[mylocation])
-
-		doregen = True
-		for auxdb in auxdbs:
-			try:
-				mydata = auxdb[mycpv]
-				eapi = mydata.get("EAPI","").strip()
-				if not eapi:
-					eapi = "0"
-				if eapi.startswith("-") and eapi_is_supported(eapi[1:]):
-					pass
-				elif emtime != long(mydata.get("_mtime_", 0)):
-					pass
-				elif len(mydata.get("_eclasses_", [])) > 0:
-					if self.eclassdb.is_eclass_data_valid(mydata["_eclasses_"]):
-						doregen = False
-				else:
-					doregen = False
-			except KeyError:
-				pass
-			except CacheError:
-				if auxdb is not pregen_auxdb:
-					try:
-						del auxdb[mycpv]
-					except KeyError:
-						pass
-			if not doregen:
-				break
+		mydata, st, emtime = self._pull_valid_cache(mycpv, myebuild, mylocation)
+		doregen = mydata is None
 
 		writemsg("auxdb is valid: "+str(not doregen)+" "+str(pkg)+"\n", 2)
 
@@ -360,26 +414,8 @@ class portdbapi(dbapi):
 				self._broken_ebuilds.add(myebuild)
 				raise KeyError(mycpv)
 
-			if "EAPI" not in mydata or not mydata["EAPI"].strip():
-				mydata["EAPI"] = "0"
-
-			if not eapi_is_supported(mydata["EAPI"]):
-				# if newer version, wipe everything and negate eapi
-				eapi = mydata["EAPI"]
-				mydata = {}
-				map(lambda x: mydata.setdefault(x, ""), auxdbkeys)
-				mydata["EAPI"] = "-"+eapi
-
-			if mydata.get("INHERITED", False):
-				mydata["_eclasses_"] = self.eclassdb.get_eclass_data(mydata["INHERITED"].split())
-			else:
-				mydata["_eclasses_"] = {}
-			
-			del mydata["INHERITED"]
-
-			mydata["_mtime_"] = emtime
-
-			self.auxdb[mylocation][mycpv] = mydata
+			self._metadata_callback(
+				mycpv, myebuild, mylocation, mydata, emtime)
 
 		if not mydata.setdefault("EAPI", "0"):
 			mydata["EAPI"] = "0"
