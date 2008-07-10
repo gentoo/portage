@@ -1545,7 +1545,14 @@ class AsynchronousTask(SlotObject):
 		"""
 		if self.returncode is not None and \
 			self._exit_listeners is not None:
-			for f in self._exit_listeners:
+
+			# This prevents recursion, in case one of the
+			# exit handlers triggers this method again by
+			# calling wait().
+			exit_listeners = self._exit_listeners
+			self._exit_listeners = None
+
+			for f in exit_listeners:
 				f(self)
 			self._exit_listeners = None
 
@@ -7604,7 +7611,7 @@ class PollSelectAdapter(PollConstants):
 
 class SequentialTaskQueue(SlotObject):
 
-	__slots__ = ("max_jobs", "running_tasks", "_task_queue")
+	__slots__ = ("max_jobs", "running_tasks", "_task_queue", "_scheduling")
 
 	def __init__(self, **kwargs):
 		SlotObject.__init__(self, **kwargs)
@@ -7624,6 +7631,13 @@ class SequentialTaskQueue(SlotObject):
 		if not self:
 			return False
 
+		if self._scheduling:
+			# Ignore any recursive schedule() calls triggered via
+			# self._task_exit().
+			return False
+
+		self._scheduling = True
+
 		task_queue = self._task_queue
 		running_tasks = self.running_tasks
 		max_jobs = self.max_jobs
@@ -7640,11 +7654,17 @@ class SequentialTaskQueue(SlotObject):
 			task = task_queue.popleft()
 			cancelled = getattr(task, "cancelled", None)
 			if not cancelled:
+				task.addExitListener(self._task_exit)
 				task.start()
 				running_tasks.add(task)
 			state_changed = True
 
+		self._scheduling = False
+
 		return state_changed
+
+	def _task_exit(self, task):
+		self.schedule()
 
 	def clear(self):
 		self._task_queue.clear()
