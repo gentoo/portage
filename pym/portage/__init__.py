@@ -4125,7 +4125,7 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	eout = portage.output.EOutput()
 	eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
 	try:
-		if strict:
+		if strict and "PORTAGE_PARALLEL_FETCHONLY" not in mysettings:
 			eout.ebegin("checking ebuild checksums ;-)")
 			mf.checkTypeHashes("EBUILD")
 			eout.eend(0)
