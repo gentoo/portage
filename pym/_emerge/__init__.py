@@ -1712,7 +1712,15 @@ class SubProcess(AsynchronousTask):
 			return self.returncode
 		if self.pid is None:
 			return self.returncode
-		retval = os.waitpid(self.pid, os.WNOHANG)
+
+		try:
+			retval = os.waitpid(self.pid, os.WNOHANG)
+		except OSError, e:
+			if e.errno != errno.ECHILD:
+				raise
+			del e
+			retval = (self.pid, 1)
+
 		if retval == (0, 0):
 			return None
 		self._set_returncode(retval)
@@ -1720,7 +1728,13 @@ class SubProcess(AsynchronousTask):
 
 	def cancel(self):
 		if self.isAlive():
-			os.kill(self.pid, signal.SIGTERM)
+			try:
+				os.kill(self.pid, signal.SIGTERM)
+			except OSError, e:
+				if e.errno != errno.ESRCH:
+					raise
+				del e
+
 		self.cancelled = True
 		if self.pid is not None:
 			self.wait()
@@ -1735,13 +1749,21 @@ class SubProcess(AsynchronousTask):
 			return self.returncode
 		if self.registered:
 			self.scheduler.schedule(self._reg_id)
-		self._set_returncode(os.waitpid(self.pid, 0))
+		try:
+			wait_retval = os.waitpid(self.pid, 0)
+		except OSError, e:
+			if e.errno != errno.ECHILD:
+				raise
+			del e
+			self._set_returncode((self.pid, 1))
+		else:
+			self._set_returncode(wait_retval)
 		return self.returncode
 
 	def _set_returncode(self, wait_retval):
 
 		retval = wait_retval[1]
-		portage.process.spawned_pids.remove(self.pid)
+
 		if retval != os.EX_OK:
 			if retval & 0xff:
 				retval = (retval & 0xff) << 8
@@ -1833,6 +1855,7 @@ class SpawnProcess(SubProcess):
 		retval = portage.process.spawn(self.args, **kwargs)
 
 		self.pid = retval[0]
+		portage.process.spawned_pids.remove(self.pid)
 
 		os.close(slave_fd)
 		files.process = os.fdopen(master_fd, 'r')
@@ -2358,6 +2381,7 @@ class EbuildPhase(SubProcess):
 			fd_pipes=fd_pipes, returnpid=True)
 
 		self.pid = retval[0]
+		portage.process.spawned_pids.remove(self.pid)
 
 		if logfile:
 			files.log = open(logfile, 'a')
