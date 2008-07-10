@@ -1375,6 +1375,13 @@ class Package(Task):
 				(self.type_name, self.root, self.cpv, self.operation)
 		return self._hash_key
 
+	def __cmp__(self, other):
+		if self > other:
+			return 1
+		elif self < other:
+			return -1
+		return 0
+
 	def __lt__(self, other):
 		if other.cp != self.cp:
 			return False
@@ -7766,6 +7773,14 @@ class Scheduler(object):
 				except EnvironmentError:
 					pass
 
+		self._running_portage = None
+		portage_match = self._running_root.trees["vartree"].dbapi.match(
+			portage.const.PORTAGE_PACKAGE_ATOM)
+		if portage_match:
+			cpv = portage_match.pop()
+			self._running_portage = self._pkg(cpv, "installed",
+				self._running_root, installed=True)
+
 	def _set_max_jobs(self, max_jobs):
 		self._max_jobs = max_jobs
 		self._task_queues.jobs.max_jobs = max_jobs
@@ -8001,6 +8016,8 @@ class Scheduler(object):
 		if pkg.root == self._running_root.root and \
 			portage.match_from_list(
 			portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
+			if self._running_portage:
+				return cmp(pkg, self._running_portage) != 0
 			return True
 		return False
 
@@ -8519,6 +8536,37 @@ class Scheduler(object):
 				world_set.add(atom)
 		finally:
 			world_set.unlock()
+
+	def _pkg(self, cpv, type_name, root_config, installed=False):
+		"""
+		Get a package instance from the cache, or create a new
+		one if necessary. Raises KeyError from aux_get if it
+		failures for some reason (package does not exist or is
+		corrupt).
+		"""
+		operation = "merge"
+		if installed:
+			operation = "nomerge"
+
+		db = root_config.trees[
+			depgraph.pkg_tree_map[type_name]].dbapi
+		metadata = izip(Package.metadata_keys,
+			db.aux_get(cpv, Package.metadata_keys))
+		pkg = Package(cpv=cpv, metadata=metadata,
+			root_config=root_config, installed=installed)
+		if type_name == "ebuild":
+			settings = self.pkgsettings[root_config.root]
+			settings.setcpv(pkg)
+			pkg.metadata["USE"] = settings["PORTAGE_USE"]
+
+		if self._digraph and \
+			self._digraph.contains(pkg):
+			for existing_instance in self._digraph.order:
+				if existing_instance == pkg:
+					pkg = existing_instance
+					break
+
+		return pkg
 
 class UninstallFailure(portage.exception.PortageException):
 	"""
