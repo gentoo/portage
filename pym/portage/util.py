@@ -335,6 +335,7 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		if e.errno == PermissionDenied.errno:
 			raise PermissionDenied(mycfg)
 		if e.errno != errno.ENOENT:
+			writemsg("open('%s', 'r'): %s\n" % (mycfg, e), noiselevel=-1)
 			raise
 		return None
 	try:

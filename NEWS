@@ -3,6 +3,9 @@ News (mainly features/major bug fixes)
 portage-2.2
 -------------
 
+* Add emerge --jobs and --load-average options which specify behavior
+  for building packages in parallel or for generating metadata in parallel
+  with emerge --regen.
 * Add emerge --keep-going option to continue as much as possible after
   an error. When an error occurs, dependencies are recalculated for
   remaining packages and any with unsatisfied dependencies are

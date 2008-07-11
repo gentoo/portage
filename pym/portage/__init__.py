@@ -4145,7 +4145,7 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	eout = portage.output.EOutput()
 	eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
 	try:
-		if strict:
+		if strict and "PORTAGE_PARALLEL_FETCHONLY" not in mysettings:
 			eout.ebegin("checking ebuild checksums ;-)")
 			mf.checkTypeHashes("EBUILD")
 			eout.eend(0)
@@ -5060,7 +5060,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if mydo == "depend":
 			writemsg("!!! DEBUG: dbkey: %s\n" % str(dbkey), 2)
 			droppriv = "userpriv" in mysettings.features
-			if isinstance(dbkey, dict):
+			if returnpid:
+				mypids = spawn(_shell_quote(ebuild_sh_binary) + " depend",
+					mysettings, fd_pipes=fd_pipes, returnpid=True,
+					droppriv=droppriv)
+				return mypids
+			elif isinstance(dbkey, dict):
 				mysettings["dbkey"] = ""
 				pr, pw = os.pipe()
 				fd_pipes = {
@@ -5386,8 +5391,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# unpack compile install`, we will try and fetch 4 times :/
 		need_distfiles = (mydo in ("fetch", "unpack") or \
 			mydo not in ("digest", "manifest") and "noauto" not in features)
-		emerge_skip_distfiles = "EMERGE_FROM" in mysettings and \
-			mydo not in ("fetch", "unpack")
+		emerge_skip_distfiles = returnpid
 		if not emerge_skip_distfiles and \
 			need_distfiles and not fetch(
 			fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
@@ -6497,7 +6501,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 				raise
 			return ["corruption"]
 		if "?" in metadata["LICENSE"]:
-			settings.setcpv(p, mydb=metadata)
+			settings.setcpv(mycpv, mydb=metadata)
 			metadata["USE"] = settings["PORTAGE_USE"]
 		else:
 			metadata["USE"] = ""
