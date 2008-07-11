@@ -417,6 +417,12 @@ class portdbapi(dbapi):
 			self._metadata_callback(
 				mycpv, myebuild, mylocation, mydata, emtime)
 
+			if mydata.get("INHERITED", False):
+				mydata["_eclasses_"] = \
+					self.eclassdb.get_eclass_data(mydata["INHERITED"].split())
+			else:
+				mydata["_eclasses_"] = {}
+
 		if not mydata.setdefault("EAPI", "0"):
 			mydata["EAPI"] = "0"
 
