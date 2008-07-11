@@ -1861,10 +1861,19 @@ class SpawnProcess(SubProcess):
 
 		retval = portage.process.spawn(self.args, **kwargs)
 
+		os.close(slave_fd)
+
+		if isinstance(retval, int):
+			# spawn failed
+			os.close(master_fd)
+			self.returncode = retval
+			self.wait()
+			return
+
 		self.pid = retval[0]
 		portage.process.spawned_pids.remove(self.pid)
 
-		os.close(slave_fd)
+		
 		files.process = os.fdopen(master_fd, 'r')
 		self._reg_id = self.scheduler.register(files.process.fileno(),
 			PollConstants.POLLIN, output_handler)
