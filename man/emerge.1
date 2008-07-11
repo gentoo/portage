@@ -165,7 +165,8 @@ differences between a 'rsync user' and some other user, then you are a 'rsync
 user' :).  Rsync users should simply run \fBemerge \-\-sync\fR to regenerate 
 the cache.  After a portage update, rsync users may find it convenient to run 
 \fBemerge \-\-metadata\fR to rebuild the cache as portage does at the end of 
-a sync operation.
+a sync operation. In order to specify parallel \fB\-\-regen\fR behavior, use
+the \fB\-\-jobs\fR and \fB\-\-load\-average\fR options.
 .TP
 .BR "\-\-resume"
 Resumes the most recent merge list that has been aborted due to an error.
@@ -321,11 +322,19 @@ directory.
 .BR "\-\-ignore-default-opts"
 Causes \fIEMERGE_DEFAULT_OPTS\fR (see \fBmake.conf\fR(5)) to be ignored.
 .TP
+.BR \-\-jobs=JOBS
+Specifies the number of packages to build simultaneously. Also see
+the related \fB\-\-load\-average\fR option.
+.TP
 .BR "\-\-keep\-going"
 Continue as much as possible after an error. When an error occurs,
 dependencies are recalculated for remaining packages and any with
 unsatisfied dependencies are automatically dropped. Also see
 the related \fB\-\-skipfirst\fR option.
+.TP
+.BR \-\-load\-average=LOAD
+Specifies that no new builds should be started if there are other builds
+running and the load average is at least LOAD (a floating-point number).
 .TP
 .BR "\-\-newuse " (\fB\-N\fR)
 Tells emerge to include installed packages where USE flags have changed since 

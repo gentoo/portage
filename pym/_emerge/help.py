@@ -15,10 +15,11 @@ def shorthelp():
 	print "   "+turquoise("emerge")+" "+turquoise("--resume")+" [ "+green("--pretend")+" | "+green("--ask")+" | "+green("--skipfirst")+" ]"
 	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("system")+" | "+green("world")+" | "+green("--sync")+" ] "
 	print bold("Options:")+" "+green("-")+"["+green("abBcCdDefgGhkKlnNoOpqPsStuvV")+"]"
-	print "          [ "+green("--columns")+"   ] [ "+green("--deep")+"      ] [ "+green("--keep-going")+" ] [ "+green("--newuse")+"   ]"
-	print "          [ "+green("--noconfmem")+" ] [ "+green("--nospinner")+" ] [ "+green("--oneshot")+"    ]"
-	print "          [ " + green("--color")+" < " + turquoise("y") + " | "+ turquoise("n")+" >           ] [ "+green("--complete-graph")+"            ]"
-	print "          [ "+green("--reinstall ")+turquoise("changed-use")+"     ] [ " + green("--with-bdeps")+" < " + turquoise("y") + " | "+ turquoise("n")+" >      ]"
+	print "          [ " + green("--color")+" < " + turquoise("y") + " | "+ turquoise("n")+" >            ] [ "+green("--columns")+"    ]"
+	print "          [ "+green("--complete-graph")+"             ] [ "+green("--deep")+"       ]"
+	print "          [ "+green("--jobs") + " " + turquoise("JOBS")+" ] [ "+green("--keep-going")+" ] [ " + green("--load-average")+" " + turquoise("LOAD") + "            ]"
+	print "          [ "+green("--newuse")+"    ] [ "+green("--noconfmem")+"  ] [ "+green("--nospinner")+"  ] [ "+green("--oneshot")+"     ]"
+	print "          [ "+green("--reinstall ")+turquoise("changed-use")+"      ] [ " + green("--with-bdeps")+" < " + turquoise("y") + " | "+ turquoise("n")+" >         ]"
 	print bold("Actions:")+"  [ "+green("--clean")+" | "+green("--depclean")+" | "+green("--prune")+" | "+green("--regen")+" | "+green("--search")+" | "+green("--unmerge")+" ]"
 
 def help(myaction,myopts,havecolor=1):
@@ -127,6 +128,10 @@ def help(myaction,myopts,havecolor=1):
 		print "              ebuilds in the portage tree. This is not recommended for rsync"
 		print "              users as rsync updates the cache using server-side caches."
 		print "              Rsync users should simply 'emerge --sync' to regenerate."
+		desc = "In order to specify parallel --regen behavior, use "+ \
+			"the ---jobs and --load-average options."
+		for line in wrap(desc, desc_width):
+			print desc_indent + line
 		print
 		print "       "+green("--resume")
 		print "              Resumes the most recent merge list that has been aborted due to an"
@@ -292,6 +297,13 @@ def help(myaction,myopts,havecolor=1):
 		print "              downloaded from the remote server without consulting packages"
 		print "              existing in the packages directory."
 		print
+		print "       " + green("--jobs") + " " + turquoise("JOBS")
+		desc = "Specifies the number of packages " + \
+			"to build simultaneously. Also see " + \
+			"the related --load-average option."
+		for line in wrap(desc, desc_width):
+			print desc_indent + line
+		print
 		print "       "+green("--keep-going")
 		desc = "Continue as much as possible after " + \
 			"an error. When an error occurs, " + \
@@ -300,6 +312,14 @@ def help(myaction,myopts,havecolor=1):
 			"unsatisfied dependencies are " + \
 			"automatically dropped. Also see " + \
 			"the related --skipfirst option."
+		for line in wrap(desc, desc_width):
+			print desc_indent + line
+		print
+		print "       " + green("--load-average") + " " + turquoise("LOAD")
+		desc = "Specifies that no new builds should " + \
+			"be started if there are other builds " + \
+			"running and the load average is at " + \
+			"least LOAD (a floating-point number)."
 		for line in wrap(desc, desc_width):
 			print desc_indent + line
 		print
