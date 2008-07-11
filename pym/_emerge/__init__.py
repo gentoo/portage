@@ -2312,6 +2312,7 @@ class EbuildMetadataPhase(SubProcess):
 
 	def start(self):
 		settings = self.settings
+		settings.reset()
 		ebuild_path = self.ebuild_path
 		debug = settings.get("PORTAGE_DEBUG") == "1"
 		master_fd = None
