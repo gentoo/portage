@@ -8591,9 +8591,9 @@ class Scheduler(PollScheduler):
 			if not mergelist:
 				break
 
-			mylist, dropped_tasks = self._calc_resume_list()
+			dropped_tasks = self._calc_resume_list()
 			clear_caches(self.trees)
-			if not mylist:
+			if not self._mergelist:
 				break
 
 			if dropped_tasks:
@@ -8611,10 +8611,9 @@ class Scheduler(PollScheduler):
 				_eerror(msg)
 				del _eerror, msg
 			del dropped_tasks
-			self._mergelist = mylist
 			self._save_resume_list()
 			self._pkg_count.curval = 0
-			self._pkg_count.maxval = len([x for x in mylist \
+			self._pkg_count.maxval = len([x for x in self._mergelist \
 				if isinstance(x, Package) and x.operation == "merge"])
 
 		self._logger.log(" *** Finished. Cleaning up...")
@@ -8898,8 +8897,10 @@ class Scheduler(PollScheduler):
 		mydepgraph.break_refs(mylist)
 		mydepgraph.break_refs(dropped_tasks)
 		mydepgraph.break_refs(mydepgraph.digraph.order)
+
+		self._mergelist = mylist
 		self._set_digraph(mydepgraph.digraph)
-		return (mylist, dropped_tasks)
+		return dropped_tasks
 
 	def _show_list(self):
 		myopts = self.myopts
