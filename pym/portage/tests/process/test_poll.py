@@ -62,31 +62,8 @@ class PtyReaderTestCase(PipeReaderTestCase):
 		self.assertEqual(test_string, consumer_value)
 
 	def _create_pipe(self):
-		got_pty = False
 
-		if portage._disable_openpty:
-			master_fd, slave_fd = os.pipe()
-		else:
-			from pty import openpty
-			try:
-				master_fd, slave_fd = openpty()
-				got_pty = True
-			except EnvironmentError, e:
-				portage._disable_openpty = True
-				portage.writemsg("openpty failed: '%s'\n" % str(e),
-					noiselevel=-1)
-				del e
-				master_fd, slave_fd = os.pipe()
-
-		if got_pty:
-			# Disable post-processing of output since otherwise weird
-			# things like \n -> \r\n transformations may occur.
-			mode = termios.tcgetattr(slave_fd)
-			mode[1] &= ~termios.OPOST
-			termios.tcsetattr(slave_fd, termios.TCSANOW, mode)
-
-		if got_pty and sys.stdout.isatty():
-			rows, columns = get_term_size()
-			set_term_size(rows, columns, slave_fd)
+		got_pty, master_fd, slave_fd = \
+			portage._create_pty_or_pipe(copy_term_size=sys.stdout.fileno())
 
 		return (master_fd, slave_fd)

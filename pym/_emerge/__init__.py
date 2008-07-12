@@ -2533,35 +2533,12 @@ class EbuildPhase(SubProcess):
 			settings.get("EBUILD_EXIT_STATUS_FILE"))
 
 		if logfile:
-			if portage._disable_openpty:
-				master_fd, slave_fd = os.pipe()
-			else:
-				from pty import openpty
-				try:
-					master_fd, slave_fd = openpty()
-					got_pty = True
-				except EnvironmentError, e:
-					portage._disable_openpty = True
-					portage.writemsg("openpty failed: '%s'\n" % str(e),
-						noiselevel=-1)
-					del e
-					master_fd, slave_fd = os.pipe()
-
-			if got_pty:
-				# Disable post-processing of output since otherwise weird
-				# things like \n -> \r\n transformations may occur.
-				import termios
-				mode = termios.tcgetattr(slave_fd)
-				mode[1] &= ~termios.OPOST
-				termios.tcsetattr(slave_fd, termios.TCSANOW, mode)
+			got_pty, master_fd, slave_fd = \
+				portage._create_pty_or_pipe(copy_term_size=fd_pipes_orig[1])
 
 			fcntl.fcntl(master_fd, fcntl.F_SETFL,
 				fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 
-			if got_pty and os.isatty(fd_pipes_orig[1]):
-				from portage.output import get_term_size, set_term_size
-				rows, columns = get_term_size()
-				set_term_size(rows, columns, slave_fd)
 			fd_pipes[0] = fd_pipes_orig[0]
 			fd_pipes[1] = slave_fd
 			fd_pipes[2] = slave_fd
