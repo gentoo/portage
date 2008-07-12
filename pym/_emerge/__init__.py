@@ -7858,7 +7858,7 @@ class SequentialTaskQueue(SlotObject):
 		return state_changed
 
 	def _task_exit(self, task):
-		self.running_tasks.remove(task)
+		self.running_tasks.discard(task)
 		if self.auto_schedule:
 			self.schedule()
 
@@ -7953,6 +7953,22 @@ class PollScheduler(object):
 		if poll is None:
 			poll = create_poll_instance()
 		self._poll = poll
+		self._scheduling = False
+
+	def _schedule(self):
+		"""
+		Calls _schedule_tasks() and automatically returns early from
+		any recursive calls to this method that the _schedule_tasks()
+		call might trigger. This makes _schedule() safe to call from
+		inside exit listeners.
+		"""
+		if self._scheduling:
+			return False
+		self._scheduling = True
+		try:
+			return self._schedule_tasks()
+		finally:
+			self._scheduling = False
 
 	def _running_job_count(self):
 		return self._jobs
@@ -8065,7 +8081,7 @@ class QueueScheduler(PollScheduler):
 
 	def run(self):
 
-		while self._schedule_tasks():
+		while self._schedule():
 			self._poll_loop()
 
 		while self._running_job_count():
@@ -8637,7 +8653,10 @@ class Scheduler(PollScheduler):
 				pass
 
 	def _merge_exit(self, merge):
+		self._do_merge_exit(merge)
 		self._job_exit(merge.merge)
+
+	def _do_merge_exit(self, merge):
 		pkg = merge.merge.pkg
 		if merge.returncode != os.EX_OK:
 			self._failed_pkgs.append((pkg, merge.returncode))
@@ -8683,6 +8702,7 @@ class Scheduler(PollScheduler):
 	def _job_exit(self, job):
 		self._jobs -= 1
 		self._deallocate_config(job.settings)
+		self._schedule()
 
 	def _merge(self):
 
@@ -8778,7 +8798,7 @@ class Scheduler(PollScheduler):
 			self._set_max_jobs(1)
 
 		while not self._failed_pkgs and \
-			self._schedule_tasks():
+			self._schedule():
 			self._poll_loop()
 
 		while self._jobs:
@@ -9036,7 +9056,7 @@ class MetadataRegen(PollScheduler):
 				dead_nodes = None
 				break
 
-		while self._schedule_tasks():
+		while self._schedule():
 			self._poll_loop()
 
 		while self._jobs:
@@ -9080,7 +9100,7 @@ class MetadataRegen(PollScheduler):
 			self._valid_pkgs.discard(metadata_process.cpv)
 			portage.writemsg("Error processing %s, continuing...\n" % \
 				(metadata_process.cpv,))
-		self._schedule_tasks()
+		self._schedule()
 
 class UninstallFailure(portage.exception.PortageException):
 	"""
