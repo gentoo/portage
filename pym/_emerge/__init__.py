@@ -7869,12 +7869,72 @@ class SequentialTaskQueue(SlotObject):
 	def __len__(self):
 		return len(self._task_queue) + len(self.running_tasks)
 
+_can_poll_pty = None
+
+def can_poll_pty():
+	"""
+	Test if it's possible to use poll() on a pty device. This
+	is known to fail on Darwin.
+	@rtype: bool
+	@returns: True if poll() on a pty device succeeds, False otherwise.
+	"""
+
+	global _can_poll_pty
+	if _can_poll_pty is not None:
+		return _can_poll_pty
+
+	if not hasattr(select, "poll"):
+		_can_poll_pty = False
+		return _can_poll_pty
+
+	got_pty, master_fd, slave_fd = \
+		portage._create_pty_or_pipe(copy_term_size=sys.stdout.fileno())
+	if not got_pty:
+		_can_poll_pty = False
+		return _can_poll_pty
+
+	test_string = 2 * "blah blah blah\n"
+
+	master_file = os.fdopen(master_fd, 'r')
+
+	task_scheduler = TaskScheduler(max_jobs=2, poll=select.poll())
+	scheduler = task_scheduler.sched_iface
+
+	producer = SpawnProcess(
+		args=["bash", "-c", "echo -n '%s'" % test_string],
+		fd_pipes={1:slave_fd}, scheduler=scheduler)
+
+	consumer = PipeReader(
+		input_files={"producer" : master_file},
+		scheduler=scheduler)
+
+	task_scheduler.add(producer)
+	task_scheduler.add(consumer)
+
+	def producer_start_cb(task):
+		os.close(slave_fd)
+
+	producer.addStartListener(producer_start_cb)
+	task_scheduler.run()
+	_can_poll_pty = test_string == consumer.getvalue()
+	return _can_poll_pty
+
+def create_poll_instance():
+	"""
+	Create an instance of select.poll, or an instance of
+	PollSelectAdapter there is no poll() implementation or
+	it is broken somehow.
+	"""
+	if can_poll_pty():
+		return select.poll()
+	return PollSelectAdapter()
+
 class PollScheduler(object):
 
 	class _sched_iface_class(SlotObject):
 		__slots__ = ("register", "schedule", "unregister")
 
-	def __init__(self):
+	def __init__(self, poll=None):
 		self._max_jobs = 1
 		self._max_load = None
 		self._jobs = 0
@@ -7882,10 +7942,9 @@ class PollScheduler(object):
 		self._poll_event_handler_ids = {}
 		# Increment id for each new handler.
 		self._event_handler_id = 0
-		try:
-			self._poll = select.poll()
-		except AttributeError:
-			self._poll = PollSelectAdapter()
+		if poll is None:
+			poll = create_poll_instance()
+		self._poll = poll
 
 	def _running_job_count(self):
 		return self._jobs
@@ -7974,8 +8033,8 @@ class QueueScheduler(PollScheduler):
 	run() method returns when no tasks remain.
 	"""
 
-	def __init__(self, max_jobs=None, max_load=None):
-		PollScheduler.__init__(self)
+	def __init__(self, max_jobs=None, max_load=None, poll=None):
+		PollScheduler.__init__(self, poll=poll)
 
 		if max_jobs is None:
 			max_jobs = 1
@@ -8049,9 +8108,10 @@ class TaskScheduler(object):
 	add tasks and call run(). The run() method returns when no tasks remain.
 	"""
 
-	def __init__(self, max_jobs=None, max_load=None):
+	def __init__(self, max_jobs=None, max_load=None, poll=None):
 		self._queue = SequentialTaskQueue(max_jobs=max_jobs)
-		self._scheduler = QueueScheduler(max_jobs=max_jobs, max_load=max_load)
+		self._scheduler = QueueScheduler(
+			max_jobs=max_jobs, max_load=max_load, poll=poll)
 		self.sched_iface = self._scheduler.sched_iface
 		self.run = self._scheduler.run
 		self._scheduler.add(self._queue)
