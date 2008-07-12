@@ -1288,6 +1288,8 @@ class Task(SlotObject):
 		return str(self._get_hash_key())
 
 class Blocker(Task):
+
+	__hash__ = Task.__hash__
 	__slots__ = ("root", "atom", "cp", "satisfied")
 
 	def __init__(self, **kwargs):
@@ -1302,6 +1304,8 @@ class Blocker(Task):
 		return self._hash_key
 
 class Package(Task):
+
+	__hash__ = Task.__hash__
 	__slots__ = ("built", "cpv", "depth",
 		"installed", "metadata", "onlydeps", "operation",
 		"root_config", "type_name",
@@ -2658,6 +2662,7 @@ class EbuildMerge(SlotObject):
 
 class PackageUninstall(Task):
 
+	__hash__ = Task.__hash__
 	__slots__ = ("ldpath_mtimes", "opts", "pkg", "settings")
 
 	def _get_hash_key(self):
