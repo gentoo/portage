@@ -1791,7 +1791,7 @@ class TaskSequence(CompositeTask):
 
 	def _task_exit_handler(self, task):
 		if self._default_exit(task) != os.EX_OK:
-			pass
+			self.wait()
 		elif self._task_queue:
 			self._start_next_task()
 		else:
@@ -2269,6 +2269,7 @@ class EbuildBuild(CompositeTask):
 	def _build_exit(self, build):
 		if self._default_exit(build) != os.EX_OK:
 			self._unlock_builddir()
+			self.wait()
 			return
 
 		opts = self.opts
@@ -2369,6 +2370,7 @@ class EbuildExecuter(CompositeTask):
 	def _clean_phase_exit(self, clean_phase):
 
 		if self._default_exit(clean_phase) != os.EX_OK:
+			self.wait()
 			return
 
 		pkg = self.pkg
@@ -2845,6 +2847,7 @@ class Binpkg(CompositeTask):
 				self.wait()
 				return
 			elif self._default_exit(fetcher) != os.EX_OK:
+				self.wait()
 				return
 
 		verifier = None
@@ -2858,7 +2861,8 @@ class Binpkg(CompositeTask):
 	def _verifier_exit(self, verifier):
 		if verifier is not None and \
 			self._default_exit(verifier) != os.EX_OK:
-				return
+			self.wait()
+			return
 
 		logger = self.logger
 		pkg = self.pkg
@@ -2889,6 +2893,7 @@ class Binpkg(CompositeTask):
 	def _clean_exit(self, clean_phase):
 		if self._default_exit(clean_phase) != os.EX_OK:
 			self._unlock_builddir()
+			self.wait()
 			return
 
 		dir_path = self._build_dir.dir_path
@@ -2961,6 +2966,7 @@ class Binpkg(CompositeTask):
 	def _setup_exit(self, setup_phase):
 		if self._default_exit(setup_phase) != os.EX_OK:
 			self._unlock_builddir()
+			self.wait()
 			return
 
 		extractor = BinpkgExtractorAsync(background=self.background,
