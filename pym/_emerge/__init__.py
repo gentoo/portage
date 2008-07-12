@@ -7896,6 +7896,8 @@ def can_poll_pty():
 	got_pty, master_fd, slave_fd = \
 		portage._create_pty_or_pipe(copy_term_size=sys.stdout.fileno())
 	if not got_pty:
+		os.close(master_fd)
+		os.close(slave_fd)
 		_can_poll_pty = False
 		return _can_poll_pty
 
