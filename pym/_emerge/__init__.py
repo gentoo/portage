@@ -8015,7 +8015,7 @@ class PollScheduler(object):
 		del self._poll_event_handlers[f]
 		del self._poll_event_handler_ids[reg_id]
 
-	def _schedule(self, wait_ids):
+	def _schedule_wait(self, wait_ids):
 		"""
 		Schedule until wait_id is not longer registered
 		for poll() events.
@@ -8051,7 +8051,7 @@ class QueueScheduler(PollScheduler):
 		self._max_load = max_load
 		self.sched_iface = self._sched_iface_class(
 			register=self._register,
-			schedule=self._schedule,
+			schedule=self._schedule_wait,
 			unregister=self._unregister)
 
 		self._queues = []
@@ -8208,7 +8208,7 @@ class Scheduler(PollScheduler):
 			schedule=self._schedule_fetch)
 		self._sched_iface = self._iface_class(
 			fetch=fetch_iface, register=self._register,
-			schedule=self._schedule, unregister=self._unregister)
+			schedule=self._schedule_wait, unregister=self._unregister)
 
 		self._task_queues = self._task_queues_class()
 		for k in self._task_queues.allowed_keys:
@@ -8995,7 +8995,7 @@ class MetadataRegen(PollScheduler):
 		self._max_load = max_load
 		self._sched_iface = self._sched_iface_class(
 			register=self._register,
-			schedule=self._schedule,
+			schedule=self._schedule_wait,
 			unregister=self._unregister)
 
 		self._valid_pkgs = set()
