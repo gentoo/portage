@@ -1594,6 +1594,8 @@ class PipeReader(AsynchronousTask):
 	__slots__ = ("input_files", "scheduler",) + \
 		("pid", "registered", "_reg_ids", "_read_data")
 
+	_bufsize = 4096
+
 	def _start(self):
 		self._reg_ids = set()
 		self._read_data = []
@@ -1628,8 +1630,16 @@ class PipeReader(AsynchronousTask):
 		for f in files.itervalues():
 			if fd == f.fileno():
 				break
-		self._read_data.append(f.read())
-		if not self._read_data[-1]:
+
+		buf = array.array('B')
+		try:
+			buf.fromfile(f, self._bufsize)
+		except EOFError:
+			pass
+
+		if buf:
+			self._read_data.append(buf.tostring())
+		else:
 			for f in files.values():
 				f.close()
 			self.registered = False
