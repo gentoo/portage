@@ -8732,12 +8732,9 @@ class Scheduler(PollLoop):
 			settings.setcpv(pkg)
 			pkg.metadata["USE"] = settings["PORTAGE_USE"]
 
-		if self._digraph and \
-			self._digraph.contains(pkg):
-			for existing_instance in self._digraph.order:
-				if existing_instance == pkg:
-					pkg = existing_instance
-					break
+		if self._digraph is not None:
+			# Reuse existing instance when available.
+			pkg = self._digraph.get(pkg, pkg)
 
 		return pkg
 

@@ -437,6 +437,9 @@ class digraph(object):
 		"""Checks if the digraph contains mynode"""
 		return node in self.nodes
 
+	def get(self, key, default=None):
+		return self.nodes.get(key, default)
+
 	def all_nodes(self):
 		"""Return a list of all nodes in the graph"""
 		return self.order[:]
@@ -506,6 +509,7 @@ class digraph(object):
 	allnodes = all_nodes
 	allzeros = leaf_nodes
 	hasnode = contains
+	__contains__ = contains
 	empty = is_empty
 	copy = clone
 
