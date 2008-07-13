@@ -8812,7 +8812,7 @@ class Scheduler(PollScheduler):
 
 		while self._can_add_job():
 
-			if not self._pkg_queue:
+			if not self._pkg_queue or self._failed_pkgs:
 				return False
 
 			pkg = self._choose_pkg()
