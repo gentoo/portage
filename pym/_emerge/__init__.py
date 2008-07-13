@@ -1014,6 +1014,7 @@ class FakeVartree(portage.vartree):
 	global updates are necessary (updates are performed when necessary if there
 	is not a matching ebuild in the tree)."""
 	def __init__(self, root_config, pkg_cache=None, acquire_lock=1):
+		self._root_config = root_config
 		if pkg_cache is None:
 			pkg_cache = {}
 		real_vartree = root_config.trees["vartree"]
@@ -1115,6 +1116,80 @@ class FakeVartree(portage.vartree):
 			perform_global_updates(
 				pkg, self.dbapi, self._global_updates)
 		return self._aux_get(pkg, wants)
+
+	def sync(self, acquire_lock=1):
+		"""
+		Call this method to synchronize state with the real vardb
+		after one or more packages may have been installed or
+		uninstalled.
+		"""
+		vdb_path = os.path.join(self.root, portage.VDB_PATH)
+		try:
+			# At least the parent needs to exist for the lock file.
+			portage.util.ensure_dirs(vdb_path)
+		except portage.exception.PortageException:
+			pass
+		vdb_lock = None
+		try:
+			if acquire_lock and os.access(vdb_path, os.W_OK):
+				vdb_lock = portage.locks.lockdir(vdb_path)
+			self._sync()
+		finally:
+			if vdb_lock:
+				portage.locks.unlockdir(vdb_lock)
+
+	def _sync(self):
+
+		real_vardb = self._root_config.trees["vartree"].dbapi
+		current_cpv_set = frozenset(real_vardb.cpv_all())
+		pkg_vardb = self.dbapi
+		aux_get_history = self._aux_get_history
+
+		# Remove any packages that have been uninstalled.
+		for pkg in list(pkg_vardb):
+			if pkg.cpv not in current_cpv_set:
+				pkg_vardb.cpv_remove(pkg)
+				aux_get_history.discard(pkg.cpv)
+
+		# Validate counters and timestamps.
+		slot_counters = {}
+		root = self.root
+		validation_keys = ["COUNTER", "_mtime_"]
+		for cpv in current_cpv_set:
+
+			pkg_hash_key = ("installed", root, cpv, "nomerge")
+			pkg = pkg_vardb.get(pkg_hash_key)
+			if pkg is not None:
+				counter, mtime = real_vardb.aux_get(cpv, validation_keys)
+
+				if counter != pkg.metadata["COUNTER"] or \
+					mtime != pkg.mtime:
+					pkg_vardb.cpv_remove(pkg)
+					aux_get_history.discard(pkg.cpv)
+					pkg = None
+
+			if pkg is None:
+				pkg = self._pkg(cpv)
+
+			other_counter = slot_counters.get(pkg.slot_atom)
+			if other_counter is not None:
+				if other_counter > pkg.counter:
+					continue
+
+			slot_counters[pkg.slot_atom] = pkg.counter
+			pkg_vardb.cpv_inject(pkg)
+
+		real_vardb.flush_cache()
+
+	def _pkg(self, cpv):
+		root_config = self._root_config
+		real_vardb = root_config.trees["vartree"].dbapi
+		pkg = Package(cpv=cpv, installed=True,
+			metadata=izip(Package.metadata_keys,
+				real_vardb.aux_get(cpv, Package.metadata_keys)),
+			root_config=root_config,
+			type_name="installed")
+		return pkg
 
 def grab_global_updates(portdir):
 	from portage.update import grab_updates, parse_updates
@@ -3494,20 +3569,31 @@ class BlockerDB(object):
 		self._root_config = root_config
 		self._vartree = root_config.trees["vartree"]
 		self._portdb = root_config.trees["porttree"].dbapi
-			
-		self._dep_check_trees = { self._vartree.root : {
-			"porttree"    :  self._vartree,
-			"vartree"     :  self._vartree,
-		}}
+
+		self._dep_check_trees = None
+		self._fake_vartree = None
+
+	def _get_fake_vartree(self, acquire_lock=0):
+		fake_vartree = self._fake_vartree
+		if fake_vartree is None:
+			fake_vartree = FakeVartree(self._root_config,
+				acquire_lock=acquire_lock)
+			self._fake_vartree = fake_vartree
+			self._dep_check_trees = { self._vartree.root : {
+				"porttree"    :  fake_vartree,
+				"vartree"     :  fake_vartree,
+			}}
+		else:
+			fake_vartree.sync(acquire_lock=acquire_lock)
+		return fake_vartree
 
 	def findInstalledBlockers(self, new_pkg, acquire_lock=0):
 		blocker_cache = BlockerCache(self._vartree.root, self._vartree.dbapi)
 		dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
-		dep_check_trees = self._dep_check_trees
 		settings = self._vartree.settings
 		stale_cache = set(blocker_cache)
-		fake_vartree = \
-			FakeVartree(self._root_config, acquire_lock=acquire_lock)
+		fake_vartree = self._get_fake_vartree(acquire_lock=acquire_lock)
+		dep_check_trees = self._dep_check_trees
 		vardb = fake_vartree.dbapi
 		installed_pkgs = list(vardb)
 
@@ -3664,6 +3750,19 @@ class PackageVirtualDbapi(portage.dbapi):
 			existing == item:
 			return True
 		return False
+
+	def get(self, item, default=None):
+		cpv = getattr(item, "cpv", None)
+		if cpv is None:
+			if len(item) != 4:
+				return default
+			type_name, root, cpv, operation = item
+
+		existing = self._cpv_map.get(cpv)
+		if existing is not None and \
+			existing == item:
+			return existing
+		return default
 
 	def match_pkgs(self, atom):
 		return [self._cpv_map[cpv] for cpv in self.match(atom)]
@@ -8213,10 +8312,12 @@ class Scheduler(PollScheduler):
 			self.edebug = 1
 		self.pkgsettings = {}
 		self._config_pool = {}
+		self._blocker_db = {}
 		for root in trees:
 			self.pkgsettings[root] = portage.config(
 				clone=trees[root]["vartree"].settings)
 			self._config_pool[root] = []
+			self._blocker_db[root] = BlockerDB(trees[root]["root_config"])
 		self.curval = 0
 		self._logger = self._emerge_log_class(
 			xterm_titles=("notitles" not in settings.features))
@@ -8378,7 +8479,7 @@ class Scheduler(PollScheduler):
 		import gc
 		gc.collect()
 
-		blocker_db = BlockerDB(self.trees[new_pkg.root]["root_config"])
+		blocker_db = self._blocker_db[new_pkg.root]
 
 		blocker_dblinks = []
 		for blocking_pkg in blocker_db.findInstalledBlockers(
