@@ -8009,7 +8009,7 @@ def can_poll_pty():
 
 	producer = SpawnProcess(
 		args=["bash", "-c", "echo -n '%s'" % test_string],
-		fd_pipes={1:slave_fd}, scheduler=scheduler)
+		fd_pipes={1:slave_fd,2:slave_fd}, scheduler=scheduler)
 
 	consumer = PipeReader(
 		input_files={"producer" : master_file},
