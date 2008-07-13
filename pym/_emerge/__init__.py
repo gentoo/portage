@@ -8880,8 +8880,7 @@ class Scheduler(PollScheduler):
 
 		merge_queue = self._task_queues.merge
 
-		while not self._failed_pkgs and \
-			self._schedule():
+		while self._schedule():
 			self._poll_loop()
 
 		while self._jobs or merge_queue:
