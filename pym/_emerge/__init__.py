@@ -8878,11 +8878,13 @@ class Scheduler(PollScheduler):
 		if self._is_restart_scheduled():
 			self._set_max_jobs(1)
 
+		merge_queue = self._task_queues.merge
+
 		while not self._failed_pkgs and \
 			self._schedule():
 			self._poll_loop()
 
-		while self._jobs:
+		while self._jobs or merge_queue:
 			self._poll_loop()
 
 	def _schedule_tasks(self):
