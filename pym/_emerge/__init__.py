@@ -8654,7 +8654,8 @@ class Scheduler(PollScheduler):
 
 	def _merge_exit(self, merge):
 		self._do_merge_exit(merge)
-		self._job_exit(merge.merge)
+		self._deallocate_config(merge.merge.settings)
+		self._schedule()
 
 	def _do_merge_exit(self, merge):
 		pkg = merge.merge.pkg
@@ -8691,18 +8692,14 @@ class Scheduler(PollScheduler):
 			merge = PackageMerge(merge=build)
 			merge.addExitListener(self._merge_exit)
 			self._task_queues.merge.add(merge)
-			self._task_queues.merge.schedule()
 		else:
 			self._failed_pkgs.append((build.pkg, build.returncode))
-			self._job_exit(build)
+			self._deallocate_config(build.settings)
+		self._jobs -= 1
+		self._schedule()
 
 	def _extract_exit(self, build):
 		self._build_exit(build)
-
-	def _job_exit(self, job):
-		self._jobs -= 1
-		self._deallocate_config(job.settings)
-		self._schedule()
 
 	def _merge(self):
 
@@ -8827,15 +8824,16 @@ class Scheduler(PollScheduler):
 
 			task = self._task(pkg, background)
 
-			self._jobs += 1
 			if pkg.installed:
 				merge = PackageMerge(merge=task)
 				merge.addExitListener(self._merge_exit)
 				task_queues.merge.add(merge)
 			elif pkg.built:
+				self._jobs += 1
 				task.addExitListener(self._extract_exit)
 				task_queues.jobs.add(task)
 			else:
+				self._jobs += 1
 				task.addExitListener(self._build_exit)
 				task_queues.jobs.add(task)
 		return True
