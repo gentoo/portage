@@ -2760,8 +2760,6 @@ class EbuildBinpkg(EbuildPhase):
 		pkg = self.pkg
 		bintree = pkg.root_config.trees["bintree"]
 		binpkg_tmpfile = self._binpkg_tmpfile
-		writemsg("EbuildBinpkg returncode %s binpkg_tmpfile '%s'\n" % \
-			(self.returncode, binpkg_tmpfile))
 		if self.returncode == os.EX_OK:
 			bintree.inject(pkg.cpv, filename=binpkg_tmpfile)
 
@@ -3363,23 +3361,7 @@ class PackageMerge(AsynchronousTask):
 	__slots__ = ("merge",)
 
 	def _start(self):
-
-		log_path = self.merge.settings.get("PORTAGE_LOG_FILE")
-		log_file = None
-
-		orig_stdout = sys.stdout
-
-		if self.background and log_path is not None:
-			log_file = open(log_path, 'a')
-			sys.stdout = log_file
-
-		try:
-			self.returncode = self.merge.merge()
-		finally:
-			if log_file is not None:
-				sys.stdout = orig_stdout
-				log_file.close()
-
+		self.returncode = self.merge.merge()
 		self.wait()
 
 class DependencyArg(object):
@@ -8808,7 +8790,7 @@ class Scheduler(PollScheduler):
 	def _build_exit(self, build):
 		if build.returncode == os.EX_OK:
 			self.curval += 1
-			merge = PackageMerge(background=build.background, merge=build)
+			merge = PackageMerge(merge=build)
 			merge.addExitListener(self._merge_exit)
 			self._task_queues.merge.add(merge)
 		else:
@@ -8944,7 +8926,7 @@ class Scheduler(PollScheduler):
 			task = self._task(pkg, background)
 
 			if pkg.installed:
-				merge = PackageMerge(background=background, merge=task)
+				merge = PackageMerge(merge=task)
 				merge.addExitListener(self._merge_exit)
 				task_queues.merge.add(merge)
 			elif pkg.built:
