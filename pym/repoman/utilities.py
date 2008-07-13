@@ -7,6 +7,7 @@
 scan"""
 
 import commands
+import errno
 import itertools
 import logging
 import os
@@ -14,6 +15,7 @@ import sys
 
 from portage import output
 from portage.output import red, green
+from portage.process import find_binary
 from portage import exception
 from portage import util
 normalize_path = util.normalize_path
@@ -74,7 +76,7 @@ def detect_vcs_conflicts(options, vcs):
 			else:
 				retval = os.system(vcs + " update " + " ".join(myupdates))
 			if retval != os.EX_OK:
-				logging.fatal("!!! " + cvs + " exited with an error. Terminating.")
+				logging.fatal("!!! " + vcs + " exited with an error. Terminating.")
 				sys.exit(retval)
 
 
@@ -103,8 +105,8 @@ def parse_use_local_desc(mylines, usedict=None):
 		try:
 			pkg, flag = pkg_flag[0].split(":")
 		except ValueError:
-			raise exception,ParseError("line %d: Malformed input: '%s'" % \
-				(linenum + 1, l.rstrip("\n")))
+			raise exception.ParseError("line %d: Malformed input: '%s'" % \
+				(line_num + 1, l.rstrip("\n")))
 		usedict.setdefault(pkg, set())
 		usedict[pkg].add(flag)
 	return usedict

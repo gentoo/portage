@@ -832,7 +832,7 @@ class binarytree(object):
 				d2 = pkgindex.packages[i]
 				if d2["CPV"] != cpv:
 					continue
-				if d2.get("PATH") == d.get("PATH"):
+				if d2.get("PATH", "") == d.get("PATH", ""):
 					del pkgindex.packages[i]
 			pkgindex.packages.append(d)
 			self._update_pkgindex_header(pkgindex.header)
