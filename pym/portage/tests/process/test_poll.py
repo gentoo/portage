@@ -51,19 +51,3 @@ class PipeReaderTestCase(TestCase):
 		task_scheduler.run()
 
 		self._assertEqual(test_string, consumer.getvalue())
-
-class PtyReaderTestCase(PipeReaderTestCase):
-
-	def _assertEqual(self, test_string, consumer_value):
-		if test_string != consumer_value:
-			# This test is expected to fail on some operating systems
-			# such as Darwin that do not support poll() on pty devices.
-			self.todo = True
-		self.assertEqual(test_string, consumer_value)
-
-	def _create_pipe(self):
-
-		got_pty, master_fd, slave_fd = \
-			portage._create_pty_or_pipe(copy_term_size=sys.stdout.fileno())
-
-		return (master_fd, slave_fd)

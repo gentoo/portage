@@ -8015,57 +8015,42 @@ class SequentialTaskQueue(SlotObject):
 	def __len__(self):
 		return len(self._task_queue) + len(self.running_tasks)
 
-_can_poll_pty = None
+_can_poll_device = None
 
-def can_poll_pty():
+def can_poll_device():
 	"""
-	Test if it's possible to use poll() on a pty device. This
+	Test if it's possible to use poll() on a device such as a pty. This
 	is known to fail on Darwin.
 	@rtype: bool
-	@returns: True if poll() on a pty device succeeds, False otherwise.
+	@returns: True if poll() on a device succeeds, False otherwise.
 	"""
 
-	global _can_poll_pty
-	if _can_poll_pty is not None:
-		return _can_poll_pty
+	global _can_poll_device
+	if _can_poll_device is not None:
+		return _can_poll_device
 
 	if not hasattr(select, "poll"):
-		_can_poll_pty = False
-		return _can_poll_pty
+		_can_poll_device = False
+		return _can_poll_device
 
-	got_pty, master_fd, slave_fd = \
-		portage._create_pty_or_pipe(copy_term_size=sys.stdout.fileno())
-	if not got_pty:
-		os.close(master_fd)
-		os.close(slave_fd)
-		_can_poll_pty = False
-		return _can_poll_pty
+	try:
+		dev_null = open('/dev/null', 'rb')
+	except IOError:
+		_can_poll_device = False
+		return _can_poll_device
 
-	test_string = 2 * "blah blah blah\n"
+	p = select.poll()
+	p.register(dev_null.fileno(), PollConstants.POLLIN)
 
-	master_file = os.fdopen(master_fd, 'r')
+	invalid_request = False
+	for f, event in p.poll():
+		if event & PollConstants.POLLNVAL:
+			invalid_request = True
+			break
+	dev_null.close()
 
-	task_scheduler = TaskScheduler(max_jobs=2, poll=select.poll())
-	scheduler = task_scheduler.sched_iface
-
-	producer = SpawnProcess(
-		args=["bash", "-c", "echo -n '%s'" % test_string],
-		fd_pipes={1:slave_fd,2:slave_fd}, scheduler=scheduler)
-
-	consumer = PipeReader(
-		input_files={"producer" : master_file},
-		scheduler=scheduler)
-
-	task_scheduler.add(producer)
-	task_scheduler.add(consumer)
-
-	def producer_start_cb(task):
-		os.close(slave_fd)
-
-	producer.addStartListener(producer_start_cb)
-	task_scheduler.run()
-	_can_poll_pty = test_string == consumer.getvalue()
-	return _can_poll_pty
+	_can_poll_device = not invalid_request
+	return _can_poll_device
 
 def create_poll_instance():
 	"""
@@ -8073,7 +8058,7 @@ def create_poll_instance():
 	PollSelectAdapter there is no poll() implementation or
 	it is broken somehow.
 	"""
-	if can_poll_pty():
+	if can_poll_device():
 		return select.poll()
 	return PollSelectAdapter()
 
@@ -8082,7 +8067,7 @@ class PollScheduler(object):
 	class _sched_iface_class(SlotObject):
 		__slots__ = ("register", "schedule", "unregister")
 
-	def __init__(self, poll=None):
+	def __init__(self):
 		self._max_jobs = 1
 		self._max_load = None
 		self._jobs = 0
@@ -8090,9 +8075,7 @@ class PollScheduler(object):
 		self._poll_event_handler_ids = {}
 		# Increment id for each new handler.
 		self._event_handler_id = 0
-		if poll is None:
-			poll = create_poll_instance()
-		self._poll = poll
+		self._poll = create_poll_instance()
 		self._scheduling = False
 
 	def _schedule(self):
@@ -8197,8 +8180,8 @@ class QueueScheduler(PollScheduler):
 	run() method returns when no tasks remain.
 	"""
 
-	def __init__(self, max_jobs=None, max_load=None, poll=None):
-		PollScheduler.__init__(self, poll=poll)
+	def __init__(self, max_jobs=None, max_load=None):
+		PollScheduler.__init__(self)
 
 		if max_jobs is None:
 			max_jobs = 1
@@ -8272,10 +8255,10 @@ class TaskScheduler(object):
 	add tasks and call run(). The run() method returns when no tasks remain.
 	"""
 
-	def __init__(self, max_jobs=None, max_load=None, poll=None):
+	def __init__(self, max_jobs=None, max_load=None):
 		self._queue = SequentialTaskQueue(max_jobs=max_jobs)
 		self._scheduler = QueueScheduler(
-			max_jobs=max_jobs, max_load=max_load, poll=poll)
+			max_jobs=max_jobs, max_load=max_load)
 		self.sched_iface = self._scheduler.sched_iface
 		self.run = self._scheduler.run
 		self._scheduler.add(self._queue)
