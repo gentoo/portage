@@ -1726,11 +1726,13 @@ class PipeReader(AsynchronousTask):
 		if buf:
 			self._read_data.append(buf.tostring())
 		else:
-			for f in files.values():
-				f.close()
 			self.registered = False
 			for reg_id in self._reg_ids:
 				self.scheduler.unregister(reg_id)
+
+			for f in files.values():
+				f.close()
+
 			self.wait()
 
 		return self.registered
@@ -2069,12 +2071,12 @@ class SpawnProcess(SubProcess):
 			buf.tofile(files.out)
 			files.out.flush()
 		else:
-			fd = files.process.fileno()
-			for f in files.values():
-				f.flush()
-				f.close()
 			self.registered = False
 			self.scheduler.unregister(self._reg_id)
+
+			for f in files.values():
+				f.close()
+
 			self.wait()
 		return self.registered
 
@@ -2093,11 +2095,12 @@ class SpawnProcess(SubProcess):
 		if buf:
 			pass
 		else:
-			fd = files.process.fileno()
-			for f in files.values():
-				f.close()
 			self.registered = False
 			self.scheduler.unregister(self._reg_id)
+
+			for f in files.values():
+				f.close()
+
 			self.wait()
 		return self.registered
 
@@ -2562,10 +2565,12 @@ class EbuildMetadataPhase(SubProcess):
 		files = self.files
 		self._raw_metadata.append(files.ebuild.read())
 		if not self._raw_metadata[-1]:
-			for f in files.values():
-				f.close()
 			self.registered = False
 			self.scheduler.unregister(self._reg_id)
+
+			for f in files.values():
+				f.close()
+
 			self.wait()
 
 			if self.returncode == os.EX_OK:
@@ -2687,11 +2692,12 @@ class EbuildPhase(SubProcess):
 			buf.tofile(files.log)
 			files.log.flush()
 		else:
-			fd = files.ebuild.fileno()
-			for f in files.values():
-				f.close()
 			self.registered = False
 			self.scheduler.unregister(self._reg_id)
+
+			for f in files.values():
+				f.close()
+
 			self.wait()
 		return self.registered
 
@@ -2710,11 +2716,12 @@ class EbuildPhase(SubProcess):
 		if buf:
 			pass
 		else:
-			fd = files.ebuild.fileno()
-			for f in files.values():
-				f.close()
 			self.registered = False
 			self.scheduler.unregister(self._reg_id)
+
+			for f in files.values():
+				f.close()
+
 			self.wait()
 		return self.registered
 
