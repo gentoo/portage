@@ -739,6 +739,17 @@ class search(object):
 class RootConfig(object):
 	"""This is used internally by depgraph to track information about a
 	particular $ROOT."""
+
+	pkg_tree_map = {
+		"ebuild"    : "porttree",
+		"binary"    : "bintree",
+		"installed" : "vartree"
+	}
+
+	tree_pkg_map = {}
+	for k, v in pkg_tree_map.iteritems():
+		tree_pkg_map[v] = k
+
 	def __init__(self, settings, trees, setconfig):
 		self.trees = trees
 		self.settings = settings
@@ -2409,6 +2420,7 @@ class EbuildBuild(CompositeTask):
 		merge = EbuildMerge(find_blockers=self.find_blockers,
 			ldpath_mtimes=ldpath_mtimes, logger=logger, pkg=pkg,
 			pkg_count=pkg_count, pkg_path=ebuild_path,
+			scheduler=self.scheduler,
 			settings=settings, tree=tree, world_atom=world_atom)
 
 		msg = " === (%s of %s) Merging (%s::%s)" % \
@@ -2767,7 +2779,7 @@ class EbuildMerge(SlotObject):
 
 	__slots__ = ("find_blockers", "logger", "ldpath_mtimes",
 		"pkg", "pkg_count", "pkg_path", "pretend",
-		"settings", "tree", "world_atom")
+		"scheduler", "settings", "tree", "world_atom")
 
 	def execute(self):
 		root_config = self.pkg.root_config
@@ -2780,6 +2792,7 @@ class EbuildMerge(SlotObject):
 			mytree=self.tree, mydbapi=root_config.trees[self.tree].dbapi,
 			vartree=root_config.trees["vartree"],
 			prev_mtimes=self.ldpath_mtimes,
+			scheduler=self.scheduler,
 			blockers=self.find_blockers)
 
 		if retval == os.EX_OK:
@@ -3072,8 +3085,8 @@ class Binpkg(CompositeTask):
 		merge = EbuildMerge(find_blockers=self.find_blockers,
 			ldpath_mtimes=self.ldpath_mtimes, logger=self.logger,
 			pkg=self.pkg, pkg_count=self.pkg_count,
-			pkg_path=self._pkg_path, settings=settings,
-			tree=self._tree, world_atom=self.world_atom)
+			pkg_path=self._pkg_path, scheduler=self.scheduler,
+			settings=settings, tree=self._tree, world_atom=self.world_atom)
 
 		try:
 			retval = merge.execute()
@@ -3843,10 +3856,7 @@ class PackageVirtualDbapi(portage.dbapi):
 
 class depgraph(object):
 
-	pkg_tree_map = {
-		"ebuild":"porttree",
-		"binary":"bintree",
-		"installed":"vartree"}
+	pkg_tree_map = RootConfig.pkg_tree_map
 
 	_mydbapi_keys = Package.metadata_keys
 
@@ -8244,7 +8254,8 @@ class Scheduler(PollScheduler):
 	_fetch_log = "/var/log/emerge-fetch.log"
 
 	class _iface_class(SlotObject):
-		__slots__ = ("fetch", "register", "schedule", "unregister")
+		__slots__ = ("dblinkEbuildPhase", "fetch",
+			"register", "schedule", "unregister")
 
 	class _fetch_iface_class(SlotObject):
 		__slots__ = ("log_file", "schedule")
@@ -8307,6 +8318,7 @@ class Scheduler(PollScheduler):
 		fetch_iface = self._fetch_iface_class(log_file=self._fetch_log,
 			schedule=self._schedule_fetch)
 		self._sched_iface = self._iface_class(
+			dblinkEbuildPhase=self._dblink_ebuild_phase,
 			fetch=fetch_iface, register=self._register,
 			schedule=self._schedule_wait, unregister=self._unregister)
 
@@ -8479,6 +8491,55 @@ class Scheduler(PollScheduler):
 		gc.collect()
 
 		return blocker_dblinks
+
+	def _dblink_pkg(self, pkg_dblink):
+		cpv = pkg_dblink.mycpv
+		type_name = RootConfig.tree_pkg_map[pkg_dblink.treetype]
+		root_config = self.trees[pkg_dblink.myroot]["root_config"]
+		installed = type_name == "installed"
+		return self._pkg(cpv, type_name, root_config, installed=installed)
+
+	def _append_to_log_path(self, log_path, msg):
+		f = open(log_path, 'a')
+		try:
+			f.write(msg)
+		finally:
+			f.close()
+
+	def _dblink_ebuild_phase(self,
+		pkg_dblink, pkg_dbapi, ebuild_path, phase):
+		"""
+		Using this callback for merge phases allows the scheduler
+		to run while these phases execute asynchronously, and allows
+		the scheduler control output handling.
+		"""
+
+		scheduler = self._sched_iface
+		settings = pkg_dblink.settings
+		pkg = self._dblink_pkg(pkg_dblink)
+		background = self._max_jobs > 1
+		log_path = settings.get("PORTAGE_LOG_FILE")
+
+		if phase == "preinst":
+			msg = ">>> Merging %s to %s\n" % (pkg.cpv, pkg.root)
+			portage.writemsg_stdout(msg)
+			if log_path is not None:
+				self._append_to_log_path(log_path, msg)
+
+		ebuild_phase = EbuildPhase(background=background,
+			pkg=pkg, phase=phase, scheduler=scheduler,
+			settings=settings, tree=pkg_dblink.treetype)
+		ebuild_phase.start()
+		ebuild_phase.wait()
+
+		if phase == "postinst" and \
+			ebuild_phase.returncode == os.EX_OK:
+			msg = ">>> %s %s\n" % (pkg.cpv, "merged.")
+			portage.writemsg_stdout(msg)
+			if log_path is not None:
+				self._append_to_log_path(log_path, msg)
+
+		return ebuild_phase.returncode
 
 	def _check_manifests(self):
 		# Verify all the manifests now so that the user is notified of failure

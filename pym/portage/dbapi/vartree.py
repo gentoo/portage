@@ -1282,7 +1282,7 @@ class dblink(object):
 	}
 
 	def __init__(self, cat, pkg, myroot, mysettings, treetype=None,
-		vartree=None, blockers=None):
+		vartree=None, blockers=None, scheduler=None):
 		"""
 		Creates a DBlink object for a given CPV.
 		The given CPV may not be present in the database already.
@@ -1312,6 +1312,7 @@ class dblink(object):
 			vartree = db[myroot]["vartree"]
 		self.vartree = vartree
 		self._blockers = blockers
+		self._scheduler = scheduler
 
 		self.dbroot = normalize_path(os.path.join(myroot, VDB_PATH))
 		self.dbcatdir = self.dbroot+"/"+cat
@@ -2379,7 +2380,7 @@ class dblink(object):
 			# we need it to have private ${T} etc... for things like elog.
 			others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
 				self.vartree.root, config(clone=self.settings),
-				vartree=self.vartree))
+				vartree=self.vartree, scheduler=self._scheduler))
 		retval = self._security_check(others_in_slot)
 		if retval:
 			return retval
@@ -2550,8 +2551,6 @@ class dblink(object):
 			if collision_protect:
 				return 1
 
-		writemsg_stdout(">>> Merging %s to %s\n" % (self.mycpv, destroot))
-
 		# The merge process may move files out of the image directory,
 		# which causes invalidation of the .installed flag.
 		try:
@@ -2566,10 +2565,17 @@ class dblink(object):
 		self.delete()
 		ensure_dirs(self.dbtmpdir)
 
+		scheduler = self._scheduler
+
 		# run preinst script
-		a = doebuild(myebuild, "preinst", destroot, self.settings,
-			use_cache=0, tree=self.treetype, mydbapi=mydbapi,
-			vartree=self.vartree)
+		if scheduler is None:
+			writemsg_stdout(">>> Merging %s to %s\n" % (self.mycpv, destroot))
+			a = doebuild(myebuild, "preinst", destroot, self.settings,
+				use_cache=0, tree=self.treetype, mydbapi=mydbapi,
+				vartree=self.vartree)
+		else:
+			a = scheduler.dblinkEbuildPhase(
+				self, mydbapi, myebuild, "preinst")
 
 		# XXX: Decide how to handle failures here.
 		if a != os.EX_OK:
@@ -2722,9 +2728,18 @@ class dblink(object):
 		self.settings["PORTAGE_UPDATE_ENV"] = \
 			os.path.join(self.dbpkgdir, "environment.bz2")
 		self.settings.backup_changes("PORTAGE_UPDATE_ENV")
-		a = doebuild(myebuild, "postinst", destroot, self.settings, use_cache=0,
-			tree=self.treetype, mydbapi=mydbapi, vartree=self.vartree)
-		self.settings.pop("PORTAGE_UPDATE_ENV", None)
+		try:
+			if scheduler is None:
+				a = doebuild(myebuild, "postinst", destroot, self.settings,
+					use_cache=0, tree=self.treetype, mydbapi=mydbapi,
+					vartree=self.vartree)
+				if a == os.EX_OK:
+					writemsg_stdout(">>> %s %s\n" % (self.mycpv, "merged."))
+			else:
+				a = scheduler.dblinkEbuildPhase(
+					self, mydbapi, myebuild, "postinst")
+		finally:
+			self.settings.pop("PORTAGE_UPDATE_ENV", None)
 
 		# XXX: Decide how to handle failures here.
 		if a != os.EX_OK:
@@ -2741,7 +2756,6 @@ class dblink(object):
 			target_root=self.settings["ROOT"], prev_mtimes=prev_mtimes,
 			contents=contents, env=self.settings.environ())
 
-		writemsg_stdout(">>> %s %s\n" % (self.mycpv,"merged."))
 		return os.EX_OK
 
 	def mergeme(self, srcroot, destroot, outfile, secondhand, stufftomerge, cfgfiledict, thismtime):

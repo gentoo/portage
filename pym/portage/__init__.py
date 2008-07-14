@@ -5727,13 +5727,14 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	return newmtime
 
 def merge(mycat, mypkg, pkgloc, infloc, myroot, mysettings, myebuild=None,
-	mytree=None, mydbapi=None, vartree=None, prev_mtimes=None, blockers=None):
+	mytree=None, mydbapi=None, vartree=None, prev_mtimes=None, blockers=None,
+	scheduler=None):
 	if not os.access(myroot, os.W_OK):
 		writemsg("Permission denied: access('%s', W_OK)\n" % myroot,
 			noiselevel=-1)
 		return errno.EACCES
 	mylink = dblink(mycat, mypkg, myroot, mysettings, treetype=mytree,
-		vartree=vartree, blockers=blockers)
+		vartree=vartree, blockers=blockers, scheduler=scheduler)
 	return mylink.merge(pkgloc, infloc, myroot, myebuild,
 		mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 
