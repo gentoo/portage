@@ -1698,8 +1698,11 @@ class PipeReader(AsynchronousTask):
 	def _wait(self):
 		if self.returncode is not None:
 			return self.returncode
+
 		if self.registered:
 			self.scheduler.schedule(self._reg_ids)
+			self._unregister()
+
 		self.returncode = os.EX_OK
 		return self.returncode
 
@@ -1726,16 +1729,27 @@ class PipeReader(AsynchronousTask):
 		if buf:
 			self._read_data.append(buf.tostring())
 		else:
-			self.registered = False
-			for reg_id in self._reg_ids:
-				self.scheduler.unregister(reg_id)
-
-			for f in files.values():
-				f.close()
-
+			self._unregister()
 			self.wait()
 
 		return self.registered
+
+	def _unregister(self):
+		"""
+		Unregister from the scheduler and close open files.
+		"""
+
+		self.registered = False
+
+		if self._reg_ids is not None:
+			for reg_id in self._reg_ids:
+				self.scheduler.unregister(reg_id)
+			self._reg_ids = None
+
+		if self.input_files is not None:
+			for f in self.input_files.itervalues():
+				f.close()
+			self.input_files = None
 
 class CompositeTask(AsynchronousTask):
 
@@ -1888,7 +1902,7 @@ class TaskSequence(CompositeTask):
 
 class SubProcess(AsynchronousTask):
 
-	__slots__ = ("scheduler",) + ("pid", "registered", "_reg_id")
+	__slots__ = ("scheduler",) + ("files", "pid", "registered", "_reg_id")
 
 	# A file descriptor is required for the scheduler to monitor changes from
 	# inside a poll() loop. When logging is not enabled, create a pipe just to
@@ -1933,10 +1947,16 @@ class SubProcess(AsynchronousTask):
 			self.returncode is None
 
 	def _wait(self):
-		if self.registered:
-			self.scheduler.schedule(self._reg_id)
+
 		if self.returncode is not None:
 			return self.returncode
+
+		if self.registered:
+			self.scheduler.schedule(self._reg_id)
+			self._unregister()
+			if self.returncode is not None:
+				return self.returncode
+
 		try:
 			wait_retval = os.waitpid(self.pid, 0)
 		except OSError, e:
@@ -1946,7 +1966,24 @@ class SubProcess(AsynchronousTask):
 			self._set_returncode((self.pid, 1))
 		else:
 			self._set_returncode(wait_retval)
+
 		return self.returncode
+
+	def _unregister(self):
+		"""
+		Unregister from the scheduler and close open files.
+		"""
+
+		self.registered = False
+
+		if self._reg_id is not None:
+			self.scheduler.unregister(self._reg_id)
+			self._reg_id = None
+
+		if self.files is not None:
+			for f in self.files.itervalues():
+				f.close()
+			self.files = None
 
 	def _set_returncode(self, wait_retval):
 
@@ -1972,7 +2009,7 @@ class SpawnProcess(SubProcess):
 		"uid", "gid", "groups", "umask", "logfile",
 		"path_lookup", "pre_exec")
 
-	__slots__ = ("args", "files") + \
+	__slots__ = ("args",) + \
 		_spawn_kwarg_names
 
 	_file_names = ("process", "out")
@@ -2071,12 +2108,7 @@ class SpawnProcess(SubProcess):
 			buf.tofile(files.out)
 			files.out.flush()
 		else:
-			self.registered = False
-			self.scheduler.unregister(self._reg_id)
-
-			for f in files.values():
-				f.close()
-
+			self._unregister()
 			self.wait()
 		return self.registered
 
@@ -2095,12 +2127,7 @@ class SpawnProcess(SubProcess):
 		if buf:
 			pass
 		else:
-			self.registered = False
-			self.scheduler.unregister(self._reg_id)
-
-			for f in files.values():
-				f.close()
-
+			self._unregister()
 			self.wait()
 		return self.registered
 
@@ -2497,7 +2524,7 @@ class EbuildMetadataPhase(SubProcess):
 
 	__slots__ = ("cpv", "ebuild_path", "fd_pipes", "metadata_callback",
 		"ebuild_mtime", "portdb", "repo_path", "settings") + \
-		("files", "_raw_metadata")
+		("_raw_metadata",)
 
 	_file_names = ("ebuild",)
 	_files_dict = slot_dict_class(_file_names, prefix="")
@@ -2565,12 +2592,7 @@ class EbuildMetadataPhase(SubProcess):
 		files = self.files
 		self._raw_metadata.append(files.ebuild.read())
 		if not self._raw_metadata[-1]:
-			self.registered = False
-			self.scheduler.unregister(self._reg_id)
-
-			for f in files.values():
-				f.close()
-
+			self._unregister()
 			self.wait()
 
 			if self.returncode == os.EX_OK:
@@ -2584,8 +2606,7 @@ class EbuildMetadataPhase(SubProcess):
 class EbuildPhase(SubProcess):
 
 	__slots__ = ("fd_pipes", "phase", "pkg",
-		"settings", "tree",
-		"files")
+		"settings", "tree")
 
 	_file_names = ("log", "stdout", "ebuild")
 	_files_dict = slot_dict_class(_file_names, prefix="")
@@ -2692,12 +2713,7 @@ class EbuildPhase(SubProcess):
 			buf.tofile(files.log)
 			files.log.flush()
 		else:
-			self.registered = False
-			self.scheduler.unregister(self._reg_id)
-
-			for f in files.values():
-				f.close()
-
+			self._unregister()
 			self.wait()
 		return self.registered
 
@@ -2716,12 +2732,7 @@ class EbuildPhase(SubProcess):
 		if buf:
 			pass
 		else:
-			self.registered = False
-			self.scheduler.unregister(self._reg_id)
-
-			for f in files.values():
-				f.close()
-
+			self._unregister()
 			self.wait()
 		return self.registered
 
@@ -2743,7 +2754,6 @@ class EbuildPhase(SubProcess):
 				self.returncode = portage._post_src_install_checks(settings)
 
 		elif self.phase == "preinst":
-
 			if self.returncode == os.EX_OK:
 				portage._doebuild_exit_status_unlink(
 					settings.get("EBUILD_EXIT_STATUS_FILE"))
