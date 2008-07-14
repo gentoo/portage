@@ -895,7 +895,7 @@ class vardbapi(dbapi):
 	def _dblink(self, cpv):
 		category, pf = catsplit(cpv)
 		return dblink(category, pf, self.root,
-			self.settings, vartree=self.vartree)
+			self.settings, vartree=self.vartree, treetype="vartree")
 
 	def removeFromContents(self, pkg, paths, relative_paths=True):
 		"""
@@ -1523,7 +1523,9 @@ class dblink(object):
 				if cur_cpv == self.mycpv:
 					continue
 				others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
-					self.vartree.root, self.settings, vartree=self.vartree))
+					self.vartree.root, self.settings, vartree=self.vartree,
+					treetype="vartree"))
+
 			retval = self._security_check([self] + others_in_slot)
 			if retval:
 				return retval
@@ -1560,6 +1562,7 @@ class dblink(object):
 				uid=portage_uid, gid=portage_gid, mode=070, mask=0)
 		builddir_lock = None
 		catdir_lock = None
+		scheduler = self._scheduler
 		retval = -1
 		try:
 			if myebuildpath:
@@ -1573,11 +1576,16 @@ class dblink(object):
 					unlockdir(catdir_lock)
 				finally:
 					catdir_lock = None
-				# Eventually, we'd like to pass in the saved ebuild env here...
-				retval = doebuild(myebuildpath, "prerm", self.myroot,
-					self.settings, cleanup=cleanup, use_cache=0,
-					mydbapi=self.vartree.dbapi, tree="vartree",
-					vartree=self.vartree)
+
+				if scheduler is None:
+					retval = doebuild(myebuildpath, ebuild_phase, self.myroot,
+						self.settings, cleanup=cleanup, use_cache=0,
+						mydbapi=self.vartree.dbapi, tree=self.treetype,
+						vartree=self.vartree)
+				else:
+					retval = scheduler.dblinkEbuildPhase(
+						self, self.vartree.dbapi, myebuildpath, ebuild_phase)
+
 				# XXX: Decide how to handle failures here.
 				if retval != os.EX_OK:
 					writemsg("!!! FAILED prerm: %s\n" % retval, noiselevel=-1)
@@ -1592,9 +1600,13 @@ class dblink(object):
 
 			if myebuildpath:
 				ebuild_phase = "postrm"
-				retval = doebuild(myebuildpath, "postrm", self.myroot,
-					 self.settings, use_cache=0, tree="vartree",
-					 mydbapi=self.vartree.dbapi, vartree=self.vartree)
+				if scheduler is None:
+					retval = doebuild(myebuildpath, ebuild_phase, self.myroot,
+						self.settings, use_cache=0, tree=self.treetype,
+						mydbapi=self.vartree.dbapi, vartree=self.vartree)
+				else:
+					retval = scheduler.dblinkEbuildPhase(
+						self, self.vartree.dbapi, myebuildpath, ebuild_phase)
 
 				# XXX: Decide how to handle failures here.
 				if retval != os.EX_OK:
@@ -1751,7 +1763,8 @@ class dblink(object):
 					continue
 				others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
 					self.vartree.root, self.settings,
-					vartree=self.vartree))
+					vartree=self.vartree, treetype="vartree"))
+
 		dest_root = normalize_path(self.vartree.root).rstrip(os.path.sep) + \
 			os.path.sep
 		dest_root_len = len(dest_root) - 1
@@ -2380,7 +2393,9 @@ class dblink(object):
 			# we need it to have private ${T} etc... for things like elog.
 			others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
 				self.vartree.root, config(clone=self.settings),
-				vartree=self.vartree, scheduler=self._scheduler))
+				vartree=self.vartree, treetype="vartree",
+				scheduler=self._scheduler))
+
 		retval = self._security_check(others_in_slot)
 		if retval:
 			return retval

@@ -1931,10 +1931,10 @@ class SubProcess(AsynchronousTask):
 			self.returncode is None
 
 	def _wait(self):
-		if self.returncode is not None:
-			return self.returncode
 		if self.registered:
 			self.scheduler.schedule(self._reg_id)
+		if self.returncode is not None:
+			return self.returncode
 		try:
 			wait_retval = os.waitpid(self.pid, 0)
 		except OSError, e:
@@ -2720,22 +2720,50 @@ class EbuildPhase(SubProcess):
 
 	def _set_returncode(self, wait_retval):
 		SubProcess._set_returncode(self, wait_retval)
-		if self.phase != "clean":
-			msg = portage._doebuild_exit_status_check(
-				self.phase, self.settings)
-			if msg:
-				self.returncode = 1
-				from textwrap import wrap
-				from portage.elog.messages import eerror
-				for l in wrap(msg, 72):
-					eerror(l, phase=self.phase, key=self.pkg.cpv)
 
 		settings = self.settings
+		debug = settings.get("PORTAGE_DEBUG") == "1"
+		log_path = settings.get("PORTAGE_LOG_FILE")
+
+		if self.phase != "clean":
+			self.returncode = portage._doebuild_exit_status_check_and_log(
+				settings, self.phase, self.returncode)
+
 		portage._post_phase_userpriv_perms(settings)
 		if self.phase == "install":
 			portage._check_build_log(settings)
 			if self.returncode == os.EX_OK:
 				self.returncode = portage._post_src_install_checks(settings)
+
+		elif self.phase == "preinst":
+
+			if self.returncode == os.EX_OK:
+				portage._doebuild_exit_status_unlink(
+					settings.get("EBUILD_EXIT_STATUS_FILE"))
+				phase_retval = portage.spawn(
+					" ".join(portage._post_pkg_preinst_cmd(settings)),
+					settings, debug=debug, free=1, logfile=log_path)
+				phase_retval = portage._doebuild_exit_status_check_and_log(
+					settings, self.phase, phase_retval)
+				if phase_retval != os.EX_OK:
+					writemsg("!!! post preinst failed; exiting.\n",
+						noiselevel=-1)
+					self.returncode = phase_retval
+
+		elif self.phase == "postinst":
+
+			if self.returncode == os.EX_OK:
+				portage._doebuild_exit_status_unlink(
+					settings.get("EBUILD_EXIT_STATUS_FILE"))
+				phase_retval = portage.spawn(
+					" ".join(portage._post_pkg_postinst_cmd(settings)),
+					settings, debug=debug, free=1, logfile=log_path)
+				phase_retval = portage._doebuild_exit_status_check_and_log(
+					settings, self.phase, phase_retval)
+				if phase_retval != os.EX_OK:
+					writemsg("!!! post postinst failed; exiting.\n",
+						noiselevel=-1)
+					self.returncode = phase_retval
 
 class EbuildBinpkg(EbuildPhase):
 	"""

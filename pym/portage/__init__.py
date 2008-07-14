@@ -4380,6 +4380,42 @@ def _post_src_install_uid_fix(mysettings):
 				mode=mystat.st_mode, stat_cached=mystat,
 				follow_links=False)
 
+def _post_pkg_preinst_cmd(mysettings):
+	"""
+	Post phase logic and tasks that have been factored out of
+	ebuild.sh. Call preinst_mask last so that INSTALL_MASK can
+	can be used to wipe out any gmon.out files created during
+	previous functions (in case any tools were built with -pg
+	in CFLAGS).
+	"""
+
+	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
+	misc_sh_binary = os.path.join(portage_bin_path,
+		os.path.basename(MISC_SH_BINARY))
+
+	mysettings["EBUILD_PHASE"] = ""
+	myargs = [_shell_quote(misc_sh_binary),
+		"preinst_bsdflags",
+		"preinst_sfperms", "preinst_selinux_labels",
+		"preinst_suid_scan", "preinst_mask"]
+
+	return myargs
+
+def _post_pkg_postinst_cmd(mysettings):
+	"""
+	Post phase logic and tasks that have been factored out of
+	build.sh.
+	"""
+
+	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
+	misc_sh_binary = os.path.join(portage_bin_path,
+		os.path.basename(MISC_SH_BINARY))
+
+	mysettings["EBUILD_PHASE"] = ""
+	myargs = [_shell_quote(misc_sh_binary), "postinst_bsdflags"]
+
+	return myargs
+
 def _spawn_misc_sh(mysettings, commands, **kwargs):
 	"""
 	@param mysettings: the ebuild config
@@ -4821,6 +4857,18 @@ def _doebuild_exit_status_check(mydo, settings):
 	"assignments (bug #190128) or bad substitution " + \
 	"errors (bug #200313)."
 	return msg
+
+def _doebuild_exit_status_check_and_log(settings, mydo, retval):
+	if retval != os.EX_OK:
+		return retval
+	msg = _doebuild_exit_status_check(mydo, settings)
+	if msg:
+		retval = 1
+		from textwrap import wrap
+		from portage.elog.messages import eerror
+		for l in wrap(msg, 72):
+			eerror(l, phase=mydo, key=settings.mycpv)
+	return retval
 
 def _doebuild_exit_status_unlink(exit_status_file):
 	"""
@@ -5277,22 +5325,18 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		elif mydo == "preinst":
 			phase_retval = spawn(
 				_shell_quote(ebuild_sh_binary) + " " + mydo,
-				mysettings, debug=debug, free=1, logfile=logfile)
+				mysettings, debug=debug, free=1, logfile=logfile,
+				fd_pipes=fd_pipes, returnpid=returnpid)
+
+			if returnpid:
+				return phase_retval
+
 			phase_retval = exit_status_check(phase_retval)
 			if phase_retval == os.EX_OK:
-				# Post phase logic and tasks that have been factored out of
-				# ebuild.sh. Call preinst_mask last so that INSTALL_MASK can
-				# can be used to wipe out any gmon.out files created during
-				# previous functions (in case any tools were built with -pg
-				# in CFLAGS).
-				myargs = [_shell_quote(misc_sh_binary),
-					"preinst_bsdflags",
-					"preinst_sfperms", "preinst_selinux_labels",
-					"preinst_suid_scan", "preinst_mask"]
 				_doebuild_exit_status_unlink(
 					mysettings.get("EBUILD_EXIT_STATUS_FILE"))
-				mysettings["EBUILD_PHASE"] = ""
-				phase_retval = spawn(" ".join(myargs),
+				phase_retval = spawn(
+					" ".join(_post_pkg_preinst_cmd(mysettings)),
 					mysettings, debug=debug, free=1, logfile=logfile)
 				phase_retval = exit_status_check(phase_retval)
 				if phase_retval != os.EX_OK:
@@ -5302,16 +5346,17 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		elif mydo == "postinst":
 			phase_retval = spawn(
 				_shell_quote(ebuild_sh_binary) + " " + mydo,
-				mysettings, debug=debug, free=1, logfile=logfile)
+				mysettings, debug=debug, free=1, logfile=logfile,
+				fd_pipes=fd_pipes, returnpid=returnpid)
+
+			if returnpid:
+				return phase_retval
+
 			phase_retval = exit_status_check(phase_retval)
 			if phase_retval == os.EX_OK:
-				# Post phase logic and tasks that have been factored out of
-				# ebuild.sh.
-				myargs = [_shell_quote(misc_sh_binary), "postinst_bsdflags"]
 				_doebuild_exit_status_unlink(
 					mysettings.get("EBUILD_EXIT_STATUS_FILE"))
-				mysettings["EBUILD_PHASE"] = ""
-				phase_retval = spawn(" ".join(myargs),
+				phase_retval = spawn(" ".join(_post_pkg_postinst_cmd(mysettings)),
 					mysettings, debug=debug, free=1, logfile=logfile)
 				phase_retval = exit_status_check(phase_retval)
 				if phase_retval != os.EX_OK:
@@ -5321,7 +5366,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		elif mydo in ("prerm", "postrm", "config", "info"):
 			retval =  spawn(
 				_shell_quote(ebuild_sh_binary) + " " + mydo,
-				mysettings, debug=debug, free=1, logfile=logfile)
+				mysettings, debug=debug, free=1, logfile=logfile,
+				fd_pipes=fd_pipes, returnpid=returnpid)
+
+			if returnpid:
+				return retval
+
 			retval = exit_status_check(retval)
 			return retval
 
