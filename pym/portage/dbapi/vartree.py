@@ -1577,6 +1577,8 @@ class dblink(object):
 				finally:
 					catdir_lock = None
 
+				prepare_build_dirs(self.myroot, self.settings, 1)
+
 				if scheduler is None:
 					retval = doebuild(myebuildpath, ebuild_phase, self.myroot,
 						self.settings, cleanup=cleanup, use_cache=0,
