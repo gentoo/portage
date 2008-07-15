@@ -8792,6 +8792,7 @@ class Scheduler(PollScheduler):
 
 		keep_going = "--keep-going" in self.myopts
 		mtimedb = self._mtimedb
+		failed_pkgs = self._failed_pkgs
 
 		while True:
 			rval = self._merge()
@@ -8805,19 +8806,15 @@ class Scheduler(PollScheduler):
 			mergelist = self._mtimedb["resume"].get("mergelist")
 			if not mergelist:
 				break
-			if mergelist[0][-1] != "merge":
+
+			if not failed_pkgs:
 				break
 
-			# Skip the first one because it failed to build or install.
-			pkg_key = tuple(mergelist[0])
-			del mergelist[0]
-			failed_pkg = None
-			for task in self._mergelist:
-				if task == pkg_key:
-					failed_pkg = task
-					break
-			if failed_pkg is None:
-				break
+			for failed_pkg, returncode in failed_pkgs:
+				mergelist.remove(list(failed_pkg))
+
+			del failed_pkgs[:]
+
 			if not mergelist:
 				break
 
@@ -8887,7 +8884,7 @@ class Scheduler(PollScheduler):
 		# --resume still works after being interrupted
 		# by reboot, sigkill or similar.
 		mtimedb = self._mtimedb
-		del mtimedb["resume"]["mergelist"][0]
+		mtimedb["resume"]["mergelist"].remove(list(pkg))
 		if not mtimedb["resume"]["mergelist"]:
 			del mtimedb["resume"]
 		mtimedb.commit()
@@ -8923,8 +8920,6 @@ class Scheduler(PollScheduler):
 			# exist status of the last one
 			if failed_pkgs:
 				pkg, rval = failed_pkgs[-1]
-
-			del failed_pkgs[:]
 
 		return rval
 
@@ -11351,9 +11346,8 @@ def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner,
 			# will be infinite. Therefore, if that case ever
 			# occurs for some reason, raise the exception to
 			# break out of the loop.
-			if not pruned_mergelist or \
-				len(pruned_mergelist) == len(mergelist):
-				raise
+			if len(pruned_mergelist) == len(mergelist):
+				raise AssertionError("tight loop")
 			mergelist[:] = pruned_mergelist
 			dropped_tasks.update(unsatisfied_parents)
 			del e, graph, traversed_nodes, \
