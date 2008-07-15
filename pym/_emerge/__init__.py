@@ -8390,6 +8390,7 @@ class Scheduler(PollScheduler):
 		self._pkg_queue = []
 		self._completed_tasks = set()
 		self._failed_pkgs = []
+		self._failed_pkgs_all = []
 		self._failed_fetches = []
 		self._parallel_fetch = False
 		merge_count = len([x for x in mergelist \
@@ -8813,6 +8814,7 @@ class Scheduler(PollScheduler):
 			for failed_pkg, returncode in failed_pkgs:
 				mergelist.remove(list(failed_pkg))
 
+			self._failed_pkgs_all.extend(failed_pkgs)
 			del failed_pkgs[:]
 
 			if not mergelist:
@@ -8844,6 +8846,22 @@ class Scheduler(PollScheduler):
 				if isinstance(x, Package) and x.operation == "merge"])
 
 		self._logger.log(" *** Finished. Cleaning up...")
+
+		if len(self._failed_pkgs_all) > 1:
+			_flush_elog_mod_echo()
+			msg = "The following packages have " + \
+				"failed to build or install:"
+			prefix = bad(" * ")
+			writemsg(prefix + "\n", noiselevel=-1)
+			from textwrap import wrap
+			for line in wrap(msg, 72):
+				writemsg("%s%s\n" % (prefix, line), noiselevel=-1)
+			writemsg(prefix + "\n", noiselevel=-1)
+			for pkg, returncode in self._failed_pkgs_all:
+				writemsg("%s\t%s\n" % (prefix,
+					colorize("INFORM", str(pkg))),
+					noiselevel=-1)
+			writemsg(prefix + "\n", noiselevel=-1)
 
 		return rval
 
@@ -9883,6 +9901,18 @@ def display_news_notification(trees):
 		print "Use " + colorize("GOOD", "eselect news") + " to read news items."
 		print
 
+def _flush_elog_mod_echo():
+	"""
+	Dump the mod_echo output now so that our other
+	notifications are shown last.
+	"""
+	try:
+		from portage.elog import mod_echo
+	except ImportError:
+		pass # happens during downgrade to a version without the module
+	else:
+		mod_echo.finalize()
+
 def post_emerge(trees, mtimedb, retval):
 	"""
 	Misc. things to run at the end of a merge session.
@@ -9929,14 +9959,7 @@ def post_emerge(trees, mtimedb, retval):
 		exit_msg = " *** exiting unsuccessfully with status '%s'." % retval
 	emergelog("notitles" not in settings.features, exit_msg)
 
-	# Dump the mod_echo output now so that our other notifications are shown
-	# last.
-	try:
-		from portage.elog import mod_echo
-	except ImportError:
-		pass # happens during downgrade to a version without the module
-	else:
-		mod_echo.finalize()
+	_flush_elog_mod_echo()
 
 	vdb_path = os.path.join(target_root, portage.VDB_PATH)
 	portage.util.ensure_dirs(vdb_path)
