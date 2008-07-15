@@ -8760,7 +8760,7 @@ class Scheduler(PollScheduler):
 			"emerge via exec() after change of " + \
 			"portage version.")
 
-		del mtimedb["resume"]["mergelist"][0]
+		mtimedb["resume"]["mergelist"].remove(list(pkg))
 		mtimedb.commit()
 		portage.run_exitfuncs()
 		mynewargv = [sys.argv[0], "--resume"]
