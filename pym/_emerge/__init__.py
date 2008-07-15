@@ -1914,6 +1914,8 @@ class SubProcess(AsynchronousTask):
 			return self.returncode
 		if self.pid is None:
 			return self.returncode
+		if self.registered:
+			return self.returncode
 
 		try:
 			retval = os.waitpid(self.pid, os.WNOHANG)
@@ -7993,8 +7995,6 @@ class SequentialTaskQueue(SlotObject):
 		state_changed = False
 
 		for task in list(running_tasks):
-			if hasattr(task, "registered") and task.registered:
-				continue
 			if task.poll() is not None:
 				state_changed = True
 
