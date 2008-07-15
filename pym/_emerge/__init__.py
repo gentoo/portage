@@ -8730,6 +8730,8 @@ class Scheduler(PollScheduler):
 		if self._pkg_count.curval >= self._pkg_count.maxval:
 			return
 
+		self._main_loop_cleanup()
+
 		logger = self._logger
 		pkg_count = self._pkg_count
 		mtimedb = self._mtimedb
@@ -8902,12 +8904,7 @@ class Scheduler(PollScheduler):
 		try:
 			self._main_loop()
 		finally:
-			# discard remaining packages if necessary
-			del pkg_queue[:]
-			self._completed_tasks.clear()
-			self._digraph = None
-			self._task_queues.fetch.clear()
-
+			self._main_loop_cleanup()
 			# discard any failures and return the
 			# exist status of the last one
 			if failed_pkgs:
@@ -8916,6 +8913,12 @@ class Scheduler(PollScheduler):
 			del failed_pkgs[:]
 
 		return rval
+
+	def _main_loop_cleanup(self):
+		del self._pkg_queue[:]
+		self._completed_tasks.clear()
+		self._digraph = None
+		self._task_queues.fetch.clear()
 
 	def _choose_pkg(self):
 		"""
