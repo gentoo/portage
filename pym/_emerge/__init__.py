@@ -2137,6 +2137,8 @@ class EbuildFetcher(SpawnProcess):
 
 	__slots__ = ("fetchonly", "pkg",)
 
+	_env_vars = ("FETCHCOMMAND", "RESUMECOMMAND")
+
 	def _start(self):
 
 		root_config = self.pkg.root_config
@@ -2146,6 +2148,10 @@ class EbuildFetcher(SpawnProcess):
 
 		fetch_env = settings.environ()
 		fetch_env["PORTAGE_NICENESS"] = "0"
+		for k in self._env_vars:
+			v = settings.get(k)
+			if v is not None:
+				fetch_env[k] = v
 		if self.fetchonly:
 			fetch_env["PORTAGE_PARALLEL_FETCHONLY"] = "1"
 
