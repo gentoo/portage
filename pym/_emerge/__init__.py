@@ -8391,6 +8391,7 @@ class Scheduler(PollScheduler):
 		self._completed_tasks = set()
 		self._failed_pkgs = []
 		self._failed_pkgs_all = []
+		self._failed_pkgs_die_msgs = []
 		self._failed_fetches = []
 		self._parallel_fetch = False
 		merge_count = len([x for x in mergelist \
@@ -8847,6 +8848,29 @@ class Scheduler(PollScheduler):
 
 		self._logger.log(" *** Finished. Cleaning up...")
 
+		background = self._max_jobs > 1
+		if self._failed_pkgs_all and background and \
+			self._failed_pkgs_die_msgs and \
+			not _flush_elog_mod_echo():
+
+			printer = portage.output.EOutput()
+			for mysettings, key, logentries in self._failed_pkgs_die_msgs:
+				root_msg = ""
+				if mysettings["ROOT"] != "/":
+					root_msg = " merged to %s" % mysettings["ROOT"]
+				print
+				printer.einfo("Error messages for package %s%s:" % \
+					(colorize("INFORM", key), root_msg))
+				print
+				for phase in portage.const.EBUILD_PHASES:
+					if phase not in logentries:
+						continue
+					for msgtype, msgcontent in logentries[phase]:
+						if isinstance(msgcontent, basestring):
+							msgcontent = [msgcontent]
+						for line in msgcontent:
+							printer.eerror(line.strip("\n"))
+
 		if len(self._failed_pkgs_all) > 1:
 			_flush_elog_mod_echo()
 			msg = "The following packages have " + \
@@ -8864,6 +8888,12 @@ class Scheduler(PollScheduler):
 			writemsg(prefix + "\n", noiselevel=-1)
 
 		return rval
+
+	def _elog_listener(self, mysettings, key, logentries, fulltext):
+		errors = portage.elog.filter_loglevels(logentries, ["ERROR"])
+		if errors:
+			self._failed_pkgs_die_msgs.append(
+				(mysettings, key, errors))
 
 	def _add_packages(self):
 		pkg_queue = self._pkg_queue
@@ -8928,14 +8958,14 @@ class Scheduler(PollScheduler):
 		self._add_packages()
 		pkg_queue = self._pkg_queue
 		failed_pkgs = self._failed_pkgs
+		portage.elog._emerge_elog_listener = self._elog_listener
 		rval = os.EX_OK
 
 		try:
 			self._main_loop()
 		finally:
 			self._main_loop_cleanup()
-			# discard any failures and return the
-			# exist status of the last one
+			portage.elog._emerge_elog_listener = None
 			if failed_pkgs:
 				pkg, rval = failed_pkgs[-1]
 
@@ -9905,13 +9935,18 @@ def _flush_elog_mod_echo():
 	"""
 	Dump the mod_echo output now so that our other
 	notifications are shown last.
+	@rtype: bool
+	@returns: True if messages were shown, False otherwise.
 	"""
+	messages_shown = False
 	try:
 		from portage.elog import mod_echo
 	except ImportError:
 		pass # happens during downgrade to a version without the module
 	else:
+		messages_shown = bool(mod_echo._items)
 		mod_echo.finalize()
+	return messages_shown
 
 def post_emerge(trees, mtimedb, retval):
 	"""
