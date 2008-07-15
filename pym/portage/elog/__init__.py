@@ -53,10 +53,11 @@ def _load_mod(name):
 		_elog_mod_imports[name] = m
 	return m
 
+_emerge_elog_listener = None
 _elog_atexit_handlers = []
 _preserve_logentries = {}
 def elog_process(cpv, mysettings, phasefilter=None):
-	global _elog_atexit_handlers, _preserve_logentries
+	global _elog_atexit_handlers, _emerge_elog_listener, _preserve_logentries
 	
 	logsystems = mysettings.get("PORTAGE_ELOG_SYSTEM","").split()
 	for s in logsystems:
@@ -99,6 +100,10 @@ def elog_process(cpv, mysettings, phasefilter=None):
 			return
 
 		default_fulllog = _combine_logentries(default_logentries)
+
+		if _emerge_elog_listener is not None:
+			_emerge_elog_listener(mysettings, str(key),
+				default_logentries, default_fulllog)
 
 		# pass the processing to the individual modules
 		logsystems = mysettings["PORTAGE_ELOG_SYSTEM"].split()

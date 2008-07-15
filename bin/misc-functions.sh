@@ -355,7 +355,7 @@ install_qa_check() {
 	fi
 
 	# Verify that the libtool files don't contain bogus $D entries.
-	abort="no"
+	local abort=no gentoo_bug=no
 	for a in "${ED}"usr/lib*/*.la ; do
 		s=${a##*/}
 		if grep -qs "${D}" "${a}" ; then
@@ -442,18 +442,38 @@ install_qa_check() {
 		done
 		f=$(cat "${PORTAGE_LOG_FILE}" | check-implicit-pointer-usage.py)
 		if [[ -n ${f} ]] ; then
-			vecho -ne '\a\n'
-			eqawarn "QA Notice: Package has poor programming practices which may compile"
-			eqawarn "           but will almost certainly crash on 64bit architectures."
-			eqawarn "${f}"
-			vecho -ne '\a\n'
+
+			# In the future this will be a forced "die". In preparation,
+			# increase the log level from "qa" to "eerror" so that people
+			# are aware this is a problem that must be fixed asap.
+
 			# just warn on 32bit hosts but bail on 64bit hosts
 			case ${CHOST} in
-				alpha*|ia64*|powerpc64*|mips64*|sparc64*|sparcv9*|x86_64*) die "this code is not 64bit clean";;
-				*) abort="yes";;
+				alpha*|ia64*|powerpc64*|mips64*|sparc64*|sparcv9*|x86_64*) gentoo_bug=yes ;;
 			esac
+
+			abort=yes
+
+			if [[ $gentoo_bug = yes ]] ; then
+				eerror
+				eerror "QA Notice: Package has poor programming practices which may compile"
+				eerror "           but will almost certainly crash on 64bit architectures."
+				eerror
+				eerror "${f}"
+				eerror
+				eerror " Please file a bug about this at http://bugs.gentoo.org/"
+				eerror " with the maintaining herd of the package."
+				eerror
+			else
+				vecho -ne '\a\n'
+				eqawarn "QA Notice: Package has poor programming practices which may compile"
+				eqawarn "           but will almost certainly crash on 64bit architectures."
+				eqawarn "${f}"
+				vecho -ne '\a\n'
+			fi
+
 		fi
-		if [[ ${abort} == "yes" ]] ; then
+		if [[ $abort = yes ]] && [[ $gentoo_bug != yes ]] ; then
 			echo "Please do not file a Gentoo bug and instead" \
 			"report the above QA issues directly to the upstream" \
 			"developers of this software." | fmt -w 70 | \

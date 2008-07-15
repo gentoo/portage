@@ -1705,7 +1705,7 @@ class PipeReader(AsynchronousTask):
 	"""
 
 	__slots__ = ("input_files", "scheduler",) + \
-		("pid", "registered", "_reg_ids", "_read_data")
+		("pid", "_read_data", "_registered", "_reg_ids")
 
 	_bufsize = 4096
 
@@ -1717,16 +1717,19 @@ class PipeReader(AsynchronousTask):
 				fcntl.fcntl(f.fileno(), fcntl.F_GETFL) | os.O_NONBLOCK)
 			self._reg_ids.add(self.scheduler.register(f.fileno(),
 				PollConstants.POLLIN, self._output_handler))
-		self.registered = True
+		self._registered = True
 
 	def isAlive(self):
-		return self.registered
+		return self._registered
 
 	def _wait(self):
 		if self.returncode is not None:
 			return self.returncode
-		if self.registered:
+
+		if self._registered:
 			self.scheduler.schedule(self._reg_ids)
+			self._unregister()
+
 		self.returncode = os.EX_OK
 		return self.returncode
 
@@ -1753,16 +1756,27 @@ class PipeReader(AsynchronousTask):
 		if buf:
 			self._read_data.append(buf.tostring())
 		else:
-			self.registered = False
-			for reg_id in self._reg_ids:
-				self.scheduler.unregister(reg_id)
-
-			for f in files.values():
-				f.close()
-
+			self._unregister()
 			self.wait()
 
-		return self.registered
+		return self._registered
+
+	def _unregister(self):
+		"""
+		Unregister from the scheduler and close open files.
+		"""
+
+		self._registered = False
+
+		if self._reg_ids is not None:
+			for reg_id in self._reg_ids:
+				self.scheduler.unregister(reg_id)
+			self._reg_ids = None
+
+		if self.input_files is not None:
+			for f in self.input_files.itervalues():
+				f.close()
+			self.input_files = None
 
 class CompositeTask(AsynchronousTask):
 
@@ -1915,7 +1929,7 @@ class TaskSequence(CompositeTask):
 
 class SubProcess(AsynchronousTask):
 
-	__slots__ = ("scheduler",) + ("pid", "registered", "_reg_id")
+	__slots__ = ("scheduler",) + ("pid", "_files", "_registered", "_reg_id")
 
 	# A file descriptor is required for the scheduler to monitor changes from
 	# inside a poll() loop. When logging is not enabled, create a pipe just to
@@ -1926,6 +1940,8 @@ class SubProcess(AsynchronousTask):
 		if self.returncode is not None:
 			return self.returncode
 		if self.pid is None:
+			return self.returncode
+		if self._registered:
 			return self.returncode
 
 		try:
@@ -1960,10 +1976,16 @@ class SubProcess(AsynchronousTask):
 			self.returncode is None
 
 	def _wait(self):
-		if self.registered:
-			self.scheduler.schedule(self._reg_id)
+
 		if self.returncode is not None:
 			return self.returncode
+
+		if self._registered:
+			self.scheduler.schedule(self._reg_id)
+			self._unregister()
+			if self.returncode is not None:
+				return self.returncode
+
 		try:
 			wait_retval = os.waitpid(self.pid, 0)
 		except OSError, e:
@@ -1973,7 +1995,24 @@ class SubProcess(AsynchronousTask):
 			self._set_returncode((self.pid, 1))
 		else:
 			self._set_returncode(wait_retval)
+
 		return self.returncode
+
+	def _unregister(self):
+		"""
+		Unregister from the scheduler and close open files.
+		"""
+
+		self._registered = False
+
+		if self._reg_id is not None:
+			self.scheduler.unregister(self._reg_id)
+			self._reg_id = None
+
+		if self._files is not None:
+			for f in self._files.itervalues():
+				f.close()
+			self._files = None
 
 	def _set_returncode(self, wait_retval):
 
@@ -1999,7 +2038,7 @@ class SpawnProcess(SubProcess):
 		"uid", "gid", "groups", "umask", "logfile",
 		"path_lookup", "pre_exec")
 
-	__slots__ = ("args", "files") + \
+	__slots__ = ("args",) + \
 		_spawn_kwarg_names
 
 	_file_names = ("process", "out")
@@ -2026,8 +2065,8 @@ class SpawnProcess(SubProcess):
 				sys.stderr.flush()
 
 		logfile = self.logfile
-		self.files = self._files_dict()
-		files = self.files
+		self._files = self._files_dict()
+		files = self._files
 
 		master_fd, slave_fd = os.pipe()
 		fcntl.fcntl(master_fd, fcntl.F_SETFL,
@@ -2085,10 +2124,10 @@ class SpawnProcess(SubProcess):
 		files.process = os.fdopen(master_fd, 'r')
 		self._reg_id = self.scheduler.register(files.process.fileno(),
 			PollConstants.POLLIN, output_handler)
-		self.registered = True
+		self._registered = True
 
 	def _output_handler(self, fd, event):
-		files = self.files
+		files = self._files
 		buf = array.array('B')
 		try:
 			buf.fromfile(files.process, self._bufsize)
@@ -2098,14 +2137,9 @@ class SpawnProcess(SubProcess):
 			buf.tofile(files.out)
 			files.out.flush()
 		else:
-			self.registered = False
-			self.scheduler.unregister(self._reg_id)
-
-			for f in files.values():
-				f.close()
-
+			self._unregister()
 			self.wait()
-		return self.registered
+		return self._registered
 
 	def _dummy_handler(self, fd, event):
 		"""
@@ -2113,7 +2147,7 @@ class SpawnProcess(SubProcess):
 		the only purpose of the pipe is to allow the scheduler to
 		monitor the process from inside a poll() loop.
 		"""
-		files = self.files
+		files = self._files
 		buf = array.array('B')
 		try:
 			buf.fromfile(files.process, self._bufsize)
@@ -2122,14 +2156,9 @@ class SpawnProcess(SubProcess):
 		if buf:
 			pass
 		else:
-			self.registered = False
-			self.scheduler.unregister(self._reg_id)
-
-			for f in files.values():
-				f.close()
-
+			self._unregister()
 			self.wait()
-		return self.registered
+		return self._registered
 
 class EbuildFetcher(SpawnProcess):
 
@@ -2524,7 +2553,7 @@ class EbuildMetadataPhase(SubProcess):
 
 	__slots__ = ("cpv", "ebuild_path", "fd_pipes", "metadata_callback",
 		"ebuild_mtime", "portdb", "repo_path", "settings") + \
-		("files", "_raw_metadata")
+		("_raw_metadata",)
 
 	_file_names = ("ebuild",)
 	_files_dict = slot_dict_class(_file_names, prefix="")
@@ -2556,8 +2585,8 @@ class EbuildMetadataPhase(SubProcess):
 				sys.stderr.flush()
 
 		fd_pipes_orig = fd_pipes.copy()
-		self.files = self._files_dict()
-		files = self.files
+		self._files = self._files_dict()
+		files = self._files
 
 		master_fd, slave_fd = os.pipe()
 		fcntl.fcntl(master_fd, fcntl.F_SETFL,
@@ -2586,18 +2615,13 @@ class EbuildMetadataPhase(SubProcess):
 		files.ebuild = os.fdopen(master_fd, 'r')
 		self._reg_id = self.scheduler.register(files.ebuild.fileno(),
 			PollConstants.POLLIN, self._output_handler)
-		self.registered = True
+		self._registered = True
 
 	def _output_handler(self, fd, event):
-		files = self.files
+		files = self._files
 		self._raw_metadata.append(files.ebuild.read())
 		if not self._raw_metadata[-1]:
-			self.registered = False
-			self.scheduler.unregister(self._reg_id)
-
-			for f in files.values():
-				f.close()
-
+			self._unregister()
 			self.wait()
 
 			if self.returncode == os.EX_OK:
@@ -2606,13 +2630,12 @@ class EbuildMetadataPhase(SubProcess):
 				self.metadata_callback(self.cpv, self.ebuild_path,
 					self.repo_path, metadata, self.ebuild_mtime)
 
-		return self.registered
+		return self._registered
 
 class EbuildPhase(SubProcess):
 
 	__slots__ = ("fd_pipes", "phase", "pkg",
-		"settings", "tree",
-		"files")
+		"settings", "tree")
 
 	_file_names = ("log", "stdout", "ebuild")
 	_files_dict = slot_dict_class(_file_names, prefix="")
@@ -2646,8 +2669,8 @@ class EbuildPhase(SubProcess):
 				sys.stderr.flush()
 
 		fd_pipes_orig = fd_pipes.copy()
-		self.files = self._files_dict()
-		files = self.files
+		self._files = self._files_dict()
+		files = self._files
 		got_pty = False
 
 		portage._doebuild_exit_status_unlink(
@@ -2703,10 +2726,10 @@ class EbuildPhase(SubProcess):
 		files.ebuild = os.fdopen(master_fd, 'r')
 		self._reg_id = self.scheduler.register(files.ebuild.fileno(),
 			PollConstants.POLLIN, output_handler)
-		self.registered = True
+		self._registered = True
 
 	def _output_handler(self, fd, event):
-		files = self.files
+		files = self._files
 		buf = array.array('B')
 		try:
 			buf.fromfile(files.ebuild, self._bufsize)
@@ -2719,14 +2742,9 @@ class EbuildPhase(SubProcess):
 			buf.tofile(files.log)
 			files.log.flush()
 		else:
-			self.registered = False
-			self.scheduler.unregister(self._reg_id)
-
-			for f in files.values():
-				f.close()
-
+			self._unregister()
 			self.wait()
-		return self.registered
+		return self._registered
 
 	def _dummy_handler(self, fd, event):
 		"""
@@ -2734,7 +2752,7 @@ class EbuildPhase(SubProcess):
 		the only purpose of the pipe is to allow the scheduler to
 		monitor the process from inside a poll() loop.
 		"""
-		files = self.files
+		files = self._files
 		buf = array.array('B')
 		try:
 			buf.fromfile(files.ebuild, self._bufsize)
@@ -2743,14 +2761,9 @@ class EbuildPhase(SubProcess):
 		if buf:
 			pass
 		else:
-			self.registered = False
-			self.scheduler.unregister(self._reg_id)
-
-			for f in files.values():
-				f.close()
-
+			self._unregister()
 			self.wait()
-		return self.registered
+		return self._registered
 
 	def _set_returncode(self, wait_retval):
 		SubProcess._set_returncode(self, wait_retval)
@@ -2770,7 +2783,6 @@ class EbuildPhase(SubProcess):
 				self.returncode = portage._post_src_install_checks(settings)
 
 		elif self.phase == "preinst":
-
 			if self.returncode == os.EX_OK:
 				portage._doebuild_exit_status_unlink(
 					settings.get("EBUILD_EXIT_STATUS_FILE"))
@@ -8024,8 +8036,6 @@ class SequentialTaskQueue(SlotObject):
 		state_changed = False
 
 		for task in list(running_tasks):
-			if hasattr(task, "registered") and task.registered:
-				continue
 			if task.poll() is not None:
 				state_changed = True
 
@@ -8116,6 +8126,7 @@ class PollScheduler(object):
 		self._max_jobs = 1
 		self._max_load = None
 		self._jobs = 0
+		self._poll_event_queue = []
 		self._poll_event_handlers = {}
 		self._poll_event_handler_ids = {}
 		# Increment id for each new handler.
@@ -8163,19 +8174,29 @@ class PollScheduler(object):
 
 		return True
 
+	def _next_poll_event(self):
+		"""
+		Since the _schedule_wait() loop is called by event
+		handlers from _poll_loop(), maintain a central event
+		queue for both of them to share events from a single
+		poll() call.
+		"""
+		if not self._poll_event_queue:
+			self._poll_event_queue.extend(self._poll.poll())
+		return self._poll_event_queue.pop()
+
 	def _poll_loop(self):
 
 		event_handlers = self._poll_event_handlers
-		poll = self._poll.poll
-		state_change = 0
+		event_handled = False
 
 		while event_handlers:
-			for f, event in poll():
-				handler, reg_id = event_handlers[f]
-				if not handler(f, event):
-					state_change += 1
+			f, event = self._next_poll_event()
+			handler, reg_id = event_handlers[f]
+			handler(f, event)
+			event_handled = True
 
-		if not state_change:
+		if not event_handled:
 			raise AssertionError("tight loop")
 
 	def _register(self, f, eventmask, handler):
@@ -8208,15 +8229,18 @@ class PollScheduler(object):
 		"""
 		event_handlers = self._poll_event_handlers
 		handler_ids = self._poll_event_handler_ids
-		poll = self._poll.poll
+		event_handled = False
 
 		if isinstance(wait_ids, int):
 			wait_ids = frozenset([wait_ids])
 
 		while wait_ids.intersection(handler_ids):
-			for f, event in poll():
-				handler, reg_id = event_handlers[f]
-				handler(f, event)
+			f, event = self._next_poll_event()
+			handler, reg_id = event_handlers[f]
+			handler(f, event)
+			event_handled = True
+
+		return event_handled
 
 class QueueScheduler(PollScheduler):
 
@@ -8407,6 +8431,8 @@ class Scheduler(PollScheduler):
 		self._pkg_queue = []
 		self._completed_tasks = set()
 		self._failed_pkgs = []
+		self._failed_pkgs_all = []
+		self._failed_pkgs_die_msgs = []
 		self._failed_fetches = []
 		self._parallel_fetch = False
 		merge_count = len([x for x in mergelist \
@@ -8762,6 +8788,8 @@ class Scheduler(PollScheduler):
 		if self._pkg_count.curval >= self._pkg_count.maxval:
 			return
 
+		self._main_loop_cleanup()
+
 		logger = self._logger
 		pkg_count = self._pkg_count
 		mtimedb = self._mtimedb
@@ -8808,6 +8836,7 @@ class Scheduler(PollScheduler):
 
 		keep_going = "--keep-going" in self.myopts
 		mtimedb = self._mtimedb
+		failed_pkgs = self._failed_pkgs
 
 		while True:
 			rval = self._merge()
@@ -8821,19 +8850,16 @@ class Scheduler(PollScheduler):
 			mergelist = self._mtimedb["resume"].get("mergelist")
 			if not mergelist:
 				break
-			if mergelist[0][-1] != "merge":
+
+			if not failed_pkgs:
 				break
 
-			# Skip the first one because it failed to build or install.
-			pkg_key = tuple(mergelist[0])
-			del mergelist[0]
-			failed_pkg = None
-			for task in self._mergelist:
-				if task == pkg_key:
-					failed_pkg = task
-					break
-			if failed_pkg is None:
-				break
+			for failed_pkg, returncode in failed_pkgs:
+				mergelist.remove(list(failed_pkg))
+
+			self._failed_pkgs_all.extend(failed_pkgs)
+			del failed_pkgs[:]
+
 			if not mergelist:
 				break
 
@@ -8864,7 +8890,52 @@ class Scheduler(PollScheduler):
 
 		self._logger.log(" *** Finished. Cleaning up...")
 
+		background = self._max_jobs > 1
+		if self._failed_pkgs_all and background and \
+			self._failed_pkgs_die_msgs and \
+			not _flush_elog_mod_echo():
+
+			printer = portage.output.EOutput()
+			for mysettings, key, logentries in self._failed_pkgs_die_msgs:
+				root_msg = ""
+				if mysettings["ROOT"] != "/":
+					root_msg = " merged to %s" % mysettings["ROOT"]
+				print
+				printer.einfo("Error messages for package %s%s:" % \
+					(colorize("INFORM", key), root_msg))
+				print
+				for phase in portage.const.EBUILD_PHASES:
+					if phase not in logentries:
+						continue
+					for msgtype, msgcontent in logentries[phase]:
+						if isinstance(msgcontent, basestring):
+							msgcontent = [msgcontent]
+						for line in msgcontent:
+							printer.eerror(line.strip("\n"))
+
+		if len(self._failed_pkgs_all) > 1:
+			_flush_elog_mod_echo()
+			msg = "The following packages have " + \
+				"failed to build or install:"
+			prefix = bad(" * ")
+			writemsg(prefix + "\n", noiselevel=-1)
+			from textwrap import wrap
+			for line in wrap(msg, 72):
+				writemsg("%s%s\n" % (prefix, line), noiselevel=-1)
+			writemsg(prefix + "\n", noiselevel=-1)
+			for pkg, returncode in self._failed_pkgs_all:
+				writemsg("%s\t%s\n" % (prefix,
+					colorize("INFORM", str(pkg))),
+					noiselevel=-1)
+			writemsg(prefix + "\n", noiselevel=-1)
+
 		return rval
+
+	def _elog_listener(self, mysettings, key, logentries, fulltext):
+		errors = portage.elog.filter_loglevels(logentries, ["ERROR"])
+		if errors:
+			self._failed_pkgs_die_msgs.append(
+				(mysettings, key, errors))
 
 	def _add_packages(self):
 		pkg_queue = self._pkg_queue
@@ -8903,7 +8974,7 @@ class Scheduler(PollScheduler):
 		# --resume still works after being interrupted
 		# by reboot, sigkill or similar.
 		mtimedb = self._mtimedb
-		del mtimedb["resume"]["mergelist"][0]
+		mtimedb["resume"]["mergelist"].remove(list(pkg))
 		if not mtimedb["resume"]["mergelist"]:
 			del mtimedb["resume"]
 		mtimedb.commit()
@@ -8929,25 +9000,24 @@ class Scheduler(PollScheduler):
 		self._add_packages()
 		pkg_queue = self._pkg_queue
 		failed_pkgs = self._failed_pkgs
+		portage.elog._emerge_elog_listener = self._elog_listener
 		rval = os.EX_OK
 
 		try:
 			self._main_loop()
 		finally:
-			# discard remaining packages if necessary
-			del pkg_queue[:]
-			self._completed_tasks.clear()
-			self._digraph = None
-			self._task_queues.fetch.clear()
-
-			# discard any failures and return the
-			# exist status of the last one
+			self._main_loop_cleanup()
+			portage.elog._emerge_elog_listener = None
 			if failed_pkgs:
 				pkg, rval = failed_pkgs[-1]
 
-			del failed_pkgs[:]
-
 		return rval
+
+	def _main_loop_cleanup(self):
+		del self._pkg_queue[:]
+		self._completed_tasks.clear()
+		self._digraph = None
+		self._task_queues.fetch.clear()
 
 	def _choose_pkg(self):
 		"""
@@ -9903,6 +9973,23 @@ def display_news_notification(trees):
 		print "Use " + colorize("GOOD", "eselect news") + " to read news items."
 		print
 
+def _flush_elog_mod_echo():
+	"""
+	Dump the mod_echo output now so that our other
+	notifications are shown last.
+	@rtype: bool
+	@returns: True if messages were shown, False otherwise.
+	"""
+	messages_shown = False
+	try:
+		from portage.elog import mod_echo
+	except ImportError:
+		pass # happens during downgrade to a version without the module
+	else:
+		messages_shown = bool(mod_echo._items)
+		mod_echo.finalize()
+	return messages_shown
+
 def post_emerge(trees, mtimedb, retval):
 	"""
 	Misc. things to run at the end of a merge session.
@@ -9949,15 +10036,7 @@ def post_emerge(trees, mtimedb, retval):
 		exit_msg = " *** exiting unsuccessfully with status '%s'." % retval
 	emergelog("notitles" not in settings.features, exit_msg)
 
-	from portage.util import normalize_path
-	# Dump the mod_echo output now so that our other notifications are shown
-	# last.
-	try:
-		from portage.elog import mod_echo
-	except ImportError:
-		pass # happens during downgrade to a version without the module
-	else:
-		mod_echo.finalize()
+	_flush_elog_mod_echo()
 
 	vdb_path = os.path.join(target_root, portage.VDB_PATH)
 	portage.util.ensure_dirs(vdb_path)
@@ -11415,9 +11494,8 @@ def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner,
 			# will be infinite. Therefore, if that case ever
 			# occurs for some reason, raise the exception to
 			# break out of the loop.
-			if not pruned_mergelist or \
-				len(pruned_mergelist) == len(mergelist):
-				raise
+			if len(pruned_mergelist) == len(mergelist):
+				raise AssertionError("tight loop")
 			mergelist[:] = pruned_mergelist
 			dropped_tasks.update(unsatisfied_parents)
 			del e, graph, traversed_nodes, \
