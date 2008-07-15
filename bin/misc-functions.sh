@@ -345,7 +345,11 @@ install_qa_check() {
 	[[ ${abort} == "yes" ]] && die "add those ldscripts"
 
 	# Make sure people don't store libtool files or static libs in /lib
-	f=$(ls "${ED}"lib*/*.{a,la} 2>/dev/null)
+	# on AIX, "dynamic libs" have extention .a, so don't get false
+	# positives
+	[[ ${CHOST} == *-aix* ]] \
+		&& f=$(ls "${ED}"lib*/*.la 2>/dev/null) \
+		|| f=$(ls "${ED}"lib*/*.{a,la} 2>/dev/null)
 	if [[ -n ${f} ]] ; then
 		vecho -ne '\a\n'
 		eqawarn "QA Notice: Excessive files found in the / partition"
