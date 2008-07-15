@@ -155,7 +155,7 @@ being submitted for inclusion, it must have ~arch set for architectures
 where it has been PROVEN TO WORK.  (Packages KEYWORDed this way may be
 unmasked for testing by setting ACCEPT_KEYWORDS="~arch" on the command
 line, or in \fBmake.conf\fR(5)) For an authoritative list please review
-/usr/portage/profiles/arch.list.  Please keep this list in alphabetical order.
+@DOMAIN_PREFIX@/usr/portage/profiles/arch.list.  Please keep this list in alphabetical order.
 .TP
 \fBSLOT\fR
 This sets the SLOT for packages that may need to have multiple versions
@@ -166,7 +166,7 @@ value should \fINEVER\fR be left undefined.
 \fBLICENSE\fR
 This should be a space delimited list of licenses that the package falls
 under.  This \fB_must_\fR be set to a matching license in
-/usr/portage/licenses/. If the license does not exist in portage yet, you
+@DOMAIN_PREFIX@/usr/portage/licenses/. If the license does not exist in portage yet, you
 must add it first.
 .TP
 \fBIUSE\fR
@@ -619,13 +619,13 @@ directory. The function will append \fIsource\fR to the \fBDISTDIR\fR variable.
 This is used as a replacement for configure.  Performs:
 .nf
 ${\fIECONF_SOURCE\fR:-.}/configure \\
-	\-\-prefix=/usr \\
+	\-\-prefix="@DOMAIN_PREFIX@"/usr \\
 	\-\-host=${CHOST} \\
-	\-\-mandir=/usr/share/man \\
-	\-\-infodir=/usr/share/info \\
-	\-\-datadir=/usr/share \\
-	\-\-sysconfdir=/etc \\
-	\-\-localstatedir=/var/lib \\
+	\-\-mandir="@DOMAIN_PREFIX@"/usr/share/man \\
+	\-\-infodir="@DOMAIN_PREFIX@"/usr/share/info \\
+	\-\-datadir="@DOMAIN_PREFIX@"/usr/share \\
+	\-\-sysconfdir="@DOMAIN_PREFIX@"/etc \\
+	\-\-localstatedir="@DOMAIN_PREFIX@"/var/lib \\
 	\fI${EXTRA_ECONF}\fR \\
 	\fIconfigure options\fR
 .fi
@@ -635,7 +635,7 @@ extra arguements to \fBeconf\fR.
 .TP
 \fBemake\fR \fI[make options]\fR
 This is used as a replacement for make.  Performs 'make ${MAKEOPTS}
-\fImake options\fR' (as set in /etc/make.globals), default is MAKEOPTS="\-j2".
+\fImake options\fR' (as set in @DOMAIN_PREFIX@/etc/make.globals), default is MAKEOPTS="\-j2".
 
 \fB***warning***\fR
 .br
@@ -650,12 +650,12 @@ the issue, then you should run '\fBemake\fR \-j1' instead of 'make'.
 This is used as a replacement for make install.  Performs:
 .nf
 make \\
-	prefix=${D}/usr \\
-	datadir=${D}/usr/share \\
-	infodir=${D}/usr/share/info \\
-	localstatedir=${D}/var/lib \\
-	mandir=${D}/usr/share/man \\
-	sysconfdir=${D}/etc \\
+	prefix="${ED}"/usr \\
+	datadir="${ED}"/usr/share \\
+	infodir="${ED}"/usr/share/info \\
+	localstatedir="${ED}"/var/lib \\
+	mandir="${ED}"/usr/share/man \\
+	sysconfdir="${ED}"/etc \\
 	\fI${EXTRA_EINSTALL}\fR \\
 	\fImake options\fR \\
 	install
@@ -690,13 +690,13 @@ libraries +x, and then checks aclocal directories.  Please note this
 does \fI*not*\fR run \fBprepalldocs\fR.
 .TP
 .B prepalldocs:
-Compresses all doc files in ${D}/usr/share/doc.
+Compresses all doc files in ${ED}/usr/share/doc.
 .TP
 .B prepallinfo:
-Compresses all info files in ${D}/usr/share/info.
+Compresses all info files in ${ED}/usr/share/info.
 .TP
 .B prepallman:
-Compresses all man files in ${D}/usr/share/man.
+Compresses all man files in ${ED}/usr/share/man.
 .TP
 .B prepallstrip:
 Strips all executable files of debugging symboles.  This includes libraries.
@@ -716,31 +716,31 @@ Similiar to the \fBprepall\fR functions, these are subtle in their differences.
 .B prepinfo:
 If a \fIdir\fR is not specified, then \fBprepinfo\fR will assume the dir
 \fIusr\fR. \fBprepinfo\fR will then compress all the files in
-${D}/\fIdir\fR/info.
+${ED}/\fIdir\fR/info.
 .TP
 .B prepman:
 If a \fIdir\fR is not specified, then \fBprepman\fR will assume the dir
 \fIusr\fR. \fBprepman\fR will then compress all the files in
-${D}/\fIdir\fR/man/*/.
+${ED}/\fIdir\fR/man/*/.
 .TP
 .B prepstrip:
-All the files found in ${D}/\fIdir\fR will be stripped.  You may specify
+All the files found in ${ED}/\fIdir\fR will be stripped.  You may specify
 multiple directories.
 .RE
 .PD 1
 .TP
 \fBdosed\fR \fI"s:orig:change:g" <filename>\fR
-Performs sed in place on \fIfilename\fR inside ${D}. If no expression is
+Performs sed in place on \fIfilename\fR inside ${ED}. If no expression is
 given then \fI"s:${D}::g"\fR is used as the default expression.
 .br
 .BR 'dosed\ "s:/usr/local:/usr:g"\ /usr/bin/some\-script'
-runs sed on ${D}/usr/bin/some\-script
+runs sed on ${ED}/usr/bin/some\-script
 .TP
 \fBdodir\fR \fI<path>\fR
-Creates a directory inside of ${D}.
+Creates a directory inside of ${ED}.
 .br
 .BR 'dodir\ /usr/lib/apache'
-creates ${D}/usr/lib/apache.  Note that the do* functions will run
+creates ${ED}/usr/lib/apache.  Note that the do* functions will run
 \fBdodir\fR for you.
 .TP
 \fBdiropts\fR \fI[options for install(1)]\fR
@@ -909,18 +909,18 @@ Arfrever Frehtes Taifersar Arahesis <Arfrever.FTA@gmail.com>
 .fi
 .SH "FILES"
 .TP
-The \fI/usr/sbin/ebuild.sh\fR script.
+The \fI@DOMAIN_PREFIX@/usr/sbin/ebuild.sh\fR script.
 .TP
 The helper apps in \fI@PORTAGE_BASE@/bin\fR.
 .TP
-.B /etc/make.conf
+.B @sysconfdir@/make.conf
 Contains variables for the build\-process and overwrites those in make.defaults.
 .TP
-.B /etc/make.globals
+.B @sysconfdir@/make.globals
 Contains the default variables for the build\-process, you should edit
-\fI/etc/make.conf\fR instead.
+\fI@sysconfdir@/make.conf\fR instead.
 .TP
-.B /etc/portage/color.map
+.B @sysconfdir@/portage/color.map
 Contains variables customizing colors.
 .SH "SEE ALSO"
 .BR ebuild (1),
