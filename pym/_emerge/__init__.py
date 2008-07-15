@@ -1678,7 +1678,7 @@ class PipeReader(AsynchronousTask):
 	"""
 
 	__slots__ = ("input_files", "scheduler",) + \
-		("pid", "registered", "_reg_ids", "_read_data")
+		("pid", "_read_data", "_registered", "_reg_ids")
 
 	_bufsize = 4096
 
@@ -1690,16 +1690,16 @@ class PipeReader(AsynchronousTask):
 				fcntl.fcntl(f.fileno(), fcntl.F_GETFL) | os.O_NONBLOCK)
 			self._reg_ids.add(self.scheduler.register(f.fileno(),
 				PollConstants.POLLIN, self._output_handler))
-		self.registered = True
+		self._registered = True
 
 	def isAlive(self):
-		return self.registered
+		return self._registered
 
 	def _wait(self):
 		if self.returncode is not None:
 			return self.returncode
 
-		if self.registered:
+		if self._registered:
 			self.scheduler.schedule(self._reg_ids)
 			self._unregister()
 
@@ -1732,14 +1732,14 @@ class PipeReader(AsynchronousTask):
 			self._unregister()
 			self.wait()
 
-		return self.registered
+		return self._registered
 
 	def _unregister(self):
 		"""
 		Unregister from the scheduler and close open files.
 		"""
 
-		self.registered = False
+		self._registered = False
 
 		if self._reg_ids is not None:
 			for reg_id in self._reg_ids:
@@ -1902,7 +1902,7 @@ class TaskSequence(CompositeTask):
 
 class SubProcess(AsynchronousTask):
 
-	__slots__ = ("scheduler",) + ("files", "pid", "registered", "_reg_id")
+	__slots__ = ("scheduler",) + ("pid", "_files", "_registered", "_reg_id")
 
 	# A file descriptor is required for the scheduler to monitor changes from
 	# inside a poll() loop. When logging is not enabled, create a pipe just to
@@ -1914,7 +1914,7 @@ class SubProcess(AsynchronousTask):
 			return self.returncode
 		if self.pid is None:
 			return self.returncode
-		if self.registered:
+		if self._registered:
 			return self.returncode
 
 		try:
@@ -1953,7 +1953,7 @@ class SubProcess(AsynchronousTask):
 		if self.returncode is not None:
 			return self.returncode
 
-		if self.registered:
+		if self._registered:
 			self.scheduler.schedule(self._reg_id)
 			self._unregister()
 			if self.returncode is not None:
@@ -1976,16 +1976,16 @@ class SubProcess(AsynchronousTask):
 		Unregister from the scheduler and close open files.
 		"""
 
-		self.registered = False
+		self._registered = False
 
 		if self._reg_id is not None:
 			self.scheduler.unregister(self._reg_id)
 			self._reg_id = None
 
-		if self.files is not None:
-			for f in self.files.itervalues():
+		if self._files is not None:
+			for f in self._files.itervalues():
 				f.close()
-			self.files = None
+			self._files = None
 
 	def _set_returncode(self, wait_retval):
 
@@ -2038,8 +2038,8 @@ class SpawnProcess(SubProcess):
 				sys.stderr.flush()
 
 		logfile = self.logfile
-		self.files = self._files_dict()
-		files = self.files
+		self._files = self._files_dict()
+		files = self._files
 
 		master_fd, slave_fd = os.pipe()
 		fcntl.fcntl(master_fd, fcntl.F_SETFL,
@@ -2097,10 +2097,10 @@ class SpawnProcess(SubProcess):
 		files.process = os.fdopen(master_fd, 'r')
 		self._reg_id = self.scheduler.register(files.process.fileno(),
 			PollConstants.POLLIN, output_handler)
-		self.registered = True
+		self._registered = True
 
 	def _output_handler(self, fd, event):
-		files = self.files
+		files = self._files
 		buf = array.array('B')
 		try:
 			buf.fromfile(files.process, self._bufsize)
@@ -2112,7 +2112,7 @@ class SpawnProcess(SubProcess):
 		else:
 			self._unregister()
 			self.wait()
-		return self.registered
+		return self._registered
 
 	def _dummy_handler(self, fd, event):
 		"""
@@ -2120,7 +2120,7 @@ class SpawnProcess(SubProcess):
 		the only purpose of the pipe is to allow the scheduler to
 		monitor the process from inside a poll() loop.
 		"""
-		files = self.files
+		files = self._files
 		buf = array.array('B')
 		try:
 			buf.fromfile(files.process, self._bufsize)
@@ -2131,7 +2131,7 @@ class SpawnProcess(SubProcess):
 		else:
 			self._unregister()
 			self.wait()
-		return self.registered
+		return self._registered
 
 class EbuildFetcher(SpawnProcess):
 
@@ -2558,8 +2558,8 @@ class EbuildMetadataPhase(SubProcess):
 				sys.stderr.flush()
 
 		fd_pipes_orig = fd_pipes.copy()
-		self.files = self._files_dict()
-		files = self.files
+		self._files = self._files_dict()
+		files = self._files
 
 		master_fd, slave_fd = os.pipe()
 		fcntl.fcntl(master_fd, fcntl.F_SETFL,
@@ -2588,10 +2588,10 @@ class EbuildMetadataPhase(SubProcess):
 		files.ebuild = os.fdopen(master_fd, 'r')
 		self._reg_id = self.scheduler.register(files.ebuild.fileno(),
 			PollConstants.POLLIN, self._output_handler)
-		self.registered = True
+		self._registered = True
 
 	def _output_handler(self, fd, event):
-		files = self.files
+		files = self._files
 		self._raw_metadata.append(files.ebuild.read())
 		if not self._raw_metadata[-1]:
 			self._unregister()
@@ -2603,7 +2603,7 @@ class EbuildMetadataPhase(SubProcess):
 				self.metadata_callback(self.cpv, self.ebuild_path,
 					self.repo_path, metadata, self.ebuild_mtime)
 
-		return self.registered
+		return self._registered
 
 class EbuildPhase(SubProcess):
 
@@ -2642,8 +2642,8 @@ class EbuildPhase(SubProcess):
 				sys.stderr.flush()
 
 		fd_pipes_orig = fd_pipes.copy()
-		self.files = self._files_dict()
-		files = self.files
+		self._files = self._files_dict()
+		files = self._files
 		got_pty = False
 
 		portage._doebuild_exit_status_unlink(
@@ -2699,10 +2699,10 @@ class EbuildPhase(SubProcess):
 		files.ebuild = os.fdopen(master_fd, 'r')
 		self._reg_id = self.scheduler.register(files.ebuild.fileno(),
 			PollConstants.POLLIN, output_handler)
-		self.registered = True
+		self._registered = True
 
 	def _output_handler(self, fd, event):
-		files = self.files
+		files = self._files
 		buf = array.array('B')
 		try:
 			buf.fromfile(files.ebuild, self._bufsize)
@@ -2717,7 +2717,7 @@ class EbuildPhase(SubProcess):
 		else:
 			self._unregister()
 			self.wait()
-		return self.registered
+		return self._registered
 
 	def _dummy_handler(self, fd, event):
 		"""
@@ -2725,7 +2725,7 @@ class EbuildPhase(SubProcess):
 		the only purpose of the pipe is to allow the scheduler to
 		monitor the process from inside a poll() loop.
 		"""
-		files = self.files
+		files = self._files
 		buf = array.array('B')
 		try:
 			buf.fromfile(files.ebuild, self._bufsize)
@@ -2736,7 +2736,7 @@ class EbuildPhase(SubProcess):
 		else:
 			self._unregister()
 			self.wait()
-		return self.registered
+		return self._registered
 
 	def _set_returncode(self, wait_retval):
 		SubProcess._set_returncode(self, wait_retval)
