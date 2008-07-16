@@ -8450,6 +8450,9 @@ class Scheduler(PollScheduler):
 		self._prefetchers = weakref.WeakValueDictionary()
 		self._pkg_queue = []
 		self._completed_tasks = set()
+		# Number of completed package tasks, excluding uninstalls.
+		self._completed_pkg_count = 0
+		self._summary_prev_pkg_count = 0
 		self._failed_pkgs = []
 		self._failed_pkgs_all = []
 		self._failed_pkgs_die_msgs = []
@@ -9015,6 +9018,7 @@ class Scheduler(PollScheduler):
 		if not mtimedb["resume"]["mergelist"]:
 			del mtimedb["resume"]
 		mtimedb.commit()
+		self._completed_pkg_count += 1
 
 	def _build_exit(self, build):
 		if build.returncode == os.EX_OK:
@@ -9053,6 +9057,8 @@ class Scheduler(PollScheduler):
 	def _main_loop_cleanup(self):
 		del self._pkg_queue[:]
 		self._completed_tasks.clear()
+		self._completed_pkg_count = 0
+		self._summary_prev_pkg_count = 0
 		self._digraph = None
 		self._task_queues.fetch.clear()
 
@@ -9133,8 +9139,11 @@ class Scheduler(PollScheduler):
 
 	def _schedule_tasks(self):
 		remaining, state_change = self._schedule_tasks_imp()
-		if state_change:
+
+		if state_change or \
+			self._summary_prev_pkg_count != self._completed_pkg_count:
 			self._display_status()
+			self._summary_prev_pkg_count = self._completed_pkg_count
 		return remaining
 
 	def _schedule_tasks_imp(self):
@@ -9178,7 +9187,7 @@ class Scheduler(PollScheduler):
 				task_queues.jobs.add(task)
 		return (True, state_change)
 
-	def _load_avg_str(self, digits=2):
+	def _load_avg_str(self, digits=1):
 		try:
 			avg = os.getloadavg()
 		except OSError, e:
@@ -9189,20 +9198,27 @@ class Scheduler(PollScheduler):
 		if self._max_jobs < 2:
 			return
 
-		jobs_str = str(self._jobs).rjust(2)
-		merges_str = str(len(self._task_queues.merge)).rjust(2)
+		# Don't use len(self._completed_tasks) here since that also
+		# can include uninstall tasks.
+		completed_str = str(self._completed_pkg_count)
+		maxval_str = str(self._pkg_count.maxval)
+		jobs_str = str(self._jobs)
+		merges_str = str(len(self._task_queues.merge))
 		load_avg_str = self._load_avg_str()
 
-		msg = "Jobs: %s running, %s merges, load average: %s" % \
-			(colorize("INFORM", jobs_str), colorize("INFORM", merges_str),
+		msg = ("Jobs: %s of %s complete, %s running, %s merges, " + \
+			"load average: %s") % \
+			(colorize("INFORM", completed_str), colorize("INFORM", maxval_str),
+			colorize("INFORM", jobs_str), colorize("INFORM", merges_str),
 			load_avg_str)
 		noiselevel = 0
 		if "--verbose" in self.myopts:
 			noiselevel = -1
 		portage.writemsg_stdout(">>> %s\n" % msg, noiselevel=noiselevel)
 
-		short_msg = "Jobs: %s running, %s merges, load average: %s" % \
-			(jobs_str, merges_str, load_avg_str)
+		short_msg = ("Jobs: %s of %s complete, %s running, %s merges, " + \
+			"load average: %s") % \
+			(completed_str, maxval_str, jobs_str, merges_str, load_avg_str)
 		xtermTitle(short_msg)
 
 	def _task(self, pkg, background):
