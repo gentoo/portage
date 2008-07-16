@@ -8,7 +8,7 @@ SVN_LOCATION=${REPOSITORY}/${BRANCH}
 
 die() {
 	echo $@
-	echo "Usage: $(basename $0) [-t|--tag] [-u|--upload <location>] <version>"
+	echo "Usage: ${0##*/} [--anon] [-t|--tag] [-u|--upload <location>] <version>"
 	exit 1
 }
 
