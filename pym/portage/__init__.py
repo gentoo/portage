@@ -1140,7 +1140,7 @@ class config(object):
 			config_root = normalize_path(os.path.abspath(
 				config_root)).rstrip(os.path.sep) + os.path.sep
 
-			check_var_directory("PORTAGE_CONFIGROOT", config_root + EPREFIX_LSTRIP)
+			check_var_directory("PORTAGE_CONFIGROOT", config_root)
 
 			self.depcachedir = DEPCACHE_PATH
 
@@ -1301,7 +1301,7 @@ class config(object):
 				target_root)).rstrip(os.path.sep) + os.path.sep
 
 			portage.util.ensure_dirs(target_root + EPREFIX_LSTRIP)
-			check_var_directory("ROOT", target_root + EPREFIX_LSTRIP)
+			check_var_directory("EROOT", target_root + EPREFIX_LSTRIP)
 
 			# The expand_map is used for variable substitution
 			# in getconfig() calls, and the getconfig() calls
