@@ -23,6 +23,7 @@ except KeyboardInterrupt:
 import array
 from collections import deque
 import fcntl
+import fpformat
 import select
 import shlex
 import shutil
@@ -9059,6 +9060,12 @@ class Scheduler(PollScheduler):
 			self._poll_loop()
 
 	def _schedule_tasks(self):
+		remaining, state_change = self._schedule_tasks_imp()
+		if state_change:
+			self._display_status()
+		return remaining
+
+	def _schedule_tasks_imp(self):
 		"""
 		@rtype: bool
 		@returns: True if tasks remain to schedule, False otherwise.
@@ -9066,15 +9073,18 @@ class Scheduler(PollScheduler):
 
 		task_queues = self._task_queues
 		background = self._max_jobs > 1
+		state_change = 0
 
 		while self._can_add_job():
 
 			if not self._pkg_queue or self._failed_pkgs:
-				return False
+				return (False, state_change)
 
 			pkg = self._choose_pkg()
 			if pkg is None:
-				return True
+				return (True, state_change)
+
+			state_change += 1
 
 			if not pkg.installed:
 				self._pkg_count.curval += 1
@@ -9093,7 +9103,26 @@ class Scheduler(PollScheduler):
 				self._jobs += 1
 				task.addExitListener(self._build_exit)
 				task_queues.jobs.add(task)
-		return True
+		return (True, state_change)
+
+	def _load_avg_str(self, digits=2):
+		try:
+			avg = os.getloadavg()
+		except OSError, e:
+			return str(e)
+		return ", ".join(fpformat.fix(x, digits) for x in avg)
+
+	def _display_status(self):
+		if self._max_jobs < 2:
+			return
+		msg = ">>> Jobs: %s running, %s merges, load average: %s\n" % \
+			(colorize("INFORM", str(self._jobs).rjust(2)),
+			colorize("INFORM", str(len(self._task_queues.merge)).rjust(2)),
+			self._load_avg_str())
+		noiselevel = 0
+		if "--verbose" in self.myopts:
+			noiselevel = -1
+		portage.writemsg_stdout(msg, noiselevel=noiselevel)
 
 	def _task(self, pkg, background):
 
