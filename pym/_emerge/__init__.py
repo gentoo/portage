@@ -246,9 +246,7 @@ shortmapping={
 }
 
 def emergelog(xterm_titles, mystr, short_msg=None):
-	if xterm_titles:
-		if short_msg == None:
-			short_msg = mystr
+	if xterm_titles and short_msg:
 		if "HOSTNAME" in os.environ:
 			short_msg = os.environ["HOSTNAME"]+": "+short_msg
 		xtermTitle(short_msg)
@@ -8392,9 +8390,12 @@ class Scheduler(PollScheduler):
 		__slots__ = ("curval", "maxval")
 
 	class _emerge_log_class(SlotObject):
-		__slots__ = ("xterm_titles",)
+		__slots__ = ("parallel", "xterm_titles",)
 
 		def log(self, *pargs, **kwargs):
+			if self.parallel:
+				# Avoid interference with the scheduler's status display.
+				kwargs.pop("short_msg", None)
 			emergelog(self.xterm_titles, *pargs, **kwargs)
 
 	def __init__(self, settings, trees, mtimedb, myopts,
@@ -9144,6 +9145,7 @@ class Scheduler(PollScheduler):
 
 		task_queues = self._task_queues
 		background = self._max_jobs > 1
+		self._logger.parallel = background
 		state_change = 0
 
 		while self._can_add_job():
@@ -9186,14 +9188,22 @@ class Scheduler(PollScheduler):
 	def _display_status(self):
 		if self._max_jobs < 2:
 			return
-		msg = ">>> Jobs: %s running, %s merges, load average: %s\n" % \
-			(colorize("INFORM", str(self._jobs).rjust(2)),
-			colorize("INFORM", str(len(self._task_queues.merge)).rjust(2)),
-			self._load_avg_str())
+
+		jobs_str = str(self._jobs).rjust(2)
+		merges_str = str(len(self._task_queues.merge)).rjust(2)
+		load_avg_str = self._load_avg_str()
+
+		msg = "Jobs: %s running, %s merges, load average: %s" % \
+			(colorize("INFORM", jobs_str), colorize("INFORM", merges_str),
+			load_avg_str)
 		noiselevel = 0
 		if "--verbose" in self.myopts:
 			noiselevel = -1
-		portage.writemsg_stdout(msg, noiselevel=noiselevel)
+		portage.writemsg_stdout(">>> %s\n" % msg, noiselevel=noiselevel)
+
+		short_msg = "Jobs: %s running, %s merges, load average: %s" % \
+			(jobs_str, merges_str, load_avg_str)
+		xtermTitle(short_msg)
 
 	def _task(self, pkg, background):
 
