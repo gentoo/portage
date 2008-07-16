@@ -2016,7 +2016,7 @@ class SpawnProcess(SubProcess):
 	__slots__ = ("args",) + \
 		_spawn_kwarg_names
 
-	_file_names = ("process", "out")
+	_file_names = ("log", "process", "stdout")
 	_files_dict = slot_dict_class(_file_names, prefix="")
 	_bufsize = 4096
 
@@ -2047,6 +2047,7 @@ class SpawnProcess(SubProcess):
 		fcntl.fcntl(master_fd, fcntl.F_SETFL,
 			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 
+		files.process = os.fdopen(master_fd, 'r')
 		if logfile is not None:
 
 			fd_pipes_orig = fd_pipes.copy()
@@ -2054,10 +2055,13 @@ class SpawnProcess(SubProcess):
 			fd_pipes[1] = slave_fd
 			fd_pipes[2] = slave_fd
 
-			files.out = open(logfile, "a")
+			files.log = open(logfile, "a")
 			portage.util.apply_secpass_permissions(logfile,
 				uid=portage.portage_uid, gid=portage.portage_gid,
 				mode=0660)
+
+			if not self.background:
+				files.stdout = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
 
 			output_handler = self._output_handler
 
@@ -2081,13 +2085,15 @@ class SpawnProcess(SubProcess):
 		kwargs["returnpid"] = True
 		kwargs.pop("logfile", None)
 
-		retval = portage.process.spawn(self.args, **kwargs)
+		retval = self._spawn(self.args, **kwargs)
 
 		os.close(slave_fd)
 
 		if isinstance(retval, int):
 			# spawn failed
 			os.close(master_fd)
+			for f in self.files.values():
+				f.close()
 			self.returncode = retval
 			self.wait()
 			return
@@ -2095,11 +2101,12 @@ class SpawnProcess(SubProcess):
 		self.pid = retval[0]
 		portage.process.spawned_pids.remove(self.pid)
 
-		
-		files.process = os.fdopen(master_fd, 'r')
 		self._reg_id = self.scheduler.register(files.process.fileno(),
 			PollConstants.POLLIN, output_handler)
 		self._registered = True
+
+	def _spawn(self, args, **kwargs):
+		return portage.process.spawn(args, **kwargs)
 
 	def _output_handler(self, fd, event):
 		files = self._files
@@ -2109,8 +2116,11 @@ class SpawnProcess(SubProcess):
 		except EOFError:
 			pass
 		if buf:
-			buf.tofile(files.out)
-			files.out.flush()
+			if not self.background:
+				buf.tofile(files.stdout)
+				files.stdout.flush()
+			buf.tofile(files.log)
+			files.log.flush()
 		else:
 			self._unregister()
 			self.wait()
@@ -2134,6 +2144,38 @@ class SpawnProcess(SubProcess):
 			self._unregister()
 			self.wait()
 		return self._registered
+
+class MiscFunctionsProcess(SpawnProcess):
+	"""
+	Spawns misc-functions.sh with an existing ebuild environment.
+	"""
+
+	__slots__ = ("commands", "phase", "pkg", "settings")
+
+	def _start(self):
+		settings = self.settings
+		portage_bin_path = settings["PORTAGE_BIN_PATH"]
+		misc_sh_binary = os.path.join(portage_bin_path,
+			os.path.basename(portage.const.MISC_SH_BINARY))
+
+		self.args = [portage._shell_quote(misc_sh_binary)] + self.commands
+		self.logfile = settings.get("PORTAGE_LOG_FILE")
+
+		portage._doebuild_exit_status_unlink(
+			settings.get("EBUILD_EXIT_STATUS_FILE"))
+
+		SpawnProcess._start(self)
+
+	def _spawn(self, args, **kwargs):
+		settings = self.settings
+		debug = settings.get("PORTAGE_DEBUG") == "1"
+		return portage.spawn(" ".join(args), settings,
+			debug=debug, **kwargs)
+
+	def _set_returncode(self, wait_retval):
+		SpawnProcess._set_returncode(self, wait_retval)
+		self.returncode = portage._doebuild_exit_status_check_and_log(
+			self.settings, self.phase, self.returncode)
 
 class EbuildFetcher(SpawnProcess):
 
@@ -2509,17 +2551,10 @@ class EbuildExecuter(CompositeTask):
 		# This initializes PORTAGE_LOG_FILE.
 		portage.prepare_build_dirs(pkg.root, settings, cleanup)
 
-		fd_pipes = {
-			0 : sys.stdin.fileno(),
-			1 : sys.stdout.fileno(),
-			2 : sys.stderr.fileno(),
-		}
-
 		ebuild_phases = TaskSequence(scheduler=scheduler)
 
 		for phase in self._phases:
 			ebuild_phases.add(EbuildPhase(background=self.background,
-				fd_pipes=fd_pipes,
 				pkg=pkg, phase=phase, scheduler=scheduler,
 				settings=settings, tree=tree))
 
@@ -2613,7 +2648,7 @@ class EbuildMetadataPhase(SubProcess):
 
 		return self._registered
 
-class EbuildPhase(SubProcess):
+class EbuildProcess(SubProcess):
 
 	__slots__ = ("fd_pipes", "phase", "pkg",
 		"settings", "tree")
@@ -2758,41 +2793,57 @@ class EbuildPhase(SubProcess):
 				settings, self.phase, self.returncode)
 
 		portage._post_phase_userpriv_perms(settings)
+
+class EbuildPhase(CompositeTask):
+
+	__slots__ = ("background", "pkg", "phase",
+		"scheduler", "settings", "tree")
+
+	_post_phase_cmds = portage._post_phase_cmds
+
+	def _start(self):
+
+		ebuild_process = EbuildProcess(background=self.background,
+			pkg=self.pkg, phase=self.phase, scheduler=self.scheduler,
+			settings=self.settings, tree=self.tree)
+
+		self._start_task(ebuild_process, self._ebuild_exit)
+
+	def _ebuild_exit(self, ebuild_process):
+
 		if self.phase == "install":
-			portage._check_build_log(settings)
-			if self.returncode == os.EX_OK:
-				self.returncode = portage._post_src_install_checks(settings)
+			portage._check_build_log(self.settings)
 
-		elif self.phase == "preinst":
-			if self.returncode == os.EX_OK:
-				portage._doebuild_exit_status_unlink(
-					settings.get("EBUILD_EXIT_STATUS_FILE"))
-				phase_retval = portage.spawn(
-					" ".join(portage._post_pkg_preinst_cmd(settings)),
-					settings, debug=debug, free=1, logfile=log_path)
-				phase_retval = portage._doebuild_exit_status_check_and_log(
-					settings, self.phase, phase_retval)
-				if phase_retval != os.EX_OK:
-					writemsg("!!! post preinst failed; exiting.\n",
-						noiselevel=-1)
-					self.returncode = phase_retval
+		if self._default_exit(ebuild_process) != os.EX_OK:
+			self.wait()
+			return
 
-		elif self.phase == "postinst":
+		settings = self.settings
 
-			if self.returncode == os.EX_OK:
-				portage._doebuild_exit_status_unlink(
-					settings.get("EBUILD_EXIT_STATUS_FILE"))
-				phase_retval = portage.spawn(
-					" ".join(portage._post_pkg_postinst_cmd(settings)),
-					settings, debug=debug, free=1, logfile=log_path)
-				phase_retval = portage._doebuild_exit_status_check_and_log(
-					settings, self.phase, phase_retval)
-				if phase_retval != os.EX_OK:
-					writemsg("!!! post postinst failed; exiting.\n",
-						noiselevel=-1)
-					self.returncode = phase_retval
+		if self.phase == "install":
+			portage._post_src_install_uid_fix(settings)
 
-class EbuildBinpkg(EbuildPhase):
+		post_phase_cmds = self._post_phase_cmds.get(self.phase)
+		if post_phase_cmds is not None:
+			post_phase = MiscFunctionsProcess(background=self.background,
+				commands=post_phase_cmds, phase=self.phase, pkg=self.pkg,
+				scheduler=self.scheduler, settings=settings)
+			self._start_task(post_phase, self._post_phase_exit)
+			return
+
+		self.returncode = ebuild_process.returncode
+		self._current_task = None
+		self.wait()
+
+	def _post_phase_exit(self, post_phase):
+		if self._final_exit(post_phase) != os.EX_OK:
+			writemsg("!!! post %s failed; exiting.\n" % self.phase,
+				noiselevel=-1)
+		self._current_task = None
+		self.wait()
+		return
+
+class EbuildBinpkg(EbuildProcess):
 	"""
 	This assumes that src_install() has successfully completed.
 	"""
@@ -2817,12 +2868,12 @@ class EbuildBinpkg(EbuildPhase):
 		settings.backup_changes("PORTAGE_BINPKG_TMPFILE")
 
 		try:
-			EbuildPhase._start(self)
+			EbuildProcess._start(self)
 		finally:
 			settings.pop("PORTAGE_BINPKG_TMPFILE", None)
 
 	def _set_returncode(self, wait_retval):
-		EbuildPhase._set_returncode(self, wait_retval)
+		EbuildProcess._set_returncode(self, wait_retval)
 
 		pkg = self.pkg
 		bintree = pkg.root_config.trees["bintree"]

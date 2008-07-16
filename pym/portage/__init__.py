@@ -4259,6 +4259,23 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 			phase_retval = _post_src_install_checks(mysettings)
 	return phase_retval
 
+_post_phase_cmds = {
+
+	"install" : [
+		"install_qa_check",
+		"install_symlink_html_docs"],
+
+	"preinst" : [
+		"preinst_bsdflags",
+		"preinst_sfperms",
+		"preinst_selinux_labels",
+		"preinst_suid_scan",
+		"preinst_mask"],
+
+	"postinst" : [
+		"postinst_bsdflags"]
+}
+
 def _post_phase_userpriv_perms(mysettings):
 	if "userpriv" in mysettings.features and secpass >= 2:
 		""" Privileged phases may have left files that need to be made
@@ -4269,8 +4286,8 @@ def _post_phase_userpriv_perms(mysettings):
 
 def _post_src_install_checks(mysettings):
 	_post_src_install_uid_fix(mysettings)
-	retval = _spawn_misc_sh(mysettings, ["install_qa_check",
-		"install_symlink_html_docs"])
+	global _post_phase_cmds
+	retval = _spawn_misc_sh(mysettings, post_phase_cmds["install"])
 	if retval != os.EX_OK:
 		writemsg("!!! install_qa_check failed; exiting.\n",
 			noiselevel=-1)
@@ -4396,10 +4413,8 @@ def _post_pkg_preinst_cmd(mysettings):
 		os.path.basename(MISC_SH_BINARY))
 
 	mysettings["EBUILD_PHASE"] = ""
-	myargs = [_shell_quote(misc_sh_binary),
-		"preinst_bsdflags",
-		"preinst_sfperms", "preinst_selinux_labels",
-		"preinst_suid_scan", "preinst_mask"]
+	global _post_phase_cmds
+	myargs = [_shell_quote(misc_sh_binary)] + _post_phase_cmds["preinst"]
 
 	return myargs
 
@@ -4414,7 +4429,8 @@ def _post_pkg_postinst_cmd(mysettings):
 		os.path.basename(MISC_SH_BINARY))
 
 	mysettings["EBUILD_PHASE"] = ""
-	myargs = [_shell_quote(misc_sh_binary), "postinst_bsdflags"]
+	global _post_phase_cmds
+	myargs = [_shell_quote(misc_sh_binary)] + _post_phase_cmds["postinst"]
 
 	return myargs
 
