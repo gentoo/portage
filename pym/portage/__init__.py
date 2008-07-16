@@ -1694,7 +1694,7 @@ class config(object):
 		dir_mode_map = {
 			EPREFIX_LSTRIP+"/tmp" : (                  -1, 01777,  0,  True),
 			EPREFIX_LSTRIP+"/var/tmp" : (              -1, 01777,  0,  True),
-			EPREFIX_LSTRIP+PRIVATE_PATH : (   portage_gid, 02750, 02,  False),
+			EPREFIX_LSTRIP+"/"+PRIVATE_PATH :(portage_gid, 02750, 02,  False),
 			CACHE_PATH.lstrip(os.path.sep) : (portage_gid,  0755, 02,  False)
 		}
 
