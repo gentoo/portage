@@ -169,11 +169,11 @@ class WorldSet(EditablePackageSet):
 		# most attributes exist twice as atoms and non-atoms are stored in 
 		# separate files
 		self._lock = None
-		self._filename = os.path.join(os.sep, root, PRIVATE_PATH.lstrip(os.sep), "world")
+		self._filename = os.path.join(os.sep, root, EPREFIX_LSTRIP, PRIVATE_PATH.lstrip(os.sep), "world")
 		self.loader = ItemFileLoader(self._filename, self._validate)
 		self._mtime = None
 		
-		self._filename2 = os.path.join(os.sep, root, PRIVATE_PATH.lstrip(os.sep), "world_sets")
+		self._filename2 = os.path.join(os.sep, root, EPREFIX_LSTRIP,  PRIVATE_PATH.lstrip(os.sep), "world_sets")
 		self.loader2 = ItemFileLoader(self._filename2, self._validate2)
 		self._mtime2 = None
 		
