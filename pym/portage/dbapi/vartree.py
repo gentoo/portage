@@ -1740,6 +1740,11 @@ class dblink(object):
 		return os.EX_OK
 
 	def _display_merge(self, msg, level=0):
+		if self._scheduler is not None:
+			self._scheduler.dblinkDisplayMerge(
+				self.settings, msg, level=level)
+			return
+
 		if level >= logging.WARNING:
 			noiselevel = -1
 			msg_func = writemsg
@@ -1761,12 +1766,7 @@ class dblink(object):
 		@rtype: None
 		"""
 
-		if self._scheduler is None:
-			showMessage = self._display_merge
-		else:
-			def showMessage(msg, level=0):
-				self._scheduler.dblinkDisplayMerge(
-					self.settings, msg, level=level)
+		showMessage = self._display_merge
 
 		if not pkgfiles:
 			showMessage("No package files given... Grabbing a set.\n")
