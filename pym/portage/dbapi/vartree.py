@@ -1741,8 +1741,7 @@ class dblink(object):
 
 	def _display_merge(self, msg, level=0):
 		if self._scheduler is not None:
-			self._scheduler.dblinkDisplayMerge(
-				self.settings, msg, level=level)
+			self._scheduler.dblinkDisplayMerge(self, msg, level=level)
 			return
 
 		if level >= logging.WARNING:

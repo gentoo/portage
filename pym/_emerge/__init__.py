@@ -8576,8 +8576,8 @@ class Scheduler(PollScheduler):
 		finally:
 			f.close()
 
-	def _dblink_display_merge(self, settings, msg, level=0):
-		log_path = settings.get("PORTAGE_LOG_FILE")
+	def _dblink_display_merge(self, pkg_dblink, msg, level=0):
+		log_path = pkg_dblink.settings.get("PORTAGE_LOG_FILE")
 		background = self._max_jobs > 1
 
 		if level >= logging.WARNING:
