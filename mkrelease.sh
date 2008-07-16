@@ -57,7 +57,8 @@ svn2cl -o "${SOURCE_DIR}/ChangeLog" "${SVN_LOCATION}" || die "ChangeLog creation
 
 echo ">>> Building release tree"
 cp -a "${SOURCE_DIR}/"{bin,cnf,doc,man,pym,src} "${RELEASE_DIR}/" || die "directory copy failed"
-cp "${SOURCE_DIR}/"{ChangeLog,DEVELOPING,NEWS,RELEASE-NOTES,TEST-NOTES,TODO} "${RELEASE_DIR}/" || die "file copy failed"
+cp "${SOURCE_DIR}/"{ChangeLog,DEVELOPING,NEWS,RELEASE-NOTES,TEST-NOTES} \
+	"${RELEASE_DIR}/" || die "file copy failed"
 
 cd "${RELEASE_BUILDDIR}"
 
