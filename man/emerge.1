@@ -335,6 +335,10 @@ the related \fB\-\-skipfirst\fR option.
 .BR \-\-load\-average=LOAD
 Specifies that no new builds should be started if there are other builds
 running and the load average is at least LOAD (a floating-point number).
+This option is recommended for use in combination with \fB\-\-jobs\fR in
+order to avoid excess load. See \fBmake\fR(1) for information about
+analogous options that should be configured via \fBMAKEOPTS\fR in
+\fBmake.conf\fR(5).
 .TP
 .BR "\-\-newuse " (\fB\-N\fR)
 Tells emerge to include installed packages where USE flags have changed since 

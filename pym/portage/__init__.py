@@ -1041,7 +1041,6 @@ class config(object):
 
 		self.already_in_regenerate = 0
 
-		self._filter_calling_env = False
 		self.locked   = 0
 		self.mycpv    = None
 		self.puse     = []
@@ -1067,7 +1066,6 @@ class config(object):
 		self.local_config = local_config
 
 		if clone:
-			self._filter_calling_env = copy.deepcopy(clone._filter_calling_env)
 			self.incrementals = copy.deepcopy(clone.incrementals)
 			self.profile_path = copy.deepcopy(clone.profile_path)
 			self.user_profile_dir = copy.deepcopy(clone.user_profile_dir)
@@ -2828,7 +2826,13 @@ class config(object):
 		"return our locally-maintained environment"
 		mydict={}
 		environ_filter = self._environ_filter
-		filter_calling_env = self._filter_calling_env
+
+		filter_calling_env = False
+		temp_dir = self.get("T")
+		if temp_dir is not None and \
+			os.path.exists(os.path.join(temp_dir, "environment")):
+			filter_calling_env = True
+
 		environ_whitelist = self._environ_whitelist
 		env_d = self.configdict["env.d"]
 		for x in self:
@@ -4250,16 +4254,14 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 	mysettings["EBUILD_PHASE"] = mydo
 	_doebuild_exit_status_unlink(
 		mysettings.get("EBUILD_EXIT_STATUS_FILE"))
-	filter_calling_env_state = mysettings._filter_calling_env
-	if os.path.exists(os.path.join(mysettings["T"], "environment")):
-		mysettings._filter_calling_env = True
+
 	try:
 		phase_retval = spawn(actionmap[mydo]["cmd"] % mydo,
 			mysettings, debug=debug, logfile=logfile,
 			fd_pipes=fd_pipes, returnpid=returnpid, **kwargs)
 	finally:
 		mysettings["EBUILD_PHASE"] = ""
-		mysettings._filter_calling_env = filter_calling_env_state
+
 	if returnpid:
 		return phase_retval
 	msg = _doebuild_exit_status_check(mydo, mysettings)
@@ -4277,6 +4279,23 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 			phase_retval = _post_src_install_checks(mysettings)
 	return phase_retval
 
+_post_phase_cmds = {
+
+	"install" : [
+		"install_qa_check",
+		"install_symlink_html_docs"],
+
+	"preinst" : [
+		"preinst_bsdflags",
+		"preinst_sfperms",
+		"preinst_selinux_labels",
+		"preinst_suid_scan",
+		"preinst_mask"],
+
+	"postinst" : [
+		"postinst_bsdflags"]
+}
+
 def _post_phase_userpriv_perms(mysettings):
 	if "userpriv" in mysettings.features and secpass >= 2:
 		""" Privileged phases may have left files that need to be made
@@ -4287,8 +4306,8 @@ def _post_phase_userpriv_perms(mysettings):
 
 def _post_src_install_checks(mysettings):
 	_post_src_install_uid_fix(mysettings)
-	retval = _spawn_misc_sh(mysettings, ["install_qa_check",
-		"install_symlink_html_docs"])
+	global _post_phase_cmds
+	retval = _spawn_misc_sh(mysettings, post_phase_cmds["install"])
 	if retval != os.EX_OK:
 		writemsg("!!! install_qa_check failed; exiting.\n",
 			noiselevel=-1)
@@ -4414,10 +4433,8 @@ def _post_pkg_preinst_cmd(mysettings):
 		os.path.basename(MISC_SH_BINARY))
 
 	mysettings["EBUILD_PHASE"] = ""
-	myargs = [_shell_quote(misc_sh_binary),
-		"preinst_bsdflags",
-		"preinst_sfperms", "preinst_selinux_labels",
-		"preinst_suid_scan", "preinst_mask"]
+	global _post_phase_cmds
+	myargs = [_shell_quote(misc_sh_binary)] + _post_phase_cmds["preinst"]
 
 	return myargs
 
@@ -4432,7 +4449,8 @@ def _post_pkg_postinst_cmd(mysettings):
 		os.path.basename(MISC_SH_BINARY))
 
 	mysettings["EBUILD_PHASE"] = ""
-	myargs = [_shell_quote(misc_sh_binary), "postinst_bsdflags"]
+	global _post_phase_cmds
+	myargs = [_shell_quote(misc_sh_binary)] + _post_phase_cmds["postinst"]
 
 	return myargs
 
@@ -4454,9 +4472,6 @@ def _spawn_misc_sh(mysettings, commands, **kwargs):
 	mycommand = " ".join([_shell_quote(misc_sh_binary)] + commands)
 	_doebuild_exit_status_unlink(
 		mysettings.get("EBUILD_EXIT_STATUS_FILE"))
-	filter_calling_env_state = mysettings._filter_calling_env
-	if os.path.exists(os.path.join(mysettings["T"], "environment")):
-		mysettings._filter_calling_env = True
 	debug = mysettings.get("PORTAGE_DEBUG") == "1"
 	logfile = mysettings.get("PORTAGE_LOG_FILE")
 	mydo = mysettings["EBUILD_PHASE"]
@@ -4464,7 +4479,7 @@ def _spawn_misc_sh(mysettings, commands, **kwargs):
 		rval = spawn(mycommand, mysettings, debug=debug,
 			logfile=logfile, **kwargs)
 	finally:
-		mysettings._filter_calling_env = filter_calling_env_state
+		pass
 	msg = _doebuild_exit_status_check(mydo, mysettings)
 	if msg:
 		rval = 1
@@ -5111,7 +5126,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	builddir_lock = None
 	tmpdir = None
 	tmpdir_orig = None
-	filter_calling_env_state = mysettings._filter_calling_env
+
 	try:
 		if mydo in ("digest", "manifest", "help"):
 			# Temporarily exempt the depend phase from manifest checks, in case
@@ -5327,7 +5342,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 						del e
 					env_stat = None
 			if env_stat:
-				mysettings._filter_calling_env = True
+				pass
 			else:
 				for var in ("ARCH", ):
 					value = mysettings.get(var)
@@ -5636,7 +5651,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		return retval
 
 	finally:
-		mysettings._filter_calling_env = filter_calling_env_state
+
 		if tmpdir:
 			mysettings["PORTAGE_TMPDIR"] = tmpdir_orig
 			shutil.rmtree(tmpdir)

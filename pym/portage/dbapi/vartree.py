@@ -28,6 +28,7 @@ from portage.elog.messages import ewarn
 from portage.elog.filtering import filter_mergephases, filter_unmergephases
 
 import os, re, sys, stat, errno, commands, copy, time, subprocess
+import logging
 from itertools import izip
 
 try:
@@ -1878,6 +1879,19 @@ class dblink(object):
 			contents=contents, env=self.settings.environ())
 		return os.EX_OK
 
+	def _display_merge(self, msg, level=0):
+		if self._scheduler is not None:
+			self._scheduler.dblinkDisplayMerge(self, msg, level=level)
+			return
+
+		if level >= logging.WARNING:
+			noiselevel = -1
+			msg_func = writemsg
+		else:
+			noiselevel = 0
+			msg_func = writemsg_stdout
+		msg_func(msg, noiselevel=noiselevel)
+
 	def _unmerge_pkgfiles(self, pkgfiles, others_in_slot):
 		"""
 		
@@ -1891,8 +1905,10 @@ class dblink(object):
 		@rtype: None
 		"""
 
+		showMessage = self._display_merge
+
 		if not pkgfiles:
-			writemsg_stdout("No package files given... Grabbing a set.\n")
+			showMessage("No package files given... Grabbing a set.\n")
 			pkgfiles = self.getcontents()
 
 		if others_in_slot is None:
@@ -1956,7 +1972,7 @@ class dblink(object):
 						bsd_chflags.chflags(parent_name, pflags)
 
 			def show_unmerge(zing, desc, file_type, file_name):
-					writemsg_stdout("%s %s %s %s\n" % \
+					showMessage("%s %s %s %s\n" % \
 						(zing, desc.ljust(8), file_type, file_name))
 			for objkey in mykeys:
 				obj = normalize_path(objkey)
@@ -2334,17 +2350,18 @@ class dblink(object):
 			collision_ignore = set([normalize_path(myignore) for myignore in \
 				self.settings.get("COLLISION_IGNORE", "").split()])
 
+			showMessage = self._display_merge
 			stopmerge = False
 			i=0
 			collisions = []
 			destroot = normalize_path(destroot).rstrip(os.path.sep) + \
 				os.path.sep
-			writemsg_stdout("%s checking %d files for package collisions\n" % \
+			showMessage("%s checking %d files for package collisions\n" % \
 				(green("*"), len(mycontents)))
 			for f in mycontents:
 				i = i + 1
 				if i % 1000 == 0:
-					writemsg_stdout("%d files checked ...\n" % i)
+					showMessage("%d files checked ...\n" % i)
 				dest_path = normalize_path(
 					os.path.join(destroot, f.lstrip(os.path.sep)))
 				try:
@@ -2402,6 +2419,9 @@ class dblink(object):
 	def _security_check(self, installed_instances):
 		if not installed_instances:
 			return 0
+
+		showMessage = self._display_merge
+
 		file_paths = set()
 		for dblnk in installed_instances:
 			file_paths.update(dblnk.getcontents())
@@ -2436,13 +2456,13 @@ class dblink(object):
 			return 0
 		from portage.output import colorize
 		prefix = colorize("SECURITY_WARN", "*") + " WARNING: "
-		writemsg(prefix + "suid/sgid file(s) " + \
-			"with suspicious hardlink(s):\n", noiselevel=-1)
+		showMessage(prefix + "suid/sgid file(s) " + \
+			"with suspicious hardlink(s):\n", level=logging.ERROR)
 		for path_list in suspicious_hardlinks:
 			for path, s in path_list:
-				writemsg(prefix + "  '%s'\n" % path, noiselevel=-1)
-		writemsg(prefix + "See the Gentoo Security Handbook " + \
-			"guide for advice on how to proceed.\n", noiselevel=-1)
+				showMessage(prefix + "  '%s'\n" % path, level=logging.ERROR)
+		showMessage(prefix + "See the Gentoo Security Handbook " + \
+			"guide for advice on how to proceed.\n", level=logging.ERROR)
 		return 1
 
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
@@ -2481,12 +2501,14 @@ class dblink(object):
 		not existing; we will merge these symlinks at a later time.
 		"""
 
+		showMessage = self._display_merge
+
 		srcroot = normalize_path(srcroot).rstrip(os.path.sep) + os.path.sep
 		destroot = normalize_path(destroot).rstrip(os.path.sep) + os.path.sep
 
 		if not os.path.isdir(srcroot):
-			writemsg("!!! Directory Not Found: D='%s'\n" % srcroot,
-				noiselevel=-1)
+			showMessage("!!! Directory Not Found: D='%s'\n" % srcroot,
+				level=logging.ERROR)
 			return 1
 
 		inforoot_slot_file = os.path.join(inforoot, "SLOT")
@@ -2511,8 +2533,8 @@ class dblink(object):
 				_eerror(l, phase="preinst", key=self.settings.mycpv)
 
 		if slot != self.settings["SLOT"]:
-			writemsg("!!! WARNING: Expected SLOT='%s', got '%s'\n" % \
-				(self.settings["SLOT"], slot))
+			showMessage("!!! WARNING: Expected SLOT='%s', got '%s'\n" % \
+				(self.settings["SLOT"], slot), level=logging.WARN)
 
 		if not os.path.exists(self.dbcatdir):
 			os.makedirs(self.dbcatdir)
@@ -2729,7 +2751,7 @@ class dblink(object):
 
 		# run preinst script
 		if scheduler is None:
-			writemsg_stdout(">>> Merging %s to %s\n" % (self.mycpv, destroot))
+			showMessage(">>> Merging %s to %s\n" % (self.mycpv, destroot))
 			a = doebuild(myebuild, "preinst", destroot, self.settings,
 				use_cache=0, tree=self.treetype, mydbapi=mydbapi,
 				vartree=self.vartree)
@@ -2739,7 +2761,8 @@ class dblink(object):
 
 		# XXX: Decide how to handle failures here.
 		if a != os.EX_OK:
-			writemsg("!!! FAILED preinst: "+str(a)+"\n", noiselevel=-1)
+			showMessage("!!! FAILED preinst: "+str(a)+"\n",
+				level=logging.ERROR)
 			return a
 
 		# copy "info" files (like SLOT, CFLAGS, etc.) into the database
@@ -2849,19 +2872,20 @@ class dblink(object):
 				continue
 			if not (autoclean or dblnk.mycpv == self.mycpv or reinstall_self):
 				continue
-			writemsg_stdout(">>> Safely unmerging already-installed instance...\n")
+			showMessage(">>> Safely unmerging already-installed instance...\n")
 			others_in_slot.remove(dblnk) # dblnk will unmerge itself now
 			dblnk.unmerge(trimworld=0, ldpath_mtimes=prev_mtimes,
 				others_in_slot=others_in_slot)
 			# TODO: Check status and abort if necessary.
 			dblnk.delete()
-			writemsg_stdout(">>> Original instance of package unmerged safely.\n")
+			showMessage(">>> Original instance of package unmerged safely.\n")
 
 		if len(others_in_slot) > 1:
 			from portage.output import colorize
-			writemsg_stdout(colorize("WARN", "WARNING:")
+			showMessage(colorize("WARN", "WARNING:")
 				+ " AUTOCLEAN is disabled.  This can cause serious"
-				+ " problems due to overlapping packages.\n")
+				+ " problems due to overlapping packages.\n",
+				level=logging.WARN)
 
 		# We hold both directory locks.
 		self.dbdir = self.dbpkgdir
@@ -2894,7 +2918,7 @@ class dblink(object):
 					use_cache=0, tree=self.treetype, mydbapi=mydbapi,
 					vartree=self.vartree)
 				if a == os.EX_OK:
-					writemsg_stdout(">>> %s %s\n" % (self.mycpv, "merged."))
+					showMessage(">>> %s %s\n" % (self.mycpv, "merged."))
 			else:
 				a = scheduler.dblinkEbuildPhase(
 					self, mydbapi, myebuild, "postinst")
@@ -2903,7 +2927,8 @@ class dblink(object):
 
 		# XXX: Decide how to handle failures here.
 		if a != os.EX_OK:
-			writemsg("!!! FAILED postinst: "+str(a)+"\n", noiselevel=-1)
+			showMessage("!!! FAILED postinst: "+str(a)+"\n",
+				level=logging.ERROR)
 			return a
 
 		downgrade = False
@@ -2945,6 +2970,9 @@ class dblink(object):
 		2. None otherwise
 		
 		"""
+
+		showMessage = self._display_merge
+
 		from os.path import sep, join
 		srcroot = normalize_path(srcroot).rstrip(sep) + sep
 		destroot = normalize_path(destroot).rstrip(sep) + sep
@@ -3045,7 +3073,7 @@ class dblink(object):
 				# unlinking no longer necessary; "movefile" will overwrite symlinks atomically and correctly
 				mymtime = movefile(mysrc, mydest, newmtime=thismtime, sstat=mystat, mysettings=self.settings)
 				if mymtime != None:
-					writemsg_stdout(">>> %s -> %s\n" % (mydest, myto))
+					showMessage(">>> %s -> %s\n" % (mydest, myto))
 					outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime)+"\n")
 				else:
 					print "!!! Failed to move file."
@@ -3073,7 +3101,7 @@ class dblink(object):
 
 					if stat.S_ISLNK(mydmode) or stat.S_ISDIR(mydmode):
 						# a symlink to an existing directory will work for us; keep it:
-						writemsg_stdout("--- %s/\n" % mydest)
+						showMessage("--- %s/\n" % mydest)
 						if bsd_chflags:
 							bsd_chflags.lchflags(mydest, dflags)
 					else:
@@ -3092,7 +3120,7 @@ class dblink(object):
 							bsd_chflags.lchflags(mydest, dflags)
 						os.chmod(mydest, mystat[0])
 						os.chown(mydest, mystat[4], mystat[5])
-						writemsg_stdout(">>> %s/\n" % mydest)
+						showMessage(">>> %s/\n" % mydest)
 				else:
 					#destination doesn't exist
 					if self.settings.selinux_enabled():
@@ -3103,7 +3131,7 @@ class dblink(object):
 						os.mkdir(mydest)
 					os.chmod(mydest, mystat[0])
 					os.chown(mydest, mystat[4], mystat[5])
-					writemsg_stdout(">>> %s/\n" % mydest)
+					showMessage(">>> %s/\n" % mydest)
 				outfile.write("dir "+myrealdest+"\n")
 				# recurse and merge this directory
 				if self.mergeme(srcroot, destroot, outfile, secondhand,
@@ -3122,7 +3150,7 @@ class dblink(object):
 					if stat.S_ISDIR(mydmode):
 						# install of destination is blocked by an existing directory with the same name
 						moveme = 0
-						writemsg_stdout("!!! %s\n" % mydest)
+						showMessage("!!! %s\n" % mydest, level=logging.ERROR)
 					elif stat.S_ISREG(mydmode) or (stat.S_ISLNK(mydmode) and os.path.exists(mydest) and stat.S_ISREG(os.stat(mydest)[stat.ST_MODE])):
 						cfgprot = 0
 						# install of destination is blocked by an existing regular file,
@@ -3168,7 +3196,7 @@ class dblink(object):
 
 				if mymtime != None:
 					outfile.write("obj "+myrealdest+" "+mymd5+" "+str(mymtime)+"\n")
-				writemsg_stdout("%s %s\n" % (zing,mydest))
+				showMessage("%s %s\n" % (zing,mydest))
 			else:
 				# we are merging a fifo or device node
 				zing = "!!!"
@@ -3182,7 +3210,7 @@ class dblink(object):
 					outfile.write("fif %s\n" % myrealdest)
 				else:
 					outfile.write("dev %s\n" % myrealdest)
-				writemsg_stdout(zing + " " + mydest + "\n")
+				showMessage(zing + " " + mydest + "\n")
 
 	def merge(self, mergeroot, inforoot, myroot, myebuild=None, cleanup=0,
 		mydbapi=None, prev_mtimes=None):

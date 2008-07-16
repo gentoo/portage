@@ -319,7 +319,14 @@ def help(myaction,myopts,havecolor=1):
 		desc = "Specifies that no new builds should " + \
 			"be started if there are other builds " + \
 			"running and the load average is at " + \
-			"least LOAD (a floating-point number)."
+			"least LOAD (a floating-point number). " + \
+			"This option is recommended for use " + \
+			"in combination with --jobs in " + \
+			"order to avoid excess load. See " + \
+			"make(1) for information about " + \
+			"analogous options that should be " + \
+			"configured via MAKEOPTS in " + \
+			"make.conf(5)."
 		for line in wrap(desc, desc_width):
 			print desc_indent + line
 		print

@@ -23,6 +23,8 @@ except KeyboardInterrupt:
 import array
 from collections import deque
 import fcntl
+import fpformat
+import logging
 import select
 import shlex
 import shutil
@@ -259,9 +261,7 @@ shortmapping={
 }
 
 def emergelog(xterm_titles, mystr, short_msg=None):
-	if xterm_titles:
-		if short_msg == None:
-			short_msg = mystr
+	if xterm_titles and short_msg:
 		if "HOSTNAME" in os.environ:
 			short_msg = os.environ["HOSTNAME"]+": "+short_msg
 		xtermTitle(short_msg)
@@ -2041,7 +2041,7 @@ class SpawnProcess(SubProcess):
 	__slots__ = ("args",) + \
 		_spawn_kwarg_names
 
-	_file_names = ("process", "out")
+	_file_names = ("log", "process", "stdout")
 	_files_dict = slot_dict_class(_file_names, prefix="")
 	_bufsize = 4096
 
@@ -2072,6 +2072,7 @@ class SpawnProcess(SubProcess):
 		fcntl.fcntl(master_fd, fcntl.F_SETFL,
 			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 
+		files.process = os.fdopen(master_fd, 'r')
 		if logfile is not None:
 
 			fd_pipes_orig = fd_pipes.copy()
@@ -2079,10 +2080,13 @@ class SpawnProcess(SubProcess):
 			fd_pipes[1] = slave_fd
 			fd_pipes[2] = slave_fd
 
-			files.out = open(logfile, "a")
+			files.log = open(logfile, "a")
 			portage.util.apply_secpass_permissions(logfile,
 				uid=portage.portage_uid, gid=portage.portage_gid,
 				mode=0660)
+
+			if not self.background:
+				files.stdout = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
 
 			output_handler = self._output_handler
 
@@ -2106,13 +2110,15 @@ class SpawnProcess(SubProcess):
 		kwargs["returnpid"] = True
 		kwargs.pop("logfile", None)
 
-		retval = portage.process.spawn(self.args, **kwargs)
+		retval = self._spawn(self.args, **kwargs)
 
 		os.close(slave_fd)
 
 		if isinstance(retval, int):
 			# spawn failed
 			os.close(master_fd)
+			for f in self.files.values():
+				f.close()
 			self.returncode = retval
 			self.wait()
 			return
@@ -2120,11 +2126,12 @@ class SpawnProcess(SubProcess):
 		self.pid = retval[0]
 		portage.process.spawned_pids.remove(self.pid)
 
-		
-		files.process = os.fdopen(master_fd, 'r')
 		self._reg_id = self.scheduler.register(files.process.fileno(),
 			PollConstants.POLLIN, output_handler)
 		self._registered = True
+
+	def _spawn(self, args, **kwargs):
+		return portage.process.spawn(args, **kwargs)
 
 	def _output_handler(self, fd, event):
 		files = self._files
@@ -2134,8 +2141,11 @@ class SpawnProcess(SubProcess):
 		except EOFError:
 			pass
 		if buf:
-			buf.tofile(files.out)
-			files.out.flush()
+			if not self.background:
+				buf.tofile(files.stdout)
+				files.stdout.flush()
+			buf.tofile(files.log)
+			files.log.flush()
 		else:
 			self._unregister()
 			self.wait()
@@ -2160,9 +2170,43 @@ class SpawnProcess(SubProcess):
 			self.wait()
 		return self._registered
 
+class MiscFunctionsProcess(SpawnProcess):
+	"""
+	Spawns misc-functions.sh with an existing ebuild environment.
+	"""
+
+	__slots__ = ("commands", "phase", "pkg", "settings")
+
+	def _start(self):
+		settings = self.settings
+		portage_bin_path = settings["PORTAGE_BIN_PATH"]
+		misc_sh_binary = os.path.join(portage_bin_path,
+			os.path.basename(portage.const.MISC_SH_BINARY))
+
+		self.args = [portage._shell_quote(misc_sh_binary)] + self.commands
+		self.logfile = settings.get("PORTAGE_LOG_FILE")
+
+		portage._doebuild_exit_status_unlink(
+			settings.get("EBUILD_EXIT_STATUS_FILE"))
+
+		SpawnProcess._start(self)
+
+	def _spawn(self, args, **kwargs):
+		settings = self.settings
+		debug = settings.get("PORTAGE_DEBUG") == "1"
+		return portage.spawn(" ".join(args), settings,
+			debug=debug, **kwargs)
+
+	def _set_returncode(self, wait_retval):
+		SpawnProcess._set_returncode(self, wait_retval)
+		self.returncode = portage._doebuild_exit_status_check_and_log(
+			self.settings, self.phase, self.returncode)
+
 class EbuildFetcher(SpawnProcess):
 
 	__slots__ = ("fetchonly", "pkg",)
+
+	_env_vars = ("FETCHCOMMAND", "RESUMECOMMAND")
 
 	def _start(self):
 
@@ -2173,6 +2217,10 @@ class EbuildFetcher(SpawnProcess):
 
 		fetch_env = settings.environ()
 		fetch_env["PORTAGE_NICENESS"] = "0"
+		for k in self._env_vars:
+			v = settings.get(k)
+			if v is not None:
+				fetch_env[k] = v
 		if self.fetchonly:
 			fetch_env["PORTAGE_PARALLEL_FETCHONLY"] = "1"
 
@@ -2528,17 +2576,10 @@ class EbuildExecuter(CompositeTask):
 		# This initializes PORTAGE_LOG_FILE.
 		portage.prepare_build_dirs(pkg.root, settings, cleanup)
 
-		fd_pipes = {
-			0 : sys.stdin.fileno(),
-			1 : sys.stdout.fileno(),
-			2 : sys.stderr.fileno(),
-		}
-
 		ebuild_phases = TaskSequence(scheduler=scheduler)
 
 		for phase in self._phases:
 			ebuild_phases.add(EbuildPhase(background=self.background,
-				fd_pipes=fd_pipes,
 				pkg=pkg, phase=phase, scheduler=scheduler,
 				settings=settings, tree=tree))
 
@@ -2632,7 +2673,7 @@ class EbuildMetadataPhase(SubProcess):
 
 		return self._registered
 
-class EbuildPhase(SubProcess):
+class EbuildProcess(SubProcess):
 
 	__slots__ = ("fd_pipes", "phase", "pkg",
 		"settings", "tree")
@@ -2777,41 +2818,57 @@ class EbuildPhase(SubProcess):
 				settings, self.phase, self.returncode)
 
 		portage._post_phase_userpriv_perms(settings)
+
+class EbuildPhase(CompositeTask):
+
+	__slots__ = ("background", "pkg", "phase",
+		"scheduler", "settings", "tree")
+
+	_post_phase_cmds = portage._post_phase_cmds
+
+	def _start(self):
+
+		ebuild_process = EbuildProcess(background=self.background,
+			pkg=self.pkg, phase=self.phase, scheduler=self.scheduler,
+			settings=self.settings, tree=self.tree)
+
+		self._start_task(ebuild_process, self._ebuild_exit)
+
+	def _ebuild_exit(self, ebuild_process):
+
 		if self.phase == "install":
-			portage._check_build_log(settings)
-			if self.returncode == os.EX_OK:
-				self.returncode = portage._post_src_install_checks(settings)
+			portage._check_build_log(self.settings)
 
-		elif self.phase == "preinst":
-			if self.returncode == os.EX_OK:
-				portage._doebuild_exit_status_unlink(
-					settings.get("EBUILD_EXIT_STATUS_FILE"))
-				phase_retval = portage.spawn(
-					" ".join(portage._post_pkg_preinst_cmd(settings)),
-					settings, debug=debug, free=1, logfile=log_path)
-				phase_retval = portage._doebuild_exit_status_check_and_log(
-					settings, self.phase, phase_retval)
-				if phase_retval != os.EX_OK:
-					writemsg("!!! post preinst failed; exiting.\n",
-						noiselevel=-1)
-					self.returncode = phase_retval
+		if self._default_exit(ebuild_process) != os.EX_OK:
+			self.wait()
+			return
 
-		elif self.phase == "postinst":
+		settings = self.settings
 
-			if self.returncode == os.EX_OK:
-				portage._doebuild_exit_status_unlink(
-					settings.get("EBUILD_EXIT_STATUS_FILE"))
-				phase_retval = portage.spawn(
-					" ".join(portage._post_pkg_postinst_cmd(settings)),
-					settings, debug=debug, free=1, logfile=log_path)
-				phase_retval = portage._doebuild_exit_status_check_and_log(
-					settings, self.phase, phase_retval)
-				if phase_retval != os.EX_OK:
-					writemsg("!!! post postinst failed; exiting.\n",
-						noiselevel=-1)
-					self.returncode = phase_retval
+		if self.phase == "install":
+			portage._post_src_install_uid_fix(settings)
 
-class EbuildBinpkg(EbuildPhase):
+		post_phase_cmds = self._post_phase_cmds.get(self.phase)
+		if post_phase_cmds is not None:
+			post_phase = MiscFunctionsProcess(background=self.background,
+				commands=post_phase_cmds, phase=self.phase, pkg=self.pkg,
+				scheduler=self.scheduler, settings=settings)
+			self._start_task(post_phase, self._post_phase_exit)
+			return
+
+		self.returncode = ebuild_process.returncode
+		self._current_task = None
+		self.wait()
+
+	def _post_phase_exit(self, post_phase):
+		if self._final_exit(post_phase) != os.EX_OK:
+			writemsg("!!! post %s failed; exiting.\n" % self.phase,
+				noiselevel=-1)
+		self._current_task = None
+		self.wait()
+		return
+
+class EbuildBinpkg(EbuildProcess):
 	"""
 	This assumes that src_install() has successfully completed.
 	"""
@@ -2836,12 +2893,12 @@ class EbuildBinpkg(EbuildPhase):
 		settings.backup_changes("PORTAGE_BINPKG_TMPFILE")
 
 		try:
-			EbuildPhase._start(self)
+			EbuildProcess._start(self)
 		finally:
 			settings.pop("PORTAGE_BINPKG_TMPFILE", None)
 
 	def _set_returncode(self, wait_retval):
-		EbuildPhase._set_returncode(self, wait_retval)
+		EbuildProcess._set_returncode(self, wait_retval)
 
 		pkg = self.pkg
 		bintree = pkg.root_config.trees["bintree"]
@@ -8354,7 +8411,7 @@ class Scheduler(PollScheduler):
 	_fetch_log = EPREFIX + "/var/log/emerge-fetch.log"
 
 	class _iface_class(SlotObject):
-		__slots__ = ("dblinkEbuildPhase", "fetch",
+		__slots__ = ("dblinkEbuildPhase", "dblinkDisplayMerge", "fetch",
 			"register", "schedule", "unregister")
 
 	class _fetch_iface_class(SlotObject):
@@ -8374,9 +8431,12 @@ class Scheduler(PollScheduler):
 		__slots__ = ("curval", "maxval")
 
 	class _emerge_log_class(SlotObject):
-		__slots__ = ("xterm_titles",)
+		__slots__ = ("parallel", "xterm_titles",)
 
 		def log(self, *pargs, **kwargs):
+			if self.parallel:
+				# Avoid interference with the scheduler's status display.
+				kwargs.pop("short_msg", None)
 			emergelog(self.xterm_titles, *pargs, **kwargs)
 
 	def __init__(self, settings, trees, mtimedb, myopts,
@@ -8419,6 +8479,7 @@ class Scheduler(PollScheduler):
 			schedule=self._schedule_fetch)
 		self._sched_iface = self._iface_class(
 			dblinkEbuildPhase=self._dblink_ebuild_phase,
+			dblinkDisplayMerge=self._dblink_display_merge,
 			fetch=fetch_iface, register=self._register,
 			schedule=self._schedule_wait, unregister=self._unregister)
 
@@ -8430,6 +8491,9 @@ class Scheduler(PollScheduler):
 		self._prefetchers = weakref.WeakValueDictionary()
 		self._pkg_queue = []
 		self._completed_tasks = set()
+		# Number of completed package tasks, excluding uninstalls.
+		self._completed_pkg_count = 0
+		self._summary_prev_pkg_count = 0
 		self._failed_pkgs = []
 		self._failed_pkgs_all = []
 		self._failed_pkgs_die_msgs = []
@@ -8608,6 +8672,24 @@ class Scheduler(PollScheduler):
 		finally:
 			f.close()
 
+	def _dblink_display_merge(self, pkg_dblink, msg, level=0):
+		log_path = pkg_dblink.settings.get("PORTAGE_LOG_FILE")
+		background = self._max_jobs > 1
+
+		if level >= logging.WARNING:
+			noiselevel = -1
+			msg_func = writemsg
+		else:
+			noiselevel = 0
+			msg_func = portage.writemsg_stdout
+
+		if log_path is None:
+			msg_func(msg, noiselevel=noiselevel)
+		else:
+			if not background:
+				msg_func(msg, noiselevel=noiselevel)
+			self._append_to_log_path(log_path, msg)
+
 	def _dblink_ebuild_phase(self,
 		pkg_dblink, pkg_dbapi, ebuild_path, phase):
 		"""
@@ -8706,16 +8788,17 @@ class Scheduler(PollScheduler):
 
 		elif pkg.type_name == "ebuild":
 
-			prefetcher = EbuildFetcher(fetchonly=1,
-				logfile=self._fetch_log, pkg=pkg,
-				scheduler=self._sched_iface)
+			prefetcher = EbuildFetcher(background=True,
+				fetchonly=1, logfile=self._fetch_log,
+				pkg=pkg, scheduler=self._sched_iface)
 
 		elif pkg.type_name == "binary" and \
 			"--getbinpkg" in self.myopts and \
 			pkg.root_config.trees["bintree"].isremote(pkg.cpv):
 
-			prefetcher = BinpkgFetcher(logfile=self._fetch_log,
-				pkg=pkg, scheduler=self._sched_iface)
+			prefetcher = BinpkgFetcher(background=True,
+				logfile=self._fetch_log, pkg=pkg,
+				scheduler=self._sched_iface)
 
 		return prefetcher
 
@@ -8802,7 +8885,7 @@ class Scheduler(PollScheduler):
 			"emerge via exec() after change of " + \
 			"portage version.")
 
-		del mtimedb["resume"]["mergelist"][0]
+		mtimedb["resume"]["mergelist"].remove(list(pkg))
 		mtimedb.commit()
 		portage.run_exitfuncs()
 		mynewargv = [sys.argv[0], "--resume"]
@@ -8978,6 +9061,7 @@ class Scheduler(PollScheduler):
 		if not mtimedb["resume"]["mergelist"]:
 			del mtimedb["resume"]
 		mtimedb.commit()
+		self._completed_pkg_count += 1
 
 	def _build_exit(self, build):
 		if build.returncode == os.EX_OK:
@@ -9016,6 +9100,8 @@ class Scheduler(PollScheduler):
 	def _main_loop_cleanup(self):
 		del self._pkg_queue[:]
 		self._completed_tasks.clear()
+		self._completed_pkg_count = 0
+		self._summary_prev_pkg_count = 0
 		self._digraph = None
 		self._task_queues.fetch.clear()
 
@@ -9095,6 +9181,15 @@ class Scheduler(PollScheduler):
 			self._poll_loop()
 
 	def _schedule_tasks(self):
+		remaining, state_change = self._schedule_tasks_imp()
+
+		if state_change or \
+			self._summary_prev_pkg_count != self._completed_pkg_count:
+			self._display_status()
+			self._summary_prev_pkg_count = self._completed_pkg_count
+		return remaining
+
+	def _schedule_tasks_imp(self):
 		"""
 		@rtype: bool
 		@returns: True if tasks remain to schedule, False otherwise.
@@ -9102,15 +9197,19 @@ class Scheduler(PollScheduler):
 
 		task_queues = self._task_queues
 		background = self._max_jobs > 1
+		self._logger.parallel = background
+		state_change = 0
 
 		while self._can_add_job():
 
 			if not self._pkg_queue or self._failed_pkgs:
-				return False
+				return (False, state_change)
 
 			pkg = self._choose_pkg()
 			if pkg is None:
-				return True
+				return (True, state_change)
+
+			state_change += 1
 
 			if not pkg.installed:
 				self._pkg_count.curval += 1
@@ -9129,7 +9228,41 @@ class Scheduler(PollScheduler):
 				self._jobs += 1
 				task.addExitListener(self._build_exit)
 				task_queues.jobs.add(task)
-		return True
+		return (True, state_change)
+
+	def _load_avg_str(self, digits=1):
+		try:
+			avg = os.getloadavg()
+		except OSError, e:
+			return str(e)
+		return ", ".join(fpformat.fix(x, digits) for x in avg)
+
+	def _display_status(self):
+		if self._max_jobs < 2:
+			return
+
+		# Don't use len(self._completed_tasks) here since that also
+		# can include uninstall tasks.
+		completed_str = str(self._completed_pkg_count)
+		maxval_str = str(self._pkg_count.maxval)
+		jobs_str = str(self._jobs)
+		merges_str = str(len(self._task_queues.merge))
+		load_avg_str = self._load_avg_str()
+
+		msg = ("Jobs: %s of %s complete, %s running, %s merges, " + \
+			"load average: %s") % \
+			(colorize("INFORM", completed_str), colorize("INFORM", maxval_str),
+			colorize("INFORM", jobs_str), colorize("INFORM", merges_str),
+			load_avg_str)
+		noiselevel = 0
+		if "--verbose" in self.myopts:
+			noiselevel = -1
+		portage.writemsg_stdout(">>> %s\n" % msg, noiselevel=noiselevel)
+
+		short_msg = ("Jobs: %s of %s complete, %s running, %s merges, " + \
+			"load average: %s") % \
+			(completed_str, maxval_str, jobs_str, merges_str, load_avg_str)
+		xtermTitle(short_msg)
 
 	def _task(self, pkg, background):
 
@@ -10955,7 +11088,7 @@ def action_info(settings, trees, myopts, myfiles):
 	if mypkgs:
 		# Get our global settings (we only print stuff if it varies from
 		# the current config)
-		mydesiredvars = [ 'CHOST', 'CFLAGS', 'CXXFLAGS', 'EPREFIX' ]
+		mydesiredvars = [ 'CHOST', 'CFLAGS', 'CXXFLAGS', 'LDFLAGS', 'EPREFIX' ]
 		auxkeys = mydesiredvars + [ "USE", "IUSE"]
 		global_vals = {}
 		pkgsettings = portage.config(clone=settings)
