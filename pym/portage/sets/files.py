@@ -7,7 +7,7 @@ import re
 from itertools import chain
 
 from portage.util import grabfile, write_atomic, ensure_dirs
-from portage.const import PRIVATE_PATH, USER_CONFIG_PATH
+from portage.const import PRIVATE_PATH, USER_CONFIG_PATH, EPREFIX_LSTRIP
 from portage.locks import lockfile, unlockfile
 from portage import portage_gid
 from portage.sets.base import PackageSet, EditablePackageSet
