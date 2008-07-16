@@ -1133,7 +1133,7 @@ class config(object):
 					raise portage.exception.DirectoryNotFound(var)
 
 			if config_root is None:
-				config_root = EPREFIX + "/"
+				config_root = "/"
 
 			config_root = normalize_path(os.path.abspath(
 				config_root)).rstrip(os.path.sep) + os.path.sep
@@ -1144,7 +1144,7 @@ class config(object):
 
 			if not config_profile_path:
 				config_profile_path = \
-					os.path.join(config_root, PROFILE_PATH.lstrip(EPREFIX + os.path.sep))
+					os.path.join(config_root, PROFILE_PATH.lstrip(os.path.sep))
 				if os.path.isdir(config_profile_path):
 					self.profile_path = config_profile_path
 				else:
@@ -1161,7 +1161,7 @@ class config(object):
 			self.module_priority    = ["user","default"]
 			self.modules            = {}
 			self.modules["user"] = getconfig(
-				os.path.join(config_root, MODULES_FILE_PATH.lstrip(EPREFIX + os.path.sep)))
+				os.path.join(config_root, MODULES_FILE_PATH.lstrip(os.path.sep)))
 			if self.modules["user"] is None:
 				self.modules["user"] = {}
 			self.modules["default"] = {
@@ -1213,7 +1213,7 @@ class config(object):
 					self.profiles = []
 			if local_config:
 				custom_prof = os.path.join(
-					config_root, CUSTOM_PROFILE_PATH.lstrip(EPREFIX + os.path.sep))
+					config_root, CUSTOM_PROFILE_PATH.lstrip(os.path.sep))
 				if os.path.exists(custom_prof):
 					self.user_profile_dir = custom_prof
 					self.profiles.append(custom_prof)
@@ -1281,7 +1281,7 @@ class config(object):
 			del rawpuseforce
 
 			make_conf = getconfig(
-				os.path.join(config_root, MAKE_CONF_FILE.lstrip(EPREFIX + os.path.sep)),
+				os.path.join(config_root, MAKE_CONF_FILE.lstrip(os.path.sep)),
 				tolerant=tolerant, allow_sourcing=True)
 			if make_conf is None:
 				make_conf = {}
@@ -1372,7 +1372,7 @@ class config(object):
 			self.configdict["defaults"]=self.configlist[-1]
 
 			self.mygcfg = getconfig(
-				os.path.join(config_root, MAKE_CONF_FILE.lstrip(EPREFIX + os.path.sep)),
+				os.path.join(config_root, MAKE_CONF_FILE.lstrip(os.path.sep)),
 				tolerant=tolerant, allow_sourcing=True, expand=expand_map)
 			if self.mygcfg is None:
 				self.mygcfg = {}
@@ -1429,7 +1429,7 @@ class config(object):
 			self._plicensedict = {}
 			self.punmaskdict = {}
 			abs_user_config = os.path.join(config_root,
-				USER_CONFIG_PATH.lstrip(EPREFIX + os.path.sep))
+				USER_CONFIG_PATH.lstrip(os.path.sep))
 
 			# locations for "categories" and "arch.list" files
 			locations = [os.path.join(self["PORTDIR"], "profiles")]
@@ -1777,7 +1777,7 @@ class config(object):
 						noiselevel=-1)
 
 		abs_profile_path = os.path.join(self["PORTAGE_CONFIGROOT"],
-			PROFILE_PATH.lstrip(EPREFIX + os.path.sep))
+			PROFILE_PATH.lstrip(os.path.sep))
 		if not self.profile_path or (not os.path.islink(abs_profile_path) and \
 			not os.path.exists(os.path.join(abs_profile_path, "parent")) and \
 			os.path.exists(os.path.join(self["PORTDIR"], "profiles"))):
@@ -1787,7 +1787,7 @@ class config(object):
 			writemsg("!!! (You can safely ignore this message when syncing. It's harmless.)\n\n\n")
 
 		abs_user_virtuals = os.path.join(self["PORTAGE_CONFIGROOT"],
-			USER_VIRTUALS_FILE.lstrip(EPREFIX + os.path.sep))
+			USER_VIRTUALS_FILE.lstrip(os.path.sep))
 		if os.path.exists(abs_user_virtuals):
 			writemsg("\n!!! /etc/portage/virtuals is deprecated in favor of\n")
 			writemsg("!!! /etc/portage/profile/virtuals. Please move it to\n")
@@ -3343,7 +3343,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	check_config_instance(mysettings)
 
 	custommirrors = grabdict(os.path.join(mysettings["PORTAGE_CONFIGROOT"],
-		CUSTOM_MIRRORS_FILE.lstrip(EPREFIX + os.path.sep)), recursive=1)
+		CUSTOM_MIRRORS_FILE.lstrip(os.path.sep)), recursive=1)
 
 	mymirrors=[]
 
@@ -4666,7 +4666,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mysettings["T"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "temp")
 
 	mysettings["PORTAGE_BASHRC"] = os.path.join(
-		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_FILE.lstrip(EPREFIX + os.path.sep))
+		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_FILE.lstrip(os.path.sep))
 	mysettings["EBUILD_EXIT_STATUS_FILE"] = os.path.join(
 		mysettings["PORTAGE_BUILDDIR"], ".exit_status")
 
@@ -6536,7 +6536,7 @@ def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_lo
 		if os.path.isdir(profdir):
 			locations.append(profdir)
 	locations.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
-		USER_CONFIG_PATH.lstrip(EPREFIX + os.path.sep)))
+		USER_CONFIG_PATH.lstrip(os.path.sep)))
 	locations.reverse()
 	pmasklists = [(x, grablines(os.path.join(x, "package.mask"), recursive=1)) for x in locations]
 
@@ -7249,8 +7249,8 @@ def init_legacy_globals():
 	os.umask(022)
 
 	kwargs = {}
-	kwargs["config_root"] = os.environ.get("PORTAGE_CONFIGROOT", EPREFIX + "/")
-	kwargs["target_root"] = os.environ.get("ROOT", "/")
+	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT")):
+		kwargs[k] = os.environ.get(envvar, "/")
 
 	global _initializing_globals
 	_initializing_globals = True

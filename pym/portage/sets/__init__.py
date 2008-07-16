@@ -5,7 +5,7 @@
 import os
 from ConfigParser import SafeConfigParser, NoOptionError
 from portage import load_mod
-from portage.const import USER_CONFIG_PATH, GLOBAL_CONFIG_PATH, EPREFIX
+from portage.const import USER_CONFIG_PATH, GLOBAL_CONFIG_PATH
 
 SETPREFIX = "@"
 
@@ -116,7 +116,7 @@ def load_default_config(settings, trees):
 	setconfigpaths.append(os.path.join(settings["PORTDIR"], "sets.conf"))
 	setconfigpaths += [os.path.join(x, "sets.conf") for x in settings["PORTDIR_OVERLAY"].split()]
 	setconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
-		USER_CONFIG_PATH.lstrip(EPREFIX + os.path.sep), "sets.conf"))
+		USER_CONFIG_PATH.lstrip(os.path.sep), "sets.conf"))
 	return SetConfig(setconfigpaths, settings, trees)
 
 # adhoc test code
