@@ -11,7 +11,7 @@ import os
 import re
 import shlex
 import sys
-from portage.const import COLOR_MAP_FILE
+from portage.const import COLOR_MAP_FILE, EPREFIX
 from portage.util import writemsg
 from portage.exception import CommandNotFound, FileNotFound, \
 	ParseError, PermissionDenied, PortageException
@@ -171,7 +171,7 @@ def parse_color_map(onerror=None):
 	@rtype: dict
 	@return: a dictionary mapping color classes to color codes
 	"""
-	myfile = COLOR_MAP_FILE
+	myfile = EPREFIX + COLOR_MAP_FILE
 	ansi_code_pattern = re.compile("^[0-9;]*m$")
 	def strip_quotes(token, quotes):
 		if token[0] in quotes and token[0] == token[-1]:

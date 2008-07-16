@@ -10,7 +10,7 @@ from portage.exception import DirectoryNotFound, PortageException
 from portage.versions import ververify
 from portage.dep import dep_getkey, get_operator, isvalidatom, isjustname, \
 	remove_slot
-from portage.const import USER_CONFIG_PATH, WORLD_FILE, EPREFIX
+from portage.const import USER_CONFIG_PATH, WORLD_FILE
 
 ignored_dbentries = ("CONTENTS", "environment.bz2")
 
@@ -149,13 +149,8 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 	myxfiles = ["package.mask", "package.unmask", \
 		"package.keywords", "package.use"]
 	myxfiles += [os.path.join("profile", x) for x in myxfiles]
-	# if the user gives a path, respect it, otherwise use our prefix
-	if USER_CONFIG_PATH != "":
-		abs_user_config = os.path.join(config_root,
-			USER_CONFIG_PATH.lstrip(os.path.sep))
-	else:
-		abs_user_config = os.path.join(config_root,
-			EPREFIX.lstrip(os.path.sep))
+	abs_user_config = os.path.join(config_root,
+		USER_CONFIG_PATH.lstrip(os.path.sep))
 	recursivefiles = []
 	for x in myxfiles:
 		config_file = os.path.join(abs_user_config, x)

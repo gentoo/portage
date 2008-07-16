@@ -75,7 +75,7 @@ portage.dep._dep_check_strict = True
 import portage.util
 import portage.locks
 import portage.exception
-from portage.const import EPREFIX, BPREFIX
+from portage.const import EPREFIX, BPREFIX, EPREFIX_LSTRIP
 from portage.data import secpass
 from portage.elog.messages import eerror
 from portage.util import normalize_path as normpath
@@ -10801,12 +10801,12 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	chk_updated_cfg_files(EPREFIX, settings.get("CONFIG_PROTECT","").split())
 
 	if myaction != "metadata":
-		if os.access(portage.USER_CONFIG_PATH + "/bin/post_sync", os.X_OK):
+		if os.access(portage.USER_CONFIG_PATH + EPREFIX + "/bin/post_sync", os.X_OK):
 			retval = portage.process.spawn(
-				[os.path.join(portage.USER_CONFIG_PATH, "bin", "post_sync"),
+				[os.path.join(portage.USER_CONFIG_PATH, EPREFIX_LSTRIP, "bin", "post_sync"),
 				dosyncuri], env=settings.environ())
 			if retval != os.EX_OK:
-				print red(" * ")+bold("spawn failed of "+ portage.USER_CONFIG_PATH + "/bin/post_sync")
+				print red(" * ")+bold("spawn failed of "+ portage.USER_CONFIG_PATH + EPREFIX + "/bin/post_sync")
 
 	if(mybestpv != mypvs) and not "--quiet" in myopts:
 		print

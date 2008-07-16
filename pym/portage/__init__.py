@@ -1133,7 +1133,7 @@ class config(object):
 					raise portage.exception.DirectoryNotFound(var)
 
 			if config_root is None:
-				config_root = "/"
+				config_root = EPREFIX
 
 			config_root = normalize_path(os.path.abspath(
 				config_root)).rstrip(os.path.sep) + os.path.sep
@@ -7249,8 +7249,8 @@ def init_legacy_globals():
 	os.umask(022)
 
 	kwargs = {}
-	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT")):
-		kwargs[k] = os.environ.get(envvar, "/")
+	kwargs["config_root"] = os.environ.get("PORTAGE_CONFIGROOT", EPREFIX + "/")
+	kwargs["target_root"] = os.environ.get("ROOT", "/")
 
 	global _initializing_globals
 	_initializing_globals = True
