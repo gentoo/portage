@@ -1133,7 +1133,7 @@ class config(object):
 					raise portage.exception.DirectoryNotFound(var)
 
 			if config_root is None:
-				config_root = "/"
+				config_root = EPREFIX + "/"
 
 			config_root = normalize_path(os.path.abspath(
 				config_root)).rstrip(os.path.sep) + os.path.sep
@@ -1144,7 +1144,7 @@ class config(object):
 
 			if not config_profile_path:
 				config_profile_path = \
-					os.path.join(config_root, PROFILE_PATH.lstrip(os.path.sep))
+					os.path.join(config_root, PROFILE_PATH.lstrip(EPREFIX + os.path.sep))
 				if os.path.isdir(config_profile_path):
 					self.profile_path = config_profile_path
 				else:
@@ -1161,7 +1161,7 @@ class config(object):
 			self.module_priority    = ["user","default"]
 			self.modules            = {}
 			self.modules["user"] = getconfig(
-				os.path.join(config_root, MODULES_FILE_PATH.lstrip(os.path.sep)))
+				os.path.join(config_root, MODULES_FILE_PATH.lstrip(EPREFIX + os.path.sep)))
 			if self.modules["user"] is None:
 				self.modules["user"] = {}
 			self.modules["default"] = {
@@ -1213,7 +1213,7 @@ class config(object):
 					self.profiles = []
 			if local_config:
 				custom_prof = os.path.join(
-					config_root, CUSTOM_PROFILE_PATH.lstrip(os.path.sep))
+					config_root, CUSTOM_PROFILE_PATH.lstrip(EPREFIX + os.path.sep))
 				if os.path.exists(custom_prof):
 					self.user_profile_dir = custom_prof
 					self.profiles.append(custom_prof)
@@ -1281,7 +1281,7 @@ class config(object):
 			del rawpuseforce
 
 			make_conf = getconfig(
-				os.path.join(config_root, MAKE_CONF_FILE.lstrip(os.path.sep)),
+				os.path.join(config_root, MAKE_CONF_FILE.lstrip(EPREFIX + os.path.sep)),
 				tolerant=tolerant, allow_sourcing=True)
 			if make_conf is None:
 				make_conf = {}
@@ -1372,7 +1372,7 @@ class config(object):
 			self.configdict["defaults"]=self.configlist[-1]
 
 			self.mygcfg = getconfig(
-				os.path.join(config_root, MAKE_CONF_FILE.lstrip(os.path.sep)),
+				os.path.join(config_root, MAKE_CONF_FILE.lstrip(EPREFIX + os.path.sep)),
 				tolerant=tolerant, allow_sourcing=True, expand=expand_map)
 			if self.mygcfg is None:
 				self.mygcfg = {}
@@ -1429,7 +1429,7 @@ class config(object):
 			self._plicensedict = {}
 			self.punmaskdict = {}
 			abs_user_config = os.path.join(config_root,
-				USER_CONFIG_PATH.lstrip(os.path.sep))
+				USER_CONFIG_PATH.lstrip(EPREFIX + os.path.sep))
 
 			# locations for "categories" and "arch.list" files
 			locations = [os.path.join(self["PORTDIR"], "profiles")]
