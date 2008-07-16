@@ -6808,9 +6808,13 @@ def deprecated_profile_check():
 	deprecatedfile = open(DEPRECATED_PROFILE_FILE, "r")
 	dcontent = deprecatedfile.readlines()
 	deprecatedfile.close()
-	newprofile = dcontent[0]
 	writemsg(red("\n!!! Your current profile is deprecated and not supported anymore.\n"),
 		noiselevel=-1)
+	if not dcontent:
+		writemsg(red("!!! Please refer to the Gentoo Upgrading Guide.\n"),
+			noiselevel=-1)
+		return True
+	newprofile = dcontent[0]
 	writemsg(red("!!! Please upgrade to the following profile if possible:\n"),
 		noiselevel=-1)
 	writemsg(8*" "+green(newprofile)+"\n", noiselevel=-1)
