@@ -24,6 +24,7 @@ import array
 from collections import deque
 import fcntl
 import fpformat
+import logging
 import select
 import shlex
 import shutil
@@ -8320,7 +8321,7 @@ class Scheduler(PollScheduler):
 	_fetch_log = "/var/log/emerge-fetch.log"
 
 	class _iface_class(SlotObject):
-		__slots__ = ("dblinkEbuildPhase", "dblinkDisplayUnmerge", "fetch",
+		__slots__ = ("dblinkEbuildPhase", "dblinkDisplayMerge", "fetch",
 			"register", "schedule", "unregister")
 
 	class _fetch_iface_class(SlotObject):
@@ -8385,7 +8386,7 @@ class Scheduler(PollScheduler):
 			schedule=self._schedule_fetch)
 		self._sched_iface = self._iface_class(
 			dblinkEbuildPhase=self._dblink_ebuild_phase,
-			dblinkDisplayUnmerge=self._dblink_display_unmerge,
+			dblinkDisplayMerge=self._dblink_display_merge,
 			fetch=fetch_iface, register=self._register,
 			schedule=self._schedule_wait, unregister=self._unregister)
 
@@ -8575,14 +8576,22 @@ class Scheduler(PollScheduler):
 		finally:
 			f.close()
 
-	def _dblink_display_unmerge(self, settings, msg, noiselevel=0):
+	def _dblink_display_merge(self, settings, msg, level=0):
 		log_path = settings.get("PORTAGE_LOG_FILE")
 		background = self._max_jobs > 1
+
+		if level >= logging.WARNING:
+			noiselevel = -1
+			msg_func = writemsg
+		else:
+			noiselevel = 0
+			msg_func = portage.writemsg_stdout
+
 		if log_path is None:
-			portage.writemsg_stdout(msg, noiselevel=noiselevel)
+			msg_func(msg, noiselevel=noiselevel)
 		else:
 			if not background:
-				portage.writemsg_stdout(msg, noiselevel=noiselevel)
+				msg_func(msg, noiselevel=noiselevel)
 			self._append_to_log_path(log_path, msg)
 
 	def _dblink_ebuild_phase(self,

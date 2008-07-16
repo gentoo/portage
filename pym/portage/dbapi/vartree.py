@@ -28,6 +28,7 @@ from portage.elog.messages import ewarn
 from portage.elog.filtering import filter_mergephases, filter_unmergephases
 
 import os, re, sys, stat, errno, commands, copy, time, subprocess
+import logging
 from itertools import izip
 
 try:
@@ -1738,6 +1739,15 @@ class dblink(object):
 			contents=contents, env=self.settings.environ())
 		return os.EX_OK
 
+	def _display_merge(self, msg, level=0):
+		if level >= logging.WARNING:
+			noiselevel = -1
+			msg_func = writemsg
+		else:
+			noiselevel = 0
+			msg_func = writemsg_stdout
+		msg_func(msg, noiselevel=noiselevel)
+
 	def _unmerge_pkgfiles(self, pkgfiles, others_in_slot):
 		"""
 		
@@ -1752,12 +1762,11 @@ class dblink(object):
 		"""
 
 		if self._scheduler is None:
-			def showMessage(msg, noiselevel=0):
-				writemsg_stdout(msg, noiselevel=noiselevel)
+			showMessage = self._display_merge
 		else:
-			def showMessage(msg, noiselevel=0):
-				self._scheduler.dblinkDisplayUnmerge(
-					self.settings, msg, noiselevel=noiselevel)
+			def showMessage(msg, level=0):
+				self._scheduler.dblinkDisplayMerge(
+					self.settings, msg, level=level)
 
 		if not pkgfiles:
 			showMessage("No package files given... Grabbing a set.\n")
