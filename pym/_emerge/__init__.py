@@ -10920,7 +10920,7 @@ def action_info(settings, trees, myopts, myfiles):
 	if mypkgs:
 		# Get our global settings (we only print stuff if it varies from
 		# the current config)
-		mydesiredvars = [ 'CHOST', 'CFLAGS', 'CXXFLAGS' ]
+		mydesiredvars = [ 'CHOST', 'CFLAGS', 'CXXFLAGS', 'LDFLAGS' ]
 		auxkeys = mydesiredvars + [ "USE", "IUSE"]
 		global_vals = {}
 		pkgsettings = portage.config(clone=settings)
