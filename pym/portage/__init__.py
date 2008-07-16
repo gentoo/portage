@@ -1777,7 +1777,7 @@ class config(object):
 						noiselevel=-1)
 
 		abs_profile_path = os.path.join(self["PORTAGE_CONFIGROOT"],
-			PROFILE_PATH.lstrip(os.path.sep))
+			PROFILE_PATH.lstrip(EPREFIX + os.path.sep))
 		if not self.profile_path or (not os.path.islink(abs_profile_path) and \
 			not os.path.exists(os.path.join(abs_profile_path, "parent")) and \
 			os.path.exists(os.path.join(self["PORTDIR"], "profiles"))):
@@ -1787,7 +1787,7 @@ class config(object):
 			writemsg("!!! (You can safely ignore this message when syncing. It's harmless.)\n\n\n")
 
 		abs_user_virtuals = os.path.join(self["PORTAGE_CONFIGROOT"],
-			USER_VIRTUALS_FILE.lstrip(os.path.sep))
+			USER_VIRTUALS_FILE.lstrip(EPREFIX + os.path.sep))
 		if os.path.exists(abs_user_virtuals):
 			writemsg("\n!!! /etc/portage/virtuals is deprecated in favor of\n")
 			writemsg("!!! /etc/portage/profile/virtuals. Please move it to\n")
@@ -3343,7 +3343,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	check_config_instance(mysettings)
 
 	custommirrors = grabdict(os.path.join(mysettings["PORTAGE_CONFIGROOT"],
-		CUSTOM_MIRRORS_FILE.lstrip(os.path.sep)), recursive=1)
+		CUSTOM_MIRRORS_FILE.lstrip(EPREFIX + os.path.sep)), recursive=1)
 
 	mymirrors=[]
 
@@ -4666,7 +4666,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mysettings["T"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "temp")
 
 	mysettings["PORTAGE_BASHRC"] = os.path.join(
-		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_FILE.lstrip(os.path.sep))
+		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_FILE.lstrip(EPREFIX + os.path.sep))
 	mysettings["EBUILD_EXIT_STATUS_FILE"] = os.path.join(
 		mysettings["PORTAGE_BUILDDIR"], ".exit_status")
 
@@ -6536,7 +6536,7 @@ def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_lo
 		if os.path.isdir(profdir):
 			locations.append(profdir)
 	locations.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
-		USER_CONFIG_PATH.lstrip(os.path.sep)))
+		USER_CONFIG_PATH.lstrip(EPREFIX + os.path.sep)))
 	locations.reverse()
 	pmasklists = [(x, grablines(os.path.join(x, "package.mask"), recursive=1)) for x in locations]
 
@@ -7249,8 +7249,8 @@ def init_legacy_globals():
 	os.umask(022)
 
 	kwargs = {}
-	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT")):
-		kwargs[k] = os.environ.get(envvar, "/")
+	kwargs["config_root"] = os.environ.get("PORTAGE_CONFIGROOT", EPREFIX + "/")
+	kwargs["target_root"] = os.environ.get("ROOT", "/")
 
 	global _initializing_globals
 	_initializing_globals = True
