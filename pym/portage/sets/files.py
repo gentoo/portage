@@ -7,7 +7,7 @@ import re
 from itertools import chain
 
 from portage.util import grabfile, write_atomic, ensure_dirs
-from portage.const import PRIVATE_PATH, USER_CONFIG_PATH
+from portage.const import PRIVATE_PATH, USER_CONFIG_PATH, EPREFIX
 from portage.locks import lockfile, unlockfile
 from portage import portage_gid
 from portage.sets.base import PackageSet, EditablePackageSet
@@ -109,7 +109,7 @@ class StaticFileSet(EditablePackageSet):
 	
 	def multiBuilder(self, options, settings, trees):
 		rValue = {}
-		directory = options.get("directory", os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH.lstrip(os.sep), "sets"))
+		directory = options.get("directory", os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH.lstrip(EPREFIX + os.sep), "sets"))
 		name_pattern = options.get("name_pattern", "${name}")
 		if not "$name" in name_pattern and not "${name}" in name_pattern:
 			raise SetConfigError("name_pattern doesn't include ${name} placeholder")
@@ -150,7 +150,7 @@ class ConfigFileSet(PackageSet):
 	
 	def multiBuilder(self, options, settings, trees):
 		rValue = {}
-		directory = options.get("directory", os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH.lstrip(os.sep)))
+		directory = options.get("directory", os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH.lstrip(EPREFIX + os.sep)))
 		name_pattern = options.get("name_pattern", "sets/package_$suffix")
 		if not "$suffix" in name_pattern and not "${suffix}" in name_pattern:
 			raise SetConfigError("name_pattern doesn't include $suffix placeholder")
