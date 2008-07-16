@@ -101,6 +101,12 @@ Contains the path to the package build root.  Do not modify this variable.
 Contains the path to the 'files' sub folder in the package specific
 location in the portage tree.  Do not modify this variable.
 .TP
+.B EPREFIX
+Contains the offset that this Portage was configured for during
+installation.  The offset is sometimes necessary in an ebuild or eclass,
+and is available in such cases as ${EPREFIX}.  Do not modify this
+variable.
+.TP
 \fBS\fR = \fI"${WORKDIR}/${P}"\fR
 Contains the path to the temporary \fIbuild directory\fR.  This variable
 is used by the functions \fIsrc_compile\fR and \fIsrc_install\fR.  Both
@@ -129,11 +135,9 @@ Contains the path that portage should use as the root of the live filesystem.
 When packages wish to make changes to the live filesystem, they should do so in
 the tree prefixed by ${ROOT}.  Do not modify this variable.
 .TP
-.B EPREFIX
-Contains the offset that this Portage was configured for during
-installation.  The offset is sometimes necessary in an ebuild or eclass,
-and is available in such cases as ${EPREFIX}.  Do not modify this
-variable.
+\fBEROOT\fR = \fI"${ROOT}${EPREFIX%/}"\fR
+Contains "${ROOT}${EPREFIX%/}" for convenience purposes.  Do not modify
+this variable.
 .TP
 \fBDESCRIPTION\fR = \fI"A happy little package"\fR
 Should contain a short description of the package.
