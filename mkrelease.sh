@@ -19,6 +19,11 @@ eval set -- "${ARGS}"
 
 while true; do
 	case "$1" in
+		--anon)
+			REPOSITORY=svn://anonsvn.gentoo.org/portage/main
+			SVN_LOCATION=${REPOSITORY}/${BRANCH}
+			shift
+			;;
 		-t|--tag)
 			CREATE_TAG=true
 			shift
