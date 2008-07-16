@@ -191,7 +191,7 @@ Portage uses lockfiles to ensure competing instances don't clobber
 each other's files. This feature is enabled by default but may cause
 heartache on less intelligent remote filesystems like NFSv2 and some
 strangely configured Samba server (oplocks off, NFS re\-export). A tool
-@PORTAGE_BASE@bin/clean_locks exists to help handle lock issues
+/usr/lib/portage/bin/clean_locks exists to help handle lock issues
 when a problem arises (normally due to a crash or disconnect).
 .TP
 .B fakeroot
@@ -649,4 +649,4 @@ Contains a list of all local USE variables.
 .TP
 The \fI/usr/sbin/ebuild.sh\fR script. 
 .TP
-The helper apps in \fI@PORTAGE_BASE@/bin\fR.
+The helper apps in \fI/usr/lib/portage/bin\fR.

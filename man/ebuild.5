@@ -19,6 +19,8 @@ Here's a simple example ebuild:
 # Distributed under the terms of the GNU General Public License v2
 # $Header: $
 
+EAPI="prefix"
+
 inherit some_eclass another_eclass
 
 DESCRIPTION="Super\-useful stream editor (sed)"
@@ -35,7 +37,7 @@ DEPEND="nls? ( sys-devel/gettext )"
 
 src_compile() {
 	econf \\
-		\-\-bindir=/bin \\
+		\-\-bindir="${EPREFIX}"/bin \\
 		|| die "could not configure"
 	emake || die "emake failed"
 }
@@ -114,6 +116,10 @@ Contains the path to the temporary \fIinstall directory\fR.  Every write
 operation that does not involve the helper tools and functions (found below)
 should be prefixed with ${D}.  Do not modify this variable.
 .TP
+\fBED\fT = \fI"${PORTAGE_TMPDIR}/portage/${CATEGORY}/${PF}/image/${EPREFIX}"\fR
+Contains the path "${D}${EPREFIX}" for convenience purposes.  Do not
+modify this variable.
+.TP
 .B PORTAGE_LOG_FILE
 Contains the path of the build log. If \fBPORT_LOGDIR\fR variable is unset then
 \fBPORTAGE_LOG_FILE\fR=\fB"${T}/build.log"\fR.
@@ -122,6 +128,12 @@ Contains the path of the build log. If \fBPORT_LOGDIR\fR variable is unset then
 Contains the path that portage should use as the root of the live filesystem.
 When packages wish to make changes to the live filesystem, they should do so in
 the tree prefixed by ${ROOT}.  Do not modify this variable.
+.TP
+.B EPREFIX
+Contains the offset that this Portage was configured for during
+installation.  The offset is sometimes necessary in an ebuild or eclass,
+and is available in such cases as ${EPREFIX}.  Do not modify this
+variable.
 .TP
 \fBDESCRIPTION\fR = \fI"A happy little package"\fR
 Should contain a short description of the package.
@@ -155,7 +167,7 @@ being submitted for inclusion, it must have ~arch set for architectures
 where it has been PROVEN TO WORK.  (Packages KEYWORDed this way may be
 unmasked for testing by setting ACCEPT_KEYWORDS="~arch" on the command
 line, or in \fBmake.conf\fR(5)) For an authoritative list please review
-@DOMAIN_PREFIX@/usr/portage/profiles/arch.list.  Please keep this list in alphabetical order.
+/usr/portage/profiles/arch.list.  Please keep this list in alphabetical order.
 .TP
 \fBSLOT\fR
 This sets the SLOT for packages that may need to have multiple versions
@@ -166,7 +178,7 @@ value should \fINEVER\fR be left undefined.
 \fBLICENSE\fR
 This should be a space delimited list of licenses that the package falls
 under.  This \fB_must_\fR be set to a matching license in
-@DOMAIN_PREFIX@/usr/portage/licenses/. If the license does not exist in portage yet, you
+/usr/portage/licenses/. If the license does not exist in portage yet, you
 must add it first.
 .TP
 \fBIUSE\fR
@@ -619,13 +631,13 @@ directory. The function will append \fIsource\fR to the \fBDISTDIR\fR variable.
 This is used as a replacement for configure.  Performs:
 .nf
 ${\fIECONF_SOURCE\fR:-.}/configure \\
-	\-\-prefix="@DOMAIN_PREFIX@"/usr \\
-	\-\-host=${CHOST} \\
-	\-\-mandir="@DOMAIN_PREFIX@"/usr/share/man \\
-	\-\-infodir="@DOMAIN_PREFIX@"/usr/share/info \\
-	\-\-datadir="@DOMAIN_PREFIX@"/usr/share \\
-	\-\-sysconfdir="@DOMAIN_PREFIX@"/etc \\
-	\-\-localstatedir="@DOMAIN_PREFIX@"/var/lib \\
+	\-\-prefix="${EPREFIX}"/usr \\
+	\-\-host="${EPREFIX}${CHOST} \\
+	\-\-mandir="${EPREFIX}"/usr/share/man \\
+	\-\-infodir="${EPREFIX}"/usr/share/info \\
+	\-\-datadir="${EPREFIX}"/usr/share \\
+	\-\-sysconfdir="${EPREFIX}"/etc \\
+	\-\-localstatedir="${EPREFIX}"/var/lib \\
 	\fI${EXTRA_ECONF}\fR \\
 	\fIconfigure options\fR
 .fi
@@ -635,7 +647,7 @@ extra arguements to \fBeconf\fR.
 .TP
 \fBemake\fR \fI[make options]\fR
 This is used as a replacement for make.  Performs 'make ${MAKEOPTS}
-\fImake options\fR' (as set in @DOMAIN_PREFIX@/etc/make.globals), default is MAKEOPTS="\-j2".
+\fImake options\fR' (as set in /etc/make.globals), default is MAKEOPTS="\-j2".
 
 \fB***warning***\fR
 .br
@@ -650,12 +662,12 @@ the issue, then you should run '\fBemake\fR \-j1' instead of 'make'.
 This is used as a replacement for make install.  Performs:
 .nf
 make \\
-	prefix="${ED}"/usr \\
-	datadir="${ED}"/usr/share \\
-	infodir="${ED}"/usr/share/info \\
-	localstatedir="${ED}"/var/lib \\
-	mandir="${ED}"/usr/share/man \\
-	sysconfdir="${ED}"/etc \\
+	prefix=${ED}/usr \\
+	datadir=${ED}/usr/share \\
+	infodir=${ED}/usr/share/info \\
+	localstatedir=${ED}/var/lib \\
+	mandir=${ED}/usr/share/man \\
+	sysconfdir=${ED}/etc \\
 	\fI${EXTRA_EINSTALL}\fR \\
 	\fImake options\fR \\
 	install
@@ -731,7 +743,8 @@ multiple directories.
 .TP
 \fBdosed\fR \fI"s:orig:change:g" <filename>\fR
 Performs sed in place on \fIfilename\fR inside ${ED}. If no expression is
-given then \fI"s:${D}::g"\fR is used as the default expression.
+given then \fI"s:${D}::g"\fR is used as the default expression.  Note
+that this expression does \fBNOT\fR use the offset prefix.
 .br
 .BR 'dosed\ "s:/usr/local:/usr:g"\ /usr/bin/some\-script'
 runs sed on ${ED}/usr/bin/some\-script
@@ -906,21 +919,22 @@ Mark Guertin <gerk@gentoo.org>
 Nicholas Jones <carpaski@gentoo.org>
 Mike Frysinger <vapier@gentoo.org>
 Arfrever Frehtes Taifersar Arahesis <Arfrever.FTA@gmail.com>
+Fabian Groffen <grobian@gentoo.org>
 .fi
 .SH "FILES"
 .TP
-The \fI@DOMAIN_PREFIX@/usr/sbin/ebuild.sh\fR script.
+The \fI/usr/sbin/ebuild.sh\fR script.
 .TP
-The helper apps in \fI@PORTAGE_BASE@/bin\fR.
+The helper apps in \fI/usr/lib/portage/bin\fR.
 .TP
-.B @sysconfdir@/make.conf
+.B /etc/make.conf
 Contains variables for the build\-process and overwrites those in make.defaults.
 .TP
-.B @sysconfdir@/make.globals
+.B /etc/make.globals
 Contains the default variables for the build\-process, you should edit
-\fI@sysconfdir@/make.conf\fR instead.
+\fI/etc/make.conf\fR instead.
 .TP
-.B @sysconfdir@/portage/color.map
+.B /etc/portage/color.map
 Contains variables customizing colors.
 .SH "SEE ALSO"
 .BR ebuild (1),

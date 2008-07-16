@@ -125,7 +125,7 @@ to the live filesystem.  The process works as follows: first, the
 \fIpkg_preinst()\fR function (if specified) is run.  Then, the files
 are merged into the live filesystem, and the installed files' md5
 digests are recorded in
-\fI@DOMAIN_PREFIX@/var/db/pkg/${CATEGORY}/${PN}\-${PVR}/CONTENTS\fR.  After
+\fI/var/db/pkg/${CATEGORY}/${PN}\-${PVR}/CONTENTS\fR.  After
 all the files have been merged, the \fIpkg_postinst()\fR function
 (if specified) is executed.
 .TP
@@ -162,7 +162,7 @@ or other similar setups that the user may wish to run.
 This command is a lot like the \fImerge\fR command, except that after
 fetching, unpacking, compiling and installing, a .tbz2 binary package
 tarball is created and stored in  ${PKGDIR}/All (${PKGDIR} defaults to
-@DOMAIN_PREFIX@/usr/portage/packages).  A symbolic link is created in
+/usr/portage/packages).  A symbolic link is created in
 ${PKGDIR}/${CATEGORY} that points to the package in ${PKGDIR}/All.
 .TP
 .BR rpm
@@ -187,11 +187,11 @@ Mike Frysinger <vapier@gentoo.org>
 .fi
 .SH "FILES"
 .TP
-.B @sysconfdir@/make.conf 
+.B /etc/make.conf 
 Contains variables for the build\-process and overwrites those
 in make.globals.
 .TP
-.B @sysconfdir@/portage/color.map
+.B /etc/portage/color.map
 Contains variables customizing colors.
 .SH "SEE ALSO"
 .BR emerge (1),
@@ -199,6 +199,6 @@ Contains variables customizing colors.
 .BR make.conf (5),
 .BR color.map (5)
 .TP
-The \fI@DOMAIN_PREFIX@/usr/sbin/ebuild.sh\fR script. 
+The \fI/usr/sbin/ebuild.sh\fR script. 
 .TP
-The helper apps in \fI@PORTAGE_BASE@/bin\fR.
+The helper apps in \fI/usr/lib/portage/bin\fR.
