@@ -8747,16 +8747,17 @@ class Scheduler(PollScheduler):
 
 		elif pkg.type_name == "ebuild":
 
-			prefetcher = EbuildFetcher(fetchonly=1,
-				logfile=self._fetch_log, pkg=pkg,
-				scheduler=self._sched_iface)
+			prefetcher = EbuildFetcher(background=True,
+				fetchonly=1, logfile=self._fetch_log,
+				pkg=pkg, scheduler=self._sched_iface)
 
 		elif pkg.type_name == "binary" and \
 			"--getbinpkg" in self.myopts and \
 			pkg.root_config.trees["bintree"].isremote(pkg.cpv):
 
-			prefetcher = BinpkgFetcher(logfile=self._fetch_log,
-				pkg=pkg, scheduler=self._sched_iface)
+			prefetcher = BinpkgFetcher(background=True,
+				logfile=self._fetch_log, pkg=pkg,
+				scheduler=self._sched_iface)
 
 		return prefetcher
 
