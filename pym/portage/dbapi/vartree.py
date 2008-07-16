@@ -1751,8 +1751,16 @@ class dblink(object):
 		@rtype: None
 		"""
 
+		if self._scheduler is None:
+			def showMessage(msg, noiselevel=0):
+				writemsg_stdout(msg, noiselevel=noiselevel)
+		else:
+			def showMessage(msg, noiselevel=0):
+				self._scheduler.dblinkDisplayUnmerge(
+					self.settings, msg, noiselevel=noiselevel)
+
 		if not pkgfiles:
-			writemsg_stdout("No package files given... Grabbing a set.\n")
+			showMessage("No package files given... Grabbing a set.\n")
 			pkgfiles = self.getcontents()
 
 		if others_in_slot is None:
@@ -1816,7 +1824,7 @@ class dblink(object):
 						bsd_chflags.chflags(parent_name, pflags)
 
 			def show_unmerge(zing, desc, file_type, file_name):
-					writemsg_stdout("%s %s %s %s\n" % \
+					showMessage("%s %s %s %s\n" % \
 						(zing, desc.ljust(8), file_type, file_name))
 			for objkey in mykeys:
 				obj = normalize_path(objkey)
