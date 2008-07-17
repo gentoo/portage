@@ -2859,6 +2859,20 @@ class Binpkg(CompositeTask):
 		("_bintree", "_build_dir", "_ebuild_path", "_fetched_pkg",
 		"_image_dir", "_infloc", "_pkg_path", "_tree", "_verify")
 
+	def _writemsg_level(self, msg, level=0, noiselevel=0):
+
+		if not self.background:
+			portage.util.writemsg_level(msg,
+				level=level, noiselevel=noiselevel)
+
+		log_path = self.settings.get("PORTAGE_LOG_FILE")
+		if  log_path is not None:
+			f = open(log_path, 'a')
+			try:
+				f.write(msg)
+			finally:
+				f.close()
+
 	def _start(self):
 
 		pkg = self.pkg
@@ -3024,10 +3038,9 @@ class Binpkg(CompositeTask):
 			portage.util.ensure_dirs(mydir, uid=portage.data.portage_uid,
 				gid=portage.data.portage_gid, mode=dir_mode)
 
-		portage.writemsg_stdout(">>> Extracting info\n")
-
 		# This initializes PORTAGE_LOG_FILE.
 		portage.prepare_build_dirs(self.settings["ROOT"], self.settings, 1)
+		self._writemsg_level(">>> Extracting info\n")
 
 		pkg_xpak = portage.xpak.tbz2(self._pkg_path)
 		check_missing_metadata = ("CATEGORY", "PF")
@@ -3082,7 +3095,7 @@ class Binpkg(CompositeTask):
 		extractor = BinpkgExtractorAsync(background=self.background,
 			image_dir=self._image_dir,
 			pkg=self.pkg, pkg_path=self._pkg_path, scheduler=self.scheduler)
-		portage.writemsg_stdout(">>> Extracting %s\n" % self.pkg.cpv)
+		self._writemsg_level(">>> Extracting %s\n" % self.pkg.cpv)
 		self._start_task(extractor, self._extractor_exit)
 
 	def _extractor_exit(self, extractor):
