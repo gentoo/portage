@@ -12,7 +12,7 @@ die() {
 	exit 1
 }
 
-ARGS=$(getopt -o tu: --long tag,upload: -n $(basename $0) -- "$@")
+ARGS=$(getopt -o tu: --long anon,tag,upload: -n $(basename $0) -- "$@")
 [ $? != 0 ] && die "initialization error"
 
 eval set -- "${ARGS}"
