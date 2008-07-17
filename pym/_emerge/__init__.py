@@ -2041,7 +2041,7 @@ class SpawnProcess(SubProcess):
 		self._files = self._files_dict()
 		files = self._files
 
-		master_fd, slave_fd = os.pipe()
+		master_fd, slave_fd = self._pipe(fd_pipes)
 		fcntl.fcntl(master_fd, fcntl.F_SETFL,
 			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 
@@ -2102,6 +2102,13 @@ class SpawnProcess(SubProcess):
 		self._reg_id = self.scheduler.register(files.process.fileno(),
 			PollConstants.POLLIN, output_handler)
 		self._registered = True
+
+	def _pipe(self, fd_pipes):
+		"""
+		@type fd_pipes: dict
+		@param fd_pipes: pipes from which to copy terminal size if desired.
+		"""
+		return os.pipe()
 
 	def _spawn(self, args, **kwargs):
 		return portage.process.spawn(args, **kwargs)
@@ -2646,151 +2653,43 @@ class EbuildMetadataPhase(SubProcess):
 
 		return self._registered
 
-class EbuildProcess(SubProcess):
+class EbuildProcess(SpawnProcess):
 
-	__slots__ = ("fd_pipes", "phase", "pkg",
-		"settings", "tree")
-
-	_file_names = ("log", "stdout", "ebuild")
-	_files_dict = slot_dict_class(_file_names, prefix="")
-	_bufsize = 4096
+	__slots__ = ("phase", "pkg", "settings", "tree")
 
 	def _start(self):
+		self.logfile = self.settings.get("PORTAGE_LOG_FILE")
+		SpawnProcess._start(self)
+
+	def _pipe(self, fd_pipes):
+		stdout_pipe = fd_pipes.get(1)
+		got_pty, master_fd, slave_fd = \
+			portage._create_pty_or_pipe(copy_term_size=stdout_pipe)
+		return (master_fd, slave_fd)
+
+	def _spawn(self, args, **kwargs):
+
 		root_config = self.pkg.root_config
 		tree = self.tree
 		mydbapi = root_config.trees[tree].dbapi
 		settings = self.settings
 		ebuild_path = settings["EBUILD"]
 		debug = settings.get("PORTAGE_DEBUG") == "1"
-		logfile = settings.get("PORTAGE_LOG_FILE")
-		master_fd = None
-		slave_fd = None
-		fd_pipes = None
-		if self.fd_pipes is not None:
-			fd_pipes = self.fd_pipes.copy()
-		else:
-			fd_pipes = {}
 
-		fd_pipes.setdefault(0, sys.stdin.fileno())
-		fd_pipes.setdefault(1, sys.stdout.fileno())
-		fd_pipes.setdefault(2, sys.stderr.fileno())
-
-		# flush any pending output
-		for fd in fd_pipes.itervalues():
-			if fd == sys.stdout.fileno():
-				sys.stdout.flush()
-			if fd == sys.stderr.fileno():
-				sys.stderr.flush()
-
-		fd_pipes_orig = fd_pipes.copy()
-		self._files = self._files_dict()
-		files = self._files
-		got_pty = False
-
-		portage._doebuild_exit_status_unlink(
-			settings.get("EBUILD_EXIT_STATUS_FILE"))
-
-		if logfile:
-			got_pty, master_fd, slave_fd = \
-				portage._create_pty_or_pipe(copy_term_size=fd_pipes_orig[1])
-
-			fcntl.fcntl(master_fd, fcntl.F_SETFL,
-				fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
-
-			fd_pipes[0] = fd_pipes_orig[0]
-			fd_pipes[1] = slave_fd
-			fd_pipes[2] = slave_fd
-
-		else:
-			# Create a dummy pipe so the scheduler can monitor
-			# the process from inside a poll() loop.
-			master_fd, slave_fd = os.pipe()
-			fcntl.fcntl(master_fd, fcntl.F_SETFL,
-				fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
-			fd_pipes[self._dummy_pipe_fd] = slave_fd
-			if self.background:
-				fd_pipes[1] = slave_fd
-				fd_pipes[2] = slave_fd
-
-		retval = portage.doebuild(ebuild_path, self.phase,
+		rval = portage.doebuild(ebuild_path, self.phase,
 			root_config.root, settings, debug,
-			mydbapi=mydbapi, tree=tree,
-			fd_pipes=fd_pipes, returnpid=True)
+			mydbapi=mydbapi, tree=tree, **kwargs)
 
-		os.close(slave_fd)
-
-		if isinstance(retval, int):
-			# doebuild failed before spawning
-			os.close(master_fd)
-			self.returncode = retval
-			self.wait()
-			return
-
-		self.pid = retval[0]
-		portage.process.spawned_pids.remove(self.pid)
-
-		if logfile:
-			files.log = open(logfile, 'a')
-			if not self.background:
-				files.stdout = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
-			output_handler = self._output_handler
-		else:
-			output_handler = self._dummy_handler
-
-		files.ebuild = os.fdopen(master_fd, 'r')
-		self._reg_id = self.scheduler.register(files.ebuild.fileno(),
-			PollConstants.POLLIN, output_handler)
-		self._registered = True
-
-	def _output_handler(self, fd, event):
-		files = self._files
-		buf = array.array('B')
-		try:
-			buf.fromfile(files.ebuild, self._bufsize)
-		except EOFError:
-			pass
-		if buf:
-			if not self.background:
-				buf.tofile(files.stdout)
-				files.stdout.flush()
-			buf.tofile(files.log)
-			files.log.flush()
-		else:
-			self._unregister()
-			self.wait()
-		return self._registered
-
-	def _dummy_handler(self, fd, event):
-		"""
-		This method is mainly interested in detecting EOF, since
-		the only purpose of the pipe is to allow the scheduler to
-		monitor the process from inside a poll() loop.
-		"""
-		files = self._files
-		buf = array.array('B')
-		try:
-			buf.fromfile(files.ebuild, self._bufsize)
-		except EOFError:
-			pass
-		if buf:
-			pass
-		else:
-			self._unregister()
-			self.wait()
-		return self._registered
+		return rval
 
 	def _set_returncode(self, wait_retval):
-		SubProcess._set_returncode(self, wait_retval)
-
-		settings = self.settings
-		debug = settings.get("PORTAGE_DEBUG") == "1"
-		log_path = settings.get("PORTAGE_LOG_FILE")
+		SpawnProcess._set_returncode(self, wait_retval)
 
 		if self.phase != "clean":
 			self.returncode = portage._doebuild_exit_status_check_and_log(
-				settings, self.phase, self.returncode)
+				self.settings, self.phase, self.returncode)
 
-		portage._post_phase_userpriv_perms(settings)
+		portage._post_phase_userpriv_perms(self.settings)
 
 class EbuildPhase(CompositeTask):
 

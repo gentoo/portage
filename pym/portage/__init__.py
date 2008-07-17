@@ -3001,10 +3001,6 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		env=mysettings.environ()
 		keywords["opt_name"]="[%s]" % mysettings["PF"]
 
-	if keywords.get("returnpid"):
-		# emerge handles logging externally
-		keywords.pop("logfile", None)
-
 	fd_pipes = keywords.get("fd_pipes")
 	if fd_pipes is None:
 		fd_pipes = {
@@ -5245,8 +5241,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if mystatus:
 				return mystatus
 			have_build_dirs = True
-			# PORTAGE_LOG_FILE is set above by the prepare_build_dirs() call.
-			logfile = mysettings.get("PORTAGE_LOG_FILE")
+
+			# emerge handles logging externally
+			if not returnpid:
+				# PORTAGE_LOG_FILE is set by the
+				# above prepare_build_dirs() call.
+				logfile = mysettings.get("PORTAGE_LOG_FILE")
 
 		if have_build_dirs:
 			env_file = os.path.join(mysettings["T"], "environment")
