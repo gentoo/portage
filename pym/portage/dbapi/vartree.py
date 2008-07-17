@@ -1739,10 +1739,15 @@ class dblink(object):
 						del e
 					unlockdir(catdir_lock)
 
-		if log_path is not None:
+		if log_path is not None and os.path.exists(log_path):
 			# Restore this since it gets lost somewhere above and it
 			# needs to be set for _display_merge() to be able to log.
+			# Note that the log isn't necessarily supposed to exist
+			# since if PORT_LOGDIR is unset then it's a temp file
+			# so it gets cleaned above.
 			self.settings["PORTAGE_LOG_FILE"] = log_path
+		else:
+			self.settings.pop("PORTAGE_LOG_FILE", None)
 
 		env_update(target_root=self.myroot, prev_mtimes=ldpath_mtimes,
 			contents=contents, env=self.settings.environ(),
