@@ -8625,22 +8625,17 @@ class Scheduler(PollScheduler):
 		finally:
 			f.close()
 
-	def _dblink_display_merge(self, pkg_dblink, msg, level=0):
+	def _dblink_display_merge(self, pkg_dblink, msg, level=0, noiselevel=0):
 		log_path = pkg_dblink.settings.get("PORTAGE_LOG_FILE")
 		background = self._max_jobs > 1
 
-		if level >= logging.WARNING:
-			noiselevel = -1
-			msg_func = writemsg
-		else:
-			noiselevel = 0
-			msg_func = portage.writemsg_stdout
-
 		if log_path is None:
-			msg_func(msg, noiselevel=noiselevel)
+			portage.util.writemsg_level(msg,
+				level=level, noiselevel=noiselevel)
 		else:
 			if not background:
-				msg_func(msg, noiselevel=noiselevel)
+				portage.util.writemsg_level(msg,
+					level=level, noiselevel=noiselevel)
 			self._append_to_log_path(log_path, msg)
 
 	def _dblink_ebuild_phase(self,

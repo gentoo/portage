@@ -540,11 +540,10 @@ class digraph(object):
 				print "  ",child,
 				print "(%s)" % self.nodes[node][0][child]
 
-
 #parse /etc/env.d and generate /etc/profile.env
 
 def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
-	env=None):
+	env=None, writemsg_level=portage.util.writemsg_level):
 	if target_root is None:
 		global settings
 		target_root = settings["ROOT"]
@@ -751,13 +750,14 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 			# an older package installed ON TOP of a newer version will cause ldconfig
 			# to overwrite the symlinks we just made. -X means no links. After 'clean'
 			# we can safely create links.
-			writemsg(">>> Regenerating %setc/ld.so.cache...\n" % target_root)
+			writemsg_level(">>> Regenerating %setc/ld.so.cache...\n" % \
+				(target_root,))
 			if makelinks:
 				os.system("cd / ; %s -r '%s'" % (ldconfig, target_root))
 			else:
 				os.system("cd / ; %s -X -r '%s'" % (ldconfig, target_root))
 		elif ostype in ("FreeBSD","DragonFly"):
-			writemsg(">>> Regenerating %svar/run/ld-elf.so.hints...\n" % \
+			writemsg_level(">>> Regenerating %svar/run/ld-elf.so.hints...\n" % \
 				target_root)
 			os.system(("cd / ; %s -elf -i " + \
 				"-f '%svar/run/ld-elf.so.hints' '%setc/ld.so.conf'") % \
