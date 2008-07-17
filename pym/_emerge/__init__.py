@@ -2045,11 +2045,21 @@ class SpawnProcess(SubProcess):
 		fcntl.fcntl(master_fd, fcntl.F_SETFL,
 			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 
+		null_input = None
+		fd_pipes_orig = fd_pipes.copy()
+		if self.background:
+			# TODO: Use job control functions like tcsetpgrp() to control
+			# access to stdin. Until then, use /dev/null so that any
+			# attempts to read from stdin will immediately return EOF
+			# instead of blocking indefinitely.
+			null_input = open('/dev/null', 'rb')
+			fd_pipes[0] = null_input.fileno()
+		else:
+			fd_pipes[0] = fd_pipes_orig[0]
+
 		files.process = os.fdopen(master_fd, 'r')
 		if logfile is not None:
 
-			fd_pipes_orig = fd_pipes.copy()
-			fd_pipes[0] = fd_pipes_orig[0]
 			fd_pipes[1] = slave_fd
 			fd_pipes[2] = slave_fd
 
@@ -2086,6 +2096,8 @@ class SpawnProcess(SubProcess):
 		retval = self._spawn(self.args, **kwargs)
 
 		os.close(slave_fd)
+		if null_input is not None:
+			null_input.close()
 
 		if isinstance(retval, int):
 			# spawn failed
