@@ -25,7 +25,6 @@ from portage import listdir, dep_expand, flatten, key_expand, \
 	abssymlink, movefile, _movefile, bsd_chflags, cpv_getkey
 
 from portage.elog import elog_process
-from portage.elog.messages import ewarn
 from portage.elog.filtering import filter_mergephases, filter_unmergephases
 
 import os, re, sys, stat, errno, commands, copy, time, subprocess
@@ -1715,9 +1714,14 @@ class dblink(object):
 							"pkg_prerm() and pkg_postrm() removal " + \
 							"phases to be skipped entirely."
 							msg_lines.extend(wrap(msg, 72))
+
 							from portage.elog.messages import eerror
-							for l in msg_lines:
-								eerror(l, phase=ebuild_phase, key=self.mycpv)
+							if scheduler is None:
+								for l in msg_lines:
+									eerror(l, phase=ebuild_phase, key=self.mycpv)
+							else:
+								scheduler.dblinkElog(self,
+									ebuild_phase, eerror, msg_lines)
 
 						# process logs created during pre/postrm
 						elog_process(self.mycpv, self.settings, phasefilter=filter_unmergephases)
@@ -2391,6 +2395,7 @@ class dblink(object):
 		"""
 
 		showMessage = self._display_merge
+		scheduler = self._scheduler
 
 		srcroot = normalize_path(srcroot).rstrip(os.path.sep) + os.path.sep
 		destroot = normalize_path(destroot).rstrip(os.path.sep) + os.path.sep
@@ -2418,8 +2423,12 @@ class dblink(object):
 
 		from portage.elog.messages import eerror as _eerror
 		def eerror(lines):
-			for l in lines:
-				_eerror(l, phase="preinst", key=self.settings.mycpv)
+			if scheduler is None:
+				for l in lines:
+					_eerror(l, phase="preinst", key=self.settings.mycpv)
+			else:
+				scheduler.dblinkElog(self,
+					"preinst", _eerror, lines)
 
 		if slot != self.settings["SLOT"]:
 			showMessage("!!! WARNING: Expected SLOT='%s', got '%s'\n" % \
@@ -2635,8 +2644,6 @@ class dblink(object):
 		self.dbdir = self.dbtmpdir
 		self.delete()
 		ensure_dirs(self.dbtmpdir)
-
-		scheduler = self._scheduler
 
 		# run preinst script
 		if scheduler is None:

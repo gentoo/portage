@@ -8465,8 +8465,9 @@ class Scheduler(PollScheduler):
 	_fetch_log = "/var/log/emerge-fetch.log"
 
 	class _iface_class(SlotObject):
-		__slots__ = ("dblinkEbuildPhase", "dblinkDisplayMerge", "fetch",
-			"register", "schedule", "scheduleYield", "unregister")
+		__slots__ = ("dblinkEbuildPhase", "dblinkDisplayMerge",
+			"dblinkElog", "fetch", "register", "schedule",
+			"scheduleYield", "unregister")
 
 	class _fetch_iface_class(SlotObject):
 		__slots__ = ("log_file", "schedule")
@@ -8534,6 +8535,7 @@ class Scheduler(PollScheduler):
 		self._sched_iface = self._iface_class(
 			dblinkEbuildPhase=self._dblink_ebuild_phase,
 			dblinkDisplayMerge=self._dblink_display_merge,
+			dblinkElog=self._dblink_elog,
 			fetch=fetch_iface, register=self._register,
 			schedule=self._schedule_wait, scheduleYield=self._schedule_yield,
 			unregister=self._unregister)
@@ -8727,6 +8729,24 @@ class Scheduler(PollScheduler):
 			f.write(msg)
 		finally:
 			f.close()
+
+	def _dblink_elog(self, pkg_dblink, phase, func, msgs):
+
+		log_path = pkg_dblink.settings.get("PORTAGE_LOG_FILE")
+		log_file = None
+		out = sys.stdout
+		background = self._max_jobs > 1
+
+		if background and log_path is not None:
+			log_file = open(log_path, 'a')
+			out = log_file
+
+		try:
+			for msg in msgs:
+				func(msg, phase=phase, key=pkg_dblink.mycpv, out=out)
+		finally:
+			if log_file is not None:
+				log_file.close()
 
 	def _dblink_display_merge(self, pkg_dblink, msg, level=0, noiselevel=0):
 		log_path = pkg_dblink.settings.get("PORTAGE_LOG_FILE")
