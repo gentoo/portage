@@ -1283,6 +1283,10 @@ class dblink(object):
 		"sym": 5
 	}
 
+	# When looping over files for merge/unmerge, temporarily yield to the
+	# scheduler each time this many files are processed.
+	_file_merge_yield_interval = 20
+
 	def __init__(self, cat, pkg, myroot, mysettings, treetype=None,
 		vartree=None, blockers=None, scheduler=None):
 		"""
@@ -1775,6 +1779,7 @@ class dblink(object):
 		"""
 
 		showMessage = self._display_merge
+		scheduler = self._scheduler
 
 		if not pkgfiles:
 			showMessage("No package files given... Grabbing a set.\n")
@@ -1843,7 +1848,12 @@ class dblink(object):
 			def show_unmerge(zing, desc, file_type, file_name):
 					showMessage("%s %s %s %s\n" % \
 						(zing, desc.ljust(8), file_type, file_name))
-			for objkey in mykeys:
+			for i, objkey in enumerate(mykeys):
+
+				if scheduler is not None and \
+					0 == i % self._file_merge_yield_interval:
+					scheduler.scheduleYield()
+
 				obj = normalize_path(objkey)
 				file_data = pkgfiles[objkey]
 				file_type = file_data[0]
@@ -2217,17 +2227,21 @@ class dblink(object):
 				self.settings.get("COLLISION_IGNORE", "").split()])
 
 			showMessage = self._display_merge
+			scheduler = self._scheduler
 			stopmerge = False
-			i=0
 			collisions = []
 			destroot = normalize_path(destroot).rstrip(os.path.sep) + \
 				os.path.sep
 			showMessage("%s checking %d files for package collisions\n" % \
 				(green("*"), len(mycontents)))
-			for f in mycontents:
-				i = i + 1
+			for i, f in enumerate(mycontents):
 				if i % 1000 == 0:
 					showMessage("%d files checked ...\n" % i)
+
+				if scheduler is not None and \
+					0 == i % self._file_merge_yield_interval:
+					scheduler.scheduleYield()
+
 				dest_path = normalize_path(
 					os.path.join(destroot, f.lstrip(os.path.sep)))
 				try:
@@ -2287,13 +2301,19 @@ class dblink(object):
 			return 0
 
 		showMessage = self._display_merge
+		scheduler = self._scheduler
 
 		file_paths = set()
 		for dblnk in installed_instances:
 			file_paths.update(dblnk.getcontents())
 		inode_map = {}
 		real_paths = set()
-		for path in file_paths:
+		for i, path in enumerate(file_paths):
+
+			if scheduler is not None and \
+				0 == i % self._file_merge_yield_interval:
+				scheduler.scheduleYield()
+
 			try:
 				s = os.lstat(path)
 			except OSError, e:
@@ -2842,6 +2862,7 @@ class dblink(object):
 		"""
 
 		showMessage = self._display_merge
+		scheduler = self._scheduler
 
 		from os.path import sep, join
 		srcroot = normalize_path(srcroot).rstrip(sep) + sep
@@ -2855,7 +2876,13 @@ class dblink(object):
 		else:
 			mergelist = stufftomerge
 			offset = ""
-		for x in mergelist:
+
+		for i, x in enumerate(mergelist):
+
+			if scheduler is not None and \
+				0 == i % self._file_merge_yield_interval:
+				scheduler.scheduleYield()
+
 			mysrc = join(srcroot, offset, x)
 			mydest = join(destroot, offset, x)
 			# myrealdest is mydest without the $ROOT prefix (makes a difference if ROOT!="/")
