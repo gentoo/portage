@@ -3297,8 +3297,11 @@ class MergeListItem(CompositeTask):
 		ldpath_mtimes = mtimedb["ldpath"]
 
 		if not build_opts.pretend:
+			extra_newline = "\n"
+			if self.background:
+				extra_newline = ""
 			portage.writemsg_stdout(
-				"\n>>> Emerging (%s of %s) %s to %s\n" % \
+				extra_newline + ">>> Emerging (%s of %s) %s to %s\n" % \
 				(colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
 				colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)),
 				colorize("GOOD", pkg.cpv), pkg.root), noiselevel=-1)
