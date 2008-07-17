@@ -8984,7 +8984,6 @@ class Scheduler(PollScheduler):
 			not merge.merge.pkg.installed:
 			self._status_display.curval += 1
 		self._status_display.merges = len(self._task_queues.merge)
-		self._status_display.display()
 
 	def _do_merge_exit(self, merge):
 		pkg = merge.merge.pkg
@@ -9021,13 +9020,13 @@ class Scheduler(PollScheduler):
 			merge = PackageMerge(merge=build)
 			merge.addExitListener(self._merge_exit)
 			self._task_queues.merge.add(merge)
+			self._status_display.merges = len(self._task_queues.merge)
 		else:
 			self._failed_pkgs.append((build.pkg, build.returncode))
 			self._deallocate_config(build.settings)
 		self._jobs -= 1
+		self._status_display.running = self._jobs
 		self._schedule()
-		self._status_display.merges = len(self._task_queues.merge)
-		self._status_display.display()
 
 	def _extract_exit(self, build):
 		self._build_exit(build)
@@ -9135,8 +9134,8 @@ class Scheduler(PollScheduler):
 
 	def _schedule_tasks(self):
 		remaining, state_change = self._schedule_tasks_imp()
-		self._status_display.running = self._jobs
-		self._status_display.display()
+		if state_change:
+			self._status_display.display()
 		return remaining
 
 	def _schedule_tasks_imp(self):
@@ -9177,10 +9176,12 @@ class Scheduler(PollScheduler):
 				task_queues.merge.add(merge)
 			elif pkg.built:
 				self._jobs += 1
+				self._status_display.running = self._jobs
 				task.addExitListener(self._extract_exit)
 				task_queues.jobs.add(task)
 			else:
 				self._jobs += 1
+				self._status_display.running = self._jobs
 				task.addExitListener(self._build_exit)
 				task_queues.jobs.add(task)
 		return (True, state_change)
