@@ -2955,8 +2955,15 @@ class Binpkg(CompositeTask):
 
 		verifier = None
 		if self._verify:
-			verifier = BinpkgVerifier(background=self.background, pkg=self.pkg)
-			self._start_task(verifier, self._verifier_exit)
+			verifier = BinpkgVerifier(background=self.background,
+				logfile=self.scheduler.fetch.log_file, pkg=self.pkg)
+
+			if self.background:
+				verifier.addExitListener(self._verifier_exit)
+				self._current_task = verifier
+				self.scheduler.fetch.schedule(verifier)
+			else:
+				self._start_task(verifier, self._verifier_exit)
 			return
 
 		self._verifier_exit(verifier)
@@ -3211,7 +3218,7 @@ class BinpkgFetcher(SpawnProcess):
 		self.locked = False
 
 class BinpkgVerifier(AsynchronousTask):
-	__slots__ = ("pkg",)
+	__slots__ = ("logfile", "pkg",)
 
 	def _start(self):
 		"""
@@ -3224,24 +3231,38 @@ class BinpkgVerifier(AsynchronousTask):
 		root_config = pkg.root_config
 		bintree = root_config.trees["bintree"]
 		rval = os.EX_OK
+		stdout_orig = sys.stdout
+		stderr_orig = sys.stderr
+		log_file = None
+		if self.background and self.logfile is not None:
+			log_file = open(self.logfile, 'a')
 		try:
-			bintree.digestCheck(pkg)
-		except portage.exception.FileNotFound:
-			writemsg("!!! Fetching Binary failed " + \
-				"for '%s'\n" % pkg.cpv, noiselevel=-1)
-			rval = 1
-		except portage.exception.DigestException, e:
-			writemsg("\n!!! Digest verification failed:\n",
-				noiselevel=-1)
-			writemsg("!!! %s\n" % e.value[0],
-				noiselevel=-1)
-			writemsg("!!! Reason: %s\n" % e.value[1],
-				noiselevel=-1)
-			writemsg("!!! Got: %s\n" % e.value[2],
-				noiselevel=-1)
-			writemsg("!!! Expected: %s\n" % e.value[3],
-				noiselevel=-1)
-			rval = 1
+			if log_file is not None:
+				sys.stdout = log_file
+				sys.stderr = log_file
+			try:
+				bintree.digestCheck(pkg)
+			except portage.exception.FileNotFound:
+				writemsg("!!! Fetching Binary failed " + \
+					"for '%s'\n" % pkg.cpv, noiselevel=-1)
+				rval = 1
+			except portage.exception.DigestException, e:
+				writemsg("\n!!! Digest verification failed:\n",
+					noiselevel=-1)
+				writemsg("!!! %s\n" % e.value[0],
+					noiselevel=-1)
+				writemsg("!!! Reason: %s\n" % e.value[1],
+					noiselevel=-1)
+				writemsg("!!! Got: %s\n" % e.value[2],
+					noiselevel=-1)
+				writemsg("!!! Expected: %s\n" % e.value[3],
+					noiselevel=-1)
+				rval = 1
+		finally:
+			sys.stdout = stdout_orig
+			sys.stderr = stderr_orig
+			if log_file is not None:
+				log_file.close()
 
 		self.returncode = rval
 		self.wait()
