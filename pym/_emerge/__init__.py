@@ -8389,7 +8389,8 @@ class JobStatusDisplay(object):
 			f.pop_style()
 			f.add_literal_data(" running")
 
-		if self.merges:
+		#if self.merges:
+		if False:
 			f.add_literal_data(", ")
 			f.push_style(number_style)
 			f.add_literal_data(merges_str)
