@@ -8985,7 +8985,8 @@ class Scheduler(PollScheduler):
 		self._do_merge_exit(merge)
 		self._deallocate_config(merge.merge.settings)
 		self._schedule()
-		if merge.returncode == os.EX_OK:
+		if merge.returncode == os.EX_OK and \
+			not merge.merge.pkg.installed:
 			self._status_display.curval += 1
 		self._status_display.merges = len(self._task_queues.merge)
 		self._status_display.display()
