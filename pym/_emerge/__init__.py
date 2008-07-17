@@ -8691,7 +8691,8 @@ class Scheduler(PollScheduler):
 
 		if phase == "preinst":
 			msg = ">>> Merging %s to %s\n" % (pkg.cpv, pkg.root)
-			portage.writemsg_stdout(msg)
+			if not background:
+				portage.writemsg_stdout(msg)
 			if log_path is not None:
 				self._append_to_log_path(log_path, msg)
 
@@ -8704,7 +8705,8 @@ class Scheduler(PollScheduler):
 		if phase == "postinst" and \
 			ebuild_phase.returncode == os.EX_OK:
 			msg = ">>> %s %s\n" % (pkg.cpv, "merged.")
-			portage.writemsg_stdout(msg)
+			if not background:
+				portage.writemsg_stdout(msg)
 			if log_path is not None:
 				self._append_to_log_path(log_path, msg)
 
