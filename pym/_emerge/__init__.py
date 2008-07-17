@@ -8311,7 +8311,7 @@ class TaskScheduler(object):
 
 class JobStatusDisplay(object):
 
-	_bound_properties = ("curval", "merges", "running")
+	_bound_properties = ("curval", "running")
 	_jobs_column_width = 45
 
 	def __init__(self, quiet=False):
