@@ -8266,6 +8266,87 @@ class TaskScheduler(object):
 	def run(self):
 		self._scheduler.schedule()
 
+class JobStatusDisplay(object):
+
+	_bound_properties = ("curval", "merges", "running")
+	_msg_template = "Jobs: %(curval)s of %(maxval)s complete, " + \
+		"%(running)s running, %(merges)s merge%(merges_plural)s, " + \
+		"load average: %(load_avg)s"
+
+	def __init__(self, quiet=False):
+		object.__setattr__(self, "quiet", quiet)
+		object.__setattr__(self, "maxval", 0)
+		object.__setattr__(self, "_changed", False)
+		self.reset()
+
+	def reset(self):
+		self.maxval = 0
+		for name in self._bound_properties:
+			object.__setattr__(self, name, 0)
+
+	def __setattr__(self, name, value):
+		old_value = getattr(self, name)
+		if value == old_value:
+			return
+		object.__setattr__(self, name, value)
+		if name in self._bound_properties:
+			self._property_change(name, old_value, value)
+
+	def _property_change(self, name, old_value, new_value):
+		self._changed = True
+
+	def _load_avg_str(self, digits=1):
+		try:
+			avg = os.getloadavg()
+		except OSError, e:
+			return str(e)
+		return ", ".join(fpformat.fix(x, digits) for x in avg)
+
+	def display(self):
+		"""
+		Display status on stdout, but only if something has
+		changed since the last call.
+		"""
+
+		if self.quiet:
+			return
+		if not self._changed:
+			return
+		self._changed = False
+
+		# Don't use len(self._completed_tasks) here since that also
+		# can include uninstall tasks.
+		curval_str = str(self.curval)
+		maxval_str = str(self.maxval)
+		running_str = str(self.running)
+		merges_str = str(self.merges)
+		load_avg_str = self._load_avg_str()
+		if self.merges == 1:
+			merges_plural = ""
+		else:
+			merges_plural = "s"
+
+		msg = self._msg_template % {
+			"curval"            : colorize("INFORM", curval_str),
+			"maxval"            : colorize("INFORM", maxval_str),
+			"running"           : colorize("INFORM", running_str),
+			"merges"            : colorize("INFORM", merges_str),
+			"merges_plural"     : merges_plural,
+			"load_avg"          : load_avg_str,
+		}
+		portage.writemsg_stdout(">>> %s\n" % (msg,), noiselevel=-1)
+
+		xterm_msg = self._msg_template % {
+			"curval"            : curval_str,
+			"maxval"            : maxval_str,
+			"running"           : running_str,
+			"merges"            : merges_str,
+			"merges_plural"     : merges_plural,
+			"load_avg"          : load_avg_str,
+		}
+
+		xtermTitle(xterm_msg)
+
 class Scheduler(PollScheduler):
 
 	_opts_ignore_blockers = \
@@ -8362,9 +8443,9 @@ class Scheduler(PollScheduler):
 		self._prefetchers = weakref.WeakValueDictionary()
 		self._pkg_queue = []
 		self._completed_tasks = set()
-		# Number of completed package tasks, excluding uninstalls.
-		self._completed_pkg_count = 0
-		self._summary_prev_pkg_count = 0
+
+		self._status_display = JobStatusDisplay()
+
 		self._failed_pkgs = []
 		self._failed_pkgs_all = []
 		self._failed_pkgs_die_msgs = []
@@ -8374,6 +8455,7 @@ class Scheduler(PollScheduler):
 			if isinstance(x, Package) and x.operation == "merge"])
 		self._pkg_count = self._pkg_count_class(
 			curval=0, maxval=merge_count)
+		self._status_display.maxval = self._pkg_count.maxval
 
 		max_jobs = myopts.get("--jobs")
 		if max_jobs is None:
@@ -8840,6 +8922,7 @@ class Scheduler(PollScheduler):
 			self._pkg_count.curval = 0
 			self._pkg_count.maxval = len([x for x in self._mergelist \
 				if isinstance(x, Package) and x.operation == "merge"])
+			self._status_display.maxval = self._pkg_count.maxval
 
 		self._logger.log(" *** Finished. Cleaning up...")
 
@@ -8902,6 +8985,10 @@ class Scheduler(PollScheduler):
 		self._do_merge_exit(merge)
 		self._deallocate_config(merge.merge.settings)
 		self._schedule()
+		if merge.returncode == os.EX_OK:
+			self._status_display.curval += 1
+		self._status_display.merges = len(self._task_queues.merge)
+		self._status_display.display()
 
 	def _do_merge_exit(self, merge):
 		pkg = merge.merge.pkg
@@ -8931,7 +9018,6 @@ class Scheduler(PollScheduler):
 		if not mtimedb["resume"]["mergelist"]:
 			del mtimedb["resume"]
 		mtimedb.commit()
-		self._completed_pkg_count += 1
 
 	def _build_exit(self, build):
 		if build.returncode == os.EX_OK:
@@ -8944,6 +9030,8 @@ class Scheduler(PollScheduler):
 			self._deallocate_config(build.settings)
 		self._jobs -= 1
 		self._schedule()
+		self._status_display.merges = len(self._task_queues.merge)
+		self._status_display.display()
 
 	def _extract_exit(self, build):
 		self._build_exit(build)
@@ -8970,8 +9058,7 @@ class Scheduler(PollScheduler):
 	def _main_loop_cleanup(self):
 		del self._pkg_queue[:]
 		self._completed_tasks.clear()
-		self._completed_pkg_count = 0
-		self._summary_prev_pkg_count = 0
+		self._status_display.reset()
 		self._digraph = None
 		self._task_queues.fetch.clear()
 
@@ -9052,11 +9139,8 @@ class Scheduler(PollScheduler):
 
 	def _schedule_tasks(self):
 		remaining, state_change = self._schedule_tasks_imp()
-
-		if state_change or \
-			self._summary_prev_pkg_count != self._completed_pkg_count:
-			self._display_status()
-			self._summary_prev_pkg_count = self._completed_pkg_count
+		self._status_display.running = self._jobs
+		self._status_display.display()
 		return remaining
 
 	def _schedule_tasks_imp(self):
@@ -9068,6 +9152,11 @@ class Scheduler(PollScheduler):
 		task_queues = self._task_queues
 		background = self._max_jobs > 1
 		self._logger.parallel = background
+		self._status_display.quiet = \
+			not background or \
+			("--quiet" in self.myopts and \
+			"--verbose" not in self.myopts)
+
 		state_change = 0
 
 		while self._can_add_job():
@@ -9099,40 +9188,6 @@ class Scheduler(PollScheduler):
 				task.addExitListener(self._build_exit)
 				task_queues.jobs.add(task)
 		return (True, state_change)
-
-	def _load_avg_str(self, digits=1):
-		try:
-			avg = os.getloadavg()
-		except OSError, e:
-			return str(e)
-		return ", ".join(fpformat.fix(x, digits) for x in avg)
-
-	def _display_status(self):
-		if self._max_jobs < 2:
-			return
-
-		# Don't use len(self._completed_tasks) here since that also
-		# can include uninstall tasks.
-		completed_str = str(self._completed_pkg_count)
-		maxval_str = str(self._pkg_count.maxval)
-		jobs_str = str(self._jobs)
-		merges_str = str(len(self._task_queues.merge))
-		load_avg_str = self._load_avg_str()
-
-		msg = ("Jobs: %s of %s complete, %s running, %s merges, " + \
-			"load average: %s") % \
-			(colorize("INFORM", completed_str), colorize("INFORM", maxval_str),
-			colorize("INFORM", jobs_str), colorize("INFORM", merges_str),
-			load_avg_str)
-		noiselevel = 0
-		if "--verbose" in self.myopts:
-			noiselevel = -1
-		portage.writemsg_stdout(">>> %s\n" % msg, noiselevel=noiselevel)
-
-		short_msg = ("Jobs: %s of %s complete, %s running, %s merges, " + \
-			"load average: %s") % \
-			(completed_str, maxval_str, jobs_str, merges_str, load_avg_str)
-		xtermTitle(short_msg)
 
 	def _task(self, pkg, background):
 
