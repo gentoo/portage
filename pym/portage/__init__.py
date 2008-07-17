@@ -541,11 +541,10 @@ class digraph(object):
 				print "  ",child,
 				print "(%s)" % self.nodes[node][0][child]
 
-
 #parse /etc/env.d and generate /etc/profile.env
 
 def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
-	env=None):
+	env=None, writemsg_level=portage.util.writemsg_level):
 	if target_root is None:
 		global settings
 		target_root = settings["ROOT"]
@@ -752,13 +751,14 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 			# an older package installed ON TOP of a newer version will cause ldconfig
 			# to overwrite the symlinks we just made. -X means no links. After 'clean'
 			# we can safely create links.
-			writemsg(">>> Regenerating %s/etc/ld.so.cache...\n" % (target_root + EPREFIX_LSTRIP))
+			writemsg_level(">>> Regenerating %s/etc/ld.so.cache...\n" % \
+				(target_root + EPREFIX_LSTRIP,))
 			if makelinks:
 				os.system("cd / ; %s -r '%s'" % (ldconfig, target_root))
 			else:
 				os.system("cd / ; %s -X -r '%s'" % (ldconfig, target_root))
 		elif ostype in ("FreeBSD","DragonFly"):
-			writemsg(">>> Regenerating %svar/run/ld-elf.so.hints...\n" % \
+			writemsg_level(">>> Regenerating %svar/run/ld-elf.so.hints...\n" % \
 				target_root + EPREFIX_LSTRIP)
 			os.system(("cd / ; %s -elf -i " + \
 				"-f '%svar/run/ld-elf.so.hints' '%setc/ld.so.conf'") % \
@@ -3020,10 +3020,6 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		check_config_instance(mysettings)
 		env=mysettings.environ()
 		keywords["opt_name"]="[%s]" % mysettings["PF"]
-
-	if keywords.get("returnpid"):
-		# emerge handles logging externally
-		keywords.pop("logfile", None)
 
 	fd_pipes = keywords.get("fd_pipes")
 	if fd_pipes is None:
@@ -5294,8 +5290,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if mystatus:
 				return mystatus
 			have_build_dirs = True
-			# PORTAGE_LOG_FILE is set above by the prepare_build_dirs() call.
-			logfile = mysettings.get("PORTAGE_LOG_FILE")
+
+			# emerge handles logging externally
+			if not returnpid:
+				# PORTAGE_LOG_FILE is set by the
+				# above prepare_build_dirs() call.
+				logfile = mysettings.get("PORTAGE_LOG_FILE")
 
 		if have_build_dirs:
 			env_file = os.path.join(mysettings["T"], "environment")
@@ -6894,9 +6894,13 @@ def deprecated_profile_check():
 	deprecatedfile = open(DEPRECATED_PROFILE_FILE, "r")
 	dcontent = deprecatedfile.readlines()
 	deprecatedfile.close()
-	newprofile = dcontent[0]
 	writemsg(red("\n!!! Your current profile is deprecated and not supported anymore.\n"),
 		noiselevel=-1)
+	if not dcontent:
+		writemsg(red("!!! Please refer to the Gentoo Upgrading Guide.\n"),
+			noiselevel=-1)
+		return True
+	newprofile = dcontent[0]
 	writemsg(red("!!! Please upgrade to the following profile if possible:\n"),
 		noiselevel=-1)
 	writemsg(8*" "+green(newprofile)+"\n", noiselevel=-1)

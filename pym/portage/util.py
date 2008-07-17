@@ -51,6 +51,26 @@ def writemsg_stdout(mystr,noiselevel=0):
 	"""Prints messages stdout based on the noiselimit setting"""
 	writemsg(mystr, noiselevel=noiselevel, fd=sys.stdout)
 
+def writemsg_level(msg, level=0, noiselevel=0):
+	"""
+	Show a message for the given level as defined by the logging module
+	(default is 0). When level >= logging.WARNING then the message is
+	sent to stderr, otherwise it is sent to stdout. The noiselevel is
+	passed directly to writemsg().
+
+	@type msg: str
+	@param msg: a message string, including newline if appropriate
+	@type level: int
+	@param level: a numeric logging level (see the logging module)
+	@type noiselevel: int
+	@param noiselevel: passed directly to writemsg
+	"""
+	if level >= logging.WARNING:
+		fd = sys.stderr
+	else:
+		fd = sys.stdout
+	writemsg(msg, noiselevel=noiselevel, fd=fd)
+
 def normalize_path(mypath):
 	""" 
 	os.path.normpath("//foo") returns "//foo" instead of "/foo"

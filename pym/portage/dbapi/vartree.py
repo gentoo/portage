@@ -15,7 +15,8 @@ from portage.locks import lockdir, unlockdir
 from portage.output import bold, red, green
 from portage.update import fixdbentries
 from portage.util import apply_secpass_permissions, ConfigProtect, ensure_dirs, \
-	writemsg, writemsg_stdout, write_atomic, atomic_ofstream, writedict, \
+	writemsg, writemsg_stdout, writemsg_level, \
+	write_atomic, atomic_ofstream, writedict, \
 	grabfile, grabdict, normalize_path, new_protect_filename, getlibpaths
 from portage.versions import pkgsplit, catpkgsplit, catsplit, best, pkgcmp
 
@@ -1676,6 +1677,7 @@ class dblink(object):
 		# name of the dir; the package may have been moved.
 		myebuildpath = None
 		ebuild_phase = "prerm"
+		log_path = None
 		mystuff = os.listdir(self.dbdir)
 		for x in mystuff:
 			if x.endswith(".ebuild"):
@@ -1719,6 +1721,7 @@ class dblink(object):
 					catdir_lock = None
 
 				prepare_build_dirs(self.myroot, self.settings, 1)
+				log_path = self.settings.get("PORTAGE_LOG_FILE")
 
 				if scheduler is None:
 					retval = doebuild(myebuildpath, ebuild_phase, self.myroot,
@@ -1875,22 +1878,28 @@ class dblink(object):
 							raise
 						del e
 					unlockdir(catdir_lock)
+
+		if log_path is not None and os.path.exists(log_path):
+			# Restore this since it gets lost somewhere above and it
+			# needs to be set for _display_merge() to be able to log.
+			# Note that the log isn't necessarily supposed to exist
+			# since if PORT_LOGDIR is unset then it's a temp file
+			# so it gets cleaned above.
+			self.settings["PORTAGE_LOG_FILE"] = log_path
+		else:
+			self.settings.pop("PORTAGE_LOG_FILE", None)
+
 		env_update(target_root=self.myroot, prev_mtimes=ldpath_mtimes,
-			contents=contents, env=self.settings.environ())
+			contents=contents, env=self.settings.environ(),
+			writemsg_level=self._display_merge)
 		return os.EX_OK
 
-	def _display_merge(self, msg, level=0):
+	def _display_merge(self, msg, level=0, noiselevel=0):
 		if self._scheduler is not None:
-			self._scheduler.dblinkDisplayMerge(self, msg, level=level)
+			self._scheduler.dblinkDisplayMerge(self, msg,
+				level=level, noiselevel=noiselevel)
 			return
-
-		if level >= logging.WARNING:
-			noiselevel = -1
-			msg_func = writemsg
-		else:
-			noiselevel = 0
-			msg_func = writemsg_stdout
-		msg_func(msg, noiselevel=noiselevel)
+		writemsg_level(msg, level=level, noiselevel=noiselevel)
 
 	def _unmerge_pkgfiles(self, pkgfiles, others_in_slot):
 		"""
@@ -2457,12 +2466,15 @@ class dblink(object):
 		from portage.output import colorize
 		prefix = colorize("SECURITY_WARN", "*") + " WARNING: "
 		showMessage(prefix + "suid/sgid file(s) " + \
-			"with suspicious hardlink(s):\n", level=logging.ERROR)
+			"with suspicious hardlink(s):\n",
+			level=logging.ERROR, noiselevel=-1)
 		for path_list in suspicious_hardlinks:
 			for path, s in path_list:
-				showMessage(prefix + "  '%s'\n" % path, level=logging.ERROR)
+				showMessage(prefix + "  '%s'\n" % path,
+					level=logging.ERROR, noiselevel=-1)
 		showMessage(prefix + "See the Gentoo Security Handbook " + \
-			"guide for advice on how to proceed.\n", level=logging.ERROR)
+			"guide for advice on how to proceed.\n",
+			level=logging.ERROR, noiselevel=-1)
 		return 1
 
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
@@ -2508,7 +2520,7 @@ class dblink(object):
 
 		if not os.path.isdir(srcroot):
 			showMessage("!!! Directory Not Found: D='%s'\n" % srcroot,
-				level=logging.ERROR)
+				level=logging.ERROR, noiselevel=-1)
 			return 1
 
 		inforoot_slot_file = os.path.join(inforoot, "SLOT")
@@ -2762,7 +2774,7 @@ class dblink(object):
 		# XXX: Decide how to handle failures here.
 		if a != os.EX_OK:
 			showMessage("!!! FAILED preinst: "+str(a)+"\n",
-				level=logging.ERROR)
+				level=logging.ERROR, noiselevel=-1)
 			return a
 
 		# copy "info" files (like SLOT, CFLAGS, etc.) into the database
@@ -2885,7 +2897,7 @@ class dblink(object):
 			showMessage(colorize("WARN", "WARNING:")
 				+ " AUTOCLEAN is disabled.  This can cause serious"
 				+ " problems due to overlapping packages.\n",
-				level=logging.WARN)
+				level=logging.WARN, noiselevel=-1)
 
 		# We hold both directory locks.
 		self.dbdir = self.dbpkgdir
@@ -2928,7 +2940,7 @@ class dblink(object):
 		# XXX: Decide how to handle failures here.
 		if a != os.EX_OK:
 			showMessage("!!! FAILED postinst: "+str(a)+"\n",
-				level=logging.ERROR)
+				level=logging.ERROR, noiselevel=-1)
 			return a
 
 		downgrade = False
@@ -2939,7 +2951,8 @@ class dblink(object):
 		#update environment settings, library paths. DO NOT change symlinks.
 		env_update(makelinks=(not downgrade),
 			target_root=self.settings["ROOT"], prev_mtimes=prev_mtimes,
-			contents=contents, env=self.settings.environ())
+			contents=contents, env=self.settings.environ(),
+			writemsg_level=self._display_merge)
 
 		return os.EX_OK
 
@@ -3150,7 +3163,8 @@ class dblink(object):
 					if stat.S_ISDIR(mydmode):
 						# install of destination is blocked by an existing directory with the same name
 						moveme = 0
-						showMessage("!!! %s\n" % mydest, level=logging.ERROR)
+						showMessage("!!! %s\n" % mydest,
+							level=logging.ERROR, noiselevel=-1)
 					elif stat.S_ISREG(mydmode) or (stat.S_ISLNK(mydmode) and os.path.exists(mydest) and stat.S_ISREG(os.stat(mydest)[stat.ST_MODE])):
 						cfgprot = 0
 						# install of destination is blocked by an existing regular file,
