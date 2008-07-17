@@ -7989,6 +7989,7 @@ class SequentialTaskQueue(SlotObject):
 		running_tasks = self.running_tasks
 		while running_tasks:
 			task = running_tasks.pop()
+			task.removeExitListener(self._task_exit)
 			task.cancel()
 
 	def __nonzero__(self):
