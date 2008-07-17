@@ -23,6 +23,7 @@ except KeyboardInterrupt:
 import array
 from collections import deque
 import fcntl
+import formatter
 import fpformat
 import logging
 import select
@@ -75,6 +76,11 @@ try:
 	import cPickle
 except ImportError:
 	import pickle as cPickle
+
+try:
+	import cStringIO as StringIO
+except ImportError:
+	import StringIO
 
 class stdout_spinner(object):
 	scroll_msgs = [
@@ -8306,9 +8312,7 @@ class TaskScheduler(object):
 class JobStatusDisplay(object):
 
 	_bound_properties = ("curval", "merges", "running")
-	_msg_template = "Jobs: %(curval)s of %(maxval)s complete, " + \
-		"%(running)s running, %(merges)s merge%(merges_plural)s, " + \
-		"load average: %(load_avg)s"
+	_jobs_column_width = 45
 
 	def __init__(self, quiet=False):
 		object.__setattr__(self, "quiet", quiet)
@@ -8358,31 +8362,52 @@ class JobStatusDisplay(object):
 		running_str = str(self.running)
 		merges_str = str(self.merges)
 		load_avg_str = self._load_avg_str()
-		if self.merges == 1:
-			merges_plural = ""
-		else:
-			merges_plural = "s"
 
-		msg = self._msg_template % {
-			"curval"            : colorize("INFORM", curval_str),
-			"maxval"            : colorize("INFORM", maxval_str),
-			"running"           : colorize("INFORM", running_str),
-			"merges"            : colorize("INFORM", merges_str),
-			"merges_plural"     : merges_plural,
-			"load_avg"          : load_avg_str,
-		}
-		portage.writemsg_stdout(">>> %s\n" % (msg,), noiselevel=-1)
+		color_output = StringIO.StringIO()
+		plain_output = StringIO.StringIO()
+		style_file = portage.output.ConsoleStyleFile(color_output)
+		style_file.write_listener = plain_output
+		style_writer = portage.output.StyleWriter(file=style_file, maxcol=9999)
+		style_writer.style_listener = style_file.new_styles
+		f = formatter.AbstractFormatter(style_writer)
 
-		xterm_msg = self._msg_template % {
-			"curval"            : curval_str,
-			"maxval"            : maxval_str,
-			"running"           : running_str,
-			"merges"            : merges_str,
-			"merges_plural"     : merges_plural,
-			"load_avg"          : load_avg_str,
-		}
+		number_style = "INFORM"
+		f.add_literal_data("Jobs: ")
+		f.push_style(number_style)
+		f.add_literal_data(curval_str)
+		f.pop_style()
+		f.add_literal_data(" of ")
+		f.push_style(number_style)
+		f.add_literal_data(maxval_str)
+		f.pop_style()
+		f.add_literal_data(" complete")
 
-		xtermTitle(xterm_msg)
+		if self.running:
+			f.add_literal_data(", ")
+			f.push_style(number_style)
+			f.add_literal_data(running_str)
+			f.pop_style()
+			f.add_literal_data(" running")
+
+		if self.merges:
+			f.add_literal_data(", ")
+			f.push_style(number_style)
+			f.add_literal_data(merges_str)
+			f.pop_style()
+			f.add_literal_data(" merge")
+			if self.merges != 1:
+				f.add_literal_data("s")
+
+		padding = self._jobs_column_width - len(plain_output.getvalue())
+		if padding > 0:
+			f.add_literal_data(padding * " ")
+
+		f.add_literal_data("Load average: ")
+		f.add_literal_data(load_avg_str)
+
+		portage.writemsg_stdout(">>> %s\n" % \
+			(color_output.getvalue(),), noiselevel=-1)
+		xtermTitle(plain_output.getvalue())
 
 class Scheduler(PollScheduler):
 
