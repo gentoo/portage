@@ -8323,6 +8323,7 @@ class JobStatusDisplay(object):
 
 	def reset(self):
 		self.maxval = 0
+		self.merges = 0
 		for name in self._bound_properties:
 			object.__setattr__(self, name, 0)
 
