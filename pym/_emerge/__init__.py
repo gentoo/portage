@@ -8317,6 +8317,7 @@ class JobStatusDisplay(object):
 	def __init__(self, quiet=False):
 		object.__setattr__(self, "quiet", quiet)
 		object.__setattr__(self, "maxval", 0)
+		object.__setattr__(self, "merges", 0)
 		object.__setattr__(self, "_changed", False)
 		self.reset()
 
