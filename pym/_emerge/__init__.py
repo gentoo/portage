@@ -9050,6 +9050,7 @@ class Scheduler(PollScheduler):
 			self._deallocate_config(build.settings)
 		self._jobs -= 1
 		self._status_display.running = self._jobs
+		self._status_display.display()
 		self._schedule()
 
 	def _extract_exit(self, build):
