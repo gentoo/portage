@@ -846,13 +846,16 @@ class vardbapi(dbapi):
 				if counter > max_counter:
 					max_counter = counter
 
+		new_vdb = False
 		counter = -1
 		try:
 			cfile = open(self._counter_path, "r")
 		except EnvironmentError, e:
-			writemsg("!!! Unable to read COUNTER file: '%s'\n" % \
-				self._counter_path, noiselevel=-1)
-			writemsg("!!! %s\n" % str(e), noiselevel=-1)
+			new_vdb = not bool(self.cpv_all())
+			if not new_vdb:
+				writemsg("!!! Unable to read COUNTER file: '%s'\n" % \
+					self._counter_path, noiselevel=-1)
+				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 			del e
 		else:
 			try:
@@ -877,7 +880,7 @@ class vardbapi(dbapi):
 		if counter > max_counter:
 			max_counter = counter
 
-		if counter < 0:
+		if counter < 0 and not new_vdb:
 			writemsg("!!! Initializing COUNTER to " + \
 				"value of %d\n" % max_counter, noiselevel=-1)
 
