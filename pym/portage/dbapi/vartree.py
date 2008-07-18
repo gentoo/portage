@@ -1715,13 +1715,7 @@ class dblink(object):
 							"phases to be skipped entirely."
 							msg_lines.extend(wrap(msg, 72))
 
-							from portage.elog.messages import eerror
-							if scheduler is None:
-								for l in msg_lines:
-									eerror(l, phase=ebuild_phase, key=self.mycpv)
-							else:
-								scheduler.dblinkElog(self,
-									ebuild_phase, eerror, msg_lines)
+							self._eerror(ebuild_phase, msg_lines)
 
 						# process logs created during pre/postrm
 						elog_process(self.mycpv, self.settings, phasefilter=filter_unmergephases)
@@ -2432,14 +2426,8 @@ class dblink(object):
 		if slot is None:
 			slot = ""
 
-		from portage.elog.messages import eerror as _eerror
 		def eerror(lines):
-			if scheduler is None:
-				for l in lines:
-					_eerror(l, phase="preinst", key=self.settings.mycpv)
-			else:
-				scheduler.dblinkElog(self,
-					"preinst", _eerror, lines)
+			self._eerror("preinst", lines)
 
 		if slot != self.settings["SLOT"]:
 			showMessage("!!! WARNING: Expected SLOT='%s', got '%s'\n" % \
