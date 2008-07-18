@@ -13,6 +13,8 @@ import logging
 import os
 import sys
 
+from xml.dom import minidom
+from xml.dom import NotFoundErr
 from portage import output
 from portage.output import red, green
 from portage.process import find_binary
@@ -110,6 +112,37 @@ def parse_use_local_desc(mylines, usedict=None):
 		usedict.setdefault(pkg, set())
 		usedict[pkg].add(flag)
 	return usedict
+
+def parse_metadata_use(mylines, uselist=None):
+	"""
+	Records are wrapped in XML as per GLEP 56
+	returns a dict of the form a list of flags"""
+	if uselist is None:
+		uselist = []
+	metadatadom = minidom.parse(mylines)
+
+	try:
+		usetag = metadatadom.getElementsByTagName("use")
+		if not usetag:
+			return uselist
+	except NotFoundErr:
+		return uselist
+
+	try:
+		flags = usetag[0].getElementsByTagName("flag")
+	except NotFoundErr:
+		raise exception.ParseError("metadata.xml: " + \
+			"Malformed input: missing 'flag' tag(s)")
+
+	for flag in flags:
+		pkg_flag = flag.getAttribute("name")
+		if not pkg_flag:
+			raise exception.ParseError("metadata.xml: " + \
+				"Malformed input: missing 'name' attribute for 'flag' tag")
+		uselist.append(pkg_flag)
+
+	metadatadom.unlink()
+	return uselist
 
 
 def FindPackagesToScan(settings, startdir, reposplit):
