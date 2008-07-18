@@ -4283,7 +4283,7 @@ def _post_phase_userpriv_perms(mysettings):
 def _post_src_install_checks(mysettings):
 	_post_src_install_uid_fix(mysettings)
 	global _post_phase_cmds
-	retval = _spawn_misc_sh(mysettings, post_phase_cmds["install"])
+	retval = _spawn_misc_sh(mysettings, _post_phase_cmds["install"])
 	if retval != os.EX_OK:
 		writemsg("!!! install_qa_check failed; exiting.\n",
 			noiselevel=-1)
