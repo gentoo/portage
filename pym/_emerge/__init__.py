@@ -3336,15 +3336,22 @@ class MergeListItem(CompositeTask):
 		world_atom = self.world_atom
 		ldpath_mtimes = mtimedb["ldpath"]
 
+		action_desc = "Building"
+		preposition = "for"
+		if pkg.type_name == "binary":
+			action_desc = "Extracting"
+
 		if not build_opts.pretend:
 			extra_newline = "\n"
 			if self.background:
 				extra_newline = ""
 			portage.writemsg_stdout(
-				extra_newline + ">>> Emerging (%s of %s) %s to %s\n" % \
-				(colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
+				"%s>>> %s (%s of %s) %s %s %s\n" % \
+				(extra_newline, action_desc,
+				colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
 				colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)),
-				colorize("GOOD", pkg.cpv), pkg.root), noiselevel=-1)
+				colorize("GOOD", pkg.cpv), preposition, pkg.root),
+				noiselevel=-1)
 			logger.log(" >>> emerge (%s of %s) %s to %s" % \
 				(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root))
 
@@ -3432,6 +3439,30 @@ class PackageMerge(AsynchronousTask):
 	__slots__ = ("merge",)
 
 	def _start(self):
+
+		pkg = self.merge.pkg
+		pkg_count = self.merge.pkg_count
+
+		if pkg.installed:
+
+			action_desc = "Uninstalling"
+			preposition = "from"
+
+			portage.writemsg_stdout(
+				">>> %s %s %s %s\n" % \
+				(action_desc, colorize("GOOD", pkg.cpv),
+				preposition, pkg.root), noiselevel=-1)
+
+		else:
+
+			action_desc = "Installing"
+			preposition = "to"
+
+			portage.writemsg_stdout(
+				">>> %s %s %s %s\n" % \
+				(action_desc, colorize("GOOD", pkg.cpv),
+				preposition, pkg.root), noiselevel=-1)
+
 		self.returncode = self.merge.merge()
 		self.wait()
 
@@ -8776,26 +8807,11 @@ class Scheduler(PollScheduler):
 		background = self._max_jobs > 1
 		log_path = settings.get("PORTAGE_LOG_FILE")
 
-		if phase == "preinst":
-			msg = ">>> Merging %s to %s\n" % (pkg.cpv, pkg.root)
-			if not background:
-				portage.writemsg_stdout(msg)
-			if log_path is not None:
-				self._append_to_log_path(log_path, msg)
-
 		ebuild_phase = EbuildPhase(background=background,
 			pkg=pkg, phase=phase, scheduler=scheduler,
 			settings=settings, tree=pkg_dblink.treetype)
 		ebuild_phase.start()
 		ebuild_phase.wait()
-
-		if phase == "postinst" and \
-			ebuild_phase.returncode == os.EX_OK:
-			msg = ">>> %s %s\n" % (pkg.cpv, "merged.")
-			if not background:
-				portage.writemsg_stdout(msg)
-			if log_path is not None:
-				self._append_to_log_path(log_path, msg)
 
 		return ebuild_phase.returncode
 
