@@ -25,7 +25,6 @@ from portage import listdir, dep_expand, flatten, key_expand, \
 	abssymlink, movefile, _movefile, bsd_chflags, cpv_getkey
 
 from portage.elog import elog_process
-from portage.elog.messages import ewarn
 from portage.elog.filtering import filter_mergephases, filter_unmergephases
 
 import os, re, sys, stat, errno, commands, copy, time, subprocess
@@ -987,13 +986,16 @@ class vardbapi(dbapi):
 				if counter > max_counter:
 					max_counter = counter
 
+		new_vdb = False
 		counter = -1
 		try:
 			cfile = open(self._counter_path, "r")
 		except EnvironmentError, e:
-			writemsg("!!! Unable to read COUNTER file: '%s'\n" % \
-				self._counter_path, noiselevel=-1)
-			writemsg("!!! %s\n" % str(e), noiselevel=-1)
+			new_vdb = not bool(self.cpv_all())
+			if not new_vdb:
+				writemsg("!!! Unable to read COUNTER file: '%s'\n" % \
+					self._counter_path, noiselevel=-1)
+				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 			del e
 		else:
 			try:
@@ -1018,7 +1020,7 @@ class vardbapi(dbapi):
 		if counter > max_counter:
 			max_counter = counter
 
-		if counter < 0:
+		if counter < 0 and not new_vdb:
 			writemsg("!!! Initializing COUNTER to " + \
 				"value of %d\n" % max_counter, noiselevel=-1)
 
@@ -1422,6 +1424,10 @@ class dblink(object):
 		"obj": 4,
 		"sym": 5
 	}
+
+	# When looping over files for merge/unmerge, temporarily yield to the
+	# scheduler each time this many files are processed.
+	_file_merge_yield_interval = 20
 
 	def __init__(self, cat, pkg, myroot, mysettings, treetype=None,
 		vartree=None, blockers=None, scheduler=None):
@@ -1851,9 +1857,8 @@ class dblink(object):
 							"pkg_prerm() and pkg_postrm() removal " + \
 							"phases to be skipped entirely."
 							msg_lines.extend(wrap(msg, 72))
-							from portage.elog.messages import eerror
-							for l in msg_lines:
-								eerror(l, phase=ebuild_phase, key=self.mycpv)
+
+							self._eerror(ebuild_phase, msg_lines)
 
 						# process logs created during pre/postrm
 						elog_process(self.mycpv, self.settings, phasefilter=filter_unmergephases)
@@ -1915,6 +1920,7 @@ class dblink(object):
 		"""
 
 		showMessage = self._display_merge
+		scheduler = self._scheduler
 
 		if not pkgfiles:
 			showMessage("No package files given... Grabbing a set.\n")
@@ -1983,7 +1989,12 @@ class dblink(object):
 			def show_unmerge(zing, desc, file_type, file_name):
 					showMessage("%s %s %s %s\n" % \
 						(zing, desc.ljust(8), file_type, file_name))
-			for objkey in mykeys:
+			for i, objkey in enumerate(mykeys):
+
+				if scheduler is not None and \
+					0 == i % self._file_merge_yield_interval:
+					scheduler.scheduleYield()
+
 				obj = normalize_path(objkey)
 				file_data = pkgfiles[objkey]
 				file_type = file_data[0]
@@ -2360,17 +2371,21 @@ class dblink(object):
 				self.settings.get("COLLISION_IGNORE", "").split()])
 
 			showMessage = self._display_merge
+			scheduler = self._scheduler
 			stopmerge = False
-			i=0
 			collisions = []
 			destroot = normalize_path(destroot).rstrip(os.path.sep) + \
 				os.path.sep
 			showMessage("%s checking %d files for package collisions\n" % \
 				(green("*"), len(mycontents)))
-			for f in mycontents:
-				i = i + 1
+			for i, f in enumerate(mycontents):
 				if i % 1000 == 0:
 					showMessage("%d files checked ...\n" % i)
+
+				if scheduler is not None and \
+					0 == i % self._file_merge_yield_interval:
+					scheduler.scheduleYield()
+
 				dest_path = normalize_path(
 					os.path.join(destroot, f.lstrip(os.path.sep)))
 				try:
@@ -2430,13 +2445,19 @@ class dblink(object):
 			return 0
 
 		showMessage = self._display_merge
+		scheduler = self._scheduler
 
 		file_paths = set()
 		for dblnk in installed_instances:
 			file_paths.update(dblnk.getcontents())
 		inode_map = {}
 		real_paths = set()
-		for path in file_paths:
+		for i, path in enumerate(file_paths):
+
+			if scheduler is not None and \
+				0 == i % self._file_merge_yield_interval:
+				scheduler.scheduleYield()
+
 			try:
 				s = os.lstat(path)
 			except OSError, e:
@@ -2463,19 +2484,30 @@ class dblink(object):
 			suspicious_hardlinks.append(path_list)
 		if not suspicious_hardlinks:
 			return 0
-		from portage.output import colorize
-		prefix = colorize("SECURITY_WARN", "*") + " WARNING: "
-		showMessage(prefix + "suid/sgid file(s) " + \
-			"with suspicious hardlink(s):\n",
-			level=logging.ERROR, noiselevel=-1)
+
+		msg = []
+		msg.append("suid/sgid file(s) " + \
+			"with suspicious hardlink(s):")
+		msg.append("")
 		for path_list in suspicious_hardlinks:
 			for path, s in path_list:
-				showMessage(prefix + "  '%s'\n" % path,
-					level=logging.ERROR, noiselevel=-1)
-		showMessage(prefix + "See the Gentoo Security Handbook " + \
-			"guide for advice on how to proceed.\n",
-			level=logging.ERROR, noiselevel=-1)
+				msg.append("\t%s" % path)
+		msg.append("")
+		msg.append("See the Gentoo Security Handbook " + \
+			"guide for advice on how to proceed.")
+
+		self._eerror("preinst", msg)
+
 		return 1
+
+	def _eerror(self, phase, lines):
+		from portage.elog.messages import eerror as _eerror
+		if self._scheduler is None:
+			for l in lines:
+				_eerror(l, phase=phase, key=self.settings.mycpv)
+		else:
+			self._scheduler.dblinkElog(self,
+				phase, _eerror, lines)
 
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
@@ -2514,6 +2546,7 @@ class dblink(object):
 		"""
 
 		showMessage = self._display_merge
+		scheduler = self._scheduler
 
 		srcroot = normalize_path(srcroot).rstrip(os.path.sep) + os.path.sep
 		destroot = normalize_path(destroot).rstrip(os.path.sep) + os.path.sep
@@ -2539,10 +2572,8 @@ class dblink(object):
 		if slot is None:
 			slot = ""
 
-		from portage.elog.messages import eerror as _eerror
 		def eerror(lines):
-			for l in lines:
-				_eerror(l, phase="preinst", key=self.settings.mycpv)
+			self._eerror("preinst", lines)
 
 		if slot != self.settings["SLOT"]:
 			showMessage("!!! WARNING: Expected SLOT='%s', got '%s'\n" % \
@@ -2758,8 +2789,6 @@ class dblink(object):
 		self.dbdir = self.dbtmpdir
 		self.delete()
 		ensure_dirs(self.dbtmpdir)
-
-		scheduler = self._scheduler
 
 		# run preinst script
 		if scheduler is None:
@@ -2985,6 +3014,7 @@ class dblink(object):
 		"""
 
 		showMessage = self._display_merge
+		scheduler = self._scheduler
 
 		from os.path import sep, join
 		srcroot = normalize_path(srcroot).rstrip(sep) + sep
@@ -2998,7 +3028,13 @@ class dblink(object):
 		else:
 			mergelist = stufftomerge
 			offset = ""
-		for x in mergelist:
+
+		for i, x in enumerate(mergelist):
+
+			if scheduler is not None and \
+				0 == i % self._file_merge_yield_interval:
+				scheduler.scheduleYield()
+
 			mysrc = join(srcroot, offset, x)
 			mydest = join(destroot, offset, x)
 			# myrealdest is mydest without the $ROOT prefix (makes a difference if ROOT!="/")

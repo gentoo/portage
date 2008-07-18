@@ -2864,25 +2864,41 @@ class EbuildMerge(SlotObject):
 		logger.log(" ::: completed emerge (%s of %s) %s to %s" % \
 			(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root))
 
-class PackageUninstall(Task):
+class PackageUninstall(AsynchronousTask):
 
-	__hash__ = Task.__hash__
-	__slots__ = ("ldpath_mtimes", "opts", "pkg", "settings")
+	__slots__ = ("ldpath_mtimes", "opts", "pkg", "scheduler", "settings")
 
-	def _get_hash_key(self):
-		hash_key = getattr(self, "_hash_key", None)
-		if hash_key is None:
-			self._hash_key = ("PackageUninstall", self.pkg._get_hash_key())
-		return self._hash_key
-
-	def execute(self):
+	def _start(self):
 		try:
 			unmerge(self.pkg.root_config, self.opts, "unmerge",
 				[self.pkg.cpv], self.ldpath_mtimes, clean_world=0,
-				raise_on_error=1)
+				clean_delay=0, raise_on_error=1, scheduler=self.scheduler,
+				writemsg_level=self._writemsg_level)
 		except UninstallFailure, e:
-			return e.status
-		return os.EX_OK
+			self.returncode = e.status
+		else:
+			self.returncode = os.EX_OK
+		self.wait()
+
+	def _writemsg_level(self, msg, level=0, noiselevel=0):
+
+		log_path = self.settings.get("PORTAGE_LOG_FILE")
+		background = self.background
+
+		if log_path is None:
+			if not (background and level < logging.WARNING):
+				portage.util.writemsg_level(msg,
+					level=level, noiselevel=noiselevel)
+		else:
+			if not background:
+				portage.util.writemsg_level(msg,
+					level=level, noiselevel=noiselevel)
+
+			f = open(log_path, 'a')
+			try:
+				f.write(msg)
+			finally:
+				f.close()
 
 class Binpkg(CompositeTask):
 
@@ -3363,15 +3379,22 @@ class MergeListItem(CompositeTask):
 		world_atom = self.world_atom
 		ldpath_mtimes = mtimedb["ldpath"]
 
+		action_desc = "Building"
+		preposition = "for"
+		if pkg.type_name == "binary":
+			action_desc = "Extracting"
+
 		if not build_opts.pretend:
 			extra_newline = "\n"
 			if self.background:
 				extra_newline = ""
 			portage.writemsg_stdout(
-				extra_newline + ">>> Emerging (%s of %s) %s to %s\n" % \
-				(colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
+				"%s>>> %s (%s of %s) %s %s %s\n" % \
+				(extra_newline, action_desc,
+				colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
 				colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)),
-				colorize("GOOD", pkg.cpv), pkg.root), noiselevel=-1)
+				colorize("GOOD", pkg.cpv), preposition, pkg.root),
+				noiselevel=-1)
 			logger.log(" >>> emerge (%s of %s) %s to %s" % \
 				(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root))
 
@@ -3435,10 +3458,12 @@ class MergeListItem(CompositeTask):
 			if not (build_opts.buildpkgonly or \
 				build_opts.fetchonly or build_opts.pretend):
 
-				uninstall = PackageUninstall(ldpath_mtimes=ldpath_mtimes,
-					opts=self.emerge_opts, pkg=pkg, settings=settings)
+				uninstall = PackageUninstall(background=self.background,
+					ldpath_mtimes=ldpath_mtimes, opts=self.emerge_opts,
+					pkg=pkg, scheduler=scheduler, settings=settings)
 
-				retval = uninstall.execute()
+				uninstall.start()
+				retval = uninstall.wait()
 				if retval != os.EX_OK:
 					return retval
 			return os.EX_OK
@@ -3459,6 +3484,30 @@ class PackageMerge(AsynchronousTask):
 	__slots__ = ("merge",)
 
 	def _start(self):
+
+		pkg = self.merge.pkg
+		pkg_count = self.merge.pkg_count
+
+		if pkg.installed:
+
+			action_desc = "Uninstalling"
+			preposition = "from"
+
+			portage.writemsg_stdout(
+				">>> %s %s %s %s\n" % \
+				(action_desc, colorize("GOOD", pkg.cpv),
+				preposition, pkg.root), noiselevel=-1)
+
+		else:
+
+			action_desc = "Installing"
+			preposition = "to"
+
+			portage.writemsg_stdout(
+				">>> %s %s %s %s\n" % \
+				(action_desc, colorize("GOOD", pkg.cpv),
+				preposition, pkg.root), noiselevel=-1)
+
 		self.returncode = self.merge.merge()
 		self.wait()
 
@@ -7999,7 +8048,19 @@ class PollSelectAdapter(PollConstants):
 
 		if timeout is not None:
 			select_args = select_args[:]
-			select_args.append(timeout)
+			# Translate poll() timeout args to select() timeout args:
+			#
+			#          | units        | value(s) for indefinite block
+			# ---------|--------------|------------------------------
+			#   poll   | milliseconds | omitted, negative, or None
+			# ---------|--------------|------------------------------
+			#   select | seconds      | omitted
+			# ---------|--------------|------------------------------
+
+			if timeout is not None and timeout < 0:
+				timeout = None
+			if timeout is not None:
+				select_args.append(timeout / 1000)
 
 		select_events = select.select(*select_args)
 		poll_events = []
@@ -8186,7 +8247,7 @@ class PollScheduler(object):
 
 		return True
 
-	def _next_poll_event(self):
+	def _next_poll_event(self, timeout=None):
 		"""
 		Since the _schedule_wait() loop is called by event
 		handlers from _poll_loop(), maintain a central event
@@ -8194,7 +8255,7 @@ class PollScheduler(object):
 		poll() call.
 		"""
 		if not self._poll_event_queue:
-			self._poll_event_queue.extend(self._poll.poll())
+			self._poll_event_queue.extend(self._poll.poll(timeout))
 		return self._poll_event_queue.pop()
 
 	def _poll_loop(self):
@@ -8210,6 +8271,31 @@ class PollScheduler(object):
 
 		if not event_handled:
 			raise AssertionError("tight loop")
+
+	def _schedule_yield(self):
+		"""
+		Schedule for a short period of time chosen by the scheduler based
+		on internal state. Synchronous tasks should call this periodically
+		in order to allow the scheduler to service pending poll events. The
+		scheduler will call poll() exactly once, without blocking, and any
+		resulting poll events will be serviced.
+		"""
+		event_handlers = self._poll_event_handlers
+		events_handled = 0
+
+		if not event_handlers:
+			return bool(events_handled)
+
+		if not self._poll_event_queue:
+			self._poll_event_queue.extend(self._poll.poll(0))
+
+		while event_handlers and self._poll_event_queue:
+			f, event = self._next_poll_event()
+			handler, reg_id = event_handlers[f]
+			handler(f, event)
+			events_handled += 1
+
+		return bool(events_handled)
 
 	def _register(self, f, eventmask, handler):
 		"""
@@ -8352,17 +8438,19 @@ class TaskScheduler(object):
 
 class JobStatusDisplay(object):
 
-	_bound_properties = ("curval", "merges", "running")
+	_bound_properties = ("curval", "running")
 	_jobs_column_width = 45
 
 	def __init__(self, quiet=False):
 		object.__setattr__(self, "quiet", quiet)
 		object.__setattr__(self, "maxval", 0)
+		object.__setattr__(self, "merges", 0)
 		object.__setattr__(self, "_changed", False)
 		self.reset()
 
 	def reset(self):
 		self.maxval = 0
+		self.merges = 0
 		for name in self._bound_properties:
 			object.__setattr__(self, name, 0)
 
@@ -8430,7 +8518,8 @@ class JobStatusDisplay(object):
 			f.pop_style()
 			f.add_literal_data(" running")
 
-		if self.merges:
+		#if self.merges:
+		if False:
 			f.add_literal_data(", ")
 			f.push_style(number_style)
 			f.add_literal_data(merges_str)
@@ -8466,8 +8555,9 @@ class Scheduler(PollScheduler):
 	_fetch_log = EPREFIX + "/var/log/emerge-fetch.log"
 
 	class _iface_class(SlotObject):
-		__slots__ = ("dblinkEbuildPhase", "dblinkDisplayMerge", "fetch",
-			"register", "schedule", "unregister")
+		__slots__ = ("dblinkEbuildPhase", "dblinkDisplayMerge",
+			"dblinkElog", "fetch", "register", "schedule",
+			"scheduleYield", "unregister")
 
 	class _fetch_iface_class(SlotObject):
 		__slots__ = ("log_file", "schedule")
@@ -8535,8 +8625,10 @@ class Scheduler(PollScheduler):
 		self._sched_iface = self._iface_class(
 			dblinkEbuildPhase=self._dblink_ebuild_phase,
 			dblinkDisplayMerge=self._dblink_display_merge,
+			dblinkElog=self._dblink_elog,
 			fetch=fetch_iface, register=self._register,
-			schedule=self._schedule_wait, unregister=self._unregister)
+			schedule=self._schedule_wait, scheduleYield=self._schedule_yield,
+			unregister=self._unregister)
 
 		self._task_queues = self._task_queues_class()
 		for k in self._task_queues.allowed_keys:
@@ -8728,13 +8820,32 @@ class Scheduler(PollScheduler):
 		finally:
 			f.close()
 
+	def _dblink_elog(self, pkg_dblink, phase, func, msgs):
+
+		log_path = pkg_dblink.settings.get("PORTAGE_LOG_FILE")
+		log_file = None
+		out = sys.stdout
+		background = self._max_jobs > 1
+
+		if background and log_path is not None:
+			log_file = open(log_path, 'a')
+			out = log_file
+
+		try:
+			for msg in msgs:
+				func(msg, phase=phase, key=pkg_dblink.mycpv, out=out)
+		finally:
+			if log_file is not None:
+				log_file.close()
+
 	def _dblink_display_merge(self, pkg_dblink, msg, level=0, noiselevel=0):
 		log_path = pkg_dblink.settings.get("PORTAGE_LOG_FILE")
 		background = self._max_jobs > 1
 
 		if log_path is None:
-			portage.util.writemsg_level(msg,
-				level=level, noiselevel=noiselevel)
+			if not (background and level < logging.WARN):
+				portage.util.writemsg_level(msg,
+					level=level, noiselevel=noiselevel)
 		else:
 			if not background:
 				portage.util.writemsg_level(msg,
@@ -8755,26 +8866,11 @@ class Scheduler(PollScheduler):
 		background = self._max_jobs > 1
 		log_path = settings.get("PORTAGE_LOG_FILE")
 
-		if phase == "preinst":
-			msg = ">>> Merging %s to %s\n" % (pkg.cpv, pkg.root)
-			if not background:
-				portage.writemsg_stdout(msg)
-			if log_path is not None:
-				self._append_to_log_path(log_path, msg)
-
 		ebuild_phase = EbuildPhase(background=background,
 			pkg=pkg, phase=phase, scheduler=scheduler,
 			settings=settings, tree=pkg_dblink.treetype)
 		ebuild_phase.start()
 		ebuild_phase.wait()
-
-		if phase == "postinst" and \
-			ebuild_phase.returncode == os.EX_OK:
-			msg = ">>> %s %s\n" % (pkg.cpv, "merged.")
-			if not background:
-				portage.writemsg_stdout(msg)
-			if log_path is not None:
-				self._append_to_log_path(log_path, msg)
 
 		return ebuild_phase.returncode
 
@@ -9568,7 +9664,10 @@ class UninstallFailure(portage.exception.PortageException):
 
 def unmerge(root_config, myopts, unmerge_action,
 	unmerge_files, ldpath_mtimes, autoclean=0,
-	clean_world=1, ordered=0, raise_on_error=0):
+	clean_world=1, clean_delay=1, ordered=0, raise_on_error=0,
+	scheduler=None, writemsg_level=portage.util.writemsg_level):
+
+	quiet = "--quiet" in myopts
 	settings = root_config.settings
 	sets = root_config.sets
 	vartree = root_config.trees["vartree"]
@@ -9925,18 +10024,22 @@ def unmerge(root_config, myopts, unmerge_action,
 			#avoid cluttering the preview printout with stuff that isn't getting unmerged
 			continue
 		if not (pkgmap[x]["protected"] or pkgmap[x]["omitted"]) and cp in syslist:
-			print colorize("BAD","\a\n\n!!! '%s' is part of your system profile." % cp)
-			print colorize("WARN","\a!!! Unmerging it may be damaging to your system.\n")
-			if "--pretend" not in myopts and "--ask" not in myopts:
+			writemsg_level(colorize("BAD","\a\n\n!!! " + \
+				"'%s' is part of your system profile.\n" % cp),
+				level=logging.WARNING, noiselevel=-1)
+			writemsg_level(colorize("WARN","\a!!! Unmerging it may " + \
+				"be damaging to your system.\n\n"),
+				level=logging.WARNING, noiselevel=-1)
+			if clean_delay and "--pretend" not in myopts and "--ask" not in myopts:
 				countdown(int(settings["EMERGE_WARNING_DELAY"]),
 					colorize("UNMERGE_WARN", "Press Ctrl-C to Stop"))
-		if "--quiet" not in myopts:
-			print "\n "+bold(cp)
+		if not quiet:
+			writemsg_level("\n %s\n" % (bold(cp),), noiselevel=-1)
 		else:
-			print bold(cp)+": ",
+			writemsg_level(bold(cp) + ": ", noiselevel=-1)
 		for mytype in ["selected","protected","omitted"]:
-			if "--quiet" not in myopts:
-				portage.writemsg_stdout((mytype + ": ").rjust(14), noiselevel=-1)
+			if not quiet:
+				writemsg_level((mytype + ": ").rjust(14), noiselevel=-1)
 			if pkgmap[x][mytype]:
 				sorted_pkgs = [portage.catpkgsplit(mypkg)[1:] for mypkg in pkgmap[x][mytype]]
 				sorted_pkgs.sort(portage.pkgcmp)
@@ -9946,21 +10049,22 @@ def unmerge(root_config, myopts, unmerge_action,
 					else:
 						myversion = ver + "-" + rev
 					if mytype == "selected":
-						portage.writemsg_stdout(
-							colorize("UNMERGE_WARN", myversion + " "), noiselevel=-1)
+						writemsg_level(
+							colorize("UNMERGE_WARN", myversion + " "),
+							noiselevel=-1)
 					else:
-						portage.writemsg_stdout(
+						writemsg_level(
 							colorize("GOOD", myversion + " "), noiselevel=-1)
 			else:
-				portage.writemsg_stdout("none ", noiselevel=-1)
-			if "--quiet" not in myopts:
-				portage.writemsg_stdout("\n", noiselevel=-1)
-		if "--quiet" in myopts:
-			portage.writemsg_stdout("\n", noiselevel=-1)
+				writemsg_level("none ", noiselevel=-1)
+			if not quiet:
+				writemsg_level("\n", noiselevel=-1)
+		if quiet:
+			writemsg_level("\n", noiselevel=-1)
 
-	portage.writemsg_stdout("\n>>> " + colorize("UNMERGE_WARN", "'Selected'") + \
+	writemsg_level("\n>>> " + colorize("UNMERGE_WARN", "'Selected'") + \
 		" packages are slated for removal.\n")
-	portage.writemsg_stdout(">>> " + colorize("GOOD", "'Protected'") + \
+	writemsg_level(">>> " + colorize("GOOD", "'Protected'") + \
 			" and " + colorize("GOOD", "'omitted'") + \
 			" packages will not be removed.\n\n")
 
@@ -9976,18 +10080,20 @@ def unmerge(root_config, myopts, unmerge_action,
 			print
 			return 0
 	#the real unmerging begins, after a short delay....
-	if not autoclean:
+	if clean_delay and not autoclean:
 		countdown(int(settings["CLEAN_DELAY"]), ">>> Unmerging")
 
 	for x in xrange(len(pkgmap)):
 		for y in pkgmap[x]["selected"]:
-			print ">>> Unmerging "+y+"..."
+			writemsg_level(">>> Unmerging "+y+"...\n", noiselevel=-1)
 			emergelog(xterm_titles, "=== Unmerging... ("+y+")")
 			mysplit = y.split("/")
 			#unmerge...
 			retval = portage.unmerge(mysplit[0], mysplit[1], settings["ROOT"],
 				mysettings, unmerge_action not in ["clean","prune"],
-				vartree=vartree, ldpath_mtimes=ldpath_mtimes)
+				vartree=vartree, ldpath_mtimes=ldpath_mtimes,
+				scheduler=scheduler)
+
 			if retval != os.EX_OK:
 				emergelog(xterm_titles, " !!! unmerge FAILURE: "+y)
 				if raise_on_error:

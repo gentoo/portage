@@ -4303,7 +4303,7 @@ def _post_phase_userpriv_perms(mysettings):
 def _post_src_install_checks(mysettings):
 	_post_src_install_uid_fix(mysettings)
 	global _post_phase_cmds
-	retval = _spawn_misc_sh(mysettings, post_phase_cmds["install"])
+	retval = _spawn_misc_sh(mysettings, _post_phase_cmds["install"])
 	if retval != os.EX_OK:
 		writemsg("!!! install_qa_check failed; exiting.\n",
 			noiselevel=-1)
@@ -5852,9 +5852,10 @@ def merge(mycat, mypkg, pkgloc, infloc, myroot, mysettings, myebuild=None,
 	return mylink.merge(pkgloc, infloc, myroot, myebuild,
 		mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 
-def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None, ldpath_mtimes=None):
-	mylink = dblink(
-		cat, pkg, myroot, mysettings, treetype="vartree", vartree=vartree)
+def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None,
+	ldpath_mtimes=None, scheduler=None):
+	mylink = dblink(cat, pkg, myroot, mysettings, treetype="vartree",
+		vartree=vartree, scheduler=scheduler)
 	try:
 		mylink.lockdb()
 		if mylink.exists():
