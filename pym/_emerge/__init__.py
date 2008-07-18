@@ -8753,8 +8753,9 @@ class Scheduler(PollScheduler):
 		background = self._max_jobs > 1
 
 		if log_path is None:
-			portage.util.writemsg_level(msg,
-				level=level, noiselevel=noiselevel)
+			if not (background and level < logging.WARN):
+				portage.util.writemsg_level(msg,
+					level=level, noiselevel=noiselevel)
 		else:
 			if not background:
 				portage.util.writemsg_level(msg,
