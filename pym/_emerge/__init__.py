@@ -2837,25 +2837,41 @@ class EbuildMerge(SlotObject):
 		logger.log(" ::: completed emerge (%s of %s) %s to %s" % \
 			(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root))
 
-class PackageUninstall(Task):
+class PackageUninstall(AsynchronousTask):
 
-	__hash__ = Task.__hash__
-	__slots__ = ("ldpath_mtimes", "opts", "pkg", "settings")
+	__slots__ = ("ldpath_mtimes", "opts", "pkg", "scheduler", "settings")
 
-	def _get_hash_key(self):
-		hash_key = getattr(self, "_hash_key", None)
-		if hash_key is None:
-			self._hash_key = ("PackageUninstall", self.pkg._get_hash_key())
-		return self._hash_key
-
-	def execute(self):
+	def _start(self):
 		try:
 			unmerge(self.pkg.root_config, self.opts, "unmerge",
 				[self.pkg.cpv], self.ldpath_mtimes, clean_world=0,
-				raise_on_error=1)
+				clean_delay=0, raise_on_error=1, scheduler=self.scheduler,
+				writemsg_level=self._writemsg_level)
 		except UninstallFailure, e:
-			return e.status
-		return os.EX_OK
+			self.returncode = e.status
+		else:
+			self.returncode = os.EX_OK
+		self.wait()
+
+	def _writemsg_level(self, msg, level=0, noiselevel=0):
+
+		log_path = self.settings.get("PORTAGE_LOG_FILE")
+		background = self.background
+
+		if log_path is None:
+			if not (background and level < logging.WARNING):
+				portage.util.writemsg_level(msg,
+					level=level, noiselevel=noiselevel)
+		else:
+			if not background:
+				portage.util.writemsg_level(msg,
+					level=level, noiselevel=noiselevel)
+
+			f = open(log_path, 'a')
+			try:
+				f.write(msg)
+			finally:
+				f.close()
 
 class Binpkg(CompositeTask):
 
@@ -3415,10 +3431,12 @@ class MergeListItem(CompositeTask):
 			if not (build_opts.buildpkgonly or \
 				build_opts.fetchonly or build_opts.pretend):
 
-				uninstall = PackageUninstall(ldpath_mtimes=ldpath_mtimes,
-					opts=self.emerge_opts, pkg=pkg, settings=settings)
+				uninstall = PackageUninstall(background=self.background,
+					ldpath_mtimes=ldpath_mtimes, opts=self.emerge_opts,
+					pkg=pkg, scheduler=scheduler, settings=settings)
 
-				retval = uninstall.execute()
+				uninstall.start()
+				retval = uninstall.wait()
 				if retval != os.EX_OK:
 					return retval
 			return os.EX_OK
@@ -9604,7 +9622,10 @@ class UninstallFailure(portage.exception.PortageException):
 
 def unmerge(root_config, myopts, unmerge_action,
 	unmerge_files, ldpath_mtimes, autoclean=0,
-	clean_world=1, ordered=0, raise_on_error=0):
+	clean_world=1, clean_delay=1, ordered=0, raise_on_error=0,
+	scheduler=None, writemsg_level=portage.util.writemsg_level):
+
+	quiet = "--quiet" in myopts
 	settings = root_config.settings
 	sets = root_config.sets
 	vartree = root_config.trees["vartree"]
@@ -9961,18 +9982,22 @@ def unmerge(root_config, myopts, unmerge_action,
 			#avoid cluttering the preview printout with stuff that isn't getting unmerged
 			continue
 		if not (pkgmap[x]["protected"] or pkgmap[x]["omitted"]) and cp in syslist:
-			print colorize("BAD","\a\n\n!!! '%s' is part of your system profile." % cp)
-			print colorize("WARN","\a!!! Unmerging it may be damaging to your system.\n")
-			if "--pretend" not in myopts and "--ask" not in myopts:
+			writemsg_level(colorize("BAD","\a\n\n!!! " + \
+				"'%s' is part of your system profile.\n" % cp),
+				level=logging.WARNING, noiselevel=-1)
+			writemsg_level(colorize("WARN","\a!!! Unmerging it may " + \
+				"be damaging to your system.\n\n"),
+				level=logging.WARNING, noiselevel=-1)
+			if clean_delay and "--pretend" not in myopts and "--ask" not in myopts:
 				countdown(int(settings["EMERGE_WARNING_DELAY"]),
 					colorize("UNMERGE_WARN", "Press Ctrl-C to Stop"))
-		if "--quiet" not in myopts:
-			print "\n "+bold(cp)
+		if not quiet:
+			writemsg_level("\n %s\n" % (bold(cp),), noiselevel=-1)
 		else:
-			print bold(cp)+": ",
+			writemsg_level(bold(cp) + ": ", noiselevel=-1)
 		for mytype in ["selected","protected","omitted"]:
-			if "--quiet" not in myopts:
-				portage.writemsg_stdout((mytype + ": ").rjust(14), noiselevel=-1)
+			if not quiet:
+				writemsg_level((mytype + ": ").rjust(14), noiselevel=-1)
 			if pkgmap[x][mytype]:
 				sorted_pkgs = [portage.catpkgsplit(mypkg)[1:] for mypkg in pkgmap[x][mytype]]
 				sorted_pkgs.sort(portage.pkgcmp)
@@ -9982,21 +10007,22 @@ def unmerge(root_config, myopts, unmerge_action,
 					else:
 						myversion = ver + "-" + rev
 					if mytype == "selected":
-						portage.writemsg_stdout(
-							colorize("UNMERGE_WARN", myversion + " "), noiselevel=-1)
+						writemsg_level(
+							colorize("UNMERGE_WARN", myversion + " "),
+							noiselevel=-1)
 					else:
-						portage.writemsg_stdout(
+						writemsg_level(
 							colorize("GOOD", myversion + " "), noiselevel=-1)
 			else:
-				portage.writemsg_stdout("none ", noiselevel=-1)
-			if "--quiet" not in myopts:
-				portage.writemsg_stdout("\n", noiselevel=-1)
-		if "--quiet" in myopts:
-			portage.writemsg_stdout("\n", noiselevel=-1)
+				writemsg_level("none ", noiselevel=-1)
+			if not quiet:
+				writemsg_level("\n", noiselevel=-1)
+		if quiet:
+			writemsg_level("\n", noiselevel=-1)
 
-	portage.writemsg_stdout("\n>>> " + colorize("UNMERGE_WARN", "'Selected'") + \
+	writemsg_level("\n>>> " + colorize("UNMERGE_WARN", "'Selected'") + \
 		" packages are slated for removal.\n")
-	portage.writemsg_stdout(">>> " + colorize("GOOD", "'Protected'") + \
+	writemsg_level(">>> " + colorize("GOOD", "'Protected'") + \
 			" and " + colorize("GOOD", "'omitted'") + \
 			" packages will not be removed.\n\n")
 
@@ -10012,18 +10038,20 @@ def unmerge(root_config, myopts, unmerge_action,
 			print
 			return 0
 	#the real unmerging begins, after a short delay....
-	if not autoclean:
+	if clean_delay and not autoclean:
 		countdown(int(settings["CLEAN_DELAY"]), ">>> Unmerging")
 
 	for x in xrange(len(pkgmap)):
 		for y in pkgmap[x]["selected"]:
-			print ">>> Unmerging "+y+"..."
+			writemsg_level(">>> Unmerging "+y+"...\n", noiselevel=-1)
 			emergelog(xterm_titles, "=== Unmerging... ("+y+")")
 			mysplit = y.split("/")
 			#unmerge...
 			retval = portage.unmerge(mysplit[0], mysplit[1], settings["ROOT"],
 				mysettings, unmerge_action not in ["clean","prune"],
-				vartree=vartree, ldpath_mtimes=ldpath_mtimes)
+				vartree=vartree, ldpath_mtimes=ldpath_mtimes,
+				scheduler=scheduler)
+
 			if retval != os.EX_OK:
 				emergelog(xterm_titles, " !!! unmerge FAILURE: "+y)
 				if raise_on_error:

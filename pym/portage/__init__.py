@@ -5803,9 +5803,10 @@ def merge(mycat, mypkg, pkgloc, infloc, myroot, mysettings, myebuild=None,
 	return mylink.merge(pkgloc, infloc, myroot, myebuild,
 		mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 
-def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None, ldpath_mtimes=None):
-	mylink = dblink(
-		cat, pkg, myroot, mysettings, treetype="vartree", vartree=vartree)
+def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None,
+	ldpath_mtimes=None, scheduler=None):
+	mylink = dblink(cat, pkg, myroot, mysettings, treetype="vartree",
+		vartree=vartree, scheduler=scheduler)
 	try:
 		mylink.lockdb()
 		if mylink.exists():
