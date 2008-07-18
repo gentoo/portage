@@ -2344,19 +2344,30 @@ class dblink(object):
 			suspicious_hardlinks.append(path_list)
 		if not suspicious_hardlinks:
 			return 0
-		from portage.output import colorize
-		prefix = colorize("SECURITY_WARN", "*") + " WARNING: "
-		showMessage(prefix + "suid/sgid file(s) " + \
-			"with suspicious hardlink(s):\n",
-			level=logging.ERROR, noiselevel=-1)
+
+		msg = []
+		msg.append("suid/sgid file(s) " + \
+			"with suspicious hardlink(s):")
+		msg.append("")
 		for path_list in suspicious_hardlinks:
 			for path, s in path_list:
-				showMessage(prefix + "  '%s'\n" % path,
-					level=logging.ERROR, noiselevel=-1)
-		showMessage(prefix + "See the Gentoo Security Handbook " + \
-			"guide for advice on how to proceed.\n",
-			level=logging.ERROR, noiselevel=-1)
+				msg.append("\t%s" % path)
+		msg.append("")
+		msg.append("See the Gentoo Security Handbook " + \
+			"guide for advice on how to proceed.")
+
+		self._eerror("preinst", msg)
+
 		return 1
+
+	def _eerror(self, phase, lines):
+		from portage.elog.messages import eerror as _eerror
+		if self._scheduler is None:
+			for l in lines:
+				_eerror(l, phase=phase, key=self.settings.mycpv)
+		else:
+			self._scheduler.dblinkElog(self,
+				phase, _eerror, lines)
 
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
