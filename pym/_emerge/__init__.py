@@ -8422,9 +8422,7 @@ class JobStatusDisplay(object):
 
 		isatty = hasattr(out, "isatty") and out.isatty()
 		object.__setattr__(self, "_isatty", isatty)
-		if isatty:
-			self._init_term()
-		else:
+		if not isatty or not self._init_term():
 			term_codes = {}
 			for k, capname in self._termcap_name_map.iteritems():
 				term_codes[k] = self._default_term_codes[capname]
@@ -8433,6 +8431,9 @@ class JobStatusDisplay(object):
 	def _init_term(self):
 		"""
 		Initialize term control codes.
+		@rtype: bool
+		@returns: True if term codes were successfully initialized,
+			False otherwise.
 		"""
 
 		term_type = os.environ.get("TERM", "vt100")
@@ -8449,13 +8450,16 @@ class JobStatusDisplay(object):
 			pass
 
 		if tigetstr is None:
-			def tigetstr(capname):
-				return self._default_term_codes[capname]
+			return False
 
 		term_codes = {}
 		for k, capname in self._termcap_name_map.iteritems():
-			term_codes[k] = tigetstr(capname)
+			code = tigetstr(capname)
+			if code is None:
+				code = self._default_term_codes[capname]
+			term_codes[k] = code
 		object.__setattr__(self, "_term_codes", term_codes)
+		return True
 
 	def _format_msg(self, msg):
 		return ">>> %s" % msg
