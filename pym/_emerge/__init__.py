@@ -8388,18 +8388,106 @@ class JobStatusDisplay(object):
 	_bound_properties = ("curval", "running")
 	_jobs_column_width = 45
 
-	def __init__(self, quiet=False):
+	_default_term_codes = {
+		'cr'  : '\r',
+		'el'  : '\x1b[K',
+		'nel' : '\n',
+	}
+
+	_termcap_name_map = {
+		'carriage_return' : 'cr',
+		'clr_eol'         : 'el',
+		'newline'         : 'nel',
+	}
+
+	def __init__(self, out=sys.stdout, quiet=False):
+		object.__setattr__(self, "out", out)
 		object.__setattr__(self, "quiet", quiet)
 		object.__setattr__(self, "maxval", 0)
 		object.__setattr__(self, "merges", 0)
 		object.__setattr__(self, "_changed", False)
+		object.__setattr__(self, "_displayed", False)
 		self.reset()
+
+		isatty = hasattr(out, "isatty") and out.isatty()
+		object.__setattr__(self, "_isatty", isatty)
+		if isatty:
+			self._init_term()
+		else:
+			term_codes = {}
+			for k, capname in self._termcap_name_map.iteritems():
+				term_codes[k] = self._default_term_codes[capname]
+			object.__setattr__(self, "_term_codes", term_codes)
+
+	def _init_term(self):
+		"""
+		Initialize term control codes.
+		"""
+
+		term_type = os.environ.get("TERM", "vt100")
+		tigetstr = None
+
+		try:
+			import curses
+			try:
+				curses.setupterm(term_type, self.out.fileno())
+				tigetstr = curses.tigetstr
+			except curses.error:
+				pass
+		except ImportError:
+			pass
+
+		if tigetstr is None:
+			def tigetstr(capname):
+				return self._default_term_codes[capname]
+
+		term_codes = {}
+		for k, capname in self._termcap_name_map.iteritems():
+			term_codes[k] = tigetstr(capname)
+		object.__setattr__(self, "_term_codes", term_codes)
+
+	def _format_msg(self, msg):
+		return ">>> %s" % msg
+
+	def _erase(self):
+		self.out.write(
+			self._term_codes['carriage_return'] + \
+			self._term_codes['clr_eol'])
+		self._displayed = False
+
+	def _display(self, line):
+		self.out.write(line)
+		self._displayed = True
+
+	def _update(self, msg):
+
+		out = self.out
+		if not self._isatty:
+			out.write(self._format_msg(msg) + self._term_codes['newline'])
+			return
+
+		if self._displayed:
+			self._erase()
+
+		self._display(self._format_msg(msg))
+
+	def displayMessage(self, msg):
+
+		if self._isatty and self._displayed:
+			self._erase()
+
+		self.out.write(self._format_msg(msg) + self._term_codes['newline'])
+		self._displayed = False
 
 	def reset(self):
 		self.maxval = 0
 		self.merges = 0
 		for name in self._bound_properties:
 			object.__setattr__(self, name, 0)
+
+		if self._displayed:
+			self.out.write(self._term_codes['newline'])
+			self._displayed = False
 
 	def __setattr__(self, name, value):
 		old_value = getattr(self, name)
@@ -8482,8 +8570,7 @@ class JobStatusDisplay(object):
 		f.add_literal_data("Load average: ")
 		f.add_literal_data(load_avg_str)
 
-		portage.writemsg_stdout(">>> %s\n" % \
-			(color_output.getvalue(),), noiselevel=-1)
+		self._update(color_output.getvalue())
 		xtermTitle(plain_output.getvalue())
 
 class Scheduler(PollScheduler):
@@ -9374,8 +9461,7 @@ class Scheduler(PollScheduler):
 		@param msg: a brief status message (no newlines allowed)
 		"""
 
-		# TODO: Let self._status_display handle this.
-		portage.util.writemsg_level(">>> %s\n" % msg, noiselevel=-1)
+		self._status_display.displayMessage(msg)
 
 	def _save_resume_list(self):
 		"""
