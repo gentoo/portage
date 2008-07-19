@@ -9460,11 +9460,14 @@ class Scheduler(PollScheduler):
 
 		state_change = 0
 
-		while not self._choose_pkg_return_early and \
-			self._can_add_job():
+		while True:
 
 			if not self._pkg_queue or self._failed_pkgs:
 				return (False, state_change)
+
+			if self._choose_pkg_return_early or \
+				not self._can_add_job():
+				return (True, state_change)
 
 			pkg = self._choose_pkg()
 			if pkg is None:
