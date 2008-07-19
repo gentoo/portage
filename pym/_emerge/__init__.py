@@ -3328,7 +3328,7 @@ class MergeListItem(CompositeTask):
 		"binpkg_opts", "build_opts", "emerge_opts",
 		"failed_fetches", "find_blockers", "logger", "mtimedb", "pkg",
 		"pkg_count", "pkg_to_replace", "prefetcher",
-		"settings", "world_atom") + \
+		"settings", "statusMessage", "world_atom") + \
 		("_install_task",)
 
 	def _start(self):
@@ -3358,16 +3358,13 @@ class MergeListItem(CompositeTask):
 			action_desc = "Extracting"
 
 		if not build_opts.pretend:
-			extra_newline = "\n"
-			if self.background:
-				extra_newline = ""
-			portage.writemsg_stdout(
-				"%s>>> %s (%s of %s) %s %s %s\n" % \
-				(extra_newline, action_desc,
+
+			self.statusMessage("%s (%s of %s) %s %s %s" % \
+				(action_desc,
 				colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
 				colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)),
-				colorize("GOOD", pkg.cpv), preposition, pkg.root),
-				noiselevel=-1)
+				colorize("GOOD", pkg.cpv), preposition, pkg.root))
+
 			logger.log(" >>> emerge (%s of %s) %s to %s" % \
 				(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root))
 
@@ -3462,24 +3459,15 @@ class PackageMerge(AsynchronousTask):
 		pkg_count = self.merge.pkg_count
 
 		if pkg.installed:
-
 			action_desc = "Uninstalling"
 			preposition = "from"
-
-			portage.writemsg_stdout(
-				">>> %s %s %s %s\n" % \
-				(action_desc, colorize("GOOD", pkg.cpv),
-				preposition, pkg.root), noiselevel=-1)
-
 		else:
-
 			action_desc = "Installing"
 			preposition = "to"
 
-			portage.writemsg_stdout(
-				">>> %s %s %s %s\n" % \
-				(action_desc, colorize("GOOD", pkg.cpv),
-				preposition, pkg.root), noiselevel=-1)
+		self.merge.statusMessage("%s %s %s %s" % \
+			(action_desc, colorize("GOOD", pkg.cpv),
+			preposition, pkg.root))
 
 		self.returncode = self.merge.merge()
 		self.wait()
@@ -9369,9 +9357,25 @@ class Scheduler(PollScheduler):
 			prefetcher=self._prefetchers.get(pkg),
 			scheduler=self._sched_iface,
 			settings=self._allocate_config(pkg.root),
+			statusMessage=self._status_msg,
 			world_atom=self._world_atom)
 
 		return task
+
+	def _status_msg(self, msg):
+		"""
+		Display a brief status message (no newlines) in the status display.
+		This is called by tasks to provide feedback to the user. This
+		delegates the resposibility of generating \r and \n control characters,
+		to guarantee that lines are created or erased when necessary and
+		appropriate.
+
+		@type msg: str
+		@param msg: a brief status message (no newlines allowed)
+		"""
+
+		# TODO: Let self._status_display handle this.
+		portage.util.writemsg_level(">>> %s\n" % msg, noiselevel=-1)
 
 	def _save_resume_list(self):
 		"""
