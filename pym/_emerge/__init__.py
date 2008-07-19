@@ -8392,7 +8392,11 @@ class TaskScheduler(object):
 class JobStatusDisplay(object):
 
 	_bound_properties = ("curval", "running")
-	_jobs_column_width = 45
+	_jobs_column_width = 42
+
+	# Don't update the display unless at least this much
+	# time has passed, in units of seconds.
+	_min_display_latency = 2
 
 	_default_term_codes = {
 		'cr'  : '\r',
@@ -8413,6 +8417,7 @@ class JobStatusDisplay(object):
 		object.__setattr__(self, "merges", 0)
 		object.__setattr__(self, "_changed", False)
 		object.__setattr__(self, "_displayed", False)
+		object.__setattr__(self, "_last_display_time", 0)
 		self.reset()
 
 		isatty = hasattr(out, "isatty") and out.isatty()
@@ -8512,7 +8517,7 @@ class JobStatusDisplay(object):
 	def _property_change(self, name, old_value, new_value):
 		self._changed = True
 
-	def _load_avg_str(self, digits=1):
+	def _load_avg_str(self, digits=2):
 		try:
 			avg = os.getloadavg()
 		except OSError, e:
@@ -8527,10 +8532,21 @@ class JobStatusDisplay(object):
 
 		if self.quiet:
 			return
-		if not self._changed:
-			return
-		self._changed = False
 
+		current_time = time.time()
+		time_delta = current_time - self._last_display_time
+		if self._displayed and \
+			not self._changed:
+			if not self._isatty:
+				return
+			if time_delta < self._min_display_latency:
+				return
+
+		self._last_display_time = current_time
+		self._changed = False
+		self._display_status()
+
+	def _display_status(self):
 		# Don't use len(self._completed_tasks) here since that also
 		# can include uninstall tasks.
 		curval_str = str(self.curval)
@@ -8739,6 +8755,10 @@ class Scheduler(PollScheduler):
 			cpv = portage_match.pop()
 			self._running_portage = self._pkg(cpv, "installed",
 				self._running_root, installed=True)
+
+	def _poll(self, timeout=None):
+		self._status_display.display()
+		return PollScheduler._poll(self, timeout=timeout)
 
 	def _set_max_jobs(self, max_jobs):
 		self._max_jobs = max_jobs
