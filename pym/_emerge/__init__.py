@@ -8781,8 +8781,8 @@ class Scheduler(PollScheduler):
 		"""
 		The uninstall is performed only after blocking packages have been
 		merged on top of it (similar to how a normal upgrade is performed
-		by first merging the new version on top of the onld version). This
-		is implemented by reversing the the parent -> uninstall edges in
+		by first merging the new version on top of the old version). This
+		is implemented by reversing the parent -> uninstall edges in
 		the graph.
 		"""
 
