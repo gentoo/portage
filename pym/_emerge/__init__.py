@@ -8701,6 +8701,12 @@ class Scheduler(PollScheduler):
 			setattr(self._task_queues, k,
 				SequentialTaskQueue(auto_schedule=True))
 
+		# Merge tasks currently run synchronously which makes
+		# it necessary to disable auto_schedule in order to
+		# avoid excess recursion which prevents tasks from
+		# being marked complete as soon as they should be.
+		self._task_queues.merge.auto_schedule = False
+
 		self._prefetchers = weakref.WeakValueDictionary()
 		self._pkg_queue = []
 		self._completed_tasks = set()
@@ -9274,11 +9280,11 @@ class Scheduler(PollScheduler):
 	def _merge_exit(self, merge):
 		self._do_merge_exit(merge)
 		self._deallocate_config(merge.merge.settings)
-		self._schedule()
 		if merge.returncode == os.EX_OK and \
 			not merge.merge.pkg.installed:
 			self._status_display.curval += 1
 		self._status_display.merges = len(self._task_queues.merge)
+		self._schedule()
 
 	def _do_merge_exit(self, merge):
 		pkg = merge.merge.pkg
@@ -9446,6 +9452,7 @@ class Scheduler(PollScheduler):
 
 	def _schedule_tasks(self):
 		remaining, state_change = self._schedule_tasks_imp()
+		self._task_queues.merge.schedule()
 		self._status_display.display()
 		return remaining
 
