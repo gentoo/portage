@@ -8719,6 +8719,7 @@ class Scheduler(PollScheduler):
 			max_jobs = 1
 		self._set_max_jobs(max_jobs)
 		background = self._background_mode()
+		self._background = background
 
 		self._max_load = myopts.get("--load-average")
 
@@ -8757,7 +8758,7 @@ class Scheduler(PollScheduler):
 				self._running_root, installed=True)
 
 	def _poll(self, timeout=None):
-		self._status_display.display()
+		self._schedule()
 		return PollScheduler._poll(self, timeout=timeout)
 
 	def _set_max_jobs(self, max_jobs):
@@ -8765,7 +8766,22 @@ class Scheduler(PollScheduler):
 		self._task_queues.jobs.max_jobs = max_jobs
 
 	def _background_mode(self):
-		return self._max_jobs > 1 or "--quiet" in self.myopts
+		"""
+		Check if background mode is enabled and adjust states as necessary.
+
+		@rtype: bool
+		@returns: True if background mode is enabled, False otherwise.
+		"""
+		background = self._max_jobs > 1 or "--quiet" in self.myopts
+
+		self._logger.parallel = background
+
+		self._status_display.quiet = \
+			not background or \
+			("--quiet" in self.myopts and \
+			"--verbose" not in self.myopts)
+
+		return background
 
 	def _set_digraph(self, digraph):
 		if self._max_jobs < 2:
@@ -9405,8 +9421,7 @@ class Scheduler(PollScheduler):
 
 	def _schedule_tasks(self):
 		remaining, state_change = self._schedule_tasks_imp()
-		if state_change:
-			self._status_display.display()
+		self._status_display.display()
 		return remaining
 
 	def _schedule_tasks_imp(self):
@@ -9416,12 +9431,7 @@ class Scheduler(PollScheduler):
 		"""
 
 		task_queues = self._task_queues
-		background = self._background_mode()
-		self._logger.parallel = background
-		self._status_display.quiet = \
-			not background or \
-			("--quiet" in self.myopts and \
-			"--verbose" not in self.myopts)
+		background = self._background
 
 		state_change = 0
 
