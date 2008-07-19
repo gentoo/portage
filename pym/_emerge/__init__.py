@@ -8767,7 +8767,7 @@ class Scheduler(PollScheduler):
 				self._running_root, installed=True)
 
 	def _poll(self, timeout=None):
-		self._schedule()
+		self._status_display.display()
 		return PollScheduler._poll(self, timeout=timeout)
 
 	def _set_max_jobs(self, max_jobs):
