@@ -97,7 +97,7 @@ def elog_process(cpv, mysettings, phasefilter=None):
 
 		# in case the filters matched all messages and no module overrides exist
 		if len(default_logentries) == 0 and (not ":" in mysettings.get("PORTAGE_ELOG_SYSTEM", "")):
-			return
+			continue
 
 		default_fulllog = _combine_logentries(default_logentries)
 
