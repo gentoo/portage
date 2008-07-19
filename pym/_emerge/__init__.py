@@ -8473,11 +8473,17 @@ class JobStatusDisplay(object):
 
 	def displayMessage(self, msg):
 
+		was_displayed = self._displayed
+
 		if self._isatty and self._displayed:
 			self._erase()
 
 		self.out.write(self._format_msg(msg) + self._term_codes['newline'])
 		self._displayed = False
+
+		if was_displayed:
+			self._changed = True
+			self.display()
 
 	def reset(self):
 		self.maxval = 0
