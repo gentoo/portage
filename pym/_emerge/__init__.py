@@ -8151,7 +8151,7 @@ class PollScheduler(object):
 		self._poll_event_handler_ids = {}
 		# Increment id for each new handler.
 		self._event_handler_id = 0
-		self._poll = create_poll_instance()
+		self._poll_obj = create_poll_instance()
 		self._scheduling = False
 
 	def _schedule(self):
@@ -8194,6 +8194,12 @@ class PollScheduler(object):
 
 		return True
 
+	def _poll(self, timeout=None):
+		"""
+		All poll() calls pass through here.
+		"""
+		return self._poll_obj.poll(timeout)
+
 	def _next_poll_event(self, timeout=None):
 		"""
 		Since the _schedule_wait() loop is called by event
@@ -8202,7 +8208,7 @@ class PollScheduler(object):
 		poll() call.
 		"""
 		if not self._poll_event_queue:
-			self._poll_event_queue.extend(self._poll.poll(timeout))
+			self._poll_event_queue.extend(self._poll(timeout))
 		return self._poll_event_queue.pop()
 
 	def _poll_loop(self):
@@ -8234,7 +8240,7 @@ class PollScheduler(object):
 			return bool(events_handled)
 
 		if not self._poll_event_queue:
-			self._poll_event_queue.extend(self._poll.poll(0))
+			self._poll_event_queue.extend(self._poll(0))
 
 		while event_handlers and self._poll_event_queue:
 			f, event = self._next_poll_event()
@@ -8256,12 +8262,12 @@ class PollScheduler(object):
 		reg_id = self._event_handler_id
 		self._poll_event_handler_ids[reg_id] = f
 		self._poll_event_handlers[f] = (handler, reg_id)
-		self._poll.register(f, eventmask)
+		self._poll_obj.register(f, eventmask)
 		return reg_id
 
 	def _unregister(self, reg_id):
 		f = self._poll_event_handler_ids[reg_id]
-		self._poll.unregister(f)
+		self._poll_obj.unregister(f)
 		del self._poll_event_handlers[f]
 		del self._poll_event_handler_ids[reg_id]
 
