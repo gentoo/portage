@@ -8964,7 +8964,7 @@ class Scheduler(PollScheduler):
 
 			if not shown_verifying_msg:
 				shown_verifying_msg = True
-				print ">>> Verifying ebuild Manifests..."
+				self._status_msg("Verifying ebuild manifests")
 
 			root_config = x.root_config
 			portdb = root_config.trees["porttree"].dbapi
@@ -8981,7 +8981,7 @@ class Scheduler(PollScheduler):
 			return
 
 		if self._parallel_fetch:
-			portage.writemsg(">>> starting parallel fetch\n")
+			self._status_msg("Starting parallel fetch")
 
 			prefetchers = self._prefetchers
 			getbinpkg = "--getbinpkg" in self.myopts
