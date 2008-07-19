@@ -8729,6 +8729,11 @@ class Scheduler(PollScheduler):
 
 		self._set_digraph(digraph)
 
+		# This is used to memoize the _choose_pkg() result when
+		# no packages can be chosen until one of the existing
+		# jobs completes.
+		self._choose_pkg_return_early = False
+
 		features = self.settings.features
 		if "parallel-fetch" in features and \
 			not ("--pretend" in self.myopts or \
@@ -9281,14 +9286,14 @@ class Scheduler(PollScheduler):
 			self._failed_pkgs.append((pkg, merge.returncode))
 			return
 
-		self._completed_tasks.add(pkg)
+		self._task_complete(pkg)
 		pkg_to_replace = merge.merge.pkg_to_replace
 		if pkg_to_replace is not None:
 			# When a package is replaced, mark it's uninstall
 			# task complete (if any).
 			uninst_hash_key = \
 				("installed", pkg.root, pkg_to_replace.cpv, "uninstall")
-			self._completed_tasks.add(uninst_hash_key)
+			self._task_complete(uninst_hash_key)
 
 		if pkg.installed:
 			return
@@ -9322,6 +9327,10 @@ class Scheduler(PollScheduler):
 	def _extract_exit(self, build):
 		self._build_exit(build)
 
+	def _task_complete(self, pkg):
+		self._completed_tasks.add(pkg)
+		self._choose_pkg_return_early = False
+
 	def _merge(self):
 
 		self._add_prefetchers()
@@ -9344,6 +9353,7 @@ class Scheduler(PollScheduler):
 	def _main_loop_cleanup(self):
 		del self._pkg_queue[:]
 		self._completed_tasks.clear()
+		self._choose_pkg_return_early = False
 		self._status_display.reset()
 		self._digraph = None
 		self._task_queues.fetch.clear()
@@ -9352,6 +9362,10 @@ class Scheduler(PollScheduler):
 		"""
 		Choose a task that has all it's dependencies satisfied.
 		"""
+
+		if self._choose_pkg_return_early:
+			return None
+
 		if self._max_jobs < 2 or self._jobs == 0:
 			return self._pkg_queue.pop(0)
 
@@ -9365,6 +9379,13 @@ class Scheduler(PollScheduler):
 
 		if chosen_pkg is not None:
 			self._pkg_queue.remove(chosen_pkg)
+
+		if chosen_pkg is None:
+			# There's no point in searching for a package to
+			# choose until at least one of the existing jobs
+			# completes.
+			self._choose_pkg_return_early = True
+
 		return chosen_pkg
 
 	def _dependent_on_scheduled_merges(self, pkg):
