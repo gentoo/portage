@@ -8914,7 +8914,7 @@ class Scheduler(PollScheduler):
 		log_path = pkg_dblink.settings.get("PORTAGE_LOG_FILE")
 		log_file = None
 		out = sys.stdout
-		background = self._background_mode()
+		background = self._background
 
 		if background and log_path is not None:
 			log_file = open(log_path, 'a')
@@ -8929,7 +8929,7 @@ class Scheduler(PollScheduler):
 
 	def _dblink_display_merge(self, pkg_dblink, msg, level=0, noiselevel=0):
 		log_path = pkg_dblink.settings.get("PORTAGE_LOG_FILE")
-		background = self._background_mode()
+		background = self._background
 
 		if log_path is None:
 			if not (background and level < logging.WARN):
@@ -8952,7 +8952,7 @@ class Scheduler(PollScheduler):
 		scheduler = self._sched_iface
 		settings = pkg_dblink.settings
 		pkg = self._dblink_pkg(pkg_dblink)
-		background = self._background_mode()
+		background = self._background
 		log_path = settings.get("PORTAGE_LOG_FILE")
 
 		ebuild_phase = EbuildPhase(background=background,
@@ -9211,7 +9211,7 @@ class Scheduler(PollScheduler):
 
 		self._logger.log(" *** Finished. Cleaning up...")
 
-		background = self._background_mode()
+		background = self._background
 		if self._failed_pkgs_all and background and \
 			self._failed_pkgs_die_msgs and \
 			not _flush_elog_mod_echo():
