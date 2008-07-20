@@ -8196,9 +8196,10 @@ class PollScheduler(object):
 
 	def _poll(self, timeout=None):
 		"""
-		All poll() calls pass through here.
+		All poll() calls pass through here. The poll events
+		are added directly to self._poll_event_queue.
 		"""
-		return self._poll_obj.poll(timeout)
+		self._poll_event_queue.extend(self._poll_obj.poll(timeout))
 
 	def _next_poll_event(self, timeout=None):
 		"""
@@ -8208,7 +8209,7 @@ class PollScheduler(object):
 		poll() call.
 		"""
 		if not self._poll_event_queue:
-			self._poll_event_queue.extend(self._poll(timeout))
+			self._poll(timeout)
 		return self._poll_event_queue.pop()
 
 	def _poll_loop(self):
@@ -8240,7 +8241,7 @@ class PollScheduler(object):
 			return bool(events_handled)
 
 		if not self._poll_event_queue:
-			self._poll_event_queue.extend(self._poll(0))
+			self._poll(0)
 
 		while event_handlers and self._poll_event_queue:
 			f, event = self._next_poll_event()
@@ -8773,8 +8774,8 @@ class Scheduler(PollScheduler):
 				self._running_root, installed=True)
 
 	def _poll(self, timeout=None):
-		self._status_display.display()
-		return PollScheduler._poll(self, timeout=timeout)
+		self._schedule()
+		PollScheduler._poll(self, timeout=timeout)
 
 	def _set_max_jobs(self, max_jobs):
 		self._max_jobs = max_jobs
