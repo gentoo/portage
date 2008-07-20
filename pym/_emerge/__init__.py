@@ -3355,7 +3355,7 @@ class MergeListItem(CompositeTask):
 		"binpkg_opts", "build_opts", "emerge_opts",
 		"failed_fetches", "find_blockers", "logger", "mtimedb", "pkg",
 		"pkg_count", "pkg_to_replace", "prefetcher",
-		"settings", "world_atom") + \
+		"settings", "statusMessage", "world_atom") + \
 		("_install_task",)
 
 	def _start(self):
@@ -3385,16 +3385,13 @@ class MergeListItem(CompositeTask):
 			action_desc = "Extracting"
 
 		if not build_opts.pretend:
-			extra_newline = "\n"
-			if self.background:
-				extra_newline = ""
-			portage.writemsg_stdout(
-				"%s>>> %s (%s of %s) %s %s %s\n" % \
-				(extra_newline, action_desc,
+
+			self.statusMessage("%s (%s of %s) %s %s %s" % \
+				(action_desc,
 				colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
 				colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)),
-				colorize("GOOD", pkg.cpv), preposition, pkg.root),
-				noiselevel=-1)
+				colorize("GOOD", pkg.cpv), preposition, pkg.root))
+
 			logger.log(" >>> emerge (%s of %s) %s to %s" % \
 				(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root))
 
@@ -3489,24 +3486,15 @@ class PackageMerge(AsynchronousTask):
 		pkg_count = self.merge.pkg_count
 
 		if pkg.installed:
-
 			action_desc = "Uninstalling"
 			preposition = "from"
-
-			portage.writemsg_stdout(
-				">>> %s %s %s %s\n" % \
-				(action_desc, colorize("GOOD", pkg.cpv),
-				preposition, pkg.root), noiselevel=-1)
-
 		else:
-
 			action_desc = "Installing"
 			preposition = "to"
 
-			portage.writemsg_stdout(
-				">>> %s %s %s %s\n" % \
-				(action_desc, colorize("GOOD", pkg.cpv),
-				preposition, pkg.root), noiselevel=-1)
+		self.merge.statusMessage("%s %s %s %s" % \
+			(action_desc, colorize("GOOD", pkg.cpv),
+			preposition, pkg.root))
 
 		self.returncode = self.merge.merge()
 		self.wait()
@@ -8204,7 +8192,7 @@ class PollScheduler(object):
 		self._poll_event_handler_ids = {}
 		# Increment id for each new handler.
 		self._event_handler_id = 0
-		self._poll = create_poll_instance()
+		self._poll_obj = create_poll_instance()
 		self._scheduling = False
 
 	def _schedule(self):
@@ -8247,6 +8235,12 @@ class PollScheduler(object):
 
 		return True
 
+	def _poll(self, timeout=None):
+		"""
+		All poll() calls pass through here.
+		"""
+		return self._poll_obj.poll(timeout)
+
 	def _next_poll_event(self, timeout=None):
 		"""
 		Since the _schedule_wait() loop is called by event
@@ -8255,7 +8249,7 @@ class PollScheduler(object):
 		poll() call.
 		"""
 		if not self._poll_event_queue:
-			self._poll_event_queue.extend(self._poll.poll(timeout))
+			self._poll_event_queue.extend(self._poll(timeout))
 		return self._poll_event_queue.pop()
 
 	def _poll_loop(self):
@@ -8287,7 +8281,7 @@ class PollScheduler(object):
 			return bool(events_handled)
 
 		if not self._poll_event_queue:
-			self._poll_event_queue.extend(self._poll.poll(0))
+			self._poll_event_queue.extend(self._poll(0))
 
 		while event_handlers and self._poll_event_queue:
 			f, event = self._next_poll_event()
@@ -8309,12 +8303,12 @@ class PollScheduler(object):
 		reg_id = self._event_handler_id
 		self._poll_event_handler_ids[reg_id] = f
 		self._poll_event_handlers[f] = (handler, reg_id)
-		self._poll.register(f, eventmask)
+		self._poll_obj.register(f, eventmask)
 		return reg_id
 
 	def _unregister(self, reg_id):
 		f = self._poll_event_handler_ids[reg_id]
-		self._poll.unregister(f)
+		self._poll_obj.unregister(f)
 		del self._poll_event_handlers[f]
 		del self._poll_event_handler_ids[reg_id]
 
@@ -8439,20 +8433,123 @@ class TaskScheduler(object):
 class JobStatusDisplay(object):
 
 	_bound_properties = ("curval", "running")
-	_jobs_column_width = 45
+	_jobs_column_width = 42
 
-	def __init__(self, quiet=False):
+	# Don't update the display unless at least this much
+	# time has passed, in units of seconds.
+	_min_display_latency = 2
+
+	_default_term_codes = {
+		'cr'  : '\r',
+		'el'  : '\x1b[K',
+		'nel' : '\n',
+	}
+
+	_termcap_name_map = {
+		'carriage_return' : 'cr',
+		'clr_eol'         : 'el',
+		'newline'         : 'nel',
+	}
+
+	def __init__(self, out=sys.stdout, quiet=False):
+		object.__setattr__(self, "out", out)
 		object.__setattr__(self, "quiet", quiet)
 		object.__setattr__(self, "maxval", 0)
 		object.__setattr__(self, "merges", 0)
 		object.__setattr__(self, "_changed", False)
+		object.__setattr__(self, "_displayed", False)
+		object.__setattr__(self, "_last_display_time", 0)
 		self.reset()
+
+		isatty = hasattr(out, "isatty") and out.isatty()
+		object.__setattr__(self, "_isatty", isatty)
+		if not isatty or not self._init_term():
+			term_codes = {}
+			for k, capname in self._termcap_name_map.iteritems():
+				term_codes[k] = self._default_term_codes[capname]
+			object.__setattr__(self, "_term_codes", term_codes)
+
+	def _init_term(self):
+		"""
+		Initialize term control codes.
+		@rtype: bool
+		@returns: True if term codes were successfully initialized,
+			False otherwise.
+		"""
+
+		term_type = os.environ.get("TERM", "vt100")
+		tigetstr = None
+
+		try:
+			import curses
+			try:
+				curses.setupterm(term_type, self.out.fileno())
+				tigetstr = curses.tigetstr
+			except curses.error:
+				pass
+		except ImportError:
+			pass
+
+		if tigetstr is None:
+			return False
+
+		term_codes = {}
+		for k, capname in self._termcap_name_map.iteritems():
+			code = tigetstr(capname)
+			if code is None:
+				code = self._default_term_codes[capname]
+			term_codes[k] = code
+		object.__setattr__(self, "_term_codes", term_codes)
+		return True
+
+	def _format_msg(self, msg):
+		return ">>> %s" % msg
+
+	def _erase(self):
+		self.out.write(
+			self._term_codes['carriage_return'] + \
+			self._term_codes['clr_eol'])
+		self._displayed = False
+
+	def _display(self, line):
+		self.out.write(line)
+		self._displayed = True
+
+	def _update(self, msg):
+
+		out = self.out
+		if not self._isatty:
+			out.write(self._format_msg(msg) + self._term_codes['newline'])
+			return
+
+		if self._displayed:
+			self._erase()
+
+		self._display(self._format_msg(msg))
+
+	def displayMessage(self, msg):
+
+		was_displayed = self._displayed
+
+		if self._isatty and self._displayed:
+			self._erase()
+
+		self.out.write(self._format_msg(msg) + self._term_codes['newline'])
+		self._displayed = False
+
+		if was_displayed:
+			self._changed = True
+			self.display()
 
 	def reset(self):
 		self.maxval = 0
 		self.merges = 0
 		for name in self._bound_properties:
 			object.__setattr__(self, name, 0)
+
+		if self._displayed:
+			self.out.write(self._term_codes['newline'])
+			self._displayed = False
 
 	def __setattr__(self, name, value):
 		old_value = getattr(self, name)
@@ -8465,7 +8562,7 @@ class JobStatusDisplay(object):
 	def _property_change(self, name, old_value, new_value):
 		self._changed = True
 
-	def _load_avg_str(self, digits=1):
+	def _load_avg_str(self, digits=2):
 		try:
 			avg = os.getloadavg()
 		except OSError, e:
@@ -8480,10 +8577,21 @@ class JobStatusDisplay(object):
 
 		if self.quiet:
 			return
-		if not self._changed:
-			return
-		self._changed = False
 
+		current_time = time.time()
+		time_delta = current_time - self._last_display_time
+		if self._displayed and \
+			not self._changed:
+			if not self._isatty:
+				return
+			if time_delta < self._min_display_latency:
+				return
+
+		self._last_display_time = current_time
+		self._changed = False
+		self._display_status()
+
+	def _display_status(self):
 		# Don't use len(self._completed_tasks) here since that also
 		# can include uninstall tasks.
 		curval_str = str(self.curval)
@@ -8535,8 +8643,7 @@ class JobStatusDisplay(object):
 		f.add_literal_data("Load average: ")
 		f.add_literal_data(load_avg_str)
 
-		portage.writemsg_stdout(">>> %s\n" % \
-			(color_output.getvalue(),), noiselevel=-1)
+		self._update(color_output.getvalue())
 		xtermTitle(plain_output.getvalue())
 
 class Scheduler(PollScheduler):
@@ -8656,11 +8763,17 @@ class Scheduler(PollScheduler):
 		if max_jobs is None:
 			max_jobs = 1
 		self._set_max_jobs(max_jobs)
-		background = self._max_jobs > 1
+		background = self._background_mode()
+		self._background = background
 
 		self._max_load = myopts.get("--load-average")
 
 		self._set_digraph(digraph)
+
+		# This is used to memoize the _choose_pkg() result when
+		# no packages can be chosen until one of the existing
+		# jobs completes.
+		self._choose_pkg_return_early = False
 
 		features = self.settings.features
 		if "parallel-fetch" in features and \
@@ -8694,9 +8807,31 @@ class Scheduler(PollScheduler):
 			self._running_portage = self._pkg(cpv, "installed",
 				self._running_root, installed=True)
 
+	def _poll(self, timeout=None):
+		self._schedule()
+		return PollScheduler._poll(self, timeout=timeout)
+
 	def _set_max_jobs(self, max_jobs):
 		self._max_jobs = max_jobs
 		self._task_queues.jobs.max_jobs = max_jobs
+
+	def _background_mode(self):
+		"""
+		Check if background mode is enabled and adjust states as necessary.
+
+		@rtype: bool
+		@returns: True if background mode is enabled, False otherwise.
+		"""
+		background = self._max_jobs > 1 or "--quiet" in self.myopts
+
+		self._logger.parallel = background
+
+		self._status_display.quiet = \
+			not background or \
+			("--quiet" in self.myopts and \
+			"--verbose" not in self.myopts)
+
+		return background
 
 	def _set_digraph(self, digraph):
 		if self._max_jobs < 2:
@@ -8712,8 +8847,8 @@ class Scheduler(PollScheduler):
 		"""
 		The uninstall is performed only after blocking packages have been
 		merged on top of it (similar to how a normal upgrade is performed
-		by first merging the new version on top of the onld version). This
-		is implemented by reversing the the parent -> uninstall edges in
+		by first merging the new version on top of the old version). This
+		is implemented by reversing the parent -> uninstall edges in
 		the graph.
 		"""
 
@@ -8825,7 +8960,7 @@ class Scheduler(PollScheduler):
 		log_path = pkg_dblink.settings.get("PORTAGE_LOG_FILE")
 		log_file = None
 		out = sys.stdout
-		background = self._max_jobs > 1
+		background = self._background
 
 		if background and log_path is not None:
 			log_file = open(log_path, 'a')
@@ -8840,7 +8975,7 @@ class Scheduler(PollScheduler):
 
 	def _dblink_display_merge(self, pkg_dblink, msg, level=0, noiselevel=0):
 		log_path = pkg_dblink.settings.get("PORTAGE_LOG_FILE")
-		background = self._max_jobs > 1
+		background = self._background
 
 		if log_path is None:
 			if not (background and level < logging.WARN):
@@ -8863,7 +8998,7 @@ class Scheduler(PollScheduler):
 		scheduler = self._sched_iface
 		settings = pkg_dblink.settings
 		pkg = self._dblink_pkg(pkg_dblink)
-		background = self._max_jobs > 1
+		background = self._background
 		log_path = settings.get("PORTAGE_LOG_FILE")
 
 		ebuild_phase = EbuildPhase(background=background,
@@ -8898,7 +9033,7 @@ class Scheduler(PollScheduler):
 
 			if not shown_verifying_msg:
 				shown_verifying_msg = True
-				print ">>> Verifying ebuild Manifests..."
+				self._status_msg("Verifying ebuild manifests")
 
 			root_config = x.root_config
 			portdb = root_config.trees["porttree"].dbapi
@@ -8915,7 +9050,7 @@ class Scheduler(PollScheduler):
 			return
 
 		if self._parallel_fetch:
-			portage.writemsg(">>> starting parallel fetch\n")
+			self._status_msg("Starting parallel fetch")
 
 			prefetchers = self._prefetchers
 			getbinpkg = "--getbinpkg" in self.myopts
@@ -9123,7 +9258,7 @@ class Scheduler(PollScheduler):
 
 		self._logger.log(" *** Finished. Cleaning up...")
 
-		background = self._max_jobs > 1
+		background = self._background
 		if self._failed_pkgs_all and background and \
 			self._failed_pkgs_die_msgs and \
 			not _flush_elog_mod_echo():
@@ -9193,14 +9328,14 @@ class Scheduler(PollScheduler):
 			self._failed_pkgs.append((pkg, merge.returncode))
 			return
 
-		self._completed_tasks.add(pkg)
+		self._task_complete(pkg)
 		pkg_to_replace = merge.merge.pkg_to_replace
 		if pkg_to_replace is not None:
 			# When a package is replaced, mark it's uninstall
 			# task complete (if any).
 			uninst_hash_key = \
 				("installed", pkg.root, pkg_to_replace.cpv, "uninstall")
-			self._completed_tasks.add(uninst_hash_key)
+			self._task_complete(uninst_hash_key)
 
 		if pkg.installed:
 			return
@@ -9234,6 +9369,10 @@ class Scheduler(PollScheduler):
 	def _extract_exit(self, build):
 		self._build_exit(build)
 
+	def _task_complete(self, pkg):
+		self._completed_tasks.add(pkg)
+		self._choose_pkg_return_early = False
+
 	def _merge(self):
 
 		self._add_prefetchers()
@@ -9256,6 +9395,7 @@ class Scheduler(PollScheduler):
 	def _main_loop_cleanup(self):
 		del self._pkg_queue[:]
 		self._completed_tasks.clear()
+		self._choose_pkg_return_early = False
 		self._status_display.reset()
 		self._digraph = None
 		self._task_queues.fetch.clear()
@@ -9264,6 +9404,10 @@ class Scheduler(PollScheduler):
 		"""
 		Choose a task that has all it's dependencies satisfied.
 		"""
+
+		if self._choose_pkg_return_early:
+			return None
+
 		if self._max_jobs < 2 or self._jobs == 0:
 			return self._pkg_queue.pop(0)
 
@@ -9277,6 +9421,13 @@ class Scheduler(PollScheduler):
 
 		if chosen_pkg is not None:
 			self._pkg_queue.remove(chosen_pkg)
+
+		if chosen_pkg is None:
+			# There's no point in searching for a package to
+			# choose until at least one of the existing jobs
+			# completes.
+			self._choose_pkg_return_early = True
+
 		return chosen_pkg
 
 	def _dependent_on_scheduled_merges(self, pkg):
@@ -9337,8 +9488,7 @@ class Scheduler(PollScheduler):
 
 	def _schedule_tasks(self):
 		remaining, state_change = self._schedule_tasks_imp()
-		if state_change:
-			self._status_display.display()
+		self._status_display.display()
 		return remaining
 
 	def _schedule_tasks_imp(self):
@@ -9348,12 +9498,7 @@ class Scheduler(PollScheduler):
 		"""
 
 		task_queues = self._task_queues
-		background = self._max_jobs > 1
-		self._logger.parallel = background
-		self._status_display.quiet = \
-			not background or \
-			("--quiet" in self.myopts and \
-			"--verbose" not in self.myopts)
+		background = self._background
 
 		state_change = 0
 
@@ -9411,9 +9556,24 @@ class Scheduler(PollScheduler):
 			prefetcher=self._prefetchers.get(pkg),
 			scheduler=self._sched_iface,
 			settings=self._allocate_config(pkg.root),
+			statusMessage=self._status_msg,
 			world_atom=self._world_atom)
 
 		return task
+
+	def _status_msg(self, msg):
+		"""
+		Display a brief status message (no newlines) in the status display.
+		This is called by tasks to provide feedback to the user. This
+		delegates the resposibility of generating \r and \n control characters,
+		to guarantee that lines are created or erased when necessary and
+		appropriate.
+
+		@type msg: str
+		@param msg: a brief status message (no newlines allowed)
+		"""
+
+		self._status_display.displayMessage(msg)
 
 	def _save_resume_list(self):
 		"""

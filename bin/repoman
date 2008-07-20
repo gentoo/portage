@@ -1070,6 +1070,16 @@ for x in scanlist:
 				stats["metadata.bad"]+=1
 				fails["metadata.bad"].append(x+"/metadata.xml")
 
+	#load USE flags from metadata.xml
+	muselist=[]
+	try:
+		f = open(os.path.join(checkdir, "metadata.xml"))
+		utilities.parse_metadata_use(f, muselist)
+		f.close()
+	except (IOError, OSError, ParseError), e:
+		logging.exception("Couldn't read from metadata.xml", e)
+		sys.exit(1)
+
 	allmasked = True
 
 	for y in ebuildlist:
@@ -1351,6 +1361,11 @@ for x in scanlist:
 				default_use.append(myflag)
 			if flag_name not in uselist:
 				myuse.append(flag_name)
+
+		# uselist checks - metadata
+		for mypos in range(len(myuse)-1,-1,-1):
+			if myuse[mypos] and (myuse[mypos] in muselist):
+				del myuse[mypos]
 
 		# uselist checks - local
 		mykey = portage.dep_getkey(catpkg)
