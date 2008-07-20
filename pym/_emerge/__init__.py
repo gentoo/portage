@@ -9924,12 +9924,14 @@ def unmerge(root_config, myopts, unmerge_action,
 		if (not "--quiet" in myopts):
 			newline="\n"
 		if settings["ROOT"] != "/":
-			print darkgreen(newline+ \
-				">>> Using system located in ROOT tree "+settings["ROOT"])
+			writemsg_level(darkgreen(newline+ \
+				">>> Using system located in ROOT tree %s\n" % \
+				settings["ROOT"]))
+
 		if (("--pretend" in myopts) or ("--ask" in myopts)) and \
 			not ("--quiet" in myopts):
-			print darkgreen(newline+\
-				">>> These are the packages that would be unmerged:")
+			writemsg_level(darkgreen(newline+\
+				">>> These are the packages that would be unmerged:\n"))
 
 		# Preservation of order is required for --depclean and --prune so
 		# that dependencies are respected. Use all_selected to eliminate
