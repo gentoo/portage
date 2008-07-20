@@ -8643,10 +8643,10 @@ class Scheduler(PollScheduler):
 		__slots__ = ("curval", "maxval")
 
 	class _emerge_log_class(SlotObject):
-		__slots__ = ("parallel", "xterm_titles",)
+		__slots__ = ("xterm_titles",)
 
 		def log(self, *pargs, **kwargs):
-			if self.parallel:
+			if not self.xterm_titles:
 				# Avoid interference with the scheduler's status display.
 				kwargs.pop("short_msg", None)
 			emergelog(self.xterm_titles, *pargs, **kwargs)
@@ -8685,8 +8685,7 @@ class Scheduler(PollScheduler):
 			self._config_pool[root] = []
 			self._blocker_db[root] = BlockerDB(trees[root]["root_config"])
 		self.curval = 0
-		self._logger = self._emerge_log_class(
-			xterm_titles=("notitles" not in settings.features))
+		self._logger = self._emerge_log_class()
 		fetch_iface = self._fetch_iface_class(log_file=self._fetch_log,
 			schedule=self._schedule_fetch)
 		self._sched_iface = self._iface_class(
@@ -8790,12 +8789,14 @@ class Scheduler(PollScheduler):
 		"""
 		background = self._max_jobs > 1 or "--quiet" in self.myopts
 
-		self._logger.parallel = background
-
 		self._status_display.quiet = \
 			not background or \
 			("--quiet" in self.myopts and \
 			"--verbose" not in self.myopts)
+
+		self._logger.xterm_titles = \
+			"notitles" not in self.settings.features and \
+			self._status_display.quiet
 
 		return background
 
