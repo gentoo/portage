@@ -8237,9 +8237,10 @@ class PollScheduler(object):
 
 	def _poll(self, timeout=None):
 		"""
-		All poll() calls pass through here.
+		All poll() calls pass through here. The poll events
+		are added directly to self._poll_event_queue.
 		"""
-		return self._poll_obj.poll(timeout)
+		self._poll_event_queue.extend(self._poll_obj.poll(timeout))
 
 	def _next_poll_event(self, timeout=None):
 		"""
@@ -8249,7 +8250,7 @@ class PollScheduler(object):
 		poll() call.
 		"""
 		if not self._poll_event_queue:
-			self._poll_event_queue.extend(self._poll(timeout))
+			self._poll(timeout)
 		return self._poll_event_queue.pop()
 
 	def _poll_loop(self):
@@ -8281,7 +8282,7 @@ class PollScheduler(object):
 			return bool(events_handled)
 
 		if not self._poll_event_queue:
-			self._poll_event_queue.extend(self._poll(0))
+			self._poll(0)
 
 		while event_handlers and self._poll_event_queue:
 			f, event = self._next_poll_event()
@@ -8683,10 +8684,10 @@ class Scheduler(PollScheduler):
 		__slots__ = ("curval", "maxval")
 
 	class _emerge_log_class(SlotObject):
-		__slots__ = ("parallel", "xterm_titles",)
+		__slots__ = ("xterm_titles",)
 
 		def log(self, *pargs, **kwargs):
-			if self.parallel:
+			if not self.xterm_titles:
 				# Avoid interference with the scheduler's status display.
 				kwargs.pop("short_msg", None)
 			emergelog(self.xterm_titles, *pargs, **kwargs)
@@ -8725,8 +8726,7 @@ class Scheduler(PollScheduler):
 			self._config_pool[root] = []
 			self._blocker_db[root] = BlockerDB(trees[root]["root_config"])
 		self.curval = 0
-		self._logger = self._emerge_log_class(
-			xterm_titles=("notitles" not in settings.features))
+		self._logger = self._emerge_log_class()
 		fetch_iface = self._fetch_iface_class(log_file=self._fetch_log,
 			schedule=self._schedule_fetch)
 		self._sched_iface = self._iface_class(
@@ -8741,6 +8741,12 @@ class Scheduler(PollScheduler):
 		for k in self._task_queues.allowed_keys:
 			setattr(self._task_queues, k,
 				SequentialTaskQueue(auto_schedule=True))
+
+		# Merge tasks currently run synchronously which makes
+		# it necessary to disable auto_schedule in order to
+		# avoid excess recursion which prevents tasks from
+		# being marked complete as soon as they should be.
+		self._task_queues.merge.auto_schedule = False
 
 		self._prefetchers = weakref.WeakValueDictionary()
 		self._pkg_queue = []
@@ -8809,7 +8815,7 @@ class Scheduler(PollScheduler):
 
 	def _poll(self, timeout=None):
 		self._schedule()
-		return PollScheduler._poll(self, timeout=timeout)
+		PollScheduler._poll(self, timeout=timeout)
 
 	def _set_max_jobs(self, max_jobs):
 		self._max_jobs = max_jobs
@@ -8824,12 +8830,14 @@ class Scheduler(PollScheduler):
 		"""
 		background = self._max_jobs > 1 or "--quiet" in self.myopts
 
-		self._logger.parallel = background
-
 		self._status_display.quiet = \
 			not background or \
 			("--quiet" in self.myopts and \
 			"--verbose" not in self.myopts)
+
+		self._logger.xterm_titles = \
+			"notitles" not in self.settings.features and \
+			self._status_display.quiet
 
 		return background
 
@@ -9316,11 +9324,11 @@ class Scheduler(PollScheduler):
 	def _merge_exit(self, merge):
 		self._do_merge_exit(merge)
 		self._deallocate_config(merge.merge.settings)
-		self._schedule()
 		if merge.returncode == os.EX_OK and \
 			not merge.merge.pkg.installed:
 			self._status_display.curval += 1
 		self._status_display.merges = len(self._task_queues.merge)
+		self._schedule()
 
 	def _do_merge_exit(self, merge):
 		pkg = merge.merge.pkg
@@ -9488,6 +9496,7 @@ class Scheduler(PollScheduler):
 
 	def _schedule_tasks(self):
 		remaining, state_change = self._schedule_tasks_imp()
+		self._task_queues.merge.schedule()
 		self._status_display.display()
 		return remaining
 
@@ -9497,15 +9506,16 @@ class Scheduler(PollScheduler):
 		@returns: True if tasks remain to schedule, False otherwise.
 		"""
 
-		task_queues = self._task_queues
-		background = self._background
-
 		state_change = 0
 
-		while self._can_add_job():
+		while True:
 
 			if not self._pkg_queue or self._failed_pkgs:
 				return (False, state_change)
+
+			if self._choose_pkg_return_early or \
+				not self._can_add_job():
+				return (True, state_change)
 
 			pkg = self._choose_pkg()
 			if pkg is None:
@@ -9516,25 +9526,28 @@ class Scheduler(PollScheduler):
 			if not pkg.installed:
 				self._pkg_count.curval += 1
 
-			task = self._task(pkg, background)
+			task = self._task(pkg)
 
 			if pkg.installed:
 				merge = PackageMerge(merge=task)
 				merge.addExitListener(self._merge_exit)
-				task_queues.merge.add(merge)
+				self._task_queues.merge.add(merge)
+
 			elif pkg.built:
 				self._jobs += 1
 				self._status_display.running = self._jobs
 				task.addExitListener(self._extract_exit)
-				task_queues.jobs.add(task)
+				self._task_queues.jobs.add(task)
+
 			else:
 				self._jobs += 1
 				self._status_display.running = self._jobs
 				task.addExitListener(self._build_exit)
-				task_queues.jobs.add(task)
+				self._task_queues.jobs.add(task)
+
 		return (True, state_change)
 
-	def _task(self, pkg, background):
+	def _task(self, pkg):
 
 		pkg_to_replace = None
 		if pkg.operation != "uninstall":
@@ -9546,7 +9559,7 @@ class Scheduler(PollScheduler):
 					"installed", pkg.root_config, installed=True)
 
 		task = MergeListItem(args_set=self._args_set,
-			background=background, binpkg_opts=self._binpkg_opts,
+			background=self._background, binpkg_opts=self._binpkg_opts,
 			build_opts=self._build_opts,
 			emerge_opts=self.myopts,
 			failed_fetches=self._failed_fetches,
@@ -9953,12 +9966,14 @@ def unmerge(root_config, myopts, unmerge_action,
 		if (not "--quiet" in myopts):
 			newline="\n"
 		if settings["ROOT"] != "/":
-			print darkgreen(newline+ \
-				">>> Using system located in ROOT tree "+settings["ROOT"])
+			writemsg_level(darkgreen(newline+ \
+				">>> Using system located in ROOT tree %s\n" % \
+				settings["ROOT"]))
+
 		if (("--pretend" in myopts) or ("--ask" in myopts)) and \
 			not ("--quiet" in myopts):
-			print darkgreen(newline+\
-				">>> These are the packages that would be unmerged:")
+			writemsg_level(darkgreen(newline+\
+				">>> These are the packages that would be unmerged:\n"))
 
 		# Preservation of order is required for --depclean and --prune so
 		# that dependencies are respected. Use all_selected to eliminate
