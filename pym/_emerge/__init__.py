@@ -9463,9 +9463,6 @@ class Scheduler(PollScheduler):
 		@returns: True if tasks remain to schedule, False otherwise.
 		"""
 
-		task_queues = self._task_queues
-		background = self._background
-
 		state_change = 0
 
 		while True:
@@ -9486,25 +9483,28 @@ class Scheduler(PollScheduler):
 			if not pkg.installed:
 				self._pkg_count.curval += 1
 
-			task = self._task(pkg, background)
+			task = self._task(pkg)
 
 			if pkg.installed:
 				merge = PackageMerge(merge=task)
 				merge.addExitListener(self._merge_exit)
-				task_queues.merge.add(merge)
+				self._task_queues.merge.add(merge)
+
 			elif pkg.built:
 				self._jobs += 1
 				self._status_display.running = self._jobs
 				task.addExitListener(self._extract_exit)
-				task_queues.jobs.add(task)
+				self._task_queues.jobs.add(task)
+
 			else:
 				self._jobs += 1
 				self._status_display.running = self._jobs
 				task.addExitListener(self._build_exit)
-				task_queues.jobs.add(task)
+				self._task_queues.jobs.add(task)
+
 		return (True, state_change)
 
-	def _task(self, pkg, background):
+	def _task(self, pkg):
 
 		pkg_to_replace = None
 		if pkg.operation != "uninstall":
@@ -9516,7 +9516,7 @@ class Scheduler(PollScheduler):
 					"installed", pkg.root_config, installed=True)
 
 		task = MergeListItem(args_set=self._args_set,
-			background=background, binpkg_opts=self._binpkg_opts,
+			background=self._background, binpkg_opts=self._binpkg_opts,
 			build_opts=self._build_opts,
 			emerge_opts=self.myopts,
 			failed_fetches=self._failed_fetches,
