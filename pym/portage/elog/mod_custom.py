@@ -3,10 +3,10 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import portage.elog_modules.mod_save, portage.process, portage.exception
+import portage.elog.mod_save, portage.process, portage.exception
 
 def process(mysettings, key, logentries, fulltext):
-	elogfilename = portage.elog_modules.mod_save.process(mysettings, key, logentries, fulltext)
+	elogfilename = portage.elog.mod_save.process(mysettings, key, logentries, fulltext)
 	
 	if not mysettings.get("PORTAGE_ELOG_COMMAND"):
 		raise portage.exception.MissingParameter("!!! Custom logging requested but PORTAGE_ELOG_COMMAND is not defined")
