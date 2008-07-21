@@ -224,6 +224,7 @@ class LinkageMap(object):
 			if obj not in self._obj_properties:
 				raise KeyError("%s not in object list" % obj)
 		arch, needed, path, soname = self._obj_properties[obj]
+		path = path[:]
 		path.extend(self._defpath)
 		path = set(realpath(x) for x in path)
 		for x in needed:
