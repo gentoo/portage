@@ -65,7 +65,7 @@ import portage.exception
 from portage.data import secpass
 from portage.elog.messages import eerror
 from portage.util import normalize_path as normpath
-from portage.util import writemsg
+from portage.util import writemsg, writemsg_level
 from portage.sets import load_default_config, SETPREFIX
 from portage.sets.base import InternalPackageSet
 
@@ -378,7 +378,14 @@ def create_depgraph_params(myopts, myaction):
 	# deep:      go into the dependencies of already merged packages
 	# empty:     pretend nothing is merged
 	# complete:  completely account for all known dependencies
+	# remove:    build graph for use in removing packages
 	myparams = set(["recurse"])
+
+	if myaction == "remove":
+		myparams.add("remove")
+		myparams.add("complete")
+		return myparams
+
 	if "--update" in myopts or \
 		"--newuse" in myopts or \
 		"--reinstall" in myopts or \
@@ -991,7 +998,7 @@ class BlockerDepPriority(DepPriority):
 BlockerDepPriority.instance = BlockerDepPriority()
 
 class UnmergeDepPriority(AbstractDepPriority):
-	__slots__ = ()
+	__slots__ = ("satisfied",)
 	"""
 	Combination of properties           Priority  Category
 
@@ -4488,9 +4495,9 @@ class depgraph(object):
 
 		deps = (
 			("/", edepend["DEPEND"],
-				DepPriority(buildtime=True, satisfied=bdeps_satisfied)),
-			(myroot, edepend["RDEPEND"], DepPriority(runtime=True)),
-			(myroot, edepend["PDEPEND"], DepPriority(runtime_post=True))
+				self._priority(buildtime=True, satisfied=bdeps_satisfied)),
+			(myroot, edepend["RDEPEND"], self._priority(runtime=True)),
+			(myroot, edepend["PDEPEND"], self._priority(runtime_post=True))
 		)
 
 		debug = "--debug" in self.myopts
@@ -4561,6 +4568,13 @@ class depgraph(object):
 				"that atoms must be fully-qualified.\n", noiselevel=-1)
 			return 0
 		return 1
+
+	def _priority(self, **kwargs):
+		if "remove" in self.myparams:
+			priority_constructor = UnmergeDepPriority
+		else:
+			priority_constructor = DepPriority
+		return priority_constructor(**kwargs)
 
 	def _dep_expand(self, root_config, atom_without_category):
 		"""
@@ -11424,53 +11438,67 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	xterm_titles = "notitles" not in settings.features
 	myroot = settings["ROOT"]
-	portdb = trees[myroot]["porttree"].dbapi
-	pkg_cache = {}
-	dep_check_trees = {}
-	dep_check_trees[myroot] = {}
-	dep_check_trees[myroot]["vartree"] = \
-		FakeVartree(trees[myroot]["root_config"], pkg_cache=pkg_cache)
-	vardb = dep_check_trees[myroot]["vartree"].dbapi
-	# Constrain dependency selection to the installed packages.
-	dep_check_trees[myroot]["porttree"] = dep_check_trees[myroot]["vartree"]
 	root_config = trees[myroot]["root_config"]
-	setconfig = root_config.setconfig
-	syslist = setconfig.getSetAtoms("system")
-	worldlist = setconfig.getSetAtoms("world")
-	args_set = InternalPackageSet()
-	fakedb = portage.fakedbapi(settings=settings)
-	myvarlist = vardb.cpv_all()
+	getSetAtoms = root_config.setconfig.getSetAtoms
+	vardb = trees[myroot]["vartree"].dbapi
 
-	if not syslist:
-		print "\n!!! You have no system list.",
-	if not worldlist:
-		print "\n!!! You have no world file.",
-	if not myvarlist:
-		print "\n!!! You have no installed package database (%s)." % portage.VDB_PATH,
+	required_set_names = ("system", "world")
+	required_sets = {}
+	set_args = []
 
-	if not (syslist and worldlist and myvarlist):
-		print "\n!!! Proceeding "+(syslist and myvarlist and "may" or "will")
-		print " break your installation.\n"
+	for s in required_set_names:
+		required_sets[s] = InternalPackageSet(
+			initial_atoms=getSetAtoms(s))
+
+	
+	# When removing packages, use a temporary version of world
+	# which excludes packages that are intended to be eligible for
+	# removal.
+	world_temp_set = required_sets["world"]
+	system_set = required_sets["system"]
+
+	if not system_set or not world_temp_set:
+
+		if not system_set:
+			writemsg_level("!!! You have no system list.\n",
+				level=logging.ERROR, noiselevel=-1)
+
+		if not world_temp_set:
+			writemsg_level("!!! You have no world file.\n",
+					level=logging.WARNING, noiselevel=-1)
+
+		writemsg_level("!!! Proceeding is likely to " + \
+			"break your installation.\n",
+			level=logging.WARNING, noiselevel=-1)
 		if "--pretend" not in myopts:
 			countdown(int(settings["EMERGE_WARNING_DELAY"]), ">>> Depclean")
 
 	if action == "depclean":
 		emergelog(xterm_titles, " >>> depclean")
+
+	import textwrap
+	args_set = InternalPackageSet()
 	if myfiles:
 		for x in myfiles:
 			if not is_valid_package_atom(x):
-				portage.writemsg("!!! '%s' is not a valid package atom.\n" % x,
-					noiselevel=-1)
-				portage.writemsg("!!! Please check ebuild(5) for full details.\n")
+				writemsg_level("!!! '%s' is not a valid package atom.\n" % x,
+					level=logging.ERROR, noiselevel=-1)
+				writemsg_level("!!! Please check ebuild(5) for full details.\n")
 				return
 			try:
 				atom = portage.dep_expand(x, mydb=vardb, settings=settings)
 			except ValueError, e:
-				print "!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
-				print "!!! one of the following fully-qualified ebuild names instead:\n"
+				msg = "The short ebuild name \"" + x + \
+					"\" is ambiguous.  Please specify " + \
+					"one of the following " + \
+					"fully-qualified ebuild names instead:"
+				for line in textwrap.wrap(msg, 70):
+					writemsg_level("!!! %s\n" % (line,),
+						level=logging.ERROR, noiselevel=-1)
 				for i in e[0]:
-					print "    " + colorize("INFORM", i)
-				print
+					writemsg_level("    %s\n" % colorize("INFORM", i),
+						level=logging.ERROR, noiselevel=-1)
+				writemsg_level("\n", level=logging.ERROR, noiselevel=-1)
 				return
 			args_set.add(atom)
 		matched_packages = False
@@ -11479,149 +11507,114 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				matched_packages = True
 				break
 		if not matched_packages:
-			portage.writemsg_stdout(
-				">>> No packages selected for removal by %s\n" % action)
+			writemsg_level(">>> No packages selected for removal by %s\n" % \
+				action)
 			return
 
-	if "--quiet" not in myopts:
-		print "\nCalculating dependencies  ",
+	writemsg_level("\nCalculating dependencies  ")
+	resolver_params = create_depgraph_params(myopts, "remove")
+	resolver = depgraph(settings, trees, myopts, resolver_params, spinner)
+	vardb = resolver.trees[myroot]["vartree"].dbapi
 
-	runtime = UnmergeDepPriority(runtime=True)
-	runtime_post = UnmergeDepPriority(runtime_post=True)
-	buildtime = UnmergeDepPriority(buildtime=True)
-
-	priority_map = {
-		"RDEPEND": runtime,
-		"PDEPEND": runtime_post,
-		"DEPEND": buildtime,
-	}
-
-	remaining_atoms = []
 	if action == "depclean":
-		for atom in syslist:
-			if vardb.match(atom):
-				remaining_atoms.append((atom, 'system', runtime))
-		if myfiles:
-			# Pull in everything that's installed since we don't want
-			# to clean any package if something depends on it.
-			remaining_atoms.extend(
-				("="+cpv, 'world', runtime) for cpv in vardb.cpv_all())
-		else:
-			for atom in worldlist:
-				if vardb.match(atom):
-					remaining_atoms.append((atom, 'world', runtime))
+
+		if args_set:
+			# Pull in everything that's installed but not matched
+			# by an argument atom since we don't want to clean any
+			# package if something depends on it.
+
+			world_temp_set.clear()
+			for pkg in vardb:
+				spinner.update()
+
+				try:
+					if args_set.findAtomForPackage(pkg) is None:
+						world_temp_set.add("=" + pkg.cpv)
+						continue
+				except portage.exception.InvalidDependString, e:
+					show_invalid_depstring_notice(pkg,
+						pkg.metadata["PROVIDE"], str(e))
+					del e
+					world_temp_set.add("=" + pkg.cpv)
+					continue
+
 	elif action == "prune":
-		for atom in syslist:
-			if vardb.match(atom):
-				remaining_atoms.append((atom, 'system', runtime))
-		# Pull in everything that's installed since we don't want to prune a
-		# package if something depends on it.
-		remaining_atoms.extend(
-			(atom, 'world', runtime) for atom in vardb.cp_all())
-		if not myfiles:
+
+		# Pull in everything that's installed since we don't
+		# to prune a package if something depends on it.
+		world_temp_set.clear()
+		world_temp_set.update(vardb.cp_all())
+
+		if not args_set:
+
 			# Try to prune everything that's slotted.
 			for cp in vardb.cp_all():
 				if len(vardb.cp_list(cp)) > 1:
 					args_set.add(cp)
 
-	unresolveable = {}
-	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
-	metadata_keys = depgraph._mydbapi_keys
-	graph = digraph()
-	with_bdeps = myopts.get("--with-bdeps", "y") == "y"
-
-	while remaining_atoms:
-		atom, parent, priority = remaining_atoms.pop()
-		pkgs = vardb.match(atom)
-		if not pkgs:
-			if priority > UnmergeDepPriority.SOFT:
-				unresolveable.setdefault(atom, []).append(parent)
-			continue
-		if action == "depclean" and parent == "world" and myfiles:
-			# Filter out packages given as arguments since the user wants
-			# to remove those.
-			filtered_pkgs = []
-			for pkg in pkgs:
-				arg_atom = None
-				try:
-					arg_atom = args_set.findAtomForPackage(
-						pkg_cache[("installed", myroot, pkg, "nomerge")])
-				except portage.exception.InvalidDependString, e:
-					file_path = os.path.join(
-						myroot, portage.VDB_PATH, pkg, "PROVIDE")
-					portage.writemsg("\n\nInvalid PROVIDE: %s\n" % str(e),
-						noiselevel=-1)
-					portage.writemsg("See '%s'\n" % file_path,
-						noiselevel=-1)
-					del e
-				if not arg_atom:
-					filtered_pkgs.append(pkg)
-			pkgs = filtered_pkgs
-		if len(pkgs) > 1:
-			# For consistency with the update algorithm, keep the highest
-			# visible version and prune any versions that are old or masked.
-			for cpv in reversed(pkgs):
-				if visible(settings,
-					pkg_cache[("installed", myroot, cpv, "nomerge")]):
-					pkgs = [cpv]
-					break
-			if len(pkgs) > 1:
-				# They're all masked, so just keep the highest version.
-				pkgs = [pkgs[-1]]
-		for pkg in pkgs:
-			graph.add(pkg, parent, priority=priority)
-			if fakedb.cpv_exists(pkg):
-				continue
+		# Remove atoms from world that match installed packages
+		# that are also matched by argument atoms, but do not remove
+		# them if they match the highest installed version.
+		for pkg in vardb:
 			spinner.update()
-			fakedb.cpv_inject(pkg)
-			myaux = izip(aux_keys, vardb.aux_get(pkg, aux_keys))
-			mydeps = []
+			pkgs_for_cp = vardb.match_pkgs(pkg.cp)
+			if not pkgs_for_cp or pkg not in pkgs_for_cp:
+				raise AssertionError("package expected in matches: " + \
+					"cp = %s, cpv = %s matches = %s" % \
+					(pkg.cp, pkg.cpv, [str(x) for x in pkgs_for_cp]))
 
-			usedef = vardb.aux_get(pkg, ["USE"])[0].split()
-			for dep_type, depstr in myaux:
+			highest_version = pkgs_for_cp[-1]
+			if pkg == highest_version:
+				# pkg is the highest version
+				world_temp_set.add("=" + pkg.cpv)
+				continue
 
-				if not depstr:
+			if len(pkgs_for_cp) <= 1:
+				raise AssertionError("more packages expected: " + \
+					"cp = %s, cpv = %s matches = %s" % \
+					(pkg.cp, pkg.cpv, [str(x) for x in pkgs_for_cp]))
+
+			try:
+				if args_set.findAtomForPackage(pkg) is None:
+					world_temp_set.add("=" + pkg.cpv)
 					continue
+			except portage.exception.InvalidDependString, e:
+				show_invalid_depstring_notice(pkg,
+					pkg.metadata["PROVIDE"], str(e))
+				del e
+				world_temp_set.add("=" + pkg.cpv)
+				continue
 
-				if not with_bdeps and dep_type == "DEPEND":
-					continue
+	set_args = {}
+	for s, package_set in required_sets.iteritems():
+		set_atom = SETPREFIX + s
+		set_arg = SetArg(arg=set_atom, set=package_set,
+			root_config=resolver.roots[myroot])
+		set_args[s] = set_arg
+		for atom in set_arg.set:
+			resolver._dep_stack.append(
+				Dependency(atom=atom, root=myroot, parent=set_arg))
+			resolver.digraph.add(set_arg, None)
 
-				priority = priority_map[dep_type]
-				if "--debug" in myopts:
-					print
-					print "Parent:   ", pkg
-					print "Depstring:", depstr
-					print "Priority:", priority
+	success = resolver._complete_graph()
+	writemsg_level("\b\b... done!\n")
 
-				try:
-					portage.dep._dep_check_strict = False
-					success, atoms = portage.dep_check(depstr, None, settings,
-						myuse=usedef, trees=dep_check_trees, myroot=myroot)
-				finally:
-					portage.dep._dep_check_strict = True
-				if not success:
-					show_invalid_depstring_notice(
-						("installed", myroot, pkg, "nomerge"),
-						depstr, atoms)
-					return
+	resolver.display_problems()
 
-				if "--debug" in myopts:
-					print "Candidates:", atoms
+	if not success:
+		return 1
 
-				for atom in atoms:
-					if atom.startswith("!"):
-						continue
-					remaining_atoms.append((atom, pkg, priority))
-
-	if "--quiet" not in myopts:
-		print "\b\b... done!\n"
+	unresolveable = []
+	for dep in resolver._unsatisfied_deps:
+		if isinstance(Package, dep.parent):
+			unresolveable.append(dep)
 
 	if unresolveable and not allow_missing_deps:
 		print "Dependencies could not be completely resolved due to"
 		print "the following required packages not being installed:"
 		print
-		for atom in unresolveable:
-			print atom, "required by", " ".join(unresolveable[atom])
+		for dep in unresolveable:
+			print dep.atom, "required by", str(dep.parent)
 	if unresolveable and not allow_missing_deps:
 		print
 		print "Have you forgotten to run " + good("`emerge --update --newuse --deep world`") + " prior to"
@@ -11635,6 +11628,12 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				good("--nodeps")
 		return
 
+	graph = resolver.digraph.copy()
+	required_pkgs_total = 0
+	for node in graph:
+		if isinstance(node, Package):
+			required_pkgs_total += 1
+
 	def show_parents(child_node):
 		parent_nodes = graph.parent_nodes(child_node)
 		if not parent_nodes:
@@ -11642,44 +11641,45 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			# real parent since all installed packages are pulled in.  In that
 			# case there's nothing to show here.
 			return
-		parent_nodes.sort()
+		parent_strs = []
+		for node in parent_nodes:
+			parent_strs.append(str(getattr(node, "cpv", node)))
+		parent_strs.sort()
 		msg = []
-		msg.append("  %s pulled in by:\n" % str(child_node))
-		for parent_node in parent_nodes:
-			msg.append("    %s\n" % str(parent_node))
+		msg.append("  %s pulled in by:\n" % (child_node.cpv,))
+		for parent_str in parent_strs:
+			msg.append("    %s\n" % (parent_str,))
 		msg.append("\n")
 		portage.writemsg_stdout("".join(msg), noiselevel=-1)
 
 	cleanlist = []
 	if action == "depclean":
-		if myfiles:
-			for pkg in vardb.cpv_all():
+		if args_set:
+			for pkg in vardb:
 				arg_atom = None
 				try:
-					arg_atom = args_set.findAtomForPackage(
-						pkg_cache[("installed", myroot, pkg, "nomerge")])
+					arg_atom = args_set.findAtomForPackage(pkg)
 				except portage.exception.InvalidDependString:
 					# this error has already been displayed by now
 					continue
 				if arg_atom:
-					if not fakedb.cpv_exists(pkg):
+					if pkg not in graph:
 						cleanlist.append(pkg)
 					elif "--verbose" in myopts:
 						show_parents(pkg)
 		else:
-			for pkg in vardb.cpv_all():
-				if not fakedb.cpv_exists(pkg):
+			for pkg in vardb:
+				if pkg not in graph:
 					cleanlist.append(pkg)
 				elif "--verbose" in myopts:
 					show_parents(pkg)
 	elif action == "prune":
 		# Prune really uses all installed instead of world.  It's not a real
 		# reverse dependency so don't display it as such.
-		if graph.contains("world"):
-			graph.remove("world")
+		graph.remove(set_args["world"])
 		for atom in args_set:
-			for pkg in vardb.match(atom):
-				if not fakedb.cpv_exists(pkg):
+			for pkg in vardb.match_pkgs(atom):
+				if pkg not in graph:
 					cleanlist.append(pkg)
 				elif "--verbose" in myopts:
 					show_parents(pkg)
@@ -11707,18 +11707,30 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		graph = digraph()
 		clean_set = set(cleanlist)
 		del cleanlist[:]
+
+		dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
+		runtime = UnmergeDepPriority(runtime=True)
+		runtime_post = UnmergeDepPriority(runtime_post=True)
+		buildtime = UnmergeDepPriority(buildtime=True)
+		priority_map = {
+			"RDEPEND": runtime,
+			"PDEPEND": runtime_post,
+			"DEPEND": buildtime,
+		}
+
 		for node in clean_set:
 			graph.add(node, None)
-			myaux = izip(aux_keys, vardb.aux_get(node, aux_keys))
 			mydeps = []
-			usedef = vardb.aux_get(node, ["USE"])[0].split()
-			for dep_type, depstr in myaux:
+			node_use = node.metadata["USE"].split()
+			for dep_type in dep_keys:
+				depstr = node.metadata[dep_type]
 				if not depstr:
 					continue
 				try:
 					portage.dep._dep_check_strict = False
 					success, atoms = portage.dep_check(depstr, None, settings,
-						myuse=usedef, trees=dep_check_trees, myroot=myroot)
+						myuse=node_use, trees=resolver._graph_trees,
+						myroot=myroot)
 				finally:
 					portage.dep._dep_check_strict = True
 				if not success:
@@ -11726,24 +11738,24 @@ def action_depclean(settings, trees, ldpath_mtimes,
 						("installed", myroot, node, "nomerge"),
 						depstr, atoms)
 					return
-
+ 
 				priority = priority_map[dep_type]
 				for atom in atoms:
 					if atom.startswith("!"):
 						continue
-					matches = vardb.match(atom)
+					matches = vardb.match_pkgs(atom)
 					if not matches:
 						continue
-					for cpv in matches:
-						if cpv in clean_set:
-							graph.add(cpv, node, priority=priority)
+					for child_node in matches:
+						if child_node in clean_set:
+							graph.add(child_node, node, priority=priority)
 
 		ordered = True
 		if len(graph.order) == len(graph.root_nodes()):
 			# If there are no dependencies between packages
 			# let unmerge() group them by cat/pn.
 			ordered = False
-			cleanlist = graph.all_nodes()
+			cleanlist = [pkg.cpv for pkg in cleanlist]
 		else:
 			# Order nodes from lowest to highest overall reference count for
 			# optimal root node selection.
@@ -11771,7 +11783,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 					del nodes[1:]
 				for node in nodes:
 					graph.remove(node)
-					cleanlist.append(node)
+					cleanlist.append(node.cpv)
 
 		unmerge(root_config, myopts, "unmerge", cleanlist,
 			ldpath_mtimes, ordered=ordered)
@@ -11782,11 +11794,12 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	if not cleanlist and "--quiet" in myopts:
 		return
 
-	print "Packages installed:   "+str(len(myvarlist))
-	print "Packages in world:    "+str(len(worldlist))
-	print "Packages in system:   "+str(len(syslist))
-	print "Unique package names: "+str(len(myvarlist))
-	print "Required packages:    "+str(len(fakedb.cpv_all()))
+	print "Packages installed:   "+str(len(vardb.cpv_all()))
+	print "Packages in world:    " + \
+		str(len(root_config.sets["world"].getAtoms()))
+	print "Packages in system:   " + \
+		str(len(root_config.sets["system"].getAtoms()))
+	print "Required packages:    "+str(required_pkgs_total)
 	if "--pretend" in myopts:
 		print "Number to remove:     "+str(len(cleanlist))
 	else:

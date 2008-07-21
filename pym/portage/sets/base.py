@@ -37,6 +37,10 @@ class PackageSet(object):
 		for x in self._nonatoms:
 			yield x
 
+	def __nonzero__(self):
+		self._load()
+		return bool(self._atoms or self._nonatoms)
+
 	def supportsOperation(self, op):
 		if not op in OPERATIONS:
 			raise ValueError(op)

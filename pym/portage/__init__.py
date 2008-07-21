@@ -433,6 +433,9 @@ class digraph(object):
 		del self.nodes[child][1][parent]
 		del self.nodes[parent][0][child]
 
+	def __iter__(self):
+		return iter(self.order)
+
 	def contains(self, node):
 		"""Checks if the digraph contains mynode"""
 		return node in self.nodes
