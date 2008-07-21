@@ -11755,7 +11755,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			# If there are no dependencies between packages
 			# let unmerge() group them by cat/pn.
 			ordered = False
-			cleanlist = [pkg.cpv for pkg in cleanlist]
+			cleanlist = [pkg.cpv for pkg in graph.order]
 		else:
 			# Order nodes from lowest to highest overall reference count for
 			# optimal root node selection.
