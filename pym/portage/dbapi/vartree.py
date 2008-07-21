@@ -2107,8 +2107,10 @@ class dblink(object):
 		liblist = linkmap.listLibraryObjects()
 
 		# get list of libraries from old package instance
-		old_contents = self._installed_instance.getcontents().keys()
-		old_libs = set(old_contents).intersection(liblist)
+		root_len = len(self.myroot) - 1
+		old_contents = set(p[root_len:] \
+			for p in self._installed_instance.getcontents())
+		old_libs = old_contents.intersection(liblist)
 
 		# get list of libraries from new package instance
 		mylibs = set([os.path.join(os.sep, x) for x in mycontents]).intersection(liblist)
