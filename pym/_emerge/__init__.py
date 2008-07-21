@@ -9646,8 +9646,8 @@ class Scheduler(PollScheduler):
 			world_set.load() # maybe it's changed on disk
 			atom = create_world_atom(pkg, args_set, root_config)
 			if atom:
-				portage.writemsg_stdout(('>>> Recording %s in "world" ' + \
-					'favorites file...\n') % atom)
+				self._status_msg(('Recording %s in "world" ' + \
+					'favorites file...') % atom)
 				logger.log(" === (%s of %s) Updating world file (%s)" % \
 					(pkg_count.curval, pkg_count.maxval, pkg.cpv))
 				world_set.add(atom)
