@@ -4121,6 +4121,7 @@ class depgraph(object):
 		self._circular_deps_for_display = None
 		self._dep_stack = []
 		self._unsatisfied_deps = []
+		self._initially_unsatisfied_deps = []
 		self._ignored_deps = []
 		self._required_set_names = set(["system", "world"])
 		self._select_atoms = self._select_atoms_highest_available
@@ -5560,7 +5561,7 @@ class depgraph(object):
 				dep = self._unsatisfied_deps.pop()
 				matches = vardb.match_pkgs(dep.atom)
 				if not matches:
-					# Initially unsatisfied.
+					self._initially_unsatisfied_deps.append(dep)
 					continue
 				# An scheduled installation broke a deep dependency.
 				# Add the installed package to the graph so that it
@@ -11604,17 +11605,17 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	if not success:
 		return 1
 
-	unresolveable = []
-	for dep in resolver._unsatisfied_deps:
-		if isinstance(Package, dep.parent):
-			unresolveable.append(dep)
+	unresolveable = set()
+	for dep in resolver._initially_unsatisfied_deps:
+		if isinstance(dep.parent, Package):
+			unresolveable.add((dep.atom, dep.parent.cpv))
 
 	if unresolveable and not allow_missing_deps:
 		print "Dependencies could not be completely resolved due to"
 		print "the following required packages not being installed:"
 		print
-		for dep in unresolveable:
-			print dep.atom, "required by", str(dep.parent)
+		for atom, parent in unresolveable:
+			print atom, "required by", str(parent)
 	if unresolveable and not allow_missing_deps:
 		print
 		print "Have you forgotten to run " + good("`emerge --update --newuse --deep world`") + " prior to"
