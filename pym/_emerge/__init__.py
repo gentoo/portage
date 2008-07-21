@@ -11601,29 +11601,45 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	if not success:
 		return 1
 
-	unresolveable = set()
-	for dep in resolver._initially_unsatisfied_deps:
-		if isinstance(dep.parent, Package):
-			unresolveable.add((dep.atom, dep.parent.cpv))
+	def unresolved_deps():
 
-	if unresolveable and not allow_missing_deps:
-		print "Dependencies could not be completely resolved due to"
-		print "the following required packages not being installed:"
-		print
-		for atom, parent in unresolveable:
-			print atom, "required by", str(parent)
-	if unresolveable and not allow_missing_deps:
-		print
-		print "Have you forgotten to run " + good("`emerge --update --newuse --deep world`") + " prior to"
-		print "%s?  It may be necessary to manually uninstall packages that no longer" % action
-		print "exist in the portage tree since it may not be possible to satisfy their"
-		print "dependencies.  Also, be aware of the --with-bdeps option that is documented"
-		print "in " + good("`man emerge`") + "."
-		print
-		if action == "prune":
-			print "If you would like to ignore dependencies then use %s." % \
-				good("--nodeps")
-		return
+		unresolvable = set()
+		for dep in resolver._initially_unsatisfied_deps:
+			if isinstance(dep.parent, Package):
+				unresolvable.add((dep.atom, dep.parent.cpv))
+		if not unresolvable:
+			return False
+
+		if unresolvable and not allow_missing_deps:
+			prefix = bad(" * ")
+			msg = []
+			msg.append("Dependencies could not be completely resolved due to")
+			msg.append("the following required packages not being installed:")
+			msg.append("")
+			for atom, parent in unresolvable:
+				msg.append("  %s pulled in by:" % (atom,))
+				msg.append("    %s" % (parent,))
+				msg.append("")
+			msg.append("Have you forgotten to run " + \
+				good("`emerge --update --newuse --deep world`") + " prior to")
+			msg.append(("%s?  It may be necessary to manually " + \
+				"uninstall packages that no longer") % action)
+			msg.append("exist in the portage tree since " + \
+				"it may not be possible to satisfy their")
+			msg.append("dependencies.  Also, be aware of " + \
+				"the --with-bdeps option that is documented")
+			msg.append("in " + good("`man emerge`") + ".")
+			if action == "prune":
+				msg.append("")
+				msg.append("If you would like to ignore " + \
+					"dependencies then use %s." % good("--nodeps"))
+			writemsg_level("".join("%s%s\n" % (prefix, line) for line in msg),
+				level=logging.ERROR, noiselevel=-1)
+			return True
+		return False
+
+	if unresolved_deps():
+		return 1
 
 	graph = resolver.digraph.copy()
 	required_pkgs_total = 0
@@ -11649,49 +11665,60 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		msg.append("\n")
 		portage.writemsg_stdout("".join(msg), noiselevel=-1)
 
-	cleanlist = []
-	if action == "depclean":
-		if args_set:
-			for pkg in vardb:
-				arg_atom = None
-				try:
-					arg_atom = args_set.findAtomForPackage(pkg)
-				except portage.exception.InvalidDependString:
-					# this error has already been displayed by now
-					continue
-				if arg_atom:
+	def create_cleanlist():
+		pkgs_to_remove = []
+
+		if action == "depclean":
+			if args_set:
+
+				for pkg in vardb:
+					arg_atom = None
+					try:
+						arg_atom = args_set.findAtomForPackage(pkg)
+					except portage.exception.InvalidDependString:
+						# this error has already been displayed by now
+						continue
+
+					if arg_atom:
+						if pkg not in graph:
+							pkgs_to_remove.append(pkg)
+						elif "--verbose" in myopts:
+							show_parents(pkg)
+
+			else:
+				for pkg in vardb:
 					if pkg not in graph:
-						cleanlist.append(pkg)
+						pkgs_to_remove.append(pkg)
 					elif "--verbose" in myopts:
 						show_parents(pkg)
-		else:
-			for pkg in vardb:
-				if pkg not in graph:
-					cleanlist.append(pkg)
-				elif "--verbose" in myopts:
-					show_parents(pkg)
-	elif action == "prune":
-		# Prune really uses all installed instead of world.  It's not a real
-		# reverse dependency so don't display it as such.
-		graph.remove(set_args["world"])
-		for atom in args_set:
-			for pkg in vardb.match_pkgs(atom):
-				if pkg not in graph:
-					cleanlist.append(pkg)
-				elif "--verbose" in myopts:
-					show_parents(pkg)
 
-	if not cleanlist:
-		portage.writemsg_stdout(
-			">>> No packages selected for removal by %s\n" % action)
-		if "--verbose" not in myopts:
-			portage.writemsg_stdout(
-				">>> To see reverse dependencies, use %s\n" % \
-					good("--verbose"))
-		if action == "prune":
-			portage.writemsg_stdout(
-				">>> To ignore dependencies, use %s\n" % \
-					good("--nodeps"))
+		elif action == "prune":
+			# Prune really uses all installed instead of world. It's not
+			# a real reverse dependency so don't display it as such.
+			graph.remove(set_args["world"])
+
+			for atom in args_set:
+				for pkg in vardb.match_pkgs(atom):
+					if pkg not in graph:
+						pkgs_to_remove.append(pkg)
+					elif "--verbose" in myopts:
+						show_parents(pkg)
+
+		if not pkgs_to_remove:
+			writemsg_level(
+				">>> No packages selected for removal by %s\n" % action)
+			if "--verbose" not in myopts:
+				writemsg_level(
+					">>> To see reverse dependencies, use %s\n" % \
+						good("--verbose"))
+			if action == "prune":
+				writemsg_level(
+					">>> To ignore dependencies, use %s\n" % \
+						good("--nodeps"))
+
+		return pkgs_to_remove
+
+	cleanlist = create_cleanlist()
 
 	if len(cleanlist):
 		clean_set = set(cleanlist)
@@ -11843,8 +11870,36 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			msg.append("")
 			writemsg_level("".join(prefix + "%s\n" % line for line in msg),
 				level=logging.WARNING, noiselevel=-1)
-			# TODO: Add packages + deps to graph, and calculate new clean list.
-			return 1
+
+			# Add lib providers to the graph as children of lib consumers,
+			# and also add any dependencies pulled in by the provider.
+			writemsg_level(">>> Adding lib providers to graph...\n")
+
+			for pkg, consumers in consumer_map.iteritems():
+				for consumer_dblink in set(chain(*consumers.values())):
+					consumer_pkg = vardb.get(("installed", myroot,
+						consumer_dblink.mycpv, "nomerge"))
+					resolver._add_pkg(pkg, consumer_pkg,
+						priority=UnmergeDepPriority(runtime=True))
+
+			writemsg_level("\nCalculating dependencies  ")
+			success = resolver._complete_graph()
+			writemsg_level("\b\b... done!\n")
+			resolver.display_problems()
+			if not success:
+				return 1
+			if unresolved_deps():
+				return 1
+
+			graph = resolver.digraph.copy()
+			required_pkgs_total = 0
+			for node in graph:
+				if isinstance(node, Package):
+					required_pkgs_total += 1
+			cleanlist = create_cleanlist()
+			if not cleanlist:
+				return 0
+			clean_set = set(cleanlist)
 
 		# Use a topological sort to create an unmerge order such that
 		# each package is unmerged before it's dependencies. This is
