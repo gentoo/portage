@@ -66,35 +66,42 @@ def help(myaction,myopts,havecolor=1):
 		print "              file setup or other similar setups that the user may wish to run."
 		print
 		print "       "+green("--depclean")
-		paragraph = "Cleans the system by removing packages that are not associated " + \
-			"with explicitly merged packages. Depclean works by creating the " + \
-			"full dependency tree from the system and world sets, " + \
-			"then comparing it to installed packages. Packages installed, but " + \
-			"not part of the dependency tree, will be uninstalled by depclean. " + \
-			"Inexperienced users are advised to use --pretend " + \
-			"with this option in order to see a preview of which packages " + \
-			"will be uninstalled."
+
+		paragraph = "Cleans the system by removing packages that are " + \
+		"not associated with explicitly merged packages. Depclean works " + \
+		"by creating the full dependency tree from the @system and " + \
+		"@world sets, then comparing it to installed packages. Packages " + \
+		"installed, but not part of the dependency tree, will be " + \
+		"uninstalled by depclean. See --with-bdeps for behavior with " + \
+		"respect to build time dependencies that are not strictly " + \
+		"required. Packages that are part of the world set will " + \
+		"always be kept. They can be manually added to this set with " + \
+		"emerge --noreplace <atom>. As a safety measure, depclean " + \
+		"will not remove any packages unless *all* required dependencies " + \
+		"have been resolved. As a consequence, it is often necessary to " + \
+		"run emerge --update --newuse --deep --oneshot @system @world " + \
+		"prior to depclean."
+
 		for line in wrap(paragraph, desc_width):
 			print desc_indent + line
 		print
 
-		paragraph =  "WARNING: Removing some " + \
-			"packages may cause packages which link to the removed package  " + \
-			"to stop working and complain about missing libraries. " + \
-			"Rebuild the complaining package to fix this issue.  Also see " + \
-			"--with-bdeps for behavior with respect to build time dependencies that " + \
-			"are not strictly required. Note that packages listed in " + \
-			"package.provided (see portage(5)) may be removed by " + \
-			"depclean, even if they are part of the world set."
+		paragraph =  "WARNING: Inexperienced users are advised to use " + \
+		"--pretend with this option in order to see a preview of which " + \
+		"packages will be uninstalled. Always study the list of packages " + \
+		"to be cleaned for any obvious mistakes. Note that packages " + \
+		"listed in package.provided (see portage(5)) may be removed by " + \
+		"depclean, even if they are part of the world set."
+
 		for line in wrap(paragraph, desc_width):
 			print desc_indent + line
 		print
 
-		paragraph = "Depclean serves as a dependency aware " + \
-			"version of --unmerge. When given one or more atoms, it will " + \
-			"unmerge matched packages that have no reverse dependencies. Use " + \
-			"--depclean together with --verbose to show reverse " + \
-			"dependencies."
+		paragraph = "Depclean serves as a dependency aware version of " + \
+			"--unmerge. When given one or more atoms, it will unmerge " + \
+			"matched packages that have no reverse dependencies. Use " + \
+			"--depclean together with --verbose to show reverse dependencies."
+
 		for line in wrap(paragraph, desc_width):
 			print desc_indent + line
 		print
@@ -116,12 +123,13 @@ def help(myaction,myopts,havecolor=1):
 		print
 		print "       "+green("--prune")+" ("+green("-P")+" short option)"
 		print "              "+turquoise("WARNING: This action can remove important packages!")
-		print "              Removes all but the highest installed version of a package"
-		print "              from your system. This action doesn't verify the possible binary"
-		print "              compatibility between versions and can thus remove essential"
-		print "              dependencies from your system. Use --prune together with"
-		print "              --verbose to show reverse dependencies or with --nodeps to"
-		print "              ignore all dependencies."
+		paragraph = "Removes all but the highest installed version of a " + \
+			"package from your system. Use --prune together with " + \
+			"--verbose to show reverse dependencies or with --nodeps " + \
+			"to ignore all dependencies. "
+
+		for line in wrap(paragraph, desc_width):
+			print desc_indent + line
 		print
 		print "       "+green("--regen")
 		print "              Causes portage to check and update the dependency cache of all"
