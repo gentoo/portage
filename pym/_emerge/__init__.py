@@ -3477,7 +3477,9 @@ class PackageMerge(AsynchronousTask):
 			action_desc = "Installing"
 			preposition = "to"
 
-		if not self.merge.build_opts.fetchonly:
+		if not self.merge.build_opts.fetchonly and \
+			not self.merge.build_opts.pretend and \
+			not self.merge.build_opts.buildpkgonly:
 			self.merge.statusMessage("%s %s %s %s" % \
 				(action_desc, colorize("GOOD", pkg.cpv),
 				preposition, pkg.root))
