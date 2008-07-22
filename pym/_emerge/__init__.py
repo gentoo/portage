@@ -9240,6 +9240,9 @@ class Scheduler(PollScheduler):
 				break
 
 			dropped_tasks = self._calc_resume_list()
+			if dropped_tasks is None:
+				break
+
 			clear_caches(self.trees)
 			if not self._mergelist:
 				break
@@ -9608,6 +9611,9 @@ class Scheduler(PollScheduler):
 		"""
 		Use the current resume list to calculate a new one,
 		dropping any packages with unsatisfied deps.
+		@rtype: set
+		@returns: a possibly empty set of dropped tasks, or
+			None if an error occurs.
 		"""
 		print colorize("GOOD", "*** Resuming merge...")
 
@@ -9629,12 +9635,46 @@ class Scheduler(PollScheduler):
 			print "Calculating dependencies  ",
 
 		myparams = create_depgraph_params(self.myopts, None)
-		success, mydepgraph, dropped_tasks = resume_depgraph(
-			self.settings, self.trees, self._mtimedb, self.myopts,
-			myparams, self._spinner, skip_unsatisfied=True)
+		success = False
+		e = None
+		try:
+			success, mydepgraph, dropped_tasks = resume_depgraph(
+				self.settings, self.trees, self._mtimedb, self.myopts,
+				myparams, self._spinner, skip_unsatisfied=True)
+		except depgraph.UnsatisfiedResumeDep, e:
+			mydepgraph = e.depgraph
+			dropped_tasks = set()
 
 		if show_spinner:
 			print "\b\b... done!"
+
+		if e is not None:
+			mydepgraph.display_problems()
+			out = portage.output.EOutput()
+			out.eerror("One or packages are either masked or " + \
+				"have missing dependencies:")
+			out.eerror("")
+			indent = "  "
+			for dep in e.value:
+				if dep.atom is None:
+					out.eerror(indent + "Masked package:")
+					out.eerror(2 * indent + str(dep.parent))
+					out.eerror("")
+				else:
+					out.eerror(indent + str(dep.atom) + " pulled in by:")
+					out.eerror(2 * indent + str(dep.parent))
+					out.eerror("")
+			msg = "The resume list contains packages " + \
+				"that are either masked or have " + \
+				"unsatisfied dependencies. " + \
+				"Please restart/continue " + \
+				"the operation manually, or use --skipfirst " + \
+				"to skip the first package in the list and " + \
+				"any other packages that may be " + \
+				"masked or have missing dependencies."
+			for line in textwrap.wrap(msg, 72):
+				out.eerror(line)
+			return None
 
 		if self._show_list():
 			mylist = mydepgraph.altlist()
@@ -9644,7 +9684,7 @@ class Scheduler(PollScheduler):
 
 		mydepgraph.display_problems()
 		if not success:
-			return (None, None)
+			return None
 
 		mylist = mydepgraph.altlist()
 		mydepgraph.break_refs(mylist)
