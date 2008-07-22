@@ -8808,7 +8808,8 @@ class Scheduler(PollScheduler):
 		@rtype: bool
 		@returns: True if background mode is enabled, False otherwise.
 		"""
-		background = self._max_jobs > 1 or "--quiet" in self.myopts
+		background = (self._max_jobs > 1 or "--quiet" in self.myopts) and \
+			"--pretend" not in self.myopts
 
 		self._status_display.quiet = \
 			not background or \
@@ -9473,7 +9474,8 @@ class Scheduler(PollScheduler):
 
 		# Only allow 1 job max if a restart is scheduled
 		# due to portage update.
-		if self._is_restart_scheduled():
+		if self._is_restart_scheduled() or \
+			"--pretend" in self.myopts:
 			self._set_max_jobs(1)
 
 		merge_queue = self._task_queues.merge
