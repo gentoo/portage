@@ -2124,6 +2124,7 @@ class dblink(object):
 		return False
 
 	def _preserve_libs(self, srcroot, destroot, mycontents, counter, inforoot):
+		showMessage = self._display_merge
 		# read global reverse NEEDED map
 		linkmap = self.vartree.dbapi.linkmap
 		linkmap.rebuild(include_file=os.path.join(inforoot, "NEEDED.ELF.2"))
@@ -2217,9 +2218,11 @@ class dblink(object):
 			# skip existing files so the 'new' libs aren't overwritten
 			if os.path.exists(os.path.join(srcroot, x.lstrip(os.sep))):
 				continue
-			print "injecting %s into %s" % (x, srcroot)
+			showMessage("injecting %s into %s\n" % (x, srcroot),
+				noiselevel=-1)
 			if not os.path.exists(os.path.join(destroot, x.lstrip(os.sep))):
-				print "%s does not exist so can't be preserved" % x
+				showMessage("%s does not exist so can't be preserved\n" % x,
+					noiselevel=-1)
 				continue
 			mydir = os.path.join(srcroot, os.path.dirname(x).lstrip(os.sep))
 			if not os.path.exists(mydir):
