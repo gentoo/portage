@@ -12088,13 +12088,11 @@ def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner,
 				if isinstance(x, list) and \
 				tuple(x) not in unsatisfied_parents]
 
-			# It shouldn't happen, but if the size of mergelist
-			# does not decrease for some reason then the loop
-			# will be infinite. Therefore, if that case ever
-			# occurs for some reason, raise the exception to
-			# break out of the loop.
+			# If the mergelist doesn't shrink then this loop is infinite.
 			if len(pruned_mergelist) == len(mergelist):
-				raise AssertionError("tight loop")
+				# This happens if a package can't be dropped because
+				# it's already installed, but it has unsatisfied PDEPEND.
+				raise
 			mergelist[:] = pruned_mergelist
 			dropped_tasks.update(unsatisfied_parents)
 			del e, graph, traversed_nodes, \
