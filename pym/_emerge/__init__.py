@@ -3366,6 +3366,9 @@ class MergeListItem(CompositeTask):
 		if pkg.type_name == "binary":
 			action_desc = "Extracting"
 
+		if build_opts.fetchonly:
+			action_desc = "Fetching"
+
 		if not build_opts.pretend:
 
 			self.statusMessage("%s (%s of %s) %s %s %s" % \
@@ -3474,9 +3477,10 @@ class PackageMerge(AsynchronousTask):
 			action_desc = "Installing"
 			preposition = "to"
 
-		self.merge.statusMessage("%s %s %s %s" % \
-			(action_desc, colorize("GOOD", pkg.cpv),
-			preposition, pkg.root))
+		if not self.merge.build_opts.fetchonly:
+			self.merge.statusMessage("%s %s %s %s" % \
+				(action_desc, colorize("GOOD", pkg.cpv),
+				preposition, pkg.root))
 
 		self.returncode = self.merge.merge()
 		self.wait()
