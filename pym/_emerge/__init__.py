@@ -8425,8 +8425,8 @@ class TaskScheduler(object):
 
 class JobStatusDisplay(object):
 
-	_bound_properties = ("curval", "running")
-	_jobs_column_width = 42
+	_bound_properties = ("curval", "failed", "running")
+	_jobs_column_width = 48
 
 	# Don't update the display unless at least this much
 	# time has passed, in units of seconds.
@@ -8554,6 +8554,7 @@ class JobStatusDisplay(object):
 
 	def _property_change(self, name, old_value, new_value):
 		self._changed = True
+		self.display()
 
 	def _load_avg_str(self, digits=2):
 		try:
@@ -8590,7 +8591,7 @@ class JobStatusDisplay(object):
 		curval_str = str(self.curval)
 		maxval_str = str(self.maxval)
 		running_str = str(self.running)
-		merges_str = str(self.merges)
+		failed_str = str(self.failed)
 		load_avg_str = self._load_avg_str()
 
 		color_output = StringIO.StringIO()
@@ -8619,21 +8620,18 @@ class JobStatusDisplay(object):
 			f.pop_style()
 			f.add_literal_data(" running")
 
-		#if self.merges:
-		if False:
+		if self.failed:
 			f.add_literal_data(", ")
 			f.push_style(number_style)
-			f.add_literal_data(merges_str)
+			f.add_literal_data(failed_str)
 			f.pop_style()
-			f.add_literal_data(" merge")
-			if self.merges != 1:
-				f.add_literal_data("s")
+			f.add_literal_data(" failed")
 
 		padding = self._jobs_column_width - len(plain_output.getvalue())
 		if padding > 0:
 			f.add_literal_data(padding * " ")
 
-		f.add_literal_data("Load average: ")
+		f.add_literal_data("Load avg: ")
 		f.add_literal_data(load_avg_str)
 
 		self._update(color_output.getvalue())
@@ -9337,6 +9335,7 @@ class Scheduler(PollScheduler):
 		pkg = merge.merge.pkg
 		if merge.returncode != os.EX_OK:
 			self._failed_pkgs.append((pkg, merge.returncode))
+			self._status_display.failed = len(self._failed_pkgs)
 			return
 
 		self._task_complete(pkg)
@@ -9371,10 +9370,10 @@ class Scheduler(PollScheduler):
 			self._status_display.merges = len(self._task_queues.merge)
 		else:
 			self._failed_pkgs.append((build.pkg, build.returncode))
+			self._status_display.failed = len(self._failed_pkgs)
 			self._deallocate_config(build.settings)
 		self._jobs -= 1
 		self._status_display.running = self._jobs
-		self._status_display.display()
 		self._schedule()
 
 	def _extract_exit(self, build):
