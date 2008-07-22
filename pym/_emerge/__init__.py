@@ -2736,7 +2736,17 @@ class EbuildPhase(CompositeTask):
 	def _ebuild_exit(self, ebuild_process):
 
 		if self.phase == "install":
-			portage._check_build_log(self.settings)
+			out = None
+			log_path = self.settings.get("PORTAGE_LOG_FILE")
+			log_file = None
+			if self.background and log_path is not None:
+				log_file = open(log_path, 'a')
+				out = log_file
+			try:
+				portage._check_build_log(self.settings, out=out)
+			finally:
+				if log_file is not None:
+					log_file.close()
 
 		if self._default_exit(ebuild_process) != os.EX_OK:
 			self.wait()
