@@ -1540,6 +1540,7 @@ class dblink(object):
 		The caller must ensure that lockdb() and unlockdb() are called
 		before and after this method.
 		"""
+		showMessage = self._display_merge
 		if self.vartree.dbapi._categories is not None:
 			self.vartree.dbapi._categories = None
 		# When others_in_slot is supplied, the security check has already been
@@ -1695,7 +1696,7 @@ class dblink(object):
 							else:
 								obj_type = "obj"
 							os.unlink(obj)
-							writemsg_stdout("<<< !needed   %s %s\n" % (obj_type, obj))
+							showMessage("<<< !needed   %s %s\n" % (obj_type, obj))
 						except OSError, e:
 							if e.errno == errno.ENOENT:
 								pass
