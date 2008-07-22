@@ -29,6 +29,7 @@ import logging
 import select
 import shlex
 import shutil
+import textwrap
 import urlparse
 import weakref
 import gc
@@ -2402,8 +2403,9 @@ class EbuildBuild(CompositeTask):
 
 		if opts.fetchonly:
 			if self._final_exit(fetcher) != os.EX_OK:
-				eerror("!!! Fetch for %s failed, continuing..." % pkg.cpv,
-					phase="unpack", key=pkg.cpv)
+				if not self.background:
+					eerror("Fetch for %s failed, continuing..." % pkg.cpv,
+						phase="unpack", key=pkg.cpv)
 			self.wait()
 			return
 
@@ -9075,15 +9077,26 @@ class Scheduler(PollScheduler):
 			"--fetch-all-uri" in self.myopts):
 			return
 
-		sys.stderr.write("\n\n!!! Some fetch errors were " + \
-			"encountered.  Please see above for details.\n\n")
+		if self._background:
+			msg = "Some fetch errors were " + \
+				"encountered. Please see %s for details." % \
+				self._fetch_log
+		else:
+			msg = "Some fetch errors were " + \
+				"encountered. Please see above for details."
 
+		prefix = bad(" * ")
+		msg = "".join("%s%s\n" % (prefix, line) \
+			for line in textwrap.wrap(msg, 70))
+		writemsg_level(msg, level=logging.ERROR, noiselevel=-1)
+
+		msg = []
+		msg.append("")
 		for cpv in failed_fetches:
-			sys.stderr.write("   ")
-			sys.stderr.write(cpv)
-			sys.stderr.write("\n")
-
-		sys.stderr.write("\n")
+			msg.append("  %s" % cpv)
+		msg.append("")
+		writemsg_level("".join("%s%s\n" % (prefix, line) \
+			for line in msg), level=logging.ERROR, noiselevel=-1)
 
 	def _is_restart_scheduled(self):
 		"""
