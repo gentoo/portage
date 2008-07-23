@@ -476,13 +476,22 @@ def main():
 			sys.exit(os.EX_USAGE)
 		os.environ["ROOT"] = sys.argv[2]
 
+	# Avoid sandbox violations after python upgrade.
+	from os import path as osp
+	pym_path = osp.join(osp.dirname(
+		osp.dirname(osp.realpath(__file__))), "pym")
+	if os.environ.get("SANDBOX_ON") == "1":
+		sandbox_write = os.environ.get("SANDBOX_WRITE", "").split(":")
+		if pym_path not in sandbox_write:
+			sandbox_write.append(pym_path)
+			os.environ["SANDBOX_WRITE"] = \
+				":".join(filter(None, sandbox_write))
+
 	global portage
 	try:
 		import portage
 	except ImportError:
-		from os import path as osp
-		sys.path.insert(0, osp.join(osp.dirname(
-			osp.dirname(osp.realpath(__file__))), "pym"))
+		sys.path.insert(0, pym_path)
 		import portage
 
 	try:
