@@ -205,7 +205,17 @@ class LinkageMap(object):
 			for arch in self._libs[soname]:
 				rValue.extend(self._libs[soname][arch]["providers"])
 		return rValue
-	
+
+	def getSoname(self, obj):
+		if not self._libs:
+			self.rebuild()
+		if obj not in self._obj_properties:
+			obj = realpath(obj)
+			if obj not in self._obj_properties:
+				raise KeyError("%s not in object list" % obj)
+		arch, needed, path, soname = self._obj_properties[obj]
+		return soname
+
 	def findProviders(self, obj):
 		if not self._libs:
 			self.rebuild()
@@ -224,6 +234,7 @@ class LinkageMap(object):
 			if obj not in self._obj_properties:
 				raise KeyError("%s not in object list" % obj)
 		arch, needed, path, soname = self._obj_properties[obj]
+		path = path[:]
 		path.extend(self._defpath)
 		path = set(realpath(x) for x in path)
 		for x in needed:
@@ -1191,6 +1202,18 @@ class vardbapi(dbapi):
 					owners[owner] = owned_files
 				owned_files.add(f)
 			return owners
+
+		def getFileOwnerMap(self, path_iter):
+			owners = self.get_owners(path_iter)
+			file_owners = {}
+			for pkg_dblink, files in owners.iteritems():
+				for f in files:
+					owner_set = file_owners.get(f)
+					if owner_set is None:
+						owner_set = set()
+						file_owners[f] = owner_set
+					owner_set.add(pkg_dblink)
+			return file_owners
 
 		def iter_owners(self, path_iter):
 			"""
@@ -2250,8 +2273,10 @@ class dblink(object):
 		liblist = linkmap.listLibraryObjects()
 
 		# get list of libraries from old package instance
-		old_contents = self._installed_instance.getcontents().keys()
-		old_libs = set(old_contents).intersection(liblist)
+		root_len = len(self.myroot) - 1
+		old_contents = set(p[root_len:] \
+			for p in self._installed_instance.getcontents())
+		old_libs = old_contents.intersection(liblist)
 
 		# get list of libraries from new package instance
 		mylibs = set([os.path.join(os.sep, x) for x in mycontents]).intersection(liblist)
