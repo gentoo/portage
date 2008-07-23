@@ -29,6 +29,7 @@ import logging
 import select
 import shlex
 import shutil
+import textwrap
 import urlparse
 import weakref
 import gc
@@ -2429,8 +2430,9 @@ class EbuildBuild(CompositeTask):
 
 		if opts.fetchonly:
 			if self._final_exit(fetcher) != os.EX_OK:
-				eerror("!!! Fetch for %s failed, continuing..." % pkg.cpv,
-					phase="unpack", key=pkg.cpv)
+				if not self.background:
+					eerror("Fetch for %s failed, continuing..." % pkg.cpv,
+						phase="unpack", key=pkg.cpv)
 			self.wait()
 			return
 
@@ -2761,7 +2763,17 @@ class EbuildPhase(CompositeTask):
 	def _ebuild_exit(self, ebuild_process):
 
 		if self.phase == "install":
-			portage._check_build_log(self.settings)
+			out = None
+			log_path = self.settings.get("PORTAGE_LOG_FILE")
+			log_file = None
+			if self.background and log_path is not None:
+				log_file = open(log_path, 'a')
+				out = log_file
+			try:
+				portage._check_build_log(self.settings, out=out)
+			finally:
+				if log_file is not None:
+					log_file.close()
 
 		if self._default_exit(ebuild_process) != os.EX_OK:
 			self.wait()
@@ -3391,6 +3403,9 @@ class MergeListItem(CompositeTask):
 		if pkg.type_name == "binary":
 			action_desc = "Extracting"
 
+		if build_opts.fetchonly:
+			action_desc = "Fetching"
+
 		if not build_opts.pretend:
 
 			self.statusMessage("%s (%s of %s) %s %s %s" % \
@@ -3499,9 +3514,12 @@ class PackageMerge(AsynchronousTask):
 			action_desc = "Installing"
 			preposition = "to"
 
-		self.merge.statusMessage("%s %s %s %s" % \
-			(action_desc, colorize("GOOD", pkg.cpv),
-			preposition, pkg.root))
+		if not self.merge.build_opts.fetchonly and \
+			not self.merge.build_opts.pretend and \
+			not self.merge.build_opts.buildpkgonly:
+			self.merge.statusMessage("%s %s %s %s" % \
+				(action_desc, colorize("GOOD", pkg.cpv),
+				preposition, pkg.root))
 
 		self.returncode = self.merge.merge()
 		self.wait()
@@ -8448,8 +8466,8 @@ class TaskScheduler(object):
 
 class JobStatusDisplay(object):
 
-	_bound_properties = ("curval", "running")
-	_jobs_column_width = 42
+	_bound_properties = ("curval", "failed", "running")
+	_jobs_column_width = 48
 
 	# Don't update the display unless at least this much
 	# time has passed, in units of seconds.
@@ -8577,6 +8595,7 @@ class JobStatusDisplay(object):
 
 	def _property_change(self, name, old_value, new_value):
 		self._changed = True
+		self.display()
 
 	def _load_avg_str(self, digits=2):
 		try:
@@ -8613,7 +8632,7 @@ class JobStatusDisplay(object):
 		curval_str = str(self.curval)
 		maxval_str = str(self.maxval)
 		running_str = str(self.running)
-		merges_str = str(self.merges)
+		failed_str = str(self.failed)
 		load_avg_str = self._load_avg_str()
 
 		color_output = StringIO.StringIO()
@@ -8642,21 +8661,18 @@ class JobStatusDisplay(object):
 			f.pop_style()
 			f.add_literal_data(" running")
 
-		#if self.merges:
-		if False:
+		if self.failed:
 			f.add_literal_data(", ")
 			f.push_style(number_style)
-			f.add_literal_data(merges_str)
+			f.add_literal_data(failed_str)
 			f.pop_style()
-			f.add_literal_data(" merge")
-			if self.merges != 1:
-				f.add_literal_data("s")
+			f.add_literal_data(" failed")
 
 		padding = self._jobs_column_width - len(plain_output.getvalue())
 		if padding > 0:
 			f.add_literal_data(padding * " ")
 
-		f.add_literal_data("Load average: ")
+		f.add_literal_data("Load avg: ")
 		f.add_literal_data(load_avg_str)
 
 		self._update(color_output.getvalue())
@@ -8843,7 +8859,8 @@ class Scheduler(PollScheduler):
 		@rtype: bool
 		@returns: True if background mode is enabled, False otherwise.
 		"""
-		background = self._max_jobs > 1 or "--quiet" in self.myopts
+		background = (self._max_jobs > 1 or "--quiet" in self.myopts) and \
+			"--pretend" not in self.myopts
 
 		self._status_display.quiet = \
 			not background or \
@@ -9116,15 +9133,26 @@ class Scheduler(PollScheduler):
 			"--fetch-all-uri" in self.myopts):
 			return
 
-		sys.stderr.write("\n\n!!! Some fetch errors were " + \
-			"encountered.  Please see above for details.\n\n")
+		if self._background:
+			msg = "Some fetch errors were " + \
+				"encountered. Please see %s for details." % \
+				self._fetch_log
+		else:
+			msg = "Some fetch errors were " + \
+				"encountered. Please see above for details."
 
+		prefix = bad(" * ")
+		msg = "".join("%s%s\n" % (prefix, line) \
+			for line in textwrap.wrap(msg, 70))
+		writemsg_level(msg, level=logging.ERROR, noiselevel=-1)
+
+		msg = []
+		msg.append("")
 		for cpv in failed_fetches:
-			sys.stderr.write("   ")
-			sys.stderr.write(cpv)
-			sys.stderr.write("\n")
-
-		sys.stderr.write("\n")
+			msg.append("  %s" % cpv)
+		msg.append("")
+		writemsg_level("".join("%s%s\n" % (prefix, line) \
+			for line in msg), level=logging.ERROR, noiselevel=-1)
 
 	def _is_restart_scheduled(self):
 		"""
@@ -9254,6 +9282,9 @@ class Scheduler(PollScheduler):
 				break
 
 			dropped_tasks = self._calc_resume_list()
+			if dropped_tasks is None:
+				break
+
 			clear_caches(self.trees)
 			if not self._mergelist:
 				break
@@ -9349,6 +9380,7 @@ class Scheduler(PollScheduler):
 		pkg = merge.merge.pkg
 		if merge.returncode != os.EX_OK:
 			self._failed_pkgs.append((pkg, merge.returncode))
+			self._status_display.failed = len(self._failed_pkgs)
 			return
 
 		self._task_complete(pkg)
@@ -9383,10 +9415,10 @@ class Scheduler(PollScheduler):
 			self._status_display.merges = len(self._task_queues.merge)
 		else:
 			self._failed_pkgs.append((build.pkg, build.returncode))
+			self._status_display.failed = len(self._failed_pkgs)
 			self._deallocate_config(build.settings)
 		self._jobs -= 1
 		self._status_display.running = self._jobs
-		self._status_display.display()
 		self._schedule()
 
 	def _extract_exit(self, build):
@@ -9498,7 +9530,8 @@ class Scheduler(PollScheduler):
 
 		# Only allow 1 job max if a restart is scheduled
 		# due to portage update.
-		if self._is_restart_scheduled():
+		if self._is_restart_scheduled() or \
+			"--pretend" in self.myopts:
 			self._set_max_jobs(1)
 
 		merge_queue = self._task_queues.merge
@@ -9620,6 +9653,9 @@ class Scheduler(PollScheduler):
 		"""
 		Use the current resume list to calculate a new one,
 		dropping any packages with unsatisfied deps.
+		@rtype: set
+		@returns: a possibly empty set of dropped tasks, or
+			None if an error occurs.
 		"""
 		print colorize("GOOD", "*** Resuming merge...")
 
@@ -9641,12 +9677,46 @@ class Scheduler(PollScheduler):
 			print "Calculating dependencies  ",
 
 		myparams = create_depgraph_params(self.myopts, None)
-		success, mydepgraph, dropped_tasks = resume_depgraph(
-			self.settings, self.trees, self._mtimedb, self.myopts,
-			myparams, self._spinner, skip_unsatisfied=True)
+		success = False
+		e = None
+		try:
+			success, mydepgraph, dropped_tasks = resume_depgraph(
+				self.settings, self.trees, self._mtimedb, self.myopts,
+				myparams, self._spinner, skip_unsatisfied=True)
+		except depgraph.UnsatisfiedResumeDep, e:
+			mydepgraph = e.depgraph
+			dropped_tasks = set()
 
 		if show_spinner:
 			print "\b\b... done!"
+
+		if e is not None:
+			mydepgraph.display_problems()
+			out = portage.output.EOutput()
+			out.eerror("One or packages are either masked or " + \
+				"have missing dependencies:")
+			out.eerror("")
+			indent = "  "
+			for dep in e.value:
+				if dep.atom is None:
+					out.eerror(indent + "Masked package:")
+					out.eerror(2 * indent + str(dep.parent))
+					out.eerror("")
+				else:
+					out.eerror(indent + str(dep.atom) + " pulled in by:")
+					out.eerror(2 * indent + str(dep.parent))
+					out.eerror("")
+			msg = "The resume list contains packages " + \
+				"that are either masked or have " + \
+				"unsatisfied dependencies. " + \
+				"Please restart/continue " + \
+				"the operation manually, or use --skipfirst " + \
+				"to skip the first package in the list and " + \
+				"any other packages that may be " + \
+				"masked or have missing dependencies."
+			for line in textwrap.wrap(msg, 72):
+				out.eerror(line)
+			return None
 
 		if self._show_list():
 			mylist = mydepgraph.altlist()
@@ -9656,7 +9726,7 @@ class Scheduler(PollScheduler):
 
 		mydepgraph.display_problems()
 		if not success:
-			return (None, None)
+			return None
 
 		mylist = mydepgraph.altlist()
 		mydepgraph.break_refs(mylist)
@@ -11515,8 +11585,10 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	msg.append("\n")
 	msg.append("As a safety measure, depclean will not remove any packages\n")
 	msg.append("unless *all* required dependencies have been resolved.  As a\n")
-	msg.append("consequence, it is often necessary to run\n")
-	msg.append(good("`emerge --update --newuse --deep world`") + " prior to depclean.\n")
+	msg.append("consequence, it is often necessary to run %s\n" % \
+		good("`emerge --update"))
+	msg.append(good("--newuse --deep --oneshot @system @world`") + \
+		" prior to depclean.\n")
 
 	if action == "depclean" and "--quiet" not in myopts and not myfiles:
 		portage.writemsg_stdout("\n")
@@ -11691,29 +11763,45 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	if not success:
 		return 1
 
-	unresolveable = set()
-	for dep in resolver._initially_unsatisfied_deps:
-		if isinstance(dep.parent, Package):
-			unresolveable.add((dep.atom, dep.parent.cpv))
+	def unresolved_deps():
 
-	if unresolveable and not allow_missing_deps:
-		print "Dependencies could not be completely resolved due to"
-		print "the following required packages not being installed:"
-		print
-		for atom, parent in unresolveable:
-			print atom, "required by", str(parent)
-	if unresolveable and not allow_missing_deps:
-		print
-		print "Have you forgotten to run " + good("`emerge --update --newuse --deep world`") + " prior to"
-		print "%s?  It may be necessary to manually uninstall packages that no longer" % action
-		print "exist in the portage tree since it may not be possible to satisfy their"
-		print "dependencies.  Also, be aware of the --with-bdeps option that is documented"
-		print "in " + good("`man emerge`") + "."
-		print
-		if action == "prune":
-			print "If you would like to ignore dependencies then use %s." % \
-				good("--nodeps")
-		return
+		unresolvable = set()
+		for dep in resolver._initially_unsatisfied_deps:
+			if isinstance(dep.parent, Package):
+				unresolvable.add((dep.atom, dep.parent.cpv))
+		if not unresolvable:
+			return False
+
+		if unresolvable and not allow_missing_deps:
+			prefix = bad(" * ")
+			msg = []
+			msg.append("Dependencies could not be completely resolved due to")
+			msg.append("the following required packages not being installed:")
+			msg.append("")
+			for atom, parent in unresolvable:
+				msg.append("  %s pulled in by:" % (atom,))
+				msg.append("    %s" % (parent,))
+				msg.append("")
+			msg.append("Have you forgotten to run " + \
+				good("`emerge --update --newuse --deep world`") + " prior to")
+			msg.append(("%s?  It may be necessary to manually " + \
+				"uninstall packages that no longer") % action)
+			msg.append("exist in the portage tree since " + \
+				"it may not be possible to satisfy their")
+			msg.append("dependencies.  Also, be aware of " + \
+				"the --with-bdeps option that is documented")
+			msg.append("in " + good("`man emerge`") + ".")
+			if action == "prune":
+				msg.append("")
+				msg.append("If you would like to ignore " + \
+					"dependencies then use %s." % good("--nodeps"))
+			writemsg_level("".join("%s%s\n" % (prefix, line) for line in msg),
+				level=logging.ERROR, noiselevel=-1)
+			return True
+		return False
+
+	if unresolved_deps():
+		return 1
 
 	graph = resolver.digraph.copy()
 	required_pkgs_total = 0
@@ -11739,49 +11827,60 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		msg.append("\n")
 		portage.writemsg_stdout("".join(msg), noiselevel=-1)
 
-	cleanlist = []
-	if action == "depclean":
-		if args_set:
-			for pkg in vardb:
-				arg_atom = None
-				try:
-					arg_atom = args_set.findAtomForPackage(pkg)
-				except portage.exception.InvalidDependString:
-					# this error has already been displayed by now
-					continue
-				if arg_atom:
+	def create_cleanlist():
+		pkgs_to_remove = []
+
+		if action == "depclean":
+			if args_set:
+
+				for pkg in vardb:
+					arg_atom = None
+					try:
+						arg_atom = args_set.findAtomForPackage(pkg)
+					except portage.exception.InvalidDependString:
+						# this error has already been displayed by now
+						continue
+
+					if arg_atom:
+						if pkg not in graph:
+							pkgs_to_remove.append(pkg)
+						elif "--verbose" in myopts:
+							show_parents(pkg)
+
+			else:
+				for pkg in vardb:
 					if pkg not in graph:
-						cleanlist.append(pkg)
+						pkgs_to_remove.append(pkg)
 					elif "--verbose" in myopts:
 						show_parents(pkg)
-		else:
-			for pkg in vardb:
-				if pkg not in graph:
-					cleanlist.append(pkg)
-				elif "--verbose" in myopts:
-					show_parents(pkg)
-	elif action == "prune":
-		# Prune really uses all installed instead of world.  It's not a real
-		# reverse dependency so don't display it as such.
-		graph.remove(set_args["world"])
-		for atom in args_set:
-			for pkg in vardb.match_pkgs(atom):
-				if pkg not in graph:
-					cleanlist.append(pkg)
-				elif "--verbose" in myopts:
-					show_parents(pkg)
 
-	if not cleanlist:
-		portage.writemsg_stdout(
-			">>> No packages selected for removal by %s\n" % action)
-		if "--verbose" not in myopts:
-			portage.writemsg_stdout(
-				">>> To see reverse dependencies, use %s\n" % \
-					good("--verbose"))
-		if action == "prune":
-			portage.writemsg_stdout(
-				">>> To ignore dependencies, use %s\n" % \
-					good("--nodeps"))
+		elif action == "prune":
+			# Prune really uses all installed instead of world. It's not
+			# a real reverse dependency so don't display it as such.
+			graph.remove(set_args["world"])
+
+			for atom in args_set:
+				for pkg in vardb.match_pkgs(atom):
+					if pkg not in graph:
+						pkgs_to_remove.append(pkg)
+					elif "--verbose" in myopts:
+						show_parents(pkg)
+
+		if not pkgs_to_remove:
+			writemsg_level(
+				">>> No packages selected for removal by %s\n" % action)
+			if "--verbose" not in myopts:
+				writemsg_level(
+					">>> To see reverse dependencies, use %s\n" % \
+						good("--verbose"))
+			if action == "prune":
+				writemsg_level(
+					">>> To ignore dependencies, use %s\n" % \
+						good("--nodeps"))
+
+		return pkgs_to_remove
+
+	cleanlist = create_cleanlist()
 
 	if len(cleanlist):
 		clean_set = set(cleanlist)
@@ -11933,8 +12032,36 @@ def action_depclean(settings, trees, ldpath_mtimes,
 			msg.append("")
 			writemsg_level("".join(prefix + "%s\n" % line for line in msg),
 				level=logging.WARNING, noiselevel=-1)
-			# TODO: Add packages + deps to graph, and calculate new clean list.
-			return 1
+
+			# Add lib providers to the graph as children of lib consumers,
+			# and also add any dependencies pulled in by the provider.
+			writemsg_level(">>> Adding lib providers to graph...\n")
+
+			for pkg, consumers in consumer_map.iteritems():
+				for consumer_dblink in set(chain(*consumers.values())):
+					consumer_pkg = vardb.get(("installed", myroot,
+						consumer_dblink.mycpv, "nomerge"))
+					resolver._add_pkg(pkg, consumer_pkg,
+						priority=UnmergeDepPriority(runtime=True))
+
+			writemsg_level("\nCalculating dependencies  ")
+			success = resolver._complete_graph()
+			writemsg_level("\b\b... done!\n")
+			resolver.display_problems()
+			if not success:
+				return 1
+			if unresolved_deps():
+				return 1
+
+			graph = resolver.digraph.copy()
+			required_pkgs_total = 0
+			for node in graph:
+				if isinstance(node, Package):
+					required_pkgs_total += 1
+			cleanlist = create_cleanlist()
+			if not cleanlist:
+				return 0
+			clean_set = set(cleanlist)
 
 		# Use a topological sort to create an unmerge order such that
 		# each package is unmerged before it's dependencies. This is
@@ -12093,13 +12220,11 @@ def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner,
 				if isinstance(x, list) and \
 				tuple(x) not in unsatisfied_parents]
 
-			# It shouldn't happen, but if the size of mergelist
-			# does not decrease for some reason then the loop
-			# will be infinite. Therefore, if that case ever
-			# occurs for some reason, raise the exception to
-			# break out of the loop.
+			# If the mergelist doesn't shrink then this loop is infinite.
 			if len(pruned_mergelist) == len(mergelist):
-				raise AssertionError("tight loop")
+				# This happens if a package can't be dropped because
+				# it's already installed, but it has unsatisfied PDEPEND.
+				raise
 			mergelist[:] = pruned_mergelist
 			dropped_tasks.update(unsatisfied_parents)
 			del e, graph, traversed_nodes, \

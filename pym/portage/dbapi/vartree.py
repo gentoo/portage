@@ -1680,6 +1680,7 @@ class dblink(object):
 		The caller must ensure that lockdb() and unlockdb() are called
 		before and after this method.
 		"""
+		showMessage = self._display_merge
 		if self.vartree.dbapi._categories is not None:
 			self.vartree.dbapi._categories = None
 		# When others_in_slot is supplied, the security check has already been
@@ -1835,7 +1836,7 @@ class dblink(object):
 							else:
 								obj_type = "obj"
 							os.unlink(obj)
-							writemsg_stdout("<<< !needed   %s %s\n" % (obj_type, obj))
+							showMessage("<<< !needed   %s %s\n" % (obj_type, obj))
 						except OSError, e:
 							if e.errno == errno.ENOENT:
 								pass
@@ -2264,6 +2265,7 @@ class dblink(object):
 		return False
 
 	def _preserve_libs(self, srcroot, destroot, mycontents, counter, inforoot):
+		showMessage = self._display_merge
 		# read global reverse NEEDED map
 		linkmap = self.vartree.dbapi.linkmap
 		if ostype == "Darwin":
@@ -2360,9 +2362,11 @@ class dblink(object):
 			# skip existing files so the 'new' libs aren't overwritten
 			if os.path.exists(os.path.join(srcroot, x.lstrip(os.sep))):
 				continue
-			print "injecting %s into %s" % (x, srcroot)
+			showMessage("injecting %s into %s\n" % (x, srcroot),
+				noiselevel=-1)
 			if not os.path.exists(os.path.join(destroot, x.lstrip(os.sep))):
-				print "%s does not exist so can't be preserved" % x
+				showMessage("%s does not exist so can't be preserved\n" % x,
+					noiselevel=-1)
 				continue
 			mydir = os.path.join(srcroot, os.path.dirname(x).lstrip(os.sep))
 			if not os.path.exists(mydir):

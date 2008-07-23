@@ -103,19 +103,22 @@ setups that the user may wish to run.
 .BR \-\-depclean
 Cleans the system by removing packages that are not associated
 with explicitly merged packages. Depclean works by creating the
-full dependency tree from the system and world sets,
+full dependency tree from the @system and @world sets,
 then comparing it to installed packages. Packages installed, but
 not part of the dependency tree, will be uninstalled by depclean.
-Inexperienced users are advised to use \fB\-\-pretend\fR
-with this option in order to see a preview of which packages
-will be uninstalled.
+See \fB\-\-with\-bdeps\fR for behavior with respect to build time dependencies
+that are not strictly required. Packages that are part of the world set will
+always be kept. They can be manually added to this set with \fIemerge
+\-\-noreplace <atom>\fR. As a safety measure, depclean will not remove any
+packages unless *all* required dependencies have been resolved. As a
+consequence, it is often necessary to run \fIemerge \-\-update \-\-newuse
+\-\-deep \-\-oneshot @system @world\fR prior to depclean. 
 
-\fBWARNING: Removing some
-packages may cause packages which link to the removed package 
-to stop working and complain about missing libraries.\fR
-Rebuild the complaining package to fix this issue.  Also see
-\fB\-\-with\-bdeps\fR for behavior with respect to build time dependencies that
-are not strictly required. Note that packages listed in
+\fBWARNING:\fR
+Inexperienced users are advised to use \fB\-\-pretend\fR with this
+option in order to see a preview of which packages
+will be uninstalled. Always study the list of packages
+to be cleaned for any obvious mistakes. Note that packages listed in
 package.provided (see \fBportage\fR(5)) may be removed by
 depclean, even if they are part of the world set.
 
@@ -150,11 +153,9 @@ unless the user has enabled FEATURES="metadata-transfer" in \fBmake.conf\fR(5).
 .TP
 .BR "\-\-prune " (\fB\-P\fR)
 \fBWARNING: This action can remove important packages!\fR  Removes all but the
-highest installed version of a package from your system. This action doesn't
-verify the possible binary compatibility between versions and can thus remove
-essential dependencies from your system. Use \fB\-\-prune\fR together with
-\fB\-\-verbose\fR to show reverse dependencies or with \fB\-\-nodeps\fR to
-ignore all dependencies.
+highest installed version of a package from your system. Use \fB\-\-prune\fR
+together with \fB\-\-verbose\fR to show reverse dependencies or with
+\fB\-\-nodeps\fR to ignore all dependencies.
 .TP
 .BR \-\-regen
 Causes portage to check and update the dependency cache of all ebuilds in the 

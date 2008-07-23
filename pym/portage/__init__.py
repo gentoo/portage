@@ -4312,7 +4312,7 @@ def _post_src_install_checks(mysettings):
 			noiselevel=-1)
 	return retval
 
-def _check_build_log(mysettings):
+def _check_build_log(mysettings, out=None):
 	"""
 	Search the content of $PORTAGE_LOG_FILE if it exists
 	and generate the following QA Notices when appropriate:
@@ -4357,7 +4357,7 @@ def _check_build_log(mysettings):
 	from portage.elog.messages import eqawarn
 	def _eqawarn(lines):
 		for line in lines:
-			eqawarn(line, phase="install", key=mysettings.mycpv)
+			eqawarn(line, phase="install", key=mysettings.mycpv, out=out)
 	from textwrap import wrap
 	wrap_width = 70
 
