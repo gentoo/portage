@@ -4485,6 +4485,7 @@ class depgraph(object):
 		myuse = pkg.use.enabled
 		jbigkey = pkg
 		depth = pkg.depth + 1
+		removal_action = "remove" in self.myparams
 
 		edepend={}
 		depkeys = ["DEPEND","RDEPEND","PDEPEND"]
@@ -4498,7 +4499,8 @@ class depgraph(object):
 			edepend["RDEPEND"] = ""
 			edepend["PDEPEND"] = ""
 		bdeps_satisfied = False
-		if mytype in ("installed", "binary"):
+		
+		if pkg.built and not removal_action:
 			if self.myopts.get("--with-bdeps", "n") == "y":
 				# Pull in build time deps as requested, but marked them as
 				# "satisfied" since they are not strictly required. This allows
@@ -4511,6 +4513,9 @@ class depgraph(object):
 			else:
 				# built packages do not have build time dependencies.
 				edepend["DEPEND"] = ""
+
+		if removal_action and self.myopts.get("--with-bdeps", "y") == "n":
+			edepend["DEPEND"] = ""
 
 		deps = (
 			("/", edepend["DEPEND"],
@@ -11681,8 +11686,10 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 		unresolvable = set()
 		for dep in resolver._initially_unsatisfied_deps:
-			if isinstance(dep.parent, Package):
+			if isinstance(dep.parent, Package) and \
+				(dep.priority > UnmergeDepPriority.SOFT):
 				unresolvable.add((dep.atom, dep.parent.cpv))
+
 		if not unresolvable:
 			return False
 
