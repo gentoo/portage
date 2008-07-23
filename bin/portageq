@@ -384,7 +384,7 @@ def get_repo_path(argv):
 		print "ERROR: insufficient parameters!"
 		sys.exit(2)
 	for arg in argv[1:]:
-		print portage.db[argv[0]]["porttree"].dbapi.getRepositoryPath(argv[1])
+		print portage.db[argv[0]]["porttree"].dbapi.getRepositoryPath(arg)
 
 def list_preserved_libs(argv):
 	"""<root>
