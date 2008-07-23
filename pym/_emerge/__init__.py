@@ -2212,7 +2212,7 @@ class EbuildFetcher(SpawnProcess):
 
 	__slots__ = ("fetchonly", "pkg",)
 
-	_env_vars = ("FETCHCOMMAND", "RESUMECOMMAND")
+	_env_vars = ("FETCHCOMMAND", "GENTOO_MIRRORS", "RESUMECOMMAND")
 
 	def _start(self):
 
