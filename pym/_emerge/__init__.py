@@ -12868,6 +12868,7 @@ def ionice(settings):
 	if rval != os.EX_OK:
 		out = portage.output.EOutput()
 		out.eerror("PORTAGE_IONICE_COMMAND returned %d" % (rval,))
+		out.eerror("See the make.conf(5) man page for PORTAGE_IONICE_COMMAND usage instructions.")
 
 def emerge_main():
 	global portage	# NFC why this is necessary now - genone
