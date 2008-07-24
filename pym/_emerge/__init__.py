@@ -12846,6 +12846,29 @@ def adjust_config(myopts, settings):
 		settings["NOCOLOR"] = "true"
 		settings.backup_changes("NOCOLOR")
 
+def ionice(settings):
+
+	ionice_cmd = settings.get("PORTAGE_IONICE_COMMAND")
+	if ionice_cmd:
+		ionice_cmd = shlex.split(ionice_cmd)
+	if not ionice_cmd:
+		return
+
+	from portage.util import varexpand
+	variables = {"PID" : str(os.getpid())}
+	cmd = [varexpand(x, mydict=variables) for x in ionice_cmd]
+
+	try:
+		rval = portage.process.spawn(cmd, env=os.environ)
+	except portage.exception.CommandNotFound:
+		# The OS kernel probably doesn't support ionice,
+		# so return silently.
+		return
+
+	if rval != os.EX_OK:
+		out = portage.output.EOutput()
+		out.eerror("PORTAGE_IONICE_COMMAND returned %d" % (rval,))
+
 def emerge_main():
 	global portage	# NFC why this is necessary now - genone
 	portage._disable_legacy_globals()
@@ -12866,6 +12889,8 @@ def emerge_main():
 	os.umask(022)
 	settings, trees, mtimedb = load_emerge_config()
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
+
+	ionice(settings)
 
 	try:
 		os.nice(int(settings.get("PORTAGE_NICENESS", "0")))

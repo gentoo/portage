@@ -459,6 +459,14 @@ that small garbage files such as html 404 pages are properly discarded. The
 variable should contain an integer number of bytes and may have a suffix such
 as K, M, or G.
 .TP
+\fBPORTAGE_IONICE_COMMAND\fR = \fI[ionice command string]\fR
+This variable should contain a command for portage to call in order
+to adjust the io priority of portage and it's subprocesses. The command
+string should contain a \\${PID} place-holder that will be substituted
+with an integer pid. For more information about ionice, see \fBionice\fR(1).
+.br
+Defaults to "ionice -c 2 -n 7 -p \\${PID}".
+.TP
 \fBPORTAGE_NICENESS\fR = \fI[number]\fR
 The value of this variable will be added to the current nice level that
 emerge is running at.  In other words, this will not set the nice level,
