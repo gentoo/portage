@@ -3379,14 +3379,17 @@ class MergeListItem(CompositeTask):
 		if build_opts.fetchonly:
 			action_desc = "Fetching"
 
+		msg = "%s (%s of %s) %s" % \
+			(action_desc,
+			colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
+			colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)),
+			colorize("GOOD", pkg.cpv))
+
+		if pkg.root != "/":
+			msg += " %s %s" % (preposition, pkg.root)
+
 		if not build_opts.pretend:
-
-			self.statusMessage("%s (%s of %s) %s %s %s" % \
-				(action_desc,
-				colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
-				colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)),
-				colorize("GOOD", pkg.cpv), preposition, pkg.root))
-
+			self.statusMessage(msg)
 			logger.log(" >>> emerge (%s of %s) %s to %s" % \
 				(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root))
 
@@ -3487,12 +3490,15 @@ class PackageMerge(AsynchronousTask):
 			action_desc = "Installing"
 			preposition = "to"
 
+		msg = "%s %s" % (action_desc, colorize("GOOD", pkg.cpv))
+
+		if pkg.root != "/":
+			msg += " %s %s" % (preposition, pkg.root)
+
 		if not self.merge.build_opts.fetchonly and \
 			not self.merge.build_opts.pretend and \
 			not self.merge.build_opts.buildpkgonly:
-			self.merge.statusMessage("%s %s %s %s" % \
-				(action_desc, colorize("GOOD", pkg.cpv),
-				preposition, pkg.root))
+			self.merge.statusMessage(msg)
 
 		self.returncode = self.merge.merge()
 		self.wait()
