@@ -1443,7 +1443,7 @@ class Package(Task):
 	metadata_keys = [
 		"CHOST", "COUNTER", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
 		"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
-		"repository", "RESTRICT", "SLOT", "USE", "_mtime_"]
+		"repository", "RESTRICT", "SLOT", "USE", "_mtime_", "EPREFIX" ]
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
