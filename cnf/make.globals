@@ -62,6 +62,9 @@ PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS="5"
 # Minimum size of existing file for RESUMECOMMAND to be called.
 PORTAGE_FETCH_RESUME_MIN_SIZE="350K"
 
+# Command called to adjust the io priority of portage and it's subprocesses.
+PORTAGE_IONICE_COMMAND="ionice -c 2 -n 7 -p \${PID}"
+
 # Number of times 'emerge --sync' will run before giving up.
 PORTAGE_RSYNC_RETRIES="3"
 

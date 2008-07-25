@@ -383,8 +383,8 @@ def get_repo_path(argv):
 	if len(argv) < 2:
 		print "ERROR: insufficient parameters!"
 		sys.exit(2)
-	for arg in arvg[1:]:
-		print portage.db[argv[0]]["porttree"].dbapi.getRepositoryPath(argv[1])
+	for arg in argv[1:]:
+		print portage.db[argv[0]]["porttree"].dbapi.getRepositoryPath(arg)
 
 def list_preserved_libs(argv):
 	"""<root>
@@ -476,17 +476,24 @@ def main():
 			sys.exit(os.EX_USAGE)
 		os.environ["ROOT"] = sys.argv[2]
 
+	# Avoid sandbox violations after python upgrade.
+	from os import path as osp
+	# for an explanation on this logic, see pym/_emerge/__init__.py
+	if os.environ.__contains__("PORTAGE_PYTHONPATH"):
+		pym_path = os.environ["PORTAGE_PYTHONPATH"])
+	else:
+		pym_path = osp.join(osp.dirname(
+			osp.dirname(osp.realpath(__file__))), "pym")
+	if os.environ.get("SANDBOX_ON") == "1":
+		sandbox_write = os.environ.get("SANDBOX_WRITE", "").split(":")
+		if pym_path not in sandbox_write:
+			sandbox_write.append(pym_path)
+			os.environ["SANDBOX_WRITE"] = \
+				":".join(filter(None, sandbox_write))
+
 	global portage
-	try:
-		import portage
-	except ImportError:
-		from os import path as osp
-		# for an explanation on this logic, see pym/_emerge/__init__.py
-		if os.environ.__contains__("PORTAGE_PYTHONPATH"):
-			sys.path.insert(0, os.environ["PORTAGE_PYTHONPATH"])
-		else:
-			sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-		import portage
+	sys.path.insert(0, pym_path)
+	import portage
 
 	try:
 		if uses_root:

@@ -2408,7 +2408,7 @@ class dblink(object):
 			showMessage("%s checking %d files for package collisions\n" % \
 				(green("*"), len(mycontents)))
 			for i, f in enumerate(mycontents):
-				if i % 1000 == 0:
+				if i % 1000 == 0 and i != 0:
 					showMessage("%d files checked ...\n" % i)
 
 				if scheduler is not None and \

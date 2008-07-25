@@ -340,6 +340,44 @@ class _tolerant_shlex(shlex.shlex):
 				(self.infile, str(e)), noiselevel=-1)
 			return (newfile, StringIO.StringIO())
 
+class _insert_newline_eof(file):
+	"""
+	Read functions insert anywhere from 0 and 2 newlines just before eof.
+	This is useful as a workaround for avoiding a silent error in shlex that
+	is triggered by a source statement at the end of the file without a
+	trailing newline after the source statement.
+	"""
+
+	def read(self, *args):
+		if hasattr(self, "_got_eof"):
+			return ""
+		rval = file.read(self, *args)
+		if rval and not args and rval[-1:] != "\n":
+			rval += "\n"
+		if not rval:
+			self._got_eof = True
+			return "\n"
+		return rval
+
+	def readline(self, *args):
+		if hasattr(self, "_got_eof"):
+			return ""
+		rval = file.readline(self, *args)
+		if rval and rval[-1:] != "\n":
+			rval += "\n"
+		if not rval:
+			self._got_eof = True
+			rval = "\n"
+		return rval
+
+	def readlines(self, *args):
+		if hasattr(self, "_got_eof"):
+			return []
+		lines = file.readlines(self, *args)
+		if lines and lines[-1][-1:] != "\n":
+			lines[-1] += "\n"
+		return lines
+
 def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	if isinstance(expand, dict):
 		# Some existing variable definitions have been
@@ -350,7 +388,7 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		expand_map = {}
 	mykeys = {}
 	try:
-		f=open(mycfg,'r')
+		f = _insert_newline_eof(mycfg, 'rb')
 	except IOError, e:
 		if e.errno == PermissionDenied.errno:
 			raise PermissionDenied(mycfg)

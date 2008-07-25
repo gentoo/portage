@@ -2239,7 +2239,7 @@ class EbuildFetcher(SpawnProcess):
 
 	__slots__ = ("fetchonly", "pkg",)
 
-	_env_vars = ("FETCHCOMMAND", "RESUMECOMMAND")
+	_env_vars = ("FETCHCOMMAND", "GENTOO_MIRRORS", "RESUMECOMMAND")
 
 	def _start(self):
 
@@ -4512,6 +4512,7 @@ class depgraph(object):
 		myuse = pkg.use.enabled
 		jbigkey = pkg
 		depth = pkg.depth + 1
+		removal_action = "remove" in self.myparams
 
 		edepend={}
 		depkeys = ["DEPEND","RDEPEND","PDEPEND"]
@@ -4525,7 +4526,8 @@ class depgraph(object):
 			edepend["RDEPEND"] = ""
 			edepend["PDEPEND"] = ""
 		bdeps_satisfied = False
-		if mytype in ("installed", "binary"):
+		
+		if pkg.built and not removal_action:
 			if self.myopts.get("--with-bdeps", "n") == "y":
 				# Pull in build time deps as requested, but marked them as
 				# "satisfied" since they are not strictly required. This allows
@@ -4538,6 +4540,9 @@ class depgraph(object):
 			else:
 				# built packages do not have build time dependencies.
 				edepend["DEPEND"] = ""
+
+		if removal_action and self.myopts.get("--with-bdeps", "y") == "n":
+			edepend["DEPEND"] = ""
 
 		deps = (
 			("/", edepend["DEPEND"],
@@ -8685,6 +8690,10 @@ class Scheduler(PollScheduler):
 		"--fetchonly", "--fetch-all-uri",
 		"--nodeps", "--pretend"])
 
+	_opts_no_background = \
+		frozenset(["--pretend",
+		"--fetchonly", "--fetch-all-uri"])
+
 	_opts_no_restart = frozenset(["--buildpkgonly",
 		"--fetchonly", "--fetch-all-uri", "--pretend"])
 
@@ -8722,6 +8731,9 @@ class Scheduler(PollScheduler):
 				# Avoid interference with the scheduler's status display.
 				kwargs.pop("short_msg", None)
 			emergelog(self.xterm_titles, *pargs, **kwargs)
+
+	class _failed_pkg(SlotObject):
+		__slots__ = ("log_path", "pkg", "returncode")
 
 	def __init__(self, settings, trees, mtimedb, myopts,
 		spinner, mergelist, favorites, digraph):
@@ -8860,7 +8872,7 @@ class Scheduler(PollScheduler):
 		@returns: True if background mode is enabled, False otherwise.
 		"""
 		background = (self._max_jobs > 1 or "--quiet" in self.myopts) and \
-			"--pretend" not in self.myopts
+			not bool(self._opts_no_background.intersection(self.myopts))
 
 		self._status_display.quiet = \
 			not background or \
@@ -9272,8 +9284,8 @@ class Scheduler(PollScheduler):
 			if not failed_pkgs:
 				break
 
-			for failed_pkg, returncode in failed_pkgs:
-				mergelist.remove(list(failed_pkg))
+			for failed_pkg in failed_pkgs:
+				mergelist.remove(list(failed_pkg.pkg))
 
 			self._failed_pkgs_all.extend(failed_pkgs)
 			del failed_pkgs[:]
@@ -9293,7 +9305,7 @@ class Scheduler(PollScheduler):
 
 				def _eerror(lines):
 					for l in lines:
-						eerror(l, phase="other", key=failed_pkg.cpv)
+						eerror(l, phase="other", key=failed_pkg.pkg.cpv)
 
 				msg = []
 				msg.append("One or more packages have been " + \
@@ -9312,8 +9324,32 @@ class Scheduler(PollScheduler):
 
 		self._logger.log(" *** Finished. Cleaning up...")
 
+		if failed_pkgs:
+			self._failed_pkgs_all.extend(failed_pkgs)
+			del failed_pkgs[:]
+
 		background = self._background
-		if self._failed_pkgs_all and background and \
+		failure_log_shown = False
+		if background and len(self._failed_pkgs_all) == 1:
+			# If only one package failed then just show it's
+			# whole log for easy viewing.
+			failed_pkg = self._failed_pkgs_all[-1]
+			log_path = failed_pkg.log_path
+			if log_path is not None:
+				try:
+					log_file = open(log_path, 'rb')
+				except IOError:
+					pass
+				else:
+					try:
+						for line in log_file:
+							writemsg_level(line, noiselevel=-1)
+					finally:
+						log_file.close()
+					failure_log_shown = True
+
+		if background and not failure_log_shown and \
+			self._failed_pkgs_all and \
 			self._failed_pkgs_die_msgs and \
 			not _flush_elog_mod_echo():
 
@@ -9345,9 +9381,9 @@ class Scheduler(PollScheduler):
 			for line in wrap(msg, 72):
 				writemsg("%s%s\n" % (prefix, line), noiselevel=-1)
 			writemsg(prefix + "\n", noiselevel=-1)
-			for pkg, returncode in self._failed_pkgs_all:
+			for failed_pkg in self._failed_pkgs_all:
 				writemsg("%s\t%s\n" % (prefix,
-					colorize("INFORM", str(pkg))),
+					colorize("INFORM", str(failed_pkg.pkg))),
 					noiselevel=-1)
 			writemsg(prefix + "\n", noiselevel=-1)
 
@@ -9379,7 +9415,9 @@ class Scheduler(PollScheduler):
 	def _do_merge_exit(self, merge):
 		pkg = merge.merge.pkg
 		if merge.returncode != os.EX_OK:
-			self._failed_pkgs.append((pkg, merge.returncode))
+			log_path = merge.merge.settings.get("PORTAGE_LOG_FILE")
+			self._failed_pkgs.append(self._failed_pkg(
+				log_path=log_path, pkg=pkg, returncode=merge.returncode))
 			self._status_display.failed = len(self._failed_pkgs)
 			return
 
@@ -9414,7 +9452,9 @@ class Scheduler(PollScheduler):
 			self._task_queues.merge.add(merge)
 			self._status_display.merges = len(self._task_queues.merge)
 		else:
-			self._failed_pkgs.append((build.pkg, build.returncode))
+			log_path = build.settings.get("PORTAGE_LOG_FILE")
+			self._failed_pkgs.append(self._failed_pkg(
+				log_path=log_path, pkg=build.pkg, returncode=build.returncode))
 			self._status_display.failed = len(self._failed_pkgs)
 			self._deallocate_config(build.settings)
 		self._jobs -= 1
@@ -9443,7 +9483,7 @@ class Scheduler(PollScheduler):
 			self._main_loop_cleanup()
 			portage.elog._emerge_elog_listener = None
 			if failed_pkgs:
-				pkg, rval = failed_pkgs[-1]
+				rval = failed_pkgs[-1].returncode
 
 		return rval
 
@@ -9531,7 +9571,7 @@ class Scheduler(PollScheduler):
 		# Only allow 1 job max if a restart is scheduled
 		# due to portage update.
 		if self._is_restart_scheduled() or \
-			"--pretend" in self.myopts:
+			self._opts_no_background.intersection(self.myopts):
 			self._set_max_jobs(1)
 
 		merge_queue = self._task_queues.merge
@@ -9546,6 +9586,13 @@ class Scheduler(PollScheduler):
 		remaining, state_change = self._schedule_tasks_imp()
 		self._task_queues.merge.schedule()
 		self._status_display.display()
+
+		# Cancel prefetchers if they're the only reason
+		# the main poll loop is still running.
+		if self._failed_pkgs and \
+			not (self._jobs or self._task_queues.merge):
+			self._task_queues.fetch.clear()
+
 		return remaining
 
 	def _schedule_tasks_imp(self):
@@ -11767,8 +11814,10 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 		unresolvable = set()
 		for dep in resolver._initially_unsatisfied_deps:
-			if isinstance(dep.parent, Package):
+			if isinstance(dep.parent, Package) and \
+				(dep.priority > UnmergeDepPriority.SOFT):
 				unresolvable.add((dep.atom, dep.parent.cpv))
+
 		if not unresolvable:
 			return False
 
@@ -12925,6 +12974,30 @@ def adjust_config(myopts, settings):
 		settings["NOCOLOR"] = "true"
 		settings.backup_changes("NOCOLOR")
 
+def ionice(settings):
+
+	ionice_cmd = settings.get("PORTAGE_IONICE_COMMAND")
+	if ionice_cmd:
+		ionice_cmd = shlex.split(ionice_cmd)
+	if not ionice_cmd:
+		return
+
+	from portage.util import varexpand
+	variables = {"PID" : str(os.getpid())}
+	cmd = [varexpand(x, mydict=variables) for x in ionice_cmd]
+
+	try:
+		rval = portage.process.spawn(cmd, env=os.environ)
+	except portage.exception.CommandNotFound:
+		# The OS kernel probably doesn't support ionice,
+		# so return silently.
+		return
+
+	if rval != os.EX_OK:
+		out = portage.output.EOutput()
+		out.eerror("PORTAGE_IONICE_COMMAND returned %d" % (rval,))
+		out.eerror("See the make.conf(5) man page for PORTAGE_IONICE_COMMAND usage instructions.")
+
 def emerge_main():
 	global portage	# NFC why this is necessary now - genone
 	portage._disable_legacy_globals()
@@ -12945,6 +13018,8 @@ def emerge_main():
 	os.umask(022)
 	settings, trees, mtimedb = load_emerge_config()
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
+
+	ionice(settings)
 
 	try:
 		os.nice(int(settings.get("PORTAGE_NICENESS", "0")))
