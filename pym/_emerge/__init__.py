@@ -9544,6 +9544,13 @@ class Scheduler(PollScheduler):
 		remaining, state_change = self._schedule_tasks_imp()
 		self._task_queues.merge.schedule()
 		self._status_display.display()
+
+		# Cancel prefetchers if they're the only reason
+		# the main poll loop is still running.
+		if self._failed_pkgs and \
+			not (self._jobs or self._task_queues.merge):
+			self._task_queues.fetch.clear()
+
 		return remaining
 
 	def _schedule_tasks_imp(self):
