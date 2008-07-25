@@ -2231,7 +2231,7 @@ class EbuildFetcher(SpawnProcess):
 			fetch_env["PORTAGE_PARALLEL_FETCHONLY"] = "1"
 
 		ebuild_binary = os.path.join(
-			settings["EBUILD_BIN_PATH"], "ebuild")
+			settings["PORTAGE_BIN_PATH"], "ebuild")
 
 		fetch_args = [ebuild_binary, ebuild_path, "fetch"]
 		debug = settings.get("PORTAGE_DEBUG") == "1"
