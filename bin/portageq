@@ -480,7 +480,7 @@ def main():
 	from os import path as osp
 	# for an explanation on this logic, see pym/_emerge/__init__.py
 	if os.environ.__contains__("PORTAGE_PYTHONPATH"):
-		pym_path = os.environ["PORTAGE_PYTHONPATH"])
+		pym_path = os.environ["PORTAGE_PYTHONPATH"]
 	else:
 		pym_path = osp.join(osp.dirname(
 			osp.dirname(osp.realpath(__file__))), "pym")
