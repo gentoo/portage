@@ -3,6 +3,8 @@ News (mainly features/major bug fixes)
 portage-2.2
 -------------
 
+* Add PORTAGE_IONICE_COMMAND setting for make.conf which is called to adjust
+  IO priority on portage and it's subprocesses.
 * Add link level dependency awareness to emerge --depclean and --prune actions
   in order to protect against uninstallation of required libraries.
 * Add emerge --jobs and --load-average options which specify behavior
