@@ -624,7 +624,9 @@ dyn_package() {
 }
 
 dyn_spec() {
-	tar czf "/usr/src/rpm/SOURCES/${PF}.tar.gz" \
+	local sources_dir=/usr/src/rpm/SOURCES
+	mkdir -p "${sources_dir}"
+	tar czf "${sources_dir}/${PF}.tar.gz" \
 		"${EBUILD}" "${FILESDIR}" || \
 		die "Failed to create base rpm tarball."
 
@@ -658,6 +660,7 @@ __END1__
 }
 
 dyn_rpm() {
+	cd "${T}" || die "cd failed"
 	addwrite /usr/src/rpm
 	addwrite "${RPMDIR}"
 	dyn_spec
