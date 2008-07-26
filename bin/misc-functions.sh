@@ -661,11 +661,13 @@ __END1__
 
 dyn_rpm() {
 	cd "${T}" || die "cd failed"
+	local machine_name=$(uname -m)
+	local dest_dir=/usr/src/rpm/RPMS/${machine_name}
 	addwrite /usr/src/rpm
 	addwrite "${RPMDIR}"
 	dyn_spec
 	rpmbuild -bb --clean --rmsource "${PF}.spec" || die "Failed to integrate rpm spec file"
-	install -D "/usr/src/rpm/RPMS/i386/${PN}-${PV}-${PR}.i386.rpm" \
+	install -D "${dest_dir}/${PN}-${PV}-${PR}.${machine_name}.rpm" \
 		"${RPMDIR}/${CATEGORY}/${PN}-${PV}-${PR}.rpm" || \
 		die "Failed to move rpm"
 }
