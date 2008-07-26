@@ -2655,10 +2655,23 @@ class dblink(object):
 				for f in sorted(owned_files):
 					msg.append("\t%s" % os.path.join(destroot,
 						f.lstrip(os.path.sep)))
+				msg.append("")
 				eerror(msg)
+
 			if not owners:
 				eerror(["None of the installed" + \
-					" packages claim the file(s)."])
+					" packages claim the file(s).", ""])
+
+			# The explanation about the collision and how to solve
+			# it may not be visible via a scrollback buffer, especially
+			# if the number of file collisions is large. Therefore,
+			# show a summary at the end.
+			msg = ("Package '%s' NOT merged due to " + \
+				"file collisions. If necessary, refer to your elog " + \
+				"messages for the whole content of the above message.") % \
+				self.settings.mycpv
+			eerror(wrap(msg, 70))
+
 			if collision_protect:
 				return 1
 
