@@ -12893,6 +12893,19 @@ def adjust_config(myopts, settings):
 		settings["NOCOLOR"] = "true"
 		settings.backup_changes("NOCOLOR")
 
+def apply_priorities(settings):
+	ionice(settings)
+	nice(settings)
+
+def nice(settings):
+	try:
+		os.nice(int(settings.get("PORTAGE_NICENESS", "0")))
+	except (OSError, ValueError), e:
+		out = portage.output.EOutput()
+		out.eerror("Failed to change nice value to '%s'" % \
+			settings["PORTAGE_NICENESS"])
+		out.eerror("%s\n" % str(e))
+
 def ionice(settings):
 
 	ionice_cmd = settings.get("PORTAGE_IONICE_COMMAND")
@@ -12953,16 +12966,6 @@ def emerge_main():
 	settings, trees, mtimedb = load_emerge_config()
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
 
-	ionice(settings)
-
-	try:
-		os.nice(int(settings.get("PORTAGE_NICENESS", "0")))
-	except (OSError, ValueError), e:
-		portage.writemsg("!!! Failed to change nice value to '%s'\n" % \
-			settings["PORTAGE_NICENESS"])
-		portage.writemsg("!!! %s\n" % str(e))
-		del e
-
 	if portage._global_updates(trees, mtimedb["updates"]):
 		mtimedb.commit()
 		# Reload the whole config from scratch.
@@ -12990,6 +12993,8 @@ def emerge_main():
 		adjust_config(myopts, mysettings)
 		mysettings.lock()
 		del myroot, mysettings
+
+	apply_priorities(settings)
 
 	spinner = stdout_spinner()
 	if "candy" in settings.features:
