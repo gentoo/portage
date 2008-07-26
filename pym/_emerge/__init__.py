@@ -2258,7 +2258,7 @@ class EbuildFetcher(SpawnProcess):
 			fetch_env["PORTAGE_PARALLEL_FETCHONLY"] = "1"
 
 		ebuild_binary = os.path.join(
-			settings["EBUILD_BIN_PATH"], "ebuild")
+			settings["PORTAGE_BIN_PATH"], "ebuild")
 
 		fetch_args = [ebuild_binary, ebuild_path, "fetch"]
 		debug = settings.get("PORTAGE_DEBUG") == "1"
@@ -3406,14 +3406,17 @@ class MergeListItem(CompositeTask):
 		if build_opts.fetchonly:
 			action_desc = "Fetching"
 
+		msg = "%s (%s of %s) %s" % \
+			(action_desc,
+			colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
+			colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)),
+			colorize("GOOD", pkg.cpv))
+
+		if pkg.root != "/":
+			msg += " %s %s" % (preposition, pkg.root)
+
 		if not build_opts.pretend:
-
-			self.statusMessage("%s (%s of %s) %s %s %s" % \
-				(action_desc,
-				colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
-				colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)),
-				colorize("GOOD", pkg.cpv), preposition, pkg.root))
-
+			self.statusMessage(msg)
 			logger.log(" >>> emerge (%s of %s) %s to %s" % \
 				(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root))
 
@@ -3514,12 +3517,15 @@ class PackageMerge(AsynchronousTask):
 			action_desc = "Installing"
 			preposition = "to"
 
+		msg = "%s %s" % (action_desc, colorize("GOOD", pkg.cpv))
+
+		if pkg.root != "/":
+			msg += " %s %s" % (preposition, pkg.root)
+
 		if not self.merge.build_opts.fetchonly and \
 			not self.merge.build_opts.pretend and \
 			not self.merge.build_opts.buildpkgonly:
-			self.merge.statusMessage("%s %s %s %s" % \
-				(action_desc, colorize("GOOD", pkg.cpv),
-				preposition, pkg.root))
+			self.merge.statusMessage(msg)
 
 		self.returncode = self.merge.merge()
 		self.wait()
@@ -4795,8 +4801,7 @@ class depgraph(object):
 				if x.startswith(SETPREFIX):
 					s = x[len(SETPREFIX):]
 					if s not in sets:
-						raise portage.exception.PackageNotFound(
-							"emerge: there are no sets to satisfy '%s'." % s)
+						raise portage.exception.PackageSetNotFound(s)
 					if s in self._sets:
 						continue
 					# Recursively expand sets so that containment tests in
@@ -12511,6 +12516,10 @@ def action_build(settings, trees, mtimedb,
 		except portage.exception.PackageNotFound, e:
 			portage.writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
 			return 1
+		except portage.exception.PackageSetNotFound, e:
+			root_config = trees[settings["ROOT"]]["root_config"]
+			display_missing_pkg_set(root_config, e.value)
+			return 1
 		if show_spinner:
 			print "\b\b... done!"
 		if not retval:
@@ -12974,6 +12983,19 @@ def adjust_config(myopts, settings):
 		settings["NOCOLOR"] = "true"
 		settings.backup_changes("NOCOLOR")
 
+def apply_priorities(settings):
+	ionice(settings)
+	nice(settings)
+
+def nice(settings):
+	try:
+		os.nice(int(settings.get("PORTAGE_NICENESS", "0")))
+	except (OSError, ValueError), e:
+		out = portage.output.EOutput()
+		out.eerror("Failed to change nice value to '%s'" % \
+			settings["PORTAGE_NICENESS"])
+		out.eerror("%s\n" % str(e))
+
 def ionice(settings):
 
 	ionice_cmd = settings.get("PORTAGE_IONICE_COMMAND")
@@ -12998,6 +13020,21 @@ def ionice(settings):
 		out.eerror("PORTAGE_IONICE_COMMAND returned %d" % (rval,))
 		out.eerror("See the make.conf(5) man page for PORTAGE_IONICE_COMMAND usage instructions.")
 
+def display_missing_pkg_set(root_config, set_name):
+
+	msg = []
+	msg.append(("emerge: There are no sets to satisfy '%s'. " + \
+		"The following sets exist:") % \
+		colorize("INFORM", set_name))
+	msg.append("")
+
+	for s in sorted(root_config.sets):
+		msg.append("    %s" % s)
+	msg.append("")
+
+	writemsg_level("".join("%s\n" % l for l in msg),
+		level=logging.ERROR, noiselevel=-1)
+
 def emerge_main():
 	global portage	# NFC why this is necessary now - genone
 	portage._disable_legacy_globals()
@@ -13018,16 +13055,6 @@ def emerge_main():
 	os.umask(022)
 	settings, trees, mtimedb = load_emerge_config()
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
-
-	ionice(settings)
-
-	try:
-		os.nice(int(settings.get("PORTAGE_NICENESS", "0")))
-	except (OSError, ValueError), e:
-		portage.writemsg("!!! Failed to change nice value to '%s'\n" % \
-			settings["PORTAGE_NICENESS"])
-		portage.writemsg("!!! %s\n" % str(e))
-		del e
 
 	if portage._global_updates(trees, mtimedb["updates"]):
 		mtimedb.commit()
@@ -13056,6 +13083,8 @@ def emerge_main():
 		adjust_config(myopts, mysettings)
 		mysettings.lock()
 		del myroot, mysettings
+
+	apply_priorities(settings)
 
 	spinner = stdout_spinner()
 	if "candy" in settings.features:
@@ -13176,8 +13205,7 @@ def emerge_main():
 			if a.startswith(SETPREFIX):
 				s = a[len(SETPREFIX):]
 				if s not in sets:
-					print "emerge: there are no sets to satisfy %s." % \
-						colorize("INFORM", s)
+					display_missing_pkg_set(root_config, s)
 					return 1
 				setconfig.active.append(s)
 				if myaction in unmerge_actions and \

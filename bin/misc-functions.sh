@@ -170,7 +170,7 @@ install_qa_check() {
 				echo "${obj} ${needed}"	>> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
 				echo "${arch:3};${obj};${soname};${rpath};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2
 			else
-				dir=$(dirname ${obj})
+				dir=${obj%/*}
 				# replace $ORIGIN with the dirname of the current object for the lookup
 				opath=$(echo :${rpath}: | sed -e "s#.*:\(.*\)\$ORIGIN\(.*\):.*#\1${dir}\2#")
 				sneeded=$(echo ${needed} | tr , ' ')
@@ -178,7 +178,7 @@ install_qa_check() {
 				for lib in ${sneeded}; do
 					found=0
 					for path in ${opath//:/ }; do
-						[ -e "${D}/${path}/${lib}" ] && found=1
+						[ -e "${D}/${path}/${lib}" ] && found=1 && break
 					done
 					[ "${found}" -eq 0 ] && rneeded="${rneeded},${lib}"
 				done
@@ -731,7 +731,9 @@ dyn_package() {
 }
 
 dyn_spec() {
-	tar czf "/usr/src/rpm/SOURCES/${PF}.tar.gz" \
+	local sources_dir=/usr/src/rpm/SOURCES
+	mkdir -p "${sources_dir}"
+	tar czf "${sources_dir}/${PF}.tar.gz" \
 		"${EBUILD}" "${FILESDIR}" || \
 		die "Failed to create base rpm tarball."
 
@@ -765,11 +767,14 @@ __END1__
 }
 
 dyn_rpm() {
+	cd "${T}" || die "cd failed"
+	local machine_name=$(uname -m)
+	local dest_dir=/usr/src/rpm/RPMS/${machine_name}
 	addwrite /usr/src/rpm
 	addwrite "${RPMDIR}"
 	dyn_spec
 	rpmbuild -bb --clean --rmsource "${PF}.spec" || die "Failed to integrate rpm spec file"
-	install -D "/usr/src/rpm/RPMS/i386/${PN}-${PV}-${PR}.i386.rpm" \
+	install -D "${dest_dir}/${PN}-${PV}-${PR}.${machine_name}.rpm" \
 		"${RPMDIR}/${CATEGORY}/${PN}-${PV}-${PR}.rpm" || \
 		die "Failed to move rpm"
 }

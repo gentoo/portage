@@ -11,7 +11,7 @@ from portage.dep import use_reduce, paren_reduce, dep_getslot, dep_getkey, \
 	match_from_list, match_to_list, remove_slot
 from portage.exception import OperationNotPermitted, PortageException, \
 	UntrustedSignature, SecurityViolation, InvalidSignature, MissingSignature, \
-	FileNotFound, InvalidDependString
+	FileNotFound, InvalidDependString, InvalidPackageName
 from portage.manifest import Manifest
 from portage.output import red
 from portage.util import ensure_dirs, writemsg, apply_recursive_permissions
@@ -216,6 +216,8 @@ class portdbapi(dbapi):
 			return "",0
 		mysplit = mycpv.split("/")
 		psplit = pkgsplit(mysplit[1])
+		if psplit is None or len(mysplit) != 2:
+			raise InvalidPackageName(mycpv)
 
 		if mytree:
 			mytrees = [mytree]
