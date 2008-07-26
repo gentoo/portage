@@ -170,7 +170,7 @@ install_qa_check() {
 				echo "${obj} ${needed}"	>> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
 				echo "${arch:3};${obj};${soname};${rpath};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2
 			else
-				dir=$(dirname ${obj})
+				dir=${obj%/*}
 				# replace $ORIGIN with the dirname of the current object for the lookup
 				opath=$(echo :${rpath}: | sed -e "s#.*:\(.*\)\$ORIGIN\(.*\):.*#\1${dir}\2#")
 				sneeded=$(echo ${needed} | tr , ' ')
@@ -178,7 +178,7 @@ install_qa_check() {
 				for lib in ${sneeded}; do
 					found=0
 					for path in ${opath//:/ }; do
-						[ -e "${D}/${path}/${lib}" ] && found=1
+						[ -e "${D}/${path}/${lib}" ] && found=1 && break
 					done
 					[ "${found}" -eq 0 ] && rneeded="${rneeded},${lib}"
 				done
