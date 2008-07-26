@@ -264,6 +264,24 @@ class LinkageMap(object):
 			obj = realpath(obj)
 			if obj not in self._obj_properties:
 				raise KeyError("%s not in object list" % obj)
+
+		# If there is another version of this lib with the
+		# same soname and the master link points to that
+		# other version, this lib will be shadowed and won't
+		# have any consumers.
+		arch, needed, path, soname = self._obj_properties[obj]
+		obj_dir = os.path.dirname(obj)
+		master_link = os.path.join(obj_dir, soname)
+		try:
+			master_st = os.stat(master_link)
+			obj_st = os.stat(obj)
+		except OSError:
+			pass
+		else:
+			if (obj_st.st_dev, obj_st.st_ino) != \
+				(master_st.st_dev, master_st.st_ino):
+				return set()
+
 		rValue = set()
 		for soname in self._libs:
 			for arch in self._libs[soname]:
@@ -273,7 +291,7 @@ class LinkageMap(object):
 						path = [realpath(y) for y in path+self._defpath]
 						if soname[0] == os.sep and realpath(soname) == realpath(obj):
 							rValue.add(x)
-						elif realpath(os.path.dirname(obj)) in path:
+						elif realpath(obj_dir) in path:
 							rValue.add(x)
 		return rValue
 					
