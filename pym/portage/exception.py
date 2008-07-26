@@ -74,6 +74,9 @@ class PortagePackageException(PortageException):
 class PackageNotFound(PortagePackageException):
 	"""Missing Ebuild or Binary"""
 
+class PackageSetNotFound(PortagePackageException):
+	"""Missing package set"""
+
 class InvalidPackageName(PortagePackageException):
 	"""Malformed package name"""
 

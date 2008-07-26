@@ -4774,8 +4774,7 @@ class depgraph(object):
 				if x.startswith(SETPREFIX):
 					s = x[len(SETPREFIX):]
 					if s not in sets:
-						raise portage.exception.PackageNotFound(
-							"emerge: there are no sets to satisfy '%s'." % s)
+						raise portage.exception.PackageSetNotFound(s)
 					if s in self._sets:
 						continue
 					# Recursively expand sets so that containment tests in
@@ -12427,6 +12426,10 @@ def action_build(settings, trees, mtimedb,
 		except portage.exception.PackageNotFound, e:
 			portage.writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
 			return 1
+		except portage.exception.PackageSetNotFound, e:
+			root_config = trees[settings["ROOT"]]["root_config"]
+			display_missing_pkg_set(root_config, e.value)
+			return 1
 		if show_spinner:
 			print "\b\b... done!"
 		if not retval:
@@ -12914,6 +12917,21 @@ def ionice(settings):
 		out.eerror("PORTAGE_IONICE_COMMAND returned %d" % (rval,))
 		out.eerror("See the make.conf(5) man page for PORTAGE_IONICE_COMMAND usage instructions.")
 
+def display_missing_pkg_set(root_config, set_name):
+
+	msg = []
+	msg.append(("emerge: There are no sets to satisfy '%s'. " + \
+		"The following sets exist:") % \
+		colorize("INFORM", set_name))
+	msg.append("")
+
+	for s in sorted(root_config.sets):
+		msg.append("    %s" % s)
+	msg.append("")
+
+	writemsg_level("".join("%s\n" % l for l in msg),
+		level=logging.ERROR, noiselevel=-1)
+
 def emerge_main():
 	global portage	# NFC why this is necessary now - genone
 	portage._disable_legacy_globals()
@@ -13092,8 +13110,7 @@ def emerge_main():
 			if a.startswith(SETPREFIX):
 				s = a[len(SETPREFIX):]
 				if s not in sets:
-					print "emerge: there are no sets to satisfy %s." % \
-						colorize("INFORM", s)
+					display_missing_pkg_set(root_config, s)
 					return 1
 				setconfig.active.append(s)
 				if myaction in unmerge_actions and \
