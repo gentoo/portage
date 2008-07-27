@@ -572,7 +572,7 @@ try:
 	utilities.parse_use_local_desc(f, luselist)
 	f.close()
 except (IOError, OSError, ParseError), e:
-	logging.exception("Couldn't read from use.local.desc", e)
+	logging.exception("Couldn't read from use.local.desc")
 	sys.exit(1)
 
 if portdir_overlay != portdir:
@@ -583,7 +583,7 @@ if portdir_overlay != portdir:
 			utilities.parse_use_local_desc(f, luselist)
 			f.close()
 		except (IOError, OSError, ParseError), e:
-			logging.exception("Couldn't read from '%s'" % filename, e)
+			logging.exception("Couldn't read from '%s'" % (filename,))
 			sys.exit(1)
 	del filename
 
@@ -598,7 +598,7 @@ try:
 		for l in range(0, len(vardescs)):
 			uselist.append(var.lower() + "_" + vardescs[l].split()[0])
 except (IOError, OSError, ParseError), e:
-	logging.exception("Couldn't read USE flags from use.desc", e)
+	logging.exception("Couldn't read USE flags from use.desc")
 	sys.exit(1)
 
 # retrieve a list of current licenses in portage
@@ -1088,7 +1088,7 @@ for x in scanlist:
 			utilities.parse_metadata_use(f, muselist)
 			f.close()
 		except (EnvironmentError, ParseError), e:
-			logging.exception("Couldn't read from metadata.xml: %s" % (e,))
+			logging.exception("Couldn't read from metadata.xml")
 			sys.exit(1)
 
 	allmasked = True
