@@ -432,15 +432,11 @@ class portdbapi(dbapi):
 		mydata["repository"] = self._repository_map.get(
 			os.path.sep.join(myebuild.split(os.path.sep)[:-3]), "")
 
+		mydata["INHERITED"] = ' '.join(mydata.get("_eclasses_", []))
+		mydata["_mtime_"] = st.st_mtime
+
 		#finally, we look at our internal cache entry and return the requested data.
-		returnme = []
-		for x in mylist:
-			if x == "INHERITED":
-				returnme.append(' '.join(mydata.get("_eclasses_", [])))
-			elif x == "_mtime_":
-				returnme.append(st.st_mtime)
-			else:
-				returnme.append(mydata.get(x,""))
+		returnme = [mydata.get(x, "") for x in mylist]
 
 		if cache_me:
 			if self._aux_cache_slot_dict is None:

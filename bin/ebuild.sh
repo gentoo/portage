@@ -1184,7 +1184,7 @@ inherit() {
 			# false alarms due to INHERITED in /var/db/pkg being outdated
 			# in comparison the the eclasses from the portage tree.
 			if ! hasq $ECLASS $INHERITED; then
-				eqawarn "QA Notice: ECLASS '$ECLASS' inherited illegally in $CATEGORY/$PF"
+				eqawarn "QA Notice: ECLASS '$ECLASS' inherited illegally in $CATEGORY/$PF $EBUILD_PHASE"
 			fi
 		fi
 
