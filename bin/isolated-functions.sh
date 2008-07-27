@@ -183,7 +183,13 @@ elog_base() {
 eqawarn() {
 	elog_base QA "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	vecho -e " ${WARN}*${NORMAL} $*" >&2
+	save_IFS
+	IFS=$'\n'
+	local line
+	for line in $* ; do
+		vecho -e " ${WARN}*${NORMAL} ${line}" >&2
+	done
+	restore_IFS
 	LAST_E_CMD="eqawarn"
 	return 0
 }
@@ -191,7 +197,13 @@ eqawarn() {
 elog() {
 	elog_base LOG "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo -e " ${GOOD}*${NORMAL} $*"
+	save_IFS
+	IFS=$'\n'
+	local line
+	for line in $* ; do
+		echo -e " ${GOOD}*${NORMAL} ${line}"
+	done
+	restore_IFS
 	LAST_E_CMD="elog"
 	return 0
 }
@@ -217,7 +229,13 @@ esyslog() {
 einfo() {
 	elog_base INFO "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo -e " ${GOOD}*${NORMAL} $*"
+	save_IFS
+	IFS=$'\n'
+	local line
+	for line in $* ; do
+		echo -e " ${GOOD}*${NORMAL} ${line}"
+	done
+	restore_IFS
 	LAST_E_CMD="einfo"
 	return 0
 }
@@ -233,7 +251,13 @@ einfon() {
 ewarn() {
 	elog_base WARN "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo -e " ${WARN}*${NORMAL} ${RC_INDENTATION}$*" >&2
+	save_IFS
+	IFS=$'\n'
+	local line
+	for line in $* ; do
+		echo -e " ${WARN}*${NORMAL} ${RC_INDENTATION}${line}" >&2
+	done
+	restore_IFS
 	LAST_E_CMD="ewarn"
 	return 0
 }
@@ -241,7 +265,13 @@ ewarn() {
 eerror() {
 	elog_base ERROR "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo -e " ${BAD}*${NORMAL} ${RC_INDENTATION}$*" >&2
+	save_IFS
+	IFS=$'\n'
+	local line
+	for line in $* ; do
+		echo -e " ${BAD}*${NORMAL} ${RC_INDENTATION}${line}" >&2
+	done
+	restore_IFS
 	LAST_E_CMD="eerror"
 	return 0
 }
