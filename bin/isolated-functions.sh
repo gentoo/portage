@@ -173,7 +173,7 @@ elog_base() {
 	save_IFS
 	IFS=$'\n'
 	for line in $* ; do
-		echo -ne "${messagetype} ${line}\n\0" >> \
+		echo -ne "${messagetype} ${line}\n" >> \
 			"${T}/logging/${EBUILD_PHASE:-other}"
 	done
 	restore_IFS
