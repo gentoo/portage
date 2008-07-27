@@ -1679,8 +1679,8 @@ else:
 
 	if vcs == "svn":
 		try:
-			svnstatus=os.popen("svn status").readlines()
-			myunadded = [ "./"+elem.rstrip().split()[1] for elem in svnstatus if elem.startswith("?") ]	
+			svnstatus=os.popen("svn status --no-ignore").readlines()
+			myunadded = [ "./"+elem.rstrip().split()[1] for elem in svnstatus if elem.startswith("?") or elem.startswith("I") ]
 		except SystemExit, e:
 			raise  # TODO propogate this
 		except:
