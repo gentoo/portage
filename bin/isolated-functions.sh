@@ -158,7 +158,7 @@ vecho() {
 
 # Internal logging function, don't use this in ebuilds
 elog_base() {
-	local messagetype
+	local line messagetype
 	[ -z "${1}" -o -z "${T}" -o ! -d "${T}/logging" ] && return 1
 	case "${1}" in
 		INFO|WARN|ERROR|LOG|QA)
@@ -170,7 +170,13 @@ elog_base() {
 			return 1
 			;;
 	esac
-	echo -ne "${messagetype} $*\n\0" >> "${T}/logging/${EBUILD_PHASE:-other}"
+	save_IFS
+	IFS=$'\n'
+	for line in $* ; do
+		echo -ne "${messagetype} ${line}\n\0" >> \
+			"${T}/logging/${EBUILD_PHASE:-other}"
+	done
+	restore_IFS
 	return 0
 }
 
