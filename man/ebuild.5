@@ -422,6 +422,11 @@ stack (i.e. not those marked to need it which in fact do not).
 This should contain a list of file paths, relative to the image directory, of
 files that contain writable and executable segments.  These are rare.
 The paths may contain regular expressions.
+.TP
+\fBQA_DT_HASH\fR
+This should contain a list of file paths, relative to the image directory, of
+files that contain .hash sections. The paths may contain regular expressions
+with escape\-quoted special characters.
 .SH "PORTAGE DECLARATIONS"
 .TP
 .B inherit
