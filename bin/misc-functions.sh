@@ -170,9 +170,13 @@ install_qa_check() {
 							sed -e "s#^${x#/}\$##" -i "${T}"/scanelf-ignored-LDFLAGS.log
 						done
 					else
+						local shopts=$-
+						set -o noglob
 						for x in ${QA_DT_HASH} ; do
 							sed -e "s#^${x#/}\$##" -i "${T}"/scanelf-ignored-LDFLAGS.log
 						done
+						set +o noglob
+						set -${shopts}
 					fi
 				fi
 				sed -e "/^\$/d" -e "s#^#/#" -i "${T}"/scanelf-ignored-LDFLAGS.log
