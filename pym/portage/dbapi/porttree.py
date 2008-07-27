@@ -138,7 +138,7 @@ class portdbapi(dbapi):
 						x, "metadata/cache", filtered_auxdbkeys, readonly=True)
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
-			["DEPEND", "EAPI", "IUSE", "KEYWORDS", "LICENSE",
+			["DEPEND", "EAPI", "INHERITED", "IUSE", "KEYWORDS", "LICENSE",
 			"PDEPEND", "PROVIDE", "RDEPEND", "repository",
 			"RESTRICT", "SLOT"])
 

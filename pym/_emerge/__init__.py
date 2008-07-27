@@ -1414,7 +1414,8 @@ class Package(Task):
 		"pf", "pv_split", "root", "slot", "slot_atom", "use")
 
 	metadata_keys = [
-		"CHOST", "COUNTER", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
+		"CHOST", "COUNTER", "DEPEND", "EAPI",
+		"INHERITED", "IUSE", "KEYWORDS",
 		"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
 		"repository", "RESTRICT", "SLOT", "USE", "_mtime_"]
 
@@ -2559,7 +2560,15 @@ class EbuildExecuter(CompositeTask):
 
 	__slots__ = ("pkg", "scheduler", "settings") + ("_tree",)
 
-	_phases = ("unpack", "compile", "test", "install")
+	_phases = ("compile", "test", "install")
+
+	_live_eclasses = frozenset([
+		"cvs",
+		"darcs",
+		"git",
+		"mercurial",
+		"subversion"
+	])
 
 	def _start(self):
 		self._tree = "porttree"
@@ -2594,6 +2603,27 @@ class EbuildExecuter(CompositeTask):
 	def _setup_exit(self, setup_phase):
 
 		if self._default_exit(setup_phase) != os.EX_OK:
+			self.wait()
+			return
+
+		unpack_phase = EbuildPhase(background=self.background,
+			pkg=self.pkg, phase="unpack", scheduler=self.scheduler,
+			settings=self.settings, tree=self._tree)
+
+		if self._live_eclasses.intersection(self.pkg.inherited):
+			# Serialize $DISTDIR access for live ebuilds since
+			# otherwise they can interfere with eachother.
+
+			unpack_phase.addExitListener(self._unpack_exit)
+			self._current_task = unpack_phase
+			self.scheduler.scheduleUnpack(unpack_phase)
+
+		else:
+			self._start_task(unpack_phase, self._unpack_exit)
+
+	def _unpack_exit(self, unpack_phase):
+
+		if self._default_exit(unpack_phase) != os.EX_OK:
 			self.wait()
 			return
 
@@ -8705,13 +8735,14 @@ class Scheduler(PollScheduler):
 	class _iface_class(SlotObject):
 		__slots__ = ("dblinkEbuildPhase", "dblinkDisplayMerge",
 			"dblinkElog", "fetch", "register", "schedule",
-			"scheduleSetup", "scheduleYield", "unregister")
+			"scheduleSetup", "scheduleUnpack", "scheduleYield",
+			"unregister")
 
 	class _fetch_iface_class(SlotObject):
 		__slots__ = ("log_file", "schedule")
 
 	_task_queues_class = slot_dict_class(
-		("merge", "jobs", "fetch",), prefix="")
+		("merge", "jobs", "fetch", "unpack"), prefix="")
 
 	class _build_opts_class(SlotObject):
 		__slots__ = ("buildpkg", "buildpkgonly",
@@ -8779,6 +8810,7 @@ class Scheduler(PollScheduler):
 			fetch=fetch_iface, register=self._register,
 			schedule=self._schedule_wait,
 			scheduleSetup=self._schedule_setup,
+			scheduleUnpack=self._schedule_unpack,
 			scheduleYield=self._schedule_yield,
 			unregister=self._unregister)
 
@@ -8965,6 +8997,13 @@ class Scheduler(PollScheduler):
 		"""
 		self._task_queues.merge.addFront(setup_phase)
 		self._schedule()
+
+	def _schedule_unpack(self, unpack_phase):
+		"""
+		Schedule an unpack phase on the unpack queue, in order
+		to serialize $DISTDIR access for live ebuilds.
+		"""
+		self._task_queues.unpack.add(unpack_phase)
 
 	def _find_blockers(self, new_pkg):
 		"""
