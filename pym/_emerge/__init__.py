@@ -1642,6 +1642,8 @@ class AsynchronousTask(SlotObject):
 		self._start_listeners.append(f)
 
 	def removeStartListener(self, f):
+		if self._start_listeners is None:
+			return
 		self._start_listeners.remove(f)
 
 	def _start_hook(self):
@@ -1661,6 +1663,8 @@ class AsynchronousTask(SlotObject):
 		self._exit_listeners.append(f)
 
 	def removeExitListener(self, f):
+		if self._exit_listeners is None:
+			return
 		self._exit_listeners.remove(f)
 
 	def _wait_hook(self):
