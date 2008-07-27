@@ -1753,13 +1753,14 @@ else:
 		mychanged = [ elem.rstrip()[7:] for elem in svnstatus if elem.startswith("M") ]
 		mynew     = [ elem.rstrip()[7:] for elem in svnstatus if elem.startswith("A") ]
 		myremoved = [ elem.rstrip()[7:] for elem in svnstatus if elem.startswith("D") ]
-		# in contrast to CVS, SVN expands nothing by default, but of
-		# course proplist's output is horrible.  bin_blobs historically
+		# in contrast to CVS, SVN expands nothing by default.
+		# bin_blobs historically
 		# were just there to see what files need to be checked for
 		# keyword expansion, which is exactly what we do here, so
-		# slightly change the semantic meaning of "bin_blob"...
-		props = os.popen("svn proplist -R").readlines()
-		expansion = [ prop[15:-3] for prop in props if prop.startswith("Properties on '") ]
+		# slightly change the semantic meaning of "bin_blob"...  In the
+		# future we could store which keyword is expanded.
+		props = os.popen("svn propget -R svn:keywords").readlines()
+		expansion = [ prop.split("-")[0].strip() for prop in props ]
 
 	if vcs:
 		if not (mychanged or mynew or myremoved):
