@@ -1759,7 +1759,7 @@ else:
 		# keyword expansion, which is exactly what we do here, so
 		# slightly change the semantic meaning of "bin_blob"...
 		props = os.popen("svn proplist -R").readlines()
-		expansion = [ prop[15:-2] for prop in props if prop.startswith("Properties on '") ]
+		expansion = [ prop[15:-3] for prop in props if prop.startswith("Properties on '") ]
 
 	if vcs:
 		if not (mychanged or mynew or myremoved):
