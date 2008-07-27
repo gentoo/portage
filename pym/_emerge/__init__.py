@@ -8245,7 +8245,16 @@ class PollScheduler(object):
 		"""
 		All poll() calls pass through here. The poll events
 		are added directly to self._poll_event_queue.
+		In order to avoid endless blocking, this raises
+		StopIteration if timeout is None and there are
+		no file descriptors to poll.
 		"""
+		if not self._poll_event_handlers:
+			self._schedule()
+			if timeout is None and \
+				not self._poll_event_handlers:
+				raise StopIteration(
+					"timeout is None and there are no poll() event handlers")
 		self._poll_event_queue.extend(self._poll_obj.poll(timeout))
 
 	def _next_poll_event(self, timeout=None):
@@ -8253,7 +8262,9 @@ class PollScheduler(object):
 		Since the _schedule_wait() loop is called by event
 		handlers from _poll_loop(), maintain a central event
 		queue for both of them to share events from a single
-		poll() call.
+		poll() call. In order to avoid endless blocking, this
+		raises StopIteration if timeout is None and there are
+		no file descriptors to poll.
 		"""
 		if not self._poll_event_queue:
 			self._poll(timeout)
@@ -8264,10 +8275,13 @@ class PollScheduler(object):
 		event_handlers = self._poll_event_handlers
 		event_handled = False
 
-		while event_handlers:
-			f, event = self._next_poll_event()
-			handler, reg_id = event_handlers[f]
-			handler(f, event)
+		try:
+			while event_handlers:
+				f, event = self._next_poll_event()
+				handler, reg_id = event_handlers[f]
+				handler(f, event)
+				event_handled = True
+		except StopIteration:
 			event_handled = True
 
 		if not event_handled:
@@ -8290,10 +8304,13 @@ class PollScheduler(object):
 		if not self._poll_event_queue:
 			self._poll(0)
 
-		while event_handlers and self._poll_event_queue:
-			f, event = self._next_poll_event()
-			handler, reg_id = event_handlers[f]
-			handler(f, event)
+		try:
+			while event_handlers and self._poll_event_queue:
+				f, event = self._next_poll_event()
+				handler, reg_id = event_handlers[f]
+				handler(f, event)
+				events_handled += 1
+		except StopIteration:
 			events_handled += 1
 
 		return bool(events_handled)
@@ -8333,10 +8350,13 @@ class PollScheduler(object):
 		if isinstance(wait_ids, int):
 			wait_ids = frozenset([wait_ids])
 
-		while wait_ids.intersection(handler_ids):
-			f, event = self._next_poll_event()
-			handler, reg_id = event_handlers[f]
-			handler(f, event)
+		try:
+			while wait_ids.intersection(handler_ids):
+				f, event = self._next_poll_event()
+				handler, reg_id = event_handlers[f]
+				handler(f, event)
+				event_handled = True
+		except StopIteration:
 			event_handled = True
 
 		return event_handled
@@ -9550,9 +9570,7 @@ class Scheduler(PollScheduler):
 			self._poll_loop()
 
 	def _schedule_tasks(self):
-		remaining, state_change = self._schedule_tasks_imp()
 		self._task_queues.merge.schedule()
-		self._status_display.display()
 
 		# Cancel prefetchers if they're the only reason
 		# the main poll loop is still running.
@@ -9560,6 +9578,8 @@ class Scheduler(PollScheduler):
 			not (self._jobs or self._task_queues.merge):
 			self._task_queues.fetch.clear()
 
+		remaining, state_change = self._schedule_tasks_imp()
+		self._status_display.display()
 		return remaining
 
 	def _schedule_tasks_imp(self):
