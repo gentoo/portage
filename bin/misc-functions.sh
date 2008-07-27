@@ -60,6 +60,7 @@ install_qa_check() {
 
 	if type -P scanelf > /dev/null && ! hasq binchecks ${RESTRICT}; then
 		local qa_var insecure_rpath=0 tmp_quiet=${PORTAGE_QUIET}
+		local f x
 
 		# display warnings when using stricter because we die afterwards
 		if has stricter ${FEATURES} ; then
@@ -156,6 +157,40 @@ install_qa_check() {
 			vecho -ne '\a\n'
 			die_msg="${die_msg} execstacks"
 			sleep 1
+		fi
+
+		# Check for files built without respecting LDFLAGS
+		if [[ "${LDFLAGS}" == *--hash-style=gnu* ]] && [[ "${PN}" != *-bin ]] ; then
+			f=$(scanelf -qyRF '%k %p' -k .hash "${D}" | sed -e "s:\.hash ::")
+			if [[ -n ${f} ]] ; then
+				echo "${f}" > "${T}"/scanelf-ignored-LDFLAGS.log
+				if [ "${QA_STRICT_DT_HASH-unset}" == unset ] ; then
+					if [[ ${#QA_DT_HASH[@]} -gt 1 ]] ; then
+						for x in "${QA_DT_HASH[@]}" ; do
+							sed -e "s#^${x#/}\$##" -i "${T}"/scanelf-ignored-LDFLAGS.log
+						done
+					else
+						local shopts=$-
+						set -o noglob
+						for x in ${QA_DT_HASH} ; do
+							sed -e "s#^${x#/}\$##" -i "${T}"/scanelf-ignored-LDFLAGS.log
+						done
+						set +o noglob
+						set -${shopts}
+					fi
+				fi
+				sed -e "/^\$/d" -e "s#^#/#" -i "${T}"/scanelf-ignored-LDFLAGS.log
+				f=$(<"${T}"/scanelf-ignored-LDFLAGS.log)
+				if [[ -n ${f} ]] ; then
+					vecho -ne '\a\n'
+					eqawarn "QA Notice: Files built without respecting LDFLAGS have been detected"
+					eqawarn " Please include this file in your report:"
+					eqawarn " ${T}/scanelf-ignored-LDFLAGS.log"
+					eqawarn "${f}"
+					vecho -ne '\a\n'
+					sleep 1
+				fi
+			fi
 		fi
 
 		# Save NEEDED information after removing self-contained providers

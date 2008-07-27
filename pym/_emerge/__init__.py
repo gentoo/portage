@@ -1669,6 +1669,8 @@ class AsynchronousTask(SlotObject):
 		self._start_listeners.append(f)
 
 	def removeStartListener(self, f):
+		if self._start_listeners is None:
+			return
 		self._start_listeners.remove(f)
 
 	def _start_hook(self):
@@ -1688,6 +1690,8 @@ class AsynchronousTask(SlotObject):
 		self._exit_listeners.append(f)
 
 	def removeExitListener(self, f):
+		if self._exit_listeners is None:
+			return
 		self._exit_listeners.remove(f)
 
 	def _wait_hook(self):
@@ -2580,19 +2584,16 @@ class EbuildBuild(CompositeTask):
 
 class EbuildExecuter(CompositeTask):
 
-	__slots__ = ("pkg", "scheduler", "settings")
+	__slots__ = ("pkg", "scheduler", "settings") + ("_tree",)
 
-	_phases = ("setup", "unpack", "compile", "test", "install")
+	_phases = ("unpack", "compile", "test", "install")
 
 	def _start(self):
+		self._tree = "porttree"
 		pkg = self.pkg
-		scheduler = self.scheduler
-		tree = "porttree"
-		settings = self.settings
-
 		phase = "clean"
 		clean_phase = EbuildPhase(background=self.background, pkg=pkg, phase=phase,
-			scheduler=scheduler, settings=settings, tree=tree)
+			scheduler=self.scheduler, settings=self.settings, tree=self._tree)
 		self._start_task(clean_phase, self._clean_phase_exit)
 
 	def _clean_phase_exit(self, clean_phase):
@@ -2603,19 +2604,32 @@ class EbuildExecuter(CompositeTask):
 
 		pkg = self.pkg
 		scheduler = self.scheduler
-		tree = "porttree"
 		settings = self.settings
 		cleanup = 1
 
 		# This initializes PORTAGE_LOG_FILE.
 		portage.prepare_build_dirs(pkg.root, settings, cleanup)
 
-		ebuild_phases = TaskSequence(scheduler=scheduler)
+		setup_phase = EbuildPhase(background=self.background,
+			pkg=pkg, phase="setup", scheduler=scheduler,
+			settings=settings, tree=self._tree)
+
+		setup_phase.addExitListener(self._setup_exit)
+		self._current_task = setup_phase
+		self.scheduler.scheduleSetup(setup_phase)
+
+	def _setup_exit(self, setup_phase):
+
+		if self._default_exit(setup_phase) != os.EX_OK:
+			self.wait()
+			return
+
+		ebuild_phases = TaskSequence(scheduler=self.scheduler)
 
 		for phase in self._phases:
 			ebuild_phases.add(EbuildPhase(background=self.background,
-				pkg=pkg, phase=phase, scheduler=scheduler,
-				settings=settings, tree=tree))
+				pkg=self.pkg, phase=phase, scheduler=self.scheduler,
+				settings=self.settings, tree=self._tree))
 
 		self._start_task(ebuild_phases, self._default_final_exit)
 
@@ -3148,11 +3162,13 @@ class Binpkg(CompositeTask):
 		settings.backup_changes("PORTAGE_BINPKG_FILE")
 
 		phase = "setup"
-		ebuild_phase = EbuildPhase(background=self.background,
+		setup_phase = EbuildPhase(background=self.background,
 			pkg=self.pkg, phase=phase, scheduler=self.scheduler,
 			settings=settings, tree=self._tree)
 
-		self._start_task(ebuild_phase, self._setup_exit)
+		setup_phase.addExitListener(self._setup_exit)
+		self._current_task = setup_phase
+		self.scheduler.scheduleSetup(setup_phase)
 
 	def _setup_exit(self, setup_phase):
 		if self._default_exit(setup_phase) != os.EX_OK:
@@ -8282,7 +8298,16 @@ class PollScheduler(object):
 		"""
 		All poll() calls pass through here. The poll events
 		are added directly to self._poll_event_queue.
+		In order to avoid endless blocking, this raises
+		StopIteration if timeout is None and there are
+		no file descriptors to poll.
 		"""
+		if not self._poll_event_handlers:
+			self._schedule()
+			if timeout is None and \
+				not self._poll_event_handlers:
+				raise StopIteration(
+					"timeout is None and there are no poll() event handlers")
 		self._poll_event_queue.extend(self._poll_obj.poll(timeout))
 
 	def _next_poll_event(self, timeout=None):
@@ -8290,7 +8315,9 @@ class PollScheduler(object):
 		Since the _schedule_wait() loop is called by event
 		handlers from _poll_loop(), maintain a central event
 		queue for both of them to share events from a single
-		poll() call.
+		poll() call. In order to avoid endless blocking, this
+		raises StopIteration if timeout is None and there are
+		no file descriptors to poll.
 		"""
 		if not self._poll_event_queue:
 			self._poll(timeout)
@@ -8301,10 +8328,13 @@ class PollScheduler(object):
 		event_handlers = self._poll_event_handlers
 		event_handled = False
 
-		while event_handlers:
-			f, event = self._next_poll_event()
-			handler, reg_id = event_handlers[f]
-			handler(f, event)
+		try:
+			while event_handlers:
+				f, event = self._next_poll_event()
+				handler, reg_id = event_handlers[f]
+				handler(f, event)
+				event_handled = True
+		except StopIteration:
 			event_handled = True
 
 		if not event_handled:
@@ -8327,10 +8357,13 @@ class PollScheduler(object):
 		if not self._poll_event_queue:
 			self._poll(0)
 
-		while event_handlers and self._poll_event_queue:
-			f, event = self._next_poll_event()
-			handler, reg_id = event_handlers[f]
-			handler(f, event)
+		try:
+			while event_handlers and self._poll_event_queue:
+				f, event = self._next_poll_event()
+				handler, reg_id = event_handlers[f]
+				handler(f, event)
+				events_handled += 1
+		except StopIteration:
 			events_handled += 1
 
 		return bool(events_handled)
@@ -8370,10 +8403,13 @@ class PollScheduler(object):
 		if isinstance(wait_ids, int):
 			wait_ids = frozenset([wait_ids])
 
-		while wait_ids.intersection(handler_ids):
-			f, event = self._next_poll_event()
-			handler, reg_id = event_handlers[f]
-			handler(f, event)
+		try:
+			while wait_ids.intersection(handler_ids):
+				f, event = self._next_poll_event()
+				handler, reg_id = event_handlers[f]
+				handler(f, event)
+				event_handled = True
+		except StopIteration:
 			event_handled = True
 
 		return event_handled
@@ -8710,7 +8746,7 @@ class Scheduler(PollScheduler):
 	class _iface_class(SlotObject):
 		__slots__ = ("dblinkEbuildPhase", "dblinkDisplayMerge",
 			"dblinkElog", "fetch", "register", "schedule",
-			"scheduleYield", "unregister")
+			"scheduleSetup", "scheduleYield", "unregister")
 
 	class _fetch_iface_class(SlotObject):
 		__slots__ = ("log_file", "schedule")
@@ -8782,7 +8818,9 @@ class Scheduler(PollScheduler):
 			dblinkDisplayMerge=self._dblink_display_merge,
 			dblinkElog=self._dblink_elog,
 			fetch=fetch_iface, register=self._register,
-			schedule=self._schedule_wait, scheduleYield=self._schedule_yield,
+			schedule=self._schedule_wait,
+			scheduleSetup=self._schedule_setup,
+			scheduleYield=self._schedule_yield,
 			unregister=self._unregister)
 
 		self._task_queues = self._task_queues_class()
@@ -8960,6 +8998,14 @@ class Scheduler(PollScheduler):
 		serialize access to the fetch log.
 		"""
 		self._task_queues.fetch.addFront(fetcher)
+
+	def _schedule_setup(self, setup_phase):
+		"""
+		Schedule a setup phase on the merge queue, in order to
+		serialize unsandboxed access to the live filesystem.
+		"""
+		self._task_queues.merge.addFront(setup_phase)
+		self._schedule()
 
 	def _find_blockers(self, new_pkg):
 		"""
@@ -9588,9 +9634,7 @@ class Scheduler(PollScheduler):
 			self._poll_loop()
 
 	def _schedule_tasks(self):
-		remaining, state_change = self._schedule_tasks_imp()
 		self._task_queues.merge.schedule()
-		self._status_display.display()
 
 		# Cancel prefetchers if they're the only reason
 		# the main poll loop is still running.
@@ -9598,6 +9642,8 @@ class Scheduler(PollScheduler):
 			not (self._jobs or self._task_queues.merge):
 			self._task_queues.fetch.clear()
 
+		remaining, state_change = self._schedule_tasks_imp()
+		self._status_display.display()
 		return remaining
 
 	def _schedule_tasks_imp(self):
