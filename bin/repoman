@@ -374,6 +374,14 @@ valid_restrict = frozenset(["binchecks", "bindist",
 	"fetch", "installsources", "mirror",
 	"primaryuri", "strip", "test", "userpriv"])
 
+live_eclasses = frozenset([
+	"cvs",
+	"darcs",
+	"git",
+	"mercurial",
+	"subversion"
+])
+
 suspect_rdepend = frozenset([
 	"app-arch/cabextract",
 	"app-arch/rpm2targz",
@@ -1222,10 +1230,9 @@ for x in scanlist:
 		Ebuilds that inherit a "Live" eclass (darcs,subversion,git,cvs,etc..) should
 		not be allowed to be marked stable
 		"""
-		if set(["darcs","cvs","subversion","git"]).intersection(
-			myaux["INHERITED"].split()):
+		if live_eclasses.intersection(pkg.inherited):
 			bad_stable_keywords = []
-			for keyword in myaux["KEYWORDS"].split():
+			for keyword in keywords:
 				if not keyword.startswith("~") and \
 					not keyword.startswith("-"):
 					bad_stable_keywords.append(keyword)
