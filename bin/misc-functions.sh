@@ -183,7 +183,7 @@ install_qa_check() {
 				f=$(<"${T}"/scanelf-ignored-LDFLAGS.log)
 				if [[ -n ${f} ]] ; then
 					vecho -ne '\a\n'
-					eqawarn "${BAD}QA Notice: Files built without respecting LDFLAGS have been detected"
+					eqawarn "${BAD}QA Notice: Files built without respecting LDFLAGS have been detected${NORMAL}"
 					eqawarn " Please include this file in your report:"
 					eqawarn " ${T}/scanelf-ignored-LDFLAGS.log"
 					eqawarn "${f}"
