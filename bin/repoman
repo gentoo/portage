@@ -1061,6 +1061,8 @@ for x in scanlist:
 		fails["changelog.missing"].append(x+"/ChangeLog")
 	
 	#metadata.xml file check
+	muselist = []
+
 	if "metadata.xml" not in checkdirlist:
 		stats["metadata.missing"]+=1
 		fails["metadata.missing"].append(x+"/metadata.xml")
@@ -1080,15 +1082,14 @@ for x in scanlist:
 				stats["metadata.bad"]+=1
 				fails["metadata.bad"].append(x+"/metadata.xml")
 
-	#load USE flags from metadata.xml
-	muselist=[]
-	try:
-		f = open(os.path.join(checkdir, "metadata.xml"))
-		utilities.parse_metadata_use(f, muselist)
-		f.close()
-	except (IOError, OSError, ParseError), e:
-		logging.exception("Couldn't read from metadata.xml", e)
-		sys.exit(1)
+		#load USE flags from metadata.xml
+		try:
+			f = open(os.path.join(checkdir, "metadata.xml"))
+			utilities.parse_metadata_use(f, muselist)
+			f.close()
+		except (EnvironmentError, ParseError), e:
+			logging.exception("Couldn't read from metadata.xml: %s" % (e,))
+			sys.exit(1)
 
 	allmasked = True
 
