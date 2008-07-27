@@ -2798,6 +2798,13 @@ class config(object):
 	def iterkeys(self):
 		return iter(self)
 
+	def iteritems(self):
+		for k in self:
+			yield (k, self[k])
+
+	def items(self):
+		return list(self.iteritems())
+
 	def __setitem__(self,mykey,myvalue):
 		"set a value; will be thrown away at reset() time"
 		if not isinstance(myvalue, str):
