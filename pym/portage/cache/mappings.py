@@ -147,7 +147,7 @@ def slot_dict_class(keys, prefix="_val_"):
 				if len(args) > 1:
 					raise TypeError(
 						"expected at most 1 positional argument, got " + \
-						repr(1 + len(args)))
+						repr(len(args)))
 
 				if args:
 					self.update(args[0])
