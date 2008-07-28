@@ -384,6 +384,16 @@ class LinkageMapMachO(object):
 			rValue.extend(self._libs[install_name]["providers"])
 		return rValue
 	
+	def getSoname(self, obj):
+		if not self._libs:
+			self.rebuild()
+		if obj not in self._obj_properties:
+			obj = realpath(obj)
+			if obj not in self._obj_properties:
+				raise KeyError("%s not in object list" % obj)
+		install_name = self._obj_properties[obj][1]
+		return install_name
+
 	# the missing documentation, part X.
 	# This function appears to return all (valid) providers for all
 	# needed entries that the given object has.
