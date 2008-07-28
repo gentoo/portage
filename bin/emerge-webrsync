@@ -39,6 +39,10 @@ eval $(portageq envvar -v FEATURES FETCHCOMMAND GENTOO_MIRRORS \
 DISTDIR="${PORTAGE_TMPDIR}/emerge-webrsync"
 export http_proxy ftp_proxy
 
+# PREFIX HACK: use Prefix servers, just because we want this and infra
+# just can't support us yet
+GENTOO_MIRRORS=http://prefix.gentooexperimental.org
+
 # If PORTAGE_NICENESS is overriden via the env then it will
 # still pass through the portageq call and override properly.
 if [ -n "${PORTAGE_NICENESS}" ]; then
