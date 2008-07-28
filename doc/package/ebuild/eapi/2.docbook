@@ -33,6 +33,35 @@
 	</sect2>
 	<sect2 id='package-ebuild-eapi-2-use-deps'>
 	<title>USE Dependencies</title>
+	<sect3 id='package-ebuild-eapi-2-use-deps-unconditional'>
+	<title>Unconditional USE Dependencies</title>
+	<table><title>Syntax Examples</title>
+	<tgroup cols='2' align='left' >
+	<colspec colname='example'/>
+	<colspec colname='meaning'/>
+	<thead>
+	<row>
+	<entry>Example</entry>
+	<entry>Meaning</entry>
+	</row>
+	</thead>
+	<tbody>
+	<row>
+	<entry>foo[bar]</entry>
+	<entry>foo must have bar enabled</entry>
+	</row>
+	<row>
+	<entry>foo[bar,baz]</entry>
+	<entry>foo must have both bar and baz enabled</entry>
+	</row>
+	<row>
+	<entry>foo[-bar,baz]</entry>
+	<entry>foo must have bar disabled and baz enabled</entry>
+	</row>
+	</tbody>
+	</tgroup>
+	</table>
+	</sect3>
 	<sect3 id='package-ebuild-eapi-2-use-deps-conditional'>
 	<title>Conditional USE Dependencies</title>
 	<table><title>Syntax Examples</title>
