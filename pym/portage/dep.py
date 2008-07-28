@@ -396,7 +396,7 @@ class _use_dep(object):
 				break
 
 	def __str__(self):
-		return "[%s]" % (",".join(x for x in self.tokens),)
+		return "[%s]" % (",".join(self.tokens),)
 
 	def evaluate_conditionals(self, use):
 		"""
