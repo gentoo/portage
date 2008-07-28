@@ -396,7 +396,7 @@ class _use_dep(object):
 				break
 
 	def __str__(self):
-		return "".join("[%s]" % x for x in self.tokens)
+		return "[%s]" % (",".join(x for x in self.tokens),)
 
 	def evaluate_conditionals(self, use):
 		"""
@@ -640,6 +640,9 @@ def dep_getusedeps( depend ):
 	bracket_count = 0
 	while( open_bracket != -1 ):
 		bracket_count += 1
+		if bracket_count > 1:
+			raise InvalidAtom("USE Dependency with more " + \
+				"than one set of brackets: %s" % (depend,))
 		close_bracket = depend.find(']', open_bracket )
 		if close_bracket == -1:
 			raise InvalidAtom("USE Dependency with no closing bracket: %s" % depend )
