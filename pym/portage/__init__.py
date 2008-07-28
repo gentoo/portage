@@ -3868,7 +3868,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							myfetch = ["bash", "-c", "exec \"$@\"", myfetch[0]] + myfetch
 
 						myret = portage.process.spawn(myfetch,
-							env=mysettings.environ(), **spawn_keywords)
+							env=dict(mysettings.iteritems()), **spawn_keywords)
 
 						if mysettings.selinux_enabled():
 							selinux.setexec(None)
