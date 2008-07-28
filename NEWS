@@ -3,6 +3,11 @@ News (mainly features/major bug fixes)
 portage-2.2
 -------------
 
+* Add support for a new EAPI="2_pre0" value that can be used in ebuilds when
+  testing new features such as USE dependencies. This is an experimental EAPI
+  that will not be supported after the final EAPI 2 is defined. For more
+  information about experimental EAPI features, refer to the "Ebuild" chapter
+  of the html documentation that is installed with portage.
 * Add PORTAGE_IONICE_COMMAND setting for make.conf which is called to adjust
   IO priority on portage and it's subprocesses.
 * Add link level dependency awareness to emerge --depclean and --prune actions

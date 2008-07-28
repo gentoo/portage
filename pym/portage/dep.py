@@ -24,6 +24,7 @@ from itertools import chain
 import portage.exception
 from portage.exception import InvalidData, InvalidAtom
 from portage.versions import catpkgsplit, catsplit, pkgcmp, pkgsplit, ververify
+import portage.cache.mappings
 
 def cpvequal(cpv1, cpv2):
 	"""
@@ -343,54 +344,101 @@ class _use_dep(object):
 	__slots__ = ("__weakref__", "conditional", "conditional_disabled",
 		"conditional_enabled", "disabled", "enabled", "tokens", "required")
 
+	_conditionals_class = portage.cache.mappings.slot_dict_class(
+		("disabled", "enabled", "equal", "not_equal"), prefix="")
+
 	def __init__(self, use):
 		enabled_flags = []
 		disabled_flags = []
-		conditional_enabled = []
-		conditional_disabled = []
+		conditional = self._conditionals_class()
+		for k in conditional.allowed_keys:
+			conditional[k] = []
+
 		for x in use:
-			if "-" == x[:1]:
-				if "?" == x[-1:]:
-					conditional_disabled.append(x[1:-1])
+			last_char = x[-1:]
+			if "?" == last_char:
+				if "-" == x[:1]:
+					conditional.disabled.append(x[1:-1])
 				else:
-					disabled_flags.append(x[1:])
+					conditional.enabled.append(x[:-1])
+			elif "=" == last_char:
+				if "-" == x[:1]:
+					raise InvalidAtom("Invalid use dep: '%s'" % (x,))
+				if "!" == x[-2:-1]:
+					conditional.not_equal.append(x[:-2])
+				else:
+					conditional.equal.append(x[:-1])
 			else:
-				if "?" == x[-1:]:
-					conditional_enabled.append(x[:-1])
+				if "-" == x[:1]:
+					disabled_flags.append(x[1:])
 				else:
 					enabled_flags.append(x)
+
 		self.tokens = use
 		if not isinstance(self.tokens, tuple):
 			self.tokens = tuple(self.tokens)
+
+		self.required = frozenset(chain(
+			enabled_flags,
+			disabled_flags,
+			*conditional.values()
+		))
+
 		self.enabled = frozenset(enabled_flags)
 		self.disabled = frozenset(disabled_flags)
-		self.conditional_enabled = frozenset(conditional_enabled)
-		self.conditional_disabled = frozenset(conditional_disabled)
-		self.conditional = self.conditional_enabled.union(
-			self.conditional_disabled)
-		self.required = frozenset(chain(self.enabled, self.disabled,
-			self.conditional_enabled, self.conditional_disabled))
+		self.conditional = None
+
+		for v in conditional.itervalues():
+			if v:
+				for k, v in conditional.iteritems():
+					conditional[k] = frozenset(v)
+				self.conditional = conditional
+				break
 
 	def __str__(self):
-		return "".join("[%s]" % x for x in self.tokens)
+		return "[%s]" % (",".join(self.tokens),)
 
 	def evaluate_conditionals(self, use):
 		"""
-		Create a new instance with conditionals evaluated as follows:
+		Create a new instance with conditionals evaluated.
 
-		parent state   conditional   result
-		 x              x?            x
-		-x              x?           -x
-		 x             -x?           -x
-		-x             -x?            x
+		Conditional evaluation behavior:
+
+			parent state   conditional   result
+
+			 x              x?            x
+			-x              x?
+			 x             -x?
+			-x             -x?           -x
+
+			 x              x=            x
+			-x              x=           -x
+			 x             x!=           -x
+			-x             x!=            x
+
+		Conditional syntax examples:
+
+			compact form         equivalent expanded form
+
+			 foo[bar?]           foo  bar? (  foo[bar] )
+			foo[-bar?]           foo !bar? ( foo[-bar] )
+			 foo[bar=]           foo  bar? (  foo[bar] ) !bar? ( foo[-bar] )
+			 foo[bar!=]          foo  bar? ( foo[-bar] ) !bar? (  foo[bar] )
+
 		"""
 		tokens = []
+
+		conditional = self.conditional
 		tokens.extend(self.enabled)
 		tokens.extend("-" + x for x in self.disabled)
-		tokens.extend(self.conditional_enabled.intersection(use))
-		tokens.extend("-" + x for x in self.conditional_enabled.difference(use))
-		tokens.extend("-" + x for x in self.conditional_disabled.intersection(use))
-		tokens.extend(self.conditional_disabled.difference(use))
+		tokens.extend(x for x in conditional.enabled if x in use)
+		tokens.extend("-" + x for x in conditional.disabled if x not in use)
+
+		tokens.extend(x for x in conditional.equal if x in use)
+		tokens.extend("-" + x for x in conditional.equal if x not in use)
+		tokens.extend("-" + x for x in conditional.not_equal if x in use)
+		tokens.extend(x for x in conditional.not_equal if x not in use)
+
 		return _use_dep(tokens)
 
 class _AtomCache(type):
@@ -416,7 +464,8 @@ class Atom(object):
 	_atoms = weakref.WeakValueDictionary()
 
 	_str_methods = ("endswith", "find", "index", "lstrip", "replace",
-		"startswith", "strip", "rindex", "rfind", "rstrip", "__getitem__",
+		"startswith", "split", "strip",
+		"rindex", "rfind", "rstrip", "__getitem__",
 		"__eq__", "__hash__", "__len__", "__ne__", "__repr__", "__str__")
 
 	__slots__ = ("__weakref__", "blocker", "cp", "cpv", "operator",
@@ -587,16 +636,38 @@ def dep_getusedeps( depend ):
 	use_list = []
 	open_bracket = depend.find('[')
 	# -1 = failure (think c++ string::npos)
+	comma_separated = False
+	bracket_count = 0
 	while( open_bracket != -1 ):
+		bracket_count += 1
+		if bracket_count > 1:
+			raise InvalidAtom("USE Dependency with more " + \
+				"than one set of brackets: %s" % (depend,))
 		close_bracket = depend.find(']', open_bracket )
 		if close_bracket == -1:
 			raise InvalidAtom("USE Dependency with no closing bracket: %s" % depend )
 		use = depend[open_bracket + 1: close_bracket]
 		# foo[1:1] may return '' instead of None, we don't want '' in the result
-		if len(use):
-			use_list.append(use)
+		if not use:
+			raise InvalidAtom("USE Dependency with " + \
+				"no use flag ([]): %s" % depend )
+		if not comma_separated:
+			comma_separated = "," in use
+
+		if comma_separated and bracket_count > 1:
+			raise InvalidAtom("USE Dependency contains a mixture of " + \
+				"comma and bracket separators: %s" % depend )
+
+		if comma_separated:
+			for x in use.split(","):
+				if x:
+					use_list.append(x)
+				else:
+					raise InvalidAtom("USE Dependency with no use " + \
+						"flag next to comma: %s" % depend )
 		else:
-			raise InvalidAtom("USE Dependency with no use flag ([]): %s" % depend )
+			use_list.append(use)
+
 		# Find next use flag
 		open_bracket = depend.find( '[', open_bracket+1 )
 	return tuple(use_list)
@@ -633,6 +704,14 @@ def isvalidatom(atom, allow_blockers=False):
 		return 0
 	if allow_blockers and atom.startswith("!"):
 		atom = atom[1:]
+
+	try:
+		use = dep_getusedeps(atom)
+		if use:
+			use = _use_dep(use)
+	except InvalidAtom:
+		return 0
+
 	cpv = dep_getcpv(atom)
 	cpv_catsplit = catsplit(cpv)
 	mycpv_cps = None

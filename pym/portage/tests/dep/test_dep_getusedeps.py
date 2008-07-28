@@ -25,8 +25,7 @@ class DepGetUseDeps(TestCase):
 						if slot:
 							cpv += ":" + slot
 						if isinstance(use, tuple):
-							for u in use:
-								cpv = cpv + "[" + u + "]"
+							cpv += "[%s]" % (",".join(use),)
 							self.assertEqual( dep_getusedeps(
 								cpv ), use )
 						else:
