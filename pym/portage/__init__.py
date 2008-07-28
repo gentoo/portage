@@ -4477,8 +4477,11 @@ def _spawn_misc_sh(mysettings, commands, **kwargs):
 	return rval
 
 def eapi_is_supported(eapi):
+	eapi = str(eapi).strip()
+	if eapi == "2_pre0":
+		return True
 	try:
-		eapi = int(str(eapi).strip())
+		eapi = int(eapi)
 	except ValueError:
 		eapi = -1
 	if eapi < 0:
