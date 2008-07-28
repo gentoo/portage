@@ -423,7 +423,7 @@ class _use_dep(object):
 			foo[bar?]           bar? ( foo[bar]  ) !bar? ( foo       )
 			foo[-bar?]          bar? ( foo       ) !bar? ( foo[-bar] )
 			foo[bar=]           bar? ( foo[bar]  ) !bar? ( foo[-bar] )
-			foo[bar!=]          bar? ( foo[-bar] ) !bar? ( foo[bar] )
+			foo[bar!=]          bar? ( foo[-bar] ) !bar? ( foo[bar]  )
 
 		"""
 		tokens = []
