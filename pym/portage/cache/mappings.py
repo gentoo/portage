@@ -142,6 +142,19 @@ def slot_dict_class(keys, prefix="_val_"):
 			__slots__ = ("__weakref__",) + \
 				tuple(prefix + k for k in allowed_keys)
 
+			def __init__(self, *args, **kwargs):
+
+				if len(args) > 1:
+					raise TypeError(
+						"expected at most 1 positional argument, got " + \
+						repr(1 + len(args)))
+
+				if args:
+					self.update(args[0])
+
+				if kwargs:
+					self.update(kwargs)
+
 			def __iter__(self):
 				for k, v in self.iteritems():
 					yield k
