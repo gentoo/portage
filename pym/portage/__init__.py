@@ -4526,12 +4526,14 @@ def eapi_is_supported(eapi):
 	
 	# now check if what's left is supported (can)
 	properties = [ "2_pre0" ] # another clumpsy solution
-	for i in range(portage.const.EAPI):
+	for i in range(portage.const.EAPI + 1):
 		properties.append(str(i))
 
 	for v in eapi:
 		if v not in properties:
 			return False
+	
+	return True
 
 def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, mydbapi):
 
