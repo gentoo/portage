@@ -170,10 +170,14 @@ elog_base() {
 			return 1
 			;;
 	esac
+	# Note: Even though the message is split on $'\n' here, it's still
+	# not entirely safe to use it as a delimiter in the log file since
+	# there can still be escaped newlines that will be expanded due to
+	# the echo -e parameter.
 	save_IFS
 	IFS=$'\n'
 	for line in $* ; do
-		echo -ne "${messagetype} ${line}\n" >> \
+		echo -ne "${messagetype} ${line}\n\0" >> \
 			"${T}/logging/${EBUILD_PHASE:-other}"
 	done
 	restore_IFS
