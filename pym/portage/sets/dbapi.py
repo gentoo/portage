@@ -70,7 +70,7 @@ class CategorySet(PackageSet):
 			raise SetConfigError("no category given")
 
 		category = options["category"]
-		if not category in categories:
+		if not category in settings.categories:
 			raise SetConfigError("invalid category name '%s'" % category)
 
 		repository = cls._builderGetRepository(options, trees.keys())
