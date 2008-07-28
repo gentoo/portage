@@ -416,7 +416,8 @@ class Atom(object):
 	_atoms = weakref.WeakValueDictionary()
 
 	_str_methods = ("endswith", "find", "index", "lstrip", "replace",
-		"startswith", "strip", "rindex", "rfind", "rstrip", "__getitem__",
+		"startswith", "split", "strip",
+		"rindex", "rfind", "rstrip", "__getitem__",
 		"__eq__", "__hash__", "__len__", "__ne__", "__repr__", "__str__")
 
 	__slots__ = ("__weakref__", "blocker", "cp", "cpv", "operator",
