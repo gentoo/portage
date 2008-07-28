@@ -4496,9 +4496,6 @@ def _spawn_misc_sh(mysettings, commands, **kwargs):
 			eerror(l, phase=mydo, key=mysettings.mycpv)
 	return rval
 
-_eapi_prefix_re = re.compile("(^|\s*)%s($|\s*)" % portage.const.EAPIPREFIX)
-_eapi_num_re    = re.compile("(^|\s*)[0-9]+($|\s*)")
-
 def eapi_is_supported(eapi):
 	# PREFIX HACK/EXTENSION: in prefix we have "incompatible" ebuilds in
 	# an consistent manner; regardless what the EAPI of the main tree
@@ -4514,22 +4511,27 @@ def eapi_is_supported(eapi):
 	# However, back to reality, we just look for all <desc> we require,
 	# and don't do version tricks other than the main tree does.
 
-	eapi = str(eapi)
-	if portage.const.EAPIPREFIX:
-		if not _eapi_prefix_re.search(eapi):
-			return False
+	eapi = str(eapi).split() # note Python's contact for this special case
 
-	m = _eapi_num_re.search(eapi)
-	if not m:
-		eapi = 0
-	else:
-		try:
-			eapi = int(m.string[m.start():m.end()].strip())
-		except ValueError:
-			eapi = -1
-	if eapi < 0:
-		return False
-	return eapi <= portage.const.EAPI
+	# these are the properties that MUST be present (should)
+	properties = []
+	if portage.const.EAPIPREFIX:
+		properties.append(portage.const.EAPIPREFIX) # clumpsy temporary solution
+
+	for prop in properties:
+		if prop not in eapi:
+			return False
+		else:
+			eapi.remove(prop)
+	
+	# now check if what's left is supported (can)
+	properties = [ "2_pre0" ] # another clumpsy solution
+	for i in range(portage.const.EAPI):
+		propeties.append(str(i))
+
+	for v in eapi:
+		if v not in properties
+			return False
 
 def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, mydbapi):
 
