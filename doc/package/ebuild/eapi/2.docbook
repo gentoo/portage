@@ -48,19 +48,19 @@
 	<tbody>
 	<row>
 	<entry>foo[bar?]</entry>
-	<entry>foo  bar? (  foo[bar] )</entry>
+	<entry>bar? ( foo[bar]  ) !bar? ( foo       )</entry>
 	</row>
 	<row>
 	<entry>foo[-bar?]</entry>
-	<entry>foo !bar? ( foo[-bar] )</entry>
+	<entry>bar? ( foo       ) !bar? ( foo[-bar] )</entry>
 	</row>
 	<row>
 	<entry>foo[bar=]</entry>
-	<entry>foo  bar? (  foo[bar] ) !bar? ( foo[-bar] )</entry>
+	<entry>bar? ( foo[bar]  ) !bar? ( foo[-bar] )</entry>
 	</row>
 	<row>
 	<entry>foo[bar!=]</entry>
-	<entry>foo  bar? ( foo[-bar] ) !bar? (  foo[bar] )</entry>
+	<entry>bar? ( foo[-bar] ) !bar? ( foo[bar] )</entry>
 	</row>
 	</tbody>
 	</tgroup>

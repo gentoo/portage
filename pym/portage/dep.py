@@ -420,10 +420,10 @@ class _use_dep(object):
 
 			compact form         equivalent expanded form
 
-			 foo[bar?]           foo  bar? (  foo[bar] )
-			foo[-bar?]           foo !bar? ( foo[-bar] )
-			 foo[bar=]           foo  bar? (  foo[bar] ) !bar? ( foo[-bar] )
-			 foo[bar!=]          foo  bar? ( foo[-bar] ) !bar? (  foo[bar] )
+			foo[bar?]           bar? ( foo[bar]  ) !bar? ( foo       )
+			foo[-bar?]          bar? ( foo       ) !bar? ( foo[-bar] )
+			foo[bar=]           bar? ( foo[bar]  ) !bar? ( foo[-bar] )
+			foo[bar!=]          bar? ( foo[-bar] ) !bar? ( foo[bar] )
 
 		"""
 		tokens = []
