@@ -588,16 +588,35 @@ def dep_getusedeps( depend ):
 	use_list = []
 	open_bracket = depend.find('[')
 	# -1 = failure (think c++ string::npos)
+	comma_separated = False
+	bracket_count = 0
 	while( open_bracket != -1 ):
+		bracket_count += 1
 		close_bracket = depend.find(']', open_bracket )
 		if close_bracket == -1:
 			raise InvalidAtom("USE Dependency with no closing bracket: %s" % depend )
 		use = depend[open_bracket + 1: close_bracket]
 		# foo[1:1] may return '' instead of None, we don't want '' in the result
-		if len(use):
-			use_list.append(use)
+		if not use:
+			raise InvalidAtom("USE Dependency with " + \
+				"no use flag ([]): %s" % depend )
+		if not comma_separated:
+			comma_separated = "," in use
+
+		if comma_separated and bracket_count > 1:
+			raise InvalidAtom("USE Dependency contains a mixture of " + \
+				"comma and bracket separators: %s" % depend )
+
+		if comma_separated:
+			for x in use.split(","):
+				if x:
+					use_list.append(x)
+				else:
+					raise InvalidAtom("USE Dependency with no use " + \
+						"flag next to comma: %s" % depend )
 		else:
-			raise InvalidAtom("USE Dependency with no use flag ([]): %s" % depend )
+			use_list.append(use)
+
 		# Find next use flag
 		open_bracket = depend.find( '[', open_bracket+1 )
 	return tuple(use_list)
@@ -634,6 +653,12 @@ def isvalidatom(atom, allow_blockers=False):
 		return 0
 	if allow_blockers and atom.startswith("!"):
 		atom = atom[1:]
+
+	try:
+		dep_getusedeps(atom)
+	except InvalidAtom:
+		return 0
+
 	cpv = dep_getcpv(atom)
 	cpv_catsplit = catsplit(cpv)
 	mycpv_cps = None
