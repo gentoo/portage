@@ -3259,7 +3259,7 @@ class BinpkgFetcher(SpawnProcess):
 			"FILE"    : os.path.basename(pkg_path)
 		}
 
-		fetch_env = dict((k, settings[k]) for k in settings)
+		fetch_env = dict(settings.iteritems())
 		fetch_args = [portage.util.varexpand(x, mydict=fcmd_vars) \
 			for x in shlex.split(fcmd)]
 
