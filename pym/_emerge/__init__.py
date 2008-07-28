@@ -9622,6 +9622,9 @@ class Scheduler(PollScheduler):
 			self._poll_loop()
 
 		while self._jobs or merge_queue:
+			if merge_queue.schedule() and \
+				not self._poll_event_handlers:
+				continue
 			self._poll_loop()
 
 	def _schedule_tasks(self):
