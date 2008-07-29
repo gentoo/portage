@@ -800,8 +800,12 @@ def apply_recursive_permissions(top, uid=-1, gid=-1,
 				if not applied:
 					all_applied = False
 			except PortageException, e:
-				all_applied = False
-				onerror(e)
+				# Ignore InvalidLocation exceptions such as FileNotFound
+				# and DirectoryNotFound since sometimes things disappear,
+				# like when adjusting permissions on DISTCC_DIR.
+				if not isinstance(e, portage.exception.InvalidLocation):
+					all_applied = False
+					onerror(e)
 	return all_applied
 
 def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
