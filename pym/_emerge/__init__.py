@@ -9567,7 +9567,7 @@ class Scheduler(PollScheduler):
 		if self._choose_pkg_return_early:
 			return None
 
-		if self._max_jobs < 2 or self._jobs == 0:
+		if self._digraph is None:
 			return self._pkg_queue.pop(0)
 
 		self._prune_digraph()
