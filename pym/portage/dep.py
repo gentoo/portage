@@ -418,8 +418,8 @@ class _use_dep(object):
 
 			 x              x=            x
 			-x              x=           -x
-			 x             x!=           -x
-			-x             x!=            x
+			 x              x!=          -x
+			-x              x!=           x
 
 		Conditional syntax examples:
 
