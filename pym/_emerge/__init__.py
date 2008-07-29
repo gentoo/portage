@@ -9655,18 +9655,25 @@ class Scheduler(PollScheduler):
 	def _schedule_tasks(self):
 		remaining, state_change = self._schedule_tasks_imp()
 		self._status_display.display()
+
+		state_change = 0
 		for q in self._task_queues.values():
-			q.schedule()
+			if q.schedule():
+				state_change += 1
 
 		# Cancel prefetchers if they're the only reason
 		# the main poll loop is still running.
 		if self._failed_pkgs and \
-			not (self._jobs or self._task_queues.merge):
+			not (self._jobs or self._task_queues.merge) and \
+			self._task_queues.fetch:
 			self._task_queues.fetch.clear()
+			state_change += 1
 
-		remaining, state_change = self._schedule_tasks_imp()
-		self._status_display.display()
-		return remaining
+		if state_change:
+			remaining, state_change = self._schedule_tasks_imp()
+			self._status_display.display()
+
+		return bool(self._pkg_queue and not self._failed_pkgs)
 
 	def _job_delay(self):
 		"""
