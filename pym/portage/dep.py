@@ -396,6 +396,8 @@ class _use_dep(object):
 				break
 
 	def __str__(self):
+		if not self.tokens:
+			return ""
 		return "[%s]" % (",".join(self.tokens),)
 
 	def evaluate_conditionals(self, use):
