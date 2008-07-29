@@ -8936,7 +8936,8 @@ class Scheduler(PollScheduler):
 		return background
 
 	def _set_digraph(self, digraph):
-		if self._max_jobs < 2:
+		if self._max_jobs is not True and \
+			self._max_jobs < 2:
 			# save some memory
 			self._digraph = None
 			return
