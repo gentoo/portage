@@ -9568,6 +9568,9 @@ class Scheduler(PollScheduler):
 			return None
 
 		if self._digraph is None:
+			if self._jobs or self._task_queues.merge:
+				self._choose_pkg_return_early = True
+				return None
 			return self._pkg_queue.pop(0)
 
 		self._prune_digraph()
