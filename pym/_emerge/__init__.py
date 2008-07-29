@@ -8862,14 +8862,9 @@ class Scheduler(PollScheduler):
 
 		# The load average takes some time to respond when new
 		# jobs are added, so we need to limit the rate of adding
-		# new jobs when emerge first starts.
-		self._main_loop_init_delay_period = 60
+		# new jobs.
 		self._job_delay_factor = 0.5
-
-		# State variables
-		self._main_loop_init_delay = None
 		self._previous_job_start_time = None
-		self._main_loop_start_time = None
 
 		self._set_digraph(digraph)
 
@@ -9636,8 +9631,6 @@ class Scheduler(PollScheduler):
 		self._config_pool[settings["ROOT"]].append(settings)
 
 	def _main_loop(self):
-		self._main_loop_init_delay = self._max_load is not None
-		self._main_loop_start_time = time.time()
 
 		# Only allow 1 job max if a restart is scheduled
 		# due to portage update.
@@ -9675,15 +9668,11 @@ class Scheduler(PollScheduler):
 		@returns: True if job scheduling should be delayed, False otherwise.
 		"""
 
-		if self._main_loop_init_delay and self._jobs:
+		if self._jobs and self._max_load is not None:
 
 			current_time = time.time()
 
-			if current_time - self._main_loop_start_time > \
-				self._main_loop_init_delay_period:
-				self._main_loop_init_delay = False
-
-			elif current_time - self._previous_job_start_time < \
+			if current_time - self._previous_job_start_time < \
 				self._job_delay_factor * self._jobs:
 				return True
 
@@ -9702,11 +9691,9 @@ class Scheduler(PollScheduler):
 			if not self._pkg_queue or self._failed_pkgs:
 				return (False, state_change)
 
-			if self._job_delay():
-				return (True, state_change)
-
 			if self._choose_pkg_return_early or \
-				not self._can_add_job():
+				not self._can_add_job() or \
+				self._job_delay():
 				return (True, state_change)
 
 			pkg = self._choose_pkg()
