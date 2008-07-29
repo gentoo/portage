@@ -12737,7 +12737,10 @@ def insert_optional_args(args):
 
 	new_args = []
 	jobs_opts = ("-j", "--jobs")
-	for i, arg in enumerate(args):
+	arg_stack = args[:]
+	arg_stack.reverse()
+	while arg_stack:
+		arg = arg_stack.pop()
 
 		short_job_opt = bool("j" in arg and arg[:1] == "-" and arg[:2] != "--")
 		if not (short_job_opt or arg in jobs_opts):
@@ -12760,16 +12763,15 @@ def insert_optional_args(args):
 				job_count = "True"
 				saved_opts = arg[1:].replace("j", "")
 
-		if job_count is None and \
-			i < len(args) - 1:
+		if job_count is None and arg_stack:
 			try:
-				job_count = int(args[i+1])
+				job_count = int(arg_stack[-1])
 			except ValueError:
 				pass
 			else:
-				# The next loop iteration will append
-				# the validated job count to new_args.
-				continue
+				# Discard the job count from the stack
+				# since we're consuming it here.
+				arg_stack.pop()
 
 		if job_count is None:
 			# unlimited number of jobs
