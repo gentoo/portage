@@ -2321,7 +2321,7 @@ class EbuildBuild(CompositeTask):
 	__slots__ = ("args_set", "background", "find_blockers",
 		"ldpath_mtimes", "logger", "opts", "pkg", "pkg_count",
 		"prefetcher", "settings", "world_atom") + \
-		("_build_dir", "_buildpkg", "_ebuild_path", "_tree")
+		("_build_dir", "_buildpkg", "_ebuild_path", "_issyspkg", "_tree")
 
 	def _start(self):
 
@@ -2433,16 +2433,13 @@ class EbuildBuild(CompositeTask):
 		logger.log(msg, short_msg=short_msg)
 
 		#buildsyspkg: Check if we need to _force_ binary package creation
-		issyspkg = "buildsyspkg" in features and \
+		self._issyspkg = "buildsyspkg" in features and \
 				system_set.findAtomForPackage(pkg) and \
 				not opts.buildpkg
 
-		if opts.buildpkg or issyspkg:
+		if opts.buildpkg or self._issyspkg:
 
 			self._buildpkg = True
-			if issyspkg:
-				portage.writemsg_stdout(">>> This is a system package, " + \
-					"let's pack a rescue tarball.\n", noiselevel=-1)
 
 			msg = " === (%s of %s) Compiling/Packaging (%s::%s)" % \
 				(pkg_count.curval, pkg_count.maxval, pkg.cpv, ebuild_path)
@@ -2478,6 +2475,21 @@ class EbuildBuild(CompositeTask):
 			self._final_exit(build)
 			self.wait()
 			return
+
+		if self._issyspkg:
+			msg = ">>> This is a system package, " + \
+				"let's pack a rescue tarball.\n"
+
+			log_path = self.settings.get("PORTAGE_LOG_FILE")
+			if log_path is not None:
+				log_file = open(log_path, 'a')
+				try:
+					log_file.write(msg)
+				finally:
+					log_file.close()
+
+			if not self.background:
+				portage.writemsg_stdout(msg, noiselevel=-1)
 
 		packager = EbuildBinpkg(background=self.background, pkg=self.pkg,
 			scheduler=self.scheduler, settings=self.settings)
