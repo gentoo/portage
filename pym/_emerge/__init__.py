@@ -9639,7 +9639,8 @@ class Scheduler(PollScheduler):
 		merge_queue = self._task_queues.merge
 
 		while self._schedule():
-			self._poll_loop()
+			if self._poll_event_handlers:
+				self._poll_loop()
 
 		while True:
 			self._schedule()
