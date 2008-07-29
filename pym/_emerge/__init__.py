@@ -8153,7 +8153,8 @@ class SequentialTaskQueue(SlotObject):
 			if task.poll() is not None:
 				state_changed = True
 
-		while task_queue and (len(running_tasks) < max_jobs):
+		while task_queue and \
+			(max_jobs is True or len(running_tasks) < max_jobs):
 			task = task_queue.popleft()
 			cancelled = getattr(task, "cancelled", None)
 			if not cancelled:
@@ -8271,10 +8272,12 @@ class PollScheduler(object):
 		max_jobs = self._max_jobs
 		max_load = self._max_load
 
-		if self._running_job_count() >= self._max_jobs:
+		if self._max_jobs is not True and \
+			self._running_job_count() >= self._max_jobs:
 			return False
 
-		if max_load is not None and max_jobs > 1 and \
+		if max_load is not None and \
+			(max_jobs is True or max_jobs > 1) and \
 			self._running_job_count() > 1:
 			try:
 				avg1, avg5, avg15 = os.getloadavg()
@@ -8911,7 +8914,8 @@ class Scheduler(PollScheduler):
 		@rtype: bool
 		@returns: True if background mode is enabled, False otherwise.
 		"""
-		background = (self._max_jobs > 1 or "--quiet" in self.myopts) and \
+		background = (self._max_jobs is True or \
+			self._max_jobs > 1 or "--quiet" in self.myopts) and \
 			not bool(self._opts_no_background.intersection(self.myopts))
 
 		self._status_display.quiet = \
@@ -12723,6 +12727,61 @@ def multiple_actions(action1, action2):
 	sys.stderr.write("!!! '%s' or '%s'\n\n" % (action1, action2))
 	sys.exit(1)
 
+def insert_optional_args(args):
+	"""
+	Parse optional arguments and insert a value if one has
+	not been provided. This is done before feeding the args
+	to the optparse parser since that parser does not support
+	this feature natively.
+	"""
+
+	new_args = []
+	jobs_opts = ("-j", "--jobs")
+	for i, arg in enumerate(args):
+
+		short_job_opt = bool("j" in arg and arg[:1] == "-" and arg[:2] != "--")
+		if not (short_job_opt or arg in jobs_opts):
+			new_args.append(arg)
+			continue
+
+		# Insert an empty placeholder in order to
+		# satisfy the requirements of optparse.
+
+		new_args.append("--jobs")
+		job_count = None
+		saved_opts = None
+		if short_job_opt and len(arg) > 2:
+			if arg[:2] == "-j":
+				try:
+					job_count = int(arg[2:])
+				except ValueError:
+					saved_opts = arg[2:]
+			else:
+				job_count = "True"
+				saved_opts = arg[1:].replace("j", "")
+
+		if job_count is None and \
+			i < len(args) - 1:
+			try:
+				job_count = int(args[i+1])
+			except ValueError:
+				pass
+			else:
+				# The next loop iteration will append
+				# the validated job count to new_args.
+				continue
+
+		if job_count is None:
+			# unlimited number of jobs
+			new_args.append("True")
+		else:
+			new_args.append(str(job_count))
+
+		if saved_opts is not None:
+			new_args.append("-" + saved_opts)
+
+	return new_args
+
 def parse_opts(tmpcmdline, silent=False):
 	myaction=None
 	myopts = {}
@@ -12793,15 +12852,22 @@ def parse_opts(tmpcmdline, silent=False):
 		parser.add_option(myopt,
 			dest=myopt.lstrip("--").replace("-", "_"), **kwargs)
 
+	tmpcmdline = insert_optional_args(tmpcmdline)
+
 	myoptions, myargs = parser.parse_args(args=tmpcmdline)
 
 	if myoptions.jobs:
-		try:
-			jobs = int(myoptions.jobs)
-		except ValueError:
-			jobs = 0
+		jobs = None
+		if myoptions.jobs == "True":
+			jobs = True
+		else:
+			try:
+				jobs = int(myoptions.jobs)
+			except ValueError:
+				jobs = -1
 
-		if jobs < 1:
+		if jobs is not True and \
+			jobs < 1:
 			jobs = None
 			if not silent:
 				writemsg("!!! Invalid --jobs parameter: '%s'\n" % \
