@@ -323,9 +323,10 @@ directory.
 .BR "\-\-ignore-default-opts"
 Causes \fIEMERGE_DEFAULT_OPTS\fR (see \fBmake.conf\fR(5)) to be ignored.
 .TP
-.BR \-\-jobs=JOBS
-Specifies the number of packages to build simultaneously. Also see
-the related \fB\-\-load\-average\fR option.
+.BR "-j [JOBS], \-\-jobs[=JOBS]"
+Specifies the number of packages to build simultaneously. If this option is
+given without an argument, emerge will not limit the number of jobs that can
+run simultaneously. Also see the related \fB\-\-load\-average\fR option.
 .TP
 .BR "\-\-keep\-going"
 Continue as much as possible after an error. When an error occurs,

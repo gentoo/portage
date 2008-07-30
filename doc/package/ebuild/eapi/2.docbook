@@ -1,7 +1,67 @@
 <sect1 id='package-ebuild-eapi-2'>
 	<title>EAPI 2_pre0</title>
+	<sect2 id='package-ebuild-eapi-2-helpers'>
+	<title>Helpers</title>
+	<sect3 id='package-ebuild-eapi-2-helpers-doman'>
+	<title>doman</title>
+	<para>
+	Language codes in file names are now used for path translation.
+	</para>
+	<table><title>Man Page Path Translation</title>
+	<tgroup cols='2' align='left' >
+	<colspec colname='source'/>
+	<colspec colname='destination'/>
+	<thead>
+	<row>
+	<entry>Source</entry>
+	<entry>Destination</entry>
+	</row>
+	</thead>
+	<tbody>
+	<row>
+	<entry>foo.1</entry>
+	<entry>/usr/share/man/man1/foo.1</entry>
+	</row>
+	<row>
+	<entry>foo.lang.1</entry>
+	<entry>/usr/share/man/lang/man1/foo.1</entry>
+	</row>
+	</tbody>
+	</tgroup>
+	</table>
+	</sect3>
+	</sect2>
 	<sect2 id='package-ebuild-eapi-2-use-deps'>
 	<title>USE Dependencies</title>
+	<sect3 id='package-ebuild-eapi-2-use-deps-unconditional'>
+	<title>Unconditional USE Dependencies</title>
+	<table><title>Syntax Examples</title>
+	<tgroup cols='2' align='left' >
+	<colspec colname='example'/>
+	<colspec colname='meaning'/>
+	<thead>
+	<row>
+	<entry>Example</entry>
+	<entry>Meaning</entry>
+	</row>
+	</thead>
+	<tbody>
+	<row>
+	<entry>foo[bar]</entry>
+	<entry>foo must have bar enabled</entry>
+	</row>
+	<row>
+	<entry>foo[bar,baz]</entry>
+	<entry>foo must have both bar and baz enabled</entry>
+	</row>
+	<row>
+	<entry>foo[-bar,baz]</entry>
+	<entry>foo must have bar disabled and baz enabled</entry>
+	</row>
+	</tbody>
+	</tgroup>
+	</table>
+	</sect3>
 	<sect3 id='package-ebuild-eapi-2-use-deps-conditional'>
 	<title>Conditional USE Dependencies</title>
 	<table><title>Syntax Examples</title>
@@ -17,19 +77,19 @@
 	<tbody>
 	<row>
 	<entry>foo[bar?]</entry>
-	<entry>foo  bar? (  foo[bar] )</entry>
+	<entry>bar? ( foo[bar]  ) !bar? ( foo       )</entry>
 	</row>
 	<row>
 	<entry>foo[-bar?]</entry>
-	<entry>foo !bar? ( foo[-bar] )</entry>
+	<entry>bar? ( foo       ) !bar? ( foo[-bar] )</entry>
 	</row>
 	<row>
 	<entry>foo[bar=]</entry>
-	<entry>foo  bar? (  foo[bar] ) !bar? ( foo[-bar] )</entry>
+	<entry>bar? ( foo[bar]  ) !bar? ( foo[-bar] )</entry>
 	</row>
 	<row>
 	<entry>foo[bar!=]</entry>
-	<entry>foo  bar? ( foo[-bar] ) !bar? (  foo[bar] )</entry>
+	<entry>bar? ( foo[-bar] ) !bar? ( foo[bar] )</entry>
 	</row>
 	</tbody>
 	</tgroup>

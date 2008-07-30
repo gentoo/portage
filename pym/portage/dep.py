@@ -395,7 +395,12 @@ class _use_dep(object):
 				self.conditional = conditional
 				break
 
+	def __nonzero__(self):
+		return bool(self.tokens)
+
 	def __str__(self):
+		if not self.tokens:
+			return ""
 		return "[%s]" % (",".join(self.tokens),)
 
 	def evaluate_conditionals(self, use):
@@ -413,17 +418,17 @@ class _use_dep(object):
 
 			 x              x=            x
 			-x              x=           -x
-			 x             x!=           -x
-			-x             x!=            x
+			 x              x!=          -x
+			-x              x!=           x
 
 		Conditional syntax examples:
 
 			compact form         equivalent expanded form
 
-			 foo[bar?]           foo  bar? (  foo[bar] )
-			foo[-bar?]           foo !bar? ( foo[-bar] )
-			 foo[bar=]           foo  bar? (  foo[bar] ) !bar? ( foo[-bar] )
-			 foo[bar!=]          foo  bar? ( foo[-bar] ) !bar? (  foo[bar] )
+			foo[bar?]           bar? ( foo[bar]  ) !bar? ( foo       )
+			foo[-bar?]          bar? ( foo       ) !bar? ( foo[-bar] )
+			foo[bar=]           bar? ( foo[bar]  ) !bar? ( foo[-bar] )
+			foo[bar!=]          bar? ( foo[-bar] ) !bar? ( foo[bar]  )
 
 		"""
 		tokens = []

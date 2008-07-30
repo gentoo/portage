@@ -14,7 +14,7 @@ def shorthelp():
 	print "   "+turquoise("emerge")+" < "+turquoise("--sync")+" | "+turquoise("--metadata")+" | "+turquoise("--info")+" >"
 	print "   "+turquoise("emerge")+" "+turquoise("--resume")+" [ "+green("--pretend")+" | "+green("--ask")+" | "+green("--skipfirst")+" ]"
 	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("system")+" | "+green("world")+" | "+green("--sync")+" ] "
-	print bold("Options:")+" "+green("-")+"["+green("abBcCdDefgGhkKlnNoOpqPsStuvV")+"]"
+	print bold("Options:")+" "+green("-")+"["+green("abBcCdDefgGhjkKlnNoOpqPsStuvV")+"]"
 	print "          [ " + green("--color")+" < " + turquoise("y") + " | "+ turquoise("n")+" >            ] [ "+green("--columns")+"    ]"
 	print "          [ "+green("--complete-graph")+"             ] [ "+green("--deep")+"       ]"
 	print "          [ "+green("--jobs") + " " + turquoise("JOBS")+" ] [ "+green("--keep-going")+" ] [ " + green("--load-average")+" " + turquoise("LOAD") + "            ]"
@@ -305,9 +305,12 @@ def help(myaction,myopts,havecolor=1):
 		print "              downloaded from the remote server without consulting packages"
 		print "              existing in the packages directory."
 		print
-		print "       " + green("--jobs") + " " + turquoise("JOBS")
+		print "       " + green("--jobs") + " " + turquoise("[JOBS]") + " ("+green("-j")+" short option)"
 		desc = "Specifies the number of packages " + \
-			"to build simultaneously. Also see " + \
+			"to build simultaneously. If this option is " + \
+			"given without an argument, emerge will not " + \
+			"limit the number of jobs that " + \
+			"can run simultaneously. Also see " + \
 			"the related --load-average option."
 		for line in wrap(desc, desc_width):
 			print desc_indent + line
