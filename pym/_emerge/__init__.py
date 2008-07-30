@@ -10628,20 +10628,20 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 					print " "+green("*")+" Processed",icount,"info files."
 
 
-def display_news_notification(trees):
-	for target_root in trees:
-		if len(trees) > 1 and target_root != "/":
-			break
-	settings = trees[target_root]["vartree"].settings
-	portdb = trees[target_root]["porttree"].dbapi
-	vardb = trees[target_root]["vartree"].dbapi
+def display_news_notification(root_config, myopts):
+	target_root = root_config.root
+	trees = root_config.trees
+	settings = trees["vartree"].settings
+	portdb = trees["porttree"].dbapi
+	vardb = trees["vartree"].dbapi
 	NEWS_PATH = os.path.join("metadata", "news")
 	UNREAD_PATH = os.path.join(target_root, NEWS_LIB_PATH, "news")
 	newsReaderDisplay = False
+	update = "--pretend" not in myopts
 
 	for repo in portdb.getRepositories():
 		unreadItems = checkUpdatedNewsItems(
-			portdb, vardb, NEWS_PATH, UNREAD_PATH, repo)
+			portdb, vardb, NEWS_PATH, UNREAD_PATH, repo, update=update)
 		if unreadItems:
 			if not newsReaderDisplay:
 				newsReaderDisplay = True
@@ -10672,7 +10672,7 @@ def _flush_elog_mod_echo():
 		mod_echo.finalize()
 	return messages_shown
 
-def post_emerge(trees, mtimedb, retval):
+def post_emerge(root_config, myopts, mtimedb, retval):
 	"""
 	Misc. things to run at the end of a merge session.
 	
@@ -10693,9 +10693,9 @@ def post_emerge(trees, mtimedb, retval):
 	@returns:
 	1.  Calls sys.exit(retval)
 	"""
-	for target_root in trees:
-		if len(trees) > 1 and target_root != "/":
-			break
+
+	target_root = root_config.root
+	trees = { target_root : root_config.trees }
 	vardbapi = trees[target_root]["vartree"].dbapi
 	settings = vardbapi.settings
 	info_mtimes = mtimedb["info"]
@@ -10738,7 +10738,7 @@ def post_emerge(trees, mtimedb, retval):
 
 	chk_updated_cfg_files(target_root, config_protect)
 	
-	display_news_notification(trees)
+	display_news_notification(root_config, myopts)
 	
 	if vardbapi.plib_registry.hasEntries():
 		print
@@ -10807,7 +10807,8 @@ def chk_updated_cfg_files(target_root, config_protect):
 				" section of the " + bold("emerge")
 			print " "+yellow("*")+" man page to learn how to update config files."
 
-def checkUpdatedNewsItems(portdb, vardb, NEWS_PATH, UNREAD_PATH, repo_id):
+def checkUpdatedNewsItems(portdb, vardb, NEWS_PATH, UNREAD_PATH, repo_id,
+	update=False):
 	"""
 	Examines news items in repodir + '/' + NEWS_PATH and attempts to find unread items
 	Returns the number of unread (yet relevent) items.
@@ -10829,7 +10830,7 @@ def checkUpdatedNewsItems(portdb, vardb, NEWS_PATH, UNREAD_PATH, repo_id):
 	"""
 	from portage.news import NewsManager
 	manager = NewsManager(portdb, vardb, NEWS_PATH, UNREAD_PATH)
-	return manager.getUnreadItems( repo_id, update=True )
+	return manager.getUnreadItems( repo_id, update=update )
 
 def insert_category_into_atom(atom, category):
 	alphanum = re.search(r'\w', atom)
@@ -11285,6 +11286,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 	# Reload the whole config from scratch.
 	settings, trees, mtimedb = load_emerge_config(trees=trees)
+	root_config = trees[settings["ROOT"]]["root_config"]
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
 
 	if os.path.exists(myportdir+"/metadata/cache") and updatecache_flg:
@@ -11318,7 +11320,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		print red(" * ")+"To update portage, run 'emerge portage' now."
 		print
 	
-	display_news_notification(trees)
+	display_news_notification(root_config, myopts)
 
 def action_metadata(settings, portdb, myopts):
 	portage.writemsg_stdout("\n>>> Updating Portage cache:      ")
@@ -12765,7 +12767,8 @@ def action_build(settings, trees, mtimedb,
 			trees[settings["ROOT"]]["vartree"].dbapi.plib_registry.pruneNonExisting()
 
 		if merge_count and not (buildpkgonly or fetchonly or pretend):
-			post_emerge(trees, mtimedb, retval)
+			root_config = trees[settings["ROOT"]]["root_config"]
+			post_emerge(root_config, myopts, mtimedb, retval)
 		return retval
 
 def multiple_actions(action1, action2):
@@ -13524,6 +13527,9 @@ def emerge_main():
 			sys.stderr.write(("emerge: The '%s' action does " + \
 				"not support '--pretend'.\n") % myaction)
 			return 1
+
+	root_config = trees[settings["ROOT"]]["root_config"]
+
 	if "sync" == myaction:
 		action_sync(settings, trees, mtimedb, myopts, myaction)
 	elif "metadata" == myaction:
@@ -13549,30 +13555,29 @@ def emerge_main():
 	elif myaction in ("clean", "unmerge") or \
 		(myaction == "prune" and "--nodeps" in myopts):
 		validate_ebuild_environment(trees)
-		root_config = trees[settings["ROOT"]]["root_config"]
 		# When given a list of atoms, unmerge
 		# them in the order given.
 		ordered = myaction == "unmerge"
 		if 1 == unmerge(root_config, myopts, myaction, myfiles,
 			mtimedb["ldpath"], ordered=ordered):
 			if not (buildpkgonly or fetchonly or pretend):
-				post_emerge(trees, mtimedb, os.EX_OK)
+				post_emerge(root_config, myopts, mtimedb, os.EX_OK)
 
 	elif myaction in ("depclean", "prune"):
 		validate_ebuild_environment(trees)
 		action_depclean(settings, trees, mtimedb["ldpath"],
 			myopts, myaction, myfiles, spinner)
 		if not (buildpkgonly or fetchonly or pretend):
-			post_emerge(trees, mtimedb, os.EX_OK)
+			post_emerge(root_config, myopts, mtimedb, os.EX_OK)
 	# "update", "system", or just process files:
 	else:
 		validate_ebuild_environment(trees)
 		if "--pretend" not in myopts:
-			display_news_notification(trees)
+			display_news_notification(root_config, myopts)
 		retval = action_build(settings, trees, mtimedb,
 			myopts, myaction, myfiles, spinner)
 		# if --pretend was not enabled then display_news_notification 
 		# was already called by post_emerge
 		if "--pretend" in myopts:
-			display_news_notification(trees)
+			display_news_notification(root_config, myopts)
 		return retval
