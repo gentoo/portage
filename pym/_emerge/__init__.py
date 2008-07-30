@@ -8112,8 +8112,8 @@ class PollSelectAdapter(PollConstants):
 
 class SequentialTaskQueue(SlotObject):
 
-	__slots__ = ("auto_schedule", "max_jobs", "running_tasks") + \
-		("_task_queue", "_scheduling")
+	__slots__ = ("max_jobs", "running_tasks") + \
+		("_dirty", "_scheduling", "_task_queue")
 
 	def __init__(self, **kwargs):
 		SlotObject.__init__(self, **kwargs)
@@ -8121,18 +8121,20 @@ class SequentialTaskQueue(SlotObject):
 		self.running_tasks = set()
 		if self.max_jobs is None:
 			self.max_jobs = 1
+		self._dirty = True
 
 	def add(self, task):
 		self._task_queue.append(task)
-		if self.auto_schedule:
-			self.schedule()
+		self._dirty = True
 
 	def addFront(self, task):
 		self._task_queue.appendleft(task)
-		if self.auto_schedule:
-			self.schedule()
+		self._dirty = True
 
 	def schedule(self):
+
+		if not self._dirty:
+			return False
 
 		if not self:
 			return False
@@ -8149,10 +8151,6 @@ class SequentialTaskQueue(SlotObject):
 		max_jobs = self.max_jobs
 		state_changed = False
 
-		for task in list(running_tasks):
-			if task.poll() is not None:
-				state_changed = True
-
 		while task_queue and \
 			(max_jobs is True or len(running_tasks) < max_jobs):
 			task = task_queue.popleft()
@@ -8163,14 +8161,20 @@ class SequentialTaskQueue(SlotObject):
 				task.start()
 			state_changed = True
 
+		self._dirty = False
 		self._scheduling = False
 
 		return state_changed
 
 	def _task_exit(self, task):
-		self.running_tasks.discard(task)
-		if self.auto_schedule:
-			self.schedule()
+		"""
+		Since we can always rely on exist listeners being called, set of
+ 		running tasks is always pruned automatically and there is never any need
+		to actively prune it.
+		"""
+		self.running_tasks.remove(task)
+		if self._task_queue:
+			self._dirty = True
 
 	def clear(self):
 		self._task_queue.clear()
@@ -8179,6 +8183,7 @@ class SequentialTaskQueue(SlotObject):
 			task = running_tasks.pop()
 			task.removeExitListener(self._task_exit)
 			task.cancel()
+		self._dirty = False
 
 	def __nonzero__(self):
 		return bool(self._task_queue or self.running_tasks)
