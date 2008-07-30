@@ -8170,7 +8170,7 @@ class SequentialTaskQueue(SlotObject):
 
 	def _task_exit(self, task):
 		"""
-		Since we can always rely on exist listeners being called, set of
+		Since we can always rely on exit listeners being called, the set of
  		running tasks is always pruned automatically and there is never any need
 		to actively prune it.
 		"""
