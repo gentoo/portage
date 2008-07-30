@@ -88,7 +88,7 @@
 	<entry>bar? ( foo[bar]  ) !bar? ( foo[-bar] )</entry>
 	</row>
 	<row>
-	<entry>foo[bar!=]</entry>
+	<entry>foo[!bar=]</entry>
 	<entry>bar? ( foo[-bar] ) !bar? ( foo[bar]  )</entry>
 	</row>
 	</tbody>
