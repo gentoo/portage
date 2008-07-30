@@ -367,20 +367,16 @@ class _use_dep(object):
 				else:
 					conditional.enabled.append(
 						self._validate_flag(x, x[:-1]))
+
 			elif "=" == last_char:
-				if "-" == first_char:
-					raise InvalidAtom("Invalid use dep: '%s'" % (x,))
-				if "!" == x[-2:-1]:
-					raise InvalidAtom("Invalid use dep: '%s'" % (x,))
 				if "!" == first_char:
 					conditional.not_equal.append(
 						self._validate_flag(x, x[1:-1]))
 				else:
 					conditional.equal.append(
 						self._validate_flag(x, x[:-1]))
+
 			else:
-				if "!" == first_char:
-					raise InvalidAtom("Invalid use dep: '%s'" % (x,))
 				if "-" == first_char:
 					disabled_flags.append(self._validate_flag(x, x[1:]))
 				else:
