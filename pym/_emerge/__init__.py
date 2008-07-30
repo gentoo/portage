@@ -9658,7 +9658,7 @@ class Scheduler(PollScheduler):
 				self._poll_loop()
 
 	def _schedule_tasks(self):
-		remaining, state_change = self._schedule_tasks_imp()
+		self._schedule_tasks_imp()
 		self._status_display.display()
 
 		state_change = 0
@@ -9675,7 +9675,7 @@ class Scheduler(PollScheduler):
 			state_change += 1
 
 		if state_change:
-			remaining, state_change = self._schedule_tasks_imp()
+			self._schedule_tasks_imp()
 			self._status_display.display()
 
 		return bool(self._pkg_queue and not self._failed_pkgs)
@@ -9699,7 +9699,7 @@ class Scheduler(PollScheduler):
 	def _schedule_tasks_imp(self):
 		"""
 		@rtype: bool
-		@returns: True if tasks remain to schedule, False otherwise.
+		@returns: True if state changed, False otherwise.
 		"""
 
 		state_change = 0
@@ -9707,16 +9707,16 @@ class Scheduler(PollScheduler):
 		while True:
 
 			if not self._pkg_queue or self._failed_pkgs:
-				return (False, state_change)
+				return bool(state_change)
 
 			if self._choose_pkg_return_early or \
 				not self._can_add_job() or \
 				self._job_delay():
-				return (True, state_change)
+				return bool(state_change)
 
 			pkg = self._choose_pkg()
 			if pkg is None:
-				return (True, state_change)
+				return bool(state_change)
 
 			state_change += 1
 
@@ -9744,7 +9744,7 @@ class Scheduler(PollScheduler):
 				task.addExitListener(self._build_exit)
 				self._task_queues.jobs.add(task)
 
-		return (True, state_change)
+		return bool(state_change)
 
 	def _task(self, pkg):
 
