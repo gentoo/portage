@@ -4056,6 +4056,8 @@ class depgraph(object):
 		if settings.get("PORTAGE_DEBUG", "") == "1":
 			self.edebug = 1
 		self.spinner = spinner
+		self._running_root = trees["/"]["root_config"]
+		self._opts_no_restart = Scheduler._opts_no_restart
 		self.pkgsettings = {}
 		# Maps slot atom to package for each Package added to the graph.
 		self._slot_pkg_map = {}
@@ -6111,7 +6113,7 @@ class depgraph(object):
 					node in scheduled_uninstalls)]
 
 		# sys-apps/portage needs special treatment if ROOT="/"
-		running_root = "/"
+		running_root = self._running_root.root
 		from portage.const import PORTAGE_PACKAGE_ATOM
 		runtime_deps = InternalPackageSet(
 			initial_atoms=[PORTAGE_PACKAGE_ATOM])
@@ -7315,23 +7317,23 @@ class depgraph(object):
 							myprint="["+pkgprint(pkg_type)+" "+addl+"] "+indent+pkgprint(pkg_key)+" "+myoldbest+" "+verboseadd
 				p.append(myprint)
 
-				mysplit = [portage.cpv_getkey(pkg_key)] + \
-					list(portage.catpkgsplit(pkg_key)[2:])
-				if "--tree" not in self.myopts and mysplit and \
-					len(mysplit) == 3 and mysplit[0] == "sys-apps/portage" and \
-					x[1] == "/":
-	
-					if mysplit[2] == "r0":
-						myversion = mysplit[1]
+				if "--tree" not in self.myopts and \
+					"--quiet" not in self.myopts and \
+					not self._opts_no_restart.intersection(self.myopts) and \
+					pkg.root == self._running_root.root and \
+					portage.match_from_list(
+					portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
+
+					pn, ver, rev = pkg.pv_split
+					if rev == "r0":
+						myversion = ver
 					else:
-						myversion = "%s-%s" % (mysplit[1], mysplit[2])
-	
+						myversion = "%s-%s" % (ver, rev)
+
 					if myversion != portage.VERSION and "--quiet" not in self.myopts:
 						if mylist_index < len(mylist) - 1:
 							p.append(colorize("WARN", "*** Portage will stop merging at this point and reload itself,"))
 							p.append(colorize("WARN", "    then resume the merge."))
-							print
-				del mysplit
 
 		for x in p:
 			print x
@@ -9280,7 +9282,7 @@ class Scheduler(PollScheduler):
 		if not self._is_restart_necessary(pkg):
 			return
 
-		if self._pkg_count.curval >= self._pkg_count.maxval:
+		if pkg == self._mergelist[-1]:
 			return
 
 		self._main_loop_cleanup()
