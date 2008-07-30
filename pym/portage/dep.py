@@ -359,7 +359,7 @@ class _use_dep(object):
 		for x in use:
 			last_char = x[-1:]
 			first_char = x[:1]
-			second_char = x[1:2]
+
 			if "?" == last_char:
 				if "!" == first_char:
 					conditional.disabled.append(
