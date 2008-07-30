@@ -4083,6 +4083,8 @@ class depgraph(object):
 		if settings.get("PORTAGE_DEBUG", "") == "1":
 			self.edebug = 1
 		self.spinner = spinner
+		self._running_root = trees["/"]["root_config"]
+		self._opts_no_restart = Scheduler._opts_no_restart
 		self.pkgsettings = {}
 		# Maps slot atom to package for each Package added to the graph.
 		self._slot_pkg_map = {}
@@ -6142,7 +6144,7 @@ class depgraph(object):
 					node in scheduled_uninstalls)]
 
 		# sys-apps/portage needs special treatment if ROOT="/"
-		running_root = "/"
+		running_root = self._running_root.root
 		from portage.const import PORTAGE_PACKAGE_ATOM
 		runtime_deps = InternalPackageSet(
 			initial_atoms=[PORTAGE_PACKAGE_ATOM])
@@ -7351,23 +7353,23 @@ class depgraph(object):
 							myprint="["+pkgprint(pkg_type)+" "+addl+"] "+indent+pkgprint(pkg_key)+" "+myoldbest+" "+verboseadd
 				p.append(myprint)
 
-				mysplit = [portage.cpv_getkey(pkg_key)] + \
-					list(portage.catpkgsplit(pkg_key)[2:])
-				if "--tree" not in self.myopts and mysplit and \
-					len(mysplit) == 3 and mysplit[0] == "sys-apps/portage" and \
-					x[1] == "/":
-	
-					if mysplit[2] == "r0":
-						myversion = mysplit[1]
+				if "--tree" not in self.myopts and \
+					"--quiet" not in self.myopts and \
+					not self._opts_no_restart.intersection(self.myopts) and \
+					pkg.root == self._running_root.root and \
+					portage.match_from_list(
+					portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
+
+					pn, ver, rev = pkg.pv_split
+					if rev == "r0":
+						myversion = ver
 					else:
-						myversion = "%s-%s" % (mysplit[1], mysplit[2])
-	
+						myversion = "%s-%s" % (ver, rev)
+
 					if myversion != portage.VERSION and "--quiet" not in self.myopts:
 						if mylist_index < len(mylist) - 1:
 							p.append(colorize("WARN", "*** Portage will stop merging at this point and reload itself,"))
 							p.append(colorize("WARN", "    then resume the merge."))
-							print
-				del mysplit
 
 		for x in p:
 			print x
@@ -8153,8 +8155,8 @@ class PollSelectAdapter(PollConstants):
 
 class SequentialTaskQueue(SlotObject):
 
-	__slots__ = ("auto_schedule", "max_jobs", "running_tasks") + \
-		("_task_queue", "_scheduling")
+	__slots__ = ("max_jobs", "running_tasks") + \
+		("_dirty", "_scheduling", "_task_queue")
 
 	def __init__(self, **kwargs):
 		SlotObject.__init__(self, **kwargs)
@@ -8162,18 +8164,20 @@ class SequentialTaskQueue(SlotObject):
 		self.running_tasks = set()
 		if self.max_jobs is None:
 			self.max_jobs = 1
+		self._dirty = True
 
 	def add(self, task):
 		self._task_queue.append(task)
-		if self.auto_schedule:
-			self.schedule()
+		self._dirty = True
 
 	def addFront(self, task):
 		self._task_queue.appendleft(task)
-		if self.auto_schedule:
-			self.schedule()
+		self._dirty = True
 
 	def schedule(self):
+
+		if not self._dirty:
+			return False
 
 		if not self:
 			return False
@@ -8190,10 +8194,6 @@ class SequentialTaskQueue(SlotObject):
 		max_jobs = self.max_jobs
 		state_changed = False
 
-		for task in list(running_tasks):
-			if task.poll() is not None:
-				state_changed = True
-
 		while task_queue and \
 			(max_jobs is True or len(running_tasks) < max_jobs):
 			task = task_queue.popleft()
@@ -8204,14 +8204,20 @@ class SequentialTaskQueue(SlotObject):
 				task.start()
 			state_changed = True
 
+		self._dirty = False
 		self._scheduling = False
 
 		return state_changed
 
 	def _task_exit(self, task):
-		self.running_tasks.discard(task)
-		if self.auto_schedule:
-			self.schedule()
+		"""
+		Since we can always rely on exit listeners being called, the set of
+ 		running tasks is always pruned automatically and there is never any need
+		to actively prune it.
+		"""
+		self.running_tasks.remove(task)
+		if self._task_queue:
+			self._dirty = True
 
 	def clear(self):
 		self._task_queue.clear()
@@ -8220,6 +8226,7 @@ class SequentialTaskQueue(SlotObject):
 			task = running_tasks.pop()
 			task.removeExitListener(self._task_exit)
 			task.cancel()
+		self._dirty = False
 
 	def __nonzero__(self):
 		return bool(self._task_queue or self.running_tasks)
@@ -8867,13 +8874,7 @@ class Scheduler(PollScheduler):
 		self._task_queues = self._task_queues_class()
 		for k in self._task_queues.allowed_keys:
 			setattr(self._task_queues, k,
-				SequentialTaskQueue(auto_schedule=True))
-
-		# Merge tasks currently run synchronously which makes
-		# it necessary to disable auto_schedule in order to
-		# avoid excess recursion which prevents tasks from
-		# being marked complete as soon as they should be.
-		self._task_queues.merge.auto_schedule = False
+				SequentialTaskQueue())
 
 		self._prefetchers = weakref.WeakValueDictionary()
 		self._pkg_queue = []
@@ -8904,6 +8905,7 @@ class Scheduler(PollScheduler):
 		# The load average takes some time to respond when new
 		# jobs are added, so we need to limit the rate of adding
 		# new jobs.
+		self._job_delay_max = 5
 		self._job_delay_factor = 0.5
 		self._previous_job_start_time = None
 
@@ -9322,7 +9324,7 @@ class Scheduler(PollScheduler):
 		if not self._is_restart_necessary(pkg):
 			return
 
-		if self._pkg_count.curval >= self._pkg_count.maxval:
+		if pkg == self._mergelist[-1]:
 			return
 
 		self._main_loop_cleanup()
@@ -9616,6 +9618,9 @@ class Scheduler(PollScheduler):
 				return None
 			return self._pkg_queue.pop(0)
 
+		if not (self._jobs or self._task_queues.merge):
+			return self._pkg_queue.pop(0)
+
 		self._prune_digraph()
 
 		chosen_pkg = None
@@ -9687,26 +9692,38 @@ class Scheduler(PollScheduler):
 		merge_queue = self._task_queues.merge
 
 		while self._schedule():
-			self._poll_loop()
+			if self._poll_event_handlers:
+				self._poll_loop()
 
-		while self._jobs or merge_queue:
-			if merge_queue.schedule() and \
-				not self._poll_event_handlers:
-				continue
-			self._poll_loop()
+		while True:
+			self._schedule()
+			if not self._jobs or merge_queue:
+				break
+			if self._poll_event_handlers:
+				self._poll_loop()
 
 	def _schedule_tasks(self):
-		self._task_queues.merge.schedule()
+		self._schedule_tasks_imp()
+		self._status_display.display()
+
+		state_change = 0
+		for q in self._task_queues.values():
+			if q.schedule():
+				state_change += 1
 
 		# Cancel prefetchers if they're the only reason
 		# the main poll loop is still running.
 		if self._failed_pkgs and \
-			not (self._jobs or self._task_queues.merge):
+			not (self._jobs or self._task_queues.merge) and \
+			self._task_queues.fetch:
 			self._task_queues.fetch.clear()
+			state_change += 1
 
-		remaining, state_change = self._schedule_tasks_imp()
-		self._status_display.display()
-		return remaining
+		if state_change:
+			self._schedule_tasks_imp()
+			self._status_display.display()
+
+		return bool(self._pkg_queue and not self._failed_pkgs)
 
 	def _job_delay(self):
 		"""
@@ -9718,8 +9735,10 @@ class Scheduler(PollScheduler):
 
 			current_time = time.time()
 
-			if current_time - self._previous_job_start_time < \
-				self._job_delay_factor * self._jobs:
+			delay = self._job_delay_factor * self._jobs
+			if delay > self._job_delay_max:
+				delay = self._job_delay_max
+			if (current_time - self._previous_job_start_time) < delay:
 				return True
 
 		return False
@@ -9727,7 +9746,7 @@ class Scheduler(PollScheduler):
 	def _schedule_tasks_imp(self):
 		"""
 		@rtype: bool
-		@returns: True if tasks remain to schedule, False otherwise.
+		@returns: True if state changed, False otherwise.
 		"""
 
 		state_change = 0
@@ -9735,16 +9754,16 @@ class Scheduler(PollScheduler):
 		while True:
 
 			if not self._pkg_queue or self._failed_pkgs:
-				return (False, state_change)
+				return bool(state_change)
 
 			if self._choose_pkg_return_early or \
 				not self._can_add_job() or \
 				self._job_delay():
-				return (True, state_change)
+				return bool(state_change)
 
 			pkg = self._choose_pkg()
 			if pkg is None:
-				return (True, state_change)
+				return bool(state_change)
 
 			state_change += 1
 
@@ -9772,7 +9791,7 @@ class Scheduler(PollScheduler):
 				task.addExitListener(self._build_exit)
 				self._task_queues.jobs.add(task)
 
-		return (True, state_change)
+		return bool(state_change)
 
 	def _task(self, pkg):
 
@@ -10653,20 +10672,20 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 					print " "+green("*")+" Processed",icount,"info files."
 
 
-def display_news_notification(trees):
-	for target_root in trees:
-		if len(trees) > 1 and target_root != "/":
-			break
-	settings = trees[target_root]["vartree"].settings
-	portdb = trees[target_root]["porttree"].dbapi
-	vardb = trees[target_root]["vartree"].dbapi
+def display_news_notification(root_config, myopts):
+	target_root = root_config.root
+	trees = root_config.trees
+	settings = trees["vartree"].settings
+	portdb = trees["porttree"].dbapi
+	vardb = trees["vartree"].dbapi
 	NEWS_PATH = os.path.join("metadata", "news")
 	UNREAD_PATH = os.path.join(target_root, NEWS_LIB_PATH, "news")
 	newsReaderDisplay = False
+	update = "--pretend" not in myopts
 
 	for repo in portdb.getRepositories():
 		unreadItems = checkUpdatedNewsItems(
-			portdb, vardb, NEWS_PATH, UNREAD_PATH, repo)
+			portdb, vardb, NEWS_PATH, UNREAD_PATH, repo, update=update)
 		if unreadItems:
 			if not newsReaderDisplay:
 				newsReaderDisplay = True
@@ -10697,7 +10716,7 @@ def _flush_elog_mod_echo():
 		mod_echo.finalize()
 	return messages_shown
 
-def post_emerge(trees, mtimedb, retval):
+def post_emerge(root_config, myopts, mtimedb, retval):
 	"""
 	Misc. things to run at the end of a merge session.
 	
@@ -10718,9 +10737,9 @@ def post_emerge(trees, mtimedb, retval):
 	@returns:
 	1.  Calls sys.exit(retval)
 	"""
-	for target_root in trees:
-		if len(trees) > 1 and target_root != "/":
-			break
+
+	target_root = root_config.root
+	trees = { target_root : root_config.trees }
 	vardbapi = trees[target_root]["vartree"].dbapi
 	settings = vardbapi.settings
 	info_mtimes = mtimedb["info"]
@@ -10763,7 +10782,7 @@ def post_emerge(trees, mtimedb, retval):
 
 	chk_updated_cfg_files(target_root + EPREFIX, config_protect)
 	
-	display_news_notification(trees)
+	display_news_notification(root_config, myopts)
 	
 	if vardbapi.plib_registry.hasEntries():
 		print
@@ -10832,7 +10851,8 @@ def chk_updated_cfg_files(target_root, config_protect):
 				" section of the " + bold("emerge")
 			print " "+yellow("*")+" man page to learn how to update config files."
 
-def checkUpdatedNewsItems(portdb, vardb, NEWS_PATH, UNREAD_PATH, repo_id):
+def checkUpdatedNewsItems(portdb, vardb, NEWS_PATH, UNREAD_PATH, repo_id,
+	update=False):
 	"""
 	Examines news items in repodir + '/' + NEWS_PATH and attempts to find unread items
 	Returns the number of unread (yet relevent) items.
@@ -10854,7 +10874,7 @@ def checkUpdatedNewsItems(portdb, vardb, NEWS_PATH, UNREAD_PATH, repo_id):
 	"""
 	from portage.news import NewsManager
 	manager = NewsManager(portdb, vardb, NEWS_PATH, UNREAD_PATH)
-	return manager.getUnreadItems( repo_id, update=True )
+	return manager.getUnreadItems( repo_id, update=update )
 
 def insert_category_into_atom(atom, category):
 	alphanum = re.search(r'\w', atom)
@@ -11357,6 +11377,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 	# Reload the whole config from scratch.
 	settings, trees, mtimedb = load_emerge_config(trees=trees)
+	root_config = trees[settings["ROOT"]]["root_config"]
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
 
 	if os.path.exists(myportdir+"/metadata/cache") and updatecache_flg:
@@ -11390,7 +11411,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		print red(" * ")+"To update portage, run 'emerge portage' now."
 		print
 	
-	display_news_notification(trees)
+	display_news_notification(root_config, myopts)
 
 def action_metadata(settings, portdb, myopts):
 	portage.writemsg_stdout("\n>>> Updating Portage cache:      ")
@@ -12838,7 +12859,8 @@ def action_build(settings, trees, mtimedb,
 			trees[settings["ROOT"]]["vartree"].dbapi.plib_registry.pruneNonExisting()
 
 		if merge_count and not (buildpkgonly or fetchonly or pretend):
-			post_emerge(trees, mtimedb, retval)
+			root_config = trees[settings["ROOT"]]["root_config"]
+			post_emerge(root_config, myopts, mtimedb, retval)
 		return retval
 
 def multiple_actions(action1, action2):
@@ -13601,6 +13623,9 @@ def emerge_main():
 			sys.stderr.write(("emerge: The '%s' action does " + \
 				"not support '--pretend'.\n") % myaction)
 			return 1
+
+	root_config = trees[settings["ROOT"]]["root_config"]
+
 	if "sync" == myaction:
 		action_sync(settings, trees, mtimedb, myopts, myaction)
 	elif "metadata" == myaction:
@@ -13626,30 +13651,29 @@ def emerge_main():
 	elif myaction in ("clean", "unmerge") or \
 		(myaction == "prune" and "--nodeps" in myopts):
 		validate_ebuild_environment(trees)
-		root_config = trees[settings["ROOT"]]["root_config"]
 		# When given a list of atoms, unmerge
 		# them in the order given.
 		ordered = myaction == "unmerge"
 		if 1 == unmerge(root_config, myopts, myaction, myfiles,
 			mtimedb["ldpath"], ordered=ordered):
 			if not (buildpkgonly or fetchonly or pretend):
-				post_emerge(trees, mtimedb, os.EX_OK)
+				post_emerge(root_config, myopts, mtimedb, os.EX_OK)
 
 	elif myaction in ("depclean", "prune"):
 		validate_ebuild_environment(trees)
 		action_depclean(settings, trees, mtimedb["ldpath"],
 			myopts, myaction, myfiles, spinner)
 		if not (buildpkgonly or fetchonly or pretend):
-			post_emerge(trees, mtimedb, os.EX_OK)
+			post_emerge(root_config, myopts, mtimedb, os.EX_OK)
 	# "update", "system", or just process files:
 	else:
 		validate_ebuild_environment(trees)
 		if "--pretend" not in myopts:
-			display_news_notification(trees)
+			display_news_notification(root_config, myopts)
 		retval = action_build(settings, trees, mtimedb,
 			myopts, myaction, myfiles, spinner)
 		# if --pretend was not enabled then display_news_notification 
 		# was already called by post_emerge
 		if "--pretend" in myopts:
-			display_news_notification(trees)
+			display_news_notification(root_config, myopts)
 		return retval

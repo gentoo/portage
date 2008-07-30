@@ -4525,7 +4525,7 @@ def eapi_is_supported(eapi):
 			eapi.remove(prop)
 	
 	# now check if what's left is supported (can)
-	properties = [ "2_pre0" ] # another clumpsy solution
+	properties = [ "2_pre1" ] # another clumpsy solution
 	for i in range(portage.const.EAPI + 1):
 		properties.append(str(i))
 

@@ -3,9 +3,24 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header: /var/cvsroot/gentoo-src/portage/bin/ebuild,v 1.18.2.3 2005/05/07 04:32:59 ferringb Exp $
 
+import sys
+# This block ensures that ^C interrupts are handled quietly.
+try:
+	import signal
+
+	def exithandler(signum,frame):
+		signal.signal(signal.SIGINT, signal.SIG_IGN)
+		signal.signal(signal.SIGTERM, signal.SIG_IGN)
+		sys.exit(1)
+
+	signal.signal(signal.SIGINT, exithandler)
+	signal.signal(signal.SIGTERM, exithandler)
+
+except KeyboardInterrupt:
+	sys.exit(1)
+
 import optparse
 import os
-import sys
 
 description = "See the ebuild(1) man page for more info"
 usage = "Usage: ebuild <ebuild file> <command> [command] ..."
