@@ -347,6 +347,8 @@ class _use_dep(object):
 	_conditionals_class = portage.cache.mappings.slot_dict_class(
 		("disabled", "enabled", "equal", "not_equal"), prefix="")
 
+	_valid_use_re = re.compile(r'^[^-?!=][^?!=]*$')
+
 	def __init__(self, use):
 		enabled_flags = []
 		disabled_flags = []
@@ -357,25 +359,32 @@ class _use_dep(object):
 		for x in use:
 			last_char = x[-1:]
 			first_char = x[:1]
+			second_char = x[1:2]
 			if "?" == last_char:
-				if "-" == first_char:
-					conditional.disabled.append(x[1:-1])
+				if "!" == first_char:
+					conditional.disabled.append(
+						self._validate_flag(x, x[1:-1]))
 				else:
-					conditional.enabled.append(x[:-1])
+					conditional.enabled.append(
+						self._validate_flag(x, x[:-1]))
 			elif "=" == last_char:
 				if "-" == first_char:
 					raise InvalidAtom("Invalid use dep: '%s'" % (x,))
 				if "!" == x[-2:-1]:
 					raise InvalidAtom("Invalid use dep: '%s'" % (x,))
 				if "!" == first_char:
-					conditional.not_equal.append(x[1:-1])
+					conditional.not_equal.append(
+						self._validate_flag(x, x[1:-1]))
 				else:
-					conditional.equal.append(x[:-1])
+					conditional.equal.append(
+						self._validate_flag(x, x[:-1]))
 			else:
+				if "!" == first_char:
+					raise InvalidAtom("Invalid use dep: '%s'" % (x,))
 				if "-" == first_char:
-					disabled_flags.append(x[1:])
+					disabled_flags.append(self._validate_flag(x, x[1:]))
 				else:
-					enabled_flags.append(x)
+					enabled_flags.append(self._validate_flag(x, x))
 
 		self.tokens = use
 		if not isinstance(self.tokens, tuple):
@@ -397,6 +406,11 @@ class _use_dep(object):
 					conditional[k] = frozenset(v)
 				self.conditional = conditional
 				break
+
+	def _validate_flag(self, token, flag):
+		if self._valid_use_re.match(flag) is None:
+			raise InvalidAtom("Invalid use dep: '%s'" % (token,))
+		return flag
 
 	def __nonzero__(self):
 		return bool(self.tokens)
