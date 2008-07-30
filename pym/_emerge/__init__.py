@@ -8862,6 +8862,7 @@ class Scheduler(PollScheduler):
 		# The load average takes some time to respond when new
 		# jobs are added, so we need to limit the rate of adding
 		# new jobs.
+		self._job_delay_max = 5
 		self._job_delay_factor = 0.5
 		self._previous_job_start_time = None
 
@@ -9690,8 +9691,10 @@ class Scheduler(PollScheduler):
 
 			current_time = time.time()
 
-			if current_time - self._previous_job_start_time < \
-				self._job_delay_factor * self._jobs:
+			delay = self._job_delay_factor * self._jobs
+			if delay > self._job_delay_max:
+				delay = self._job_delay_max
+			if (current_time - self._previous_job_start_time) < delay:
 				return True
 
 		return False
