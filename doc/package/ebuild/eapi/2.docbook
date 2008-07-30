@@ -1,5 +1,5 @@
 <sect1 id='package-ebuild-eapi-2'>
-	<title>EAPI 2_pre0</title>
+	<title>EAPI 2_pre1</title>
 	<sect2 id='package-ebuild-eapi-2-helpers'>
 	<title>Helpers</title>
 	<sect3 id='package-ebuild-eapi-2-helpers-doman'>
@@ -80,7 +80,7 @@
 	<entry>bar? ( foo[bar]  ) !bar? ( foo       )</entry>
 	</row>
 	<row>
-	<entry>foo[-bar?]</entry>
+	<entry>foo[!bar?]</entry>
 	<entry>bar? ( foo       ) !bar? ( foo[-bar] )</entry>
 	</row>
 	<row>
@@ -89,7 +89,7 @@
 	</row>
 	<row>
 	<entry>foo[bar!=]</entry>
-	<entry>bar? ( foo[-bar] ) !bar? ( foo[bar] )</entry>
+	<entry>bar? ( foo[-bar] ) !bar? ( foo[bar]  )</entry>
 	</row>
 	</tbody>
 	</tgroup>

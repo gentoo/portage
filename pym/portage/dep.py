@@ -356,20 +356,23 @@ class _use_dep(object):
 
 		for x in use:
 			last_char = x[-1:]
+			first_char = x[:1]
 			if "?" == last_char:
-				if "-" == x[:1]:
+				if "-" == first_char:
 					conditional.disabled.append(x[1:-1])
 				else:
 					conditional.enabled.append(x[:-1])
 			elif "=" == last_char:
-				if "-" == x[:1]:
+				if "-" == first_char:
 					raise InvalidAtom("Invalid use dep: '%s'" % (x,))
 				if "!" == x[-2:-1]:
-					conditional.not_equal.append(x[:-2])
+					raise InvalidAtom("Invalid use dep: '%s'" % (x,))
+				if "!" == first_char:
+					conditional.not_equal.append(x[1:-1])
 				else:
 					conditional.equal.append(x[:-1])
 			else:
-				if "-" == x[:1]:
+				if "-" == first_char:
 					disabled_flags.append(x[1:])
 				else:
 					enabled_flags.append(x)
@@ -413,22 +416,22 @@ class _use_dep(object):
 
 			 x              x?            x
 			-x              x?
-			 x             -x?
-			-x             -x?           -x
+			 x             !x?
+			-x             !x?           -x
 
 			 x              x=            x
 			-x              x=           -x
-			 x              x!=          -x
-			-x              x!=           x
+			 x             !x=           -x
+			-x             !x=            x
 
 		Conditional syntax examples:
 
-			compact form         equivalent expanded form
+			Compact Form        Equivalent Expanded Form
 
 			foo[bar?]           bar? ( foo[bar]  ) !bar? ( foo       )
-			foo[-bar?]          bar? ( foo       ) !bar? ( foo[-bar] )
+			foo[!bar?]          bar? ( foo       ) !bar? ( foo[-bar] )
 			foo[bar=]           bar? ( foo[bar]  ) !bar? ( foo[-bar] )
-			foo[bar!=]          bar? ( foo[-bar] ) !bar? ( foo[bar]  )
+			foo[!bar=]          bar? ( foo[-bar] ) !bar? ( foo[bar]  )
 
 		"""
 		tokens = []
