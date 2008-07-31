@@ -3167,6 +3167,84 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		return retval >> 8
 	return retval
 
+_userpriv_spawn_kwargs = (
+	("uid",    portage_uid),
+	("gid",    portage_gid),
+	("groups", userpriv_groups),
+	("umask",  002),
+)
+
+def _spawn_fetch(settings, args, **kwargs):
+	"""
+	Spawn a process with appropriate settings for fetching, including
+	userfetch and selinux support.
+	"""
+
+	global _userpriv_spawn_kwargs
+
+	# Redirect all output to stdout since some fetchers like
+	# wget pollute stderr (if portage detects a problem then it
+	# can send it's own message to stderr).
+	if "fd_pipes" not in kwargs:
+
+		kwargs["fd_pipes"] = {
+			0 : sys.stdin.fileno(),
+			1 : sys.stdout.fileno(),
+			2 : sys.stdout.fileno(),
+		}
+
+	if "userfetch" in settings.features and \
+		os.getuid() == 0 and portage_gid and portage_uid:
+		kwargs.update(_userpriv_spawn_kwargs)
+
+	try:
+
+		if settings.selinux_enabled():
+			con = selinux.getcontext()
+			con = con.replace(settings["PORTAGE_T"], settings["PORTAGE_FETCH_T"])
+			selinux.setexec(con)
+			# bash is an allowed entrypoint, while most binaries are not
+			if args[0] != BASH_BINARY:
+				args = [BASH_BINARY, "-c", "exec \"$@\"", args[0]] + args
+
+		rval = portage.process.spawn(args,
+			env=dict(settings.iteritems()), **kwargs)
+
+	finally:
+		if settings.selinux_enabled():
+			selinux.setexec(None)
+
+	return rval
+
+_userpriv_test_write_file_cache = {}
+_userpriv_test_write_cmd_script = "> %(file_path)s ; rval=$? ; " + \
+	"rm -f  %(file_path)s ; exit $rval"
+
+def _userpriv_test_write_file(settings, file_path):
+	"""
+	Drop privileges and try to open a file for writing. The file may or
+	may not exist, and the parent directory is assumed to exist. The file
+	is removed before returning.
+
+	@param settings: A config instance which is passed to _spawn_fetch()
+	@param file_path: A file path to open and write.
+	@return: True if write succeeds, False otherwise.
+	"""
+
+	global _userpriv_test_write_file_cache, _userpriv_test_write_cmd_script
+	rval = _userpriv_test_write_file_cache.get(file_path)
+	if rval is not None:
+		return rval
+
+	args = [BASH_BINARY, "-c", _userpriv_test_write_cmd_script % \
+		{"file_path" : _shell_quote(file_path)}]
+
+	returncode = _spawn_fetch(settings, args)
+
+	rval = returncode == os.EX_OK
+	_userpriv_test_write_file_cache[file_path] = rval
+	return rval
+
 def _checksum_failure_temp_file(distdir, basename):
 	"""
 	First try to find a duplicate temp file with the same checksum and return
@@ -3274,6 +3352,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 	features = mysettings.features
 	restrict = mysettings.get("PORTAGE_RESTRICT","").split()
+
+	from portage.data import secpass
+	userfetch = secpass >= 2 and "userfetch" in features
+	userpriv = secpass >= 2 and "userpriv" in features
+
 	# 'nomirror' is bad/negative logic. You Restrict mirroring, not no-mirroring.
 	if "mirror" in restrict or \
 	   "nomirror" in restrict:
@@ -3473,7 +3556,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		if not mysettings.get(var_name, None):
 			can_fetch = False
 
-	if can_fetch:
+	if can_fetch and not fetch_to_ro:
+		global _userpriv_test_write_file_cache
 		dirmode  = 02070
 		filemode =   060
 		modemask =    02
@@ -3491,6 +3575,16 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			
 			for x in distdir_dirs:
 				mydir = os.path.join(mysettings["DISTDIR"], x)
+				write_test_file = os.path.join(
+					mydir, ".__portage_test_write__")
+
+				if os.path.isdir(mydir):
+					if not (userfetch or userpriv):
+						continue
+					if _userpriv_test_write_file(mysettings, write_test_file):
+						continue
+
+				_userpriv_test_write_file_cache.pop(write_test_file, None)
 				if portage.util.ensure_dirs(mydir, gid=dir_gid, mode=dirmode, mask=modemask):
 					writemsg("Adjusting permissions recursively: '%s'\n" % mydir,
 						noiselevel=-1)
@@ -3840,38 +3934,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					lexer = shlex.shlex(StringIO.StringIO(locfetch), posix=True)
 					lexer.whitespace_split = True
 					myfetch = [varexpand(x, mydict=variables) for x in lexer]
-
-					spawn_keywords = {}
-					# Redirect all output to stdout since some fetchers like
-					# wget pollute stderr (if portage detects a problem then it
-					# can send it's own message to stderr).
-					spawn_keywords["fd_pipes"] = {
-						0:sys.stdin.fileno(),
-						1:sys.stdout.fileno(),
-						2:sys.stdout.fileno()
-					}
-					if "userfetch" in mysettings.features and \
-						os.getuid() == 0 and portage_gid and portage_uid:
-						spawn_keywords.update({
-							"uid"    : portage_uid,
-							"gid"    : portage_gid,
-							"groups" : userpriv_groups,
-							"umask"  : 002})
 					myret = -1
 					try:
 
-						if mysettings.selinux_enabled():
-							con = selinux.getcontext()
-							con = con.replace(mysettings["PORTAGE_T"], mysettings["PORTAGE_FETCH_T"])
-							selinux.setexec(con)
-							# bash is an allowed entrypoint, while most binaries are not
-							myfetch = ["bash", "-c", "exec \"$@\"", myfetch[0]] + myfetch
-
-						myret = portage.process.spawn(myfetch,
-							env=dict(mysettings.iteritems()), **spawn_keywords)
-
-						if mysettings.selinux_enabled():
-							selinux.setexec(None)
+						myret = _spawn_fetch(mysettings, myfetch)
 
 					finally:
 						try:

@@ -2,11 +2,11 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from portage.versions import catsplit
+from portage.versions import catpkgsplit, catsplit, pkgcmp
 from portage.sets.base import PackageSet
 from portage.sets import SetConfigError, get_boolean
 
-__all__ = ["CategorySet", "EverythingSet"]
+__all__ = ["CategorySet", "EverythingSet", "InheritSet"]
 
 class EverythingSet(PackageSet):
 	_operations = ["merge", "unmerge"]
@@ -30,6 +30,119 @@ class EverythingSet(PackageSet):
 	
 	def singleBuilder(self, options, settings, trees):
 		return EverythingSet(trees["vartree"].dbapi)
+	singleBuilder = classmethod(singleBuilder)
+
+class OwnerSet(PackageSet):
+
+	_operations = ["merge", "unmerge"]
+
+	description = "Package set which contains all packages " + \
+		"that own one or more files."
+
+	def __init__(self, vardb=None, files=None):
+		super(OwnerSet, self).__init__()
+		self._db = vardb
+		self._files = files
+
+	def mapPathsToAtoms(self, paths):
+		rValue = set()
+		vardb = self._db
+		aux_get = vardb.aux_get
+		aux_keys = ["SLOT"]
+		for link, p in vardb._owners.iter_owners(paths):
+			cat, pn = catpkgsplit(link.mycpv)[:2]
+			slot, = aux_get(link.mycpv, aux_keys)
+			rValue.add("%s/%s:%s" % (cat, pn, slot))
+		return rValue
+
+	def load(self):
+		self._setAtoms(self.mapPathsToAtoms(self._files))
+
+	def singleBuilder(cls, options, settings, trees):
+		if not "files" in options:
+			raise SetConfigError("no files given")
+
+		import shlex
+		return cls(vardb=trees["vartree"].dbapi,
+			files=frozenset(shlex.split(options["files"])))
+
+	singleBuilder = classmethod(singleBuilder)
+
+class InheritSet(PackageSet):
+
+	_operations = ["merge", "unmerge"]
+
+	description = "Package set which contains all packages " + \
+		"that inherit one or more specific eclasses."
+
+	def __init__(self, vardb=None, inherits=None):
+		super(InheritSet, self).__init__()
+		self._db = vardb
+		self._inherits = inherits
+
+	def load(self):
+		atoms = []
+		inherits = self._inherits
+		cp_list = self._db.cp_list
+		aux_get = self._db.aux_get
+		aux_keys = ["INHERITED", "SLOT"]
+		for cp in self._db.cp_all():
+			for cpv in cp_list(cp):
+				inherited, slot = aux_get(cpv, aux_keys)
+				inherited = inherited.split()
+				if inherits.intersection(inherited):
+					atoms.append("%s:%s" % (cp, slot))
+
+		self._setAtoms(atoms)
+
+	def singleBuilder(cls, options, settings, trees):
+		if not "inherits" in options:
+			raise SetConfigError("no inherits given")
+
+		inherits = options["inherits"]
+		return cls(vardb=trees["vartree"].dbapi,
+			inherits=frozenset(inherits.split()))
+
+	singleBuilder = classmethod(singleBuilder)
+
+class DowngradeSet(PackageSet):
+
+	_operations = ["merge", "unmerge"]
+
+	description = "Package set which contains all packages " + \
+		"for which the highest visible ebuild version is lower than " + \
+		"the currently installed version."
+
+	def __init__(self, portdb=None, vardb=None):
+		super(DowngradeSet, self).__init__()
+		self._portdb = portdb
+		self._vardb = vardb
+
+	def load(self):
+		atoms = []
+		xmatch = self._portdb.xmatch
+		xmatch_level = "bestmatch-visible"
+		cp_list = self._vardb.cp_list
+		aux_get = self._vardb.aux_get
+		aux_keys = ["SLOT"]
+		for cp in self._vardb.cp_all():
+			for cpv in cp_list(cp):
+				slot, = aux_get(cpv, aux_keys)
+				slot_atom = "%s:%s" % (cp, slot)
+				ebuild = xmatch(xmatch_level, slot_atom)
+				if not ebuild:
+					continue
+				ebuild_split = catpkgsplit(ebuild)[1:]
+				installed_split = catpkgsplit(cpv)[1:]
+				if pkgcmp(installed_split, ebuild_split) > 0:
+					atoms.append(slot_atom)
+
+		self._setAtoms(atoms)
+
+	def singleBuilder(cls, options, settings, trees):
+		return cls(portdb=trees["porttree"].dbapi,
+			vardb=trees["vartree"].dbapi)
+
 	singleBuilder = classmethod(singleBuilder)
 
 class CategorySet(PackageSet):

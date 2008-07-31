@@ -1626,7 +1626,7 @@ class AsynchronousTask(SlotObject):
 	"""
 
 	__slots__ = ("background", "cancelled", "returncode") + \
-		("_exit_listeners", "_start_listeners")
+		("_exit_listeners", "_exit_listener_stack", "_start_listeners")
 
 	def start(self):
 		"""
@@ -1692,6 +1692,8 @@ class AsynchronousTask(SlotObject):
 
 	def removeExitListener(self, f):
 		if self._exit_listeners is None:
+			if self._exit_listener_stack is not None:
+				self._exit_listener_stack.remove(f)
 			return
 		self._exit_listeners.remove(f)
 
@@ -1707,12 +1709,22 @@ class AsynchronousTask(SlotObject):
 
 			# This prevents recursion, in case one of the
 			# exit handlers triggers this method again by
-			# calling wait().
-			exit_listeners = self._exit_listeners
+			# calling wait(). Use a stack that gives
+			# removeExitListener() an opportunity to consume
+			# listeners from the stack, before they can get
+			# called below. This is necessary because a call
+			# to one exit listener may result in a call to
+			# removeExitListener() for another listener on
+			# the stack. That listener needs to be removed
+			# from the stack since it would be inconsistent
+			# to call it after it has been been passed into
+			# removeExitListener().
+			self._exit_listener_stack = self._exit_listeners
 			self._exit_listeners = None
 
-			for f in exit_listeners:
-				f(self)
+			self._exit_listener_stack.reverse()
+			while self._exit_listener_stack:
+				self._exit_listener_stack.pop()(self)
 
 class PipeReader(AsynchronousTask):
 

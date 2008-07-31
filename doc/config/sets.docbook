@@ -453,6 +453,41 @@
 			</para>
 			</sect3>
 		</sect2>
+		<sect2 id='config-set-classes-InheritSet'>
+		<title>portage.sets.dbapi.InheritSet</title>
+		<para>
+		Package set which contains all packages
+		that inherit one or more specific eclasses.
+		This class supports the following options:
+		<itemizedlist>
+		<listitem><varname>inherits</varname>: Required. A list of eclass names
+		which should be used to create the package set.
+		</listitem>
+		</itemizedlist>
+		</para>
+		</sect2>
+		<sect2 id='config-set-classes-OwnerSet'>
+		<title>portage.sets.dbapi.OwnerSet</title>
+		<para>
+		Package set which contains all packages
+		that own one or more files.
+		This class supports the following options:
+		<itemizedlist>
+		<listitem><varname>files</varname>: Required. A list of file paths
+		that should be used to create the package set.
+		</listitem>
+		</itemizedlist>
+		</para>
+		</sect2>
+		<sect2 id='config-set-classes-DowngradeSet'>
+		<title>portage.sets.dbapi.DowngradeSet</title>
+		<para>
+		Package set which contains all packages
+		for which the highest visible ebuild version is lower than
+		the currently installed version.
+		This class doesn't support any extra options.
+		</para>
+		</sect2>
 		<sect2 id='config-set-classes-PreservedLibraryConsumerSet'>
 		<title>portage.sets.libs.PreservedLibraryConsumerSet</title>
 		<para>
@@ -490,6 +525,9 @@
 	<listitem><varname>security</varname>: uses <classname>NewAffectedSet</classname> with default options</listitem>
 	<listitem><varname>everything</varname>: uses <classname>EverythingSet</classname></listitem>
 	<listitem><varname>preserved-rebuild</varname>: uses <classname>PreservedLibraryConsumerSet</classname></listitem>
+	<listitem><varname>live-rebuild</varname>: uses <classname>InheritSet</classname></listitem>
+	<listitem><varname>module-rebuild</varname>: uses <classname>OwnerSet</classname></listitem>
+	<listitem><varname>downgrade</varname>: uses <classname>DowngradeSet</classname></listitem>
 	</itemizedlist>
 	Additionally the default configuration includes a multi set section based on
 	the <classname>StaticFileSet</classname> defaults that creates a set for each 
