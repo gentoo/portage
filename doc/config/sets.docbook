@@ -479,6 +479,15 @@
 		</itemizedlist>
 		</para>
 		</sect2>
+		<sect2 id='config-set-classes-DowngradeSet'>
+		<title>portage.sets.dbapi.DowngradeSet</title>
+		<para>
+		Package set which contains all packages
+		for which the highest visible ebuild version is lower than
+		the currently installed version.
+		This class doesn't support any extra options.
+		</para>
+		</sect2>
 		<sect2 id='config-set-classes-PreservedLibraryConsumerSet'>
 		<title>portage.sets.libs.PreservedLibraryConsumerSet</title>
 		<para>
@@ -518,6 +527,7 @@
 	<listitem><varname>preserved-rebuild</varname>: uses <classname>PreservedLibraryConsumerSet</classname></listitem>
 	<listitem><varname>live-rebuild</varname>: uses <classname>InheritSet</classname></listitem>
 	<listitem><varname>module-rebuild</varname>: uses <classname>OwnerSet</classname></listitem>
+	<listitem><varname>downgrade</varname>: uses <classname>DowngradeSet</classname></listitem>
 	</itemizedlist>
 	Additionally the default configuration includes a multi set section based on
 	the <classname>StaticFileSet</classname> defaults that creates a set for each 
