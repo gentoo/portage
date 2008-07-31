@@ -130,6 +130,8 @@ class DowngradeSet(PackageSet):
 				slot, = aux_get(cpv, aux_keys)
 				slot_atom = "%s:%s" % (cp, slot)
 				ebuild = xmatch(xmatch_level, slot_atom)
+				if not ebuild:
+					continue
 				ebuild_split = catpkgsplit(ebuild)[1:]
 				installed_split = catpkgsplit(cpv)[1:]
 				if pkgcmp(installed_split, ebuild_split) > 0:
