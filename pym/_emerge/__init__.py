@@ -13217,10 +13217,6 @@ def ionice(settings):
 	if not ionice_cmd:
 		return
 
-	# Don't try if not root, it will be denied http://www.stupids.org/?p=25
-	if os.geteuid() != 0:
-		return
-
 	from portage.util import varexpand
 	variables = {"PID" : str(os.getpid())}
 	cmd = [varexpand(x, mydict=variables) for x in ionice_cmd]
