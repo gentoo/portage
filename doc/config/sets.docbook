@@ -453,6 +453,28 @@
 			</para>
 			</sect3>
 		</sect2>
+		<sect2 id='config-set-classes-InheritSet'>
+		<title>portage.sets.dbapi.InheritSet</title>
+		<para>
+		This class supports the following options:
+		<itemizedlist>
+		<listitem><varname>inherits</varname>: Required. A list of eclass names
+		which should be used to create the package set.
+		</listitem>
+		</itemizedlist>
+		</para>
+		</sect2>
+		<sect2 id='config-set-classes-OwnerSet'>
+		<title>portage.sets.dbapi.OwnerSet</title>
+		<para>
+		This class supports the following options:
+		<itemizedlist>
+		<listitem><varname>files</varname>: Required. A list of file paths
+		that should be used to create the package set.
+		</listitem>
+		</itemizedlist>
+		</para>
+		</sect2>
 		<sect2 id='config-set-classes-PreservedLibraryConsumerSet'>
 		<title>portage.sets.libs.PreservedLibraryConsumerSet</title>
 		<para>
@@ -490,6 +512,8 @@
 	<listitem><varname>security</varname>: uses <classname>NewAffectedSet</classname> with default options</listitem>
 	<listitem><varname>everything</varname>: uses <classname>EverythingSet</classname></listitem>
 	<listitem><varname>preserved-rebuild</varname>: uses <classname>PreservedLibraryConsumerSet</classname></listitem>
+	<listitem><varname>live-rebuild</varname>: uses <classname>InheritSet</classname></listitem>
+	<listitem><varname>module-rebuild</varname>: uses <classname>OwnerSet</classname></listitem>
 	</itemizedlist>
 	Additionally the default configuration includes a multi set section based on
 	the <classname>StaticFileSet</classname> defaults that creates a set for each 
