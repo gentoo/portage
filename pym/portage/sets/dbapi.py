@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from portage.versions import catsplit
+from portage.versions import catpkgsplit, catsplit
 from portage.sets.base import PackageSet
 from portage.sets import SetConfigError, get_boolean
 
@@ -30,6 +30,42 @@ class EverythingSet(PackageSet):
 	
 	def singleBuilder(self, options, settings, trees):
 		return EverythingSet(trees["vartree"].dbapi)
+	singleBuilder = classmethod(singleBuilder)
+
+class OwnerSet(PackageSet):
+
+	_operations = ["merge", "unmerge"]
+
+	description = "Package set which contains all packages " + \
+		"that own one or more files."
+
+	def __init__(self, vardb=None, files=None):
+		super(OwnerSet, self).__init__()
+		self._db = vardb
+		self._files = files
+
+	def mapPathsToAtoms(self, paths):
+		rValue = set()
+		vardb = self._db
+		aux_get = vardb.aux_get
+		aux_keys = ["SLOT"]
+		for link, p in vardb._owners.iter_owners(paths):
+			cat, pn = catpkgsplit(link.mycpv)[:2]
+			slot, = aux_get(link.mycpv, aux_keys)
+			rValue.add("%s/%s:%s" % (cat, pn, slot))
+		return rValue
+
+	def load(self):
+		self._setAtoms(self.mapPathsToAtoms(self._files))
+
+	def singleBuilder(cls, options, settings, trees):
+		if not "files" in options:
+			raise SetConfigError("no files given")
+
+		import shlex
+		return cls(vardb=trees["vartree"].dbapi,
+			files=frozenset(shlex.split(options["files"])))
+
 	singleBuilder = classmethod(singleBuilder)
 
 class InheritSet(PackageSet):
