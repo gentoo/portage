@@ -3147,6 +3147,54 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		return retval >> 8
 	return retval
 
+_userpriv_spawn_kwargs = (
+	("uid",    portage_uid),
+	("gid",    portage_gid),
+	("groups", userpriv_groups),
+	("umask",  002),
+)
+
+def _spawn_fetch(settings, args, **kwargs):
+	"""
+	Spawn a process with appropriate settings for fetching, including
+	userfetch and selinux support.
+	"""
+
+	global _userpriv_spawn_kwargs
+
+	# Redirect all output to stdout since some fetchers like
+	# wget pollute stderr (if portage detects a problem then it
+	# can send it's own message to stderr).
+	if "fd_pipes" not in kwargs:
+
+		kwargs["fd_pipes"] = {
+			0 : sys.stdin.fileno(),
+			1 : sys.stdout.fileno(),
+			2 : sys.stdout.fileno(),
+		}
+
+	if "userfetch" in settings.features and \
+		os.getuid() == 0 and portage_gid and portage_uid:
+		kwargs.update(_userpriv_spawn_kwargs)
+
+	try:
+
+		if settings.selinux_enabled():
+			con = selinux.getcontext()
+			con = con.replace(settings["PORTAGE_T"], settings["PORTAGE_FETCH_T"])
+			selinux.setexec(con)
+			# bash is an allowed entrypoint, while most binaries are not
+			args = [BASH_BINARY, "-c", "exec \"$@\"", args[0]] + args
+
+		rval = portage.process.spawn(args,
+			env=dict(settings.iteritems()), **kwargs)
+
+	finally:
+		if settings.selinux_enabled():
+			selinux.setexec(None)
+
+	return rval
+
 def _checksum_failure_temp_file(distdir, basename):
 	"""
 	First try to find a duplicate temp file with the same checksum and return
@@ -3820,38 +3868,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					lexer = shlex.shlex(StringIO.StringIO(locfetch), posix=True)
 					lexer.whitespace_split = True
 					myfetch = [varexpand(x, mydict=variables) for x in lexer]
-
-					spawn_keywords = {}
-					# Redirect all output to stdout since some fetchers like
-					# wget pollute stderr (if portage detects a problem then it
-					# can send it's own message to stderr).
-					spawn_keywords["fd_pipes"] = {
-						0:sys.stdin.fileno(),
-						1:sys.stdout.fileno(),
-						2:sys.stdout.fileno()
-					}
-					if "userfetch" in mysettings.features and \
-						os.getuid() == 0 and portage_gid and portage_uid:
-						spawn_keywords.update({
-							"uid"    : portage_uid,
-							"gid"    : portage_gid,
-							"groups" : userpriv_groups,
-							"umask"  : 002})
 					myret = -1
 					try:
 
-						if mysettings.selinux_enabled():
-							con = selinux.getcontext()
-							con = con.replace(mysettings["PORTAGE_T"], mysettings["PORTAGE_FETCH_T"])
-							selinux.setexec(con)
-							# bash is an allowed entrypoint, while most binaries are not
-							myfetch = ["bash", "-c", "exec \"$@\"", myfetch[0]] + myfetch
-
-						myret = portage.process.spawn(myfetch,
-							env=dict(mysettings.iteritems()), **spawn_keywords)
-
-						if mysettings.selinux_enabled():
-							selinux.setexec(None)
+						myret = _spawn_fetch(mysettings, myfetch)
 
 					finally:
 						try:
