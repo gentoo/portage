@@ -3564,8 +3564,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					if _userpriv_test_write_file(mysettings, write_test_file):
 						continue
 
+				_userpriv_test_write_file_cache.pop(write_test_file, None)
 				if portage.util.ensure_dirs(mydir, gid=dir_gid, mode=dirmode, mask=modemask):
-					_userpriv_test_write_file_cache.pop(write_test_file, None)
 					writemsg("Adjusting permissions recursively: '%s'\n" % mydir,
 						noiselevel=-1)
 					def onerror(e):
