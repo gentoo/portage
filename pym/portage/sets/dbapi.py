@@ -6,7 +6,7 @@ from portage.versions import catsplit
 from portage.sets.base import PackageSet
 from portage.sets import SetConfigError, get_boolean
 
-__all__ = ["CategorySet", "EverythingSet"]
+__all__ = ["CategorySet", "EverythingSet", "InheritSet"]
 
 class EverythingSet(PackageSet):
 	_operations = ["merge", "unmerge"]
@@ -30,6 +30,43 @@ class EverythingSet(PackageSet):
 	
 	def singleBuilder(self, options, settings, trees):
 		return EverythingSet(trees["vartree"].dbapi)
+	singleBuilder = classmethod(singleBuilder)
+
+class InheritSet(PackageSet):
+
+	_operations = ["merge", "unmerge"]
+
+	description = "Package set which contains all packages " + \
+		"that inherit one or more specific eclasses."
+
+	def __init__(self, vardb=None, inherits=None):
+		super(InheritSet, self).__init__()
+		self._db = vardb
+		self._inherits = inherits
+
+	def load(self):
+		atoms = []
+		inherits = self._inherits
+		cp_list = self._db.cp_list
+		aux_get = self._db.aux_get
+		aux_keys = ["INHERITED", "SLOT"]
+		for cp in self._db.cp_all():
+			for cpv in cp_list(cp):
+				inherited, slot = aux_get(cpv, aux_keys)
+				inherited = inherited.split()
+				if inherits.intersection(inherited):
+					atoms.append("%s:%s" % (cp, slot))
+
+		self._setAtoms(atoms)
+
+	def singleBuilder(cls, options, settings, trees):
+		if not "inherits" in options:
+			raise SetConfigError("no inherits given")
+
+		inherits = options["inherits"]
+		return cls(vardb=trees["vartree"].dbapi,
+			inherits=frozenset(inherits.split()))
+
 	singleBuilder = classmethod(singleBuilder)
 
 class CategorySet(PackageSet):
