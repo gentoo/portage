@@ -143,10 +143,10 @@ Contains additional options that \fBeconf\fR will append to configure
 script arguments (see \fBebuild\fR(5)).
 .TP
 \fBFEATURES\fR = \fI"sandbox ccache"\fR
-Defines actions portage takes by default.  These options should
-not be changed by anyone but developers and/or maintainers.  'sandbox' is an important
-part of \fBFEATURES\fR and should not be disabled by default.  This is 
-an incremental variable.
+Defines actions portage takes by default. This is an incremental variable.
+Most of these settings are for developer use, but some are available to
+non-developers as well. The \fBsandbox\fR feature is very important and
+should not be disabled by default.
 .RS
 .TP
 .B assume\-digests
