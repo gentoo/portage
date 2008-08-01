@@ -2239,7 +2239,12 @@ class EbuildFetcher(SpawnProcess):
 		if self.fetchall:
 			phase = "fetchall"
 
-		fetch_env = dict(settings.iteritems())
+		# If any incremental variables have been overridden
+		# via the environment, those values need to be passed
+		# along here so that they are correctly considered by
+		# the config instance in the subproccess.
+		fetch_env = os.environ.copy()
+
 		fetch_env["PORTAGE_NICENESS"] = "0"
 		if self.fetchonly:
 			fetch_env["PORTAGE_PARALLEL_FETCHONLY"] = "1"
