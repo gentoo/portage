@@ -339,7 +339,7 @@ class vardbapi(dbapi):
 		self.vartree = vartree
 		self._aux_cache_keys = set(
 			["CHOST", "COUNTER", "DEPEND", "DESCRIPTION",
-			"EAPI", "HOMEPAGE", "IUSE", "KEYWORDS",
+			"EAPI", "HOMEPAGE", "INHERITED", "IUSE", "KEYWORDS",
 			"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
 			"repository", "RESTRICT" , "SLOT", "USE"])
 		self._aux_cache_obj = None
@@ -772,7 +772,7 @@ class vardbapi(dbapi):
 			cache_valid = cache_mtime == mydir_mtime
 		if cache_valid:
 			mydata.update(metadata)
-			pull_me.difference_update(metadata)
+			pull_me.difference_update(mydata)
 
 		if pull_me:
 			# pull any needed data and cache it
