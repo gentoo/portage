@@ -262,6 +262,9 @@ def slot_dict_class(keys, prefix="_val_"):
 					except AttributeError:
 						pass
 
+			def __str__(self):
+				return str(dict(self.iteritems()))
+
 		v = SlotDict
 		_slot_dict_classes[v.allowed_keys] = v
 	return v
