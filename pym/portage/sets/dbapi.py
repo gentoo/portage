@@ -6,7 +6,8 @@ from portage.versions import catpkgsplit, catsplit, pkgcmp
 from portage.sets.base import PackageSet
 from portage.sets import SetConfigError, get_boolean
 
-__all__ = ["CategorySet", "EverythingSet", "InheritSet"]
+__all__ = ["CategorySet", "DowngradeSet",
+	"EverythingSet", "InheritSet", "OwnerSet"]
 
 class EverythingSet(PackageSet):
 	_operations = ["merge", "unmerge"]
