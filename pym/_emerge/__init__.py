@@ -2227,7 +2227,7 @@ class MiscFunctionsProcess(SpawnProcess):
 
 class EbuildFetcher(SpawnProcess):
 
-	__slots__ = ("fetchonly", "pkg",)
+	__slots__ = ("fetchonly", "fetchall", "pkg",)
 
 	def _start(self):
 
@@ -2235,6 +2235,9 @@ class EbuildFetcher(SpawnProcess):
 		portdb = root_config.trees["porttree"].dbapi
 		ebuild_path = portdb.findname(self.pkg.cpv)
 		settings = root_config.settings
+		phase = "fetch"
+		if self.fetchall:
+			phase = "fetchall"
 
 		fetch_env = dict(settings.iteritems())
 		fetch_env["PORTAGE_NICENESS"] = "0"
@@ -2244,7 +2247,7 @@ class EbuildFetcher(SpawnProcess):
 		ebuild_binary = os.path.join(
 			settings["PORTAGE_BIN_PATH"], "ebuild")
 
-		fetch_args = [ebuild_binary, ebuild_path, "fetch"]
+		fetch_args = [ebuild_binary, ebuild_path, phase]
 		debug = settings.get("PORTAGE_DEBUG") == "1"
 		if debug:
 			fetch_args.append("--debug")
@@ -2396,7 +2399,8 @@ class EbuildBuild(CompositeTask):
 		if self.background:
 			fetch_log = self.scheduler.fetch.log_file
 
-		fetcher = EbuildFetcher(fetchonly=opts.fetchonly,
+		fetcher = EbuildFetcher(fetchall=opts.fetch_all_uri,
+			fetchonly=opts.fetchonly,
 			background=self.background, logfile=fetch_log,
 			pkg=pkg, scheduler=self.scheduler)
 
@@ -13398,6 +13402,9 @@ def emerge_main():
 		for opt in ("--getbinpkg", "--getbinpkgonly",
 			"--usepkg", "--usepkgonly"):
 			myopts.pop(opt, None)
+
+	if "--fetch-all-uri" in myopts:
+		myopts["--fetchonly"] = True
 
 	if "--skipfirst" in myopts and "--resume" not in myopts:
 		myopts["--resume"] = True
