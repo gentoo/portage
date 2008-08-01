@@ -75,23 +75,32 @@ class InheritSet(PackageSet):
 	description = "Package set which contains all packages " + \
 		"that inherit one or more specific eclasses."
 
-	def __init__(self, vardb=None, inherits=None):
+	def __init__(self, portdb=None, vardb=None, inherits=None):
 		super(InheritSet, self).__init__()
+		self._portdb = portdb
 		self._db = vardb
 		self._inherits = inherits
 
 	def load(self):
 		atoms = []
 		inherits = self._inherits
+		xmatch = self._portdb.xmatch
+		xmatch_level = "bestmatch-visible"
 		cp_list = self._db.cp_list
 		aux_get = self._db.aux_get
-		aux_keys = ["INHERITED", "SLOT"]
+		portdb_aux_get = self._portdb.aux_get
+		vardb_keys = ["SLOT"]
+		portdb_keys = ["INHERITED"]
 		for cp in self._db.cp_all():
 			for cpv in cp_list(cp):
-				inherited, slot = aux_get(cpv, aux_keys)
-				inherited = inherited.split()
-				if inherits.intersection(inherited):
-					atoms.append("%s:%s" % (cp, slot))
+				slot, = aux_get(cpv, vardb_keys)
+				slot_atom = "%s:%s" % (cp, slot)
+				ebuild = xmatch(xmatch_level, slot_atom)
+				if not ebuild:
+					continue
+				inherited, = portdb_aux_get(ebuild, portdb_keys)
+				if inherits.intersection(inherited.split()):
+					atoms.append(slot_atom)
 
 		self._setAtoms(atoms)
 
@@ -100,7 +109,8 @@ class InheritSet(PackageSet):
 			raise SetConfigError("no inherits given")
 
 		inherits = options["inherits"]
-		return cls(vardb=trees["vartree"].dbapi,
+		return cls(portdb=trees["porttree"].dbapi,
+			vardb=trees["vartree"].dbapi,
 			inherits=frozenset(inherits.split()))
 
 	singleBuilder = classmethod(singleBuilder)
