@@ -4624,25 +4624,30 @@ class depgraph(object):
 					return 0
 				if debug:
 					print "Candidates:", selected_atoms
+
 				for atom in selected_atoms:
-					if isinstance(atom, basestring) \
-						and not portage.isvalidatom(atom):
+					try:
+
+						blocker = atom.startswith("!")
+						if blocker:
+							atom = atom[1:]
+						mypriority = dep_priority.copy()
+						if not blocker and vardb.match(atom):
+							mypriority.satisfied = True
+
+						if not self._add_dep(Dependency(atom=atom,
+							blocker=blocker, depth=depth, parent=pkg,
+							priority=mypriority, root=dep_root),
+							allow_unsatisfied=allow_unsatisfied):
+							return 0
+
+					except portage.exception.InvalidAtom, e:
 						show_invalid_depstring_notice(
-							pkg, dep_string, str(atom))
+							pkg, dep_string, str(e))
+						del e
 						if not pkg.installed:
 							return 0
-						continue
-					blocker = atom.startswith("!")
-					if blocker:
-						atom = atom[1:]
-					mypriority = dep_priority.copy()
-					if not blocker and vardb.match(atom):
-						mypriority.satisfied = True
-					if not self._add_dep(Dependency(atom=atom,
-						blocker=blocker, depth=depth, parent=pkg,
-						priority=mypriority, root=dep_root),
-						allow_unsatisfied=allow_unsatisfied):
-						return 0
+
 				if debug:
 					print "Exiting...", jbigkey
 		except ValueError, e:
