@@ -479,6 +479,24 @@
 		</itemizedlist>
 		</para>
 		</sect2>
+		<sect2 id='config-set-classes-RestrictSet'>
+		<title>portage.sets.dbapi.RestrictSet</title>
+		<para>
+		Package set which contains all packages
+		that match specified RESTRICT values.
+		This class supports the following options:
+		<itemizedlist>
+		<listitem><varname>includes</varname>: A list of
+		values that must be contained within the RESTRICT
+		metadata.
+		</listitem>
+		<listitem><varname>excludes</varname>: A list of
+		values that must not be contained within the RESTRICT
+		metadata.
+		</listitem>
+		</itemizedlist>
+		</para>
+		</sect2>
 		<sect2 id='config-set-classes-DowngradeSet'>
 		<title>portage.sets.dbapi.DowngradeSet</title>
 		<para>

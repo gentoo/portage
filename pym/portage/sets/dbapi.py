@@ -3,30 +3,50 @@
 # $Id$
 
 from portage.versions import catpkgsplit, catsplit, pkgcmp
+from portage.dep import Atom
 from portage.sets.base import PackageSet
 from portage.sets import SetConfigError, get_boolean
 
 __all__ = ["CategorySet", "DowngradeSet",
-	"EverythingSet", "InheritSet", "OwnerSet"]
+	"EverythingSet", "InheritSet", "OwnerSet", "RestrictSet"]
 
 class EverythingSet(PackageSet):
 	_operations = ["merge", "unmerge"]
 	description = "Package set which contains SLOT " + \
 		"atoms to match all installed packages"
+	_filter = None
 
 	def __init__(self, vdbapi):
 		super(EverythingSet, self).__init__()
 		self._db = vdbapi
-	
+
 	def load(self):
 		myatoms = []
+		db_keys = ["SLOT"]
+		aux_get = self._db.aux_get
+		cp_list = self._db.cp_list
+
 		for cp in self._db.cp_all():
-			if len(self._db.cp_list(cp)) > 1:
-				for cpv in self._db.cp_list(cp):
-					myslot = self._db.aux_get(cpv, ["SLOT"])[0]
-					myatoms.append(cp+":"+myslot)
+			cpv_list = cp_list(cp)
+
+			if len(cpv_list) > 1:
+				for cpv in cpv_list:
+					slot, = aux_get(cpv, db_keys)
+					atom = Atom("%s:%s" % (cp, slot))
+					if self._filter:
+						if self._filter(atom):
+							myatoms.append(atom)
+					else:
+						myatoms.append(atom)
+
 			else:
-				myatoms.append(cp)
+				atom = Atom(cp)
+				if self._filter:
+					if self._filter(atom):
+						myatoms.append(atom)
+				else:
+					myatoms.append(atom)
+
 		self._setAtoms(myatoms)
 	
 	def singleBuilder(self, options, settings, trees):
@@ -113,6 +133,46 @@ class InheritSet(PackageSet):
 		return cls(portdb=trees["porttree"].dbapi,
 			vardb=trees["vartree"].dbapi,
 			inherits=frozenset(inherits.split()))
+
+	singleBuilder = classmethod(singleBuilder)
+
+class RestrictSet(EverythingSet):
+
+	_operations = ["merge", "unmerge"]
+
+	description = "Package set which contains all packages " + \
+		"that match specified RESTRICT values."
+
+	def __init__(self, vardb, portdb=None, includes=None, excludes=None):
+		super(RestrictSet, self).__init__(vardb)
+		self._portdb = portdb
+		self._includes = includes
+		self._excludes = excludes
+
+	def _filter(self, atom):
+		ebuild = self._portdb.xmatch("bestmatch-visible", atom)
+		if not ebuild:
+			return False
+		restrict, = self._portdb.aux_get(ebuild, ["RESTRICT"])
+		restrict = restrict.split()
+		if self._includes and not self._includes.intersection(restrict):
+			return False
+		if self._excludes and self._excludes.intersection(restrict):
+			return False
+		return True
+
+	def singleBuilder(cls, options, settings, trees):
+
+		includes = options.get("includes", "")
+		excludes = options.get("excludes", "")
+
+		if not (includes or excludes):
+			raise SetConfigError("no includes or excludes given")
+
+		return cls(trees["vartree"].dbapi,
+			portdb=trees["porttree"].dbapi,
+			excludes=frozenset(excludes.split()),
+			includes=frozenset(includes.split()))
 
 	singleBuilder = classmethod(singleBuilder)
 
