@@ -10370,6 +10370,7 @@ def unmerge(root_config, myopts, unmerge_action,
 	# we don't want to unmerge packages that are still listed in user-editable package sets
 	# listed in "world" as they would be remerged on the next update of "world" or the 
 	# relevant package sets.
+	unknown_sets = set()
 	for cp in xrange(len(pkgmap)):
 		for cpv in pkgmap[cp]["selected"].copy():
 			try:
@@ -10385,6 +10386,17 @@ def unmerge(root_config, myopts, unmerge_action,
 				# removed from "world" later on)
 				if s in root_config.setconfig.active or (s == "world" and not root_config.setconfig.active):
 					continue
+
+				if s not in sets:
+					if s in unknown_sets:
+						continue
+					unknown_sets.add(s)
+					out = portage.output.EOutput()
+					out.eerror(("Unknown set '@%s' in " + \
+						"%svar/lib/portage/world_sets") % \
+						(s, root_config.root))
+					continue
+
 				# only check instances of EditablePackageSet as other classes are generally used for
 				# special purposes and can be ignored here (and are usually generated dynamically, so the
 				# user can't do much about them anyway)
