@@ -2684,10 +2684,14 @@ class dblink(object):
 			# it may not be visible via a scrollback buffer, especially
 			# if the number of file collisions is large. Therefore,
 			# show a summary at the end.
-			msg = ("Package '%s' NOT merged due to " + \
-				"file collisions. If necessary, refer to your elog " + \
-				"messages for the whole content of the above message.") % \
-				self.settings.mycpv
+			if collision_protect:
+				msg = "Package '%s' NOT merged due to file collisions." % \
+					self.settings.mycpv
+			else:
+				msg = "Package '%s' merged despite file collisions." % \
+					self.settings.mycpv
+			msg += " If necessary, refer to your elog " + \
+				"messages for the whole content of the above message."
 			eerror(wrap(msg, 70))
 
 			if collision_protect:
