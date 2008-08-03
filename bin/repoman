@@ -1745,23 +1745,19 @@ else:
 		mynew=portage.cvstree.findnew(mycvstree,recursive=1,basedir="./")
 		myremoved=portage.cvstree.findremoved(mycvstree,recursive=1,basedir="./")
 		bin_blob_pattern = re.compile("^-kb$")
-		expansion = set(portage.cvstree.findoption(mycvstree, bin_blob_pattern,
+		bin_blobs = set(portage.cvstree.findoption(mycvstree, bin_blob_pattern,
 			recursive=1, basedir="./"))
 
 
 	if vcs == "svn":
 		svnstatus = os.popen("svn status").readlines()
 		mychanged = [ elem.rstrip()[7:] for elem in svnstatus if elem.startswith("M") ]
-		mynew     = [ elem.rstrip()[7:] for elem in svnstatus if elem.startswith("A") ]
+		for manifest in [ file for file in mychanged if '/Manifest' in file ]:
+			mychanged.remove(manifest)
+		mynew = [ elem.rstrip()[7:] for elem in svnstatus if elem.startswith("A") ]
 		myremoved = [ elem.rstrip()[7:] for elem in svnstatus if elem.startswith("D") ]
-		# in contrast to CVS, SVN expands nothing by default.
-		# bin_blobs historically
-		# were just there to see what files need to be checked for
-		# keyword expansion, which is exactly what we do here, so
-		# slightly change the semantic meaning of "bin_blob"...  In the
-		# future we could store which keyword is expanded.
-		props = os.popen("svn propget -R svn:keywords").readlines()
-		expansion = [ prop.split("-")[0].strip() for prop in props ]
+		# no idea how to detect binaries in SVN
+		bin_blobs = []
 
 	if vcs:
 		if not (mychanged or mynew or myremoved):
@@ -1781,11 +1777,7 @@ else:
 	headerstring = "'\$(Header|Id)"
 	headerstring += ".*\$'"
 	for myfile in myupdates:
-		# for CVS, expansion contains files that are excluded from expansion
-		if vcs == "cvs" and myfile in expansion:
-			continue
-		# for SVN, expansion contains files that are included in expansion
-		if vcs == "svn" and myfile not in expansion:
+		if myfile in bin_blobs:
 			continue
 		myout = commands.getstatusoutput("egrep -q "+headerstring+" "+myfile)
 		if myout[0] == 0:
@@ -1841,8 +1833,6 @@ else:
 
 	if myupdates or myremoved:
 		myfiles = myupdates + myremoved
-		if not myheaders and "sign" not in repoman_settings.features:
-			myfiles += mymanifests
 		fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
 		mymsg = os.fdopen(fd, "w")
 		mymsg.write(commitmessage)
@@ -1929,8 +1919,8 @@ else:
 			write_atomic(x, "".join(mylines))
 
 	manifest_commit_required = True
-	if myupdates or myremoved or mynew:
-		myfiles=myupdates+myremoved+mynew
+	if myheaders or myupdates or myremoved or mynew:
+		myfiles=myheaders+myupdates+myremoved+mynew
 		for x in range(len(myfiles)-1, -1, -1):
 			if myfiles[x].count("/") < 4-repolevel:
 				del myfiles[x]
