@@ -114,8 +114,7 @@ class BinhostHandler(object):
 		self._bintree = portage.db[myroot]["bintree"]
 		self._bintree.populate()
 		self._pkgindex_file = os.path.join(self._bintree.pkgdir, "Packages")
-		from portage import getbinpkg
-		self._pkgindex = getbinpkg.PackageIndex()
+		self._pkgindex = self._bintree._new_pkgindex()
 		f = open(self._pkgindex_file, 'r')
 		try:
 			self._pkgindex.read(f)
@@ -151,7 +150,7 @@ class BinhostHandler(object):
 		cpv_all = self._bintree.dbapi.cpv_all()
 		cpv_all.sort()
 		missing = []
-		maxval = len(cpv_all)
+		maxval = 0
 		if onProgress:
 			onProgress(maxval, 0)
 		pkgindex = self._pkgindex
@@ -159,35 +158,61 @@ class BinhostHandler(object):
 		metadata = {}
 		for d in pkgindex.packages:
 			metadata[d["CPV"]] = d
+
 		for i, cpv in enumerate(cpv_all):
 			d = metadata.get(cpv)
 			if not d or "MD5" not in d:
-				bintree.inject(cpv)
-			if onProgress:
-				onProgress(maxval, i+1)
+				missing.append(cpv)
+
 		stale = set(metadata).difference(cpv_all)
-		if stale:
+		if missing or stale:
 			from portage import locks
 			pkgindex_lock = locks.lockfile(
 				self._pkgindex_file, wantnewlockfile=1)
 			try:
-				from portage import getbinpkg
-				pkgindex = getbinpkg.PackageIndex()
+				# Repopulate with lock held.
+				bintree._populate()
+				cpv_all = self._bintree.dbapi.cpv_all()
+				cpv_all.sort()
+
+				pkgindex = bintree._new_pkgindex()
 				self._pkgindex = pkgindex
 				f = open(self._pkgindex_file, 'r')
 				try:
 					self._pkgindex.read(f)
 				finally:
 					f.close()
-				from portage.dbapi.bintree import binarytree
-				self._bintree = binarytree(bintree.root, bintree.pkgdir,
-					settings=bintree.settings)
-				del bintree
-				portage.db[self._bintree.root]["bintree"] = self._bintree
-				self._bintree._populate()
+
+				metadata = {}
+				for d in pkgindex.packages:
+					metadata[d["CPV"]] = d
+
+				# Recount missing packages, with lock held.
+				del missing[:]
+				for i, cpv in enumerate(cpv_all):
+					d = metadata.get(cpv)
+					if not d or "MD5" not in d:
+						missing.append(cpv)
+
+				maxval = len(missing)
+				for i, cpv in enumerate(missing):
+					try:
+						metadata[cpv] = bintree._pkgindex_entry(cpv)
+					except portage.exception.InvalidDependString:
+						writemsg("!!! Invalid binary package: '%s'\n" % \
+							bintree.getname(cpv), noiselevel=-1)
+
+					if onProgress:
+						onProgress(maxval, i+1)
+
 				for cpv in set(metadata).difference(
 					self._bintree.dbapi.cpv_all()):
 					del metadata[cpv]
+
+				# We've updated the pkgindex, so set it to
+				# repopulate when necessary.
+				bintree.populated = False
+
 				del pkgindex.packages[:]
 				pkgindex.packages.extend(metadata.itervalues())
 				from portage.util import atomic_ofstream
@@ -198,6 +223,11 @@ class BinhostHandler(object):
 					f.close()
 			finally:
 				locks.unlockfile(pkgindex_lock)
+
+		if onProgress:
+			if maxval == 0:
+				maxval = 1
+			onProgress(maxval, maxval)
 		return None
 
 class MoveHandler(object):

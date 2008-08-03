@@ -443,7 +443,9 @@
 		<title>portage.sets.dbapi.EverythingSet</title>
 		<para>
 		A superset of the classic <parameter>world</parameter> target, a set created
-		by this class contains SLOT atoms to match all installed packages.
+		by this class contains SLOT atoms to match all installed packages. Note that
+		use of this set makes it impossible for emerge to solve blockers by automatic
+		uninstallation of blocked packages.
 		</para>
 
 			<sect3>
@@ -452,19 +454,6 @@
 			This class doesn't support any extra options.
 			</para>
 			</sect3>
-		</sect2>
-		<sect2 id='config-set-classes-InheritSet'>
-		<title>portage.sets.dbapi.InheritSet</title>
-		<para>
-		Package set which contains all packages
-		that inherit one or more specific eclasses.
-		This class supports the following options:
-		<itemizedlist>
-		<listitem><varname>inherits</varname>: Required. A list of eclass names
-		which should be used to create the package set.
-		</listitem>
-		</itemizedlist>
-		</para>
 		</sect2>
 		<sect2 id='config-set-classes-OwnerSet'>
 		<title>portage.sets.dbapi.OwnerSet</title>
@@ -475,6 +464,27 @@
 		<itemizedlist>
 		<listitem><varname>files</varname>: Required. A list of file paths
 		that should be used to create the package set.
+		</listitem>
+		</itemizedlist>
+		</para>
+		</sect2>
+		<sect2 id='config-set-classes-VariableSet'>
+		<title>portage.sets.dbapi.VariableSet</title>
+		<para>
+		Package set which contains all packages
+		that match specified values of specified variable.
+		This class supports the following options:
+		<itemizedlist>
+		<listitem><varname>variable</varname>: The name of
+		the specified variable whose values are checked.
+		</listitem>
+		<listitem><varname>includes</varname>: A list of
+		values that must be contained within the specified
+		variable.
+		</listitem>
+		<listitem><varname>excludes</varname>: A list of
+		values that must not be contained within the specified
+		variable.
 		</listitem>
 		</itemizedlist>
 		</para>
@@ -525,7 +535,7 @@
 	<listitem><varname>security</varname>: uses <classname>NewAffectedSet</classname> with default options</listitem>
 	<listitem><varname>everything</varname>: uses <classname>EverythingSet</classname></listitem>
 	<listitem><varname>preserved-rebuild</varname>: uses <classname>PreservedLibraryConsumerSet</classname></listitem>
-	<listitem><varname>live-rebuild</varname>: uses <classname>InheritSet</classname></listitem>
+	<listitem><varname>live-rebuild</varname>: uses <classname>VariableSet</classname></listitem>
 	<listitem><varname>module-rebuild</varname>: uses <classname>OwnerSet</classname></listitem>
 	<listitem><varname>downgrade</varname>: uses <classname>DowngradeSet</classname></listitem>
 	</itemizedlist>

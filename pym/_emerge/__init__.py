@@ -2254,7 +2254,7 @@ class MiscFunctionsProcess(SpawnProcess):
 
 class EbuildFetcher(SpawnProcess):
 
-	__slots__ = ("fetchonly", "pkg",)
+	__slots__ = ("fetchonly", "fetchall", "pkg",)
 
 	def _start(self):
 
@@ -2262,8 +2262,16 @@ class EbuildFetcher(SpawnProcess):
 		portdb = root_config.trees["porttree"].dbapi
 		ebuild_path = portdb.findname(self.pkg.cpv)
 		settings = root_config.settings
+		phase = "fetch"
+		if self.fetchall:
+			phase = "fetchall"
 
-		fetch_env = dict(settings.iteritems())
+		# If any incremental variables have been overridden
+		# via the environment, those values need to be passed
+		# along here so that they are correctly considered by
+		# the config instance in the subproccess.
+		fetch_env = os.environ.copy()
+
 		fetch_env["PORTAGE_NICENESS"] = "0"
 		if self.fetchonly:
 			fetch_env["PORTAGE_PARALLEL_FETCHONLY"] = "1"
@@ -2271,7 +2279,7 @@ class EbuildFetcher(SpawnProcess):
 		ebuild_binary = os.path.join(
 			settings["PORTAGE_BIN_PATH"], "ebuild")
 
-		fetch_args = [ebuild_binary, ebuild_path, "fetch"]
+		fetch_args = [ebuild_binary, ebuild_path, phase]
 		debug = settings.get("PORTAGE_DEBUG") == "1"
 		if debug:
 			fetch_args.append("--debug")
@@ -2423,7 +2431,8 @@ class EbuildBuild(CompositeTask):
 		if self.background:
 			fetch_log = self.scheduler.fetch.log_file
 
-		fetcher = EbuildFetcher(fetchonly=opts.fetchonly,
+		fetcher = EbuildFetcher(fetchall=opts.fetch_all_uri,
+			fetchonly=opts.fetchonly,
 			background=self.background, logfile=fetch_log,
 			pkg=pkg, scheduler=self.scheduler)
 
@@ -4647,25 +4656,30 @@ class depgraph(object):
 					return 0
 				if debug:
 					print "Candidates:", selected_atoms
+
 				for atom in selected_atoms:
-					if isinstance(atom, basestring) \
-						and not portage.isvalidatom(atom):
+					try:
+
+						blocker = atom.startswith("!")
+						if blocker:
+							atom = atom[1:]
+						mypriority = dep_priority.copy()
+						if not blocker and vardb.match(atom):
+							mypriority.satisfied = True
+
+						if not self._add_dep(Dependency(atom=atom,
+							blocker=blocker, depth=depth, parent=pkg,
+							priority=mypriority, root=dep_root),
+							allow_unsatisfied=allow_unsatisfied):
+							return 0
+
+					except portage.exception.InvalidAtom, e:
 						show_invalid_depstring_notice(
-							pkg, dep_string, str(atom))
+							pkg, dep_string, str(e))
+						del e
 						if not pkg.installed:
 							return 0
-						continue
-					blocker = atom.startswith("!")
-					if blocker:
-						atom = atom[1:]
-					mypriority = dep_priority.copy()
-					if not blocker and vardb.match(atom):
-						mypriority.satisfied = True
-					if not self._add_dep(Dependency(atom=atom,
-						blocker=blocker, depth=depth, parent=pkg,
-						priority=mypriority, root=dep_root),
-						allow_unsatisfied=allow_unsatisfied):
-						return 0
+
 				if debug:
 					print "Exiting...", jbigkey
 		except ValueError, e:
@@ -10398,6 +10412,7 @@ def unmerge(root_config, myopts, unmerge_action,
 	# we don't want to unmerge packages that are still listed in user-editable package sets
 	# listed in "world" as they would be remerged on the next update of "world" or the 
 	# relevant package sets.
+	unknown_sets = set()
 	for cp in xrange(len(pkgmap)):
 		for cpv in pkgmap[cp]["selected"].copy():
 			try:
@@ -10413,6 +10428,17 @@ def unmerge(root_config, myopts, unmerge_action,
 				# removed from "world" later on)
 				if s in root_config.setconfig.active or (s == "world" and not root_config.setconfig.active):
 					continue
+
+				if s not in sets:
+					if s in unknown_sets:
+						continue
+					unknown_sets.add(s)
+					out = portage.output.EOutput()
+					out.eerror(("Unknown set '@%s' in " + \
+						"%svar/lib/portage/world_sets") % \
+						(s, root_config.root))
+					continue
+
 				# only check instances of EditablePackageSet as other classes are generally used for
 				# special purposes and can be ignored here (and are usually generated dynamically, so the
 				# user can't do much about them anyway)
@@ -13488,6 +13514,9 @@ def emerge_main():
 		for opt in ("--getbinpkg", "--getbinpkgonly",
 			"--usepkg", "--usepkgonly"):
 			myopts.pop(opt, None)
+
+	if "--fetch-all-uri" in myopts:
+		myopts["--fetchonly"] = True
 
 	if "--skipfirst" in myopts and "--resume" not in myopts:
 		myopts["--resume"] = True

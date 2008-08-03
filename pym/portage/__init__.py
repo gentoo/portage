@@ -5111,7 +5111,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 	clean_phases = ("clean", "cleanrm")
 	validcommands = ["help","clean","prerm","postrm","cleanrm","preinst","postinst",
-	                "config","info","setup","depend","fetch","digest",
+	                "config", "info", "setup", "depend",
+	                "fetch", "fetchall", "digest",
 	                "unpack","compile","test","install","rpm","qmerge","merge",
 	                "package","unmerge", "manifest"]
 
@@ -5125,6 +5126,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			writemsg(validcommands[vcount].ljust(11), noiselevel=-1)
 		writemsg("\n", noiselevel=-1)
 		return 1
+
+	if mydo == "fetchall":
+		fetchall = 1
+		mydo = "fetch"
 
 	if mydo not in clean_phases and not os.path.exists(myebuild):
 		writemsg("!!! doebuild: %s not found for %s\n" % (myebuild, mydo),

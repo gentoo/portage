@@ -68,7 +68,13 @@
 <sect1 id='dependency-resolution-task-scheduling-parallel'>
 	<title>Parallel Scheduling</title>
 	<para>
-	TODO: Spawn an appropriate number of tasks in parallel when desired.
+	The algorithm used to choose packages that will execute concurrently
+	with other packages is as conservative as possible in the sense that
+	a given package will not be executed if the subgraph composed of its
+	direct and indirect dependencies contains any scheduled merges. By
+	ensuring that the subgraph of deep dependencies is fully up to date
+	in this way, potential problems are avoided which could be triggered
+	by other build orders that are less optimal.
 	</para>
 </sect1>
 </chapter>

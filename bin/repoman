@@ -1745,19 +1745,28 @@ else:
 		mynew=portage.cvstree.findnew(mycvstree,recursive=1,basedir="./")
 		myremoved=portage.cvstree.findremoved(mycvstree,recursive=1,basedir="./")
 		bin_blob_pattern = re.compile("^-kb$")
-		bin_blobs = set(portage.cvstree.findoption(mycvstree, bin_blob_pattern,
+		no_expansion = set(portage.cvstree.findoption(mycvstree, bin_blob_pattern,
 			recursive=1, basedir="./"))
 
 
 	if vcs == "svn":
 		svnstatus = os.popen("svn status").readlines()
 		mychanged = [ elem.rstrip()[7:] for elem in svnstatus if elem.startswith("M") ]
-		for manifest in [ file for file in mychanged if '/Manifest' in file ]:
-			mychanged.remove(manifest)
-		mynew = [ elem.rstrip()[7:] for elem in svnstatus if elem.startswith("A") ]
+		mynew     = [ elem.rstrip()[7:] for elem in svnstatus if elem.startswith("A") ]
 		myremoved = [ elem.rstrip()[7:] for elem in svnstatus if elem.startswith("D") ]
-		# no idea how to detect binaries in SVN
-		bin_blobs = []
+		# in contrast to CVS, SVN expands nothing by default.
+		# bin_blobs historically
+		# were just there to see what files need to be checked for
+		# keyword expansion, which is exactly what we do here, so
+		# slightly change the semantic meaning of "bin_blob"...  In the
+		# future we could store which keyword is expanded.
+		props = os.popen("svn propget -R svn:keywords").readlines()
+
+		# For files with multiple props set, props are delimited by newlines,
+		# so exclude lines that don't contain " - " since each of those lines
+		# only a contain props for a file listed on a previous line.
+		expansion = set(prop.split(" - ")[0] \
+			for prop in props if " - " in prop)
 
 	if vcs:
 		if not (mychanged or mynew or myremoved):
@@ -1777,8 +1786,17 @@ else:
 	headerstring = "'\$(Header|Id)"
 	headerstring += ".*\$'"
 	for myfile in myupdates:
-		if myfile in bin_blobs:
-			continue
+
+		# for CVS, no_expansion contains files that are excluded from expansion
+		if vcs == "cvs":
+			if myfile in no_expansion:
+				continue
+
+		# for SVN, expansion contains files that are included in expansion
+		elif vcs == "svn":
+			if myfile not in expansion:
+				continue
+
 		myout = commands.getstatusoutput("egrep -q "+headerstring+" "+myfile)
 		if myout[0] == 0:
 			myheaders.append(myfile)
@@ -1833,6 +1851,8 @@ else:
 
 	if myupdates or myremoved:
 		myfiles = myupdates + myremoved
+		if not myheaders and "sign" not in repoman_settings.features:
+			myfiles += mymanifests
 		fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
 		mymsg = os.fdopen(fd, "w")
 		mymsg.write(commitmessage)
@@ -1919,8 +1939,8 @@ else:
 			write_atomic(x, "".join(mylines))
 
 	manifest_commit_required = True
-	if myheaders or myupdates or myremoved or mynew:
-		myfiles=myheaders+myupdates+myremoved+mynew
+	if myupdates or myremoved or mynew:
+		myfiles=myupdates+myremoved+mynew
 		for x in range(len(myfiles)-1, -1, -1):
 			if myfiles[x].count("/") < 4-repolevel:
 				del myfiles[x]

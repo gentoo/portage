@@ -774,9 +774,6 @@ class binarytree(object):
 				noiselevel=-1)
 			return
 		slot = slot.strip()
-		from portage.checksum import perform_multiple_checksums
-		digests = perform_multiple_checksums(
-			full_path, hashes=self._pkgindex_hashes)
 		self.dbapi.cpv_inject(cpv)
 		self.dbapi._aux_cache.pop(cpv, None)
 
@@ -807,26 +804,16 @@ class binarytree(object):
 					del f
 			if not self._pkgindex_version_supported(pkgindex):
 				pkgindex = self._new_pkgindex()
-			d = digests
-			d["CPV"] = cpv
-			d["SLOT"] = slot
-			d["MTIME"] = str(long(s.st_mtime))
-			d["SIZE"] = str(s.st_size)
-			rel_path = self._pkg_paths[cpv]
-			# record location if it's non-default
-			if rel_path != cpv + ".tbz2":
-				d["PATH"] = rel_path
-			from itertools import izip
-			d.update(izip(self._pkgindex_aux_keys,
-				self.dbapi.aux_get(cpv, self._pkgindex_aux_keys)))
+
 			try:
-				self._eval_use_flags(cpv, d)
+				d = self._pkgindex_entry(cpv)
 			except portage.exception.InvalidDependString:
 				writemsg("!!! Invalid binary package: '%s'\n" % \
 					self.getname(cpv), noiselevel=-1)
 				self.dbapi.cpv_remove(cpv)
 				del self._pkg_paths[cpv]
 				return
+
 			# If found, remove package(s) with duplicate path.
 			for i in xrange(len(pkgindex.packages) - 1, -1, -1):
 				d2 = pkgindex.packages[i]
@@ -835,6 +822,7 @@ class binarytree(object):
 				if d2.get("PATH", "") == d.get("PATH", ""):
 					del pkgindex.packages[i]
 			pkgindex.packages.append(d)
+
 			self._update_pkgindex_header(pkgindex.header)
 			from portage.util import atomic_ofstream
 			f = atomic_ofstream(os.path.join(self.pkgdir, "Packages"))
@@ -845,6 +833,36 @@ class binarytree(object):
 		finally:
 			if pkgindex_lock:
 				unlockfile(pkgindex_lock)
+
+	def _pkgindex_entry(self, cpv):
+		"""
+		Performs checksums and evaluates USE flag conditionals.
+		Raises InvalidDependString if necessary.
+		@rtype: dict
+		@returns: a dict containing entry for the give cpv.
+		"""
+
+		pkg_path = self.getname(cpv)
+		from portage.checksum import perform_multiple_checksums
+
+		d = dict(izip(self._pkgindex_aux_keys,
+			self.dbapi.aux_get(cpv, self._pkgindex_aux_keys)))
+
+		d.update(perform_multiple_checksums(
+			pkg_path, hashes=self._pkgindex_hashes))
+
+		d["CPV"] = cpv
+		st = os.stat(pkg_path)
+		d["MTIME"] = str(long(st.st_mtime))
+		d["SIZE"] = str(st.st_size)
+
+		rel_path = self._pkg_paths[cpv]
+		# record location if it's non-default
+		if rel_path != cpv + ".tbz2":
+			d["PATH"] = rel_path
+
+		self._eval_use_flags(cpv, d)
+		return d
 
 	def _new_pkgindex(self):
 		return portage.getbinpkg.PackageIndex(

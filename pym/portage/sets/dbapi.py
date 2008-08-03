@@ -3,29 +3,50 @@
 # $Id$
 
 from portage.versions import catpkgsplit, catsplit, pkgcmp
+from portage.dep import Atom
 from portage.sets.base import PackageSet
 from portage.sets import SetConfigError, get_boolean
 
-__all__ = ["CategorySet", "EverythingSet", "InheritSet"]
+__all__ = ["CategorySet", "DowngradeSet",
+	"EverythingSet", "OwnerSet", "VariableSet"]
 
 class EverythingSet(PackageSet):
 	_operations = ["merge", "unmerge"]
 	description = "Package set which contains SLOT " + \
 		"atoms to match all installed packages"
+	_filter = None
 
 	def __init__(self, vdbapi):
 		super(EverythingSet, self).__init__()
 		self._db = vdbapi
-	
+
 	def load(self):
 		myatoms = []
+		db_keys = ["SLOT"]
+		aux_get = self._db.aux_get
+		cp_list = self._db.cp_list
+
 		for cp in self._db.cp_all():
-			if len(self._db.cp_list(cp)) > 1:
-				for cpv in self._db.cp_list(cp):
-					myslot = self._db.aux_get(cpv, ["SLOT"])[0]
-					myatoms.append(cp+":"+myslot)
+			cpv_list = cp_list(cp)
+
+			if len(cpv_list) > 1:
+				for cpv in cpv_list:
+					slot, = aux_get(cpv, db_keys)
+					atom = Atom("%s:%s" % (cp, slot))
+					if self._filter:
+						if self._filter(atom):
+							myatoms.append(atom)
+					else:
+						myatoms.append(atom)
+
 			else:
-				myatoms.append(cp)
+				atom = Atom(cp)
+				if self._filter:
+					if self._filter(atom):
+						myatoms.append(atom)
+				else:
+					myatoms.append(atom)
+
 		self._setAtoms(myatoms)
 	
 	def singleBuilder(self, options, settings, trees):
@@ -68,40 +89,49 @@ class OwnerSet(PackageSet):
 
 	singleBuilder = classmethod(singleBuilder)
 
-class InheritSet(PackageSet):
+class VariableSet(EverythingSet):
 
 	_operations = ["merge", "unmerge"]
 
 	description = "Package set which contains all packages " + \
-		"that inherit one or more specific eclasses."
+		"that match specified values of a specified variable."
 
-	def __init__(self, vardb=None, inherits=None):
-		super(InheritSet, self).__init__()
-		self._db = vardb
-		self._inherits = inherits
+	def __init__(self, vardb, portdb=None, variable=None, includes=None, excludes=None):
+		super(VariableSet, self).__init__(vardb)
+		self._portdb = portdb
+		self._variable = variable
+		self._includes = includes
+		self._excludes = excludes
 
-	def load(self):
-		atoms = []
-		inherits = self._inherits
-		cp_list = self._db.cp_list
-		aux_get = self._db.aux_get
-		aux_keys = ["INHERITED", "SLOT"]
-		for cp in self._db.cp_all():
-			for cpv in cp_list(cp):
-				inherited, slot = aux_get(cpv, aux_keys)
-				inherited = inherited.split()
-				if inherits.intersection(inherited):
-					atoms.append("%s:%s" % (cp, slot))
-
-		self._setAtoms(atoms)
+	def _filter(self, atom):
+		ebuild = self._portdb.xmatch("bestmatch-visible", atom)
+		if not ebuild:
+			return False
+		values, = self._portdb.aux_get(ebuild, [self._variable])
+		values = values.split()
+		if self._includes and not self._includes.intersection(values):
+			return False
+		if self._excludes and self._excludes.intersection(values):
+			return False
+		return True
 
 	def singleBuilder(cls, options, settings, trees):
-		if not "inherits" in options:
-			raise SetConfigError("no inherits given")
 
-		inherits = options["inherits"]
-		return cls(vardb=trees["vartree"].dbapi,
-			inherits=frozenset(inherits.split()))
+		variable = options.get("variable")
+		if variable is None:
+			raise SetConfigError("missing required attribute: 'variable'")
+
+		includes = options.get("includes", "")
+		excludes = options.get("excludes", "")
+
+		if not (includes or excludes):
+			raise SetConfigError("no includes or excludes given")
+
+		return cls(trees["vartree"].dbapi,
+			portdb=trees["porttree"].dbapi,
+			excludes=frozenset(excludes.split()),
+			includes=frozenset(includes.split()),
+			variable=variable)
 
 	singleBuilder = classmethod(singleBuilder)
 

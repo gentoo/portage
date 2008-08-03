@@ -486,7 +486,7 @@ class vardbapi(dbapi):
 		self.vartree = vartree
 		self._aux_cache_keys = set(
 			["CHOST", "COUNTER", "DEPEND", "DESCRIPTION",
-			"EAPI", "HOMEPAGE", "IUSE", "KEYWORDS",
+			"EAPI", "HOMEPAGE", "INHERITED", "IUSE", "KEYWORDS",
 			"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
 			"repository", "RESTRICT" , "SLOT", "USE"])
 		self._aux_cache_obj = None
@@ -922,7 +922,7 @@ class vardbapi(dbapi):
 			cache_valid = cache_mtime == mydir_mtime
 		if cache_valid:
 			mydata.update(metadata)
-			pull_me.difference_update(metadata)
+			pull_me.difference_update(mydata)
 
 		if pull_me:
 			# pull any needed data and cache it
@@ -2837,10 +2837,14 @@ class dblink(object):
 			# it may not be visible via a scrollback buffer, especially
 			# if the number of file collisions is large. Therefore,
 			# show a summary at the end.
-			msg = ("Package '%s' NOT merged due to " + \
-				"file collisions. If necessary, refer to your elog " + \
-				"messages for the whole content of the above message.") % \
-				self.settings.mycpv
+			if collision_protect:
+				msg = "Package '%s' NOT merged due to file collisions." % \
+					self.settings.mycpv
+			else:
+				msg = "Package '%s' merged despite file collisions." % \
+					self.settings.mycpv
+			msg += " If necessary, refer to your elog " + \
+				"messages for the whole content of the above message."
 			eerror(wrap(msg, 70))
 
 			if collision_protect:
