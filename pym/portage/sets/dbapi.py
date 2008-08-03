@@ -8,7 +8,7 @@ from portage.sets.base import PackageSet
 from portage.sets import SetConfigError, get_boolean
 
 __all__ = ["CategorySet", "DowngradeSet",
-	"EverythingSet", "InheritSet", "OwnerSet", "RestrictSet"]
+	"EverythingSet", "OwnerSet", "VariableSet"]
 
 class EverythingSet(PackageSet):
 	_operations = ["merge", "unmerge"]
@@ -89,63 +89,17 @@ class OwnerSet(PackageSet):
 
 	singleBuilder = classmethod(singleBuilder)
 
-class InheritSet(PackageSet):
+class VariableSet(EverythingSet):
 
 	_operations = ["merge", "unmerge"]
 
 	description = "Package set which contains all packages " + \
-		"that inherit one or more specific eclasses."
+		"that match specified values of a specified variable."
 
-	def __init__(self, portdb=None, vardb=None, inherits=None):
-		super(InheritSet, self).__init__()
+	def __init__(self, vardb, portdb=None, variable=None, includes=None, excludes=None):
+		super(VariableSet, self).__init__(vardb)
 		self._portdb = portdb
-		self._db = vardb
-		self._inherits = inherits
-
-	def load(self):
-		atoms = []
-		inherits = self._inherits
-		xmatch = self._portdb.xmatch
-		xmatch_level = "bestmatch-visible"
-		cp_list = self._db.cp_list
-		aux_get = self._db.aux_get
-		portdb_aux_get = self._portdb.aux_get
-		vardb_keys = ["SLOT"]
-		portdb_keys = ["INHERITED"]
-		for cp in self._db.cp_all():
-			for cpv in cp_list(cp):
-				slot, = aux_get(cpv, vardb_keys)
-				slot_atom = "%s:%s" % (cp, slot)
-				ebuild = xmatch(xmatch_level, slot_atom)
-				if not ebuild:
-					continue
-				inherited, = portdb_aux_get(ebuild, portdb_keys)
-				if inherits.intersection(inherited.split()):
-					atoms.append(slot_atom)
-
-		self._setAtoms(atoms)
-
-	def singleBuilder(cls, options, settings, trees):
-		if not "inherits" in options:
-			raise SetConfigError("no inherits given")
-
-		inherits = options["inherits"]
-		return cls(portdb=trees["porttree"].dbapi,
-			vardb=trees["vartree"].dbapi,
-			inherits=frozenset(inherits.split()))
-
-	singleBuilder = classmethod(singleBuilder)
-
-class RestrictSet(EverythingSet):
-
-	_operations = ["merge", "unmerge"]
-
-	description = "Package set which contains all packages " + \
-		"that match specified RESTRICT values."
-
-	def __init__(self, vardb, portdb=None, includes=None, excludes=None):
-		super(RestrictSet, self).__init__(vardb)
-		self._portdb = portdb
+		self._variable = variable
 		self._includes = includes
 		self._excludes = excludes
 
@@ -153,15 +107,19 @@ class RestrictSet(EverythingSet):
 		ebuild = self._portdb.xmatch("bestmatch-visible", atom)
 		if not ebuild:
 			return False
-		restrict, = self._portdb.aux_get(ebuild, ["RESTRICT"])
-		restrict = restrict.split()
-		if self._includes and not self._includes.intersection(restrict):
+		values, = self._portdb.aux_get(ebuild, [self._variable])
+		values = values.split()
+		if self._includes and not self._includes.intersection(values):
 			return False
-		if self._excludes and self._excludes.intersection(restrict):
+		if self._excludes and self._excludes.intersection(values):
 			return False
 		return True
 
 	def singleBuilder(cls, options, settings, trees):
+
+		variable = options.get("variable")
+		if variable is None:
+			raise SetConfigError("missing required attribute: 'variable'")
 
 		includes = options.get("includes", "")
 		excludes = options.get("excludes", "")
@@ -172,7 +130,8 @@ class RestrictSet(EverythingSet):
 		return cls(trees["vartree"].dbapi,
 			portdb=trees["porttree"].dbapi,
 			excludes=frozenset(excludes.split()),
-			includes=frozenset(includes.split()))
+			includes=frozenset(includes.split()),
+			variable=variable)
 
 	singleBuilder = classmethod(singleBuilder)
 
