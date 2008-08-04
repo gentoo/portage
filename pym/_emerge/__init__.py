@@ -5733,11 +5733,6 @@ class depgraph(object):
 				pkgsettings = self.pkgsettings[myroot]
 				final_db = self.mydbapi[myroot]
 
-				graph_complete_for_root = "complete" in self.myparams or \
-					(myroot == self.target_root and \
-					("deep" in self.myparams or "empty" in self.myparams) and \
-					not self._required_set_names.difference(self._sets))
-
 				blocker_cache = BlockerCache(myroot, vardb)
 				stale_cache = set(blocker_cache)
 				for pkg in vardb:
@@ -5761,18 +5756,11 @@ class depgraph(object):
 					#
 					#  * KEYWORDS is not empty (not installed by old portage).
 					#
-					#  * The graph is complete and the package has not been
-					#    pulled into the dependency graph. It's eligible for
-					#    depclean, but depclean may fail to recognize it as
-					#    such due to differences in visibility filtering which
-					#    can lead to differences in || dep evaluation.
-					#    TODO: Share visibility code to fix this inconsistency.
 
 					if pkg in final_db:
 						if pkg_in_graph and not visible(pkgsettings, pkg):
 							self._masked_installed.add(pkg)
-						elif graph_complete_for_root and \
-							pkgsettings._getMissingKeywords(
+						elif pkgsettings._getMissingKeywords(
 							pkg.cpv, pkg.metadata) and \
 							pkg.metadata["KEYWORDS"].split() and \
 							not pkg_in_graph:
