@@ -9815,7 +9815,8 @@ class Scheduler(PollScheduler):
 		@type msg: str
 		@param msg: a brief status message (no newlines allowed)
 		"""
-
+		if not self._background:
+			writemsg_level("\n")
 		self._status_display.displayMessage(msg)
 
 	def _save_resume_list(self):
