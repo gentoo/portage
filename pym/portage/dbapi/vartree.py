@@ -1607,10 +1607,12 @@ class dblink(object):
 				writemsg("!!! FAILED prerm: %s\n" % \
 					os.path.join(self.dbdir, "EAPI"), noiselevel=-1)
 				writemsg("%s\n" % str(e), noiselevel=-1)
-				return 1
-			catdir = os.path.dirname(self.settings["PORTAGE_BUILDDIR"])
-			ensure_dirs(os.path.dirname(catdir),
-				uid=portage_uid, gid=portage_gid, mode=070, mask=0)
+				myebuildpath = None
+			else:
+				catdir = os.path.dirname(self.settings["PORTAGE_BUILDDIR"])
+				ensure_dirs(os.path.dirname(catdir), uid=portage_uid,
+					gid=portage_gid, mode=070, mask=0)
+
 		builddir_lock = None
 		catdir_lock = None
 		scheduler = self._scheduler
@@ -1643,7 +1645,6 @@ class dblink(object):
 				# XXX: Decide how to handle failures here.
 				if retval != os.EX_OK:
 					writemsg("!!! FAILED prerm: %s\n" % retval, noiselevel=-1)
-					return retval
 
 			self._unmerge_pkgfiles(pkgfiles, others_in_slot)
 			
@@ -1665,7 +1666,6 @@ class dblink(object):
 				# XXX: Decide how to handle failures here.
 				if retval != os.EX_OK:
 					writemsg("!!! FAILED postrm: %s\n" % retval, noiselevel=-1)
-					return retval
 
 			# regenerate reverse NEEDED map
 			self.vartree.dbapi.linkmap.rebuild()
