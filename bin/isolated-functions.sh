@@ -499,13 +499,16 @@ save_ebuild_env() {
 			best_version use_with use_enable register_die_hook check_KV \
 			keepdir unpack strip_duplicate_slashes econf einstall \
 			dyn_setup dyn_unpack dyn_clean into insinto exeinto docinto \
-			insopts diropts exeopts libopts abort_handler abort_compile \
-			abort_test abort_install dyn_compile dyn_test dyn_install \
+			insopts diropts exeopts libopts \
+			abort_handler abort_configure abort_compile \
+			abort_test abort_install dyn_configure \
+			dyn_compile dyn_test dyn_install \
 			dyn_preinst dyn_help debug-print debug-print-function \
 			debug-print-section inherit EXPORT_FUNCTIONS newdepend newrdepend \
 			newpdepend do_newdepend remove_path_entry \
 			save_ebuild_env filter_readonly_variables preprocess_ebuild_env \
-			source_all_bashrcs ebuild_phase ebuild_phase_with_hooks \
+			source_all_bashrcs ebuild_main \
+			ebuild_phase ebuild_phase_with_hooks \
 			${QA_INTERCEPTORS}
 
 		# portage config variables and variables set directly by portage

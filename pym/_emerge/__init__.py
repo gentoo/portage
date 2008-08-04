@@ -2587,7 +2587,7 @@ class EbuildExecuter(CompositeTask):
 
 	__slots__ = ("pkg", "scheduler", "settings") + ("_tree",)
 
-	_phases = ("compile", "test", "install")
+	_phases = ("configure", "compile", "test", "install")
 
 	_live_eclasses = frozenset([
 		"cvs",

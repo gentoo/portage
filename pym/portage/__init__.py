@@ -4544,8 +4544,10 @@ def _spawn_misc_sh(mysettings, commands, **kwargs):
 
 def eapi_is_supported(eapi):
 	eapi = str(eapi).strip()
-	if eapi == "2_pre1":
+
+	if eapi in ("2_pre2", "2_pre1"):
 		return True
+
 	try:
 		eapi = int(eapi)
 	except ValueError:
@@ -5042,7 +5044,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	actionmap_deps={
 	"setup":  [],
 	"unpack": ["setup"],
-	"compile":["unpack"],
+	"configure": ["unpack"],
+	"compile":["configure"],
 	"test":   ["compile"],
 	"install":["test"],
 	"rpm":    ["install"],
@@ -5063,7 +5066,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	validcommands = ["help","clean","prerm","postrm","cleanrm","preinst","postinst",
 	                "config", "info", "setup", "depend",
 	                "fetch", "fetchall", "digest",
-	                "unpack","compile","test","install","rpm","qmerge","merge",
+	                "unpack", "configure", "compile", "test",
+	                "install", "rpm", "qmerge", "merge",
 	                "package","unmerge", "manifest"]
 
 	if mydo not in validcommands:
@@ -5617,13 +5621,14 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		# args are for the to spawn function
 		actionmap = {
-"setup":  {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":1,         "sesandbox":0,         "fakeroot":0}},
-"unpack": {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox, "fakeroot":0}},
-"compile":{"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
-"test":   {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
-"install":{"cmd":ebuild_sh, "args":{"droppriv":0,        "free":0,         "sesandbox":sesandbox, "fakeroot":fakeroot}},
-"rpm":    {"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0,         "fakeroot":fakeroot}},
-"package":{"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0,         "fakeroot":fakeroot}},
+"setup":    {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":1,         "sesandbox":0,         "fakeroot":0}},
+"unpack":   {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox, "fakeroot":0}},
+"configure":{"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
+"compile":  {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
+"test":     {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
+"install":  {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":0,         "sesandbox":sesandbox, "fakeroot":fakeroot}},
+"rpm":      {"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0,         "fakeroot":fakeroot}},
+"package":  {"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0,         "fakeroot":fakeroot}},
 		}
 
 		# merge the deps in so we have again a 'full' actionmap

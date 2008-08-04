@@ -583,7 +583,7 @@ einstall() {
 	fi
 }
 
-pkg_nofetch() {
+_default_pkg_nofetch() {
 	[ -z "${SRC_URI}" ] && return
 
 	echo "!!! The following are listed in SRC_URI for ${PN}:"
@@ -593,22 +593,25 @@ pkg_nofetch() {
 	done
 }
 
-src_unpack() {
+_default_src_unpack() {
 	[[ -n ${A} ]] && unpack ${A}
 }
 
-src_compile() {
+_default_src_configure() {
 	if [ "${EAPI:-0}" == 0 ] ; then
 		[ -x ./configure ] && econf
 	elif [ -x "${ECONF_SOURCE:-.}/configure" ] ; then
 		econf
 	fi
+}
+
+_default_src_compile() {
 	if [ -f Makefile ] || [ -f GNUmakefile ] || [ -f makefile ]; then
 		emake || die "emake failed"
 	fi
 }
 
-src_test() {
+_default_src_test() {
 	if emake -j1 check -n &> /dev/null; then
 		vecho ">>> Test phase [check]: ${CATEGORY}/${PF}"
 		if ! emake -j1 check; then
@@ -624,6 +627,25 @@ src_test() {
 	else
 		vecho ">>> Test phase [none]: ${CATEGORY}/${PF}"
 	fi
+}
+
+pkg_nofetch() {
+	_default_pkg_nofetch
+}
+
+src_unpack() {
+	_default_src_unpack
+}
+
+src_compile() {
+	hasq "$EAPI" 0 1 2_pre1 && \
+		_default_src_configure
+
+	_default_src_compile
+}
+
+src_test() {
+	_default_src_test
 }
 
 ebuild_phase() {
@@ -822,6 +844,12 @@ abort_handler() {
 	trap SIGINT SIGQUIT
 }
 
+abort_configure() {
+	abort_handler src_configure $1
+	rm -f "$PORTAGE_BUILDDIR/.configured"
+	exit 1
+}
+
 abort_compile() {
 	abort_handler "src_compile" $1
 	rm -f "${PORTAGE_BUILDDIR}/.compiled"
@@ -840,72 +868,45 @@ abort_install() {
 	exit 1
 }
 
+dyn_configure() {
+	hasq "$EAPI" 0 1 2_pre1 && return 0
+
+	if [[ $PORTAGE_BUILDDIR/.configured -nt $WORKDIR ]] ; then
+		vecho ">>> It appears that '$PF' is already configured; skipping."
+		vecho ">>> Remove '$PORTAGE_BUILDDIR/.configured' to force configuration."
+		return 0
+	fi
+
+	trap abort_configure SIGINT SIGQUIT
+
+	[[ $(type -t pre_src_configure) = function ]] && \
+		qa_call pre_src_configure
+
+	vecho ">>> Configuring source in $srcdir ..."
+	ebuild_phase src_configure
+	vecho ">>> Source configured."
+	#|| abort_configure "fail"
+	cd "$PORTAGE_BUILDDIR"
+	touch .configured
+	[[ $(type -t post_src_configure) = function ]] && \
+		qa_call post_src_configure
+
+	trap SIGINT SIGQUIT
+}
+
 dyn_compile() {
-	trap "abort_compile" SIGINT SIGQUIT
 
-	[ "$(type -t pre_src_compile)" == "function" ] && qa_call pre_src_compile
-
-	[ "${CFLAGS-unset}"      != "unset" ] && export CFLAGS
-	[ "${CXXFLAGS-unset}"    != "unset" ] && export CXXFLAGS
-	[ "${LIBCFLAGS-unset}"   != "unset" ] && export LIBCFLAGS
-	[ "${LIBCXXFLAGS-unset}" != "unset" ] && export LIBCXXFLAGS
-	[ "${LDFLAGS-unset}"     != "unset" ] && export LDFLAGS
-	[ "${ASFLAGS-unset}"     != "unset" ] && export ASFLAGS
-
-	[ "${CCACHE_DIR-unset}"  != "unset" ] && export CCACHE_DIR
-	[ "${CCACHE_SIZE-unset}" != "unset" ] && export CCACHE_SIZE
-
-	[ "${DISTCC_DIR-unset}"  == "unset" ] && export DISTCC_DIR="${PORTAGE_TMPDIR}/.distcc"
-	[ ! -z "${DISTCC_DIR}" ] && addwrite "${DISTCC_DIR}"
-
-	LIBDIR_VAR="LIBDIR_${ABI}"
-	if [ -z "${PKG_CONFIG_PATH}" -a -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then
-		export PKG_CONFIG_PATH="/usr/${!LIBDIR_VAR}/pkgconfig"
-	fi
-	unset LIBDIR_VAR
-
-	if hasq noauto $FEATURES && [ ! -f ${PORTAGE_BUILDDIR}/.unpacked ]; then
-		echo
-		echo "!!! We apparently haven't unpacked... This is probably not what you"
-		echo "!!! want to be doing... You are using FEATURES=noauto so I'll assume"
-		echo "!!! that you know what you are doing... You have 5 seconds to abort..."
-		echo
-
-		local x
-		for x in 1 2 3 4 5 6 7 8; do
-			echo -ne "\a"
-			LC_ALL=C sleep 0.25
-		done
-
-		sleep 3
-	fi
-
-	local srcdir=${PORTAGE_BUILDDIR}
-	cd "${PORTAGE_BUILDDIR}"
-	if [ ! -e "build-info" ]; then
-		mkdir build-info
-	fi
-	cp "${EBUILD}" "build-info/${PF}.ebuild"
-
-	if [[ ${PORTAGE_BUILDDIR}/.compiled -nt ${WORKDIR} ]] ; then
+	if [[ $PORTAGE_BUILDDIR/.compiled -nt $WORKDIR ]] ; then
 		vecho ">>> It appears that '${PF}' is already compiled; skipping."
-		vecho ">>> Remove '${PORTAGE_BUILDDIR}/.compiled' to force compilation."
-		trap SIGINT SIGQUIT
-		[ "$(type -t post_src_compile)" == "function" ] && qa_call post_src_compile
-		return
+		vecho ">>> Remove '$PORTAGE_BUILDDIR/.compiled' to force compilation."
+		return 0
 	fi
-	if [ -d "${S}" ]; then
-		srcdir=${S}
-	else
-		srcdir=${WORKDIR}
-	fi
-	cd "${srcdir}"
-	#our custom version of libtool uses $S and $D to fix
-	#invalid paths in .la files
-	export S D
-	#some packages use an alternative to $S to build in, cause
-	#our libtool to create problematic .la files
-	export PWORKDIR="$WORKDIR"
+
+	trap abort_compile SIGINT SIGQUIT
+
+	[[ $(type -t pre_src_compile) = function ]] && \
+		qa_call pre_src_compile
+
 	vecho ">>> Compiling source in ${srcdir} ..."
 	ebuild_phase src_compile
 	vecho ">>> Source compiled."
@@ -1059,8 +1060,9 @@ dyn_help() {
 	echo "  digest      : create a manifest file for the package"
 	echo "  manifest    : create a manifest file for the package"
 	echo "  unpack      : unpack/patch sources (auto-fetch if needed)"
-	echo "  compile     : compile sources (auto-fetch/unpack if needed)"
-	echo "  test        : test package (auto-fetch/unpack/compile if needed)"
+	echo "  configure   : configure sources (auto-fetch/unpack if needed)"
+	echo "  compile     : compile sources (auto-fetch/unpack/configure if needed)"
+	echo "  test        : test package (auto-fetch/unpack/configure/compile if needed)"
 	echo "  preinst     : execute pre-install instructions"
 	echo "  postinst    : execute post-install instructions"
 	echo "  install     : install the package to the temporary install directory"
@@ -1350,13 +1352,39 @@ remove_path_entry() {
 	PATH="${stripped_path}"
 }
 
+# @FUNCTION: source_all_bashrcs
+# @DESCRIPTION:
+# Source a relevant bashrc files and perform other miscellaneous
+# environment initialization when appropriate:
+#
+#  * If EAPI is set, define default_* functions provided by the current EAPI.
+#
 source_all_bashrcs() {
 	[ -n "$EBUILD_PHASE" ] || return
+	local x
+	local default_phases="pkg_nofetch src_unpack src_configure
+		src_compile src_test"
+
+	if [[ -n $EAPI ]] && ! hasq "$EAPI" 0 1 2_pre1 ; then
+		for x in $default_phases ; do
+			eval "default_$x() { _default_$x \"\$@\" ; }"
+		done
+
+		[[ $(type -t src_configure) = function ]] || \
+			src_configure() { _default_src_configure "$@" ; }
+
+	else
+		for x in $default_phases ; do
+			eval "default_$x() {
+				die \"default_$x() is not supported with EAPI='$EAPI'\"
+			}"
+		done
+	fi
+
 	local OCC="${CC}" OCXX="${CXX}"
 	# source the existing profile.bashrc's.
 	save_IFS
 	IFS=$'\n'
-	local x
 	for x in ${PROFILE_PATHS}; do
 		# Must unset it so that it doesn't mess up assumptions in the RCs.
 		unset IFS
@@ -1717,6 +1745,10 @@ if ! hasq ${EBUILD_PHASE} clean && \
 		debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
 	fi
 
+	# Set default EAPI if necessary, so that most
+	# code can simply assume that it's defined.
+	[[ -n $EAPI ]] || EAPI=0
+
 	# add in dependency info from eclasses
 	IUSE="${IUSE} ${E_IUSE}"
 	DEPEND="${DEPEND} ${E_DEPEND}"
@@ -1756,7 +1788,11 @@ if [ "${EBUILD_PHASE}" != "depend" ] ; then
 	declare -r ${READONLY_EBUILD_METADATA} ${READONLY_PORTAGE_VARS}
 fi
 
-if [ -n "${EBUILD_SH_ARGS}" ] ; then
+ebuild_main() {
+	local f x
+	local export_vars="ASFLAGS CCACHE_DIR CCACHE_SIZE
+		CFLAGS CXXFLAGS LDFLAGS LIBCFLAGS LIBCXXFLAGS"
+
 	case ${EBUILD_SH_ARGS} in
 	nofetch)
 		ebuild_phase_with_hooks pkg_nofetch
@@ -1786,12 +1822,71 @@ if [ -n "${EBUILD_SH_ARGS}" ] ; then
 			)
 		fi
 		;;
-	unpack|compile|test|clean|install)
-		if [ "${SANDBOX_DISABLED="0"}" == "0" ]; then
+	unpack|configure|compile|test|clean|install)
+		if [[ ${SANDBOX_DISABLED:-0} = 0 ]] ; then
 			export SANDBOX_ON="1"
 		else
 			export SANDBOX_ON="0"
 		fi
+
+		case "$EBUILD_SH_ARGS" in
+		configure|compile)
+
+			for x in $export_vars ; do
+				[[ ${!x-unset} != unset ]] && export $x
+			done
+
+			hasq distcc $FEATURES && [[ -n $DISTCC_DIR ]] && \
+				[[ ${SANDBOX_WRITE/$DISTCC_DIR} = $SANDBOX_WRITE ]] && \
+				addwrite "$DISTCC_DIR"
+
+			x=LIBDIR_$ABI
+			[ -z "$PKG_CONFIG_PATH" -a -n "$ABI" -a -n "${!x}" ] && \
+				export PKG_CONFIG_PATH=/usr/${!x}/pkgconfig
+
+			if hasq noauto $FEATURES && \
+				[[ ! -f $PORTAGE_BUILDDIR/.unpacked ]] ; then
+				echo
+				echo "!!! We apparently haven't unpacked..." \
+					"This is probably not what you"
+				echo "!!! want to be doing... You are using" \
+					"FEATURES=noauto so I'll assume"
+				echo "!!! that you know what you are doing..." \
+					"You have 5 seconds to abort..."
+				echo
+
+				local x
+				for x in 1 2 3 4 5 6 7 8; do
+					echo -ne "\a"
+					LC_ALL=C sleep 0.25
+				done
+
+				sleep 3
+			fi
+
+			cd "$PORTAGE_BUILDDIR"
+			if [ ! -d build-info ] ; then
+				mkdir build-info
+				cp "$EBUILD" "build-info/$PF.ebuild"
+			fi
+
+			local srcdir
+			if [[ -d $S ]] ; then
+				srcdir=$S
+			else
+				srcdir=$WORKDIR
+			fi
+			cd "$srcdir"
+			#our custom version of libtool uses $S and $D to fix
+			#invalid paths in .la files
+			export S D
+			#some packages use an alternative to $S to build in, cause
+			#our libtool to create problematic .la files
+			export PWORKDIR=$WORKDIR
+
+			;;
+		esac
+
 		if [ "${PORTAGE_DEBUG}" != "1" ] || [ "${-/x/}" != "$-" ]; then
 			dyn_${EBUILD_SH_ARGS}
 		else
@@ -1857,7 +1952,9 @@ if [ -n "${EBUILD_SH_ARGS}" ] ; then
 	esac
 	[ -n "${EBUILD_EXIT_STATUS_FILE}" ] && \
 		touch "${EBUILD_EXIT_STATUS_FILE}" &>/dev/null
-fi
+}
+
+[[ -n $EBUILD_SH_ARGS ]] && ebuild_main
 
 # Save the env only for relevant phases.
 if [ -n "${EBUILD_SH_ARGS}" ] && \

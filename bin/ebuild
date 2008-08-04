@@ -182,7 +182,7 @@ if opts.skip_manifest:
 	tmpsettings.backup_changes("EBUILD_SKIP_MANIFEST")
 	portage._doebuild_manifest_exempt_depend += 1
 
-build_dir_phases = set(["setup", "unpack", "compile",
+build_dir_phases = set(["setup", "unpack", "configure", "compile",
 	"test", "install", "package", "rpm"])
 
 def stale_env_warning():
