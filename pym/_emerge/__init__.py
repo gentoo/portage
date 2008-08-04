@@ -3444,10 +3444,10 @@ class MergeListItem(CompositeTask):
 		world_atom = self.world_atom
 		ldpath_mtimes = mtimedb["ldpath"]
 
-		action_desc = "Building"
+		action_desc = "Emerging"
 		preposition = "for"
 		if pkg.type_name == "binary":
-			action_desc = "Extracting"
+			action_desc += " binary"
 
 		if build_opts.fetchonly:
 			action_desc = "Fetching"
