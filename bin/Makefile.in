@@ -29,6 +29,7 @@ user_sbinprogs = \
 	dispatch-conf \
 	ebuild \
 	ebuild.sh \
+	emerge-webrsync \
 	env-update \
 	etc-update \
 	fixpackages \
