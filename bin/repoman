@@ -563,28 +563,6 @@ for x in range(0, repolevel - 1):
 def caterror(mycat):
 	err(mycat+" is not an official category.  Skipping QA checks in this directory.\nPlease ensure that you add "+catdir+" to "+repodir+"/profiles/categories\nif it is a new category.")
 
-# retreive local USE list
-luselist={}
-try:
-	f = open(os.path.join(portdir, "profiles", "use.local.desc"))
-	utilities.parse_use_local_desc(f, luselist)
-	f.close()
-except (IOError, OSError, ParseError), e:
-	logging.exception("Couldn't read from use.local.desc")
-	sys.exit(1)
-
-if portdir_overlay != portdir:
-	filename = os.path.join(portdir_overlay, "profiles", "use.local.desc")
-	if os.path.exists(filename):
-		try:
-			f = open(filename)
-			utilities.parse_use_local_desc(f, luselist)
-			f.close()
-		except (IOError, OSError, ParseError), e:
-			logging.exception("Couldn't read from '%s'" % (filename,))
-			sys.exit(1)
-	del filename
-
 # setup a uselist from portage
 uselist=[]
 try:
@@ -1375,13 +1353,6 @@ for x in scanlist:
 			if myuse[mypos] and (myuse[mypos] in muselist):
 				del myuse[mypos]
 
-		# uselist checks - local
-		mykey = portage.dep_getkey(catpkg)
-		if mykey in luselist:
-			for mypos in range(len(myuse)-1,-1,-1):
-				if myuse[mypos] and (myuse[mypos] in luselist[mykey]):
-					del myuse[mypos]
-
 		if default_use and eapi == "0":
 			for myflag in default_use:
 				stats['EAPI.incompatible'] += 1
@@ -1433,7 +1404,8 @@ for x in scanlist:
 				portage.dep.paren_reduce(myaux["RESTRICT"]), matchall=1)
 		except portage.exception.InvalidDependString, e:
 			stats["RESTRICT.syntax"] = stats["RESTRICT.syntax"] + 1
-			fails["RESTRICT.syntax"].append(mykey+".ebuild RESTRICT: "+str(e))
+			fails["RESTRICT.syntax"].append(
+				"%s: RESTRICT: %s" % (relative_path, e))
 			del e
 		if myrestrict:
 			myrestrict = set(portage.flatten(myrestrict))

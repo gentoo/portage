@@ -2614,7 +2614,7 @@ class EbuildExecuter(CompositeTask):
 
 	__slots__ = ("pkg", "scheduler", "settings") + ("_tree",)
 
-	_phases = ("compile", "test", "install")
+	_phases = ("configure", "compile", "test", "install")
 
 	_live_eclasses = frozenset([
 		"cvs",
@@ -3471,10 +3471,10 @@ class MergeListItem(CompositeTask):
 		world_atom = self.world_atom
 		ldpath_mtimes = mtimedb["ldpath"]
 
-		action_desc = "Building"
+		action_desc = "Emerging"
 		preposition = "for"
 		if pkg.type_name == "binary":
-			action_desc = "Extracting"
+			action_desc += " binary"
 
 		if build_opts.fetchonly:
 			action_desc = "Fetching"
@@ -5764,11 +5764,6 @@ class depgraph(object):
 				pkgsettings = self.pkgsettings[myroot]
 				final_db = self.mydbapi[myroot]
 
-				graph_complete_for_root = "complete" in self.myparams or \
-					(myroot == self.target_root and \
-					("deep" in self.myparams or "empty" in self.myparams) and \
-					not self._required_set_names.difference(self._sets))
-
 				blocker_cache = BlockerCache(myroot, vardb)
 				stale_cache = set(blocker_cache)
 				for pkg in vardb:
@@ -5792,18 +5787,11 @@ class depgraph(object):
 					#
 					#  * KEYWORDS is not empty (not installed by old portage).
 					#
-					#  * The graph is complete and the package has not been
-					#    pulled into the dependency graph. It's eligible for
-					#    depclean, but depclean may fail to recognize it as
-					#    such due to differences in visibility filtering which
-					#    can lead to differences in || dep evaluation.
-					#    TODO: Share visibility code to fix this inconsistency.
 
 					if pkg in final_db:
 						if pkg_in_graph and not visible(pkgsettings, pkg):
 							self._masked_installed.add(pkg)
-						elif graph_complete_for_root and \
-							pkgsettings._getMissingKeywords(
+						elif pkgsettings._getMissingKeywords(
 							pkg.cpv, pkg.metadata) and \
 							pkg.metadata["KEYWORDS"].split() and \
 							not pkg_in_graph:
@@ -8847,7 +8835,8 @@ class Scheduler(PollScheduler):
 			emergelog(self.xterm_titles, *pargs, **kwargs)
 
 	class _failed_pkg(SlotObject):
-		__slots__ = ("log_path", "pkg", "returncode")
+		__slots__ = ("build_dir", "build_log",
+			"fetch_log", "pkg", "returncode")
 
 	def __init__(self, settings, trees, mtimedb, myopts,
 		spinner, mergelist, favorites, digraph):
@@ -9469,19 +9458,40 @@ class Scheduler(PollScheduler):
 			# If only one package failed then just show it's
 			# whole log for easy viewing.
 			failed_pkg = self._failed_pkgs_all[-1]
-			log_path = failed_pkg.log_path
-			if log_path is not None:
+			build_dir = failed_pkg.build_dir
+			log_file = None
+
+			log_paths = [failed_pkg.build_log]
+
+			if not (build_dir and os.path.isdir(build_dir)):
+				log_paths.append(failed_pkg.fetch_log)
+
+			for log_path in log_paths:
+				if not log_path:
+					continue
+
+				try:
+					log_size = os.stat(log_path).st_size
+				except OSError:
+					continue
+
+				if log_size == 0:
+					continue
+
 				try:
 					log_file = open(log_path, 'rb')
 				except IOError:
-					pass
-				else:
-					try:
-						for line in log_file:
-							writemsg_level(line, noiselevel=-1)
-					finally:
-						log_file.close()
-					failure_log_shown = True
+					continue
+
+				break
+
+			if log_file is not None:
+				try:
+					for line in log_file:
+						writemsg_level(line, noiselevel=-1)
+				finally:
+					log_file.close()
+				failure_log_shown = True
 
 		if background and not failure_log_shown and \
 			self._failed_pkgs_all and \
@@ -9550,9 +9560,16 @@ class Scheduler(PollScheduler):
 	def _do_merge_exit(self, merge):
 		pkg = merge.merge.pkg
 		if merge.returncode != os.EX_OK:
-			log_path = merge.merge.settings.get("PORTAGE_LOG_FILE")
+			settings = merge.merge.settings
+			build_dir = settings.get("PORTAGE_BUILDDIR")
+			build_log = settings.get("PORTAGE_LOG_FILE")
+			fetch_log = self._fetch_Log
+
 			self._failed_pkgs.append(self._failed_pkg(
-				log_path=log_path, pkg=pkg, returncode=merge.returncode))
+				build_dir=build_dir, build_log=build_log,
+				fetch_log=fetch_log, pkg=pkg,
+				returncode=merge.returncode))
+
 			self._status_display.failed = len(self._failed_pkgs)
 			return
 
@@ -9587,9 +9604,16 @@ class Scheduler(PollScheduler):
 			self._task_queues.merge.add(merge)
 			self._status_display.merges = len(self._task_queues.merge)
 		else:
-			log_path = build.settings.get("PORTAGE_LOG_FILE")
+			settings = build.settings
+			build_dir = settings.get("PORTAGE_BUILDDIR")
+			fetch_log = self._fetch_log
+			build_log = settings.get("PORTAGE_LOG_FILE")
+
 			self._failed_pkgs.append(self._failed_pkg(
-				log_path=log_path, pkg=build.pkg, returncode=build.returncode))
+				build_dir=build_dir, build_log=build_log,
+				fetch_log=fetch_log, pkg=build.pkg,
+				returncode=build.returncode))
+
 			self._status_display.failed = len(self._failed_pkgs)
 			self._deallocate_config(build.settings)
 		self._jobs -= 1
@@ -9857,7 +9881,8 @@ class Scheduler(PollScheduler):
 		@type msg: str
 		@param msg: a brief status message (no newlines allowed)
 		"""
-
+		if not self._background:
+			writemsg_level("\n")
 		self._status_display.displayMessage(msg)
 
 	def _save_resume_list(self):
