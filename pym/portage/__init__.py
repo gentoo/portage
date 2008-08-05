@@ -4979,7 +4979,8 @@ def _doebuild_exit_status_unlink(exit_status_file):
 		os.unlink(exit_status_file)
 
 _doebuild_manifest_exempt_depend = 0
-_doebuild_manifest_checked = None
+_doebuild_manifest_cache = None
+_doebuild_broken_ebuilds = set()
 _doebuild_broken_manifests = set()
 
 def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
@@ -5098,45 +5099,72 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		mydo not in ("digest", "manifest", "help") and \
 		not _doebuild_manifest_exempt_depend:
 		# Always verify the ebuild checksums before executing it.
+		global _doebuild_manifest_cache, _doebuild_broken_ebuilds, \
+			_doebuild_broken_ebuilds
+
+		if myebuild in _doebuild_broken_ebuilds:
+			return 1
+
 		pkgdir = os.path.dirname(myebuild)
 		manifest_path = os.path.join(pkgdir, "Manifest")
-		global _doebuild_manifest_checked, _doebuild_broken_manifests
-		if manifest_path in _doebuild_broken_manifests:
-			return 1
+
 		# Avoid checking the same Manifest several times in a row during a
 		# regen with an empty cache.
-		if _doebuild_manifest_checked != manifest_path:
+		if _doebuild_manifest_cache is None or \
+			_doebuild_manifest_cache.getFullname() != manifest_path:
+			_doebuild_manifest_cache = None
 			if not os.path.exists(manifest_path):
-				writemsg("!!! Manifest file not found: '%s'\n" % manifest_path,
-					noiselevel=-1)
-				_doebuild_broken_manifests.add(manifest_path)
+				out = portage.output.EOutput()
+				out.eerror("Manifest not found for '%s'" % (myebuild,))
+				_doebuild_broken_ebuilds.add(myebuild)
 				return 1
 			mf = Manifest(pkgdir, mysettings["DISTDIR"])
-			try:
-				mf.checkTypeHashes("EBUILD")
-			except portage.exception.FileNotFound, e:
-				writemsg("!!! A file listed in the Manifest " + \
-					"could not be found: %s\n" % str(e), noiselevel=-1)
-				_doebuild_broken_manifests.add(manifest_path)
-				return 1
-			except portage.exception.DigestException, e:
-				writemsg("!!! Digest verification failed:\n", noiselevel=-1)
-				writemsg("!!! %s\n" % e.value[0], noiselevel=-1)
-				writemsg("!!! Reason: %s\n" % e.value[1], noiselevel=-1)
-				writemsg("!!! Got: %s\n" % e.value[2], noiselevel=-1)
-				writemsg("!!! Expected: %s\n" % e.value[3], noiselevel=-1)
-				_doebuild_broken_manifests.add(manifest_path)
-				return 1
-			# Make sure that all of the ebuilds are actually listed in the
-			# Manifest.
+
+		else:
+			mf = _doebuild_manifest_cache
+
+		try:
+			mf.checkFileHashes("EBUILD", os.path.basename(myebuild))
+		except KeyError:
+			out = portage.output.EOutput()
+			out.eerror("Missing digest for '%s'" % (myebuild,))
+			_doebuild_broken_ebuilds.add(myebuild)
+			return 1
+		except portage.exception.FileNotFound:
+			out = portage.output.EOutput()
+			out.eerror("A file listed in the Manifest " + \
+				"could not be found: '%s'" % (myebuild,))
+			_doebuild_broken_ebuilds.add(myebuild)
+			return 1
+		except portage.exception.DigestException, e:
+			out = portage.output.EOutput()
+			out.eerror("Digest verification failed:")
+			out.eerror("%s" % e.value[0])
+			out.eerror("Reason: %s" % e.value[1])
+			out.eerror("Got: %s" % e.value[2])
+			out.eerror("Expected: %s" % e.value[3])
+			_doebuild_broken_ebuilds.add(myebuild)
+			return 1
+
+		if mf.getFullname() in _doebuild_broken_manifests:
+			return 1
+
+		if mf is not _doebuild_manifest_cache:
+
+			# Make sure that all of the ebuilds are
+			# actually listed in the Manifest.
 			for f in os.listdir(pkgdir):
 				if f.endswith(".ebuild") and not mf.hasFile("EBUILD", f):
-					writemsg("!!! A file is not listed in the " + \
-					"Manifest: '%s'\n" % os.path.join(pkgdir, f),
-					noiselevel=-1)
+					f = os.path.join(pkgdir, f)
+					if f not in _doebuild_broken_ebuilds:
+						out = portage.output.EOutput()
+						out.eerror("A file is not listed in the " + \
+							"Manifest: '%s'" % (f,))
 					_doebuild_broken_manifests.add(manifest_path)
 					return 1
-			_doebuild_manifest_checked = manifest_path
+
+			# Only cache it if the above stray files test succeeds.
+			_doebuild_manifest_cache = mf
 
 	def exit_status_check(retval):
 		if retval != os.EX_OK:
