@@ -8794,7 +8794,8 @@ class Scheduler(PollScheduler):
 			emergelog(self.xterm_titles, *pargs, **kwargs)
 
 	class _failed_pkg(SlotObject):
-		__slots__ = ("log_path", "pkg", "returncode")
+		__slots__ = ("build_dir", "build_log",
+			"fetch_log", "pkg", "returncode")
 
 	def __init__(self, settings, trees, mtimedb, myopts,
 		spinner, mergelist, favorites, digraph):
@@ -9415,19 +9416,40 @@ class Scheduler(PollScheduler):
 			# If only one package failed then just show it's
 			# whole log for easy viewing.
 			failed_pkg = self._failed_pkgs_all[-1]
-			log_path = failed_pkg.log_path
-			if log_path is not None:
+			build_dir = failed_pkg.build_dir
+			log_file = None
+
+			log_paths = [failed_pkg.build_log]
+
+			if not (build_dir and os.path.isdir(build_dir)):
+				log_paths.append(failed_pkg.fetch_log)
+
+			for log_path in log_paths:
+				if not log_path:
+					continue
+
+				try:
+					log_size = os.stat(log_path).st_size
+				except OSError:
+					continue
+
+				if log_size == 0:
+					continue
+
 				try:
 					log_file = open(log_path, 'rb')
 				except IOError:
-					pass
-				else:
-					try:
-						for line in log_file:
-							writemsg_level(line, noiselevel=-1)
-					finally:
-						log_file.close()
-					failure_log_shown = True
+					continue
+
+				break
+
+			if log_file is not None:
+				try:
+					for line in log_file:
+						writemsg_level(line, noiselevel=-1)
+				finally:
+					log_file.close()
+				failure_log_shown = True
 
 		if background and not failure_log_shown and \
 			self._failed_pkgs_all and \
@@ -9496,9 +9518,16 @@ class Scheduler(PollScheduler):
 	def _do_merge_exit(self, merge):
 		pkg = merge.merge.pkg
 		if merge.returncode != os.EX_OK:
-			log_path = merge.merge.settings.get("PORTAGE_LOG_FILE")
+			settings = merge.merge.settings
+			build_dir = settings.get("PORTAGE_BUILDDIR")
+			build_log = settings.get("PORTAGE_LOG_FILE")
+			fetch_log = self._fetch_Log
+
 			self._failed_pkgs.append(self._failed_pkg(
-				log_path=log_path, pkg=pkg, returncode=merge.returncode))
+				build_dir=build_dir, build_log=build_log,
+				fetch_log=fetch_log, pkg=pkg,
+				returncode=merge.returncode))
+
 			self._status_display.failed = len(self._failed_pkgs)
 			return
 
@@ -9533,9 +9562,16 @@ class Scheduler(PollScheduler):
 			self._task_queues.merge.add(merge)
 			self._status_display.merges = len(self._task_queues.merge)
 		else:
-			log_path = build.settings.get("PORTAGE_LOG_FILE")
+			settings = build.settings
+			build_dir = settings.get("PORTAGE_BUILDDIR")
+			fetch_log = self._fetch_log
+			build_log = settings.get("PORTAGE_LOG_FILE")
+
 			self._failed_pkgs.append(self._failed_pkg(
-				log_path=log_path, pkg=build.pkg, returncode=build.returncode))
+				build_dir=build_dir, build_log=build_log,
+				fetch_log=fetch_log, pkg=build.pkg,
+				returncode=build.returncode))
+
 			self._status_display.failed = len(self._failed_pkgs)
 			self._deallocate_config(build.settings)
 		self._jobs -= 1
