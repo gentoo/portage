@@ -91,28 +91,6 @@ def have_profile_dir(path, maxdepth=3):
 		path = normalize_path(path + "/..")
 		maxdepth -= 1
 
-
-def parse_use_local_desc(mylines, usedict=None):
-	"""
-	Records are of the form PACKAGE:FLAG - DESC
-	returns a dict of the form {cpv:set(flags)}"""
-	if usedict is None:
-		usedict = {}
-	for line_num, l in enumerate(mylines):
-		if not l or l.startswith('#'):
-			continue
-		pkg_flag = l.split(None, 1) # None implies splitting on whitespace
-		if not pkg_flag:
-			continue
-		try:
-			pkg, flag = pkg_flag[0].split(":")
-		except ValueError:
-			raise exception.ParseError("line %d: Malformed input: '%s'" % \
-				(line_num + 1, l.rstrip("\n")))
-		usedict.setdefault(pkg, set())
-		usedict[pkg].add(flag)
-	return usedict
-
 def parse_metadata_use(mylines, uselist=None):
 	"""
 	Records are wrapped in XML as per GLEP 56
