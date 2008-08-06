@@ -252,7 +252,6 @@ qahelp={
 	"ebuild.invalidname":"Ebuild files with a non-parseable or syntactically incorrect name (or using 2.1 versioning extensions)",
 	"ebuild.namenomatch":"Ebuild files that do not have the same name as their parent directory",
 	"changelog.missing":"Missing ChangeLog files",
-	"ebuild.disjointed":"Ebuilds not added to cvs when the matching digest has been added",
 	"ebuild.notadded":"Ebuilds that exist but have not been added to cvs",
 	"ebuild.patches":"PATCHES variable should be a bash array to ensure white space safety",
 	"changelog.notadded":"ChangeLogs that exist but have not been added to cvs",
@@ -771,7 +770,6 @@ for x in scanlist:
 	#ebuilds and digests added to cvs respectively.
 	logging.info("checking package %s" % x)
 	eadded=[]
-	dadded=[]
 	catdir,pkgdir=x.split("/")
 	checkdir=repodir+"/"+x
 
@@ -859,10 +857,6 @@ for x in scanlist:
 				s = s[s.rfind("\n") + 1:]
 			fails["file.UTF8"].append("%s/%s: line %i, just after: '%s'" % (checkdir, y, line, s))
 
-	has_filesdir = True
-	if not os.path.isdir(os.path.join(checkdir, "files")):
-		has_filesdir = False
-
 	if vcs and check_ebuild_notadded:
 		try:
 			if vcs == "cvs":
@@ -902,47 +896,6 @@ for x in scanlist:
 			if options.mode == 'commit' and vcs == "svn":
 				stats["svn.IO_error"] += 1
 				fails["svn.IO_error"].append(checkdir+"svn info")
-			continue
-
-	if vcs and has_filesdir:
-		try:
-			if vcs == "cvs":
-				myf=open(checkdir+"/files/CVS/Entries","r")
-			if vcs == "svn":
-				myf=os.popen("svn list "+os.path.normpath(checkdir+"/files"))
-			myl=myf.readlines()
-			myf.close()
-			for l in myl:
-				if vcs == "cvs":
-					if l[0]!="/":
-						continue
-					splitl=l[1:].split("/")
-					if not len(splitl):
-						continue
-					if splitl[0][:7]=="digest-":
-						dadded.append(splitl[0][7:])
-				if vcs == "svn":
-					l = l.rstrip();
-					if l[-1:] == "/":
-						continue
-					if l[:7] == "digest-":
-						dadded.append(l[7:])
-			if vcs == "svn":
-				myf=os.popen("svn status "+os.path.normpath(checkdir+"/files"))
-				myl=myf.readlines()
-				myf.close()
-				for l in myl:
-					if l[0] == "A":
-						l = l.rstrip().split(' ')[-1]
-						if l[:7] == "digest-":
-							dadded.append(l[7:])
-		except IOError:
-			if options.mode == 'commit' and vcs == "cvs":
-				stats["CVS/Entries.IO_error"] += 1
-				fails["CVS/Entries.IO_error"].append(checkdir+"/files/CVS/Entries")
-			if options.mode == 'commit' and vcs == "svn":
-				stats["svn.IO_error"] += 1
-				fails["svn.IO_error"].append(checkdir+"/files svn info")
 			continue
 
 	mf = Manifest(checkdir, repoman_settings["DISTDIR"])
@@ -1081,9 +1034,7 @@ for x in scanlist:
 			#ebuild not added to vcs
 			stats["ebuild.notadded"]=stats["ebuild.notadded"]+1
 			fails["ebuild.notadded"].append(x+"/"+y+".ebuild")
-			if y in dadded:
-				stats["ebuild.disjointed"]=stats["ebuild.disjointed"]+1
-				fails["ebuild.disjointed"].append(x+"/"+y+".ebuild")
+
 		myesplit=portage.pkgsplit(y)
 		if myesplit is None or myesplit[0] != x.split("/")[-1]:
 			stats["ebuild.invalidname"]=stats["ebuild.invalidname"]+1
