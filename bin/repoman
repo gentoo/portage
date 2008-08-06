@@ -1725,7 +1725,7 @@ else:
 
 	if vcs == "svn":
 		svnstatus = os.popen("svn status").readlines()
-		mychanged = [ elem.rstrip()[7:] for elem in svnstatus if elem.startswith("M") ]
+		mychanged = [ elem.rstrip()[7:] for elem in svnstatus if elem[:1] in "MR" ]
 		mynew     = [ elem.rstrip()[7:] for elem in svnstatus if elem.startswith("A") ]
 		myremoved = [ elem.rstrip()[7:] for elem in svnstatus if elem.startswith("D") ]
 		# in contrast to CVS, SVN expands nothing by default.
