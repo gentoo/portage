@@ -217,7 +217,6 @@ elog() {
 	local line lines=0
 	save_IFS
 	IFS=$'\n'
-	local line
 	for line in $* ; do
 		(( lines++ ))
 		echo -e " ${GOOD}*${NORMAL} ${line}"
