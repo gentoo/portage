@@ -158,7 +158,7 @@ vecho() {
 
 # Internal logging function, don't use this in ebuilds
 elog_base() {
-	local line messagetype
+	local line lines=0 messagetype
 	[ -z "${1}" -o -z "${T}" -o ! -d "${T}/logging" ] && return 1
 	case "${1}" in
 		INFO|WARN|ERROR|LOG|QA)
@@ -177,23 +177,36 @@ elog_base() {
 	save_IFS
 	IFS=$'\n'
 	for line in $* ; do
+		(( lines++ ))
 		echo -ne "${messagetype} ${line}\n\0" >> \
 			"${T}/logging/${EBUILD_PHASE:-other}"
 	done
 	restore_IFS
+
+	# This is needed in case a blank line is being shown.
+	[ $lines -eq 0 ] && \
+		echo -ne "${messagetype} $*\n\0" >> \
+			"${T}/logging/${EBUILD_PHASE:-other}"
+
 	return 0
 }
 
 eqawarn() {
 	elog_base QA "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
+	local line lines=0
 	save_IFS
 	IFS=$'\n'
-	local line
 	for line in $* ; do
+		(( lines++ ))
 		vecho -e " ${WARN}*${NORMAL} ${line}" >&2
 	done
 	restore_IFS
+
+	# This is needed in case a blank line is being shown.
+	[ $lines -eq 0 ] && \
+		vecho -e " ${WARN}*${NORMAL} $*" >&2
+
 	LAST_E_CMD="eqawarn"
 	return 0
 }
@@ -201,13 +214,20 @@ eqawarn() {
 elog() {
 	elog_base LOG "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
+	local line lines=0
 	save_IFS
 	IFS=$'\n'
 	local line
 	for line in $* ; do
+		(( lines++ ))
 		echo -e " ${GOOD}*${NORMAL} ${line}"
 	done
 	restore_IFS
+
+	# This is needed in case a blank line is being shown.
+	[ $lines -eq 0 ] && \
+		echo -e " ${GOOD}*${NORMAL} $*"
+
 	LAST_E_CMD="elog"
 	return 0
 }
@@ -235,11 +255,17 @@ einfo() {
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
 	save_IFS
 	IFS=$'\n'
-	local line
+	local line lines=0
 	for line in $* ; do
+		(( lines++ ))
 		echo -e " ${GOOD}*${NORMAL} ${line}"
 	done
 	restore_IFS
+
+	# This is needed in case a blank line is being shown.
+	[ $lines -eq 0 ] && \
+		echo -e " ${GOOD}*${NORMAL} $*"
+
 	LAST_E_CMD="einfo"
 	return 0
 }
@@ -257,11 +283,17 @@ ewarn() {
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
 	save_IFS
 	IFS=$'\n'
-	local line
+	local line lines=0
 	for line in $* ; do
+		(( lines++ ))
 		echo -e " ${WARN}*${NORMAL} ${RC_INDENTATION}${line}" >&2
 	done
 	restore_IFS
+
+	# This is needed in case a blank line is being shown.
+	[ $lines -eq 0 ] && \
+		echo -e " ${WARN}*${NORMAL} ${RC_INDENTATION}$*" >&2
+
 	LAST_E_CMD="ewarn"
 	return 0
 }
@@ -271,11 +303,17 @@ eerror() {
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
 	save_IFS
 	IFS=$'\n'
-	local line
+	local line lines=0
 	for line in $* ; do
+		(( lines++ ))
 		echo -e " ${BAD}*${NORMAL} ${RC_INDENTATION}${line}" >&2
 	done
 	restore_IFS
+
+	# This is needed in case a blank line is being shown.
+	[ $lines -eq 0 ] && \
+		echo -e " ${BAD}*${NORMAL} ${RC_INDENTATION}$*" >&2
+
 	LAST_E_CMD="eerror"
 	return 0
 }
