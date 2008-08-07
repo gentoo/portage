@@ -942,7 +942,7 @@ class vardbapi(dbapi):
 		root = self.root
 		root_len = len(root) - 1
 		new_contents = pkg.getcontents().copy()
-		contents_key = None
+		removed = 0
 
 		for filename in paths:
 			filename = normalize_path(filename)
@@ -953,8 +953,9 @@ class vardbapi(dbapi):
 			contents_key = pkg._match_contents(relative_filename, root)
 			if contents_key:
 				del new_contents[contents_key]
+				removed += 1
 
-		if contents_key:
+		if removed:
 			f = atomic_ofstream(os.path.join(pkg.dbdir, "CONTENTS"))
 			write_contents(new_contents, root, f)
 			f.close()
