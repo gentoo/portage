@@ -1373,12 +1373,21 @@ source_all_bashrcs() {
 		[[ $(type -t src_configure) = function ]] || \
 			src_configure() { _default_src_configure "$@" ; }
 
+		default() {
+			_default_${EBUILD_PHASE}
+		}
+
 	else
 		for x in $default_phases ; do
 			eval "default_$x() {
 				die \"default_$x() is not supported with EAPI='$EAPI'\"
 			}"
 		done
+
+		default() {
+			die "default() is not supported with EAPI='$EAPI'"
+		}
+
 	fi
 
 	local OCC="${CC}" OCXX="${CXX}"
