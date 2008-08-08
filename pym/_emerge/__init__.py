@@ -11156,7 +11156,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				try:
 					for addrinfo in socket.getaddrinfo(
 						hostname, None, family, socket.SOCK_STREAM):
-						if addrinfo[0] == socket.AF_INET6:
+						if socket.has_ipv6 and addrinfo[0] == socket.AF_INET6:
 							# IPv6 addresses need to be enclosed in square brackets
 							ips.append("[%s]" % addrinfo[4][0])
 						else:
