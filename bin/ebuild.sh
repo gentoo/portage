@@ -1480,10 +1480,10 @@ _ebuild_phase_funcs() {
 				eapi2_src_install   () { _eapi0_src_install   "$@" ; }
 
 				for x in $default_phases ; do
-					eval "default_$x() { eapi${eapi}_$x \"\$@\" ; }"
+					eval "default_$x() { eapi2_$x \"\$@\" ; }"
 				done
 
-				eval "default() { eapi${eapi}_$phase_func \"\$@\" ; }"
+				eval "default() { eapi2_$phase_func \"\$@\" ; }"
 
 			else
 
