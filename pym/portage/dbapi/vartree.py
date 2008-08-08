@@ -212,7 +212,7 @@ class LinkageMap(object):
 		if not self._libs:
 			self.rebuild()
 		if obj not in self._obj_properties:
-			obj = realpath(obj)
+			obj = os.path.realpath(obj)
 			if obj not in self._obj_properties:
 				raise KeyError("%s not in object list" % obj)
 		arch, needed, path, soname = self._obj_properties[obj]
