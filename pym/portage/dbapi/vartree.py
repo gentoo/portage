@@ -173,8 +173,10 @@ class LinkageMap(object):
 			arch = fields[0]
 			obj = os.path.realpath(fields[1])
 			soname = fields[2]
-			path = fields[3].replace("${ORIGIN}", os.path.dirname(obj)).replace("$ORIGIN", os.path.dirname(obj)).split(":")
-			needed = fields[4].split(",")
+			path = filter(None, fields[3].replace(
+				"${ORIGIN}", os.path.dirname(obj)).replace(
+				"$ORIGIN", os.path.dirname(obj)).split(":"))
+			needed = filter(None, fields[4].split(","))
 			if soname:
 				libs.setdefault(soname, {arch: {"providers": [], "consumers": []}})
 				libs[soname].setdefault(arch, {"providers": [], "consumers": []})
