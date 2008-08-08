@@ -8741,7 +8741,7 @@ class JobStatusDisplay(object):
 		f.add_literal_data(load_avg_str)
 
 		self._update(color_output.getvalue())
-		xtermTitle(plain_output.getvalue())
+		xtermTitle(" ".join(plain_output.getvalue().split()))
 
 class Scheduler(PollScheduler):
 
