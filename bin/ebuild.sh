@@ -641,18 +641,6 @@ _eapi2_src_compile() {
 	fi
 }
 
-pkg_nofetch() {
-	_eapi0_pkg_nofetch
-}
-
-src_unpack() {
-	_eapi0_src_unpack
-}
-
-src_test() {
-	_eapi0_src_test
-}
-
 ebuild_phase() {
 	[ "$(type -t ${1})" == "function" ] && qa_call ${1}
 }
