@@ -155,13 +155,96 @@
 		<sect3 id='package-ebuild-eapi-2-phases-default-functions'>
 			<title>Default Phase Functions</title>
 			<para>
-			Each of the default src_* phase functions is now accessible
-			via a function having a name that begins with default_ and
+			The default pkg_nofetch and src_* phase functions are now
+			accessible via a function having a name
+			that begins with default_ and
 			ends with the respective phase function name. For example,
 			a call to a function with the name default_src_compile is
 			equivalent to a call to the default src_compile
 			implementation.
 			</para>
+			<table><title>Default Phase Functions</title>
+				<tgroup cols='1' align='left' >
+				<colspec colname='name'/>
+				<thead>
+				<row>
+					<entry>Function Name</entry>
+				</row>
+				</thead>
+				<tbody>
+				<row>
+					<entry>default_pkg_nofetch</entry>
+				</row>
+				<row>
+					<entry>default_src_unpack</entry>
+				</row>
+				<row>
+					<entry>default_src_compile</entry>
+				</row>
+				<row>
+					<entry>default_src_test</entry>
+				</row>
+				</tbody>
+				</tgroup>
+			</table>
+			<para>
+			The default phase functions for a particular EAPI are also
+			accessible as functions having names that start with 'eapi'
+			followed by the EAPI value. For example, a call to a function
+			named eapi0_src_compile is equivalent to a call to the
+			default src_compile implementation that is provided with EAPI 0.
+			</para>
+			<table><title>Default EAPI Phase Functions</title>
+				<tgroup cols='1' align='left' >
+				<colspec colname='name'/>
+				<thead>
+				<row>
+					<entry>Function Name</entry>
+				</row>
+				</thead>
+				<tbody>
+				<row>
+					<entry>eapi0_pkg_nofetch</entry>
+				</row>
+				<row>
+					<entry>eapi0_src_unpack</entry>
+				</row>
+				<row>
+					<entry>eapi0_src_compile</entry>
+				</row>
+				<row>
+					<entry>eapi0_src_test</entry>
+				</row>
+				<row>
+					<entry>eapi1_pkg_nofetch</entry>
+				</row>
+				<row>
+					<entry>eapi1_src_unpack</entry>
+				</row>
+				<row>
+					<entry>eapi1_src_compile</entry>
+				</row>
+				<row>
+					<entry>eapi1_src_test</entry>
+				</row>
+				<row>
+					<entry>eapi2_pkg_nofetch</entry>
+				</row>
+				<row>
+					<entry>eapi2_src_unpack</entry>
+				</row>
+				<row>
+					<entry>eapi2_src_configure</entry>
+				</row>
+				<row>
+					<entry>eapi2_src_compile</entry>
+				</row>
+				<row>
+					<entry>eapi2_src_test</entry>
+				</row>
+				</tbody>
+				</tgroup>
+			</table>
 		</sect3>
 		<sect3 id='package-ebuild-eapi-2-phases-default-function-alias'>
 			<title>Default Phase Function Alias</title>

@@ -1435,7 +1435,7 @@ _ebuild_phase_funcs() {
 				eval "default_$x() {
 					die \"default_$x() is not supported with EAPI='$eapi' during phase $phase_func\"
 				}"
-				for y in 0 1 2_pre1 ; do
+				for y in 0 1 2 ; do
 					eval "eapi${y}_$x() {
 						die \"eapi${y}_$x() is not supported with EAPI='$eapi' during phase $phase_func\"
 					}"
@@ -1472,12 +1472,12 @@ _ebuild_phase_funcs() {
 				eapi1_src_test      () { _eapi0_src_test      "$@" ; }
 				eapi1_src_install   () { _eapi0_src_install   "$@" ; }
 
-				eapi2_pre2_pkg_nofetch   () { _eapi0_pkg_nofetch   "$@" ; }
-				eapi2_pre2_src_unpack    () { _eapi0_src_unpack    "$@" ; }
-				eapi2_pre2_src_configure () { _eapi2_src_configure "$@" ; }
-				eapi2_pre2_src_compile   () { _eapi2_src_compile   "$@" ; }
-				eapi2_pre2_src_test      () { _eapi0_src_test      "$@" ; }
-				eapi2_pre2_src_install   () { _eapi0_src_install   "$@" ; }
+				eapi2_pkg_nofetch   () { _eapi0_pkg_nofetch   "$@" ; }
+				eapi2_src_unpack    () { _eapi0_src_unpack    "$@" ; }
+				eapi2_src_configure () { _eapi2_src_configure "$@" ; }
+				eapi2_src_compile   () { _eapi2_src_compile   "$@" ; }
+				eapi2_src_test      () { _eapi0_src_test      "$@" ; }
+				eapi2_src_install   () { _eapi0_src_install   "$@" ; }
 
 				for x in $default_phases ; do
 					eval "default_$x() { eapi${eapi}_$x \"\$@\" ; }"
@@ -1491,7 +1491,7 @@ _ebuild_phase_funcs() {
 					eval "default_$x() {
 						die \"default_$x() is not supported in phase $default_func\"
 					}"
-					for y in 0 1 2_pre2 ; do
+					for y in 0 1 2 ; do
 						eval "eapi${y}_$x() {
 							die \"eapi${y}_$x() is not supported with EAPI='$eapi' during phase $phase_func\"
 						}"
