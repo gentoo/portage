@@ -1014,15 +1014,9 @@ dyn_install() {
 	# local variables can leak into the saved environment.
 	unset f
 
-	(
-		# To avoid environment.bz2 bloat, cleanse variables that are
-		# are no longer needed after src_install(). Don't cleanse from
-		# the global environment though, in case the user wants to repeat
-		# this phase (like with FEATURES=noauto and the ebuild command).
-		unset S _E_DOCDESTTREE_ _E_EXEDESTTREE_
-		save_ebuild_env | filter_readonly_variables \
-			--filter-sandbox --allow-extra-vars > environment
-	)
+	save_ebuild_env --exclude-init-phases | filter_readonly_variables \
+		--filter-sandbox --allow-extra-vars > environment
+
 	bzip2 -f9 environment
 
 	cp "${EBUILD}" "${PF}.ebuild"
@@ -1352,42 +1346,133 @@ remove_path_entry() {
 	PATH="${stripped_path}"
 }
 
-# @FUNCTION: source_all_bashrcs
+# @FUNCTION: _ebuild_arg_to_phase
 # @DESCRIPTION:
-# Source a relevant bashrc files and perform other miscellaneous
-# environment initialization when appropriate:
-#
-#  * If EAPI is set, define default_* functions provided by the current EAPI.
-#
-source_all_bashrcs() {
-	[ -n "$EBUILD_PHASE" ] || return
-	local x
+# Translate a known ebuild(1) argument into the precise
+# name of it's corresponding ebuild phase.
+_ebuild_arg_to_phase() {
+	[ $# -ne 2 ] && die "expected exactly 2 args, got $#: $*"
+	local eapi=$1
+	local arg=$2
+	local phase_func=""
+
+	case "$arg" in
+		setup)
+			phase_func=pkg_setup
+			;;
+		nofetch)
+			phase_func=pkg_nofetch
+			;;
+		unpack)
+			phase_func=src_unpack
+			;;
+		configure)
+			! hasq $eapi 0 1 2_pre1 && \
+				phase_func=src_configure
+			;;
+		compile)
+			phase_func=src_compile
+			;;
+		test)
+			phase_func=src_test
+			;;
+		install)
+			phase_func=src_install
+			;;
+		preinst)
+			phase_func=pkg_preinst
+			;;
+		postinst)
+			phase_func=pkg_postinst
+			;;
+		prerm)
+			phase_func=pkg_prerm
+			;;
+		postrm)
+			phase_func=pkg_postrm
+			;;
+	esac
+
+	[[ -z $phase_func ]] && return 1
+	echo "$phase_func"
+	return 0
+}
+
+_ebuild_phase_funcs() {
+	[ $# -ne 2 ] && die "expected exactly 2 args, got $#: $*"
+	local eapi=$1
+	local phase_func=$2
+	local eapi_has_default_fns=$(hasq $eapi 0 1 2_pre1 && echo 0 || echo 1)
 	local default_phases="pkg_nofetch src_unpack src_configure
 		src_compile src_test"
+	local x default_func=""
 
-	if [[ -n $EAPI ]] && ! hasq "$EAPI" 0 1 2_pre1 ; then
-		for x in $default_phases ; do
-			eval "default_$x() { _default_$x \"\$@\" ; }"
-		done
+	[[ $eapi_has_default_fns = 1 ]] && \
+	hasq $phase_func $default_phases && \
+		default_func=$phase_func
 
-		[[ $(type -t src_configure) = function ]] || \
-			src_configure() { _default_src_configure "$@" ; }
+	if [[ $eapi_has_default_fns = 1 ]] ; then
 
-		default() {
-			_default_${EBUILD_PHASE}
-		}
+		if [[ -n $default_func ]] ; then
+
+			for x in $default_phases ; do
+				eval "default_$x() { _default_$x \"\$@\" ; }"
+			done
+
+			[[ $(type -t src_configure) = function ]] || \
+				src_configure() { _default_src_configure "$@" ; }
+
+			eval "default() {
+				_default_$default_func "$@"
+			}"
+
+		else
+
+			for x in $default_phases ; do
+				eval "default_$x() {
+					die \"default_$x() is not supported in phase $default_func\"
+				}"
+			done
+
+			eval "default() {
+				die \"default() is not supported with EAPI='$eapi' during phase $phase_func\"
+			}"
+
+		fi
 
 	else
+
 		for x in $default_phases ; do
 			eval "default_$x() {
-				die \"default_$x() is not supported with EAPI='$EAPI'\"
+				die \"default_$x() is not supported with EAPI='$eapi' during phase $phase_func\"
 			}"
 		done
 
 		default() {
-			die "default() is not supported with EAPI='$EAPI'"
+			die "default() is not supported with EAPI='$eapi' during phase $phase_func"
 		}
 
+	fi
+}
+
+# @FUNCTION: source_all_bashrcs
+# @DESCRIPTION:
+# Source a relevant bashrc files and perform other miscellaneous
+# environment initialization when appropriate.
+#
+# If EAPI is set then define functions provided by the current EAPI:
+#
+#  * default_* aliases for the current EAPI phase functions
+#  * A "default" function which is an alias for the default phase
+#    function for the current phase.
+#
+source_all_bashrcs() {
+	[ -n "$EBUILD_PHASE" ] || return
+	local x
+
+	if [[ -n $EAPI ]] ; then
+		local phase_func=$(_ebuild_arg_to_phase "$EAPI" $EBUILD_PHASE)
+		[[ -n $phase_func ]] && _ebuild_phase_funcs "$EAPI" $phase_func
 	fi
 
 	local OCC="${CC}" OCXX="${CXX}"
@@ -1823,12 +1908,9 @@ ebuild_main() {
 		if [[ $EBUILD_PHASE == postinst ]] && [[ -n $PORTAGE_UPDATE_ENV ]]; then
 			# Update environment.bz2 in case installation phases
 			# need to pass some variables to uninstallation phases.
-			(
-				unset S _E_DOCDESTTREE_ _E_EXEDESTTREE_
-				save_ebuild_env | filter_readonly_variables \
-					--filter-sandbox --allow-extra-vars | \
-					bzip2 -c -f9 > "$PORTAGE_UPDATE_ENV"
-			)
+			save_ebuild_env --exclude-init-phases | \
+				filter_readonly_variables --filter-sandbox --allow-extra-vars \
+				| bzip2 -c -f9 > "$PORTAGE_UPDATE_ENV"
 		fi
 		;;
 	unpack|configure|compile|test|clean|install)

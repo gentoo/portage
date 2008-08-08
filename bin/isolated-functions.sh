@@ -507,8 +507,23 @@ hasq() {
 # @FUNCTION: save_ebuild_env
 # @DESCRIPTION:
 # echo the current environment to stdout, filtering out redundant info.
+#
+# --exclude-init-phases causes pkg_nofetch and src_* phase functions to
+# be excluded from the output. These function are not needed for installation
+# or removal of the packages, and can therefore be safely excluded.
+#
 save_ebuild_env() {
 	(
+
+		if hasq --exclude-init-phases $* ; then
+			unset S _E_DOCDESTTREE_ _E_EXEDESTTREE_
+			unset -f pkg_nofetch src_unpack src_configure \
+			src_compile src_test src_install
+			if [[ -n $PYTHONPATH ]] ; then
+				export PYTHONPATH=${PYTHONPATH/${PORTAGE_PYM_PATH}:}
+				[[ -z $PYTHONPATH ]] && unset PYTHONPATH
+			fi
+		fi
 
 		# misc variables set by bash
 		unset BASH HOSTTYPE IFS MACHTYPE OLDPWD \
@@ -528,6 +543,13 @@ save_ebuild_env() {
 		# There's no need to bloat environment.bz2 with internally defined
 		# functions and variables, so filter them out if possible.
 
+		for x in pkg_setup pkg_nofetch src_unpack src_configure \
+			src_compile src_test src_install pkg_preinst pkg_postinst \
+			pkg_prerm pkg_postrm ; do
+			unset -f {,_}default_$x
+		done
+		unset x
+
 		unset -f dump_trace die diefunc quiet_mode vecho elog_base eqawarn elog \
 			esyslog einfo einfon ewarn eerror ebegin _eend eend KV_major \
 			KV_minor KV_micro KV_to_int get_KV unset_colors set_colors has \
@@ -546,6 +568,7 @@ save_ebuild_env() {
 			save_ebuild_env filter_readonly_variables preprocess_ebuild_env \
 			source_all_bashrcs ebuild_main \
 			ebuild_phase ebuild_phase_with_hooks \
+			_ebuild_arg_to_phase _ebuild_phase_funcs default \
 			${QA_INTERCEPTORS}
 
 		# portage config variables and variables set directly by portage
