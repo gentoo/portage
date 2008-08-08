@@ -179,6 +179,9 @@
 					<entry>default_src_unpack</entry>
 				</row>
 				<row>
+					<entry>default_src_configure</entry>
+				</row>
+				<row>
 					<entry>default_src_compile</entry>
 				</row>
 				<row>
