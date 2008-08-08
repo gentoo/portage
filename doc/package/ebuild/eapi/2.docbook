@@ -163,5 +163,15 @@
 			implementation.
 			</para>
 		</sect3>
+		<sect3 id='package-ebuild-eapi-2-phases-default-function-alias'>
+			<title>Default Phase Function Alias</title>
+			<para>
+			A function named "default" is redefined for each phase so that it
+			will call the default_* function corresponding to the current phase.
+			For example, a call to the function named "default" during the
+			src_compile phase is equivalent to a call to the function named
+			default_src_compile.
+			</para>
+		</sect3>
 	</sect2>
 </sect1>

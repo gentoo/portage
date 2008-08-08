@@ -165,7 +165,7 @@ vecho() {
 
 # Internal logging function, don't use this in ebuilds
 elog_base() {
-	local line messagetype
+	local line lines=0 messagetype
 	[ -z "${1}" -o -z "${T}" -o ! -d "${T}/logging" ] && return 1
 	case "${1}" in
 		INFO|WARN|ERROR|LOG|QA)
@@ -184,23 +184,36 @@ elog_base() {
 	save_IFS
 	IFS=$'\n'
 	for line in $* ; do
+		(( lines++ ))
 		echo -ne "${messagetype} ${line}\n\0" >> \
 			"${T}/logging/${EBUILD_PHASE:-other}"
 	done
 	restore_IFS
+
+	# This is needed in case a blank line is being shown.
+	[ $lines -eq 0 ] && \
+		echo -ne "${messagetype} $*\n\0" >> \
+			"${T}/logging/${EBUILD_PHASE:-other}"
+
 	return 0
 }
 
 eqawarn() {
 	elog_base QA "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
+	local line lines=0
 	save_IFS
 	IFS=$'\n'
-	local line
 	for line in $* ; do
+		(( lines++ ))
 		vecho -e " ${WARN}*${NORMAL} ${line}" >&2
 	done
 	restore_IFS
+
+	# This is needed in case a blank line is being shown.
+	[ $lines -eq 0 ] && \
+		vecho -e " ${WARN}*${NORMAL} $*" >&2
+
 	LAST_E_CMD="eqawarn"
 	return 0
 }
@@ -208,13 +221,19 @@ eqawarn() {
 elog() {
 	elog_base LOG "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
+	local line lines=0
 	save_IFS
 	IFS=$'\n'
-	local line
 	for line in $* ; do
+		(( lines++ ))
 		echo -e " ${GOOD}*${NORMAL} ${line}"
 	done
 	restore_IFS
+
+	# This is needed in case a blank line is being shown.
+	[ $lines -eq 0 ] && \
+		echo -e " ${GOOD}*${NORMAL} $*"
+
 	LAST_E_CMD="elog"
 	return 0
 }
@@ -244,11 +263,17 @@ einfo() {
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
 	save_IFS
 	IFS=$'\n'
-	local line
+	local line lines=0
 	for line in $* ; do
+		(( lines++ ))
 		echo -e " ${GOOD}*${NORMAL} ${line}"
 	done
 	restore_IFS
+
+	# This is needed in case a blank line is being shown.
+	[ $lines -eq 0 ] && \
+		echo -e " ${GOOD}*${NORMAL} $*"
+
 	LAST_E_CMD="einfo"
 	return 0
 }
@@ -266,11 +291,17 @@ ewarn() {
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
 	save_IFS
 	IFS=$'\n'
-	local line
+	local line lines=0
 	for line in $* ; do
+		(( lines++ ))
 		echo -e " ${WARN}*${NORMAL} ${RC_INDENTATION}${line}" >&2
 	done
 	restore_IFS
+
+	# This is needed in case a blank line is being shown.
+	[ $lines -eq 0 ] && \
+		echo -e " ${WARN}*${NORMAL} ${RC_INDENTATION}$*" >&2
+
 	LAST_E_CMD="ewarn"
 	return 0
 }
@@ -280,11 +311,17 @@ eerror() {
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
 	save_IFS
 	IFS=$'\n'
-	local line
+	local line lines=0
 	for line in $* ; do
+		(( lines++ ))
 		echo -e " ${BAD}*${NORMAL} ${RC_INDENTATION}${line}" >&2
 	done
 	restore_IFS
+
+	# This is needed in case a blank line is being shown.
+	[ $lines -eq 0 ] && \
+		echo -e " ${BAD}*${NORMAL} ${RC_INDENTATION}$*" >&2
+
 	LAST_E_CMD="eerror"
 	return 0
 }
@@ -485,8 +522,23 @@ hasq() {
 # @FUNCTION: save_ebuild_env
 # @DESCRIPTION:
 # echo the current environment to stdout, filtering out redundant info.
+#
+# --exclude-init-phases causes pkg_nofetch and src_* phase functions to
+# be excluded from the output. These function are not needed for installation
+# or removal of the packages, and can therefore be safely excluded.
+#
 save_ebuild_env() {
 	(
+
+		if hasq --exclude-init-phases $* ; then
+			unset S _E_DOCDESTTREE_ _E_EXEDESTTREE_
+			unset -f pkg_nofetch src_unpack src_configure \
+			src_compile src_test src_install
+			if [[ -n $PYTHONPATH ]] ; then
+				export PYTHONPATH=${PYTHONPATH/${PORTAGE_PYM_PATH}:}
+				[[ -z $PYTHONPATH ]] && unset PYTHONPATH
+			fi
+		fi
 
 		# misc variables set by bash
 		unset BASH HOSTTYPE IFS MACHTYPE OLDPWD \
@@ -506,6 +558,13 @@ save_ebuild_env() {
 		# There's no need to bloat environment.bz2 with internally defined
 		# functions and variables, so filter them out if possible.
 
+		for x in pkg_setup pkg_nofetch src_unpack src_configure \
+			src_compile src_test src_install pkg_preinst pkg_postinst \
+			pkg_prerm pkg_postrm ; do
+			unset -f {,_}default_$x
+		done
+		unset x
+
 		unset -f dump_trace die diefunc quiet_mode vecho elog_base eqawarn elog \
 			esyslog einfo einfon ewarn eerror ebegin _eend eend KV_major \
 			KV_minor KV_micro KV_to_int get_KV unset_colors set_colors has \
@@ -524,6 +583,7 @@ save_ebuild_env() {
 			save_ebuild_env filter_readonly_variables preprocess_ebuild_env \
 			source_all_bashrcs ebuild_main \
 			ebuild_phase ebuild_phase_with_hooks \
+			_ebuild_arg_to_phase _ebuild_phase_funcs default \
 			${QA_INTERCEPTORS}
 
 		# portage config variables and variables set directly by portage

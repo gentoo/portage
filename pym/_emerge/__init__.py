@@ -8782,7 +8782,7 @@ class JobStatusDisplay(object):
 		f.add_literal_data(load_avg_str)
 
 		self._update(color_output.getvalue())
-		xtermTitle(plain_output.getvalue())
+		xtermTitle(" ".join(plain_output.getvalue().split()))
 
 class Scheduler(PollScheduler):
 
@@ -12540,6 +12540,10 @@ def action_build(settings, trees, mtimedb,
 		for opt in ("--skipfirst", "--ask", "--tree"):
 			resume_opts.pop(opt, None)
 		myopts.update(resume_opts)
+
+		if "--debug" in myopts:
+			writemsg_level("myopts %s\n" % (myopts,))
+
 		# Adjust config according to options of the command being resumed.
 		for myroot in trees:
 			mysettings =  trees[myroot]["vartree"].settings
@@ -12869,9 +12873,10 @@ def action_build(settings, trees, mtimedb,
 				del mtimedb["resume"]
 				mtimedb.commit()
 			mtimedb["resume"]={}
-			# XXX: Stored as a list for backward compatibility.
-			mtimedb["resume"]["myopts"] = \
-				[k for k in myopts if myopts[k] is True]
+			# Stored as a dict starting with portage-2.2_rc7, and supported
+			# by >=portage-2.1.3_rc8. Versions <portage-2.1.3_rc8 only support
+			# a list type for options.
+			mtimedb["resume"]["myopts"] = myopts.copy()
 
 			# Convert Atom instances to plain str since the mtimedb loader
 			# sets unpickler.find_global = None which causes unpickler.load()

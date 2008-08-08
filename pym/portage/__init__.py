@@ -4062,8 +4062,16 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					"ebuild's files must be downloaded"
 				print "!!! manually.  See the comments in" + \
 					" the ebuild for more information.\n"
-				mysettings["EBUILD_PHASE"] = "unpack"
-				spawn(EBUILD_SH_BINARY + " nofetch", mysettings)
+				ebuild_phase = mysettings.get("EBUILD_PHASE")
+				try:
+					mysettings["EBUILD_PHASE"] = "nofetch"
+					spawn(_shell_quote(EBUILD_SH_BINARY) + \
+						" nofetch", mysettings)
+				finally:
+					if ebuild_phase is None:
+						mysettings.pop("EBUILD_PHASE", None)
+					else:
+						mysettings["EBUILD_PHASE"] = ebuild_phase
 			elif listonly:
 				continue
 			elif not filedict[myfile]:

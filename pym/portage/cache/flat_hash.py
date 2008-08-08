@@ -72,6 +72,8 @@ class database(fs_template.FsBased):
 				raise cache_errors.CacheCorruption(cpv, e)
 
 		for k, v in values.iteritems():
+			if not v:
+				continue
 			if k != "_mtime_" and (k == "_eclasses_" or k in self._known_keys):
 				myf.write("%s=%s\n" % (k, v))
 

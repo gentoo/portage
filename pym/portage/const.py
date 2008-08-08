@@ -82,7 +82,7 @@ INCREMENTALS = ["USE", "USE_EXPAND", "USE_EXPAND_HIDDEN", "FEATURES",
 EBUILD_PHASES           = ["setup", "unpack", "configure",
                           "compile", "test", "install",
                           "package", "preinst", "postinst","prerm", "postrm",
-                          "other"]
+                          "nofetch", "other"]
 
 EAPI = 1
 
