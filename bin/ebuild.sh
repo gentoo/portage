@@ -1264,7 +1264,7 @@ EXPORT_FUNCTIONS() {
 	fi
 	while [ "$1" ]; do
 		debug-print "EXPORT_FUNCTIONS: ${1} -> ${ECLASS}_${1}"
-		eval "$1() { ${ECLASS}_$1 "\$@" ; }" > /dev/null
+		eval "$1() { ${ECLASS}_$1 \"\$@\" ; }" > /dev/null
 		shift
 	done
 }
@@ -1413,7 +1413,7 @@ _ebuild_phase_funcs() {
 
 	for x in pkg_nofetch src_unpack src_test ; do
 		[[ $(type -t $x) = function ]] || \
-			eval "$x() { _eapi0_$x "$@" ; }"
+			eval "$x() { _eapi0_$x \"\$@\" ; }"
 	done
 
 	case $eapi in
