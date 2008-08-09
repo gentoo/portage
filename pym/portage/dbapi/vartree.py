@@ -2,6 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+__all__ = ["PreservedLibsRegistry", "LinkageMap",
+	"vardbapi", "vartree", "dblink"]
+
 from portage.checksum import perform_md5
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, PORTAGE_BIN_PATH, \
 	PRIVATE_PATH, VDB_PATH
@@ -29,6 +32,7 @@ from portage.elog.filtering import filter_mergephases, filter_unmergephases
 
 import os, re, sys, stat, errno, commands, copy, time, subprocess
 import logging
+import shlex
 from itertools import izip
 
 try:
@@ -2427,7 +2431,7 @@ class dblink(object):
 	
 	def _collision_protect(self, srcroot, destroot, mypkglist, mycontents):
 			collision_ignore = set([normalize_path(myignore) for myignore in \
-				self.settings.get("COLLISION_IGNORE", "").split()])
+				shlex.split(self.settings.get("COLLISION_IGNORE", ""))])
 
 			showMessage = self._display_merge
 			scheduler = self._scheduler
