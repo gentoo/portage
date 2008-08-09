@@ -8880,7 +8880,7 @@ class Scheduler(PollScheduler):
 		# jobs are added, so we need to limit the rate of adding
 		# new jobs.
 		self._job_delay_max = 5
-		self._job_delay_factor = 0.5
+		self._job_delay_factor = 0.75
 		self._previous_job_start_time = None
 
 		self._set_digraph(digraph)
