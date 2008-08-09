@@ -583,7 +583,7 @@ einstall() {
 	fi
 }
 
-_default_pkg_nofetch() {
+_eapi0_pkg_nofetch() {
 	[ -z "${SRC_URI}" ] && return
 
 	echo "!!! The following are listed in SRC_URI for ${PN}:"
@@ -593,25 +593,18 @@ _default_pkg_nofetch() {
 	done
 }
 
-_default_src_unpack() {
+_eapi0_src_unpack() {
 	[[ -n ${A} ]] && unpack ${A}
 }
 
-_default_src_configure() {
-	if [ "${EAPI:-0}" == 0 ] ; then
-		[ -x ./configure ] && econf
-	elif [ -x "${ECONF_SOURCE:-.}/configure" ] ; then
+_eapi0_src_compile() {
+	if [ -x ./configure ] ; then
 		econf
 	fi
+	_eapi2_src_compile
 }
 
-_default_src_compile() {
-	if [ -f Makefile ] || [ -f GNUmakefile ] || [ -f makefile ]; then
-		emake || die "emake failed"
-	fi
-}
-
-_default_src_test() {
+_eapi0_src_test() {
 	if emake -j1 check -n &> /dev/null; then
 		vecho ">>> Test phase [check]: ${CATEGORY}/${PF}"
 		if ! emake -j1 check; then
@@ -629,19 +622,31 @@ _default_src_test() {
 	fi
 }
 
+_eapi1_src_compile() {
+	if [[ -x ${ECONF_SOURCE:-.}/configure ]] ; then
+		econf
+	fi
+	_eapi2_src_compile
+}
+
+_eapi2_src_configure() {
+	if [[ -x ${ECONF_SOURCE:-.}/configure ]] ; then
+		econf
+	fi
+}
+
+_eapi2_src_compile() {
+	if [ -f Makefile ] || [ -f GNUmakefile ] || [ -f makefile ]; then
+		emake || die "emake failed"
+	fi
+}
+
 pkg_nofetch() {
-	_default_pkg_nofetch
+	_eapi0_pkg_nofetch
 }
 
 src_unpack() {
-	_default_src_unpack
-}
-
-src_compile() {
-	hasq "$EAPI" 0 1 2_pre1 && \
-		_default_src_configure
-
-	_default_src_compile
+	_eapi0_src_unpack
 }
 
 src_install() {
@@ -654,7 +659,7 @@ src_install() {
 }
 
 src_test() {
-	_default_src_test
+	_eapi0_src_test
 }
 
 ebuild_phase() {
@@ -1269,7 +1274,7 @@ EXPORT_FUNCTIONS() {
 	fi
 	while [ "$1" ]; do
 		debug-print "EXPORT_FUNCTIONS: ${1} -> ${ECLASS}_${1}"
-		eval "$1() { ${ECLASS}_$1 "\$@" ; }" > /dev/null
+		eval "$1() { ${ECLASS}_$1 \"\$@\" ; }" > /dev/null
 		shift
 	done
 }
@@ -1412,57 +1417,105 @@ _ebuild_phase_funcs() {
 	[ $# -ne 2 ] && die "expected exactly 2 args, got $#: $*"
 	local eapi=$1
 	local phase_func=$2
-	local eapi_has_default_fns=$(hasq $eapi 0 1 2_pre1 && echo 0 || echo 1)
 	local default_phases="pkg_nofetch src_unpack src_configure
-		src_compile src_test"
-	local x default_func=""
+		src_compile src_install src_test"
+	local x y default_func=""
 
-	[[ $eapi_has_default_fns = 1 ]] && \
-	hasq $phase_func $default_phases && \
-		default_func=$phase_func
+	for x in pkg_nofetch src_unpack src_test ; do
+		[[ $(type -t $x) = function ]] || \
+			eval "$x() { _eapi0_$x \"\$@\" ; }"
+	done
 
-	if [[ $eapi_has_default_fns = 1 ]] ; then
+	case $eapi in
 
-		if [[ -n $default_func ]] ; then
+		0|1|2_pre1)
 
-			for x in $default_phases ; do
-				eval "default_$x() { _default_$x \"\$@\" ; }"
-			done
-
-			[[ $(type -t src_configure) = function ]] || \
-				src_configure() { _default_src_configure "$@" ; }
-
-			eval "default() {
-				_default_$default_func "$@"
-			}"
-
-		else
+			if [[ $(type -t src_compile) != function ]] ; then
+				case $eapi in
+					0)
+						src_compile() { _eapi0_src_compile "$@" ; }
+						;;
+					*)
+						src_compile() { _eapi1_src_compile "$@" ; }
+						;;
+				esac
+			fi
 
 			for x in $default_phases ; do
 				eval "default_$x() {
-					die \"default_$x() is not supported in phase $default_func\"
+					die \"default_$x() is not supported with EAPI='$eapi' during phase $phase_func\"
 				}"
+				for y in 0 1 2 ; do
+					eval "eapi${y}_$x() {
+						die \"eapi${y}_$x() is not supported with EAPI='$eapi' during phase $phase_func\"
+					}"
+				done
 			done
 
 			eval "default() {
 				die \"default() is not supported with EAPI='$eapi' during phase $phase_func\"
 			}"
 
-		fi
+			;;
 
-	else
+		*)
 
-		for x in $default_phases ; do
-			eval "default_$x() {
-				die \"default_$x() is not supported with EAPI='$eapi' during phase $phase_func\"
-			}"
-		done
+			[[ $(type -t src_configure) = function ]] || \
+				src_configure() { _eapi2_src_configure "$@" ; }
 
-		default() {
-			die "default() is not supported with EAPI='$eapi' during phase $phase_func"
-		}
+			[[ $(type -t src_compile) = function ]] || \
+				src_compile() { _eapi2_src_compile "$@" ; }
 
-	fi
+			if hasq $phase_func $default_phases ; then
+
+				eapi0_pkg_nofetch   () { _eapi0_pkg_nofetch   "$@" ; }
+				eapi0_src_unpack    () { _eapi0_src_unpack    "$@" ; }
+				eapi0_src_configure () { die "$FUNCNAME is not supported" ; }
+				eapi0_src_compile   () { _eapi0_src_compile   "$@" ; }
+				eapi0_src_test      () { _eapi0_src_test      "$@" ; }
+				eapi0_src_install   () { _eapi0_src_install   "$@" ; }
+
+				eapi1_pkg_nofetch   () { _eapi0_pkg_nofetch   "$@" ; }
+				eapi1_src_unpack    () { _eapi0_src_unpack    "$@" ; }
+				eapi1_src_configure () { die "$FUNCNAME is not supported" ; }
+				eapi1_src_compile   () { _eapi1_src_compile   "$@" ; }
+				eapi1_src_test      () { _eapi0_src_test      "$@" ; }
+				eapi1_src_install   () { _eapi0_src_install   "$@" ; }
+
+				eapi2_pkg_nofetch   () { _eapi0_pkg_nofetch   "$@" ; }
+				eapi2_src_unpack    () { _eapi0_src_unpack    "$@" ; }
+				eapi2_src_configure () { _eapi2_src_configure "$@" ; }
+				eapi2_src_compile   () { _eapi2_src_compile   "$@" ; }
+				eapi2_src_test      () { _eapi0_src_test      "$@" ; }
+				eapi2_src_install   () { _eapi0_src_install   "$@" ; }
+
+				for x in $default_phases ; do
+					eval "default_$x() { eapi2_$x \"\$@\" ; }"
+				done
+
+				eval "default() { eapi2_$phase_func \"\$@\" ; }"
+
+			else
+
+				for x in $default_phases ; do
+					eval "default_$x() {
+						die \"default_$x() is not supported in phase $default_func\"
+					}"
+					for y in 0 1 2 ; do
+						eval "eapi${y}_$x() {
+							die \"eapi${y}_$x() is not supported with EAPI='$eapi' during phase $phase_func\"
+						}"
+					done
+				done
+
+				eval "default() {
+					die \"default() is not supported with EAPI='$eapi' during phase $phase_func\"
+				}"
+
+			fi
+
+			;;
+	esac
 }
 
 # @FUNCTION: source_all_bashrcs
