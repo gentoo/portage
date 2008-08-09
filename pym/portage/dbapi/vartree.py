@@ -646,7 +646,7 @@ class LinkageMapMachO(object):
 								print "Missing library:", lib
 							else:
 								print "Possibly missing symlink:", \
-										install_name)
+										install_name
 
 		return rValue
 
