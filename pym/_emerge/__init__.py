@@ -1492,8 +1492,12 @@ class Package(Task):
 				except AttributeError:
 					all = object.__getattribute__(self, "all")
 					iuse_implicit = object.__getattribute__(self, "iuse_implicit")
-					self.regex = re.compile("^(%s)$" % "|".join(
-						chain((re.escape(x) for x in all), iuse_implicit)))
+					# Escape anything except ".*" which is supposed
+					# to pass through from _get_implicit_iuse()
+					regex = (re.escape(x) for x in chain(all, iuse_implicit))
+					regex = "^(%s)$" % "|".join(regex)
+					regex = regex.replace("\\.\\*", ".*")
+					self.regex = re.compile(regex)
 			return object.__getattribute__(self, name)
 
 	def _get_hash_key(self):
