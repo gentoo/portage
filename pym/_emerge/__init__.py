@@ -5380,8 +5380,7 @@ class depgraph(object):
 					if pkg is None:
 						calculated_use = False
 						try:
-							metadata = izip(self._mydbapi_keys,
-								db.aux_get(cpv, self._mydbapi_keys))
+							metadata = izip(db_keys, db.aux_get(cpv, db_keys))
 						except KeyError:
 							continue
 						pkg = Package(built=built, cpv=cpv,
