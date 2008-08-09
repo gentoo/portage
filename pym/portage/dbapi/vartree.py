@@ -173,8 +173,10 @@ class LinkageMap(object):
 			arch = fields[0]
 			obj = os.path.realpath(fields[1])
 			soname = fields[2]
-			path = fields[3].replace("${ORIGIN}", os.path.dirname(obj)).replace("$ORIGIN", os.path.dirname(obj)).split(":")
-			needed = fields[4].split(",")
+			path = filter(None, fields[3].replace(
+				"${ORIGIN}", os.path.dirname(obj)).replace(
+				"$ORIGIN", os.path.dirname(obj)).split(":"))
+			needed = filter(None, fields[4].split(","))
 			if soname:
 				libs.setdefault(soname, {arch: {"providers": [], "consumers": []}})
 				libs[soname].setdefault(arch, {"providers": [], "consumers": []})
@@ -187,6 +189,158 @@ class LinkageMap(object):
 		
 		self._libs = libs
 		self._obj_properties = obj_properties
+
+	def listBrokenBinaries(self):
+		"""
+		Find binaries and their needed sonames, which have no providers.
+
+		@rtype: dict (example: {'/usr/bin/foo': set(['libbar.so'])})
+		@return: The return value is an object -> set-of-sonames mapping, where
+			object is a broken binary and the set consists of sonames needed by
+			object that have no corresponding libraries to fulfill the dependency.
+
+		"""
+		class LibraryCache(object):
+
+			"""
+			Caches sonames and realpaths associated with paths.
+
+			The purpose of this class is to prevent multiple calls of
+			os.path.realpath and os.path.isfile on the same paths.
+
+			"""
+
+			def __init__(cache_self):
+				cache_self.cache = {}
+
+			def get(cache_self, path):
+				"""
+				Caches and returns the soname and realpath for a path.
+
+				@param path: absolute path (can be symlink)
+				@type path: string (example: '/usr/lib/libfoo.so')
+				@rtype: 3-tuple with types (string or None, string, boolean)
+				@return: 3-tuple with the following components:
+					1. soname as a string or None if it does not exist,
+					2. realpath as a string,
+					3. the result of os.path.isfile(realpath)
+					(example: ('libfoo.so.1', '/usr/lib/libfoo.so.1.5.1', True))
+
+				"""
+				if path in cache_self.cache:
+					return cache_self.cache[path]
+				else:
+					realpath = os.path.realpath(path)
+					# Check that the library exists on the filesystem.
+					if os.path.isfile(realpath):
+						# Get the soname from LinkageMap._obj_properties if it
+						# exists. Otherwise, None.
+						soname = self._obj_properties.get(realpath, (None,)*3)[3]
+						# Both path and realpath are cached and the result is
+						# returned.
+						cache_self.cache.setdefault(realpath, \
+								(soname, realpath, True))
+						return cache_self.cache.setdefault(path, \
+								(soname, realpath, True))
+					else:
+						# realpath is not cached here, because the majority of cases
+						# where realpath is not a file, path is the same as realpath.
+						# Thus storing twice slows down the cache performance.
+						return cache_self.cache.setdefault(path, \
+								(None, realpath, False))
+
+		debug = False
+		rValue = {}
+		cache = LibraryCache()
+		providers = self.listProviders()
+
+		# Iterate over all binaries and their providers.
+		for obj, sonames in providers.items():
+			# Iterate over each needed soname and the set of library paths that
+			# fulfill the soname to determine if the dependency is broken.
+			for soname, libraries in sonames.items():
+				# validLibraries is used to store libraries, which satisfy soname,
+				# so if no valid libraries are found, the soname is not satisfied
+				# for obj.  Thus obj must be emerged.
+				validLibraries = set()
+				# It could be the case that the library to satisfy the soname is
+				# not in the obj's runpath, but a symlink to the library is (eg
+				# libnvidia-tls.so.1 in nvidia-drivers).  Also, since LinkageMap
+				# does not catalog symlinks, broken or missing symlinks may go
+				# unnoticed.  As a result of these cases, check that a file with
+				# the same name as the soname exists in obj's runpath.
+				path = self._obj_properties[obj][2] + self._defpath
+				for dir in path:
+					cachedSoname, cachedRealpath, cachedExists = \
+							cache.get(os.path.join(dir, soname))
+					# Check that the this library provides the needed soname.  Doing
+					# this, however, will cause consumers of libraries missing
+					# sonames to be unnecessarily emerged. (eg libmix.so)
+					if cachedSoname == soname:
+						validLibraries.add(cachedRealpath)
+						if debug and cachedRealpath not in libraries:
+							print "Found provider outside of findProviders:", \
+									os.path.join(dir, soname), "->", cachedRealpath
+						# A valid library has been found, so there is no need to
+						# continue.
+						break
+					if debug and cachedRealpath in self._obj_properties:
+						print "Broken symlink or missing/bad soname:", \
+								os.path.join(dir, soname), '->', cachedRealpath, \
+								"with soname", cachedSoname, "but expecting", soname
+				# This conditional checks if there are no libraries to satisfy the
+				# soname (empty set).
+				if not validLibraries:
+					rValue.setdefault(obj, set()).add(soname)
+					# If no valid libraries have been found by this point, then
+					# there are no files named with the soname within obj's runpath,
+					# but if there are libraries (from the providers mapping), it is
+					# likely that symlinks or the actual libraries are missing.
+					# Thus possible symlinks and missing libraries are added to
+					# rValue in order to emerge corrupt library packages.
+					for lib in libraries:
+						cachedSoname, cachedRealpath, cachedExists = cache.get(lib)
+						if not cachedExists:
+							# The library's package needs to be emerged to repair the
+							# missing library.
+							rValue.setdefault(lib, set()).add(soname)
+						else:
+							# A library providing the soname exists in the obj's
+							# runpath, but no file named as the soname exists, so add
+							# the path constructed from the lib's directory and the
+							# soname to rValue to fix cases of vanishing (or modified)
+							# symlinks.  This path is not guaranteed to exist, but it
+							# follows the symlink convention found in the majority of
+							# packages.
+							rValue.setdefault(os.path.join(os.path.dirname(lib), \
+									soname), set()).add(soname)
+						if debug:
+							if not cachedExists:
+								print "Missing library:", lib
+							else:
+								print "Possibly missing symlink:", \
+										os.path.join(os.path.dirname(lib), soname)
+
+		return rValue
+
+	def listProviders(self):
+		"""
+		Find the providers for all binaries.
+
+		@rtype: dict (example:
+			{'/usr/bin/foo': {'libbar.so': set(['/lib/libbar.so.1.5'])}})
+		@return: The return value is an object -> providers mapping, where
+			providers is a mapping of soname -> set-of-library-paths returned
+			from the findProviders method.
+
+		"""
+		rValue = {}
+		if not self._libs:
+			self.rebuild()
+		# Iterate over all binaries within LinkageMap.
+		for obj in self._obj_properties.keys():
+			rValue.setdefault(obj, self.findProviders(obj))
+		return rValue
 
 	def isMasterLink(self, obj):
 		basename = os.path.basename(obj)
@@ -210,7 +364,7 @@ class LinkageMap(object):
 		if not self._libs:
 			self.rebuild()
 		if obj not in self._obj_properties:
-			obj = realpath(obj)
+			obj = os.path.realpath(obj)
 			if obj not in self._obj_properties:
 				raise KeyError("%s not in object list" % obj)
 		arch, needed, path, soname = self._obj_properties[obj]
