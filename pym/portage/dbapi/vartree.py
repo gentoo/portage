@@ -3,7 +3,8 @@
 # $Id$
 
 __all__ = ["PreservedLibsRegistry", "LinkageMap",
-	"vardbapi", "vartree", "dblink"]
+	"vardbapi", "vartree", "dblink"] + \
+	["write_contents", "tar_contents"]
 
 from portage.checksum import perform_md5
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, PORTAGE_BIN_PATH, \
