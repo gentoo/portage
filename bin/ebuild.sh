@@ -1451,21 +1451,21 @@ _ebuild_phase_funcs() {
 				eapi0_src_configure () { die "$FUNCNAME is not supported" ; }
 				eapi0_src_compile   () { _eapi0_src_compile   "$@" ; }
 				eapi0_src_test      () { _eapi0_src_test      "$@" ; }
-				eapi0_src_install   () { _eapi0_src_install   "$@" ; }
+				eapi0_src_install   () { die "$FUNCNAME is not supported" ; }
 
 				eapi1_pkg_nofetch   () { _eapi0_pkg_nofetch   "$@" ; }
 				eapi1_src_unpack    () { _eapi0_src_unpack    "$@" ; }
 				eapi1_src_configure () { die "$FUNCNAME is not supported" ; }
 				eapi1_src_compile   () { _eapi1_src_compile   "$@" ; }
 				eapi1_src_test      () { _eapi0_src_test      "$@" ; }
-				eapi1_src_install   () { _eapi0_src_install   "$@" ; }
+				eapi1_src_install   () { die "$FUNCNAME is not supported" ; }
 
 				eapi2_pkg_nofetch   () { _eapi0_pkg_nofetch   "$@" ; }
 				eapi2_src_unpack    () { _eapi0_src_unpack    "$@" ; }
 				eapi2_src_configure () { _eapi2_src_configure "$@" ; }
 				eapi2_src_compile   () { _eapi2_src_compile   "$@" ; }
 				eapi2_src_test      () { _eapi0_src_test      "$@" ; }
-				eapi2_src_install   () { _eapi0_src_install   "$@" ; }
+				eapi2_src_install   () { die "$FUNCNAME is not supported" ; }
 
 				for x in $default_phases ; do
 					eval "default_$x() { eapi2_$x \"\$@\" ; }"
