@@ -2072,8 +2072,12 @@ class config(object):
 		iuse_implicit = self._get_implicit_iuse()
 		iuse_implicit.update(x.lstrip("+-") for x in iuse.split())
 
-		self.configdict["pkg"]["PORTAGE_IUSE"] = \
-			"^(%s)$" % "|".join(sorted(iuse_implicit))
+		# Escape anything except ".*" which is supposed
+		# to pass through from _get_implicit_iuse()
+		regex = sorted(re.escape(x) for x in iuse_implicit)
+		regex = "^(%s)$" % "|".join(regex)
+		regex = regex.replace("\\.\\*", ".*")
+		self.configdict["pkg"]["PORTAGE_IUSE"] = regex
 
 		ebuild_force_test = self.get("EBUILD_FORCE_TEST") == "1"
 		if ebuild_force_test and ebuild_phase and \
