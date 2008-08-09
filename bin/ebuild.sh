@@ -642,7 +642,7 @@ _eapi2_src_compile() {
 }
 
 src_install() {
-	if hasq "$EAPI" prefix; then
+	if hasq prefix ${EAPI}; then
 		# this avoids misc errors in prefix because it doesn't exist
 		# by default
 		mkdir -p "${ED}"
@@ -871,7 +871,10 @@ abort_install() {
 }
 
 dyn_configure() {
-	hasq "$EAPI" 0 1 2_pre1 && return 0
+	# PREFIX HACK: just remove "prefix" from EAPI here, this file
+	# currently assumes EAPI to contain a single token, and "prefix"
+	# is ortogonal to all supported EAPIs here.
+	hasq ${EAPI/prefix/} 0 1 2_pre1 && return 0
 
 	if [[ $PORTAGE_BUILDDIR/.configured -nt $WORKDIR ]] ; then
 		vecho ">>> It appears that '$PF' is already configured; skipping."
@@ -1522,8 +1525,11 @@ source_all_bashrcs() {
 	local x
 
 	if [[ -n $EAPI ]] ; then
-		local phase_func=$(_ebuild_arg_to_phase "$EAPI" $EBUILD_PHASE)
-		[[ -n $phase_func ]] && _ebuild_phase_funcs "$EAPI" $phase_func
+		# PREFIX HACK: just remove "prefix" from EAPI here, this file
+		# currently assumes EAPI to contain a single token, and "prefix"
+		# is ortogonal to all supported EAPIs here.
+		local phase_func=$(_ebuild_arg_to_phase ${EAPI/prefix/} $EBUILD_PHASE)
+		[[ -n $phase_func ]] && _ebuild_phase_funcs ${EAPI/prefix/} $phase_func
 	fi
 
 	local OCC="${CC}" OCXX="${CXX}"
@@ -1892,7 +1898,8 @@ if ! hasq ${EBUILD_PHASE} clean && \
 
 	# Set default EAPI if necessary, so that most
 	# code can simply assume that it's defined.
-	[[ -n $EAPI ]] || EAPI=0
+	# PREFIX HACK: ignore prefix, and then respect it again
+	[[ -n ${EAPI/prefix/} ]] || EAPI="${EAPI}${EAPI:+ }0
 
 	# add in dependency info from eclasses
 	IUSE="${IUSE} ${E_IUSE}"
@@ -2070,7 +2077,8 @@ ebuild_main() {
 
 		#the extra $(echo) commands remove newlines
 		unset CDEPEND
-		[ -n "${EAPI}" ] || EAPI=0
+		# PREFIX HACK: ignore prefix, and then respect it again
+		[[ -n ${EAPI/prefix/} ]] || EAPI="${EAPI}${EAPI:+ }0
 		if [ -n "${dbkey}" ] ; then
 			> "${dbkey}"
 			for f in ${auxdbkeys} ; do
