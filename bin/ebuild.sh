@@ -1032,7 +1032,7 @@ dyn_preinst() {
 dyn_help() {
 	echo
 	echo "Portage"
-	echo "Copyright 1999-2006 Gentoo Foundation"
+	echo "Copyright 1999-2008 Gentoo Foundation"
 	echo
 	echo "How to use the ebuild command:"
 	echo
