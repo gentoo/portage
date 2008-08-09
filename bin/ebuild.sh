@@ -728,12 +728,9 @@ dyn_clean() {
 	fi
 
 	if ! hasq keepwork $FEATURES; then
-		rm -rf "${PORTAGE_BUILDDIR}/.exit_status"
-		rm -rf "${PORTAGE_BUILDDIR}/.logid"
-		rm -rf "${PORTAGE_BUILDDIR}/.unpacked"
-		rm -rf "${PORTAGE_BUILDDIR}/.compiled"
-		rm -rf "${PORTAGE_BUILDDIR}/.tested"
-		rm -rf "${PORTAGE_BUILDDIR}/.packaged"
+		rm -f "$PORTAGE_BUILDDIR"/.{exit_status,logid,unpacked} \
+			"$PORTAGE_BUILDDIR"/.{configured,compiled,tested,packaged}
+
 		rm -rf "${PORTAGE_BUILDDIR}/build-info"
 		rm -rf "${WORKDIR}"
 	fi
