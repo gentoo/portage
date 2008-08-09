@@ -641,14 +641,6 @@ _eapi2_src_compile() {
 	fi
 }
 
-pkg_nofetch() {
-	_eapi0_pkg_nofetch
-}
-
-src_unpack() {
-	_eapi0_src_unpack
-}
-
 src_install() {
 	if hasq "$EAPI" prefix; then
 		# this avoids misc errors in prefix because it doesn't exist
@@ -656,10 +648,6 @@ src_install() {
 		mkdir -p "${ED}"
 		return
 	fi
-}
-
-src_test() {
-	_eapi0_src_test
 }
 
 ebuild_phase() {
