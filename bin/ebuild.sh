@@ -872,10 +872,9 @@ dyn_configure() {
 
 	vecho ">>> Configuring source in $srcdir ..."
 	ebuild_phase src_configure
+	touch "$PORTAGE_BUILDDIR"/.configured
 	vecho ">>> Source configured."
-	#|| abort_configure "fail"
-	cd "$PORTAGE_BUILDDIR"
-	touch .configured
+
 	[[ $(type -t post_src_configure) = function ]] && \
 		qa_call post_src_configure
 
@@ -897,10 +896,9 @@ dyn_compile() {
 
 	vecho ">>> Compiling source in ${srcdir} ..."
 	ebuild_phase src_compile
+	touch "$PORTAGE_BUILDDIR"/.compiled
 	vecho ">>> Source compiled."
-	#|| abort_compile "fail"
-	cd "${PORTAGE_BUILDDIR}"
-	touch .compiled
+
 	[ "$(type -t post_src_compile)" == "function" ] && qa_call post_src_compile
 
 	trap SIGINT SIGQUIT
