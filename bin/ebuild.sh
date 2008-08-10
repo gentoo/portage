@@ -1873,10 +1873,6 @@ if ! hasq ${EBUILD_PHASE} clean && \
 		debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
 	fi
 
-	# Set default EAPI if necessary, so that most
-	# code can simply assume that it's defined.
-	[[ -n $EAPI ]] || EAPI=0
-
 	# add in dependency info from eclasses
 	IUSE="${IUSE} ${E_IUSE}"
 	DEPEND="${DEPEND} ${E_DEPEND}"
@@ -1886,6 +1882,10 @@ if ! hasq ${EBUILD_PHASE} clean && \
 	unset ECLASS E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
 	set +f
 fi
+
+# Set default EAPI if necessary, so that most
+# code can simply assume that it's defined.
+[[ -n $EAPI ]] || EAPI=0
 
 # enable bashrc support for the clean phase
 [[ ${EBUILD_PHASE} == clean ]] && source_all_bashrcs
