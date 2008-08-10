@@ -1046,7 +1046,7 @@ class FakeVartree(portage.vartree):
 		portdb = root_config.trees["porttree"].dbapi
 		self.root = real_vartree.root
 		self.settings = real_vartree.settings
-		mykeys = list(Package.metadata_keys)
+		mykeys = list(real_vartree.dbapi._aux_cache_keys)
 		for required_key in ("COUNTER", "SLOT"):
 			if required_key not in mykeys:
 				mykeys.append(required_key)
@@ -4182,7 +4182,7 @@ class depgraph(object):
 			if "--usepkg" in self.myopts:
 				db_keys = list(bindb._aux_cache_keys)
 				dbs.append((bindb,  "binary", True, False, db_keys))
-			db_keys = self._mydbapi_keys
+			db_keys = list(trees[myroot]["vartree"].dbapi._aux_cache_keys)
 			dbs.append((vardb, "installed", True, True, db_keys))
 			self._filtered_trees[myroot]["dbs"] = dbs
 			if "--usepkg" in self.myopts:
@@ -5699,10 +5699,11 @@ class depgraph(object):
 		pkg = self._pkg_cache.get(
 			(type_name, root_config.root, cpv, operation))
 		if pkg is None:
-			db = root_config.trees[
-				self.pkg_tree_map[type_name]].dbapi
-			metadata = izip(Package.metadata_keys,
-				db.aux_get(cpv, Package.metadata_keys))
+			tree_type = self.pkg_tree_map[type_name]
+			db = root_config.trees[tree_type].dbapi
+			db_keys = list(self._trees_orig[root_config.root][
+				tree_type].dbapi._aux_cache_keys)
+			metadata = izip(db_keys, db.aux_get(cpv, db_keys))
 			pkg = Package(cpv=cpv, metadata=metadata,
 				root_config=root_config, installed=installed)
 			if type_name == "ebuild":
