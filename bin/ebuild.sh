@@ -1899,7 +1899,7 @@ if ! hasq ${EBUILD_PHASE} clean && \
 	# Set default EAPI if necessary, so that most
 	# code can simply assume that it's defined.
 	# PREFIX HACK: ignore prefix, and then respect it again
-	[[ -n ${EAPI/prefix/} ]] || EAPI="${EAPI}${EAPI:+ }0
+	[[ -n ${EAPI/prefix/} ]] || EAPI="${EAPI}${EAPI:+ }0"
 
 	# add in dependency info from eclasses
 	IUSE="${IUSE} ${E_IUSE}"
@@ -2078,7 +2078,7 @@ ebuild_main() {
 		#the extra $(echo) commands remove newlines
 		unset CDEPEND
 		# PREFIX HACK: ignore prefix, and then respect it again
-		[[ -n ${EAPI/prefix/} ]] || EAPI="${EAPI}${EAPI:+ }0
+		[[ -n ${EAPI/prefix/} ]] || EAPI="${EAPI}${EAPI:+ }0"
 		if [ -n "${dbkey}" ] ; then
 			> "${dbkey}"
 			for f in ${auxdbkeys} ; do
