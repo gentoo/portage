@@ -1517,7 +1517,7 @@ source_all_bashrcs() {
 	[ -n "$EBUILD_PHASE" ] || return
 	local x
 
-	if [[ -n $EAPI ]] ; then
+	if [[ -n ${EAPI/prefix/} ]] ; then
 		# PREFIX HACK: just remove "prefix" from EAPI here, this file
 		# currently assumes EAPI to contain a single token, and "prefix"
 		# is ortogonal to all supported EAPIs here.
