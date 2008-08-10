@@ -270,9 +270,9 @@ class LinkageMap(object):
 				# unnoticed.  As a result of these cases, check that a file with
 				# the same name as the soname exists in obj's runpath.
 				path = self._obj_properties[obj][2] + self._defpath
-				for dir in path:
+				for d in path:
 					cachedSoname, cachedRealpath, cachedExists = \
-							cache.get(os.path.join(dir, soname))
+							cache.get(os.path.join(d, soname))
 					# Check that the this library provides the needed soname.  Doing
 					# this, however, will cause consumers of libraries missing
 					# sonames to be unnecessarily emerged. (eg libmix.so)
@@ -280,13 +280,13 @@ class LinkageMap(object):
 						validLibraries.add(cachedRealpath)
 						if debug and cachedRealpath not in libraries:
 							print "Found provider outside of findProviders:", \
-									os.path.join(dir, soname), "->", cachedRealpath
+									os.path.join(d, soname), "->", cachedRealpath
 						# A valid library has been found, so there is no need to
 						# continue.
 						break
 					if debug and cachedRealpath in self._obj_properties:
 						print "Broken symlink or missing/bad soname:", \
-								os.path.join(dir, soname), '->', cachedRealpath, \
+								os.path.join(d, soname), '->', cachedRealpath, \
 								"with soname", cachedSoname, "but expecting", soname
 				# This conditional checks if there are no libraries to satisfy the
 				# soname (empty set).
