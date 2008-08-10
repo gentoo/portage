@@ -1,3 +1,54 @@
 <sect1 id='package-ebuild-eapi-1'>
 	<title>EAPI 1</title>
+	<sect2 id='package-ebuild-eapi-1-phases'>
+		<title>Phases</title>
+		<sect3 id='package-ebuild-eapi-1-phases-default-src-compile'>
+			<title>Default src_compile Phase Function</title>
+			<para>
+			Support for the ECONF_SOURCE variable, which is also supported
+			by econf, has been added to the default src_compile implementation.
+			</para>
+			<programlisting>
+src_compile() {
+	if [[ -x ${ECONF_SOURCE:-.}/configure ]] ; then
+		econf
+	fi
+	if [ -f Makefile ] || [ -f GNUmakefile ] || [ -f makefile ] ; then
+		emake || die "emake failed"
+	fi
+}
+			</programlisting>
+		</sect3>
+	</sect2>
+	<sect2 id='package-ebuild-eapi-1-slot-deps'>
+	<title>SLOT Dependencies</title>
+	<para>
+	Any valid atom can be constrained to match a specific SLOT. This is
+	accomplished by appending a colon to the atom, followed by a SLOT value.
+	</para>
+	<table><title>Slot Dependency Examples</title>
+	<tgroup cols='1' align='left' >
+	<colspec colname='atom'/>
+	<thead>
+	<row>
+	<entry>Atom</entry>
+	</row>
+	</thead>
+	<tbody>
+	<row>
+	<entry>x11-libs/qt:3</entry>
+	</row>
+	<row>
+	<entry>~x11-libs/qt-3.3.8:3</entry>
+	</row>
+	<row>
+	<entry>&gt;=x11-libs/qt-3.3.8:3</entry>
+	</row>
+	<row>
+	<entry>=x11-libs/qt-3.3*:3</entry>
+	</row>
+	</tbody>
+	</tgroup>
+	</table>
+	</sect2>
 </sect1>
