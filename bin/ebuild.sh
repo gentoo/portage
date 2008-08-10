@@ -623,9 +623,7 @@ _eapi0_src_test() {
 }
 
 _eapi1_src_compile() {
-	if [[ -x ${ECONF_SOURCE:-.}/configure ]] ; then
-		econf
-	fi
+	_eapi2_src_configure
 	_eapi2_src_compile
 }
 
