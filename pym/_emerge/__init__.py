@@ -8880,7 +8880,7 @@ class Scheduler(PollScheduler):
 		# The load average takes some time to respond when new
 		# jobs are added, so we need to limit the rate of adding
 		# new jobs.
-		self._job_delay_max = 5
+		self._job_delay_max = 10
 		self._job_delay_factor = 1.0
 		self._job_delay_exp = 1.5
 		self._previous_job_start_time = None
