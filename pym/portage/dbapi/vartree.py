@@ -2,6 +2,10 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+__all__ = ["PreservedLibsRegistry", "LinkageMap",
+	"vardbapi", "vartree", "dblink"] + \
+	["write_contents", "tar_contents"]
+
 from portage.checksum import perform_md5
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, PORTAGE_BIN_PATH, \
 	PRIVATE_PATH, VDB_PATH, EPREFIX, EPREFIX_LSTRIP
@@ -29,6 +33,7 @@ from portage.elog.filtering import filter_mergephases, filter_unmergephases
 
 import os, re, sys, stat, errno, commands, copy, time, subprocess
 import logging
+import shlex
 from itertools import izip
 
 try:
@@ -788,7 +793,7 @@ class vardbapi(dbapi):
 		self.vartree = vartree
 		self._aux_cache_keys = set(
 			["CHOST", "COUNTER", "DEPEND", "DESCRIPTION",
-			"EAPI", "HOMEPAGE", "INHERITED", "IUSE", "KEYWORDS",
+			"EAPI", "HOMEPAGE", "IUSE", "KEYWORDS",
 			"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
 			"repository", "RESTRICT" , "SLOT", "USE"])
 		self._aux_cache_obj = None
@@ -2728,7 +2733,7 @@ class dblink(object):
 	
 	def _collision_protect(self, srcroot, destroot, mypkglist, mycontents):
 			collision_ignore = set([normalize_path(myignore) for myignore in \
-				self.settings.get("COLLISION_IGNORE", "").split()])
+				shlex.split(self.settings.get("COLLISION_IGNORE", ""))])
 
 			showMessage = self._display_merge
 			scheduler = self._scheduler

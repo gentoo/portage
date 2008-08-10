@@ -109,6 +109,19 @@
 			src_configure function is called in between the src_unpack and
 			src_compile functions.
 			</para>
+			<programlisting>
+src_configure() {
+	if [[ -x ${ECONF_SOURCE:-.}/configure ]] ; then
+		econf
+	fi
+}
+
+src_compile() {
+	if [ -f Makefile ] || [ -f GNUmakefile ] || [ -f makefile ] ; then
+		emake || die "emake failed"
+	fi
+}
+			</programlisting>
 			<table><title>Execution Order of Phase Functions</title>
 				<tgroup cols='1' align='left' >
 				<colspec colname='name'/>

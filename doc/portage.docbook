@@ -15,6 +15,8 @@
 	<!ENTITY package_ebuild SYSTEM "package/ebuild.docbook">
 	<!ENTITY package_ebuild_phases SYSTEM "package/ebuild/phases.docbook">
 	<!ENTITY package_ebuild_helper_functions SYSTEM "package/ebuild/helper_functions.docbook">
+	<!ENTITY package_ebuild_eapi_0 SYSTEM "package/ebuild/eapi/0.docbook">
+	<!ENTITY package_ebuild_eapi_1 SYSTEM "package/ebuild/eapi/1.docbook">
 	<!ENTITY package_ebuild_eapi_2 SYSTEM "package/ebuild/eapi/2.docbook">
 	<!ENTITY qa SYSTEM "qa.docbook">
 	<!ENTITY config SYSTEM "config.docbook">

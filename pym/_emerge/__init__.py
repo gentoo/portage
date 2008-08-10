@@ -1061,10 +1061,7 @@ class FakeVartree(portage.vartree):
 		portdb = root_config.trees["porttree"].dbapi
 		self.root = real_vartree.root
 		self.settings = real_vartree.settings
-		mykeys = list(Package.metadata_keys)
-		for required_key in ("COUNTER", "SLOT"):
-			if required_key not in mykeys:
-				mykeys.append(required_key)
+		mykeys = list(real_vartree.dbapi._aux_cache_keys)
 		self._pkg_cache = pkg_cache
 		self.dbapi = PackageVirtualDbapi(real_vartree.settings)
 		vdb_path = os.path.join(self.root, portage.VDB_PATH)
@@ -1224,9 +1221,9 @@ class FakeVartree(portage.vartree):
 	def _pkg(self, cpv):
 		root_config = self._root_config
 		real_vardb = root_config.trees["vartree"].dbapi
+		db_keys = list(real_vardb._aux_cache_keys)
 		pkg = Package(cpv=cpv, installed=True,
-			metadata=izip(Package.metadata_keys,
-				real_vardb.aux_get(cpv, Package.metadata_keys)),
+			metadata=izip(db_keys, real_vardb.aux_get(cpv, db_keys)),
 			root_config=root_config,
 			type_name="installed")
 		return pkg
@@ -4088,8 +4085,6 @@ class depgraph(object):
 
 	pkg_tree_map = RootConfig.pkg_tree_map
 
-	_mydbapi_keys = Package.metadata_keys
-
 	_dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 
 	# If dep calculation time exceeds this value then automatically
@@ -4209,7 +4204,7 @@ class depgraph(object):
 			if "--usepkg" in self.myopts:
 				db_keys = list(bindb._aux_cache_keys)
 				dbs.append((bindb,  "binary", True, False, db_keys))
-			db_keys = self._mydbapi_keys
+			db_keys = list(trees[myroot]["vartree"].dbapi._aux_cache_keys)
 			dbs.append((vardb, "installed", True, True, db_keys))
 			self._filtered_trees[myroot]["dbs"] = dbs
 			if "--usepkg" in self.myopts:
@@ -4824,8 +4819,8 @@ class depgraph(object):
 					os.path.realpath(self.trees[myroot]["bintree"].getname(mykey)):
 					print colorize("BAD", "\n*** You need to adjust PKGDIR to emerge this package.\n")
 					return 0, myfavorites
-				metadata = izip(self._mydbapi_keys,
-					bindb.aux_get(mykey, self._mydbapi_keys))
+				db_keys = list(bindb._aux_cache_keys)
+				metadata = izip(db_keys, bindb.aux_get(mykey, db_keys))
 				pkg = Package(type_name="binary", root_config=root_config,
 					cpv=mykey, built=True, metadata=metadata,
 					onlydeps=onlydeps)
@@ -4862,8 +4857,8 @@ class depgraph(object):
 				else:
 					raise portage.exception.PackageNotFound(
 						"%s is not in a valid portage tree hierarchy or does not exist" % x)
-				metadata = izip(self._mydbapi_keys,
-					portdb.aux_get(mykey, self._mydbapi_keys))
+				db_keys = list(portdb._aux_cache_keys)
+				metadata = izip(db_keys, portdb.aux_get(mykey, db_keys))
 				pkg = Package(type_name="ebuild", root_config=root_config,
 					cpv=mykey, metadata=metadata, onlydeps=onlydeps)
 				pkgsettings.setcpv(pkg)
@@ -5730,10 +5725,11 @@ class depgraph(object):
 		pkg = self._pkg_cache.get(
 			(type_name, root_config.root, cpv, operation))
 		if pkg is None:
-			db = root_config.trees[
-				self.pkg_tree_map[type_name]].dbapi
-			metadata = izip(Package.metadata_keys,
-				db.aux_get(cpv, Package.metadata_keys))
+			tree_type = self.pkg_tree_map[type_name]
+			db = root_config.trees[tree_type].dbapi
+			db_keys = list(self._trees_orig[root_config.root][
+				tree_type].dbapi._aux_cache_keys)
+			metadata = izip(db_keys, db.aux_get(cpv, db_keys))
 			pkg = Package(cpv=cpv, metadata=metadata,
 				root_config=root_config, installed=installed)
 			if type_name == "ebuild":
@@ -7636,10 +7632,12 @@ class depgraph(object):
 				continue
 			if action != "merge":
 				continue
-			mydb = trees[myroot][self.pkg_tree_map[pkg_type]].dbapi
+			tree_type = self.pkg_tree_map[pkg_type]
+			mydb = trees[myroot][tree_type].dbapi
+			db_keys = list(self._trees_orig[myroot][
+				tree_type].dbapi._aux_cache_keys)
 			try:
-				metadata = izip(self._mydbapi_keys,
-					mydb.aux_get(pkg_key, self._mydbapi_keys))
+				metadata = izip(db_keys, mydb.aux_get(pkg_key, db_keys))
 			except KeyError:
 				# It does no exist or it is corrupt.
 				if action == "uninstall":
@@ -8924,7 +8922,8 @@ class Scheduler(PollScheduler):
 		# jobs are added, so we need to limit the rate of adding
 		# new jobs.
 		self._job_delay_max = 5
-		self._job_delay_factor = 0.75
+		self._job_delay_factor = 1.0
+		self._job_delay_exp = 1.5
 		self._previous_job_start_time = None
 
 		self._set_digraph(digraph)
@@ -9566,7 +9565,7 @@ class Scheduler(PollScheduler):
 			settings = merge.merge.settings
 			build_dir = settings.get("PORTAGE_BUILDDIR")
 			build_log = settings.get("PORTAGE_LOG_FILE")
-			fetch_log = self._fetch_Log
+			fetch_log = self._fetch_log
 
 			self._failed_pkgs.append(self._failed_pkg(
 				build_dir=build_dir, build_log=build_log,
@@ -9788,7 +9787,7 @@ class Scheduler(PollScheduler):
 
 			current_time = time.time()
 
-			delay = self._job_delay_factor * self._jobs
+			delay = self._job_delay_factor * self._jobs ** self._job_delay_exp
 			if delay > self._job_delay_max:
 				delay = self._job_delay_max
 			if (current_time - self._previous_job_start_time) < delay:
@@ -10044,10 +10043,11 @@ class Scheduler(PollScheduler):
 		if installed:
 			operation = "nomerge"
 
-		db = root_config.trees[
-			depgraph.pkg_tree_map[type_name]].dbapi
-		metadata = izip(Package.metadata_keys,
-			db.aux_get(cpv, Package.metadata_keys))
+		tree_type = depgraph.pkg_tree_map[type_name]
+		db = root_config.trees[tree_type].dbapi
+		db_keys = list(self.trees[root_config.root][
+			tree_type].dbapi._aux_cache_keys)
+		metadata = izip(db_keys, db.aux_get(cpv, db_keys))
 		pkg = Package(cpv=cpv, metadata=metadata,
 			root_config=root_config, installed=installed)
 		if type_name == "ebuild":
@@ -10186,13 +10186,13 @@ def unmerge(root_config, myopts, unmerge_action,
 	xterm_titles = "notitles" not in settings.features
 
 	pkg_cache = {}
+	db_keys = list(vartree.dbapi._aux_cache_keys)
 
 	def _pkg(cpv):
 		pkg = pkg_cache.get(cpv)
 		if pkg is None:
 			pkg = Package(cpv=cpv, installed=True,
-				metadata=izip(Package.metadata_keys,
-					vartree.dbapi.aux_get(cpv, Package.metadata_keys)),
+				metadata=izip(db_keys, vartree.dbapi.aux_get(cpv, db_keys)),
 				root_config=root_config,
 				type_name="installed")
 			pkg_cache[cpv] = pkg

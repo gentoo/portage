@@ -623,9 +623,7 @@ _eapi0_src_test() {
 }
 
 _eapi1_src_compile() {
-	if [[ -x ${ECONF_SOURCE:-.}/configure ]] ; then
-		econf
-	fi
+	_eapi2_src_configure
 	_eapi2_src_compile
 }
 
@@ -737,12 +735,9 @@ dyn_clean() {
 	fi
 
 	if ! hasq keepwork $FEATURES; then
-		rm -rf "${PORTAGE_BUILDDIR}/.exit_status"
-		rm -rf "${PORTAGE_BUILDDIR}/.logid"
-		rm -rf "${PORTAGE_BUILDDIR}/.unpacked"
-		rm -rf "${PORTAGE_BUILDDIR}/.compiled"
-		rm -rf "${PORTAGE_BUILDDIR}/.tested"
-		rm -rf "${PORTAGE_BUILDDIR}/.packaged"
+		rm -f "$PORTAGE_BUILDDIR"/.{exit_status,logid,unpacked} \
+			"$PORTAGE_BUILDDIR"/.{configured,compiled,tested,packaged}
+
 		rm -rf "${PORTAGE_BUILDDIR}/build-info"
 		rm -rf "${WORKDIR}"
 	fi
@@ -889,10 +884,9 @@ dyn_configure() {
 
 	vecho ">>> Configuring source in $srcdir ..."
 	ebuild_phase src_configure
+	touch "$PORTAGE_BUILDDIR"/.configured
 	vecho ">>> Source configured."
-	#|| abort_configure "fail"
-	cd "$PORTAGE_BUILDDIR"
-	touch .configured
+
 	[[ $(type -t post_src_configure) = function ]] && \
 		qa_call post_src_configure
 
@@ -914,10 +908,9 @@ dyn_compile() {
 
 	vecho ">>> Compiling source in ${srcdir} ..."
 	ebuild_phase src_compile
+	touch "$PORTAGE_BUILDDIR"/.compiled
 	vecho ">>> Source compiled."
-	#|| abort_compile "fail"
-	cd "${PORTAGE_BUILDDIR}"
-	touch .compiled
+
 	[ "$(type -t post_src_compile)" == "function" ] && qa_call post_src_compile
 
 	trap SIGINT SIGQUIT
@@ -1896,11 +1889,6 @@ if ! hasq ${EBUILD_PHASE} clean && \
 		debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
 	fi
 
-	# Set default EAPI if necessary, so that most
-	# code can simply assume that it's defined.
-	# PREFIX HACK: ignore prefix, and then respect it again
-	[[ -n ${EAPI/prefix/} ]] || EAPI="${EAPI}${EAPI:+ }0"
-
 	# add in dependency info from eclasses
 	IUSE="${IUSE} ${E_IUSE}"
 	DEPEND="${DEPEND} ${E_DEPEND}"
@@ -1910,6 +1898,11 @@ if ! hasq ${EBUILD_PHASE} clean && \
 	unset ECLASS E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
 	set +f
 fi
+
+# Set default EAPI if necessary, so that most
+# code can simply assume that it's defined.
+# PREFIX HACK: ignore prefix, and then respect it again
+[[ -n ${EAPI/prefix/} ]] || EAPI="${EAPI}${EAPI:+ }0"
 
 # enable bashrc support for the clean phase
 [[ ${EBUILD_PHASE} == clean ]] && source_all_bashrcs
