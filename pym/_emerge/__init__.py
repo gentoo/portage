@@ -9526,7 +9526,7 @@ class Scheduler(PollScheduler):
 			settings = merge.merge.settings
 			build_dir = settings.get("PORTAGE_BUILDDIR")
 			build_log = settings.get("PORTAGE_LOG_FILE")
-			fetch_log = self._fetch_Log
+			fetch_log = self._fetch_log
 
 			self._failed_pkgs.append(self._failed_pkg(
 				build_dir=build_dir, build_log=build_log,
