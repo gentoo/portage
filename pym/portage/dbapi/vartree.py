@@ -343,7 +343,7 @@ class LinkageMap(object):
 		if not self._libs:
 			self.rebuild()
 		# Iterate over all binaries within LinkageMap.
-		for obj in self._obj_properties.keys():
+		for obj in self._obj_properties:
 			rValue.setdefault(obj, self.findProviders(obj))
 		return rValue
 
