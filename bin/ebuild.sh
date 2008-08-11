@@ -1513,13 +1513,12 @@ source_all_bashrcs() {
 	# source the existing profile.bashrc's.
 	save_IFS
 	IFS=$'\n'
-	for x in ${PROFILE_PATHS}; do
-		# Must unset it so that it doesn't mess up assumptions in the RCs.
-		unset IFS
+	local path_array=($PROFILE_PATHS)
+	restore_IFS
+	for x in ${path_array[@]} ; do
 		[ -f "${x}/profile.bashrc" ] && qa_source "${x}/profile.bashrc"
 	done
-	restore_IFS
-	
+
 	# We assume if people are changing shopts in their bashrc they do so at their
 	# own peril.  This is the ONLY non-portage bit of code that can change shopts
 	# without a QA violation.
