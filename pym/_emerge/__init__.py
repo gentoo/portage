@@ -2657,7 +2657,13 @@ class EbuildExecuter(CompositeTask):
 
 		ebuild_phases = TaskSequence(scheduler=self.scheduler)
 
-		for phase in self._phases:
+		pkg = self.pkg
+		phases = self._phases
+		if pkg.metadata["EAPI"] in ("0", "1", "2_pre1"):
+			# skip src_configure
+			phases = phases[1:]
+
+		for phase in phases:
 			ebuild_phases.add(EbuildPhase(background=self.background,
 				pkg=self.pkg, phase=phase, scheduler=self.scheduler,
 				settings=self.settings, tree=self._tree))

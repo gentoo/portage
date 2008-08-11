@@ -857,7 +857,6 @@ abort_install() {
 }
 
 dyn_configure() {
-	hasq "$EAPI" 0 1 2_pre1 && return 0
 
 	if [[ $PORTAGE_BUILDDIR/.configured -nt $WORKDIR ]] ; then
 		vecho ">>> It appears that '$PF' is already configured; skipping."
