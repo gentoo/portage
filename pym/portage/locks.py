@@ -13,6 +13,10 @@ from portage.localization import _
 
 HARDLINK_FD = -2
 
+# Used by emerge in order to disable the "waiting for lock" message
+# so that it doesn't interfere with the status display.
+_quiet = False
+
 def lockdir(mydir):
 	return lockfile(mydir,wantnewlockfile=1)
 def unlockdir(mylock):
@@ -83,7 +87,11 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 			# resource temp unavailable; eg, someone beat us to the lock.
 			if flags & os.O_NONBLOCK:
 				raise TryAgain(mypath)
-			if waiting_msg is None:
+
+			global _quiet
+			if _quiet:
+				pass
+			elif waiting_msg is None:
 				if isinstance(mypath, int):
 					print "waiting for lock on fd %i" % myfd
 				else:

@@ -9599,6 +9599,7 @@ class Scheduler(PollScheduler):
 		self._add_packages()
 		pkg_queue = self._pkg_queue
 		failed_pkgs = self._failed_pkgs
+		portage.locks._quiet = self._background
 		portage.elog._emerge_elog_listener = self._elog_listener
 		rval = os.EX_OK
 
@@ -9606,6 +9607,7 @@ class Scheduler(PollScheduler):
 			self._main_loop()
 		finally:
 			self._main_loop_cleanup()
+			portage.locks._quiet = False
 			portage.elog._emerge_elog_listener = None
 			if failed_pkgs:
 				rval = failed_pkgs[-1].returncode
