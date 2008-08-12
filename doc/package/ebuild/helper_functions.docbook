@@ -1,31 +1,31 @@
-<sect1 id='package-ebuild-helper-functions'>
+<section id='package-ebuild-helper-functions'>
 	<title>Helper Functions</title>
-	<sect2 id='package-ebuild-helper-functions-output'>
+	<section id='package-ebuild-helper-functions-output'>
 	<title>Output</title>
-	<sect3 id='package-ebuild-helper-functions-output-ebegin'>
+	<section id='package-ebuild-helper-functions-output-ebegin'>
 	<title>ebegin</title>
 	<para>
 	Like einfo, we output a helpful message and then hint that the following
 	operation may take some time to complete. Once the task is finished, you
 	need to call eend.
 	</para>
-	</sect3>
-	<sect3 id='package-ebuild-helper-functions-output-eend'>
+	</section>
+	<section id='package-ebuild-helper-functions-output-eend'>
 	<title>eend</title>
 	<para>
 	Followup the ebegin message with an appropriate "OK" or "!!" (for errors)
 	marker. If status is non-zero, then the additional error message is
 	displayed.
 	</para>
-	</sect3>
-	<sect3 id='package-ebuild-helper-functions-output-einfo'>
+	</section>
+	<section id='package-ebuild-helper-functions-output-einfo'>
 	<title>einfo</title>
 	<para>
 	Same as elog, but should be used when the message isn't important
 	to the user (like progress or status messages during the build process).
 	</para>
-	</sect3>
-	<sect3 id='package-ebuild-helper-functions-output-elog'>
+	</section>
+	<section id='package-ebuild-helper-functions-output-elog'>
 	<title>elog</title>
 	<para>
 	If you need to display a message that you wish the user to read
@@ -33,18 +33,18 @@
 	but adds a little more to the output so as to catch the user's eye.
 	The message will also be logged by portage for later review.
 	</para>
-	</sect3>
-	<sect3 id='package-ebuild-helper-functions-output-eqawarn'>
+	</section>
+	<section id='package-ebuild-helper-functions-output-eqawarn'>
 	<title>eqawarn</title>
 	<para>
 	Same as einfo, but should be used when showing a QA warning to the user.
 	</para>
-	</sect3>
-	<sect3 id='package-ebuild-helper-functions-output-ewarn'>
+	</section>
+	<section id='package-ebuild-helper-functions-output-ewarn'>
 	<title>ewarn</title>
 	<para>
 	Same as einfo, but should be used when showing a warning to the user.
 	</para>
-	</sect3>
-	</sect2>
-</sect1>
+	</section>
+	</section>
+</section>

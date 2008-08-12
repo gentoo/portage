@@ -1,8 +1,8 @@
-<sect1 id='package-ebuild-eapi-2_pre1'>
+<section id='package-ebuild-eapi-2_pre1'>
 	<title>EAPI 2_pre1</title>
-	<sect2 id='package-ebuild-eapi-2-helpers'>
+	<section id='package-ebuild-eapi-2-helpers'>
 	<title>Helpers</title>
-	<sect3 id='package-ebuild-eapi-2-helpers-doman'>
+	<section id='package-ebuild-eapi-2-helpers-doman'>
 	<title>doman</title>
 	<para>
 	Language codes in file names are now used for path translation.
@@ -29,11 +29,11 @@
 	</tbody>
 	</tgroup>
 	</table>
-	</sect3>
-	</sect2>
-	<sect2 id='package-ebuild-eapi-2-use-deps'>
+	</section>
+	</section>
+	<section id='package-ebuild-eapi-2-use-deps'>
 	<title>USE Dependencies</title>
-	<sect3 id='package-ebuild-eapi-2-use-deps-unconditional'>
+	<section id='package-ebuild-eapi-2-use-deps-unconditional'>
 	<title>Unconditional USE Dependencies</title>
 	<table><title>Syntax Examples</title>
 	<tgroup cols='2' align='left' >
@@ -61,8 +61,8 @@
 	</tbody>
 	</tgroup>
 	</table>
-	</sect3>
-	<sect3 id='package-ebuild-eapi-2-use-deps-conditional'>
+	</section>
+	<section id='package-ebuild-eapi-2-use-deps-conditional'>
 	<title>Conditional USE Dependencies</title>
 	<table><title>Syntax Examples</title>
 	<tgroup cols='2' align='left' >
@@ -94,14 +94,14 @@
 	</tbody>
 	</tgroup>
 	</table>
-	</sect3>
-	</sect2>
-</sect1>
-<sect1 id='package-ebuild-eapi-2_pre2'>
+	</section>
+	</section>
+</section>
+<section id='package-ebuild-eapi-2_pre2'>
 	<title>EAPI 2_pre2</title>
-	<sect2 id='package-ebuild-eapi-2-phases'>
+	<section id='package-ebuild-eapi-2-phases'>
 		<title>Phases</title>
-		<sect3 id='package-ebuild-eapi-2-phases-src-configure'>
+		<section id='package-ebuild-eapi-2-phases-src-configure'>
 			<title>New src_configure Phase Function</title>
 			<para>
 			The configure portion of the src_compile function has been
@@ -164,8 +164,8 @@ src_compile() {
 				</tbody>
 				</tgroup>
 			</table>
-		</sect3>
-		<sect3 id='package-ebuild-eapi-2-phases-default-functions'>
+		</section>
+		<section id='package-ebuild-eapi-2-phases-default-functions'>
 			<title>Default Phase Functions</title>
 			<para>
 			The default pkg_nofetch and src_* phase functions are now
@@ -261,8 +261,8 @@ src_compile() {
 				</tbody>
 				</tgroup>
 			</table>
-		</sect3>
-		<sect3 id='package-ebuild-eapi-2-phases-default-function-alias'>
+		</section>
+		<section id='package-ebuild-eapi-2-phases-default-function-alias'>
 			<title>Default Phase Function Alias</title>
 			<para>
 			A function named "default" is redefined for each phase so that it
@@ -271,6 +271,6 @@ src_compile() {
 			src_compile phase is equivalent to a call to the function named
 			default_src_compile.
 			</para>
-		</sect3>
-	</sect2>
-</sect1>
+		</section>
+	</section>
+</section>

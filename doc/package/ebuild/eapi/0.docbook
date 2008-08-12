@@ -1,8 +1,8 @@
-<sect1 id='package-ebuild-eapi-0'>
+<section id='package-ebuild-eapi-0'>
 	<title>EAPI 0</title>
-	<sect2 id='package-ebuild-eapi-0-phases'>
+	<section id='package-ebuild-eapi-0-phases'>
 		<title>Phases</title>
-		<sect3 id='package-ebuild-eapi-0-phases-default-src-compile'>
+		<section id='package-ebuild-eapi-0-phases-default-src-compile'>
 			<title>Default src_compile Phase Function</title>
 			<programlisting>
 src_compile() {
@@ -14,6 +14,6 @@ src_compile() {
 	fi
 }
 			</programlisting>
-		</sect3>
-	</sect2>
-</sect1>
+		</section>
+	</section>
+</section>

@@ -2,7 +2,10 @@
 <title>Ebuild</title>
 &package_ebuild_phases;
 &package_ebuild_helper_functions;
+<section id='package-ebuild-eapi'>
+<title>EAPI</title>
 &package_ebuild_eapi_0;
 &package_ebuild_eapi_1;
 &package_ebuild_eapi_2;
+</section>
 </chapter>

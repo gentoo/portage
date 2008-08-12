@@ -1,8 +1,8 @@
-<sect1 id='package-ebuild-eapi-1'>
+<section id='package-ebuild-eapi-1'>
 	<title>EAPI 1</title>
-	<sect2 id='package-ebuild-eapi-1-phases'>
+	<section id='package-ebuild-eapi-1-phases'>
 		<title>Phases</title>
-		<sect3 id='package-ebuild-eapi-1-phases-default-src-compile'>
+		<section id='package-ebuild-eapi-1-phases-default-src-compile'>
 			<title>Default src_compile Phase Function</title>
 			<para>
 			Support for the ECONF_SOURCE variable, which is also supported
@@ -18,9 +18,9 @@ src_compile() {
 	fi
 }
 			</programlisting>
-		</sect3>
-	</sect2>
-	<sect2 id='package-ebuild-eapi-1-slot-deps'>
+		</section>
+	</section>
+	<section id='package-ebuild-eapi-1-slot-deps'>
 	<title>SLOT Dependencies</title>
 	<para>
 	Any valid atom can be constrained to match a specific SLOT. This is
@@ -50,5 +50,5 @@ src_compile() {
 	</tbody>
 	</tgroup>
 	</table>
-	</sect2>
-</sect1>
+	</section>
+</section>
