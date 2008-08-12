@@ -2357,9 +2357,15 @@ class config(object):
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
 			for atom in match_to_list(cpv_slot, cpdict.keys()):
 				acceptable_licenses.update(cpdict[atom])
-		license_struct = portage.dep.paren_reduce(metadata["LICENSE"])
+
+		license_str = metadata["LICENSE"]
+		if "?" in license_str:
+			use = metadata["USE"].split()
+		else:
+			use = []
+
 		license_struct = portage.dep.use_reduce(
-			license_struct, uselist=metadata["USE"].split())
+			portage.dep.paren_reduce(license_str), uselist=use)
 		license_struct = portage.dep.dep_opconvert(license_struct)
 		return self._getMaskedLicenses(license_struct, acceptable_licenses)
 
