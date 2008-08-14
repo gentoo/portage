@@ -9642,8 +9642,10 @@ class Scheduler(PollScheduler):
 		self._prune_digraph()
 
 		chosen_pkg = None
+		later = set(self._pkg_queue)
 		for pkg in self._pkg_queue:
-			if not self._dependent_on_scheduled_merges(pkg):
+			later.remove(pkg)
+			if not self._dependent_on_scheduled_merges(pkg, later):
 				chosen_pkg = pkg
 				break
 
@@ -9658,10 +9660,17 @@ class Scheduler(PollScheduler):
 
 		return chosen_pkg
 
-	def _dependent_on_scheduled_merges(self, pkg):
+	def _dependent_on_scheduled_merges(self, pkg, later):
 		"""
 		Traverse the subgraph of the given packages deep dependencies
 		to see if it contains any scheduled merges.
+		@param pkg: a package to check dependencies for
+		@type pkg: Package
+		@param later: packages for which dependence should be ignored
+			since they will be merged later than pkg anyway and therefore
+			delaying the merge of pkg will not result in a more optimal
+			merge order
+		@type later: set
 		@rtype: bool
 		@returns: True if the package is dependent, False otherwise.
 		"""
@@ -9671,14 +9680,19 @@ class Scheduler(PollScheduler):
 
 		dependent = False
 		traversed_nodes = set([pkg])
-		node_stack = graph.child_nodes(pkg)
+		direct_deps = graph.child_nodes(pkg)
+		node_stack = direct_deps
+		direct_deps = frozenset(direct_deps)
 		while node_stack:
 			node = node_stack.pop()
 			if node in traversed_nodes:
 				continue
 			traversed_nodes.add(node)
-			if not (node.installed and node.operation == "nomerge") and \
-				node not in completed_tasks:
+			if not ((node.installed and node.operation == "nomerge") or \
+				(node.operation == "uninstall" and \
+				node not in direct_deps) or \
+				node in completed_tasks or \
+				node in later):
 				dependent = True
 				break
 			node_stack.extend(graph.child_nodes(node))
