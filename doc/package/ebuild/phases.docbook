@@ -1,4 +1,4 @@
-<sect1 id='package-ebuild-phases'>
+<section id='package-ebuild-phases'>
 	<title>Ebuild Phases</title>
 	<para>
 	Ebuild execution is divided into a series of phases. In order
@@ -40,13 +40,13 @@
 	</listitem>
 	</itemizedlist>
 	</para>
-	<sect2 id='package-ebuild-phases-previous-installed'>
+	<section id='package-ebuild-phases-previous-installed'>
 	<title>Interaction with previous installed version</title>
 	<para>
 	The order for upgrade and downgrade operations changed in
 	version 2.1.5, but the order for reinstall operations remained unchanged.
 	</para>
-	<sect3 id='package-ebuild-phases-before-2.1.5'>
+	<section id='package-ebuild-phases-before-2.1.5'>
 	<title>Upgrade/downgrade order used by versions less than 2.1.5 (deprecated)</title>
 	<para>
 	<itemizedlist>
@@ -64,8 +64,8 @@
 	</listitem>
 	</itemizedlist>
 	</para>
-	</sect3>
-	<sect3 id='package-ebuild-phases-after-2.1.5'>
+	</section>
+	<section id='package-ebuild-phases-after-2.1.5'>
 	<title>Upgrade/downgrade order starting with version 2.1.5</title>
 	<para>
 	The new order for upgrades and downgrades is identical to the order used
@@ -95,6 +95,6 @@
 	pkg_preinst) and store the result in a global variable to be accessed by
 	pkg_postinst when it is called.
 	</para>
-	</sect3>
-	</sect2>
-</sect1>
+	</section>
+	</section>
+</section>

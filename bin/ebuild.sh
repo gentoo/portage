@@ -1527,7 +1527,7 @@ source_all_bashrcs() {
 	IFS=$'\n'
 	local path_array=($PROFILE_PATHS)
 	restore_IFS
-	for x in ${path_array[@]} ; do
+	for x in "${path_array[@]}" ; do
 		[ -f "${x}/profile.bashrc" ] && qa_source "${x}/profile.bashrc"
 	done
 
