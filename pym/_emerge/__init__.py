@@ -77,7 +77,7 @@ portage.dep._dep_check_strict = True
 import portage.util
 import portage.locks
 import portage.exception
-from portage.const import EPREFIX, BPREFIX, EPREFIX_LSTRIP
+from portage.const import EPREFIX, BPREFIX, EPREFIX_LSTRIP, EAPIPREFIX
 from portage.data import secpass
 from portage.elog.messages import eerror
 from portage.util import normalize_path as normpath
@@ -2684,7 +2684,14 @@ class EbuildExecuter(CompositeTask):
 
 		ebuild_phases = TaskSequence(scheduler=self.scheduler)
 
-		for phase in self._phases:
+		pkg = self.pkg
+		phases = self._phases
+		EAPIPREFIX
+		if pkg.metadata["EAPI"].replace(EAPIPREFIX, "").strip() in ("0", "1", "2_pre1"):
+			# skip src_configure
+			phases = phases[1:]
+
+		for phase in phases:
 			ebuild_phases.add(EbuildPhase(background=self.background,
 				pkg=self.pkg, phase=phase, scheduler=self.scheduler,
 				settings=self.settings, tree=self._tree))
@@ -8921,7 +8928,7 @@ class Scheduler(PollScheduler):
 		# The load average takes some time to respond when new
 		# jobs are added, so we need to limit the rate of adding
 		# new jobs.
-		self._job_delay_max = 5
+		self._job_delay_max = 10
 		self._job_delay_factor = 1.0
 		self._job_delay_exp = 1.5
 		self._previous_job_start_time = None

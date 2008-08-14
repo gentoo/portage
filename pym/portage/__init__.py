@@ -3221,7 +3221,7 @@ def _spawn_fetch(settings, args, **kwargs):
 	return rval
 
 _userpriv_test_write_file_cache = {}
-_userpriv_test_write_cmd_script = "> %(file_path)s ; rval=$? ; " + \
+_userpriv_test_write_cmd_script = "touch %(file_path)s 2>/dev/null ; rval=$? ; " + \
 	"rm -f  %(file_path)s ; exit $rval"
 
 def _userpriv_test_write_file(settings, file_path):
@@ -4335,6 +4335,10 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 				fd_pipes=fd_pipes, returnpid=returnpid)
 			if retval:
 				return retval
+
+	if mydo == "configure" and mysettings["EAPI"] in ("0", "1", "2_pre1"):
+		return os.EX_OK
+
 	kwargs = actionmap[mydo]["args"]
 	mysettings["EBUILD_PHASE"] = mydo
 	_doebuild_exit_status_unlink(
@@ -4707,6 +4711,8 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		if not eapi_is_supported(eapi):
 			# can't do anything with this.
 			raise portage.exception.UnsupportedAPIException(mycpv, eapi)
+		mysettings.pop("EAPI", None)
+		mysettings.configdict["pkg"]["EAPI"] = eapi
 		try:
 			mysettings["PORTAGE_RESTRICT"] = " ".join(flatten(
 				portage.dep.use_reduce(portage.dep.paren_reduce(
