@@ -9428,27 +9428,12 @@ class Scheduler(PollScheduler):
 
 			log_paths = [failed_pkg.build_log]
 
-			if not (build_dir and os.path.isdir(build_dir)):
-				log_paths.append(failed_pkg.fetch_log)
-
-			for log_path in log_paths:
-				if not log_path:
-					continue
-
-				try:
-					log_size = os.stat(log_path).st_size
-				except OSError:
-					continue
-
-				if log_size == 0:
-					continue
-
+			log_path = self._locate_failure_log(failed_pkg)
+			if log_path is not None:
 				try:
 					log_file = open(log_path, 'rb')
 				except IOError:
-					continue
-
-				break
+					pass
 
 			if log_file is not None:
 				try:
@@ -9505,6 +9490,32 @@ class Scheduler(PollScheduler):
 			self._failed_pkgs_die_msgs.append(
 				(mysettings, key, errors))
 
+	def _locate_failure_log(self, failed_pkg):
+
+		build_dir = failed_pkg.build_dir
+		log_file = None
+
+		log_paths = [failed_pkg.build_log]
+
+		if not (build_dir and os.path.isdir(build_dir)):
+			log_paths.append(failed_pkg.fetch_log)
+
+		for log_path in log_paths:
+			if not log_path:
+				continue
+
+			try:
+				log_size = os.stat(log_path).st_size
+			except OSError:
+				continue
+
+			if log_size == 0:
+				continue
+
+			return log_path
+
+		return None
+
 	def _add_packages(self):
 		pkg_queue = self._pkg_queue
 		for pkg in self._mergelist:
@@ -9534,6 +9545,7 @@ class Scheduler(PollScheduler):
 				build_dir=build_dir, build_log=build_log,
 				fetch_log=fetch_log, pkg=pkg,
 				returncode=merge.returncode))
+			self._failed_pkg_msg(self._failed_pkgs[-1], "install", "to")
 
 			self._status_display.failed = len(self._failed_pkgs)
 			return
@@ -9578,6 +9590,7 @@ class Scheduler(PollScheduler):
 				build_dir=build_dir, build_log=build_log,
 				fetch_log=fetch_log, pkg=build.pkg,
 				returncode=build.returncode))
+			self._failed_pkg_msg(self._failed_pkgs[-1], "emerge", "for")
 
 			self._status_display.failed = len(self._failed_pkgs)
 			self._deallocate_config(build.settings)
@@ -9850,6 +9863,21 @@ class Scheduler(PollScheduler):
 			world_atom=self._world_atom)
 
 		return task
+
+	def _failed_pkg_msg(self, failed_pkg, action, preposition):
+		pkg = failed_pkg.pkg
+		msg = "%s to %s %s" % \
+			(bad("Failed"), action, colorize("INFORM", pkg.cpv))
+		if pkg.root != "/":
+			msg += " %s %s" % (preposition, pkg.root)
+
+		log_path = self._locate_failure_log(failed_pkg)
+		if log_path is not None:
+			msg += ", Log file:"
+		self._status_msg(msg)
+
+		if log_path is not None:
+			self._status_msg(" '%s'" % (colorize("INFORM", log_path),))
 
 	def _status_msg(self, msg):
 		"""
