@@ -24,7 +24,6 @@ import array
 from collections import deque
 import fcntl
 import formatter
-import fpformat
 import logging
 import select
 import shlex
@@ -8674,7 +8673,7 @@ class JobStatusDisplay(object):
 			avg = os.getloadavg()
 		except OSError, e:
 			return str(e)
-		return ", ".join(fpformat.fix(x, digits) for x in avg)
+		return ", ".join(("%%.%df" % digits ) % x for x in avg)
 
 	def display(self):
 		"""
