@@ -6,6 +6,18 @@
 """This module contains utility functions to help repoman find ebuilds to
 scan"""
 
+__all__ = [
+	"detect_vcs_conflicts",
+	"editor_is_executable",
+	"FindPackagesToScan",
+	"FindPortdir",
+	"format_qa_output",
+	"get_commit_message_with_editor",
+	"get_commit_message_with_stdin",
+	"have_profile_dir",
+	"parse_metadata_use"
+]
+
 import commands
 import errno
 import itertools
@@ -15,6 +27,7 @@ import sys
 
 from xml.dom import minidom
 from xml.dom import NotFoundErr
+from xml.parsers.expat import ExpatError
 from portage import output
 from portage.output import red, green
 from portage.process import find_binary
@@ -97,7 +110,10 @@ def parse_metadata_use(mylines, uselist=None):
 	returns a dict of the form a list of flags"""
 	if uselist is None:
 		uselist = []
-	metadatadom = minidom.parse(mylines)
+	try:
+		metadatadom = minidom.parse(mylines)
+	except ExpatError, e:
+		raise exception.ParseError("metadata.xml: %s" % (e,))
 
 	try:
 		usetag = metadatadom.getElementsByTagName("use")
