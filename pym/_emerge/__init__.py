@@ -13678,6 +13678,20 @@ def emerge_main():
 	elif myaction in ("clean", "unmerge") or \
 		(myaction == "prune" and "--nodeps" in myopts):
 		validate_ebuild_environment(trees)
+
+		# Ensure atoms are valid before calling unmerge().
+		# For backward compat, leading '=' is not required.
+		for x in myfiles:
+			if is_valid_package_atom(x) or \
+				is_valid_package_atom("=" + x):
+				continue
+			msg = []
+			msg.append("'%s' is not a valid package atom." % (x,))
+			msg.append("Please check ebuild(5) for full details.")
+			writemsg_level("".join("!!! %s\n" % line for line in msg),
+				level=logging.ERROR, noiselevel=-1)
+			return 1
+
 		# When given a list of atoms, unmerge
 		# them in the order given.
 		ordered = myaction == "unmerge"
