@@ -263,7 +263,8 @@ class portdbapi(dbapi):
 			# if newer version, wipe everything and negate eapi
 			eapi = metadata["EAPI"]
 			metadata = {}
-			map(lambda x: metadata.setdefault(x, ""), auxdbkeys)
+			for x in self._known_keys:
+				metadata.setdefault(x, "")
 			metadata["EAPI"] = "-" + eapi
 
 		if metadata.get("INHERITED", False):
