@@ -10329,9 +10329,7 @@ def unmerge(root_config, myopts, unmerge_action,
 			# cycle through all our candidate deps and determine
 			# what will and will not get unmerged
 			try:
-				mymatch=localtree.dep_match(x)
-			except KeyError:
-				mymatch=None
+				mymatch = vartree.dbapi.match(x)
 			except ValueError, errpkgs:
 				print "\n\n!!! The short ebuild name \"" + \
 					x + "\" is ambiguous.  Please specify"
