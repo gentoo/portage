@@ -13701,6 +13701,34 @@ def emerge_main():
 				post_emerge(root_config, myopts, mtimedb, os.EX_OK)
 
 	elif myaction in ("depclean", "prune"):
+
+		# Ensure atoms are valid before calling unmerge().
+		vardb = trees[settings["ROOT"]]["vartree"].dbapi
+		for x in myfiles:
+			if is_valid_package_atom(x):
+				try:
+					portage.dep_expand(x, mydb=vardb, settings=settings)
+				except ValueError, e:
+					msg = "The short ebuild name \"" + x + \
+						"\" is ambiguous.  Please specify " + \
+						"one of the following " + \
+						"fully-qualified ebuild names instead:"
+					for line in textwrap.wrap(msg, 70):
+						writemsg_level("!!! %s\n" % (line,),
+							level=logging.ERROR, noiselevel=-1)
+					for i in e[0]:
+						writemsg_level("    %s\n" % colorize("INFORM", i),
+							level=logging.ERROR, noiselevel=-1)
+					writemsg_level("\n", level=logging.ERROR, noiselevel=-1)
+					return 1
+				continue
+			msg = []
+			msg.append("'%s' is not a valid package atom." % (x,))
+			msg.append("Please check ebuild(5) for full details.")
+			writemsg_level("".join("!!! %s\n" % line for line in msg),
+				level=logging.ERROR, noiselevel=-1)
+			return 1
+
 		validate_ebuild_environment(trees)
 		action_depclean(settings, trees, mtimedb["ldpath"],
 			myopts, myaction, myfiles, spinner)
