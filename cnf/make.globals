@@ -56,6 +56,9 @@ EMERGE_WARNING_DELAY="10"
 # This option will be removed and forced to yes.
 AUTOCLEAN="yes"
 
+# Don't compress files with these suffixes.
+PORTAGE_COMPRESS_EXCLUDE_SUFFIXES="css gif htm[l]? jp[e]?g js pdf png"
+
 # Number of mirrors to try when a downloaded file has an incorrect checksum.
 PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS="5"
 
