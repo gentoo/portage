@@ -21,8 +21,8 @@ except ImportError:
 
 if os.path.isdir("/proc/%i/fd" % os.getpid()):
 	def get_open_fds():
-		return [int(fd) for fd in os.listdir("/proc/%i/fd" % os.getpid()) \
-			if fd.isdigit()]
+		return (int(fd) for fd in os.listdir("/proc/%i/fd" % os.getpid()) \
+			if fd.isdigit())
 else:
 	def get_open_fds():
 		return xrange(max_fd_limit)
