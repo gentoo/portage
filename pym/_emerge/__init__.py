@@ -13704,10 +13704,12 @@ def emerge_main():
 
 		# Ensure atoms are valid before calling unmerge().
 		vardb = trees[settings["ROOT"]]["vartree"].dbapi
+		valid_atoms = []
 		for x in myfiles:
 			if is_valid_package_atom(x):
 				try:
-					portage.dep_expand(x, mydb=vardb, settings=settings)
+					valid_atoms.append(
+						portage.dep_expand(x, mydb=vardb, settings=settings))
 				except ValueError, e:
 					msg = "The short ebuild name \"" + x + \
 						"\" is ambiguous.  Please specify " + \
@@ -13731,7 +13733,7 @@ def emerge_main():
 
 		validate_ebuild_environment(trees)
 		action_depclean(settings, trees, mtimedb["ldpath"],
-			myopts, myaction, myfiles, spinner)
+			myopts, myaction, valid_atoms, spinner)
 		if not (buildpkgonly or fetchonly or pretend):
 			post_emerge(root_config, myopts, mtimedb, os.EX_OK)
 	# "update", "system", or just process files:
