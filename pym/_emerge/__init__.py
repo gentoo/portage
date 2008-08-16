@@ -9471,27 +9471,12 @@ class Scheduler(PollScheduler):
 
 			log_paths = [failed_pkg.build_log]
 
-			if not (build_dir and os.path.isdir(build_dir)):
-				log_paths.append(failed_pkg.fetch_log)
-
-			for log_path in log_paths:
-				if not log_path:
-					continue
-
-				try:
-					log_size = os.stat(log_path).st_size
-				except OSError:
-					continue
-
-				if log_size == 0:
-					continue
-
+			log_path = self._locate_failure_log(failed_pkg)
+			if log_path is not None:
 				try:
 					log_file = open(log_path, 'rb')
 				except IOError:
-					continue
-
-				break
+					pass
 
 			if log_file is not None:
 				try:
@@ -9548,6 +9533,32 @@ class Scheduler(PollScheduler):
 			self._failed_pkgs_die_msgs.append(
 				(mysettings, key, errors))
 
+	def _locate_failure_log(self, failed_pkg):
+
+		build_dir = failed_pkg.build_dir
+		log_file = None
+
+		log_paths = [failed_pkg.build_log]
+
+		if not (build_dir and os.path.isdir(build_dir)):
+			log_paths.append(failed_pkg.fetch_log)
+
+		for log_path in log_paths:
+			if not log_path:
+				continue
+
+			try:
+				log_size = os.stat(log_path).st_size
+			except OSError:
+				continue
+
+			if log_size == 0:
+				continue
+
+			return log_path
+
+		return None
+
 	def _add_packages(self):
 		pkg_queue = self._pkg_queue
 		for pkg in self._mergelist:
@@ -9577,6 +9588,7 @@ class Scheduler(PollScheduler):
 				build_dir=build_dir, build_log=build_log,
 				fetch_log=fetch_log, pkg=pkg,
 				returncode=merge.returncode))
+			self._failed_pkg_msg(self._failed_pkgs[-1], "install", "to")
 
 			self._status_display.failed = len(self._failed_pkgs)
 			return
@@ -9621,6 +9633,7 @@ class Scheduler(PollScheduler):
 				build_dir=build_dir, build_log=build_log,
 				fetch_log=fetch_log, pkg=build.pkg,
 				returncode=build.returncode))
+			self._failed_pkg_msg(self._failed_pkgs[-1], "emerge", "for")
 
 			self._status_display.failed = len(self._failed_pkgs)
 			self._deallocate_config(build.settings)
@@ -9893,6 +9906,21 @@ class Scheduler(PollScheduler):
 			world_atom=self._world_atom)
 
 		return task
+
+	def _failed_pkg_msg(self, failed_pkg, action, preposition):
+		pkg = failed_pkg.pkg
+		msg = "%s to %s %s" % \
+			(bad("Failed"), action, colorize("INFORM", pkg.cpv))
+		if pkg.root != "/":
+			msg += " %s %s" % (preposition, pkg.root)
+
+		log_path = self._locate_failure_log(failed_pkg)
+		if log_path is not None:
+			msg += ", Log file:"
+		self._status_msg(msg)
+
+		if log_path is not None:
+			self._status_msg(" '%s'" % (colorize("INFORM", log_path),))
 
 	def _status_msg(self, msg):
 		"""
@@ -10344,9 +10372,7 @@ def unmerge(root_config, myopts, unmerge_action,
 			# cycle through all our candidate deps and determine
 			# what will and will not get unmerged
 			try:
-				mymatch=localtree.dep_match(x)
-			except KeyError:
-				mymatch=None
+				mymatch = vartree.dbapi.match(x)
 			except ValueError, errpkgs:
 				print "\n\n!!! The short ebuild name \"" + \
 					x + "\" is ambiguous.  Please specify"
@@ -13743,6 +13769,20 @@ def emerge_main():
 	elif myaction in ("clean", "unmerge") or \
 		(myaction == "prune" and "--nodeps" in myopts):
 		validate_ebuild_environment(trees)
+
+		# Ensure atoms are valid before calling unmerge().
+		# For backward compat, leading '=' is not required.
+		for x in myfiles:
+			if is_valid_package_atom(x) or \
+				is_valid_package_atom("=" + x):
+				continue
+			msg = []
+			msg.append("'%s' is not a valid package atom." % (x,))
+			msg.append("Please check ebuild(5) for full details.")
+			writemsg_level("".join("!!! %s\n" % line for line in msg),
+				level=logging.ERROR, noiselevel=-1)
+			return 1
+
 		# When given a list of atoms, unmerge
 		# them in the order given.
 		ordered = myaction == "unmerge"
@@ -13752,9 +13792,39 @@ def emerge_main():
 				post_emerge(root_config, myopts, mtimedb, os.EX_OK)
 
 	elif myaction in ("depclean", "prune"):
+
+		# Ensure atoms are valid before calling unmerge().
+		vardb = trees[settings["ROOT"]]["vartree"].dbapi
+		valid_atoms = []
+		for x in myfiles:
+			if is_valid_package_atom(x):
+				try:
+					valid_atoms.append(
+						portage.dep_expand(x, mydb=vardb, settings=settings))
+				except ValueError, e:
+					msg = "The short ebuild name \"" + x + \
+						"\" is ambiguous.  Please specify " + \
+						"one of the following " + \
+						"fully-qualified ebuild names instead:"
+					for line in textwrap.wrap(msg, 70):
+						writemsg_level("!!! %s\n" % (line,),
+							level=logging.ERROR, noiselevel=-1)
+					for i in e[0]:
+						writemsg_level("    %s\n" % colorize("INFORM", i),
+							level=logging.ERROR, noiselevel=-1)
+					writemsg_level("\n", level=logging.ERROR, noiselevel=-1)
+					return 1
+				continue
+			msg = []
+			msg.append("'%s' is not a valid package atom." % (x,))
+			msg.append("Please check ebuild(5) for full details.")
+			writemsg_level("".join("!!! %s\n" % line for line in msg),
+				level=logging.ERROR, noiselevel=-1)
+			return 1
+
 		validate_ebuild_environment(trees)
 		action_depclean(settings, trees, mtimedb["ldpath"],
-			myopts, myaction, myfiles, spinner)
+			myopts, myaction, valid_atoms, spinner)
 		if not (buildpkgonly or fetchonly or pretend):
 			post_emerge(root_config, myopts, mtimedb, os.EX_OK)
 	# "update", "system", or just process files:

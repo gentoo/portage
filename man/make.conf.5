@@ -430,6 +430,13 @@ install phase.
 \fBPORTAGE_COMPRESS_FLAGS\fR = \fI"\-9"\fR
 This variable contains flags for the \fBPORTAGE_COMPRESS\fR command.
 .TP
+.TP
+\fBPORTAGE_COMPRESS_EXCLUDE_SUFFIXES\fR = \fI"gif htm[l]? jp[e]?g pdf png"\fR
+This variable contains a space delimited list of file suffixes for which
+matching files are excluded when the \fBPORTAGE_COMPRESS\fR command is
+called. Regular expressions are supported and the match is performed only
+against the portion of the file name which follows the last period character.
+.TP
 .B PORTAGE_ELOG_CLASSES
 .TP
 .B PORTAGE_ELOG_SYSTEM

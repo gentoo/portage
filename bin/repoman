@@ -997,8 +997,21 @@ for x in scanlist:
 		fails["metadata.missing"].append(x+"/metadata.xml")
 	#metadata.xml parse check
 	else:
+		metadata_bad = False
+
+		# load USE flags from metadata.xml
+		try:
+			f = open(os.path.join(checkdir, "metadata.xml"))
+			utilities.parse_metadata_use(f, muselist)
+			f.close()
+		except (EnvironmentError, ParseError), e:
+			metadata_bad = True
+			stats["metadata.bad"] += 1
+			fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
+			del e
+
 		#Only carry out if in package directory or check forced
-		if xmllint_capable:
+		if xmllint_capable and not metadata_bad:
 			# xmlint can produce garbage output even on success, so only dump
 			# the ouput when it fails.
 			st, out = commands.getstatusoutput(
@@ -1011,14 +1024,7 @@ for x in scanlist:
 				stats["metadata.bad"]+=1
 				fails["metadata.bad"].append(x+"/metadata.xml")
 
-		#load USE flags from metadata.xml
-		try:
-			f = open(os.path.join(checkdir, "metadata.xml"))
-			utilities.parse_metadata_use(f, muselist)
-			f.close()
-		except (EnvironmentError, ParseError), e:
-			logging.exception("Couldn't read from metadata.xml")
-			sys.exit(1)
+		del metadata_bad
 
 	allmasked = True
 

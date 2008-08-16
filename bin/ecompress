@@ -63,6 +63,22 @@ case $1 in
 		exit 1
 		;;
 	*)
+		mask_ext_re=""
+		set -f
+		for x in $PORTAGE_COMPRESS_EXCLUDE_SUFFIXES ; do
+			mask_ext_re+="|$x"
+		done
+		set +f
+		mask_ext_re="^(${mask_ext_re:1})\$"
+		declare -a filtered_args=()
+		i=0
+		for x in "$@" ; do
+			[[ ${x##*.} =~ $mask_ext_re ]] && continue
+			filtered_args[$i]=$x
+			(( i++ ))
+		done
+		set "${filtered_args[@]}"
+
 		# If a compressed version of the file already exists, simply
 		# delete it so that the compressor doesn't whine (bzip2 will
 		# complain and skip, gzip will prompt for input)
