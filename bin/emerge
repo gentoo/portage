@@ -2019,7 +2019,7 @@ class depgraph(object):
 	# enable "complete" mode since any performance difference is
 	# not as likely to be noticed by the user after this much time
 	# has passed.
-	_complete_thresold = 20
+	_complete_threshold = 20
 
 	def __init__(self, settings, trees, myopts, myparams, spinner):
 		self._creation_time = time.time()
@@ -3452,14 +3452,14 @@ class depgraph(object):
 
 		Since this method can consume enough time to disturb users, it is
 		currently only enabled by the --complete-graph option, or when
-		dep calculation time exceeds self._complete_thresold.
+		dep calculation time exceeds self._complete_threshold.
 		"""
 		if "--buildpkgonly" in self.myopts or \
 			"recurse" not in self.myparams:
 			return 1
 
 		if "complete" not in self.myparams:
-			if time.time() - self._creation_time > self._complete_thresold:
+			if time.time() - self._creation_time > self._complete_threshold:
 				self.myparams.add("complete")
 			else:
 				# Skip this to avoid consuming enough time to disturb users.
