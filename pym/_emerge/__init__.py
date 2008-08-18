@@ -8342,7 +8342,25 @@ class PollScheduler(object):
 				not self._poll_event_handlers:
 				raise StopIteration(
 					"timeout is None and there are no poll() event handlers")
-		self._poll_event_queue.extend(self._poll_obj.poll(timeout))
+
+		# The following error is known to occur with Linux kernel versions
+		# less than 2.6.24:
+		#
+		#   select.error: (4, 'Interrupted system call')
+		#
+		# This error has been observed after a SIGSTOP, followed by SIGCONT.
+		# Treat it similar to EAGAIN if timeout is None, otherwise just return
+		# without any events.
+		while True:
+			try:
+				self._poll_event_queue.extend(self._poll_obj.poll(timeout))
+				break
+			except select.error, e:
+				writemsg_level("\n!!! select error: %s\n" % (e,),
+					level=logging.ERROR, noiselevel=-1)
+				del e
+				if timeout is not None:
+					break
 
 	def _next_poll_event(self, timeout=None):
 		"""
