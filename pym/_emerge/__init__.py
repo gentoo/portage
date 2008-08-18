@@ -7537,8 +7537,15 @@ class depgraph(object):
 				return
 		root_config = self.roots[self.target_root]
 		world_set = root_config.sets["world"]
-		world_set.lock()
-		world_set.load() # maybe it's changed on disk
+
+		world_locked = False
+		if hasattr(world_set, "lock"):
+			world_set.lock()
+			world_locked = True
+
+		if hasattr(world_set, "load"):
+			world_set.load() # maybe it's changed on disk
+
 		args_set = self._sets["args"]
 		portdb = self.trees[self.target_root]["porttree"].dbapi
 		added_favorites = set()
@@ -7574,7 +7581,9 @@ class depgraph(object):
 				colorize("INFORM", str(a))
 		if all_added:
 			world_set.update(all_added)
-		world_set.unlock()
+
+		if world_locked:
+			world_set.unlock()
 
 	def loadResumeCommand(self, resume_data, skip_masked=False):
 		"""
@@ -10026,18 +10035,29 @@ class Scheduler(PollScheduler):
 		pkg_count = self._pkg_count
 		root_config = pkg.root_config
 		world_set = root_config.sets["world"]
-		world_set.lock()
+		world_locked = False
+		if hasattr(world_set, "lock"):
+			world_set.lock()
+			world_locked = True
+
 		try:
-			world_set.load() # maybe it's changed on disk
+			if hasattr(world_set, "load"):
+				world_set.load() # maybe it's changed on disk
+
 			atom = create_world_atom(pkg, args_set, root_config)
 			if atom:
-				self._status_msg(('Recording %s in "world" ' + \
-					'favorites file...') % atom)
-				logger.log(" === (%s of %s) Updating world file (%s)" % \
-					(pkg_count.curval, pkg_count.maxval, pkg.cpv))
-				world_set.add(atom)
+				if hasattr(world_set, "add"):
+					self._status_msg(('Recording %s in "world" ' + \
+						'favorites file...') % atom)
+					logger.log(" === (%s of %s) Updating world file (%s)" % \
+						(pkg_count.curval, pkg_count.maxval, pkg.cpv))
+					world_set.add(atom)
+				else:
+					writemsg_level('\n!!! Unable to record %s in "world"\n' % \
+						(atom,), level=logging.WARN, noiselevel=-1)
 		finally:
-			world_set.unlock()
+			if world_locked:
+				world_set.unlock()
 
 	def _pkg(self, cpv, type_name, root_config, installed=False):
 		"""
@@ -10629,10 +10649,10 @@ def unmerge(root_config, myopts, unmerge_action,
 					raise UninstallFailure(retval)
 				sys.exit(retval)
 			else:
-				if clean_world:
+				if clean_world and hasattr(sets["world"], "cleanPackage"):
 					sets["world"].cleanPackage(vartree.dbapi, y)
 				emergelog(xterm_titles, " >>> unmerge success: "+y)
-	if clean_world:
+	if clean_world and hasattr(sets["world"], "remove"):
 		for s in root_config.setconfig.active:
 			sets["world"].remove(SETPREFIX+s)
 	return 1
