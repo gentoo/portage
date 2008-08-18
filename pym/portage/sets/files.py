@@ -59,9 +59,9 @@ class StaticFileSet(EditablePackageSet):
 		return ValidAtomValidator(atom)
 
 	def write(self):
-		write_atomic(self._filename, "\n".join(sorted(
-			chain(self._atoms, self._nonatoms)))+"\n")
-	
+		write_atomic(self._filename, "".join("%s\n" % (atom,) \
+			for atom in sorted(chain(self._atoms, self._nonatoms))))
+
 	def load(self):
 		try:
 			mtime = os.stat(self._filename).st_mtime
