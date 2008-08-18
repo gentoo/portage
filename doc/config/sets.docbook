@@ -533,7 +533,7 @@
 	<listitem><varname>system</varname>: uses <classname>PackagesSystemSet</classname></listitem>
 	<listitem><varname>world</varname>: uses <classname>WorldSet</classname></listitem>
 	<listitem><varname>security</varname>: uses <classname>NewAffectedSet</classname> with default options</listitem>
-	<listitem><varname>everything</varname>: uses <classname>EverythingSet</classname></listitem>
+	<listitem><varname>installed</varname>: uses <classname>EverythingSet</classname></listitem>
 	<listitem><varname>preserved-rebuild</varname>: uses <classname>PreservedLibraryConsumerSet</classname></listitem>
 	<listitem><varname>live-rebuild</varname>: uses <classname>VariableSet</classname></listitem>
 	<listitem><varname>module-rebuild</varname>: uses <classname>OwnerSet</classname></listitem>
