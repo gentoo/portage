@@ -8573,6 +8573,7 @@ class JobStatusDisplay(object):
 		object.__setattr__(self, "_changed", False)
 		object.__setattr__(self, "_displayed", False)
 		object.__setattr__(self, "_last_display_time", 0)
+		object.__setattr__(self, "width", 80)
 		self.reset()
 
 		isatty = hasattr(out, "isatty") and out.isatty()
@@ -8677,11 +8678,21 @@ class JobStatusDisplay(object):
 		self._changed = True
 		self.display()
 
-	def _load_avg_str(self, digits=2):
+	def _load_avg_str(self):
 		try:
 			avg = os.getloadavg()
 		except OSError, e:
 			return str(e)
+
+		max_avg = max(avg)
+
+		if max_avg < 10:
+			digits = 2
+		elif max_avg < 100:
+			digits = 1
+		else:
+			digits = 0
+
 		return ", ".join(("%%.%df" % digits ) % x for x in avg)
 
 	def display(self):
@@ -8755,8 +8766,18 @@ class JobStatusDisplay(object):
 		f.add_literal_data("Load avg: ")
 		f.add_literal_data(load_avg_str)
 
-		self._update(color_output.getvalue())
-		xtermTitle(" ".join(plain_output.getvalue().split()))
+		# Truncate to fit width, to avoid making the terminal scroll if the
+		# line overflows (happens when the load average is large).
+		plain_output = plain_output.getvalue()
+		if self._isatty and len(plain_output) > self.width:
+			# Use plain_output here since it's easier to truncate
+			# properly than the color output which contains console
+			# color codes.
+			self._update(plain_output[:self.width])
+		else:
+			self._update(color_output.getvalue())
+
+		xtermTitle(" ".join(plain_output.split()))
 
 class Scheduler(PollScheduler):
 
