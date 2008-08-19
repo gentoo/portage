@@ -8870,6 +8870,21 @@ class Scheduler(PollScheduler):
 		for k in self._binpkg_opts.__slots__:
 			setattr(self._binpkg_opts, k, "--" + k.replace("_", "-") in myopts)
 
+		self.curval = 0
+		self._logger = self._emerge_log_class()
+		self._task_queues = self._task_queues_class()
+		for k in self._task_queues.allowed_keys:
+			setattr(self._task_queues, k,
+				SequentialTaskQueue())
+		self._status_display = JobStatusDisplay()
+		self._max_load = myopts.get("--load-average")
+		max_jobs = myopts.get("--jobs")
+		if max_jobs is None:
+			max_jobs = 1
+		self._set_max_jobs(max_jobs)
+		background = self._background_mode()
+		self._background = background
+
 		# The root where the currently running
 		# portage instance is installed.
 		self._running_root = trees["/"]["root_config"]
@@ -8880,12 +8895,18 @@ class Scheduler(PollScheduler):
 		self._config_pool = {}
 		self._blocker_db = {}
 		for root in trees:
+			root_config = trees[root]["root_config"]
+			if background:
+				root_config.settings.unlock()
+				root_config.settings["PORTAGE_BACKGROUND"] = "1"
+				root_config.settings.backup_changes("PORTAGE_BACKGROUND")
+				root_config.settings.lock()
+
 			self.pkgsettings[root] = portage.config(
 				clone=trees[root]["vartree"].settings)
 			self._config_pool[root] = []
 			self._blocker_db[root] = BlockerDB(trees[root]["root_config"])
-		self.curval = 0
-		self._logger = self._emerge_log_class()
+
 		fetch_iface = self._fetch_iface_class(log_file=self._fetch_log,
 			schedule=self._schedule_fetch)
 		self._sched_iface = self._iface_class(
@@ -8899,16 +8920,9 @@ class Scheduler(PollScheduler):
 			scheduleYield=self._schedule_yield,
 			unregister=self._unregister)
 
-		self._task_queues = self._task_queues_class()
-		for k in self._task_queues.allowed_keys:
-			setattr(self._task_queues, k,
-				SequentialTaskQueue())
-
 		self._prefetchers = weakref.WeakValueDictionary()
 		self._pkg_queue = []
 		self._completed_tasks = set()
-
-		self._status_display = JobStatusDisplay()
 
 		self._failed_pkgs = []
 		self._failed_pkgs_all = []
@@ -8920,15 +8934,6 @@ class Scheduler(PollScheduler):
 		self._pkg_count = self._pkg_count_class(
 			curval=0, maxval=merge_count)
 		self._status_display.maxval = self._pkg_count.maxval
-
-		max_jobs = myopts.get("--jobs")
-		if max_jobs is None:
-			max_jobs = 1
-		self._set_max_jobs(max_jobs)
-		background = self._background_mode()
-		self._background = background
-
-		self._max_load = myopts.get("--load-average")
 
 		# The load average takes some time to respond when new
 		# jobs are added, so we need to limit the rate of adding
