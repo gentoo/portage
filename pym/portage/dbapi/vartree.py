@@ -1925,10 +1925,15 @@ class dblink(object):
 						# process logs created during pre/postrm
 						elog_process(self.mycpv, self.settings, phasefilter=filter_unmergephases)
 						if retval == os.EX_OK:
-							doebuild(myebuildpath, "cleanrm", self.myroot,
-								self.settings, tree="vartree",
-								mydbapi=self.vartree.dbapi,
-								vartree=self.vartree)
+							if scheduler is None:
+								doebuild(myebuildpath, "cleanrm", self.myroot,
+									self.settings, tree="vartree",
+									mydbapi=self.vartree.dbapi,
+									vartree=self.vartree)
+							else:
+								scheduler.dblinkEbuildPhase(
+									self, self.vartree.dbapi,
+									myebuildpath, "cleanrm")
 				finally:
 					unlockdir(builddir_lock)
 			try:
@@ -3402,8 +3407,14 @@ class dblink(object):
 			if retval == os.EX_OK and "noclean" not in self.settings.features:
 				if myebuild is None:
 					myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
-				doebuild(myebuild, "clean", myroot, self.settings,
-					tree=self.treetype, mydbapi=mydbapi, vartree=self.vartree)
+
+				if self._scheduler is None:
+					doebuild(myebuild, "clean", myroot,
+						self.settings, tree=self.treetype,
+						mydbapi=mydbapi, vartree=self.vartree)
+				else:
+					self._scheduler.dblinkEbuildPhase(
+						self, mydbapi, myebuild, "clean")
 		finally:
 			self.unlockdb()
 		return retval

@@ -2790,7 +2790,7 @@ class EbuildProcess(SpawnProcess):
 	def _set_returncode(self, wait_retval):
 		SpawnProcess._set_returncode(self, wait_retval)
 
-		if self.phase != "clean":
+		if self.phase not in ("clean", "cleanrm"):
 			self.returncode = portage._doebuild_exit_status_check_and_log(
 				self.settings, self.phase, self.returncode)
 
