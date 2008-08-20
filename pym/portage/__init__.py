@@ -5527,6 +5527,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if phase_retval == os.EX_OK:
 				_doebuild_exit_status_unlink(
 					mysettings.get("EBUILD_EXIT_STATUS_FILE"))
+				mysettings.pop("EBUILD_PHASE", None)
 				phase_retval = spawn(
 					" ".join(_post_pkg_preinst_cmd(mysettings)),
 					mysettings, debug=debug, free=1, logfile=logfile)
@@ -5548,6 +5549,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if phase_retval == os.EX_OK:
 				_doebuild_exit_status_unlink(
 					mysettings.get("EBUILD_EXIT_STATUS_FILE"))
+				mysettings.pop("EBUILD_PHASE", None)
 				phase_retval = spawn(" ".join(_post_pkg_postinst_cmd(mysettings)),
 					mysettings, debug=debug, free=1, logfile=logfile)
 				phase_retval = exit_status_check(phase_retval)

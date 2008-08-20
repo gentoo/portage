@@ -2202,6 +2202,7 @@ class MiscFunctionsProcess(SpawnProcess):
 
 	def _start(self):
 		settings = self.settings
+		settings.pop("EBUILD_PHASE", None)
 		portage_bin_path = settings["PORTAGE_BIN_PATH"]
 		misc_sh_binary = os.path.join(portage_bin_path,
 			os.path.basename(portage.const.MISC_SH_BINARY))
