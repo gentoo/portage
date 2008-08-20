@@ -13437,7 +13437,7 @@ def emerge_main():
 				(eclasses_overridden[eclass_name], eclass_name),
 				noiselevel=-1)
 		writemsg(prefix + "\n", noiselevel=-1)
-		msg = "It is best to avoid overridding eclasses from PORTDIR " + \
+		msg = "It is best to avoid overriding eclasses from PORTDIR " + \
 		"because it will trigger invalidation of cached ebuild metadata " + \
 		"that is distributed with the portage tree. If you must " + \
 		"override eclasses from PORTDIR then you are advised to add " + \
