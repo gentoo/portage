@@ -14,6 +14,7 @@ try:
 	import sys
 	import copy
 	import errno
+	import logging
 	import os
 	import re
 	import shutil
@@ -997,6 +998,7 @@ class config(object):
 		"EMERGE_WARNING_DELAY", "FETCHCOMMAND", "FETCHCOMMAND_FTP",
 		"FETCHCOMMAND_HTTP", "FETCHCOMMAND_SFTP",
 		"GENTOO_MIRRORS", "NOCONFMEM", "O",
+		"PORTAGE_BACKGROUND",
 		"PORTAGE_BINHOST_CHUNKSIZE", "PORTAGE_CALLER",
 		"PORTAGE_ECLASS_WARNING_ENABLE", "PORTAGE_ELOG_CLASSES",
 		"PORTAGE_ELOG_MAILFROM", "PORTAGE_ELOG_MAILSUBJECT",
@@ -4854,6 +4856,37 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 		writemsg("File Not Found: '%s'\n" % str(e), noiselevel=-1)
 		return 1
 
+	_prepare_workdir(mysettings)
+	_prepare_features_dirs(mysettings)
+
+def _adjust_perms_msg(settings, msg):
+
+	def write(msg):
+		writemsg(msg, noiselevel=-1)
+
+	background = settings.get("PORTAGE_BACKGROUND") == "1"
+	log_path = settings.get("PORTAGE_LOG_FILE")
+	log_file = None
+
+	if background and log_path is not None:
+		try:
+			log_file = open(log_path, 'a')
+		except IOError:
+			def write(msg):
+				pass
+		else:
+			def write(msg):
+				log_file.write(msg)
+				log_file.flush()
+
+	try:
+		write(msg)
+	finally:
+		if log_file is not None:
+			log_file.close()
+
+def _prepare_features_dirs(mysettings):
+
 	features_dirs = {
 		"ccache":{
 			"basedir_var":"CCACHE_DIR",
@@ -4912,16 +4945,18 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 									not dirmode == (stat.S_IMODE(subdir_st.st_mode) & dirmode))):
 									droppriv_fix = True
 									break
+
 					if droppriv_fix:
-						writemsg(colorize("WARN", " * ") + \
-							 "Adjusting permissions " + \
-							 "for FEATURES=userpriv: '%s'\n" % mydir,
-							noiselevel=-1)
+						_adjust_perms_msg(mysettings,
+							colorize("WARN", " * ") + \
+							"Adjusting permissions " + \
+							"for FEATURES=userpriv: '%s'\n" % mydir)
 					elif modified:
-						writemsg(colorize("WARN", " * ") + \
-							 "Adjusting permissions " + \
-							 "for FEATURES=%s: '%s'\n" % (myfeature, mydir),
-							noiselevel=-1)
+						_adjust_perms_msg(mysettings,
+							colorize("WARN", " * ") + \
+							"Adjusting permissions " + \
+							"for FEATURES=%s: '%s'\n" % (myfeature, mydir))
+
 					if modified or kwargs["always_recurse"] or droppriv_fix:
 						def onerror(e):
 							raise	# The feature is disabled if a single error
@@ -4941,6 +4976,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 					noiselevel=-1)
 				time.sleep(5)
 
+def _prepare_workdir(mysettings):
 	workdir_mode = 0700
 	try:
 		mode = mysettings["PORTAGE_WORKDIR_MODE"]
@@ -5539,6 +5575,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if phase_retval == os.EX_OK:
 				_doebuild_exit_status_unlink(
 					mysettings.get("EBUILD_EXIT_STATUS_FILE"))
+				mysettings.pop("EBUILD_PHASE", None)
 				phase_retval = spawn(
 					" ".join(_post_pkg_preinst_cmd(mysettings)),
 					mysettings, debug=debug, free=1, logfile=logfile)
@@ -5560,6 +5597,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if phase_retval == os.EX_OK:
 				_doebuild_exit_status_unlink(
 					mysettings.get("EBUILD_EXIT_STATUS_FILE"))
+				mysettings.pop("EBUILD_PHASE", None)
 				phase_retval = spawn(" ".join(_post_pkg_postinst_cmd(mysettings)),
 					mysettings, debug=debug, free=1, logfile=logfile)
 				phase_retval = exit_status_check(phase_retval)
@@ -6495,12 +6533,14 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 	"Reduces the deplist to ones and zeros"
 	deplist=mydeplist[:]
-	for mypos in xrange(len(deplist)):
+	for mypos, token in enumerate(deplist):
 		if isinstance(deplist[mypos], list):
 			#recurse
 			deplist[mypos]=dep_wordreduce(deplist[mypos],mysettings,mydbapi,mode,use_cache=use_cache)
 		elif deplist[mypos]=="||":
 			pass
+		elif token[:1] == "!":
+			deplist[mypos] = False
 		else:
 			mykey = dep_getkey(deplist[mypos])
 			if mysettings and mykey in mysettings.pprovideddict and \

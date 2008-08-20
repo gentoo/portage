@@ -2229,6 +2229,7 @@ class MiscFunctionsProcess(SpawnProcess):
 
 	def _start(self):
 		settings = self.settings
+		settings.pop("EBUILD_PHASE", None)
 		portage_bin_path = settings["PORTAGE_BIN_PATH"]
 		misc_sh_binary = os.path.join(portage_bin_path,
 			os.path.basename(portage.const.MISC_SH_BINARY))
@@ -2817,7 +2818,7 @@ class EbuildProcess(SpawnProcess):
 	def _set_returncode(self, wait_retval):
 		SpawnProcess._set_returncode(self, wait_retval)
 
-		if self.phase != "clean":
+		if self.phase not in ("clean", "cleanrm"):
 			self.returncode = portage._doebuild_exit_status_check_and_log(
 				self.settings, self.phase, self.returncode)
 
@@ -7574,8 +7575,15 @@ class depgraph(object):
 				return
 		root_config = self.roots[self.target_root]
 		world_set = root_config.sets["world"]
-		world_set.lock()
-		world_set.load() # maybe it's changed on disk
+
+		world_locked = False
+		if hasattr(world_set, "lock"):
+			world_set.lock()
+			world_locked = True
+
+		if hasattr(world_set, "load"):
+			world_set.load() # maybe it's changed on disk
+
 		args_set = self._sets["args"]
 		portdb = self.trees[self.target_root]["porttree"].dbapi
 		added_favorites = set()
@@ -7611,7 +7619,9 @@ class depgraph(object):
 				colorize("INFORM", str(a))
 		if all_added:
 			world_set.update(all_added)
-		world_set.unlock()
+
+		if world_locked:
+			world_set.unlock()
 
 	def loadResumeCommand(self, resume_data, skip_masked=False):
 		"""
@@ -8375,7 +8385,25 @@ class PollScheduler(object):
 				not self._poll_event_handlers:
 				raise StopIteration(
 					"timeout is None and there are no poll() event handlers")
-		self._poll_event_queue.extend(self._poll_obj.poll(timeout))
+
+		# The following error is known to occur with Linux kernel versions
+		# less than 2.6.24:
+		#
+		#   select.error: (4, 'Interrupted system call')
+		#
+		# This error has been observed after a SIGSTOP, followed by SIGCONT.
+		# Treat it similar to EAGAIN if timeout is None, otherwise just return
+		# without any events.
+		while True:
+			try:
+				self._poll_event_queue.extend(self._poll_obj.poll(timeout))
+				break
+			except select.error, e:
+				writemsg_level("\n!!! select error: %s\n" % (e,),
+					level=logging.ERROR, noiselevel=-1)
+				del e
+				if timeout is not None:
+					break
 
 	def _next_poll_event(self, timeout=None):
 		"""
@@ -8606,6 +8634,7 @@ class JobStatusDisplay(object):
 		object.__setattr__(self, "_changed", False)
 		object.__setattr__(self, "_displayed", False)
 		object.__setattr__(self, "_last_display_time", 0)
+		object.__setattr__(self, "width", 80)
 		self.reset()
 
 		isatty = hasattr(out, "isatty") and out.isatty()
@@ -8710,11 +8739,21 @@ class JobStatusDisplay(object):
 		self._changed = True
 		self.display()
 
-	def _load_avg_str(self, digits=2):
+	def _load_avg_str(self):
 		try:
 			avg = os.getloadavg()
 		except OSError, e:
 			return str(e)
+
+		max_avg = max(avg)
+
+		if max_avg < 10:
+			digits = 2
+		elif max_avg < 100:
+			digits = 1
+		else:
+			digits = 0
+
 		return ", ".join(("%%.%df" % digits ) % x for x in avg)
 
 	def display(self):
@@ -8788,8 +8827,18 @@ class JobStatusDisplay(object):
 		f.add_literal_data("Load avg: ")
 		f.add_literal_data(load_avg_str)
 
-		self._update(color_output.getvalue())
-		xtermTitle(" ".join(plain_output.getvalue().split()))
+		# Truncate to fit width, to avoid making the terminal scroll if the
+		# line overflows (happens when the load average is large).
+		plain_output = plain_output.getvalue()
+		if self._isatty and len(plain_output) > self.width:
+			# Use plain_output here since it's easier to truncate
+			# properly than the color output which contains console
+			# color codes.
+			self._update(plain_output[:self.width])
+		else:
+			self._update(color_output.getvalue())
+
+		xtermTitle(" ".join(plain_output.split()))
 
 class Scheduler(PollScheduler):
 
@@ -8864,6 +8913,21 @@ class Scheduler(PollScheduler):
 		for k in self._binpkg_opts.__slots__:
 			setattr(self._binpkg_opts, k, "--" + k.replace("_", "-") in myopts)
 
+		self.curval = 0
+		self._logger = self._emerge_log_class()
+		self._task_queues = self._task_queues_class()
+		for k in self._task_queues.allowed_keys:
+			setattr(self._task_queues, k,
+				SequentialTaskQueue())
+		self._status_display = JobStatusDisplay()
+		self._max_load = myopts.get("--load-average")
+		max_jobs = myopts.get("--jobs")
+		if max_jobs is None:
+			max_jobs = 1
+		self._set_max_jobs(max_jobs)
+		background = self._background_mode()
+		self._background = background
+
 		# The root where the currently running
 		# portage instance is installed.
 		self._running_root = trees["/"]["root_config"]
@@ -8874,12 +8938,18 @@ class Scheduler(PollScheduler):
 		self._config_pool = {}
 		self._blocker_db = {}
 		for root in trees:
+			root_config = trees[root]["root_config"]
+			if background:
+				root_config.settings.unlock()
+				root_config.settings["PORTAGE_BACKGROUND"] = "1"
+				root_config.settings.backup_changes("PORTAGE_BACKGROUND")
+				root_config.settings.lock()
+
 			self.pkgsettings[root] = portage.config(
 				clone=trees[root]["vartree"].settings)
 			self._config_pool[root] = []
 			self._blocker_db[root] = BlockerDB(trees[root]["root_config"])
-		self.curval = 0
-		self._logger = self._emerge_log_class()
+
 		fetch_iface = self._fetch_iface_class(log_file=self._fetch_log,
 			schedule=self._schedule_fetch)
 		self._sched_iface = self._iface_class(
@@ -8893,16 +8963,9 @@ class Scheduler(PollScheduler):
 			scheduleYield=self._schedule_yield,
 			unregister=self._unregister)
 
-		self._task_queues = self._task_queues_class()
-		for k in self._task_queues.allowed_keys:
-			setattr(self._task_queues, k,
-				SequentialTaskQueue())
-
 		self._prefetchers = weakref.WeakValueDictionary()
 		self._pkg_queue = []
 		self._completed_tasks = set()
-
-		self._status_display = JobStatusDisplay()
 
 		self._failed_pkgs = []
 		self._failed_pkgs_all = []
@@ -8914,15 +8977,6 @@ class Scheduler(PollScheduler):
 		self._pkg_count = self._pkg_count_class(
 			curval=0, maxval=merge_count)
 		self._status_display.maxval = self._pkg_count.maxval
-
-		max_jobs = myopts.get("--jobs")
-		if max_jobs is None:
-			max_jobs = 1
-		self._set_max_jobs(max_jobs)
-		background = self._background_mode()
-		self._background = background
-
-		self._max_load = myopts.get("--load-average")
 
 		# The load average takes some time to respond when new
 		# jobs are added, so we need to limit the rate of adding
@@ -10069,18 +10123,29 @@ class Scheduler(PollScheduler):
 		pkg_count = self._pkg_count
 		root_config = pkg.root_config
 		world_set = root_config.sets["world"]
-		world_set.lock()
+		world_locked = False
+		if hasattr(world_set, "lock"):
+			world_set.lock()
+			world_locked = True
+
 		try:
-			world_set.load() # maybe it's changed on disk
+			if hasattr(world_set, "load"):
+				world_set.load() # maybe it's changed on disk
+
 			atom = create_world_atom(pkg, args_set, root_config)
 			if atom:
-				self._status_msg(('Recording %s in "world" ' + \
-					'favorites file...') % atom)
-				logger.log(" === (%s of %s) Updating world file (%s)" % \
-					(pkg_count.curval, pkg_count.maxval, pkg.cpv))
-				world_set.add(atom)
+				if hasattr(world_set, "add"):
+					self._status_msg(('Recording %s in "world" ' + \
+						'favorites file...') % atom)
+					logger.log(" === (%s of %s) Updating world file (%s)" % \
+						(pkg_count.curval, pkg_count.maxval, pkg.cpv))
+					world_set.add(atom)
+				else:
+					writemsg_level('\n!!! Unable to record %s in "world"\n' % \
+						(atom,), level=logging.WARN, noiselevel=-1)
 		finally:
-			world_set.unlock()
+			if world_locked:
+				world_set.unlock()
 
 	def _pkg(self, cpv, type_name, root_config, installed=False):
 		"""
@@ -10672,10 +10737,10 @@ def unmerge(root_config, myopts, unmerge_action,
 					raise UninstallFailure(retval)
 				sys.exit(retval)
 			else:
-				if clean_world:
+				if clean_world and hasattr(sets["world"], "cleanPackage"):
 					sets["world"].cleanPackage(vartree.dbapi, y)
 				emergelog(xterm_titles, " >>> unmerge success: "+y)
-	if clean_world:
+	if clean_world and hasattr(sets["world"], "remove"):
 		for s in root_config.setconfig.active:
 			sets["world"].remove(SETPREFIX+s)
 	return 1
@@ -13463,7 +13528,7 @@ def emerge_main():
 				(eclasses_overridden[eclass_name], eclass_name),
 				noiselevel=-1)
 		writemsg(prefix + "\n", noiselevel=-1)
-		msg = "It is best to avoid overridding eclasses from PORTDIR " + \
+		msg = "It is best to avoid overriding eclasses from PORTDIR " + \
 		"because it will trigger invalidation of cached ebuild metadata " + \
 		"that is distributed with the portage tree. If you must " + \
 		"override eclasses from PORTDIR then you are advised to add " + \

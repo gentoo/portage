@@ -1,5 +1,13 @@
 <section id='package-ebuild-eapi-1'>
 	<title>EAPI 1</title>
+	<section id='package-ebuild-eapi-1-iuse-defaults'>
+		<title>IUSE defaults</title>
+		<para>
+		A + or - prefix added to the beginning of a flag in IUSE creates
+		a default USE setting that respectively enables or disables the
+		corresponding USE flag.
+		</para>
+	</section>
 	<section id='package-ebuild-eapi-1-phases'>
 		<title>Phases</title>
 		<section id='package-ebuild-eapi-1-phases-default-src-compile'>
