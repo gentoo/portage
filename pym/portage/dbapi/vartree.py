@@ -478,12 +478,19 @@ class LinkageMapMachO(object):
 			otool = EPREFIX+"/usr/bin/otool"
 			for items in self._dbapi.plib_registry.getPreservedLibs().values():
 				for x in items:
-					proc = subprocess.Popen([otool, "-DX", x.lstrip(".")],
-							stdout=subprocess.PIPE)
-					install_name = proc.communicate()[0].split("\n")[0]
-					proc = subprocess.Popen([otool, "-LX", x.lstrip(".")],
-							stdout=subprocess.PIPE)
-					output = [l.lstrip() for l in proc.communicate()[0].split("\n")]
+					try:
+						proc = subprocess.Popen([otool, "-DX", x.lstrip(".")],
+								stdout=subprocess.PIPE)
+						install_name = proc.communicate()[0].split("\n")[0]
+						proc = subprocess.Popen([otool, "-LX", x.lstrip(".")],
+								stdout=subprocess.PIPE)
+						output = [l.lstrip() for l in proc.communicate()[0].split("\n")]
+					except OSError:
+						# if otool can't be found (like in an odcctools
+						# upgrade -> binutils-config needs to update
+						# symlinks) just ignore it, don't crash
+						continue
+
 					n = ""
 					for l in output:
 						if l == '':
