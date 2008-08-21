@@ -5399,7 +5399,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				writemsg("Can not execute files in %s\n" % checkdir + \
 					"Likely cause is that you've mounted it with one of the\n" + \
 					"following mount options: 'noexec', 'user', 'users'\n\n" + \
-					"Please make sure that portage can execute files in this direxctory.\n" \
+					"Please make sure that portage can execute files in this directory.\n" \
 					, noiselevel=-1)
 				fd.close()
 				return 1
