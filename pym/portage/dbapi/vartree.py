@@ -1638,8 +1638,8 @@ class dblink(object):
 
 		self.myroot=myroot
 		protect_obj = ConfigProtect(myroot,
-			mysettings.get("CONFIG_PROTECT","").split(),
-			mysettings.get("CONFIG_PROTECT_MASK","").split())
+			shlex.split(mysettings.get("CONFIG_PROTECT", "")),
+			shlex.split(mysettings.get("CONFIG_PROTECT_MASK", "")))
 		self.updateprotect = protect_obj.updateprotect
 		self.isprotected = protect_obj.isprotected
 		self._installed_instance = None
