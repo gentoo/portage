@@ -2592,8 +2592,9 @@ class dblink(object):
 				if f[0] != "/":
 					f="/"+f
 				isowned = False
+				full_path = os.path.join(destroot, f.lstrip(os.path.sep))
 				for ver in [self] + mypkglist:
-					if (ver.isowner(f, destroot) or ver.isprotected(f)):
+					if (ver.isowner(f, destroot) or ver.isprotected(full_path)):
 						isowned = True
 						break
 				if not isowned:
