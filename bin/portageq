@@ -214,6 +214,53 @@ def owners(argv):
 
 owners.uses_root = True
 
+def is_protected(argv):
+	"""<root> <filename>
+	Given a single filename, return code 0 if it's protected, 1 otherwise.
+	The filename must begin with <root>.
+	"""
+	if len(argv) != 2:
+		sys.stderr.write("ERROR: expeced 2 parameters, got %d!\n" % len(argv))
+		sys.stderr.flush()
+		return 2
+
+	root, filename = argv
+
+	err = sys.stderr
+	cwd = None
+	try:
+		cwd = os.getcwd()
+	except OSError:
+		pass
+
+	f = portage.normalize_path(filename)
+	if not f.startswith(os.path.sep):
+		if cwd is None:
+			err.write("ERROR: cwd does not exist!\n")
+			err.flush()
+			return 2
+		f = os.path.join(cwd, f)
+		f = portage.normalize_path(f)
+
+	if not f.startswith(root):
+		err.write("ERROR: file paths must begin with <root>!\n")
+		err.flush()
+		return 2
+
+	import shlex
+	from portage.util import ConfigProtect
+
+	settings = portage.settings
+	protect = shlex.split(settings.get("CONFIG_PROTECT", ""))
+	protect_mask = shlex.split(settings.get("CONFIG_PROTECT_MASK", ""))
+	protect_obj = ConfigProtect(root, protect, protect_mask)
+
+	if protect_obj.isprotected(f):
+		return 0
+	return 1
+
+is_protected.uses_root = True
+
 def best_visible(argv):
 	"""<root> [<category/package>]+
 	Returns category/package-version (without .ebuild).
