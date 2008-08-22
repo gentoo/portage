@@ -439,7 +439,10 @@ class LinkageMap(object):
 
 		In some cases, not all valid libraries are returned.  This may occur when
 		an soname symlink referencing a library is in an object's runpath while
-		the actual library is not.
+		the actual library is not.  We should consider cataloging symlinks within
+		LinkageMap as this would avoid those cases and would be a better model of
+		library dependencies (since the dynamic linker actually searches for
+		files named with the soname in the runpaths).
 
 		@param obj: absolute path to an object
 		@type obj: string (example: '/usr/bin/bar')
