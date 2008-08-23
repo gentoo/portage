@@ -2588,7 +2588,7 @@ class EbuildExecuter(CompositeTask):
 
 	__slots__ = ("pkg", "scheduler", "settings") + ("_tree",)
 
-	_phases = ("configure", "compile", "test", "install")
+	_phases = ("prepare", "configure", "compile", "test", "install")
 
 	_live_eclasses = frozenset([
 		"cvs",
@@ -2659,8 +2659,12 @@ class EbuildExecuter(CompositeTask):
 
 		pkg = self.pkg
 		phases = self._phases
-		if pkg.metadata["EAPI"] in ("0", "1", "2_pre1"):
-			# skip src_configure
+		eapi = pkg.metadata["EAPI"]
+		if eapi in ("0", "1", "2_pre1"):
+			# skip src_prepare and src_configure
+			phases = phases[2:]
+		elif eapi in ("2_pre2",):
+			# skip src_prepare
 			phases = phases[1:]
 
 		for phase in phases:

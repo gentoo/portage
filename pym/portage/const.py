@@ -55,7 +55,7 @@ INCREMENTALS = ["USE", "USE_EXPAND", "USE_EXPAND_HIDDEN", "FEATURES",
 	"ACCEPT_KEYWORDS", "ACCEPT_LICENSE",
 	"CONFIG_PROTECT_MASK", "CONFIG_PROTECT",
 	"PRELINK_PATH", "PRELINK_PATH_MASK", "PROFILE_ONLY_VARIABLES"]
-EBUILD_PHASES           = ["setup", "unpack", "configure",
+EBUILD_PHASES           = ["setup", "unpack", "prepare", "configure",
                           "compile", "test", "install",
                           "package", "preinst", "postinst","prerm", "postrm",
                           "nofetch", "config", "info", "other"]
