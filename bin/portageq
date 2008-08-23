@@ -310,6 +310,7 @@ def filter_protected(argv):
 		if protect_obj.isprotected(f):
 			protected += 1
 			out.write("%s\n" % filename)
+	out.flush()
 
 	if errors:
 		return 2
