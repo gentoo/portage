@@ -261,6 +261,63 @@ def is_protected(argv):
 
 is_protected.uses_root = True
 
+def filter_protected(argv):
+	"""<root>
+	Read filenames from stdin and write them to stdout if they are protected.
+	All filenames are delimited by \\n and must begin with <root>.
+	"""
+	if len(argv) != 1:
+		sys.stderr.write("ERROR: expeced 1 parameters, got %d!\n" % len(argv))
+		sys.stderr.flush()
+		return 2
+
+	root, = argv
+	out = sys.stdout
+	err = sys.stderr
+	cwd = None
+	try:
+		cwd = os.getcwd()
+	except OSError:
+		pass
+
+	import shlex
+	from portage.util import ConfigProtect
+
+	settings = portage.settings
+	protect = shlex.split(settings.get("CONFIG_PROTECT", ""))
+	protect_mask = shlex.split(settings.get("CONFIG_PROTECT_MASK", ""))
+	protect_obj = ConfigProtect(root, protect, protect_mask)
+
+	protected = 0
+	errors = 0
+
+	for line in sys.stdin:
+		filename = line.rstrip("\n")
+		f = portage.normalize_path(filename)
+		if not f.startswith(os.path.sep):
+			if cwd is None:
+				err.write("ERROR: cwd does not exist!\n")
+				err.flush()
+				errors += 1
+			f = os.path.join(cwd, f)
+			f = portage.normalize_path(f)
+
+		if not f.startswith(root):
+			err.write("ERROR: file paths must begin with <root>!\n")
+			err.flush()
+			errors += 1
+
+		if protect_obj.isprotected(f):
+			protected += 1
+			out.write("%s\n" % filename)
+
+	if errors:
+		return 2
+
+	return 0
+
+filter_protected.uses_root = True
+
 def best_visible(argv):
 	"""<root> [<category/package>]+
 	Returns category/package-version (without .ebuild).
