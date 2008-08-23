@@ -299,6 +299,7 @@ def filter_protected(argv):
 				err.write("ERROR: cwd does not exist!\n")
 				err.flush()
 				errors += 1
+				continue
 			f = os.path.join(cwd, f)
 			f = portage.normalize_path(f)
 
@@ -306,6 +307,7 @@ def filter_protected(argv):
 			err.write("ERROR: file paths must begin with <root>!\n")
 			err.flush()
 			errors += 1
+			continue
 
 		if protect_obj.isprotected(f):
 			protected += 1
