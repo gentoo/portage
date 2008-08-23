@@ -139,12 +139,70 @@ class PreservedLibsRegistry(object):
 		return rValue
 
 class LinkageMap(object):
+
+	"""Models dynamic linker dependencies."""
+
 	def __init__(self, vardbapi):
 		self._dbapi = vardbapi
 		self._libs = {}
 		self._obj_properties = {}
 		self._defpath = set(getlibpaths())
 		self._obj_key_cache = {}
+
+	class _ObjectKey(object):
+
+		"""Helper class used as _obj_properties keys for objects."""
+
+		def __init__(self, object):
+			"""
+			This takes a path to an object.
+
+			@param object: path to a file
+			@type object: string (example: '/usr/bin/bar')
+
+			"""
+			self._key = self._generate_object_key(object)
+
+		def __hash__(self):
+			return hash(self._key)
+
+		def __eq__(self, other):
+			return self._key == other._key
+
+		def _generate_object_key(self, object):
+			"""
+			Generate object key for a given object.
+
+			@param object: path to a file
+			@type object: string (example: '/usr/bin/bar')
+			@rtype: 2-tuple of types (long, int) if object exists. string if
+				object does not exist.
+			@return:
+				1. 2-tuple of object's inode and device from a stat call, if object
+					exists.
+				2. realpath of object if object does not exist.
+
+			"""
+			try:
+				object_stat = os.stat(object)
+			except OSError:
+				# Use the realpath as the key if the file does not exists on the
+				# filesystem.
+				return os.path.realpath(object)
+			# Return a tuple of the device and inode.
+			return (object_stat.st_dev, object_stat.st_ino)
+
+		def file_exists(self):
+			"""
+			Determine if the file for this key exists on the filesystem.
+
+			@rtype: Boolean
+			@return:
+				1. True if the file exists.
+				2. False if the file does not exist or is a broken symlink.
+
+			"""
+			return isinstance(self._key, tuple)
 
 	def rebuild(self, include_file=None):
 		libs = {}
@@ -179,7 +237,7 @@ class LinkageMap(object):
 				continue
 			arch = fields[0]
 			obj = fields[1]
-			obj_key = self._generateObjKey(obj)
+			obj_key = self._ObjectKey(obj)
 			soname = fields[2]
 			path = set([normalize_path(x)
 				for x in filter(None, fields[3].replace(
@@ -206,27 +264,6 @@ class LinkageMap(object):
 		self._obj_properties = obj_properties
 		self._obj_key_cache = obj_key_cache
 
-	def _generateObjKey(self, obj):
-		"""
-		Generate obj key for a given object.
-
-		@param obj: path to an existing file
-		@type obj: string (example: '/usr/bin/bar')
-		@rtype: 2-tuple of longs if obj exists. string if obj does not exist.
-		@return:
-			1. 2-tuple of obj's inode and device from a stat call, if obj exists.
-			2. realpath of object if obj does not exist.
-
-		"""
-		try:
-			obj_st = os.stat(obj)
-		except OSError:
-			# Use the realpath as the key if the file does not exists on the
-			# filesystem.
-			return os.path.realpath(obj)
-		# Return a tuple of the device and inode.
-		return (obj_st.st_dev, obj_st.st_ino)
-
 	def listBrokenBinaries(self, debug=False):
 		"""
 		Find binaries and their needed sonames, which have no providers.
@@ -239,13 +276,13 @@ class LinkageMap(object):
 			object that have no corresponding libraries to fulfill the dependency.
 
 		"""
-		class LibraryCache(object):
+		class _LibraryCache(object):
 
 			"""
 			Caches properties associated with paths.
 
-			The purpose of this class is to prevent multiple calls of
-			_generateObjKey on the same paths.
+			The purpose of this class is to prevent multiple instances of
+			_ObjectKey for the same paths.
 
 			"""
 
@@ -274,9 +311,9 @@ class LinkageMap(object):
 					if obj in self._obj_key_cache:
 						obj_key = self._obj_key_cache.get(obj)
 					else:
-						obj_key = self._generateObjKey(obj)
+						obj_key = self._ObjectKey(obj)
 					# Check that the library exists on the filesystem.
-					if isinstance(obj_key, tuple):
+					if obj_key.file_exists():
 						# Get the arch and soname from LinkageMap._obj_properties if
 						# it exists. Otherwise, None.
 						arch, _, _, soname, _ = \
@@ -288,7 +325,7 @@ class LinkageMap(object):
 								(None, None, obj_key, False))
 
 		rValue = {}
-		cache = LibraryCache()
+		cache = _LibraryCache()
 		providers = self.listProviders()
 
 		# Iterate over all obj_keys and their providers.
@@ -372,7 +409,7 @@ class LinkageMap(object):
 			self.rebuild()
 		# Iterate over all object keys within LinkageMap.
 		for obj_key in self._obj_properties:
-			rValue.setdefault(obj_key, self.findProviders(obj_key=obj_key))
+			rValue.setdefault(obj_key, self.findProviders(obj_key))
 		return rValue
 
 	def isMasterLink(self, obj):
@@ -388,7 +425,7 @@ class LinkageMap(object):
 
 		"""
 		basename = os.path.basename(obj)
-		obj_key = self._generateObjKey(obj)
+		obj_key = self._ObjectKey(obj)
 		if obj_key not in self._obj_properties:
 			raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 		soname = self._obj_properties[obj_key][3]
@@ -429,13 +466,11 @@ class LinkageMap(object):
 			raise KeyError("%s not in object list" % obj)
 		return self._obj_properties[self._obj_key_cache[obj]][3]
 
-	def findProviders(self, obj=None, obj_key=None):
+	def findProviders(self, obj):
 		"""
 		Find providers for an object or object key.
 
-		This method should be called with either an obj or obj_key.  If called
-		with both, the obj_key is ignored.  If called with neither, KeyError is
-		raised as if an invalid obj was passed.
+		This method may be called with a key from _obj_properties.
 
 		In some cases, not all valid libraries are returned.  This may occur when
 		an soname symlink referencing a library is in an object's runpath while
@@ -444,10 +479,8 @@ class LinkageMap(object):
 		library dependencies (since the dynamic linker actually searches for
 		files named with the soname in the runpaths).
 
-		@param obj: absolute path to an object
-		@type obj: string (example: '/usr/bin/bar')
-		@param obj_key: key from LinkageMap._generateObjKey
-		@type obj_key: 2-tuple of longs or string
+		@param obj: absolute path to an object or a key from _obj_properties
+		@type obj: string (example: '/usr/bin/bar') or _ObjectKey
 		@rtype: dict (example: {'libbar.so': set(['/lib/libbar.so.1.5'])})
 		@return: The return value is a soname -> set-of-library-paths, where
 		set-of-library-paths satisfy soname.
@@ -459,14 +492,16 @@ class LinkageMap(object):
 			self.rebuild()
 
 		# Determine the obj_key from the arguments.
-		if obj is not None:
+		if isinstance(obj, self._ObjectKey):
+			obj_key = obj
+			if obj_key not in self._obj_properties:
+				raise KeyError("%s not in object list" % obj_key)
+		else:
 			obj_key = self._obj_key_cache.get(obj)
 			if obj_key not in self._obj_properties:
-				obj_key = self._generateObjKey(obj)
+				obj_key = self._ObjectKey(obj)
 				if obj_key not in self._obj_properties:
 					raise KeyError("%s (%s) not in object list" % (obj_key, obj))
-		elif obj_key not in self._obj_properties:
-			raise KeyError("%s not in object list" % obj_key)
 
 		arch, needed, path, _, _ = self._obj_properties[obj_key]
 		path = path.union(self._defpath)
@@ -483,23 +518,22 @@ class LinkageMap(object):
 						rValue[soname].add(provider)
 		return rValue
 
-	def findConsumers(self, obj=None, obj_key=None):
+	def findConsumers(self, obj):
 		"""
 		Find consumers of an object or object key.
 
-		This method should be called with either an obj or obj_key.  If called
-		with both, the obj_key is ignored.  If called with neither, KeyError is
-		raised as if an invalid obj was passed.
+		This method may be called with a key from _obj_properties.  If this
+		method is going to be called with an object key, to avoid not catching
+		shadowed libraries, do not pass new _ObjectKey instances to this method.
+		Instead pass the obj as a string.
 
 		In some cases, not all consumers are returned.  This may occur when
 		an soname symlink referencing a library is in an object's runpath while
 		the actual library is not.
 
-		@param obj: absolute path to an object
-		@type obj: string (example: '/usr/bin/bar')
-		@param obj_key: key from LinkageMap._generateObjKey
-		@type obj_key: 2-tuple of longs or string
-		@rtype: set of strings (example: )
+		@param obj: absolute path to an object or a key from _obj_properties
+		@type obj: string (example: '/usr/bin/bar') or _ObjectKey
+		@rtype: set of strings (example: set(['/bin/foo', '/usr/bin/bar']))
 		@return: The return value is a soname -> set-of-library-paths, where
 		set-of-library-paths satisfy soname.
 
@@ -510,17 +544,18 @@ class LinkageMap(object):
 			self.rebuild()
 
 		# Determine the obj_key and the set of objects matching the arguments.
-		if obj is not None:
-			objs = set([obj])
-			obj_key = self._obj_key_cache.get(obj)
-			if obj_key not in self._obj_properties:
-				obj_key = self._generateObjKey(obj)
-				if obj_key not in self._obj_properties:
-					raise KeyError("%s (%s) not in object list" % (obj_key, obj))
-		else:
+		if isinstance(obj, self._ObjectKey):
+			obj_key = obj
 			if obj_key not in self._obj_properties:
 				raise KeyError("%s not in object list" % obj_key)
 			objs = self._obj_properties[obj_key][4]
+		else:
+			objs = set([obj])
+			obj_key = self._obj_key_cache.get(obj)
+			if obj_key not in self._obj_properties:
+				obj_key = self._ObjectKey(obj)
+				if obj_key not in self._obj_properties:
+					raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 
 		# Determine the directory(ies) from the set of objects.
 		objs_dirs = set([os.path.dirname(x) for x in objs])
@@ -529,7 +564,7 @@ class LinkageMap(object):
 		# same soname and the master link points to that
 		# other version, this lib will be shadowed and won't
 		# have any consumers.
-		if obj is not None:
+		if not isinstance(obj, self._ObjectKey):
 			soname = self._obj_properties[obj_key][3]
 			obj_dir = os.path.dirname(obj)
 			master_link = os.path.join(obj_dir, soname)
