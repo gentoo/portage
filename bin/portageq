@@ -220,7 +220,7 @@ def is_protected(argv):
 	The filename must begin with <root>.
 	"""
 	if len(argv) != 2:
-		sys.stderr.write("ERROR: expeced 2 parameters, got %d!\n" % len(argv))
+		sys.stderr.write("ERROR: expected 2 parameters, got %d!\n" % len(argv))
 		sys.stderr.flush()
 		return 2
 
@@ -267,7 +267,7 @@ def filter_protected(argv):
 	All filenames are delimited by \\n and must begin with <root>.
 	"""
 	if len(argv) != 1:
-		sys.stderr.write("ERROR: expeced 1 parameters, got %d!\n" % len(argv))
+		sys.stderr.write("ERROR: expected 1 parameters, got %d!\n" % len(argv))
 		sys.stderr.flush()
 		return 2
 
