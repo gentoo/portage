@@ -7377,7 +7377,7 @@ class depgraph(object):
 			if verboseadd:
 				myprint += " " + verboseadd
 
-			if show_repos:
+			if show_repos and repoadd:
 				myprint += " " + teal("[%s]" % repoadd)
 
 			out.write("%s\n" % (myprint,))
