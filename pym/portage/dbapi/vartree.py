@@ -610,6 +610,8 @@ class LinkageMapMachO(object):
 
 		"""Helper class used as _obj_properties keys for objects."""
 
+		__slots__ = ("__weakref__", "_key")
+
 		def __init__(self, object):
 			"""
 			This takes a path to an object.
@@ -624,7 +626,11 @@ class LinkageMapMachO(object):
 			return hash(self._key)
 
 		def __eq__(self, other):
-			return self._key == other._key
+			if isinstance(other, self.__class__):
+				other_key = other._key
+			else:
+				other_key = other
+			return self._key == other_key
 
 		def _generate_object_key(self, object):
 			"""
