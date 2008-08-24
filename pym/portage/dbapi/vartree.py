@@ -489,6 +489,7 @@ class LinkageMapMachO(object):
 						# if otool can't be found (like in an odcctools
 						# upgrade -> binutils-config needs to update
 						# symlinks) just ignore it, don't crash
+						lines += [x + ";" + x.lstrip(".") + ";\n"]
 						continue
 
 					n = ""
