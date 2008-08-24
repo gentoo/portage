@@ -740,7 +740,6 @@ class LinkageMapMachO(object):
 				libs.setdefault(x, \
 						{"providers": set(), "consumers": set()})
 				libs[x]["consumers"].add(obj_key)
-			obj_properties[obj] = (needed, install_name)
 			obj_key_cache.setdefault(obj, obj_key)
 			# All object paths are added into the obj_properties tuple
 			obj_properties.setdefault(obj_key, \
