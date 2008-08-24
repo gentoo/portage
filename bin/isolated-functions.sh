@@ -532,7 +532,7 @@ save_ebuild_env() {
 
 		if hasq --exclude-init-phases $* ; then
 			unset S _E_DOCDESTTREE_ _E_EXEDESTTREE_
-			unset -f pkg_nofetch src_unpack src_configure \
+			unset -f pkg_nofetch src_unpack src_prepare src_configure \
 			src_compile src_test src_install
 			if [[ -n $PYTHONPATH ]] ; then
 				export PYTHONPATH=${PYTHONPATH/${PORTAGE_PYM_PATH}:}
@@ -558,7 +558,7 @@ save_ebuild_env() {
 		# There's no need to bloat environment.bz2 with internally defined
 		# functions and variables, so filter them out if possible.
 
-		for x in pkg_setup pkg_nofetch src_unpack src_configure \
+		for x in pkg_setup pkg_nofetch src_unpack src_prepare src_configure \
 			src_compile src_test src_install pkg_preinst pkg_postinst \
 			pkg_prerm pkg_postrm ; do
 			unset -f {,_}default_$x {,_}eapi{0,1,2}_$x
@@ -574,8 +574,8 @@ save_ebuild_env() {
 			keepdir unpack strip_duplicate_slashes econf einstall \
 			dyn_setup dyn_unpack dyn_clean into insinto exeinto docinto \
 			insopts diropts exeopts libopts \
-			abort_handler abort_configure abort_compile \
-			abort_test abort_install dyn_configure \
+			abort_handler abort_prepare abort_configure abort_compile \
+			abort_test abort_install dyn_prepare dyn_configure \
 			dyn_compile dyn_test dyn_install \
 			dyn_preinst dyn_help debug-print debug-print-function \
 			debug-print-section inherit EXPORT_FUNCTIONS newdepend newrdepend \

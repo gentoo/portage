@@ -2615,7 +2615,7 @@ class EbuildExecuter(CompositeTask):
 
 	__slots__ = ("pkg", "scheduler", "settings") + ("_tree",)
 
-	_phases = ("configure", "compile", "test", "install")
+	_phases = ("prepare", "configure", "compile", "test", "install")
 
 	_live_eclasses = frozenset([
 		"cvs",
@@ -2686,9 +2686,12 @@ class EbuildExecuter(CompositeTask):
 
 		pkg = self.pkg
 		phases = self._phases
-		EAPIPREFIX
-		if pkg.metadata["EAPI"].replace(EAPIPREFIX, "").strip() in ("0", "1", "2_pre1"):
-			# skip src_configure
+		eapi = pkg.metadata["EAPI"].replace(EAPIPREFIX, "").strip()
+		if eapi in ("0", "1", "2_pre1"):
+			# skip src_prepare and src_configure
+			phases = phases[2:]
+		elif eapi in ("2_pre2",):
+			# skip src_prepare
 			phases = phases[1:]
 
 		for phase in phases:
@@ -6787,7 +6790,6 @@ class depgraph(object):
 				return ret
 
 		repo_display = RepoDisplay(self.roots)
-		show_repos = False
 
 		tree_nodes = []
 		display_list = []
@@ -6938,6 +6940,10 @@ class depgraph(object):
 		# in size display (verbose mode)
 		myfetchlist=[]
 
+		# Use this set to detect when all the "repoadd" strings are "[0]"
+		# and disable the entire repo display in this case.
+		repoadd_set = set()
+
 		for mylist_index in xrange(len(mylist)):
 			x, depth, ordered = mylist[mylist_index]
 			pkg_type = x[0]
@@ -7086,7 +7092,8 @@ class depgraph(object):
 						counters.new += 1
 
 				verboseadd = ""
-				
+				repoadd = None
+
 				if True:
 					# USE flag display
 					forced_flags = set()
@@ -7206,7 +7213,7 @@ class depgraph(object):
 									myfetchlist.append(myfetchfile)
 							if ordered:
 								counters.totalsize += mysize
-						verboseadd+=format_size(mysize)+" "
+						verboseadd += format_size(mysize)
 
 					# overlay verbose
 					# assign index for a previous version in the same slot
@@ -7221,7 +7228,6 @@ class depgraph(object):
 							["repository"])[0]
 
 					# now use the data to generate output
-					repoadd = None
 					if pkg.installed or not has_previous:
 						repoadd = repo_display.repoStr(repo_path_real)
 					else:
@@ -7235,9 +7241,8 @@ class depgraph(object):
 							repoadd = "%s=>%s" % (
 								repo_display.repoStr(repo_path_prev),
 								repo_display.repoStr(repo_path_real))
-					if repoadd and repoadd != "0":
-						show_repos = True
-						verboseadd += teal("[%s]" % repoadd)
+					if repoadd:
+						repoadd_set.add(repoadd)
 
 				xs = [portage.cpv_getkey(pkg_key)] + \
 					list(portage.catpkgsplit(pkg_key)[2:])
@@ -7318,6 +7323,7 @@ class depgraph(object):
 							myprint=myprint+darkblue(" "+xs[1]+xs[2])+" "
 							myprint=myprint+myoldbest
 							myprint=myprint+darkgreen("to "+x[1])
+							verboseadd = None
 						else:
 							if not pkg_merge:
 								myprint = "[%s] %s%s" % \
@@ -7333,21 +7339,21 @@ class depgraph(object):
 							if (oldlp-nc_len(myprint)) > 0:
 								myprint=myprint+" "*(oldlp-nc_len(myprint))
 							myprint=myprint+myoldbest
-							myprint=myprint+darkgreen("to "+x[1])+" "+verboseadd
+							myprint += darkgreen("to " + pkg.root)
 					else:
 						if not pkg_merge:
 							myprint = "[%s] " % pkgprint(pkg_status.ljust(13))
 						else:
 							myprint = "[" + pkg_type + " " + addl + "] "
 						myprint += indent + pkgprint(pkg_key) + " " + \
-							myoldbest + darkgreen("to " + myroot) + " " + \
-							verboseadd
+							myoldbest + darkgreen("to " + myroot)
 				else:
 					if "--columns" in self.myopts:
 						if "--quiet" in self.myopts:
 							myprint=addl+" "+indent+pkgprint(pkg_cp)
 							myprint=myprint+" "+green(xs[1]+xs[2])+" "
 							myprint=myprint+myoldbest
+							verboseadd = None
 						else:
 							if not pkg_merge:
 								myprint = "[%s] %s%s" % \
@@ -7362,16 +7368,19 @@ class depgraph(object):
 							myprint=myprint+green(" ["+xs[1]+xs[2]+"] ")
 							if (oldlp-nc_len(myprint)) > 0:
 								myprint=myprint+(" "*(oldlp-nc_len(myprint)))
-							myprint=myprint+myoldbest+"  "+verboseadd
+							myprint += myoldbest
 					else:
 						if not pkg_merge:
-							myprint = "[%s] %s%s %s %s" % \
+							myprint = "[%s] %s%s %s" % \
 								(pkgprint(pkg_status.ljust(13)),
 								indent, pkgprint(pkg.cpv),
-								myoldbest, verboseadd)
+								myoldbest)
 						else:
-							myprint="["+pkgprint(pkg_type)+" "+addl+"] "+indent+pkgprint(pkg_key)+" "+myoldbest+" "+verboseadd
-				p.append(myprint)
+							myprint = "[%s %s] %s%s %s" % \
+								(pkgprint(pkg_type), addl, indent,
+								pkgprint(pkg.cpv), myoldbest)
+
+				p.append((myprint, verboseadd, repoadd))
 
 				if "--tree" not in self.myopts and \
 					"--quiet" not in self.myopts and \
@@ -7391,8 +7400,24 @@ class depgraph(object):
 							p.append(colorize("WARN", "*** Portage will stop merging at this point and reload itself,"))
 							p.append(colorize("WARN", "    then resume the merge."))
 
+		out = sys.stdout
+		show_repos = repoadd_set != set(["0"])
+
 		for x in p:
-			print x
+			if isinstance(x, basestring):
+				out.write("%s\n" % (x,))
+				continue
+
+			myprint, verboseadd, repoadd = x
+
+			if verboseadd:
+				myprint += " " + verboseadd
+
+			if show_repos:
+				myprint += " " + teal("[%s]" % repoadd)
+
+			out.write("%s\n" % (myprint,))
+
 		for x in blockers:
 			print x
 

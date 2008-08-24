@@ -735,7 +735,7 @@ dyn_clean() {
 	fi
 
 	if ! hasq keepwork $FEATURES; then
-		rm -f "$PORTAGE_BUILDDIR"/.{exit_status,logid,unpacked} \
+		rm -f "$PORTAGE_BUILDDIR"/.{exit_status,logid,unpacked,prepared} \
 			"$PORTAGE_BUILDDIR"/.{configured,compiled,tested,packaged}
 
 		rm -rf "${PORTAGE_BUILDDIR}/build-info"
@@ -841,6 +841,12 @@ abort_handler() {
 	trap SIGINT SIGQUIT
 }
 
+abort_prepare() {
+	abort_handler src_prepare $1
+	rm -f "$PORTAGE_BUILDDIR/.prepared"
+	exit 1
+}
+
 abort_configure() {
 	abort_handler src_configure $1
 	rm -f "$PORTAGE_BUILDDIR/.configured"
@@ -863,6 +869,32 @@ abort_install() {
 	abort_handler "src_install" $1
 	rm -rf "${PORTAGE_BUILDDIR}/image"
 	exit 1
+}
+
+dyn_prepare() {
+
+	if [[ $PORTAGE_BUILDDIR/.prepared -nt $WORKDIR ]] ; then
+		vecho ">>> It appears that '$PF' is already prepared; skipping."
+		vecho ">>> Remove '$PORTAGE_BUILDDIR/.prepared' to force prepare."
+		return 0
+	fi
+
+	local srcdir
+	if [[ -d $S ]] ; then
+		srcdir=$S
+	else
+		srcdir=$WORKDIR
+	fi
+	cd "$srcdir"
+
+	trap abort_prepare SIGINT SIGQUIT
+
+	ebuild_phase pre_src_prepare
+	ebuild_phase src_prepare
+	touch "$PORTAGE_BUILDDIR"/.prepared
+	ebuild_phase post_src_prepare
+
+	trap SIGINT SIGQUIT
 }
 
 dyn_configure() {
@@ -1048,7 +1080,8 @@ dyn_help() {
 	echo "  fetch       : download source archive(s) and patches"
 	echo "  digest      : create a manifest file for the package"
 	echo "  manifest    : create a manifest file for the package"
-	echo "  unpack      : unpack/patch sources (auto-fetch if needed)"
+	echo "  unpack      : unpack sources (auto-dependencies if needed)"
+	echo "  prepare     : prepare sources (auto-dependencies if needed)"
 	echo "  configure   : configure sources (auto-fetch/unpack if needed)"
 	echo "  compile     : compile sources (auto-fetch/unpack/configure if needed)"
 	echo "  test        : test package (auto-fetch/unpack/configure/compile if needed)"
@@ -1397,7 +1430,7 @@ _ebuild_phase_funcs() {
 	[ $# -ne 2 ] && die "expected exactly 2 args, got $#: $*"
 	local eapi=$1
 	local phase_func=$2
-	local default_phases="pkg_nofetch src_unpack src_configure
+	local default_phases="pkg_nofetch src_unpack src_prepare src_configure
 		src_compile src_install src_test"
 	local x y default_func=""
 
@@ -1450,6 +1483,7 @@ _ebuild_phase_funcs() {
 
 				eapi0_pkg_nofetch   () { _eapi0_pkg_nofetch   "$@" ; }
 				eapi0_src_unpack    () { _eapi0_src_unpack    "$@" ; }
+				eapi0_src_prepare   () { die "$FUNCNAME is not supported" ; }
 				eapi0_src_configure () { die "$FUNCNAME is not supported" ; }
 				eapi0_src_compile   () { _eapi0_src_compile   "$@" ; }
 				eapi0_src_test      () { _eapi0_src_test      "$@" ; }
@@ -1457,6 +1491,7 @@ _ebuild_phase_funcs() {
 
 				eapi1_pkg_nofetch   () { _eapi0_pkg_nofetch   "$@" ; }
 				eapi1_src_unpack    () { _eapi0_src_unpack    "$@" ; }
+				eapi1_src_prepare   () { die "$FUNCNAME is not supported" ; }
 				eapi1_src_configure () { die "$FUNCNAME is not supported" ; }
 				eapi1_src_compile   () { _eapi1_src_compile   "$@" ; }
 				eapi1_src_test      () { _eapi0_src_test      "$@" ; }
@@ -1464,6 +1499,7 @@ _ebuild_phase_funcs() {
 
 				eapi2_pkg_nofetch   () { _eapi0_pkg_nofetch   "$@" ; }
 				eapi2_src_unpack    () { _eapi0_src_unpack    "$@" ; }
+				eapi2_src_prepare   () { true ; }
 				eapi2_src_configure () { _eapi2_src_configure "$@" ; }
 				eapi2_src_compile   () { _eapi2_src_compile   "$@" ; }
 				eapi2_src_test      () { _eapi0_src_test      "$@" ; }
@@ -1959,7 +1995,7 @@ ebuild_main() {
 				| bzip2 -c -f9 > "$PORTAGE_UPDATE_ENV"
 		fi
 		;;
-	unpack|configure|compile|test|clean|install)
+	unpack|prepare|configure|compile|test|clean|install)
 		if [[ ${SANDBOX_DISABLED:-0} = 0 ]] ; then
 			export SANDBOX_ON="1"
 		else

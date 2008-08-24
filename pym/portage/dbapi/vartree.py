@@ -1843,8 +1843,8 @@ class dblink(object):
 
 		self.myroot=myroot
 		protect_obj = ConfigProtect(myroot,
-			mysettings.get("CONFIG_PROTECT","").split(),
-			mysettings.get("CONFIG_PROTECT_MASK","").split())
+			shlex.split(mysettings.get("CONFIG_PROTECT", "")),
+			shlex.split(mysettings.get("CONFIG_PROTECT_MASK", "")))
 		self.updateprotect = protect_obj.updateprotect
 		self.isprotected = protect_obj.isprotected
 		self._installed_instance = None
@@ -2800,8 +2800,9 @@ class dblink(object):
 				if f[0] != "/":
 					f="/"+f
 				isowned = False
+				full_path = os.path.join(destroot, f.lstrip(os.path.sep))
 				for ver in [self] + mypkglist:
-					if (ver.isowner(f, destroot) or ver.isprotected(f)):
+					if (ver.isowner(f, destroot) or ver.isprotected(full_path)):
 						isowned = True
 						break
 				if not isowned:

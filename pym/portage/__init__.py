@@ -4344,7 +4344,12 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 			if retval:
 				return retval
 
-	if mydo == "configure" and mysettings["EAPI"] in ("0", "1", "2_pre1"):
+	eapi = mysettings["EAPI"]
+
+	if mydo == "configure" and eapi in ("0", "1", "2_pre1"):
+		return os.EX_OK
+
+	if mydo == "prepare" and eapi in ("0", "1", "2_pre1", "2_pre2"):
 		return os.EX_OK
 
 	kwargs = actionmap[mydo]["args"]
@@ -4615,7 +4620,7 @@ def eapi_is_supported(eapi):
 			eapi.remove(prop)
 	
 	# now check if what's left is supported (can)
-	properties = [ "2_pre2", "2_pre1" ] # another clumpsy solution
+	properties = [ "2_pre3", "2_pre2", "2_pre1" ] # another clumpsy solution
 	for i in range(portage.const.EAPI + 1):
 		properties.append(str(i))
 
@@ -5153,7 +5158,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	actionmap_deps={
 	"setup":  [],
 	"unpack": ["setup"],
-	"configure": ["unpack"],
+	"prepare": ["unpack"],
+	"configure": ["prepare"],
 	"compile":["configure"],
 	"test":   ["compile"],
 	"install":["test"],
@@ -5175,7 +5181,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	validcommands = ["help","clean","prerm","postrm","cleanrm","preinst","postinst",
 	                "config", "info", "setup", "depend",
 	                "fetch", "fetchall", "digest",
-	                "unpack", "configure", "compile", "test",
+	                "unpack", "prepare", "configure", "compile", "test",
 	                "install", "rpm", "qmerge", "merge",
 	                "package","unmerge", "manifest"]
 
@@ -5447,7 +5453,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				writemsg("Can not execute files in %s\n" % checkdir + \
 					"Likely cause is that you've mounted it with one of the\n" + \
 					"following mount options: 'noexec', 'user', 'users'\n\n" + \
-					"Please make sure that portage can execute files in this direxctory.\n" \
+					"Please make sure that portage can execute files in this directory.\n" \
 					, noiselevel=-1)
 				fd.close()
 				return 1
@@ -5761,6 +5767,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		actionmap = {
 "setup":    {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":1,         "sesandbox":0,         "fakeroot":0}},
 "unpack":   {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox, "fakeroot":0}},
+"prepare":  {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox, "fakeroot":0}},
 "configure":{"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
 "compile":  {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
 "test":     {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
