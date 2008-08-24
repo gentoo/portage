@@ -139,14 +139,74 @@ class PreservedLibsRegistry(object):
 		return rValue
 
 class LinkageMap(object):
+
+	"""Models dynamic linker dependencies."""
+
 	def __init__(self, vardbapi):
 		self._dbapi = vardbapi
 		self._libs = {}
 		self._obj_properties = {}
-		self._defpath = getlibpaths()
-	
+		self._defpath = set(getlibpaths())
+		self._obj_key_cache = {}
+
+	class _ObjectKey(object):
+
+		"""Helper class used as _obj_properties keys for objects."""
+
+		def __init__(self, object):
+			"""
+			This takes a path to an object.
+
+			@param object: path to a file
+			@type object: string (example: '/usr/bin/bar')
+
+			"""
+			self._key = self._generate_object_key(object)
+
+		def __hash__(self):
+			return hash(self._key)
+
+		def __eq__(self, other):
+			return self._key == other._key
+
+		def _generate_object_key(self, object):
+			"""
+			Generate object key for a given object.
+
+			@param object: path to a file
+			@type object: string (example: '/usr/bin/bar')
+			@rtype: 2-tuple of types (long, int) if object exists. string if
+				object does not exist.
+			@return:
+				1. 2-tuple of object's inode and device from a stat call, if object
+					exists.
+				2. realpath of object if object does not exist.
+
+			"""
+			try:
+				object_stat = os.stat(object)
+			except OSError:
+				# Use the realpath as the key if the file does not exists on the
+				# filesystem.
+				return os.path.realpath(object)
+			# Return a tuple of the device and inode.
+			return (object_stat.st_dev, object_stat.st_ino)
+
+		def file_exists(self):
+			"""
+			Determine if the file for this key exists on the filesystem.
+
+			@rtype: Boolean
+			@return:
+				1. True if the file exists.
+				2. False if the file does not exist or is a broken symlink.
+
+			"""
+			return isinstance(self._key, tuple)
+
 	def rebuild(self, include_file=None):
 		libs = {}
+		obj_key_cache = {}
 		obj_properties = {}
 		lines = []
 		for cpv in self._dbapi.cpv_all():
@@ -176,97 +236,109 @@ class LinkageMap(object):
 				# insufficient field length
 				continue
 			arch = fields[0]
-			obj = os.path.realpath(fields[1])
+			obj = fields[1]
+			obj_key = self._ObjectKey(obj)
 			soname = fields[2]
-			path = filter(None, fields[3].replace(
+			path = set([normalize_path(x)
+				for x in filter(None, fields[3].replace(
 				"${ORIGIN}", os.path.dirname(obj)).replace(
-				"$ORIGIN", os.path.dirname(obj)).split(":"))
+				"$ORIGIN", os.path.dirname(obj)).split(":"))])
 			needed = filter(None, fields[4].split(","))
 			if soname:
-				libs.setdefault(soname, {arch: {"providers": [], "consumers": []}})
-				libs[soname].setdefault(arch, {"providers": [], "consumers": []})
-				libs[soname][arch]["providers"].append(obj)
+				libs.setdefault(soname, \
+						{arch: {"providers": set(), "consumers": set()}})
+				libs[soname].setdefault(arch, \
+						{"providers": set(), "consumers": set()})
+				libs[soname][arch]["providers"].add(obj_key)
 			for x in needed:
-				libs.setdefault(x, {arch: {"providers": [], "consumers": []}})
-				libs[x].setdefault(arch, {"providers": [], "consumers": []})
-				libs[x][arch]["consumers"].append(obj)
-			obj_properties[obj] = (arch, needed, path, soname)
-		
+				libs.setdefault(x, \
+						{arch: {"providers": set(), "consumers": set()}})
+				libs[x].setdefault(arch, {"providers": set(), "consumers": set()})
+				libs[x][arch]["consumers"].add(obj_key)
+			obj_key_cache.setdefault(obj, obj_key)
+			# All object paths are added into the obj_properties tuple
+			obj_properties.setdefault(obj_key, \
+					(arch, needed, path, soname, set()))[4].add(obj)
+
 		self._libs = libs
 		self._obj_properties = obj_properties
+		self._obj_key_cache = obj_key_cache
 
-	def listBrokenBinaries(self):
+	def listBrokenBinaries(self, debug=False):
 		"""
 		Find binaries and their needed sonames, which have no providers.
 
+		@param debug: Boolean to enable debug output
+		@type debug: Boolean
 		@rtype: dict (example: {'/usr/bin/foo': set(['libbar.so'])})
 		@return: The return value is an object -> set-of-sonames mapping, where
 			object is a broken binary and the set consists of sonames needed by
 			object that have no corresponding libraries to fulfill the dependency.
 
 		"""
-		class LibraryCache(object):
+		class _LibraryCache(object):
 
 			"""
-			Caches sonames and realpaths associated with paths.
+			Caches properties associated with paths.
 
-			The purpose of this class is to prevent multiple calls of
-			os.path.realpath and os.path.isfile on the same paths.
+			The purpose of this class is to prevent multiple instances of
+			_ObjectKey for the same paths.
 
 			"""
 
 			def __init__(cache_self):
 				cache_self.cache = {}
 
-			def get(cache_self, path):
+			def get(cache_self, obj):
 				"""
-				Caches and returns the soname and realpath for a path.
+				Caches and returns properties associated with an object.
 
-				@param path: absolute path (can be symlink)
-				@type path: string (example: '/usr/lib/libfoo.so')
-				@rtype: 3-tuple with types (string or None, string, boolean)
-				@return: 3-tuple with the following components:
-					1. soname as a string or None if it does not exist,
-					2. realpath as a string,
-					3. the result of os.path.isfile(realpath)
-					(example: ('libfoo.so.1', '/usr/lib/libfoo.so.1.5.1', True))
+				@param obj: absolute path (can be symlink)
+				@type obj: string (example: '/usr/lib/libfoo.so')
+				@rtype: 4-tuple with types
+					(string or None, string or None, 2-tuple, Boolean)
+				@return: 4-tuple with the following components:
+					1. arch as a string or None if it does not exist,
+					2. soname as a string or None if it does not exist,
+					3. obj_key as 2-tuple,
+					4. Boolean representing whether the object exists.
+					(example: ('libfoo.so.1', (123L, 456L), True))
 
 				"""
-				if path in cache_self.cache:
-					return cache_self.cache[path]
+				if obj in cache_self.cache:
+					return cache_self.cache[obj]
 				else:
-					realpath = os.path.realpath(path)
-					# Check that the library exists on the filesystem.
-					if os.path.isfile(realpath):
-						# Get the soname from LinkageMap._obj_properties if it
-						# exists. Otherwise, None.
-						soname = self._obj_properties.get(realpath, (None,)*3)[3]
-						# Both path and realpath are cached and the result is
-						# returned.
-						cache_self.cache.setdefault(realpath, \
-								(soname, realpath, True))
-						return cache_self.cache.setdefault(path, \
-								(soname, realpath, True))
+					if obj in self._obj_key_cache:
+						obj_key = self._obj_key_cache.get(obj)
 					else:
-						# realpath is not cached here, because the majority of cases
-						# where realpath is not a file, path is the same as realpath.
-						# Thus storing twice slows down the cache performance.
-						return cache_self.cache.setdefault(path, \
-								(None, realpath, False))
+						obj_key = self._ObjectKey(obj)
+					# Check that the library exists on the filesystem.
+					if obj_key.file_exists():
+						# Get the arch and soname from LinkageMap._obj_properties if
+						# it exists. Otherwise, None.
+						arch, _, _, soname, _ = \
+								self._obj_properties.get(obj_key, (None,)*5)
+						return cache_self.cache.setdefault(obj, \
+								(arch, soname, obj_key, True))
+					else:
+						return cache_self.cache.setdefault(obj, \
+								(None, None, obj_key, False))
 
-		debug = False
 		rValue = {}
-		cache = LibraryCache()
+		cache = _LibraryCache()
 		providers = self.listProviders()
 
-		# Iterate over all binaries and their providers.
-		for obj, sonames in providers.items():
+		# Iterate over all obj_keys and their providers.
+		for obj_key, sonames in providers.items():
+			arch, _, path, _, objs = self._obj_properties[obj_key]
+			path = path.union(self._defpath)
 			# Iterate over each needed soname and the set of library paths that
 			# fulfill the soname to determine if the dependency is broken.
 			for soname, libraries in sonames.items():
 				# validLibraries is used to store libraries, which satisfy soname,
 				# so if no valid libraries are found, the soname is not satisfied
-				# for obj.  Thus obj must be emerged.
+				# for obj_key.  If unsatisfied, objects associated with obj_key
+				# must be emerged.
 				validLibraries = set()
 				# It could be the case that the library to satisfy the soname is
 				# not in the obj's runpath, but a symlink to the library is (eg
@@ -274,67 +346,60 @@ class LinkageMap(object):
 				# does not catalog symlinks, broken or missing symlinks may go
 				# unnoticed.  As a result of these cases, check that a file with
 				# the same name as the soname exists in obj's runpath.
-				path = self._obj_properties[obj][2] + self._defpath
-				for d in path:
-					cachedSoname, cachedRealpath, cachedExists = \
-							cache.get(os.path.join(d, soname))
-					# Check that the this library provides the needed soname.  Doing
+				# XXX If we catalog symlinks in LinkageMap, this could be improved.
+				for directory in path:
+					cachedArch, cachedSoname, cachedKey, cachedExists = \
+							cache.get(os.path.join(directory, soname))
+					# Check that this library provides the needed soname.  Doing
 					# this, however, will cause consumers of libraries missing
 					# sonames to be unnecessarily emerged. (eg libmix.so)
-					if cachedSoname == soname:
-						validLibraries.add(cachedRealpath)
-						if debug and cachedRealpath not in libraries:
+					if cachedSoname == soname and cachedArch == arch:
+						validLibraries.add(cachedKey)
+						if debug and cachedKey not in \
+								set(map(self._obj_key_cache.get, libraries)):
+							# XXX This is most often due to soname symlinks not in
+							# a library's directory.  We could catalog symlinks in
+							# LinkageMap to avoid checking for this edge case here.
 							print "Found provider outside of findProviders:", \
-									os.path.join(d, soname), "->", cachedRealpath
+									os.path.join(directory, soname), "->", \
+									self._obj_properties[cachedKey][4], libraries
 						# A valid library has been found, so there is no need to
 						# continue.
 						break
-					if debug and cachedRealpath in self._obj_properties:
+					if debug and cachedArch == arch and \
+							cachedKey in self._obj_properties:
 						print "Broken symlink or missing/bad soname:", \
-								os.path.join(d, soname), '->', cachedRealpath, \
-								"with soname", cachedSoname, "but expecting", soname
+								os.path.join(directory, soname), '->', \
+								self._obj_properties[cachedKey], "with soname", \
+								cachedSoname, "but expecting", soname
 				# This conditional checks if there are no libraries to satisfy the
 				# soname (empty set).
 				if not validLibraries:
-					rValue.setdefault(obj, set()).add(soname)
+					for obj in objs:
+						rValue.setdefault(obj, set()).add(soname)
 					# If no valid libraries have been found by this point, then
 					# there are no files named with the soname within obj's runpath,
 					# but if there are libraries (from the providers mapping), it is
-					# likely that symlinks or the actual libraries are missing.
-					# Thus possible symlinks and missing libraries are added to
-					# rValue in order to emerge corrupt library packages.
+					# likely that soname symlinks or the actual libraries are
+					# missing or broken.  Thus those libraries are added to rValue
+					# in order to emerge corrupt library packages.
 					for lib in libraries:
-						cachedSoname, cachedRealpath, cachedExists = cache.get(lib)
-						if not cachedExists:
-							# The library's package needs to be emerged to repair the
-							# missing library.
-							rValue.setdefault(lib, set()).add(soname)
-						else:
-							# A library providing the soname exists in the obj's
-							# runpath, but no file named as the soname exists, so add
-							# the path constructed from the lib's directory and the
-							# soname to rValue to fix cases of vanishing (or modified)
-							# symlinks.  This path is not guaranteed to exist, but it
-							# follows the symlink convention found in the majority of
-							# packages.
-							rValue.setdefault(os.path.join(os.path.dirname(lib), \
-									soname), set()).add(soname)
+						rValue.setdefault(lib, set()).add(soname)
 						if debug:
-							if not cachedExists:
+							if not os.path.isfile(lib):
 								print "Missing library:", lib
 							else:
 								print "Possibly missing symlink:", \
 										os.path.join(os.path.dirname(lib), soname)
-
 		return rValue
 
 	def listProviders(self):
 		"""
-		Find the providers for all binaries.
+		Find the providers for all object keys in LinkageMap.
 
 		@rtype: dict (example:
-			{'/usr/bin/foo': {'libbar.so': set(['/lib/libbar.so.1.5'])}})
-		@return: The return value is an object -> providers mapping, where
+			{(123L, 456L): {'libbar.so': set(['/lib/libbar.so.1.5'])}})
+		@return: The return value is an object key -> providers mapping, where
 			providers is a mapping of soname -> set-of-library-paths returned
 			from the findProviders method.
 
@@ -342,126 +407,257 @@ class LinkageMap(object):
 		rValue = {}
 		if not self._libs:
 			self.rebuild()
-		# Iterate over all binaries within LinkageMap.
-		for obj in self._obj_properties:
-			rValue.setdefault(obj, self.findProviders(obj))
+		# Iterate over all object keys within LinkageMap.
+		for obj_key in self._obj_properties:
+			rValue.setdefault(obj_key, self.findProviders(obj_key))
 		return rValue
 
 	def isMasterLink(self, obj):
+		"""
+		Determine whether an object is a master link.
+
+		@param obj: absolute path to an object
+		@type obj: string (example: '/usr/bin/foo')
+		@rtype: Boolean
+		@return:
+			1. True if obj is a master link
+			2. False if obj is not a master link
+
+		"""
 		basename = os.path.basename(obj)
-		if obj not in self._obj_properties:
-			obj = os.path.realpath(obj)
-			if obj not in self._obj_properties:
-				raise KeyError("%s not in object list" % obj)
-		soname = self._obj_properties[obj][3]
+		obj_key = self._ObjectKey(obj)
+		if obj_key not in self._obj_properties:
+			raise KeyError("%s (%s) not in object list" % (obj_key, obj))
+		soname = self._obj_properties[obj_key][3]
 		return (len(basename) < len(soname))
-		
+
 	def listLibraryObjects(self):
+		"""
+		Return a list of library objects.
+
+		Known limitation: library objects lacking an soname are not included.
+
+		@rtype: list of strings
+		@return: list of paths to all providers
+
+		"""
 		rValue = []
 		if not self._libs:
 			self.rebuild()
 		for soname in self._libs:
 			for arch in self._libs[soname]:
-				rValue.extend(self._libs[soname][arch]["providers"])
+				for obj_key in self._libs[soname][arch]["providers"]:
+					rValue.extend(self._obj_properties[obj_key][4])
 		return rValue
 
 	def getSoname(self, obj):
+		"""
+		Return the soname associated with an object.
+
+		@param obj: absolute path to an object
+		@type obj: string (example: '/usr/bin/bar')
+		@rtype: string
+		@return: soname as a string
+
+		"""
 		if not self._libs:
 			self.rebuild()
-		if obj not in self._obj_properties:
-			obj = os.path.realpath(obj)
-			if obj not in self._obj_properties:
-				raise KeyError("%s not in object list" % obj)
-		arch, needed, path, soname = self._obj_properties[obj]
-		return soname
+		if obj not in self._obj_key_cache:
+			raise KeyError("%s not in object list" % obj)
+		return self._obj_properties[self._obj_key_cache[obj]][3]
 
 	def findProviders(self, obj):
-		if not self._libs:
-			self.rebuild()
+		"""
+		Find providers for an object or object key.
 
-		realpath_cache = {}
-		def realpath(p):
-			real_path = realpath_cache.get(p)
-			if real_path is None:
-				real_path = os.path.realpath(p)
-				realpath_cache[p] = real_path
-			return real_path
+		This method may be called with a key from _obj_properties.
 
+		In some cases, not all valid libraries are returned.  This may occur when
+		an soname symlink referencing a library is in an object's runpath while
+		the actual library is not.  We should consider cataloging symlinks within
+		LinkageMap as this would avoid those cases and would be a better model of
+		library dependencies (since the dynamic linker actually searches for
+		files named with the soname in the runpaths).
+
+		@param obj: absolute path to an object or a key from _obj_properties
+		@type obj: string (example: '/usr/bin/bar') or _ObjectKey
+		@rtype: dict (example: {'libbar.so': set(['/lib/libbar.so.1.5'])})
+		@return: The return value is a soname -> set-of-library-paths, where
+		set-of-library-paths satisfy soname.
+
+		"""
 		rValue = {}
-		if obj not in self._obj_properties:
-			obj = realpath(obj)
-			if obj not in self._obj_properties:
-				raise KeyError("%s not in object list" % obj)
-		arch, needed, path, soname = self._obj_properties[obj]
-		path = path[:]
-		path.extend(self._defpath)
-		path = set(realpath(x) for x in path)
-		for x in needed:
-			rValue[x] = set()
-			if x not in self._libs or arch not in self._libs[x]:
-				continue
-			for y in self._libs[x][arch]["providers"]:
-				if x[0] == os.sep and realpath(x) == realpath(y):
-					rValue[x].add(y)
-				elif realpath(os.path.dirname(y)) in path:
-					rValue[x].add(y)
-		return rValue
-	
-	def findConsumers(self, obj):
+
 		if not self._libs:
 			self.rebuild()
 
-		realpath_cache = {}
-		def realpath(p):
-			real_path = realpath_cache.get(p)
-			if real_path is None:
-				real_path = os.path.realpath(p)
-				realpath_cache[p] = real_path
-			return real_path
+		# Determine the obj_key from the arguments.
+		if isinstance(obj, self._ObjectKey):
+			obj_key = obj
+			if obj_key not in self._obj_properties:
+				raise KeyError("%s not in object list" % obj_key)
+		else:
+			obj_key = self._obj_key_cache.get(obj)
+			if obj_key not in self._obj_properties:
+				obj_key = self._ObjectKey(obj)
+				if obj_key not in self._obj_properties:
+					raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 
-		if obj not in self._obj_properties:
-			obj = realpath(obj)
-			if obj not in self._obj_properties:
-				raise KeyError("%s not in object list" % obj)
+		arch, needed, path, _, _ = self._obj_properties[obj_key]
+		path = path.union(self._defpath)
+		for soname in needed:
+			rValue[soname] = set()
+			if soname not in self._libs or arch not in self._libs[soname]:
+				continue
+			# For each potential provider of the soname, add it to rValue if it
+			# resides in the obj's runpath.
+			for provider_key in self._libs[soname][arch]["providers"]:
+				providers = self._obj_properties[provider_key][4]
+				for provider in providers:
+					if os.path.dirname(provider) in path:
+						rValue[soname].add(provider)
+		return rValue
+
+	def findConsumers(self, obj):
+		"""
+		Find consumers of an object or object key.
+
+		This method may be called with a key from _obj_properties.  If this
+		method is going to be called with an object key, to avoid not catching
+		shadowed libraries, do not pass new _ObjectKey instances to this method.
+		Instead pass the obj as a string.
+
+		In some cases, not all consumers are returned.  This may occur when
+		an soname symlink referencing a library is in an object's runpath while
+		the actual library is not.
+
+		@param obj: absolute path to an object or a key from _obj_properties
+		@type obj: string (example: '/usr/bin/bar') or _ObjectKey
+		@rtype: set of strings (example: set(['/bin/foo', '/usr/bin/bar']))
+		@return: The return value is a soname -> set-of-library-paths, where
+		set-of-library-paths satisfy soname.
+
+		"""
+		rValue = set()
+
+		if not self._libs:
+			self.rebuild()
+
+		# Determine the obj_key and the set of objects matching the arguments.
+		if isinstance(obj, self._ObjectKey):
+			obj_key = obj
+			if obj_key not in self._obj_properties:
+				raise KeyError("%s not in object list" % obj_key)
+			objs = self._obj_properties[obj_key][4]
+		else:
+			objs = set([obj])
+			obj_key = self._obj_key_cache.get(obj)
+			if obj_key not in self._obj_properties:
+				obj_key = self._ObjectKey(obj)
+				if obj_key not in self._obj_properties:
+					raise KeyError("%s (%s) not in object list" % (obj_key, obj))
+
+		# Determine the directory(ies) from the set of objects.
+		objs_dirs = set([os.path.dirname(x) for x in objs])
 
 		# If there is another version of this lib with the
 		# same soname and the master link points to that
 		# other version, this lib will be shadowed and won't
 		# have any consumers.
-		arch, needed, path, soname = self._obj_properties[obj]
-		obj_dir = os.path.dirname(obj)
-		master_link = os.path.join(obj_dir, soname)
-		try:
-			master_st = os.stat(master_link)
-			obj_st = os.stat(obj)
-		except OSError:
-			pass
-		else:
-			if (obj_st.st_dev, obj_st.st_ino) != \
-				(master_st.st_dev, master_st.st_ino):
-				return set()
+		if not isinstance(obj, self._ObjectKey):
+			soname = self._obj_properties[obj_key][3]
+			obj_dir = os.path.dirname(obj)
+			master_link = os.path.join(obj_dir, soname)
+			try:
+				master_st = os.stat(master_link)
+				obj_st = os.stat(obj)
+			except OSError:
+				pass
+			else:
+				if (obj_st.st_dev, obj_st.st_ino) != \
+					(master_st.st_dev, master_st.st_ino):
+					return set()
 
-		rValue = set()
-		for soname in self._libs:
-			for arch in self._libs[soname]:
-				if obj in self._libs[soname][arch]["providers"]:
-					for x in self._libs[soname][arch]["consumers"]:
-						path = self._obj_properties[x][2]
-						path = [realpath(y) for y in path+self._defpath]
-						if soname[0] == os.sep and realpath(soname) == realpath(obj):
-							rValue.add(x)
-						elif realpath(obj_dir) in path:
-							rValue.add(x)
+		arch, _, _, soname, _ = self._obj_properties[obj_key]
+		if soname in self._libs and arch in self._libs[soname]:
+			# For each potential consumer, add it to rValue if an object from the
+			# arguments resides in the consumer's runpath.
+			for consumer_key in self._libs[soname][arch]["consumers"]:
+				_, _, path, _, consumer_objs = \
+						self._obj_properties[consumer_key]
+				path = path.union(self._defpath)
+				if objs_dirs.intersection(path):
+					rValue.update(consumer_objs)
 		return rValue
-					
+
 class LinkageMapMachO(object):
+
+	"""Models dynamic linker dependencies."""
+
 	def __init__(self, vardbapi):
 		self._dbapi = vardbapi
 		self._libs = {}
 		self._obj_properties = {}
+		self._obj_key_cache = {}
+
+	class _ObjectKey(object):
+
+		"""Helper class used as _obj_properties keys for objects."""
+
+		def __init__(self, object):
+			"""
+			This takes a path to an object.
+
+			@param object: path to a file
+			@type object: string (example: '/usr/bin/bar')
+
+			"""
+			self._key = self._generate_object_key(object)
+
+		def __hash__(self):
+			return hash(self._key)
+
+		def __eq__(self, other):
+			return self._key == other._key
+
+		def _generate_object_key(self, object):
+			"""
+			Generate object key for a given object.
+
+			@param object: path to a file
+			@type object: string (example: '/usr/bin/bar')
+			@rtype: 2-tuple of types (long, int) if object exists. string if
+				object does not exist.
+			@return:
+				1. 2-tuple of object's inode and device from a stat call, if object
+					exists.
+				2. realpath of object if object does not exist.
+
+			"""
+			try:
+				object_stat = os.stat(object)
+			except OSError:
+				# Use the realpath as the key if the file does not exists on the
+				# filesystem.
+				return os.path.realpath(object)
+			# Return a tuple of the device and inode.
+			return (object_stat.st_dev, object_stat.st_ino)
+
+		def file_exists(self):
+			"""
+			Determine if the file for this key exists on the filesystem.
+
+			@rtype: Boolean
+			@return:
+				1. True if the file exists.
+				2. False if the file does not exist or is a broken symlink.
+
+			"""
+			return isinstance(self._key, tuple)
 
 	def rebuild(self, include_file=None):
 		libs = {}
+		obj_key_cache = {}
 		obj_properties = {}
 		lines = []
 		for cpv in self._dbapi.cpv_all():
@@ -514,7 +710,8 @@ class LinkageMapMachO(object):
 
 			# Linking an object to a library is registered by recording
 			# the install_name of the library in the object.
-			obj = os.path.realpath(fields[0])
+			obj = fields[0]
+			obj_key = self._ObjectKey(obj)
 			install_name = os.path.normpath(fields[1])
 			needed = filter(None, fields[2].split(","))
 
@@ -524,20 +721,29 @@ class LinkageMapMachO(object):
 			# an absolute path, consumers are those objects that
 			# reference the install_name
 			if install_name:
-				libs.setdefault(install_name, {"providers": [], "consumers": []})
-				libs[install_name]["providers"].append(obj)
+				libs.setdefault(install_name, \
+						{"providers": set(), "consumers": set()})
+				libs[install_name]["providers"].append(obj_key)
 			for x in needed:
-				libs.setdefault(x, {"providers": [], "consumers": []})
-				libs[x]["consumers"].append(obj)
+				libs.setdefault(x, \
+						{"providers": set(), "consumers": set()})
+				libs[x]["consumers"].append(obj_key)
 			obj_properties[obj] = (needed, install_name)
+			obj_key_cache.setdefault(obj, obj_key)
+			# All object paths are added into the obj_properties tuple
+			obj_properties.setdefault(obj_key, \
+					(needed, install_name, set()))[2].add(obj)
 		
 		self._libs = libs
 		self._obj_properties = obj_properties
+		self._obj_key_cache = obj_key_cache
 
-	def listBrokenBinaries(self):
+	def listBrokenBinaries(self, debug=False):
 		"""
 		Find binaries and their needed install_names, which have no providers.
 
+		@param debug: Boolean to enable debug output
+		@type debug: Boolean
 		@rtype: dict (example: {'/usr/bin/foo': set(['/usr/lib/libbar.dylib'])})
 		@return: The return value is an object -> set-of-install_names
 			mapping, where object is a broken binary and the set
@@ -545,71 +751,70 @@ class LinkageMapMachO(object):
 			corresponding libraries to fulfill the dependency.
 
 		"""
-		class LibraryCache(object):
+		class _LibraryCache(object):
 
 			"""
-			Caches install_names and realpaths associated with paths.
+			Caches properties associated with paths.
 
-			The purpose of this class is to prevent multiple calls of
-			os.path.realpath and os.path.isfile on the same paths.
+			The purpose of this class is to prevent multiple instances of
+			_ObjectKey for the same paths.
 
 			"""
 
 			def __init__(cache_self):
 				cache_self.cache = {}
 
-			def get(cache_self, path):
+			def get(cache_self, obj):
 				"""
-				Caches and returns the install_name and realpath for a path.
+				Caches and returns properties associated with an object.
 
-				@param path: absolute path (can be symlink)
-				@type path: string (example: '/usr/lib/libfoo.dylib')
-				@rtype: 3-tuple with types (string or None, string, boolean)
-				@return: 3-tuple with the following components:
-					1. soname as a string or None if it does not exist,
-					2. realpath as a string,
-					3. the result of os.path.isfile(realpath)
-					(example: ('/usr/lib/libfoo.1.dylib', '/usr/lib/libfoo.1.5.1.dylib', True))
+				@param obj: absolute path (can be symlink)
+				@type obj: string (example: '/usr/lib/libfoo.dylib')
+				@rtype: 4-tuple with types
+					(string or None, string or None, 2-tuple, Boolean)
+				@return: 4-tuple with the following components:
+					1. arch as a string or None if it does not exist,
+					2. soname as a string or None if it does not exist,
+					3. obj_key as 2-tuple,
+					4. Boolean representing whether the object exists.
+					(example: ('libfoo.1.dylib', (123L, 456L), True))
 
 				"""
-				if path in cache_self.cache:
-					return cache_self.cache[path]
+				if obj in cache_self.cache:
+					return cache_self.cache[obj]
 				else:
-					realpath = os.path.realpath(path)
-					# Check that the library exists on the filesystem.
-					if os.path.isfile(realpath):
-						# Get the install_name from
-						# LinkageMap._obj_properties if it exists.
-						# Otherwise, None.
-						install_name = self._obj_properties.get(realpath, (None,)*2)[1]
-						# Both path and realpath are cached and the result is
-						# returned.
-						cache_self.cache.setdefault(realpath, \
-								(install_name, realpath, True))
-						return cache_self.cache.setdefault(path, \
-								(install_name, realpath, True))
+					if obj in self._obj_key_cache:
+						obj_key = self._obj_key_cache.get(obj)
 					else:
-						# realpath is not cached here, because the majority of cases
-						# where realpath is not a file, path is the same as realpath.
-						# Thus storing twice slows down the cache performance.
-						return cache_self.cache.setdefault(path, \
-								(None, realpath, False))
+						obj_key = self._ObjectKey(obj)
+					# Check that the library exists on the filesystem.
+					if obj_key.file_exists():
+						# Get the install_name from LinkageMapMachO._obj_properties if
+						# it exists. Otherwise, None.
+						_, install_name, _ = \
+								self._obj_properties.get(obj_key, (None,)*3)
+						return cache_self.cache.setdefault(obj, \
+								(install_name, obj_key, True))
+					else:
+						return cache_self.cache.setdefault(obj, \
+								(None, obj_key, False))
 
-		debug = False
 		rValue = {}
-		cache = LibraryCache()
+		cache = _LibraryCache()
 		providers = self.listProviders()
 
-		# Iterate over all binaries and their providers.
-		for obj, install_names in providers.items():
+		# Iterate over all obj_keys and their providers.
+		for obj_key, install_names in providers.items():
+			_, _, objs = self._obj_properties[obj_key]
 			# Iterate over each needed install_name and the set of
 			# library paths that fulfill the install_name to determine
 			# if the dependency is broken.
 			for install_name, libraries in install_names.items():
 				# validLibraries is used to store libraries, which
 				# satisfy install_name, so if no valid libraries are
-				# found, the install_name is not satisfied for obj.
-				# Thus obj must be emerged.
+				# found, the install_name is not satisfied for obj_key.
+				# If unsatisfied, objects associated with obj_key must
+				# be emerged.
 				validLibrary = None
 				cachedInstallname, cachedRealpath, cachedExists = \
 						cache.get(install_name)
@@ -621,54 +826,38 @@ class LinkageMapMachO(object):
 					if debug and cachedRealpath not in libraries:
 						print "Found provider outside of findProviders:", \
 								install_name, "->", cachedRealpath
-				if debug and cachedRealpath in self._obj_properties:
+				if debug and cachedKey in self._obj_properties:
 					print "Broken symlink or missing/bad install_name:", \
 							install_name, '->', cachedRealpath, \
 							"with install_name", cachedInstallname, "but expecting", install_name
 				# This conditional checks if there are no libraries to
 				# satisfy the install_name (empty set).
 				if not validLibrary:
-					rValue.setdefault(obj, set()).add(install_name)
+					for obj in objs:
+						rValue.setdefault(obj, set()).add(install_name)
 					# If no valid libraries have been found by this
 					# point, then the install_name does not exist in the
 					# filesystem, but if there are libraries (from the
-					# providers mapping), it is likely that symlinks or
-					# the actual libraries are missing.  Thus possible
-					# symlinks and missing libraries are added to rValue
+					# providers mapping), it is likely that soname
+					# symlinks or the actual libraries are missing or
+					# broken.  Thus those libraries are added to rValue
 					# in order to emerge corrupt library packages.
 					for lib in libraries:
-						cachedInstallname, cachedRealpath, cachedExists = cache.get(lib)
-						if not cachedExists:
-							# The library's package needs to be emerged to repair the
-							# missing library.
-							rValue.setdefault(lib, set()).add(install_name)
-						else:
-							# A library providing the install_name
-							# exists in the obj's runpath, but no file
-							# named as the install_name exists, so add
-							# the path and the install_name to rValue to
-							# fix cases of vanishing (or modified)
-							# symlinks.  This path is not guaranteed to
-							# exist, but it follows the symlink
-							# convention found in the majority of
-							# packages.
-							rValue.setdefault(install_name,
-									set()).add(install_name)
+						rValue.setdefault(lib, set()).add(install_name)
 						if debug:
-							if not cachedExists:
+							if not os.path.isfile(lib):
 								print "Missing library:", lib
 							else:
 								print "Possibly missing symlink:", \
 										install_name
-
 		return rValue
 
 	def listProviders(self):
 		"""
-		Find the providers for all binaries.
+		Find the providers for all object keys in LinkageMap.
 
 		@rtype: dict (example:
-			{'/usr/bin/foo': {'libbar.dylib': set(['/lib/libbar.1.5.dylib'])}})
+			{(123L, 456L): {'libbar.dylib': set(['/lib/libbar.1.5.dylib'])}})
 		@return: The return value is an object -> providers mapping, where
 			providers is a mapping of install_name ->
 			set-of-library-paths returned from the findProviders method.
@@ -677,86 +866,179 @@ class LinkageMapMachO(object):
 		rValue = {}
 		if not self._libs:
 			self.rebuild()
-		# Iterate over all binaries within LinkageMap.
-		for obj in self._obj_properties.keys():
-			rValue.setdefault(obj, self.findProviders(obj))
+		# Iterate over all binaries within LinkageMapMachO.
+		for obj_key in self._obj_properties:
+			rValue.setdefault(obj_key, self.findProviders(obj_key))
 		return rValue
 
 	def isMasterLink(self, obj):
+		"""
+		Determine whether an object is a master link.
+
+		@param obj: absolute path to an object
+		@type obj: string (example: '/usr/bin/foo')
+		@rtype: Boolean
+		@return:
+			1. True if obj is a master link
+			2. False if obj is not a master link
+
+		"""
 		basename = os.path.basename(obj)
-		if os.path.normpath(obj) not in self._obj_properties:
-			obj = os.path.realpath(obj)
-			if obj not in self._obj_properties:
-				raise KeyError("%s not in object list" % obj)
-		install_name = self._obj_properties[obj][1]
+		if obj_key not in self._obj_properties:
+			raise KeyError("%s (%s) not in object list" % (obj_key, obj))
+		install_name = self._obj_properties[obj_key][1]
 		return (len(basename) < len(os.path.basename(install_name)))
-		
+
 	def listLibraryObjects(self):
+		"""
+		Return a list of library objects.
+
+		Known limitation: library objects lacking an soname are not included.
+
+		@rtype: list of strings
+		@return: list of paths to all providers
+
+		"""
 		rValue = []
 		if not self._libs:
 			self.rebuild()
 		for install_name in self._libs:
-			rValue.extend(self._libs[install_name]["providers"])
+			for obj_key in self._libs[install_name]["providers"]:
+				rValue.extend(self._obj_properties[obj_key][2])
 		return rValue
 	
 	def getSoname(self, obj):
+		"""
+		Return the soname associated with an object.
+
+		@param obj: absolute path to an object
+		@type obj: string (example: '/usr/bin/bar')
+		@rtype: string
+		@return: soname as a string
+
+		"""
 		if not self._libs:
 			self.rebuild()
-		if obj not in self._obj_properties:
-			obj = os.path.realpath(obj)
-			if obj not in self._obj_properties:
-				raise KeyError("%s not in object list" % obj)
-		install_name = self._obj_properties[obj][1]
-		return install_name
+		if obj not in self._obj_key_cache:
+			raise KeyError("%s not in object list" % obj)
+		return self._obj_properties[self._obj_key_cache[obj]][1]
 
-	# the missing documentation, part X.
-	# This function appears to return all (valid) providers for all
-	# needed entries that the given object has.
 	def findProviders(self, obj):
-		if not self._libs:
-			self.rebuild()
+		"""
+		Find providers for an object or object key.
 
-		realpath_cache = {}
-		def realpath(p):
-			real_path = realpath_cache.get(p)
-			if real_path is None:
-				real_path = os.path.realpath(p)
-				realpath_cache[p] = real_path
-			return real_path
+		This method may be called with a key from _obj_properties.
 
-		obj = os.path.normpath(obj)
+		In some cases, not all valid libraries are returned.  This may occur when
+		an soname symlink referencing a library is in an object's runpath while
+		the actual library is not.  We should consider cataloging symlinks within
+		LinkageMap as this would avoid those cases and would be a better model of
+		library dependencies (since the dynamic linker actually searches for
+		files named with the soname in the runpaths).
+
+		@param obj: absolute path to an object or a key from _obj_properties
+		@type obj: string (example: '/usr/bin/bar') or _ObjectKey
+		@rtype: dict (example: {'libbar.dylib': set(['/lib/libbar.1.5.dylib'])})
+		@return: The return value is a install_name -> set-of-library-paths, where
+		set-of-library-paths satisfy install_name.
+
+		"""
 		rValue = {}
-		if obj not in self._obj_properties:
-			obj = realpath(obj)
-			if obj not in self._obj_properties:
-				raise KeyError("%s not in object list" % obj)
-		needed, install_name = self._obj_properties[obj]
 
-		for x in needed:
-			rValue[x] = set()
-			if x not in self._libs:
-				continue
-			for y in self._libs[x]["providers"]:
-				if realpath(x) == realpath(y):
-					rValue[x].add(y)
-		return rValue
-	
-	def findConsumers(self, obj):
 		if not self._libs:
 			self.rebuild()
 
-		obj = os.path.normpath(obj)
-		if obj not in self._obj_properties:
-			obj = os.path.realpath(obj)
-			if obj not in self._obj_properties:
-				raise KeyError("%s not in object list" % obj)
-		rValue = set()
-		for install_name in self._libs:
-			if obj in self._libs[install_name]["providers"]:
-				for x in self._libs[install_name]["consumers"]:
-					rValue.add(x)
+		# Determine the obj_key from the arguments.
+		if isinstance(obj, self._ObjectKey):
+			obj_key = obj
+			if obj_key not in self._obj_properties:
+				raise KeyError("%s not in object list" % obj_key)
+		else:
+			obj_key = self._obj_key_cache.get(obj)
+			if obj_key not in self._obj_properties:
+				obj_key = self._ObjectKey(obj)
+				if obj_key not in self._obj_properties:
+					raise KeyError("%s (%s) not in object list" % (obj_key, obj))
+
+		needed, install_name, _ = self._obj_properties[obj_key]
+		for install_name in needed:
+			rValue[install_name] = set()
+			if install_name not in self._libs:
+				continue
+			# For each potential provider of the install_name, add it to
+			# rValue if it exists.  (Should be one)
+			for provider_key in self._libs[install_name]["providers"]:
+				providers = self._obj_properties[provider_key][2]
+				for provider in providers:
+					if os.path.exists(provider):
+						rValue[install_name].add(provider)
 		return rValue
-					
+
+	def findConsumers(self, obj):
+		"""
+		Find consumers of an object or object key.
+
+		This method may be called with a key from _obj_properties.  If this
+		method is going to be called with an object key, to avoid not catching
+		shadowed libraries, do not pass new _ObjectKey instances to this method.
+		Instead pass the obj as a string.
+
+		In some cases, not all consumers are returned.  This may occur when
+		an soname symlink referencing a library is in an object's runpath while
+		the actual library is not.
+
+		@param obj: absolute path to an object or a key from _obj_properties
+		@type obj: string (example: '/usr/bin/bar') or _ObjectKey
+		@rtype: set of strings (example: set(['/bin/foo', '/usr/bin/bar']))
+		@return: The return value is a install_name -> set-of-library-paths, where
+		set-of-library-paths satisfy install_name.
+
+		"""
+		rValue = set()
+
+		if not self._libs:
+			self.rebuild()
+
+		# Determine the obj_key and the set of objects matching the arguments.
+		if isinstance(obj, self._ObjectKey):
+			obj_key = obj
+			if obj_key not in self._obj_properties:
+				raise KeyError("%s not in object list" % obj_key)
+			objs = self._obj_properties[obj_key][2]
+		else:
+			objs = set([obj])
+			obj_key = self._obj_key_cache.get(obj)
+			if obj_key not in self._obj_properties:
+				obj_key = self._ObjectKey(obj)
+				if obj_key not in self._obj_properties:
+					raise KeyError("%s (%s) not in object list" % (obj_key, obj))
+
+		# If there is another version of this lib with the
+		# same soname and the master link points to that
+		# other version, this lib will be shadowed and won't
+		# have any consumers.
+		if not isinstance(obj, self._ObjectKey):
+			master_link = self._obj_properties[obj_key][1]
+			try:
+				master_st = os.stat(master_link)
+				obj_st = os.stat(obj)
+			except OSError:
+				pass
+			else:
+				if (obj_st.st_dev, obj_st.st_ino) != \
+					(master_st.st_dev, master_st.st_ino):
+					return set()
+
+		_, install_name, _ = self._obj_properties[obj_key]
+		if install_name in self._libs:
+			# For each potential consumer, add it to rValue if an object from the
+			# arguments resides in the consumer's runpath.
+			for consumer_key in self._libs[install_name]["consumers"]:
+				_, _, consumer_objs = \
+						self._obj_properties[consumer_key]
+				rValue.update(consumer_objs)
+		return rValue
+
 class vardbapi(dbapi):
 
 	_excluded_dirs = ["CVS", "lost+found"]
