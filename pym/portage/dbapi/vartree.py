@@ -169,11 +169,6 @@ class LinkageMap(object):
 			return hash(self._key)
 
 		def __eq__(self, other):
-			if not isinstance(other, self.__class__):
-				# Can't safely return True in this case since
-				# if there is a hash collision then __eq__ needs
-				# to be relied upon for correct dict behavior.
-				return False
 			return self._key == other._key
 
 		def _generate_object_key(self, object):
