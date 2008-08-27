@@ -895,6 +895,7 @@ class LinkageMapMachO(object):
 
 		"""
 		basename = os.path.basename(obj)
+		obj_key = self._ObjectKey(obj)
 		if obj_key not in self._obj_properties:
 			raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 		install_name = self._obj_properties[obj_key][1]
