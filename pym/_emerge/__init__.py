@@ -11592,6 +11592,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		# Reload the whole config from scratch.
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
 		portdb = trees[settings["ROOT"]]["porttree"].dbapi
+		root_config = trees[settings["ROOT"]]["root_config"]
 
 	mybestpv = portdb.xmatch("bestmatch-visible", "sys-apps/portage")
 	mypvs = portage.best(

@@ -169,11 +169,7 @@ class LinkageMap(object):
 			return hash(self._key)
 
 		def __eq__(self, other):
-			if isinstance(other, self.__class__):
-				other_key = other._key
-			else:
-				other_key = other
-			return self._key == other_key
+			return self._key == other._key
 
 		def _generate_object_key(self, object):
 			"""
