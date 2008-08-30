@@ -6218,6 +6218,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	# d) is the first item
 
 	preferred = []
+	preferred_not_installed = []
 	preferred_any_slot = []
 	possible_upgrades = []
 	other = []
@@ -6298,7 +6299,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						break
 				if all_in_graph:
 					if parent is None:
-						preferred.append(this_choice)
+						preferred_not_installed.append(this_choice)
 					else:
 						# Check if the atom would result in a direct circular
 						# dependency and try to avoid that if it seems likely
@@ -6318,7 +6319,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 								circular_atom = atom
 								break
 						if circular_atom is None:
-							preferred.append(this_choice)
+							preferred_not_installed.append(this_choice)
 						else:
 							other.append(this_choice)
 				else:
@@ -6332,6 +6333,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	# into || ( highest version ... lowest version ).  We want to prefer the
 	# highest all_available version of the new-style virtual when there is a
 	# lower all_installed version.
+	preferred.extend(preferred_not_installed)
 	preferred.extend(preferred_any_slot)
 	preferred.extend(possible_upgrades)
 	possible_upgrades = preferred[1:]
