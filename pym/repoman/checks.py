@@ -271,7 +271,7 @@ class IUseUndefined(LineCheck):
 class EMakeParallelDisabled(LineCheck):
 	"""Check for emake -j1 calls which disable parallelization."""
 	repoman_check_name = 'ebuild.minorsyn'
-	re = re.compile(r'^\s*emake\s*-j\s*1\s')
+	re = re.compile(r'^\s*emake\s+-j\s*1\s')
 	error = errors.EMAKE_PARALLEL_DISABLED
 
 class DeprecatedBindnowFlags(LineCheck):
