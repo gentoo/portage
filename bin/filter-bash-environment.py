@@ -25,6 +25,11 @@ def have_end_quote(quote, line):
 		close_quote_match.group(1) == quote
 
 def filter_bash_environment(pattern, file_in, file_out):
+	# Filter out any instances of the \1 character from variable values
+	# since this character multiplies each time that the environment
+	# is saved (strange bash behavior). This can eventually result in
+	# mysterious 'Argument list too long' errors from programs that have
+	# huge strings of \1 characters in their environment. See bug #222091.
 	here_doc_delim = None
 	in_func = None
 	multi_line_quote = None
@@ -32,7 +37,7 @@ def filter_bash_environment(pattern, file_in, file_out):
 	for line in file_in:
 		if multi_line_quote is not None:
 			if not multi_line_quote_filter:
-				file_out.write(line)
+				file_out.write(line.replace("\1", ""))
 			if have_end_quote(multi_line_quote, line):
 				multi_line_quote = None
 				multi_line_quote_filter = None
@@ -59,7 +64,7 @@ def filter_bash_environment(pattern, file_in, file_out):
 								(declare_opts, line[readonly_match.end():])
 						else:
 							line = "declare " + line[readonly_match.end():]
-					file_out.write(line)
+					file_out.write(line.replace("\1", ""))
 				continue
 		if here_doc_delim is not None:
 			if here_doc_delim.match(line):
