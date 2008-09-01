@@ -82,8 +82,10 @@ Determines how long the countdown delay will be after running `emerge clean`.
 Defaults to 5 seconds.
 .TP
 \fBCOLLISION_IGNORE\fR = \fI[space delimited list of files and/or directories]\fR
-This variable allows the user to disable \fIcollision\-protect\fR for specific
-files and/or directories.
+This variable allows the user to disable \fIcollision\-protect\fR and
+\fIprotect\-owned\fR for specific files and/or directories.
+.br
+Defaults to /lib/modules.
 .TP
 \fBCONFIG_PROTECT\fR = \fI[space delimited list of files and/or directories]\fR
 All files and/or directories that are defined here will have "config file protection"
@@ -171,7 +173,7 @@ ${PORTAGE_TMPDIR}/ccache.
 .B collision\-protect
 A QA\-feature to ensure that a package doesn't overwrite files it doesn't own.
 The \fICOLLISION_IGNORE\fR variable can be used to selectively disable this
-feature.
+feature. Also see the related \fIprotect\-owned\fR feature.
 .TP
 .B digest
 Autogenerate digests for packages when running the \fBemerge\fR(1) command.  If
@@ -267,6 +269,20 @@ Fetch in the background while compiling. Run
 `tail \-f /var/log/emerge\-fetch.log` in a
 terminal to view parallel-fetch progress.
 .TP
+.B protect\-owned
+This is identical to the \fIcollision\-protect\fR feature except that files
+may be overwritten if they are not explicitly listed in the contents of a
+currently installed package. This is particularly useful on systems that
+have lots of orphan files that have been left behind by older versions
+of portage that did not support the \fIunmerge\-orphans\fR feature. Like
+\fIcollision\-protect\fR, the \fICOLLISION_IGNORE\fR variable can be used to
+selectively disable this feature. It is recommended to leave either
+\fIprotect\-owned\fR or \fIcollision\-protect\fR enabled at all times,
+since otherwise file collisions between packages may result in files being
+overwritten or uninstalled at inappropriate times.
+If \fIcollision\-protect\fR is enabled then it takes precedence over
+\fIprotect\-owned\fR. 
+.TP
 .B sandbox
 Enable sandbox\-ing when running \fBemerge\fR(1) and \fBebuild\fR(1).
 .TP
@@ -321,7 +337,7 @@ the package compiled properly.  See \fItest\fR in \fBebuild\fR(1)
 and \fIsrc_test()\fR in \fBebuild\fR(5). This feature implies the "test"
 \fBUSE\fR flag.
 .TP
-.B unmerge-orphans
+.B unmerge\-orphans
 If a file is not claimed by another package in the same slot and it is not
 protected by \fICONFIG_PROTECT\fR, unmerge it even if the modification time or
 checksum differs from the file that was originally installed.
@@ -500,7 +516,7 @@ Default rsync options to be used by \fBemerge \-\-sync\fR.
 \fBDon't change this unless you know exactly what you're doing!\fR
 .br
 Defaults to "\-\-recursive \-\-links \-\-safe\-links \-\-perms \-\-times
-\-\-compress \-\-force \-\-whole\-file \-\-delete \-\-delete\-after \-\-stats
+\-\-compress \-\-force \-\-whole\-file \-\-delete \-\-stats
 \-\-timeout=180 \-\-exclude='/distfiles' \-\-exclude='/local'
 \-\-exclude='/packages'"
 .TP

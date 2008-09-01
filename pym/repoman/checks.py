@@ -268,12 +268,25 @@ class IUseUndefined(LineCheck):
 		if self._iuse_def is None:
 			yield 'IUSE is not defined'
 
+class EMakeParallelDisabled(LineCheck):
+	"""Check for emake -j1 calls which disable parallelization."""
+	repoman_check_name = 'ebuild.minorsyn'
+	re = re.compile(r'^\s*emake\s+-j\s*1\s')
+	error = errors.EMAKE_PARALLEL_DISABLED
+
+class DeprecatedBindnowFlags(LineCheck):
+	"""Check for calls to the deprecated bindnow-flags function."""
+	repoman_check_name = 'ebuild.minorsyn'
+	re = re.compile(r'.*\$\(bindnow-flags\)')
+	error = errors.DEPRECATED_BINDNOW_FLAGS
+
 _constant_checks = tuple((c() for c in (
 	EbuildHeader, EbuildWhitespace, EbuildQuote,
 	EbuildAssignment, EbuildUselessDodoc,
 	EbuildUselessCdS, EbuildNestedDie,
 	EbuildPatches, EbuildQuotedA,
-	IUseUndefined, InheritAutotools)))
+	IUseUndefined, InheritAutotools,
+	EMakeParallelDisabled, DeprecatedBindnowFlags)))
 
 def run_checks(contents, pkg):
 	checks = _constant_checks

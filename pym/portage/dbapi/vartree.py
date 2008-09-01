@@ -3379,12 +3379,15 @@ class dblink(object):
 
 		if collisions:
 			collision_protect = "collision-protect" in self.settings.features
+			protect_owned = "protect-owned" in self.settings.features
 			msg = "This package will overwrite one or more files that" + \
 			" may belong to other packages (see list below)."
-			if not collision_protect:
-				msg += " Add \"collision-protect\" to FEATURES in" + \
+			if not (collision_protect or protect_owned):
+				msg += " Add either \"collision-protect\" or" + \
+				" \"protect-owned\" to FEATURES in" + \
 				" make.conf if you would like the merge to abort" + \
-				" in cases like this."
+				" in cases like this. See the make.conf man page for" + \
+				" more information about these features."
 			if self.settings.get("PORTAGE_QUIET") != "1":
 				msg += " You can use a command such as" + \
 				" `portageq owners / <filename>` to identify the" + \
@@ -3452,6 +3455,9 @@ class dblink(object):
 			if collision_protect:
 				msg = "Package '%s' NOT merged due to file collisions." % \
 					self.settings.mycpv
+			elif protect_owned and owners:
+				msg = "Package '%s' NOT merged due to file collisions." % \
+					self.settings.mycpv
 			else:
 				msg = "Package '%s' merged despite file collisions." % \
 					self.settings.mycpv
@@ -3459,7 +3465,7 @@ class dblink(object):
 				"messages for the whole content of the above message."
 			eerror(wrap(msg, 70))
 
-			if collision_protect:
+			if collision_protect or (protect_owned and owners):
 				return 1
 
 		# The merge process may move files out of the image directory,
