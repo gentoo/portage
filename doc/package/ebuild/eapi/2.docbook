@@ -306,6 +306,18 @@ src_compile() {
 	</tgroup>
 	</table>
 	</section>
+	<section id='package-ebuild-eapi-2-draft-helpers-unpack'>
+	<title>unpack</title>
+	<section id='package-ebuild-eapi-2-draft-helpers-unpack-gitweb-snapshots'>
+	<title>Gitweb Snapshots</title>
+	<para>
+	To aid interoperatiblity with gitweb, files with the suffixes of ;sf=tbz2
+	and ;sf=tgz are now treated as .tar.bz2 and .tar.gz archives, respectively.
+	This allows for ebuilds to consume gitweb snapshots and still use the
+	default src_unpack implementation.
+	</para>
+	</section>
+	</section>
 	</section>
 	<section id='package-ebuild-eapi-2-draft-metadata'>
 	<title>Metadata</title>
