@@ -307,11 +307,13 @@ src_compile() {
 	</table>
 	</section>
 	</section>
-	<section id='package-ebuild-eapi-2-draft-dependencies'>
+	<section id='package-ebuild-eapi-2-draft-metadata'>
+	<title>Metadata</title>
+	<section id='package-ebuild-eapi-2-draft-metadata-dependencies'>
 	<title>Dependencies</title>
-	<section id='package-ebuild-eapi-2-draft-dependencies-blocker-atoms'>
+	<section id='package-ebuild-eapi-2-draft-metadata-dependencies-blocker-atoms'>
 	<title>Blocker Atoms</title>
-	<section id='package-ebuild-eapi-2-draft-dependencies-blocker-atoms-new-meaning'>
+	<section id='package-ebuild-eapi-2-draft-metadata-dependencies-blocker-atoms-new-meaning'>
 	<title>New Meaning for Old Syntax</title>
 	<para>
 	Blocker atoms which use the previously existing !atom syntax now have
@@ -326,7 +328,7 @@ src_compile() {
 	any newer blocking packages have been merged on top of it.
 	</para>
 	</section>
-	<section id='package-ebuild-eapi-2-draft-dependencies-blocker-atoms-new-syntax'>
+	<section id='package-ebuild-eapi-2-draft-metadata-dependencies-blocker-atoms-new-syntax'>
 	<title>New !!atom Syntax</title>
 	<para>
 	A new !!atom syntax is now supported, for use in special cases for which
@@ -337,9 +339,9 @@ src_compile() {
 	</para>
 	</section>
 	</section>
-	<section id='package-ebuild-eapi-2-draft-dependencies-use'>
+	<section id='package-ebuild-eapi-2-draft-metadata-dependencies-use'>
 	<title>USE Dependencies</title>
-	<section id='package-ebuild-eapi-2-draft-dependencies-use-unconditional'>
+	<section id='package-ebuild-eapi-2-draft-metadata-dependencies-use-unconditional'>
 	<title>Unconditional USE Dependencies</title>
 	<table><title>Syntax Examples</title>
 	<tgroup cols='2' align='left' >
@@ -368,7 +370,7 @@ src_compile() {
 	</tgroup>
 	</table>
 	</section>
-	<section id='package-ebuild-eapi-2-draft-dependencies-use-conditional'>
+	<section id='package-ebuild-eapi-2-draft-metadata-dependencies-use-conditional'>
 	<title>Conditional USE Dependencies</title>
 	<table><title>Syntax Examples</title>
 	<tgroup cols='2' align='left' >
@@ -400,6 +402,7 @@ src_compile() {
 	</tbody>
 	</tgroup>
 	</table>
+	</section>
 	</section>
 	</section>
 	</section>
