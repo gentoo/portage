@@ -330,7 +330,7 @@ src_compile() {
 	<title>New !!atom Syntax</title>
 	<para>
 	A new !!atom syntax is now supported, for use in special cases for which
-	temporary simultaneous installation of blocking packages should not be
+	temporary simultaneous installation of conflicting packages should not be
 	allowed. If a given package happens to be blocked my a mixture of atoms
 	consisting of both the !atom and !!atom syntaxes, the !!atom syntax takes
 	precedence over the !atom syntax.
