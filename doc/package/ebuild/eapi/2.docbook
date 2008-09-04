@@ -280,6 +280,8 @@ src_compile() {
 	<title>Helpers</title>
 	<section id='package-ebuild-eapi-2-draft-helpers-doman'>
 	<title>doman</title>
+	<section id='package-ebuild-eapi-2-draft-helpers-doman-language-codes'>
+	<title>Recognition of Language Codes in File Names</title>
 	<para>
 	Language codes in file names are now used for path translation.
 	</para>
@@ -305,6 +307,7 @@ src_compile() {
 	</tbody>
 	</tgroup>
 	</table>
+	</section>
 	</section>
 	<section id='package-ebuild-eapi-2-draft-helpers-unpack'>
 	<title>unpack</title>
