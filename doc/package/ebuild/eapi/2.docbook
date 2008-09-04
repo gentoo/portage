@@ -307,9 +307,11 @@ src_compile() {
 	</table>
 	</section>
 	</section>
-	<section id='package-ebuild-eapi-2-draft-use-deps'>
+	<section id='package-ebuild-eapi-2-draft-dependencies'>
+	<title>Dependencies</title>
+	<section id='package-ebuild-eapi-2-draft-dependencies-use'>
 	<title>USE Dependencies</title>
-	<section id='package-ebuild-eapi-2-draft-use-deps-unconditional'>
+	<section id='package-ebuild-eapi-2-draft-dependencies-use-unconditional'>
 	<title>Unconditional USE Dependencies</title>
 	<table><title>Syntax Examples</title>
 	<tgroup cols='2' align='left' >
@@ -338,7 +340,7 @@ src_compile() {
 	</tgroup>
 	</table>
 	</section>
-	<section id='package-ebuild-eapi-2-draft-use-deps-conditional'>
+	<section id='package-ebuild-eapi-2-draft-dependencies-use-conditional'>
 	<title>Conditional USE Dependencies</title>
 	<table><title>Syntax Examples</title>
 	<tgroup cols='2' align='left' >
@@ -370,6 +372,7 @@ src_compile() {
 	</tbody>
 	</tgroup>
 	</table>
+	</section>
 	</section>
 	</section>
 	<section id='package-ebuild-eapi-2-draft-phases'>
