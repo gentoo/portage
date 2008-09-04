@@ -405,6 +405,20 @@ src_compile() {
 	</section>
 	</section>
 	</section>
+	<section id='package-ebuild-eapi-2-draft-metadata-src-uri'>
+		<title>SRC_URI</title>
+		<section id='package-ebuild-eapi-2-draft-metadata-src-uri-output-file-name-customization'>
+			<title>Customization of Output File Names</title>
+			<para>
+			A new syntax is supported which allows customization of the output
+			file name for a given URI. In order to customize the output file
+			name, a given URI should be followed by a "->" operator which,
+			in turn, should be followed by the desired output file name. As
+			usual, all tokens, including the operator and output file name,
+			should be separated by whitespace.
+			</para>
+		</section>
+	</section>
 	</section>
 	<section id='package-ebuild-eapi-2-draft-phases'>
 		<title>Phases</title>
