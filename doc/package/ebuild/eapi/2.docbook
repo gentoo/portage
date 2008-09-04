@@ -309,6 +309,34 @@ src_compile() {
 	</section>
 	<section id='package-ebuild-eapi-2-draft-dependencies'>
 	<title>Dependencies</title>
+	<section id='package-ebuild-eapi-2-draft-dependencies-blocker-atoms'>
+	<title>Blocker Atoms</title>
+	<section id='package-ebuild-eapi-2-draft-dependencies-blocker-atoms-new-meaning'>
+	<title>New Meaning for Old Syntax</title>
+	<para>
+	Blocker atoms which use the previously existing !atom syntax now have
+	a slightly different meaning. These blocker atoms indicate that
+	conflicting packages may be temporarily installed simultaneously. When
+	temporary simultaneous installation of conflicting packages occurs, the
+	installation of a newer package may overwrite any colliding files that
+	belong to an older package which is explicitly blocked. When such file
+	collisions occur, the colliding files cease to belong to the older
+	package, and they remain installed after the older package is
+	eventually uninstalled. The older package is uninstalled only after
+	any newer blocking packages have been merged on top of it.
+	</para>
+	</section>
+	<section id='package-ebuild-eapi-2-draft-dependencies-blocker-atoms-new-syntax'>
+	<title>New !!atom Syntax</title>
+	<para>
+	A new !!atom syntax is now supported, for use in special cases for which
+	temporary simultaneous installation of blocking packages should not be
+	allowed. If a given package happens to be blocked my a mixture of atoms
+	consisting of both the !atom and !!atom syntaxes, the !!atom syntax takes
+	precedence over the !atom syntax.
+	</para>
+	</section>
+	</section>
 	<section id='package-ebuild-eapi-2-draft-dependencies-use'>
 	<title>USE Dependencies</title>
 	<section id='package-ebuild-eapi-2-draft-dependencies-use-unconditional'>
