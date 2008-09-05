@@ -55,7 +55,7 @@ class StaticFileSet(EditablePackageSet):
 				setattr(self, key, " ".join(value))
 
 	def _validate(self, atom):
-		return ValidAtomValidator(atom)
+		return bool(atom[:1] == SETPREFIX or ValidAtomValidator(atom))
 
 	def write(self):
 		write_atomic(self._filename, "".join("%s\n" % (atom,) \
