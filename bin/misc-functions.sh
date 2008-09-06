@@ -106,8 +106,7 @@ install_qa_check() {
 			eqawarn " risk.  On some architectures, the code may not even function"
 			eqawarn " properly, if at all."
 			eqawarn " For more information, see http://hardened.gentoo.org/pic-fix-guide.xml"
-			eqawarn " Please include this file in your report:"
-			eqawarn " ${T}/scanelf-textrel.log"
+			eqawarn " Please include the following list of files in your report:"
 			eqawarn "${f}"
 			vecho -ne '\a\n'
 			die_msg="${die_msg} textrels,"
@@ -151,8 +150,7 @@ install_qa_check() {
 			eqawarn " on some architectures/operating systems.  A bug should be filed"
 			eqawarn " at http://bugs.gentoo.org/ to make sure the file is fixed."
 			eqawarn " For more information, see http://hardened.gentoo.org/gnu-stack.xml"
-			eqawarn " Please include this file in your report:"
-			eqawarn " ${T}/scanelf-execstack.log"
+			eqawarn " Please include the following list of files in your report:"
 			eqawarn "${f}"
 			vecho -ne '\a\n'
 			die_msg="${die_msg} execstacks"
@@ -187,8 +185,7 @@ install_qa_check() {
 				if [[ -n ${f} ]] ; then
 					vecho -ne '\a\n'
 					eqawarn "${BAD}QA Notice: Files built without respecting LDFLAGS have been detected${NORMAL}"
-					eqawarn " Please include this file in your report:"
-					eqawarn " ${T}/scanelf-ignored-LDFLAGS.log"
+					eqawarn " Please include the following list of files in your report:"
 					eqawarn "${f}"
 					vecho -ne '\a\n'
 					sleep 1
