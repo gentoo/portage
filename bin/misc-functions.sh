@@ -179,7 +179,10 @@ install_qa_check() {
 						set -${shopts}
 					fi
 				fi
-				sed -e "/^\$/d" -e "s#^#/#" -i "${T}"/scanelf-ignored-LDFLAGS.log
+				# Filter anything under /usr/lib/debug/ in order to avoid
+				# duplicate warnings for splitdebug files.
+				sed -e "s#^usr/lib/debug/.*##" -e "/^\$/d" -e "s#^#/#" \
+					-i "${T}"/scanelf-ignored-LDFLAGS.log
 				f=$(<"${T}"/scanelf-ignored-LDFLAGS.log)
 				if [[ -n ${f} ]] ; then
 					vecho -ne '\a\n'
