@@ -543,67 +543,6 @@ src_compile() {
 				</tbody>
 				</tgroup>
 			</table>
-			<para>
-			The default phase functions for a particular EAPI are also
-			accessible as functions having names that start with 'eapi'
-			followed by the EAPI value. For example, a call to a function
-			named eapi0_src_compile is equivalent to a call to the
-			default src_compile implementation that is provided with EAPI 0.
-			</para>
-			<table><title>Default EAPI Phase Functions</title>
-				<tgroup cols='1' align='left' >
-				<colspec colname='name'/>
-				<thead>
-				<row>
-					<entry>Function Name</entry>
-				</row>
-				</thead>
-				<tbody>
-				<row>
-					<entry>eapi0_pkg_nofetch</entry>
-				</row>
-				<row>
-					<entry>eapi0_src_unpack</entry>
-				</row>
-				<row>
-					<entry>eapi0_src_compile</entry>
-				</row>
-				<row>
-					<entry>eapi0_src_test</entry>
-				</row>
-				<row>
-					<entry>eapi1_pkg_nofetch</entry>
-				</row>
-				<row>
-					<entry>eapi1_src_unpack</entry>
-				</row>
-				<row>
-					<entry>eapi1_src_compile</entry>
-				</row>
-				<row>
-					<entry>eapi1_src_test</entry>
-				</row>
-				<row>
-					<entry>eapi2_pkg_nofetch</entry>
-				</row>
-				<row>
-					<entry>eapi2_src_unpack</entry>
-				</row>
-				<row>
-					<entry>eapi2_src_prepare</entry>
-				</row>
-				<row>
-					<entry>eapi2_src_configure</entry>
-				</row>
-				<row>
-					<entry>eapi2_src_compile</entry>
-				</row>
-				<row>
-					<entry>eapi2_src_test</entry>
-				</row>
-				</tbody>
-				</tgroup>
-			</table>
 		</section>
 		<section id='package-ebuild-eapi-2-draft-phases-default-function-alias'>
 			<title>Default Phase Function Alias</title>
