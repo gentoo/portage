@@ -56,12 +56,23 @@ save_elf_debug() {
 	# dont save debug info twice
 	[[ ${x} == *".debug" ]] && return 0
 
+	# this will recompute the build-id, but for now that's ok
+	local buildid="$( type -P debugedit >/dev/null && debugedit -i "${x}" )"
+
 	mkdir -p $(dirname "${y}")
 	${OBJCOPY} --only-keep-debug "${x}" "${y}"
 	${OBJCOPY} --add-gnu-debuglink="${y}" "${x}"
 	[[ -g ${x} ]] && chmod go-r "${y}"
 	[[ -u ${x} ]] && chmod go-r "${y}"
 	chmod a-x,o-w "${y}"
+
+	if [[ -n ${buildid} ]] ; then
+		local buildid_dir="${D}usr/lib/debug/.build-id/${buildid:0:2}"
+		local buildid_file="${buildid_dir}/${buildid:2}"
+		mkdir -p "${buildid_dir}"
+		ln -s "../../${x:${#D}}.debug" "${buildid_file}.debug"
+		ln -s "/${x:${#D}}" "${buildid_file}"
+	fi
 }
 
 # The existance of the section .symtab tells us that a binary is stripped.
