@@ -24,11 +24,11 @@ class WorldHandler(object):
 		self.not_installed = []
 		self.invalid_category = []
 		self.okay = []
-		self.world_file = os.path.join("/", portage_const.WORLD_FILE)
+		myroot = portage.settings["ROOT"]
+		self.world_file = os.path.join(myroot, portage_const.WORLD_FILE)
 		self.found = os.access(self.world_file, os.R_OK)
 
 		categories = set(portage.settings.categories)
-		myroot = portage.settings["ROOT"]
 		vardb = portage.db[myroot]["vartree"].dbapi
 
 		for atom in open(self.world_file).read().split():
