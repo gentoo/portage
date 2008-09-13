@@ -639,7 +639,7 @@ dyn_package() {
 	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${D}" . | \
 		bzip2 -f > "$PORTAGE_BINPKG_TMPFILE" || \
 		die "Failed to create tarball"
-	export PYTHONPATH="${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}:${PYTHONPATH}"
+	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
 	python -c "from portage import xpak; t=xpak.tbz2('${PORTAGE_BINPKG_TMPFILE}'); t.recompose('${PORTAGE_BUILDDIR}/build-info')"
 	if [ $? -ne 0 ]; then
 		rm -f "${PORTAGE_BINPKG_TMPFILE}"
