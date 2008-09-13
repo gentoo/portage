@@ -117,7 +117,7 @@ try:
 	import portage.eclass_cache
 	from portage.localization import _
 	from portage.update import dep_transform, fixdbentries, grab_updates, \
-		parse_updates, update_config_files, update_dbentries
+		parse_updates, update_config_files, update_dbentries, update_dbentry
 
 	# Need these functions directly in portage namespace to not break every external tool in existence
 	from portage.versions import best, catpkgsplit, catsplit, pkgcmp, \
@@ -7069,6 +7069,7 @@ def _global_updates(trees, prev_mtimes):
 	global secpass
 	if secpass < 2 or "SANDBOX_ACTIVE" in os.environ:
 		return
+	root = "/"
 	mysettings = trees["/"]["vartree"].settings
 	updpath = os.path.join(mysettings["PORTDIR"], "profiles", "updates")
 
@@ -7101,6 +7102,20 @@ def _global_updates(trees, prev_mtimes):
 			else:
 				for msg in errors:
 					writemsg("%s\n" % msg, noiselevel=-1)
+
+		world_file = os.path.join(root, WORLD_FILE)
+		world_list = grabfile(world_file)
+		world_modified = False
+		for update_cmd in myupd:
+			for pos, atom in enumerate(world_list):
+				new_atom = update_dbentry(update_cmd, atom)
+				if atom != new_atom:
+					world_list[pos] = new_atom
+					world_modified = True
+		if world_modified:
+			world_list.sort()
+			write_atomic(world_file,
+				"".join("%s\n" % (x,) for x in world_list))
 
 		update_config_files("/",
 			mysettings.get("CONFIG_PROTECT","").split(),
