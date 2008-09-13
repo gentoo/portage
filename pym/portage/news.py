@@ -10,7 +10,8 @@ __all__ = ["NewsManager", "NewsItem", "DisplayRestriction",
 import errno
 import os
 import re
-from portage.util import ensure_dirs, apply_permissions, normalize_path, grabfile, write_atomic
+from portage.util import apply_permissions, ensure_dirs, grabfile, \
+	grablines, normalize_path, write_atomic
 from portage.data import portage_gid
 from portage.locks import lockfile, unlockfile
 from portage.exception import OperationNotPermitted
@@ -141,19 +142,9 @@ class NewsManager(object):
 			if os.access(os.path.dirname(unreadfile), os.W_OK):
 				# TODO: implement shared readonly locks
 				unread_lock = lockfile(unreadfile)
-			try:
-				f = open(unreadfile)
-				try:
-					unread = f.readlines()
-				finally:
-					f.close()
-			except EnvironmentError, e:
-				if e.errno != errno.ENOENT:
-					raise
-				del e
-				return 0
-			if len(unread):
-				return len(unread)
+
+			return len(grablines(unreadfile))
+
 		finally:
 			if unread_lock:
 				unlockfile(unread_lock)
