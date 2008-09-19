@@ -1386,7 +1386,7 @@ class Task(SlotObject):
 class Blocker(Task):
 
 	__hash__ = Task.__hash__
-	__slots__ = ("root", "atom", "cp", "satisfied")
+	__slots__ = ("root", "atom", "cp", "eapi", "satisfied")
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
@@ -1396,7 +1396,7 @@ class Blocker(Task):
 		hash_key = getattr(self, "_hash_key", None)
 		if hash_key is None:
 			self._hash_key = \
-				("blocks", self.root, self.atom)
+				("blocks", self.root, self.atom, self.eapi)
 		return self._hash_key
 
 class Package(Task):
@@ -4384,7 +4384,9 @@ class depgraph(object):
 					return 1
 				# The blocker applies to the root where
 				# the parent is or will be installed.
-				blocker = Blocker(atom=dep.atom, root=dep.parent.root)
+				blocker = Blocker(atom=dep.atom,
+					eapi=dep.parent.metadata["EAPI"],
+					root=dep.parent.root)
 				self._blocker_parents.add(blocker, dep.parent)
 			return 1
 		dep_pkg, existing_node = self._select_package(dep.root, dep.atom,
@@ -4642,15 +4644,14 @@ class depgraph(object):
 				for atom in selected_atoms:
 					try:
 
-						blocker = atom.startswith("!")
-						if blocker:
-							atom = atom[1:]
+						atom = portage.dep.Atom(atom)
+
 						mypriority = dep_priority.copy()
-						if not blocker and vardb.match(atom):
+						if not atom.blocker and vardb.match(atom):
 							mypriority.satisfied = True
 
 						if not self._add_dep(Dependency(atom=atom,
-							blocker=blocker, depth=depth, parent=pkg,
+							blocker=atom.blocker, depth=depth, parent=pkg,
 							priority=mypriority, root=dep_root),
 							allow_unsatisfied=allow_unsatisfied):
 							return 0
@@ -5802,7 +5803,7 @@ class depgraph(object):
 						except KeyError:
 							pass
 					if blockers is not None:
-						blockers = set("!" + blocker.atom \
+						blockers = set(str(blocker.atom) \
 							for blocker in blockers)
 
 					# If this node has any blockers, create a "nomerge"
@@ -5880,7 +5881,8 @@ class depgraph(object):
 							blocker_cache.BlockerData(counter, blocker_atoms)
 					if blocker_atoms:
 						for myatom in blocker_atoms:
-							blocker = Blocker(atom=myatom[1:], root=myroot)
+							blocker = Blocker(atom=portage.dep.Atom(myatom),
+								eapi=pkg.metadata["EAPI"], root=myroot)
 							self._blocker_parents.add(blocker, pkg)
 				for cpv in stale_cache:
 					del blocker_cache[cpv]
@@ -5899,7 +5901,7 @@ class depgraph(object):
 			self.spinner.update()
 			root_config = self.roots[blocker.root]
 			virtuals = root_config.settings.getvirtuals()
-			mytype, myroot, mydep = blocker
+			myroot = blocker.root
 			initial_db = self.trees[myroot]["vartree"].dbapi
 			final_db = self.mydbapi[myroot]
 			
@@ -6370,7 +6372,18 @@ class depgraph(object):
 					if self.digraph.contains(inst_pkg):
 						continue
 
-					if running_root == task.root:
+					forbid_overlap = False
+					heuristic_overlap = False
+					for blocker in myblocker_uninstalls.parent_nodes(task):
+						if blocker.eapi in ("0", "1"):
+							heuristic_overlap = True
+						elif blocker.atom.blocker.overlap.forbid:
+							forbid_overlap = True
+							break
+					if forbid_overlap and running_root == task.root:
+						continue
+
+					if heuristic_overlap and running_root == task.root:
 						# Never uninstall sys-apps/portage or it's essential
 						# dependencies, except through replacement.
 						try:
@@ -6570,7 +6583,8 @@ class depgraph(object):
 					# will be temporarily installed simultaneously.
 					for blocker in solved_blockers:
 						retlist.append(Blocker(atom=blocker.atom,
-							root=blocker.root, satisfied=True))
+							root=blocker.root, eapi=blocker.eapi,
+							satisfied=True))
 
 		unsolvable_blockers = set(self._unsolvable_blockers.leaf_nodes())
 		for node in myblocker_uninstalls.root_nodes():
@@ -6939,7 +6953,7 @@ class depgraph(object):
 					if x.satisfied:
 						counters.blocks_satisfied += 1
 				resolved = portage.key_expand(
-					pkg_key, mydb=vardb, settings=pkgsettings)
+					str(x.atom).lstrip("!"), mydb=vardb, settings=pkgsettings)
 				if "--columns" in self.myopts and "--quiet" in self.myopts:
 					addl += " " + colorize(blocker_style, resolved)
 				else:
@@ -6952,7 +6966,7 @@ class depgraph(object):
 				if resolved!=x[2]:
 					addl += colorize(blocker_style,
 						" (\"%s\" is blocking %s)") % \
-						(pkg_key, block_parents)
+						(str(x.atom).lstrip("!"), block_parents)
 				else:
 					addl += colorize(blocker_style,
 						" (is blocking %s)") % block_parents
