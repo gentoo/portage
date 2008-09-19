@@ -171,7 +171,11 @@ Builds a RedHat RPM package from the files in the temporary
 information is not incorporated into the RPM.
 .SH OPTIONS
 .TP
-\fB--force\fR
+.BR "\-\-debug"
+Run bash with the \-x option, causing it to output verbose debugging
+information to stdout.
+.TP
+.BR "\-\-force"
 When used together with the digest or manifest command,
 this option forces regeneration of
 digests for all distfiles associated with the current ebuild. Any distfiles
