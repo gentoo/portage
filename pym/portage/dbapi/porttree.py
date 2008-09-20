@@ -543,26 +543,18 @@ class portdbapi(dbapi):
 
 		uri_map = {}
 
-		uri = None
-		operator = None
 		myuris.reverse()
 		while myuris:
-			token = myuris.pop()
-			if uri is None:
-				uri = token
-				if myuris:
-					continue
-			if token == "->":
-				operator = token
-				continue
-			if operator is None:
+			uri = myuris.pop()
+			if myuris and myuris[-1] == "->":
+				operator = myuris.pop()
+				distfile = myuris.pop()
+			else:
 				distfile = os.path.basename(uri)
 				if not distfile:
 					raise portage.exception.InvalidDependString(
 						("getFetchMap(): '%s' SRC_URI has no file " + \
 						"name: '%s'") % (mypkg, uri))
-			else:
-				distfile = token
 
 			uri_set = uri_map.get(distfile)
 			if uri_set is None:
