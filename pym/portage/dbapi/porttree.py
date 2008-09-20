@@ -63,6 +63,11 @@ def _src_uri_validate(cpv, eapi, src_uri):
 					"supported with EAPI='%s'") % (cpv, eapi))
 			operator = x
 			continue
+		if operator is not None:
+			if "/" in x:
+				raise portage.exception.InvalidDependString(
+					("getFetchMap(): '%s' SRC_URI '/' character in " + \
+					"file name: '%s'") % (cpv, x))
 		uri = None
 		operator = None
 
@@ -548,11 +553,6 @@ class portdbapi(dbapi):
 				if myuris:
 					continue
 			if token == "->":
-				if eapi in ("0", "1"):
-					raise portage.exception.InvalidDependString(
-						("getFetchMap(): '%s' SRC_URI arrows are not " + \
-						"supported with EAPI='%s'") % (mypkg, eapi))
-
 				operator = token
 				continue
 			if operator is None:
@@ -563,10 +563,7 @@ class portdbapi(dbapi):
 						"name: '%s'") % (mypkg, uri))
 			else:
 				distfile = token
-				if "/" in distfile:
-					raise portage.exception.InvalidDependString(
-						("getFetchMap(): '%s' SRC_URI '/' character in " + \
-						"file name: '%s'") % (mypkg, distfile))
+
 			uri_set = uri_map.get(distfile)
 			if uri_set is None:
 				uri_set = set()
