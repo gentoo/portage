@@ -3487,11 +3487,19 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	else:
 		locations = mymirrors
 
+	file_uri_tuples = []
+	if isinstance(myuris, dict):
+		for myfile, uri_set in myuris.iteritems():
+			for myuri in uri_set:
+				file_uri_tuples.append((myfile, myuri))
+	else:
+		for myuri in myuris:
+			file_uri_tuples.append((os.path.basename(myuri), myuri))
+
 	filedict={}
 	primaryuri_indexes={}
 	primaryuri_dict = {}
-	for myuri in myuris:
-		myfile=os.path.basename(myuri)
+	for myfile, myuri in file_uri_tuples:
 		if myfile not in filedict:
 			filedict[myfile]=[]
 			for y in range(0,len(locations)):
@@ -4150,11 +4158,8 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 						doebuild_environment(myebuild, "fetch",
 							mysettings["ROOT"], fetch_settings,
 							debug, 1, myportdb)
-						alluris, aalist = myportdb.getfetchlist(
-							cpv, mytree=mytree, all=True,
-							mysettings=fetch_settings)
-						myuris = [uri for uri in alluris \
-							if os.path.basename(uri) == myfile]
+						uri_map = myportdb.getFetchMap(cpv, mytree=mytree)
+						myuris = {myfile:uri_map[myfile]}
 						fetch_settings["A"] = myfile # for use by pkg_nofetch()
 						if fetch(myuris, fetch_settings):
 							success = True
@@ -4191,8 +4196,7 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 				writemsg_stdout("  digest.assumed" + portage.output.colorize("WARN",
 					str(len(auto_assumed)).rjust(18)) + "\n")
 				for pkg_key in pkgs:
-					fetchlist = myportdb.getfetchlist(pkg_key,
-						mysettings=mysettings, all=True, mytree=mytree)[1]
+					fetchlist = myportdb.getFetchMap(pkg_key, mytree=mytree)
 					pv = pkg_key.split("/")[1]
 					for filename in auto_assumed:
 						if filename in fetchlist:
@@ -5580,11 +5584,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# Make sure we get the correct tree in case there are overlays.
 		mytree = os.path.realpath(
 			os.path.dirname(os.path.dirname(mysettings["O"])))
+		useflags = mysettings["PORTAGE_USE"].split()
 		try:
-			newuris, alist = mydbapi.getfetchlist(
-				mycpv, mytree=mytree, mysettings=mysettings)
-			alluris, aalist = mydbapi.getfetchlist(
-				mycpv, mytree=mytree, all=True, mysettings=mysettings)
+			alist = mydbapi.getFetchMap(mycpv, useflags=useflags, mytree=mytree)
+			aalist = mydbapi.getFetchMap(mycpv, mytree=mytree)
 		except portage.exception.InvalidDependString, e:
 			writemsg("!!! %s\n" % str(e), noiselevel=-1)
 			writemsg("!!! Invalid SRC_URI for '%s'.\n" % mycpv, noiselevel=-1)
@@ -5593,26 +5596,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		mysettings["A"] = " ".join(alist)
 		mysettings["AA"] = " ".join(aalist)
 		if ("mirror" in features) or fetchall:
-			fetchme = alluris[:]
-			checkme = aalist[:]
-		elif mydo == "digest":
-			fetchme = alluris[:]
-			checkme = aalist[:]
-			# Skip files that we already have digests for.
-			mf = Manifest(mysettings["O"], mysettings["DISTDIR"])
-			mydigests = mf.getTypeDigests("DIST")
-			required_hash_types = set()
-			required_hash_types.add("size")
-			required_hash_types.add(portage.const.MANIFEST2_REQUIRED_HASH)
-			for filename, hashes in mydigests.iteritems():
-				if not required_hash_types.difference(hashes):
-					checkme = [i for i in checkme if i != filename]
-					fetchme = [i for i in fetchme \
-						if os.path.basename(i) != filename]
-				del filename, hashes
+			fetchme = aalist
+			checkme = aalist
 		else:
-			fetchme = newuris[:]
-			checkme = alist[:]
+			fetchme = alist
+			checkme = alist
 
 		if mydo == "fetch":
 			# Files are already checked inside fetch(),
@@ -6871,8 +6859,7 @@ class FetchlistDict(UserDict.DictMixin):
 		self.portdb = mydbapi
 	def __getitem__(self, pkg_key):
 		"""Returns the complete fetch list for a given package."""
-		return self.portdb.getfetchlist(pkg_key, mysettings=self.settings,
-			all=True, mytree=self.mytree)[1]
+		return self.portdb.getFetchMap(pkg_key, mytree=self.mytree).keys()
 	def __contains__(self, cpv):
 		return cpv in self.keys()
 	def has_key(self, pkg_key):

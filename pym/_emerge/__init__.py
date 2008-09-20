@@ -431,7 +431,7 @@ class search(object):
 			pass
 		self.portdb = fake_portdb
 		for attrib in ("aux_get", "cp_all",
-			"xmatch", "findname", "getfetchlist"):
+			"xmatch", "findname", "getFetchMap"):
 			setattr(fake_portdb, attrib, getattr(self, "_"+attrib))
 
 		self._dbs = []
@@ -478,14 +478,14 @@ class search(object):
 					return value
 		return None
 
-	def _getfetchlist(self, *args, **kwargs):
+	def _getFetchMap(self, *args, **kwargs):
 		for db in self._dbs:
-			func = getattr(db, "getfetchlist", None)
+			func = getattr(db, "getFetchMap", None)
 			if func:
 				value = func(*args, **kwargs)
 				if value:
 					return value
-		return [], []
+		return {}
 
 	def _visible(self, db, cpv, metadata):
 		installed = db is self.vartree.dbapi
@@ -684,8 +684,7 @@ class search(object):
 						from portage import manifest
 						mf = manifest.Manifest(
 							pkgdir, self.settings["DISTDIR"])
-						fetchlist = self.portdb.getfetchlist(mycpv,
-							mysettings=self.settings, all=True)[1]
+						fetchlist = self.portdb.getFetchMap(mycpv)
 						try:
 							mysum[0] = mf.getDistfilesSize(fetchlist)
 						except KeyError, e:
