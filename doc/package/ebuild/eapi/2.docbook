@@ -216,6 +216,67 @@ src_compile() {
 		</section>
 	</section>
 </section>
+<section id='package-ebuild-eapi-2-pre3'>
+	<title>EAPI 2_pre3</title>
+	<section id='package-ebuild-eapi-2-pre3-metadata'>
+	<title>Metadata</title>
+	<section id='package-ebuild-eapi-2-pre3-metadata-dependencies'>
+	<title>Dependencies</title>
+	<section id='package-ebuild-eapi-2-pre3-metadata-dependencies-blocker-atoms'>
+	<title>Blocker Atoms</title>
+	<section id='package-ebuild-eapi-2-pre3-metadata-dependencies-blocker-atoms-new-meaning'>
+	<title>New Meaning for Old Syntax</title>
+	<para>
+	Blocker atoms which use the previously existing !atom syntax now have
+	a slightly different meaning. These blocker atoms indicate that
+	conflicting packages may be temporarily installed simultaneously. When
+	temporary simultaneous installation of conflicting packages occurs, the
+	installation of a newer package may overwrite any colliding files that
+	belong to an older package which is explicitly blocked. When such file
+	collisions occur, the colliding files cease to belong to the older
+	package, and they remain installed after the older package is
+	eventually uninstalled. The older package is uninstalled only after
+	any newer blocking packages have been merged on top of it.
+	</para>
+	</section>
+	<section id='package-ebuild-eapi-2-pre3-metadata-dependencies-blocker-atoms-new-syntax'>
+	<title>New !!atom Syntax</title>
+	<para>
+	A new !!atom syntax is now supported, for use in special cases for which
+	temporary simultaneous installation of conflicting packages should not be
+	allowed. If a given package happens to be blocked my a mixture of atoms
+	consisting of both the !atom and !!atom syntaxes, the !!atom syntax takes
+	precedence over the !atom syntax.
+	</para>
+	</section>
+	</section>
+	</section>
+	<section id='package-ebuild-eapi-2-pre3-metadata-src-uri'>
+		<title>SRC_URI</title>
+		<section id='package-ebuild-eapi-2-pre3-metadata-src-uri-output-file-name-customization'>
+			<title>Customization of Output File Names</title>
+			<para>
+			A new syntax is supported which allows customization of the output
+			file name for a given URI. In order to customize the output file
+			name, a given URI should be followed by a "->" operator which,
+			in turn, should be followed by the desired output file name. As
+			usual, all tokens, including the operator and output file name,
+			should be separated by whitespace.
+			</para>
+		</section>
+	</section>
+	</section>
+	<section id='package-ebuild-eapi-2-pre3-phases'>
+		<title>Phases</title>
+		<section id='package-ebuild-eapi-2-pre3-phases-src-prepare'>
+			<title>New src_prepare Phase Function</title>
+			<para>
+			A new src_prepare function is called after the src_unpack
+			function, with cwd initially set to $S.
+			</para>
+		</section>
+	</section>
+</section>
 <section id='package-ebuild-eapi-2-draft'>
 	<title>EAPI 2 Draft</title>
 	<section id='package-ebuild-eapi-2-draft-helpers'>
