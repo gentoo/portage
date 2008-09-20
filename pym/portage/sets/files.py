@@ -7,7 +7,7 @@ import os
 import re
 from itertools import chain
 
-from portage.util import grabfile, write_atomic, ensure_dirs
+from portage.util import grabfile, write_atomic, ensure_dirs, normalize_path
 from portage.const import PRIVATE_PATH, USER_CONFIG_PATH
 from portage.locks import lockfile, unlockfile
 from portage import portage_gid
@@ -123,12 +123,18 @@ class StaticFileSet(EditablePackageSet):
 			except KeyError:
 				raise SetConfigError("Could not find repository '%s'" % match.groupdict()["reponame"])
 		if os.path.isdir(directory):
-			for filename in os.listdir(directory):
-				if filename.endswith(".metadata"):
-					continue
-				myname = name_pattern.replace("$name", filename)
-				myname = myname.replace("${name}", filename)
-				rValue[myname] = StaticFileSet(os.path.join(directory, filename), greedy=greedy, dbapi=trees["vartree"].dbapi)
+			directory = normalize_path(directory)
+			for parent, dirs, files in os.walk(directory):
+				for filename in files:
+					if filename.endswith(".metadata"):
+						continue
+					filename = os.path.join(parent,
+						filename)[1 + len(directory):]
+					myname = name_pattern.replace("$name", filename)
+					myname = myname.replace("${name}", filename)
+					rValue[myname] = StaticFileSet(
+						os.path.join(directory, filename),
+						greedy=greedy, dbapi=trees["vartree"].dbapi)
 		return rValue
 	multiBuilder = classmethod(multiBuilder)
 	
