@@ -158,7 +158,7 @@ vecho() {
 
 # Internal logging function, don't use this in ebuilds
 elog_base() {
-	local line lines=0 messagetype
+	local messagetype
 	[ -z "${1}" -o -z "${T}" -o ! -d "${T}/logging" ] && return 1
 	case "${1}" in
 		INFO|WARN|ERROR|LOG|QA)
@@ -174,39 +174,19 @@ elog_base() {
 	# not entirely safe to use it as a delimiter in the log file since
 	# there can still be escaped newlines that will be expanded due to
 	# the echo -e parameter.
-	save_IFS
-	IFS=$'\n'
-	for line in $* ; do
-		(( lines++ ))
+	echo "$@" | while read line ; do
 		echo -ne "${messagetype} ${line}\n\0" >> \
 			"${T}/logging/${EBUILD_PHASE:-other}"
 	done
-	restore_IFS
-
-	# This is needed in case a blank line is being shown.
-	[ $lines -eq 0 ] && \
-		echo -ne "${messagetype} $*\n\0" >> \
-			"${T}/logging/${EBUILD_PHASE:-other}"
-
 	return 0
 }
 
 eqawarn() {
 	elog_base QA "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	local line lines=0
-	save_IFS
-	IFS=$'\n'
-	for line in $* ; do
-		(( lines++ ))
+	echo "$@" | while read line ; do
 		vecho -e " ${WARN}*${NORMAL} ${line}" >&2
 	done
-	restore_IFS
-
-	# This is needed in case a blank line is being shown.
-	[ $lines -eq 0 ] && \
-		vecho -e " ${WARN}*${NORMAL} $*" >&2
-
 	LAST_E_CMD="eqawarn"
 	return 0
 }
@@ -214,19 +194,9 @@ eqawarn() {
 elog() {
 	elog_base LOG "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	local line lines=0
-	save_IFS
-	IFS=$'\n'
-	for line in $* ; do
-		(( lines++ ))
+	echo "$@" | while read line ; do
 		echo -e " ${GOOD}*${NORMAL} ${line}"
 	done
-	restore_IFS
-
-	# This is needed in case a blank line is being shown.
-	[ $lines -eq 0 ] && \
-		echo -e " ${GOOD}*${NORMAL} $*"
-
 	LAST_E_CMD="elog"
 	return 0
 }
@@ -252,19 +222,9 @@ esyslog() {
 einfo() {
 	elog_base INFO "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	save_IFS
-	IFS=$'\n'
-	local line lines=0
-	for line in $* ; do
-		(( lines++ ))
+	echo "$@" | while read line ; do
 		echo -e " ${GOOD}*${NORMAL} ${line}"
 	done
-	restore_IFS
-
-	# This is needed in case a blank line is being shown.
-	[ $lines -eq 0 ] && \
-		echo -e " ${GOOD}*${NORMAL} $*"
-
 	LAST_E_CMD="einfo"
 	return 0
 }
@@ -280,19 +240,9 @@ einfon() {
 ewarn() {
 	elog_base WARN "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	save_IFS
-	IFS=$'\n'
-	local line lines=0
-	for line in $* ; do
-		(( lines++ ))
+	echo "$@" | while read line ; do
 		echo -e " ${WARN}*${NORMAL} ${RC_INDENTATION}${line}" >&2
 	done
-	restore_IFS
-
-	# This is needed in case a blank line is being shown.
-	[ $lines -eq 0 ] && \
-		echo -e " ${WARN}*${NORMAL} ${RC_INDENTATION}$*" >&2
-
 	LAST_E_CMD="ewarn"
 	return 0
 }
@@ -300,19 +250,9 @@ ewarn() {
 eerror() {
 	elog_base ERROR "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	save_IFS
-	IFS=$'\n'
-	local line lines=0
-	for line in $* ; do
-		(( lines++ ))
+	echo "$@" | while read line ; do
 		echo -e " ${BAD}*${NORMAL} ${RC_INDENTATION}${line}" >&2
 	done
-	restore_IFS
-
-	# This is needed in case a blank line is being shown.
-	[ $lines -eq 0 ] && \
-		echo -e " ${BAD}*${NORMAL} ${RC_INDENTATION}$*" >&2
-
 	LAST_E_CMD="eerror"
 	return 0
 }
