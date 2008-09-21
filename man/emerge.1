@@ -67,7 +67,8 @@ on the current configuration. The default set configuration is located
 in \fB/usr/share/portage/config/sets.conf\fR. Note that a \fIset\fR
 is generally used in conjunction with \fB\-\-update\fR. When used as 
 arguments to \fBemerge\fR sets have to be prefixed with \fB@\fR to be
-recognized.
+recognized. Use the \fB\-\-list\-sets\fR action to display a list of
+available package sets.
 .TP
 .BR atom
 An \fIatom\fR describes bounds on a package that you wish to install.  
@@ -141,6 +142,9 @@ Produces a list of information to include in bug reports which aids the
 developers when fixing the reported problem.  \fBPlease include this 
 information when submitting a bug report.\fR  Expanded output can be obtained 
 with the \fI\-\-verbose\fR option.
+.TP
+.BR \-\-list\-sets
+Displays a list of available package sets.
 .TP
 .BR \-\-metadata
 Transfers metadata cache from ${PORTDIR}/metadata/cache/ to

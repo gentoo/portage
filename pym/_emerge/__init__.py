@@ -197,12 +197,12 @@ def userquery(prompt, responses=None, colours=None):
 		print "Interrupted."
 		sys.exit(1)
 
-actions=[
+actions = frozenset([
 "clean", "config", "depclean",
-"info", "metadata",
+"info", "list-sets", "metadata",
 "prune", "regen",  "search",
 "sync",  "unmerge",
-]
+])
 options=[
 "--ask",          "--alphabetical",
 "--buildpkg",     "--buildpkgonly",
@@ -13518,10 +13518,15 @@ def emerge_main():
 			print colorize("BAD", "\n*** emerging by path is broken and may not always work!!!\n")
 			break
 
+	root_config = trees[settings["ROOT"]]["root_config"]
+	if myaction == "list-sets":
+		sys.stdout.write("".join("%s\n" % s for s in sorted(root_config.sets)))
+		sys.stdout.flush()
+		return os.EX_OK
+
 	# only expand sets for actions taking package arguments
 	oldargs = myfiles[:]
 	if myaction in ("clean", "config", "depclean", "info", "prune", "unmerge", None):
-		root_config = trees[settings["ROOT"]]["root_config"]
 		setconfig = root_config.setconfig
 		# display errors that occured while loading the SetConfig instance
 		for e in setconfig.errors:
@@ -13762,8 +13767,6 @@ def emerge_main():
 			sys.stderr.write(("emerge: The '%s' action does " + \
 				"not support '--pretend'.\n") % myaction)
 			return 1
-
-	root_config = trees[settings["ROOT"]]["root_config"]
 
 	if "sync" == myaction:
 		return action_sync(settings, trees, mtimedb, myopts, myaction)
