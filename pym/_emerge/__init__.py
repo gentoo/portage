@@ -11157,18 +11157,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					"PORTAGE_RSYNC_OPTS (can be overridden with --exclude='!')\n")
 					rsync_opts.append(opt)
 	
-			if settings["RSYNC_TIMEOUT"] != "":
-				portage.writemsg("WARNING: usage of RSYNC_TIMEOUT is deprecated, " + \
-				"use PORTAGE_RSYNC_EXTRA_OPTS instead\n")
-				try:
-					mytimeout = int(settings["RSYNC_TIMEOUT"])
-					rsync_opts.append("--timeout=%d" % mytimeout)
-				except ValueError, e:
-					portage.writemsg("!!! %s\n" % str(e))
-	
-			# TODO: determine options required for official servers
 			if syncuri.rstrip("/").endswith(".gentoo.org/gentoo-portage"):
-
 				def rsync_opt_startswith(opt_prefix):
 					for x in rsync_opts:
 						if x.startswith(opt_prefix):
@@ -11195,24 +11184,6 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		if "--debug" in myopts:
 			rsync_opts.append("--checksum") # Force checksum on all files
 
-		if settings["RSYNC_EXCLUDEFROM"] != "":
-			portage.writemsg(yellow("WARNING:") + \
-			" usage of RSYNC_EXCLUDEFROM is deprecated, use " + \
-			"PORTAGE_RSYNC_EXTRA_OPTS instead\n")
-			if os.path.exists(settings["RSYNC_EXCLUDEFROM"]):
-				rsync_opts.append("--exclude-from=%s" % \
-				settings["RSYNC_EXCLUDEFROM"])
-			else:
-				portage.writemsg("!!! RSYNC_EXCLUDEFROM specified," + \
-				" but file does not exist.\n")
-
-		if settings["RSYNC_RATELIMIT"] != "":
-			portage.writemsg(yellow("WARNING:") + \
-			" usage of RSYNC_RATELIMIT is deprecated, use " + \
-			"PORTAGE_RSYNC_EXTRA_OPTS instead")
-			rsync_opts.append("--bwlimit=%s" % \
-			settings["RSYNC_RATELIMIT"])
-
 		# Real local timestamp file.
 		servertimestampfile = os.path.join(
 			myportdir, "metadata", "timestamp.chk")
@@ -11234,11 +11205,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			rsync_initial_timeout = 15
 
 		try:
-			if "RSYNC_RETRIES" in settings:
-				print yellow("WARNING:")+" usage of RSYNC_RETRIES is deprecated, use PORTAGE_RSYNC_RETRIES instead"
-				maxretries=int(settings["RSYNC_RETRIES"])				
-			else:
-				maxretries=int(settings["PORTAGE_RSYNC_RETRIES"])
+			maxretries=int(settings["PORTAGE_RSYNC_RETRIES"])
 		except SystemExit, e:
 			raise # Needed else can't exit
 		except:
@@ -13192,24 +13159,7 @@ def parse_opts(tmpcmdline, silent=False):
 				sys.exit(1)
 			myaction = action_opt
 
-	for x in myargs:
-		if x in actions and myaction != "search":
-			if not silent:
-				print red("*** Deprecated use of action '%s', use '--%s' instead" % (x,x))
-			# special case "search" so people can search for action terms, e.g. emerge -s sync
-			if myaction:
-				multiple_actions(myaction, x)
-				sys.exit(1)
-			myaction = x
-		else:
-			myfiles.append(x)
-
-	if "--nocolor" in myopts:
-		if not silent:
-			sys.stderr.write("*** Deprecated use of '--nocolor', " + \
-				"use '--color=n' instead.\n")
-		del myopts["--nocolor"]
-		myopts["--color"] = "n"
+	myfiles += myargs
 
 	return myaction, myopts, myfiles
 
