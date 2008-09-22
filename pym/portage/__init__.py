@@ -140,7 +140,7 @@ except ImportError, e:
 
 
 try:
-	import portage.selinux as selinux
+	import portage._selinux as selinux
 except OSError, e:
 	writemsg("!!! SELinux not loaded: %s\n" % str(e), noiselevel=-1)
 	del e
