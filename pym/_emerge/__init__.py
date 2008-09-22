@@ -10539,6 +10539,8 @@ def unmerge(root_config, myopts, unmerge_action,
 		stop = True
 		pos = len(installed_sets)
 		for s in installed_sets[pos - 1:]:
+			if s not in sets:
+				continue
 			candidates = [x[len(SETPREFIX):] for x in sets[s].getNonAtoms() if x.startswith(SETPREFIX)]
 			if candidates:
 				stop = False
