@@ -20,9 +20,9 @@ try:
 	import shutil
 	import time
 	try:
-		import cPickle
+		import cPickle as pickle
 	except ImportError:
-		import pickle as cPickle
+		import pickle
 
 	import stat
 	import commands
@@ -7025,7 +7025,7 @@ def commit_mtimedb(mydict=None, filename=None):
 	d.update(mydict)
 	try:
 		f = atomic_ofstream(filename)
-		cPickle.dump(d, f, -1)
+		pickle.dump(d, f, -1)
 		f.close()
 		portage.util.apply_secpass_permissions(filename, uid=uid, gid=portage_gid, mode=0664)
 	except (IOError, OSError), e:
@@ -7179,13 +7179,13 @@ class MtimeDB(dict):
 	def _load(self, filename):
 		try:
 			f = open(filename)
-			mypickle = cPickle.Unpickler(f)
+			mypickle = pickle.Unpickler(f)
 			mypickle.find_global = None
 			d = mypickle.load()
 			f.close()
 			del f
-		except (IOError, OSError, EOFError, cPickle.UnpicklingError), e:
-			if isinstance(e, cPickle.UnpicklingError):
+		except (IOError, OSError, EOFError, pickle.UnpicklingError), e:
+			if isinstance(e, pickle.UnpicklingError):
 				writemsg("!!! Error loading '%s': %s\n" % \
 					(filename, str(e)), noiselevel=-1)
 			del e

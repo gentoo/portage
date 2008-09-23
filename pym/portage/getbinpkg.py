@@ -15,9 +15,9 @@ import base64
 import urllib2
 
 try:
-	import cPickle
+	import cPickle as pickle
 except ImportError:
-	import pickle as cPickle
+	import pickle
 
 try:
 	import ftplib
@@ -473,11 +473,11 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	out = sys.stdout
 	try:
 		metadatafile = open("/var/cache/edb/remote_metadata.pickle")
-		metadata = cPickle.load(metadatafile)
+		metadata = pickle.load(metadatafile)
 		out.write("Loaded metadata pickle.\n")
 		out.flush()
 		metadatafile.close()
-	except (cPickle.UnpicklingError, OSError, IOError, EOFError):
+	except (pickle.UnpicklingError, OSError, IOError, EOFError):
 		metadata = {}
 	if baseurl not in metadata:
 		metadata[baseurl]={}
@@ -546,7 +546,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 						sys.stderr.flush()
 					mytempfile.close()
 				try:
-					metadata[baseurl]["data"] = cPickle.loads(data)
+					metadata[baseurl]["data"] = pickle.loads(data)
 					del data
 					metadata[baseurl]["indexname"] = mfile
 					metadata[baseurl]["timestamp"] = int(time.time())
@@ -562,7 +562,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 					sys.stderr.flush()
 			try:
 				metadatafile = open("/var/cache/edb/remote_metadata.pickle", "w+")
-				cPickle.dump(metadata,metadatafile)
+				pickle.dump(metadata,metadatafile)
 				metadatafile.close()
 			except SystemExit, e:
 				raise
@@ -652,11 +652,11 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 		if "modified" in metadata[baseurl] and metadata[baseurl]["modified"]:
 			metadata[baseurl]["timestamp"] = int(time.time())
 			metadatafile = open("/var/cache/edb/remote_metadata.pickle", "w+")
-			cPickle.dump(metadata,metadatafile)
+			pickle.dump(metadata,metadatafile)
 			metadatafile.close()
 		if makepickle:
 			metadatafile = open(makepickle, "w")
-			cPickle.dump(metadata[baseurl]["data"],metadatafile)
+			pickle.dump(metadata[baseurl]["data"],metadatafile)
 			metadatafile.close()
 	except SystemExit, e:
 		raise

@@ -17,9 +17,9 @@ import portage.exception
 from portage.dep import isvalidatom
 
 try:
-	import cPickle
+	import cPickle as pickle
 except ImportError:
-	import pickle as cPickle
+	import pickle
 
 try:
 	import cStringIO as StringIO
@@ -568,7 +568,7 @@ def pickle_write(data,filename,debug=0):
 	import os
 	try:
 		myf=open(filename,"w")
-		cPickle.dump(data,myf,-1)
+		pickle.dump(data,myf,-1)
 		myf.flush()
 		myf.close()
 		writemsg("Wrote pickle: "+str(filename)+"\n",1)
@@ -588,7 +588,7 @@ def pickle_read(filename,default=None,debug=0):
 	data = None
 	try:
 		myf = open(filename)
-		mypickle = cPickle.Unpickler(myf)
+		mypickle = pickle.Unpickler(myf)
 		mypickle.find_global = None
 		data = mypickle.load()
 		myf.close()

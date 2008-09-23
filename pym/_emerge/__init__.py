@@ -73,9 +73,9 @@ from itertools import chain, izip
 from UserDict import DictMixin
 
 try:
-	import cPickle
+	import cPickle as pickle
 except ImportError:
-	import pickle as cPickle
+	import pickle
 
 try:
 	import cStringIO as StringIO
@@ -3659,13 +3659,13 @@ class BlockerCache(DictMixin):
 	def _load(self):
 		try:
 			f = open(self._cache_filename)
-			mypickle = cPickle.Unpickler(f)
+			mypickle = pickle.Unpickler(f)
 			mypickle.find_global = None
 			self._cache_data = mypickle.load()
 			f.close()
 			del f
-		except (IOError, OSError, EOFError, cPickle.UnpicklingError), e:
-			if isinstance(e, cPickle.UnpicklingError):
+		except (IOError, OSError, EOFError, pickle.UnpicklingError), e:
+			if isinstance(e, pickle.UnpicklingError):
 				writemsg("!!! Error loading '%s': %s\n" % \
 					(self._cache_filename, str(e)), noiselevel=-1)
 			del e
@@ -3745,7 +3745,7 @@ class BlockerCache(DictMixin):
 			secpass >= 2:
 			try:
 				f = portage.util.atomic_ofstream(self._cache_filename)
-				cPickle.dump(self._cache_data, f, -1)
+				pickle.dump(self._cache_data, f, -1)
 				f.close()
 				portage.util.apply_secpass_permissions(
 					self._cache_filename, gid=portage.portage_gid, mode=0644)
