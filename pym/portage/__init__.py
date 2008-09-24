@@ -3508,11 +3508,19 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			eidx = myuri.find("/", 9)
 			if eidx != -1:
 				mirrorname = myuri[9:eidx]
+				if myfile != os.path.basename(myuri):
+					# If a SRC_URI arrow is used together with
+					# mirror://, preserve the remote path that's
+					# specified within the uri.
+					path = myuri[eidx+1:]
+				else:
+					path = myfile
 
 				# Try user-defined mirrors first
 				if mirrorname in custommirrors:
 					for cmirr in custommirrors[mirrorname]:
-						filedict[myfile].append(cmirr+"/"+myuri[eidx+1:])
+						filedict[myfile].append(
+							cmirr.rstrip("/") + "/" + path)
 						# remove the mirrors we tried from the list of official mirrors
 						if cmirr.strip() in thirdpartymirrors[mirrorname]:
 							thirdpartymirrors[mirrorname].remove(cmirr)
@@ -3521,7 +3529,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					shuffle(thirdpartymirrors[mirrorname])
 
 					for locmirr in thirdpartymirrors[mirrorname]:
-						filedict[myfile].append(locmirr+"/"+myuri[eidx+1:])
+						filedict[myfile].append(
+							locmirr.rstrip("/") + "/" + path)
 
 				if not filedict[myfile]:
 					writemsg("No known mirror by the name: %s\n" % (mirrorname))
