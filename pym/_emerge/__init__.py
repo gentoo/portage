@@ -13391,9 +13391,11 @@ def expand_set_arguments(myfiles, myaction, root_config):
 	del newargs
 	newargs = []
 	
-	IS_OPERATOR = "/"
-	DIFF_OPERATOR = "-"
-	UNION_OPERATOR = "+"
+	# WARNING: all operators must be of equal length
+	IS_OPERATOR = "/@"
+	DIFF_OPERATOR = "-@"
+	UNION_OPERATOR = "+@"
+	
 	for a in myfiles:
 		if a.startswith(SETPREFIX):
 			# support simple set operations (intersection, difference and union)
@@ -13406,9 +13408,10 @@ def expand_set_arguments(myfiles, myaction, root_config):
 					is_pos = expression.rfind(IS_OPERATOR)
 					diff_pos = expression.rfind(DIFF_OPERATOR)
 					union_pos = expression.rfind(UNION_OPERATOR)
-					s1 = expression[:max(is_pos, diff_pos, union_pos)]
-					s2 = expression[max(is_pos, diff_pos, union_pos)+1:]
-					op = expression[max(is_pos, diff_pos, union_pos)]
+					op_pos = max(is_pos, diff_pos, union_pos)
+					s1 = expression[:op_pos]
+					s2 = expression[op_pos+len(IS_OPERATOR):]
+					op = expression[op_pos:op_pos+len(IS_OPERATOR)]
 					if not s2 in sets:
 						display_missing_pkg_set(root_config, s2)
 						return (None, 1)
