@@ -13353,6 +13353,67 @@ def display_missing_pkg_set(root_config, set_name):
 	writemsg_level("".join("%s\n" % l for l in msg),
 		level=logging.ERROR, noiselevel=-1)
 
+def expand_set_arguments(myfiles, myaction, root_config):
+	retval = os.EX_OK
+	setconfig = root_config.setconfig
+
+	# display errors that occured while loading the SetConfig instance
+	for e in setconfig.errors:
+		print colorize("BAD", "Error during set creation: %s" % e)
+	
+	sets = setconfig.getSets()
+
+	# emerge relies on the existance of sets with names "world" and "system"
+	required_sets = ("world", "system")
+
+	for s in required_sets:
+		if s not in sets:
+			msg = ["emerge: incomplete set configuration, " + \
+				"no \"%s\" set defined" % s]
+			msg.append("        sets defined: %s" % ", ".join(sets))
+			for line in msg:
+				sys.stderr.write(line + "\n")
+			retval = 1
+	unmerge_actions = ("unmerge", "prune", "clean", "depclean")
+	
+	# In order to know exactly which atoms/sets should be added to the
+	# world file, the depgraph performs set expansion later. It will get
+	# confused about where the atoms came from if it's not allowed to
+	# expand them itself.
+	do_not_expand = (None, )
+	newargs = []
+	for a in myfiles:
+		if a in ("system", "world"):
+			newargs.append(SETPREFIX+a)
+		else:
+			newargs.append(a)
+	myfiles = newargs
+	del newargs
+	newargs = []
+	for a in myfiles:
+		if a.startswith(SETPREFIX):
+			s = a[len(SETPREFIX):]
+			if s not in sets:
+				display_missing_pkg_set(root_config, s)
+				return (None, 1)
+			setconfig.active.append(s)
+			if myaction in unmerge_actions and \
+					not sets[s].supportsOperation("unmerge"):
+				sys.stderr.write("emerge: the given set '%s' does " % s + \
+					"not support unmerge operations\n")
+				retval = 1
+			elif not setconfig.getSetAtoms(s):
+				print "emerge: '%s' is an empty set" % s
+			elif myaction not in do_not_expand:
+				newargs.extend(setconfig.getSetAtoms(s))
+			else:
+				newargs.append(SETPREFIX+s)
+			for e in sets[s].errors:
+				print e
+		else:
+			newargs.append(a)
+	return (newargs, retval)
+
 def emerge_main():
 	global portage	# NFC why this is necessary now - genone
 	portage._disable_legacy_globals()
@@ -13492,62 +13553,10 @@ def emerge_main():
 	# only expand sets for actions taking package arguments
 	oldargs = myfiles[:]
 	if myaction in ("clean", "config", "depclean", "info", "prune", "unmerge", None):
-		setconfig = root_config.setconfig
-		# display errors that occured while loading the SetConfig instance
-		for e in setconfig.errors:
-			print colorize("BAD", "Error during set creation: %s" % e)
-		
-		sets = setconfig.getSets()
-		# emerge relies on the existance of sets with names "world" and "system"
-		required_sets = ("world", "system")
-		for s in required_sets:
-			if s not in sets:
-				msg = ["emerge: incomplete set configuration, " + \
-					"no \"%s\" set defined" % s]
-				msg.append("        sets defined: %s" % ", ".join(sets))
-				for line in msg:
-					sys.stderr.write(line + "\n")
-				return 1
-		unmerge_actions = ("unmerge", "prune", "clean", "depclean")
-		
-		# In order to know exactly which atoms/sets should be added to the
-		# world file, the depgraph performs set expansion later. It will get
-		# confused about where the atoms came from if it's not allowed to
-		# expand them itself.
-		do_not_expand = (None, )
-		newargs = []
-		for a in myfiles:
-			if a in ("system", "world"):
-				newargs.append(SETPREFIX+a)
-			else:
-				newargs.append(a)
-		myfiles = newargs
-		del newargs
-		newargs = []
-		for a in myfiles:
-			if a.startswith(SETPREFIX):
-				s = a[len(SETPREFIX):]
-				if s not in sets:
-					display_missing_pkg_set(root_config, s)
-					return 1
-				setconfig.active.append(s)
-				if myaction in unmerge_actions and \
-						not sets[s].supportsOperation("unmerge"):
-					sys.stderr.write("emerge: the given set '%s' does " % s + \
-						"not support unmerge operations\n")
-					return 1
-				if not setconfig.getSetAtoms(s):
-					print "emerge: '%s' is an empty set" % s
-				elif myaction not in do_not_expand:
-					newargs.extend(setconfig.getSetAtoms(s))
-				else:
-					newargs.append(SETPREFIX+s)
-				for e in sets[s].errors:
-					print e
-			else:
-				newargs.append(a)
-		myfiles = newargs
-		del newargs
+		myfiles, retval = expand_set_arguments(myfiles, myaction, root_config)
+		if retval != os.EX_OK:
+			return retval
+
 		# Need to handle empty sets specially, otherwise emerge will react 
 		# with the help message for empty argument lists
 		if oldargs and not myfiles:
