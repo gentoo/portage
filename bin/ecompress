@@ -77,7 +77,8 @@ case $1 in
 			filtered_args[$i]=$x
 			(( i++ ))
 		done
-		set "${filtered_args[@]}"
+		[ $i -eq 0 ] && exit 0
+		set -- "${filtered_args[@]}"
 
 		# If a compressed version of the file already exists, simply
 		# delete it so that the compressor doesn't whine (bzip2 will
