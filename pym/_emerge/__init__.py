@@ -10876,6 +10876,30 @@ def display_news_notification(root_config, myopts):
 		print "Use " + colorize("GOOD", "eselect news") + " to read news items."
 		print
 
+def display_preserved_libs(vardbapi):
+	MAX_DISPLAY = 3
+
+	if vardbapi.plib_registry.hasEntries():
+		print
+		print colorize("WARN", "!!!") + " existing preserved libs:"
+		plibdata = vardbapi.plib_registry.getPreservedLibs()
+		linkmap = vardbapi.linkmap
+		for cpv in plibdata:
+			print colorize("WARN", ">>>") + " package: %s" % cpv
+			for f in plibdata[cpv]:
+				print colorize("WARN", " * ") + " - %s" % f
+				consumers = list(linkmap.findConsumers(f))
+				consumers.sort()
+				owners = vardbapi._owners.getFileOwnerMap(consumers[:MAX_DISPLAY+2])
+				for c in consumers[:MAX_DISPLAY]:
+					print colorize("WARN", " * ") + "     used by %s (%s)" % (c, ", ".join([x.mycpv for x in owners[c]]))
+				if len(consumers) > MAX_DISPLAY + 1:
+					print colorize("WARN", " * ") + "     used by %d other files" % (len(consumers) - MAX_DISPLAY)
+				else:
+					print colorize("WARN", " * ") + "     used by %s (%s)" % (consumers[MAX_DISPLAY], ", ".join([x.mycpv for x in owners[consumers[MAX_DISPLAY]]]))
+		print "Use " + colorize("GOOD", "emerge @preserved-rebuild") + " to rebuild packages using these libraries"
+
+
 def _flush_elog_mod_echo():
 	"""
 	Dump the mod_echo output now so that our other
@@ -10944,7 +10968,7 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 	vdb_path = os.path.join(target_root, portage.VDB_PATH)
 	portage.util.ensure_dirs(vdb_path)
 	vdb_lock = None
-	if os.access(vdb_path, os.W_OK):
+	if os.access(vdb_path, os.W_OK) and not "--pretend" in myopts:
 		vdb_lock = portage.locks.lockdir(vdb_path)
 
 	if vdb_lock:
@@ -10960,16 +10984,8 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 	chk_updated_cfg_files(target_root, config_protect)
 	
 	display_news_notification(root_config, myopts)
-	
-	if vardbapi.plib_registry.hasEntries():
-		print
-		print colorize("WARN", "!!!") + " existing preserved libs:"
-		plibdata = vardbapi.plib_registry.getPreservedLibs()
-		for cpv in plibdata:
-			print colorize("WARN", ">>>") + " package: %s" % cpv
-			for f in plibdata[cpv]:
-				print colorize("WARN", " * ") + " - %s" % f
-		print "Use " + colorize("GOOD", "emerge @preserved-rebuild") + " to rebuild packages using these libraries"
+	if retval in (None, os.EX_OK) or (not "--pretend" in myopts):
+		display_preserved_libs(vardbapi)	
 
 	sys.exit(retval)
 
@@ -12967,9 +12983,6 @@ def action_build(settings, trees, mtimedb,
 					+ " problems due to overlapping packages.\n")
 			trees[settings["ROOT"]]["vartree"].dbapi.plib_registry.pruneNonExisting()
 
-		if merge_count and not (buildpkgonly or fetchonly or pretend):
-			root_config = trees[settings["ROOT"]]["root_config"]
-			post_emerge(root_config, myopts, mtimedb, retval)
 		return retval
 
 def multiple_actions(action1, action2):
@@ -13810,8 +13823,7 @@ def emerge_main():
 			display_news_notification(root_config, myopts)
 		retval = action_build(settings, trees, mtimedb,
 			myopts, myaction, myfiles, spinner)
-		# if --pretend was not enabled then display_news_notification 
-		# was already called by post_emerge
-		if "--pretend" in myopts:
-			display_news_notification(root_config, myopts)
+		root_config = trees[settings["ROOT"]]["root_config"]
+		post_emerge(root_config, myopts, mtimedb, retval)
+
 		return retval
