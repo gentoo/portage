@@ -170,6 +170,8 @@ class database(fs_template.FsBased):
 				pass #writemsg("%s: %s\n" % (cpv, str(e)))
 		if "_eclasses_" in d:
 			d["_eclasses_"] = reconstruct_eclasses(cpv, d["_eclasses_"])
+		else:
+			d["_eclasses_"] = {}
 		for x in self._known_keys:
 			d.setdefault(x,'')
 		return d

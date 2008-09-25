@@ -46,6 +46,8 @@ class database(fs_template.FsBased):
 			raise cache_errors.CacheCorruption(cpv, e)
 		if "_eclasses_" in d:
 			d["_eclasses_"] = reconstruct_eclasses(cpv, d["_eclasses_"])
+		else:
+			d["_eclasses_"] = {}
 		return d
 		
 		for x in self._known_keys:

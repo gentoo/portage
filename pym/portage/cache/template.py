@@ -37,6 +37,8 @@ class database(object):
 		d=self._getitem(cpv)
 		if self.serialize_eclasses and "_eclasses_" in d:
 			d["_eclasses_"] = reconstruct_eclasses(cpv, d["_eclasses_"])
+		elif "_eclasses_" not in d:
+			d["_eclasses_"] = {}
 		return d
 
 	def _getitem(self, cpv):
