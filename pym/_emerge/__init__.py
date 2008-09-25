@@ -10044,7 +10044,7 @@ class Scheduler(PollScheduler):
 		if e is not None:
 			mydepgraph.display_problems()
 			out = portage.output.EOutput()
-			out.eerror("One or packages are either masked or " + \
+			out.eerror("One or more packages are either masked or " + \
 				"have missing dependencies:")
 			out.eerror("")
 			indent = "  "
@@ -12715,7 +12715,7 @@ def action_build(settings, trees, mtimedb,
 				out.eerror("")
 
 			if isinstance(e, depgraph.UnsatisfiedResumeDep):
-				out.eerror("One or packages are either masked or " + \
+				out.eerror("One or more packages are either masked or " + \
 					"have missing dependencies:")
 				out.eerror("")
 				indent = "  "
