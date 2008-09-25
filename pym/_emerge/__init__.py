@@ -13390,26 +13390,66 @@ def expand_set_arguments(myfiles, myaction, root_config):
 	myfiles = newargs
 	del newargs
 	newargs = []
+	
+	IS_OPERATOR = "/"
+	DIFF_OPERATOR = "-"
+	UNION_OPERATOR = "+"
 	for a in myfiles:
 		if a.startswith(SETPREFIX):
-			s = a[len(SETPREFIX):]
-			if s not in sets:
-				display_missing_pkg_set(root_config, s)
-				return (None, 1)
-			setconfig.active.append(s)
-			if myaction in unmerge_actions and \
-					not sets[s].supportsOperation("unmerge"):
-				sys.stderr.write("emerge: the given set '%s' does " % s + \
-					"not support unmerge operations\n")
-				retval = 1
-			elif not setconfig.getSetAtoms(s):
-				print "emerge: '%s' is an empty set" % s
-			elif myaction not in do_not_expand:
-				newargs.extend(setconfig.getSetAtoms(s))
-			else:
-				newargs.append(SETPREFIX+s)
-			for e in sets[s].errors:
-				print e
+			# support simple set operations (intersection, difference and union)
+			# on the commandline. Expressions are evaluated strictly left-to-right
+			if IS_OPERATOR in a or DIFF_OPERATOR in a or UNION_OPERATOR in a:
+				expression = a[len(SETPREFIX):]
+				expr_sets = []
+				expr_ops = []
+				while IS_OPERATOR in expression or DIFF_OPERATOR in expression or UNION_OPERATOR in expression:
+					is_pos = expression.rfind(IS_OPERATOR)
+					diff_pos = expression.rfind(DIFF_OPERATOR)
+					union_pos = expression.rfind(UNION_OPERATOR)
+					s1 = expression[:max(is_pos, diff_pos, union_pos)]
+					s2 = expression[max(is_pos, diff_pos, union_pos)+1:]
+					op = expression[max(is_pos, diff_pos, union_pos)]
+					if not s2 in sets:
+						display_missing_pkg_set(root_config, s2)
+						return (None, 1)
+					expr_sets.insert(0, s2)
+					expr_ops.insert(0, op)
+					expression = s1
+				if not expression in sets:
+					display_missing_pkg_set(root_config, expression)
+					return (None, 1)
+				expr_sets.insert(0, expression)
+				result = set(setconfig.getSetAtoms(expression))
+				for i in range(0, len(expr_ops)):
+					s2 = setconfig.getSetAtoms(expr_sets[i+1])
+					if expr_ops[i] == IS_OPERATOR:
+						result.intersection_update(s2)
+					elif expr_ops[i] == DIFF_OPERATOR:
+						result.difference_update(s2)
+					elif expr_ops[i] == UNION_OPERATOR:
+						result.update(s2)
+					else:
+						raise NotImplementedError("unknown set operator %s" % expr_ops[i])
+				newargs.extend(result)
+			else:			
+				s = a[len(SETPREFIX):]
+				if s not in sets:
+					display_missing_pkg_set(root_config, s)
+					return (None, 1)
+				setconfig.active.append(s)
+				if myaction in unmerge_actions and \
+						not sets[s].supportsOperation("unmerge"):
+					sys.stderr.write("emerge: the given set '%s' does " % s + \
+						"not support unmerge operations\n")
+					retval = 1
+				elif not setconfig.getSetAtoms(s):
+					print "emerge: '%s' is an empty set" % s
+				elif myaction not in do_not_expand:
+					newargs.extend(setconfig.getSetAtoms(s))
+				else:
+					newargs.append(SETPREFIX+s)
+				for e in sets[s].errors:
+					print e
 		else:
 			newargs.append(a)
 	return (newargs, retval)
