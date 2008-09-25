@@ -174,7 +174,7 @@ elog_base() {
 	# not entirely safe to use it as a delimiter in the log file since
 	# there can still be escaped newlines that will be expanded due to
 	# the echo -e parameter.
-	echo "$@" | while read line ; do
+	echo -e "$@" | while read line ; do
 		echo -ne "${messagetype} ${line}\n\0" >> \
 			"${T}/logging/${EBUILD_PHASE:-other}"
 	done
@@ -184,7 +184,7 @@ elog_base() {
 eqawarn() {
 	elog_base QA "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo "$@" | while read line ; do
+	echo -e "$@" | while read line ; do
 		vecho -e " ${WARN}*${NORMAL} ${line}" >&2
 	done
 	LAST_E_CMD="eqawarn"
@@ -194,7 +194,7 @@ eqawarn() {
 elog() {
 	elog_base LOG "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo "$@" | while read line ; do
+	echo -e "$@" | while read line ; do
 		echo -e " ${GOOD}*${NORMAL} ${line}"
 	done
 	LAST_E_CMD="elog"
@@ -222,7 +222,7 @@ esyslog() {
 einfo() {
 	elog_base INFO "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo "$@" | while read line ; do
+	echo -e "$@" | while read line ; do
 		echo -e " ${GOOD}*${NORMAL} ${line}"
 	done
 	LAST_E_CMD="einfo"
@@ -240,7 +240,7 @@ einfon() {
 ewarn() {
 	elog_base WARN "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo "$@" | while read line ; do
+	echo -e "$@" | while read line ; do
 		echo -e " ${WARN}*${NORMAL} ${RC_INDENTATION}${line}" >&2
 	done
 	LAST_E_CMD="ewarn"
@@ -250,7 +250,7 @@ ewarn() {
 eerror() {
 	elog_base ERROR "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo "$@" | while read line ; do
+	echo -e "$@" | while read line ; do
 		echo -e " ${BAD}*${NORMAL} ${RC_INDENTATION}${line}" >&2
 	done
 	LAST_E_CMD="eerror"
