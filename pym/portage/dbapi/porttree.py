@@ -172,6 +172,7 @@ class portdbapi(dbapi):
 		# XXX: REMOVE THIS ONCE UNUSED_0 IS YANKED FROM auxdbkeys
 		# ~harring
 		filtered_auxdbkeys = filter(lambda x: not x.startswith("UNUSED_0"), auxdbkeys)
+		filtered_auxdbkeys.sort()
 		if secpass < 1:
 			from portage.cache import metadata_overlay, volatile
 			for x in self.porttrees:
