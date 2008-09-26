@@ -18,7 +18,7 @@ class database(flat_hash.database):
 	auxdbkey_order=('DEPEND', 'RDEPEND', 'SLOT', 'SRC_URI',
 		'RESTRICT',  'HOMEPAGE',  'LICENSE', 'DESCRIPTION',
 		'KEYWORDS',  'INHERITED', 'IUSE', 'CDEPEND',
-		'PDEPEND',   'PROVIDE', 'EAPI')
+		'PDEPEND',   'PROVIDE', 'EAPI', 'PROPERTIES')
 
 	autocommits = True
 
