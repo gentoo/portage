@@ -10893,10 +10893,8 @@ def display_preserved_libs(vardbapi):
 				owners = vardbapi._owners.getFileOwnerMap(consumers[:MAX_DISPLAY+2])
 				for c in consumers[:MAX_DISPLAY]:
 					print colorize("WARN", " * ") + "     used by %s (%s)" % (c, ", ".join([x.mycpv for x in owners[c]]))
-				if len(consumers) > MAX_DISPLAY + 1:
+				if len(consumers) > MAX_DISPLAY:
 					print colorize("WARN", " * ") + "     used by %d other files" % (len(consumers) - MAX_DISPLAY)
-				else:
-					print colorize("WARN", " * ") + "     used by %s (%s)" % (consumers[MAX_DISPLAY], ", ".join([x.mycpv for x in owners[consumers[MAX_DISPLAY]]]))
 		print "Use " + colorize("GOOD", "emerge @preserved-rebuild") + " to rebuild packages using these libraries"
 
 
