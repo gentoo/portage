@@ -39,7 +39,7 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 		trg = None
 		try:
 			trg = trg_cache[x]
-		except KeyError:
+		except (KeyError, cache_errors.CacheError):
 			pass
 		else:
 			try:
