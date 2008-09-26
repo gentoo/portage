@@ -1,9 +1,11 @@
-<section id='package-ebuild-eapi-2_pre1'>
-	<title>EAPI 2_pre1</title>
+<section id='package-ebuild-eapi-2'>
+	<title>EAPI 2</title>
 	<section id='package-ebuild-eapi-2-helpers'>
 	<title>Helpers</title>
 	<section id='package-ebuild-eapi-2-helpers-doman'>
 	<title>doman</title>
+	<section id='package-ebuild-eapi-2-helpers-doman-language-codes'>
+	<title>Recognition of Language Codes in File Names</title>
 	<para>
 	Language codes in file names are now used for path translation.
 	</para>
@@ -31,9 +33,42 @@
 	</table>
 	</section>
 	</section>
-	<section id='package-ebuild-eapi-2-use-deps'>
+	</section>
+	<section id='package-ebuild-eapi-2-metadata'>
+	<title>Metadata</title>
+	<section id='package-ebuild-eapi-2-metadata-dependencies'>
+	<title>Dependencies</title>
+	<section id='package-ebuild-eapi-2-metadata-dependencies-blocker-atoms'>
+	<title>Blocker Atoms</title>
+	<section id='package-ebuild-eapi-2-metadata-dependencies-blocker-atoms-new-meaning'>
+	<title>New Meaning for Old Syntax</title>
+	<para>
+	Blocker atoms which use the previously existing !atom syntax now have
+	a slightly different meaning. These blocker atoms indicate that
+	conflicting packages may be temporarily installed simultaneously. When
+	temporary simultaneous installation of conflicting packages occurs, the
+	installation of a newer package may overwrite any colliding files that
+	belong to an older package which is explicitly blocked. When such file
+	collisions occur, the colliding files cease to belong to the older
+	package, and they remain installed after the older package is
+	eventually uninstalled. The older package is uninstalled only after
+	any newer blocking packages have been merged on top of it.
+	</para>
+	</section>
+	<section id='package-ebuild-eapi-2-metadata-dependencies-blocker-atoms-new-syntax'>
+	<title>New !!atom Syntax</title>
+	<para>
+	A new !!atom syntax is now supported, for use in special cases for which
+	temporary simultaneous installation of conflicting packages should not be
+	allowed. If a given package happens to be blocked my a mixture of atoms
+	consisting of both the !atom and !!atom syntaxes, the !!atom syntax takes
+	precedence over the !atom syntax.
+	</para>
+	</section>
+	</section>
+	<section id='package-ebuild-eapi-2-metadata-dependencies-use'>
 	<title>USE Dependencies</title>
-	<section id='package-ebuild-eapi-2-use-deps-unconditional'>
+	<section id='package-ebuild-eapi-2-metadata-dependencies-use-unconditional'>
 	<title>Unconditional USE Dependencies</title>
 	<table><title>Syntax Examples</title>
 	<tgroup cols='2' align='left' >
@@ -62,7 +97,7 @@
 	</tgroup>
 	</table>
 	</section>
-	<section id='package-ebuild-eapi-2-use-deps-conditional'>
+	<section id='package-ebuild-eapi-2-metadata-dependencies-use-conditional'>
 	<title>Conditional USE Dependencies</title>
 	<table><title>Syntax Examples</title>
 	<tgroup cols='2' align='left' >
@@ -96,17 +131,37 @@
 	</table>
 	</section>
 	</section>
-</section>
-<section id='package-ebuild-eapi-2_pre2'>
-	<title>EAPI 2_pre2</title>
+	</section>
+	<section id='package-ebuild-eapi-2-metadata-src-uri'>
+		<title>SRC_URI</title>
+		<section id='package-ebuild-eapi-2-metadata-src-uri-output-file-name-customization'>
+			<title>Customization of Output File Names</title>
+			<para>
+			A new syntax is supported which allows customization of the output
+			file name for a given URI. In order to customize the output file
+			name, a given URI should be followed by a "->" operator which,
+			in turn, should be followed by the desired output file name. As
+			usual, all tokens, including the operator and output file name,
+			should be separated by whitespace.
+			</para>
+		</section>
+	</section>
+	</section>
 	<section id='package-ebuild-eapi-2-phases'>
 		<title>Phases</title>
+		<section id='package-ebuild-eapi-2-phases-src-prepare'>
+			<title>New src_prepare Phase Function</title>
+			<para>
+			A new src_prepare function is called after the src_unpack
+			function, with cwd initially set to $S.
+			</para>
+		</section>
 		<section id='package-ebuild-eapi-2-phases-src-configure'>
 			<title>New src_configure Phase Function</title>
 			<para>
 			The configure portion of the src_compile function has been
 			split into a separate function which is named src_configure. The
-			src_configure function is called in-between the src_unpack and
+			src_configure function is called in-between the src_prepare and
 			src_compile functions.
 			</para>
 			<programlisting>
@@ -122,6 +177,9 @@ src_compile() {
 	fi
 }
 			</programlisting>
+		</section>
+		<section id='package-ebuild-eapi-2-phases-order'>
+			<title>Execution Order of Phase Functions</title>
 			<table><title>Execution Order of Phase Functions</title>
 				<tgroup cols='1' align='left' >
 				<colspec colname='name'/>
@@ -136,6 +194,9 @@ src_compile() {
 				</row>
 				<row>
 					<entry>src_unpack</entry>
+				</row>
+				<row>
+					<entry>src_prepare</entry>
 				</row>
 				<row>
 					<entry>src_configure</entry>
@@ -192,346 +253,6 @@ src_compile() {
 					<entry>default_src_unpack</entry>
 				</row>
 				<row>
-					<entry>default_src_configure</entry>
-				</row>
-				<row>
-					<entry>default_src_compile</entry>
-				</row>
-				<row>
-					<entry>default_src_test</entry>
-				</row>
-				</tbody>
-				</tgroup>
-			</table>
-		</section>
-		<section id='package-ebuild-eapi-2-phases-default-function-alias'>
-			<title>Default Phase Function Alias</title>
-			<para>
-			A function named "default" is redefined for each phase so that it
-			will call the default_* function corresponding to the current phase.
-			For example, a call to the function named "default" during the
-			src_compile phase is equivalent to a call to the function named
-			default_src_compile.
-			</para>
-		</section>
-	</section>
-</section>
-<section id='package-ebuild-eapi-2-pre3'>
-	<title>EAPI 2_pre3</title>
-	<section id='package-ebuild-eapi-2-pre3-metadata'>
-	<title>Metadata</title>
-	<section id='package-ebuild-eapi-2-pre3-metadata-dependencies'>
-	<title>Dependencies</title>
-	<section id='package-ebuild-eapi-2-pre3-metadata-dependencies-blocker-atoms'>
-	<title>Blocker Atoms</title>
-	<section id='package-ebuild-eapi-2-pre3-metadata-dependencies-blocker-atoms-new-meaning'>
-	<title>New Meaning for Old Syntax</title>
-	<para>
-	Blocker atoms which use the previously existing !atom syntax now have
-	a slightly different meaning. These blocker atoms indicate that
-	conflicting packages may be temporarily installed simultaneously. When
-	temporary simultaneous installation of conflicting packages occurs, the
-	installation of a newer package may overwrite any colliding files that
-	belong to an older package which is explicitly blocked. When such file
-	collisions occur, the colliding files cease to belong to the older
-	package, and they remain installed after the older package is
-	eventually uninstalled. The older package is uninstalled only after
-	any newer blocking packages have been merged on top of it.
-	</para>
-	</section>
-	<section id='package-ebuild-eapi-2-pre3-metadata-dependencies-blocker-atoms-new-syntax'>
-	<title>New !!atom Syntax</title>
-	<para>
-	A new !!atom syntax is now supported, for use in special cases for which
-	temporary simultaneous installation of conflicting packages should not be
-	allowed. If a given package happens to be blocked my a mixture of atoms
-	consisting of both the !atom and !!atom syntaxes, the !!atom syntax takes
-	precedence over the !atom syntax.
-	</para>
-	</section>
-	</section>
-	</section>
-	<section id='package-ebuild-eapi-2-pre3-metadata-src-uri'>
-		<title>SRC_URI</title>
-		<section id='package-ebuild-eapi-2-pre3-metadata-src-uri-output-file-name-customization'>
-			<title>Customization of Output File Names</title>
-			<para>
-			A new syntax is supported which allows customization of the output
-			file name for a given URI. In order to customize the output file
-			name, a given URI should be followed by a "->" operator which,
-			in turn, should be followed by the desired output file name. As
-			usual, all tokens, including the operator and output file name,
-			should be separated by whitespace.
-			</para>
-		</section>
-	</section>
-	</section>
-	<section id='package-ebuild-eapi-2-pre3-phases'>
-		<title>Phases</title>
-		<section id='package-ebuild-eapi-2-pre3-phases-src-prepare'>
-			<title>New src_prepare Phase Function</title>
-			<para>
-			A new src_prepare function is called after the src_unpack
-			function, with cwd initially set to $S.
-			</para>
-		</section>
-	</section>
-</section>
-<section id='package-ebuild-eapi-2-draft'>
-	<title>EAPI 2 Draft</title>
-	<section id='package-ebuild-eapi-2-draft-helpers'>
-	<title>Helpers</title>
-	<section id='package-ebuild-eapi-2-draft-helpers-doman'>
-	<title>doman</title>
-	<section id='package-ebuild-eapi-2-draft-helpers-doman-language-codes'>
-	<title>Recognition of Language Codes in File Names</title>
-	<para>
-	Language codes in file names are now used for path translation.
-	</para>
-	<table><title>Man Page Path Translation</title>
-	<tgroup cols='2' align='left' >
-	<colspec colname='source'/>
-	<colspec colname='destination'/>
-	<thead>
-	<row>
-	<entry>Source</entry>
-	<entry>Destination</entry>
-	</row>
-	</thead>
-	<tbody>
-	<row>
-	<entry>foo.1</entry>
-	<entry>/usr/share/man/man1/foo.1</entry>
-	</row>
-	<row>
-	<entry>foo.lang.1</entry>
-	<entry>/usr/share/man/lang/man1/foo.1</entry>
-	</row>
-	</tbody>
-	</tgroup>
-	</table>
-	</section>
-	</section>
-	</section>
-	<section id='package-ebuild-eapi-2-draft-metadata'>
-	<title>Metadata</title>
-	<section id='package-ebuild-eapi-2-draft-metadata-dependencies'>
-	<title>Dependencies</title>
-	<section id='package-ebuild-eapi-2-draft-metadata-dependencies-blocker-atoms'>
-	<title>Blocker Atoms</title>
-	<section id='package-ebuild-eapi-2-draft-metadata-dependencies-blocker-atoms-new-meaning'>
-	<title>New Meaning for Old Syntax</title>
-	<para>
-	Blocker atoms which use the previously existing !atom syntax now have
-	a slightly different meaning. These blocker atoms indicate that
-	conflicting packages may be temporarily installed simultaneously. When
-	temporary simultaneous installation of conflicting packages occurs, the
-	installation of a newer package may overwrite any colliding files that
-	belong to an older package which is explicitly blocked. When such file
-	collisions occur, the colliding files cease to belong to the older
-	package, and they remain installed after the older package is
-	eventually uninstalled. The older package is uninstalled only after
-	any newer blocking packages have been merged on top of it.
-	</para>
-	</section>
-	<section id='package-ebuild-eapi-2-draft-metadata-dependencies-blocker-atoms-new-syntax'>
-	<title>New !!atom Syntax</title>
-	<para>
-	A new !!atom syntax is now supported, for use in special cases for which
-	temporary simultaneous installation of conflicting packages should not be
-	allowed. If a given package happens to be blocked my a mixture of atoms
-	consisting of both the !atom and !!atom syntaxes, the !!atom syntax takes
-	precedence over the !atom syntax.
-	</para>
-	</section>
-	</section>
-	<section id='package-ebuild-eapi-2-draft-metadata-dependencies-use'>
-	<title>USE Dependencies</title>
-	<section id='package-ebuild-eapi-2-draft-metadata-dependencies-use-unconditional'>
-	<title>Unconditional USE Dependencies</title>
-	<table><title>Syntax Examples</title>
-	<tgroup cols='2' align='left' >
-	<colspec colname='example'/>
-	<colspec colname='meaning'/>
-	<thead>
-	<row>
-	<entry>Example</entry>
-	<entry>Meaning</entry>
-	</row>
-	</thead>
-	<tbody>
-	<row>
-	<entry>foo[bar]</entry>
-	<entry>foo must have bar enabled</entry>
-	</row>
-	<row>
-	<entry>foo[bar,baz]</entry>
-	<entry>foo must have both bar and baz enabled</entry>
-	</row>
-	<row>
-	<entry>foo[-bar,baz]</entry>
-	<entry>foo must have bar disabled and baz enabled</entry>
-	</row>
-	</tbody>
-	</tgroup>
-	</table>
-	</section>
-	<section id='package-ebuild-eapi-2-draft-metadata-dependencies-use-conditional'>
-	<title>Conditional USE Dependencies</title>
-	<table><title>Syntax Examples</title>
-	<tgroup cols='2' align='left' >
-	<colspec colname='compact'/>
-	<colspec colname='expanded'/>
-	<thead>
-	<row>
-	<entry>Compact Form</entry>
-	<entry>Equivalent Expanded Form</entry>
-	</row>
-	</thead>
-	<tbody>
-	<row>
-	<entry>foo[bar?]</entry>
-	<entry>bar? ( foo[bar]  ) !bar? ( foo       )</entry>
-	</row>
-	<row>
-	<entry>foo[!bar?]</entry>
-	<entry>bar? ( foo       ) !bar? ( foo[-bar] )</entry>
-	</row>
-	<row>
-	<entry>foo[bar=]</entry>
-	<entry>bar? ( foo[bar]  ) !bar? ( foo[-bar] )</entry>
-	</row>
-	<row>
-	<entry>foo[!bar=]</entry>
-	<entry>bar? ( foo[-bar] ) !bar? ( foo[bar]  )</entry>
-	</row>
-	</tbody>
-	</tgroup>
-	</table>
-	</section>
-	</section>
-	</section>
-	<section id='package-ebuild-eapi-2-draft-metadata-src-uri'>
-		<title>SRC_URI</title>
-		<section id='package-ebuild-eapi-2-draft-metadata-src-uri-output-file-name-customization'>
-			<title>Customization of Output File Names</title>
-			<para>
-			A new syntax is supported which allows customization of the output
-			file name for a given URI. In order to customize the output file
-			name, a given URI should be followed by a "->" operator which,
-			in turn, should be followed by the desired output file name. As
-			usual, all tokens, including the operator and output file name,
-			should be separated by whitespace.
-			</para>
-		</section>
-	</section>
-	</section>
-	<section id='package-ebuild-eapi-2-draft-phases'>
-		<title>Phases</title>
-		<section id='package-ebuild-eapi-2-draft-phases-src-prepare'>
-			<title>New src_prepare Phase Function</title>
-			<para>
-			A new src_prepare function is called after the src_unpack
-			function, with cwd initially set to $S.
-			</para>
-		</section>
-		<section id='package-ebuild-eapi-2-draft-phases-src-configure'>
-			<title>New src_configure Phase Function</title>
-			<para>
-			The configure portion of the src_compile function has been
-			split into a separate function which is named src_configure. The
-			src_configure function is called in-between the src_prepare and
-			src_compile functions.
-			</para>
-			<programlisting>
-src_configure() {
-	if [[ -x ${ECONF_SOURCE:-.}/configure ]] ; then
-		econf
-	fi
-}
-
-src_compile() {
-	if [ -f Makefile ] || [ -f GNUmakefile ] || [ -f makefile ] ; then
-		emake || die "emake failed"
-	fi
-}
-			</programlisting>
-		</section>
-		<section id='package-ebuild-eapi-2-draft-phases-order'>
-			<title>Execution Order of Phase Functions</title>
-			<table><title>Execution Order of Phase Functions</title>
-				<tgroup cols='1' align='left' >
-				<colspec colname='name'/>
-				<thead>
-				<row>
-					<entry>Phase Function Name</entry>
-				</row>
-				</thead>
-				<tbody>
-				<row>
-					<entry>pkg_setup</entry>
-				</row>
-				<row>
-					<entry>src_unpack</entry>
-				</row>
-				<row>
-					<entry>src_prepare</entry>
-				</row>
-				<row>
-					<entry>src_configure</entry>
-				</row>
-				<row>
-					<entry>src_compile</entry>
-				</row>
-				<row>
-					<entry>src_test</entry>
-				</row>
-				<row>
-					<entry>src_install</entry>
-				</row>
-				<row>
-					<entry>pkg_preinst</entry>
-				</row>
-				<row>
-					<entry>pkg_postinst</entry>
-				</row>
-				<row>
-					<entry>pkg_prerm</entry>
-				</row>
-				<row>
-					<entry>pkg_postrm</entry>
-				</row>
-				</tbody>
-				</tgroup>
-			</table>
-		</section>
-		<section id='package-ebuild-eapi-2-draft-phases-default-functions'>
-			<title>Default Phase Functions</title>
-			<para>
-			The default pkg_nofetch and src_* phase functions are now
-			accessible via a function having a name
-			that begins with default_ and
-			ends with the respective phase function name. For example,
-			a call to a function with the name default_src_compile is
-			equivalent to a call to the default src_compile
-			implementation.
-			</para>
-			<table><title>Default Phase Functions</title>
-				<tgroup cols='1' align='left' >
-				<colspec colname='name'/>
-				<thead>
-				<row>
-					<entry>Function Name</entry>
-				</row>
-				</thead>
-				<tbody>
-				<row>
-					<entry>default_pkg_nofetch</entry>
-				</row>
-				<row>
-					<entry>default_src_unpack</entry>
-				</row>
-				<row>
 					<entry>default_src_prepare</entry>
 				</row>
 				<row>
@@ -547,7 +268,7 @@ src_compile() {
 				</tgroup>
 			</table>
 		</section>
-		<section id='package-ebuild-eapi-2-draft-phases-default-function-alias'>
+		<section id='package-ebuild-eapi-2-phases-default-function-alias'>
 			<title>Default Phase Function Alias</title>
 			<para>
 			A function named "default" is redefined for each phase so that it
