@@ -3508,13 +3508,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			eidx = myuri.find("/", 9)
 			if eidx != -1:
 				mirrorname = myuri[9:eidx]
-				if myfile != os.path.basename(myuri):
-					# If a SRC_URI arrow is used together with
-					# mirror://, preserve the remote path that's
-					# specified within the uri.
-					path = myuri[eidx+1:]
-				else:
-					path = myfile
+				path = myuri[eidx+1:]
 
 				# Try user-defined mirrors first
 				if mirrorname in custommirrors:
