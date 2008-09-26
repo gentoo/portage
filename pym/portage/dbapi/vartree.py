@@ -637,7 +637,7 @@ class vardbapi(dbapi):
 		self._aux_cache_keys = set(
 			["CHOST", "COUNTER", "DEPEND", "DESCRIPTION",
 			"EAPI", "HOMEPAGE", "IUSE", "KEYWORDS",
-			"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
+			"LICENSE", "PDEPEND", "PROPERTIES", "PROVIDE", "RDEPEND",
 			"repository", "RESTRICT" , "SLOT", "USE"])
 		self._aux_cache_obj = None
 		self._aux_cache_filename = os.path.join(self.root,

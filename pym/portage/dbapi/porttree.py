@@ -195,7 +195,7 @@ class portdbapi(dbapi):
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
 			["DEPEND", "EAPI", "INHERITED", "IUSE", "KEYWORDS", "LICENSE",
-			"PDEPEND", "PROVIDE", "RDEPEND", "repository",
+			"PDEPEND", "PROPERTIES", "PROVIDE", "RDEPEND", "repository",
 			"RESTRICT", "SLOT"])
 
 		# Repoman modifies _aux_cache_keys, so delay _aux_cache_slot_dict

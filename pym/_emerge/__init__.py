@@ -1412,7 +1412,7 @@ class Package(Task):
 		"CHOST", "COUNTER", "DEPEND", "EAPI",
 		"INHERITED", "IUSE", "KEYWORDS",
 		"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
-		"repository", "RESTRICT", "SLOT", "USE", "_mtime_"]
+		"repository", "PROPERTIES", "RESTRICT", "SLOT", "USE", "_mtime_"]
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
