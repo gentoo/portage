@@ -489,14 +489,34 @@ class Atom(object):
 	__slots__ = ("__weakref__", "blocker", "cp", "cpv", "operator",
 		"slot", "use") + _str_methods
 
+	class _blocker(object):
+		__slots__ = ("overlap",)
+
+		class _overlap(object):
+			__slots__ = ("forbid",)
+
+			def __init__(self, forbid=False):
+				self.forbid = forbid
+
+		def __init__(self, forbid_overlap=False):
+			self.overlap = self._overlap(forbid=forbid_overlap)
+
 	def __init__(self, s):
 		if not isvalidatom(s, allow_blockers=True):
 			raise InvalidAtom(s)
 		for x in self._str_methods:
 			setattr(self, x, getattr(s, x))
-		self.blocker = "!" == s[:1]
-		if self.blocker:
-			s = s[1:]
+
+		blocker = "!" == s[:1]
+		if blocker:
+			self.blocker = self._blocker(forbid_overlap=("!" == s[1:2]))
+			if self.blocker.overlap.forbid:
+				s = s[2:]
+			else:
+				s = s[1:]
+		else:
+			self.blocker = False
+
 		self.cp = dep_getkey(s)
 		self.cpv = dep_getcpv(s)
 		self.slot = dep_getslot(s)
@@ -586,7 +606,10 @@ def dep_getcpv(mydep):
 	if mydep and mydep[-1] == "*":
 		mydep = mydep[:-1]
 	if mydep and mydep[0] == "!":
-		mydep = mydep[1:]
+		if mydep[1:2] == "!":
+			mydep = mydep[2:]
+		else:
+			mydep = mydep[1:]
 	if mydep[:2] in [">=", "<="]:
 		mydep = mydep[2:]
 	elif mydep[:1] in "=<>~":
@@ -720,8 +743,11 @@ def isvalidatom(atom, allow_blockers=False):
 	global _invalid_atom_chars_regexp
 	if _invalid_atom_chars_regexp.search(atom):
 		return 0
-	if allow_blockers and atom.startswith("!"):
-		atom = atom[1:]
+	if allow_blockers and atom[:1] == "!":
+		if atom[1:2] == "!":
+			atom = atom[2:]
+		else:
+			atom = atom[1:]
 
 	try:
 		use = dep_getusedeps(atom)

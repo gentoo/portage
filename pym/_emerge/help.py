@@ -20,7 +20,7 @@ def shorthelp():
 	print "          [ "+green("--jobs") + " " + turquoise("JOBS")+" ] [ "+green("--keep-going")+" ] [ " + green("--load-average")+" " + turquoise("LOAD") + "            ]"
 	print "          [ "+green("--newuse")+"    ] [ "+green("--noconfmem")+"  ] [ "+green("--nospinner")+"  ] [ "+green("--oneshot")+"     ]"
 	print "          [ "+green("--reinstall ")+turquoise("changed-use")+"      ] [ " + green("--with-bdeps")+" < " + turquoise("y") + " | "+ turquoise("n")+" >         ]"
-	print bold("Actions:")+"  [ "+green("--clean")+" | "+green("--depclean")+" | "+green("--prune")+" | "+green("--regen")+" | "+green("--search")+" | "+green("--unmerge")+" ]"
+	print bold("Actions:")+"  [ "+green("--depclean")+" | "+green("--list-sets")+" | "+green("--search")+" | "+green("--sync")+" | "+green("--version")+"        ]"
 
 def help(myaction,myopts,havecolor=1):
 	# TODO: Implement a wrap() that accounts for console color escape codes.
@@ -111,6 +111,12 @@ def help(myaction,myopts,havecolor=1):
 		print "              for bug reports and verification of settings. All settings in"
 		print "              make.{conf,globals,defaults} and the environment show up if"
 		print "              run with the '--verbose' flag."
+		print
+		print "       " + green("--list-sets")
+		paragraph = "Displays a list of available package sets."
+
+		for line in wrap(paragraph, desc_width):
+			print desc_indent + line
 		print
 		print "       "+green("--metadata")
 		print "              Transfers metadata cache from ${PORTDIR}/metadata/cache/ to"

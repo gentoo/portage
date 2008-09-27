@@ -272,6 +272,9 @@ register_die_hook() {
 	export EBUILD_DEATH_HOOKS="${EBUILD_DEATH_HOOKS} $*"
 }
 
+# Ensure that $CWD is sane whenever possible.
+cd "$WORKDIR" 2>/dev/null
+
 #if no perms are specified, dirs/files will have decent defaults
 #(not secretive, but not stupid)
 umask 022

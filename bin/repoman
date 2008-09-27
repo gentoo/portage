@@ -1255,8 +1255,6 @@ for x in scanlist:
 						badsyntax.append("'%s' not a valid atom" % token)
 					else:
 						is_blocker = atom.blocker
-						if atom.blocker:
-							atom = portage.dep.Atom(atom[1:])
 
 						if mytype == "DEPEND" and \
 							not is_blocker and \
@@ -1281,6 +1279,13 @@ for x in scanlist:
 							stats['EAPI.incompatible'] += 1
 							fails['EAPI.incompatible'].append(
 								(relative_path + ": %s use dependency" + \
+								" not supported with EAPI='%s':" + \
+								" '%s'") % (mytype, eapi, atom))
+						if atom.blocker and atom.blocker.overlap.forbid \
+							and eapi in ("0", "1"):
+							stats['EAPI.incompatible'] += 1
+							fails['EAPI.incompatible'].append(
+								(relative_path + ": %s new blocker syntax" + \
 								" not supported with EAPI='%s':" + \
 								" '%s'") % (mytype, eapi, atom))
 

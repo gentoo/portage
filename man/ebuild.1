@@ -171,11 +171,21 @@ Builds a RedHat RPM package from the files in the temporary
 information is not incorporated into the RPM.
 .SH OPTIONS
 .TP
-\fB--force\fR
+.BR "\-\-debug"
+Run bash with the \-x option, causing it to output verbose debugging
+information to stdout.
+.TP
+.BR "\-\-force"
 When used together with the digest or manifest command,
 this option forces regeneration of
 digests for all distfiles associated with the current ebuild. Any distfiles
 that do not already exist in ${DISTDIR} will be automatically fetched.
+.TP
+.BR "\-\-ignore\-default\-opts"
+Do not use the \fIEBUILD_DEFAULT_OPTS\fR environment variable.
+.TP
+.BR "\-\-skip\-manifest"
+Skip all manifest checks.
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
 .SH "AUTHORS"

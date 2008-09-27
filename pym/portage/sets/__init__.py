@@ -65,7 +65,7 @@ class SetConfig(SafeConfigParser):
 						continue
 					for x in newsets:
 						if x in self.psets:
-							self.errors.append("Redefinition of set '%s' (sections: '%s', '%s')" % (setname, self.psets[setname].creator, sname))
+							self.errors.append("Redefinition of set '%s' (sections: '%s', '%s')" % (x, self.psets[x].creator, sname))
 						newsets[x].creator = sname
 						if self.has_option(sname, "world-candidate") and not self.getboolean(sname, "world-candidate"):
 							newsets[x].world_candidate = False
