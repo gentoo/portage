@@ -622,10 +622,6 @@ class LinkageMapMachO(object):
 			return hash(self._key)
 
 		def __eq__(self, other):
-			if isinstance(other, self.__class__):
-				other_key = other._key
-			else:
-				other_key = other
 			return self._key == other_key
 
 		def _generate_object_key(self, object):
@@ -669,59 +665,39 @@ class LinkageMapMachO(object):
 		obj_properties = {}
 		lines = []
 		for cpv in self._dbapi.cpv_all():
-			lines += self._dbapi.aux_get(cpv, ["NEEDED.MACHO.2"])[0].split('\n')
+			lines += self._dbapi.aux_get(cpv, ["NEEDED.MACHO.3"])[0].split('\n')
 		# Cache NEEDED.* files avoid doing excessive IO for every rebuild.
 		self._dbapi.flush_cache()
 
 		if include_file:
 			lines += grabfile(include_file)
 
-		# have to call otool for preserved libs here as they aren't 
-		# registered in NEEDED.MACHO.2 files
+		# have to call scanmacho for preserved libs here as they aren't 
+		# registered in NEEDED.MACHO.3 files
 		if self._dbapi.plib_registry and self._dbapi.plib_registry.getPreservedLibs():
-			otool = EPREFIX+"/usr/bin/otool"
+			args = [EPREFIX+"/usr/bin/scanmacho", "-qF", "%a;%F;%S;%n"]
 			for items in self._dbapi.plib_registry.getPreservedLibs().values():
-				for x in items:
-					try:
-						proc = subprocess.Popen([otool, "-DX", x.lstrip(".")],
-								stdout=subprocess.PIPE)
-						install_name = proc.communicate()[0].split("\n")[0]
-						proc = subprocess.Popen([otool, "-LX", x.lstrip(".")],
-								stdout=subprocess.PIPE)
-						output = [l.lstrip() for l in proc.communicate()[0].split("\n")]
-					except OSError:
-						# if otool can't be found (like in an odcctools
-						# upgrade -> binutils-config needs to update
-						# symlinks) just ignore it, don't crash
-						lines += [x + ";" + x.lstrip(".") + ";\n"]
-						continue
-
-					n = ""
-					for l in output:
-						if l == '':
-							continue
-						p = l.rfind(" (compatibility")
-						if p != -1:
-							l = l[:p]
-						n += "," + l
-
-					lines += [x + ";" + install_name + ";" + n.lstrip(",") + "\n"]
+				args += [x.lstrip(".") for x in items]
+			proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+			output = [proc.communicate()[0].split("\n")]
+			lines += output
 
 		for l in lines:
 			if l.strip() == "":
 				continue
 			fields = l.strip("\n").split(";")
-			if len(fields) < 3:
+			if len(fields) < 4:
 				print "Error", fields
 				# insufficient field length
 				continue
 
 			# Linking an object to a library is registered by recording
 			# the install_name of the library in the object.
-			obj = fields[0]
+			arch = fields[0]
+			obj = fields[1]
 			obj_key = self._ObjectKey(obj)
-			install_name = os.path.normpath(fields[1])
-			needed = filter(None, fields[2].split(","))
+			install_name = os.path.normpath(fields[2])
+			needed = filter(None, fields[3].split(","))
 
 			# build an internal structure that contains for each
 			# install_name, what libs have that install_name
@@ -730,16 +706,19 @@ class LinkageMapMachO(object):
 			# reference the install_name
 			if install_name:
 				libs.setdefault(install_name, \
+						{arch: {"providers": set(), "consumers": set()}})
+				libs[install_name].setdefault(arch, \
 						{"providers": set(), "consumers": set()})
-				libs[install_name]["providers"].add(obj_key)
+				libs[install_name][arch]["providers"].add(obj_key)
 			for x in needed:
 				libs.setdefault(x, \
-						{"providers": set(), "consumers": set()})
-				libs[x]["consumers"].add(obj_key)
+						{arch: {"providers": set(), "consumers": set()}})
+				libs[x].setdefault(arch, {"providers": set(), "consumers": set()})
+				libs[x][arch]["consumers"].add(obj_key)
 			obj_key_cache.setdefault(obj, obj_key)
 			# All object paths are added into the obj_properties tuple
 			obj_properties.setdefault(obj_key, \
-					(needed, install_name, set()))[2].add(obj)
+					(arch, needed, install_name, set()))[3].add(obj)
 		
 		self._libs = libs
 		self._obj_properties = obj_properties
@@ -798,13 +777,13 @@ class LinkageMapMachO(object):
 					if obj_key.file_exists():
 						# Get the install_name from LinkageMapMachO._obj_properties if
 						# it exists. Otherwise, None.
-						_, install_name, _ = \
-								self._obj_properties.get(obj_key, (None,)*3)
+						arch, _, install_name, _ = \
+								self._obj_properties.get(obj_key, (None,)*4)
 						return cache_self.cache.setdefault(obj, \
-								(install_name, obj_key, True))
+								(arch, install_name, obj_key, True))
 					else:
 						return cache_self.cache.setdefault(obj, \
-								(None, obj_key, False))
+								(None, None, obj_key, False))
 
 		rValue = {}
 		cache = _LibraryCache()
@@ -812,7 +791,7 @@ class LinkageMapMachO(object):
 
 		# Iterate over all obj_keys and their providers.
 		for obj_key, install_names in providers.items():
-			_, _, objs = self._obj_properties[obj_key]
+			arch, _, _, objs = self._obj_properties[obj_key]
 			# Iterate over each needed install_name and the set of
 			# library paths that fulfill the install_name to determine
 			# if the dependency is broken.
@@ -823,12 +802,12 @@ class LinkageMapMachO(object):
 				# If unsatisfied, objects associated with obj_key must
 				# be emerged.
 				validLibrary = None
-				cachedInstallname, cachedRealpath, cachedExists = \
+				cachedArch, cachedInstallname, cachedRealpath, cachedExists = \
 						cache.get(install_name)
 				# Check that the this library provides the needed soname.  Doing
 				# this, however, will cause consumers of libraries missing
 				# sonames to be unnecessarily emerged. (eg libmix.so)
-				if cachedInstallname == install_name:
+				if cachedInstallname == install_name and cachedArch == arch:
 					validLibrary = cachedRealpath
 					if debug and cachedRealpath not in libraries:
 						print "Found provider outside of findProviders:", \
@@ -894,7 +873,7 @@ class LinkageMapMachO(object):
 		obj_key = self._ObjectKey(obj)
 		if obj_key not in self._obj_properties:
 			raise KeyError("%s (%s) not in object list" % (obj_key, obj))
-		install_name = self._obj_properties[obj_key][1]
+		install_name = self._obj_properties[obj_key][2]
 		return (len(basename) < len(os.path.basename(install_name)))
 
 	def listLibraryObjects(self):
@@ -911,8 +890,9 @@ class LinkageMapMachO(object):
 		if not self._libs:
 			self.rebuild()
 		for install_name in self._libs:
-			for obj_key in self._libs[install_name]["providers"]:
-				rValue.extend(self._obj_properties[obj_key][2])
+			for arch in self._libs[install_name]:
+				for obj_key in self._libs[install_name][arch]["providers"]:
+					rValue.extend(self._obj_properties[obj_key][3])
 		return rValue
 	
 	def getSoname(self, obj):
@@ -929,7 +909,7 @@ class LinkageMapMachO(object):
 			self.rebuild()
 		if obj not in self._obj_key_cache:
 			raise KeyError("%s not in object list" % obj)
-		return self._obj_properties[self._obj_key_cache[obj]][1]
+		return self._obj_properties[self._obj_key_cache[obj]][2]
 
 	def findProviders(self, obj):
 		"""
@@ -968,15 +948,15 @@ class LinkageMapMachO(object):
 				if obj_key not in self._obj_properties:
 					raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 
-		needed, install_name, _ = self._obj_properties[obj_key]
+		arch, needed, install_name, _ = self._obj_properties[obj_key]
 		for install_name in needed:
 			rValue[install_name] = set()
-			if install_name not in self._libs:
+			if install_name not in self._libs or arch not in self._libs[install_name]:
 				continue
 			# For each potential provider of the install_name, add it to
 			# rValue if it exists.  (Should be one)
-			for provider_key in self._libs[install_name]["providers"]:
-				providers = self._obj_properties[provider_key][2]
+			for provider_key in self._libs[install_name][arch]["providers"]:
+				providers = self._obj_properties[provider_key][3]
 				for provider in providers:
 					if os.path.exists(provider):
 						rValue[install_name].add(provider)
@@ -1012,7 +992,7 @@ class LinkageMapMachO(object):
 			obj_key = obj
 			if obj_key not in self._obj_properties:
 				raise KeyError("%s not in object list" % obj_key)
-			objs = self._obj_properties[obj_key][2]
+			objs = self._obj_properties[obj_key][3]
 		else:
 			objs = set([obj])
 			obj_key = self._obj_key_cache.get(obj)
@@ -1026,7 +1006,7 @@ class LinkageMapMachO(object):
 		# other version, this lib will be shadowed and won't
 		# have any consumers.
 		if not isinstance(obj, self._ObjectKey):
-			master_link = self._obj_properties[obj_key][1]
+			master_link = self._obj_properties[obj_key][2]
 			try:
 				master_st = os.stat(master_link)
 				obj_st = os.stat(obj)
@@ -1037,12 +1017,12 @@ class LinkageMapMachO(object):
 					(master_st.st_dev, master_st.st_ino):
 					return set()
 
-		_, install_name, _ = self._obj_properties[obj_key]
-		if install_name in self._libs:
+		arch, _, install_name, _ = self._obj_properties[obj_key]
+		if install_name in self._libs and arch in self._libs[install_name]:
 			# For each potential consumer, add it to rValue if an object from the
 			# arguments resides in the consumer's runpath.
-			for consumer_key in self._libs[install_name]["consumers"]:
-				_, _, consumer_objs = \
+			for consumer_key in self._libs[install_name][arch]["consumers"]:
+				_, _, _, consumer_objs = \
 						self._obj_properties[consumer_key]
 				rValue.update(consumer_objs)
 		return rValue

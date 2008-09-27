@@ -407,53 +407,56 @@ install_qa_check() {
 	done
 	[[ ${abort} == "yes" ]] && die "soiled libtool library files found"
 
-	# Check that we don't get kernel traps at runtime because of broken
-	# install_names on Darwin, at the same time generate the NEEDED
-	# entries.  As long as we don't have a "scanelf" tool for this, we
-	# use otool to do the magic.  Since this is expensive, we do it
-	# together with the scan for broken installs.
+	# While we generate the NEEDED files, check that we don't get kernel
+	# traps at runtime because of broken install_names on Darwin.
 	rm -f "${T}"/.install_name_check_failed
-	[[ ${CHOST} == *-darwin* ]] && find "${ED}" -type f | while IFS= read f ; do
-		rm -f "${T}"/.NEEDED.tmp
-		install_name=$(otool -DX "${f}")
-		otool -LX "${f}" \
-			| grep -v "Archive : " \
-			| sed -e 's/^\t//' -e 's/ (compa.*$//' \
-			| while read r ;
-		do
-			# skip the self reference in libraries
-			[[ -n ${install_name} && ${install_name} == ${r} ]] && continue
+	[[ ${CHOST} == *-darwin* ]] && scanmacho -qyRF '%a;%p;%S;%n' "${D}" | { while IFS= read l ; do
+		arch=${l%%;*}; l=${l#*;}
+		obj="/${l%%;*}"; l=${l#*;}
+		install_name=${l%%;*}; l=${l#*;}
+		needed=${l%%;*}; l=${l#*;}
 
-			if [[ ! -e ${r} && ! -e ${D}${r} && ${r} != *"@executable_path"* ]] ; then
+		# this is ugly, paths with spaces won't work
+		reevaluate=0
+		for lib in $(echo ${needed} | tr , ' '); do
+			if [[ ! -e ${lib} && ! -e ${D}${lib} && ${lib} != *"@executable_path"* ]] ; then
 				# try to "repair" this if possible, happens because of
 				# gen_usr_ldscript tactics
-				s=${r%usr/*}${r##*/usr/}
+				s=${lib%usr/*}${lib##*/usr/}
 				if [[ -e ${D}${s} ]] ; then
-					ewarn "correcting install_name from ${r} to ${s} in ${f#${D}}"
+					ewarn "correcting install_name from ${lib} to ${s} in ${obj}"
 					install_name_tool -change \
-						"${r}" "${s}" "${f}"
-					r=${s} # for the NEEDED entries
+						"${lib}" "${s}" "${D}${obj}"
+					reevaluate=1
 				else
-					eqawarn "QA Notice: invalid reference to ${r} in ${f}"
+					eqawarn "QA Notice: invalid reference to ${lib} in ${obj}"
 					# remember we are in an implicit subshell, that's
 					# why we touch a file here ... ideally we should be
 					# able to die correctly/nicely here
 					touch "${T}"/.install_name_check_failed
 				fi
 			fi
-			echo -n ",${r}" >> "${T}"/.NEEDED.tmp
 		done
-		if [[ -f "${T}"/.NEEDED.tmp ]] ; then
-			needed=$(< "${T}"/.NEEDED.tmp)
-			echo "/${f#${D}} ${needed#,}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
-			echo "/${f#${D}};${install_name};${needed#,}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.MACHO.2
+		if [[ reevaluate == 1 ]]; then
+			# install_name(s) have been changed, refresh data so we
+			# store the correct meta data
+			l=$(scanmacho -qyF '%a;%p;%S;%n' ${D}${obj})
+			arch=${l%%;*}; l=${l#*;}
+			obj="/${l%%;*}"; l=${l#*;}
+			install_name=${l%%;*}; l=${l#*;}
+			needed=${l%%;*}; l=${l#*;}
 		fi
-	done
+
+		# backwards compatability
+		echo "${obj} ${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+		# what we use
+		echo "${arch};${obj};${install_name};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.MACHO.3
+	done }
 	if [[ -f ${T}/.install_name_check_failed ]] ; then
 		# secret switch "allow_broken_install_names" to get
 		# around this and install broken crap (not a good idea)
 		hasq allow_broken_install_names ${FEATURES} || \
-			die "invalid install_name found, your application will crash at runtime"
+			die "invalid install_name found, your application or library will crash at runtime"
 	fi
 
 	# Evaluate misc gcc warnings
