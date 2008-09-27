@@ -503,7 +503,7 @@ class EOutput(object):
 		@param msg: A very brief (shorter than one line) error message.
 		@type msg: StringType
 		"""
-		out = sys.stdout
+		out = sys.stderr
 		if not self.quiet:
 			if self.__last_e_cmd == "ebegin":
 				out.write("\n")
@@ -548,7 +548,7 @@ class EOutput(object):
 		@param msg: A very brief (shorter than one line) warning message.
 		@type msg: StringType
 		"""
-		out = sys.stdout
+		out = sys.stderr
 		if not self.quiet:
 			if self.__last_e_cmd == "ebegin":
 				out.write("\n")

@@ -33,7 +33,7 @@ class bindbapi(fakedbapi):
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
 			["CHOST", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
-			"LICENSE", "PDEPEND", "PROVIDE",
+			"LICENSE", "PDEPEND", "PROPERTIES", "PROVIDE",
 			"RDEPEND", "repository", "RESTRICT", "SLOT", "USE",
 			"EPREFIX"])
 		self._aux_cache_slot_dict = slot_dict_class(self._aux_cache_keys)
@@ -156,10 +156,13 @@ class binarytree(object):
 			self._pkgindex_keys.update(["CPV", "MTIME", "SIZE"])
 			self._pkgindex_aux_keys = \
 				["CHOST", "DEPEND", "DESCRIPTION", "EAPI",
-				"IUSE", "KEYWORDS", "LICENSE", "PDEPEND",
+				"IUSE", "KEYWORDS", "LICENSE", "PDEPEND", "PROPERTIES",
 				"PROVIDE", "RDEPEND", "repository", "SLOT", "USE",
 				"EPREFIX"]
 			self._pkgindex_aux_keys = list(self._pkgindex_aux_keys)
+			self._pkgindex_use_evaluated_keys = \
+				("LICENSE", "RDEPEND", "DEPEND",
+				"PDEPEND", "PROPERTIES", "PROVIDE")
 			self._pkgindex_header_keys = set(["ACCEPT_KEYWORDS", "CBUILD",
 				"CHOST", "CONFIG_PROTECT", "CONFIG_PROTECT_MASK", "FEATURES",
 				"GENTOO_MIRRORS", "INSTALL_MASK", "SYNC", "USE", "EAPI", "EPREFIX"])
@@ -175,6 +178,7 @@ class binarytree(object):
 				"LICENSE" : "",
 				"PATH"    : "",
 				"PDEPEND" : "",
+				"PROPERTIES" : "",
 				"PROVIDE" : "",
 				"RDEPEND" : "",
 				"RESTRICT": "",
@@ -913,7 +917,7 @@ class binarytree(object):
 		metadata["USE"] = " ".join(use)
 		from portage.dep import paren_reduce, use_reduce, \
 			paren_normalize, paren_enclose
-		for k in "LICENSE", "RDEPEND", "DEPEND", "PDEPEND", "PROVIDE":
+		for k in self._pkgindex_use_evaluated_keys:
 			try:
 				deps = paren_reduce(metadata[k])
 				deps = use_reduce(deps, uselist=raw_use)

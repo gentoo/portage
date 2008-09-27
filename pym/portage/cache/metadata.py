@@ -18,7 +18,7 @@ class database(flat_hash.database):
 	auxdbkey_order=('DEPEND', 'RDEPEND', 'SLOT', 'SRC_URI',
 		'RESTRICT',  'HOMEPAGE',  'LICENSE', 'DESCRIPTION',
 		'KEYWORDS',  'INHERITED', 'IUSE', 'CDEPEND',
-		'PDEPEND',   'PROVIDE', 'EAPI')
+		'PDEPEND',   'PROVIDE', 'EAPI', 'PROPERTIES')
 
 	autocommits = True
 
@@ -66,6 +66,8 @@ class database(flat_hash.database):
 			if "INHERITED" in d:
 				d["_eclasses_"] = self.ec.get_eclass_data(d["INHERITED"].split(), from_master_only=True)
 				del d["INHERITED"]
+			else:
+				d["_eclasses_"] = {}
 		elif isinstance(d["_eclasses_"], basestring):
 			# We skip this if flat_hash.database._parse_data() was called above
 			# because it calls reconstruct_eclasses() internally.

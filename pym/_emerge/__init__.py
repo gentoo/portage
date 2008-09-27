@@ -1439,7 +1439,7 @@ class Package(Task):
 		"CHOST", "COUNTER", "DEPEND", "EAPI",
 		"INHERITED", "IUSE", "KEYWORDS",
 		"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
-		"repository", "RESTRICT", "SLOT", "USE", "_mtime_", "EPREFIX" ]
+		"repository", "PROPERTIES", "RESTRICT", "SLOT", "USE", "_mtime_", "EPREFIX" ]
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
@@ -10086,7 +10086,7 @@ class Scheduler(PollScheduler):
 		if e is not None:
 			mydepgraph.display_problems()
 			out = portage.output.EOutput()
-			out.eerror("One or packages are either masked or " + \
+			out.eerror("One or more packages are either masked or " + \
 				"have missing dependencies:")
 			out.eerror("")
 			indent = "  "
@@ -10935,10 +10935,12 @@ def display_preserved_libs(vardbapi):
 				owners = vardbapi._owners.getFileOwnerMap(consumers[:MAX_DISPLAY+2])
 				for c in consumers[:MAX_DISPLAY]:
 					print colorize("WARN", " * ") + "     used by %s (%s)" % (c, ", ".join([x.mycpv for x in owners[c]]))
-				if len(consumers) > MAX_DISPLAY + 1:
+				if len(consumers) == MAX_DISPLAY + 1:
+					print colorize("WARN", " * ") + "     used by %s (%s)" % \
+						(consumers[MAX_DISPLAY], ", ".join(
+						x.mycpv for x in owners[consumers[MAX_DISPLAY]]))
+				elif len(consumers) > MAX_DISPLAY:
 					print colorize("WARN", " * ") + "     used by %d other files" % (len(consumers) - MAX_DISPLAY)
-				else:
-					print colorize("WARN", " * ") + "     used by %s (%s)" % (consumers[MAX_DISPLAY], ", ".join([x.mycpv for x in owners[consumers[MAX_DISPLAY]]]))
 		print "Use " + colorize("GOOD", "emerge @preserved-rebuild") + " to rebuild packages using these libraries"
 
 
@@ -11997,7 +11999,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	msg.append("unless *all* required dependencies have been resolved.  As a\n")
 	msg.append("consequence, it is often necessary to run %s\n" % \
 		good("`emerge --update"))
-	msg.append(good("--newuse --deep --oneshot @system @world`") + \
+	msg.append(good("--newuse --deep @system @world`") + \
 		" prior to depclean.\n")
 
 	if action == "depclean" and "--quiet" not in myopts and not myfiles:
@@ -12805,7 +12807,7 @@ def action_build(settings, trees, mtimedb,
 				out.eerror("")
 
 			if isinstance(e, depgraph.UnsatisfiedResumeDep):
-				out.eerror("One or packages are either masked or " + \
+				out.eerror("One or more packages are either masked or " + \
 					"have missing dependencies:")
 				out.eerror("")
 				indent = "  "

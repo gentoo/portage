@@ -533,9 +533,8 @@ setconfig = load_default_config(repoman_settings, trees["/"])
 root_config = RootConfig(repoman_settings, trees["/"], setconfig)
 # We really only need to cache the metadata that's necessary for visibility
 # filtering. Anything else can be discarded to reduce memory consumption.
-for k in ("DEPEND", "LICENCE", "PDEPEND",
-	"PROVIDE", "RDEPEND", "RESTRICT", "repository"):
-	portdb._aux_cache_keys.discard(k)
+portdb._aux_cache_keys.clear()
+portdb._aux_cache_keys.update(["EAPI", "KEYWORDS", "SLOT"])
 # dep_zapdeps looks at the vardbapi, but it shouldn't for repoman.
 del trees["/"]["vartree"]
 

@@ -238,6 +238,8 @@ class SQLDatabase(template.database):
 					d = dict(l)
 					if "_eclasses_" in d:
 						d["_eclasses_"] = reconstruct_eclasses(oldcpv, d["_eclasses_"])
+					else:
+						d["_eclasses_"] = {}
 					yield cpv, d
 				l.clear()
 				oldcpv = x
@@ -246,6 +248,8 @@ class SQLDatabase(template.database):
 			d = dict(l)
 			if "_eclasses_" in d:
 				d["_eclasses_"] = reconstruct_eclasses(oldcpv, d["_eclasses_"])
+			else:
+				d["_eclasses_"] = {}
 			yield cpv, d			
 
 	def commit(self):

@@ -16,7 +16,9 @@ class database(fs_template.FsBased):
 		super(database,self).__init__(*args, **config)
 		self.location = os.path.join(self.location, 
 			self.label.lstrip(os.path.sep).rstrip(os.path.sep))
-
+		write_keys = set(self._known_keys)
+		write_keys.add("_eclasses_")
+		self._write_keys = sorted(write_keys)
 		if not self.readonly and not os.path.exists(self.location):
 			self._ensure_dirs()
 
@@ -46,6 +48,8 @@ class database(fs_template.FsBased):
 			raise cache_errors.CacheCorruption(cpv, e)
 		if "_eclasses_" in d:
 			d["_eclasses_"] = reconstruct_eclasses(cpv, d["_eclasses_"])
+		else:
+			d["_eclasses_"] = {}
 		return d
 		
 		for x in self._known_keys:
@@ -71,13 +75,14 @@ class database(fs_template.FsBased):
 			else:
 				raise cache_errors.CacheCorruption(cpv, e)
 
-		for k, v in values.iteritems():
-			if not v:
-				continue
-			if k != "_mtime_" and (k == "_eclasses_" or k in self._known_keys):
+		try:
+			for k in self._write_keys:
+				v = values.get(k)
+				if not v:
+					continue
 				myf.write("%s=%s\n" % (k, v))
-
-		myf.close()
+		finally:
+			myf.close()
 		self._ensure_access(fp, mtime=values["_mtime_"])
 
 		#update written.  now we move it.

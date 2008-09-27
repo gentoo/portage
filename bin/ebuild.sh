@@ -272,8 +272,8 @@ register_die_hook() {
 	export EBUILD_DEATH_HOOKS="${EBUILD_DEATH_HOOKS} $*"
 }
 
-# Ensure that $CWD is sane whenever possible.
-cd "$WORKDIR" 2>/dev/null
+# Ensure that $PWD is sane whenever possible.
+cd "$PORTAGE_BUILDDIR" 2>/dev/null
 
 #if no perms are specified, dirs/files will have decent defaults
 #(not secretive, but not stupid)
@@ -1031,7 +1031,7 @@ dyn_install() {
 	for f in ASFLAGS CATEGORY CBUILD CC CFLAGS CHOST CTARGET CXX \
 		CXXFLAGS DEPEND EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
 		FEATURES INHERITED IUSE LDFLAGS LIBCFLAGS LIBCXXFLAGS \
-		LICENSE PDEPEND PF PKGUSE PROVIDE RDEPEND RESTRICT SLOT \
+		LICENSE PDEPEND PF PKGUSE PROPERTIES PROVIDE RDEPEND RESTRICT SLOT \
 		KEYWORDS HOMEPAGE SRC_URI DESCRIPTION; do
 		[ -n "${!f}" ] && echo $(echo "${!f}" | \
 			tr '\n,\r,\t' ' , , ' | sed s/'  \+'/' '/g) > ${f}
@@ -2071,8 +2071,8 @@ ebuild_main() {
 
 		auxdbkeys="DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE
 			DESCRIPTION KEYWORDS INHERITED IUSE CDEPEND PDEPEND PROVIDE EAPI
-			UNUSED_01 UNUSED_02 UNUSED_03 UNUSED_04 UNUSED_05 UNUSED_06
-			UNUSED_07"
+			PROPERTIES UNUSED_06 UNUSED_05 UNUSED_04
+			UNUSED_03 UNUSED_02 UNUSED_01"
 
 		#the extra $(echo) commands remove newlines
 		unset CDEPEND

@@ -84,7 +84,7 @@ EBUILD_PHASES           = ["setup", "unpack", "prepare", "configure",
                           "package", "preinst", "postinst","prerm", "postrm",
                           "nofetch", "config", "info", "other"]
 
-EAPI = 1
+EAPI = 2
 
 HASHING_BLOCKSIZE        = 32768
 MANIFEST1_HASH_FUNCTIONS = ["MD5","SHA256","RMD160"]
