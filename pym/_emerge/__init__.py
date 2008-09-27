@@ -1245,11 +1245,14 @@ def visible(pkgsettings, pkg):
 	if pkg.built and not pkg.installed and "CHOST" in pkg.metadata:
 		if not pkgsettings._accept_chost(pkg):
 			return False
-	if not portage.eapi_is_supported(pkg.metadata["EAPI"]):
+	eapi = pkg.metadata["EAPI"]
+	if not portage.eapi_is_supported(eapi):
 		return False
-	if not pkg.installed and \
-		pkgsettings._getMissingKeywords(pkg.cpv, pkg.metadata):
-		return False
+	if not pkg.installed:
+		if portage._eapi_is_deprecated(eapi):
+			return False
+		if pkgsettings._getMissingKeywords(pkg.cpv, pkg.metadata):
+			return False
 	if pkgsettings._getMaskAtom(pkg.cpv, pkg.metadata):
 		return False
 	if pkgsettings._getProfileMaskAtom(pkg.cpv, pkg.metadata):
