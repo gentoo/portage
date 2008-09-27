@@ -3862,7 +3862,7 @@ class BlockerDB(object):
 		blocker_atoms = []
 		for pkg in installed_pkgs:
 			for blocker_atom in blocker_cache[pkg.cpv].atoms:
-				blocker_atom = blocker_atom[1:]
+				blocker_atom = blocker_atom.lstrip("!")
 				blocker_atoms.append(blocker_atom)
 				blocker_parents.add(blocker_atom, pkg)
 
