@@ -37,9 +37,9 @@ import shlex
 from itertools import izip
 
 try:
-	import cPickle
+	import cPickle as pickle
 except ImportError:
-	import pickle as cPickle
+	import pickle
 
 class PreservedLibsRegistry(object):
 	""" This class handles the tracking of preserved library objects """
@@ -57,7 +57,7 @@ class PreservedLibsRegistry(object):
 	def load(self):
 		""" Reload the registry data from file """
 		try:
-			self._data = cPickle.load(open(self._filename, "r"))
+			self._data = pickle.load(open(self._filename, "r"))
 		except (EOFError, IOError), e:
 			if isinstance(e, EOFError) or e.errno == errno.ENOENT:
 				self._data = {}
@@ -74,7 +74,7 @@ class PreservedLibsRegistry(object):
 			return
 		try:
 			f = atomic_ofstream(self._filename)
-			cPickle.dump(self._data, f)
+			pickle.dump(self._data, f)
 			f.close()
 		except EnvironmentError, e:
 			if e.errno != PermissionDenied.errno:
@@ -1394,7 +1394,7 @@ class vardbapi(dbapi):
 			del self._aux_cache["modified"]
 			try:
 				f = atomic_ofstream(self._aux_cache_filename)
-				cPickle.dump(self._aux_cache, f, -1)
+				pickle.dump(self._aux_cache, f, -1)
 				f.close()
 				apply_secpass_permissions(
 					self._aux_cache_filename, gid=portage_gid, mode=0644)
@@ -1412,13 +1412,13 @@ class vardbapi(dbapi):
 		aux_cache = None
 		try:
 			f = open(self._aux_cache_filename)
-			mypickle = cPickle.Unpickler(f)
+			mypickle = pickle.Unpickler(f)
 			mypickle.find_global = None
 			aux_cache = mypickle.load()
 			f.close()
 			del f
-		except (IOError, OSError, EOFError, cPickle.UnpicklingError), e:
-			if isinstance(e, cPickle.UnpicklingError):
+		except (IOError, OSError, EOFError, pickle.UnpicklingError), e:
+			if isinstance(e, pickle.UnpicklingError):
 				writemsg("!!! Error loading '%s': %s\n" % \
 					(self._aux_cache_filename, str(e)), noiselevel=-1)
 			del e

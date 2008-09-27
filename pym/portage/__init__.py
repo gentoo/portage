@@ -20,9 +20,9 @@ try:
 	import shutil
 	import time
 	try:
-		import cPickle
+		import cPickle as pickle
 	except ImportError:
-		import pickle as cPickle
+		import pickle
 
 	import stat
 	import commands
@@ -141,7 +141,7 @@ except ImportError, e:
 
 
 try:
-	import portage.selinux as selinux
+	import portage._selinux as selinux
 except OSError, e:
 	writemsg("!!! SELinux not loaded: %s\n" % str(e), noiselevel=-1)
 	del e
@@ -3528,11 +3528,19 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			eidx = myuri.find("/", 9)
 			if eidx != -1:
 				mirrorname = myuri[9:eidx]
+				if myfile != os.path.basename(myuri):
+					# If a SRC_URI arrow is used together with
+					# mirror://, preserve the remote path that's
+					# specified within the uri.
+					path = myuri[eidx+1:]
+				else:
+					path = myfile
 
 				# Try user-defined mirrors first
 				if mirrorname in custommirrors:
 					for cmirr in custommirrors[mirrorname]:
-						filedict[myfile].append(cmirr+"/"+myuri[eidx+1:])
+						filedict[myfile].append(
+							cmirr.rstrip("/") + "/" + path)
 						# remove the mirrors we tried from the list of official mirrors
 						if cmirr.strip() in thirdpartymirrors[mirrorname]:
 							thirdpartymirrors[mirrorname].remove(cmirr)
@@ -3541,7 +3549,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					shuffle(thirdpartymirrors[mirrorname])
 
 					for locmirr in thirdpartymirrors[mirrorname]:
-						filedict[myfile].append(locmirr+"/"+myuri[eidx+1:])
+						filedict[myfile].append(
+							locmirr.rstrip("/") + "/" + path)
 
 				if not filedict[myfile]:
 					writemsg("No known mirror by the name: %s\n" % (mirrorname))
@@ -7110,7 +7119,7 @@ def commit_mtimedb(mydict=None, filename=None):
 	d.update(mydict)
 	try:
 		f = atomic_ofstream(filename)
-		cPickle.dump(d, f, -1)
+		pickle.dump(d, f, -1)
 		f.close()
 		portage.util.apply_secpass_permissions(filename, uid=uid, gid=portage_gid, mode=0664)
 	except (IOError, OSError), e:
@@ -7264,13 +7273,13 @@ class MtimeDB(dict):
 	def _load(self, filename):
 		try:
 			f = open(filename)
-			mypickle = cPickle.Unpickler(f)
+			mypickle = pickle.Unpickler(f)
 			mypickle.find_global = None
 			d = mypickle.load()
 			f.close()
 			del f
-		except (IOError, OSError, EOFError, cPickle.UnpicklingError), e:
-			if isinstance(e, cPickle.UnpicklingError):
+		except (IOError, OSError, EOFError, pickle.UnpicklingError), e:
+			if isinstance(e, pickle.UnpicklingError):
 				writemsg("!!! Error loading '%s': %s\n" % \
 					(filename, str(e)), noiselevel=-1)
 			del e

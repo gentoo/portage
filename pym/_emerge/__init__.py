@@ -88,9 +88,9 @@ from itertools import chain, izip
 from UserDict import DictMixin
 
 try:
-	import cPickle
+	import cPickle as pickle
 except ImportError:
-	import pickle as cPickle
+	import pickle
 
 try:
 	import cStringIO as StringIO
@@ -3686,13 +3686,13 @@ class BlockerCache(DictMixin):
 	def _load(self):
 		try:
 			f = open(self._cache_filename)
-			mypickle = cPickle.Unpickler(f)
+			mypickle = pickle.Unpickler(f)
 			mypickle.find_global = None
 			self._cache_data = mypickle.load()
 			f.close()
 			del f
-		except (IOError, OSError, EOFError, cPickle.UnpicklingError), e:
-			if isinstance(e, cPickle.UnpicklingError):
+		except (IOError, OSError, EOFError, pickle.UnpicklingError), e:
+			if isinstance(e, pickle.UnpicklingError):
 				writemsg("!!! Error loading '%s': %s\n" % \
 					(self._cache_filename, str(e)), noiselevel=-1)
 			del e
@@ -3772,7 +3772,7 @@ class BlockerCache(DictMixin):
 			secpass >= 2:
 			try:
 				f = portage.util.atomic_ofstream(self._cache_filename)
-				cPickle.dump(self._cache_data, f, -1)
+				pickle.dump(self._cache_data, f, -1)
 				f.close()
 				portage.util.apply_secpass_permissions(
 					self._cache_filename, gid=portage.portage_gid, mode=0644)
@@ -10581,6 +10581,8 @@ def unmerge(root_config, myopts, unmerge_action,
 		stop = True
 		pos = len(installed_sets)
 		for s in installed_sets[pos - 1:]:
+			if s not in sets:
+				continue
 			candidates = [x[len(SETPREFIX):] for x in sets[s].getNonAtoms() if x.startswith(SETPREFIX)]
 			if candidates:
 				stop = False
@@ -10916,6 +10918,30 @@ def display_news_notification(root_config, myopts):
 		print "Use " + colorize("GOOD", "eselect news") + " to read news items."
 		print
 
+def display_preserved_libs(vardbapi):
+	MAX_DISPLAY = 3
+
+	if vardbapi.plib_registry.hasEntries():
+		print
+		print colorize("WARN", "!!!") + " existing preserved libs:"
+		plibdata = vardbapi.plib_registry.getPreservedLibs()
+		linkmap = vardbapi.linkmap
+		for cpv in plibdata:
+			print colorize("WARN", ">>>") + " package: %s" % cpv
+			for f in plibdata[cpv]:
+				print colorize("WARN", " * ") + " - %s" % f
+				consumers = list(linkmap.findConsumers(f))
+				consumers.sort()
+				owners = vardbapi._owners.getFileOwnerMap(consumers[:MAX_DISPLAY+2])
+				for c in consumers[:MAX_DISPLAY]:
+					print colorize("WARN", " * ") + "     used by %s (%s)" % (c, ", ".join([x.mycpv for x in owners[c]]))
+				if len(consumers) > MAX_DISPLAY + 1:
+					print colorize("WARN", " * ") + "     used by %d other files" % (len(consumers) - MAX_DISPLAY)
+				else:
+					print colorize("WARN", " * ") + "     used by %s (%s)" % (consumers[MAX_DISPLAY], ", ".join([x.mycpv for x in owners[consumers[MAX_DISPLAY]]]))
+		print "Use " + colorize("GOOD", "emerge @preserved-rebuild") + " to rebuild packages using these libraries"
+
+
 def _flush_elog_mod_echo():
 	"""
 	Dump the mod_echo output now so that our other
@@ -10984,7 +11010,7 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 	vdb_path = os.path.join(target_root, portage.VDB_PATH)
 	portage.util.ensure_dirs(vdb_path)
 	vdb_lock = None
-	if os.access(vdb_path, os.W_OK):
+	if os.access(vdb_path, os.W_OK) and not "--pretend" in myopts:
 		vdb_lock = portage.locks.lockdir(vdb_path)
 
 	if vdb_lock:
@@ -11000,16 +11026,8 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 	chk_updated_cfg_files(target_root + EPREFIX, config_protect)
 	
 	display_news_notification(root_config, myopts)
-	
-	if vardbapi.plib_registry.hasEntries():
-		print
-		print colorize("WARN", "!!!") + " existing preserved libs:"
-		plibdata = vardbapi.plib_registry.getPreservedLibs()
-		for cpv in plibdata:
-			print colorize("WARN", ">>>") + " package: %s" % cpv
-			for f in plibdata[cpv]:
-				print colorize("WARN", " * ") + " - %s" % f
-		print "Use " + colorize("GOOD", "emerge @preserved-rebuild") + " to rebuild packages using these libraries"
+	if retval in (None, os.EX_OK) or (not "--pretend" in myopts):
+		display_preserved_libs(vardbapi)	
 
 	sys.exit(retval)
 
@@ -11197,18 +11215,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					"PORTAGE_RSYNC_OPTS (can be overridden with --exclude='!')\n")
 					rsync_opts.append(opt)
 	
-			if settings["RSYNC_TIMEOUT"] != "":
-				portage.writemsg("WARNING: usage of RSYNC_TIMEOUT is deprecated, " + \
-				"use PORTAGE_RSYNC_EXTRA_OPTS instead\n")
-				try:
-					mytimeout = int(settings["RSYNC_TIMEOUT"])
-					rsync_opts.append("--timeout=%d" % mytimeout)
-				except ValueError, e:
-					portage.writemsg("!!! %s\n" % str(e))
-	
-			# TODO: determine options required for official servers
 			if syncuri.rstrip("/").endswith(".gentoo.org/gentoo-portage"):
-
 				def rsync_opt_startswith(opt_prefix):
 					for x in rsync_opts:
 						if x.startswith(opt_prefix):
@@ -11235,24 +11242,6 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		if "--debug" in myopts:
 			rsync_opts.append("--checksum") # Force checksum on all files
 
-		if settings["RSYNC_EXCLUDEFROM"] != "":
-			portage.writemsg(yellow("WARNING:") + \
-			" usage of RSYNC_EXCLUDEFROM is deprecated, use " + \
-			"PORTAGE_RSYNC_EXTRA_OPTS instead\n")
-			if os.path.exists(settings["RSYNC_EXCLUDEFROM"]):
-				rsync_opts.append("--exclude-from=%s" % \
-				settings["RSYNC_EXCLUDEFROM"])
-			else:
-				portage.writemsg("!!! RSYNC_EXCLUDEFROM specified," + \
-				" but file does not exist.\n")
-
-		if settings["RSYNC_RATELIMIT"] != "":
-			portage.writemsg(yellow("WARNING:") + \
-			" usage of RSYNC_RATELIMIT is deprecated, use " + \
-			"PORTAGE_RSYNC_EXTRA_OPTS instead")
-			rsync_opts.append("--bwlimit=%s" % \
-			settings["RSYNC_RATELIMIT"])
-
 		# Real local timestamp file.
 		servertimestampfile = os.path.join(
 			myportdir, "metadata", "timestamp.chk")
@@ -11274,11 +11263,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			rsync_initial_timeout = 15
 
 		try:
-			if "RSYNC_RETRIES" in settings:
-				print yellow("WARNING:")+" usage of RSYNC_RETRIES is deprecated, use PORTAGE_RSYNC_RETRIES instead"
-				maxretries=int(settings["RSYNC_RETRIES"])				
-			else:
-				maxretries=int(settings["PORTAGE_RSYNC_RETRIES"])
+			maxretries=int(settings["PORTAGE_RSYNC_RETRIES"])
 		except SystemExit, e:
 			raise # Needed else can't exit
 		except:
@@ -13088,9 +13073,6 @@ def action_build(settings, trees, mtimedb,
 					+ " problems due to overlapping packages.\n")
 			trees[settings["ROOT"]]["vartree"].dbapi.plib_registry.pruneNonExisting()
 
-		if merge_count and not (buildpkgonly or fetchonly or pretend):
-			root_config = trees[settings["ROOT"]]["root_config"]
-			post_emerge(root_config, myopts, mtimedb, retval)
 		return retval
 
 def multiple_actions(action1, action2):
@@ -13280,24 +13262,7 @@ def parse_opts(tmpcmdline, silent=False):
 				sys.exit(1)
 			myaction = action_opt
 
-	for x in myargs:
-		if x in actions and myaction != "search":
-			if not silent:
-				print red("*** Deprecated use of action '%s', use '--%s' instead" % (x,x))
-			# special case "search" so people can search for action terms, e.g. emerge -s sync
-			if myaction:
-				multiple_actions(myaction, x)
-				sys.exit(1)
-			myaction = x
-		else:
-			myfiles.append(x)
-
-	if "--nocolor" in myopts:
-		if not silent:
-			sys.stderr.write("*** Deprecated use of '--nocolor', " + \
-				"use '--color=n' instead.\n")
-		del myopts["--nocolor"]
-		myopts["--color"] = "n"
+	myfiles += myargs
 
 	return myaction, myopts, myfiles
 
@@ -13478,6 +13443,110 @@ def display_missing_pkg_set(root_config, set_name):
 	writemsg_level("".join("%s\n" % l for l in msg),
 		level=logging.ERROR, noiselevel=-1)
 
+def expand_set_arguments(myfiles, myaction, root_config):
+	retval = os.EX_OK
+	setconfig = root_config.setconfig
+
+	# display errors that occured while loading the SetConfig instance
+	for e in setconfig.errors:
+		print colorize("BAD", "Error during set creation: %s" % e)
+	
+	sets = setconfig.getSets()
+
+	# emerge relies on the existance of sets with names "world" and "system"
+	required_sets = ("world", "system")
+
+	for s in required_sets:
+		if s not in sets:
+			msg = ["emerge: incomplete set configuration, " + \
+				"no \"%s\" set defined" % s]
+			msg.append("        sets defined: %s" % ", ".join(sets))
+			for line in msg:
+				sys.stderr.write(line + "\n")
+			retval = 1
+	unmerge_actions = ("unmerge", "prune", "clean", "depclean")
+	
+	# In order to know exactly which atoms/sets should be added to the
+	# world file, the depgraph performs set expansion later. It will get
+	# confused about where the atoms came from if it's not allowed to
+	# expand them itself.
+	do_not_expand = (None, )
+	newargs = []
+	for a in myfiles:
+		if a in ("system", "world"):
+			newargs.append(SETPREFIX+a)
+		else:
+			newargs.append(a)
+	myfiles = newargs
+	del newargs
+	newargs = []
+	
+	# WARNING: all operators must be of equal length
+	IS_OPERATOR = "/@"
+	DIFF_OPERATOR = "-@"
+	UNION_OPERATOR = "+@"
+	
+	for a in myfiles:
+		if a.startswith(SETPREFIX):
+			# support simple set operations (intersection, difference and union)
+			# on the commandline. Expressions are evaluated strictly left-to-right
+			if IS_OPERATOR in a or DIFF_OPERATOR in a or UNION_OPERATOR in a:
+				expression = a[len(SETPREFIX):]
+				expr_sets = []
+				expr_ops = []
+				while IS_OPERATOR in expression or DIFF_OPERATOR in expression or UNION_OPERATOR in expression:
+					is_pos = expression.rfind(IS_OPERATOR)
+					diff_pos = expression.rfind(DIFF_OPERATOR)
+					union_pos = expression.rfind(UNION_OPERATOR)
+					op_pos = max(is_pos, diff_pos, union_pos)
+					s1 = expression[:op_pos]
+					s2 = expression[op_pos+len(IS_OPERATOR):]
+					op = expression[op_pos:op_pos+len(IS_OPERATOR)]
+					if not s2 in sets:
+						display_missing_pkg_set(root_config, s2)
+						return (None, 1)
+					expr_sets.insert(0, s2)
+					expr_ops.insert(0, op)
+					expression = s1
+				if not expression in sets:
+					display_missing_pkg_set(root_config, expression)
+					return (None, 1)
+				expr_sets.insert(0, expression)
+				result = set(setconfig.getSetAtoms(expression))
+				for i in range(0, len(expr_ops)):
+					s2 = setconfig.getSetAtoms(expr_sets[i+1])
+					if expr_ops[i] == IS_OPERATOR:
+						result.intersection_update(s2)
+					elif expr_ops[i] == DIFF_OPERATOR:
+						result.difference_update(s2)
+					elif expr_ops[i] == UNION_OPERATOR:
+						result.update(s2)
+					else:
+						raise NotImplementedError("unknown set operator %s" % expr_ops[i])
+				newargs.extend(result)
+			else:			
+				s = a[len(SETPREFIX):]
+				if s not in sets:
+					display_missing_pkg_set(root_config, s)
+					return (None, 1)
+				setconfig.active.append(s)
+				if myaction in unmerge_actions and \
+						not sets[s].supportsOperation("unmerge"):
+					sys.stderr.write("emerge: the given set '%s' does " % s + \
+						"not support unmerge operations\n")
+					retval = 1
+				elif not setconfig.getSetAtoms(s):
+					print "emerge: '%s' is an empty set" % s
+				elif myaction not in do_not_expand:
+					newargs.extend(setconfig.getSetAtoms(s))
+				else:
+					newargs.append(SETPREFIX+s)
+				for e in sets[s].errors:
+					print e
+		else:
+			newargs.append(a)
+	return (newargs, retval)
+
 def emerge_main():
 	global portage	# NFC why this is necessary now - genone
 	portage._disable_legacy_globals()
@@ -13617,62 +13686,10 @@ def emerge_main():
 	# only expand sets for actions taking package arguments
 	oldargs = myfiles[:]
 	if myaction in ("clean", "config", "depclean", "info", "prune", "unmerge", None):
-		setconfig = root_config.setconfig
-		# display errors that occured while loading the SetConfig instance
-		for e in setconfig.errors:
-			print colorize("BAD", "Error during set creation: %s" % e)
-		
-		sets = setconfig.getSets()
-		# emerge relies on the existance of sets with names "world" and "system"
-		required_sets = ("world", "system")
-		for s in required_sets:
-			if s not in sets:
-				msg = ["emerge: incomplete set configuration, " + \
-					"no \"%s\" set defined" % s]
-				msg.append("        sets defined: %s" % ", ".join(sets))
-				for line in msg:
-					sys.stderr.write(line + "\n")
-				return 1
-		unmerge_actions = ("unmerge", "prune", "clean", "depclean")
-		
-		# In order to know exactly which atoms/sets should be added to the
-		# world file, the depgraph performs set expansion later. It will get
-		# confused about where the atoms came from if it's not allowed to
-		# expand them itself.
-		do_not_expand = (None, )
-		newargs = []
-		for a in myfiles:
-			if a in ("system", "world"):
-				newargs.append(SETPREFIX+a)
-			else:
-				newargs.append(a)
-		myfiles = newargs
-		del newargs
-		newargs = []
-		for a in myfiles:
-			if a.startswith(SETPREFIX):
-				s = a[len(SETPREFIX):]
-				if s not in sets:
-					display_missing_pkg_set(root_config, s)
-					return 1
-				setconfig.active.append(s)
-				if myaction in unmerge_actions and \
-						not sets[s].supportsOperation("unmerge"):
-					sys.stderr.write("emerge: the given set '%s' does " % s + \
-						"not support unmerge operations\n")
-					return 1
-				if not setconfig.getSetAtoms(s):
-					print "emerge: '%s' is an empty set" % s
-				elif myaction not in do_not_expand:
-					newargs.extend(setconfig.getSetAtoms(s))
-				else:
-					newargs.append(SETPREFIX+s)
-				for e in sets[s].errors:
-					print e
-			else:
-				newargs.append(a)
-		myfiles = newargs
-		del newargs
+		myfiles, retval = expand_set_arguments(myfiles, myaction, root_config)
+		if retval != os.EX_OK:
+			return retval
+
 		# Need to handle empty sets specially, otherwise emerge will react 
 		# with the help message for empty argument lists
 		if oldargs and not myfiles:
@@ -13948,8 +13965,7 @@ def emerge_main():
 			display_news_notification(root_config, myopts)
 		retval = action_build(settings, trees, mtimedb,
 			myopts, myaction, myfiles, spinner)
-		# if --pretend was not enabled then display_news_notification 
-		# was already called by post_emerge
-		if "--pretend" in myopts:
-			display_news_notification(root_config, myopts)
+		root_config = trees[settings["ROOT"]]["root_config"]
+		post_emerge(root_config, myopts, mtimedb, retval)
+
 		return retval

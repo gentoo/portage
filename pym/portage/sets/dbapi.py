@@ -248,3 +248,34 @@ class CategorySet(PackageSet):
 		return rValue
 	multiBuilder = classmethod(multiBuilder)
 
+class AgeSet(EverythingSet):
+	_operations = ["merge", "unmerge"]
+
+	def __init__(self, vardb, mode="older", age=7):
+		super(AgeSet, self).__init__(vardb)
+		self._mode = mode
+		self._age = age
+
+	def _filter(self, atom):
+		import time, os
+	
+		cpv = self._db.match(atom)[0]
+		path = self._db.getpath(cpv, filename="COUNTER")
+		age = (time.time() - os.stat(path).st_mtime) / (3600 * 24)
+		if ((self._mode == "older" and age <= self._age) \
+			or (self._mode == "newer" and age >= self._age)):
+			return False
+		else:
+			return True
+	
+	def singleBuilder(cls, options, settings, trees):
+		mode = options.get("mode", "older")
+		if str(mode).lower() not in ["newer", "older"]:
+			raise SetConfigError("invalid 'mode' value %s (use either 'newer' or 'older')" % mode)
+		try:
+			age = int(options.get("age", "7"))
+		except ValueError, e:
+			raise SetConfigError("value of option 'age' is not an integer")
+		return AgeSet(vardb=trees["vartree"].dbapi, mode=mode, age=age)
+
+	singleBuilder = classmethod(singleBuilder)
