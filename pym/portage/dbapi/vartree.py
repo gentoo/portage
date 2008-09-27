@@ -2888,7 +2888,7 @@ class dblink(object):
 		# read global reverse NEEDED map
 		linkmap = self.vartree.dbapi.linkmap
 		if ostype == "Darwin":
-			linkmap.rebuild(include_file=os.path.join(inforoot, "NEEDED.MACHO.2"))
+			linkmap.rebuild(include_file=os.path.join(inforoot, "NEEDED.MACHO.3"))
 		else:
 			linkmap.rebuild(include_file=os.path.join(inforoot, "NEEDED.ELF.2"))
 		liblist = linkmap.listLibraryObjects()
