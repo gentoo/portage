@@ -166,7 +166,7 @@ has_version() {
 	fi
 	# return shell-true/shell-false if exists.
 	# Takes single depend-type atoms.
-	PYTHONPATH="${PORTAGE_PYM_PATH}:${PYTHONPATH}" \
+	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
 	"${PORTAGE_BIN_PATH}"/portageq has_version "${ROOT}" "$1"
 	local retval=$?
 	case "${retval}" in
@@ -186,7 +186,7 @@ portageq() {
 	if [ "${EBUILD_PHASE}" == "depend" ]; then
 		die "portageq calls are not allowed in the global scope"
 	fi
-	PYTHONPATH="${PORTAGE_PYM_PATH}:${PYTHONPATH}" \
+	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
 	"${PORTAGE_BIN_PATH}/portageq" "$@"
 }
 
@@ -202,7 +202,7 @@ best_version() {
 	fi
 	# returns the best/most-current match.
 	# Takes single depend-type atoms.
-	PYTHONPATH="${PORTAGE_PYM_PATH}:${PYTHONPATH}" \
+	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
 	"${PORTAGE_BIN_PATH}/portageq" 'best_version' "${ROOT}" "$1"
 	local retval=$?
 	case "${retval}" in
@@ -1458,11 +1458,6 @@ _ebuild_phase_funcs() {
 				eval "default_$x() {
 					die \"default_$x() is not supported with EAPI='$eapi' during phase $phase_func\"
 				}"
-				for y in 0 1 2 ; do
-					eval "eapi${y}_$x() {
-						die \"eapi${y}_$x() is not supported with EAPI='$eapi' during phase $phase_func\"
-					}"
-				done
 			done
 
 			eval "default() {
@@ -1481,35 +1476,17 @@ _ebuild_phase_funcs() {
 
 			if hasq $phase_func $default_phases ; then
 
-				eapi0_pkg_nofetch   () { _eapi0_pkg_nofetch   "$@" ; }
-				eapi0_src_unpack    () { _eapi0_src_unpack    "$@" ; }
-				eapi0_src_prepare   () { die "$FUNCNAME is not supported" ; }
-				eapi0_src_configure () { die "$FUNCNAME is not supported" ; }
-				eapi0_src_compile   () { _eapi0_src_compile   "$@" ; }
-				eapi0_src_test      () { _eapi0_src_test      "$@" ; }
-				eapi0_src_install   () { die "$FUNCNAME is not supported" ; }
-
-				eapi1_pkg_nofetch   () { _eapi0_pkg_nofetch   "$@" ; }
-				eapi1_src_unpack    () { _eapi0_src_unpack    "$@" ; }
-				eapi1_src_prepare   () { die "$FUNCNAME is not supported" ; }
-				eapi1_src_configure () { die "$FUNCNAME is not supported" ; }
-				eapi1_src_compile   () { _eapi1_src_compile   "$@" ; }
-				eapi1_src_test      () { _eapi0_src_test      "$@" ; }
-				eapi1_src_install   () { die "$FUNCNAME is not supported" ; }
-
-				eapi2_pkg_nofetch   () { _eapi0_pkg_nofetch   "$@" ; }
-				eapi2_src_unpack    () { _eapi0_src_unpack    "$@" ; }
-				eapi2_src_prepare   () { true ; }
-				eapi2_src_configure () { _eapi2_src_configure "$@" ; }
-				eapi2_src_compile   () { _eapi2_src_compile   "$@" ; }
-				eapi2_src_test      () { _eapi0_src_test      "$@" ; }
-				eapi2_src_install   () { die "$FUNCNAME is not supported" ; }
+				_eapi2_pkg_nofetch   () { _eapi0_pkg_nofetch          "$@" ; }
+				_eapi2_src_unpack    () { _eapi0_src_unpack           "$@" ; }
+				_eapi2_src_prepare   () { true                             ; }
+				_eapi2_src_test      () { _eapi0_src_test             "$@" ; }
+				_eapi2_src_install   () { die "$FUNCNAME is not supported" ; }
 
 				for x in $default_phases ; do
-					eval "default_$x() { eapi2_$x \"\$@\" ; }"
+					eval "default_$x() { _eapi2_$x \"\$@\" ; }"
 				done
 
-				eval "default() { eapi2_$phase_func \"\$@\" ; }"
+				eval "default() { _eapi2_$phase_func \"\$@\" ; }"
 
 			else
 
@@ -1517,11 +1494,6 @@ _ebuild_phase_funcs() {
 					eval "default_$x() {
 						die \"default_$x() is not supported in phase $default_func\"
 					}"
-					for y in 0 1 2 ; do
-						eval "eapi${y}_$x() {
-							die \"eapi${y}_$x() is not supported with EAPI='$eapi' during phase $phase_func\"
-						}"
-					done
 				done
 
 				eval "default() {

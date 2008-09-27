@@ -177,19 +177,6 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 				del file_contents[x]
 			continue
 
-	worldlist = grabfile(os.path.join(config_root, WORLD_FILE))
-	modified = False
-	for update_cmd in update_iter:
-		for pos, atom in enumerate(worldlist):
-			new_atom = update_dbentry(update_cmd, atom)
-			if atom != new_atom:
-				worldlist[pos] = new_atom
-				modified = True
-	if modified:
-		worldlist.sort()
-		write_atomic(os.path.join(config_root, WORLD_FILE),
-			"\n".join(worldlist)+"\n")
-
 	# update /etc/portage/packages.*
 	ignore_line_re = re.compile(r'^#|^\s*$')
 	for update_cmd in update_iter:

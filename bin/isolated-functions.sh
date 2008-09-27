@@ -561,7 +561,7 @@ save_ebuild_env() {
 		for x in pkg_setup pkg_nofetch src_unpack src_prepare src_configure \
 			src_compile src_test src_install pkg_preinst pkg_postinst \
 			pkg_prerm pkg_postrm ; do
-			unset -f {,_}default_$x {,_}eapi{0,1,2}_$x
+			unset -f _default_$x _eapi{0,1,2}_$x
 		done
 		unset x
 

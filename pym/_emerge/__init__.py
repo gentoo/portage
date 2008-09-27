@@ -2160,7 +2160,7 @@ class SpawnProcess(SubProcess):
 		if isinstance(retval, int):
 			# spawn failed
 			os.close(master_fd)
-			for f in self.files.values():
+			for f in files.values():
 				f.close()
 			self.returncode = retval
 			self.wait()
@@ -11120,7 +11120,12 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	if not os.path.exists(myportdir):
 		print ">>>",myportdir,"not found, creating it."
 		os.makedirs(myportdir,0755)
-	syncuri=settings["SYNC"].rstrip()
+	syncuri = settings.get("SYNC", "").strip()
+	if not syncuri:
+		writemsg_level("!!! SYNC is undefined. Is /etc/make.globals missing?\n",
+			noiselevel=-1, level=logging.ERROR)
+		return 1
+
 	os.umask(0022)
 	updatecache_flg = False
 	if myaction == "metadata":
@@ -11571,8 +11576,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 		dosyncuri = syncuri
 	else:
-		print "!!! rsync setting: ",syncuri,"not recognized; exiting."
-		sys.exit(1)
+		writemsg_level("!!! Unrecognized protocol: SYNC='%s'\n" % (syncuri,),
+			noiselevel=-1, level=logging.ERROR)
+		return 1
 
 	if updatecache_flg and  \
 		myaction != "metadata" and \
@@ -11617,6 +11623,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		print
 	
 	display_news_notification(root_config, myopts)
+	return os.EX_OK
 
 def action_metadata(settings, portdb, myopts):
 	portage.writemsg_stdout("\n>>> Updating Portage cache:      ")
@@ -13836,7 +13843,7 @@ def emerge_main():
 	root_config = trees[settings["ROOT"]]["root_config"]
 
 	if "sync" == myaction:
-		action_sync(settings, trees, mtimedb, myopts, myaction)
+		return action_sync(settings, trees, mtimedb, myopts, myaction)
 	elif "metadata" == myaction:
 		action_metadata(settings, portdb, myopts)
 	elif myaction=="regen":
