@@ -7188,7 +7188,7 @@ def _global_updates(trees, prev_mtimes):
 				for msg in errors:
 					writemsg("%s\n" % msg, noiselevel=-1)
 
-		world_file = os.path.join(root, WORLD_FILE)
+		world_file = os.path.join(root, EPREFIX_LSTRIP, WORLD_FILE)
 		world_list = grabfile(world_file)
 		world_modified = False
 		for update_cmd in myupd:
