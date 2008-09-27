@@ -3885,8 +3885,8 @@ class BlockerDB(object):
 			show_invalid_depstring_notice(new_pkg, depstr, atoms)
 			assert False
 
-		blocker_atoms = [atom[1:] for atom in atoms \
-			if atom.startswith("!")]
+		blocker_atoms = [atom.lstrip("!") for atom in atoms \
+			if atom[:1] == "!"]
 		if blocker_atoms:
 			blocker_atoms = InternalPackageSet(initial_atoms=blocker_atoms)
 			for inst_pkg in installed_pkgs:
