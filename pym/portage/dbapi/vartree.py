@@ -622,7 +622,7 @@ class LinkageMapMachO(object):
 			return hash(self._key)
 
 		def __eq__(self, other):
-			return self._key == other_key
+			return self._key == other._key
 
 		def _generate_object_key(self, object):
 			"""
