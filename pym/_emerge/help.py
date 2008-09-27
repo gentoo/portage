@@ -79,7 +79,7 @@ def help(myaction,myopts,havecolor=1):
 		"emerge --noreplace <atom>. As a safety measure, depclean " + \
 		"will not remove any packages unless *all* required dependencies " + \
 		"have been resolved. As a consequence, it is often necessary to " + \
-		"run emerge --update --newuse --deep --oneshot @system @world " + \
+		"run emerge --update --newuse --deep @system @world " + \
 		"prior to depclean."
 
 		for line in wrap(paragraph, desc_width):
