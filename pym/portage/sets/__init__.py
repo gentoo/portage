@@ -123,14 +123,38 @@ class SetConfig(SafeConfigParser):
 	def getSetAtoms(self, setname, ignorelist=None):
 		myset = self.getSets()[setname]
 		myatoms = myset.getAtoms()
+		
+		extend = set()
+		remove = set()
+		intersect = set()
+		
 		if ignorelist is None:
 			ignorelist = set()
+		if not setname in ignorelist:
+			if self.has_option(myset.creator, "extend"):
+				extend.update(self.get(myset.creator, "extend").split())
+			if self.has_option(myset.creator, "remove"):
+				remove.update(self.get(myset.creator, "remove").split())
+			if self.has_option(myset.creator, "intersect"):
+				intersect.update(self.get(myset.creator, "intersect").split())
+						
 		ignorelist.add(setname)
 		for n in myset.getNonAtoms():
-			if n[0] == SETPREFIX and n[1:] in self.psets:
-				if n[1:] not in ignorelist:
-					myatoms.update(self.getSetAtoms(n[1:],
-						ignorelist=ignorelist))
+			if n.startswith(SETPREFIX) and n[len(SETPREFIX):] in self.psets:
+				extend.add(n[len(SETPREFIX):])
+
+		for s in ignorelist:
+			extend.discard(s)
+			remove.discard(s)
+			intersect.discard(s)
+		
+		for s in extend:
+			myatoms.update(self.getSetAtoms(s, ignorelist=ignorelist))
+		for s in remove:
+			myatoms.difference_update(self.getSetAtoms(s, ignorelist=None))
+		for s in intersect:
+			myatoms.intersection_update(self.getSetAtoms(s, ignorelist=None))
+
 		return myatoms
 
 def load_default_config(settings, trees):
