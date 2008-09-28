@@ -201,13 +201,6 @@ class CategorySet(PackageSet):
 					myatoms.append(cp)
 		self._setAtoms(myatoms)
 	
-	def _builderGetRepository(cls, options, repositories):
-		repository = options.get("repository", "porttree")
-		if not repository in repositories:
-			raise SetConfigError("invalid repository class '%s'" % repository)
-		return repository
-	_builderGetRepository = classmethod(_builderGetRepository)
-
 	def _builderGetVisible(cls, options):
 		return get_boolean(options, "only_visible", True)
 	_builderGetVisible = classmethod(_builderGetVisible)
@@ -220,10 +213,9 @@ class CategorySet(PackageSet):
 		if not category in settings.categories:
 			raise SetConfigError("invalid category name '%s'" % category)
 
-		repository = cls._builderGetRepository(options, trees.keys())
 		visible = cls._builderGetVisible(options)
 		
-		return CategorySet(category, dbapi=trees[repository].dbapi, only_visible=visible)
+		return CategorySet(category, dbapi=trees["porttree"].dbapi, only_visible=visible)
 	singleBuilder = classmethod(singleBuilder)
 
 	def multiBuilder(cls, options, settings, trees):
@@ -237,7 +229,6 @@ class CategorySet(PackageSet):
 		else:
 			categories = settings.categories
 	
-		repository = cls._builderGetRepository(options, trees.keys())
 		visible = cls._builderGetVisible(options)
 		name_pattern = options.get("name_pattern", "$category/*")
 	
@@ -245,7 +236,7 @@ class CategorySet(PackageSet):
 			raise SetConfigError("name_pattern doesn't include $category placeholder")
 	
 		for cat in categories:
-			myset = CategorySet(cat, trees[repository].dbapi, only_visible=visible)
+			myset = CategorySet(cat, trees["porttree"].dbapi, only_visible=visible)
 			myname = name_pattern.replace("$category", cat)
 			myname = myname.replace("${category}", cat)
 			rValue[myname] = myset
