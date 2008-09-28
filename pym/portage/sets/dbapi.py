@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from portage.versions import catpkgsplit, catsplit, pkgcmp
+from portage.versions import catpkgsplit, catsplit, pkgcmp, best
 from portage.dep import Atom
 from portage.sets.base import PackageSet
 from portage.sets import SetConfigError, get_boolean
@@ -96,18 +96,18 @@ class VariableSet(EverythingSet):
 	description = "Package set which contains all packages " + \
 		"that match specified values of a specified variable."
 
-	def __init__(self, vardb, portdb=None, variable=None, includes=None, excludes=None):
+	def __init__(self, vardb, metadatadb=None, variable=None, includes=None, excludes=None):
 		super(VariableSet, self).__init__(vardb)
-		self._portdb = portdb
+		self._metadatadb = metadatadb
 		self._variable = variable
 		self._includes = includes
 		self._excludes = excludes
 
 	def _filter(self, atom):
-		ebuild = self._portdb.xmatch("bestmatch-visible", atom)
+		ebuild = best(self._metadatadb.match(atom))
 		if not ebuild:
 			return False
-		values, = self._portdb.aux_get(ebuild, [self._variable])
+		values, = self._metadatadb.aux_get(ebuild, [self._variable])
 		values = values.split()
 		if self._includes and not self._includes.intersection(values):
 			return False
@@ -126,9 +126,13 @@ class VariableSet(EverythingSet):
 
 		if not (includes or excludes):
 			raise SetConfigError("no includes or excludes given")
+		
+		metadatadb = options.get("metadata-source", "vartree")
+		if not metadatadb in trees.keys():
+			raise SetConfigError("invalid value '%s' for option metadata-source" % metadatadb)
 
 		return cls(trees["vartree"].dbapi,
-			portdb=trees["porttree"].dbapi,
+			metadatadb=trees[metadatadb].dbapi,
 			excludes=frozenset(excludes.split()),
 			includes=frozenset(includes.split()),
 			variable=variable)
