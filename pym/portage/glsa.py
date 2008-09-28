@@ -442,7 +442,23 @@ class Glsa:
 		self.title = getText(myroot.getElementsByTagName("title")[0], format="strip")
 		self.synopsis = getText(myroot.getElementsByTagName("synopsis")[0], format="strip")
 		self.announced = getText(myroot.getElementsByTagName("announced")[0], format="strip")
-		self.revised = getText(myroot.getElementsByTagName("revised")[0], format="strip")
+		
+		count = 1
+		# Support both formats of revised:
+		# <revised>December 30, 2007: 02</revised>
+		# <revised count="2">2007-12-30</revised>
+		revisedEl = myroot.getElementsByTagName("revised")[0]
+		self.revised = getText(revisedEl, format="strip")
+		if (revisedEl.attributes.has_key("count")):
+			count = revisedEl.getAttribute("count")
+		elif (self.revised.find(":") >= 0):
+			(self.revised, count) = self.revised.split(":")
+		
+		try:
+			self.count = int(count)
+		except ValueError:
+			# TODO should this rais a GlsaFormatException?
+			self.count = 1
 		
 		# now the optional and 0-n toplevel, #PCDATA tags and references
 		try:
@@ -499,7 +515,7 @@ class Glsa:
 		outstream.write((width*"=")+"\n")
 		outstream.write(wrap(self.synopsis, width, caption="Synopsis:         ")+"\n")
 		outstream.write("Announced on:      %s\n" % self.announced)
-		outstream.write("Last revised on:   %s\n\n" % self.revised)
+		outstream.write("Last revised on:   %s : %02d\n\n" % (self.revised, self.count))
 		if self.glsatype == "ebuild":
 			for k in self.packages.keys():
 				pkg = self.packages[k]
