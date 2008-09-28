@@ -37,6 +37,7 @@ class SetConfig(SafeConfigParser):
 		self.errors = []
 		if not setname in self.psets:
 			options["name"] = setname
+			options["world-candidate"] = "False"
 			
 			# for the unlikely case that there is already a section with the requested setname
 			import random
