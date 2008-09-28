@@ -679,7 +679,7 @@ class LinkageMapMachO(object):
 			for items in self._dbapi.plib_registry.getPreservedLibs().values():
 				args += [x.lstrip(".") for x in items]
 			proc = subprocess.Popen(args, stdout=subprocess.PIPE)
-			output = [proc.communicate()[0].split("\n")]
+			output = [l for l in proc.communicate()[0].split("\n")]
 			lines += output
 
 		for l in lines:
