@@ -432,7 +432,11 @@ class Glsa:
 		self.DOM = xml.dom.minidom.parse(myfile)
 		if not self.DOM.doctype:
 			raise GlsaTypeException(None)
-		elif self.DOM.doctype.systemId != "http://www.gentoo.org/dtd/glsa.dtd":
+		elif self.DOM.doctype.systemId == "http://www.gentoo.org/dtd/glsa.dtd":
+			self.dtdversion = 0
+		elif self.DOM.doctype.systemId == "http://www.gentoo.org/dtd/glsa-2.dtd":
+			self.dtdversion = 2
+		else:
 			raise GlsaTypeException(self.DOM.doctype.systemId)
 		myroot = self.DOM.getElementsByTagName("glsa")[0]
 		if self.type == "id" and myroot.getAttribute("id") != self.nr:
