@@ -6698,6 +6698,7 @@ class depgraph(object):
 		favorites_set = InternalPackageSet(favorites)
 		oneshot = "--oneshot" in self.myopts or \
 			"--onlydeps" in self.myopts
+		columns = "--columns" in self.myopts
 		changelogs=[]
 		p=[]
 		blockers = []
@@ -6973,6 +6974,8 @@ class depgraph(object):
 					addl += colorize(blocker_style,
 						" (is blocking %s)") % block_parents
 				if isinstance(x, Blocker) and x.satisfied:
+					if columns:
+						continue
 					p.append(addl)
 				else:
 					blockers.append(addl)
@@ -7360,6 +7363,8 @@ class depgraph(object):
 								(pkgprint(pkg_type), addl, indent,
 								pkgprint(pkg.cpv), myoldbest)
 
+				if columns and pkg.operation == "uninstall":
+					continue
 				p.append((myprint, verboseadd, repoadd))
 
 				if "--tree" not in self.myopts and \
