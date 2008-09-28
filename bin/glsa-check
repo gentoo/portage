@@ -167,6 +167,7 @@ def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr):
 	fd2.write(green("[U]")+" means the system is not affected and\n")
 	fd2.write(red("[N]")+" indicates that the system might be affected.\n\n")
 
+	myglsalist.sort()
 	for myid in myglsalist:
 		try:
 			myglsa = Glsa(myid, portage.settings, vardb, portdb)

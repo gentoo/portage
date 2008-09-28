@@ -613,7 +613,7 @@ class Glsa:
 		@rtype:		Boolean
 		@returns:	True if the GLSA was applied, False if not
 		"""
-		return (self.nr in get_applied_glsas())
+		return (self.nr in get_applied_glsas(self.config))
 
 	def inject(self):
 		"""
