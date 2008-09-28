@@ -13362,25 +13362,8 @@ def expand_set_arguments(myfiles, myaction, root_config):
 	retval = os.EX_OK
 	setconfig = root_config.setconfig
 
-	# display errors that occured while loading the SetConfig instance
-	for e in setconfig.errors:
-		print colorize("BAD", "Error during set creation: %s" % e)
-	
 	sets = setconfig.getSets()
 
-	# emerge relies on the existance of sets with names "world" and "system"
-	required_sets = ("world", "system")
-
-	for s in required_sets:
-		if s not in sets:
-			msg = ["emerge: incomplete set configuration, " + \
-				"no \"%s\" set defined" % s]
-			msg.append("        sets defined: %s" % ", ".join(sets))
-			for line in msg:
-				sys.stderr.write(line + "\n")
-			retval = 1
-	unmerge_actions = ("unmerge", "prune", "clean", "depclean")
-	
 	# In order to know exactly which atoms/sets should be added to the
 	# world file, the depgraph performs set expansion later. It will get
 	# confused about where the atoms came from if it's not allowed to
@@ -13399,34 +13382,61 @@ def expand_set_arguments(myfiles, myaction, root_config):
 	# separators for set arguments
 	ARG_START = "{"
 	ARG_END = "}"
-	
-	for i in range(0, len(myfiles)):
-		if myfiles[i].startswith(SETPREFIX):
-			x = myfiles[i][len(SETPREFIX):]
-			start = x.find(ARG_START)
-			end = x.find(ARG_END)
-			if start > 0 and start < end:
-				namepart = x[:start]
-				argpart = x[start+1:end]
-				
-				# TODO: implement proper quoting
-				args = argpart.split(",")
-				options = {}
-				for a in args:
-					if "=" in a:
-						k, v  = a.split("=", 1)
-						options[k] = v
-					else:
-						options[a] = "True"
-				setconfig.update(namepart, options)
-				myfiles[i] = SETPREFIX + namepart
-	sets = setconfig.getSets()
 
 	# WARNING: all operators must be of equal length
 	IS_OPERATOR = "/@"
 	DIFF_OPERATOR = "-@"
 	UNION_OPERATOR = "+@"
-		
+	
+	for i in range(0, len(myfiles)):
+		if myfiles[i].startswith(SETPREFIX):
+			start = 0
+			end = 0
+			x = myfiles[i][len(SETPREFIX):]
+			newset = ""
+			while x:
+				start = x.find(ARG_START)
+				end = x.find(ARG_END)
+				if start > 0 and start < end:
+					namepart = x[:start]
+					argpart = x[start+1:end]
+				
+					# TODO: implement proper quoting
+					args = argpart.split(",")
+					options = {}
+					for a in args:
+						if "=" in a:
+							k, v  = a.split("=", 1)
+							options[k] = v
+						else:
+							options[a] = "True"
+					setconfig.update(namepart, options)
+					newset += (x[:start-len(namepart)]+namepart)
+					x = x[end+len(ARG_END):]
+				else:
+					newset += x
+					x = ""
+			myfiles[i] = SETPREFIX+newset
+				
+	sets = setconfig.getSets()
+
+	# display errors that occured while loading the SetConfig instance
+	for e in setconfig.errors:
+		print colorize("BAD", "Error during set creation: %s" % e)
+	
+	# emerge relies on the existance of sets with names "world" and "system"
+	required_sets = ("world", "system")
+
+	for s in required_sets:
+		if s not in sets:
+			msg = ["emerge: incomplete set configuration, " + \
+				"no \"%s\" set defined" % s]
+			msg.append("        sets defined: %s" % ", ".join(sets))
+			for line in msg:
+				sys.stderr.write(line + "\n")
+			retval = 1
+	unmerge_actions = ("unmerge", "prune", "clean", "depclean")
+
 	for a in myfiles:
 		if a.startswith(SETPREFIX):
 			# support simple set operations (intersection, difference and union)
