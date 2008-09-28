@@ -151,9 +151,9 @@ class SetConfig(SafeConfigParser):
 		for s in extend:
 			myatoms.update(self.getSetAtoms(s, ignorelist=ignorelist))
 		for s in remove:
-			myatoms.difference_update(self.getSetAtoms(s, ignorelist=None))
+			myatoms.difference_update(self.getSetAtoms(s, ignorelist=ignorelist))
 		for s in intersect:
-			myatoms.intersection_update(self.getSetAtoms(s, ignorelist=None))
+			myatoms.intersection_update(self.getSetAtoms(s, ignorelist=ignorelist))
 
 		return myatoms
 
