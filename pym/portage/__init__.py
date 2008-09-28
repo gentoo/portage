@@ -4621,9 +4621,9 @@ def eapi_is_supported(eapi):
 	eapi = str(eapi).split() # note Python's contact for this special case
 
 	# these are the properties that MUST be present (should)
-	properties = []
+	properties = set()
 	if portage.const.EAPIPREFIX:
-		properties.append(portage.const.EAPIPREFIX) # clumpsy temporary solution
+		properties.add(portage.const.EAPIPREFIX) # clumpsy temporary solution
 
 	for prop in properties:
 		if prop not in eapi:
@@ -4632,9 +4632,9 @@ def eapi_is_supported(eapi):
 			eapi.remove(prop)
 	
 	# now check if what's left is supported (can)
-	properties = _deprecated_eapis[:] # another clumpsy solution
+	properties = set(_deprecated_eapis) # another clumpsy solution
 	for i in range(portage.const.EAPI + 1):
-		properties.append(str(i))
+		properties.add(str(i))
 
 	for v in eapi:
 		if v not in properties:
