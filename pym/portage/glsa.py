@@ -226,6 +226,8 @@ def makeAtom(pkgname, versionNode):
 	rValue = opMapping[versionNode.getAttribute("range")] \
 				+ pkgname \
 				+ "-" + getText(versionNode, format="strip")
+	if "slot" in versionNode.attributes and versionNode.getAttribute("slot") != "*":
+		rValue += ":"+versionNode.getAttribute("slot")
 	return str(rValue)
 
 def makeVersion(versionNode):
@@ -239,8 +241,11 @@ def makeVersion(versionNode):
 	@rtype:		String
 	@return:	the version string
 	"""
-	return opMapping[versionNode.getAttribute("range")] \
+	rValue = opMapping[versionNode.getAttribute("range")] \
 			+ getText(versionNode, format="strip")
+	if "slot" in versionNode.attributes and versionNode.getAttribute("slot") != "*":
+		rValue += ":"+versionNode.getAttribute("slot")
+	return rValue
 
 def match(atom, dbapi, match_type="default"):
 	"""
@@ -283,9 +288,9 @@ def revisionMatch(revisionAtom, dbapi, match_type="default"):
 	@return:	a list with the matching versions
 	"""
 	if match_type == "default" or not hasattr(dbapi, "xmatch"):
-		mylist = dbapi.match(re.sub("-r[0-9]+$", "", revisionAtom[2:]))
+		mylist = dbapi.match(re.sub(r'-r[0-9]+(:[^ ]+)?$', r'\1', revisionAtom[2:]))
 	else:
-		mylist = dbapi.xmatch(match_type, re.sub("-r[0-9]+$", "", revisionAtom[2:]))
+		mylist = dbapi.xmatch(match_type, re.sub(r'-r[0-9]+(:[^ ]+)?$', r'\1', revisionAtom[2:]))
 	rValue = []
 	for v in mylist:
 		r1 = pkgsplit(v)[-1][1:]
