@@ -13395,12 +13395,38 @@ def expand_set_arguments(myfiles, myaction, root_config):
 	myfiles = newargs
 	del newargs
 	newargs = []
+
+	# separators for set arguments
+	ARG_START = "{"
+	ARG_END = "}"
 	
+	for i in range(0, len(myfiles)):
+		if myfiles[i].startswith(SETPREFIX):
+			x = myfiles[i][len(SETPREFIX):]
+			start = x.find(ARG_START)
+			end = x.find(ARG_END)
+			if start > 0 and start < end:
+				namepart = x[:start]
+				argpart = x[start+1:end]
+				
+				# TODO: implement proper quoting
+				args = argpart.split(",")
+				options = {}
+				for a in args:
+					if "=" in a:
+						k, v  = a.split("=", 1)
+						options[k] = v
+					else:
+						options[a] = "True"
+				setconfig.update(namepart, options)
+				myfiles[i] = SETPREFIX + namepart
+	sets = setconfig.getSets()
+
 	# WARNING: all operators must be of equal length
 	IS_OPERATOR = "/@"
 	DIFF_OPERATOR = "-@"
 	UNION_OPERATOR = "+@"
-	
+		
 	for a in myfiles:
 		if a.startswith(SETPREFIX):
 			# support simple set operations (intersection, difference and union)
