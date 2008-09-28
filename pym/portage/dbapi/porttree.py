@@ -20,7 +20,8 @@ from portage.versions import pkgsplit, catpkgsplit, best, ver_regexp
 import portage.gpg, portage.checksum
 
 from portage import eclass_cache, auxdbkeys, doebuild, flatten, \
-	listdir, dep_expand, eapi_is_supported, key_expand, dep_check
+	listdir, dep_expand, eapi_is_supported, key_expand, dep_check, \
+	_eapi_is_deprecated
 
 import os, stat
 from itertools import izip
@@ -917,7 +918,10 @@ class portdbapi(dbapi):
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 				del e
 				continue
-			if not eapi_is_supported(metadata["EAPI"]):
+			eapi = metadata["EAPI"]
+			if not eapi_is_supported(eapi):
+				continue
+			if _eapi_is_deprecated(eapi):
 				continue
 			if self.mysettings._getMissingKeywords(mycpv, metadata):
 				continue

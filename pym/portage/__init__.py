@@ -4598,6 +4598,11 @@ def _spawn_misc_sh(mysettings, commands, **kwargs):
 			eerror(l, phase=mydo, key=mysettings.mycpv)
 	return rval
 
+_deprecated_eapis = frozenset(["2_pre3", "2_pre2", "2_pre1"])
+
+def _eapi_is_deprecated(eapi):
+	return eapi in _deprecated_eapis
+
 def eapi_is_supported(eapi):
 	# PREFIX HACK/EXTENSION: in prefix we have "incompatible" ebuilds in
 	# an consistent manner; regardless what the EAPI of the main tree
@@ -4627,7 +4632,7 @@ def eapi_is_supported(eapi):
 			eapi.remove(prop)
 	
 	# now check if what's left is supported (can)
-	properties = [ "2_pre3", "2_pre2", "2_pre1" ] # another clumpsy solution
+	properties = _deprecated_eapis[:] # another clumpsy solution
 	for i in range(portage.const.EAPI + 1):
 		properties.append(str(i))
 
@@ -6805,6 +6810,8 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 	if eapi.startswith("-"):
 		eapi = eapi[1:]
 	if not eapi_is_supported(eapi):
+		return ["EAPI %s" % eapi]
+	elif _eapi_is_deprecated(eapi) and not installed:
 		return ["EAPI %s" % eapi]
 	egroups = settings.configdict["backupenv"].get(
 		"ACCEPT_KEYWORDS", "").split()

@@ -1266,11 +1266,14 @@ def visible(pkgsettings, pkg):
 			return False
 		if len(pkg.metadata["EPREFIX"].strip()) < len(pkgsettings["EPREFIX"]):
 			return False
-	if not portage.eapi_is_supported(pkg.metadata["EAPI"]):
+	eapi = pkg.metadata["EAPI"]
+	if not portage.eapi_is_supported(eapi):
 		return False
-	if not pkg.installed and \
-		pkgsettings._getMissingKeywords(pkg.cpv, pkg.metadata):
-		return False
+	if not pkg.installed:
+		if portage._eapi_is_deprecated(eapi):
+			return False
+		if pkgsettings._getMissingKeywords(pkg.cpv, pkg.metadata):
+			return False
 	if pkgsettings._getMaskAtom(pkg.cpv, pkg.metadata):
 		return False
 	if pkgsettings._getProfileMaskAtom(pkg.cpv, pkg.metadata):
@@ -3886,7 +3889,7 @@ class BlockerDB(object):
 		blocker_atoms = []
 		for pkg in installed_pkgs:
 			for blocker_atom in blocker_cache[pkg.cpv].atoms:
-				blocker_atom = blocker_atom[1:]
+				blocker_atom = blocker_atom.lstrip("!")
 				blocker_atoms.append(blocker_atom)
 				blocker_parents.add(blocker_atom, pkg)
 
@@ -3909,8 +3912,8 @@ class BlockerDB(object):
 			show_invalid_depstring_notice(new_pkg, depstr, atoms)
 			assert False
 
-		blocker_atoms = [atom[1:] for atom in atoms \
-			if atom.startswith("!")]
+		blocker_atoms = [atom.lstrip("!") for atom in atoms \
+			if atom[:1] == "!"]
 		if blocker_atoms:
 			blocker_atoms = InternalPackageSet(initial_atoms=blocker_atoms)
 			for inst_pkg in installed_pkgs:
