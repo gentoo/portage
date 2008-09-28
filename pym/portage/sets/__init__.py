@@ -53,11 +53,10 @@ class SetConfig(SafeConfigParser):
 				return
 			for k, v in options.items():
 				self.set(section, k, v)
-		self._parsed = False
-		self._parse()
+		self._parse(update=True)
 
-	def _parse(self):
-		if self._parsed:
+	def _parse(self, update=False):
+		if self._parsed and not update:
 			return
 		for sname in self.sections():
 			# find classname for current section, default to file based sets
@@ -87,7 +86,7 @@ class SetConfig(SafeConfigParser):
 						self.errors.append("Configuration error in section '%s': %s" % (sname, str(e)))
 						continue
 					for x in newsets:
-						if x in self.psets:
+						if x in self.psets and not update:
 							self.errors.append("Redefinition of set '%s' (sections: '%s', '%s')" % (x, self.psets[x].creator, sname))
 						newsets[x].creator = sname
 						if self.has_option(sname, "world-candidate") and not self.getboolean(sname, "world-candidate"):
@@ -101,7 +100,7 @@ class SetConfig(SafeConfigParser):
 					setname = self.get(sname, "name")
 				except NoOptionError:
 					setname = sname
-				if setname in self.psets:
+				if setname in self.psets and not update:
 					self.errors.append("Redefinition of set '%s' (sections: '%s', '%s')" % (setname, self.psets[setname].creator, sname))
 				if hasattr(setclass, "singleBuilder"):
 					try:
