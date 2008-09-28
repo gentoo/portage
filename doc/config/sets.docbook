@@ -397,6 +397,32 @@
 			</sect3>
 		</sect2>
 		
+		<sect2 id='config-set-classes-AgeSet'>
+		<title>portage.sets.dbapi.AgeSet</title>
+		<para>
+		Package sets created by this class will include installed packages that
+		have been installed before / after a given date.
+		</para>
+			
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			In single set configurations this class supports the following options:
+			<itemizedlist>
+			<listitem><varname>age</varname>: Optional, defaults to 7. Specifies 
+				the number of days passed since installation to use as cut-off point.
+			</listitem>
+			<listitem><varname>mode</varname>: Optional, defaults to "older". Must 
+				be either "older" or "newer" to select packages installed either 
+				before resp. after the cut-off-date given by <varname>age</varname>.
+				E.g. the defaults will select all installed packages that have been 
+				installed more than one week ago.
+			</listitem>
+			</itemizedlist>
+			</para>
+			</sect3>
+		</sect2>
+		
 		<sect2 id='config-set-classes-CategorySet'>
 		<title>portage.sets.dbapi.CategorySet</title>
 		<para>
