@@ -274,13 +274,13 @@ if mode == "test":
 				sys.stderr.write(("invalid GLSA: %s (error message was: %s)\n" % (myid, e)))
 			continue
 		if myglsa.isVulnerable():
-			if verbose:
-				outputlist.append(str(myglsa.nr)+" ( "+myglsa.title+" ) ")
-			else:
-				outputlist.append(str(myglsa.nr))
+			outputlist.append(str(myglsa.nr))
 	if len(outputlist) > 0:
 		sys.stderr.write("This system is affected by the following GLSAs:\n")
-		sys.stdout.write("\n".join(outputlist)+"\n")
+		if verbose:
+			summarylist(outputlist)
+		else:
+			sys.stdout.write("\n".join(outputlist)+"\n")
 	else:
 		sys.stderr.write("This system is not affected by any of the listed GLSAs\n")
 	sys.exit(0)
