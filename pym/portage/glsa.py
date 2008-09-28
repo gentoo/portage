@@ -353,6 +353,32 @@ def getMinUpgrade(vulnerableList, unaffectedList, portdbapi, vardbapi, minimize=
 					rValue += "-"+c_pv[3]
 	return rValue
 
+def format_date(datestr):
+	"""
+	Takes a date (announced, revised) date from a GLSA and formats
+	it as readable text (i.e. "January 1, 2008").
+	
+	@type	date: String
+	@param	date: the date string to reformat
+	@rtype:		String
+	@return:	a reformatted string, or the original string
+				if it cannot be reformatted.
+	"""
+	splitdate = datestr.split("-", 2)
+	if len(splitdate) != 3:
+		return datestr
+	
+	# This cannot raise an error as we use () instead of []
+	splitdate = (int(x) for x in splitdate)
+	
+	from datetime import date
+	try:
+		d = date(*splitdate)
+	except ValueError:
+		return datestr
+	
+	# TODO We could format to local date format '%x' here?
+	return d.strftime("%B %d, %Y")
 
 # simple Exception classes to catch specific errors
 class GlsaTypeException(Exception):
@@ -445,7 +471,7 @@ class Glsa:
 		# the simple (single, required, top-level, #PCDATA) tags first
 		self.title = getText(myroot.getElementsByTagName("title")[0], format="strip")
 		self.synopsis = getText(myroot.getElementsByTagName("synopsis")[0], format="strip")
-		self.announced = getText(myroot.getElementsByTagName("announced")[0], format="strip")
+		self.announced = format_date(getText(myroot.getElementsByTagName("announced")[0], format="strip"))
 		
 		count = 1
 		# Support both formats of revised:
@@ -457,6 +483,8 @@ class Glsa:
 			count = revisedEl.getAttribute("count")
 		elif (self.revised.find(":") >= 0):
 			(self.revised, count) = self.revised.split(":")
+		
+		self.revised = format_date(self.revised)
 		
 		try:
 			self.count = int(count)
