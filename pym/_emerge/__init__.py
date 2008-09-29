@@ -1102,7 +1102,7 @@ class FakeVartree(portage.vartree):
 		self._match = self.dbapi.match
 		self.dbapi.match = self._match_wrapper
 		self._aux_get_history = set()
-		self._portdb_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
+		self._portdb_keys = ["EAPI", "DEPEND", "RDEPEND", "PDEPEND"]
 		self._portdb = portdb
 		self._global_updates = None
 
@@ -1128,6 +1128,8 @@ class FakeVartree(portage.vartree):
 			# Use the live ebuild metadata if possible.
 			live_metadata = dict(izip(self._portdb_keys,
 				self._portdb.aux_get(pkg, self._portdb_keys)))
+			if not portage.eapi_is_supported(live_metadata["EAPI"]):
+				raise KeyError(pkg)
 			self.dbapi.aux_update(pkg, live_metadata)
 		except (KeyError, portage.exception.PortageException):
 			if self._global_updates is None:
