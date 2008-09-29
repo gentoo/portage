@@ -70,8 +70,11 @@ class SetConfig(SafeConfigParser):
 			try:
 				setclass = load_mod(classname)
 			except (ImportError, AttributeError):
-				self.errors.append("Could not import '%s' for section '%s'" % (classname, sname))
-				continue
+				try:
+					setclass = load_mod("portage.sets."+classname)
+				except (ImportError, AttributeError):
+					self.errors.append("Could not import '%s' for section '%s'" % (classname, sname))
+					continue
 			# prepare option dict for the current section
 			optdict = {}
 			for oname in self.options(sname):
