@@ -684,12 +684,18 @@ class search(object):
 						from portage import manifest
 						mf = manifest.Manifest(
 							pkgdir, self.settings["DISTDIR"])
-						fetchlist = self.portdb.getFetchMap(mycpv)
 						try:
-							mysum[0] = mf.getDistfilesSize(fetchlist)
-						except KeyError, e:
-							file_size_str = "Unknown (missing digest for %s)" % \
-								str(e)
+							uri_map = self.portdb.getFetchMap(mycpv)
+						except portage.exception.InvalidDependString, e:
+							file_size_str = "Unknown (%s)" % (e,)
+							del e
+						else:
+							try:
+								mysum[0] = mf.getDistfilesSize(uri_map)
+							except KeyError, e:
+								file_size_str = "Unknown (missing " + \
+									"digest for %s)" % (e,)
+								del e
 
 					available = False
 					for db in self._dbs:
