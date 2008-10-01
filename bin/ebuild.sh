@@ -436,6 +436,10 @@ econf() {
 	local x
 	local LOCAL_EXTRA_ECONF="${EXTRA_ECONF}"
 
+	! hasq "$EAPI" 0 1 && [[ $EBUILD_PHASE = compile && \
+		$(type -t src_configure) = function ]] && \
+		eqawarn "econf called in src_compile instead of src_configure"
+
 	if [ -z "${ECONF_SOURCE}" ]; then
 		ECONF_SOURCE="."
 	fi
