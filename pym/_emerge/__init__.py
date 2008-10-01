@@ -5890,10 +5890,16 @@ class depgraph(object):
 						blocker_cache[cpv] = \
 							blocker_cache.BlockerData(counter, blocker_atoms)
 					if blocker_atoms:
-						for myatom in blocker_atoms:
-							blocker = Blocker(atom=portage.dep.Atom(myatom),
-								eapi=pkg.metadata["EAPI"], root=myroot)
-							self._blocker_parents.add(blocker, pkg)
+						try:
+							for atom in blocker_atoms:
+								blocker = Blocker(atom=portage.dep.Atom(atom),
+									eapi=pkg.metadata["EAPI"], root=myroot)
+								self._blocker_parents.add(blocker, pkg)
+						except portage.exception.InvalidAtom, e:
+							depstr = " ".join(vardb.aux_get(pkg.cpv, dep_keys))
+							show_invalid_depstring_notice(
+								pkg, depstr, "Invalid Atom: %s" % (e,))
+							return False
 				for cpv in stale_cache:
 					del blocker_cache[cpv]
 				blocker_cache.flush()
