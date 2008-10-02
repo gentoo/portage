@@ -2538,6 +2538,7 @@ class EbuildBuild(CompositeTask):
 		if self._default_exit(packager) == os.EX_OK and \
 			self.opts.buildpkgonly:
 			# Need to call "clean" phase for buildpkgonly mode
+			portage.elog.elog_process(self.pkg.cpv, self.settings)
 			phase = "clean"
 			clean_phase = EbuildPhase(background=self.background,
 				pkg=self.pkg, phase=phase,
