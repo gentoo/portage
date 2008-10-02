@@ -8716,6 +8716,7 @@ class JobStatusDisplay(object):
 		out = self.out
 		if not self._isatty:
 			out.write(self._format_msg(msg) + self._term_codes['newline'])
+			self._displayed = True
 			return
 
 		if self._displayed:
