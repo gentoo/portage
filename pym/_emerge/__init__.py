@@ -10907,13 +10907,27 @@ def display_preserved_libs(vardbapi):
 		print colorize("WARN", "!!!") + " existing preserved libs:"
 		plibdata = vardbapi.plib_registry.getPreservedLibs()
 		linkmap = vardbapi.linkmap
+
+		consumer_map = {}
+		search_for_owners = set()
+		for cpv in plibdata:
+			for f in plibdata[cpv]:
+				if f in consumer_map:
+					continue
+				consumers = list(linkmap.findConsumers(f))
+				consumers.sort()
+				consumer_map[f] = consumers
+				search_for_owners.update(consumers[:MAX_DISPLAY+1])
+
+		all_owners = vardbapi._owners.getFileOwnerMap(search_for_owners)
+
 		for cpv in plibdata:
 			print colorize("WARN", ">>>") + " package: %s" % cpv
 			for f in plibdata[cpv]:
 				print colorize("WARN", " * ") + " - %s" % f
-				consumers = list(linkmap.findConsumers(f))
-				consumers.sort()
-				owners = vardbapi._owners.getFileOwnerMap(consumers[:MAX_DISPLAY+2])
+				consumers = consumer_map[f]
+				owners = dict((c, all_owners[c])
+					for c in consumers[:MAX_DISPLAY+1])
 				for c in consumers[:MAX_DISPLAY]:
 					print colorize("WARN", " * ") + "     used by %s (%s)" % (c, ", ".join([x.mycpv for x in owners[c]]))
 				if len(consumers) == MAX_DISPLAY + 1:
