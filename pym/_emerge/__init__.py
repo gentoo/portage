@@ -9857,7 +9857,7 @@ class Scheduler(PollScheduler):
 
 		while True:
 			self._schedule()
-			if not self._jobs or merge_queue:
+			if not (self._jobs or merge_queue):
 				break
 			if self._poll_event_handlers:
 				self._poll_loop()
