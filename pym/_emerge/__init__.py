@@ -10920,15 +10920,13 @@ def display_preserved_libs(vardbapi):
 				consumer_map[f] = consumers
 				search_for_owners.update(consumers[:MAX_DISPLAY+1])
 
-		all_owners = vardbapi._owners.getFileOwnerMap(search_for_owners)
+		owners = vardbapi._owners.getFileOwnerMap(search_for_owners)
 
 		for cpv in plibdata:
 			print colorize("WARN", ">>>") + " package: %s" % cpv
 			for f in plibdata[cpv]:
 				print colorize("WARN", " * ") + " - %s" % f
 				consumers = consumer_map[f]
-				owners = dict((c, all_owners[c])
-					for c in consumers[:MAX_DISPLAY+1])
 				for c in consumers[:MAX_DISPLAY]:
 					print colorize("WARN", " * ") + "     used by %s (%s)" % (c, ", ".join([x.mycpv for x in owners[c]]))
 				if len(consumers) == MAX_DISPLAY + 1:
