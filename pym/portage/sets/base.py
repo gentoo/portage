@@ -219,3 +219,16 @@ class InternalPackageSet(EditablePackageSet):
 	def write(self):
 		pass
 
+class DummyPackageSet(PackageSet):
+	def __init__(self, atoms=None):
+		super(DummyPackageSet, self).__init__()
+		if atoms:
+			self._setAtoms(atoms)
+	
+	def load(self):
+		pass
+	
+	def singleBuilder(cls, options, settings, trees):
+		atoms = options.get("packages", "").split()
+		return DummyPackageSet(atoms=atoms)
+	singleBuilder = classmethod(singleBuilder)

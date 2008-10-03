@@ -699,12 +699,18 @@ class search(object):
 						from portage import manifest
 						mf = manifest.Manifest(
 							pkgdir, self.settings["DISTDIR"])
-						fetchlist = self.portdb.getFetchMap(mycpv)
 						try:
-							mysum[0] = mf.getDistfilesSize(fetchlist)
-						except KeyError, e:
-							file_size_str = "Unknown (missing digest for %s)" % \
-								str(e)
+							uri_map = self.portdb.getFetchMap(mycpv)
+						except portage.exception.InvalidDependString, e:
+							file_size_str = "Unknown (%s)" % (e,)
+							del e
+						else:
+							try:
+								mysum[0] = mf.getDistfilesSize(uri_map)
+							except KeyError, e:
+								file_size_str = "Unknown (missing " + \
+									"digest for %s)" % (e,)
+								del e
 
 					available = False
 					for db in self._dbs:
@@ -1117,7 +1123,7 @@ class FakeVartree(portage.vartree):
 		self._match = self.dbapi.match
 		self.dbapi.match = self._match_wrapper
 		self._aux_get_history = set()
-		self._portdb_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
+		self._portdb_keys = ["EAPI", "DEPEND", "RDEPEND", "PDEPEND"]
 		self._portdb = portdb
 		self._global_updates = None
 
@@ -1143,6 +1149,8 @@ class FakeVartree(portage.vartree):
 			# Use the live ebuild metadata if possible.
 			live_metadata = dict(izip(self._portdb_keys,
 				self._portdb.aux_get(pkg, self._portdb_keys)))
+			if not portage.eapi_is_supported(live_metadata["EAPI"]):
+				raise KeyError(pkg)
 			self.dbapi.aux_update(pkg, live_metadata)
 		except (KeyError, portage.exception.PortageException):
 			if self._global_updates is None:
@@ -6729,6 +6737,7 @@ class depgraph(object):
 		favorites_set = InternalPackageSet(favorites)
 		oneshot = "--oneshot" in self.myopts or \
 			"--onlydeps" in self.myopts
+		columns = "--columns" in self.myopts
 		changelogs=[]
 		p=[]
 		blockers = []
@@ -7004,6 +7013,8 @@ class depgraph(object):
 					addl += colorize(blocker_style,
 						" (is blocking %s)") % block_parents
 				if isinstance(x, Blocker) and x.satisfied:
+					if columns:
+						continue
 					p.append(addl)
 				else:
 					blockers.append(addl)
@@ -7396,6 +7407,8 @@ class depgraph(object):
 								(pkgprint(pkg_type), addl, indent,
 								pkgprint(pkg.cpv), myoldbest)
 
+				if columns and pkg.operation == "uninstall":
+					continue
 				p.append((myprint, verboseadd, repoadd))
 
 				if "--tree" not in self.myopts and \

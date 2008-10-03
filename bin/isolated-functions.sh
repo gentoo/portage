@@ -177,12 +177,8 @@ elog_base() {
 			return 1
 			;;
 	esac
-	# Note: Even though the message is split on $'\n' here, it's still
-	# not entirely safe to use it as a delimiter in the log file since
-	# there can still be escaped newlines that will be expanded due to
-	# the echo -e parameter.
 	echo -e "$@" | while read line ; do
-		echo -ne "${messagetype} ${line}\n\0" >> \
+		echo "${messagetype} ${line}" >> \
 			"${T}/logging/${EBUILD_PHASE:-other}"
 	done
 	return 0

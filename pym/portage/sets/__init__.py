@@ -37,6 +37,7 @@ class SetConfig(SafeConfigParser):
 		self.errors = []
 		if not setname in self.psets:
 			options["name"] = setname
+			options["world-candidate"] = "False"
 			
 			# for the unlikely case that there is already a section with the requested setname
 			import random
@@ -69,8 +70,11 @@ class SetConfig(SafeConfigParser):
 			try:
 				setclass = load_mod(classname)
 			except (ImportError, AttributeError):
-				self.errors.append("Could not import '%s' for section '%s'" % (classname, sname))
-				continue
+				try:
+					setclass = load_mod("portage.sets."+classname)
+				except (ImportError, AttributeError):
+					self.errors.append("Could not import '%s' for section '%s'" % (classname, sname))
+					continue
 			# prepare option dict for the current section
 			optdict = {}
 			for oname in self.options(sname):
