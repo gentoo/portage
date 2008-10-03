@@ -226,6 +226,8 @@ def makeAtom(pkgname, versionNode):
 	rValue = opMapping[versionNode.getAttribute("range")] \
 				+ pkgname \
 				+ "-" + getText(versionNode, format="strip")
+	if "slot" in versionNode.attributes and versionNode.getAttribute("slot") != "*":
+		rValue += ":"+versionNode.getAttribute("slot")
 	return str(rValue)
 
 def makeVersion(versionNode):
@@ -239,8 +241,11 @@ def makeVersion(versionNode):
 	@rtype:		String
 	@return:	the version string
 	"""
-	return opMapping[versionNode.getAttribute("range")] \
+	rValue = opMapping[versionNode.getAttribute("range")] \
 			+ getText(versionNode, format="strip")
+	if "slot" in versionNode.attributes and versionNode.getAttribute("slot") != "*":
+		rValue += ":"+versionNode.getAttribute("slot")
+	return rValue
 
 def match(atom, dbapi, match_type="default"):
 	"""
@@ -283,9 +288,9 @@ def revisionMatch(revisionAtom, dbapi, match_type="default"):
 	@return:	a list with the matching versions
 	"""
 	if match_type == "default" or not hasattr(dbapi, "xmatch"):
-		mylist = dbapi.match(re.sub("-r[0-9]+$", "", revisionAtom[2:]))
+		mylist = dbapi.match(re.sub(r'-r[0-9]+(:[^ ]+)?$', r'\1', revisionAtom[2:]))
 	else:
-		mylist = dbapi.xmatch(match_type, re.sub("-r[0-9]+$", "", revisionAtom[2:]))
+		mylist = dbapi.xmatch(match_type, re.sub(r'-r[0-9]+(:[^ ]+)?$', r'\1', revisionAtom[2:]))
 	rValue = []
 	for v in mylist:
 		r1 = pkgsplit(v)[-1][1:]
@@ -353,6 +358,32 @@ def getMinUpgrade(vulnerableList, unaffectedList, portdbapi, vardbapi, minimize=
 					rValue += "-"+c_pv[3]
 	return rValue
 
+def format_date(datestr):
+	"""
+	Takes a date (announced, revised) date from a GLSA and formats
+	it as readable text (i.e. "January 1, 2008").
+	
+	@type	date: String
+	@param	date: the date string to reformat
+	@rtype:		String
+	@return:	a reformatted string, or the original string
+				if it cannot be reformatted.
+	"""
+	splitdate = datestr.split("-", 2)
+	if len(splitdate) != 3:
+		return datestr
+	
+	# This cannot raise an error as we use () instead of []
+	splitdate = (int(x) for x in splitdate)
+	
+	from datetime import date
+	try:
+		d = date(*splitdate)
+	except ValueError:
+		return datestr
+	
+	# TODO We could format to local date format '%x' here?
+	return d.strftime("%B %d, %Y")
 
 # simple Exception classes to catch specific errors
 class GlsaTypeException(Exception):
@@ -432,7 +463,11 @@ class Glsa:
 		self.DOM = xml.dom.minidom.parse(myfile)
 		if not self.DOM.doctype:
 			raise GlsaTypeException(None)
-		elif self.DOM.doctype.systemId != "http://www.gentoo.org/dtd/glsa.dtd":
+		elif self.DOM.doctype.systemId == "http://www.gentoo.org/dtd/glsa.dtd":
+			self.dtdversion = 0
+		elif self.DOM.doctype.systemId == "http://www.gentoo.org/dtd/glsa-2.dtd":
+			self.dtdversion = 2
+		else:
 			raise GlsaTypeException(self.DOM.doctype.systemId)
 		myroot = self.DOM.getElementsByTagName("glsa")[0]
 		if self.type == "id" and myroot.getAttribute("id") != self.nr:
@@ -441,8 +476,26 @@ class Glsa:
 		# the simple (single, required, top-level, #PCDATA) tags first
 		self.title = getText(myroot.getElementsByTagName("title")[0], format="strip")
 		self.synopsis = getText(myroot.getElementsByTagName("synopsis")[0], format="strip")
-		self.announced = getText(myroot.getElementsByTagName("announced")[0], format="strip")
-		self.revised = getText(myroot.getElementsByTagName("revised")[0], format="strip")
+		self.announced = format_date(getText(myroot.getElementsByTagName("announced")[0], format="strip"))
+		
+		count = 1
+		# Support both formats of revised:
+		# <revised>December 30, 2007: 02</revised>
+		# <revised count="2">2007-12-30</revised>
+		revisedEl = myroot.getElementsByTagName("revised")[0]
+		self.revised = getText(revisedEl, format="strip")
+		if (revisedEl.attributes.has_key("count")):
+			count = revisedEl.getAttribute("count")
+		elif (self.revised.find(":") >= 0):
+			(self.revised, count) = self.revised.split(":")
+		
+		self.revised = format_date(self.revised)
+		
+		try:
+			self.count = int(count)
+		except ValueError:
+			# TODO should this rais a GlsaFormatException?
+			self.count = 1
 		
 		# now the optional and 0-n toplevel, #PCDATA tags and references
 		try:
@@ -499,7 +552,7 @@ class Glsa:
 		outstream.write((width*"=")+"\n")
 		outstream.write(wrap(self.synopsis, width, caption="Synopsis:         ")+"\n")
 		outstream.write("Announced on:      %s\n" % self.announced)
-		outstream.write("Last revised on:   %s\n\n" % self.revised)
+		outstream.write("Last revised on:   %s : %02d\n\n" % (self.revised, self.count))
 		if self.glsatype == "ebuild":
 			for k in self.packages.keys():
 				pkg = self.packages[k]
@@ -565,7 +618,7 @@ class Glsa:
 		@rtype:		Boolean
 		@returns:	True if the GLSA was applied, False if not
 		"""
-		return (self.nr in get_applied_glsas())
+		return (self.nr in get_applied_glsas(self.config))
 
 	def inject(self):
 		"""

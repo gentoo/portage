@@ -169,6 +169,7 @@ def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr):
 	fd2.write(green("[U]")+" means the system is not affected and\n")
 	fd2.write(red("[N]")+" indicates that the system might be affected.\n\n")
 
+	myglsalist.sort()
 	for myid in myglsalist:
 		try:
 			myglsa = Glsa(myid, portage.settings, vardb, portdb)
@@ -275,13 +276,13 @@ if mode == "test":
 				sys.stderr.write(("invalid GLSA: %s (error message was: %s)\n" % (myid, e)))
 			continue
 		if myglsa.isVulnerable():
-			if verbose:
-				outputlist.append(str(myglsa.nr)+" ( "+myglsa.title+" ) ")
-			else:
-				outputlist.append(str(myglsa.nr))
+			outputlist.append(str(myglsa.nr))
 	if len(outputlist) > 0:
 		sys.stderr.write("This system is affected by the following GLSAs:\n")
-		sys.stdout.write("\n".join(outputlist)+"\n")
+		if verbose:
+			summarylist(outputlist)
+		else:
+			sys.stdout.write("\n".join(outputlist)+"\n")
 	else:
 		sys.stderr.write("This system is not affected by any of the listed GLSAs\n")
 	sys.exit(0)
