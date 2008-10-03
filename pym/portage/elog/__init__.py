@@ -91,6 +91,19 @@ def elog_process(cpv, mysettings, phasefilter=None):
 			all_logentries[key], _preserve_logentries[key] = phasefilter(all_logentries[key])
 
 	my_elog_classes = set(mysettings.get("PORTAGE_ELOG_CLASSES", "").split())
+	logsystems = {}
+	for token in mysettings.get("PORTAGE_ELOG_SYSTEM", "").split():
+		if ":" in token:
+			s, levels = token.split(":", 1)
+			levels = levels.split(",")
+		else:
+			s = token
+			levels = ()
+		levels_set = logsystems.get(s)
+		if levels_set is None:
+			levels_set = set()
+			logsystems[s] = levels_set
+		levels_set.update(levels)
 
 	for key in all_logentries:
 		default_logentries = filter_loglevels(all_logentries[key], my_elog_classes)
@@ -106,12 +119,9 @@ def elog_process(cpv, mysettings, phasefilter=None):
 				default_logentries, default_fulllog)
 
 		# pass the processing to the individual modules
-		logsystems = mysettings["PORTAGE_ELOG_SYSTEM"].split()
-		for s in logsystems:
+		for s, levels in logsystems.iteritems():
 			# allow per module overrides of PORTAGE_ELOG_CLASSES
-			if ":" in s:
-				s, levels = s.split(":", 1)
-				levels = levels.split(",")
+			if levels:
 				mod_logentries = filter_loglevels(all_logentries[key], levels)
 				mod_fulllog = _combine_logentries(mod_logentries)
 			else:

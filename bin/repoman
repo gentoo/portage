@@ -22,7 +22,7 @@ import tempfile
 import time
 import platform
 
-from itertools import izip
+from itertools import chain, izip
 from stat import S_ISDIR, ST_CTIME
 
 try:
@@ -249,6 +249,7 @@ qahelp={
 	"desktop.invalid":"desktop-file-validate reports errors in a *.desktop file",
 	"ebuild.invalidname":"Ebuild files with a non-parseable or syntactically incorrect name (or using 2.1 versioning extensions)",
 	"ebuild.namenomatch":"Ebuild files that do not have the same name as their parent directory",
+	"changelog.ebuildadded":"An ebuild was added but the ChangeLog was not modified",
 	"changelog.missing":"Missing ChangeLog files",
 	"ebuild.notadded":"Ebuilds that exist but have not been added to cvs",
 	"ebuild.patches":"PATCHES variable should be a bash array to ensure white space safety",
@@ -743,11 +744,21 @@ else:
 	print green("\nRepoMan scours the neighborhood...")
 
 new_ebuilds = set()
+modified_changelogs = set()
 if vcs == "cvs":
 	mycvstree = cvstree.getentries("./", recursive=1)
+	mychanged = cvstree.findchanged(mycvstree, recursive=1, basedir="./")
 	mynew = cvstree.findnew(mycvstree, recursive=1, basedir="./")
+
+if vcs == "svn":
+	svnstatus = os.popen("svn status").readlines()
+	mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and elem[:1] in "MR" ]
+	mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A") ]
+
+if vcs:
 	new_ebuilds.update(x for x in mynew if x.endswith(".ebuild"))
-	del mycvstree, mynew
+	modified_changelogs.update(x for x in chain(mychanged, mynew) \
+		if os.path.basename(x) == "ChangeLog")
 
 have_masked = False
 dofail = 0
@@ -1026,11 +1037,29 @@ for x in scanlist:
 
 		del metadata_bad
 
+	changelog_path = "ChangeLog"
+	if repolevel < 3:
+		changelog_path = os.path.join(pkgdir, changelog_path)
+	if repolevel < 2:
+		changelog_path = os.path.join(catdir, changelog_path)
+	changelog_path = os.path.join(".", changelog_path)
+	changelog_modified = changelog_path in modified_changelogs
+
 	allmasked = True
 
 	for y in ebuildlist:
 		relative_path = os.path.join(x, y + ".ebuild")
 		full_path = os.path.join(repodir, relative_path)
+		ebuild_path = y + ".ebuild"
+		if repolevel < 3:
+			ebuild_path = os.path.join(pkgdir, ebuild_path)
+		if repolevel < 2:
+			ebuild_path = os.path.join(catdir, ebuild_path)
+		ebuild_path = os.path.join(".", ebuild_path)
+		if not changelog_modified and ebuild_path in new_ebuilds:
+			stats['changelog.ebuildadded'] += 1
+			fails['changelog.ebuildadded'].append(relative_path)
+
 		if stat.S_IMODE(os.stat(full_path).st_mode) & 0111:
 			stats["file.executable"] += 1
 			fails["file.executable"].append(x+"/"+y+".ebuild")
@@ -1119,12 +1148,6 @@ for x in scanlist:
 				not keyword.startswith("-"):
 				stable_keywords.append(keyword)
 		if stable_keywords:
-			ebuild_path = y + ".ebuild"
-			if repolevel < 3:
-				ebuild_path = os.path.join(pkgdir, ebuild_path)
-			if repolevel < 2:
-				ebuild_path = os.path.join(catdir, ebuild_path)
-			ebuild_path = os.path.join(".", ebuild_path)
 			if ebuild_path in new_ebuilds:
 				stable_keywords.sort()
 				stats["KEYWORDS.stable"] += 1
@@ -1674,9 +1697,10 @@ else:
 		sys.exit(1)
 
 	if vcs == "cvs":
-		mycvstree=portage.cvstree.getentries("./",recursive=1)
-		mychanged=portage.cvstree.findchanged(mycvstree,recursive=1,basedir="./")
-		mynew=portage.cvstree.findnew(mycvstree,recursive=1,basedir="./")
+		if myautoadd:
+			mycvstree = cvstree.getentries("./", recursive=1)
+			mychanged = cvstree.findchanged(mycvstree, recursive=1, basedir="./")
+			mynew = cvstree.findnew(mycvstree, recursive=1, basedir="./")
 		myremoved=portage.cvstree.findremoved(mycvstree,recursive=1,basedir="./")
 		bin_blob_pattern = re.compile("^-kb$")
 		no_expansion = set(portage.cvstree.findoption(mycvstree, bin_blob_pattern,
@@ -1684,10 +1708,11 @@ else:
 
 
 	if vcs == "svn":
-		svnstatus = os.popen("svn status").readlines()
-		mychanged = [ elem.rstrip()[7:] for elem in svnstatus if elem and elem[:1] in "MR" ]
-		mynew     = [ elem.rstrip()[7:] for elem in svnstatus if elem.startswith("A") ]
-		myremoved = [ elem.rstrip()[7:] for elem in svnstatus if elem.startswith("D") ]
+		if myautoadd:
+			svnstatus = os.popen("svn status").readlines()
+			mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and elem[:1] in "MR" ]
+			mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A") ]
+		myremoved = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("D") ]
 		# in contrast to CVS, SVN expands nothing by default.
 		# bin_blobs historically
 		# were just there to see what files need to be checked for
@@ -1699,7 +1724,7 @@ else:
 		# For files with multiple props set, props are delimited by newlines,
 		# so exclude lines that don't contain " - " since each of those lines
 		# only a contain props for a file listed on a previous line.
-		expansion = set(prop.split(" - ")[0] \
+		expansion = set("./" + prop.split(" - ")[0] \
 			for prop in props if " - " in prop)
 
 	if vcs:

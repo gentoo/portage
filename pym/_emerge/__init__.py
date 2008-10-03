@@ -2565,6 +2565,7 @@ class EbuildBuild(CompositeTask):
 		if self._default_exit(packager) == os.EX_OK and \
 			self.opts.buildpkgonly:
 			# Need to call "clean" phase for buildpkgonly mode
+			portage.elog.elog_process(self.pkg.cpv, self.settings)
 			phase = "clean"
 			clean_phase = EbuildPhase(background=self.background,
 				pkg=self.pkg, phase=phase,
@@ -5921,10 +5922,16 @@ class depgraph(object):
 						blocker_cache[cpv] = \
 							blocker_cache.BlockerData(counter, blocker_atoms)
 					if blocker_atoms:
-						for myatom in blocker_atoms:
-							blocker = Blocker(atom=portage.dep.Atom(myatom),
-								eapi=pkg.metadata["EAPI"], root=myroot)
-							self._blocker_parents.add(blocker, pkg)
+						try:
+							for atom in blocker_atoms:
+								blocker = Blocker(atom=portage.dep.Atom(atom),
+									eapi=pkg.metadata["EAPI"], root=myroot)
+								self._blocker_parents.add(blocker, pkg)
+						except portage.exception.InvalidAtom, e:
+							depstr = " ".join(vardb.aux_get(pkg.cpv, dep_keys))
+							show_invalid_depstring_notice(
+								pkg, depstr, "Invalid Atom: %s" % (e,))
+							return False
 				for cpv in stale_cache:
 					del blocker_cache[cpv]
 				blocker_cache.flush()
@@ -8750,6 +8757,7 @@ class JobStatusDisplay(object):
 		out = self.out
 		if not self._isatty:
 			out.write(self._format_msg(msg) + self._term_codes['newline'])
+			self._displayed = True
 			return
 
 		if self._displayed:
@@ -9892,7 +9900,7 @@ class Scheduler(PollScheduler):
 
 		while True:
 			self._schedule()
-			if not self._jobs or merge_queue:
+			if not (self._jobs or merge_queue):
 				break
 			if self._poll_event_handlers:
 				self._poll_loop()
@@ -10942,13 +10950,25 @@ def display_preserved_libs(vardbapi):
 		print colorize("WARN", "!!!") + " existing preserved libs:"
 		plibdata = vardbapi.plib_registry.getPreservedLibs()
 		linkmap = vardbapi.linkmap
+
+		consumer_map = {}
+		search_for_owners = set()
+		for cpv in plibdata:
+			for f in plibdata[cpv]:
+				if f in consumer_map:
+					continue
+				consumers = list(linkmap.findConsumers(f))
+				consumers.sort()
+				consumer_map[f] = consumers
+				search_for_owners.update(consumers[:MAX_DISPLAY+1])
+
+		owners = vardbapi._owners.getFileOwnerMap(search_for_owners)
+
 		for cpv in plibdata:
 			print colorize("WARN", ">>>") + " package: %s" % cpv
 			for f in plibdata[cpv]:
 				print colorize("WARN", " * ") + " - %s" % f
-				consumers = list(linkmap.findConsumers(f))
-				consumers.sort()
-				owners = vardbapi._owners.getFileOwnerMap(consumers[:MAX_DISPLAY+2])
+				consumers = consumer_map[f]
 				for c in consumers[:MAX_DISPLAY]:
 					print colorize("WARN", " * ") + "     used by %s (%s)" % (c, ", ".join([x.mycpv for x in owners[c]]))
 				if len(consumers) == MAX_DISPLAY + 1:
