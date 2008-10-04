@@ -321,6 +321,7 @@ qacats = qahelp.keys()
 qacats.sort()
 
 qawarnings=[
+"changelog.ebuildadded",
 "changelog.missing",
 "changelog.notadded",
 "digestentry.unused",
