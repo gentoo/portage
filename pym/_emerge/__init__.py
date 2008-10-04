@@ -8395,7 +8395,7 @@ class PollScheduler(object):
 			self._running_job_count() > 1:
 			try:
 				avg1, avg5, avg15 = os.getloadavg()
-			except OSError, e:
+			except (AttributeError, OSError), e:
 				writemsg("!!! getloadavg() failed: %s\n" % (e,),
 					noiselevel=-1)
 				del e
@@ -8778,7 +8778,7 @@ class JobStatusDisplay(object):
 	def _load_avg_str(self):
 		try:
 			avg = os.getloadavg()
-		except OSError, e:
+		except (AttributeError, OSError), e:
 			return str(e)
 
 		max_avg = max(avg)
