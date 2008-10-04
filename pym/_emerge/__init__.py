@@ -4494,7 +4494,16 @@ class depgraph(object):
 			existing_node = self._slot_pkg_map[pkg.root].get(pkg.slot_atom)
 			slot_collision = False
 			if existing_node:
-				if pkg.cpv == existing_node.cpv:
+				existing_node_matches = pkg.cpv == existing_node.cpv
+				if existing_node_matches and \
+					pkg != existing_node and \
+					dep.atom is not None:
+					# Use package set for matching since it will match via
+					# PROVIDE when necessary, while match_from_list does not.
+					atom_set = InternalPackageSet(initial_atoms=[dep.atom])
+					if not atom_set.findAtomForPackage(existing_node):
+						existing_node_matches = False
+				if existing_node_matches:
 					# The existing node can be reused.
 					if args:
 						for arg in args:
