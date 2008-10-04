@@ -4458,12 +4458,20 @@ class depgraph(object):
 				self._ignored_deps.append(dep)
 				return 1
 
-		if not self._add_pkg(dep_pkg, dep.parent,
-			priority=dep.priority, depth=dep.depth):
+		if not self._add_pkg(dep_pkg, dep):
 			return 0
 		return 1
 
-	def _add_pkg(self, pkg, myparent, priority=None, depth=0):
+	def _add_pkg(self, pkg, dep):
+		myparent = None
+		priority = None
+		depth = 0
+		if dep is None:
+			dep = Dependency()
+		else:
+			myparent = dep.parent
+			priority = dep.priority
+			depth = dep.depth
 		if priority is None:
 			priority = DepPriority()
 		"""
@@ -4513,7 +4521,16 @@ class depgraph(object):
 			existing_node = self._slot_pkg_map[pkg.root].get(pkg.slot_atom)
 			slot_collision = False
 			if existing_node:
-				if pkg.cpv == existing_node.cpv:
+				existing_node_matches = pkg.cpv == existing_node.cpv
+				if existing_node_matches and \
+					pkg != existing_node and \
+					dep.atom is not None:
+					# Use package set for matching since it will match via
+					# PROVIDE when necessary, while match_from_list does not.
+					atom_set = InternalPackageSet(initial_atoms=[dep.atom])
+					if not atom_set.findAtomForPackage(existing_node):
+						existing_node_matches = False
+				if existing_node_matches:
 					# The existing node can be reused.
 					if args:
 						for arg in args:
@@ -5056,6 +5073,8 @@ class depgraph(object):
 			arg = args.pop()
 			for atom in arg.set:
 				self.spinner.update()
+				dep = Dependency(atom=atom, onlydeps=onlydeps,
+					root=myroot, parent=arg)
 				atom_cp = portage.dep_getkey(atom)
 				try:
 					pprovided = pprovideddict.get(portage.dep_getkey(atom))
@@ -5064,7 +5083,7 @@ class depgraph(object):
 						self._pprovided_args.append((arg, atom))
 						continue
 					if isinstance(arg, PackageArg):
-						if not self._add_pkg(arg.package, arg) or \
+						if not self._add_pkg(arg.package, dep) or \
 							not self._create_graph():
 							sys.stderr.write(("\n\n!!! Problem resolving " + \
 								"dependencies for %s\n") % arg.arg)
@@ -5107,14 +5126,10 @@ class depgraph(object):
 							arg.name in ("system", "world")):
 							return 0, myfavorites
 
-					dep = Dependency(atom=atom, onlydeps=onlydeps,
-						root=myroot, parent=arg)
-
 					# Add the selected package to the graph as soon as possible
 					# so that later dep_check() calls can use it as feedback
 					# for making more consistent atom selections.
-					if not self._add_pkg(pkg, dep.parent,
-						priority=dep.priority, depth=dep.depth):
+					if not self._add_pkg(pkg, dep):
 						if isinstance(arg, SetArg):
 							sys.stderr.write(("\n\n!!! Problem resolving " + \
 								"dependencies for %s from %s\n") % \
@@ -5727,8 +5742,7 @@ class depgraph(object):
 				# will be appropriately reported as a slot collision
 				# (possibly solvable via backtracking).
 				pkg = matches[-1] # highest match
-				if not self._add_pkg(pkg, dep.parent,
-					priority=dep.priority, depth=dep.depth):
+				if not self._add_pkg(pkg, dep):
 					return 0
 				if not self._create_graph(allow_unsatisfied=True):
 					return 0
@@ -7777,7 +7791,8 @@ class depgraph(object):
 						arg.root_config.root, atom)
 					if existing_node is None and \
 						pkg is not None:
-						if not self._add_pkg(pkg, arg):
+						if not self._add_pkg(pkg, Dependency(atom=atom,
+							root=pkg.root, parent=arg)):
 							return False
 
 			# Allow unsatisfied deps here to avoid showing a masking
@@ -12491,8 +12506,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				for consumer_dblink in set(chain(*consumers.values())):
 					consumer_pkg = vardb.get(("installed", myroot,
 						consumer_dblink.mycpv, "nomerge"))
-					resolver._add_pkg(pkg, consumer_pkg,
-						priority=UnmergeDepPriority(runtime=True))
+					resolver._add_pkg(pkg, Dependency(parent=consumer_pkg,
+						priority=UnmergeDepPriority(runtime=True),
+						root=pkg.root))
 
 			writemsg_level("\nCalculating dependencies  ")
 			success = resolver._complete_graph()
