@@ -273,7 +273,10 @@ register_die_hook() {
 }
 
 # Ensure that $PWD is sane whenever possible.
-cd "$PORTAGE_BUILDDIR" 2>/dev/null
+if ! hasq "$EBUILD_PHASE" clean depend help ; then
+	cd "$PORTAGE_BUILDDIR" || \
+		die "PORTAGE_BUILDDIR does not exist: '$PORTAGE_BUILDDIR'"
+fi
 
 #if no perms are specified, dirs/files will have decent defaults
 #(not secretive, but not stupid)
