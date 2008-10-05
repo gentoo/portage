@@ -70,7 +70,7 @@ for x in "$@" ; do
 		while [ -L "$x" ] ; do
 			pushd "$(readlink "$x")"
 			x=${PWD##*/}
-			pushd ${PWD%/*}
+			pushd "${PWD%/*}"
 		done
 		find "$x" -type d -exec dodir "${INSDESTTREE}/{}" \;
 		find "$x" \( -type f -or -type l \) -print0 | _xdoins
