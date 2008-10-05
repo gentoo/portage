@@ -273,7 +273,10 @@ register_die_hook() {
 }
 
 # Ensure that $PWD is sane whenever possible.
-cd "$PORTAGE_BUILDDIR" 2>/dev/null
+if ! hasq "$EBUILD_PHASE" clean depend help ; then
+	cd "$PORTAGE_BUILDDIR" || \
+		die "PORTAGE_BUILDDIR does not exist: '$PORTAGE_BUILDDIR'"
+fi
 
 #if no perms are specified, dirs/files will have decent defaults
 #(not secretive, but not stupid)
@@ -757,9 +760,10 @@ dyn_clean() {
 	# result in it wiping the users distfiles directory (bad).
 	rm -rf "${PORTAGE_BUILDDIR}/distdir"
 
-	if [ -z "$(find "${PORTAGE_BUILDDIR}" -mindepth 1 -maxdepth 1)" ]; then
-		rmdir "${PORTAGE_BUILDDIR}"
-	fi
+	# Some kernels, such as Solaris, return EINVAL when an attempt
+	# is made to remove the current working directory.
+	cd "$PORTAGE_BUILDDIR"/..
+	rmdir "$PORTAGE_BUILDDIR" 2>/dev/null
 
 	true
 }

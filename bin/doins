@@ -25,6 +25,9 @@ if [[ ${INSDESTTREE#${D}} != "${INSDESTTREE}" ]]; then
 	exit 1
 fi
 
+TMP=$T/.doins_tmp
+mkdir "$TMP"
+
 if [[ ${INSDESTTREE#${EPREFIX}} != "${INSDESTTREE}" ]]; then
 	vecho "-------------------------------------------------------" 1>&2
 	vecho "You should not use \${EPREFIX} with helpers." 1>&2
@@ -39,8 +42,8 @@ _doins() {
 	local mysrc="$1" mydir="$2" cleanup="" rval
 
 	if [ -L "$mysrc" ] ; then
-		cp "$mysrc" "${T}"
-		mysrc="${T}/${mysrc##*/}"
+		cp "$mysrc" "$TMP"
+		mysrc="$TMP/${mysrc##*/}"
 		cleanup=${mysrc}
 	fi
 
@@ -72,13 +75,30 @@ for x in "$@" ; do
 		else
 			pushd "${x%/*}" >/dev/null
 		fi
-		find "${x##*/}" -type d -exec dodir "${INSDESTTREE}/{}" \;
-		find "${x##*/}" \( -type f -or -type l \) -print0 | _xdoins
-		popd >/dev/null
+		x=${x##*/}
+		x_orig=$x
+		# Follow any symlinks recursively until we've got
+		# a normal directory for 'find' to traverse.
+		while [ -L "$x" ] ; do
+			pushd "$(readlink "$x")" >/dev/null
+			x=${PWD##*/}
+			pushd "${PWD%/*}" >/dev/null
+		done
+		if [[ $x != $x_orig ]] ; then
+			mv "$x" "$TMP/$x_orig"
+			pushd "$TMP" >/dev/null
+		fi
+		find "$x_orig" -type d -exec dodir "${INSDESTTREE}/{}" \;
+		find "$x_orig" \( -type f -or -type l \) -print0 | _xdoins
+		if [[ $x != $x_orig ]] ; then
+			popd >/dev/null
+			mv "$TMP/$x_orig" "$x"
+		fi
+		while popd >/dev/null 2>&1 ; do true ; done
 		((++success))
 	else
 		_doins "${x}" && ((++success))
 	fi
 done
-
+rm -rf "$TMP"
 [ $success -gt 0 ] && exit 0 || exit 1

@@ -65,12 +65,13 @@ class PreservedLibsRegistry(object):
 				raise PermissionDenied(self._filename)
 			else:
 				raise e
-		
+		self._data_orig = self._data.copy()
 	def store(self):
 		""" Store the registry data to file. No need to call this if autocommit
 		    was enabled.
 		"""
-		if os.environ.get("SANDBOX_ON") == "1":
+		if os.environ.get("SANDBOX_ON") == "1" or \
+			self._data == self._data_orig:
 			return
 		try:
 			f = atomic_ofstream(self._filename)
@@ -3495,6 +3496,7 @@ class dblink(object):
 		#if we have a file containing previously-merged config file md5sums, grab it.
 		conf_mem_file = os.path.join(destroot, EPREFIX_LSTRIP, CONFIG_MEMORY_FILE)
 		cfgfiledict = grabdict(conf_mem_file)
+		cfgfiledict_orig = cfgfiledict.copy()
 		if "NOCONFMEM" in self.settings:
 			cfgfiledict["IGNORE"]=1
 		else:
@@ -3555,9 +3557,10 @@ class dblink(object):
 
 		# write out our collection of md5sums
 		cfgfiledict.pop("IGNORE", None)
-		ensure_dirs(os.path.dirname(conf_mem_file),
-			gid=portage_gid, mode=02750, mask=02)
-		writedict(cfgfiledict, conf_mem_file)
+		if cfgfiledict != cfgfiledict_orig:
+			ensure_dirs(os.path.dirname(conf_mem_file),
+				gid=portage_gid, mode=02750, mask=02)
+			writedict(cfgfiledict, conf_mem_file)
 
 		# These caches are populated during collision-protect and the data
 		# they contain is now invalid. It's very important to invalidate
