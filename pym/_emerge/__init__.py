@@ -5193,6 +5193,7 @@ class depgraph(object):
 
 	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None):
 		atom = portage.dep.Atom(atom)
+		atom_set = InternalPackageSet(initial_atoms=(atom,))
 		atom_without_use = atom
 		if atom.use:
 			atom_without_use = portage.dep.remove_slot(atom)
@@ -5230,13 +5231,22 @@ class depgraph(object):
 			for cpv in cpv_list:
 				metadata, mreasons  = get_mask_info(root_config, cpv,
 					pkgsettings, db, pkg_type, built, installed, db_keys)
-				if atom.use and not mreasons:
-					missing_use.append(Package(built=built, cpv=cpv,
+				if metadata is not None:
+					pkg = Package(built=built, cpv=cpv,
 						installed=installed, metadata=metadata,
-						root_config=root_config))
-				else:
-					masked_packages.append(
-						(root_config, pkgsettings, cpv, metadata, mreasons))
+						root_config=root_config)
+					if pkg.cp != atom.cp:
+						# A cpv can be returned from dbapi.match() as an
+						# old-style virtual match even in cases when the
+						# package does not actually PROVIDE the virtual.
+						# Filter out any such false matches here.
+						if not atom_set.findAtomForPackage(pkg):
+							continue
+					if atom.use and not mreasons:
+						missing_use.append(pkg)
+						continue
+				masked_packages.append(
+					(root_config, pkgsettings, cpv, metadata, mreasons))
 
 		missing_use_reasons = []
 		missing_iuse_reasons = []
@@ -5326,6 +5336,7 @@ class depgraph(object):
 		if not isinstance(atom, portage.dep.Atom):
 			atom = portage.dep.Atom(atom)
 		atom_cp = atom.cp
+		atom_set = InternalPackageSet(initial_atoms=(atom,))
 		existing_node = None
 		myeb = None
 		usepkgonly = "--usepkgonly" in self.myopts
@@ -5472,6 +5483,14 @@ class depgraph(object):
 						# it's expensive.
 						pkgsettings.setcpv(pkg)
 						pkg.metadata["USE"] = pkgsettings["PORTAGE_USE"]
+
+					if pkg.cp != atom.cp:
+						# A cpv can be returned from dbapi.match() as an
+						# old-style virtual match even in cases when the
+						# package does not actually PROVIDE the virtual.
+						# Filter out any such false matches here.
+						if not atom_set.findAtomForPackage(pkg):
+							continue
 
 					myarg = None
 					if root == self.target_root:
