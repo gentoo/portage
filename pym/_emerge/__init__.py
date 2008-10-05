@@ -10958,8 +10958,18 @@ def display_preserved_libs(vardbapi):
 
 		for cpv in plibdata:
 			print colorize("WARN", ">>>") + " package: %s" % cpv
+			samefile_map = {}
 			for f in plibdata[cpv]:
-				print colorize("WARN", " * ") + " - %s" % f
+				real_path = os.path.realpath(f)
+				alt_paths = samefile_map.get(real_path)
+				if alt_paths is None:
+					alt_paths = set()
+					samefile_map[real_path] = alt_paths
+				alt_paths.add(f)
+
+			for f, alt_paths in samefile_map.iteritems():
+				for p in sorted(alt_paths):
+					print colorize("WARN", " * ") + " - %s" % (p,)
 				consumers = consumer_map[f]
 				for c in consumers[:MAX_DISPLAY]:
 					print colorize("WARN", " * ") + "     used by %s (%s)" % \
