@@ -337,6 +337,7 @@ qawarnings=[
 "KEYWORDS.dropped",
 "KEYWORDS.stupid",
 "KEYWORDS.missing",
+"HOMEPAGE.missing",
 "IUSE.invalid",
 "IUSE.undefined",
 "RDEPEND.suspect",
