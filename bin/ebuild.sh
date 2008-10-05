@@ -273,7 +273,7 @@ register_die_hook() {
 }
 
 # Ensure that $PWD is sane whenever possible.
-cd "${PORTAGE_BUILDDIR}"/.. 2>/dev/null
+cd "$PORTAGE_BUILDDIR" 2>/dev/null
 
 #if no perms are specified, dirs/files will have decent defaults
 #(not secretive, but not stupid)
