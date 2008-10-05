@@ -751,9 +751,10 @@ dyn_clean() {
 	# result in it wiping the users distfiles directory (bad).
 	rm -rf "${PORTAGE_BUILDDIR}/distdir"
 
-	if [ -z "$(find "${PORTAGE_BUILDDIR}" -mindepth 1 -maxdepth 1)" ]; then
-		rmdir "${PORTAGE_BUILDDIR}"
-	fi
+	# Some kernels, such as Solaris, return EINVAL when an attempt
+	# is made to remove the current working directory.
+	cd "$PORTAGE_BUILDDIR"/..
+	rmdir "$PORTAGE_BUILDDIR" 2>/dev/null
 
 	true
 }
