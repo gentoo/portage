@@ -65,12 +65,13 @@ class PreservedLibsRegistry(object):
 				raise PermissionDenied(self._filename)
 			else:
 				raise e
-		
+		self._data_orig = self._data.copy()
 	def store(self):
 		""" Store the registry data to file. No need to call this if autocommit
 		    was enabled.
 		"""
-		if os.environ.get("SANDBOX_ON") == "1":
+		if os.environ.get("SANDBOX_ON") == "1" or \
+			self._data == self._data_orig:
 			return
 		try:
 			f = atomic_ofstream(self._filename)
