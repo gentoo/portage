@@ -64,9 +64,17 @@ for x in "$@" ; do
 		else
 			pushd "${x%/*}" >/dev/null
 		fi
-		find "${x##*/}" -type d -exec dodir "${INSDESTTREE}/{}" \;
-		find "${x##*/}" \( -type f -or -type l \) -print0 | _xdoins
-		popd >/dev/null
+		x=${x##*/}
+		# Follow any symlinks recursively until we've got
+		# a normal directory for 'find' to traverse.
+		while [ -L "$x" ] ; do
+			pushd "$(readlink "$x")"
+			x=${PWD##*/}
+			pushd ${PWD%/*}
+		done
+		find "$x" -type d -exec dodir "${INSDESTTREE}/{}" \;
+		find "$x" \( -type f -or -type l \) -print0 | _xdoins
+		while popd >/dev/null ; do true ; done
 		((++success))
 	else
 		_doins "${x}" && ((++success))
