@@ -10962,11 +10962,12 @@ def display_preserved_libs(vardbapi):
 				print colorize("WARN", " * ") + " - %s" % f
 				consumers = consumer_map[f]
 				for c in consumers[:MAX_DISPLAY]:
-					print colorize("WARN", " * ") + "     used by %s (%s)" % (c, ", ".join([x.mycpv for x in owners[c]]))
+					print colorize("WARN", " * ") + "     used by %s (%s)" % \
+						(c, ", ".join(x.mycpv for x in owners.get(c, [])))
 				if len(consumers) == MAX_DISPLAY + 1:
 					print colorize("WARN", " * ") + "     used by %s (%s)" % \
-						(consumers[MAX_DISPLAY], ", ".join(
-						x.mycpv for x in owners[consumers[MAX_DISPLAY]]))
+						(consumers[MAX_DISPLAY], ", ".join(x.mycpv \
+						for x in owners.get(consumers[MAX_DISPLAY], [])))
 				elif len(consumers) > MAX_DISPLAY:
 					print colorize("WARN", " * ") + "     used by %d other files" % (len(consumers) - MAX_DISPLAY)
 		print "Use " + colorize("GOOD", "emerge @preserved-rebuild") + " to rebuild packages using these libraries"
