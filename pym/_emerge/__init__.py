@@ -9348,7 +9348,10 @@ class Scheduler(PollScheduler):
 			prefetchers = self._prefetchers
 			getbinpkg = "--getbinpkg" in self.myopts
 
-			for pkg in self._mergelist:
+			# In order to avoid "waiting for lock" messages
+			# at the beginning, which annoy users, never
+			# spawn a prefetcher for the first package.
+			for pkg in self._mergelist[1:]:
 				prefetcher = self._create_prefetcher(pkg)
 				if prefetcher is not None:
 					self._task_queues.fetch.add(prefetcher)
