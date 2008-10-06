@@ -4057,7 +4057,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 		if listonly:
 			writemsg_stdout("\n", noiselevel=-1)
-		if fetched != 2:
+		elif fetched != 2:
 			if restrict_fetch:
 				print "\n!!!", mysettings["CATEGORY"] + "/" + \
 					mysettings["PF"], "has fetch restriction turned on."
@@ -4075,8 +4075,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						mysettings.pop("EBUILD_PHASE", None)
 					else:
 						mysettings["EBUILD_PHASE"] = ebuild_phase
-			elif listonly:
-				continue
 			elif not filedict[myfile]:
 				writemsg("Warning: No mirrors available for file" + \
 					" '%s'\n" % (myfile), noiselevel=-1)
