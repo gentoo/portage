@@ -10967,9 +10967,11 @@ def display_preserved_libs(vardbapi):
 					samefile_map[real_path] = alt_paths
 				alt_paths.add(f)
 
-			for f, alt_paths in samefile_map.iteritems():
-				for p in sorted(alt_paths):
+			for alt_paths in samefile_map.itervalues():
+				alt_paths = sorted(alt_paths)
+				for p in alt_paths:
 					print colorize("WARN", " * ") + " - %s" % (p,)
+				f = alt_paths[0]
 				consumers = consumer_map[f]
 				for c in consumers[:MAX_DISPLAY]:
 					print colorize("WARN", " * ") + "     used by %s (%s)" % \
