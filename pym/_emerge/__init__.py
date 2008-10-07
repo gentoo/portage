@@ -2238,7 +2238,7 @@ class MiscFunctionsProcess(SpawnProcess):
 
 class EbuildFetcher(SpawnProcess):
 
-	__slots__ = ("config_pool", "fetchonly", "fetchall", "pkg",) + \
+	__slots__ = ("config_pool", "fetchonly", "fetchall", "pkg", "prefetch") + \
 		("_build_dir",)
 
 	def _start(self):
@@ -2249,14 +2249,8 @@ class EbuildFetcher(SpawnProcess):
 		settings = self.config_pool.allocate()
 		self._build_dir = EbuildBuildDir(pkg=self.pkg, settings=settings)
 		self._build_dir.lock()
-		
-		if self.background and self.logfile is None:
-			fetch_log = None
-			if not self.fetchonly:
-				fetch_log = settings.get("PORTAGE_LOG_FILE")
-			if fetch_log is None:
-				fetch_log = self.scheduler.fetch.log_file
-			self.logfile = fetch_log
+		if self.logfile is None:
+			self.logfile = settings.get("PORTAGE_LOG_FILE")
 
 		phase = "fetch"
 		if self.fetchall:
@@ -2269,7 +2263,7 @@ class EbuildFetcher(SpawnProcess):
 		fetch_env = os.environ.copy()
 
 		fetch_env["PORTAGE_NICENESS"] = "0"
-		if self.fetchonly:
+		if self.prefetch:
 			fetch_env["PORTAGE_PARALLEL_FETCHONLY"] = "1"
 
 		ebuild_binary = os.path.join(
@@ -2289,7 +2283,18 @@ class EbuildFetcher(SpawnProcess):
 		# Collect elog messages that might have been
 		# created by the pkg_nofetch phase.
 		if self._build_dir is not None:
-			portage.elog.elog_process(self.pkg.cpv, self._build_dir.settings)
+			# Skip elog messages for prefetch, in order to avoid duplicates.
+			if not self.prefetch and self.returncode != os.EX_OK:
+				elog_out = None
+				if self.logfile is not None:
+					if self.background:
+						elog_out = open(self.logfile, 'a')
+				eerror("Fetch failed for '%s'" % self.pkg.cpv,
+					phase="unpack", key=self.pkg.cpv, out=elog_out)
+				if elog_out is not None:
+					elog_out.close()
+			if not self.prefetch:
+				portage.elog.elog_process(self.pkg.cpv, self._build_dir.settings)
 			if self.fetchonly or self.returncode == os.EX_OK:
 				try:
 					shutil.rmtree(self._build_dir.settings["PORTAGE_BUILDDIR"])
@@ -2458,21 +2463,20 @@ class EbuildBuild(CompositeTask):
 			self._start_task(fetcher, self._fetch_exit)
 
 	def _fetch_exit(self, fetcher):
-
 		opts = self.opts
 		pkg = self.pkg
 
+		fetch_failed = False
 		if opts.fetchonly:
-			if self._final_exit(fetcher) != os.EX_OK:
-				if not self.background:
-					eerror("Fetch for %s failed, continuing..." % pkg.cpv,
-						phase="unpack", key=pkg.cpv)
-			self.wait()
-			return
+			fetch_failed = self._final_exit(fetcher) != os.EX_OK
+		else:
+			fetch_failed = self._default_exit(fetcher) != os.EX_OK
 
-		if self._default_exit(fetcher) != os.EX_OK:
-			if fetcher.logfile is not None:
-				self.settings["PORTAGE_LOG_FILE"] = fetcher.logfile
+		if fetch_failed and fetcher.logfile is not None and \
+			os.path.exists(fetcher.logfile):
+			self.settings["PORTAGE_LOG_FILE"] = fetcher.logfile
+
+		if fetch_failed or opts.fetchonly:
 			self.wait()
 			return
 
@@ -9420,7 +9424,7 @@ class Scheduler(PollScheduler):
 				config_pool=self._ConfigPool(pkg.root,
 				self._allocate_config, self._deallocate_config),
 				fetchonly=1, logfile=self._fetch_log,
-				pkg=pkg, scheduler=self._sched_iface)
+				pkg=pkg, prefetch=True, scheduler=self._sched_iface)
 
 		elif pkg.type_name == "binary" and \
 			"--getbinpkg" in self.myopts and \
