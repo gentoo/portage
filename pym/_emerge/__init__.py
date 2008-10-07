@@ -2471,6 +2471,8 @@ class EbuildBuild(CompositeTask):
 			return
 
 		if self._default_exit(fetcher) != os.EX_OK:
+			if fetcher.logfile is not None:
+				self.settings["PORTAGE_LOG_FILE"] = fetcher.logfile
 			self.wait()
 			return
 
