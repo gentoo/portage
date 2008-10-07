@@ -2278,16 +2278,17 @@ class EbuildFetcher(SpawnProcess):
 	def _wait_hook(self):
 		# Collect elog messages that might have been
 		# created by the pkg_nofetch phase.
-		portage.elog.elog_process(self.pkg.cpv, self._build_dir.settings)
-		try:
-			shutil.rmtree(self._build_dir.settings["PORTAGE_BUILDDIR"])
-		except EnvironmentError, e:
-			if e.errno != errno.ENOENT:
-				raise
-			del e
-		self._build_dir.unlock()
-		self.config_pool.deallocate(self._build_dir.settings)
-		self._build_dir = None
+		if self._build_dir is not None:
+			portage.elog.elog_process(self.pkg.cpv, self._build_dir.settings)
+			try:
+				shutil.rmtree(self._build_dir.settings["PORTAGE_BUILDDIR"])
+			except EnvironmentError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
+			self._build_dir.unlock()
+			self.config_pool.deallocate(self._build_dir.settings)
+			self._build_dir = None
 		SpawnProcess._wait_hook(self)
 
 class EbuildBuildDir(SlotObject):
