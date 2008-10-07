@@ -2249,6 +2249,15 @@ class EbuildFetcher(SpawnProcess):
 		settings = self.config_pool.allocate()
 		self._build_dir = EbuildBuildDir(pkg=self.pkg, settings=settings)
 		self._build_dir.lock()
+		
+		if self.background and self.logfile is None:
+			fetch_log = None
+			if not self.fetchonly:
+				fetch_log = settings.get("PORTAGE_LOG_FILE")
+			if fetch_log is None:
+				fetch_log = self.scheduler.fetch.log_file
+			self.logfile = fetch_log
+
 		phase = "fetch"
 		if self.fetchall:
 			phase = "fetchall"
@@ -2275,21 +2284,22 @@ class EbuildFetcher(SpawnProcess):
 		self.env = fetch_env
 		SpawnProcess._start(self)
 
-	def _wait_hook(self):
+	def _set_returncode(self, wait_retval):
+		SpawnProcess._set_returncode(self, wait_retval)
 		# Collect elog messages that might have been
 		# created by the pkg_nofetch phase.
 		if self._build_dir is not None:
 			portage.elog.elog_process(self.pkg.cpv, self._build_dir.settings)
-			try:
-				shutil.rmtree(self._build_dir.settings["PORTAGE_BUILDDIR"])
-			except EnvironmentError, e:
-				if e.errno != errno.ENOENT:
-					raise
-				del e
+			if self.returncode == os.EX_OK:
+				try:
+					shutil.rmtree(self._build_dir.settings["PORTAGE_BUILDDIR"])
+				except EnvironmentError, e:
+					if e.errno != errno.ENOENT:
+						raise
+					del e
 			self._build_dir.unlock()
 			self.config_pool.deallocate(self._build_dir.settings)
 			self._build_dir = None
-		SpawnProcess._wait_hook(self)
 
 class EbuildBuildDir(SlotObject):
 
@@ -2322,6 +2332,7 @@ class EbuildBuildDir(SlotObject):
 			portage.doebuild_environment(ebuild_path, "setup", root_config.root,
 				self.settings, debug, use_cache, portdb)
 			dir_path = self.settings["PORTAGE_BUILDDIR"]
+			portage.prepare_build_dirs(self.pkg.root, self.settings, 0)
 
 		catdir = os.path.dirname(dir_path)
 		self._catdir = catdir
@@ -2432,8 +2443,6 @@ class EbuildBuild(CompositeTask):
 				return
 
 		fetch_log = None
-		if self.background:
-			fetch_log = self.scheduler.fetch.log_file
 
 		fetcher = EbuildFetcher(config_pool=self.config_pool,
 			fetchall=opts.fetch_all_uri,
