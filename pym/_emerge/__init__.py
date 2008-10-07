@@ -2238,14 +2238,17 @@ class MiscFunctionsProcess(SpawnProcess):
 
 class EbuildFetcher(SpawnProcess):
 
-	__slots__ = ("fetchonly", "fetchall", "pkg",)
+	__slots__ = ("config_pool", "fetchonly", "fetchall", "pkg",) + \
+		("_build_dir",)
 
 	def _start(self):
 
 		root_config = self.pkg.root_config
 		portdb = root_config.trees["porttree"].dbapi
 		ebuild_path = portdb.findname(self.pkg.cpv)
-		settings = root_config.settings
+		settings = self.config_pool.allocate()
+		self._build_dir = EbuildBuildDir(pkg=self.pkg, settings=settings)
+		self._build_dir.lock()
 		phase = "fetch"
 		if self.fetchall:
 			phase = "fetchall"
@@ -2272,6 +2275,21 @@ class EbuildFetcher(SpawnProcess):
 		self.env = fetch_env
 		SpawnProcess._start(self)
 
+	def _wait_hook(self):
+		# Collect elog messages that might have been
+		# created by the pkg_nofetch phase.
+		portage.elog.elog_process(self.pkg.cpv, self._build_dir.settings)
+		try:
+			shutil.rmtree(self._build_dir.settings["PORTAGE_BUILDDIR"])
+		except EnvironmentError, e:
+			if e.errno != errno.ENOENT:
+				raise
+			del e
+		self._build_dir.unlock()
+		self.config_pool.deallocate(self._build_dir.settings)
+		self._build_dir = None
+		SpawnProcess._wait_hook(self)
+
 class EbuildBuildDir(SlotObject):
 
 	__slots__ = ("dir_path", "pkg", "settings",
@@ -2297,6 +2315,7 @@ class EbuildBuildDir(SlotObject):
 			portdb = root_config.trees["porttree"].dbapi
 			ebuild_path = portdb.findname(self.pkg.cpv)
 			settings = self.settings
+			settings.setcpv(self.pkg)
 			debug = settings.get("PORTAGE_DEBUG") == "1"
 			use_cache = 1 # always true
 			portage.doebuild_environment(ebuild_path, "setup", root_config.root,
@@ -2349,7 +2368,7 @@ class EbuildBuildDir(SlotObject):
 
 class EbuildBuild(CompositeTask):
 
-	__slots__ = ("args_set", "background", "find_blockers",
+	__slots__ = ("args_set", "config_pool", "find_blockers",
 		"ldpath_mtimes", "logger", "opts", "pkg", "pkg_count",
 		"prefetcher", "settings", "world_atom") + \
 		("_build_dir", "_buildpkg", "_ebuild_path", "_issyspkg", "_tree")
@@ -2415,7 +2434,8 @@ class EbuildBuild(CompositeTask):
 		if self.background:
 			fetch_log = self.scheduler.fetch.log_file
 
-		fetcher = EbuildFetcher(fetchall=opts.fetch_all_uri,
+		fetcher = EbuildFetcher(config_pool=self.config_pool,
+			fetchall=opts.fetch_all_uri,
 			fetchonly=opts.fetchonly,
 			background=self.background, logfile=fetch_log,
 			pkg=pkg, scheduler=self.scheduler)
@@ -3439,7 +3459,7 @@ class MergeListItem(CompositeTask):
 	"""
 
 	__slots__ = ("args_set",
-		"binpkg_opts", "build_opts", "emerge_opts",
+		"binpkg_opts", "build_opts", "config_pool", "emerge_opts",
 		"failed_fetches", "find_blockers", "logger", "mtimedb", "pkg",
 		"pkg_count", "pkg_to_replace", "prefetcher",
 		"settings", "statusMessage", "world_atom") + \
@@ -3492,6 +3512,7 @@ class MergeListItem(CompositeTask):
 
 			build = EbuildBuild(args_set=args_set,
 				background=self.background,
+				config_pool=self.config_pool,
 				find_blockers=find_blockers,
 				ldpath_mtimes=ldpath_mtimes, logger=logger,
 				opts=build_opts, pkg=pkg, pkg_count=pkg_count,
@@ -8949,6 +8970,21 @@ class Scheduler(PollScheduler):
 		__slots__ = ("build_dir", "build_log",
 			"fetch_log", "pkg", "returncode")
 
+	class _ConfigPool(object):
+		"""Interface for a task to temporarily allocate a config
+		instance from a pool. This allows a task to be constructed
+		long before the config instance actually becomes needed, like
+		when prefetchers are constructed for the whole merge list."""
+		__slots__ = ("_root", "_allocate", "_deallocate")
+		def __init__(self, root, allocate, deallocate):
+			self._root = root
+			self._allocate = allocate
+			self._deallocate = deallocate
+		def allocate(self):
+			return self._allocate(self._root)
+		def deallocate(self, settings):
+			self._deallocate(settings)
+
 	def __init__(self, settings, trees, mtimedb, myopts,
 		spinner, mergelist, favorites, digraph):
 		PollScheduler.__init__(self)
@@ -9369,6 +9405,8 @@ class Scheduler(PollScheduler):
 		elif pkg.type_name == "ebuild":
 
 			prefetcher = EbuildFetcher(background=True,
+				config_pool=self._ConfigPool(pkg.root,
+				self._allocate_config, self._deallocate_config),
 				fetchonly=1, logfile=self._fetch_log,
 				pkg=pkg, scheduler=self._sched_iface)
 
@@ -10005,6 +10043,8 @@ class Scheduler(PollScheduler):
 		task = MergeListItem(args_set=self._args_set,
 			background=self._background, binpkg_opts=self._binpkg_opts,
 			build_opts=self._build_opts,
+			config_pool=self._ConfigPool(pkg.root,
+			self._allocate_config, self._deallocate_config),
 			emerge_opts=self.myopts,
 			failed_fetches=self._failed_fetches,
 			find_blockers=self._find_blockers(pkg), logger=self._logger,

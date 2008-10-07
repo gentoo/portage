@@ -5622,16 +5622,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if not emerge_skip_distfiles and \
 			need_distfiles and not fetch(
 			fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
-			if have_build_dirs:
-				# Create an elog message for this fetch failure since the
-				# mod_echo module might push the original message off of the
-				# top of the terminal and prevent the user from being able to
-				# see it.
-				from portage.elog.messages import eerror
-				eerror("Fetch failed for '%s'" % mycpv,
-					phase="unpack", key=mycpv)
-				from portage.elog import elog_process
-				elog_process(mysettings.mycpv, mysettings)
 			return 1
 
 		if mydo == "fetch" and listonly:
