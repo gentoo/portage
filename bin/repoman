@@ -322,7 +322,7 @@ qahelp={
 qacats = qahelp.keys()
 qacats.sort()
 
-qawarnings = frozenset((
+qawarnings = set((
 "changelog.missing",
 "changelog.notadded",
 "digestentry.unused",
