@@ -2290,7 +2290,7 @@ class EbuildFetcher(SpawnProcess):
 		# created by the pkg_nofetch phase.
 		if self._build_dir is not None:
 			portage.elog.elog_process(self.pkg.cpv, self._build_dir.settings)
-			if self.returncode == os.EX_OK:
+			if self.fetchonly or self.returncode == os.EX_OK:
 				try:
 					shutil.rmtree(self._build_dir.settings["PORTAGE_BUILDDIR"])
 				except EnvironmentError, e:
