@@ -9928,6 +9928,10 @@ class Scheduler(PollScheduler):
 			temp_settings = self._config_pool[root].pop()
 		else:
 			temp_settings = portage.config(clone=self.pkgsettings[root])
+		# Since config.setcpv() isn't guaranteed to call config.reset() due to
+		# performance reasons, call it here to make sure all settings from the
+		# previous package get flushed out (such as PORTAGE_LOG_FILE).
+		temp_settings.reset()
 		return temp_settings
 
 	def _deallocate_config(self, settings):
