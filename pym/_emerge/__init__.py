@@ -7471,7 +7471,7 @@ class depgraph(object):
 							p.append(colorize("WARN", "    then resume the merge."))
 
 		out = sys.stdout
-		show_repos = repoadd_set != set(["0"])
+		show_repos = repoadd_set and repoadd_set != set(["0"])
 
 		for x in p:
 			if isinstance(x, basestring):
