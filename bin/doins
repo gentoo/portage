@@ -25,8 +25,9 @@ if [[ ${INSDESTTREE#${D}} != "${INSDESTTREE}" ]]; then
 	exit 1
 fi
 
-TMP=$T/.doins_tmp
-mkdir "$TMP"
+export TMP=$T/.doins_tmp
+# Use separate directories to avoid potential name collisions.
+mkdir -p "$TMP"/{1,2}
 
 [[ ! -d ${D}${INSDESTTREE} ]] && dodir "${INSDESTTREE}"
 
@@ -34,8 +35,8 @@ _doins() {
 	local mysrc="$1" mydir="$2" cleanup="" rval
 
 	if [ -L "$mysrc" ] ; then
-		cp "$mysrc" "$TMP"
-		mysrc="$TMP/${mysrc##*/}"
+		cp "$mysrc" "$TMP/2"
+		mysrc="$TMP/2/${mysrc##*/}"
 		cleanup=${mysrc}
 	fi
 
@@ -77,14 +78,14 @@ for x in "$@" ; do
 			pushd "${PWD%/*}" >/dev/null
 		done
 		if [[ $x != $x_orig ]] ; then
-			mv "$x" "$TMP/$x_orig"
-			pushd "$TMP" >/dev/null
+			mv "$x" "$TMP/1/$x_orig"
+			pushd "$TMP/1" >/dev/null
 		fi
 		find "$x_orig" -type d -exec dodir "${INSDESTTREE}/{}" \;
 		find "$x_orig" \( -type f -or -type l \) -print0 | _xdoins
 		if [[ $x != $x_orig ]] ; then
 			popd >/dev/null
-			mv "$TMP/$x_orig" "$x"
+			mv "$TMP/1/$x_orig" "$x"
 		fi
 		while popd >/dev/null 2>&1 ; do true ; done
 		((++success))
