@@ -2469,6 +2469,13 @@ class EbuildBuild(CompositeTask):
 			os.path.exists(fetcher.logfile):
 			self.settings["PORTAGE_LOG_FILE"] = fetcher.logfile
 
+		if not fetch_failed and fetcher.logfile is not None:
+			# Fetch was successful, so remove the fetch log.
+			try:
+				os.unlink(fetcher.logfile)
+			except OSError:
+				pass
+
 		if fetch_failed or opts.fetchonly:
 			self.wait()
 			return
