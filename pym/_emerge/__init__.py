@@ -2447,20 +2447,13 @@ class EbuildBuild(CompositeTask):
 				self.wait()
 				return
 
-		fetch_log = None
-
 		fetcher = EbuildFetcher(config_pool=self.config_pool,
 			fetchall=opts.fetch_all_uri,
 			fetchonly=opts.fetchonly,
-			background=self.background, logfile=fetch_log,
+			background=self.background,
 			pkg=pkg, scheduler=self.scheduler)
 
-		if self.background:
-			fetcher.addExitListener(self._fetch_exit)
-			self._current_task = fetcher
-			self.scheduler.fetch.schedule(fetcher)
-		else:
-			self._start_task(fetcher, self._fetch_exit)
+		self._start_task(fetcher, self._fetch_exit)
 
 	def _fetch_exit(self, fetcher):
 		opts = self.opts
