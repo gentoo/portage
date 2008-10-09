@@ -753,8 +753,8 @@ dyn_clean() {
 
 	# Some kernels, such as Solaris, return EINVAL when an attempt
 	# is made to remove the current working directory.
-	cd "$PORTAGE_BUILDDIR"/..
-	rmdir "$PORTAGE_BUILDDIR" 2>/dev/null
+	cd "$PORTAGE_BUILDDIR"/../..
+	rmdir "$PORTAGE_BUILDDIR" "${PORTAGE_BUILDDIR%/*}" 2>/dev/null
 
 	true
 }
