@@ -2142,7 +2142,6 @@ class SpawnProcess(SubProcess):
 
 		if isinstance(retval, int):
 			# spawn failed
-			os.close(master_fd)
 			for f in files.values():
 				f.close()
 			self.returncode = retval
