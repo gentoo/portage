@@ -1395,6 +1395,9 @@ _ebuild_arg_to_phase() {
 		unpack)
 			phase_func=src_unpack
 			;;
+		prepare)
+			phase_func=src_prepare
+			;;
 		configure)
 			! hasq $eapi 0 1 2_pre1 && \
 				phase_func=src_configure
