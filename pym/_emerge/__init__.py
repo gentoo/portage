@@ -2295,7 +2295,9 @@ class EbuildFetcher(SpawnProcess):
 					elog_out.close()
 			if not self.prefetch:
 				portage.elog.elog_process(self.pkg.cpv, self._build_dir.settings)
-			if self.fetchonly or self.returncode == os.EX_OK:
+			features = self._build_dir.settings.features
+			if (self.fetchonly or self.returncode == os.EX_OK) and \
+				not ("keepwork" in features or "keeptemp" in features):
 				try:
 					shutil.rmtree(self._build_dir.settings["PORTAGE_BUILDDIR"])
 				except EnvironmentError, e:
