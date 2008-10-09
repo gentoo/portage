@@ -1343,8 +1343,11 @@ class config(object):
 
 			# make.globals should not be relative to config_root
 			# because it only contains constants.
-			self.mygcfg = getconfig(os.path.join("/etc", "make.globals"),
-				expand=expand_map)
+			for x in (portage.const.GLOBAL_CONFIG_PATH, "/etc"):
+				self.mygcfg = getconfig(os.path.join(x, "make.globals"),
+					expand=expand_map)
+				if self.mygcfg:
+					break
 
 			if self.mygcfg is None:
 				self.mygcfg = {}
