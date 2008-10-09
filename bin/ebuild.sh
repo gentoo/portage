@@ -7,7 +7,7 @@ PORTAGE_BIN_PATH="${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"
 PORTAGE_PYM_PATH="${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}"
 
 SANDBOX_PREDICT="${SANDBOX_PREDICT}:/proc/self/maps:/dev/console:/dev/random"
-export SANDBOX_PREDICT
+export SANDBOX_PREDICT="${SANDBOX_PREDICT}:${PORTAGE_PYM_PATH}:${PORTAGE_DEPCACHEDIR}"
 export SANDBOX_WRITE="${SANDBOX_WRITE}:/dev/shm:/dev/stdout:/dev/stderr:${PORTAGE_TMPDIR}"
 export SANDBOX_READ="${SANDBOX_READ}:/:/dev/shm:/dev/stdin:${PORTAGE_TMPDIR}"
 # Don't use sandbox's BASH_ENV for new shells because it does
@@ -260,6 +260,12 @@ register_die_hook() {
 	export EBUILD_DEATH_HOOKS="${EBUILD_DEATH_HOOKS} $*"
 }
 
+# Ensure that $PWD is sane whenever possible.
+if ! hasq "$EBUILD_PHASE" clean depend help ; then
+	cd "$PORTAGE_BUILDDIR" || \
+		die "PORTAGE_BUILDDIR does not exist: '$PORTAGE_BUILDDIR'"
+fi
+
 #if no perms are specified, dirs/files will have decent defaults
 #(not secretive, but not stupid)
 umask 022
@@ -372,21 +378,8 @@ unpack() {
 			LHa|LHA|lha|lzh)
 				lha xfq "${srcdir}${x}" || die "$myfail"
 				;;
-			a)
+			a|deb)
 				ar x "${srcdir}${x}" || die "$myfail"
-				;;
-			deb)
-				# Unpacking .deb archives can not always be done with
-				# `ar`.  For instance on AIX this doesn't work out.  If
-				# we have `deb2targz` installed, prefer it over `ar` for
-				# that reason.  We just make sure on AIX `deb2targz` is
-				# installed.
-				if type -P deb2targz > /dev/null; then
-					deb2targz "${srcdir}/${x}" || die "$myfail"
-					mv "${srcdir}/${x/.deb/.tar.gz}" data.tar.gz
-				else
-					ar x "${srcdir}/${x}" || die "$myfail"
-				fi
 				;;
 			lzma)
 				if [ "${y}" == "tar" ]; then
@@ -614,6 +607,15 @@ src_test() {
 	fi
 }
 
+# Used to generate the /lib/cpp and /usr/bin/cc wrappers
+gen_wrapper() {
+	cat > "$1" <<-EOF
+	#!/bin/sh
+	exec $2 "\$@"
+	EOF
+	chmod 0755 "$1"
+}
+
 ebuild_phase() {
 	[ "$(type -t ${1})" == "function" ] && qa_call ${1}
 }
@@ -653,11 +655,12 @@ dyn_unpack() {
 	fi
 	if [ "${newstuff}" == "yes" ]; then
 		# We don't necessarily have privileges to do a full dyn_clean here.
-		rm -rf "${PORTAGE_BUILDDIR}"/{.unpacked,.compiled,.tested,.packaged,build-info}
 		rm -rf "${WORKDIR}"
-		if [ -d "${T}" ] && \
-			! hasq keeptemp $FEATURES && ! hasq keepwork $FEATURES ; then
+		if [ -d "${T}" ] && ! hasq keeptemp ${FEATURES} ; then
 			rm -rf "${T}" && mkdir "${T}"
+		else
+			[ -e "${T}/environment" ] && \
+				mv "${T}/environment" "${T}/environment.keeptemp"
 		fi
 	fi
 	if [ -e "${WORKDIR}" ]; then
@@ -694,10 +697,11 @@ dyn_clean() {
 	fi
 
 	rm -rf "${PORTAGE_BUILDDIR}/image" "${PORTAGE_BUILDDIR}/homedir"
-	rm -f "${PORTAGE_BUILDDIR}/.installed"
 
-	if ! hasq keeptemp $FEATURES && ! hasq keepwork $FEATURES ; then
+	if ! hasq keeptemp $FEATURES; then
 		rm -rf "${T}"
+	else
+		[ -e "${T}/environment" ] && mv "${T}/environment" "${T}/environment.keeptemp"
 	fi
 
 	if ! hasq keepwork $FEATURES; then
@@ -706,6 +710,7 @@ dyn_clean() {
 		rm -rf "${PORTAGE_BUILDDIR}/.unpacked"
 		rm -rf "${PORTAGE_BUILDDIR}/.compiled"
 		rm -rf "${PORTAGE_BUILDDIR}/.tested"
+		rm -rf "${PORTAGE_BUILDDIR}/.installed"
 		rm -rf "${PORTAGE_BUILDDIR}/.packaged"
 		rm -rf "${PORTAGE_BUILDDIR}/build-info"
 		rm -rf "${WORKDIR}"
@@ -967,15 +972,6 @@ dyn_install() {
 	#some packages uses an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
-
-	# Reset exeinto(), docinto(), insinto(), and into() state variables
-	# in case the user is running the install phase multiple times
-	# consecutively via the ebuild command.
-	export DESTTREE=/usr
-	export INSDESTTREE=""
-	export _E_EXEDESTTREE_=""
-	export _E_DOCDESTTREE_=""
-
 	ebuild_phase src_install
 	touch "${PORTAGE_BUILDDIR}/.installed"
 	vecho ">>> Completed installing ${PF} into ${D}"
@@ -1044,7 +1040,7 @@ dyn_help() {
 	echo "  help        : show this help screen"
 	echo "  setup       : execute package specific setup actions"
 	echo "  fetch       : download source archive(s) and patches"
-	echo "  digest      : create a manifest file for the package"
+	echo "  digest      : create a digest and a manifest file for the package"
 	echo "  manifest    : create a manifest file for the package"
 	echo "  unpack      : unpack/patch sources (auto-fetch if needed)"
 	echo "  compile     : compile sources (auto-fetch/unpack if needed)"
@@ -1107,7 +1103,7 @@ debug-print() {
 
 		# extra user-configurable targets
 		if [ "$ECLASS_DEBUG_OUTPUT" == "on" ]; then
-			echo "debug: $1" >&2
+			echo "debug: $1"
 		elif [ -n "$ECLASS_DEBUG_OUTPUT" ]; then
 			echo "debug: $1" >> $ECLASS_DEBUG_OUTPUT
 		fi
@@ -1339,7 +1335,6 @@ remove_path_entry() {
 }
 
 source_all_bashrcs() {
-	[ -n "$EBUILD_PHASE" ] || return
 	local OCC="${CC}" OCXX="${CXX}"
 	# source the existing profile.bashrc's.
 	save_IFS
@@ -1395,13 +1390,8 @@ PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 
 # @FUNCTION: filter_readonly_variables
 # @DESCRIPTION: [--filter-sandbox] [--allow-extra-vars]
-# Read an environment from stdin and echo to stdout while filtering variables
-# with names that are known to cause interference:
-#
-#   * some specific variables for which bash does not allow assignment
-#   * some specific variables that affect portage or sandbox behavior
-#   * variable names that begin with a digit or that contain any
-#     non-alphanumeric characters that are not be supported by bash
+# Read an environment from stdin and echo to stdout while filtering readonly
+# variables.
 #
 # --filter-sandbox causes all SANDBOX_* variables to be filtered, which
 # is only desired in certain cases, such as during preprocessing or when
@@ -1423,16 +1413,16 @@ PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 # builtin command. To avoid this problem, this function filters those
 # variables out and discards them. See bug #190128.
 filter_readonly_variables() {
-	local x filtered_vars
+	local x filtered_vars var_grep
 	local readonly_bash_vars="DIRSTACK EUID FUNCNAME GROUPS
 		PIPESTATUS PPID SHELLOPTS UID"
 	local filtered_sandbox_vars="SANDBOX_ACTIVE SANDBOX_BASHRC
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
 		SANDBOX_LOG SANDBOX_ON"
 	filtered_vars="${readonly_bash_vars} ${READONLY_PORTAGE_VARS}
-		BASH_.* PATH"
+		BASH_[_[:alnum:]]* PATH"
 	if hasq --filter-sandbox $* ; then
-		filtered_vars="${filtered_vars} SANDBOX_.*"
+		filtered_vars="${filtered_vars} SANDBOX_[_[:alnum:]]*"
 	else
 		filtered_vars="${filtered_vars} ${filtered_sandbox_vars}"
 	fi
@@ -1446,8 +1436,20 @@ filter_readonly_variables() {
 			${PORTAGE_MUTABLE_FILTERED_VARS}
 		"
 	fi
-
-	"${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars}"
+	set -f
+	for x in ${filtered_vars} ; do
+		var_grep="${var_grep}|${x}"
+	done
+	set +f
+	var_grep=${var_grep:1} # strip the first |
+	var_grep="(^|^declare[[:space:]]+-[^[:space:]]+[[:space:]]+|^export[[:space:]]+)(${var_grep})=.*"
+	# The sed is to remove the readonly attribute from variables such as those
+	# listed in READONLY_EBUILD_METADATA, since having any readonly attributes
+	# persisting in the saved environment can be inconvenient when it
+	# eventually needs to be reloaded.
+	"${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${var_grep}" | sed -r \
+		-e 's:^declare[[:space:]]+-r[[:space:]]+:declare :' \
+		-e 's:^declare[[:space:]]+-([[:alnum:]]*)r([[:alnum:]]*)[[:space:]]+:declare -\1\2 :'
 }
 
 # @FUNCTION: preprocess_ebuild_env
@@ -1568,6 +1570,14 @@ if [ -n "${EBUILD_SH_ARGS}" ] && \
 #	for X in /usr/lib/portage/bin/functions/*.sh; do
 #		source ${X} || die "Failed to source ${X}"
 #	done
+
+else
+
+killparent() {
+	trap INT
+	kill ${PORTAGE_MASTER_PID}
+}
+trap "killparent" INT
 
 fi # "$*"!="depend" && "$*"!="clean" && "$*" != "setup"
 
@@ -1712,6 +1722,20 @@ if ! hasq ${EBUILD_PHASE} clean && \
 	PDEPEND="${PDEPEND} ${E_PDEPEND}"
 
 	unset ECLASS E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
+
+	if [ "${EBUILD_PHASE}" != "depend" ] ; then
+		# Make IUSE defaults backward compatible with all the old shell code.
+		iuse_temp=""
+		for x in ${IUSE} ; do
+			if [[ ${x} == +* ]] || [[ ${x} == -* ]] ; then
+				iuse_temp="${iuse_temp} ${x:1}"
+			else
+				iuse_temp="${iuse_temp} ${x}"
+			fi
+		done
+		export IUSE=${iuse_temp}
+		unset x iuse_temp
+	fi
 	set +f
 fi
 
