@@ -4731,10 +4731,7 @@ class depgraph(object):
 
 				if debug:
 					print "Exiting...", jbigkey
-		except ValueError, e:
-			if not e.args or not isinstance(e.args[0], list) or \
-				len(e.args[0]) < 2:
-				raise
+		except portage.exception.AmbiguousPackageName, e:
 			pkgs = e.args[0]
 			portage.writemsg("\n\n!!! An atom in the dependencies " + \
 				"is not fully-qualified. Multiple matches:\n\n", noiselevel=-1)
@@ -8031,8 +8028,8 @@ class depgraph(object):
 					expanded_atoms = non_virtual_atoms
 			if len(expanded_atoms) > 1:
 				# compatible with portage.cpv_expand()
-				raise ValueError([portage.dep_getkey(x) \
-					for x in expanded_atoms])
+				raise portage.exception.AmbiguousPackageName(
+					[portage.dep_getkey(x) for x in expanded_atoms])
 			if expanded_atoms:
 				atom = expanded_atoms[0]
 			else:
@@ -10556,7 +10553,7 @@ def unmerge(root_config, myopts, unmerge_action,
 			# what will and will not get unmerged
 			try:
 				mymatch = vartree.dbapi.match(x)
-			except ValueError, errpkgs:
+			except portage.exception.AmbiguousPackageName, errpkgs:
 				print "\n\n!!! The short ebuild name \"" + \
 					x + "\" is ambiguous.  Please specify"
 				print "!!! one of the following fully-qualified " + \
@@ -11783,7 +11780,7 @@ def action_config(settings, trees, myopts, myfiles):
 	print
 	try:
 		pkgs = trees[settings["ROOT"]]["vartree"].dbapi.match(myfiles[0])
-	except ValueError, e:
+	except portage.exception.AmbiguousPackageName, e:
 		# Multiple matches thrown from cpv_expand
 		pkgs = e.args[0]
 	if len(pkgs) == 0:
@@ -12115,7 +12112,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				return
 			try:
 				atom = portage.dep_expand(x, mydb=vardb, settings=settings)
-			except ValueError, e:
+			except portage.exception.AmbiguousPackageName, e:
 				msg = "The short ebuild name \"" + x + \
 					"\" is ambiguous.  Please specify " + \
 					"one of the following " + \
@@ -14024,7 +14021,7 @@ def emerge_main():
 				try:
 					valid_atoms.append(
 						portage.dep_expand(x, mydb=vardb, settings=settings))
-				except ValueError, e:
+				except portage.exception.AmbiguousPackageName, e:
 					msg = "The short ebuild name \"" + x + \
 						"\" is ambiguous.  Please specify " + \
 						"one of the following " + \
