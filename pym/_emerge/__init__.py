@@ -13983,10 +13983,6 @@ def emerge_main():
 	elif "config"==myaction:
 		validate_ebuild_environment(trees)
 		action_config(settings, trees, myopts, myfiles)
-	
-	# INFO action
-	elif "info"==myaction:
-		action_info(settings, trees, myopts, myfiles)
 
 	# SEARCH action
 	elif "search"==myaction:
@@ -14018,7 +14014,7 @@ def emerge_main():
 			if not (buildpkgonly or fetchonly or pretend):
 				post_emerge(root_config, myopts, mtimedb, os.EX_OK)
 
-	elif myaction in ("depclean", "prune"):
+	elif myaction in ("depclean", "info", "prune"):
 
 		# Ensure atoms are valid before calling unmerge().
 		vardb = trees[settings["ROOT"]]["vartree"].dbapi
@@ -14048,6 +14044,9 @@ def emerge_main():
 			writemsg_level("".join("!!! %s\n" % line for line in msg),
 				level=logging.ERROR, noiselevel=-1)
 			return 1
+
+		if myaction == "info":
+			return action_info(settings, trees, myopts, valid_atoms)
 
 		validate_ebuild_environment(trees)
 		action_depclean(settings, trees, mtimedb["ldpath"],
