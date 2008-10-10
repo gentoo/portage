@@ -67,6 +67,13 @@ class ReadOnlyFileSystem(PortageException):
 class CommandNotFound(PortageException):
 	"""A required binary was not available or executable"""
 
+class AmbiguousPackageName(ValueError, PortageException):
+	"""Raised by portage.cpv_expand() when the package name is ambiguous due
+	to the existence of multiple matches in different categories. This inherits
+	from ValueError, for backward compatibility with calling code that already
+	handles ValueError."""
+	def __str__(self):
+		return ValueError.__str__(self)
 
 class PortagePackageException(PortageException):
 	"""Malformed or missing package data"""

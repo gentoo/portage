@@ -6617,7 +6617,10 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 					else:
 						virtual_name_collision = True
 			if not virtual_name_collision:
-				raise ValueError, matches
+				# AmbiguousPackageName inherits from ValueError,
+				# for backward compatibility with calling code
+				# that already handles ValueError.
+				raise portage.exception.AmbiguousPackageName(matches)
 		elif matches:
 			mykey=matches[0]
 
