@@ -2169,7 +2169,6 @@ class SpawnProcess(SubProcess):
 
 		if isinstance(retval, int):
 			# spawn failed
-			os.close(master_fd)
 			for f in files.values():
 				f.close()
 			self.returncode = retval
@@ -2322,7 +2321,9 @@ class EbuildFetcher(SpawnProcess):
 					elog_out.close()
 			if not self.prefetch:
 				portage.elog.elog_process(self.pkg.cpv, self._build_dir.settings)
-			if self.fetchonly or self.returncode == os.EX_OK:
+			features = self._build_dir.settings.features
+			if (self.fetchonly or self.returncode == os.EX_OK) and \
+				not ("keepwork" in features or "keeptemp" in features):
 				try:
 					shutil.rmtree(self._build_dir.settings["PORTAGE_BUILDDIR"])
 				except EnvironmentError, e:
@@ -2474,20 +2475,13 @@ class EbuildBuild(CompositeTask):
 				self.wait()
 				return
 
-		fetch_log = None
-
 		fetcher = EbuildFetcher(config_pool=self.config_pool,
 			fetchall=opts.fetch_all_uri,
 			fetchonly=opts.fetchonly,
-			background=self.background, logfile=fetch_log,
+			background=self.background,
 			pkg=pkg, scheduler=self.scheduler)
 
-		if self.background:
-			fetcher.addExitListener(self._fetch_exit)
-			self._current_task = fetcher
-			self.scheduler.fetch.schedule(fetcher)
-		else:
-			self._start_task(fetcher, self._fetch_exit)
+		self._start_task(fetcher, self._fetch_exit)
 
 	def _fetch_exit(self, fetcher):
 		opts = self.opts
@@ -2502,6 +2496,13 @@ class EbuildBuild(CompositeTask):
 		if fetch_failed and fetcher.logfile is not None and \
 			os.path.exists(fetcher.logfile):
 			self.settings["PORTAGE_LOG_FILE"] = fetcher.logfile
+
+		if not fetch_failed and fetcher.logfile is not None:
+			# Fetch was successful, so remove the fetch log.
+			try:
+				os.unlink(fetcher.logfile)
+			except OSError:
+				pass
 
 		if fetch_failed or opts.fetchonly:
 			self.wait()
@@ -4757,10 +4758,7 @@ class depgraph(object):
 
 				if debug:
 					print "Exiting...", jbigkey
-		except ValueError, e:
-			if not e.args or not isinstance(e.args[0], list) or \
-				len(e.args[0]) < 2:
-				raise
+		except portage.exception.AmbiguousPackageName, e:
 			pkgs = e.args[0]
 			portage.writemsg("\n\n!!! An atom in the dependencies " + \
 				"is not fully-qualified. Multiple matches:\n\n", noiselevel=-1)
@@ -7507,7 +7505,7 @@ class depgraph(object):
 							p.append(colorize("WARN", "    then resume the merge."))
 
 		out = sys.stdout
-		show_repos = repoadd_set != set(["0"])
+		show_repos = repoadd_set and repoadd_set != set(["0"])
 
 		for x in p:
 			if isinstance(x, basestring):
@@ -8066,8 +8064,8 @@ class depgraph(object):
 					expanded_atoms = non_virtual_atoms
 			if len(expanded_atoms) > 1:
 				# compatible with portage.cpv_expand()
-				raise ValueError([portage.dep_getkey(x) \
-					for x in expanded_atoms])
+				raise portage.exception.AmbiguousPackageName(
+					[portage.dep_getkey(x) for x in expanded_atoms])
 			if expanded_atoms:
 				atom = expanded_atoms[0]
 			else:
@@ -9970,6 +9968,10 @@ class Scheduler(PollScheduler):
 			temp_settings = self._config_pool[root].pop()
 		else:
 			temp_settings = portage.config(clone=self.pkgsettings[root])
+		# Since config.setcpv() isn't guaranteed to call config.reset() due to
+		# performance reasons, call it here to make sure all settings from the
+		# previous package get flushed out (such as PORTAGE_LOG_FILE).
+		temp_settings.reset()
 		return temp_settings
 
 	def _deallocate_config(self, settings):
@@ -10593,7 +10595,7 @@ def unmerge(root_config, myopts, unmerge_action,
 			# what will and will not get unmerged
 			try:
 				mymatch = vartree.dbapi.match(x)
-			except ValueError, errpkgs:
+			except portage.exception.AmbiguousPackageName, errpkgs:
 				print "\n\n!!! The short ebuild name \"" + \
 					x + "\" is ambiguous.  Please specify"
 				print "!!! one of the following fully-qualified " + \
@@ -11867,7 +11869,7 @@ def action_config(settings, trees, myopts, myfiles):
 	print
 	try:
 		pkgs = trees[settings["ROOT"]]["vartree"].dbapi.match(myfiles[0])
-	except ValueError, e:
+	except portage.exception.AmbiguousPackageName, e:
 		# Multiple matches thrown from cpv_expand
 		pkgs = e.args[0]
 	if len(pkgs) == 0:
@@ -12200,7 +12202,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				return
 			try:
 				atom = portage.dep_expand(x, mydb=vardb, settings=settings)
-			except ValueError, e:
+			except portage.exception.AmbiguousPackageName, e:
 				msg = "The short ebuild name \"" + x + \
 					"\" is ambiguous.  Please specify " + \
 					"one of the following " + \
@@ -14068,10 +14070,6 @@ def emerge_main():
 	elif "config"==myaction:
 		validate_ebuild_environment(trees)
 		action_config(settings, trees, myopts, myfiles)
-	
-	# INFO action
-	elif "info"==myaction:
-		action_info(settings, trees, myopts, myfiles)
 
 	# SEARCH action
 	elif "search"==myaction:
@@ -14103,7 +14101,7 @@ def emerge_main():
 			if not (buildpkgonly or fetchonly or pretend):
 				post_emerge(root_config, myopts, mtimedb, os.EX_OK)
 
-	elif myaction in ("depclean", "prune"):
+	elif myaction in ("depclean", "info", "prune"):
 
 		# Ensure atoms are valid before calling unmerge().
 		vardb = trees[settings["ROOT"]]["vartree"].dbapi
@@ -14113,7 +14111,7 @@ def emerge_main():
 				try:
 					valid_atoms.append(
 						portage.dep_expand(x, mydb=vardb, settings=settings))
-				except ValueError, e:
+				except portage.exception.AmbiguousPackageName, e:
 					msg = "The short ebuild name \"" + x + \
 						"\" is ambiguous.  Please specify " + \
 						"one of the following " + \
@@ -14133,6 +14131,9 @@ def emerge_main():
 			writemsg_level("".join("!!! %s\n" % line for line in msg),
 				level=logging.ERROR, noiselevel=-1)
 			return 1
+
+		if myaction == "info":
+			return action_info(settings, trees, myopts, valid_atoms)
 
 		validate_ebuild_environment(trees)
 		action_depclean(settings, trees, mtimedb["ldpath"],

@@ -227,7 +227,8 @@ read_int() {
 }
 
 do_file() {
-	echo
+	interactive_echo() { [ "${OVERWRITE_ALL}" != "yes" ] && [ "${DELETE_ALL}" != "yes" ] && echo; }
+	interactive_echo
 	local -i my_input
 	local -i fcount=0
 	until (( $(wc -l < ${TMP}/files/${input}) < 2 )); do
@@ -296,7 +297,7 @@ do_file() {
 			break
 		fi
 	done
-	echo
+	interactive_echo
 	rm ${TMP}/files/${input}
 	count=${count}-1
 }

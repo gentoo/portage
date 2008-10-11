@@ -1350,8 +1350,11 @@ class config(object):
 
 			# make.globals should not be relative to config_root
 			# because it only contains constants.
-			self.mygcfg = getconfig(os.path.join(BPREFIX, "etc", "make.globals"),
-				expand=expand_map)
+			for x in (portage.const.GLOBAL_CONFIG_PATH, BPREFIX+"/etc"):
+				self.mygcfg = getconfig(os.path.join(x, "make.globals"),
+					expand=expand_map)
+				if self.mygcfg:
+					break
 
 			if self.mygcfg is None:
 				self.mygcfg = {}
@@ -6662,7 +6665,10 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 					else:
 						virtual_name_collision = True
 			if not virtual_name_collision:
-				raise ValueError, matches
+				# AmbiguousPackageName inherits from ValueError,
+				# for backward compatibility with calling code
+				# that already handles ValueError.
+				raise portage.exception.AmbiguousPackageName(matches)
 		elif matches:
 			mykey=matches[0]
 
