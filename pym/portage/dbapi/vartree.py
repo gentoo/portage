@@ -857,10 +857,10 @@ class vardbapi(dbapi):
 				# -MERGING- should never be a cpv, nor should files.
 				try:
 					if catpkgsplit(subpath) is None:
-						self.invalidentry(os.path.join(self.root, subpath))
+						self.invalidentry(self.getpath(subpath))
 						continue
 				except InvalidData:
-					self.invalidentry(os.path.join(self.root, subpath))
+					self.invalidentry(self.getpath(subpath))
 					continue
 				returnme.append(subpath)
 		return returnme
