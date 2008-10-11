@@ -2248,6 +2248,8 @@ class EbuildFetcher(SpawnProcess):
 		settings = self.config_pool.allocate()
 		self._build_dir = EbuildBuildDir(pkg=self.pkg, settings=settings)
 		self._build_dir.lock()
+		self._clean_builddir()
+		portage.prepare_build_dirs(self.pkg.root, self._build_dir.settings, 0)
 		if self.logfile is None:
 			self.logfile = settings.get("PORTAGE_LOG_FILE")
 
@@ -2277,6 +2279,18 @@ class EbuildFetcher(SpawnProcess):
 		self.env = fetch_env
 		SpawnProcess._start(self)
 
+	def _clean_builddir(self):
+		"""Uses shutil.rmtree() rather than spawning a 'clean' phase. Disabled
+		by keepwork or keeptemp in FEATURES."""
+		features = self._build_dir.settings.features
+		if not ("keepwork" in features or "keeptemp" in features):
+			try:
+				shutil.rmtree(self._build_dir.settings["PORTAGE_BUILDDIR"])
+			except EnvironmentError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
+
 	def _set_returncode(self, wait_retval):
 		SpawnProcess._set_returncode(self, wait_retval)
 		# Collect elog messages that might have been
@@ -2295,14 +2309,8 @@ class EbuildFetcher(SpawnProcess):
 			if not self.prefetch:
 				portage.elog.elog_process(self.pkg.cpv, self._build_dir.settings)
 			features = self._build_dir.settings.features
-			if (self.fetchonly or self.returncode == os.EX_OK) and \
-				not ("keepwork" in features or "keeptemp" in features):
-				try:
-					shutil.rmtree(self._build_dir.settings["PORTAGE_BUILDDIR"])
-				except EnvironmentError, e:
-					if e.errno != errno.ENOENT:
-						raise
-					del e
+			if self.fetchonly or self.returncode == os.EX_OK:
+				self._clean_builddir()
 			self._build_dir.unlock()
 			self.config_pool.deallocate(self._build_dir.settings)
 			self._build_dir = None
@@ -2338,7 +2346,6 @@ class EbuildBuildDir(SlotObject):
 			portage.doebuild_environment(ebuild_path, "setup", root_config.root,
 				self.settings, debug, use_cache, portdb)
 			dir_path = self.settings["PORTAGE_BUILDDIR"]
-			portage.prepare_build_dirs(self.pkg.root, self.settings, 0)
 
 		catdir = os.path.dirname(dir_path)
 		self._catdir = catdir
