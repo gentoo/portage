@@ -4077,7 +4077,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 		if listonly:
 			writemsg_stdout("\n", noiselevel=-1)
-		if fetched != 2:
+		elif fetched != 2:
 			if restrict_fetch:
 				print "\n!!!", mysettings["CATEGORY"] + "/" + \
 					mysettings["PF"], "has fetch restriction turned on."
@@ -4095,8 +4095,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						mysettings.pop("EBUILD_PHASE", None)
 					else:
 						mysettings["EBUILD_PHASE"] = ebuild_phase
-			elif listonly:
-				continue
 			elif not filedict[myfile]:
 				writemsg("Warning: No mirrors available for file" + \
 					" '%s'\n" % (myfile), noiselevel=-1)
@@ -5478,7 +5476,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		# Build directory creation isn't required for any of these.
 		have_build_dirs = False
-		if mydo not in ("digest", "help", "manifest"):
+		if not (mydo in ("digest", "help", "manifest") or \
+			(mydo == "fetch" and listonly)):
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 			if mystatus:
 				return mystatus
@@ -5671,16 +5670,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if not emerge_skip_distfiles and \
 			need_distfiles and not fetch(
 			fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
-			if have_build_dirs:
-				# Create an elog message for this fetch failure since the
-				# mod_echo module might push the original message off of the
-				# top of the terminal and prevent the user from being able to
-				# see it.
-				from portage.elog.messages import eerror
-				eerror("Fetch failed for '%s'" % mycpv,
-					phase="unpack", key=mycpv)
-				from portage.elog import elog_process
-				elog_process(mysettings.mycpv, mysettings)
 			return 1
 
 		if mydo == "fetch" and listonly:

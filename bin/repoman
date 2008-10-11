@@ -320,7 +320,7 @@ qahelp={
 qacats = qahelp.keys()
 qacats.sort()
 
-qawarnings=[
+qawarnings = set((
 "changelog.ebuildadded",
 "changelog.missing",
 "changelog.notadded",
@@ -337,7 +337,6 @@ qawarnings=[
 "KEYWORDS.dropped",
 "KEYWORDS.stupid",
 "KEYWORDS.missing",
-"HOMEPAGE.missing",
 "IUSE.invalid",
 "IUSE.undefined",
 "RDEPEND.suspect",
@@ -356,7 +355,7 @@ qawarnings=[
 "virtual.unavailable",
 "usage.obsolete",
 "LIVEVCS.stable"
-]
+))
 
 missingvars=["KEYWORDS","LICENSE","DESCRIPTION","HOMEPAGE","SLOT"]
 allvars = set(x for x in portage.auxdbkeys if not x.startswith("UNUSED_"))
@@ -369,7 +368,7 @@ for x in missingvars:
 	if x not in qacats:
 		logging.warn('* missingvars values need to be added to qahelp ("%s")' % x)
 		qacats.append(x)
-		qawarnings.append(x)
+		qawarnings.add(x)
 
 valid_restrict = frozenset(["binchecks", "bindist",
 	"fetch", "installsources", "mirror",

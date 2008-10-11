@@ -2265,14 +2265,20 @@ class MiscFunctionsProcess(SpawnProcess):
 
 class EbuildFetcher(SpawnProcess):
 
-	__slots__ = ("fetchonly", "fetchall", "pkg",)
+	__slots__ = ("config_pool", "fetchonly", "fetchall", "pkg", "prefetch") + \
+		("_build_dir",)
 
 	def _start(self):
 
 		root_config = self.pkg.root_config
 		portdb = root_config.trees["porttree"].dbapi
 		ebuild_path = portdb.findname(self.pkg.cpv)
-		settings = root_config.settings
+		settings = self.config_pool.allocate()
+		self._build_dir = EbuildBuildDir(pkg=self.pkg, settings=settings)
+		self._build_dir.lock()
+		if self.logfile is None:
+			self.logfile = settings.get("PORTAGE_LOG_FILE")
+
 		phase = "fetch"
 		if self.fetchall:
 			phase = "fetchall"
@@ -2284,7 +2290,7 @@ class EbuildFetcher(SpawnProcess):
 		fetch_env = os.environ.copy()
 
 		fetch_env["PORTAGE_NICENESS"] = "0"
-		if self.fetchonly:
+		if self.prefetch:
 			fetch_env["PORTAGE_PARALLEL_FETCHONLY"] = "1"
 
 		ebuild_binary = os.path.join(
@@ -2298,6 +2304,34 @@ class EbuildFetcher(SpawnProcess):
 		self.args = fetch_args
 		self.env = fetch_env
 		SpawnProcess._start(self)
+
+	def _set_returncode(self, wait_retval):
+		SpawnProcess._set_returncode(self, wait_retval)
+		# Collect elog messages that might have been
+		# created by the pkg_nofetch phase.
+		if self._build_dir is not None:
+			# Skip elog messages for prefetch, in order to avoid duplicates.
+			if not self.prefetch and self.returncode != os.EX_OK:
+				elog_out = None
+				if self.logfile is not None:
+					if self.background:
+						elog_out = open(self.logfile, 'a')
+				eerror("Fetch failed for '%s'" % self.pkg.cpv,
+					phase="unpack", key=self.pkg.cpv, out=elog_out)
+				if elog_out is not None:
+					elog_out.close()
+			if not self.prefetch:
+				portage.elog.elog_process(self.pkg.cpv, self._build_dir.settings)
+			if self.fetchonly or self.returncode == os.EX_OK:
+				try:
+					shutil.rmtree(self._build_dir.settings["PORTAGE_BUILDDIR"])
+				except EnvironmentError, e:
+					if e.errno != errno.ENOENT:
+						raise
+					del e
+			self._build_dir.unlock()
+			self.config_pool.deallocate(self._build_dir.settings)
+			self._build_dir = None
 
 class EbuildBuildDir(SlotObject):
 
@@ -2324,11 +2358,13 @@ class EbuildBuildDir(SlotObject):
 			portdb = root_config.trees["porttree"].dbapi
 			ebuild_path = portdb.findname(self.pkg.cpv)
 			settings = self.settings
+			settings.setcpv(self.pkg)
 			debug = settings.get("PORTAGE_DEBUG") == "1"
 			use_cache = 1 # always true
 			portage.doebuild_environment(ebuild_path, "setup", root_config.root,
 				self.settings, debug, use_cache, portdb)
 			dir_path = self.settings["PORTAGE_BUILDDIR"]
+			portage.prepare_build_dirs(self.pkg.root, self.settings, 0)
 
 		catdir = os.path.dirname(dir_path)
 		self._catdir = catdir
@@ -2376,7 +2412,7 @@ class EbuildBuildDir(SlotObject):
 
 class EbuildBuild(CompositeTask):
 
-	__slots__ = ("args_set", "background", "find_blockers",
+	__slots__ = ("args_set", "config_pool", "find_blockers",
 		"ldpath_mtimes", "logger", "opts", "pkg", "pkg_count",
 		"prefetcher", "settings", "world_atom") + \
 		("_build_dir", "_buildpkg", "_ebuild_path", "_issyspkg", "_tree")
@@ -2439,10 +2475,9 @@ class EbuildBuild(CompositeTask):
 				return
 
 		fetch_log = None
-		if self.background:
-			fetch_log = self.scheduler.fetch.log_file
 
-		fetcher = EbuildFetcher(fetchall=opts.fetch_all_uri,
+		fetcher = EbuildFetcher(config_pool=self.config_pool,
+			fetchall=opts.fetch_all_uri,
 			fetchonly=opts.fetchonly,
 			background=self.background, logfile=fetch_log,
 			pkg=pkg, scheduler=self.scheduler)
@@ -2455,19 +2490,20 @@ class EbuildBuild(CompositeTask):
 			self._start_task(fetcher, self._fetch_exit)
 
 	def _fetch_exit(self, fetcher):
-
 		opts = self.opts
 		pkg = self.pkg
 
+		fetch_failed = False
 		if opts.fetchonly:
-			if self._final_exit(fetcher) != os.EX_OK:
-				if not self.background:
-					eerror("Fetch for %s failed, continuing..." % pkg.cpv,
-						phase="unpack", key=pkg.cpv)
-			self.wait()
-			return
+			fetch_failed = self._final_exit(fetcher) != os.EX_OK
+		else:
+			fetch_failed = self._default_exit(fetcher) != os.EX_OK
 
-		if self._default_exit(fetcher) != os.EX_OK:
+		if fetch_failed and fetcher.logfile is not None and \
+			os.path.exists(fetcher.logfile):
+			self.settings["PORTAGE_LOG_FILE"] = fetcher.logfile
+
+		if fetch_failed or opts.fetchonly:
 			self.wait()
 			return
 
@@ -3466,7 +3502,7 @@ class MergeListItem(CompositeTask):
 	"""
 
 	__slots__ = ("args_set",
-		"binpkg_opts", "build_opts", "emerge_opts",
+		"binpkg_opts", "build_opts", "config_pool", "emerge_opts",
 		"failed_fetches", "find_blockers", "logger", "mtimedb", "pkg",
 		"pkg_count", "pkg_to_replace", "prefetcher",
 		"settings", "statusMessage", "world_atom") + \
@@ -3519,6 +3555,7 @@ class MergeListItem(CompositeTask):
 
 			build = EbuildBuild(args_set=args_set,
 				background=self.background,
+				config_pool=self.config_pool,
 				find_blockers=find_blockers,
 				ldpath_mtimes=ldpath_mtimes, logger=logger,
 				opts=build_opts, pkg=pkg, pkg_count=pkg_count,
@@ -8990,6 +9027,21 @@ class Scheduler(PollScheduler):
 		__slots__ = ("build_dir", "build_log",
 			"fetch_log", "pkg", "returncode")
 
+	class _ConfigPool(object):
+		"""Interface for a task to temporarily allocate a config
+		instance from a pool. This allows a task to be constructed
+		long before the config instance actually becomes needed, like
+		when prefetchers are constructed for the whole merge list."""
+		__slots__ = ("_root", "_allocate", "_deallocate")
+		def __init__(self, root, allocate, deallocate):
+			self._root = root
+			self._allocate = allocate
+			self._deallocate = deallocate
+		def allocate(self):
+			return self._allocate(self._root)
+		def deallocate(self, settings):
+			self._deallocate(settings)
+
 	def __init__(self, settings, trees, mtimedb, myopts,
 		spinner, mergelist, favorites, digraph):
 		PollScheduler.__init__(self)
@@ -9389,7 +9441,10 @@ class Scheduler(PollScheduler):
 			prefetchers = self._prefetchers
 			getbinpkg = "--getbinpkg" in self.myopts
 
-			for pkg in self._mergelist:
+			# In order to avoid "waiting for lock" messages
+			# at the beginning, which annoy users, never
+			# spawn a prefetcher for the first package.
+			for pkg in self._mergelist[1:]:
 				prefetcher = self._create_prefetcher(pkg)
 				if prefetcher is not None:
 					self._task_queues.fetch.add(prefetcher)
@@ -9407,8 +9462,10 @@ class Scheduler(PollScheduler):
 		elif pkg.type_name == "ebuild":
 
 			prefetcher = EbuildFetcher(background=True,
+				config_pool=self._ConfigPool(pkg.root,
+				self._allocate_config, self._deallocate_config),
 				fetchonly=1, logfile=self._fetch_log,
-				pkg=pkg, scheduler=self._sched_iface)
+				pkg=pkg, prefetch=True, scheduler=self._sched_iface)
 
 		elif pkg.type_name == "binary" and \
 			"--getbinpkg" in self.myopts and \
@@ -10044,6 +10101,8 @@ class Scheduler(PollScheduler):
 		task = MergeListItem(args_set=self._args_set,
 			background=self._background, binpkg_opts=self._binpkg_opts,
 			build_opts=self._build_opts,
+			config_pool=self._ConfigPool(pkg.root,
+			self._allocate_config, self._deallocate_config),
 			emerge_opts=self.myopts,
 			failed_fetches=self._failed_fetches,
 			find_blockers=self._find_blockers(pkg), logger=self._logger,
@@ -11000,8 +11059,20 @@ def display_preserved_libs(vardbapi):
 
 		for cpv in plibdata:
 			print colorize("WARN", ">>>") + " package: %s" % cpv
+			samefile_map = {}
 			for f in plibdata[cpv]:
-				print colorize("WARN", " * ") + " - %s" % f
+				real_path = os.path.realpath(f)
+				alt_paths = samefile_map.get(real_path)
+				if alt_paths is None:
+					alt_paths = set()
+					samefile_map[real_path] = alt_paths
+				alt_paths.add(f)
+
+			for alt_paths in samefile_map.itervalues():
+				alt_paths = sorted(alt_paths)
+				for p in alt_paths:
+					print colorize("WARN", " * ") + " - %s" % (p,)
+				f = alt_paths[0]
 				consumers = consumer_map[f]
 				for c in consumers[:MAX_DISPLAY]:
 					print colorize("WARN", " * ") + "     used by %s (%s)" % \
