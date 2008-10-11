@@ -728,7 +728,8 @@ class portdbapi(dbapi):
 					d[mysplit[0]+"/"+pf] = None
 		if invalid_category and d:
 			writemsg(("\n!!! '%s' has a category that is not listed in " + \
-				"/etc/portage/categories\n") % mycp, noiselevel=-1)
+				"%setc/portage/categories\n") % \
+				(mycp, self.mysettings["PORTAGE_CONFIGROOT"]), noiselevel=-1)
 			mylist = []
 		else:
 			mylist = d.keys()

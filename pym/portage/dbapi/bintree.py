@@ -548,7 +548,8 @@ class binarytree(object):
 							"unrecognized category: '%s'\n") % full_path,
 							noiselevel=-1)
 						writemsg(("!!! '%s' has a category that is not" + \
-							" listed in /etc/portage/categories\n") % mycpv,
+							" listed in %setc/portage/categories\n") % \
+							(mycpv, self.settings["PORTAGE_CONFIGROOT"]),
 							noiselevel=-1)
 						continue
 					pkg_paths[mycpv] = mypath
@@ -713,7 +714,8 @@ class binarytree(object):
 						"unrecognized category: '%s'\n") % fullpkg,
 						noiselevel=-1)
 					writemsg(("!!! '%s' has a category that is not" + \
-						" listed in /etc/portage/categories\n") % fullpkg,
+						" listed in %setc/portage/categories\n") % \
+						(fullpkg, self.settings["PORTAGE_CONFIGROOT"]),
 						noiselevel=-1)
 					continue
 				mykey = dep_getkey(fullpkg)
