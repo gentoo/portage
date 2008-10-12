@@ -2282,7 +2282,7 @@ class EbuildFetcher(SpawnProcess):
 	def _pipe(self, fd_pipes):
 		"""When appropriate, use a pty so that fetcher progress bars,
 		like wget has, will work properly."""
-		if self.prefetch or self.background or not sys.stdout.isatty():
+		if self.background or not sys.stdout.isatty():
 			# When the output only goes to a log file,
 			# there's no point in creating a pty.
 			return os.pipe()
