@@ -4068,16 +4068,21 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					"ebuild's files must be downloaded"
 				print "!!! manually.  See the comments in" + \
 					" the ebuild for more information.\n"
-				ebuild_phase = mysettings.get("EBUILD_PHASE")
-				try:
-					mysettings["EBUILD_PHASE"] = "nofetch"
-					spawn(_shell_quote(EBUILD_SH_BINARY) + \
-						" nofetch", mysettings)
-				finally:
-					if ebuild_phase is None:
-						mysettings.pop("EBUILD_PHASE", None)
-					else:
-						mysettings["EBUILD_PHASE"] = ebuild_phase
+				if not parallel_fetchonly:
+					# To spawn pkg_nofetch requires PORTAGE_BUILDDIR for
+					# ensuring sane $PWD (bug #239560) and storing elog
+					# messages. Therefore, calling code needs to ensure that
+					# PORTAGE_BUILDDIR is already clean and locked here.
+					ebuild_phase = mysettings.get("EBUILD_PHASE")
+					try:
+						mysettings["EBUILD_PHASE"] = "nofetch"
+						spawn(_shell_quote(EBUILD_SH_BINARY) + \
+							" nofetch", mysettings)
+					finally:
+						if ebuild_phase is None:
+							mysettings.pop("EBUILD_PHASE", None)
+						else:
+							mysettings["EBUILD_PHASE"] = ebuild_phase
 			elif not filedict[myfile]:
 				writemsg("Warning: No mirrors available for file" + \
 					" '%s'\n" % (myfile), noiselevel=-1)
