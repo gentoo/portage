@@ -272,7 +272,9 @@ register_die_hook() {
 	export EBUILD_DEATH_HOOKS="${EBUILD_DEATH_HOOKS} $*"
 }
 
-# Ensure that $PWD is sane whenever possible.
+# Ensure that $PWD is sane whenever possible, to protect against
+# exploitation of insecure search path for python -c in ebuilds.
+# See bug #239560.
 if ! hasq "$EBUILD_PHASE" clean depend help ; then
 	cd "$PORTAGE_BUILDDIR" || \
 		die "PORTAGE_BUILDDIR does not exist: '$PORTAGE_BUILDDIR'"
