@@ -3484,7 +3484,7 @@ class MergeListItem(CompositeTask):
 
 	__slots__ = ("args_set",
 		"binpkg_opts", "build_opts", "config_pool", "emerge_opts",
-		"failed_fetches", "find_blockers", "logger", "mtimedb", "pkg",
+		"find_blockers", "logger", "mtimedb", "pkg",
 		"pkg_count", "pkg_to_replace", "prefetcher",
 		"settings", "statusMessage", "world_atom") + \
 		("_install_task",)
@@ -3544,7 +3544,7 @@ class MergeListItem(CompositeTask):
 				settings=settings, world_atom=world_atom)
 
 			self._install_task = build
-			self._start_task(build, self._ebuild_exit)
+			self._start_task(build, self._default_final_exit)
 			return
 
 		elif pkg.type_name == "binary":
@@ -3560,12 +3560,6 @@ class MergeListItem(CompositeTask):
 			self._start_task(binpkg, self._default_final_exit)
 			return
 
-	def _ebuild_exit(self, build):
-		if self._final_exit(build) != os.EX_OK:
-			if self.build_opts.fetchonly:
-				self.failed_fetches.append(self.pkg.cpv)
-		self.wait()
-
 	def _poll(self):
 		self._install_task.poll()
 		return self.returncode
@@ -3578,7 +3572,6 @@ class MergeListItem(CompositeTask):
 
 		pkg = self.pkg
 		build_opts = self.build_opts
-		failed_fetches = self.failed_fetches
 		find_blockers = self.find_blockers
 		logger = self.logger
 		mtimedb = self.mtimedb
@@ -9082,7 +9075,6 @@ class Scheduler(PollScheduler):
 		self._failed_pkgs = []
 		self._failed_pkgs_all = []
 		self._failed_pkgs_die_msgs = []
-		self._failed_fetches = []
 		self._parallel_fetch = False
 		merge_count = len([x for x in mergelist \
 			if isinstance(x, Package) and x.operation == "merge"])
@@ -9441,34 +9433,6 @@ class Scheduler(PollScheduler):
 
 		return prefetcher
 
-	def _show_failed_fetches(self):
-		failed_fetches = self._failed_fetches
-		if not failed_fetches or not \
-			("--fetchonly" in self.myopts or \
-			"--fetch-all-uri" in self.myopts):
-			return
-
-		if self._background:
-			msg = "Some fetch errors were " + \
-				"encountered. Please see %s for details." % \
-				self._fetch_log
-		else:
-			msg = "Some fetch errors were " + \
-				"encountered. Please see above for details."
-
-		prefix = bad(" * ")
-		msg = "".join("%s%s\n" % (prefix, line) \
-			for line in textwrap.wrap(msg, 70))
-		writemsg_level(msg, level=logging.ERROR, noiselevel=-1)
-
-		msg = []
-		msg.append("")
-		for cpv in failed_fetches:
-			msg.append("  %s" % cpv)
-		msg.append("")
-		writemsg_level("".join("%s%s\n" % (prefix, line) \
-			for line in msg), level=logging.ERROR, noiselevel=-1)
-
 	def _is_restart_scheduled(self):
 		"""
 		Check if the merge list contains a replacement
@@ -9567,15 +9531,13 @@ class Scheduler(PollScheduler):
 			return rval
 
 		keep_going = "--keep-going" in self.myopts
+		fetchonly = self._build_opts.fetchonly
 		mtimedb = self._mtimedb
 		failed_pkgs = self._failed_pkgs
 
 		while True:
 			rval = self._merge()
-			self._show_failed_fetches()
-			del self._failed_fetches[:]
-
-			if rval == os.EX_OK or not keep_going:
+			if rval == os.EX_OK or fetchonly or not keep_going:
 				break
 			if "resume" not in mtimedb:
 				break
@@ -9963,6 +9925,10 @@ class Scheduler(PollScheduler):
 			if self._poll_event_handlers:
 				self._poll_loop()
 
+	def _keep_scheduling(self):
+		return bool(self._pkg_queue and \
+			not (self._failed_pkgs and not self._build_opts.fetchonly))
+
 	def _schedule_tasks(self):
 		self._schedule_tasks_imp()
 		self._status_display.display()
@@ -9974,7 +9940,7 @@ class Scheduler(PollScheduler):
 
 		# Cancel prefetchers if they're the only reason
 		# the main poll loop is still running.
-		if self._failed_pkgs and \
+		if self._failed_pkgs and not self._build_opts.fetchonly and \
 			not (self._jobs or self._task_queues.merge) and \
 			self._task_queues.fetch:
 			self._task_queues.fetch.clear()
@@ -9984,7 +9950,7 @@ class Scheduler(PollScheduler):
 			self._schedule_tasks_imp()
 			self._status_display.display()
 
-		return bool(self._pkg_queue and not self._failed_pkgs)
+		return self._keep_scheduling()
 
 	def _job_delay(self):
 		"""
@@ -10014,7 +9980,7 @@ class Scheduler(PollScheduler):
 
 		while True:
 
-			if not self._pkg_queue or self._failed_pkgs:
+			if not self._keep_scheduling():
 				return bool(state_change)
 
 			if self._choose_pkg_return_early or \
@@ -10071,7 +10037,6 @@ class Scheduler(PollScheduler):
 			config_pool=self._ConfigPool(pkg.root,
 			self._allocate_config, self._deallocate_config),
 			emerge_opts=self.myopts,
-			failed_fetches=self._failed_fetches,
 			find_blockers=self._find_blockers(pkg), logger=self._logger,
 			mtimedb=self._mtimedb, pkg=pkg, pkg_count=self._pkg_count.copy(),
 			pkg_to_replace=pkg_to_replace,
