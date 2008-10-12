@@ -2313,14 +2313,19 @@ class EbuildFetcher(SpawnProcess):
 				if self.logfile is not None:
 					if self.background:
 						elog_out = open(self.logfile, 'a')
-				eerror("Fetch failed for '%s'" % self.pkg.cpv,
-					phase="unpack", key=self.pkg.cpv, out=elog_out)
+				msg = "Fetch failed for '%s'" % (self.pkg.cpv,)
+				if self.logfile is not None:
+					msg += ", Log file:"
+				eerror(msg, phase="unpack", key=self.pkg.cpv, out=elog_out)
+				if self.logfile is not None:
+					eerror(" '%s'" % (self.logfile,),
+						phase="unpack", key=self.pkg.cpv, out=elog_out)
 				if elog_out is not None:
 					elog_out.close()
 			if not self.prefetch:
 				portage.elog.elog_process(self.pkg.cpv, self._build_dir.settings)
 			features = self._build_dir.settings.features
-			if self.fetchonly or self.returncode == os.EX_OK:
+			if self.returncode == os.EX_OK:
 				self._build_dir.clean()
 			self._build_dir.unlock()
 			self.config_pool.deallocate(self._build_dir.settings)
