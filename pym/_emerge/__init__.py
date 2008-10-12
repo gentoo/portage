@@ -8993,8 +8993,7 @@ class Scheduler(PollScheduler):
 			emergelog(self.xterm_titles, *pargs, **kwargs)
 
 	class _failed_pkg(SlotObject):
-		__slots__ = ("build_dir", "build_log",
-			"fetch_log", "pkg", "returncode")
+		__slots__ = ("build_dir", "build_log", "pkg", "returncode")
 
 	class _ConfigPool(object):
 		"""Interface for a task to temporarily allocate a config
@@ -9126,7 +9125,7 @@ class Scheduler(PollScheduler):
 			elif len(mergelist) > 1:
 				self._parallel_fetch = True
 
-		if background or self._parallel_fetch:
+		if self._parallel_fetch:
 				# clear out existing fetch log if it exists
 				try:
 					open(self._fetch_log, 'w')
@@ -9684,9 +9683,6 @@ class Scheduler(PollScheduler):
 
 		log_paths = [failed_pkg.build_log]
 
-		if not (build_dir and os.path.isdir(build_dir)):
-			log_paths.append(failed_pkg.fetch_log)
-
 		for log_path in log_paths:
 			if not log_path:
 				continue
@@ -9726,11 +9722,10 @@ class Scheduler(PollScheduler):
 			settings = merge.merge.settings
 			build_dir = settings.get("PORTAGE_BUILDDIR")
 			build_log = settings.get("PORTAGE_LOG_FILE")
-			fetch_log = self._fetch_log
 
 			self._failed_pkgs.append(self._failed_pkg(
 				build_dir=build_dir, build_log=build_log,
-				fetch_log=fetch_log, pkg=pkg,
+				pkg=pkg,
 				returncode=merge.returncode))
 			self._failed_pkg_msg(self._failed_pkgs[-1], "install", "to")
 
@@ -9770,12 +9765,11 @@ class Scheduler(PollScheduler):
 		else:
 			settings = build.settings
 			build_dir = settings.get("PORTAGE_BUILDDIR")
-			fetch_log = self._fetch_log
 			build_log = settings.get("PORTAGE_LOG_FILE")
 
 			self._failed_pkgs.append(self._failed_pkg(
 				build_dir=build_dir, build_log=build_log,
-				fetch_log=fetch_log, pkg=build.pkg,
+				pkg=build.pkg,
 				returncode=build.returncode))
 			self._failed_pkg_msg(self._failed_pkgs[-1], "emerge", "for")
 
