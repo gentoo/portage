@@ -1588,6 +1588,13 @@ class EbuildFetchPretend(SlotObject):
 	__slots__ = ("fetch_all", "pkg", "settings")
 
 	def execute(self):
+		# To spawn pkg_nofetch requires PORTAGE_BUILDDIR for
+		# ensuring sane $PWD (bug #239560) and storing elog
+		# messages.
+		build_dir = EbuildBuildDir(pkg=self.pkg, settings=self.settings)
+		build_dir.lock()
+		build_dir.clean()
+		portage.prepare_build_dirs(self.pkg.root, self.settings, 0)
 		portdb = self.pkg.root_config.trees["porttree"].dbapi
 		ebuild_path = portdb.findname(self.pkg.cpv)
 		debug = self.settings.get("PORTAGE_DEBUG") == "1"
@@ -1596,6 +1603,10 @@ class EbuildFetchPretend(SlotObject):
 			self.settings["ROOT"], self.settings, debug=debug,
 			listonly=1, fetchonly=1, fetchall=self.fetch_all,
 			mydbapi=portdb, tree="porttree")
+
+		portage.elog.elog_process(self.pkg.cpv, self.settings)
+		build_dir.clean()
+		build_dir.unlock()
 		return retval
 
 class AsynchronousTask(SlotObject):
@@ -2248,7 +2259,7 @@ class EbuildFetcher(SpawnProcess):
 		settings = self.config_pool.allocate()
 		self._build_dir = EbuildBuildDir(pkg=self.pkg, settings=settings)
 		self._build_dir.lock()
-		self._clean_builddir()
+		self._build_dir.clean()
 		portage.prepare_build_dirs(self.pkg.root, self._build_dir.settings, 0)
 		if self.logfile is None:
 			self.logfile = settings.get("PORTAGE_LOG_FILE")
@@ -2291,18 +2302,6 @@ class EbuildFetcher(SpawnProcess):
 			portage._create_pty_or_pipe(copy_term_size=stdout_pipe)
 		return (master_fd, slave_fd)
 
-	def _clean_builddir(self):
-		"""Uses shutil.rmtree() rather than spawning a 'clean' phase. Disabled
-		by keepwork or keeptemp in FEATURES."""
-		features = self._build_dir.settings.features
-		if not ("keepwork" in features or "keeptemp" in features):
-			try:
-				shutil.rmtree(self._build_dir.settings["PORTAGE_BUILDDIR"])
-			except EnvironmentError, e:
-				if e.errno != errno.ENOENT:
-					raise
-				del e
-
 	def _set_returncode(self, wait_retval):
 		SpawnProcess._set_returncode(self, wait_retval)
 		# Collect elog messages that might have been
@@ -2322,7 +2321,7 @@ class EbuildFetcher(SpawnProcess):
 				portage.elog.elog_process(self.pkg.cpv, self._build_dir.settings)
 			features = self._build_dir.settings.features
 			if self.fetchonly or self.returncode == os.EX_OK:
-				self._clean_builddir()
+				self._build_dir.clean()
 			self._build_dir.unlock()
 			self.config_pool.deallocate(self._build_dir.settings)
 			self._build_dir = None
@@ -2376,6 +2375,19 @@ class EbuildBuildDir(SlotObject):
 			self.locked = self._lock_obj is not None
 			if catdir_lock is not None:
 				portage.locks.unlockdir(catdir_lock)
+
+	def clean(self):
+		"""Uses shutil.rmtree() rather than spawning a 'clean' phase. Disabled
+		by keepwork or keeptemp in FEATURES."""
+		settings = self.settings
+		features = settings.features
+		if not ("keepwork" in features or "keeptemp" in features):
+			try:
+				shutil.rmtree(settings["PORTAGE_BUILDDIR"])
+			except EnvironmentError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
 
 	def unlock(self):
 		if self._lock_obj is None:

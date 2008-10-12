@@ -4060,29 +4060,43 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 		if listonly:
 			writemsg_stdout("\n", noiselevel=-1)
-		elif fetched != 2:
+		if fetched != 2:
 			if restrict_fetch:
-				print "\n!!!", mysettings["CATEGORY"] + "/" + \
-					mysettings["PF"], "has fetch restriction turned on."
-				print "!!! This probably means that this " + \
-					"ebuild's files must be downloaded"
-				print "!!! manually.  See the comments in" + \
-					" the ebuild for more information.\n"
+				msg = ("\n!!! %s/%s" + \
+					" has fetch restriction turned on.\n" + \
+					"!!! This probably means that this " + \
+					"ebuild's files must be downloaded\n" + \
+					"!!! manually.  See the comments in" + \
+					" the ebuild for more information.\n\n") % \
+					(mysettings["CATEGORY"], mysettings["PF"])
+				portage.util.writemsg_level(msg,
+					level=logging.ERROR, noiselevel=-1)
 				if not parallel_fetchonly:
 					# To spawn pkg_nofetch requires PORTAGE_BUILDDIR for
 					# ensuring sane $PWD (bug #239560) and storing elog
 					# messages. Therefore, calling code needs to ensure that
 					# PORTAGE_BUILDDIR is already clean and locked here.
+
+					# All the pkg_nofetch goes to stderr since it's considered
+					# to be an error message.
+					fd_pipes = {
+						0 : sys.stdin.fileno(),
+						1 : sys.stderr.fileno(),
+						2 : sys.stderr.fileno(),
+					}
+
 					ebuild_phase = mysettings.get("EBUILD_PHASE")
 					try:
 						mysettings["EBUILD_PHASE"] = "nofetch"
 						spawn(_shell_quote(EBUILD_SH_BINARY) + \
-							" nofetch", mysettings)
+							" nofetch", mysettings, fd_pipes=fd_pipes)
 					finally:
 						if ebuild_phase is None:
 							mysettings.pop("EBUILD_PHASE", None)
 						else:
 							mysettings["EBUILD_PHASE"] = ebuild_phase
+			elif listonly:
+				continue
 			elif not filedict[myfile]:
 				writemsg("Warning: No mirrors available for file" + \
 					" '%s'\n" % (myfile), noiselevel=-1)
@@ -5436,8 +5450,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		# Build directory creation isn't required for any of these.
 		have_build_dirs = False
-		if not (mydo in ("digest", "help", "manifest") or \
-			(mydo == "fetch" and listonly)):
+		if not mydo in ("digest", "help", "manifest"):
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 			if mystatus:
 				return mystatus
