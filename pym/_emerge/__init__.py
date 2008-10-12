@@ -2279,6 +2279,18 @@ class EbuildFetcher(SpawnProcess):
 		self.env = fetch_env
 		SpawnProcess._start(self)
 
+	def _pipe(self, fd_pipes):
+		"""When appropriate, use a pty so that fetcher progress bars,
+		like wget has, will work properly."""
+		if self.prefetch or self.background or not sys.stdout.isatty():
+			# When the output only goes to a log file,
+			# there's no point in creating a pty.
+			return os.pipe()
+		stdout_pipe = fd_pipes.get(1)
+		got_pty, master_fd, slave_fd = \
+			portage._create_pty_or_pipe(copy_term_size=stdout_pipe)
+		return (master_fd, slave_fd)
+
 	def _clean_builddir(self):
 		"""Uses shutil.rmtree() rather than spawning a 'clean' phase. Disabled
 		by keepwork or keeptemp in FEATURES."""
