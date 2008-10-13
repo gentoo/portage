@@ -3623,6 +3623,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			del distlocks_subdir
 
 	distdir_writable = can_fetch and not fetch_to_ro
+	failed_files = set()
 
 	for myfile in filedict:
 		"""
@@ -4105,7 +4106,12 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			else:
 				writemsg("!!! Couldn't download '%s'. Aborting.\n" % myfile,
 					noiselevel=-1)
+			if fetchonly:
+				failed_files.add(myfile)
+				continue
 			return 0
+	if failed_files:
+		return 0
 	return 1
 
 def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None):
