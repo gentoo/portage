@@ -4106,7 +4106,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			else:
 				writemsg("!!! Couldn't download '%s'. Aborting.\n" % myfile,
 					noiselevel=-1)
-			if fetchonly:
+			if fetchonly and not restrict_fetch:
 				failed_files.add(myfile)
 				continue
 			return 0
