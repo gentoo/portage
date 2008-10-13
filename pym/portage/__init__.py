@@ -4095,6 +4095,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							mysettings.pop("EBUILD_PHASE", None)
 						else:
 							mysettings["EBUILD_PHASE"] = ebuild_phase
+				if listonly:
+					continue
 			elif listonly:
 				continue
 			elif not filedict[myfile]:
