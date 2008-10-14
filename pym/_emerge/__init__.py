@@ -7560,8 +7560,11 @@ class depgraph(object):
 		if self._missing_args:
 			world_problems = False
 			if "world" in self._sets:
+				# Filter out indirect members of world (from nested sets)
+				# since only direct members of world are desired here.
+				world_set = self.roots[self.target_root].sets["world"]
 				for arg, atom in self._missing_args:
-					if arg.name == "world":
+					if arg.name == "world" and atom in world_set:
 						world_problems = True
 						break
 
