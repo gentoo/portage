@@ -9103,6 +9103,7 @@ class Scheduler(PollScheduler):
 		self._failed_pkgs = []
 		self._failed_pkgs_all = []
 		self._failed_pkgs_die_msgs = []
+		self._post_mod_echo_msgs = []
 		self._parallel_fetch = False
 		merge_count = len([x for x in mergelist \
 			if isinstance(x, Package) and x.operation == "merge"])
@@ -9585,29 +9586,13 @@ class Scheduler(PollScheduler):
 			if not mergelist:
 				break
 
-			dropped_tasks = self._calc_resume_list()
-			if dropped_tasks is None:
+			if not self._calc_resume_list():
 				break
 
 			clear_caches(self.trees)
 			if not self._mergelist:
 				break
 
-			if dropped_tasks:
-
-				def _eerror(lines):
-					for l in lines:
-						eerror(l, phase="other", key=failed_pkg.pkg.cpv)
-
-				msg = []
-				msg.append("One or more packages have been " + \
-					"dropped due to unsatisfied dependencies:")
-				msg.append("")
-				msg.extend("  " + str(task) for task in dropped_tasks)
-				msg.append("")
-				_eerror(msg)
-				del _eerror, msg
-			del dropped_tasks
 			self._save_resume_list()
 			self._pkg_count.curval = 0
 			self._pkg_count.maxval = len([x for x in self._mergelist \
@@ -9646,10 +9631,15 @@ class Scheduler(PollScheduler):
 					log_file.close()
 				failure_log_shown = True
 
+		# Dump mod_echo output now since it tends to flood the terminal.
+		# This allows us to avoid having more important output, generated
+		# later, from being swept away by the mod_echo output.
+		mod_echo_output =  _flush_elog_mod_echo()
+
 		if background and not failure_log_shown and \
 			self._failed_pkgs_all and \
 			self._failed_pkgs_die_msgs and \
-			not _flush_elog_mod_echo():
+			not mod_echo_output:
 
 			printer = portage.output.EOutput()
 			for mysettings, key, logentries in self._failed_pkgs_die_msgs:
@@ -9669,8 +9659,11 @@ class Scheduler(PollScheduler):
 						for line in msgcontent:
 							printer.eerror(line.strip("\n"))
 
+		if self._post_mod_echo_msgs:
+			for msg in self._post_mod_echo_msgs:
+				msg()
+
 		if len(self._failed_pkgs_all) > 1:
-			_flush_elog_mod_echo()
 			msg = "The following packages have " + \
 				"failed to build or install:"
 			prefix = bad(" * ")
@@ -10118,9 +10111,8 @@ class Scheduler(PollScheduler):
 		"""
 		Use the current resume list to calculate a new one,
 		dropping any packages with unsatisfied deps.
-		@rtype: set
-		@returns: a possibly empty set of dropped tasks, or
-			None if an error occurs.
+		@rtype: bool
+		@returns: True if successful, False otherwise.
 		"""
 		print colorize("GOOD", "*** Resuming merge...")
 
@@ -10156,42 +10148,50 @@ class Scheduler(PollScheduler):
 			print "\b\b... done!"
 
 		if e is not None:
-			mydepgraph.display_problems()
-			out = portage.output.EOutput()
-			out.eerror("One or more packages are either masked or " + \
-				"have missing dependencies:")
-			out.eerror("")
-			indent = "  "
-			for dep in e.value:
-				if dep.atom is None:
-					out.eerror(indent + "Masked package:")
-					out.eerror(2 * indent + str(dep.parent))
-					out.eerror("")
-				else:
-					out.eerror(indent + str(dep.atom) + " pulled in by:")
-					out.eerror(2 * indent + str(dep.parent))
-					out.eerror("")
-			msg = "The resume list contains packages " + \
-				"that are either masked or have " + \
-				"unsatisfied dependencies. " + \
-				"Please restart/continue " + \
-				"the operation manually, or use --skipfirst " + \
-				"to skip the first package in the list and " + \
-				"any other packages that may be " + \
-				"masked or have missing dependencies."
-			for line in textwrap.wrap(msg, 72):
-				out.eerror(line)
-			return None
+			def unsatisfied_resume_dep_msg():
+				mydepgraph.display_problems()
+				out = portage.output.EOutput()
+				out.eerror("One or more packages are either masked or " + \
+					"have missing dependencies:")
+				out.eerror("")
+				indent = "  "
+				show_parents = set()
+				for dep in e.value:
+					if dep.parent in show_parents:
+						continue
+					show_parents.add(dep.parent)
+					if dep.atom is None:
+						out.eerror(indent + "Masked package:")
+						out.eerror(2 * indent + str(dep.parent))
+						out.eerror("")
+					else:
+						out.eerror(indent + str(dep.atom) + " pulled in by:")
+						out.eerror(2 * indent + str(dep.parent))
+						out.eerror("")
+				msg = "The resume list contains packages " + \
+					"that are either masked or have " + \
+					"unsatisfied dependencies. " + \
+					"Please restart/continue " + \
+					"the operation manually, or use --skipfirst " + \
+					"to skip the first package in the list and " + \
+					"any other packages that may be " + \
+					"masked or have missing dependencies."
+				for line in textwrap.wrap(msg, 72):
+					out.eerror(line)
+			self._post_mod_echo_msgs.append(unsatisfied_resume_dep_msg)
+			return False
 
-		if self._show_list():
+		if success and self._show_list():
 			mylist = mydepgraph.altlist()
-			if "--tree" in self.myopts:
-				mylist.reverse()
-			mydepgraph.display(mylist, favorites=self._favorites)
+			if mylist:
+				if "--tree" in self.myopts:
+					mylist.reverse()
+				mydepgraph.display(mylist, favorites=self._favorites)
 
-		mydepgraph.display_problems()
 		if not success:
-			return None
+			self._post_mod_echo_msgs.append(mydepgraph.display_problems)
+			return False
+		mydepgraph.display_problems()
 
 		mylist = mydepgraph.altlist()
 		mydepgraph.break_refs(mylist)
@@ -10200,7 +10200,27 @@ class Scheduler(PollScheduler):
 
 		self._mergelist = mylist
 		self._set_digraph(mydepgraph.digraph)
-		return dropped_tasks
+
+		msg_width = 75
+		for task in dropped_tasks:
+			if not (isinstance(task, Package) and task.operation == "merge"):
+				continue
+			pkg = task
+			msg = "emerge --keep-going:" + \
+				" %s" % (pkg.cpv,)
+			if pkg.root != "/":
+				msg += " for %s" % (pkg.root,)
+			msg += " dropped due to unsatisfied dependency."
+			for line in textwrap.wrap(msg, msg_width):
+				eerror(line, phase="other", key=pkg.cpv)
+			settings = mydepgraph.pkgsettings[pkg.root]
+			# Ensure that log collection from $T is disabled inside
+			# elog_process(), since any logs that might exist are
+			# not valid here.
+			settings.pop("T", None)
+			portage.elog.elog_process(pkg.cpv, settings)
+
+		return True
 
 	def _show_list(self):
 		myopts = self.myopts
