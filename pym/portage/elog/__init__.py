@@ -72,7 +72,13 @@ def elog_process(cpv, mysettings, phasefilter=None):
 		except ImportError:
 			pass
 
-	ebuild_logentries = collect_ebuild_messages(os.path.join(mysettings["T"], "logging"))
+	if "T" in mysettings:
+		ebuild_logentries = collect_ebuild_messages(
+			os.path.join(mysettings["T"], "logging"))
+	else:
+		# A build dir isn't necessarily required since the messages.e*
+		# functions allow messages to be generated in-memory.
+		ebuild_logentries = {}
 	all_logentries = collect_messages()
 	if cpv in all_logentries:
 		all_logentries[cpv] = _merge_logentries(ebuild_logentries, all_logentries[cpv])

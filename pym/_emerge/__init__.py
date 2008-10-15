@@ -1615,6 +1615,13 @@ class EbuildFetchPretend(SlotObject):
 	__slots__ = ("fetch_all", "pkg", "settings")
 
 	def execute(self):
+		# To spawn pkg_nofetch requires PORTAGE_BUILDDIR for
+		# ensuring sane $PWD (bug #239560) and storing elog
+		# messages.
+		build_dir = EbuildBuildDir(pkg=self.pkg, settings=self.settings)
+		build_dir.lock()
+		build_dir.clean()
+		portage.prepare_build_dirs(self.pkg.root, self.settings, 0)
 		portdb = self.pkg.root_config.trees["porttree"].dbapi
 		ebuild_path = portdb.findname(self.pkg.cpv)
 		debug = self.settings.get("PORTAGE_DEBUG") == "1"
@@ -1623,6 +1630,10 @@ class EbuildFetchPretend(SlotObject):
 			self.settings["ROOT"], self.settings, debug=debug,
 			listonly=1, fetchonly=1, fetchall=self.fetch_all,
 			mydbapi=portdb, tree="porttree")
+
+		portage.elog.elog_process(self.pkg.cpv, self.settings)
+		build_dir.clean()
+		build_dir.unlock()
 		return retval
 
 class AsynchronousTask(SlotObject):
@@ -2275,6 +2286,8 @@ class EbuildFetcher(SpawnProcess):
 		settings = self.config_pool.allocate()
 		self._build_dir = EbuildBuildDir(pkg=self.pkg, settings=settings)
 		self._build_dir.lock()
+		self._build_dir.clean()
+		portage.prepare_build_dirs(self.pkg.root, self._build_dir.settings, 0)
 		if self.logfile is None:
 			self.logfile = settings.get("PORTAGE_LOG_FILE")
 
@@ -2304,6 +2317,18 @@ class EbuildFetcher(SpawnProcess):
 		self.env = fetch_env
 		SpawnProcess._start(self)
 
+	def _pipe(self, fd_pipes):
+		"""When appropriate, use a pty so that fetcher progress bars,
+		like wget has, will work properly."""
+		if self.background or not sys.stdout.isatty():
+			# When the output only goes to a log file,
+			# there's no point in creating a pty.
+			return os.pipe()
+		stdout_pipe = fd_pipes.get(1)
+		got_pty, master_fd, slave_fd = \
+			portage._create_pty_or_pipe(copy_term_size=stdout_pipe)
+		return (master_fd, slave_fd)
+
 	def _set_returncode(self, wait_retval):
 		SpawnProcess._set_returncode(self, wait_retval)
 		# Collect elog messages that might have been
@@ -2315,21 +2340,20 @@ class EbuildFetcher(SpawnProcess):
 				if self.logfile is not None:
 					if self.background:
 						elog_out = open(self.logfile, 'a')
-				eerror("Fetch failed for '%s'" % self.pkg.cpv,
-					phase="unpack", key=self.pkg.cpv, out=elog_out)
+				msg = "Fetch failed for '%s'" % (self.pkg.cpv,)
+				if self.logfile is not None:
+					msg += ", Log file:"
+				eerror(msg, phase="unpack", key=self.pkg.cpv, out=elog_out)
+				if self.logfile is not None:
+					eerror(" '%s'" % (self.logfile,),
+						phase="unpack", key=self.pkg.cpv, out=elog_out)
 				if elog_out is not None:
 					elog_out.close()
 			if not self.prefetch:
 				portage.elog.elog_process(self.pkg.cpv, self._build_dir.settings)
 			features = self._build_dir.settings.features
-			if (self.fetchonly or self.returncode == os.EX_OK) and \
-				not ("keepwork" in features or "keeptemp" in features):
-				try:
-					shutil.rmtree(self._build_dir.settings["PORTAGE_BUILDDIR"])
-				except EnvironmentError, e:
-					if e.errno != errno.ENOENT:
-						raise
-					del e
+			if self.returncode == os.EX_OK:
+				self._build_dir.clean()
 			self._build_dir.unlock()
 			self.config_pool.deallocate(self._build_dir.settings)
 			self._build_dir = None
@@ -2365,7 +2389,6 @@ class EbuildBuildDir(SlotObject):
 			portage.doebuild_environment(ebuild_path, "setup", root_config.root,
 				self.settings, debug, use_cache, portdb)
 			dir_path = self.settings["PORTAGE_BUILDDIR"]
-			portage.prepare_build_dirs(self.pkg.root, self.settings, 0)
 
 		catdir = os.path.dirname(dir_path)
 		self._catdir = catdir
@@ -2384,6 +2407,19 @@ class EbuildBuildDir(SlotObject):
 			self.locked = self._lock_obj is not None
 			if catdir_lock is not None:
 				portage.locks.unlockdir(catdir_lock)
+
+	def clean(self):
+		"""Uses shutil.rmtree() rather than spawning a 'clean' phase. Disabled
+		by keepwork or keeptemp in FEATURES."""
+		settings = self.settings
+		features = settings.features
+		if not ("keepwork" in features or "keeptemp" in features):
+			try:
+				shutil.rmtree(settings["PORTAGE_BUILDDIR"])
+			except EnvironmentError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
 
 	def unlock(self):
 		if self._lock_obj is None:
@@ -3504,7 +3540,7 @@ class MergeListItem(CompositeTask):
 
 	__slots__ = ("args_set",
 		"binpkg_opts", "build_opts", "config_pool", "emerge_opts",
-		"failed_fetches", "find_blockers", "logger", "mtimedb", "pkg",
+		"find_blockers", "logger", "mtimedb", "pkg",
 		"pkg_count", "pkg_to_replace", "prefetcher",
 		"settings", "statusMessage", "world_atom") + \
 		("_install_task",)
@@ -3564,7 +3600,7 @@ class MergeListItem(CompositeTask):
 				settings=settings, world_atom=world_atom)
 
 			self._install_task = build
-			self._start_task(build, self._ebuild_exit)
+			self._start_task(build, self._default_final_exit)
 			return
 
 		elif pkg.type_name == "binary":
@@ -3580,12 +3616,6 @@ class MergeListItem(CompositeTask):
 			self._start_task(binpkg, self._default_final_exit)
 			return
 
-	def _ebuild_exit(self, build):
-		if self._final_exit(build) != os.EX_OK:
-			if self.build_opts.fetchonly:
-				self.failed_fetches.append(self.pkg.cpv)
-		self.wait()
-
 	def _poll(self):
 		self._install_task.poll()
 		return self.returncode
@@ -3598,7 +3628,6 @@ class MergeListItem(CompositeTask):
 
 		pkg = self.pkg
 		build_opts = self.build_opts
-		failed_fetches = self.failed_fetches
 		find_blockers = self.find_blockers
 		logger = self.logger
 		mtimedb = self.mtimedb
@@ -7567,8 +7596,11 @@ class depgraph(object):
 		if self._missing_args:
 			world_problems = False
 			if "world" in self._sets:
+				# Filter out indirect members of world (from nested sets)
+				# since only direct members of world are desired here.
+				world_set = self.roots[self.target_root].sets["world"]
 				for arg, atom in self._missing_args:
-					if arg.name == "world":
+					if arg.name == "world" and atom in world_set:
 						world_problems = True
 						break
 
@@ -9022,8 +9054,7 @@ class Scheduler(PollScheduler):
 			emergelog(self.xterm_titles, *pargs, **kwargs)
 
 	class _failed_pkg(SlotObject):
-		__slots__ = ("build_dir", "build_log",
-			"fetch_log", "pkg", "returncode")
+		__slots__ = ("build_dir", "build_log", "pkg", "returncode")
 
 	class _ConfigPool(object):
 		"""Interface for a task to temporarily allocate a config
@@ -9116,7 +9147,7 @@ class Scheduler(PollScheduler):
 		self._failed_pkgs = []
 		self._failed_pkgs_all = []
 		self._failed_pkgs_die_msgs = []
-		self._failed_fetches = []
+		self._post_mod_echo_msgs = []
 		self._parallel_fetch = False
 		merge_count = len([x for x in mergelist \
 			if isinstance(x, Package) and x.operation == "merge"])
@@ -9156,7 +9187,7 @@ class Scheduler(PollScheduler):
 			elif len(mergelist) > 1:
 				self._parallel_fetch = True
 
-		if background or self._parallel_fetch:
+		if self._parallel_fetch:
 				# clear out existing fetch log if it exists
 				try:
 					open(self._fetch_log, 'w')
@@ -9475,34 +9506,6 @@ class Scheduler(PollScheduler):
 
 		return prefetcher
 
-	def _show_failed_fetches(self):
-		failed_fetches = self._failed_fetches
-		if not failed_fetches or not \
-			("--fetchonly" in self.myopts or \
-			"--fetch-all-uri" in self.myopts):
-			return
-
-		if self._background:
-			msg = "Some fetch errors were " + \
-				"encountered. Please see %s for details." % \
-				self._fetch_log
-		else:
-			msg = "Some fetch errors were " + \
-				"encountered. Please see above for details."
-
-		prefix = bad(" * ")
-		msg = "".join("%s%s\n" % (prefix, line) \
-			for line in textwrap.wrap(msg, 70))
-		writemsg_level(msg, level=logging.ERROR, noiselevel=-1)
-
-		msg = []
-		msg.append("")
-		for cpv in failed_fetches:
-			msg.append("  %s" % cpv)
-		msg.append("")
-		writemsg_level("".join("%s%s\n" % (prefix, line) \
-			for line in msg), level=logging.ERROR, noiselevel=-1)
-
 	def _is_restart_scheduled(self):
 		"""
 		Check if the merge list contains a replacement
@@ -9602,15 +9605,13 @@ class Scheduler(PollScheduler):
 			return rval
 
 		keep_going = "--keep-going" in self.myopts
+		fetchonly = self._build_opts.fetchonly
 		mtimedb = self._mtimedb
 		failed_pkgs = self._failed_pkgs
 
 		while True:
 			rval = self._merge()
-			self._show_failed_fetches()
-			del self._failed_fetches[:]
-
-			if rval == os.EX_OK or not keep_going:
+			if rval == os.EX_OK or fetchonly or not keep_going:
 				break
 			if "resume" not in mtimedb:
 				break
@@ -9630,29 +9631,13 @@ class Scheduler(PollScheduler):
 			if not mergelist:
 				break
 
-			dropped_tasks = self._calc_resume_list()
-			if dropped_tasks is None:
+			if not self._calc_resume_list():
 				break
 
 			clear_caches(self.trees)
 			if not self._mergelist:
 				break
 
-			if dropped_tasks:
-
-				def _eerror(lines):
-					for l in lines:
-						eerror(l, phase="other", key=failed_pkg.pkg.cpv)
-
-				msg = []
-				msg.append("One or more packages have been " + \
-					"dropped due to unsatisfied dependencies:")
-				msg.append("")
-				msg.extend("  " + str(task) for task in dropped_tasks)
-				msg.append("")
-				_eerror(msg)
-				del _eerror, msg
-			del dropped_tasks
 			self._save_resume_list()
 			self._pkg_count.curval = 0
 			self._pkg_count.maxval = len([x for x in self._mergelist \
@@ -9691,10 +9676,15 @@ class Scheduler(PollScheduler):
 					log_file.close()
 				failure_log_shown = True
 
+		# Dump mod_echo output now since it tends to flood the terminal.
+		# This allows us to avoid having more important output, generated
+		# later, from being swept away by the mod_echo output.
+		mod_echo_output =  _flush_elog_mod_echo()
+
 		if background and not failure_log_shown and \
 			self._failed_pkgs_all and \
 			self._failed_pkgs_die_msgs and \
-			not _flush_elog_mod_echo():
+			not mod_echo_output:
 
 			printer = portage.output.EOutput()
 			for mysettings, key, logentries in self._failed_pkgs_die_msgs:
@@ -9714,8 +9704,11 @@ class Scheduler(PollScheduler):
 						for line in msgcontent:
 							printer.eerror(line.strip("\n"))
 
+		if self._post_mod_echo_msgs:
+			for msg in self._post_mod_echo_msgs:
+				msg()
+
 		if len(self._failed_pkgs_all) > 1:
-			_flush_elog_mod_echo()
 			msg = "The following packages have " + \
 				"failed to build or install:"
 			prefix = bad(" * ")
@@ -9744,9 +9737,6 @@ class Scheduler(PollScheduler):
 		log_file = None
 
 		log_paths = [failed_pkg.build_log]
-
-		if not (build_dir and os.path.isdir(build_dir)):
-			log_paths.append(failed_pkg.fetch_log)
 
 		for log_path in log_paths:
 			if not log_path:
@@ -9787,11 +9777,10 @@ class Scheduler(PollScheduler):
 			settings = merge.merge.settings
 			build_dir = settings.get("PORTAGE_BUILDDIR")
 			build_log = settings.get("PORTAGE_LOG_FILE")
-			fetch_log = self._fetch_log
 
 			self._failed_pkgs.append(self._failed_pkg(
 				build_dir=build_dir, build_log=build_log,
-				fetch_log=fetch_log, pkg=pkg,
+				pkg=pkg,
 				returncode=merge.returncode))
 			self._failed_pkg_msg(self._failed_pkgs[-1], "install", "to")
 
@@ -9831,12 +9820,11 @@ class Scheduler(PollScheduler):
 		else:
 			settings = build.settings
 			build_dir = settings.get("PORTAGE_BUILDDIR")
-			fetch_log = self._fetch_log
 			build_log = settings.get("PORTAGE_LOG_FILE")
 
 			self._failed_pkgs.append(self._failed_pkg(
 				build_dir=build_dir, build_log=build_log,
-				fetch_log=fetch_log, pkg=build.pkg,
+				pkg=build.pkg,
 				returncode=build.returncode))
 			self._failed_pkg_msg(self._failed_pkgs[-1], "emerge", "for")
 
@@ -9998,6 +9986,10 @@ class Scheduler(PollScheduler):
 			if self._poll_event_handlers:
 				self._poll_loop()
 
+	def _keep_scheduling(self):
+		return bool(self._pkg_queue and \
+			not (self._failed_pkgs and not self._build_opts.fetchonly))
+
 	def _schedule_tasks(self):
 		self._schedule_tasks_imp()
 		self._status_display.display()
@@ -10009,7 +10001,7 @@ class Scheduler(PollScheduler):
 
 		# Cancel prefetchers if they're the only reason
 		# the main poll loop is still running.
-		if self._failed_pkgs and \
+		if self._failed_pkgs and not self._build_opts.fetchonly and \
 			not (self._jobs or self._task_queues.merge) and \
 			self._task_queues.fetch:
 			self._task_queues.fetch.clear()
@@ -10019,7 +10011,7 @@ class Scheduler(PollScheduler):
 			self._schedule_tasks_imp()
 			self._status_display.display()
 
-		return bool(self._pkg_queue and not self._failed_pkgs)
+		return self._keep_scheduling()
 
 	def _job_delay(self):
 		"""
@@ -10049,7 +10041,7 @@ class Scheduler(PollScheduler):
 
 		while True:
 
-			if not self._pkg_queue or self._failed_pkgs:
+			if not self._keep_scheduling():
 				return bool(state_change)
 
 			if self._choose_pkg_return_early or \
@@ -10106,7 +10098,6 @@ class Scheduler(PollScheduler):
 			config_pool=self._ConfigPool(pkg.root,
 			self._allocate_config, self._deallocate_config),
 			emerge_opts=self.myopts,
-			failed_fetches=self._failed_fetches,
 			find_blockers=self._find_blockers(pkg), logger=self._logger,
 			mtimedb=self._mtimedb, pkg=pkg, pkg_count=self._pkg_count.copy(),
 			pkg_to_replace=pkg_to_replace,
@@ -10165,9 +10156,8 @@ class Scheduler(PollScheduler):
 		"""
 		Use the current resume list to calculate a new one,
 		dropping any packages with unsatisfied deps.
-		@rtype: set
-		@returns: a possibly empty set of dropped tasks, or
-			None if an error occurs.
+		@rtype: bool
+		@returns: True if successful, False otherwise.
 		"""
 		print colorize("GOOD", "*** Resuming merge...")
 
@@ -10203,42 +10193,50 @@ class Scheduler(PollScheduler):
 			print "\b\b... done!"
 
 		if e is not None:
-			mydepgraph.display_problems()
-			out = portage.output.EOutput()
-			out.eerror("One or more packages are either masked or " + \
-				"have missing dependencies:")
-			out.eerror("")
-			indent = "  "
-			for dep in e.value:
-				if dep.atom is None:
-					out.eerror(indent + "Masked package:")
-					out.eerror(2 * indent + str(dep.parent))
-					out.eerror("")
-				else:
-					out.eerror(indent + str(dep.atom) + " pulled in by:")
-					out.eerror(2 * indent + str(dep.parent))
-					out.eerror("")
-			msg = "The resume list contains packages " + \
-				"that are either masked or have " + \
-				"unsatisfied dependencies. " + \
-				"Please restart/continue " + \
-				"the operation manually, or use --skipfirst " + \
-				"to skip the first package in the list and " + \
-				"any other packages that may be " + \
-				"masked or have missing dependencies."
-			for line in textwrap.wrap(msg, 72):
-				out.eerror(line)
-			return None
+			def unsatisfied_resume_dep_msg():
+				mydepgraph.display_problems()
+				out = portage.output.EOutput()
+				out.eerror("One or more packages are either masked or " + \
+					"have missing dependencies:")
+				out.eerror("")
+				indent = "  "
+				show_parents = set()
+				for dep in e.value:
+					if dep.parent in show_parents:
+						continue
+					show_parents.add(dep.parent)
+					if dep.atom is None:
+						out.eerror(indent + "Masked package:")
+						out.eerror(2 * indent + str(dep.parent))
+						out.eerror("")
+					else:
+						out.eerror(indent + str(dep.atom) + " pulled in by:")
+						out.eerror(2 * indent + str(dep.parent))
+						out.eerror("")
+				msg = "The resume list contains packages " + \
+					"that are either masked or have " + \
+					"unsatisfied dependencies. " + \
+					"Please restart/continue " + \
+					"the operation manually, or use --skipfirst " + \
+					"to skip the first package in the list and " + \
+					"any other packages that may be " + \
+					"masked or have missing dependencies."
+				for line in textwrap.wrap(msg, 72):
+					out.eerror(line)
+			self._post_mod_echo_msgs.append(unsatisfied_resume_dep_msg)
+			return False
 
-		if self._show_list():
+		if success and self._show_list():
 			mylist = mydepgraph.altlist()
-			if "--tree" in self.myopts:
-				mylist.reverse()
-			mydepgraph.display(mylist, favorites=self._favorites)
+			if mylist:
+				if "--tree" in self.myopts:
+					mylist.reverse()
+				mydepgraph.display(mylist, favorites=self._favorites)
 
-		mydepgraph.display_problems()
 		if not success:
-			return None
+			self._post_mod_echo_msgs.append(mydepgraph.display_problems)
+			return False
+		mydepgraph.display_problems()
 
 		mylist = mydepgraph.altlist()
 		mydepgraph.break_refs(mylist)
@@ -10247,7 +10245,27 @@ class Scheduler(PollScheduler):
 
 		self._mergelist = mylist
 		self._set_digraph(mydepgraph.digraph)
-		return dropped_tasks
+
+		msg_width = 75
+		for task in dropped_tasks:
+			if not (isinstance(task, Package) and task.operation == "merge"):
+				continue
+			pkg = task
+			msg = "emerge --keep-going:" + \
+				" %s" % (pkg.cpv,)
+			if pkg.root != "/":
+				msg += " for %s" % (pkg.root,)
+			msg += " dropped due to unsatisfied dependency."
+			for line in textwrap.wrap(msg, msg_width):
+				eerror(line, phase="other", key=pkg.cpv)
+			settings = mydepgraph.pkgsettings[pkg.root]
+			# Ensure that log collection from $T is disabled inside
+			# elog_process(), since any logs that might exist are
+			# not valid here.
+			settings.pop("T", None)
+			portage.elog.elog_process(pkg.cpv, settings)
+
+		return True
 
 	def _show_list(self):
 		myopts = self.myopts
