@@ -3319,6 +3319,9 @@ def _check_distfile(filename, digests, eout, show_errors=1):
 		if size is not None:
 			eout.ebegin("%s %s ;-)" % (os.path.basename(filename), "size"))
 			eout.eend(0)
+		elif st.st_size == 0:
+			# Zero-byte distfiles are always invalid.
+			return (False, st)
 	else:
 		if _check_digests(filename, digests, show_errors=show_errors):
 			eout.ebegin("%s %s ;-)" % (os.path.basename(filename),
@@ -3636,6 +3639,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 		orig_digests = mydigests.get(myfile, {})
 		size = orig_digests.get("size")
+		if size == 0:
+			# Zero-byte distfiles are always invalid, so discard their digests.
+			orig_digests.clear()
+			size = None
 		pruned_digests = orig_digests
 		if parallel_fetchonly:
 			pruned_digests = {}
@@ -3650,7 +3657,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		else:
 			# check if there is enough space in DISTDIR to completely store myfile
 			# overestimate the filesize so we aren't bitten by FS overhead
-			if hasattr(os, "statvfs"):
+			if size is not None and hasattr(os, "statvfs"):
 				vfs_stat = os.statvfs(mysettings["DISTDIR"])
 				try:
 					mysize = os.stat(myfile_path).st_size
@@ -3659,8 +3666,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						raise
 					del e
 					mysize = 0
-				if myfile in mydigests \
-					and (mydigests[myfile]["size"] - mysize + vfs_stat.f_bsize) >= \
+				if (size - mysize + vfs_stat.f_bsize) >= \
 					(vfs_stat.f_bsize * vfs_stat.f_bavail):
 					writemsg("!!! Insufficient space to store %s in %s\n" % (myfile, mysettings["DISTDIR"]), noiselevel=-1)
 					has_space = False
