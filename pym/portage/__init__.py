@@ -4078,7 +4078,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					(mysettings["CATEGORY"], mysettings["PF"])
 				portage.util.writemsg_level(msg,
 					level=logging.ERROR, noiselevel=-1)
-				if not parallel_fetchonly:
+				have_builddir = "PORTAGE_BUILDDIR" in mysettings and \
+					os.path.isdir(mysettings["PORTAGE_BUILDDIR"])
+				if not parallel_fetchonly and have_builddir:
 					# To spawn pkg_nofetch requires PORTAGE_BUILDDIR for
 					# ensuring sane $PWD (bug #239560) and storing elog
 					# messages. Therefore, calling code needs to ensure that
