@@ -3641,6 +3641,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		size = orig_digests.get("size")
 		if size == 0:
 			# Zero-byte distfiles are always invalid, so discard their digests.
+			del mydigests[myfile]
 			orig_digests.clear()
 			size = None
 		pruned_digests = orig_digests
