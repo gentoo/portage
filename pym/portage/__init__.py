@@ -107,7 +107,6 @@ try:
 		pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, \
 		unique_array, varexpand, writedict, writemsg, writemsg_stdout, write_atomic
 	import portage.exception
-	import portage.gpg
 	import portage.locks
 	import portage.process
 	from portage.process import atexit_register, run_exitfuncs
@@ -1642,13 +1641,6 @@ class config(object):
 				# repoman will accept any license
 				self._accept_license = set(["*"])
 
-			if "gpg" in self.features:
-				if not os.path.exists(self["PORTAGE_GPG_DIR"]) or \
-					not os.path.isdir(self["PORTAGE_GPG_DIR"]):
-					writemsg(colorize("BAD", "PORTAGE_GPG_DIR is invalid." + \
-						" Removing gpg from FEATURES.\n"), noiselevel=-1)
-					self.features.remove("gpg")
-
 			if not portage.process.sandbox_capable and \
 				("sandbox" in self.features or "usersandbox" in self.features):
 				if self.profile_path is not None and \
@@ -1665,9 +1657,6 @@ class config(object):
 					self.features.remove("usersandbox")
 
 			self.features.sort()
-			if "gpg" in self.features:
-				writemsg(colorize("WARN", "!!! FEATURES=gpg is unmaintained, incomplete and broken. Disabling it."), noiselevel=-1)
-				self.features.remove("gpg")
 			self["FEATURES"] = " ".join(self.features)
 			self.backup_changes("FEATURES")
 

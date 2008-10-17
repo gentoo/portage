@@ -11,13 +11,12 @@ from portage.data import portage_gid, secpass
 from portage.dbapi import dbapi
 from portage.dep import use_reduce, paren_reduce, dep_getkey, match_from_list
 from portage.exception import PortageException, \
-	UntrustedSignature, SecurityViolation, InvalidSignature, MissingSignature, \
 	FileNotFound, InvalidDependString, InvalidPackageName
 from portage.manifest import Manifest
 from portage.util import ensure_dirs, writemsg
 from portage.versions import pkgsplit, catpkgsplit, best, ver_regexp
 
-import portage.gpg, portage.checksum
+import portage.checksum
 
 from portage import eclass_cache, auxdbkeys, doebuild, flatten, \
 	listdir, dep_expand, eapi_is_supported, key_expand, dep_check, \
@@ -101,22 +100,6 @@ class portdbapi(dbapi):
 		# this purpose because doebuild makes many changes to the config
 		# instance that is passed in.
 		self.doebuild_settings = config(clone=self.mysettings)
-
-		self.manifestVerifyLevel = None
-		self.manifestVerifier = None
-		self.manifestCache = {}    # {location: [stat, md5]}
-		self.manifestMissingCache = []
-
-		if "gpg" in self.mysettings.features:
-			self.manifestVerifyLevel = portage.gpg.EXISTS
-			if "strict" in self.mysettings.features:
-				self.manifestVerifyLevel = portage.gpg.MARGINAL
-				self.manifestVerifier = portage.gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", minimumTrust=self.manifestVerifyLevel)
-			elif "severe" in self.mysettings.features:
-				self.manifestVerifyLevel = portage.gpg.TRUSTED
-				self.manifestVerifier = portage.gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", requireSignedRing=True, minimumTrust=self.manifestVerifyLevel)
-			else:
-				self.manifestVerifier = portage.gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", minimumTrust=self.manifestVerifyLevel)
 
 		#self.root=settings["PORTDIR"]
 		self.porttree_root = porttree_root
@@ -410,47 +393,6 @@ class portdbapi(dbapi):
 				noiselevel=1)
 			writemsg("!!!            %s\n" % myebuild, noiselevel=1)
 			raise KeyError(mycpv)
-
-		myManifestPath = "/".join(myebuild.split("/")[:-1])+"/Manifest"
-		if "gpg" in self.mysettings.features:
-			try:
-				mys = portage.gpg.fileStats(myManifestPath)
-				if (myManifestPath in self.manifestCache) and \
-				   (self.manifestCache[myManifestPath] == mys):
-					pass
-				elif self.manifestVerifier:
-					if not self.manifestVerifier.verify(myManifestPath):
-						# Verification failed the desired level.
-						raise UntrustedSignature(
-							"Untrusted Manifest: %(manifest)s" % \
-							{"manifest" : myManifestPath})
-
-				if ("severe" in self.mysettings.features) and \
-				   (mys != portage.gpg.fileStats(myManifestPath)):
-					raise SecurityViolation(
-						"Manifest changed: %(manifest)s" % \
-						{"manifest":myManifestPath})
-
-			except InvalidSignature, e:
-				if ("strict" in self.mysettings.features) or \
-				   ("severe" in self.mysettings.features):
-					raise
-				writemsg("!!! INVALID MANIFEST SIGNATURE DETECTED: %(manifest)s\n" % {"manifest":myManifestPath})
-			except MissingSignature, e:
-				if ("severe" in self.mysettings.features):
-					raise
-				if ("strict" in self.mysettings.features):
-					if myManifestPath not in self.manifestMissingCache:
-						writemsg("!!! WARNING: Missing signature in: %(manifest)s\n" % {"manifest":myManifestPath})
-						self.manifestMissingCache.insert(0,myManifestPath)
-			except (OSError, FileNotFound), e:
-				if ("strict" in self.mysettings.features) or \
-				   ("severe" in self.mysettings.features):
-					raise SecurityViolation(
-						"Error in verification of signatures: " + \
-						"%(errormsg)s" % {"errormsg" : str(e)})
-				writemsg("!!! Manifest is missing or inaccessable: %(manifest)s\n" % {"manifest":myManifestPath},
-					noiselevel=-1)
 
 		mydata, st, emtime = self._pull_valid_cache(mycpv, myebuild, mylocation)
 		doregen = mydata is None
