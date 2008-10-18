@@ -25,20 +25,15 @@ list_sourcedir = \
 all:
 
 install:
+	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(datadir)/portage/config
+	$(INSTALL_cnfsubst) $(srcdir)/make.globals $(DESTDIR)$(datadir)/portage/config/make.globals
+	$(INSTALL_cnfsubst) $(srcdir)/make.conf $(DESTDIR)$(datadir)/portage/config/make.conf.example
+	$(INSTALL_cnfsubst) $(srcdir)/sets.conf $(DESTDIR)$(datadir)/portage/config/sets.conf
 	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(sysconfdir)
-	$(INSTALL_cnfsubst) $(srcdir)/make.globals $(DESTDIR)$(sysconfdir)/make.globals
-	$(INSTALL_cnfsubst) $(srcdir)/make.conf $(DESTDIR)$(sysconfdir)/make.conf.example
 	$(INSTALL_cnfsubst) $(srcdir)/dispatch-conf.conf $(DESTDIR)$(sysconfdir)/dispatch-conf.conf
 	$(INSTALL_cnfsubst) $(srcdir)/etc-update.conf $(DESTDIR)$(sysconfdir)/etc-update.conf
-	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(datadir)/portage/config
-	$(INSTALL_cnfsubst) $(srcdir)/sets.conf $(DESTDIR)$(datadir)/portage/config/sets.conf
+	( cd $(DESTDIR)$(sysconfdir) && ln -s $(DESTDIR)$(datadir)/portage/config/make.globals )
 	
-uninstall:
-	@ echo rm -f $(DESTDIR)$(sysconfdir)/make.conf.example \
-	; rm -f $(DESTDIR)$(sysconfdir)/make.conf.example \
-	; echo rm -f $(DESTDIR)$(sysconfdir)/make.globals \
-	; rm -f $(DESTDIR)$(sysconfdir)/make.globals \
-
 distdir:
 	$(list_sourcedir) | while read f \
 	; do echo $(INSTALL_cnf) ${srcdir}/$${f} $(distdir)/$${f} \
@@ -46,7 +41,7 @@ distdir:
 	; done
 
 all dvi check installcheck:
-clean distclean maintainer-clean:
+uninstall clean distclean maintainer-clean:
 
 .PHONY: all install distdir uninstall
 .PHONY: dvi check installcheck
