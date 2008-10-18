@@ -108,7 +108,6 @@ try:
 		pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, \
 		unique_array, varexpand, writedict, writemsg, writemsg_stdout, write_atomic
 	import portage.exception
-	import portage.gpg
 	import portage.locks
 	import portage.process
 	from portage.process import atexit_register, run_exitfuncs
@@ -1654,13 +1653,6 @@ class config(object):
 				# repoman will accept any license
 				self._accept_license = set(["*"])
 
-			if "gpg" in self.features:
-				if not os.path.exists(self["PORTAGE_GPG_DIR"]) or \
-					not os.path.isdir(self["PORTAGE_GPG_DIR"]):
-					writemsg(colorize("BAD", "PORTAGE_GPG_DIR is invalid." + \
-						" Removing gpg from FEATURES.\n"), noiselevel=-1)
-					self.features.remove("gpg")
-
 			if not portage.process.sandbox_capable and \
 				("sandbox" in self.features or "usersandbox" in self.features):
 				if self.profile_path is not None and \
@@ -1677,9 +1669,6 @@ class config(object):
 					self.features.remove("usersandbox")
 
 			self.features.sort()
-			if "gpg" in self.features:
-				writemsg(colorize("WARN", "!!! FEATURES=gpg is unmaintained, incomplete and broken. Disabling it."), noiselevel=-1)
-				self.features.remove("gpg")
 			self["FEATURES"] = " ".join(self.features)
 			self.backup_changes("FEATURES")
 
@@ -3339,6 +3328,9 @@ def _check_distfile(filename, digests, eout, show_errors=1):
 		if size is not None:
 			eout.ebegin("%s %s ;-)" % (os.path.basename(filename), "size"))
 			eout.eend(0)
+		elif st.st_size == 0:
+			# Zero-byte distfiles are always invalid.
+			return (False, st)
 	else:
 		if _check_digests(filename, digests, show_errors=show_errors):
 			eout.ebegin("%s %s ;-)" % (os.path.basename(filename),
@@ -3656,6 +3648,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 		orig_digests = mydigests.get(myfile, {})
 		size = orig_digests.get("size")
+		if size == 0:
+			# Zero-byte distfiles are always invalid, so discard their digests.
+			del mydigests[myfile]
+			orig_digests.clear()
+			size = None
 		pruned_digests = orig_digests
 		if parallel_fetchonly:
 			pruned_digests = {}
@@ -3670,7 +3667,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		else:
 			# check if there is enough space in DISTDIR to completely store myfile
 			# overestimate the filesize so we aren't bitten by FS overhead
-			if hasattr(os, "statvfs"):
+			if size is not None and hasattr(os, "statvfs"):
 				vfs_stat = os.statvfs(mysettings["DISTDIR"])
 				try:
 					mysize = os.stat(myfile_path).st_size
@@ -3679,8 +3676,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						raise
 					del e
 					mysize = 0
-				if myfile in mydigests \
-					and (mydigests[myfile]["size"] - mysize + vfs_stat.f_bsize) >= \
+				if (size - mysize + vfs_stat.f_bsize) >= \
 					(vfs_stat.f_bsize * vfs_stat.f_bavail):
 					writemsg("!!! Insufficient space to store %s in %s\n" % (myfile, mysettings["DISTDIR"]), noiselevel=-1)
 					has_space = False
@@ -4092,7 +4088,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					(mysettings["CATEGORY"], mysettings["PF"])
 				portage.util.writemsg_level(msg,
 					level=logging.ERROR, noiselevel=-1)
-				if not parallel_fetchonly:
+				have_builddir = "PORTAGE_BUILDDIR" in mysettings and \
+					os.path.isdir(mysettings["PORTAGE_BUILDDIR"])
+				if not parallel_fetchonly and have_builddir:
 					# To spawn pkg_nofetch requires PORTAGE_BUILDDIR for
 					# ensuring sane $PWD (bug #239560) and storing elog
 					# messages. Therefore, calling code needs to ensure that
