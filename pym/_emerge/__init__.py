@@ -5677,6 +5677,22 @@ class depgraph(object):
 					if pkg.cp == cp]
 				break
 
+		# If the installed version is in a different slot and it is higher than
+		# the highest available visible package, _iter_atoms_for_pkg() may fail
+		# to properly match the available package with a corresponding argument
+		# atom. Detect this case and correct it here.
+		if not selective and len(matched_packages) > 1 and \
+			matched_packages[-1].installed and \
+			matched_packages[-1].slot_atom != \
+			matched_packages[-2].slot_atom and \
+			matched_packages[-1] > matched_packages[-2]:
+			pkg = matched_packages[-2]
+			if pkg.root == self.target_root and \
+				self._set_atoms.findAtomForPackage(pkg):
+				# Select the available package instead
+				# of the installed package.
+				matched_packages.pop()
+
 		if len(matched_packages) > 1:
 			bestmatch = portage.best(
 				[pkg.cpv for pkg in matched_packages])
