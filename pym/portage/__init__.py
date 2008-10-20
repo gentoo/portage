@@ -3494,6 +3494,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	filedict={}
 	primaryuri_indexes={}
 	primaryuri_dict = {}
+	thirdpartymirror_uris = {}
 	for myfile, myuri in file_uri_tuples:
 		if myfile not in filedict:
 			filedict[myfile]=[]
@@ -3517,9 +3518,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				if mirrorname in thirdpartymirrors:
 					shuffle(thirdpartymirrors[mirrorname])
 
-					for locmirr in thirdpartymirrors[mirrorname]:
-						filedict[myfile].append(
-							locmirr.rstrip("/") + "/" + path)
+					uris = [locmirr.rstrip("/") + "/" + path \
+						for locmirr in thirdpartymirrors[mirrorname]]
+					filedict[myfile].extend(uris)
+					thirdpartymirror_uris.setdefault(myfile, []).extend(uris)
 
 				if not filedict[myfile]:
 					writemsg("No known mirror by the name: %s\n" % (mirrorname))
@@ -3544,6 +3546,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				primaryuris = []
 				primaryuri_dict[myfile] = primaryuris
 			primaryuris.append(myuri)
+
+	# Prefer thirdpartymirrors over normal mirrors in cases when
+	# the file does not yet exist on the normal mirrors.
+	for myfile, uris in thirdpartymirror_uris.iteritems():
+		primaryuri_dict.setdefault(myfile, []).extend(uris)
 
 	can_fetch=True
 
