@@ -5424,11 +5424,10 @@ class depgraph(object):
 			for db, pkg_type, built, installed, db_keys in dbs:
 				if existing_node:
 					break
-				if installed and not find_existing_node:
-					want_reinstall = reinstall or empty or \
-						(matched_packages and not selective)
-					if want_reinstall and matched_packages:
-						continue
+				if not find_existing_node and \
+					installed and matched_packages and \
+					(reinstall or empty or not selective):
+					continue
 				if hasattr(db, "xmatch"):
 					cpv_list = db.xmatch("match-all", atom)
 				else:
