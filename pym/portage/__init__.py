@@ -3511,9 +3511,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					for cmirr in custommirrors[mirrorname]:
 						filedict[myfile].append(
 							cmirr.rstrip("/") + "/" + path)
-						# remove the mirrors we tried from the list of official mirrors
-						if cmirr.strip() in thirdpartymirrors[mirrorname]:
-							thirdpartymirrors[mirrorname].remove(cmirr)
+
 				# now try the official mirrors
 				if mirrorname in thirdpartymirrors:
 					shuffle(thirdpartymirrors[mirrorname])
