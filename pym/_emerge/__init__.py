@@ -5417,17 +5417,20 @@ class depgraph(object):
 		# Therefore, "selective" logic does not consider
 		# whether or not an installed package matches an
 		# argument atom. It only considers whether or not
-		# available packages match argument atoms.
+		# available packages match argument atoms, which is
+		# represented by the found_available_arg flag.
+		found_available_arg = False
 		for find_existing_node in True, False:
 			if existing_node:
 				break
 			for db, pkg_type, built, installed, db_keys in dbs:
 				if existing_node:
 					break
-				if not find_existing_node and \
-					installed and matched_packages and \
-					(reinstall or empty or not selective):
-					continue
+				if installed and not find_existing_node:
+					want_reinstall = reinstall or empty or \
+						(found_available_arg and not selective)
+					if want_reinstall and matched_packages:
+						continue
 				if hasattr(db, "xmatch"):
 					cpv_list = db.xmatch("match-all", atom)
 				else:
@@ -5565,6 +5568,8 @@ class depgraph(object):
 							if not installed:
 								# masked by corruption
 								continue
+					if not installed and myarg:
+						found_available_arg = True
 
 					if atom.use and not pkg.built:
 						use = pkg.use.enabled
