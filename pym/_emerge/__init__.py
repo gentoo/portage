@@ -13439,6 +13439,10 @@ def adjust_config(myopts, settings):
 		settings["PORTAGE_QUIET"]="1"
 		settings.backup_changes("PORTAGE_QUIET")
 
+	if "--verbose" in myopts:
+		settings["PORTAGE_VERBOSE"] = "1"
+		settings.backup_changes("PORTAGE_VERBOSE")
+
 	# Set so that configs will be merged regardless of remembered status
 	if ("--noconfmem" in myopts):
 		settings["NOCONFMEM"]="1"

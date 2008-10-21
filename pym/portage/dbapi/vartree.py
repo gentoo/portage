@@ -1671,8 +1671,7 @@ class dblink(object):
 		self._lock_vdb = None
 
 		self.settings = mysettings
-		if self.settings == 1:
-			raise ValueError
+		self._verbose = self.settings.get("PORTAGE_VERBOSE") == "1"
 
 		self.myroot=myroot
 		protect_obj = ConfigProtect(myroot,
@@ -2106,6 +2105,8 @@ class dblink(object):
 		return os.EX_OK
 
 	def _display_merge(self, msg, level=0, noiselevel=0):
+		if not self._verbose and noiselevel >= 0 and level < logging.WARN:
+			return
 		if self._scheduler is not None:
 			self._scheduler.dblinkDisplayMerge(self, msg,
 				level=level, noiselevel=noiselevel)
