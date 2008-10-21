@@ -9196,6 +9196,28 @@ class Scheduler(PollScheduler):
 			self._max_jobs > 1 or "--quiet" in self.myopts) and \
 			not bool(self._opts_no_background.intersection(self.myopts))
 
+		if background:
+			interactive_tasks = self._get_interactive_tasks()
+			if interactive_tasks:
+				background = False
+				writemsg_level(">>> Sending package output to stdio due " + \
+					"to interactive package(s):\n",
+					level=logging.INFO, noiselevel=-1)
+				msg = [""]
+				for pkg in interactive_tasks:
+					pkg_str = "  " + colorize("INFORM", str(pkg.cpv))
+					if pkg.root != "/":
+						pkg_str += " for " + pkg.root
+					msg.append(pkg_str)
+				msg.append("")
+				writemsg_level("".join("%s\n" % (l,) for l in msg),
+					level=logging.INFO, noiselevel=-1)
+				if self._max_jobs is True or self._max_jobs > 1:
+					self._set_max_jobs(1)
+					writemsg_level(">>> Setting --jobs=1 due " + \
+						"to the above interactive package(s)\n",
+						level=logging.INFO, noiselevel=-1)
+
 		self._status_display.quiet = \
 			not background or \
 			("--quiet" in self.myopts and \
@@ -9206,6 +9228,20 @@ class Scheduler(PollScheduler):
 			self._status_display.quiet
 
 		return background
+
+	def _get_interactive_tasks(self):
+		from portage import flatten
+		from portage.dep import use_reduce, paren_reduce
+		interactive_tasks = []
+		for task in self._mergelist:
+			if not (isinstance(task, Package) and \
+				task.operation == "merge"):
+				continue
+			properties = flatten(use_reduce(paren_reduce(
+				task.metadata["PROPERTIES"]), uselist=task.use.enabled))
+			if "interactive" in properties:
+				interactive_tasks.append(task)
+		return interactive_tasks
 
 	def _set_digraph(self, digraph):
 		if self._max_jobs is not True and \
