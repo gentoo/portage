@@ -7,20 +7,19 @@ __all__ = ["PreservedLibsRegistry", "LinkageMap",
 	["write_contents", "tar_contents"]
 
 from portage.checksum import perform_md5
-from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, PORTAGE_BIN_PATH, \
+from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, \
 	PRIVATE_PATH, VDB_PATH
 from portage.data import portage_gid, portage_uid, secpass
 from portage.dbapi import dbapi
-from portage.dep import dep_getslot, use_reduce, paren_reduce, isvalidatom, \
-	isjustname, dep_getkey, match_from_list
-from portage.exception import InvalidAtom, InvalidData, InvalidPackageName, \
+from portage.dep import use_reduce, paren_reduce, isvalidatom, \
+	isjustname, dep_getkey
+from portage.exception import InvalidData, InvalidPackageName, \
 	FileNotFound, PermissionDenied, UnsupportedAPIException
 from portage.locks import lockdir, unlockdir
 from portage.output import bold, red, green
 from portage.update import fixdbentries
 from portage.util import apply_secpass_permissions, ConfigProtect, ensure_dirs, \
-	writemsg, writemsg_stdout, writemsg_level, \
-	write_atomic, atomic_ofstream, writedict, \
+	writemsg, writemsg_level, write_atomic, atomic_ofstream, writedict, \
 	grabfile, grabdict, normalize_path, new_protect_filename, getlibpaths
 from portage.versions import pkgsplit, catpkgsplit, catsplit, best, pkgcmp
 
@@ -31,7 +30,7 @@ from portage import listdir, dep_expand, flatten, key_expand, \
 from portage.elog import elog_process
 from portage.elog.filtering import filter_mergephases, filter_unmergephases
 
-import os, re, sys, stat, errno, commands, copy, time, subprocess
+import os, re, stat, errno, copy, subprocess
 import logging
 import shlex
 from itertools import izip
