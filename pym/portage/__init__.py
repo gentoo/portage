@@ -5384,7 +5384,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			set(["clean", "cleanrm", "help", "prerm", "postrm"])
 		mycpv = mysettings["CATEGORY"] + "/" + mysettings["PF"]
 		dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
-		misc_keys = ["LICENSE", "PROVIDE", "RESTRICT", "SRC_URI"]
+		misc_keys = ["LICENSE", "PROPERTIES", "PROVIDE", "RESTRICT", "SRC_URI"]
 		other_keys = ["SLOT"]
 		all_keys = dep_keys + misc_keys + other_keys
 		metadata = dict(izip(all_keys, mydbapi.aux_get(mycpv, all_keys)))
