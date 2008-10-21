@@ -672,53 +672,10 @@ class vardbapi(dbapi):
 			return long(self.aux_get(mycpv, ["COUNTER"])[0])
 		except (KeyError, ValueError):
 			pass
-		cdir = self.getpath(mycpv)
-		cpath = self.getpath(mycpv, filename="COUNTER")
-
-		# We write our new counter value to a new file that gets moved into
-		# place to avoid filesystem corruption on XFS (unexpected reboot.)
-		corrupted = 0
-		if os.path.exists(cpath):
-			cfile = open(cpath, "r")
-			try:
-				counter = long(cfile.readline())
-			except ValueError:
-				print "portage: COUNTER for", mycpv, "was corrupted; resetting to value of 0"
-				counter = long(0)
-				corrupted = 1
-			cfile.close()
-		elif os.path.exists(cdir):
-			mys = pkgsplit(mycpv)
-			myl = self.match(mys[0], use_cache=0)
-			print mys, myl
-			if len(myl) == 1:
-				try:
-					# Only one package... Counter doesn't matter.
-					write_atomic(cpath, "1")
-					counter = 1
-				except SystemExit, e:
-					raise
-				except Exception, e:
-					writemsg("!!! COUNTER file is missing for "+str(mycpv)+" in /var/db.\n",
-						noiselevel=-1)
-					writemsg("!!! Please run %s/fix-db.py or\n" % PORTAGE_BIN_PATH,
-						noiselevel=-1)
-					writemsg("!!! unmerge this exact version.\n", noiselevel=-1)
-					writemsg("!!! %s\n" % e, noiselevel=-1)
-					sys.exit(1)
-			else:
-				writemsg("!!! COUNTER file is missing for "+str(mycpv)+" in /var/db.\n",
-					noiselevel=-1)
-				writemsg("!!! Please run %s/fix-db.py or\n" % PORTAGE_BIN_PATH,
-					noiselevel=-1)
-				writemsg("!!! remerge the package.\n", noiselevel=-1)
-				sys.exit(1)
-		else:
-			counter = long(0)
-		if corrupted:
-			# update new global counter file
-			write_atomic(cpath, str(counter))
-		return counter
+		writemsg_level(("portage: COUNTER for %s was corrupted; " + \
+			"resetting to value of 0\n") % (mycpv,),
+			level=logging.ERROR, noiselevel=-1)
+		return 0
 
 	def cpv_inject(self, mycpv):
 		"injects a real package into our on-disk database; assumes mycpv is valid and doesn't already exist"
