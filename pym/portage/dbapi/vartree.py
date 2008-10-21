@@ -3094,7 +3094,9 @@ class dblink(object):
 			# couldn't get merged will be added to thirdhand.
 
 			thirdhand = []
-			self.mergeme(srcroot, destroot, outfile, thirdhand, secondhand, cfgfiledict, mymtime)
+			if self.mergeme(srcroot, destroot, outfile, thirdhand,
+				secondhand, cfgfiledict, mymtime):
+				return 1
 
 			#swap hands
 			lastlen = len(secondhand)
@@ -3106,7 +3108,9 @@ class dblink(object):
 
 		if len(secondhand):
 			# force merge of remaining symlinks (broken or circular; oh well)
-			self.mergeme(srcroot, destroot, outfile, None, secondhand, cfgfiledict, mymtime)
+			if self.mergeme(srcroot, destroot, outfile, None,
+				secondhand, cfgfiledict, mymtime):
+				return 1
 
 		#restore umask
 		os.umask(prevmask)
@@ -3249,6 +3253,7 @@ class dblink(object):
 		"""
 
 		showMessage = self._display_merge
+		writemsg = self._display_merge
 		scheduler = self._scheduler
 
 		from os.path import sep, join
@@ -3285,7 +3290,7 @@ class dblink(object):
 				writemsg(red("!!!        and ensure your filesystem is in a sane state. ")+bold("'shutdown -Fr now'\n"))
 				writemsg(red("!!!        File:  ")+str(mysrc)+"\n", noiselevel=-1)
 				writemsg(red("!!!        Error: ")+str(e)+"\n", noiselevel=-1)
-				sys.exit(1)
+				return 1
 			except Exception, e:
 				writemsg("\n")
 				writemsg(red("!!! ERROR: An unknown error has occurred during the merge process.\n"))
@@ -3294,7 +3299,7 @@ class dblink(object):
 				writemsg(    "!!!        this as a portage bug at bugs.gentoo.org. Append 'emerge info'.\n")
 				writemsg(    "!!!        File:  "+str(mysrc)+"\n", noiselevel=-1)
 				writemsg(    "!!!        Error: "+str(e)+"\n", noiselevel=-1)
-				sys.exit(1)
+				return 1
 
 
 			mymode = mystat[stat.ST_MODE]
@@ -3360,9 +3365,11 @@ class dblink(object):
 					showMessage(">>> %s -> %s\n" % (mydest, myto))
 					outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime)+"\n")
 				else:
-					print "!!! Failed to move file."
-					print "!!!", mydest, "->", myto
-					sys.exit(1)
+					showMessage("!!! Failed to move file.\n",
+						level=logging.ERROR, noiselevel=-1)
+					showMessage("!!! %s -> %s\n" % (mydest, myto),
+						level=logging.ERROR, noiselevel=-1)
+					return 1
 			elif stat.S_ISDIR(mymode):
 				# we are merging a directory
 				if mydmode != None:
@@ -3391,8 +3398,9 @@ class dblink(object):
 					else:
 						# a non-directory and non-symlink-to-directory.  Won't work for us.  Move out of the way.
 						if movefile(mydest, mydest+".backup", mysettings=self.settings) is None:
-							sys.exit(1)
-						print "bak", mydest, mydest+".backup"
+							return 1
+						showMessage("bak %s %s.backup\n" % (mydest, mydest),
+							level=logging.ERROR, noiselevel=-1)
 						#now create our directory
 						if self.settings.selinux_enabled():
 							import selinux
@@ -3476,7 +3484,7 @@ class dblink(object):
 				if moveme:
 					mymtime = movefile(mysrc, mydest, newmtime=thismtime, sstat=mystat, mysettings=self.settings)
 					if mymtime is None:
-						sys.exit(1)
+						return 1
 					zing = ">>>"
 
 				if mymtime != None:
@@ -3490,7 +3498,7 @@ class dblink(object):
 					if movefile(mysrc, mydest, newmtime=thismtime, sstat=mystat, mysettings=self.settings) != None:
 						zing = ">>>"
 					else:
-						sys.exit(1)
+						return 1
 				if stat.S_ISFIFO(mymode):
 					outfile.write("fif %s\n" % myrealdest)
 				else:
