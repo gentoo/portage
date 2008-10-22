@@ -291,6 +291,7 @@ qahelp={
 	"PDEPEND.syntax":"Syntax error in PDEPEND (usually an extra/missing space/parenthesis)",
 	"LICENSE.syntax":"Syntax error in LICENSE (usually an extra/missing space/parenthesis)",
 	"PROVIDE.syntax":"Syntax error in PROVIDE (usually an extra/missing space/parenthesis)",
+	"PROPERTIES.syntax":"Syntax error in PROPERTIES (usually an extra/missing space/parenthesis)",
 	"RESTRICT.syntax":"Syntax error in RESTRICT (usually an extra/missing space/parenthesis)",
 	"SRC_URI.syntax":"Syntax error in SRC_URI (usually an extra/missing space/parenthesis)",
 	"SRC_URI.mirror":"A uri listed in profiles/thirdpartymirrors is found in SRC_URI",
@@ -1230,7 +1231,8 @@ for x in scanlist:
 			"java-pkg-opt-2" in inherited
 		operator_tokens = set(["||", "(", ")"])
 		type_list, badsyntax = [], []
-		for mytype in ("DEPEND", "RDEPEND", "PDEPEND", "LICENSE", "PROVIDE"):
+		for mytype in ("DEPEND", "RDEPEND", "PDEPEND",
+			"LICENSE", "PROPERTIES", "PROVIDE"):
 			mydepstr = myaux[mytype]
 			
 			if mydepstr.find(" ?") != -1:
