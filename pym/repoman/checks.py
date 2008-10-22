@@ -232,12 +232,19 @@ class InheritAutotools(LineCheck):
 		"eautomake", "eautoreconf", "_elibtoolize")
 	_autotools_func_re = re.compile(r'(^|\s)(' + \
 		"|".join(_autotools_funcs) + ')(\s|$)')
+	# Exempt eclasses:
+	# git - An EGIT_BOOTSTRAP variable may be used to call one of
+	#       the autotools functions.
+	_exempt_eclasses = frozenset(["git"])
 
 	def new(self, pkg):
 		self._inherit_autotools = None
 		self._autotools_func_call = None
+		self._disabled = self._exempt_eclasses.intersection(pkg.inherited)
 
 	def check(self, num, line):
+		if self._disabled:
+			return
 		if self._inherit_autotools is None:
 			self._inherit_autotools = self._inherit_autotools_re.match(line)
 		if self._inherit_autotools is not None and \
