@@ -235,7 +235,9 @@ class InheritAutotools(LineCheck):
 	# Exempt eclasses:
 	# git - An EGIT_BOOTSTRAP variable may be used to call one of
 	#       the autotools functions.
-	_exempt_eclasses = frozenset(["git"])
+	# subversion - An ESVN_BOOTSTRAP variable may be used to call one of
+	#       the autotools functions.
+	_exempt_eclasses = frozenset(["git", "subversion"])
 
 	def new(self, pkg):
 		self._inherit_autotools = None
