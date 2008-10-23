@@ -2675,6 +2675,7 @@ class EbuildExecuter(CompositeTask):
 	_phases = ("prepare", "configure", "compile", "test", "install")
 
 	_live_eclasses = frozenset([
+		"bzr",
 		"cvs",
 		"darcs",
 		"git",

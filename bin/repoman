@@ -376,6 +376,7 @@ valid_restrict = frozenset(["binchecks", "bindist",
 	"primaryuri", "strip", "test", "userpriv"])
 
 live_eclasses = frozenset([
+	"bzr",
 	"cvs",
 	"darcs",
 	"git",
