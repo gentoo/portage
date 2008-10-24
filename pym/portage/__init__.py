@@ -5656,24 +5656,31 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			mysettings["PORTAGE_ACTUAL_DISTDIR"] = orig_distdir
 			edpath = mysettings["DISTDIR"] = \
 				os.path.join(mysettings["PORTAGE_BUILDDIR"], "distdir")
-			if os.path.exists(edpath):
+			portage.util.ensure_dirs(edpath, uid=portage_uid, mode=0755)
+
+			# Remove any unexpected files or directories.
+			for x in os.listdir(edpath):
+				symlink_path = os.path.join(edpath, x)
+				st = os.lstat(symlink_path)
+				if x in alist and stat.S_ISLNK(st.st_mode):
+					continue
+				if stat.S_ISDIR(st.st_mode):
+					shutil.rmtree(symlink_path)
+				else:
+					os.unlink(symlink_path)
+
+			# Check for existing symlinks and recreate if necessary.
+			for x in alist:
+				symlink_path = os.path.join(edpath, x)
+				target = os.path.join(orig_distdir, x)
 				try:
-					if os.path.isdir(edpath) and not os.path.islink(edpath):
-						shutil.rmtree(edpath)
-					else:
-						os.unlink(edpath)
+					link_target = os.readlink(symlink_path)
 				except OSError:
-					print "!!! Failed reseting ebuild distdir path, " + edpath
-					raise
-			os.mkdir(edpath)
-			apply_secpass_permissions(edpath, uid=portage_uid, mode=0755)
-			try:
-				for file in alist:
-					os.symlink(os.path.join(orig_distdir, file),
-						os.path.join(edpath, file))
-			except OSError:
-				print "!!! Failed symlinking in '%s' to ebuild distdir" % file
-				raise
+					os.symlink(target, symlink_path)
+				else:
+					if link_target != target:
+						os.unlink(symlink_path)
+						os.symlink(target, symlink_path)
 
 		#initial dep checks complete; time to process main commands
 
