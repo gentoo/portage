@@ -5656,7 +5656,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			mysettings["PORTAGE_ACTUAL_DISTDIR"] = orig_distdir
 			edpath = mysettings["DISTDIR"] = \
 				os.path.join(mysettings["PORTAGE_BUILDDIR"], "distdir")
-			portage.util.ensure_dirs(edpath, uid=portage_uid, mode=0755)
+			portage.util.ensure_dirs(edpath, gid=portage_gid, mode=0755)
 
 			# Remove any unexpected files or directories.
 			for x in os.listdir(edpath):
