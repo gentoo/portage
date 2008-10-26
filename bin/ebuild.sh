@@ -1525,10 +1525,9 @@ _ebuild_phase_funcs() {
 #    function for the current phase.
 #
 source_all_bashrcs() {
-	[ -n "$EBUILD_PHASE" ] || return
 	local x
 
-	if [[ -n $EAPI ]] ; then
+	if [[ -n $EBUILD_PHASE && -n $EAPI ]] ; then
 		local phase_func=$(_ebuild_arg_to_phase "$EAPI" $EBUILD_PHASE)
 		[[ -n $phase_func ]] && _ebuild_phase_funcs "$EAPI" $phase_func
 	fi
