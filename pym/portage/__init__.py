@@ -3339,6 +3339,9 @@ _size_suffix_map = {
 def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",use_locks=1, try_mirrors=1):
 	"fetch files.  Will use digest file if available."
 
+	if not myuris:
+		return 1
+
 	features = mysettings.features
 	restrict = mysettings.get("PORTAGE_RESTRICT","").split()
 
