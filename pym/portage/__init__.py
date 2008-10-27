@@ -3583,7 +3583,12 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				write_test_file = os.path.join(
 					mydir, ".__portage_test_write__")
 
-				if os.path.isdir(mydir):
+				try:
+					st = os.stat(mydir)
+				except OSError:
+					st = None
+
+				if st is not None and stat.S_ISDIR(st.st_mode):
 					if not (userfetch or userpriv):
 						continue
 					if _userpriv_test_write_file(mysettings, write_test_file):
@@ -3591,6 +3596,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 				_userpriv_test_write_file_cache.pop(write_test_file, None)
 				if portage.util.ensure_dirs(mydir, gid=dir_gid, mode=dirmode, mask=modemask):
+					if st is None:
+						# The directory has just been created
+						# and therefore it must be empty.
+						continue
 					writemsg("Adjusting permissions recursively: '%s'\n" % mydir,
 						noiselevel=-1)
 					def onerror(e):
