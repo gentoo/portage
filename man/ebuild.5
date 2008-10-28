@@ -401,6 +401,16 @@ Disables userpriv for specific packages.
 .RE
 .PD 1
 .TP
+\fBPROPERTIES\fR = \fI[interactive]\fR
+A space delimited list of properties, with conditional syntax support.
+.PD 0
+.RS
+.TP
+.I interactive
+One or more ebuild phases will produce a prompt that requires user interaction.
+.RE
+.PD 1
+.TP
 \fBPROVIDE\fR = \fI"virtual/TARGET"\fR
 This variable should only be used when a package provides a virtual target.
 For example, blackdown\-jdk and sun\-jdk provide \fIvirtual/jdk\fR.  This

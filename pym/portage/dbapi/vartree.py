@@ -2373,6 +2373,8 @@ class dblink(object):
 				# their real target before the object is found not to be
 				# in the reverse NEEDED map
 				def symlink_compare(x, y):
+					x = os.path.join(self.myroot, x.lstrip(os.path.sep))
+					y = os.path.join(self.myroot, y.lstrip(os.path.sep))
 					if os.path.islink(x):
 						if os.path.islink(y):
 							return 0
@@ -2385,20 +2387,23 @@ class dblink(object):
 
 				plib_dict[cpv].sort(symlink_compare)
 				for f in plib_dict[cpv]:
-					if not os.path.exists(f):
+					f_abs = os.path.join(self.myroot, f.lstrip(os.path.sep))
+					if not os.path.exists(f_abs):
 						continue
 					unlink_list = []
 					consumers = self.vartree.dbapi.linkmap.findConsumers(f)
 					if not consumers:
-						unlink_list.append(f)
+						unlink_list.append(f_abs)
 					else:
 						keep=False
 						for c in consumers:
+							c = os.path.join(self.myroot,
+								c.lstrip(os.path.sep))
 							if c not in self.getcontents():
 								keep=True
 								break
 						if not keep:
-							unlink_list.append(f)
+							unlink_list.append(f_abs)
 					for obj in unlink_list:
 						try:
 							if os.path.islink(obj):

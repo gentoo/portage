@@ -5427,46 +5427,13 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				droppriv=droppriv)
 
 		# Validate dependency metadata here to ensure that ebuilds with invalid
-		# data are never installed (even via the ebuild command).
-		invalid_dep_exempt_phases = \
-			set(["clean", "cleanrm", "help", "prerm", "postrm"])
-		mycpv = mysettings["CATEGORY"] + "/" + mysettings["PF"]
-		dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
-		misc_keys = ["LICENSE", "PROPERTIES", "PROVIDE", "RESTRICT", "SRC_URI"]
-		other_keys = ["SLOT"]
-		all_keys = dep_keys + misc_keys + other_keys
-		metadata = dict(izip(all_keys, mydbapi.aux_get(mycpv, all_keys)))
-		class FakeTree(object):
-			def __init__(self, mydb):
-				self.dbapi = mydb
-		dep_check_trees = {myroot:{}}
-		dep_check_trees[myroot]["porttree"] = \
-			FakeTree(fakedbapi(settings=mysettings))
-		for dep_type in dep_keys:
-			mycheck = dep_check(metadata[dep_type], None, mysettings,
-				myuse="all", myroot=myroot, trees=dep_check_trees)
-			if not mycheck[0]:
-				writemsg("%s: %s\n%s\n" % (
-					dep_type, metadata[dep_type], mycheck[1]), noiselevel=-1)
-				if mydo not in invalid_dep_exempt_phases:
-					return 1
-			del dep_type, mycheck
-		for k in misc_keys:
-			try:
-				portage.dep.use_reduce(
-					portage.dep.paren_reduce(metadata[k]), matchall=True)
-			except portage.exception.InvalidDependString, e:
-				writemsg("%s: %s\n%s\n" % (
-					k, metadata[k], str(e)), noiselevel=-1)
-				del e
-				if mydo not in invalid_dep_exempt_phases:
-					return 1
-			del k
-		if not metadata["SLOT"]:
-			writemsg("SLOT is undefined\n", noiselevel=-1)
-			if mydo not in invalid_dep_exempt_phases:
-				return 1
-		del mycpv, dep_keys, metadata, misc_keys, FakeTree, dep_check_trees
+		# data are never installed via the ebuild command. Don't bother when
+		# returnpid == True since there's no need to do this every time emerge
+		# executes a phase.
+		if not returnpid:
+			rval = _validate_deps(mysettings, myroot, mydo, mydbapi)
+			if rval != os.EX_OK:
+				return rval
 
 		if "PORTAGE_TMPDIR" not in mysettings or \
 			not os.path.isdir(mysettings["PORTAGE_TMPDIR"]):
@@ -5737,24 +5704,31 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			mysettings["PORTAGE_ACTUAL_DISTDIR"] = orig_distdir
 			edpath = mysettings["DISTDIR"] = \
 				os.path.join(mysettings["PORTAGE_BUILDDIR"], "distdir")
-			if os.path.exists(edpath):
+			portage.util.ensure_dirs(edpath, uid=portage_uid, mode=0755)
+
+			# Remove any unexpected files or directories.
+			for x in os.listdir(edpath):
+				symlink_path = os.path.join(edpath, x)
+				st = os.lstat(symlink_path)
+				if x in alist and stat.S_ISLNK(st.st_mode):
+					continue
+				if stat.S_ISDIR(st.st_mode):
+					shutil.rmtree(symlink_path)
+				else:
+					os.unlink(symlink_path)
+
+			# Check for existing symlinks and recreate if necessary.
+			for x in alist:
+				symlink_path = os.path.join(edpath, x)
+				target = os.path.join(orig_distdir, x)
 				try:
-					if os.path.isdir(edpath) and not os.path.islink(edpath):
-						shutil.rmtree(edpath)
-					else:
-						os.unlink(edpath)
+					link_target = os.readlink(symlink_path)
 				except OSError:
-					print "!!! Failed reseting ebuild distdir path, " + edpath
-					raise
-			os.mkdir(edpath)
-			apply_secpass_permissions(edpath, uid=portage_uid, mode=0755)
-			try:
-				for file in alist:
-					os.symlink(os.path.join(orig_distdir, file),
-						os.path.join(edpath, file))
-			except OSError:
-				print "!!! Failed symlinking in '%s' to ebuild distdir" % file
-				raise
+					os.symlink(target, symlink_path)
+				else:
+					if link_target != target:
+						os.unlink(symlink_path)
+						os.symlink(target, symlink_path)
 
 		#initial dep checks complete; time to process main commands
 
@@ -5878,6 +5852,50 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			# If necessary, depend phase has been triggered by aux_get calls
 			# and the exemption is no longer needed.
 			_doebuild_manifest_exempt_depend -= 1
+
+def _validate_deps(mysettings, myroot, mydo, mydbapi):
+
+	invalid_dep_exempt_phases = \
+		set(["clean", "cleanrm", "help", "prerm", "postrm"])
+	dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
+	misc_keys = ["LICENSE", "PROPERTIES", "PROVIDE", "RESTRICT", "SRC_URI"]
+	other_keys = ["SLOT"]
+	all_keys = dep_keys + misc_keys + other_keys
+	metadata = dict(izip(all_keys,
+		mydbapi.aux_get(mysettings.mycpv, all_keys)))
+
+	class FakeTree(object):
+		def __init__(self, mydb):
+			self.dbapi = mydb
+	dep_check_trees = {myroot:{}}
+	dep_check_trees[myroot]["porttree"] = \
+		FakeTree(fakedbapi(settings=mysettings))
+
+	for dep_type in dep_keys:
+		mycheck = dep_check(metadata[dep_type], None, mysettings,
+			myuse="all", myroot=myroot, trees=dep_check_trees)
+		if not mycheck[0]:
+			writemsg("%s: %s\n%s\n" % (
+				dep_type, metadata[dep_type], mycheck[1]), noiselevel=-1)
+			if mydo not in invalid_dep_exempt_phases:
+				return 1
+
+	for k in misc_keys:
+		try:
+			portage.dep.use_reduce(
+				portage.dep.paren_reduce(metadata[k]), matchall=True)
+		except portage.exception.InvalidDependString, e:
+			writemsg("%s: %s\n%s\n" % (
+				k, metadata[k], str(e)), noiselevel=-1)
+			if mydo not in invalid_dep_exempt_phases:
+				return 1
+
+	if not metadata["SLOT"]:
+		writemsg("SLOT is undefined\n", noiselevel=-1)
+		if mydo not in invalid_dep_exempt_phases:
+			return 1
+
+	return os.EX_OK
 
 expandcache={}
 
