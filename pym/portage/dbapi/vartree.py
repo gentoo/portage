@@ -575,7 +575,8 @@ class LinkageMap(object):
 					raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 
 		# Determine the directory(ies) from the set of objects.
-		objs_dirs = set([os.path.dirname(x) for x in objs])
+		objs_dirs = set(os.path.join(self._root,
+			os.path.dirname(x).lstrip(os.sep)) for x in objs)
 
 		# If there is another version of this lib with the
 		# same soname and the master link points to that
