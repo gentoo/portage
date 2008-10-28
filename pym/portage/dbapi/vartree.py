@@ -144,9 +144,10 @@ class LinkageMap(object):
 
 	def __init__(self, vardbapi):
 		self._dbapi = vardbapi
+		self._root = self._dbapi.root
 		self._libs = {}
 		self._obj_properties = {}
-		self._defpath = set(getlibpaths(self._dbapi.root))
+		self._defpath = set(getlibpaths(self._root))
 		self._obj_key_cache = {}
 
 	class _ObjectKey(object):
@@ -155,7 +156,7 @@ class LinkageMap(object):
 
 		__slots__ = ("__weakref__", "_key")
 
-		def __init__(self, object):
+		def __init__(self, object, root):
 			"""
 			This takes a path to an object.
 
@@ -163,7 +164,7 @@ class LinkageMap(object):
 			@type object: string (example: '/usr/bin/bar')
 
 			"""
-			self._key = self._generate_object_key(object)
+			self._key = self._generate_object_key(object, root)
 
 		def __hash__(self):
 			return hash(self._key)
@@ -171,7 +172,7 @@ class LinkageMap(object):
 		def __eq__(self, other):
 			return self._key == other._key
 
-		def _generate_object_key(self, object):
+		def _generate_object_key(self, object, root):
 			"""
 			Generate object key for a given object.
 
@@ -185,12 +186,13 @@ class LinkageMap(object):
 				2. realpath of object if object does not exist.
 
 			"""
+			abs_path = os.path.join(root, object.lstrip(os.path.sep))
 			try:
-				object_stat = os.stat(object)
+				object_stat = os.stat(abs_path)
 			except OSError:
 				# Use the realpath as the key if the file does not exists on the
 				# filesystem.
-				return os.path.realpath(object)
+				return os.path.realpath(abs_path)
 			# Return a tuple of the device and inode.
 			return (object_stat.st_dev, object_stat.st_ino)
 
@@ -207,6 +209,7 @@ class LinkageMap(object):
 			return isinstance(self._key, tuple)
 
 	def rebuild(self, include_file=None):
+		root = self._root
 		libs = {}
 		obj_key_cache = {}
 		obj_properties = {}
@@ -239,7 +242,7 @@ class LinkageMap(object):
 				continue
 			arch = fields[0]
 			obj = fields[1]
-			obj_key = self._ObjectKey(obj)
+			obj_key = self._ObjectKey(obj, root)
 			soname = fields[2]
 			path = set([normalize_path(x)
 				for x in filter(None, fields[3].replace(
@@ -313,7 +316,7 @@ class LinkageMap(object):
 					if obj in self._obj_key_cache:
 						obj_key = self._obj_key_cache.get(obj)
 					else:
-						obj_key = self._ObjectKey(obj)
+						obj_key = self._ObjectKey(obj, self._root)
 					# Check that the library exists on the filesystem.
 					if obj_key.file_exists():
 						# Get the arch and soname from LinkageMap._obj_properties if
@@ -427,7 +430,7 @@ class LinkageMap(object):
 
 		"""
 		basename = os.path.basename(obj)
-		obj_key = self._ObjectKey(obj)
+		obj_key = self._ObjectKey(obj, self._root)
 		if obj_key not in self._obj_properties:
 			raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 		soname = self._obj_properties[obj_key][3]
@@ -501,7 +504,7 @@ class LinkageMap(object):
 		else:
 			obj_key = self._obj_key_cache.get(obj)
 			if obj_key not in self._obj_properties:
-				obj_key = self._ObjectKey(obj)
+				obj_key = self._ObjectKey(obj, self._root)
 				if obj_key not in self._obj_properties:
 					raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 
@@ -555,7 +558,7 @@ class LinkageMap(object):
 			objs = set([obj])
 			obj_key = self._obj_key_cache.get(obj)
 			if obj_key not in self._obj_properties:
-				obj_key = self._ObjectKey(obj)
+				obj_key = self._ObjectKey(obj, self._root)
 				if obj_key not in self._obj_properties:
 					raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 
