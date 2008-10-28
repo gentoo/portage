@@ -353,14 +353,14 @@ class digraph(object):
 		relationship to the parent, the relationship is left as hard."""
 		
 		if node not in self.nodes:
-			self.nodes[node] = ({}, {})
+			self.nodes[node] = ({}, {}, node)
 			self.order.append(node)
 		
 		if not parent:
 			return
 		
 		if parent not in self.nodes:
-			self.nodes[parent] = ({}, {})
+			self.nodes[parent] = ({}, {}, parent)
 			self.order.append(parent)
 		
 		if parent in self.nodes[node][1]:
@@ -441,7 +441,10 @@ class digraph(object):
 		return node in self.nodes
 
 	def get(self, key, default=None):
-		return self.nodes.get(key, default)
+		node_data = self.nodes.get(key, self)
+		if node_data is self:
+			return default
+		return node_data[2]
 
 	def all_nodes(self):
 		"""Return a list of all nodes in the graph"""
@@ -503,7 +506,7 @@ class digraph(object):
 		clone = digraph()
 		clone.nodes = {}
 		for k, v in self.nodes.iteritems():
-			clone.nodes[k] = (v[0].copy(), v[1].copy())
+			clone.nodes[k] = (v[0].copy(), v[1].copy(), v[2])
 		clone.order = self.order[:]
 		return clone
 
