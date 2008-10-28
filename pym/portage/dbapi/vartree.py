@@ -146,7 +146,7 @@ class LinkageMap(object):
 		self._dbapi = vardbapi
 		self._libs = {}
 		self._obj_properties = {}
-		self._defpath = set(getlibpaths())
+		self._defpath = set(getlibpaths(self._dbapi.root))
 		self._obj_key_cache = {}
 
 	class _ObjectKey(object):
