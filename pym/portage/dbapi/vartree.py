@@ -2425,13 +2425,30 @@ class dblink(object):
 		old_libs = old_contents.intersection(liblist)
 
 		# get list of libraries from new package instance
-		mylibs = set([os.path.join(os.sep, x) for x in mycontents]).intersection(liblist)
+		mycontents = set(os.path.join(os.path.sep, x) for x in mycontents)
+		mylibs = mycontents.intersection(liblist)
 		
 		# check which libs are present in the old, but not the new package instance
 		candidates = old_libs.difference(mylibs)
-		
+		candidates_inodes = set()
+		for x in candidates:
+			x_destroot = os.path.join(destroot, x.lstrip(os.path.sep))
+			try:
+				st = os.stat(x_destroot)
+			except OSError:
+				continue
+			candidates_inodes.add((st.st_dev, st.st_ino))
+
 		for x in old_contents:
-			if os.path.islink(x) and os.path.realpath(x) in candidates and x not in mycontents:
+			x_destroot = os.path.join(destroot, x.lstrip(os.path.sep))
+			if not os.path.islink(x_destroot):
+				continue
+			try:
+				st = os.stat(x_destroot)
+			except OSError:
+				continue
+			if (st.st_dev, st.st_ino) in candidates_inodes and \
+				x not in mycontents:
 				candidates.add(x)
 
 		provider_cache = {}
@@ -2503,12 +2520,14 @@ class dblink(object):
 		candidates_stack = list(candidates)
 		while candidates_stack:
 			x = candidates_stack.pop()
+			x_srcroot = os.path.join(srcroot, x.lstrip(os.path.sep))
+			x_destroot = os.path.join(destroot, x.lstrip(os.path.sep))
 			# skip existing files so the 'new' libs aren't overwritten
 			if os.path.exists(os.path.join(srcroot, x.lstrip(os.sep))):
 				continue
 			showMessage("injecting %s into %s\n" % (x, srcroot),
 				noiselevel=-1)
-			if not os.path.exists(os.path.join(destroot, x.lstrip(os.sep))):
+			if not os.path.exists(x_destroot):
 				showMessage("%s does not exist so can't be preserved\n" % x,
 					noiselevel=-1)
 				continue
@@ -2519,8 +2538,8 @@ class dblink(object):
 			# resolve symlinks and extend preserve list
 			# NOTE: we're extending the list in the loop to emulate recursion to
 			#       also get indirect symlinks
-			if os.path.islink(x):
-				linktarget = os.readlink(x)
+			if os.path.islink(x_destroot):
+				linktarget = os.readlink(x_destroot)
 				os.symlink(linktarget, os.path.join(srcroot, x.lstrip(os.sep)))
 				if linktarget[0] != os.sep:
 					linktarget = os.path.join(os.path.dirname(x), linktarget)
@@ -2528,8 +2547,7 @@ class dblink(object):
 					candidates.add(linktarget)
 					candidates_stack.append(linktarget)
 			else:
-				shutil.copy2(os.path.join(destroot, x.lstrip(os.sep)),
-					os.path.join(srcroot, x.lstrip(os.sep)))
+				shutil.copy2(x_destroot, x_srcroot)
 			preserve_paths.append(x)
 			
 		del candidates
