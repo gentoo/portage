@@ -1667,7 +1667,7 @@ else:
 				del myunadded[x]
 
 	if myautoadd:
-		print ">>> Auto-Adding missing digests..."
+		print ">>> Auto-Adding missing Manifest(s)..."
 		if options.pretend:
 			if vcs == "cvs":
 				print "(cvs add "+" ".join(myautoadd)+")"
