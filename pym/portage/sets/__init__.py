@@ -2,10 +2,14 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+__all__ = ["SETPREFIX", "get_boolean", "SetConfigError",
+	"SetConfig", "load_default_config"]
+
 import os
 from ConfigParser import SafeConfigParser, NoOptionError
 from portage import load_mod
 from portage.const import USER_CONFIG_PATH, GLOBAL_CONFIG_PATH
+from portage.exception import PackageSetNotFound
 
 SETPREFIX = "@"
 
@@ -131,7 +135,13 @@ class SetConfig(object):
 		return self.psets.copy()
 
 	def getSetAtoms(self, setname, ignorelist=None):
-		myset = self.getSets()[setname]
+		"""
+		This raises PackageSetNotFound if the give setname does not exist.
+		"""
+		try:
+			myset = self.getSets()[setname]
+		except KeyError:
+			raise PackageSetNotFound(setname)
 		myatoms = myset.getAtoms()
 		parser = self._parser
 		extend = set()
@@ -150,8 +160,12 @@ class SetConfig(object):
 						
 		ignorelist.add(setname)
 		for n in myset.getNonAtoms():
-			if n.startswith(SETPREFIX) and n[len(SETPREFIX):] in self.psets:
-				extend.add(n[len(SETPREFIX):])
+			if n.startswith(SETPREFIX):
+				s = n[len(SETPREFIX):]
+				if s in self.psets:
+					extend.add(n[len(SETPREFIX):])
+				else:
+					raise PackageSetNotFound(s)
 
 		for s in ignorelist:
 			extend.discard(s)
