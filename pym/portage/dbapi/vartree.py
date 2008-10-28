@@ -244,7 +244,8 @@ class LinkageMap(object):
 			obj = fields[1]
 			obj_key = self._ObjectKey(obj, root)
 			soname = fields[2]
-			path = set([normalize_path(x)
+			path = set([
+				normalize_path(os.path.join(self._root, x.lstrip(os.path.sep)))
 				for x in filter(None, fields[3].replace(
 				"${ORIGIN}", os.path.dirname(obj)).replace(
 				"$ORIGIN", os.path.dirname(obj)).split(":"))])
@@ -519,7 +520,8 @@ class LinkageMap(object):
 			for provider_key in self._libs[soname][arch]["providers"]:
 				providers = self._obj_properties[provider_key][4]
 				for provider in providers:
-					if os.path.dirname(provider) in path:
+					if os.path.join(self._root,
+						os.path.dirname(provider).lstrip(os.path.sep)) in path:
 						rValue[soname].add(provider)
 		return rValue
 
@@ -571,8 +573,8 @@ class LinkageMap(object):
 		# have any consumers.
 		if not isinstance(obj, self._ObjectKey):
 			soname = self._obj_properties[obj_key][3]
-			obj_dir = os.path.dirname(obj)
-			master_link = os.path.join(obj_dir, soname)
+			master_link = os.path.join(self._root,
+				os.path.dirname(obj).lstrip(os.path.sep), soname)
 			try:
 				master_st = os.stat(master_link)
 				obj_st = os.stat(obj)
