@@ -144,9 +144,10 @@ class LinkageMap(object):
 
 	def __init__(self, vardbapi):
 		self._dbapi = vardbapi
+		self._root = self._dbapi.root
 		self._libs = {}
 		self._obj_properties = {}
-		self._defpath = set(getlibpaths())
+		self._defpath = set(getlibpaths(self._root))
 		self._obj_key_cache = {}
 
 	class _ObjectKey(object):
@@ -155,7 +156,7 @@ class LinkageMap(object):
 
 		__slots__ = ("__weakref__", "_key")
 
-		def __init__(self, object):
+		def __init__(self, object, root):
 			"""
 			This takes a path to an object.
 
@@ -163,7 +164,7 @@ class LinkageMap(object):
 			@type object: string (example: '/usr/bin/bar')
 
 			"""
-			self._key = self._generate_object_key(object)
+			self._key = self._generate_object_key(object, root)
 
 		def __hash__(self):
 			return hash(self._key)
@@ -171,7 +172,7 @@ class LinkageMap(object):
 		def __eq__(self, other):
 			return self._key == other._key
 
-		def _generate_object_key(self, object):
+		def _generate_object_key(self, object, root):
 			"""
 			Generate object key for a given object.
 
@@ -185,12 +186,13 @@ class LinkageMap(object):
 				2. realpath of object if object does not exist.
 
 			"""
+			abs_path = os.path.join(root, object.lstrip(os.path.sep))
 			try:
-				object_stat = os.stat(object)
+				object_stat = os.stat(abs_path)
 			except OSError:
 				# Use the realpath as the key if the file does not exists on the
 				# filesystem.
-				return os.path.realpath(object)
+				return os.path.realpath(abs_path)
 			# Return a tuple of the device and inode.
 			return (object_stat.st_dev, object_stat.st_ino)
 
@@ -207,6 +209,7 @@ class LinkageMap(object):
 			return isinstance(self._key, tuple)
 
 	def rebuild(self, include_file=None):
+		root = self._root
 		libs = {}
 		obj_key_cache = {}
 		obj_properties = {}
@@ -239,9 +242,10 @@ class LinkageMap(object):
 				continue
 			arch = fields[0]
 			obj = fields[1]
-			obj_key = self._ObjectKey(obj)
+			obj_key = self._ObjectKey(obj, root)
 			soname = fields[2]
-			path = set([normalize_path(x)
+			path = set([
+				normalize_path(os.path.join(self._root, x.lstrip(os.path.sep)))
 				for x in filter(None, fields[3].replace(
 				"${ORIGIN}", os.path.dirname(obj)).replace(
 				"$ORIGIN", os.path.dirname(obj)).split(":"))])
@@ -313,7 +317,7 @@ class LinkageMap(object):
 					if obj in self._obj_key_cache:
 						obj_key = self._obj_key_cache.get(obj)
 					else:
-						obj_key = self._ObjectKey(obj)
+						obj_key = self._ObjectKey(obj, self._root)
 					# Check that the library exists on the filesystem.
 					if obj_key.file_exists():
 						# Get the arch and soname from LinkageMap._obj_properties if
@@ -427,7 +431,7 @@ class LinkageMap(object):
 
 		"""
 		basename = os.path.basename(obj)
-		obj_key = self._ObjectKey(obj)
+		obj_key = self._ObjectKey(obj, self._root)
 		if obj_key not in self._obj_properties:
 			raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 		soname = self._obj_properties[obj_key][3]
@@ -501,7 +505,7 @@ class LinkageMap(object):
 		else:
 			obj_key = self._obj_key_cache.get(obj)
 			if obj_key not in self._obj_properties:
-				obj_key = self._ObjectKey(obj)
+				obj_key = self._ObjectKey(obj, self._root)
 				if obj_key not in self._obj_properties:
 					raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 
@@ -516,7 +520,8 @@ class LinkageMap(object):
 			for provider_key in self._libs[soname][arch]["providers"]:
 				providers = self._obj_properties[provider_key][4]
 				for provider in providers:
-					if os.path.dirname(provider) in path:
+					if os.path.join(self._root,
+						os.path.dirname(provider).lstrip(os.path.sep)) in path:
 						rValue[soname].add(provider)
 		return rValue
 
@@ -555,7 +560,7 @@ class LinkageMap(object):
 			objs = set([obj])
 			obj_key = self._obj_key_cache.get(obj)
 			if obj_key not in self._obj_properties:
-				obj_key = self._ObjectKey(obj)
+				obj_key = self._ObjectKey(obj, self._root)
 				if obj_key not in self._obj_properties:
 					raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 
@@ -568,8 +573,8 @@ class LinkageMap(object):
 		# have any consumers.
 		if not isinstance(obj, self._ObjectKey):
 			soname = self._obj_properties[obj_key][3]
-			obj_dir = os.path.dirname(obj)
-			master_link = os.path.join(obj_dir, soname)
+			master_link = os.path.join(self._root,
+				os.path.dirname(obj).lstrip(os.path.sep), soname)
 			try:
 				master_st = os.stat(master_link)
 				obj_st = os.stat(obj)
@@ -598,6 +603,7 @@ class LinkageMapMachO(object):
 
 	def __init__(self, vardbapi):
 		self._dbapi = vardbapi
+		self._root = self._dbapi.root
 		self._libs = {}
 		self._obj_properties = {}
 		self._obj_key_cache = {}
@@ -608,7 +614,7 @@ class LinkageMapMachO(object):
 
 		__slots__ = ("__weakref__", "_key")
 
-		def __init__(self, object):
+		def __init__(self, object, root):
 			"""
 			This takes a path to an object.
 
@@ -616,7 +622,7 @@ class LinkageMapMachO(object):
 			@type object: string (example: '/usr/bin/bar')
 
 			"""
-			self._key = self._generate_object_key(object)
+			self._key = self._generate_object_key(object, root)
 
 		def __hash__(self):
 			return hash(self._key)
@@ -624,7 +630,7 @@ class LinkageMapMachO(object):
 		def __eq__(self, other):
 			return self._key == other._key
 
-		def _generate_object_key(self, object):
+		def _generate_object_key(self, object, root):
 			"""
 			Generate object key for a given object.
 
@@ -638,12 +644,13 @@ class LinkageMapMachO(object):
 				2. realpath of object if object does not exist.
 
 			"""
+			abs_path = os.path.join(root, object.lstrip(os.path.sep))
 			try:
-				object_stat = os.stat(object)
+				object_stat = os.stat(abs_path)
 			except OSError:
 				# Use the realpath as the key if the file does not exists on the
 				# filesystem.
-				return os.path.realpath(object)
+				return os.path.realpath(abs_path)
 			# Return a tuple of the device and inode.
 			return (object_stat.st_dev, object_stat.st_ino)
 
@@ -660,6 +667,7 @@ class LinkageMapMachO(object):
 			return isinstance(self._key, tuple)
 
 	def rebuild(self, include_file=None):
+		root = self._root
 		libs = {}
 		obj_key_cache = {}
 		obj_properties = {}
@@ -695,7 +703,7 @@ class LinkageMapMachO(object):
 			# the install_name of the library in the object.
 			arch = fields[0]
 			obj = fields[1]
-			obj_key = self._ObjectKey(obj)
+			obj_key = self._ObjectKey(obj, root)
 			install_name = os.path.normpath(fields[2])
 			needed = filter(None, fields[3].split(","))
 
@@ -772,7 +780,7 @@ class LinkageMapMachO(object):
 					if obj in self._obj_key_cache:
 						obj_key = self._obj_key_cache.get(obj)
 					else:
-						obj_key = self._ObjectKey(obj)
+						obj_key = self._ObjectKey(obj, self._root)
 					# Check that the library exists on the filesystem.
 					if obj_key.file_exists():
 						# Get the install_name from LinkageMapMachO._obj_properties if
@@ -870,7 +878,7 @@ class LinkageMapMachO(object):
 
 		"""
 		basename = os.path.basename(obj)
-		obj_key = self._ObjectKey(obj)
+		obj_key = self._ObjectKey(obj, self._root)
 		if obj_key not in self._obj_properties:
 			raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 		install_name = self._obj_properties[obj_key][2]
@@ -944,7 +952,7 @@ class LinkageMapMachO(object):
 		else:
 			obj_key = self._obj_key_cache.get(obj)
 			if obj_key not in self._obj_properties:
-				obj_key = self._ObjectKey(obj)
+				obj_key = self._ObjectKey(obj, self._root)
 				if obj_key not in self._obj_properties:
 					raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 
@@ -958,7 +966,8 @@ class LinkageMapMachO(object):
 			for provider_key in self._libs[install_name][arch]["providers"]:
 				providers = self._obj_properties[provider_key][3]
 				for provider in providers:
-					if os.path.exists(provider):
+					if os.path.exists(os.path.join(self._root,
+						provider.lstrip(os.path.sep))):
 						rValue[install_name].add(provider)
 		return rValue
 
@@ -997,7 +1006,7 @@ class LinkageMapMachO(object):
 			objs = set([obj])
 			obj_key = self._obj_key_cache.get(obj)
 			if obj_key not in self._obj_properties:
-				obj_key = self._ObjectKey(obj)
+				obj_key = self._ObjectKey(obj, self._root)
 				if obj_key not in self._obj_properties:
 					raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 
@@ -1006,7 +1015,8 @@ class LinkageMapMachO(object):
 		# other version, this lib will be shadowed and won't
 		# have any consumers.
 		if not isinstance(obj, self._ObjectKey):
-			master_link = self._obj_properties[obj_key][2]
+			master_link = os.path.join(self._root,
+					self._obj_properties[obj_key][2].lstrip(os.path.sep))
 			try:
 				master_st = os.stat(master_link)
 				obj_st = os.stat(obj)
@@ -2863,13 +2873,30 @@ class dblink(object):
 		old_libs = old_contents.intersection(liblist)
 
 		# get list of libraries from new package instance
-		mylibs = set([os.path.join(os.sep, x) for x in mycontents]).intersection(liblist)
+		mycontents = set(os.path.join(os.path.sep, x) for x in mycontents)
+		mylibs = mycontents.intersection(liblist)
 		
 		# check which libs are present in the old, but not the new package instance
 		candidates = old_libs.difference(mylibs)
-		
+		candidates_inodes = set()
+		for x in candidates:
+			x_destroot = os.path.join(destroot, x.lstrip(os.path.sep))
+			try:
+				st = os.stat(x_destroot)
+			except OSError:
+				continue
+			candidates_inodes.add((st.st_dev, st.st_ino))
+
 		for x in old_contents:
-			if os.path.islink(x) and os.path.realpath(x) in candidates and x not in mycontents:
+			x_destroot = os.path.join(destroot, x.lstrip(os.path.sep))
+			if not os.path.islink(x_destroot):
+				continue
+			try:
+				st = os.stat(x_destroot)
+			except OSError:
+				continue
+			if (st.st_dev, st.st_ino) in candidates_inodes and \
+				x not in mycontents:
 				candidates.add(x)
 
 		provider_cache = {}
@@ -2941,12 +2968,14 @@ class dblink(object):
 		candidates_stack = list(candidates)
 		while candidates_stack:
 			x = candidates_stack.pop()
+			x_srcroot = os.path.join(srcroot, x.lstrip(os.path.sep))
+			x_destroot = os.path.join(destroot, x.lstrip(os.path.sep))
 			# skip existing files so the 'new' libs aren't overwritten
 			if os.path.exists(os.path.join(srcroot, x.lstrip(os.sep))):
 				continue
 			showMessage("injecting %s into %s\n" % (x, srcroot),
 				noiselevel=-1)
-			if not os.path.exists(os.path.join(destroot, x.lstrip(os.sep))):
+			if not os.path.exists(x_destroot):
 				showMessage("%s does not exist so can't be preserved\n" % x,
 					noiselevel=-1)
 				continue
@@ -2957,8 +2986,8 @@ class dblink(object):
 			# resolve symlinks and extend preserve list
 			# NOTE: we're extending the list in the loop to emulate recursion to
 			#       also get indirect symlinks
-			if os.path.islink(x):
-				linktarget = os.readlink(x)
+			if os.path.islink(x_destroot):
+				linktarget = os.readlink(x_destroot)
 				os.symlink(linktarget, os.path.join(srcroot, x.lstrip(os.sep)))
 				if linktarget[0] != os.sep:
 					linktarget = os.path.join(os.path.dirname(x), linktarget)
@@ -2966,8 +2995,7 @@ class dblink(object):
 					candidates.add(linktarget)
 					candidates_stack.append(linktarget)
 			else:
-				shutil.copy2(os.path.join(destroot, x.lstrip(os.sep)),
-					os.path.join(srcroot, x.lstrip(os.sep)))
+				shutil.copy2(x_destroot, x_srcroot)
 			preserve_paths.append(x)
 			
 		del candidates

@@ -1213,7 +1213,7 @@ def new_protect_filename(mydest, newmd5=None):
 				return old_pfile
 	return new_pfile
 
-def getlibpaths():
+def getlibpaths(root):
 	""" Return a list of paths that are used for library lookups """
 
 	# PREFIX HACK: LD_LIBRARY_PATH isn't portable, and considered
@@ -1229,11 +1229,12 @@ def getlibpaths():
 	else:
 		# the following is based on the information from ld.so(8)
 		rval = os.environ.get("LD_LIBRARY_PATH", "").split(":")
-		rval.extend(grabfile("/etc/ld.so.conf"))
+		rval.extend(grabfile(os.path.join(root, "etc", "ld.so.conf")))
 		rval.append("/usr/lib")
 		rval.append("/lib")
 
-	rval = [normalize_path(x) for x in rval if x != ""]
-	
+	rval = [normalize_path(os.path.join(root, x.lstrip(os.path.sep))) \
+		for x in rval if x]
+
 	return rval
 	

@@ -3359,6 +3359,9 @@ _size_suffix_map = {
 def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",use_locks=1, try_mirrors=1):
 	"fetch files.  Will use digest file if available."
 
+	if not myuris:
+		return 1
+
 	features = mysettings.features
 	restrict = mysettings.get("PORTAGE_RESTRICT","").split()
 
@@ -3603,7 +3606,12 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				write_test_file = os.path.join(
 					mydir, ".__portage_test_write__")
 
-				if os.path.isdir(mydir):
+				try:
+					st = os.stat(mydir)
+				except OSError:
+					st = None
+
+				if st is not None and stat.S_ISDIR(st.st_mode):
 					if not (userfetch or userpriv):
 						continue
 					if _userpriv_test_write_file(mysettings, write_test_file):
@@ -3611,6 +3619,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 				_userpriv_test_write_file_cache.pop(write_test_file, None)
 				if portage.util.ensure_dirs(mydir, gid=dir_gid, mode=dirmode, mask=modemask):
+					if st is None:
+						# The directory has just been created
+						# and therefore it must be empty.
+						continue
 					writemsg("Adjusting permissions recursively: '%s'\n" % mydir,
 						noiselevel=-1)
 					def onerror(e):
@@ -5704,7 +5716,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			mysettings["PORTAGE_ACTUAL_DISTDIR"] = orig_distdir
 			edpath = mysettings["DISTDIR"] = \
 				os.path.join(mysettings["PORTAGE_BUILDDIR"], "distdir")
-			portage.util.ensure_dirs(edpath, uid=portage_uid, mode=0755)
+			portage.util.ensure_dirs(edpath, gid=portage_gid, mode=0755)
 
 			# Remove any unexpected files or directories.
 			for x in os.listdir(edpath):

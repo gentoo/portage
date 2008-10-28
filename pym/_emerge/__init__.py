@@ -13788,15 +13788,22 @@ def expand_set_arguments(myfiles, myaction, root_config):
 					display_missing_pkg_set(root_config, s)
 					return (None, 1)
 				setconfig.active.append(s)
+				try:
+					set_atoms = setconfig.getSetAtoms(s)
+				except portage.exception.PackageSetNotFound, e:
+					writemsg_level(("emerge: the given set '%s' " + \
+						"contains a non-existent set named '%s'.\n") % \
+						(s, e), level=logging.ERROR, noiselevel=-1)
+					return (None, 1)
 				if myaction in unmerge_actions and \
 						not sets[s].supportsOperation("unmerge"):
 					sys.stderr.write("emerge: the given set '%s' does " % s + \
 						"not support unmerge operations\n")
 					retval = 1
-				elif not setconfig.getSetAtoms(s):
+				elif not set_atoms:
 					print "emerge: '%s' is an empty set" % s
 				elif myaction not in do_not_expand:
-					newargs.extend(setconfig.getSetAtoms(s))
+					newargs.extend(set_atoms)
 				else:
 					newargs.append(SETPREFIX+s)
 				for e in sets[s].errors:
