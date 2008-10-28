@@ -739,7 +739,7 @@ dyn_package() {
 	cd "${T}"
 	install_mask "${PORTAGE_BUILDDIR}/image" "${PKG_INSTALL_MASK}"
 	local tar_options=""
-	[ "${PORTAGE_QUIET}" == "1" ] ||  tar_options="${tar_options} -v"
+	[[ $PORTAGE_VERBOSE = 1 ]] && tar_options+=" -v"
 	# Sandbox is disabled in case the user wants to use a symlink
 	# for $PKGDIR and/or $PKGDIR/All.
 	export SANDBOX_ON="0"

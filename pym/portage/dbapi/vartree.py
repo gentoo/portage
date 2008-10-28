@@ -7,20 +7,19 @@ __all__ = ["PreservedLibsRegistry", "LinkageMap",
 	["write_contents", "tar_contents"]
 
 from portage.checksum import perform_md5
-from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, PORTAGE_BIN_PATH, \
+from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, \
 	PRIVATE_PATH, VDB_PATH, EPREFIX, EPREFIX_LSTRIP
 from portage.data import portage_gid, portage_uid, secpass, ostype
 from portage.dbapi import dbapi
-from portage.dep import dep_getslot, use_reduce, paren_reduce, isvalidatom, \
-	isjustname, dep_getkey, match_from_list
-from portage.exception import InvalidAtom, InvalidData, InvalidPackageName, \
+from portage.dep import use_reduce, paren_reduce, isvalidatom, \
+	isjustname, dep_getkey
+from portage.exception import InvalidData, InvalidPackageName, \
 	FileNotFound, PermissionDenied, UnsupportedAPIException
 from portage.locks import lockdir, unlockdir
 from portage.output import bold, red, green
 from portage.update import fixdbentries
 from portage.util import apply_secpass_permissions, ConfigProtect, ensure_dirs, \
-	writemsg, writemsg_stdout, writemsg_level, \
-	write_atomic, atomic_ofstream, writedict, \
+	writemsg, writemsg_level, write_atomic, atomic_ofstream, writedict, \
 	grabfile, grabdict, normalize_path, new_protect_filename, getlibpaths
 from portage.versions import pkgsplit, catpkgsplit, catsplit, best, pkgcmp
 
@@ -31,7 +30,7 @@ from portage import listdir, dep_expand, flatten, key_expand, \
 from portage.elog import elog_process
 from portage.elog.filtering import filter_mergephases, filter_unmergephases
 
-import os, re, sys, stat, errno, commands, copy, time, subprocess
+import os, re, stat, errno, copy, subprocess
 import logging
 import shlex
 from itertools import izip
@@ -1110,53 +1109,10 @@ class vardbapi(dbapi):
 			return long(self.aux_get(mycpv, ["COUNTER"])[0])
 		except (KeyError, ValueError):
 			pass
-		cdir = self.getpath(mycpv)
-		cpath = self.getpath(mycpv, filename="COUNTER")
-
-		# We write our new counter value to a new file that gets moved into
-		# place to avoid filesystem corruption on XFS (unexpected reboot.)
-		corrupted = 0
-		if os.path.exists(cpath):
-			cfile = open(cpath, "r")
-			try:
-				counter = long(cfile.readline())
-			except ValueError:
-				print "portage: COUNTER for", mycpv, "was corrupted; resetting to value of 0"
-				counter = long(0)
-				corrupted = 1
-			cfile.close()
-		elif os.path.exists(cdir):
-			mys = pkgsplit(mycpv)
-			myl = self.match(mys[0], use_cache=0)
-			print mys, myl
-			if len(myl) == 1:
-				try:
-					# Only one package... Counter doesn't matter.
-					write_atomic(cpath, "1")
-					counter = 1
-				except SystemExit, e:
-					raise
-				except Exception, e:
-					writemsg("!!! COUNTER file is missing for "+str(mycpv)+" in /var/db.\n",
-						noiselevel=-1)
-					writemsg("!!! Please run %s/fix-db.py or\n" % PORTAGE_BIN_PATH,
-						noiselevel=-1)
-					writemsg("!!! unmerge this exact version.\n", noiselevel=-1)
-					writemsg("!!! %s\n" % e, noiselevel=-1)
-					sys.exit(1)
-			else:
-				writemsg("!!! COUNTER file is missing for "+str(mycpv)+" in /var/db.\n",
-					noiselevel=-1)
-				writemsg("!!! Please run %s/fix-db.py or\n" % PORTAGE_BIN_PATH,
-					noiselevel=-1)
-				writemsg("!!! remerge the package.\n", noiselevel=-1)
-				sys.exit(1)
-		else:
-			counter = long(0)
-		if corrupted:
-			# update new global counter file
-			write_atomic(cpath, str(counter))
-		return counter
+		writemsg_level(("portage: COUNTER for %s was corrupted; " + \
+			"resetting to value of 0\n") % (mycpv,),
+			level=logging.ERROR, noiselevel=-1)
+		return 0
 
 	def cpv_inject(self, mycpv):
 		"injects a real package into our on-disk database; assumes mycpv is valid and doesn't already exist"
@@ -2109,8 +2065,7 @@ class dblink(object):
 		self._lock_vdb = None
 
 		self.settings = mysettings
-		if self.settings == 1:
-			raise ValueError
+		self._verbose = self.settings.get("PORTAGE_VERBOSE") == "1"
 
 		self.myroot=myroot
 		protect_obj = ConfigProtect(myroot,
@@ -2544,6 +2499,8 @@ class dblink(object):
 		return os.EX_OK
 
 	def _display_merge(self, msg, level=0, noiselevel=0):
+		if not self._verbose and noiselevel >= 0 and level < logging.WARN:
+			return
 		if self._scheduler is not None:
 			self._scheduler.dblinkDisplayMerge(self, msg,
 				level=level, noiselevel=noiselevel)
@@ -3534,7 +3491,9 @@ class dblink(object):
 			# couldn't get merged will be added to thirdhand.
 
 			thirdhand = []
-			self.mergeme(srcroot, destroot, outfile, thirdhand, secondhand, cfgfiledict, mymtime)
+			if self.mergeme(srcroot, destroot, outfile, thirdhand,
+				secondhand, cfgfiledict, mymtime):
+				return 1
 
 			#swap hands
 			lastlen = len(secondhand)
@@ -3546,7 +3505,9 @@ class dblink(object):
 
 		if len(secondhand):
 			# force merge of remaining symlinks (broken or circular; oh well)
-			self.mergeme(srcroot, destroot, outfile, None, secondhand, cfgfiledict, mymtime)
+			if self.mergeme(srcroot, destroot, outfile, None,
+				secondhand, cfgfiledict, mymtime):
+				return 1
 
 		#restore umask
 		os.umask(prevmask)
@@ -3689,6 +3650,7 @@ class dblink(object):
 		"""
 
 		showMessage = self._display_merge
+		writemsg = self._display_merge
 		scheduler = self._scheduler
 
 		from os.path import sep, join
@@ -3725,7 +3687,7 @@ class dblink(object):
 				writemsg(red("!!!        and ensure your filesystem is in a sane state. ")+bold("'shutdown -Fr now'\n"))
 				writemsg(red("!!!        File:  ")+str(mysrc)+"\n", noiselevel=-1)
 				writemsg(red("!!!        Error: ")+str(e)+"\n", noiselevel=-1)
-				sys.exit(1)
+				return 1
 			except Exception, e:
 				writemsg("\n")
 				writemsg(red("!!! ERROR: An unknown error has occurred during the merge process.\n"))
@@ -3734,7 +3696,7 @@ class dblink(object):
 				writemsg(    "!!!        this as a portage bug at bugs.gentoo.org. Append 'emerge info'.\n")
 				writemsg(    "!!!        File:  "+str(mysrc)+"\n", noiselevel=-1)
 				writemsg(    "!!!        Error: "+str(e)+"\n", noiselevel=-1)
-				sys.exit(1)
+				return 1
 
 
 			mymode = mystat[stat.ST_MODE]
@@ -3800,9 +3762,11 @@ class dblink(object):
 					showMessage(">>> %s -> %s\n" % (mydest, myto))
 					outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime)+"\n")
 				else:
-					print "!!! Failed to move file."
-					print "!!!", mydest, "->", myto
-					sys.exit(1)
+					showMessage("!!! Failed to move file.\n",
+						level=logging.ERROR, noiselevel=-1)
+					showMessage("!!! %s -> %s\n" % (mydest, myto),
+						level=logging.ERROR, noiselevel=-1)
+					return 1
 			elif stat.S_ISDIR(mymode):
 				# we are merging a directory
 				if mydmode != None:
@@ -3831,8 +3795,9 @@ class dblink(object):
 					else:
 						# a non-directory and non-symlink-to-directory.  Won't work for us.  Move out of the way.
 						if movefile(mydest, mydest+".backup", mysettings=self.settings) is None:
-							sys.exit(1)
-						print "bak", mydest, mydest+".backup"
+							return 1
+						showMessage("bak %s %s.backup\n" % (mydest, mydest),
+							level=logging.ERROR, noiselevel=-1)
 						#now create our directory
 						if self.settings.selinux_enabled():
 							import selinux
@@ -3916,7 +3881,7 @@ class dblink(object):
 				if moveme:
 					mymtime = movefile(mysrc, mydest, newmtime=thismtime, sstat=mystat, mysettings=self.settings)
 					if mymtime is None:
-						sys.exit(1)
+						return 1
 					zing = ">>>"
 
 				if mymtime != None:
@@ -3930,7 +3895,7 @@ class dblink(object):
 					if movefile(mysrc, mydest, newmtime=thismtime, sstat=mystat, mysettings=self.settings) != None:
 						zing = ">>>"
 					else:
-						sys.exit(1)
+						return 1
 				if stat.S_ISFIFO(mymode):
 					outfile.write("fif %s\n" % myrealdest)
 				else:

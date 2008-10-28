@@ -938,8 +938,10 @@ class config(object):
 		"PORTAGE_GID", "PORTAGE_INST_GID", "PORTAGE_INST_UID",
 		"PORTAGE_IUSE",
 		"PORTAGE_LOG_FILE", "PORTAGE_MASTER_PID",
-		"PORTAGE_PYM_PATH", "PORTAGE_REPO_NAME", "PORTAGE_RESTRICT",
-		"PORTAGE_TMPDIR", "PORTAGE_UPDATE_ENV", "PORTAGE_WORKDIR_MODE",
+		"PORTAGE_PYM_PATH", "PORTAGE_QUIET",
+		"PORTAGE_REPO_NAME", "PORTAGE_RESTRICT",
+		"PORTAGE_TMPDIR", "PORTAGE_UPDATE_ENV",
+		"PORTAGE_VERBOSE", "PORTAGE_WORKDIR_MODE",
 		"PORTDIR", "PORTDIR_OVERLAY", "PREROOTPATH", "PROFILE_PATHS",
 		"ROOT", "ROOTPATH", "STARTDIR", "T", "TMP", "TMPDIR",
 		"USE_EXPAND", "USE_ORDER", "WORKDIR",
@@ -3514,6 +3516,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	filedict={}
 	primaryuri_indexes={}
 	primaryuri_dict = {}
+	thirdpartymirror_uris = {}
 	for myfile, myuri in file_uri_tuples:
 		if myfile not in filedict:
 			filedict[myfile]=[]
@@ -3530,16 +3533,15 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					for cmirr in custommirrors[mirrorname]:
 						filedict[myfile].append(
 							cmirr.rstrip("/") + "/" + path)
-						# remove the mirrors we tried from the list of official mirrors
-						if cmirr.strip() in thirdpartymirrors[mirrorname]:
-							thirdpartymirrors[mirrorname].remove(cmirr)
+
 				# now try the official mirrors
 				if mirrorname in thirdpartymirrors:
 					shuffle(thirdpartymirrors[mirrorname])
 
-					for locmirr in thirdpartymirrors[mirrorname]:
-						filedict[myfile].append(
-							locmirr.rstrip("/") + "/" + path)
+					uris = [locmirr.rstrip("/") + "/" + path \
+						for locmirr in thirdpartymirrors[mirrorname]]
+					filedict[myfile].extend(uris)
+					thirdpartymirror_uris.setdefault(myfile, []).extend(uris)
 
 				if not filedict[myfile]:
 					writemsg("No known mirror by the name: %s\n" % (mirrorname))
@@ -3564,6 +3566,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				primaryuris = []
 				primaryuri_dict[myfile] = primaryuris
 			primaryuris.append(myuri)
+
+	# Prefer thirdpartymirrors over normal mirrors in cases when
+	# the file does not yet exist on the normal mirrors.
+	for myfile, uris in thirdpartymirror_uris.iteritems():
+		primaryuri_dict.setdefault(myfile, []).extend(uris)
 
 	can_fetch=True
 
@@ -5425,7 +5432,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			set(["clean", "cleanrm", "help", "prerm", "postrm"])
 		mycpv = mysettings["CATEGORY"] + "/" + mysettings["PF"]
 		dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
-		misc_keys = ["LICENSE", "PROVIDE", "RESTRICT", "SRC_URI"]
+		misc_keys = ["LICENSE", "PROPERTIES", "PROVIDE", "RESTRICT", "SRC_URI"]
 		other_keys = ["SLOT"]
 		all_keys = dep_keys + misc_keys + other_keys
 		metadata = dict(izip(all_keys, mydbapi.aux_get(mycpv, all_keys)))
