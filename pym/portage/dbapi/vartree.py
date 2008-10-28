@@ -23,7 +23,7 @@ from portage.util import apply_secpass_permissions, ConfigProtect, ensure_dirs, 
 	grabfile, grabdict, normalize_path, new_protect_filename, getlibpaths
 from portage.versions import pkgsplit, catpkgsplit, catsplit, best, pkgcmp
 
-from portage import listdir, dep_expand, flatten, key_expand, \
+from portage import listdir, dep_expand, digraph, flatten, key_expand, \
 	doebuild_environment, doebuild, env_update, prepare_build_dirs, \
 	abssymlink, movefile, _movefile, bsd_chflags, cpv_getkey
 
@@ -207,6 +207,16 @@ class LinkageMap(object):
 
 			"""
 			return isinstance(self._key, tuple)
+
+	class _LibGraphNode(_ObjectKey):
+		__slots__ = ("alt_paths",)
+
+		def __init__(self, obj, root):
+			LinkageMap._ObjectKey.__init__(self, obj, root)
+			self.alt_paths = set()
+
+		def __str__(self):
+			return str(sorted(self.alt_paths))
 
 	def rebuild(self, include_file=None):
 		root = self._root
@@ -1906,7 +1916,8 @@ class dblink(object):
 					writemsg("!!! FAILED prerm: %s\n" % retval, noiselevel=-1)
 
 			self._unmerge_pkgfiles(pkgfiles, others_in_slot)
-			
+			self._clear_contents_cache()
+
 			# Remove the registration of preserved libs for this pkg instance
 			plib_registry = self.vartree.dbapi.plib_registry
 			plib_registry.unregister(self.mycpv, self.settings["SLOT"],
@@ -1930,60 +1941,64 @@ class dblink(object):
 			self.vartree.dbapi.linkmap.rebuild()
 
 			# remove preserved libraries that don't have any consumers left
-			# FIXME: this code is quite ugly and can likely be optimized in several ways
+			# Since preserved libraries can be consumers of other preserved
+			# libraries, use a graph to track consumer relationships.
 			plib_dict = plib_registry.getPreservedLibs()
-			for cpv in plib_dict:
-				plib_dict[cpv].sort()
-				# for the loop below to work correctly, we need all
-				# symlinks to come before the actual files, such that
-				# the recorded symlinks (sonames) will be resolved into
-				# their real target before the object is found not to be
-				# in the reverse NEEDED map
-				def symlink_compare(x, y):
-					x = os.path.join(self.myroot, x.lstrip(os.path.sep))
-					y = os.path.join(self.myroot, y.lstrip(os.path.sep))
-					if os.path.islink(x):
-						if os.path.islink(y):
-							return 0
-						else:
-							return -1
-					elif os.path.islink(y):
-						return 1
-					else:
-						return 0
-
-				plib_dict[cpv].sort(symlink_compare)
-				for f in plib_dict[cpv]:
-					f_abs = os.path.join(self.myroot, f.lstrip(os.path.sep))
-					if not os.path.exists(f_abs):
+			lib_graph = digraph()
+			preserved_nodes = set()
+			root = self.myroot
+			for plibs in plib_dict.itervalues():
+				for f in plibs:
+					preserved_node = LinkageMap._LibGraphNode(f, root)
+					if not preserved_node.file_exists():
 						continue
-					unlink_list = []
-					consumers = self.vartree.dbapi.linkmap.findConsumers(f)
-					if not consumers:
-						unlink_list.append(f_abs)
+					existing_node = lib_graph.get(preserved_node)
+					if existing_node is not None:
+						preserved_node = existing_node
 					else:
-						keep=False
-						for c in consumers:
-							c = os.path.join(self.myroot,
-								c.lstrip(os.path.sep))
-							if c not in self.getcontents():
-								keep=True
-								break
-						if not keep:
-							unlink_list.append(f_abs)
-					for obj in unlink_list:
-						try:
-							if os.path.islink(obj):
-								obj_type = "sym"
-							else:
-								obj_type = "obj"
-							os.unlink(obj)
-							showMessage("<<< !needed   %s %s\n" % (obj_type, obj))
-						except OSError, e:
-							if e.errno == errno.ENOENT:
-								pass
-							else:
-								raise e
+						lib_graph.add(preserved_node, None)
+					preserved_node.alt_paths.add(f)
+					preserved_nodes.add(preserved_node)
+					for c in self.vartree.dbapi.linkmap.findConsumers(f):
+						if self.isowner(c, root):
+							# TODO: Remove this case since it shouldn't be
+							# necessary. This seems to be a false positive
+							# returned from LinkageMap.findConsumers().
+							continue
+						consumer_node = LinkageMap._LibGraphNode(c, root)
+						if not consumer_node.file_exists():
+							continue
+						# Note that consumers may also be providers.
+						existing_node = lib_graph.get(consumer_node)
+						if existing_node is not None:
+							consumer_node = existing_node
+						consumer_node.alt_paths.add(c)
+						lib_graph.add(preserved_node, consumer_node)
+
+			while not lib_graph.empty():
+				root_nodes = preserved_nodes.intersection(lib_graph.root_nodes())
+				if not root_nodes:
+					break
+				lib_graph.difference_update(root_nodes)
+				unlink_list = set()
+				for node in root_nodes:
+					unlink_list.update(node.alt_paths)
+				unlink_list = sorted(unlink_list)
+				for obj in unlink_list:
+					obj = os.path.join(root, obj.lstrip(os.sep))
+					if os.path.islink(obj):
+						obj_type = "sym"
+					else:
+						obj_type = "obj"
+					try:
+						os.unlink(obj)
+					except OSError, e:
+						if e.errno != errno.ENOENT:
+							raise
+						del e
+					else:
+						showMessage("<<< !needed   %s %s\n" % (obj_type, obj))
+
 			plib_registry.pruneNonExisting()
 						
 		finally:
