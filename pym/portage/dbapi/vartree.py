@@ -218,13 +218,15 @@ class LinkageMap(object):
 		def __str__(self):
 			return str(sorted(self.alt_paths))
 
-	def rebuild(self, include_file=None):
+	def rebuild(self, exclude_pkgs=None, include_file=None):
 		root = self._root
 		libs = {}
 		obj_key_cache = {}
 		obj_properties = {}
 		lines = []
 		for cpv in self._dbapi.cpv_all():
+			if exclude_pkgs is not None and cpv in exclude_pkgs:
+				continue
 			lines += self._dbapi.aux_get(cpv, ["NEEDED.ELF.2"])[0].split('\n')
 		# Cache NEEDED.* files avoid doing excessive IO for every rebuild.
 		self._dbapi.flush_cache()
@@ -1938,8 +1940,12 @@ class dblink(object):
 				if retval != os.EX_OK:
 					writemsg("!!! FAILED postrm: %s\n" % retval, noiselevel=-1)
 
-			# regenerate reverse NEEDED map
-			self.vartree.dbapi.linkmap.rebuild()
+			# Skip this if another package in the same slot has just been
+			# merged on top of this package, since the other package has
+			# already called LinkageMap.rebuild() and passed it's NEEDED file
+			# in as an argument.
+			if not others_in_slot:
+				self.vartree.dbapi.linkmap.rebuild(exclude_pkgs=(self.mycpv,))
 
 			# remove preserved libraries that don't have any consumers left
 			# Since preserved libraries can be consumers of other preserved
@@ -1961,11 +1967,6 @@ class dblink(object):
 					preserved_node.alt_paths.add(f)
 					preserved_nodes.add(preserved_node)
 					for c in self.vartree.dbapi.linkmap.findConsumers(f):
-						if self.isowner(c, root):
-							# TODO: Remove this case since it shouldn't be
-							# necessary. This seems to be a false positive
-							# returned from LinkageMap.findConsumers().
-							continue
 						consumer_node = LinkageMap._LibGraphNode(c, root)
 						if not consumer_node.file_exists():
 							continue
@@ -3125,6 +3126,10 @@ class dblink(object):
 			ensure_dirs(os.path.dirname(conf_mem_file),
 				gid=portage_gid, mode=02750, mask=02)
 			writedict(cfgfiledict, conf_mem_file)
+
+		exclude_pkgs = set(dblnk.mycpv for dblnk in others_in_slot)
+		self.vartree.dbapi.linkmap.rebuild(exclude_pkgs=exclude_pkgs,
+			include_file=os.path.join(inforoot, "NEEDED.ELF.2"))
 
 		# These caches are populated during collision-protect and the data
 		# they contain is now invalid. It's very important to invalidate
