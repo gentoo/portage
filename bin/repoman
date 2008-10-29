@@ -1665,17 +1665,9 @@ else:
 				# It's a manifest... auto add
 				myautoadd+=[myunadded[x]]
 				del myunadded[x]
-			elif len(xs[-1])>=7:
-				if xs[-1][:7]=="digest-":
-					del xs[-2]
-					myeb="/".join(xs[:-1]+[xs[-1][7:]])+".ebuild"
-					if os.path.exists(myeb):
-						# Ebuild exists for digest... So autoadd it.
-						myautoadd+=[myunadded[x]]
-						del myunadded[x]
-		
+
 	if myautoadd:
-		print ">>> Auto-Adding missing digests..."
+		print ">>> Auto-Adding missing Manifest(s)..."
 		if options.pretend:
 			if vcs == "cvs":
 				print "(cvs add "+" ".join(myautoadd)+")"

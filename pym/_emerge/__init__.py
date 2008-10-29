@@ -10012,6 +10012,7 @@ class Scheduler(PollScheduler):
 		# Since config.setcpv() isn't guaranteed to call config.reset() due to
 		# performance reasons, call it here to make sure all settings from the
 		# previous package get flushed out (such as PORTAGE_LOG_FILE).
+		temp_settings.reload()
 		temp_settings.reset()
 		return temp_settings
 
