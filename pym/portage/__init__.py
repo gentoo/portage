@@ -1939,19 +1939,33 @@ class config(object):
 
 		if self.mycpv == mycpv:
 			return
-		ebuild_phase = self.get("EBUILD_PHASE")
 		has_changed = False
 		self.mycpv = mycpv
+		cat, pf = catsplit(mycpv)
 		cp = dep_getkey(mycpv)
 		cpv_slot = self.mycpv
 		pkginternaluse = ""
 		iuse = ""
+		env_configdict = self.configdict["env"]
+		pkg_configdict = self.configdict["pkg"]
+		previous_iuse = pkg_configdict.get("IUSE")
+		for k in ("CATEGORY", "PKGUSE", "PF", "PORTAGE_USE"):
+			env_configdict.pop(k, None)
+		pkg_configdict["CATEGORY"] = cat
+		pkg_configdict["PF"] = pf
 		if mydb:
 			if not hasattr(mydb, "aux_get"):
-				slot = mydb["SLOT"]
-				iuse = mydb["IUSE"]
+				pkg_configdict.update(mydb)
 			else:
-				slot, iuse = mydb.aux_get(self.mycpv, ["SLOT", "IUSE"])
+				aux_keys = [k for k in auxdbkeys \
+					if not k.startswith("UNUSED_")]
+				for k, v in izip(aux_keys, mydb.aux_get(self.mycpv, aux_keys)):
+					pkg_configdict[k] = v
+			for k in pkg_configdict:
+				if k != "USE":
+					env_configdict.pop(k, None)
+			slot = pkg_configdict["SLOT"]
+			iuse = pkg_configdict["IUSE"]
 			if pkg is None:
 				cpv_slot = "%s:%s" % (self.mycpv, slot)
 			else:
@@ -2046,22 +2060,13 @@ class config(object):
 			has_changed = True
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
-		previous_iuse = self.configdict["pkg"].get("IUSE")
-		self.configdict["pkg"]["IUSE"] = iuse
-
-		# Always set known good values for these variables, since
-		# corruption of these can cause problems:
-		cat, pf = catsplit(self.mycpv)
-		self.configdict["pkg"]["CATEGORY"] = cat
-		self.configdict["pkg"]["PF"] = pf
 
 		if has_changed:
 			self.reset(keeping_pkg=1,use_cache=use_cache)
 
-		# If this is not an ebuild phase and reset() has not been called,
-		# it's safe to return early here if IUSE has not changed.
-		if not (has_changed or ebuild_phase) and \
-			previous_iuse == iuse:
+		# If reset() has not been called, it's safe to return
+		# early if IUSE has not changed.
+		if not has_changed and previous_iuse == iuse:
 			return
 
 		# Filter out USE flags that aren't part of IUSE. This has to
@@ -2079,7 +2084,7 @@ class config(object):
 		self.configdict["pkg"]["PORTAGE_IUSE"] = regex
 
 		ebuild_force_test = self.get("EBUILD_FORCE_TEST") == "1"
-		if ebuild_force_test and ebuild_phase and \
+		if ebuild_force_test and \
 			not hasattr(self, "_ebuild_force_test_msg_shown"):
 				self._ebuild_force_test_msg_shown = True
 				writemsg("Forcing test.\n", noiselevel=-1)
@@ -4665,12 +4670,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	# so that the caller can override it.
 	tmpdir = mysettings["PORTAGE_TMPDIR"]
 
-	# This variable is a signal to setcpv where it triggers
-	# filtering of USE for the ebuild environment.
-	mysettings["EBUILD_PHASE"] = mydo
-	mysettings.backup_changes("EBUILD_PHASE")
-
-	if mydo != "depend":
+	if mydo != "depend" and mycpv != mysettings.mycpv:
 		"""For performance reasons, setcpv only triggers reset when it
 		detects a package-specific change in config.  For the ebuild
 		environment, a reset call is forced in order to ensure that the
@@ -4732,18 +4732,17 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		mysettings["PORTAGE_QUIET"] = "1"
 
 	if mydo != "depend":
-		eapi, mysettings["INHERITED"], mysettings["SLOT"], mysettings["RESTRICT"]  = \
-			mydbapi.aux_get(mycpv, ["EAPI", "INHERITED", "SLOT", "RESTRICT"])
+		# Metadata vars such as EAPI and RESTRICT are
+		# set by the above config.setcpv() call.
+		eapi = mysettings["EAPI"]
 		if not eapi_is_supported(eapi):
 			# can't do anything with this.
 			raise portage.exception.UnsupportedAPIException(mycpv, eapi)
-		mysettings.pop("EAPI", None)
-		mysettings.configdict["pkg"]["EAPI"] = eapi
 		try:
 			mysettings["PORTAGE_RESTRICT"] = " ".join(flatten(
 				portage.dep.use_reduce(portage.dep.paren_reduce(
-				mysettings.get("RESTRICT","")),
-				uselist=mysettings.get("USE","").split())))
+				mysettings["RESTRICT"]),
+				uselist=mysettings["PORTAGE_USE"].split())))
 		except portage.exception.InvalidDependString:
 			# RESTRICT is validated again inside doebuild, so let this go
 			mysettings["PORTAGE_RESTRICT"] = ""
@@ -5603,20 +5602,35 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		mycpv = "/".join((mysettings["CATEGORY"], mysettings["PF"]))
 
-		# Make sure we get the correct tree in case there are overlays.
-		mytree = os.path.realpath(
-			os.path.dirname(os.path.dirname(mysettings["O"])))
-		useflags = mysettings["PORTAGE_USE"].split()
-		try:
-			alist = mydbapi.getFetchMap(mycpv, useflags=useflags, mytree=mytree)
-			aalist = mydbapi.getFetchMap(mycpv, mytree=mytree)
-		except portage.exception.InvalidDependString, e:
-			writemsg("!!! %s\n" % str(e), noiselevel=-1)
-			writemsg("!!! Invalid SRC_URI for '%s'.\n" % mycpv, noiselevel=-1)
-			del e
-			return 1
-		mysettings["A"] = " ".join(alist)
-		mysettings["AA"] = " ".join(aalist)
+		emerge_skip_distfiles = returnpid
+		# Only try and fetch the files if we are going to need them ...
+		# otherwise, if user has FEATURES=noauto and they run `ebuild clean
+		# unpack compile install`, we will try and fetch 4 times :/
+		need_distfiles = not emerge_skip_distfiles and \
+			(mydo in ("fetch", "unpack") or \
+			mydo not in ("digest", "manifest") and "noauto" not in features)
+		alist = mysettings.configdict["pkg"].get("A")
+		aalist = mysettings.configdict["pkg"].get("AA")
+		if need_distfiles or alist is None or aalist is None:
+			# Make sure we get the correct tree in case there are overlays.
+			mytree = os.path.realpath(
+				os.path.dirname(os.path.dirname(mysettings["O"])))
+			useflags = mysettings["PORTAGE_USE"].split()
+			try:
+				alist = mydbapi.getFetchMap(mycpv, useflags=useflags,
+					mytree=mytree)
+				aalist = mydbapi.getFetchMap(mycpv, mytree=mytree)
+			except portage.exception.InvalidDependString, e:
+				writemsg("!!! %s\n" % str(e), noiselevel=-1)
+				writemsg("!!! Invalid SRC_URI for '%s'.\n" % mycpv,
+					noiselevel=-1)
+				del e
+				return 1
+			mysettings.configdict["pkg"]["A"] = " ".join(alist)
+			mysettings.configdict["pkg"]["AA"] = " ".join(aalist)
+		else:
+			alist = set(alist.split())
+			aalist = set(aalist.split())
 		if ("mirror" in features) or fetchall:
 			fetchme = aalist
 			checkme = aalist
@@ -5629,12 +5643,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			# so do not check them again.
 			checkme = []
 
-		# Only try and fetch the files if we are going to need them ...
-		# otherwise, if user has FEATURES=noauto and they run `ebuild clean
-		# unpack compile install`, we will try and fetch 4 times :/
-		need_distfiles = (mydo in ("fetch", "unpack") or \
-			mydo not in ("digest", "manifest") and "noauto" not in features)
-		emerge_skip_distfiles = returnpid
+
 		if not emerge_skip_distfiles and \
 			need_distfiles and not fetch(
 			fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
@@ -5828,8 +5837,7 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 	misc_keys = ["LICENSE", "PROPERTIES", "PROVIDE", "RESTRICT", "SRC_URI"]
 	other_keys = ["SLOT"]
 	all_keys = dep_keys + misc_keys + other_keys
-	metadata = dict(izip(all_keys,
-		mydbapi.aux_get(mysettings.mycpv, all_keys)))
+	metadata = mysettings.configdict["pkg"]
 
 	class FakeTree(object):
 		def __init__(self, mydb):
