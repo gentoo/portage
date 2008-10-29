@@ -679,13 +679,15 @@ class LinkageMapMachO(object):
 			"""
 			return isinstance(self._key, tuple)
 
-	def rebuild(self, include_file=None):
+	def rebuild(self, exclude_pkgs=None, include_file=None):
 		root = self._root
 		libs = {}
 		obj_key_cache = {}
 		obj_properties = {}
 		lines = []
 		for cpv in self._dbapi.cpv_all():
+			if exclude_pkgs is not None and cpv in exclude_pkgs:
+				continue
 			lines += self._dbapi.aux_get(cpv, ["NEEDED.MACHO.3"])[0].split('\n')
 		# Cache NEEDED.* files avoid doing excessive IO for every rebuild.
 		self._dbapi.flush_cache()
@@ -2878,9 +2880,10 @@ class dblink(object):
 		# read global reverse NEEDED map
 		linkmap = self.vartree.dbapi.linkmap
 		if ostype == "Darwin":
-			linkmap.rebuild(include_file=os.path.join(inforoot, "NEEDED.MACHO.3"))
+			neededfile = "NEEDED.MACHO.3"
 		else:
-			linkmap.rebuild(include_file=os.path.join(inforoot, "NEEDED.ELF.2"))
+			neededfile = "NEEDED.ELF.2"
+		linkmap.rebuild(include_file=os.path.join(inforoot, neededfile))
 		liblist = linkmap.listLibraryObjects()
 
 		# get list of libraries from old package instance
@@ -3574,8 +3577,12 @@ class dblink(object):
 			writedict(cfgfiledict, conf_mem_file)
 
 		exclude_pkgs = set(dblnk.mycpv for dblnk in others_in_slot)
+		if ostype == "Darwin":
+			neededfile = "NEEDED.MACHO.3"
+		else:
+			neededfile = "NEEDED.ELF.2"
 		self.vartree.dbapi.linkmap.rebuild(exclude_pkgs=exclude_pkgs,
-			include_file=os.path.join(inforoot, "NEEDED.ELF.2"))
+			include_file=os.path.join(inforoot, neededfile))
 
 		# These caches are populated during collision-protect and the data
 		# they contain is now invalid. It's very important to invalidate
