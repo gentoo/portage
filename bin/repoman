@@ -1637,6 +1637,7 @@ else:
 	if options.pretend:
 		print green("RepoMan sez:"), "\"So, you want to play it safe. Good call.\"\n"
 
+	myunadded = []
 	if vcs == "cvs":
 		try:
 			myvcstree=portage.cvstree.getentries("./",recursive=1)
