@@ -10489,7 +10489,7 @@ def unmerge(root_config, myopts, unmerge_action,
 	candidate_catpkgs=[]
 	global_unmerge=0
 	xterm_titles = "notitles" not in settings.features
-
+	out = portage.output.EOutput()
 	pkg_cache = {}
 	db_keys = list(vartree.dbapi._aux_cache_keys)
 
@@ -10754,6 +10754,21 @@ def unmerge(root_config, myopts, unmerge_action,
 				# It could have been uninstalled
 				# by a concurrent process.
 				continue
+
+			if unmerge_action != "clean" and \
+				root_config.root == "/" and \
+				portage.match_from_list(
+				portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
+				msg = ("Not unmerging package %s since there is no valid " + \
+				"reason for portage to unmerge itself.") % (pkg.cpv,)
+				for line in textwrap.wrap(msg, 75):
+					out.eerror(line)
+				# adjust pkgmap so the display output is correct
+				pkgmap[cp]["selected"].remove(cpv)
+				all_selected.remove(cpv)
+				pkgmap[cp]["protected"].add(cpv)
+				continue
+
 			parents = []
 			for s in installed_sets:
 				# skip sets that the user requested to unmerge, and skip world 
@@ -10812,9 +10827,17 @@ def unmerge(root_config, myopts, unmerge_action,
 				print "    %s\n" % ", ".join(parents)
 				# adjust pkgmap so the display output is correct
 				pkgmap[cp]["selected"].remove(cpv)
+				all_selected.remove(cpv)
 				pkgmap[cp]["protected"].add(cpv)
 	
 	del installed_sets
+
+	numselected = len(all_selected)
+	if not numselected:
+		writemsg_level(
+			"\n>>> No packages selected for removal by " + \
+			unmerge_action + "\n")
+		return 0
 
 	# Unmerge order only matters in some cases
 	if not ordered:
