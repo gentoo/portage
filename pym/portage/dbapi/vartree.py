@@ -8,11 +8,11 @@ __all__ = ["PreservedLibsRegistry", "LinkageMap",
 
 from portage.checksum import perform_md5
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, \
-	PRIVATE_PATH, VDB_PATH
+	PORTAGE_PACKAGE_ATOM, PRIVATE_PATH, VDB_PATH
 from portage.data import portage_gid, portage_uid, secpass
 from portage.dbapi import dbapi
 from portage.dep import use_reduce, paren_reduce, isvalidatom, \
-	isjustname, dep_getkey
+	isjustname, dep_getkey, match_from_list
 from portage.exception import InvalidData, InvalidPackageName, \
 	FileNotFound, PermissionDenied, UnsupportedAPIException
 from portage.locks import lockdir, unlockdir
@@ -3248,8 +3248,7 @@ class dblink(object):
 		# PORTAGE_BIN_PATH that will be removed when we return.
 		reinstall_self = False
 		if self.myroot == "/" and \
-			"sys-apps" == self.cat and \
-			"portage" == pkgsplit(self.pkg)[0]:
+			match_from_list(PORTAGE_PACKAGE_ATOM, [self.mycpv]):
 			reinstall_self = True
 
 		autoclean = self.settings.get("AUTOCLEAN", "yes") == "yes"
@@ -3636,8 +3635,7 @@ class dblink(object):
 		if self.vartree.dbapi._categories is not None:
 			self.vartree.dbapi._categories = None
 		if self.myroot == "/" and \
-			"sys-apps" == self.cat and \
-			"portage" == pkgsplit(self.pkg)[0]:
+			match_from_list(PORTAGE_PACKAGE_ATOM, [self.mycpv]):
 			settings = self.settings
 			base_path_orig = os.path.dirname(settings["PORTAGE_BIN_PATH"])
 			from tempfile import mkdtemp

@@ -11753,9 +11753,11 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		portdb = trees[settings["ROOT"]]["porttree"].dbapi
 		root_config = trees[settings["ROOT"]]["root_config"]
 
-	mybestpv = portdb.xmatch("bestmatch-visible", "sys-apps/portage")
+	mybestpv = portdb.xmatch("bestmatch-visible",
+		portage.const.PORTAGE_PACKAGE_ATOM)
 	mypvs = portage.best(
-		trees[settings["ROOT"]]["vartree"].dbapi.match("sys-apps/portage"))
+		trees[settings["ROOT"]]["vartree"].dbapi.match(
+		portage.const.PORTAGE_PACKAGE_ATOM))
 
 	chk_updated_cfg_files("/", settings.get("CONFIG_PROTECT","").split())
 
