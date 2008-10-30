@@ -480,6 +480,11 @@ class LinkageMap(object):
 		"""
 		if not self._libs:
 			self.rebuild()
+		if isinstance(obj, self._ObjectKey):
+			obj_key = obj
+			if obj_key not in self._obj_properties:
+				raise KeyError("%s not in object list" % obj_key)
+			return self._obj_properties[obj_key][3]
 		if obj not in self._obj_key_cache:
 			raise KeyError("%s not in object list" % obj)
 		return self._obj_properties[self._obj_key_cache[obj]][3]
@@ -1953,29 +1958,66 @@ class dblink(object):
 			plib_dict = plib_registry.getPreservedLibs()
 			lib_graph = digraph()
 			preserved_nodes = set()
+			preserved_paths = set()
+			path_node_map = {}
 			root = self.myroot
+
+			def path_to_node(path):
+				node = path_node_map.get(path)
+				if node is None:
+					node = LinkageMap._LibGraphNode(path, root)
+					alt_path_node = lib_graph.get(node)
+					if alt_path_node is not None:
+						node = alt_path_node
+					node.alt_paths.add(path)
+					path_node_map[path] = node
+				return node
+
+			linkmap = self.vartree.dbapi.linkmap
 			for plibs in plib_dict.itervalues():
 				for f in plibs:
-					preserved_node = LinkageMap._LibGraphNode(f, root)
+					preserved_node = path_to_node(f)
 					if not preserved_node.file_exists():
 						continue
-					existing_node = lib_graph.get(preserved_node)
-					if existing_node is not None:
-						preserved_node = existing_node
-					else:
-						lib_graph.add(preserved_node, None)
-					preserved_node.alt_paths.add(f)
+					lib_graph.add(preserved_node, None)
+					preserved_paths.add(f)
 					preserved_nodes.add(preserved_node)
 					for c in self.vartree.dbapi.linkmap.findConsumers(f):
-						consumer_node = LinkageMap._LibGraphNode(c, root)
+						consumer_node = path_to_node(c)
 						if not consumer_node.file_exists():
 							continue
 						# Note that consumers may also be providers.
-						existing_node = lib_graph.get(consumer_node)
-						if existing_node is not None:
-							consumer_node = existing_node
-						consumer_node.alt_paths.add(c)
 						lib_graph.add(preserved_node, consumer_node)
+
+			# Eliminate consumers having providers with the same soname as an
+			# installed library that is not preserved. This eliminates
+			# libraries that are erroneously preserved due to a move from one
+			# directory to another.
+			provider_cache = {}
+			for preserved_node in preserved_nodes:
+				soname = linkmap.getSoname(preserved_node)
+				for consumer_node in lib_graph.parent_nodes(preserved_node):
+					if consumer_node in preserved_nodes:
+						continue
+					providers = provider_cache.get(consumer_node)
+					if providers is None:
+						providers = linkmap.findProviders(consumer_node)
+						provider_cache[consumer_node] = providers
+					providers = providers.get(soname)
+					if providers is None:
+						continue
+					for provider in providers:
+						if provider in preserved_paths:
+							continue
+						provider_node = path_to_node(provider)
+						if not provider_node.file_exists():
+							continue
+						if provider_node in preserved_nodes:
+							continue
+						# An alternative provider seems to be
+						# installed, so drop this edge.
+						lib_graph.remove_edge(preserved_node, consumer_node)
+						break
 
 			while not lib_graph.empty():
 				root_nodes = preserved_nodes.intersection(lib_graph.root_nodes())
