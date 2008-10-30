@@ -220,6 +220,7 @@ class LinkageMap(object):
 
 	def rebuild(self, exclude_pkgs=None, include_file=None):
 		root = self._root
+		self._defpath = set(getlibpaths(root))
 		libs = {}
 		obj_key_cache = {}
 		obj_properties = {}
