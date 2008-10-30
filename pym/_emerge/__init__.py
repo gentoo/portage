@@ -10387,6 +10387,13 @@ class Scheduler(PollScheduler):
 		if installed:
 			operation = "nomerge"
 
+		if self._digraph is not None:
+			# Reuse existing instance when available.
+			pkg = self._digraph.get(
+				(type_name, root_config.root, cpv, operation))
+			if pkg is not None:
+				return pkg
+
 		tree_type = depgraph.pkg_tree_map[type_name]
 		db = root_config.trees[tree_type].dbapi
 		db_keys = list(self.trees[root_config.root][
@@ -10398,10 +10405,6 @@ class Scheduler(PollScheduler):
 			settings = self.pkgsettings[root_config.root]
 			settings.setcpv(pkg)
 			pkg.metadata["USE"] = settings["PORTAGE_USE"]
-
-		if self._digraph is not None:
-			# Reuse existing instance when available.
-			pkg = self._digraph.get(pkg, pkg)
 
 		return pkg
 
