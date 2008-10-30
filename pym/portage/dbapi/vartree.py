@@ -1953,118 +1953,21 @@ class dblink(object):
 				self.vartree.dbapi.linkmap.rebuild(exclude_pkgs=(self.mycpv,))
 
 			# remove preserved libraries that don't have any consumers left
-			# Since preserved libraries can be consumers of other preserved
-			# libraries, use a graph to track consumer relationships.
-			plib_dict = plib_registry.getPreservedLibs()
-			lib_graph = digraph()
-			preserved_nodes = set()
-			preserved_paths = set()
-			path_cpv_map = {}
-			path_node_map = {}
-			root = self.myroot
-
-			def path_to_node(path):
-				node = path_node_map.get(path)
-				if node is None:
-					node = LinkageMap._LibGraphNode(path, root)
-					alt_path_node = lib_graph.get(node)
-					if alt_path_node is not None:
-						node = alt_path_node
-					node.alt_paths.add(path)
-					path_node_map[path] = node
-				return node
-
-			linkmap = self.vartree.dbapi.linkmap
-			for cpv, plibs in plib_dict.iteritems():
-				for f in plibs:
-					path_cpv_map[f] = cpv
-					preserved_node = path_to_node(f)
-					if not preserved_node.file_exists():
+			cpv_lib_map = self._find_unused_preserved_libs()
+			if cpv_lib_map:
+				self._remove_preserved_libs(cpv_lib_map)
+				for cpv, removed in cpv_lib_map.iteritems():
+					if not self.vartree.dbapi.cpv_exists(cpv):
+						for dblnk in others_in_slot:
+							if dblnk.mycpv == cpv:
+								# This one just got merged so it doesn't
+								# register with cpv_exists() yet.
+								self.vartree.dbapi.removeFromContents(
+									dblnk, removed)
+								break
 						continue
-					lib_graph.add(preserved_node, None)
-					preserved_paths.add(f)
-					preserved_nodes.add(preserved_node)
-					for c in self.vartree.dbapi.linkmap.findConsumers(f):
-						consumer_node = path_to_node(c)
-						if not consumer_node.file_exists():
-							continue
-						# Note that consumers may also be providers.
-						lib_graph.add(preserved_node, consumer_node)
+					self.vartree.dbapi.removeFromContents(cpv, removed)
 
-			# Eliminate consumers having providers with the same soname as an
-			# installed library that is not preserved. This eliminates
-			# libraries that are erroneously preserved due to a move from one
-			# directory to another.
-			provider_cache = {}
-			for preserved_node in preserved_nodes:
-				soname = linkmap.getSoname(preserved_node)
-				for consumer_node in lib_graph.parent_nodes(preserved_node):
-					if consumer_node in preserved_nodes:
-						continue
-					providers = provider_cache.get(consumer_node)
-					if providers is None:
-						providers = linkmap.findProviders(consumer_node)
-						provider_cache[consumer_node] = providers
-					providers = providers.get(soname)
-					if providers is None:
-						continue
-					for provider in providers:
-						if provider in preserved_paths:
-							continue
-						provider_node = path_to_node(provider)
-						if not provider_node.file_exists():
-							continue
-						if provider_node in preserved_nodes:
-							continue
-						# An alternative provider seems to be
-						# installed, so drop this edge.
-						lib_graph.remove_edge(preserved_node, consumer_node)
-						break
-
-			removed_for_cpv = {}
-			while not lib_graph.empty():
-				root_nodes = preserved_nodes.intersection(lib_graph.root_nodes())
-				if not root_nodes:
-					break
-				lib_graph.difference_update(root_nodes)
-				unlink_list = set()
-				for node in root_nodes:
-					unlink_list.update(node.alt_paths)
-				unlink_list = sorted(unlink_list)
-				for obj in unlink_list:
-					cpv = path_cpv_map[obj]
-					removed = removed_for_cpv.get(cpv)
-					if removed is None:
-						removed = set()
-						removed_for_cpv[cpv] = removed
-					removed.add(obj)
-					obj = os.path.join(root, obj.lstrip(os.sep))
-					if os.path.islink(obj):
-						obj_type = "sym"
-					else:
-						obj_type = "obj"
-					try:
-						os.unlink(obj)
-					except OSError, e:
-						if e.errno != errno.ENOENT:
-							raise
-						del e
-					else:
-						showMessage("<<< !needed   %s %s\n" % (obj_type, obj))
-
-			for cpv, removed in removed_for_cpv.iteritems():
-				if not self.vartree.dbapi.cpv_exists(cpv):
-					for dblnk in others_in_slot:
-						if dblnk.mycpv == cpv:
-							# This one just got merged so it doesn't
-							# register with cpv_exists() yet.
-							self.vartree.dbapi.removeFromContents(dblnk, removed)
-							break
-					continue
-				self.vartree.dbapi.removeFromContents(cpv, removed)
-
-			plib_registry.pruneNonExisting()
-						
 		finally:
 			if builddir_lock:
 				try:
@@ -2636,8 +2539,143 @@ class dblink(object):
 		# keep track of the libs we preserved
 		self.vartree.dbapi.plib_registry.register(self.mycpv, self.settings["SLOT"], counter, preserve_paths)
 
-		del preserve_paths
-	
+	def _find_unused_preserved_libs(self):
+		"""
+		Find preserved libraries that don't have any consumers left.
+		"""
+
+		# Since preserved libraries can be consumers of other preserved
+		# libraries, use a graph to track consumer relationships.
+		plib_dict = self.vartree.dbapi.plib_registry.getPreservedLibs()
+		lib_graph = digraph()
+		preserved_nodes = set()
+		preserved_paths = set()
+		path_cpv_map = {}
+		path_node_map = {}
+		root = self.myroot
+
+		def path_to_node(path):
+			node = path_node_map.get(path)
+			if node is None:
+				node = LinkageMap._LibGraphNode(path, root)
+				alt_path_node = lib_graph.get(node)
+				if alt_path_node is not None:
+					node = alt_path_node
+				node.alt_paths.add(path)
+				path_node_map[path] = node
+			return node
+
+		linkmap = self.vartree.dbapi.linkmap
+		for cpv, plibs in plib_dict.iteritems():
+			for f in plibs:
+				path_cpv_map[f] = cpv
+				preserved_node = path_to_node(f)
+				if not preserved_node.file_exists():
+					continue
+				lib_graph.add(preserved_node, None)
+				preserved_paths.add(f)
+				preserved_nodes.add(preserved_node)
+				for c in self.vartree.dbapi.linkmap.findConsumers(f):
+					consumer_node = path_to_node(c)
+					if not consumer_node.file_exists():
+						continue
+					# Note that consumers may also be providers.
+					lib_graph.add(preserved_node, consumer_node)
+
+		# Eliminate consumers having providers with the same soname as an
+		# installed library that is not preserved. This eliminates
+		# libraries that are erroneously preserved due to a move from one
+		# directory to another.
+		provider_cache = {}
+		for preserved_node in preserved_nodes:
+			soname = linkmap.getSoname(preserved_node)
+			for consumer_node in lib_graph.parent_nodes(preserved_node):
+				if consumer_node in preserved_nodes:
+					continue
+				providers = provider_cache.get(consumer_node)
+				if providers is None:
+					providers = linkmap.findProviders(consumer_node)
+					provider_cache[consumer_node] = providers
+				providers = providers.get(soname)
+				if providers is None:
+					continue
+				for provider in providers:
+					if provider in preserved_paths:
+						continue
+					provider_node = path_to_node(provider)
+					if not provider_node.file_exists():
+						continue
+					if provider_node in preserved_nodes:
+						continue
+					# An alternative provider seems to be
+					# installed, so drop this edge.
+					lib_graph.remove_edge(preserved_node, consumer_node)
+					break
+
+		cpv_lib_map = {}
+		while not lib_graph.empty():
+			root_nodes = preserved_nodes.intersection(lib_graph.root_nodes())
+			if not root_nodes:
+				break
+			lib_graph.difference_update(root_nodes)
+			unlink_list = set()
+			for node in root_nodes:
+				unlink_list.update(node.alt_paths)
+			unlink_list = sorted(unlink_list)
+			for obj in unlink_list:
+				cpv = path_cpv_map[obj]
+				removed = cpv_lib_map.get(cpv)
+				if removed is None:
+					removed = set()
+					cpv_lib_map[cpv] = removed
+				removed.add(obj)
+
+		return cpv_lib_map
+
+	def _remove_preserved_libs(self, cpv_lib_map):
+		"""
+		Remove files returned from _find_unused_preserved_libs().
+		"""
+
+		files_to_remove = set()
+		for files in cpv_lib_map.itervalues():
+			files_to_remove.update(files)
+		files_to_remove = sorted(files_to_remove)
+		showMessage = self._display_merge
+		root = self.myroot
+
+		parent_dirs = set()
+		for obj in files_to_remove:
+			obj = os.path.join(root, obj.lstrip(os.sep))
+			parent_dirs.add(os.path.dirname(obj))
+			if os.path.islink(obj):
+				obj_type = "sym"
+			else:
+				obj_type = "obj"
+			try:
+				os.unlink(obj)
+			except OSError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
+			else:
+				showMessage("<<< !needed   %s %s\n" % (obj_type, obj))
+
+		# Remove empty parent directories if possible.
+		while parent_dirs:
+			x = parent_dirs.pop()
+			while True:
+				try:
+					os.rmdir(x)
+				except OSError:
+					break
+				prev = x
+				x = os.path.dirname(x)
+				if x == prev:
+					break
+
+		self.vartree.dbapi.plib_registry.pruneNonExisting()
+
 	def _collision_protect(self, srcroot, destroot, mypkglist, mycontents):
 			collision_ignore = set([normalize_path(myignore) for myignore in \
 				shlex.split(self.settings.get("COLLISION_IGNORE", ""))])
@@ -3288,6 +3326,17 @@ class dblink(object):
 			target_root=self.settings["ROOT"], prev_mtimes=prev_mtimes,
 			contents=contents, env=self.settings.environ(),
 			writemsg_level=self._display_merge)
+
+		# For gcc upgrades, preserved libs have to be removed after the
+		# the library path has been updated.
+		self.vartree.dbapi.linkmap.rebuild()
+		cpv_lib_map = self._find_unused_preserved_libs()
+		if cpv_lib_map:
+			self._remove_preserved_libs(cpv_lib_map)
+			for cpv, removed in cpv_lib_map.iteritems():
+				if not self.vartree.dbapi.cpv_exists(cpv):
+					continue
+				self.vartree.dbapi.removeFromContents(cpv, removed)
 
 		return os.EX_OK
 
