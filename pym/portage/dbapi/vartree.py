@@ -1959,6 +1959,7 @@ class dblink(object):
 			lib_graph = digraph()
 			preserved_nodes = set()
 			preserved_paths = set()
+			path_cpv_map = {}
 			path_node_map = {}
 			root = self.myroot
 
@@ -1974,8 +1975,9 @@ class dblink(object):
 				return node
 
 			linkmap = self.vartree.dbapi.linkmap
-			for plibs in plib_dict.itervalues():
+			for cpv, plibs in plib_dict.iteritems():
 				for f in plibs:
+					path_cpv_map[f] = cpv
 					preserved_node = path_to_node(f)
 					if not preserved_node.file_exists():
 						continue
@@ -2019,6 +2021,7 @@ class dblink(object):
 						lib_graph.remove_edge(preserved_node, consumer_node)
 						break
 
+			removed_for_cpv = {}
 			while not lib_graph.empty():
 				root_nodes = preserved_nodes.intersection(lib_graph.root_nodes())
 				if not root_nodes:
@@ -2029,6 +2032,12 @@ class dblink(object):
 					unlink_list.update(node.alt_paths)
 				unlink_list = sorted(unlink_list)
 				for obj in unlink_list:
+					cpv = path_cpv_map[obj]
+					removed = removed_for_cpv.get(cpv)
+					if removed is None:
+						removed = set()
+						removed_for_cpv[cpv] = removed
+					removed.add(obj)
 					obj = os.path.join(root, obj.lstrip(os.sep))
 					if os.path.islink(obj):
 						obj_type = "sym"
@@ -2042,6 +2051,17 @@ class dblink(object):
 						del e
 					else:
 						showMessage("<<< !needed   %s %s\n" % (obj_type, obj))
+
+			for cpv, removed in removed_for_cpv.iteritems():
+				if not self.vartree.dbapi.cpv_exists(cpv):
+					for dblnk in others_in_slot:
+						if dblnk.mycpv == cpv:
+							# This one just got merged so it doesn't
+							# register with cpv_exists() yet.
+							self.vartree.dbapi.removeFromContents(dblnk, removed)
+							break
+					continue
+				self.vartree.dbapi.removeFromContents(cpv, removed)
 
 			plib_registry.pruneNonExisting()
 						
