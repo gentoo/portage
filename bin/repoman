@@ -1696,10 +1696,9 @@ else:
 		sys.exit(1)
 
 	if vcs == "cvs":
-		if myautoadd:
-			mycvstree = cvstree.getentries("./", recursive=1)
-			mychanged = cvstree.findchanged(mycvstree, recursive=1, basedir="./")
-			mynew = cvstree.findnew(mycvstree, recursive=1, basedir="./")
+		mycvstree = cvstree.getentries("./", recursive=1)
+		mychanged = cvstree.findchanged(mycvstree, recursive=1, basedir="./")
+		mynew = cvstree.findnew(mycvstree, recursive=1, basedir="./")
 		myremoved=portage.cvstree.findremoved(mycvstree,recursive=1,basedir="./")
 		bin_blob_pattern = re.compile("^-kb$")
 		no_expansion = set(portage.cvstree.findoption(mycvstree, bin_blob_pattern,
@@ -1707,10 +1706,9 @@ else:
 
 
 	if vcs == "svn":
-		if myautoadd:
-			svnstatus = os.popen("svn status").readlines()
-			mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and elem[:1] in "MR" ]
-			mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A") ]
+		svnstatus = os.popen("svn status").readlines()
+		mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and elem[:1] in "MR" ]
+		mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A") ]
 		myremoved = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("D") ]
 		# in contrast to CVS, SVN expands nothing by default.
 		# bin_blobs historically
