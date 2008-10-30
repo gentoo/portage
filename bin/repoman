@@ -748,6 +748,8 @@ else:
 
 new_ebuilds = set()
 modified_changelogs = set()
+mychanged = []
+mynew = []
 if vcs == "cvs":
 	mycvstree = cvstree.getentries("./", recursive=1)
 	mychanged = cvstree.findchanged(mycvstree, recursive=1, basedir="./")
