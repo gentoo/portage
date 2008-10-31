@@ -3295,9 +3295,7 @@ class dblink(object):
 		# just been merged.
 		others_in_slot.append(self)  # self has just been merged
 		for dblnk in others_in_slot:
-			dblnk.contentscache = None
-			dblnk._contents_inodes = None
-			dblnk._contents_basenames = None
+			dblnk._clear_contents_cache()
 
 		# If portage is reinstalling itself, remove the old
 		# version now since we want to use the temporary
