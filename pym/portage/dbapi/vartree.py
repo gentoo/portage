@@ -2681,6 +2681,18 @@ class dblink(object):
 			collision_ignore = set([normalize_path(myignore) for myignore in \
 				shlex.split(self.settings.get("COLLISION_IGNORE", ""))])
 
+			# For collisions with preserved libraries, the current package
+			# will assume ownership and the libraries will be unregistered.
+			plib_dict = self.vartree.dbapi.plib_registry.getPreservedLibs()
+			plib_cpv_map = {}
+			plib_paths = set()
+			for cpv, paths in plib_dict.iteritems():
+				plib_paths.update(paths)
+				for f in paths:
+					plib_cpv_map[f] = cpv
+			plib_inodes = self._lstat_inode_map(plib_paths)
+			plib_collisions = {}
+
 			showMessage = self._display_merge
 			scheduler = self._scheduler
 			stopmerge = False
@@ -2732,6 +2744,21 @@ class dblink(object):
 						raise
 				if f[0] != "/":
 					f="/"+f
+
+				plibs = plib_inodes.get((dest_lstat.st_dev, dest_lstat.st_ino))
+				if plibs:
+					for path in plibs:
+						cpv = plib_cpv_map[path]
+						paths = plib_collisions.get(cpv)
+						if paths is None:
+							paths = set()
+							plib_collisions[cpv] = paths
+						paths.add(path)
+					# The current package will assume ownership and the
+					# libraries will be unregistered, so exclude this
+					# path from the normal collisions.
+					continue
+
 				isowned = False
 				full_path = os.path.join(destroot, f.lstrip(os.path.sep))
 				for ver in mypkglist:
@@ -2752,7 +2779,33 @@ class dblink(object):
 									break
 					if stopmerge:
 						collisions.append(f)
-			return collisions
+			return collisions, plib_collisions
+
+	def _lstat_inode_map(self, path_iter):
+		"""
+		Use lstat to create a map of the form:
+		  {(st_dev, st_ino) : set([path1, path2, ...])}
+		Multiple paths may reference the same inode due to hardlinks.
+		All lstat() calls are relative to self.myroot.
+		"""
+		root = self.myroot
+		inode_map = {}
+		for f in path_iter:
+			path = os.path.join(root, f.lstrip(os.sep))
+			try:
+				st = os.lstat(path)
+			except OSError, e:
+				if e.errno not in (errno.ENOENT, errno.ENOTDIR):
+					raise
+				del e
+				continue
+			key = (st.st_dev, st.st_ino)
+			paths = inode_map.get(key)
+			if paths is None:
+				paths = set()
+				inode_map[key] = paths
+			paths.add(f)
+		return inode_map
 
 	def _security_check(self, installed_instances):
 		if not installed_instances:
@@ -3011,7 +3064,8 @@ class dblink(object):
 			blockers = self._blockers()
 		if blockers is None:
 			blockers = []
-		collisions = self._collision_protect(srcroot, destroot,
+		collisions, plib_collisions = \
+			self._collision_protect(srcroot, destroot,
 			others_in_slot + blockers, myfilelist + mylinklist)
 
 		# Make sure the ebuild environment is initialized and that ${T}/elog
@@ -3288,6 +3342,24 @@ class dblink(object):
 		for blocker in blockers:
 			self.vartree.dbapi.removeFromContents(blocker, iter(contents),
 				relative_paths=False)
+
+		# Unregister any preserved libs that this package has overwritten
+		# and update the contents of the packages that owned them.
+		plib_registry = self.vartree.dbapi.plib_registry
+		plib_dict = plib_registry.getPreservedLibs()
+		for cpv, paths in plib_collisions.iteritems():
+			if cpv not in plib_dict:
+				continue
+			if cpv == self.mycpv:
+				continue
+			try:
+				slot, counter = self.vartree.dbapi.aux_get(
+					cpv, ["SLOT", "COUNTER"])
+			except KeyError:
+				continue
+			remaining = [f for f in plib_dict[cpv] if f not in paths]
+			plib_registry.register(cpv, slot, counter, remaining)
+			self.vartree.dbapi.removeFromContents(cpv, paths)
 
 		self.vartree.dbapi._add(self)
 		contents = self.getcontents()
