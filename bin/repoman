@@ -750,6 +750,8 @@ new_ebuilds = set()
 modified_changelogs = set()
 mychanged = []
 mynew = []
+myremoved = []
+
 if vcs == "cvs":
 	mycvstree = cvstree.getentries("./", recursive=1)
 	mychanged = cvstree.findchanged(mycvstree, recursive=1, basedir="./")
@@ -1815,7 +1817,8 @@ else:
 		unameout += platform.processor()
 	else:
 		unameout += platform.machine()
-	commitmessage+="\n(Portage version: "+str(portage_version)+"/"+vcs+"/"+unameout
+	commitmessage += "\n(Portage version: %s/%s/%s" % \
+		(portage_version, vcs, unameout)
 	if options.force:
 		commitmessage += ", RepoMan options: --force"
 	commitmessage += ")"
