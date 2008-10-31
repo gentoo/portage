@@ -341,8 +341,8 @@ def dep_opconvert(deplist):
 
 class _use_dep(object):
 
-	__slots__ = ("__weakref__", "conditional", "conditional_disabled",
-		"conditional_enabled", "disabled", "enabled", "tokens", "required")
+	__slots__ = ("__weakref__", "conditional",
+		"disabled", "enabled", "tokens", "required")
 
 	_conditionals_class = portage.cache.mappings.slot_dict_class(
 		("disabled", "enabled", "equal", "not_equal"), prefix="")
