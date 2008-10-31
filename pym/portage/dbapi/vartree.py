@@ -2734,10 +2734,12 @@ class dblink(object):
 					f="/"+f
 				isowned = False
 				full_path = os.path.join(destroot, f.lstrip(os.path.sep))
-				for ver in [self] + mypkglist:
-					if (ver.isowner(f, destroot) or ver.isprotected(full_path)):
+				for ver in mypkglist:
+					if ver.isowner(f, destroot):
 						isowned = True
 						break
+				if not isowned and self.isprotected(full_path):
+					isowned = True
 				if not isowned:
 					stopmerge = True
 					if collision_ignore:
