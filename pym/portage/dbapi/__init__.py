@@ -169,6 +169,26 @@ class dbapi(object):
 					continue
 				if atom.use.disabled.intersection(use):
 					continue
+			else:
+				# Check masked and forced flags for repoman.
+				mysettings = getattr(self, "mysettings", None)
+				if mysettings is not None and not mysettings.local_config:
+
+					usemask = mysettings.usemask
+					conditional = atom.use.conditional
+					if usemask.intersection(atom.use.enabled):
+						continue
+					if conditional is not None and \
+						usemask.intersection(conditional.enabled):
+						continue
+
+					useforce = mysettings.useforce.difference(usemask)
+					if useforce.intersection(atom.use.disabled):
+						continue
+					if conditional is not None and \
+						useforce.intersection(conditional.disabled):
+						continue
+
 			yield cpv
 
 	def invalidentry(self, mypath):
