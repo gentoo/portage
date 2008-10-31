@@ -2001,45 +2001,13 @@ class config(object):
 		if defaults != self.configdict["defaults"].get("USE",""):
 			self.configdict["defaults"]["USE"] = defaults
 			has_changed = True
-		useforce = []
-		pos = 0
-		for i in xrange(len(self.profiles)):
-			cpdict = self.puseforce_list[i].get(cp, None)
-			if cpdict:
-				keys = cpdict.keys()
-				while keys:
-					best_match = best_match_to_list(cpv_slot, keys)
-					if best_match:
-						keys.remove(best_match)
-						useforce.insert(pos, cpdict[best_match])
-					else:
-						break
-				del keys
-			if self.useforce_list[i]:
-				useforce.insert(pos, self.useforce_list[i])
-			pos = len(useforce)
-		useforce = set(stack_lists(useforce, incremental=True))
+
+		useforce = self._getUseForce(cpv_slot)
 		if useforce != self.useforce:
 			self.useforce = useforce
 			has_changed = True
-		usemask = []
-		pos = 0
-		for i in xrange(len(self.profiles)):
-			cpdict = self.pusemask_list[i].get(cp, None)
-			if cpdict:
-				keys = cpdict.keys()
-				while keys:
-					best_match = best_match_to_list(cpv_slot, keys)
-					if best_match:
-						keys.remove(best_match)
-						usemask.insert(pos, cpdict[best_match])
-					else:
-						break
-				del keys
-			if self.usemask_list[i]:
-				usemask.insert(pos, self.usemask_list[i])
-			pos = len(usemask)
-		usemask = set(stack_lists(usemask, incremental=True))
+
+		usemask = self._getUseMask(cpv_slot)
 		if usemask != self.usemask:
 			self.usemask = usemask
 			has_changed = True
@@ -2206,6 +2174,52 @@ class config(object):
 		iuse_implicit.add("build")
 		iuse_implicit.add("bootstrap")
 		return iuse_implicit
+
+	def _getUseMask(self, pkg):
+		cp = getattr(pkg, "cp", None)
+		if cp is None:
+			cp = dep_getkey(pkg)
+		usemask = []
+		pos = 0
+		for i in xrange(len(self.profiles)):
+			cpdict = self.pusemask_list[i].get(cp, None)
+			if cpdict:
+				keys = cpdict.keys()
+				while keys:
+					best_match = best_match_to_list(pkg, keys)
+					if best_match:
+						keys.remove(best_match)
+						usemask.insert(pos, cpdict[best_match])
+					else:
+						break
+				del keys
+			if self.usemask_list[i]:
+				usemask.insert(pos, self.usemask_list[i])
+			pos = len(usemask)
+		return set(stack_lists(usemask, incremental=True))
+
+	def _getUseForce(self, pkg):
+		cp = getattr(pkg, "cp", None)
+		if cp is None:
+			cp = dep_getkey(pkg)
+		useforce = []
+		pos = 0
+		for i in xrange(len(self.profiles)):
+			cpdict = self.puseforce_list[i].get(cp, None)
+			if cpdict:
+				keys = cpdict.keys()
+				while keys:
+					best_match = best_match_to_list(pkg, keys)
+					if best_match:
+						keys.remove(best_match)
+						useforce.insert(pos, cpdict[best_match])
+					else:
+						break
+				del keys
+			if self.useforce_list[i]:
+				useforce.insert(pos, self.useforce_list[i])
+			pos = len(useforce)
+		return set(stack_lists(useforce, incremental=True))
 
 	def _getMaskAtom(self, cpv, metadata):
 		"""
