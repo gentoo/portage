@@ -371,7 +371,7 @@ set_colors() {
 	(( COLS > 0 )) || (( COLS = 80 ))
 	COLS=$((${COLS} - 8))	# width of [ ok ] == 7
 	# Adjust COLS so that eend works properly on a standard BSD console.
-	[ "${TERM}" = "cons25" ] && COLS=$((${COLS} - 1))
+	[[ $TERM = cons25 || $TERM = dumb ]] && ((COLS--))
 
 	# Now, ${ENDCOL} will move us to the end of the
 	# column;  irregardless of character width
