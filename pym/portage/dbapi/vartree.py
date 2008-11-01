@@ -3286,6 +3286,9 @@ class dblink(object):
 				gid=portage_gid, mode=02750, mask=02)
 			writedict(cfgfiledict, conf_mem_file)
 
+		# TODO: In case some elf files collide with blocked packages,
+		# ensure that NEEDED data from include_file overrides the stale
+		# NEEDED data from the colliding files in the blocked packages.
 		exclude_pkgs = set(dblnk.mycpv for dblnk in others_in_slot)
 		self.vartree.dbapi.linkmap.rebuild(exclude_pkgs=exclude_pkgs,
 			include_file=os.path.join(inforoot, "NEEDED.ELF.2"))
