@@ -2,15 +2,16 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+__all__ = ["dbapi"]
+
 import os
 import re
-from portage.dep import Atom, dep_getslot, dep_getkey, \
-	dep_getusedeps, match_from_list
+from portage.dep import match_from_list
 from portage.locks import unlockfile
 from portage.output import red
 from portage.util import writemsg
 from portage import auxdbkeys, dep_expand
-from portage.versions import catpkgsplit, catsplit, pkgcmp
+from portage.versions import catpkgsplit, pkgcmp
 
 
 class dbapi(object):
