@@ -2,10 +2,12 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+__all__ = ["bindbapi", "binarytree"]
+
 from portage.cache.mappings import slot_dict_class
 from portage.dep import isvalidatom, isjustname, dep_getkey, match_from_list
 from portage.dbapi.virtual import fakedbapi
-from portage.exception import InvalidPackageName, InvalidAtom, \
+from portage.exception import InvalidPackageName, \
 	PermissionDenied, PortageException
 from portage.output import green, EOutput
 from portage.util import ensure_dirs, normalize_path, writemsg, writemsg_stdout

@@ -8,11 +8,11 @@ __all__ = ["PreservedLibsRegistry", "LinkageMap",
 
 from portage.checksum import perform_md5
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, \
-	PRIVATE_PATH, VDB_PATH, EPREFIX, EPREFIX_LSTRIP
-from portage.data import portage_gid, portage_uid, secpass, ostype
+	PORTAGE_PACKAGE_ATOM, PRIVATE_PATH, VDB_PATH, EPREFIX, EPREFIX_LSTRIP
+from portage.data import portage_gid, portage_uid, secpass
 from portage.dbapi import dbapi
 from portage.dep import use_reduce, paren_reduce, isvalidatom, \
-	isjustname, dep_getkey
+	isjustname, dep_getkey, match_from_list
 from portage.exception import InvalidData, InvalidPackageName, \
 	FileNotFound, PermissionDenied, UnsupportedAPIException
 from portage.locks import lockdir, unlockdir
@@ -3135,6 +3135,18 @@ class dblink(object):
 			collision_ignore = set([normalize_path(myignore) for myignore in \
 				shlex.split(self.settings.get("COLLISION_IGNORE", ""))])
 
+			# For collisions with preserved libraries, the current package
+			# will assume ownership and the libraries will be unregistered.
+			plib_dict = self.vartree.dbapi.plib_registry.getPreservedLibs()
+			plib_cpv_map = {}
+			plib_paths = set()
+			for cpv, paths in plib_dict.iteritems():
+				plib_paths.update(paths)
+				for f in paths:
+					plib_cpv_map[f] = cpv
+			plib_inodes = self._lstat_inode_map(plib_paths)
+			plib_collisions = {}
+
 			showMessage = self._display_merge
 			scheduler = self._scheduler
 			stopmerge = False
@@ -3186,12 +3198,29 @@ class dblink(object):
 						raise
 				if f[0] != "/":
 					f="/"+f
+
+				plibs = plib_inodes.get((dest_lstat.st_dev, dest_lstat.st_ino))
+				if plibs:
+					for path in plibs:
+						cpv = plib_cpv_map[path]
+						paths = plib_collisions.get(cpv)
+						if paths is None:
+							paths = set()
+							plib_collisions[cpv] = paths
+						paths.add(path)
+					# The current package will assume ownership and the
+					# libraries will be unregistered, so exclude this
+					# path from the normal collisions.
+					continue
+
 				isowned = False
 				full_path = os.path.join(destroot, f.lstrip(os.path.sep))
-				for ver in [self] + mypkglist:
-					if (ver.isowner(f, destroot) or ver.isprotected(full_path)):
+				for ver in mypkglist:
+					if ver.isowner(f, destroot):
 						isowned = True
 						break
+				if not isowned and self.isprotected(full_path):
+					isowned = True
 				if not isowned:
 					stopmerge = True
 					if collision_ignore:
@@ -3204,7 +3233,33 @@ class dblink(object):
 									break
 					if stopmerge:
 						collisions.append(f)
-			return collisions
+			return collisions, plib_collisions
+
+	def _lstat_inode_map(self, path_iter):
+		"""
+		Use lstat to create a map of the form:
+		  {(st_dev, st_ino) : set([path1, path2, ...])}
+		Multiple paths may reference the same inode due to hardlinks.
+		All lstat() calls are relative to self.myroot.
+		"""
+		root = self.myroot
+		inode_map = {}
+		for f in path_iter:
+			path = os.path.join(root, f.lstrip(os.sep))
+			try:
+				st = os.lstat(path)
+			except OSError, e:
+				if e.errno not in (errno.ENOENT, errno.ENOTDIR):
+					raise
+				del e
+				continue
+			key = (st.st_dev, st.st_ino)
+			paths = inode_map.get(key)
+			if paths is None:
+				paths = set()
+				inode_map[key] = paths
+			paths.add(f)
+		return inode_map
 
 	def _security_check(self, installed_instances):
 		if not installed_instances:
@@ -3463,7 +3518,8 @@ class dblink(object):
 			blockers = self._blockers()
 		if blockers is None:
 			blockers = []
-		collisions = self._collision_protect(srcroot, destroot,
+		collisions, plib_collisions = \
+			self._collision_protect(srcroot, destroot,
 			others_in_slot + blockers, myfilelist + mylinklist)
 
 		# Make sure the ebuild environment is initialized and that ${T}/elog
@@ -3697,17 +3753,14 @@ class dblink(object):
 		# just been merged.
 		others_in_slot.append(self)  # self has just been merged
 		for dblnk in others_in_slot:
-			dblnk.contentscache = None
-			dblnk._contents_inodes = None
-			dblnk._contents_basenames = None
+			dblnk._clear_contents_cache()
 
 		# If portage is reinstalling itself, remove the old
 		# version now since we want to use the temporary
 		# PORTAGE_BIN_PATH that will be removed when we return.
 		reinstall_self = False
 		if self.myroot == "/" and \
-			"sys-apps" == self.cat and \
-			"portage" == pkgsplit(self.pkg)[0]:
+			match_from_list(PORTAGE_PACKAGE_ATOM, [self.mycpv]):
 			reinstall_self = True
 
 		autoclean = self.settings.get("AUTOCLEAN", "yes") == "yes"
@@ -3745,6 +3798,24 @@ class dblink(object):
 		for blocker in blockers:
 			self.vartree.dbapi.removeFromContents(blocker, iter(contents),
 				relative_paths=False)
+
+		# Unregister any preserved libs that this package has overwritten
+		# and update the contents of the packages that owned them.
+		plib_registry = self.vartree.dbapi.plib_registry
+		plib_dict = plib_registry.getPreservedLibs()
+		for cpv, paths in plib_collisions.iteritems():
+			if cpv not in plib_dict:
+				continue
+			if cpv == self.mycpv:
+				continue
+			try:
+				slot, counter = self.vartree.dbapi.aux_get(
+					cpv, ["SLOT", "COUNTER"])
+			except KeyError:
+				continue
+			remaining = [f for f in plib_dict[cpv] if f not in paths]
+			plib_registry.register(cpv, slot, counter, remaining)
+			self.vartree.dbapi.removeFromContents(cpv, paths)
 
 		self.vartree.dbapi._add(self)
 		contents = self.getcontents()
@@ -4094,8 +4165,7 @@ class dblink(object):
 		if self.vartree.dbapi._categories is not None:
 			self.vartree.dbapi._categories = None
 		if self.myroot == "/" and \
-			"sys-apps" == self.cat and \
-			"portage" == pkgsplit(self.pkg)[0]:
+			match_from_list(PORTAGE_PACKAGE_ATOM, [self.mycpv]):
 			settings = self.settings
 			base_path_orig = os.path.dirname(settings["PORTAGE_BIN_PATH"])
 			from tempfile import mkdtemp

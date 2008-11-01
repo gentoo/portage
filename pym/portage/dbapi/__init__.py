@@ -2,15 +2,16 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+__all__ = ["dbapi"]
+
 import os
 import re
-from portage.dep import Atom, dep_getslot, dep_getkey, \
-	dep_getusedeps, match_from_list
+from portage.dep import match_from_list
 from portage.locks import unlockfile
 from portage.output import red
 from portage.util import writemsg
 from portage import auxdbkeys, dep_expand
-from portage.versions import catpkgsplit, catsplit, pkgcmp
+from portage.versions import catpkgsplit, pkgcmp
 
 
 class dbapi(object):
@@ -150,7 +151,7 @@ class dbapi(object):
 			self._iuse_implicit = self.settings._get_implicit_iuse()
 		for cpv in cpv_iter:
 			try:
-				iuse, use = self.aux_get(cpv, ["IUSE", "USE"])
+				iuse, slot, use = self.aux_get(cpv, ["IUSE", "SLOT", "USE"])
 			except KeyError:
 				continue
 			use = use.split()
@@ -169,6 +170,20 @@ class dbapi(object):
 					continue
 				if atom.use.disabled.intersection(use):
 					continue
+			else:
+				# Check masked and forced flags for repoman.
+				mysettings = getattr(self, "mysettings", None)
+				if mysettings is not None and not mysettings.local_config:
+
+					pkg = "%s:%s" % (cpv, slot)
+					usemask = mysettings._getUseMask(pkg)
+					if usemask.intersection(atom.use.enabled):
+						continue
+
+					useforce = mysettings._getUseForce(pkg).difference(usemask)
+					if useforce.intersection(atom.use.disabled):
+						continue
+
 			yield cpv
 
 	def invalidentry(self, mypath):

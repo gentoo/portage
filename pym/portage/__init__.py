@@ -2017,45 +2017,13 @@ class config(object):
 		if defaults != self.configdict["defaults"].get("USE",""):
 			self.configdict["defaults"]["USE"] = defaults
 			has_changed = True
-		useforce = []
-		pos = 0
-		for i in xrange(len(self.profiles)):
-			cpdict = self.puseforce_list[i].get(cp, None)
-			if cpdict:
-				keys = cpdict.keys()
-				while keys:
-					best_match = best_match_to_list(cpv_slot, keys)
-					if best_match:
-						keys.remove(best_match)
-						useforce.insert(pos, cpdict[best_match])
-					else:
-						break
-				del keys
-			if self.useforce_list[i]:
-				useforce.insert(pos, self.useforce_list[i])
-			pos = len(useforce)
-		useforce = set(stack_lists(useforce, incremental=True))
+
+		useforce = self._getUseForce(cpv_slot)
 		if useforce != self.useforce:
 			self.useforce = useforce
 			has_changed = True
-		usemask = []
-		pos = 0
-		for i in xrange(len(self.profiles)):
-			cpdict = self.pusemask_list[i].get(cp, None)
-			if cpdict:
-				keys = cpdict.keys()
-				while keys:
-					best_match = best_match_to_list(cpv_slot, keys)
-					if best_match:
-						keys.remove(best_match)
-						usemask.insert(pos, cpdict[best_match])
-					else:
-						break
-				del keys
-			if self.usemask_list[i]:
-				usemask.insert(pos, self.usemask_list[i])
-			pos = len(usemask)
-		usemask = set(stack_lists(usemask, incremental=True))
+
+		usemask = self._getUseMask(cpv_slot)
 		if usemask != self.usemask:
 			self.usemask = usemask
 			has_changed = True
@@ -2226,6 +2194,52 @@ class config(object):
 		iuse_implicit.add("prefix")
 
 		return iuse_implicit
+
+	def _getUseMask(self, pkg):
+		cp = getattr(pkg, "cp", None)
+		if cp is None:
+			cp = dep_getkey(pkg)
+		usemask = []
+		pos = 0
+		for i in xrange(len(self.profiles)):
+			cpdict = self.pusemask_list[i].get(cp, None)
+			if cpdict:
+				keys = cpdict.keys()
+				while keys:
+					best_match = best_match_to_list(pkg, keys)
+					if best_match:
+						keys.remove(best_match)
+						usemask.insert(pos, cpdict[best_match])
+					else:
+						break
+				del keys
+			if self.usemask_list[i]:
+				usemask.insert(pos, self.usemask_list[i])
+			pos = len(usemask)
+		return set(stack_lists(usemask, incremental=True))
+
+	def _getUseForce(self, pkg):
+		cp = getattr(pkg, "cp", None)
+		if cp is None:
+			cp = dep_getkey(pkg)
+		useforce = []
+		pos = 0
+		for i in xrange(len(self.profiles)):
+			cpdict = self.puseforce_list[i].get(cp, None)
+			if cpdict:
+				keys = cpdict.keys()
+				while keys:
+					best_match = best_match_to_list(pkg, keys)
+					if best_match:
+						keys.remove(best_match)
+						useforce.insert(pos, cpdict[best_match])
+					else:
+						break
+				del keys
+			if self.useforce_list[i]:
+				useforce.insert(pos, self.useforce_list[i])
+			pos = len(useforce)
+		return set(stack_lists(useforce, incremental=True))
 
 	def _getMaskAtom(self, cpv, metadata):
 		"""
@@ -4956,10 +4970,6 @@ def _prepare_features_dirs(mysettings):
 			"basedir_var":"CCACHE_DIR",
 			"default_dir":os.path.join(mysettings["PORTAGE_TMPDIR"], "ccache"),
 			"always_recurse":False},
-		"confcache":{
-			"basedir_var":"CONFCACHE_DIR",
-			"default_dir":os.path.join(mysettings["PORTAGE_TMPDIR"], "confcache"),
-			"always_recurse":False},
 		"distcc":{
 			"basedir_var":"DISTCC_DIR",
 			"default_dir":os.path.join(mysettings["BUILD_PREFIX"], ".distcc"),
@@ -6144,7 +6154,7 @@ def dep_virtual(mysplit, mysettings):
 	return newsplit
 
 def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
-	trees=None, **kwargs):
+	trees=None, use_mask=None, use_force=None, **kwargs):
 	"""Recursively expand new-style virtuals so as to collapse one or more
 	levels of indirection.  In dep_zapdeps, new-style virtuals will be assigned
 	zero cost regardless of whether or not they are currently installed. Virtual
@@ -6180,8 +6190,14 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					raise portage.exception.ParseError(
 						"invalid atom: '%s'" % x)
 
-		# Repoman only checks IUSE for USE deps, so there's
-		# no need to evaluate conditionals.
+		if repoman and x.use and x.use.conditional:
+			evaluated_atom = portage.dep.remove_slot(x)
+			if x.slot:
+				evaluated_atom += ":%s" % x.slot
+			evaluated_atom += str(x.use._eval_qa_conditionals(
+				use_mask, use_force))
+			x = portage.dep.Atom(evaluated_atom)
+
 		if not repoman and \
 			myuse is not None and isinstance(x, portage.dep.Atom) and x.use:
 			if x.use.conditional:
@@ -6572,7 +6588,8 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	# collapse one or more levels of indirection.
 	try:
 		mysplit = _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings,
-			use=use, mode=mode, myuse=myuse, use_cache=use_cache,
+			use=use, mode=mode, myuse=myuse,
+			use_force=useforce, use_mask=mymasks, use_cache=use_cache,
 			use_binaries=use_binaries, myroot=myroot, trees=trees)
 	except portage.exception.ParseError, e:
 		return [0, str(e)]

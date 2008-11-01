@@ -380,7 +380,7 @@ set_colors() {
 	(( COLS > 0 )) || (( COLS = 80 ))
 	COLS=$((${COLS} - 8))	# width of [ ok ] == 7
 	# Adjust COLS so that eend works properly on a standard BSD console.
-	[ "${TERM}" = "cons25" ] && COLS=$((${COLS} - 1))
+	[[ $TERM = cons25 || $TERM = dumb ]] && ((COLS--))
 
 	# Now, ${ENDCOL} will move us to the end of the
 	# column;  irregardless of character width
@@ -537,7 +537,7 @@ save_ebuild_env() {
 			PORTAGE_INST_UID PORTAGE_LOG_FILE PORTAGE_MASTER_PID \
 			PORTAGE_QUIET \
 			PORTAGE_REPO_NAME PORTAGE_RESTRICT PORTAGE_UPDATE_ENV \
-			PORTAGE_WORKDIR_MODE PORTDIR \
+			PORTAGE_VERBOSE PORTAGE_WORKDIR_MODE PORTDIR \
 			PORTDIR_OVERLAY ${!PORTAGE_SANDBOX_*} PREROOTPATH \
 			PROFILE_PATHS PWORKDIR QA_INTERCEPTORS \
 			RC_DEFAULT_INDENT RC_DOT_PATTERN RC_ENDCOL \

@@ -4,6 +4,7 @@
 # $Id$
 
 import sys, os
+import portage.exception
 
 # for an explanation on this logic, see pym/_emerge/__init__.py
 import os
@@ -85,7 +86,7 @@ for mykey in biglist:
 	#print "checking:",mykey
 	try:
 		mylist=portage.db["/"]["vartree"].dbapi.match(mykey)
-	except KeyError:
+	except (portage.exception.InvalidAtom, KeyError):
 		if "--debug" in sys.argv:
 			print "* ignoring broken log entry for %s (likely injected)" % mykey
 	except ValueError, e:
