@@ -42,13 +42,13 @@ except ImportError:
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
 
-from portage import digraph, portdbapi
-from portage.const import NEWS_LIB_PATH, CACHE_PATH, PRIVATE_PATH, USER_CONFIG_PATH, GLOBAL_CONFIG_PATH
+from portage import digraph
+from portage.const import NEWS_LIB_PATH
 
 import _emerge.help
 import portage.xpak, commands, errno, re, socket, time, types
 from portage.output import blue, bold, colorize, darkblue, darkgreen, darkred, green, \
-	havecolor, nc_len, nocolor, red, teal, turquoise, white, xtermTitle, \
+	nc_len, red, teal, turquoise, xtermTitle, \
 	xtermTitleReset, yellow
 from portage.output import create_color_func
 good = create_color_func("GOOD")
