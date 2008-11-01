@@ -6066,6 +6066,7 @@ def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None,
 	try:
 		mylink.lockdb()
 		if mylink.exists():
+			vartree.dbapi.plib_registry.load()
 			retval = mylink.unmerge(trimworld=mytrimworld, cleanup=1,
 				ldpath_mtimes=ldpath_mtimes)
 			if retval == os.EX_OK:
