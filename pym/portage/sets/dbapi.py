@@ -11,7 +11,7 @@ __all__ = ["CategorySet", "DowngradeSet",
 	"EverythingSet", "OwnerSet", "VariableSet"]
 
 class EverythingSet(PackageSet):
-	_operations = ["merge", "unmerge"]
+	_operations = ["merge"]
 	description = "Package set which contains SLOT " + \
 		"atoms to match all installed packages"
 	_filter = None
