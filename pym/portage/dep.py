@@ -459,6 +459,31 @@ class _use_dep(object):
 
 		return _use_dep(tokens)
 
+	def _eval_qa_conditionals(self, use_mask, use_force):
+		"""
+		For repoman, evaluate all possible combinations within the constraints
+		of the given use.force and use.mask settings. The result may seem
+		ambiguous in the sense that the same flag can be in both the enabled
+		and disabled sets, but this is useful within the context of how its
+		intended to be used by repoman. It is assumed that the caller has
+		already ensured that there is no intersection between the given
+		use_mask and use_force sets when necessary.
+		"""
+		tokens = []
+
+		conditional = self.conditional
+		tokens.extend(self.enabled)
+		tokens.extend("-" + x for x in self.disabled)
+		tokens.extend(x for x in conditional.enabled if x not in use_mask)
+		tokens.extend("-" + x for x in conditional.disabled if x not in use_force)
+
+		tokens.extend(x for x in conditional.equal if x not in use_mask)
+		tokens.extend("-" + x for x in conditional.equal if x not in use_force)
+		tokens.extend("-" + x for x in conditional.not_equal if x not in use_mask)
+		tokens.extend(x for x in conditional.not_equal if x not in use_force)
+
+		return _use_dep(tokens)
+
 class _AtomCache(type):
 	"""
 	Cache Atom instances from constructor calls and reuse
