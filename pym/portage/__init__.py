@@ -5863,27 +5863,31 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 	dep_check_trees[myroot]["porttree"] = \
 		FakeTree(fakedbapi(settings=mysettings))
 
+	msgs = []
 	for dep_type in dep_keys:
 		mycheck = dep_check(metadata[dep_type], None, mysettings,
 			myuse="all", myroot=myroot, trees=dep_check_trees)
 		if not mycheck[0]:
-			writemsg("%s: %s\n%s\n" % (
-				dep_type, metadata[dep_type], mycheck[1]), noiselevel=-1)
-			if mydo not in invalid_dep_exempt_phases:
-				return 1
+			msgs.append("  %s: %s\n    %s\n" % (
+				dep_type, metadata[dep_type], mycheck[1]))
 
 	for k in misc_keys:
 		try:
 			portage.dep.use_reduce(
 				portage.dep.paren_reduce(metadata[k]), matchall=True)
 		except portage.exception.InvalidDependString, e:
-			writemsg("%s: %s\n%s\n" % (
-				k, metadata[k], str(e)), noiselevel=-1)
-			if mydo not in invalid_dep_exempt_phases:
-				return 1
+			msgs.append("  %s: %s\n    %s\n" % (
+				k, metadata[k], str(e)))
 
 	if not metadata["SLOT"]:
-		writemsg("SLOT is undefined\n", noiselevel=-1)
+		msgs.append("  SLOT is undefined\n")
+
+	if msgs:
+		portage.util.writemsg_level("Error(s) in metadata for '%s':\n" % \
+			(mysettings.mycpv,), level=logging.ERROR, noiselevel=-1)
+		for x in msgs:
+			portage.util.writemsg_level(x,
+				level=logging.ERROR, noiselevel=-1)
 		if mydo not in invalid_dep_exempt_phases:
 			return 1
 
