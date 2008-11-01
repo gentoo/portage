@@ -1949,7 +1949,7 @@ class config(object):
 		env_configdict = self.configdict["env"]
 		pkg_configdict = self.configdict["pkg"]
 		previous_iuse = pkg_configdict.get("IUSE")
-		for k in ("CATEGORY", "PKGUSE", "PF", "PORTAGE_USE"):
+		for k in ("A", "AA", "CATEGORY", "PKGUSE", "PF", "PORTAGE_USE"):
 			env_configdict.pop(k, None)
 		pkg_configdict["CATEGORY"] = cat
 		pkg_configdict["PF"] = pf
