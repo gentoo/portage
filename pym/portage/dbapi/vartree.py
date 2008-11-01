@@ -3481,16 +3481,6 @@ class dblink(object):
 				writemsg(red("!!!        File:  ")+str(mysrc)+"\n", noiselevel=-1)
 				writemsg(red("!!!        Error: ")+str(e)+"\n", noiselevel=-1)
 				return 1
-			except Exception, e:
-				writemsg("\n")
-				writemsg(red("!!! ERROR: An unknown error has occurred during the merge process.\n"))
-				writemsg(red("!!!        A stat call returned the following error for the following file:"))
-				writemsg(    "!!!        Please ensure that your filesystem is intact, otherwise report\n")
-				writemsg(    "!!!        this as a portage bug at bugs.gentoo.org. Append 'emerge info'.\n")
-				writemsg(    "!!!        File:  "+str(mysrc)+"\n", noiselevel=-1)
-				writemsg(    "!!!        Error: "+str(e)+"\n", noiselevel=-1)
-				return 1
-
 
 			mymode = mystat[stat.ST_MODE]
 			# handy variables; mydest is the target object on the live filesystems;
