@@ -156,7 +156,7 @@ class LinkageMap(object):
 
 		__slots__ = ("__weakref__", "_key")
 
-		def __init__(self, object, root):
+		def __init__(self, obj, root):
 			"""
 			This takes a path to an object.
 
@@ -164,7 +164,7 @@ class LinkageMap(object):
 			@type object: string (example: '/usr/bin/bar')
 
 			"""
-			self._key = self._generate_object_key(object, root)
+			self._key = self._generate_object_key(obj, root)
 
 		def __hash__(self):
 			return hash(self._key)
@@ -172,7 +172,7 @@ class LinkageMap(object):
 		def __eq__(self, other):
 			return self._key == other._key
 
-		def _generate_object_key(self, object, root):
+		def _generate_object_key(self, obj, root):
 			"""
 			Generate object key for a given object.
 
@@ -186,7 +186,7 @@ class LinkageMap(object):
 				2. realpath of object if object does not exist.
 
 			"""
-			abs_path = os.path.join(root, object.lstrip(os.path.sep))
+			abs_path = os.path.join(root, obj.lstrip(os.sep))
 			try:
 				object_stat = os.stat(abs_path)
 			except OSError:
