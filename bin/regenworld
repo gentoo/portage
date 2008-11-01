@@ -11,6 +11,7 @@ except ImportError:
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
 import re
+import portage.exception
 
 __candidatematcher__ = re.compile("^[0-9]+: \\*\\*\\* emerge ")
 __noncandidatematcher__ = re.compile(" sync( |$)| clean( |$)| search( |$)|--oneshot|--fetchonly| unmerge( |$)")
@@ -81,7 +82,7 @@ for mykey in biglist:
 	#print "checking:",mykey
 	try:
 		mylist=portage.db["/"]["vartree"].dbapi.match(mykey)
-	except KeyError:
+	except (portage.exception.InvalidAtom, KeyError):
 		if "--debug" in sys.argv:
 			print "* ignoring broken log entry for %s (likely injected)" % mykey
 	except ValueError, e:
