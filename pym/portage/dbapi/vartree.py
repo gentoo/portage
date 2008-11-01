@@ -3744,6 +3744,7 @@ class dblink(object):
 		self.lockdb()
 		try:
 			self.vartree.dbapi.plib_registry.load()
+			self.vartree.dbapi.plib_registry.pruneNonExisting()
 			retval = self.treewalk(mergeroot, myroot, inforoot, myebuild,
 				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 			# undo registrations of preserved libraries, bug #210501
