@@ -79,6 +79,8 @@ class PreservedLibsRegistry(object):
 		except EnvironmentError, e:
 			if e.errno != PermissionDenied.errno:
 				writemsg("!!! %s %s\n" % (e, self._filename), noiselevel=-1)
+		else:
+			self._data_orig = self._data.copy()
 
 	def register(self, cpv, slot, counter, paths):
 		""" Register new objects in the registry. If there is a record with the
