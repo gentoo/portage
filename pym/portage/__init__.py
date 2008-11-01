@@ -4922,10 +4922,6 @@ def _prepare_features_dirs(mysettings):
 			"basedir_var":"CCACHE_DIR",
 			"default_dir":os.path.join(mysettings["PORTAGE_TMPDIR"], "ccache"),
 			"always_recurse":False},
-		"confcache":{
-			"basedir_var":"CONFCACHE_DIR",
-			"default_dir":os.path.join(mysettings["PORTAGE_TMPDIR"], "confcache"),
-			"always_recurse":False},
 		"distcc":{
 			"basedir_var":"DISTCC_DIR",
 			"default_dir":os.path.join(mysettings["BUILD_PREFIX"], ".distcc"),
