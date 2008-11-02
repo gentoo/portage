@@ -349,8 +349,6 @@ qawarnings = set((
 "file.size",
 "inherit.autotools",
 "java.eclassesnotused",
-"metadata.missing",
-"metadata.bad",
 "virtual.versioned",
 "virtual.exists",
 "virtual.unavailable",
