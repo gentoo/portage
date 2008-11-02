@@ -30,7 +30,7 @@ from portage import listdir, dep_expand, digraph, flatten, key_expand, \
 from portage.elog import elog_process
 from portage.elog.filtering import filter_mergephases, filter_unmergephases
 
-import os, re, stat, errno, copy, subprocess
+import os, re, shutil, stat, errno, copy, subprocess
 import logging
 import shlex
 from itertools import izip
@@ -1698,7 +1698,7 @@ class dblink(object):
 			writemsg("portage.dblink.delete(): invalid dbdir: %s\n" % \
 				self.dbdir, noiselevel=-1)
 			return
-		import shutil
+
 		shutil.rmtree(self.dbdir)
 		self.vartree.dbapi._remove(self)
 
@@ -2502,7 +2502,6 @@ class dblink(object):
 		del mylibs, mycontents, old_contents, liblist
 		
 		# inject files that should be preserved into our image dir
-		import shutil
 		preserve_paths = []
 		candidates_stack = list(candidates)
 		while candidates_stack:
@@ -3706,7 +3705,7 @@ class dblink(object):
 			settings = self.settings
 			base_path_orig = os.path.dirname(settings["PORTAGE_BIN_PATH"])
 			from tempfile import mkdtemp
-			import shutil
+
 			# Make the temp directory inside PORTAGE_TMPDIR since, unlike
 			# /tmp, it can't be mounted with the "noexec" option.
 			base_path_tmp = mkdtemp("", "._portage_reinstall_.",
@@ -3770,7 +3769,6 @@ class dblink(object):
 		return " ".join(mydata)
 
 	def copyfile(self,fname):
-		import shutil
 		shutil.copyfile(fname,self.dbdir+"/"+os.path.basename(fname))
 
 	def getfile(self,fname):
