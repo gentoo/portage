@@ -565,21 +565,8 @@ def varexpand(mystring, mydict={}):
 		cexpand[mystring]=newstring[1:]
 	return newstring[1:]	
 
-def pickle_write(data,filename,debug=0):
-	import os
-	try:
-		myf=open(filename,"w")
-		pickle.dump(data,myf,-1)
-		myf.flush()
-		myf.close()
-		writemsg("Wrote pickle: "+str(filename)+"\n",1)
-		os.chown(myefn,uid,portage_gid)
-		os.chmod(myefn,0664)
-	except SystemExit, e:
-		raise
-	except Exception, e:
-		return 0
-	return 1
+# broken and removed, but can still be imported
+pickle_write = None
 
 def pickle_read(filename,default=None,debug=0):
 	import os

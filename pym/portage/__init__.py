@@ -3677,6 +3677,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 	distdir_writable = can_fetch and not fetch_to_ro
 	failed_files = set()
+	restrict_fetch_msg = False
 
 	for myfile in filedict:
 		"""
@@ -4119,7 +4120,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		if listonly:
 			writemsg_stdout("\n", noiselevel=-1)
 		if fetched != 2:
-			if restrict_fetch:
+			if restrict_fetch and not restrict_fetch_msg:
+				restrict_fetch_msg = True
 				msg = ("\n!!! %s/%s" + \
 					" has fetch restriction turned on.\n" + \
 					"!!! This probably means that this " + \
@@ -4155,17 +4157,21 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							mysettings.pop("EBUILD_PHASE", None)
 						else:
 							mysettings["EBUILD_PHASE"] = ebuild_phase
-				if listonly:
-					continue
+
+			elif restrict_fetch:
+				pass
 			elif listonly:
-				continue
+				pass
 			elif not filedict[myfile]:
 				writemsg("Warning: No mirrors available for file" + \
 					" '%s'\n" % (myfile), noiselevel=-1)
 			else:
 				writemsg("!!! Couldn't download '%s'. Aborting.\n" % myfile,
 					noiselevel=-1)
-			if fetchonly and not restrict_fetch:
+
+			if listonly:
+				continue
+			elif fetchonly:
 				failed_files.add(myfile)
 				continue
 			return 0
@@ -5895,7 +5901,8 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 	misc_keys = ["LICENSE", "PROPERTIES", "PROVIDE", "RESTRICT", "SRC_URI"]
 	other_keys = ["SLOT"]
 	all_keys = dep_keys + misc_keys + other_keys
-	metadata = mysettings.configdict["pkg"]
+	metadata = dict(izip(all_keys,
+		mydbapi.aux_get(mysettings.mycpv, all_keys)))
 
 	class FakeTree(object):
 		def __init__(self, mydb):
@@ -6114,6 +6121,8 @@ def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None,
 	try:
 		mylink.lockdb()
 		if mylink.exists():
+			vartree.dbapi.plib_registry.load()
+			vartree.dbapi.plib_registry.pruneNonExisting()
 			retval = mylink.unmerge(trimworld=mytrimworld, cleanup=1,
 				ldpath_mtimes=ldpath_mtimes)
 			if retval == os.EX_OK:

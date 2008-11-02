@@ -79,6 +79,8 @@ class PreservedLibsRegistry(object):
 		except EnvironmentError, e:
 			if e.errno != PermissionDenied.errno:
 				writemsg("!!! %s %s\n" % (e, self._filename), noiselevel=-1)
+		else:
+			self._data_orig = self._data.copy()
 
 	def register(self, cpv, slot, counter, paths):
 		""" Register new objects in the registry. If there is a record with the
@@ -156,7 +158,7 @@ class LinkageMap(object):
 
 		__slots__ = ("__weakref__", "_key")
 
-		def __init__(self, object, root):
+		def __init__(self, obj, root):
 			"""
 			This takes a path to an object.
 
@@ -164,7 +166,7 @@ class LinkageMap(object):
 			@type object: string (example: '/usr/bin/bar')
 
 			"""
-			self._key = self._generate_object_key(object, root)
+			self._key = self._generate_object_key(obj, root)
 
 		def __hash__(self):
 			return hash(self._key)
@@ -172,7 +174,7 @@ class LinkageMap(object):
 		def __eq__(self, other):
 			return self._key == other._key
 
-		def _generate_object_key(self, object, root):
+		def _generate_object_key(self, obj, root):
 			"""
 			Generate object key for a given object.
 
@@ -186,7 +188,7 @@ class LinkageMap(object):
 				2. realpath of object if object does not exist.
 
 			"""
-			abs_path = os.path.join(root, object.lstrip(os.path.sep))
+			abs_path = os.path.join(root, obj.lstrip(os.sep))
 			try:
 				object_stat = os.stat(abs_path)
 			except OSError:
@@ -3937,16 +3939,6 @@ class dblink(object):
 				writemsg(red("!!!        File:  ")+str(mysrc)+"\n", noiselevel=-1)
 				writemsg(red("!!!        Error: ")+str(e)+"\n", noiselevel=-1)
 				return 1
-			except Exception, e:
-				writemsg("\n")
-				writemsg(red("!!! ERROR: An unknown error has occurred during the merge process.\n"))
-				writemsg(red("!!!        A stat call returned the following error for the following file:"))
-				writemsg(    "!!!        Please ensure that your filesystem is intact, otherwise report\n")
-				writemsg(    "!!!        this as a portage bug at bugs.gentoo.org. Append 'emerge info'.\n")
-				writemsg(    "!!!        File:  "+str(mysrc)+"\n", noiselevel=-1)
-				writemsg(    "!!!        Error: "+str(e)+"\n", noiselevel=-1)
-				return 1
-
 
 			mymode = mystat[stat.ST_MODE]
 			# handy variables; mydest is the target object on the live filesystems;
@@ -4199,6 +4191,8 @@ class dblink(object):
 		retval = -1
 		self.lockdb()
 		try:
+			self.vartree.dbapi.plib_registry.load()
+			self.vartree.dbapi.plib_registry.pruneNonExisting()
 			retval = self.treewalk(mergeroot, myroot, inforoot, myebuild,
 				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 			# undo registrations of preserved libraries, bug #210501
