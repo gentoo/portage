@@ -1618,9 +1618,6 @@ class EbuildFetchPretend(SlotObject):
 		portage.doebuild_environment(ebuild_path, "fetch",
 			root_config.root, settings, debug, use_cache, portdb)
 		portage.prepare_build_dirs(self.pkg.root, self.settings, 0)
-		portdb = self.pkg.root_config.trees["porttree"].dbapi
-		ebuild_path = portdb.findname(self.pkg.cpv)
-		debug = self.settings.get("PORTAGE_DEBUG") == "1"
 
 		retval = portage.doebuild(ebuild_path, "fetch",
 			self.settings["ROOT"], self.settings, debug=debug,
