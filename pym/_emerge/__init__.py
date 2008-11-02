@@ -1590,7 +1590,23 @@ class EbuildFetchPretend(SlotObject):
 	def execute(self):
 		# To spawn pkg_nofetch requires PORTAGE_BUILDDIR for
 		# ensuring sane $PWD (bug #239560) and storing elog
-		# messages.
+		# messages. Use a private temp directory, in order
+		# to avoid locking the main one.
+		settings = self.settings
+		global_tmpdir = settings["PORTAGE_TMPDIR"]
+		from tempfile import mkdtemp
+		private_tmpdir = mkdtemp("", "._portage_fetch_.", global_tmpdir)
+		settings["PORTAGE_TMPDIR"] = private_tmpdir
+		settings.backup_changes("PORTAGE_TMPDIR")
+		try:
+			retval = self._execute()
+		finally:
+			settings["PORTAGE_TMPDIR"] = global_tmpdir
+			settings.backup_changes("PORTAGE_TMPDIR")
+			shutil.rmtree(private_tmpdir)
+		return retval
+
+	def _execute(self):
 		build_dir = EbuildBuildDir(pkg=self.pkg, settings=self.settings)
 		build_dir.lock()
 		build_dir.clean()
@@ -2367,7 +2383,7 @@ class EbuildBuildDir(SlotObject):
 		self._catdir = catdir
 
 		portage.util.ensure_dirs(os.path.dirname(catdir),
-			uid=portage.portage_uid, gid=portage.portage_gid,
+			gid=portage.portage_gid,
 			mode=070, mask=0)
 		catdir_lock = None
 		try:
