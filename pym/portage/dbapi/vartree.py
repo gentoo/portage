@@ -687,6 +687,16 @@ class LinkageMapMachO(object):
 			"""
 			return isinstance(self._key, tuple)
 
+	class _LibGraphNode(_ObjectKey):
+		__slots__ = ("alt_paths",)
+
+		def __init__(self, obj, root):
+			LinkageMapMachO._ObjectKey.__init__(self, obj, root)
+			self.alt_paths = set()
+
+		def __str__(self):
+			return str(sorted(self.alt_paths))
+
 	def rebuild(self, exclude_pkgs=None, include_file=None):
 		root = self._root
 		libs = {}
@@ -3014,7 +3024,10 @@ class dblink(object):
 		def path_to_node(path):
 			node = path_node_map.get(path)
 			if node is None:
-				node = LinkageMap._LibGraphNode(path, root)
+				if ostype == "Darwin":
+					node = LinkageMapMachO._LibGraphNode(path, root)
+				else:
+					node = LinkageMap._LibGraphNode(path, root)
 				alt_path_node = lib_graph.get(node)
 				if alt_path_node is not None:
 					node = alt_path_node
