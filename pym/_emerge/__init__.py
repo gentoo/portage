@@ -1607,9 +1607,16 @@ class EbuildFetchPretend(SlotObject):
 		return retval
 
 	def _execute(self):
-		build_dir = EbuildBuildDir(pkg=self.pkg, settings=self.settings)
-		build_dir.lock()
-		build_dir.clean()
+		settings = self.settings
+		pkg = self.pkg
+		root_config = pkg.root_config
+		portdb = root_config.trees["porttree"].dbapi
+		ebuild_path = portdb.findname(pkg.cpv)
+		settings.setcpv(pkg)
+		debug = settings.get("PORTAGE_DEBUG") == "1"
+		use_cache = 1 # always true
+		portage.doebuild_environment(ebuild_path, "fetch",
+			root_config.root, settings, debug, use_cache, portdb)
 		portage.prepare_build_dirs(self.pkg.root, self.settings, 0)
 		portdb = self.pkg.root_config.trees["porttree"].dbapi
 		ebuild_path = portdb.findname(self.pkg.cpv)
@@ -1621,8 +1628,6 @@ class EbuildFetchPretend(SlotObject):
 			mydbapi=portdb, tree="porttree")
 
 		portage.elog.elog_process(self.pkg.cpv, self.settings)
-		build_dir.clean()
-		build_dir.unlock()
 		return retval
 
 class AsynchronousTask(SlotObject):
