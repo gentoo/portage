@@ -9,7 +9,7 @@ __all__ = ["PreservedLibsRegistry", "LinkageMap",
 from portage.checksum import perform_md5
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, \
 	PORTAGE_PACKAGE_ATOM, PRIVATE_PATH, VDB_PATH, EPREFIX, EPREFIX_LSTRIP
-from portage.data import portage_gid, portage_uid, secpass
+from portage.data import portage_gid, portage_uid, secpass, ostype
 from portage.dbapi import dbapi
 from portage.dep import use_reduce, paren_reduce, isvalidatom, \
 	isjustname, dep_getkey, match_from_list
