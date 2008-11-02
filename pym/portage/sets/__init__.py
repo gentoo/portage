@@ -138,8 +138,9 @@ class SetConfig(object):
 		"""
 		This raises PackageSetNotFound if the give setname does not exist.
 		"""
+		self._parse()
 		try:
-			myset = self.getSets()[setname]
+			myset = self.psets[setname]
 		except KeyError:
 			raise PackageSetNotFound(setname)
 		myatoms = myset.getAtoms()

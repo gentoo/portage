@@ -10312,7 +10312,7 @@ class Scheduler(PollScheduler):
 			msg += " dropped due to unsatisfied dependency."
 			for line in textwrap.wrap(msg, msg_width):
 				eerror(line, phase="other", key=pkg.cpv)
-			settings = mydepgraph.pkgsettings[pkg.root]
+			settings = self.pkgsettings[pkg.root]
 			# Ensure that log collection from $T is disabled inside
 			# elog_process(), since any logs that might exist are
 			# not valid here.
