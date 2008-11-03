@@ -5288,10 +5288,6 @@ class depgraph(object):
 			xinfo='"%s"' % arg
 		# Discard null/ from failed cpv_expand category expansion.
 		xinfo = xinfo.replace("null/", "")
-		if myparent:
-			xfrom = '(dependency required by '+ \
-				green('"%s"' % myparent[2]) + \
-				red(' [%s]' % myparent[0]) + ')'
 		masked_packages = []
 		missing_use = []
 		missing_licenses = []
@@ -5386,8 +5382,24 @@ class depgraph(object):
 			show_mask_docs()
 		else:
 			print "\nemerge: there are no ebuilds to satisfy "+green(xinfo)+"."
-		if myparent:
-			print xfrom
+
+		# Show parent nodes and the argument that pulled them in.
+		node = myparent
+		msg = []
+		while node is not None:
+			msg.append('(dependency required by "%s" [%s])' % \
+				(colorize('INFORM', str(node.cpv)), node.type_name))
+			parent = None
+			for parent in self.digraph.parent_nodes(node):
+				if isinstance(parent, DependencyArg):
+					msg.append('(dependency required by "%s" [argument])' % \
+						(colorize('INFORM', str(parent))))
+					parent = None
+					break
+			node = parent
+		for line in msg:
+			print line
+
 		print
 
 	def _select_pkg_highest_available(self, root, atom, onlydeps=False):
