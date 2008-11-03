@@ -987,6 +987,11 @@ class config(object):
 		"INFOPATH", "MANPATH",
 	]
 
+	# variables that break bash
+	_environ_filter += [
+		"POSIXLY_CORRECT",
+	]
+
 	# portage config variables and variables set directly by portage
 	_environ_filter += [
 		"ACCEPT_KEYWORDS", "AUTOCLEAN",
