@@ -6091,6 +6091,7 @@ def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None,
 			return retval
 		return os.EX_OK
 	finally:
+		self.vartree.dbapi.linkmap._clear_cache()
 		mylink.unlockdb()
 
 def getCPFromCPV(mycpv):

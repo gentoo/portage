@@ -13464,6 +13464,7 @@ def clear_caches(trees):
 		d["porttree"].dbapi._aux_cache.clear()
 		d["bintree"].dbapi._aux_cache.clear()
 		d["bintree"].dbapi._clear_cache()
+		d["vartree"].dbapi.linkmap._clear_cache()
 	portage.dircache.clear()
 	gc.collect()
 

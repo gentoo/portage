@@ -3767,6 +3767,7 @@ class dblink(object):
 					self._scheduler.dblinkEbuildPhase(
 						self, mydbapi, myebuild, "clean")
 		finally:
+			self.vartree.dbapi.linkmap._clear_cache()
 			self.unlockdb()
 		return retval
 
