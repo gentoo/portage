@@ -6079,6 +6079,7 @@ def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None,
 	ldpath_mtimes=None, scheduler=None):
 	mylink = dblink(cat, pkg, myroot, mysettings, treetype="vartree",
 		vartree=vartree, scheduler=scheduler)
+	vartree = mylink.vartree
 	try:
 		mylink.lockdb()
 		if mylink.exists():
@@ -6091,7 +6092,7 @@ def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None,
 			return retval
 		return os.EX_OK
 	finally:
-		self.vartree.dbapi.linkmap._clear_cache()
+		vartree.dbapi.linkmap._clear_cache()
 		mylink.unlockdb()
 
 def getCPFromCPV(mycpv):
