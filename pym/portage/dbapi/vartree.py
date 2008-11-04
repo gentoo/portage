@@ -3712,7 +3712,8 @@ class dblink(object):
 		if self.vartree.dbapi._categories is not None:
 			self.vartree.dbapi._categories = None
 		if self.myroot == "/" and \
-			match_from_list(PORTAGE_PACKAGE_ATOM, [self.mycpv]):
+			match_from_list(PORTAGE_PACKAGE_ATOM, [self.mycpv]) and \
+			not self.vartree.dbapi.cpv_exists(self.mycpv):
 			settings = self.settings
 			base_path_orig = os.path.dirname(settings["PORTAGE_BIN_PATH"])
 			from tempfile import mkdtemp

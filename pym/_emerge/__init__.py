@@ -7531,15 +7531,9 @@ class depgraph(object):
 					not self._opts_no_restart.intersection(self.myopts) and \
 					pkg.root == self._running_root.root and \
 					portage.match_from_list(
-					portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
-
-					pn, ver, rev = pkg.pv_split
-					if rev == "r0":
-						myversion = ver
-					else:
-						myversion = "%s-%s" % (ver, rev)
-
-					if myversion != portage.VERSION and "--quiet" not in self.myopts:
+					portage.const.PORTAGE_PACKAGE_ATOM, [pkg]) and \
+					not vardb.cpv_exists(pkg.cpv) and \
+					"--quiet" not in self.myopts:
 						if mylist_index < len(mylist) - 1:
 							p.append(colorize("WARN", "*** Portage will stop merging at this point and reload itself,"))
 							p.append(colorize("WARN", "    then resume the merge."))
