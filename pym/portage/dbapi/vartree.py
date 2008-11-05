@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-__all__ = ["PreservedLibsRegistry", "LinkageMap",
+__all__ = ["PreservedLibsRegistry", "LinkageMap", "LinkageMapMachO",
 	"vardbapi", "vartree", "dblink"] + \
 	["write_contents", "tar_contents"]
 
@@ -639,6 +639,20 @@ class LinkageMapMachO(object):
 		self._libs = {}
 		self._obj_properties = {}
 		self._obj_key_cache = {}
+		self._path_key_cache = {}
+
+	def _clear_cache(self):
+		self._libs.clear()
+		self._obj_properties.clear()
+		self._obj_key_cache.clear()
+		self._path_key_cache.clear()
+
+	def _path_key(self, path):
+		key = self._path_key_cache.get(path)
+		if key is None:
+			key = self._ObjectKey(path, self._root)
+			self._path_key_cache[path] = key
+		return key
 
 	class _ObjectKey(object):
 
@@ -710,9 +724,11 @@ class LinkageMapMachO(object):
 
 	def rebuild(self, exclude_pkgs=None, include_file=None):
 		root = self._root
-		libs = {}
-		obj_key_cache = {}
-		obj_properties = {}
+		self._clear_cache()
+		libs = self._libs
+		obj_key_cache = self._obj_key_cache
+		obj_properties = self._obj_properties
+
 		lines = []
 		for cpv in self._dbapi.cpv_all():
 			if exclude_pkgs is not None and cpv in exclude_pkgs:
@@ -772,10 +788,6 @@ class LinkageMapMachO(object):
 			obj_properties.setdefault(obj_key, \
 					(arch, needed, install_name, set()))[3].add(obj)
 		
-		self._libs = libs
-		self._obj_properties = obj_properties
-		self._obj_key_cache = obj_key_cache
-
 	def listBrokenBinaries(self, debug=False):
 		"""
 		Find binaries and their needed install_names, which have no providers.
