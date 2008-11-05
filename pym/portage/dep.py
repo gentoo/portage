@@ -529,29 +529,32 @@ class Atom(object):
 	def __init__(self, s):
 		if not isvalidatom(s, allow_blockers=True):
 			raise InvalidAtom(s)
+		obj_setattr = object.__setattr__
 		for x in self._str_methods:
-			setattr(self, x, getattr(s, x))
+			obj_setattr(self, x, getattr(s, x))
 
 		blocker = "!" == s[:1]
 		if blocker:
-			self.blocker = self._blocker(forbid_overlap=("!" == s[1:2]))
-			if self.blocker.overlap.forbid:
+			blocker = self._blocker(forbid_overlap=("!" == s[1:2]))
+			if blocker.overlap.forbid:
 				s = s[2:]
 			else:
 				s = s[1:]
 		else:
-			self.blocker = False
+			blocker = False
+		obj_setattr(self, "blocker", blocker)
 
-		self.cp = dep_getkey(s)
-		self.cpv = dep_getcpv(s)
-		self.slot = dep_getslot(s)
-		self.operator = get_operator(s)
-		#self.repo = self._get_repo(s)
-		self.use = dep_getusedeps(s)
-		if self.use:
-			self.use = _use_dep(self.use)
+		obj_setattr(self, "cp", dep_getkey(s))
+		obj_setattr(self, "cpv", dep_getcpv(s))
+		obj_setattr(self, "slot", dep_getslot(s))
+		obj_setattr(self, "operator", get_operator(s))
+
+		use = dep_getusedeps(s)
+		if use:
+			use = _use_dep(use)
 		else:
-			self.use = None
+			use = None
+		obj_setattr(self, "use", use)
 
 	def __cmp__(self, other):
 		self_str = str(self)
@@ -561,6 +564,9 @@ class Atom(object):
 		if self_str > other_str:
 			return 1
 		return -1
+
+	def __setattr__(self, name, value):
+		raise AttributeError("Atom instances are immutable")
 
 def get_operator(mydep):
 	"""
