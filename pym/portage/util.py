@@ -1220,8 +1220,4 @@ def getlibpaths(root):
 		rval.append("/usr/lib")
 		rval.append("/lib")
 
-	rval = [normalize_path(os.path.join(root, x.lstrip(os.path.sep))) \
-		for x in rval if x]
-
-	return rval
-	
+	return [normalize_path(x) for x in rval if x]

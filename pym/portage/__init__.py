@@ -994,6 +994,11 @@ class config(object):
 		"VENDOR", "__CF_USER_TEXT_ENCODING",
 	]
 
+	# variables that break bash
+	_environ_filter += [
+		"POSIXLY_CORRECT",
+	]
+
 	# portage config variables and variables set directly by portage
 	_environ_filter += [
 		"ACCEPT_KEYWORDS", "AUTOCLEAN",
@@ -6122,6 +6127,7 @@ def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None,
 	ldpath_mtimes=None, scheduler=None):
 	mylink = dblink(cat, pkg, myroot, mysettings, treetype="vartree",
 		vartree=vartree, scheduler=scheduler)
+	vartree = mylink.vartree
 	try:
 		mylink.lockdb()
 		if mylink.exists():
@@ -6134,6 +6140,7 @@ def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None,
 			return retval
 		return os.EX_OK
 	finally:
+		vartree.dbapi.linkmap._clear_cache()
 		mylink.unlockdb()
 
 def getCPFromCPV(mycpv):

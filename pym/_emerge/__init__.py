@@ -1634,13 +1634,17 @@ class EbuildFetchPretend(SlotObject):
 		return retval
 
 	def _execute(self):
-		build_dir = EbuildBuildDir(pkg=self.pkg, settings=self.settings)
-		build_dir.lock()
-		build_dir.clean()
+		settings = self.settings
+		pkg = self.pkg
+		root_config = pkg.root_config
+		portdb = root_config.trees["porttree"].dbapi
+		ebuild_path = portdb.findname(pkg.cpv)
+		settings.setcpv(pkg)
+		debug = settings.get("PORTAGE_DEBUG") == "1"
+		use_cache = 1 # always true
+		portage.doebuild_environment(ebuild_path, "fetch",
+			root_config.root, settings, debug, use_cache, portdb)
 		portage.prepare_build_dirs(self.pkg.root, self.settings, 0)
-		portdb = self.pkg.root_config.trees["porttree"].dbapi
-		ebuild_path = portdb.findname(self.pkg.cpv)
-		debug = self.settings.get("PORTAGE_DEBUG") == "1"
 
 		retval = portage.doebuild(ebuild_path, "fetch",
 			self.settings["ROOT"], self.settings, debug=debug,
@@ -1648,8 +1652,6 @@ class EbuildFetchPretend(SlotObject):
 			mydbapi=portdb, tree="porttree")
 
 		portage.elog.elog_process(self.pkg.cpv, self.settings)
-		build_dir.clean()
-		build_dir.unlock()
 		return retval
 
 class AsynchronousTask(SlotObject):
@@ -5313,10 +5315,6 @@ class depgraph(object):
 			xinfo='"%s"' % arg
 		# Discard null/ from failed cpv_expand category expansion.
 		xinfo = xinfo.replace("null/", "")
-		if myparent:
-			xfrom = '(dependency required by '+ \
-				green('"%s"' % myparent[2]) + \
-				red(' [%s]' % myparent[0]) + ')'
 		masked_packages = []
 		missing_use = []
 		missing_licenses = []
@@ -5415,8 +5413,24 @@ class depgraph(object):
 			show_mask_docs()
 		else:
 			print "\nemerge: there are no ebuilds to satisfy "+green(xinfo)+"."
-		if myparent:
-			print xfrom
+
+		# Show parent nodes and the argument that pulled them in.
+		node = myparent
+		msg = []
+		while node is not None:
+			msg.append('(dependency required by "%s" [%s])' % \
+				(colorize('INFORM', str(node.cpv)), node.type_name))
+			parent = None
+			for parent in self.digraph.parent_nodes(node):
+				if isinstance(parent, DependencyArg):
+					msg.append('(dependency required by "%s" [argument])' % \
+						(colorize('INFORM', str(parent))))
+					parent = None
+					break
+			node = parent
+		for line in msg:
+			print line
+
 		print
 
 	def _select_pkg_highest_available(self, root, atom, onlydeps=False):
@@ -7553,15 +7567,9 @@ class depgraph(object):
 					not self._opts_no_restart.intersection(self.myopts) and \
 					pkg.root == self._running_root.root and \
 					portage.match_from_list(
-					portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
-
-					pn, ver, rev = pkg.pv_split
-					if rev == "r0":
-						myversion = ver
-					else:
-						myversion = "%s-%s" % (ver, rev)
-
-					if myversion != portage.VERSION and "--quiet" not in self.myopts:
+					portage.const.PORTAGE_PACKAGE_ATOM, [pkg]) and \
+					not vardb.cpv_exists(pkg.cpv) and \
+					"--quiet" not in self.myopts:
 						if mylist_index < len(mylist) - 1:
 							p.append(colorize("WARN", "*** Portage will stop merging at this point and reload itself,"))
 							p.append(colorize("WARN", "    then resume the merge."))
@@ -13540,6 +13548,7 @@ def clear_caches(trees):
 		d["porttree"].dbapi._aux_cache.clear()
 		d["bintree"].dbapi._aux_cache.clear()
 		d["bintree"].dbapi._clear_cache()
+		d["vartree"].dbapi.linkmap._clear_cache()
 	portage.dircache.clear()
 	gc.collect()
 

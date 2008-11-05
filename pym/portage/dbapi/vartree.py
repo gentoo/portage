@@ -30,7 +30,7 @@ from portage import listdir, dep_expand, digraph, flatten, key_expand, \
 from portage.elog import elog_process
 from portage.elog.filtering import filter_mergephases, filter_unmergephases
 
-import os, re, stat, errno, copy, subprocess
+import os, re, shutil, stat, errno, copy, subprocess
 import logging
 import shlex
 from itertools import izip
@@ -149,8 +149,23 @@ class LinkageMap(object):
 		self._root = self._dbapi.root
 		self._libs = {}
 		self._obj_properties = {}
-		self._defpath = set(getlibpaths(self._root))
 		self._obj_key_cache = {}
+		self._defpath = set()
+		self._path_key_cache = {}
+
+	def _clear_cache(self):
+		self._libs.clear()
+		self._obj_properties.clear()
+		self._obj_key_cache.clear()
+		self._defpath.clear()
+		self._path_key_cache.clear()
+
+	def _path_key(self, path):
+		key = self._path_key_cache.get(path)
+		if key is None:
+			key = self._ObjectKey(path, self._root)
+			self._path_key_cache[path] = key
+		return key
 
 	class _ObjectKey(object):
 
@@ -222,10 +237,12 @@ class LinkageMap(object):
 
 	def rebuild(self, exclude_pkgs=None, include_file=None):
 		root = self._root
-		self._defpath = set(getlibpaths(root))
-		libs = {}
-		obj_key_cache = {}
-		obj_properties = {}
+		self._clear_cache()
+		self._defpath.update(getlibpaths(self._root))
+		libs = self._libs
+		obj_key_cache = self._obj_key_cache
+		obj_properties = self._obj_properties
+
 		lines = []
 		for cpv in self._dbapi.cpv_all():
 			if exclude_pkgs is not None and cpv in exclude_pkgs:
@@ -259,8 +276,7 @@ class LinkageMap(object):
 			obj = fields[1]
 			obj_key = self._ObjectKey(obj, root)
 			soname = fields[2]
-			path = set([
-				normalize_path(os.path.join(self._root, x.lstrip(os.path.sep)))
+			path = set([normalize_path(x) \
 				for x in filter(None, fields[3].replace(
 				"${ORIGIN}", os.path.dirname(obj)).replace(
 				"$ORIGIN", os.path.dirname(obj)).split(":"))])
@@ -280,10 +296,6 @@ class LinkageMap(object):
 			# All object paths are added into the obj_properties tuple
 			obj_properties.setdefault(obj_key, \
 					(arch, needed, path, soname, set()))[4].add(obj)
-
-		self._libs = libs
-		self._obj_properties = obj_properties
-		self._obj_key_cache = obj_key_cache
 
 	def listBrokenBinaries(self, debug=False):
 		"""
@@ -530,7 +542,7 @@ class LinkageMap(object):
 					raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 
 		arch, needed, path, _, _ = self._obj_properties[obj_key]
-		path = path.union(self._defpath)
+		path_keys = set(self._path_key(x) for x in path.union(self._defpath))
 		for soname in needed:
 			rValue[soname] = set()
 			if soname not in self._libs or arch not in self._libs[soname]:
@@ -540,8 +552,7 @@ class LinkageMap(object):
 			for provider_key in self._libs[soname][arch]["providers"]:
 				providers = self._obj_properties[provider_key][4]
 				for provider in providers:
-					if os.path.join(self._root,
-						os.path.dirname(provider).lstrip(os.path.sep)) in path:
+					if self._path_key(os.path.dirname(provider)) in path_keys:
 						rValue[soname].add(provider)
 		return rValue
 
@@ -584,10 +595,6 @@ class LinkageMap(object):
 				if obj_key not in self._obj_properties:
 					raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 
-		# Determine the directory(ies) from the set of objects.
-		objs_dirs = set(os.path.join(self._root,
-			os.path.dirname(x).lstrip(os.sep)) for x in objs)
-
 		# If there is another version of this lib with the
 		# same soname and the master link points to that
 		# other version, this lib will be shadowed and won't
@@ -606,6 +613,10 @@ class LinkageMap(object):
 					(master_st.st_dev, master_st.st_ino):
 					return set()
 
+		# Determine the directory(ies) from the set of objects.
+		objs_dir_keys = set(self._path_key(os.path.dirname(x)) for x in objs)
+		defpath_keys = set(self._path_key(x) for x in self._defpath)
+
 		arch, _, _, soname, _ = self._obj_properties[obj_key]
 		if soname in self._libs and arch in self._libs[soname]:
 			# For each potential consumer, add it to rValue if an object from the
@@ -613,8 +624,8 @@ class LinkageMap(object):
 			for consumer_key in self._libs[soname][arch]["consumers"]:
 				_, _, path, _, consumer_objs = \
 						self._obj_properties[consumer_key]
-				path = path.union(self._defpath)
-				if objs_dirs.intersection(path):
+				path_keys = defpath_keys.union(self._path_key(x) for x in path)
+				if objs_dir_keys.intersection(path_keys):
 					rValue.update(consumer_objs)
 		return rValue
 
@@ -2158,7 +2169,7 @@ class dblink(object):
 			writemsg("portage.dblink.delete(): invalid dbdir: %s\n" % \
 				self.dbdir, noiselevel=-1)
 			return
-		import shutil
+
 		shutil.rmtree(self.dbdir)
 		self.vartree.dbapi._remove(self)
 
@@ -2966,7 +2977,6 @@ class dblink(object):
 		del mylibs, mycontents, old_contents, liblist
 		
 		# inject files that should be preserved into our image dir
-		import shutil
 		preserve_paths = []
 		candidates_stack = list(candidates)
 		while candidates_stack:
@@ -4173,11 +4183,12 @@ class dblink(object):
 		if self.vartree.dbapi._categories is not None:
 			self.vartree.dbapi._categories = None
 		if self.myroot == "/" and \
-			match_from_list(PORTAGE_PACKAGE_ATOM, [self.mycpv]):
+			match_from_list(PORTAGE_PACKAGE_ATOM, [self.mycpv]) and \
+			not self.vartree.dbapi.cpv_exists(self.mycpv):
 			settings = self.settings
 			base_path_orig = os.path.dirname(settings["PORTAGE_BIN_PATH"])
 			from tempfile import mkdtemp
-			import shutil
+
 			# Make the temp directory inside PORTAGE_TMPDIR since, unlike
 			# /tmp, it can't be mounted with the "noexec" option.
 			base_path_tmp = mkdtemp("", "._portage_reinstall_.",
@@ -4228,6 +4239,7 @@ class dblink(object):
 					self._scheduler.dblinkEbuildPhase(
 						self, mydbapi, myebuild, "clean")
 		finally:
+			self.vartree.dbapi.linkmap._clear_cache()
 			self.unlockdb()
 		return retval
 
@@ -4241,7 +4253,6 @@ class dblink(object):
 		return " ".join(mydata)
 
 	def copyfile(self,fname):
-		import shutil
 		shutil.copyfile(fname,self.dbdir+"/"+os.path.basename(fname))
 
 	def getfile(self,fname):
