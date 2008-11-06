@@ -566,7 +566,8 @@ class Atom(object):
 		return -1
 
 	def __setattr__(self, name, value):
-		raise AttributeError("Atom instances are immutable")
+		raise AttributeError("Atom instances are immutable",
+			self.__class__, name, value)
 
 def get_operator(mydep):
 	"""
