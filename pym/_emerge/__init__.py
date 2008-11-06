@@ -5894,43 +5894,13 @@ class depgraph(object):
 					stale_cache.discard(cpv)
 					pkg_in_graph = self.digraph.contains(pkg)
 
-					# Check for masked installed packages. For keyword
-					# mask there are a couple of common cases that are
-					# likely to generate unwanted noise:
-					#
-					#  * Packages missing /var/db/pkg/*/*/KEYWORDS entries
-					#    due to having been installed by an old version of
-					#    portage.
-					#
-					#  * Packages installed by overriding ACCEPT_KEYWORDS
-					#    via the environment.
-					#
-					# To avoid unwanted noise, only warn about keyword
-					# masks if all of the following are true:
-					#
-					#  * KEYWORDS is not empty (not installed by old portage).
-					#
-
+					# Check for masked installed packages. Only warn about
+					# packages that are in the graph in order to avoid warning
+					# about those that will be automatically uninstalled during
+					# the merge process or by --depclean.
 					if pkg in final_db:
 						if pkg_in_graph and not visible(pkgsettings, pkg):
 							self._masked_installed.add(pkg)
-						elif pkgsettings._getMissingKeywords(
-							pkg.cpv, pkg.metadata) and \
-							pkg.metadata["KEYWORDS"].split() and \
-							not pkg_in_graph:
-							try:
-								ebuild = self._pkg(pkg.cpv,
-									"ebuild", pkg.root_config)
-							except KeyError:
-								ebuild = None
-							else:
-								try:
-									if not visible(pkgsettings, ebuild):
-										ebuild = None
-								except portage.exception.InvalidDependString:
-									ebuild = None
-							if ebuild is None:
-								self._masked_installed.add(pkg)
 
 					blocker_atoms = None
 					blockers = None
