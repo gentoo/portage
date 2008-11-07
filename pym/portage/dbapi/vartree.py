@@ -13,7 +13,8 @@ from portage.data import portage_gid, portage_uid, secpass
 from portage.dbapi import dbapi
 from portage.dep import use_reduce, paren_reduce, isvalidatom, \
 	isjustname, dep_getkey, match_from_list
-from portage.exception import InvalidData, InvalidPackageName, \
+from portage.exception import CommandNotFound, \
+	InvalidData, InvalidPackageName, \
 	FileNotFound, PermissionDenied, UnsupportedAPIException
 from portage.locks import lockdir, unlockdir
 from portage.output import bold, red, green
@@ -281,9 +282,9 @@ class LinkageMap(object):
 			try:
 				proc = subprocess.Popen(args, stdout=subprocess.PIPE)
 			except EnvironmentError, e:
-				writemsg_level("\nUnable to execute %s: %s\n\n" % (args[0], e),
-					level=logging.ERROR, noiselevel=-1)
-				del e
+				if e.errno != errno.ENOENT:
+					raise
+				raise CommandNotFound(args[0])
 			else:
 				for l in proc.stdout:
 					l = l[3:].rstrip("\n")
