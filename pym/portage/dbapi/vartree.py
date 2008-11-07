@@ -171,6 +171,13 @@ class LinkageMap(object):
 			self._path_key_cache[path] = key
 		return key
 
+	def _obj_key(self, path):
+		key = self._obj_key_cache.get(path)
+		if key is None:
+			key = self._ObjectKey(path, self._root)
+			self._obj_key_cache[path] = key
+		return key
+
 	class _ObjectKey(object):
 
 		"""Helper class used as _obj_properties keys for objects."""
@@ -248,16 +255,19 @@ class LinkageMap(object):
 		obj_properties = self._obj_properties
 
 		lines = []
+
+		# Data from include_file is processed first so that it
+		# overrides any data from previously installed files.
+		if include_file is not None:
+			lines += grabfile(include_file)
+
 		for cpv in self._dbapi.cpv_all():
 			if exclude_pkgs is not None and cpv in exclude_pkgs:
 				continue
 			lines += self._dbapi.aux_get(cpv, ["NEEDED.ELF.2"])[0].split('\n')
 		# Cache NEEDED.* files avoid doing excessive IO for every rebuild.
 		self._dbapi.flush_cache()
-		
-		if include_file:
-			lines += grabfile(include_file)
-		
+
 		# have to call scanelf for preserved libs here as they aren't 
 		# registered in NEEDED.ELF.2 files
 		if self._dbapi.plib_registry and self._dbapi.plib_registry.getPreservedLibs():
@@ -278,13 +288,30 @@ class LinkageMap(object):
 				continue
 			arch = fields[0]
 			obj = fields[1]
-			obj_key = self._ObjectKey(obj, root)
 			soname = fields[2]
 			path = set([normalize_path(x) \
 				for x in filter(None, fields[3].replace(
 				"${ORIGIN}", os.path.dirname(obj)).replace(
 				"$ORIGIN", os.path.dirname(obj)).split(":"))])
 			needed = filter(None, fields[4].split(","))
+
+			obj_key = self._obj_key(obj)
+			indexed = True
+			myprops = obj_properties.get(obj_key)
+			if myprops is None:
+				indexed = False
+				myprops = (arch, needed, path, soname, set())
+				obj_properties[obj_key] = myprops
+			# All object paths are added into the obj_properties tuple.
+			myprops[4].add(obj)
+
+			# Don't index the same file more that once since only one
+			# set of data can be correct and therefore mixing data
+			# may corrupt the index (include_file overrides previously
+			# installed).
+			if indexed:
+				continue
+
 			arch_map = libs.get(arch)
 			if arch_map is None:
 				arch_map = {}
@@ -303,10 +330,6 @@ class LinkageMap(object):
 						providers=set(), consumers=set())
 					arch_map[needed_soname] = soname_map
 				soname_map.consumers.add(obj_key)
-			obj_key_cache.setdefault(obj, obj_key)
-			# All object paths are added into the obj_properties tuple
-			obj_properties.setdefault(obj_key, \
-					(arch, needed, path, soname, set()))[4].add(obj)
 
 	def listBrokenBinaries(self, debug=False):
 		"""
@@ -3307,9 +3330,6 @@ class dblink(object):
 				gid=portage_gid, mode=02750, mask=02)
 			writedict(cfgfiledict, conf_mem_file)
 
-		# TODO: In case some elf files collide with blocked packages,
-		# ensure that NEEDED data from include_file overrides the stale
-		# NEEDED data from the colliding files in the blocked packages.
 		exclude_pkgs = set(dblnk.mycpv for dblnk in others_in_slot)
 		self.vartree.dbapi.linkmap.rebuild(exclude_pkgs=exclude_pkgs,
 			include_file=os.path.join(inforoot, "NEEDED.ELF.2"))
