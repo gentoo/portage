@@ -248,6 +248,7 @@ class LinkageMap(object):
 
 	def rebuild(self, exclude_pkgs=None, include_file=None):
 		root = self._root
+		root_len = len(root) - 1
 		self._clear_cache()
 		self._defpath.update(getlibpaths(self._root))
 		libs = self._libs
@@ -273,10 +274,22 @@ class LinkageMap(object):
 		if self._dbapi.plib_registry and self._dbapi.plib_registry.getPreservedLibs():
 			args = ["/usr/bin/scanelf", "-qF", "%a;%F;%S;%r;%n"]
 			for items in self._dbapi.plib_registry.getPreservedLibs().values():
-				args += [x.lstrip(".") for x in items]
+				args.extend(os.path.join(root, x.lstrip("." + os.sep)) \
+					for x in items)
 			proc = subprocess.Popen(args, stdout=subprocess.PIPE)
-			output = [l[3:] for l in proc.communicate()[0].split("\n")]
-			lines += output
+			for l in proc.stdout:
+				l = l[3:].rstrip("\n")
+				if not l:
+					continue
+				fields = l.split(";")
+				if len(fields) < 5:
+					writemsg_level("\nWrong number of fields " + \
+						"returned from scanelf: %s\n\n" % (l,),
+						level=logging.ERROR, noiselevel=-1)
+					continue
+				fields[1] = fields[1][root_len:]
+				lines.append(";".join(fields))
+			proc.wait()
 
 		for l in lines:
 			if l.strip() == "":
