@@ -29,6 +29,7 @@ from portage import listdir, dep_expand, digraph, flatten, key_expand, \
 
 from portage.elog import elog_process
 from portage.elog.filtering import filter_mergephases, filter_unmergephases
+from portage.cache.mappings import slot_dict_class
 
 import os, re, shutil, stat, errno, copy, subprocess
 import logging
@@ -143,6 +144,9 @@ class PreservedLibsRegistry(object):
 class LinkageMap(object):
 
 	"""Models dynamic linker dependencies."""
+
+	_soname_map_class = slot_dict_class(
+		("consumers", "providers"), prefix="")
 
 	def __init__(self, vardbapi):
 		self._dbapi = vardbapi
@@ -282,16 +286,27 @@ class LinkageMap(object):
 				"$ORIGIN", os.path.dirname(obj)).split(":"))])
 			needed = filter(None, fields[4].split(","))
 			if soname:
-				libs.setdefault(soname, \
-						{arch: {"providers": set(), "consumers": set()}})
-				libs[soname].setdefault(arch, \
-						{"providers": set(), "consumers": set()})
-				libs[soname][arch]["providers"].add(obj_key)
+				soname_map = libs.get(soname)
+				if soname_map is None:
+					soname_map = {}
+					libs[soname] = soname_map
+				arch_map = soname_map.get(arch)
+				if arch_map is None:
+					arch_map = self._soname_map_class(
+						providers=set(), consumers=set())
+					soname_map[arch] = arch_map
+				arch_map.providers.add(obj_key)
 			for x in needed:
-				libs.setdefault(x, \
-						{arch: {"providers": set(), "consumers": set()}})
-				libs[x].setdefault(arch, {"providers": set(), "consumers": set()})
-				libs[x][arch]["consumers"].add(obj_key)
+				soname_map = libs.get(x)
+				if soname_map is None:
+					soname_map = {}
+					libs[x] = soname_map
+				arch_map = soname_map.get(arch)
+				if arch_map is None:
+					arch_map = self._soname_map_class(
+						providers=set(), consumers=set())
+					soname_map[arch] = arch_map
+				arch_map.consumers.add(obj_key)
 			obj_key_cache.setdefault(obj, obj_key)
 			# All object paths are added into the obj_properties tuple
 			obj_properties.setdefault(obj_key, \
