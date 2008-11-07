@@ -286,27 +286,27 @@ class LinkageMap(object):
 				"$ORIGIN", os.path.dirname(obj)).split(":"))])
 			needed = filter(None, fields[4].split(","))
 			if soname:
-				soname_map = libs.get(soname)
-				if soname_map is None:
-					soname_map = {}
-					libs[soname] = soname_map
-				arch_map = soname_map.get(arch)
+				arch_map = libs.get(arch)
 				if arch_map is None:
-					arch_map = self._soname_map_class(
-						providers=set(), consumers=set())
-					soname_map[arch] = arch_map
-				arch_map.providers.add(obj_key)
-			for x in needed:
-				soname_map = libs.get(x)
+					arch_map = {}
+					libs[arch] = arch_map
+				soname_map = arch_map.get(soname)
 				if soname_map is None:
-					soname_map = {}
-					libs[x] = soname_map
-				arch_map = soname_map.get(arch)
-				if arch_map is None:
-					arch_map = self._soname_map_class(
+					soname_map = self._soname_map_class(
 						providers=set(), consumers=set())
-					soname_map[arch] = arch_map
-				arch_map.consumers.add(obj_key)
+					arch_map[soname] = soname_map
+				soname_map.providers.add(obj_key)
+			for needed_soname in needed:
+				arch_map = libs.get(arch)
+				if arch_map is None:
+					arch_map = {}
+					libs[arch] = arch_map
+				soname_map = arch_map.get(needed_soname)
+				if soname_map is None:
+					soname_map = self._soname_map_class(
+						providers=set(), consumers=set())
+					arch_map[needed_soname] = soname_map
+				soname_map.consumers.add(obj_key)
 			obj_key_cache.setdefault(obj, obj_key)
 			# All object paths are added into the obj_properties tuple
 			obj_properties.setdefault(obj_key, \
@@ -492,9 +492,9 @@ class LinkageMap(object):
 		rValue = []
 		if not self._libs:
 			self.rebuild()
-		for soname in self._libs:
-			for arch in self._libs[soname]:
-				for obj_key in self._libs[soname][arch]["providers"]:
+		for arch_map in self._libs.itervalues():
+			for soname_map in arch_map.itervalues():
+				for obj_key in soname_map.providers:
 					rValue.extend(self._obj_properties[obj_key][4])
 		return rValue
 
@@ -560,11 +560,11 @@ class LinkageMap(object):
 		path_keys = set(self._path_key(x) for x in path.union(self._defpath))
 		for soname in needed:
 			rValue[soname] = set()
-			if soname not in self._libs or arch not in self._libs[soname]:
+			if arch not in self._libs or soname not in self._libs[arch]:
 				continue
 			# For each potential provider of the soname, add it to rValue if it
 			# resides in the obj's runpath.
-			for provider_key in self._libs[soname][arch]["providers"]:
+			for provider_key in self._libs[arch][soname].providers:
 				providers = self._obj_properties[provider_key][4]
 				for provider in providers:
 					if self._path_key(os.path.dirname(provider)) in path_keys:
@@ -633,10 +633,10 @@ class LinkageMap(object):
 		defpath_keys = set(self._path_key(x) for x in self._defpath)
 
 		arch, _, _, soname, _ = self._obj_properties[obj_key]
-		if soname in self._libs and arch in self._libs[soname]:
+		if arch in self._libs and soname in self._libs[arch]:
 			# For each potential consumer, add it to rValue if an object from the
 			# arguments resides in the consumer's runpath.
-			for consumer_key in self._libs[soname][arch]["consumers"]:
+			for consumer_key in self._libs[arch][soname].consumers:
 				_, _, path, _, consumer_objs = \
 						self._obj_properties[consumer_key]
 				path_keys = defpath_keys.union(self._path_key(x) for x in path)
