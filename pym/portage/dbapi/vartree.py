@@ -285,11 +285,11 @@ class LinkageMap(object):
 				"${ORIGIN}", os.path.dirname(obj)).replace(
 				"$ORIGIN", os.path.dirname(obj)).split(":"))])
 			needed = filter(None, fields[4].split(","))
+			arch_map = libs.get(arch)
+			if arch_map is None:
+				arch_map = {}
+				libs[arch] = arch_map
 			if soname:
-				arch_map = libs.get(arch)
-				if arch_map is None:
-					arch_map = {}
-					libs[arch] = arch_map
 				soname_map = arch_map.get(soname)
 				if soname_map is None:
 					soname_map = self._soname_map_class(
@@ -297,10 +297,6 @@ class LinkageMap(object):
 					arch_map[soname] = soname_map
 				soname_map.providers.add(obj_key)
 			for needed_soname in needed:
-				arch_map = libs.get(arch)
-				if arch_map is None:
-					arch_map = {}
-					libs[arch] = arch_map
 				soname_map = arch_map.get(needed_soname)
 				if soname_map is None:
 					soname_map = self._soname_map_class(
