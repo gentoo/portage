@@ -145,6 +145,7 @@ class LinkageMap(object):
 
 	"""Models dynamic linker dependencies."""
 
+	_needed_aux_key = "NEEDED.ELF.2"
 	_soname_map_class = slot_dict_class(
 		("consumers", "providers"), prefix="")
 
@@ -262,10 +263,11 @@ class LinkageMap(object):
 		if include_file is not None:
 			lines += grabfile(include_file)
 
+		aux_keys = [self._needed_aux_key]
 		for cpv in self._dbapi.cpv_all():
 			if exclude_pkgs is not None and cpv in exclude_pkgs:
 				continue
-			lines += self._dbapi.aux_get(cpv, ["NEEDED.ELF.2"])[0].split('\n')
+			lines += self._dbapi.aux_get(cpv, aux_keys)[0].split('\n')
 		# Cache NEEDED.* files avoid doing excessive IO for every rebuild.
 		self._dbapi.flush_cache()
 
@@ -292,12 +294,14 @@ class LinkageMap(object):
 			proc.wait()
 
 		for l in lines:
-			if l.strip() == "":
+			l = l.rstrip("\n")
+			if not l:
 				continue
-			fields = l.strip("\n").split(";")
+			fields = l.split(";")
 			if len(fields) < 5:
-				print "Error", fields
-				# insufficient field length
+				writemsg_level("\nWrong number of fields " + \
+					"in %s: %s\n\n" % (self._needed_aux_key, l),
+					level=logging.ERROR, noiselevel=-1)
 				continue
 			arch = fields[0]
 			obj = fields[1]
