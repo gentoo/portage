@@ -278,20 +278,26 @@ class LinkageMap(object):
 			for items in self._dbapi.plib_registry.getPreservedLibs().values():
 				args.extend(os.path.join(root, x.lstrip("." + os.sep)) \
 					for x in items)
-			proc = subprocess.Popen(args, stdout=subprocess.PIPE)
-			for l in proc.stdout:
-				l = l[3:].rstrip("\n")
-				if not l:
-					continue
-				fields = l.split(";")
-				if len(fields) < 5:
-					writemsg_level("\nWrong number of fields " + \
-						"returned from scanelf: %s\n\n" % (l,),
-						level=logging.ERROR, noiselevel=-1)
-					continue
-				fields[1] = fields[1][root_len:]
-				lines.append(";".join(fields))
-			proc.wait()
+			try:
+				proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+			except EnvironmentError, e:
+				writemsg_level("\nUnable to execute %s: %s\n\n" % (args[0], e),
+					level=logging.ERROR, noiselevel=-1)
+				del e
+			else:
+				for l in proc.stdout:
+					l = l[3:].rstrip("\n")
+					if not l:
+						continue
+					fields = l.split(";")
+					if len(fields) < 5:
+						writemsg_level("\nWrong number of fields " + \
+							"returned from scanelf: %s\n\n" % (l,),
+							level=logging.ERROR, noiselevel=-1)
+						continue
+					fields[1] = fields[1][root_len:]
+					lines.append(";".join(fields))
+				proc.wait()
 
 		for l in lines:
 			l = l.rstrip("\n")
