@@ -2464,7 +2464,8 @@ class dblink(object):
 		showMessage = self._display_merge
 		# read global reverse NEEDED map
 		linkmap = self.vartree.dbapi.linkmap
-		linkmap.rebuild(include_file=os.path.join(inforoot, "NEEDED.ELF.2"))
+		linkmap.rebuild(include_file=os.path.join(inforoot,
+			linkmap._needed_aux_key))
 		liblist = linkmap.listLibraryObjects()
 
 		# get list of libraries from old package instance
@@ -3348,8 +3349,9 @@ class dblink(object):
 			writedict(cfgfiledict, conf_mem_file)
 
 		exclude_pkgs = set(dblnk.mycpv for dblnk in others_in_slot)
-		self.vartree.dbapi.linkmap.rebuild(exclude_pkgs=exclude_pkgs,
-			include_file=os.path.join(inforoot, "NEEDED.ELF.2"))
+		linkmap = self.vartree.dbapi.linkmap
+		linkmap.rebuild(exclude_pkgs=exclude_pkgs,
+			include_file=os.path.join(inforoot, linkmap._needed_aux_key))
 
 		# These caches are populated during collision-protect and the data
 		# they contain is now invalid. It's very important to invalidate
