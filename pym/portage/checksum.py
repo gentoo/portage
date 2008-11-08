@@ -61,10 +61,7 @@ sha1hash = _generate_hash_function("SHA1", _new_sha1, origin="internal")
 
 # Use pycrypto when available, prefer it over the internal fallbacks
 try:
-	from Crypto.Hash import MD5, SHA, SHA256, RIPEMD
-	
-	md5hash = _generate_hash_function("MD5", MD5.new, origin="pycrypto")
-	sha1hash = _generate_hash_function("SHA1", SHA.new, origin="pycrypto")
+	from Crypto.Hash import SHA256, RIPEMD
 	sha256hash = _generate_hash_function("SHA256", SHA256.new, origin="pycrypto")
 	rmd160hash = _generate_hash_function("RMD160", RIPEMD.new, origin="pycrypto")
 except ImportError, e:
