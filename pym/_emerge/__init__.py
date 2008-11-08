@@ -11112,11 +11112,11 @@ def display_preserved_libs(vardbapi):
 			print colorize("WARN", ">>>") + " package: %s" % cpv
 			samefile_map = {}
 			for f in plibdata[cpv]:
-				real_path = os.path.realpath(f)
-				alt_paths = samefile_map.get(real_path)
+				obj_key = linkmap._obj_key(f)
+				alt_paths = samefile_map.get(obj_key)
 				if alt_paths is None:
 					alt_paths = set()
-					samefile_map[real_path] = alt_paths
+					samefile_map[obj_key] = alt_paths
 				alt_paths.add(f)
 
 			for alt_paths in samefile_map.itervalues():
