@@ -11084,19 +11084,29 @@ def display_preserved_libs(vardbapi):
 		print colorize("WARN", "!!!") + " existing preserved libs:"
 		plibdata = vardbapi.plib_registry.getPreservedLibs()
 		linkmap = vardbapi.linkmap
-
 		consumer_map = {}
-		search_for_owners = set()
-		for cpv in plibdata:
-			for f in plibdata[cpv]:
-				if f in consumer_map:
-					continue
-				consumers = list(linkmap.findConsumers(f))
-				consumers.sort()
-				consumer_map[f] = consumers
-				search_for_owners.update(consumers[:MAX_DISPLAY+1])
+		owners = {}
+		linkmap_broken = False
 
-		owners = vardbapi._owners.getFileOwnerMap(search_for_owners)
+		try:
+			linkmap.rebuild()
+		except portage.exception.CommandNotFound, e:
+			writemsg_level("!!! Command Not Found: %s\n" % (e,),
+				level=logging.ERROR, noiselevel=-1)
+			del e
+			linkmap_broken = True
+		else:
+			search_for_owners = set()
+			for cpv in plibdata:
+				for f in plibdata[cpv]:
+					if f in consumer_map:
+						continue
+					consumers = list(linkmap.findConsumers(f))
+					consumers.sort()
+					consumer_map[f] = consumers
+					search_for_owners.update(consumers[:MAX_DISPLAY+1])
+
+			owners = vardbapi._owners.getFileOwnerMap(search_for_owners)
 
 		for cpv in plibdata:
 			print colorize("WARN", ">>>") + " package: %s" % cpv
@@ -11114,7 +11124,7 @@ def display_preserved_libs(vardbapi):
 				for p in alt_paths:
 					print colorize("WARN", " * ") + " - %s" % (p,)
 				f = alt_paths[0]
-				consumers = consumer_map[f]
+				consumers = consumer_map.get(f, [])
 				for c in consumers[:MAX_DISPLAY]:
 					print colorize("WARN", " * ") + "     used by %s (%s)" % \
 						(c, ", ".join(x.mycpv for x in owners.get(c, [])))

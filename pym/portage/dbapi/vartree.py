@@ -249,6 +249,10 @@ class LinkageMap(object):
 			return str(sorted(self.alt_paths))
 
 	def rebuild(self, exclude_pkgs=None, include_file=None):
+		"""
+		Raises CommandNotFound if there are preserved libs
+		and the scanelf binary is not available.
+		"""
 		root = self._root
 		root_len = len(root) - 1
 		self._clear_cache()
@@ -1734,6 +1738,7 @@ class dblink(object):
 		self.contentscache = None
 		self._contents_inodes = None
 		self._contents_basenames = None
+		self._linkmap_broken = False
 
 	def lockdb(self):
 		if self._lock_vdb:
@@ -2022,7 +2027,7 @@ class dblink(object):
 			# already called LinkageMap.rebuild() and passed it's NEEDED file
 			# in as an argument.
 			if not others_in_slot:
-				self.vartree.dbapi.linkmap.rebuild(exclude_pkgs=(self.mycpv,))
+				self._linkmap_rebuild(exclude_pkgs=(self.mycpv,))
 
 			# remove preserved libraries that don't have any consumers left
 			cpv_lib_map = self._find_unused_preserved_libs()
@@ -2467,12 +2472,26 @@ class dblink(object):
 
 		return False
 
+	def _linkmap_rebuild(self, **kwargs):
+		if self._linkmap_broken:
+			return
+		try:
+			self.vartree.dbapi.linkmap.rebuild(**kwargs)
+		except CommandNotFound, e:
+			self._linkmap_broken = True
+			self._display_merge("!!! Disabling preserve-libs " + \
+				"due to error: Command Not Found: %s\n" % (e,),
+				level=logging.ERROR, noiselevel=-1)
+
 	def _preserve_libs(self, srcroot, destroot, mycontents, counter, inforoot):
-		showMessage = self._display_merge
-		# read global reverse NEEDED map
+
 		linkmap = self.vartree.dbapi.linkmap
-		linkmap.rebuild(include_file=os.path.join(inforoot,
+		self._linkmap_rebuild(include_file=os.path.join(inforoot,
 			linkmap._needed_aux_key))
+		if self._linkmap_broken:
+			return
+
+		showMessage = self._display_merge
 		liblist = linkmap.listLibraryObjects()
 
 		# get list of libraries from old package instance
@@ -2615,6 +2634,9 @@ class dblink(object):
 		"""
 		Find preserved libraries that don't have any consumers left.
 		"""
+
+		if self._linkmap_broken:
+			return {}
 
 		# Since preserved libraries can be consumers of other preserved
 		# libraries, use a graph to track consumer relationships.
@@ -3357,7 +3379,7 @@ class dblink(object):
 
 		exclude_pkgs = set(dblnk.mycpv for dblnk in others_in_slot)
 		linkmap = self.vartree.dbapi.linkmap
-		linkmap.rebuild(exclude_pkgs=exclude_pkgs,
+		self._linkmap_rebuild(exclude_pkgs=exclude_pkgs,
 			include_file=os.path.join(inforoot, linkmap._needed_aux_key))
 
 		# These caches are populated during collision-protect and the data
@@ -3385,6 +3407,7 @@ class dblink(object):
 				continue
 			showMessage(">>> Safely unmerging already-installed instance...\n")
 			others_in_slot.remove(dblnk) # dblnk will unmerge itself now
+			dblnk._linkmap_broken = self._linkmap_broken
 			dblnk.unmerge(trimworld=0, ldpath_mtimes=prev_mtimes,
 				others_in_slot=others_in_slot)
 			# TODO: Check status and abort if necessary.
@@ -3434,9 +3457,6 @@ class dblink(object):
 		self.vartree.dbapi._add(self)
 		contents = self.getcontents()
 
-		# regenerate reverse NEEDED map
-		self.vartree.dbapi.linkmap.rebuild()
-
 		#do postinst script
 		self.settings["PORTAGE_UPDATE_ENV"] = \
 			os.path.join(self.dbpkgdir, "environment.bz2")
@@ -3473,7 +3493,7 @@ class dblink(object):
 
 		# For gcc upgrades, preserved libs have to be removed after the
 		# the library path has been updated.
-		self.vartree.dbapi.linkmap.rebuild()
+		self._linkmap_rebuild()
 		cpv_lib_map = self._find_unused_preserved_libs()
 		if cpv_lib_map:
 			self._remove_preserved_libs(cpv_lib_map)
