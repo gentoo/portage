@@ -3998,14 +3998,8 @@ def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 	from formatter import AbstractFormatter, DumbWriter
 	f = AbstractFormatter(DumbWriter(maxcol=72))
 
-	print "\n\n!!! Invalid or corrupt dependency specification: "
-	print
-	print error_msg
-	print
-	print parent_node
-	print
-	print depstring
-	print
+	msg1 = "\n\n!!! Invalid or corrupt dependency specification: " + \
+		"\n\n%s\n\n%s\n\n%s\n\n" % (error_msg, parent_node, depstring)
 	p_type, p_root, p_key, p_status = parent_node
 	msg = []
 	if p_status == "nomerge":
@@ -4020,13 +4014,12 @@ def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 		msg.append("the problematic dependencies can be found in the ")
 		msg.append("*DEPEND files located in '%s/'." % pkg_location)
 	else:
-		msg.append("This package can not be installed.  ")
+		msg.append("This package can not be installed. ")
 		msg.append("Please notify the '%s' package maintainer " % p_key)
 		msg.append("about this problem.")
 
-	for x in msg:
-		f.add_flowing_data(x)
-	f.end_paragraph(1)
+	msg2 = "".join("%s\n" % line for line in textwrap.wrap("".join(msg), 72))
+	writemsg_level(msg1 + msg2, level=logging.ERROR, noiselevel=-1)
 
 class PackageVirtualDbapi(portage.dbapi):
 	"""
