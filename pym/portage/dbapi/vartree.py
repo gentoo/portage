@@ -2573,7 +2573,7 @@ class dblink(object):
 		# Copy contents entries from the old package to the new one.
 		new_contents = self.getcontents().copy()
 		old_contents = self._installed_instance.getcontents()
-		for f in list(preserve_paths):
+		for f in sorted(preserve_paths):
 			f_abs = os.path.join(root, f.lstrip(os.sep))
 			contents_entry = old_contents.get(f_abs)
 			if contents_entry is None:
@@ -2589,7 +2589,8 @@ class dblink(object):
 				continue
 			new_contents[f_abs] = contents_entry
 			obj_type = contents_entry[0]
-			showMessage(">>> needed    %s %s\n" % (obj_type, f_abs))
+			showMessage(">>> needed    %s %s\n" % (obj_type, f_abs),
+				noiselevel=-1)
 			# Add parent directories to contents if necessary.
 			parent_dir = os.path.dirname(f_abs)
 			while len(parent_dir) > len(root):
@@ -2726,7 +2727,8 @@ class dblink(object):
 					raise
 				del e
 			else:
-				showMessage("<<< !needed   %s %s\n" % (obj_type, obj))
+				showMessage("<<< !needed   %s %s\n" % (obj_type, obj),
+					noiselevel=-1)
 
 		# Remove empty parent directories if possible.
 		while parent_dirs:
