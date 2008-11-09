@@ -3995,9 +3995,6 @@ class BlockerDB(object):
 
 def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 
-	from formatter import AbstractFormatter, DumbWriter
-	f = AbstractFormatter(DumbWriter(maxcol=72))
-
 	msg1 = "\n\n!!! Invalid or corrupt dependency specification: " + \
 		"\n\n%s\n\n%s\n\n%s\n\n" % (error_msg, parent_node, depstring)
 	p_type, p_root, p_key, p_status = parent_node
