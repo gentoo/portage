@@ -9271,7 +9271,10 @@ class Scheduler(PollScheduler):
 
 		graph = self._digraph
 
-		for node in self._mergelist:
+		# Iterate over all nodes rather than just the merge list, because
+		# some uninstall nodes may not be in the merge list since they will
+		# be performed as part of an upgrade within a slot.
+		for node in graph.all_nodes():
 			if not isinstance(node, Package) or \
 				node.operation != "uninstall":
 				continue
