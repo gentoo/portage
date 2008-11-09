@@ -403,10 +403,7 @@ class LinkageMap(object):
 				if obj in cache_self.cache:
 					return cache_self.cache[obj]
 				else:
-					if obj in self._obj_key_cache:
-						obj_key = self._obj_key_cache.get(obj)
-					else:
-						obj_key = self._ObjectKey(obj, self._root)
+					obj_key = self._obj_key(obj)
 					# Check that the library exists on the filesystem.
 					if obj_key.file_exists():
 						# Get the arch and soname from LinkageMap._obj_properties if
@@ -520,7 +517,7 @@ class LinkageMap(object):
 
 		"""
 		basename = os.path.basename(obj)
-		obj_key = self._ObjectKey(obj, self._root)
+		obj_key = self._obj_key(obj)
 		if obj_key not in self._obj_properties:
 			raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 		soname = self._obj_properties[obj_key][3]
@@ -597,11 +594,9 @@ class LinkageMap(object):
 			if obj_key not in self._obj_properties:
 				raise KeyError("%s not in object list" % obj_key)
 		else:
-			obj_key = self._obj_key_cache.get(obj)
+			obj_key = self._obj_key(obj)
 			if obj_key not in self._obj_properties:
-				obj_key = self._ObjectKey(obj, self._root)
-				if obj_key not in self._obj_properties:
-					raise KeyError("%s (%s) not in object list" % (obj_key, obj))
+				raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 
 		arch, needed, path, _, _ = self._obj_properties[obj_key]
 		path_keys = set(self._path_key(x) for x in path.union(self._defpath))
@@ -651,11 +646,9 @@ class LinkageMap(object):
 			objs = self._obj_properties[obj_key][4]
 		else:
 			objs = set([obj])
-			obj_key = self._obj_key_cache.get(obj)
+			obj_key = self._obj_key(obj)
 			if obj_key not in self._obj_properties:
-				obj_key = self._ObjectKey(obj, self._root)
-				if obj_key not in self._obj_properties:
-					raise KeyError("%s (%s) not in object list" % (obj_key, obj))
+				raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 
 		# If there is another version of this lib with the
 		# same soname and the master link points to that
