@@ -2575,11 +2575,20 @@ class dblink(object):
 		old_contents = self._installed_instance.getcontents()
 		for f in list(preserve_paths):
 			f_abs = os.path.join(root, f.lstrip(os.sep))
-			new_contents[f_abs] = old_contents[f_abs]
-			if os.path.islink(f_abs):
-				obj_type = "sym"
-			else:
-				obj_type = "obj"
+			contents_entry = old_contents.get(f_abs)
+			if contents_entry is None:
+				# This will probably never happen, but it might if one of the
+				# paths returned from findConsumers() refers to one of the libs
+				# that should be preserved yet the path is not listed in the
+				# contents. Such a path might belong to some other package, so
+				# it shouldn't be preserved here.
+				showMessage(("!!! File '%s' will not be preserved " + \
+					"due to missing contents entry\n") % (f_abs,),
+					level=logging.ERROR, noiselevel=-1)
+				preserve_paths.remove(f)
+				continue
+			new_contents[f_abs] = contents_entry
+			obj_type = contents_entry[0]
 			showMessage(">>> needed    %s %s\n" % (obj_type, f_abs))
 			# Add parent directories to contents if necessary.
 			parent_dir = os.path.dirname(f_abs)
