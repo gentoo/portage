@@ -2476,152 +2476,122 @@ class dblink(object):
 				"due to error: Command Not Found: %s\n" % (e,),
 				level=logging.ERROR, noiselevel=-1)
 
-	def _preserve_libs(self, srcroot, destroot, mycontents, counter, inforoot):
+	def _find_libs_to_preserve(self):
+		"""
+		Get CONTENTS entries for libraries to be preserved. Returns a
+		dict instance like that returned from getcontents().
+		"""
+		if self._linkmap_broken or not \
+			(self._installed_instance is not None and \
+			"preserve-libs" in self.settings.features):
+			return None
 
 		linkmap = self.vartree.dbapi.linkmap
-		self._linkmap_rebuild(include_file=os.path.join(inforoot,
-			linkmap._needed_aux_key))
-		if self._linkmap_broken:
+		installed_instance = self._installed_instance
+		old_contents = installed_instance.getcontents()
+		root = self.myroot
+		root_len = len(root) - 1
+		lib_graph = digraph()
+		path_node_map = {}
+
+		def path_to_node(path):
+			node = path_node_map.get(path)
+			if node is None:
+				node = LinkageMap._LibGraphNode(path, root)
+				alt_path_node = lib_graph.get(node)
+				if alt_path_node is not None:
+					node = alt_path_node
+				node.alt_paths.add(path)
+				path_node_map[path] = node
+			return node
+
+		consumer_map = {}
+		provider_nodes = set()
+		# Create provider nodes and add them to the graph.
+		for f_abs in old_contents:
+			f = f_abs[root_len:]
+			if self.isowner(f, root):
+				continue
+			try:
+				consumers = linkmap.findConsumers(f)
+			except KeyError:
+				continue
+			if not consumers:
+				continue
+			provider_node = path_to_node(f)
+			lib_graph.add(provider_node, None)
+			provider_nodes.add(provider_node)
+			consumer_map[provider_node] = consumers
+
+		# Create consumer nodes and add them to the graph.
+		# Note that consumers can also be providers.
+		for provider_node, consumers in consumer_map.iteritems():
+			for c in consumers:
+				if self.isowner(c, root):
+					continue
+				consumer_node = path_to_node(c)
+				if installed_instance.isowner(c, root) and \
+					consumer_node not in provider_nodes:
+					# This is not a provider, so it will be uninstalled.
+					continue
+				lib_graph.add(provider_node, consumer_node)
+
+		# Locate nodes which should be preserved. They consist of all
+		# providers that are reachable from consumers that are not
+		# providers themselves.
+		preserve_nodes = set()
+		for consumer_node in lib_graph.root_nodes():
+			if consumer_node in provider_nodes:
+				continue
+			# Preserve all providers that are reachable from this consumer.
+			node_stack = lib_graph.child_nodes(consumer_node)
+			while node_stack:
+				provider_node = node_stack.pop()
+				if provider_node in preserve_nodes:
+					continue
+				preserve_nodes.add(provider_node)
+				node_stack.extend(lib_graph.child_nodes(provider_node))
+
+		preserve_paths = set()
+		for preserve_node in preserve_nodes:
+			preserve_paths.update(preserve_node.alt_paths)
+
+		return preserve_paths
+
+	def _add_preserve_libs_to_contents(self, preserve_paths):
+		"""
+		Preserve libs returned from _find_libs_to_preserve().
+		"""
+
+		if not preserve_paths:
 			return
 
 		showMessage = self._display_merge
-		liblist = linkmap.listLibraryObjects()
+		root = self.myroot
 
-		# get list of libraries from old package instance
-		root_len = len(self.myroot) - 1
-		old_contents = set(p[root_len:] \
-			for p in self._installed_instance.getcontents())
-		old_libs = old_contents.intersection(liblist)
-
-		# get list of libraries from new package instance
-		mycontents = set(os.path.join(os.path.sep, x) for x in mycontents)
-		mylibs = mycontents.intersection(liblist)
-		
-		# check which libs are present in the old, but not the new package instance
-		candidates = old_libs.difference(mylibs)
-		candidates_inodes = set()
-		for x in candidates:
-			x_destroot = os.path.join(destroot, x.lstrip(os.path.sep))
-			try:
-				st = os.stat(x_destroot)
-			except OSError:
-				continue
-			candidates_inodes.add((st.st_dev, st.st_ino))
-
-		for x in old_contents:
-			x_destroot = os.path.join(destroot, x.lstrip(os.path.sep))
-			if not os.path.islink(x_destroot):
-				continue
-			try:
-				st = os.stat(x_destroot)
-			except OSError:
-				continue
-			if (st.st_dev, st.st_ino) in candidates_inodes and \
-				x not in mycontents:
-				candidates.add(x)
-
-		provider_cache = {}
-		consumer_cache = {}
-
-		# ignore any libs that are only internally used by the package
-		def has_external_consumers(lib, contents, otherlibs):
-			consumers = consumer_cache.get(lib)
-			if consumers is None:
-				consumers = linkmap.findConsumers(lib)
-				consumer_cache[lib] = consumers
-			contents_without_libs = [x for x in contents if x not in otherlibs]
-			
-			# just used by objects that will be autocleaned
-			if len(consumers.difference(contents_without_libs)) == 0:
-				return False
-			# used by objects that are referenced as well, need to check those 
-			# recursively to break any reference cycles
-			elif len(consumers.difference(contents)) == 0:
-				otherlibs = set(otherlibs)
-				for ol in otherlibs.intersection(consumers):
-					if has_external_consumers(ol, contents, otherlibs.difference([lib])):
-						return True
-				return False
-			# used by external objects directly
+		# Copy contents entries from the old package to the new one.
+		new_contents = self.getcontents().copy()
+		old_contents = self._installed_instance.getcontents()
+		for f in list(preserve_paths):
+			f_abs = os.path.join(root, f.lstrip(os.sep))
+			new_contents[f_abs] = old_contents[f_abs]
+			if os.path.islink(f_abs):
+				obj_type = "sym"
 			else:
-				return True
-
-		for lib in list(candidates):
-			if not has_external_consumers(lib, old_contents, candidates):
-				candidates.remove(lib)
-				continue
-			if linkmap.isMasterLink(lib):
-				candidates.remove(lib)
-				continue
-			# only preserve the lib if there is no other copy to use for each consumer
-			keep = False
-
-			lib_consumers = consumer_cache.get(lib)
-			if lib_consumers is None:
-				lib_consumers = linkmap.findConsumers(lib)
-				consumer_cache[lib] = lib_consumers
-
-			for c in lib_consumers:
-				localkeep = True
-				providers = provider_cache.get(c)
-				if providers is None:
-					providers = linkmap.findProviders(c)
-					provider_cache[c] = providers
-
-				for soname in providers:
-					if lib in providers[soname]:
-						for p in providers[soname]:
-							if p not in candidates or os.path.exists(os.path.join(srcroot, p.lstrip(os.sep))):
-								localkeep = False
-								break
-						break
-				if localkeep:
-					keep = True
-			if not keep:
-				candidates.remove(lib)
-				continue
-		
-		del mylibs, mycontents, old_contents, liblist
-		
-		# inject files that should be preserved into our image dir
-		preserve_paths = []
-		candidates_stack = list(candidates)
-		while candidates_stack:
-			x = candidates_stack.pop()
-			x_srcroot = os.path.join(srcroot, x.lstrip(os.path.sep))
-			x_destroot = os.path.join(destroot, x.lstrip(os.path.sep))
-			# skip existing files so the 'new' libs aren't overwritten
-			if os.path.exists(os.path.join(srcroot, x.lstrip(os.sep))):
-				continue
-			showMessage("injecting %s into %s\n" % (x, srcroot),
-				noiselevel=-1)
-			if not os.path.exists(x_destroot):
-				showMessage("%s does not exist so can't be preserved\n" % x,
-					noiselevel=-1)
-				continue
-			mydir = os.path.join(srcroot, os.path.dirname(x).lstrip(os.sep))
-			if not os.path.exists(mydir):
-				os.makedirs(mydir)
-
-			# resolve symlinks and extend preserve list
-			# NOTE: we're extending the list in the loop to emulate recursion to
-			#       also get indirect symlinks
-			if os.path.islink(x_destroot):
-				linktarget = os.readlink(x_destroot)
-				os.symlink(linktarget, os.path.join(srcroot, x.lstrip(os.sep)))
-				if linktarget[0] != os.sep:
-					linktarget = os.path.join(os.path.dirname(x), linktarget)
-				if linktarget not in candidates:
-					candidates.add(linktarget)
-					candidates_stack.append(linktarget)
-			else:
-				shutil.copy2(x_destroot, x_srcroot)
-			preserve_paths.append(x)
-			
-		del candidates
-
-		# keep track of the libs we preserved
-		self.vartree.dbapi.plib_registry.register(self.mycpv, self.settings["SLOT"], counter, preserve_paths)
+				obj_type = "obj"
+			showMessage(">>> needed    %s %s\n" % (obj_type, f_abs))
+			# Add parent directories to contents if necessary.
+			parent_dir = os.path.dirname(f_abs)
+			while parent_dir != root:
+				new_contents[parent_dir] = ["dir"]
+				prev = parent_dir
+				parent_dir = os.path.dirname(parent_dir)
+				if prev == parent_dir:
+					break
+		outfile = atomic_ofstream(os.path.join(self.dbtmpdir, "CONTENTS"))
+		write_contents(new_contents, root, outfile)
+		outfile.close()
+		self._clear_contents_cache()
 
 	def _find_unused_preserved_libs(self):
 		"""
@@ -3074,18 +3044,6 @@ class dblink(object):
 					max_dblnk = dblnk
 			self._installed_instance = max_dblnk
 
-		# get current counter value (counter_tick also takes care of incrementing it)
-		# XXX Need to make this destroot, but it needs to be initialized first. XXX
-		# XXX bis: leads to some invalidentry() call through cp_all().
-		# Note: The counter is generated here but written later because preserve_libs
-		#       needs the counter value but has to be before dbtmpdir is made (which
-		#       has to be before the counter is written) - genone
-		counter = self.vartree.dbapi.counter_tick(self.myroot, mycpv=self.mycpv)
-
-		# Save this for unregistering preserved-libs if the merge fails.
-		self.settings["COUNTER"] = str(counter)
-		self.settings.backup_changes("COUNTER")
-
 		myfilelist = []
 		mylinklist = []
 		def onerror(e):
@@ -3137,10 +3095,6 @@ class dblink(object):
 				eerror(msg)
 			if installed_files:
 				return 1
-
-		# Preserve old libs if they are still in use
-		if slot_matches and "preserve-libs" in self.settings.features:
-			self._preserve_libs(srcroot, destroot, myfilelist+mylinklist, counter, inforoot)
 
 		# check for package collisions
 		blockers = None
@@ -3288,6 +3242,7 @@ class dblink(object):
 			self.copyfile(inforoot+"/"+x)
 
 		# write local package counter for recording
+		counter = self.vartree.dbapi.counter_tick(self.myroot, mycpv=self.mycpv)
 		lcfile = open(os.path.join(self.dbtmpdir, "COUNTER"),"w")
 		lcfile.write(str(counter))
 		lcfile.close()
@@ -3370,19 +3325,23 @@ class dblink(object):
 				gid=portage_gid, mode=02750, mask=02)
 			writedict(cfgfiledict, conf_mem_file)
 
-		exclude_pkgs = set(dblnk.mycpv for dblnk in others_in_slot)
-		linkmap = self.vartree.dbapi.linkmap
-		self._linkmap_rebuild(exclude_pkgs=exclude_pkgs,
-			include_file=os.path.join(inforoot, linkmap._needed_aux_key))
-
 		# These caches are populated during collision-protect and the data
 		# they contain is now invalid. It's very important to invalidate
 		# the contents_inodes cache so that FEATURES=unmerge-orphans
 		# doesn't unmerge anything that belongs to this package that has
 		# just been merged.
-		others_in_slot.append(self)  # self has just been merged
 		for dblnk in others_in_slot:
 			dblnk._clear_contents_cache()
+		self._clear_contents_cache()
+
+		linkmap = self.vartree.dbapi.linkmap
+		self._linkmap_rebuild(include_file=os.path.join(inforoot,
+			linkmap._needed_aux_key))
+
+		# Preserve old libs if they are still in use
+		preserve_paths = self._find_libs_to_preserve()
+		if preserve_paths:
+			self._add_preserve_libs_to_contents(preserve_paths)
 
 		# If portage is reinstalling itself, remove the old
 		# version now since we want to use the temporary
@@ -3393,6 +3352,7 @@ class dblink(object):
 			reinstall_self = True
 
 		autoclean = self.settings.get("AUTOCLEAN", "yes") == "yes"
+		others_in_slot.append(self)  # self has just been merged
 		for dblnk in list(others_in_slot):
 			if dblnk is self:
 				continue
@@ -3418,6 +3378,11 @@ class dblink(object):
 		self.dbdir = self.dbpkgdir
 		self.delete()
 		_movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
+
+		# keep track of the libs we preserved
+		if preserve_paths:
+			self.vartree.dbapi.plib_registry.register(self.mycpv,
+				slot, counter, sorted(preserve_paths))
 
 		# Check for file collisions with blocking packages
 		# and remove any colliding files from their CONTENTS
@@ -3821,9 +3786,7 @@ class dblink(object):
 			self.vartree.dbapi.plib_registry.pruneNonExisting()
 			retval = self.treewalk(mergeroot, myroot, inforoot, myebuild,
 				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes)
-			# undo registrations of preserved libraries, bug #210501
-			if retval != os.EX_OK:
-				self.vartree.dbapi.plib_registry.unregister(self.mycpv, self.settings["SLOT"], self.settings["COUNTER"])
+
 			# Process ebuild logfiles
 			elog_process(self.mycpv, self.settings, phasefilter=filter_mergephases)
 			if retval == os.EX_OK and "noclean" not in self.settings.features:
