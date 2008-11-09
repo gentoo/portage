@@ -7415,6 +7415,22 @@ class depgraph(object):
 						else:
 							return colorize("PKG_NOMERGE", pkg_str)
 
+				try:
+					properties = flatten(use_reduce(paren_reduce(
+						pkg.metadata["PROPERTIES"]), uselist=pkg.use.enabled))
+				except portage.exception.InvalidDependString, e:
+					if not pkg.installed:
+						show_invalid_depstring_notice(pkg,
+							pkg.metadata["PROPERTIES"], str(e))
+						del e
+						return 1
+					properties = []
+				interactive = "interactive" in properties
+				if interactive and pkg.operation == "merge":
+					addl = colorize("WARN", "I") + addl[1:]
+					if ordered:
+						counters.interactive += 1
+
 				if x[1]!="/":
 					if myoldbest:
 						myoldbest +=" "
@@ -8169,6 +8185,7 @@ class PackageCounters(object):
 		self.totalsize  = 0
 		self.restrict_fetch           = 0
 		self.restrict_fetch_satisfied = 0
+		self.interactive              = 0
 
 	def __str__(self):
 		total_installs = self.upgrades + self.downgrades + self.newslot + self.new + self.reinst
@@ -8201,6 +8218,9 @@ class PackageCounters(object):
 			details.append("%s uninstall" % self.uninst)
 			if self.uninst > 1:
 				details[-1] += "s"
+		if self.interactive > 0:
+			details.append("%s %s" % (self.interactive,
+				colorize("WARN", "interactive")))
 		myoutput.append(", ".join(details))
 		if total_installs != 0:
 			myoutput.append(")")
