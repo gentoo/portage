@@ -1305,6 +1305,7 @@ class vardbapi(dbapi):
 			f = atomic_ofstream(os.path.join(pkg.dbdir, "CONTENTS"))
 			write_contents(new_contents, root, f)
 			f.close()
+			pkg._clear_contents_cache()
 
 	class _owners_cache(object):
 		"""
