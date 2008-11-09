@@ -2592,7 +2592,7 @@ class dblink(object):
 			showMessage(">>> needed    %s %s\n" % (obj_type, f_abs))
 			# Add parent directories to contents if necessary.
 			parent_dir = os.path.dirname(f_abs)
-			while parent_dir != root:
+			while len(parent_dir) > len(root):
 				new_contents[parent_dir] = ["dir"]
 				prev = parent_dir
 				parent_dir = os.path.dirname(parent_dir)
