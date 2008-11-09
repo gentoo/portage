@@ -2479,8 +2479,8 @@ class dblink(object):
 
 	def _find_libs_to_preserve(self):
 		"""
-		Get CONTENTS entries for libraries to be preserved. Returns a
-		dict instance like that returned from getcontents().
+		Get set of relative paths for libraries to be preserved. The file
+		paths are selected from self._installed_instance.getcontents().
 		"""
 		if self._linkmap_broken or not \
 			(self._installed_instance is not None and \
