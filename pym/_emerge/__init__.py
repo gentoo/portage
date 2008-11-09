@@ -9050,6 +9050,14 @@ class Scheduler(PollScheduler):
 		def deallocate(self, settings):
 			self._deallocate(settings)
 
+	class _unknown_internal_error(portage.exception.PortageException):
+		"""
+		Used internally to terminate scheduling. The specific reason for
+		the failure should have been dumped to stderr.
+		"""
+		def __init__(self, value=""):
+			portage.exception.PortageException.__init__(self, value)
+
 	def __init__(self, settings, trees, mtimedb, myopts,
 		spinner, mergelist, favorites, digraph):
 		PollScheduler.__init__(self)
@@ -9081,8 +9089,6 @@ class Scheduler(PollScheduler):
 		if max_jobs is None:
 			max_jobs = 1
 		self._set_max_jobs(max_jobs)
-		background = self._background_mode()
-		self._background = background
 
 		# The root where the currently running
 		# portage instance is installed.
@@ -9094,15 +9100,6 @@ class Scheduler(PollScheduler):
 		self._config_pool = {}
 		self._blocker_db = {}
 		for root in trees:
-			root_config = trees[root]["root_config"]
-			if background:
-				root_config.settings.unlock()
-				root_config.settings["PORTAGE_BACKGROUND"] = "1"
-				root_config.settings.backup_changes("PORTAGE_BACKGROUND")
-				root_config.settings.lock()
-
-			self.pkgsettings[root] = portage.config(
-				clone=trees[root]["vartree"].settings)
 			self._config_pool[root] = []
 			self._blocker_db[root] = BlockerDB(trees[root]["root_config"])
 
@@ -9241,8 +9238,13 @@ class Scheduler(PollScheduler):
 			if not (isinstance(task, Package) and \
 				task.operation == "merge"):
 				continue
-			properties = flatten(use_reduce(paren_reduce(
-				task.metadata["PROPERTIES"]), uselist=task.use.enabled))
+			try:
+				properties = flatten(use_reduce(paren_reduce(
+					task.metadata["PROPERTIES"]), uselist=task.use.enabled))
+			except portage.exception.InvalidDependString, e:
+				show_invalid_depstring_notice(task,
+					task.metadata["PROPERTIES"], str(e))
+				raise self._unknown_internal_error()
 			if "interactive" in properties:
 				interactive_tasks.append(task)
 		return interactive_tasks
@@ -9614,6 +9616,23 @@ class Scheduler(PollScheduler):
 			self._logger.log(" *** Resuming merge...")
 
 		self._save_resume_list()
+
+		try:
+			self._background = self._background_mode()
+		except self._unknown_internal_error:
+			return 1
+
+		for root in self.trees:
+			root_config = self.trees[root]["root_config"]
+			if self._background:
+				root_config.settings.unlock()
+				root_config.settings["PORTAGE_BACKGROUND"] = "1"
+				root_config.settings.backup_changes("PORTAGE_BACKGROUND")
+				root_config.settings.lock()
+
+			self.pkgsettings[root] = portage.config(
+				clone=self.trees[root]["vartree"].settings)
+
 		rval = self._check_manifests()
 		if rval != os.EX_OK:
 			return rval
