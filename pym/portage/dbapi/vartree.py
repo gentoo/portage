@@ -624,7 +624,12 @@ class LinkageMap(object):
 
 		In some cases, not all consumers are returned.  This may occur when
 		an soname symlink referencing a library is in an object's runpath while
-		the actual library is not.
+		the actual library is not. For example, this problem is noticeable for
+		binutils since it's libraries are added to the path via symlinks that
+		are gemerated in the /usr/$CHOST/lib/ directory by binutils-config.
+		Failure to recognize consumers of these symlinks makes preserve-libs
+		fail to preserve binutils libs that are needed by these unrecognized
+		consumers.
 
 		@param obj: absolute path to an object or a key from _obj_properties
 		@type obj: string (example: '/usr/bin/bar') or _ObjectKey
