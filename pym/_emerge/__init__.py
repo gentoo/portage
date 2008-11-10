@@ -9261,10 +9261,11 @@ class Scheduler(PollScheduler):
 
 		graph = self._digraph
 
-		# Iterate over all nodes rather than just the merge list, because
-		# some uninstall nodes may not be in the merge list since they will
-		# be performed as part of an upgrade within a slot.
-		for node in graph.all_nodes():
+		# TODO: Invert specific edges that the depgraph has decided are
+		# necessary and allowed to be inverted. Currently the below code
+		# does not invert edges for uninstalls that happen as part of an
+		# upgrade with in a slot (though it should).
+		for node in self._mergelist:
 			if not isinstance(node, Package) or \
 				node.operation != "uninstall":
 				continue
