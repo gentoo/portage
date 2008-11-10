@@ -4300,6 +4300,7 @@ class depgraph(object):
 		# blocker validation is only able to account for one package per slot.
 		self._slot_collision_nodes = set()
 		self._serialized_tasks_cache = None
+		self._scheduler_graph = None
 		self._displayed_list = None
 		self._pprovided_args = []
 		self._missing_args = []
@@ -6154,7 +6155,8 @@ class depgraph(object):
 		while self._serialized_tasks_cache is None:
 			self._resolve_conflicts()
 			try:
-				self._serialized_tasks_cache = self._serialize_tasks()
+				self._serialized_tasks_cache, self._scheduler_graph = \
+					self._serialize_tasks()
 			except self._serialize_tasks_retry:
 				pass
 
@@ -6162,6 +6164,25 @@ class depgraph(object):
 		if reversed:
 			retlist.reverse()
 		return retlist
+
+	def schedulerGraph(self):
+		"""
+		The scheduler graph is identical to the normal one except that
+		uninstall edges are reversed in specific cases that require
+		conflicting packages to be temporarily installed simultaneously.
+		This is intended for use by the Scheduler in it's parallelization
+		logic. It ensures that temporary simultaneous installation of
+		conflicting packages is avoided when appropriate (especially for
+		!!atom blockers), but allowed in specific cases that require it.
+
+		Note that this method calls break_refs() which alters the state of
+		internal Package instances such that this depgraph instance should
+		not be used to perform any more calculations.
+		"""
+		if self._scheduler_graph is None:
+			self.altlist()
+		self.break_refs(self._scheduler_graph.order)
+		return self._scheduler_graph
 
 	def break_refs(self, nodes):
 		"""
@@ -6189,6 +6210,7 @@ class depgraph(object):
 			raise self._unknown_internal_error()
 
 	def _serialize_tasks(self):
+		scheduler_graph = self.digraph.copy()
 		mygraph=self.digraph.copy()
 		# Prune "nomerge" root nodes if nothing depends on them, since
 		# otherwise they slow down merge order calculation. Don't remove
@@ -6608,6 +6630,10 @@ class depgraph(object):
 					for blocked_pkg in parent_nodes:
 						mygraph.add(blocked_pkg, uninst_task,
 							priority=BlockerDepPriority.instance)
+						scheduler_graph.remove_edge(uninst_task, blocked_pkg)
+						scheduler_graph.add(blocked_pkg, uninst_task,
+							priority=BlockerDepPriority.instance)
+
 				else:
 					# None of the Uninstall tasks are acceptable, so
 					# the corresponding blockers are unresolvable.
@@ -6718,14 +6744,16 @@ class depgraph(object):
 			not self._accept_blocker_conflicts():
 			self._unsatisfied_blockers_for_display = unsolvable_blockers
 			self._serialized_tasks_cache = retlist[:]
+			self._scheduler_graph = scheduler_graph
 			raise self._unknown_internal_error()
 
 		if self._slot_collision_info and \
 			not self._accept_blocker_conflicts():
 			self._serialized_tasks_cache = retlist[:]
+			self._scheduler_graph = scheduler_graph
 			raise self._unknown_internal_error()
 
-		return retlist
+		return retlist, scheduler_graph
 
 	def _show_circular_deps(self, mygraph):
 		# No leaf nodes are available, so we have a circular
@@ -9247,34 +9275,7 @@ class Scheduler(PollScheduler):
 			return
 
 		self._digraph = digraph
-		self._reverse_uninstall_edges()
 		self._prune_digraph()
-
-	def _reverse_uninstall_edges(self):
-		"""
-		The uninstall is performed only after blocking packages have been
-		merged on top of it (similar to how a normal upgrade is performed
-		by first merging the new version on top of the old version). This
-		is implemented by reversing the parent -> uninstall edges in
-		the graph.
-		"""
-
-		graph = self._digraph
-
-		# TODO: Invert specific edges that the depgraph has decided are
-		# necessary and allowed to be inverted. Currently the below code
-		# does not invert edges for uninstalls that happen as part of an
-		# upgrade with in a slot (though it should).
-		for node in self._mergelist:
-			if not isinstance(node, Package) or \
-				node.operation != "uninstall":
-				continue
-
-			parent_nodes = graph.parent_nodes(node)
-			graph.remove(node)
-			for blocked_pkg in parent_nodes:
-				graph.add(blocked_pkg, node,
-					priority=BlockerDepPriority.instance)
 
 	def _prune_digraph(self):
 		"""
@@ -10268,11 +10269,8 @@ class Scheduler(PollScheduler):
 
 		mylist = mydepgraph.altlist()
 		mydepgraph.break_refs(mylist)
-		mydepgraph.break_refs(dropped_tasks)
-		mydepgraph.break_refs(mydepgraph.digraph.order)
-
 		self._mergelist = mylist
-		self._set_digraph(mydepgraph.digraph)
+		self._set_digraph(mydepgraph.schedulerGraph())
 
 		msg_width = 75
 		for task in dropped_tasks:
@@ -13187,10 +13185,9 @@ def action_build(settings, trees, mtimedb,
 				time.sleep(3) # allow the parent to have first fetch
 			mymergelist = mydepgraph.altlist()
 			mydepgraph.break_refs(mymergelist)
-			mydepgraph.break_refs(mydepgraph.digraph.order)
 			mergetask = Scheduler(settings, trees, mtimedb, myopts,
-				spinner, mymergelist, favorites, mydepgraph.digraph)
-			del mydepgraph
+				spinner, mymergelist, favorites, mydepgraph.schedulerGraph())
+			del mydepgraph, mymergelist
 			clear_caches(trees)
 
 			retval = mergetask.merge()
@@ -13235,10 +13232,9 @@ def action_build(settings, trees, mtimedb,
 			pkglist = mydepgraph.altlist()
 			mydepgraph.saveNomergeFavorites()
 			mydepgraph.break_refs(pkglist)
-			mydepgraph.break_refs(mydepgraph.digraph.order)
 			mergetask = Scheduler(settings, trees, mtimedb, myopts,
-				spinner, pkglist, favorites, mydepgraph.digraph)
-			del mydepgraph
+				spinner, pkglist, favorites, mydepgraph.schedulerGraph())
+			del mydepgraph, pkglist
 			clear_caches(trees)
 
 			retval = mergetask.merge()
