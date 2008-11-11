@@ -71,6 +71,7 @@ from portage.process import find_binary, spawn
 from portage.output import bold, create_color_func, darkgreen, \
 	green, nocolor, red, turquoise, yellow
 from portage.output import ConsoleStyleFile, StyleWriter
+from portage.util import writemsg_level
 
 util.initialize_logger()
 
@@ -1715,7 +1716,8 @@ else:
 			elif vcs == "git":
 				retval=os.system("git add "+" ".join(myautoadd))
 		if retval:
-			print "!!! Exiting on vcs (shell) error code:",retval
+			writemsg_level("!!! Exiting on %s (shell) error code: %s\n" % \
+				(vcs, retval), level=logging.ERROR, noiselevel=-1)
 			sys.exit(retval)
 
 	if myunadded:
@@ -1911,7 +1913,8 @@ else:
 		except OSError:
 			pass
 		if retval:
-			print "!!! Exiting on cvs (shell) error code:",retval
+			writemsg_level("!!! Exiting on %s (shell) error code: %s\n" % \
+				(vcs, retval), level=logging.ERROR, noiselevel=-1)
 			sys.exit(retval)
 
 	# Setup the GPG commands
@@ -2034,7 +2037,8 @@ else:
 				except OSError:
 					pass
 				if retval:
-					print "!!! Exiting on cvs (shell) error code:",retval
+					writemsg_level("!!! Exiting on %s (shell) error code: %s\n" % \
+						(vcs, retval), level=logging.ERROR, noiselevel=-1)
 					sys.exit(retval)
 			manifest_commit_required = False
 
@@ -2110,7 +2114,8 @@ else:
 			except OSError:
 				pass
 			if retval:
-				print "!!! Exiting on cvs (shell) error code:",retval
+				writemsg_level("!!! Exiting on %s (shell) error code: %s\n" % \
+					(vcs, retval), level=logging.ERROR, noiselevel=-1)
 				sys.exit(retval)
 
 	print
