@@ -99,7 +99,7 @@ def have_profile_dir(path, maxdepth=3):
 	""" Try to figure out if 'path' has a /profiles dir in it by checking for a package.mask file
 	"""
 	while path != "/" and maxdepth:
-		if os.path.exists(path + "/profiles/package.mask"):
+		if os.path.exists(os.path.join(path, "profiles", "profiles.desc")):
 			return normalize_path(path)
 		path = normalize_path(path + "/..")
 		maxdepth -= 1
