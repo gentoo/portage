@@ -9269,8 +9269,8 @@ class Scheduler(PollScheduler):
 		return interactive_tasks
 
 	def _set_digraph(self, digraph):
-		if self._max_jobs is not True and \
-			self._max_jobs < 2:
+		if "--nodeps" in self.myopts or \
+			(self._max_jobs is not True and self._max_jobs < 2):
 			# save some memory
 			self._digraph = None
 			return
@@ -9908,7 +9908,8 @@ class Scheduler(PollScheduler):
 			return None
 
 		if self._digraph is None:
-			if self._jobs or self._task_queues.merge:
+			if (self._jobs or self._task_queues.merge) and \
+				"--nodeps" not in self.myopts:
 				self._choose_pkg_return_early = True
 				return None
 			return self._pkg_queue.pop(0)
