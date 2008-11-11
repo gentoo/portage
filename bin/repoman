@@ -480,12 +480,18 @@ if options.mode in ('last', 'lfull'):
 # commit (like if Manifest generation fails).
 can_force = True
 
+try:
+	portdir, portdir_overlay, mydir = utilities.FindPortdir(repoman_settings)
+except ValueError:
+	sys.exit(1)
 
 vcs = None
 if os.path.isdir("CVS"):
 	vcs = "cvs"
 if os.path.isdir(".svn"):
 	vcs = "svn"
+elif os.path.isdir(os.path.join(portdir_overlay, ".git")):
+	vcs = "git"
 
 if vcs == "cvs" and \
 	"commit" == options.mode and \
@@ -508,11 +514,6 @@ if vcs == "cvs" and \
 if options.mode == 'commit' and not options.pretend and not vcs:
 	logging.info("Not in a version controlled repository; enabling pretend mode.")
 	options.pretend = True
-
-try:
-	portdir, portdir_overlay, mydir = utilities.FindPortdir(repoman_settings)
-except ValueError:
-	sys.exit(1)
 
 os.environ["PORTDIR"] = portdir
 if portdir_overlay != portdir:
@@ -749,17 +750,24 @@ modified_changelogs = set()
 mychanged = []
 mynew = []
 myremoved = []
+path_lstrip_re = re.compile(r'.*/')
 
 if vcs == "cvs":
 	mycvstree = cvstree.getentries("./", recursive=1)
 	mychanged = cvstree.findchanged(mycvstree, recursive=1, basedir="./")
 	mynew = cvstree.findnew(mycvstree, recursive=1, basedir="./")
-
 if vcs == "svn":
 	svnstatus = os.popen("svn status").readlines()
 	mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and elem[:1] in "MR" ]
 	mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A") ]
-
+elif vcs == "git":
+	mychanged = os.popen("git ls-files -m").readlines()
+	mychanged = [ "./" +  elem[:-1] for elem in mychanged ]
+	mynew = os.popen("git diff --cached --name-only --diff-filter=A").readlines()
+	strip_levels = repolevel - 1
+	if strip_levels:
+		mynew = [path_lstrip_re.sub("", elem, strip_levels) for elem in mynew]
+	mynew = ["./" + elem[:-1] for elem in mynew]
 if vcs:
 	new_ebuilds.update(x for x in mynew if x.endswith(".ebuild"))
 	modified_changelogs.update(x for x in chain(mychanged, mynew) \
@@ -786,6 +794,12 @@ for x in scanlist:
 	eadded=[]
 	catdir,pkgdir=x.split("/")
 	checkdir=repodir+"/"+x
+	checkdir_relative = ""
+	if repolevel < 3:
+		checkdir_relative = os.path.join(pkgdir, checkdir_relative)
+	if repolevel < 2:
+		checkdir_relative = os.path.join(catdir, checkdir_relative)
+	checkdir_relative = os.path.join(".", checkdir_relative)
 
 	if options.mode == "manifest" or \
 	  options.mode in ('commit', 'fix') and not options.pretend:
@@ -871,7 +885,17 @@ for x in scanlist:
 				s = s[s.rfind("\n") + 1:]
 			fails["file.UTF8"].append("%s/%s: line %i, just after: '%s'" % (checkdir, y, line, s))
 
-	if vcs and check_ebuild_notadded:
+	if vcs == "git" and check_ebuild_notadded:
+		myf = os.popen("git ls-files --others %s" % \
+			(portage._shell_quote(checkdir_relative),))
+		for l in myf:
+			if l[:-1][-7:] == ".ebuild":
+				stats["ebuild.notadded"] += 1
+				fails["ebuild.notadded"].append(
+					os.path.join(x, os.path.basename(l[:-1])))
+		myf.close()
+
+	if vcs in ("cvs", "svn") and check_ebuild_notadded:
 		try:
 			if vcs == "cvs":
 				myf=open(checkdir+"/CVS/Entries","r")
@@ -1068,11 +1092,10 @@ for x in scanlist:
 		if stat.S_IMODE(os.stat(full_path).st_mode) & 0111:
 			stats["file.executable"] += 1
 			fails["file.executable"].append(x+"/"+y+".ebuild")
-		if vcs and check_ebuild_notadded and y not in eadded:
+		if vcs in ("cvs", "svn") and check_ebuild_notadded and y not in eadded:
 			#ebuild not added to vcs
 			stats["ebuild.notadded"]=stats["ebuild.notadded"]+1
 			fails["ebuild.notadded"].append(x+"/"+y+".ebuild")
-
 		myesplit=portage.pkgsplit(y)
 		if myesplit is None or myesplit[0] != x.split("/")[-1]:
 			stats["ebuild.invalidname"]=stats["ebuild.invalidname"]+1
@@ -1648,7 +1671,6 @@ else:
 			raise  # TODO propogate this
 		except:
 			err("Error retrieving CVS tree; exiting.")
-
 	if vcs == "svn":
 		try:
 			svnstatus=os.popen("svn status --no-ignore").readlines()
@@ -1657,6 +1679,12 @@ else:
 			raise  # TODO propogate this
 		except:
 			err("Error retrieving SVN info; exiting.")
+	if vcs == "git":
+		# get list of files not under version control or missing
+		myf = os.popen("git ls-files --others")
+		myunadded = [ "./" + elem[:-1] for elem in myf ]
+		myf.close()
+
 	myautoadd=[]
 	if myunadded:
 		for x in range(len(myunadded)-1,-1,-1):
@@ -1676,12 +1704,16 @@ else:
 				print "(cvs add "+" ".join(myautoadd)+")"
 			if vcs == "svn":
 				print "(svn add "+" ".join(myautoadd)+")"
+			elif vcs == "git":
+				print "(git add "+" ".join(myautoadd)+")"
 			retval=0
 		else:
 			if vcs == "cvs":
 				retval=os.system("cvs add "+" ".join(myautoadd))
 			if vcs == "svn":
 				retval=os.system("svn add "+" ".join(myautoadd))
+			elif vcs == "git":
+				retval=os.system("git add "+" ".join(myautoadd))
 		if retval:
 			print "!!! Exiting on vcs (shell) error code:",retval
 			sys.exit(retval)
@@ -1723,6 +1755,19 @@ else:
 		# only a contain props for a file listed on a previous line.
 		expansion = set("./" + prop.split(" - ")[0] \
 			for prop in props if " - " in prop)
+
+	elif vcs == "git":
+		mychanged = os.popen("git ls-files -m").readlines()
+		mychanged = [ "./" +  elem[:-1] for elem in mychanged ]
+		mynew = os.popen("git diff --cached --name-only --diff-filter=A").readlines()
+		strip_levels = repolevel - 1
+		if strip_levels:
+			mynew = [path_lstrip_re.sub("", elem, strip_levels) for elem in mynew]
+		mynew = ["./" + elem[:-1] for elem in mynew]
+		myremoved = os.popen("git diff --cached --name-only --diff-filter=D").readlines()
+		if strip_levels:
+			myremoved = [path_lstrip_re.sub("", elem, strip_levels) for elem in myremoved]
+		myremoved = ["./" + elem[:-1] for elem in myremoved]
 
 	if vcs:
 		if not (mychanged or mynew or myremoved):
@@ -1845,6 +1890,9 @@ else:
 			if vcs == "svn":
 				print "(svn commit -F %s %s)" % \
 					(commitmessagefile, " ".join(myfiles))
+			elif vcs == "git":
+				print "(git commit -F %s %s)" % \
+					(commitmessagefile, " ".join(myfiles))
 		else:
 			if vcs == "cvs":
 				retval = spawn(["cvs", "-q", "commit",
@@ -1853,6 +1901,10 @@ else:
 			if vcs == "svn":
 				retval = spawn(["svn", "commit",
 					"-F", commitmessagefile] + myfiles,
+					env=os.environ)
+			elif vcs == "git":
+				retval = spawn(["git", "commit", "-F",
+					commitmessagefile] + myfiles,
 					env=os.environ)
 		try:
 			os.unlink(commitmessagefile)
@@ -1963,6 +2015,8 @@ else:
 					print "(cvs -q commit -F commitmessagefile)"
 				if vcs == "svn":
 					print "(svn -q commit -F commitmessagefile)"
+				elif vcs == "git":
+					print "(git commit -F commitmessagefile)"
 			else:
 				fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
 				mymsg = os.fdopen(fd, "w")
@@ -1973,6 +2027,8 @@ else:
 					retval=os.system("cvs -q commit -F "+commitmessagefile)
 				if vcs == "svn":
 					retval=os.system("svn -q commit -F "+commitmessagefile)
+				elif vcs == "git":
+					retval=os.system("git commit -F "+commitmessagefile)
 				try:
 					os.unlink(commitmessagefile)
 				except OSError:
@@ -2032,6 +2088,8 @@ else:
 				print "(cvs -q commit -F commitmessagefile)"
 			if vcs == "svn":
 				print "(svn -q commit -F commitmessagefile)"
+			elif vcs == "git":
+				print "(git commit -F commitmessagefile)"
 		else:
 			fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
 			mymsg = os.fdopen(fd, "w")
@@ -2045,6 +2103,8 @@ else:
 				retval=os.system("cvs -q commit -F "+commitmessagefile)
 			if vcs == "svn":
 				retval=os.system("svn -q commit -F "+commitmessagefile)
+			elif vcs == "git":
+				retval=os.system("git commit -a -F "+commitmessagefile)
 			try:
 				os.unlink(commitmessagefile)
 			except OSError:
