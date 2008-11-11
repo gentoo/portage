@@ -9909,7 +9909,8 @@ class Scheduler(PollScheduler):
 
 		if self._digraph is None:
 			if (self._jobs or self._task_queues.merge) and \
-				"--nodeps" not in self.myopts:
+				not ("--nodeps" in self.myopts and \
+				(self._max_jobs is True or self._max_jobs > 1)):
 				self._choose_pkg_return_early = True
 				return None
 			return self._pkg_queue.pop(0)
