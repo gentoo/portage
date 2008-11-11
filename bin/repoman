@@ -1066,12 +1066,7 @@ for x in scanlist:
 
 		del metadata_bad
 
-	changelog_path = "ChangeLog"
-	if repolevel < 3:
-		changelog_path = os.path.join(pkgdir, changelog_path)
-	if repolevel < 2:
-		changelog_path = os.path.join(catdir, changelog_path)
-	changelog_path = os.path.join(".", changelog_path)
+	changelog_path = os.path.join(checkdir_relative, "ChangeLog")
 	changelog_modified = changelog_path in modified_changelogs
 
 	allmasked = True
