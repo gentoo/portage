@@ -12803,7 +12803,7 @@ def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner,
 				# dependency to become unsatisfied.
 				for parent_node in graph.parent_nodes(pkg):
 					if not isinstance(parent_node, Package) \
-						or parent_node.operation != "merge":
+						or parent_node.operation not in ("merge", "nomerge"):
 						continue
 					unsatisfied = \
 						graph.child_nodes(parent_node,
@@ -12822,7 +12822,14 @@ def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner,
 				# it's already installed, but it has unsatisfied PDEPEND.
 				raise
 			mergelist[:] = pruned_mergelist
-			dropped_tasks.update(unsatisfied_parents)
+
+			# Exclude installed packages that have been removed from the graph due
+			# to failure to build/install runtime dependencies after the dependent
+			# package has already been installed.
+			dropped_tasks.update(pkg for pkg in \
+				unsatisfied_parents if pkg.operation != "nomerge")
+			mydepgraph.break_refs(unsatisfied_parents)
+
 			del e, graph, traversed_nodes, \
 				unsatisfied_parents, unsatisfied_stack
 			continue
