@@ -45,7 +45,10 @@ AC_DEFUN([GENTOO_PATH_XCU_ID],
   dnl does it support all the bells and whistles we need?
   AC_MSG_CHECKING([whether $XCU_ID is good enough])
   for a in '' '-G' '-Gn' '-g' '-gn' '-gr' '-gnr' '-u' '-un' '-ur' '-unr' ; do
-    "$XCU_ID" $a >/dev/null 2>&1 || { XCU_ID=no ; break ; }
+    if ! "$XCU_ID" $a >/dev/null 2>&1 ; then
+      XCU_ID=no
+      break
+    fi
   done
   if test "$XCU_ID" != "no" ; then
     AC_MSG_RESULT([yes])
