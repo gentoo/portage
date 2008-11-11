@@ -11236,6 +11236,12 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 
 	_flush_elog_mod_echo()
 
+	counter_hash = settings.get("PORTAGE_COUNTER_HASH")
+	if counter_hash is not None and \
+		counter_hash == vardbapi._counter_hash():
+		# If vdb state has not changed then there's nothing else to do.
+		sys.exit(retval)
+
 	vdb_path = os.path.join(target_root, portage.VDB_PATH)
 	portage.util.ensure_dirs(vdb_path)
 	vdb_lock = None
@@ -13830,6 +13836,9 @@ def emerge_main():
 		mysettings =  trees[myroot]["vartree"].settings
 		mysettings.unlock()
 		adjust_config(myopts, mysettings)
+		mysettings["PORTAGE_COUNTER_HASH"] = \
+			trees[myroot]["vartree"].dbapi._counter_hash()
+		mysettings.backup_changes("PORTAGE_COUNTER_HASH")
 		mysettings.lock()
 		del myroot, mysettings
 
