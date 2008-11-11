@@ -9627,7 +9627,7 @@ class Scheduler(PollScheduler):
 				root_config.settings.lock()
 
 			self.pkgsettings[root] = portage.config(
-				clone=self.trees[root]["vartree"].settings)
+				clone=root_config.settings)
 
 		rval = self._check_manifests()
 		if rval != os.EX_OK:
