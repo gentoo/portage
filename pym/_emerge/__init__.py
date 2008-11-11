@@ -7849,6 +7849,7 @@ class depgraph(object):
 
 		if not serialized_tasks or "--nodeps" in self.myopts:
 			self._serialized_tasks_cache = serialized_tasks
+			self._scheduler_graph = self.digraph
 		else:
 			self._select_package = self._select_pkg_from_graph
 			self.myparams.add("selective")
