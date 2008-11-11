@@ -481,9 +481,8 @@ if options.mode in ('last', 'lfull'):
 # commit (like if Manifest generation fails).
 can_force = True
 
-try:
-	portdir, portdir_overlay, mydir = utilities.FindPortdir(repoman_settings)
-except ValueError:
+portdir, portdir_overlay, mydir = utilities.FindPortdir(repoman_settings)
+if portdir is None:
 	sys.exit(1)
 
 vcs = None

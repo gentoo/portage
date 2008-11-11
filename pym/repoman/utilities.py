@@ -393,7 +393,7 @@ def FindPortdir(settings):
 		msg = 'Repoman is unable to determine PORTDIR or PORTDIR_OVERLAY' + \
 			' from the current working directory'
 		logging.critical(msg)
-		raise ValueError(msg)
+		return (None, None, None)
 
 	if not portdir:
 		portdir = settings["PORTDIR"]
