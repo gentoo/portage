@@ -77,7 +77,7 @@ class NewsManager(object):
 		news = os.listdir(path)
 
 		skipfile = os.path.join(self.unread_path, "news-%s.skip" % repoid)
-		skiplist = frozenset(grabfile(skipfile))
+		skiplist = set(grabfile(skipfile))
 		updates = []
 		for itemid in news:
 			if itemid in skiplist:
@@ -107,12 +107,13 @@ class NewsManager(object):
 
 			for item in updates:
 				unread_file.write(item.name + "\n")
-				skiplist.append(item.name)
+				skiplist.add(item.name)
 			unread_file.close()
 		finally:
 			if unread_lock:
 				unlockfile(unread_lock)
-			write_atomic(skipfile, "\n".join(skiplist)+"\n")
+			write_atomic(skipfile,
+				"".join("%s\n" % x for x in sorted(skiplist)))
 		try:
 			apply_permissions(filename=skipfile, 
 				uid=int(self.config["PORTAGE_INST_UID"]), gid=portage_gid, mode=0664)
