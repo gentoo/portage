@@ -8,11 +8,13 @@ __all__ = ["NewsManager", "NewsItem", "DisplayRestriction",
 	"DisplayInstalledRestriction"]
 
 import errno
+import logging
 import os
 import re
 from portage.util import apply_permissions, ensure_dirs, grabfile, \
-	grablines, normalize_path, write_atomic
+	grablines, normalize_path, write_atomic, writemsg_level
 from portage.data import portage_gid
+from portage.dep import isvalidatom
 from portage.locks import lockfile, unlockfile
 from portage.exception import OperationNotPermitted
 
@@ -87,6 +89,8 @@ class NewsManager(object):
 			if not os.path.isfile(filename):
 				continue
 			item = NewsItem(filename, itemid)
+			if not item.isValid():
+				continue
 			if item.isRelevant(profile=self._profile_path,
 				config=self.config, vardb=self.vdb):
 				updates.append(item)
@@ -173,6 +177,7 @@ class NewsItem(object):
 		self.path = path
 		self.name = name
 		self._parsed = False
+		self._valid = True
 
 	def isRelevant(self, vardb, config, profile):
 		"""
@@ -197,10 +202,16 @@ class NewsItem(object):
 			
 		return False # No restrictions were met; thus we aren't relevant :(
 
+	def isValid(self):
+		if not self._parsed:
+			self.parse()
+		return self._valid
+
 	def parse(self):
 		lines = open(self.path).readlines()
 		self.restrictions = []
-		for line in lines:
+		invalids = []
+		for i, line in enumerate(lines):
 			#Optimization to ignore regex matchines on lines that
 			#will never match
 			if not line.startswith('D'):
@@ -212,7 +223,18 @@ class NewsItem(object):
 				match = regex.match(line)
 				if match:
 					self.restrictions.append(restriction(match.groups()[0].strip()))
+					if not self.restrictions[-1].isValid():
+						invalids.append((i + 1, line.rstrip("\n")))
 					continue
+		if invalids:
+			self._valid = False
+			msg = []
+			msg.append("Invalid news item: %s" % (self.path,))
+			for lineno, line in invalids:
+				msg.append("  line %d: %s" % (lineno, line))
+			writemsg_level("".join("!!! %s\n" % x for x in msg),
+				level=logging.ERROR, noiselevel=-1)
+
 		self._parsed = True
 
 	def __getattr__(self, attr):
@@ -228,6 +250,9 @@ class DisplayRestriction(object):
 	a particular item is relevant or not.  If any of it's restrictions
 	are met, then it is displayed
 	"""
+
+	def isValid(self):
+		return True
 
 	def checkRestriction(self, **kwargs):
 		raise NotImplementedError('Derived class should over-ride this method')
@@ -266,11 +291,14 @@ class DisplayInstalledRestriction(DisplayRestriction):
 	if the user has that item installed.
 	"""
 	
-	def __init__(self, cpv):
-		self.cpv = cpv
+	def __init__(self, atom):
+		self.atom = atom
+
+	def isValid(self):
+		return isvalidatom(self.atom)
 
 	def checkRestriction(self, **kwargs):
 		vdb = kwargs['vardb']
-		if vdb.match(self.cpv):
+		if vdb.match(self.atom):
 			return True
 		return False
