@@ -77,7 +77,7 @@ class NewsManager(object):
 		news = os.listdir(path)
 
 		skipfile = os.path.join(self.unread_path, "news-%s.skip" % repoid)
-		skiplist = grabfile(skipfile)
+		skiplist = frozenset(grabfile(skipfile))
 		updates = []
 		for itemid in news:
 			if itemid in skiplist:
