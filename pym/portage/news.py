@@ -82,11 +82,11 @@ class NewsManager(object):
 		for itemid in news:
 			if itemid in skiplist:
 				continue
-			try:
-				filename = os.path.join(path, itemid, itemid + "." + self.language_id + ".txt")
-				item = NewsItem(filename, itemid)
-			except (TypeError):
+			filename = os.path.join(path, itemid,
+				itemid + "." + self.language_id + ".txt")
+			if not os.path.isfile(filename):
 				continue
+			item = NewsItem(filename, itemid)
 			if item.isRelevant(profile=self._profile_path,
 				config=self.config, vardb=self.vdb):
 				updates.append(item)
@@ -169,8 +169,6 @@ class NewsItem(object):
 		""" 
 		For a given news item we only want if it path is a file.
 		"""
-		if not os.path.isfile(path):
-			raise TypeError("%s is no regular file" % path)
 		self.path = path
 		self.name = name
 		self._parsed = False
