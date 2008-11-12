@@ -188,6 +188,9 @@ class NewsItem(object):
 		or raise a ValueError exception if the required object is not present.
 		"""
 
+		if not self._parsed:
+			self.parse()
+
 		if not len(self.restrictions):
 			return True # no restrictions to match means everyone should see it
 		
@@ -236,11 +239,6 @@ class NewsItem(object):
 				level=logging.ERROR, noiselevel=-1)
 
 		self._parsed = True
-
-	def __getattr__(self, attr):
-		if not self._parsed:
-			self.parse()
-		return self.__dict__[attr]
 
 class DisplayRestriction(object):
 	"""
