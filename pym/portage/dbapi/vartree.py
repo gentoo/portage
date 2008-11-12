@@ -780,7 +780,9 @@ class vardbapi(dbapi):
 			from md5 import new as new_hash
 		h = new_hash()
 		aux_keys = ["COUNTER"]
-		for cpv in self.cpv_all():
+		cpv_list = self.cpv_all()
+		cpv_list.sort()
+		for cpv in cpv_list:
 			try:
 				counter, = self.aux_get(cpv, aux_keys)
 			except KeyError:
@@ -931,7 +933,7 @@ class vardbapi(dbapi):
 					self.invalidentry(self.getpath(subpath))
 					continue
 				returnme.append(subpath)
-		returnme.sort()
+
 		return returnme
 
 	def cp_all(self, use_cache=1):
