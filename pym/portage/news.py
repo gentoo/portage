@@ -40,6 +40,10 @@ class NewsManager(object):
 		self.vdb = vardb
 		self.portdb = portdb
 
+		# GLEP 42 says:
+		#   All news item related files should be root owned and in the
+		#   portage group with the group write (and, for directories,
+		#   execute) bits set. News files should be world readable.
 		self._uid = int(self.config["PORTAGE_INST_UID"])
 		self._gid = portage_gid
 		self._file_mode = 00064
