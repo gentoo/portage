@@ -10,7 +10,7 @@ __all__ = ["NewsManager", "NewsItem", "DisplayRestriction",
 import logging
 import os
 import re
-from portage.util import apply_permissions, ensure_dirs, \
+from portage.util import apply_secpass_permissions, ensure_dirs, \
 	grabfile, normalize_path, write_atomic, writemsg_level
 from portage.data import portage_gid
 from portage.dep import isvalidatom
@@ -124,14 +124,14 @@ class NewsManager(object):
 			if unread != unread_orig:
 				write_atomic(unread_filename,
 					"".join("%s\n" % x for x in sorted(unread)))
-				apply_permissions(unread_filename,
+				apply_secpass_permissions(unread_filename,
 					uid=self._uid, gid=self._gid,
 					mode=self._file_mode, mask=self._mode_mask)
 
 			if skip != skip_orig:
 				write_atomic(skip_filename,
 					"".join("%s\n" % x for x in sorted(skip)))
-				apply_permissions(skip_filename,
+				apply_secpass_permissions(skip_filename,
 					uid=self._uid, gid=self._gid,
 					mode=self._file_mode, mask=self._mode_mask)
 
