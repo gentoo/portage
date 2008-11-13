@@ -21,7 +21,6 @@
 	<!ENTITY qa SYSTEM "qa.docbook">
 	<!ENTITY config SYSTEM "config.docbook">
 	<!ENTITY config_bashrc SYSTEM "config/bashrc.docbook">
-	<!ENTITY config_set SYSTEM "config/sets.docbook">
 ]>
 
 <book id="portage" lang="en">
