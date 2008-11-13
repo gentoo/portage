@@ -11,7 +11,7 @@ import logging
 import os
 import re
 from portage.util import apply_permissions, ensure_dirs, \
-	grablines, normalize_path, write_atomic, writemsg_level
+	grabfile, normalize_path, write_atomic, writemsg_level
 from portage.data import portage_gid
 from portage.dep import isvalidatom
 from portage.locks import lockfile, unlockfile
@@ -100,9 +100,9 @@ class NewsManager(object):
 		unread_filename = self._unread_filename(repoid)
 		unread_lock = lockfile(unread_filename, wantnewlockfile=1)
 		try:
-			unread = set(grablines(unread_filename))
+			unread = set(grabfile(unread_filename))
 			unread_orig = unread.copy()
-			skip = set(grablines(skip_filename))
+			skip = set(grabfile(skip_filename))
 			skip_orig = skip.copy()
 
 			updates = []
@@ -156,7 +156,7 @@ class NewsManager(object):
 		except (InvalidLocation, OperationNotPermitted, PermissionDenied):
 			return 0
 		try:
-			return len(grablines(unread_filename))
+			return len(grabfile(unread_filename))
 		finally:
 			if unread_lock:
 				unlockfile(unread_lock)
