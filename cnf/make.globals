@@ -46,9 +46,6 @@ FEATURES="distlocks parallel-fetch protect-owned sandbox
 # FEATURES=protect-owned to operate smoothly in all cases.
 COLLISION_IGNORE="/lib/modules"
 
-# Enable for global testing
-FEATURES="${FEATURES} preserve-libs"
-
 # Default chunksize for binhost comms
 PORTAGE_BINHOST_CHUNKSIZE="3000"
 

@@ -11023,67 +11023,6 @@ def display_news_notification(root_config, myopts):
 		print "Use " + colorize("GOOD", "eselect news") + " to read news items."
 		print
 
-def display_preserved_libs(vardbapi):
-	MAX_DISPLAY = 3
-
-	if vardbapi.plib_registry.hasEntries():
-		print
-		print colorize("WARN", "!!!") + " existing preserved libs:"
-		plibdata = vardbapi.plib_registry.getPreservedLibs()
-		linkmap = vardbapi.linkmap
-		consumer_map = {}
-		owners = {}
-		linkmap_broken = False
-
-		try:
-			linkmap.rebuild()
-		except portage.exception.CommandNotFound, e:
-			writemsg_level("!!! Command Not Found: %s\n" % (e,),
-				level=logging.ERROR, noiselevel=-1)
-			del e
-			linkmap_broken = True
-		else:
-			search_for_owners = set()
-			for cpv in plibdata:
-				for f in plibdata[cpv]:
-					if f in consumer_map:
-						continue
-					consumers = list(linkmap.findConsumers(f))
-					consumers.sort()
-					consumer_map[f] = consumers
-					search_for_owners.update(consumers[:MAX_DISPLAY+1])
-
-			owners = vardbapi._owners.getFileOwnerMap(search_for_owners)
-
-		for cpv in plibdata:
-			print colorize("WARN", ">>>") + " package: %s" % cpv
-			samefile_map = {}
-			for f in plibdata[cpv]:
-				obj_key = linkmap._obj_key(f)
-				alt_paths = samefile_map.get(obj_key)
-				if alt_paths is None:
-					alt_paths = set()
-					samefile_map[obj_key] = alt_paths
-				alt_paths.add(f)
-
-			for alt_paths in samefile_map.itervalues():
-				alt_paths = sorted(alt_paths)
-				for p in alt_paths:
-					print colorize("WARN", " * ") + " - %s" % (p,)
-				f = alt_paths[0]
-				consumers = consumer_map.get(f, [])
-				for c in consumers[:MAX_DISPLAY]:
-					print colorize("WARN", " * ") + "     used by %s (%s)" % \
-						(c, ", ".join(x.mycpv for x in owners.get(c, [])))
-				if len(consumers) == MAX_DISPLAY + 1:
-					print colorize("WARN", " * ") + "     used by %s (%s)" % \
-						(consumers[MAX_DISPLAY], ", ".join(x.mycpv \
-						for x in owners.get(consumers[MAX_DISPLAY], [])))
-				elif len(consumers) > MAX_DISPLAY:
-					print colorize("WARN", " * ") + "     used by %d other files" % (len(consumers) - MAX_DISPLAY)
-		print "Use " + colorize("GOOD", "emerge @preserved-rebuild") + " to rebuild packages using these libraries"
-
-
 def _flush_elog_mod_echo():
 	"""
 	Dump the mod_echo output now so that our other
@@ -11174,8 +11113,6 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 	chk_updated_cfg_files(target_root, config_protect)
 	
 	display_news_notification(root_config, myopts)
-	if retval in (None, os.EX_OK) or (not "--pretend" in myopts):
-		display_preserved_libs(vardbapi)	
 
 	sys.exit(retval)
 
@@ -12399,185 +12336,6 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	if len(cleanlist):
 		clean_set = set(cleanlist)
 
-		# Check if any of these package are the sole providers of libraries
-		# with consumers that have not been selected for removal. If so, these
-		# packages and any dependencies need to be added to the graph.
-		real_vardb = trees[myroot]["vartree"].dbapi
-		linkmap = real_vardb.linkmap
-		liblist = linkmap.listLibraryObjects()
-		consumer_cache = {}
-		provider_cache = {}
-		soname_cache = {}
-		consumer_map = {}
-
-		writemsg_level(">>> Checking for lib consumers...\n")
-
-		for pkg in cleanlist:
-			pkg_dblink = real_vardb._dblink(pkg.cpv)
-			provided_libs = set()
-
-			for lib in liblist:
-				if pkg_dblink.isowner(lib, myroot):
-					provided_libs.add(lib)
-
-			if not provided_libs:
-				continue
-
-			consumers = {}
-			for lib in provided_libs:
-				lib_consumers = consumer_cache.get(lib)
-				if lib_consumers is None:
-					lib_consumers = linkmap.findConsumers(lib)
-					consumer_cache[lib] = lib_consumers
-				if lib_consumers:
-					consumers[lib] = lib_consumers
-
-			if not consumers:
-				continue
-
-			for lib, lib_consumers in consumers.items():
-				for consumer_file in list(lib_consumers):
-					if pkg_dblink.isowner(consumer_file, myroot):
-						lib_consumers.remove(consumer_file)
-				if not lib_consumers:
-					del consumers[lib]
-
-			if not consumers:
-				continue
-
-			for lib, lib_consumers in consumers.iteritems():
-
-				soname = soname_cache.get(lib)
-				if soname is None:
-					soname = linkmap.getSoname(lib)
-					soname_cache[lib] = soname
-
-				consumer_providers = []
-				for lib_consumer in lib_consumers:
-					providers = provider_cache.get(lib)
-					if providers is None:
-						providers = linkmap.findProviders(lib_consumer)
-						provider_cache[lib_consumer] = providers
-					if soname not in providers:
-						# Why does this happen?
-						continue
-					consumer_providers.append(
-						(lib_consumer, providers[soname]))
-
-				consumers[lib] = consumer_providers
-
-			consumer_map[pkg] = consumers
-
-		if consumer_map:
-
-			search_files = set()
-			for consumers in consumer_map.itervalues():
-				for lib, consumer_providers in consumers.iteritems():
-					for lib_consumer, providers in consumer_providers:
-						search_files.add(lib_consumer)
-						search_files.update(providers)
-
-			writemsg_level(">>> Assigning files to packages...\n")
-			file_owners = real_vardb._owners.getFileOwnerMap(search_files)
-
-			for pkg, consumers in consumer_map.items():
-				for lib, consumer_providers in consumers.items():
-					lib_consumers = set()
-
-					for lib_consumer, providers in consumer_providers:
-						owner_set = file_owners.get(lib_consumer)
-						provider_dblinks = set()
-						provider_pkgs = set()
-
-						if len(providers) > 1:
-							for provider in providers:
-								provider_set = file_owners.get(provider)
-								if provider_set is not None:
-									provider_dblinks.update(provider_set)
-
-						if len(provider_dblinks) > 1:
-							for provider_dblink in provider_dblinks:
-								pkg_key = ("installed", myroot,
-									provider_dblink.mycpv, "nomerge")
-								if pkg_key not in clean_set:
-									provider_pkgs.add(vardb.get(pkg_key))
-
-						if provider_pkgs:
-							continue
-
-						if owner_set is not None:
-							lib_consumers.update(owner_set)
-
-					for consumer_dblink in list(lib_consumers):
-						if ("installed", myroot, consumer_dblink.mycpv,
-							"nomerge") in clean_set:
-							lib_consumers.remove(consumer_dblink)
-							continue
-
-					if lib_consumers:
-						consumers[lib] = lib_consumers
-					else:
-						del consumers[lib]
-				if not consumers:
-					del consumer_map[pkg]
-
-		if consumer_map:
-			# TODO: Implement a package set for rebuilding consumer packages.
-
-			msg = "In order to avoid breakage of link level " + \
-				"dependencies, one or more packages will not be removed. " + \
-				"This can be solved by rebuilding " + \
-				"the packages that pulled them in."
-
-			prefix = bad(" * ")
-			from textwrap import wrap
-			writemsg_level("".join(prefix + "%s\n" % line for \
-				line in wrap(msg, 70)), level=logging.WARNING, noiselevel=-1)
-
-			msg = []
-			for pkg, consumers in consumer_map.iteritems():
-				unique_consumers = set(chain(*consumers.values()))
-				unique_consumers = sorted(consumer.mycpv \
-					for consumer in unique_consumers)
-				msg.append("")
-				msg.append("  %s pulled in by:" % (pkg.cpv,))
-				for consumer in unique_consumers:
-					msg.append("    %s" % (consumer,))
-			msg.append("")
-			writemsg_level("".join(prefix + "%s\n" % line for line in msg),
-				level=logging.WARNING, noiselevel=-1)
-
-			# Add lib providers to the graph as children of lib consumers,
-			# and also add any dependencies pulled in by the provider.
-			writemsg_level(">>> Adding lib providers to graph...\n")
-
-			for pkg, consumers in consumer_map.iteritems():
-				for consumer_dblink in set(chain(*consumers.values())):
-					consumer_pkg = vardb.get(("installed", myroot,
-						consumer_dblink.mycpv, "nomerge"))
-					resolver._add_pkg(pkg, Dependency(parent=consumer_pkg,
-						priority=UnmergeDepPriority(runtime=True),
-						root=pkg.root))
-
-			writemsg_level("\nCalculating dependencies  ")
-			success = resolver._complete_graph()
-			writemsg_level("\b\b... done!\n")
-			resolver.display_problems()
-			if not success:
-				return 1
-			if unresolved_deps():
-				return 1
-
-			graph = resolver.digraph.copy()
-			required_pkgs_total = 0
-			for node in graph:
-				if isinstance(node, Package):
-					required_pkgs_total += 1
-			cleanlist = create_cleanlist()
-			if not cleanlist:
-				return 0
-			clean_set = set(cleanlist)
-
 		# Use a topological sort to create an unmerge order such that
 		# each package is unmerged before it's dependencies. This is
 		# necessary to avoid breaking things that may need to run
@@ -13179,7 +12937,6 @@ def action_build(settings, trees, mtimedb,
 				portage.writemsg_stdout(colorize("WARN", "WARNING:")
 					+ " AUTOCLEAN is disabled.  This can cause serious"
 					+ " problems due to overlapping packages.\n")
-			trees[settings["ROOT"]]["vartree"].dbapi.plib_registry.pruneNonExisting()
 
 		return retval
 
@@ -13385,7 +13142,6 @@ def clear_caches(trees):
 		d["porttree"].dbapi._aux_cache.clear()
 		d["bintree"].dbapi._aux_cache.clear()
 		d["bintree"].dbapi._clear_cache()
-		d["vartree"].dbapi.linkmap._clear_cache()
 	portage.dircache.clear()
 	gc.collect()
 
