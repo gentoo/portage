@@ -180,24 +180,16 @@ class WorldSet(EditablePackageSet):
 		self.loader = ItemFileLoader(self._filename, self._validate)
 		self._mtime = None
 		
-		self._filename2 = os.path.join(os.sep, root, PRIVATE_PATH.lstrip(os.sep), "world_sets")
-		self.loader2 = ItemFileLoader(self._filename2, self._validate2)
-		self._mtime2 = None
-		
 	def _validate(self, atom):
 		return ValidAtomValidator(atom)
-
-	def _validate2(self, setname):
-		return setname.startswith(SETPREFIX)
 
 	def write(self):
 		write_atomic(self._filename,
 			"".join(sorted("%s\n" % x for x in self._atoms)))
-		write_atomic(self._filename2, "\n".join(sorted(self._nonatoms))+"\n")
 	
 	def load(self):
 		atoms = []
-		nonatoms = []
+		nonatoms = ["@system"]
 		atoms_changed = False
 		# load atoms and non-atoms from different files so the worldfile is 
 		# backwards-compatible with older versions and other PMs, even though 
@@ -222,26 +214,6 @@ class WorldSet(EditablePackageSet):
 			atoms_changed = True
 		else:
 			atoms.extend(self._atoms)
-		try:
-			mtime = os.stat(self._filename2).st_mtime
-		except (OSError, IOError):
-			mtime = None
-		if (not self._loaded or self._mtime2 != mtime):
-			try:
-				data, errors = self.loader2.load()
-				for fname in errors:
-					for e in errors[fname]:
-						self.errors.append(fname+": "+e)
-			except EnvironmentError, e:
-				if e.errno != errno.ENOENT:
-					raise
-				del e
-				data = {}
-			nonatoms = data.keys()
-			self._mtime2 = mtime
-			atoms_changed = True
-		else:
-			nonatoms.extend(self._nonatoms)
 		if atoms_changed:
 			self._setAtoms(atoms+nonatoms)
 		
