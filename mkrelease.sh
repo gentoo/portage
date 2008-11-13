@@ -5,6 +5,10 @@ SOURCE_DIR=${RELEASE_BUILDDIR}/checkout
 BRANCH=${BRANCH:-trunk}
 REPOSITORY=svn+ssh://cvs.gentoo.org/var/svnroot/portage/main
 SVN_LOCATION=${REPOSITORY}/${BRANCH}
+CHANGELOG_REVISION=""
+CREATE_TAG=
+CHANGELOG_REVISION=
+UPLOAD_LOCATION=
 
 die() {
 	echo $@
@@ -12,7 +16,8 @@ die() {
 	exit 1
 }
 
-ARGS=$(getopt -o tu: --long anon,tag,upload: -n $(basename $0) -- "$@")
+ARGS=$(getopt -o tu: --long anon,changelog-rev:,tag,upload: \
+	-n ${0##*/} -- "$@")
 [ $? != 0 ] && die "initialization error"
 
 eval set -- "${ARGS}"
@@ -23,6 +28,10 @@ while true; do
 			REPOSITORY=svn://anonsvn.gentoo.org/portage/main
 			SVN_LOCATION=${REPOSITORY}/${BRANCH}
 			shift
+			;;
+		--changelog-rev)
+			CHANGELOG_REVISION=$2
+			shift 2
 			;;
 		-t|--tag)
 			CREATE_TAG=true
@@ -58,7 +67,10 @@ echo ">>> Starting Subversion export"
 svn export "${SVN_LOCATION}" "${SOURCE_DIR}" > /dev/null || die "svn export failed"
 
 echo ">>> Creating Changelog"
-svn2cl -o "${SOURCE_DIR}/ChangeLog" "${SVN_LOCATION}" || die "ChangeLog creation failed"
+svn2cl_opts=
+[ -n $CHANGELOG_REVISION ] && svn2cl_opts=HEAD:$CHANGELOG_REVISION
+svn2cl -r $svn2cl_opts -i -o "${SOURCE_DIR}/ChangeLog" "${SVN_LOCATION}" \
+	|| die "ChangeLog creation failed"
 
 echo ">>> Building release tree"
 cp -a "${SOURCE_DIR}/"{bin,cnf,doc,man,pym,src} "${RELEASE_DIR}/" || die "directory copy failed"
