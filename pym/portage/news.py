@@ -73,12 +73,10 @@ class NewsManager(object):
 			raise ValueError("Invalid repoID: %s" % repoid)
 
 		path = os.path.join(self.portdb.getRepositoryPath(repoid), self.news_path)
-
-		# Skip reading news for repoid if the news dir does not exist.  Requested by
-		# NightMorph :)
-		if not os.path.exists(path):
-			return None
-		news = os.listdir(path)
+		try:
+			news = os.listdir(path)
+		except OSError:
+			return
 
 		skipfile = os.path.join(self.unread_path, "news-%s.skip" % repoid)
 		skiplist = set(grabfile(skipfile))
