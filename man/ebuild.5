@@ -141,6 +141,10 @@ the EAPI to which this package conforms.
 Contains a list of URI's for the required source files.  It can contain
 multiple URI's for a single source file.  The list is processed in order
 if the file was not found on any of the \fIGENTOO_MIRRORS\fR.
+Beginning with \fBEAPI 2\fR, the output file name of a given URI may be
+customized with a "->" operator on the right hand side, followed by the
+desired output file name. All tokens, including the operator and output
+file name, should be separated by whitespace.
 .TP
 \fBHOMEPAGE\fR = \fI"http://happy.com/"\fR
 Should contain a list of URL's for the sources main sites and other further
