@@ -470,8 +470,22 @@ patches and other pre configure/compile modifications should be done here.
 .br
 Initial working directory of $WORKDIR.
 .TP
+.B src_prepare
+All preparation of source code, such as application of patches, should be done
+here. This function is supported beginning with \fBEAPI 2\fR.
+.br
+Initial working directory of $S.
+.TP
+.B src_configure
+All necessary steps for configuration should be done here. This function is
+supported beginning with \fBEAPI 2\fR.
+.br
+Initial working directory of $S.
+.TP
 .B src_compile
-All necessary steps for configuration and compilation should be done in here.
+With less than \fBEAPI 2\fR, all necessary steps for both configuration and
+compilation should be done here. Beginning with \fBEAPI 2\fR, only compilation
+steps should be done here.
 .br
 Initial working directory of $S.
 .TP
