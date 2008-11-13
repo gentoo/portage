@@ -7,16 +7,16 @@ __all__ = ["NewsManager", "NewsItem", "DisplayRestriction",
 	"DisplayProfileRestriction", "DisplayKeywordRestriction",
 	"DisplayInstalledRestriction"]
 
-import errno
 import logging
 import os
 import re
-from portage.util import apply_permissions, ensure_dirs, grabfile, \
+from portage.util import apply_permissions, ensure_dirs, \
 	grablines, normalize_path, write_atomic, writemsg_level
 from portage.data import portage_gid
 from portage.dep import isvalidatom
 from portage.locks import lockfile, unlockfile
-from portage.exception import OperationNotPermitted, PermissionDenied
+from portage.exception import InvalidLocation, OperationNotPermitted, \
+	PermissionDenied
 
 class NewsManager(object):
 	"""
@@ -40,6 +40,12 @@ class NewsManager(object):
 		self.vdb = vardb
 		self.portdb = portdb
 
+		self._uid = int(self.config["PORTAGE_INST_UID"])
+		self._gid = portage_gid
+		self._file_mode = 00064
+		self._dir_mode  = 00074
+		self._mode_mask = 00000
+
 		portdir = portdb.porttree_root
 		profiles_base = os.path.join(portdir, 'profiles') + os.path.sep
 		profile_path = None
@@ -50,6 +56,18 @@ class NewsManager(object):
 				profile_path = profile_path[len(profiles_base):]
 		self._profile_path = profile_path
 
+	def _unread_filename(self, repoid):
+		return os.path.join(self.unread_path, 'news-%s.unread' % repoid)
+
+	def _skip_filename(self, repoid):
+		return os.path.join(self.unread_path, 'news-%s.skip' % repoid)
+
+	def _news_dir(self, repoid):
+		repo_path = self.portdb.getRepositoryPath(repoid)
+		if repo_path is None:
+			raise AssertionError("Invalid repoID: %s" % repoid)
+		return os.path.join(repo_path, self.news_path)
+
 	def updateItems(self, repoid):
 		"""
 		Figure out which news items from NEWS_PATH are both unread and relevant to
@@ -58,77 +76,63 @@ class NewsManager(object):
 		"""
 
 		# Ensure that the unread path exists and is writable.
-		dirmode  = 00700
-		modemask =   022
+
 		try:
-			ensure_dirs(self.unread_path, mode=dirmode, mask=modemask)
+			ensure_dirs(self.unread_path, uid=self._uid, gid=self._gid,
+				mode=self._dir_mode, mask=self._mode_mask)
 		except (OperationNotPermitted, PermissionDenied):
 			return
 
 		if not os.access(self.unread_path, os.W_OK):
 			return
 
-		repos = self.portdb.getRepositories()
-		if repoid not in repos:
-			raise ValueError("Invalid repoID: %s" % repoid)
-
-		path = os.path.join(self.portdb.getRepositoryPath(repoid), self.news_path)
+		news_dir = self._news_dir(repoid)
 		try:
-			news = os.listdir(path)
+			news = os.listdir(news_dir)
 		except OSError:
 			return
 
-		skipfile = os.path.join(self.unread_path, "news-%s.skip" % repoid)
-		skiplist = set(grabfile(skipfile))
-		updates = []
-		for itemid in news:
-			if itemid in skiplist:
-				continue
-			filename = os.path.join(path, itemid,
-				itemid + "." + self.language_id + ".txt")
-			if not os.path.isfile(filename):
-				continue
-			item = NewsItem(filename, itemid)
-			if not item.isValid():
-				continue
-			if item.isRelevant(profile=self._profile_path,
-				config=self.config, vardb=self.vdb):
-				updates.append(item)
-		del path
-		
-		path = os.path.join(self.unread_path, 'news-%s.unread' % repoid)
-		unread_lock = None
+		skip_filename = self._skip_filename(repoid)
+		unread_filename = self._unread_filename(repoid)
+		unread_lock = lockfile(unread_filename, wantnewlockfile=1)
 		try:
-			unread_lock = lockfile(path)
-			if not os.path.exists(path):
-				#create the file if it does not exist
-				open(path, "w")
-			# Ensure correct perms on the unread file.
-			apply_permissions( filename=path,
-				uid=int(self.config['PORTAGE_INST_UID']), gid=portage_gid, mode=0664)
-			# Make sure we have the correct permissions when created
-			unread_file = open(path, 'a')
+			unread = set(grablines(unread_filename))
+			unread_orig = unread.copy()
+			skip = set(grablines(skip_filename))
+			skip_orig = skip.copy()
 
-			for item in updates:
-				unread_file.write(item.name + "\n")
-				skiplist.add(item.name)
-			unread_file.close()
+			updates = []
+			for itemid in news:
+				if itemid in skip:
+					continue
+				filename = os.path.join(news_dir, itemid,
+					itemid + "." + self.language_id + ".txt")
+				if not os.path.isfile(filename):
+					continue
+				item = NewsItem(filename, itemid)
+				if not item.isValid():
+					continue
+				if item.isRelevant(profile=self._profile_path,
+					config=self.config, vardb=self.vdb):
+					unread.add(item.name)
+					skip.add(item.name)
+
+			if unread != unread_orig:
+				write_atomic(unread_filename,
+					"".join("%s\n" % x for x in sorted(unread)))
+				apply_permissions(unread_filename,
+					uid=self._uid, gid=self._gid,
+					mode=self._file_mode, mask=self._mode_mask)
+
+			if skip != skip_orig:
+				write_atomic(skip_filename,
+					"".join("%s\n" % x for x in sorted(skip)))
+				apply_permissions(skip_filename,
+					uid=self._uid, gid=self._gid,
+					mode=self._file_mode, mask=self._mode_mask)
+
 		finally:
-			if unread_lock:
-				unlockfile(unread_lock)
-			write_atomic(skipfile,
-				"".join("%s\n" % x for x in sorted(skiplist)))
-		try:
-			apply_permissions(filename=skipfile, 
-				uid=int(self.config["PORTAGE_INST_UID"]), gid=portage_gid, mode=0664)
-		except OperationNotPermitted, e:
-			import errno
-			# skip "permission denied" errors as we're likely running in pretend mode
-			# with reduced priviledges
-			if e.errno == errno.EPERM:
-				pass
-			else:
-				raise
+			unlockfile(unread_lock)
 
 	def getUnreadItems(self, repoid, update=False):
 		"""
@@ -141,15 +145,14 @@ class NewsManager(object):
 		if update:
 			self.updateItems(repoid)
 		
-		unreadfile = os.path.join(self.unread_path, 'news-%s.unread' % repoid)
+		unread_filename = self._unread_filename(repoid)
 		unread_lock = None
 		try:
-			if os.access(os.path.dirname(unreadfile), os.W_OK):
-				# TODO: implement shared readonly locks
-				unread_lock = lockfile(unreadfile)
-
-			return len(grablines(unreadfile))
-
+			unread_lock = lockfile(unread_filename, wantnewlockfile=1)
+		except (InvalidLocation, OperationNotPermitted, PermissionDenied):
+			return 0
+		try:
+			return len(grablines(unread_filename))
 		finally:
 			if unread_lock:
 				unlockfile(unread_lock)
