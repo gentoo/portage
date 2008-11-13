@@ -517,6 +517,35 @@ Initial working directory of $PWD.
 This function should contain optional basic configuration steps.
 .br
 Initial working directory of $PWD.
+.SH "HELPER FUNCTIONS: PHASES"
+.TP
+.B default
+Calls the default phase function implementation for the currently executing
+phase. This function is supported beginning with \fBEAPI 2\fR.
+.TP
+.B default_pkg_nofetch
+Calls the default pkg_nofetch phase function implementation.
+This function is supported beginning with \fBEAPI 2\fR.
+.TP
+.B default_src_unpack
+Calls the default src_unpack phase function implementation.
+This function is supported beginning with \fBEAPI 2\fR.
+.TP
+.B default_src_prepare
+Calls the default src_prepare phase function implementation.
+This function is supported beginning with \fBEAPI 2\fR.
+.TP
+.B default_src_configure
+Calls the default src_configure phase function implementation.
+This function is supported beginning with \fBEAPI 2\fR.
+.TP
+.B default_src_compile
+Calls the default src_compile phase function implementation.
+This function is supported beginning with \fBEAPI 2\fR.
+.TP
+.B default_src_test
+Calls the default src_test phase function implementation.
+This function is supported beginning with \fBEAPI 2\fR.
 .SH "HELPER FUNCTIONS: GENERAL"
 .TP
 \fBdie\fR \fI[reason]\fR
