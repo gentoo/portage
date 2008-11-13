@@ -1,7 +1,7 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
-portage-2.2
+portage-2.1.6
 ==================================
 
 * The python namespace for portage has been sanitized, all portage related code
@@ -15,20 +15,8 @@ portage-2.2
   For packages that don't specify any other KEYWORDS you can use the new ** token
   as documented in portage(5) to disable KEYWORDS filtering completely.
 * Portage now warns if an ebuild repository does not have a name, as several new
-  features in 2.2 make use of or require named repositories. The repository name
+  features in 2.1.6 make use of or require named repositories. The repository name
   is stored in profiles/repo_name in each repository.
-* Package set support: There are several important notes regarding package sets:
-  - setnames have to be prefixed with @ (exceptions: 'world' and 'system' can be 
-    used without the prefix)
-  - they may currently only include simple and versioned atoms or other sets, use
-    conditionals or any-of constructs aren't possible yet
-  - sets can be referenced either in other file-based sets or as argument to emerge, but
-    not in ebuilds, config files or other tools at this time.
-  - packages won't be unmerged if they are referenced by an installed package
-    set (with the exception of the world set, and installed being determined
-	by the world_sets file).
-* "world" does no longer include "system" unconditionally, but you can add
-  "@system" to the world_sets file to restore the old state.
 
 portage-2.1.5
 ==================================

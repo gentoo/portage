@@ -1,6 +1,6 @@
 News (mainly features/major bug fixes)
 
-portage-2.2
+portage-2.1.6
 -------------
 
 * Add support for a new EAPI="2" value. For more information about new EAPI
@@ -25,11 +25,9 @@ portage-2.2
   as a decent substitute for module-rebuild.
 * Namespace sanitizing: move all portage related code into portage.* namespace,
   rename portage_foo modules to portage.foo (but keep symlinks for compability)
-* Add license visibility filtering (GLEP 23)
 * Experimental support for preserving old library files on package upgrades
   based on FEATURES=preserve-libs
 * Add support for news items (GLEP 42)
-* Add support for generic package sets (also see RELEASE-NOTES)
 
 portage-2.1.5
 -------------
