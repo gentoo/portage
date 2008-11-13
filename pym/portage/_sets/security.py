@@ -5,9 +5,9 @@
 import os
 import portage.glsa as glsa
 from portage.util import grabfile, write_atomic
-from portage.sets.base import PackageSet
+from portage._sets.base import PackageSet
 from portage.versions import catpkgsplit, pkgcmp
-from portage.sets import get_boolean
+from portage._sets import get_boolean
 
 __all__ = ["SecuritySet", "NewGlsaSet", "NewAffectedSet", "AffectedSet"]
 

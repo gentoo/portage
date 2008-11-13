@@ -11,8 +11,8 @@ from portage.util import grabfile, write_atomic, ensure_dirs, normalize_path
 from portage.const import PRIVATE_PATH, USER_CONFIG_PATH
 from portage.locks import lockfile, unlockfile
 from portage import portage_gid
-from portage.sets.base import PackageSet, EditablePackageSet
-from portage.sets import SetConfigError, SETPREFIX, get_boolean
+from portage._sets.base import PackageSet, EditablePackageSet
+from portage._sets import SetConfigError, SETPREFIX, get_boolean
 from portage.env.loaders import ItemFileLoader, KeyListFileLoader
 from portage.env.validators import ValidAtomValidator
 from portage import dep_getkey, cpv_getkey

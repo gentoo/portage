@@ -66,8 +66,8 @@ from portage.data import secpass
 from portage.elog.messages import eerror
 from portage.util import normalize_path as normpath
 from portage.util import writemsg, writemsg_level
-from portage.sets import load_default_config, SETPREFIX
-from portage.sets.base import InternalPackageSet
+from portage._sets import load_default_config, SETPREFIX
+from portage._sets.base import InternalPackageSet
 
 from itertools import chain, izip
 from UserDict import DictMixin
@@ -10739,7 +10739,7 @@ def unmerge(root_config, myopts, unmerge_action,
 			vartree.dbapi.flush_cache()
 			portage.locks.unlockdir(vdb_lock)
 	
-	from portage.sets.base import EditablePackageSet
+	from portage._sets.base import EditablePackageSet
 	
 	# generate a list of package sets that are directly or indirectly listed in "world",
 	# as there is no persistent list of "installed" sets

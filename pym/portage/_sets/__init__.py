@@ -29,7 +29,19 @@ class SetConfigError(Exception):
 class SetConfig(object):
 	def __init__(self, paths, settings, trees):
 		self._parser = SafeConfigParser()
-		self._parser.read(paths)
+		#self._parser.read(paths)
+		# The "paths" argument is ignored and the config for
+		# system and world sets is hardcoded below.
+		parser = self._parser
+
+		parser.add_section("system")
+		parser.set("system", "class", "portage._sets.profiles.PackagesSystemSet")
+		parser.set("system", "world-candidate", "False")
+
+		parser.add_section("world")
+		parser.set("world", "class", "portage._sets.files.WorldSet")
+		parser.set("world", "world-candidate", "False")
+
 		self.errors = []
 		self.psets = {}
 		self.trees = trees
@@ -69,7 +81,7 @@ class SetConfig(object):
 		for sname in parser.sections():
 			# find classname for current section, default to file based sets
 			if not parser.has_option(sname, "class"):
-				classname = "portage.sets.files.StaticFileSet"
+				classname = "portage._sets.files.StaticFileSet"
 			else:
 				classname = parser.get(sname, "class")
 			
@@ -78,7 +90,7 @@ class SetConfig(object):
 				setclass = load_mod(classname)
 			except (ImportError, AttributeError):
 				try:
-					setclass = load_mod("portage.sets."+classname)
+					setclass = load_mod("portage._sets."+classname)
 				except (ImportError, AttributeError):
 					self.errors.append("Could not import '%s' for section '%s'" % (classname, sname))
 					continue

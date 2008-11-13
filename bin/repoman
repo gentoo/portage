@@ -56,7 +56,7 @@ except ImportError:
 	from repoman import utilities
 
 from _emerge import Package, RootConfig
-from portage.sets import load_default_config
+from portage._sets import load_default_config
 
 import portage.checksum
 import portage.const

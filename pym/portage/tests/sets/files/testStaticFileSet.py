@@ -6,7 +6,7 @@
 import tempfile, os
 
 from portage.tests import TestCase, test_cps
-from portage.sets.files import StaticFileSet
+from portage._sets.files import StaticFileSet
 from portage.env.loaders import TestTextLoader
 from portage.env.config import ConfigLoaderKlass
 
