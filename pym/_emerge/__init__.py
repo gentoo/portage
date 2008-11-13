@@ -10738,31 +10738,7 @@ def unmerge(root_config, myopts, unmerge_action,
 		if vdb_lock:
 			vartree.dbapi.flush_cache()
 			portage.locks.unlockdir(vdb_lock)
-	
-	from portage._sets.base import EditablePackageSet
-	
-	# generate a list of package sets that are directly or indirectly listed in "world",
-	# as there is no persistent list of "installed" sets
-	installed_sets = ["world"]
-	stop = False
-	pos = 0
-	while not stop:
-		stop = True
-		pos = len(installed_sets)
-		for s in installed_sets[pos - 1:]:
-			if s not in sets:
-				continue
-			candidates = [x[len(SETPREFIX):] for x in sets[s].getNonAtoms() if x.startswith(SETPREFIX)]
-			if candidates:
-				stop = False
-				installed_sets += candidates
-	installed_sets = [x for x in installed_sets if x not in root_config.setconfig.active]
-	del stop, pos
 
-	# we don't want to unmerge packages that are still listed in user-editable package sets
-	# listed in "world" as they would be remerged on the next update of "world" or the 
-	# relevant package sets.
-	unknown_sets = set()
 	for cp in xrange(len(pkgmap)):
 		for cpv in pkgmap[cp]["selected"].copy():
 			try:
@@ -10785,69 +10761,6 @@ def unmerge(root_config, myopts, unmerge_action,
 				all_selected.remove(cpv)
 				pkgmap[cp]["protected"].add(cpv)
 				continue
-
-			parents = []
-			for s in installed_sets:
-				# skip sets that the user requested to unmerge, and skip world 
-				# unless we're unmerging a package set (as the package would be 
-				# removed from "world" later on)
-				if s in root_config.setconfig.active or (s == "world" and not root_config.setconfig.active):
-					continue
-
-				if s not in sets:
-					if s in unknown_sets:
-						continue
-					unknown_sets.add(s)
-					out = portage.output.EOutput()
-					out.eerror(("Unknown set '@%s' in " + \
-						"%svar/lib/portage/world_sets") % \
-						(s, root_config.root))
-					continue
-
-				# only check instances of EditablePackageSet as other classes are generally used for
-				# special purposes and can be ignored here (and are usually generated dynamically, so the
-				# user can't do much about them anyway)
-				if isinstance(sets[s], EditablePackageSet):
-
-					# This is derived from a snippet of code in the
-					# depgraph._iter_atoms_for_pkg() method.
-					for atom in sets[s].iterAtomsForPackage(pkg):
-						inst_matches = vartree.dbapi.match(atom)
-						inst_matches.reverse() # descending order
-						higher_slot = None
-						for inst_cpv in inst_matches:
-							try:
-								inst_pkg = _pkg(inst_cpv)
-							except KeyError:
-								# It could have been uninstalled
-								# by a concurrent process.
-								continue
-
-							if inst_pkg.cp != atom.cp:
-								continue
-							if pkg >= inst_pkg:
-								# This is descending order, and we're not
-								# interested in any versions <= pkg given.
-								break
-							if pkg.slot_atom != inst_pkg.slot_atom:
-								higher_slot = inst_pkg
-								break
-						if higher_slot is None:
-							parents.append(s)
-							break
-			if parents:
-				#print colorize("WARN", "Package %s is going to be unmerged," % cpv)
-				#print colorize("WARN", "but still listed in the following package sets:")
-				#print "    %s\n" % ", ".join(parents)
-				print colorize("WARN", "Not unmerging package %s as it is" % cpv)
-				print colorize("WARN", "still referenced by the following package sets:")
-				print "    %s\n" % ", ".join(parents)
-				# adjust pkgmap so the display output is correct
-				pkgmap[cp]["selected"].remove(cpv)
-				all_selected.remove(cpv)
-				pkgmap[cp]["protected"].add(cpv)
-	
-	del installed_sets
 
 	numselected = len(all_selected)
 	if not numselected:
