@@ -1638,19 +1638,9 @@ class config(object):
 			# initialize self.features
 			self.regenerate()
 
-			if local_config:
-				self._accept_license = \
-					set(self.get("ACCEPT_LICENSE", "").split())
-				# In order to enforce explicit acceptance for restrictive
-				# licenses that require it, "*" will not be allowed in the
-				# user config.  Don't enforce this until license groups are
-				# fully implemented in the tree.
-				#self._accept_license.discard("*")
-				if not self._accept_license:
-					self._accept_license = set(["*"])
-			else:
-				# repoman will accept any license
-				self._accept_license = set(["*"])
+			# ACCEPT_LICENSE support depends on definition of license groups
+			# in the tree, so it's disabled for now (accept anything).
+			self._accept_license = set(["*"])
 
 			if not portage.process.sandbox_capable and \
 				("sandbox" in self.features or "usersandbox" in self.features):
