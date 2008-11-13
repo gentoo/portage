@@ -815,6 +815,12 @@ Installs manual\-pages into /usr/share/man/man[0\-9n] depending on the
 manual file ending.  The files are compressed if they are not already.  You
 can specify locale\-specific manpages with the \fI\-i18n\fR option.  Then the
 man\-page will be installed into /usr/share/man/\fI<locale>\fR/man[0\-9n].
+Beginning with \fBEAPI 2\fR, a locale\-specific manpage which contains a locale
+in the file name will be installed in /usr/share/man/\fI<locale>\fR/man[0\-9n],
+with the locale portion of the file name removed, and the \fI\-i18n\fR option
+has no effect. For example, with \fBEAPI 2\fR, a manpage named
+foo.\fI<locale>\fR.1 will be installed as
+/usr/share/man/\fI<locale>\fR/man1/foo.1.
 .PD 0
 .TP
 \fBdohard\fR \fI<filename> <linkname>\fR
