@@ -16,7 +16,7 @@ from portage.util import apply_permissions, ensure_dirs, grabfile, \
 from portage.data import portage_gid
 from portage.dep import isvalidatom
 from portage.locks import lockfile, unlockfile
-from portage.exception import OperationNotPermitted
+from portage.exception import OperationNotPermitted, PermissionDenied
 
 class NewsManager(object):
 	"""
@@ -50,21 +50,23 @@ class NewsManager(object):
 				profile_path = profile_path[len(profiles_base):]
 		self._profile_path = profile_path
 
-		# Ensure that the unread path exists and is writable.
-		dirmode  = 02070
-		modemask =    02
-		try:
-			ensure_dirs(self.unread_path, mode=dirmode,
-				mask=modemask, gid=portage_gid)
-		except OperationNotPermitted:
-			pass
-
 	def updateItems(self, repoid):
 		"""
 		Figure out which news items from NEWS_PATH are both unread and relevant to
 		the user (according to the GLEP 42 standards of relevancy).  Then add these
 		items into the news.repoid.unread file.
 		"""
+
+		# Ensure that the unread path exists and is writable.
+		dirmode  = 00700
+		modemask =   022
+		try:
+			ensure_dirs(self.unread_path, mode=dirmode, mask=modemask)
+		except (OperationNotPermitted, PermissionDenied):
+			return
+
+		if not os.access(self.unread_path, os.W_OK):
+			return
 
 		repos = self.portdb.getRepositories()
 		if repoid not in repos:
