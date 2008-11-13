@@ -69,8 +69,8 @@ def help(myaction,myopts,havecolor=1):
 
 		paragraph = "Cleans the system by removing packages that are " + \
 		"not associated with explicitly merged packages. Depclean works " + \
-		"by creating the full dependency tree from the @system and " + \
-		"@world sets, then comparing it to installed packages. Packages " + \
+		"by creating the full dependency tree from the system and " + \
+		"world sets, then comparing it to installed packages. Packages " + \
 		"installed, but not part of the dependency tree, will be " + \
 		"uninstalled by depclean. See --with-bdeps for behavior with " + \
 		"respect to build time dependencies that are not strictly " + \
@@ -79,7 +79,7 @@ def help(myaction,myopts,havecolor=1):
 		"emerge --noreplace <atom>. As a safety measure, depclean " + \
 		"will not remove any packages unless *all* required dependencies " + \
 		"have been resolved. As a consequence, it is often necessary to " + \
-		"run emerge --update --newuse --deep @system @world " + \
+		"run emerge --update --newuse --deep world " + \
 		"prior to depclean."
 
 		for line in wrap(paragraph, desc_width):

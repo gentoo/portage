@@ -105,7 +105,7 @@ setups that the user may wish to run.
 .BR \-\-depclean
 Cleans the system by removing packages that are not associated
 with explicitly merged packages. Depclean works by creating the
-full dependency tree from the @system and @world sets,
+full dependency tree from the system and world sets,
 then comparing it to installed packages. Packages installed, but
 not part of the dependency tree, will be uninstalled by depclean.
 See \fB\-\-with\-bdeps\fR for behavior with respect to build time dependencies
@@ -114,7 +114,7 @@ always be kept. They can be manually added to this set with \fIemerge
 \-\-noreplace <atom>\fR. As a safety measure, depclean will not remove any
 packages unless *all* required dependencies have been resolved. As a
 consequence, it is often necessary to run \fIemerge \-\-update \-\-newuse
-\-\-deep @system @world\fR prior to depclean. 
+\-\-deep world\fR prior to depclean. 
 
 \fBWARNING:\fR
 Inexperienced users are advised to use \fB\-\-pretend\fR with this

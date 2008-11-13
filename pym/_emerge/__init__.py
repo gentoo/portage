@@ -12036,7 +12036,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	msg.append("unless *all* required dependencies have been resolved.  As a\n")
 	msg.append("consequence, it is often necessary to run %s\n" % \
 		good("`emerge --update"))
-	msg.append(good("--newuse --deep @system @world`") + \
+	msg.append(good("--newuse --deep world`") + \
 		" prior to depclean.\n")
 
 	if action == "depclean" and "--quiet" not in myopts and not myfiles:
