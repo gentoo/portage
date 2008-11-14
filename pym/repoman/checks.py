@@ -83,8 +83,11 @@ class EbuildQuote(LineCheck):
 	"""Ensure ebuilds have valid quoting around things like D,FILESDIR, etc..."""
 
 	repoman_check_name = 'ebuild.minorsyn'
-	_ignored_commands = ["echo", "local", "export"]
-	_ignored_commands += ["eerror", "einfo", "elog", "eqawarn", "ewarn"]
+	_message_commands = ["die", "echo", "eerror",
+		"einfo", "elog", "eqawarn", "ewarn"]
+	_message_re = re.compile(r'\s(' + "|".join(_message_commands) + \
+		r')\s+"[^"]*"\s*$')
+	_ignored_commands = ["local", "export"] + _message_commands
 	ignore_line = re.compile(r'(^$)|(^\s*#.*)|(^\s*\w+=.*)' + \
 		r'|(^\s*(' + "|".join(_ignored_commands) + r')\s+)')
 	var_names = ["D", "DISTDIR", "FILESDIR", "S", "T", "ROOT", "WORKDIR"]
@@ -124,6 +127,15 @@ class EbuildQuote(LineCheck):
 			# get through the missing_quotes regex.
 			if self.var_reference.search(group) is None:
 				continue
+
+			# Filter matches that appear to be an
+			# argument to a message command.
+			# For example: false || ewarn "foo $WORKDIR/bar baz"
+			message_match = self._message_re.search(line)
+			if message_match is not None and \
+				message_match.start() < pos and \
+				message_match.end() > pos:
+				break
 
 			# This is an attempt to avoid false positives without getting
 			# too complex, while possibly allowing some (hopefully
