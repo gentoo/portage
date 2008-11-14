@@ -25,8 +25,6 @@ portage-2.1.6
   as a decent substitute for module-rebuild.
 * Namespace sanitizing: move all portage related code into portage.* namespace,
   rename portage_foo modules to portage.foo (but keep symlinks for compability)
-* Experimental support for preserving old library files on package upgrades
-  based on FEATURES=preserve-libs
 * Add support for news items (GLEP 42)
 
 portage-2.1.5
