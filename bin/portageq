@@ -493,27 +493,6 @@ def get_repo_path(argv):
 	for arg in argv[1:]:
 		print portage.db[argv[0]]["porttree"].dbapi.getRepositoryPath(arg)
 
-def list_preserved_libs(argv):
-	"""<root>
-	Print a list of libraries preserved during a package update in the form
-	package: path. Returns 0 if no preserved libraries could be found, 
-	1 otherwise.
-	"""
-
-	if len(argv) != 1:
-		print "ERROR: wrong number of arguments"
-		sys.exit(2)
-	mylibs = portage.db[argv[0]]["vartree"].dbapi.plib_registry.getPreservedLibs()
-	rValue = 0
-	for cpv in mylibs:
-		print cpv,
-		for path in mylibs[cpv]:
-			print path,
-			rValue = 1
-		print
-	return rValue
-list_preserved_libs.uses_root = True
-
 #-----------------------------------------------------------------------------
 #
 # DO NOT CHANGE CODE BEYOND THIS POINT - IT'S NOT NEEDED!
