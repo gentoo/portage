@@ -282,6 +282,7 @@ l l
 __
 l l.
 Example	Meaning
+
 foo[bar]	foo must have bar enabled
 foo[bar,baz]	foo must have both bar and baz enabled
 foo[\-bar,baz]	foo must have bar disabled and baz enabled
@@ -294,6 +295,7 @@ l l
 __
 l l.
 Compact Form	Equivalent Expanded Form
+
 foo[bar?]	bar? ( foo[bar] ) !bar? ( foo )
 foo[!bar?]	bar? ( foo ) !bar? ( foo[\-bar] )
 foo[bar=]	bar? ( foo[bar] ) !bar? ( foo[\-bar] )
