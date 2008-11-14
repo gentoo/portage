@@ -244,9 +244,15 @@ examples you may find in the portage tree:
 =dev\-libs/glib\-2\fI*\fR
 \fI!\fR=net\-fs/samba\-2\fI*\fR
 \fI~\fRnet\-libs/libnet\-1.0.2a
+\fI!!\fR<sys\-apps/portage\-2.1.4_rc1\fI\fR
 .fi
 
 \fI!\fR means block packages from being installed at the same time.
+.br
+\fI!!\fR means block packages from being installed at the same time
+and explicitly disallow them from being temporarily installed
+simultaneously during a series of upgrades. This syntax is supported
+beginning with \fBEAPI 2\fR.
 .br
 \fI*\fR means match any version of the package so long as the specified base
 is matched.  So with a version of '2*', we can match '2.1', '2.2', '2.2.1',
