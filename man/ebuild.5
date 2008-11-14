@@ -141,6 +141,10 @@ the EAPI to which this package conforms.
 Contains a list of URI's for the required source files.  It can contain
 multiple URI's for a single source file.  The list is processed in order
 if the file was not found on any of the \fIGENTOO_MIRRORS\fR.
+Beginning with \fBEAPI 2\fR, the output file name of a given URI may be
+customized with a "->" operator on the right hand side, followed by the
+desired output file name. All tokens, including the operator and output
+file name, should be separated by whitespace.
 .TP
 \fBHOMEPAGE\fR = \fI"http://happy.com/"\fR
 Should contain a list of URL's for the sources main sites and other further
@@ -240,9 +244,15 @@ examples you may find in the portage tree:
 =dev\-libs/glib\-2\fI*\fR
 \fI!\fR=net\-fs/samba\-2\fI*\fR
 \fI~\fRnet\-libs/libnet\-1.0.2a
+\fI!!\fR<sys\-apps/portage\-2.1.4_rc1\fI\fR
 .fi
 
 \fI!\fR means block packages from being installed at the same time.
+.br
+\fI!!\fR means block packages from being installed at the same time
+and explicitly disallow them from being temporarily installed
+simultaneously during a series of upgrades. This syntax is supported
+beginning with \fBEAPI 2\fR.
 .br
 \fI*\fR means match any version of the package so long as the specified base
 is matched.  So with a version of '2*', we can match '2.1', '2.2', '2.2.1',
@@ -263,6 +273,41 @@ x11\-libs/qt:3
 \fI>=\fRx11\-libs/qt-3.3.8:3
 \fI=\fRx11\-libs/qt-3.3*:3
 .fi
+.TP
+.B Atom USE
+Beginning with \fBEAPI 2\fR, any atom can be constrained to match specific
+\fBUSE\fR flag settings. When used together with \fBSLOT\fR dependencies,
+\fBUSE\fR dependencies appear on the right hand side of \fBSLOT\fR
+dependencies.
+
+.RS
+.TP
+.B Unconditional USE Dependencies
+.TS
+l l
+__
+l l.
+Example	Meaning
+
+foo[bar]	foo must have bar enabled
+foo[bar,baz]	foo must have both bar and baz enabled
+foo[\-bar,baz]	foo must have bar disabled and baz enabled
+.TE
+
+.TP
+.B Conditional USE Dependencies
+.TS
+l l
+__
+l l.
+Compact Form	Equivalent Expanded Form
+
+foo[bar?]	bar? ( foo[bar] ) !bar? ( foo )
+foo[!bar?]	bar? ( foo ) !bar? ( foo[\-bar] )
+foo[bar=]	bar? ( foo[bar] ) !bar? ( foo[\-bar] )
+foo[!bar=]	bar? ( foo[\-bar] ) !bar? ( foo[bar] )
+.TE
+.RE
 .RE
 .TP
 .B Dynamic DEPENDs
@@ -448,7 +493,7 @@ process.  Inherit may only be called once in an ebuild and it may \fBnever be
 wrapped within any conditionals\fR of any kind.  Specification of the eclasses
 contains only their name and not the \fI.eclass\fR extension.  Also note that
 the inherit statement must come before other variable declarations.
-.SH "FUNCTIONS"
+.SH "PHASE FUNCTIONS"
 .TP
 .B pkg_nofetch
 If you turn on \fIfetch\fR in \fBRESTRICT\fR, then this function will be
@@ -470,8 +515,22 @@ patches and other pre configure/compile modifications should be done here.
 .br
 Initial working directory of $WORKDIR.
 .TP
+.B src_prepare
+All preparation of source code, such as application of patches, should be done
+here. This function is supported beginning with \fBEAPI 2\fR.
+.br
+Initial working directory of $S.
+.TP
+.B src_configure
+All necessary steps for configuration should be done here. This function is
+supported beginning with \fBEAPI 2\fR.
+.br
+Initial working directory of $S.
+.TP
 .B src_compile
-All necessary steps for configuration and compilation should be done in here.
+With less than \fBEAPI 2\fR, all necessary steps for both configuration and
+compilation should be done here. Beginning with \fBEAPI 2\fR, only compilation
+steps should be done here.
 .br
 Initial working directory of $S.
 .TP
@@ -503,6 +562,34 @@ Initial working directory of $PWD.
 This function should contain optional basic configuration steps.
 .br
 Initial working directory of $PWD.
+.SH "HELPER FUNCTIONS: PHASES"
+.TP
+.B default
+Calls the default phase function implementation for the currently executing
+phase. This function is supported beginning with \fBEAPI 2\fR.
+.TP
+.B default_*
+Beginning with \fBEAPI 2\fR, the default pkg_nofetch and src_* phase
+functions are accessible via a function having a name that begins with
+default_ and ends with the respective phase function name. For example,
+a call to a function with the name default_src_compile is equivalent to
+a call to the default src_compile implementation.
+
+.RS
+.TS
+l
+_
+l.
+Default Phase Functions
+
+default_pkg_nofetch
+default_src_unpack
+default_src_prepare
+default_src_configure
+default_src_compile
+default_src_test
+.TE
+.RE
 .SH "HELPER FUNCTIONS: GENERAL"
 .TP
 \fBdie\fR \fI[reason]\fR
@@ -815,6 +902,12 @@ Installs manual\-pages into /usr/share/man/man[0\-9n] depending on the
 manual file ending.  The files are compressed if they are not already.  You
 can specify locale\-specific manpages with the \fI\-i18n\fR option.  Then the
 man\-page will be installed into /usr/share/man/\fI<locale>\fR/man[0\-9n].
+Beginning with \fBEAPI 2\fR, a locale\-specific manpage which contains a locale
+in the file name will be installed in /usr/share/man/\fI<locale>\fR/man[0\-9n],
+with the locale portion of the file name removed, and the \fI\-i18n\fR option
+has no effect. For example, with \fBEAPI 2\fR, a manpage named
+foo.\fI<locale>\fR.1 will be installed as
+/usr/share/man/\fI<locale>\fR/man1/foo.1.
 .PD 0
 .TP
 \fBdohard\fR \fI<filename> <linkname>\fR

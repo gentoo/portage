@@ -68,6 +68,10 @@
 	</section>
 	<section id='package-ebuild-eapi-2-metadata-dependencies-use'>
 	<title>USE Dependencies</title>
+	<para>
+	When used together with SLOT dependencies, USE dependencies
+	appear on the right hand side of SLOT dependencies.
+	</para>
 	<section id='package-ebuild-eapi-2-metadata-dependencies-use-unconditional'>
 	<title>Unconditional USE Dependencies</title>
 	<table><title>Syntax Examples</title>
