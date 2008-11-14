@@ -1106,6 +1106,7 @@ for x in scanlist:
 		myaux = pkg.metadata
 		eapi = myaux["EAPI"]
 		inherited = pkg.inherited
+		live_ebuild = live_eclasses.intersection(inherited)
 
 		if not src_uri_error:
 			# Check that URIs don't reference a server from thirdpartymirrors.
@@ -1153,6 +1154,8 @@ for x in scanlist:
 				if catdir == "virtual" and \
 					missing_var in ("HOMEPAGE", "LICENSE"):
 					continue
+				if live_ebuild and missing_var == "KEYWORDS":
+					continue
 				myqakey=missingvars[pos]+".missing"
 				stats[myqakey]=stats[myqakey]+1
 				fails[myqakey].append(x+"/"+y+".ebuild")
@@ -1184,7 +1187,7 @@ for x in scanlist:
 		previous_keywords = slot_keywords.get(myaux["SLOT"])
 		if previous_keywords is None:
 			slot_keywords[myaux["SLOT"]] = set()
-		else:
+		elif not live_ebuild:
 			dropped_keywords = previous_keywords.difference(ebuild_archs)
 			if dropped_keywords:
 				stats["KEYWORDS.dropped"] += 1
@@ -1210,7 +1213,7 @@ for x in scanlist:
 		Ebuilds that inherit a "Live" eclass (darcs,subversion,git,cvs,etc..) should
 		not be allowed to be marked stable
 		"""
-		if live_eclasses.intersection(pkg.inherited):
+		if live_ebuild:
 			bad_stable_keywords = []
 			for keyword in keywords:
 				if not keyword.startswith("~") and \
