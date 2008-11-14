@@ -1878,6 +1878,11 @@ else:
 		print green("------------------------------------------------------------------------------")
 		print
 
+		# Having a leading ./ prefix on file paths can trigger a bug in
+		# the cvs server when committing files to multiple directories,
+		# so strip the prefix.
+		myfiles = [f.lstrip("./") for f in myfiles]
+
 		retval = None
 		if options.pretend:
 			if vcs == "cvs":
