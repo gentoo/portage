@@ -67,9 +67,9 @@ echo ">>> Starting Subversion export"
 svn export "${SVN_LOCATION}" "${SOURCE_DIR}" > /dev/null || die "svn export failed"
 
 echo ">>> Creating Changelog"
-svn2cl_opts=
-[ -n $CHANGELOG_REVISION ] && svn2cl_opts=HEAD:$CHANGELOG_REVISION
-svn2cl -r $svn2cl_opts -i -o "${SOURCE_DIR}/ChangeLog" "${SVN_LOCATION}" \
+svn2cl_opts="-i --reparagraph"
+[ -n $CHANGELOG_REVISION ] && svn2cl_opts+=" -r HEAD:$CHANGELOG_REVISION"
+svn2cl $svn2cl_opts -o "${SOURCE_DIR}/ChangeLog" "${SVN_LOCATION}" \
 	|| die "ChangeLog creation failed"
 
 echo ">>> Building release tree"
