@@ -568,29 +568,28 @@ Initial working directory of $PWD.
 Calls the default phase function implementation for the currently executing
 phase. This function is supported beginning with \fBEAPI 2\fR.
 .TP
-.B default_pkg_nofetch
-Calls the default pkg_nofetch phase function implementation.
-This function is supported beginning with \fBEAPI 2\fR.
-.TP
-.B default_src_unpack
-Calls the default src_unpack phase function implementation.
-This function is supported beginning with \fBEAPI 2\fR.
-.TP
-.B default_src_prepare
-Calls the default src_prepare phase function implementation.
-This function is supported beginning with \fBEAPI 2\fR.
-.TP
-.B default_src_configure
-Calls the default src_configure phase function implementation.
-This function is supported beginning with \fBEAPI 2\fR.
-.TP
-.B default_src_compile
-Calls the default src_compile phase function implementation.
-This function is supported beginning with \fBEAPI 2\fR.
-.TP
-.B default_src_test
-Calls the default src_test phase function implementation.
-This function is supported beginning with \fBEAPI 2\fR.
+.B default_*
+Beginning with \fBEAPI 2\fR, the default pkg_nofetch and src_* phase
+functions are accessible via a function having a name that begins with
+default_ and ends with the respective phase function name. For example,
+a call to a function with the name default_src_compile is equivalent to
+a call to the default src_compile implementation.
+
+.RS
+.TS
+l
+_
+l.
+Default Phase Functions
+
+default_pkg_nofetch
+default_src_unpack
+default_src_prepare
+default_src_configure
+default_src_compile
+default_src_test
+.TE
+.RE
 .SH "HELPER FUNCTIONS: GENERAL"
 .TP
 \fBdie\fR \fI[reason]\fR
