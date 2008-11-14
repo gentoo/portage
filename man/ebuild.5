@@ -267,6 +267,39 @@ x11\-libs/qt:3
 \fI>=\fRx11\-libs/qt-3.3.8:3
 \fI=\fRx11\-libs/qt-3.3*:3
 .fi
+.TP
+.B Atom USE
+Beginning with \fBEAPI 2\fR, any atom can be constrained to match specific
+\fBUSE\fR flag settings. When used together with \fBSLOT\fR dependencies,
+\fBUSE\fR dependencies appear on the right hand side of \fBSLOT\fR
+dependencies.
+
+.RS
+.TP
+.B Unconditional USE Dependencies
+.TS
+l l
+__
+l l.
+Example	Meaning
+foo[bar]	foo must have bar enabled
+foo[bar,baz]	foo must have both bar and baz enabled
+foo[\-bar,baz]	foo must have bar disabled and baz enabled
+.TE
+
+.TP
+.B Conditional USE Dependencies
+.TS
+l l
+__
+l l.
+Compact Form	Equivalent Expanded Form
+foo[bar?]	bar? ( foo[bar] ) !bar? ( foo )
+foo[!bar?]	bar? ( foo ) !bar? ( foo[\-bar] )
+foo[bar=]	bar? ( foo[bar] ) !bar? ( foo[\-bar] )
+foo[!bar=]	bar? ( foo[\-bar] ) !bar? ( foo[bar] )
+.TE
+.RE
 .RE
 .TP
 .B Dynamic DEPENDs
