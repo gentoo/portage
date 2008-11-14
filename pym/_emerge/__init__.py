@@ -3694,6 +3694,9 @@ class SetArg(DependencyArg):
 		self.set = set
 		self.name = self.arg[len(SETPREFIX):]
 
+	def __str__(self):
+		return self.name
+
 class Dependency(SlotObject):
 	__slots__ = ("atom", "blocker", "depth",
 		"parent", "onlydeps", "priority", "root")
