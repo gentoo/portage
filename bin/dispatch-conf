@@ -98,7 +98,6 @@ class dispatch:
                 path, basename = os.path.split(path)
                 find_opts = "-maxdepth 1"
 
-            print FIND_EXTANT_CONFIGS % (path, find_opts, basename)
             confs += self.massage(os.popen(FIND_EXTANT_CONFIGS % (path, find_opts, basename)).readlines())
 
         if self.options['use-rcs'] == 'yes':
