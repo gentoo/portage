@@ -4573,6 +4573,20 @@ class depgraph(object):
 							priority=priority)
 					return 1
 				else:
+
+					if pkg.cpv == existing_node.cpv and \
+						dep.atom is not None and \
+						dep.atom.use:
+						# Multiple different instances of the same version
+						# (typically one installed and another not yet
+						# installed) have been pulled into the graph due
+						# to a USE dependency. The "slot collision" display
+						# is not helpful in a case like this, so display it
+						# as an unsatisfied dependency.
+						self._unsatisfied_deps_for_display.append(
+							((dep.root, dep.atom), {"myparent":dep.parent}))
+						return 0
+
 					if pkg in self._slot_collision_nodes:
 						return 1
 					# A slot collision has occurred.  Sometimes this coincides
