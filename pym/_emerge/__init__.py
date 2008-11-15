@@ -7577,8 +7577,30 @@ class depgraph(object):
 		the merge list where it is most likely to be seen, but if display()
 		is not going to be called then this method should be called explicitly
 		to ensure that the user is notified of problems with the graph.
+
+		All output goes to stderr.
 		"""
 
+		# Note that show_masked_packages() sends it's output to
+		# stdout, and some programs such as autounmask parse the
+		# output in cases when emerge bails out. However, when
+		# show_masked_packages() is called for installed packages
+		# here, the message is a warning that is more appropriate
+		# to send to stderr, so temporarily redirect stdout to
+		# stderr. TODO: Fix output code so there's a cleaner way
+		# to redirect everything to stderr.
+		sys.stdout.flush()
+		sys.stderr.flush()
+		stdout = sys.stdout
+		try:
+			sys.stdout = sys.stderr
+			self._display_problems()
+		finally:
+			sys.stdout = stdout
+			sys.stdout.flush()
+			sys.stderr.flush()
+
+	def _display_problems(self):
 		if self._circular_deps_for_display is not None:
 			self._show_circular_deps(
 				self._circular_deps_for_display)
