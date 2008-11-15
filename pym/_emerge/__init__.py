@@ -12676,9 +12676,12 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				for consumer_dblink in set(chain(*consumers.values())):
 					consumer_pkg = vardb.get(("installed", myroot,
 						consumer_dblink.mycpv, "nomerge"))
-					resolver._add_pkg(pkg, Dependency(parent=consumer_pkg,
+					if not resolver._add_pkg(pkg,
+						Dependency(parent=consumer_pkg,
 						priority=UnmergeDepPriority(runtime=True),
-						root=pkg.root))
+						root=pkg.root)):
+						resolver.display_problems()
+						return 1
 
 			writemsg_level("\nCalculating dependencies  ")
 			success = resolver._complete_graph()
