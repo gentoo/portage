@@ -4260,7 +4260,11 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 			writemsg(("!!! File %s doesn't exist, can't update " + \
 				"Manifest\n") % e, noiselevel=-1)
 			return 0
-		mf.write(sign=False)
+		try:
+			mf.write(sign=False)
+		except portage.exception.PermissionDenied, e:
+			writemsg("!!! Permission Denied: %s\n" % (e,), noiselevel=-1)
+			return 0
 		if "assume-digests" not in mysettings.features:
 			distlist = mf.fhashdict.get("DIST", {}).keys()
 			distlist.sort()
