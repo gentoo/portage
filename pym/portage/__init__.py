@@ -5696,7 +5696,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			elif "digest" in mysettings.features:
 				digestgen(aalist, mysettings, overwrite=0, myportdb=mydbapi)
 		except portage.exception.PermissionDenied, e:
-			writemsg("!!! %s\n" % str(e), noiselevel=-1)
+			writemsg("!!! Permission Denied: %s\n" % (e,), noiselevel=-1)
 			if mydo in ("digest", "manifest"):
 				return 1
 
