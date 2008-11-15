@@ -11291,11 +11291,11 @@ def chk_updated_cfg_files(target_root, config_protect):
 				except OSError:
 					pass
 			if stat.S_ISDIR(mymode):
-				mycommand = "find '%s' -iname '._cfg????_*'" % x
+				mycommand = "find '%s' -name '.*' -type d -prune -o -name '._cfg????_*'" % x
 			else:
-				mycommand = "find '%s' -maxdepth 1 -iname '._cfg????_%s'" % \
+				mycommand = "find '%s' -maxdepth 1 -name '._cfg????_%s'" % \
 					os.path.split(x.rstrip(os.path.sep))
-			mycommand += " ! -iname '.*~' ! -iname '.*.bak' -print0"
+			mycommand += " ! -name '.*~' ! -iname '.*.bak' -print0"
 			a = commands.getstatusoutput(mycommand)
 			if a[0] != 0:
 				sys.stderr.write(" %s error scanning '%s': " % (bad("*"), x))
