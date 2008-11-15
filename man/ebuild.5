@@ -157,6 +157,10 @@ the EAPI to which this package conforms.
 Contains a list of URI's for the required source files.  It can contain
 multiple URI's for a single source file.  The list is processed in order
 if the file was not found on any of the \fIGENTOO_MIRRORS\fR.
+Beginning with \fBEAPI 2\fR, the output file name of a given URI may be
+customized with a "->" operator on the right hand side, followed by the
+desired output file name. All tokens, including the operator and output
+file name, should be separated by whitespace.
 .TP
 \fBHOMEPAGE\fR = \fI"http://happy.com/"\fR
 Should contain a list of URL's for the sources main sites and other further
@@ -256,9 +260,15 @@ examples you may find in the portage tree:
 =dev\-libs/glib\-2\fI*\fR
 \fI!\fR=net\-fs/samba\-2\fI*\fR
 \fI~\fRnet\-libs/libnet\-1.0.2a
+\fI!!\fR<sys\-apps/portage\-2.1.4_rc1\fI\fR
 .fi
 
 \fI!\fR means block packages from being installed at the same time.
+.br
+\fI!!\fR means block packages from being installed at the same time
+and explicitly disallow them from being temporarily installed
+simultaneously during a series of upgrades. This syntax is supported
+beginning with \fBEAPI 2\fR.
 .br
 \fI*\fR means match any version of the package so long as the specified base
 is matched.  So with a version of '2*', we can match '2.1', '2.2', '2.2.1',
@@ -279,6 +289,41 @@ x11\-libs/qt:3
 \fI>=\fRx11\-libs/qt-3.3.8:3
 \fI=\fRx11\-libs/qt-3.3*:3
 .fi
+.TP
+.B Atom USE
+Beginning with \fBEAPI 2\fR, any atom can be constrained to match specific
+\fBUSE\fR flag settings. When used together with \fBSLOT\fR dependencies,
+\fBUSE\fR dependencies appear on the right hand side of \fBSLOT\fR
+dependencies.
+
+.RS
+.TP
+.B Unconditional USE Dependencies
+.TS
+l l
+__
+l l.
+Example	Meaning
+
+foo[bar]	foo must have bar enabled
+foo[bar,baz]	foo must have both bar and baz enabled
+foo[\-bar,baz]	foo must have bar disabled and baz enabled
+.TE
+
+.TP
+.B Conditional USE Dependencies
+.TS
+l l
+__
+l l.
+Compact Form	Equivalent Expanded Form
+
+foo[bar?]	bar? ( foo[bar] ) !bar? ( foo )
+foo[!bar?]	bar? ( foo ) !bar? ( foo[\-bar] )
+foo[bar=]	bar? ( foo[bar] ) !bar? ( foo[\-bar] )
+foo[!bar=]	bar? ( foo[\-bar] ) !bar? ( foo[bar] )
+.TE
+.RE
 .RE
 .TP
 .B Dynamic DEPENDs
@@ -539,29 +584,28 @@ Initial working directory of $PWD.
 Calls the default phase function implementation for the currently executing
 phase. This function is supported beginning with \fBEAPI 2\fR.
 .TP
-.B default_pkg_nofetch
-Calls the default pkg_nofetch phase function implementation.
-This function is supported beginning with \fBEAPI 2\fR.
-.TP
-.B default_src_unpack
-Calls the default src_unpack phase function implementation.
-This function is supported beginning with \fBEAPI 2\fR.
-.TP
-.B default_src_prepare
-Calls the default src_prepare phase function implementation.
-This function is supported beginning with \fBEAPI 2\fR.
-.TP
-.B default_src_configure
-Calls the default src_configure phase function implementation.
-This function is supported beginning with \fBEAPI 2\fR.
-.TP
-.B default_src_compile
-Calls the default src_compile phase function implementation.
-This function is supported beginning with \fBEAPI 2\fR.
-.TP
-.B default_src_test
-Calls the default src_test phase function implementation.
-This function is supported beginning with \fBEAPI 2\fR.
+.B default_*
+Beginning with \fBEAPI 2\fR, the default pkg_nofetch and src_* phase
+functions are accessible via a function having a name that begins with
+default_ and ends with the respective phase function name. For example,
+a call to a function with the name default_src_compile is equivalent to
+a call to the default src_compile implementation.
+
+.RS
+.TS
+l
+_
+l.
+Default Phase Functions
+
+default_pkg_nofetch
+default_src_unpack
+default_src_prepare
+default_src_configure
+default_src_compile
+default_src_test
+.TE
+.RE
 .SH "HELPER FUNCTIONS: GENERAL"
 .TP
 \fBdie\fR \fI[reason]\fR
