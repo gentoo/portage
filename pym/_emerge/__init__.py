@@ -4194,14 +4194,7 @@ class depgraph(object):
 
 	_dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 
-	# If dep calculation time exceeds this value then automatically
-	# enable "complete" mode since any performance difference is
-	# not as likely to be noticed by the user after this much time
-	# has passed.
-	_complete_threshold = 20
-
 	def __init__(self, settings, trees, myopts, myparams, spinner):
-		self._creation_time = time.time()
 		self.settings = settings
 		self.target_root = settings["ROOT"]
 		self.myopts = myopts
@@ -5795,19 +5788,15 @@ class depgraph(object):
 		intially satisfied.
 
 		Since this method can consume enough time to disturb users, it is
-		currently only enabled by the --complete-graph option, or when
-		dep calculation time exceeds self._complete_threshold.
+		currently only enabled by the --complete-graph option.
 		"""
 		if "--buildpkgonly" in self.myopts or \
 			"recurse" not in self.myparams:
 			return 1
 
 		if "complete" not in self.myparams:
-			if time.time() - self._creation_time > self._complete_threshold:
-				self.myparams.add("complete")
-			else:
-				# Skip this to avoid consuming enough time to disturb users.
-				return 1
+			# Skip this to avoid consuming enough time to disturb users.
+			return 1
 
 		# Put the depgraph into a mode that causes it to only
 		# select packages that have already been added to the
@@ -5936,43 +5925,13 @@ class depgraph(object):
 					stale_cache.discard(cpv)
 					pkg_in_graph = self.digraph.contains(pkg)
 
-					# Check for masked installed packages. For keyword
-					# mask there are a couple of common cases that are
-					# likely to generate unwanted noise:
-					#
-					#  * Packages missing /var/db/pkg/*/*/KEYWORDS entries
-					#    due to having been installed by an old version of
-					#    portage.
-					#
-					#  * Packages installed by overriding ACCEPT_KEYWORDS
-					#    via the environment.
-					#
-					# To avoid unwanted noise, only warn about keyword
-					# masks if all of the following are true:
-					#
-					#  * KEYWORDS is not empty (not installed by old portage).
-					#
-
+					# Check for masked installed packages. Only warn about
+					# packages that are in the graph in order to avoid warning
+					# about those that will be automatically uninstalled during
+					# the merge process or by --depclean.
 					if pkg in final_db:
 						if pkg_in_graph and not visible(pkgsettings, pkg):
 							self._masked_installed.add(pkg)
-						elif pkgsettings._getMissingKeywords(
-							pkg.cpv, pkg.metadata) and \
-							pkg.metadata["KEYWORDS"].split() and \
-							not pkg_in_graph:
-							try:
-								ebuild = self._pkg(pkg.cpv,
-									"ebuild", pkg.root_config)
-							except KeyError:
-								ebuild = None
-							else:
-								try:
-									if not visible(pkgsettings, ebuild):
-										ebuild = None
-								except portage.exception.InvalidDependString:
-									ebuild = None
-							if ebuild is None:
-								self._masked_installed.add(pkg)
 
 					blocker_atoms = None
 					blockers = None

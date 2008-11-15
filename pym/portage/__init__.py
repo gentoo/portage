@@ -6199,7 +6199,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			continue
 		elif isinstance(x, list):
 			newsplit.append(_expand_new_virtuals(x, edebug, mydbapi,
-				mysettings, myroot=myroot, trees=trees, **kwargs))
+				mysettings, myroot=myroot, trees=trees, use_mask=use_mask,
+				use_force=use_force, **kwargs))
 			continue
 
 		if not isinstance(x, portage.dep.Atom):
