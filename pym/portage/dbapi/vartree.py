@@ -2092,19 +2092,40 @@ class dblink(object):
 
 		myfilelist = []
 		mylinklist = []
+		paths_with_newlines = []
+		srcroot_len = len(srcroot)
 		def onerror(e):
 			raise
 		for parent, dirs, files in os.walk(srcroot, onerror=onerror):
 			for f in files:
 				file_path = os.path.join(parent, f)
+				relative_path = file_path[srcroot_len:]
+
+				if "\n" in relative_path:
+					paths_with_newlines.append(relative_path)
+
 				file_mode = os.lstat(file_path).st_mode
 				if stat.S_ISREG(file_mode):
-					myfilelist.append(file_path[len(srcroot):])
+					myfilelist.append(relative_path)
 				elif stat.S_ISLNK(file_mode):
 					# Note: os.walk puts symlinks to directories in the "dirs"
 					# list and it does not traverse them since that could lead
 					# to an infinite recursion loop.
-					mylinklist.append(file_path[len(srcroot):])
+					mylinklist.append(relative_path)
+
+		if paths_with_newlines:
+			msg = []
+			msg.append("This package installs one or more files containing")
+			msg.append("a newline (\\n) character:")
+			msg.append("")
+			paths_with_newlines.sort()
+			for f in paths_with_newlines:
+				msg.append("\t/%s" % (f.replace("\n", "\\n")))
+			msg.append("")
+			msg.append("package %s NOT merged" % self.mycpv)
+			msg.append("")
+			eerror(msg)
+			return 1
 
 		# If there are no files to merge, and an installed package in the same
 		# slot has files, it probably means that something went wrong.
