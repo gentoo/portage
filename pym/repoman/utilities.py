@@ -95,11 +95,13 @@ def detect_vcs_conflicts(options, vcs):
 				sys.exit(retval)
 
 
-def have_profile_dir(path, maxdepth=3):
-	""" Try to figure out if 'path' has a /profiles dir in it by checking for a package.mask file
+def have_profile_dir(path, maxdepth=3, filename="profiles.desc"):
+	""" 
+	Try to figure out if 'path' has a profiles/
+	dir in it by checking for the given filename.
 	"""
 	while path != "/" and maxdepth:
-		if os.path.exists(path + "/profiles/package.mask"):
+		if os.path.exists(os.path.join(path, "profiles", filename)):
 			return normalize_path(path)
 		path = normalize_path(path + "/..")
 		maxdepth -= 1
@@ -379,9 +381,21 @@ def FindPortdir(settings):
 			if have_profile_dir(location, subdir.count("/")):
 				portdir = portdir_overlay
 			break
-	
-	del p, s, path_ids
-	
+
+	# Couldn't match location with anything from PORTDIR_OVERLAY,
+	# so fall back to have_profile_dir() checks alone. Assume that
+	# an overlay will contain at least a "repo_name" file while a
+	# master repo (portdir) will contain at least a "profiles.desc"
+	# file.
+	if not portdir_overlay:
+		portdir_overlay = have_profile_dir(location, filename="repo_name")
+		if portdir_overlay:
+			subdir = location[len(portdir_overlay):]
+			if subdir and subdir[-1] != os.sep:
+				subdir += os.sep
+			if have_profile_dir(location, subdir.count(os.sep)):
+				portdir = portdir_overlay
+
 	if not portdir_overlay:
 		if (settings["PORTDIR"] + os.path.sep).startswith(location):
 			portdir_overlay = settings["PORTDIR"]
@@ -393,7 +407,7 @@ def FindPortdir(settings):
 		msg = 'Repoman is unable to determine PORTDIR or PORTDIR_OVERLAY' + \
 			' from the current working directory'
 		logging.critical(msg)
-		raise ValueError(msg)
+		return (None, None, None)
 
 	if not portdir:
 		portdir = settings["PORTDIR"]

@@ -7885,6 +7885,7 @@ class depgraph(object):
 
 		if not serialized_tasks or "--nodeps" in self.myopts:
 			self._serialized_tasks_cache = serialized_tasks
+			self._scheduler_graph = self.digraph
 		else:
 			self._select_package = self._select_pkg_from_graph
 			self.myparams.add("selective")
@@ -9309,8 +9310,8 @@ class Scheduler(PollScheduler):
 		return interactive_tasks
 
 	def _set_digraph(self, digraph):
-		if self._max_jobs is not True and \
-			self._max_jobs < 2:
+		if "--nodeps" in self.myopts or \
+			(self._max_jobs is not True and self._max_jobs < 2):
 			# save some memory
 			self._digraph = None
 			return
@@ -9668,7 +9669,7 @@ class Scheduler(PollScheduler):
 				root_config.settings.lock()
 
 			self.pkgsettings[root] = portage.config(
-				clone=self.trees[root]["vartree"].settings)
+				clone=root_config.settings)
 
 		rval = self._check_manifests()
 		if rval != os.EX_OK:
@@ -9949,7 +9950,9 @@ class Scheduler(PollScheduler):
 			return None
 
 		if self._digraph is None:
-			if self._jobs or self._task_queues.merge:
+			if (self._jobs or self._task_queues.merge) and \
+				not ("--nodeps" in self.myopts and \
+				(self._max_jobs is True or self._max_jobs > 1)):
 				self._choose_pkg_return_early = True
 				return None
 			return self._pkg_queue.pop(0)
@@ -11274,6 +11277,12 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 	emergelog("notitles" not in settings.features, exit_msg)
 
 	_flush_elog_mod_echo()
+
+	counter_hash = settings.get("PORTAGE_COUNTER_HASH")
+	if counter_hash is not None and \
+		counter_hash == vardbapi._counter_hash():
+		# If vdb state has not changed then there's nothing else to do.
+		sys.exit(retval)
 
 	vdb_path = os.path.join(target_root, portage.VDB_PATH)
 	portage.util.ensure_dirs(vdb_path)
@@ -12890,7 +12899,7 @@ def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner,
 				# dependency to become unsatisfied.
 				for parent_node in graph.parent_nodes(pkg):
 					if not isinstance(parent_node, Package) \
-						or parent_node.operation != "merge":
+						or parent_node.operation not in ("merge", "nomerge"):
 						continue
 					unsatisfied = \
 						graph.child_nodes(parent_node,
@@ -12909,7 +12918,14 @@ def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner,
 				# it's already installed, but it has unsatisfied PDEPEND.
 				raise
 			mergelist[:] = pruned_mergelist
-			dropped_tasks.update(unsatisfied_parents)
+
+			# Exclude installed packages that have been removed from the graph due
+			# to failure to build/install runtime dependencies after the dependent
+			# package has already been installed.
+			dropped_tasks.update(pkg for pkg in \
+				unsatisfied_parents if pkg.operation != "nomerge")
+			mydepgraph.break_refs(unsatisfied_parents)
+
 			del e, graph, traversed_nodes, \
 				unsatisfied_parents, unsatisfied_stack
 			continue
@@ -13910,6 +13926,9 @@ def emerge_main():
 		mysettings =  trees[myroot]["vartree"].settings
 		mysettings.unlock()
 		adjust_config(myopts, mysettings)
+		mysettings["PORTAGE_COUNTER_HASH"] = \
+			trees[myroot]["vartree"].dbapi._counter_hash()
+		mysettings.backup_changes("PORTAGE_COUNTER_HASH")
 		mysettings.lock()
 		del myroot, mysettings
 
