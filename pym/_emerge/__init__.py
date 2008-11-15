@@ -8558,7 +8558,7 @@ class PollScheduler(object):
 
 		if max_load is not None and \
 			(max_jobs is True or max_jobs > 1) and \
-			self._running_job_count() > 1:
+			self._running_job_count() >= 1:
 			try:
 				avg1, avg5, avg15 = os.getloadavg()
 			except (AttributeError, OSError), e:
