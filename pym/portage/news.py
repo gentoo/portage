@@ -100,10 +100,13 @@ class NewsManager(object):
 		unread_filename = self._unread_filename(repoid)
 		unread_lock = lockfile(unread_filename, wantnewlockfile=1)
 		try:
-			unread = set(grabfile(unread_filename))
-			unread_orig = unread.copy()
-			skip = set(grabfile(skip_filename))
-			skip_orig = skip.copy()
+			try:
+				unread = set(grabfile(unread_filename))
+				unread_orig = unread.copy()
+				skip = set(grabfile(skip_filename))
+				skip_orig = skip.copy()
+			except PermissionDenied:
+				return
 
 			updates = []
 			for itemid in news:
@@ -156,7 +159,10 @@ class NewsManager(object):
 		except (InvalidLocation, OperationNotPermitted, PermissionDenied):
 			return 0
 		try:
-			return len(grabfile(unread_filename))
+			try:
+				return len(grabfile(unread_filename))
+			except PermissionDenied:
+				return 0
 		finally:
 			if unread_lock:
 				unlockfile(unread_lock)
