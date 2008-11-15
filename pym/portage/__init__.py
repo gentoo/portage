@@ -4502,6 +4502,9 @@ def _check_build_log(mysettings, out=None):
 	bash_command_not_found = []
 	bash_command_not_found_re = re.compile(
 		r'(.*): line (\d*): (.*): command not found$')
+	helper_missing_file = []
+	helper_missing_file_re = re.compile(
+		r'^!!! (do|new).*: .* does not exist$')
 
 	configure_opts_warn = []
 	configure_opts_warn_re = re.compile(
@@ -4517,6 +4520,9 @@ def _check_build_log(mysettings, out=None):
 
 			if bash_command_not_found_re.match(line) is not None:
 				bash_command_not_found.append(line.rstrip("\n"))
+
+			if helper_missing_file_re.match(line) is not None:
+				helper_missing_file.append(line.rstrip("\n"))
 
 			if configure_opts_warn_re.match(line) is not None:
 				configure_opts_warn.append(line.rstrip("\n"))
@@ -4552,6 +4558,12 @@ def _check_build_log(mysettings, out=None):
 		msg = ["QA Notice: command not found:"]
 		msg.append("")
 		msg.extend("\t" + line for line in bash_command_not_found)
+		_eqawarn(msg)
+
+	if helper_missing_file:
+		msg = ["QA Notice: file does not exist:"]
+		msg.append("")
+		msg.extend("\t" + line[4:] for line in helper_missing_file)
 		_eqawarn(msg)
 
 	if configure_opts_warn:

@@ -20,7 +20,7 @@ for x in "$@" ; do
 	if [[ -e ${x} ]] ; then
 		install -m0755 -o ${PORTAGE_INST_UID:-0} -g ${PORTAGE_INST_GID:-0} "${x}" "${D}${DESTTREE}/bin"
 	else
-		vecho "!!! ${0##*/}: ${x} does not exist" 1>&2
+		echo "!!! ${0##*/}: $x does not exist" 1>&2
 		false
 	fi
 	((ret+=$?))
