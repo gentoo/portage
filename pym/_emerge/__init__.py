@@ -7578,7 +7578,8 @@ class depgraph(object):
 		is not going to be called then this method should be called explicitly
 		to ensure that the user is notified of problems with the graph.
 
-		All output goes to stderr.
+		All output goes to stderr, except for unsatisfied dependencies which
+		go to stdout for parsing by programs such as autounmask.
 		"""
 
 		# Note that show_masked_packages() sends it's output to
@@ -7599,6 +7600,10 @@ class depgraph(object):
 			sys.stdout = stdout
 			sys.stdout.flush()
 			sys.stderr.flush()
+
+		# This goes to stdout for parsing by programs like autounmask.
+		for pargs, kwargs in self._unsatisfied_deps_for_display:
+			self._show_unsatisfied_dep(*pargs, **kwargs)
 
 	def _display_problems(self):
 		if self._circular_deps_for_display is not None:
@@ -7694,9 +7699,6 @@ class depgraph(object):
 			show_masked_packages(masked_packages)
 			show_mask_docs()
 			print
-
-		for pargs, kwargs in self._unsatisfied_deps_for_display:
-			self._show_unsatisfied_dep(*pargs, **kwargs)
 
 	def calc_changelog(self,ebuildpath,current,next):
 		if ebuildpath == None or not os.path.exists(ebuildpath):
