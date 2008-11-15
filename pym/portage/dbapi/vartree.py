@@ -799,6 +799,7 @@ class LinkageMapMachO(object):
 		and the scanmacho binary is not available.
 		"""
 		root = self._root
+		root_len = len(root) - 1
 		self._clear_cache()
 		libs = self._libs
 		obj_key_cache = self._obj_key_cache
