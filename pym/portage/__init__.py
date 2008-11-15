@@ -4250,6 +4250,9 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 			writemsg(("!!! File %s doesn't exist, can't update " + \
 				"Manifest\n") % e, noiselevel=-1)
 			return 0
+		except portage.exception.PortagePackageException, e:
+			writemsg(("!!! %s\n") % (e,), noiselevel=-1)
+			return 0
 		try:
 			mf.write(sign=False)
 		except portage.exception.PermissionDenied, e:
