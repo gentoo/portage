@@ -624,7 +624,12 @@ class LinkageMap(object):
 
 		In some cases, not all consumers are returned.  This may occur when
 		an soname symlink referencing a library is in an object's runpath while
-		the actual library is not.
+		the actual library is not. For example, this problem is noticeable for
+		binutils since it's libraries are added to the path via symlinks that
+		are gemerated in the /usr/$CHOST/lib/ directory by binutils-config.
+		Failure to recognize consumers of these symlinks makes preserve-libs
+		fail to preserve binutils libs that are needed by these unrecognized
+		consumers.
 
 		@param obj: absolute path to an object or a key from _obj_properties
 		@type obj: string (example: '/usr/bin/bar') or _ObjectKey
@@ -3093,7 +3098,7 @@ class dblink(object):
 		# Copy contents entries from the old package to the new one.
 		new_contents = self.getcontents().copy()
 		old_contents = self._installed_instance.getcontents()
-		for f in list(preserve_paths):
+		for f in sorted(preserve_paths):
 			f_abs = os.path.join(root, f.lstrip(os.sep))
 			contents_entry = old_contents.get(f_abs)
 			if contents_entry is None:
@@ -3109,7 +3114,8 @@ class dblink(object):
 				continue
 			new_contents[f_abs] = contents_entry
 			obj_type = contents_entry[0]
-			showMessage(">>> needed    %s %s\n" % (obj_type, f_abs))
+			showMessage(">>> needed    %s %s\n" % (obj_type, f_abs),
+				noiselevel=-1)
 			# Add parent directories to contents if necessary.
 			parent_dir = os.path.dirname(f_abs)
 			while len(parent_dir) > len(root):
@@ -3249,7 +3255,8 @@ class dblink(object):
 					raise
 				del e
 			else:
-				showMessage("<<< !needed   %s %s\n" % (obj_type, obj))
+				showMessage("<<< !needed   %s %s\n" % (obj_type, obj),
+					noiselevel=-1)
 
 		# Remove empty parent directories if possible.
 		while parent_dirs:
