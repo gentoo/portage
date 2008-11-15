@@ -8,6 +8,11 @@ if [[ -z ${T} ]] || [[ -z ${2} ]] ; then
 	exit 1
 fi
 
+if [ ! -e "$1" ] ; then
+	echo "!!! ${0##*/}: $1 does not exist" 1>&2
+	exit 1
+fi
+
 rm -rf "${T}/${2}" && \
 cp -f "${1}" "${T}/${2}" && \
 exec dolib.a "${T}/${2}"

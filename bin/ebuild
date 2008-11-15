@@ -205,7 +205,8 @@ def stale_env_warning():
 			for x in msg:
 				portage.writemsg(">>> %s\n" % x)
 
-from portage.exception import UnsupportedAPIException
+from portage.exception import PermissionDenied, \
+	PortagePackageException, UnsupportedAPIException
 checked_for_stale_env = False
 
 for arg in pargs:
@@ -232,6 +233,12 @@ for arg in pargs:
 		del e
 		for x in msg:
 			portage.writemsg("!!! %s\n" % x, noiselevel=-1)
+		a = 1
+	except PortagePackageException, e:
+		portage.writemsg("!!! %s\n" % (e,), noiselevel=-1)
+		a = 1
+	except PermissionDenied, e:
+		portage.writemsg("!!! Permission Denied: %s\n" % (e,), noiselevel=-1)
 		a = 1
 	if a == None:
 		print "Could not run the required binary?"

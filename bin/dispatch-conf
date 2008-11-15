@@ -31,7 +31,7 @@ import portage
 from portage import dispatch_conf, const
 from portage.process import find_binary
 
-FIND_EXTANT_CONFIGS  = "find '%s' %s -iname '._cfg????_%s' ! -iname '.*~' ! -iname '.*.bak'"
+FIND_EXTANT_CONFIGS  = "find '%s' %s -name '._cfg????_%s' ! -name '.*~' ! -iname '.*.bak' -print"
 DIFF_CONTENTS        = "diff -Nu '%s' '%s'"
 DIFF_CVS_INTERP      = "diff -Nu '%s' '%s' | grep '^[+-][^+-]' | grep -v '# .Header:.*'"
 DIFF_WSCOMMENTS      = "diff -Nu '%s' '%s' | grep '^[+-][^+-]' | grep -v '^[-+]#' | grep -v '^[-+][:space:]*$'"
@@ -96,7 +96,7 @@ class dispatch:
             except OSError:
                 continue
             basename = "*"
-            find_opts = ""
+            find_opts = "-name '.*' -type d -prune -o"
             if not stat.S_ISDIR(mymode):
                 path, basename = os.path.split(path)
                 find_opts = "-maxdepth 1"

@@ -51,6 +51,7 @@ _doins() {
 	install ${INSOPTIONS} "${mysrc}" "${ED}${INSDESTTREE}/${mydir}"
 	rval=$?
 	[[ -n ${cleanup} ]] && rm -f "${cleanup}"
+	[ $rval -ne 0 ] && echo "!!! ${0##*/}: $mysrc does not exist" 1>&2
 	return $rval
 }
 

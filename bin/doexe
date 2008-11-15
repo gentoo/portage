@@ -24,5 +24,6 @@ for x in "$@" ; do
 	else
 		mysrc="${x}"
 	fi
-	install ${EXEOPTIONS} "${mysrc}" "${ED}${_E_EXEDESTTREE_}"
+	install $EXEOPTIONS "$mysrc" "$ED$_E_EXEDESTTREE_" || \
+		echo "!!! ${0##*/}: $mysrc does not exist" 1>&2
 done

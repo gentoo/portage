@@ -20,7 +20,7 @@ for x in "$@" ; do
 		install -m0644 "${x}" "${dir}"
 		ecompress --queue "${dir}/${x##*/}"
 	elif [ ! -e "${x}" ] ; then
-		echo "dodoc: ${x} does not exist" 1>&2
+		echo "!!! ${0##*/}: $x does not exist" 1>&2
 		((++ret))
 	fi
 done
