@@ -3674,7 +3674,8 @@ class dblink(object):
 						writemsg("!!! And finish by running this: env-update\n\n")
 						return 1
 
-					if stat.S_ISLNK(mydmode) or stat.S_ISDIR(mydmode):
+					if stat.S_ISDIR(mydmode) or \
+						(stat.S_ISLNK(mydmode) and os.path.isdir(mydest)):
 						# a symlink to an existing directory will work for us; keep it:
 						showMessage("--- %s/\n" % mydest)
 						if bsd_chflags:
