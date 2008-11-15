@@ -5350,7 +5350,10 @@ class depgraph(object):
 				print "- "+pkg.cpv+" ("+", ".join(mreasons)+")"
 
 		elif masked_packages:
-			print "\n!!! "+red("All ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
+			print "\n!!! " + \
+				colorize("BAD", "All ebuilds that could satisfy ") + \
+				colorize("INFORM", xinfo) + \
+				colorize("BAD", " have been masked.")
 			print "!!! One of the following masked packages is required to complete your request:"
 			have_eapi_mask = show_masked_packages(masked_packages)
 			if have_eapi_mask:
@@ -10980,6 +10983,7 @@ def unmerge(root_config, myopts, unmerge_action,
 def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 
 	if os.path.exists("/usr/bin/install-info"):
+		out = portage.output.EOutput()
 		regen_infodirs=[]
 		for z in infodirs:
 			if z=='':
@@ -10992,13 +10996,16 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 						regen_infodirs.append(inforoot)
 
 		if not regen_infodirs:
-			portage.writemsg_stdout("\n "+green("*")+" GNU info directory index is up-to-date.\n")
+			portage.writemsg_stdout("\n")
+			out.einfo("GNU info directory index is up-to-date.")
 		else:
-			portage.writemsg_stdout("\n "+green("*")+" Regenerating GNU info directory index...\n")
+			portage.writemsg_stdout("\n")
+			out.einfo("Regenerating GNU info directory index...")
 
 			dir_extensions = ("", ".gz", ".bz2")
 			icount=0
 			badcount=0
+			errmsg = ""
 			for inforoot in regen_infodirs:
 				if inforoot=='':
 					continue
@@ -11006,7 +11013,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 				if not os.path.isdir(inforoot) or \
 					not os.access(inforoot, os.W_OK):
 					continue
-				errmsg = ""
+
 				file_list = os.listdir(inforoot)
 				file_list.sort()
 				dir_file = os.path.join(inforoot, "dir")
@@ -11076,11 +11083,12 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 				prev_mtimes[inforoot] = long(os.stat(inforoot).st_mtime)
 
 			if badcount:
-				print " "+yellow("*")+" Processed",icount,"info files;",badcount,"errors."
-				print errmsg
+				out.eerror("Processed %d info files; %d errors." % \
+					(icount, badcount))
+				writemsg_level(errmsg, level=logging.ERROR, noiselevel=-1)
 			else:
 				if icount > 0:
-					print " "+green("*")+" Processed",icount,"info files."
+					out.einfo("Processed %d info files." % (icount,))
 
 
 def display_news_notification(root_config, myopts):
@@ -11378,6 +11386,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	xterm_titles = "notitles" not in settings.features
 	emergelog(xterm_titles, " === sync")
 	myportdir = settings.get("PORTDIR", None)
+	out = portage.output.EOutput()
 	if not myportdir:
 		sys.stderr.write("!!! PORTDIR is undefined.  Is /etc/make.globals missing?\n")
 		sys.exit(1)
@@ -11707,26 +11716,27 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				">>> Exceeded PORTAGE_RSYNC_RETRIES: %s\n" % maxretries)
 			sys.exit(1)
 		elif (exitcode>0):
-			print
+			msg = []
 			if exitcode==1:
-				print darkred("!!!")+green(" Rsync has reported that there is a syntax error. Please ensure")
-				print darkred("!!!")+green(" that your SYNC statement is proper.")
-				print darkred("!!!")+green(" SYNC="+settings["SYNC"])
+				msg.append("Rsync has reported that there is a syntax error. Please ensure")
+				msg.append("that your SYNC statement is proper.")
+				msg.append("SYNC=" + settings["SYNC"])
 			elif exitcode==11:
-				print darkred("!!!")+green(" Rsync has reported that there is a File IO error. Normally")
-				print darkred("!!!")+green(" this means your disk is full, but can be caused by corruption")
-				print darkred("!!!")+green(" on the filesystem that contains PORTDIR. Please investigate")
-				print darkred("!!!")+green(" and try again after the problem has been fixed.")
-				print darkred("!!!")+green(" PORTDIR="+settings["PORTDIR"])
+				msg.append("Rsync has reported that there is a File IO error. Normally")
+				msg.append("this means your disk is full, but can be caused by corruption")
+				msg.append("on the filesystem that contains PORTDIR. Please investigate")
+				msg.append("and try again after the problem has been fixed.")
+				msg.append("PORTDIR=" + settings["PORTDIR"])
 			elif exitcode==20:
-				print darkred("!!!")+green(" Rsync was killed before it finished.")
+				msg.append("Rsync was killed before it finished.")
 			else:
-				print darkred("!!!")+green(" Rsync has not successfully finished. It is recommended that you keep")
-				print darkred("!!!")+green(" trying or that you use the 'emerge-webrsync' option if you are unable")
-				print darkred("!!!")+green(" to use rsync due to firewall or other restrictions. This should be a")
-				print darkred("!!!")+green(" temporary problem unless complications exist with your network")
-				print darkred("!!!")+green(" (and possibly your system's filesystem) configuration.")
-			print
+				msg.append("Rsync has not successfully finished. It is recommended that you keep")
+				msg.append("trying or that you use the 'emerge-webrsync' option if you are unable")
+				msg.append("to use rsync due to firewall or other restrictions. This should be a")
+				msg.append("temporary problem unless complications exist with your network")
+				msg.append("(and possibly your system's filesystem) configuration.")
+			for line in msg:
+				out.eerror(line)
 			sys.exit(exitcode)
 	elif syncuri[:6]=="cvs://":
 		if not os.path.exists("/usr/bin/cvs"):
