@@ -970,7 +970,7 @@ class binarytree(object):
 	def isremote(self, pkgname):
 		"""Returns true if the package is kept remotely and it has not been
 		downloaded (or it is only partially downloaded)."""
-		if pkgname not in self._remotepkgs:
+		if self._remotepkgs is None or pkgname not in self._remotepkgs:
 			return False
 		pkg_path = self.getname(pkgname)
 		if os.path.exists(pkg_path) and \
