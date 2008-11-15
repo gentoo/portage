@@ -4022,17 +4022,8 @@ class BlockerDB(object):
 
 def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 
-	from formatter import AbstractFormatter, DumbWriter
-	f = AbstractFormatter(DumbWriter(maxcol=72))
-
-	print "\n\n!!! Invalid or corrupt dependency specification: "
-	print
-	print error_msg
-	print
-	print parent_node
-	print
-	print depstring
-	print
+	msg1 = "\n\n!!! Invalid or corrupt dependency specification: " + \
+		"\n\n%s\n\n%s\n\n%s\n\n" % (error_msg, parent_node, depstring)
 	p_type, p_root, p_key, p_status = parent_node
 	msg = []
 	if p_status == "nomerge":
@@ -4047,13 +4038,12 @@ def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 		msg.append("the problematic dependencies can be found in the ")
 		msg.append("*DEPEND files located in '%s/'." % pkg_location)
 	else:
-		msg.append("This package can not be installed.  ")
+		msg.append("This package can not be installed. ")
 		msg.append("Please notify the '%s' package maintainer " % p_key)
 		msg.append("about this problem.")
 
-	for x in msg:
-		f.add_flowing_data(x)
-	f.end_paragraph(1)
+	msg2 = "".join("%s\n" % line for line in textwrap.wrap("".join(msg), 72))
+	writemsg_level(msg1 + msg2, level=logging.ERROR, noiselevel=-1)
 
 class PackageVirtualDbapi(portage.dbapi):
 	"""
@@ -7451,6 +7441,22 @@ class depgraph(object):
 						else:
 							return colorize("PKG_NOMERGE", pkg_str)
 
+				try:
+					properties = flatten(use_reduce(paren_reduce(
+						pkg.metadata["PROPERTIES"]), uselist=pkg.use.enabled))
+				except portage.exception.InvalidDependString, e:
+					if not pkg.installed:
+						show_invalid_depstring_notice(pkg,
+							pkg.metadata["PROPERTIES"], str(e))
+						del e
+						return 1
+					properties = []
+				interactive = "interactive" in properties
+				if interactive and pkg.operation == "merge":
+					addl = colorize("WARN", "I") + addl[1:]
+					if ordered:
+						counters.interactive += 1
+
 				if x[1]!="/":
 					if myoldbest:
 						myoldbest +=" "
@@ -8210,6 +8216,7 @@ class PackageCounters(object):
 		self.totalsize  = 0
 		self.restrict_fetch           = 0
 		self.restrict_fetch_satisfied = 0
+		self.interactive              = 0
 
 	def __str__(self):
 		total_installs = self.upgrades + self.downgrades + self.newslot + self.new + self.reinst
@@ -8242,6 +8249,9 @@ class PackageCounters(object):
 			details.append("%s uninstall" % self.uninst)
 			if self.uninst > 1:
 				details[-1] += "s"
+		if self.interactive > 0:
+			details.append("%s %s" % (self.interactive,
+				colorize("WARN", "interactive")))
 		myoutput.append(", ".join(details))
 		if total_installs != 0:
 			myoutput.append(")")
@@ -9071,6 +9081,14 @@ class Scheduler(PollScheduler):
 		def deallocate(self, settings):
 			self._deallocate(settings)
 
+	class _unknown_internal_error(portage.exception.PortageException):
+		"""
+		Used internally to terminate scheduling. The specific reason for
+		the failure should have been dumped to stderr.
+		"""
+		def __init__(self, value=""):
+			portage.exception.PortageException.__init__(self, value)
+
 	def __init__(self, settings, trees, mtimedb, myopts,
 		spinner, mergelist, favorites, digraph):
 		PollScheduler.__init__(self)
@@ -9102,8 +9120,6 @@ class Scheduler(PollScheduler):
 		if max_jobs is None:
 			max_jobs = 1
 		self._set_max_jobs(max_jobs)
-		background = self._background_mode()
-		self._background = background
 
 		# The root where the currently running
 		# portage instance is installed.
@@ -9115,15 +9131,6 @@ class Scheduler(PollScheduler):
 		self._config_pool = {}
 		self._blocker_db = {}
 		for root in trees:
-			root_config = trees[root]["root_config"]
-			if background:
-				root_config.settings.unlock()
-				root_config.settings["PORTAGE_BACKGROUND"] = "1"
-				root_config.settings.backup_changes("PORTAGE_BACKGROUND")
-				root_config.settings.lock()
-
-			self.pkgsettings[root] = portage.config(
-				clone=trees[root]["vartree"].settings)
 			self._config_pool[root] = []
 			self._blocker_db[root] = BlockerDB(trees[root]["root_config"])
 
@@ -9262,8 +9269,13 @@ class Scheduler(PollScheduler):
 			if not (isinstance(task, Package) and \
 				task.operation == "merge"):
 				continue
-			properties = flatten(use_reduce(paren_reduce(
-				task.metadata["PROPERTIES"]), uselist=task.use.enabled))
+			try:
+				properties = flatten(use_reduce(paren_reduce(
+					task.metadata["PROPERTIES"]), uselist=task.use.enabled))
+			except portage.exception.InvalidDependString, e:
+				show_invalid_depstring_notice(task,
+					task.metadata["PROPERTIES"], str(e))
+				raise self._unknown_internal_error()
 			if "interactive" in properties:
 				interactive_tasks.append(task)
 		return interactive_tasks
@@ -9290,7 +9302,10 @@ class Scheduler(PollScheduler):
 
 		graph = self._digraph
 
-		for node in self._mergelist:
+		# Iterate over all nodes rather than just the merge list, because
+		# some uninstall nodes may not be in the merge list since they will
+		# be performed as part of an upgrade within a slot.
+		for node in graph.all_nodes():
 			if not isinstance(node, Package) or \
 				node.operation != "uninstall":
 				continue
@@ -9636,6 +9651,23 @@ class Scheduler(PollScheduler):
 			self._logger.log(" *** Resuming merge...")
 
 		self._save_resume_list()
+
+		try:
+			self._background = self._background_mode()
+		except self._unknown_internal_error:
+			return 1
+
+		for root in self.trees:
+			root_config = self.trees[root]["root_config"]
+			if self._background:
+				root_config.settings.unlock()
+				root_config.settings["PORTAGE_BACKGROUND"] = "1"
+				root_config.settings.backup_changes("PORTAGE_BACKGROUND")
+				root_config.settings.lock()
+
+			self.pkgsettings[root] = portage.config(
+				clone=self.trees[root]["vartree"].settings)
+
 		rval = self._check_manifests()
 		if rval != os.EX_OK:
 			return rval
