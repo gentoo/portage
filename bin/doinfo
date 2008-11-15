@@ -12,4 +12,11 @@ if [[ ! -d ${D}usr/share/info ]] ; then
 	install -d "${D}usr/share/info" || exit 1
 fi
 
-exec install -m0644 "$@" "${D}usr/share/info"
+install -m0644 "$@" "${D}usr/share/info"
+rval=$?
+if [ $rval -ne 0 ] ; then
+	for x in "$@" ; do
+		[ -e "$x" ] || echo "!!! ${0##*/}: $x does not exist" 1>&2
+	done
+fi
+exit $rval
