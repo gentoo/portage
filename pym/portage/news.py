@@ -7,14 +7,16 @@ __all__ = ["NewsManager", "NewsItem", "DisplayRestriction",
 	"DisplayProfileRestriction", "DisplayKeywordRestriction",
 	"DisplayInstalledRestriction"]
 
-import errno
+import logging
 import os
 import re
-from portage.util import apply_permissions, ensure_dirs, grabfile, \
-	grablines, normalize_path, write_atomic
+from portage.util import apply_secpass_permissions, ensure_dirs, \
+	grabfile, normalize_path, write_atomic, writemsg_level
 from portage.data import portage_gid
+from portage.dep import isvalidatom
 from portage.locks import lockfile, unlockfile
-from portage.exception import OperationNotPermitted
+from portage.exception import InvalidLocation, OperationNotPermitted, \
+	PermissionDenied
 
 class NewsManager(object):
 	"""
@@ -38,6 +40,16 @@ class NewsManager(object):
 		self.vdb = vardb
 		self.portdb = portdb
 
+		# GLEP 42 says:
+		#   All news item related files should be root owned and in the
+		#   portage group with the group write (and, for directories,
+		#   execute) bits set. News files should be world readable.
+		self._uid = int(self.config["PORTAGE_INST_UID"])
+		self._gid = portage_gid
+		self._file_mode = 00064
+		self._dir_mode  = 00074
+		self._mode_mask = 00000
+
 		portdir = portdb.porttree_root
 		profiles_base = os.path.join(portdir, 'profiles') + os.path.sep
 		profile_path = None
@@ -48,14 +60,17 @@ class NewsManager(object):
 				profile_path = profile_path[len(profiles_base):]
 		self._profile_path = profile_path
 
-		# Ensure that the unread path exists and is writable.
-		dirmode  = 02070
-		modemask =    02
-		try:
-			ensure_dirs(self.unread_path, mode=dirmode,
-				mask=modemask, gid=portage_gid)
-		except OperationNotPermitted:
-			pass
+	def _unread_filename(self, repoid):
+		return os.path.join(self.unread_path, 'news-%s.unread' % repoid)
+
+	def _skip_filename(self, repoid):
+		return os.path.join(self.unread_path, 'news-%s.skip' % repoid)
+
+	def _news_dir(self, repoid):
+		repo_path = self.portdb.getRepositoryPath(repoid)
+		if repo_path is None:
+			raise AssertionError("Invalid repoID: %s" % repoid)
+		return os.path.join(repo_path, self.news_path)
 
 	def updateItems(self, repoid):
 		"""
@@ -64,66 +79,64 @@ class NewsManager(object):
 		items into the news.repoid.unread file.
 		"""
 
-		repos = self.portdb.getRepositories()
-		if repoid not in repos:
-			raise ValueError("Invalid repoID: %s" % repoid)
+		# Ensure that the unread path exists and is writable.
 
-		path = os.path.join(self.portdb.getRepositoryPath(repoid), self.news_path)
+		try:
+			ensure_dirs(self.unread_path, uid=self._uid, gid=self._gid,
+				mode=self._dir_mode, mask=self._mode_mask)
+		except (OperationNotPermitted, PermissionDenied):
+			return
 
-		# Skip reading news for repoid if the news dir does not exist.  Requested by
-		# NightMorph :)
-		if not os.path.exists(path):
-			return None
-		news = os.listdir(path)
+		if not os.access(self.unread_path, os.W_OK):
+			return
 
-		skipfile = os.path.join(self.unread_path, "news-%s.skip" % repoid)
-		skiplist = grabfile(skipfile)
-		updates = []
-		for itemid in news:
-			if itemid in skiplist:
-				continue
-			try:
-				filename = os.path.join(path, itemid, itemid + "." + self.language_id + ".txt")
+		news_dir = self._news_dir(repoid)
+		try:
+			news = os.listdir(news_dir)
+		except OSError:
+			return
+
+		skip_filename = self._skip_filename(repoid)
+		unread_filename = self._unread_filename(repoid)
+		unread_lock = lockfile(unread_filename, wantnewlockfile=1)
+		try:
+			unread = set(grabfile(unread_filename))
+			unread_orig = unread.copy()
+			skip = set(grabfile(skip_filename))
+			skip_orig = skip.copy()
+
+			updates = []
+			for itemid in news:
+				if itemid in skip:
+					continue
+				filename = os.path.join(news_dir, itemid,
+					itemid + "." + self.language_id + ".txt")
+				if not os.path.isfile(filename):
+					continue
 				item = NewsItem(filename, itemid)
-			except (TypeError):
-				continue
-			if item.isRelevant(profile=self._profile_path,
-				config=self.config, vardb=self.vdb):
-				updates.append(item)
-		del path
-		
-		path = os.path.join(self.unread_path, 'news-%s.unread' % repoid)
-		unread_lock = None
-		try:
-			unread_lock = lockfile(path)
-			if not os.path.exists(path):
-				#create the file if it does not exist
-				open(path, "w")
-			# Ensure correct perms on the unread file.
-			apply_permissions( filename=path,
-				uid=int(self.config['PORTAGE_INST_UID']), gid=portage_gid, mode=0664)
-			# Make sure we have the correct permissions when created
-			unread_file = open(path, 'a')
+				if not item.isValid():
+					continue
+				if item.isRelevant(profile=self._profile_path,
+					config=self.config, vardb=self.vdb):
+					unread.add(item.name)
+					skip.add(item.name)
 
-			for item in updates:
-				unread_file.write(item.name + "\n")
-				skiplist.append(item.name)
-			unread_file.close()
+			if unread != unread_orig:
+				write_atomic(unread_filename,
+					"".join("%s\n" % x for x in sorted(unread)))
+				apply_secpass_permissions(unread_filename,
+					uid=self._uid, gid=self._gid,
+					mode=self._file_mode, mask=self._mode_mask)
+
+			if skip != skip_orig:
+				write_atomic(skip_filename,
+					"".join("%s\n" % x for x in sorted(skip)))
+				apply_secpass_permissions(skip_filename,
+					uid=self._uid, gid=self._gid,
+					mode=self._file_mode, mask=self._mode_mask)
+
 		finally:
-			if unread_lock:
-				unlockfile(unread_lock)
-			write_atomic(skipfile, "\n".join(skiplist)+"\n")
-		try:
-			apply_permissions(filename=skipfile, 
-				uid=int(self.config["PORTAGE_INST_UID"]), gid=portage_gid, mode=0664)
-		except OperationNotPermitted, e:
-			import errno
-			# skip "permission denied" errors as we're likely running in pretend mode
-			# with reduced priviledges
-			if e.errno == errno.EPERM:
-				pass
-			else:
-				raise
+			unlockfile(unread_lock)
 
 	def getUnreadItems(self, repoid, update=False):
 		"""
@@ -136,15 +149,14 @@ class NewsManager(object):
 		if update:
 			self.updateItems(repoid)
 		
-		unreadfile = os.path.join(self.unread_path, 'news-%s.unread' % repoid)
+		unread_filename = self._unread_filename(repoid)
 		unread_lock = None
 		try:
-			if os.access(os.path.dirname(unreadfile), os.W_OK):
-				# TODO: implement shared readonly locks
-				unread_lock = lockfile(unreadfile)
-
-			return len(grablines(unreadfile))
-
+			unread_lock = lockfile(unread_filename, wantnewlockfile=1)
+		except (InvalidLocation, OperationNotPermitted, PermissionDenied):
+			return 0
+		try:
+			return len(grabfile(unread_filename))
 		finally:
 			if unread_lock:
 				unlockfile(unread_lock)
@@ -169,11 +181,10 @@ class NewsItem(object):
 		""" 
 		For a given news item we only want if it path is a file.
 		"""
-		if not os.path.isfile(path):
-			raise TypeError("%s is no regular file" % path)
 		self.path = path
 		self.name = name
 		self._parsed = False
+		self._valid = True
 
 	def isRelevant(self, vardb, config, profile):
 		"""
@@ -183,6 +194,9 @@ class NewsItem(object):
 		Each restriction will pluck out the items that are required for it to match
 		or raise a ValueError exception if the required object is not present.
 		"""
+
+		if not self._parsed:
+			self.parse()
 
 		if not len(self.restrictions):
 			return True # no restrictions to match means everyone should see it
@@ -198,10 +212,16 @@ class NewsItem(object):
 			
 		return False # No restrictions were met; thus we aren't relevant :(
 
+	def isValid(self):
+		if not self._parsed:
+			self.parse()
+		return self._valid
+
 	def parse(self):
 		lines = open(self.path).readlines()
 		self.restrictions = []
-		for line in lines:
+		invalids = []
+		for i, line in enumerate(lines):
 			#Optimization to ignore regex matchines on lines that
 			#will never match
 			if not line.startswith('D'):
@@ -213,13 +233,19 @@ class NewsItem(object):
 				match = regex.match(line)
 				if match:
 					self.restrictions.append(restriction(match.groups()[0].strip()))
+					if not self.restrictions[-1].isValid():
+						invalids.append((i + 1, line.rstrip("\n")))
 					continue
-		self._parsed = True
+		if invalids:
+			self._valid = False
+			msg = []
+			msg.append("Invalid news item: %s" % (self.path,))
+			for lineno, line in invalids:
+				msg.append("  line %d: %s" % (lineno, line))
+			writemsg_level("".join("!!! %s\n" % x for x in msg),
+				level=logging.ERROR, noiselevel=-1)
 
-	def __getattr__(self, attr):
-		if not self._parsed:
-			self.parse()
-		return self.__dict__[attr]
+		self._parsed = True
 
 class DisplayRestriction(object):
 	"""
@@ -229,6 +255,9 @@ class DisplayRestriction(object):
 	a particular item is relevant or not.  If any of it's restrictions
 	are met, then it is displayed
 	"""
+
+	def isValid(self):
+		return True
 
 	def checkRestriction(self, **kwargs):
 		raise NotImplementedError('Derived class should over-ride this method')
@@ -267,11 +296,14 @@ class DisplayInstalledRestriction(DisplayRestriction):
 	if the user has that item installed.
 	"""
 	
-	def __init__(self, cpv):
-		self.cpv = cpv
+	def __init__(self, atom):
+		self.atom = atom
+
+	def isValid(self):
+		return isvalidatom(self.atom)
 
 	def checkRestriction(self, **kwargs):
 		vdb = kwargs['vardb']
-		if vdb.match(self.cpv):
+		if vdb.match(self.atom):
 			return True
 		return False

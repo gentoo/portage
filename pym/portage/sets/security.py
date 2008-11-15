@@ -46,7 +46,7 @@ class SecuritySet(PackageSet):
 	def _reduce(self, atomlist):
 		mydict = {}
 		for atom in atomlist[:]:
-			cpv = self._portdbapi.match(atom)[0]
+			cpv = self._portdbapi.xmatch("match-all", atom)[0]
 			slot = self._portdbapi.aux_get(cpv, ["SLOT"])[0]
 			cps = "/".join(catpkgsplit(cpv)[0:2]) + ":" + slot
 			if not cps in mydict:

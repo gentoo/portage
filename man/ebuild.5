@@ -464,7 +464,7 @@ process.  Inherit may only be called once in an ebuild and it may \fBnever be
 wrapped within any conditionals\fR of any kind.  Specification of the eclasses
 contains only their name and not the \fI.eclass\fR extension.  Also note that
 the inherit statement must come before other variable declarations.
-.SH "FUNCTIONS"
+.SH "PHASE FUNCTIONS"
 .TP
 .B pkg_nofetch
 If you turn on \fIfetch\fR in \fBRESTRICT\fR, then this function will be
@@ -486,8 +486,22 @@ patches and other pre configure/compile modifications should be done here.
 .br
 Initial working directory of $WORKDIR.
 .TP
+.B src_prepare
+All preparation of source code, such as application of patches, should be done
+here. This function is supported beginning with \fBEAPI 2\fR.
+.br
+Initial working directory of $S.
+.TP
+.B src_configure
+All necessary steps for configuration should be done here. This function is
+supported beginning with \fBEAPI 2\fR.
+.br
+Initial working directory of $S.
+.TP
 .B src_compile
-All necessary steps for configuration and compilation should be done in here.
+With less than \fBEAPI 2\fR, all necessary steps for both configuration and
+compilation should be done here. Beginning with \fBEAPI 2\fR, only compilation
+steps should be done here.
 .br
 Initial working directory of $S.
 .TP
@@ -519,6 +533,35 @@ Initial working directory of $PWD.
 This function should contain optional basic configuration steps.
 .br
 Initial working directory of $PWD.
+.SH "HELPER FUNCTIONS: PHASES"
+.TP
+.B default
+Calls the default phase function implementation for the currently executing
+phase. This function is supported beginning with \fBEAPI 2\fR.
+.TP
+.B default_pkg_nofetch
+Calls the default pkg_nofetch phase function implementation.
+This function is supported beginning with \fBEAPI 2\fR.
+.TP
+.B default_src_unpack
+Calls the default src_unpack phase function implementation.
+This function is supported beginning with \fBEAPI 2\fR.
+.TP
+.B default_src_prepare
+Calls the default src_prepare phase function implementation.
+This function is supported beginning with \fBEAPI 2\fR.
+.TP
+.B default_src_configure
+Calls the default src_configure phase function implementation.
+This function is supported beginning with \fBEAPI 2\fR.
+.TP
+.B default_src_compile
+Calls the default src_compile phase function implementation.
+This function is supported beginning with \fBEAPI 2\fR.
+.TP
+.B default_src_test
+Calls the default src_test phase function implementation.
+This function is supported beginning with \fBEAPI 2\fR.
 .SH "HELPER FUNCTIONS: GENERAL"
 .TP
 \fBdie\fR \fI[reason]\fR
@@ -832,6 +875,12 @@ Installs manual\-pages into /usr/share/man/man[0\-9n] depending on the
 manual file ending.  The files are compressed if they are not already.  You
 can specify locale\-specific manpages with the \fI\-i18n\fR option.  Then the
 man\-page will be installed into /usr/share/man/\fI<locale>\fR/man[0\-9n].
+Beginning with \fBEAPI 2\fR, a locale\-specific manpage which contains a locale
+in the file name will be installed in /usr/share/man/\fI<locale>\fR/man[0\-9n],
+with the locale portion of the file name removed, and the \fI\-i18n\fR option
+has no effect. For example, with \fBEAPI 2\fR, a manpage named
+foo.\fI<locale>\fR.1 will be installed as
+/usr/share/man/\fI<locale>\fR/man1/foo.1.
 .PD 0
 .TP
 \fBdohard\fR \fI<filename> <linkname>\fR
