@@ -776,7 +776,7 @@ if vcs:
 	modified_changelogs.update(x for x in chain(mychanged, mynew) \
 		if os.path.basename(x) == "ChangeLog")
 
-have_masked = False
+have_pmasked = False
 dofail = 0
 arch_caches={}
 arch_xmatch_caches = {}
@@ -1508,7 +1508,9 @@ for x in scanlist:
 					ismasked = os.path.join(catdir, y) not in \
 						portdb.xmatch("list-visible", x)
 					if ismasked:
-						have_masked = True
+						if not have_pmasked:
+							have_pmasked = bool(dep_settings._getMaskAtom(
+								pkg.cpv, pkg.metadata))
 						if options.ignore_masked:
 							continue
 						#we are testing deps for a masked package; give it some lee-way
@@ -1634,7 +1636,7 @@ def grouplist(mylist,seperator="/"):
 			mygroups[xs[0]]+=[seperator.join(xs[1:])]
 	return mygroups
 
-if have_masked and not (options.without_mask or options.ignore_masked):
+if have_pmasked and not (options.without_mask or options.ignore_masked):
 	print bold("Note: use --without-mask to check " + \
 		"KEYWORDS on dependencies of masked packages")
 
