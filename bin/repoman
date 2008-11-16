@@ -671,6 +671,28 @@ else:
 	print
 	sys.exit(1)
 
+def dev_keywords(profiles):
+	"""
+	Create a set of KEYWORDS values that exist in 'dev'
+	profiles and not in 'stable' profiles. These are used
+	to trigger a message notifying the user when they might
+	want to add the --include-dev option.
+	"""
+	type_arch_map = {}
+	for arch, arch_profiles in profiles.iteritems():
+		for profile_path, profile_type in arch_profiles:
+			arch_set = type_arch_map.get(profile_type)
+			if arch_set is None:
+				arch_set = set()
+				type_arch_map[profile_type] = arch_set
+			arch_set.add(arch)
+
+	dev_keywords = type_arch_map.get('dev', set())
+	dev_keywords.difference_update(type_arch_map.get('stable', set()))
+	dev_keywords.update(['~' + arch for arch in dev_keywords])
+	return frozenset(dev_keywords)
+
+dev_keywords = dev_keywords(profiles)
 
 stats={}
 fails={}
@@ -777,6 +799,7 @@ if vcs:
 		if os.path.basename(x) == "ChangeLog")
 
 have_pmasked = False
+have_dev_keywords = False
 dofail = 0
 arch_caches={}
 arch_xmatch_caches = {}
@@ -1519,7 +1542,11 @@ for x in scanlist:
 					else:
 						suffix=""
 						matchmode = "minimum-visible"
-	
+
+					if not have_dev_keywords:
+						have_dev_keywords = \
+							bool(dev_keywords.intersection(keywords))
+
 					if prof[1] == "dev":
 						suffix=suffix+"indev"
 
@@ -1639,6 +1666,10 @@ def grouplist(mylist,seperator="/"):
 if have_pmasked and not (options.without_mask or options.ignore_masked):
 	print bold("Note: use --without-mask to check " + \
 		"KEYWORDS on dependencies of masked packages")
+
+if have_dev_keywords and not options.include_dev:
+	print bold("Note: use --include-dev (-d) to check " + \
+		"dependencies for 'dev' profiles")
 
 if options.mode != 'commit':
 	if dofull:
