@@ -4509,6 +4509,11 @@ def _check_build_log(mysettings, out=None):
 	am_maintainer_mode_re = re.compile(r'.*/missing --run .*')
 	am_maintainer_mode_exclude_re = \
 		re.compile(r'.*/missing --run (autoheader|makeinfo)')
+
+	make_jobserver_re = \
+		re.compile(r'make\[\d+\]: warning: jobserver unavailable:')
+	make_jobserver = []
+
 	try:
 		for line in f:
 			if am_maintainer_mode_re.search(line) is not None and \
@@ -4523,6 +4528,10 @@ def _check_build_log(mysettings, out=None):
 
 			if configure_opts_warn_re.match(line) is not None:
 				configure_opts_warn.append(line.rstrip("\n"))
+
+			if make_jobserver_re.match(line) is not None:
+				make_jobserver.append(line.rstrip("\n"))
+
 	finally:
 		f.close()
 
@@ -4567,6 +4576,12 @@ def _check_build_log(mysettings, out=None):
 		msg = ["QA Notice: Unrecognized configure options:"]
 		msg.append("")
 		msg.extend("\t" + line for line in configure_opts_warn)
+		_eqawarn(msg)
+
+	if make_jobserver:
+		msg = ["QA Notice: make jobserver unavailable:"]
+		msg.append("")
+		msg.extend("\t" + line for line in make_jobserver)
 		_eqawarn(msg)
 
 def _post_src_install_uid_fix(mysettings):
