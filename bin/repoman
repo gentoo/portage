@@ -193,6 +193,9 @@ def ParseArgs(args, qahelp):
 	parser.add_option('-I', '--ignore-masked', dest='ignore_masked', action='store_true',
 		default=False, help='ignore masked packages (not allowed with commit mode)')
 
+	parser.add_option('--include-dev', dest='include_dev', action='store_true',
+		default=False, help='include dev profiles in dependency checks')
+
 	parser.add_option('--without-mask', dest='without_mask', action='store_true',
 		default=False, help='behave as if no package.mask entries exist (not allowed with commit mode)')
 
@@ -1453,7 +1456,8 @@ for x in scanlist:
 				
 			for prof in profiles[arch]:
 
-				if prof[1] not in ("stable", "dev"):
+				if prof[1] not in ("stable", "dev") or \
+					prof[1] == "dev" and not options.include_dev:
 					continue
 
 				profdir = portdir+"/profiles/"+prof[0]
