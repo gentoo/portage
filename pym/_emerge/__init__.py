@@ -4330,7 +4330,7 @@ class depgraph(object):
 		self._show_merge_list()
 
 		msg = []
-		msg.append("\n!!! Multiple versions within a single " + \
+		msg.append("\n!!! Multiple package instances within a single " + \
 			"package slot have been pulled\n")
 		msg.append("!!! into the dependency graph, resulting" + \
 			" in a slot conflict:\n\n")
@@ -4601,6 +4601,9 @@ class depgraph(object):
 						# as an unsatisfied dependency.
 						self._unsatisfied_deps_for_display.append(
 							((dep.root, dep.atom), {"myparent":dep.parent}))
+						self._slot_collision_info.add((pkg.slot_atom, pkg.root))
+						self._slot_collision_nodes.add(pkg)
+						self.digraph.addnode(pkg, myparent, priority=priority)
 						return 0
 
 					if pkg in self._slot_collision_nodes:
