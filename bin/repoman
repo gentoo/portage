@@ -674,7 +674,7 @@ else:
 def dev_keywords(profiles):
 	"""
 	Create a set of KEYWORDS values that exist in 'dev'
-	profiles and not in 'stable' profiles. These are used
+	profiles. These are used
 	to trigger a message notifying the user when they might
 	want to add the --include-dev option.
 	"""
@@ -688,7 +688,6 @@ def dev_keywords(profiles):
 			arch_set.add(arch)
 
 	dev_keywords = type_arch_map.get('dev', set())
-	dev_keywords.difference_update(type_arch_map.get('stable', set()))
 	dev_keywords.update(['~' + arch for arch in dev_keywords])
 	return frozenset(dev_keywords)
 
