@@ -2057,7 +2057,7 @@ else:
 				if vcs == "svn":
 					print "(svn -q commit -F commitmessagefile)"
 				elif vcs == "git":
-					print "(git commit -F commitmessagefile)"
+					print "(git commit -a -F commitmessagefile)"
 			else:
 				fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
 				mymsg = os.fdopen(fd, "w")
@@ -2069,7 +2069,7 @@ else:
 				if vcs == "svn":
 					retval=os.system("svn -q commit -F "+commitmessagefile)
 				elif vcs == "git":
-					retval=os.system("git commit -F "+commitmessagefile)
+					retval=os.system("git commit -a -F "+commitmessagefile)
 				try:
 					os.unlink(commitmessagefile)
 				except OSError:
