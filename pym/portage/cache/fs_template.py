@@ -36,7 +36,7 @@ class FsBased(template.database):
 		try:
 			os.chown(path, -1, self._gid)
 			os.chmod(path, self._perms)
-			if mtime:
+			if mtime != -1:
 				mtime=long(mtime)
 				os.utime(path, (mtime, mtime))
 		except (OSError, IOError):
