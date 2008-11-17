@@ -2061,9 +2061,8 @@ else:
 			commit_cmd.extend(vcs_global_opts)
 			commit_cmd.append("commit")
 			commit_cmd.extend(vcs_local_opts)
-			if vcs == "git":
-				commit_cmd.append("-a")
 			commit_cmd.extend(["-F", commitmessagefile])
+			commit_cmd.extend(f.lstrip("./") for f in mymanifests)
 
 			try:
 				if options.pretend:
@@ -2141,9 +2140,8 @@ else:
 		commit_cmd.extend(vcs_global_opts)
 		commit_cmd.append("commit")
 		commit_cmd.extend(vcs_local_opts)
-		if vcs == "git":
-			commit_cmd.append("-a")
 		commit_cmd.extend(["-F", commitmessagefile])
+		commit_cmd.extend(f.lstrip("./") for f in mymanifests)
 
 		try:
 			if options.pretend:
