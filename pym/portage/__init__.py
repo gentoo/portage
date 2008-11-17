@@ -4521,7 +4521,7 @@ def _check_build_log(mysettings, out=None):
 		re.compile(r'.*/missing --run (autoheader|makeinfo)')
 
 	make_jobserver_re = \
-		re.compile(r'make\[\d+\]: warning: jobserver unavailable:')
+		re.compile(r'g?make\[\d+\]: warning: jobserver unavailable:')
 	make_jobserver = []
 
 	try:
