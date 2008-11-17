@@ -496,6 +496,15 @@ if os.path.isdir(".svn"):
 elif os.path.isdir(os.path.join(portdir_overlay, ".git")):
 	vcs = "git"
 
+vcs_local_opts = repoman_settings.get("REPOMAN_VCS_LOCAL_OPTS", "").split()
+vcs_global_opts = repoman_settings.get("REPOMAN_VCS_GLOBAL_OPTS")
+if vcs_global_opts is None:
+	if vcs != "git":
+		vcs_global_opts = "-q"
+	else:
+		vcs_global_opts = ""
+vcs_global_opts = vcs_global_opts.split()
+
 if vcs == "cvs" and \
 	"commit" == options.mode and \
 	"RMD160" not in portage.checksum.hashorigin_map:
@@ -1922,38 +1931,28 @@ else:
 		# so strip the prefix.
 		myfiles = [f.lstrip("./") for f in myfiles]
 
-		retval = None
-		if options.pretend:
-			if vcs == "cvs":
-				print "(cvs -q commit -F %s %s)" % \
-					(commitmessagefile, " ".join(myfiles))
-			if vcs == "svn":
-				print "(svn commit -F %s %s)" % \
-					(commitmessagefile, " ".join(myfiles))
-			elif vcs == "git":
-				print "(git commit -F %s %s)" % \
-					(commitmessagefile, " ".join(myfiles))
-		else:
-			if vcs == "cvs":
-				retval = spawn(["cvs", "-q", "commit",
-					"-F", commitmessagefile] + myfiles,
-					env=os.environ)
-			if vcs == "svn":
-				retval = spawn(["svn", "commit",
-					"-F", commitmessagefile] + myfiles,
-					env=os.environ)
-			elif vcs == "git":
-				retval = spawn(["git", "commit", "-F",
-					commitmessagefile] + myfiles,
-					env=os.environ)
+		commit_cmd = [vcs]
+		commit_cmd.extend(vcs_global_opts)
+		commit_cmd.append("commit")
+		commit_cmd.extend(vcs_local_opts)
+		commit_cmd.extend(["-F", commitmessagefile])
+		commit_cmd.extend(myfiles)
+
 		try:
-			os.unlink(commitmessagefile)
-		except OSError:
-			pass
-		if retval:
-			writemsg_level("!!! Exiting on %s (shell) error code: %s\n" % \
-				(vcs, retval), level=logging.ERROR, noiselevel=-1)
-			sys.exit(retval)
+			if options.pretend:
+				print "(%s)" % (" ".join(commit_cmd),)
+			else:
+				retval = spawn(commit_cmd, env=os.environ)
+				if retval != os.EX_OK:
+					writemsg_level(("!!! Exiting on %s (shell) " + \
+						"error code: %s\n") % (vcs, retval),
+						level=logging.ERROR, noiselevel=-1)
+					sys.exit(retval)
+		finally:
+			try:
+				os.unlink(commitmessagefile)
+			except OSError:
+				pass
 
 	# Setup the GPG commands
 	def gpgsign(filename):
@@ -2051,33 +2050,36 @@ else:
 
 		# Force an unsigned commit when more than one Manifest needs to be signed.
 		if repolevel < 3 and "sign" in repoman_settings.features:
-			if options.pretend:
-				if vcs == "cvs":
-					print "(cvs -q commit -F commitmessagefile)"
-				if vcs == "svn":
-					print "(svn -q commit -F commitmessagefile)"
-				elif vcs == "git":
-					print "(git commit -a -F commitmessagefile)"
-			else:
-				fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
-				mymsg = os.fdopen(fd, "w")
-				mymsg.write(commitmessage)
-				mymsg.write("\n (Unsigned Manifest commit)")
-				mymsg.close()
-				if vcs == "cvs":
-					retval=os.system("cvs -q commit -F "+commitmessagefile)
-				if vcs == "svn":
-					retval=os.system("svn -q commit -F "+commitmessagefile)
-				elif vcs == "git":
-					retval=os.system("git commit -a -F "+commitmessagefile)
+
+			fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
+			mymsg = os.fdopen(fd, "w")
+			mymsg.write(commitmessage)
+			mymsg.write("\n (Unsigned Manifest commit)")
+			mymsg.close()
+
+			commit_cmd = [vcs]
+			commit_cmd.extend(vcs_global_opts)
+			commit_cmd.append("commit")
+			commit_cmd.extend(vcs_local_opts)
+			if vcs == "git":
+				commit_cmd.append("-a")
+			commit_cmd.extend(["-F", commitmessagefile])
+
+			try:
+				if options.pretend:
+					print "(%s)" % (" ".join(commit_cmd),)
+				else:
+					retval = spawn(commit_cmd, env=os.environ)
+					if retval:
+						writemsg_level(("!!! Exiting on %s (shell) " + \
+							"error code: %s\n") % (vcs, retval),
+							level=logging.ERROR, noiselevel=-1)
+						sys.exit(retval)
+			finally:
 				try:
 					os.unlink(commitmessagefile)
 				except OSError:
 					pass
-				if retval:
-					writemsg_level("!!! Exiting on %s (shell) error code: %s\n" % \
-						(vcs, retval), level=logging.ERROR, noiselevel=-1)
-					sys.exit(retval)
 			manifest_commit_required = False
 
 	signed = False
@@ -2125,36 +2127,39 @@ else:
 			signed = False
 
 	if manifest_commit_required or signed:
-		if options.pretend:
-			if vcs == "cvs":
-				print "(cvs -q commit -F commitmessagefile)"
-			if vcs == "svn":
-				print "(svn -q commit -F commitmessagefile)"
-			elif vcs == "git":
-				print "(git commit -a -F commitmessagefile)"
+
+		fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
+		mymsg = os.fdopen(fd, "w")
+		mymsg.write(commitmessage)
+		if signed:
+			mymsg.write("\n (Signed Manifest commit)")
 		else:
-			fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
-			mymsg = os.fdopen(fd, "w")
-			mymsg.write(commitmessage)
-			if signed:
-				mymsg.write("\n (Signed Manifest commit)")
+			mymsg.write("\n (Unsigned Manifest commit)")
+		mymsg.close()
+
+		commit_cmd = [vcs]
+		commit_cmd.extend(vcs_global_opts)
+		commit_cmd.append("commit")
+		commit_cmd.extend(vcs_local_opts)
+		if vcs == "git":
+			commit_cmd.append("-a")
+		commit_cmd.extend(["-F", commitmessagefile])
+
+		try:
+			if options.pretend:
+				print "(%s)" % (" ".join(commit_cmd),)
 			else:
-				mymsg.write("\n (Unsigned Manifest commit)")
-			mymsg.close()
-			if vcs == "cvs":
-				retval=os.system("cvs -q commit -F "+commitmessagefile)
-			if vcs == "svn":
-				retval=os.system("svn -q commit -F "+commitmessagefile)
-			elif vcs == "git":
-				retval=os.system("git commit -a -F "+commitmessagefile)
+				retval = spawn(commit_cmd, env=os.environ)
+				if retval != os.EX_OK:
+					writemsg_level(("!!! Exiting on %s (shell) " + \
+						"error code: %s\n") % (vcs, retval),
+						level=logging.ERROR, noiselevel=-1)
+					sys.exit(retval)
+		finally:
 			try:
 				os.unlink(commitmessagefile)
 			except OSError:
 				pass
-			if retval:
-				writemsg_level("!!! Exiting on %s (shell) error code: %s\n" % \
-					(vcs, retval), level=logging.ERROR, noiselevel=-1)
-				sys.exit(retval)
 
 	print
 	if vcs:
