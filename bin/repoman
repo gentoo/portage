@@ -621,6 +621,7 @@ if repolevel==2:
 			continue
 		if os.path.isdir(startdir+"/"+x):
 			scanlist.append(catdir+"/"+x)
+	repo_subdir = catdir + os.sep
 elif repolevel==1:
 	for x in repoman_settings.categories:
 		if not os.path.isdir(startdir+"/"+x):
@@ -630,11 +631,14 @@ elif repolevel==1:
 				continue
 			if os.path.isdir(startdir+"/"+x+"/"+y):
 				scanlist.append(x+"/"+y)
+	repo_subdir = ""
 elif repolevel==3:
 	catdir = reposplit[-2]
 	if catdir not in repoman_settings.categories:
 		caterror(catdir)
 	scanlist.append(catdir+"/"+reposplit[-1])
+	repo_subdir = scanlist[-1] + os.sep
+repo_subdir_len = len(repo_subdir)
 scanlist.sort()
 
 logging.debug("Found the following packages to scan:\n%s" % '\n'.join(scanlist))
@@ -783,7 +787,6 @@ modified_changelogs = set()
 mychanged = []
 mynew = []
 myremoved = []
-path_lstrip_re = re.compile(r'.*/')
 
 if vcs == "cvs":
 	mycvstree = cvstree.getentries("./", recursive=1)
@@ -799,7 +802,8 @@ elif vcs == "git":
 	mynew = os.popen("git diff --cached --name-only --diff-filter=A").readlines()
 	strip_levels = repolevel - 1
 	if strip_levels:
-		mynew = [path_lstrip_re.sub("", elem, strip_levels) for elem in mynew]
+		mynew = [elem[repo_subdir_len:] for elem in mynew \
+			if elem[:repo_subdir_len] == repo_subdir]
 	mynew = ["./" + elem[:-1] for elem in mynew]
 if vcs:
 	new_ebuilds.update(x for x in mynew if x.endswith(".ebuild"))
@@ -1806,11 +1810,13 @@ else:
 		mynew = os.popen("git diff --cached --name-only --diff-filter=A").readlines()
 		strip_levels = repolevel - 1
 		if strip_levels:
-			mynew = [path_lstrip_re.sub("", elem, strip_levels) for elem in mynew]
+			mynew = [elem[repo_subdir_len:] for elem in mynew \
+				if elem[:repo_subdir_len] == repo_subdir]
 		mynew = ["./" + elem[:-1] for elem in mynew]
 		myremoved = os.popen("git diff --cached --name-only --diff-filter=D").readlines()
 		if strip_levels:
-			myremoved = [path_lstrip_re.sub("", elem, strip_levels) for elem in myremoved]
+			myremoved = [elem[repo_subdir_len:] for elem in myremoved \
+				if elem[:repo_subdir_len] == repo_subdir]
 		myremoved = ["./" + elem[:-1] for elem in myremoved]
 
 	if vcs:
