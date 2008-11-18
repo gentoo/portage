@@ -13904,21 +13904,29 @@ def emerge_main():
 
 	if "--quiet" not in myopts:
 		portage.deprecated_profile_check()
+		missing_repo_names = set()
 		for root in trees:
 			if "porttree" in trees[root]:
 				db = trees[root]["porttree"].dbapi
 				paths = (db.mysettings["PORTDIR"]+" "+db.mysettings["PORTDIR_OVERLAY"]).split()
-				paths = [os.path.realpath(p) for p in paths]
+				missing_repo_names.update(os.path.realpath(p) for p in paths)
 				repos = db.getRepositories()
 				for r in repos:
-					p = db.getRepositoryPath(r)
-					try:
-						paths.remove(p)
-					except ValueError:
-						pass
-				for p in paths:
-					writemsg("WARNING: repository at %s is missing a repo_name entry\n" % p)
-					
+					missing_repo_names.discard(db.getRepositoryPath(r))
+
+		if missing_repo_names:
+			msg = []
+			msg.append("WARNING: One or more repositories " + \
+				"have missing repo_name entries:")
+			msg.append("")
+			for p in missing_repo_names:
+				msg.append("\t%s/profiles/repo_name" % (p,))
+			msg.append("")
+			msg.extend(textwrap.wrap("NOTE: Each repo_name entry " + \
+				"should be a plain text file containing a unique " + \
+				"name for the repository on the first line.", 70))
+			writemsg_level("".join("%s\n" % l for l in msg),
+				level=logging.WARNING, noiselevel=-1)
 
 	eclasses_overridden = {}
 	for mytrees in trees.itervalues():
