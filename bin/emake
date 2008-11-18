@@ -11,6 +11,15 @@
 #        /etc/make.globals here because emake is only called from an
 #        ebuild.
 
-[[ $PORTAGE_QUIET = 1 ]] || echo ${MAKE:-make} $MAKEOPTS $EXTRA_EMAKE "$@" >&2
+if [[ $PORTAGE_QUIET != 1 ]] ; then
+	(
+	for arg in ${MAKE:-make} $MAKEOPTS $EXTRA_EMAKE "$@" ; do
+		[[ ${arg} == *" "* ]] \
+			&& printf "'%s' " "${arg}" \
+			|| printf "%s " "${arg}"
+	done
+	printf "\n"
+	) >&2
+fi
 
 exec ${MAKE:-make} ${MAKEOPTS} ${EXTRA_EMAKE} "$@"
