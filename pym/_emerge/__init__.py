@@ -13844,6 +13844,32 @@ def expand_set_arguments(myfiles, myaction, root_config):
 			newargs.append(a)
 	return (newargs, retval)
 
+def repo_name_check(trees):
+	missing_repo_names = set()
+	for root, root_trees in trees.iteritems():
+		if "porttree" in root_trees:
+			portdb = root_trees["porttree"].dbapi
+			missing_repo_names.update(portdb.porttrees)
+			repos = portdb.getRepositories()
+			for r in repos:
+				missing_repo_names.discard(portdb.getRepositoryPath(r))
+
+	if missing_repo_names:
+		msg = []
+		msg.append("WARNING: One or more repositories " + \
+			"have missing repo_name entries:")
+		msg.append("")
+		for p in missing_repo_names:
+			msg.append("\t%s/profiles/repo_name" % (p,))
+		msg.append("")
+		msg.extend(textwrap.wrap("NOTE: Each repo_name entry " + \
+			"should be a plain text file containing a unique " + \
+			"name for the repository on the first line.", 70))
+		writemsg_level("".join("%s\n" % l for l in msg),
+			level=logging.WARNING, noiselevel=-1)
+
+	return bool(missing_repo_names)
+
 def emerge_main():
 	global portage	# NFC why this is necessary now - genone
 	portage._disable_legacy_globals()
@@ -13904,29 +13930,7 @@ def emerge_main():
 
 	if "--quiet" not in myopts:
 		portage.deprecated_profile_check()
-		missing_repo_names = set()
-		for root in trees:
-			if "porttree" in trees[root]:
-				db = trees[root]["porttree"].dbapi
-				paths = (db.mysettings["PORTDIR"]+" "+db.mysettings["PORTDIR_OVERLAY"]).split()
-				missing_repo_names.update(os.path.realpath(p) for p in paths)
-				repos = db.getRepositories()
-				for r in repos:
-					missing_repo_names.discard(db.getRepositoryPath(r))
-
-		if missing_repo_names:
-			msg = []
-			msg.append("WARNING: One or more repositories " + \
-				"have missing repo_name entries:")
-			msg.append("")
-			for p in missing_repo_names:
-				msg.append("\t%s/profiles/repo_name" % (p,))
-			msg.append("")
-			msg.extend(textwrap.wrap("NOTE: Each repo_name entry " + \
-				"should be a plain text file containing a unique " + \
-				"name for the repository on the first line.", 70))
-			writemsg_level("".join("%s\n" % l for l in msg),
-				level=logging.WARNING, noiselevel=-1)
+		repo_name_check(trees)
 
 	eclasses_overridden = {}
 	for mytrees in trees.itervalues():
