@@ -3,6 +3,8 @@
 # License: GPL2
 # $Id$
 
+__all__ = ["cache"]
+
 from portage.util import normalize_path, writemsg
 import errno, os, sys
 from portage.data import portage_gid
@@ -63,14 +65,22 @@ class cache(object):
 				except OSError:
 					continue
 				ys=y[:-eclass_len]
-				self.eclasses[ys] = (x, long(mtime))
-				self._eclass_locations[ys] = x
 				if x == self._master_eclass_root:
 					master_eclasses[ys] = mtime
-				else:
-					master_mtime = master_eclasses.get(ys)
-					if master_mtime and master_mtime != mtime:
+					self.eclasses[ys] = (x, mtime)
+					self._eclass_locations[ys] = x
+					continue
+
+				master_mtime = master_eclasses.get(ys)
+				if master_mtime is not None:
+					if master_mtime == mtime:
+						# It appears to be identical to the master,
+						# so prefer the master entry.
+						continue
+					else:
 						self._master_eclasses_overridden[ys] = x
+				self.eclasses[ys] = (x, mtime)
+				self._eclass_locations[ys] = x
 
 	def is_eclass_data_valid(self, ec_dict):
 		if not isinstance(ec_dict, dict):

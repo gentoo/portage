@@ -3,6 +3,8 @@
 # License: GPL2
 # $Id$
 
+__all__ = ["mirror_cache", "non_quiet_mirroring", "quiet_mirroring"]
+
 from itertools import chain
 from portage.cache import cache_errors
 
@@ -65,25 +67,34 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 
 		if write_it:
 			try:
-				inherited = entry.get("INHERITED", None)
+				inherited = entry.get("INHERITED", "")
+				eclasses = entry.get("_eclasses_")
 			except cache_errors.CacheError, ce:
 				noise.exception(x, ce)
 				del ce
 				continue
+
+			if eclasses is not None:
+				if not eclass_cache.is_eclass_data_valid(entry["_eclasses_"]):
+					noise.eclass_stale(x)
+					continue
+				inherited = eclasses
+			else:
+				inherited = inherited.split()
+
 			if inherited:
-				if src_cache.complete_eclass_entries:
-					if not "_eclasses_" in entry:
-						noise.corruption(x,"missing _eclasses_ field")
-						continue
-					if not eclass_cache.is_eclass_data_valid(entry["_eclasses_"]):
-						noise.eclass_stale(x)
-						continue
-				else:
-					entry["_eclasses_"] = eclass_cache.get_eclass_data(entry["INHERITED"].split(), \
-						from_master_only=True)
-					if not entry["_eclasses_"]:
-						noise.eclass_stale(x)
-						continue
+				if src_cache.complete_eclass_entries and eclasses is None:
+					noise.corruption(x, "missing _eclasses_ field")
+					continue
+
+				# Even if _eclasses_ already exists, replace it with data from
+				# eclass_cache, in order to insert local eclass paths.
+				eclasses = eclass_cache.get_eclass_data(inherited,
+					from_master_only=True)
+				if eclasses is None:
+					noise.eclass_stale(x)
+					continue
+				entry["_eclasses_"] = eclasses
 
 			# by this time, if it reaches here, the eclass has been validated, and the entry has 
 			# been updated/translated (if needs be, for metadata/cache mainly)
