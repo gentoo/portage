@@ -12900,11 +12900,6 @@ def action_build(settings, trees, mtimedb,
 
 		if ("--resume" in myopts):
 			favorites=mtimedb["resume"]["favorites"]
-			if "PORTAGE_PARALLEL_FETCHONLY" in settings:
-				""" parallel-fetch uses --resume --fetchonly and we don't want
-				it to write the mtimedb"""
-				mtimedb.filename = None
-				time.sleep(3) # allow the parent to have first fetch
 			mymergelist = mydepgraph.altlist()
 			mydepgraph.break_refs(mymergelist)
 			mergetask = Scheduler(settings, trees, mtimedb, myopts,
