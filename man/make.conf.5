@@ -401,7 +401,13 @@ Defines if color should be disabled by default.
 Defaults to false.
 .TP
 \fBPKGDIR\fR = \fI[path]\fR
-Defines the location where created .tbz2 binary packages will be stored.  Note
+Defines the location where created .tbz2 binary packages will be
+stored when the \fBemerge\fR(1) \fB\-\-buildpkg\fR option is enabled.
+By default, a given package is stored in a subdirectory corresponding
+to it's category. However, for backward compatibility with the layout
+used by older versions of portage, if the \fI${PKGDIR}/All\fR directory
+exists then all packages will be stored inside of it and symlinks to
+the packages will be created in the category subdirectories. Note
 that locations under /usr/portage are not necessarily safe for data storage.
 See the \fBPORTDIR\fR documentation for more information.
 .br
