@@ -3,7 +3,7 @@
 # License: GPL2
 # $Id$
 
-import os, stat, types
+import os, re, stat, types
 from portage.cache import flat_hash
 import portage.eclass_cache 
 from portage.cache.template import reconstruct_eclasses
@@ -22,6 +22,8 @@ class database(flat_hash.database):
 
 	autocommits = True
 
+	_hashed_re = re.compile('^(\\w+)=([^\n]*)')
+
 	def __init__(self, location, *args, **config):
 		loc = location
 		super(database, self).__init__(location, *args, **config)
@@ -33,34 +35,23 @@ class database(flat_hash.database):
 
 
 	def _parse_data(self, data, cpv):
-		# easy attempt first.
+		_hashed_re_match = self._hashed_re.match
 		data = list(data)
-		if len(data) != magic_line_count:
-			d = flat_hash.database._parse_data(self, data, cpv)
-		else:
-			# this one's interesting.
-			d = {}
+		d = {}
 
-			for line in data:
-				# yes, meant to iterate over a string.
-				hashed = False
-				# poor mans enumerate.  replace when python 2.3 is required
-				for idx, c in zip(range(len(line)), line):
-					if not c.isalpha():
-						if c == "=" and idx > 0:
-							hashed = True
-							d[line[:idx]] = line[idx + 1:].rstrip("\n")
-						elif c == "_" or c.isdigit():
-							continue
-						break
-
-				if not hashed:
-					# non hashed.
-					d.clear()
-					# poor mans enumerate.  replace when python 2.3 is required
-					for idx, key in zip(range(len(self.auxdbkey_order)), self.auxdbkey_order):
-						d[key] = data[idx].strip()
-					break
+		for line in data:
+			hashed = False
+			hashed_match = _hashed_re_match(line)
+			if hashed_match is None:
+				d.clear()
+				try:
+					for i, key in enumerate(self.auxdbkey_order):
+						d[key] = data[i].rstrip("\n")
+				except IndexError:
+					pass
+				break
+			else:
+				d[hashed_match.group(1)] = hashed_match.group(2)
 
 		if "_eclasses_" not in d:
 			if "INHERITED" in d:
