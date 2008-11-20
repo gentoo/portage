@@ -3046,11 +3046,12 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	# In some cases the above print statements don't flush stdout, so
 	# it needs to be flushed before allowing a child process to use it
 	# so that output always shows in the correct order.
+	stdout_filenos = (sys.stdout.fileno(), sys.stderr.fileno())
 	for fd in fd_pipes.itervalues():
-		if fd == sys.stdout.fileno():
+		if fd in stdout_filenos:
 			sys.stdout.flush()
-		if fd == sys.stderr.fileno():
 			sys.stderr.flush()
+			break
 
 	# The default policy for the sesandbox domain only allows entry (via exec)
 	# from shells and from binaries that belong to portage (the number of entry
