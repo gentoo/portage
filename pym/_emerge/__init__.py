@@ -1583,9 +1583,9 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 				v = 0
 		self._pkg.mtime = v
 
-class EbuildFetchPretend(SlotObject):
+class EbuildFetchonly(SlotObject):
 
-	__slots__ = ("fetch_all", "pkg", "settings")
+	__slots__ = ("fetch_all", "pkg", "pretend", "settings")
 
 	def execute(self):
 		# To spawn pkg_nofetch requires PORTAGE_BUILDDIR for
@@ -1621,8 +1621,12 @@ class EbuildFetchPretend(SlotObject):
 
 		retval = portage.doebuild(ebuild_path, "fetch",
 			self.settings["ROOT"], self.settings, debug=debug,
-			listonly=1, fetchonly=1, fetchall=self.fetch_all,
+			listonly=self.pretend, fetchonly=1, fetchall=self.fetch_all,
 			mydbapi=portdb, tree="porttree")
+
+		if retval != os.EX_OK:
+			msg = "Fetch failed for '%s'" % (pkg.cpv,)
+			eerror(msg, phase="unpack", key=pkg.cpv)
 
 		portage.elog.elog_process(self.pkg.cpv, self.settings)
 		return retval
@@ -2493,10 +2497,11 @@ class EbuildBuild(CompositeTask):
 		pkg = self.pkg
 		settings = self.settings
 
-		if opts.fetchonly and opts.pretend:
-				fetcher = EbuildFetchPretend(
+		if opts.fetchonly:
+				fetcher = EbuildFetchonly(
 					fetch_all=opts.fetch_all_uri,
-					pkg=pkg, settings=settings)
+					pkg=pkg, pretend=opts.pretend,
+					settings=settings)
 				retval = fetcher.execute()
 				self.returncode = retval
 				self.wait()
@@ -8916,6 +8921,7 @@ class JobStatusDisplay(object):
 			self._erase()
 
 		self.out.write(self._format_msg(msg) + self._term_codes['newline'])
+		self.out.flush()
 		self._displayed = False
 
 		if was_displayed:
