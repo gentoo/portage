@@ -8901,10 +8901,12 @@ class JobStatusDisplay(object):
 		self.out.write(
 			self._term_codes['carriage_return'] + \
 			self._term_codes['clr_eol'])
+		self.out.flush()
 		self._displayed = False
 
 	def _display(self, line):
 		self.out.write(line)
+		self.out.flush()
 		self._displayed = True
 
 	def _update(self, msg):
@@ -8912,6 +8914,7 @@ class JobStatusDisplay(object):
 		out = self.out
 		if not self._isatty:
 			out.write(self._format_msg(msg) + self._term_codes['newline'])
+			self.out.flush()
 			self._displayed = True
 			return
 
@@ -8943,6 +8946,7 @@ class JobStatusDisplay(object):
 
 		if self._displayed:
 			self.out.write(self._term_codes['newline'])
+			self.out.flush()
 			self._displayed = False
 
 	def __setattr__(self, name, value):
