@@ -2885,7 +2885,11 @@ class EbuildProcess(SpawnProcess):
 	__slots__ = ("phase", "pkg", "settings", "tree")
 
 	def _start(self):
-		self.logfile = self.settings.get("PORTAGE_LOG_FILE")
+		# Don't open the log file during the clean phase since the
+		# open file can result in an nfs lock on $T/build.log which
+		# prevents the clean phase from removing $T.
+		if self.phase not in ("clean", "cleanrm"):
+			self.logfile = self.settings.get("PORTAGE_LOG_FILE")
 		SpawnProcess._start(self)
 
 	def _pipe(self, fd_pipes):
