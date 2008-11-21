@@ -12428,11 +12428,10 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				finally:
 					portage.dep._dep_check_strict = True
 				if not success:
-					show_invalid_depstring_notice(
-						("installed", myroot, node, "nomerge"),
-						depstr, atoms)
-					return
- 
+					# Ignore invalid deps of packages that will
+					# be uninstalled anyway.
+					continue
+
 				priority = priority_map[dep_type]
 				for atom in atoms:
 					if not isinstance(atom, portage.dep.Atom):
