@@ -12783,7 +12783,10 @@ def action_depclean(settings, trees, ldpath_mtimes,
  
 				priority = priority_map[dep_type]
 				for atom in atoms:
-					if atom.startswith("!"):
+					if not isinstance(atom, portage.dep.Atom):
+						# Ignore invalid atoms returned from dep_check().
+						continue
+					if atom.blocker:
 						continue
 					matches = vardb.match_pkgs(atom)
 					if not matches:
