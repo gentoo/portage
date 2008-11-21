@@ -13888,6 +13888,14 @@ def repo_name_check(trees):
 
 	return bool(missing_repo_names)
 
+def config_protect_check(trees):
+	for root, root_trees in trees.iteritems():
+		if not root_trees["root_config"].settings.get("CONFIG_PROTECT"):
+			msg = "!!! CONFIG_PROTECT is empty"
+			if root != "/":
+				msg += " for '%s'" % root
+			writemsg_level(msg, level=logging.WARN, noiselevel=-1)
+
 def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
 
 	if "--quiet" in myopts:
@@ -13971,6 +13979,7 @@ def emerge_main():
 	if "--quiet" not in myopts:
 		portage.deprecated_profile_check()
 		repo_name_check(trees)
+		config_protect_check(trees)
 
 	eclasses_overridden = {}
 	for mytrees in trees.itervalues():
