@@ -426,6 +426,8 @@ class search(object):
 		self.searchdesc = searchdesc
 		self.root_config = root_config
 		self.setconfig = root_config.setconfig
+		self.matches = {"pkg" : []}
+		self.mlen = 0
 
 		def fake_portdb():
 			pass
@@ -542,7 +544,7 @@ class search(object):
 					if not result or cpv == portage.best([cpv, result]):
 						result = cpv
 				else:
-					db_keys = list(db._aux_cache_keys)
+					db_keys = Package.metadata_keys
 					# break out of this loop with highest visible
 					# match, checked in descending order
 					for cpv in reversed(db.match(atom)):
@@ -634,6 +636,15 @@ class search(object):
 		for mtype in self.matches:
 			self.matches[mtype].sort()
 			self.mlen += len(self.matches[mtype])
+
+	def addCP(self, cp):
+		if not self.portdb.xmatch("match-all", cp):
+			return
+		masked = 0
+		if not self.portdb.xmatch("bestmatch-visible", cp):
+			masked = 1
+		self.matches["pkg"].append([cp, masked])
+		self.mlen += 1
 
 	def output(self):
 		"""Outputs the results of the search."""
@@ -729,7 +740,6 @@ class search(object):
 						print "     ", darkgreen("Description:")+"  ",desc
 						print "     ", darkgreen("License:")+"      ",license
 						print
-		print
 	#
 	# private interface
 	#
@@ -5023,13 +5033,10 @@ class depgraph(object):
 						if portage.dep_getkey(atom) == installed_cp]
 
 				if len(expanded_atoms) > 1:
-					print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
-					print "!!! one of the following fully-qualified ebuild names instead:\n"
-					expanded_atoms = set(portage.dep_getkey(atom) \
-						for atom in expanded_atoms)
-					for i in sorted(expanded_atoms):
-						print "    " + green(i)
 					print
+					print
+					ambiguous_package_name(x, expanded_atoms, root_config,
+						self.spinner, self.myopts)
 					return False, myfavorites
 				if expanded_atoms:
 					atom = expanded_atoms[0]
@@ -13870,6 +13877,28 @@ def repo_name_check(trees):
 			level=logging.WARNING, noiselevel=-1)
 
 	return bool(missing_repo_names)
+
+def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
+
+	if "--quiet" in myopts:
+		print "!!! The short ebuild name \"%s\" is ambiguous. Please specify" % arg
+		print "!!! one of the following fully-qualified ebuild names instead:\n"
+		for cp in sorted(set(portage.dep_getkey(atom) for atom in atoms)):
+			print "    " + colorize("INFORM", cp)
+		return
+
+	s = search(root_config, spinner, "--searchdesc" in myopts,
+		"--quiet" not in myopts, "--usepkg" in myopts,
+		"--usepkgonly" in myopts)
+	null_cp = portage.dep_getkey(insert_category_into_atom(
+		arg, "null"))
+	cat, atom_pn = portage.catsplit(null_cp)
+	s.searchkey = atom_pn
+	for cp in sorted(set(portage.dep_getkey(atom) for atom in atoms)):
+		s.addCP(cp)
+	s.output()
+	print "!!! The short ebuild name \"%s\" is ambiguous. Please specify" % arg
+	print "!!! one of the above fully-qualified ebuild names instead.\n"
 
 def emerge_main():
 	global portage	# NFC why this is necessary now - genone
