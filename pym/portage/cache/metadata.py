@@ -64,6 +64,9 @@ class database(flat_hash.database):
 			# because it calls reconstruct_eclasses() internally.
 			d["_eclasses_"] = reconstruct_eclasses(None, d["_eclasses_"])
 
+		for x in self._known_keys:
+			d.setdefault(x, '')
+
 		return d
 
 
