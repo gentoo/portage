@@ -6372,6 +6372,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		all_available = True
 		versions = {}
 		for atom in atoms:
+			if atom[:1] == "!":
+				continue
 			avail_pkg = mydbapi.match(atom)
 			if avail_pkg:
 				avail_pkg = avail_pkg[-1] # highest (ascending order)
@@ -6389,7 +6391,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 			# If any version of a package is installed then we assume that it
 			# is preferred over other possible packages choices.
 			all_installed = True
-			for atom in set([dep_getkey(atom) for atom in atoms]):
+			for atom in set([dep_getkey(atom) for atom in atoms \
+				if atom[:1] != "!"]):
 				# New-style virtuals have zero cost to install.
 				if not vardb.match(atom) and not atom.startswith("virtual/"):
 					all_installed = False
