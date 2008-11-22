@@ -441,6 +441,8 @@ class search(object):
 		self.searchdesc = searchdesc
 		self.root_config = root_config
 		self.setconfig = root_config.setconfig
+		self.matches = {"pkg" : []}
+		self.mlen = 0
 
 		def fake_portdb():
 			pass
@@ -557,7 +559,7 @@ class search(object):
 					if not result or cpv == portage.best([cpv, result]):
 						result = cpv
 				else:
-					db_keys = list(db._aux_cache_keys)
+					db_keys = Package.metadata_keys
 					# break out of this loop with highest visible
 					# match, checked in descending order
 					for cpv in reversed(db.match(atom)):
@@ -649,6 +651,15 @@ class search(object):
 		for mtype in self.matches:
 			self.matches[mtype].sort()
 			self.mlen += len(self.matches[mtype])
+
+	def addCP(self, cp):
+		if not self.portdb.xmatch("match-all", cp):
+			return
+		masked = 0
+		if not self.portdb.xmatch("bestmatch-visible", cp):
+			masked = 1
+		self.matches["pkg"].append([cp, masked])
+		self.mlen += 1
 
 	def output(self):
 		"""Outputs the results of the search."""
@@ -744,7 +755,6 @@ class search(object):
 						print "     ", darkgreen("Description:")+"  ",desc
 						print "     ", darkgreen("License:")+"      ",license
 						print
-		print
 	#
 	# private interface
 	#
@@ -1610,9 +1620,9 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 				v = 0
 		self._pkg.mtime = v
 
-class EbuildFetchPretend(SlotObject):
+class EbuildFetchonly(SlotObject):
 
-	__slots__ = ("fetch_all", "pkg", "settings")
+	__slots__ = ("fetch_all", "pkg", "pretend", "settings")
 
 	def execute(self):
 		# To spawn pkg_nofetch requires PORTAGE_BUILDDIR for
@@ -1648,8 +1658,12 @@ class EbuildFetchPretend(SlotObject):
 
 		retval = portage.doebuild(ebuild_path, "fetch",
 			self.settings["ROOT"], self.settings, debug=debug,
-			listonly=1, fetchonly=1, fetchall=self.fetch_all,
+			listonly=self.pretend, fetchonly=1, fetchall=self.fetch_all,
 			mydbapi=portdb, tree="porttree")
+
+		if retval != os.EX_OK:
+			msg = "Fetch failed for '%s'" % (pkg.cpv,)
+			eerror(msg, phase="unpack", key=pkg.cpv)
 
 		portage.elog.elog_process(self.pkg.cpv, self.settings)
 		return retval
@@ -2520,10 +2534,11 @@ class EbuildBuild(CompositeTask):
 		pkg = self.pkg
 		settings = self.settings
 
-		if opts.fetchonly and opts.pretend:
-				fetcher = EbuildFetchPretend(
+		if opts.fetchonly:
+				fetcher = EbuildFetchonly(
 					fetch_all=opts.fetch_all_uri,
-					pkg=pkg, settings=settings)
+					pkg=pkg, pretend=opts.pretend,
+					settings=settings)
 				retval = fetcher.execute()
 				self.returncode = retval
 				self.wait()
@@ -2897,7 +2912,11 @@ class EbuildProcess(SpawnProcess):
 	__slots__ = ("phase", "pkg", "settings", "tree")
 
 	def _start(self):
-		self.logfile = self.settings.get("PORTAGE_LOG_FILE")
+		# Don't open the log file during the clean phase since the
+		# open file can result in an nfs lock on $T/build.log which
+		# prevents the clean phase from removing $T.
+		if self.phase not in ("clean", "cleanrm"):
+			self.logfile = self.settings.get("PORTAGE_LOG_FILE")
 		SpawnProcess._start(self)
 
 	def _pipe(self, fd_pipes):
@@ -5045,13 +5064,10 @@ class depgraph(object):
 						if portage.dep_getkey(atom) == installed_cp]
 
 				if len(expanded_atoms) > 1:
-					print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
-					print "!!! one of the following fully-qualified ebuild names instead:\n"
-					expanded_atoms = set(portage.dep_getkey(atom) \
-						for atom in expanded_atoms)
-					for i in sorted(expanded_atoms):
-						print "    " + green(i)
 					print
+					print
+					ambiguous_package_name(x, expanded_atoms, root_config,
+						self.spinner, self.myopts)
 					return False, myfavorites
 				if expanded_atoms:
 					atom = expanded_atoms[0]
@@ -8930,10 +8946,12 @@ class JobStatusDisplay(object):
 		self.out.write(
 			self._term_codes['carriage_return'] + \
 			self._term_codes['clr_eol'])
+		self.out.flush()
 		self._displayed = False
 
 	def _display(self, line):
 		self.out.write(line)
+		self.out.flush()
 		self._displayed = True
 
 	def _update(self, msg):
@@ -8941,6 +8959,7 @@ class JobStatusDisplay(object):
 		out = self.out
 		if not self._isatty:
 			out.write(self._format_msg(msg) + self._term_codes['newline'])
+			self.out.flush()
 			self._displayed = True
 			return
 
@@ -8957,6 +8976,7 @@ class JobStatusDisplay(object):
 			self._erase()
 
 		self.out.write(self._format_msg(msg) + self._term_codes['newline'])
+		self.out.flush()
 		self._displayed = False
 
 		if was_displayed:
@@ -8971,6 +8991,7 @@ class JobStatusDisplay(object):
 
 		if self._displayed:
 			self.out.write(self._term_codes['newline'])
+			self.out.flush()
 			self._displayed = False
 
 	def __setattr__(self, name, value):
@@ -12845,14 +12866,16 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				finally:
 					portage.dep._dep_check_strict = True
 				if not success:
-					show_invalid_depstring_notice(
-						("installed", myroot, node, "nomerge"),
-						depstr, atoms)
-					return
- 
+					# Ignore invalid deps of packages that will
+					# be uninstalled anyway.
+					continue
+
 				priority = priority_map[dep_type]
 				for atom in atoms:
-					if atom.startswith("!"):
+					if not isinstance(atom, portage.dep.Atom):
+						# Ignore invalid atoms returned from dep_check().
+						continue
+					if atom.blocker:
 						continue
 					matches = vardb.match_pkgs(atom)
 					if not matches:
@@ -13954,6 +13977,28 @@ def repo_name_check(trees):
 			level=logging.WARNING, noiselevel=-1)
 
 	return bool(missing_repo_names)
+
+def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
+
+	if "--quiet" in myopts:
+		print "!!! The short ebuild name \"%s\" is ambiguous. Please specify" % arg
+		print "!!! one of the following fully-qualified ebuild names instead:\n"
+		for cp in sorted(set(portage.dep_getkey(atom) for atom in atoms)):
+			print "    " + colorize("INFORM", cp)
+		return
+
+	s = search(root_config, spinner, "--searchdesc" in myopts,
+		"--quiet" not in myopts, "--usepkg" in myopts,
+		"--usepkgonly" in myopts)
+	null_cp = portage.dep_getkey(insert_category_into_atom(
+		arg, "null"))
+	cat, atom_pn = portage.catsplit(null_cp)
+	s.searchkey = atom_pn
+	for cp in sorted(set(portage.dep_getkey(atom) for atom in atoms)):
+		s.addCP(cp)
+	s.output()
+	print "!!! The short ebuild name \"%s\" is ambiguous. Please specify" % arg
+	print "!!! one of the above fully-qualified ebuild names instead.\n"
 
 def emerge_main():
 	global portage	# NFC why this is necessary now - genone

@@ -3076,11 +3076,12 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	# In some cases the above print statements don't flush stdout, so
 	# it needs to be flushed before allowing a child process to use it
 	# so that output always shows in the correct order.
+	stdout_filenos = (sys.stdout.fileno(), sys.stderr.fileno())
 	for fd in fd_pipes.itervalues():
-		if fd == sys.stdout.fileno():
+		if fd in stdout_filenos:
 			sys.stdout.flush()
-		if fd == sys.stderr.fileno():
 			sys.stderr.flush()
+			break
 
 	# The default policy for the sesandbox domain only allows entry (via exec)
 	# from shells and from binaries that belong to portage (the number of entry
@@ -6661,8 +6662,16 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	writemsg("mysplit:  %s\n" % (mysplit), 1)
 	writemsg("mysplit2: %s\n" % (mysplit2), 1)
 
-	myzaps = dep_zapdeps(mysplit, mysplit2, myroot,
-		use_binaries=use_binaries, trees=trees)
+	try:
+		myzaps = dep_zapdeps(mysplit, mysplit2, myroot,
+			use_binaries=use_binaries, trees=trees)
+	except portage.exception.InvalidAtom, e:
+		if portage.dep._dep_check_strict:
+			raise # This shouldn't happen.
+		# dbapi.match() failed due to an invalid atom in
+		# the dependencies of an installed package.
+		return [0, "Invalid atom: '%s'" % (e,)]
+
 	mylist = flatten(myzaps)
 	writemsg("myzaps:   %s\n" % (myzaps), 1)
 	writemsg("mylist:   %s\n" % (mylist), 1)
