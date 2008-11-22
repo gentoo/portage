@@ -4357,7 +4357,7 @@ class depgraph(object):
 		self._show_merge_list()
 
 		msg = []
-		msg.append("\n!!! Multiple versions within a single " + \
+		msg.append("\n!!! Multiple package instances within a single " + \
 			"package slot have been pulled\n")
 		msg.append("!!! into the dependency graph, resulting" + \
 			" in a slot conflict:\n\n")
@@ -4616,6 +4616,23 @@ class depgraph(object):
 							priority=priority)
 					return 1
 				else:
+
+					if pkg.cpv == existing_node.cpv and \
+						dep.atom is not None and \
+						dep.atom.use:
+						# Multiple different instances of the same version
+						# (typically one installed and another not yet
+						# installed) have been pulled into the graph due
+						# to a USE dependency. The "slot collision" display
+						# is not helpful in a case like this, so display it
+						# as an unsatisfied dependency.
+						self._unsatisfied_deps_for_display.append(
+							((dep.root, dep.atom), {"myparent":dep.parent}))
+						self._slot_collision_info.add((pkg.slot_atom, pkg.root))
+						self._slot_collision_nodes.add(pkg)
+						self.digraph.addnode(pkg, myparent, priority=priority)
+						return 0
+
 					if pkg in self._slot_collision_nodes:
 						return 1
 					# A slot collision has occurred.  Sometimes this coincides
@@ -7613,8 +7630,35 @@ class depgraph(object):
 		the merge list where it is most likely to be seen, but if display()
 		is not going to be called then this method should be called explicitly
 		to ensure that the user is notified of problems with the graph.
+
+		All output goes to stderr, except for unsatisfied dependencies which
+		go to stdout for parsing by programs such as autounmask.
 		"""
 
+		# Note that show_masked_packages() sends it's output to
+		# stdout, and some programs such as autounmask parse the
+		# output in cases when emerge bails out. However, when
+		# show_masked_packages() is called for installed packages
+		# here, the message is a warning that is more appropriate
+		# to send to stderr, so temporarily redirect stdout to
+		# stderr. TODO: Fix output code so there's a cleaner way
+		# to redirect everything to stderr.
+		sys.stdout.flush()
+		sys.stderr.flush()
+		stdout = sys.stdout
+		try:
+			sys.stdout = sys.stderr
+			self._display_problems()
+		finally:
+			sys.stdout = stdout
+			sys.stdout.flush()
+			sys.stderr.flush()
+
+		# This goes to stdout for parsing by programs like autounmask.
+		for pargs, kwargs in self._unsatisfied_deps_for_display:
+			self._show_unsatisfied_dep(*pargs, **kwargs)
+
+	def _display_problems(self):
 		if self._circular_deps_for_display is not None:
 			self._show_circular_deps(
 				self._circular_deps_for_display)
@@ -7708,9 +7752,6 @@ class depgraph(object):
 			show_masked_packages(masked_packages)
 			show_mask_docs()
 			print
-
-		for pargs, kwargs in self._unsatisfied_deps_for_display:
-			self._show_unsatisfied_dep(*pargs, **kwargs)
 
 	def calc_changelog(self,ebuildpath,current,next):
 		if ebuildpath == None or not os.path.exists(ebuildpath):
@@ -8561,7 +8602,7 @@ class PollScheduler(object):
 
 		if max_load is not None and \
 			(max_jobs is True or max_jobs > 1) and \
-			self._running_job_count() > 1:
+			self._running_job_count() >= 1:
 			try:
 				avg1, avg5, avg15 = os.getloadavg()
 			except OSError, e:
@@ -12742,9 +12783,12 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				for consumer_dblink in set(chain(*consumers.values())):
 					consumer_pkg = vardb.get(("installed", myroot,
 						consumer_dblink.mycpv, "nomerge"))
-					resolver._add_pkg(pkg, Dependency(parent=consumer_pkg,
+					if not resolver._add_pkg(pkg,
+						Dependency(parent=consumer_pkg,
 						priority=UnmergeDepPriority(runtime=True),
-						root=pkg.root))
+						root=pkg.root)):
+						resolver.display_problems()
+						return 1
 
 			writemsg_level("\nCalculating dependencies  ")
 			success = resolver._complete_graph()
