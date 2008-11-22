@@ -5,7 +5,6 @@ SOURCE_DIR=${RELEASE_BUILDDIR}/checkout
 BRANCH=${BRANCH:-trunk}
 REPOSITORY=svn+ssh://cvs.gentoo.org/var/svnroot/portage/main
 SVN_LOCATION=${REPOSITORY}/${BRANCH}
-CHANGELOG_REVISION=""
 CREATE_TAG=
 CHANGELOG_REVISION=
 UPLOAD_LOCATION=
@@ -68,7 +67,7 @@ svn export "${SVN_LOCATION}" "${SOURCE_DIR}" > /dev/null || die "svn export fail
 
 echo ">>> Creating Changelog"
 svn2cl_opts="-i --reparagraph"
-[ -n $CHANGELOG_REVISION ] && svn2cl_opts+=" -r HEAD:$CHANGELOG_REVISION"
+[ -n "$CHANGELOG_REVISION" ] && svn2cl_opts+=" -r HEAD:$CHANGELOG_REVISION"
 svn2cl $svn2cl_opts -o "${SOURCE_DIR}/ChangeLog" "${SVN_LOCATION}" \
 	|| die "ChangeLog creation failed"
 
