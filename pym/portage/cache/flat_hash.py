@@ -18,6 +18,7 @@ class database(fs_template.FsBased):
 			self.label.lstrip(os.path.sep).rstrip(os.path.sep))
 		write_keys = set(self._known_keys)
 		write_keys.add("_eclasses_")
+		write_keys.add("_mtime_")
 		self._write_keys = sorted(write_keys)
 		if not self.readonly and not os.path.exists(self.location):
 			self._ensure_dirs()
@@ -83,7 +84,7 @@ class database(fs_template.FsBased):
 				myf.write("%s=%s\n" % (k, v))
 		finally:
 			myf.close()
-		self._ensure_access(fp, mtime=values["_mtime_"])
+		self._ensure_access(fp)
 
 		#update written.  now we move it.
 

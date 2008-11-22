@@ -161,9 +161,7 @@ or other similar setups that the user may wish to run.
 .BR package
 This command is a lot like the \fImerge\fR command, except that after
 fetching, unpacking, compiling and installing, a .tbz2 binary package
-tarball is created and stored in  ${PKGDIR}/All (${PKGDIR} defaults to
-/usr/portage/packages).  A symbolic link is created in
-${PKGDIR}/${CATEGORY} that points to the package in ${PKGDIR}/All.
+tarball is created and stored in \fBPKGDIR\fR (see \fBmake.conf\fR(5)).
 .TP
 .BR rpm
 Builds a RedHat RPM package from the files in the temporary

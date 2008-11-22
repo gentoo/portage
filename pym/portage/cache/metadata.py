@@ -78,12 +78,4 @@ class database(flat_hash.database):
 
 		
 	def _setitem(self, cpv, values):
-		values = ProtectedDict(values)
-		
-		# hack.  proper solution is to make this a __setitem__ override, since template.__setitem__ 
-		# serializes _eclasses_, then we reconstruct it.
-		if "_eclasses_" in values:
-			values["INHERITED"] = ' '.join(reconstruct_eclasses(cpv, values["_eclasses_"]).keys())
-			del values["_eclasses_"]
-
 		flat_hash.database._setitem(self, cpv, values)
