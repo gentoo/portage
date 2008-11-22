@@ -496,6 +496,15 @@ if os.path.isdir(".svn"):
 elif os.path.isdir(os.path.join(portdir_overlay, ".git")):
 	vcs = "git"
 
+vcs_local_opts = repoman_settings.get("REPOMAN_VCS_LOCAL_OPTS", "").split()
+vcs_global_opts = repoman_settings.get("REPOMAN_VCS_GLOBAL_OPTS")
+if vcs_global_opts is None:
+	if vcs != "git":
+		vcs_global_opts = "-q"
+	else:
+		vcs_global_opts = ""
+vcs_global_opts = vcs_global_opts.split()
+
 if vcs == "cvs" and \
 	"commit" == options.mode and \
 	"RMD160" not in portage.checksum.hashorigin_map:
@@ -612,6 +621,7 @@ if repolevel==2:
 			continue
 		if os.path.isdir(startdir+"/"+x):
 			scanlist.append(catdir+"/"+x)
+	repo_subdir = catdir + os.sep
 elif repolevel==1:
 	for x in repoman_settings.categories:
 		if not os.path.isdir(startdir+"/"+x):
@@ -621,11 +631,14 @@ elif repolevel==1:
 				continue
 			if os.path.isdir(startdir+"/"+x+"/"+y):
 				scanlist.append(x+"/"+y)
+	repo_subdir = ""
 elif repolevel==3:
 	catdir = reposplit[-2]
 	if catdir not in repoman_settings.categories:
 		caterror(catdir)
 	scanlist.append(catdir+"/"+reposplit[-1])
+	repo_subdir = scanlist[-1] + os.sep
+repo_subdir_len = len(repo_subdir)
 scanlist.sort()
 
 logging.debug("Found the following packages to scan:\n%s" % '\n'.join(scanlist))
@@ -671,6 +684,27 @@ else:
 	print
 	sys.exit(1)
 
+def dev_keywords(profiles):
+	"""
+	Create a set of KEYWORDS values that exist in 'dev'
+	profiles. These are used
+	to trigger a message notifying the user when they might
+	want to add the --include-dev option.
+	"""
+	type_arch_map = {}
+	for arch, arch_profiles in profiles.iteritems():
+		for profile_path, profile_type in arch_profiles:
+			arch_set = type_arch_map.get(profile_type)
+			if arch_set is None:
+				arch_set = set()
+				type_arch_map[profile_type] = arch_set
+			arch_set.add(arch)
+
+	dev_keywords = type_arch_map.get('dev', set())
+	dev_keywords.update(['~' + arch for arch in dev_keywords])
+	return frozenset(dev_keywords)
+
+dev_keywords = dev_keywords(profiles)
 
 stats={}
 fails={}
@@ -753,7 +787,6 @@ modified_changelogs = set()
 mychanged = []
 mynew = []
 myremoved = []
-path_lstrip_re = re.compile(r'.*/')
 
 if vcs == "cvs":
 	mycvstree = cvstree.getentries("./", recursive=1)
@@ -769,14 +802,16 @@ elif vcs == "git":
 	mynew = os.popen("git diff --cached --name-only --diff-filter=A").readlines()
 	strip_levels = repolevel - 1
 	if strip_levels:
-		mynew = [path_lstrip_re.sub("", elem, strip_levels) for elem in mynew]
+		mynew = [elem[repo_subdir_len:] for elem in mynew \
+			if elem[:repo_subdir_len] == repo_subdir]
 	mynew = ["./" + elem[:-1] for elem in mynew]
 if vcs:
 	new_ebuilds.update(x for x in mynew if x.endswith(".ebuild"))
 	modified_changelogs.update(x for x in chain(mychanged, mynew) \
 		if os.path.basename(x) == "ChangeLog")
 
-have_masked = False
+have_pmasked = False
+have_dev_keywords = False
 dofail = 0
 arch_caches={}
 arch_xmatch_caches = {}
@@ -1508,7 +1543,9 @@ for x in scanlist:
 					ismasked = os.path.join(catdir, y) not in \
 						portdb.xmatch("list-visible", x)
 					if ismasked:
-						have_masked = True
+						if not have_pmasked:
+							have_pmasked = bool(dep_settings._getMaskAtom(
+								pkg.cpv, pkg.metadata))
 						if options.ignore_masked:
 							continue
 						#we are testing deps for a masked package; give it some lee-way
@@ -1517,7 +1554,11 @@ for x in scanlist:
 					else:
 						suffix=""
 						matchmode = "minimum-visible"
-	
+
+					if not have_dev_keywords:
+						have_dev_keywords = \
+							bool(dev_keywords.intersection(keywords))
+
 					if prof[1] == "dev":
 						suffix=suffix+"indev"
 
@@ -1634,9 +1675,13 @@ def grouplist(mylist,seperator="/"):
 			mygroups[xs[0]]+=[seperator.join(xs[1:])]
 	return mygroups
 
-if have_masked and not (options.without_mask or options.ignore_masked):
+if have_pmasked and not (options.without_mask or options.ignore_masked):
 	print bold("Note: use --without-mask to check " + \
 		"KEYWORDS on dependencies of masked packages")
+
+if have_dev_keywords and not options.include_dev:
+	print bold("Note: use --include-dev (-d) to check " + \
+		"dependencies for 'dev' profiles")
 
 if options.mode != 'commit':
 	if dofull:
@@ -1765,11 +1810,13 @@ else:
 		mynew = os.popen("git diff --cached --name-only --diff-filter=A").readlines()
 		strip_levels = repolevel - 1
 		if strip_levels:
-			mynew = [path_lstrip_re.sub("", elem, strip_levels) for elem in mynew]
+			mynew = [elem[repo_subdir_len:] for elem in mynew \
+				if elem[:repo_subdir_len] == repo_subdir]
 		mynew = ["./" + elem[:-1] for elem in mynew]
 		myremoved = os.popen("git diff --cached --name-only --diff-filter=D").readlines()
 		if strip_levels:
-			myremoved = [path_lstrip_re.sub("", elem, strip_levels) for elem in myremoved]
+			myremoved = [elem[repo_subdir_len:] for elem in myremoved \
+				if elem[:repo_subdir_len] == repo_subdir]
 		myremoved = ["./" + elem[:-1] for elem in myremoved]
 
 	if vcs:
@@ -1890,38 +1937,28 @@ else:
 		# so strip the prefix.
 		myfiles = [f.lstrip("./") for f in myfiles]
 
-		retval = None
-		if options.pretend:
-			if vcs == "cvs":
-				print "(cvs -q commit -F %s %s)" % \
-					(commitmessagefile, " ".join(myfiles))
-			if vcs == "svn":
-				print "(svn commit -F %s %s)" % \
-					(commitmessagefile, " ".join(myfiles))
-			elif vcs == "git":
-				print "(git commit -F %s %s)" % \
-					(commitmessagefile, " ".join(myfiles))
-		else:
-			if vcs == "cvs":
-				retval = spawn(["cvs", "-q", "commit",
-					"-F", commitmessagefile] + myfiles,
-					env=os.environ)
-			if vcs == "svn":
-				retval = spawn(["svn", "commit",
-					"-F", commitmessagefile] + myfiles,
-					env=os.environ)
-			elif vcs == "git":
-				retval = spawn(["git", "commit", "-F",
-					commitmessagefile] + myfiles,
-					env=os.environ)
+		commit_cmd = [vcs]
+		commit_cmd.extend(vcs_global_opts)
+		commit_cmd.append("commit")
+		commit_cmd.extend(vcs_local_opts)
+		commit_cmd.extend(["-F", commitmessagefile])
+		commit_cmd.extend(myfiles)
+
 		try:
-			os.unlink(commitmessagefile)
-		except OSError:
-			pass
-		if retval:
-			writemsg_level("!!! Exiting on %s (shell) error code: %s\n" % \
-				(vcs, retval), level=logging.ERROR, noiselevel=-1)
-			sys.exit(retval)
+			if options.pretend:
+				print "(%s)" % (" ".join(commit_cmd),)
+			else:
+				retval = spawn(commit_cmd, env=os.environ)
+				if retval != os.EX_OK:
+					writemsg_level(("!!! Exiting on %s (shell) " + \
+						"error code: %s\n") % (vcs, retval),
+						level=logging.ERROR, noiselevel=-1)
+					sys.exit(retval)
+		finally:
+			try:
+				os.unlink(commitmessagefile)
+			except OSError:
+				pass
 
 	# Setup the GPG commands
 	def gpgsign(filename):
@@ -2019,33 +2056,35 @@ else:
 
 		# Force an unsigned commit when more than one Manifest needs to be signed.
 		if repolevel < 3 and "sign" in repoman_settings.features:
-			if options.pretend:
-				if vcs == "cvs":
-					print "(cvs -q commit -F commitmessagefile)"
-				if vcs == "svn":
-					print "(svn -q commit -F commitmessagefile)"
-				elif vcs == "git":
-					print "(git commit -F commitmessagefile)"
-			else:
-				fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
-				mymsg = os.fdopen(fd, "w")
-				mymsg.write(commitmessage)
-				mymsg.write("\n (Unsigned Manifest commit)")
-				mymsg.close()
-				if vcs == "cvs":
-					retval=os.system("cvs -q commit -F "+commitmessagefile)
-				if vcs == "svn":
-					retval=os.system("svn -q commit -F "+commitmessagefile)
-				elif vcs == "git":
-					retval=os.system("git commit -F "+commitmessagefile)
+
+			fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
+			mymsg = os.fdopen(fd, "w")
+			mymsg.write(commitmessage)
+			mymsg.write("\n (Unsigned Manifest commit)")
+			mymsg.close()
+
+			commit_cmd = [vcs]
+			commit_cmd.extend(vcs_global_opts)
+			commit_cmd.append("commit")
+			commit_cmd.extend(vcs_local_opts)
+			commit_cmd.extend(["-F", commitmessagefile])
+			commit_cmd.extend(f.lstrip("./") for f in mymanifests)
+
+			try:
+				if options.pretend:
+					print "(%s)" % (" ".join(commit_cmd),)
+				else:
+					retval = spawn(commit_cmd, env=os.environ)
+					if retval:
+						writemsg_level(("!!! Exiting on %s (shell) " + \
+							"error code: %s\n") % (vcs, retval),
+							level=logging.ERROR, noiselevel=-1)
+						sys.exit(retval)
+			finally:
 				try:
 					os.unlink(commitmessagefile)
 				except OSError:
 					pass
-				if retval:
-					writemsg_level("!!! Exiting on %s (shell) error code: %s\n" % \
-						(vcs, retval), level=logging.ERROR, noiselevel=-1)
-					sys.exit(retval)
 			manifest_commit_required = False
 
 	signed = False
@@ -2093,36 +2132,38 @@ else:
 			signed = False
 
 	if manifest_commit_required or signed:
-		if options.pretend:
-			if vcs == "cvs":
-				print "(cvs -q commit -F commitmessagefile)"
-			if vcs == "svn":
-				print "(svn -q commit -F commitmessagefile)"
-			elif vcs == "git":
-				print "(git commit -a -F commitmessagefile)"
+
+		fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
+		mymsg = os.fdopen(fd, "w")
+		mymsg.write(commitmessage)
+		if signed:
+			mymsg.write("\n (Signed Manifest commit)")
 		else:
-			fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
-			mymsg = os.fdopen(fd, "w")
-			mymsg.write(commitmessage)
-			if signed:
-				mymsg.write("\n (Signed Manifest commit)")
+			mymsg.write("\n (Unsigned Manifest commit)")
+		mymsg.close()
+
+		commit_cmd = [vcs]
+		commit_cmd.extend(vcs_global_opts)
+		commit_cmd.append("commit")
+		commit_cmd.extend(vcs_local_opts)
+		commit_cmd.extend(["-F", commitmessagefile])
+		commit_cmd.extend(f.lstrip("./") for f in mymanifests)
+
+		try:
+			if options.pretend:
+				print "(%s)" % (" ".join(commit_cmd),)
 			else:
-				mymsg.write("\n (Unsigned Manifest commit)")
-			mymsg.close()
-			if vcs == "cvs":
-				retval=os.system("cvs -q commit -F "+commitmessagefile)
-			if vcs == "svn":
-				retval=os.system("svn -q commit -F "+commitmessagefile)
-			elif vcs == "git":
-				retval=os.system("git commit -a -F "+commitmessagefile)
+				retval = spawn(commit_cmd, env=os.environ)
+				if retval != os.EX_OK:
+					writemsg_level(("!!! Exiting on %s (shell) " + \
+						"error code: %s\n") % (vcs, retval),
+						level=logging.ERROR, noiselevel=-1)
+					sys.exit(retval)
+		finally:
 			try:
 				os.unlink(commitmessagefile)
 			except OSError:
 				pass
-			if retval:
-				writemsg_level("!!! Exiting on %s (shell) error code: %s\n" % \
-					(vcs, retval), level=logging.ERROR, noiselevel=-1)
-				sys.exit(retval)
 
 	print
 	if vcs:
