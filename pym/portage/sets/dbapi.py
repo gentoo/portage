@@ -179,6 +179,33 @@ class DowngradeSet(PackageSet):
 
 	singleBuilder = classmethod(singleBuilder)
 
+class UnavailableSet(EverythingSet):
+
+	_operations = ["unmerge"]
+
+	description = "Package set which contains all installed " + \
+		"packages for which there are no visible ebuilds " + \
+		"corresponding to the same $CATEGORY/$PN:$SLOT."
+
+	def __init__(self, vardb, metadatadb=None):
+		super(UnavailableSet, self).__init__(vardb)
+		self._metadatadb = metadatadb
+
+	def _filter(self, atom):
+		return not self._metadatadb.match(atom)
+
+	def singleBuilder(cls, options, settings, trees):
+
+		metadatadb = options.get("metadata-source", "porttree")
+		if not metadatadb in trees:
+			raise SetConfigError(("invalid value '%s' for option " + \
+				"metadata-source") % (metadatadb,))
+
+		return cls(trees["vartree"].dbapi,
+			metadatadb=trees[metadatadb].dbapi)
+
+	singleBuilder = classmethod(singleBuilder)
+
 class CategorySet(PackageSet):
 	_operations = ["merge", "unmerge"]
 	

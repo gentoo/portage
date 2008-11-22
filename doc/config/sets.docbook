@@ -522,6 +522,20 @@
 		</itemizedlist>
 		</para>
 		</sect2>
+		<sect2 id='config-set-classes-UnavailableSet'>
+		<title>portage.sets.dbapi.UnavailableSet</title>
+		<para>
+		Package set which contains all installed
+		packages for which there are no visible ebuilds
+		corresponding to the same $CATEGORY/$PN:$SLOT.
+		This class supports the following options:
+		<itemizedlist>
+		<listitem><varname>metadata-source</varname>: Optional, defaults to
+		"porttree". Specifies the repository to use for getting the metadata
+		to check.</listitem>
+		</itemizedlist>
+		</para>
+		</sect2>
 		<sect2 id='config-set-classes-DowngradeSet'>
 		<title>portage.sets.dbapi.DowngradeSet</title>
 		<para>
@@ -571,6 +585,7 @@
 	<listitem><varname>live-rebuild</varname>: uses <classname>VariableSet</classname></listitem>
 	<listitem><varname>module-rebuild</varname>: uses <classname>OwnerSet</classname></listitem>
 	<listitem><varname>downgrade</varname>: uses <classname>DowngradeSet</classname></listitem>
+	<listitem><varname>unavailable</varname>: uses <classname>UnavailableSet</classname></listitem>
 	</itemizedlist>
 	Additionally the default configuration includes a multi set section based on
 	the <classname>StaticFileSet</classname> defaults that creates a set for each 
