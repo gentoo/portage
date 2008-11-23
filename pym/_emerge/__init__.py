@@ -5404,13 +5404,18 @@ class depgraph(object):
 			print "\nemerge: there are no ebuilds to satisfy "+green(xinfo)+"."
 
 		# Show parent nodes and the argument that pulled them in.
+		traversed_nodes = set()
 		node = myparent
 		msg = []
 		while node is not None:
+			traversed_nodes.add(node)
 			msg.append('(dependency required by "%s" [%s])' % \
 				(colorize('INFORM', str(node.cpv)), node.type_name))
 			parent = None
 			for parent in self.digraph.parent_nodes(node):
+				if parent in traversed_nodes:
+					parent = None
+					continue
 				if isinstance(parent, DependencyArg):
 					msg.append('(dependency required by "%s" [argument])' % \
 						(colorize('INFORM', str(parent))))
