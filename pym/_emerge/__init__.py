@@ -5411,17 +5411,19 @@ class depgraph(object):
 			traversed_nodes.add(node)
 			msg.append('(dependency required by "%s" [%s])' % \
 				(colorize('INFORM', str(node.cpv)), node.type_name))
-			parent = None
+			# When traversing to parents, prefer arguments over packages
+			# since arguments are root nodes. Never traverse the same
+			# package twice, in order to prevent an infinite loop.
+			selected_parent = None
 			for parent in self.digraph.parent_nodes(node):
-				if parent in traversed_nodes:
-					parent = None
-					continue
 				if isinstance(parent, DependencyArg):
 					msg.append('(dependency required by "%s" [argument])' % \
 						(colorize('INFORM', str(parent))))
-					parent = None
+					selected_parent = None
 					break
-			node = parent
+				if parent not in traversed_nodes:
+					selected_parent = parent
+			node = selected_parent
 		for line in msg:
 			print line
 
