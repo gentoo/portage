@@ -394,26 +394,19 @@ Instead of actually performing the merge, simply display what *would*
 have been installed if \fB\-\-pretend\fR weren't used.  Using \fB\-\-pretend\fR
 is strongly recommended before installing an unfamiliar package.  In
 the printout:
-.br 
- 
-.br 
-\fIN\fR = new (not yet installed)
-.br 
-\fIS\fR = new SLOT installation (side-by-side versions) 
-.br 
-\fIU\fR = updating (to another version)
-.br 
-\fID\fR = downgrading (best version seems lower)
-.br 
-\fIR\fR = replacing (remerging same version))
-.br 
-\fIF\fR = fetch restricted (must be manually downloaded)
-.br 
-\fIf\fR = fetch restricted (already downloaded)
-.br 
-\fII\fR = interactive (requires user input)
-.br 
-\fIB\fR = blocked by an already installed package
+
+.TS
+lI l.
+N	new (not yet installed)
+S	new SLOT installation (side-by-side versions) 
+U	updating (to another version)
+D	downgrading (best version seems lower)
+R	replacing (remerging same version))
+F	fetch restricted (must be manually downloaded)
+f	fetch restricted (already downloaded)
+I	interactive (requires user input)
+B	blocked by an already installed package
+.TE
 .TP
 .BR "\-\-quiet " (\fB\-q\fR)
 Results may vary, but the general outcome is a reduced or condensed
