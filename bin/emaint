@@ -4,6 +4,7 @@ import os
 import re
 import signal
 import sys
+import textwrap
 import time
 from optparse import OptionParser, OptionValueError
 
@@ -17,6 +18,8 @@ except ImportError:
 import portage.const, portage.exception, portage.output
 
 class WorldHandler(object):
+
+	short_desc = "Fix problems in the world file"
 
 	def name():
 		return "world"
@@ -102,6 +105,8 @@ class WorldHandler(object):
 			world_set.unlock()
 
 class BinhostHandler(object):
+
+	short_desc = "Generate a metadata index for binary packages"
 
 	def name():
 		return "binhost"
@@ -315,6 +320,9 @@ class MoveHandler(object):
 		return errors
 
 class MoveInstalled(MoveHandler):
+
+	short_desc = "Perform package move updates for installed packages"
+
 	def name():
 		return "moveinst"
 	name = staticmethod(name)
@@ -323,6 +331,9 @@ class MoveInstalled(MoveHandler):
 		MoveHandler.__init__(self, portage.db[myroot]["vartree"])
 
 class MoveBinary(MoveHandler):
+
+	short_desc = "Perform package move updates for binary packages"
+
 	def name():
 		return "movebin"
 	name = staticmethod(name)
@@ -407,6 +418,9 @@ class ProgressHandler(object):
 		raise NotImplementedError(self)
 
 class CleanResume(object):
+
+	short_desc = "Discard emerge --resume merge lists"
+
 	def name():
 		return "cleanresume"
 	name = staticmethod(name)
@@ -483,12 +497,20 @@ def emaint_main(myargv):
 		setattr(parser, var, str(option))
 
 
-	usage = "usage: emaint [options] " + " | ".join(module_names)
+	usage = "usage: emaint [options] COMMAND"
 
-	usage+= "\n\nCurrently emaint can only check and fix problems with one's world\n"
-	usage+= "file.  Future versions will integrate other portage check-and-fix\n"
-	usage+= "tools and provide a single interface to system health checks."
+	desc = "The emaint program provides an interface to system health " + \
+		"checks and maintenance. See the emaint(1) man page for " + \
+		"for additional information about the following commands:"
 
+	usage += "\n\n"
+	for line in textwrap.wrap(desc, 65):
+		usage += "%s\n" % line
+	usage += "\n"
+	usage += "  %s" % "all".ljust(15) + \
+		"Perform all supported commands\n"
+	for m in module_names[1:]:
+		usage += "  %s%s\n" % (m.ljust(15), modules[m].short_desc)
 
 	parser = OptionParser(usage=usage, version=portage.VERSION)
 	parser.add_option("-c", "--check", help="check for problems",
