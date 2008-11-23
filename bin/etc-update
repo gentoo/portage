@@ -223,7 +223,8 @@ read_int() {
 		read my_input
 		# failed integer conversions will break a loop unless they're enclosed
 		# in a subshell.
-		echo "${my_input}" | ( declare -i x; read x) && break
+		echo "${my_input}" | ( declare -i x; read x) 2>/dev/null && break
+		echo -n "Value '$my_input' is not valid. Please enter an integer value:" >&2
 	done
 	echo ${my_input}
 }
