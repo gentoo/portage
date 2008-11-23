@@ -446,10 +446,9 @@ Please select from the menu above (-1 to exit, losing this merge): "
 }
 
 die() {
-	trap "" TERM
-	trap "" KILL
+	trap SIGTERM SIGINT
 
-	if [ ${2} -eq 0 ]; then
+	if [ "$2" -eq 0 ]; then
 		echo "Exiting: ${1}"
 		scan > /dev/null
 		[ ${count} -gt 0 ] && echo "NOTE: ${count} updates remaining"
@@ -500,7 +499,8 @@ eval $(portageq envvar -v CONFIG_PROTECT \
 export PORTAGE_TMPDIR
 
 TMP="${PORTAGE_TMPDIR}/etc-update-$$"
-trap die term
+trap "die terminated 1" SIGTERM
+trap "die interrupted 1" SIGINT
 
 [ -w ${PORTAGE_CONFIGROOT}etc ] || die "Need write access to ${PORTAGE_CONFIGROOT}etc" 1
 #echo $PORTAGE_TMPDIR
