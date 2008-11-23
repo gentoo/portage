@@ -447,16 +447,18 @@ Tell emerge to run in verbose mode.  Currently this flag causes emerge to print
 out GNU info errors, if any, and to show the USE flags that will be used for 
 each package when pretending. The following symbols are affixed to USE flags
 in order to indicate their status:
-.br
 
-.br
-\fI- prefix\fR     = not enabled (either disabled or removed)
-.br
-\fI* suffix\fR     = transition to or from the enabled state
-.br
-\fI% suffix\fR     = newly added or removed
-.br
-\fI() circumfix\fR = forced, masked, or removed
+.TS
+l l l
+___
+l l l.
+Symbol	Location	Meaning
+
+-	prefix	not enabled (either disabled or removed)
+*	suffix	transition to or from the enabled state
+%	suffix	newly added or removed
+()	circumfix	forced, masked, or removed
+.TE
 .TP
 .BR "\-\-with\-bdeps < y | n >"
 In dependency calculations, pull in build time dependencies
