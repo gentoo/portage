@@ -79,7 +79,8 @@ cp "${SOURCE_DIR}/"{ChangeLog,DEVELOPING,NEWS,RELEASE-NOTES,TEST-NOTES} \
 cd "${RELEASE_BUILDDIR}"
 
 echo ">>> Creating release tarball ${RELEASE_TARBALL}"
-tar cfj "${RELEASE_TARBALL}" "${RELEASE}" || die "tarball creation failed"
+tar --owner portage --group portage -cjf "${RELEASE_TARBALL}" "${RELEASE}" || \
+	die "tarball creation failed"
 
 DISTDIR=$(portageq distdir)
 if [ -n "${DISTDIR}" -a -d "${DISTDIR}" -a -w "${DISTDIR}" ]; then
