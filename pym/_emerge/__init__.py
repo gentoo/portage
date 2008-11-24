@@ -199,7 +199,7 @@ def userquery(prompt, responses=None, colours=None):
 
 actions = frozenset([
 "clean", "config", "depclean",
-"info", "list-sets", "metadata",
+"info", "metadata",
 "prune", "regen",  "search",
 "sync",  "unmerge",
 ])
@@ -13609,10 +13609,6 @@ def emerge_main():
 			break
 
 	root_config = trees[settings["ROOT"]]["root_config"]
-	if myaction == "list-sets":
-		sys.stdout.write("".join("%s\n" % s for s in sorted(root_config.sets)))
-		sys.stdout.flush()
-		return os.EX_OK
 
 	# only expand sets for actions taking package arguments
 	oldargs = myfiles[:]

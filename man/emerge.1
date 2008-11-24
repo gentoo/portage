@@ -4,7 +4,7 @@ emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
 .TP
 .BR emerge
-[\fIoptions\fR] [\fIaction\fR] [\fIebuild\fR | \fItbz2file\fR | \fIfile\fR | \fI@set\fR | \fIatom\fR] ...
+[\fIoptions\fR] [\fIaction\fR] [\fIebuild\fR | \fItbz2file\fR | \fIfile\fR | \fIset\fR | \fIatom\fR] ...
 .TP
 .BR emerge
 \fB\-\-sync\fR | \fB\-\-version\fR
@@ -58,17 +58,14 @@ would like to query the owners of one or more files or directories.
 .TP
 .BR set
 A \fIset\fR is a convenient shorthand for a large group of
-packages.  Two sets are currently always available: \fBsystem\fR
+packages. Two sets are currently available: \fBsystem\fR
 and \fBworld\fR.  \fBsystem\fR refers to a set of packages
 deemed necessary for your system to run properly. \fBworld\fR
 contains all the packages listed in \fB/var/lib/portage/world\fR.  [See
-\fBFILES\fR below for more information.] Other sets can exist depending
-on the current configuration. The default set configuration is located
-in \fB/usr/share/portage/config/sets.conf\fR. Note that a \fIset\fR
-is generally used in conjunction with \fB\-\-update\fR. When used as 
-arguments to \fBemerge\fR sets have to be prefixed with \fB@\fR to be
-recognized. Use the \fB\-\-list\-sets\fR action to display a list of
-available package sets.
+\fBFILES\fR below for more information.] Currently, the world set
+also includes members of the system set, but later versions of portage
+will have a way to disable this behavior. Note that a \fIset\fR
+is generally used in conjunction with \fB\-\-update\fR. 
 .TP
 .BR atom
 An \fIatom\fR describes bounds on a package that you wish to install.  
@@ -676,9 +673,6 @@ Zac Medico <zmedico@gentoo.org>
 .SH "FILES"
 Here is a common list of files you will probably be interested in.  For a 
 complete listing, please refer to the \fBportage\fR(5) man page.
-.TP
-.B /usr/share/portage/config/sets.conf
-Contains the default set configuration.
 .TP
 .B /var/lib/portage/world
 Contains a list of all user\-specified packages.  You can safely edit
