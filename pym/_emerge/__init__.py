@@ -13933,6 +13933,8 @@ def profile_check(trees, myaction, myopts):
 	for root, root_trees in trees.iteritems():
 		if root_trees["root_config"].settings.profiles:
 			continue
+		# generate some profile related warning messages
+		validate_ebuild_environment(trees)
 		msg = "If you have just changed your profile configuration, you " + \
 			"should revert back to the previous configuration. Due to " + \
 			"your current profile being invalid, allowed actions are " + \
