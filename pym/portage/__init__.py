@@ -1220,7 +1220,7 @@ class config(object):
 					writemsg("!!! ParseError: %s\n" % str(e), noiselevel=-1)
 					del e
 					self.profiles = []
-			if local_config:
+			if local_config and self.profiles:
 				custom_prof = os.path.join(
 					config_root, CUSTOM_PROFILE_PATH.lstrip(os.path.sep))
 				if os.path.exists(custom_prof):

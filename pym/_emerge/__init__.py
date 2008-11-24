@@ -13925,6 +13925,23 @@ def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
 	print "!!! The short ebuild name \"%s\" is ambiguous. Please specify" % arg
 	print "!!! one of the above fully-qualified ebuild names instead.\n"
 
+def profile_check(trees, myaction, myopts):
+	if myaction in ("info", "sync"):
+		return os.EX_OK
+	elif "--version" in myopts or "--help" in myopts:
+		return os.EX_OK
+	for root, root_trees in trees.iteritems():
+		if root_trees["root_config"].settings.profiles:
+			continue
+		msg = "If you have just changed your profile configuration, you " + \
+			"should revert back to the previous configuration. Due to " + \
+			"your current profile being invalid, allowed actions are " + \
+			"limited to --help, --info, --sync, and --version."
+		writemsg_level("".join("!!! %s\n" % l for l in textwrap.wrap(msg, 70)),
+			level=logging.ERROR, noiselevel=-1)
+		return 1
+	return os.EX_OK
+
 def emerge_main():
 	global portage	# NFC why this is necessary now - genone
 	portage._disable_legacy_globals()
@@ -13945,6 +13962,9 @@ def emerge_main():
 	os.umask(022)
 	settings, trees, mtimedb = load_emerge_config()
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
+	rval = profile_check(trees, myaction, myopts)
+	if rval != os.EX_OK:
+		return rval
 
 	if portage._global_updates(trees, mtimedb["updates"]):
 		mtimedb.commit()
