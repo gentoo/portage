@@ -1197,6 +1197,17 @@ class config(object):
 				self.profiles = []
 				def addProfile(currentPath):
 					parentsFile = os.path.join(currentPath, "parent")
+					eapi_file = os.path.join(currentPath, "eapi")
+					try:
+						eapi = open(eapi_file).readline().strip()
+					except IOError:
+						pass
+					else:
+						if not eapi_is_supported(eapi):
+							raise portage.exception.ParseError(
+								"Profile contains unsupported " + \
+								"EAPI '%s': '%s'" % \
+								(eapi, os.path.realpath(eapi_file),))
 					if os.path.exists(parentsFile):
 						parents = grabfile(parentsFile)
 						if not parents:
