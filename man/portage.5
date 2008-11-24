@@ -25,6 +25,7 @@ make.globals
 site\-specific overrides go in \fB/etc/portage/profile/\fR
 .nf
 deprecated
+eapi
 make.defaults
 packages
 packages.build
@@ -149,6 +150,11 @@ default-linux/x86/2005.0
 # rm -f /etc/make.profile
 # ln -s /usr/portage/profiles/default-linux/alpha/2005.0 /etc/make.profile
 .fi
+.TP
+.BR eapi
+The first line of this file specifies the \fBEAPI\fR to which files in the
+same directory conform. See \fBebuild\fR(5) for information about \fBEAPI\fR
+and related features.
 .TP
 .BR make.defaults
 The profile default settings for Portage.  The general format is described 
