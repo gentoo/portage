@@ -12088,6 +12088,10 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	allow_missing_deps = len(myfiles) > 0
 
 	msg = []
+	msg.append("Depclean may break link level dependencies.  Thus, it is\n")
+	msg.append("recommended to use a tool such as " + good("`revdep-rebuild`") + " (from\n")
+	msg.append("app-portage/gentoolkit) in order to detect such breakage.\n")
+	msg.append("\n")
 	msg.append("Always study the list of packages to be cleaned for any obvious\n")
 	msg.append("mistakes. Packages that are part of the world set will always\n")
 	msg.append("be kept.  They can be manually added to this set with\n")
