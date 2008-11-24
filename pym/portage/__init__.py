@@ -7254,7 +7254,7 @@ def _global_updates(trees, prev_mtimes):
 			writemsg_stdout("\n\n")
 			writemsg_stdout(green("Performing Global Updates: ")+bold(mykey)+"\n")
 			writemsg_stdout("(Could take a couple of minutes if you have a lot of binary packages.)\n")
-			writemsg_stdout("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n"+"  "+bold("s")+"='/var/db SLOT move' "+bold("%")+"='binary move' "+bold("S")+"='binary SLOT move' "+bold("p")+"='update /etc/portage/package.*'\n")
+			writemsg_stdout("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n"+"  "+bold("s")+"='/var/db SLOT move' "+bold("%")+"='binary move' "+bold("S")+"='binary SLOT move'\n"+bold("p")+"='update /etc/portage/package.*'\n")
 			valid_updates, errors = parse_updates(mycontent)
 			myupd.extend(valid_updates)
 			writemsg_stdout(len(valid_updates) * "." + "\n")
