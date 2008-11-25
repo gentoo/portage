@@ -119,7 +119,10 @@ option in order to see a preview of which packages
 will be uninstalled. Always study the list of packages
 to be cleaned for any obvious mistakes. Note that packages listed in
 package.provided (see \fBportage\fR(5)) may be removed by
-depclean, even if they are part of the world set.
+depclean, even if they are part of the world set. Also note that
+depclean may break link level dependencies. Thus, it is
+recommended to use a tool such as \fBrevdep-rebuild\fR(1)
+in order to detect such breakage.
 
 Depclean serves as a dependency aware
 version of \fB\-\-unmerge\fR. When given one or more atoms, it will

@@ -91,7 +91,10 @@ def help(myaction,myopts,havecolor=1):
 		"packages will be uninstalled. Always study the list of packages " + \
 		"to be cleaned for any obvious mistakes. Note that packages " + \
 		"listed in package.provided (see portage(5)) may be removed by " + \
-		"depclean, even if they are part of the world set."
+		"depclean, even if they are part of the world set. Also note that " + \
+		"depclean may break link level dependencies. Thus, it is " + \
+		"recommended to use a tool such as revdep-rebuild(1) " + \
+		"in order to detect such breakage."
 
 		for line in wrap(paragraph, desc_width):
 			print desc_indent + line
