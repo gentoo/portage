@@ -3769,7 +3769,8 @@ class dblink(object):
 				# whether config protection or not, we merge the new file the
 				# same way.  Unless moveme=0 (blocking directory)
 				if moveme:
-					hardlink_key = (mymd5, mystat.st_size)
+					hardlink_key = (mymd5, mystat.st_size,
+						mystat.st_mode, mystat.st_uid, mystat.st_gid)
 					hardlink_candidates = self._md5_merge_map.get(hardlink_key)
 					if hardlink_candidates is None:
 						hardlink_candidates = []
