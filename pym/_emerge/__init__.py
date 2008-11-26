@@ -1586,7 +1586,12 @@ class EbuildFetchonly(SlotObject):
 		settings = self.settings
 		global_tmpdir = settings["PORTAGE_TMPDIR"]
 		from tempfile import mkdtemp
-		private_tmpdir = mkdtemp("", "._portage_fetch_.", global_tmpdir)
+		try:
+			private_tmpdir = mkdtemp("", "._portage_fetch_.", global_tmpdir)
+		except OSError, e:
+			if e.errno != portage.exception.PermissionDenied.errno:
+				raise
+			raise portage.exception.PermissionDenied(global_tmpdir)
 		settings["PORTAGE_TMPDIR"] = private_tmpdir
 		settings.backup_changes("PORTAGE_TMPDIR")
 		try:
