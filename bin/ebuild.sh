@@ -275,9 +275,13 @@ register_die_hook() {
 # Ensure that $PWD is sane whenever possible, to protect against
 # exploitation of insecure search path for python -c in ebuilds.
 # See bug #239560.
-if ! hasq "$EBUILD_PHASE" clean depend help ; then
+if ! hasq "$EBUILD_PHASE" clean cleanrm depend help ; then
 	cd "$PORTAGE_BUILDDIR" || \
 		die "PORTAGE_BUILDDIR does not exist: '$PORTAGE_BUILDDIR'"
+else
+	# Don't try to create this when it's parent
+	# directory doesn't necessarily exist.
+	unset EBUILD_EXIT_STATUS_FILE
 fi
 
 #if no perms are specified, dirs/files will have decent defaults
@@ -2072,8 +2076,10 @@ ebuild_main() {
 		exit 1
 		;;
 	esac
-	[ -n "${EBUILD_EXIT_STATUS_FILE}" ] && \
-		touch "${EBUILD_EXIT_STATUS_FILE}" &>/dev/null
+	if [ -n "$EBUILD_EXIT_STATUS_FILE" ] ; then
+		> "$EBUILD_EXIT_STATUS_FILE" || \
+			die "failed to create '$EBUILD_EXIT_STATUS_FILE'"
+	fi
 }
 
 [[ -n $EBUILD_SH_ARGS ]] && ebuild_main
