@@ -370,13 +370,14 @@ virtual/aspell\-dict   app\-dicts/aspell\-en
 .BR /etc/portage/
 Any file in this directory that begins with "package." can be more than just a 
 flat file.  If it is a directory, then all the files in that directory will be 
-summed together as if it were a single file.
+sorted in ascending alphabetical order by file name and summed together as if
+it were a single file.
 
 .I Example:
 .nf
-/etc/portage/package.keywords/kde
 /etc/portage/package.keywords/common
 /etc/portage/package.keywords/e17
+/etc/portage/package.keywords/kde
 .fi
 .RS
 .TP
