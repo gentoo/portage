@@ -6046,7 +6046,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 	# so os.link() calls might fail for some paths, so try them all.
 	# For atomic replacement, first create the link as a temp file
 	# and them use os.rename() to replace the destination.
-	if hardlink_candidates is not None:
+	if hardlink_candidates:
 		head, tail = os.path.split(dest)
 		hardlink_tmp = os.path.join(head, ".%s._portage_merge_.%s" % \
 			(tail, os.getpid()))
