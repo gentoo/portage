@@ -5132,9 +5132,20 @@ def _doebuild_exit_status_check(mydo, settings):
 	"is known to be triggered " + \
 	"by things such as failed variable " + \
 	"assignments (bug #190128) or bad substitution " + \
-	"errors (bug #200313). This behavior may also be " + \
-	"triggered by a corrupt bash binary or a hardware " + \
-	"problem such as memory or cpu malfunction."
+	"errors (bug #200313). Normally, before exiting, bash should " + \
+	"have displayed an error message above. If bash did not " + \
+	"produce an error message above, it's possible " + \
+	"that the ebuild has called `exit` when it " + \
+	"should have called `die` instead. This behavior may also " + \
+	"be triggered by a corrupt bash binary or a hardware " + \
+	"problem such as memory or cpu malfunction. If the problem is not " + \
+	"reproducible or it appears to occur randomly, then it is likely " + \
+	"to be triggered by a hardware problem. " + \
+	"If you suspect a hardware problem then you should " + \
+	"try some basic hardware diagnostics such as memtest. " + \
+	"Please do not report this as a bug unless it is consistently " + \
+	"reproducible and you are sure that your bash binary and hardware " + \
+	"are functioning properly."
 	return msg
 
 def _doebuild_exit_status_check_and_log(settings, mydo, retval):
