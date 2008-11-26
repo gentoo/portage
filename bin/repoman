@@ -1758,23 +1758,14 @@ else:
 	# Manifests need to be regenerated after all other commits, so don't commit
 	# them now even if they have changed.
 	mymanifests = set()
-	changed_set = set()
-	new_set = set()
-	for f in mychanged:
+	myupdates = set()
+	for f in mychanged + mynew:
 		if "Manifest" == os.path.basename(f):
 			mymanifests.add(f)
 		else:
-			changed_set.add(f)
-	for f in mynew:
-		if "Manifest" == os.path.basename(f):
-			mymanifests.add(f)
-		else:
-			new_set.add(f)
-	mychanged = list(changed_set)
-	mynew =  list(new_set)
+			myupdates.add(f)
+	myupdates = list(myupdates)
 	mymanifests = list(mymanifests)
-	del changed_set, new_set
-	myupdates = mychanged + mynew
 	myheaders = []
 	mydirty = []
 	headerstring = "'\$(Header|Id)"
