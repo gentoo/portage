@@ -1795,8 +1795,16 @@ else:
 		if myout[0] == 0:
 			myheaders.append(myfile)
 
-	print "*",green(str(len(myupdates))),"files being committed...",green(str(len(myheaders))),"have headers that will change."
-	print "*","Files with headers will cause the manifests to be made and recommited."
+	print "* %s files being committed..." % green(str(len(myupdates))),
+	if vcs == 'git':
+		# With git, there's never any keyword expansion, so there's
+		# no need to regenerate manifests and all files will be
+		# committed in one big commit at the end.
+		print
+	else:
+		print "%s have headers that will change." % green(str(len(myheaders)))
+		print "* Files with headers will cause the " + \
+			"manifests to be made and recommited."
 	logging.info("myupdates:", str(myupdates))
 	logging.info("myheaders:", str(myheaders))
 
@@ -1844,7 +1852,7 @@ else:
 		commitmessage += ", RepoMan options: --force"
 	commitmessage += ")"
 
-	if myupdates or myremoved:
+	if vcs != 'git' and (myupdates or myremoved):
 		myfiles = myupdates + myremoved
 		if not myheaders and "sign" not in repoman_settings.features:
 			myfiles += mymanifests
@@ -1937,7 +1945,7 @@ else:
 			write_atomic(x, "".join(mylines))
 
 	manifest_commit_required = True
-	if myupdates or myremoved or mynew:
+	if vcs != 'git' and (myupdates or myremoved or mynew):
 		myfiles=myupdates+myremoved+mynew
 		for x in range(len(myfiles)-1, -1, -1):
 			if myfiles[x].count("/") < 4-repolevel:
@@ -2059,7 +2067,13 @@ else:
 			portage.writemsg("!!! Disabled FEATURES='sign'\n")
 			signed = False
 
-	if manifest_commit_required or signed:
+	if vcs == 'git' or manifest_commit_required or signed:
+
+		myfiles = mymanifests[:]
+		if vcs == 'git':
+			myfiles += myupdates
+			myfiles += myremoved
+		myfiles.sort()
 
 		fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
 		mymsg = os.fdopen(fd, "w")
@@ -2075,7 +2089,7 @@ else:
 		commit_cmd.append("commit")
 		commit_cmd.extend(vcs_local_opts)
 		commit_cmd.extend(["-F", commitmessagefile])
-		commit_cmd.extend(f.lstrip("./") for f in mymanifests)
+		commit_cmd.extend(f.lstrip("./") for f in myfiles)
 
 		try:
 			if options.pretend:
