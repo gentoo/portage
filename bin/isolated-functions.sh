@@ -134,8 +134,7 @@ die() {
 		done
 	fi
 
-	[ -n "${EBUILD_EXIT_STATUS_FILE}" ] && \
-		touch "${EBUILD_EXIT_STATUS_FILE}" &>/dev/null
+	[ -n "$EBUILD_EXIT_STATUS_FILE" ] && > "$EBUILD_EXIT_STATUS_FILE"
 
 	# subshell die support
 	kill -s SIGTERM ${EBUILD_MASTER_PID}
