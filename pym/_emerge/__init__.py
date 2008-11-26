@@ -13553,7 +13553,7 @@ def emerge_main():
 
 	if "--quiet" not in myopts:
 		portage.deprecated_profile_check()
-		repo_name_check(trees)
+		#repo_name_check(trees)
 		config_protect_check(trees)
 
 	eclasses_overridden = {}
