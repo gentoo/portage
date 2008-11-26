@@ -5958,7 +5958,8 @@ def _movefile(src, dest, **kwargs):
 		raise portage.exception.PortageException(
 			"mv '%s' '%s'" % (src, dest))
 
-def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
+def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
+		hardlink_candidates=None):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
 	be preserved even when moving across filesystems.  Returns true on success and false on
 	failure.  Move is atomic."""
@@ -6030,8 +6031,45 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 			print "!!!",e
 			return None
 
+	hardlinked = False
+	# Since identical files might be merged to multiple filesystems,
+	# so os.link() calls might fail for some paths, so try them all.
+	# For atomic replacement, first create the link as a temp file
+	# and them use os.rename() to replace the destination.
+	if hardlink_candidates is not None:
+		head, tail = os.path.split(dest)
+		hardlink_tmp = os.path.join(head, ".%s._portage_merge_.%s" % \
+			(tail, os.getpid()))
+		try:
+			os.unlink(hardlink_tmp)
+		except OSError, e:
+			if e.errno != errno.ENOENT:
+				writemsg("!!! Failed to remove hardlink temp file: %s\n" % \
+					(hardlink_tmp,), noiselevel=-1)
+				writemsg("!!! %s\n" % (e,), noiselevel=-1)
+				return None
+			del e
+		for hardlink_src in hardlink_candidates:
+			try:
+				os.link(hardlink_src, hardlink_tmp)
+			except OSError:
+				continue
+			else:
+				try:
+					os.rename(hardlink_tmp, dest)
+				except OSError, e:
+					writemsg("!!! Failed to rename %s to %s\n" % \
+						(hardlink_tmp, dest), noiselevel=-1)
+					writemsg("!!! %s\n" % (e,), noiselevel=-1)
+					return None
+				hardlinked = True
+				break
+
 	renamefailed=1
-	if sstat[stat.ST_DEV]==dstat[stat.ST_DEV] or selinux_enabled:
+	if hardlinked:
+		renamefailed = False
+	if not hardlinked and \
+		(selinux_enabled or sstat[stat.ST_DEV] == dstat[stat.ST_DEV]):
 		try:
 			if selinux_enabled:
 				ret=selinux.secure_rename(src,dest)
@@ -6092,11 +6130,14 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 			return None
 
 	try:
-		if newmtime is not None:
-			os.utime(dest, (newmtime, newmtime))
+		if hardlinked:
+			newmtime = long(os.stat(dest).st_mtime)
 		else:
-			os.utime(dest, (sstat.st_atime, sstat.st_mtime))
-			newmtime = long(sstat.st_mtime)
+			if newmtime is not None:
+				os.utime(dest, (newmtime, newmtime))
+			else:
+				os.utime(dest, (sstat.st_atime, sstat.st_mtime))
+				newmtime = long(sstat.st_mtime)
 	except OSError:
 		# The utime can fail here with EPERM even though the move succeeded.
 		# Instead of failing, use stat to return the mtime if possible.
