@@ -1945,8 +1945,8 @@ else:
 			write_atomic(x, "".join(mylines))
 
 	manifest_commit_required = True
-	if vcs != 'git' and (myupdates or myremoved or mynew):
-		myfiles=myupdates+myremoved+mynew
+	if vcs != 'git' and (myupdates or myremoved):
+		myfiles = myupdates + myremoved
 		for x in range(len(myfiles)-1, -1, -1):
 			if myfiles[x].count("/") < 4-repolevel:
 				del myfiles[x]
