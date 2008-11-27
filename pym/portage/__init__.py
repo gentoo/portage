@@ -6071,8 +6071,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 	renamefailed=1
 	if hardlinked:
 		renamefailed = False
-	if not hardlinked and \
-		(selinux_enabled or sstat[stat.ST_DEV] == dstat[stat.ST_DEV]):
+	if not hardlinked and (selinux_enabled or sstat.st_dev == dstat.st_dev):
 		try:
 			if selinux_enabled:
 				ret=selinux.secure_rename(src,dest)
