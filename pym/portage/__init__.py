@@ -5294,6 +5294,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		fetchall = 1
 		mydo = "fetch"
 
+	parallel_fetchonly = mydo in ("fetch", "fetchall") and \
+		"PORTAGE_PARALLEL_FETCHONLY" in mysettings
+
 	if mydo not in clean_phases and not os.path.exists(myebuild):
 		writemsg("!!! doebuild: %s not found for %s\n" % (myebuild, mydo),
 			noiselevel=-1)
@@ -5527,7 +5530,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		# Build directory creation isn't required for any of these.
 		have_build_dirs = False
-		if not mydo in ("digest", "help", "manifest"):
+		if not parallel_fetchonly and mydo not in ("digest", "help", "manifest"):
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 			if mystatus:
 				return mystatus
