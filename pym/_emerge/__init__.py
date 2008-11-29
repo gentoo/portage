@@ -4552,6 +4552,9 @@ class depgraph(object):
 		#IUSE-aware emerge -> USE DEP aware depgraph
 		#"no downgrade" emerge
 		"""
+		# Ensure that the dependencies of the same package
+		# are never processed more than once.
+		previously_added = pkg in self.digraph
 
 		# select the correct /var database that we'll be checking against
 		vardbapi = self.trees[pkg.root]["vartree"].dbapi
@@ -4704,7 +4707,8 @@ class depgraph(object):
 		if args:
 			depth = 0
 		pkg.depth = depth
-		dep_stack.append(pkg)
+		if not previously_added:
+			dep_stack.append(pkg)
 		return 1
 
 	def _add_pkg_deps(self, pkg, allow_unsatisfied=False):
