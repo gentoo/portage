@@ -4319,7 +4319,7 @@ class depgraph(object):
 		self._irrelevant_blockers = digraph()
 		# Contains only unsolvable Package -> Blocker edges
 		self._unsolvable_blockers = digraph()
-		self._slot_collision_info = set()
+		self._slot_collision_info = {}
 		# Slot collision nodes are not allowed to block other packages since
 		# blocker validation is only able to account for one package per slot.
 		self._slot_collision_nodes = set()
@@ -4361,14 +4361,11 @@ class depgraph(object):
 		indent = "  "
 		# Max number of parents shown, to avoid flooding the display.
 		max_parents = 3
-		for slot_atom, root in self._slot_collision_info:
+		for (slot_atom, root), slot_nodes \
+			in self._slot_collision_info.iteritems():
 			msg.append(str(slot_atom))
 			msg.append("\n\n")
-			slot_nodes = []
-			for node in self._slot_collision_nodes:
-				if node.slot_atom == slot_atom:
-					slot_nodes.append(node)
-			slot_nodes.append(self._slot_pkg_map[root][slot_atom])
+
 			for node in slot_nodes:
 				msg.append(indent)
 				msg.append(str(node))
@@ -4628,8 +4625,7 @@ class depgraph(object):
 						# as an unsatisfied dependency.
 						self._unsatisfied_deps_for_display.append(
 							((dep.root, dep.atom), {"myparent":dep.parent}))
-						self._slot_collision_info.add((pkg.slot_atom, pkg.root))
-						self._slot_collision_nodes.add(pkg)
+						self._add_slot_conflict(pkg)
 						self.digraph.addnode(pkg, myparent, priority=priority)
 						return 0
 
@@ -4638,8 +4634,7 @@ class depgraph(object):
 					# A slot collision has occurred.  Sometimes this coincides
 					# with unresolvable blockers, so the slot collision will be
 					# shown later if there are no unresolvable blockers.
-					self._slot_collision_info.add((pkg.slot_atom, pkg.root))
-					self._slot_collision_nodes.add(pkg)
+					self._add_slot_conflict(pkg)
 					slot_collision = True
 
 			if slot_collision:
@@ -4710,6 +4705,16 @@ class depgraph(object):
 		if not previously_added:
 			dep_stack.append(pkg)
 		return 1
+
+	def _add_slot_conflict(self, pkg):
+		self._slot_collision_nodes.add(pkg)
+		slot_key = (pkg.slot_atom, pkg.root)
+		slot_nodes = self._slot_collision_info.get(slot_key)
+		if slot_nodes is None:
+			slot_nodes = set()
+			slot_nodes.add(self._slot_pkg_map[pkg.root][pkg.slot_atom])
+			self._slot_collision_info[slot_key] = slot_nodes
+		slot_nodes.add(pkg)
 
 	def _add_pkg_deps(self, pkg, allow_unsatisfied=False):
 
