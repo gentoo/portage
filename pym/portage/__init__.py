@@ -5179,7 +5179,9 @@ def _doebuild_exit_status_check(mydo, settings):
 	"is known to be triggered " + \
 	"by things such as failed variable " + \
 	"assignments (bug #190128) or bad substitution " + \
-	"errors (bug #200313)."
+	"errors (bug #200313). This behavior may also be " + \
+	"triggered by a corrupt bash binary or a hardware " + \
+	"problem such as memory or cpu malfunction."
 	return msg
 
 def _doebuild_exit_status_check_and_log(settings, mydo, retval):

@@ -211,7 +211,7 @@ def format_qa_output(formatter, stats, fails, dofull, dofail, options, qawarning
 	Returns:
 		None (modifies formatter)
 	"""
-	full = options.mode in ("full", "lfull")
+	full = options.mode == 'full'
 	# we only want key value pairs where value > 0 
 	for category, number in \
 		itertools.ifilter(lambda myitem: myitem[1] > 0, stats.iteritems()):

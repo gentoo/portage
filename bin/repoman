@@ -26,11 +26,6 @@ from itertools import chain, izip
 from stat import S_ISDIR, ST_CTIME
 
 try:
-	import cPickle as pickle
-except ImportError:
-	import pickle
-
-try:
 	import cStringIO as StringIO
 except ImportError:
 	import StringIO
@@ -149,8 +144,6 @@ def ParseArgs(args, qahelp):
 		'fix' : 'Fix simple QA issues (stray digests, missing digests)',
 		'full' : 'Scan directory tree and print all issues (not a summary)',
 		'help' : 'Show this screen',
-		'last' : 'Remember report from last run',
-		'lfull' : 'Remember report from last run (full listing)',
 		'manifest' : 'Generate a Manifest (fetches files if necessary)',
 		'scan' : 'Scan directory tree for QA issues' 
 	}
@@ -226,7 +219,7 @@ def ParseArgs(args, qahelp):
 				break
 
 	if not opts.mode:
-		opts.mode = 'full'	#default to full
+		opts.mode = 'full'
 	
 	if opts.mode == 'ci':
 		opts.mode = 'commit'  # backwards compat shortcut
@@ -424,60 +417,7 @@ suspect_rdepend = frozenset([
 # file.executable
 no_exec = frozenset(["Manifest","ChangeLog","metadata.xml"])
 
-def last(full=False):
-	"""Print the results of the last repoman run
-	Args:
-		full - Print the complete results, if false, print a summary
-	Returns:
-		Doesn't return (invokes sys.exit()
-	"""
-	#Retrieve and unpickle stats and fails from saved files
-	savedf=open(os.path.join(portage.const.CACHE_PATH, 'repo.stats'),'r')
-	stats = pickle.load(savedf)
-	savedf.close()
-	savedf=open(os.path.join(portage.const.CACHE_PATH, 'repo.fails'),'r')
-	fails = pickle.load(savedf)
-	savedf.close()
-
-	#dofail will be set to 1 if we have failed in at least one non-warning category
-	dofail=0
-	#dowarn will be set to 1 if we tripped any warnings
-	dowarn=0
-	#dofull will be set if we should print a "repoman full" informational message
-	dofull=0
-
-	dofull = options.mode not in ("full", "lfull")
-	
-	for x in qacats:
-		if not stats[x]:
-			continue
-		dowarn = 1
-		if x not in qawarnings:
-			dofail = 1
-
-	print
-	print green("RepoMan remembers...")
-	print
-	style_file = ConsoleStyleFile(sys.stdout)
-	console_writer = StyleWriter(file=style_file, maxcol=9999)
-	console_writer.style_listener = style_file.new_styles
-	f = formatter.AbstractFormatter(console_writer)
-	utilities.format_qa_output(f, stats, fails, dofull, dofail, options, qawarnings)
-	print
-	if dofull:
-		print bold("Note: type \"repoman lfull\" for a complete listing of repomans last run.")
-		print
-	if dowarn and not dofail:
-		print green("RepoMan sez:"),"\"You only gave me a partial QA payment last time?\n              I took it, but I wasn't happy.\""
-	elif not dofail:
-		print green("RepoMan sez:"),"\"If everyone were like you, I'd be out of business!\""
-	print
-	sys.exit(0)
-
 options, arguments = ParseArgs(sys.argv, qahelp)
-
-if options.mode in ('last', 'lfull'):
-	last('lfull' in options.mode)
 
 # Set this to False when an extraordinary issue (generally
 # something other than a QA issue) makes it impossible to
@@ -1608,24 +1548,12 @@ for x in scanlist:
 if options.mode == "manifest":
 	sys.exit(dofail)
 
-#Pickle and save results for instant reuse in last and lfull
-if os.access(portage.const.CACHE_PATH, os.W_OK):
-	for myobj, fname in (stats, "repo.stats"), (fails, "repo.fails"):
-		fpath = os.path.join(portage.const.CACHE_PATH, fname)
-		savef = open(fpath, 'w')
-		pickle.dump(myobj, savef)
-		savef.close()
-		portage.apply_secpass_permissions(fpath, gid=portage.portage_gid,
-			mode=0664)
-
-# TODO(antarus) This function and last () look familiar ;)
-
 #dofail will be set to 1 if we have failed in at least one non-warning category
 dofail=0
 #dowarn will be set to 1 if we tripped any warnings
 dowarn=0
 #dofull will be set if we should print a "repoman full" informational message
-dofull = options.mode not in ("full", "lfull")
+dofull = options.mode != 'full'
 
 for x in qacats:
 	if not stats[x]:

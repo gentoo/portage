@@ -223,7 +223,8 @@ read_int() {
 		read my_input
 		# failed integer conversions will break a loop unless they're enclosed
 		# in a subshell.
-		echo "${my_input}" | ( declare -i x; read x) && break
+		echo "${my_input}" | ( declare -i x; read x) 2>/dev/null && break
+		echo -n "Value '$my_input' is not valid. Please enter an integer value:" >&2
 	done
 	echo ${my_input}
 }
@@ -445,10 +446,9 @@ Please select from the menu above (-1 to exit, losing this merge): "
 }
 
 die() {
-	trap "" TERM
-	trap "" KILL
+	trap SIGTERM SIGINT
 
-	if [ ${2} -eq 0 ]; then
+	if [ "$2" -eq 0 ]; then
 		echo "Exiting: ${1}"
 		scan > /dev/null
 		[ ${count} -gt 0 ] && echo "NOTE: ${count} updates remaining"
@@ -500,7 +500,8 @@ export PORTAGE_TMPDIR
 export EROOT=${ROOT%/}${EPREFIX}/
 
 TMP="${PORTAGE_TMPDIR}/etc-update-$$"
-trap die term
+trap "die terminated 1" SIGTERM
+trap "die interrupted 1" SIGINT
 
 [ -w ${PORTAGE_CONFIGROOT}etc ] || die "Need write access to ${PORTAGE_CONFIGROOT}etc" 1
 #echo $PORTAGE_TMPDIR

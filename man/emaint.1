@@ -4,10 +4,32 @@ emaint \- performs system health checks and maintenance
 .SH SYNOPSIS
 .BR emaint
 [\fIoptions\fR]
-[\fBall\fR | \fBworld\fR]
+[\fBall\fR | \fBbinhost\fR | \fBcleanresume\fR | \
+\fBmovebin\fR | \fBmoveinst\fR | \fBworld\fR]
 .SH DESCRIPTION
-.B emaint
-checks for and fixes problems in the portage \fIworld\fR file.
+The emaint program provides an interface to system health
+checks and maintenance.
+.SH COMMANDS
+.TP
+.BR all
+Perform all supported commands.
+.TP
+.BR binhost
+Generate a metadata index for binary packages located in \fBPKGDIR\fR (for
+download by remote clients). See the \fBPORTAGE_BINHOST\fR documentation in
+the \fBmake.conf\fR(5) man page for additional information.
+.TP
+.BR cleanresume
+Discard merge lists saved for the \fBemerge\fR(1) \fB--resume\fR action.
+.TP
+.BR movebin
+Perform package move updates for binary packages located in \fBPKGDIR\fR.
+.TP
+.BR moveinst
+Perform package move updates for installed packages.
+.TP
+.BR world
+Fix problems in the \fIworld\fR file.
 .SH OPTIONS 
 .TP
 .B \-c, \-\-check
