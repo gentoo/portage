@@ -2282,6 +2282,7 @@ class dblink(object):
 		self._contents_inodes = None
 		self._contents_basenames = None
 		self._linkmap_broken = False
+		self._md5_merge_map = {}
 
 	def lockdb(self):
 		if self._lock_vdb:
@@ -3895,6 +3896,7 @@ class dblink(object):
 			if self.mergeme(srcroot, destroot, outfile, None,
 				secondhand, cfgfiledict, mymtime):
 				return 1
+		self._md5_merge_map.clear()
 
 		#restore umask
 		os.umask(prevmask)
@@ -4296,9 +4298,18 @@ class dblink(object):
 				# whether config protection or not, we merge the new file the
 				# same way.  Unless moveme=0 (blocking directory)
 				if moveme:
-					mymtime = movefile(mysrc, mydest, newmtime=thismtime, sstat=mystat, mysettings=self.settings)
+					hardlink_key = (mymd5, mystat.st_size,
+						mystat.st_mode, mystat.st_uid, mystat.st_gid)
+					hardlink_candidates = self._md5_merge_map.get(hardlink_key)
+					if hardlink_candidates is None:
+						hardlink_candidates = []
+						self._md5_merge_map[hardlink_key] = hardlink_candidates
+					mymtime = movefile(mysrc, mydest, newmtime=thismtime,
+						sstat=mystat, mysettings=self.settings,
+						hardlink_candidates=hardlink_candidates)
 					if mymtime is None:
 						return 1
+					hardlink_candidates.append(mydest)
 					zing = ">>>"
 
 				if mymtime != None:

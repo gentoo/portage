@@ -1632,7 +1632,12 @@ class EbuildFetchonly(SlotObject):
 		settings = self.settings
 		global_tmpdir = settings["PORTAGE_TMPDIR"]
 		from tempfile import mkdtemp
-		private_tmpdir = mkdtemp("", "._portage_fetch_.", global_tmpdir)
+		try:
+			private_tmpdir = mkdtemp("", "._portage_fetch_.", global_tmpdir)
+		except OSError, e:
+			if e.errno != portage.exception.PermissionDenied.errno:
+				raise
+			raise portage.exception.PermissionDenied(global_tmpdir)
 		settings["PORTAGE_TMPDIR"] = private_tmpdir
 		settings.backup_changes("PORTAGE_TMPDIR")
 		try:
@@ -9734,6 +9739,22 @@ class Scheduler(PollScheduler):
 
 		for root in self.trees:
 			root_config = self.trees[root]["root_config"]
+
+			# Even for --pretend --fetch mode, PORTAGE_TMPDIR is required
+			# since it might spawn pkg_nofetch which requires PORTAGE_BUILDDIR
+			# for ensuring sane $PWD (bug #239560) and storing elog messages.
+			tmpdir = root_config.settings.get("PORTAGE_TMPDIR", "")
+			if not tmpdir or not os.path.isdir(tmpdir):
+				msg = "The directory specified in your " + \
+					"PORTAGE_TMPDIR variable, '%s', " % tmpdir + \
+				"does not exist. Please create this " + \
+				"directory or correct your PORTAGE_TMPDIR setting."
+				msg = textwrap.wrap(msg, 70)
+				out = portage.output.EOutput()
+				for l in msg:
+					out.eerror(l)
+				return 1
+
 			if self._background:
 				root_config.settings.unlock()
 				root_config.settings["PORTAGE_BACKGROUND"] = "1"

@@ -128,21 +128,7 @@ die() {
 		done
 	fi
 
-	[[ -n ${PORTAGE_LOG_FILE} ]] \
-		&& eerror "build log: '${PORTAGE_LOG_FILE}'"
-	if [ -f "${T}/environment" ] ; then
-		eerror "ebuild environment: '${T}/environment'"
-	elif [ -d "${T}" ] ; then
-		{
-			set
-			export
-		} > "${T}/die.env"
-		eerror "ebuild environment: '${T}/die.env'"
-	fi
-	eerror "S: '${S}'"
-
-	[ -n "${EBUILD_EXIT_STATUS_FILE}" ] && \
-		touch "${EBUILD_EXIT_STATUS_FILE}" &>/dev/null
+	[ -n "$EBUILD_EXIT_STATUS_FILE" ] && > "$EBUILD_EXIT_STATUS_FILE"
 
 	# subshell die support
 	kill -s SIGTERM ${EBUILD_MASTER_PID}

@@ -5190,9 +5190,20 @@ def _doebuild_exit_status_check(mydo, settings):
 	"is known to be triggered " + \
 	"by things such as failed variable " + \
 	"assignments (bug #190128) or bad substitution " + \
-	"errors (bug #200313). This behavior may also be " + \
-	"triggered by a corrupt bash binary or a hardware " + \
-	"problem such as memory or cpu malfunction."
+	"errors (bug #200313). Normally, before exiting, bash should " + \
+	"have displayed an error message above. If bash did not " + \
+	"produce an error message above, it's possible " + \
+	"that the ebuild has called `exit` when it " + \
+	"should have called `die` instead. This behavior may also " + \
+	"be triggered by a corrupt bash binary or a hardware " + \
+	"problem such as memory or cpu malfunction. If the problem is not " + \
+	"reproducible or it appears to occur randomly, then it is likely " + \
+	"to be triggered by a hardware problem. " + \
+	"If you suspect a hardware problem then you should " + \
+	"try some basic hardware diagnostics such as memtest. " + \
+	"Please do not report this as a bug unless it is consistently " + \
+	"reproducible and you are sure that your bash binary and hardware " + \
+	"are functioning properly."
 	return msg
 
 def _doebuild_exit_status_check_and_log(settings, mydo, retval):
@@ -5330,6 +5341,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	if mydo == "fetchall":
 		fetchall = 1
 		mydo = "fetch"
+
+	parallel_fetchonly = mydo in ("fetch", "fetchall") and \
+		"PORTAGE_PARALLEL_FETCHONLY" in mysettings
 
 	if mydo not in clean_phases and not os.path.exists(myebuild):
 		writemsg("!!! doebuild: %s not found for %s\n" % (myebuild, mydo),
@@ -5564,7 +5578,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		# Build directory creation isn't required for any of these.
 		have_build_dirs = False
-		if not mydo in ("digest", "help", "manifest"):
+		if not parallel_fetchonly and mydo not in ("digest", "help", "manifest"):
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 			if mystatus:
 				return mystatus
@@ -6005,7 +6019,8 @@ def _movefile(src, dest, **kwargs):
 		raise portage.exception.PortageException(
 			"mv '%s' '%s'" % (src, dest))
 
-def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
+def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
+		hardlink_candidates=None):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
 	be preserved even when moving across filesystems.  Returns true on success and false on
 	failure.  Move is atomic."""
@@ -6077,8 +6092,44 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 			print "!!!",e
 			return None
 
+	hardlinked = False
+	# Since identical files might be merged to multiple filesystems,
+	# so os.link() calls might fail for some paths, so try them all.
+	# For atomic replacement, first create the link as a temp file
+	# and them use os.rename() to replace the destination.
+	if hardlink_candidates:
+		head, tail = os.path.split(dest)
+		hardlink_tmp = os.path.join(head, ".%s._portage_merge_.%s" % \
+			(tail, os.getpid()))
+		try:
+			os.unlink(hardlink_tmp)
+		except OSError, e:
+			if e.errno != errno.ENOENT:
+				writemsg("!!! Failed to remove hardlink temp file: %s\n" % \
+					(hardlink_tmp,), noiselevel=-1)
+				writemsg("!!! %s\n" % (e,), noiselevel=-1)
+				return None
+			del e
+		for hardlink_src in hardlink_candidates:
+			try:
+				os.link(hardlink_src, hardlink_tmp)
+			except OSError:
+				continue
+			else:
+				try:
+					os.rename(hardlink_tmp, dest)
+				except OSError, e:
+					writemsg("!!! Failed to rename %s to %s\n" % \
+						(hardlink_tmp, dest), noiselevel=-1)
+					writemsg("!!! %s\n" % (e,), noiselevel=-1)
+					return None
+				hardlinked = True
+				break
+
 	renamefailed=1
-	if sstat[stat.ST_DEV]==dstat[stat.ST_DEV] or selinux_enabled:
+	if hardlinked:
+		renamefailed = False
+	if not hardlinked and (selinux_enabled or sstat.st_dev == dstat.st_dev):
 		try:
 			if selinux_enabled:
 				ret=selinux.secure_rename(src,dest)
@@ -6139,11 +6190,14 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 			return None
 
 	try:
-		if newmtime is not None:
-			os.utime(dest, (newmtime, newmtime))
+		if hardlinked:
+			newmtime = long(os.stat(dest).st_mtime)
 		else:
-			os.utime(dest, (sstat.st_atime, sstat.st_mtime))
-			newmtime = long(sstat.st_mtime)
+			if newmtime is not None:
+				os.utime(dest, (newmtime, newmtime))
+			else:
+				os.utime(dest, (sstat.st_atime, sstat.st_mtime))
+				newmtime = long(sstat.st_mtime)
 	except OSError:
 		# The utime can fail here with EPERM even though the move succeeded.
 		# Instead of failing, use stat to return the mtime if possible.
