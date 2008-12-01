@@ -1797,7 +1797,7 @@ if [[ -n ${QA_INTERCEPTORS} ]] ; then
 	unset BIN_PATH BIN BODY FUNC_SRC
 fi
 
-if ! hasq ${EBUILD_PHASE} clean depend && \
+if ! hasq "$EBUILD_PHASE" clean cleanrm depend && \
 	[ -f "${T}"/environment ] ; then
 	# The environment may have been extracted from environment.bz2 or
 	# may have come from another version of ebuild.sh or something.
@@ -1843,7 +1843,7 @@ if ! hasq ${EBUILD_PHASE} clean depend && \
 	source_all_bashrcs
 fi
 
-if ! hasq ${EBUILD_PHASE} clean && \
+if ! hasq "$EBUILD_PHASE" clean cleanrm && \
 	(
 		hasq ${EBUILD_PHASE} depend || \
 		[ ! -f "${T}"/environment ] || \
@@ -1889,7 +1889,7 @@ fi
 [[ -n $EAPI ]] || EAPI=0
 
 # enable bashrc support for the clean phase
-[[ ${EBUILD_PHASE} == clean ]] && source_all_bashrcs
+hasq "$EBUILD_PHASE" clean cleanrm && source_all_bashrcs
 
 # unset USE_EXPAND variables that contain only the special "*" token
 for x in ${USE_EXPAND} ; do
