@@ -502,7 +502,7 @@ def emaint_main(myargv):
 	usage = "usage: emaint [options] COMMAND"
 
 	desc = "The emaint program provides an interface to system health " + \
-		"checks and maintenance. See the emaint(1) man page for " + \
+		"checks and maintenance. See the emaint(1) man page " + \
 		"for additional information about the following commands:"
 
 	usage += "\n\n"

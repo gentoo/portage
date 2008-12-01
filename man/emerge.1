@@ -16,7 +16,7 @@ emerge \- Command\-line interface to the Portage system
 \fB\-\-search\fR \fIsomestring\fR
 .TP
 .BR emerge
-\fB\-\-help\fR [\fBsystem\fR | \fBworld\fR | \fB\-\-sync\fR]
+\fB\-\-help\fR [\fB\-\-sync\fR]
 .SH "DESCRIPTION"
 \fBemerge\fR is the definitive command\-line interface to the Portage
 system.  It is primarily used for installing packages, and \fBemerge\fR
@@ -394,24 +394,19 @@ Instead of actually performing the merge, simply display what *would*
 have been installed if \fB\-\-pretend\fR weren't used.  Using \fB\-\-pretend\fR
 is strongly recommended before installing an unfamiliar package.  In
 the printout:
-.br 
- 
-.br 
-\fIN\fR = new (not yet installed)
-.br 
-\fIS\fR = new SLOT installation (side-by-side versions) 
-.br 
-\fIU\fR = updating (to another version)
-.br 
-\fID\fR = downgrading (best version seems lower)
-.br 
-\fIR\fR = replacing (remerging same version))
-.br 
-\fIF\fR = fetch restricted (must be manually downloaded)
-.br 
-\fIf\fR = fetch restricted (already downloaded)
-.br 
-\fIB\fR = blocked by an already installed package
+
+.TS
+lI l.
+N	new (not yet installed)
+S	new SLOT installation (side-by-side versions) 
+U	updating (to another version)
+D	downgrading (best version seems lower)
+R	replacing (remerging same version))
+F	fetch restricted (must be manually downloaded)
+f	fetch restricted (already downloaded)
+I	interactive (requires user input)
+B	blocked by an already installed package
+.TE
 .TP
 .BR "\-\-quiet " (\fB\-q\fR)
 Results may vary, but the general outcome is a reduced or condensed
@@ -452,16 +447,18 @@ Tell emerge to run in verbose mode.  Currently this flag causes emerge to print
 out GNU info errors, if any, and to show the USE flags that will be used for 
 each package when pretending. The following symbols are affixed to USE flags
 in order to indicate their status:
-.br
 
-.br
-\fI- prefix\fR     = not enabled (either disabled or removed)
-.br
-\fI* suffix\fR     = transition to or from the enabled state
-.br
-\fI% suffix\fR     = newly added or removed
-.br
-\fI() circumfix\fR = forced, masked, or removed
+.TS
+l l l
+___
+l l l.
+Symbol	Location	Meaning
+
+-	prefix	not enabled (either disabled or removed)
+*	suffix	transition to or from the enabled state
+%	suffix	newly added or removed
+()	circumfix	forced, masked, or removed
+.TE
 .TP
 .BR "\-\-with\-bdeps < y | n >"
 In dependency calculations, pull in build time dependencies

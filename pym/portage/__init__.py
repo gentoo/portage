@@ -1204,6 +1204,17 @@ class config(object):
 				self.profiles = []
 				def addProfile(currentPath):
 					parentsFile = os.path.join(currentPath, "parent")
+					eapi_file = os.path.join(currentPath, "eapi")
+					try:
+						eapi = open(eapi_file).readline().strip()
+					except IOError:
+						pass
+					else:
+						if not eapi_is_supported(eapi):
+							raise portage.exception.ParseError(
+								"Profile contains unsupported " + \
+								"EAPI '%s': '%s'" % \
+								(eapi, os.path.realpath(eapi_file),))
 					if os.path.exists(parentsFile):
 						parents = grabfile(parentsFile)
 						if not parents:
@@ -1227,7 +1238,7 @@ class config(object):
 					writemsg("!!! ParseError: %s\n" % str(e), noiselevel=-1)
 					del e
 					self.profiles = []
-			if local_config:
+			if local_config and self.profiles:
 				custom_prof = os.path.join(
 					config_root, CUSTOM_PROFILE_PATH.lstrip(os.path.sep))
 				if os.path.exists(custom_prof):
@@ -7328,7 +7339,7 @@ def _global_updates(trees, prev_mtimes):
 			writemsg_stdout("\n\n")
 			writemsg_stdout(green("Performing Global Updates: ")+bold(mykey)+"\n")
 			writemsg_stdout("(Could take a couple of minutes if you have a lot of binary packages.)\n")
-			writemsg_stdout("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n"+"  "+bold("s")+"='/var/db SLOT move' "+bold("%")+"='binary move' "+bold("S")+"='binary SLOT move' "+bold("p")+"='update /etc/portage/package.*'\n")
+			writemsg_stdout("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n"+"  "+bold("s")+"='/var/db SLOT move' "+bold("%")+"='binary move' "+bold("S")+"='binary SLOT move'\n  "+bold("p")+"='update /etc/portage/package.*'\n")
 			valid_updates, errors = parse_updates(mycontent)
 			myupd.extend(valid_updates)
 			writemsg_stdout(len(valid_updates) * "." + "\n")

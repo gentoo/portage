@@ -463,32 +463,3 @@ def help(myaction,myopts,havecolor=1):
 		print "       exist on it, including ones that you may have created. The exceptions"
 		print "       to this are the distfiles, local and packages directories."
 		print
-	elif myaction=="system":
-		print
-		print bold("Usage: ")+turquoise("emerge")+" [ "+green("options")+" ] "+turquoise("system")
-		print
-		print "       \"emerge system\" is the Portage system update command.  When run, it"
-		print "       will scan the etc/make.profile/packages file and determine what"
-		print "       packages need to be installed so that your system meets the minimum"
-		print "       requirements of your current system profile.  Note that this doesn't"
-		print "       necessarily bring your system up-to-date at all; instead, it just"
-		print "       ensures that you have no missing parts.  For example, if your system"
-		print "       profile specifies that you should have sys-apps/iptables installed"
-		print "       and you don't, then \"emerge system\" will install it (the most"
-		print "       recent version that matches the profile spec) for you.  It's always a"
-		print "       good idea to do an \"emerge --pretend system\" before an \"emerge"
-		print "       system\", just so you know what emerge is planning to do."
-		print
-	elif myaction=="world":
-		print
-		print bold("Usage: ")+turquoise("emerge")+" [ "+green("options")+" ] "+turquoise("world")
-		print
-		print "       'emerge world' is the Portage command for completely updating your"
-		print "       system.  The normal procedure is to first do an 'emerge --sync' and"
-		print "       then an 'emerge --update --deep world'.  The first command brings your"
-		print "       local Portage tree up-to-date with the latest version information and"
-		print "       ebuilds.  The second command then rebuilds all packages for which newer"
-		print "       versions or newer ebuilds have become available since you last did a"
-		print "       sync and update."
-		print
-
