@@ -4307,6 +4307,8 @@ class depgraph(object):
 		# Slot collision nodes are not allowed to block other packages since
 		# blocker validation is only able to account for one package per slot.
 		self._slot_collision_nodes = set()
+		self._parent_atoms = {}
+		self._slot_conflict_parent_atoms = set()
 		self._serialized_tasks_cache = None
 		self._scheduler_graph = None
 		self._displayed_list = None
@@ -4330,7 +4332,25 @@ class depgraph(object):
 		the packages. In some cases it may be possible to resolve this
 		automatically, but support for backtracking (removal nodes that have
 		already been selected) will be required in order to handle all possible
-		cases."""
+		cases.
+
+		When a slot conflict occurs due to USE deps, there are a few
+		different cases to consider:
+
+		1) New USE are correctly set but --newuse wasn't requested so an
+		   installed package with incorrect USE happened to get pulled
+		   into graph before the new one.
+
+		2) New USE are incorrectly set but an installed package has correct
+		   USE so it got pulled into the graph, and a new instance also got
+		   pulled in due to --newuse or an upgrade.
+
+		3) Multiple USE deps exist that can't be satisfied simultaneously,
+		   and multiple package instances got pulled into the same slot to
+		   satisfy the conflicting deps.
+
+		TODO: Distinguish the above cases and tailor messages to suit them.
+		"""
 
 		if not self._slot_collision_info:
 			return
@@ -4353,35 +4373,56 @@ class depgraph(object):
 			for node in slot_nodes:
 				msg.append(indent)
 				msg.append(str(node))
-				parents = self.digraph.parent_nodes(node)
-				if parents:
-					omitted_parents = 0
-					if len(parents) > max_parents:
-						pruned_list = []
+				parent_atoms = self._parent_atoms.get(node)
+				if parent_atoms:
+					pruned_list = set()
+					# Prefer conflict atoms over others.
+					for parent_atom in parent_atoms:
+						if len(pruned_list) >= max_parents:
+							break
+						if parent_atom in self._slot_conflict_parent_atoms:
+							pruned_list.add(parent_atom)
+
+					# If this package was pulled in by conflict atoms then
+					# show those alone since those are the most interesting.
+					if not pruned_list:
 						# When generating the pruned list, prefer instances
 						# of DependencyArg over instances of Package.
-						for parent in parents:
+						for parent_atom in parent_atoms:
+							if len(pruned_list) >= max_parents:
+								break
+							parent, atom = parent_atom
 							if isinstance(parent, DependencyArg):
-								pruned_list.append(parent)
+								pruned_list.add(parent_atom)
 						# Prefer Packages instances that themselves have been
 						# pulled into collision slots.
-						for parent in parents:
+						for parent_atom in parent_atoms:
+							if len(pruned_list) >= max_parents:
+								break
+							parent, atom = parent_atom
 							if isinstance(parent, Package) and \
 								(parent.slot_atom, parent.root) \
 								in self._slot_collision_info:
-								pruned_list.append(parent)
-						for parent in parents:
+								pruned_list.add(parent_atom)
+						for parent_atom in parent_atoms:
 							if len(pruned_list) >= max_parents:
 								break
-							if not isinstance(parent, DependencyArg) and \
-								parent not in pruned_list:
-								pruned_list.append(parent)
-						omitted_parents = len(parents) - len(pruned_list)
-						parents = pruned_list
+							pruned_list.add(parent_atom)
+					omitted_parents = len(parent_atoms) - len(pruned_list)
+					parent_atoms = pruned_list
 					msg.append(" pulled in by\n")
-					for parent in parents:
+					for parent_atom in parent_atoms:
+						parent, atom = parent_atom
 						msg.append(2*indent)
-						msg.append(str(parent))
+						if isinstance(parent,
+							(PackageArg, AtomArg)):
+							# For PackageArg and AtomArg types, it's
+							# redundant to display the atom attribute.
+							msg.append(str(parent))
+						else:
+							# Display the specific atom from SetArg or
+							# Package types.
+							msg.append("%s required by %s" % (atom, parent))
 						msg.append("\n")
 					if omitted_parents:
 						msg.append(2*indent)
@@ -4420,6 +4461,40 @@ class depgraph(object):
 			f.add_flowing_data(x)
 		f.end_paragraph(1)
 		f.writer.flush()
+
+	def _process_slot_conflicts(self):
+		"""
+		Process slot conflict data to identify specific atoms which
+		lead to conflict. These atoms only match a subset of the
+		packages that have been pulled into a given slot.
+		"""
+		for (slot_atom, root), slot_nodes \
+			in self._slot_collision_info.iteritems():
+
+			all_parent_atoms = set()
+			for pkg in slot_nodes:
+				parent_atoms = self._parent_atoms.get(pkg)
+				if not parent_atoms:
+					continue
+				all_parent_atoms.update(parent_atoms)
+
+			for pkg in slot_nodes:
+				parent_atoms = self._parent_atoms.get(pkg)
+				if parent_atoms is None:
+					parent_atoms = set()
+					self._parent_atoms[pkg] = parent_atoms
+				for parent_atom in all_parent_atoms:
+					if parent_atom in parent_atoms:
+						continue
+					# Use package set for matching since it will match via
+					# PROVIDE when necessary, while match_from_list does not.
+					parent, atom = parent_atom
+					atom_set = InternalPackageSet(
+						initial_atoms=(atom,))
+					if atom_set.findAtomForPackage(pkg):
+						parent_atoms.add(parent_atom)
+					else:
+						self._slot_conflict_parent_atoms.add(parent_atom)
 
 	def _reinstall_for_flags(self, forced_flags,
 		orig_use, orig_iuse, cur_use, cur_iuse):
@@ -4541,7 +4616,6 @@ class depgraph(object):
 		vardbapi = self.trees[pkg.root]["vartree"].dbapi
 		pkgsettings = self.pkgsettings[pkg.root]
 
-		args = None
 		arg_atoms = None
 		if True:
 			try:
@@ -4552,8 +4626,6 @@ class depgraph(object):
 						pkg, pkg.metadata["PROVIDE"], str(e))
 					return 0
 				del e
-			else:
-				args = [arg for arg, atom in arg_atoms]
 
 		if not pkg.onlydeps:
 			if not pkg.installed and \
@@ -4583,10 +4655,12 @@ class depgraph(object):
 						existing_node_matches = False
 				if existing_node_matches:
 					# The existing node can be reused.
-					if args:
-						for arg in args:
-							self.digraph.add(existing_node, arg,
+					if arg_atoms:
+						for parent_atom in arg_atoms:
+							parent, atom = parent_atom
+							self.digraph.add(existing_node, parent,
 								priority=priority)
+							self._add_parent_atom(existing_node, parent_atom)
 					# If a direct circular dependency is not an unsatisfied
 					# buildtime dependency then drop it here since otherwise
 					# it can skew the merge order calculation in an unwanted
@@ -4595,26 +4669,12 @@ class depgraph(object):
 						(priority.buildtime and not priority.satisfied):
 						self.digraph.addnode(existing_node, myparent,
 							priority=priority)
+						if dep.atom is not None and dep.parent is not None:
+							self._add_parent_atom(existing_node,
+								(dep.parent, dep.atom))
 					return 1
 				else:
 
-					if pkg.cpv == existing_node.cpv and \
-						dep.atom is not None and \
-						dep.atom.use:
-						# Multiple different instances of the same version
-						# (typically one installed and another not yet
-						# installed) have been pulled into the graph due
-						# to a USE dependency. The "slot collision" display
-						# is not helpful in a case like this, so display it
-						# as an unsatisfied dependency.
-						self._unsatisfied_deps_for_display.append(
-							((dep.root, dep.atom), {"myparent":dep.parent}))
-						self._add_slot_conflict(pkg)
-						self.digraph.addnode(pkg, myparent, priority=priority)
-						return 0
-
-					if pkg in self._slot_collision_nodes:
-						return 1
 					# A slot collision has occurred.  Sometimes this coincides
 					# with unresolvable blockers, so the slot collision will be
 					# shown later if there are no unresolvable blockers.
@@ -4637,8 +4697,6 @@ class depgraph(object):
 				self._slot_pkg_map[pkg.root][pkg.slot_atom] = pkg
 				self.mydbapi[pkg.root].cpv_inject(pkg)
 
-			self.digraph.addnode(pkg, myparent, priority=priority)
-
 			if not pkg.installed:
 				# Allow this package to satisfy old-style virtuals in case it
 				# doesn't already. Any pre-existing providers will be preferred
@@ -4656,17 +4714,21 @@ class depgraph(object):
 					del e
 					return 0
 
-		if args:
+		if arg_atoms:
 			self._set_nodes.add(pkg)
 
 		# Do this even when addme is False (--onlydeps) so that the
 		# parent/child relationship is always known in case
 		# self._show_slot_collision_notice() needs to be called later.
-		if pkg.onlydeps:
-			self.digraph.add(pkg, myparent, priority=priority)
-		if args:
-			for arg in args:
-				self.digraph.add(pkg, arg, priority=priority)
+		self.digraph.add(pkg, myparent, priority=priority)
+		if dep.atom is not None and dep.parent is not None:
+			self._add_parent_atom(pkg, (dep.parent, dep.atom))
+
+		if arg_atoms:
+			for parent_atom in arg_atoms:
+				parent, atom = parent_atom
+				self.digraph.add(pkg, parent, priority=priority)
+				self._add_parent_atom(pkg, parent_atom)
 
 		""" This section determines whether we go deeper into dependencies or not.
 		    We want to go deeper on a few occasions:
@@ -4683,12 +4745,19 @@ class depgraph(object):
 
 		self.spinner.update()
 
-		if args:
+		if arg_atoms:
 			depth = 0
 		pkg.depth = depth
 		if not previously_added:
 			dep_stack.append(pkg)
 		return 1
+
+	def _add_parent_atom(self, pkg, parent_atom):
+		parent_atoms = self._parent_atoms.get(pkg)
+		if parent_atoms is None:
+			parent_atoms = set()
+			self._parent_atoms[pkg] = parent_atoms
+		parent_atoms.add(parent_atom)
 
 	def _add_slot_conflict(self, pkg):
 		self._slot_collision_nodes.add(pkg)
@@ -6249,6 +6318,9 @@ class depgraph(object):
 
 		if not self.validate_blockers():
 			raise self._unknown_internal_error()
+
+		if self._slot_collision_info:
+			self._process_slot_conflicts()
 
 	def _serialize_tasks(self):
 		scheduler_graph = self.digraph.copy()
