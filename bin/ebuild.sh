@@ -1516,14 +1516,17 @@ source_all_bashrcs() {
 	fi
 
 	local OCC="${CC}" OCXX="${CXX}"
-	# source the existing profile.bashrc's.
-	save_IFS
-	IFS=$'\n'
-	local path_array=($PROFILE_PATHS)
-	restore_IFS
-	for x in "${path_array[@]}" ; do
-		[ -f "${x}/profile.bashrc" ] && qa_source "${x}/profile.bashrc"
-	done
+
+	if [[ $EBUILD_PHASE != depend ]] ; then
+		# source the existing profile.bashrcs.
+		save_IFS
+		IFS=$'\n'
+		local path_array=($PROFILE_PATHS)
+		restore_IFS
+		for x in "${path_array[@]}" ; do
+			[ -f "$x/profile.bashrc" ] && qa_source "$x/profile.bashrc"
+		done
+	fi
 
 	# We assume if people are changing shopts in their bashrc they do so at their
 	# own peril.  This is the ONLY non-portage bit of code that can change shopts
