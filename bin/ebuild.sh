@@ -1492,6 +1492,8 @@ _ebuild_phase_funcs() {
 	esac
 }
 
+PORTAGE_BASHRCS_SOURCED=0
+
 # @FUNCTION: source_all_bashrcs
 # @DESCRIPTION:
 # Source a relevant bashrc files and perform other miscellaneous
@@ -1504,6 +1506,8 @@ _ebuild_phase_funcs() {
 #    function for the current phase.
 #
 source_all_bashrcs() {
+	[[ $PORTAGE_BASHRCS_SOURCED = 1 ]] && return 0
+	PORTAGE_BASHRCS_SOURCED=1
 	local x
 
 	if [[ -n $EBUILD_PHASE && -n $EAPI ]] ; then
@@ -1840,7 +1844,6 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm depend && \
 			;;
 	esac
 
-	source_all_bashrcs
 fi
 
 if ! hasq "$EBUILD_PHASE" clean cleanrm && \
@@ -1888,9 +1891,6 @@ fi
 # code can simply assume that it's defined.
 [[ -n $EAPI ]] || EAPI=0
 
-# enable bashrc support for the clean phase
-hasq "$EBUILD_PHASE" clean cleanrm && source_all_bashrcs
-
 # unset USE_EXPAND variables that contain only the special "*" token
 for x in ${USE_EXPAND} ; do
 	[ "${!x}" == "*" ] && unset ${x}
@@ -1918,6 +1918,7 @@ if [ "${EBUILD_PHASE}" != "depend" ] ; then
 fi
 
 ebuild_main() {
+	source_all_bashrcs
 	local f x
 	local export_vars="ASFLAGS CCACHE_DIR CCACHE_SIZE
 		CFLAGS CXXFLAGS LDFLAGS LIBCFLAGS LIBCXXFLAGS"
