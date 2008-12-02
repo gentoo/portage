@@ -8217,13 +8217,13 @@ class depgraph(object):
 					arg = None
 				if arg:
 					return False
-				if pkg.installed:
-					try:
-						if not visible(
-							self._depgraph.pkgsettings[pkg.root], pkg):
-							return False
-					except portage.exception.InvalidDependString:
-						pass
+			if pkg.installed:
+				try:
+					if not visible(
+						self._depgraph.pkgsettings[pkg.root], pkg):
+						return False
+				except portage.exception.InvalidDependString:
+					pass
 			return True
 
 		def _dep_expand(self, atom):
