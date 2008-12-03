@@ -10467,6 +10467,7 @@ class Scheduler(PollScheduler):
 			# not valid here.
 			settings.pop("T", None)
 			portage.elog.elog_process(pkg.cpv, settings)
+			self._failed_pkgs_all.append(self._failed_pkg(pkg=pkg))
 
 		return True
 
