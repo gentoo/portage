@@ -737,7 +737,7 @@ if vcs == "svn":
 	mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and elem[:1] in "MR" ]
 	mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A") ]
 elif vcs == "git":
-	mychanged = os.popen("git ls-files -m").readlines()
+	mychanged = os.popen("git ls-files -m --with-tree=HEAD").readlines()
 	mychanged = [ "./" +  elem[:-1] for elem in mychanged ]
 	mynew = os.popen("git diff --cached --name-only --diff-filter=A").readlines()
 	strip_levels = repolevel - 1
@@ -1733,7 +1733,7 @@ else:
 			for prop in props if " - " in prop)
 
 	elif vcs == "git":
-		mychanged = os.popen("git ls-files -m").readlines()
+		mychanged = os.popen("git ls-files -m --with-tree=HEAD").readlines()
 		mychanged = [ "./" +  elem[:-1] for elem in mychanged ]
 		mynew = os.popen("git diff --cached --name-only --diff-filter=A").readlines()
 		strip_levels = repolevel - 1
