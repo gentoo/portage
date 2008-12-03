@@ -10430,6 +10430,7 @@ class Scheduler(PollScheduler):
 
 		mylist = mydepgraph.altlist()
 		mydepgraph.break_refs(mylist)
+		mydepgraph.break_refs(dropped_tasks)
 		self._mergelist = mylist
 		self._set_digraph(mydepgraph.schedulerGraph())
 
