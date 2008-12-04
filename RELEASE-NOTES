@@ -4,16 +4,6 @@ Features/major bugfixes are listed in NEWS
 portage-2.2
 ==================================
 
-* The python namespace for portage has been sanitized, all portage related code
-  is now contained within the portage namespace. External script should be updated
-  accordingly, though links exist for backward compability.
-* -* support in package.keywords was changed as it was inconsistent with 
-  ACCEPT_KEYWORDS behavior (also see http://dev.gentoo.org/~genone/docs/KEYWORDS.stupid).
-  Previously having -* in package.keywords matched packages with KEYWORDS="-*", 
-  now it resets the ACCEPT_KEYWORDS list for the given atom like it does when
-  used in ACCEPT_KEYWORDS.
-  For packages that don't specify any other KEYWORDS you can use the new ** token
-  as documented in portage(5) to disable KEYWORDS filtering completely.
 * Portage now warns if an ebuild repository does not have a name, as several new
   features in 2.2 make use of or require named repositories. The repository name
   is stored in profiles/repo_name in each repository.
@@ -29,6 +19,20 @@ portage-2.2
 	by the world_sets file).
 * "world" does no longer include "system" unconditionally, but you can add
   "@system" to the world_sets file to restore the old state.
+
+portage-2.1.6
+==================================
+
+* The python namespace for portage has been sanitized, all portage related code
+  is now contained within the portage namespace. External script should be updated
+  accordingly, though links exist for backward compability.
+* -* support in package.keywords was changed as it was inconsistent with 
+  ACCEPT_KEYWORDS behavior (also see http://dev.gentoo.org/~genone/docs/KEYWORDS.stupid).
+  Previously having -* in package.keywords matched packages with KEYWORDS="-*", 
+  now it resets the ACCEPT_KEYWORDS list for the given atom like it does when
+  used in ACCEPT_KEYWORDS.
+  For packages that don't specify any other KEYWORDS you can use the new ** token
+  as documented in portage(5) to disable KEYWORDS filtering completely.
 
 portage-2.1.5
 ==================================
