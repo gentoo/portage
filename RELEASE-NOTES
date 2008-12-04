@@ -23,6 +23,8 @@ portage-2.2
 portage-2.1.6
 ==================================
 
+* FEATURES=fixpackages is now enabled by default via make.globals. Set
+  FEATURES="-fixpackages" in make.conf if you'd like to disable it.
 * The python namespace for portage has been sanitized, all portage related code
   is now contained within the portage namespace. External script should be updated
   accordingly, though links exist for backward compability.
