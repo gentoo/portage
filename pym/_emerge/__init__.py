@@ -4543,7 +4543,7 @@ class depgraph(object):
 				" reinstall '%s'." % matched_node.slot_atom
 
 		if matched_node.installed and not unmatched_node.installed:
-			atoms = [atom for parent, atom in matched_atoms]
+			atoms = sorted(set(atom for parent, atom in matched_atoms))
 			explanation = ("New USE for '%s' are incorrectly set. " + \
 				"In order to solve this, adjust USE to satisfy '%s'") % \
 				(matched_node.slot_atom, atoms[0])
