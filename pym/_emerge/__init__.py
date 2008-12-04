@@ -4349,23 +4349,6 @@ class depgraph(object):
 		automatically, but support for backtracking (removal nodes that have
 		already been selected) will be required in order to handle all possible
 		cases.
-
-		When a slot conflict occurs due to USE deps, there are a few
-		different cases to consider:
-
-		1) New USE are correctly set but --newuse wasn't requested so an
-		   installed package with incorrect USE happened to get pulled
-		   into graph before the new one.
-
-		2) New USE are incorrectly set but an installed package has correct
-		   USE so it got pulled into the graph, and a new instance also got
-		   pulled in due to --newuse or an upgrade.
-
-		3) Multiple USE deps exist that can't be satisfied simultaneously,
-		   and multiple package instances got pulled into the same slot to
-		   satisfy the conflicting deps.
-
-		TODO: Distinguish the above cases and tailor messages to suit them.
 		"""
 
 		if not self._slot_collision_info:
@@ -4381,6 +4364,8 @@ class depgraph(object):
 		indent = "  "
 		# Max number of parents shown, to avoid flooding the display.
 		max_parents = 3
+		explanation_columns = 70
+		explanations = 0
 		for (slot_atom, root), slot_nodes \
 			in self._slot_collision_info.iteritems():
 			msg.append(str(slot_atom))
@@ -4446,11 +4431,20 @@ class depgraph(object):
 				else:
 					msg.append(" (no parents)\n")
 				msg.append("\n")
+			explanation = self._slot_conflict_explanation(slot_nodes)
+			if explanation:
+				explanations += 1
+				msg.append(indent + "Explanation:\n\n")
+				for line in textwrap.wrap(explanation, explanation_columns):
+					msg.append(2*indent + line + "\n")
+				msg.append("\n")
 		msg.append("\n")
 		sys.stderr.write("".join(msg))
 		sys.stderr.flush()
 
-		if "--quiet" in self.myopts:
+		explanations_for_all = explanations == len(self._slot_collision_info)
+
+		if explanations_for_all or "--quiet" in self.myopts:
 			return
 
 		msg = []
@@ -4477,6 +4471,92 @@ class depgraph(object):
 			f.add_flowing_data(x)
 		f.end_paragraph(1)
 		f.writer.flush()
+
+	def _slot_conflict_explanation(self, slot_nodes):
+		"""
+		When a slot conflict occurs due to USE deps, there are a few
+		different cases to consider:
+
+		1) New USE are correctly set but --newuse wasn't requested so an
+		   installed package with incorrect USE happened to get pulled
+		   into graph before the new one.
+
+		2) New USE are incorrectly set but an installed package has correct
+		   USE so it got pulled into the graph, and a new instance also got
+		   pulled in due to --newuse or an upgrade.
+
+		3) Multiple USE deps exist that can't be satisfied simultaneously,
+		   and multiple package instances got pulled into the same slot to
+		   satisfy the conflicting deps.
+
+		Currently, explanations and suggested courses of action are generated
+		for cases 1 and 2. Case 3 is too complex to give a useful suggestion.
+		"""
+
+		if len(slot_nodes) != 2:
+			# Suggestions are only implemented for
+			# conflicts between two packages.
+			return None
+
+		all_conflict_atoms = self._slot_conflict_parent_atoms
+		matched_node = None
+		matched_atoms = None
+		unmatched_node = None
+		for node in slot_nodes:
+			parent_atoms = self._parent_atoms.get(node)
+			if not parent_atoms:
+				# Normally, there are always parent atoms. If there are
+				# none then something unexpected is happening and there's
+				# currently no suggestion for this case.
+				return None
+			conflict_atoms = all_conflict_atoms.intersection(parent_atoms)
+			for parent_atom in conflict_atoms:
+				parent, atom = parent_atom
+				if not atom.use:
+					# Suggestions are currently only implemented for cases
+					# in which all conflict atoms have USE deps.
+					return None
+			if conflict_atoms:
+				if matched_node is not None:
+					# If conflict atoms match multiple nodes
+					# then there's no suggestion.
+					return None
+				matched_node = node
+				matched_atoms = conflict_atoms
+			else:
+				if unmatched_node is not None:
+					# Neither node is matched by conflict atoms, and
+					# there is no suggestion for this case.
+					return None
+				unmatched_node = node
+
+		if matched_node is None or unmatched_node is None:
+			# This shouldn't happen.
+			return None
+
+		if unmatched_node.installed and not matched_node.installed:
+			return "New USE are correctly set, but --newuse wasn't" + \
+				" requested, so an installed package with incorrect USE " + \
+				"happened to get pulled into the dependency graph. " + \
+				"In order to solve " + \
+				"this, either specify the --newuse option or explicitly " + \
+				" reinstall '%s'." % matched_node.slot_atom
+
+		if matched_node.installed and not unmatched_node.installed:
+			atoms = [atom for parent, atom in matched_atoms]
+			explanation = ("New USE for '%s' are incorrectly set. " + \
+				"In order to solve this, adjust USE to satisfy '%s'") % \
+				(matched_node.slot_atom, atoms[0])
+			if len(atoms) > 1:
+				for atom in atoms[1:-1]:
+					explanation += ", '%s'" % (atom,)
+				if len(atoms) > 2:
+					explanation += ","
+				explanation += " and '%s'" % (atoms[-1],)
+			explanation += "."
+			return explanation
+
+		return None
 
 	def _process_slot_conflicts(self):
 		"""
