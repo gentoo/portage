@@ -11374,6 +11374,9 @@ def display_news_notification(root_config, myopts):
 def display_preserved_libs(vardbapi):
 	MAX_DISPLAY = 3
 
+	# Ensure the registry is consistent with existing files.
+	vardbapi.plib_registry.pruneNonExisting()
+
 	if vardbapi.plib_registry.hasEntries():
 		print
 		print colorize("WARN", "!!!") + " existing preserved libs:"
