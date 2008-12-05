@@ -737,7 +737,7 @@ if vcs == "svn":
 	mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and elem[:1] in "MR" ]
 	mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A") ]
 elif vcs == "git":
-	mychanged = os.popen("git ls-files -m").readlines()
+	mychanged = os.popen("git ls-files -m --with-tree=HEAD").readlines()
 	mychanged = [ "./" +  elem[:-1] for elem in mychanged ]
 	mynew = os.popen("git diff --cached --name-only --diff-filter=A").readlines()
 	strip_levels = repolevel - 1
@@ -1733,7 +1733,7 @@ else:
 			for prop in props if " - " in prop)
 
 	elif vcs == "git":
-		mychanged = os.popen("git ls-files -m").readlines()
+		mychanged = os.popen("git ls-files -m --with-tree=HEAD").readlines()
 		mychanged = [ "./" +  elem[:-1] for elem in mychanged ]
 		mynew = os.popen("git diff --cached --name-only --diff-filter=A").readlines()
 		strip_levels = repolevel - 1
@@ -1764,6 +1764,8 @@ else:
 			mymanifests.add(f)
 		else:
 			myupdates.add(f)
+	if vcs == 'git':
+		myupdates.difference_update(myremoved)
 	myupdates = list(myupdates)
 	mymanifests = list(mymanifests)
 	myheaders = []
@@ -2057,6 +2059,27 @@ else:
 			portage.writemsg("!!! %s\n" % str(e))
 			portage.writemsg("!!! Disabled FEATURES='sign'\n")
 			signed = False
+
+	if vcs == 'git':
+		# It's not safe to use the git commit -a option since there might
+		# be some modified files elsewhere in the working tree that the
+		# user doesn't want to commit. Therefore, call git update-index
+		# in order to ensure that the index is updated with the latest
+		# versions of all new and modified files in the relevant portion
+		# of the working tree.
+		myfiles = mymanifests + myupdates
+		myfiles.sort()
+		update_index_cmd = ["git", "update-index"]
+		update_index_cmd.extend(f.lstrip("./") for f in myfiles)
+		if options.pretend:
+			print "(%s)" % (" ".join(update_index_cmd),)
+		else:
+			retval = spawn(update_index_cmd, env=os.environ)
+			if retval != os.EX_OK:
+				writemsg_level(("!!! Exiting on %s (shell) " + \
+					"error code: %s\n") % (vcs, retval),
+					level=logging.ERROR, noiselevel=-1)
+				sys.exit(retval)
 
 	if vcs == 'git' or manifest_commit_required or signed:
 

@@ -8253,13 +8253,13 @@ class depgraph(object):
 					arg = None
 				if arg:
 					return False
-				if pkg.installed:
-					try:
-						if not visible(
-							self._depgraph.pkgsettings[pkg.root], pkg):
-							return False
-					except portage.exception.InvalidDependString:
-						pass
+			if pkg.installed:
+				try:
+					if not visible(
+						self._depgraph.pkgsettings[pkg.root], pkg):
+						return False
+				except portage.exception.InvalidDependString:
+					pass
 			return True
 
 		def _dep_expand(self, atom):
@@ -10488,6 +10488,7 @@ class Scheduler(PollScheduler):
 
 		mylist = mydepgraph.altlist()
 		mydepgraph.break_refs(mylist)
+		mydepgraph.break_refs(dropped_tasks)
 		self._mergelist = mylist
 		self._set_digraph(mydepgraph.schedulerGraph())
 
@@ -10509,6 +10510,7 @@ class Scheduler(PollScheduler):
 			# not valid here.
 			settings.pop("T", None)
 			portage.elog.elog_process(pkg.cpv, settings)
+			self._failed_pkgs_all.append(self._failed_pkg(pkg=pkg))
 
 		return True
 
