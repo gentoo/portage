@@ -7295,7 +7295,13 @@ def _global_updates(trees, prev_mtimes):
 			writemsg_stdout("\n\n")
 			writemsg_stdout(green("Performing Global Updates: ")+bold(mykey)+"\n")
 			writemsg_stdout("(Could take a couple of minutes if you have a lot of binary packages.)\n")
-			writemsg_stdout("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n"+"  "+bold("s")+"='/var/db SLOT move' "+bold("%")+"='binary move' "+bold("S")+"='binary SLOT move'\n  "+bold("p")+"='update /etc/portage/package.*'\n")
+			writemsg_stdout("  " + bold(".") + "='update pass'  " + \
+				bold("*") + "='binary update'  " + bold("#") + \
+				"='/var/db update'  " + bold("@") + "='/var/db move'\n" + \
+				"  " + bold("s") + "='/var/db SLOT move'  " + \
+				bold("%") + "='binary move'  " + bold("S") + \
+				"='binary SLOT move'\n  " + \
+				bold("p") + "='update /etc/portage/package.*'\n")
 			valid_updates, errors = parse_updates(mycontent)
 			myupd.extend(valid_updates)
 			writemsg_stdout(len(valid_updates) * "." + "\n")
@@ -7365,9 +7371,12 @@ def _global_updates(trees, prev_mtimes):
 		"fixpackages" in mysettings.features:
 			def onUpdate(maxval, curval):
 				if curval > 0:
-					writemsg_stdout("*")
+					writemsg_stdout("#")
 			vardb.update_ents(myupd, onUpdate=onUpdate)
 			if bindb:
+				def onUpdate(maxval, curval):
+					if curval > 0:
+						writemsg_stdout("*")
 				bindb.update_ents(myupd, onUpdate=onUpdate)
 		else:
 			do_upgrade_packagesmessage = 1
