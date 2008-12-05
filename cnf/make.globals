@@ -38,7 +38,7 @@ FETCHCOMMAND="wget -t 5 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI
 RESUMECOMMAND="wget -c -t 5 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
 
 # Default user options
-FEATURES="distlocks parallel-fetch protect-owned sandbox
+FEATURES="distlocks fixpackages parallel-fetch protect-owned sandbox
           sfperms strict unmerge-orphans userfetch"
 
 # Ignore file collisions in /lib/modules since files inside this directory

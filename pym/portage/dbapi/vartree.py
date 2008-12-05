@@ -2588,6 +2588,10 @@ class dblink(object):
 								break
 						continue
 					self.vartree.dbapi.removeFromContents(cpv, removed)
+			else:
+				# Prune any preserved libs that may have
+				# been unmerged with this package.
+				self.vartree.dbapi.plib_registry.pruneNonExisting()
 
 		finally:
 			if builddir_lock:

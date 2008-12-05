@@ -200,13 +200,17 @@ class dbapi(object):
 		else:
 			writemsg("!!! Invalid db entry: %s\n" % mypath, noiselevel=-1)
 
-	def update_ents(self, updates, onProgress=None):
+	def update_ents(self, updates, onProgress=None, onUpdate=None):
 		"""
 		Update metadata of all packages for package moves.
 		@param updates: A list of move commands
 		@type updates: List
 		@param onProgress: A progress callback function
 		@type onProgress: a callable that takes 2 integer arguments: maxval and curval
+		@param onUpdate: A progress callback function called only
+			for packages that are modified by updates.
+		@type onUpdate: a callable that takes 2 integer arguments:
+			maxval and curval
 		"""
 		cpv_all = self.cpv_all()
 		cpv_all.sort()
@@ -216,6 +220,8 @@ class dbapi(object):
 		update_keys = ["DEPEND", "RDEPEND", "PDEPEND", "PROVIDE"]
 		from itertools import izip
 		from portage.update import update_dbentries
+		if onUpdate:
+			onUpdate(maxval, 0)
 		if onProgress:
 			onProgress(maxval, 0)
 		for i, cpv in enumerate(cpv_all):
@@ -223,6 +229,8 @@ class dbapi(object):
 			metadata_updates = update_dbentries(updates, metadata)
 			if metadata_updates:
 				aux_update(cpv, metadata_updates)
+				if onUpdate:
+					onUpdate(maxval, i+1)
 			if onProgress:
 				onProgress(maxval, i+1)
 
