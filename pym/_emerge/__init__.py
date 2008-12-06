@@ -13600,10 +13600,6 @@ def expand_set_arguments(myfiles, myaction, root_config):
 				multiple_actions("world", myaction)
 				return (myfiles, 1)
 
-		if system and world:
-			multiple_actions("system", "world")
-			return (myfiles, 1)
-
 	return (myfiles, os.EX_OK)
 
 def repo_name_check(trees):
