@@ -13220,6 +13220,18 @@ def action_build(settings, trees, mtimedb,
 		if not isinstance(mergelist, list):
 			del mtimedb[k]
 			continue
+		for x in mergelist:
+			if not (isinstance(x, list) and len(x) == 4):
+				continue
+			pkg_type, pkg_root, pkg_key, pkg_action = x
+			if pkg_root not in trees:
+				# Current $ROOT setting differs,
+				# so the list must be stale.
+				mergelist = None
+				break
+		if not mergelist:
+			del mtimedb[k]
+			continue
 		resume_opts = resume_data.get("myopts")
 		if not isinstance(resume_opts, (dict, list)):
 			del mtimedb[k]
