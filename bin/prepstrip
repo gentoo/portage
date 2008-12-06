@@ -116,6 +116,15 @@ do
 		strip_this=false
 	fi
 
+	# In Prefix we are usually an unprivileged user, so we can't strip
+	# unwritable objects.  Make them temporarily writable for the
+	# stripping.
+	was_not_writable=false
+	if [[ ! -w ${x} ]] ; then
+		was_not_writable=true
+		chmod u+w "${x}"
+	fi
+
 	# only split debug info for final linked objects
 	# or kernel modules as debuginfo for intermediatary
 	# files (think crt*.o from gcc/glibc) is useless and
@@ -142,5 +151,9 @@ do
 			[[ ${x} == *.ko ]] && save_elf_debug "${x}"
 			${STRIP} ${SAFE_STRIP_FLAGS} "${x}"
 		fi
+	fi
+
+	if [[ ${was_not_writable} == "true" ]] ; then
+		chmod u-w "${x}"
 	fi
 done
