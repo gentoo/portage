@@ -2895,6 +2895,9 @@ class dblink(object):
 			mydirs.reverse()
 
 			for obj in mydirs:
+				# don't try to unmerge the prefix offset itself
+				if len(obj) <= len(EPREFIX):
+					continue
 				try:
 					if bsd_chflags:
 						lstatobj = os.lstat(obj)
