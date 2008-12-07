@@ -4131,6 +4131,33 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					level=logging.ERROR, noiselevel=-1)
 				have_builddir = "PORTAGE_BUILDDIR" in mysettings and \
 					os.path.isdir(mysettings["PORTAGE_BUILDDIR"])
+
+				global_tmpdir = mysettings["PORTAGE_TMPDIR"]
+				private_tmpdir = None
+				if not parallel_fetchonly and not have_builddir:
+					# When called by digestgen(), it's normal that
+					# PORTAGE_BUILDDIR doesn't exist. It's helpful
+					# to show the pkg_nofetch output though, so go
+					# ahead and create a temporary PORTAGE_BUILDDIR.
+					# Use a temporary config instance to avoid altering
+					# the state of the one that's been passed in.
+					mysettings = config(clone=mysettings)
+					from tempfile import mkdtemp
+					try:
+						private_tmpdir = mkdtemp("", "._portage_fetch_.",
+							global_tmpdir)
+					except OSError, e:
+						if e.errno != portage.exception.PermissionDenied.errno:
+							raise
+						raise portage.exception.PermissionDenied(global_tmpdir)
+					mysettings["PORTAGE_TMPDIR"] = private_tmpdir
+					mysettings.backup_changes("PORTAGE_TMPDIR")
+					debug = mysettings.get("PORTAGE_DEBUG") == "1"
+					portage.doebuild_environment(mysettings["EBUILD"], "fetch",
+						mysettings["ROOT"], mysettings, debug, 1, None)
+					prepare_build_dirs(mysettings["ROOT"], mysettings, 0)
+					have_builddir = True
+
 				if not parallel_fetchonly and have_builddir:
 					# To spawn pkg_nofetch requires PORTAGE_BUILDDIR for
 					# ensuring sane $PWD (bug #239560) and storing elog
@@ -4155,6 +4182,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							mysettings.pop("EBUILD_PHASE", None)
 						else:
 							mysettings["EBUILD_PHASE"] = ebuild_phase
+						if private_tmpdir is not None:
+							shutil.rmtree(private_tmpdir)
 
 			elif restrict_fetch:
 				pass
