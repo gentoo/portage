@@ -3,6 +3,9 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+__all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
+	"hardlock_name", "hardlink_is_mine", "hardlink_lockfile", \
+	"unhardlink_lockfile", "hardlock_cleanup"]
 
 import errno, os, stat, time, types
 from portage.exception import DirectoryNotFound, FileNotFound, \
@@ -93,11 +96,13 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 				pass
 			elif waiting_msg is None:
 				if isinstance(mypath, int):
-					print "waiting for lock on fd %i" % myfd
+					writemsg("waiting for lock on fd %i\n" % myfd,
+						noiselevel=-1)
 				else:
-					print "waiting for lock on %s" % lockfilename
+					writemsg("waiting for lock on %s\n" % lockfilename,
+						noiselevel=-1)
 			elif waiting_msg:
-				print waiting_msg
+				writemsg(waiting_msg + "\n", noiselevel=-1)
 			# try for the exclusive lock now.
 			fcntl.lockf(myfd,fcntl.LOCK_EX)
 		elif e.errno == errno.ENOLCK:
@@ -256,19 +261,19 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 		if hardlink_is_mine(myhardlock, lockfilename):
 			# We have the lock.
 			if reported_waiting:
-				print
+				writemsg("\n", noiselevel=-1)
 			return True
 
 		if reported_waiting:
-			writemsg(".")
+			writemsg(".", noiselevel=-1)
 		else:
 			reported_waiting = True
 			from portage.const import PORTAGE_BIN_PATH
-			print
-			print "Waiting on (hardlink) lockfile: (one '.' per 3 seconds)"
-			print "This is a feature to prevent distfiles corruption."
-			print "%s/clean_locks can fix stuck locks." % PORTAGE_BIN_PATH
-			print "Lockfile: " + lockfilename
+			msg = "\nWaiting on (hardlink) lockfile:" + \
+				" (one '.' per 3 seconds)\n" + \
+				"%s/clean_locks can fix stuck locks.\n" % PORTAGE_BIN_PATH + \
+				"Lockfile: %s\n" % lockfilename
+			writemsg(msg, noiselevel=-1)
 		time.sleep(3)
 	
 	os.unlink(myhardlock)
