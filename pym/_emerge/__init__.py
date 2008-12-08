@@ -3917,6 +3917,9 @@ class BlockerCache(DictMixin):
 		self._modified.add(cpv)
 
 	def __iter__(self):
+		if self._cache_data is None:
+			# triggered by python-trace
+			return iter([])
 		return iter(self._cache_data["blockers"])
 
 	def __delitem__(self, cpv):
@@ -14295,7 +14298,7 @@ def emerge_main():
 		spinner.update = spinner.update_scroll
 
 	if "--quiet" not in myopts:
-		portage.deprecated_profile_check()
+		portage.deprecated_profile_check(settings=settings)
 		repo_name_check(trees)
 		config_protect_check(trees)
 

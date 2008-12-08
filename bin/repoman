@@ -312,7 +312,8 @@ qahelp={
 	"virtual.versioned":"PROVIDE contains virtuals with versions",
 	"virtual.exists":"PROVIDE contains existing package names",
 	"virtual.unavailable":"PROVIDE contains a virtual which contains no profile default",
-	"usage.obsolete":"The ebuild makes use of an obsolete construct"
+	"usage.obsolete":"The ebuild makes use of an obsolete construct",
+	"upstream.workaround":"The ebuild works around an upstream bug, an upstream bug should be filed and tracked in bugs.gentoo.org"
 }
 
 qacats = qahelp.keys()
@@ -350,6 +351,7 @@ qawarnings = set((
 "virtual.exists",
 "virtual.unavailable",
 "usage.obsolete",
+"upstream.workaround",
 "LIVEVCS.stable"
 ))
 
