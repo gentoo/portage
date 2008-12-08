@@ -7240,10 +7240,15 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 					raise
 				del e
 
-def deprecated_profile_check():
-	if not os.access(DEPRECATED_PROFILE_FILE, os.R_OK):
+def deprecated_profile_check(settings=None):
+	config_root = "/"
+	if settings is not None:
+		config_root = settings["PORTAGE_CONFIGROOT"]
+	deprecated_profile_file = os.path.join(config_root,
+		DEPRECATED_PROFILE_FILE.lstrip(os.sep))
+	if not os.access(deprecated_profile_file, os.R_OK):
 		return False
-	deprecatedfile = open(DEPRECATED_PROFILE_FILE, "r")
+	deprecatedfile = open(deprecated_profile_file, "r")
 	dcontent = deprecatedfile.readlines()
 	deprecatedfile.close()
 	writemsg(red("\n!!! Your current profile is deprecated and not supported anymore.\n"),
