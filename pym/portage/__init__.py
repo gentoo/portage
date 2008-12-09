@@ -4259,9 +4259,6 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 				missing_files.append(myfile)
 				continue
 			size = myhashes.get("size")
-			if size == 0:
-				missing_files.append(myfile)
-				continue
 
 			try:
 				st = os.stat(os.path.join(mysettings["DISTDIR"], myfile))
@@ -4269,6 +4266,9 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 				if e.errno != errno.ENOENT:
 					raise
 				del e
+				if size == 0:
+					missing_files.append(myfile)
+					continue
 				if required_hash_types.difference(myhashes):
 					missing_files.append(myfile)
 					continue
