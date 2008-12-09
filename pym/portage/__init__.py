@@ -4244,7 +4244,7 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 		required_hash_types.add("size")
 		required_hash_types.add(portage.const.MANIFEST2_REQUIRED_HASH)
 		dist_hashes = mf.fhashdict.get("DIST", {})
-		missing_hashes = set()
+
 		# To avoid accidental regeneration of digests with the incorrect
 		# files (such as partially downloaded files), trigger the fetch
 		# code if the file exists and it's size doesn't match the current
@@ -4252,45 +4252,32 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 		# digest to change, `ebuild --force digest` can be used to avoid
 		# triggering this code (or else the old digests can be manually
 		# removed from the Manifest).
-		wrong_size_files = set()
+		missing_files = []
 		for myfile in distfiles_map:
 			myhashes = dist_hashes.get(myfile)
 			if not myhashes:
-				missing_hashes.add(myfile)
+				missing_files.append(myfile)
 				continue
-			if required_hash_types.difference(myhashes):
-				missing_hashes.add(myfile)
+			size = myhashes.get("size")
+			if size == 0:
+				missing_files.append(myfile)
 				continue
-			if myhashes["size"] == 0:
-				missing_hashes.add(myfile)
-				continue
+
 			try:
 				st = os.stat(os.path.join(mysettings["DISTDIR"], myfile))
 			except OSError, e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
-				continue
-			if st.st_size == 0 or st.st_size != myhashes["size"]:
-				wrong_size_files.add(myfile)
-				continue
-
-		if missing_hashes or wrong_size_files:
-			missing_files = []
-			for myfile in missing_hashes:
-				try:
-					st = os.stat(os.path.join(mysettings["DISTDIR"], myfile))
-				except OSError, e:
-					if e.errno != errno.ENOENT:
-						raise
-					del e
+				if required_hash_types.difference(myhashes):
 					missing_files.append(myfile)
-				else:
-					# If the file is empty then it's obviously invalid.
-					if st.st_size == 0:
-						missing_files.append(myfile)
-			missing_files.extend(wrong_size_files)
-			if missing_files:
+					continue
+			else:
+				if st.st_size == 0 or size is not None and size != st.st_size:
+					missing_files.append(myfile)
+					continue
+
+		if missing_files:
 				mytree = os.path.realpath(os.path.dirname(
 					os.path.dirname(mysettings["O"])))
 				fetch_settings = config(clone=mysettings)
