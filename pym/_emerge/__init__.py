@@ -6415,6 +6415,12 @@ class depgraph(object):
 			self._process_slot_conflicts()
 
 	def _serialize_tasks(self):
+
+		if "--debug" in self.myopts:
+			writemsg("\ndigraph:\n\n", noiselevel=-1)
+			self.digraph.debug_print()
+			writemsg("\n", noiselevel=-1)
+
 		scheduler_graph = self.digraph.copy()
 		mygraph=self.digraph.copy()
 		# Prune "nomerge" root nodes if nothing depends on them, since
