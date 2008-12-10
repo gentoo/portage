@@ -2867,16 +2867,25 @@ class EbuildMetadataPhase(SubProcess):
 		files = self._files
 		self._raw_metadata.append(files.ebuild.read())
 		if not self._raw_metadata[-1]:
+			# Split lines here so they can be counted inside _set_returncode().
+			self._raw_metadata = "".join(self._raw_metadata).splitlines()
 			self._unregister()
 			self.wait()
 
 			if self.returncode == os.EX_OK:
-				metadata = izip(portage.auxdbkeys,
-					"".join(self._raw_metadata).splitlines())
+				metadata = izip(portage.auxdbkeys, self._raw_metadata)
 				self.metadata_callback(self.cpv, self.ebuild_path,
 					self.repo_path, metadata, self.ebuild_mtime)
 
 		return self._registered
+
+	def _set_returncode(self, wait_retval):
+		SubProcess._set_returncode(self, wait_retval)
+		if self.returncode == os.EX_OK and \
+			len(portage.auxdbkeys) != len(self._raw_metadata):
+			# Don't trust bash's returncode if the
+			# number of lines is incorrect.
+			self.returncode = 1
 
 class EbuildProcess(SpawnProcess):
 
