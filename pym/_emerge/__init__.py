@@ -3186,6 +3186,12 @@ class Binpkg(CompositeTask):
 		pkg_count = self.pkg_count
 		if not self.opts.fetchonly:
 			self._build_dir.lock()
+			try:
+				shutil.rmtree(self._build_dir.dir_path)
+			except EnvironmentError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
 			portage.prepare_build_dirs(self.settings["ROOT"], self.settings, 1)
 		fetcher = BinpkgFetcher(background=self.background,
 			logfile=self.settings.get("PORTAGE_LOG_FILE"), pkg=self.pkg,
