@@ -3536,6 +3536,40 @@ class BinpkgVerifier(AsynchronousTask):
 		self.returncode = rval
 		self.wait()
 
+class BinpkgPrefetcher(CompositeTask):
+
+	__slots__ = ("pkg",) + \
+		("pkg_path", "_bintree",)
+
+	def _start(self):
+		self._bintree = self.pkg.root_config.trees["bintree"]
+		fetcher = BinpkgFetcher(background=self.background,
+			logfile=self.scheduler.fetch.log_file, pkg=self.pkg,
+			scheduler=self.scheduler)
+		self.pkg_path = fetcher.pkg_path
+		self._start_task(fetcher, self._fetcher_exit)
+
+	def _fetcher_exit(self, fetcher):
+
+		if self._default_exit(fetcher) != os.EX_OK:
+			self.wait()
+			return
+
+		verifier = BinpkgVerifier(background=self.background,
+			logfile=self.scheduler.fetch.log_file, pkg=self.pkg)
+		self._start_task(verifier, self._verifier_exit)
+
+	def _verifier_exit(self, verifier):
+		if self._default_exit(verifier) != os.EX_OK:
+			self.wait()
+			return
+
+		self._bintree.inject(self.pkg.cpv, filename=self.pkg_path)
+
+		self._current_task = None
+		self.returncode = os.EX_OK
+		self.wait()
+
 class BinpkgExtractorAsync(SpawnProcess):
 
 	__slots__ = ("image_dir", "pkg", "pkg_path")
@@ -9764,9 +9798,8 @@ class Scheduler(PollScheduler):
 			"--getbinpkg" in self.myopts and \
 			pkg.root_config.trees["bintree"].isremote(pkg.cpv):
 
-			prefetcher = BinpkgFetcher(background=True,
-				logfile=self._fetch_log, pkg=pkg,
-				scheduler=self._sched_iface)
+			prefetcher = BinpkgPrefetcher(background=True,
+				pkg=pkg, scheduler=self._sched_iface)
 
 		return prefetcher
 
