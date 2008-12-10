@@ -643,7 +643,10 @@ class binarytree(object):
 			import urllib, urlparse
 			rmt_idx = self._new_pkgindex()
 			try:
-				f = urllib.urlopen(urlparse.urljoin(base_url, "Packages"))
+				# urlparse.urljoin() only works correctly with recognized
+				# protocols and requires the base url to have a trailing
+				# slash, so join manually...
+				f = urllib.urlopen(base_url.rstrip("/") + "/Packages")
 				try:
 					rmt_idx.readHeader(f)
 					remote_timestamp = rmt_idx.header.get("TIMESTAMP", None)
