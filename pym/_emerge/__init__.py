@@ -3211,11 +3211,7 @@ class Binpkg(CompositeTask):
 		# --getbinpkg is enabled.
 		if fetcher.returncode is not None:
 			self._fetched_pkg = True
-			if self.opts.fetchonly:
-				self._final_exit(fetcher)
-				self.wait()
-				return
-			elif self._default_exit(fetcher) != os.EX_OK:
+			if self._default_exit(fetcher) != os.EX_OK:
 				self.wait()
 				return
 
@@ -3247,6 +3243,12 @@ class Binpkg(CompositeTask):
 
 		if self._fetched_pkg:
 			self._bintree.inject(pkg.cpv, filename=pkg_path)
+
+		if self.opts.fetchonly:
+			self._current_task = None
+			self.returncode = os.EX_OK
+			self.wait()
+			return
 
 		msg = " === (%s of %s) Merging Binary (%s::%s)" % \
 			(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg_path)
