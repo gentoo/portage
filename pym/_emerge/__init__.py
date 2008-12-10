@@ -3524,6 +3524,12 @@ class BinpkgVerifier(AsynchronousTask):
 				writemsg("!!! Expected: %s\n" % e.value[3],
 					noiselevel=-1)
 				rval = 1
+			if rval != os.EX_OK:
+				pkg_path = bintree.getname(pkg.cpv)
+				head, tail = os.path.split(pkg_path)
+				temp_filename = portage._checksum_failure_temp_file(head, tail)
+				writemsg("File renamed to '%s'\n" % (temp_filename,),
+					noiselevel=-1)
 		finally:
 			sys.stdout = stdout_orig
 			sys.stderr = stderr_orig
