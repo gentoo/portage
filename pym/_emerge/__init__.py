@@ -11736,12 +11736,39 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			noiselevel=-1, level=logging.ERROR)
 		return 1
 
+	vcs_dirs = frozenset([".git", ".svn", "CVS", ".hg"])
+	vcs_dirs = vcs_dirs.intersection(os.listdir(myportdir))
+
 	os.umask(0022)
 	updatecache_flg = False
 	if myaction == "metadata":
 		print "skipping sync"
 		updatecache_flg = True
+	elif ".git" in vcs_dirs:
+		# Update existing git repository, and ignore the syncuri. We are
+		# going to trust the user and assume that the user is in the branch
+		# that he/she wants updated. We'll let the user manage branches with
+		# git directly.
+		msg = ">>> Starting git pull in %s..." % myportdir
+		emergelog(xterm_titles, msg )
+		writemsg_level(msg + "\n")
+		exitcode = portage.spawn("cd %s ; git pull" % \
+			(portage._shell_quote(myportdir),), settings, free=1)
+		if exitcode != os.EX_OK:
+			msg = "!!! git pull error in %s." % myportdir
+			emergelog(xterm_titles, msg)
+			writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
+			return exitcode
+		msg = ">>> Git pull in %s successful" % myportdir
+		emergelog(xterm_titles, msg)
+		writemsg_level(msg + "\n")
+		return exitcode
 	elif syncuri[:8]=="rsync://":
+		for vcs_dir in vcs_dirs:
+			writemsg_level(("!!! %s appears to be under revision " + \
+				"control (contains %s).\n!!! Aborting rsync sync.\n") % \
+				(myportdir, vcs_dir), level=logging.ERROR, noiselevel=-1)
+			return 1
 		if not os.path.exists("/usr/bin/rsync"):
 			print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
 			print "!!! Type \"emerge net-misc/rsync\" to enable rsync support."
