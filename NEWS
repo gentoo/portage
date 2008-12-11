@@ -5,7 +5,6 @@ portage-2.2
 
 * Add link level dependency awareness to emerge --depclean and --prune actions
   in order to protect against uninstallation of required libraries.
-  packages in the same way, and also drops any masked packages.
 * Add license visibility filtering (GLEP 23)
 * Add support for generic package sets (also see RELEASE-NOTES)
 
@@ -17,8 +16,6 @@ portage-2.1.6
   installed with portage.
 * Add PORTAGE_IONICE_COMMAND setting for make.conf which is called to adjust
   IO priority on portage and it's subprocesses.
-* Add link level dependency awareness to emerge --depclean and --prune actions
-  in order to protect against uninstallation of required libraries.
 * Add emerge --jobs and --load-average options which specify behavior
   for building packages in parallel or for generating metadata in parallel
   with emerge --regen.
