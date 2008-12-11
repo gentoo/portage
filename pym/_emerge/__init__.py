@@ -3462,6 +3462,30 @@ class BinpkgFetcher(SpawnProcess):
 
 	def _set_returncode(self, wait_retval):
 		SpawnProcess._set_returncode(self, wait_retval)
+		if self.returncode == os.EX_OK:
+			# If possible, update the mtime to match the remote package if
+			# the fetcher didn't already do it automatically.
+			bintree = self.pkg.root_config.trees["bintree"]
+			if bintree._remote_has_index:
+				remote_mtime = bintree._remotepkgs[self.pkg.cpv].get("MTIME")
+				if remote_mtime is not None:
+					try:
+						remote_mtime = float(remote_mtime)
+					except ValueError:
+						pass
+					else:
+						try:
+							local_mtime = os.stat(self.pkg_path).st_mtime
+						except OSError:
+							pass
+						else:
+							if remote_mtime != local_mtime:
+								try:
+									os.utime(self.pkg_path,
+										(remote_mtime, remote_mtime))
+								except OSError:
+									pass
+
 		if self.locked:
 			self.unlock()
 
