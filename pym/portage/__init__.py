@@ -5494,9 +5494,15 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				# shift in order to distinguish it from a return value. (just
 				# like portage.process.spawn() would do).
 				if retval & 0xff:
-					return (retval & 0xff) << 8
-				# Otherwise, return its exit code.
-				return retval >> 8
+					retval = (retval & 0xff) << 8
+				else:
+					# Otherwise, return its exit code.
+					retval = retval >> 8
+				if retval == os.EX_OK and len(dbkey) != len(auxdbkeys):
+					# Don't trust bash's returncode if the
+					# number of lines is incorrect.
+					retval = 1
+				return retval
 			elif dbkey:
 				mysettings["dbkey"] = dbkey
 			else:
