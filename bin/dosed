@@ -3,6 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+ret=0
 mysed="s:${D}::g"
 
 for x in "$@" ; do
@@ -11,10 +12,13 @@ for x in "$@" ; do
 		if [ -f "${y}" ] ; then
 			sed -i -e "${mysed}" "${y}"
 		else
-			echo "${y} is not a regular file!"
-			exit 1
+			echo "${y} is not a regular file!" >&2
+			false
 		fi
+		((ret+=$?))
 	else
 		mysed="${x}"
 	fi
 done
+
+exit $ret
