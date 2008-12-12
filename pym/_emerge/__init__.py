@@ -13717,6 +13717,12 @@ def repo_name_check(trees):
 			repos = portdb.getRepositories()
 			for r in repos:
 				missing_repo_names.discard(portdb.getRepositoryPath(r))
+			if portdb.porttree_root in missing_repo_names and \
+				not os.path.exists(os.path.join(
+				portdb.porttree_root, "profiles")):
+				# This is normal if $PORTDIR happens to be empty,
+				# so don't warn about it.
+				missing_repo_names.remove(portdb.porttree_root)
 
 	if missing_repo_names:
 		msg = []
