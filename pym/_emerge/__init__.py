@@ -3390,7 +3390,18 @@ class BinpkgFetcher(SpawnProcess):
 		settings = bintree.settings
 		use_locks = "distlocks" in settings.features
 		pkg_path = self.pkg_path
-		resume = os.path.exists(pkg_path)
+
+		portage.util.ensure_dirs(os.path.dirname(pkg_path))
+		if use_locks:
+			self.lock()
+		exists = os.path.exists(pkg_path)
+		resume = exists and os.path.basename(pkg_path) in bintree.invalids
+		if not resume:
+			# Remove existing file or broken symlink.
+			try:
+				os.unlink(pkg_path)
+			except OSError:
+				pass
 
 		# urljoin doesn't work correctly with
 		# unrecognized protocols like sftp
@@ -3421,10 +3432,6 @@ class BinpkgFetcher(SpawnProcess):
 		fetch_env = dict(settings.iteritems())
 		fetch_args = [portage.util.varexpand(x, mydict=fcmd_vars) \
 			for x in shlex.split(fcmd)]
-
-		portage.util.ensure_dirs(os.path.dirname(pkg_path))
-		if use_locks:
-			self.lock()
 
 		if self.fd_pipes is None:
 			self.fd_pipes = {}

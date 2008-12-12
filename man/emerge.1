@@ -317,10 +317,8 @@ list.  This option implies \fB\-k\fR.  (Use \fB\-gK\fR for binary\-only
 merging.)
 .TP
 .BR "\-\-getbinpkgonly " (\fB\-G\fR)
-This option is identical to \fB\-g\fR, as above, except it will not use ANY 
-information from the local machine.  All binaries will be downloaded from the 
-remote server without consulting packages existing in the local packages 
-directory.
+This option is identical to \fB\-g\fR, as above, except binaries from the
+remote server are preferred over local packages if they are not identical.
 .TP
 .BR "\-\-ignore-default-opts"
 Causes \fIEMERGE_DEFAULT_OPTS\fR (see \fBmake.conf\fR(5)) to be ignored.

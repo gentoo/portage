@@ -407,7 +407,7 @@ class binarytree(object):
 		if (not os.path.isdir(self.pkgdir) and not getbinpkgs):
 			return 0
 
-		if not getbinpkgsonly:
+		if True:
 			pkg_paths = {}
 			self._pkg_paths = pkg_paths
 			dirs = listdir(self.pkgdir, dirsonly=True, EmptyOnError=True)
@@ -689,6 +689,32 @@ class binarytree(object):
 				for cpv in self._remotepkgs:
 					self.dbapi.cpv_inject(cpv)
 				self.populated = 1
+				if getbinpkgsonly:
+					# Remote package instances override local package
+					# if they are not identical.
+					hash_names = ["SIZE"] + self._pkgindex_hashes
+					for cpv, local_metadata in metadata.iteritems():
+						remote_metadata = self._remotepkgs.get(cpv)
+						if remote_metadata is None:
+							continue
+						# Use digests to compare identity.
+						identical = True
+						for hash_name in hash_names:
+							local_value = local_metadata.get(hash_name)
+							if local_value is None:
+								continue
+							remote_value = remote_metadata.get(hash_name)
+							if remote_value is None:
+								continue
+							if local_value != remote_value:
+								identical = False
+								break
+						if identical:
+							del self._remotepkgs[cpv]
+				else:
+					# Local package instances override remote instances.
+					for cpv in metadata:
+						self._remotepkgs.pop(cpv, None)
 				return
 			self._remotepkgs = {}
 			try:
@@ -835,6 +861,11 @@ class binarytree(object):
 			if pkgindex_lock:
 				unlockfile(pkgindex_lock)
 
+		if self._remotepkgs is not None:
+			# When a remote package is downloaded and injected,
+			# update state so self.isremote() returns False.
+			self._remotepkgs.pop(cpv, None)
+
 	def _pkgindex_entry(self, cpv):
 		"""
 		Performs checksums and evaluates USE flag conditionals.
@@ -975,6 +1006,10 @@ class binarytree(object):
 		downloaded (or it is only partially downloaded)."""
 		if self._remotepkgs is None or pkgname not in self._remotepkgs:
 			return False
+		if self._remote_has_index:
+			# Presence in self._remotepkgs implies that it's remote. When a
+			# package is downloaded, state is updated by self.inject().
+			return True
 		pkg_path = self.getname(pkgname)
 		if os.path.exists(pkg_path) and \
 			os.path.basename(pkg_path) not in self.invalids:
