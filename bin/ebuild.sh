@@ -2068,7 +2068,7 @@ ebuild_main() {
 			for f in ${auxdbkeys} ; do
 				echo $(echo ${!f}) 1>&9 || exit $?
 			done
-			9>&-
+			exec 9>&-
 		fi
 		set +f
 		;;
