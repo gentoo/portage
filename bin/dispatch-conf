@@ -326,24 +326,28 @@ class dispatch:
         We keep ._cfg0002_conf over ._cfg0001_conf and ._cfg0000_conf.
         """
         h = {}
-
+        configs = []
         newconfigs.sort ()
 
         for nconf in newconfigs:
             nconf = nconf.rstrip ()
             conf  = re.sub (r'\._cfg\d+_', '', nconf)
-            dir   = re.match (r'^(.+)/', nconf).group (1)
+            dirname   = os.path.dirname(nconf)
+            conf_map  = {
+                'current' : conf,
+                'dir'     : dirname,
+                'new'     : nconf,
+            }
 
             if conf in h:
                 mrgconf = re.sub(r'\._cfg', '._mrg', h[conf]['new'])
                 if os.path.exists(mrgconf):
                     os.unlink(mrgconf)
                 os.unlink(h[conf]['new'])
-
-            h [conf] = { 'current' : conf, 'dir' : dir, 'new' : nconf }
-
-        configs = h.values ()
-        configs.sort (lambda a, b: cmp(a ['current'], b ['current']))
+                h[conf].update(conf_map)
+            else:
+                h[conf] = conf_map
+                configs.append(conf_map)
 
         return configs
 
