@@ -446,7 +446,8 @@ Please select from the menu above (-1 to exit, losing this merge): "
 }
 
 die() {
-	trap SIGTERM SIGINT
+	trap SIGTERM
+	trap SIGINT
 
 	if [ "$2" -eq 0 ]; then
 		echo "Exiting: ${1}"
