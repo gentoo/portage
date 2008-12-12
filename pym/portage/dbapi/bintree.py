@@ -740,6 +740,11 @@ class binarytree(object):
 					continue
 				mycat = self.remotepkgs[mypkg]["CATEGORY"].strip()
 				fullpkg = mycat+"/"+mypkg[:-5]
+
+				if not getbinpkgsonly and fullpkg in metadata:
+					# Local package overrides the remote one.
+					continue
+
 				if not self.dbapi._category_re.match(mycat):
 					writemsg(("!!! Remote binary package has an " + \
 						"unrecognized category: '%s'\n") % fullpkg,
@@ -754,10 +759,10 @@ class binarytree(object):
 					# invalid tbz2's can hurt things.
 					#print "cpv_inject("+str(fullpkg)+")"
 					self.dbapi.cpv_inject(fullpkg)
-					metadata = self.remotepkgs[mypkg]
-					for k, v in metadata.items():
-						metadata[k] = v.strip()
-					self._remotepkgs[fullpkg] = metadata
+					remote_metadata = self.remotepkgs[mypkg]
+					for k, v in remote_metadata.items():
+						remote_metadata[k] = v.strip()
+					self._remotepkgs[fullpkg] = remote_metadata
 					#print "  -- Injected"
 				except SystemExit, e:
 					raise
