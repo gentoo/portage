@@ -13742,7 +13742,7 @@ def emerge_main():
 		spinner.update = spinner.update_scroll
 
 	if "--quiet" not in myopts:
-		portage.deprecated_profile_check()
+		portage.deprecated_profile_check(settings=settings)
 		#repo_name_check(trees)
 		config_protect_check(trees)
 
