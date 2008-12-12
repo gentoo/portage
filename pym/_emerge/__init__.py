@@ -3113,8 +3113,7 @@ class Binpkg(CompositeTask):
 		settings.setcpv(pkg)
 		self._tree = "bintree"
 		self._bintree = self.pkg.root_config.trees[self._tree]
-		self._verify = "strict" in self.settings.features and \
-			not self.opts.pretend
+		self._verify = not self.opts.pretend
 
 		dir_path = os.path.join(settings["PORTAGE_TMPDIR"],
 			"portage", pkg.category, pkg.pf)
