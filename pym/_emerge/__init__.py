@@ -1481,13 +1481,6 @@ class Package(Task):
 				(self.type_name, self.root, self.cpv, self.operation)
 		return self._hash_key
 
-	def __cmp__(self, other):
-		if self > other:
-			return 1
-		elif self < other:
-			return -1
-		return 0
-
 	def __lt__(self, other):
 		if other.cp != self.cp:
 			return False
@@ -9775,7 +9768,7 @@ class Scheduler(PollScheduler):
 			portage.match_from_list(
 			portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
 			if self._running_portage:
-				return cmp(pkg, self._running_portage) != 0
+				return pkg.cpv != self._running_portage.cpv
 			return True
 		return False
 
