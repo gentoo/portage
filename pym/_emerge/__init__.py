@@ -2908,6 +2908,10 @@ class EbuildProcess(SpawnProcess):
 			self.returncode = portage._doebuild_exit_status_check_and_log(
 				self.settings, self.phase, self.returncode)
 
+		if self.phase == "test" and self.returncode != os.EX_OK and \
+			"test-fail-continue" in self.settings.features:
+			self.returncode = os.EX_OK
+
 		portage._post_phase_userpriv_perms(self.settings)
 
 class EbuildPhase(CompositeTask):
