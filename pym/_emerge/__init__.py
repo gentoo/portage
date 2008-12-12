@@ -3195,7 +3195,7 @@ class Binpkg(CompositeTask):
 			portage.prepare_build_dirs(self.settings["ROOT"], self.settings, 1)
 		fetcher = BinpkgFetcher(background=self.background,
 			logfile=self.settings.get("PORTAGE_LOG_FILE"), pkg=self.pkg,
-			scheduler=self.scheduler)
+			pretend=self.opts.pretend, scheduler=self.scheduler)
 		pkg_path = fetcher.pkg_path
 		self._pkg_path = pkg_path
 
@@ -3221,6 +3221,12 @@ class Binpkg(CompositeTask):
 				self._unlock_builddir()
 				self.wait()
 				return
+
+		if self.opts.pretend:
+			self._current_task = None
+			self.returncode = os.EX_OK
+			self.wait()
+			return
 
 		verifier = None
 		if self._verify:
@@ -3391,7 +3397,7 @@ class Binpkg(CompositeTask):
 
 class BinpkgFetcher(SpawnProcess):
 
-	__slots__ = ("pkg",
+	__slots__ = ("pkg", "pretend",
 		"locked", "pkg_path", "_lock_obj")
 
 	def __init__(self, **kwargs):
@@ -3405,17 +3411,19 @@ class BinpkgFetcher(SpawnProcess):
 			return
 
 		pkg = self.pkg
+		pretend = self.pretend
 		bintree = pkg.root_config.trees["bintree"]
 		settings = bintree.settings
 		use_locks = "distlocks" in settings.features
 		pkg_path = self.pkg_path
 
-		portage.util.ensure_dirs(os.path.dirname(pkg_path))
-		if use_locks:
-			self.lock()
+		if not pretend:
+			portage.util.ensure_dirs(os.path.dirname(pkg_path))
+			if use_locks:
+				self.lock()
 		exists = os.path.exists(pkg_path)
 		resume = exists and os.path.basename(pkg_path) in bintree.invalids
-		if not resume:
+		if not (pretend or resume):
 			# Remove existing file or broken symlink.
 			try:
 				os.unlink(pkg_path)
@@ -3433,6 +3441,12 @@ class BinpkgFetcher(SpawnProcess):
 		else:
 			uri = settings["PORTAGE_BINHOST"].rstrip("/") + \
 				"/" + pkg.pf + ".tbz2"
+
+		if pretend:
+			portage.writemsg_stdout("\n%s\n" % uri, noiselevel=-1)
+			self.returncode = os.EX_OK
+			self.wait()
+			return
 
 		protocol = urlparse.urlparse(uri)[0]
 		fcmd_prefix = "FETCHCOMMAND"
