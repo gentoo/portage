@@ -3,13 +3,20 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+if [[ $# -lt 1 ]] ; then
+	echo "!!! ${0##*/}: at least one argument needed" >&2
+	exit 1
+fi
+
 ret=0
+file_found=0
 mysed="s:${D}::g"
 
 for x in "$@" ; do
-	y="${D}${x}"
+	y=$D${x#/}
 	if [ -e "${y}" ] ; then
 		if [ -f "${y}" ] ; then
+			file_found=1
 			sed -i -e "${mysed}" "${y}"
 		else
 			echo "${y} is not a regular file!" >&2
@@ -20,5 +27,10 @@ for x in "$@" ; do
 		mysed="${x}"
 	fi
 done
+
+if [ $file_found = 0 ] ; then
+	echo "!!! ${0##*/}: $y does not exist" 1>&2
+	((ret+=1))
+fi
 
 exit $ret
