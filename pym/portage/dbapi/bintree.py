@@ -598,13 +598,14 @@ class binarytree(object):
 							aux_cache[k] = d[k]
 						self.dbapi._aux_cache[mycpv] = aux_cache
 
+			for cpv in list(metadata):
+				if cpv not in pkg_paths:
+					del metadata[cpv]
+
 			# Do not bother to write the Packages index if $PKGDIR/All/ exists
 			# since it will provide no benefit due to the need to read CATEGORY
 			# from xpak.
 			if update_pkgindex and os.access(self.pkgdir, os.W_OK):
-				stale = [cpv for cpv in metadata if cpv not in self._pkg_paths]
-				for cpv in stale:
-					del metadata[cpv]
 				del pkgindex.packages[:]
 				pkgindex.packages.extend(metadata.itervalues())
 				self._update_pkgindex_header(pkgindex.header)
