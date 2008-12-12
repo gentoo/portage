@@ -3122,6 +3122,10 @@ class Binpkg(CompositeTask):
 		self._image_dir = os.path.join(dir_path, "image")
 		self._infloc = os.path.join(dir_path, "build-info")
 		self._ebuild_path = os.path.join(self._infloc, pkg.pf + ".ebuild")
+		settings["EBUILD"] = self._ebuild_path
+		debug = settings.get("PORTAGE_DEBUG") == "1"
+		portage.doebuild_environment(self._ebuild_path, "setup",
+			settings["ROOT"], settings, debug, 1, self._bintree.dbapi)
 
 		# The prefetcher has already completed or it
 		# could be running now. If it's running now,
@@ -3161,8 +3165,11 @@ class Binpkg(CompositeTask):
 
 		pkg = self.pkg
 		pkg_count = self.pkg_count
+		if not self.opts.fetchonly:
+			self._build_dir.lock()
+			portage.prepare_build_dirs(self.settings["ROOT"], self.settings, 1)
 		fetcher = BinpkgFetcher(background=self.background,
-			logfile=self.scheduler.fetch.log_file, pkg=self.pkg,
+			logfile=self.settings.get("PORTAGE_LOG_FILE"), pkg=self.pkg,
 			scheduler=self.scheduler)
 		pkg_path = fetcher.pkg_path
 		self._pkg_path = pkg_path
@@ -3174,13 +3181,7 @@ class Binpkg(CompositeTask):
 			short_msg = "emerge: (%s of %s) %s Fetch" % \
 				(pkg_count.curval, pkg_count.maxval, pkg.cpv)
 			self.logger.log(msg, short_msg=short_msg)
-
-			if self.background:
-				fetcher.addExitListener(self._fetcher_exit)
-				self._current_task = fetcher
-				self.scheduler.fetch.schedule(fetcher)
-			else:
-				self._start_task(fetcher, self._fetcher_exit)
+			self._start_task(fetcher, self._fetcher_exit)
 			return
 
 		self._fetcher_exit(fetcher)
@@ -3192,20 +3193,18 @@ class Binpkg(CompositeTask):
 		if fetcher.returncode is not None:
 			self._fetched_pkg = True
 			if self._default_exit(fetcher) != os.EX_OK:
+				self._unlock_builddir()
 				self.wait()
 				return
 
 		verifier = None
 		if self._verify:
-			verifier = BinpkgVerifier(background=self.background,
-				logfile=self.scheduler.fetch.log_file, pkg=self.pkg)
-
+			logfile = None
 			if self.background:
-				verifier.addExitListener(self._verifier_exit)
-				self._current_task = verifier
-				self.scheduler.fetch.schedule(verifier)
-			else:
-				self._start_task(verifier, self._verifier_exit)
+				logfile = self.settings.get("PORTAGE_LOG_FILE")
+			verifier = BinpkgVerifier(background=self.background,
+				logfile=logfile, pkg=self.pkg)
+			self._start_task(verifier, self._verifier_exit)
 			return
 
 		self._verifier_exit(verifier)
@@ -3213,6 +3212,7 @@ class Binpkg(CompositeTask):
 	def _verifier_exit(self, verifier):
 		if verifier is not None and \
 			self._default_exit(verifier) != os.EX_OK:
+			self._unlock_builddir()
 			self.wait()
 			return
 
@@ -3236,12 +3236,8 @@ class Binpkg(CompositeTask):
 			(pkg_count.curval, pkg_count.maxval, pkg.cpv)
 		logger.log(msg, short_msg=short_msg)
 
-		self._build_dir.lock()
-
 		phase = "clean"
 		settings = self.settings
-		settings.setcpv(pkg)
-		settings["EBUILD"] = self._ebuild_path
 		ebuild_phase = EbuildPhase(background=self.background,
 			pkg=pkg, phase=phase, scheduler=self.scheduler,
 			settings=settings, tree=self._tree)
@@ -3342,6 +3338,8 @@ class Binpkg(CompositeTask):
 		self.wait()
 
 	def _unlock_builddir(self):
+		if self.opts.fetchonly:
+			return
 		portage.elog.elog_process(self.pkg.cpv, self.settings)
 		self._build_dir.unlock()
 
