@@ -4234,32 +4234,40 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 		required_hash_types.add("size")
 		required_hash_types.add(portage.const.MANIFEST2_REQUIRED_HASH)
 		dist_hashes = mf.fhashdict.get("DIST", {})
-		missing_hashes = set()
+
+		# To avoid accidental regeneration of digests with the incorrect
+		# files (such as partially downloaded files), trigger the fetch
+		# code if the file exists and it's size doesn't match the current
+		# manifest entry. If there really is a legitimate reason for the
+		# digest to change, `ebuild --force digest` can be used to avoid
+		# triggering this code (or else the old digests can be manually
+		# removed from the Manifest).
+		missing_files = []
 		for myfile in distfiles_map:
 			myhashes = dist_hashes.get(myfile)
 			if not myhashes:
-				missing_hashes.add(myfile)
+				missing_files.append(myfile)
 				continue
-			if required_hash_types.difference(myhashes):
-				missing_hashes.add(myfile)
-				continue
-			if myhashes["size"] == 0:
-				missing_hashes.add(myfile)
-		if missing_hashes:
-			missing_files = []
-			for myfile in missing_hashes:
-				try:
-					st = os.stat(os.path.join(mysettings["DISTDIR"], myfile))
-				except OSError, e:
-					if e.errno != errno.ENOENT:
-						raise
-					del e
+			size = myhashes.get("size")
+
+			try:
+				st = os.stat(os.path.join(mysettings["DISTDIR"], myfile))
+			except OSError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
+				if size == 0:
 					missing_files.append(myfile)
-				else:
-					# If the file is empty then it's obviously invalid.
-					if st.st_size == 0:
-						missing_files.append(myfile)
-			if missing_files:
+					continue
+				if required_hash_types.difference(myhashes):
+					missing_files.append(myfile)
+					continue
+			else:
+				if st.st_size == 0 or size is not None and size != st.st_size:
+					missing_files.append(myfile)
+					continue
+
+		if missing_files:
 				mytree = os.path.realpath(os.path.dirname(
 					os.path.dirname(mysettings["O"])))
 				fetch_settings = config(clone=mysettings)
