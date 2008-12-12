@@ -3184,7 +3184,7 @@ class Binpkg(CompositeTask):
 
 		pkg = self.pkg
 		pkg_count = self.pkg_count
-		if not self.opts.fetchonly:
+		if not (self.opts.pretend or self.opts.fetchonly):
 			self._build_dir.lock()
 			try:
 				shutil.rmtree(self._build_dir.dir_path)
@@ -3369,7 +3369,7 @@ class Binpkg(CompositeTask):
 		self.wait()
 
 	def _unlock_builddir(self):
-		if self.opts.fetchonly:
+		if self.opts.pretend or self.opts.fetchonly:
 			return
 		portage.elog.elog_process(self.pkg.cpv, self.settings)
 		self._build_dir.unlock()
