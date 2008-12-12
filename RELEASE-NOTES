@@ -16,9 +16,6 @@ portage-2.1.6
   used in ACCEPT_KEYWORDS.
   For packages that don't specify any other KEYWORDS you can use the new ** token
   as documented in portage(5) to disable KEYWORDS filtering completely.
-* Portage now warns if an ebuild repository does not have a name, as several new
-  features in 2.1.6 make use of or require named repositories. The repository name
-  is stored in profiles/repo_name in each repository.
 
 portage-2.1.5
 ==================================
