@@ -741,8 +741,10 @@ class binarytree(object):
 				mycat = self.remotepkgs[mypkg]["CATEGORY"].strip()
 				fullpkg = mycat+"/"+mypkg[:-5]
 
-				if not getbinpkgsonly and fullpkg in metadata:
-					# Local package overrides the remote one.
+				if fullpkg in metadata:
+					# When using this old protocol, comparison with the remote
+					# package isn't supported, so the local package is always
+					# preferred even if getbinpkgsonly is enabled.
 					continue
 
 				if not self.dbapi._category_re.match(mycat):
@@ -1011,14 +1013,8 @@ class binarytree(object):
 		downloaded (or it is only partially downloaded)."""
 		if self._remotepkgs is None or pkgname not in self._remotepkgs:
 			return False
-		if self._remote_has_index:
-			# Presence in self._remotepkgs implies that it's remote. When a
-			# package is downloaded, state is updated by self.inject().
-			return True
-		pkg_path = self.getname(pkgname)
-		if os.path.exists(pkg_path) and \
-			os.path.basename(pkg_path) not in self.invalids:
-			return False
+		# Presence in self._remotepkgs implies that it's remote. When a
+		# package is downloaded, state is updated by self.inject().
 		return True
 
 	def get_use(self, pkgname):
