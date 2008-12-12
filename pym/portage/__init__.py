@@ -536,15 +536,17 @@ class digraph(object):
 			len(self.order)
 
 	def debug_print(self):
+		def output(s):
+			writemsg(s, noiselevel=-1)
 		for node in self.nodes:
-			print node,
+			output("%s " % (node,))
 			if self.nodes[node][0]:
-				print "depends on"
+				output("depends on\n")
 			else:
-				print "(no children)"
+				output("(no children)\n")
 			for child in self.nodes[node][0]:
-				print "  ",child,
-				print "(%s)" % self.nodes[node][0][child]
+				output("  %s (%s)\n" % \
+					(child, self.nodes[node][0][child],))
 
 #parse /etc/env.d and generate /etc/profile.env
 
