@@ -2734,7 +2734,14 @@ class dblink(object):
 				unlink_list.update(node.alt_paths)
 			unlink_list = sorted(unlink_list)
 			for obj in unlink_list:
-				cpv = path_cpv_map[obj]
+				cpv = path_cpv_map.get(obj)
+				if cpv is None:
+					# This means that a symlink is in the preserved libs
+					# registry, but the actual lib it points to is not.
+					self._display_merge("!!! symlink to lib is preserved, " + \
+						"but not the lib itself:\n!!! '%s'\n" % (obj,),
+						level=logging.ERROR, noiselevel=-1)
+					continue
 				removed = cpv_lib_map.get(cpv)
 				if removed is None:
 					removed = set()
