@@ -11500,10 +11500,16 @@ def display_preserved_libs(vardbapi):
 		else:
 			search_for_owners = set()
 			for cpv in plibdata:
+				pkg_dblink = vardbapi._dblink(cpv)
 				for f in plibdata[cpv]:
 					if f in consumer_map:
 						continue
-					consumers = list(linkmap.findConsumers(f))
+					consumers = []
+					for c in linkmap.findConsumers(f):
+						# Filter out any consumers that belong
+						# to the same package as the provider.
+						if not pkg_dblink.isowner(c, pkg_dblink.myroot):
+							consumers.append(c)
 					consumers.sort()
 					consumer_map[f] = consumers
 					search_for_owners.update(consumers[:MAX_DISPLAY+1])
