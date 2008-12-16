@@ -2954,6 +2954,10 @@ class EbuildProcess(SpawnProcess):
 			self.returncode = portage._doebuild_exit_status_check_and_log(
 				self.settings, self.phase, self.returncode)
 
+		if self.phase == "test" and self.returncode != os.EX_OK and \
+			"test-fail-continue" in self.settings.features:
+			self.returncode = os.EX_OK
+
 		portage._post_phase_userpriv_perms(self.settings)
 
 class EbuildPhase(CompositeTask):
@@ -3211,7 +3215,7 @@ class Binpkg(CompositeTask):
 
 		pkg = self.pkg
 		pkg_count = self.pkg_count
-		if not self.opts.fetchonly:
+		if not (self.opts.pretend or self.opts.fetchonly):
 			self._build_dir.lock()
 			try:
 				shutil.rmtree(self._build_dir.dir_path)
@@ -3222,7 +3226,7 @@ class Binpkg(CompositeTask):
 			portage.prepare_build_dirs(self.settings["ROOT"], self.settings, 1)
 		fetcher = BinpkgFetcher(background=self.background,
 			logfile=self.settings.get("PORTAGE_LOG_FILE"), pkg=self.pkg,
-			scheduler=self.scheduler)
+			pretend=self.opts.pretend, scheduler=self.scheduler)
 		pkg_path = fetcher.pkg_path
 		self._pkg_path = pkg_path
 
@@ -3248,6 +3252,12 @@ class Binpkg(CompositeTask):
 				self._unlock_builddir()
 				self.wait()
 				return
+
+		if self.opts.pretend:
+			self._current_task = None
+			self.returncode = os.EX_OK
+			self.wait()
+			return
 
 		verifier = None
 		if self._verify:
@@ -3390,7 +3400,7 @@ class Binpkg(CompositeTask):
 		self.wait()
 
 	def _unlock_builddir(self):
-		if self.opts.fetchonly:
+		if self.opts.pretend or self.opts.fetchonly:
 			return
 		portage.elog.elog_process(self.pkg.cpv, self.settings)
 		self._build_dir.unlock()
@@ -3418,7 +3428,7 @@ class Binpkg(CompositeTask):
 
 class BinpkgFetcher(SpawnProcess):
 
-	__slots__ = ("pkg",
+	__slots__ = ("pkg", "pretend",
 		"locked", "pkg_path", "_lock_obj")
 
 	def __init__(self, **kwargs):
@@ -3432,11 +3442,24 @@ class BinpkgFetcher(SpawnProcess):
 			return
 
 		pkg = self.pkg
+		pretend = self.pretend
 		bintree = pkg.root_config.trees["bintree"]
 		settings = bintree.settings
 		use_locks = "distlocks" in settings.features
 		pkg_path = self.pkg_path
-		resume = os.path.exists(pkg_path)
+
+		if not pretend:
+			portage.util.ensure_dirs(os.path.dirname(pkg_path))
+			if use_locks:
+				self.lock()
+		exists = os.path.exists(pkg_path)
+		resume = exists and os.path.basename(pkg_path) in bintree.invalids
+		if not (pretend or resume):
+			# Remove existing file or broken symlink.
+			try:
+				os.unlink(pkg_path)
+			except OSError:
+				pass
 
 		# urljoin doesn't work correctly with
 		# unrecognized protocols like sftp
@@ -3449,6 +3472,12 @@ class BinpkgFetcher(SpawnProcess):
 		else:
 			uri = settings["PORTAGE_BINHOST"].rstrip("/") + \
 				"/" + pkg.pf + ".tbz2"
+
+		if pretend:
+			portage.writemsg_stdout("\n%s\n" % uri, noiselevel=-1)
+			self.returncode = os.EX_OK
+			self.wait()
+			return
 
 		protocol = urlparse.urlparse(uri)[0]
 		fcmd_prefix = "FETCHCOMMAND"
@@ -3468,10 +3497,6 @@ class BinpkgFetcher(SpawnProcess):
 		fetch_args = [portage.util.varexpand(x, mydict=fcmd_vars) \
 			for x in shlex.split(fcmd)]
 
-		portage.util.ensure_dirs(os.path.dirname(pkg_path))
-		if use_locks:
-			self.lock()
-
 		if self.fd_pipes is None:
 			self.fd_pipes = {}
 		fd_pipes = self.fd_pipes
@@ -3489,6 +3514,30 @@ class BinpkgFetcher(SpawnProcess):
 
 	def _set_returncode(self, wait_retval):
 		SpawnProcess._set_returncode(self, wait_retval)
+		if self.returncode == os.EX_OK:
+			# If possible, update the mtime to match the remote package if
+			# the fetcher didn't already do it automatically.
+			bintree = self.pkg.root_config.trees["bintree"]
+			if bintree._remote_has_index:
+				remote_mtime = bintree._remotepkgs[self.pkg.cpv].get("MTIME")
+				if remote_mtime is not None:
+					try:
+						remote_mtime = float(remote_mtime)
+					except ValueError:
+						pass
+					else:
+						try:
+							local_mtime = os.stat(self.pkg_path).st_mtime
+						except OSError:
+							pass
+						else:
+							if remote_mtime != local_mtime:
+								try:
+									os.utime(self.pkg_path,
+										(remote_mtime, remote_mtime))
+								except OSError:
+									pass
+
 		if self.locked:
 			self.unlock()
 
@@ -11754,14 +11803,41 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			noiselevel=-1, level=logging.ERROR)
 		return 1
 
+	vcs_dirs = frozenset([".git", ".svn", "CVS", ".hg"])
+	vcs_dirs = vcs_dirs.intersection(os.listdir(myportdir))
+
 	os.umask(0022)
 	updatecache_flg = False
 	if myaction == "metadata":
 		print "skipping sync"
 		updatecache_flg = True
+	elif ".git" in vcs_dirs:
+		# Update existing git repository, and ignore the syncuri. We are
+		# going to trust the user and assume that the user is in the branch
+		# that he/she wants updated. We'll let the user manage branches with
+		# git directly.
+		msg = ">>> Starting git pull in %s..." % myportdir
+		emergelog(xterm_titles, msg )
+		writemsg_level(msg + "\n")
+		exitcode = portage.spawn("cd %s ; git pull" % \
+			(portage._shell_quote(myportdir),), settings, free=1)
+		if exitcode != os.EX_OK:
+			msg = "!!! git pull error in %s." % myportdir
+			emergelog(xterm_titles, msg)
+			writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
+			return exitcode
+		msg = ">>> Git pull in %s successful" % myportdir
+		emergelog(xterm_titles, msg)
+		writemsg_level(msg + "\n")
+		return exitcode
 	elif syncuri[:8]=="rsync://":
+		for vcs_dir in vcs_dirs:
+			writemsg_level(("!!! %s appears to be under revision " + \
+				"control (contains %s).\n!!! Aborting rsync sync.\n") % \
+				(myportdir, vcs_dir), level=logging.ERROR, noiselevel=-1)
+			return 1
 		if not os.path.exists(EPREFIX+"/usr/bin/rsync"):
-			print "!!! rsync does not exist, so rsync support is disabled."
+			print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
 			print "!!! Type \"emerge net-misc/rsync\" to enable rsync support."
 			sys.exit(1)
 		mytimeout=180
@@ -13639,7 +13715,7 @@ def action_build(settings, trees, mtimedb,
 				del mtimedb["resume"]
 				mtimedb.commit()
 			mtimedb["resume"]={}
-			# Stored as a dict starting with portage-2.2_rc7, and supported
+			# Stored as a dict starting with portage-2.1.6_rc1, and supported
 			# by >=portage-2.1.3_rc8. Versions <portage-2.1.3_rc8 only support
 			# a list type for options.
 			mtimedb["resume"]["myopts"] = myopts.copy()
@@ -14222,6 +14298,12 @@ def repo_name_check(trees):
 			repos = portdb.getRepositories()
 			for r in repos:
 				missing_repo_names.discard(portdb.getRepositoryPath(r))
+			if portdb.porttree_root in missing_repo_names and \
+				not os.path.exists(os.path.join(
+				portdb.porttree_root, "profiles")):
+				# This is normal if $PORTDIR happens to be empty,
+				# so don't warn about it.
+				missing_repo_names.remove(portdb.porttree_root)
 
 	if missing_repo_names:
 		msg = []

@@ -4523,6 +4523,11 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 		_check_build_log(mysettings)
 		if phase_retval == os.EX_OK:
 			phase_retval = _post_src_install_checks(mysettings)
+
+	if mydo == "test" and phase_retval != os.EX_OK and \
+		"test-fail-continue" in mysettings.features:
+		phase_retval = os.EX_OK
+
 	return phase_retval
 
 _post_phase_cmds = {

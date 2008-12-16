@@ -338,6 +338,12 @@ the package compiled properly.  See \fItest\fR in \fBebuild\fR(1)
 and \fIsrc_test()\fR in \fBebuild\fR(5). This feature implies the "test"
 \fBUSE\fR flag.
 .TP
+.B test\-fail\-continue
+If "test" is enabled \fBFEATURES\fR and the test phase of an ebuild fails,
+continue to execute the remaining phases as if the failure had not occurred.
+Note that the test phase for a specific package may be disabled by masking
+the "test" \fBUSE\fR flag in \fBpackage.use.mask\fR (see \fBportage\fR(5)).
+.TP
 .B unmerge\-orphans
 If a file is not claimed by another package in the same slot and it is not
 protected by \fICONFIG_PROTECT\fR, unmerge it even if the modification time or

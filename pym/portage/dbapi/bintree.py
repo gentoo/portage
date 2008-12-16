@@ -414,7 +414,7 @@ class binarytree(object):
 		if (not os.path.isdir(self.pkgdir) and not getbinpkgs):
 			return 0
 
-		if not getbinpkgsonly:
+		if True:
 			pkg_paths = {}
 			self._pkg_paths = pkg_paths
 			dirs = listdir(self.pkgdir, dirsonly=True, EmptyOnError=True)
@@ -605,13 +605,14 @@ class binarytree(object):
 							aux_cache[k] = d[k]
 						self.dbapi._aux_cache[mycpv] = aux_cache
 
+			for cpv in list(metadata):
+				if cpv not in pkg_paths:
+					del metadata[cpv]
+
 			# Do not bother to write the Packages index if $PKGDIR/All/ exists
 			# since it will provide no benefit due to the need to read CATEGORY
 			# from xpak.
 			if update_pkgindex and os.access(self.pkgdir, os.W_OK):
-				stale = [cpv for cpv in metadata if cpv not in self._pkg_paths]
-				for cpv in stale:
-					del metadata[cpv]
 				del pkgindex.packages[:]
 				pkgindex.packages.extend(metadata.itervalues())
 				self._update_pkgindex_header(pkgindex.header)
@@ -699,6 +700,32 @@ class binarytree(object):
 				for cpv in self._remotepkgs:
 					self.dbapi.cpv_inject(cpv)
 				self.populated = 1
+				if getbinpkgsonly:
+					# Remote package instances override local package
+					# if they are not identical.
+					hash_names = ["SIZE"] + self._pkgindex_hashes
+					for cpv, local_metadata in metadata.iteritems():
+						remote_metadata = self._remotepkgs.get(cpv)
+						if remote_metadata is None:
+							continue
+						# Use digests to compare identity.
+						identical = True
+						for hash_name in hash_names:
+							local_value = local_metadata.get(hash_name)
+							if local_value is None:
+								continue
+							remote_value = remote_metadata.get(hash_name)
+							if remote_value is None:
+								continue
+							if local_value != remote_value:
+								identical = False
+								break
+						if identical:
+							del self._remotepkgs[cpv]
+				else:
+					# Local package instances override remote instances.
+					for cpv in metadata:
+						self._remotepkgs.pop(cpv, None)
 				return
 			self._remotepkgs = {}
 			try:
@@ -724,6 +751,13 @@ class binarytree(object):
 					continue
 				mycat = self.remotepkgs[mypkg]["CATEGORY"].strip()
 				fullpkg = mycat+"/"+mypkg[:-5]
+
+				if fullpkg in metadata:
+					# When using this old protocol, comparison with the remote
+					# package isn't supported, so the local package is always
+					# preferred even if getbinpkgsonly is enabled.
+					continue
+
 				if not self.dbapi._category_re.match(mycat):
 					writemsg(("!!! Remote binary package has an " + \
 						"unrecognized category: '%s'\n") % fullpkg,
@@ -738,10 +772,10 @@ class binarytree(object):
 					# invalid tbz2's can hurt things.
 					#print "cpv_inject("+str(fullpkg)+")"
 					self.dbapi.cpv_inject(fullpkg)
-					metadata = self.remotepkgs[mypkg]
-					for k, v in metadata.items():
-						metadata[k] = v.strip()
-					self._remotepkgs[fullpkg] = metadata
+					remote_metadata = self.remotepkgs[mypkg]
+					for k, v in remote_metadata.items():
+						remote_metadata[k] = v.strip()
+					self._remotepkgs[fullpkg] = remote_metadata
 					#print "  -- Injected"
 				except SystemExit, e:
 					raise
@@ -844,6 +878,11 @@ class binarytree(object):
 		finally:
 			if pkgindex_lock:
 				unlockfile(pkgindex_lock)
+
+		if self._remotepkgs is not None:
+			# When a remote package is downloaded and injected,
+			# update state so self.isremote() returns False.
+			self._remotepkgs.pop(cpv, None)
 
 	def _pkgindex_entry(self, cpv):
 		"""
@@ -985,10 +1024,8 @@ class binarytree(object):
 		downloaded (or it is only partially downloaded)."""
 		if self._remotepkgs is None or pkgname not in self._remotepkgs:
 			return False
-		pkg_path = self.getname(pkgname)
-		if os.path.exists(pkg_path) and \
-			os.path.basename(pkg_path) not in self.invalids:
-			return False
+		# Presence in self._remotepkgs implies that it's remote. When a
+		# package is downloaded, state is updated by self.inject().
 		return True
 
 	def get_use(self, pkgname):
