@@ -3112,7 +3112,22 @@ class dblink(object):
 
 		preserve_paths = set()
 		for preserve_node in preserve_nodes:
-			preserve_paths.update(preserve_node.alt_paths)
+			# Make sure that at least one of the paths is not a symlink.
+			# This prevents symlinks from being erroneously preserved by
+			# themselves when the old instance installed symlinks that
+			# the new instance does not install.
+			have_lib = False
+			for f in preserve_node.alt_paths:
+				f_abs = os.path.join(root, f.lstrip(os.sep))
+				try:
+					if stat.S_ISREG(os.lstat(f_abs).st_mode):
+						have_lib = True
+						break
+				except OSError:
+					continue
+
+			if have_lib:
+				preserve_paths.update(preserve_node.alt_paths)
 
 		return preserve_paths
 
@@ -3251,7 +3266,14 @@ class dblink(object):
 				unlink_list.update(node.alt_paths)
 			unlink_list = sorted(unlink_list)
 			for obj in unlink_list:
-				cpv = path_cpv_map[obj]
+				cpv = path_cpv_map.get(obj)
+				if cpv is None:
+					# This means that a symlink is in the preserved libs
+					# registry, but the actual lib it points to is not.
+					self._display_merge("!!! symlink to lib is preserved, " + \
+						"but not the lib itself:\n!!! '%s'\n" % (obj,),
+						level=logging.ERROR, noiselevel=-1)
+					continue
 				removed = cpv_lib_map.get(cpv)
 				if removed is None:
 					removed = set()
