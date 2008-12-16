@@ -509,7 +509,8 @@ class Atom(object):
 	_str_methods = ("endswith", "find", "index", "lstrip", "replace",
 		"startswith", "split", "strip",
 		"rindex", "rfind", "rstrip", "__getitem__",
-		"__eq__", "__hash__", "__len__", "__ne__", "__repr__", "__str__")
+		"__eq__", "__hash__", "__len__", "__lt__",
+		"__ne__", "__repr__", "__str__")
 
 	__slots__ = ("__weakref__", "blocker", "cp", "cpv", "operator",
 		"slot", "use") + _str_methods
@@ -555,15 +556,6 @@ class Atom(object):
 		else:
 			use = None
 		obj_setattr(self, "use", use)
-
-	def __cmp__(self, other):
-		self_str = str(self)
-		other_str = str(other)
-		if self_str == other_str:
-			return 0
-		if self_str > other_str:
-			return 1
-		return -1
 
 	def __setattr__(self, name, value):
 		raise AttributeError("Atom instances are immutable",

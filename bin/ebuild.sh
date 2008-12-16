@@ -2083,7 +2083,7 @@ ebuild_main() {
 			for f in ${auxdbkeys} ; do
 				echo $(echo ${!f}) 1>&9 || exit $?
 			done
-			9>&-
+			exec 9>&-
 		fi
 		set +f
 		;;
@@ -2101,16 +2101,26 @@ ebuild_main() {
 	fi
 }
 
-[[ -n $EBUILD_SH_ARGS ]] && ebuild_main
+if [[ $EBUILD_PHASE = depend ]] ; then
+	ebuild_main
+elif [[ -n $EBUILD_SH_ARGS ]] ; then
+	(
+		# Don't allow subprocesses to inherit the pipe which
+		# emerge uses to monitor ebuild.sh.
+		exec 9>&-
 
-# Save the env only for relevant phases.
-if [ -n "${EBUILD_SH_ARGS}" ] && \
-	! hasq ${EBUILD_SH_ARGS} clean depend help info nofetch ; then
-	# Save current environment and touch a success file. (echo for success)
-	umask 002
-	save_ebuild_env | filter_readonly_variables > "${T}/environment"
-	chown ${PORTAGE_USER:-portage}:${PORTAGE_GROUP:-portage} "${T}/environment" &>/dev/null
-	chmod g+w "${T}/environment" &>/dev/null
+		ebuild_main
+
+		# Save the env only for relevant phases.
+		if ! hasq "$EBUILD_SH_ARGS" clean help info nofetch ; then
+			umask 002
+			save_ebuild_env | filter_readonly_variables > "$T/environment"
+			chown ${PORTAGE_USER:-portage}:${PORTAGE_GROUP:-portage} "$T/environment" &>/dev/null
+			chmod g+w "$T/environment" &>/dev/null
+		fi
+		exit 0
+	)
+	exit $?
 fi
 
 # Do not exit when ebuild.sh is sourced by other scripts.

@@ -55,10 +55,6 @@ class ManifestEntry(object):
 	def __init__(self, **kwargs):
 		for k, v in kwargs.iteritems():
 			setattr(self, k, v)
-	def __cmp__(self, other):
-		if str(self) == str(other):
-			return 0
-		return 1
 
 class Manifest2Entry(ManifestEntry):
 	def __str__(self):

@@ -1527,13 +1527,6 @@ class Package(Task):
 				(self.type_name, self.root, self.cpv, self.operation)
 		return self._hash_key
 
-	def __cmp__(self, other):
-		if self > other:
-			return 1
-		elif self < other:
-			return -1
-		return 0
-
 	def __lt__(self, other):
 		if other.cp != self.cp:
 			return False
@@ -2901,16 +2894,25 @@ class EbuildMetadataPhase(SubProcess):
 		files = self._files
 		self._raw_metadata.append(files.ebuild.read())
 		if not self._raw_metadata[-1]:
+			# Split lines here so they can be counted inside _set_returncode().
+			self._raw_metadata = "".join(self._raw_metadata).splitlines()
 			self._unregister()
 			self.wait()
 
 			if self.returncode == os.EX_OK:
-				metadata = izip(portage.auxdbkeys,
-					"".join(self._raw_metadata).splitlines())
+				metadata = izip(portage.auxdbkeys, self._raw_metadata)
 				self.metadata_callback(self.cpv, self.ebuild_path,
 					self.repo_path, metadata, self.ebuild_mtime)
 
 		return self._registered
+
+	def _set_returncode(self, wait_retval):
+		SubProcess._set_returncode(self, wait_retval)
+		if self.returncode == os.EX_OK and \
+			len(portage.auxdbkeys) != len(self._raw_metadata):
+			# Don't trust bash's returncode if the
+			# number of lines is incorrect.
+			self.returncode = 1
 
 class EbuildProcess(SpawnProcess):
 
@@ -3157,8 +3159,7 @@ class Binpkg(CompositeTask):
 		settings.setcpv(pkg)
 		self._tree = "bintree"
 		self._bintree = self.pkg.root_config.trees[self._tree]
-		self._verify = "strict" in self.settings.features and \
-			not self.opts.pretend
+		self._verify = not self.opts.pretend
 
 		dir_path = os.path.join(settings["PORTAGE_TMPDIR"],
 			"portage", pkg.category, pkg.pf)
@@ -3167,6 +3168,10 @@ class Binpkg(CompositeTask):
 		self._image_dir = os.path.join(dir_path, "image")
 		self._infloc = os.path.join(dir_path, "build-info")
 		self._ebuild_path = os.path.join(self._infloc, pkg.pf + ".ebuild")
+		settings["EBUILD"] = self._ebuild_path
+		debug = settings.get("PORTAGE_DEBUG") == "1"
+		portage.doebuild_environment(self._ebuild_path, "setup",
+			settings["ROOT"], settings, debug, 1, self._bintree.dbapi)
 
 		# The prefetcher has already completed or it
 		# could be running now. If it's running now,
@@ -3206,8 +3211,17 @@ class Binpkg(CompositeTask):
 
 		pkg = self.pkg
 		pkg_count = self.pkg_count
+		if not self.opts.fetchonly:
+			self._build_dir.lock()
+			try:
+				shutil.rmtree(self._build_dir.dir_path)
+			except EnvironmentError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
+			portage.prepare_build_dirs(self.settings["ROOT"], self.settings, 1)
 		fetcher = BinpkgFetcher(background=self.background,
-			logfile=self.scheduler.fetch.log_file, pkg=self.pkg,
+			logfile=self.settings.get("PORTAGE_LOG_FILE"), pkg=self.pkg,
 			scheduler=self.scheduler)
 		pkg_path = fetcher.pkg_path
 		self._pkg_path = pkg_path
@@ -3219,13 +3233,7 @@ class Binpkg(CompositeTask):
 			short_msg = "emerge: (%s of %s) %s Fetch" % \
 				(pkg_count.curval, pkg_count.maxval, pkg.cpv)
 			self.logger.log(msg, short_msg=short_msg)
-
-			if self.background:
-				fetcher.addExitListener(self._fetcher_exit)
-				self._current_task = fetcher
-				self.scheduler.fetch.schedule(fetcher)
-			else:
-				self._start_task(fetcher, self._fetcher_exit)
+			self._start_task(fetcher, self._fetcher_exit)
 			return
 
 		self._fetcher_exit(fetcher)
@@ -3236,25 +3244,19 @@ class Binpkg(CompositeTask):
 		# --getbinpkg is enabled.
 		if fetcher.returncode is not None:
 			self._fetched_pkg = True
-			if self.opts.fetchonly:
-				self._final_exit(fetcher)
-				self.wait()
-				return
-			elif self._default_exit(fetcher) != os.EX_OK:
+			if self._default_exit(fetcher) != os.EX_OK:
+				self._unlock_builddir()
 				self.wait()
 				return
 
 		verifier = None
 		if self._verify:
-			verifier = BinpkgVerifier(background=self.background,
-				logfile=self.scheduler.fetch.log_file, pkg=self.pkg)
-
+			logfile = None
 			if self.background:
-				verifier.addExitListener(self._verifier_exit)
-				self._current_task = verifier
-				self.scheduler.fetch.schedule(verifier)
-			else:
-				self._start_task(verifier, self._verifier_exit)
+				logfile = self.settings.get("PORTAGE_LOG_FILE")
+			verifier = BinpkgVerifier(background=self.background,
+				logfile=logfile, pkg=self.pkg)
+			self._start_task(verifier, self._verifier_exit)
 			return
 
 		self._verifier_exit(verifier)
@@ -3262,6 +3264,7 @@ class Binpkg(CompositeTask):
 	def _verifier_exit(self, verifier):
 		if verifier is not None and \
 			self._default_exit(verifier) != os.EX_OK:
+			self._unlock_builddir()
 			self.wait()
 			return
 
@@ -3273,18 +3276,20 @@ class Binpkg(CompositeTask):
 		if self._fetched_pkg:
 			self._bintree.inject(pkg.cpv, filename=pkg_path)
 
+		if self.opts.fetchonly:
+			self._current_task = None
+			self.returncode = os.EX_OK
+			self.wait()
+			return
+
 		msg = " === (%s of %s) Merging Binary (%s::%s)" % \
 			(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg_path)
 		short_msg = "emerge: (%s of %s) %s Merge Binary" % \
 			(pkg_count.curval, pkg_count.maxval, pkg.cpv)
 		logger.log(msg, short_msg=short_msg)
 
-		self._build_dir.lock()
-
 		phase = "clean"
 		settings = self.settings
-		settings.setcpv(pkg)
-		settings["EBUILD"] = self._ebuild_path
 		ebuild_phase = EbuildPhase(background=self.background,
 			pkg=pkg, phase=phase, scheduler=self.scheduler,
 			settings=settings, tree=self._tree)
@@ -3385,6 +3390,8 @@ class Binpkg(CompositeTask):
 		self.wait()
 
 	def _unlock_builddir(self):
+		if self.opts.fetchonly:
+			return
 		portage.elog.elog_process(self.pkg.cpv, self.settings)
 		self._build_dir.unlock()
 
@@ -3550,6 +3557,12 @@ class BinpkgVerifier(AsynchronousTask):
 				writemsg("!!! Expected: %s\n" % e.value[3],
 					noiselevel=-1)
 				rval = 1
+			if rval != os.EX_OK:
+				pkg_path = bintree.getname(pkg.cpv)
+				head, tail = os.path.split(pkg_path)
+				temp_filename = portage._checksum_failure_temp_file(head, tail)
+				writemsg("File renamed to '%s'\n" % (temp_filename,),
+					noiselevel=-1)
 		finally:
 			sys.stdout = stdout_orig
 			sys.stderr = stderr_orig
@@ -3557,6 +3570,40 @@ class BinpkgVerifier(AsynchronousTask):
 				log_file.close()
 
 		self.returncode = rval
+		self.wait()
+
+class BinpkgPrefetcher(CompositeTask):
+
+	__slots__ = ("pkg",) + \
+		("pkg_path", "_bintree",)
+
+	def _start(self):
+		self._bintree = self.pkg.root_config.trees["bintree"]
+		fetcher = BinpkgFetcher(background=self.background,
+			logfile=self.scheduler.fetch.log_file, pkg=self.pkg,
+			scheduler=self.scheduler)
+		self.pkg_path = fetcher.pkg_path
+		self._start_task(fetcher, self._fetcher_exit)
+
+	def _fetcher_exit(self, fetcher):
+
+		if self._default_exit(fetcher) != os.EX_OK:
+			self.wait()
+			return
+
+		verifier = BinpkgVerifier(background=self.background,
+			logfile=self.scheduler.fetch.log_file, pkg=self.pkg)
+		self._start_task(verifier, self._verifier_exit)
+
+	def _verifier_exit(self, verifier):
+		if self._default_exit(verifier) != os.EX_OK:
+			self.wait()
+			return
+
+		self._bintree.inject(self.pkg.cpv, filename=self.pkg_path)
+
+		self._current_task = None
+		self.returncode = os.EX_OK
 		self.wait()
 
 class BinpkgExtractorAsync(SpawnProcess):
@@ -6453,6 +6500,12 @@ class depgraph(object):
 			self._process_slot_conflicts()
 
 	def _serialize_tasks(self):
+
+		if "--debug" in self.myopts:
+			writemsg("\ndigraph:\n\n", noiselevel=-1)
+			self.digraph.debug_print()
+			writemsg("\n", noiselevel=-1)
+
 		scheduler_graph = self.digraph.copy()
 		mygraph=self.digraph.copy()
 		# Prune "nomerge" root nodes if nothing depends on them, since
@@ -9795,9 +9848,8 @@ class Scheduler(PollScheduler):
 			"--getbinpkg" in self.myopts and \
 			pkg.root_config.trees["bintree"].isremote(pkg.cpv):
 
-			prefetcher = BinpkgFetcher(background=True,
-				logfile=self._fetch_log, pkg=pkg,
-				scheduler=self._sched_iface)
+			prefetcher = BinpkgPrefetcher(background=True,
+				pkg=pkg, scheduler=self._sched_iface)
 
 		return prefetcher
 
@@ -9833,7 +9885,7 @@ class Scheduler(PollScheduler):
 			portage.match_from_list(
 			portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
 			if self._running_portage:
-				return cmp(pkg, self._running_portage) != 0
+				return pkg.cpv != self._running_portage.cpv
 			return True
 		return False
 
