@@ -11500,15 +11500,16 @@ def display_preserved_libs(vardbapi):
 		else:
 			search_for_owners = set()
 			for cpv in plibdata:
-				pkg_dblink = vardbapi._dblink(cpv)
+				internal_plib_keys = set(linkmap._obj_key(f) \
+					for f in plibdata[cpv])
 				for f in plibdata[cpv]:
 					if f in consumer_map:
 						continue
 					consumers = []
 					for c in linkmap.findConsumers(f):
-						# Filter out any consumers that belong
-						# to the same package as the provider.
-						if not pkg_dblink.isowner(c, pkg_dblink.myroot):
+						# Filter out any consumers that are also preserved libs
+						# belonging to the same package as the provider.
+						if linkmap._obj_key(c) not in internal_plib_keys:
 							consumers.append(c)
 					consumers.sort()
 					consumer_map[f] = consumers
