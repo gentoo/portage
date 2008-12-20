@@ -3791,7 +3791,7 @@ class DependencyArg(object):
 		self.root_config = root_config
 
 	def __str__(self):
-		return self.arg
+		return str(self.arg)
 
 class AtomArg(DependencyArg):
 	def __init__(self, atom=None, **kwargs):
