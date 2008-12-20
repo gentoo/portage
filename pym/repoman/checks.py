@@ -242,8 +242,8 @@ class InheritAutotools(LineCheck):
 	_autotools_funcs = (
 		"eaclocal", "eautoconf", "eautoheader",
 		"eautomake", "eautoreconf", "_elibtoolize")
-	_autotools_func_re = re.compile(r'(^|\s)(' + \
-		"|".join(_autotools_funcs) + ')(\s|$)')
+	_autotools_func_re = re.compile(r'(^|\s|\|\||&&)(' + \
+		"|".join(_autotools_funcs) + r')(\s|\|\||&&|\\?$)')
 	# Exempt eclasses:
 	# git - An EGIT_BOOTSTRAP variable may be used to call one of
 	#       the autotools functions.
