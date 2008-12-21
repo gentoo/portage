@@ -12785,8 +12785,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				msg.append("    %s" % (parent,))
 				msg.append("")
 			msg.append("Have you forgotten to run " + \
-				good("`emerge --update --newuse --deep world`") + " prior to")
-			msg.append(("%s?  It may be necessary to manually " + \
+				good("`emerge --update --newuse --deep @system @world`") + " prior")
+			msg.append(("to %s? It may be necessary to manually " + \
 				"uninstall packages that no longer") % action)
 			msg.append("exist in the portage tree since " + \
 				"it may not be possible to satisfy their")
