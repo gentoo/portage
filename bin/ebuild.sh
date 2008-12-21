@@ -2053,12 +2053,38 @@ ebuild_main() {
 
 		auxdbkeys="DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE
 			DESCRIPTION KEYWORDS INHERITED IUSE CDEPEND PDEPEND PROVIDE EAPI
-			PROPERTIES UNUSED_06 UNUSED_05 UNUSED_04
+			PROPERTIES DEFINED_PHASES UNUSED_05 UNUSED_04
 			UNUSED_03 UNUSED_02 UNUSED_01"
 
 		#the extra $(echo) commands remove newlines
 		unset CDEPEND
 		[ -n "${EAPI}" ] || EAPI=0
+		local eapi=$EAPI
+
+		# alphabetically ordered by $EBUILD_PHASE value
+		local valid_phases
+		case $eapi in
+			0|1)
+				valid_phases="src_compile src_install pkg_nofetch
+					pkg_postinst pkg_postrm pkg_preinst pkg_prerm pkg_setup
+					src_test src_unpack"
+				;;
+			*)
+				valid_phases="src_compile src_configure src_install
+					pkg_nofetch pkg_postinst pkg_postrm pkg_preinst
+					src_prepare pkg_prerm pkg_setup src_test src_unpack"
+				;;
+		esac
+
+		DEFINED_PHASES=
+		for f in $valid_phases ; do
+			if [[ $(type -t $f) = function ]] ; then
+				f=${f#pkg_}
+				DEFINED_PHASES+=" ${f#src_}"
+			fi
+		done
+		[[ -n $DEFINED_PHASES ]] || DEFINED_PHASES=-
+
 		if [ -n "${dbkey}" ] ; then
 			> "${dbkey}"
 			for f in ${auxdbkeys} ; do
