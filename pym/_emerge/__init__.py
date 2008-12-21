@@ -11064,7 +11064,14 @@ def unmerge(root_config, myopts, unmerge_action,
 					if myslot not in slotmap:
 						slotmap[myslot] = {}
 					slotmap[myslot][localtree.dbapi.cpv_counter(mypkg)] = mypkg
-				
+
+				for mypkg in vartree.dbapi.cp_list(
+					portage.dep_getkey(mymatch[0])):
+					myslot = vartree.getslot(mypkg)
+					if myslot not in slotmap:
+						slotmap[myslot] = {}
+					slotmap[myslot][vartree.dbapi.cpv_counter(mypkg)] = mypkg
+
 				for myslot in slotmap:
 					counterkeys = slotmap[myslot].keys()
 					if not counterkeys:
@@ -11073,6 +11080,14 @@ def unmerge(root_config, myopts, unmerge_action,
 					pkgmap[mykey]["protected"].add(
 						slotmap[myslot][counterkeys[-1]])
 					del counterkeys[-1]
+
+					for counter in counterkeys[:]:
+						mypkg = slotmap[myslot][counter]
+						if mypkg not in mymatch:
+							counterkeys.remove(counter)
+							pkgmap[mykey]["protected"].add(
+								slotmap[myslot][counter])
+
 					#be pretty and get them in order of merge:
 					for ckey in counterkeys:
 						mypkg = slotmap[myslot][ckey]
