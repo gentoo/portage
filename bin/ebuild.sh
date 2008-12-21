@@ -2065,13 +2065,13 @@ ebuild_main() {
 		local valid_phases
 		case $eapi in
 			0|1)
-				valid_phases="src_compile src_install pkg_nofetch
-					pkg_postinst pkg_postrm pkg_preinst pkg_prerm pkg_setup
-					src_test src_unpack"
+				valid_phases="src_compile pkg_config pkg_info src_install
+					pkg_nofetch pkg_postinst pkg_postrm pkg_preinst pkg_prerm
+					pkg_setup src_test src_unpack"
 				;;
 			*)
-				valid_phases="src_compile src_configure src_install
-					pkg_nofetch pkg_postinst pkg_postrm pkg_preinst
+				valid_phases="src_compile pkg_config src_configure pkg_info
+					src_install pkg_nofetch pkg_postinst pkg_postrm pkg_preinst
 					src_prepare pkg_prerm pkg_setup src_test src_unpack"
 				;;
 		esac
