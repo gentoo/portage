@@ -1865,73 +1865,9 @@ class config(object):
 		self.regenerate(use_cache=use_cache)
 
 	def load_infodir(self,infodir):
-		self.modifying()
-		backup_pkg_metadata = dict(self.configdict["pkg"].iteritems())
-		if "pkg" in self.configdict and \
-			"CATEGORY" in self.configdict["pkg"]:
-			self.configdict["pkg"].clear()
-			self.configdict["pkg"]["CATEGORY"] = \
-				backup_pkg_metadata["CATEGORY"]
-		else:
-			raise portage.exception.PortageException(
-				"No pkg setup for settings instance?")
-
-		retval = 0
-		found_category_file = False
-		if os.path.isdir(infodir):
-			if os.path.exists(infodir+"/environment"):
-				self.configdict["pkg"]["PORT_ENV_FILE"] = infodir+"/environment"
-
-			myre = re.compile('^[A-Z]+$')
-			null_byte = "\0"
-			for filename in listdir(infodir,filesonly=1,EmptyOnError=1):
-				if filename == "FEATURES":
-					# FEATURES from the build host shouldn't be interpreted as
-					# FEATURES on the client system.
-					continue
-				if filename == "CATEGORY":
-					found_category_file = True
-					continue
-				if myre.match(filename):
-					try:
-						file_path = os.path.join(infodir, filename)
-						mydata = open(file_path).read().strip()
-						if len(mydata) < 2048 or filename == "USE":
-							if null_byte in mydata:
-								writemsg("!!! Null byte found in metadata " + \
-									"file: '%s'\n" % file_path, noiselevel=-1)
-								continue
-							if filename == "USE":
-								binpkg_flags = "-* " + mydata
-								self.configdict["pkg"][filename] = binpkg_flags
-								self.configdict["env"][filename] = mydata
-							else:
-								self.configdict["pkg"][filename] = mydata
-								self.configdict["env"][filename] = mydata
-					except (OSError, IOError):
-						writemsg("!!! Unable to read file: %s\n" % infodir+"/"+filename,
-							noiselevel=-1)
-						pass
-			retval = 1
-
-		# Missing or corrupt CATEGORY will cause problems for
-		# doebuild(), which uses it to infer the cpv. We already
-		# know the category, so there's no need to trust this
-		# file. Show a warning if the file is missing though,
-		# because it's required (especially for binary packages).
-		if not found_category_file:
-			writemsg("!!! CATEGORY file is missing: %s\n" % \
-				os.path.join(infodir, "CATEGORY"), noiselevel=-1)
-			self.configdict["pkg"].update(backup_pkg_metadata)
-			retval = 0
-
-		# Always set known good values for these variables, since
-		# corruption of these can cause problems:
-		cat, pf = catsplit(self.mycpv)
-		self.configdict["pkg"]["CATEGORY"] = cat
-		self.configdict["pkg"]["PF"] = pf
-
-		return retval
+		warnings.warn("portage.config.load_infodir() is deprecated",
+			DeprecationWarning)
+		return 1
 
 	def setcpv(self, mycpv, use_cache=1, mydb=None):
 		"""
