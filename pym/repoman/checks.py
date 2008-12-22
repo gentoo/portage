@@ -177,7 +177,7 @@ class EbuildNestedDie(LineCheck):
 	"""Check ebuild for nested die statements (die statements in subshells"""
 	
 	repoman_check_name = 'ebuild.nesteddie'
-	nesteddie_re = re.compile(r'^[^#]*\([^)]*\bdie\b')
+	nesteddie_re = re.compile(r'^[^#]*\s\(\s[^)]*\bdie\b')
 	
 	def check(self, num, line):
 		if self.nesteddie_re.match(line):
@@ -242,8 +242,8 @@ class InheritAutotools(LineCheck):
 	_autotools_funcs = (
 		"eaclocal", "eautoconf", "eautoheader",
 		"eautomake", "eautoreconf", "_elibtoolize")
-	_autotools_func_re = re.compile(r'(^|\s)(' + \
-		"|".join(_autotools_funcs) + ')(\s|$)')
+	_autotools_func_re = re.compile(r'\b(' + \
+		"|".join(_autotools_funcs) + r')\b')
 	# Exempt eclasses:
 	# git - An EGIT_BOOTSTRAP variable may be used to call one of
 	#       the autotools functions.

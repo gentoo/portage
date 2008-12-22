@@ -3837,7 +3837,7 @@ class DependencyArg(object):
 		self.root_config = root_config
 
 	def __str__(self):
-		return self.arg
+		return str(self.arg)
 
 class AtomArg(DependencyArg):
 	def __init__(self, atom=None, **kwargs):
@@ -9141,9 +9141,6 @@ class TaskScheduler(object):
 	def add(self, task):
 		self._queue.add(task)
 
-	def run(self):
-		self._scheduler.schedule()
-
 class JobStatusDisplay(object):
 
 	_bound_properties = ("curval", "failed", "running")
@@ -11109,7 +11106,14 @@ def unmerge(root_config, myopts, unmerge_action,
 					if myslot not in slotmap:
 						slotmap[myslot] = {}
 					slotmap[myslot][localtree.dbapi.cpv_counter(mypkg)] = mypkg
-				
+
+				for mypkg in vartree.dbapi.cp_list(
+					portage.dep_getkey(mymatch[0])):
+					myslot = vartree.getslot(mypkg)
+					if myslot not in slotmap:
+						slotmap[myslot] = {}
+					slotmap[myslot][vartree.dbapi.cpv_counter(mypkg)] = mypkg
+
 				for myslot in slotmap:
 					counterkeys = slotmap[myslot].keys()
 					if not counterkeys:
@@ -11118,6 +11122,14 @@ def unmerge(root_config, myopts, unmerge_action,
 					pkgmap[mykey]["protected"].add(
 						slotmap[myslot][counterkeys[-1]])
 					del counterkeys[-1]
+
+					for counter in counterkeys[:]:
+						mypkg = slotmap[myslot][counter]
+						if mypkg not in mymatch:
+							counterkeys.remove(counter)
+							pkgmap[mykey]["protected"].add(
+								slotmap[myslot][counter])
+
 					#be pretty and get them in order of merge:
 					for ckey in counterkeys:
 						mypkg = slotmap[myslot][ckey]
@@ -11542,15 +11554,16 @@ def display_preserved_libs(vardbapi):
 		else:
 			search_for_owners = set()
 			for cpv in plibdata:
-				pkg_dblink = vardbapi._dblink(cpv)
+				internal_plib_keys = set(linkmap._obj_key(f) \
+					for f in plibdata[cpv])
 				for f in plibdata[cpv]:
 					if f in consumer_map:
 						continue
 					consumers = []
 					for c in linkmap.findConsumers(f):
-						# Filter out any consumers that belong
-						# to the same package as the provider.
-						if not pkg_dblink.isowner(c, pkg_dblink.myroot):
+						# Filter out any consumers that are also preserved libs
+						# belonging to the same package as the provider.
+						if linkmap._obj_key(c) not in internal_plib_keys:
 							consumers.append(c)
 					consumers.sort()
 					consumer_map[f] = consumers
@@ -12877,8 +12890,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				msg.append("    %s" % (parent,))
 				msg.append("")
 			msg.append("Have you forgotten to run " + \
-				good("`emerge --update --newuse --deep world`") + " prior to")
-			msg.append(("%s?  It may be necessary to manually " + \
+				good("`emerge --update --newuse --deep @system @world`") + " prior")
+			msg.append(("to %s? It may be necessary to manually " + \
 				"uninstall packages that no longer") % action)
 			msg.append("exist in the portage tree since " + \
 				"it may not be possible to satisfy their")
