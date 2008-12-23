@@ -1822,23 +1822,24 @@ class PipeReader(AbstractPollTask):
 		self._read_data = None
 
 	def _output_handler(self, fd, event):
-		files = self.input_files
-		for f in files.itervalues():
-			if fd == f.fileno():
-				break
 
-		buf = array.array('B')
 		if event & PollConstants.POLLIN:
+
+			for f in self.input_files.itervalues():
+				if fd == f.fileno():
+					break
+
+			buf = array.array('B')
 			try:
 				buf.fromfile(f, self._bufsize)
 			except EOFError:
 				pass
 
-		if buf:
-			self._read_data.append(buf.tostring())
-		else:
-			self._unregister()
-			self.wait()
+			if buf:
+				self._read_data.append(buf.tostring())
+			else:
+				self._unregister()
+				self.wait()
 
 		self._unregister_if_appropriate(event)
 		return self._registered
@@ -2233,22 +2234,25 @@ class SpawnProcess(SubProcess):
 		return portage.process.spawn(args, **kwargs)
 
 	def _output_handler(self, fd, event):
-		files = self._files
-		buf = array.array('B')
+
 		if event & PollConstants.POLLIN:
+
+			files = self._files
+			buf = array.array('B')
 			try:
 				buf.fromfile(files.process, self._bufsize)
 			except EOFError:
 				pass
-		if buf:
-			if not self.background:
-				buf.tofile(files.stdout)
-				files.stdout.flush()
-			buf.tofile(files.log)
-			files.log.flush()
-		else:
-			self._unregister()
-			self.wait()
+
+			if buf:
+				if not self.background:
+					buf.tofile(files.stdout)
+					files.stdout.flush()
+				buf.tofile(files.log)
+				files.log.flush()
+			else:
+				self._unregister()
+				self.wait()
 
 		self._unregister_if_appropriate(event)
 		return self._registered
@@ -2259,18 +2263,20 @@ class SpawnProcess(SubProcess):
 		the only purpose of the pipe is to allow the scheduler to
 		monitor the process from inside a poll() loop.
 		"""
-		files = self._files
-		buf = array.array('B')
+
 		if event & PollConstants.POLLIN:
+
+			buf = array.array('B')
 			try:
-				buf.fromfile(files.process, self._bufsize)
+				buf.fromfile(self._files.process, self._bufsize)
 			except EOFError:
 				pass
-		if buf:
-			pass
-		else:
-			self._unregister()
-			self.wait()
+
+			if buf:
+				pass
+			else:
+				self._unregister()
+				self.wait()
 
 		self._unregister_if_appropriate(event)
 		return self._registered
@@ -2895,9 +2901,10 @@ class EbuildMetadataPhase(SubProcess):
 		portage.process.spawned_pids.remove(self.pid)
 
 	def _output_handler(self, fd, event):
-		files = self._files
+
 		if event & PollConstants.POLLIN:
-			self._raw_metadata.append(files.ebuild.read())
+			self._raw_metadata.append(self._files.ebuild.read())
+
 		if not self._raw_metadata[-1] or event & PollConstants.POLLHUP:
 			# Split lines here so they can be counted inside _set_returncode().
 			self._raw_metadata = "".join(self._raw_metadata).splitlines()
