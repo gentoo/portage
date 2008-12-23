@@ -1666,6 +1666,20 @@ class EbuildFetchonly(SlotObject):
 		portage.elog.elog_process(self.pkg.cpv, self.settings)
 		return retval
 
+class PollConstants(object):
+
+	"""
+	Provides POLL* constants that are equivalent to those from the
+	select module, for use by PollSelectAdapter.
+	"""
+
+	names = ("POLLIN", "POLLPRI", "POLLOUT", "POLLERR", "POLLHUP", "POLLNVAL")
+	v = 1
+	for k in names:
+		locals()[k] = getattr(select, k, v)
+		v *= 2
+	del k, v
+
 class AsynchronousTask(SlotObject):
 	"""
 	Subclasses override _wait() and _poll() so that calls
@@ -1777,7 +1791,26 @@ class AsynchronousTask(SlotObject):
 			while self._exit_listener_stack:
 				self._exit_listener_stack.pop()(self)
 
-class PipeReader(AsynchronousTask):
+class PollTask(AsynchronousTask):
+
+	__slots__ = ("scheduler",) + \
+		("_registered",)
+
+	_bufsize = 4096
+	_exceptional_events = PollConstants.POLLERR | PollConstants.POLLNVAL
+	_registered_events = PollConstants.POLLIN | PollConstants.POLLHUP | \
+		_exceptional_events
+
+	def _unregister_if_appropriate(self, event):
+		if self._registered:
+			if event & self._exceptional_events:
+				self._unregister()
+				self.cancel()
+			elif event & PollConstants.POLLHUP:
+				self._unregister()
+				self.wait()
+
+class PipeReader(PollTask):
 
 	"""
 	Reads output from one or more files and saves it in memory,
@@ -1786,10 +1819,8 @@ class PipeReader(AsynchronousTask):
 	current process.
 	"""
 
-	__slots__ = ("input_files", "scheduler",) + \
-		("pid", "_read_data", "_registered", "_reg_ids")
-
-	_bufsize = 4096
+	__slots__ = ("input_files",) + \
+		("_read_data", "_reg_ids")
 
 	def _start(self):
 		self._reg_ids = set()
@@ -1798,11 +1829,17 @@ class PipeReader(AsynchronousTask):
 			fcntl.fcntl(f.fileno(), fcntl.F_SETFL,
 				fcntl.fcntl(f.fileno(), fcntl.F_GETFL) | os.O_NONBLOCK)
 			self._reg_ids.add(self.scheduler.register(f.fileno(),
-				PollConstants.POLLIN, self._output_handler))
+				self._registered_events, self._output_handler))
 		self._registered = True
 
 	def isAlive(self):
 		return self._registered
+
+	def cancel(self):
+		if self.returncode is None:
+			self.returncode = 1
+			self.cancelled = True
+		self.wait()
 
 	def _wait(self):
 		if self.returncode is not None:
@@ -1830,10 +1867,11 @@ class PipeReader(AsynchronousTask):
 				break
 
 		buf = array.array('B')
-		try:
-			buf.fromfile(f, self._bufsize)
-		except EOFError:
-			pass
+		if event & PollConstants.POLLIN:
+			try:
+				buf.fromfile(f, self._bufsize)
+			except EOFError:
+				pass
 
 		if buf:
 			self._read_data.append(buf.tostring())
@@ -1841,6 +1879,7 @@ class PipeReader(AsynchronousTask):
 			self._unregister()
 			self.wait()
 
+		self._unregister_if_appropriate(event)
 		return self._registered
 
 	def _unregister(self):
@@ -2009,9 +2048,10 @@ class TaskSequence(CompositeTask):
 			self._final_exit(task)
 			self.wait()
 
-class SubProcess(AsynchronousTask):
+class SubProcess(PollTask):
 
-	__slots__ = ("scheduler",) + ("pid", "_files", "_registered", "_reg_id")
+	__slots__ = ("pid",) + \
+		("_files", "_reg_id")
 
 	# A file descriptor is required for the scheduler to monitor changes from
 	# inside a poll() loop. When logging is not enabled, create a pipe just to
@@ -2125,7 +2165,6 @@ class SpawnProcess(SubProcess):
 
 	_file_names = ("log", "process", "stdout")
 	_files_dict = slot_dict_class(_file_names, prefix="")
-	_bufsize = 4096
 
 	def _start(self):
 
@@ -2203,7 +2242,7 @@ class SpawnProcess(SubProcess):
 		kwargs.pop("logfile", None)
 
 		self._reg_id = self.scheduler.register(files.process.fileno(),
-			PollConstants.POLLIN, output_handler)
+			self._registered_events, output_handler)
 		self._registered = True
 
 		retval = self._spawn(self.args, **kwargs)
@@ -2235,10 +2274,11 @@ class SpawnProcess(SubProcess):
 	def _output_handler(self, fd, event):
 		files = self._files
 		buf = array.array('B')
-		try:
-			buf.fromfile(files.process, self._bufsize)
-		except EOFError:
-			pass
+		if event & PollConstants.POLLIN:
+			try:
+				buf.fromfile(files.process, self._bufsize)
+			except EOFError:
+				pass
 		if buf:
 			if not self.background:
 				buf.tofile(files.stdout)
@@ -2248,6 +2288,8 @@ class SpawnProcess(SubProcess):
 		else:
 			self._unregister()
 			self.wait()
+
+		self._unregister_if_appropriate(event)
 		return self._registered
 
 	def _dummy_handler(self, fd, event):
@@ -2258,15 +2300,18 @@ class SpawnProcess(SubProcess):
 		"""
 		files = self._files
 		buf = array.array('B')
-		try:
-			buf.fromfile(files.process, self._bufsize)
-		except EOFError:
-			pass
+		if event & PollConstants.POLLIN:
+			try:
+				buf.fromfile(files.process, self._bufsize)
+			except EOFError:
+				pass
 		if buf:
 			pass
 		else:
 			self._unregister()
 			self.wait()
+
+		self._unregister_if_appropriate(event)
 		return self._registered
 
 class MiscFunctionsProcess(SpawnProcess):
@@ -2829,7 +2874,6 @@ class EbuildMetadataPhase(SubProcess):
 
 	_file_names = ("ebuild",)
 	_files_dict = slot_dict_class(_file_names, prefix="")
-	_bufsize = SpawnProcess._bufsize
 	_metadata_fd = 9
 
 	def _start(self):
@@ -2869,7 +2913,7 @@ class EbuildMetadataPhase(SubProcess):
 		self._raw_metadata = []
 		files.ebuild = os.fdopen(master_fd, 'r')
 		self._reg_id = self.scheduler.register(files.ebuild.fileno(),
-			PollConstants.POLLIN, self._output_handler)
+			self._registered_events, self._output_handler)
 		self._registered = True
 
 		retval = portage.doebuild(ebuild_path, "depend",
@@ -2891,8 +2935,9 @@ class EbuildMetadataPhase(SubProcess):
 
 	def _output_handler(self, fd, event):
 		files = self._files
-		self._raw_metadata.append(files.ebuild.read())
-		if not self._raw_metadata[-1]:
+		if event & PollConstants.POLLIN:
+			self._raw_metadata.append(files.ebuild.read())
+		if not self._raw_metadata[-1] or event & PollConstants.POLLHUP:
 			# Split lines here so they can be counted inside _set_returncode().
 			self._raw_metadata = "".join(self._raw_metadata).splitlines()
 			self._unregister()
@@ -2903,6 +2948,7 @@ class EbuildMetadataPhase(SubProcess):
 				self.metadata_callback(self.cpv, self.ebuild_path,
 					self.repo_path, metadata, self.ebuild_mtime)
 
+		self._unregister_if_appropriate(event)
 		return self._registered
 
 	def _set_returncode(self, wait_retval):
@@ -8632,20 +8678,6 @@ class PackageCounters(object):
 				myoutput.append(bad(" (%s unsatisfied)") % \
 					(self.blocks - self.blocks_satisfied))
 		return "".join(myoutput)
-
-class PollConstants(object):
-
-	"""
-	Provides POLL* constants that are equivalent to those from the
-	select module, for use by PollSelectAdapter.
-	"""
-
-	names = ("POLLIN", "POLLPRI", "POLLOUT", "POLLERR", "POLLHUP", "POLLNVAL")
-	v = 1
-	for k in names:
-		locals()[k] = getattr(select, k, v)
-		v *= 2
-	del k, v
 
 class PollSelectAdapter(PollConstants):
 
