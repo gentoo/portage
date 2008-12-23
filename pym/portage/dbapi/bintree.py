@@ -333,7 +333,7 @@ class binarytree(object):
 				try:
 					os.unlink(dest_path)
 				except OSError:
-					if os.path.exist(dest_path):
+					if os.path.exists(dest_path):
 						raise
 
 		if st is not None:
