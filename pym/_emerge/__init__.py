@@ -2202,6 +2202,10 @@ class SpawnProcess(SubProcess):
 		kwargs["returnpid"] = True
 		kwargs.pop("logfile", None)
 
+		self._reg_id = self.scheduler.register(files.process.fileno(),
+			PollConstants.POLLIN, output_handler)
+		self._registered = True
+
 		retval = self._spawn(self.args, **kwargs)
 
 		os.close(slave_fd)
@@ -2210,18 +2214,13 @@ class SpawnProcess(SubProcess):
 
 		if isinstance(retval, int):
 			# spawn failed
-			for f in files.values():
-				f.close()
+			self._unregister()
 			self.returncode = retval
 			self.wait()
 			return
 
 		self.pid = retval[0]
 		portage.process.spawned_pids.remove(self.pid)
-
-		self._reg_id = self.scheduler.register(files.process.fileno(),
-			PollConstants.POLLIN, output_handler)
-		self._registered = True
 
 	def _pipe(self, fd_pipes):
 		"""
@@ -2867,6 +2866,12 @@ class EbuildMetadataPhase(SubProcess):
 
 		fd_pipes[self._metadata_fd] = slave_fd
 
+		self._raw_metadata = []
+		files.ebuild = os.fdopen(master_fd, 'r')
+		self._reg_id = self.scheduler.register(files.ebuild.fileno(),
+			PollConstants.POLLIN, self._output_handler)
+		self._registered = True
+
 		retval = portage.doebuild(ebuild_path, "depend",
 			settings["ROOT"], settings, debug,
 			mydbapi=self.portdb, tree="porttree",
@@ -2876,19 +2881,13 @@ class EbuildMetadataPhase(SubProcess):
 
 		if isinstance(retval, int):
 			# doebuild failed before spawning
-			os.close(master_fd)
+			self._unregister()
 			self.returncode = retval
 			self.wait()
 			return
 
 		self.pid = retval[0]
 		portage.process.spawned_pids.remove(self.pid)
-
-		self._raw_metadata = []
-		files.ebuild = os.fdopen(master_fd, 'r')
-		self._reg_id = self.scheduler.register(files.ebuild.fileno(),
-			PollConstants.POLLIN, self._output_handler)
-		self._registered = True
 
 	def _output_handler(self, fd, event):
 		files = self._files
