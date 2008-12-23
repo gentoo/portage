@@ -322,7 +322,21 @@ class binarytree(object):
 		myfile = mypkg + ".tbz2"
 		mypath = os.path.join("All", myfile)
 		dest_path = os.path.join(self.pkgdir, mypath)
-		if os.path.exists(dest_path):
+
+		try:
+			st = os.lstat(dest_path)
+		except OSError:
+			st = None
+		else:
+			if stat.S_ISLNK(st.st_mode):
+				st = None
+				try:
+					os.unlink(dest_path)
+				except OSError:
+					if os.path.exist(dest_path):
+						raise
+
+		if st is not None:
 			# For invalid packages, other_cat could be None.
 			other_cat = portage.xpak.tbz2(dest_path).getfile("CATEGORY")
 			if other_cat:
@@ -330,11 +344,7 @@ class binarytree(object):
 				other_cpv = other_cat + "/" + mypkg
 				self._move_from_all(other_cpv)
 				self.inject(other_cpv)
-		"""The file may or may not exist. Move it if necessary and update
-		internal state for future calls to getname()."""
 		self._move_to_all(cpv)
-		if os.path.exists(full_path):
-			self.inject(cpv)
 
 	def _ensure_dir(self, path):
 		"""
@@ -361,6 +371,7 @@ class binarytree(object):
 		for future getname() calls."""
 		mycat, mypkg = catsplit(cpv)
 		myfile = mypkg + ".tbz2"
+		self._pkg_paths[cpv] = os.path.join("All", myfile)
 		src_path = os.path.join(self.pkgdir, mycat, myfile)
 		try:
 			mystat = os.lstat(src_path)
@@ -371,7 +382,7 @@ class binarytree(object):
 			dest_path = os.path.join(self.pkgdir, "All", myfile)
 			_movefile(src_path, dest_path, mysettings=self.settings)
 			self._create_symlink(cpv)
-		self._pkg_paths[cpv] = os.path.join("All", myfile)
+			self.inject(cpv)
 
 	def _move_from_all(self, cpv):
 		"""Move a package from ${PKGDIR}/All/${PF}.tbz2 to
