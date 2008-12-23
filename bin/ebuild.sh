@@ -2078,7 +2078,7 @@ ebuild_main() {
 
 		# alphabetically ordered by $EBUILD_PHASE value
 		local valid_phases
-		case $eapi in
+		case ${eapi/prefix/} in
 			0|1)
 				valid_phases="src_compile pkg_config pkg_info src_install
 					pkg_nofetch pkg_postinst pkg_postrm pkg_preinst pkg_prerm
