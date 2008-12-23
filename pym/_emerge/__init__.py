@@ -3,23 +3,6 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id: emerge 5976 2007-02-17 09:14:53Z genone $
 
-import sys
-# This block ensures that ^C interrupts are handled quietly.
-try:
-	import signal
-
-	def exithandler(signum,frame):
-		signal.signal(signal.SIGINT, signal.SIG_IGN)
-		signal.signal(signal.SIGTERM, signal.SIG_IGN)
-		sys.exit(1)
-	
-	signal.signal(signal.SIGINT, exithandler)
-	signal.signal(signal.SIGTERM, exithandler)
-	signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-
-except KeyboardInterrupt:
-	sys.exit(1)
-
 import array
 from collections import deque
 import fcntl
@@ -28,6 +11,8 @@ import logging
 import select
 import shlex
 import shutil
+import signal
+import sys
 import textwrap
 import urlparse
 import weakref
