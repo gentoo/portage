@@ -84,7 +84,7 @@ if ! hasq binchecks ${RESTRICT} && \
 	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^$D##" > "$log"
 	if [[ -n $QA_PRESTRIPPED && -s $log && \
 		${QA_STRICT_PRESTRIPPED-unset} = unset ]] ; then
-		local shopts=$-
+		shopts=$-
 		set -o noglob
 		for x in $QA_PRESTRIPPED ; do
 			sed -e "s#^${x#/}\$##" -i "$log"
