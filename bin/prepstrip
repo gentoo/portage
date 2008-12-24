@@ -82,7 +82,7 @@ if ! hasq binchecks ${RESTRICT} && \
 	! hasq strip ${RESTRICT} ; then
 	log=$T/scanelf-already-stripped.log
 	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^$D##" > "$log"
-	if [[ -n $QA_PRESTRIPPED && -s $log \
+	if [[ -n $QA_PRESTRIPPED && -s $log && \
 		${QA_STRICT_PRESTRIPPED-unset} = unset ]] ; then
 		local shopts=$-
 		set -o noglob
