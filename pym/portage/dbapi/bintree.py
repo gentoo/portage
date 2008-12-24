@@ -864,7 +864,7 @@ class binarytree(object):
 			path = d.get("PATH", "")
 			for i in xrange(len(pkgindex.packages) - 1, -1, -1):
 				d2 = pkgindex.packages[i]
-				if path is not None and path == d2.get("PATH"):
+				if path and path == d2.get("PATH"):
 					# Handle path collisions in $PKGDIR/All
 					# when CPV is not identical.
 					del pkgindex.packages[i]
