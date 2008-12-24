@@ -82,20 +82,15 @@ if ! hasq binchecks ${RESTRICT} && \
 	! hasq strip ${RESTRICT} ; then
 	log=$T/scanelf-already-stripped.log
 	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^$D##" > "$log"
-	if [[ -s $log && ${QA_STRICT_PRESTRIPPED-unset} = unset ]] ; then
-		if [[ ${#QA_DT_HASH[@]} -gt 1 ]] ; then
-			for x in "${QA_PRESTRIPPED[@]}" ; do
-				sed -e "s#^${x#/}\$##" -i "$log"
-			done
-		else
-			local shopts=$-
-			set -o noglob
-			for x in $QA_PRESTRIPPED ; do
-				sed -e "s#^${x#/}\$##" -i "$log"
-			done
-			set +o noglob
-			set -$shopts
-		fi
+	if [[ -n $QA_PRESTRIPPED && -s $log \
+		${QA_STRICT_PRESTRIPPED-unset} = unset ]] ; then
+		local shopts=$-
+		set -o noglob
+		for x in $QA_PRESTRIPPED ; do
+			sed -e "s#^${x#/}\$##" -i "$log"
+		done
+		set +o noglob
+		set -$shopts
 	fi
 	sed -e "/^\$/d" -e "s#^#/#" -i "$log"
 	if [[ -s $log ]] ; then
