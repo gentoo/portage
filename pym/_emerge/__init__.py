@@ -3535,12 +3535,12 @@ class BinpkgFetcher(SpawnProcess):
 				remote_mtime = bintree._remotepkgs[self.pkg.cpv].get("MTIME")
 				if remote_mtime is not None:
 					try:
-						remote_mtime = float(remote_mtime)
+						remote_mtime = long(remote_mtime)
 					except ValueError:
 						pass
 					else:
 						try:
-							local_mtime = os.stat(self.pkg_path).st_mtime
+							local_mtime = long(os.stat(self.pkg_path).st_mtime)
 						except OSError:
 							pass
 						else:
