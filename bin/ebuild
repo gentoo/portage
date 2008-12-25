@@ -19,6 +19,11 @@ try:
 except KeyboardInterrupt:
 	sys.exit(1)
 
+def debug_signal(signum, frame):
+	import pdb
+	pdb.set_trace()
+signal.signal(signal.SIGUSR1, debug_signal)
+
 import optparse
 import os
 
@@ -167,6 +172,7 @@ def discard_digests(myebuild, mysettings, mydbapi):
 	finally:
 		portage._doebuild_manifest_exempt_depend -= 1
 
+portage.settings.validate() # generate warning messages if necessary
 tmpsettings = portage.config(clone=portage.settings)
 if "test" in pargs:
 	# This variable is a signal to config.regenerate() to

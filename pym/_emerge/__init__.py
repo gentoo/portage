@@ -3,23 +3,6 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import sys
-# This block ensures that ^C interrupts are handled quietly.
-try:
-	import signal
-
-	def exithandler(signum,frame):
-		signal.signal(signal.SIGINT, signal.SIG_IGN)
-		signal.signal(signal.SIGTERM, signal.SIG_IGN)
-		sys.exit(1)
-	
-	signal.signal(signal.SIGINT, exithandler)
-	signal.signal(signal.SIGTERM, exithandler)
-	signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-
-except KeyboardInterrupt:
-	sys.exit(1)
-
 import array
 from collections import deque
 import fcntl
@@ -28,6 +11,8 @@ import logging
 import select
 import shlex
 import shutil
+import signal
+import sys
 import textwrap
 import urlparse
 import weakref
@@ -1791,7 +1776,7 @@ class AsynchronousTask(SlotObject):
 			while self._exit_listener_stack:
 				self._exit_listener_stack.pop()(self)
 
-class PollTask(AsynchronousTask):
+class AbstractPollTask(AsynchronousTask):
 
 	__slots__ = ("scheduler",) + \
 		("_registered",)
@@ -1800,6 +1785,9 @@ class PollTask(AsynchronousTask):
 	_exceptional_events = PollConstants.POLLERR | PollConstants.POLLNVAL
 	_registered_events = PollConstants.POLLIN | PollConstants.POLLHUP | \
 		_exceptional_events
+
+	def _unregister(self):
+		raise NotImplementedError(self)
 
 	def _unregister_if_appropriate(self, event):
 		if self._registered:
@@ -1810,7 +1798,7 @@ class PollTask(AsynchronousTask):
 				self._unregister()
 				self.wait()
 
-class PipeReader(PollTask):
+class PipeReader(AbstractPollTask):
 
 	"""
 	Reads output from one or more files and saves it in memory,
@@ -1861,23 +1849,24 @@ class PipeReader(PollTask):
 		self._read_data = None
 
 	def _output_handler(self, fd, event):
-		files = self.input_files
-		for f in files.itervalues():
-			if fd == f.fileno():
-				break
 
-		buf = array.array('B')
 		if event & PollConstants.POLLIN:
+
+			for f in self.input_files.itervalues():
+				if fd == f.fileno():
+					break
+
+			buf = array.array('B')
 			try:
 				buf.fromfile(f, self._bufsize)
 			except EOFError:
 				pass
 
-		if buf:
-			self._read_data.append(buf.tostring())
-		else:
-			self._unregister()
-			self.wait()
+			if buf:
+				self._read_data.append(buf.tostring())
+			else:
+				self._unregister()
+				self.wait()
 
 		self._unregister_if_appropriate(event)
 		return self._registered
@@ -2048,7 +2037,7 @@ class TaskSequence(CompositeTask):
 			self._final_exit(task)
 			self.wait()
 
-class SubProcess(PollTask):
+class SubProcess(AbstractPollTask):
 
 	__slots__ = ("pid",) + \
 		("_files", "_reg_id")
@@ -2272,22 +2261,25 @@ class SpawnProcess(SubProcess):
 		return portage.process.spawn(args, **kwargs)
 
 	def _output_handler(self, fd, event):
-		files = self._files
-		buf = array.array('B')
+
 		if event & PollConstants.POLLIN:
+
+			files = self._files
+			buf = array.array('B')
 			try:
 				buf.fromfile(files.process, self._bufsize)
 			except EOFError:
 				pass
-		if buf:
-			if not self.background:
-				buf.tofile(files.stdout)
-				files.stdout.flush()
-			buf.tofile(files.log)
-			files.log.flush()
-		else:
-			self._unregister()
-			self.wait()
+
+			if buf:
+				if not self.background:
+					buf.tofile(files.stdout)
+					files.stdout.flush()
+				buf.tofile(files.log)
+				files.log.flush()
+			else:
+				self._unregister()
+				self.wait()
 
 		self._unregister_if_appropriate(event)
 		return self._registered
@@ -2298,18 +2290,20 @@ class SpawnProcess(SubProcess):
 		the only purpose of the pipe is to allow the scheduler to
 		monitor the process from inside a poll() loop.
 		"""
-		files = self._files
-		buf = array.array('B')
+
 		if event & PollConstants.POLLIN:
+
+			buf = array.array('B')
 			try:
-				buf.fromfile(files.process, self._bufsize)
+				buf.fromfile(self._files.process, self._bufsize)
 			except EOFError:
 				pass
-		if buf:
-			pass
-		else:
-			self._unregister()
-			self.wait()
+
+			if buf:
+				pass
+			else:
+				self._unregister()
+				self.wait()
 
 		self._unregister_if_appropriate(event)
 		return self._registered
@@ -2934,9 +2928,10 @@ class EbuildMetadataPhase(SubProcess):
 		portage.process.spawned_pids.remove(self.pid)
 
 	def _output_handler(self, fd, event):
-		files = self._files
+
 		if event & PollConstants.POLLIN:
-			self._raw_metadata.append(files.ebuild.read())
+			self._raw_metadata.append(self._files.ebuild.read())
+
 		if not self._raw_metadata[-1] or event & PollConstants.POLLHUP:
 			# Split lines here so they can be counted inside _set_returncode().
 			self._raw_metadata = "".join(self._raw_metadata).splitlines()
@@ -3567,12 +3562,12 @@ class BinpkgFetcher(SpawnProcess):
 				remote_mtime = bintree._remotepkgs[self.pkg.cpv].get("MTIME")
 				if remote_mtime is not None:
 					try:
-						remote_mtime = float(remote_mtime)
+						remote_mtime = long(remote_mtime)
 					except ValueError:
 						pass
 					else:
 						try:
-							local_mtime = os.stat(self.pkg_path).st_mtime
+							local_mtime = long(os.stat(self.pkg_path).st_mtime)
 						except OSError:
 							pass
 						else:

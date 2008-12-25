@@ -175,6 +175,9 @@ def ParseArgs(args, qahelp):
 	parser.add_option('-v', '--verbose', dest="verbosity", action='count',
 		help='be very verbose in output', default=0)
 
+	parser.add_option('-V', '--version', dest='version', action='store_true',
+		help='show version info')
+
 	parser.add_option('-x', '--xmlparse', dest='xml_parse', action='store_true',
 		default=False, help='forces the metadata.xml parse check to be carried out')
 
@@ -420,6 +423,10 @@ suspect_rdepend = frozenset([
 no_exec = frozenset(["Manifest","ChangeLog","metadata.xml"])
 
 options, arguments = ParseArgs(sys.argv, qahelp)
+
+if options.version:
+	print "Portage", portage.VERSION
+	sys.exit(0)
 
 # Set this to False when an extraordinary issue (generally
 # something other than a QA issue) makes it impossible to

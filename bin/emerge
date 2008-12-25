@@ -3,6 +3,28 @@
 # Portage Emerge bits
 # $Id$
 
+import os
+import sys
+# This block ensures that ^C interrupts are handled quietly.
+try:
+	import signal
+
+	def exithandler(signum,frame):
+		signal.signal(signal.SIGINT, signal.SIG_IGN)
+		signal.signal(signal.SIGTERM, signal.SIG_IGN)
+		sys.exit(1)
+
+	signal.signal(signal.SIGINT, exithandler)
+	signal.signal(signal.SIGTERM, exithandler)
+	signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
+except KeyboardInterrupt:
+	sys.exit(1)
+
+def debug_signal(signum, frame):
+	import pdb
+	pdb.set_trace()
+signal.signal(signal.SIGUSR1, debug_signal)
 
 # for an explanation on this logic, see pym/_emerge/__init__.py
 import os
