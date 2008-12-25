@@ -5813,7 +5813,7 @@ class depgraph(object):
 							calculated_use = True
 						self._pkg_cache[pkg] = pkg
 
-					if not installed or (installed and matched_packages):
+					if not installed or (built and matched_packages):
 						# Only enforce visibility on installed packages
 						# if there is at least one other visible package
 						# available. By filtering installed masked packages
@@ -5832,9 +5832,8 @@ class depgraph(object):
 						# version is masked by KEYWORDS, but never
 						# reinstall the same exact version only due
 						# to a KEYWORDS mask.
-						if installed and matched_packages and \
-							pkgsettings._getMissingKeywords(
-							pkg.cpv, pkg.metadata):
+						if built and matched_packages:
+
 							different_version = None
 							for avail_pkg in matched_packages:
 								if not portage.dep.cpvequal(
@@ -5842,9 +5841,26 @@ class depgraph(object):
 									different_version = avail_pkg
 									break
 							if different_version is not None:
-								# Only reinstall for KEYWORDS if
-								# it's not the same version.
-								continue
+
+								if installed and \
+									pkgsettings._getMissingKeywords(
+									pkg.cpv, pkg.metadata):
+									continue
+
+								# If the ebuild no longer exists or it's
+								# keywords have been dropped, reject built
+								# instances (installed or binary).
+								# If --usepkgonly is enabled, assume that
+								# the ebuild status should be ignored.
+								if not usepkgonly:
+									try:
+										pkg_eb = self._pkg(
+											pkg.cpv, "ebuild", root_config)
+									except portage.exception.PackageNotFound:
+										continue
+									else:
+										if not visible(pkgsettings, pkg_eb):
+											continue
 
 					if not pkg.built and not calculated_use:
 						# This is avoided whenever possible because
@@ -6133,7 +6149,10 @@ class depgraph(object):
 			db = root_config.trees[tree_type].dbapi
 			db_keys = list(self._trees_orig[root_config.root][
 				tree_type].dbapi._aux_cache_keys)
-			metadata = izip(db_keys, db.aux_get(cpv, db_keys))
+			try:
+				metadata = izip(db_keys, db.aux_get(cpv, db_keys))
+			except KeyError:
+				raise portage.exception.PackageNotFound(cpv)
 			pkg = Package(cpv=cpv, metadata=metadata,
 				root_config=root_config, installed=installed)
 			if type_name == "ebuild":
