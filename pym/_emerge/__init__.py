@@ -4291,7 +4291,7 @@ class depgraph(object):
 		# to the graph.
 		self._graph_trees = {}
 		# All Package instances
-		self._pkg_cache = self._package_cache(self)
+		self._pkg_cache = {}
 		for myroot in trees:
 			self.trees[myroot] = {}
 			# Create a RootConfig instance that references
@@ -5690,6 +5690,12 @@ class depgraph(object):
 			return ret
 		ret = self._select_pkg_highest_available_imp(root, atom, onlydeps=onlydeps)
 		self._highest_pkg_cache[cache_key] = ret
+		pkg, existing = ret
+		if pkg is not None:
+			settings = pkg.root_config.settings
+			if visible(settings, pkg) and not (pkg.installed and \
+				settings._getMissingKeywords(pkg.cpv, pkg.metadata)):
+				pkg.root_config.visible_pkgs.cpv_inject(pkg)
 		return ret
 
 	def _select_pkg_highest_available_imp(self, root, atom, onlydeps=False):
@@ -5996,22 +6002,6 @@ class depgraph(object):
 				matched_packages = [pkg for pkg in matched_packages \
 					if pkg.cp == cp]
 				break
-
-		# If the installed version is in a different slot and it is higher than
-		# the highest available visible package, _iter_atoms_for_pkg() may fail
-		# to properly match the available package with a corresponding argument
-		# atom. Detect this case and correct it here.
-		if not selective and len(matched_packages) > 1 and \
-			matched_packages[-1].installed and \
-			matched_packages[-1].slot_atom != \
-			matched_packages[-2].slot_atom and \
-			matched_packages[-1] > matched_packages[-2]:
-			pkg = matched_packages[-2]
-			if pkg.root == self.target_root and \
-				self._set_atoms.findAtomForPackage(pkg):
-				# Select the available package instead
-				# of the installed package.
-				matched_packages.pop()
 
 		if len(matched_packages) > 1:
 			bestmatch = portage.best(
@@ -8455,22 +8445,6 @@ class depgraph(object):
 		def aux_get(self, cpv, wants):
 			metadata = self._cpv_pkg_map[cpv].metadata
 			return [metadata.get(x, "") for x in wants]
-
-	class _package_cache(dict):
-		def __init__(self, depgraph):
-			dict.__init__(self)
-			self._depgraph = depgraph
-
-		def __setitem__(self, k, v):
-			dict.__setitem__(self, k, v)
-			root_config = self._depgraph.roots[v.root]
-			try:
-				if visible(root_config.settings, v) and \
-					not (v.installed and \
-					v.root_config.settings._getMissingKeywords(v.cpv, v.metadata)):
-					root_config.visible_pkgs.cpv_inject(v)
-			except portage.exception.InvalidDependString:
-				pass
 
 class RepoDisplay(object):
 	def __init__(self, roots):
