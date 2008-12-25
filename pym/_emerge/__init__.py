@@ -1566,7 +1566,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 	def _set__mtime_(self, k, v):
 		if isinstance(v, basestring):
 			try:
-				v = float(v.strip())
+				v = long(v.strip())
 			except ValueError:
 				v = 0
 		self._pkg.mtime = v
