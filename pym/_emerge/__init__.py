@@ -9084,9 +9084,6 @@ class TaskScheduler(object):
 	def add(self, task):
 		self._queue.add(task)
 
-	def run(self):
-		self._scheduler.schedule()
-
 class JobStatusDisplay(object):
 
 	_bound_properties = ("curval", "failed", "running")
