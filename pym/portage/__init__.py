@@ -1789,6 +1789,11 @@ class config(object):
 			writemsg("!!! /etc/portage/profile/virtuals. Please move it to\n")
 			writemsg("!!! this new location.\n\n")
 
+		if "fakeroot" in self.features and \
+			not portage.process.fakeroot_capable:
+			writemsg("!!! FEATURES=fakeroot is enabled, but the " + \
+				"fakeroot binary is not installed.\n", noiselevel=-1)
+
 	def loadVirtuals(self,root):
 		"""Not currently used by portage."""
 		writemsg("DEPRECATED: portage.config.loadVirtuals\n")
