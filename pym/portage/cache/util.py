@@ -90,8 +90,14 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 
 				# Even if _eclasses_ already exists, replace it with data from
 				# eclass_cache, in order to insert local eclass paths.
-				eclasses = eclass_cache.get_eclass_data(inherited,
-					from_master_only=True)
+				try:
+					eclasses = eclass_cache.get_eclass_data(inherited,
+						from_master_only=True)
+				except KeyError:
+					# INHERITED contains a non-existent eclass.
+					noise.eclass_stale(x)
+					continue
+
 				if eclasses is None:
 					noise.eclass_stale(x)
 					continue
