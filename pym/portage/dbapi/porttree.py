@@ -296,17 +296,6 @@ class portdbapi(dbapi):
 			i = metadata.iteritems()
 		metadata = dict(i)
 
-		if "EAPI" not in metadata or not metadata["EAPI"].strip():
-			metadata["EAPI"] = "0"
-
-		if not eapi_is_supported(metadata["EAPI"]):
-			# if newer version, wipe everything and negate eapi
-			eapi = metadata["EAPI"]
-			metadata = {}
-			for x in self._known_keys:
-				metadata.setdefault(x, "")
-			metadata["EAPI"] = "-" + eapi
-
 		if metadata.get("INHERITED", False):
 			metadata["_eclasses_"] = \
 				self.eclassdb.get_eclass_data(metadata["INHERITED"].split())
@@ -315,6 +304,16 @@ class portdbapi(dbapi):
 
 		metadata.pop("INHERITED", None)
 		metadata["_mtime_"] = mtime
+
+		eapi = metadata.get("EAPI")
+		if not eapi or not eapi.strip():
+			eapi = "0"
+			metadata["EAPI"] = eapi
+		if not eapi_is_supported(eapi):
+			for k in set(metadata).difference(("_mtime_", "_eclasses_")):
+				metadata[k] = ""
+			metadata["EAPI"] = "-" + eapi.lstrip("-")
+
 		self.auxdb[repo_path][cpv] = metadata
 
 	def _pull_valid_cache(self, cpv, ebuild_path, repo_path):
@@ -425,15 +424,21 @@ class portdbapi(dbapi):
 			else:
 				mydata["_eclasses_"] = {}
 
-		if not mydata.setdefault("EAPI", "0"):
-			mydata["EAPI"] = "0"
-
 		# do we have a origin repository name for the current package
 		mydata["repository"] = self._repository_map.get(
 			os.path.sep.join(myebuild.split(os.path.sep)[:-3]), "")
 
 		mydata["INHERITED"] = ' '.join(mydata.get("_eclasses_", []))
-		mydata["_mtime_"] = st.st_mtime
+		mydata["_mtime_"] = long(st.st_mtime)
+
+		eapi = mydata.get("EAPI")
+		if not eapi:
+			eapi = "0"
+			mydata["EAPI"] = eapi
+		if not eapi_is_supported(eapi):
+			for k in set(mydata).difference(("_mtime_", "_eclasses_")):
+				mydata[k] = ""
+			mydata["EAPI"] = "-" + eapi.lstrip("-")
 
 		#finally, we look at our internal cache entry and return the requested data.
 		returnme = [mydata.get(x, "") for x in mylist]
