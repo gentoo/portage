@@ -2904,28 +2904,25 @@ class EbuildMetadataPhase(SubProcess):
 
 		if event & PollConstants.POLLIN:
 			self._raw_metadata.append(self._files.ebuild.read())
-
-		if not self._raw_metadata[-1] or event & PollConstants.POLLHUP:
-			# Split lines here so they can be counted inside _set_returncode().
-			self._raw_metadata = "".join(self._raw_metadata).splitlines()
-			self._unregister()
-			self.wait()
-
-			if self.returncode == os.EX_OK:
-				metadata = izip(portage.auxdbkeys, self._raw_metadata)
-				self.metadata_callback(self.cpv, self.ebuild_path,
-					self.repo_path, metadata, self.ebuild_mtime)
+			if not self._raw_metadata[-1]:
+				self._unregister()
+				self.wait()
 
 		self._unregister_if_appropriate(event)
 		return self._registered
 
 	def _set_returncode(self, wait_retval):
 		SubProcess._set_returncode(self, wait_retval)
-		if self.returncode == os.EX_OK and \
-			len(portage.auxdbkeys) != len(self._raw_metadata):
-			# Don't trust bash's returncode if the
-			# number of lines is incorrect.
-			self.returncode = 1
+		if self.returncode == os.EX_OK:
+			metadata_lines = "".join(self._raw_metadata).splitlines()
+			if len(portage.auxdbkeys) != len(metadata_lines):
+				# Don't trust bash's returncode if the
+				# number of lines is incorrect.
+				self.returncode = 1
+			else:
+				metadata = izip(portage.auxdbkeys, metadata_lines)
+				self.metadata_callback(self.cpv, self.ebuild_path,
+					self.repo_path, metadata, self.ebuild_mtime)
 
 class EbuildProcess(SpawnProcess):
 
