@@ -11803,6 +11803,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	vcs_dirs = vcs_dirs.intersection(os.listdir(myportdir))
 
 	os.umask(0022)
+	dosyncuri = syncuri
 	updatecache_flg = False
 	if myaction == "metadata":
 		print "skipping sync"
@@ -11825,7 +11826,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		msg = ">>> Git pull in %s successful" % myportdir
 		emergelog(xterm_titles, msg)
 		writemsg_level(msg + "\n")
-		return exitcode
+		exitcode = git_sync_timestamps(settings, myportdir)
+		if exitcode == os.EX_OK:
+			updatecache_flg = True
 	elif syncuri[:8]=="rsync://":
 		for vcs_dir in vcs_dirs:
 			writemsg_level(("!!! %s appears to be under revision " + \
@@ -12246,6 +12249,138 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		print
 	
 	display_news_notification(root_config, myopts)
+	return os.EX_OK
+
+def git_sync_timestamps(settings, portdir):
+	"""
+	Since git doesn't preserve timestamps, synchronize timestamps between
+	entries and ebuilds/eclasses. Assume the cache has the correct timestamp
+	for a given file as long as the file in the working tree is not modified
+	(relative to HEAD).
+	"""
+	cache_dir = os.path.join(portdir, "metadata", "cache")
+	if not os.path.isdir(cache_dir):
+		return os.EX_OK
+	writemsg_level(">>> Synchronizing timestamps...\n")
+
+	from portage.cache.cache_errors import CacheError
+	try:
+		cache_db = settings.load_best_module("portdbapi.metadbmodule")(
+			portdir, "metadata/cache", portage.auxdbkeys[:], readonly=True)
+	except CacheError, e:
+		writemsg_level("!!! Unable to instantiate cache: %s\n" % (e,),
+			level=logging.ERROR, noiselevel=-1)
+		return 1
+
+	ec_dir = os.path.join(portdir, "eclass")
+	try:
+		ec_names = set(f[:-7] for f in os.listdir(ec_dir) \
+			if f.endswith(".eclass"))
+	except OSError, e:
+		writemsg_level("!!! Unable to list eclasses: %s\n" % (e,),
+			level=logging.ERROR, noiselevel=-1)
+		return 1
+
+	args = [portage.const.BASH_BINARY, "-c",
+		"cd %s && git ls-files -m --with-tree=HEAD" % \
+		portage._shell_quote(portdir)]
+	import subprocess
+	proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+	modified_files = set(l.rstrip("\n") for l in proc.stdout)
+	rval = proc.wait()
+	if rval != os.EX_OK:
+		return rval
+
+	modified_eclasses = set(ec for ec in ec_names \
+		if os.path.join("eclass", ec + ".eclass") in modified_files)
+
+	updated_ec_mtimes = {}
+
+	for cpv in cache_db:
+		cpv_split = portage.catpkgsplit(cpv)
+		if cpv_split is None:
+			writemsg_level("!!! Invalid cache entry: %s\n" % (cpv,),
+				level=logging.ERROR, noiselevel=-1)
+			continue
+
+		cat, pn, ver, rev = cpv_split
+		cat, pf = portage.catsplit(cpv)
+		relative_eb_path = os.path.join(cat, pn, pf + ".ebuild")
+		if relative_eb_path in modified_files:
+			continue
+
+		try:
+			cache_entry = cache_db[cpv]
+			eb_mtime = cache_entry.get("_mtime_")
+			ec_mtimes = cache_entry.get("_eclasses_")
+		except KeyError:
+			writemsg_level("!!! Missing cache entry: %s\n" % (cpv,),
+				level=logging.ERROR, noiselevel=-1)
+			continue
+		except CacheError, e:
+			writemsg_level("!!! Unable to access cache entry: %s %s\n" % \
+				(cpv, e), level=logging.ERROR, noiselevel=-1)
+			continue
+
+		if eb_mtime is None:
+			writemsg_level("!!! Missing ebuild mtime: %s\n" % (cpv,),
+				level=logging.ERROR, noiselevel=-1)
+			continue
+
+		try:
+			eb_mtime = long(eb_mtime)
+		except ValueError:
+			writemsg_level("!!! Invalid ebuild mtime: %s %s\n" % \
+				(cpv, eb_mtime), level=logging.ERROR, noiselevel=-1)
+			continue
+
+		if ec_mtimes is None:
+			writemsg_level("!!! Missing eclass mtimes: %s\n" % (cpv,),
+				level=logging.ERROR, noiselevel=-1)
+			continue
+
+		if modified_eclasses.intersection(ec_mtimes):
+			continue
+
+		missing_eclasses = set(ec_mtimes).difference(ec_names)
+		if missing_eclasses:
+			writemsg_level("!!! Non-existent eclass(es): %s %s\n" % \
+				(cpv, sorted(missing_eclasses)), level=logging.ERROR,
+				noiselevel=-1)
+			continue
+
+		eb_path = os.path.join(portdir, relative_eb_path)
+		try:
+			current_eb_mtime = os.stat(eb_path)
+		except OSError:
+			writemsg_level("!!! Missing ebuild: %s\n" % \
+				(cpv,), level=logging.ERROR, noiselevel=-1)
+			continue
+
+		inconsistent = False
+		for ec, (ec_path, ec_mtime) in ec_mtimes.iteritems():
+			updated_mtime = updated_ec_mtimes.get(ec)
+			if updated_mtime is not None and updated_mtime != ec_mtime:
+				writemsg_level("!!! Inconsistend eclass mtime: %s %s\n" % \
+					(cpv, ec), level=logging.ERROR, noiselevel=-1)
+				inconsistent = True
+				break
+
+		if inconsistent:
+			continue
+
+		if current_eb_mtime != eb_mtime:
+			os.utime(eb_path, (eb_mtime, eb_mtime))
+
+		for ec, (ec_path, ec_mtime) in ec_mtimes.iteritems():
+			if ec in updated_ec_mtimes:
+				continue
+			ec_path = os.path.join(ec_dir, ec + ".eclass")
+			current_mtime = long(os.stat(ec_path).st_mtime)
+			if current_mtime != ec_mtime:
+				os.utime(ec_path, (ec_mtime, ec_mtime))
+			updated_ec_mtimes[ec] = ec_mtime
+
 	return os.EX_OK
 
 def action_metadata(settings, portdb, myopts):
