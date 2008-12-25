@@ -19,6 +19,11 @@ try:
 except KeyboardInterrupt:
 	sys.exit(1)
 
+def debug_signal(signum, frame):
+	import pdb
+	pdb.set_trace()
+signal.signal(signal.SIGUSR1, debug_signal)
+
 import optparse
 import os
 
