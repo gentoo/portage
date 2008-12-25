@@ -861,14 +861,14 @@ class binarytree(object):
 				return
 
 			# If found, remove package(s) with duplicate path.
-			path = d.get("PATH")
+			path = d.get("PATH", "")
 			for i in xrange(len(pkgindex.packages) - 1, -1, -1):
 				d2 = pkgindex.packages[i]
 				if path is not None and path == d2.get("PATH"):
 					# Handle path collisions in $PKGDIR/All
 					# when CPV is not identical.
 					del pkgindex.packages[i]
-				elif cpv == d2.get("CPV") and path == d2.get("PATH"):
+				elif cpv == d2.get("CPV") and path == d2.get("PATH", ""):
 					del pkgindex.packages[i]
 			pkgindex.packages.append(d)
 
