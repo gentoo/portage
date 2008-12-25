@@ -1745,7 +1745,7 @@ class AsynchronousTask(SlotObject):
 			while self._exit_listener_stack:
 				self._exit_listener_stack.pop()(self)
 
-class PollTask(AsynchronousTask):
+class AbstractPollTask(AsynchronousTask):
 
 	__slots__ = ("scheduler",) + \
 		("_registered",)
@@ -1754,6 +1754,9 @@ class PollTask(AsynchronousTask):
 	_exceptional_events = PollConstants.POLLERR | PollConstants.POLLNVAL
 	_registered_events = PollConstants.POLLIN | PollConstants.POLLHUP | \
 		_exceptional_events
+
+	def _unregister(self):
+		raise NotImplementedError(self)
 
 	def _unregister_if_appropriate(self, event):
 		if self._registered:
@@ -1764,7 +1767,7 @@ class PollTask(AsynchronousTask):
 				self._unregister()
 				self.wait()
 
-class PipeReader(PollTask):
+class PipeReader(AbstractPollTask):
 
 	"""
 	Reads output from one or more files and saves it in memory,
@@ -2002,7 +2005,7 @@ class TaskSequence(CompositeTask):
 			self._final_exit(task)
 			self.wait()
 
-class SubProcess(PollTask):
+class SubProcess(AbstractPollTask):
 
 	__slots__ = ("pid",) + \
 		("_files", "_reg_id")
