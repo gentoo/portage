@@ -12358,7 +12358,7 @@ def git_sync_timestamps(settings, portdir):
 		for ec, (ec_path, ec_mtime) in ec_mtimes.iteritems():
 			updated_mtime = updated_ec_mtimes.get(ec)
 			if updated_mtime is not None and updated_mtime != ec_mtime:
-				writemsg_level("!!! Inconsistend eclass mtime: %s %s\n" % \
+				writemsg_level("!!! Inconsistent eclass mtime: %s %s\n" % \
 					(cpv, ec), level=logging.ERROR, noiselevel=-1)
 				inconsistent = True
 				break
