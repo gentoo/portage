@@ -99,12 +99,7 @@ class cache(object):
 	def get_eclass_data(self, inherits, from_master_only=False):
 		ec_dict = {}
 		for x in inherits:
-			try:
-				ec_dict[x] = self.eclasses[x]
-			except KeyError:
-				print "ec=",ec_dict
-				print "inherits=",inherits
-				raise
+			ec_dict[x] = self.eclasses[x]
 			if from_master_only and \
 				self._eclass_locations[x] != self._master_eclass_root:
 				return None
