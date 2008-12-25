@@ -1176,7 +1176,7 @@ class vardbapi(dbapi):
 		results = []
 		for x in wants:
 			if x == "_mtime_":
-				results.append(st.st_mtime)
+				results.append(long(st.st_mtime))
 				continue
 			try:
 				myf = open(os.path.join(mydir, x), "r")
