@@ -103,7 +103,7 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 			if not eapi_is_supported(eapi):
 				for k in set(entry).difference(("_mtime_", "_eclasses_")):
 					entry[k] = ""
-				entry["EAPI"] = "-" + eapi
+				entry["EAPI"] = "-" + eapi.lstrip("-")
 
 			# by this time, if it reaches here, the eclass has been validated, and the entry has 
 			# been updated/translated (if needs be, for metadata/cache mainly)
