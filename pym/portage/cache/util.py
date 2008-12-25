@@ -10,6 +10,7 @@ from portage.cache import cache_errors
 
 def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, verbose_instance=None):
 
+	from portage import eapi_is_supported
 	if not src_cache.complete_eclass_entries and not eclass_cache:
 		raise Exception("eclass_cache required for cache's of class %s!" % src_cache.__class__)
 
@@ -89,12 +90,26 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 
 				# Even if _eclasses_ already exists, replace it with data from
 				# eclass_cache, in order to insert local eclass paths.
-				eclasses = eclass_cache.get_eclass_data(inherited,
-					from_master_only=True)
+				try:
+					eclasses = eclass_cache.get_eclass_data(inherited,
+						from_master_only=True)
+				except KeyError:
+					# INHERITED contains a non-existent eclass.
+					noise.eclass_stale(x)
+					continue
+
 				if eclasses is None:
 					noise.eclass_stale(x)
 					continue
 				entry["_eclasses_"] = eclasses
+
+			eapi = entry.get("EAPI")
+			if not eapi:
+				eapi = "0"
+			if not eapi_is_supported(eapi):
+				for k in set(entry).difference(("_mtime_", "_eclasses_")):
+					entry[k] = ""
+				entry["EAPI"] = "-" + eapi.lstrip("-")
 
 			# by this time, if it reaches here, the eclass has been validated, and the entry has 
 			# been updated/translated (if needs be, for metadata/cache mainly)

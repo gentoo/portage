@@ -98,7 +98,7 @@ install_qa_check() {
 		export QA_TEXTRELS="${QA_TEXTRELS} lib*/modules/*.ko"
 		f=$(scanelf -qyRF '%t %p' "${ED}" | grep -v 'usr/lib/debug/')
 		if [[ -n ${f} ]] ; then
-			scanelf -qyRF '%T %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-textrel.log
+			scanelf -qyRAF '%T %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-textrel.log
 			vecho -ne '\a\n'
 			eqawarn "QA Notice: The following files contain runtime text relocations"
 			eqawarn " Text relocations force the dynamic linker to perform extra"
@@ -136,14 +136,14 @@ install_qa_check() {
 					[[ -n ${QA_STRICT_WX_LOAD} ]] && QA_WX_LOAD=""
 					export QA_EXECSTACK="${QA_EXECSTACK} lib*/modules/*.ko"
 					export QA_WX_LOAD="${QA_WX_LOAD} lib*/modules/*.ko"
-					f=$(scanelf -qyRF '%e %p' "${ED}" | grep -v 'usr/lib/debug/')
+					f=$(scanelf -qyRAF '%e %p' "${ED}" | grep -v 'usr/lib/debug/')
 					;;
 			esac
 			;;
 		esac
 		if [[ -n ${f} ]] ; then
 			# One more pass to help devs track down the source
-			scanelf -qyRF '%e %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-execstack.log
+			scanelf -qyRAF '%e %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-execstack.log
 			vecho -ne '\a\n'
 			eqawarn "QA Notice: The following files contain executable stacks"
 			eqawarn " Files with executable stacks will not work properly (or at all!)"

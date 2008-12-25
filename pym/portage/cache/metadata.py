@@ -4,7 +4,7 @@
 # $Id$
 
 import os, re, stat, types
-from portage.cache import flat_hash
+from portage.cache import cache_errors, flat_hash
 import portage.eclass_cache 
 from portage.cache.template import reconstruct_eclasses
 from portage.cache.mappings import ProtectedDict
@@ -55,7 +55,12 @@ class database(flat_hash.database):
 
 		if "_eclasses_" not in d:
 			if "INHERITED" in d:
-				d["_eclasses_"] = self.ec.get_eclass_data(d["INHERITED"].split(), from_master_only=True)
+				try:
+					d["_eclasses_"] = self.ec.get_eclass_data(
+						d["INHERITED"].split(), from_master_only=True)
+				except KeyError, e:
+					# INHERITED contains a non-existent eclass.
+					raise cache_errors.CacheCorruption(cpv, e)
 				del d["INHERITED"]
 			else:
 				d["_eclasses_"] = {}
