@@ -6838,7 +6838,7 @@ class depgraph(object):
 					selected_nodes = list(selected_nodes)
 				selected_nodes.sort(cmp_circular_bias)
 
-			if not selected_nodes and myblocker_uninstalls.leaf_nodes():
+			if not selected_nodes and not myblocker_uninstalls.is_empty():
 				# An Uninstall task needs to be executed in order to
 				# avoid conflict if possible.
 				min_parent_deps = None
