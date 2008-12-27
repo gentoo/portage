@@ -6991,15 +6991,17 @@ class depgraph(object):
 						except KeyError:
 							pass
 						else:
+							uninst_task = node
 							ignored_uninstall_tasks.add(node)
 							break
 
-				# After dropping an Uninstall task, reset
-				# the state variables for leaf node selection and
-				# continue trying to select leaf nodes.
-				prefer_asap = True
-				accept_root_node = False
-				continue
+				if uninst_task is not None:
+					# After dropping an Uninstall task, reset
+					# the state variables for leaf node selection and
+					# continue trying to select leaf nodes.
+					prefer_asap = True
+					accept_root_node = False
+					continue
 
 			if not selected_nodes:
 				self._circular_deps_for_display = mygraph
