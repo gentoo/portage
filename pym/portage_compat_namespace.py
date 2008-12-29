@@ -33,6 +33,7 @@ except (ImportError, AttributeError):
 
 def _showwarning(message, category, filename, lineno, file=None, line=None):
 	if file is None:
+		import sys
 		file = sys.stderr
 	try:
 		file.write("%s:%s: %s: %s\n" % (filename, lineno, category.__name__, message))
