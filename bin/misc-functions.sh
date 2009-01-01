@@ -44,6 +44,7 @@ install_symlink_html_docs() {
 install_qa_check() {
 	cd "${D}" || die "cd failed"
 
+	export STRIP_MASK
 	prepall
 	ecompressdir --dequeue
 	ecompress --dequeue
