@@ -691,7 +691,7 @@ dyn_unpack() {
 	vecho ">>> Unpacking source..."
 	ebuild_phase src_unpack
 	touch "${PORTAGE_BUILDDIR}/.unpacked" || die "IO Failure -- Failed 'touch .unpacked' in ${PORTAGE_BUILDDIR}"
-	vecho ">>> Source unpacked."
+	vecho ">>> Source unpacked in ${WORKDIR}"
 	cd "${PORTAGE_BUILDDIR}"
 
 	[ "$(type -t post_src_unpack)" == "function" ] && qa_call post_src_unpack
