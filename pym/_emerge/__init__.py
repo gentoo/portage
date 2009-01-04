@@ -11821,6 +11821,10 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			spawn_kwargs["gid"]    = st.st_gid
 			spawn_kwargs["groups"] = [st.st_gid]
 			spawn_kwargs["env"]["HOME"] = homedir
+			umask = 0002
+			if not st.st_mode & 0020:
+				umask = umask | 0020
+			spawn_kwargs["umask"] = umask
 
 	syncuri = settings.get("SYNC", "").strip()
 	if not syncuri:
