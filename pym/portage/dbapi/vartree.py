@@ -3802,7 +3802,6 @@ class dblink(object):
 					# mount points). Also, don't hardlink zero-byte files since
 					# it doesn't save any space.
 					parent_dir = os.path.dirname(myrealdest)
-					print "parent_dir", parent_dir
 					hardlink_key = (parent_dir, mymd5, mystat.st_size,
 						mystat.st_mode, mystat.st_uid, mystat.st_gid)
 					hardlink_candidates = self._md5_merge_map.get(hardlink_key)
