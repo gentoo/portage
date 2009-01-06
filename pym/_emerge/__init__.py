@@ -14326,15 +14326,29 @@ def expand_set_arguments(myfiles, myaction, root_config):
 	
 	# emerge relies on the existance of sets with names "world" and "system"
 	required_sets = ("world", "system")
+	missing_sets = []
 
 	for s in required_sets:
 		if s not in sets:
-			msg = ["emerge: incomplete set configuration, " + \
-				"no \"%s\" set defined" % s]
+			missing_sets.append(s)
+	if missing_sets:
+		if len(missing_sets) > 2:
+			missing_sets_str = ", ".join('"%s"' % s for s in missing_sets[:-1])
+			missing_sets_str += ', and "%s"' % missing_sets[-1]
+		elif len(missing_sets) == 2:
+			missing_sets_str = '"%s" and "%s"' % tuple(missing_sets)
+		else:
+			missing_sets_str = '"%s"' % missing_sets[-1]
+		msg = ["emerge: incomplete set configuration, " + \
+			"missing set(s): %s" % missing_sets_str]
+		if sets:
 			msg.append("        sets defined: %s" % ", ".join(sets))
-			for line in msg:
-				sys.stderr.write(line + "\n")
-			retval = 1
+		msg.append("        This usually means that '%s'" % \
+			(os.path.join(portage.const.GLOBAL_CONFIG_PATH, "sets.conf"),))
+		msg.append("        is missing or corrupt.")
+		for line in msg:
+			writemsg_level(line + "\n", level=logging.ERROR, noiselevel=-1)
+		return (None, 1)
 	unmerge_actions = ("unmerge", "prune", "clean", "depclean")
 
 	for a in myfiles:
