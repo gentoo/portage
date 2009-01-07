@@ -75,7 +75,7 @@ save_elf_debug() {
 	if [[ -n ${!inode} ]] ; then
 		ln "${D}usr/lib/debug/${!inode:${#D}}.debug" "$y"
 	else
-		eval $inode=\"$x\"
+		eval $inode=\$x
 		${OBJCOPY} --only-keep-debug "${x}" "${y}"
 		${OBJCOPY} --add-gnu-debuglink="${y}" "${x}"
 		[[ -g ${x} ]] && chmod go-r "${y}"
