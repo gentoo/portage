@@ -30,6 +30,8 @@ if hasq installsources ${FEATURES} && ! type -P debugedit >/dev/null ; then
 	ewarn "be found. This feature will not work unless debugedit is installed!"
 fi
 
+unset ${!INODE_*}
+
 inode_var_name() {
 	if  [[ $USERLAND = BSD ]] ; then
 		stat -f 'INODE_%d_%i' "$1"
