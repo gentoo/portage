@@ -85,6 +85,12 @@ if portage.settings["NOCOLOR"] in ("yes","true") or not sys.stdout.isatty():
 	portage.output.nocolor()
 
 ebuild = pargs.pop(0)
+
+if not ebuild.endswith(".ebuild"):
+	portage.writemsg("'%s' does not end with '.ebuild'.\n" % \
+		(ebuild,), noiselevel=-1)
+	sys.exit(1)
+
 if not os.path.isabs(ebuild):
 	mycwd = os.getcwd()
 	# Try to get the non-canonical path from the PWD evironment variable, since
