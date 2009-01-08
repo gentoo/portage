@@ -3,9 +3,9 @@
 # License: GPL2
 # $Id$
 
-import os, re, stat, types
+import errno, os, re
 from portage.cache import cache_errors, flat_hash
-import portage.eclass_cache 
+import portage.eclass_cache
 from portage.cache.template import reconstruct_eclasses
 from portage.cache.mappings import ProtectedDict
 
@@ -74,7 +74,42 @@ class database(flat_hash.database):
 
 		return d
 
-
-		
 	def _setitem(self, cpv, values):
-		flat_hash.database._setitem(self, cpv, values)
+		if "_eclasses_" in values:
+			values = ProtectedDict(values)
+			values["INHERITED"] = ' '.join(sorted(
+				reconstruct_eclasses(cpv, values["_eclasses_"])))
+
+		s = cpv.rfind("/")
+		fp = os.path.join(self.location,cpv[:s],
+			".update.%i.%s" % (os.getpid(), cpv[s+1:]))
+		try:
+			myf = open(fp, "w")
+		except EnvironmentError, e:
+			if errno.ENOENT == e.errno:
+				try:
+					self._ensure_dirs(cpv)
+					myf = open(fp, "w")
+				except EnvironmentError, e:
+					raise cache_errors.CacheCorruption(cpv, e)
+			else:
+				raise cache_errors.CacheCorruption(cpv, e)
+
+		try:
+			for k in self.auxdbkey_order:
+				myf.write(values.get(k, "") + "\n")
+			for i in xrange(magic_line_count - len(self.auxdbkey_order)):
+				myf.write("\n")
+		finally:
+			myf.close()
+		self._ensure_access(fp, mtime=values["_mtime_"])
+
+		new_fp = os.path.join(self.location, cpv)
+		try:
+			os.rename(fp, new_fp)
+		except EnvironmentError, e:
+			try:
+				os.unlink(fp)
+			except EnvironmentError:
+				pass
+			raise cache_errors.CacheCorruption(cpv, e)
