@@ -406,10 +406,24 @@ unpack() {
 				# that reason.  We just make sure on AIX `deb2targz` is
 				# installed.
 				if type -P deb2targz > /dev/null; then
-					deb2targz "${srcdir}/${x}" || die "$myfail"
-					mv "${srcdir}/${x/.deb/.tar.gz}" data.tar.gz
+					y=${x##*/}
+					local created_symlink=0
+					if [ ! "$srcdir$x" -ef "$y" ] ; then
+						# deb2targz always extracts into the same directory as
+						# the source file, so create a symlink in the current
+						# working directory if necessary.
+						ln -sf "$srcdir$x" "$y" || die "$myfail"
+						created_symlink=1
+					fi
+					deb2targz "$y" || die "$myfail"
+					if [ $created_symlink = 1 ] ; then
+						# Clean up the symlink so the ebuild
+						# doesn't inadvertently install it.
+						rm -f "$y"
+					fi
+					mv -f "${y%.deb}".tar.gz data.tar.gz || die "$myfail"
 				else
-					ar x "${srcdir}/${x}" || die "$myfail"
+					ar x "$srcdir$x" || die "$myfail"
 				fi
 				;;
 			lzma)
