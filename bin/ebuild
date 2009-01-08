@@ -180,6 +180,8 @@ def discard_digests(myebuild, mysettings, mydbapi):
 
 portage.settings.validate() # generate warning messages if necessary
 tmpsettings = portage.config(clone=portage.settings)
+tmpsettings["PORTAGE_VERBOSE"] = "1"
+tmpsettings.backup_changes("PORTAGE_VERBOSE")
 if "test" in pargs:
 	# This variable is a signal to config.regenerate() to
 	# indicate that the test phase should be enabled regardless

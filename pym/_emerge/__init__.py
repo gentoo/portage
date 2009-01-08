@@ -8,6 +8,7 @@ from collections import deque
 import fcntl
 import formatter
 import logging
+import pwd
 import select
 import shlex
 import shutil
@@ -11837,9 +11838,36 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		sys.exit(1)
 	if myportdir[-1]=="/":
 		myportdir=myportdir[:-1]
-	if not os.path.exists(myportdir):
+	try:
+		st = os.stat(myportdir)
+	except OSError:
+		st = None
+	if st is None:
 		print ">>>",myportdir,"not found, creating it."
 		os.makedirs(myportdir,0755)
+		st = os.stat(myportdir)
+
+	spawn_kwargs = {}
+	spawn_kwargs["env"] = settings.environ()
+	if portage.data.secpass >= 2 and \
+		(st.st_uid != os.getuid() and st.st_mode & 0700 or \
+		st.st_gid != os.getgid() and st.st_mode & 0070):
+		try:
+			homedir = pwd.getpwuid(st.st_uid).pw_dir
+		except KeyError:
+			pass
+		else:
+			# Drop privileges when syncing, in order to match
+			# existing uid/gid settings.
+			spawn_kwargs["uid"]    = st.st_uid
+			spawn_kwargs["gid"]    = st.st_gid
+			spawn_kwargs["groups"] = [st.st_gid]
+			spawn_kwargs["env"]["HOME"] = homedir
+			umask = 0002
+			if not st.st_mode & 0020:
+				umask = umask | 0020
+			spawn_kwargs["umask"] = umask
+
 	syncuri = settings.get("SYNC", "").strip()
 	if not syncuri:
 		writemsg_level("!!! SYNC is undefined. Is /etc/make.globals missing?\n",
@@ -11863,8 +11891,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		msg = ">>> Starting git pull in %s..." % myportdir
 		emergelog(xterm_titles, msg )
 		writemsg_level(msg + "\n")
-		exitcode = portage.spawn("cd %s ; git pull" % \
-			(portage._shell_quote(myportdir),), settings, free=1)
+		exitcode = portage.process.spawn_bash("cd %s ; git pull" % \
+			(portage._shell_quote(myportdir),), **spawn_kwargs)
 		if exitcode != os.EX_OK:
 			msg = "!!! git pull error in %s." % myportdir
 			emergelog(xterm_titles, msg)
@@ -12157,8 +12185,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
 					# actual sync
 					mycommand = rsynccommand + [dosyncuri+"/", myportdir]
-					exitcode = portage.process.spawn(mycommand,
-						env=settings.environ())
+					exitcode = portage.process.spawn(mycommand, **spawn_kwargs)
 					if exitcode in [0,1,3,4,11,14,20,21]:
 						break
 			elif exitcode in [1,3,4,11,14,20,21]:
@@ -12241,8 +12268,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		else:
 			#cvs update
 			print ">>> Starting cvs update with "+syncuri+"..."
-			retval = portage.spawn("cd '%s'; cvs -z0 -q update -dP" % \
-				myportdir, settings, free=1)
+			retval = portage.process.spawn_bash(
+				"cd %s; cvs -z0 -q update -dP" % \
+				(portage._shell_quote(myportdir),), **spawn_kwargs)
 			if retval != os.EX_OK:
 				sys.exit(retval)
 		dosyncuri = syncuri
