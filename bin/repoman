@@ -910,6 +910,9 @@ for x in scanlist:
 				if vcs == "svn":
 					if l[:1] == "?":
 						continue
+					if l[:7] == '      >':
+						# tree conflict, new in subversion 1.6
+						continue
 					l = l.split()[-1]
 					if l[-7:] == ".ebuild":
 						eadded.append(os.path.basename(l[:-7]))
