@@ -296,6 +296,7 @@ qahelp={
 	"ebuild.syntax":"Error generating cache entry for ebuild; typically caused by ebuild syntax error or digest verification failure",
 	"ebuild.output":"A simple sourcing of the ebuild produces output; this breaks ebuild policy.",
 	"ebuild.nesteddie":"Placing 'die' inside ( ) prints an error, but doesn't stop the ebuild.",
+	"variable.invalidchar":"A variable contains an invalid character that is not part of the ASCII character set",
 	"variable.readonly":"Assigning a readonly variable",
 	"LIVEVCS.stable":"This ebuild is a live checkout from a VCS but has stable keywords.",
 	"IUSE.invalid":"This ebuild has a variable in IUSE that is not in the use.desc or use.local.desc file",
@@ -357,6 +358,8 @@ qawarnings = set((
 "upstream.workaround",
 "LIVEVCS.stable"
 ))
+
+non_ascii_re = re.compile(r'[^\x00-\x7f]')
 
 missingvars=["KEYWORDS","LICENSE","DESCRIPTION","HOMEPAGE","SLOT"]
 allvars = set(x for x in portage.auxdbkeys if not x.startswith("UNUSED_"))
@@ -746,10 +749,15 @@ if vcs == "svn":
 	mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and elem[:1] in "MR" ]
 	mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A") ]
 elif vcs == "git":
-	mychanged = os.popen("git ls-files -m --with-tree=HEAD").readlines()
-	mychanged = [ "./" +  elem[:-1] for elem in mychanged ]
-	mynew = os.popen("git diff --cached --name-only --diff-filter=A").readlines()
 	strip_levels = repolevel - 1
+
+	mychanged = os.popen("git diff-index --name-only --diff-filter=M HEAD").readlines()
+	if strip_levels:
+		mychanged = [elem[repo_subdir_len:] for elem in mychanged \
+			if elem[:repo_subdir_len] == repo_subdir]
+	mychanged = ["./" + elem[:-1] for elem in mychanged]
+
+	mynew = os.popen("git diff-index --name-only --diff-filter=A HEAD").readlines()
 	if strip_levels:
 		mynew = [elem[repo_subdir_len:] for elem in mynew \
 			if elem[:repo_subdir_len] == repo_subdir]
@@ -1094,6 +1102,17 @@ for x in scanlist:
 		eapi = myaux["EAPI"]
 		inherited = pkg.inherited
 		live_ebuild = live_eclasses.intersection(inherited)
+
+		for k, v in myaux.iteritems():
+			if not isinstance(v, basestring):
+				continue
+			m = non_ascii_re.search(v)
+			if m is not None:
+				stats["variable.invalidchar"] += 1
+				fails["variable.invalidchar"].append(
+					("%s: %s variable contains non-ASCII " + \
+					"character at position %s") % \
+					(relative_path, k, m.start() + 1))
 
 		if not src_uri_error:
 			# Check that URIs don't reference a server from thirdpartymirrors.
@@ -1742,15 +1761,21 @@ else:
 			for prop in props if " - " in prop)
 
 	elif vcs == "git":
-		mychanged = os.popen("git ls-files -m --with-tree=HEAD").readlines()
-		mychanged = [ "./" +  elem[:-1] for elem in mychanged ]
-		mynew = os.popen("git diff --cached --name-only --diff-filter=A").readlines()
 		strip_levels = repolevel - 1
+
+		mychanged = os.popen("git diff-index --name-only --diff-filter=M HEAD").readlines()
+		if strip_levels:
+			mychanged = [elem[repo_subdir_len:] for elem in mychanged \
+				if elem[:repo_subdir_len] == repo_subdir]
+		mychanged = ["./" + elem[:-1] for elem in mychanged]
+
+		mynew = os.popen("git diff-index --name-only --diff-filter=A HEAD").readlines()
 		if strip_levels:
 			mynew = [elem[repo_subdir_len:] for elem in mynew \
 				if elem[:repo_subdir_len] == repo_subdir]
 		mynew = ["./" + elem[:-1] for elem in mynew]
-		myremoved = os.popen("git diff --cached --name-only --diff-filter=D").readlines()
+
+		myremoved = os.popen("git diff-index --name-only --diff-filter=D HEAD").readlines()
 		if strip_levels:
 			myremoved = [elem[repo_subdir_len:] for elem in myremoved \
 				if elem[:repo_subdir_len] == repo_subdir]
@@ -1807,8 +1832,8 @@ else:
 		print "%s have headers that will change." % green(str(len(myheaders)))
 		print "* Files with headers will cause the " + \
 			"manifests to be made and recommited."
-	logging.info("myupdates:", str(myupdates))
-	logging.info("myheaders:", str(myheaders))
+	logging.info("myupdates: %s", myupdates)
+	logging.info("myheaders: %s", myheaders)
 
 	commitmessage = options.commitmsg
 	if options.commitmsgfile:

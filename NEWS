@@ -32,10 +32,20 @@ portage-2.1.6
 * Namespace sanitizing: move all portage related code into portage.* namespace,
   rename portage_foo modules to portage.foo (but keep symlinks for compability)
 * Add support for news items (GLEP 42)
+* Add FEATURES=protect-owned which is identical to the collision-protect
+  feature except that files may be overwritten if they are not explicitly
+  listed in the contents of a currently installed package.
 
 portage-2.1.5
 -------------
 
+* For extra careful dependency handling, emerge has a new --complete-graph
+  option that causes it to consider the deep dependencies of all packages from
+  the system and world sets. With this option enabled, emerge will bail out
+  if it determines that the given operation will break any dependencies of
+  the packages that have been added to the graph. Unlike the --deep option,
+  the --complete-graph option does not cause any more packages to be updated
+  than would have otherwise been updated with the option disabled.
 * Blockers are now resolved automatically in many more cases
   than before.  When it's safe, blocked packages are uninstalled
   automatically so that users are no longer inconvenienced with the

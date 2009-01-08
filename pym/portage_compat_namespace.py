@@ -31,10 +31,16 @@ try:
 except (ImportError, AttributeError):
 	raise ImportError("No module named %s" % __oldname)
 
-def _formatwarning(message, category, filename, lineno):
-	return "%s:%s: %s: %s\n" % (filename, lineno, category.__name__, message)
+def _showwarning(message, category, filename, lineno, file=None, line=None):
+	if file is None:
+		import sys
+		file = sys.stderr
+	try:
+		file.write("%s:%s: %s: %s\n" % (filename, lineno, category.__name__, message))
+	except IOError:
+		pass
 
-warnings.formatwarning = _formatwarning
+warnings.showwarning = _showwarning
 
 warnings.warn("DEPRECATION NOTICE: The %s module was replaced by %s" % (__oldname, __newname), DeprecationWarning)
 sys.modules[__oldname] = __realmodule
