@@ -3752,7 +3752,7 @@ class MergeListItem(CompositeTask):
 		portdb = pkg.root_config.trees["porttree"].dbapi
 		portdir_repo_name = portdb._repository_map.get(portdb.porttree_root)
 		if portdir_repo_name:
-			pkg_repo_name = pkg.metadata["repository"]
+			pkg_repo_name = pkg.metadata.get("repository")
 			if pkg_repo_name != portdir_repo_name:
 				if not pkg_repo_name:
 					pkg_repo_name = "unknown repo"
