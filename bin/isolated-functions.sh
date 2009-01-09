@@ -123,7 +123,19 @@ die() {
 		local overlay=${EBUILD%/*}
 		overlay=${overlay%/*}
 		overlay=${overlay%/*}
-		eerror "This ebuild is from an overlay: '${overlay}/'"
+		if [[ -n $PORTAGE_REPO_NAME ]] ; then
+			eerror "This ebuild is from an overlay named" \
+				"'$PORTAGE_REPO_NAME': '${overlay}/'"
+		else
+			eerror "This ebuild is from an overlay: '${overlay}/'"
+		fi
+	elif [[ -n $PORTAGE_REPO_NAME && -f "$PORTDIR"/profiles/repo_name ]] ; then
+		local portdir_repo_name=$(<"$PORTDIR"/profiles/repo_name)
+		if [[ -n $portdir_repo_name && \
+			$portdir_repo_name != $PORTAGE_REPO_NAME ]] ; then
+			eerror "This ebuild is from a repository" \
+				"named '$PORTAGE_REPO_NAME'"
+		fi
 	fi
 	eerror
 

@@ -2521,9 +2521,8 @@ class EbuildBuild(CompositeTask):
 		tree = "porttree"
 		self._tree = tree
 		portdb = root_config.trees[tree].dbapi
-		settings["EMERGE_FROM"] = pkg.type_name
-		settings.backup_changes("EMERGE_FROM")
-		settings.reset()
+		settings.setcpv(pkg)
+		settings.configdict["pkg"]["EMERGE_FROM"] = pkg.type_name
 		ebuild_path = portdb.findname(self.pkg.cpv)
 		self._ebuild_path = ebuild_path
 
@@ -3206,6 +3205,7 @@ class Binpkg(CompositeTask):
 		debug = settings.get("PORTAGE_DEBUG") == "1"
 		portage.doebuild_environment(self._ebuild_path, "setup",
 			settings["ROOT"], settings, debug, 1, self._bintree.dbapi)
+		settings.configdict["pkg"]["EMERGE_FROM"] = pkg.type_name
 
 		# The prefetcher has already completed or it
 		# could be running now. If it's running now,

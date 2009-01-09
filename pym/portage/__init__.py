@@ -917,7 +917,7 @@ class config(object):
 	_env_blacklist = [
 		"A", "AA", "CATEGORY", "EBUILD_PHASE", "EMERGE_FROM",
 		"PF", "PKGUSE", "PORTAGE_CONFIGROOT", "PORTAGE_IUSE",
-		"PORTAGE_USE", "ROOT"
+		"PORTAGE_REPO_NAME", "PORTAGE_USE", "ROOT"
 	]
 
 	_environ_whitelist = []
@@ -1921,8 +1921,12 @@ class config(object):
 			else:
 				aux_keys = [k for k in auxdbkeys \
 					if not k.startswith("UNUSED_")]
+				aux_keys.append("repository")
 				for k, v in izip(aux_keys, mydb.aux_get(self.mycpv, aux_keys)):
 					pkg_configdict[k] = v
+			repository = pkg_configdict.pop("repository", None)
+			if repository is not None:
+				pkg_configdict["PORTAGE_REPO_NAME"] = repository
 			for k in pkg_configdict:
 				if k != "USE":
 					env_configdict.pop(k, None)
@@ -4761,17 +4765,6 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 
 	mysettings["ROOT"]     = myroot
 	mysettings["STARTDIR"] = getcwd()
-
-	mysettings["PORTAGE_REPO_NAME"] = ""
-	# bindbapi has no getRepositories() method
-	if mydbapi and hasattr(mydbapi, "getRepositories"):
-		# do we have a origin repository name for the current package
-		repopath = os.sep.join(pkg_dir.split(os.path.sep)[:-2])
-		for reponame in mydbapi.getRepositories():
-			if mydbapi.getRepositoryPath(reponame) == repopath:
-				mysettings["PORTAGE_REPO_NAME"] = reponame
-				break
-
 	mysettings["EBUILD"]   = ebuild_path
 	mysettings["O"]        = pkg_dir
 	mysettings.configdict["pkg"]["CATEGORY"] = cat
