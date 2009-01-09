@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from portage.output import red, yellow, green
+from portage.output import colorize
 from portage.cache.mappings import slot_dict_class
 import portage.xpak
 import HTMLParser
@@ -22,12 +22,12 @@ except ImportError:
 try:
 	import ftplib
 except ImportError, e:
-	sys.stderr.write(red("!!! CANNOT IMPORT FTPLIB: ")+str(e)+"\n")
+	sys.stderr.write(colorize("BAD","!!! CANNOT IMPORT FTPLIB: ")+str(e)+"\n")
 
 try:
 	import httplib
 except ImportError, e:
-	sys.stderr.write(red("!!! CANNOT IMPORT HTTPLIB: ")+str(e)+"\n")
+	sys.stderr.write(colorize("BAD","!!! CANNOT IMPORT HTTPLIB: ")+str(e)+"\n")
 
 def make_metadata_dict(data):
 	myid,myglob = data
@@ -139,7 +139,9 @@ def create_conn(baseurl,conn=None):
 			if password:
 				conn.login(username,password)
 			else:
-				sys.stderr.write(yellow(" * No password provided for username")+" '"+str(username)+"'\n\n")
+				sys.stderr.write(colorize("WARN",
+					" * No password provided for username")+" '%s'" % \
+					(username,) + "\n\n")
 				conn.login(username)
 			conn.set_pasv(passive)
 			conn.set_debuglevel(0)
@@ -231,9 +233,12 @@ def make_http_request(conn, address, params={}, headers={}, dest=None):
 				parts = x.split(": ",1)
 				if parts[0] == "Location":
 					if (rc == 301):
-						sys.stderr.write(red("Location has moved: ")+str(parts[1])+"\n")
+						sys.stderr.write(colorize("BAD",
+							"Location has moved: ") + str(parts[1]) + "\n")
 					if (rc == 302):
-						sys.stderr.write(red("Location has temporarily moved: ")+str(parts[1])+"\n")
+						sys.stderr.write(colorize("BAD",
+							"Location has temporarily moved: ") + \
+							str(parts[1]) + "\n")
 					address = parts[1]
 					break
 	
@@ -587,8 +592,9 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 				self.last_update = cur_time
 				self.display()
 		def display(self):
-			self.out.write("\r"+yellow("cache miss: '"+str(self.misses)+"'")+\
-				" --- "+green("cache hit: '"+str(self.hits)+"'"))
+			self.out.write("\r"+colorize("WARN",
+				"cache miss: '"+str(self.misses)+"'") + \
+				" --- "+colorize("GOOD","cache hit: '"+str(self.hits)+"'"))
 			self.out.flush()
 
 	cache_stats = CacheStats(out)
@@ -630,7 +636,8 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 			if myid and myid[0]:
 				metadata[baseurl]["data"][x] = make_metadata_dict(myid)
 			elif verbose:
-				sys.stderr.write(red("!!! Failed to retrieve metadata on: ")+str(x)+"\n")
+				sys.stderr.write(colorize("BAD",
+					"!!! Failed to retrieve metadata on: ")+str(x)+"\n")
 				sys.stderr.flush()
 		else:
 			cache_stats.hits += 1

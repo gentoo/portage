@@ -17,7 +17,7 @@ from portage.exception import CommandNotFound, \
 	InvalidData, InvalidPackageName, \
 	FileNotFound, PermissionDenied, UnsupportedAPIException
 from portage.locks import lockdir, unlockdir
-from portage.output import bold, red, green
+from portage.output import bold, colorize
 from portage.update import fixdbentries
 from portage.util import apply_secpass_permissions, ConfigProtect, ensure_dirs, \
 	writemsg, writemsg_level, write_atomic, atomic_ofstream, writedict, \
@@ -2817,8 +2817,8 @@ class dblink(object):
 			collisions = []
 			destroot = normalize_path(destroot).rstrip(os.path.sep) + \
 				os.path.sep
-			showMessage("%s checking %d files for package collisions\n" % \
-				(green("*"), len(mycontents)))
+			showMessage(" %s checking %d files for package collisions\n" % \
+				(colorize("GOOD", "*"), len(mycontents)))
 			for i, f in enumerate(mycontents):
 				if i % 1000 == 0 and i != 0:
 					showMessage("%d files checked ...\n" % i)
@@ -3452,7 +3452,6 @@ class dblink(object):
 			showMessage(">>> Original instance of package unmerged safely.\n")
 
 		if len(others_in_slot) > 1:
-			from portage.output import colorize
 			showMessage(colorize("WARN", "WARNING:")
 				+ " AUTOCLEAN is disabled.  This can cause serious"
 				+ " problems due to overlapping packages.\n",
@@ -3602,18 +3601,7 @@ class dblink(object):
 			# myrealdest is mydest without the $ROOT prefix (makes a difference if ROOT!="/")
 			myrealdest = join(sep, offset, x)
 			# stat file once, test using S_* macros many times (faster that way)
-			try:
-				mystat = os.lstat(mysrc)
-			except OSError, e:
-				writemsg("\n")
-				writemsg(red("!!! ERROR: There appears to be ")+bold("FILE SYSTEM CORRUPTION.")+red(" A file that is listed\n"))
-				writemsg(red("!!!        as existing is not capable of being stat'd. If you are using an\n"))
-				writemsg(red("!!!        experimental kernel, please boot into a stable one, force an fsck,\n"))
-				writemsg(red("!!!        and ensure your filesystem is in a sane state. ")+bold("'shutdown -Fr now'\n"))
-				writemsg(red("!!!        File:  ")+str(mysrc)+"\n", noiselevel=-1)
-				writemsg(red("!!!        Error: ")+str(e)+"\n", noiselevel=-1)
-				return 1
-
+			mystat = os.lstat(mysrc)
 			mymode = mystat[stat.ST_MODE]
 			# handy variables; mydest is the target object on the live filesystems;
 			# mysrc is the source object in the temporary install dir

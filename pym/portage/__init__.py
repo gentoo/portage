@@ -2526,8 +2526,9 @@ class config(object):
 
 					if x[0]=="+":
 						# Not legal. People assume too much. Complain.
-						writemsg(red("USE flags should not start with a '+': %s\n" % x),
-							noiselevel=-1)
+						writemsg(colorize("BAD",
+							"USE flags should not start with a '+': %s" % x) \
+							+ "\n", noiselevel=-1)
 						x=x[1:]
 						if not x:
 							continue
@@ -3423,7 +3424,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 	if not os.access(mysettings["DISTDIR"],os.W_OK) and fetch_to_ro:
 		if use_locks:
-			writemsg(red("!!! For fetching to a read-only filesystem, " + \
+			writemsg(colorize("BAD",
+				"!!! For fetching to a read-only filesystem, " + \
 				"locking should be turned off.\n"), noiselevel=-1)
 			writemsg("!!! This can be done by adding -distlocks to " + \
 				"FEATURES in /etc/make.conf\n", noiselevel=-1)
@@ -7215,16 +7217,16 @@ def deprecated_profile_check(settings=None):
 	deprecatedfile = open(deprecated_profile_file, "r")
 	dcontent = deprecatedfile.readlines()
 	deprecatedfile.close()
-	writemsg(red("\n!!! Your current profile is deprecated and not supported anymore.\n"),
-		noiselevel=-1)
+	writemsg(colorize("BAD", "\n!!! Your current profile is " + \
+		"deprecated and not supported anymore.") + "\n", noiselevel=-1)
 	if not dcontent:
-		writemsg(red("!!! Please refer to the Gentoo Upgrading Guide.\n"),
-			noiselevel=-1)
+		writemsg(colorize("BAD","!!! Please refer to the " + \
+			"Gentoo Upgrading Guide.") + "\n", noiselevel=-1)
 		return True
 	newprofile = dcontent[0]
-	writemsg(red("!!! Please upgrade to the following profile if possible:\n"),
-		noiselevel=-1)
-	writemsg(8*" "+green(newprofile)+"\n", noiselevel=-1)
+	writemsg(colorize("BAD", "!!! Please upgrade to the " + \
+		"following profile if possible:") + "\n", noiselevel=-1)
+	writemsg(8*" " + colorize("GOOD", newprofile) + "\n", noiselevel=-1)
 	if len(dcontent) > 1:
 		writemsg("To upgrade do the following steps:\n", noiselevel=-1)
 		for myline in dcontent[1:]:
@@ -7304,7 +7306,8 @@ def _global_updates(trees, prev_mtimes):
 		timestamps = {}
 		for mykey, mystat, mycontent in update_data:
 			writemsg_stdout("\n\n")
-			writemsg_stdout(green("Performing Global Updates: ")+bold(mykey)+"\n")
+			writemsg_stdout(colorize("GOOD",
+				"Performing Global Updates: ")+bold(mykey)+"\n")
 			writemsg_stdout("(Could take a couple of minutes if you have a lot of binary packages.)\n")
 			writemsg_stdout("  " + bold(".") + "='update pass'  " + \
 				bold("*") + "='binary update'  " + bold("#") + \

@@ -5,7 +5,7 @@
 
 import os, sys, pwd, grp, platform
 from portage.util import writemsg
-from portage.output import green,red
+from portage.output import colorize
 from portage.output import create_color_func
 bad = create_color_func("BAD")
 
@@ -28,7 +28,8 @@ if not lchown:
 			lchown = missingos.lchown
 		except ImportError:
 			def lchown(*pos_args, **key_args):
-				writemsg(red("!!!") + " It seems that os.lchown does not" + \
+				writemsg(colorize("BAD", "!!!") + \
+					" It seems that os.lchown does not" + \
 					" exist.  Please rebuild python.\n", noiselevel=-1)
 			lchown()
 
@@ -78,17 +79,16 @@ try:
 except KeyError:
 	portage_uid=0
 	portage_gid=0
-	writemsg("\n")
-	writemsg(  red("portage: 'portage' user or group missing. Please update baselayout\n"))
-	writemsg(  red("         and merge portage user(250) and group(250) into your passwd\n"))
-	writemsg(  red("         and group files. Non-root compilation is disabled until then.\n"))
-	writemsg(      "         Also note that non-root/wheel users will need to be added to\n")
-	writemsg(      "         the portage group to do portage commands.\n")
-	writemsg("\n")
-	writemsg(      "         For the defaults, line 1 goes into passwd, and 2 into group.\n")
-	writemsg(green("         portage:x:250:250:portage:/var/tmp/portage:/bin/false\n"))
-	writemsg(green("         portage::250:portage\n"))
-	writemsg("\n")
+	writemsg(colorize("BAD",
+		"portage: 'portage' user or group missing.") + "\n", noiselevel=-1)
+	writemsg(
+		"         For the defaults, line 1 goes into passwd, " + \
+		"and 2 into group.\n", noiselevel=-1)
+	writemsg(colorize("GOOD",
+		"         portage:x:250:250:portage:/var/tmp/portage:/bin/false") \
+		+ "\n", noiselevel=-1)
+	writemsg(colorize("GOOD", "         portage::250:portage") + "\n",
+		noiselevel=-1)
 	portage_group_warning()
 
 userpriv_groups = [portage_gid]
