@@ -1282,9 +1282,8 @@ class config(object):
 			del rawpusemask
 
 			self.pkgprofileuse = []
-			rawprofileuse = [grabdict_package(
-				os.path.join(x, "package.use"), juststrings=True) \
-				for x in self.profiles]
+			rawprofileuse = [grabdict_package(os.path.join(x, "package.use"),
+				juststrings=True, recursive=1) for x in self.profiles]
 			for i in xrange(len(self.profiles)):
 				cpdict = {}
 				for k, v in rawprofileuse[i].iteritems():
@@ -1516,17 +1515,6 @@ class config(object):
 						self._plicensedict[cp] = cp_dict
 					cp_dict[k] = self.expandLicenseTokens(v)
 
-				#package.unmask
-				pkgunmasklines = grabfile_package(
-					os.path.join(abs_user_config, "package.unmask"),
-					recursive=1)
-				for x in pkgunmasklines:
-					mycatpkg=dep_getkey(x)
-					if mycatpkg in self.punmaskdict:
-						self.punmaskdict[mycatpkg].append(x)
-					else:
-						self.punmaskdict[mycatpkg]=[x]
-
 			#getting categories from an external file now
 			categories = [grabfile(os.path.join(x, "categories")) for x in locations]
 			self.categories = stack_lists(categories, incremental=1)
@@ -1536,12 +1524,16 @@ class config(object):
 			archlist = stack_lists(archlist, incremental=1)
 			self.configdict["conf"]["PORTAGE_ARCHLIST"] = " ".join(archlist)
 
-			#package.mask
+			# package.mask and package.unmask
 			pkgmasklines = []
+			pkgunmasklines = []
 			for x in pmask_locations:
 				pkgmasklines.append(grabfile_package(
 					os.path.join(x, "package.mask"), recursive=1))
+				pkgunmasklines.append(grabfile_package(
+					os.path.join(x, "package.unmask"), recursive=1))
 			pkgmasklines = stack_lists(pkgmasklines, incremental=1)
+			pkgunmasklines = stack_lists(pkgunmasklines, incremental=1)
 
 			self.pmaskdict = {}
 			for x in pkgmasklines:
@@ -1550,6 +1542,13 @@ class config(object):
 					self.pmaskdict[mycatpkg].append(x)
 				else:
 					self.pmaskdict[mycatpkg]=[x]
+
+			for x in pkgunmasklines:
+				mycatpkg=dep_getkey(x)
+				if mycatpkg in self.punmaskdict:
+					self.punmaskdict[mycatpkg].append(x)
+				else:
+					self.punmaskdict[mycatpkg]=[x]
 
 			pkgprovidedlines = [grabfile(os.path.join(x, "package.provided")) for x in self.profiles]
 			pkgprovidedlines = stack_lists(pkgprovidedlines, incremental=1)
