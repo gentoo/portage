@@ -4484,6 +4484,12 @@ class depgraph(object):
 		self._irrelevant_blockers = digraph()
 		# Contains only unsolvable Package -> Blocker edges
 		self._unsolvable_blockers = digraph()
+		# Contains all Blocker -> Blocked Package edges
+		self._blocked_pkgs = digraph()
+		# Contains world packages that have been protected from
+		# uninstallation but may not have been added to the graph
+		# if the graph is not complete yet.
+		self._blocked_world_pkgs = {}
 		self._slot_collision_info = {}
 		# Slot collision nodes are not allowed to block other packages since
 		# blocker validation is only able to account for one package per slot.
@@ -6444,6 +6450,9 @@ class depgraph(object):
 						# is already done and this would be likely to
 						# confuse users if displayed like a normal blocker.
 						continue
+
+					self._blocked_pkgs.add(pkg, blocker)
+
 					if parent.operation == "merge":
 						# Maybe the blocked package can be replaced or simply
 						# unmerged to resolve this block.
@@ -6461,6 +6470,8 @@ class depgraph(object):
 						# This blocker will be handled the next time that a
 						# merge of either package is triggered.
 						continue
+
+					self._blocked_pkgs.add(pkg, blocker)
 
 					# Maybe the blocking package can be
 					# unmerged to resolve this block.
@@ -6514,7 +6525,7 @@ class depgraph(object):
 	def _accept_blocker_conflicts(self):
 		acceptable = False
 		for x in ("--buildpkgonly", "--fetchonly",
-			"--fetch-all-uri", "--nodeps", "--pretend"):
+			"--fetch-all-uri", "--nodeps"):
 			if x in self.myopts:
 				acceptable = True
 				break
@@ -6977,6 +6988,7 @@ class depgraph(object):
 									break
 								if not satisfied:
 									skip = True
+									self._blocked_world_pkgs[inst_pkg] = atom
 									break
 						except portage.exception.InvalidDependString, e:
 							portage.writemsg("!!! Invalid PROVIDE in " + \
@@ -7208,6 +7220,74 @@ class depgraph(object):
 		portage.writemsg("\n", noiselevel=-1)
 		for line in wrap(msg, 70):
 			portage.writemsg(prefix + line + "\n", noiselevel=-1)
+
+		# Display the conflicting packages along with the packages
+		# that pulled them in. This is helpful for troubleshooting
+		# cases in which blockers don't solve automatically and
+		# the reasons are not apparent from the normal merge list
+		# display.
+
+		conflict_pkgs = {}
+		for blocker in blockers:
+			for pkg in chain(self._blocked_pkgs.child_nodes(blocker), \
+				self._blocker_parents.parent_nodes(blocker)):
+				parent_atoms = self._parent_atoms.get(pkg)
+				if not parent_atoms:
+					atom = self._blocked_world_pkgs.get(pkg)
+					if atom is not None:
+						parent_atoms = set([("@world", atom)])
+				if parent_atoms:
+					conflict_pkgs[pkg] = parent_atoms
+
+		if conflict_pkgs:
+			msg = []
+			msg.append("\n")
+			indent = "  "
+			# Max number of parents shown, to avoid flooding the display.
+			max_parents = 3
+			for pkg, parent_atoms in conflict_pkgs.iteritems():
+
+				pruned_list = set()
+
+				# Prefer conflict packages over others.
+				for parent_atom in parent_atoms:
+					if len(pruned_list) >= max_parents:
+						break
+					parent, atom = parent_atom
+					if parent in conflict_pkgs:
+						pruned_list.add(parent_atom)
+
+				for parent_atom in parent_atoms:
+					if len(pruned_list) >= max_parents:
+						break
+					pruned_list.add(parent_atom)
+
+				omitted_parents = len(parent_atoms) - len(pruned_list)
+				msg.append(indent + "%s pulled in by\n" % pkg)
+
+				for parent_atom in pruned_list:
+					parent, atom = parent_atom
+					msg.append(2*indent)
+					if isinstance(parent,
+						(PackageArg, AtomArg)):
+						# For PackageArg and AtomArg types, it's
+						# redundant to display the atom attribute.
+						msg.append(str(parent))
+					else:
+						# Display the specific atom from SetArg or
+						# Package types.
+						msg.append("%s required by %s" % (atom, parent))
+					msg.append("\n")
+
+				if omitted_parents:
+					msg.append(2*indent)
+					msg.append("(and %d more)\n" % omitted_parents)
+
+				msg.append("\n")
+
+			sys.stderr.write("".join(msg))
+			sys.stderr.flush()
+
 		if "--quiet" not in self.myopts:
 			show_blocker_docs_link()
 
