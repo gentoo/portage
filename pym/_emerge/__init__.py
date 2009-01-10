@@ -11948,6 +11948,13 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		# going to trust the user and assume that the user is in the branch
 		# that he/she wants updated. We'll let the user manage branches with
 		# git directly.
+		if portage.process.find_binary("git") is None:
+			msg = ["Command not found: git",
+			"Type \"emerge dev-util/git\" to enable git support."]
+			for l in msg:
+				writemsg_level("!!! %s\n" % l,
+					level=logging.ERROR, noiselevel=-1)
+			return 1
 		msg = ">>> Starting git pull in %s..." % myportdir
 		emergelog(xterm_titles, msg )
 		writemsg_level(msg + "\n")
