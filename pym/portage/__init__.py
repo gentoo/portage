@@ -1273,8 +1273,8 @@ class config(object):
 				self._pkeywords_list.append(cpdict)
 
 			# get profile-masked use flags -- INCREMENTAL Child over parent
-			self.usemask_list = [grabfile(os.path.join(x, "use.mask")) \
-				for x in self.profiles]
+			self.usemask_list = [grabfile(os.path.join(x, "use.mask"),
+				recursive=1) for x in self.profiles]
 			self.usemask  = set(stack_lists(
 				self.usemask_list, incremental=True))
 			use_defs_lists = [grabdict(os.path.join(x, "use.defaults")) for x in self.profiles]
@@ -1282,9 +1282,8 @@ class config(object):
 			del use_defs_lists
 
 			self.pusemask_list = []
-			rawpusemask = [grabdict_package(
-				os.path.join(x, "package.use.mask")) \
-				for x in self.profiles]
+			rawpusemask = [grabdict_package(os.path.join(x, "package.use.mask"),
+				recursive=1) for x in self.profiles]
 			for i in xrange(len(self.profiles)):
 				cpdict = {}
 				for k, v in rawpusemask[i].iteritems():
@@ -1302,14 +1301,14 @@ class config(object):
 				self.pkgprofileuse.append(cpdict)
 			del rawprofileuse
 
-			self.useforce_list = [grabfile(os.path.join(x, "use.force")) \
-				for x in self.profiles]
+			self.useforce_list = [grabfile(os.path.join(x, "use.force"),
+				recursive=1) for x in self.profiles]
 			self.useforce  = set(stack_lists(
 				self.useforce_list, incremental=True))
 
 			self.puseforce_list = []
 			rawpuseforce = [grabdict_package(
-				os.path.join(x, "package.use.force")) \
+				os.path.join(x, "package.use.force"), recursive=1) \
 				for x in self.profiles]
 			for i in xrange(len(self.profiles)):
 				cpdict = {}
