@@ -4482,7 +4482,7 @@ class depgraph(object):
 		self._blocker_parents = digraph()
 		# Contains only irrelevant Package -> Blocker edges
 		self._irrelevant_blockers = digraph()
-		# Contains only unsolvable Package -> Blocker edges
+		# Contains only unsolvable Package -> Blocker -> Blocked Package edges
 		self._unsolvable_blockers = digraph()
 		self._slot_collision_info = {}
 		# Slot collision nodes are not allowed to block other packages since
@@ -6429,7 +6429,7 @@ class depgraph(object):
 						self._blocker_parents.remove(pkg)
 				continue
 			for parent in self._blocker_parents.parent_nodes(blocker):
-				unresolved_blocks = False
+				unresolved_blocks = set()
 				depends_on_order = set()
 				for pkg in blocked_initial:
 					if pkg.slot_atom == parent.slot_atom:
@@ -6451,7 +6451,7 @@ class depgraph(object):
 						continue
 					# None of the above blocker resolutions techniques apply,
 					# so apparently this one is unresolvable.
-					unresolved_blocks = True
+					unresolved_blocks.add(pkg)
 				for pkg in blocked_final:
 					if pkg.slot_atom == parent.slot_atom:
 						# TODO: Support blocks within slots.
@@ -6472,16 +6472,7 @@ class depgraph(object):
 						continue
 					# None of the above blocker resolutions techniques apply,
 					# so apparently this one is unresolvable.
-					unresolved_blocks = True
-
-				# Make sure we don't unmerge any package that have been pulled
-				# into the graph.
-				if not unresolved_blocks and depends_on_order:
-					for inst_pkg, inst_task in depends_on_order:
-						if self.digraph.contains(inst_pkg) and \
-							self.digraph.parent_nodes(inst_pkg):
-							unresolved_blocks = True
-							break
+					unresolved_blocks.add(pkg)
 
 				if not unresolved_blocks and depends_on_order:
 					for inst_pkg, inst_task in depends_on_order:
@@ -6508,6 +6499,8 @@ class depgraph(object):
 						self._blocker_parents.remove(parent)
 				if unresolved_blocks:
 					self._unsolvable_blockers.add(blocker, parent)
+					for pkg in unresolved_blocks:
+						self._unsolvable_blockers.add(pkg, blocker)
 
 		return True
 
@@ -7113,7 +7106,8 @@ class depgraph(object):
 							root=blocker.root, eapi=blocker.eapi,
 							satisfied=True))
 
-		unsolvable_blockers = set(self._unsolvable_blockers.leaf_nodes())
+		unsolvable_blockers = set(node for node in \
+			self._unsolvable_blockers if isinstance(node, Blocker))
 		for node in myblocker_uninstalls.root_nodes():
 			unsolvable_blockers.add(node)
 
