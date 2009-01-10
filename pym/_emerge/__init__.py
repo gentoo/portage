@@ -6638,7 +6638,6 @@ class depgraph(object):
 		ignored_uninstall_tasks = set()
 		have_uninstall_task = False
 		complete = "complete" in self.myparams
-		myblocker_parents = self._blocker_parents.copy()
 		asap_nodes = []
 
 		def get_nodes(**kwargs):
