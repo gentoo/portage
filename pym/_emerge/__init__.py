@@ -7240,6 +7240,21 @@ class depgraph(object):
 					conflict_pkgs[pkg] = parent_atoms
 
 		if conflict_pkgs:
+			# Reduce noise by pruning packages that are only
+			# pulled in by other conflict packages.
+			pruned_pkgs = set()
+			for pkg, parent_atoms in conflict_pkgs.iteritems():
+				relevant_parent = False
+				for parent, atom in parent_atoms:
+					if parent not in conflict_pkgs:
+						relevant_parent = True
+						break
+				if not relevant_parent:
+					pruned_pkgs.add(pkg)
+			for pkg in pruned_pkgs:
+				del conflict_pkgs[pkg]
+
+		if conflict_pkgs:
 			msg = []
 			msg.append("\n")
 			indent = "  "
