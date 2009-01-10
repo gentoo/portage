@@ -2254,7 +2254,7 @@ class config(object):
 	def _getKeywords(self, cpv, metadata):
 		cp = dep_getkey(cpv)
 		pkg = "%s:%s" % (cpv, metadata["SLOT"])
-		keywords = metadata["KEYWORDS"].split()
+		keywords = [metadata["KEYWORDS"].split()]
 		pos = len(keywords)
 		for i in xrange(len(self.profiles)):
 			cpdict = self._pkeywords_list[i].get(cp, None)
