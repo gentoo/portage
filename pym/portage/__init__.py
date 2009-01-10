@@ -1264,7 +1264,7 @@ class config(object):
 
 			self._pkeywords_list = []
 			rawpkeywords = [grabdict_package(
-				os.path.join(x, "package.keywords")) \
+				os.path.join(x, "package.keywords"), recursive=1) \
 				for x in self.profiles]
 			for i in xrange(len(self.profiles)):
 				cpdict = {}
