@@ -2158,7 +2158,12 @@ else:
 			mymsg.write("\n (Unsigned Manifest commit)")
 		mymsg.close()
 
-		commit_cmd = [vcs]
+		commit_cmd = []
+		if options.pretend and vcs is None:
+			# substitute a bogus value for pretend output
+			commit_cmd.append("cvs")
+		else:
+			commit_cmd.append(vcs)
 		commit_cmd.extend(vcs_global_opts)
 		commit_cmd.append("commit")
 		commit_cmd.extend(vcs_local_opts)
