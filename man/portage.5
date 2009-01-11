@@ -29,8 +29,10 @@ eapi
 make.defaults
 packages
 packages.build
+package.keywords
 package.mask
 package.provided
+package.unmask
 package.use
 package.use.force
 package.use.mask
@@ -583,6 +585,26 @@ A list of all the packages which will be displayed when you run `emerge info`.
 .TP
 .BR info_vars
 A list of all the variables which will be displayed when you run `emerge info`.
+.TP
+.BR package.keywords
+Per\-profile KEYWORDS. Useful for cases in which the effective KEYWORDS of a
+given package should vary depending on which profile the user has selected.
+
+.I Format:
+.nf
+\- comment lines begin with # (no inline comments)
+\- one DEPEND atom per line followed by additional KEYWORDS
+.fi
+
+.I Example:
+.nf
+# add stable keyword to libgd
+media\-libs/libgd x86
+# remove stable keyword from mplayer and add unstable keyword
+media\-video/mplayer \-x86 ~x86
+# remove all keywords from netcat
+net-analyzer/netcat -*
+.fi
 .TP
 .BR package.mask
 This contains a list of DEPEND atoms for packages that should not be installed 

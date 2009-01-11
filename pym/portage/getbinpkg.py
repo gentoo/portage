@@ -9,6 +9,7 @@ import portage.xpak
 import HTMLParser
 import sys
 import os
+import socket
 import time
 import tempfile
 import base64
@@ -475,7 +476,14 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	if makepickle is None:
 		makepickle = CACHE_PATH+"/metadata.idx.most_recent"
 
-	conn,protocol,address,params,headers = create_conn(baseurl, conn)
+	try:
+		conn, protocol, address, params, headers = create_conn(baseurl, conn)
+	except socket.error, e:
+		# ftplib.FTP(host) can raise errors like this:
+		#   socket.error: (111, 'Connection refused')
+		sys.stderr.write("!!! %s\n" % (e,))
+		return {}
+
 	out = sys.stdout
 	try:
 		metadatafile = open(CACHE_PATH+"/remote_metadata.pickle")

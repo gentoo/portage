@@ -313,6 +313,7 @@ qahelp={
 	"ebuild.badheader":"This ebuild has a malformed header",
 	"metadata.missing":"Missing metadata.xml files",
 	"metadata.bad":"Bad metadata.xml files",
+	"metadata.warning":"Warnings in metadata.xml files",
 	"virtual.versioned":"PROVIDE contains virtuals with versions",
 	"virtual.exists":"PROVIDE contains existing package names",
 	"virtual.unavailable":"PROVIDE contains a virtual which contains no profile default",
@@ -351,6 +352,7 @@ qawarnings = set((
 "file.size",
 "inherit.autotools",
 "java.eclassesnotused",
+"metadata.warning",
 "virtual.versioned",
 "virtual.exists",
 "virtual.unavailable",
@@ -1063,11 +1065,14 @@ for x in scanlist:
 				fails["metadata.bad"].append(x+"/metadata.xml")
 
 		del metadata_bad
+	muselist = frozenset(muselist)
 
 	changelog_path = os.path.join(checkdir_relative, "ChangeLog")
 	changelog_modified = changelog_path in modified_changelogs
 
 	allmasked = True
+	# detect unused local USE-descriptions
+	used_useflags = set()
 
 	for y in ebuildlist:
 		relative_path = os.path.join(x, y + ".ebuild")
@@ -1368,6 +1373,7 @@ for x in scanlist:
 				default_use.append(myflag)
 			if flag_name not in uselist:
 				myuse.append(flag_name)
+		used_useflags.update(myuse)
 
 		# uselist checks - metadata
 		for mypos in range(len(myuse)-1,-1,-1):
@@ -1575,6 +1581,12 @@ for x in scanlist:
 	if allmasked and repolevel == 3:
 		stats["ebuild.allmasked"]+=1
 		fails["ebuild.allmasked"].append(x)
+
+	# check if there are unused local USE-descriptions in metadata.xml
+	for myflag in muselist.difference(used_useflags):
+		stats["metadata.warning"] += 1
+		fails["metadata.warning"].append(
+			"unused local USE-description: '%s'" % myflag)
 
 if options.mode == "manifest":
 	sys.exit(dofail)

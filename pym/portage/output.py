@@ -437,10 +437,10 @@ class EOutput(object):
 	@type term_columns: IntType
 	"""
 
-	def __init__(self):
+	def __init__(self, quiet=False):
 		self.__last_e_cmd = ""
 		self.__last_e_len = 0
-		self.quiet = False
+		self.quiet = quiet
 		lines, columns = get_term_size()
 		if columns <= 0:
 			columns = 80
@@ -448,6 +448,8 @@ class EOutput(object):
 		if os.environ.get("TERM") in ("cons25", "dumb"):
 			columns = columns - 1
 		self.term_columns = columns
+		sys.stdout.flush()
+		sys.stderr.flush()
 
 	def __eend(self, caller, errno, msg):
 		if errno == 0:
@@ -461,10 +463,11 @@ class EOutput(object):
 					self.ewarn(msg[0])
 		if self.__last_e_cmd != "ebegin":
 			self.__last_e_len = 0
-		out = sys.stdout
-		out.write("%*s%s\n" % \
-			((self.term_columns - self.__last_e_len - 6), "", status_brackets))
-		out.flush()
+		if not self.quiet:
+			out = sys.stdout
+			out.write("%*s%s\n" % ((self.term_columns - self.__last_e_len - 6),
+				"", status_brackets))
+			out.flush()
 
 	def ebegin(self, msg):
 		"""

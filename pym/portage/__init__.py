@@ -1139,6 +1139,7 @@ class config(object):
 			self.pusedict   = copy.deepcopy(clone.pusedict)
 			self.categories = copy.deepcopy(clone.categories)
 			self.pkeywordsdict = copy.deepcopy(clone.pkeywordsdict)
+			self._pkeywords_list = copy.deepcopy(clone._pkeywords_list)
 			self.pmaskdict = copy.deepcopy(clone.pmaskdict)
 			self.punmaskdict = copy.deepcopy(clone.punmaskdict)
 			self.prevmaskdict = copy.deepcopy(clone.prevmaskdict)
@@ -1268,9 +1269,19 @@ class config(object):
 				else:
 					self.prevmaskdict[mycatpkg].append(x)
 
-			# get profile-masked use flags -- INCREMENTAL Child over parent
-			self.usemask_list = [grabfile(os.path.join(x, "use.mask")) \
+			self._pkeywords_list = []
+			rawpkeywords = [grabdict_package(
+				os.path.join(x, "package.keywords"), recursive=1) \
 				for x in self.profiles]
+			for i in xrange(len(self.profiles)):
+				cpdict = {}
+				for k, v in rawpkeywords[i].iteritems():
+					cpdict.setdefault(dep_getkey(k), {})[k] = v
+				self._pkeywords_list.append(cpdict)
+
+			# get profile-masked use flags -- INCREMENTAL Child over parent
+			self.usemask_list = [grabfile(os.path.join(x, "use.mask"),
+				recursive=1) for x in self.profiles]
 			self.usemask  = set(stack_lists(
 				self.usemask_list, incremental=True))
 			use_defs_lists = [grabdict(os.path.join(x, "use.defaults")) for x in self.profiles]
@@ -1278,9 +1289,8 @@ class config(object):
 			del use_defs_lists
 
 			self.pusemask_list = []
-			rawpusemask = [grabdict_package(
-				os.path.join(x, "package.use.mask")) \
-				for x in self.profiles]
+			rawpusemask = [grabdict_package(os.path.join(x, "package.use.mask"),
+				recursive=1) for x in self.profiles]
 			for i in xrange(len(self.profiles)):
 				cpdict = {}
 				for k, v in rawpusemask[i].iteritems():
@@ -1289,9 +1299,8 @@ class config(object):
 			del rawpusemask
 
 			self.pkgprofileuse = []
-			rawprofileuse = [grabdict_package(
-				os.path.join(x, "package.use"), juststrings=True) \
-				for x in self.profiles]
+			rawprofileuse = [grabdict_package(os.path.join(x, "package.use"),
+				juststrings=True, recursive=1) for x in self.profiles]
 			for i in xrange(len(self.profiles)):
 				cpdict = {}
 				for k, v in rawprofileuse[i].iteritems():
@@ -1299,14 +1308,14 @@ class config(object):
 				self.pkgprofileuse.append(cpdict)
 			del rawprofileuse
 
-			self.useforce_list = [grabfile(os.path.join(x, "use.force")) \
-				for x in self.profiles]
+			self.useforce_list = [grabfile(os.path.join(x, "use.force"),
+				recursive=1) for x in self.profiles]
 			self.useforce  = set(stack_lists(
 				self.useforce_list, incremental=True))
 
 			self.puseforce_list = []
 			rawpuseforce = [grabdict_package(
-				os.path.join(x, "package.use.force")) \
+				os.path.join(x, "package.use.force"), recursive=1) \
 				for x in self.profiles]
 			for i in xrange(len(self.profiles)):
 				cpdict = {}
@@ -1527,17 +1536,6 @@ class config(object):
 						self._plicensedict[cp] = cp_dict
 					cp_dict[k] = self.expandLicenseTokens(v)
 
-				#package.unmask
-				pkgunmasklines = grabfile_package(
-					os.path.join(abs_user_config, "package.unmask"),
-					recursive=1)
-				for x in pkgunmasklines:
-					mycatpkg=dep_getkey(x)
-					if mycatpkg in self.punmaskdict:
-						self.punmaskdict[mycatpkg].append(x)
-					else:
-						self.punmaskdict[mycatpkg]=[x]
-
 			#getting categories from an external file now
 			categories = [grabfile(os.path.join(x, "categories")) for x in locations]
 			self.categories = stack_lists(categories, incremental=1)
@@ -1547,12 +1545,16 @@ class config(object):
 			archlist = stack_lists(archlist, incremental=1)
 			self.configdict["conf"]["PORTAGE_ARCHLIST"] = " ".join(archlist)
 
-			#package.mask
+			# package.mask and package.unmask
 			pkgmasklines = []
+			pkgunmasklines = []
 			for x in pmask_locations:
 				pkgmasklines.append(grabfile_package(
 					os.path.join(x, "package.mask"), recursive=1))
+				pkgunmasklines.append(grabfile_package(
+					os.path.join(x, "package.unmask"), recursive=1))
 			pkgmasklines = stack_lists(pkgmasklines, incremental=1)
+			pkgunmasklines = stack_lists(pkgunmasklines, incremental=1)
 
 			self.pmaskdict = {}
 			for x in pkgmasklines:
@@ -1561,6 +1563,13 @@ class config(object):
 					self.pmaskdict[mycatpkg].append(x)
 				else:
 					self.pmaskdict[mycatpkg]=[x]
+
+			for x in pkgunmasklines:
+				mycatpkg=dep_getkey(x)
+				if mycatpkg in self.punmaskdict:
+					self.punmaskdict[mycatpkg].append(x)
+				else:
+					self.punmaskdict[mycatpkg]=[x]
 
 			pkgprovidedlines = [grabfile(os.path.join(x, "package.provided")) for x in self.profiles]
 			pkgprovidedlines = stack_lists(pkgprovidedlines, incremental=1)
@@ -2260,6 +2269,25 @@ class config(object):
 				return x
 		return None
 
+	def _getKeywords(self, cpv, metadata):
+		cp = dep_getkey(cpv)
+		pkg = "%s:%s" % (cpv, metadata["SLOT"])
+		keywords = [[x for x in metadata["KEYWORDS"].split() if x != "-*"]]
+		pos = len(keywords)
+		for i in xrange(len(self.profiles)):
+			cpdict = self._pkeywords_list[i].get(cp, None)
+			if cpdict:
+				keys = list(cpdict)
+				while keys:
+					best_match = best_match_to_list(pkg, keys)
+					if best_match:
+						keys.remove(best_match)
+						keywords.insert(pos, cpdict[best_match])
+					else:
+						break
+			pos = len(keywords)
+		return stack_lists(keywords, incremental=True)
+
 	def _getMissingKeywords(self, cpv, metadata):
 		"""
 		Take a package and return a list of any KEYWORDS that the user may
@@ -2281,7 +2309,7 @@ class config(object):
 		# object (bug #139600)
 		egroups = self.configdict["backupenv"].get(
 			"ACCEPT_KEYWORDS", "").split()
-		mygroups = metadata["KEYWORDS"].split()
+		mygroups = self._getKeywords(cpv, metadata)
 		# Repoman may modify this attribute as necessary.
 		pgroups = self["ACCEPT_KEYWORDS"].split()
 		match=0
@@ -7011,7 +7039,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 
 	# keywords checking
 	eapi = metadata["EAPI"]
-	mygroups = metadata["KEYWORDS"]
+	mygroups = settings._getKeywords(mycpv, metadata)
 	licenses = metadata["LICENSE"]
 	slot = metadata["SLOT"]
 	if eapi.startswith("-"):
@@ -7022,7 +7050,6 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 		return ["EAPI %s" % eapi]
 	egroups = settings.configdict["backupenv"].get(
 		"ACCEPT_KEYWORDS", "").split()
-	mygroups = mygroups.split()
 	pgroups = settings["ACCEPT_KEYWORDS"].split()
 	myarch = settings["ARCH"]
 	if pgroups and myarch not in pgroups:
