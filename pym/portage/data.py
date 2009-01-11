@@ -6,7 +6,7 @@
 import os, sys, pwd, grp, platform
 from portage.util import writemsg
 from portage.const import rootuid, portageuser, portagegroup, EPREFIX
-from portage.output import green,red
+from portage.output import colorize
 from portage.output import create_color_func
 bad = create_color_func("BAD")
 
@@ -32,7 +32,8 @@ if not lchown:
 			lchown = missingos.lchown
 		except ImportError:
 			def lchown(*pos_args, **key_args):
-				writemsg(red("!!!") + " It seems that os.lchown does not" + \
+				writemsg(colorize("BAD", "!!!") + \
+					" It seems that os.lchown does not" + \
 					" exist.  Please rebuild python.\n", noiselevel=-1)
 			lchown()
 
@@ -88,6 +89,16 @@ except KeyError:
 	writemsg(  red("         since it means you have thrown away yourself.\n"))
 	writemsg(      "         Re-add yourself or re-bootstrap Gentoo Prefix.\n")
 	writemsg("\n")
+	writemsg(colorize("BAD",
+		"portage: 'portage' user or group missing.") + "\n", noiselevel=-1)
+	writemsg(
+		"         For the defaults, line 1 goes into passwd, " + \
+		"and 2 into group.\n", noiselevel=-1)
+	writemsg(colorize("GOOD",
+		"         portage:x:250:250:portage:/var/tmp/portage:/bin/false") \
+		+ "\n", noiselevel=-1)
+	writemsg(colorize("GOOD", "         portage::250:portage") + "\n",
+		noiselevel=-1)
 	portage_group_warning()
 
 userpriv_groups = [portage_gid]

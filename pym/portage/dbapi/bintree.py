@@ -9,7 +9,7 @@ from portage.dep import isvalidatom, isjustname, dep_getkey, match_from_list
 from portage.dbapi.virtual import fakedbapi
 from portage.exception import InvalidPackageName, \
 	PermissionDenied, PortageException
-from portage.output import green, EOutput
+from portage.output import EOutput, colorize
 from portage.util import ensure_dirs, normalize_path, writemsg, writemsg_stdout
 from portage.versions import best, catpkgsplit, catsplit
 from portage.update import update_dbentries
@@ -747,7 +747,7 @@ class binarytree(object):
 				chunk_size = 3000
 			writemsg_stdout("\n")
 			writemsg_stdout(
-				green("Fetching bininfo from ") + \
+				colorize("GOOD", "Fetching bininfo from ") + \
 				re.sub(r'//(.+):.+@(.+)/', r'//\1:*password*@\2/', base_url) + "\n")
 			self.remotepkgs = portage.getbinpkg.dir_get_metadata(
 				self.settings["PORTAGE_BINHOST"], chunk_size=chunk_size)
