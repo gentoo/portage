@@ -7295,12 +7295,12 @@ class depgraph(object):
 
 				pruned_list = set()
 
-				# Prefer conflict packages over others.
+				# Prefer packages that are not directly involved in a conflict.
 				for parent_atom in parent_atoms:
 					if len(pruned_list) >= max_parents:
 						break
 					parent, atom = parent_atom
-					if parent in conflict_pkgs:
+					if parent not in conflict_pkgs:
 						pruned_list.add(parent_atom)
 
 				for parent_atom in parent_atoms:
@@ -8992,6 +8992,29 @@ def create_poll_instance():
 		return select.poll()
 	return PollSelectAdapter()
 
+getloadavg = getattr(os, "getloadavg", None)
+if getloadavg is None:
+	def getloadavg():
+		"""
+		Uses /proc/loadavg to emulate os.getloadavg().
+		Raises OSError if the load average was unobtainable.
+		"""
+		try:
+			loadavg_str = open('/proc/loadavg').readline()
+		except IOError:
+			# getloadavg() is only supposed to raise OSError, so convert
+			raise OSError('unknown')
+		loadavg_split = loadavg_str.split()
+		if len(loadavg_split) < 3:
+			raise OSError('unknown')
+		loadavg_floats = []
+		for i in xrange(3):
+			try:
+				loadavg_floats.append(float(loadavg_split[i]))
+			except ValueError:
+				raise OSError('unknown')
+		return tuple(loadavg_floats)
+
 class PollScheduler(object):
 
 	class _sched_iface_class(SlotObject):
@@ -9039,11 +9062,8 @@ class PollScheduler(object):
 			(max_jobs is True or max_jobs > 1) and \
 			self._running_job_count() >= 1:
 			try:
-				avg1, avg5, avg15 = os.getloadavg()
-			except OSError, e:
-				writemsg("!!! getloadavg() failed: %s\n" % (e,),
-					noiselevel=-1)
-				del e
+				avg1, avg5, avg15 = getloadavg()
+			except OSError:
 				return False
 
 			if avg1 >= max_load:
@@ -9424,9 +9444,9 @@ class JobStatusDisplay(object):
 
 	def _load_avg_str(self):
 		try:
-			avg = os.getloadavg()
-		except OSError, e:
-			return str(e)
+			avg = getloadavg()
+		except OSError:
+			return 'unknown'
 
 		max_avg = max(avg)
 
