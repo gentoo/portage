@@ -1634,13 +1634,24 @@ def grouplist(mylist,seperator="/"):
 			mygroups[xs[0]]+=[seperator.join(xs[1:])]
 	return mygroups
 
-if have_pmasked and not (options.without_mask or options.ignore_masked):
-	print bold("Note: use --without-mask to check " + \
-		"KEYWORDS on dependencies of masked packages")
+suggest_ignore_masked = False
+suggest_include_dev = False
 
+if have_pmasked and not (options.without_mask or options.ignore_masked):
+	suggest_ignore_masked = True
 if have_dev_keywords and not options.include_dev:
-	print bold("Note: use --include-dev (-d) to check " + \
-		"dependencies for 'dev' profiles")
+	suggest_include_dev = True
+
+if suggest_ignore_masked or suggest_include_dev:
+	print
+	if suggest_ignore_masked:
+		print bold("Note: use --without-mask to check " + \
+			"KEYWORDS on dependencies of masked packages")
+
+	if suggest_include_dev:
+		print bold("Note: use --include-dev (-d) to check " + \
+			"dependencies for 'dev' profiles")
+	print
 
 if options.mode != 'commit':
 	if dofull:
