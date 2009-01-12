@@ -461,10 +461,11 @@ class EOutput(object):
 					self.ewarn(msg[0])
 		if self.__last_e_cmd != "ebegin":
 			self.__last_e_len = 0
-		out = sys.stdout
-		out.write("%*s%s\n" % \
-			((self.term_columns - self.__last_e_len - 6), "", status_brackets))
-		out.flush()
+		if not self.quiet:
+			out = sys.stdout
+			out.write("%*s%s\n" % ((self.term_columns - self.__last_e_len - 6),
+				"", status_brackets))
+			out.flush()
 
 	def ebegin(self, msg):
 		"""
