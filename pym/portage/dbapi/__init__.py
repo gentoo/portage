@@ -8,7 +8,7 @@ import os
 import re
 from portage.dep import match_from_list
 from portage.locks import unlockfile
-from portage.output import red
+from portage.output import colorize
 from portage.util import writemsg
 from portage import auxdbkeys, dep_expand
 from portage.versions import catpkgsplit, pkgcmp
@@ -196,7 +196,8 @@ class dbapi(object):
 				pass
 		elif '/-MERGING-' in mypath:
 			if os.path.exists(mypath):
-				writemsg(red("INCOMPLETE MERGE:")+" "+mypath+"\n", noiselevel=-1)
+				writemsg(colorize("BAD","INCOMPLETE MERGE:")+" %s\n" % mypath,
+					noiselevel=-1)
 		else:
 			writemsg("!!! Invalid db entry: %s\n" % mypath, noiselevel=-1)
 
