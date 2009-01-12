@@ -13415,7 +13415,7 @@ def action_build(settings, trees, mtimedb,
 		resume_opts = mtimedb["resume"].get("myopts", [])
 		if isinstance(resume_opts, list):
 			resume_opts = dict((k,True) for k in resume_opts)
-		for opt in ("--skipfirst", "--ask", "--tree"):
+		for opt in ("--ask", "--color", "--skipfirst", "--tree"):
 			resume_opts.pop(opt, None)
 		myopts.update(resume_opts)
 
