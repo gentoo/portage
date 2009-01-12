@@ -4503,7 +4503,7 @@ def _check_build_log(mysettings, out=None):
 
 	configure_opts_warn = []
 	configure_opts_warn_re = re.compile(
-		r'^configure: WARNING: Unrecognized options: ')
+		r'^configure: WARNING: [Uu]nrecognized options: ')
 	am_maintainer_mode_re = re.compile(r'/missing --run ')
 	am_maintainer_mode_exclude_re = \
 		re.compile(r'/missing --run (autoheader|makeinfo)')
