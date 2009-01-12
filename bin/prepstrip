@@ -30,12 +30,24 @@ if hasq installsources ${FEATURES} && ! type -P debugedit >/dev/null ; then
 	ewarn "be found. This feature will not work unless debugedit is installed!"
 fi
 
+unset ${!INODE_*}
+
+inode_var_name() {
+	if  [[ $USERLAND = BSD ]] ; then
+		stat -f 'INODE_%d_%i' "$1"
+	else
+		stat -c 'INODE_%d_%i' "$1"
+	fi
+}
+
 save_elf_sources() {
 	hasq installsources ${FEATURES} || return 0
 	hasq installsources ${RESTRICT} && return 0
 	type -P debugedit >/dev/null || return 0
 
 	local x=$1
+	local inode=$(inode_var_name "$x")
+	[[ -n ${!inode} ]] && return 0
 	local sources_dir=/usr/src/debug/${CATEGORY}/${PF}
 	debugedit -b "${WORKDIR}" -d "${sources_dir}" \
 		-l "${T}"/debug.sources "${x}"
@@ -60,11 +72,18 @@ save_elf_debug() {
 	local buildid="$( type -P debugedit >/dev/null && debugedit -i "${x}" )"
 
 	mkdir -p $(dirname "${y}")
-	${OBJCOPY} --only-keep-debug "${x}" "${y}"
-	${OBJCOPY} --add-gnu-debuglink="${y}" "${x}"
-	[[ -g ${x} ]] && chmod go-r "${y}"
-	[[ -u ${x} ]] && chmod go-r "${y}"
-	chmod a-x,o-w "${y}"
+
+	local inode=$(inode_var_name "$x")
+	if [[ -n ${!inode} ]] ; then
+		ln "${D}usr/lib/debug/${!inode:${#D}}.debug" "$y"
+	else
+		eval $inode=\$x
+		${OBJCOPY} --only-keep-debug "${x}" "${y}"
+		${OBJCOPY} --add-gnu-debuglink="${y}" "${x}"
+		[[ -g ${x} ]] && chmod go-r "${y}"
+		[[ -u ${x} ]] && chmod go-r "${y}"
+		chmod a-x,o-w "${y}"
+	fi
 
 	if [[ -n ${buildid} ]] ; then
 		local buildid_dir="${D}usr/lib/debug/.build-id/${buildid:0:2}"
