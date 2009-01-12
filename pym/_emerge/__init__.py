@@ -5664,7 +5664,8 @@ class depgraph(object):
 			slot = slots.pop()
 			slot_atom = portage.dep.Atom("%s:%s" % (highest_pkg.cp, slot))
 			pkg, in_graph = self._select_package(root_config.root, slot_atom)
-			if pkg is not None and pkg < highest_pkg:
+			if pkg is not None and \
+				pkg.cp == highest_pkg.cp and pkg < highest_pkg:
 				greedy_pkgs.append(pkg)
 		if not greedy_pkgs:
 			return []
