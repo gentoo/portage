@@ -2736,12 +2736,21 @@ class dblink(object):
 				# whether config protection or not, we merge the new file the
 				# same way.  Unless moveme=0 (blocking directory)
 				if moveme:
-					hardlink_key = (mymd5, mystat.st_size,
+					# Do not hardlink files unless they are in the same
+					# directory, since otherwise tar may not be able to
+					# extract a tarball of the resulting hardlinks due to
+					# 'Invalid cross-device link' errors (depends on layout of
+					# mount points). Also, don't hardlink zero-byte files since
+					# it doesn't save any space.
+					parent_dir = os.path.dirname(myrealdest)
+					print "parent_dir", parent_dir
+					hardlink_key = (parent_dir, mymd5, mystat.st_size,
 						mystat.st_mode, mystat.st_uid, mystat.st_gid)
 					hardlink_candidates = self._md5_merge_map.get(hardlink_key)
 					if hardlink_candidates is None:
 						hardlink_candidates = []
-						self._md5_merge_map[hardlink_key] = hardlink_candidates
+						if mystat.st_size != 0:
+							self._md5_merge_map[hardlink_key] = hardlink_candidates
 					mymtime = movefile(mysrc, mydest, newmtime=thismtime,
 						sstat=mystat, mysettings=self.settings,
 						hardlink_candidates=hardlink_candidates)
