@@ -1028,6 +1028,9 @@ class FakeVartree(portage.vartree):
 		self.root = real_vartree.root
 		self.settings = real_vartree.settings
 		mykeys = list(real_vartree.dbapi._aux_cache_keys)
+		if "_mtime_" not in mykeys:
+			mykeys.append("_mtime_")
+		self._db_keys = mykeys
 		self._pkg_cache = pkg_cache
 		self.dbapi = PackageVirtualDbapi(real_vartree.settings)
 		vdb_path = os.path.join(self.root, portage.VDB_PATH)
@@ -1166,8 +1169,12 @@ class FakeVartree(portage.vartree):
 			pkg = pkg_vardb.get(pkg_hash_key)
 			if pkg is not None:
 				counter, mtime = real_vardb.aux_get(cpv, validation_keys)
+				try:
+					counter = long(counter)
+				except ValueError:
+					counter = 0
 
-				if counter != pkg.metadata["COUNTER"] or \
+				if counter != pkg.counter or \
 					mtime != pkg.mtime:
 					pkg_vardb.cpv_remove(pkg)
 					aux_get_history.discard(pkg.cpv)
@@ -1189,11 +1196,18 @@ class FakeVartree(portage.vartree):
 	def _pkg(self, cpv):
 		root_config = self._root_config
 		real_vardb = root_config.trees["vartree"].dbapi
-		db_keys = list(real_vardb._aux_cache_keys)
 		pkg = Package(cpv=cpv, installed=True,
-			metadata=izip(db_keys, real_vardb.aux_get(cpv, db_keys)),
+			metadata=izip(self._db_keys,
+			real_vardb.aux_get(cpv, self._db_keys)),
 			root_config=root_config,
 			type_name="installed")
+
+		try:
+			mycounter = long(pkg.metadata["COUNTER"])
+		except ValueError:
+			mycounter = 0
+			pkg.metadata["COUNTER"] = str(mycounter)
+
 		return pkg
 
 def grab_global_updates(portdir):
@@ -1540,7 +1554,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 	def _set_counter(self, k, v):
 		if isinstance(v, basestring):
 			try:
-				v = int(v.strip())
+				v = long(v.strip())
 			except ValueError:
 				v = 0
 		self._pkg.counter = v
