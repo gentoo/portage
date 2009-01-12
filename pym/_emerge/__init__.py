@@ -12105,7 +12105,7 @@ def git_sync_timestamps(settings, portdir):
 		return 1
 
 	args = [portage.const.BASH_BINARY, "-c",
-		"cd %s && git ls-files -m --with-tree=HEAD" % \
+		"cd %s && git diff-index --name-only --diff-filter=M HEAD" % \
 		portage._shell_quote(portdir)]
 	import subprocess
 	proc = subprocess.Popen(args, stdout=subprocess.PIPE)
