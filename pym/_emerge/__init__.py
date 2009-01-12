@@ -5324,7 +5324,6 @@ class depgraph(object):
 					self._sets[s] = expanded_set
 					args.append(SetArg(arg=x, set=expanded_set,
 						root_config=root_config))
-					myfavorites.append(x)
 					continue
 				if not is_valid_package_atom(x):
 					portage.writemsg("\n\n!!! '%s' is not a valid package atom.\n" % x,
@@ -5411,49 +5410,59 @@ class depgraph(object):
 					root_config=root_config))
 
 		if "--update" in self.myopts:
-			# Enable greedy SLOT atoms for atoms given as arguments.
-			# This is currently disabled for sets since greedy SLOT
-			# atoms could be a property of the set itself.
-			greedy_atoms = []
-			for arg in args:
-				# In addition to any installed slots, also try to pull
-				# in the latest new slot that may be available.
-				greedy_atoms.append(arg)
-				if not isinstance(arg, (AtomArg, PackageArg)):
-					continue
-				atom_cp = portage.dep_getkey(arg.atom)
-				slots = set()
-				for cpv in vardb.match(arg.atom):
-					slots.add(vardb.aux_get(cpv, ["SLOT"])[0])
-				for slot in slots:
-					greedy_atoms.append(
-						AtomArg(arg=arg.arg, atom="%s:%s" % (atom_cp, slot),
-							root_config=root_config))
-			args = greedy_atoms
-			del greedy_atoms
+			# In some cases, the greedy slots behavior can pull in a slot that
+			# the user would want to uninstall due to it being blocked by a
+			# newer version in a different slot. Therefore, it's necessary to
+			# detect and discard the any that should be uninstalled. Each time
+			# that arguments are updated, package selections are repeated in
+			# ensure consistency with the current arguments:
+			#
+			#  1) Initialize args
+			#  2) Select packages and generate initial greedy atoms
+			#  3) Update args with greedy atoms
+			#  4) Select packages and generate greedy atoms again, while
+			#     accounting for any blockers between selected packages
+			#  5) Update args with revised greedy atoms
 
-		# Create the "args" package set from atoms and
-		# packages given as arguments.
-		args_set = self._sets["args"]
+			self._set_args(args)
+			greedy_args = []
+			for arg in args:
+				greedy_args.append(arg)
+				if not isinstance(arg, AtomArg):
+					continue
+				for atom in self._greedy_slots(arg.root_config, arg.atom):
+					greedy_args.append(
+						AtomArg(arg=arg.arg, atom=atom,
+							root_config=arg.root_config))
+
+			self._set_args(greedy_args)
+			del greedy_args
+
+			# Revise greedy atoms, accounting for any blockers
+			# between selected packages.
+			revised_greedy_args = []
+			for arg in args:
+				revised_greedy_args.append(arg)
+				if not isinstance(arg, AtomArg):
+					continue
+				for atom in self._greedy_slots(arg.root_config, arg.atom,
+					blocker_lookahead=True):
+					revised_greedy_args.append(
+						AtomArg(arg=arg.arg, atom=atom,
+							root_config=arg.root_config))
+			args = revised_greedy_args
+			del revised_greedy_args
+
+		self._set_args(args)
+
+		myfavorites = set(myfavorites)
 		for arg in args:
-			if not isinstance(arg, (AtomArg, PackageArg)):
-				continue
-			myatom = arg.atom
-			if myatom in args_set:
-				continue
-			args_set.add(myatom)
-			myfavorites.append(myatom)
-		self._set_atoms.update(chain(*self._sets.itervalues()))
-		atom_arg_map = self._atom_arg_map
-		for arg in args:
-			for atom in arg.set:
-				atom_key = (atom, myroot)
-				refs = atom_arg_map.get(atom_key)
-				if refs is None:
-					refs = []
-					atom_arg_map[atom_key] = refs
-					if arg not in refs:
-						refs.append(arg)
+			if isinstance(arg, (AtomArg, PackageArg)):
+				myfavorites.add(arg.atom)
+			elif isinstance(arg, SetArg):
+				myfavorites.add(arg.arg)
+		myfavorites = list(myfavorites)
+
 		pprovideddict = pkgsettings.pprovideddict
 		if debug:
 			portage.writemsg("\n", noiselevel=-1)
@@ -5574,6 +5583,121 @@ class depgraph(object):
 
 		# We're true here unless we are missing binaries.
 		return (not missing,myfavorites)
+
+	def _set_args(self, args):
+		"""
+		Create the "args" package set from atoms and packages given as
+		arguments. This method can be called multiple times if necessary.
+		The package selection cache is automatically invalidated, since
+		arguments influence package selections.
+		"""
+		args_set = self._sets["args"]
+		args_set.clear()
+		for arg in args:
+			if not isinstance(arg, (AtomArg, PackageArg)):
+				continue
+			atom = arg.atom
+			if atom in args_set:
+				continue
+			args_set.add(atom)
+
+		self._set_atoms.clear()
+		self._set_atoms.update(chain(*self._sets.itervalues()))
+		atom_arg_map = self._atom_arg_map
+		atom_arg_map.clear()
+		for arg in args:
+			for atom in arg.set:
+				atom_key = (atom, arg.root_config.root)
+				refs = atom_arg_map.get(atom_key)
+				if refs is None:
+					refs = []
+					atom_arg_map[atom_key] = refs
+					if arg not in refs:
+						refs.append(arg)
+
+		# Invalidate the package selection cache, since
+		# arguments influence package selections.
+		self._highest_pkg_cache.clear()
+
+	def _greedy_slots(self, root_config, atom, blocker_lookahead=False):
+		"""
+		Return a list of slot atoms corresponding to installed slots that
+		differ from the slot of the highest visible match. Slot atoms that
+		would trigger a blocker conflict are automatically discarded,
+		potentially allowing automatic uninstallation of older slots when
+		appropriate.
+		"""
+		highest_pkg, in_graph = self._select_package(root_config.root, atom)
+		if highest_pkg is None:
+			return []
+		vardb = root_config.trees["vartree"].dbapi
+		slots = set()
+		for cpv in vardb.match(atom):
+			# don't mix new virtuals with old virtuals
+			if portage.cpv_getkey(cpv) == highest_pkg.cp:
+				slots.add(vardb.aux_get(cpv, ["SLOT"])[0])
+
+		slots.add(highest_pkg.metadata["SLOT"])
+		if len(slots) == 1:
+			return []
+		greedy_pkgs = []
+		slots.remove(highest_pkg.metadata["SLOT"])
+		while slots:
+			slot = slots.pop()
+			slot_atom = portage.dep.Atom("%s:%s" % (highest_pkg.cp, slot))
+			pkg, in_graph = self._select_package(root_config.root, slot_atom)
+			if pkg is not None and pkg < highest_pkg:
+				greedy_pkgs.append(pkg)
+		if not greedy_pkgs:
+			return []
+		if not blocker_lookahead:
+			return [pkg.slot_atom for pkg in greedy_pkgs]
+
+		blockers = {}
+		blocker_dep_keys = ["DEPEND", "PDEPEND", "RDEPEND"]
+		for pkg in greedy_pkgs + [highest_pkg]:
+			dep_str = " ".join(pkg.metadata[k] for k in blocker_dep_keys)
+			try:
+				atoms = self._select_atoms(
+					pkg.root, dep_str, pkg.use.enabled,
+					parent=pkg, strict=True)
+			except portage.exception.InvalidDependString:
+				continue
+			blocker_atoms = (x for x in atoms if x.blocker)
+			blockers[pkg] = InternalPackageSet(initial_atoms=blocker_atoms)
+
+		if highest_pkg not in blockers:
+			return []
+
+		# filter packages with invalid deps
+		greedy_pkgs = [pkg for pkg in greedy_pkgs if pkg in blockers]
+
+		# filter packages that conflict with highest_pkg
+		greedy_pkgs = [pkg for pkg in greedy_pkgs if not \
+			(blockers[highest_pkg].findAtomForPackage(pkg) or \
+			blockers[pkg].findAtomForPackage(highest_pkg))]
+
+		if not greedy_pkgs:
+			return []
+
+		# If two packages conflict, discard the lower version.
+		discard_pkgs = set()
+		greedy_pkgs.sort(reverse=True)
+		for pkg1 in greedy_pkgs:
+			if pkg1 in discard_pkgs:
+				continue
+			for pkg2 in greedy_pkgs:
+				if pkg2 in discard_pkgs:
+					continue
+				if pkg1 is pkg2:
+					continue
+				if blockers[pkg1].findAtomForPackage(pkg2) or \
+					blockers[pkg2].findAtomForPackage(pkg1):
+					# pkg1 > pkg2
+					discard_pkgs.add(pkg2)
+
+		return [pkg.slot_atom for pkg in greedy_pkgs \
+			if pkg not in discard_pkgs]
 
 	def _select_atoms_from_graph(self, *pargs, **kwargs):
 		"""
