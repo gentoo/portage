@@ -746,10 +746,15 @@ if vcs == "svn":
 	mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and elem[:1] in "MR" ]
 	mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A") ]
 elif vcs == "git":
-	mychanged = os.popen("git ls-files -m --with-tree=HEAD").readlines()
-	mychanged = [ "./" +  elem[:-1] for elem in mychanged ]
-	mynew = os.popen("git diff --cached --name-only --diff-filter=A").readlines()
 	strip_levels = repolevel - 1
+
+	mychanged = os.popen("git diff-index --name-only --diff-filter=M HEAD").readlines()
+	if strip_levels:
+		mychanged = [elem[repo_subdir_len:] for elem in mychanged \
+			if elem[:repo_subdir_len] == repo_subdir]
+	mychanged = ["./" + elem[:-1] for elem in mychanged]
+
+	mynew = os.popen("git diff-index --name-only --diff-filter=A HEAD").readlines()
 	if strip_levels:
 		mynew = [elem[repo_subdir_len:] for elem in mynew \
 			if elem[:repo_subdir_len] == repo_subdir]
@@ -1742,15 +1747,21 @@ else:
 			for prop in props if " - " in prop)
 
 	elif vcs == "git":
-		mychanged = os.popen("git ls-files -m --with-tree=HEAD").readlines()
-		mychanged = [ "./" +  elem[:-1] for elem in mychanged ]
-		mynew = os.popen("git diff --cached --name-only --diff-filter=A").readlines()
 		strip_levels = repolevel - 1
+
+		mychanged = os.popen("git diff-index --name-only --diff-filter=M HEAD").readlines()
+		if strip_levels:
+			mychanged = [elem[repo_subdir_len:] for elem in mychanged \
+				if elem[:repo_subdir_len] == repo_subdir]
+		mychanged = ["./" + elem[:-1] for elem in mychanged]
+
+		mynew = os.popen("git diff-index --name-only --diff-filter=A HEAD").readlines()
 		if strip_levels:
 			mynew = [elem[repo_subdir_len:] for elem in mynew \
 				if elem[:repo_subdir_len] == repo_subdir]
 		mynew = ["./" + elem[:-1] for elem in mynew]
-		myremoved = os.popen("git diff --cached --name-only --diff-filter=D").readlines()
+
+		myremoved = os.popen("git diff-index --name-only --diff-filter=D HEAD").readlines()
 		if strip_levels:
 			myremoved = [elem[repo_subdir_len:] for elem in myremoved \
 				if elem[:repo_subdir_len] == repo_subdir]
