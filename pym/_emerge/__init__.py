@@ -7343,7 +7343,7 @@ class depgraph(object):
 				if not parent_atoms:
 					atom = self._blocked_world_pkgs.get(pkg)
 					if atom is not None:
-						parent_atoms = set([("@world", atom)])
+						parent_atoms = set([("world", atom)])
 				if parent_atoms:
 					conflict_pkgs[pkg] = parent_atoms
 
