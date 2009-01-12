@@ -5618,6 +5618,8 @@ class depgraph(object):
 		# Invalidate the package selection cache, since
 		# arguments influence package selections.
 		self._highest_pkg_cache.clear()
+		for trees in self._filtered_trees.itervalues():
+			trees["porttree"].dbapi._clear_cache()
 
 	def _greedy_slots(self, root_config, atom, blocker_lookahead=False):
 		"""
@@ -8622,6 +8624,10 @@ class depgraph(object):
 			self._root = root
 			self._match_cache = {}
 			self._cpv_pkg_map = {}
+
+		def _clear_cache(self):
+			self._match_cache.clear()
+			self._cpv_pkg_map.clear()
 
 		def match(self, atom):
 			ret = self._match_cache.get(atom)
