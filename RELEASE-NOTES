@@ -4,6 +4,9 @@ Features/major bugfixes are listed in NEWS
 portage-2.1.6
 ==================================
 
+* The default behavior has changed for `emerge world` and `emerge system`
+  commands. These commands will reinstall all packages from the given set
+  unless an option such as --noreplace, --update, or --newuse is specified.
 * FEATURES=fixpackages is now enabled by default via make.globals. Set
   FEATURES="-fixpackages" in make.conf if you'd like to disable it.
 * File collision protection is now enabled by default via make.globals with
