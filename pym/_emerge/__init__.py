@@ -5640,10 +5640,10 @@ class depgraph(object):
 	def _greedy_slots(self, root_config, atom, blocker_lookahead=False):
 		"""
 		Return a list of slot atoms corresponding to installed slots that
-		differ from the slot of the highest visible match. Slot atoms that
-		would trigger a blocker conflict are automatically discarded,
-		potentially allowing automatic uninstallation of older slots when
-		appropriate.
+		differ from the slot of the highest visible match. When
+		blocker_lookahead is True, slot atoms that would trigger a blocker
+		conflict are automatically discarded, potentially allowing automatic
+		uninstallation of older slots when appropriate.
 		"""
 		highest_pkg, in_graph = self._select_package(root_config.root, atom)
 		if highest_pkg is None:
