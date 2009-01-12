@@ -53,6 +53,9 @@ ebuilds (such as the PORTAGE* and PORTDIR* variables)
 .br
 \- When assigning values to variables in ebuilds, you \fBcannot have a
 space\fR between the variable name and the equal sign.
+.br
+\- Variable values should only contain characters that are members of the
+\fBascii\fR(7) character set. This requirement is mandated by \fBGLEP 31\fR.
 .TP
 .B P
 This variable contains the package name without the ebuild revision.
