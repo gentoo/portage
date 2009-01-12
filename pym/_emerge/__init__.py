@@ -11470,6 +11470,7 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 	counter_hash = settings.get("PORTAGE_COUNTER_HASH")
 	if counter_hash is not None and \
 		counter_hash == vardbapi._counter_hash():
+		display_news_notification(root_config, myopts)
 		# If vdb state has not changed then there's nothing else to do.
 		sys.exit(retval)
 
