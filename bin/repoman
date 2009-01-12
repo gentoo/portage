@@ -1832,8 +1832,8 @@ else:
 		print "%s have headers that will change." % green(str(len(myheaders)))
 		print "* Files with headers will cause the " + \
 			"manifests to be made and recommited."
-	logging.info("myupdates:", str(myupdates))
-	logging.info("myheaders:", str(myheaders))
+	logging.info("myupdates: %s", myupdates)
+	logging.info("myheaders: %s", myheaders)
 
 	commitmessage = options.commitmsg
 	if options.commitmsgfile:
