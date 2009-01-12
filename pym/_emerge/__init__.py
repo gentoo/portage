@@ -7248,12 +7248,12 @@ class depgraph(object):
 
 				pruned_list = set()
 
-				# Prefer conflict packages over others.
+				# Prefer packages that are not directly involved in a conflict.
 				for parent_atom in parent_atoms:
 					if len(pruned_list) >= max_parents:
 						break
 					parent, atom = parent_atom
-					if parent in conflict_pkgs:
+					if parent not in conflict_pkgs:
 						pruned_list.add(parent_atom)
 
 				for parent_atom in parent_atoms:
