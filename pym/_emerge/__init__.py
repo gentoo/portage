@@ -5701,13 +5701,13 @@ class depgraph(object):
 		# If two packages conflict, discard the lower version.
 		discard_pkgs = set()
 		greedy_pkgs.sort(reverse=True)
-		for pkg1 in greedy_pkgs:
+		for i in xrange(len(greedy_pkgs) - 1):
+			pkg1 = greedy_pkgs[i]
 			if pkg1 in discard_pkgs:
 				continue
-			for pkg2 in greedy_pkgs:
+			for j in xrange(i + 1, len(greedy_pkgs)):
+				pkg2 = greedy_pkgs[j]
 				if pkg2 in discard_pkgs:
-					continue
-				if pkg1 is pkg2:
 					continue
 				if blockers[pkg1].findAtomForPackage(pkg2) or \
 					blockers[pkg2].findAtomForPackage(pkg1):
