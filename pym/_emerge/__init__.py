@@ -5429,9 +5429,9 @@ class depgraph(object):
 			# In some cases, the greedy slots behavior can pull in a slot that
 			# the user would want to uninstall due to it being blocked by a
 			# newer version in a different slot. Therefore, it's necessary to
-			# detect and discard the any that should be uninstalled. Each time
+			# detect and discard any that should be uninstalled. Each time
 			# that arguments are updated, package selections are repeated in
-			# ensure consistency with the current arguments:
+			# order to ensure consistency with the current arguments:
 			#
 			#  1) Initialize args
 			#  2) Select packages and generate initial greedy atoms
