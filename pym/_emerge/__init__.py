@@ -2658,8 +2658,12 @@ class EbuildBuild(CompositeTask):
 		be released when merge() is called.
 		"""
 
-		if self._default_exit(packager) == os.EX_OK and \
-			self.opts.buildpkgonly:
+		if self._default_exit(packager) != os.EX_OK:
+			self._unlock_builddir()
+			self.wait()
+			return
+
+		if self.opts.buildpkgonly:
 			# Need to call "clean" phase for buildpkgonly mode
 			portage.elog.elog_process(self.pkg.cpv, self.settings)
 			phase = "clean"
@@ -2670,9 +2674,10 @@ class EbuildBuild(CompositeTask):
 			self._start_task(clean_phase, self._clean_exit)
 			return
 
-		if self._final_exit(packager) != os.EX_OK or \
-			self.opts.buildpkgonly:
-			self._unlock_builddir()
+		# Continue holding the builddir lock until
+		# after the package has been installed.
+		self._current_task = None
+		self.returncode = packager.returncode
 		self.wait()
 
 	def _clean_exit(self, clean_phase):
