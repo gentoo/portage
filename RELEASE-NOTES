@@ -7,15 +7,16 @@ portage-2.1.6
 * FEATURES=fixpackages is now enabled by default via make.globals. Set
   FEATURES="-fixpackages" in make.conf if you'd like to disable it.
 * The python namespace for portage has been sanitized, all portage related code
-  is now contained within the portage namespace. External script should be updated
-  accordingly, though links exist for backward compability.
+  is now contained within the portage namespace. External script should be
+  updated accordingly, though links exist for backward compability.
 * -* support in package.keywords was changed as it was inconsistent with 
-  ACCEPT_KEYWORDS behavior (also see http://dev.gentoo.org/~genone/docs/KEYWORDS.stupid).
-  Previously having -* in package.keywords matched packages with KEYWORDS="-*", 
+  ACCEPT_KEYWORDS behavior (also see
+  http://dev.gentoo.org/~genone/docs/KEYWORDS.stupid).
+  Previously having -* in package.keywords matched packages with KEYWORDS="-*",
   now it resets the ACCEPT_KEYWORDS list for the given atom like it does when
   used in ACCEPT_KEYWORDS.
-  For packages that don't specify any other KEYWORDS you can use the new ** token
-  as documented in portage(5) to disable KEYWORDS filtering completely.
+  For packages that don't specify any other KEYWORDS you can use the new **
+  token as documented in portage(5) to disable KEYWORDS filtering completely.
 
 portage-2.1.5
 ==================================
@@ -28,7 +29,6 @@ portage-2.1.5
   earlier phase (such as pkg_preinst) and store the result in a global
   variable to be accessed by pkg_postinst when it is called. Bug #226505
   tracks all issues related to this phase execution order change.
-
 * The metadata-transfer feature is now disabled by default. This disables the
   "Updating Portage cache" routine that used to run at the tail end of each
   `emerge --sync` operation. If you use something like the sqlite module and
@@ -38,13 +38,11 @@ portage-2.1.5
   that override eclasses from PORTDIR (in this case, you may have disabled
   a relevant warning message by setting PORTAGE_ECLASS_WARNING_ENABLE="0" in
   make.conf).
-
 * The parallel-fetch feature is now enabled by default. It is optimized
   to avoid doing redundant checksums for previously downloaded files that have
   the correct size. Run `tail -f /var/log/emerge-fetch.log` in a
   terminal to view parallel-fetch progress. Add FEATURES="-parallel-fetch"
   to /etc/make.conf if you want to disable this feature.
-
 * For extra careful dependency handling, emerge has a new --complete-graph
   option that causes it to consider the deep dependencies of all packages from
   the system and world sets. With this option enabled, emerge will bail out
