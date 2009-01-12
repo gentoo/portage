@@ -12,7 +12,10 @@ portage-2.1.6
 * File collision protection is now enabled by default via make.globals with
   FEATURES=protect-owned. In order to protect files from be overwritten or
   removed a inappropriate times, it is recommended to leave protect-owned
-  (or the similar collision-protect feature) enabled at all times.
+  (or the similar collision-protect feature) enabled at all times. If you
+  want to disable collision protection completely (not recommended), then
+  you need to ensure that neither protect-owned nor collision-protect are
+  enabled.
 * The python namespace for portage has been sanitized, all portage related code
   is now contained within the portage namespace. External script should be
   updated accordingly, though links exist for backward compability.
