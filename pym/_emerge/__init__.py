@@ -3730,6 +3730,15 @@ class MergeListItem(CompositeTask):
 			colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)),
 			colorize("GOOD", pkg.cpv))
 
+		portdb = pkg.root_config.trees["porttree"].dbapi
+		portdir_repo_name = portdb._repository_map.get(portdb.porttree_root)
+		if portdir_repo_name:
+			pkg_repo_name = pkg.metadata["repository"]
+			if pkg_repo_name != portdir_repo_name:
+				if not pkg_repo_name:
+					pkg_repo_name = "unknown repo"
+				msg += " from %s" % pkg_repo_name
+
 		if pkg.root != "/":
 			msg += " %s %s" % (preposition, pkg.root)
 
