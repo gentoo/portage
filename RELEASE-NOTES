@@ -6,6 +6,10 @@ portage-2.1.6
 
 * FEATURES=fixpackages is now enabled by default via make.globals. Set
   FEATURES="-fixpackages" in make.conf if you'd like to disable it.
+* File collision protection is now enabled by default via make.globals with
+  FEATURES=protect-owned. In order to protect files from be overwritten or
+  removed a inappropriate times, it is recommended to leave protect-owned
+  (or the similar collision-protect feature) enabled at all times.
 * The python namespace for portage has been sanitized, all portage related code
   is now contained within the portage namespace. External script should be
   updated accordingly, though links exist for backward compability.
@@ -43,13 +47,6 @@ portage-2.1.5
   the correct size. Run `tail -f /var/log/emerge-fetch.log` in a
   terminal to view parallel-fetch progress. Add FEATURES="-parallel-fetch"
   to /etc/make.conf if you want to disable this feature.
-* For extra careful dependency handling, emerge has a new --complete-graph
-  option that causes it to consider the deep dependencies of all packages from
-  the system and world sets. With this option enabled, emerge will bail out
-  if it determines that the given operation will break any dependencies of
-  the packages that have been added to the graph. Unlike the --deep option,
-  the --complete-graph option does not cause any more packages to be updated
-  than would have otherwise been updated with the option disabled.
 
 portage-2.1.4.1
 ==================================
