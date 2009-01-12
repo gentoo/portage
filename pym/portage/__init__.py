@@ -914,6 +914,12 @@ class config(object):
 	virtuals ...etc you look in here.
 	"""
 
+	_env_blacklist = [
+		"A", "AA", "CATEGORY", "EBUILD_PHASE", "EMERGE_FROM",
+		"PF", "PKGUSE", "PORTAGE_CONFIGROOT", "PORTAGE_IUSE",
+		"PORTAGE_USE", "ROOT"
+	]
+
 	_environ_whitelist = []
 
 	# Whitelisted variables are always allowed to enter the ebuild
@@ -1432,9 +1438,7 @@ class config(object):
 			self.lookuplist.reverse()
 
 			# Blacklist vars that could interfere with portage internals.
-			for blacklisted in "CATEGORY", "EBUILD_PHASE", \
-				"EMERGE_FROM", "PKGUSE", "PORTAGE_CONFIGROOT", \
-				"PORTAGE_IUSE", "PORTAGE_USE", "ROOT":
+			for blacklisted in self._env_blacklist:
 				for cfg in self.lookuplist:
 					cfg.pop(blacklisted, None)
 			del blacklisted, cfg
@@ -1899,8 +1903,6 @@ class config(object):
 		env_configdict = self.configdict["env"]
 		pkg_configdict = self.configdict["pkg"]
 		previous_iuse = pkg_configdict.get("IUSE")
-		for k in ("A", "AA", "CATEGORY", "PKGUSE", "PF", "PORTAGE_USE"):
-			env_configdict.pop(k, None)
 		pkg_configdict["CATEGORY"] = cat
 		pkg_configdict["PF"] = pf
 		if mydb:
