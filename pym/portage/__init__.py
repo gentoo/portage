@@ -1132,6 +1132,7 @@ class config(object):
 			self.pusedict   = copy.deepcopy(clone.pusedict)
 			self.categories = copy.deepcopy(clone.categories)
 			self.pkeywordsdict = copy.deepcopy(clone.pkeywordsdict)
+			self._pkeywords_list = copy.deepcopy(clone._pkeywords_list)
 			self.pmaskdict = copy.deepcopy(clone.pmaskdict)
 			self.punmaskdict = copy.deepcopy(clone.punmaskdict)
 			self.prevmaskdict = copy.deepcopy(clone.prevmaskdict)
@@ -1260,6 +1261,16 @@ class config(object):
 					self.prevmaskdict[mycatpkg]=[x]
 				else:
 					self.prevmaskdict[mycatpkg].append(x)
+
+			self._pkeywords_list = []
+			rawpkeywords = [grabdict_package(
+				os.path.join(x, "package.keywords"), recursive=1) \
+				for x in self.profiles]
+			for i in xrange(len(self.profiles)):
+				cpdict = {}
+				for k, v in rawpkeywords[i].iteritems():
+					cpdict.setdefault(dep_getkey(k), {})[k] = v
+				self._pkeywords_list.append(cpdict)
 
 			# get profile-masked use flags -- INCREMENTAL Child over parent
 			self.usemask_list = [grabfile(os.path.join(x, "use.mask")) \
@@ -2230,6 +2241,25 @@ class config(object):
 				return x
 		return None
 
+	def _getKeywords(self, cpv, metadata):
+		cp = dep_getkey(cpv)
+		pkg = "%s:%s" % (cpv, metadata["SLOT"])
+		keywords = [metadata["KEYWORDS"].split()]
+		pos = len(keywords)
+		for i in xrange(len(self.profiles)):
+			cpdict = self._pkeywords_list[i].get(cp, None)
+			if cpdict:
+				keys = list(cpdict)
+				while keys:
+					best_match = best_match_to_list(pkg, keys)
+					if best_match:
+						keys.remove(best_match)
+						keywords.insert(pos, cpdict[best_match])
+					else:
+						break
+			pos = len(keywords)
+		return stack_lists(keywords, incremental=True)
+
 	def _getMissingKeywords(self, cpv, metadata):
 		"""
 		Take a package and return a list of any KEYWORDS that the user may
@@ -2251,7 +2281,7 @@ class config(object):
 		# object (bug #139600)
 		egroups = self.configdict["backupenv"].get(
 			"ACCEPT_KEYWORDS", "").split()
-		mygroups = metadata["KEYWORDS"].split()
+		mygroups = self._getKeywords(cpv, metadata)
 		# Repoman may modify this attribute as necessary.
 		pgroups = self["ACCEPT_KEYWORDS"].split()
 		match=0
@@ -6950,7 +6980,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 
 	# keywords checking
 	eapi = metadata["EAPI"]
-	mygroups = metadata["KEYWORDS"]
+	mygroups = settings._getKeywords(mycpv, metadata)
 	licenses = metadata["LICENSE"]
 	slot = metadata["SLOT"]
 	if eapi.startswith("-"):
@@ -6961,7 +6991,6 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 		return ["EAPI %s" % eapi]
 	egroups = settings.configdict["backupenv"].get(
 		"ACCEPT_KEYWORDS", "").split()
-	mygroups = mygroups.split()
 	pgroups = settings["ACCEPT_KEYWORDS"].split()
 	myarch = settings["ARCH"]
 	if pgroups and myarch not in pgroups:
