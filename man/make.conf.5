@@ -360,6 +360,10 @@ portage:portage without a sandbox (unless \fIusersandbox\fR is also used).
 .B usersandbox
 Enable the sandbox in the compile phase, when running without root privs (\fIuserpriv\fR).
 .TP
+.B usersync
+Drop privileges to the owner of \fBPORTDIR\fR for \fBemerge(1) --sync\fR
+operations.
+.TP
 .B webrsync-gpg
 Enable GPG verification when using \fIemerge\-webrsync\fR.
 .RE

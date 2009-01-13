@@ -12068,7 +12068,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 	spawn_kwargs = {}
 	spawn_kwargs["env"] = settings.environ()
-	if portage.data.secpass >= 2 and \
+	if 'usersync' in settings.features and \
+		portage.data.secpass >= 2 and \
 		(st.st_uid != os.getuid() and st.st_mode & 0700 or \
 		st.st_gid != os.getgid() and st.st_mode & 0070):
 		try:
