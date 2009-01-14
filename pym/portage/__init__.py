@@ -6351,13 +6351,14 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				if len(virtual_atoms) == 1:
 					# It wouldn't make sense to block all the components of a
 					# compound virtual, so only a single atom block is allowed.
-					a.append("!" + virtual_atoms[0])
+					a.append(portage.dep.Atom("!" + virtual_atoms[0]))
 			else:
-				mycheck[1].append("="+y[0]) # pull in the new-style virtual
+				# pull in the new-style virtual
+				mycheck[1].append(portage.dep.Atom("="+y[0]))
 				a.append(mycheck[1])
 		# Plain old-style virtuals.  New-style virtuals are preferred.
 		for y in mychoices:
-			a.append(x.replace(mykey, y))
+			a.append(portage.dep.Atom(x.replace(mykey, y, 1)))
 		if isblocker and not a:
 			# Probably a compound virtual.  Pass the atom through unprocessed.
 			newsplit.append(x)
