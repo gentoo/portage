@@ -3921,12 +3921,23 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 				if not can_fetch:
 					if fetched != 2:
-						if fetched == 0:
+						try:
+							mysize = os.stat(myfile_path).st_size
+						except OSError, e:
+							if e.errno != errno.ENOENT:
+								raise
+							del e
+							mysize = 0
+
+						if mysize == 0:
 							writemsg("!!! File %s isn't fetched but unable to get it.\n" % myfile,
 								noiselevel=-1)
-						else:
+						elif size is None or size > mysize:
 							writemsg("!!! File %s isn't fully fetched, but unable to complete it\n" % myfile,
 								noiselevel=-1)
+						else:
+							writemsg(("!!! File %s is incorrect size, " + \
+								"but unable to retry.\n") % myfile, noiselevel=-1)
 						for var_name in ("FETCHCOMMAND", "RESUMECOMMAND"):
 							if not mysettings.get(var_name, None):
 								writemsg(("!!! %s is unset.  It should " + \
@@ -4260,7 +4271,7 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 				fetch_settings = config(clone=mysettings)
 				debug = mysettings.get("PORTAGE_DEBUG") == "1"
 				for myfile in missing_files:
-					success = False
+					uris = set()
 					for cpv in distfiles_map[myfile]:
 						myebuild = os.path.join(mysettings["O"],
 							catsplit(cpv)[1] + ".ebuild")
@@ -4268,15 +4279,33 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 						doebuild_environment(myebuild, "fetch",
 							mysettings["ROOT"], fetch_settings,
 							debug, 1, myportdb)
-						uri_map = myportdb.getFetchMap(cpv, mytree=mytree)
-						myuris = {myfile:uri_map[myfile]}
-						fetch_settings["A"] = myfile # for use by pkg_nofetch()
-						if fetch(myuris, fetch_settings):
-							success = True
-							break
-					if not success:
-						writemsg(("!!! File %s doesn't exist, can't update " + \
+						uris.update(myportdb.getFetchMap(
+							cpv, mytree=mytree)[myfile])
+
+					fetch_settings["A"] = myfile # for use by pkg_nofetch()
+
+					try:
+						st = os.stat(os.path.join(
+							mysettings["DISTDIR"],myfile))
+					except OSError:
+						st = None
+
+					if not fetch({myfile : uris}, fetch_settings):
+						writemsg(("!!! Fetch failed for %s, can't update " + \
 							"Manifest\n") % myfile, noiselevel=-1)
+						if myfile in dist_hashes and \
+							st is not None and st.st_size > 0:
+							# stat result is obtained before calling fetch(),
+							# since fetch may rename the existing file if the
+							# digest does not match.
+							writemsg("!!! If you would like to " + \
+								"forcefully replace the existing " + \
+								"Manifest entry\n!!! for %s, use the " % \
+								myfile + "following command:\n" + \
+								"!!!    " + colorize("INFORM",
+								"ebuild --force %s manifest" % \
+								os.path.basename(myebuild)) + "\n",
+								noiselevel=-1)
 						return 0
 		writemsg_stdout(">>> Creating Manifest for %s\n" % mysettings["O"])
 		try:
