@@ -6218,19 +6218,12 @@ class depgraph(object):
 		replacement.
 		"""
 		graph_db = self._graph_trees[root]["porttree"].dbapi
-		matches = graph_db.match(atom)
+		matches = graph_db.match_pkgs(atom)
 		if not matches:
 			return None, None
-		cpv = matches[-1] # highest match
-		slot_atom = "%s:%s" % (portage.cpv_getkey(cpv),
-			graph_db.aux_get(cpv, ["SLOT"])[0])
-		e_pkg = self._slot_pkg_map[root].get(slot_atom)
-		if e_pkg:
-			return e_pkg, e_pkg
-		# Since this cpv exists in the graph_db,
-		# we must have a cached Package instance.
-		cache_key = ("installed", root, cpv, "nomerge")
-		return (self._pkg_cache[cache_key], None)
+		pkg = matches[-1] # highest match
+		in_graph = self._slot_pkg_map[root].get(pkg.slot_atom)
+		return pkg, in_graph
 
 	def _complete_graph(self):
 		"""
