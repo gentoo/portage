@@ -6320,7 +6320,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			newsplit.append(x)
 			continue
 		if not pkgs and len(mychoices) == 1:
-			newsplit.append(x.replace(mykey, mychoices[0]))
+			newsplit.append(portage.dep.Atom(x.replace(mykey, mychoices[0])))
 			continue
 		if isblocker:
 			a = []
