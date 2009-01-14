@@ -6302,7 +6302,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	# for new-style virtuals.  Repoman should enforce this.
 	dep_keys = ["RDEPEND", "DEPEND", "PDEPEND"]
 	portdb = trees[myroot]["porttree"].dbapi
-	repoman = isinstance(mydbapi, portdbapi)
+	repoman = not mysettings.local_config
 	if kwargs["use_binaries"]:
 		portdb = trees[myroot]["bintree"].dbapi
 	myvirtuals = mysettings.getvirtuals()
@@ -6384,8 +6384,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			cpv, pv_split, db = y
 			depstring = " ".join(db.aux_get(cpv, dep_keys))
 			pkg_kwargs = kwargs.copy()
-			if isinstance(db, portdbapi):
-				# for repoman
+			if repoman:
 				pass
 			else:
 				# for emerge
