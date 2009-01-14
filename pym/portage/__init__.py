@@ -3033,7 +3033,8 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	else:
 		check_config_instance(mysettings)
 		env=mysettings.environ()
-		keywords["opt_name"]="[%s]" % mysettings["PF"]
+		if mysettings.mycpv is not None:
+			keywords["opt_name"] = "[%s]" % mysettings.mycpv
 
 	fd_pipes = keywords.get("fd_pipes")
 	if fd_pipes is None:
