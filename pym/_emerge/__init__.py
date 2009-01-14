@@ -8567,27 +8567,7 @@ class depgraph(object):
 				args.append(AtomArg(arg=x, atom=x,
 					root_config=root_config))
 
-		# Create the "args" package set from atoms and
-		# packages given as arguments.
-		args_set = self._sets["args"]
-		for arg in args:
-			if not isinstance(arg, (AtomArg, PackageArg)):
-				continue
-			myatom = arg.atom
-			if myatom in args_set:
-				continue
-			args_set.add(myatom)
-		self._set_atoms.update(chain(*self._sets.itervalues()))
-		atom_arg_map = self._atom_arg_map
-		for arg in args:
-			for atom in arg.set:
-				atom_key = (atom, arg.root_config.root)
-				refs = atom_arg_map.get(atom_key)
-				if refs is None:
-					refs = []
-					atom_arg_map[atom_key] = refs
-					if arg not in refs:
-						refs.append(arg)
+		self._set_args(args)
 		return args
 
 	class UnsatisfiedResumeDep(portage.exception.PortageException):
