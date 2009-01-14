@@ -4234,7 +4234,12 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 		for myfile in distfiles_map:
 			myhashes = dist_hashes.get(myfile)
 			if not myhashes:
-				missing_files.append(myfile)
+				try:
+					st = os.stat(os.path.join(mysettings["DISTDIR"], myfile))
+				except OSError:
+					st = None
+				if st is None or st.st_size == 0:
+					missing_files.append(myfile)
 				continue
 			size = myhashes.get("size")
 
