@@ -1369,11 +1369,11 @@ for x in scanlist:
 		default_use = []
 		for myflag in myaux["IUSE"].split():
 			flag_name = myflag.lstrip("+-")
+			used_useflags.add(flag_name)
 			if myflag != flag_name:
 				default_use.append(myflag)
 			if flag_name not in uselist:
 				myuse.append(flag_name)
-		used_useflags.update(myuse)
 
 		# uselist checks - metadata
 		for mypos in range(len(myuse)-1,-1,-1):
