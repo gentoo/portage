@@ -6265,19 +6265,12 @@ class depgraph(object):
 		replacement.
 		"""
 		graph_db = self._graph_trees[root]["porttree"].dbapi
-		matches = graph_db.match(atom)
+		matches = graph_db.match_pkgs(atom)
 		if not matches:
 			return None, None
-		cpv = matches[-1] # highest match
-		slot_atom = "%s:%s" % (portage.cpv_getkey(cpv),
-			graph_db.aux_get(cpv, ["SLOT"])[0])
-		e_pkg = self._slot_pkg_map[root].get(slot_atom)
-		if e_pkg:
-			return e_pkg, e_pkg
-		# Since this cpv exists in the graph_db,
-		# we must have a cached Package instance.
-		cache_key = ("installed", root, cpv, "nomerge")
-		return (self._pkg_cache[cache_key], None)
+		pkg = matches[-1] # highest match
+		in_graph = self._slot_pkg_map[root].get(pkg.slot_atom)
+		return pkg, in_graph
 
 	def _complete_graph(self):
 		"""
@@ -8610,27 +8603,7 @@ class depgraph(object):
 				args.append(AtomArg(arg=x, atom=x,
 					root_config=root_config))
 
-		# Create the "args" package set from atoms and
-		# packages given as arguments.
-		args_set = self._sets["args"]
-		for arg in args:
-			if not isinstance(arg, (AtomArg, PackageArg)):
-				continue
-			myatom = arg.atom
-			if myatom in args_set:
-				continue
-			args_set.add(myatom)
-		self._set_atoms.update(chain(*self._sets.itervalues()))
-		atom_arg_map = self._atom_arg_map
-		for arg in args:
-			for atom in arg.set:
-				atom_key = (atom, arg.root_config.root)
-				refs = atom_arg_map.get(atom_key)
-				if refs is None:
-					refs = []
-					atom_arg_map[atom_key] = refs
-					if arg not in refs:
-						refs.append(arg)
+		self._set_args(args)
 		return args
 
 	class UnsatisfiedResumeDep(portage.exception.PortageException):
@@ -12117,7 +12090,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 	spawn_kwargs = {}
 	spawn_kwargs["env"] = settings.environ()
-	if portage.data.secpass >= 2 and \
+	if 'usersync' in settings.features and \
+		portage.data.secpass >= 2 and \
 		(st.st_uid != os.getuid() and st.st_mode & 0700 or \
 		st.st_gid != os.getgid() and st.st_mode & 0070):
 		try:

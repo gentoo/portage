@@ -916,9 +916,12 @@ class config(object):
 	"""
 
 	_env_blacklist = [
-		"A", "AA", "CATEGORY", "EBUILD_PHASE", "EMERGE_FROM",
-		"PF", "PKGUSE", "PORTAGE_CONFIGROOT", "PORTAGE_IUSE",
-		"PORTAGE_REPO_NAME", "PORTAGE_USE", "ROOT", "EPREFIX", "EROOT"
+		"A", "AA", "CATEGORY", "DEPEND", "DESCRIPTION", "EAPI",
+		"EBUILD_PHASE", "EMERGE_FROM", "HOMEPAGE", "INHERITED", "IUSE",
+		"KEYWORDS", "LICENSE", "PDEPEND", "PF", "PKGUSE",
+		"PORTAGE_CONFIGROOT", "PORTAGE_IUSE", "PORTAGE_REPO_NAME",
+		"PORTAGE_USE", "PROPERTIES", "PROVIDE", "RDEPEND", "RESTRICT",
+		"ROOT", "SLOT", "SRC_URI", "EPREFIX", "EROOT"
 	]
 
 	_environ_whitelist = []
@@ -3052,7 +3055,11 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	else:
 		check_config_instance(mysettings)
 		env=mysettings.environ()
-		keywords["opt_name"]="[%s]" % mysettings["PF"]
+		if mysettings.mycpv is not None:
+			keywords["opt_name"] = "[%s]" % mysettings.mycpv
+		else:
+			keywords["opt_name"] = "[%s/%s]" % \
+				(mysettings.get("CATEGORY",""), mysettings.get("PF",""))
 
 	fd_pipes = keywords.get("fd_pipes")
 	if fd_pipes is None:
@@ -3940,12 +3947,23 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 				if not can_fetch:
 					if fetched != 2:
-						if fetched == 0:
+						try:
+							mysize = os.stat(myfile_path).st_size
+						except OSError, e:
+							if e.errno != errno.ENOENT:
+								raise
+							del e
+							mysize = 0
+
+						if mysize == 0:
 							writemsg("!!! File %s isn't fetched but unable to get it.\n" % myfile,
 								noiselevel=-1)
-						else:
+						elif size is None or size > mysize:
 							writemsg("!!! File %s isn't fully fetched, but unable to complete it\n" % myfile,
 								noiselevel=-1)
+						else:
+							writemsg(("!!! File %s is incorrect size, " + \
+								"but unable to retry.\n") % myfile, noiselevel=-1)
 						for var_name in ("FETCHCOMMAND", "RESUMECOMMAND"):
 							if not mysettings.get(var_name, None):
 								writemsg(("!!! %s is unset.  It should " + \
@@ -4252,7 +4270,12 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 		for myfile in distfiles_map:
 			myhashes = dist_hashes.get(myfile)
 			if not myhashes:
-				missing_files.append(myfile)
+				try:
+					st = os.stat(os.path.join(mysettings["DISTDIR"], myfile))
+				except OSError:
+					st = None
+				if st is None or st.st_size == 0:
+					missing_files.append(myfile)
 				continue
 			size = myhashes.get("size")
 
@@ -4279,7 +4302,7 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 				fetch_settings = config(clone=mysettings)
 				debug = mysettings.get("PORTAGE_DEBUG") == "1"
 				for myfile in missing_files:
-					success = False
+					uris = set()
 					for cpv in distfiles_map[myfile]:
 						myebuild = os.path.join(mysettings["O"],
 							catsplit(cpv)[1] + ".ebuild")
@@ -4287,15 +4310,33 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 						doebuild_environment(myebuild, "fetch",
 							mysettings["ROOT"], fetch_settings,
 							debug, 1, myportdb)
-						uri_map = myportdb.getFetchMap(cpv, mytree=mytree)
-						myuris = {myfile:uri_map[myfile]}
-						fetch_settings["A"] = myfile # for use by pkg_nofetch()
-						if fetch(myuris, fetch_settings):
-							success = True
-							break
-					if not success:
-						writemsg(("!!! File %s doesn't exist, can't update " + \
+						uris.update(myportdb.getFetchMap(
+							cpv, mytree=mytree)[myfile])
+
+					fetch_settings["A"] = myfile # for use by pkg_nofetch()
+
+					try:
+						st = os.stat(os.path.join(
+							mysettings["DISTDIR"],myfile))
+					except OSError:
+						st = None
+
+					if not fetch({myfile : uris}, fetch_settings):
+						writemsg(("!!! Fetch failed for %s, can't update " + \
 							"Manifest\n") % myfile, noiselevel=-1)
+						if myfile in dist_hashes and \
+							st is not None and st.st_size > 0:
+							# stat result is obtained before calling fetch(),
+							# since fetch may rename the existing file if the
+							# digest does not match.
+							writemsg("!!! If you would like to " + \
+								"forcefully replace the existing " + \
+								"Manifest entry\n!!! for %s, use the " % \
+								myfile + "following command:\n" + \
+								"!!!    " + colorize("INFORM",
+								"ebuild --force %s manifest" % \
+								os.path.basename(myebuild)) + "\n",
+								noiselevel=-1)
 						return 0
 		writemsg_stdout(">>> Creating Manifest for %s\n" % mysettings["O"])
 		try:
@@ -6308,7 +6349,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	# for new-style virtuals.  Repoman should enforce this.
 	dep_keys = ["RDEPEND", "DEPEND", "PDEPEND"]
 	portdb = trees[myroot]["porttree"].dbapi
-	repoman = isinstance(mydbapi, portdbapi)
+	repoman = not mysettings.local_config
 	if kwargs["use_binaries"]:
 		portdb = trees[myroot]["bintree"].dbapi
 	myvirtuals = mysettings.getvirtuals()
@@ -6380,7 +6421,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			newsplit.append(x)
 			continue
 		if not pkgs and len(mychoices) == 1:
-			newsplit.append(x.replace(mykey, mychoices[0]))
+			newsplit.append(portage.dep.Atom(x.replace(mykey, mychoices[0])))
 			continue
 		if isblocker:
 			a = []
@@ -6390,8 +6431,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			cpv, pv_split, db = y
 			depstring = " ".join(db.aux_get(cpv, dep_keys))
 			pkg_kwargs = kwargs.copy()
-			if isinstance(db, portdbapi):
-				# for repoman
+			if repoman:
 				pass
 			else:
 				# for emerge
@@ -6411,13 +6451,14 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				if len(virtual_atoms) == 1:
 					# It wouldn't make sense to block all the components of a
 					# compound virtual, so only a single atom block is allowed.
-					a.append("!" + virtual_atoms[0])
+					a.append(portage.dep.Atom("!" + virtual_atoms[0]))
 			else:
-				mycheck[1].append("="+y[0]) # pull in the new-style virtual
+				# pull in the new-style virtual
+				mycheck[1].append(portage.dep.Atom("="+y[0]))
 				a.append(mycheck[1])
 		# Plain old-style virtuals.  New-style virtuals are preferred.
 		for y in mychoices:
-			a.append(x.replace(mykey, y))
+			a.append(portage.dep.Atom(x.replace(mykey, y, 1)))
 		if isblocker and not a:
 			# Probably a compound virtual.  Pass the atom through unprocessed.
 			newsplit.append(x)
