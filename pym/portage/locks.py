@@ -55,6 +55,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 	if type(mypath) == types.StringType:
 		if not os.path.exists(os.path.dirname(mypath)):
 			raise DirectoryNotFound(os.path.dirname(mypath))
+		preexisting = os.path.exists(lockfilename)
 		old_mask = os.umask(000)
 		try:
 			try:
@@ -67,17 +68,21 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 					raise PermissionDenied(func_call)
 				else:
 					raise
-			try:
-				if os.stat(lockfilename).st_gid != portage_gid:
-					os.chown(lockfilename, os.getuid(), portage_gid)
-			except OSError, e:
-				if e.errno == errno.ENOENT: # No such file or directory
-					return lockfile(mypath, wantnewlockfile=wantnewlockfile,
-						unlinkfile=unlinkfile, waiting_msg=waiting_msg,
-						flags=flags)
-				else:
-					writemsg("Cannot chown a lockfile. This could " + \
-						"cause inconvenience later.\n")
+
+			if not preexisting:
+				try:
+					if os.stat(lockfilename).st_gid != portage_gid:
+						os.chown(lockfilename, -1, portage_gid)
+				except OSError, e:
+					if e.errno == errno.ENOENT: # No such file or directory
+						return lockfile(mypath,
+							wantnewlockfile=wantnewlockfile,
+							unlinkfile=unlinkfile, waiting_msg=waiting_msg,
+							flags=flags)
+					else:
+						writemsg("Cannot chown a lockfile. This could " + \
+							"cause inconvenience later.\n")
+
 		finally:
 			os.umask(old_mask)
 
