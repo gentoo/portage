@@ -1895,8 +1895,6 @@ else:
 		sys.stderr.flush()
 		portage_version = "Unknown"
 	unameout = platform.system() + " "
-	if platform.system() != "Linux":
-		unameout += platform.release() + " "
 	if platform.system() in ["Darwin", "SunOS"]:
 		unameout += platform.processor()
 	else:
