@@ -9,7 +9,7 @@ __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
 
 import errno, os, stat, time, types
 from portage.exception import DirectoryNotFound, FileNotFound, \
-	InvalidData, TryAgain
+	InvalidData, TryAgain, OperationNotPermitted, PermissionDenied
 from portage.data import portage_gid
 from portage.output import EOutput
 from portage.util import writemsg
@@ -55,22 +55,31 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 	if type(mypath) == types.StringType:
 		if not os.path.exists(os.path.dirname(mypath)):
 			raise DirectoryNotFound(os.path.dirname(mypath))
-		if not os.path.exists(lockfilename):
-			old_mask=os.umask(000)
-			myfd = os.open(lockfilename, os.O_CREAT|os.O_RDWR,0660)
+		old_mask = os.umask(000)
+		try:
+			try:
+				myfd = os.open(lockfilename, os.O_CREAT|os.O_RDWR, 0660)
+			except OSError, e:
+				func_call = "open('%s')" % lockfilename
+				if e.errno == OperationNotPermitted.errno:
+					raise OperationNotPermitted(func_call)
+				elif e.errno == PermissionDenied.errno:
+					raise PermissionDenied(func_call)
+				else:
+					raise
 			try:
 				if os.stat(lockfilename).st_gid != portage_gid:
-					os.chown(lockfilename,os.getuid(),portage_gid)
+					os.chown(lockfilename, os.getuid(), portage_gid)
 			except OSError, e:
-				if e[0] == 2: # No such file or directory
+				if e.errno == errno.ENOENT: # No such file or directory
 					return lockfile(mypath, wantnewlockfile=wantnewlockfile,
 						unlinkfile=unlinkfile, waiting_msg=waiting_msg,
 						flags=flags)
 				else:
-					writemsg("Cannot chown a lockfile. This could cause inconvenience later.\n");
+					writemsg("Cannot chown a lockfile. This could " + \
+						"cause inconvenience later.\n")
+		finally:
 			os.umask(old_mask)
-		else:
-			myfd = os.open(lockfilename, os.O_CREAT|os.O_RDWR,0660)
 
 	elif type(mypath) == types.IntType:
 		myfd = mypath

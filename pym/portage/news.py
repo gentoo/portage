@@ -157,7 +157,7 @@ class NewsManager(object):
 		try:
 			unread_lock = lockfile(unread_filename, wantnewlockfile=1)
 		except (InvalidLocation, OperationNotPermitted, PermissionDenied):
-			return 0
+			pass
 		try:
 			try:
 				return len(grabfile(unread_filename))
