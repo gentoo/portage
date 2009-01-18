@@ -417,6 +417,17 @@ install_qa_check() {
 		install_name=${l%%;*}; l=${l#*;}
 		needed=${l%%;*}; l=${l#*;}
 
+		# See if the self-reference install_name points to an existing
+		# and to be installed file.  This usually is a symlink for the
+		# major version.
+		if [[ ! -e ${D}${install_name} ]] ; then
+			eqawarn "QA Notice: invalid self-reference install_name ${install_name} in ${obj}"
+			# remember we are in an implicit subshell, that's
+			# why we touch a file here ... ideally we should be
+			# able to die correctly/nicely here
+			touch "${T}"/.install_name_check_failed
+		fi
+
 		# this is ugly, paths with spaces won't work
 		reevaluate=0
 		for lib in $(echo ${needed} | tr , ' '); do
@@ -438,7 +449,7 @@ install_qa_check() {
 				fi
 			fi
 		done
-		if [[ reevaluate == 1 ]]; then
+		if [[ ${reevaluate} == 1 ]]; then
 			# install_name(s) have been changed, refresh data so we
 			# store the correct meta data
 			l=$(scanmacho -qyF '%a;%p;%S;%n' ${D}${obj})
