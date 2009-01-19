@@ -10357,7 +10357,8 @@ class Scheduler(PollScheduler):
 			for msg in self._post_mod_echo_msgs:
 				msg()
 
-		if len(self._failed_pkgs_all) > 1:
+		if len(self._failed_pkgs_all) > 1 or \
+			(self._failed_pkgs_all and "--keep-going" in self.myopts):
 			msg = "The following packages have " + \
 				"failed to build or install:"
 			prefix = bad(" * ")
