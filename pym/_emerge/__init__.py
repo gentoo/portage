@@ -8515,11 +8515,35 @@ class depgraph(object):
 			if not self._create_graph(allow_unsatisfied=True):
 				return False
 
-			# TODO: Add sanity checks to make sure that it's really
-			# safe to ignore all the deps that can be ignored here.
-			unsatisfied_deps = [x for x in self._unsatisfied_deps \
-				if isinstance(x.parent, Package) and \
-				x.parent.operation == "merge"]
+			unsatisfied_deps = []
+			for dep in self._unsatisfied_deps:
+				if not isinstance(dep.parent, Package):
+					continue
+				if dep.parent.operation == "merge":
+					unsatisfied_deps.append(dep)
+					continue
+
+				# For unsatisfied deps of installed packages, only account for
+				# them if they are in the subgraph of dependencies of a package
+				# which is scheduled to be installed.
+				unsatisfied_install = False
+				traversed = set()
+				dep_stack = self.digraph.parent_nodes(dep.parent)
+				while dep_stack:
+					node = dep_stack.pop()
+					if not isinstance(node, Package):
+						continue
+					if node.operation == "merge":
+						unsatisfied_install = True
+						break
+					if node in traversed:
+						continue
+					traversed.add(node)
+					dep_stack.extend(self.digraph.parent_nodes(node))
+
+				if unsatisfied_install:
+					unsatisfied_deps.append(dep)
+
 			if masked_tasks or unsatisfied_deps:
 				# This probably means that a required package
 				# was dropped via --skipfirst. It makes the
