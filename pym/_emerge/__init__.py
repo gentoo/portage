@@ -4820,6 +4820,10 @@ class depgraph(object):
 		dep_pkg, existing_node = self._select_package(dep.root, dep.atom,
 			onlydeps=dep.onlydeps)
 		if not dep_pkg:
+			if dep.satisfied:
+				# This could be an unecessary build-time dep
+				# pulled in by --with-bdeps=y.
+				return 1
 			if allow_unsatisfied:
 				self._unsatisfied_deps.append(dep)
 				return 1
