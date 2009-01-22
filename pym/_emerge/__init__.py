@@ -4832,6 +4832,7 @@ class depgraph(object):
 		# discarded dependencies reduce the amount of information
 		# available for optimization of merge order.
 		if dep.priority.satisfied and \
+			not dep_pkg.installed and \
 			not (existing_node or empty or deep or update):
 			myarg = None
 			if dep.root == self.target_root:
