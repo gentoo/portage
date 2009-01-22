@@ -8516,8 +8516,14 @@ class depgraph(object):
 			if not self._create_graph(allow_unsatisfied=True):
 				return False
 
+			# When appropriate, complete the graph before analyzing
+			# any unsatisfied deps that may exist.
+			if not self._complete_graph():
+				return False
+
 			unsatisfied_deps = []
-			for dep in self._unsatisfied_deps:
+			for dep in self._unsatisfied_deps + \
+				self._initially_unsatisfied_deps:
 				if not isinstance(dep.parent, Package):
 					continue
 				if dep.parent.operation == "merge":
