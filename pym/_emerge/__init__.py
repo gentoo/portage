@@ -8483,6 +8483,19 @@ class depgraph(object):
 		else:
 			self._select_package = self._select_pkg_from_graph
 			self.myparams.add("selective")
+			# Always traverse deep dependencies in order to account for
+			# potentially unsatisfied dependencies of installed packages.
+			# This is necessary for correct --keep-going or --resume operation
+			# in case a package from a group of circularly dependent packages
+			# fails. In this case, a package which has recently been installed
+			# may have an unsatisfied circular dependency (pulled in by
+			# PDEPEND, for example). So, even though a package is already
+			# installed, it may not have all of it's dependencies satisfied, so
+			# it may not be usable. If such a package is in the subgraph of
+			# deep depenedencies of a scheduled build, that build needs to
+			# be cancelled. In order for this type of situation to be
+			# recognized, deep traversal of dependencies is required.
+			self.myparams.add("deep")
 
 			favorites = resume_data.get("favorites")
 			args_set = self._sets["args"]
@@ -8516,14 +8529,8 @@ class depgraph(object):
 			if not self._create_graph(allow_unsatisfied=True):
 				return False
 
-			# When appropriate, complete the graph before analyzing
-			# any unsatisfied deps that may exist.
-			if not self._complete_graph():
-				return False
-
 			unsatisfied_deps = []
-			for dep in self._unsatisfied_deps + \
-				self._initially_unsatisfied_deps:
+			for dep in self._unsatisfied_deps:
 				if not isinstance(dep.parent, Package):
 					continue
 				if dep.parent.operation == "merge":
