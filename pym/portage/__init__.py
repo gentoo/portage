@@ -3721,7 +3721,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 			if distdir_writable and use_locks:
 				waiting_msg = None
-				if not parallel_fetchonly and "parallel-fetch" in features:
+				if not parallel_fetchonly and "parallel-fetch" in features \
+					and "EMERGE_FROM" in mysettings:
 					waiting_msg = ("Fetching '%s' " + \
 						"in the background. " + \
 						"To view fetch progress, run `tail -f " + \
