@@ -9937,6 +9937,7 @@ class Scheduler(PollScheduler):
 
 		self._digraph = digraph
 		self._prune_digraph()
+		self._prevent_builddir_collisions()
 
 	def _prune_digraph(self):
 		"""
@@ -9958,6 +9959,26 @@ class Scheduler(PollScheduler):
 			if not removed_nodes:
 				break
 			removed_nodes.clear()
+
+	def _prevent_builddir_collisions(self):
+		"""
+		When building stages, sometimes the same exact cpv needs to be merged
+		to both $ROOTs. Add edges to the digraph in order to avoid collisions
+		in the builddir. Currently, normal file locks would be inappropriate
+		for this purpose since emerge holds all of it's build dir locks from
+		the main process.
+		"""
+		cpv_map = {}
+		for pkg in self._mergelist:
+			if pkg.installed:
+				continue
+			if pkg.cpv not in cpv_map:
+				cpv_map[pkg.cpv] = [pkg]
+				continue
+			for earlier_pkg in cpv_map[pkg.cpv]:
+				self._digraph.add(earlier_pkg, pkg,
+					priority=DepPriority(buildtime=True))
+			cpv_map[pkg.cpv].append(pkg)
 
 	class _pkg_failure(portage.exception.PortageException):
 		"""
