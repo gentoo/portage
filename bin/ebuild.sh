@@ -896,8 +896,10 @@ dyn_prepare() {
 	trap abort_prepare SIGINT SIGQUIT
 
 	ebuild_phase pre_src_prepare
+	vecho ">>> Preparing source in $srcdir ..."
 	ebuild_phase src_prepare
 	touch "$PORTAGE_BUILDDIR"/.prepared
+	vecho ">>> Source prepared."
 	ebuild_phase post_src_prepare
 
 	trap SIGINT SIGQUIT

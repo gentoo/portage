@@ -3739,17 +3739,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					has_space = False
 
 			if distdir_writable and use_locks:
-				waiting_msg = None
-				if not parallel_fetchonly and "parallel-fetch" in features:
-					waiting_msg = ("Fetching '%s' " + \
-						"in the background. " + \
-						"To view fetch progress, run `tail -f " + \
-						EPREFIX + "/var/log/emerge-fetch.log` in another " + \
-						"terminal.") % myfile
-					msg_prefix = colorize("GOOD", " * ")
-					from textwrap import wrap
-					waiting_msg = "\n".join(msg_prefix + line \
-						for line in wrap(waiting_msg, 65))
 
 				if locks_in_subdir:
 					lock_file = os.path.join(mysettings["DISTDIR"],
@@ -3760,8 +3749,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				lock_kwargs = {}
 				if fetchonly:
 					lock_kwargs["flags"] = os.O_NONBLOCK
-				else:
-					lock_kwargs["waiting_msg"] = waiting_msg
 
 				try:
 					file_lock = portage.locks.lockfile(myfile_path,
