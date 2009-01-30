@@ -2367,12 +2367,20 @@ class EbuildFetcher(SpawnProcess):
 		portdb = root_config.trees["porttree"].dbapi
 		ebuild_path = portdb.findname(self.pkg.cpv)
 		settings = self.config_pool.allocate()
-		self._build_dir = EbuildBuildDir(pkg=self.pkg, settings=settings)
-		self._build_dir.lock()
-		self._build_dir.clean()
-		portage.prepare_build_dirs(self.pkg.root, self._build_dir.settings, 0)
-		if self.logfile is None:
-			self.logfile = settings.get("PORTAGE_LOG_FILE")
+		settings.setcpv(self.pkg)
+
+		# In prefetch mode, logging goes to emerge-fetch.log and the builddir
+		# should not be touched since otherwise it could interfere with
+		# another instance of the same cpv concurrently being built for a
+		# different $ROOT (currently, builds only cooperate with prefetchers
+		# that are spawned for the same $ROOT).
+		if not self.prefetch:
+			self._build_dir = EbuildBuildDir(pkg=self.pkg, settings=settings)
+			self._build_dir.lock()
+			self._build_dir.clean()
+			portage.prepare_build_dirs(self.pkg.root, self._build_dir.settings, 0)
+			if self.logfile is None:
+				self.logfile = settings.get("PORTAGE_LOG_FILE")
 
 		phase = "fetch"
 		if self.fetchall:
@@ -8132,7 +8140,7 @@ class depgraph(object):
 						if not pkg_merge:
 							myprint = "[%s] " % pkgprint(pkg_status.ljust(13))
 						else:
-							myprint = "[" + pkg_type + " " + addl + "] "
+							myprint = "[%s %s] " % (pkgprint(pkg_type), addl)
 						myprint += indent + pkgprint(pkg_key) + " " + \
 							myoldbest + darkgreen("to " + myroot)
 				else:
@@ -9978,6 +9986,7 @@ class Scheduler(PollScheduler):
 
 		self._digraph = digraph
 		self._prune_digraph()
+		self._prevent_builddir_collisions()
 
 	def _prune_digraph(self):
 		"""
@@ -9999,6 +10008,26 @@ class Scheduler(PollScheduler):
 			if not removed_nodes:
 				break
 			removed_nodes.clear()
+
+	def _prevent_builddir_collisions(self):
+		"""
+		When building stages, sometimes the same exact cpv needs to be merged
+		to both $ROOTs. Add edges to the digraph in order to avoid collisions
+		in the builddir. Currently, normal file locks would be inappropriate
+		for this purpose since emerge holds all of it's build dir locks from
+		the main process.
+		"""
+		cpv_map = {}
+		for pkg in self._mergelist:
+			if pkg.installed:
+				continue
+			if pkg.cpv not in cpv_map:
+				cpv_map[pkg.cpv] = [pkg]
+				continue
+			for earlier_pkg in cpv_map[pkg.cpv]:
+				self._digraph.add(earlier_pkg, pkg,
+					priority=DepPriority(buildtime=True))
+			cpv_map[pkg.cpv].append(pkg)
 
 	class _pkg_failure(portage.exception.PortageException):
 		"""
