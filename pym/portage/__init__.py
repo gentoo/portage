@@ -253,15 +253,20 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 	ret_list = []
 	ret_ftype = []
 	for x in range(0, len(list)):
-		if(ignorecvs and (len(list[x]) > 2) and (list[x][:2]!=".#")):
-			ret_list.append(list[x])
-			ret_ftype.append(ftype[x])
-		elif (list[x] not in ignorelist):
+		if list[x] in ignorelist:
+			pass
+		elif ignorecvs:
+			if list[x][:2] != ".#":
+				ret_list.append(list[x])
+				ret_ftype.append(ftype[x])
+		else:
 			ret_list.append(list[x])
 			ret_ftype.append(ftype[x])
 
 	writemsg("cacheddirStats: H:%d/M:%d/S:%d\n" % (cacheHit, cacheMiss, cacheStale),10)
 	return ret_list, ret_ftype
+
+_ignorecvs_dirs = ('CVS', 'SCCS', '.svn', '.git')
 
 def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelist=[], followSymlinks=True,
 	EmptyOnError=False, dirsonly=False):
@@ -274,7 +279,7 @@ def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelis
 	@type recursive: Boolean
 	@param filesonly; Only return files, not more directories
 	@type filesonly: Boolean
-	@param ignorecvs: Ignore CVS directories ('CVS','.svn','SCCS')
+	@param ignorecvs: Ignore CVS directories ('CVS','SCCS','.svn','.git')
 	@type ignorecvs: Boolean
 	@param ignorelist: List of filenames/directories to exclude
 	@type ignorelist: List
@@ -301,7 +306,8 @@ def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelis
 	if recursive:
 		x=0
 		while x<len(ftype):
-			if ftype[x]==1 and not (ignorecvs and os.path.basename(list[x]) in ('CVS','.svn','SCCS')):
+			if ftype[x] == 1 and not \
+				(ignorecvs and os.path.basename(list[x]) in _ignorecvs_dirs):
 				l,f = cacheddir(mypath+"/"+list[x], ignorecvs, ignorelist, EmptyOnError,
 					followSymlinks)
 
@@ -454,16 +460,22 @@ class digraph(object):
 	def child_nodes(self, node, ignore_priority=None):
 		"""Return all children of the specified node"""
 		if ignore_priority is None:
-			return self.nodes[node][0].keys()
+			return list(self.nodes[node][0])
 		children = []
 		for child, priority in self.nodes[node][0].iteritems():
 			if priority > ignore_priority:
 				children.append(child)
 		return children
 
-	def parent_nodes(self, node):
+	def parent_nodes(self, node, ignore_priority=None):
 		"""Return all parents of the specified node"""
-		return self.nodes[node][1].keys()
+		if ignore_priority is None:
+			return list(self.nodes[node][1])
+		parents = []
+		for parent, priority in self.nodes[node][1].iteritems():
+			if priority > ignore_priority:
+				parents.append(parent)
+		return parents
 
 	def leaf_nodes(self, ignore_priority=None):
 		"""Return all nodes that have no children

@@ -4847,6 +4847,10 @@ class depgraph(object):
 		dep_pkg, existing_node = self._select_package(dep.root, dep.atom,
 			onlydeps=dep.onlydeps)
 		if not dep_pkg:
+			if dep.priority.satisfied:
+				# This could be an unecessary build-time dep
+				# pulled in by --with-bdeps=y.
+				return 1
 			if allow_unsatisfied:
 				self._unsatisfied_deps.append(dep)
 				return 1
@@ -4859,6 +4863,7 @@ class depgraph(object):
 		# discarded dependencies reduce the amount of information
 		# available for optimization of merge order.
 		if dep.priority.satisfied and \
+			not dep_pkg.installed and \
 			not (existing_node or empty or deep or update):
 			myarg = None
 			if dep.root == self.target_root:
@@ -5201,9 +5206,9 @@ class depgraph(object):
 			atom_without_category, "null"))
 		cat, atom_pn = portage.catsplit(null_cp)
 
+		dbs = self._filtered_trees[root_config.root]["dbs"]
 		cp_set = set()
-		for db, pkg_type, built, installed, db_keys in \
-			self._filtered_trees[root_config.root]["dbs"]:
+		for db, pkg_type, built, installed, db_keys in dbs:
 			cp_set.update(db.cp_all())
 		for cp in list(cp_set):
 			cat, pn = portage.catsplit(cp)
@@ -5211,6 +5216,13 @@ class depgraph(object):
 				cp_set.discard(cp)
 		deps = []
 		for cp in cp_set:
+			have_pkg = False
+			for db, pkg_type, built, installed, db_keys in dbs:
+				if db.cp_list(cp):
+					have_pkg = True
+					break
+			if not have_pkg:
+				continue
 			cat, pn = portage.catsplit(cp)
 			deps.append(insert_category_into_atom(
 				atom_without_category, cat))
@@ -8518,6 +8530,19 @@ class depgraph(object):
 		else:
 			self._select_package = self._select_pkg_from_graph
 			self.myparams.add("selective")
+			# Always traverse deep dependencies in order to account for
+			# potentially unsatisfied dependencies of installed packages.
+			# This is necessary for correct --keep-going or --resume operation
+			# in case a package from a group of circularly dependent packages
+			# fails. In this case, a package which has recently been installed
+			# may have an unsatisfied circular dependency (pulled in by
+			# PDEPEND, for example). So, even though a package is already
+			# installed, it may not have all of it's dependencies satisfied, so
+			# it may not be usable. If such a package is in the subgraph of
+			# deep depenedencies of a scheduled build, that build needs to
+			# be cancelled. In order for this type of situation to be
+			# recognized, deep traversal of dependencies is required.
+			self.myparams.add("deep")
 
 			favorites = resume_data.get("favorites")
 			args_set = self._sets["args"]
