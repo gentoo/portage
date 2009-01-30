@@ -8550,13 +8550,43 @@ class depgraph(object):
 			# masked.
 			if not self._create_graph(allow_unsatisfied=True):
 				return False
-			if masked_tasks or self._unsatisfied_deps:
+
+			unsatisfied_deps = []
+			for dep in self._unsatisfied_deps:
+				if not isinstance(dep.parent, Package):
+					continue
+				if dep.parent.operation == "merge":
+					unsatisfied_deps.append(dep)
+					continue
+
+				# For unsatisfied deps of installed packages, only account for
+				# them if they are in the subgraph of dependencies of a package
+				# which is scheduled to be installed.
+				unsatisfied_install = False
+				traversed = set()
+				dep_stack = self.digraph.parent_nodes(dep.parent)
+				while dep_stack:
+					node = dep_stack.pop()
+					if not isinstance(node, Package):
+						continue
+					if node.operation == "merge":
+						unsatisfied_install = True
+						break
+					if node in traversed:
+						continue
+					traversed.add(node)
+					dep_stack.extend(self.digraph.parent_nodes(node))
+
+				if unsatisfied_install:
+					unsatisfied_deps.append(dep)
+
+			if masked_tasks or unsatisfied_deps:
 				# This probably means that a required package
 				# was dropped via --skipfirst. It makes the
 				# resume list invalid, so convert it to a
 				# UnsatisfiedResumeDep exception.
 				raise self.UnsatisfiedResumeDep(self,
-					masked_tasks + self._unsatisfied_deps)
+					masked_tasks + unsatisfied_deps)
 			self._serialized_tasks_cache = None
 			try:
 				self.altlist()
@@ -10399,7 +10429,8 @@ class Scheduler(PollScheduler):
 			for msg in self._post_mod_echo_msgs:
 				msg()
 
-		if len(self._failed_pkgs_all) > 1:
+		if len(self._failed_pkgs_all) > 1 or \
+			(self._failed_pkgs_all and "--keep-going" in self.myopts):
 			msg = "The following packages have " + \
 				"failed to build or install:"
 			prefix = bad(" * ")
@@ -10878,7 +10909,7 @@ class Scheduler(PollScheduler):
 		try:
 			success, mydepgraph, dropped_tasks = resume_depgraph(
 				self.settings, self.trees, self._mtimedb, self.myopts,
-				myparams, self._spinner, skip_unsatisfied=True)
+				myparams, self._spinner)
 		except depgraph.UnsatisfiedResumeDep, e:
 			mydepgraph = e.depgraph
 			dropped_tasks = set()
@@ -13719,14 +13750,15 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	else:
 		print "Number removed:       "+str(len(cleanlist))
 
-def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner,
-	skip_masked=False, skip_unsatisfied=False):
+def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 	"""
 	Construct a depgraph for the given resume list. This will raise
 	PackageNotFound or depgraph.UnsatisfiedResumeDep when necessary.
 	@rtype: tuple
 	@returns: (success, depgraph, dropped_tasks)
 	"""
+	skip_masked = True
+	skip_unsatisfied = True
 	mergelist = mtimedb["resume"]["mergelist"]
 	dropped_tasks = set()
 	while True:
@@ -13929,14 +13961,11 @@ def action_build(settings, trees, mtimedb,
 					del mergelist[i]
 					break
 
-		skip_masked      = "--skipfirst" in myopts
-		skip_unsatisfied = "--skipfirst" in myopts
 		success = False
 		mydepgraph = None
 		try:
 			success, mydepgraph, dropped_tasks = resume_depgraph(
-				settings, trees, mtimedb, myopts, myparams, spinner,
-				skip_masked=skip_masked, skip_unsatisfied=skip_unsatisfied)
+				settings, trees, mtimedb, myopts, myparams, spinner)
 		except (portage.exception.PackageNotFound,
 			depgraph.UnsatisfiedResumeDep), e:
 			if isinstance(e, depgraph.UnsatisfiedResumeDep):
