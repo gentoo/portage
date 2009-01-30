@@ -22,4 +22,4 @@ if [[ $PORTAGE_QUIET != 1 ]] ; then
 	) >&2
 fi
 
-exec ${MAKE:-make} ${MAKEOPTS} ${EXTRA_EMAKE} "$@"
+exec ${MAKE:-make} SHELL="${BASH:-/bin/bash}" ${MAKEOPTS} ${EXTRA_EMAKE} "$@"
