@@ -6898,21 +6898,26 @@ class depgraph(object):
 				for ignore_priority in ignore_priority_soft_range:
 					nodes = get_nodes(ignore_priority=ignore_priority)
 					if nodes:
+						# If there is a mix of uninstall nodes with other
+						# types, save the uninstall nodes for later since
+						# sometimes a merge node will render an uninstall
+						# node unnecessary (due to occupying the same slot),
+						# and we want to avoid executing a separate uninstall
+						# task in that case.
+						if len(nodes) > 1:
+							non_uninstalls = [node for node in nodes \
+								if node.operation != "uninstall"]
+							if non_uninstalls:
+								nodes = non_uninstalls
+							else:
+								nodes = nodes
+
 						if ignore_priority is None and not tree_mode:
 							# Greedily pop all of these nodes since no
 							# relationship has been ignored. This optimization
 							# destroys --tree output, so it's disabled in tree
-							# mode. If there is a mix of merge and uninstall
-							# nodes, save the uninstall nodes for later since
-							# sometimes a merge node will render an install
-							# node unnecessary, and we want to avoid doing a
-							# separate uninstall task in that case.
-							merge_nodes = [node for node in nodes \
-								if node.operation == "merge"]
-							if merge_nodes:
-								selected_nodes = merge_nodes
-							else:
-								selected_nodes = nodes
+							# mode.
+							selected_nodes = nodes
 						else:
 							# For optimal merge order:
 							#  * Only pop one node.
