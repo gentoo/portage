@@ -6898,37 +6898,37 @@ class depgraph(object):
 				for ignore_priority in ignore_priority_soft_range:
 					nodes = get_nodes(ignore_priority=ignore_priority)
 					if nodes:
-						break
-				if nodes:
-					if ignore_priority is None and not tree_mode:
-						# Greedily pop all of these nodes since no relationship
-						# has been ignored.  This optimization destroys --tree
-						# output, so it's disabled in reversed mode. If there
-						# is a mix of merge and uninstall nodes, save the
-						# uninstall nodes from later since sometimes a merge
-						# node will render an install node unnecessary, and
-						# we want to avoid doing a separate uninstall task in
-						# that case.
-						merge_nodes = [node for node in nodes \
-							if node.operation == "merge"]
-						if merge_nodes:
-							selected_nodes = merge_nodes
+						if ignore_priority is None and not tree_mode:
+							# Greedily pop all of these nodes since no
+							# relationship has been ignored. This optimization
+							# destroys --tree output, so it's disabled in tree
+							# mode. If there is a mix of merge and uninstall
+							# nodes, save the uninstall nodes for later since
+							# sometimes a merge node will render an install
+							# node unnecessary, and we want to avoid doing a
+							# separate uninstall task in that case.
+							merge_nodes = [node for node in nodes \
+								if node.operation == "merge"]
+							if merge_nodes:
+								selected_nodes = merge_nodes
+							else:
+								selected_nodes = nodes
 						else:
-							selected_nodes = nodes
-					else:
-						# For optimal merge order:
-						#  * Only pop one node.
-						#  * Removing a root node (node without a parent)
-						#    will not produce a leaf node, so avoid it.
-						for node in nodes:
-							if mygraph.parent_nodes(node):
-								# found a non-root node
-								selected_nodes = [node]
-								break
-						if not selected_nodes and \
-							(accept_root_node or ignore_priority is None):
-							# settle for a root node
-							selected_nodes = [nodes[0]]
+							# For optimal merge order:
+							#  * Only pop one node.
+							#  * Removing a root node (node without a parent)
+							#    will not produce a leaf node, so avoid it.
+							for node in nodes:
+								if mygraph.parent_nodes(node):
+									# found a non-root node
+									selected_nodes = [node]
+									break
+							if not selected_nodes and \
+								(accept_root_node or ignore_priority is None):
+								# settle for a root node
+								selected_nodes = [nodes[0]]
+						if selected_nodes:
+							break
 
 			if not selected_nodes:
 				nodes = get_nodes(ignore_priority=DepPriority.MEDIUM)
