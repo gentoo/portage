@@ -605,6 +605,42 @@ def dump_traceback(msg, noiselevel=1):
 		writemsg(error+"\n", noiselevel=noiselevel)
 	writemsg("====================================\n\n", noiselevel=noiselevel)
 
+class cmp_sort_key(object):
+	"""
+	In python-3.0 the list.sort() method no longer has a "cmp" keyword
+	argument. This class acts as an adapter which converts a cmp function
+	into one that's suitable for use as the "key" keyword argument to
+	list.sort(), making it easier to port code for python-3.0 compatibility.
+	It works by generating key objects which use the given cmp function to
+	implement their __lt__ method.
+	"""
+	__slots__ = ("_cmp_func",)
+
+	def __init__(self, cmp_func):
+		"""
+		@type cmp_func: callable which takes 2 positional arguments
+		@param cmp_func: A cmp function.
+		"""
+		self._cmp_func = cmp_func
+
+	def __call__(self, lhs):
+		return self._cmp_key(self._cmp_func, lhs)
+
+	class _cmp_key(object):
+		__slots__ = ("_cmp_func", "_obj")
+
+		def __init__(self, cmp_func, obj):
+			self._cmp_func = cmp_func
+			self._obj = obj
+
+		def __lt__(self, other):
+			if not isinstance(other, self.__class__):
+				raise TypeError("Expected type %s, got %s" % \
+					(self.__class__, other.__class__))
+			if self._cmp_func(self._obj, other._obj) < 0:
+				return True
+			return False
+
 def unique_array(s):
 	"""lifted from python cookbook, credit: Tim Peters
 	Return a list of the elements in s in arbitrary order, sans duplicates"""
