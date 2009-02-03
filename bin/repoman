@@ -66,7 +66,7 @@ from portage.process import find_binary, spawn
 from portage.output import bold, create_color_func, darkgreen, \
 	green, nocolor, red, turquoise, yellow
 from portage.output import ConsoleStyleFile, StyleWriter
-from portage.util import writemsg_level
+from portage.util import cmp_sort_key, writemsg_level
 
 util.initialize_logger()
 
@@ -846,7 +846,7 @@ for x in scanlist:
 		ebuild_split = portage.pkgsplit(ebuildlist[i])
 		pkgsplits[ebuild_split] = ebuildlist[i]
 		ebuildlist[i] = ebuild_split
-	ebuildlist.sort(portage.pkgcmp)
+	ebuildlist.sort(key=cmp_sort_key(portage.pkgcmp))
 	for i in xrange(len(ebuildlist)):
 		ebuildlist[i] = pkgsplits[ebuildlist[i]]
 	del pkgsplits
