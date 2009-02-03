@@ -11145,6 +11145,8 @@ class MetadataRegen(PollScheduler):
 
 		self._valid_pkgs = set()
 		self._process_iter = self._iter_metadata_processes()
+		self.returncode = os.EX_OK
+		self._error_count = 0
 
 	def _iter_metadata_processes(self):
 		portdb = self._portdb
@@ -11222,6 +11224,8 @@ class MetadataRegen(PollScheduler):
 	def _metadata_exit(self, metadata_process):
 		self._jobs -= 1
 		if metadata_process.returncode != os.EX_OK:
+			self.returncode = 1
+			self._error_count += 1
 			self._valid_pkgs.discard(metadata_process.cpv)
 			portage.writemsg("Error processing %s, continuing...\n" % \
 				(metadata_process.cpv,))
@@ -12873,6 +12877,7 @@ def action_regen(settings, portdb, max_jobs, max_load):
 	regen.run()
 
 	portage.writemsg_stdout("done!\n")
+	return regen.returncode
 
 def action_config(settings, trees, myopts, myfiles):
 	if len(myfiles) != 1:
@@ -15196,7 +15201,7 @@ def emerge_main():
 		action_metadata(settings, portdb, myopts)
 	elif myaction=="regen":
 		validate_ebuild_environment(trees)
-		action_regen(settings, portdb, myopts.get("--jobs"),
+		return action_regen(settings, portdb, myopts.get("--jobs"),
 			myopts.get("--load-average"))
 	# HELP action
 	elif "config"==myaction:
