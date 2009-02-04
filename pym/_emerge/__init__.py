@@ -9991,14 +9991,21 @@ class Scheduler(PollScheduler):
 			if system_set.findAtomForPackage(node):
 				node_stack.append(node)
 
+		def ignore_priority(priority):
+			"""
+			Ignore non-runtime priorities.
+			"""
+			if isinstance(priority, DepPriority) and \
+				(priority.runtime or priority.runtime_post):
+				return False
+			return True
+
 		while node_stack:
 			node = node_stack.pop()
 			if node in deep_system_deps:
 				continue
 			deep_system_deps.add(node)
-			# TODO: Only traverse runtime deps since we aren't concerned about
-			# buildtime deps here.
-			for child in graph.child_nodes(node):
+			for child in graph.child_nodes(node, ignore_priority=ignore_priority):
 				if not isinstance(child, Package) or \
 					child.operation == "uninstall":
 					continue
