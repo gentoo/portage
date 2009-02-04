@@ -2983,6 +2983,10 @@ class config(object):
 					pass
 		return self._selinux_enabled
 
+	if sys.hexversion >= 0x3000000:
+		keys = __iter__
+		items = iteritems
+
 def _shell_quote(s):
 	"""
 	Quote a string in double-quotes and use backslashes to
