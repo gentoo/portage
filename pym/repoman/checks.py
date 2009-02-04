@@ -328,13 +328,25 @@ class DeprecatedBindnowFlags(LineCheck):
 	re = re.compile(r'.*\$\(bindnow-flags\)')
 	error = errors.DEPRECATED_BINDNOW_FLAGS
 
+class WantAutoDefaultValue(LineCheck):
+	"""Check setting WANT_AUTO* to latest (default value)."""
+	repoman_check_name = 'ebuild.minorsyn'
+	_re = re.compile(r'^WANT_AUTO(CONF|MAKE)=(\'|")?latest')
+
+	def check(self, num, line):
+		m = self._re.match(line)
+		if m is not None:
+			return 'WANT_AUTO' + m.group(1) + \
+				' redundantly set to default value "latest" on line: %d'
+
 _constant_checks = tuple((c() for c in (
 	EbuildHeader, EbuildWhitespace, EbuildQuote,
 	EbuildAssignment, EbuildUselessDodoc,
 	EbuildUselessCdS, EbuildNestedDie,
 	EbuildPatches, EbuildQuotedA,
 	IUseUndefined, ImplicitRuntimeDeps, InheritAutotools,
-	EMakeParallelDisabled, DeprecatedBindnowFlags)))
+	EMakeParallelDisabled, DeprecatedBindnowFlags,
+	WantAutoDefaultValue)))
 
 def run_checks(contents, pkg):
 	checks = _constant_checks
