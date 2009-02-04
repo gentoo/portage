@@ -1002,7 +1002,7 @@ class BlockerDepPriority(DepPriority):
 BlockerDepPriority.instance = BlockerDepPriority()
 
 class UnmergeDepPriority(AbstractDepPriority):
-	__slots__ = ("satisfied",)
+	__slots__ = ("optional", "satisfied",)
 	"""
 	Combination of properties           Priority  Category
 
