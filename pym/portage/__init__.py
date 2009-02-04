@@ -600,9 +600,8 @@ class digraph(object):
 				output("depends on\n")
 			else:
 				output("(no children)\n")
-			for child in self.nodes[node][0]:
-				output("  %s (%s)\n" % \
-					(child, self.nodes[node][0][child],))
+			for child, priorities in self.nodes[node][0].iteritems():
+				output("  %s (%s)\n" % (child, priorities[-1],))
 
 #parse /etc/env.d and generate /etc/profile.env
 
