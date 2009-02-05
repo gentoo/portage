@@ -985,6 +985,8 @@ class DepPriority(AbstractDepPriority):
 		return -7
 
 	def __str__(self):
+		if self.optional:
+			return "optional"
 		myvalue = self.__int__()
 		if myvalue > self.MEDIUM:
 			return "hard"
