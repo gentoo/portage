@@ -6864,23 +6864,14 @@ class depgraph(object):
 		# successfully selected.
 		prefer_asap = True
 
-		# By default, try to avoid selecting root nodes whenever possible. This
-		# helps ensure that the maximimum possible number of soft dependencies
-		# have been removed from the graph before their parent nodes have
-		# selected. This is especially important when those dependencies are
-		# going to be rebuilt by revdep-rebuild or `emerge -e system` after the
-		# CHOST has been changed (like when building a stage3 from a stage2).
-		accept_root_node = False
-
-		# State of prefer_asap and accept_root_node flags for successive
-		# iterations that loosen the criteria for node selection.
+		# State of variables for successive iterations that loosen the
+		# criteria for node selection.
 		#
-		# iteration   prefer_asap   accept_root_node
-		# 1           True          False
-		# 2           False         False
-		# 3           False         True
+		# iteration   prefer_asap
+		# 1           True
+		# 2           False
 		#
-		# If no nodes are selected on the 3rd iteration, it is due to
+		# If no nodes are selected on the last iteration, it is due to
 		# unresolved blockers or circular dependencies.
 
 		while not mygraph.empty():
@@ -6888,7 +6879,9 @@ class depgraph(object):
 			selected_nodes = None
 			ignore_priority = None
 			if prefer_asap and asap_nodes:
-				"""ASAP nodes are merged before their soft deps."""
+				# ASAP nodes are merged before their soft deps. Go ahead and
+				# select root nodes here if necessary, since it's typical for
+				# the parent to have been removed from the graph already.
 				asap_nodes = [node for node in asap_nodes \
 					if mygraph.contains(node)]
 				for node in asap_nodes:
@@ -6932,10 +6925,7 @@ class depgraph(object):
 									# found a non-root node
 									selected_nodes = [node]
 									break
-							if not selected_nodes and \
-								(accept_root_node or ignore_priority is None):
-								# settle for a root node
-								selected_nodes = [nodes[0]]
+
 						if selected_nodes:
 							break
 
@@ -6970,9 +6960,7 @@ class depgraph(object):
 					for ignore_priority in xrange(DepPriority.SOFT,
 						DepPriority.MEDIUM_SOFT + 1):
 						for node in nodes:
-							if nodes is not asap_nodes and \
-								not accept_root_node and \
-								not mygraph.parent_nodes(node):
+							if not mygraph.parent_nodes(node):
 								continue
 							selected_nodes = set()
 							if gather_deps(ignore_priority,
@@ -6995,12 +6983,6 @@ class depgraph(object):
 						# We failed to find any asap nodes to merge, so ignore
 						# them for the next iteration.
 						prefer_asap = False
-						continue
-
-					if not selected_nodes and not accept_root_node:
-						# Maybe there are only root nodes left, so accept them
-						# for the next iteration.
-						accept_root_node = True
 						continue
 
 			if selected_nodes and ignore_priority > DepPriority.SOFT:
@@ -7183,29 +7165,37 @@ class depgraph(object):
 						scheduler_graph.add(blocked_pkg, uninst_task,
 							priority=BlockerDepPriority.instance)
 
-				else:
-					# None of the Uninstall tasks are acceptable, so
-					# the corresponding blockers are unresolvable.
-					# We need to drop an Uninstall task here in order
-					# to avoid the circular deps code path, but the
-					# blocker will still be counted as an unresolved
-					# conflict.
-					for node in myblocker_uninstalls.leaf_nodes():
-						try:
-							mygraph.remove(node)
-						except KeyError:
-							pass
-						else:
-							uninst_task = node
-							ignored_uninstall_tasks.add(node)
-							break
-
-				if uninst_task is not None:
-					# After dropping an Uninstall task, reset
-					# the state variables for leaf node selection and
+					# Reset the state variables for leaf node selection and
 					# continue trying to select leaf nodes.
 					prefer_asap = True
-					accept_root_node = False
+					continue
+
+			if not selected_nodes:
+				# Only select root nodes as a last resort. This case should
+				# only trigger when the graph is nearly empty and the only
+				# remaining nodes are isolated (no parents or children). Since
+				# the nodes must be isolated, ignore_priority is not needed.
+				selected_nodes = get_nodes()
+
+			if not selected_nodes and not myblocker_uninstalls.is_empty():
+				# If possible, drop an uninstall task here in order to avoid
+				# the circular deps code path. The corresponding blocker will
+				# still be counted as an unresolved conflict.
+				uninst_task = None
+				for node in myblocker_uninstalls.leaf_nodes():
+					try:
+						mygraph.remove(node)
+					except KeyError:
+						pass
+					else:
+						uninst_task = node
+						ignored_uninstall_tasks.add(node)
+						break
+
+				if uninst_task is not None:
+					# Reset the state variables for leaf node selection and
+					# continue trying to select leaf nodes.
+					prefer_asap = True
 					continue
 
 			if not selected_nodes:
@@ -7213,10 +7203,8 @@ class depgraph(object):
 				raise self._unknown_internal_error()
 
 			# At this point, we've succeeded in selecting one or more nodes, so
-			# it's now safe to reset the prefer_asap and accept_root_node flags
-			# to their default states.
+			# reset state variables for leaf node selection.
 			prefer_asap = True
-			accept_root_node = False
 
 			mygraph.difference_update(selected_nodes)
 
