@@ -486,9 +486,9 @@ econf() {
 		if [[ -n ${ABI} && -n ${!LIBDIR_VAR} ]] ; then
 			CONF_LIBDIR=${!LIBDIR_VAR}
 		fi
-		if [[ -n ${CONF_LIBDIR} ]] && ! hasgq --libdir=* "$@" ; then
-			export CONF_PREFIX=$(hasg --exec-prefix=* "$@")
-			[[ -z ${CONF_PREFIX} ]] && CONF_PREFIX=$(hasg --prefix=* "$@")
+		if [[ -n ${CONF_LIBDIR} ]] && ! hasgq --libdir=\* "$@" ; then
+			export CONF_PREFIX=$(hasg --exec-prefix=\* "$@")
+			[[ -z ${CONF_PREFIX} ]] && CONF_PREFIX=$(hasg --prefix=\* "$@")
 			: ${CONF_PREFIX:=/usr}
 			CONF_PREFIX=${CONF_PREFIX#*=}
 			[[ ${CONF_PREFIX} != /* ]] && CONF_PREFIX="/${CONF_PREFIX}"
