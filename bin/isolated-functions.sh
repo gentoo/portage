@@ -500,7 +500,8 @@ save_ebuild_env() {
 		unset -f dump_trace die diefunc quiet_mode vecho elog_base eqawarn elog \
 			esyslog einfo einfon ewarn eerror ebegin _eend eend KV_major \
 			KV_minor KV_micro KV_to_int get_KV unset_colors set_colors has \
-			hasv hasq qa_source qa_call addread addwrite adddeny addpredict \
+			hasg hasgq hasv hasq qa_source qa_call \
+			addread addwrite adddeny addpredict \
 			lchown lchgrp esyslog use usev useq has_version portageq \
 			best_version use_with use_enable register_die_hook check_KV \
 			keepdir unpack strip_duplicate_slashes econf einstall \
