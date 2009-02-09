@@ -4540,10 +4540,10 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 
 	eapi = mysettings["EAPI"]
 
-	if mydo == "configure" and eapi in ("0", "1", "2_pre1"):
+	if mydo == "configure" and eapi in ("0", "1"):
 		return os.EX_OK
 
-	if mydo == "prepare" and eapi in ("0", "1", "2_pre1", "2_pre2"):
+	if mydo == "prepare" and eapi in ("0", "1"):
 		return os.EX_OK
 
 	kwargs = actionmap[mydo]["args"]
@@ -4819,7 +4819,7 @@ def _spawn_misc_sh(mysettings, commands, **kwargs):
 			eerror(l, phase=mydo, key=mysettings.mycpv)
 	return rval
 
-_deprecated_eapis = frozenset(["2_pre3", "2_pre2", "2_pre1"])
+_deprecated_eapis = frozenset()
 
 def _eapi_is_deprecated(eapi):
 	return eapi in _deprecated_eapis

@@ -2846,12 +2846,9 @@ class EbuildExecuter(CompositeTask):
 		pkg = self.pkg
 		phases = self._phases
 		eapi = pkg.metadata["EAPI"]
-		if eapi in ("0", "1", "2_pre1"):
+		if eapi in ("0", "1"):
 			# skip src_prepare and src_configure
 			phases = phases[2:]
-		elif eapi in ("2_pre2",):
-			# skip src_prepare
-			phases = phases[1:]
 
 		for phase in phases:
 			ebuild_phases.add(EbuildPhase(background=self.background,
