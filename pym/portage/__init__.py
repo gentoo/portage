@@ -4819,6 +4819,7 @@ def _spawn_misc_sh(mysettings, commands, **kwargs):
 			eerror(l, phase=mydo, key=mysettings.mycpv)
 	return rval
 
+_testing_eapis = frozenset(["3_pre1"])
 _deprecated_eapis = frozenset(["2_pre3", "2_pre2", "2_pre1"])
 
 def _eapi_is_deprecated(eapi):
@@ -4828,6 +4829,9 @@ def eapi_is_supported(eapi):
 	eapi = str(eapi).strip()
 
 	if _eapi_is_deprecated(eapi):
+		return True
+
+	if eapi in _testing_eapis:
 		return True
 
 	try:
