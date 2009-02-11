@@ -5118,7 +5118,8 @@ class depgraph(object):
 				vardb = self.roots[dep_root].trees["vartree"].dbapi
 				try:
 					selected_atoms = self._select_atoms(dep_root,
-						dep_string, myuse=myuse, parent=pkg, strict=strict)
+						dep_string, myuse=myuse, parent=pkg, strict=strict,
+						priority=dep_priority)
 				except portage.exception.InvalidDependString, e:
 					show_invalid_depstring_notice(jbigkey, dep_string, str(e))
 					return 0
@@ -5751,12 +5752,20 @@ class depgraph(object):
 		return self._select_atoms_highest_available(*pargs, **kwargs)
 
 	def _select_atoms_highest_available(self, root, depstring,
-		myuse=None, parent=None, strict=True, trees=None):
+		myuse=None, parent=None, strict=True, trees=None, priority=None):
 		"""This will raise InvalidDependString if necessary. If trees is
 		None then self._filtered_trees is used."""
 		pkgsettings = self.pkgsettings[root]
 		if trees is None:
 			trees = self._filtered_trees
+		if not getattr(priority, "buildtime", False):
+			# The parent should only be passed to dep_check() for buildtime
+			# dependencies since that's the only case when it's appropriate
+			# to trigger the circular dependency avoidance code which uses it.
+			# It's important not to trigger the same circular dependency
+			# avoidance code for runtime dependencies since it's not needed
+			# and it can promote an incorrect package choice.
+			parent = None
 		if True:
 			try:
 				if parent is not None:
