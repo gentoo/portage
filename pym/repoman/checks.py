@@ -339,6 +339,15 @@ class WantAutoDefaultValue(LineCheck):
 			return 'WANT_AUTO' + m.group(1) + \
 				' redundantly set to default value "latest" on line: %d'
 
+class PortageInternal(LineCheck):
+	"""
+	In February 2009 the Gentoo council ruled that
+	prepalldocs is a Portage internal.
+	"""
+	repoman_check_name = 'portage.internal'
+	re = re.compile(r'[^#]*\bprepalldocs\b')
+	error = errors.PREPALLDOCS_ERROR
+
 _constant_checks = tuple((c() for c in (
 	EbuildHeader, EbuildWhitespace, EbuildQuote,
 	EbuildAssignment, EbuildUselessDodoc,
@@ -346,7 +355,7 @@ _constant_checks = tuple((c() for c in (
 	EbuildPatches, EbuildQuotedA,
 	IUseUndefined, ImplicitRuntimeDeps, InheritAutotools,
 	EMakeParallelDisabled, DeprecatedBindnowFlags,
-	WantAutoDefaultValue)))
+	WantAutoDefaultValue, PortageInternal)))
 
 def run_checks(contents, pkg):
 	checks = _constant_checks
