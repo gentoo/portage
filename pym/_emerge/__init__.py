@@ -6862,6 +6862,41 @@ class depgraph(object):
 			runtime_deps.update(atom for atom in portage_rdepend \
 				if not atom.startswith("!"))
 
+		def gather_deps(ignore_priority, mergeable_nodes,
+			selected_nodes, node):
+			"""
+			Recursively gather a group of nodes that RDEPEND on
+			eachother. This ensures that they are merged as a group
+			and get their RDEPENDs satisfied as soon as possible.
+			"""
+			if node in selected_nodes:
+				return True
+			if node not in mergeable_nodes:
+				return False
+			if node == replacement_portage and \
+				mygraph.child_nodes(node,
+				ignore_priority=DepPriority.MEDIUM_SOFT):
+				# Make sure that portage always has all of it's
+				# RDEPENDs installed first.
+				return False
+			selected_nodes.add(node)
+			for child in mygraph.child_nodes(node,
+				ignore_priority=ignore_priority):
+				if not gather_deps(ignore_priority,
+					mergeable_nodes, selected_nodes, child):
+					return False
+			return True
+
+		def ignore_uninst_or_med(priority):
+			if priority is BlockerDepPriority.instance:
+				return True
+			return priority <= DepPriority.MEDIUM
+
+		def ignore_uninst_or_med_soft(priority):
+			if priority is BlockerDepPriority.instance:
+				return True
+			return priority <= DepPriority.MEDIUM_SOFT
+
 		ignore_priority_soft_range = [None]
 		ignore_priority_soft_range.extend(
 			xrange(DepPriority.MIN, DepPriority.MEDIUM_SOFT + 1))
@@ -6940,28 +6975,6 @@ class depgraph(object):
 			if not selected_nodes:
 				nodes = get_nodes(ignore_priority=DepPriority.MEDIUM)
 				if nodes:
-					"""Recursively gather a group of nodes that RDEPEND on
-					eachother.  This ensures that they are merged as a group
-					and get their RDEPENDs satisfied as soon as possible."""
-					def gather_deps(ignore_priority,
-						mergeable_nodes, selected_nodes, node):
-						if node in selected_nodes:
-							return True
-						if node not in mergeable_nodes:
-							return False
-						if node == replacement_portage and \
-							mygraph.child_nodes(node,
-							ignore_priority=DepPriority.MEDIUM_SOFT):
-							# Make sure that portage always has all of it's
-							# RDEPENDs installed first.
-							return False
-						selected_nodes.add(node)
-						for child in mygraph.child_nodes(node,
-							ignore_priority=ignore_priority):
-							if not gather_deps(ignore_priority,
-								mergeable_nodes, selected_nodes, child):
-								return False
-						return True
 					mergeable_nodes = set(nodes)
 					if prefer_asap and asap_nodes:
 						nodes = asap_nodes
@@ -7019,6 +7032,10 @@ class depgraph(object):
 			if not selected_nodes and not myblocker_uninstalls.is_empty():
 				# An Uninstall task needs to be executed in order to
 				# avoid conflict if possible.
+
+				mergeable_nodes = get_nodes(
+					ignore_priority=ignore_uninst_or_med)
+
 				min_parent_deps = None
 				uninst_task = None
 				for task in myblocker_uninstalls.leaf_nodes():
@@ -7144,10 +7161,19 @@ class depgraph(object):
 					# best possible choice, but the current algorithm
 					# is simple and should be near optimal for most
 					# common cases.
+					mergeable_parent = False
 					parent_deps = set()
 					for parent in mygraph.parent_nodes(task):
 						parent_deps.update(mygraph.child_nodes(parent,
 							ignore_priority=DepPriority.MEDIUM_SOFT))
+						if parent in mergeable_nodes and \
+							gather_deps(ignore_uninst_or_med_soft,
+							mergeable_nodes, set(), parent):
+							mergeable_parent = True
+
+					if not mergeable_parent:
+						continue
+
 					parent_deps.remove(task)
 					if min_parent_deps is None or \
 						len(parent_deps) < min_parent_deps:
