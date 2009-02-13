@@ -10041,6 +10041,9 @@ class Scheduler(PollScheduler):
 		"""
 		cpv_map = {}
 		for pkg in self._mergelist:
+			if not isinstance(pkg, Package):
+				# a satisfied blocker
+				continue
 			if pkg.installed:
 				continue
 			if pkg.cpv not in cpv_map:
