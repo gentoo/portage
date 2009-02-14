@@ -66,7 +66,7 @@ from portage.const import EPREFIX, BPREFIX, EPREFIX_LSTRIP, EAPIPREFIX
 from portage.data import secpass
 from portage.elog.messages import eerror
 from portage.util import normalize_path as normpath
-from portage.util import writemsg, writemsg_level
+from portage.util import cmp_sort_key, writemsg, writemsg_level
 from portage.sets import load_default_config, SETPREFIX
 from portage.sets.base import InternalPackageSet
 
@@ -962,7 +962,8 @@ class DepPriority(AbstractDepPriority):
 		satisfied and buildtime               -4       SOFT
 		satisfied and runtime                 -5       SOFT
 		satisfied and runtime_post            -6       SOFT
-		(none of the above)                   -6       SOFT
+		optional                              -7       SOFT
+		(none of the above)                   -7       SOFT
 
 		Several integer constants are defined for categorization of priority
 		levels:
@@ -972,13 +973,15 @@ class DepPriority(AbstractDepPriority):
 		SOFT     The upper boundary for soft dependencies.
 		MIN      The lower boundary for soft dependencies.
 	"""
-	__slots__ = ("satisfied", "rebuild")
+	__slots__ = ("satisfied", "optional", "rebuild")
 	MEDIUM = -1
 	MEDIUM_SOFT = -2
 	SOFT   = -3
-	MIN    = -6
+	MIN    = -7
 
 	def __int__(self):
+		if self.optional:
+			return -7
 		if not self.satisfied:
 			if self.buildtime:
 				return 0
@@ -994,7 +997,7 @@ class DepPriority(AbstractDepPriority):
 			return -5
 		if self.runtime_post:
 			return -6
-		return -6
+		return -7
 
 	def __str__(self):
 		myvalue = self.__int__()
@@ -1014,7 +1017,7 @@ class BlockerDepPriority(DepPriority):
 BlockerDepPriority.instance = BlockerDepPriority()
 
 class UnmergeDepPriority(AbstractDepPriority):
-	__slots__ = ("satisfied",)
+	__slots__ = ("optional", "satisfied",)
 	"""
 	Combination of properties           Priority  Category
 
@@ -4855,7 +4858,7 @@ class depgraph(object):
 		dep_pkg, existing_node = self._select_package(dep.root, dep.atom,
 			onlydeps=dep.onlydeps)
 		if not dep_pkg:
-			if dep.priority.satisfied:
+			if dep.priority.optional:
 				# This could be an unecessary build-time dep
 				# pulled in by --with-bdeps=y.
 				return 1
@@ -5098,18 +5101,18 @@ class depgraph(object):
 			"empty" not in self.myparams:
 			edepend["RDEPEND"] = ""
 			edepend["PDEPEND"] = ""
-		bdeps_satisfied = False
-		
+		bdeps_optional = False
+
 		if pkg.built and not removal_action:
 			if self.myopts.get("--with-bdeps", "n") == "y":
 				# Pull in build time deps as requested, but marked them as
-				# "satisfied" since they are not strictly required. This allows
+				# "optional" since they are not strictly required. This allows
 				# more freedom in the merge order calculation for solving
 				# circular dependencies. Don't convert to PDEPEND since that
 				# could make --with-bdeps=y less effective if it is used to
 				# adjust merge order to prevent built_with_use() calls from
 				# failing.
-				bdeps_satisfied = True
+				bdeps_optional = True
 			else:
 				# built packages do not have build time dependencies.
 				edepend["DEPEND"] = ""
@@ -5119,7 +5122,8 @@ class depgraph(object):
 
 		deps = (
 			("/", edepend["DEPEND"],
-				self._priority(buildtime=True, satisfied=bdeps_satisfied)),
+				self._priority(buildtime=(not bdeps_optional),
+				optional=bdeps_optional)),
 			(myroot, edepend["RDEPEND"], self._priority(runtime=True)),
 			(myroot, edepend["PDEPEND"], self._priority(runtime_post=True))
 		)
@@ -6710,7 +6714,7 @@ class depgraph(object):
 			node_info[node] = len(mygraph.parent_nodes(node))
 		def cmp_merge_preference(node1, node2):
 			return node_info[node2] - node_info[node1]
-		mygraph.order.sort(cmp_merge_preference)
+		mygraph.order.sort(key=cmp_sort_key(cmp_merge_preference))
 
 	def altlist(self, reversed=False):
 
@@ -6929,37 +6933,42 @@ class depgraph(object):
 				for ignore_priority in ignore_priority_soft_range:
 					nodes = get_nodes(ignore_priority=ignore_priority)
 					if nodes:
-						break
-				if nodes:
-					if ignore_priority is None and not tree_mode:
-						# Greedily pop all of these nodes since no relationship
-						# has been ignored.  This optimization destroys --tree
-						# output, so it's disabled in reversed mode. If there
-						# is a mix of merge and uninstall nodes, save the
-						# uninstall nodes from later since sometimes a merge
-						# node will render an install node unnecessary, and
-						# we want to avoid doing a separate uninstall task in
-						# that case.
-						merge_nodes = [node for node in nodes \
-							if node.operation == "merge"]
-						if merge_nodes:
-							selected_nodes = merge_nodes
-						else:
+						# If there is a mix of uninstall nodes with other
+						# types, save the uninstall nodes for later since
+						# sometimes a merge node will render an uninstall
+						# node unnecessary (due to occupying the same slot),
+						# and we want to avoid executing a separate uninstall
+						# task in that case.
+						if len(nodes) > 1:
+							non_uninstalls = [node for node in nodes \
+								if node.operation != "uninstall"]
+							if non_uninstalls:
+								nodes = non_uninstalls
+							else:
+								nodes = nodes
+
+						if ignore_priority is None and not tree_mode:
+							# Greedily pop all of these nodes since no
+							# relationship has been ignored. This optimization
+							# destroys --tree output, so it's disabled in tree
+							# mode.
 							selected_nodes = nodes
-					else:
-						# For optimal merge order:
-						#  * Only pop one node.
-						#  * Removing a root node (node without a parent)
-						#    will not produce a leaf node, so avoid it.
-						for node in nodes:
-							if mygraph.parent_nodes(node):
-								# found a non-root node
-								selected_nodes = [node]
-								break
-						if not selected_nodes and \
-							(accept_root_node or ignore_priority is None):
-							# settle for a root node
-							selected_nodes = [nodes[0]]
+						else:
+							# For optimal merge order:
+							#  * Only pop one node.
+							#  * Removing a root node (node without a parent)
+							#    will not produce a leaf node, so avoid it.
+							for node in nodes:
+								if mygraph.parent_nodes(node):
+									# found a non-root node
+									selected_nodes = [node]
+									break
+							if not selected_nodes and \
+								(accept_root_node or ignore_priority is None):
+								# settle for a root node
+								selected_nodes = [nodes[0]]
+						if selected_nodes:
+							break
 
 			if not selected_nodes:
 				nodes = get_nodes(ignore_priority=DepPriority.MEDIUM)
@@ -7046,7 +7055,7 @@ class depgraph(object):
 			if selected_nodes and len(selected_nodes) > 1:
 				if not isinstance(selected_nodes, list):
 					selected_nodes = list(selected_nodes)
-				selected_nodes.sort(cmp_circular_bias)
+				selected_nodes.sort(key=cmp_sort_key(cmp_circular_bias))
 
 			if not selected_nodes and not myblocker_uninstalls.is_empty():
 				# An Uninstall task needs to be executed in order to
@@ -9811,6 +9820,22 @@ class Scheduler(PollScheduler):
 		for k in self._task_queues.allowed_keys:
 			setattr(self._task_queues, k,
 				SequentialTaskQueue())
+
+		# Holds merges that will wait to be executed when no builds are
+		# executing. This is useful for system packages since dependencies
+		# on system packages are frequently unspecified.
+		self._merge_wait_queue = []
+		# Holds merges that have been transfered from the merge_wait_queue to
+		# the actual merge queue. They are removed from this list upon
+		# completion. Other packages can start building only when this list is
+		# empty.
+		self._merge_wait_scheduled = []
+
+		# Holds system packages and their deep runtime dependencies. Before
+		# being merged, these packages go to merge_wait_queue, to be merged
+		# when no other packages are building.
+		self._deep_system_deps = set()
+
 		self._status_display = JobStatusDisplay()
 		self._max_load = myopts.get("--load-average")
 		max_jobs = myopts.get("--jobs")
@@ -9985,8 +10010,50 @@ class Scheduler(PollScheduler):
 			return
 
 		self._digraph = digraph
+		self._find_system_deps()
 		self._prune_digraph()
 		self._prevent_builddir_collisions()
+
+	def _find_system_deps(self):
+		"""
+		Find system packages and their deep runtime dependencies. Before being
+		merged, these packages go to merge_wait_queue, to be merged when no
+		other packages are building.
+		"""
+		graph = self._digraph
+		deep_system_deps = self._deep_system_deps
+		deep_system_deps.clear()
+		node_stack = []
+		for node in graph.order:
+			if not isinstance(node, Package) or \
+				node.operation == "uninstall":
+				continue
+			system_set = node.root_config.sets["system"]
+			if system_set.findAtomForPackage(node):
+				node_stack.append(node)
+
+		def ignore_priority(priority):
+			"""
+			Ignore non-runtime priorities.
+			"""
+			if isinstance(priority, DepPriority) and \
+				(priority.runtime or priority.runtime_post):
+				return False
+			return True
+
+		while node_stack:
+			node = node_stack.pop()
+			if node in deep_system_deps:
+				continue
+			deep_system_deps.add(node)
+			for child in graph.child_nodes(node, ignore_priority=ignore_priority):
+				if not isinstance(child, Package) or \
+					child.operation == "uninstall":
+					continue
+				node_stack.append(child)
+
+		deep_system_deps.difference_update([pkg for pkg in \
+			deep_system_deps if pkg.operation != "merge"])
 
 	def _prune_digraph(self):
 		"""
@@ -10538,6 +10605,10 @@ class Scheduler(PollScheduler):
 			elif isinstance(pkg, Blocker):
 				pass
 
+	def _merge_wait_exit_handler(self, task):
+		self._merge_wait_scheduled.remove(task)
+		self._merge_exit(task)
+
 	def _merge_exit(self, merge):
 		self._do_merge_exit(merge)
 		self._deallocate_config(merge.merge.settings)
@@ -10590,9 +10661,15 @@ class Scheduler(PollScheduler):
 		if build.returncode == os.EX_OK:
 			self.curval += 1
 			merge = PackageMerge(merge=build)
-			merge.addExitListener(self._merge_exit)
-			self._task_queues.merge.add(merge)
-			self._status_display.merges = len(self._task_queues.merge)
+			if not build.build_opts.buildpkgonly and \
+				build.pkg in self._deep_system_deps:
+				# Since dependencies on system packages are frequently
+				# unspecified, merge them only when no builds are executing.
+				self._merge_wait_queue.append(merge)
+			else:
+				merge.addExitListener(self._merge_exit)
+				self._task_queues.merge.add(merge)
+				self._status_display.merges = len(self._task_queues.merge)
 		else:
 			settings = build.settings
 			build_dir = settings.get("PORTAGE_BUILDDIR")
@@ -10641,6 +10718,7 @@ class Scheduler(PollScheduler):
 	def _main_loop_cleanup(self):
 		del self._pkg_queue[:]
 		self._completed_tasks.clear()
+		self._deep_system_deps.clear()
 		self._choose_pkg_return_early = False
 		self._status_display.reset()
 		self._digraph = None
@@ -10770,6 +10848,16 @@ class Scheduler(PollScheduler):
 			not (self._failed_pkgs and not self._build_opts.fetchonly))
 
 	def _schedule_tasks(self):
+
+		# When the number of jobs drops to zero, process all waiting merges.
+		if not self._jobs and self._merge_wait_queue:
+			for task in self._merge_wait_queue:
+				task.addExitListener(self._merge_wait_exit_handler)
+				self._task_queues.merge.add(task)
+			self._status_display.merges = len(self._task_queues.merge)
+			self._merge_wait_scheduled.extend(self._merge_wait_queue)
+			del self._merge_wait_queue[:]
+
 		self._schedule_tasks_imp()
 		self._status_display.display()
 
@@ -10824,6 +10912,7 @@ class Scheduler(PollScheduler):
 				return bool(state_change)
 
 			if self._choose_pkg_return_early or \
+				self._merge_wait_scheduled or \
 				not self._can_add_job() or \
 				self._job_delay():
 				return bool(state_change)
@@ -11150,6 +11239,8 @@ class MetadataRegen(PollScheduler):
 
 		self._valid_pkgs = set()
 		self._process_iter = self._iter_metadata_processes()
+		self.returncode = os.EX_OK
+		self._error_count = 0
 
 	def _iter_metadata_processes(self):
 		portdb = self._portdb
@@ -11227,6 +11318,8 @@ class MetadataRegen(PollScheduler):
 	def _metadata_exit(self, metadata_process):
 		self._jobs -= 1
 		if metadata_process.returncode != os.EX_OK:
+			self.returncode = 1
+			self._error_count += 1
 			self._valid_pkgs.discard(metadata_process.cpv)
 			portage.writemsg("Error processing %s, continuing...\n" % \
 				(metadata_process.cpv,))
@@ -11675,7 +11768,7 @@ def unmerge(root_config, myopts, unmerge_action,
 				writemsg_level((mytype + ": ").rjust(14), noiselevel=-1)
 			if pkgmap[x][mytype]:
 				sorted_pkgs = [portage.catpkgsplit(mypkg)[1:] for mypkg in pkgmap[x][mytype]]
-				sorted_pkgs.sort(portage.pkgcmp)
+				sorted_pkgs.sort(key=cmp_sort_key(portage.pkgcmp))
 				for pn, ver, rev in sorted_pkgs:
 					if rev == "r0":
 						myversion = ver
@@ -12925,6 +13018,7 @@ def action_regen(settings, portdb, max_jobs, max_load):
 	regen.run()
 
 	portage.writemsg_stdout("done!\n")
+	return regen.returncode
 
 def action_config(settings, trees, myopts, myfiles):
 	if len(myfiles) != 1:
@@ -13035,7 +13129,7 @@ def action_info(settings, trees, myopts, myfiles):
 		if portage.isvalidatom(x):
 			pkg_matches = trees["/"]["vartree"].dbapi.match(x)
 			pkg_matches = [portage.catpkgsplit(cpv)[1:] for cpv in pkg_matches]
-			pkg_matches.sort(portage.pkgcmp)
+			pkg_matches.sort(key=cmp_sort_key(portage.pkgcmp))
 			pkgs = []
 			for pn, ver, rev in pkg_matches:
 				if rev != "r0":
@@ -13763,7 +13857,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				node_refcounts[node] = len(graph.parent_nodes(node))
 			def cmp_reference_count(node1, node2):
 				return node_refcounts[node1] - node_refcounts[node2]
-			graph.order.sort(cmp_reference_count)
+			graph.order.sort(key=cmp_sort_key(cmp_reference_count))
 	
 			ignore_priority_range = [None]
 			ignore_priority_range.extend(
@@ -15249,7 +15343,7 @@ def emerge_main():
 		action_metadata(settings, portdb, myopts)
 	elif myaction=="regen":
 		validate_ebuild_environment(trees)
-		action_regen(settings, portdb, myopts.get("--jobs"),
+		return action_regen(settings, portdb, myopts.get("--jobs"),
 			myopts.get("--load-average"))
 	# HELP action
 	elif "config"==myaction:

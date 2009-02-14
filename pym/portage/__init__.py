@@ -369,18 +369,14 @@ class digraph(object):
 		if parent not in self.nodes:
 			self.nodes[parent] = ({}, {}, parent)
 			self.order.append(parent)
-		
-		if parent in self.nodes[node][1]:
-			if priority > self.nodes[node][1][parent]:
-				self.nodes[node][1][parent] = priority
-		else:
-			self.nodes[node][1][parent] = priority
-		
-		if node in self.nodes[parent][0]:
-			if priority > self.nodes[parent][0][node]:
-				self.nodes[parent][0][node] = priority
-		else:
-			self.nodes[parent][0][node] = priority
+
+		priorities = self.nodes[node][1].setdefault(parent, [])
+		priorities.append(priority)
+		priorities.sort()
+
+		priorities = self.nodes[parent][0].setdefault(node, [])
+		priorities.append(priority)
+		priorities.sort()
 
 	def remove(self, node):
 		"""Removes the specified node from the digraph, also removing
@@ -462,9 +458,16 @@ class digraph(object):
 		if ignore_priority is None:
 			return list(self.nodes[node][0])
 		children = []
-		for child, priority in self.nodes[node][0].iteritems():
-			if priority > ignore_priority:
-				children.append(child)
+		if hasattr(ignore_priority, '__call__'):
+			for child, priorities in self.nodes[node][0].iteritems():
+				for priority in priorities:
+					if not ignore_priority(priority):
+						children.append(child)
+						break
+		else:
+			for child, priorities in self.nodes[node][0].iteritems():
+				if ignore_priority < priorities[-1]:
+					children.append(child)
 		return children
 
 	def parent_nodes(self, node, ignore_priority=None):
@@ -472,9 +475,16 @@ class digraph(object):
 		if ignore_priority is None:
 			return list(self.nodes[node][1])
 		parents = []
-		for parent, priority in self.nodes[node][1].iteritems():
-			if priority > ignore_priority:
-				parents.append(parent)
+		if hasattr(ignore_priority, '__call__'):
+			for parent, priorities in self.nodes[node][1].iteritems():
+				for priority in priorities:
+					if not ignore_priority(priority):
+						parents.append(parent)
+						break
+		else:
+			for parent, priorities in self.nodes[node][1].iteritems():
+				if ignore_priority < priorities[-1]:
+					parents.append(parent)
 		return parents
 
 	def leaf_nodes(self, ignore_priority=None):
@@ -484,14 +494,31 @@ class digraph(object):
 		children in calculations."""
 		
 		leaf_nodes = []
-		for node in self.order:
-			is_leaf_node = True
-			for child in self.nodes[node][0]:
-				if self.nodes[node][0][child] > ignore_priority:
-					is_leaf_node = False
-					break
-			if is_leaf_node:
-				leaf_nodes.append(node)
+		if ignore_priority is None:
+			for node in self.order:
+				if not self.nodes[node][0]:
+					leaf_nodes.append(node)
+		elif hasattr(ignore_priority, '__call__'):
+			for node in self.order:
+				is_leaf_node = True
+				for child, priorities in self.nodes[node][0].iteritems():
+					for priority in priorities:
+						if not ignore_priority(priority):
+							is_leaf_node = False
+							break
+					if not is_leaf_node:
+						break
+				if is_leaf_node:
+					leaf_nodes.append(node)
+		else:
+			for node in self.order:
+				is_leaf_node = True
+				for child, priorities in self.nodes[node][0].iteritems():
+					if ignore_priority < priorities[-1]:
+						is_leaf_node = False
+						break
+				if is_leaf_node:
+					leaf_nodes.append(node)
 		return leaf_nodes
 
 	def root_nodes(self, ignore_priority=None):
@@ -501,14 +528,31 @@ class digraph(object):
 		parents in calculations."""
 		
 		root_nodes = []
-		for node in self.order:
-			is_root_node = True
-			for parent in self.nodes[node][1]:
-				if self.nodes[node][1][parent] > ignore_priority:
-					is_root_node = False
-					break
-			if is_root_node:
-				root_nodes.append(node)
+		if ignore_priority is None:
+			for node in self.order:
+				if not self.nodes[node][1]:
+					root_nodes.append(node)
+		elif hasattr(ignore_priority, '__call__'):
+			for node in self.order:
+				is_root_node = True
+				for parent, priorities in self.nodes[node][1].iteritems():
+					for priority in priorities:
+						if not ignore_priority(priority):
+							is_root_node = False
+							break
+					if not is_root_node:
+						break
+				if is_root_node:
+					root_nodes.append(node)
+		else:
+			for node in self.order:
+				is_root_node = True
+				for parent, priorities in self.nodes[node][1].iteritems():
+					if ignore_priority < priorities[-1]:
+						is_root_node = False
+						break
+				if is_root_node:
+					root_nodes.append(node)
 		return root_nodes
 
 	def is_empty(self):
@@ -557,9 +601,8 @@ class digraph(object):
 				output("depends on\n")
 			else:
 				output("(no children)\n")
-			for child in self.nodes[node][0]:
-				output("  %s (%s)\n" % \
-					(child, self.nodes[node][0][child],))
+			for child, priorities in self.nodes[node][0].iteritems():
+				output("  %s (%s)\n" % (child, priorities[-1],))
 
 #parse /etc/env.d and generate /etc/profile.env
 

@@ -9,7 +9,7 @@ import re
 from portage.dep import match_from_list
 from portage.locks import unlockfile
 from portage.output import colorize
-from portage.util import writemsg
+from portage.util import writemsg, cmp_sort_key
 from portage import auxdbkeys, dep_expand
 from portage.versions import catpkgsplit, pkgcmp
 
@@ -62,7 +62,7 @@ class dbapi(object):
 				mysplit = tuple(catpkgsplit(cpv)[1:])
 				str_map[mysplit] = cpv
 				cpv_list[i] = mysplit
-			cpv_list.sort(pkgcmp)
+			cpv_list.sort(key=cmp_sort_key(pkgcmp))
 			for i, mysplit in enumerate(cpv_list):
 				cpv_list[i] = str_map[mysplit]
 

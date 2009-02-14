@@ -66,6 +66,17 @@ class Manifest2Entry(ManifestEntry):
 			myline += " " + h + " " + str(self.hashes[h])
 		return myline
 
+	def __eq__(self, other):
+		if not isinstance(other, Manifest2Entry) or \
+			self.type != other.type or \
+			self.name != other.name or \
+			self.hashes != other.hashes:
+			return False
+		return True
+
+	def __ne__(self, other):
+		return not self.__eq__(other)
+
 class Manifest(object):
 	parsers = (parseManifest2,)
 	def __init__(self, pkgdir, distdir, fetchlist_dict=None,
@@ -291,7 +302,9 @@ class Manifest(object):
 		for pkgdir, pkgdir_dirs, pkgdir_files in os.walk(self.pkgdir):
 			break
 		for f in pkgdir_files:
-			if f.endswith(".ebuild"):
+			if f[:1] == ".":
+				continue
+			elif f[-7:] == ".ebuild":
 				mytype = "EBUILD"
 				pf = f[:-7]
 				ps = portage.versions.pkgsplit(pf)
