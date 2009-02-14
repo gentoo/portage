@@ -6941,10 +6941,21 @@ class depgraph(object):
 						# and we want to avoid executing a separate uninstall
 						# task in that case.
 						if len(nodes) > 1:
-							non_uninstalls = [node for node in nodes \
-								if node.operation != "uninstall"]
-							if non_uninstalls:
-								nodes = non_uninstalls
+							good_uninstalls = []
+							with_some_uninstalls_excluded = []
+							for node in nodes:
+								if node.operation == "uninstall":
+									slot_node = self.mydbapi[node.root
+										].match_pkgs(node.slot_atom)
+									if slot_node and \
+										slot_node[0].operation == "merge":
+										continue
+									good_uninstalls.append(node)
+								with_some_uninstalls_excluded.append(node)
+							if good_uninstalls:
+								nodes = good_uninstalls
+							elif with_some_uninstalls_excluded:
+								nodes = with_some_uninstalls_excluded
 							else:
 								nodes = nodes
 
