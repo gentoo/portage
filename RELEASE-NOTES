@@ -52,6 +52,10 @@ portage-2.1.6
   force digests to be updated, run `ebuild --force <ebuild file> manifest`.
   This is a safety measure which protects valid distfiles digests from being
   accidentally replaced by invalid digests.
+* If you have overridden FETCHCOMMAND or RESUMECOMMAND variables, for
+  compatibility with EAPI 2, you must ensure that these variables are written
+  such that the downloaded file will be placed at \"\${DISTDIR}/\${FILE}\".
+  Refer to make.conf(5) for information about FETCHCOMMAND and RESUMECOMMAND.
 
 portage-2.1.5
 ==================================

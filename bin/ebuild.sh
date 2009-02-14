@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2007 Gentoo Foundation
+# Copyright 1999-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
@@ -29,7 +29,7 @@ fi
 # These two functions wrap sourcing and calling respectively.  At present they
 # perform a qa check to make sure eclasses and ebuilds and profiles don't mess
 # with shell opts (shopts).  Ebuilds/eclasses changing shopts should reset them 
-# when they are done.  Note:  For now these shoudl always return success.
+# when they are done.
 
 qa_source() {
 	local shopts=$(shopt) OLDIFS="$IFS"
@@ -334,6 +334,7 @@ unpack() {
 	local y
 	local myfail
 	local tar_opts=""
+	local eapi=${EAPI:-0}
 	[ -z "$*" ] && die "Nothing passed to the 'unpack' command"
 
 	for x in "$@"; do
@@ -435,11 +436,15 @@ unpack() {
 				fi
 				;;
 			xz)
-				if [ "${y}" == "tar" ]; then
-					xz -dc "${srcdir}${x}" | tar xof - ${tar_opts}
-					assert "$myfail"
+				if hasq $eapi 0 1 2 ; then
+					vecho "unpack ${x}: file format not recognized. Ignoring."
 				else
-					xz -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
+					if [ "${y}" == "tar" ]; then
+						xz -dc "${srcdir}${x}" | tar xof - ${tar_opts}
+						assert "$myfail"
+					else
+						xz -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
+					fi
 				fi
 				;;
 			*)
@@ -1388,11 +1393,11 @@ _ebuild_arg_to_phase() {
 			phase_func=src_unpack
 			;;
 		prepare)
-			! hasq $eapi 0 1 2_pre1 2_pre2 && \
+			! hasq $eapi 0 1 && \
 				phase_func=src_prepare
 			;;
 		configure)
-			! hasq $eapi 0 1 2_pre1 && \
+			! hasq $eapi 0 1 && \
 				phase_func=src_configure
 			;;
 		compile)
@@ -1438,7 +1443,7 @@ _ebuild_phase_funcs() {
 
 	case $eapi in
 
-		0|1|2_pre1)
+		0|1)
 
 			if [[ $(type -t src_compile) != function ]] ; then
 				case $eapi in

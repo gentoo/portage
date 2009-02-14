@@ -1,0 +1,15 @@
+<section id='package-ebuild-eapi-3_pre1'>
+<title>EAPI 3_pre1</title>
+<section id='package-ebuild-eapi-3_pre1-helpers'>
+<title>Helpers</title>
+<section id='package-ebuild-eapi-3_pre1-helpers-unpack'>
+<title>unpack</title>
+<section id='package-ebuild-eapi-3_pre1-helpers-unpack-xz'>
+<title>Support for the xz file extension</title>
+<para>
+The xz file extension is now supported.
+</para>
+</section>
+</section>
+</section>
+</section>

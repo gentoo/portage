@@ -3670,10 +3670,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	if listonly:
 		can_fetch = False
 
-	for var_name in ("FETCHCOMMAND", "RESUMECOMMAND"):
-		if not mysettings.get(var_name, None):
-			can_fetch = False
-
 	if can_fetch and not fetch_to_ro:
 		global _userpriv_test_write_file_cache
 		dirmode  = 02070
@@ -3839,6 +3835,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						pass
 
 				if mystat is not None:
+					if stat.S_ISDIR(mystat.st_mode):
+						portage.util.writemsg_level(
+							("!!! Unable to fetch file since " + \
+							"a directory is in the way: \n" + \
+							"!!!   %s\n") % myfile_path,
+							level=logging.ERROR, noiselevel=-1)
+						return 0
+
 					if mystat.st_size == 0:
 						if distdir_writable:
 							try:
@@ -3988,14 +3992,56 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					continue
 				# allow different fetchcommands per protocol
 				protocol = loc[0:loc.find("://")]
-				if "FETCHCOMMAND_" + protocol.upper() in mysettings:
-					fetchcommand=mysettings["FETCHCOMMAND_"+protocol.upper()]
-				else:
-					fetchcommand=mysettings["FETCHCOMMAND"]
-				if "RESUMECOMMAND_" + protocol.upper() in mysettings:
-					resumecommand=mysettings["RESUMECOMMAND_"+protocol.upper()]
-				else:
-					resumecommand=mysettings["RESUMECOMMAND"]
+
+				missing_file_param = False
+				fetchcommand_var = "FETCHCOMMAND_" + protocol.upper()
+				fetchcommand = mysettings.get(fetchcommand_var)
+				if fetchcommand is None:
+					fetchcommand_var = "FETCHCOMMAND"
+					fetchcommand = mysettings.get(fetchcommand_var)
+					if fetchcommand is None:
+						portage.util.writemsg_level(
+							("!!! %s is unset. It should " + \
+							"have been defined in\n!!! %s/make.globals.\n") \
+							% (fetchcommand_var,
+							portage.const.GLOBAL_CONFIG_PATH),
+							level=logging.ERROR, noiselevel=-1)
+						return 0
+				if "${FILE}" not in fetchcommand:
+					portage.util.writemsg_level(
+						("!!! %s does not contain the required ${FILE}" + \
+						" parameter.\n") % fetchcommand_var,
+						level=logging.ERROR, noiselevel=-1)
+					missing_file_param = True
+
+				resumecommand_var = "RESUMECOMMAND_" + protocol.upper()
+				resumecommand = mysettings.get(resumecommand_var)
+				if resumecommand is None:
+					resumecommand_var = "RESUMECOMMAND"
+					resumecommand = mysettings.get(resumecommand_var)
+					if resumecommand is None:
+						portage.util.writemsg_level(
+							("!!! %s is unset. It should " + \
+							"have been defined in\n!!! %s/make.globals.\n") \
+							% (resumecommand_var,
+							portage.const.GLOBAL_CONFIG_PATH),
+							noiselevel=-1)
+						return 0
+				if "${FILE}" not in resumecommand:
+					portage.util.writemsg_level(
+						("!!! %s does not contain the required ${FILE}" + \
+						" parameter.\n") % resumecommand_var,
+						level=logging.ERROR, noiselevel=-1)
+					missing_file_param = True
+
+				if missing_file_param:
+					portage.util.writemsg_level(
+						"!!! Refer to the make.conf(5) man page for " + \
+						"information about how to\n!!! correctly specify " + \
+						"FETCHCOMMAND and RESUMECOMMAND.\n",
+						level=logging.ERROR, noiselevel=-1)
+					if myfile != os.path.basename(loc):
+						return 0
 
 				if not can_fetch:
 					if fetched != 2:
@@ -4016,11 +4062,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						else:
 							writemsg(("!!! File %s is incorrect size, " + \
 								"but unable to retry.\n") % myfile, noiselevel=-1)
-						for var_name in ("FETCHCOMMAND", "RESUMECOMMAND"):
-							if not mysettings.get(var_name, None):
-								writemsg(("!!! %s is unset.  It should " + \
-								"have been defined in /etc/make.globals.\n") \
-								 % var_name, noiselevel=-1)
 						return 0
 					else:
 						continue
@@ -4051,9 +4092,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						#resume mode:
 						writemsg(">>> Resuming download...\n")
 						locfetch=resumecommand
+						command_var = resumecommand_var
 					else:
 						#normal mode:
 						locfetch=fetchcommand
+						command_var = fetchcommand_var
 					writemsg_stdout(">>> Downloading '%s'\n" % \
 						re.sub(r'//(.+):.+@(.+)/',r'//\1:*password*@\2/', loc))
 					variables = {
@@ -4101,6 +4144,25 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							del e
 							fetched = 0
 						else:
+
+							if stat.S_ISDIR(mystat.st_mode):
+								# This can happen if FETCHCOMMAND erroneously
+								# contains wget's -P option where it should
+								# instead have -O.
+								portage.util.writemsg_level(
+									("!!! The command specified in the " + \
+									"%s variable appears to have\n!!! " + \
+									"created a directory instead of a " + \
+									"normal file.\n") % command_var,
+									level=logging.ERROR, noiselevel=-1)
+								portage.util.writemsg_level(
+									"!!! Refer to the make.conf(5) " + \
+									"man page for information about how " + \
+									"to\n!!! correctly specify " + \
+									"FETCHCOMMAND and RESUMECOMMAND.\n",
+									level=logging.ERROR, noiselevel=-1)
+								return 0
+
 							# no exception?  file exists. let digestcheck() report
 							# an appropriately for size or checksum errors
 
@@ -4559,10 +4621,10 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 
 	eapi = mysettings["EAPI"]
 
-	if mydo == "configure" and eapi in ("0", "1", "2_pre1"):
+	if mydo == "configure" and eapi in ("0", "1"):
 		return os.EX_OK
 
-	if mydo == "prepare" and eapi in ("0", "1", "2_pre1", "2_pre2"):
+	if mydo == "prepare" and eapi in ("0", "1"):
 		return os.EX_OK
 
 	kwargs = actionmap[mydo]["args"]
@@ -4838,6 +4900,7 @@ def _spawn_misc_sh(mysettings, commands, **kwargs):
 			eerror(l, phase=mydo, key=mysettings.mycpv)
 	return rval
 
+_testing_eapis = frozenset(["3_pre1"])
 _deprecated_eapis = frozenset(["2_pre3", "2_pre2", "2_pre1"])
 
 def _eapi_is_deprecated(eapi):
@@ -4872,7 +4935,7 @@ def eapi_is_supported(eapi):
 			eapi.remove(prop)
 	
 	# now check if what's left is supported (can)
-	properties = set(_deprecated_eapis) # another clumpsy solution
+	properties = set(_testing_eapis) # another clumpsy solution
 	for i in range(portage.const.EAPI + 1):
 		properties.add(str(i))
 
