@@ -1894,6 +1894,9 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm && \
 
 	unset ECLASS E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
 	set +f
+
+	# This needs to be exported since prepstrip is a separate shell script.
+	[[ -n $QA_PRESTRIPPED ]] && export QA_PRESTRIPPED
 fi
 
 # Set default EAPI if necessary, so that most
