@@ -795,6 +795,8 @@ def isvalidatom(atom, allow_blockers=False):
 					mycpv_cps[0] = "null"
 		if not mycpv_cps:
 			mycpv_cps = catpkgsplit(cpv)
+		if mycpv_cps is None:
+			return 0
 
 	operator = get_operator(atom)
 	if operator:
