@@ -7028,7 +7028,8 @@ class depgraph(object):
 						break
 			if not selected_nodes and \
 				not (prefer_asap and asap_nodes):
-				for i in xrange(priority_range.NONE, priority_range.SOFT + 1):
+				for i in xrange(priority_range.NONE,
+					priority_range.MEDIUM_SOFT + 1):
 					ignore_priority = priority_range.ignore_priority[i]
 					nodes = get_nodes(ignore_priority=ignore_priority)
 					if nodes:
