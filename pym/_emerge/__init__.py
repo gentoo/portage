@@ -7450,7 +7450,7 @@ class depgraph(object):
 		# have no parents and thus can not be part of a cycle.
 		while True:
 			root_nodes = mygraph.root_nodes(
-				ignore_priority=DepPriority.MEDIUM_SOFT)
+				ignore_priority=DepPrioritySatisfiedRange.ignore_medium_soft)
 			if not root_nodes:
 				break
 			mygraph.difference_update(root_nodes)
@@ -13990,7 +13990,7 @@ def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 						continue
 					unsatisfied = \
 						graph.child_nodes(parent_node,
-						ignore_priority=DepPriority.SOFT)
+						ignore_priority=DepPrioritySatisfiedRange.ignore_soft)
 					if pkg in unsatisfied:
 						unsatisfied_parents[parent_node] = parent_node
 						unsatisfied_stack.append(parent_node)
@@ -14366,7 +14366,8 @@ def action_build(settings, trees, mtimedb,
 						node.operation == "nomerge":
 						removed_nodes.add(node)
 				graph_copy.difference_update(removed_nodes)
-				if not graph_copy.hasallzeros(ignore_priority=DepPriority.MEDIUM):
+				if not graph_copy.hasallzeros(ignore_priority = \
+					DepPrioritySatisfiedRange.ignore_medium):
 					print "\n!!! --buildpkgonly requires all dependencies to be merged."
 					print "!!! You have to merge the dependencies before you can build this package.\n"
 					return 1
@@ -14379,7 +14380,8 @@ def action_build(settings, trees, mtimedb,
 					node.operation == "nomerge":
 					removed_nodes.add(node)
 			graph_copy.difference_update(removed_nodes)
-			if not graph_copy.hasallzeros(ignore_priority=DepPriority.MEDIUM):
+			if not graph_copy.hasallzeros(ignore_priority = \
+				DepPrioritySatisfiedRange.ignore_medium):
 				print "\n!!! --buildpkgonly requires all dependencies to be merged."
 				print "!!! Cannot merge requested packages. Merge deps and try again.\n"
 				return 1
