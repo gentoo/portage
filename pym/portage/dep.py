@@ -782,6 +782,7 @@ def isvalidatom(atom, allow_blockers=False):
 
 	cpv = dep_getcpv(atom)
 	cpv_catsplit = catsplit(cpv)
+	without_slot = remove_slot(atom)
 	mycpv_cps = None
 	if cpv:
 		if len(cpv_catsplit) == 2:
@@ -795,12 +796,12 @@ def isvalidatom(atom, allow_blockers=False):
 					mycpv_cps[0] = "null"
 		if not mycpv_cps:
 			mycpv_cps = catpkgsplit(cpv)
-		if mycpv_cps is None and cpv != atom:
+		if mycpv_cps is None and cpv != without_slot:
 			return 0
 
 	operator = get_operator(atom)
 	if operator:
-		if operator[0] in "<>" and remove_slot(atom).endswith("*"):
+		if operator[0] in "<>" and without_slot[-1:] == "*":
 			return 0
 		if mycpv_cps:
 			if len(cpv_catsplit) == 2:
