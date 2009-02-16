@@ -2458,6 +2458,10 @@ class EbuildFetcher(SpawnProcess):
 		# the config instance in the subproccess.
 		fetch_env = os.environ.copy()
 
+		nocolor = settings.get("NOCOLOR")
+		if nocolor is not None:
+			fetch_env["NOCOLOR"] = nocolor
+
 		fetch_env["PORTAGE_NICENESS"] = "0"
 		if self.prefetch:
 			fetch_env["PORTAGE_PARALLEL_FETCHONLY"] = "1"
