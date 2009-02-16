@@ -353,6 +353,15 @@ unpack() {
 		fi
 		[[ ! -s ${srcdir}${x} ]] && die "${x} does not exist"
 
+		_unpack_tar() {
+			if [ "${y}" == "tar" ]; then
+				$1 -dc "${srcdir}${x}" | tar xof - ${tar_opts}
+				assert "$myfail"
+			else
+				$1 -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
+			fi
+		}
+
 		myfail="failure unpacking ${x}"
 		case "${x##*.}" in
 			tar)
@@ -369,19 +378,10 @@ unpack() {
 				unzip -qo "${srcdir}${x}" || die "$myfail"
 				;;
 			gz|Z|z)
-				if [ "${y}" == "tar" ]; then
-					tar zoxf "${srcdir}${x}" ${tar_opts} || die "$myfail"
-				else
-					gzip -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
-				fi
+				_unpack_tar gzip
 				;;
 			bz2|bz)
-				if [ "${y}" == "tar" ]; then
-					bzip2 -dc "${srcdir}${x}" | tar xof - ${tar_opts}
-					assert "$myfail"
-				else
-					bzip2 -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
-				fi
+				_unpack_tar bzip2
 				;;
 			7Z|7z)
 				local my_output
@@ -428,23 +428,13 @@ unpack() {
 				fi
 				;;
 			lzma)
-				if [ "${y}" == "tar" ]; then
-					lzma -dc "${srcdir}${x}" | tar xof - ${tar_opts}
-					assert "$myfail"
-				else
-					lzma -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
-				fi
+				_unpack_tar lzma
 				;;
 			xz)
 				if hasq $eapi 0 1 2 ; then
 					vecho "unpack ${x}: file format not recognized. Ignoring."
 				else
-					if [ "${y}" == "tar" ]; then
-						xz -dc "${srcdir}${x}" | tar xof - ${tar_opts}
-						assert "$myfail"
-					else
-						xz -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
-					fi
+					_unpack_tar xz
 				fi
 				;;
 			*)
