@@ -1831,18 +1831,6 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm depend && \
 	unset x y
 	export SANDBOX_ON=${PORTAGE_SANDBOX_ON}
 	unset PORTAGE_SANDBOX_ON
-
-	# After loading the environment, make sure the color variables
-	# are in sync with the current NOCOLOR setting.
-	case "${NOCOLOR:-false}" in
-		yes|true)
-			unset_colors
-			;;
-		no|false)
-			set_colors
-			;;
-	esac
-
 fi
 
 if ! hasq "$EBUILD_PHASE" clean cleanrm && \
