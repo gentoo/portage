@@ -4,7 +4,7 @@
 # $Id$
 
 
-VERSION="$Rev$"[6:-2] + "-svn"
+VERSION="$Rev: 12601 $"[6:-2] + "-svn"
 
 # ===========================================================================
 # START OF IMPORTS -- START OF IMPORTS -- START OF IMPORTS -- START OF IMPORT
