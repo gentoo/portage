@@ -5067,9 +5067,10 @@ class depgraph(object):
 				# dependencies so that things like --fetchonly can still
 				# function despite collisions.
 				pass
-			else:
+			elif not previously_added:
 				self._slot_pkg_map[pkg.root][pkg.slot_atom] = pkg
 				self.mydbapi[pkg.root].cpv_inject(pkg)
+				self._filtered_trees[pkg.root]["porttree"].dbapi._clear_cache()
 
 			if not pkg.installed:
 				# Allow this package to satisfy old-style virtuals in case it
