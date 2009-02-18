@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: prepman 5507 2007-01-10 04:22:27Z zmedico $
+# $Id$
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 

@@ -1,7 +1,7 @@
 # setup_env.py -- Make sure bin subdir has sane env for testing
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: test_dep_getcpv.py 6182 2007-03-06 07:35:22Z antarus $
+# $Id$
 
 import os, shutil, sys
 from os.path import dirname, abspath, join
