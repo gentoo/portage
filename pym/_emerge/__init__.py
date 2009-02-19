@@ -10656,8 +10656,13 @@ class Scheduler(PollScheduler):
 
 		if len(self._failed_pkgs_all) > 1 or \
 			(self._failed_pkgs_all and "--keep-going" in self.myopts):
-			msg = "The following packages have " + \
-				"failed to build or install:"
+			if len(self._failed_pkgs_all) > 1:
+				msg = "The following %d packages have " % \
+					len(self._failed_pkgs_all) + \
+					"failed to build or install:"
+			else:
+				msg = "The following package has " + \
+					"failed to build or install:"
 			prefix = bad(" * ")
 			writemsg(prefix + "\n", noiselevel=-1)
 			from textwrap import wrap
