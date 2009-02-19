@@ -35,7 +35,7 @@ def collect_ebuild_messages(path):
 			logentries[msgfunction] = []
 		lastmsgtype = None
 		msgcontent = []
-		for l in open(filename, "rb"):
+		for l in open(filename):
 			if not l:
 				continue
 			try:

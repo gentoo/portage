@@ -10616,7 +10616,7 @@ class Scheduler(PollScheduler):
 			log_path = self._locate_failure_log(failed_pkg)
 			if log_path is not None:
 				try:
-					log_file = open(log_path, 'rb')
+					log_file = open(log_path)
 				except IOError:
 					pass
 

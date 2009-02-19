@@ -600,7 +600,7 @@ profiles={}
 valid_profile_types = frozenset(["dev", "exp", "stable"])
 descfile=portdir+"/profiles/profiles.desc"
 if os.path.exists(descfile):
-	for i, x in enumerate(open(descfile, 'rb')):
+	for i, x in enumerate(open(descfile)):
 		if x[0]=="#":
 			continue
 		arch=x.split()
@@ -1444,7 +1444,7 @@ for x in scanlist:
 		# Syntax Checks
 		relative_path = os.path.join(x, y + ".ebuild")
 		full_path = os.path.join(repodir, relative_path)
-		f = open(full_path, 'rb')
+		f = open(full_path)
 		try:
 			for check_name, e in run_checks(f, pkg):
 				stats[check_name] += 1
