@@ -32,7 +32,7 @@ from portage import digraph
 from portage.const import NEWS_LIB_PATH
 
 import _emerge.help
-import portage.xpak, commands, errno, re, socket, time, types
+import portage.xpak, commands, errno, re, socket, time
 from portage.output import blue, bold, colorize, darkblue, darkgreen, darkred, green, \
 	nc_len, red, teal, turquoise, xtermTitle, \
 	xtermTitleReset, yellow
@@ -277,8 +277,8 @@ def countdown(secs=5, doing="Starting"):
 
 # formats a size given in bytes nicely
 def format_size(mysize):
-	if type(mysize) not in [types.IntType,types.LongType]:
-		return str(mysize)
+	if isinstance(mysize, basestring):
+		return mysize
 	if 0 != mysize % 1024:
 		# Always round up to the next kB so that it doesn't show 0 kB when
 		# some small file still needs to be fetched.

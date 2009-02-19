@@ -18,7 +18,7 @@
 # "a? ( b? ( z ) ) -- Valid
 #
 
-import re, sys, types
+import re, sys
 import weakref
 from itertools import chain
 import portage.exception
@@ -230,7 +230,7 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 	while mydeparray:
 		head = mydeparray.pop(0)
 
-		if type(head) == types.ListType:
+		if not isinstance(head, basestring):
 			additions = use_reduce(head, uselist, masklist, matchall, excludeall)
 			if additions:
 				rlist.append(additions)
