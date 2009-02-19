@@ -1,7 +1,10 @@
-# Copyright: 2005 Gentoo Foundation
+# Copyright: 2005-2009 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
-# License: GPL2
 # $Id$
+
+__all__ = ["Mapping", "MutableMapping", "UserDict", "ProtectedDict",
+	"LazyLoad", "slot_dict_class"]
 
 import sys
 import warnings
@@ -122,6 +125,39 @@ class MutableMapping(Mapping):
 				self[k] = v
 		if kwargs:
 			self.update(kwargs)
+
+class UserDict(MutableMapping):
+	"""
+	Use this class as a substitute for UserDict.UserDict so that
+	code converted via 2to3 will run:
+
+	     http://bugs.python.org/issue2876
+	"""
+
+	def __init__(self, dict=None, **kwargs):
+		self.data = {}
+		if dict is not None:
+			self.update(dict)
+		if kwargs:
+			self.update(kwargs)
+
+	def __repr__(self):
+		return repr(self.data)
+
+	def __len__(self):
+		return len(self.data)
+
+	def __getitem__(self, key):
+		return self.data[key]
+
+	def __setitem__(self, key, item):
+		self.data[key] = item
+
+	def __delitem__(self, key):
+		del self.data[key]
+
+	def clear(self):
+		self.data.clear()
 
 class ProtectedDict(MutableMapping):
 	"""
