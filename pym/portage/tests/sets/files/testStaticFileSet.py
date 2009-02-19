@@ -1,7 +1,7 @@
 # testStaticFileSet.py -- Portage Unit Testing Functionality
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: testShell.py 7363 2007-07-22 23:21:14Z zmedico $
+# $Id$
 
 import tempfile, os
 

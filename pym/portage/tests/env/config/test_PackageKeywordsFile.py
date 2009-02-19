@@ -1,7 +1,7 @@
 # test_PackageKeywordsFile.py -- Portage Unit Testing Functionality
 # Copyright 2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: test_PackageKeywordsFile.py 6182 2007-03-06 07:35:22Z antarus $
+# $Id$
 
 from portage.tests import TestCase
 from portage.env.config import PackageKeywordsFile

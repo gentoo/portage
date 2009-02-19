@@ -7,7 +7,7 @@ __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
 	"hardlock_name", "hardlink_is_mine", "hardlink_lockfile", \
 	"unhardlink_lockfile", "hardlock_cleanup"]
 
-import errno, os, stat, time, types
+import errno, os, stat, time
 from portage.exception import DirectoryNotFound, FileNotFound, \
 	InvalidData, TryAgain, OperationNotPermitted, PermissionDenied
 from portage.data import portage_gid
@@ -36,12 +36,12 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 	if not mypath:
 		raise InvalidData("Empty path given")
 
-	if type(mypath) == types.StringType and mypath[-1] == '/':
+	if isinstance(mypath, basestring) and mypath[-1] == '/':
 		mypath = mypath[:-1]
 
-	if type(mypath) == types.FileType:
+	if hasattr(mypath, 'fileno'):
 		mypath = mypath.fileno()
-	if type(mypath) == types.IntType:
+	if isinstance(mypath, int):
 		lockfilename    = mypath
 		wantnewlockfile = 0
 		unlinkfile      = 0
@@ -52,8 +52,8 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 		unlinkfile   = 1
 	else:
 		lockfilename = mypath
-	
-	if type(mypath) == types.StringType:
+
+	if isinstance(mypath, basestring):
 		if not os.path.exists(os.path.dirname(mypath)):
 			raise DirectoryNotFound(os.path.dirname(mypath))
 		preexisting = os.path.exists(lockfilename)
@@ -87,7 +87,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 		finally:
 			os.umask(old_mask)
 
-	elif type(mypath) == types.IntType:
+	elif isinstance(mypath, int):
 		myfd = mypath
 
 	else:
@@ -143,7 +143,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 			raise
 
 		
-	if type(lockfilename) == types.StringType and \
+	if isinstance(lockfilename, basestring) and \
 		myfd != HARDLINK_FD and _fstat_nlink(myfd) == 0:
 		# The file was deleted on us... Keep trying to make one...
 		os.close(myfd)
@@ -188,7 +188,8 @@ def unlockfile(mytuple):
 		return True
 	
 	# myfd may be None here due to myfd = mypath in lockfile()
-	if type(lockfilename) == types.StringType and not os.path.exists(lockfilename):
+	if isinstance(lockfilename, basestring) and \
+		not os.path.exists(lockfilename):
 		writemsg("lockfile does not exist '%s'\n" % lockfilename,1)
 		if myfd is not None:
 			os.close(myfd)
@@ -200,7 +201,7 @@ def unlockfile(mytuple):
 			unlinkfile = 1
 		locking_method(myfd,fcntl.LOCK_UN)
 	except OSError:
-		if type(lockfilename) == types.StringType:
+		if isinstance(lockfilename, basestring):
 			os.close(myfd)
 		raise IOError("Failed to unlock file '%s'\n" % lockfilename)
 
@@ -231,7 +232,7 @@ def unlockfile(mytuple):
 	# why test lockfilename?  because we may have been handed an
 	# fd originally, and the caller might not like having their
 	# open fd closed automatically on them.
-	if type(lockfilename) == types.StringType:
+	if isinstance(lockfilename, basestring):
 		os.close(myfd)
 
 	return True

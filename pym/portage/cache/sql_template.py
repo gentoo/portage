@@ -280,3 +280,4 @@ class SQLDatabase(template.database):
 
 	if sys.hexversion >= 0x3000000:
 		items = iteritems
+		keys = __iter__

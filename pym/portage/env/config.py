@@ -1,12 +1,15 @@
 # config.py -- Portage Config
-# Copyright 2007 Gentoo Foundation
+# Copyright 2007-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from UserDict import UserDict
+__all__ = ["ConfigLoaderKlass", "GenericFile", "PackageKeywordsFile",
+	"PackageUseFile", "PackageMaskFile", "PortageModulesFile"]
+
+from portage.cache.mappings import UserDict
 from portage.env.loaders import KeyListFileLoader, KeyValuePairFileLoader, ItemFileLoader
 
-class ConfigLoaderKlass(UserDict, object):
+class ConfigLoaderKlass(UserDict):
 	"""
 	A base class stub for things to inherit from.
 	Users may want a non-file backend.
@@ -28,9 +31,6 @@ class ConfigLoaderKlass(UserDict, object):
 		"""
 
 		self.data, self.errors = self._loader.load()
-
-	def __iter__(self):
-		return iter(self.data)
 
 class GenericFile(UserDict):
 	"""

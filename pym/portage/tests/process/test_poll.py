@@ -1,6 +1,6 @@
 # Copyright 1998-2008 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: test_spawn.py 8474 2007-11-09 03:35:38Z zmedico $
+# $Id$
 
 import errno, os, sys
 import fcntl

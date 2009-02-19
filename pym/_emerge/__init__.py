@@ -46,7 +46,7 @@ from portage import digraph
 from portage.const import NEWS_LIB_PATH
 
 import _emerge.help
-import portage.xpak, commands, errno, re, socket, time, types
+import portage.xpak, commands, errno, re, socket, time
 from portage.output import blue, bold, colorize, darkblue, darkgreen, darkred, green, \
 	nc_len, red, teal, turquoise, xtermTitle, \
 	xtermTitleReset, yellow
@@ -71,7 +71,6 @@ from portage.sets import load_default_config, SETPREFIX
 from portage.sets.base import InternalPackageSet
 
 from itertools import chain, izip
-from UserDict import DictMixin
 
 try:
 	import cPickle as pickle
@@ -293,8 +292,8 @@ def countdown(secs=5, doing="Starting"):
 
 # formats a size given in bytes nicely
 def format_size(mysize):
-	if type(mysize) not in [types.IntType,types.LongType]:
-		return str(mysize)
+	if isinstance(mysize, basestring):
+		return mysize
 	if 0 != mysize % 1024:
 		# Always round up to the next kB so that it doesn't show 0 kB when
 		# some small file still needs to be fetched.
@@ -2485,6 +2484,10 @@ class EbuildFetcher(SpawnProcess):
 		# the config instance in the subproccess.
 		fetch_env = os.environ.copy()
 
+		nocolor = settings.get("NOCOLOR")
+		if nocolor is not None:
+			fetch_env["NOCOLOR"] = nocolor
+
 		fetch_env["PORTAGE_NICENESS"] = "0"
 		if self.prefetch:
 			fetch_env["PORTAGE_PARALLEL_FETCHONLY"] = "1"
@@ -4034,7 +4037,7 @@ class Dependency(SlotObject):
 		if self.depth is None:
 			self.depth = 0
 
-class BlockerCache(DictMixin):
+class BlockerCache(portage.cache.mappings.MutableMapping):
 	"""This caches blockers of installed packages so that dep_check does not
 	have to be done for every single installed package on every invocation of
 	emerge.  The cache is invalidated whenever it is detected that something
@@ -4191,11 +4194,6 @@ class BlockerCache(DictMixin):
 		@returns: An object with counter and atoms attributes.
 		"""
 		return self.BlockerData(*self._cache_data["blockers"][cpv])
-
-	def keys(self):
-		"""This needs to be implemented so that self.__repr__() doesn't raise
-		an AttributeError."""
-		return list(self)
 
 class BlockerDB(object):
 
@@ -5090,9 +5088,10 @@ class depgraph(object):
 				# dependencies so that things like --fetchonly can still
 				# function despite collisions.
 				pass
-			else:
+			elif not previously_added:
 				self._slot_pkg_map[pkg.root][pkg.slot_atom] = pkg
 				self.mydbapi[pkg.root].cpv_inject(pkg)
+				self._filtered_trees[pkg.root]["porttree"].dbapi._clear_cache()
 
 			if not pkg.installed:
 				# Allow this package to satisfy old-style virtuals in case it
@@ -8929,6 +8928,20 @@ class depgraph(object):
 						return False
 				except portage.exception.InvalidDependString:
 					pass
+			in_graph = self._depgraph._slot_pkg_map[
+				self._root].get(pkg.slot_atom)
+			if in_graph is None:
+				# Mask choices for packages which are not the highest visible
+				# version within their slot (since they usually trigger slot
+				# conflicts).
+				highest_visible, in_graph = self._depgraph._select_package(
+					self._root, pkg.slot_atom)
+				if pkg != highest_visible:
+					return False
+			elif in_graph != pkg:
+				# Mask choices for packages that would trigger a slot
+				# conflict with a previously selected package.
+				return False
 			return True
 
 		def _dep_expand(self, atom):
