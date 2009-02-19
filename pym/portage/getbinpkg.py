@@ -491,7 +491,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 		out.write("Loaded metadata pickle.\n")
 		out.flush()
 		metadatafile.close()
-	except (pickle.UnpicklingError, OSError, IOError, EOFError):
+	except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError):
 		metadata = {}
 	if baseurl not in metadata:
 		metadata[baseurl]={}
