@@ -334,6 +334,65 @@ def writedict(mydict,myfilename,writekey=True):
 		return 0
 	return 1
 
+class ObjectProxy(object):
+
+	"""
+	Object that acts as a proxy to another object, forwarding
+	attribute accesses and method calls. This can be useful
+	for implementing lazy initialization.
+	"""
+
+	def _get_target(self):
+		raise NotImplementedError(self)
+
+	def __getattribute__(self, attr):
+		result = object.__getattribute__(self, '_get_target')()
+		return getattr(result, attr)
+
+	def __setattr__(self, attr, value):
+		result = object.__getattribute__(self, '_get_target')()
+		setattr(result, attr, value)
+
+	def __call__(self, *args, **kwargs):
+		result = object.__getattribute__(self, '_get_target')()
+		return result(*args, **kwargs)
+
+	def __setitem__(self, key, value):
+		object.__getattribute__(self, '_get_target')()[key] = value
+
+	def __getitem__(self, key):
+		return object.__getattribute__(self, '_get_target')()[key]
+
+	def __delitem__(self, key):
+		del object.__getattribute__(self, '_get_target')()[key]
+
+	def __contains__(self, key):
+		return key in object.__getattribute__(self, '_get_target')()
+
+	def __iter__(self):
+		return iter(object.__getattribute__(self, '_get_target')())
+
+	def __len__(self):
+		return len(object.__getattribute__(self, '_get_target')())
+
+	def __repr__(self):
+		return repr(object.__getattribute__(self, '_get_target')())
+
+	def __str__(self):
+		return str(object.__getattribute__(self, '_get_target')())
+
+	def __hash__(self):
+		return hash(object.__getattribute__(self, '_get_target')())
+
+	def __eq__(self, other):
+		return object.__getattribute__(self, '_get_target')() == other
+
+	def __ne__(self, other):
+		return object.__getattribute__(self, '_get_target')() != other
+
+	def __nonzero__(self):
+		return bool(object.__getattribute__(self, '_get_target')())
+
 class _tolerant_shlex(shlex.shlex):
 	def sourcehook(self, newfile):
 		try:
@@ -343,7 +402,7 @@ class _tolerant_shlex(shlex.shlex):
 				(self.infile, str(e)), noiselevel=-1)
 			return (newfile, StringIO.StringIO())
 
-class _insert_newline_eof(file):
+class _insert_newline_eof(ObjectProxy):
 	"""
 	Read functions insert anywhere from 0 and 2 newlines just before eof.
 	This is useful as a workaround for avoiding a silent error in shlex that
@@ -351,32 +410,53 @@ class _insert_newline_eof(file):
 	trailing newline after the source statement.
 	"""
 
+	def __init__(self, *pargs, **kargs):
+		ObjectProxy.__init__(self)
+		object.__setattr__(self, '_file', open(*pargs, **kargs))
+
+	def _get_target(self):
+		return object.__getattribute__(self, '_file')
+
+	def __getattribute__(self, attr):
+		if attr in ('read', 'readline', 'readlines'):
+			return object.__getattribute__(self, attr)
+		return getattr(object.__getattribute__(self, '_file'), attr)
+
 	def read(self, *args):
-		if hasattr(self, "_got_eof"):
+		try:
+			object.__getattribute__(self, '_got_eof')
 			return ""
-		rval = file.read(self, *args)
+		except AttributeError:
+			pass
+		rval = object.__getattribute__(self, '_file').read(*args)
 		if rval and not args and rval[-1:] != "\n":
 			rval += "\n"
 		if not rval:
-			self._got_eof = True
+			object.__setattr__(self, '_got_eof', True)
 			return "\n"
 		return rval
 
 	def readline(self, *args):
-		if hasattr(self, "_got_eof"):
+		try:
+			object.__getattribute__(self, '_got_eof')
 			return ""
-		rval = file.readline(self, *args)
+		except AttributeError:
+			pass
+		rval = object.__getattribute__(self, '_file').readline(*args)
 		if rval and rval[-1:] != "\n":
 			rval += "\n"
 		if not rval:
-			self._got_eof = True
+			object.__setattr__(self, '_got_eof', True)
 			rval = "\n"
 		return rval
 
 	def readlines(self, *args):
-		if hasattr(self, "_got_eof"):
+		try:
+			object.__getattribute__(self, '_got_eof')
 			return []
-		lines = file.readlines(self, *args)
+		except AttributeError:
+			pass
+		lines = object.__getattribute__(self, '_file').readlines(*args)
 		if lines and lines[-1][-1:] != "\n":
 			lines[-1] += "\n"
 		return lines
@@ -391,7 +471,7 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		expand_map = {}
 	mykeys = {}
 	try:
-		f = _insert_newline_eof(mycfg, 'rb')
+		f = _insert_newline_eof(mycfg)
 	except IOError, e:
 		if e.errno == PermissionDenied.errno:
 			raise PermissionDenied(mycfg)
@@ -408,7 +488,7 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		# only joins relative paths when the infile
 		# attribute is properly set.
 		lex = shlex_class(f, infile=mycfg, posix=True)
-		lex.wordchars=string.digits+string.letters+"~!@#$%*_\:;?,./-+{}"     
+		lex.wordchars += "~!@#$%*_\:;?,./-+{}"
 		lex.quotes="\"'"
 		if allow_sourcing:
 			lex.source="source"
@@ -578,9 +658,8 @@ def pickle_read(filename,default=None,debug=0):
 		return default
 	data = None
 	try:
-		myf = open(filename)
+		myf = open(filename, 'rb')
 		mypickle = pickle.Unpickler(myf)
-		mypickle.find_global = None
 		data = mypickle.load()
 		myf.close()
 		del mypickle,myf
@@ -882,7 +961,7 @@ def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 		stat_cached=stat_cached, follow_links=follow_links)
 	return all_applied
 
-class atomic_ofstream(file):
+class atomic_ofstream(ObjectProxy):
 	"""Write a file atomically via os.rename().  Atomic replacement prevents
 	interprocess interference and prevents corruption of the target
 	file when the write is interrupted (for example, when an 'out of space'
@@ -890,36 +969,48 @@ class atomic_ofstream(file):
 
 	def __init__(self, filename, mode='w', follow_links=True, **kargs):
 		"""Opens a temporary filename.pid in the same directory as filename."""
-		self._aborted = False
+		ObjectProxy.__init__(self)
+		object.__setattr__(self, '_aborted', False)
 
 		if follow_links:
 			canonical_path = os.path.realpath(filename)
-			self._real_name = canonical_path
+			object.__setattr__(self, '_real_name', canonical_path)
 			tmp_name = "%s.%i" % (canonical_path, os.getpid())
 			try:
-				super(atomic_ofstream, self).__init__(tmp_name, mode=mode, **kargs)
+				object.__setattr__(self, '_file',
+					open(tmp_name, mode=mode, **kargs))
 				return
-			except (OSError, IOError), e:
+			except IOError, e:
 				if canonical_path == filename:
 					raise
 				writemsg("!!! Failed to open file: '%s'\n" % tmp_name,
 					noiselevel=-1)
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 
-		self._real_name = filename
+		object.__setattr__(self, '_real_name', filename)
 		tmp_name = "%s.%i" % (filename, os.getpid())
-		super(atomic_ofstream, self).__init__(tmp_name, mode=mode, **kargs)
+		object.__setattr__(self, '_file', open(tmp_name, mode=mode, **kargs))
+
+	def _get_target(self):
+		return object.__getattribute__(self, '_file')
+
+	def __getattribute__(self, attr):
+		if attr in ('close', 'abort', '__del__'):
+			return object.__getattribute__(self, attr)
+		return getattr(object.__getattribute__(self, '_file'), attr)
 
 	def close(self):
 		"""Closes the temporary file, copies permissions (if possible),
 		and performs the atomic replacement via os.rename().  If the abort()
 		method has been called, then the temp file is closed and removed."""
-		if not self.closed:
+		f = object.__getattribute__(self, '_file')
+		real_name = object.__getattribute__(self, '_real_name')
+		if not f.closed:
 			try:
-				super(atomic_ofstream, self).close()
-				if not self._aborted:
+				f.close()
+				if not object.__getattribute__(self, '_aborted'):
 					try:
-						apply_stat_permissions(self.name, os.stat(self._real_name))
+						apply_stat_permissions(f.name, os.stat(real_name))
 					except OperationNotPermitted:
 						pass
 					except FileNotFound:
@@ -929,12 +1020,12 @@ class atomic_ofstream(file):
 							pass
 						else:
 							raise
-					os.rename(self.name, self._real_name)
+					os.rename(f.name, real_name)
 			finally:
 				# Make sure we cleanup the temp file
 				# even if an exception is raised.
 				try:
-					os.unlink(self.name)
+					os.unlink(f.name)
 				except OSError, oe:
 					pass
 
@@ -942,19 +1033,20 @@ class atomic_ofstream(file):
 		"""If an error occurs while writing the file, the user should
 		call this method in order to leave the target file unchanged.
 		This will call close() automatically."""
-		if not self._aborted:
-			self._aborted = True
+		if not object.__getattribute__(self, '_aborted'):
+			object.__setattr__(self, '_aborted', True)
 			self.close()
 
 	def __del__(self):
 		"""If the user does not explicitely call close(), it is
 		assumed that an error has occurred, so we abort()."""
-		if not self.closed:
+		f = object.__getattribute__(self, '_file')
+		if not f.closed:
 			self.abort()
 		# ensure destructor from the base class is called
-		base_destructor = getattr(super(atomic_ofstream, self), '__del__', None)
+		base_destructor = getattr(ObjectProxy, '__del__', None)
 		if base_destructor is not None:
-			base_destructor()
+			base_destructor(self)
 
 def write_atomic(file_path, content):
 	f = None
@@ -1001,65 +1093,6 @@ def ensure_dirs(dir_path, *args, **kwargs):
 			raise
 	perms_modified = apply_permissions(dir_path, *args, **kwargs)
 	return created_dir or perms_modified
-
-class ObjectProxy(object):
-
-	"""
-	Object that acts as a proxy to another object, forwarding
-	attribute accesses and method calls. This can be useful
-	for implementing lazy initialization.
-	"""
-
-	def _get_target(self):
-		raise NotImplementedError(self)
-
-	def __getattribute__(self, attr):
-		result = object.__getattribute__(self, '_get_target')()
-		return getattr(result, attr)
-
-	def __setattr__(self, attr, value):
-		result = object.__getattribute__(self, '_get_target')()
-		setattr(result, attr, value)
-
-	def __call__(self, *args, **kwargs):
-		result = object.__getattribute__(self, '_get_target')()
-		return result(*args, **kwargs)
-
-	def __setitem__(self, key, value):
-		object.__getattribute__(self, '_get_target')()[key] = value
-
-	def __getitem__(self, key):
-		return object.__getattribute__(self, '_get_target')()[key]
-
-	def __delitem__(self, key):
-		del object.__getattribute__(self, '_get_target')()[key]
-
-	def __contains__(self, key):
-		return key in object.__getattribute__(self, '_get_target')()
-
-	def __iter__(self):
-		return iter(object.__getattribute__(self, '_get_target')())
-
-	def __len__(self):
-		return len(object.__getattribute__(self, '_get_target')())
-
-	def __repr__(self):
-		return repr(object.__getattribute__(self, '_get_target')())
-
-	def __str__(self):
-		return str(object.__getattribute__(self, '_get_target')())
-
-	def __hash__(self):
-		return hash(object.__getattribute__(self, '_get_target')())
-
-	def __eq__(self, other):
-		return object.__getattribute__(self, '_get_target')() == other
-
-	def __ne__(self, other):
-		return object.__getattribute__(self, '_get_target')() != other
-
-	def __nonzero__(self):
-		return bool(object.__getattribute__(self, '_get_target')())
 
 class LazyItemsDict(dict):
 	"""A mapping object that behaves like a standard dict except that it allows

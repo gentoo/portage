@@ -4707,7 +4707,7 @@ def _check_build_log(mysettings, out=None):
 	if logfile is None:
 		return
 	try:
-		f = open(logfile, 'rb')
+		f = open(logfile)
 	except EnvironmentError:
 		return
 
@@ -7520,7 +7520,7 @@ def commit_mtimedb(mydict=None, filename=None):
 	d = {} # for full backward compat, pickle it as a plain dict object.
 	d.update(mydict)
 	try:
-		f = atomic_ofstream(filename)
+		f = atomic_ofstream(filename, mode='wb')
 		pickle.dump(d, f, -1)
 		f.close()
 		portage.util.apply_secpass_permissions(filename, uid=uid, gid=portage_gid, mode=0664)
@@ -7685,13 +7685,12 @@ class MtimeDB(dict):
 
 	def _load(self, filename):
 		try:
-			f = open(filename)
+			f = open(filename, 'rb')
 			mypickle = pickle.Unpickler(f)
-			mypickle.find_global = None
 			d = mypickle.load()
 			f.close()
 			del f
-		except (IOError, OSError, EOFError, pickle.UnpicklingError), e:
+		except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError), e:
 			if isinstance(e, pickle.UnpicklingError):
 				writemsg("!!! Error loading '%s': %s\n" % \
 					(filename, str(e)), noiselevel=-1)

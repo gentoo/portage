@@ -65,7 +65,8 @@ class database(fs_template.FsBased):
 #		import pdb;pdb.set_trace()
 		s = cpv.rfind("/")
 		fp = os.path.join(self.location,cpv[:s],".update.%i.%s" % (os.getpid(), cpv[s+1:]))
-		try:	myf=open(fp, "w")
+		try:
+			myf = open(fp, 'w')
 		except (IOError, OSError), e:
 			if errno.ENOENT == e.errno:
 				try:
@@ -89,7 +90,8 @@ class database(fs_template.FsBased):
 		#update written.  now we move it.
 
 		new_fp = os.path.join(self.location,cpv)
-		try:	os.rename(fp, new_fp)
+		try:
+			os.rename(fp, new_fp)
 		except (OSError, IOError), e:
 			os.remove(fp)
 			raise cache_errors.CacheCorruption(cpv, e)

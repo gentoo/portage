@@ -4070,13 +4070,12 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 
 	def _load(self):
 		try:
-			f = open(self._cache_filename)
+			f = open(self._cache_filename, mode='rb')
 			mypickle = pickle.Unpickler(f)
-			mypickle.find_global = None
 			self._cache_data = mypickle.load()
 			f.close()
 			del f
-		except (IOError, OSError, EOFError, pickle.UnpicklingError), e:
+		except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError), e:
 			if isinstance(e, pickle.UnpicklingError):
 				writemsg("!!! Error loading '%s': %s\n" % \
 					(self._cache_filename, str(e)), noiselevel=-1)
@@ -4156,7 +4155,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 		if len(self._modified) >= self._cache_threshold and \
 			secpass >= 2:
 			try:
-				f = portage.util.atomic_ofstream(self._cache_filename)
+				f = portage.util.atomic_ofstream(self._cache_filename, mode='wb')
 				pickle.dump(self._cache_data, f, -1)
 				f.close()
 				portage.util.apply_secpass_permissions(
@@ -9667,6 +9666,9 @@ class JobStatusDisplay(object):
 			for k, capname in self._termcap_name_map.iteritems():
 				term_codes[k] = self._default_term_codes[capname]
 			object.__setattr__(self, "_term_codes", term_codes)
+		for k, v in self._term_codes.items():
+			if not isinstance(v, str):
+				self._term_codes[k] = v.decode()
 
 	def _init_term(self):
 		"""
@@ -10659,7 +10661,7 @@ class Scheduler(PollScheduler):
 			log_path = self._locate_failure_log(failed_pkg)
 			if log_path is not None:
 				try:
-					log_file = open(log_path, 'rb')
+					log_file = open(log_path)
 				except IOError:
 					pass
 
@@ -11206,7 +11208,11 @@ class Scheduler(PollScheduler):
 			success, mydepgraph, dropped_tasks = resume_depgraph(
 				self.settings, self.trees, self._mtimedb, self.myopts,
 				myparams, self._spinner)
-		except depgraph.UnsatisfiedResumeDep, e:
+		except depgraph.UnsatisfiedResumeDep, exc:
+			# rename variable to avoid python-3.0 error:
+			# SyntaxError: can not delete variable 'e' referenced in nested
+			#              scope
+			e = exc
 			mydepgraph = e.depgraph
 			dropped_tasks = set()
 
@@ -12262,8 +12268,8 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 	_flush_elog_mod_echo()
 
 	counter_hash = settings.get("PORTAGE_COUNTER_HASH")
-	if counter_hash is not None and \
-		counter_hash == vardbapi._counter_hash():
+	if "--pretend" in myopts or (counter_hash is not None and \
+		counter_hash == vardbapi._counter_hash()):
 		display_news_notification(root_config, myopts)
 		# If vdb state has not changed then there's nothing else to do.
 		sys.exit(retval)
@@ -14098,9 +14104,11 @@ def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 						unsatisfied_parents[parent_node] = parent_node
 						unsatisfied_stack.append(parent_node)
 
-			pruned_mergelist = [x for x in mergelist \
+			pruned_mergelist = []
+			for x in mergelist:
 				if isinstance(x, list) and \
-				tuple(x) not in unsatisfied_parents]
+					tuple(x) not in unsatisfied_parents:
+					pruned_mergelist.append(x)
 
 			# If the mergelist doesn't shrink then this loop is infinite.
 			if len(pruned_mergelist) == len(mergelist):
@@ -14513,14 +14521,7 @@ def action_build(settings, trees, mtimedb,
 			# a list type for options.
 			mtimedb["resume"]["myopts"] = myopts.copy()
 
-			# Convert Atom instances to plain str since the mtimedb loader
-			# sets unpickler.find_global = None which causes unpickler.load()
-			# to raise the following exception:
-			#
-			# cPickle.UnpicklingError: Global and instance pickles are not supported.
-			#
-			# TODO: Maybe stop setting find_global = None, or find some other
-			# way to avoid accidental triggering of the above UnpicklingError.
+			# Convert Atom instances to plain str.
 			mtimedb["resume"]["favorites"] = [str(x) for x in favorites]
 
 			if ("--digest" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
@@ -15226,9 +15227,10 @@ def emerge_main():
 		mysettings =  trees[myroot]["vartree"].settings
 		mysettings.unlock()
 		adjust_config(myopts, mysettings)
-		mysettings["PORTAGE_COUNTER_HASH"] = \
-			trees[myroot]["vartree"].dbapi._counter_hash()
-		mysettings.backup_changes("PORTAGE_COUNTER_HASH")
+		if "--pretend" not in myopts:
+			mysettings["PORTAGE_COUNTER_HASH"] = \
+				trees[myroot]["vartree"].dbapi._counter_hash()
+			mysettings.backup_changes("PORTAGE_COUNTER_HASH")
 		mysettings.lock()
 		del myroot, mysettings
 

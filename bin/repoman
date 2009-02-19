@@ -71,11 +71,7 @@ util.initialize_logger()
 # 14 is the length of DESCRIPTION=""
 max_desc_len = 100
 allowed_filename_chars="a-zA-Z0-9._-+:"
-allowed_filename_chars_set = {}
-map(allowed_filename_chars_set.setdefault, map(chr, range(ord('a'), ord('z')+1)))
-map(allowed_filename_chars_set.setdefault, map(chr, range(ord('A'), ord('Z')+1)))
-map(allowed_filename_chars_set.setdefault, map(chr, range(ord('0'), ord('9')+1)))
-map(allowed_filename_chars_set.setdefault, map(chr, map(ord, [".", "-", "_", "+", ":"])))
+disallowed_filename_chars_re = re.compile(r'[^a-zA-Z0-9._\-+:]')
 bad = create_color_func("BAD")
 
 # A sane umask is needed for files that portage creates.
@@ -604,7 +600,7 @@ profiles={}
 valid_profile_types = frozenset(["dev", "exp", "stable"])
 descfile=portdir+"/profiles/profiles.desc"
 if os.path.exists(descfile):
-	for i, x in enumerate(open(descfile, 'rb')):
+	for i, x in enumerate(open(descfile)):
 		if x[0]=="#":
 			continue
 		arch=x.split()
@@ -864,11 +860,11 @@ for x in scanlist:
 		continue
 
 	for y in checkdirlist:
-		for c in y.strip(os.path.sep):
-			if c not in allowed_filename_chars_set:
-				stats["file.name"] += 1
-				fails["file.name"].append("%s/%s: char '%s'" % (checkdir, y, c))
-				break
+		m = disallowed_filename_chars_re.search(y.strip(os.sep))
+		if m is not None:
+			stats["file.name"] += 1
+			fails["file.name"].append("%s/%s: char '%s'" % \
+				(checkdir, y, m.group(0)))
 
 		if not (y in ("ChangeLog", "metadata.xml") or y.endswith(".ebuild")):
 			continue
@@ -1003,11 +999,12 @@ for x in scanlist:
 				stats["file.size"] += 1
 				fails["file.size"].append("("+ str(mystat.st_size/1024) + "K) "+x+"/files/"+y)
 
-			for c in os.path.basename(y.rstrip(os.path.sep)):
-				if c not in allowed_filename_chars_set:
-					stats["file.name"] += 1
-					fails["file.name"].append("%s/files/%s: char '%s'" % (checkdir, y, c))
-					break
+			m = disallowed_filename_chars_re.search(
+				os.path.basename(y.rstrip(os.sep)))
+			if m is not None:
+				stats["file.name"] += 1
+				fails["file.name"].append("%s/files/%s: char '%s'" % \
+					(checkdir, y, m.group(0)))
 
 			if desktop_file_validate and desktop_pattern.match(y):
 				status, cmd_output = commands.getstatusoutput(
@@ -1447,7 +1444,7 @@ for x in scanlist:
 		# Syntax Checks
 		relative_path = os.path.join(x, y + ".ebuild")
 		full_path = os.path.join(repodir, relative_path)
-		f = open(full_path, 'rb')
+		f = open(full_path)
 		try:
 			for check_name, e in run_checks(f, pkg):
 				stats[check_name] += 1

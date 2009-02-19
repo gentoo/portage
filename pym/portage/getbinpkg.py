@@ -471,7 +471,8 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	else:
 		keepconnection = 1
 
-	cache_path = "/var/cache/edb"
+	cache_path = CACHE_PATH
+	metadatafilename = os.path.join(cache_path, 'remote_metadata.pickle')
 
 	if makepickle is None:
 		makepickle = CACHE_PATH+"/metadata.idx.most_recent"
@@ -486,12 +487,12 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 
 	out = sys.stdout
 	try:
-		metadatafile = open(CACHE_PATH+"/remote_metadata.pickle")
+		metadatafile = open(metadatafilename, 'rb')
 		metadata = pickle.load(metadatafile)
 		out.write("Loaded metadata pickle.\n")
 		out.flush()
 		metadatafile.close()
-	except (pickle.UnpicklingError, OSError, IOError, EOFError):
+	except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError):
 		metadata = {}
 	if baseurl not in metadata:
 		metadata[baseurl]={}
@@ -575,7 +576,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 					sys.stderr.write("!!! "+str(e)+"\n")
 					sys.stderr.flush()
 			try:
-				metadatafile = open(CACHE_PATH+"/remote_metadata.pickle", "w+")
+				metadatafile = open(metadatafilename, 'wb')
 				pickle.dump(metadata,metadatafile)
 				metadatafile.close()
 			except SystemExit, e:
@@ -667,11 +668,11 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	try:
 		if "modified" in metadata[baseurl] and metadata[baseurl]["modified"]:
 			metadata[baseurl]["timestamp"] = int(time.time())
-			metadatafile = open(CACHE_PATH+"/remote_metadata.pickle", "w+")
+			metadatafile = open(metadatafilename, 'wb')
 			pickle.dump(metadata,metadatafile)
 			metadatafile.close()
 		if makepickle:
-			metadatafile = open(makepickle, "w")
+			metadatafile = open(makepickle, 'wb')
 			pickle.dump(metadata[baseurl]["data"],metadatafile)
 			metadatafile.close()
 	except SystemExit, e:
