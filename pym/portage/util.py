@@ -657,9 +657,8 @@ def pickle_read(filename,default=None,debug=0):
 		return default
 	data = None
 	try:
-		myf = open(filename)
+		myf = open(filename, 'rb')
 		mypickle = pickle.Unpickler(myf)
-		mypickle.find_global = None
 		data = mypickle.load()
 		myf.close()
 		del mypickle,myf

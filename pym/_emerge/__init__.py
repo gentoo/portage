@@ -4043,9 +4043,8 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 
 	def _load(self):
 		try:
-			f = open(self._cache_filename)
+			f = open(self._cache_filename, mode='rb')
 			mypickle = pickle.Unpickler(f)
-			mypickle.find_global = None
 			self._cache_data = mypickle.load()
 			f.close()
 			del f
@@ -4129,7 +4128,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 		if len(self._modified) >= self._cache_threshold and \
 			secpass >= 2:
 			try:
-				f = portage.util.atomic_ofstream(self._cache_filename)
+				f = portage.util.atomic_ofstream(self._cache_filename, mode='wb')
 				pickle.dump(self._cache_data, f, -1)
 				f.close()
 				portage.util.apply_secpass_permissions(
@@ -14423,14 +14422,7 @@ def action_build(settings, trees, mtimedb,
 			# a list type for options.
 			mtimedb["resume"]["myopts"] = myopts.copy()
 
-			# Convert Atom instances to plain str since the mtimedb loader
-			# sets unpickler.find_global = None which causes unpickler.load()
-			# to raise the following exception:
-			#
-			# cPickle.UnpicklingError: Global and instance pickles are not supported.
-			#
-			# TODO: Maybe stop setting find_global = None, or find some other
-			# way to avoid accidental triggering of the above UnpicklingError.
+			# Convert Atom instances to plain str.
 			mtimedb["resume"]["favorites"] = [str(x) for x in favorites]
 
 			if ("--digest" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
