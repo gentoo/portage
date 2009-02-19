@@ -11163,7 +11163,11 @@ class Scheduler(PollScheduler):
 			success, mydepgraph, dropped_tasks = resume_depgraph(
 				self.settings, self.trees, self._mtimedb, self.myopts,
 				myparams, self._spinner)
-		except depgraph.UnsatisfiedResumeDep, e:
+		except depgraph.UnsatisfiedResumeDep, exc:
+			# rename variable to avoid python-3.0 error:
+			# SyntaxError: can not delete variable 'e' referenced in nested
+			#              scope
+			e = exc
 			mydepgraph = e.depgraph
 			dropped_tasks = set()
 
@@ -14007,9 +14011,11 @@ def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 						unsatisfied_parents[parent_node] = parent_node
 						unsatisfied_stack.append(parent_node)
 
-			pruned_mergelist = [x for x in mergelist \
+			pruned_mergelist = []
+			for x in mergelist:
 				if isinstance(x, list) and \
-				tuple(x) not in unsatisfied_parents]
+					tuple(x) not in unsatisfied_parents:
+					pruned_mergelist.append(x)
 
 			# If the mergelist doesn't shrink then this loop is infinite.
 			if len(pruned_mergelist) == len(mergelist):
