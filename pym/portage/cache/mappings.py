@@ -165,6 +165,9 @@ class UserDict(MutableMapping):
 	def clear(self):
 		self.data.clear()
 
+	if sys.hexversion >= 0x3000000:
+		keys = __iter__
+
 class ProtectedDict(MutableMapping):
 	"""
 	given an initial dict, this wraps that dict storing changes in a secondary dict, protecting
@@ -218,6 +221,9 @@ class ProtectedDict(MutableMapping):
 			DeprecationWarning)
 		return key in self
 
+	if sys.hexversion >= 0x3000000:
+		keys = __iter__
+
 class LazyLoad(Mapping):
 	"""
 	Lazy loading of values for a dict
@@ -258,6 +264,9 @@ class LazyLoad(Mapping):
 			self.d.update(self.pull())
 			self.pull = None
 		return key in self.d
+
+	if sys.hexversion >= 0x3000000:
+		keys = __iter__
 
 _slot_dict_classes = weakref.WeakValueDictionary()
 
