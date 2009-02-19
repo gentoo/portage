@@ -32,9 +32,6 @@ class ConfigLoaderKlass(UserDict):
 
 		self.data, self.errors = self._loader.load()
 
-	def __iter__(self):
-		return iter(self.data)
-
 class GenericFile(UserDict):
 	"""
 	Inherits from ConfigLoaderKlass, attempts to use all known loaders
