@@ -115,7 +115,12 @@ class MutableMapping(Mapping):
 		if other is None:
 			pass
 		elif hasattr(other, 'iteritems'):
-			for k, v in other.iteritems():
+			# Use getattr to avoid interference from 2to3.
+			for k, v in getattr(other, 'iteritems')():
+				self[k] = v
+		elif hasattr(other, 'items'):
+			# Use getattr to avoid interference from 2to3.
+			for k, v in getattr(other, 'items')():
 				self[k] = v
 		elif hasattr(other, 'keys'):
 			for k in other.keys():
@@ -358,14 +363,25 @@ def slot_dict_class(keys, prefix="_val_"):
 					self[key] = default
 				return default
 
-			def update(self, d):
-				i = getattr(d, "iteritems", None)
-				if i is None:
-					i = d
+			def update(self, other=None, **kwargs):
+				if other is None:
+					pass
+				elif hasattr(other, 'iteritems'):
+					# Use getattr to avoid interference from 2to3.
+					for k, v in getattr(other, 'iteritems')():
+						self[k] = v
+				elif hasattr(other, 'items'):
+					# Use getattr to avoid interference from 2to3.
+					for k, v in getattr(other, 'items')():
+						self[k] = v
+				elif hasattr(other, 'keys'):
+					for k in other.keys():
+						self[k] = other[k]
 				else:
-					i = i()
-				for k, v in i:
-					self[k] = v
+					for k, v in other:
+						self[k] = v
+				if kwargs:
+					self.update(kwargs)
 
 			def __getitem__(self, k):
 				try:
