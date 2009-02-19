@@ -57,6 +57,7 @@ class IsValidAtom(TestCase):
 			  ( "null/portage", True ),
 			  ( "=null/portage", False ),
 			  ( "=null/portage*", False ),
+			  ( "null/portage*:0", False ),
 			  ( ">=null/portage-2.1", True ),
 			  ( "~null/portage-2.1", True ),
 			  ( "=null/portage-2.1*", True ),]
