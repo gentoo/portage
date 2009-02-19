@@ -4,11 +4,126 @@
 # $Id$
 
 import sys
-import UserDict
 import warnings
 import weakref
 
-class ProtectedDict(UserDict.DictMixin):
+class Mapping(object):
+	"""
+	In python-3.0, the UserDict.DictMixin class has been replaced by
+	Mapping and MutableMapping from the collections module, but 2to3
+	doesn't currently account for this change:
+
+	    http://bugs.python.org/issue2876
+
+	As a workaround for the above issue, use this class as a substitute
+	for UserDict.DictMixin so that code converted via 2to3 will run.
+	"""
+
+	def __iter__(self):
+		return self.iterkeys()
+
+	def keys(self):
+		return list(self.__iter__())
+
+	def has_key(self, key):
+		warnings.warn("portage.cache.mappings.Mapping.has_key() " + \
+			"is deprecated, use the in operator instead", DeprecationWarning)
+		return key in self
+
+	def __contains__(self, key):
+		try:
+			value = self[key]
+		except KeyError:
+			return False
+		return True
+
+	def iteritems(self):
+		for k in self:
+			yield (k, self[k])
+
+	def iterkeys(self):
+		return self.__iter__()
+
+	def itervalues(self):
+		for _, v in self.iteritems():
+			yield v
+
+	def values(self):
+		return [v for _, v in self.iteritems()]
+
+	def items(self):
+		return list(self.iteritems())
+
+	def get(self, key, default=None):
+		try:
+			return self[key]
+		except KeyError:
+			return default
+
+	def __repr__(self):
+		return repr(dict(self.iteritems()))
+
+	def __len__(self):
+		return len(self.keys())
+
+	if sys.hexversion >= 0x3000000:
+		items = iteritems
+		keys = __iter__
+		values = itervalues
+
+class MutableMapping(Mapping):
+	"""
+	A mutable vesion of the Mapping class.
+	"""
+
+	def clear(self):
+		for key in self.keys():
+			del self[key]
+
+	def setdefault(self, key, default=None):
+		try:
+			return self[key]
+		except KeyError:
+			self[key] = default
+		return default
+
+	def pop(self, key, *args):
+		if len(args) > 1:
+			raise TypeError("pop expected at most 2 arguments, got " + \
+				repr(1 + len(args)))
+		try:
+			value = self[key]
+		except KeyError:
+			if args:
+				return args[0]
+			raise
+		del self[key]
+		return value
+
+	def popitem(self):
+		try:
+			k, v = self.iteritems().next()
+		except StopIteration:
+			raise KeyError('container is empty')
+		del self[k]
+		return (k, v)
+
+	def update(self, other=None, **kwargs):
+		if other is None:
+			pass
+		elif hasattr(other, 'iteritems'):
+			for k, v in other.iteritems():
+				self[k] = v
+		elif hasattr(other, 'keys'):
+			for k in other.keys():
+				self[k] = other[k]
+		else:
+			for k, v in other:
+				self[k] = v
+		if kwargs:
+			self.update(kwargs)
+
+class ProtectedDict(MutableMapping):
 	"""
 	given an initial dict, this wraps that dict storing changes in a secondary dict, protecting
 	the underlying dict from changes
@@ -52,11 +167,6 @@ class ProtectedDict(UserDict.DictMixin):
 			if k not in self.blacklist and k not in self.new:
 				yield k
 
-
-	def keys(self):
-		return list(self.__iter__())
-
-
 	def __contains__(self, key):
 		return key in self.new or (key not in self.blacklist and key in self.orig)
 
@@ -66,11 +176,7 @@ class ProtectedDict(UserDict.DictMixin):
 			DeprecationWarning)
 		return key in self
 
-	if sys.hexversion >= 0x3000000:
-		keys = __iter__
-		items = iteritems
-
-class LazyLoad(UserDict.DictMixin):
+class LazyLoad(Mapping):
 	"""
 	Lazy loading of values for a dict
 	"""
@@ -90,16 +196,11 @@ class LazyLoad(UserDict.DictMixin):
 			self.pull = None
 		return self.d[key]
 
-
 	def __iter__(self):
-		return iter(self.keys())
-
-	def keys(self):
-		if self.pull != None:
+		if self.pull is not None:
 			self.d.update(self.pull())
 			self.pull = None
-		return self.d.keys()
-
+		return iter(self.d)
 
 	def has_key(self, key):
 		warnings.warn("portage.cache.mappings.LazyLoad.has_key() is "
@@ -115,10 +216,6 @@ class LazyLoad(UserDict.DictMixin):
 			self.d.update(self.pull())
 			self.pull = None
 		return key in self.d
-
-	if sys.hexversion >= 0x3000000:
-		keys = __iter__
-		items = iteritems
 
 _slot_dict_classes = weakref.WeakValueDictionary()
 
@@ -235,6 +332,9 @@ def slot_dict_class(keys, prefix="_val_"):
 				return hasattr(self, self._prefix + k)
 
 			def has_key(self, k):
+				warnings.warn("portage.cache.mappings.SlotDict.has_key()" + \
+					" is deprecated, use the in operator instead",
+					DeprecationWarning)
 				return k in self
 
 			def pop(self, key, *args):

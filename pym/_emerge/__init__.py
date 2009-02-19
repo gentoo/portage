@@ -56,7 +56,6 @@ from portage.sets import load_default_config, SETPREFIX
 from portage.sets.base import InternalPackageSet
 
 from itertools import chain, izip
-from UserDict import DictMixin
 
 try:
 	import cPickle as pickle
@@ -4011,7 +4010,7 @@ class Dependency(SlotObject):
 		if self.depth is None:
 			self.depth = 0
 
-class BlockerCache(DictMixin):
+class BlockerCache(portage.cache.mappings.MutableMapping):
 	"""This caches blockers of installed packages so that dep_check does not
 	have to be done for every single installed package on every invocation of
 	emerge.  The cache is invalidated whenever it is detected that something
@@ -4168,11 +4167,6 @@ class BlockerCache(DictMixin):
 		@returns: An object with counter and atoms attributes.
 		"""
 		return self.BlockerData(*self._cache_data["blockers"][cpv])
-
-	def keys(self):
-		"""This needs to be implemented so that self.__repr__() doesn't raise
-		an AttributeError."""
-		return list(self)
 
 class BlockerDB(object):
 
