@@ -1,7 +1,7 @@
 # portage.py -- core Portage functionality
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: __init__.py 12627 2009-02-18 22:52:56Z zmedico $
 
 
 VERSION="$Rev: 12515 $"[6:-2] + "-svn"
