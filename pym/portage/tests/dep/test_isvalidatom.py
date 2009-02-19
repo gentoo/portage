@@ -25,6 +25,7 @@ class IsValidAtom(TestCase):
 			  ( "sys-apps/portage:foo", True ),
 			  ( "sys-apps/portage-2.1:foo", False ),
 			  ( "sys-apps/portage-2.1:", False ),
+			  ( "sys-apps/portage-2.1:[foo]", False ),
 			  ( "=sys-apps/portage-2.2*:foo[bar?,!baz?,!doc=,build=]", True ),
 			  ( "=sys-apps/portage-2.2*:foo[doc?]", True ),
 			  ( "=sys-apps/portage-2.2*:foo[!doc?]", True ),
