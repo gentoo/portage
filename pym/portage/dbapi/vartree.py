@@ -1342,7 +1342,7 @@ class vardbapi(dbapi):
 			from md5 import new as _new_hash
 
 		_hash_bits = 16
-		_hex_chars = _hash_bits / 4
+		_hex_chars = int(_hash_bits / 4)
 
 		def __init__(self, vardb):
 			self._vardb = vardb
