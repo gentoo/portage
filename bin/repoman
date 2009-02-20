@@ -26,9 +26,9 @@ from itertools import chain, izip
 from stat import S_ISDIR, ST_CTIME
 
 try:
-	import cStringIO as StringIO
+	from cStringIO import StringIO
 except ImportError:
-	import StringIO
+	from StringIO import StringIO
 
 if not hasattr(__builtins__, "set"):
 	from sets import Set as set
@@ -1614,7 +1614,7 @@ if dofail or \
 # in $EDITOR while the user creates a commit message.
 # Otherwise, the user would not be able to see this output
 # once the editor has taken over the screen.
-qa_output = StringIO.StringIO()
+qa_output = StringIO()
 style_file = ConsoleStyleFile(sys.stdout)
 if options.mode == 'commit' and \
 	(not commitmessage or not commitmessage.strip()):
