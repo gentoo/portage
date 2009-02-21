@@ -17,7 +17,7 @@ from portage.const import EAPI, EAPIPREFIX
 
 from portage import dep_expand, listdir, _check_distfile, _movefile
 
-import portage.xpak, portage.getbinpkg
+import portage
 
 import os, errno, stat
 import re

@@ -78,9 +78,9 @@ except ImportError:
 	import pickle
 
 try:
-	import cStringIO as StringIO
+	from cStringIO import StringIO
 except ImportError:
-	import StringIO
+	from StringIO import StringIO
 
 class stdout_spinner(object):
 	scroll_msgs = [
@@ -5301,23 +5301,14 @@ class depgraph(object):
 		cat, atom_pn = portage.catsplit(null_cp)
 
 		dbs = self._filtered_trees[root_config.root]["dbs"]
-		cp_set = set()
+		categories = set()
 		for db, pkg_type, built, installed, db_keys in dbs:
-			cp_set.update(db.cp_all())
-		for cp in list(cp_set):
-			cat, pn = portage.catsplit(cp)
-			if pn != atom_pn:
-				cp_set.discard(cp)
+			for cat in db.categories:
+				if db.cp_list("%s/%s" % (cat, atom_pn)):
+					categories.add(cat)
+
 		deps = []
-		for cp in cp_set:
-			have_pkg = False
-			for db, pkg_type, built, installed, db_keys in dbs:
-				if db.cp_list(cp):
-					have_pkg = True
-					break
-			if not have_pkg:
-				continue
-			cat, pn = portage.catsplit(cp)
+		for cat in categories:
 			deps.append(insert_category_into_atom(
 				atom_without_category, cat))
 		return deps
@@ -9818,8 +9809,8 @@ class JobStatusDisplay(object):
 		failed_str = str(self.failed)
 		load_avg_str = self._load_avg_str()
 
-		color_output = StringIO.StringIO()
-		plain_output = StringIO.StringIO()
+		color_output = StringIO()
+		plain_output = StringIO()
 		style_file = portage.output.ConsoleStyleFile(color_output)
 		style_file.write_listener = plain_output
 		style_writer = portage.output.StyleWriter(file=style_file, maxcol=9999)
@@ -10707,8 +10698,13 @@ class Scheduler(PollScheduler):
 
 		if len(self._failed_pkgs_all) > 1 or \
 			(self._failed_pkgs_all and "--keep-going" in self.myopts):
-			msg = "The following packages have " + \
-				"failed to build or install:"
+			if len(self._failed_pkgs_all) > 1:
+				msg = "The following %d packages have " % \
+					len(self._failed_pkgs_all) + \
+					"failed to build or install:"
+			else:
+				msg = "The following package has " + \
+					"failed to build or install:"
 			prefix = bad(" * ")
 			writemsg(prefix + "\n", noiselevel=-1)
 			from textwrap import wrap
@@ -12503,7 +12499,6 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		mytimeout=180
 
 		rsync_opts = []
-		import shlex, StringIO
 		if settings["PORTAGE_RSYNC_OPTS"] == "":
 			portage.writemsg("PORTAGE_RSYNC_OPTS empty or unset, using hardcoded defaults\n")
 			rsync_opts.extend([
@@ -12528,12 +12523,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			# defaults.
 
 			portage.writemsg("Using PORTAGE_RSYNC_OPTS instead of hardcoded defaults\n", 1)
-			lexer = shlex.shlex(StringIO.StringIO(
-				settings.get("PORTAGE_RSYNC_OPTS","")), posix=True)
-			lexer.whitespace_split = True
-			rsync_opts.extend(lexer)
-			del lexer
-
+			rsync_opts.extend(
+				shlex.split(settings.get("PORTAGE_RSYNC_OPTS","")))
 			for opt in ("--recursive", "--times"):
 				if opt not in rsync_opts:
 					portage.writemsg(yellow("WARNING:") + " adding required option " + \
@@ -12611,11 +12602,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			user_name=""
 		updatecache_flg=True
 		all_rsync_opts = set(rsync_opts)
-		lexer = shlex.shlex(StringIO.StringIO(
-			settings.get("PORTAGE_RSYNC_EXTRA_OPTS","")), posix=True)
-		lexer.whitespace_split = True
-		extra_rsync_opts = list(lexer)
-		del lexer
+		extra_rsync_opts = shlex.split(
+			settings.get("PORTAGE_RSYNC_EXTRA_OPTS",""))
 		all_rsync_opts.update(extra_rsync_opts)
 		family = socket.AF_INET
 		if "-4" in all_rsync_opts or "--ipv4" in all_rsync_opts:

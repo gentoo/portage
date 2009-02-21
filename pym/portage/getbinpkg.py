@@ -401,12 +401,11 @@ def file_get(baseurl,dest,conn=None,fcmd=None):
 		"URI":     baseurl,
 		"FILE":    os.path.basename(baseurl)
 	}
-	import shlex, StringIO
+	import shlex
 	from portage.util import varexpand
 	from portage.process import spawn
-	lexer = shlex.shlex(StringIO.StringIO(fcmd), posix=True)
-	lexer.whitespace_split = True
-	myfetch = [varexpand(x, mydict=variables) for x in lexer]
+	myfetch = shlex.split(fcmd)
+	myfetch = [varexpand(x, mydict=variables) for x in myfetch]
 	fd_pipes= {
 		0:sys.stdin.fileno(),
 		1:sys.stdout.fileno(),

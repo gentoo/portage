@@ -773,6 +773,10 @@ def isvalidatom(atom, allow_blockers=False):
 		else:
 			atom = atom[1:]
 
+	if dep_getslot(atom) == "":
+		# empty slot is invalid (None is valid)
+		return 0
+
 	try:
 		use = dep_getusedeps(atom)
 		if use:
