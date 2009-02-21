@@ -178,7 +178,7 @@ def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr):
 				fd1.write("... ")
 		else:
 			for pkg in myglsa.packages.keys():
-				mylist = vardb.match(portage.dep_getkey(pkg))
+				mylist = vardb.match(portage.dep_getkey(str(pkg)))
 				if len(mylist) > 0:
 					pkg = color(" ".join(mylist))
 				fd1.write(" " + pkg + " ")

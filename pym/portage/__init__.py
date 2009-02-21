@@ -3217,9 +3217,9 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		return mypids
 
 	if logfile:
-		log_file = open(logfile, 'a')
-		stdout_file = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
-		master_file = os.fdopen(master_fd, 'r')
+		log_file = open(logfile, mode='ab')
+		stdout_file = os.fdopen(os.dup(fd_pipes_orig[1]), 'wb')
+		master_file = os.fdopen(master_fd, 'rb')
 		iwtd = [master_file]
 		owtd = []
 		ewtd = []
