@@ -1199,6 +1199,9 @@ class LazyItemsDict(dict):
 	"""A mapping object that behaves like a standard dict except that it allows
 	for lazy initialization of values via callable objects.  Lazy items can be
 	overwritten and deleted just as normal items."""
+
+	__slots__ = ('lazy_items',)
+
 	def __init__(self, initial_items=None):
 		dict.__init__(self)
 		self.lazy_items = {}
@@ -1213,18 +1216,9 @@ class LazyItemsDict(dict):
 	def addLazySingleton(self, item_key, value_callable, *pargs, **kwargs):
 		"""This is like addLazyItem except value_callable will only be called
 		a maximum of 1 time and the result will be cached for future requests."""
-		class SingletonItem(object):
-			def __init__(self, value_callable, *pargs, **kwargs):
-				self._callable = value_callable
-				self._pargs = pargs
-				self._kwargs = kwargs
-				self._called = False
-			def __call__(self):
-				if not self._called:
-					self._called = True
-					self._value = self._callable(*self._pargs, **self._kwargs)
-				return self._value
-		self.addLazyItem(item_key, SingletonItem(value_callable, *pargs, **kwargs))
+		self.addLazyItem(item_key,
+			self._SingletonWrapper(self, item_key, value_callable,
+				*pargs, **kwargs))
 	def update(self, map_obj):
 		if isinstance(map_obj, LazyItemsDict):
 			for k in map_obj:
@@ -1249,6 +1243,22 @@ class LazyItemsDict(dict):
 		if item_key in self.lazy_items:
 			del self.lazy_items[item_key]
 		dict.__delitem__(self, item_key)
+
+	class _SingletonWrapper(object):
+
+		__slots__ = ('_parent', '_key', '_callable', '_pargs', '_kwargs')
+
+		def __init__(self, parent, key, value_callable, *pargs, **kwargs):
+			self._parent = parent
+			self._key = key
+			self._callable = value_callable
+			self._pargs = pargs
+			self._kwargs = kwargs
+
+		def __call__(self):
+			value = self._callable(*self._pargs, **self._kwargs)
+			self._parent[self._key] = value
+			return value
 
 class ConfigProtect(object):
 	def __init__(self, myroot, protect_list, mask_list):
