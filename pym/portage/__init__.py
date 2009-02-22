@@ -1,5 +1,5 @@
 # portage.py -- core Portage functionality
-# Copyright 1998-2004 Gentoo Foundation
+# Copyright 1998-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
@@ -609,7 +609,9 @@ class digraph(object):
 #parse /etc/env.d and generate /etc/profile.env
 
 def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
-	env=None, writemsg_level=portage.util.writemsg_level):
+	env=None, writemsg_level=None):
+	if writemsg_level is None:
+		writemsg_level = portage.util.writemsg_level
 	if target_root is None:
 		global settings
 		target_root = settings["ROOT"]

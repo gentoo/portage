@@ -1,10 +1,15 @@
 # data.py -- Calculated/Discovered Data Values
-# Copyright 1998-2004 Gentoo Foundation
+# Copyright 1998-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
 import os, sys, pwd, grp, platform
-from portage.util import writemsg
+
+import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.util:writemsg',
+)
+
 from portage.output import colorize
 from portage.output import create_color_func
 bad = create_color_func("BAD")

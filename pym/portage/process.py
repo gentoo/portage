@@ -1,5 +1,5 @@
 # portage.py -- core Portage functionality
-# Copyright 1998-2004 Gentoo Foundation
+# Copyright 1998-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
@@ -9,7 +9,11 @@ import atexit
 import signal
 import sys
 
-from portage.util import dump_traceback
+import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.util:dump_traceback',
+)
+
 from portage.const import BASH_BINARY, SANDBOX_BINARY, FAKEROOT_BINARY
 from portage.exception import CommandNotFound
 
