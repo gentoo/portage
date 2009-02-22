@@ -7464,6 +7464,62 @@ def portageexit():
 
 atexit_register(portageexit)
 
+def _ensure_default_encoding():
+	"""
+	The python that's inside stage 1 or 2 is built with a minimal
+	configuration which does not include the /usr/lib/pythonX.Y/encodings
+	directory. This results in error like the following:
+
+	  LookupError: no codec search functions registered: can't find encoding
+
+	In order to solve this problem, detect it early and manually register
+	a search function for the ascii codec. Starting with python-3.0 this
+	problem is more noticeable because of stricter handling of encoding
+	and decoding between strings of characters and bytes.
+	"""
+
+	import codecs
+	try:
+		codecs.lookup(sys.getdefaultencoding())
+	except LookupError:
+		pass
+	else:
+		return
+
+	class IncrementalEncoder(codecs.IncrementalEncoder):
+		def encode(self, input, final=False):
+			return codecs.ascii_encode(input, self.errors)[0]
+
+	class IncrementalDecoder(codecs.IncrementalDecoder):
+		def decode(self, input, final=False):
+			return codecs.ascii_decode(input, self.errors)[0]
+
+	class StreamWriter(codecs.StreamWriter):
+		encode = codecs.ascii_encode
+
+	class StreamReader(codecs.StreamReader):
+		decode = codecs.ascii_decode
+
+	# The sys.setdefaultencoding() function doesn't necessarily exist,
+	# so just setup the ascii codec to correspond to whatever name
+	# happens to be returned by sys.getdefaultencoding().
+	encoding = sys.getdefaultencoding()
+
+	def search_function(name):
+		if name != encoding:
+			return None
+		return codecs.CodecInfo(
+			name=encoding,
+			encode=codecs.ascii_encode,
+			decode=codecs.ascii_decode,
+			incrementalencoder=IncrementalEncoder,
+			incrementaldecoder=IncrementalDecoder,
+			streamwriter=StreamWriter,
+			streamreader=StreamReader,
+		)
+
+	codecs.register(search_function)
+
 def _global_updates(trees, prev_mtimes):
 	"""
 	Perform new global updates if they exist in $PORTDIR/profiles/updates/.
@@ -7853,6 +7909,8 @@ if True:
 		"pkglines", "thirdpartymirrors", "usedefaults", "profiledir",
 		"flushmtimedb"):
 		globals()[k] = _LegacyGlobalProxy(k)
+
+	_ensure_default_encoding()
 
 # Clear the cache
 dircache={}
