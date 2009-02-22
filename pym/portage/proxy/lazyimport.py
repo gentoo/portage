@@ -6,16 +6,27 @@ __all__ = ['lazyimport']
 
 import sys
 import types
+
+try:
+	import threading
+except ImportError:
+	import dummy_threading as threading
+
 from portage.proxy.objectproxy import ObjectProxy
 
 _module_proxies = {}
+_module_proxies_lock = threading.RLock()
 
 def _register_module_proxy(name, proxy):
-	proxy_list = _module_proxies.get(name)
-	if proxy_list is None:
-		proxy_list = []
-		_module_proxies[name] = proxy_list
-	proxy_list.append(proxy)
+	_module_proxies_lock.acquire()
+	try:
+		proxy_list = _module_proxies.get(name)
+		if proxy_list is None:
+			proxy_list = []
+			_module_proxies[name] = proxy_list
+		proxy_list.append(proxy)
+	finally:
+		_module_proxies_lock.release()
 
 def _unregister_module_proxy(name):
 	"""
@@ -24,19 +35,29 @@ def _unregister_module_proxy(name):
 	destroy those proxies too. This way, destruction of a single proxy
 	can trigger destruction of all the rest.
 	"""
-	proxy_list = _module_proxies.get(name)
-	if proxy_list is not None:
-		del _module_proxies[name]
-		for proxy in proxy_list:
-			object.__getattribute__(proxy, '_get_target')()
-
-		modules = sys.modules
-		for name, proxy_list in list(_module_proxies.iteritems()):
-			if name not in modules:
-				continue
+	_module_proxies_lock.acquire()
+	try:
+		proxy_list = _module_proxies.get(name)
+		if proxy_list is not None:
+			# First delete this name from the dict so that
+			# if this same thread reenters below, it won't
+			# enter this path again.
 			del _module_proxies[name]
 			for proxy in proxy_list:
 				object.__getattribute__(proxy, '_get_target')()
+
+			modules = sys.modules
+			for name, proxy_list in list(_module_proxies.iteritems()):
+				if name not in modules:
+					continue
+				# First delete this name from the dict so that
+				# if this same thread reenters below, it won't
+				# enter this path again.
+				del _module_proxies[name]
+				for proxy in proxy_list:
+					object.__getattribute__(proxy, '_get_target')()
+	finally:
+		_module_proxies_lock.release()
 
 class _LazyImport(ObjectProxy):
 
