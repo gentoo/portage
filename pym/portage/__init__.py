@@ -73,8 +73,9 @@ if platform.system() in ["FreeBSD"]:
 
 try:
 	from portage.cache.cache_errors import CacheError
-	import portage.util as util
-	util.lazy_import(globals(),
+	import portage.proxy.lazyimport
+	import portage.proxy as proxy
+	proxy.lazyimport.lazyimport(globals(),
 		'portage.checksum',
 		'portage.checksum:perform_checksum,perform_md5,prelink_capable',
 		'portage.cvstree',
@@ -93,6 +94,14 @@ try:
 		'portage.update:dep_transform,fixdbentries,grab_updates,' + \
 			'parse_updates,update_config_files,update_dbentries,' + \
 			'update_dbentry',
+		'portage.util',
+		'portage.util:atomic_ofstream,apply_secpass_permissions,' + \
+			'apply_recursive_permissions,dump_traceback,getconfig,' + \
+			'grabdict,grabdict_package,grabfile,grabfile_package,' + \
+			'map_dictlist_vals,new_protect_filename,normalize_path,' + \
+			'pickle_read,pickle_write,stack_dictlist,stack_dicts,' + \
+			'stack_lists,unique_array,varexpand,writedict,writemsg,' + \
+			'writemsg_stdout,write_atomic',
 		'portage.versions:best,catpkgsplit,catsplit,endversion_keys,' + \
 			'suffix_value@endversion,pkgcmp,pkgsplit,vercmp,ververify',
 		'portage.xpak',
@@ -111,12 +120,6 @@ try:
 	from portage.data import ostype, lchown, userland, secpass, uid, wheelgid, \
 	                         portage_uid, portage_gid, userpriv_groups
 	from portage.manifest import Manifest
-
-	from portage.util import atomic_ofstream, apply_secpass_permissions, apply_recursive_permissions, \
-		dump_traceback, getconfig, grabdict, grabdict_package, grabfile, grabfile_package, \
-		map_dictlist_vals, new_protect_filename, normalize_path, \
-		pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, \
-		unique_array, varexpand, writedict, writemsg, writemsg_stdout, write_atomic
 	import portage.exception
 	from portage.localization import _
 
@@ -7704,13 +7707,13 @@ def create_trees(config_root=None, target_root=None, trees=None):
 			binarytree, myroot, mysettings["PKGDIR"], settings=mysettings)
 	return trees
 
-class _LegacyGlobalProxy(portage.util.ObjectProxy):
+class _LegacyGlobalProxy(proxy.objectproxy.ObjectProxy):
 	"""
 	Instances of these serve as proxies to global variables
 	that are initialized on demand.
 	"""
 	def __init__(self, name):
-		portage.util.ObjectProxy.__init__(self)
+		proxy.objectproxy.ObjectProxy.__init__(self)
 		object.__setattr__(self, '_name', name)
 
 	def _get_target(self):
@@ -7718,7 +7721,7 @@ class _LegacyGlobalProxy(portage.util.ObjectProxy):
 		name = object.__getattribute__(self, '_name')
 		return globals()[name]
 
-class _PortdbProxy(portage.util.ObjectProxy):
+class _PortdbProxy(proxy.objectproxy.ObjectProxy):
 	"""
 	The portdb is initialized separately from the rest
 	of the variables, since sometimes the other variables
@@ -7733,13 +7736,13 @@ class _PortdbProxy(portage.util.ObjectProxy):
 			_portdb_initialized = True
 		return portdb
 
-class _MtimedbProxy(portage.util.ObjectProxy):
+class _MtimedbProxy(proxy.objectproxy.ObjectProxy):
 	"""
 	The mtimedb is independent from the portdb and other globals.
 	"""
 
 	def __init__(self, name):
-		portage.util.ObjectProxy.__init__(self)
+		proxy.objectproxy.ObjectProxy.__init__(self)
 		object.__setattr__(self, '_name', name)
 
 	def _get_target(self):
