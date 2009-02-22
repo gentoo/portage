@@ -9638,9 +9638,10 @@ class JobStatusDisplay(object):
 			for k, capname in self._termcap_name_map.iteritems():
 				term_codes[k] = self._default_term_codes[capname]
 			object.__setattr__(self, "_term_codes", term_codes)
+		encoding = sys.getdefaultencoding()
 		for k, v in self._term_codes.items():
 			if not isinstance(v, str):
-				self._term_codes[k] = v.decode()
+				self._term_codes[k] = v.decode(encoding, 'replace')
 
 	def _init_term(self):
 		"""
