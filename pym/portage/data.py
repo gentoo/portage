@@ -7,12 +7,9 @@ import os, sys, pwd, grp, platform
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.output:colorize',
 	'portage.util:writemsg',
 )
-
-from portage.output import colorize
-from portage.output import create_color_func
-bad = create_color_func("BAD")
 
 ostype=platform.system()
 userland = None
@@ -39,7 +36,7 @@ if not lchown:
 			lchown()
 
 def portage_group_warning():
-	warn_prefix = bad("*** WARNING ***  ")
+	warn_prefix = colorize("BAD", "*** WARNING ***  ")
 	mylines = [
 		"For security reasons, only system administrators should be",
 		"allowed in the portage group.  Untrusted users or processes",

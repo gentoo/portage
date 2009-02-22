@@ -6,14 +6,13 @@ import errno, os, re, sys
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.dep:dep_getkey,get_operator,isvalidatom,isjustname,remove_slot',
 	'portage.util:ConfigProtect,grabfile,new_protect_filename,' + \
 		'normalize_path,write_atomic,writemsg',
+	'portage.versions:ververify'
 )
 
 from portage.exception import DirectoryNotFound, PortageException
-from portage.versions import ververify
-from portage.dep import dep_getkey, get_operator, isvalidatom, isjustname, \
-	remove_slot
 from portage.const import USER_CONFIG_PATH, WORLD_FILE
 
 ignored_dbentries = ("CONTENTS", "environment.bz2")

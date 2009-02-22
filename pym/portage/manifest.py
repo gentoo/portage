@@ -10,7 +10,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:write_atomic',
 )
 
-import portage.versions, portage.const
 from portage.exception import *
 
 class FileNotInManifestException(PortageException):

@@ -102,6 +102,7 @@ try:
 			'pickle_read,pickle_write,stack_dictlist,stack_dicts,' + \
 			'stack_lists,unique_array,varexpand,writedict,writemsg,' + \
 			'writemsg_stdout,write_atomic',
+		'portage.versions',
 		'portage.versions:best,catpkgsplit,catsplit,endversion_keys,' + \
 			'suffix_value@endversion,pkgcmp,pkgsplit,vercmp,ververify',
 		'portage.xpak',

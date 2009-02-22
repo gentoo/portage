@@ -5,10 +5,10 @@
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.output:colorize',
 	'portage.util:writemsg',
 )
 
-from portage.output import colorize
 from portage.const import EBUILD_PHASES
 
 import os
