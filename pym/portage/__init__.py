@@ -7576,16 +7576,12 @@ def _ensure_default_encoding():
 
 		default_fallback = 'utf_8'
 
-		if hasattr(sys, 'setdefaultencoding'):
-			sys.setdefaultencoding(default_fallback)
-		else:
-			# The sys.setdefaultencoding() function doesn't exist,
-			# so just make the fallback codec correspond to whatever
-			# name happens to be returned by sys.getdefaultencoding().
-			try:
-				encodings[default_encoding] = codecs.lookup(default_fallback)
-			except LookupError:
-				encodings[default_encoding] = encodings[default_fallback]
+		# Make the fallback codec correspond to whatever name happens
+		# to be returned by sys.getdefaultencoding().
+		try:
+			encodings[default_encoding] = codecs.lookup(default_fallback)
+		except LookupError:
+			encodings[default_encoding] = encodings[default_fallback]
 
 		del default_fallback
 
