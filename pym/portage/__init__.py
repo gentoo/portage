@@ -7207,9 +7207,13 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 
 	kmask = "missing"
 
-	for keyword in pgroups:
-		if keyword in mygroups:
-			kmask=None
+	if '**' in pgroups:
+		kmask = None
+	else:
+		for keyword in pgroups:
+			if keyword in mygroups:
+				kmask = None
+				break
 
 	if kmask:
 		fallback = None
