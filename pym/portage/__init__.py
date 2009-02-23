@@ -2119,6 +2119,8 @@ class config(object):
 				if ebuild_force_test:
 					self.usemask.discard("test")
 
+		use.difference_update([x for x in use if x not in iuse_implicit])
+
 		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
 		# that they are consistent. For optimal performance, use slice
 		# comparison instead of startswith().
@@ -2126,8 +2128,8 @@ class config(object):
 		for var in use_expand:
 			prefix = var.lower() + "_"
 			prefix_len = len(prefix)
-			expand_flags = set([ x[prefix_len:] for x in use \
-				if x[:prefix_len] == prefix ])
+			expand_flags = set( x[prefix_len:] for x in use \
+				if x[:prefix_len] == prefix )
 			var_split = self.get(var, "").split()
 			# Preserve the order of var_split because it can matter for things
 			# like LINGUAS.
@@ -2189,9 +2191,7 @@ class config(object):
 		# attribute since we still want to be able to see global USE
 		# settings for things like emerge --info.
 
-		self.configdict["pkg"]["PORTAGE_USE"] = " ".join(sorted(
-			x for x in use if \
-			x in iuse_implicit))
+		self.configdict["pkg"]["PORTAGE_USE"] = " ".join(sorted(use))
 
 	def _get_implicit_iuse(self):
 		"""
