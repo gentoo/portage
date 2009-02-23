@@ -1318,7 +1318,7 @@ class vardbapi(dbapi):
 				counter, = self.aux_get(cpv, aux_keys)
 			except KeyError:
 				continue
-			h.update(counter.encode())
+			h.update(counter)
 		return h.hexdigest()
 
 	def cpv_inject(self, mycpv):
@@ -1916,7 +1916,9 @@ class vardbapi(dbapi):
 
 		def _hash_str(self, s):
 			h = self._new_hash()
-			h.update(s.encode())
+			# Always use a constant utf_8 encoding here, since
+			# the "default" encoding can change.
+			h.update(s)
 			h = h.hexdigest()
 			h = h[-self._hex_chars:]
 			h = int(h, 16)

@@ -9679,9 +9679,10 @@ class JobStatusDisplay(object):
 			for k, capname in self._termcap_name_map.iteritems():
 				term_codes[k] = self._default_term_codes[capname]
 			object.__setattr__(self, "_term_codes", term_codes)
+		encoding = sys.getdefaultencoding()
 		for k, v in self._term_codes.items():
 			if not isinstance(v, str):
-				self._term_codes[k] = v.decode()
+				self._term_codes[k] = v.decode(encoding, 'replace')
 
 	def _init_term(self):
 		"""
@@ -13718,13 +13719,22 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		msg.append("\n")
 		portage.writemsg_stdout("".join(msg), noiselevel=-1)
 
+	def cmp_pkg_cpv(pkg1, pkg2):
+		"""Sort Package instances by cpv."""
+		if pkg1.cpv > pkg2.cpv:
+			return 1
+		elif pkg1.cpv == pkg2.cpv:
+			return 0
+		else:
+			return -1
+
 	def create_cleanlist():
 		pkgs_to_remove = []
 
 		if action == "depclean":
 			if args_set:
 
-				for pkg in vardb:
+				for pkg in sorted(vardb, key=cmp_sort_key(cmp_pkg_cpv)):
 					arg_atom = None
 					try:
 						arg_atom = args_set.findAtomForPackage(pkg)
@@ -13739,7 +13749,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 							show_parents(pkg)
 
 			else:
-				for pkg in vardb:
+				for pkg in sorted(vardb, key=cmp_sort_key(cmp_pkg_cpv)):
 					if pkg not in graph:
 						pkgs_to_remove.append(pkg)
 					elif "--verbose" in myopts:
