@@ -702,7 +702,7 @@ class vardbapi(dbapi):
 		"|".join(_excluded_dirs) + r')$')
 
 	_aux_cache_version        = "1"
-	_owners_cache_version     = "2"
+	_owners_cache_version     = "1"
 
 	# Number of uncached packages to trigger cache update, since
 	# it's wasteful to update it for every vdb change.
@@ -792,7 +792,7 @@ class vardbapi(dbapi):
 				counter, = self.aux_get(cpv, aux_keys)
 			except KeyError:
 				continue
-			h.update(counter.encode('ascii', 'backslashreplace'))
+			h.update(counter)
 		return h.hexdigest()
 
 	def cpv_inject(self, mycpv):
@@ -1392,7 +1392,7 @@ class vardbapi(dbapi):
 			h = self._new_hash()
 			# Always use a constant utf_8 encoding here, since
 			# the "default" encoding can change.
-			h.update(s.encode('utf_8', 'backslashreplace'))
+			h.update(s)
 			h = h.hexdigest()
 			h = h[-self._hex_chars:]
 			h = int(h, 16)
