@@ -12,6 +12,7 @@ VERSION="$Rev$"[6:-2] + "-svn"
 
 try:
 	import sys
+	import codecs
 	import copy
 	import errno
 	import logging
@@ -7467,33 +7468,7 @@ def portageexit():
 
 atexit_register(portageexit)
 
-def _ensure_default_encoding():
-	"""
-	The python that's inside stage 1 or 2 is built with a minimal
-	configuration which does not include the /usr/lib/pythonX.Y/encodings
-	directory. This results in error like the following:
-
-	  LookupError: no codec search functions registered: can't find encoding
-
-	In order to solve this problem, detect it early and manually register
-	a search function for the ascii and utf_8 codecs. Starting with python-3.0
-	this problem is more noticeable because of stricter handling of encoding
-	and decoding between strings of characters and bytes.
-	"""
-
-	import codecs
-	default_encoding = sys.getdefaultencoding()
-	required_encodings = set(['ascii', 'utf_8'])
-	required_encodings.add(default_encoding)
-	missing_encodings = set()
-	for codec_name in required_encodings:
-		try:
-			codecs.lookup(codec_name)
-		except LookupError:
-			missing_encodings.add(codec_name)
-
-	if not missing_encodings:
-		return
+def _gen_missing_encodings(missing_encodings):
 
 	encodings = {}
 
@@ -7513,7 +7488,7 @@ def _ensure_default_encoding():
 		class AsciiStreamReader(codecs.StreamReader):
 			decode = codecs.ascii_decode
 
-		ascii_codec_info =  codecs.CodecInfo(
+		encodings['ascii'] =  codecs.CodecInfo(
 			name='ascii',
 			encode=codecs.ascii_encode,
 			decode=codecs.ascii_decode,
@@ -7522,8 +7497,6 @@ def _ensure_default_encoding():
 			streamwriter=AsciiStreamWriter,
 			streamreader=AsciiStreamReader,
 		)
-
-		encodings['ascii'] = ascii_codec_info
 
 	if 'utf_8' in missing_encodings:
 
@@ -7543,7 +7516,7 @@ def _ensure_default_encoding():
 		class Utf8StreamReader(codecs.StreamReader):
 			decode = codecs.utf_8_decode
 
-		utf8_codec_info = codecs.CodecInfo(
+		encodings['utf_8'] = codecs.CodecInfo(
 			name='utf-8',
 			encode=codecs.utf_8_encode,
 			decode=utf8decode,
@@ -7553,7 +7526,46 @@ def _ensure_default_encoding():
 			streamwriter=Utf8StreamReader,
 		)
 
-		encodings['utf_8'] = utf8_codec_info
+	return encodings
+
+def _ensure_default_encoding():
+	"""
+	The python that's inside stage 1 or 2 is built with a minimal
+	configuration which does not include the /usr/lib/pythonX.Y/encodings
+	directory. This results in error like the following:
+
+	  LookupError: no codec search functions registered: can't find encoding
+
+	In order to solve this problem, detect it early and manually register
+	a search function for the ascii and utf_8 codecs. Starting with python-3.0
+	this problem is more noticeable because of stricter handling of encoding
+	and decoding between strings of characters and bytes.
+	"""
+
+	default_fallback = 'utf_8'
+	default_encoding = sys.getdefaultencoding()
+	required_encodings = set(['ascii', 'utf_8'])
+	required_encodings.add(default_encoding)
+	missing_encodings = set()
+	for codec_name in required_encodings:
+		try:
+			codecs.lookup(codec_name)
+		except LookupError:
+			missing_encodings.add(codec_name)
+
+	if not missing_encodings:
+		return
+
+	encodings = _gen_missing_encodings(missing_encodings)
+
+	if default_encoding not in encodings:
+		# Make the fallback codec correspond to whatever name happens
+		# to be returned by sys.getdefaultencoding().
+
+		try:
+			encodings[default_encoding] = codecs.lookup(default_fallback)
+		except LookupError:
+			encodings[default_encoding] = encodings[default_fallback]
 
 	def search_function(name):
 		codec_info = encodings.get(name)
@@ -7571,21 +7583,8 @@ def _ensure_default_encoding():
 
 	codecs.register(search_function)
 
-	if default_encoding in missing_encodings and \
-		default_encoding not in encodings:
-
-		default_fallback = 'utf_8'
-
-		# Make the fallback codec correspond to whatever name happens
-		# to be returned by sys.getdefaultencoding().
-		try:
-			encodings[default_encoding] = codecs.lookup(default_fallback)
-		except LookupError:
-			encodings[default_encoding] = encodings[default_fallback]
-
-		del default_fallback
-
-	del codec_name, default_encoding, missing_encodings, required_encodings
+	del codec_name, default_encoding, default_fallback, missing_encodings, \
+		required_encodings, search_function
 
 def _global_updates(trees, prev_mtimes):
 	"""
