@@ -7558,7 +7558,8 @@ def _ensure_default_encoding():
 
 	encodings = _gen_missing_encodings(missing_encodings)
 
-	if default_encoding not in encodings:
+	if default_encoding in missing_encodings and \
+		default_encoding not in encodings:
 		# Make the fallback codec correspond to whatever name happens
 		# to be returned by sys.getdefaultencoding().
 
