@@ -1,23 +1,25 @@
-# Copyright 1998-2007 Gentoo Foundation
+# Copyright 1998-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
 __all__ = ["bindbapi", "binarytree"]
 
+import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list',
+	'portage.output:EOutput,colorize',
+	'portage.update:update_dbentries',
+	'portage.util:ensure_dirs,normalize_path,writemsg,writemsg_stdout',
+	'portage.versions:best,catpkgsplit,catsplit',
+)
+
 from portage.cache.mappings import slot_dict_class
-from portage.dep import isvalidatom, isjustname, dep_getkey, match_from_list
 from portage.dbapi.virtual import fakedbapi
 from portage.exception import InvalidPackageName, \
 	PermissionDenied, PortageException
-from portage.output import EOutput, colorize
-from portage.util import ensure_dirs, normalize_path, writemsg, writemsg_stdout
-from portage.versions import best, catpkgsplit, catsplit
-from portage.update import update_dbentries
 from portage.const import EAPI, EAPIPREFIX
 
 from portage import dep_expand, listdir, _check_distfile, _movefile
-
-import portage
 
 import os, errno, stat
 import re

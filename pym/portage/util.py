@@ -1,7 +1,16 @@
-# Copyright 2004 Gentoo Foundation
+# Copyright 2004-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+__all__ = ['apply_permissions', 'apply_recursive_permissions',
+	'apply_secpass_permissions', 'apply_stat_permissions', 'atomic_ofstream',
+	'cmp_sort_key', 'ConfigProtect', 'dump_traceback', 'ensure_dirs',
+	'getconfig', 'getlibpaths', 'grabdict', 'grabdict_package', 'grabfile',
+	'grabfile_package', 'grablines', 'initialize_logger', 'LazyItemsDict',
+	'map_dictlist_vals', 'new_protect_filename', 'normalize_path',
+	'pickle_read', 'stack_dictlist', 'stack_dicts', 'stack_lists',
+	'unique_array', 'varexpand', 'write_atomic', 'writedict', 'writemsg',
+	'writemsg_level', 'writemsg_stdout']
 
 import os
 import errno
@@ -16,6 +25,7 @@ from portage.exception import PortageException, FileNotFound, \
        OperationNotPermitted, PermissionDenied, ReadOnlyFileSystem
 import portage.exception
 from portage.dep import isvalidatom
+from portage.proxy.objectproxy import ObjectProxy
 from portage.const import EPREFIX, EPREFIX_LSTRIP
 
 try:
@@ -334,165 +344,6 @@ def writedict(mydict,myfilename,writekey=True):
 			myfile.abort()
 		return 0
 	return 1
-
-class ObjectProxy(object):
-
-	"""
-	Object that acts as a proxy to another object, forwarding
-	attribute accesses and method calls. This can be useful
-	for implementing lazy initialization.
-	"""
-
-	__slots__ = ()
-
-	def _get_target(self):
-		raise NotImplementedError(self)
-
-	def __getattribute__(self, attr):
-		result = object.__getattribute__(self, '_get_target')()
-		return getattr(result, attr)
-
-	def __setattr__(self, attr, value):
-		result = object.__getattribute__(self, '_get_target')()
-		setattr(result, attr, value)
-
-	def __call__(self, *args, **kwargs):
-		result = object.__getattribute__(self, '_get_target')()
-		return result(*args, **kwargs)
-
-	def __setitem__(self, key, value):
-		object.__getattribute__(self, '_get_target')()[key] = value
-
-	def __getitem__(self, key):
-		return object.__getattribute__(self, '_get_target')()[key]
-
-	def __delitem__(self, key):
-		del object.__getattribute__(self, '_get_target')()[key]
-
-	def __contains__(self, key):
-		return key in object.__getattribute__(self, '_get_target')()
-
-	def __iter__(self):
-		return iter(object.__getattribute__(self, '_get_target')())
-
-	def __len__(self):
-		return len(object.__getattribute__(self, '_get_target')())
-
-	def __repr__(self):
-		return repr(object.__getattribute__(self, '_get_target')())
-
-	def __str__(self):
-		return str(object.__getattribute__(self, '_get_target')())
-
-	def __hash__(self):
-		return hash(object.__getattribute__(self, '_get_target')())
-
-	def __eq__(self, other):
-		return object.__getattribute__(self, '_get_target')() == other
-
-	def __ne__(self, other):
-		return object.__getattribute__(self, '_get_target')() != other
-
-	def __nonzero__(self):
-		return bool(object.__getattribute__(self, '_get_target')())
-
-class _LazyImport(ObjectProxy):
-
-	__slots__ = ('_scope', '_alias', '_name', '_target')
-
-	def __init__(self, scope, alias, name):
-		ObjectProxy.__init__(self)
-		object.__setattr__(self, '_scope', scope)
-		object.__setattr__(self, '_alias', alias)
-		object.__setattr__(self, '_name', name)
-
-	def _get_target(self):
-		try:
-			return object.__getattribute__(self, '_target')
-		except AttributeError:
-			pass
-		name = object.__getattribute__(self, '_name')
-		__import__(name)
-		target = sys.modules[name]
-		object.__setattr__(self, '_target', target)
-		object.__getattribute__(self, '_scope')[
-			object.__getattribute__(self, '_alias')] = target
-		return target
-
-class _LazyImportFrom(_LazyImport):
-
-	__slots__ = ()
-
-	def _get_target(self):
-		try:
-			return object.__getattribute__(self, '_target')
-		except AttributeError:
-			pass
-		name = object.__getattribute__(self, '_name')
-		components = name.split('.')
-		parent_name = '.'.join(components[:-1])
-		__import__(parent_name)
-		target = getattr(sys.modules[parent_name], components[-1])
-		object.__setattr__(self, '_target', target)
-		object.__getattribute__(self, '_scope')[
-			object.__getattribute__(self, '_alias')] = target
-		return target
-
-def lazy_import(scope, *args):
-	"""
-	Create a proxy in the given scope in order to performa a lazy import.
-
-	Syntax         Result
-	foo            import foo
-	foo:bar,baz    from foo import bar, baz
-	foo:bar@baz    from foo import bar as baz
-
-	@param scope: the scope in which to place the import, typically globals()
-	@type myfilename: dict
-	@param args: module names to import
-	@type args: strings
-	"""
-
-	for s in args:
-		parts = s.split(':', 1)
-		if len(parts) == 1:
-			name = s
-
-			if not name or not isinstance(name, basestring):
-				raise ValueError(name)
-
-			components = name.split('.')
-			parent_scope = scope
-			for i in xrange(len(components)):
-				alias = components[i]
-				mod = parent_scope.get(alias)
-				if isinstance(mod, types.ModuleType):
-					parent_scope = mod.__dict__
-					continue
-				if i < len(components) - 1:
-					parent_name = ".".join(components[:i+1])
-					__import__(parent_name)
-					mod = sys.modules.get(parent_name)
-					if not isinstance(mod, types.ModuleType):
-						# raise an exception
-						__import__(name)
-					parent_scope[alias] = mod
-					parent_scope = mod.__dict__
-					continue
-				parent_scope[alias] = _LazyImport(parent_scope, alias, name)
-
-		else:
-			name, fromlist = parts
-			fromlist = fromlist.split(',')
-			for s in fromlist:
-				alias = s.split('@', 1)
-				if len(alias) == 1:
-					alias = alias[0]
-					orig = alias
-				else:
-					orig, alias = alias
-				scope[alias] = _LazyImportFrom(scope, alias,
-					name + '.' + orig)
 
 class _tolerant_shlex(shlex.shlex):
 	def sourcehook(self, newfile):
@@ -1200,11 +1051,25 @@ class LazyItemsDict(dict):
 	"""A mapping object that behaves like a standard dict except that it allows
 	for lazy initialization of values via callable objects.  Lazy items can be
 	overwritten and deleted just as normal items."""
-	def __init__(self, initial_items=None):
+
+	__slots__ = ('lazy_items',)
+
+	def __init__(self, *args, **kwargs):
+
+		if len(args) > 1:
+			raise TypeError(
+				"expected at most 1 positional argument, got " + \
+				repr(len(args)))
+
 		dict.__init__(self)
 		self.lazy_items = {}
-		if initial_items is not None:
-			self.update(initial_items)
+
+		if args:
+			self.update(args[0])
+
+		if kwargs:
+			self.update(kwargs)
+
 	def addLazyItem(self, item_key, value_callable, *pargs, **kwargs):
 		"""Add a lazy item for the given key.  When the item is requested,
 		value_callable will be called with *pargs and **kwargs arguments."""
@@ -1214,18 +1079,9 @@ class LazyItemsDict(dict):
 	def addLazySingleton(self, item_key, value_callable, *pargs, **kwargs):
 		"""This is like addLazyItem except value_callable will only be called
 		a maximum of 1 time and the result will be cached for future requests."""
-		class SingletonItem(object):
-			def __init__(self, value_callable, *pargs, **kwargs):
-				self._callable = value_callable
-				self._pargs = pargs
-				self._kwargs = kwargs
-				self._called = False
-			def __call__(self):
-				if not self._called:
-					self._called = True
-					self._value = self._callable(*self._pargs, **self._kwargs)
-				return self._value
-		self.addLazyItem(item_key, SingletonItem(value_callable, *pargs, **kwargs))
+		self.addLazyItem(item_key,
+			self._SingletonWrapper(self, item_key, value_callable,
+				*pargs, **kwargs))
 	def update(self, map_obj):
 		if isinstance(map_obj, LazyItemsDict):
 			for k in map_obj:
@@ -1250,6 +1106,63 @@ class LazyItemsDict(dict):
 		if item_key in self.lazy_items:
 			del self.lazy_items[item_key]
 		dict.__delitem__(self, item_key)
+
+	def clear(self):
+		self.lazy_items.clear()
+		dict.clear(self)
+
+	def copy(self):
+		return self.__copy__()
+
+	def __copy__(self):
+		return self.__class__(self)
+
+	def __deepcopy__(self, memo=None):
+		"""
+		WARNING: If any of the lazy items contains a bound method then it's
+		typical for deepcopy() to raise an exception like this:
+
+			File "/usr/lib/python2.5/copy.py", line 189, in deepcopy
+				y = _reconstruct(x, rv, 1, memo)
+			File "/usr/lib/python2.5/copy.py", line 322, in _reconstruct
+				y = callable(*args)
+			File "/usr/lib/python2.5/copy_reg.py", line 92, in __newobj__
+				return cls.__new__(cls, *args)
+			TypeError: instancemethod expected at least 2 arguments, got 0
+
+		If deepcopy() needs to work, this problem can be avoided by
+		implementing lazy items with normal (non-bound) functions.
+		"""
+		if memo is None:
+			memo = {}
+		from copy import deepcopy
+		result = self.__class__()
+		memo[id(self)] = result
+		for k in self:
+			k_copy = deepcopy(k, memo)
+			if k in self.lazy_items:
+				dict.__setitem__(result, k_copy, None)
+				result.lazy_items[k_copy] = \
+					deepcopy(self.lazy_items[k], memo)
+			else:
+				dict.__setitem__(result, k_copy, deepcopy(self[k], memo))
+		return result
+
+	class _SingletonWrapper(object):
+
+		__slots__ = ('_parent', '_key', '_callable', '_pargs', '_kwargs')
+
+		def __init__(self, parent, key, value_callable, *pargs, **kwargs):
+			self._parent = parent
+			self._key = key
+			self._callable = value_callable
+			self._pargs = pargs
+			self._kwargs = kwargs
+
+		def __call__(self):
+			value = self._callable(*self._pargs, **self._kwargs)
+			self._parent[self._key] = value
+			return value
 
 class ConfigProtect(object):
 	def __init__(self, myroot, protect_list, mask_list):

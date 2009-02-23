@@ -1,13 +1,16 @@
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Header: $
 
 import errno, os
 
-import portage.versions, portage.const
-from portage.checksum import *
+import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.checksum:hashfunc_map,perform_multiple_checksums,verify_all',
+	'portage.util:write_atomic',
+)
+
 from portage.exception import *
-from portage.util import write_atomic
 
 class FileNotInManifestException(PortageException):
 	pass

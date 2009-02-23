@@ -1,4 +1,4 @@
-# Copyright 1998-2007 Gentoo Foundation
+# Copyright 1998-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
@@ -6,30 +6,34 @@ __all__ = ["PreservedLibsRegistry", "LinkageMap", "LinkageMapMachO",
 	"vardbapi", "vartree", "dblink"] + \
 	["write_contents", "tar_contents"]
 
-from portage.checksum import perform_md5
+import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.checksum:perform_md5',
+	'portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list,' + \
+	 	'use_reduce,paren_reduce',
+	'portage.elog:elog_process',
+	'portage.elog.filtering:filter_mergephases,filter_unmergephases',
+	'portage.locks:lockdir,unlockdir',
+	'portage.output:bold,colorize',
+	'portage.update:fixdbentries',
+	'portage.util:apply_secpass_permissions,ConfigProtect,ensure_dirs,' + \
+		'writemsg,writemsg_level,write_atomic,atomic_ofstream,writedict,' + \
+		'grabfile,grabdict,normalize_path,new_protect_filename,getlibpaths',
+	'portage.versions:best,catpkgsplit,catsplit,pkgcmp,pkgsplit',
+)
+
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, \
 	PORTAGE_PACKAGE_ATOM, PRIVATE_PATH, VDB_PATH, EPREFIX, EPREFIX_LSTRIP
 from portage.data import portage_gid, portage_uid, secpass, ostype
 from portage.dbapi import dbapi
-from portage.dep import use_reduce, paren_reduce, isvalidatom, \
-	isjustname, dep_getkey, match_from_list
 from portage.exception import CommandNotFound, \
 	InvalidData, InvalidPackageName, \
 	FileNotFound, PermissionDenied, UnsupportedAPIException
-from portage.locks import lockdir, unlockdir
-from portage.output import bold, colorize
-from portage.update import fixdbentries
-from portage.util import apply_secpass_permissions, ConfigProtect, ensure_dirs, \
-	writemsg, writemsg_level, write_atomic, atomic_ofstream, writedict, \
-	grabfile, grabdict, normalize_path, new_protect_filename, getlibpaths
-from portage.versions import pkgsplit, catpkgsplit, catsplit, best, pkgcmp
 
 from portage import listdir, dep_expand, digraph, flatten, key_expand, \
 	doebuild_environment, doebuild, env_update, prepare_build_dirs, \
 	abssymlink, movefile, _movefile, bsd_chflags, cpv_getkey
 
-from portage.elog import elog_process
-from portage.elog.filtering import filter_mergephases, filter_unmergephases
 from portage.cache.mappings import slot_dict_class
 
 import os, re, shutil, stat, errno, copy, subprocess

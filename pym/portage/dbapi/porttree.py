@@ -1,22 +1,25 @@
-# Copyright 1998-2007 Gentoo Foundation
+# Copyright 1998-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
 __all__ = ["portdbapi", "close_portdbapi_caches", "portagetree"]
+
+import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.checksum',
+	'portage.dep:dep_getkey,match_from_list,paren_reduce,use_reduce',
+	'portage.util:ensure_dirs,writemsg',
+	'portage.versions:best,catpkgsplit,pkgsplit,ver_regexp',
+)
 
 from portage.cache.cache_errors import CacheError
 from portage.cache.mappings import slot_dict_class
 from portage.const import REPO_NAME_LOC
 from portage.data import portage_gid, secpass
 from portage.dbapi import dbapi
-from portage.dep import use_reduce, paren_reduce, dep_getkey, match_from_list
 from portage.exception import PortageException, \
 	FileNotFound, InvalidDependString, InvalidPackageName
 from portage.manifest import Manifest
-from portage.util import ensure_dirs, writemsg
-from portage.versions import pkgsplit, catpkgsplit, best, ver_regexp
-
-import portage.checksum
 
 from portage import eclass_cache, auxdbkeys, doebuild, flatten, \
 	listdir, dep_expand, eapi_is_supported, key_expand, dep_check, \

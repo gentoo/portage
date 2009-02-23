@@ -1,15 +1,18 @@
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Header: $
 
 import errno, os, re, sys
 
-from portage.util import ConfigProtect, grabfile, new_protect_filename, \
-	normalize_path, write_atomic, writemsg
+import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.dep:dep_getkey,get_operator,isvalidatom,isjustname,remove_slot',
+	'portage.util:ConfigProtect,grabfile,new_protect_filename,' + \
+		'normalize_path,write_atomic,writemsg',
+	'portage.versions:ververify'
+)
+
 from portage.exception import DirectoryNotFound, PortageException
-from portage.versions import ververify
-from portage.dep import dep_getkey, get_operator, isvalidatom, isjustname, \
-	remove_slot
 from portage.const import USER_CONFIG_PATH, WORLD_FILE
 
 ignored_dbentries = ("CONTENTS", "environment.bz2")

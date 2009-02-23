@@ -1,14 +1,16 @@
 # data.py -- Calculated/Discovered Data Values
-# Copyright 1998-2004 Gentoo Foundation
+# Copyright 1998-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
 import os, sys, pwd, grp, platform
-from portage.util import writemsg
 from portage.const import rootuid, portageuser, portagegroup, EPREFIX
-from portage.output import colorize
-from portage.output import create_color_func
-bad = create_color_func("BAD")
+
+import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.output:colorize',
+	'portage.util:writemsg',
+)
 
 ostype=platform.system()
 userland = None
@@ -38,7 +40,7 @@ if not lchown:
 			lchown()
 
 def portage_group_warning():
-	warn_prefix = bad("*** WARNING ***  ")
+	warn_prefix = colorize("BAD", "*** WARNING ***  ")
 	mylines = [
 		"For security reasons, only system administrators should be",
 		"allowed in the portage group.  Untrusted users or processes",

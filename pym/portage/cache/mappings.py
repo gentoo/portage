@@ -139,10 +139,16 @@ class UserDict(MutableMapping):
 	     http://bugs.python.org/issue2876
 	"""
 
-	def __init__(self, dict=None, **kwargs):
-		self.data = {}
-		if dict is not None:
-			self.update(dict)
+	def __init__(self, *args, **kwargs):
+
+		if len(args) > 1:
+			raise TypeError(
+				"expected at most 1 positional argument, got " + \
+				repr(len(args)))
+
+		if args:
+			self.update(args[0])
+
 		if kwargs:
 			self.update(kwargs)
 

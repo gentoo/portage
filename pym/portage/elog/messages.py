@@ -1,11 +1,15 @@
 # elog/messages.py - elog core functions
-# Copyright 2006-2007 Gentoo Foundation
+# Copyright 2006-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from portage.output import colorize
+import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.output:colorize',
+	'portage.util:writemsg',
+)
+
 from portage.const import EBUILD_PHASES
-from portage.util import writemsg
 
 import os
 import sys

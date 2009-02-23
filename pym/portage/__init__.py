@@ -1,5 +1,5 @@
 # portage.py -- core Portage functionality
-# Copyright 1998-2004 Gentoo Foundation
+# Copyright 1998-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
@@ -73,8 +73,9 @@ if platform.system() in ["FreeBSD"]:
 
 try:
 	from portage.cache.cache_errors import CacheError
-	import portage.util as util
-	util.lazy_import(globals(),
+	import portage.proxy.lazyimport
+	import portage.proxy as proxy
+	proxy.lazyimport.lazyimport(globals(),
 		'portage.checksum',
 		'portage.checksum:perform_checksum,perform_md5,prelink_capable',
 		'portage.cvstree',
@@ -93,6 +94,15 @@ try:
 		'portage.update:dep_transform,fixdbentries,grab_updates,' + \
 			'parse_updates,update_config_files,update_dbentries,' + \
 			'update_dbentry',
+		'portage.util',
+		'portage.util:atomic_ofstream,apply_secpass_permissions,' + \
+			'apply_recursive_permissions,dump_traceback,getconfig,' + \
+			'grabdict,grabdict_package,grabfile,grabfile_package,' + \
+			'map_dictlist_vals,new_protect_filename,normalize_path,' + \
+			'pickle_read,pickle_write,stack_dictlist,stack_dicts,' + \
+			'stack_lists,unique_array,varexpand,writedict,writemsg,' + \
+			'writemsg_stdout,write_atomic',
+		'portage.versions',
 		'portage.versions:best,catpkgsplit,catsplit,endversion_keys,' + \
 			'suffix_value@endversion,pkgcmp,pkgsplit,vercmp,ververify',
 		'portage.xpak',
@@ -112,12 +122,6 @@ try:
 	from portage.data import ostype, lchown, userland, secpass, uid, wheelgid, \
 	                         portage_uid, portage_gid, userpriv_groups
 	from portage.manifest import Manifest
-
-	from portage.util import atomic_ofstream, apply_secpass_permissions, apply_recursive_permissions, \
-		dump_traceback, getconfig, grabdict, grabdict_package, grabfile, grabfile_package, \
-		map_dictlist_vals, new_protect_filename, normalize_path, \
-		pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, \
-		unique_array, varexpand, writedict, writemsg, writemsg_stdout, write_atomic
 	import portage.exception
 	from portage.localization import _
 
@@ -607,7 +611,9 @@ class digraph(object):
 #parse /etc/env.d and generate /etc/profile.env
 
 def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
-	env=None, writemsg_level=portage.util.writemsg_level):
+	env=None, writemsg_level=None):
+	if writemsg_level is None:
+		writemsg_level = portage.util.writemsg_level
 	if target_root is None:
 		global settings
 		target_root = settings["ROOT"]
@@ -958,6 +964,19 @@ def autouse(myvartree, use_cache=1, mysettings=None):
 def check_config_instance(test):
 	if not isinstance(test, config):
 		raise TypeError("Invalid type for config object: %s (should be %s)" % (test.__class__, config))
+
+def _lazy_iuse_regex(iuse_implicit):
+	"""
+	The PORTAGE_IUSE value is lazily evaluated since re.escape() is slow
+	and the value is only used when an ebuild phase needs to be executed
+	(it's used only to generate QA notices).
+	"""
+	# Escape anything except ".*" which is supposed to pass through from
+	# _get_implicit_iuse().
+	regex = sorted(re.escape(x) for x in iuse_implicit)
+	regex = "^(%s)$" % "|".join(regex)
+	regex = regex.replace("\\.\\*", ".*")
+	return regex
 
 class config(object):
 	"""
@@ -1491,7 +1510,7 @@ class config(object):
 			self.configlist.append(self.mygcfg)
 			self.configdict["conf"]=self.configlist[-1]
 
-			self.configlist.append({})
+			self.configlist.append(util.LazyItemsDict())
 			self.configdict["pkg"]=self.configlist[-1]
 
 			#auto-use:
@@ -2092,12 +2111,9 @@ class config(object):
 		iuse_implicit = self._get_implicit_iuse()
 		iuse_implicit.update(x.lstrip("+-") for x in iuse.split())
 
-		# Escape anything except ".*" which is supposed
-		# to pass through from _get_implicit_iuse()
-		regex = sorted(re.escape(x) for x in iuse_implicit)
-		regex = "^(%s)$" % "|".join(regex)
-		regex = regex.replace("\\.\\*", ".*")
-		self.configdict["pkg"]["PORTAGE_IUSE"] = regex
+		# PORTAGE_IUSE is not always needed so it's lazily evaluated.
+		self.configdict["pkg"].addLazySingleton(
+			"PORTAGE_IUSE", _lazy_iuse_regex, iuse_implicit)
 
 		ebuild_force_test = self.get("EBUILD_FORCE_TEST") == "1"
 		if ebuild_force_test and \
@@ -5153,7 +5169,10 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 		return 1
 
 	_prepare_workdir(mysettings)
-	_prepare_features_dirs(mysettings)
+	if mysettings.get('EBUILD_PHASE') != 'fetch':
+		# Avoid spurious permissions adjustments when fetching with
+		# a temporary PORTAGE_TMPDIR setting (for fetchonly).
+		_prepare_features_dirs(mysettings)
 
 def _adjust_perms_msg(settings, msg):
 
@@ -7529,6 +7548,62 @@ def portageexit():
 
 atexit_register(portageexit)
 
+def _ensure_default_encoding():
+	"""
+	The python that's inside stage 1 or 2 is built with a minimal
+	configuration which does not include the /usr/lib/pythonX.Y/encodings
+	directory. This results in error like the following:
+
+	  LookupError: no codec search functions registered: can't find encoding
+
+	In order to solve this problem, detect it early and manually register
+	a search function for the ascii codec. Starting with python-3.0 this
+	problem is more noticeable because of stricter handling of encoding
+	and decoding between strings of characters and bytes.
+	"""
+
+	import codecs
+	try:
+		codecs.lookup(sys.getdefaultencoding())
+	except LookupError:
+		pass
+	else:
+		return
+
+	class IncrementalEncoder(codecs.IncrementalEncoder):
+		def encode(self, input, final=False):
+			return codecs.ascii_encode(input, self.errors)[0]
+
+	class IncrementalDecoder(codecs.IncrementalDecoder):
+		def decode(self, input, final=False):
+			return codecs.ascii_decode(input, self.errors)[0]
+
+	class StreamWriter(codecs.StreamWriter):
+		encode = codecs.ascii_encode
+
+	class StreamReader(codecs.StreamReader):
+		decode = codecs.ascii_decode
+
+	# The sys.setdefaultencoding() function doesn't necessarily exist,
+	# so just setup the ascii codec to correspond to whatever name
+	# happens to be returned by sys.getdefaultencoding().
+	encoding = sys.getdefaultencoding()
+
+	def search_function(name):
+		if name != encoding:
+			return None
+		return codecs.CodecInfo(
+			name=encoding,
+			encode=codecs.ascii_encode,
+			decode=codecs.ascii_decode,
+			incrementalencoder=IncrementalEncoder,
+			incrementaldecoder=IncrementalDecoder,
+			streamwriter=StreamWriter,
+			streamreader=StreamReader,
+		)
+
+	codecs.register(search_function)
+
 def _global_updates(trees, prev_mtimes):
 	"""
 	Perform new global updates if they exist in $PORTDIR/profiles/updates/.
@@ -7764,7 +7839,7 @@ def create_trees(config_root=None, target_root=None, trees=None):
 		myroots.append((settings["ROOT"], settings))
 
 	for myroot, mysettings in myroots:
-		trees[myroot] = portage.util.LazyItemsDict(trees.get(myroot, None))
+		trees[myroot] = portage.util.LazyItemsDict(trees.get(myroot, {}))
 		trees[myroot].addLazySingleton("virtuals", mysettings.getvirtuals, myroot)
 		trees[myroot].addLazySingleton(
 			"vartree", vartree, myroot, categories=mysettings.categories,
@@ -7775,13 +7850,13 @@ def create_trees(config_root=None, target_root=None, trees=None):
 			binarytree, myroot, mysettings["PKGDIR"], settings=mysettings)
 	return trees
 
-class _LegacyGlobalProxy(portage.util.ObjectProxy):
+class _LegacyGlobalProxy(proxy.objectproxy.ObjectProxy):
 	"""
 	Instances of these serve as proxies to global variables
 	that are initialized on demand.
 	"""
 	def __init__(self, name):
-		portage.util.ObjectProxy.__init__(self)
+		proxy.objectproxy.ObjectProxy.__init__(self)
 		object.__setattr__(self, '_name', name)
 
 	def _get_target(self):
@@ -7789,7 +7864,7 @@ class _LegacyGlobalProxy(portage.util.ObjectProxy):
 		name = object.__getattribute__(self, '_name')
 		return globals()[name]
 
-class _PortdbProxy(portage.util.ObjectProxy):
+class _PortdbProxy(proxy.objectproxy.ObjectProxy):
 	"""
 	The portdb is initialized separately from the rest
 	of the variables, since sometimes the other variables
@@ -7804,13 +7879,13 @@ class _PortdbProxy(portage.util.ObjectProxy):
 			_portdb_initialized = True
 		return portdb
 
-class _MtimedbProxy(portage.util.ObjectProxy):
+class _MtimedbProxy(proxy.objectproxy.ObjectProxy):
 	"""
 	The mtimedb is independent from the portdb and other globals.
 	"""
 
 	def __init__(self, name):
-		portage.util.ObjectProxy.__init__(self)
+		proxy.objectproxy.ObjectProxy.__init__(self)
 		object.__setattr__(self, '_name', name)
 
 	def _get_target(self):
@@ -7918,6 +7993,8 @@ if True:
 		"pkglines", "thirdpartymirrors", "usedefaults", "profiledir",
 		"flushmtimedb"):
 		globals()[k] = _LegacyGlobalProxy(k)
+
+	_ensure_default_encoding()
 
 # Clear the cache
 dircache={}
