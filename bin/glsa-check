@@ -1,7 +1,7 @@
 #!/usr/bin/python
-
-# $Header: $
-# This program is licensed under the GPL, version 2
+# Copyright 2008-2009 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id$
 
 import os
 import sys
