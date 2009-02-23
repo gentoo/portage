@@ -7476,52 +7476,120 @@ def _ensure_default_encoding():
 	  LookupError: no codec search functions registered: can't find encoding
 
 	In order to solve this problem, detect it early and manually register
-	a search function for the ascii codec. Starting with python-3.0 this
-	problem is more noticeable because of stricter handling of encoding
+	a search function for the ascii and utf_8 codecs. Starting with python-3.0
+	this problem is more noticeable because of stricter handling of encoding
 	and decoding between strings of characters and bytes.
 	"""
 
 	import codecs
-	try:
-		codecs.lookup(sys.getdefaultencoding())
-	except LookupError:
-		pass
-	else:
+	default_encoding = sys.getdefaultencoding()
+	required_encodings = set(['ascii', 'utf_8'])
+	required_encodings.add(default_encoding)
+	missing_encodings = set()
+	for codec_name in required_encodings:
+		try:
+			codecs.lookup(codec_name)
+		except LookupError:
+			missing_encodings.add(codec_name)
+
+	if not missing_encodings:
 		return
 
-	class IncrementalEncoder(codecs.IncrementalEncoder):
-		def encode(self, input, final=False):
-			return codecs.ascii_encode(input, self.errors)[0]
+	encodings = {}
 
-	class IncrementalDecoder(codecs.IncrementalDecoder):
-		def decode(self, input, final=False):
-			return codecs.ascii_decode(input, self.errors)[0]
+	if 'ascii' in missing_encodings:
 
-	class StreamWriter(codecs.StreamWriter):
-		encode = codecs.ascii_encode
+		class AsciiIncrementalEncoder(codecs.IncrementalEncoder):
+			def encode(self, input, final=False):
+				return codecs.ascii_encode(input, self.errors)[0]
 
-	class StreamReader(codecs.StreamReader):
-		decode = codecs.ascii_decode
+		class AsciiIncrementalDecoder(codecs.IncrementalDecoder):
+			def decode(self, input, final=False):
+				return codecs.ascii_decode(input, self.errors)[0]
 
-	# The sys.setdefaultencoding() function doesn't necessarily exist,
-	# so just setup the ascii codec to correspond to whatever name
-	# happens to be returned by sys.getdefaultencoding().
-	encoding = sys.getdefaultencoding()
+		class AsciiStreamWriter(codecs.StreamWriter):
+			encode = codecs.ascii_encode
 
-	def search_function(name):
-		if name != encoding:
-			return None
-		return codecs.CodecInfo(
-			name=encoding,
+		class AsciiStreamReader(codecs.StreamReader):
+			decode = codecs.ascii_decode
+
+		ascii_codec_info =  codecs.CodecInfo(
+			name='ascii',
 			encode=codecs.ascii_encode,
 			decode=codecs.ascii_decode,
-			incrementalencoder=IncrementalEncoder,
-			incrementaldecoder=IncrementalDecoder,
-			streamwriter=StreamWriter,
-			streamreader=StreamReader,
+			incrementalencoder=AsciiIncrementalEncoder,
+			incrementaldecoder=AsciiIncrementalDecoder,
+			streamwriter=AsciiStreamWriter,
+			streamreader=AsciiStreamReader,
 		)
 
+		encodings['ascii'] = ascii_codec_info
+
+	if 'utf_8' in missing_encodings:
+
+		def utf8decode(input, errors='strict'):
+			return codecs.utf_8_decode(input, errors, True)
+
+		class Utf8IncrementalEncoder(codecs.IncrementalEncoder):
+			def encode(self, input, final=False):
+				return codecs.utf_8_encode(input, self.errors)[0]
+
+		class Utf8IncrementalDecoder(codecs.BufferedIncrementalDecoder):
+			_buffer_decode = codecs.utf_8_decode
+
+		class Utf8StreamWriter(codecs.StreamWriter):
+			encode = codecs.utf_8_encode
+
+		class Utf8StreamReader(codecs.StreamReader):
+			decode = codecs.utf_8_decode
+
+		utf8_codec_info = codecs.CodecInfo(
+			name='utf-8',
+			encode=codecs.utf_8_encode,
+			decode=utf8decode,
+			incrementalencoder=Utf8IncrementalEncoder,
+			incrementaldecoder=Utf8IncrementalDecoder,
+			streamreader=Utf8StreamWriter,
+			streamwriter=Utf8StreamReader,
+		)
+
+		encodings['utf_8'] = utf8_codec_info
+
+	def search_function(name):
+		codec_info = encodings.get(name)
+		if codec_info is not None:
+			return codecs.CodecInfo(
+				name=codec_info.name,
+				encode=codec_info.encode,
+				decode=codec_info.decode,
+				incrementalencoder=codec_info.incrementalencoder,
+				incrementaldecoder=codec_info.incrementaldecoder,
+				streamreader=codec_info.streamreader,
+				streamwriter=codec_info.streamwriter,
+			)
+		return None
+
 	codecs.register(search_function)
+
+	if default_encoding in missing_encodings and \
+		default_encoding not in encodings:
+
+		default_fallback = 'utf_8'
+
+		if hasattr(sys, 'setdefaultencoding'):
+			sys.setdefaultencoding(default_fallback)
+		else:
+			# The sys.setdefaultencoding() function doesn't exist,
+			# so just make the fallback codec correspond to whatever
+			# name happens to be returned by sys.getdefaultencoding().
+			try:
+				encodings[default_encoding] = codecs.lookup(default_fallback)
+			except LookupError:
+				encodings[default_encoding] = encodings[default_fallback]
+
+		del default_fallback
+
+	del codec_name, default_encoding, missing_encodings, required_encodings
 
 def _global_updates(trees, prev_mtimes):
 	"""
