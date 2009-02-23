@@ -2147,10 +2147,11 @@ class config(object):
 			if has_wildcard:
 				# * means to enable everything in IUSE that's not masked
 				if has_iuse:
-					for x in iuse_implicit:
-						if x[:prefix_len] == prefix and x not in self.usemask:
-							suffix = x[prefix_len:]
-							var_split.append(suffix)
+					for suffix in has_iuse:
+						x = prefix + suffix
+						if x not in usemask:
+							if suffix not in expand_flags:
+								var_split.append(suffix)
 							use.add(x)
 				else:
 					# If there is a wildcard and no matching flags in IUSE then
