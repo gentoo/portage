@@ -702,7 +702,7 @@ class vardbapi(dbapi):
 		"|".join(_excluded_dirs) + r')$')
 
 	_aux_cache_version        = "1"
-	_owners_cache_version     = "1"
+	_owners_cache_version     = "2"
 
 	# Number of uncached packages to trigger cache update, since
 	# it's wasteful to update it for every vdb change.
