@@ -1205,6 +1205,7 @@ class config(object):
 				"auto":        self.configlist[6],
 				"backupenv":   self.configlist[7],
 				"env":         self.configlist[8] }
+			self._use_expand_dict = copy.deepcopy(clone._use_expand_dict)
 			self.profiles = copy.deepcopy(clone.profiles)
 			self.backupenv  = self.configdict["backupenv"]
 			self.pusedict   = copy.deepcopy(clone.pusedict)
@@ -1270,6 +1271,7 @@ class config(object):
 
 			# back up our incremental variables:
 			self.configdict={}
+			self._use_expand_dict = {}
 			# configlist will contain: [ env.d, globals, defaults, conf, pkg, auto, backupenv, env ]
 			self.configlist.append({})
 			self.configdict["env.d"] = self.configlist[-1]
@@ -1455,7 +1457,7 @@ class config(object):
 						pass
 				del k, v
 
-			self.configdict["env"] = self.backupenv.copy()
+			self.configdict["env"] = util.LazyItemsDict(self.backupenv)
 
 			# make.globals should not be relative to config_root
 			# because it only contains constants.
@@ -1965,6 +1967,86 @@ class config(object):
 			DeprecationWarning)
 		return 1
 
+	class _lazy_use_expand(object):
+		"""
+		Lazily evaluate USE_EXPAND variables since they are only needed when
+		an ebuild shell is spawned. Variables values are made consistent with
+		the previously calculated USE settings.
+		"""
+
+		def __init__(self, use, usemask, iuse_implicit,
+			use_expand_split, use_expand_dict):
+			self._use = use
+			self._usemask = usemask
+			self._iuse_implicit = iuse_implicit
+			self._use_expand_split = use_expand_split
+			self._use_expand_dict = use_expand_dict
+
+		def __getitem__(self, key):
+			prefix = key.lower() + '_'
+			prefix_len = len(prefix)
+			expand_flags = set( x[prefix_len:] for x in self._use \
+				if x[:prefix_len] == prefix )
+			var_split = self._use_expand_dict.get(key, '').split()
+			# Preserve the order of var_split because it can matter for things
+			# like LINGUAS.
+			var_split = [ x for x in var_split if x in expand_flags ]
+			var_split.extend(expand_flags.difference(var_split))
+			has_wildcard = '*' in expand_flags
+			if has_wildcard:
+				var_split = [ x for x in var_split if x != "*" ]
+			has_iuse = set()
+			for x in self._iuse_implicit:
+				if x[:prefix_len] == prefix:
+					has_iuse.add(x[prefix_len:])
+			if has_wildcard:
+				# * means to enable everything in IUSE that's not masked
+				if has_iuse:
+					usemask = self._usemask
+					for suffix in has_iuse:
+						x = prefix + suffix
+						if x not in usemask:
+							if suffix not in expand_flags:
+								var_split.append(suffix)
+				else:
+					# If there is a wildcard and no matching flags in IUSE then
+					# LINGUAS should be unset so that all .mo files are
+					# installed.
+					var_split = []
+			# Make the flags unique and filter them according to IUSE.
+			# Also, continue to preserve order for things like LINGUAS
+			# and filter any duplicates that variable may contain.
+			filtered_var_split = []
+			remaining = has_iuse.intersection(var_split)
+			for x in var_split:
+				if x in remaining:
+					remaining.remove(x)
+					filtered_var_split.append(x)
+			var_split = filtered_var_split
+
+			if var_split:
+				value = ' '.join(var_split)
+			else:
+				# Don't export empty USE_EXPAND vars unless the user config
+				# exports them as empty.  This is required for vars such as
+				# LINGUAS, where unset and empty have different meanings.
+				if has_wildcard:
+					# ebuild.sh will see this and unset the variable so
+					# that things like LINGUAS work properly
+					value = '*'
+				else:
+					if has_iuse:
+						value = ''
+					else:
+						# It's not in IUSE, so just allow the variable content
+						# to pass through if it is defined somewhere.  This
+						# allows packages that support LINGUAS but don't
+						# declare it in IUSE to use the variable outside of the
+						# USE_EXPAND context.
+						value = None
+
+			return value
+
 	def setcpv(self, mycpv, use_cache=1, mydb=None):
 		"""
 		Load a particular CPV into the config, this lets us see the
@@ -2126,69 +2208,34 @@ class config(object):
 		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
 		# that they are consistent. For optimal performance, use slice
 		# comparison instead of startswith().
-		use_expand = self.get("USE_EXPAND", "").split()
-		for var in use_expand:
-			prefix = var.lower() + "_"
+		use_expand_split = self.get("USE_EXPAND", "").split()
+		lazy_use_expand = self._lazy_use_expand(use, self.usemask,
+			iuse_implicit, use_expand_split, self._use_expand_dict)
+		use_expand_iuse = set()
+		for key in use_expand_split:
+			prefix = key.lower() + '_'
 			prefix_len = len(prefix)
 			expand_flags = set( x[prefix_len:] for x in use \
 				if x[:prefix_len] == prefix )
-			var_split = self.get(var, "").split()
-			# Preserve the order of var_split because it can matter for things
-			# like LINGUAS.
-			var_split = [ x for x in var_split if x in expand_flags ]
-			var_split.extend(expand_flags.difference(var_split))
-			has_wildcard = "*" in var_split
-			if has_wildcard:
-				var_split = [ x for x in var_split if x != "*" ]
-			has_iuse = set()
+			use_expand_iuse.clear()
 			for x in iuse_implicit:
 				if x[:prefix_len] == prefix:
-					has_iuse.add(x[prefix_len:])
-			if has_wildcard:
-				# * means to enable everything in IUSE that's not masked
-				if has_iuse:
-					for suffix in has_iuse:
-						x = prefix + suffix
-						if x not in usemask:
-							if suffix not in expand_flags:
-								var_split.append(suffix)
-							use.add(x)
-				else:
-					# If there is a wildcard and no matching flags in IUSE then
-					# LINGUAS should be unset so that all .mo files are
-					# installed.
-					var_split = []
-			# Make the flags unique and filter them according to IUSE.
-			# Also, continue to preserve order for things like LINGUAS
-			# and filter any duplicates that variable may contain.
-			filtered_var_split = []
-			remaining = has_iuse.intersection(var_split)
-			for x in var_split:
-				if x in remaining:
-					remaining.remove(x)
-					filtered_var_split.append(x)
-			var_split = filtered_var_split
-
-			if var_split:
-				self[var] = " ".join(var_split)
+					use_expand_iuse.add(x)
+			# * means to enable everything in IUSE that's not masked
+			if use_expand_iuse and '*' in expand_flags:
+				for x in use_expand_iuse:
+					if x not in usemask:
+						use.add(x)
+			if use_expand_iuse:
+				self.configdict['env'].addLazySingleton(
+					key, lazy_use_expand.__getitem__, key)
 			else:
-				# Don't export empty USE_EXPAND vars unless the user config
-				# exports them as empty.  This is required for vars such as
-				# LINGUAS, where unset and empty have different meanings.
-				if has_wildcard:
-					# ebuild.sh will see this and unset the variable so
-					# that things like LINGUAS work properly
-					self[var] = "*"
-				else:
-					if has_iuse:
-						self[var] = ""
-					else:
-						# It's not in IUSE, so just allow the variable content
-						# to pass through if it is defined somewhere.  This
-						# allows packages that support LINGUAS but don't
-						# declare it in IUSE to use the variable outside of the
-						# USE_EXPAND context.
-						pass
+				# It's not in IUSE, so just allow the variable content
+				# to pass through if it is defined somewhere.  This
+				# allows packages that support LINGUAS but don't
+				# declare it in IUSE to use the variable outside of the
+				# USE_EXPAND context.
+				pass
 
 		# Filtered for the ebuild environment. Store this in a separate
 		# attribute since we still want to be able to see global USE
@@ -2670,6 +2717,12 @@ class config(object):
 			self.configdict["auto"]["USE"] = ""
 
 		use_expand = self.get("USE_EXPAND", "").split()
+		use_expand_dict = self._use_expand_dict
+		use_expand_dict.clear()
+		for k in use_expand:
+			v = self.get(k)
+			if v is not None:
+				use_expand_dict[k] = v
 
 		if not self.uvlist:
 			for x in self["USE_ORDER"].split(":"):
