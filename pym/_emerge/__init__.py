@@ -940,7 +940,7 @@ class DepPriority(AbstractDepPriority):
 			return "buildtime"
 		if self.runtime:
 			return "runtime"
-		if runtime_post:
+		if self.runtime_post:
 			return "runtime_post"
 		return "soft"
 
