@@ -10786,16 +10786,7 @@ class Scheduler(PollScheduler):
 		completed_tasks = self._completed_tasks
 		unsatisfied = self._unsatisfied_system_deps
 
-		def ignore_non_runtime(priority):
-			"""
-			Ignore non-runtime priorities
-			"""
-			if isinstance(priority, DepPriority) and \
-				(priority.runtime or priority.runtime_post):
-				return False
-			return True
-
-		def ignore_satisfied_runtime(priority):
+		def ignore_non_runtime_or_satisfied(priority):
 			"""
 			Ignore non-runtime and satisfied runtime priorities.
 			"""
@@ -10805,35 +10796,19 @@ class Scheduler(PollScheduler):
 				return False
 			return True
 
-		traversed = set()
-		dep_stack = [pkg]
-		while dep_stack:
-			node = dep_stack.pop()
-			if node in traversed:
+		# When checking for unsatisfied runtime deps, only check
+		# direct deps since indirect deps are checked when the
+		# corresponding parent is merged.
+		for child in graph.child_nodes(pkg,
+			ignore_priority=ignore_non_runtime_or_satisfied):
+			if not isinstance(child, Package) or \
+				child.operation == 'uninstall':
 				continue
-			traversed.add(node)
-
-			unsatisfied_runtime = set(graph.child_nodes(node,
-				ignore_priority=ignore_satisfied_runtime))
-			for child in graph.child_nodes(node,
-				ignore_priority=ignore_non_runtime):
-				if not isinstance(child, Package) or \
-					child.operation == 'uninstall':
-					continue
-				if child is pkg:
-					continue
-				if child.operation == 'merge' and \
-					child in completed_tasks:
-					# When traversing children, only traverse completed
-					# 'merge' nodes since those are the only ones that need
-					# to be checked for unsatisfied runtime deps, and it's
-					# normal for nodes that aren't yet complete to have
-					# unsatisfied runtime deps.
-					dep_stack.append(child)
-				if child.operation == 'merge' and \
-					child not in completed_tasks and \
-					child in unsatisfied_runtime:
-					unsatisfied.add(child)
+			if child is pkg:
+				continue
+			if child.operation == 'merge' and \
+				child not in completed_tasks:
+				unsatisfied.add(child)
 
 	def _merge_wait_exit_handler(self, task):
 		self._merge_wait_scheduled.remove(task)
