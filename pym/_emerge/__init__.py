@@ -10822,7 +10822,14 @@ class Scheduler(PollScheduler):
 					continue
 				if child is pkg:
 					continue
-				dep_stack.append(child)
+				if child.operation == 'merge' and \
+					child in completed_tasks:
+					# When traversing children, only traverse completed
+					# 'merge' nodes since those are the only ones that need
+					# to be checked for unsatisfied runtime deps, and it's
+					# normal for nodes that aren't yet complete to have
+					# unsatisfied runtime deps.
+					dep_stack.append(child)
 				if child.operation == 'merge' and \
 					child not in completed_tasks and \
 					child in unsatisfied_runtime:
