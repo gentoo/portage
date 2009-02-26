@@ -6822,7 +6822,7 @@ class depgraph(object):
 		node_info = {}
 		for node in mygraph.order:
 			node_info[node] = len(mygraph.parent_nodes(node))
-		deep_system_deps = (_find_deep_system_runtime_deps(mygraph))
+		deep_system_deps = _find_deep_system_runtime_deps(mygraph)
 
 		def cmp_merge_preference(node1, node2):
 
