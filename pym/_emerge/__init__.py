@@ -1123,6 +1123,38 @@ DepPrioritySatisfiedRange.ignore_priority = (
 	DepPrioritySatisfiedRange._ignore_runtime
 )
 
+def _find_deep_system_runtime_deps(graph):
+	deep_system_deps = set()
+	node_stack = []
+	for node in graph:
+		if not isinstance(node, Package) or \
+			node.operation == 'uninstall':
+			continue
+		if node.root_config.sets['system'].findAtomForPackage(node):
+			node_stack.append(node)
+
+	def ignore_priority(priority):
+		"""
+		Ignore non-runtime priorities.
+		"""
+		if isinstance(priority, DepPriority) and \
+			(priority.runtime or priority.runtime_post):
+			return False
+		return True
+
+	while node_stack:
+		node = node_stack.pop()
+		if node in deep_system_deps:
+			continue
+		deep_system_deps.add(node)
+		for child in graph.child_nodes(node, ignore_priority=ignore_priority):
+			if not isinstance(child, Package) or \
+				child.operation == 'uninstall':
+				continue
+			node_stack.append(child)
+
+	return deep_system_deps
+
 class FakeVartree(portage.vartree):
 	"""This is implements an in-memory copy of a vartree instance that provides
 	all the interfaces required for use by the depgraph.  The vardb is locked
@@ -6782,13 +6814,37 @@ class depgraph(object):
 		return acceptable
 
 	def _merge_order_bias(self, mygraph):
-		"""Order nodes from highest to lowest overall reference count for
-		optimal leaf node selection."""
+		"""
+		For optimal leaf node selection, promote deep system runtime deps and
+		order nodes from highest to lowest overall reference count.
+		"""
+
 		node_info = {}
 		for node in mygraph.order:
 			node_info[node] = len(mygraph.parent_nodes(node))
+		deep_system_deps = (_find_deep_system_runtime_deps(mygraph))
+
 		def cmp_merge_preference(node1, node2):
+
+			if node1.operation == 'uninstall':
+				if node2.operation == 'uninstall':
+					return 0
+				return 1
+
+			if node2.operation == 'uninstall':
+				if node1.operation == 'uninstall':
+					return 0
+				return -1
+
+			node1_sys = node1 in deep_system_deps
+			node2_sys = node2 in deep_system_deps
+			if node1_sys != node2_sys:
+				if node1_sys:
+					return -1
+				return 1
+
 			return node_info[node2] - node_info[node1]
+
 		mygraph.order.sort(key=cmp_sort_key(cmp_merge_preference))
 
 	def altlist(self, reversed=False):
@@ -10148,38 +10204,10 @@ class Scheduler(PollScheduler):
 		merged, these packages go to merge_wait_queue, to be merged when no
 		other packages are building.
 		"""
-		graph = self._digraph
 		deep_system_deps = self._deep_system_deps
 		deep_system_deps.clear()
-		node_stack = []
-		for node in graph.order:
-			if not isinstance(node, Package) or \
-				node.operation == "uninstall":
-				continue
-			system_set = node.root_config.sets["system"]
-			if system_set.findAtomForPackage(node):
-				node_stack.append(node)
-
-		def ignore_priority(priority):
-			"""
-			Ignore non-runtime priorities.
-			"""
-			if isinstance(priority, DepPriority) and \
-				(priority.runtime or priority.runtime_post):
-				return False
-			return True
-
-		while node_stack:
-			node = node_stack.pop()
-			if node in deep_system_deps:
-				continue
-			deep_system_deps.add(node)
-			for child in graph.child_nodes(node, ignore_priority=ignore_priority):
-				if not isinstance(child, Package) or \
-					child.operation == "uninstall":
-					continue
-				node_stack.append(child)
-
+		deep_system_deps.update(
+			_find_deep_system_runtime_deps(self._digraph))
 		deep_system_deps.difference_update([pkg for pkg in \
 			deep_system_deps if pkg.operation != "merge"])
 
