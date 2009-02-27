@@ -13,8 +13,7 @@ class ConfigFileSetTestCase(TestCase):
 
 	def setUp(self):
 		fd, self.testfile = tempfile.mkstemp(suffix=".testdata", prefix=self.__class__.__name__, text=True)
-		os.close(fd)
-		f = open(self.testfile, 'w')
+		f = os.fdopen(fd, 'w')
 		for i in range(0, len(test_cps)):
 			atom = test_cps[i]
 			if i % 2 == 0:

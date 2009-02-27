@@ -15,8 +15,9 @@ class StaticFileSetTestCase(TestCase):
 
 	def setUp(self):
 		fd, self.testfile = tempfile.mkstemp(suffix=".testdata", prefix=self.__class__.__name__, text=True)
-		os.close(fd)
-		open(self.testfile, 'w').write("\n".join(test_cps))
+		f = os.fdopen(fd, 'w')
+		f.write("\n".join(test_cps))
+		f.close()
 
 	def tearDown(self):
 		os.unlink(self.testfile)
