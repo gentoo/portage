@@ -28,7 +28,7 @@ class PipeReaderTestCase(TestCase):
 		test_string = 2 * "blah blah blah\n"
 
 		master_fd, slave_fd = self._create_pipe()
-		master_file = os.fdopen(master_fd, 'r')
+		master_file = os.fdopen(master_fd, 'rb')
 
 		task_scheduler = TaskScheduler(max_jobs=2)
 		scheduler = task_scheduler.sched_iface
@@ -51,5 +51,8 @@ class PipeReaderTestCase(TestCase):
 		task_scheduler.add(consumer)
 
 		task_scheduler.run()
+
+		if sys.hexversion >= 0x3000000:
+			test_string = test_string.encode()
 
 		self._assertEqual(test_string, consumer.getvalue())
