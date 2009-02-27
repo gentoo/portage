@@ -4,7 +4,6 @@
 
 import subprocess
 import os
-import sys
 
 from portage.sets.base import PackageSet
 from portage.sets import SetConfigError
@@ -35,10 +34,7 @@ class CommandOutputSet(PackageSet):
 	def load(self):
 		pipe = subprocess.Popen(self._command, stdout=subprocess.PIPE, shell=True)
 		if pipe.wait() == os.EX_OK:
-			text = pipe.stdout.read()
-			if sys.hexversion >= 0x3000000:
-				encoding = sys.getdefaultencoding()
-				text = text.decode(encoding, 'replace')
+			text = unicode(pipe.stdout.read(), errors='replace')
 			self._setAtoms(text.splitlines())
 
 	def singleBuilder(self, options, settings, trees):
