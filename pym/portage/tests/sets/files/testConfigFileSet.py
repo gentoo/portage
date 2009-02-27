@@ -13,13 +13,15 @@ class ConfigFileSetTestCase(TestCase):
 
 	def setUp(self):
 		fd, self.testfile = tempfile.mkstemp(suffix=".testdata", prefix=self.__class__.__name__, text=True)
+		os.close(fd)
+		f = open(self.testfile, 'w')
 		for i in range(0, len(test_cps)):
 			atom = test_cps[i]
 			if i % 2 == 0:
-				os.write(fd, atom+" abc def"+"\n")
+				f.write(atom + ' abc def\n')
 			else:
-				os.write(fd, atom+"\n")
-		os.close(fd)
+				f.write(atom + '\n')
+		f.close()
 
 	def tearDown(self):
 		os.unlink(self.testfile)
