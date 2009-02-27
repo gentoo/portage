@@ -4,6 +4,7 @@
 
 import subprocess
 import os
+import sys
 
 from portage.sets.base import PackageSet
 from portage.sets import SetConfigError
@@ -35,8 +36,11 @@ class CommandOutputSet(PackageSet):
 		pipe = subprocess.Popen(self._command, stdout=subprocess.PIPE, shell=True)
 		if pipe.wait() == os.EX_OK:
 			text = pipe.stdout.read()
-			self._setAtoms(text.split("\n"))
-		
+			if sys.hexversion >= 0x3000000:
+				encoding = sys.getdefaultencoding()
+				text = text.decode(encoding, 'replace')
+			self._setAtoms(text.splitlines())
+
 	def singleBuilder(self, options, settings, trees):
 		if not "command" in options:
 			raise SetConfigError("no command specified")
