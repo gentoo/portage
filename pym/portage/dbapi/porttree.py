@@ -66,6 +66,9 @@ def _src_uri_validate(cpv, eapi, src_uri):
 					"supported with EAPI='%s'") % (cpv, eapi))
 			operator = x
 			continue
+		if operator is None:
+			uri = x
+			continue
 		if operator is not None:
 			if "/" in x:
 				raise portage.exception.InvalidDependString(
