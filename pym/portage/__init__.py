@@ -7612,7 +7612,7 @@ def _ensure_default_encoding():
 	"""
 
 	default_fallback = 'utf_8'
-	default_encoding = sys.getdefaultencoding()
+	default_encoding = sys.getdefaultencoding().lower().replace('-', '_')
 	required_encodings = set(['ascii', 'utf_8'])
 	required_encodings.add(default_encoding)
 	missing_encodings = set()
