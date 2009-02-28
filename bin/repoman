@@ -1444,14 +1444,18 @@ for x in scanlist:
 		# Syntax Checks
 		relative_path = os.path.join(x, y + ".ebuild")
 		full_path = os.path.join(repodir, relative_path)
-		f = open(full_path)
 		try:
-			for check_name, e in run_checks(f, pkg):
-				stats[check_name] += 1
-				fails[check_name].append(relative_path + ': %s' % e)
-		finally:
-			f.close()
-			del f
+			# All ebuilds should have utf_8 encoding.
+			f = codecs.open(full_path, mode='r', encoding='utf_8')
+			try:
+				for check_name, e in run_checks(f, pkg):
+					stats[check_name] += 1
+					fails[check_name].append(relative_path + ': %s' % e)
+			finally:
+				f.close()
+		except UnicodeDecodeError:
+			# A file.UTF8 failure will have already been recorded above.
+			pass
 
 		if options.force:
 			# The dep_check() calls are the most expensive QA test. If --force
