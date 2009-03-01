@@ -7517,7 +7517,8 @@ def commit_mtimedb(mydict=None, filename=None):
 		f = atomic_ofstream(filename, mode='wb')
 		pickle.dump(d, f, -1)
 		f.close()
-		portage.util.apply_secpass_permissions(filename, uid=uid, gid=portage_gid, mode=0664)
+		portage.util.apply_secpass_permissions(filename,
+			uid=uid, gid=portage_gid, mode=0644)
 	except (IOError, OSError), e:
 		pass
 
