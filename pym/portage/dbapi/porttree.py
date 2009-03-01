@@ -346,19 +346,6 @@ class portdbapi(dbapi):
 		for auxdb in auxdbs:
 			try:
 				metadata = auxdb[cpv]
-				eapi = metadata.get("EAPI","").strip()
-				if not eapi:
-					eapi = "0"
-				if eapi.startswith("-") and eapi_is_supported(eapi[1:]):
-					pass
-				elif emtime != int(metadata.get("_mtime_", 0)):
-					pass
-				elif len(metadata.get("_eclasses_", [])) > 0:
-					if self.eclassdb.is_eclass_data_valid(
-						metadata["_eclasses_"]):
-						doregen = False
-				else:
-					doregen = False
 			except KeyError:
 				pass
 			except CacheError:
@@ -367,6 +354,15 @@ class portdbapi(dbapi):
 						del auxdb[cpv]
 					except KeyError:
 						pass
+			else:
+				eapi = metadata.get('EAPI', '').strip()
+				if not eapi:
+					eapi = '0'
+				if not (eapi[:1] == '-' and eapi_is_supported(eapi[1:])) and \
+					emtime == metadata['_mtime_'] and \
+					self.eclassdb.is_eclass_data_valid(metadata['_eclasses_']):
+					doregen = False
+
 			if not doregen:
 				break
 

@@ -45,13 +45,10 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 		except (KeyError, cache_errors.CacheError):
 			pass
 		else:
-			try:
-				if long(trg["_mtime_"]) == long(entry["_mtime_"]) and \
-					eclass_cache.is_eclass_data_valid(trg["_eclasses_"]) and \
-					set(trg["_eclasses_"]) == set(entry["_eclasses_"]):
-					write_it = False
-			except cache_errors.CacheError:
-				pass
+			if trg['_mtime_'] == entry['_mtime_'] and \
+				eclass_cache.is_eclass_data_valid(trg['_eclasses_']) and \
+				set(trg['_eclasses_']) == set(entry['_eclasses_']):
+				write_it = False
 
 		for d in (entry, trg):
 			if d is not None and d.get('EAPI') in ('', '0'):

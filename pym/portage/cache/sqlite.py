@@ -143,7 +143,7 @@ class database(fs_template.FsBased):
 		if actual_synchronous!=synchronous:
 			raise cache_errors.InitializationError(self.__class__,"actual synchronous = "+actual_synchronous+" does does not match requested value of "+synchronous)
 
-	def __getitem__(self, cpv):
+	def _getitem(self, cpv):
 		cursor = self._db_cursor
 		cursor.execute("select * from %s where %s=%s" % \
 			(self._db_table["packages"]["table_name"],
@@ -169,10 +169,6 @@ class database(fs_template.FsBased):
 				d[k]=str(d[k]) # convert unicode strings to normal
 			except UnicodeEncodeError, e:
 				pass #writemsg("%s: %s\n" % (cpv, str(e)))
-		if "_eclasses_" in d:
-			d["_eclasses_"] = reconstruct_eclasses(cpv, d["_eclasses_"])
-		else:
-			d["_eclasses_"] = {}
 		for x in self._known_keys:
 			d.setdefault(x,'')
 		return d
