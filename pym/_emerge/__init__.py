@@ -10785,6 +10785,12 @@ class Scheduler(PollScheduler):
 		if graph is None:
 			return
 		pkg = merge.merge.pkg
+
+		# Skip this if $ROOT != / since it shouldn't matter if there
+		# are unsatisfied system runtime deps in this case.
+		if pkg.root != '/':
+			return
+
 		completed_tasks = self._completed_tasks
 		unsatisfied = self._unsatisfied_system_deps
 
