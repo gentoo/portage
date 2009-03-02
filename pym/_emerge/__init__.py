@@ -1387,8 +1387,8 @@ def visible(pkgsettings, pkg):
 	"""
 	if not pkg.metadata["SLOT"]:
 		return False
-	if pkg.built and not pkg.installed and "CHOST" in pkg.metadata:
-		if not pkgsettings._accept_chost(pkg):
+	if not pkg.installed:
+		if not pkgsettings._accept_chost(pkg.cpv, pkg.metadata):
 			return False
 	eapi = pkg.metadata["EAPI"]
 	if not portage.eapi_is_supported(eapi):
@@ -1415,8 +1415,8 @@ def get_masking_status(pkg, pkgsettings, root_config):
 		pkg, settings=pkgsettings,
 		portdb=root_config.trees["porttree"].dbapi)
 
-	if pkg.built and not pkg.installed and "CHOST" in pkg.metadata:
-		if not pkgsettings._accept_chost(pkg):
+	if not pkg.installed:
+		if not pkgsettings._accept_chost(pkg.cpv, pkg.metadata):
 			mreasons.append("CHOST: %s" % \
 				pkg.metadata["CHOST"])
 
@@ -1436,6 +1436,7 @@ def get_mask_info(root_config, cpv, pkgsettings,
 	if metadata and not built:
 		pkgsettings.setcpv(cpv, mydb=metadata)
 		metadata["USE"] = pkgsettings["PORTAGE_USE"]
+		metadata['CHOST'] = pkgsettings.get('CHOST', '')
 	if metadata is None:
 		mreasons = ["corruption"]
 	else:
@@ -5468,6 +5469,7 @@ class depgraph(object):
 					cpv=mykey, metadata=metadata, onlydeps=onlydeps)
 				pkgsettings.setcpv(pkg)
 				pkg.metadata["USE"] = pkgsettings["PORTAGE_USE"]
+				pkg.metadata['CHOST'] = pkgsettings.get('CHOST', '')
 				self._pkg_cache[pkg] = pkg
 				args.append(PackageArg(arg=x, package=pkg,
 					root_config=root_config))
@@ -6188,6 +6190,8 @@ class depgraph(object):
 							onlydeps=onlydeps, root_config=root_config,
 							type_name=pkg_type)
 						metadata = pkg.metadata
+						if not built:
+							metadata['CHOST'] = pkgsettings.get('CHOST', '')
 						if not built and ("?" in metadata["LICENSE"] or \
 							"?" in metadata["PROVIDE"]):
 							# This is avoided whenever possible because
@@ -6521,6 +6525,7 @@ class depgraph(object):
 				settings = self.pkgsettings[root_config.root]
 				settings.setcpv(pkg)
 				pkg.metadata["USE"] = settings["PORTAGE_USE"]
+				pkg.metadata['CHOST'] = settings.get('CHOST', '')
 			self._pkg_cache[pkg] = pkg
 		return pkg
 
@@ -8696,6 +8701,7 @@ class depgraph(object):
 				pkgsettings = self.pkgsettings[myroot]
 				pkgsettings.setcpv(pkg)
 				pkg.metadata["USE"] = pkgsettings["PORTAGE_USE"]
+				pkg.metadata['CHOST'] = pkgsettings.get('CHOST', '')
 			self._pkg_cache[pkg] = pkg
 
 			root_config = self.roots[pkg.root]
@@ -11439,6 +11445,7 @@ class Scheduler(PollScheduler):
 			settings = self.pkgsettings[root_config.root]
 			settings.setcpv(pkg)
 			pkg.metadata["USE"] = settings["PORTAGE_USE"]
+			pkg.metadata['CHOST'] = settings.get('CHOST', '')
 
 		return pkg
 

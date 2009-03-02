@@ -2538,7 +2538,7 @@ class config(object):
 					ret.append(element)
 		return ret
 
-	def _accept_chost(self, pkg):
+	def _accept_chost(self, cpv, metadata):
 		"""
 		@return True if pkg CHOST is accepted, False otherwise.
 		"""
@@ -2567,7 +2567,7 @@ class config(object):
 					self._accept_chost_re = re.compile("^$")
 
 		return self._accept_chost_re.match(
-			pkg.metadata.get("CHOST", "")) is not None
+			metadata.get('CHOST', '')) is not None
 
 	def setinst(self,mycpv,mydbapi):
 		"""This updates the preferences for old-style virtuals,

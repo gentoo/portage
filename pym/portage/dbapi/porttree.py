@@ -856,6 +856,8 @@ class portdbapi(dbapi):
 		aux_keys = list(self._aux_cache_keys)
 		metadata = {}
 		local_config = self.mysettings.local_config
+		chost = self.mysettings.get('CHOST', '')
+		accept_chost = self.mysettings._accept_chost
 		for mycpv in mylist:
 			metadata.clear()
 			try:
@@ -876,6 +878,9 @@ class portdbapi(dbapi):
 			if self.mysettings._getMissingKeywords(mycpv, metadata):
 				continue
 			if local_config:
+				metadata['CHOST'] = chost
+				if not accept_chost(mycpv, metadata):
+					continue
 				metadata["USE"] = ""
 				if "?" in metadata["LICENSE"]:
 					self.doebuild_settings.setcpv(mycpv, mydb=metadata)
