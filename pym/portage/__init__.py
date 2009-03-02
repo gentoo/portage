@@ -3901,15 +3901,23 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					elif distdir_writable:
 						if mystat.st_size < fetch_resume_size and \
 							mystat.st_size < size:
-							writemsg((">>> Deleting distfile with size " + \
+							# If the file already exists and the size does not
+							# match the existing digests, it may be that the
+							# user is attempting to update the digest. In this
+							# case, the digestgen() function will advise the
+							# user to use `ebuild --force foo.ebuild manifest`
+							# in order to force the old digests to be replaced.
+							# Since the user may want to keep this file, rename
+							# it instead of deleting it.
+							writemsg((">>> Renaming distfile with size " + \
 								"%d (smaller than " "PORTAGE_FETCH_RESU" + \
 								"ME_MIN_SIZE)\n") % mystat.st_size)
-							try:
-								os.unlink(myfile_path)
-							except OSError, e:
-								if e.errno != errno.ENOENT:
-									raise
-								del e
+							temp_filename = \
+								_checksum_failure_temp_file(
+								mysettings["DISTDIR"], myfile)
+							writemsg_stdout("Refetching... " + \
+								"File renamed to '%s'\n\n" % \
+								temp_filename, noiselevel=-1)
 						elif mystat.st_size >= size:
 							temp_filename = \
 								_checksum_failure_temp_file(
