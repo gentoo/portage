@@ -725,6 +725,9 @@ class binarytree(object):
 								break
 						if identical:
 							del self._remotepkgs[cpv]
+						else:
+							# Override the local package in the aux_get cache.
+							self.dbapi._aux_cache[cpv] = remote_metadata
 				else:
 					# Local package instances override remote instances.
 					for cpv in metadata:
