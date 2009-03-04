@@ -5934,6 +5934,7 @@ class depgraph(object):
 		xinfo = xinfo.replace("null/", "")
 		masked_packages = []
 		missing_use = []
+		masked_pkg_instances = set()
 		missing_licenses = []
 		have_eapi_mask = False
 		pkgsettings = self.pkgsettings[root]
@@ -5965,9 +5966,12 @@ class depgraph(object):
 						# Filter out any such false matches here.
 						if not atom_set.findAtomForPackage(pkg):
 							continue
-					if atom.use and not mreasons:
+					if mreasons:
+						masked_pkg_instances.add(pkg)
+					if atom.use:
 						missing_use.append(pkg)
-						continue
+						if not mreasons:
+							continue
 				masked_packages.append(
 					(root_config, pkgsettings, cpv, metadata, mreasons))
 
@@ -5997,16 +6001,28 @@ class depgraph(object):
 					mreasons.append("Change USE: %s" % " ".join(changes))
 					missing_use_reasons.append((pkg, mreasons))
 
-		if missing_iuse_reasons and not missing_use_reasons:
-			missing_use_reasons = missing_iuse_reasons
-		elif missing_use_reasons:
-			# Only show the latest version.
-			del missing_use_reasons[1:]
+		unmasked_use_reasons = [(pkg, mreasons) for (pkg, mreasons) \
+			in missing_use_reasons if pkg not in masked_pkg_instances]
 
-		if missing_use_reasons:
+		unmasked_iuse_reasons = [(pkg, mreasons) for (pkg, mreasons) \
+			in missing_iuse_reasons if pkg not in masked_pkg_instances]
+
+		show_missing_use = False
+		if unmasked_use_reasons:
+			# Only show the latest version.
+			show_missing_use = unmasked_use_reasons[:1]
+		elif unmasked_iuse_reasons:
+			if missing_use_reasons:
+				# All packages with required IUSE are masked,
+				# so display a normal masking message.
+				pass
+			else:
+				show_missing_use = unmasked_iuse_reasons
+
+		if show_missing_use:
 			print "\nemerge: there are no ebuilds built with USE flags to satisfy "+green(xinfo)+"."
 			print "!!! One of the following packages is required to complete your request:"
-			for pkg, mreasons in missing_use_reasons:
+			for pkg, mreasons in show_missing_use:
 				print "- "+pkg.cpv+" ("+", ".join(mreasons)+")"
 
 		elif masked_packages:
