@@ -14510,7 +14510,7 @@ def action_build(settings, trees, mtimedb,
 			if "--buildpkgonly" in myopts:
 				graph_copy = mydepgraph.digraph.clone()
 				removed_nodes = set()
-				for node in list(graph_copy.order):
+				for node in graph_copy:
 					if not isinstance(node, Package) or \
 						node.operation == "nomerge":
 						removed_nodes.add(node)
@@ -14524,7 +14524,7 @@ def action_build(settings, trees, mtimedb,
 		if "--buildpkgonly" in myopts:
 			graph_copy = mydepgraph.digraph.clone()
 			removed_nodes = set()
-			for node in list(graph_copy.order):
+			for node in graph_copy:
 				if not isinstance(node, Package) or \
 					node.operation == "nomerge":
 					removed_nodes.add(node)
