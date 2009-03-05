@@ -201,7 +201,7 @@ actions = frozenset([
 "clean", "config", "depclean",
 "info", "list-sets", "metadata",
 "prune", "regen",  "search",
-"sync",  "unmerge",
+"sync",  "unmerge", "version",
 ])
 options=[
 "--ask",          "--alphabetical",
@@ -226,7 +226,7 @@ options=[
 "--tree",
 "--update",
 "--usepkg",       "--usepkgonly",
-"--verbose",      "--version"
+"--verbose",
 ]
 
 shortmapping={
@@ -4132,6 +4132,11 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 		try:
 			f = open(self._cache_filename, mode='rb')
 			mypickle = pickle.Unpickler(f)
+			try:
+				mypickle.find_global = None
+			except AttributeError:
+				# TODO: If py3k, override Unpickler.find_class().
+				pass
 			self._cache_data = mypickle.load()
 			f.close()
 			del f
@@ -5961,6 +5966,7 @@ class depgraph(object):
 		xinfo = xinfo.replace("null/", "")
 		masked_packages = []
 		missing_use = []
+		masked_pkg_instances = set()
 		missing_licenses = []
 		have_eapi_mask = False
 		pkgsettings = self.pkgsettings[root]
@@ -5992,9 +5998,12 @@ class depgraph(object):
 						# Filter out any such false matches here.
 						if not atom_set.findAtomForPackage(pkg):
 							continue
-					if atom.use and not mreasons:
+					if mreasons:
+						masked_pkg_instances.add(pkg)
+					if atom.use:
 						missing_use.append(pkg)
-						continue
+						if not mreasons:
+							continue
 				masked_packages.append(
 					(root_config, pkgsettings, cpv, metadata, mreasons))
 
@@ -6024,16 +6033,28 @@ class depgraph(object):
 					mreasons.append("Change USE: %s" % " ".join(changes))
 					missing_use_reasons.append((pkg, mreasons))
 
-		if missing_iuse_reasons and not missing_use_reasons:
-			missing_use_reasons = missing_iuse_reasons
-		elif missing_use_reasons:
-			# Only show the latest version.
-			del missing_use_reasons[1:]
+		unmasked_use_reasons = [(pkg, mreasons) for (pkg, mreasons) \
+			in missing_use_reasons if pkg not in masked_pkg_instances]
 
-		if missing_use_reasons:
+		unmasked_iuse_reasons = [(pkg, mreasons) for (pkg, mreasons) \
+			in missing_iuse_reasons if pkg not in masked_pkg_instances]
+
+		show_missing_use = False
+		if unmasked_use_reasons:
+			# Only show the latest version.
+			show_missing_use = unmasked_use_reasons[:1]
+		elif unmasked_iuse_reasons:
+			if missing_use_reasons:
+				# All packages with required IUSE are masked,
+				# so display a normal masking message.
+				pass
+			else:
+				show_missing_use = unmasked_iuse_reasons
+
+		if show_missing_use:
 			print "\nemerge: there are no ebuilds built with USE flags to satisfy "+green(xinfo)+"."
 			print "!!! One of the following packages is required to complete your request:"
-			for pkg, mreasons in missing_use_reasons:
+			for pkg, mreasons in show_missing_use:
 				print "- "+pkg.cpv+" ("+", ".join(mreasons)+")"
 
 		elif masked_packages:
@@ -14584,7 +14605,7 @@ def action_build(settings, trees, mtimedb,
 			if "--buildpkgonly" in myopts:
 				graph_copy = mydepgraph.digraph.clone()
 				removed_nodes = set()
-				for node in list(graph_copy.order):
+				for node in graph_copy:
 					if not isinstance(node, Package) or \
 						node.operation == "nomerge":
 						removed_nodes.add(node)
@@ -14598,7 +14619,7 @@ def action_build(settings, trees, mtimedb,
 		if "--buildpkgonly" in myopts:
 			graph_copy = mydepgraph.digraph.clone()
 			removed_nodes = set()
-			for node in list(graph_copy.order):
+			for node in graph_copy:
 				if not isinstance(node, Package) or \
 					node.operation == "nomerge":
 					removed_nodes.add(node)
@@ -14853,6 +14874,9 @@ def parse_opts(tmpcmdline, silent=False):
 		v = getattr(myoptions, myopt.lstrip("--").replace("-", "_"), None)
 		if v is not None:
 			myopts[myopt] = v
+
+	if myoptions.searchdesc:
+		myoptions.search = True
 
 	for action_opt in actions:
 		v = getattr(myoptions, action_opt.replace("-", "_"))
@@ -15339,7 +15363,8 @@ def emerge_main():
 		mysettings =  trees[myroot]["vartree"].settings
 		mysettings.unlock()
 		adjust_config(myopts, mysettings)
-		if "--pretend" not in myopts:
+		if '--pretend' not in myopts and myaction in \
+			(None, 'clean', 'depclean', 'prune', 'unmerge'):
 			mysettings["PORTAGE_COUNTER_HASH"] = \
 				trees[myroot]["vartree"].dbapi._counter_hash()
 			mysettings.backup_changes("PORTAGE_COUNTER_HASH")
@@ -15447,14 +15472,6 @@ def emerge_main():
 		if "--buildpkg" not in myopts:
 			myopts["--buildpkg"] = True
 
-	# Also allow -S to invoke search action (-sS)
-	if ("--searchdesc" in myopts):
-		if myaction and myaction != "search":
-			myfiles.append(myaction)
-		if "--search" not in myopts:
-			myopts["--search"] = True
-		myaction = "search"
-
 	# Always try and fetch binary packages if FEATURES=getbinpkg
 	if ("getbinpkg" in settings.features):
 		myopts["--getbinpkg"] = True
@@ -15508,7 +15525,7 @@ def emerge_main():
 		if not sys.stdout.isatty() or ("--nospinner" in myopts):
 			spinner.update = spinner.update_basic
 
-	if "--version" in myopts:
+	if myaction == 'version':
 		print getportageversion(settings["PORTDIR"], settings["ROOT"],
 			settings.profile_path, settings["CHOST"],
 			trees[settings["ROOT"]]["vartree"].dbapi)

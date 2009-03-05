@@ -1618,7 +1618,8 @@ class config(object):
 
 			#getting categories from an external file now
 			categories = [grabfile(os.path.join(x, "categories")) for x in locations]
-			self.categories = stack_lists(categories, incremental=1)
+			self.categories = tuple(sorted(
+				stack_lists(categories, incremental=1)))
 			del categories
 
 			archlist = [grabfile(os.path.join(x, "arch.list")) for x in locations]
@@ -7900,6 +7901,11 @@ class MtimeDB(dict):
 		try:
 			f = open(filename, 'rb')
 			mypickle = pickle.Unpickler(f)
+			try:
+				mypickle.find_global = None
+			except AttributeError:
+				# TODO: If py3k, override Unpickler.find_class().
+				pass
 			d = mypickle.load()
 			f.close()
 			del f

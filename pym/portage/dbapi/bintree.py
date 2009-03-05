@@ -713,7 +713,7 @@ class binarytree(object):
 				for cpv in self._remotepkgs:
 					self.dbapi.cpv_inject(cpv)
 				self.populated = 1
-				if getbinpkgsonly:
+				if True:
 					# Remote package instances override local package
 					# if they are not identical.
 					hash_names = ["SIZE"] + self._pkgindex_hashes
@@ -735,6 +735,9 @@ class binarytree(object):
 								break
 						if identical:
 							del self._remotepkgs[cpv]
+						else:
+							# Override the local package in the aux_get cache.
+							self.dbapi._aux_cache[cpv] = remote_metadata
 				else:
 					# Local package instances override remote instances.
 					for cpv in metadata:

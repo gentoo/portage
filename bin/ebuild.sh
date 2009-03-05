@@ -1012,14 +1012,15 @@ dyn_install() {
 
 	cd "${PORTAGE_BUILDDIR}"/build-info
 	set -f
-	local f
+	local f x
+	IFS=$' \t\n\r'
 	for f in ASFLAGS CATEGORY CBUILD CC CFLAGS CHOST CTARGET CXX \
 		CXXFLAGS DEPEND EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
 		FEATURES INHERITED IUSE LDFLAGS LIBCFLAGS LIBCXXFLAGS \
 		LICENSE PDEPEND PF PKGUSE PROPERTIES PROVIDE RDEPEND RESTRICT SLOT \
 		KEYWORDS HOMEPAGE SRC_URI DESCRIPTION; do
-		[ -n "${!f}" ] && echo $(echo "${!f}" | \
-			tr '\n,\r,\t' ' , , ' | sed s/'  \+'/' '/g) > ${f}
+		x=$(echo -n ${!f})
+		[[ -n $x ]] && echo "$x" > $f
 	done
 	echo "${EPREFIX}"   > EPREFIX
 	echo "${USE}"       > USE
