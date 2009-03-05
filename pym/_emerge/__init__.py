@@ -186,7 +186,7 @@ actions = frozenset([
 "clean", "config", "depclean",
 "info", "list-sets", "metadata",
 "prune", "regen",  "search",
-"sync",  "unmerge",
+"sync",  "unmerge", "version",
 ])
 options=[
 "--ask",          "--alphabetical",
@@ -211,7 +211,7 @@ options=[
 "--tree",
 "--update",
 "--usepkg",       "--usepkgonly",
-"--verbose",      "--version"
+"--verbose",
 ]
 
 shortmapping={
@@ -15439,7 +15439,7 @@ def emerge_main():
 		if not sys.stdout.isatty() or ("--nospinner" in myopts):
 			spinner.update = spinner.update_basic
 
-	if "--version" in myopts:
+	if myaction == 'version':
 		print getportageversion(settings["PORTDIR"], settings["ROOT"],
 			settings.profile_path, settings["CHOST"],
 			trees[settings["ROOT"]]["vartree"].dbapi)
