@@ -955,7 +955,7 @@ class DepPriority(AbstractDepPriority):
 			return "buildtime"
 		if self.runtime:
 			return "runtime"
-		if runtime_post:
+		if self.runtime_post:
 			return "runtime_post"
 		return "soft"
 
@@ -963,6 +963,9 @@ class BlockerDepPriority(DepPriority):
 	__slots__ = ()
 	def __int__(self):
 		return 0
+
+	def __str__(self):
+		return 'blocker'
 
 BlockerDepPriority.instance = BlockerDepPriority()
 
@@ -1134,6 +1137,38 @@ DepPrioritySatisfiedRange.ignore_priority = (
 	DepPrioritySatisfiedRange._ignore_runtime_post,
 	DepPrioritySatisfiedRange._ignore_runtime
 )
+
+def _find_deep_system_runtime_deps(graph):
+	deep_system_deps = set()
+	node_stack = []
+	for node in graph:
+		if not isinstance(node, Package) or \
+			node.operation == 'uninstall':
+			continue
+		if node.root_config.sets['system'].findAtomForPackage(node):
+			node_stack.append(node)
+
+	def ignore_priority(priority):
+		"""
+		Ignore non-runtime priorities.
+		"""
+		if isinstance(priority, DepPriority) and \
+			(priority.runtime or priority.runtime_post):
+			return False
+		return True
+
+	while node_stack:
+		node = node_stack.pop()
+		if node in deep_system_deps:
+			continue
+		deep_system_deps.add(node)
+		for child in graph.child_nodes(node, ignore_priority=ignore_priority):
+			if not isinstance(child, Package) or \
+				child.operation == 'uninstall':
+				continue
+			node_stack.append(child)
+
+	return deep_system_deps
 
 class FakeVartree(portage.vartree):
 	"""This is implements an in-memory copy of a vartree instance that provides
@@ -1811,8 +1846,8 @@ class AsynchronousTask(SlotObject):
 		"""
 		Start an asynchronous task and then return as soon as possible.
 		"""
-		self._start()
 		self._start_hook()
+		self._start()
 
 	def _start(self):
 		raise NotImplementedError(self)
@@ -6810,13 +6845,37 @@ class depgraph(object):
 		return acceptable
 
 	def _merge_order_bias(self, mygraph):
-		"""Order nodes from highest to lowest overall reference count for
-		optimal leaf node selection."""
+		"""
+		For optimal leaf node selection, promote deep system runtime deps and
+		order nodes from highest to lowest overall reference count.
+		"""
+
 		node_info = {}
 		for node in mygraph.order:
 			node_info[node] = len(mygraph.parent_nodes(node))
+		deep_system_deps = _find_deep_system_runtime_deps(mygraph)
+
 		def cmp_merge_preference(node1, node2):
+
+			if node1.operation == 'uninstall':
+				if node2.operation == 'uninstall':
+					return 0
+				return 1
+
+			if node2.operation == 'uninstall':
+				if node1.operation == 'uninstall':
+					return 0
+				return -1
+
+			node1_sys = node1 in deep_system_deps
+			node2_sys = node2 in deep_system_deps
+			if node1_sys != node2_sys:
+				if node1_sys:
+					return -1
+				return 1
+
 			return node_info[node2] - node_info[node1]
+
 		mygraph.order.sort(key=cmp_sort_key(cmp_merge_preference))
 
 	def altlist(self, reversed=False):
@@ -10002,6 +10061,13 @@ class Scheduler(PollScheduler):
 		# when no other packages are building.
 		self._deep_system_deps = set()
 
+		# Holds packages to merge which will satisfy currently unsatisfied
+		# deep runtime dependencies of system packages. If this is not empty
+		# then no parallel builds will be spawned until it is empty. This
+		# minimizes the possibility that a build will fail due to the system
+		# being in a fragile state. For example, see bug #259954.
+		self._unsatisfied_system_deps = set()
+
 		self._status_display = JobStatusDisplay()
 		self._max_load = myopts.get("--load-average")
 		max_jobs = myopts.get("--jobs")
@@ -10186,38 +10252,10 @@ class Scheduler(PollScheduler):
 		merged, these packages go to merge_wait_queue, to be merged when no
 		other packages are building.
 		"""
-		graph = self._digraph
 		deep_system_deps = self._deep_system_deps
 		deep_system_deps.clear()
-		node_stack = []
-		for node in graph.order:
-			if not isinstance(node, Package) or \
-				node.operation == "uninstall":
-				continue
-			system_set = node.root_config.sets["system"]
-			if system_set.findAtomForPackage(node):
-				node_stack.append(node)
-
-		def ignore_priority(priority):
-			"""
-			Ignore non-runtime priorities.
-			"""
-			if isinstance(priority, DepPriority) and \
-				(priority.runtime or priority.runtime_post):
-				return False
-			return True
-
-		while node_stack:
-			node = node_stack.pop()
-			if node in deep_system_deps:
-				continue
-			deep_system_deps.add(node)
-			for child in graph.child_nodes(node, ignore_priority=ignore_priority):
-				if not isinstance(child, Package) or \
-					child.operation == "uninstall":
-					continue
-				node_stack.append(child)
-
+		deep_system_deps.update(
+			_find_deep_system_runtime_deps(self._digraph))
 		deep_system_deps.difference_update([pkg for pkg in \
 			deep_system_deps if pkg.operation != "merge"])
 
@@ -10779,6 +10817,41 @@ class Scheduler(PollScheduler):
 			elif isinstance(pkg, Blocker):
 				pass
 
+	def _system_merge_started(self, merge):
+		"""
+		Add any unsatisfied runtime deps to self._unsatisfied_system_deps.
+		"""
+		graph = self._digraph
+		if graph is None:
+			return
+		pkg = merge.merge.pkg
+		completed_tasks = self._completed_tasks
+		unsatisfied = self._unsatisfied_system_deps
+
+		def ignore_non_runtime_or_satisfied(priority):
+			"""
+			Ignore non-runtime and satisfied runtime priorities.
+			"""
+			if isinstance(priority, DepPriority) and \
+				not priority.satisfied and \
+				(priority.runtime or priority.runtime_post):
+				return False
+			return True
+
+		# When checking for unsatisfied runtime deps, only check
+		# direct deps since indirect deps are checked when the
+		# corresponding parent is merged.
+		for child in graph.child_nodes(pkg,
+			ignore_priority=ignore_non_runtime_or_satisfied):
+			if not isinstance(child, Package) or \
+				child.operation == 'uninstall':
+				continue
+			if child is pkg:
+				continue
+			if child.operation == 'merge' and \
+				child not in completed_tasks:
+				unsatisfied.add(child)
+
 	def _merge_wait_exit_handler(self, task):
 		self._merge_wait_scheduled.remove(task)
 		self._merge_exit(task)
@@ -10840,6 +10913,7 @@ class Scheduler(PollScheduler):
 				# Since dependencies on system packages are frequently
 				# unspecified, merge them only when no builds are executing.
 				self._merge_wait_queue.append(merge)
+				merge.addStartListener(self._system_merge_started)
 			else:
 				merge.addExitListener(self._merge_exit)
 				self._task_queues.merge.add(merge)
@@ -10866,6 +10940,7 @@ class Scheduler(PollScheduler):
 
 	def _task_complete(self, pkg):
 		self._completed_tasks.add(pkg)
+		self._unsatisfied_system_deps.discard(pkg)
 		self._choose_pkg_return_early = False
 
 	def _merge(self):
@@ -10893,6 +10968,7 @@ class Scheduler(PollScheduler):
 		del self._pkg_queue[:]
 		self._completed_tasks.clear()
 		self._deep_system_deps.clear()
+		self._unsatisfied_system_deps.clear()
 		self._choose_pkg_return_early = False
 		self._status_display.reset()
 		self._digraph = None
@@ -11087,6 +11163,7 @@ class Scheduler(PollScheduler):
 
 			if self._choose_pkg_return_early or \
 				self._merge_wait_scheduled or \
+				(self._jobs and self._unsatisfied_system_deps) or \
 				not self._can_add_job() or \
 				self._job_delay():
 				return bool(state_change)
