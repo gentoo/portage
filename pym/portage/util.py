@@ -1073,6 +1073,10 @@ class LazyItemsDict(dict):
 	def addLazyItem(self, item_key, value_callable, *pargs, **kwargs):
 		"""Add a lazy item for the given key.  When the item is requested,
 		value_callable will be called with *pargs and **kwargs arguments."""
+		if not pargs:
+			pargs = None
+		if not kwargs:
+			kwargs = None
 		self.lazy_items[item_key] = (value_callable, pargs, kwargs)
 		# make it show up in self.keys(), etc...
 		dict.__setitem__(self, item_key, None)
@@ -1095,6 +1099,10 @@ class LazyItemsDict(dict):
 	def __getitem__(self, item_key):
 		if item_key in self.lazy_items:
 			value_callable, pargs, kwargs = self.lazy_items[item_key]
+			if pargs is None:
+				pargs = ()
+			if kwargs is None:
+				kwargs = {}
 			return value_callable(*pargs, **kwargs)
 		else:
 			return dict.__getitem__(self, item_key)
@@ -1132,6 +1140,10 @@ class LazyItemsDict(dict):
 
 		If deepcopy() needs to work, this problem can be avoided by
 		implementing lazy items with normal (non-bound) functions.
+
+		If deepcopy() raises a TypeError for a lazy item that has been added
+		via a call to addLazySingleton(), the singleton will be automatically
+		evaluated and deepcopy() will instead be called on the result.
 		"""
 		if memo is None:
 			memo = {}
@@ -1141,9 +1153,17 @@ class LazyItemsDict(dict):
 		for k in self:
 			k_copy = deepcopy(k, memo)
 			if k in self.lazy_items:
-				dict.__setitem__(result, k_copy, None)
-				result.lazy_items[k_copy] = \
-					deepcopy(self.lazy_items[k], memo)
+				lazy_item = self.lazy_items[k]
+				try:
+					result.lazy_items[k_copy] = deepcopy(lazy_item, memo)
+				except TypeError:
+					# If deepcopy fails for a lazy singleton, try to
+					# evaluate the singleton and deepcopy the result.
+					if not isinstance(lazy_item[0], self._SingletonWrapper):
+						raise
+					dict.__setitem__(result, k_copy, deepcopy(self[k], memo))
+				else:
+					dict.__setitem__(result, k_copy, None)
 			else:
 				dict.__setitem__(result, k_copy, deepcopy(self[k], memo))
 		return result

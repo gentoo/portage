@@ -2134,7 +2134,9 @@ class config(object):
 				if ebuild_force_test:
 					self.usemask.discard("test")
 
-		use.difference_update([x for x in use if x not in iuse_implicit])
+		# Allow _* flags from USE_EXPAND wildcards to pass through here.
+		use.difference_update([x for x in use \
+			if x not in iuse_implicit and x[-2:] != '_*'])
 
 		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
 		# that they are consistent. For optimal performance, use slice
@@ -2160,10 +2162,11 @@ class config(object):
 			if has_wildcard:
 				# * means to enable everything in IUSE that's not masked
 				if has_iuse:
-					for x in iuse_implicit:
-						if x[:prefix_len] == prefix and x not in self.usemask:
-							suffix = x[prefix_len:]
-							var_split.append(suffix)
+					for suffix in has_iuse:
+						x = prefix + suffix
+						if x not in usemask:
+							if suffix not in expand_flags:
+								var_split.append(suffix)
 							use.add(x)
 				else:
 					# If there is a wildcard and no matching flags in IUSE then
@@ -2206,7 +2209,8 @@ class config(object):
 		# attribute since we still want to be able to see global USE
 		# settings for things like emerge --info.
 
-		self.configdict["pkg"]["PORTAGE_USE"] = " ".join(sorted(use))
+		self.configdict["pkg"]["PORTAGE_USE"] = \
+			" ".join(sorted(x for x in use if x[-2:] != '_*'))
 
 	def _get_implicit_iuse(self):
 		"""
