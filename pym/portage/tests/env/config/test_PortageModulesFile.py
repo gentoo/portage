@@ -22,14 +22,14 @@ class PortageModulesFileTestCase(TestCase):
 		f = PortageModulesFile(self.fname)
 		f.load()
 		for k in self.keys:
-			self.assertEqual(f[k], [self.items[k]])
+			self.assertEqual(f[k], self.items[k])
 		for ik in self.invalid_keys:
 			self.assertEqual(False, ik in f)
 		self.NukeFile()
 
 	def BuildFile(self):
 		fd, self.fname = mkstemp()
-		f = os.fdopen(fd, 'wb')
+		f = os.fdopen(fd, 'w')
 		for k, v in self.items.iteritems():
 			f.write('%s=%s\n' % (k,v))
 		f.close()

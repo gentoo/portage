@@ -98,6 +98,6 @@ class database(template.database):
 			return False
 
 	def _are_values_identical(self, value1, value2):
-		if long(value1["_mtime_"]) != long(value2["_mtime_"]):
+		if value1['_mtime_'] != value2['_mtime_']:
 			return False
 		return value1["_eclasses_"] == value2["_eclasses_"]

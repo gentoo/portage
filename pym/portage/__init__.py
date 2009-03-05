@@ -2557,7 +2557,7 @@ class config(object):
 					ret.append(element)
 		return ret
 
-	def _accept_chost(self, pkg):
+	def _accept_chost(self, cpv, metadata):
 		"""
 		@return True if pkg CHOST is accepted, False otherwise.
 		"""
@@ -2586,7 +2586,7 @@ class config(object):
 					self._accept_chost_re = re.compile("^$")
 
 		return self._accept_chost_re.match(
-			pkg.metadata.get("CHOST", "")) is not None
+			metadata.get('CHOST', '')) is not None
 
 	def setinst(self,mycpv,mydbapi):
 		"""This updates the preferences for old-style virtuals,
@@ -3920,15 +3920,23 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					elif distdir_writable:
 						if mystat.st_size < fetch_resume_size and \
 							mystat.st_size < size:
-							writemsg((">>> Deleting distfile with size " + \
+							# If the file already exists and the size does not
+							# match the existing digests, it may be that the
+							# user is attempting to update the digest. In this
+							# case, the digestgen() function will advise the
+							# user to use `ebuild --force foo.ebuild manifest`
+							# in order to force the old digests to be replaced.
+							# Since the user may want to keep this file, rename
+							# it instead of deleting it.
+							writemsg((">>> Renaming distfile with size " + \
 								"%d (smaller than " "PORTAGE_FETCH_RESU" + \
 								"ME_MIN_SIZE)\n") % mystat.st_size)
-							try:
-								os.unlink(myfile_path)
-							except OSError, e:
-								if e.errno != errno.ENOENT:
-									raise
-								del e
+							temp_filename = \
+								_checksum_failure_temp_file(
+								mysettings["DISTDIR"], myfile)
+							writemsg_stdout("Refetching... " + \
+								"File renamed to '%s'\n\n" % \
+								temp_filename, noiselevel=-1)
 						elif mystat.st_size >= size:
 							temp_filename = \
 								_checksum_failure_temp_file(
@@ -7598,7 +7606,8 @@ def commit_mtimedb(mydict=None, filename=None):
 		f = atomic_ofstream(filename, mode='wb')
 		pickle.dump(d, f, -1)
 		f.close()
-		portage.util.apply_secpass_permissions(filename, uid=uid, gid=portage_gid, mode=0664)
+		portage.util.apply_secpass_permissions(filename,
+			uid=uid, gid=portage_gid, mode=0644)
 	except (IOError, OSError), e:
 		pass
 
@@ -7630,7 +7639,7 @@ def _gen_missing_encodings(missing_encodings):
 		class AsciiStreamReader(codecs.StreamReader):
 			decode = codecs.ascii_decode
 
-		encodings['ascii'] =  codecs.CodecInfo(
+		codec_info =  codecs.CodecInfo(
 			name='ascii',
 			encode=codecs.ascii_encode,
 			decode=codecs.ascii_decode,
@@ -7639,6 +7648,11 @@ def _gen_missing_encodings(missing_encodings):
 			streamwriter=AsciiStreamWriter,
 			streamreader=AsciiStreamReader,
 		)
+
+		for alias in ('ascii', '646', 'ansi_x3.4_1968', 'ansi_x3_4_1968',
+			'ansi_x3.4_1986', 'cp367', 'csascii', 'ibm367', 'iso646_us',
+			'iso_646.irv_1991', 'iso_ir_6', 'us', 'us_ascii'):
+			encodings[alias] = codec_info
 
 	if 'utf_8' in missing_encodings:
 
@@ -7658,7 +7672,7 @@ def _gen_missing_encodings(missing_encodings):
 		class Utf8StreamReader(codecs.StreamReader):
 			decode = codecs.utf_8_decode
 
-		encodings['utf_8'] = codecs.CodecInfo(
+		codec_info = codecs.CodecInfo(
 			name='utf-8',
 			encode=codecs.utf_8_encode,
 			decode=utf8decode,
@@ -7667,6 +7681,9 @@ def _gen_missing_encodings(missing_encodings):
 			streamreader=Utf8StreamWriter,
 			streamwriter=Utf8StreamReader,
 		)
+
+		for alias in ('utf_8', 'u8', 'utf', 'utf8', 'utf8_ucs2', 'utf8_ucs4'):
+			encodings[alias] = codec_info
 
 	return encodings
 
@@ -7685,7 +7702,7 @@ def _ensure_default_encoding():
 	"""
 
 	default_fallback = 'utf_8'
-	default_encoding = sys.getdefaultencoding()
+	default_encoding = sys.getdefaultencoding().lower().replace('-', '_')
 	required_encodings = set(['ascii', 'utf_8'])
 	required_encodings.add(default_encoding)
 	missing_encodings = set()
@@ -7711,6 +7728,8 @@ def _ensure_default_encoding():
 			encodings[default_encoding] = encodings[default_fallback]
 
 	def search_function(name):
+		name = name.lower()
+		name = name.replace('-', '_')
 		codec_info = encodings.get(name)
 		if codec_info is not None:
 			return codecs.CodecInfo(

@@ -268,14 +268,14 @@ class KeyValuePairFileLoader(FileLoader):
 			return
 		if not len(line): # skip empty lines
 			return
-		split = line.split('=')
+		split = line.split('=', 1)
 		if len(split) < 2:
 			errors.setdefault(self.fname, []).append(
 				"Malformed data at line: %s, data %s"
 				% (line_num + 1, line))
 			return
-		key = split[0]
-		value = split[1:]
+		key = split[0].strip()
+		value = split[1].strip()
 		if not key:
 			errors.setdefault(self.fname, []).append(
 				"Malformed key at line: %s, key %s"

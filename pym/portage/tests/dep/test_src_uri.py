@@ -23,6 +23,7 @@ class SrcUri(TestCase):
 			( "2", "http://foo/bar ->"                               , False ),
 			( "2", "foo? ( http://foo/bar -> ) blah.tbz2"            , False ),
 			( "2", "http://foo/bar -> foo/blah.tbz2"                 , False ),
+			( "2", "http://foo.com/foo http://foo/bar -> blah.tbz2"  , True  ),
 		]
 
 		for eapi, src_uri, valid in tests:

@@ -33,10 +33,10 @@ class CommandOutputSet(PackageSet):
 	
 	def load(self):
 		pipe = subprocess.Popen(self._command, stdout=subprocess.PIPE, shell=True)
+		stdout, stderr = pipe.communicate()
 		if pipe.wait() == os.EX_OK:
-			text = pipe.stdout.read()
-			self._setAtoms(text.split("\n"))
-		
+			self._setAtoms(unicode(stdout, errors='replace').splitlines())
+
 	def singleBuilder(self, options, settings, trees):
 		if not "command" in options:
 			raise SetConfigError("no command specified")

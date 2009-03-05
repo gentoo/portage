@@ -28,12 +28,18 @@ class PipeReaderTestCase(TestCase):
 		test_string = 2 * "blah blah blah\n"
 
 		master_fd, slave_fd = self._create_pipe()
-		master_file = os.fdopen(master_fd, 'r')
+		master_file = os.fdopen(master_fd, 'rb')
 
 		task_scheduler = TaskScheduler(max_jobs=2)
 		scheduler = task_scheduler.sched_iface
 
-		producer = SpawnProcess(
+		class Producer(SpawnProcess):
+			def _spawn(self, args, **kwargs):
+				rval = SpawnProcess._spawn(self, args, **kwargs)
+				os.close(kwargs['fd_pipes'][1])
+				return rval
+
+		producer = Producer(
 			args=["bash", "-c", "echo -n '%s'" % test_string],
 			fd_pipes={1:slave_fd}, scheduler=scheduler)
 
@@ -44,10 +50,9 @@ class PipeReaderTestCase(TestCase):
 		task_scheduler.add(producer)
 		task_scheduler.add(consumer)
 
-		def producer_start_cb(task):
-			os.close(slave_fd)
-
-		producer.addStartListener(producer_start_cb)
 		task_scheduler.run()
+
+		if sys.hexversion >= 0x3000000:
+			test_string = test_string.encode()
 
 		self._assertEqual(test_string, consumer.getvalue())

@@ -66,6 +66,9 @@ def _src_uri_validate(cpv, eapi, src_uri):
 					"supported with EAPI='%s'") % (cpv, eapi))
 			operator = x
 			continue
+		if operator is None:
+			uri = x
+			continue
 		if operator is not None:
 			if "/" in x:
 				raise portage.exception.InvalidDependString(
@@ -343,19 +346,6 @@ class portdbapi(dbapi):
 		for auxdb in auxdbs:
 			try:
 				metadata = auxdb[cpv]
-				eapi = metadata.get("EAPI","").strip()
-				if not eapi:
-					eapi = "0"
-				if eapi.startswith("-") and eapi_is_supported(eapi[1:]):
-					pass
-				elif emtime != int(metadata.get("_mtime_", 0)):
-					pass
-				elif len(metadata.get("_eclasses_", [])) > 0:
-					if self.eclassdb.is_eclass_data_valid(
-						metadata["_eclasses_"]):
-						doregen = False
-				else:
-					doregen = False
 			except KeyError:
 				pass
 			except CacheError:
@@ -364,6 +354,15 @@ class portdbapi(dbapi):
 						del auxdb[cpv]
 					except KeyError:
 						pass
+			else:
+				eapi = metadata.get('EAPI', '').strip()
+				if not eapi:
+					eapi = '0'
+				if not (eapi[:1] == '-' and eapi_is_supported(eapi[1:])) and \
+					emtime == metadata['_mtime_'] and \
+					self.eclassdb.is_eclass_data_valid(metadata['_eclasses_']):
+					doregen = False
+
 			if not doregen:
 				break
 
@@ -857,6 +856,8 @@ class portdbapi(dbapi):
 		aux_keys = list(self._aux_cache_keys)
 		metadata = {}
 		local_config = self.mysettings.local_config
+		chost = self.mysettings.get('CHOST', '')
+		accept_chost = self.mysettings._accept_chost
 		for mycpv in mylist:
 			metadata.clear()
 			try:
@@ -877,10 +878,13 @@ class portdbapi(dbapi):
 			if self.mysettings._getMissingKeywords(mycpv, metadata):
 				continue
 			if local_config:
+				metadata['CHOST'] = chost
+				if not accept_chost(mycpv, metadata):
+					continue
 				metadata["USE"] = ""
 				if "?" in metadata["LICENSE"]:
 					self.doebuild_settings.setcpv(mycpv, mydb=metadata)
-					metadata["USE"] = self.doebuild_settings.get("USE", "")
+					metadata['USE'] = self.doebuild_settings['PORTAGE_USE']
 				try:
 					if self.mysettings._getMissingLicenses(mycpv, metadata):
 						continue
