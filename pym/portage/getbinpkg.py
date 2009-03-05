@@ -486,7 +486,13 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	out = sys.stdout
 	try:
 		metadatafile = open(metadatafilename, 'rb')
-		metadata = pickle.load(metadatafile)
+		mypickle = pickle.Unpickler(metadatafile)
+		try:
+			mypickle.find_global = None
+		except AttributeError:
+			# TODO: If py3k, override Unpickler.find_class().
+			pass
+		metadata = mypickle.load()
 		out.write("Loaded metadata pickle.\n")
 		out.flush()
 		metadatafile.close()

@@ -4105,6 +4105,11 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 		try:
 			f = open(self._cache_filename, mode='rb')
 			mypickle = pickle.Unpickler(f)
+			try:
+				mypickle.find_global = None
+			except AttributeError:
+				# TODO: If py3k, override Unpickler.find_class().
+				pass
 			self._cache_data = mypickle.load()
 			f.close()
 			del f

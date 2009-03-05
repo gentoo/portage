@@ -1059,6 +1059,11 @@ class vardbapi(dbapi):
 		try:
 			f = open(self._aux_cache_filename, mode='rb', **open_kwargs)
 			mypickle = pickle.Unpickler(f)
+			try:
+				mypickle.find_global = None
+			except AttributeError:
+				# TODO: If py3k, override Unpickler.find_class().
+				pass
 			aux_cache = mypickle.load()
 			f.close()
 			del f
