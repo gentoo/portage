@@ -243,7 +243,8 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 			if head[-1:] == "?": # Use reduce next group on fail.
 				# Pull any other use conditions and the following atom or list into a separate array
 				newdeparray = [head]
-				while isinstance(newdeparray[-1], str) and newdeparray[-1][-1] == "?":
+				while isinstance(newdeparray[-1], basestring) and \
+					newdeparray[-1][-1:] == "?":
 					if mydeparray:
 						newdeparray.append(mydeparray.pop(0))
 					else:

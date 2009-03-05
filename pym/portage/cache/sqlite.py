@@ -163,12 +163,7 @@ class database(fs_template.FsBased):
 			column_index +=1
 			if k not in internal_columns:
 				d[k] = result[0][column_index]
-		# XXX: The resolver chokes on unicode strings so we convert them here.
-		for k in d.keys():
-			try:
-				d[k]=str(d[k]) # convert unicode strings to normal
-			except UnicodeEncodeError, e:
-				pass #writemsg("%s: %s\n" % (cpv, str(e)))
+
 		return d
 
 	def _setitem(self, cpv, values):
