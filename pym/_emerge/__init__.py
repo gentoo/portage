@@ -14785,6 +14785,9 @@ def parse_opts(tmpcmdline, silent=False):
 		if v is not None:
 			myopts[myopt] = v
 
+	if myoptions.searchdesc:
+		myoptions.search = True
+
 	for action_opt in actions:
 		v = getattr(myoptions, action_opt.replace("-", "_"))
 		if v:
@@ -15378,14 +15381,6 @@ def emerge_main():
 	if ("buildpkg" in settings.features) or ("--buildpkgonly" in myopts):
 		if "--buildpkg" not in myopts:
 			myopts["--buildpkg"] = True
-
-	# Also allow -S to invoke search action (-sS)
-	if ("--searchdesc" in myopts):
-		if myaction and myaction != "search":
-			myfiles.append(myaction)
-		if "--search" not in myopts:
-			myopts["--search"] = True
-		myaction = "search"
 
 	# Always try and fetch binary packages if FEATURES=getbinpkg
 	if ("getbinpkg" in settings.features):
