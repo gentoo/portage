@@ -4092,7 +4092,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							"have been defined in\n!!! %s/make.globals.\n") \
 							% (resumecommand_var,
 							portage.const.GLOBAL_CONFIG_PATH),
-							noiselevel=-1)
+							level=logging.ERROR, noiselevel=-1)
 						return 0
 				if "${FILE}" not in resumecommand:
 					portage.util.writemsg_level(
