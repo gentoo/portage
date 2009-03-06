@@ -7933,6 +7933,9 @@ class _LegacyGlobalProxy(proxy.objectproxy.ObjectProxy):
 	Instances of these serve as proxies to global variables
 	that are initialized on demand.
 	"""
+
+	__slots__ = ('_name',)
+
 	def __init__(self, name):
 		proxy.objectproxy.ObjectProxy.__init__(self)
 		object.__setattr__(self, '_name', name)
@@ -7949,6 +7952,8 @@ class _PortdbProxy(proxy.objectproxy.ObjectProxy):
 	are needed while the portdb is not.
 	"""
 
+	__slots__ = ()
+
 	def _get_target(self):
 		init_legacy_globals()
 		global db, portdb, root, _portdb_initialized
@@ -7961,6 +7966,8 @@ class _MtimedbProxy(proxy.objectproxy.ObjectProxy):
 	"""
 	The mtimedb is independent from the portdb and other globals.
 	"""
+
+	__slots__ = ('_name',)
 
 	def __init__(self, name):
 		proxy.objectproxy.ObjectProxy.__init__(self)
