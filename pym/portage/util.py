@@ -19,7 +19,6 @@ import shlex
 import stat
 import string
 import sys
-import types
 
 from portage.exception import PortageException, FileNotFound, \
        OperationNotPermitted, PermissionDenied, ReadOnlyFileSystem
