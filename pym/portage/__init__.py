@@ -2972,7 +2972,7 @@ class config(object):
 
 	def __setitem__(self,mykey,myvalue):
 		"set a value; will be thrown away at reset() time"
-		if not isinstance(myvalue, str):
+		if not isinstance(myvalue, basestring):
 			raise ValueError("Invalid type being used as a value: '%s': '%s'" % (str(mykey),str(myvalue)))
 		self.modifying()
 		self.modifiedkeys += [mykey]
