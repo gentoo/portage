@@ -9728,7 +9728,7 @@ class JobStatusDisplay(object):
 			object.__setattr__(self, "_term_codes", term_codes)
 		encoding = sys.getdefaultencoding()
 		for k, v in self._term_codes.items():
-			if not isinstance(v, str):
+			if not isinstance(v, basestring):
 				self._term_codes[k] = v.decode(encoding, 'replace')
 
 	def _init_term(self):
