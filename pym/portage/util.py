@@ -177,7 +177,7 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
 						if thing == "-*":
 							final_dict[y] = []
 							continue
-						elif thing.startswith("-"):
+						elif thing[:1] == '-':
 							try:
 								final_dict[y].remove(thing[1:])
 							except ValueError:
@@ -223,7 +223,7 @@ def stack_lists(lists, incremental=1):
 			if incremental:
 				if y == "-*":
 					new_list.clear()
-				elif y.startswith("-"):
+				elif y[:1] == '-':
 					new_list.pop(y[1:], None)
 				else:
 					new_list[y] = True
