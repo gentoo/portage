@@ -1170,17 +1170,12 @@ class LazyItemsDict(dict):
 		memo[id(self)] = result
 		for k in self:
 			k_copy = deepcopy(k, memo)
-			if k in self.lazy_items:
+			if k in list(self.lazy_items):
 				lazy_item = self.lazy_items[k]
-				try:
-					result.lazy_items[k_copy] = deepcopy(lazy_item, memo)
-				except TypeError:
-					# If deepcopy fails for a lazy singleton, try to
-					# evaluate the singleton and deepcopy the result.
-					if not lazy_item.singleton:
-						raise
+				if lazy_item.singleton:
 					dict.__setitem__(result, k_copy, deepcopy(self[k], memo))
 				else:
+					result.lazy_items[k_copy] = deepcopy(lazy_item, memo)
 					dict.__setitem__(result, k_copy, None)
 			else:
 				dict.__setitem__(result, k_copy, deepcopy(self[k], memo))
