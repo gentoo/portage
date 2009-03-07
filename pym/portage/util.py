@@ -1082,8 +1082,8 @@ class LazyItemsDict(dict):
 		"""This is like addLazyItem except value_callable will only be called
 		a maximum of 1 time and the result will be cached for future requests."""
 		self.addLazyItem(item_key,
-			self._SingletonWrapper(self, item_key, value_callable,
-				*pargs, **kwargs))
+			self._SingletonWrapper(self, item_key, value_callable),
+				*pargs, **kwargs)
 
 	def update(self, *args, **kwargs):
 		if len(args) > 1:
@@ -1102,7 +1102,12 @@ class LazyItemsDict(dict):
 					dict.__setitem__(self, k, None)
 				else:
 					dict.__setitem__(self, k, map_obj[k])
-			self.lazy_items.update(map_obj.lazy_items)
+			for k, v in map_obj.lazy_items.iteritems():
+				if isinstance(v[0], self._SingletonWrapper):
+					# Create a new wrapper that references self.
+					v = (self._SingletonWrapper(self, k, v[0]._callable),
+						v[1], v[2])
+				self.lazy_items[k] = v
 		else:
 			dict.update(self, map_obj)
 		if kwargs:
@@ -1182,17 +1187,15 @@ class LazyItemsDict(dict):
 
 	class _SingletonWrapper(object):
 
-		__slots__ = ('_parent', '_key', '_callable', '_pargs', '_kwargs')
+		__slots__ = ('_parent', '_key', '_callable')
 
-		def __init__(self, parent, key, value_callable, *pargs, **kwargs):
+		def __init__(self, parent, key, value_callable):
 			self._parent = parent
 			self._key = key
 			self._callable = value_callable
-			self._pargs = pargs
-			self._kwargs = kwargs
 
-		def __call__(self):
-			value = self._callable(*self._pargs, **self._kwargs)
+		def __call__(self, *pargs, **kwargs):
+			value = self._callable(*pargs, **kwargs)
 			self._parent[self._key] = value
 			return value
 
