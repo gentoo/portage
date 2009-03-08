@@ -1183,9 +1183,10 @@ inherit() {
 		olocation=""
 
 		export ECLASS="$1"
-		__export_funcs_var=__export_functions_${ECLASS/-/___}
-		while [[ $__export_funcs_var != ${__export_funcs_var/-/___} ]] ; do
-			__export_funcs_var=${__export_funcs_var/-/___}
+		__export_funcs_var=__export_functions_$ECLASS
+		while [[ $__export_funcs_var =~ [-.] ]] ; do
+			__export_funcs_var=${__export_funcs_var/-/__dash__}
+			__export_funcs_var=${__export_funcs_var/./__dot__}
 		done
 		unset $__export_funcs_var
 
