@@ -21,6 +21,7 @@ class database(flat_hash.database):
 		'PDEPEND',   'PROVIDE', 'EAPI', 'PROPERTIES', 'DEFINED_PHASES')
 
 	autocommits = True
+	serialize_eclasses = False
 
 	_hashed_re = re.compile('^(\\w+)=([^\n]*)')
 
@@ -29,10 +30,6 @@ class database(flat_hash.database):
 		super(database, self).__init__(location, *args, **config)
 		self.location = os.path.join(loc, "metadata","cache")
 		self.ec = portage.eclass_cache.cache(loc)
-
-	def __getitem__(self, cpv):
-		return flat_hash.database.__getitem__(self, cpv)
-
 
 	def _parse_data(self, data, cpv):
 		_hashed_re_match = self._hashed_re.match

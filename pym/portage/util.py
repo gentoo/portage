@@ -1173,10 +1173,13 @@ class LazyItemsDict(dict):
 			k_copy = deepcopy(k, memo)
 			if k in self.lazy_items:
 				lazy_item = self.lazy_items[k]
-				if lazy_item.singleton:
+				try:
+					result.lazy_items[k_copy] = deepcopy(lazy_item, memo)
+				except TypeError:
+					if not lazy_item.singleton:
+						raise
 					dict.__setitem__(result, k_copy, deepcopy(self[k], memo))
 				else:
-					result.lazy_items[k_copy] = deepcopy(lazy_item, memo)
 					dict.__setitem__(result, k_copy, None)
 			else:
 				dict.__setitem__(result, k_copy, deepcopy(self[k], memo))
@@ -1197,6 +1200,26 @@ class LazyItemsDict(dict):
 			self.pargs = pargs
 			self.kwargs = kwargs
 			self.singleton = singleton
+
+		def __copy__(self):
+			return self.__class__(self.func, self.pargs,
+				self.kwargs, self.singleton)
+
+		def __deepcopy__(self, memo=None):
+			"""
+			Override this since the default implementation can fail silently,
+			leaving some attributes unset.
+			"""
+			if memo is None:
+				memo = {}
+			from copy import deepcopy
+			result = self.__copy__()
+			memo[id(self)] = result
+			result.func = deepcopy(self.func, memo)
+			result.pargs = deepcopy(self.pargs, memo)
+			result.kwargs = deepcopy(self.kwargs, memo)
+			result.singleton = deepcopy(self.singleton, memo)
+			return result
 
 class ConfigProtect(object):
 	def __init__(self, myroot, protect_list, mask_list):
