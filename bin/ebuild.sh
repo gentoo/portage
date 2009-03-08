@@ -1177,7 +1177,7 @@ inherit() {
 		while [[ $__export_funcs_var =~ [-.+] ]] ; do
 			__export_funcs_var=${__export_funcs_var/-/__dash__}
 			__export_funcs_var=${__export_funcs_var/./__dot__}
-			__export_funcs_var=${__export_funcs_var/./__plus__}
+			__export_funcs_var=${__export_funcs_var/+/__plus__}
 		done
 		unset $__export_funcs_var
 
