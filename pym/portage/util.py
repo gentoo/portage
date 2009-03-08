@@ -178,7 +178,7 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
 						if thing == "-*":
 							final_dict[y] = []
 							continue
-						elif thing.startswith("-"):
+						elif thing[:1] == '-':
 							try:
 								final_dict[y].remove(thing[1:])
 							except ValueError:
@@ -224,7 +224,7 @@ def stack_lists(lists, incremental=1):
 			if incremental:
 				if y == "-*":
 					new_list.clear()
-				elif y.startswith("-"):
+				elif y[:1] == '-':
 					new_list.pop(y[1:], None)
 				else:
 					new_list[y] = True
@@ -1072,19 +1072,18 @@ class LazyItemsDict(dict):
 	def addLazyItem(self, item_key, value_callable, *pargs, **kwargs):
 		"""Add a lazy item for the given key.  When the item is requested,
 		value_callable will be called with *pargs and **kwargs arguments."""
-		if not pargs:
-			pargs = None
-		if not kwargs:
-			kwargs = None
-		self.lazy_items[item_key] = (value_callable, pargs, kwargs)
+		self.lazy_items[item_key] = \
+			self._LazyItem(value_callable, pargs, kwargs, False)
 		# make it show up in self.keys(), etc...
 		dict.__setitem__(self, item_key, None)
+
 	def addLazySingleton(self, item_key, value_callable, *pargs, **kwargs):
 		"""This is like addLazyItem except value_callable will only be called
 		a maximum of 1 time and the result will be cached for future requests."""
-		self.addLazyItem(item_key,
-			self._SingletonWrapper(self, item_key, value_callable,
-				*pargs, **kwargs))
+		self.lazy_items[item_key] = \
+			self._LazyItem(value_callable, pargs, kwargs, True)
+		# make it show up in self.keys(), etc...
+		dict.__setitem__(self, item_key, None)
 
 	def update(self, *args, **kwargs):
 		if len(args) > 1:
@@ -1111,14 +1110,21 @@ class LazyItemsDict(dict):
 
 	def __getitem__(self, item_key):
 		if item_key in self.lazy_items:
-			value_callable, pargs, kwargs = self.lazy_items[item_key]
+			lazy_item = self.lazy_items[item_key]
+			pargs = lazy_item.pargs
 			if pargs is None:
 				pargs = ()
+			kwargs = lazy_item.kwargs
 			if kwargs is None:
 				kwargs = {}
-			return value_callable(*pargs, **kwargs)
+			result = lazy_item.func(*pargs, **kwargs)
+			if lazy_item.singleton:
+				self[item_key] = result
+			return result
+
 		else:
 			return dict.__getitem__(self, item_key)
+
 	def __setitem__(self, item_key, value):
 		if item_key in self.lazy_items:
 			del self.lazy_items[item_key]
@@ -1167,35 +1173,30 @@ class LazyItemsDict(dict):
 			k_copy = deepcopy(k, memo)
 			if k in self.lazy_items:
 				lazy_item = self.lazy_items[k]
-				try:
-					result.lazy_items[k_copy] = deepcopy(lazy_item, memo)
-				except TypeError:
-					# If deepcopy fails for a lazy singleton, try to
-					# evaluate the singleton and deepcopy the result.
-					if not isinstance(lazy_item[0], self._SingletonWrapper):
-						raise
+				if lazy_item.singleton:
 					dict.__setitem__(result, k_copy, deepcopy(self[k], memo))
 				else:
+					result.lazy_items[k_copy] = deepcopy(lazy_item, memo)
 					dict.__setitem__(result, k_copy, None)
 			else:
 				dict.__setitem__(result, k_copy, deepcopy(self[k], memo))
 		return result
 
-	class _SingletonWrapper(object):
+	class _LazyItem(object):
 
-		__slots__ = ('_parent', '_key', '_callable', '_pargs', '_kwargs')
+		__slots__ = ('func', 'pargs', 'kwargs', 'singleton')
 
-		def __init__(self, parent, key, value_callable, *pargs, **kwargs):
-			self._parent = parent
-			self._key = key
-			self._callable = value_callable
-			self._pargs = pargs
-			self._kwargs = kwargs
+		def __init__(self, func, pargs, kwargs, singleton):
 
-		def __call__(self):
-			value = self._callable(*self._pargs, **self._kwargs)
-			self._parent[self._key] = value
-			return value
+			if not pargs:
+				pargs = None
+			if not kwargs:
+				kwargs = None
+
+			self.func = func
+			self.pargs = pargs
+			self.kwargs = kwargs
+			self.singleton = singleton
 
 class ConfigProtect(object):
 	def __init__(self, myroot, protect_list, mask_list):
