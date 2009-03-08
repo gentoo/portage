@@ -1158,7 +1158,7 @@ inherit() {
 
 	local location
 	local olocation
-	local PECLASS
+	local PECLASS=$ECLASS
 	local export_funcs_var x
 
 	local B_IUSE
@@ -1169,8 +1169,6 @@ inherit() {
 		location="${ECLASSDIR}/${1}.eclass"
 		olocation=""
 
-		# PECLASS is used to restore the ECLASS var after recursion.
-		PECLASS="$ECLASS"
 		export ECLASS="$1"
 		export_funcs_var=__export_functions_${ECLASS/-/___}
 		unset $export_funcs_var
@@ -1258,11 +1256,15 @@ inherit() {
 
 		hasq $1 $INHERITED || export INHERITED="$INHERITED $1"
 
-		export ECLASS="$PECLASS"
-
 		shift
 	done
 	((--ECLASS_DEPTH)) # Returns 1 when ECLASS_DEPTH reaches 0.
+	if (( ECLASS_DEPTH > 1 )) ; then
+		# PECLASS is used to restore the ECLASS var after recursion.
+		export ECLASS=$PECLASS
+	else
+		unset ECLASS
+	fi
 	return 0
 }
 
