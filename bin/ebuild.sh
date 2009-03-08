@@ -1158,7 +1158,11 @@ inherit() {
 
 	local location
 	local olocation
-	local PECLASS
+	local x
+
+	# These variables must be restored before returning.
+	local PECLASS=$ECLASS
+	local prev_export_funcs_var=$__export_funcs_var
 
 	local B_IUSE
 	local B_DEPEND
@@ -1168,9 +1172,12 @@ inherit() {
 		location="${ECLASSDIR}/${1}.eclass"
 		olocation=""
 
-		# PECLASS is used to restore the ECLASS var after recursion.
-		PECLASS="$ECLASS"
 		export ECLASS="$1"
+		__export_funcs_var=__export_functions_${ECLASS/-/___}
+		while [[ $__export_funcs_var != ${__export_funcs_var/-/___} ]] ; do
+			__export_funcs_var=${__export_funcs_var/-/___}
+		done
+		unset $__export_funcs_var
 
 		if [ "${EBUILD_PHASE}" != "depend" ] && \
 			[[ ${EBUILD_PHASE} != *rm ]] && \
@@ -1245,13 +1252,27 @@ inherit() {
 		#turn on glob expansion
 		set +f
 
-		hasq $1 $INHERITED || export INHERITED="$INHERITED $1"
+		if [[ -n ${!__export_funcs_var} ]] ; then
+			for x in ${!__export_funcs_var} ; do
+				debug-print "EXPORT_FUNCTIONS: $x -> ${ECLASS}_$x"
+				[[ $(type -t ${ECLASS}_$x) = function ]] || \
+					die "EXPORT_FUNCTIONS: ${ECLASS}_$x is not defined"
+				eval "$x() { ${ECLASS}_$x \"\$@\" ; }" > /dev/null
+			done
+		fi
+		unset $__export_funcs_var
 
-		export ECLASS="$PECLASS"
+		hasq $1 $INHERITED || export INHERITED="$INHERITED $1"
 
 		shift
 	done
 	((--ECLASS_DEPTH)) # Returns 1 when ECLASS_DEPTH reaches 0.
+	if (( ECLASS_DEPTH > 0 )) ; then
+		export ECLASS=$PECLASS
+		__export_funcs_var=$prev_export_funcs_var
+	else
+		unset ECLASS __export_funcs_var
+	fi
 	return 0
 }
 
@@ -1261,14 +1282,9 @@ inherit() {
 # src_unpack() { base_src_unpack; }
 EXPORT_FUNCTIONS() {
 	if [ -z "$ECLASS" ]; then
-		echo "EXPORT_FUNCTIONS without a defined ECLASS" >&2
-		exit 1
+		die "EXPORT_FUNCTIONS without a defined ECLASS"
 	fi
-	while [ "$1" ]; do
-		debug-print "EXPORT_FUNCTIONS: ${1} -> ${ECLASS}_${1}"
-		eval "$1() { ${ECLASS}_$1 \"\$@\" ; }" > /dev/null
-		shift
-	done
+	eval $__export_funcs_var+=\" $*\"
 }
 
 # adds all parameters to E_DEPEND and E_RDEPEND, which get added to DEPEND
