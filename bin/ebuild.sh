@@ -1158,8 +1158,7 @@ inherit() {
 
 	local location
 	local olocation
-	local PECLASS=$ECLASS
-	local export_funcs_var x
+	local PECLASS
 
 	local B_IUSE
 	local B_DEPEND
@@ -1169,9 +1168,9 @@ inherit() {
 		location="${ECLASSDIR}/${1}.eclass"
 		olocation=""
 
+		# PECLASS is used to restore the ECLASS var after recursion.
+		PECLASS="$ECLASS"
 		export ECLASS="$1"
-		export_funcs_var=__export_functions_${ECLASS/-/___}
-		unset $export_funcs_var
 
 		if [ "${EBUILD_PHASE}" != "depend" ] && \
 			[[ ${EBUILD_PHASE} != *rm ]] && \
@@ -1246,25 +1245,13 @@ inherit() {
 		#turn on glob expansion
 		set +f
 
-		if [[ -n ${!export_funcs_var} ]] ; then
-			for x in ${!export_funcs_var} ; do
-				debug-print "EXPORT_FUNCTIONS: $x -> ${ECLASS}_$x"
-				eval "$x() { ${ECLASS}_$x \"\$@\" ; }" > /dev/null
-			done
-		fi
-		unset $export_funcs_var
-
 		hasq $1 $INHERITED || export INHERITED="$INHERITED $1"
+
+		export ECLASS="$PECLASS"
 
 		shift
 	done
 	((--ECLASS_DEPTH)) # Returns 1 when ECLASS_DEPTH reaches 0.
-	if (( ECLASS_DEPTH > 1 )) ; then
-		# PECLASS is used to restore the ECLASS var after recursion.
-		export ECLASS=$PECLASS
-	else
-		unset ECLASS
-	fi
 	return 0
 }
 
@@ -1274,9 +1261,14 @@ inherit() {
 # src_unpack() { base_src_unpack; }
 EXPORT_FUNCTIONS() {
 	if [ -z "$ECLASS" ]; then
-		die "EXPORT_FUNCTIONS without a defined ECLASS"
+		echo "EXPORT_FUNCTIONS without a defined ECLASS" >&2
+		exit 1
 	fi
-	eval __export_functions_${ECLASS/-/___}+=\" $*\"
+	while [ "$1" ]; do
+		debug-print "EXPORT_FUNCTIONS: ${1} -> ${ECLASS}_${1}"
+		eval "$1() { ${ECLASS}_$1 \"\$@\" ; }" > /dev/null
+		shift
+	done
 }
 
 # adds all parameters to E_DEPEND and E_RDEPEND, which get added to DEPEND
