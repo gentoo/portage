@@ -369,11 +369,11 @@ class digraph(object):
 			self.nodes[parent] = ({}, {}, parent)
 			self.order.append(parent)
 
-		priorities = self.nodes[node][1].setdefault(parent, [])
-		priorities.append(priority)
-		priorities.sort()
-
-		priorities = self.nodes[parent][0].setdefault(node, [])
+		priorities = self.nodes[node][1].get(parent)
+		if priorities is None:
+			priorities = []
+			self.nodes[node][1][parent] = priorities
+			self.nodes[parent][0][node] = priorities
 		priorities.append(priority)
 		priorities.sort()
 
@@ -561,13 +561,22 @@ class digraph(object):
 	def clone(self):
 		clone = digraph()
 		clone.nodes = {}
+		memo = {}
 		for children, parents, node in self.nodes.itervalues():
 			children_clone = {}
 			for child, priorities in children.iteritems():
-				children_clone[child] = priorities[:]
+				priorities_clone = memo.get(id(priorities))
+				if priorities_clone is None:
+					priorities_clone = priorities[:]
+					memo[id(priorities)] = priorities_clone
+				children_clone[child] = priorities_clone
 			parents_clone = {}
 			for parent, priorities in parents.iteritems():
-				parents_clone[parent] = priorities[:]
+				priorities_clone = memo.get(id(priorities))
+				if priorities_clone is None:
+					priorities_clone = priorities[:]
+					memo[id(priorities)] = priorities_clone
+				parents_clone[parent] = priorities_clone
 			clone.nodes[node] = (children_clone, parents_clone, node)
 		clone.order = self.order[:]
 		return clone
@@ -4102,7 +4111,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							"have been defined in\n!!! %s/make.globals.\n") \
 							% (resumecommand_var,
 							portage.const.GLOBAL_CONFIG_PATH),
-							noiselevel=-1)
+							level=logging.ERROR, noiselevel=-1)
 						return 0
 				if "${FILE}" not in resumecommand:
 					portage.util.writemsg_level(
@@ -8005,6 +8014,9 @@ class _LegacyGlobalProxy(proxy.objectproxy.ObjectProxy):
 	Instances of these serve as proxies to global variables
 	that are initialized on demand.
 	"""
+
+	__slots__ = ('_name',)
+
 	def __init__(self, name):
 		proxy.objectproxy.ObjectProxy.__init__(self)
 		object.__setattr__(self, '_name', name)
@@ -8021,6 +8033,8 @@ class _PortdbProxy(proxy.objectproxy.ObjectProxy):
 	are needed while the portdb is not.
 	"""
 
+	__slots__ = ()
+
 	def _get_target(self):
 		init_legacy_globals()
 		global db, portdb, root, _portdb_initialized
@@ -8033,6 +8047,8 @@ class _MtimedbProxy(proxy.objectproxy.ObjectProxy):
 	"""
 	The mtimedb is independent from the portdb and other globals.
 	"""
+
+	__slots__ = ('_name',)
 
 	def __init__(self, name):
 		proxy.objectproxy.ObjectProxy.__init__(self)
