@@ -415,14 +415,18 @@ install_qa_check() {
 			fi
 
 		fi
-		if [[ $abort = yes ]] && [[ $gentoo_bug != yes ]] ; then
-			echo "Please do not file a Gentoo bug and instead" \
-			"report the above QA issues directly to the upstream" \
-			"developers of this software." | fmt -w 70 | \
-			while read line ; do eqawarn "${line}" ; done
-			eqawarn "Homepage: ${HOMEPAGE}"
+		if [[ ${abort} == "yes" ]] ; then
+			if [[ ${gentoo_bug} == "yes" ]] ; then
+				die "poor code kills airplanes"
+			else
+				echo "Please do not file a Gentoo bug and instead" \
+				"report the above QA issues directly to the upstream" \
+				"developers of this software." | fmt -w 70 | \
+				while read line ; do eqawarn "${line}" ; done
+				eqawarn "Homepage: ${HOMEPAGE}"
+				hasq stricter ${FEATURES} && die "poor code kills airplanes"
+			fi
 		fi
-		[[ ${abort} == "yes" ]] && hasq stricter ${FEATURES} && die "poor code kills airplanes"
 	fi
 
 	# Compiled python objects do not belong in /usr/share (FHS violation)
