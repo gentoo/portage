@@ -649,7 +649,6 @@ dyn_setup() {
 }
 
 dyn_unpack() {
-	[ "$(type -t pre_src_unpack)" == "function" ] && qa_call pre_src_unpack
 	local newstuff="no"
 	if [ -e "${WORKDIR}" ]; then
 		local x
@@ -682,7 +681,6 @@ dyn_unpack() {
 	if [ -e "${WORKDIR}" ]; then
 		if [ "$newstuff" == "no" ]; then
 			vecho ">>> WORKDIR is up-to-date, keeping..."
-			[ "$(type -t post_src_unpack)" == "function" ] && qa_call post_src_unpack
 			return 0
 		fi
 	fi
@@ -691,13 +689,12 @@ dyn_unpack() {
 		install -m${PORTAGE_WORKDIR_MODE:-0700} -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
 	fi
 	cd "${WORKDIR}" || die "Directory change failed: \`cd '${WORKDIR}'\`"
+	ebuild_phase pre_src_unpack
 	vecho ">>> Unpacking source..."
 	ebuild_phase src_unpack
 	touch "${PORTAGE_BUILDDIR}/.unpacked" || die "IO Failure -- Failed 'touch .unpacked' in ${PORTAGE_BUILDDIR}"
 	vecho ">>> Source unpacked in ${WORKDIR}"
-	cd "${PORTAGE_BUILDDIR}"
-
-	[ "$(type -t post_src_unpack)" == "function" ] && qa_call post_src_unpack
+	ebuild_phase post_src_unpack
 }
 
 dyn_clean() {
@@ -824,7 +821,7 @@ abort_handler() {
 	echo
 	eval ${3}
 	#unset signal handler
-	trap SIGINT SIGQUIT
+	trap - SIGINT SIGQUIT
 }
 
 abort_prepare() {
@@ -859,7 +856,7 @@ abort_install() {
 
 dyn_prepare() {
 
-	if [[ $PORTAGE_BUILDDIR/.prepared -nt $WORKDIR ]] ; then
+	if [[ -e $PORTAGE_BUILDDIR/.prepared ]] ; then
 		vecho ">>> It appears that '$PF' is already prepared; skipping."
 		vecho ">>> Remove '$PORTAGE_BUILDDIR/.prepared' to force prepare."
 		return 0
@@ -882,12 +879,12 @@ dyn_prepare() {
 	vecho ">>> Source prepared."
 	ebuild_phase post_src_prepare
 
-	trap SIGINT SIGQUIT
+	trap - SIGINT SIGQUIT
 }
 
 dyn_configure() {
 
-	if [[ $PORTAGE_BUILDDIR/.configured -nt $WORKDIR ]] ; then
+	if [[ -e $PORTAGE_BUILDDIR/.configured ]] ; then
 		vecho ">>> It appears that '$PF' is already configured; skipping."
 		vecho ">>> Remove '$PORTAGE_BUILDDIR/.configured' to force configuration."
 		return 0
@@ -895,23 +892,21 @@ dyn_configure() {
 
 	trap abort_configure SIGINT SIGQUIT
 
-	[[ $(type -t pre_src_configure) = function ]] && \
-		qa_call pre_src_configure
+	ebuild_phase pre_src_configure
 
 	vecho ">>> Configuring source in $srcdir ..."
 	ebuild_phase src_configure
 	touch "$PORTAGE_BUILDDIR"/.configured
 	vecho ">>> Source configured."
 
-	[[ $(type -t post_src_configure) = function ]] && \
-		qa_call post_src_configure
+	ebuild_phase post_src_configure
 
-	trap SIGINT SIGQUIT
+	trap - SIGINT SIGQUIT
 }
 
 dyn_compile() {
 
-	if [[ $PORTAGE_BUILDDIR/.compiled -nt $WORKDIR ]] ; then
+	if [[ -e $PORTAGE_BUILDDIR/.compiled ]] ; then
 		vecho ">>> It appears that '${PF}' is already compiled; skipping."
 		vecho ">>> Remove '$PORTAGE_BUILDDIR/.compiled' to force compilation."
 		return 0
@@ -919,17 +914,16 @@ dyn_compile() {
 
 	trap abort_compile SIGINT SIGQUIT
 
-	[[ $(type -t pre_src_compile) = function ]] && \
-		qa_call pre_src_compile
+	ebuild_phase pre_src_compile
 
 	vecho ">>> Compiling source in ${srcdir} ..."
 	ebuild_phase src_compile
 	touch "$PORTAGE_BUILDDIR"/.compiled
 	vecho ">>> Source compiled."
 
-	[ "$(type -t post_src_compile)" == "function" ] && qa_call post_src_compile
+	ebuild_phase post_src_compile
 
-	trap SIGINT SIGQUIT
+	trap - SIGINT SIGQUIT
 }
 
 dyn_test() {
@@ -939,10 +933,9 @@ dyn_test() {
 		# like it's supposed to here.
 		! hasq test ${USE} && export USE="${USE} test"
 	fi
-	[ "$(type -t pre_src_test)" == "function" ] && qa_call pre_src_test
-	if [ "${PORTAGE_BUILDDIR}/.tested" -nt "${WORKDIR}" ]; then
+	ebuild_phase pre_src_test
+	if [[ -e $PORTAGE_BUILDDIR/.tested ]] ; then
 		vecho ">>> It appears that ${PN} has already been tested; skipping."
-		[ "$(type -t post_src_test)" == "function" ] && qa_call post_src_test
 		return
 	fi
 	trap "abort_test" SIGINT SIGQUIT
@@ -962,23 +955,23 @@ dyn_test() {
 		SANDBOX_PREDICT="${SANDBOX_PREDICT%:/}"
 	fi
 
-	cd "${PORTAGE_BUILDDIR}"
-	touch .tested || die "Failed to 'touch .tested' in ${PORTAGE_BUILDDIR}"
-	[ "$(type -t post_src_test)" == "function" ] && qa_call post_src_test
-	trap SIGINT SIGQUIT
+	touch "$PORTAGE_BUILDDIR/.tested" || \
+		die "Failed to 'touch .tested' in $PORTAGE_BUILDDIR"
+	ebuild_phase post_src_test
+	trap - SIGINT SIGQUIT
 }
 
 dyn_install() {
 	[ -z "$PORTAGE_BUILDDIR" ] && die "${FUNCNAME}: PORTAGE_BUILDDIR is unset"
 	if hasq noauto $FEATURES ; then
 		rm -f "${PORTAGE_BUILDDIR}/.installed"
-	elif [[ ${PORTAGE_BUILDDIR}/.installed -nt ${WORKDIR} ]] ; then
+	elif [[ -e $PORTAGE_BUILDDIR/.installed ]] ; then
 		vecho ">>> It appears that '${PF}' is already installed; skipping."
 		vecho ">>> Remove '${PORTAGE_BUILDDIR}/.installed' to force install."
 		return 0
 	fi
 	trap "abort_install" SIGINT SIGQUIT
-	[ "$(type -t pre_src_install)" == "function" ] && qa_call pre_src_install
+	ebuild_phase pre_src_install
 	rm -rf "${PORTAGE_BUILDDIR}/image"
 	mkdir "${PORTAGE_BUILDDIR}/image"
 	if [ -d "${S}" ]; then
@@ -1007,8 +1000,7 @@ dyn_install() {
 	touch "${PORTAGE_BUILDDIR}/.installed"
 	vecho ">>> Completed installing ${PF} into ${ED}"
 	vecho
-	cd ${PORTAGE_BUILDDIR}
-	[ "$(type -t post_src_install)" == "function" ] && qa_call post_src_install
+	ebuild_phase post_src_install
 
 	cd "${PORTAGE_BUILDDIR}"/build-info
 	set -f
@@ -1041,7 +1033,7 @@ dyn_install() {
 	then
 		touch DEBUGBUILD
 	fi
-	trap SIGINT SIGQUIT
+	trap - SIGINT SIGQUIT
 }
 
 dyn_preinst() {
@@ -1166,6 +1158,13 @@ inherit() {
 		debug-print "*** Multiple Inheritence (Level: ${ECLASS_DEPTH})"
 	fi
 
+	if [[ -n $ECLASS && -n ${!__export_funcs_var} ]] ; then
+		echo "QA Notice: EXPORT_FUNCTIONS is called before inherit in" \
+			"$ECLASS.eclass. For compatibility with <=portage-2.1.6.7," \
+			"only call EXPORT_FUNCTIONS after inherit(s)." \
+			| fmt -w 75 | while read ; do eqawarn "$REPLY" ; done
+	fi
+
 	local location
 	local olocation
 	local x
@@ -1183,11 +1182,7 @@ inherit() {
 		olocation=""
 
 		export ECLASS="$1"
-		__export_funcs_var=__export_functions_$ECLASS
-		while [[ $__export_funcs_var =~ [-.] ]] ; do
-			__export_funcs_var=${__export_funcs_var/-/__dash__}
-			__export_funcs_var=${__export_funcs_var/./__dot__}
-		done
+		__export_funcs_var=__export_functions_$ECLASS_DEPTH
 		unset $__export_funcs_var
 
 		if [ "${EBUILD_PHASE}" != "depend" ] && \

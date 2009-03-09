@@ -5996,6 +5996,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		mycpv = "/".join((mysettings["CATEGORY"], mysettings["PF"]))
 
 		emerge_skip_distfiles = returnpid
+		emerge_skip_digest = returnpid
 		# Only try and fetch the files if we are going to need them ...
 		# otherwise, if user has FEATURES=noauto and they run `ebuild clean
 		# unpack compile install`, we will try and fetch 4 times :/
@@ -6052,7 +6053,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			elif mydo == "digest":
 				return not digestgen(aalist, mysettings, overwrite=1,
 					myportdb=mydbapi)
-			elif "digest" in mysettings.features:
+			elif mydo != 'fetch' and not emerge_skip_digest and \
+				"digest" in mysettings.features:
+				# Don't do this when called by emerge or when called just
+				# for fetch (especially parallel-fetch) since it's not needed
+				# and it can interfere with parallel tasks.
 				digestgen(aalist, mysettings, overwrite=0, myportdb=mydbapi)
 		except portage.exception.PermissionDenied, e:
 			writemsg("!!! Permission Denied: %s\n" % (e,), noiselevel=-1)
