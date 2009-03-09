@@ -3003,6 +3003,15 @@ class dblink(object):
 
 		return 1
 
+	def _eqawarn(self, phase, lines):
+		from portage.elog.messages import eqawarn as _eqawarn
+		if self._scheduler is None:
+			for l in lines:
+				_eqawarn(l, phase=phase, key=self.settings.mycpv)
+		else:
+			self._scheduler.dblinkElog(self,
+				phase, _eqawarn, lines)
+
 	def _eerror(self, phase, lines):
 		from portage.elog.messages import eerror as _eerror
 		if self._scheduler is None:
@@ -3059,28 +3068,26 @@ class dblink(object):
 				level=logging.ERROR, noiselevel=-1)
 			return 1
 
-		inforoot_slot_file = os.path.join(inforoot, "SLOT")
-		slot = None
-		try:
-			f = open(inforoot_slot_file)
+		slot = ''
+		for var_name in ('CHOST', 'SLOT'):
 			try:
-				slot = f.read().strip()
-			finally:
-				f.close()
-		except EnvironmentError, e:
-			if e.errno != errno.ENOENT:
-				raise
-			del e
+				val = open(os.path.join(inforoot, var_name)).readline().strip()
+			except EnvironmentError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
+				val = ''
 
-		if slot is None:
-			slot = ""
+			if var_name == 'SLOT':
+				slot = val
+
+			if val != self.settings.get(var_name, ''):
+				self._eqawarn('preinst',
+					["QA Notice: Expected %s='%s', got '%s'\n" % \
+					(var_name, self.settings.get(var_name, ''), val)])
 
 		def eerror(lines):
 			self._eerror("preinst", lines)
-
-		if slot != self.settings["SLOT"]:
-			showMessage("!!! WARNING: Expected SLOT='%s', got '%s'\n" % \
-				(self.settings["SLOT"], slot), level=logging.WARN)
 
 		if not os.path.exists(self.dbcatdir):
 			os.makedirs(self.dbcatdir)
