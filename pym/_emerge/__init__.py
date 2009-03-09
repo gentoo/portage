@@ -10429,6 +10429,51 @@ class Scheduler(PollScheduler):
 
 		return ebuild_phase.returncode
 
+	def _generate_digests(self):
+		"""
+		Generate digests if necessary for --digests or FEATURES=digest.
+		In order to avoid interference, this must done before parallel
+		tasks are started.
+		"""
+
+		if '--fetchonly' in self.myopts:
+			return os.EX_OK
+
+		digest = '--digest' in self.myopts
+		if not digest:
+			for pkgsettings in self.pkgsettings.itervalues():
+				if 'digest' in pkgsettings.features:
+					digest = True
+					break
+
+		if not digest:
+			return os.EX_OK
+
+		for x in self._mergelist:
+			if not isinstance(x, Package) or \
+				x.type_name != 'ebuild' or \
+				x.operation != 'merge':
+				continue
+			pkgsettings = self.pkgsettings[x.root]
+			if '--digest' not in self.myopts and \
+				'digest' not in pkgsettings.features:
+				continue
+			portdb = x.root_config.trees['porttree'].dbapi
+			ebuild_path = portdb.findname(x.cpv)
+			if not ebuild_path:
+				writemsg_level(
+					"!!! Could not locate ebuild for '%s'.\n" \
+					% x.cpv, level=logging.ERROR, noiselevel=-1)
+				return 1
+			pkgsettings['O'] = os.path.dirname(ebuild_path)
+			if not portage.digestgen([], pkgsettings, myportdb=portdb):
+				writemsg_level(
+					"!!! Unable to generate manifest for '%s'.\n" \
+					% x.cpv, level=logging.ERROR, noiselevel=-1)
+				return 1
+
+		return os.EX_OK
+
 	def _check_manifests(self):
 		# Verify all the manifests now so that the user is notified of failure
 		# as soon as possible.
@@ -10635,6 +10680,10 @@ class Scheduler(PollScheduler):
 
 			self.pkgsettings[root] = portage.config(
 				clone=root_config.settings)
+
+		rval = self._generate_digests()
+		if rval != os.EX_OK:
+			return rval
 
 		rval = self._check_manifests()
 		if rval != os.EX_OK:
@@ -14571,27 +14620,6 @@ def action_build(settings, trees, mtimedb,
 
 			# Convert Atom instances to plain str.
 			mtimedb["resume"]["favorites"] = [str(x) for x in favorites]
-
-			digest = '--digest' in myopts
-			if not digest:
-				for pkgsettings in mydepgraph.pkgsettings.itervalues():
-					if 'digest' in pkgsettings.features:
-						digest = True
-						break
-
-			if digest and '--fetchonly' not in myopts:
-				for pkgline in mydepgraph.altlist():
-					if pkgline[0]=="ebuild" and pkgline[3]=="merge":
-						y = trees[pkgline[1]]["porttree"].dbapi.findname(pkgline[2])
-						tmpsettings = portage.config(clone=settings)
-						edebug = 0
-						if settings.get("PORTAGE_DEBUG", "") == "1":
-							edebug = 1
-						retval = portage.doebuild(
-							y, "digest", settings["ROOT"], tmpsettings, edebug,
-							("--pretend" in myopts),
-							mydbapi=trees[pkgline[1]]["porttree"].dbapi,
-							tree="porttree")
 
 			pkglist = mydepgraph.altlist()
 			mydepgraph.saveNomergeFavorites()
