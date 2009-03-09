@@ -14572,7 +14572,14 @@ def action_build(settings, trees, mtimedb,
 			# Convert Atom instances to plain str.
 			mtimedb["resume"]["favorites"] = [str(x) for x in favorites]
 
-			if ("--digest" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
+			digest = '--digest' in myopts
+			if not digest:
+				for pkgsettings in mydepgraph.pkgsettings.itervalues():
+					if 'digest' in pkgsettings.features:
+						digest = True
+						break
+
+			if digest and '--fetchonly' not in myopts:
 				for pkgline in mydepgraph.altlist():
 					if pkgline[0]=="ebuild" and pkgline[3]=="merge":
 						y = trees[pkgline[1]]["porttree"].dbapi.findname(pkgline[2])
