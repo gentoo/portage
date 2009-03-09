@@ -640,7 +640,6 @@ dyn_setup() {
 }
 
 dyn_unpack() {
-	[ "$(type -t pre_src_unpack)" == "function" ] && qa_call pre_src_unpack
 	local newstuff="no"
 	if [ -e "${WORKDIR}" ]; then
 		local x
@@ -673,7 +672,6 @@ dyn_unpack() {
 	if [ -e "${WORKDIR}" ]; then
 		if [ "$newstuff" == "no" ]; then
 			vecho ">>> WORKDIR is up-to-date, keeping..."
-			[ "$(type -t post_src_unpack)" == "function" ] && qa_call post_src_unpack
 			return 0
 		fi
 	fi
@@ -682,6 +680,7 @@ dyn_unpack() {
 		install -m${PORTAGE_WORKDIR_MODE:-0700} -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
 	fi
 	cd "${WORKDIR}" || die "Directory change failed: \`cd '${WORKDIR}'\`"
+	[ "$(type -t pre_src_unpack)" == "function" ] && qa_call pre_src_unpack
 	vecho ">>> Unpacking source..."
 	ebuild_phase src_unpack
 	touch "${PORTAGE_BUILDDIR}/.unpacked" || die "IO Failure -- Failed 'touch .unpacked' in ${PORTAGE_BUILDDIR}"
