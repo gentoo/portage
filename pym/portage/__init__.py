@@ -6009,7 +6009,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			elif mydo == "digest":
 				return not digestgen(aalist, mysettings, overwrite=1,
 					myportdb=mydbapi)
-			elif not emerge_skip_digest and "digest" in mysettings.features:
+			elif not emerge_skip_digest and not parallel_fetchonly and \
+				"digest" in mysettings.features:
 				digestgen(aalist, mysettings, overwrite=0, myportdb=mydbapi)
 		except portage.exception.PermissionDenied, e:
 			writemsg("!!! Permission Denied: %s\n" % (e,), noiselevel=-1)
