@@ -14260,8 +14260,13 @@ def action_build(settings, trees, mtimedb,
 	if pretend or fetchonly:
 		# make the mtimedb readonly
 		mtimedb.filename = None
-	if "--digest" in myopts:
-		msg = "The --digest option can prevent corruption from being" + \
+	if '--digest' in myopts or 'digest' in settings.features:
+		if '--digest' in myopts:
+			msg = "The --digest option"
+		else:
+			msg = "The FEATURES=digest setting"
+
+		msg += " can prevent corruption from being" + \
 			" noticed. The `repoman manifest` command is the preferred" + \
 			" way to generate manifests and it is capable of doing an" + \
 			" entire repository or category at once."
