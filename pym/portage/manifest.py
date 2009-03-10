@@ -21,9 +21,9 @@ def manifest2AuxfileFilter(filename):
 	if "CVS" in mysplit:
 		return False
 	for x in mysplit:
-		if x.startswith("."):
+		if x[:1] == '.':
 			return False
-	return not filename.startswith("digest-")
+	return not filename[:7] == 'digest-'
 
 def manifest2MiscfileFilter(filename):
 	filename = filename.strip(os.sep)
