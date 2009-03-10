@@ -7917,7 +7917,7 @@ def create_trees(config_root=None, target_root=None, trees=None):
 			if k in env_d or \
 				v == backupenv.get(k):
 				backupenv.pop(k, None)
-		settings.regenerate()
+		settings.reset()
 		settings.lock()
 		myroots.append((settings["ROOT"], settings))
 
