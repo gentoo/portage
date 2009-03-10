@@ -45,7 +45,7 @@ def _src_uri_validate(cpv, eapi, src_uri):
 			uri = None
 			_src_uri_validate(cpv, eapi, x)
 			continue
-		if x[:-1] == "?":
+		if x[-1:] == "?":
 			if operator is not None:
 				raise portage.exception.InvalidDependString(
 					("getFetchMap(): '%s' SRC_URI arrow missing " + \
@@ -74,7 +74,7 @@ def _src_uri_validate(cpv, eapi, src_uri):
 				raise portage.exception.InvalidDependString(
 					("getFetchMap(): '%s' SRC_URI '/' character in " + \
 					"file name: '%s'") % (cpv, x))
-			if x[-1] == "?":
+			if x[-1:] == "?":
 				raise portage.exception.InvalidDependString(
 					("getFetchMap(): '%s' SRC_URI arrow missing " + \
 					"right operand") % (cpv,))
