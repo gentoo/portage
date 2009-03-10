@@ -13,7 +13,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.locks:unlockfile',
 	'portage.output:colorize',
 	'portage.util:cmp_sort_key,writemsg',
-	'portage.versions:catpkgsplit,pkgcmp',
+	'portage.versions:catpkgsplit,vercmp',
 )
 
 from portage import auxdbkeys, dep_expand
@@ -60,14 +60,12 @@ class dbapi(object):
 			# If the cpv includes explicit -r0, it has to be preserved
 			# for consistency in findname and aux_get calls, so use a
 			# dict to map strings back to their original values.
-			str_map = {}
-			for i, cpv in enumerate(cpv_list):
-				mysplit = tuple(catpkgsplit(cpv)[1:])
-				str_map[mysplit] = cpv
-				cpv_list[i] = mysplit
-			cpv_list.sort(key=cmp_sort_key(pkgcmp))
-			for i, mysplit in enumerate(cpv_list):
-				cpv_list[i] = str_map[mysplit]
+			ver_map = {}
+			for cpv in cpv_list:
+				ver_map[cpv] = '-'.join(catpkgsplit(cpv)[2:])
+			def cmp_cpv(cpv1, cpv2):
+				return vercmp(ver_map[cpv1], ver_map[cpv2])
+			cpv_list.sort(key=cmp_sort_key(cmp_cpv))
 
 	def cpv_all(self):
 		"""Return all CPVs in the db
