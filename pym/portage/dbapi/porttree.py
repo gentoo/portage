@@ -45,6 +45,11 @@ def _src_uri_validate(cpv, eapi, src_uri):
 			uri = None
 			_src_uri_validate(cpv, eapi, x)
 			continue
+		if x == '||':
+			raise portage.exception.InvalidDependString(
+				("getFetchMap(): '%s' SRC_URI contains invalid " + \
+				"|| operator") % (cpv,))
+
 		if x[-1:] == "?":
 			if operator is not None:
 				raise portage.exception.InvalidDependString(
