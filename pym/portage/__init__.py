@@ -1126,7 +1126,8 @@ class config(object):
 		@type mycpv: String
 		@param config_profile_path: Configurable path to the profile (usually PROFILE_PATH from portage.const)
 		@type config_profile_path: String
-		@param config_incrementals: List of incremental variables (usually portage.const.INCREMENTALS)
+		@param config_incrementals: List of incremental variables
+			(defaults to portage.const.INCREMENTALS)
 		@type config_incrementals: List
 		@param config_root: path to read local config from (defaults to "/", see PORTAGE_CONFIGROOT)
 		@type config_root: String
@@ -1261,8 +1262,7 @@ class config(object):
 			else:
 				self.profile_path = config_profile_path[:]
 
-			if not config_incrementals:
-				writemsg("incrementals not specified to class config\n")
+			if config_incrementals is None:
 				self.incrementals = copy.deepcopy(portage.const.INCREMENTALS)
 			else:
 				self.incrementals = copy.deepcopy(config_incrementals)
@@ -7904,8 +7904,7 @@ def create_trees(config_root=None, target_root=None, trees=None):
 		# When ROOT != "/" we only want overrides from the calling
 		# environment to apply to the config that's associated
 		# with ROOT != "/", so pass an empty dict for the env parameter.
-		settings = config(config_root=None, target_root="/", env={},
-			config_incrementals=portage.const.INCREMENTALS)
+		settings = config(config_root=None, target_root="/", env={})
 		settings.lock()
 		myroots.append((settings["ROOT"], settings))
 
