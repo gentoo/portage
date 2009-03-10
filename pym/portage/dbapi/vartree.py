@@ -62,15 +62,21 @@ class PreservedLibsRegistry(object):
 
 	def load(self):
 		""" Reload the registry data from file """
+		self._data = None
 		try:
 			self._data = pickle.load(open(self._filename, 'rb'))
+		except (ValueError, pickle.UnpicklingError), e:
+			writemsg_level("!!! Error loading '%s': %s\n" % \
+				(self._filename, e), level=logging.ERROR, noiselevel=-1)
 		except (EOFError, IOError), e:
 			if isinstance(e, EOFError) or e.errno == errno.ENOENT:
-				self._data = {}
+				pass
 			elif e.errno == PermissionDenied.errno:
 				raise PermissionDenied(self._filename)
 			else:
-				raise e
+				raise
+		if self._data is None:
+			self._data = {}
 		self._data_orig = self._data.copy()
 	def store(self):
 		""" Store the registry data to file. No need to call this if autocommit
