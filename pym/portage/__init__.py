@@ -1117,7 +1117,7 @@ class config(object):
 
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
-		local_config=True):
+		local_config=True, env=os.environ):
 		"""
 		@param clone: If provided, init will use deepcopy to copy by value the instance.
 		@type clone: Instance of config class.
@@ -1135,6 +1135,9 @@ class config(object):
 		@param local_config: Enables loading of local config (/etc/portage); used most by repoman to
 		ignore local config (keywording and unmasking)
 		@type local_config: Boolean
+		@param env: The calling environment which is used to override settings.
+			Defaults to os.environ if unspecified.
+		@type env: dict
 		"""
 
 		# When initializing the global portage.settings instance, avoid
@@ -1452,7 +1455,7 @@ class config(object):
 				expand_map.update(env_d)
 
 			# backupenv is used for calculating incremental variables.
-			self.backupenv = os.environ.copy()
+			self.backupenv = env.copy()
 
 			if env_d:
 				# Remove duplicate values so they don't override updated
@@ -7897,27 +7900,12 @@ def create_trees(config_root=None, target_root=None, trees=None):
 
 	myroots = [(settings["ROOT"], settings)]
 	if settings["ROOT"] != "/":
-		settings = config(config_root=None, target_root="/",
-			config_incrementals=portage.const.INCREMENTALS)
+
 		# When ROOT != "/" we only want overrides from the calling
 		# environment to apply to the config that's associated
-		# with ROOT != "/", so we wipe out the "backupenv" for the
-		# config that is associated with ROOT == "/" and regenerate
-		# it's incrementals.
-		# Preserve backupenv values that are initialized in the config
-		# constructor. Also, preserve XARGS since it is set by the
-		# portage.data module.
-
-		backupenv_whitelist = settings._environ_whitelist
-		backupenv = settings.configdict["backupenv"]
-		env_d = settings.configdict["env.d"]
-		for k, v in os.environ.iteritems():
-			if k in backupenv_whitelist:
-				continue
-			if k in env_d or \
-				v == backupenv.get(k):
-				backupenv.pop(k, None)
-		settings.reset()
+		# with ROOT != "/", so pass an empty dict for the env parameter.
+		settings = config(config_root=None, target_root="/", env={},
+			config_incrementals=portage.const.INCREMENTALS)
 		settings.lock()
 		myroots.append((settings["ROOT"], settings))
 
