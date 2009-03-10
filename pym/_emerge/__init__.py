@@ -4194,7 +4194,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 			secpass >= 2:
 			try:
 				f = portage.util.atomic_ofstream(self._cache_filename, mode='wb')
-				pickle.dump(self._cache_data, f, -1)
+				pickle.dump(self._cache_data, f, protocol=2)
 				f.close()
 				portage.util.apply_secpass_permissions(
 					self._cache_filename, gid=portage.portage_gid, mode=0644)

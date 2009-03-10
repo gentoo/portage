@@ -7541,7 +7541,7 @@ def commit_mtimedb(mydict=None, filename=None):
 	d.update(mydict)
 	try:
 		f = atomic_ofstream(filename, mode='wb')
-		pickle.dump(d, f, -1)
+		pickle.dump(d, f, protocol=2)
 		f.close()
 		portage.util.apply_secpass_permissions(filename,
 			uid=uid, gid=portage_gid, mode=0644)
