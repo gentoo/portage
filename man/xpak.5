@@ -1,0 +1,190 @@
+.TH XPAK 5 "March 2009" "Portage 2.2" "Portage"
+.SH NAME
+xpak \- The XPAK Data Format
+.SH NOTES
+.SS Data Types
+.IP Integer
+every offset or length(len) value in this documentation will be an unsigned
+32bit integer in big endian byte order(32bit unsigned big int or uint32(big)
+).
+.IP String
+All strings, mentioned in this documentation are ASCII encoded, and not
+nullterminated
+.IP Values
+The actual values of the individual xpak entries are stored as Strings.
+.P
+.SS Vertical Bars
+The vertical bars '|' are not part of the file format, they are merely used to
+illustrate how the offset values apply to the data.
+
+.SH SYNOPSIS
+
+.IP tarball
+     |<-xpak_offset->|
+.br
+<tar>|<    xpak     >|<xpak_offset>"STOP"
+
+.IP xpak
+"XPAKPACK"<index_len><data_len><index><data>"XPAKSTOP"
+
+.IP index
+|<-------------index_len------------->|
+.br
+|<index1><index2><index3><index4><...>|
+
+.IP indexN
+          |<-name_len->|
+.br
+<name_len>|<   name   >|<data_offset><data_len>
+
+.IP data
+|<--------------data_len------------->|
+.br
+|<-dataN_offset->|<-dataN_len->|
+.br
+|<     data     >|<  data_N   >|<data>|
+
+.SH DETAILED
+Every gentoo binary package has a xpak attached to it which contains build
+time information like the use flags it was built with, the ebuild it was
+built from, the environmental variables, CFLAGs, CXXFLAGs, ....
+
+.SS xpak
+
+If you look at a gentoo binary package (binpkg) with a hex-editor you'll
+notice the behinf the data, which belongs to the tarball you find a binary
+blob - the
+.I xpak
+, an offset which holds the bytes from the start of the
+.I xpak
+to the end of the file - 
+.I xpak_offset
+and finally the String
+.I "STOP".
+
+       |<xpak_offset>|
+ <tbz2>|<---xpak---->|<xpak_offset>"STOP"|
+
+Here you see the 
+.I tbz2
+archive, and the attached 
+.I xpak
+blob, the 
+.I xpak-offset
+and
+the string
+.I "STOP"
+at the end.
+
+If we read the offset value and count
+.I offset
+bytes backwards from the start of
+.I xpak_offset
+, we have found the start of the
+.I xpak
+Block which starts with the String
+.I "XPAKPACK".
+This xpak block consists of the string
+.I "XPAKPACK"
+, the length of the 
+.I index
+block - 
+.I index-len
+, the length of the data block -
+.I data-len
+, an 
+.I index-len
+bytes long binary blob with the 
+.I index
+, a 
+.I data-len
+bytes long binary blob with the
+.I data
+and the string 
+.I "XPAKSTOP"
+at the end:
+
+                                |<index_len>|<data_len>|
+ "XPAKPACK"<index_len><data_len>|<--index-->|<--data-->|"XPAKSTOP"
+
+To actually get the 
+.I index
+and the
+.I data
+, we cut out
+.I index_len
+bytes after the end of 
+.I data_len
+ for the index block and then cut out the next 
+.I data_len
+bytes for the data block. If we have done everything right up to this point,
+the following bytes would be the ASCII formatted string
+.I "XPAKSTOP"
+.
+
+The actual data is truncated into one big block - so if we want to read it we
+need the actual positions of each information in this big data block, this
+information can be obtained using the indices which are stored in the
+.I index
+block.
+
+.SS Index block
+The index block consists of several truncated index blocks:
+
+ |<-----------------------index_len---------------------->|
+ |<index1><index2><index3><index4><index5><index6><index7>|
+
+The
+.I index
+block holds all information we need to find the data we want in the 
+.I data
+block. It consists of truncated index elements with a length
+.I index_len.
+Each of those index elements stands for one information in the data block and
+consists of the length of its name (
+.I name_len>
+), a 
+.I name_len
+ bytes long string (the Name of the data block), this index belongs to, the
+offset of the 
+.I data
+block (
+.I data_offset
+) and the length of that data block (
+.I data_len
+):
+
+           |<name_len>|
+ <name_len>|<--name-->|<dataN_offset><dataN_len>
+
+.SS Data block
+the data block contains truncated data blocks with a total length of
+.I data_len
+:
+
+ |<------------------------data_len------------------------>|
+ |<data1><data2><data3><data4><data5><data6><data7><data...>|
+
+This binary block is
+.I data_len
+bytes long and consists of truncated data.
+
+To select one data element, we need the
+.I data_offset
+and the
+.I data_len
+from
+the
+.I index
+, if we have those we can count
+.I data_offset
+bytes from the start of the
+.I data
+block, and then cut out the next
+.I data_len
+bytes. there we got our data block:
+
+ |<-----dataN_offset----->|<--dataN_len->|
+ |<data1data2data3data...>|<data-we-want>|
+.SH AUTHORS
+Lars Hartmann <lars<at>chaotika<dot>org>
