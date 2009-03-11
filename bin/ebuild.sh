@@ -491,7 +491,7 @@ econf() {
 			CONF_LIBDIR="${!LIBDIR_VAR}"
 		fi
 		unset LIBDIR_VAR
-		if [ -n "${CONF_LIBDIR}" ] && [ "${*/--libdir}" == "$*" ]; then
+		if [ -n "${CONF_LIBDIR}" ] && ! hasq --libdir=* "$@" ; then
 			if [ "${*/--exec-prefix}" != "$*" ]; then
 				local args="$(echo $*)"
 				local -a pref=($(echo ${args/*--exec-prefix[= ]}))
