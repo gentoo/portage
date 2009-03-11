@@ -8088,7 +8088,7 @@ class depgraph(object):
 						if not pkg_merge:
 							myprint = "[%s] " % pkgprint(pkg_status.ljust(13))
 						else:
-							myprint = "[" + pkg_type + " " + addl + "] "
+							myprint = "[%s %s] " % (pkgprint(pkg_type), addl)
 						myprint += indent + pkgprint(pkg_key) + " " + \
 							myoldbest + darkgreen("to " + myroot)
 				else:
