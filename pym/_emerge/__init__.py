@@ -5088,10 +5088,6 @@ class depgraph(object):
 		strict = mytype != "installed"
 		try:
 			for dep_root, dep_string, dep_priority in deps:
-				if pkg.onlydeps:
-					# Decrease priority so that --buildpkgonly
-					# hasallzeros() works correctly.
-					dep_priority = DepPriority()
 				if not dep_string:
 					continue
 				if debug:
@@ -13891,9 +13887,12 @@ def action_build(settings, trees, mtimedb,
 				return retval
 			if "--buildpkgonly" in myopts:
 				graph_copy = mydepgraph.digraph.clone()
+				removed_nodes = set()
 				for node in list(graph_copy.order):
-					if not isinstance(node, Package):
-						graph_copy.remove(node)
+					if not isinstance(node, Package) or \
+						node.operation == "nomerge":
+						removed_nodes.add(node)
+				graph_copy.difference_update(removed_nodes)
 				if not graph_copy.hasallzeros(ignore_priority=DepPriority.MEDIUM):
 					print "\n!!! --buildpkgonly requires all dependencies to be merged."
 					print "!!! You have to merge the dependencies before you can build this package.\n"
@@ -13901,9 +13900,12 @@ def action_build(settings, trees, mtimedb,
 	else:
 		if "--buildpkgonly" in myopts:
 			graph_copy = mydepgraph.digraph.clone()
+			removed_nodes = set()
 			for node in list(graph_copy.order):
-				if not isinstance(node, Package):
-					graph_copy.remove(node)
+				if not isinstance(node, Package) or \
+					node.operation == "nomerge":
+					removed_nodes.add(node)
+			graph_copy.difference_update(removed_nodes)
 			if not graph_copy.hasallzeros(ignore_priority=DepPriority.MEDIUM):
 				print "\n!!! --buildpkgonly requires all dependencies to be merged."
 				print "!!! Cannot merge requested packages. Merge deps and try again.\n"
