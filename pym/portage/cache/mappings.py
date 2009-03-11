@@ -3,6 +3,7 @@
 # License: GPL2
 # $Id$
 
+import sys
 import UserDict
 import warnings
 import weakref
@@ -65,6 +66,10 @@ class ProtectedDict(UserDict.DictMixin):
 			DeprecationWarning)
 		return key in self
 
+	if sys.hexversion >= 0x3000000:
+		keys = __iter__
+		items = iteritems
+
 class LazyLoad(UserDict.DictMixin):
 	"""
 	Lazy loading of values for a dict
@@ -110,6 +115,10 @@ class LazyLoad(UserDict.DictMixin):
 			self.d.update(self.pull())
 			self.pull = None
 		return key in self.d
+
+	if sys.hexversion >= 0x3000000:
+		keys = __iter__
+		items = iteritems
 
 _slot_dict_classes = weakref.WeakValueDictionary()
 
@@ -264,6 +273,11 @@ def slot_dict_class(keys, prefix="_val_"):
 
 			def __str__(self):
 				return str(dict(self.iteritems()))
+
+			if sys.hexversion >= 0x3000000:
+				items = iteritems
+				keys = __iter__
+				values = itervalues
 
 		v = SlotDict
 		_slot_dict_classes[v.allowed_keys] = v

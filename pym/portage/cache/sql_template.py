@@ -3,6 +3,7 @@
 # License: GPL2
 # $Id$
 
+import sys
 from portage.cache import template, cache_errors
 from portage.cache.template import reconstruct_eclasses
 
@@ -277,3 +278,5 @@ class SQLDatabase(template.database):
 
 		return [ row[0] for row in self.con.fetchall() ]
 
+	if sys.hexversion >= 0x3000000:
+		items = iteritems

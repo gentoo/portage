@@ -9,6 +9,7 @@ try:
 except ImportError:
 	import pickle
 import os
+import sys
 from portage.cache import fs_template
 from portage.cache import cache_errors
 
@@ -70,3 +71,6 @@ class database(fs_template.FsBased):
 		if "__db" in self.__dict__ and self.__db != None:
 			self.__db.sync()
 			self.__db.close()
+
+	if sys.hexversion >= 0x3000000:
+		items = iteritems

@@ -6,6 +6,7 @@
 from portage.cache import cache_errors
 from portage.cache.cache_errors import InvalidRestriction
 from portage.cache.mappings import ProtectedDict
+import sys
 import warnings
 
 class database(object):
@@ -177,6 +178,9 @@ class database(object):
 			if cont:
 				yield cpv
 
+	if sys.hexversion >= 0x3000000:
+		keys = __iter__
+		items = iteritems
 
 def serialize_eclasses(eclass_dict):
 	"""takes a dict, returns a string representing said dict"""
