@@ -73,17 +73,30 @@ if platform.system() in ["FreeBSD"]:
 
 try:
 	from portage.cache.cache_errors import CacheError
-	import portage.cvstree
-	import portage.xpak
-	import portage.getbinpkg
-	import portage.dep
-	from portage.dep import dep_getcpv, dep_getkey, get_operator, \
-		isjustname, isspecific, isvalidatom, \
-		match_from_list, match_to_list, best_match_to_list
-
-	# XXX: This needs to get cleaned up.
-	import portage.output
-	from portage.output import bold, colorize, green, red, yellow
+	import portage.util as util
+	util.lazy_import(globals(),
+		'portage.checksum',
+		'portage.checksum:perform_checksum,perform_md5,prelink_capable',
+		'portage.cvstree',
+		'portage.dep',
+		'portage.dep:best_match_to_list,dep_getcpv,dep_getkey,' + \
+			'get_operator,isjustname,isspecific,isvalidatom,' + \
+			'match_from_list,match_to_list',
+		'portage.eclass_cache',
+		'portage.getbinpkg',
+		'portage.locks',
+		'portage.locks:lockdir,lockfile,unlockdir,unlockfile',
+		'portage.output',
+		'portage.output:bold,colorize',
+		'portage.process',
+		'portage.process:atexit_register,run_exitfuncs',
+		'portage.update:dep_transform,fixdbentries,grab_updates,' + \
+			'parse_updates,update_config_files,update_dbentries,' + \
+			'update_dbentry',
+		'portage.versions:best,catpkgsplit,catsplit,endversion_keys,' + \
+			'suffix_value@endversion,pkgcmp,pkgsplit,vercmp,ververify',
+		'portage.xpak',
+	)
 
 	import portage.const
 	from portage.const import VDB_PATH, PRIVATE_PATH, CACHE_PATH, DEPCACHE_PATH, \
@@ -99,31 +112,13 @@ try:
 	                         portage_uid, portage_gid, userpriv_groups
 	from portage.manifest import Manifest
 
-	import portage.util
 	from portage.util import atomic_ofstream, apply_secpass_permissions, apply_recursive_permissions, \
 		dump_traceback, getconfig, grabdict, grabdict_package, grabfile, grabfile_package, \
 		map_dictlist_vals, new_protect_filename, normalize_path, \
 		pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, \
 		unique_array, varexpand, writedict, writemsg, writemsg_stdout, write_atomic
 	import portage.exception
-	import portage.locks
-	import portage.process
-	from portage.process import atexit_register, run_exitfuncs
-	from portage.locks import unlockfile,unlockdir,lockfile,lockdir
-	import portage.checksum
-	from portage.checksum import perform_md5,perform_checksum,prelink_capable
-	import portage.eclass_cache
 	from portage.localization import _
-	from portage.update import dep_transform, fixdbentries, grab_updates, \
-		parse_updates, update_config_files, update_dbentries, update_dbentry
-
-	# Need these functions directly in portage namespace to not break every external tool in existence
-	from portage.versions import best, catpkgsplit, catsplit, pkgcmp, \
-		pkgsplit, vercmp, ververify
-
-	# endversion and endversion_keys are for backward compatibility only.
-	from portage.versions import endversion_keys
-	from portage.versions import suffix_value as endversion
 
 except ImportError, e:
 	sys.stderr.write("\n\n")
