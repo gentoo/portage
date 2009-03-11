@@ -71,8 +71,7 @@ class database(flat_hash.database):
 	def _setitem(self, cpv, values):
 		if "_eclasses_" in values:
 			values = ProtectedDict(values)
-			values["INHERITED"] = ' '.join(sorted(
-				reconstruct_eclasses(cpv, values["_eclasses_"])))
+			values["INHERITED"] = ' '.join(sorted(values["_eclasses_"]))
 
 		s = cpv.rfind("/")
 		fp = os.path.join(self.location,cpv[:s],
