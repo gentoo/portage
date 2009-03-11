@@ -322,6 +322,12 @@ class EMakeParallelDisabled(LineCheck):
 	re = re.compile(r'^\s*emake\s+-j\s*1\s')
 	error = errors.EMAKE_PARALLEL_DISABLED
 
+class EMakeParallelDisabledViaMAKEOPTS(LineCheck):
+	"""Check for MAKEOPTS=-j1 that disables parallelization."""
+	repoman_check_name = 'upstream.workaround'
+	re = re.compile(r'^\s*MAKEOPTS=(\'|")?.*-j\s*1\b')
+	error = errors.EMAKE_PARALLEL_DISABLED_VIA_MAKEOPTS
+
 class DeprecatedBindnowFlags(LineCheck):
 	"""Check for calls to the deprecated bindnow-flags function."""
 	repoman_check_name = 'ebuild.minorsyn'
@@ -354,8 +360,8 @@ _constant_checks = tuple((c() for c in (
 	EbuildUselessCdS, EbuildNestedDie,
 	EbuildPatches, EbuildQuotedA,
 	IUseUndefined, ImplicitRuntimeDeps, InheritAutotools,
-	EMakeParallelDisabled, DeprecatedBindnowFlags,
-	WantAutoDefaultValue, PortageInternal)))
+	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS,
+	DeprecatedBindnowFlags, WantAutoDefaultValue, PortageInternal)))
 
 def run_checks(contents, pkg):
 	checks = _constant_checks
