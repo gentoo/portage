@@ -2255,19 +2255,19 @@ class SpawnProcess(SubProcess):
 		else:
 			fd_pipes[0] = fd_pipes_orig[0]
 
-		files.process = os.fdopen(master_fd, 'r')
+		files.process = os.fdopen(master_fd, 'rb')
 		if logfile is not None:
 
 			fd_pipes[1] = slave_fd
 			fd_pipes[2] = slave_fd
 
-			files.log = open(logfile, "a")
+			files.log = open(logfile, mode='ab')
 			portage.util.apply_secpass_permissions(logfile,
 				uid=portage.portage_uid, gid=portage.portage_gid,
 				mode=0660)
 
 			if not self.background:
-				files.stdout = os.fdopen(os.dup(fd_pipes_orig[1]), 'w')
+				files.stdout = os.fdopen(os.dup(fd_pipes_orig[1]), 'wb')
 
 			output_handler = self._output_handler
 
