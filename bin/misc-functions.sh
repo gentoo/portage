@@ -152,6 +152,8 @@ install_qa_check() {
 			eqawarn " at http://bugs.gentoo.org/ to make sure the file is fixed."
 			eqawarn " For more information, see http://hardened.gentoo.org/gnu-stack.xml"
 			eqawarn " Please include the following list of files in your report:"
+			eqawarn " Note: Bugs should be filed for the respective maintainers"
+			eqawarn " of the package in question and not hardened@"
 			eqawarn "${f}"
 			vecho -ne '\a\n'
 			die_msg="${die_msg} execstacks"
