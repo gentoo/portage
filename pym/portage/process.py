@@ -175,7 +175,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	"""
 
 	# mycommand is either a str or a list
-	if isinstance(mycommand, str):
+	if isinstance(mycommand, basestring):
 		mycommand = mycommand.split()
 
 	# If an absolute path to an executable file isn't given

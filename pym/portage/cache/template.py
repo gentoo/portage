@@ -169,7 +169,7 @@ class database(object):
 		for key,match in match_dict.iteritems():
 			# XXX this sucks.
 			try:
-				if isinstance(match, str):
+				if isinstance(match, basestring):
 					restricts[key] = re.compile(match).match
 				else:
 					restricts[key] = re.compile(match[0],match[1]).match

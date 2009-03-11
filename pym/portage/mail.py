@@ -17,7 +17,7 @@ def create_message(sender, recipient, subject, body, attachments=None):
 		for x in attachments:
 			if isinstance(x, BaseMessage):
 				mymessage.attach(x)
-			elif isinstance(x, str):
+			elif isinstance(x, basestring):
 				mymessage.attach(TextMessage(x))
 			else:
 				raise portage.exception.PortageException("Can't handle type of attachment: %s" % type(x))
