@@ -368,11 +368,11 @@ class digraph(object):
 			self.nodes[parent] = ({}, {}, parent)
 			self.order.append(parent)
 
-		priorities = self.nodes[node][1].setdefault(parent, [])
-		priorities.append(priority)
-		priorities.sort()
-
-		priorities = self.nodes[parent][0].setdefault(node, [])
+		priorities = self.nodes[node][1].get(parent)
+		if priorities is None:
+			priorities = []
+			self.nodes[node][1][parent] = priorities
+			self.nodes[parent][0][node] = priorities
 		priorities.append(priority)
 		priorities.sort()
 
@@ -560,13 +560,22 @@ class digraph(object):
 	def clone(self):
 		clone = digraph()
 		clone.nodes = {}
+		memo = {}
 		for children, parents, node in self.nodes.itervalues():
 			children_clone = {}
 			for child, priorities in children.iteritems():
-				children_clone[child] = priorities[:]
+				priorities_clone = memo.get(id(priorities))
+				if priorities_clone is None:
+					priorities_clone = priorities[:]
+					memo[id(priorities)] = priorities_clone
+				children_clone[child] = priorities_clone
 			parents_clone = {}
 			for parent, priorities in parents.iteritems():
-				parents_clone[parent] = priorities[:]
+				priorities_clone = memo.get(id(priorities))
+				if priorities_clone is None:
+					priorities_clone = priorities[:]
+					memo[id(priorities)] = priorities_clone
+				parents_clone[parent] = priorities_clone
 			clone.nodes[node] = (children_clone, parents_clone, node)
 		clone.order = self.order[:]
 		return clone
