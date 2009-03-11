@@ -252,10 +252,13 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 	ret_list = []
 	ret_ftype = []
 	for x in range(0, len(list)):
-		if(ignorecvs and (len(list[x]) > 2) and (list[x][:2]!=".#")):
-			ret_list.append(list[x])
-			ret_ftype.append(ftype[x])
-		elif (list[x] not in ignorelist):
+		if list[x] in ignorelist:
+			pass
+		elif ignorecvs:
+			if list[x][:2] != ".#":
+				ret_list.append(list[x])
+				ret_ftype.append(ftype[x])
+		else:
 			ret_list.append(list[x])
 			ret_ftype.append(ftype[x])
 
