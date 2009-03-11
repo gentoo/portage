@@ -1568,7 +1568,12 @@ class Package(Task):
 		self.root = self.root_config.root
 		self.metadata = _PackageMetadataWrapper(self, self.metadata)
 		self.cp = portage.cpv_getkey(self.cpv)
-		self.slot_atom = portage.dep.Atom("%s:%s" % (self.cp, self.slot))
+		slot = self.slot
+		if not slot:
+			# Avoid an InvalidAtom exception when creating slot_atom.
+			# This package instance will be masked due to empty SLOT.
+			slot = '0'
+		self.slot_atom = portage.dep.Atom("%s:%s" % (self.cp, slot))
 		self.category, self.pf = portage.catsplit(self.cpv)
 		self.cpv_split = portage.catpkgsplit(self.cpv)
 		self.pv_split = self.cpv_split[1:]
