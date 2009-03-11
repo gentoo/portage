@@ -8498,13 +8498,19 @@ class depgraph(object):
 			# masked.
 			if not self._create_graph(allow_unsatisfied=True):
 				return False
-			if masked_tasks or self._unsatisfied_deps:
+
+			# TODO: Add sanity checks to make sure that it's really
+			# safe to ignore all the deps that can be ignored here.
+			unsatisfied_deps = [x for x in self._unsatisfied_deps \
+				if isinstance(x.parent, Package) and \
+				x.parent.operation == "merge"]
+			if masked_tasks or unsatisfied_deps:
 				# This probably means that a required package
 				# was dropped via --skipfirst. It makes the
 				# resume list invalid, so convert it to a
 				# UnsatisfiedResumeDep exception.
 				raise self.UnsatisfiedResumeDep(self,
-					masked_tasks + self._unsatisfied_deps)
+					masked_tasks + unsatisfied_deps)
 			self._serialized_tasks_cache = None
 			try:
 				self.altlist()
