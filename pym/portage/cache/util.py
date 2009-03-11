@@ -53,13 +53,14 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 			except cache_errors.CacheError:
 				pass
 
+		for d in (entry, trg):
+			if d is not None and d.get('EAPI') in ('', '0'):
+				del d['EAPI']
+
 		if trg and not write_it:
 			""" We don't want to skip the write unless we're really sure that
 			the existing cache is identical, so don't trust _mtime_ and
 			_eclasses_ alone."""
-			for d in (entry, trg):
-				if "EAPI" in d and d["EAPI"] in ("", "0"):
-					del d["EAPI"]
 			for k in set(chain(entry, trg)).difference(
 				("_mtime_", "_eclasses_")):
 				if trg.get(k, "") != entry.get(k, ""):
