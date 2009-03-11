@@ -461,17 +461,15 @@ hasg() {
     for x ; do [[ ${x} == ${s} ]] && echo "${x}" && return 0 ; done
     return 1
 }
+hasgq() { hasg "$@" >/dev/null ; }
 econf() {
 	local x
-	local LOCAL_EXTRA_ECONF="${EXTRA_ECONF}"
 
 	! hasq "$EAPI" 0 1 && [[ $EBUILD_PHASE = compile && \
 		$(type -t src_configure) = function ]] && \
 		eqawarn "econf called in src_compile instead of src_configure"
 
-	if [ -z "${ECONF_SOURCE}" ]; then
-		ECONF_SOURCE="."
-	fi
+	: ${ECONF_SOURCE:=.}
 	if [ -x "${ECONF_SOURCE}/configure" ]; then
 		if [ -e /usr/share/gnuconfig/ ]; then
 			find "${WORKDIR}" -type f '(' \
@@ -482,64 +480,37 @@ econf() {
 			done
 		fi
 
-		if [ ! -z "${CBUILD}" ]; then
-			LOCAL_EXTRA_ECONF="--build=${CBUILD} ${LOCAL_EXTRA_ECONF}"
-		fi
-
-		if [ ! -z "${CTARGET}" ]; then
-			LOCAL_EXTRA_ECONF="--target=${CTARGET} ${LOCAL_EXTRA_ECONF}"
-		fi
-
 		# if the profile defines a location to install libs to aside from default, pass it on.
 		# if the ebuild passes in --libdir, they're responsible for the conf_libdir fun.
-		LIBDIR_VAR="LIBDIR_${ABI}"
-		if [ -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then
-			CONF_LIBDIR="${!LIBDIR_VAR}"
+		local CONF_LIBDIR LIBDIR_VAR="LIBDIR_${ABI}"
+		if [[ -n ${ABI} && -n ${!LIBDIR_VAR} ]] ; then
+			CONF_LIBDIR=${!LIBDIR_VAR}
 		fi
-		unset LIBDIR_VAR
-		if [ -n "${CONF_LIBDIR}" ] && ! hasg --libdir=* "$@" ; then
-			if [ "${*/--exec-prefix}" != "$*" ]; then
-				local args="$(echo $*)"
-				local -a pref=($(echo ${args/*--exec-prefix[= ]}))
-				CONF_PREFIX=${pref}
-				[ "${CONF_PREFIX:0:1}" != "/" ] && CONF_PREFIX="/${CONF_PREFIX}"
-			elif [ "${*/--prefix}" != "$*" ]; then
-				local args="$(echo $*)"
-				local -a pref=($(echo ${args/*--prefix[= ]}))
-				CONF_PREFIX=${pref}
-				[ "${CONF_PREFIX:0:1}" != "/" ] && CONF_PREFIX="/${CONF_PREFIX}"
-			else
-				CONF_PREFIX="/usr"
-			fi
-			export CONF_PREFIX
-			[ "${CONF_LIBDIR:0:1}" != "/" ] && CONF_LIBDIR="/${CONF_LIBDIR}"
-
-			CONF_LIBDIR_RESULT="$(strip_duplicate_slashes ${CONF_PREFIX}${CONF_LIBDIR})"
-
-			LOCAL_EXTRA_ECONF="--libdir=${CONF_LIBDIR_RESULT} ${LOCAL_EXTRA_ECONF}"
+		if [[ -n ${CONF_LIBDIR} ]] && ! hasgq --libdir=* "$@" ; then
+			export CONF_PREFIX=$(hasg --exec-prefix=* "$@")
+			[[ -z ${CONF_PREFIX} ]] && CONF_PREFIX=$(hasg --prefix=* "$@")
+			: ${CONF_PREFIX:=/usr}
+			CONF_PREFIX=${CONF_PREFIX#*=}
+			[[ ${CONF_PREFIX} != /* ]] && CONF_PREFIX="/${CONF_PREFIX}"
+			[[ ${CONF_LIBDIR} != /* ]] && CONF_LIBDIR="/${CONF_LIBDIR}"
+			set -- --libdir="$(strip_duplicate_slashes ${CONF_PREFIX}${CONF_LIBDIR})" "$@"
 		fi
 
-		vecho "${ECONF_SOURCE}/configure" \
+		set -- \
 			--prefix=/usr \
+			${CBUILD:+--build=${CBUILD}} \
 			--host=${CHOST} \
+			${CTARGET:+--target=${CTARGET}} \
 			--mandir=/usr/share/man \
 			--infodir=/usr/share/info \
 			--datadir=/usr/share \
 			--sysconfdir=/etc \
 			--localstatedir=/var/lib \
 			"$@" \
-			${LOCAL_EXTRA_ECONF}
+			${EXTRA_ECONF}
+		vecho "${ECONF_SOURCE}/configure" "$@"
 
-		if ! "${ECONF_SOURCE}/configure" \
-			--prefix=/usr \
-			--host=${CHOST} \
-			--mandir=/usr/share/man \
-			--infodir=/usr/share/info \
-			--datadir=/usr/share \
-			--sysconfdir=/etc \
-			--localstatedir=/var/lib \
-			"$@"  \
-			${LOCAL_EXTRA_ECONF}; then
+		if ! "${ECONF_SOURCE}/configure" "$@" ; then
 
 			if [ -s config.log ]; then
 				echo
@@ -548,7 +519,7 @@ econf() {
 			fi
 			die "econf failed"
 		fi
-	elif [ -f "${ECONF_SOURCE:-.}/configure" ]; then
+	elif [ -f "${ECONF_SOURCE}/configure" ]; then
 		die "configure is not executable"
 	else
 		die "no configure script found"
