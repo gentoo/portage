@@ -73,14 +73,19 @@ install_qa_check() {
 		# (older, broken libtools would do this).  Also check for null paths
 		# because the loader will search $PWD when it finds null paths.
 		f=$(scanelf -qyRF '%r %p' "${D}" | grep -E "(${PORTAGE_BUILDDIR}|: |::|^:|^ )")
-		if [[ -n ${f} ]] ; then
+		# Reject set*id binaries with $ORIGIN in RPATH #260331
+		x=$(
+			find "${D}" -type f -perm /6000 -print0 | xargs -0 \
+			scanelf -qyRF '%r %p' | grep '$ORIGIN'
+		)
+		if [[ -n ${f}${x} ]] ; then
 			vecho -ne '\a\n'
 			eqawarn "QA Notice: The following files contain insecure RUNPATH's"
 			eqawarn " Please file a bug about this at http://bugs.gentoo.org/"
 			eqawarn " with the maintaining herd of the package."
-			eqawarn "${f}"
+			eqawarn "${f}${f:+${x:+\n}}${x}"
 			vecho -ne '\a\n'
-			if has stricter ${FEATURES} ; then
+			if [[ -n ${x} ]] || has stricter ${FEATURES} ; then
 				insecure_rpath=1
 			else
 				vecho "Auto fixing rpaths for ${f}"
