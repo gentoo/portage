@@ -850,7 +850,7 @@ abort_install() {
 
 dyn_prepare() {
 
-	if [[ $PORTAGE_BUILDDIR/.prepared -nt $WORKDIR ]] ; then
+	if [[ -e $PORTAGE_BUILDDIR/.prepared ]] ; then
 		vecho ">>> It appears that '$PF' is already prepared; skipping."
 		vecho ">>> Remove '$PORTAGE_BUILDDIR/.prepared' to force prepare."
 		return 0
@@ -878,7 +878,7 @@ dyn_prepare() {
 
 dyn_configure() {
 
-	if [[ $PORTAGE_BUILDDIR/.configured -nt $WORKDIR ]] ; then
+	if [[ -e $PORTAGE_BUILDDIR/.configured ]] ; then
 		vecho ">>> It appears that '$PF' is already configured; skipping."
 		vecho ">>> Remove '$PORTAGE_BUILDDIR/.configured' to force configuration."
 		return 0
@@ -902,7 +902,7 @@ dyn_configure() {
 
 dyn_compile() {
 
-	if [[ $PORTAGE_BUILDDIR/.compiled -nt $WORKDIR ]] ; then
+	if [[ -e $PORTAGE_BUILDDIR/.compiled ]] ; then
 		vecho ">>> It appears that '${PF}' is already compiled; skipping."
 		vecho ">>> Remove '$PORTAGE_BUILDDIR/.compiled' to force compilation."
 		return 0
@@ -931,9 +931,8 @@ dyn_test() {
 		! hasq test ${USE} && export USE="${USE} test"
 	fi
 	[ "$(type -t pre_src_test)" == "function" ] && qa_call pre_src_test
-	if [ "${PORTAGE_BUILDDIR}/.tested" -nt "${WORKDIR}" ]; then
+	if [[ -e $PORTAGE_BUILDDIR/.tested ]] ; then
 		vecho ">>> It appears that ${PN} has already been tested; skipping."
-		[ "$(type -t post_src_test)" == "function" ] && qa_call post_src_test
 		return
 	fi
 	trap "abort_test" SIGINT SIGQUIT
@@ -963,7 +962,7 @@ dyn_install() {
 	[ -z "$PORTAGE_BUILDDIR" ] && die "${FUNCNAME}: PORTAGE_BUILDDIR is unset"
 	if hasq noauto $FEATURES ; then
 		rm -f "${PORTAGE_BUILDDIR}/.installed"
-	elif [[ ${PORTAGE_BUILDDIR}/.installed -nt ${WORKDIR} ]] ; then
+	elif [[ -e $PORTAGE_BUILDDIR/.installed ]] ; then
 		vecho ">>> It appears that '${PF}' is already installed; skipping."
 		vecho ">>> Remove '${PORTAGE_BUILDDIR}/.installed' to force install."
 		return 0
