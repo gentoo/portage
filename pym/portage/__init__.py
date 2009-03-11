@@ -561,8 +561,14 @@ class digraph(object):
 	def clone(self):
 		clone = digraph()
 		clone.nodes = {}
-		for k, v in self.nodes.iteritems():
-			clone.nodes[k] = (v[0].copy(), v[1].copy(), v[2])
+		for children, parents, node in self.nodes.itervalues():
+			children_clone = {}
+			for child, priorities in children.iteritems():
+				children_clone[child] = priorities[:]
+			parents_clone = {}
+			for parent, priorities in parents.iteritems():
+				parents_clone[parent] = priorities[:]
+			clone.nodes[node] = (children_clone, parents_clone, node)
 		clone.order = self.order[:]
 		return clone
 
