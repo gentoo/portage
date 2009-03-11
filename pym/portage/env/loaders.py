@@ -275,7 +275,7 @@ class KeyValuePairFileLoader(FileLoader):
 				% (line_num + 1, line))
 			return
 		key = split[0].strip()
-		value = split[1].split()
+		value = split[1].strip()
 		if not key:
 			errors.setdefault(self.fname, []).append(
 				"Malformed key at line: %s, key %s"
