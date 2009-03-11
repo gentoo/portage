@@ -506,14 +506,8 @@ class Atom(object):
 	__metaclass__ = _AtomCache
 	_atoms = weakref.WeakValueDictionary()
 
-	_str_methods = ("endswith", "find", "index", "lstrip", "replace",
-		"startswith", "split", "strip",
-		"rindex", "rfind", "rstrip", "__getitem__",
-		"__eq__", "__hash__", "__len__", "__lt__",
-		"__ne__", "__repr__", "__str__")
-
 	__slots__ = ("__weakref__", "blocker", "cp", "cpv", "operator",
-		"slot", "use") + _str_methods
+		"slot", "use", "_str")
 
 	class _blocker(object):
 		__slots__ = ("overlap",)
@@ -531,8 +525,7 @@ class Atom(object):
 		if not isvalidatom(s, allow_blockers=True):
 			raise InvalidAtom(s)
 		obj_setattr = object.__setattr__
-		for x in self._str_methods:
-			obj_setattr(self, x, getattr(s, x))
+		obj_setattr(self, '_str', s)
 
 		blocker = "!" == s[:1]
 		if blocker:
@@ -560,6 +553,65 @@ class Atom(object):
 	def __setattr__(self, name, value):
 		raise AttributeError("Atom instances are immutable",
 			self.__class__, name, value)
+
+	# Implement some common str methods.
+
+	def __eq__(self, other):
+		return self._str == other
+
+	def __getitem__(self, key):
+		return self._str[key]
+
+	def __hash__(self):
+		return hash(self._str)
+
+	def __len__(self):
+		return len(self._str)
+
+	def __lt__(self, other):
+		return self._str < other
+
+	def __ne__(self, other):
+		return self._str != other
+
+	def __repr__(self):
+		return repr(self._str)
+
+	def __str__(self):
+		return str(self._str)
+
+	def endswith(self, *pargs, **kargs):
+		return self._str.endswith(*pargs, **kargs)
+
+	def find(self, *pargs, **kargs):
+		return self._str.find(*pargs, **kargs)
+
+	def index(self, *pargs, **kargs):
+		return self._str.index(*pargs, **kargs)
+
+	def lstrip(self, *pargs, **kargs):
+		return self._str.lstrip(*pargs, **kargs)
+
+	def replace(self, *pargs, **kargs):
+		return self._str.replace(*pargs, **kargs)
+
+	def startswith(self, *pargs, **kargs):
+		return self._str.startswith(*pargs, **kargs)
+
+	def split(self, *pargs, **kargs):
+		return self._str.split(*pargs, **kargs)
+
+	def strip(self, *pargs, **kargs):
+		return self._str.strip(*pargs, **kargs)
+
+	def rindex(self, *pargs, **kargs):
+		return self._str.rindex(*pargs, **kargs)
+
+	def rfind(self, *pargs, **kargs):
+		return self._str.rfind(*pargs, **kargs)
+
+	def rstrip(self, *pargs, **kargs):
+		return self._str.rstrip(*pargs, **kargs)
 
 def get_operator(mydep):
 	"""
