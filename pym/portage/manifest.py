@@ -291,7 +291,9 @@ class Manifest(object):
 		for pkgdir, pkgdir_dirs, pkgdir_files in os.walk(self.pkgdir):
 			break
 		for f in pkgdir_files:
-			if f.endswith(".ebuild"):
+			if f[:1] == ".":
+				continue
+			elif f[-7:] == ".ebuild":
 				mytype = "EBUILD"
 				pf = f[:-7]
 				ps = portage.versions.pkgsplit(pf)
