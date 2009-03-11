@@ -372,7 +372,7 @@ class vardbapi(dbapi):
 					del self._aux_cache["packages"][cpv]
 			del self._aux_cache["modified"]
 			try:
-				f = atomic_ofstream(self._aux_cache_filename)
+				f = atomic_ofstream(self._aux_cache_filename, 'wb')
 				pickle.dump(self._aux_cache, f, -1)
 				f.close()
 				apply_secpass_permissions(
@@ -390,9 +390,8 @@ class vardbapi(dbapi):
 	def _aux_cache_init(self):
 		aux_cache = None
 		try:
-			f = open(self._aux_cache_filename)
+			f = open(self._aux_cache_filename, 'rb')
 			mypickle = pickle.Unpickler(f)
-			mypickle.find_global = None
 			aux_cache = mypickle.load()
 			f.close()
 			del f
