@@ -909,72 +909,21 @@ class AbstractDepPriority(SlotObject):
 		return copy.copy(self)
 
 class DepPriority(AbstractDepPriority):
-	"""
-		This class generates an integer priority level based of various
-		attributes of the dependency relationship.  Attributes can be assigned
-		at any time and the new integer value will be generated on calls to the
-		__int__() method.  Rich comparison operators are supported.
 
-		The boolean attributes that affect the integer value are "satisfied",
-		"buildtime", "runtime", and "system".  Various combinations of
-		attributes lead to the following priority levels:
-
-		Combination of properties           Priority  Category
-
-		not satisfied and buildtime            0       HARD
-		not satisfied and runtime             -1       MEDIUM
-		not satisfied and runtime_post        -2       MEDIUM_SOFT
-		satisfied and buildtime and rebuild   -3       SOFT
-		satisfied and buildtime               -4       SOFT
-		satisfied and runtime                 -5       SOFT
-		satisfied and runtime_post            -6       SOFT
-		optional                              -7       SOFT
-		(none of the above)                   -7       SOFT
-
-		Several integer constants are defined for categorization of priority
-		levels:
-
-		MEDIUM   The upper boundary for medium dependencies.
-		MEDIUM_SOFT   The upper boundary for medium-soft dependencies.
-		SOFT     The upper boundary for soft dependencies.
-		MIN      The lower boundary for soft dependencies.
-	"""
 	__slots__ = ("satisfied", "optional", "rebuild")
-	MEDIUM = -1
-	MEDIUM_SOFT = -2
-	SOFT   = -3
-	MIN    = -7
 
 	def __int__(self):
-		if self.optional:
-			return -7
-		if not self.satisfied:
-			if self.buildtime:
-				return 0
-			if self.runtime:
-				return -1
-			if self.runtime_post:
-				return -2
-		if self.buildtime:
-			if self.rebuild:
-				return -3
-			return -4
-		if self.runtime:
-			return -5
-		if self.runtime_post:
-			return -6
-		return -7
+		return 0
 
 	def __str__(self):
 		if self.optional:
 			return "optional"
-		myvalue = self.__int__()
-		if myvalue > self.MEDIUM:
-			return "hard"
-		if myvalue > self.MEDIUM_SOFT:
-			return "medium"
-		if myvalue > self.SOFT:
-			return "medium-soft"
+		if self.buildtime:
+			return "buildtime"
+		if self.runtime:
+			return "runtime"
+		if runtime_post:
+			return "runtime_post"
 		return "soft"
 
 class BlockerDepPriority(DepPriority):
@@ -1013,6 +962,145 @@ class UnmergeDepPriority(AbstractDepPriority):
 		if myvalue > self.SOFT:
 			return "hard"
 		return "soft"
+
+class DepPriorityNormalRange(object):
+	"""
+	DepPriority properties              Index      Category
+
+	buildtime                                      HARD
+	runtime                                3       MEDIUM
+	runtime_post                           2       MEDIUM_SOFT
+	optional                               1       SOFT
+	(none of the above)                    0       NONE
+	"""
+	MEDIUM      = 3
+	MEDIUM_SOFT = 2
+	SOFT        = 1
+	NONE        = 0
+
+	@classmethod
+	def _ignore_optional(cls, priority):
+		if priority.__class__ is not DepPriority:
+			return False
+		return bool(priority.optional)
+
+	@classmethod
+	def _ignore_runtime_post(cls, priority):
+		if priority.__class__ is not DepPriority:
+			return False
+		return bool(priority.optional or priority.runtime_post)
+
+	@classmethod
+	def _ignore_runtime(cls, priority):
+		if priority.__class__ is not DepPriority:
+			return False
+		return not priority.buildtime
+
+	ignore_medium      = _ignore_runtime
+	ignore_medium_soft = _ignore_runtime_post
+	ignore_soft        = _ignore_optional
+
+DepPriorityNormalRange.ignore_priority = (
+	None,
+	DepPriorityNormalRange._ignore_optional,
+	DepPriorityNormalRange._ignore_runtime_post,
+	DepPriorityNormalRange._ignore_runtime
+)
+
+class DepPrioritySatisfiedRange(object):
+	"""
+	DepPriority                         Index      Category
+
+	not satisfied and buildtime                    HARD
+	not satisfied and runtime              7       MEDIUM
+	not satisfied and runtime_post         6       MEDIUM_SOFT
+	satisfied and buildtime and rebuild    5       SOFT
+	satisfied and buildtime                4       SOFT
+	satisfied and runtime                  3       SOFT
+	satisfied and runtime_post             2       SOFT
+	optional                               1       SOFT
+	(none of the above)                    0       NONE
+	"""
+	MEDIUM      = 7
+	MEDIUM_SOFT = 6
+	SOFT        = 5
+	NONE        = 0
+
+	@classmethod
+	def _ignore_optional(cls, priority):
+		if priority.__class__ is not DepPriority:
+			return False
+		return bool(priority.optional)
+
+	@classmethod
+	def _ignore_satisfied_runtime_post(cls, priority):
+		if priority.__class__ is not DepPriority:
+			return False
+		if priority.optional:
+			return True
+		if not priority.satisfied:
+			return False
+		return bool(priority.runtime_post)
+
+	@classmethod
+	def _ignore_satisfied_runtime(cls, priority):
+		if priority.__class__ is not DepPriority:
+			return False
+		if priority.optional:
+			return True
+		if not priority.satisfied:
+			return False
+		return not priority.buildtime
+
+	@classmethod
+	def _ignore_satisfied_buildtime(cls, priority):
+		if priority.__class__ is not DepPriority:
+			return False
+		if priority.optional:
+			return True
+		if not priority.satisfied:
+			return False
+		if priority.buildtime:
+			return not priority.rebuild
+		return True
+
+	@classmethod
+	def _ignore_satisfied_buildtime_rebuild(cls, priority):
+		if priority.__class__ is not DepPriority:
+			return False
+		if priority.optional:
+			return True
+		return bool(priority.satisfied)
+
+	@classmethod
+	def _ignore_runtime_post(cls, priority):
+		if priority.__class__ is not DepPriority:
+			return False
+		return bool(priority.optional or \
+			priority.satisfied or \
+			priority.runtime_post)
+
+	@classmethod
+	def _ignore_runtime(cls, priority):
+		if priority.__class__ is not DepPriority:
+			return False
+		return bool(priority.satisfied or \
+			not priority.buildtime)
+
+	ignore_medium      = _ignore_runtime
+	ignore_medium_soft = _ignore_runtime_post
+	ignore_soft        = _ignore_satisfied_buildtime_rebuild
+
+DepPrioritySatisfiedRange.ignore_priority = (
+	None,
+	DepPrioritySatisfiedRange._ignore_optional,
+	DepPrioritySatisfiedRange._ignore_satisfied_runtime_post,
+	DepPrioritySatisfiedRange._ignore_satisfied_runtime,
+	DepPrioritySatisfiedRange._ignore_satisfied_buildtime,
+	DepPrioritySatisfiedRange._ignore_satisfied_buildtime_rebuild,
+	DepPrioritySatisfiedRange._ignore_runtime_post,
+	DepPrioritySatisfiedRange._ignore_runtime
+)
 
 class FakeVartree(portage.vartree):
 	"""This is implements an in-memory copy of a vartree instance that provides
@@ -6768,9 +6856,9 @@ class depgraph(object):
 			dependency relationship.
 			"""
 			n1_n2_medium = n2 in mygraph.child_nodes(n1,
-				ignore_priority=DepPriority.MEDIUM_SOFT)
+				ignore_priority=priority_range.ignore_medium_soft)
 			n2_n1_medium = n1 in mygraph.child_nodes(n2,
-				ignore_priority=DepPriority.MEDIUM_SOFT)
+				ignore_priority=priority_range.ignore_medium_soft)
 			if n1_n2_medium == n2_n1_medium:
 				return 0
 			elif n1_n2_medium:
@@ -6855,7 +6943,7 @@ class depgraph(object):
 				return False
 			if node == replacement_portage and \
 				mygraph.child_nodes(node,
-				ignore_priority=DepPriority.MEDIUM_SOFT):
+				ignore_priority=priority_range.ignore_medium_soft):
 				# Make sure that portage always has all of it's
 				# RDEPENDs installed first.
 				return False
@@ -6870,16 +6958,13 @@ class depgraph(object):
 		def ignore_uninst_or_med(priority):
 			if priority is BlockerDepPriority.instance:
 				return True
-			return priority <= DepPriority.MEDIUM
+			return priority_range.ignore_medium(priority)
 
 		def ignore_uninst_or_med_soft(priority):
 			if priority is BlockerDepPriority.instance:
 				return True
-			return priority <= DepPriority.MEDIUM_SOFT
+			return priority_range.ignore_medium_soft(priority)
 
-		ignore_priority_soft_range = [None]
-		ignore_priority_soft_range.extend(
-			xrange(DepPriority.MIN, DepPriority.MEDIUM_SOFT + 1))
 		tree_mode = "--tree" in self.myopts
 		# Tracks whether or not the current iteration should prefer asap_nodes
 		# if available.  This is set to False when the previous iteration
@@ -6887,12 +6972,20 @@ class depgraph(object):
 		# successfully selected.
 		prefer_asap = True
 
+		# Controls whether or not the current iteration should drop edges that
+		# are "satisfied" by installed packages, in order to solve circular
+		# dependencies. The deep runtime dependencies of installed packages are
+		# not checked in this case (bug #199856), so it must be avoided
+		# whenever possible.
+		drop_satisfied = False
+
 		# State of variables for successive iterations that loosen the
 		# criteria for node selection.
 		#
-		# iteration   prefer_asap
-		# 1           True
-		# 2           False
+		# iteration   prefer_asap   drop_satisfied
+		# 1           True          False
+		# 2           False         False
+		# 3           False         True
 		#
 		# If no nodes are selected on the last iteration, it is due to
 		# unresolved blockers or circular dependencies.
@@ -6901,6 +6994,10 @@ class depgraph(object):
 			self.spinner.update()
 			selected_nodes = None
 			ignore_priority = None
+			if drop_satisfied or (prefer_asap and asap_nodes):
+				priority_range = DepPrioritySatisfiedRange
+			else:
+				priority_range = DepPriorityNormalRange
 			if prefer_asap and asap_nodes:
 				# ASAP nodes are merged before their soft deps. Go ahead and
 				# select root nodes here if necessary, since it's typical for
@@ -6909,13 +7006,14 @@ class depgraph(object):
 					if mygraph.contains(node)]
 				for node in asap_nodes:
 					if not mygraph.child_nodes(node,
-						ignore_priority=DepPriority.SOFT):
+						ignore_priority=priority_range.ignore_soft):
 						selected_nodes = [node]
 						asap_nodes.remove(node)
 						break
 			if not selected_nodes and \
 				not (prefer_asap and asap_nodes):
-				for ignore_priority in ignore_priority_soft_range:
+				for i in xrange(priority_range.NONE, priority_range.SOFT + 1):
+					ignore_priority = priority_range.ignore_priority[i]
 					nodes = get_nodes(ignore_priority=ignore_priority)
 					if nodes:
 						# If there is a mix of uninstall nodes with other
@@ -6954,9 +7052,11 @@ class depgraph(object):
 							#  * Only pop one node.
 							#  * Removing a root node (node without a parent)
 							#    will not produce a leaf node, so avoid it.
+							#  * It's normal for a selected uninstall to be a
+							#    root node, so don't check them for parents.
 							for node in nodes:
-								if mygraph.parent_nodes(node):
-									# found a non-root node
+								if node.operation == "uninstall" or \
+									mygraph.parent_nodes(node):
 									selected_nodes = [node]
 									break
 
@@ -6964,13 +7064,14 @@ class depgraph(object):
 							break
 
 			if not selected_nodes:
-				nodes = get_nodes(ignore_priority=DepPriority.MEDIUM)
+				nodes = get_nodes(ignore_priority=priority_range.ignore_medium)
 				if nodes:
 					mergeable_nodes = set(nodes)
 					if prefer_asap and asap_nodes:
 						nodes = asap_nodes
-					for ignore_priority in xrange(DepPriority.SOFT,
-						DepPriority.MEDIUM_SOFT + 1):
+					for i in xrange(priority_range.SOFT,
+						priority_range.MEDIUM_SOFT + 1):
+						ignore_priority = priority_range.ignore_priority[i]
 						for node in nodes:
 							if not mygraph.parent_nodes(node):
 								continue
@@ -6983,30 +7084,24 @@ class depgraph(object):
 						if selected_nodes:
 							break
 
-					# If any nodes have been selected here, it's always
-					# possible that anything up to a MEDIUM_SOFT priority
-					# relationship has been ignored. This state is recorded
-					# in ignore_priority so that relevant nodes will be
-					# added to asap_nodes when appropriate.
-					if selected_nodes:
-						ignore_priority = DepPriority.MEDIUM_SOFT
-
 					if prefer_asap and asap_nodes and not selected_nodes:
 						# We failed to find any asap nodes to merge, so ignore
 						# them for the next iteration.
 						prefer_asap = False
 						continue
 
-			if selected_nodes and ignore_priority > DepPriority.SOFT:
-				# Try to merge ignored medium deps as soon as possible.
+			if selected_nodes and ignore_priority is not None:
+				# Try to merge ignored medium_soft deps as soon as possible
+				# if they're not satisfied by installed packages.
 				for node in selected_nodes:
 					children = set(mygraph.child_nodes(node))
 					soft = children.difference(
 						mygraph.child_nodes(node,
-						ignore_priority=DepPriority.SOFT))
+						ignore_priority=DepPrioritySatisfiedRange.ignore_soft))
 					medium_soft = children.difference(
 						mygraph.child_nodes(node,
-						ignore_priority=DepPriority.MEDIUM_SOFT))
+							ignore_priority = \
+							DepPrioritySatisfiedRange.ignore_medium_soft))
 					medium_soft.difference_update(soft)
 					for child in medium_soft:
 						if child in selected_nodes:
@@ -7023,6 +7118,11 @@ class depgraph(object):
 			if not selected_nodes and not myblocker_uninstalls.is_empty():
 				# An Uninstall task needs to be executed in order to
 				# avoid conflict if possible.
+
+				if drop_satisfied:
+					priority_range = DepPrioritySatisfiedRange
+				else:
+					priority_range = DepPriorityNormalRange
 
 				mergeable_nodes = get_nodes(
 					ignore_priority=ignore_uninst_or_med)
@@ -7156,7 +7256,7 @@ class depgraph(object):
 					parent_deps = set()
 					for parent in mygraph.parent_nodes(task):
 						parent_deps.update(mygraph.child_nodes(parent,
-							ignore_priority=DepPriority.MEDIUM_SOFT))
+							ignore_priority=priority_range.ignore_medium_soft))
 						if parent in mergeable_nodes and \
 							gather_deps(ignore_uninst_or_med_soft,
 							mergeable_nodes, set(), parent):
@@ -7193,6 +7293,7 @@ class depgraph(object):
 					# Reset the state variables for leaf node selection and
 					# continue trying to select leaf nodes.
 					prefer_asap = True
+					drop_satisfied = False
 					continue
 
 			if not selected_nodes:
@@ -7201,6 +7302,10 @@ class depgraph(object):
 				# remaining nodes are isolated (no parents or children). Since
 				# the nodes must be isolated, ignore_priority is not needed.
 				selected_nodes = get_nodes()
+
+			if not selected_nodes and not drop_satisfied:
+				drop_satisfied = True
+				continue
 
 			if not selected_nodes and not myblocker_uninstalls.is_empty():
 				# If possible, drop an uninstall task here in order to avoid
@@ -7221,6 +7326,7 @@ class depgraph(object):
 					# Reset the state variables for leaf node selection and
 					# continue trying to select leaf nodes.
 					prefer_asap = True
+					drop_satisfied = False
 					continue
 
 			if not selected_nodes:
@@ -7230,6 +7336,7 @@ class depgraph(object):
 			# At this point, we've succeeded in selecting one or more nodes, so
 			# reset state variables for leaf node selection.
 			prefer_asap = True
+			drop_satisfied = False
 
 			mygraph.difference_update(selected_nodes)
 
