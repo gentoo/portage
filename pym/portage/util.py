@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-
 import os
 import errno
 import logging
@@ -1243,6 +1242,47 @@ class LazyItemsDict(dict):
 		if item_key in self.lazy_items:
 			del self.lazy_items[item_key]
 		dict.__delitem__(self, item_key)
+
+	def clear(self):
+		self.lazy_items.clear()
+		dict.clear(self)
+
+	def copy(self):
+		return self.__copy__()
+
+	def __copy__(self):
+		return self.__class__(self)
+
+	def __deepcopy__(self, memo=None):
+		"""
+		WARNING: If any of the lazy items contains a bound method then it's
+		typical for deepcopy() to raise an exception like this:
+
+			File "/usr/lib/python2.5/copy.py", line 189, in deepcopy
+				y = _reconstruct(x, rv, 1, memo)
+			File "/usr/lib/python2.5/copy.py", line 322, in _reconstruct
+				y = callable(*args)
+			File "/usr/lib/python2.5/copy_reg.py", line 92, in __newobj__
+				return cls.__new__(cls, *args)
+			TypeError: instancemethod expected at least 2 arguments, got 0
+
+		If deepcopy() needs to work, this problem can be avoided by
+		implementing lazy items with normal (non-bound) functions.
+		"""
+		if memo is None:
+			memo = {}
+		from copy import deepcopy
+		result = self.__class__()
+		memo[id(self)] = result
+		for k in self:
+			k_copy = deepcopy(k, memo)
+			if k in self.lazy_items:
+				dict.__setitem__(result, k_copy, None)
+				result.lazy_items[k_copy] = \
+					deepcopy(self.lazy_items[k], memo)
+			else:
+				dict.__setitem__(result, k_copy, deepcopy(self[k], memo))
+		return result
 
 	class _SingletonWrapper(object):
 

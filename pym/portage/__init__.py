@@ -958,6 +958,19 @@ def check_config_instance(test):
 	if not isinstance(test, config):
 		raise TypeError("Invalid type for config object: %s (should be %s)" % (test.__class__, config))
 
+def _lazy_iuse_regex(iuse_implicit):
+	"""
+	The PORTAGE_IUSE value is lazily evaluated since re.escape() is slow
+	and the value is only used when an ebuild phase needs to be executed
+	(it's used only to generate QA notices).
+	"""
+	# Escape anything except ".*" which is supposed to pass through from
+	# _get_implicit_iuse().
+	regex = sorted(re.escape(x) for x in iuse_implicit)
+	regex = "^(%s)$" % "|".join(regex)
+	regex = regex.replace("\\.\\*", ".*")
+	return regex
+
 class config(object):
 	"""
 	This class encompasses the main portage configuration.  Data is pulled from
@@ -1484,7 +1497,7 @@ class config(object):
 			self.configlist.append(self.mygcfg)
 			self.configdict["conf"]=self.configlist[-1]
 
-			self.configlist.append({})
+			self.configlist.append(util.LazyItemsDict())
 			self.configdict["pkg"]=self.configlist[-1]
 
 			#auto-use:
@@ -2067,12 +2080,9 @@ class config(object):
 		iuse_implicit = self._get_implicit_iuse()
 		iuse_implicit.update(x.lstrip("+-") for x in iuse.split())
 
-		# Escape anything except ".*" which is supposed
-		# to pass through from _get_implicit_iuse()
-		regex = sorted(re.escape(x) for x in iuse_implicit)
-		regex = "^(%s)$" % "|".join(regex)
-		regex = regex.replace("\\.\\*", ".*")
-		self.configdict["pkg"]["PORTAGE_IUSE"] = regex
+		# PORTAGE_IUSE is not always needed so it's lazily evaluated.
+		self.configdict["pkg"].addLazySingleton(
+			"PORTAGE_IUSE", _lazy_iuse_regex, iuse_implicit)
 
 		ebuild_force_test = self.get("EBUILD_FORCE_TEST") == "1"
 		if ebuild_force_test and \
