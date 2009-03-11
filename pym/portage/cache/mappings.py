@@ -111,7 +111,14 @@ class MutableMapping(Mapping):
 		del self[k]
 		return (k, v)
 
-	def update(self, other=None, **kwargs):
+	def update(self, *args, **kwargs):
+		if len(args) > 1:
+			raise TypeError(
+				"expected at most 1 positional argument, got " + \
+				repr(len(args)))
+		other = None
+		if args:
+			other = args[0]
 		if other is None:
 			pass
 		elif hasattr(other, 'iteritems'):
@@ -369,7 +376,14 @@ def slot_dict_class(keys, prefix="_val_"):
 					self[key] = default
 				return default
 
-			def update(self, other=None, **kwargs):
+			def update(self, *args, **kwargs):
+				if len(args) > 1:
+					raise TypeError(
+						"expected at most 1 positional argument, got " + \
+						repr(len(args)))
+				other = None
+				if args:
+					other = args[0]
 				if other is None:
 					pass
 				elif hasattr(other, 'iteritems'):
