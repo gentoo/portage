@@ -1170,7 +1170,7 @@ class LazyItemsDict(dict):
 		memo[id(self)] = result
 		for k in self:
 			k_copy = deepcopy(k, memo)
-			if k in list(self.lazy_items):
+			if k in self.lazy_items:
 				lazy_item = self.lazy_items[k]
 				if lazy_item.singleton:
 					dict.__setitem__(result, k_copy, deepcopy(self[k], memo))
