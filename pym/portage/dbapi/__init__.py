@@ -38,8 +38,7 @@ class dbapi(object):
 		cat_pattern = re.compile(r'(.*)/.*')
 		for cp in self.cp_all():
 			categories.add(cat_pattern.match(cp).group(1))
-		self._categories = list(categories)
-		self._categories.sort()
+		self._categories = tuple(sorted(categories))
 		return self._categories
 
 	def close_caches(self):
