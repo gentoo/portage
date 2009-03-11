@@ -1014,7 +1014,7 @@ class atomic_ofstream(ObjectProxy):
 						pass
 					except FileNotFound:
 						pass
-					except OSError as oe: # from the above os.stat call
+					except OSError, oe: # from the above os.stat call
 						if oe.errno in (errno.ENOENT, errno.EPERM):
 							pass
 						else:
@@ -1025,7 +1025,7 @@ class atomic_ofstream(ObjectProxy):
 				# even if an exception is raised.
 				try:
 					os.unlink(f.name)
-				except OSError as oe:
+				except OSError, oe:
 					pass
 
 	def abort(self):
