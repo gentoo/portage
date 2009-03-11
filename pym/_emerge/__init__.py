@@ -5079,7 +5079,8 @@ class depgraph(object):
 
 		deps = (
 			("/", edepend["DEPEND"],
-				self._priority(buildtime=True, optional=bdeps_optional)),
+				self._priority(buildtime=(not bdeps_optional),
+				optional=bdeps_optional)),
 			(myroot, edepend["RDEPEND"], self._priority(runtime=True)),
 			(myroot, edepend["PDEPEND"], self._priority(runtime_post=True))
 		)
