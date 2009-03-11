@@ -28,7 +28,6 @@ try:
 	import commands
 	from time import sleep
 	from random import shuffle
-	import UserDict
 	from itertools import chain, izip
 	import platform
 	import warnings
@@ -7236,7 +7235,7 @@ from portage.dbapi.bintree import bindbapi, binarytree
 from portage.dbapi.vartree import vardbapi, vartree, dblink
 from portage.dbapi.porttree import close_portdbapi_caches, portdbapi, portagetree
 
-class FetchlistDict(UserDict.DictMixin):
+class FetchlistDict(portage.cache.mappings.Mapping):
 	"""This provide a mapping interface to retrieve fetch lists.  It's used
 	to allow portage.manifest.Manifest to access fetch lists via a standard
 	mapping interface rather than use the dbapi directly."""
@@ -7256,9 +7255,16 @@ class FetchlistDict(UserDict.DictMixin):
 	def has_key(self, pkg_key):
 		"""Returns true if the given package exists within pkgdir."""
 		return pkg_key in self
+
+	def __iter__(self):
+		return iter(self.portdb.cp_list(self.cp, mytree=self.mytree))
+
 	def keys(self):
 		"""Returns keys for all packages within pkgdir"""
 		return self.portdb.cp_list(self.cp, mytree=self.mytree)
+
+	if sys.hexversion >= 0x3000000:
+		keys = __iter__
 
 def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 	vartree=None, prev_mtimes=None, blockers=None):
