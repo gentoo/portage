@@ -407,7 +407,7 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		# only joins relative paths when the infile
 		# attribute is properly set.
 		lex = shlex_class(f, infile=mycfg, posix=True)
-		lex.wordchars=string.digits+string.letters+"~!@#$%*_\:;?,./-+{}"     
+		lex.wordchars += "~!@#$%*_\:;?,./-+{}"
 		lex.quotes="\"'"
 		if allow_sourcing:
 			lex.source="source"
