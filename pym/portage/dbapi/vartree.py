@@ -378,7 +378,7 @@ class vardbapi(dbapi):
 			del self._aux_cache["modified"]
 			try:
 				f = atomic_ofstream(self._aux_cache_filename, 'wb')
-				pickle.dump(self._aux_cache, f, -1)
+				pickle.dump(self._aux_cache, f, protocol=2)
 				f.close()
 				apply_secpass_permissions(
 					self._aux_cache_filename, gid=portage_gid, mode=0644)

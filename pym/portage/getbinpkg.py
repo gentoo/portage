@@ -581,7 +581,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 					sys.stderr.flush()
 			try:
 				metadatafile = open(metadatafilename, 'wb')
-				pickle.dump(metadata,metadatafile)
+				pickle.dump(metadata, metadatafile, protocol=2)
 				metadatafile.close()
 			except SystemExit, e:
 				raise
@@ -673,11 +673,11 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 		if "modified" in metadata[baseurl] and metadata[baseurl]["modified"]:
 			metadata[baseurl]["timestamp"] = int(time.time())
 			metadatafile = open(metadatafilename, 'wb')
-			pickle.dump(metadata,metadatafile)
+			pickle.dump(metadata, metadatafile, protocol=2)
 			metadatafile.close()
 		if makepickle:
 			metadatafile = open(makepickle, 'wb')
-			pickle.dump(metadata[baseurl]["data"],metadatafile)
+			pickle.dump(metadata[baseurl]["data"], metadatafile, protocol=2)
 			metadatafile.close()
 	except SystemExit, e:
 		raise
