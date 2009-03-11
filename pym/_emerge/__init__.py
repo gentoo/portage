@@ -4032,7 +4032,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 			self._cache_data = mypickle.load()
 			f.close()
 			del f
-		except (IOError, OSError, EOFError, pickle.UnpicklingError), e:
+		except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError), e:
 			if isinstance(e, pickle.UnpicklingError):
 				writemsg("!!! Error loading '%s': %s\n" % \
 					(self._cache_filename, str(e)), noiselevel=-1)

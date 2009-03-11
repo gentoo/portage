@@ -7596,7 +7596,7 @@ class MtimeDB(dict):
 			d = mypickle.load()
 			f.close()
 			del f
-		except (IOError, OSError, EOFError, pickle.UnpicklingError), e:
+		except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError), e:
 			if isinstance(e, pickle.UnpicklingError):
 				writemsg("!!! Error loading '%s': %s\n" % \
 					(filename, str(e)), noiselevel=-1)
