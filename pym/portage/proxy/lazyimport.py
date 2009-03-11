@@ -65,7 +65,11 @@ class _LazyImport(ObjectProxy):
 
 class _LazyImportFrom(_LazyImport):
 
-	__slots__ = ()
+	__slots__ = ('_attr_name',)
+
+	def __init__(self, scope, name, attr_name, alias):
+		object.__setattr__(self, '_attr_name', attr_name)
+		_LazyImport.__init__(self, scope, alias, name)
 
 	def _get_target(self):
 		try:
@@ -73,10 +77,9 @@ class _LazyImportFrom(_LazyImport):
 		except AttributeError:
 			pass
 		name = object.__getattribute__(self, '_name')
-		components = name.split('.')
-		parent_name = '.'.join(components[:-1])
-		__import__(parent_name)
-		target = getattr(sys.modules[parent_name], components[-1])
+		attr_name = object.__getattribute__(self, '_attr_name')
+		__import__(name)
+		target = getattr(sys.modules[name], attr_name)
 		object.__setattr__(self, '_target', target)
 		object.__getattribute__(self, '_scope')[
 			object.__getattribute__(self, '_alias')] = target
@@ -138,14 +141,14 @@ def lazyimport(scope, *args):
 				alias = s.split('@', 1)
 				if len(alias) == 1:
 					alias = alias[0]
-					orig = alias
+					attr_name = alias
 				else:
-					orig, alias = alias
+					attr_name, alias = alias
 				if already_imported is not None:
 					try:
-						scope[alias] = getattr(already_imported, orig)
+						scope[alias] = getattr(already_imported, attr_name)
 					except AttributeError:
-						raise ImportError('cannot import name %s' % orig)
+						raise ImportError('cannot import name %s' % attr_name)
 				else:
-					scope[alias] = _LazyImportFrom(scope, alias,
-						name + '.' + orig)
+					scope[alias] = \
+						_LazyImportFrom(scope, name, attr_name, alias)
