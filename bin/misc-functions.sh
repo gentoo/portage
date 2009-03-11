@@ -641,7 +641,7 @@ dyn_package() {
 	mkdir -p "${PORTAGE_BINPKG_TMPFILE%/*}" || die "mkdir failed"
 	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${D}" . | \
 		bzip2 -f > "$PORTAGE_BINPKG_TMPFILE"
-	assert
+	assert "failed to pack binary package: '$PORTAGE_BINPKG_TMPFILE'"
 	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
 	python -c "from portage import xpak; t=xpak.tbz2('${PORTAGE_BINPKG_TMPFILE}'); t.recompose('${PORTAGE_BUILDDIR}/build-info')"
 	if [ $? -ne 0 ]; then
