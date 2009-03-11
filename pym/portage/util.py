@@ -668,12 +668,10 @@ class cmp_sort_key(object):
 			self._obj = obj
 
 		def __lt__(self, other):
-			if not isinstance(other, self.__class__):
+			if other.__class__ is not self.__class__:
 				raise TypeError("Expected type %s, got %s" % \
 					(self.__class__, other.__class__))
-			if self._cmp_func(self._obj, other._obj) < 0:
-				return True
-			return False
+			return self._cmp_func(self._obj, other._obj) < 0
 
 def unique_array(s):
 	"""lifted from python cookbook, credit: Tim Peters
