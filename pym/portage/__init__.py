@@ -4069,10 +4069,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						"URI":     loc,
 						"FILE":    myfile
 					}
-					import shlex, StringIO
-					lexer = shlex.shlex(StringIO.StringIO(locfetch), posix=True)
-					lexer.whitespace_split = True
-					myfetch = [varexpand(x, mydict=variables) for x in lexer]
+					import shlex
+					myfetch = shlex.split(locfetch)
+					myfetch = [varexpand(x, mydict=variables) for x in myfetch]
 					myret = -1
 					try:
 

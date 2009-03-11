@@ -23,9 +23,9 @@ except ImportError:
 	import pickle
 
 try:
-	import cStringIO as StringIO
+	from cStringIO import StringIO
 except ImportError:
-	import StringIO
+	from StringIO import StringIO
 
 noiselimit = 0
 
@@ -500,7 +500,7 @@ class _tolerant_shlex(shlex.shlex):
 		except EnvironmentError, e:
 			writemsg("!!! Parse error in '%s': source command failed: %s\n" % \
 				(self.infile, str(e)), noiselevel=-1)
-			return (newfile, StringIO.StringIO())
+			return (newfile, StringIO())
 
 class _insert_newline_eof(ObjectProxy):
 	"""

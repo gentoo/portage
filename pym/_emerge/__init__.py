@@ -63,9 +63,9 @@ except ImportError:
 	import pickle
 
 try:
-	import cStringIO as StringIO
+	from cStringIO import StringIO
 except ImportError:
-	import StringIO
+	from StringIO import StringIO
 
 class stdout_spinner(object):
 	scroll_msgs = [
@@ -9752,8 +9752,8 @@ class JobStatusDisplay(object):
 		failed_str = str(self.failed)
 		load_avg_str = self._load_avg_str()
 
-		color_output = StringIO.StringIO()
-		plain_output = StringIO.StringIO()
+		color_output = StringIO()
+		plain_output = StringIO()
 		style_file = portage.output.ConsoleStyleFile(color_output)
 		style_file.write_listener = plain_output
 		style_writer = portage.output.StyleWriter(file=style_file, maxcol=9999)
@@ -12281,7 +12281,6 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		mytimeout=180
 
 		rsync_opts = []
-		import shlex, StringIO
 		if settings["PORTAGE_RSYNC_OPTS"] == "":
 			portage.writemsg("PORTAGE_RSYNC_OPTS empty or unset, using hardcoded defaults\n")
 			rsync_opts.extend([
@@ -12306,12 +12305,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			# defaults.
 
 			portage.writemsg("Using PORTAGE_RSYNC_OPTS instead of hardcoded defaults\n", 1)
-			lexer = shlex.shlex(StringIO.StringIO(
-				settings.get("PORTAGE_RSYNC_OPTS","")), posix=True)
-			lexer.whitespace_split = True
-			rsync_opts.extend(lexer)
-			del lexer
-
+			rsync_opts.extend(
+				shlex.split(settings.get("PORTAGE_RSYNC_OPTS","")))
 			for opt in ("--recursive", "--times"):
 				if opt not in rsync_opts:
 					portage.writemsg(yellow("WARNING:") + " adding required option " + \
@@ -12389,11 +12384,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			user_name=""
 		updatecache_flg=True
 		all_rsync_opts = set(rsync_opts)
-		lexer = shlex.shlex(StringIO.StringIO(
-			settings.get("PORTAGE_RSYNC_EXTRA_OPTS","")), posix=True)
-		lexer.whitespace_split = True
-		extra_rsync_opts = list(lexer)
-		del lexer
+		extra_rsync_opts = shlex.split(
+			settings.get("PORTAGE_RSYNC_EXTRA_OPTS",""))
 		all_rsync_opts.update(extra_rsync_opts)
 		family = socket.AF_INET
 		if "-4" in all_rsync_opts or "--ipv4" in all_rsync_opts:
