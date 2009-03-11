@@ -5163,9 +5163,9 @@ class depgraph(object):
 			atom_without_category, "null"))
 		cat, atom_pn = portage.catsplit(null_cp)
 
+		dbs = self._filtered_trees[root_config.root]["dbs"]
 		cp_set = set()
-		for db, pkg_type, built, installed, db_keys in \
-			self._filtered_trees[root_config.root]["dbs"]:
+		for db, pkg_type, built, installed, db_keys in dbs:
 			cp_set.update(db.cp_all())
 		for cp in list(cp_set):
 			cat, pn = portage.catsplit(cp)
@@ -5173,6 +5173,13 @@ class depgraph(object):
 				cp_set.discard(cp)
 		deps = []
 		for cp in cp_set:
+			have_pkg = False
+			for db, pkg_type, built, installed, db_keys in dbs:
+				if db.cp_list(cp):
+					have_pkg = True
+					break
+			if not have_pkg:
+				continue
 			cat, pn = portage.catsplit(cp)
 			deps.append(insert_category_into_atom(
 				atom_without_category, cat))
