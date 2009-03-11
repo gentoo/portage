@@ -5051,9 +5051,10 @@ class depgraph(object):
 				# dependencies so that things like --fetchonly can still
 				# function despite collisions.
 				pass
-			else:
+			elif not previously_added:
 				self._slot_pkg_map[pkg.root][pkg.slot_atom] = pkg
 				self.mydbapi[pkg.root].cpv_inject(pkg)
+				self._filtered_trees[pkg.root]["porttree"].dbapi._clear_cache()
 
 			if not pkg.installed:
 				# Allow this package to satisfy old-style virtuals in case it
@@ -8881,6 +8882,20 @@ class depgraph(object):
 						return False
 				except portage.exception.InvalidDependString:
 					pass
+			in_graph = self._depgraph._slot_pkg_map[
+				self._root].get(pkg.slot_atom)
+			if in_graph is None:
+				# Mask choices for packages which are not the highest visible
+				# version within their slot (since they usually trigger slot
+				# conflicts).
+				highest_visible, in_graph = self._depgraph._select_package(
+					self._root, pkg.slot_atom)
+				if pkg != highest_visible:
+					return False
+			elif in_graph != pkg:
+				# Mask choices for packages that would trigger a slot
+				# conflict with a previously selected package.
+				return False
 			return True
 
 		def _dep_expand(self, atom):
