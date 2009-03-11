@@ -1,4 +1,4 @@
-# Copyright 1998-2007 Gentoo Foundation
+# Copyright 1998-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
@@ -6,10 +6,15 @@ __all__ = ["dbapi"]
 
 import os
 import re
+
+import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.locks:unlockfile',
+	'portage.util:cmp_sort_key,writemsg',
+)
+
 from portage.dep import match_from_list
-from portage.locks import unlockfile
 from portage.output import colorize
-from portage.util import writemsg, cmp_sort_key
 from portage import auxdbkeys, dep_expand
 from portage.versions import catpkgsplit, pkgcmp
 

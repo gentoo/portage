@@ -1,4 +1,4 @@
-# Copyright 1998-2004 Gentoo Foundation
+# Copyright 1998-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
@@ -11,8 +11,13 @@ import os
 import re
 import shlex
 import sys
+
+import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.util:writemsg',
+)
+
 from portage.const import COLOR_MAP_FILE
-from portage.util import writemsg
 from portage.exception import CommandNotFound, FileNotFound, \
 	ParseError, PermissionDenied, PortageException
 

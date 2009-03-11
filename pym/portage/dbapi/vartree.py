@@ -1,4 +1,4 @@
-# Copyright 1998-2007 Gentoo Foundation
+# Copyright 1998-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
@@ -6,7 +6,15 @@ __all__ = [
 	"vardbapi", "vartree", "dblink"] + \
 	["write_contents", "tar_contents"]
 
-from portage.checksum import perform_md5
+import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.checksum:perform_md5',
+	'portage.locks:lockdir,unlockdir',
+	'portage.util:apply_secpass_permissions,ConfigProtect,ensure_dirs,' + \
+		'writemsg,writemsg_level,write_atomic,atomic_ofstream,writedict,' + \
+		'grabfile,grabdict,normalize_path,new_protect_filename,getlibpaths'
+)
+
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, \
 	PORTAGE_PACKAGE_ATOM, PRIVATE_PATH, VDB_PATH
 from portage.data import portage_gid, portage_uid, secpass
@@ -16,12 +24,8 @@ from portage.dep import use_reduce, paren_reduce, isvalidatom, \
 from portage.exception import CommandNotFound, \
 	InvalidData, InvalidPackageName, \
 	FileNotFound, PermissionDenied, UnsupportedAPIException
-from portage.locks import lockdir, unlockdir
 from portage.output import bold, colorize
 from portage.update import fixdbentries
-from portage.util import apply_secpass_permissions, ConfigProtect, ensure_dirs, \
-	writemsg, writemsg_level, write_atomic, atomic_ofstream, writedict, \
-	grabfile, grabdict, normalize_path, new_protect_filename, getlibpaths
 from portage.versions import pkgsplit, catpkgsplit, catsplit, best, pkgcmp
 
 from portage import listdir, dep_expand, digraph, flatten, key_expand, \
