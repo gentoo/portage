@@ -169,8 +169,6 @@ class database(fs_template.FsBased):
 				d[k]=str(d[k]) # convert unicode strings to normal
 			except UnicodeEncodeError, e:
 				pass #writemsg("%s: %s\n" % (cpv, str(e)))
-		for x in self._known_keys:
-			d.setdefault(x,'')
 		return d
 
 	def _setitem(self, cpv, values):
