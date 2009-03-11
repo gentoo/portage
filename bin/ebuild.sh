@@ -455,6 +455,12 @@ strip_duplicate_slashes() {
 	fi
 }
 
+hasg() {
+    local x s=$1
+    shift
+    for x ; do [[ ${x} == ${s} ]] && echo "${x}" && return 0 ; done
+    return 1
+}
 econf() {
 	local x
 	local LOCAL_EXTRA_ECONF="${EXTRA_ECONF}"
@@ -491,7 +497,7 @@ econf() {
 			CONF_LIBDIR="${!LIBDIR_VAR}"
 		fi
 		unset LIBDIR_VAR
-		if [ -n "${CONF_LIBDIR}" ] && ! hasq --libdir=* "$@" ; then
+		if [ -n "${CONF_LIBDIR}" ] && ! hasg --libdir=* "$@" ; then
 			if [ "${*/--exec-prefix}" != "$*" ]; then
 				local args="$(echo $*)"
 				local -a pref=($(echo ${args/*--exec-prefix[= ]}))
