@@ -40,6 +40,16 @@ class database(object):
 			d["_eclasses_"] = reconstruct_eclasses(cpv, d["_eclasses_"])
 		elif "_eclasses_" not in d:
 			d["_eclasses_"] = {}
+		mtime = d.get('_mtime_')
+		if mtime is None:
+			raise cache_errors.CacheCorruption(cpv,
+				'_mtime_ field is missing')
+		try:
+			mtime = long(mtime)
+		except ValueError:
+			raise cache_errors.CacheCorruption(cpv,
+				'_mtime_ conversion to long failed: %s' % (mtime,))
+		d['_mtime_'] = mtime
 		return d
 
 	def _getitem(self, cpv):
