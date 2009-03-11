@@ -7536,7 +7536,7 @@ def _gen_missing_encodings(missing_encodings):
 		class AsciiStreamReader(codecs.StreamReader):
 			decode = codecs.ascii_decode
 
-		encodings['ascii'] =  codecs.CodecInfo(
+		codec_info =  codecs.CodecInfo(
 			name='ascii',
 			encode=codecs.ascii_encode,
 			decode=codecs.ascii_decode,
@@ -7545,6 +7545,11 @@ def _gen_missing_encodings(missing_encodings):
 			streamwriter=AsciiStreamWriter,
 			streamreader=AsciiStreamReader,
 		)
+
+		for alias in ('ascii', '646', 'ansi_x3.4_1968', 'ansi_x3_4_1968',
+			'ansi_x3.4_1986', 'cp367', 'csascii', 'ibm367', 'iso646_us',
+			'iso_646.irv_1991', 'iso_ir_6', 'us', 'us_ascii'):
+			encodings[alias] = codec_info
 
 	if 'utf_8' in missing_encodings:
 
@@ -7564,7 +7569,7 @@ def _gen_missing_encodings(missing_encodings):
 		class Utf8StreamReader(codecs.StreamReader):
 			decode = codecs.utf_8_decode
 
-		encodings['utf_8'] = codecs.CodecInfo(
+		codec_info = codecs.CodecInfo(
 			name='utf-8',
 			encode=codecs.utf_8_encode,
 			decode=utf8decode,
@@ -7573,6 +7578,9 @@ def _gen_missing_encodings(missing_encodings):
 			streamreader=Utf8StreamWriter,
 			streamwriter=Utf8StreamReader,
 		)
+
+		for alias in ('utf_8', 'u8', 'utf', 'utf8', 'utf8_ucs2', 'utf8_ucs4'):
+			encodings[alias] = codec_info
 
 	return encodings
 
@@ -7617,6 +7625,8 @@ def _ensure_default_encoding():
 			encodings[default_encoding] = encodings[default_fallback]
 
 	def search_function(name):
+		name = name.lower()
+		name = name.replace('-', '_')
 		codec_info = encodings.get(name)
 		if codec_info is not None:
 			return codecs.CodecInfo(
