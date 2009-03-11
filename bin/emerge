@@ -44,4 +44,20 @@ if __name__ == "__main__":
 	except ParseError, e:
 		sys.stderr.write("%s\n" % str(e))
 		sys.exit(1)
+	except SystemExit:
+		raise
+	except Exception:
+		# If an unexpected exception occurs then we don't want the mod_echo
+		# output to obscure the traceback, so dump the mod_echo output before
+		# showing the traceback.
+		import traceback
+		tb_str = traceback.format_exc()
+		try:
+			from portage.elog import mod_echo
+		except ImportError:
+			pass
+		else:
+			mod_echo.finalize()
+		sys.stderr.write(tb_str)
+		sys.exit(1)
 	sys.exit(retval)
