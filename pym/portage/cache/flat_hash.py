@@ -33,6 +33,16 @@ class database(fs_template.FsBased):
 					"""Backward compatibility with old cache that uses mtime
 					mangling."""
 					d["_mtime_"] = long(os.fstat(myf.fileno()).st_mtime)
+				mtime = d.get('_mtime_')
+				if mtime is None:
+					raise cache_errors.CacheCorruption(cpv,
+						'_mtime_ field is missing')
+				try:
+					mtime = long(mtime)
+				except ValueError:
+					raise cache_errors.CacheCorruption(cpv,
+						'_mtime_ conversion to long failed: %s' % (mtime,))
+				d['_mtime_'] = mtime
 				return d
 			finally:
 				myf.close()
@@ -52,14 +62,6 @@ class database(fs_template.FsBased):
 		else:
 			d["_eclasses_"] = {}
 		return d
-		
-		for x in self._known_keys:
-			if x not in d:
-				d[x] = ''
-
-
-		return d
-
 
 	def _setitem(self, cpv, values):
 #		import pdb;pdb.set_trace()
