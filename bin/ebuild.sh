@@ -1156,6 +1156,13 @@ inherit() {
 		debug-print "*** Multiple Inheritence (Level: ${ECLASS_DEPTH})"
 	fi
 
+	if [[ -n $ECLASS && -n ${!__export_funcs_var} ]] ; then
+		echo "QA Notice: EXPORT_FUNCTIONS is called before inherit in" \
+			"$ECLASS.eclass. For compatibility with <=portage-2.1.6.7," \
+			"only call EXPORT_FUNCTIONS after inherit(s)." \
+			| fmt -w 75 | while read ; do eqawarn "$REPLY" ; done
+	fi
+
 	local location
 	local olocation
 	local x
