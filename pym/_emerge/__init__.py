@@ -9774,6 +9774,11 @@ class Scheduler(PollScheduler):
 		# empty.
 		self._merge_wait_scheduled = []
 
+		# Holds system packages and their deep runtime dependencies. Before
+		# being merged, these packages go to merge_wait_queue, to be merged
+		# when no other packages are building.
+		self._deep_system_deps = set()
+
 		self._status_display = JobStatusDisplay()
 		self._max_load = myopts.get("--load-average")
 		max_jobs = myopts.get("--jobs")
@@ -9948,8 +9953,43 @@ class Scheduler(PollScheduler):
 			return
 
 		self._digraph = digraph
+		self._find_system_deps()
 		self._prune_digraph()
 		self._prevent_builddir_collisions()
+
+	def _find_system_deps(self):
+		"""
+		Find system packages and their deep runtime dependencies. Before being
+		merged, these packages go to merge_wait_queue, to be merged when no
+		other packages are building.
+		"""
+		graph = self._digraph
+		deep_system_deps = self._deep_system_deps
+		deep_system_deps.clear()
+		node_stack = []
+		for node in graph.order:
+			if not isinstance(node, Package) or \
+				node.operation == "uninstall":
+				continue
+			system_set = node.root_config.sets["system"]
+			if system_set.findAtomForPackage(node):
+				node_stack.append(node)
+
+		while node_stack:
+			node = node_stack.pop()
+			if node in deep_system_deps:
+				continue
+			deep_system_deps.add(node)
+			# TODO: Only traverse runtime deps since we aren't concerned about
+			# buildtime deps here.
+			for child in graph.child_nodes(node):
+				if not isinstance(child, Package) or \
+					child.operation == "uninstall":
+					continue
+				node_stack.append(child)
+
+		deep_system_deps.difference_update([pkg for pkg in \
+			deep_system_deps if pkg.operation != "merge"])
 
 	def _prune_digraph(self):
 		"""
@@ -10556,8 +10596,8 @@ class Scheduler(PollScheduler):
 		if build.returncode == os.EX_OK:
 			self.curval += 1
 			merge = PackageMerge(merge=build)
-			system_set = build.pkg.root_config.sets["system"]
-			if system_set.findAtomForPackage(build.pkg):
+			if not build.build_opts.buildpkgonly and \
+				build.pkg in self._deep_system_deps:
 				# Since dependencies on system packages are frequently
 				# unspecified, merge them only when no builds are executing.
 				self._merge_wait_queue.append(merge)
@@ -10613,6 +10653,7 @@ class Scheduler(PollScheduler):
 	def _main_loop_cleanup(self):
 		del self._pkg_queue[:]
 		self._completed_tasks.clear()
+		self._deep_system_deps.clear()
 		self._choose_pkg_return_early = False
 		self._status_display.reset()
 		self._digraph = None
