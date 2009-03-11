@@ -9754,6 +9754,17 @@ class Scheduler(PollScheduler):
 		for k in self._task_queues.allowed_keys:
 			setattr(self._task_queues, k,
 				SequentialTaskQueue())
+
+		# Holds merges that will wait to be executed when no builds are
+		# executing. This is useful for system packages since dependencies
+		# on system packages are frequently unspecified.
+		self._merge_wait_queue = []
+		# Holds merges that have been transfered from the merge_wait_queue to
+		# the actual merge queue. They are removed from this list upon
+		# completion. Other packages can start building only when this list is
+		# empty.
+		self._merge_wait_scheduled = []
+
 		self._status_display = JobStatusDisplay()
 		self._max_load = myopts.get("--load-average")
 		max_jobs = myopts.get("--jobs")
@@ -10480,6 +10491,10 @@ class Scheduler(PollScheduler):
 			elif isinstance(pkg, Blocker):
 				pass
 
+	def _merge_wait_exit_handler(self, task):
+		self._merge_wait_scheduled.remove(task)
+		self._merge_exit(task)
+
 	def _merge_exit(self, merge):
 		self._do_merge_exit(merge)
 		self._deallocate_config(merge.merge.settings)
@@ -10532,9 +10547,15 @@ class Scheduler(PollScheduler):
 		if build.returncode == os.EX_OK:
 			self.curval += 1
 			merge = PackageMerge(merge=build)
-			merge.addExitListener(self._merge_exit)
-			self._task_queues.merge.add(merge)
-			self._status_display.merges = len(self._task_queues.merge)
+			system_set = build.pkg.root_config.sets["system"]
+			if system_set.findAtomForPackage(build.pkg):
+				# Since dependencies on system packages are frequently
+				# unspecified, merge them only when no builds are executing.
+				self._merge_wait_queue.append(merge)
+			else:
+				merge.addExitListener(self._merge_exit)
+				self._task_queues.merge.add(merge)
+				self._status_display.merges = len(self._task_queues.merge)
 		else:
 			settings = build.settings
 			build_dir = settings.get("PORTAGE_BUILDDIR")
@@ -10712,6 +10733,16 @@ class Scheduler(PollScheduler):
 			not (self._failed_pkgs and not self._build_opts.fetchonly))
 
 	def _schedule_tasks(self):
+
+		# When the number of jobs drops to zero, process all waiting merges.
+		if not self._jobs and self._merge_wait_queue:
+			for task in self._merge_wait_queue:
+				task.addExitListener(self._merge_wait_exit_handler)
+				self._task_queues.merge.add(task)
+			self._status_display.merges = len(self._task_queues.merge)
+			self._merge_wait_scheduled.extend(self._merge_wait_queue)
+			del self._merge_wait_queue[:]
+
 		self._schedule_tasks_imp()
 		self._status_display.display()
 
@@ -10766,6 +10797,7 @@ class Scheduler(PollScheduler):
 				return bool(state_change)
 
 			if self._choose_pkg_return_early or \
+				self._merge_wait_scheduled or \
 				not self._can_add_job() or \
 				self._job_delay():
 				return bool(state_change)
