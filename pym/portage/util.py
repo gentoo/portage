@@ -1201,11 +1201,22 @@ class LazyItemsDict(dict):
 
 	__slots__ = ('lazy_items',)
 
-	def __init__(self, initial_items=None):
+	def __init__(self, *args, **kwargs):
+
+		if len(args) > 1:
+			raise TypeError(
+				"expected at most 1 positional argument, got " + \
+				repr(len(args)))
+
 		dict.__init__(self)
 		self.lazy_items = {}
-		if initial_items is not None:
-			self.update(initial_items)
+
+		if args:
+			self.update(args[0])
+
+		if kwargs:
+			self.update(kwargs)
+
 	def addLazyItem(self, item_key, value_callable, *pargs, **kwargs):
 		"""Add a lazy item for the given key.  When the item is requested,
 		value_callable will be called with *pargs and **kwargs arguments."""
