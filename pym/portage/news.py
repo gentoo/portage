@@ -148,10 +148,10 @@ class NewsManager(object):
 		If update is specified, updateNewsItems( repoid ) will be called to
 		check for new items.
 		"""
-		
+
 		if update:
 			self.updateItems(repoid)
-		
+
 		unread_filename = self._unread_filename(repoid)
 		unread_lock = None
 		try:
@@ -182,9 +182,9 @@ class NewsItem(object):
 	Creation of a news item involves passing in the path to the particular news item.
 
 	"""
-	
+
 	def __init__(self, path, name):
-		""" 
+		"""
 		For a given news item we only want if it path is a file.
 		"""
 		self.path = path
@@ -206,7 +206,7 @@ class NewsItem(object):
 
 		if not len(self.restrictions):
 			return True # no restrictions to match means everyone should see it
-		
+
 		kwargs = \
 			{ 'vardb' : vardb,
 				'config' : config,
@@ -215,7 +215,7 @@ class NewsItem(object):
 		for restriction in self.restrictions:
 			if restriction.checkRestriction(**kwargs):
 				return True
-			
+
 		return False # No restrictions were met; thus we aren't relevant :(
 
 	def isValid(self):
@@ -301,7 +301,7 @@ class DisplayInstalledRestriction(DisplayRestriction):
 	An Installation restriction where a particular item shall only be displayed
 	if the user has that item installed.
 	"""
-	
+
 	def __init__(self, atom):
 		self.atom = atom
 
