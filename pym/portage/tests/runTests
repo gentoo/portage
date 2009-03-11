@@ -16,5 +16,5 @@ import portage.tests as tests
 
 if __name__ == "__main__":
 	result = tests.main()
-	if result.failures:
+	if not result.wasSuccessful():
 		sys.exit(1)
