@@ -1960,6 +1960,8 @@ class PipeReader(AbstractPollTask):
 
 	def getvalue(self):
 		"""Retrieve the entire contents"""
+		if sys.hexversion >= 0x3000000:
+			return bytes().join(self._read_data)
 		return "".join(self._read_data)
 
 	def close(self):
