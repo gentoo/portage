@@ -459,16 +459,22 @@ class digraph(object):
 	def child_nodes(self, node, ignore_priority=None):
 		"""Return all children of the specified node"""
 		if ignore_priority is None:
-			return self.nodes[node][0].keys()
+			return list(self.nodes[node][0])
 		children = []
 		for child, priority in self.nodes[node][0].iteritems():
 			if priority > ignore_priority:
 				children.append(child)
 		return children
 
-	def parent_nodes(self, node):
+	def parent_nodes(self, node, ignore_priority=None):
 		"""Return all parents of the specified node"""
-		return self.nodes[node][1].keys()
+		if ignore_priority is None:
+			return list(self.nodes[node][1])
+		parents = []
+		for parent, priority in self.nodes[node][1].iteritems():
+			if priority > ignore_priority:
+				parents.append(parent)
+		return parents
 
 	def leaf_nodes(self, ignore_priority=None):
 		"""Return all nodes that have no children
