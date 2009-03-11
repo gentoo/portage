@@ -56,8 +56,8 @@ The revdep-rebuild tool is provided by app-portage/gentoolkit.
 		tmpItem = self.fakeItem[:].replace("#Display-If-Profile:", "Display-If-Profile: %s" %
 			self.profile)
 
+		item = self._processItem(tmpItem)
 		try:
-			item = self._processItem(tmpItem)
 			self.assertTrue(item.isRelevant(self.vardb, self.settings, self.profile),
 				msg="Expected %s to be relevant, but it was not!" % tmpItem)
 		finally:
@@ -88,9 +88,9 @@ The revdep-rebuild tool is provided by app-portage/gentoolkit.
 	def _processItem(self, item):
 		filename = None
 		fd, filename = mkstemp()
-		f = os.fdopen(fd, 'wb')
+		f = os.fdopen(fd, 'w')
 		f.write(item)
-		f.close
+		f.close()
 		try:
 			return NewsItem(filename, 0)
 		except TypeError:
