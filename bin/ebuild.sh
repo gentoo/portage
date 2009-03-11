@@ -933,7 +933,6 @@ dyn_test() {
 		# like it's supposed to here.
 		! hasq test ${USE} && export USE="${USE} test"
 	fi
-	ebuild_phase pre_src_test
 	if [[ -e $PORTAGE_BUILDDIR/.tested ]] ; then
 		vecho ">>> It appears that ${PN} has already been tested; skipping."
 		return
@@ -951,13 +950,14 @@ dyn_test() {
 		vecho ">>> Test phase [explicitly disabled]: ${CATEGORY}/${PF}"
 	else
 		addpredict /
+		ebuild_phase pre_src_test
 		ebuild_phase src_test
+		touch "$PORTAGE_BUILDDIR/.tested" || \
+			die "Failed to 'touch .tested' in $PORTAGE_BUILDDIR"
+		ebuild_phase post_src_test
 		SANDBOX_PREDICT="${SANDBOX_PREDICT%:/}"
 	fi
 
-	touch "$PORTAGE_BUILDDIR/.tested" || \
-		die "Failed to 'touch .tested' in $PORTAGE_BUILDDIR"
-	ebuild_phase post_src_test
 	trap - SIGINT SIGQUIT
 }
 
