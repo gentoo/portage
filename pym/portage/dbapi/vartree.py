@@ -1179,6 +1179,10 @@ class vardbapi(dbapi):
 					cache_data[aux_key] = mydata[aux_key]
 				self._aux_cache["packages"][mycpv] = (mydir_mtime, cache_data)
 				self._aux_cache["modified"].add(mycpv)
+		if not mydata['SLOT']:
+			# Empty slot triggers InvalidAtom exceptions when generating slot
+			# atoms for packages, so translate it to '0' here.
+			mydata['SLOT'] = '0'
 		return [mydata[x] for x in wants]
 
 	def _aux_get(self, mycpv, wants, st=None):
