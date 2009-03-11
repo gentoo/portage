@@ -879,7 +879,7 @@ class portdbapi(dbapi):
 				metadata["USE"] = ""
 				if "?" in metadata["LICENSE"]:
 					self.doebuild_settings.setcpv(mycpv, mydb=metadata)
-					metadata["USE"] = self.doebuild_settings.get("USE", "")
+					metadata['USE'] = self.doebuild_settings['PORTAGE_USE']
 				try:
 					if self.mysettings._getMissingLicenses(mycpv, metadata):
 						continue
