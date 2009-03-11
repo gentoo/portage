@@ -451,6 +451,8 @@ def lazy_import(scope, *args):
 	@type args: strings
 	"""
 
+	modules = sys.modules
+
 	for s in args:
 		parts = s.split(':', 1)
 		if len(parts) == 1:
@@ -463,24 +465,27 @@ def lazy_import(scope, *args):
 			parent_scope = scope
 			for i in xrange(len(components)):
 				alias = components[i]
-				mod = parent_scope.get(alias)
-				if isinstance(mod, types.ModuleType):
-					parent_scope = mod.__dict__
-					continue
 				if i < len(components) - 1:
 					parent_name = ".".join(components[:i+1])
 					__import__(parent_name)
-					mod = sys.modules.get(parent_name)
+					mod = modules.get(parent_name)
 					if not isinstance(mod, types.ModuleType):
 						# raise an exception
 						__import__(name)
 					parent_scope[alias] = mod
 					parent_scope = mod.__dict__
 					continue
-				parent_scope[alias] = _LazyImport(parent_scope, alias, name)
+
+				already_imported = modules.get(name)
+				if already_imported is not None:
+					parent_scope[alias] = already_imported
+				else:
+					parent_scope[alias] = \
+						_LazyImport(parent_scope, alias, name)
 
 		else:
 			name, fromlist = parts
+			already_imported = modules.get(name)
 			fromlist = fromlist.split(',')
 			for s in fromlist:
 				alias = s.split('@', 1)
@@ -489,8 +494,14 @@ def lazy_import(scope, *args):
 					orig = alias
 				else:
 					orig, alias = alias
-				scope[alias] = _LazyImportFrom(scope, alias,
-					name + '.' + orig)
+				if already_imported is not None:
+					try:
+						scope[alias] = getattr(already_imported, orig)
+					except AttributeError:
+						raise ImportError('cannot import name %s' % orig)
+				else:
+					scope[alias] = _LazyImportFrom(scope, alias,
+						name + '.' + orig)
 
 class _tolerant_shlex(shlex.shlex):
 	def sourcehook(self, newfile):
