@@ -928,7 +928,8 @@ class DepPriority(AbstractDepPriority):
 		satisfied and buildtime               -4       SOFT
 		satisfied and runtime                 -5       SOFT
 		satisfied and runtime_post            -6       SOFT
-		(none of the above)                   -6       SOFT
+		optional                              -7       SOFT
+		(none of the above)                   -7       SOFT
 
 		Several integer constants are defined for categorization of priority
 		levels:
@@ -938,13 +939,15 @@ class DepPriority(AbstractDepPriority):
 		SOFT     The upper boundary for soft dependencies.
 		MIN      The lower boundary for soft dependencies.
 	"""
-	__slots__ = ("satisfied", "rebuild")
+	__slots__ = ("satisfied", "optional", "rebuild")
 	MEDIUM = -1
 	MEDIUM_SOFT = -2
 	SOFT   = -3
-	MIN    = -6
+	MIN    = -7
 
 	def __int__(self):
+		if self.optional:
+			return -7
 		if not self.satisfied:
 			if self.buildtime:
 				return 0
@@ -960,7 +963,7 @@ class DepPriority(AbstractDepPriority):
 			return -5
 		if self.runtime_post:
 			return -6
-		return -6
+		return -7
 
 	def __str__(self):
 		myvalue = self.__int__()
@@ -4812,7 +4815,7 @@ class depgraph(object):
 		dep_pkg, existing_node = self._select_package(dep.root, dep.atom,
 			onlydeps=dep.onlydeps)
 		if not dep_pkg:
-			if dep.priority.satisfied:
+			if dep.priority.optional:
 				# This could be an unecessary build-time dep
 				# pulled in by --with-bdeps=y.
 				return 1
@@ -5055,18 +5058,18 @@ class depgraph(object):
 			"empty" not in self.myparams:
 			edepend["RDEPEND"] = ""
 			edepend["PDEPEND"] = ""
-		bdeps_satisfied = False
-		
+		bdeps_optional = False
+
 		if pkg.built and not removal_action:
 			if self.myopts.get("--with-bdeps", "n") == "y":
 				# Pull in build time deps as requested, but marked them as
-				# "satisfied" since they are not strictly required. This allows
+				# "optional" since they are not strictly required. This allows
 				# more freedom in the merge order calculation for solving
 				# circular dependencies. Don't convert to PDEPEND since that
 				# could make --with-bdeps=y less effective if it is used to
 				# adjust merge order to prevent built_with_use() calls from
 				# failing.
-				bdeps_satisfied = True
+				bdeps_optional = True
 			else:
 				# built packages do not have build time dependencies.
 				edepend["DEPEND"] = ""
@@ -5076,7 +5079,7 @@ class depgraph(object):
 
 		deps = (
 			("/", edepend["DEPEND"],
-				self._priority(buildtime=True, satisfied=bdeps_satisfied)),
+				self._priority(buildtime=True, optional=bdeps_optional)),
 			(myroot, edepend["RDEPEND"], self._priority(runtime=True)),
 			(myroot, edepend["PDEPEND"], self._priority(runtime_post=True))
 		)
