@@ -1378,11 +1378,11 @@ _ebuild_arg_to_phase() {
 			phase_func=src_unpack
 			;;
 		prepare)
-			! hasq $eapi 0 1 2_pre1 2_pre2 && \
+			! hasq $eapi 0 1 && \
 				phase_func=src_prepare
 			;;
 		configure)
-			! hasq $eapi 0 1 2_pre1 && \
+			! hasq $eapi 0 1 && \
 				phase_func=src_configure
 			;;
 		compile)
@@ -1428,7 +1428,7 @@ _ebuild_phase_funcs() {
 
 	case $eapi in
 
-		0|1|2_pre1)
+		0|1)
 
 			if [[ $(type -t src_compile) != function ]] ; then
 				case $eapi in
