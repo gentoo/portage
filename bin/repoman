@@ -799,11 +799,50 @@ for x in scanlist:
 
 	if options.mode == "manifest" or \
 	  options.mode in ('commit', 'fix') and not options.pretend:
+		auto_assumed = set()
+		fetchlist_dict = portage.FetchlistDict(checkdir,
+			repoman_settings, portdb)
+		if options.mode == 'manifest' and options.force:
+			portage._doebuild_manifest_exempt_depend += 1
+			try:
+				distdir = repoman_settings['DISTDIR']
+				mf = portage.manifest.Manifest(checkdir, distdir,
+					fetchlist_dict=fetchlist_dict)
+				mf.create(requiredDistfiles=None,
+					assumeDistHashesAlways=True)
+				for distfiles in fetchlist_dict.itervalues():
+					for distfile in distfiles:
+						if os.path.isfile(os.path.join(distdir, distfile)):
+							mf.fhashdict['DIST'].pop(distfile, None)
+						else:
+							auto_assumed.add(distfile)
+				mf.write()
+			finally:
+				portage._doebuild_manifest_exempt_depend -= 1
+
 		repoman_settings["O"] = checkdir
 		if not portage.digestgen([], repoman_settings, myportdb=portdb):
 			print "Unable to generate manifest."
 			dofail = 1
 		if options.mode == "manifest":
+			if not dofail and options.force and auto_assumed and \
+				'assume-digests' in repoman_settings.features:
+				# Show which digests were assumed despite the --force option
+				# being given. This output will already have been shown by
+				# digestgen() if assume-digests is not enabled, so only show
+				# it here if assume-digests is enabled.
+				pkgs = list(fetchlist_dict)
+				pkgs.sort()
+				portage.writemsg_stdout("  digest.assumed" + \
+					portage.output.colorize("WARN",
+					str(len(auto_assumed)).rjust(18)) + "\n")
+				for cpv in pkgs:
+					fetchmap = fetchlist_dict[cpv]
+					pf = portage.catsplit(cpv)[1]
+					for distfile in sorted(fetchmap):
+						if distfile in auto_assumed:
+							portage.writemsg_stdout(
+								"   %s::%s\n" % (pf, distfile))
 			continue
 		elif dofail:
 			sys.exit(1)

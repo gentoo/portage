@@ -18,6 +18,14 @@ Force commit to proceed, regardless of QA issues. For convenience, this option
 causes the most time consuming QA checks to be skipped. The commit message will
 include an indication that this option has been enabled, together with the
 usual portage version stamp.
+
+When used together with \fBmanifest\fR mode, \fB--force\fR causes existing
+digests to be replaced for any files that exist in ${DISTDIR}.
+Existing digests are assumed to be correct for files that would otherwise
+have to be downloaded in order to recompute digests. \fBWARNING:\fR When
+replacing existing digests, it is the user's responsibility to ensure that
+files contained in ${DISTDIR} have the correct identities. Especially beware
+of partially downloaded files.
 .TP
 \fB-q\fR, \fB--quiet\fR
 Be less verbose about extraneous info
@@ -69,7 +77,8 @@ Scan directory tree for QA issues (short listing)
 Fix simple QA issues (stray digests, missing digests)
 .TP
 .B manifest
-Generate a Manifest (fetches files if necessary)
+Generate a Manifest (fetches distfiles if necessary). See the \fB\-\-force\fR
+option if you would like to replace existing distfiles digests.
 .TP
 .B commit
 Scan directory tree for QA issues; if OK, commit via cvs
