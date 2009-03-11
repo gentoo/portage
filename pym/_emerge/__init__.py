@@ -51,7 +51,7 @@ import portage.exception
 from portage.data import secpass
 from portage.elog.messages import eerror
 from portage.util import normalize_path as normpath
-from portage.util import writemsg, writemsg_level
+from portage.util import cmp_sort_key, writemsg, writemsg_level
 from portage._sets import load_default_config, SETPREFIX
 from portage._sets.base import InternalPackageSet
 
@@ -6663,7 +6663,7 @@ class depgraph(object):
 			node_info[node] = len(mygraph.parent_nodes(node))
 		def cmp_merge_preference(node1, node2):
 			return node_info[node2] - node_info[node1]
-		mygraph.order.sort(cmp_merge_preference)
+		mygraph.order.sort(key=cmp_sort_key(cmp_merge_preference))
 
 	def altlist(self, reversed=False):
 
@@ -7004,7 +7004,7 @@ class depgraph(object):
 			if selected_nodes and len(selected_nodes) > 1:
 				if not isinstance(selected_nodes, list):
 					selected_nodes = list(selected_nodes)
-				selected_nodes.sort(cmp_circular_bias)
+				selected_nodes.sort(key=cmp_sort_key(cmp_circular_bias))
 
 			if not selected_nodes and not myblocker_uninstalls.is_empty():
 				# An Uninstall task needs to be executed in order to
@@ -11567,7 +11567,7 @@ def unmerge(root_config, myopts, unmerge_action,
 				writemsg_level((mytype + ": ").rjust(14), noiselevel=-1)
 			if pkgmap[x][mytype]:
 				sorted_pkgs = [portage.catpkgsplit(mypkg)[1:] for mypkg in pkgmap[x][mytype]]
-				sorted_pkgs.sort(portage.pkgcmp)
+				sorted_pkgs.sort(key=cmp_sort_key(portage.pkgcmp))
 				for pn, ver, rev in sorted_pkgs:
 					if rev == "r0":
 						myversion = ver
@@ -12807,7 +12807,7 @@ def action_info(settings, trees, myopts, myfiles):
 		if portage.isvalidatom(x):
 			pkg_matches = trees["/"]["vartree"].dbapi.match(x)
 			pkg_matches = [portage.catpkgsplit(cpv)[1:] for cpv in pkg_matches]
-			pkg_matches.sort(portage.pkgcmp)
+			pkg_matches.sort(key=cmp_sort_key(portage.pkgcmp))
 			pkgs = []
 			for pn, ver, rev in pkg_matches:
 				if rev != "r0":
@@ -13356,7 +13356,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 				node_refcounts[node] = len(graph.parent_nodes(node))
 			def cmp_reference_count(node1, node2):
 				return node_refcounts[node1] - node_refcounts[node2]
-			graph.order.sort(cmp_reference_count)
+			graph.order.sort(key=cmp_sort_key(cmp_reference_count))
 	
 			ignore_priority_range = [None]
 			ignore_priority_range.extend(
