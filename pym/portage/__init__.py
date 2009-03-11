@@ -265,6 +265,8 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 	writemsg("cacheddirStats: H:%d/M:%d/S:%d\n" % (cacheHit, cacheMiss, cacheStale),10)
 	return ret_list, ret_ftype
 
+_ignorecvs_dirs = ('CVS', 'SCCS', '.svn', '.git')
+
 def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelist=[], followSymlinks=True,
 	EmptyOnError=False, dirsonly=False):
 	"""
@@ -276,7 +278,7 @@ def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelis
 	@type recursive: Boolean
 	@param filesonly; Only return files, not more directories
 	@type filesonly: Boolean
-	@param ignorecvs: Ignore CVS directories ('CVS','.svn','SCCS')
+	@param ignorecvs: Ignore CVS directories ('CVS','SCCS','.svn','.git')
 	@type ignorecvs: Boolean
 	@param ignorelist: List of filenames/directories to exclude
 	@type ignorelist: List
@@ -303,7 +305,8 @@ def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelis
 	if recursive:
 		x=0
 		while x<len(ftype):
-			if ftype[x]==1 and not (ignorecvs and os.path.basename(list[x]) in ('CVS','.svn','SCCS')):
+			if ftype[x] == 1 and not \
+				(ignorecvs and os.path.basename(list[x]) in _ignorecvs_dirs):
 				l,f = cacheddir(mypath+"/"+list[x], ignorecvs, ignorelist, EmptyOnError,
 					followSymlinks)
 
