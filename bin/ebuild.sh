@@ -334,6 +334,7 @@ unpack() {
 	local y
 	local myfail
 	local tar_opts=""
+	local eapi=${EAPI:-0}
 	[ -z "$*" ] && die "Nothing passed to the 'unpack' command"
 
 	for x in "$@"; do
@@ -435,11 +436,15 @@ unpack() {
 				fi
 				;;
 			xz)
-				if [ "${y}" == "tar" ]; then
-					xz -dc "${srcdir}${x}" | tar xof - ${tar_opts}
-					assert "$myfail"
+				if hasq $eapi 0 1 2 ; then
+					vecho "unpack ${x}: file format not recognized. Ignoring."
 				else
-					xz -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
+					if [ "${y}" == "tar" ]; then
+						xz -dc "${srcdir}${x}" | tar xof - ${tar_opts}
+						assert "$myfail"
+					else
+						xz -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
+					fi
 				fi
 				;;
 			*)
