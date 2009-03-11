@@ -5115,7 +5115,10 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 		return 1
 
 	_prepare_workdir(mysettings)
-	_prepare_features_dirs(mysettings)
+	if mysettings.get('EBUILD_PHASE') != 'fetch':
+		# Avoid spurious permissions adjustments when fetching with
+		# a temporary PORTAGE_TMPDIR setting (for fetchonly).
+		_prepare_features_dirs(mysettings)
 
 def _adjust_perms_msg(settings, msg):
 
