@@ -9,15 +9,14 @@ import re
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.dep:match_from_list',
 	'portage.locks:unlockfile',
+	'portage.output:colorize',
 	'portage.util:cmp_sort_key,writemsg',
+	'portage.versions:catpkgsplit,pkgcmp',
 )
 
-from portage.dep import match_from_list
-from portage.output import colorize
 from portage import auxdbkeys, dep_expand
-from portage.versions import catpkgsplit, pkgcmp
-
 
 class dbapi(object):
 	_category_re = re.compile(r'^\w[-.+\w]*$')

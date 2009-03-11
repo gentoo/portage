@@ -9,24 +9,24 @@ __all__ = [
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum:perform_md5',
+	'portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list,' + \
+	 	'use_reduce,paren_reduce',
 	'portage.locks:lockdir,unlockdir',
+	'portage.output:bold,colorize',
+	'portage.update:fixdbentries',
 	'portage.util:apply_secpass_permissions,ConfigProtect,ensure_dirs,' + \
 		'writemsg,writemsg_level,write_atomic,atomic_ofstream,writedict,' + \
-		'grabfile,grabdict,normalize_path,new_protect_filename,getlibpaths'
+		'grabfile,grabdict,normalize_path,new_protect_filename,getlibpaths',
+	'portage.versions:best,catpkgsplit,catsplit,pkgcmp,pkgsplit',
 )
 
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, \
 	PORTAGE_PACKAGE_ATOM, PRIVATE_PATH, VDB_PATH
 from portage.data import portage_gid, portage_uid, secpass
 from portage.dbapi import dbapi
-from portage.dep import use_reduce, paren_reduce, isvalidatom, \
-	isjustname, dep_getkey, match_from_list
 from portage.exception import CommandNotFound, \
 	InvalidData, InvalidPackageName, \
 	FileNotFound, PermissionDenied, UnsupportedAPIException
-from portage.output import bold, colorize
-from portage.update import fixdbentries
-from portage.versions import pkgsplit, catpkgsplit, catsplit, best, pkgcmp
 
 from portage import listdir, dep_expand, digraph, flatten, key_expand, \
 	doebuild_environment, doebuild, env_update, prepare_build_dirs, \
