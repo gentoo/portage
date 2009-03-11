@@ -4865,7 +4865,11 @@ class depgraph(object):
 			# This shouldn't happen.
 			return None
 
-		if unmatched_node.installed and not matched_node.installed:
+		if unmatched_node.installed and not matched_node.installed and \
+			unmatched_node.cpv == matched_node.cpv:
+			# If the conflicting packages are the same version then
+			# --newuse should be all that's needed. If they are different
+			# versions then there's some other problem.
 			return "New USE are correctly set, but --newuse wasn't" + \
 				" requested, so an installed package with incorrect USE " + \
 				"happened to get pulled into the dependency graph. " + \
