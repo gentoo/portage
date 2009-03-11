@@ -23,26 +23,16 @@ class database(fs_template.FsBased):
 		if not self.readonly and not os.path.exists(self.location):
 			self._ensure_dirs()
 
-	def __getitem__(self, cpv):
+	def _getitem(self, cpv):
 		fp = os.path.join(self.location, cpv)
 		try:
 			myf = open(fp, "r")
 			try:
 				d = self._parse_data(myf, cpv)
-				if "_mtime_" not in d:
-					"""Backward compatibility with old cache that uses mtime
-					mangling."""
-					d["_mtime_"] = long(os.fstat(myf.fileno()).st_mtime)
-				mtime = d.get('_mtime_')
-				if mtime is None:
-					raise cache_errors.CacheCorruption(cpv,
-						'_mtime_ field is missing')
-				try:
-					mtime = long(mtime)
-				except ValueError:
-					raise cache_errors.CacheCorruption(cpv,
-						'_mtime_ conversion to long failed: %s' % (mtime,))
-				d['_mtime_'] = mtime
+				if '_mtime_' not in d:
+					# Backward compatibility with old cache
+					# that uses mtime mangling.
+					d['_mtime_'] = long(os.fstat(myf.fileno()).st_mtime)
 				return d
 			finally:
 				myf.close()
@@ -57,10 +47,6 @@ class database(fs_template.FsBased):
 		except ValueError, e:
 			# If a line is missing an "=", the split length is 1 instead of 2.
 			raise cache_errors.CacheCorruption(cpv, e)
-		if "_eclasses_" in d:
-			d["_eclasses_"] = reconstruct_eclasses(cpv, d["_eclasses_"])
-		else:
-			d["_eclasses_"] = {}
 		return d
 
 	def _setitem(self, cpv, values):
