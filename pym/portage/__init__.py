@@ -1607,7 +1607,8 @@ class config(object):
 
 			#getting categories from an external file now
 			categories = [grabfile(os.path.join(x, "categories")) for x in locations]
-			self.categories = stack_lists(categories, incremental=1)
+			self.categories = tuple(sorted(
+				stack_lists(categories, incremental=1)))
 			del categories
 
 			archlist = [grabfile(os.path.join(x, "arch.list")) for x in locations]
