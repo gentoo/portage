@@ -434,6 +434,14 @@ unpack() {
 					lzma -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
 				fi
 				;;
+			xz)
+				if [ "${y}" == "tar" ]; then
+					xz -dc "${srcdir}${x}" | tar xof - ${tar_opts}
+					assert "$myfail"
+				else
+					xz -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
+				fi
+				;;
 			*)
 				vecho "unpack ${x}: file format not recognized. Ignoring."
 				;;
