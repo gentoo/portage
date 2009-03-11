@@ -8,6 +8,36 @@ import sys
 import types
 from portage.proxy.objectproxy import ObjectProxy
 
+_module_proxies = {}
+
+def _register_module_proxy(name, proxy):
+	proxy_list = _module_proxies.get(name)
+	if proxy_list is None:
+		proxy_list = []
+		_module_proxies[name] = proxy_list
+	proxy_list.append(proxy)
+
+def _unregister_module_proxy(name):
+	"""
+	Destroy all proxies that reference the give module name. Also, check
+	for other proxies referenced by modules that have been imported and
+	destroy those proxies too. This way, destruction of a single proxy
+	can trigger destruction of all the rest.
+	"""
+	proxy_list = _module_proxies.get(name)
+	if proxy_list is not None:
+		del _module_proxies[name]
+		for proxy in proxy_list:
+			object.__getattribute__(proxy, '_get_target')()
+
+		modules = sys.modules
+		for name, proxy_list in list(_module_proxies.iteritems()):
+			if name not in modules:
+				continue
+			del _module_proxies[name]
+			for proxy in proxy_list:
+				object.__getattribute__(proxy, '_get_target')()
+
 class _LazyImport(ObjectProxy):
 
 	__slots__ = ('_scope', '_alias', '_name', '_target')
@@ -17,6 +47,7 @@ class _LazyImport(ObjectProxy):
 		object.__setattr__(self, '_scope', scope)
 		object.__setattr__(self, '_alias', alias)
 		object.__setattr__(self, '_name', name)
+		_register_module_proxy(name, self)
 
 	def _get_target(self):
 		try:
@@ -29,6 +60,7 @@ class _LazyImport(ObjectProxy):
 		object.__setattr__(self, '_target', target)
 		object.__getattribute__(self, '_scope')[
 			object.__getattribute__(self, '_alias')] = target
+		_unregister_module_proxy(name)
 		return target
 
 class _LazyImportFrom(_LazyImport):
@@ -48,6 +80,7 @@ class _LazyImportFrom(_LazyImport):
 		object.__setattr__(self, '_target', target)
 		object.__getattribute__(self, '_scope')[
 			object.__getattribute__(self, '_alias')] = target
+		_unregister_module_proxy(name)
 		return target
 
 def lazyimport(scope, *args):
