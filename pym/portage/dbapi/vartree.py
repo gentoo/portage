@@ -35,6 +35,7 @@ from portage.cache.mappings import slot_dict_class
 import os, re, shutil, stat, errno, copy, subprocess
 import logging
 import shlex
+import sys
 from itertools import izip
 
 try:
@@ -389,8 +390,15 @@ class vardbapi(dbapi):
 
 	def _aux_cache_init(self):
 		aux_cache = None
+		open_kwargs = {}
+		if sys.hexversion >= 0x3000000:
+			# Buffered io triggers extreme performance issues in
+			# Unpickler.load() (problem observed with python-3.0.1).
+			# Unfortunately, performance is still poor relative to
+			# python-2.x, but buffering makes it much worse.
+			open_kwargs["buffering"] = 0
 		try:
-			f = open(self._aux_cache_filename, 'rb')
+			f = open(self._aux_cache_filename, mode='rb', **open_kwargs)
 			mypickle = pickle.Unpickler(f)
 			aux_cache = mypickle.load()
 			f.close()
