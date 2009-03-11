@@ -216,8 +216,8 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 	@return: The use reduced depend array
 	"""
 	# Quick validity checks
-	for x in range(len(deparray)):
-		if deparray[x] in ["||","&&"]:
+	for x, y in enumerate(deparray):
+		if y == '||':
 			if len(deparray) - 1 == x or not isinstance(deparray[x+1], list):
 				raise portage.exception.InvalidDependString(deparray[x]+" missing atom list in \""+paren_enclose(deparray)+"\"")
 	if deparray and deparray[-1] and deparray[-1][-1] == "?":
