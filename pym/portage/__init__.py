@@ -1117,7 +1117,7 @@ class config(object):
 
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
-		local_config=True, env=os.environ):
+		local_config=True, env=None):
 		"""
 		@param clone: If provided, init will use deepcopy to copy by value the instance.
 		@type clone: Instance of config class.
@@ -1455,6 +1455,8 @@ class config(object):
 				expand_map.update(env_d)
 
 			# backupenv is used for calculating incremental variables.
+			if env is None:
+				env = os.environ
 			self.backupenv = env.copy()
 
 			if env_d:
