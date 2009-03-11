@@ -468,9 +468,18 @@ hasgq() { hasg "$@" >/dev/null ; }
 econf() {
 	local x
 
-	! hasq "$EAPI" 0 1 && [[ $EBUILD_PHASE = compile && \
-		$(type -t src_configure) = function ]] && \
-		eqawarn "econf called in src_compile instead of src_configure"
+	local phase_func=$(_ebuild_arg_to_phase "$EAPI" "$EBUILD_PHASE")
+	if [[ -n $phase_func ]] ; then
+		if hasq "$EAPI" 0 1 ; then
+			[[ $phase_func != src_compile ]] && \
+				eqawarn "QA Notice: econf called in" \
+					"$phase_func instead of src_compile"
+		else
+			[[ $phase_func != src_configure ]] && \
+				eqawarn "QA Notice: econf called in" \
+					"$phase_func instead of src_configure"
+		fi
+	fi
 
 	: ${ECONF_SOURCE:=.}
 	if [ -x "${ECONF_SOURCE}/configure" ]; then
