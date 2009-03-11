@@ -4678,7 +4678,7 @@ def _check_build_log(mysettings, out=None):
 	if logfile is None:
 		return
 	try:
-		f = open(logfile, 'rb')
+		f = open(logfile)
 	except EnvironmentError:
 		return
 
