@@ -3806,6 +3806,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						pass
 
 				if mystat is not None:
+					if stat.S_ISDIR(mystat.st_mode):
+						portage.util.writemsg_level(
+							("!!! Unable to fetch file since " + \
+							"a directory is in the way: \n" + \
+							"!!!   %s\n") % myfile_path,
+							level=logging.ERROR, noiselevel=-1)
+						return 0
+
 					if mystat.st_size == 0:
 						if distdir_writable:
 							try:
@@ -4055,9 +4063,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						#resume mode:
 						writemsg(">>> Resuming download...\n")
 						locfetch=resumecommand
+						command_var = resumecommand_var
 					else:
 						#normal mode:
 						locfetch=fetchcommand
+						command_var = fetchcommand_var
 					writemsg_stdout(">>> Downloading '%s'\n" % \
 						re.sub(r'//(.+):.+@(.+)/',r'//\1:*password*@\2/', loc))
 					variables = {
@@ -4105,6 +4115,25 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							del e
 							fetched = 0
 						else:
+
+							if stat.S_ISDIR(mystat.st_mode):
+								# This can happen if FETCHCOMMAND erroneously
+								# contains wget's -P option where it should
+								# instead have -O.
+								portage.util.writemsg_level(
+									("!!! The command specified in the " + \
+									"%s variable appears to have\n!!! " + \
+									"created a directory instead of a " + \
+									"normal file.\n") % command_var,
+									level=logging.ERROR, noiselevel=-1)
+								portage.util.writemsg_level(
+									"!!! Refer to the make.conf(5) " + \
+									"man page for information about how " + \
+									"to\n!!! correctly specify " + \
+									"FETCHCOMMAND and RESUMECOMMAND.\n",
+									level=logging.ERROR, noiselevel=-1)
+								return 0
+
 							# no exception?  file exists. let digestcheck() report
 							# an appropriately for size or checksum errors
 
