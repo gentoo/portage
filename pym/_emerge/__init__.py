@@ -14649,9 +14649,10 @@ def emerge_main():
 		mysettings =  trees[myroot]["vartree"].settings
 		mysettings.unlock()
 		adjust_config(myopts, mysettings)
-		mysettings["PORTAGE_COUNTER_HASH"] = \
-			trees[myroot]["vartree"].dbapi._counter_hash()
-		mysettings.backup_changes("PORTAGE_COUNTER_HASH")
+		if "--pretend" not in myopts:
+			mysettings["PORTAGE_COUNTER_HASH"] = \
+				trees[myroot]["vartree"].dbapi._counter_hash()
+			mysettings.backup_changes("PORTAGE_COUNTER_HASH")
 		mysettings.lock()
 		del myroot, mysettings
 
