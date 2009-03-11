@@ -1084,8 +1084,19 @@ class LazyItemsDict(dict):
 		self.addLazyItem(item_key,
 			self._SingletonWrapper(self, item_key, value_callable,
 				*pargs, **kwargs))
-	def update(self, map_obj):
-		if isinstance(map_obj, LazyItemsDict):
+
+	def update(self, *args, **kwargs):
+		if len(args) > 1:
+			raise TypeError(
+				"expected at most 1 positional argument, got " + \
+				repr(len(args)))
+		if args:
+			map_obj = args[0]
+		else:
+			map_obj = None
+		if map_obj is None:
+			pass
+		elif isinstance(map_obj, LazyItemsDict):
 			for k in map_obj:
 				if k in map_obj.lazy_items:
 					dict.__setitem__(self, k, None)
@@ -1094,6 +1105,9 @@ class LazyItemsDict(dict):
 			self.lazy_items.update(map_obj.lazy_items)
 		else:
 			dict.update(self, map_obj)
+		if kwargs:
+			dict.update(self, kwargs)
+
 	def __getitem__(self, item_key):
 		if item_key in self.lazy_items:
 			value_callable, pargs, kwargs = self.lazy_items[item_key]
