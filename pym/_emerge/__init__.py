@@ -2321,12 +2321,20 @@ class EbuildFetcher(SpawnProcess):
 		portdb = root_config.trees["porttree"].dbapi
 		ebuild_path = portdb.findname(self.pkg.cpv)
 		settings = self.config_pool.allocate()
-		self._build_dir = EbuildBuildDir(pkg=self.pkg, settings=settings)
-		self._build_dir.lock()
-		self._build_dir.clean()
-		portage.prepare_build_dirs(self.pkg.root, self._build_dir.settings, 0)
-		if self.logfile is None:
-			self.logfile = settings.get("PORTAGE_LOG_FILE")
+		settings.setcpv(self.pkg)
+
+		# In prefetch mode, logging goes to emerge-fetch.log and the builddir
+		# should not be touched since otherwise it could interfere with
+		# another instance of the same cpv concurrently being built for a
+		# different $ROOT (currently, builds only cooperate with prefetchers
+		# that are spawned for the same $ROOT).
+		if not self.prefetch:
+			self._build_dir = EbuildBuildDir(pkg=self.pkg, settings=settings)
+			self._build_dir.lock()
+			self._build_dir.clean()
+			portage.prepare_build_dirs(self.pkg.root, self._build_dir.settings, 0)
+			if self.logfile is None:
+				self.logfile = settings.get("PORTAGE_LOG_FILE")
 
 		phase = "fetch"
 		if self.fetchall:
