@@ -6,8 +6,8 @@ DEFAULT_PATH = @DEFAULT_PATH@
 srcdir=@srcdir@
 top_builddir=@top_builddir@
 
-portageuser = @portageuser@
-portagegroup = @portagegroup@
+portageuser = "@portageuser@"
+portagegroup = "@portagegroup@"
 
 INSTALL = @INSTALL@
 INSTALL_cnf = @INSTALL_PROGRAM@ -o "$(portageuser)" -g "$(portagegroup)" -m 644

@@ -6,8 +6,8 @@ libdir = @libdir@
 srcdir=@srcdir@
 top_builddir=@top_builddir@
 
-portageuser = @portageuser@
-portagegroup = @portagegroup@
+portageuser = "@portageuser@"
+portagegroup = "@portagegroup@"
 
 PORTAGE_BIN = @PORTAGE_BASE@/bin
 EBUILD_HELPER_BIN = $(PORTAGE_BIN)/ebuild-helpers

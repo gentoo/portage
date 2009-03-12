@@ -7,8 +7,8 @@ PYTHON = @PORTAGE_PYTHON@
 srcdir=@srcdir@
 top_builddir=@top_builddir@
 
-portageuser = @portageuser@
-portagegroup = @portagegroup@
+portageuser = "@portageuser@"
+portagegroup = "@portagegroup@"
 
 PORTAGE_PYM = @PORTAGE_BASE@/pym
 INSTALL = @INSTALL@
