@@ -10,6 +10,7 @@ portageuser = @portageuser@
 portagegroup = @portagegroup@
 
 PORTAGE_BIN = @PORTAGE_BASE@/bin
+EBUILD_HELPER_BIN = $(PORTAGE_BIN)/ebuild-helpers
 LN_S = @LN_S@
 INSTALL = @INSTALL@
 INSTALL_script = @INSTALL_PROGRAM@ -o "$(portageuser)" -g "$(portagegroup)" -m 755
@@ -35,9 +36,14 @@ user_sbinprogs = \
 	fixpackages \
 	regenworld
 
+ebuild_helperprogs = \
+	( cd ${srcdir}/ebuild-helpers && find . -name 'Makefile*' -prune \
+	-o -name '.svn' -prune -o type f -print )
+
 list_sourcedir = \
-	  ( cd ${srcdir} && find . -name 'CVS' -prune -o -name '.\#*' -prune -o -name 'Makefile*' -prune \
-	  -o -name '.svn' -prune -o -type f -print )
+	  ( cd ${srcdir} && find . -name 'Makefile*' -prune \
+	  -o -name '.svn' -prune -o -name 'ebuild-helpers' -prune \
+	  -o -type f -print )
 
 all:
 
@@ -46,6 +52,11 @@ install:
 	$(list_sourcedir) | while read f \
 	; do echo "$(INSTALL_scriptsubst) ${srcdir}/$${f} $(DESTDIR)$(PORTAGE_BIN)/$${f}" \
 	   ; $(INSTALL_scriptsubst) ${srcdir}/$${f} $(DESTDIR)$(PORTAGE_BIN)/$${f} \
+	; done
+	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(EBUILD_HELPER_BIN)
+	$(ebuild_helperprogs) | while read f \
+	; do echo "$(INSTALL_scriptsubst) ${srcdir}/ebuild-helpers/$${f} $(DESTDIR)$(EBUILD_HELPER_BIN)/$${f}" \
+	   ; $(INSTALL_scriptsubst) ${srcdir}/ebuild-helpers/$${f} $(DESTDIR)$(EBUILD_HELPER_BIN)/$${f} \
 	; done
 	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(prefix)/bin
 	cd $(DESTDIR)$(prefix)/bin \
@@ -72,6 +83,10 @@ uninstall:
 	$(list_sourcedir) | while read f \
 	; do echo "rm -f $(DESTDIR)$(PORTAGE_BIN)/$${f}" \
 	   ; rm -f $(DESTDIR)$(PORTAGE_BIN)/$${f} \
+	; done
+	$(ebuild_helperprogs) | while read f \
+	; do echo "rm -f $(DESTDIR)$(EBUILD_HELPER_BIN)/$${f}" \
+	   ; rm -f $(DESTDIR)$(EBUILD_HELPER_BIN)/$${f} \
 	; done
 	for p in $(user_binprogs) \
 	; do echo "rm -f $(DESTDIR)$(prefix)/bin/$${p}" \
