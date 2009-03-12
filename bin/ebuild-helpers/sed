@@ -6,6 +6,11 @@
 scriptpath=${BASH_SOURCE[0]}
 scriptname=${scriptpath##*/}
 
+if [[ ${EPREFIX} != "" ]] ; then
+	echo "using Prefix and hitting this lame BSD wrapper? die!" > /dev/stderr
+	exit 1
+fi
+
 if [[ sed == ${scriptname} ]] && [[ -n ${ESED} ]]; then
 	exec ${ESED} "$@"
 elif type -P g${scriptname} > /dev/null ; then
