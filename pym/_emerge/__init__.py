@@ -3510,13 +3510,6 @@ class Binpkg(CompositeTask):
 
 		dir_path = self._build_dir.dir_path
 
-		try:
-			shutil.rmtree(dir_path)
-		except (IOError, OSError), e:
-			if e.errno != errno.ENOENT:
-				raise
-			del e
-
 		infloc = self._infloc
 		pkg = self.pkg
 		pkg_path = self._pkg_path
