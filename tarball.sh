@@ -14,9 +14,13 @@ export TMP="/var/tmp"
 export V="$1"
 export DEST="${TMP}/${PKG}-${V}"
 
-./tabcheck.py `grep "#\!@PORTAGE_PYTHON@" bin/* | cut -d: -f1` `find ./ -type f -name '*.py'`
+./tabcheck.py $(
+	find ./ -name .svn -prune -o -type f ! -name '*.py' -print \
+		| xargs grep -l "#\!@PORTAGE_PYTHON@"
+	find ./ -name .svn -prune -o -type f -name '*.py' -print
+)
 
-if [ -e ${DEST} ]; then
+if [[ -e ${DEST} ]]; then
 	echo EXISTS ALREADY
 	exit 1
 fi
