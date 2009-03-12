@@ -3189,6 +3189,7 @@ class EbuildPhase(CompositeTask):
 		settings = self.settings
 
 		if self.phase == "install":
+			portage._post_src_install_chost_fix(settings)
 			portage._post_src_install_uid_fix(settings)
 
 		post_phase_cmds = self._post_phase_cmds.get(self.phase)

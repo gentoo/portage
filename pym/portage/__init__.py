@@ -4724,6 +4724,7 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 	if mydo == "install":
 		_check_build_log(mysettings)
 		if phase_retval == os.EX_OK:
+			_post_src_install_chost_fix(mysettings)
 			phase_retval = _post_src_install_checks(mysettings)
 
 	if mydo == "test" and phase_retval != os.EX_OK and \
@@ -4873,6 +4874,17 @@ def _check_build_log(mysettings, out=None):
 		msg.append("")
 		msg.extend("\t" + line for line in make_jobserver)
 		_eqawarn(msg)
+
+def _post_src_install_chost_fix(settings):
+	"""
+	It's possible that the ebuild has changed the
+	CHOST variable, so revert it to the initial
+	setting.
+	"""
+	chost = settings.get('CHOST')
+	if chost:
+		write_atomic(os.path.join(settings['PORTAGE_BUILDDIR'],
+			'build-info', 'CHOST'), chost + '\n')
 
 def _post_src_install_uid_fix(mysettings):
 	"""
