@@ -463,7 +463,8 @@ econf() {
 
 	local phase_func=$(_ebuild_arg_to_phase "$EAPI" "$EBUILD_PHASE")
 	if [[ -n $phase_func ]] ; then
-		if hasq "$EAPI" 0 1 ; then
+		local eapi=${EAPI/prefix/} ; eapi=${eapi# }
+		if hasq "$eapi" 0 1 ; then
 			[[ $phase_func != src_compile ]] && \
 				eqawarn "QA Notice: econf called in" \
 					"$phase_func instead of src_compile"
