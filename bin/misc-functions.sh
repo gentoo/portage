@@ -75,8 +75,8 @@ install_qa_check() {
 		f=$(scanelf -qyRF '%r %p' "${D}" | grep -E "(${PORTAGE_BUILDDIR}|: |::|^:|^ )")
 		# Reject set*id binaries with $ORIGIN in RPATH #260331
 		x=$(
-			find "${D}" -type f -perm /6000 -print0 | xargs -0 \
-			scanelf -qyRF '%r %p' | grep '$ORIGIN'
+			find "${D}" -type f \( -perm -u+s -o -perm -g+s \) -print0 | \
+			xargs -0 scanelf -qyRF '%r %p' | grep '$ORIGIN'
 		)
 		if [[ -n ${f}${x} ]] ; then
 			vecho -ne '\a\n'
