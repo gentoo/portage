@@ -712,11 +712,12 @@ dyn_clean() {
 	rm -rf "${PORTAGE_BUILDDIR}/image" "${PORTAGE_BUILDDIR}/homedir"
 	rm -f "${PORTAGE_BUILDDIR}/.installed"
 
-	if ! hasq keeptemp $FEATURES && ! hasq keepwork $FEATURES ; then
+	if [[ $EMERGE_FROM = binary ]] || \
+		! hasq keeptemp $FEATURES && ! hasq keepwork $FEATURES ; then
 		rm -rf "${T}"
 	fi
 
-	if ! hasq keepwork $FEATURES; then
+	if [[ $EMERGE_FROM = binary ]] || ! hasq keepwork $FEATURES; then
 		rm -f "$PORTAGE_BUILDDIR"/.{exit_status,logid,unpacked,prepared} \
 			"$PORTAGE_BUILDDIR"/.{configured,compiled,tested,packaged}
 
