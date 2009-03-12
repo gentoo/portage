@@ -2615,8 +2615,7 @@ class EbuildBuildDir(SlotObject):
 				portage.locks.unlockdir(catdir_lock)
 
 	def clean_log(self):
-		"""Uses shutil.rmtree() rather than spawning a 'clean' phase. Disabled
-		by keepwork or keeptemp in FEATURES."""
+		"""Discard existing log."""
 		settings = self.settings
 
 		for x in ('.logid', 'temp/build.log'):
