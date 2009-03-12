@@ -2534,7 +2534,7 @@ class EbuildFetcher(SpawnProcess):
 		if not self.prefetch:
 			self._build_dir = EbuildBuildDir(pkg=self.pkg, settings=settings)
 			self._build_dir.lock()
-			self._build_dir.clean()
+			self._build_dir.clean_log()
 			portage.prepare_build_dirs(self.pkg.root, self._build_dir.settings, 0)
 			if self.logfile is None:
 				self.logfile = settings.get("PORTAGE_LOG_FILE")
@@ -2605,7 +2605,7 @@ class EbuildFetcher(SpawnProcess):
 				portage.elog.elog_process(self.pkg.cpv, self._build_dir.settings)
 			features = self._build_dir.settings.features
 			if self.returncode == os.EX_OK:
-				self._build_dir.clean()
+				self._build_dir.clean_log()
 			self._build_dir.unlock()
 			self.config_pool.deallocate(self._build_dir.settings)
 			self._build_dir = None
@@ -2660,18 +2660,15 @@ class EbuildBuildDir(SlotObject):
 			if catdir_lock is not None:
 				portage.locks.unlockdir(catdir_lock)
 
-	def clean(self):
-		"""Uses shutil.rmtree() rather than spawning a 'clean' phase. Disabled
-		by keepwork or keeptemp in FEATURES."""
+	def clean_log(self):
+		"""Discard existing log."""
 		settings = self.settings
-		features = settings.features
-		if not ("keepwork" in features or "keeptemp" in features):
+
+		for x in ('.logid', 'temp/build.log'):
 			try:
-				shutil.rmtree(settings["PORTAGE_BUILDDIR"])
-			except EnvironmentError, e:
-				if e.errno != errno.ENOENT:
-					raise
-				del e
+				os.unlink(os.path.join(settings["PORTAGE_BUILDDIR"], x))
+			except OSError:
+				pass
 
 	def unlock(self):
 		if self._lock_obj is None:
@@ -3219,6 +3216,7 @@ class EbuildPhase(CompositeTask):
 		settings = self.settings
 
 		if self.phase == "install":
+			portage._post_src_install_chost_fix(settings)
 			portage._post_src_install_uid_fix(settings)
 
 		post_phase_cmds = self._post_phase_cmds.get(self.phase)
@@ -3440,12 +3438,10 @@ class Binpkg(CompositeTask):
 		pkg_count = self.pkg_count
 		if not (self.opts.pretend or self.opts.fetchonly):
 			self._build_dir.lock()
-			try:
-				shutil.rmtree(self._build_dir.dir_path)
-			except EnvironmentError, e:
-				if e.errno != errno.ENOENT:
-					raise
-				del e
+			# If necessary, discard old log so that we don't
+			# append to it.
+			self._build_dir.clean_log()
+			# Initialze PORTAGE_LOG_FILE.
 			portage.prepare_build_dirs(self.settings["ROOT"], self.settings, 1)
 		fetcher = BinpkgFetcher(background=self.background,
 			logfile=self.settings.get("PORTAGE_LOG_FILE"), pkg=self.pkg,
@@ -3536,13 +3532,6 @@ class Binpkg(CompositeTask):
 			return
 
 		dir_path = self._build_dir.dir_path
-
-		try:
-			shutil.rmtree(dir_path)
-		except (IOError, OSError), e:
-			if e.errno != errno.ENOENT:
-				raise
-			del e
 
 		infloc = self._infloc
 		pkg = self.pkg

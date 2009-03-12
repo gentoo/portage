@@ -6,10 +6,9 @@
 PORTAGE_BIN_PATH="${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"
 PORTAGE_PYM_PATH="${PORTAGE_PYM_PATH:-@PORTAGE_BASE@/pym}"
 
-SANDBOX_PREDICT="${SANDBOX_PREDICT}:/proc/self/maps:/dev/console:/dev/random"
-export SANDBOX_PREDICT
-export SANDBOX_WRITE="${SANDBOX_WRITE}:/dev/shm:/dev/stdout:/dev/stderr:${PORTAGE_TMPDIR}"
-export SANDBOX_READ="${SANDBOX_READ}:/:/dev/shm:/dev/stdin:${PORTAGE_TMPDIR}"
+export SANDBOX_PREDICT="${SANDBOX_PREDICT:+${SANDBOX_PREDICT}:}/proc/self/maps:/dev/console:/dev/random"
+export SANDBOX_WRITE="${SANDBOX_WRITE:+${SANDBOX_WRITE}:}/dev/shm:/dev/stdout:/dev/stderr:${PORTAGE_TMPDIR}"
+export SANDBOX_READ="${SANDBOX_READ:+${SANDBOX_READ}:}/:/dev/shm:/dev/stdin:${PORTAGE_TMPDIR}"
 # Don't use sandbox's BASH_ENV for new shells because it does
 # 'source /etc/profile' which can interfere with the build
 # environment by modifying our PATH.
@@ -85,25 +84,19 @@ source "${PORTAGE_BIN_PATH}/isolated-functions.sh"  &>/dev/null
 export SANDBOX_ON="0"
 
 # sandbox support functions; defined prior to profile.bashrc srcing, since the profile might need to add a default exception (/usr/lib64/conftest fex)
-addread() {
-	[[ -z $1 || -n $2 ]] && die "Usage: addread <colon-delimited list of paths>"
-	export SANDBOX_READ="$SANDBOX_READ:$1"
+_sb_append_var() {
+	local _v=$1 ; shift
+	local var="SANDBOX_${_v}"
+	[[ -z $1 || -n $2 ]] && die "Usage: add$(echo ${_v} | LC_ALL=C tr :upper: :lower:) <colon-delimited list of paths>"
+	export ${var}="${!var:+${!var}:}$1"
 }
-
-addwrite() {
-	[[ -z $1 || -n $2 ]] && die "Usage: addwrite <colon-delimited list of paths>"
-	export SANDBOX_WRITE="$SANDBOX_WRITE:$1"
-}
-
-adddeny() {
-	[[ -z $1 || -n $2 ]] && die "Usage: adddeny <colon-delimited list of paths>"
-	export SANDBOX_DENY="$SANDBOX_DENY:$1"
-}
-
-addpredict() {
-	[[ -z $1 || -n $2 ]] && die "Usage: addpredict <colon-delimited list of paths>"
-	export SANDBOX_PREDICT="$SANDBOX_PREDICT:$1"
-}
+# bash-4 version:
+# local var="SANDBOX_${1^^}"
+# addread() { _sb_append_var ${0#add} "$@" ; }
+addread()    { _sb_append_var READ    "$@" ; }
+addwrite()   { _sb_append_var WRITE   "$@" ; }
+adddeny()    { _sb_append_var DENY    "$@" ; }
+addpredict() { _sb_append_var PREDICT "$@" ; }
 
 lchown() {
 	chown -h "$@"
@@ -721,11 +714,12 @@ dyn_clean() {
 	rm -rf "${PORTAGE_BUILDDIR}/image" "${PORTAGE_BUILDDIR}/homedir"
 	rm -f "${PORTAGE_BUILDDIR}/.installed"
 
-	if ! hasq keeptemp $FEATURES && ! hasq keepwork $FEATURES ; then
+	if [[ $EMERGE_FROM = binary ]] || \
+		! hasq keeptemp $FEATURES && ! hasq keepwork $FEATURES ; then
 		rm -rf "${T}"
 	fi
 
-	if ! hasq keepwork $FEATURES; then
+	if [[ $EMERGE_FROM = binary ]] || ! hasq keepwork $FEATURES; then
 		rm -f "$PORTAGE_BUILDDIR"/.{exit_status,logid,unpacked,prepared} \
 			"$PORTAGE_BUILDDIR"/.{configured,compiled,tested,packaged}
 
@@ -958,13 +952,14 @@ dyn_test() {
 		ewarn "Skipping make test/check due to ebuild restriction."
 		vecho ">>> Test phase [explicitly disabled]: ${CATEGORY}/${PF}"
 	else
+		local save_sp=${SANDBOX_PREDICT}
 		addpredict /
 		ebuild_phase pre_src_test
 		ebuild_phase src_test
 		touch "$PORTAGE_BUILDDIR/.tested" || \
 			die "Failed to 'touch .tested' in $PORTAGE_BUILDDIR"
 		ebuild_phase post_src_test
-		SANDBOX_PREDICT="${SANDBOX_PREDICT%:/}"
+		SANDBOX_PREDICT=${save_sp}
 	fi
 
 	trap - SIGINT SIGQUIT
@@ -1844,7 +1839,7 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm depend && \
 		die "error processing environment"
 	# Colon separated SANDBOX_* variables need to be cumulative.
 	for x in SANDBOX_DENY SANDBOX_READ SANDBOX_PREDICT SANDBOX_WRITE ; do
-		eval PORTAGE_${x}=\${!x}
+		export PORTAGE_${x}=${!x}
 	done
 	PORTAGE_SANDBOX_ON=${SANDBOX_ON}
 	export SANDBOX_ON=1
@@ -1856,11 +1851,15 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm depend && \
 	# until we've merged them with our current values.
 	export SANDBOX_ON=0
 	for x in SANDBOX_DENY SANDBOX_PREDICT SANDBOX_READ SANDBOX_WRITE ; do
-		eval y=\${PORTAGE_${x}}
-		if [ "${y}" != "${!x}" ] ; then
-			eval export ${x}=\"$(echo -n "${y}:${!x}" | tr ":" "\0" | \
-				sort -z -u | tr "\0" ":")\"
+		y="PORTAGE_${x}"
+		if [ -z "${!x}" ] ; then
+			export ${x}=${!y}
+		elif [ -n "${!y}" ] && [ "${!y}" != "${!x}" ] ; then
+			# filter out dupes
+			export ${x}=$(printf "${!y}:${!x}" | tr ":" "\0" | \
+				sort -z -u | tr "\0" ":")
 		fi
+		export ${x}=${!x%:}
 		unset PORTAGE_${x}
 	done
 	unset x y

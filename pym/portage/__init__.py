@@ -4743,6 +4743,7 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 	if mydo == "install":
 		_check_build_log(mysettings)
 		if phase_retval == os.EX_OK:
+			_post_src_install_chost_fix(mysettings)
 			phase_retval = _post_src_install_checks(mysettings)
 
 	if mydo == "test" and phase_retval != os.EX_OK and \
@@ -4893,6 +4894,17 @@ def _check_build_log(mysettings, out=None):
 		msg.extend("\t" + line for line in make_jobserver)
 		_eqawarn(msg)
 
+def _post_src_install_chost_fix(settings):
+	"""
+	It's possible that the ebuild has changed the
+	CHOST variable, so revert it to the initial
+	setting.
+	"""
+	chost = settings.get('CHOST')
+	if chost:
+		write_atomic(os.path.join(settings['PORTAGE_BUILDDIR'],
+			'build-info', 'CHOST'), chost + '\n')
+
 def _post_src_install_uid_fix(mysettings):
 	"""
 	Files in $D with user and group bits that match the "portage"
@@ -4903,6 +4915,17 @@ def _post_src_install_uid_fix(mysettings):
 	"""
 	inst_uid = int(mysettings["PORTAGE_INST_UID"])
 	inst_gid = int(mysettings["PORTAGE_INST_GID"])
+
+	if bsd_chflags:
+		# Temporarily remove all of the flags in order to avoid EPERM errors.
+		os.system("mtree -c -p %s -k flags > %s" % \
+			(_shell_quote(mysettings["D"]),
+			_shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree"))))
+		os.system("chflags -R noschg,nouchg,nosappnd,nouappnd %s" % \
+			(_shell_quote(mysettings["D"]),))
+		os.system("chflags -R nosunlnk,nouunlnk %s 2>/dev/null" % \
+			(_shell_quote(mysettings["D"]),))
+
 	for parent, dirs, files in os.walk(mysettings["D"]):
 		for fname in chain(dirs, files):
 			fpath = os.path.join(parent, fname)
@@ -4919,6 +4942,12 @@ def _post_src_install_uid_fix(mysettings):
 			apply_secpass_permissions(fpath, uid=myuid, gid=mygid,
 				mode=mystat.st_mode, stat_cached=mystat,
 				follow_links=False)
+
+	if bsd_chflags:
+		# Restore all of the flags saved above.
+		os.system("mtree -e -p %s -U -k flags < %s > /dev/null" % \
+			(_shell_quote(mysettings["D"]),
+			_shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree"))))
 
 def _post_pkg_preinst_cmd(mysettings):
 	"""
