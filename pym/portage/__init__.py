@@ -4884,6 +4884,17 @@ def _post_src_install_uid_fix(mysettings):
 	"""
 	inst_uid = int(mysettings["PORTAGE_INST_UID"])
 	inst_gid = int(mysettings["PORTAGE_INST_GID"])
+
+	if bsd_chflags:
+		# Temporarily remove all of the flags in order to avoid EPERM errors.
+		os.system("mtree -c -p %s -k flags > %s" % \
+			(_shell_quote(mysettings["D"]),
+			_shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree"))))
+		os.system("chflags -R noschg,nouchg,nosappnd,nouappnd %s" % \
+			(_shell_quote(mysettings["D"]),))
+		os.system("chflags -R nosunlnk,nouunlnk %s 2>/dev/null" % \
+			(_shell_quote(mysettings["D"]),))
+
 	for parent, dirs, files in os.walk(mysettings["D"]):
 		for fname in chain(dirs, files):
 			fpath = os.path.join(parent, fname)
@@ -4900,6 +4911,12 @@ def _post_src_install_uid_fix(mysettings):
 			apply_secpass_permissions(fpath, uid=myuid, gid=mygid,
 				mode=mystat.st_mode, stat_cached=mystat,
 				follow_links=False)
+
+	if bsd_chflags:
+		# Restore all of the flags saved above.
+		os.system("mtree -e -p %s -U -k flags < %s > /dev/null" % \
+			(_shell_quote(mysettings["D"]),
+			_shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree"))))
 
 def _post_pkg_preinst_cmd(mysettings):
 	"""
