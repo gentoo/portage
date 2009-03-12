@@ -38,7 +38,7 @@ user_sbinprogs = \
 
 ebuild_helperprogs = \
 	( cd ${srcdir}/ebuild-helpers && find . -name 'Makefile*' -prune \
-	-o -name '.svn' -prune -o type f -print )
+	-o -name '.svn' -prune -o -type f -print )
 
 list_sourcedir = \
 	  ( cd ${srcdir} && find . -name 'Makefile*' -prune \
