@@ -45,7 +45,12 @@ def _src_uri_validate(cpv, eapi, src_uri):
 			uri = None
 			_src_uri_validate(cpv, eapi, x)
 			continue
-		if x[:-1] == "?":
+		if x == '||':
+			raise portage.exception.InvalidDependString(
+				("getFetchMap(): '%s' SRC_URI contains invalid " + \
+				"|| operator") % (cpv,))
+
+		if x[-1:] == "?":
 			if operator is not None:
 				raise portage.exception.InvalidDependString(
 					("getFetchMap(): '%s' SRC_URI arrow missing " + \
@@ -69,15 +74,19 @@ def _src_uri_validate(cpv, eapi, src_uri):
 		if operator is None:
 			uri = x
 			continue
-		if operator is not None:
-			if "/" in x:
-				raise portage.exception.InvalidDependString(
-					("getFetchMap(): '%s' SRC_URI '/' character in " + \
-					"file name: '%s'") % (cpv, x))
-			if x[-1] == "?":
-				raise portage.exception.InvalidDependString(
-					("getFetchMap(): '%s' SRC_URI arrow missing " + \
-					"right operand") % (cpv,))
+
+		# This should be the right operand of an arrow operator.
+		if "/" in x:
+			raise portage.exception.InvalidDependString(
+				("getFetchMap(): '%s' SRC_URI '/' character in " + \
+				"file name: '%s'") % (cpv, x))
+
+		if x[-1:] == "?":
+			raise portage.exception.InvalidDependString(
+				("getFetchMap(): '%s' SRC_URI arrow missing " + \
+				"right operand") % (cpv,))
+
+		# Found the right operand, so reset state.
 		uri = None
 		operator = None
 

@@ -62,15 +62,21 @@ class PreservedLibsRegistry(object):
 
 	def load(self):
 		""" Reload the registry data from file """
+		self._data = None
 		try:
 			self._data = pickle.load(open(self._filename, 'rb'))
+		except (ValueError, pickle.UnpicklingError), e:
+			writemsg_level("!!! Error loading '%s': %s\n" % \
+				(self._filename, e), level=logging.ERROR, noiselevel=-1)
 		except (EOFError, IOError), e:
 			if isinstance(e, EOFError) or e.errno == errno.ENOENT:
-				self._data = {}
+				pass
 			elif e.errno == PermissionDenied.errno:
 				raise PermissionDenied(self._filename)
 			else:
-				raise e
+				raise
+		if self._data is None:
+			self._data = {}
 		self._data_orig = self._data.copy()
 	def store(self):
 		""" Store the registry data to file. No need to call this if autocommit
@@ -81,7 +87,7 @@ class PreservedLibsRegistry(object):
 			return
 		try:
 			f = atomic_ofstream(self._filename, 'wb')
-			pickle.dump(self._data, f)
+			pickle.dump(self._data, f, protocol=2)
 			f.close()
 		except EnvironmentError, e:
 			if e.errno != PermissionDenied.errno:
@@ -1559,7 +1565,7 @@ class vardbapi(dbapi):
 			del self._aux_cache["modified"]
 			try:
 				f = atomic_ofstream(self._aux_cache_filename, 'wb')
-				pickle.dump(self._aux_cache, f, -1)
+				pickle.dump(self._aux_cache, f, protocol=2)
 				f.close()
 				apply_secpass_permissions(
 					self._aux_cache_filename, gid=portage_gid, mode=0644)
@@ -3535,6 +3541,15 @@ class dblink(object):
 
 		return 1
 
+	def _eqawarn(self, phase, lines):
+		from portage.elog.messages import eqawarn as _eqawarn
+		if self._scheduler is None:
+			for l in lines:
+				_eqawarn(l, phase=phase, key=self.settings.mycpv)
+		else:
+			self._scheduler.dblinkElog(self,
+				phase, _eqawarn, lines)
+
 	def _eerror(self, phase, lines):
 		from portage.elog.messages import eerror as _eerror
 		if self._scheduler is None:
@@ -3591,28 +3606,26 @@ class dblink(object):
 				level=logging.ERROR, noiselevel=-1)
 			return 1
 
-		inforoot_slot_file = os.path.join(inforoot, "SLOT")
-		slot = None
-		try:
-			f = open(inforoot_slot_file)
+		slot = ''
+		for var_name in ('CHOST', 'SLOT'):
 			try:
-				slot = f.read().strip()
-			finally:
-				f.close()
-		except EnvironmentError, e:
-			if e.errno != errno.ENOENT:
-				raise
-			del e
+				val = open(os.path.join(inforoot, var_name)).readline().strip()
+			except EnvironmentError, e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
+				val = ''
 
-		if slot is None:
-			slot = ""
+			if var_name == 'SLOT':
+				slot = val
+
+			if val != self.settings.get(var_name, ''):
+				self._eqawarn('preinst',
+					["QA Notice: Expected %s='%s', got '%s'\n" % \
+					(var_name, self.settings.get(var_name, ''), val)])
 
 		def eerror(lines):
 			self._eerror("preinst", lines)
-
-		if slot != self.settings["SLOT"]:
-			showMessage("!!! WARNING: Expected SLOT='%s', got '%s'\n" % \
-				(self.settings["SLOT"], slot), level=logging.WARN)
 
 		if not os.path.exists(self.dbcatdir):
 			os.makedirs(self.dbcatdir)
