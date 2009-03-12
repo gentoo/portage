@@ -9,7 +9,8 @@ from portage.tests import TestCase
 from portage.process import spawn
 from portage.const import PORTAGE_BIN_PATH
 
-bindir = join(dirname(dirname(abspath(__file__))), "..", "..", "..", "bin")
+bindir = join(dirname(dirname(abspath(__file__))),
+	"..", "..", "..", "bin", "ebuild-helpers")
 basedir = join(dirname(dirname(abspath(__file__))), "bin", "root")
 os.environ["D"] = os.path.join(basedir, "image")
 os.environ["T"] = os.path.join(basedir, "temp")

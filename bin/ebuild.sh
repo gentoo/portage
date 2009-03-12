@@ -70,7 +70,7 @@ unalias -a
 # Unset some variables that break things.
 unset GZIP BZIP BZIP2 CDPATH GREP_OPTIONS GREP_COLOR GLOBIGNORE
 
-export PATH="/usr/local/sbin:/sbin:/usr/sbin:${PORTAGE_BIN_PATH}:/usr/local/bin:/bin:/usr/bin:${ROOTPATH}"
+export PATH="/usr/local/sbin:/sbin:/usr/sbin:$PORTAGE_BIN_PATH/ebuild-helpers:/usr/local/bin:/bin:/usr/bin:${ROOTPATH}"
 [ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
 
 source "${PORTAGE_BIN_PATH}/isolated-functions.sh"  &>/dev/null

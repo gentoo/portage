@@ -382,7 +382,8 @@ install_qa_check() {
 				abort="yes"
 			fi
 		done
-		f=$(cat "${PORTAGE_LOG_FILE}" | check-implicit-pointer-usage.py)
+		f=$(cat "${PORTAGE_LOG_FILE}" | \
+			"$PORTAGE_BIN_PATH"/check-implicit-pointer-usage.py)
 		if [[ -n ${f} ]] ; then
 
 			# In the future this will be a forced "die". In preparation,
