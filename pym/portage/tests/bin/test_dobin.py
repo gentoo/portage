@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from setup_env import *
+from portage.tests.bin.setup_env import *
 
 class DoBin(BinTestCase):
 	def testDoBin(self):

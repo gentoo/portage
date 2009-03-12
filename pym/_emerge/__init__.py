@@ -1595,7 +1595,12 @@ class Package(Task):
 		self.root = self.root_config.root
 		self.metadata = _PackageMetadataWrapper(self, self.metadata)
 		self.cp = portage.cpv_getkey(self.cpv)
-		self.slot_atom = portage.dep.Atom("%s:%s" % (self.cp, self.slot))
+		slot = self.slot
+		if not slot:
+			# Avoid an InvalidAtom exception when creating slot_atom.
+			# This package instance will be masked due to empty SLOT.
+			slot = '0'
+		self.slot_atom = portage.dep.Atom("%s:%s" % (self.cp, slot))
 		self.category, self.pf = portage.catsplit(self.cpv)
 		self.cpv_split = portage.catpkgsplit(self.cpv)
 		self.pv_split = self.cpv_split[1:]
@@ -4892,7 +4897,11 @@ class depgraph(object):
 			# This shouldn't happen.
 			return None
 
-		if unmatched_node.installed and not matched_node.installed:
+		if unmatched_node.installed and not matched_node.installed and \
+			unmatched_node.cpv == matched_node.cpv:
+			# If the conflicting packages are the same version then
+			# --newuse should be all that's needed. If they are different
+			# versions then there's some other problem.
 			return "New USE are correctly set, but --newuse wasn't" + \
 				" requested, so an installed package with incorrect USE " + \
 				"happened to get pulled into the dependency graph. " + \
