@@ -87,7 +87,8 @@ export SANDBOX_ON="0"
 _sb_append_var() {
 	local _v=$1 ; shift
 	local var="SANDBOX_${_v}"
-	[[ -z $1 || -n $2 ]] && die "Usage: add$(echo ${_v} | LC_ALL=C tr :upper: :lower:) <colon-delimited list of paths>"
+	[[ -z $1 || -n $2 ]] && die "Usage: add$(echo ${_v} | \
+		LC_ALL=C tr [:upper:] [:lower:]) <colon-delimited list of paths>"
 	export ${var}="${!var:+${!var}:}$1"
 }
 # bash-4 version:
