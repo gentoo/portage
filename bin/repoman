@@ -352,6 +352,7 @@ qawarnings = set((
 "inherit.autotools",
 "java.eclassesnotused",
 "metadata.warning",
+"portage.internal",
 "virtual.versioned",
 "virtual.exists",
 "virtual.unavailable",
