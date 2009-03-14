@@ -3108,7 +3108,13 @@ def _shell_quote(s):
 
 # In some cases, openpty can be slow when it fails. Therefore,
 # stop trying to use it after the first failure.
-_disable_openpty = False
+if platform.system() in ["SunOS"]:
+	# disable the use of openpty on Solaris as it seems Python's openpty
+	# implementation doesn't play nice on Solaris with Portage's
+	# behaviour causing hangs/deadlocks.
+	_disable_openpty = True
+else:
+	_disable_openpty = False
 
 def _create_pty_or_pipe(copy_term_size=None):
 	"""
