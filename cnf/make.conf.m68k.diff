@@ -1,0 +1,34 @@
+--- make.conf
++++ make.conf.m68k
+@@ -23,6 +23,13 @@
+ # Example:
+ #USE="X gtk gnome -alsa"
+ 
++# Host Setting
++# ============
++#
++# m68k-unknown-linux-gnu for all m68k CPUs.
++#
++CHOST="m68k-unknown-linux-gnu"
++
+ # Host and optimization settings 
+ # ==============================
+ #
+@@ -35,7 +42,7 @@
+ #
+ # Please refer to the GCC manual for a list of possible values.
+ #
+-#CFLAGS="-O2 -pipe"
++#CFLAGS="-m68030 -pipe -Os"
+ #
+ # If you set a CFLAGS above, then this line will set your default C++ flags to
+ # the same settings.
+@@ -61,7 +68,7 @@
+ # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
+ # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
+ #
+-#ACCEPT_KEYWORDS="~arch"
++#ACCEPT_KEYWORDS="~m68k"
+ 
+ # Portage Directories
+ # ===================
