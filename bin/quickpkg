@@ -10,7 +10,7 @@ def quickpkg_main(options, args, eout):
 	from portage import catsplit, dep_expand, flatten, isvalidatom, xpak
 	from portage.dep import use_reduce, paren_reduce
 	from portage.util import ConfigProtect, ensure_dirs
-	from portage.exception import InvalidData, InvalidDependString
+	from portage.exception import InvalidAtom, InvalidData, InvalidDependString
 	from portage.dbapi.vartree import dblink, tar_contents
 	from portage.checksum import perform_md5
 	import tarfile
@@ -43,15 +43,16 @@ def quickpkg_main(options, args, eout):
 			del e
 			missing.append(arg)
 			continue
-		except InvalidData, e:
-			eout.eerror("Invalid atom: %s" % str(e))
-			del e
+		except (InvalidAtom, InvalidData):
+			eout.eerror("Invalid atom: %s" % (arg,))
 			missing.append(arg)
 			continue
-		if not isvalidatom(atom):
-			eout.eerror("Invalid atom: %s" % atom)
+		if atom[:1] == '=' and arg[:1] != '=':
+			# dep_expand() allows missing '=' but it's really invalid
+			eout.eerror("Invalid atom: %s" % (arg,))
 			missing.append(arg)
 			continue
+
 		matches = vardb.match(atom)
 		pkgs_for_arg = 0
 		for cpv in matches:
