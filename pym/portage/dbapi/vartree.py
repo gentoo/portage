@@ -3773,6 +3773,7 @@ class dblink(object):
 				moveme = 1
 				zing = "!!!"
 				mymtime = None
+				protected = self.isprotected(mydest)
 				if mydmode != None:
 					# destination file exists
 					if stat.S_ISDIR(mydmode):
@@ -3786,7 +3787,7 @@ class dblink(object):
 						# or by a symlink to an existing regular file;
 						# now, config file management may come into play.
 						# we only need to tweak mydest if cfg file management is in play.
-						if self.isprotected(mydest):
+						if protected:
 							# we have a protection path; enable config file management.
 							destmd5 = perform_md5(mydest, calc_prelink=1)
 							if mymd5 == destmd5:
@@ -3823,21 +3824,28 @@ class dblink(object):
 					# extract a tarball of the resulting hardlinks due to
 					# 'Invalid cross-device link' errors (depends on layout of
 					# mount points). Also, don't hardlink zero-byte files since
-					# it doesn't save any space.
+					# it doesn't save any space, and don't hardlink
+					# CONFIG_PROTECTed files since config files shouldn't be
+					# hardlinked to eachother (for example, shadow installs
+					# several identical config files inside /etc/pam.d/).
 					parent_dir = os.path.dirname(myrealdest)
 					hardlink_key = (parent_dir, mymd5, mystat.st_size,
 						mystat.st_mode, mystat.st_uid, mystat.st_gid)
-					hardlink_candidates = self._md5_merge_map.get(hardlink_key)
-					if hardlink_candidates is None:
-						hardlink_candidates = []
-						if mystat.st_size != 0:
+
+					hardlink_candidates = None
+					if not protected and mystat.st_size != 0:
+						hardlink_candidates = self._md5_merge_map.get(hardlink_key)
+						if hardlink_candidates is None:
+							hardlink_candidates = []
 							self._md5_merge_map[hardlink_key] = hardlink_candidates
+
 					mymtime = movefile(mysrc, mydest, newmtime=thismtime,
 						sstat=mystat, mysettings=self.settings,
 						hardlink_candidates=hardlink_candidates)
 					if mymtime is None:
 						return 1
-					hardlink_candidates.append(mydest)
+					if hardlink_candidates is not None:
+						hardlink_candidates.append(mydest)
 					zing = ">>>"
 
 				if mymtime != None:
