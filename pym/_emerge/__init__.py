@@ -15662,6 +15662,18 @@ def emerge_main():
 	# "update", "system", or just process files:
 	else:
 		validate_ebuild_environment(trees)
+
+		for x in myfiles:
+			if x.startswith(SETPREFIX) or \
+				is_valid_package_atom(x):
+				continue
+			msg = []
+			msg.append("'%s' is not a valid package atom." % (x,))
+			msg.append("Please check ebuild(5) for full details.")
+			writemsg_level("".join("!!! %s\n" % line for line in msg),
+				level=logging.ERROR, noiselevel=-1)
+			return 1
+
 		if "--pretend" not in myopts:
 			display_news_notification(root_config, myopts)
 		retval = action_build(settings, trees, mtimedb,
