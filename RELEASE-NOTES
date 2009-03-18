@@ -18,7 +18,7 @@ portage-2.2
   - packages won't be unmerged if they are referenced by an installed package
     set (with the exception of the world set, and installed being determined
     by the world_sets file).
-* "world" does no longer include "system" unconditionally, but you can add
+* "world" no longer includes "system" unconditionally, but you can add
   "@system" to the world_sets file to restore the old state.
 
 portage-2.1.6

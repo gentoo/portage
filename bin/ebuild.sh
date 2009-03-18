@@ -87,7 +87,8 @@ export SANDBOX_ON="0"
 _sb_append_var() {
 	local _v=$1 ; shift
 	local var="SANDBOX_${_v}"
-	[[ -z $1 || -n $2 ]] && die "Usage: add$(echo ${_v} | LC_ALL=C tr :upper: :lower:) <colon-delimited list of paths>"
+	[[ -z $1 || -n $2 ]] && die "Usage: add$(echo ${_v} | \
+		LC_ALL=C tr [:upper:] [:lower:]) <colon-delimited list of paths>"
 	export ${var}="${!var:+${!var}:}$1"
 }
 # bash-4 version:
@@ -642,6 +643,7 @@ ebuild_phase() {
 
 ebuild_phase_with_hooks() {
 	local x phase_name=${1}
+	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
 	for x in {pre_,,post_}${phase_name} ; do
 		ebuild_phase ${x}
 	done
@@ -691,6 +693,7 @@ dyn_unpack() {
 	if [ ! -d "${WORKDIR}" ]; then
 		install -m${PORTAGE_WORKDIR_MODE:-0700} -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
 	fi
+	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
 	cd "${WORKDIR}" || die "Directory change failed: \`cd '${WORKDIR}'\`"
 	ebuild_phase pre_src_unpack
 	vecho ">>> Unpacking source..."
@@ -876,6 +879,7 @@ dyn_prepare() {
 
 	trap abort_prepare SIGINT SIGQUIT
 
+	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
 	ebuild_phase pre_src_prepare
 	vecho ">>> Preparing source in $srcdir ..."
 	ebuild_phase src_prepare
@@ -896,6 +900,7 @@ dyn_configure() {
 
 	trap abort_configure SIGINT SIGQUIT
 
+	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
 	ebuild_phase pre_src_configure
 
 	vecho ">>> Configuring source in $srcdir ..."
@@ -918,6 +923,7 @@ dyn_compile() {
 
 	trap abort_compile SIGINT SIGQUIT
 
+	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
 	ebuild_phase pre_src_compile
 
 	vecho ">>> Compiling source in ${srcdir} ..."
@@ -955,6 +961,7 @@ dyn_test() {
 	else
 		local save_sp=${SANDBOX_PREDICT}
 		addpredict /
+		[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
 		ebuild_phase pre_src_test
 		ebuild_phase src_test
 		touch "$PORTAGE_BUILDDIR/.tested" || \
@@ -976,6 +983,7 @@ dyn_install() {
 		return 0
 	fi
 	trap "abort_install" SIGINT SIGQUIT
+	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
 	ebuild_phase pre_src_install
 	rm -rf "${PORTAGE_BUILDDIR}/image"
 	mkdir "${PORTAGE_BUILDDIR}/image"
