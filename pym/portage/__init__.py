@@ -5519,6 +5519,13 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	@type vartree: vartree instance
 	@param prev_mtimes: A dict of { filename:mtime } keys used by merge() to do config_protection
 	@type prev_mtimes: dictionary
+	@param fd_pipes: A dict of mapping for pipes, { '0': stdin, '1': stdout }
+		for example.
+	@type fd_pipes: Dictionary
+	@param returnpid: Return a list of process IDs for a successful spawn, or
+		in integer value if spawn is unsuccessful. NOTE: This requires the
+		caller clean up all returned PIDs.
+	@type returnpid: Boolean
 	@rtype: Boolean
 	@returns:
 	1. 0 for success
