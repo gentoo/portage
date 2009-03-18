@@ -5042,14 +5042,16 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	# so that the caller can override it.
 	tmpdir = mysettings["PORTAGE_TMPDIR"]
 
-	if mydo != "depend" and mycpv != mysettings.mycpv:
-		"""For performance reasons, setcpv only triggers reset when it
-		detects a package-specific change in config.  For the ebuild
-		environment, a reset call is forced in order to ensure that the
-		latest env.d variables are used."""
+	if mycpv != mysettings.mycpv:
+		# Reload env.d variables and reset any previous settings.
 		mysettings.reload()
-		mysettings.reset(use_cache=use_cache)
-		mysettings.setcpv(mycpv, use_cache=use_cache, mydb=mydbapi)
+		mysettings.reset()
+		if mydo == 'depend':
+			# Don't pass in mydbapi here since the resulting aux_get
+			# call would lead to infinite 'depend' phase recursion.
+			mysettings.setcpv(mycpv)
+		else:
+			mysettings.setcpv(mycpv, mydb=mydbapi)
 
 	# config.reset() might have reverted a change made by the caller,
 	# so restore it to it's original value.
