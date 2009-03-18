@@ -1788,8 +1788,7 @@ class config(object):
 				if "usersandbox" in self.features:
 					self.features.remove("usersandbox")
 
-			self.features.sort()
-			self["FEATURES"] = " ".join(self.features)
+			self["FEATURES"] = " ".join(sorted(self.features))
 			self.backup_changes("FEATURES")
 
 			self._init_dirs()
@@ -2803,8 +2802,8 @@ class config(object):
 					myflags.add(var_lower + "_" + x)
 
 		if not hasattr(self, "features"):
-			self.features = sorted(set(
-				self.configlist[-1].get("FEATURES","").split()))
+			self.features = set(
+				self.configlist[-1].get("FEATURES","").split())
 		self["FEATURES"] = " ".join(self.features)
 
 		myflags.update(self.useforce)
@@ -6162,7 +6161,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				return 1
 			# qmerge is a special phase that implies noclean.
 			if "noclean" not in mysettings.features:
-				mysettings.features.append("noclean")
+				mysettings.features.add("noclean")
 			#qmerge is specifically not supposed to do a runtime dep check
 			retval = merge(
 				mysettings["CATEGORY"], mysettings["PF"], mysettings["D"],
