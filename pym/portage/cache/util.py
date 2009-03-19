@@ -29,7 +29,8 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 #		print "processing x=",x
 		count+=1
 		dead_nodes.discard(x)
-		try:	entry = src_cache[x]
+		try:
+			entry = src_cache[x]
 		except KeyError, e:
 			noise.missing_entry(x)
 			del e
