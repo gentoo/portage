@@ -13216,8 +13216,10 @@ def action_metadata(settings, portdb, myopts):
 			self.call_update_mine = 0
 
 		def update(self, *arg):
-			try:				self.pstr = int(self.pstr) + 1
-			except ValueError:	self.pstr = 1
+			try:
+				self.pstr = int(self.pstr) + 1
+			except ValueError:
+				self.pstr = 1
 			sys.stdout.write("%s%i%%" % \
 				("\b" * (len(str(self.pstr))+1), self.pstr))
 			sys.stdout.flush()
