@@ -1376,9 +1376,9 @@ class config(object):
 			self.pusemask_list = []
 			rawpusemask = [grabdict_package(os.path.join(x, "package.use.mask"),
 				recursive=1) for x in self.profiles]
-			for i in xrange(len(self.profiles)):
+			for pusemaskdict in rawpusemask:
 				cpdict = {}
-				for k, v in rawpusemask[i].iteritems():
+				for k, v in pusemaskdict.iteritems():
 					cpdict.setdefault(dep_getkey(k), {})[k] = v
 				self.pusemask_list.append(cpdict)
 			del rawpusemask
@@ -1386,9 +1386,9 @@ class config(object):
 			self.pkgprofileuse = []
 			rawprofileuse = [grabdict_package(os.path.join(x, "package.use"),
 				juststrings=True, recursive=1) for x in self.profiles]
-			for i in xrange(len(self.profiles)):
+			for rawpusedict in rawprofileuse:
 				cpdict = {}
-				for k, v in rawprofileuse[i].iteritems():
+				for k, v in rawpusedict.iteritems():
 					cpdict.setdefault(dep_getkey(k), {})[k] = v
 				self.pkgprofileuse.append(cpdict)
 			del rawprofileuse
@@ -1402,9 +1402,9 @@ class config(object):
 			rawpuseforce = [grabdict_package(
 				os.path.join(x, "package.use.force"), recursive=1) \
 				for x in self.profiles]
-			for i in xrange(len(self.profiles)):
+			for rawpusefdict in rawpuseforce:
 				cpdict = {}
-				for k, v in rawpuseforce[i].iteritems():
+				for k, v in rawpusefdict.iteritems():
 					cpdict.setdefault(dep_getkey(k), {})[k] = v
 				self.puseforce_list.append(cpdict)
 			del rawpuseforce
@@ -2129,10 +2129,11 @@ class config(object):
 		if pkginternaluse != self.configdict["pkginternal"].get("USE", ""):
 			self.configdict["pkginternal"]["USE"] = pkginternaluse
 			has_changed = True
+
 		defaults = []
 		pos = 0
-		for i in xrange(len(self.profiles)):
-			cpdict = self.pkgprofileuse[i].get(cp, None)
+		for i, pkgprofileuse_dict in enumerate(self.pkgprofileuse):
+			cpdict = pkgprofileuse_dict.get(cp)
 			if cpdict:
 				keys = cpdict.keys()
 				while keys:
@@ -2296,8 +2297,8 @@ class config(object):
 			cp = dep_getkey(pkg)
 		usemask = []
 		pos = 0
-		for i in xrange(len(self.profiles)):
-			cpdict = self.pusemask_list[i].get(cp, None)
+		for i, pusemask_dict in enumerate(self.pusemask_list):
+			cpdict = pusemask_dict.get(cp)
 			if cpdict:
 				keys = cpdict.keys()
 				while keys:
@@ -2319,8 +2320,8 @@ class config(object):
 			cp = dep_getkey(pkg)
 		useforce = []
 		pos = 0
-		for i in xrange(len(self.profiles)):
-			cpdict = self.puseforce_list[i].get(cp, None)
+		for i, puseforce_dict in enumerate(self.puseforce_list):
+			cpdict = puseforce_dict.get(cp)
 			if cpdict:
 				keys = cpdict.keys()
 				while keys:
@@ -2395,8 +2396,8 @@ class config(object):
 		pkg = "%s:%s" % (cpv, metadata["SLOT"])
 		keywords = [[x for x in metadata["KEYWORDS"].split() if x != "-*"]]
 		pos = len(keywords)
-		for i in xrange(len(self.profiles)):
-			cpdict = self._pkeywords_list[i].get(cp, None)
+		for pkeywords_dict in self._pkeywords_list:
+			cpdict = pkeywords_dict.get(cp)
 			if cpdict:
 				keys = list(cpdict)
 				while keys:
