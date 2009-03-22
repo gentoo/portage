@@ -15669,6 +15669,13 @@ def emerge_main():
 			if x.startswith(SETPREFIX) or \
 				is_valid_package_atom(x):
 				continue
+			if x[:1] == os.sep:
+				continue
+			try:
+				os.lstat(x)
+				continue
+			except OSError:
+				pass
 			msg = []
 			msg.append("'%s' is not a valid package atom." % (x,))
 			msg.append("Please check ebuild(5) for full details.")
