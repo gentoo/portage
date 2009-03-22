@@ -2987,11 +2987,13 @@ class config(object):
 		mydict={}
 		environ_filter = self._environ_filter
 
+		phase = self.get('EBUILD_PHASE')
 		filter_calling_env = False
-		temp_dir = self.get("T")
-		if temp_dir is not None and \
-			os.path.exists(os.path.join(temp_dir, "environment")):
-			filter_calling_env = True
+		if phase not in ('clean', 'cleanrm', 'depend'):
+			temp_dir = self.get('T')
+			if temp_dir is not None and \
+				os.path.exists(os.path.join(temp_dir, 'environment')):
+				filter_calling_env = True
 
 		environ_whitelist = self._environ_whitelist
 		env_d = self.configdict["env.d"]
@@ -3017,7 +3019,6 @@ class config(object):
 			mydict["HOME"]=mydict["BUILD_PREFIX"][:]
 
 		if filter_calling_env:
-			phase = self.get("EBUILD_PHASE")
 			if phase:
 				whitelist = []
 				if "rpm" == phase:
