@@ -195,16 +195,17 @@ if opts.skip_manifest:
 	tmpsettings.backup_changes("EBUILD_SKIP_MANIFEST")
 	portage._doebuild_manifest_exempt_depend += 1
 
+build_dir_phases = set(["setup", "unpack", "prepare", "configure", "compile",
+	"test", "install", "package", "rpm", "merge", "qmerge"])
+
 # If the current metadata is invalid then force the ebuild to be
 # sourced again even if $T/environment already exists.
 ebuild_changed = False
-metadata, st, emtime = \
-	portage.portdb._pull_valid_cache(cpv, ebuild, ebuild_portdir)
-if metadata is None:
-	ebuild_changed = True
-
-build_dir_phases = set(["setup", "unpack", "prepare", "configure", "compile",
-	"test", "install", "package", "rpm"])
+if build_dir_phases.intersection(pargs):
+	metadata, st, emtime = \
+		portage.portdb._pull_valid_cache(cpv, ebuild, ebuild_portdir)
+	if metadata is None:
+		ebuild_changed = True
 
 def stale_env_warning():
 	if "clean" not in pargs and \
