@@ -417,7 +417,7 @@ class portdbapi(dbapi):
 			writemsg("doregen: %s %s\n" % (doregen, mycpv), 2)
 			writemsg("Generating cache entry(0) for: "+str(myebuild)+"\n", 1)
 
-			self.doebuild_settings.reset()
+			self.doebuild_settings.setcpv(mycpv)
 			mydata = {}
 			myret = doebuild(myebuild, "depend",
 				self.doebuild_settings["ROOT"], self.doebuild_settings,
