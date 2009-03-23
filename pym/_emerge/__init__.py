@@ -1441,9 +1441,15 @@ def get_mask_info(root_config, cpv, pkgsettings,
 	if metadata is None:
 		mreasons = ["corruption"]
 	else:
-		pkg = Package(type_name=pkg_type, root_config=root_config,
-			cpv=cpv, built=built, installed=installed, metadata=metadata)
-		mreasons = get_masking_status(pkg, pkgsettings, root_config)
+		eapi = metadata['EAPI']
+		if eapi[:1] == '-':
+			eapi = eapi[1:]
+		if not portage.eapi_is_supported(eapi):
+			mreasons = ['EAPI %s' % eapi]
+		else:
+			pkg = Package(type_name=pkg_type, root_config=root_config,
+				cpv=cpv, built=built, installed=installed, metadata=metadata)
+			mreasons = get_masking_status(pkg, pkgsettings, root_config)
 	return metadata, mreasons
 
 def show_masked_packages(masked_packages):
