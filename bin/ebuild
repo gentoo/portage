@@ -195,13 +195,20 @@ if opts.skip_manifest:
 	tmpsettings.backup_changes("EBUILD_SKIP_MANIFEST")
 	portage._doebuild_manifest_exempt_depend += 1
 
+# If the current metadata is invalid then force the ebuild to be
+# sourced again even if $T/environment already exists.
+ebuild_changed = False
+metadata, st, emtime = \
+	portage.portdb._pull_valid_cache(cpv, ebuild, ebuild_portdir)
+if metadata is None:
+	ebuild_changed = True
+
 build_dir_phases = set(["setup", "unpack", "prepare", "configure", "compile",
 	"test", "install", "package", "rpm"])
 
 def stale_env_warning():
 	if "clean" not in pargs and \
 		"noauto" not in tmpsettings.features and \
-		tmpsettings.get("PORTAGE_QUIET") != "1" and \
 		build_dir_phases.intersection(pargs):
 		portage.doebuild_environment(ebuild, "setup", portage.root,
 			tmpsettings, debug, 1, portage.portdb)
@@ -214,6 +221,10 @@ def stale_env_warning():
 			msg = wrap(msg, 70)
 			for x in msg:
 				portage.writemsg(">>> %s\n" % x)
+
+			if ebuild_changed:
+				open(os.path.join(tmpsettings['PORTAGE_BUILDDIR'],
+					'.ebuild_changed'), 'w')
 
 from portage.exception import PermissionDenied, \
 	PortagePackageException, UnsupportedAPIException

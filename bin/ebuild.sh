@@ -714,7 +714,7 @@ dyn_clean() {
 	fi
 
 	if [[ $EMERGE_FROM = binary ]] || ! hasq keepwork $FEATURES; then
-		rm -f "$PORTAGE_BUILDDIR"/.{exit_status,logid,unpacked,prepared} \
+		rm -f "$PORTAGE_BUILDDIR"/.{ebuild_changed,exit_status,logid,unpacked,prepared} \
 			"$PORTAGE_BUILDDIR"/.{configured,compiled,tested,packaged}
 
 		rm -rf "${PORTAGE_BUILDDIR}/build-info"
@@ -1865,7 +1865,7 @@ fi
 if ! hasq "$EBUILD_PHASE" clean cleanrm && \
 	(
 		hasq ${EBUILD_PHASE} depend || \
-		[ ! -f "${T}"/environment ] || \
+		[[ ! -f $T/environment || -f $PORTAGE_BUILDDIR/.ebuild_changed ]] || \
 		hasq noauto ${FEATURES}
 	) ; then
 	# The bashrcs get an opportunity here to set aliases that will be expanded
@@ -1881,6 +1881,8 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm && \
 
 	if [ "${EBUILD_PHASE}" != "depend" ] ; then
 		RESTRICT=${PORTAGE_RESTRICT}
+		[[ -e $PORTAGE_BUILDDIR/.ebuild_changed ]] && \
+			rm "$PORTAGE_BUILDDIR/.ebuild_changed"
 	fi
 
 	# This next line is not the same as export RDEPEND=${RDEPEND:-${DEPEND}}
