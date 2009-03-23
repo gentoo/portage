@@ -5527,7 +5527,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		for example.
 	@type fd_pipes: Dictionary
 	@param returnpid: Return a list of process IDs for a successful spawn, or
-		in integer value if spawn is unsuccessful. NOTE: This requires the
+		an integer value if spawn is unsuccessful. NOTE: This requires the
 		caller clean up all returned PIDs.
 	@type returnpid: Boolean
 	@rtype: Boolean
