@@ -1358,9 +1358,9 @@ class config(object):
 			rawpkeywords = [grabdict_package(
 				os.path.join(x, "package.keywords"), recursive=1) \
 				for x in self.profiles]
-			for i in xrange(len(self.profiles)):
+			for pkeyworddict in rawpkeywords:
 				cpdict = {}
-				for k, v in rawpkeywords[i].iteritems():
+				for k, v in pkeyworddict.iteritems():
 					cpdict.setdefault(dep_getkey(k), {})[k] = v
 				self._pkeywords_list.append(cpdict)
 
