@@ -47,7 +47,8 @@ class database(fs_template.FsBased):
 	def _setitem(self, cpv, values):
 		s = cpv.rfind("/")
 		fp=os.path.join(self._base,cpv[:s],".update.%i.%s" % (os.getpid(), cpv[s+1:]))
-		try:	myf=open(fp, "w")
+		try:
+			myf = open(fp, "w")
 		except (OSError, IOError), e:
 			if errno.ENOENT == e.errno:
 				try:
@@ -66,7 +67,8 @@ class database(fs_template.FsBased):
 		self._ensure_access(fp, mtime=values["_mtime_"])
 		#update written.  now we move it.
 		new_fp = os.path.join(self._base,cpv)
-		try:	os.rename(fp, new_fp)
+		try:
+			os.rename(fp, new_fp)
 		except (OSError, IOError), e:
 			os.remove(fp)
 			raise cache_errors.CacheCorruption(cpv, e)

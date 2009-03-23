@@ -146,10 +146,14 @@ def vercmp(ver1, ver2, silent=1):
 		if s1[1] != s2[1]:
 			# it's possible that the s(1|2)[1] == ''
 			# in such a case, fudge it.
-			try:			r1 = int(s1[1])
-			except ValueError:	r1 = 0
-			try:			r2 = int(s2[1])
-			except ValueError:	r2 = 0
+			try:
+				r1 = int(s1[1])
+			except ValueError:
+				r1 = 0
+			try:
+				r2 = int(s2[1])
+			except ValueError:
+				r2 = 0
 			if r1 - r2:
 				return r1 - r2
 	
