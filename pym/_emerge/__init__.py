@@ -4,6 +4,7 @@
 # $Id$
 
 import array
+import codecs
 from collections import deque
 import fcntl
 import formatter
@@ -3029,6 +3030,19 @@ class EbuildMetadataPhase(SubProcess):
 		settings = self.settings
 		settings.setcpv(self.cpv)
 		ebuild_path = self.ebuild_path
+
+		if 'parse-eapi-ebuild-head' in settings.features:
+			eapi = portage._parse_eapi_ebuild_head(codecs.open(ebuild_path,
+				mode='r', encoding='utf_8', errors='replace'))
+			if not portage.eapi_is_supported(eapi):
+				self.metadata_callback(self.cpv, self.ebuild_path,
+					self.repo_path, {'EAPI' : eapi}, self.ebuild_mtime)
+				self.returncode = os.EX_OK
+				self.wait()
+				return
+
+			settings.configdict['pkg']['EAPI'] = eapi
+
 		debug = settings.get("PORTAGE_DEBUG") == "1"
 		master_fd = None
 		slave_fd = None

@@ -1790,6 +1790,9 @@ class config(object):
 
 			self["FEATURES"] = " ".join(sorted(self.features))
 			self.backup_changes("FEATURES")
+			global _validate_cache_for_unsupported_eapis
+			if 'parse-eapi-ebuild-head' in self.features:
+				_validate_cache_for_unsupported_eapis = False
 
 			self._init_dirs()
 
@@ -5024,6 +5027,30 @@ def eapi_is_supported(eapi):
 		return False
 	return eapi <= portage.const.EAPI
 
+# Generally, it's best not to assume that cache entries for unsupported EAPIs
+# can be validated. However, the current package manager specification does not
+# guarantee that that the EAPI can be parsed without sourcing the ebuild, so
+# it's too costly to discard existing cache entries for unsupported EAPIs.
+# Therefore, by default, assume that cache entries for unsupported EAPIs can be
+# validated. If FEATURES=parse-eapi-* is enabled, this assumption is discarded
+# since the EAPI can be determined without the incurring the cost of sourcing
+# the ebuild.
+_validate_cache_for_unsupported_eapis = True
+
+_parse_eapi_ebuild_head_re = re.compile(r'^EAPI=[\'"]?([^\'"]*)')
+_parse_eapi_ebuild_head_max_lines = 30
+
+def _parse_eapi_ebuild_head(f):
+	count = 0
+	for line in f:
+		m = _parse_eapi_ebuild_head_re.match(line)
+		if m is not None:
+			return m.group(1).strip()
+		count += 1
+		if count >= _parse_eapi_ebuild_head_max_lines:
+			break
+	return '0'
+
 def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, mydbapi):
 
 	ebuild_path = os.path.abspath(myebuild)
@@ -5095,6 +5122,15 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 
 	if portage.util.noiselimit < 0:
 		mysettings["PORTAGE_QUIET"] = "1"
+
+	if mydo == 'depend' and \
+		'EAPI' not in mysettings.configdict['pkg'] and \
+		'parse-eapi-ebuild-head' in mysettings.features:
+		eapi = _parse_eapi_ebuild_head(codecs.open(ebuild_path,
+			mode='r', encoding='utf_8', errors='replace'))
+		if not eapi_is_supported(eapi):
+			raise portage.exception.UnsupportedAPIException(mycpv, eapi)
+		mysettings.configdict['pkg']['EAPI'] = eapi
 
 	if mydo != "depend":
 		# Metadata vars such as EAPI and RESTRICT are
