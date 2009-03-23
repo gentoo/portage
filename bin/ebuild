@@ -186,9 +186,8 @@ if "test" in pargs:
 	tmpsettings["EBUILD_FORCE_TEST"] = "1"
 	tmpsettings.backup_changes("EBUILD_FORCE_TEST")
 	if "test" not in tmpsettings.features:
-		tmpsettings.features.append("test")
-		tmpsettings.features.sort()
-		tmpsettings["FEATURES"] = " ".join(tmpsettings.features)
+		tmpsettings.features.add("test")
+		tmpsettings["FEATURES"] = " ".join(sorted(tmpsettings.features))
 		tmpsettings.backup_changes("FEATURES")
 
 if opts.skip_manifest:
