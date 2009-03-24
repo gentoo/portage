@@ -279,7 +279,23 @@ class portdbapi(dbapi):
 		else:
 			mytrees = self.porttrees[:]
 			mytrees.reverse()
-		if psplit:
+		if 'parse-eapi-glep-55' in self.doebuild_settings.features:
+			glep55_startswith = '%s.ebuild-' % mysplit[1]
+			for x in mytrees:
+				filename = os.path.join(x, mysplit[0], psplit[0],
+					mysplit[1] + ".ebuild")
+				if os.access(filename, os.R_OK):
+					return (filename, x)
+
+				pkgdir = os.path.join(x, mysplit[0], psplit[0])
+				try:
+					files = os.listdir(pkgdir)
+				except OSError:
+					continue
+				for y in files:
+					if y.startswith(glep55_startswith):
+						return (os.path.join(pkgdir, y), x)
+		else:
 			for x in mytrees:
 				file=x+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
 				if os.access(file, os.R_OK):
@@ -421,9 +437,15 @@ class portdbapi(dbapi):
 			mydata = {}
 			eapi = None
 
-			if 'parse-eapi-ebuild-head' in self.doebuild_settings.features:
+			if 'parse-eapi-glep-55' in self.doebuild_settings.features:
+				pf, eapi = portage._split_ebuild_name_glep55(
+					os.path.basename(myebuild))
+			if eapi is None and \
+				'parse-eapi-ebuild-head' in self.doebuild_settings.features:
 				eapi = portage._parse_eapi_ebuild_head(codecs.open(myebuild,
 					mode='r', encoding='utf_8', errors='replace'))
+
+			if eapi is not None:
 				self.doebuild_settings.configdict['pkg']['EAPI'] = eapi
 
 			if eapi is not None and not portage.eapi_is_supported(eapi):
@@ -666,6 +688,7 @@ class portdbapi(dbapi):
 				return cachelist[:]
 		mysplit = mycp.split("/")
 		invalid_category = mysplit[0] not in self._categories
+		glep55 = 'parse-eapi-glep-55' in self.doebuild_settings.features
 		d={}
 		if mytree:
 			mytrees = [mytree]
@@ -677,8 +700,14 @@ class portdbapi(dbapi):
 			except OSError:
 				continue
 			for x in file_list:
-				if x.endswith(".ebuild"):
+
+				pf = None
+				if glep55:
+					pf, eapi = portage._split_ebuild_name_glep55(x)
+				elif x[-7:] == '.ebuild':
 					pf = x[:-7]
+
+				if pf is not None:
 					ps = pkgsplit(pf)
 					if not ps:
 						writemsg("\nInvalid ebuild name: %s\n" % \

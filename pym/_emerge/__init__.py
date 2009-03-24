@@ -3037,9 +3037,16 @@ class EbuildMetadataPhase(SubProcess):
 		settings.setcpv(self.cpv)
 		ebuild_path = self.ebuild_path
 
-		if 'parse-eapi-ebuild-head' in settings.features:
+		eapi = None
+		if 'parse-eapi-glep-55' in settings.features:
+			pf, eapi = portage._split_ebuild_name_glep55(
+				os.path.basename(ebuild_path))
+		if eapi is None and \
+			'parse-eapi-ebuild-head' in settings.features:
 			eapi = portage._parse_eapi_ebuild_head(codecs.open(ebuild_path,
 				mode='r', encoding='utf_8', errors='replace'))
+
+		if eapi is not None:
 			if not portage.eapi_is_supported(eapi):
 				self.metadata_callback(self.cpv, self.ebuild_path,
 					self.repo_path, {'EAPI' : eapi}, self.ebuild_mtime)

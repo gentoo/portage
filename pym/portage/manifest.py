@@ -27,6 +27,10 @@ def manifest2AuxfileFilter(filename):
 
 def manifest2MiscfileFilter(filename):
 	filename = filename.strip(os.sep)
+	if portage._glep_55_enabled:
+		pf, eapi = portage._split_ebuild_name_glep55(filename)
+		if pf is not None:
+			return False
 	return not (filename in ["CVS", ".svn", "files", "Manifest"] or filename.endswith(".ebuild"))
 
 def guessManifestFileType(filename):
@@ -307,9 +311,13 @@ class Manifest(object):
 		for f in pkgdir_files:
 			if f[:1] == ".":
 				continue
-			elif f[-7:] == ".ebuild":
-				mytype = "EBUILD"
+			pf = None
+			if portage._glep_55_enabled:
+				pf, eapi = portage._split_ebuild_name_glep55(f)
+			elif f[-7:] == '.ebuild':
 				pf = f[:-7]
+			if pf is not None:
+				mytype = "EBUILD"
 				ps = portage.versions.pkgsplit(pf)
 				cpv = "%s/%s" % (cat, pf)
 				if not ps:

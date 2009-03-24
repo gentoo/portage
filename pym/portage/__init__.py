@@ -1790,9 +1790,12 @@ class config(object):
 
 			self["FEATURES"] = " ".join(sorted(self.features))
 			self.backup_changes("FEATURES")
-			global _validate_cache_for_unsupported_eapis
+			global _glep_55_enabled, _validate_cache_for_unsupported_eapis
 			if 'parse-eapi-ebuild-head' in self.features:
 				_validate_cache_for_unsupported_eapis = False
+			if 'parse-eapi-glep-55' in self.features:
+				_validate_cache_for_unsupported_eapis = False
+				_glep_55_enabled = True
 
 			self._init_dirs()
 
@@ -4656,8 +4659,14 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 		writemsg("!!! Expected: %s\n" % e.value[3], noiselevel=-1)
 		return 0
 	# Make sure that all of the ebuilds are actually listed in the Manifest.
+	glep55 = 'parse-eapi-glep-55' in mysettings.features
 	for f in os.listdir(pkgdir):
-		if f.endswith(".ebuild") and not mf.hasFile("EBUILD", f):
+		pf = None
+		if glep55:
+			pf, eapi = _split_ebuild_name_glep55(f)
+		elif f[-7:] == '.ebuild':
+			pf = f[:-7]
+		if pf is not None and not mf.hasFile("EBUILD", f):
 			writemsg("!!! A file is not listed in the Manifest: '%s'\n" % \
 				os.path.join(pkgdir, f), noiselevel=-1)
 			if strict:
@@ -5051,6 +5060,20 @@ def _parse_eapi_ebuild_head(f):
 			break
 	return '0'
 
+# True when FEATURES=parse-eapi-glep-55 is enabled.
+_glep_55_enabled = False
+
+_split_ebuild_name_glep55_re = re.compile(r'^(.*)\.ebuild(-([^.]+))?$')
+
+def _split_ebuild_name_glep55(name):
+	"""
+	@returns: (pkg-ver-rev, eapi)
+	"""
+	m = _split_ebuild_name_glep55_re.match(name)
+	if m is None:
+		return (None, None)
+	return (m.group(1), m.group(3))
+
 def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, mydbapi):
 
 	ebuild_path = os.path.abspath(myebuild)
@@ -5060,7 +5083,14 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		cat = mysettings.configdict["pkg"]["CATEGORY"]
 	else:
 		cat = os.path.basename(normalize_path(os.path.join(pkg_dir, "..")))
-	mypv = os.path.basename(ebuild_path)[:-7]	
+
+	eapi = None
+	if 'parse-eapi-glep-55' in mysettings.features:
+		mypv, eapi = portage._split_ebuild_name_glep55(
+			os.path.basename(myebuild))
+	else:
+		mypv = os.path.basename(ebuild_path)[:-7]
+
 	mycpv = cat+"/"+mypv
 	mysplit=pkgsplit(mypv,silent=0)
 	if mysplit is None:
@@ -5124,13 +5154,19 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		mysettings["PORTAGE_QUIET"] = "1"
 
 	if mydo == 'depend' and \
-		'EAPI' not in mysettings.configdict['pkg'] and \
-		'parse-eapi-ebuild-head' in mysettings.features:
-		eapi = _parse_eapi_ebuild_head(codecs.open(ebuild_path,
-			mode='r', encoding='utf_8', errors='replace'))
-		if not eapi_is_supported(eapi):
-			raise portage.exception.UnsupportedAPIException(mycpv, eapi)
-		mysettings.configdict['pkg']['EAPI'] = eapi
+		'EAPI' not in mysettings.configdict['pkg']:
+
+		if eapi is not None:
+			# From parse-eapi-glep-55 above.
+			mysettings.configdict['pkg']['EAPI'] = eapi
+		elif 'parse-eapi-ebuild-head' in mysettings.features:
+			eapi = _parse_eapi_ebuild_head(codecs.open(ebuild_path,
+				mode='r', encoding='utf_8', errors='replace'))
+
+		if eapi is not None:
+			if not eapi_is_supported(eapi):
+				raise portage.exception.UnsupportedAPIException(mycpv, eapi)
+			mysettings.configdict['pkg']['EAPI'] = eapi
 
 	if mydo != "depend":
 		# Metadata vars such as EAPI and RESTRICT are
@@ -5701,8 +5737,14 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 			# Make sure that all of the ebuilds are
 			# actually listed in the Manifest.
+			glep55 = 'parse-eapi-glep-55' in mysettings.features
 			for f in os.listdir(pkgdir):
-				if f.endswith(".ebuild") and not mf.hasFile("EBUILD", f):
+				pf = None
+				if glep55:
+					pf, eapi = _split_ebuild_name_glep55(f)
+				elif f[-7:] == '.ebuild':
+					pf = f[:-7]
+				if pf is not None and not mf.hasFile("EBUILD", f):
 					f = os.path.join(pkgdir, f)
 					if f not in _doebuild_broken_ebuilds:
 						out = portage.output.EOutput()
