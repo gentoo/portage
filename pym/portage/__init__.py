@@ -5158,7 +5158,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 
 		if eapi is not None:
 			# From parse-eapi-glep-55 above.
-			mysettings.configdict['pkg']['EAPI'] = eapi
+			pass
 		elif 'parse-eapi-ebuild-head' in mysettings.features:
 			eapi = _parse_eapi_ebuild_head(codecs.open(ebuild_path,
 				mode='r', encoding='utf_8', errors='replace'))
