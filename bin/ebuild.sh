@@ -327,7 +327,6 @@ unpack() {
 	local x
 	local y
 	local myfail
-	local tar_opts=""
 	local eapi=${EAPI:-0}
 	[ -z "$*" ] && die "Nothing passed to the 'unpack' command"
 
@@ -349,7 +348,7 @@ unpack() {
 
 		_unpack_tar() {
 			if [ "${y}" == "tar" ]; then
-				$1 -dc "${srcdir}${x}" | tar xof - ${tar_opts}
+				$1 -dc "$srcdir$x" | tar xof -
 				assert "$myfail"
 			else
 				$1 -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
@@ -359,13 +358,13 @@ unpack() {
 		myfail="failure unpacking ${x}"
 		case "${x##*.}" in
 			tar)
-				tar xof "${srcdir}${x}" ${tar_opts} || die "$myfail"
+				tar xof "$srcdir$x" || die "$myfail"
 				;;
 			tgz)
-				tar xozf "${srcdir}${x}" ${tar_opts} || die "$myfail"
+				tar xozf "$srcdir$x" || die "$myfail"
 				;;
 			tbz|tbz2)
-				bzip2 -dc "${srcdir}${x}" | tar xof - ${tar_opts}
+				bzip2 -dc "$srcdir$x" | tar xof -
 				assert "$myfail"
 				;;
 			ZIP|zip|jar)
