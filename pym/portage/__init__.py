@@ -2102,6 +2102,7 @@ class config(object):
 		env_configdict = self.configdict["env"]
 		pkg_configdict = self.configdict["pkg"]
 		previous_iuse = pkg_configdict.get("IUSE")
+		pkg_configdict.clear()
 		pkg_configdict["CATEGORY"] = cat
 		pkg_configdict["PF"] = pf
 		if mydb:
