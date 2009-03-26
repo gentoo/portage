@@ -242,13 +242,7 @@ def pkgsplit(mypkg,silent=1):
 			print "!!! Name error in",mypkg+": missing a version or name part."
 		pkgcache[mypkg]=None
 		return None
-	for x in myparts:
-		if len(x)==0:
-			if not silent:
-				print "!!! Name error in",mypkg+": empty \"-\" part."
-			pkgcache[mypkg]=None
-			return None
-	
+
 	#verify rev
 	revok=0
 	myrev=myparts[-1]
@@ -271,11 +265,6 @@ def pkgsplit(mypkg,silent=1):
 			pkgcache[mypkg]=None
 			return None
 		else:
-			for x in myparts[:verPos]:
-				if ververify(x):
-					pkgcache[mypkg]=None
-					return None
-					#names can't have versiony looking parts
 			myval=("-".join(myparts[:verPos]),myparts[verPos],revision)
 			pkgcache[mypkg]=myval
 			return myval
