@@ -4,6 +4,7 @@
 # $Id$
 
 import array
+import codecs
 from collections import deque
 import fcntl
 import formatter
@@ -1467,9 +1468,15 @@ def get_mask_info(root_config, cpv, pkgsettings,
 	if metadata is None:
 		mreasons = ["corruption"]
 	else:
-		pkg = Package(type_name=pkg_type, root_config=root_config,
-			cpv=cpv, built=built, installed=installed, metadata=metadata)
-		mreasons = get_masking_status(pkg, pkgsettings, root_config)
+		eapi = metadata['EAPI']
+		if eapi[:1] == '-':
+			eapi = eapi[1:]
+		if not portage.eapi_is_supported(eapi):
+			mreasons = ['EAPI %s' % eapi]
+		else:
+			pkg = Package(type_name=pkg_type, root_config=root_config,
+				cpv=cpv, built=built, installed=installed, metadata=metadata)
+			mreasons = get_masking_status(pkg, pkgsettings, root_config)
 	return metadata, mreasons
 
 def show_masked_packages(masked_packages):
@@ -3054,8 +3061,21 @@ class EbuildMetadataPhase(SubProcess):
 
 	def _start(self):
 		settings = self.settings
-		settings.reset()
+		settings.setcpv(self.cpv)
 		ebuild_path = self.ebuild_path
+
+		if 'parse-eapi-ebuild-head' in settings.features:
+			eapi = portage._parse_eapi_ebuild_head(codecs.open(ebuild_path,
+				mode='r', encoding='utf_8', errors='replace'))
+			if not portage.eapi_is_supported(eapi):
+				self.metadata_callback(self.cpv, self.ebuild_path,
+					self.repo_path, {'EAPI' : eapi}, self.ebuild_mtime)
+				self.returncode = os.EX_OK
+				self.wait()
+				return
+
+			settings.configdict['pkg']['EAPI'] = eapi
+
 		debug = settings.get("PORTAGE_DEBUG") == "1"
 		master_fd = None
 		slave_fd = None

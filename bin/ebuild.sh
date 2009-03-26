@@ -676,7 +676,7 @@ dyn_unpack() {
 	fi
 	if [ "${newstuff}" == "yes" ]; then
 		# We don't necessarily have privileges to do a full dyn_clean here.
-		rm -rf "${PORTAGE_BUILDDIR}"/{.unpacked,.compiled,.tested,.packaged,build-info}
+		rm -rf "${PORTAGE_BUILDDIR}"/{.unpacked,.prepared,.configured,.compiled,.tested,.installed,.packaged,build-info}
 		rm -rf "${WORKDIR}"
 		if [ -d "${T}" ] && \
 			! hasq keeptemp $FEATURES && ! hasq keepwork $FEATURES ; then
@@ -724,7 +724,7 @@ dyn_clean() {
 	fi
 
 	if [[ $EMERGE_FROM = binary ]] || ! hasq keepwork $FEATURES; then
-		rm -f "$PORTAGE_BUILDDIR"/.{exit_status,logid,unpacked,prepared} \
+		rm -f "$PORTAGE_BUILDDIR"/.{ebuild_changed,exit_status,logid,unpacked,prepared} \
 			"$PORTAGE_BUILDDIR"/.{configured,compiled,tested,packaged}
 
 		rm -rf "${PORTAGE_BUILDDIR}/build-info"
@@ -1876,12 +1876,11 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm depend && \
 	unset PORTAGE_SANDBOX_ON
 fi
 
-if ! hasq "$EBUILD_PHASE" clean cleanrm && \
-	(
-		hasq ${EBUILD_PHASE} depend || \
-		[ ! -f "${T}"/environment ] || \
-		hasq noauto ${FEATURES}
-	) ; then
+if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
+if [[ $EBUILD_PHASE = depend || ! -f $T/environment || \
+	-f $PORTAGE_BUILDDIR/.ebuild_changed ]] || \
+	hasq noauto $FEATURES ; then
+
 	# The bashrcs get an opportunity here to set aliases that will be expanded
 	# during sourcing of ebuilds and eclasses.
 	source_all_bashrcs
@@ -1895,6 +1894,8 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm && \
 
 	if [ "${EBUILD_PHASE}" != "depend" ] ; then
 		RESTRICT=${PORTAGE_RESTRICT}
+		[[ -e $PORTAGE_BUILDDIR/.ebuild_changed ]] && \
+			rm "$PORTAGE_BUILDDIR/.ebuild_changed"
 	fi
 
 	# This next line is not the same as export RDEPEND=${RDEPEND:-${DEPEND}}
@@ -1918,6 +1919,7 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm && \
 
 	# This needs to be exported since prepstrip is a separate shell script.
 	[[ -n $QA_PRESTRIPPED ]] && export QA_PRESTRIPPED
+fi
 fi
 
 # Set default EAPI if necessary, so that most

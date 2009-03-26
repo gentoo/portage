@@ -1383,9 +1383,9 @@ class config(object):
 			self.pusemask_list = []
 			rawpusemask = [grabdict_package(os.path.join(x, "package.use.mask"),
 				recursive=1) for x in self.profiles]
-			for i in xrange(len(self.profiles)):
+			for pusemaskdict in rawpusemask:
 				cpdict = {}
-				for k, v in rawpusemask[i].iteritems():
+				for k, v in pusemaskdict.iteritems():
 					cpdict.setdefault(dep_getkey(k), {})[k] = v
 				self.pusemask_list.append(cpdict)
 			del rawpusemask
@@ -1393,9 +1393,9 @@ class config(object):
 			self.pkgprofileuse = []
 			rawprofileuse = [grabdict_package(os.path.join(x, "package.use"),
 				juststrings=True, recursive=1) for x in self.profiles]
-			for i in xrange(len(self.profiles)):
+			for rawpusedict in rawprofileuse:
 				cpdict = {}
-				for k, v in rawprofileuse[i].iteritems():
+				for k, v in rawpusedict.iteritems():
 					cpdict.setdefault(dep_getkey(k), {})[k] = v
 				self.pkgprofileuse.append(cpdict)
 			del rawprofileuse
@@ -1409,9 +1409,9 @@ class config(object):
 			rawpuseforce = [grabdict_package(
 				os.path.join(x, "package.use.force"), recursive=1) \
 				for x in self.profiles]
-			for i in xrange(len(self.profiles)):
+			for rawpusefdict in rawpuseforce:
 				cpdict = {}
-				for k, v in rawpuseforce[i].iteritems():
+				for k, v in rawpusefdict.iteritems():
 					cpdict.setdefault(dep_getkey(k), {})[k] = v
 				self.puseforce_list.append(cpdict)
 			del rawpuseforce
@@ -1801,6 +1801,9 @@ class config(object):
 
 			self["FEATURES"] = " ".join(sorted(self.features))
 			self.backup_changes("FEATURES")
+			global _validate_cache_for_unsupported_eapis
+			if 'parse-eapi-ebuild-head' in self.features:
+				_validate_cache_for_unsupported_eapis = False
 
 			# inject EPREFIX as it's in no single config file (I hope),
 			# but needs to be available using portageq
@@ -2144,10 +2147,11 @@ class config(object):
 		if pkginternaluse != self.configdict["pkginternal"].get("USE", ""):
 			self.configdict["pkginternal"]["USE"] = pkginternaluse
 			has_changed = True
+
 		defaults = []
 		pos = 0
-		for i in xrange(len(self.profiles)):
-			cpdict = self.pkgprofileuse[i].get(cp, None)
+		for i, pkgprofileuse_dict in enumerate(self.pkgprofileuse):
+			cpdict = pkgprofileuse_dict.get(cp)
 			if cpdict:
 				keys = cpdict.keys()
 				while keys:
@@ -2315,8 +2319,8 @@ class config(object):
 			cp = dep_getkey(pkg)
 		usemask = []
 		pos = 0
-		for i in xrange(len(self.profiles)):
-			cpdict = self.pusemask_list[i].get(cp, None)
+		for i, pusemask_dict in enumerate(self.pusemask_list):
+			cpdict = pusemask_dict.get(cp)
 			if cpdict:
 				keys = cpdict.keys()
 				while keys:
@@ -2338,8 +2342,8 @@ class config(object):
 			cp = dep_getkey(pkg)
 		useforce = []
 		pos = 0
-		for i in xrange(len(self.profiles)):
-			cpdict = self.puseforce_list[i].get(cp, None)
+		for i, puseforce_dict in enumerate(self.puseforce_list):
+			cpdict = puseforce_dict.get(cp)
 			if cpdict:
 				keys = cpdict.keys()
 				while keys:
@@ -2414,8 +2418,8 @@ class config(object):
 		pkg = "%s:%s" % (cpv, metadata["SLOT"])
 		keywords = [[x for x in metadata["KEYWORDS"].split() if x != "-*"]]
 		pos = len(keywords)
-		for i in xrange(len(self.profiles)):
-			cpdict = self._pkeywords_list[i].get(cp, None)
+		for pkeywords_dict in self._pkeywords_list:
+			cpdict = pkeywords_dict.get(cp)
 			if cpdict:
 				keys = list(cpdict)
 				while keys:
@@ -5070,6 +5074,30 @@ def eapi_is_supported(eapi):
 	
 	return True
 
+# Generally, it's best not to assume that cache entries for unsupported EAPIs
+# can be validated. However, the current package manager specification does not
+# guarantee that that the EAPI can be parsed without sourcing the ebuild, so
+# it's too costly to discard existing cache entries for unsupported EAPIs.
+# Therefore, by default, assume that cache entries for unsupported EAPIs can be
+# validated. If FEATURES=parse-eapi-* is enabled, this assumption is discarded
+# since the EAPI can be determined without the incurring the cost of sourcing
+# the ebuild.
+_validate_cache_for_unsupported_eapis = True
+
+_parse_eapi_ebuild_head_re = re.compile(r'^EAPI=[\'"]?([^\'"]*)')
+_parse_eapi_ebuild_head_max_lines = 30
+
+def _parse_eapi_ebuild_head(f):
+	count = 0
+	for line in f:
+		m = _parse_eapi_ebuild_head_re.match(line)
+		if m is not None:
+			return m.group(1).strip()
+		count += 1
+		if count >= _parse_eapi_ebuild_head_max_lines:
+			break
+	return '0'
+
 def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, mydbapi):
 
 	ebuild_path = os.path.abspath(myebuild)
@@ -5091,14 +5119,14 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	tmpdir = mysettings["PORTAGE_TMPDIR"]
 
 	if mycpv != mysettings.mycpv:
-		# Reload env.d variables and reset any previous settings.
-		mysettings.reload()
-		mysettings.reset()
 		if mydo == 'depend':
 			# Don't pass in mydbapi here since the resulting aux_get
 			# call would lead to infinite 'depend' phase recursion.
 			mysettings.setcpv(mycpv)
 		else:
+			# Reload env.d variables and reset any previous settings.
+			mysettings.reload()
+			mysettings.reset()
 			mysettings.setcpv(mycpv, mydb=mydbapi)
 
 	# config.reset() might have reverted a change made by the caller,
@@ -5143,6 +5171,15 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 
 	if portage.util.noiselimit < 0:
 		mysettings["PORTAGE_QUIET"] = "1"
+
+	if mydo == 'depend' and \
+		'EAPI' not in mysettings.configdict['pkg'] and \
+		'parse-eapi-ebuild-head' in mysettings.features:
+		eapi = _parse_eapi_ebuild_head(codecs.open(ebuild_path,
+			mode='r', encoding='utf_8', errors='replace'))
+		if not eapi_is_supported(eapi):
+			raise portage.exception.UnsupportedAPIException(mycpv, eapi)
+		mysettings.configdict['pkg']['EAPI'] = eapi
 
 	if mydo != "depend":
 		# Metadata vars such as EAPI and RESTRICT are
@@ -5576,7 +5613,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		for example.
 	@type fd_pipes: Dictionary
 	@param returnpid: Return a list of process IDs for a successful spawn, or
-		in integer value if spawn is unsuccessful. NOTE: This requires the
+		an integer value if spawn is unsuccessful. NOTE: This requires the
 		caller clean up all returned PIDs.
 	@type returnpid: Boolean
 	@rtype: Boolean

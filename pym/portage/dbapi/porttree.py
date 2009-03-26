@@ -25,7 +25,7 @@ from portage import eclass_cache, auxdbkeys, doebuild, flatten, \
 	listdir, dep_expand, eapi_is_supported, key_expand, dep_check, \
 	_eapi_is_deprecated
 
-import os, stat
+import codecs, os, stat
 from itertools import izip
 
 def _src_uri_validate(cpv, eapi, src_uri):
@@ -417,14 +417,24 @@ class portdbapi(dbapi):
 			writemsg("doregen: %s %s\n" % (doregen, mycpv), 2)
 			writemsg("Generating cache entry(0) for: "+str(myebuild)+"\n", 1)
 
-			self.doebuild_settings.reset()
+			self.doebuild_settings.setcpv(mycpv)
 			mydata = {}
-			myret = doebuild(myebuild, "depend",
-				self.doebuild_settings["ROOT"], self.doebuild_settings,
-				dbkey=mydata, tree="porttree", mydbapi=self)
-			if myret != os.EX_OK:
-				self._broken_ebuilds.add(myebuild)
-				raise KeyError(mycpv)
+			eapi = None
+
+			if 'parse-eapi-ebuild-head' in self.doebuild_settings.features:
+				eapi = portage._parse_eapi_ebuild_head(codecs.open(myebuild,
+					mode='r', encoding='utf_8', errors='replace'))
+				self.doebuild_settings.configdict['pkg']['EAPI'] = eapi
+
+			if eapi is not None and not portage.eapi_is_supported(eapi):
+				mydata['EAPI'] = eapi
+			else:
+				myret = doebuild(myebuild, "depend",
+					self.doebuild_settings["ROOT"], self.doebuild_settings,
+					dbkey=mydata, tree="porttree", mydbapi=self)
+				if myret != os.EX_OK:
+					self._broken_ebuilds.add(myebuild)
+					raise KeyError(mycpv)
 
 			self._metadata_callback(
 				mycpv, myebuild, mylocation, mydata, emtime)

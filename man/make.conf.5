@@ -269,6 +269,11 @@ Fetch in the background while compiling. Run
 `tail \-f /var/log/emerge\-fetch.log` in a
 terminal to view parallel-fetch progress.
 .TP
+.B parse\-eapi\-ebuild\-head
+Parse \fBEAPI\fR from the head of the ebuild (first 30 lines). This feature
+is only intended for experimental purposes and should not be enabled under
+normal circumstances.
+.TP
 .B preserve\-libs
 Preserve libraries when the sonames change during upgrade or downgrade.
 Libraries are preserved only if consumers of those libraries are detected.
