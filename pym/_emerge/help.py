@@ -370,6 +370,12 @@ def help(myaction,myopts,havecolor=1):
 		print "              ebuilds, or deps you specify on the command-line *will* cause"
 		print "              Portage to remerge the package, even if it is already installed."
 		print "              Note that Portage won't remerge dependencies by default."
+		desc = "Also note that this option takes " + \
+			"precedence over options such as --newuse, preventing a package " + \
+			"from being reinstalled even though the corresponding USE flag settings " + \
+			"may have changed."
+		for line in wrap(desc, desc_width):
+			print desc_indent + line
 		print 
 		print "       "+green("--nospinner")
 		print "              Disables the spinner regardless of terminal type."

@@ -373,7 +373,10 @@ Skips the packages specified on the command\-line that have already
 been installed.  Without this option, any packages, ebuilds, or deps
 you specify on the command\-line \fBwill\fR cause Portage to remerge
 the package, even if it is already installed.  Note that Portage will
-not remerge dependencies by default.
+not remerge dependencies by default. Also note that this option takes
+precedence over options such as \fB\-\-newuse\fR, preventing a package
+from being reinstalled even though the corresponding USE flag settings
+may have changed.
 .TP
 .BR "\-\-nospinner"
 Disables the spinner for the session.  The spinner is active when the
