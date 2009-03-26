@@ -1799,8 +1799,7 @@ class config(object):
 				if "usersandbox" in self.features:
 					self.features.remove("usersandbox")
 
-			self.features.sort()
-			self["FEATURES"] = " ".join(self.features)
+			self["FEATURES"] = " ".join(sorted(self.features))
 			self.backup_changes("FEATURES")
 
 			# inject EPREFIX as it's in no single config file (I hope),
@@ -2822,8 +2821,8 @@ class config(object):
 					myflags.add(var_lower + "_" + x)
 
 		if not hasattr(self, "features"):
-			self.features = sorted(set(
-				self.configlist[-1].get("FEATURES","").split()))
+			self.features = set(
+				self.configlist[-1].get("FEATURES","").split())
 		self["FEATURES"] = " ".join(self.features)
 
 		myflags.update(self.useforce)
@@ -5090,14 +5089,16 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	# so that the caller can override it.
 	tmpdir = mysettings["PORTAGE_TMPDIR"]
 
-	if mydo != "depend" and mycpv != mysettings.mycpv:
-		"""For performance reasons, setcpv only triggers reset when it
-		detects a package-specific change in config.  For the ebuild
-		environment, a reset call is forced in order to ensure that the
-		latest env.d variables are used."""
+	if mycpv != mysettings.mycpv:
+		# Reload env.d variables and reset any previous settings.
 		mysettings.reload()
-		mysettings.reset(use_cache=use_cache)
-		mysettings.setcpv(mycpv, use_cache=use_cache, mydb=mydbapi)
+		mysettings.reset()
+		if mydo == 'depend':
+			# Don't pass in mydbapi here since the resulting aux_get
+			# call would lead to infinite 'depend' phase recursion.
+			mysettings.setcpv(mycpv)
+		else:
+			mysettings.setcpv(mycpv, mydb=mydbapi)
 
 	# config.reset() might have reverted a change made by the caller,
 	# so restore it to it's original value.
@@ -5570,6 +5571,13 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	@type vartree: vartree instance
 	@param prev_mtimes: A dict of { filename:mtime } keys used by merge() to do config_protection
 	@type prev_mtimes: dictionary
+	@param fd_pipes: A dict of mapping for pipes, { '0': stdin, '1': stdout }
+		for example.
+	@type fd_pipes: Dictionary
+	@param returnpid: Return a list of process IDs for a successful spawn, or
+		in integer value if spawn is unsuccessful. NOTE: This requires the
+		caller clean up all returned PIDs.
+	@type returnpid: Boolean
 	@rtype: Boolean
 	@returns:
 	1. 0 for success
@@ -6212,7 +6220,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				return 1
 			# qmerge is a special phase that implies noclean.
 			if "noclean" not in mysettings.features:
-				mysettings.features.append("noclean")
+				mysettings.features.add("noclean")
 			#qmerge is specifically not supposed to do a runtime dep check
 			retval = merge(
 				mysettings["CATEGORY"], mysettings["PF"], mysettings["D"],
