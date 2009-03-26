@@ -125,7 +125,12 @@ class StaticFileSet(EditablePackageSet):
 		if os.path.isdir(directory):
 			directory = normalize_path(directory)
 			for parent, dirs, files in os.walk(directory):
+				for d in dirs[:]:
+					if d[:1] == '.':
+						dirs.remove(d)
 				for filename in files:
+					if filename[:1] == '.':
+						continue
 					if filename.endswith(".metadata"):
 						continue
 					filename = os.path.join(parent,
