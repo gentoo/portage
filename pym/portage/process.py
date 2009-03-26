@@ -181,7 +181,8 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	# If an absolute path to an executable file isn't given
 	# search for it unless we've been told not to.
 	binary = mycommand[0]
-	if (not os.path.isabs(binary) or not os.path.isfile(binary)
+	if binary not in (BASH_BINARY, SANDBOX_BINARY, FAKEROOT_BINARY) and \
+		(not os.path.isabs(binary) or not os.path.isfile(binary)
 	    or not os.access(binary, os.X_OK)):
 		binary = path_lookup and find_binary(binary) or None
 		if not binary:
