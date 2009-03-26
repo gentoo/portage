@@ -2809,10 +2809,12 @@ class config(object):
 						continue
 					myflags.add(var_lower + "_" + x)
 
-		if not hasattr(self, "features"):
-			self.features = set(
-				self.configlist[-1].get("FEATURES","").split())
-		self["FEATURES"] = " ".join(self.features)
+		if hasattr(self, "features"):
+			self.features.clear()
+		else:
+			self.features = set()
+		self.features.update(self.configlist[-1].get('FEATURES', '').split())
+		self['FEATURES'] = ' '.join(sorted(self.features))
 
 		myflags.update(self.useforce)
 		arch = self.configdict["defaults"].get("ARCH")
