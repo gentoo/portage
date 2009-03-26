@@ -5348,10 +5348,12 @@ def _prepare_features_dirs(mysettings):
 
 	features_dirs = {
 		"ccache":{
+			"path_dir": "/usr/lib/ccache/bin",
 			"basedir_var":"CCACHE_DIR",
 			"default_dir":os.path.join(mysettings["PORTAGE_TMPDIR"], "ccache"),
 			"always_recurse":False},
 		"distcc":{
+			"path_dir": "/usr/lib/distcc/bin",
 			"basedir_var":"DISTCC_DIR",
 			"default_dir":os.path.join(mysettings["BUILD_PREFIX"], ".distcc"),
 			"subdirs":("lock", "state"),
@@ -5367,11 +5369,16 @@ def _prepare_features_dirs(mysettings):
 		"userpriv" not in restrict
 	for myfeature, kwargs in features_dirs.iteritems():
 		if myfeature in mysettings.features:
-			basedir = mysettings[kwargs["basedir_var"]]
-			if basedir == "":
+			failure = False
+			basedir = mysettings.get(kwargs["basedir_var"])
+			if basedir is None or not basedir.strip():
 				basedir = kwargs["default_dir"]
 				mysettings[kwargs["basedir_var"]] = basedir
 			try:
+				path_dir = kwargs["path_dir"]
+				if not os.path.isdir(path_dir):
+					raise portage.exception.DirectoryNotFound(path_dir)
+
 				mydirs = [mysettings[kwargs["basedir_var"]]]
 				if "subdirs" in kwargs:
 					for subdir in kwargs["subdirs"]:
@@ -5421,14 +5428,25 @@ def _prepare_features_dirs(mysettings):
 						filemode=filemode, filemask=modemask, onerror=onerror):
 							raise portage.exception.OperationNotPermitted(
 								"Failed to apply recursive permissions for the portage group.")
+
+			except portage.exception.DirectoryNotFound, e:
+				failure = True
+				writemsg("\n!!! Directory does not exist: '%s'\n" % \
+					(e,), noiselevel=-1)
+				writemsg("!!! Disabled FEATURES='%s'\n" % myfeature,
+					noiselevel=-1)
+
 			except portage.exception.PortageException, e:
-				mysettings.features.remove(myfeature)
-				mysettings["FEATURES"] = " ".join(mysettings.features)
-				writemsg("!!! %s\n" % str(e), noiselevel=-1)
+				failure = True
+				writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
 				writemsg("!!! Failed resetting perms on %s='%s'\n" % \
 					(kwargs["basedir_var"], basedir), noiselevel=-1)
 				writemsg("!!! Disabled FEATURES='%s'\n" % myfeature,
 					noiselevel=-1)
+
+			if failure:
+				mysettings.features.remove(myfeature)
+				mysettings['FEATURES'] = ' '.join(sorted(mysettings.features))
 				time.sleep(5)
 
 def _prepare_workdir(mysettings):
