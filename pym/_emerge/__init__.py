@@ -14564,9 +14564,8 @@ def adjust_config(myopts, settings):
 
 	# Kill noauto as it will break merges otherwise.
 	if "noauto" in settings.features:
-		while "noauto" in settings.features:
-			settings.features.remove("noauto")
-		settings["FEATURES"] = " ".join(settings.features)
+		settings.features.remove('noauto')
+		settings['FEATURES'] = ' '.join(sorted(settings.features))
 		settings.backup_changes("FEATURES")
 
 	CLEAN_DELAY = 5
