@@ -1158,6 +1158,7 @@ class config(object):
 
 		self.locked   = 0
 		self.mycpv    = None
+		self._setcpv_args_hash = None
 		self.puse     = []
 		self.modifiedkeys = []
 		self.uvlist = []
@@ -1211,6 +1212,7 @@ class config(object):
 			self.make_defaults_use = copy.deepcopy(clone.make_defaults_use)
 			self.pkgprofileuse = copy.deepcopy(clone.pkgprofileuse)
 			self.mycpv    = copy.deepcopy(clone.mycpv)
+			self._setcpv_args_hash = copy.deepcopy(clone._setcpv_args_hash)
 
 			self.configlist = copy.deepcopy(clone.configlist)
 			self.lookuplist = self.configlist[:]
@@ -2104,9 +2106,14 @@ class config(object):
 			pkg = mycpv
 			mycpv = pkg.cpv
 			mydb = pkg.metadata
+			args_hash = (mycpv, id(pkg))
+		else:
+			args_hash = (mycpv, id(mydb))
 
-		if self.mycpv == mycpv:
+		if args_hash == self._setcpv_args_hash:
 			return
+		self._setcpv_args_hash = args_hash
+
 		has_changed = False
 		self.mycpv = mycpv
 		cat, pf = catsplit(mycpv)
@@ -2117,16 +2124,23 @@ class config(object):
 		env_configdict = self.configdict["env"]
 		pkg_configdict = self.configdict["pkg"]
 		previous_iuse = pkg_configdict.get("IUSE")
-		pkg_configdict.clear()
+
+		aux_keys = [k for k in auxdbkeys \
+			if not k.startswith("UNUSED_")]
+		aux_keys.append("repository")
+
+		# Discard any existing metadata from the previous package, but
+		# preserve things like USE_EXPAND values and PORTAGE_USE which
+		# might be reused.
+		for k in aux_keys:
+			pkg_configdict.pop(k, None)
+
 		pkg_configdict["CATEGORY"] = cat
 		pkg_configdict["PF"] = pf
 		if mydb:
 			if not hasattr(mydb, "aux_get"):
 				pkg_configdict.update(mydb)
 			else:
-				aux_keys = [k for k in auxdbkeys \
-					if not k.startswith("UNUSED_")]
-				aux_keys.append("repository")
 				for k, v in izip(aux_keys, mydb.aux_get(self.mycpv, aux_keys)):
 					pkg_configdict[k] = v
 			repository = pkg_configdict.pop("repository", None)
@@ -5078,7 +5092,7 @@ def eapi_is_supported(eapi):
 
 # Generally, it's best not to assume that cache entries for unsupported EAPIs
 # can be validated. However, the current package manager specification does not
-# guarantee that that the EAPI can be parsed without sourcing the ebuild, so
+# guarantee that the EAPI can be parsed without sourcing the ebuild, so
 # it's too costly to discard existing cache entries for unsupported EAPIs.
 # Therefore, by default, assume that cache entries for unsupported EAPIs can be
 # validated. If FEATURES=parse-eapi-* is enabled, this assumption is discarded

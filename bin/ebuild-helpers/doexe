@@ -14,23 +14,30 @@ if [[ ! -d ${ED}${_E_EXEDESTTREE_} ]] ; then
 	install -d "${ED}${_E_EXEDESTTREE_}"
 fi
 
+TMP=$T/.doexe_tmp
+mkdir "$TMP"
+
 ret=0
 
 for x in "$@" ; do
 	if [ -L "${x}" ] ; then
-		cp "${x}" "${T}"
-		mysrc="$T/${x##*/}"
+		cp "$x" "$TMP"
+		mysrc=$TMP/${x##*/}
 	elif [ -d "${x}" ] ; then
 		vecho "doexe: warning, skipping directory ${x}"
 		continue
 	else
 		mysrc="${x}"
 	fi
-	if ! install $EXEOPTIONS "$mysrc" "$ED$_E_EXEDESTTREE_" ; then
+	if [ -e "$mysrc" ] ; then
+		install $EXEOPTIONS "$mysrc" "$ED$_E_EXEDESTTREE_"
+	else
 		echo "!!! ${0##*/}: $mysrc does not exist" 1>&2
 		false
 	fi
 	((ret+=$?))
 done
+
+rm -rf "$TMP"
 
 exit $ret
