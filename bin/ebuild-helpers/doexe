@@ -14,12 +14,15 @@ if [[ ! -d ${D}${_E_EXEDESTTREE_} ]] ; then
 	install -d "${D}${_E_EXEDESTTREE_}"
 fi
 
+TMP=$T/.doexe_tmp
+mkdir "$TMP"
+
 ret=0
 
 for x in "$@" ; do
 	if [ -L "${x}" ] ; then
-		cp "${x}" "${T}"
-		mysrc="$T/${x##*/}"
+		cp "$x" "$TMP"
+		mysrc=$TMP/${x##*/}
 	elif [ -d "${x}" ] ; then
 		vecho "doexe: warning, skipping directory ${x}"
 		continue
@@ -34,5 +37,7 @@ for x in "$@" ; do
 	fi
 	((ret+=$?))
 done
+
+rm -rf "$TMP"
 
 exit $ret
