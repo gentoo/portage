@@ -279,11 +279,14 @@ class portdbapi(dbapi):
 		else:
 			mytrees = self.porttrees[:]
 			mytrees.reverse()
+
+		relative_path = os.path.join(mysplit[0], psplit[0],
+			mysplit[1] + ".ebuild")
+
 		if 'parse-eapi-glep-55' in self.doebuild_settings.features:
 			glep55_startswith = '%s.ebuild-' % mysplit[1]
 			for x in mytrees:
-				filename = os.path.join(x, mysplit[0], psplit[0],
-					mysplit[1] + ".ebuild")
+				filename = x + os.sep + relative_path
 				if os.access(filename, os.R_OK):
 					return (filename, x)
 
@@ -297,7 +300,7 @@ class portdbapi(dbapi):
 						return (os.path.join(pkgdir, y), x)
 		else:
 			for x in mytrees:
-				file=x+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
+				file = x + os.sep + relative_path
 				if os.access(file, os.R_OK):
 					return[file, x]
 		return None, 0
