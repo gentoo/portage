@@ -1880,7 +1880,6 @@ if [ "${EBUILD_PHASE}" != "depend" ] ; then
 fi
 
 ebuild_main() {
-	source_all_bashrcs
 	local f x
 	local export_vars="ASFLAGS CCACHE_DIR CCACHE_SIZE
 		CFLAGS CXXFLAGS LDFLAGS LIBCFLAGS LIBCXXFLAGS"
@@ -1919,6 +1918,8 @@ ebuild_main() {
 			export CCACHE_DISABLE=1
 		fi
 	fi
+
+	source_all_bashrcs
 
 	case ${EBUILD_SH_ARGS} in
 	nofetch)
