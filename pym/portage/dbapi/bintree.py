@@ -169,7 +169,7 @@ class binarytree(object):
 				"PDEPEND", "PROPERTIES", "PROVIDE")
 			self._pkgindex_header_keys = set(["ACCEPT_KEYWORDS", "CBUILD",
 				"CHOST", "CONFIG_PROTECT", "CONFIG_PROTECT_MASK", "FEATURES",
-				"GENTOO_MIRRORS", "INSTALL_MASK", "SYNC", "USE", "EAPI", "EPREFIX"])
+				"GENTOO_MIRRORS", "INSTALL_MASK", "SYNC", "USE", "EPREFIX"])
 			self._pkgindex_default_pkg_data = {
 				"DEPEND"  : "",
 				"EAPI"    : "0",
@@ -641,9 +641,6 @@ class binarytree(object):
 			not self._remotepkgs:
 
 			base_url = self.settings["PORTAGE_BINHOST"]
-			# ensure the URL ends with a /, otherwise urljoin strips off
-			# the last directory, before it adds "Packages"
-			base_url = base_url.rstrip("/") + "/"
 			from portage.const import CACHE_PATH
 			from urlparse import urlparse
 			urldata = urlparse(base_url)
