@@ -2086,16 +2086,18 @@ class config(object):
 
 		self.modifying()
 
-		args_hash = (id(mycpv), id(mydb))
-		if args_hash == self._setcpv_args_hash:
-			return
-		self._setcpv_args_hash = args_hash
-
 		pkg = None
 		if not isinstance(mycpv, basestring):
 			pkg = mycpv
 			mycpv = pkg.cpv
 			mydb = pkg.metadata
+			args_hash = (mycpv, id(pkg))
+		else:
+			args_hash = (mycpv, id(mydb))
+
+		if args_hash == self._setcpv_args_hash:
+			return
+		self._setcpv_args_hash = args_hash
 
 		has_changed = False
 		self.mycpv = mycpv
