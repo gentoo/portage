@@ -14,8 +14,6 @@ BPREFIX = EPREFIX
 # pick up EPREFIX from the environment if set
 if "EPREFIX" in os.environ:
 	EPREFIX = os.path.normpath(os.environ["EPREFIX"])
-if "EAPIPREFIX" in os.environ:
-	EAPIPREFIX = os.environ["EAPIPREFIX"]
 
 # ===========================================================================
 # START OF CONSTANTS -- START OF CONSTANTS -- START OF CONSTANTS -- START OF

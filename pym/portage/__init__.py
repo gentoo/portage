@@ -5062,21 +5062,11 @@ def eapi_is_supported(eapi):
 	# However, back to reality, we just look for all <desc> we require,
 	# and don't do version tricks other than the main tree does.
 
-	eapi = str(eapi).split() # note Python's contact for this special case
+	eapi = str(eapi).split() # note Python's contract for this special case
 
-	# these are the properties that MUST be present (should)
-	properties = set()
-	if portage.const.EAPIPREFIX:
-		properties.add(portage.const.EAPIPREFIX) # clumpsy temporary solution
-
-	for prop in properties:
-		if prop not in eapi:
-			return False
-		else:
-			eapi.remove(prop)
-	
-	# now check if what's left is supported (can)
+	# check what's supported (can)
 	properties = set(_testing_eapis) # another clumpsy solution
+	properties.add("prefix") # clumpsy temporary solution
 	for i in range(portage.const.EAPI + 1):
 		properties.add(str(i))
 

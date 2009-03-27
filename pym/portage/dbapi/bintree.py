@@ -17,7 +17,7 @@ from portage.cache.mappings import slot_dict_class
 from portage.dbapi.virtual import fakedbapi
 from portage.exception import InvalidPackageName, \
 	PermissionDenied, PortageException
-from portage.const import EAPI, EAPIPREFIX
+from portage.const import EAPI
 
 from portage import dep_expand, listdir, _check_distfile, _movefile
 
@@ -170,13 +170,9 @@ class binarytree(object):
 			self._pkgindex_header_keys = set(["ACCEPT_KEYWORDS", "CBUILD",
 				"CHOST", "CONFIG_PROTECT", "CONFIG_PROTECT_MASK", "FEATURES",
 				"GENTOO_MIRRORS", "INSTALL_MASK", "SYNC", "USE", "EAPI", "EPREFIX"])
-			if EAPIPREFIX:
-				eapi = EAPIPREFIX + " " + str(EAPI)
-			else:
-				eapi = str(EAPI)
 			self._pkgindex_default_pkg_data = {
 				"DEPEND"  : "",
-				"EAPI"    : eapi,
+				"EAPI"    : "0",
 				"IUSE"    : "",
 				"KEYWORDS": "",
 				"LICENSE" : "",

@@ -63,7 +63,7 @@ portage.dep._dep_check_strict = True
 import portage.util
 import portage.locks
 import portage.exception
-from portage.const import EPREFIX, BPREFIX, EPREFIX_LSTRIP, EAPIPREFIX
+from portage.const import EPREFIX, BPREFIX, EPREFIX_LSTRIP
 from portage.data import secpass
 from portage.elog.messages import eerror
 from portage.util import normalize_path as normpath
@@ -3032,7 +3032,7 @@ class EbuildExecuter(CompositeTask):
 
 		pkg = self.pkg
 		phases = self._phases
-		eapi = pkg.metadata["EAPI"].replace(EAPIPREFIX, "").strip()
+		eapi = pkg.metadata["EAPI"].replace("prefix", "").strip()
 		if eapi in ("0", "1"):
 			# skip src_prepare and src_configure
 			phases = phases[2:]
@@ -6090,15 +6090,10 @@ class depgraph(object):
 			print "!!! One of the following masked packages is required to complete your request:"
 			have_eapi_mask = show_masked_packages(masked_packages)
 			if have_eapi_mask:
-				if portage.const.EAPIPREFIX:
-					p = portage.const.EAPIPREFIX + " "
-				else:
-					p = ''
-				print
 				msg = ("The current version of portage supports " + \
-					"EAPI '%s%s'. You must upgrade to a newer version" + \
+					"EAPI '%s'. You must upgrade to a newer version" + \
 					" of portage before EAPI masked packages can" + \
-					" be installed.") % (p, portage.const.EAPI)
+					" be installed.") % (portage.const.EAPI)
 				from textwrap import wrap
 				for line in wrap(msg, 75):
 					print line
