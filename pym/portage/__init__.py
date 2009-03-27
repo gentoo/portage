@@ -1151,6 +1151,7 @@ class config(object):
 
 		self.locked   = 0
 		self.mycpv    = None
+		self._setcpv_args_hash = None
 		self.puse     = []
 		self.modifiedkeys = []
 		self.uvlist = []
@@ -1204,6 +1205,7 @@ class config(object):
 			self.make_defaults_use = copy.deepcopy(clone.make_defaults_use)
 			self.pkgprofileuse = copy.deepcopy(clone.pkgprofileuse)
 			self.mycpv    = copy.deepcopy(clone.mycpv)
+			self._setcpv_args_hash = copy.deepcopy(clone._setcpv_args_hash)
 
 			self.configlist = copy.deepcopy(clone.configlist)
 			self.lookuplist = self.configlist[:]
@@ -2084,14 +2086,17 @@ class config(object):
 
 		self.modifying()
 
+		args_hash = (id(mycpv), id(mydb))
+		if args_hash == self._setcpv_args_hash:
+			return
+		self._setcpv_args_hash = args_hash
+
 		pkg = None
 		if not isinstance(mycpv, basestring):
 			pkg = mycpv
 			mycpv = pkg.cpv
 			mydb = pkg.metadata
 
-		if self.mycpv == mycpv:
-			return
 		has_changed = False
 		self.mycpv = mycpv
 		cat, pf = catsplit(mycpv)
