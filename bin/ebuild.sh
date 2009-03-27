@@ -655,10 +655,7 @@ dyn_unpack() {
 				break
 			fi
 		done
-		if [ "${EBUILD}" -nt "${WORKDIR}" ] && ! hasq keepwork ${FEATURES} ; then
-			vecho ">>> ${EBUILD} has been updated; recreating WORKDIR..."
-			newstuff="yes"
-		elif [ ! -f "${PORTAGE_BUILDDIR}/.unpacked" ]; then
+		if [ ! -f "${PORTAGE_BUILDDIR}/.unpacked" ] ; then
 			vecho ">>> Not marked as unpacked; recreating WORKDIR..."
 			newstuff="yes"
 		fi
