@@ -2102,16 +2102,23 @@ class config(object):
 		env_configdict = self.configdict["env"]
 		pkg_configdict = self.configdict["pkg"]
 		previous_iuse = pkg_configdict.get("IUSE")
-		pkg_configdict.clear()
+
+		aux_keys = [k for k in auxdbkeys \
+			if not k.startswith("UNUSED_")]
+		aux_keys.append("repository")
+
+		# Discard any existing metadata from the previous package, but
+		# preserve things like USE_EXPAND values and PORTAGE_USE which
+		# might be reused.
+		for k in aux_keys:
+			pkg_configdict.pop(k, None)
+
 		pkg_configdict["CATEGORY"] = cat
 		pkg_configdict["PF"] = pf
 		if mydb:
 			if not hasattr(mydb, "aux_get"):
 				pkg_configdict.update(mydb)
 			else:
-				aux_keys = [k for k in auxdbkeys \
-					if not k.startswith("UNUSED_")]
-				aux_keys.append("repository")
 				for k, v in izip(aux_keys, mydb.aux_get(self.mycpv, aux_keys)):
 					pkg_configdict[k] = v
 			repository = pkg_configdict.pop("repository", None)
