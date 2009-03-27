@@ -247,11 +247,6 @@ def pkgsplit(mypkg,silent=1):
 			pkgcache[mypkg]=None
 			return None
 		else:
-			for x in myparts[:verPos]:
-				if ververify(x):
-					pkgcache[mypkg]=None
-					return None
-					#names can't have versiony looking parts
 			myval=("-".join(myparts[:verPos]),myparts[verPos],revision)
 			pkgcache[mypkg]=myval
 			return myval

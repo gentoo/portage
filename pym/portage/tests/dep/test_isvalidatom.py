@@ -61,7 +61,10 @@ class IsValidAtom(TestCase):
 			  ( "null/portage*:0", False ),
 			  ( ">=null/portage-2.1", True ),
 			  ( "~null/portage-2.1", True ),
-			  ( "=null/portage-2.1*", True ),]
+			  ( "=null/portage-2.1*", True ),
+			  ( "=foo/bar-123-1", True ),
+			  ( "=foo/bar-123-1-r1", True ),
+		]
 
 		for test in tests:
 			if test[1]:
