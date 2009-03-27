@@ -5053,7 +5053,7 @@ def eapi_is_supported(eapi):
 
 # Generally, it's best not to assume that cache entries for unsupported EAPIs
 # can be validated. However, the current package manager specification does not
-# guarantee that that the EAPI can be parsed without sourcing the ebuild, so
+# guarantee that the EAPI can be parsed without sourcing the ebuild, so
 # it's too costly to discard existing cache entries for unsupported EAPIs.
 # Therefore, by default, assume that cache entries for unsupported EAPIs can be
 # validated. If FEATURES=parse-eapi-* is enabled, this assumption is discarded
