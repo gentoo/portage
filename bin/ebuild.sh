@@ -1887,26 +1887,15 @@ ebuild_main() {
 	if ! hasq $EBUILD_SH_ARGS clean depend help info nofetch ; then
 
 		if hasq distcc $FEATURES ; then
-			if [ -d /usr/lib/distcc/bin ] ; then
-				[[ -z ${PATH/*distcc*/} ]] && remove_path_entry distcc
-				export PATH="/usr/lib/distcc/bin:$PATH"
-				[[ -n $DISTCC_LOG ]] && addwrite "${DISTCC_LOG%/*}"
-			elif type -P distcc >/dev/null ; then
-				! hasq distcc $CC && export CC="distcc $CC"
-				! hasq distcc $CXX && export CXX="distcc $CXX"
-			fi
+			[[ -z ${PATH/*distcc*/} ]] && remove_path_entry distcc
+			export PATH="/usr/lib/distcc/bin:$PATH"
+			[[ -n $DISTCC_LOG ]] && addwrite "${DISTCC_LOG%/*}"
 		fi
 
 		if hasq ccache $FEATURES ; then
 			[[ -z ${PATH/*ccache*/} ]] && remove_path_entry ccache
 
-			if [ -d /usr/lib/ccache/bin ] ; then
-				export PATH="/usr/lib/ccache/bin:$PATH"
-			elif [ -d /usr/bin/ccache ] ; then
-				export PATH="/usr/bin/ccache:$PATH"
-			fi
-
-			[[ -z $CCACHE_DIR ]] && export CCACHE_DIR=/var/tmp/ccache
+			export PATH="/usr/lib/ccache/bin:$PATH"
 
 			addread "$CCACHE_DIR"
 			addwrite "$CCACHE_DIR"
