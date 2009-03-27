@@ -83,7 +83,14 @@ if portage.settings["NOCOLOR"] in ("yes","true") or not sys.stdout.isatty():
 
 ebuild = pargs.pop(0)
 
-if not ebuild.endswith(".ebuild"):
+pf = None
+if 'parse-eapi-glep-55' in portage.settings.features:
+	pf, eapi = portage._split_ebuild_name_glep55(
+		os.path.basename(ebuild))
+elif ebuild.endswith(".ebuild"):
+	pf = os.path.basename(ebuild)[:-7]
+
+if pf is None:
 	portage.writemsg("'%s' does not end with '.ebuild'.\n" % \
 		(ebuild,), noiselevel=-1)
 	sys.exit(1)
@@ -120,8 +127,7 @@ if not os.path.exists(ebuild):
 	sys.exit(1)
 
 ebuild_split = ebuild.split("/")
-del ebuild_split[-2]
-cpv = "/".join(ebuild_split[-2:])[:-7]
+cpv = "%s/%s" % (ebuild_split[-3], pf)
 
 if not portage.catpkgsplit(cpv):
 	print "!!! %s does not follow correct package syntax." % (cpv)
@@ -158,8 +164,6 @@ def discard_digests(myebuild, mysettings, mydbapi):
 		portage._doebuild_manifest_exempt_depend += 1
 		pkgdir = os.path.dirname(myebuild)
 		fetchlist_dict = portage.FetchlistDict(pkgdir, mysettings, mydbapi)
-		cat, pkg = pkgdir.split(os.sep)[-2:]
-		cpv = cat + "/" + os.path.basename(myebuild)[:-7]
 		from portage.manifest import Manifest
 		mf = Manifest(pkgdir, mysettings["DISTDIR"],
 			fetchlist_dict=fetchlist_dict, manifest1_compat=False)
