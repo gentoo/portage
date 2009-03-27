@@ -1709,64 +1709,6 @@ preprocess_ebuild_env() {
 # === === === === === functions end, main part begins === === === === ===
 # === === === === === === === === === === === === === === === === === ===
 
-if [ -n "${EBUILD_SH_ARGS}" ] && \
-	! hasq ${EBUILD_SH_ARGS} clean depend help info nofetch ; then
-
-	if [ "$(id -nu)" == "portage" ] ; then
-		export USER=portage
-	fi
-
-	if hasq distcc ${FEATURES} ; then
-		if [ -d /usr/lib/distcc/bin ]; then
-			#We can enable distributed compile support
-			if [ -z "${PATH/*distcc*/}" ]; then
-				# Remove the other reference.
-				remove_path_entry "distcc"
-			fi
-			export PATH="/usr/lib/distcc/bin:${PATH}"
-			[ ! -z "${DISTCC_LOG}" ] && addwrite "$(dirname ${DISTCC_LOG})"
-		elif which distcc &>/dev/null; then
-			if ! hasq distcc $CC; then
-				export CC="distcc $CC"
-			fi
-			if ! hasq distcc $CXX; then
-				export CXX="distcc $CXX"
-			fi
-		fi
-	fi
-
-	if hasq ccache ${FEATURES} ; then
-		#We can enable compiler cache support
-		if [ -z "${PATH/*ccache*/}" ]; then
-			# Remove the other reference.
-			remove_path_entry "ccache"
-		fi
-
-		if [ -d /usr/lib/ccache/bin ]; then
-			export PATH="/usr/lib/ccache/bin:${PATH}"
-		elif [ -d /usr/bin/ccache ]; then
-			export PATH="/usr/bin/ccache:${PATH}"
-		fi
-
-		[ -z "${CCACHE_DIR}" ] && export CCACHE_DIR="/var/tmp/ccache"
-
-		addread "${CCACHE_DIR}"
-		addwrite "${CCACHE_DIR}"
-
-		[ -n "${CCACHE_SIZE}" ] && ccache -M ${CCACHE_SIZE} &> /dev/null
-	else
-		# Force configure scripts that automatically detect ccache to respect
-		# FEATURES="-ccache"
-		export CCACHE_DISABLE=1
-	fi
-
-	# XXX: Load up the helper functions.
-#	for X in /usr/lib/portage/bin/functions/*.sh; do
-#		source ${X} || die "Failed to source ${X}"
-#	done
-
-fi # "$*"!="depend" && "$*"!="clean" && "$*" != "setup"
-
 export SANDBOX_ON="1"
 export S=${WORKDIR}/${P}
 
@@ -1942,6 +1884,41 @@ ebuild_main() {
 	local f x
 	local export_vars="ASFLAGS CCACHE_DIR CCACHE_SIZE
 		CFLAGS CXXFLAGS LDFLAGS LIBCFLAGS LIBCXXFLAGS"
+
+	if ! hasq $EBUILD_SH_ARGS clean depend help info nofetch ; then
+
+		if hasq distcc $FEATURES ; then
+			if [ -d /usr/lib/distcc/bin ] ; then
+				[[ -z ${PATH/*distcc*/} ]] && remove_path_entry distcc
+				export PATH="/usr/lib/distcc/bin:$PATH"
+				[[ -n $DISTCC_LOG ]] && addwrite "${DISTCC_LOG%/*}"
+			elif type -P distcc >/dev/null ; then
+				! hasq distcc $CC && export CC="distcc $CC"
+				! hasq distcc $CXX && export CXX="distcc $CXX"
+			fi
+		fi
+
+		if hasq ccache $FEATURES ; then
+			[[ -z ${PATH/*ccache*/} ]] && remove_path_entry ccache
+
+			if [ -d /usr/lib/ccache/bin ] ; then
+				export PATH="/usr/lib/ccache/bin:$PATH"
+			elif [ -d /usr/bin/ccache ] ; then
+				export PATH="/usr/bin/ccache:$PATH"
+			fi
+
+			[[ -z $CCACHE_DIR ]] && export CCACHE_DIR=/var/tmp/ccache
+
+			addread "$CCACHE_DIR"
+			addwrite "$CCACHE_DIR"
+
+			[[ -n $CCACHE_SIZE ]] && ccache -M $CCACHE_SIZE &> /dev/null
+		else
+			# Force configure scripts that automatically detect ccache to
+			# respect FEATURES="-ccache".
+			export CCACHE_DISABLE=1
+		fi
+	fi
 
 	case ${EBUILD_SH_ARGS} in
 	nofetch)
