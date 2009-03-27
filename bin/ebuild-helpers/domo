@@ -12,6 +12,8 @@ if [ ! -d "${D}${DESTTREE}/share/locale" ] ; then
 	install -d "${D}${DESTTREE}/share/locale/"
 fi
 
+ret=0
+
 for x in "$@" ; do
 	if [ -e "${x}" ] ; then
 		mytiny="${x##*/}"
@@ -22,5 +24,9 @@ for x in "$@" ; do
 		install -m0644 "${x}" "${mydir}/${MOPREFIX}.mo"
 	else
 		echo "!!! ${0##*/}: $x does not exist" 1>&2
+		false
 	fi
+	((ret+=$?))
 done
+
+exit $ret

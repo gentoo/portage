@@ -14,6 +14,8 @@ if [[ ! -d ${D}${_E_EXEDESTTREE_} ]] ; then
 	install -d "${D}${_E_EXEDESTTREE_}"
 fi
 
+ret=0
+
 for x in "$@" ; do
 	if [ -L "${x}" ] ; then
 		cp "${x}" "${T}"
@@ -24,6 +26,11 @@ for x in "$@" ; do
 	else
 		mysrc="${x}"
 	fi
-	install $EXEOPTIONS "$mysrc" "$D$_E_EXEDESTTREE_" || \
+	if ! install $EXEOPTIONS "$mysrc" "$D$_E_EXEDESTTREE_" ; then
 		echo "!!! ${0##*/}: $mysrc does not exist" 1>&2
+		false
+	fi
+	((ret+=$?))
 done
+
+exit $ret
