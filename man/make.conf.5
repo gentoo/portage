@@ -269,6 +269,11 @@ Fetch in the background while compiling. Run
 `tail \-f /var/log/emerge\-fetch.log` in a
 terminal to view parallel-fetch progress.
 .TP
+.B parse\-eapi\-ebuild\-head
+Parse \fBEAPI\fR from the head of the ebuild (first 30 lines). This feature
+is only intended for experimental purposes and should not be enabled under
+normal circumstances.
+.TP
 .B protect\-owned
 This is identical to the \fIcollision\-protect\fR feature except that files
 may be overwritten if they are not explicitly listed in the contents of a
