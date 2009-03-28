@@ -4039,7 +4039,11 @@ class PackageMerge(AsynchronousTask):
 			action_desc = "Installing"
 			preposition = "to"
 
-		msg = "%s %s" % (action_desc, colorize("GOOD", pkg.cpv))
+		msg = "%s (%s of %s) %s" % \
+			(action_desc,
+			colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
+			colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)),
+			colorize("GOOD", pkg.cpv))
 
 		if pkg.root != "/":
 			msg += " %s %s" % (preposition, pkg.root)
