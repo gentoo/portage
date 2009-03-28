@@ -4035,14 +4035,17 @@ class PackageMerge(AsynchronousTask):
 		if pkg.installed:
 			action_desc = "Uninstalling"
 			preposition = "from"
+			counter_str = ""
 		else:
 			action_desc = "Installing"
 			preposition = "to"
+			counter_str = "(%s of %s) " % \
+				(colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
+				colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)))
 
-		msg = "%s (%s of %s) %s" % \
+		msg = "%s %s%s" % \
 			(action_desc,
-			colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
-			colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)),
+			counter_str,
 			colorize("GOOD", pkg.cpv))
 
 		if pkg.root != "/":
