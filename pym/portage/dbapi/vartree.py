@@ -3091,6 +3091,14 @@ class dblink(object):
 			if var_name == 'SLOT':
 				slot = val
 
+				if not slot.strip():
+					slot = self.settings.get(var_name, '')
+					if not slot.strip():
+						showMessage("!!! SLOT is undefined\n",
+							level=logging.ERROR, noiselevel=-1)
+						return 1
+					write_atomic(os.path.join(inforoot, var_name), slot + '\n')
+
 			if val != self.settings.get(var_name, ''):
 				self._eqawarn('preinst',
 					["QA Notice: Expected %s='%s', got '%s'\n" % \
@@ -3106,10 +3114,12 @@ class dblink(object):
 		for v in self.vartree.dbapi.cp_list(self.mysplit[0]):
 			otherversions.append(v.split("/")[1])
 
+		cp = self.mysplit[0]
+		slot_atom = "%s:%s" % (cp, slot)
+
 		# filter any old-style virtual matches
-		slot_matches = [cpv for cpv in self.vartree.dbapi.match(
-			"%s:%s" % (cpv_getkey(self.mycpv), slot)) \
-			if cpv_getkey(cpv) == cpv_getkey(self.mycpv)]
+		slot_matches = [cpv for cpv in self.vartree.dbapi.match(slot_atom) \
+			if cpv_getkey(cpv) == cp]
 
 		if self.mycpv not in slot_matches and \
 			self.vartree.dbapi.cpv_exists(self.mycpv):
@@ -3470,7 +3480,17 @@ class dblink(object):
 			match_from_list(PORTAGE_PACKAGE_ATOM, [self.mycpv]):
 			reinstall_self = True
 
+		if scheduler is None:
+			def emerge_log(msg):
+				pass
+		else:
+			emerge_log = scheduler.dblinkEmergeLog
+
 		autoclean = self.settings.get("AUTOCLEAN", "yes") == "yes"
+
+		if autoclean:
+			emerge_log(" >>> AUTOCLEAN: %s" % (slot_atom,))
+
 		others_in_slot.append(self)  # self has just been merged
 		for dblnk in list(others_in_slot):
 			if dblnk is self:
@@ -3478,10 +3498,17 @@ class dblink(object):
 			if not (autoclean or dblnk.mycpv == self.mycpv or reinstall_self):
 				continue
 			showMessage(">>> Safely unmerging already-installed instance...\n")
+			emerge_log(" === Unmerging... (%s)" % (dblnk.mycpv,))
 			others_in_slot.remove(dblnk) # dblnk will unmerge itself now
 			dblnk._linkmap_broken = self._linkmap_broken
-			dblnk.unmerge(trimworld=0, ldpath_mtimes=prev_mtimes,
-				others_in_slot=others_in_slot)
+			unmerge_rval = dblnk.unmerge(trimworld=0,
+				ldpath_mtimes=prev_mtimes, others_in_slot=others_in_slot)
+
+			if unmerge_rval == os.EX_OK:
+				emerge_log(" >>> unmerge success: %s" % (dblnk.mycpv,))
+			else:
+				emerge_log(" !!! unmerge FAILURE: %s" % (dblnk.mycpv,))
+
 			# TODO: Check status and abort if necessary.
 			dblnk.delete()
 			showMessage(">>> Original instance of package unmerged safely.\n")
