@@ -207,6 +207,7 @@ options=[
 "--nospinner",    "--oneshot",
 "--onlydeps",     "--pretend",
 "--quiet",        "--resume",
+"--rdeps-only",   "--root-deps",
 "--searchdesc",   "--selective",
 "--skipfirst",
 "--tree",
@@ -5275,8 +5276,16 @@ class depgraph(object):
 		if removal_action and self.myopts.get("--with-bdeps", "y") == "n":
 			edepend["DEPEND"] = ""
 
+		bdeps_root = "/"
+		if self.target_root != "/":
+			if "--root-deps" in self.myopts:
+					bdeps_root = myroot
+			if "--rdeps-only" in self.myopts:
+					bdeps_root = "/"
+					edepend["DEPEND"] = ""
+
 		deps = (
-			("/", edepend["DEPEND"],
+			(bdeps_root, edepend["DEPEND"],
 				self._priority(buildtime=(not bdeps_optional),
 				optional=bdeps_optional)),
 			(myroot, edepend["RDEPEND"], self._priority(runtime=True)),

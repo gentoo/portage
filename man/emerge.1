@@ -414,11 +414,25 @@ b	blocked by another package (automatically resolved conflict)
 Results may vary, but the general outcome is a reduced or condensed
 output from portage's displays.
 .TP
+.BR "\-\-rdeps\-only"
+Discard all build\-time dependencies. This option is commonly used together
+with \fBROOT\fR and it should not be enabled under normal circumstances. For
+currently supported \fBEAPI\fR values, the dependencies specified in the
+\fBDEPEND\fR variable are discarded. However, behavior may change for new
+\fBEAPI\fRs when related extensions are added in the future.
+.TP
 .BR "\-\-reinstall changed\-use"
 Tells emerge to include installed packages where USE flags have
 changed since installation.  Unlike \fB\-\-newuse\fR, this option does
 not trigger reinstallation when flags that the user has not
 enabled are added or removed.
+.TP
+.BR "\-\-root\-deps"
+Install build\-time dependencies to \fBROOT\fR instead of /. This option
+should not be enabled under normal circumstances. For currently supported
+\fBEAPI\fR values, the dependencies specified in the \fBDEPEND\fR variable
+are used. However, behavior may change for new
+\fBEAPI\fRs when related extensions are added in the future.
 .TP
 .BR "\-\-skipfirst"
 This option is only valid when used with \fB\-\-resume\fR.  It removes the 
