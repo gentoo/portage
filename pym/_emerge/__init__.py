@@ -4062,11 +4062,18 @@ class PackageMerge(AsynchronousTask):
 		if pkg.installed:
 			action_desc = "Uninstalling"
 			preposition = "from"
+			counter_str = ""
 		else:
 			action_desc = "Installing"
 			preposition = "to"
+			counter_str = "(%s of %s) " % \
+				(colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
+				colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)))
 
-		msg = "%s %s" % (action_desc, colorize("GOOD", pkg.cpv))
+		msg = "%s %s%s" % \
+			(action_desc,
+			counter_str,
+			colorize("GOOD", pkg.cpv))
 
 		if pkg.root != "/":
 			msg += " %s %s" % (preposition, pkg.root)
@@ -10014,7 +10021,7 @@ class Scheduler(PollScheduler):
 
 	class _iface_class(SlotObject):
 		__slots__ = ("dblinkEbuildPhase", "dblinkDisplayMerge",
-			"dblinkElog", "fetch", "register", "schedule",
+			"dblinkElog", "dblinkEmergeLog", "fetch", "register", "schedule",
 			"scheduleSetup", "scheduleUnpack", "scheduleYield",
 			"unregister")
 
@@ -10143,6 +10150,7 @@ class Scheduler(PollScheduler):
 			dblinkEbuildPhase=self._dblink_ebuild_phase,
 			dblinkDisplayMerge=self._dblink_display_merge,
 			dblinkElog=self._dblink_elog,
+			dblinkEmergeLog=self._dblink_emerge_log,
 			fetch=fetch_iface, register=self._register,
 			schedule=self._schedule_wait,
 			scheduleSetup=self._schedule_setup,
@@ -10453,6 +10461,9 @@ class Scheduler(PollScheduler):
 		finally:
 			if log_file is not None:
 				log_file.close()
+
+	def _dblink_emerge_log(self, msg):
+		self._logger.log(msg)
 
 	def _dblink_display_merge(self, pkg_dblink, msg, level=0, noiselevel=0):
 		log_path = pkg_dblink.settings.get("PORTAGE_LOG_FILE")

@@ -9,7 +9,7 @@ find "${ED}" -type d -name man > "${T}"/prepallman.filelist
 while read mandir ; do
 	mandir=${mandir#${ED}}
 	prepman "${mandir%/man}"
-	((ret+=$?))
+	((ret|=$?))
 done < "${T}"/prepallman.filelist
 
 exit ${ret}

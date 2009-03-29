@@ -21,7 +21,7 @@ for x in "$@" ; do
 		echo "!!! ${0##*/}: ${x} does not exist" 1>&2
 		false
 	fi
-	((ret+=$?))
+	((ret|=$?))
 done
 
 exit ${ret}
