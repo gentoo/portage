@@ -22,7 +22,7 @@ for x in "$@" ; do
 			echo "${y} is not a regular file!" >&2
 			false
 		fi
-		((ret+=$?))
+		((ret|=$?))
 	else
 		mysed="${x}"
 	fi
@@ -30,7 +30,7 @@ done
 
 if [ $file_found = 0 ] ; then
 	echo "!!! ${0##*/}: $y does not exist" 1>&2
-	((ret+=1))
+	((ret|=1))
 fi
 
 exit $ret
