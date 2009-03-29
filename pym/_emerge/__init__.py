@@ -6754,7 +6754,7 @@ class depgraph(object):
 			final_db = self.mydbapi[myroot]
 			
 			provider_virtual = False
-			if blocker.cp.startswith('virtual/') and \
+			if blocker.cp in virtuals and \
 				not self._have_new_virt(blocker.root, blocker.cp):
 				provider_virtual = True
 
