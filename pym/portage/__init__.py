@@ -2326,9 +2326,6 @@ class config(object):
 		iuse_implicit.add("build")
 		iuse_implicit.add("bootstrap")
 
-		# prefix flag is used in Prefix
-		iuse_implicit.add("prefix")
-
 		return iuse_implicit
 
 	def _getUseMask(self, pkg):
