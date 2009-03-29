@@ -427,6 +427,9 @@ changed since installation.  Unlike \fB\-\-newuse\fR, this option does
 not trigger reinstallation when flags that the user has not
 enabled are added or removed.
 .TP
+.BR \-\-root=DIR
+Set the \fBROOT\fR environment variable.
+.TP
 .BR "\-\-root\-deps"
 Install build\-time dependencies to \fBROOT\fR instead of /. This option
 should not be enabled under normal circumstances. For currently supported
@@ -488,7 +491,8 @@ command line.
 .TP
 \fBROOT\fR = \fI[path]\fR
 Use \fBROOT\fR to specify the target root filesystem to be used for
-merging packages or ebuilds.  This variable can be set in \fBmake.conf\fR(5).
+merging packages or ebuilds. This variable can be set via the \fB\-\-root\fR
+option or in \fBmake.conf\fR(5) (the command line overrides other settings).
 .br
 Defaults to /.
 .TP

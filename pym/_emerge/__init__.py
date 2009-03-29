@@ -14800,7 +14800,11 @@ def parse_opts(tmpcmdline, silent=False):
 			"help":"specify conditions to trigger package reinstallation",
 			"type":"choice",
 			"choices":["changed-use"]
-		}
+		},
+		"--root": {
+		 "help"   : "specify the target root filesystem for merging packages",
+		 "action" : "store"
+		},
 	}
 
 	from optparse import OptionParser
@@ -15325,6 +15329,8 @@ def emerge_main():
 		os.environ["PORTAGE_DEBUG"] = "1"
 	if "--config-root" in myopts:
 		os.environ["PORTAGE_CONFIGROOT"] = myopts["--config-root"]
+	if "--root" in myopts:
+		os.environ["ROOT"] = myopts["--root"]
 
 	# Portage needs to ensure a sane umask for the files it creates.
 	os.umask(022)
