@@ -6754,9 +6754,14 @@ class depgraph(object):
 			final_db = self.mydbapi[myroot]
 			
 			provider_virtual = False
-			if blocker.cp in virtuals and \
+			if blocker.cp.startswith('virtual/') and \
 				not self._have_new_virt(blocker.root, blocker.cp):
 				provider_virtual = True
+
+			# Use this to check PROVIDE for each matched package
+			# when necessary.
+			atom_set = InternalPackageSet(
+				initial_atoms=[blocker.atom])
 
 			if provider_virtual:
 				atoms = []
@@ -6768,13 +6773,17 @@ class depgraph(object):
 			else:
 				atoms = [blocker.atom]
 
-			blocked_initial = []
+			blocked_initial = set()
 			for atom in atoms:
-				blocked_initial.extend(initial_db.match_pkgs(atom))
+				for pkg in initial_db.match_pkgs(atom):
+					if atom_set.findAtomForPackage(pkg):
+						blocked_initial.add(pkg)
 
-			blocked_final = []
+			blocked_final = set()
 			for atom in atoms:
-				blocked_final.extend(final_db.match_pkgs(atom))
+				for pkg in final_db.match_pkgs(atom):
+					if atom_set.findAtomForPackage(pkg):
+						blocked_final.add(pkg)
 
 			if not blocked_initial and not blocked_final:
 				parent_pkgs = self._blocker_parents.parent_nodes(blocker)
