@@ -269,6 +269,12 @@ def help(myaction,myopts,havecolor=1):
 		for line in wrap(desc, desc_width):
 			print desc_indent + line
 		print
+		print "       "+green("--config-root=DIR")
+		desc = "Set the PORTAGE_CONFIGROOT environment variable " + \
+			"which is documented in the emerge(1) man page."
+		for line in wrap(desc, desc_width):
+			print desc_indent + line
+		print
 		print "       "+green("--debug")+" ("+green("-d")+" short option)"
 		print "              Tell emerge to run the ebuild command in --debug mode. In this"
 		print "              mode, the bash build environment will run with the -x option,"
@@ -418,6 +424,12 @@ def help(myaction,myopts,havecolor=1):
 		print "              changed since installation.  Unlike --newuse, this option does"
 		print "              not trigger reinstallation when flags that the user has not"
 		print "              enabled are added or removed."
+		print
+		print "       "+green("--root=DIR")
+		desc = "Set the ROOT environment variable " + \
+			"which is documented in the emerge(1) man page."
+		for line in wrap(desc, desc_width):
+			print desc_indent + line
 		print
 		print "       "+green("--root-deps")
 		desc = "Install build-time dependencies to ROOT instead of /. This option " + \
