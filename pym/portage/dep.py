@@ -740,8 +740,8 @@ def dep_getusedeps( depend ):
 	Pull a listing of USE Dependencies out of a dep atom.
 	
 	Example usage:
-		>>> dep_getusedeps('app-misc/test:3[foo][-bar]')
-		['foo','-bar']
+		>>> dep_getusedeps('app-misc/test:3[foo,-bar]')
+		('foo', '-bar')
 	
 	@param depend: The depstring to process
 	@type depend: String
