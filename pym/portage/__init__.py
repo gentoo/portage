@@ -7180,6 +7180,8 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 def cpv_getkey(mycpv):
 	myslash=mycpv.split("/")
 	mysplit=pkgsplit(myslash[-1])
+	if mysplit is None:
+		return None
 	mylen=len(myslash)
 	if mylen==2:
 		return myslash[0]+"/"+mysplit[0]

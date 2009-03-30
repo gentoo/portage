@@ -11580,9 +11580,7 @@ class MetadataRegen(PollScheduler):
 		if cp_iter is None:
 			cp_iter = self._iter_every_cp()
 			# We can globally cleanse stale cache only if we
-			# iterate over every single cp. TODO: Add support
-			# to cleanse cache for the specific cp values that
-			# are processed.
+			# iterate over every single cp.
 			self._global_cleanse = True
 		self._cp_iter = cp_iter
 
@@ -11597,6 +11595,7 @@ class MetadataRegen(PollScheduler):
 			unregister=self._unregister)
 
 		self._valid_pkgs = set()
+		self._cp_set = set()
 		self._process_iter = self._iter_metadata_processes()
 		self.returncode = os.EX_OK
 		self._error_count = 0
@@ -11613,8 +11612,10 @@ class MetadataRegen(PollScheduler):
 	def _iter_metadata_processes(self):
 		portdb = self._portdb
 		valid_pkgs = self._valid_pkgs
+		cp_set = self._cp_set
 
 		for cp in self._cp_iter:
+			cp_set.add(cp)
 			portage.writemsg_stdout("Processing %s\n" % cp)
 			cpv_list = portdb.cp_list(cp)
 			for cpv in cpv_list:
@@ -11632,6 +11633,12 @@ class MetadataRegen(PollScheduler):
 		from portage.cache.cache_errors import CacheError
 		dead_nodes = {}
 
+		while self._schedule():
+			self._poll_loop()
+
+		while self._jobs:
+			self._poll_loop()
+
 		if self._global_cleanse:
 			for mytree in portdb.porttrees:
 				try:
@@ -11643,14 +11650,23 @@ class MetadataRegen(PollScheduler):
 					del e
 					dead_nodes = None
 					break
+		else:
+			cp_set = self._cp_set
+			cpv_getkey = portage.cpv_getkey
+			for mytree in portdb.porttrees:
+				try:
+					dead_nodes[mytree] = set(cpv for cpv in \
+						portdb.auxdb[mytree].iterkeys() \
+						if cpv_getkey(cpv) in cp_set)
+				except CacheError, e:
+					portage.writemsg("Error listing cache entries for " + \
+						"'%s': %s, continuing...\n" % (mytree, e),
+						noiselevel=-1)
+					del e
+					dead_nodes = None
+					break
 
-		while self._schedule():
-			self._poll_loop()
-
-		while self._jobs:
-			self._poll_loop()
-
-		if self._global_cleanse and dead_nodes:
+		if dead_nodes:
 			for y in self._valid_pkgs:
 				for mytree in portdb.porttrees:
 					if portdb.findname2(y, mytree=mytree)[0]:
