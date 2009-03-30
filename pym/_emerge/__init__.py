@@ -1788,8 +1788,6 @@ class EbuildFetchonly(SlotObject):
 		portdb = root_config.trees["porttree"].dbapi
 		ebuild_path = portdb.findname(pkg.cpv)
 		debug = settings.get("PORTAGE_DEBUG") == "1"
-		portage.prepare_build_dirs(self.pkg.root, self.settings, 0)
-
 		retval = portage.doebuild(ebuild_path, "fetch",
 			self.settings["ROOT"], self.settings, debug=debug,
 			listonly=self.pretend, fetchonly=1, fetchall=self.fetch_all,

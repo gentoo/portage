@@ -5841,6 +5841,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				logfile=None, returnpid=returnpid)
 			return retval
 
+		restrict = set(mysettings.get('PORTAGE_RESTRICT', '').split())
 		# get possible slot information from the deps file
 		if mydo == "depend":
 			writemsg("!!! DEBUG: dbkey: %s\n" % str(dbkey), 2)
@@ -5949,8 +5950,13 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mysettings["PF"], myroot, mysettings, vartree=vartree)
 
 		# Build directory creation isn't required for any of these.
+		# In the fetch phase, the directory is needed only for RESTRICT=fetch
+		# in order to satisfy the sane $PWD requirement (from bug #239560)
+		# when pkg_nofetch is spawned.
 		have_build_dirs = False
-		if not parallel_fetchonly and mydo not in ("digest", "help", "manifest"):
+		if not parallel_fetchonly and \
+			mydo not in ('digest', 'help', 'manifest') and \
+			not (mydo == 'fetch' and 'fetch' not in restrict):
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 			if mystatus:
 				return mystatus
