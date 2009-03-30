@@ -11573,9 +11573,18 @@ class Scheduler(PollScheduler):
 
 class MetadataRegen(PollScheduler):
 
-	def __init__(self, portdb, max_jobs=None, max_load=None):
+	def __init__(self, portdb, cp_iter=None, max_jobs=None, max_load=None):
 		PollScheduler.__init__(self)
 		self._portdb = portdb
+		self._global_cleanse = False
+		if cp_iter is None:
+			cp_iter = self._iter_every_cp()
+			# We can globally cleanse stale cache only if we
+			# iterate over every single cp. TODO: Add support
+			# to cleanse cache for the specific cp values that
+			# are processed.
+			self._global_cleanse = True
+		self._cp_iter = cp_iter
 
 		if max_jobs is None:
 			max_jobs = 1
@@ -11592,14 +11601,20 @@ class MetadataRegen(PollScheduler):
 		self.returncode = os.EX_OK
 		self._error_count = 0
 
+	def _iter_every_cp(self):
+		every_cp = self._portdb.cp_all()
+		every_cp.sort(reverse=True)
+		try:
+			while True:
+				yield every_cp.pop()
+		except IndexError:
+			pass
+
 	def _iter_metadata_processes(self):
 		portdb = self._portdb
 		valid_pkgs = self._valid_pkgs
-		every_cp = portdb.cp_all()
-		every_cp.sort(reverse=True)
 
-		while every_cp:
-			cp = every_cp.pop()
+		for cp in self._cp_iter:
 			portage.writemsg_stdout("Processing %s\n" % cp)
 			cpv_list = portdb.cp_list(cp)
 			for cpv in cpv_list:
@@ -11617,15 +11632,17 @@ class MetadataRegen(PollScheduler):
 		from portage.cache.cache_errors import CacheError
 		dead_nodes = {}
 
-		for mytree in portdb.porttrees:
-			try:
-				dead_nodes[mytree] = set(portdb.auxdb[mytree].iterkeys())
-			except CacheError, e:
-				portage.writemsg("Error listing cache entries for " + \
-					"'%s': %s, continuing...\n" % (mytree, e), noiselevel=-1)
-				del e
-				dead_nodes = None
-				break
+		if self._global_cleanse:
+			for mytree in portdb.porttrees:
+				try:
+					dead_nodes[mytree] = set(portdb.auxdb[mytree].iterkeys())
+				except CacheError, e:
+					portage.writemsg("Error listing cache entries for " + \
+						"'%s': %s, continuing...\n" % (mytree, e),
+						noiselevel=-1)
+					del e
+					dead_nodes = None
+					break
 
 		while self._schedule():
 			self._poll_loop()
@@ -11633,7 +11650,7 @@ class MetadataRegen(PollScheduler):
 		while self._jobs:
 			self._poll_loop()
 
-		if dead_nodes:
+		if self._global_cleanse and dead_nodes:
 			for y in self._valid_pkgs:
 				for mytree in portdb.porttrees:
 					if portdb.findname2(y, mytree=mytree)[0]:
