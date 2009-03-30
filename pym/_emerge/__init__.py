@@ -6408,7 +6408,7 @@ class depgraph(object):
 						old_use = vardb.aux_get(cpv, ["USE"])[0].split()
 						old_iuse = set(filter_iuse_defaults(
 							vardb.aux_get(cpv, ["IUSE"])[0].split()))
-						cur_use = pkgsettings["PORTAGE_USE"].split()
+						cur_use = pkg.use.enabled
 						cur_iuse = pkg.iuse.all
 						reinstall_for_flags = \
 							self._reinstall_for_flags(
