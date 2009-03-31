@@ -11712,18 +11712,21 @@ class MetadataRegen(PollScheduler):
 
 	def _metadata_exit(self, metadata_process):
 		self._jobs -= 1
-		if metadata_process.returncode == os.EX_OK:
-			if self._consumer is not None:
-				self._consumer(metadata_process.cpv,
-					metadata_process.ebuild_path,
-					metadata_process.repo_path,
-					metadata_process.metadata)
-		else:
+		if metadata_process.returncode != os.EX_OK:
 			self.returncode = 1
 			self._error_count += 1
 			self._valid_pkgs.discard(metadata_process.cpv)
 			portage.writemsg("Error processing %s, continuing...\n" % \
 				(metadata_process.cpv,))
+
+		if self._consumer is not None:
+			# On failure, still notify the consumer (in this case the metadata
+			# argument is None).
+			self._consumer(metadata_process.cpv,
+				metadata_process.ebuild_path,
+				metadata_process.repo_path,
+				metadata_process.metadata)
+
 		self._schedule()
 
 class UninstallFailure(portage.exception.PortageException):
