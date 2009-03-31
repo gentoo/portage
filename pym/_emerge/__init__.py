@@ -11717,7 +11717,7 @@ class MetadataRegen(PollScheduler):
 			self._error_count += 1
 			self._valid_pkgs.discard(metadata_process.cpv)
 			portage.writemsg("Error processing %s, continuing...\n" % \
-				(metadata_process.cpv,))
+				(metadata_process.cpv,), noiselevel=-1)
 
 		if self._consumer is not None:
 			# On failure, still notify the consumer (in this case the metadata
