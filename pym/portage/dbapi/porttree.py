@@ -349,6 +349,7 @@ class portdbapi(dbapi):
 			metadata["EAPI"] = "-" + eapi.lstrip("-")
 
 		self.auxdb[repo_path][cpv] = metadata
+		return metadata
 
 	def _pull_valid_cache(self, cpv, ebuild_path, repo_path):
 
