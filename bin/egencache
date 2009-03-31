@@ -243,10 +243,14 @@ def egencache_main(args):
 		target_root='/', env=env)
 
 	if 'metadata-transfer' not in settings.features:
-		writemsg_level("ecachegen: error: " + \
-			"FEATURES=metadata-transfer is not enabled\n",
-			level=logging.ERROR, noiselevel=-1)
-		return 1
+		writemsg_level("ecachegen: warning: " + \
+			"automatically enabling FEATURES=metadata-transfer\n",
+			level=logging.WARNING, noiselevel=-1)
+		settings.features.add('metadata-transfer')
+		settings['FEATURES'] = ' '.join(sorted(settings.features))
+		settings.backup_changes('FEATURES')
+
+	settings.lock()
 
 	portdb = portage.portdbapi(settings["PORTDIR"], mysettings=settings)
 
