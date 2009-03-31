@@ -3,7 +3,7 @@
 # License: GPL2
 # $Id$
 
-import errno, os, re
+import errno, os, re, sys
 from portage.cache import cache_errors, flat_hash
 import portage.eclass_cache
 from portage.cache.template import reconstruct_eclasses
@@ -30,6 +30,7 @@ class database(flat_hash.database):
 		super(database, self).__init__(location, *args, **config)
 		self.location = os.path.join(loc, "metadata","cache")
 		self.ec = portage.eclass_cache.cache(loc)
+		self.raise_stat_collision = False
 
 	def _parse_data(self, data, cpv):
 		_hashed_re_match = self._hashed_re.match
@@ -73,31 +74,63 @@ class database(flat_hash.database):
 			values = ProtectedDict(values)
 			values["INHERITED"] = ' '.join(sorted(values["_eclasses_"]))
 
+		new_content = []
+		for k in self.auxdbkey_order:
+			new_content.append(unicode(values.get(k, ''), errors='replace'))
+			new_content.append(u'\n')
+		for i in xrange(magic_line_count - len(self.auxdbkey_order)):
+			new_content.append(u'\n')
+		new_content = u''.join(new_content)
+		new_content = new_content.encode(
+			sys.getdefaultencoding(), 'backslashreplace')
+
+		new_fp = os.path.join(self.location, cpv)
+		try:
+			f = open(new_fp, 'rb')
+		except EnvironmentError:
+			pass
+		else:
+			try:
+				try:
+					existing_st = os.fstat(f.fileno())
+					existing_content = f.read()
+				finally:
+					f.close()
+			except EnvironmentError:
+				pass
+			else:
+				existing_mtime = long(existing_st.st_mtime)
+				if values['_mtime_'] == existing_mtime and \
+					existing_content == new_content:
+					return
+
+				if self.raise_stat_collision and \
+					values['_mtime_'] == existing_mtime and \
+					len(new_content) == existing_st.st_size:
+					raise cache_errors.StatCollision(cpv, new_fp,
+						existing_mtime, existing_st.st_size)
+
 		s = cpv.rfind("/")
 		fp = os.path.join(self.location,cpv[:s],
 			".update.%i.%s" % (os.getpid(), cpv[s+1:]))
 		try:
-			myf = open(fp, "w")
+			myf = open(fp, 'wb')
 		except EnvironmentError, e:
 			if errno.ENOENT == e.errno:
 				try:
 					self._ensure_dirs(cpv)
-					myf = open(fp, "w")
+					myf = open(fp, 'wb')
 				except EnvironmentError, e:
 					raise cache_errors.CacheCorruption(cpv, e)
 			else:
 				raise cache_errors.CacheCorruption(cpv, e)
 
 		try:
-			for k in self.auxdbkey_order:
-				myf.write(values.get(k, "") + "\n")
-			for i in xrange(magic_line_count - len(self.auxdbkey_order)):
-				myf.write("\n")
+			myf.write(new_content)
 		finally:
 			myf.close()
 		self._ensure_access(fp, mtime=values["_mtime_"])
 
-		new_fp = os.path.join(self.location, cpv)
 		try:
 			os.rename(fp, new_fp)
 		except EnvironmentError, e:

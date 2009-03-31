@@ -24,7 +24,7 @@ import optparse
 import os
 import portage
 import _emerge
-from portage.cache.cache_errors import CacheError
+from portage.cache.cache_errors import CacheError, StatCollision
 from portage.util import writemsg_level
 
 def parse_args(args):
@@ -46,6 +46,10 @@ def parse_args(args):
 		action="store",
 		help="max load allowed when spawning multiple jobs",
 		dest="load_average")
+	parser.add_option("--rsync",
+		action="store_true",
+		help="enable rsync stat collision workaround " + \
+			"for bug 139134 (use with --update)")
 	options, args = parser.parse_args(args)
 
 	if not options.update:
@@ -73,7 +77,8 @@ def parse_args(args):
 	return options, args
 
 class GenCache(object):
-	def __init__(self, portdb, cp_iter=None, max_jobs=None, max_load=None):
+	def __init__(self, portdb, cp_iter=None, max_jobs=None, max_load=None,
+		rsync=False):
 		self._portdb = portdb
 		# We can globally cleanse stale cache only if we
 		# iterate over every single cp.
@@ -90,22 +95,47 @@ class GenCache(object):
 		metadbmodule = portdb.mysettings.load_best_module("portdbapi.metadbmodule")
 		self._trg_cache = metadbmodule(portdb.porttree_root,
 			"metadata/cache", portage.auxdbkeys[:])
+		if rsync:
+			self._trg_cache.raise_stat_collision = True
 		self._existing_nodes = set()
 
 	def _metadata_callback(self, cpv, ebuild_path, repo_path, metadata):
 		self._existing_nodes.add(cpv)
 		if metadata is not None:
-			# TODO: Implement a workaround for bug 139134 here. The cache
-			# should be able to optionally raise an exception in order to
-			# indicate any mtime + size collisions that will prevent rsync
-			# from detecting changes. These exceptions will be handled by
-			# bumping the mtime on the ebuild (and the corresponding cache
-			# entry).
 			if metadata.get('EAPI') == '0':
 				del metadata['EAPI']
 			try:
-				self._trg_cache[cpv] = metadata
+				try:
+					self._trg_cache[cpv] = metadata
+				except StatCollision, sc:
+					# If the content of a cache entry changes and neither the
+					# file mtime nor size changes, it will prevent rsync from
+					# detecting changes. Cache backends may raise this
+					# exception from _setitem() if they detect this type of stat
+					# collision. These exceptions are be handled by bumping the
+					# mtime on the ebuild (and the corresponding cache entry).
+					# See bug #139134.
+					max_mtime = sc.mtime
+					for ec, (loc, ec_mtime) in metadata['_eclasses_'].iteritems():
+						if max_mtime < ec_mtime:
+							max_mtime = ec_mtime
+					if max_mtime == sc.mtime:
+						max_mtime += 1
+					max_mtime = long(max_mtime)
+					try:
+						os.utime(ebuild_path, (max_mtime, max_mtime))
+					except OSError, e:
+						self.returncode |= 1
+						writemsg_level(
+							"%s writing target: %s\n" % (cpv, e),
+							level=logging.ERROR, noiselevel=-1)
+					else:
+						metadata['_mtime_'] = max_mtime
+						self._trg_cache[cpv] = metadata
+						self._portdb.auxdb[repo_path][cpv] = metadata
+
 			except CacheError, ce:
+				self.returncode |= 1
 				writemsg_level(
 					"%s writing target: %s\n" % (cpv, ce),
 					level=logging.ERROR, noiselevel=-1)
@@ -195,7 +225,8 @@ def egencache_main(args):
 
 	gen_cache = GenCache(portdb, cp_iter=cp_iter,
 		max_jobs=options.jobs,
-		max_load=options.load_average)
+		max_load=options.load_average,
+		rsync=options.rsync)
 	gen_cache.run()
 	return gen_cache.returncode
 
