@@ -423,7 +423,8 @@ def help(myaction,myopts,havecolor=1):
 			print desc_indent + line
 		print
 		print "       "+green("--root-deps[=rdeps]")
-		desc = "If no argument is given then build-time dependencies are installed to " + \
+		desc = "If no argument is given then build-time dependencies of packages for " + \
+			"ROOT are installed to " + \
 			"ROOT instead of /. If the rdeps argument is given then discard " + \
 			"all build-time dependencies of packages for ROOT. This option is " + \
 			"only meaningful when used together with ROOT and it should not " + \
