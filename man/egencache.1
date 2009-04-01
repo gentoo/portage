@@ -6,10 +6,12 @@ egencache \- generate metadata cache for ebuild repositories
 .I [options] --update [ATOM]\fR...
 .SH "DESCRIPTION"
 The egencache program generates metadata cache for ebuild repositories.
-.SH "ATOMS"
-An optional list of specific package atoms to update. If no package atoms are
-specified then all will be updated. See ebuild(5) for the details on package
-atom syntax.
+.SH ACTIONS
+.TP
+.BR "\-\-update [ATOM] ... "
+Update the \fImetadata/cache/\fR directory (generate metadata as necessary).
+If no package atoms are specified then all will be updated. See ebuild(5)
+for the details on package atom syntax.
 .SH OPTIONS
 .TP
 .BR "\-\-cache\-dir=CACHE_DIR"
@@ -33,7 +35,7 @@ Also see the related \fB\-\-load\-average\fR option.
 Specifies that maximum load allowed when spawning multiple jobs.
 .TP
 .BR "\-\-rsync"
-When used together with the \fB\-\-update\fR options, this enables a workaround
+When used together with the \fB\-\-update\fR action, this enables a workaround
 for cases in which the content of a cache entry changes and neither the file
 mtime nor size changes, preventing rsync from detecting changes. Such cases are
 handled by bumping the mtime on the ebuild (and the corresponding cache entry).
@@ -42,10 +44,6 @@ This option should only be needed for distribution via something like
 (see \fBbug 139134\fR). It's not needed with \fBgit\fR(1) since that uses a
 more thorough mechanism which allows it to detect changed inode numbers
 (described in \fIracy-git.txt\fR in the git technical docs).
-.TP
-.BR "\-\-update [ATOM] ... "
-Update the \fImetadata/cache/\fR directory (generate metadata as necessary).
-If no package atoms are specified then all will be updated.
 .SH "ENVIRONMENT OPTIONS"
 .TP
 \fBEGENCACHE_DEFAULT_OPTS\fR
