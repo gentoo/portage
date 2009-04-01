@@ -5275,14 +5275,12 @@ class depgraph(object):
 			edepend["DEPEND"] = ""
 
 		bdeps_root = "/"
-		if self.target_root != "/":
-			root_deps = self.myopts.get("--root-deps")
-			if root_deps is not None:
-				if root_deps is True:
-					bdeps_root = myroot
-				elif root_deps == "rdeps":
-					bdeps_root = "/"
-					edepend["DEPEND"] = ""
+		root_deps = self.myopts.get("--root-deps")
+		if root_deps is not None:
+			if root_deps is True:
+				bdeps_root = myroot
+			elif root_deps == "rdeps":
+				edepend["DEPEND"] = ""
 
 		deps = (
 			(bdeps_root, edepend["DEPEND"],
