@@ -7,7 +7,9 @@ egencache \- generate metadata cache for ebuild repositories
 .SH "DESCRIPTION"
 The egencache program generates metadata cache for ebuild repositories and
 stores it in the \fImetadata/cache/\fR directory within the repository itself,
-for distribution.
+for distribution. Currenly, only the repository located at \fBPORTDIR\fR
+(configured in \fBmake.conf(5)\fR) can be updated by this program, but a
+future version will have the ability to select a different repository.
 .SH ACTIONS
 .TP
 .BR "\-\-update [ATOM] ... "
