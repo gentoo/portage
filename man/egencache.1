@@ -1,0 +1,69 @@
+.TH "EGENCACHE" "1" "March 2009" "Portage 2.2" "Portage"
+.SH "NAME"
+egencache \- generate metadata cache for ebuild repositories
+.SH "SYNOPSIS"
+.B egencache
+.I [options] --update [ATOM]\fR...
+.SH "DESCRIPTION"
+The egencache program generates metadata cache for ebuild repositories.
+.SH "ATOMS"
+An optional list of specific package atoms to update. If no package atoms are
+specified then all will be updated. See ebuild(5) for the details on package
+atom syntax.
+.SH OPTIONS
+.TP
+.BR "\-\-cache\-dir=CACHE_DIR"
+Location of the metadata cache.
+.br
+Defaults to /var/cache/edb/dep.
+.TP
+.BR "\-\-config\-root=CONFIG_ROOT"
+Location of portage config files.
+.br
+Defaults to /.
+.TP
+.BR "\-\-ignore-default-opts"
+Causes \fIEGENCACHE_DEFAULT_OPTS\fR to be ignored.
+.TP
+.BR "\-\-jobs=JOBS"
+Specifies the maximum number of ebuild processes to spawn simultaneously.
+Also see the related \fB\-\-load\-average\fR option.
+.TP
+.BR \-\-load\-average=LOAD
+Specifies that maximum load allowed when spawning multiple jobs.
+.TP
+.BR "\-\-rsync"
+When used together with the \fB\-\-update\fR options, this enables a workaround
+for cases in which the content of a cache entry changes and neither the file
+mtime nor size changes, preventing rsync from detecting changes. Such cases are
+handled by bumping the mtime on the ebuild (and the corresponding cache entry).
+This option should only be needed for distribution via something like
+\fBrsync\fR(1), which relies on timestamps and file sizes to detect changes
+(see \fBbug 139134\fR). It's not needed with \fBgit\fR(1) since that uses a
+more thorough mechanism which allows it to detect changed inode numbers
+(described in \fIracy-git.txt\fR in the git technical docs).
+.TP
+.BR "\-\-update [ATOM] ... "
+Update the \fImetadata/cache/\fR directory (generate metadata as necessary).
+If no package atoms are specified then all will be updated.
+.SH "ENVIRONMENT OPTIONS"
+.TP
+\fBEGENCACHE_DEFAULT_OPTS\fR
+If this variable is set in \fBmake.conf\fR(5) then any options that it
+contains will be added to the beginning of the command line on every
+invocation. These options will not be added if the
+\fB\-\-ignore-default\-opts\fR option is specified.
+.SH "REPORTING BUGS"
+Please report bugs via http://bugs.gentoo.org/
+.SH "AUTHORS"
+.nf
+Zac Medico <zmedico@gentoo.org>
+.fi
+.SH "FILES"
+.TP
+.B /etc/make.conf
+Contains variables.
+.SH "SEE ALSO"
+.BR emerge (1),
+.BR make.conf (5),
+.BR portage (5)
