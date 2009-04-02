@@ -151,14 +151,14 @@ install_qa_check() {
 			# One more pass to help devs track down the source
 			scanelf -qyRAF '%e %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-execstack.log
 			vecho -ne '\a\n'
-			eqawarn "QA Notice: The following files contain executable stacks"
-			eqawarn " Files with executable stacks will not work properly (or at all!)"
-			eqawarn " on some architectures/operating systems.  A bug should be filed"
-			eqawarn " at http://bugs.gentoo.org/ to make sure the file is fixed."
+			eqawarn "QA Notice: The following files contain writable and executable sections"
+			eqawarn " Files with such sections will not work properly (or at all!) on some"
+			eqawarn " architectures/operating systems.  A bug should be filed at"
+			eqawarn " http://bugs.gentoo.org/ to make sure the issue is fixed."
 			eqawarn " For more information, see http://hardened.gentoo.org/gnu-stack.xml"
 			eqawarn " Please include the following list of files in your report:"
 			eqawarn " Note: Bugs should be filed for the respective maintainers"
-			eqawarn " of the package in question and not hardened@"
+			eqawarn " of the package in question and not hardened@g.o."
 			eqawarn "${f}"
 			vecho -ne '\a\n'
 			die_msg="${die_msg} execstacks"
