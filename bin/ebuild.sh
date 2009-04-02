@@ -35,6 +35,7 @@ qa_source() {
 	local retval
 	source "$@"
 	retval=$?
+	set +e
 	[[ $shopts != $(shopt) ]] &&
 		eqawarn "QA Notice: Global shell options changed and were not restored while sourcing '$*'"
 	[[ "$IFS" != "$OLDIFS" ]] &&
@@ -47,6 +48,7 @@ qa_call() {
 	local retval
 	"$@"
 	retval=$?
+	set +e
 	[[ $shopts != $(shopt) ]] &&
 		eqawarn "QA Notice: Global shell options changed and were not restored while calling '$*'"
 	[[ "$IFS" != "$OLDIFS" ]] &&

@@ -54,6 +54,7 @@ dump_trace() {
 }
 
 die() {
+	set +e
 	if [ -n "${QA_INTERCEPTORS}" ] ; then
 		# die was called from inside inherit. We need to clean up
 		# QA_INTERCEPTORS since sed is called below.

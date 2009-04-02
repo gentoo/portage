@@ -4,6 +4,7 @@ man_MANS = \
 	dispatch-conf.1 \
 	ebuild.1 \
 	ebuild.5 \
+	egencache.1 \
 	emaint.1 \
 	emerge.1 \
 	env-update.1 \

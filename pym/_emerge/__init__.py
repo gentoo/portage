@@ -222,7 +222,6 @@ options=[
 "--nospinner",    "--oneshot",
 "--onlydeps",     "--pretend",
 "--quiet",        "--resume",
-"--rdeps-only",   "--root-deps",
 "--searchdesc",   "--selective",
 "--skipfirst",
 "--tree",
@@ -5303,12 +5302,12 @@ class depgraph(object):
 			edepend["DEPEND"] = ""
 
 		bdeps_root = "/"
-		if self.target_root != "/":
-			if "--root-deps" in self.myopts:
-					bdeps_root = myroot
-			if "--rdeps-only" in self.myopts:
-					bdeps_root = "/"
-					edepend["DEPEND"] = ""
+		root_deps = self.myopts.get("--root-deps")
+		if root_deps is not None:
+			if root_deps is True:
+				bdeps_root = myroot
+			elif root_deps == "rdeps":
+				edepend["DEPEND"] = ""
 
 		deps = (
 			(bdeps_root, edepend["DEPEND"],
@@ -14854,10 +14853,21 @@ def insert_optional_args(args):
 
 	new_args = []
 	jobs_opts = ("-j", "--jobs")
+	root_deps_opt = '--root-deps'
+	root_deps_choices = ('True', 'rdeps')
 	arg_stack = args[:]
 	arg_stack.reverse()
 	while arg_stack:
 		arg = arg_stack.pop()
+
+		if arg == root_deps_opt:
+			new_args.append(arg)
+			if arg_stack and arg_stack[-1] in root_deps_choices:
+				new_args.append(arg_stack.pop())
+			else:
+				# insert default argument
+				new_args.append('True')
+			continue
 
 		short_job_opt = bool("j" in arg and arg[:1] == "-" and arg[:2] != "--")
 		if not (short_job_opt or arg in jobs_opts):
@@ -14951,6 +14961,12 @@ def parse_opts(tmpcmdline, silent=False):
 		 "help"   : "specify the target root filesystem for merging packages",
 		 "action" : "store"
 		},
+
+		"--root-deps": {
+			"help"    : "modify interpretation of depedencies",
+			"type"    : "choice",
+			"choices" :("True", "rdeps")
+		},
 	}
 
 	from optparse import OptionParser
@@ -14978,6 +14994,9 @@ def parse_opts(tmpcmdline, silent=False):
 	tmpcmdline = insert_optional_args(tmpcmdline)
 
 	myoptions, myargs = parser.parse_args(args=tmpcmdline)
+
+	if myoptions.root_deps == "True":
+		myoptions.root_deps = True
 
 	if myoptions.jobs:
 		jobs = None
