@@ -4068,9 +4068,6 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 			# can properly extract it's children.
 			live_path = os.path.realpath(live_path)
 		tarinfo = tar.gettarinfo(live_path, arcname)
-		# store numbers instead of real names like tar's --numeric-owner
-		tarinfo.uname = id_strings.setdefault(tarinfo.uid, str(tarinfo.uid))
-		tarinfo.gname = id_strings.setdefault(tarinfo.gid, str(tarinfo.gid))
 
 		if stat.S_ISREG(lst.st_mode):
 			# break hardlinks due to bug #185305
