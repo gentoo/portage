@@ -417,6 +417,9 @@ class _use_dep(object):
 			return ""
 		return "[%s]" % (",".join(self.tokens),)
 
+	def __repr__(self):
+		return "portage.dep._use_dep(%s)" % repr(self.tokens)
+
 	def evaluate_conditionals(self, use):
 		"""
 		Create a new instance with conditionals evaluated.
@@ -740,8 +743,8 @@ def dep_getusedeps( depend ):
 	Pull a listing of USE Dependencies out of a dep atom.
 	
 	Example usage:
-		>>> dep_getusedeps('app-misc/test:3[foo][-bar]')
-		['foo','-bar']
+		>>> dep_getusedeps('app-misc/test:3[foo,-bar]')
+		('foo', '-bar')
 	
 	@param depend: The depstring to process
 	@type depend: String

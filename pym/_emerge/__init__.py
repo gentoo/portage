@@ -222,6 +222,7 @@ options=[
 "--nospinner",    "--oneshot",
 "--onlydeps",     "--pretend",
 "--quiet",        "--resume",
+"--rdeps-only",   "--root-deps",
 "--searchdesc",   "--selective",
 "--skipfirst",
 "--tree",
@@ -1814,8 +1815,6 @@ class EbuildFetchonly(SlotObject):
 		portdb = root_config.trees["porttree"].dbapi
 		ebuild_path = portdb.findname(pkg.cpv)
 		debug = settings.get("PORTAGE_DEBUG") == "1"
-		portage.prepare_build_dirs(self.pkg.root, self.settings, 0)
-
 		retval = portage.doebuild(ebuild_path, "fetch",
 			self.settings["ROOT"], self.settings, debug=debug,
 			listonly=self.pretend, fetchonly=1, fetchall=self.fetch_all,
@@ -5302,8 +5301,16 @@ class depgraph(object):
 		if removal_action and self.myopts.get("--with-bdeps", "y") == "n":
 			edepend["DEPEND"] = ""
 
+		bdeps_root = "/"
+		if self.target_root != "/":
+			if "--root-deps" in self.myopts:
+					bdeps_root = myroot
+			if "--rdeps-only" in self.myopts:
+					bdeps_root = "/"
+					edepend["DEPEND"] = ""
+
 		deps = (
-			("/", edepend["DEPEND"],
+			(bdeps_root, edepend["DEPEND"],
 				self._priority(buildtime=(not bdeps_optional),
 				optional=bdeps_optional)),
 			(myroot, edepend["RDEPEND"], self._priority(runtime=True)),
@@ -6427,7 +6434,7 @@ class depgraph(object):
 						old_use = vardb.aux_get(cpv, ["USE"])[0].split()
 						old_iuse = set(filter_iuse_defaults(
 							vardb.aux_get(cpv, ["IUSE"])[0].split()))
-						cur_use = pkgsettings["PORTAGE_USE"].split()
+						cur_use = pkg.use.enabled
 						cur_iuse = pkg.iuse.all
 						reinstall_for_flags = \
 							self._reinstall_for_flags(
@@ -6775,6 +6782,11 @@ class depgraph(object):
 				not self._have_new_virt(blocker.root, blocker.cp):
 				provider_virtual = True
 
+			# Use this to check PROVIDE for each matched package
+			# when necessary.
+			atom_set = InternalPackageSet(
+				initial_atoms=[blocker.atom])
+
 			if provider_virtual:
 				atoms = []
 				for provider_entry in virtuals[blocker.cp]:
@@ -6785,13 +6797,17 @@ class depgraph(object):
 			else:
 				atoms = [blocker.atom]
 
-			blocked_initial = []
+			blocked_initial = set()
 			for atom in atoms:
-				blocked_initial.extend(initial_db.match_pkgs(atom))
+				for pkg in initial_db.match_pkgs(atom):
+					if atom_set.findAtomForPackage(pkg):
+						blocked_initial.add(pkg)
 
-			blocked_final = []
+			blocked_final = set()
 			for atom in atoms:
-				blocked_final.extend(final_db.match_pkgs(atom))
+				for pkg in final_db.match_pkgs(atom):
+					if atom_set.findAtomForPackage(pkg):
+						blocked_final.add(pkg)
 
 			if not blocked_initial and not blocked_final:
 				parent_pkgs = self._blocker_parents.parent_nodes(blocker)
@@ -14876,7 +14892,11 @@ def parse_opts(tmpcmdline, silent=False):
 			"help":"specify conditions to trigger package reinstallation",
 			"type":"choice",
 			"choices":["changed-use"]
-		}
+		},
+		"--root": {
+		 "help"   : "specify the target root filesystem for merging packages",
+		 "action" : "store"
+		},
 	}
 
 	from optparse import OptionParser
@@ -15401,6 +15421,8 @@ def emerge_main():
 		os.environ["PORTAGE_DEBUG"] = "1"
 	if "--config-root" in myopts:
 		os.environ["PORTAGE_CONFIGROOT"] = myopts["--config-root"]
+	if "--root" in myopts:
+		os.environ["ROOT"] = myopts["--root"]
 
 	# Portage needs to ensure a sane umask for the files it creates.
 	os.umask(022)
