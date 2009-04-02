@@ -75,7 +75,7 @@ case $1 in
 		for x in "$@" ; do
 			[[ ${x##*.} =~ $mask_ext_re ]] && continue
 			filtered_args[$i]=$x
-			((i|=1))
+			((i++))
 		done
 		[ $i -eq 0 ] && exit 0
 		set -- "${filtered_args[@]}"
