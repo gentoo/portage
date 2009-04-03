@@ -33,10 +33,10 @@ AC_PROG_EGREP
 GENTOO_PATH_XCU_ID()
 GENTOO_PATH_PYTHON([2.4])
 
-AC_PATH_PROG(RM, [rm], no)
-AC_PATH_PROG(MV, [mv], no)
-AC_PATH_PROG(BASENAME, [basename], no)
-AC_PATH_PROG(DIRNAME, [dirname], no)
+AC_PATH_PROG(PORTAGE_RM, [rm], no)
+AC_PATH_PROG(PORTAGE_MV, [mv], no)
+AC_PATH_PROG(PORTAGE_BASENAME, [basename], no)
+AC_PATH_PROG(PORTAGE_DIRNAME, [dirname], no)
 dnl avoid bash internal variable messing up things here
 GENTOO_PATH_GNUPROG(PORTAGE_BASH, [bash])
 GENTOO_PATH_GNUPROG(PORTAGE_SED, [sed])
@@ -236,6 +236,18 @@ AC_SUBST(DOMAIN_PREFIX)
 AC_SUBST(PORTAGE_EPREFIX)
 AC_SUBST(DEFAULT_PATH)
 AC_SUBST(PORTAGE_BASE,['${exec_prefix}/lib/portage'])
+
+AC_SUBST(PORTAGE_RM)
+AC_SUBST(PORTAGE_MV)
+AC_SUBST(PORTAGE_BASENAME, [basename], no)
+AC_SUBST(PORTAGE_DIRNAME, [dirname], no)
+AC_SUBST(PORTAGE_BASH, [bash])
+AC_SUBST(PORTAGE_SED, [sed])
+AC_SUBST(PORTAGE_WGET, [wget])
+AC_SUBST(PORTAGE_FIND, [find])
+AC_SUBST(PORTAGE_XARGS, [xargs])
+AC_SUBST(PORTAGE_GREP, [grep])
+
 AM_CONDITIONAL(INSTALL_PYTHON_SOURCES, test x$enable_py_sources = xtrue)
 
 AC_MSG_CHECKING([for a list of variables known by configure])

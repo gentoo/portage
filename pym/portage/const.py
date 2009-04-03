@@ -57,8 +57,8 @@ EBUILD_SH_BINARY        = PORTAGE_BIN_PATH+"/ebuild.sh"
 MISC_SH_BINARY          = PORTAGE_BIN_PATH+"/misc-functions.sh"
 SANDBOX_BINARY          = BPREFIX+"/usr/bin/sandbox"
 FAKEROOT_BINARY         = BPREFIX+"/usr/bin/fakeroot"
-BASH_BINARY             = BPREFIX+"/bin/bash"
-MOVE_BINARY             = BPREFIX+"/bin/mv"
+BASH_BINARY             = PORTAGE_BASH
+MOVE_BINARY             = PORTAGE_MV
 PRELINK_BINARY          = EPREFIX+"/usr/sbin/prelink"
 
 WORLD_FILE              = PRIVATE_PATH + "/world"
