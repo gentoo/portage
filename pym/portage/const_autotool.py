@@ -21,5 +21,5 @@ rootuser     = "@rootuser@"
 rootuid      = @rootuid@
 rootgid      = @rootgid@
 
-PORTAGE_BASH = "@PORTAGE_BASH"
-PORTAGE_MV   = "@PORTAGE_MV"
+PORTAGE_BASH = "@PORTAGE_BASH@"
+PORTAGE_MV   = "@PORTAGE_MV@"
