@@ -116,8 +116,10 @@ class GenCache(object):
 		if cp_iter is not None:
 			self._cp_set = set(cp_iter)
 			cp_iter = iter(self._cp_set)
+			self._cp_missing = self._cp_set.copy()
 		else:
 			self._cp_set = None
+			self._cp_missing = set()
 		self._regen = _emerge.MetadataRegen(portdb, cp_iter=cp_iter,
 			consumer=self._metadata_callback,
 			max_jobs=max_jobs, max_load=max_load)
@@ -131,6 +133,7 @@ class GenCache(object):
 
 	def _metadata_callback(self, cpv, ebuild_path, repo_path, metadata):
 		self._existing_nodes.add(cpv)
+		self._cp_missing.discard(portage.cpv_getkey(cpv))
 		if metadata is not None:
 			if metadata.get('EAPI') == '0':
 				del metadata['EAPI']
@@ -173,6 +176,13 @@ class GenCache(object):
 	def run(self):
 		self._regen.run()
 		self.returncode |= self._regen.returncode
+
+		if self._cp_missing:
+			self.returncode |= 1
+			for cp in sorted(self._cp_missing):
+				writemsg_level(
+					"No ebuilds found for '%s'\n"  % (cp,),
+					level=logging.ERROR, noiselevel=-1)
 
 		trg_cache = self._trg_cache
 		dead_nodes = None
