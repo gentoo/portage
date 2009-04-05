@@ -998,6 +998,13 @@ class config(object):
 	virtuals ...etc you look in here.
 	"""
 
+	# Don't include anything that could be extremely long here (like SRC_URI)
+	# since that could cause execve() calls to fail with E2BIG errors. For
+	# example, see bug #262647.
+	_setcpv_aux_keys = ('SLOT', 'RESTRICT', 'LICENSE',
+		'KEYWORDS',  'INHERITED', 'IUSE', 'PROVIDE', 'EAPI',
+		'PROPERTIES', 'DEFINED_PHASES', 'repository')
+
 	_env_blacklist = [
 		"A", "AA", "CATEGORY", "DEPEND", "DESCRIPTION", "EAPI",
 		"EBUILD_PHASE", "EMERGE_FROM", "HOMEPAGE", "INHERITED", "IUSE",
@@ -2110,9 +2117,7 @@ class config(object):
 		pkg_configdict = self.configdict["pkg"]
 		previous_iuse = pkg_configdict.get("IUSE")
 
-		aux_keys = [k for k in auxdbkeys \
-			if not k.startswith("UNUSED_")]
-		aux_keys.append("repository")
+		aux_keys = self._setcpv_aux_keys
 
 		# Discard any existing metadata from the previous package, but
 		# preserve things like USE_EXPAND values and PORTAGE_USE which
@@ -2124,7 +2129,8 @@ class config(object):
 		pkg_configdict["PF"] = pf
 		if mydb:
 			if not hasattr(mydb, "aux_get"):
-				pkg_configdict.update(mydb)
+				for k in aux_keys:
+					pkg_configdict[k] = mydb.get(k, '')
 			else:
 				for k, v in izip(aux_keys, mydb.aux_get(self.mycpv, aux_keys)):
 					pkg_configdict[k] = v
