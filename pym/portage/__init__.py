@@ -1105,7 +1105,7 @@ class config(object):
 		"PORTAGE_BACKGROUND",
 		"PORTAGE_BINHOST_CHUNKSIZE", "PORTAGE_CALLER",
 		"PORTAGE_COUNTER_HASH",
-		"PORTAGE_ECLASS_WARNING_ENABLE", "PORTAGE_ELOG_CLASSES",
+		"PORTAGE_ELOG_CLASSES",
 		"PORTAGE_ELOG_MAILFROM", "PORTAGE_ELOG_MAILSUBJECT",
 		"PORTAGE_ELOG_MAILURI", "PORTAGE_ELOG_SYSTEM",
 		"PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS", "PORTAGE_FETCH_RESUME_MIN_SIZE",
@@ -5159,6 +5159,12 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mysettings.configdict["pkg"]["CATEGORY"] = cat
 	mysettings["FILESDIR"] = pkg_dir+"/files"
 	mysettings["PF"]       = mypv
+
+	if hasattr(mydbapi, '_repo_info'):
+		mytree = os.path.dirname(os.path.dirname(pkg_dir))
+		repo_info = mydbapi._repo_info[mytree]
+		mysettings['PORTDIR'] = repo_info.portdir
+		mysettings['PORTDIR_OVERLAY'] = repo_info.portdir_overlay
 
 	mysettings["PORTDIR"] = os.path.realpath(mysettings["PORTDIR"])
 	mysettings["DISTDIR"] = os.path.realpath(mysettings["DISTDIR"])

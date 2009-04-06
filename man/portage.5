@@ -59,6 +59,11 @@ categories
 .BR /etc/portage/profile/
 site-specific overrides of \fB/etc/make.profile/\fR
 .TP
+.BR /usr/portage/metadata/
+.nf
+layout.conf
+.fi
+.TP
 .BR /usr/portage/profiles/
 .nf
 arch.list
@@ -540,6 +545,23 @@ categories to be created.
 .nf
 app\-hackers
 media\-other
+.fi
+.RE
+.TP
+.BR /usr/portage/metadata/
+.RS
+.TP
+.BR layout.conf
+Specifies information about the repository layout. Currently, only a single
+"masters" attribute is supported, which is used to specify names of
+repositories which satisfy dependencies on eclasses and/or ebuilds. Each
+repository name should correspond the value of a \fBrepo_name\fR entry
+from one of the repositories that is configured via the \fBPORTDIR\fR or
+\fBPORTDIR_OVERLAY\fR variables (see \fBmake.conf\fR(5)).
+
+.I Example:
+.nf
+masters = gentoo java-overlay
 .fi
 .RE
 .TP

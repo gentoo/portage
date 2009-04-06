@@ -29,7 +29,7 @@ class database(flat_hash.database):
 		loc = location
 		super(database, self).__init__(location, *args, **config)
 		self.location = os.path.join(loc, "metadata","cache")
-		self.ec = portage.eclass_cache.cache(loc)
+		self.ec = None
 		self.raise_stat_collision = False
 
 	def _parse_data(self, data, cpv):
@@ -53,9 +53,11 @@ class database(flat_hash.database):
 
 		if "_eclasses_" not in d:
 			if "INHERITED" in d:
+				if self.ec is None:
+					self.ec = portage.eclass_cache.cache(self.location)
 				try:
 					d["_eclasses_"] = self.ec.get_eclass_data(
-						d["INHERITED"].split(), from_master_only=True)
+						d["INHERITED"].split())
 				except KeyError, e:
 					# INHERITED contains a non-existent eclass.
 					raise cache_errors.CacheCorruption(cpv, e)
