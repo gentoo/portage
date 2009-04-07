@@ -770,7 +770,10 @@ class RootConfig(object):
 		self.iuse_implicit = tuple(sorted(settings._get_implicit_iuse()))
 		self.root = self.settings["ROOT"]
 		self.setconfig = setconfig
-		self.sets = self.setconfig.getSets()
+		if setconfig is None:
+			self.sets = {}
+		else:
+			self.sets = self.setconfig.getSets()
 		self.visible_pkgs = PackageVirtualDbapi(self.settings)
 
 def create_world_atom(pkg, args_set, root_config):

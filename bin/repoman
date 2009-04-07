@@ -479,31 +479,35 @@ if options.mode == 'commit' and not options.pretend and not vcs:
 	logging.info("Not in a version controlled repository; enabling pretend mode.")
 	options.pretend = True
 
-os.environ["PORTDIR"] = portdir
-if portdir_overlay != portdir:
-	os.environ["PORTDIR_OVERLAY"] = portdir_overlay
-else:
-	os.environ["PORTDIR_OVERLAY"] = ""
+# Ensure that PORTDIR_OVERLAY contains the repository corresponding to $PWD.
+repoman_settings = portage.config(local_config=False)
+repoman_settings['PORTDIR_OVERLAY'] = "%s %s" % \
+	(repoman_settings.get('PORTDIR_OVERLAY', ''), portdir_overlay)
+repoman_settings.backup_changes('PORTDIR_OVERLAY')
+
+root = '/'
+trees = {
+	root : {'porttree' : portage.portagetree(root, settings=repoman_settings)}
+}
+portdb = trees[root]['porttree'].dbapi
+
+# Constrain dependency resolution to the master(s)
+# that are specified in layout.conf.
+portdir_overlay = os.path.realpath(portdir_overlay)
+repo_info = portdb._repo_info[portdir_overlay]
+portdb.porttrees = list(repo_info.eclass_db.porttrees)
+portdir = portdb.porttrees[0]
 
 logging.info('Setting paths:')
-logging.info('PORTDIR = "' + os.environ['PORTDIR'] + '"')
-logging.info('PORTDIR_OVERLAY = "' + os.environ['PORTDIR_OVERLAY']+'"')
+logging.info('PORTDIR = "' + portdir + '"')
+logging.info('PORTDIR_OVERLAY = "%s"' % ' '.join(portdb.porttrees[1:]))
 
-# Now that PORTDIR_OVERLAY is properly overridden, create the portdb.
-repoman_settings = portage.config(local_config=False,
-	config_incrementals=portage.const.INCREMENTALS)
-trees = portage.create_trees()
-trees["/"]["porttree"].settings = repoman_settings
-portdb = trees["/"]["porttree"].dbapi
 portdb.mysettings = repoman_settings
-setconfig = load_default_config(repoman_settings, trees["/"])
-root_config = RootConfig(repoman_settings, trees["/"], setconfig)
+root_config = RootConfig(repoman_settings, trees[root], None)
 # We really only need to cache the metadata that's necessary for visibility
 # filtering. Anything else can be discarded to reduce memory consumption.
 portdb._aux_cache_keys.clear()
 portdb._aux_cache_keys.update(["EAPI", "KEYWORDS", "SLOT"])
-# dep_zapdeps looks at the vardbapi, but it shouldn't for repoman.
-del trees["/"]["vartree"]
 
 myreporoot = os.path.basename(portdir_overlay)
 myreporoot += mydir[len(portdir_overlay):]
@@ -543,23 +547,26 @@ except (IOError, OSError, ParseError), e:
 	logging.exception("Couldn't read USE flags from use.desc")
 	sys.exit(1)
 
-# retrieve a list of current licenses in portage
+# get lists of valid keywords and licenses
+kwlist = set(portage.grabfile(os.path.join(portdir, "profiles", "arch.list")))
 liclist = set(portage.listdir(os.path.join(portdir, "licenses")))
+
+if portdir_overlay != portdir:
+	for porttree in portdb.porttrees[1:]:
+		try:
+			liclist.update(os.listdir(os.path.join(porttree, "licenses")))
+		except OSError:
+			pass
+		kwlist.update(portage.grabfile(os.path.join(porttree,
+			"profiles", "arch.list")))
+
 if not liclist:
 	logging.fatal("Couldn't find licenses?")
 	sys.exit(1)
-if portdir_overlay != portdir:
-	liclist.update(portage.listdir(os.path.join(portdir_overlay, "licenses")))
 
-# retrieve list of offical keywords
-kwlist = set(portage.grabfile(os.path.join(portdir, "profiles", "arch.list")))
 if not kwlist:
 	logging.fatal("Couldn't read KEYWORDS from arch.list")
 	sys.exit(1)
-
-if portdir_overlay != portdir:
-	kwlist.update(portage.grabfile(
-		os.path.join(portdir_overlay, "profiles", "arch.list")))
 
 scanlist=[]
 if repolevel==2:
