@@ -1802,11 +1802,7 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm depend && \
 	unset PORTAGE_SANDBOX_ON
 fi
 
-if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
-if [[ $EBUILD_PHASE = depend || ! -f $T/environment || \
-	-f $PORTAGE_BUILDDIR/.ebuild_changed ]] || \
-	hasq noauto $FEATURES ; then
-
+_source_ebuild() {
 	# The bashrcs get an opportunity here to set aliases that will be expanded
 	# during sourcing of ebuilds and eclasses.
 	source_all_bashrcs
@@ -1845,7 +1841,14 @@ if [[ $EBUILD_PHASE = depend || ! -f $T/environment || \
 
 	# This needs to be exported since prepstrip is a separate shell script.
 	[[ -n $QA_PRESTRIPPED ]] && export QA_PRESTRIPPED
-fi
+}
+
+if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
+	if [[ $EBUILD_PHASE = depend || ! -f $T/environment || \
+		-f $PORTAGE_BUILDDIR/.ebuild_changed ]] || \
+		hasq noauto $FEATURES ; then
+		_source_ebuild
+	fi
 fi
 
 # Set default EAPI if necessary, so that most
