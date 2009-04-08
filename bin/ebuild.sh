@@ -1008,7 +1008,7 @@ dyn_install() {
 	local f x
 	IFS=$' \t\n\r'
 	for f in ASFLAGS CATEGORY CBUILD CC CFLAGS CHOST CTARGET CXX \
-		CXXFLAGS DEPEND EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
+		CXXFLAGS DEFINED_PHASES DEPEND EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
 		FEATURES INHERITED IUSE LDFLAGS LIBCFLAGS LIBCXXFLAGS \
 		LICENSE PDEPEND PF PKGUSE PROPERTIES PROVIDE RDEPEND RESTRICT SLOT \
 		KEYWORDS HOMEPAGE SRC_URI DESCRIPTION; do
@@ -1529,11 +1529,6 @@ source_all_bashrcs() {
 	PORTAGE_BASHRCS_SOURCED=1
 	local x
 
-	if [[ -n $EBUILD_PHASE && -n $EAPI ]] ; then
-		local phase_func=$(_ebuild_arg_to_phase "$EAPI" $EBUILD_PHASE)
-		[[ -n $phase_func ]] && _ebuild_phase_funcs "$EAPI" $phase_func
-	fi
-
 	local OCC="${CC}" OCXX="${CXX}"
 
 	if [[ $EBUILD_PHASE != depend ]] ; then
@@ -1570,7 +1565,7 @@ source_all_bashrcs() {
 # of ebuild.sh will work for pkg_postinst, pkg_prerm, and pkg_postrm
 # when portage is upgrading itself.
 
-READONLY_EBUILD_METADATA="DEPEND DESCRIPTION
+READONLY_EBUILD_METADATA="DEFINED_PHASES DEPEND DESCRIPTION
 	EAPI HOMEPAGE INHERITED IUSE KEYWORDS LICENSE
 	PDEPEND PROVIDE RDEPEND RESTRICT SLOT SRC_URI"
 
@@ -1800,6 +1795,7 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm depend && \
 	unset x y
 	export SANDBOX_ON=${PORTAGE_SANDBOX_ON}
 	unset PORTAGE_SANDBOX_ON
+	[[ -n $EAPI ]] || EAPI=0
 fi
 
 _source_ebuild() {
@@ -1839,6 +1835,37 @@ _source_ebuild() {
 	unset ECLASS E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
 	set +f
 
+	[[ -n $EAPI ]] || EAPI=0
+
+	# alphabetically ordered by $EBUILD_PHASE value
+	local valid_phases
+	case "$EAPI" in
+		0|1)
+			valid_phases="src_compile pkg_config pkg_info src_install
+				pkg_nofetch pkg_postinst pkg_postrm pkg_preinst pkg_prerm
+				pkg_setup src_test src_unpack"
+			;;
+		*)
+			valid_phases="src_compile pkg_config src_configure pkg_info
+				src_install pkg_nofetch pkg_postinst pkg_postrm pkg_preinst
+				src_prepare pkg_prerm pkg_setup src_test src_unpack"
+			;;
+	esac
+
+	DEFINED_PHASES=
+	for f in $valid_phases ; do
+		if [[ $(type -t $f) = function ]] ; then
+			f=${f#pkg_}
+			DEFINED_PHASES+=" ${f#src_}"
+		fi
+	done
+	[[ -n $DEFINED_PHASES ]] || DEFINED_PHASES=-
+
+	if [[ -n $EBUILD_PHASE && $EBUILD_PHASE != depend ]] ; then
+		local phase_func=$(_ebuild_arg_to_phase "$EAPI" "$EBUILD_PHASE")
+		[[ -n $phase_func ]] && _ebuild_phase_funcs "$EAPI" "$phase_func"
+	fi
+
 	# This needs to be exported since prepstrip is a separate shell script.
 	[[ -n $QA_PRESTRIPPED ]] && export QA_PRESTRIPPED
 }
@@ -1850,10 +1877,6 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
 		_source_ebuild
 	fi
 fi
-
-# Set default EAPI if necessary, so that most
-# code can simply assume that it's defined.
-[[ -n $EAPI ]] || EAPI=0
 
 # unset USE_EXPAND variables that contain only the special "*" token
 for x in ${USE_EXPAND} ; do
@@ -2046,30 +2069,6 @@ ebuild_main() {
 		unset CDEPEND
 		[ -n "${EAPI}" ] || EAPI=0
 		local eapi=$EAPI
-
-		# alphabetically ordered by $EBUILD_PHASE value
-		local valid_phases
-		case $eapi in
-			0|1)
-				valid_phases="src_compile pkg_config pkg_info src_install
-					pkg_nofetch pkg_postinst pkg_postrm pkg_preinst pkg_prerm
-					pkg_setup src_test src_unpack"
-				;;
-			*)
-				valid_phases="src_compile pkg_config src_configure pkg_info
-					src_install pkg_nofetch pkg_postinst pkg_postrm pkg_preinst
-					src_prepare pkg_prerm pkg_setup src_test src_unpack"
-				;;
-		esac
-
-		DEFINED_PHASES=
-		for f in $valid_phases ; do
-			if [[ $(type -t $f) = function ]] ; then
-				f=${f#pkg_}
-				DEFINED_PHASES+=" ${f#src_}"
-			fi
-		done
-		[[ -n $DEFINED_PHASES ]] || DEFINED_PHASES=-
 
 		if [ -n "${dbkey}" ] ; then
 			> "${dbkey}"
