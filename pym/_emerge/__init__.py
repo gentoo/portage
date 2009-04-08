@@ -14470,6 +14470,10 @@ def action_build(settings, trees, mtimedb,
 			resume_opts = dict((k,True) for k in resume_opts)
 		for opt in ("--ask", "--color", "--skipfirst", "--tree"):
 			resume_opts.pop(opt, None)
+
+		# Current options always override resume_opts.
+		resume_opts.update(myopts)
+		myopts.clear()
 		myopts.update(resume_opts)
 
 		if "--debug" in myopts:
