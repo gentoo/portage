@@ -9232,6 +9232,43 @@ class PackageCounters(object):
 					(self.blocks - self.blocks_satisfied))
 		return "".join(myoutput)
 
+class UseFlagDisplay(object):
+
+	__slots__ = ('name', 'enabled', 'forced')
+
+	def __init__(self, name, enabled, forced):
+		self.name = name
+		self.enabled = enabled
+		self.forced = forced
+
+	def __str__(self):
+		s = self.name
+		if self.enabled:
+			s = red(s)
+		else:
+			s = '-' + s
+			s = blue(s)
+		if self.forced:
+			s = '(%s)' % s
+		return s
+
+	@classmethod
+	def cmp_combined(cls, a, b):
+		"""
+		Sort by name, combining enabled and disabled flags.
+		"""
+		return (a.name > b.name) - (a.name < b.name)
+
+	@classmethod
+	def cmp_separated(cls, a, b):
+		"""
+		Sort by name, separating enabled flags from disabled flags.
+		"""
+		enabled_diff = b.enabled - a.enabled
+		if enabled_diff:
+			return enabled_diff
+		return (a.name > b.name) - (a.name < b.name)
+
 class PollSelectAdapter(PollConstants):
 
 	"""
@@ -13508,6 +13545,12 @@ def action_info(settings, trees, myopts, myfiles):
 		myvars.extend(portage.util.grabfile(settings["PORTDIR"]+"/profiles/info_vars"))
 
 	myvars = portage.util.unique_array(myvars)
+	use_expand = settings.get('USE_EXPAND', '').split()
+	use_expand.sort()
+	use_expand_hidden = set(
+		settings.get('USE_EXPAND_HIDDEN', '').upper().split())
+	alphabetical_use = '--alphabetical' in myopts
+	root_config = trees[settings["ROOT"]]['root_config']
 	unset_vars = []
 	myvars.sort()
 	for x in myvars:
@@ -13516,8 +13559,6 @@ def action_info(settings, trees, myopts, myfiles):
 				print '%s="%s"' % (x, settings[x])
 			else:
 				use = set(settings["USE"].split())
-				use_expand = settings["USE_EXPAND"].split()
-				use_expand.sort()
 				for varname in use_expand:
 					flag_prefix = varname.lower() + "_"
 					for f in list(use):
@@ -13556,7 +13597,7 @@ def action_info(settings, trees, myopts, myfiles):
 		# Get our global settings (we only print stuff if it varies from
 		# the current config)
 		mydesiredvars = [ 'CHOST', 'CFLAGS', 'CXXFLAGS', 'LDFLAGS' ]
-		auxkeys = mydesiredvars + [ "USE", "IUSE"]
+		auxkeys = mydesiredvars + list(vardb._aux_cache_keys)
 		global_vals = {}
 		pkgsettings = portage.config(clone=settings)
 
@@ -13571,12 +13612,17 @@ def action_info(settings, trees, myopts, myfiles):
 		print header_width * "="
 		from portage.output import EOutput
 		out = EOutput()
-		for pkg in mypkgs:
+		for cpv in mypkgs:
 			# Get all package specific variables
-			auxvalues = vardb.aux_get(pkg, auxkeys)
+			metadata = dict(izip(auxkeys, vardb.aux_get(cpv, auxkeys)))
+			pkg = Package(built=True, cpv=cpv,
+				installed=True, metadata=izip(Package.metadata_keys,
+				(metadata.get(x, '') for x in Package.metadata_keys)),
+				root_config=root_config, type_name='installed')
 			valuesmap = {}
-			for i in xrange(len(auxkeys)):
-				valuesmap[auxkeys[i]] = set(auxvalues[i].split())
+			for k in auxkeys:
+				valuesmap[k] = set(metadata[k].split())
+
 			diff_values = {}
 			for myvar in mydesiredvars:
 				# If the package variable doesn't match the
@@ -13584,34 +13630,73 @@ def action_info(settings, trees, myopts, myfiles):
 				# so set diff_found so we know to print
 				if valuesmap[myvar] != global_vals[myvar]:
 					diff_values[myvar] = valuesmap[myvar]
-			valuesmap["IUSE"] = set(filter_iuse_defaults(valuesmap["IUSE"]))
-			valuesmap["USE"] = valuesmap["USE"].intersection(valuesmap["IUSE"])
-			pkgsettings.reset()
-			# If a matching ebuild is no longer available in the tree, maybe it
-			# would make sense to compare against the flags for the best
-			# available version with the same slot?
-			mydb = None
-			if portdb.cpv_exists(pkg):
-				mydb = portdb
-			pkgsettings.setcpv(pkg, mydb=mydb)
-			if valuesmap["IUSE"].intersection(
-				pkgsettings["PORTAGE_USE"].split()) != valuesmap["USE"]:
-				diff_values["USE"] = valuesmap["USE"]
+
 			# If a difference was found, print the info for
 			# this package.
 			if diff_values:
 				# Print package info
-				print "%s was built with the following:" % pkg
-				for myvar in mydesiredvars + ["USE"]:
+				print "%s was built with the following:" % pkg.cpv
+				for myvar in mydesiredvars:
 					if myvar in diff_values:
 						mylist = list(diff_values[myvar])
 						mylist.sort()
 						print "%s=\"%s\"" % (myvar, " ".join(mylist))
-				print
-			print ">>> Attempting to run pkg_info() for '%s'" % pkg
-			ebuildpath = vardb.findname(pkg)
+
+			pkgsettings.setcpv(pkg)
+			forced_flags = set(chain(pkgsettings.useforce,
+				pkgsettings.usemask))
+			use = set(pkg.use.enabled)
+			use.discard(pkgsettings.get('ARCH'))
+			use_expand_flags = set()
+			use_enabled = {}
+			use_disabled = {}
+			for varname in use_expand:
+				flag_prefix = varname.lower() + "_"
+				for f in use:
+					if f.startswith(flag_prefix):
+						use_expand_flags.add(f)
+						use_enabled.setdefault(
+							varname.upper(), []).append(f[len(flag_prefix):])
+
+				for f in pkg.iuse.all:
+					if f.startswith(flag_prefix):
+						use_expand_flags.add(f)
+						if f not in use:
+							use_disabled.setdefault(
+								varname.upper(), []).append(f[len(flag_prefix):])
+
+			var_order = set(use_enabled)
+			var_order.update(use_disabled)
+			var_order = sorted(var_order)
+			var_order.insert(0, 'USE')
+			use.difference_update(use_expand_flags)
+			use_enabled['USE'] = list(use)
+			use_disabled['USE'] = []
+
+			for f in pkg.iuse.all:
+				if f not in use and \
+					f not in use_expand_flags:
+					use_disabled['USE'].append(f)
+
+			for varname in var_order:
+				if varname in use_expand_hidden:
+					continue
+				flags = []
+				for f in use_enabled.get(varname, []):
+					flags.append(UseFlagDisplay(f, True, f in forced_flags))
+				for f in use_disabled.get(varname, []):
+					flags.append(UseFlagDisplay(f, False, f in forced_flags))
+				if alphabetical_use:
+					flags.sort(key=cmp_sort_key(UseFlagDisplay.cmp_combined))
+				else:
+					flags.sort(key=cmp_sort_key(UseFlagDisplay.cmp_separated))
+				print '%s="%s"' % (varname, ' '.join(str(f) for f in flags)),
+			print
+
+			print ">>> Attempting to run pkg_info() for '%s'" % pkg.cpv
+			ebuildpath = vardb.findname(pkg.cpv)
 			if not ebuildpath or not os.path.exists(ebuildpath):
-				out.ewarn("No ebuild found for '%s'" % pkg)
+				out.ewarn("No ebuild found for '%s'" % pkg.cpv)
 				continue
 			portage.doebuild(ebuildpath, "info", pkgsettings["ROOT"],
 				pkgsettings, debug=(settings.get("PORTAGE_DEBUG", "") == 1),
