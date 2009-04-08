@@ -13602,6 +13602,7 @@ def action_info(settings, trees, myopts, myfiles):
 		# the current config)
 		mydesiredvars = [ 'CHOST', 'CFLAGS', 'CXXFLAGS', 'LDFLAGS' ]
 		auxkeys = mydesiredvars + list(vardb._aux_cache_keys)
+		auxkeys.append('DEFINED_PHASES')
 		global_vals = {}
 		pkgsettings = portage.config(clone=settings)
 
@@ -13699,6 +13700,10 @@ def action_info(settings, trees, myopts, myfiles):
 						mylist.sort()
 						print "%s=\"%s\"" % (myvar, " ".join(mylist))
 			print
+
+			if metadata['DEFINED_PHASES']:
+				if 'info' not in metadata['DEFINED_PHASES'].split():
+					continue
 
 			print ">>> Attempting to run pkg_info() for '%s'" % pkg.cpv
 			ebuildpath = vardb.findname(pkg.cpv)
