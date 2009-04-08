@@ -13635,16 +13635,8 @@ def action_info(settings, trees, myopts, myfiles):
 				if valuesmap[myvar] != global_vals[myvar]:
 					diff_values[myvar] = valuesmap[myvar]
 
-			# If a difference was found, print the info for
-			# this package.
-			if diff_values:
-				# Print package info
-				print "%s was built with the following:" % pkg.cpv
-				for myvar in mydesiredvars:
-					if myvar in diff_values:
-						mylist = list(diff_values[myvar])
-						mylist.sort()
-						print "%s=\"%s\"" % (myvar, " ".join(mylist))
+			print "\n%s was built with the following:" % \
+				colorize("INFORM", str(pkg.cpv))
 
 			pkgsettings.setcpv(pkg)
 			forced_flags = set(chain(pkgsettings.useforce,
@@ -13695,6 +13687,17 @@ def action_info(settings, trees, myopts, myfiles):
 				else:
 					flags.sort(key=UseFlagDisplay.sort_separated)
 				print '%s="%s"' % (varname, ' '.join(str(f) for f in flags)),
+			print
+
+			# If a difference was found, print the info for
+			# this package.
+			if diff_values:
+				# Print package info
+				for myvar in mydesiredvars:
+					if myvar in diff_values:
+						mylist = list(diff_values[myvar])
+						mylist.sort()
+						print "%s=\"%s\"" % (myvar, " ".join(mylist))
 			print
 
 			print ">>> Attempting to run pkg_info() for '%s'" % pkg.cpv
