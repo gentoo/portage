@@ -9252,15 +9252,16 @@ class UseFlagDisplay(object):
 			s = '(%s)' % s
 		return s
 
-	@classmethod
-	def cmp_combined(cls, a, b):
+	def _cmp_combined(a, b):
 		"""
 		Sort by name, combining enabled and disabled flags.
 		"""
 		return (a.name > b.name) - (a.name < b.name)
 
-	@classmethod
-	def cmp_separated(cls, a, b):
+	sort_combined = cmp_sort_key(_cmp_combined)
+	del _cmp_combined
+
+	def _cmp_separated(a, b):
 		"""
 		Sort by name, separating enabled flags from disabled flags.
 		"""
@@ -9268,6 +9269,9 @@ class UseFlagDisplay(object):
 		if enabled_diff:
 			return enabled_diff
 		return (a.name > b.name) - (a.name < b.name)
+
+	sort_separated = cmp_sort_key(_cmp_separated)
+	del _cmp_separated
 
 class PollSelectAdapter(PollConstants):
 
@@ -13687,9 +13691,9 @@ def action_info(settings, trees, myopts, myfiles):
 				for f in use_disabled.get(varname, []):
 					flags.append(UseFlagDisplay(f, False, f in forced_flags))
 				if alphabetical_use:
-					flags.sort(key=cmp_sort_key(UseFlagDisplay.cmp_combined))
+					flags.sort(key=UseFlagDisplay.sort_combined)
 				else:
-					flags.sort(key=cmp_sort_key(UseFlagDisplay.cmp_separated))
+					flags.sort(key=UseFlagDisplay.sort_separated)
 				print '%s="%s"' % (varname, ' '.join(str(f) for f in flags)),
 			print
 
