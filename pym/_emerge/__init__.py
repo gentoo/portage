@@ -2426,8 +2426,41 @@ class SpawnProcess(SubProcess):
 
 			if buf:
 				if not self.background:
-					buf.tofile(files.stdout)
-					files.stdout.flush()
+					write_successful = False
+					failures = 0
+					while True:
+						try:
+							if not write_successful:
+								buf.tofile(files.stdout)
+								write_successful = True
+							files.stdout.flush()
+							break
+						except IOError, e:
+							if e.errno != errno.EAGAIN:
+								raise
+							del e
+							failures += 1
+							if failures > 50:
+								# Avoid a potentially infinite loop. In
+								# most cases, the failure count is zero
+								# and it's unlikely to exceed 1.
+								raise
+
+							# This means that a subprocess has put an inherited
+							# stdio file descriptor (typically stdin) into
+							# O_NONBLOCK mode. This is not acceptable (see bug
+							# #264435), so revert it. We need to use a loop
+							# here since there's a race condition due to
+							# parallel processes being able to change the
+							# flags on the inherited file descriptor.
+							# TODO: When possible, avoid having child processes
+							# inherit stdio file descriptors from portage
+							# (maybe it can't be avoided with
+							# PROPERTIES=interactive).
+							fcntl.fcntl(files.stdout.fileno(), fcntl.F_SETFL,
+								fcntl.fcntl(files.stdout.fileno(),
+								fcntl.F_GETFL) ^ os.O_NONBLOCK)
+
 				buf.tofile(files.log)
 				files.log.flush()
 			else:
