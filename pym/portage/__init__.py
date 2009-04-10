@@ -2130,7 +2130,9 @@ class config(object):
 		if mydb:
 			if not hasattr(mydb, "aux_get"):
 				for k in aux_keys:
-					pkg_configdict[k] = mydb.get(k, '')
+					v = mydb.get(k)
+					if v is not None:
+						pkg_configdict[k] = v
 			else:
 				for k, v in izip(aux_keys, mydb.aux_get(self.mycpv, aux_keys)):
 					pkg_configdict[k] = v
