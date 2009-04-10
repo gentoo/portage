@@ -8759,7 +8759,8 @@ class depgraph(object):
 		if world_locked:
 			world_set.unlock()
 
-	def loadResumeCommand(self, resume_data, skip_masked=False):
+	def loadResumeCommand(self, resume_data, skip_masked=True,
+		skip_missing=True):
 		"""
 		Add a resume command to the graph and validate it in the process.  This
 		will raise a PackageNotFound exception if a package is not available.
@@ -8794,7 +8795,8 @@ class depgraph(object):
 				# It does no exist or it is corrupt.
 				if action == "uninstall":
 					continue
-				raise portage.exception.PackageNotFound(pkg_key)
+				if not skip_missing:
+					raise portage.exception.PackageNotFound(pkg_key)
 			installed = action == "uninstall"
 			built = pkg_type != "ebuild"
 			root_config = self.roots[myroot]
