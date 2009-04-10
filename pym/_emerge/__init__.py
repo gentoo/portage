@@ -8795,8 +8795,10 @@ class depgraph(object):
 				# It does no exist or it is corrupt.
 				if action == "uninstall":
 					continue
-				if not skip_missing:
-					raise portage.exception.PackageNotFound(pkg_key)
+				if skip_missing:
+					# TODO: log these somewhere
+					continue
+				raise portage.exception.PackageNotFound(pkg_key)
 			installed = action == "uninstall"
 			built = pkg_type != "ebuild"
 			root_config = self.roots[myroot]
