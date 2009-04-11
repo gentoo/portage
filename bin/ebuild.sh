@@ -1901,8 +1901,6 @@ fi
 
 ebuild_main() {
 	local f x
-	local export_vars="ASFLAGS CCACHE_DIR CCACHE_SIZE
-		CFLAGS CXXFLAGS LDFLAGS LIBCFLAGS LIBCXXFLAGS"
 
 	if ! hasq $EBUILD_SH_ARGS clean depend help info nofetch ; then
 
@@ -1931,6 +1929,7 @@ ebuild_main() {
 	if [[ $EBUILD_PHASE != depend ]] ; then
 		local phase_func=$(_ebuild_arg_to_phase "$EAPI" "$EBUILD_PHASE")
 		[[ -n $phase_func ]] && _ebuild_phase_funcs "$EAPI" "$phase_func"
+		unset phase_func
 	fi
 
 	source_all_bashrcs
@@ -1971,7 +1970,8 @@ ebuild_main() {
 		case "$EBUILD_SH_ARGS" in
 		configure|compile)
 
-			for x in $export_vars ; do
+			for x in ASFLAGS CCACHE_DIR CCACHE_SIZE \
+				CFLAGS CXXFLAGS LDFLAGS LIBCFLAGS LIBCXXFLAGS ; do
 				[[ ${!x-unset} != unset ]] && export $x
 			done
 
