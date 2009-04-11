@@ -2145,7 +2145,9 @@ class config(object):
 		if mydb:
 			if not hasattr(mydb, "aux_get"):
 				for k in aux_keys:
-					pkg_configdict[k] = mydb.get(k, '')
+					v = mydb.get(k)
+					if v is not None:
+						pkg_configdict[k] = v
 			else:
 				for k, v in izip(aux_keys, mydb.aux_get(self.mycpv, aux_keys)):
 					pkg_configdict[k] = v
@@ -4771,14 +4773,14 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 	if returnpid:
 		return phase_retval
 
-	if phase_retval == os.EX_OK:
-		msg = _doebuild_exit_status_check(mydo, mysettings)
-		if msg:
+	msg = _doebuild_exit_status_check(mydo, mysettings)
+	if msg:
+		if phase_retval == os.EX_OK:
 			phase_retval = 1
-			from textwrap import wrap
-			from portage.elog.messages import eerror
-			for l in wrap(msg, 72):
-				eerror(l, phase=mydo, key=mysettings.mycpv)
+		from textwrap import wrap
+		from portage.elog.messages import eerror
+		for l in wrap(msg, 72):
+			eerror(l, phase=mydo, key=mysettings.mycpv)
 
 	_post_phase_userpriv_perms(mysettings)
 	if mydo == "install":
@@ -5051,14 +5053,16 @@ def _spawn_misc_sh(mysettings, commands, **kwargs):
 			logfile=logfile, **kwargs)
 	finally:
 		pass
-	if rval == os.EX_OK:
-		msg = _doebuild_exit_status_check(mydo, mysettings)
-		if msg:
+
+	msg = _doebuild_exit_status_check(mydo, mysettings)
+	if msg:
+		if rval == os.EX_OK:
 			rval = 1
-			from textwrap import wrap
-			from portage.elog.messages import eerror
-			for l in wrap(msg, 72):
-				eerror(l, phase=mydo, key=mysettings.mycpv)
+		from textwrap import wrap
+		from portage.elog.messages import eerror
+		for l in wrap(msg, 72):
+			eerror(l, phase=mydo, key=mysettings.mycpv)
+
 	return rval
 
 _testing_eapis = frozenset(["3_pre1"])
@@ -5612,11 +5616,10 @@ def _doebuild_exit_status_check(mydo, settings):
 	return msg
 
 def _doebuild_exit_status_check_and_log(settings, mydo, retval):
-	if retval != os.EX_OK:
-		return retval
 	msg = _doebuild_exit_status_check(mydo, settings)
 	if msg:
-		retval = 1
+		if retval == os.EX_OK:
+			retval = 1
 		from textwrap import wrap
 		from portage.elog.messages import eerror
 		for l in wrap(msg, 72):
@@ -5844,11 +5847,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			_doebuild_manifest_cache = mf
 
 	def exit_status_check(retval):
-		if retval != os.EX_OK:
-			return retval
 		msg = _doebuild_exit_status_check(mydo, mysettings)
 		if msg:
-			retval = 1
+			if retval == os.EX_OK:
+				retval = 1
 			from textwrap import wrap
 			from portage.elog.messages import eerror
 			for l in wrap(msg, 72):

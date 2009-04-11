@@ -48,7 +48,7 @@ class cache(object):
 	def append(self, other):
 		"""
 		Append another instance to this instance. This will cause eclasses
-		from the other instance to override and eclases from this instance
+		from the other instance to override any eclasses from this instance
 		that have the same name.
 		"""
 		if not isinstance(other, self.__class__):

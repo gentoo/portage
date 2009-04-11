@@ -217,7 +217,7 @@ options=[
 "--help",         "--ignore-default-opts",
 "--keep-going",
 "--noconfmem",
-"--newuse",       "--nocolor",
+"--newuse",
 "--nodeps",       "--noreplace",
 "--nospinner",    "--oneshot",
 "--onlydeps",     "--pretend",
@@ -2453,8 +2453,41 @@ class SpawnProcess(SubProcess):
 
 			if buf:
 				if not self.background:
-					buf.tofile(files.stdout)
-					files.stdout.flush()
+					write_successful = False
+					failures = 0
+					while True:
+						try:
+							if not write_successful:
+								buf.tofile(files.stdout)
+								write_successful = True
+							files.stdout.flush()
+							break
+						except IOError, e:
+							if e.errno != errno.EAGAIN:
+								raise
+							del e
+							failures += 1
+							if failures > 50:
+								# Avoid a potentially infinite loop. In
+								# most cases, the failure count is zero
+								# and it's unlikely to exceed 1.
+								raise
+
+							# This means that a subprocess has put an inherited
+							# stdio file descriptor (typically stdin) into
+							# O_NONBLOCK mode. This is not acceptable (see bug
+							# #264435), so revert it. We need to use a loop
+							# here since there's a race condition due to
+							# parallel processes being able to change the
+							# flags on the inherited file descriptor.
+							# TODO: When possible, avoid having child processes
+							# inherit stdio file descriptors from portage
+							# (maybe it can't be avoided with
+							# PROPERTIES=interactive).
+							fcntl.fcntl(files.stdout.fileno(), fcntl.F_SETFL,
+								fcntl.fcntl(files.stdout.fileno(),
+								fcntl.F_GETFL) ^ os.O_NONBLOCK)
+
 				buf.tofile(files.log)
 				files.log.flush()
 			else:
@@ -8757,7 +8790,8 @@ class depgraph(object):
 		if world_locked:
 			world_set.unlock()
 
-	def loadResumeCommand(self, resume_data, skip_masked=False):
+	def loadResumeCommand(self, resume_data, skip_masked=True,
+		skip_missing=True):
 		"""
 		Add a resume command to the graph and validate it in the process.  This
 		will raise a PackageNotFound exception if a package is not available.
@@ -8791,6 +8825,9 @@ class depgraph(object):
 			except KeyError:
 				# It does no exist or it is corrupt.
 				if action == "uninstall":
+					continue
+				if skip_missing:
+					# TODO: log these somewhere
 					continue
 				raise portage.exception.PackageNotFound(pkg_key)
 			installed = action == "uninstall"
