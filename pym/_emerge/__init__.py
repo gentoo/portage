@@ -5602,6 +5602,15 @@ class depgraph(object):
 					atom_cp = portage.dep_getkey(atom)
 					if vardb.cp_list(atom_cp):
 						installed_cp_set.add(atom_cp)
+
+				if len(installed_cp_set) > 1:
+					non_virtual_cps = set()
+					for atom_cp in installed_cp_set:
+						if not atom_cp.startswith("virtual/"):
+							non_virtual_cps.add(atom_cp)
+					if len(non_virtual_cps) == 1:
+						installed_cp_set = non_virtual_cps
+
 				if len(expanded_atoms) > 1 and len(installed_cp_set) == 1:
 					installed_cp = iter(installed_cp_set).next()
 					expanded_atoms = [atom for atom in expanded_atoms \
