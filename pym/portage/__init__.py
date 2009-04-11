@@ -1112,7 +1112,7 @@ class config(object):
 		"PORTAGE_BACKGROUND",
 		"PORTAGE_BINHOST_CHUNKSIZE", "PORTAGE_CALLER",
 		"PORTAGE_COUNTER_HASH",
-		"PORTAGE_ECLASS_WARNING_ENABLE", "PORTAGE_ELOG_CLASSES",
+		"PORTAGE_ELOG_CLASSES",
 		"PORTAGE_ELOG_MAILFROM", "PORTAGE_ELOG_MAILSUBJECT",
 		"PORTAGE_ELOG_MAILURI", "PORTAGE_ELOG_SYSTEM",
 		"PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS", "PORTAGE_FETCH_RESUME_MIN_SIZE",
@@ -4770,13 +4770,15 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 
 	if returnpid:
 		return phase_retval
-	msg = _doebuild_exit_status_check(mydo, mysettings)
-	if msg:
-		phase_retval = 1
-		from textwrap import wrap
-		from portage.elog.messages import eerror
-		for l in wrap(msg, 72):
-			eerror(l, phase=mydo, key=mysettings.mycpv)
+
+	if phase_retval == os.EX_OK:
+		msg = _doebuild_exit_status_check(mydo, mysettings)
+		if msg:
+			phase_retval = 1
+			from textwrap import wrap
+			from portage.elog.messages import eerror
+			for l in wrap(msg, 72):
+				eerror(l, phase=mydo, key=mysettings.mycpv)
 
 	_post_phase_userpriv_perms(mysettings)
 	if mydo == "install":
@@ -5049,13 +5051,14 @@ def _spawn_misc_sh(mysettings, commands, **kwargs):
 			logfile=logfile, **kwargs)
 	finally:
 		pass
-	msg = _doebuild_exit_status_check(mydo, mysettings)
-	if msg:
-		rval = 1
-		from textwrap import wrap
-		from portage.elog.messages import eerror
-		for l in wrap(msg, 72):
-			eerror(l, phase=mydo, key=mysettings.mycpv)
+	if rval == os.EX_OK:
+		msg = _doebuild_exit_status_check(mydo, mysettings)
+		if msg:
+			rval = 1
+			from textwrap import wrap
+			from portage.elog.messages import eerror
+			for l in wrap(msg, 72):
+				eerror(l, phase=mydo, key=mysettings.mycpv)
 	return rval
 
 _testing_eapis = frozenset(["3_pre1"])
@@ -5195,6 +5198,12 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mysettings.configdict["pkg"]["CATEGORY"] = cat
 	mysettings["FILESDIR"] = os.path.join(pkg_dir, "files")
 	mysettings["PF"]       = mypv
+
+	if hasattr(mydbapi, '_repo_info'):
+		mytree = os.path.dirname(os.path.dirname(pkg_dir))
+		repo_info = mydbapi._repo_info[mytree]
+		mysettings['PORTDIR'] = repo_info.portdir
+		mysettings['PORTDIR_OVERLAY'] = repo_info.portdir_overlay
 
 	mysettings["PORTDIR"] = os.path.realpath(mysettings["PORTDIR"])
 	mysettings["DISTDIR"] = os.path.realpath(mysettings["DISTDIR"])

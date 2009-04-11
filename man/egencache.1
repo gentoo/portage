@@ -7,9 +7,7 @@ egencache \- generate metadata cache for ebuild repositories
 .SH "DESCRIPTION"
 The egencache program generates metadata cache for ebuild repositories and
 stores it in the \fImetadata/cache/\fR directory within the repository itself,
-for distribution. Currenly, only the repository located at \fBPORTDIR\fR
-(configured in \fBmake.conf(5)\fR) can be updated by this program, but a
-future version will have the ability to select a different repository.
+for distribution.
 .SH ACTIONS
 .TP
 .BR "\-\-update [ATOM] ... "
@@ -39,6 +37,12 @@ Also see the related \fB\-\-load\-average\fR option.
 .TP
 .BR \-\-load\-average=LOAD
 Specifies that maximum load allowed when spawning multiple jobs.
+.TP
+.BR "\-\-repo=REPO"
+Name of the repo to operate on (default repo is located at \fBPORTDIR\fR).
+The name should correspond the value of a \fBrepo_name\fR entry (see
+\fBportage\fR(5)) from one of the repositories that is configured via the
+\fBPORTDIR\fR or \fBPORTDIR_OVERLAY\fR variables (see \fBmake.conf\fR(5)).
 .TP
 .BR "\-\-rsync"
 When used together with the \fB\-\-update\fR action, this enables a workaround
