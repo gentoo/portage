@@ -987,6 +987,13 @@ def _lazy_iuse_regex(iuse_implicit):
 	regex = regex.replace("\\.\\*", ".*")
 	return regex
 
+class _local_repo_config(object):
+	__slots__ = ('eclass_overrides', 'name',)
+	def __init__(self, name, repo_opts):
+		self.name = name
+		self.eclass_overrides = \
+			tuple(repo_opts.get('eclass-overrides', '').split())
+
 class config(object):
 	"""
 	This class encompasses the main portage configuration.  Data is pulled from
@@ -1180,12 +1187,18 @@ class config(object):
 
 		self.user_profile_dir = None
 		self.local_config = local_config
+		self._local_repo_configs = None
+		self._local_repo_conf_path = None
 
 		if clone:
 			self.incrementals = copy.deepcopy(clone.incrementals)
 			self.profile_path = copy.deepcopy(clone.profile_path)
 			self.user_profile_dir = copy.deepcopy(clone.user_profile_dir)
 			self.local_config = copy.deepcopy(clone.local_config)
+			self._local_repo_configs = \
+				copy.deepcopy(clone._local_repo_configs)
+			self._local_repo_conf_path = \
+				copy.deepcopy(clone._local_repo_conf_path)
 
 			self.module_priority = copy.deepcopy(clone.module_priority)
 			self.modules         = copy.deepcopy(clone.modules)
@@ -1627,6 +1640,38 @@ class config(object):
 						cp_dict = {}
 						self._plicensedict[cp] = cp_dict
 					cp_dict[k] = self.expandLicenseTokens(v)
+
+				self._local_repo_configs = {}
+				self._local_repo_conf_path = \
+					os.path.join(abs_user_config, 'repos.conf')
+				from ConfigParser import SafeConfigParser, ParsingError
+				repo_conf_parser = SafeConfigParser()
+				try:
+					repo_conf_parser.readfp(
+						codecs.open(self._local_repo_conf_path,
+						mode='r', errors='replace'))
+				except EnvironmentError, e:
+					if e.errno != errno.ENOENT:
+						raise
+					del e
+				except ParsingError, e:
+					portage.util.writemsg_level(
+						"!!! Error parsing '%s': %s\n"  % \
+						(self._local_repo_conf_path, e),
+						level=logging.ERROR, noiselevel=-1)
+					del e
+				else:
+					repo_defaults = repo_conf_parser.defaults()
+					if repo_defaults:
+						self._local_repo_configs['DEFAULT'] = \
+							_local_repo_config('DEFAULT', repo_defaults)
+					for repo_name in repo_conf_parser.sections():
+						repo_opts = repo_defaults.copy()
+						for opt_name in repo_conf_parser.options(repo_name):
+							repo_opts[opt_name] = \
+								repo_conf_parser.get(repo_name, opt_name)
+						self._local_repo_configs[repo_name] = \
+							_local_repo_config(repo_name, repo_opts)
 
 			#getting categories from an external file now
 			categories = [grabfile(os.path.join(x, "categories")) for x in locations]

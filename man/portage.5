@@ -54,6 +54,7 @@ package.keywords
 package.mask
 package.unmask
 package.use
+repos.conf
 .fi
 .TP
 .BR /etc/portage/profile/
@@ -545,6 +546,27 @@ documentation for QT.  Easy as pie my friend!
 =x11\-libs/gtk+\-2* doc
 # disable mysql support for QT
 x11\-libs/qt \-mysql
+.fi
+.TP
+.BR repos.conf
+Specifies \fIsite\-specific\fR repository configuration information. Note that
+configuration settings which are specified here do not apply to tools
+such as \fBrepoman\fR(1) and \fBegencache\fR(1) since their operations
+are inherently \fBnot\fR \fIsite\-specific\fR. Beware that use of
+\fBeclass\-overrides\fR is generally not recommended and that it may trigger
+performance issues under some circumstances (see \fBbug #124041\fR).
+
+.I Example:
+.nf
+# make all repositories inherit eclasses from the java\-overlay and
+# java\-experimental repositories, with eclasses from java\-experimental
+# taking precedence over those from java\-overlay
+[DEFAULT]
+eclass\-overrides = java\-overlay java\-experimental
+
+# disable all eclass overrides for ebuilds from the gentoo repository
+[gentoo]
+eclass\-overrides =
 .fi
 .RE
 .TP
