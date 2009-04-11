@@ -26,6 +26,7 @@ import portage
 import _emerge
 from portage.cache.cache_errors import CacheError, StatCollision
 from portage.util import writemsg_level
+from portage import cpv_getkey
 
 def parse_args(args):
 	usage = "egencache [options] --update [atom] ..."
@@ -133,7 +134,7 @@ class GenCache(object):
 
 	def _metadata_callback(self, cpv, ebuild_path, repo_path, metadata):
 		self._existing_nodes.add(cpv)
-		self._cp_missing.discard(portage.cpv_getkey(cpv))
+		self._cp_missing.discard(cpv_getkey(cpv))
 		if metadata is not None:
 			if metadata.get('EAPI') == '0':
 				del metadata['EAPI']
@@ -176,19 +177,21 @@ class GenCache(object):
 	def run(self):
 		self._regen.run()
 		self.returncode |= self._regen.returncode
-
-		if self._cp_missing:
-			self.returncode |= 1
-			for cp in sorted(self._cp_missing):
-				writemsg_level(
-					"No ebuilds found for '%s'\n"  % (cp,),
-					level=logging.ERROR, noiselevel=-1)
+		cp_missing = self._cp_missing
 
 		trg_cache = self._trg_cache
-		dead_nodes = None
+		dead_nodes = set()
 		if self._global_cleanse:
 			try:
-				dead_nodes = set(trg_cache.iterkeys())
+				for cpv in trg_cache.iterkeys():
+					cp = cpv_getkey(cpv)
+					if cp is None:
+						self.returncode |= 1
+						writemsg_level(
+							"Unable to parse cp for '%s'\n"  % (cpv,),
+							level=logging.ERROR, noiselevel=-1)
+					else:
+						dead_nodes.add(cpv)
 			except CacheError, ce:
 				self.returncode |= 1
 				writemsg_level(
@@ -199,17 +202,31 @@ class GenCache(object):
 
 		else:
 			cp_set = self._cp_set
-			cpv_getkey = portage.cpv_getkey
 			try:
-				dead_nodes = set(cpv for cpv in \
-					trg_cache.iterkeys() \
-					if cpv_getkey(cpv) in cp_set)
+				for cpv in trg_cache.iterkeys():
+					cp = cpv_getkey(cpv)
+					if cp is None:
+						self.returncode |= 1
+						writemsg_level(
+							"Unable to parse cp for '%s'\n"  % (cpv,),
+							level=logging.ERROR, noiselevel=-1)
+					else:
+						cp_missing.discard(cp)
+						if cp in cp_set:
+							dead_nodes.add(cpv)
 			except CacheError, ce:
 				self.returncode |= 1
 				writemsg_level(
 					"Error listing cache entries for " + \
 					"'%s/metadata/cache': %s, continuing...\n" % \
 					(self._portdb.porttree_root, ce),
+					level=logging.ERROR, noiselevel=-1)
+
+		if cp_missing:
+			self.returncode |= 1
+			for cp in sorted(cp_missing):
+				writemsg_level(
+					"No ebuilds or cache entries found for '%s'\n"  % (cp,),
 					level=logging.ERROR, noiselevel=-1)
 
 		if dead_nodes:
