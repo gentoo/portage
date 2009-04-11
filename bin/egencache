@@ -244,8 +244,11 @@ class GenCache(object):
 					del trg_cache[k]
 				except KeyError:
 					pass
-				except CacheError:
+				except CacheError, ce:
 					self.returncode |= 1
+					writemsg_level(
+						"%s deleting stale cache: %s\n" % (k, ce),
+						level=logging.ERROR, noiselevel=-1)
 
 		if not trg_cache.autocommits:
 			try:
