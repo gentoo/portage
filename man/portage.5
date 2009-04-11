@@ -46,14 +46,14 @@ virtuals
 .BR /etc/portage/
 .nf
 bashrc
+categories
 color.map
+mirrors
 modules
 package.keywords
 package.mask
 package.unmask
 package.use
-mirrors
-categories
 .fi
 .TP
 .BR /etc/portage/profile/
@@ -394,8 +394,50 @@ If needed, this file can be used to set up a special environment for ebuilds,
 different from the standard root environment.  The syntax is the same as for
 any other bash script.
 .TP
+.BR categories
+A simple list of valid categories that may be used in /usr/portage, 
+PORTDIR_OVERLAY, and PKGDIR (see \fBmake.conf\fR(5)).  This allows for custom 
+categories to be created.
+
+.I Format:
+.nf
+\- one category per line
+.fi
+
+.I Example:
+.nf
+app\-hackers
+media\-other
+.fi
+.TP
 .BR color.map
 Contains variables customizing colors. See \fBcolor.map\fR(5).
+.TP
+.BR mirrors
+Whenever portage encounters a mirror:// style URL it will look up the actual 
+hosts here.  If the mirror set is not found here, it will check the global 
+mirrors file at /usr/portage/profiles/thirdpartymirrors.  You may also set a 
+special mirror type called "local".  This list of mirrors will be checked 
+before GENTOO_MIRRORS and will be used even if the package has 
+RESTRICT="mirror" or RESTRICT="fetch".
+
+.I Format:
+.nf
+\- comments begin with # (no inline comments)
+\- mirror type followed by a list of hosts
+.fi
+
+.I Example:
+.nf
+# local private mirrors used only by my company
+local ftp://192.168.0.3/mirrors/gentoo http://192.168.0.4/distfiles
+
+# people in japan would want to use the japanese mirror first
+sourceforge http://keihanna.dl.sourceforge.net/sourceforge
+
+# people in tawain would want to use the local gnu mirror first
+gnu ftp://ftp.nctu.edu.tw/UNIX/gnu/
+.fi
 .TP
 .BR modules
 This file can be used to override the metadata cache implementation.  In
@@ -503,48 +545,6 @@ documentation for QT.  Easy as pie my friend!
 =x11\-libs/gtk+\-2* doc
 # disable mysql support for QT
 x11\-libs/qt \-mysql
-.fi
-.TP
-.BR mirrors
-Whenever portage encounters a mirror:// style URL it will look up the actual 
-hosts here.  If the mirror set is not found here, it will check the global 
-mirrors file at /usr/portage/profiles/thirdpartymirrors.  You may also set a 
-special mirror type called "local".  This list of mirrors will be checked 
-before GENTOO_MIRRORS and will be used even if the package has 
-RESTRICT="mirror" or RESTRICT="fetch".
-
-.I Format:
-.nf
-\- comments begin with # (no inline comments)
-\- mirror type followed by a list of hosts
-.fi
-
-.I Example:
-.nf
-# local private mirrors used only by my company
-local ftp://192.168.0.3/mirrors/gentoo http://192.168.0.4/distfiles
-
-# people in japan would want to use the japanese mirror first
-sourceforge http://keihanna.dl.sourceforge.net/sourceforge
-
-# people in tawain would want to use the local gnu mirror first
-gnu ftp://ftp.nctu.edu.tw/UNIX/gnu/
-.fi
-.TP
-.BR categories
-A simple list of valid categories that may be used in /usr/portage, 
-PORTDIR_OVERLAY, and PKGDIR (see \fBmake.conf\fR(5)).  This allows for custom 
-categories to be created.
-
-.I Format:
-.nf
-\- one category per line
-.fi
-
-.I Example:
-.nf
-app\-hackers
-media\-other
 .fi
 .RE
 .TP
