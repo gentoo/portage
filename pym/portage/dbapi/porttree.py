@@ -264,8 +264,8 @@ class portdbapi(dbapi):
 		# ~harring
 		filtered_auxdbkeys = filter(lambda x: not x.startswith("UNUSED_0"), auxdbkeys)
 		filtered_auxdbkeys.sort()
+		from portage.cache import metadata_overlay, volatile
 		if secpass < 1:
-			from portage.cache import metadata_overlay, volatile
 			for x in self.porttrees:
 				db_ro = self.auxdbmodule(self.depcachedir, x,
 					filtered_auxdbkeys, gid=portage_gid, readonly=True)
@@ -280,6 +280,8 @@ class portdbapi(dbapi):
 				# location, label, auxdbkeys
 				self.auxdb[x] = self.auxdbmodule(
 					self.depcachedir, x, filtered_auxdbkeys, gid=portage_gid)
+				if self.auxdbmodule is metadata_overlay.database:
+					self.auxdb[x].db_ro.ec = self._repo_info[x].eclass_db
 		if "metadata-transfer" not in self.mysettings.features:
 			for x in self.porttrees:
 				if x in self._pregen_auxdb:
