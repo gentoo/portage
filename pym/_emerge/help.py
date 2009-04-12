@@ -144,7 +144,8 @@ def help(myaction,myopts,havecolor=1):
 		print "              users as rsync updates the cache using server-side caches."
 		print "              Rsync users should simply 'emerge --sync' to regenerate."
 		desc = "In order to specify parallel --regen behavior, use "+ \
-			"the ---jobs and --load-average options."
+			"the ---jobs and --load-average options. If you would like to " + \
+			"generate and distribute cache for use by others, use egencache(1)."
 		for line in wrap(desc, desc_width):
 			print desc_indent + line
 		print

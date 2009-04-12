@@ -498,9 +498,14 @@ repo_info = portdb._repo_info[portdir_overlay]
 portdb.porttrees = list(repo_info.eclass_db.porttrees)
 portdir = portdb.porttrees[0]
 
+# Generate an appropriate PORTDIR_OVERLAY value for passing into the
+# profile-specific config constructor calls.
+env = os.environ.copy()
+env['PORTDIR_OVERLAY'] = ' '.join(portdb.porttrees[1:])
+
 logging.info('Setting paths:')
 logging.info('PORTDIR = "' + portdir + '"')
-logging.info('PORTDIR_OVERLAY = "%s"' % ' '.join(portdb.porttrees[1:]))
+logging.info('PORTDIR_OVERLAY = "%s"' % env['PORTDIR_OVERLAY'])
 
 portdb.mysettings = repoman_settings
 root_config = RootConfig(repoman_settings, trees[root], None)
@@ -1529,7 +1534,8 @@ for x in scanlist:
 					dep_settings = portage.config(
 						config_profile_path=profdir,
 						config_incrementals=portage.const.INCREMENTALS,
-						local_config=False)
+						local_config=False,
+						env=env)
 					if options.without_mask:
 						dep_settings.pmaskdict.clear()
 					arch_caches[prof[0]] = dep_settings

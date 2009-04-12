@@ -125,10 +125,6 @@ class portdbapi(dbapi):
 		# this purpose because doebuild makes many changes to the config
 		# instance that is passed in.
 		self.doebuild_settings = config(clone=self.mysettings)
-
-		porttree_root = os.path.realpath(porttree_root)
-		self.porttree_root = porttree_root
-
 		self.depcachedir = os.path.realpath(self.mysettings.depcachedir)
 
 		if os.environ.get("SANDBOX_ON") == "1":
@@ -139,6 +135,46 @@ class portdbapi(dbapi):
 				sandbox_write.append(self.depcachedir)
 				os.environ["SANDBOX_WRITE"] = \
 					":".join(filter(None, sandbox_write))
+
+		porttrees = [os.path.realpath(porttree_root)]
+		porttrees.extend(os.path.realpath(x) for x in \
+			self.mysettings.get('PORTDIR_OVERLAY', '').split())
+		treemap = {}
+		repository_map = {}
+		self.treemap = treemap
+		self._repository_map = repository_map
+		identically_named_paths = set()
+		for path in porttrees:
+			if path in repository_map:
+				continue
+			repo_name_path = os.path.join(path, REPO_NAME_LOC)
+			try:
+				repo_name = open(repo_name_path, 'r').readline().strip()
+			except EnvironmentError:
+				# warn about missing repo_name at some other time, since we
+				# don't want to see a warning every time the portage module is
+				# imported.
+				pass
+			else:
+				identically_named_path = treemap.get(repo_name)
+				if identically_named_path is not None:
+					# The earlier one is discarded.
+					del repository_map[identically_named_path]
+					identically_named_paths.add(identically_named_path)
+					if identically_named_path == porttrees[0]:
+						# Found another repo with the same name as
+						# $PORTDIR, so update porttrees[0] to match.
+						porttrees[0] = path
+				treemap[repo_name] = path
+				repository_map[path] = repo_name
+
+		# Ensure that each repo_name is unique. Later paths override
+		# earlier ones that correspond to the same name.
+		porttrees = [x for x in porttrees if x not in identically_named_paths]
+
+		self.porttrees = porttrees
+		porttree_root = porttrees[0]
+		self.porttree_root = porttree_root
 
 		self.eclassdb = eclass_cache.cache(porttree_root)
 
@@ -155,28 +191,17 @@ class portdbapi(dbapi):
 		self.xcache = {}
 		self.frozen = 0
 
-		self.porttrees = [self.porttree_root] + \
-			[os.path.realpath(t) for t in self.mysettings["PORTDIR_OVERLAY"].split()]
-		self.treemap = {}
-		self._repository_map = {}
-		for path in self.porttrees:
-			repo_name_path = os.path.join(path, REPO_NAME_LOC)
-			try:
-				repo_name = open(repo_name_path, 'r').readline().strip()
-				self.treemap[repo_name] = path
-				self._repository_map[path] = repo_name
-			except (OSError,IOError):
-				# warn about missing repo_name at some other time, since we
-				# don't want to see a warning every time the portage module is
-				# imported.
-				pass
-
 		self._repo_info = {}
 		eclass_dbs = {porttree_root : self.eclassdb}
+		local_repo_configs = self.mysettings._local_repo_configs
+		default_loc_repo_config = None
+		if local_repo_configs is not None:
+			default_loc_repo_config = local_repo_configs.get('DEFAULT')
 		for path in self.porttrees:
 			if path in self._repo_info:
 				continue
 
+			repo_name = self._repository_map.get(path)
 			layout_filename = os.path.join(path, "metadata/layout.conf")
 			layout_file = KeyValuePairFileLoader(layout_filename, None, None)
 			layout_data, layout_errors = layout_file.load()
@@ -200,6 +225,24 @@ class portdbapi(dbapi):
 
 			porttrees.append(path)
 
+			if local_repo_configs is not None:
+				loc_repo_conf = None
+				if repo_name is not None:
+					loc_repo_conf = local_repo_configs.get(repo_name)
+				if loc_repo_conf is None:
+					loc_repo_conf = default_loc_repo_config
+				if loc_repo_conf is not None:
+					for other_name in loc_repo_conf.eclass_overrides:
+						other_path = self.treemap.get(other_name)
+						if other_path is None:
+							writemsg_level(("Unavailable repository '%s' " + \
+								"referenced by eclass-overrides entry in " + \
+								"'%s'\n") % (other_name,
+								self.mysettings._local_repo_conf_path),
+								level=logging.ERROR, noiselevel=-1)
+							continue
+						porttrees.append(other_path)
+
 			eclass_db = None
 			for porttree in porttrees:
 				tree_db = eclass_dbs.get(porttree)
@@ -211,8 +254,7 @@ class portdbapi(dbapi):
 				else:
 					eclass_db.append(tree_db)
 
-			self._repo_info[path] = _repo_info(self._repository_map.get(path),
-				path, eclass_db)
+			self._repo_info[path] = _repo_info(repo_name, path, eclass_db)
 
 		self.auxdbmodule = self.mysettings.load_best_module("portdbapi.auxdbmodule")
 		self.auxdb = {}
@@ -222,8 +264,8 @@ class portdbapi(dbapi):
 		# ~harring
 		filtered_auxdbkeys = filter(lambda x: not x.startswith("UNUSED_0"), auxdbkeys)
 		filtered_auxdbkeys.sort()
+		from portage.cache import metadata_overlay, volatile
 		if secpass < 1:
-			from portage.cache import metadata_overlay, volatile
 			for x in self.porttrees:
 				db_ro = self.auxdbmodule(self.depcachedir, x,
 					filtered_auxdbkeys, gid=portage_gid, readonly=True)
@@ -238,6 +280,8 @@ class portdbapi(dbapi):
 				# location, label, auxdbkeys
 				self.auxdb[x] = self.auxdbmodule(
 					self.depcachedir, x, filtered_auxdbkeys, gid=portage_gid)
+				if self.auxdbmodule is metadata_overlay.database:
+					self.auxdb[x].db_ro.ec = self._repo_info[x].eclass_db
 		if "metadata-transfer" not in self.mysettings.features:
 			for x in self.porttrees:
 				if x in self._pregen_auxdb:
@@ -441,6 +485,8 @@ class portdbapi(dbapi):
 					try:
 						del auxdb[cpv]
 					except KeyError:
+						pass
+					except CacheError:
 						pass
 			else:
 				eapi = metadata.get('EAPI', '').strip()

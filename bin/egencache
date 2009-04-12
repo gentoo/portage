@@ -277,7 +277,7 @@ def egencache_main(args):
 		env['PORTAGE_DEPCACHEDIR'] = options.cache_dir
 
 	settings = portage.config(config_root=config_root,
-		target_root='/', env=env)
+		target_root='/', local_config=False, env=env)
 
 	default_opts = None
 	if not options.ignore_default_opts:
@@ -293,7 +293,7 @@ def egencache_main(args):
 			env['PORTAGE_DEPCACHEDIR'] = options.cache_dir
 
 		settings = portage.config(config_root=config_root,
-			target_root='/', env=env)
+			target_root='/', local_config=False, env=env)
 
 	if not options.update:
 		parser.error('No action specified (--update ' + \
