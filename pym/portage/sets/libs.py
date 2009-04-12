@@ -22,6 +22,39 @@ class LibraryConsumerSet(PackageSet):
 			rValue.add("%s/%s:%s" % (cat, pn, slot))
 		return rValue
 
+class LibraryFileConsumerSet(LibraryConsumerSet):
+
+	"""
+	Note: This does not detect libtool archive (*.la) files that consume the
+	specified files (revdep-rebuild is able to detect them).
+	"""
+
+	description = "Package set which contains all packages " + \
+		"that consume the specified library file(s)."
+
+	def __init__(self, vardbapi, files, **kargs):
+		super(LibraryFileConsumerSet, self).__init__(vardbapi, **kargs)
+		self.files = files
+
+	def load(self):
+		consumers = set()
+		for lib in self.files:
+			consumers.update(self.dbapi.linkmap.findConsumers(lib))
+
+		if not consumers:
+			return
+		self._setAtoms(self.mapPathsToAtoms(consumers))
+
+	def singleBuilder(cls, options, settings, trees):
+		import shlex
+		files = tuple(shlex.split(options.get("files", "")))
+		if not files:
+			raise SetConfigError("no files given")
+		debug = get_boolean(options, "debug", False)
+		return LibraryFileConsumerSet(trees["vartree"].dbapi,
+			files, debug=debug)
+	singleBuilder = classmethod(singleBuilder)
+
 class PreservedLibraryConsumerSet(LibraryConsumerSet):
 	def load(self):
 		reg = self.dbapi.plib_registry
@@ -48,5 +81,6 @@ class PreservedLibraryConsumerSet(LibraryConsumerSet):
 
 	def singleBuilder(cls, options, settings, trees):
 		debug = get_boolean(options, "debug", False)
-		return PreservedLibraryConsumerSet(trees["vartree"].dbapi, debug)
+		return PreservedLibraryConsumerSet(trees["vartree"].dbapi,
+			debug=debug)
 	singleBuilder = classmethod(singleBuilder)
