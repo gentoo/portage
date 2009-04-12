@@ -18,22 +18,21 @@ INSTALL_scriptsubst = $(SHELL) ${top_builddir}/subst-install --installcmd='${INS
 
 user_binprogs = \
 	ebuild \
+	egencache \
 	emerge \
-	emaint \
 	portageq \
-	quickpkg \
 	repoman \
 	xpak
 
 user_sbinprogs = \
 	archive-conf \
 	dispatch-conf \
-	ebuild \
-	ebuild.sh \
+	emaint \
 	emerge-webrsync \
 	env-update \
 	etc-update \
 	fixpackages \
+	quickpkg \
 	regenworld
 
 ebuild_helperprogs = \
