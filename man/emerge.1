@@ -172,7 +172,8 @@ user' :).  Rsync users should simply run \fBemerge \-\-sync\fR to regenerate
 the cache.  After a portage update, rsync users may find it convenient to run 
 \fBemerge \-\-metadata\fR to rebuild the cache as portage does at the end of 
 a sync operation. In order to specify parallel \fB\-\-regen\fR behavior, use
-the \fB\-\-jobs\fR and \fB\-\-load\-average\fR options.
+the \fB\-\-jobs\fR and \fB\-\-load\-average\fR options. If you would like to
+generate and distribute cache for use by others, use \fBegencache\fR(1).
 .TP
 .BR "\-\-resume"
 Resumes the most recent merge list that has been aborted due to an error.
