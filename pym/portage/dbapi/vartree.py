@@ -642,6 +642,11 @@ class LinkageMap(object):
 		fail to preserve binutils libs that are needed by these unrecognized
 		consumers.
 
+		Note that library consumption via dlopen (common for kde plugins) is
+		currently undetected. However, it is possible to use the
+		corresponding libtool archive (*.la) files to detect such consumers
+		(revdep-rebuild is able to detect them).
+
 		@param obj: absolute path to an object or a key from _obj_properties
 		@type obj: string (example: '/usr/bin/bar') or _ObjectKey
 		@rtype: set of strings (example: set(['/bin/foo', '/usr/bin/bar']))
