@@ -54,7 +54,7 @@ class database(flat_hash.database):
 		if "_eclasses_" not in d:
 			if "INHERITED" in d:
 				if self.ec is None:
-					self.ec = portage.eclass_cache.cache(self.location)
+					self.ec = portage.eclass_cache.cache(self.location[:-15])
 				try:
 					d["_eclasses_"] = self.ec.get_eclass_data(
 						d["INHERITED"].split())
