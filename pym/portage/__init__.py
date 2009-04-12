@@ -5072,33 +5072,21 @@ def _eapi_is_deprecated(eapi):
 	return eapi in _deprecated_eapis
 
 def eapi_is_supported(eapi):
-	# PREFIX HACK/EXTENSION: in prefix we have "incompatible" ebuilds in
-	# an consistent manner; regardless what the EAPI of the main tree
-	# ebuild is, we always need the prefix extension which by itself can
-	# have a version too.  In EAPI we allow to have multiple components
-	# separated by spaces to cater for this.  In general we could extend
-	# it here to contain '<desc>:<ver>' tokens, where <desc> is a
-	# string, and <ver> a number.  If '<desc>:' is omitted, it would be
-	# assumed to be the EAPI version as used in the main tree, if
-	# ':<ver>' is omitted, version 0 would be assumed.  This way an
-	# unset EAPI would make main tree EAPI 0, and 'EAPI="prefix"' would
-	# mean main tree EAPI 0, prefix tree EAPI 0.
-	# However, back to reality, we just look for all <desc> we require,
-	# and don't do version tricks other than the main tree does.
+	eapi = str(eapi).strip()
 
-	eapi = str(eapi).split() # note Python's contract for this special case
+	if _eapi_is_deprecated(eapi):
+		return True
 
-	# check what's supported (can)
-	properties = set(_testing_eapis) # another clumpsy solution
-	properties.add("prefix") # clumpsy temporary solution
-	for i in range(portage.const.EAPI + 1):
-		properties.add(str(i))
+	if eapi in _testing_eapis:
+		return True
 
-	for v in eapi:
-		if v not in properties:
-			return False
-	
-	return True
+	try:
+		eapi = int(eapi)
+	except ValueError:
+		eapi = -1
+	if eapi < 0:
+		return False
+	return eapi <= portage.const.EAPI
 
 # Generally, it's best not to assume that cache entries for unsupported EAPIs
 # can be validated. However, the current package manager specification does not
