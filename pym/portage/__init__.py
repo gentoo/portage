@@ -43,35 +43,6 @@ except ImportError, e:
 	sys.stderr.write("    "+str(e)+"\n\n");
 	raise
 
-bsd_chflags = None
-if platform.system() in ["FreeBSD"]:
-	def bsd_chflags():
-		pass
-	def _chflags(path, flags, opts=""):
-		cmd = "chflags %s %o '%s'" % (opts, flags, path)
-		status, output = commands.getstatusoutput(cmd)
-		if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
-			return
-		# Try to generate an ENOENT error if appropriate.
-		if "h" in opts:
-			os.lstat(path)
-		else:
-			os.stat(path)
-		# Make sure the binary exists.
-		if not portage.process.find_binary("chflags"):
-			raise portage.exception.CommandNotFound("chflags")
-		# Now we're not sure exactly why it failed or what
-		# the real errno was, so just report EPERM.
-		e = OSError(errno.EPERM, output)
-		e.errno = errno.EPERM
-		e.filename = path
-		e.message = output
-		raise e
-	def _lchflags(path, flags):
-		return _chflags(path, flags, opts="-h")
-	bsd_chflags.chflags = _chflags
-	bsd_chflags.lchflags = _lchflags
-
 try:
 	from portage.cache.cache_errors import CacheError
 	import portage.proxy.lazyimport
@@ -149,6 +120,48 @@ except ImportError:
 # END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END
 # ===========================================================================
 
+def _shell_quote(s):
+	"""
+	Quote a string in double-quotes and use backslashes to
+	escape any backslashes, double-quotes, dollar signs, or
+	backquotes in the string.
+	"""
+	for letter in "\\\"$`":
+		if letter in s:
+			s = s.replace(letter, "\\" + letter)
+	return "\"%s\"" % s
+
+bsd_chflags = None
+
+if platform.system() in ('FreeBSD',):
+
+	class bsd_chflags(object):
+
+		@classmethod
+		def chflags(cls, path, flags, opts=""):
+			cmd = 'chflags %s %o %s' % (opts, flags, _shell_quote(path))
+			status, output = commands.getstatusoutput(cmd)
+			if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
+				return
+			# Try to generate an ENOENT error if appropriate.
+			if 'h' in opts:
+				os.lstat(path)
+			else:
+				os.stat(path)
+			# Make sure the binary exists.
+			if not portage.process.find_binary('chflags'):
+				raise portage.exception.CommandNotFound('chflags')
+			# Now we're not sure exactly why it failed or what
+			# the real errno was, so just report EPERM.
+			e = OSError(errno.EPERM, output)
+			e.errno = errno.EPERM
+			e.filename = path
+			e.message = output
+			raise e
+
+		@classmethod
+		def lchflags(cls, path, flags):
+			return cls.chflags(path, flags, opts='-h')
 
 def load_mod(name):
 	modname = ".".join(name.split(".")[:-1])
@@ -3155,17 +3168,6 @@ class config(object):
 	if sys.hexversion >= 0x3000000:
 		keys = __iter__
 		items = iteritems
-
-def _shell_quote(s):
-	"""
-	Quote a string in double-quotes and use backslashes to
-	escape any backslashes, double-quotes, dollar signs, or
-	backquotes in the string.
-	"""
-	for letter in "\\\"$`":
-		if letter in s:
-			s = s.replace(letter, "\\" + letter)
-	return "\"%s\"" % s
 
 # In some cases, openpty can be slow when it fails. Therefore,
 # stop trying to use it after the first failure.
