@@ -1842,6 +1842,9 @@ class config(object):
 				if "usersandbox" in self.features:
 					self.features.remove("usersandbox")
 
+			if bsd_chflags:
+				self.features.add('chflags')
+
 			self["FEATURES"] = " ".join(sorted(self.features))
 			self.backup_changes("FEATURES")
 			global _glep_55_enabled, _validate_cache_for_unsupported_eapis
