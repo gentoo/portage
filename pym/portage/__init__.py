@@ -3924,7 +3924,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				try:
 					mysize = os.stat(myfile_path).st_size
 				except OSError, e:
-					if e.errno != errno.ENOENT:
+					if e.errno not in (errno.ENOENT, errno.ESTALE):
 						raise
 					del e
 					mysize = 0
@@ -4036,7 +4036,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						try:
 							os.unlink(myfile_path)
 						except OSError, e:
-							if e.errno != errno.ENOENT:
+							if e.errno not in (errno.ENOENT, errno.ESTALE):
 								raise
 							del e
 						os.symlink(readonly_file, myfile_path)
@@ -4051,14 +4051,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								" %(file)s\n" % {"file":myfile}))
 							break
 						except (IOError, OSError), e:
-							if e.errno != errno.ENOENT:
+							if e.errno not in (errno.ENOENT, errno.ESTALE):
 								raise
 							del e
 
 				try:
 					mystat = os.stat(myfile_path)
 				except OSError, e:
-					if e.errno != errno.ENOENT:
+					if e.errno not in (errno.ENOENT, errno.ESTALE):
 						raise
 					del e
 				else:
@@ -4202,7 +4202,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						try:
 							mysize = os.stat(myfile_path).st_size
 						except OSError, e:
-							if e.errno != errno.ENOENT:
+							if e.errno not in (errno.ENOENT, errno.ESTALE):
 								raise
 							del e
 							mysize = 0
@@ -4226,7 +4226,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						try:
 							mystat = os.stat(myfile_path)
 						except OSError, e:
-							if e.errno != errno.ENOENT:
+							if e.errno not in (errno.ENOENT, errno.ESTALE):
 								raise
 							del e
 							fetched = 0
@@ -4238,7 +4238,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								try:
 									os.unlink(myfile_path)
 								except OSError, e:
-									if e.errno != errno.ENOENT:
+									if e.errno not in \
+										(errno.ENOENT, errno.ESTALE):
 										raise
 									del e
 								fetched = 0
@@ -4292,7 +4293,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						try:
 							mystat = os.stat(myfile_path)
 						except OSError, e:
-							if e.errno != errno.ENOENT:
+							if e.errno not in (errno.ENOENT, errno.ESTALE):
 								raise
 							del e
 							fetched = 0

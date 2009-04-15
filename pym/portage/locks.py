@@ -74,7 +74,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 					if os.stat(lockfilename).st_gid != portage_gid:
 						os.chown(lockfilename, -1, portage_gid)
 				except OSError, e:
-					if e.errno == errno.ENOENT: # No such file or directory
+					if e.errno in (errno.ENOENT, errno.ESTALE):
 						return lockfile(mypath,
 							wantnewlockfile=wantnewlockfile,
 							unlinkfile=unlinkfile, waiting_msg=waiting_msg,
@@ -164,7 +164,7 @@ def _fstat_nlink(fd):
 	try:
 		return os.fstat(fd).st_nlink
 	except EnvironmentError, e:
-		if e.errno == errno.ENOENT:
+		if e.errno in (errno.ENOENT, errno.ESTALE):
 			# Some filesystems such as CIFS return
 			# ENOENT which means st_nlink == 0.
 			return 0
