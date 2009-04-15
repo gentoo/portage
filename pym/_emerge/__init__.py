@@ -13777,6 +13777,57 @@ def action_search(root_config, myopts, myfiles, spinner):
 				sys.exit(1)
 			searchinstance.output()
 
+def action_uninstall(settings, trees, ldpath_mtimes,
+	opts, action, files, spinner):
+
+	# For backward compat, some actions do not require leading '='.
+	ignore_missing_eq = action in ('clean', 'unmerge')
+	vardb = trees[settings["ROOT"]]["vartree"].dbapi
+	valid_atoms = []
+
+	# Ensure atoms are valid before calling unmerge().
+	# For backward compat, leading '=' is not required.
+	for x in files:
+		if not (is_valid_package_atom(x) or \
+			(ignore_missing_eq and is_valid_package_atom("=" + x))):
+
+			msg = []
+			msg.append("'%s' is not a valid package atom." % (x,))
+			msg.append("Please check ebuild(5) for full details.")
+			writemsg_level("".join("!!! %s\n" % line for line in msg),
+				level=logging.ERROR, noiselevel=-1)
+			return 1
+
+		try:
+			valid_atoms.append(
+				portage.dep_expand(x, mydb=vardb, settings=settings))
+		except portage.exception.AmbiguousPackageName, e:
+			msg = "The short ebuild name \"" + x + \
+				"\" is ambiguous.  Please specify " + \
+				"one of the following " + \
+				"fully-qualified ebuild names instead:"
+			for line in textwrap.wrap(msg, 70):
+				writemsg_level("!!! %s\n" % (line,),
+					level=logging.ERROR, noiselevel=-1)
+			for i in e[0]:
+				writemsg_level("    %s\n" % colorize("INFORM", i),
+					level=logging.ERROR, noiselevel=-1)
+			writemsg_level("\n", level=logging.ERROR, noiselevel=-1)
+			return 1
+
+	if action in ('clean', 'unmerge') or \
+		(action == 'prune' and "--nodeps" in opts):
+		# When given a list of atoms, unmerge them in the order given.
+		ordered = action == 'unmerge'
+		unmerge(trees[settings["ROOT"]]['root_config'], opts, action,
+			valid_atoms, ldpath_mtimes, ordered=ordered)
+		rval = os.EX_OK
+	else:
+		rval = action_depclean(settings, trees, ldpath_mtimes,
+			opts, action, valid_atoms, spinner)
+
+	return rval
+
 def action_depclean(settings, trees, ldpath_mtimes,
 	myopts, action, myfiles, spinner):
 	# Kill packages that aren't explicitly merged or are required as a
@@ -13853,28 +13904,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	import textwrap
 	args_set = InternalPackageSet()
 	if myfiles:
-		for x in myfiles:
-			if not is_valid_package_atom(x):
-				writemsg_level("!!! '%s' is not a valid package atom.\n" % x,
-					level=logging.ERROR, noiselevel=-1)
-				writemsg_level("!!! Please check ebuild(5) for full details.\n")
-				return
-			try:
-				atom = portage.dep_expand(x, mydb=vardb, settings=settings)
-			except portage.exception.AmbiguousPackageName, e:
-				msg = "The short ebuild name \"" + x + \
-					"\" is ambiguous.  Please specify " + \
-					"one of the following " + \
-					"fully-qualified ebuild names instead:"
-				for line in textwrap.wrap(msg, 70):
-					writemsg_level("!!! %s\n" % (line,),
-						level=logging.ERROR, noiselevel=-1)
-				for i in e[0]:
-					writemsg_level("    %s\n" % colorize("INFORM", i),
-						level=logging.ERROR, noiselevel=-1)
-				writemsg_level("\n", level=logging.ERROR, noiselevel=-1)
-				return
-			args_set.add(atom)
+		args_set.update(myfiles)
 		matched_packages = False
 		for x in args_set:
 			if vardb.match(x):
@@ -15850,32 +15880,16 @@ def emerge_main():
 		validate_ebuild_environment(trees)
 		action_search(trees[settings["ROOT"]]["root_config"],
 			myopts, myfiles, spinner)
-	elif myaction in ("clean", "unmerge") or \
-		(myaction == "prune" and "--nodeps" in myopts):
+
+	elif myaction in ('clean', 'depclean', 'prune', 'unmerge'):
 		validate_ebuild_environment(trees)
+		rval = action_uninstall(settings, trees, mtimedb["ldpath"],
+			myopts, myaction, myfiles, spinner)
+		if not (buildpkgonly or fetchonly or pretend):
+			post_emerge(root_config, myopts, mtimedb, rval)
+		return rval
 
-		# Ensure atoms are valid before calling unmerge().
-		# For backward compat, leading '=' is not required.
-		for x in myfiles:
-			if is_valid_package_atom(x) or \
-				is_valid_package_atom("=" + x):
-				continue
-			msg = []
-			msg.append("'%s' is not a valid package atom." % (x,))
-			msg.append("Please check ebuild(5) for full details.")
-			writemsg_level("".join("!!! %s\n" % line for line in msg),
-				level=logging.ERROR, noiselevel=-1)
-			return 1
-
-		# When given a list of atoms, unmerge
-		# them in the order given.
-		ordered = myaction == "unmerge"
-		if 1 == unmerge(root_config, myopts, myaction, myfiles,
-			mtimedb["ldpath"], ordered=ordered):
-			if not (buildpkgonly or fetchonly or pretend):
-				post_emerge(root_config, myopts, mtimedb, os.EX_OK)
-
-	elif myaction in ("depclean", "info", "prune"):
+	elif myaction == 'info':
 
 		# Ensure atoms are valid before calling unmerge().
 		vardb = trees[settings["ROOT"]]["vartree"].dbapi
@@ -15906,14 +15920,8 @@ def emerge_main():
 				level=logging.ERROR, noiselevel=-1)
 			return 1
 
-		if myaction == "info":
-			return action_info(settings, trees, myopts, valid_atoms)
+		return action_info(settings, trees, myopts, valid_atoms)
 
-		validate_ebuild_environment(trees)
-		action_depclean(settings, trees, mtimedb["ldpath"],
-			myopts, myaction, valid_atoms, spinner)
-		if not (buildpkgonly or fetchonly or pretend):
-			post_emerge(root_config, myopts, mtimedb, os.EX_OK)
 	# "update", "system", or just process files:
 	else:
 		validate_ebuild_environment(trees)
