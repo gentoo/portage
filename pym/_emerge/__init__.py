@@ -13782,15 +13782,44 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 
 	# For backward compat, some actions do not require leading '='.
 	ignore_missing_eq = action in ('clean', 'unmerge')
-	vardb = trees[settings["ROOT"]]["vartree"].dbapi
+	root = settings['ROOT']
+	vardb = trees[root]['vartree'].dbapi
 	valid_atoms = []
+	lookup_owners = []
 
 	# Ensure atoms are valid before calling unmerge().
 	# For backward compat, leading '=' is not required.
 	for x in files:
-		if not (is_valid_package_atom(x) or \
-			(ignore_missing_eq and is_valid_package_atom("=" + x))):
+		if is_valid_package_atom(x) or \
+			(ignore_missing_eq and is_valid_package_atom('=' + x)):
 
+			try:
+				valid_atoms.append(
+					portage.dep_expand(x, mydb=vardb, settings=settings))
+			except portage.exception.AmbiguousPackageName, e:
+				msg = "The short ebuild name \"" + x + \
+					"\" is ambiguous.  Please specify " + \
+					"one of the following " + \
+					"fully-qualified ebuild names instead:"
+				for line in textwrap.wrap(msg, 70):
+					writemsg_level("!!! %s\n" % (line,),
+						level=logging.ERROR, noiselevel=-1)
+				for i in e[0]:
+					writemsg_level("    %s\n" % colorize("INFORM", i),
+						level=logging.ERROR, noiselevel=-1)
+				writemsg_level("\n", level=logging.ERROR, noiselevel=-1)
+				return 1
+
+		elif x.startswith(os.sep):
+			if not x.startswith(root):
+				writemsg_level(("!!! '%s' does not start with" + \
+					" $ROOT.\n") % x, level=logging.ERROR, noiselevel=-1)
+				return 1
+			# Queue these up since it's most efficient to handle
+			# multiple files in a single iter_owners() call.
+			lookup_owners.append(x)
+
+		else:
 			msg = []
 			msg.append("'%s' is not a valid package atom." % (x,))
 			msg.append("Please check ebuild(5) for full details.")
@@ -13798,22 +13827,41 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 				level=logging.ERROR, noiselevel=-1)
 			return 1
 
-		try:
-			valid_atoms.append(
-				portage.dep_expand(x, mydb=vardb, settings=settings))
-		except portage.exception.AmbiguousPackageName, e:
-			msg = "The short ebuild name \"" + x + \
-				"\" is ambiguous.  Please specify " + \
-				"one of the following " + \
-				"fully-qualified ebuild names instead:"
-			for line in textwrap.wrap(msg, 70):
-				writemsg_level("!!! %s\n" % (line,),
-					level=logging.ERROR, noiselevel=-1)
-			for i in e[0]:
-				writemsg_level("    %s\n" % colorize("INFORM", i),
-					level=logging.ERROR, noiselevel=-1)
-			writemsg_level("\n", level=logging.ERROR, noiselevel=-1)
-			return 1
+	if lookup_owners:
+		relative_paths = []
+		search_for_multiple = False
+		if len(lookup_owners) > 1:
+			search_for_multiple = True
+
+		for x in lookup_owners:
+			if not search_for_multiple and os.path.isdir(x):
+				search_for_multiple = True
+			relative_paths.append(x[len(root):])
+
+		owners = set()
+		for pkg, relative_path in \
+			vardb._owners.iter_owners(relative_paths):
+			owners.add(pkg.mycpv)
+			if not search_for_multiple:
+				break
+
+		if owners:
+			for cpv in owners:
+				slot = vardb.aux_get(cpv, ['SLOT'])[0]
+				if not slot:
+					# portage now masks packages with missing slot, but it's
+					# possible that one was installed by an older version
+					atom = portage.cpv_getkey(cpv)
+				else:
+					atom = '%s:%s' % (portage.cpv_getkey(cpv), slot)
+				valid_atoms.append(portage.dep.Atom(atom))
+		else:
+			writemsg_level(("!!! '%s' is not claimed " + \
+				"by any package.\n") % lookup_owners[0],
+				level=logging.WARNING, noiselevel=-1)
+
+	if files and not valid_atoms:
+		return 1
 
 	if action in ('clean', 'unmerge') or \
 		(action == 'prune' and "--nodeps" in opts):
