@@ -15573,6 +15573,37 @@ def repo_name_check(trees):
 
 	return bool(missing_repo_names)
 
+def repo_name_duplicate_check(trees):
+	ignored_repos = {}
+	for root, root_trees in trees.iteritems():
+		if 'porttree' in root_trees:
+			portdb = root_trees['porttree'].dbapi
+			if portdb.mysettings.get('PORTAGE_REPO_DUPLICATE_WARN') != '0':
+				for repo_name, paths in portdb._ignored_repos:
+					k = (root, repo_name, portdb.getRepositoryPath(repo_name))
+					ignored_repos.setdefault(k, []).extend(paths)
+
+	if ignored_repos:
+		msg = []
+		msg.append('WARNING: One or more repositories ' + \
+			'have been ignored due to duplicate')
+		msg.append('  profiles/repo_name entries:')
+		msg.append('')
+		for k in sorted(ignored_repos):
+			msg.append('  %s overrides' % (k,))
+			for path in ignored_repos[k]:
+				msg.append('    %s' % (path,))
+			msg.append('')
+		msg.extend('  ' + x for x in textwrap.wrap(
+			"All profiles/repo_name entries must be unique in order " + \
+			"to avoid having duplicates ignored. " + \
+			"Set PORTAGE_REPO_DUPLICATE_WARN=\"0\" in " + \
+			"/etc/make.conf if you would like to disable this warning."))
+		writemsg_level(''.join('%s\n' % l for l in msg),
+			level=logging.WARNING, noiselevel=-1)
+
+	return bool(ignored_repos)
+
 def config_protect_check(trees):
 	for root, root_trees in trees.iteritems():
 		if not root_trees["root_config"].settings.get("CONFIG_PROTECT"):
@@ -15690,6 +15721,7 @@ def emerge_main():
 	if "--quiet" not in myopts:
 		portage.deprecated_profile_check(settings=settings)
 		repo_name_check(trees)
+		repo_name_duplicate_check(trees)
 		config_protect_check(trees)
 
 	for mytrees in trees.itervalues():
