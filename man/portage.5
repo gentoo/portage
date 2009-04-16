@@ -559,18 +559,21 @@ performance issues under some circumstances (see \fBbug #124041\fR).
 
 .I Example:
 .nf
+[DEFAULT]
 # make all repositories inherit eclasses from the java\-overlay and
 # java\-experimental repositories, with eclasses from java\-experimental
 # taking precedence over those from java\-overlay
-[DEFAULT]
 eclass\-overrides = java\-overlay java\-experimental
 
-# disable all eclass overrides for ebuilds from the gentoo repository
 [gentoo]
+# disable all eclass overrides for ebuilds from the gentoo repository
 eclass\-overrides =
+# when processing metadata/layout.conf from other repositories, substitute
+# 'gentoo' in place of references to repositories named 'foo' and 'bar'
+aliases = foo bar
 
-# override the metadata/layout.conf masters setting from the kde-testing repo
 [kde-testing]
+# override the metadata/layout.conf masters setting from the kde-testing repo
 masters = gentoo kde
 .fi
 .RE
