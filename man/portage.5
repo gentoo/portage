@@ -552,8 +552,9 @@ x11\-libs/qt \-mysql
 Specifies \fIsite\-specific\fR repository configuration information. Note that
 configuration settings which are specified here do not apply to tools
 such as \fBrepoman\fR(1) and \fBegencache\fR(1) since their operations
-are inherently \fBnot\fR \fIsite\-specific\fR. Beware that use of
-\fBeclass\-overrides\fR is generally not recommended and that it may trigger
+are inherently \fBnot\fR \fIsite\-specific\fR. \fBWARNING:\fR Use of
+\fBrepos.conf\fR is generally not recommended since resulting changes in
+eclass inheritance (especially due ot \fBeclass\-overrides\fR) may trigger
 performance issues under some circumstances (see \fBbug #124041\fR).
 
 .I Example:
@@ -567,6 +568,10 @@ eclass\-overrides = java\-overlay java\-experimental
 # disable all eclass overrides for ebuilds from the gentoo repository
 [gentoo]
 eclass\-overrides =
+
+# override the metadata/layout.conf masters setting from the kde-testing repo
+[kde-testing]
+masters = gentoo kde
 .fi
 .RE
 .TP
@@ -579,7 +584,9 @@ Specifies information about the repository layout. Currently, only a single
 repositories which satisfy dependencies on eclasses and/or ebuilds. Each
 repository name should correspond the value of a \fBrepo_name\fR entry
 from one of the repositories that is configured via the \fBPORTDIR\fR or
-\fBPORTDIR_OVERLAY\fR variables (see \fBmake.conf\fR(5)).
+\fBPORTDIR_OVERLAY\fR variables (see \fBmake.conf\fR(5)). Site-specific
+overrides to \fBlayout.conf\fR settings may be specified in
+\fB/etc/portage/repos.conf\fR.
 
 .I Example:
 .nf
