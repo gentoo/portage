@@ -609,6 +609,14 @@ scanlist.sort()
 
 logging.debug("Found the following packages to scan:\n%s" % '\n'.join(scanlist))
 
+class ProfileDesc(object):
+	__slots__ = ('abs_path', 'status', 'sub_path', 'tree_path',)
+	def __init__(self, status, sub_path, tree_path):
+		self.status = status
+		self.sub_path = normalize_path(sub_path.lstrip(os.sep))
+		self.tree_path = tree_path
+		self.abs_path = os.path.join(tree_path, 'profiles', self.sub_path)
+
 profiles={}
 valid_profile_types = frozenset(["dev", "exp", "stable"])
 descfile=portdir+"/profiles/profiles.desc"
@@ -628,13 +636,11 @@ if os.path.exists(descfile):
 		elif arch[2] not in valid_profile_types:
 			err("invalid profile type: \"" + bad(arch[2]) + "\" in " + \
 				descfile + " line %d" % (i+1, ))
-		if not os.path.isdir(portdir+"/profiles/"+arch[1]):
+		profile_desc = ProfileDesc(arch[2], arch[1], portdir)
+		if not os.path.isdir(profile_desc.abs_path):
 			print "Invalid "+arch[2]+" profile ("+arch[1]+") for arch "+arch[0]
 			continue
-		if arch[0] in profiles:
-			profiles[arch[0]]+= [[arch[1], arch[2]]]
-		else:
-			profiles[arch[0]] = [[arch[1], arch[2]]]
+		profiles.setdefault(arch[0], []).append(profile_desc)
 
 	for x in repoman_settings.archlist():
 		if x[0] == "~":
@@ -659,11 +665,11 @@ def dev_keywords(profiles):
 	"""
 	type_arch_map = {}
 	for arch, arch_profiles in profiles.iteritems():
-		for profile_path, profile_type in arch_profiles:
-			arch_set = type_arch_map.get(profile_type)
+		for prof in arch_profiles:
+			arch_set = type_arch_map.get(prof.status)
 			if arch_set is None:
 				arch_set = set()
-				type_arch_map[profile_type] = arch_set
+				type_arch_map[prof.status] = arch_set
 			arch_set.add(arch)
 
 	dev_keywords = type_arch_map.get('dev', set())
@@ -1524,23 +1530,20 @@ for x in scanlist:
 				
 			for prof in profiles[arch]:
 
-				if prof[1] not in ("stable", "dev") or \
-					prof[1] == "dev" and not options.include_dev:
+				if prof.status not in ("stable", "dev") or \
+					prof.status == "dev" and not options.include_dev:
 					continue
 
-				profdir = portdir+"/profiles/"+prof[0]
-	
-				if prof[0] in arch_caches:
-					dep_settings = arch_caches[prof[0]]
-				else:
+				dep_settings = arch_caches.get(prof.sub_path)
+				if dep_settings is None:
 					dep_settings = portage.config(
-						config_profile_path=profdir,
+						config_profile_path=prof.abs_path,
 						config_incrementals=portage.const.INCREMENTALS,
 						local_config=False,
 						env=env)
 					if options.without_mask:
 						dep_settings.pmaskdict.clear()
-					arch_caches[prof[0]] = dep_settings
+					arch_caches[prof.sub_path] = dep_settings
 					while True:
 						try:
 							# Protect ACCEPT_KEYWORDS from config.regenerate()
@@ -1549,7 +1552,7 @@ for x in scanlist:
 						except ValueError:
 							break
 
-				xmatch_cache_key = (prof[0], tuple(groups))
+				xmatch_cache_key = (prof.sub_path, tuple(groups))
 				xcache = arch_xmatch_caches.get(xmatch_cache_key)
 				if xcache is None:
 					portdb.melt()
@@ -1571,7 +1574,8 @@ for x in scanlist:
 					prov_cp = portage.dep_getkey(myprovide)
 					if prov_cp not in dep_settings.getvirtuals():
 						stats["virtual.unavailable"]+=1
-						fails["virtual.unavailable"].append(x+"/"+y+".ebuild: "+keyword+"("+prof[0]+") "+prov_cp)
+						fails["virtual.unavailable"].append("%s: %s(%s) %s" % \
+							(relative_path, keyword, prof.sub_path, prov_cp))
 
 				if not baddepsyntax:
 					ismasked = os.path.join(catdir, y) not in \
@@ -1593,7 +1597,7 @@ for x in scanlist:
 						have_dev_keywords = \
 							bool(dev_keywords.intersection(keywords))
 
-					if prof[1] == "dev":
+					if prof.status == "dev":
 						suffix=suffix+"indev"
 
 					for mytype,mypos in [["DEPEND",len(missingvars)],["RDEPEND",len(missingvars)+1],["PDEPEND",len(missingvars)+2]]:
@@ -1602,33 +1606,28 @@ for x in scanlist:
 						myvalue = myaux[mytype]
 						if not myvalue:
 							continue
-						try:
-							mydep = portage.dep_check(myvalue, portdb,
-								dep_settings, use="all", mode=matchmode,
-								trees=trees)
-						except KeyError, e:
-							stats[mykey]=stats[mykey]+1
-							fails[mykey].append(x+"/"+y+".ebuild: "+keyword+"("+prof[0]+") "+repr(e[0]))
-							continue
-	
-						if mydep[0]==1:
-							if mydep[1]!=[]:
+
+						success, atoms = portage.dep_check(myvalue, portdb,
+							dep_settings, use="all", mode=matchmode,
+							trees=trees)
+
+						if success:
+							if atoms:
 								#we have some unsolvable deps
 								#remove ! deps, which always show up as unsatisfiable
-								d=0
-								while d<len(mydep[1]):
-									if mydep[1][d][0]=="!":
-										del mydep[1][d]
-									else:
-										d += 1
+								atoms = [str(atom) for atom in atoms if not atom.blocker]
 								#if we emptied out our list, continue:
-								if not mydep[1]:
+								if not atoms:
 									continue
 								stats[mykey]=stats[mykey]+1
-								fails[mykey].append(x+"/"+y+".ebuild: "+keyword+"("+prof[0]+") "+repr(mydep[1]))
+								fails[mykey].append("%s: %s(%s) %s" % \
+									(relative_path, keyword,
+									prof.sub_path, repr(atoms)))
 						else:
 							stats[mykey]=stats[mykey]+1
-							fails[mykey].append(x+"/"+y+".ebuild: "+keyword+"("+prof[0]+") "+repr(mydep[1]))
+							fails[mykey].append("%s: %s(%s) %s" % \
+								(relative_path, keyword,
+								prof.sub_path, repr(atoms)))
 
 	# Check for 'all unstable' or 'all masked' -- ACCEPT_KEYWORDS is stripped
 	# XXX -- Needs to be implemented in dep code. Can't determine ~arch nicely.
