@@ -540,32 +540,39 @@ repodir = os.path.realpath(repodir)
 def caterror(mycat):
 	err(mycat+" is not an official category.  Skipping QA checks in this directory.\nPlease ensure that you add "+catdir+" to "+repodir+"/profiles/categories\nif it is a new category.")
 
-# setup a uselist from portage
-uselist=[]
-try:
-	uselist=portage.grabfile(portdir+"/profiles/use.desc")
-	for l in range(0,len(uselist)):
-		uselist[l]=uselist[l].split()[0]
-	for var in repoman_settings["USE_EXPAND"].split():
-		vardescs = portage.grabfile(portdir+"/profiles/desc/"+var.lower()+".desc")
-		for l in range(0, len(vardescs)):
-			uselist.append(var.lower() + "_" + vardescs[l].split()[0])
-except (IOError, OSError, ParseError), e:
-	logging.exception("Couldn't read USE flags from use.desc")
-	sys.exit(1)
+# get lists of valid keywords, licenses, and use
+kwlist = set()
+liclist = set()
+uselist = set()
 
-# get lists of valid keywords and licenses
-kwlist = set(portage.grabfile(os.path.join(portdir, "profiles", "arch.list")))
-liclist = set(portage.listdir(os.path.join(portdir, "licenses")))
+for path in portdb.porttrees:
+	try:
+		liclist.update(os.listdir(os.path.join(path, "licenses")))
+	except OSError:
+		pass
+	kwlist.update(portage.grabfile(os.path.join(path,
+		"profiles", "arch.list")))
 
-if portdir_overlay != portdir:
-	for porttree in portdb.porttrees[1:]:
-		try:
-			liclist.update(os.listdir(os.path.join(porttree, "licenses")))
-		except OSError:
-			pass
-		kwlist.update(portage.grabfile(os.path.join(porttree,
-			"profiles", "arch.list")))
+	use_desc = portage.grabfile(os.path.join(path, 'profiles', 'use.desc'))
+	for x in use_desc:
+		x = x.split()
+		if x:
+			uselist.add(x[0])
+
+	expand_desc_dir = os.path.join(path, 'profiles', 'desc')
+	try:
+		expand_list = os.listdir(expand_desc_dir)
+	except OSError:
+		pass
+	else:
+		for fn in expand_list:
+			if not fn[-5:] == '.desc':
+				continue
+			use_prefix = fn[:-5].lower() + '_'
+			for x in portage.grabfile(os.path.join(expand_desc_dir, fn)):
+				x = x.split()
+				if x:
+					uselist.add(use_prefix + x[0])
 
 if not liclist:
 	logging.fatal("Couldn't find licenses?")
@@ -573,6 +580,10 @@ if not liclist:
 
 if not kwlist:
 	logging.fatal("Couldn't read KEYWORDS from arch.list")
+	sys.exit(1)
+
+if not uselist:
+	logging.fatal("Couldn't find use.desc?")
 	sys.exit(1)
 
 scanlist=[]
