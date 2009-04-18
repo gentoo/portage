@@ -49,6 +49,7 @@ portage.dep._dep_check_strict = True
 import portage.util
 import portage.locks
 import portage.exception
+from portage.cache.cache_errors import CacheError
 from portage.data import secpass
 from portage.elog.messages import eerror
 from portage.util import normalize_path as normpath
@@ -10070,6 +10071,24 @@ class JobStatusDisplay(object):
 
 		xtermTitle(" ".join(plain_output.split()))
 
+class ProgressHandler(object):
+	def __init__(self):
+		self.curval = 0
+		self.maxval = 0
+		self._last_update = 0
+		self.min_latency = 0.2
+
+	def onProgress(self, maxval, curval):
+		self.maxval = maxval
+		self.curval = curval
+		cur_time = time.time()
+		if cur_time - self._last_update >= self.min_latency:
+			self._last_update = cur_time
+			self.display()
+
+	def display(self):
+		raise NotImplementedError(self)
+
 class Scheduler(PollScheduler):
 
 	_opts_ignore_blockers = \
@@ -12743,7 +12762,8 @@ def show_mask_docs():
 def action_sync(settings, trees, mtimedb, myopts, myaction):
 	xterm_titles = "notitles" not in settings.features
 	emergelog(xterm_titles, " === sync")
-	myportdir = settings.get("PORTDIR", None)
+	portdb = trees[settings["ROOT"]]["porttree"].dbapi
+	myportdir = portdb.porttree_root
 	out = portage.output.EOutput()
 	if not myportdir:
 		sys.stderr.write("!!! PORTDIR is undefined.  Is /etc/make.globals missing?\n")
@@ -13201,8 +13221,12 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	root_config = trees[settings["ROOT"]]["root_config"]
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
 
-	if os.path.exists(myportdir+"/metadata/cache") and updatecache_flg:
-		action_metadata(settings, portdb, myopts)
+	if updatecache_flg and \
+		os.path.exists(os.path.join(myportdir, 'metadata', 'cache')):
+
+		# Only update cache for myportdir since that's
+		# the only one that's been synced here.
+		action_metadata(settings, portdb, myopts, porttrees=[myportdir])
 
 	if portage._global_updates(trees, mtimedb["updates"]):
 		mtimedb.commit()
@@ -13370,8 +13394,10 @@ def git_sync_timestamps(settings, portdir):
 
 	return os.EX_OK
 
-def action_metadata(settings, portdb, myopts):
-	portage.writemsg_stdout("\n>>> Updating Portage cache:      ")
+def action_metadata(settings, portdb, myopts, porttrees=None):
+	if porttrees is None:
+		porttrees = portdb.porttrees
+	portage.writemsg_stdout("\n>>> Updating Portage cache\n")
 	old_umask = os.umask(0002)
 	cachedir = os.path.normpath(settings.depcachedir)
 	if cachedir in ["/",    "/bin", "/dev",  "/etc",  "/home",
@@ -13383,60 +13409,213 @@ def action_metadata(settings, portdb, myopts):
 			"!!! This is ALMOST CERTAINLY NOT what you want: '%s'" % cachedir
 		sys.exit(73)
 	if not os.path.exists(cachedir):
-		os.mkdir(cachedir)
+		os.makedirs(cachedir)
 
-	ec = portage.eclass_cache.cache(portdb.porttree_root)
-	myportdir = os.path.realpath(settings["PORTDIR"])
-	cm = settings.load_best_module("portdbapi.metadbmodule")(
-		myportdir, "metadata/cache", portage.auxdbkeys[:], readonly=True)
+	auxdbkeys = [x for x in portage.auxdbkeys if not x.startswith("UNUSED_0")]
+	auxdbkeys = tuple(auxdbkeys)
 
-	from portage.cache import util
+	class TreeData(object):
+		__slots__ = ('dest_db', 'eclass_db', 'path', 'src_db', 'valid_nodes')
+		def __init__(self, dest_db, eclass_db, path, src_db):
+			self.dest_db = dest_db
+			self.eclass_db = eclass_db
+			self.path = path
+			self.src_db = src_db
+			self.valid_nodes = set()
 
-	class percentage_noise_maker(util.quiet_mirroring):
-		def __init__(self, dbapi):
-			self.dbapi = dbapi
-			self.cp_all = dbapi.cp_all()
-			l = len(self.cp_all)
-			self.call_update_min = 100000000
-			self.min_cp_all = l/100.0
-			self.count = 1
-			self.pstr = ''
-
-		def __iter__(self):
-			for x in self.cp_all:
-				self.count += 1
-				if self.count > self.min_cp_all:
-					self.call_update_min = 0
-					self.count = 0
-				for y in self.dbapi.cp_list(x):
-					yield y
-			self.call_update_mine = 0
-
-		def update(self, *arg):
+	porttrees_data = []
+	for path in porttrees:
+		src_db = portdb._pregen_auxdb.get(path)
+		if src_db is None and \
+			os.path.isdir(os.path.join(path, 'metadata', 'cache')):
+			src_db = portdb.metadbmodule(
+				path, 'metadata/cache', auxdbkeys, readonly=True)
 			try:
-				self.pstr = int(self.pstr) + 1
-			except ValueError:
-				self.pstr = 1
-			sys.stdout.write("%s%i%%" % \
-				("\b" * (len(str(self.pstr))+1), self.pstr))
-			sys.stdout.flush()
-			self.call_update_min = 10000000
+				src_db.ec = portdb._repo_info[path].eclass_db
+			except AttributeError:
+				pass
 
-		def finish(self, *arg):
-			sys.stdout.write("\b\b\b\b100%\n")
-			sys.stdout.flush()
+		if src_db is not None:
+			porttrees_data.append(TreeData(portdb.auxdb[path],
+				portdb._repo_info[path].eclass_db, path, src_db))
 
-	if "--quiet" in myopts:
-		def quicky_cpv_generator(cp_all_list):
-			for x in cp_all_list:
-				for y in portdb.cp_list(x):
-					yield y
-		source = quicky_cpv_generator(portdb.cp_all())
-		noise_maker = portage.cache.util.quiet_mirroring()
-	else:
-		noise_maker = source = percentage_noise_maker(portdb)
-	portage.cache.util.mirror_cache(source, cm, portdb.auxdb[myportdir],
-		eclass_cache=ec, verbose_instance=noise_maker)
+	porttrees = [tree_data.path for tree_data in porttrees_data]
+
+	isatty = sys.stdout.isatty()
+	quiet = not isatty or '--quiet' in myopts
+	onProgress = None
+	if not quiet:
+		progressBar = portage.output.TermProgressBar()
+		progressHandler = ProgressHandler()
+		onProgress = progressHandler.onProgress
+		def display():
+			progressBar.set(progressHandler.curval, progressHandler.maxval)
+		progressHandler.display = display
+		def sigwinch_handler(signum, frame):
+			lines, progressBar.term_columns = \
+				portage.output.get_term_size()
+		signal.signal(signal.SIGWINCH, sigwinch_handler)
+
+	# Temporarily override portdb.porttrees so portdb.cp_all()
+	# will only return the relevant subset.
+	portdb_porttrees = portdb.porttrees
+	portdb.porttrees = porttrees
+	try:
+		cp_all = portdb.cp_all()
+	finally:
+		portdb.porttrees = portdb_porttrees
+
+	curval = 0
+	maxval = len(cp_all)
+	if onProgress is not None:
+		onProgress(maxval, curval)
+
+	from portage.cache.util import quiet_mirroring
+	from portage import eapi_is_supported, \
+		_validate_cache_for_unsupported_eapis
+
+	# TODO: Display error messages, but do not interfere with the progress bar.
+	# Here's how:
+	#  1) erase the progress bar
+	#  2) show the error message
+	#  3) redraw the progress bar on a new line
+	noise = quiet_mirroring()
+
+	for cp in cp_all:
+		for tree_data in porttrees_data:
+			for cpv in portdb.cp_list(cp, mytree=tree_data.path):
+				tree_data.valid_nodes.add(cpv)
+				try:
+					src = tree_data.src_db[cpv]
+				except KeyError, e:
+					noise.missing_entry(cpv)
+					del e
+					continue
+				except CacheError, ce:
+					noise.exception(cpv, ce)
+					del ce
+					continue
+
+				eapi = src.get('EAPI')
+				if not eapi:
+					eapi = '0'
+				eapi = eapi.lstrip('-')
+				eapi_supported = eapi_is_supported(eapi)
+				if not eapi_supported:
+					if not _validate_cache_for_unsupported_eapis:
+						noise.misc(cpv, "unable to validate " + \
+							"cache for EAPI='%s'" % eapi)
+						continue
+
+				dest = None
+				try:
+					dest = tree_data.dest_db[cpv]
+				except (KeyError, CacheError):
+					pass
+
+				for d in (src, dest):
+					if d is not None and d.get('EAPI') in ('', '0'):
+						del d['EAPI']
+
+				if dest is not None:
+					if not (dest['_mtime_'] == src['_mtime_'] and \
+						tree_data.eclass_db.is_eclass_data_valid(
+							dest['_eclasses_']) and \
+						set(dest['_eclasses_']) == set(src['_eclasses_'])):
+						dest = None
+					else:
+						# We don't want to skip the write unless we're really
+						# sure that the existing cache is identical, so don't
+						# trust _mtime_ and _eclasses_ alone.
+						for k in set(chain(src, dest)).difference(
+							('_mtime_', '_eclasses_')):
+							if dest.get(k, '') != src.get(k, ''):
+								dest = None
+								break
+
+				if dest is not None:
+					# The existing data is valid and identical,
+					# so there's no need to overwrite it.
+					continue
+
+				try:
+					inherited = src.get('INHERITED', '')
+					eclasses = src.get('_eclasses_')
+				except CacheError, ce:
+					noise.exception(cpv, ce)
+					del ce
+					continue
+
+				if eclasses is not None:
+					if not tree_data.eclass_db.is_eclass_data_valid(
+						src['_eclasses_']):
+						noise.eclass_stale(cpv)
+						continue
+					inherited = eclasses
+				else:
+					inherited = inherited.split()
+
+				if inherited:
+					if tree_data.src_db.complete_eclass_entries and \
+						eclasses is None:
+						noise.corruption(cpv, "missing _eclasses_ field")
+						continue
+
+					# Even if _eclasses_ already exists, replace it with data from
+					# eclass_cache, in order to insert local eclass paths.
+					try:
+						eclasses = tree_data.eclass_db.get_eclass_data(inherited)
+					except KeyError:
+						# INHERITED contains a non-existent eclass.
+						noise.eclass_stale(cpv)
+						continue
+
+					if eclasses is None:
+						noise.eclass_stale(cpv)
+						continue
+					src['_eclasses_'] = eclasses
+
+				if not eapi_supported:
+					src = {
+						'EAPI'       : '-' + eapi,
+						'_mtime_'    : src['_mtime_'],
+						'_eclasses_' : src['_eclasses_'],
+					}
+
+				try:
+					tree_data.dest_db[cpv] = src
+				except CacheError, ce:
+					noise.exception(cpv, ce)
+					del ce
+
+		curval += 1
+		if onProgress is not None:
+			onProgress(maxval, curval)
+
+	if onProgress is not None:
+		onProgress(maxval, curval)
+
+	for tree_data in porttrees_data:
+		try:
+			dead_nodes = set(tree_data.dest_db.iterkeys())
+		except CacheError, e:
+			writemsg_level("Error listing cache entries for " + \
+				"'%s': %s, continuing...\n" % (tree_data.path, e),
+				level=logging.ERROR, noiselevel=-1)
+			del e
+		else:
+			dead_nodes.difference_update(tree_data.valid_nodes)
+			for cpv in dead_nodes:
+				try:
+					tree_data.dest_db[cpv]
+				except (KeyError, CacheError):
+					pass
+
+	if not quiet:
+		# make sure the final progress is displayed
+		progressHandler.display()
+		print
+		signal.signal(signal.SIGWINCH, signal.SIG_DFL)
 
 	sys.stdout.flush()
 	os.umask(old_umask)
