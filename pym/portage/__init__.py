@@ -1002,11 +1002,19 @@ def _lazy_iuse_regex(iuse_implicit):
 	return regex
 
 class _local_repo_config(object):
-	__slots__ = ('eclass_overrides', 'name',)
+	__slots__ = ('eclass_overrides', 'masters', 'name',)
 	def __init__(self, name, repo_opts):
 		self.name = name
-		self.eclass_overrides = \
-			tuple(repo_opts.get('eclass-overrides', '').split())
+
+		eclass_overrides = repo_opts.get('eclass-overrides')
+		if eclass_overrides is not None:
+			eclass_overrides = tuple(eclass_overrides.split())
+		self.eclass_overrides = eclass_overrides
+
+		masters = repo_opts.get('masters')
+		if masters is not None:
+			masters = tuple(masters.split())
+		self.masters = masters
 
 class config(object):
 	"""
@@ -1139,6 +1147,7 @@ class config(object):
 		"PORTAGE_GPG_DIR",
 		"PORTAGE_GPG_KEY", "PORTAGE_IONICE_COMMAND",
 		"PORTAGE_PACKAGE_EMPTY_ABORT",
+		"PORTAGE_REPO_DUPLICATE_WARN",
 		"PORTAGE_RO_DISTDIRS",
 		"PORTAGE_RSYNC_EXTRA_OPTS", "PORTAGE_RSYNC_OPTS",
 		"PORTAGE_RSYNC_RETRIES", "PORTAGE_USE", "PORT_LOGDIR",
@@ -3946,7 +3955,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				try:
 					mysize = os.stat(myfile_path).st_size
 				except OSError, e:
-					if e.errno != errno.ENOENT:
+					if e.errno not in (errno.ENOENT, errno.ESTALE):
 						raise
 					del e
 					mysize = 0
@@ -4058,7 +4067,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						try:
 							os.unlink(myfile_path)
 						except OSError, e:
-							if e.errno != errno.ENOENT:
+							if e.errno not in (errno.ENOENT, errno.ESTALE):
 								raise
 							del e
 						os.symlink(readonly_file, myfile_path)
@@ -4073,14 +4082,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								" %(file)s\n" % {"file":myfile}))
 							break
 						except (IOError, OSError), e:
-							if e.errno != errno.ENOENT:
+							if e.errno not in (errno.ENOENT, errno.ESTALE):
 								raise
 							del e
 
 				try:
 					mystat = os.stat(myfile_path)
 				except OSError, e:
-					if e.errno != errno.ENOENT:
+					if e.errno not in (errno.ENOENT, errno.ESTALE):
 						raise
 					del e
 				else:
@@ -4224,7 +4233,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						try:
 							mysize = os.stat(myfile_path).st_size
 						except OSError, e:
-							if e.errno != errno.ENOENT:
+							if e.errno not in (errno.ENOENT, errno.ESTALE):
 								raise
 							del e
 							mysize = 0
@@ -4248,7 +4257,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						try:
 							mystat = os.stat(myfile_path)
 						except OSError, e:
-							if e.errno != errno.ENOENT:
+							if e.errno not in (errno.ENOENT, errno.ESTALE):
 								raise
 							del e
 							fetched = 0
@@ -4260,7 +4269,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								try:
 									os.unlink(myfile_path)
 								except OSError, e:
-									if e.errno != errno.ENOENT:
+									if e.errno not in \
+										(errno.ENOENT, errno.ESTALE):
 										raise
 									del e
 								fetched = 0
@@ -4314,7 +4324,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						try:
 							mystat = os.stat(myfile_path)
 						except OSError, e:
-							if e.errno != errno.ENOENT:
+							if e.errno not in (errno.ENOENT, errno.ESTALE):
 								raise
 							del e
 							fetched = 0

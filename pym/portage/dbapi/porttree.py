@@ -143,7 +143,7 @@ class portdbapi(dbapi):
 		repository_map = {}
 		self.treemap = treemap
 		self._repository_map = repository_map
-		identically_named_paths = set()
+		identically_named_paths = {}
 		for path in porttrees:
 			if path in repository_map:
 				continue
@@ -160,7 +160,7 @@ class portdbapi(dbapi):
 				if identically_named_path is not None:
 					# The earlier one is discarded.
 					del repository_map[identically_named_path]
-					identically_named_paths.add(identically_named_path)
+					identically_named_paths[identically_named_path] = repo_name
 					if identically_named_path == porttrees[0]:
 						# Found another repo with the same name as
 						# $PORTDIR, so update porttrees[0] to match.
@@ -171,6 +171,11 @@ class portdbapi(dbapi):
 		# Ensure that each repo_name is unique. Later paths override
 		# earlier ones that correspond to the same name.
 		porttrees = [x for x in porttrees if x not in identically_named_paths]
+		ignored_map = {}
+		for path, repo_name in identically_named_paths.iteritems():
+			ignored_map.setdefault(repo_name, []).append(path)
+		self._ignored_repos = tuple((repo_name, tuple(paths)) \
+			for repo_name, paths in ignored_map.iteritems())
 
 		self.porttrees = porttrees
 		porttree_root = porttrees[0]
@@ -202,11 +207,27 @@ class portdbapi(dbapi):
 				continue
 
 			repo_name = self._repository_map.get(path)
+
+			loc_repo_conf = None
+			if local_repo_configs is not None:
+				if repo_name is not None:
+					loc_repo_conf = local_repo_configs.get(repo_name)
+				else:
+					loc_repo_conf = default_loc_repo_config
+
 			layout_filename = os.path.join(path, "metadata/layout.conf")
 			layout_file = KeyValuePairFileLoader(layout_filename, None, None)
 			layout_data, layout_errors = layout_file.load()
 			porttrees = []
-			for master_name in layout_data.get('masters', '').split():
+
+			masters = None
+			if loc_repo_conf is not None and \
+				loc_repo_conf.masters is not None:
+				masters = loc_repo_conf.masters
+			else:
+				masters = layout_data.get('masters', '').split()
+
+			for master_name in masters:
 				master_path = self.treemap.get(master_name)
 				if master_path is None:
 					writemsg_level(("Unavailable repository '%s' " + \
@@ -225,13 +246,8 @@ class portdbapi(dbapi):
 
 			porttrees.append(path)
 
-			if local_repo_configs is not None:
-				loc_repo_conf = None
-				if repo_name is not None:
-					loc_repo_conf = local_repo_configs.get(repo_name)
-				if loc_repo_conf is None:
-					loc_repo_conf = default_loc_repo_config
-				if loc_repo_conf is not None:
+			if loc_repo_conf is not None and \
+					loc_repo_conf.eclass_overrides is not None:
 					for other_name in loc_repo_conf.eclass_overrides:
 						other_path = self.treemap.get(other_name)
 						if other_path is None:

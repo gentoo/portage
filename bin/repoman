@@ -535,6 +535,7 @@ startdir = normalize_path(mydir)
 repodir = startdir
 for x in range(0, repolevel - 1):
 	repodir = os.path.dirname(repodir)
+repodir = os.path.realpath(repodir)
 
 def caterror(mycat):
 	err(mycat+" is not an official category.  Skipping QA checks in this directory.\nPlease ensure that you add "+catdir+" to "+repodir+"/profiles/categories\nif it is a new category.")
