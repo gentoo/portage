@@ -589,9 +589,13 @@ repository name should correspond the value of a \fBrepo_name\fR entry
 from one of the repositories that is configured via the \fBPORTDIR\fR or
 \fBPORTDIR_OVERLAY\fR variables (see \fBmake.conf\fR(5)). Repositories listed
 toward the right of the \fBmasters\fR list take precedence over those listed
-toward the left of the list. Site-specific
+toward the left of the list. \fISite-specific\fR
 overrides to \fBlayout.conf\fR settings may be specified in
-\fB/etc/portage/repos.conf\fR.
+\fB/etc/portage/repos.conf\fR. Settings in \fBrepos.conf\fR take
+precedence over settings in \fBlayout.conf\fR, except tools such as
+\fBrepoman\fR(1) and \fBegencache\fR(1) will entirely ignore
+\fBrepos.conf\fR since their operations are inherently \fBnot\fR
+\fIsite\-specific\fR.
 
 .I Example:
 .nf
