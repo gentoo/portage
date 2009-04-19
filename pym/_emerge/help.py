@@ -106,6 +106,18 @@ def help(myaction,myopts,havecolor=1):
 		for line in wrap(paragraph, desc_width):
 			print desc_indent + line
 		print
+		print "       " + green("--deselect") + "[=%s]" % turquoise("n")
+
+		paragraph = \
+			"Remove atoms from the world file. This action is implied " + \
+			"by uninstall actions, including --depclean, " + \
+			"--prune and --unmerge. Use --deselect=n " + \
+			"in order to prevent uninstall actions from removing " + \
+			"atoms from the world file."
+
+		for line in wrap(paragraph, desc_width):
+			print desc_indent + line
+		print
 		print "       "+green("--info")
 		print "              Displays important portage variables that will be exported to"
 		print "              ebuild.sh when performing merges. This information is useful"
