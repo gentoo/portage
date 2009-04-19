@@ -13611,7 +13611,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 			dead_nodes.difference_update(tree_data.valid_nodes)
 			for cpv in dead_nodes:
 				try:
-					tree_data.dest_db[cpv]
+					del tree_data.dest_db[cpv]
 				except (KeyError, CacheError):
 					pass
 
