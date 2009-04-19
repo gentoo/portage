@@ -14060,11 +14060,23 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 	return rval
 
 def action_deselect(settings, trees, opts, atoms):
-	world_set = trees[settings['ROOT']]['root_config'].sets['world']
+	root_config = trees[settings['ROOT']]['root_config']
+	world_set = root_config.sets['world']
 	if not hasattr(world_set, 'update'):
 		writemsg_level("World set does not appear to be mutable.\n",
 			level=logging.ERROR, noiselevel=-1)
 		return 1
+
+	vardb = root_config.trees['vartree'].dbapi
+	expanded_atoms = set(atoms)
+	from portage.dep import Atom
+	for atom in atoms:
+		for cpv in vardb.match(atom):
+			slot, = vardb.aux_get(cpv, ['SLOT'])
+			if not slot:
+				slot = '0'
+			expanded_atoms.add(Atom('%s:%s' % (portage.cpv_getkey(cpv), slot)))
+
 	pretend = '--pretend' in opts
 	locked = False
 	if not pretend and hasattr(world_set, 'lock'):
@@ -14073,12 +14085,11 @@ def action_deselect(settings, trees, opts, atoms):
 	try:
 		discard_atoms = set()
 		world_set.load()
-		from portage.dep import Atom
 		for atom in world_set:
 			if not isinstance(atom, Atom):
 				# nested set
 				continue
-			for arg_atom in atoms:
+			for arg_atom in expanded_atoms:
 				if arg_atom.intersects(atom) and \
 					not (arg_atom.slot and not atom.slot):
 					discard_atoms.add(atom)
