@@ -16125,7 +16125,8 @@ def emerge_main():
 	if portage.secpass < 2:
 		# We've already allowed "--version" and "--help" above.
 		if "--pretend" not in myopts and myaction not in ("search","info"):
-			need_superuser = myaction in ('deselect',) or not \
+			need_superuser = myaction in ('clean', 'depclean', 'deselect',
+				'prune', 'unmerge') or not \
 				(fetchonly or \
 				(buildpkgonly and secpass >= 1) or \
 				myaction in ("metadata", "regen") or \
