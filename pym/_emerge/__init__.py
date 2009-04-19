@@ -14087,6 +14087,13 @@ def action_deselect(settings, trees, opts, atoms):
 			for atom in sorted(discard_atoms):
 				print ">>> Removing %s from \"world\" favorites file..." % \
 					colorize("INFORM", str(atom))
+
+			if '--ask' in opts:
+				prompt = "Would you like to remove these " + \
+					"packages from your world favorites?"
+				if userquery(prompt) == 'No':
+					return os.EX_OK
+
 			remaining = set(world_set)
 			remaining.difference_update(discard_atoms)
 			if not pretend:
