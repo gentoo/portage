@@ -13557,12 +13557,12 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 				else:
 					inherited = inherited.split()
 
-				if inherited:
-					if tree_data.src_db.complete_eclass_entries and \
-						eclasses is None:
-						noise.corruption(cpv, "missing _eclasses_ field")
-						continue
+				if tree_data.src_db.complete_eclass_entries and \
+					eclasses is None:
+					noise.corruption(cpv, "missing _eclasses_ field")
+					continue
 
+				if inherited:
 					# Even if _eclasses_ already exists, replace it with data from
 					# eclass_cache, in order to insert local eclass paths.
 					try:
@@ -13576,6 +13576,8 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 						noise.eclass_stale(cpv)
 						continue
 					src['_eclasses_'] = eclasses
+				else:
+					src['_eclasses_'] = {}
 
 				if not eapi_supported:
 					src = {
