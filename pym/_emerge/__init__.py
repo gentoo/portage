@@ -14065,8 +14065,9 @@ def action_deselect(settings, trees, opts, atoms):
 		writemsg_level("World set does not appear to be mutable.\n",
 			level=logging.ERROR, noiselevel=-1)
 		return 1
+	pretend = '--pretend' in opts
 	locked = False
-	if not hasattr(world_set, 'lock'):
+	if not pretend and hasattr(world_set, 'lock'):
 		world_set.lock()
 		locked = True
 	try:
@@ -14078,16 +14079,18 @@ def action_deselect(settings, trees, opts, atoms):
 				# nested set
 				continue
 			for arg_atom in atoms:
-				if arg_atom.intersects(atom):
+				if arg_atom.intersects(atom) and \
+					not (arg_atom.slot and not atom.slot):
 					discard_atoms.add(atom)
-				break
+					break
 		if discard_atoms:
 			for atom in sorted(discard_atoms):
 				print ">>> Removing %s from \"world\" favorites file..." % \
 					colorize("INFORM", str(atom))
 			remaining = set(world_set)
 			remaining.difference_update(discard_atoms)
-			world_set.replace(remaining)
+			if not pretend:
+				world_set.replace(remaining)
 		else:
 			print ">>> No matching atoms found in \"world\" favorites file..."
 	finally:
@@ -16102,7 +16105,7 @@ def emerge_main():
 	if portage.secpass < 2:
 		# We've already allowed "--version" and "--help" above.
 		if "--pretend" not in myopts and myaction not in ("search","info"):
-			need_superuser = not \
+			need_superuser = myaction in ('deselect',) or not \
 				(fetchonly or \
 				(buildpkgonly and secpass >= 1) or \
 				myaction in ("metadata", "regen") or \
