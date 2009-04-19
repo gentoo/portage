@@ -254,10 +254,12 @@ class portdbapi(dbapi):
 					porttrees.append(master_path)
 
 			if not porttrees:
-				# Make PORTDIR the default master, but only if this
-				# repo doesn't provide profiles.desc itself.
+				# Make PORTDIR the default master, but only if our
+				# heuristics suggest that it's necessary.
 				profiles_desc = os.path.join(path, 'profiles', 'profiles.desc')
-				if not os.path.exists(profiles_desc):
+				eclass_dir = os.path.join(path, 'eclass')
+				if not os.path.isfile(profiles_desc) or \
+					not os.path.isdir(eclass_dir):
 					porttrees.append(porttree_root)
 
 			porttrees.append(path)
