@@ -200,8 +200,23 @@ class portdbapi(dbapi):
 		eclass_dbs = {porttree_root : self.eclassdb}
 		local_repo_configs = self.mysettings._local_repo_configs
 		default_loc_repo_config = None
+		repo_aliases = {}
 		if local_repo_configs is not None:
 			default_loc_repo_config = local_repo_configs.get('DEFAULT')
+			for repo_name, loc_repo_conf in local_repo_configs.iteritems():
+				if loc_repo_conf.aliases is not None:
+					for alias in loc_repo_conf.aliases:
+						overridden_alias = repo_aliases.get(alias)
+						if overridden_alias is not None:
+							writemsg_level(("!!! Alias '%s' " + \
+								"created for '%s' overrides " + \
+								"'%s' alias in " + \
+								"'%s'\n") % (alias, repo_name,
+								overridden_alias,
+								self.mysettings._local_repo_conf_path),
+								level=logging.WARNING, noiselevel=-1)
+						repo_aliases[alias] = repo_name
+
 		for path in self.porttrees:
 			if path in self._repo_info:
 				continue
@@ -228,6 +243,7 @@ class portdbapi(dbapi):
 				masters = layout_data.get('masters', '').split()
 
 			for master_name in masters:
+				master_name = repo_aliases.get(master_name, master_name)
 				master_path = self.treemap.get(master_name)
 				if master_path is None:
 					writemsg_level(("Unavailable repository '%s' " + \

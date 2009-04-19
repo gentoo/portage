@@ -125,9 +125,12 @@ def vercmp(ver1, ver2, silent=1):
 			vercmp_cache[mykey] = 1
 			return 1
 		elif list1[i] != list2[i]:
-			vercmp_cache[mykey] = list1[i] - list2[i]
-			return list1[i] - list2[i]
-	
+			a = list1[i]
+			b = list2[i]
+			rval = (a > b) - (a < b)
+			vercmp_cache[mykey] = rval
+			return rval
+
 	# main version is equal, so now compare the _suffix part
 	list1 = match1.group(6).split("_")[1:]
 	list2 = match2.group(6).split("_")[1:]
@@ -143,7 +146,11 @@ def vercmp(ver1, ver2, silent=1):
 		else:
 			s2 = suffix_regexp.match(list2[i]).groups()
 		if s1[0] != s2[0]:
-			return suffix_value[s1[0]] - suffix_value[s2[0]]
+			a = suffix_value[s1[0]]
+			b = suffix_value[s2[0]]
+			rval = (a > b) - (a < b)
+			vercmp_cache[mykey] = rval
+			return rval
 		if s1[1] != s2[1]:
 			# it's possible that the s(1|2)[1] == ''
 			# in such a case, fudge it.
@@ -155,16 +162,18 @@ def vercmp(ver1, ver2, silent=1):
 				r2 = int(s2[1])
 			except ValueError:
 				r2 = 0
-			if r1 - r2:
-				return r1 - r2
-	
-	# the suffix part is equal to, so finally check the revision
+			rval = (r1 > r2) - (r1 < r2)
+			if rval:
+				vercmp_cache[mykey] = rval
+				return rval
+
+	# The suffix part is equal too, so finally check the revision
 	# PREFIX hack: a revision starting with 0 is an 'inter-revision',
 	# which means that it is possible to create revisions on revisions.
 	# An example is -r01.1 which is the first revision of -r1.  Note
 	# that a period (.) is used to separate the real revision and the
 	# secondary revision number.  This trick is in use to allow revision
-	# bumps in ebuilds synced from the main tree for prefix changes,
+	# bumps in ebuilds synced from the main tree for Prefix changes,
 	# while still staying in the main tree versioning scheme.
 	if match1.group(10):
 		if match1.group(10)[0] == '0' and '.' in match1.group(10):
@@ -189,8 +198,9 @@ def vercmp(ver1, ver2, silent=1):
 	if r1 == r2 and (r3 != 0 or r4 != 0):
 		r1 = r3
 		r2 = r4
-	vercmp_cache[mykey] = r1 - r2
-	return r1 - r2
+	rval = (r1 > r2) - (r1 < r2)
+	vercmp_cache[mykey] = rval
+	return rval
 	
 def pkgcmp(pkg1, pkg2):
 	"""
@@ -216,15 +226,7 @@ def pkgcmp(pkg1, pkg2):
 	"""
 	if pkg1[0] != pkg2[0]:
 		return None
-	mycmp = vercmp("-".join(pkg1[1:]), "-".join(pkg2[1:]))
-	if mycmp is None:
-		return mycmp
-	if mycmp > 0:
-		return 1
-	if mycmp < 0:
-		return -1
-	return 0
-
+	return vercmp("-".join(pkg1[1:]), "-".join(pkg2[1:]))
 
 pkgcache={}
 
