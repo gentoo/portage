@@ -253,7 +253,7 @@ class portdbapi(dbapi):
 				else:
 					porttrees.append(master_path)
 
-			if not porttrees:
+			if not porttrees and path != porttree_root:
 				# Make PORTDIR the default master, but only if our
 				# heuristics suggest that it's necessary.
 				profiles_desc = os.path.join(path, 'profiles', 'profiles.desc')
