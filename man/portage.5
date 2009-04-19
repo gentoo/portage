@@ -587,12 +587,16 @@ Specifies information about the repository layout. Currently, only a single
 repositories which satisfy dependencies on eclasses and/or ebuilds. Each
 repository name should correspond the value of a \fBrepo_name\fR entry
 from one of the repositories that is configured via the \fBPORTDIR\fR or
-\fBPORTDIR_OVERLAY\fR variables (see \fBmake.conf\fR(5)). Site-specific
+\fBPORTDIR_OVERLAY\fR variables (see \fBmake.conf\fR(5)). Repositories listed
+toward the right of the \fBmasters\fR list take precedence over those listed
+toward the left of the list. Site-specific
 overrides to \fBlayout.conf\fR settings may be specified in
 \fB/etc/portage/repos.conf\fR.
 
 .I Example:
 .nf
+# eclasses provided by java-overlay take precedence over identically named
+# eclasses that are provided by gentoo
 masters = gentoo java-overlay
 .fi
 .RE
