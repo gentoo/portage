@@ -558,6 +558,36 @@ class Atom(object):
 		raise AttributeError("Atom instances are immutable",
 			self.__class__, name, value)
 
+	def intersects(self, other):
+		"""
+		Atoms with different operator or cpv attributes cause this method to
+		return False. TODO: Detect intersection when operators are present.
+		@param other: The package atom to match
+		@type other: Atom
+		@rtype: Boolean
+		@return: True if this atom and the other atom intersect,
+			False otherwise.
+		"""
+		if not isinstance(other, Atom):
+			raise TypeError("expected %s, got %s" % \
+				(Atom, type(other)))
+
+		if self == other:
+			return True
+
+		if self.cp != other.cp or \
+			self.use != other.use or \
+			self.operator != other.operator or \
+			self.cpv != other.cpv:
+			return False
+
+		if self.slot is None or \
+			other.slot is None or \
+			self.slot == other.slot:
+			return True
+
+		return False
+
 	# Implement some common str methods.
 
 	def __eq__(self, other):

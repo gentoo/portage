@@ -11853,6 +11853,8 @@ def unmerge(root_config, myopts, unmerge_action,
 	clean_world=1, clean_delay=1, ordered=0, raise_on_error=0,
 	scheduler=None, writemsg_level=portage.util.writemsg_level):
 
+	if clean_world:
+		clean_world = myopts.get('--deselect') != 'n'
 	quiet = "--quiet" in myopts
 	settings = root_config.settings
 	sets = root_config.sets
@@ -14049,11 +14051,49 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 		unmerge(trees[settings["ROOT"]]['root_config'], opts, action,
 			valid_atoms, ldpath_mtimes, ordered=ordered)
 		rval = os.EX_OK
+	elif action == 'deselect':
+		rval = action_deselect(settings, trees, opts, valid_atoms)
 	else:
 		rval = action_depclean(settings, trees, ldpath_mtimes,
 			opts, action, valid_atoms, spinner)
 
 	return rval
+
+def action_deselect(settings, trees, opts, atoms):
+	world_set = trees[settings['ROOT']]['root_config'].sets['world']
+	if not hasattr(world_set, 'update'):
+		writemsg_level("World set does not appear to be mutable.\n",
+			level=logging.ERROR, noiselevel=-1)
+		return 1
+	locked = False
+	if not hasattr(world_set, 'lock'):
+		world_set.lock()
+		locked = True
+	try:
+		discard_atoms = set()
+		world_set.load()
+		from portage.dep import Atom
+		for atom in world_set:
+			if not isinstance(atom, Atom):
+				# nested set
+				continue
+			for arg_atom in atoms:
+				if arg_atom.intersects(atom):
+					discard_atoms.add(atom)
+				break
+		if discard_atoms:
+			for atom in sorted(discard_atoms):
+				print ">>> Removing %s from \"world\" favorites file..." % \
+					colorize("INFORM", str(atom))
+			remaining = set(world_set)
+			remaining.difference_update(discard_atoms)
+			world_set.replace(remaining)
+		else:
+			print ">>> No matching atoms found in \"world\" favorites file..."
+	finally:
+		if locked:
+			world_set.unlock()
+	return os.EX_OK
 
 def action_depclean(settings, trees, ldpath_mtimes,
 	myopts, action, myfiles, spinner):
@@ -14093,6 +14133,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	root_config = trees[myroot]["root_config"]
 	getSetAtoms = root_config.setconfig.getSetAtoms
 	vardb = trees[myroot]["vartree"].dbapi
+	deselect = myopts.get('--deselect') != 'n'
 
 	required_set_names = ("system", "world")
 	required_sets = {}
@@ -14150,11 +14191,13 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	if action == "depclean":
 
 		if args_set:
+
+			if deselect:
+				world_temp_set.clear()
+
 			# Pull in everything that's installed but not matched
 			# by an argument atom since we don't want to clean any
 			# package if something depends on it.
-
-			world_temp_set.clear()
 			for pkg in vardb:
 				spinner.update()
 
@@ -14171,9 +14214,11 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	elif action == "prune":
 
+		if deselect:
+			world_temp_set.clear()
+
 		# Pull in everything that's installed since we don't
 		# to prune a package if something depends on it.
-		world_temp_set.clear()
 		world_temp_set.update(vardb.cp_all())
 
 		if not args_set:
@@ -15175,16 +15220,19 @@ def insert_optional_args(args):
 
 	new_args = []
 	jobs_opts = ("-j", "--jobs")
-	root_deps_opt = '--root-deps'
-	root_deps_choices = ('True', 'rdeps')
+	default_arg_opts = {
+		'--deselect'   : ('n',),
+		'--root-deps'  : ('rdeps',),
+	}
 	arg_stack = args[:]
 	arg_stack.reverse()
 	while arg_stack:
 		arg = arg_stack.pop()
 
-		if arg == root_deps_opt:
+		default_arg_choices = default_arg_opts.get(arg)
+		if default_arg_choices is not None:
 			new_args.append(arg)
-			if arg_stack and arg_stack[-1] in root_deps_choices:
+			if arg_stack and arg_stack[-1] in default_arg_choices:
 				new_args.append(arg_stack.pop())
 			else:
 				# insert default argument
@@ -15252,6 +15300,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices":("y", "n")
 		},
 
+		"--deselect": {
+			"help"    : "remove atoms from the world file",
+			"type"    : "choice",
+			"choices" : ("True", "n")
+		},
+
 		"--jobs": {
 
 			"help"   : "Specifies the number of packages to build " + \
@@ -15317,6 +15371,9 @@ def parse_opts(tmpcmdline, silent=False):
 
 	myoptions, myargs = parser.parse_args(args=tmpcmdline)
 
+	if myoptions.deselect == "True":
+		myoptions.deselect = True
+
 	if myoptions.root_deps == "True":
 		myoptions.root_deps = True
 
@@ -15373,6 +15430,9 @@ def parse_opts(tmpcmdline, silent=False):
 				multiple_actions(myaction, action_opt)
 				sys.exit(1)
 			myaction = action_opt
+
+	if myaction is None and myoptions.deselect is True:
+		myaction = 'deselect'
 
 	myfiles += myargs
 
@@ -16140,11 +16200,11 @@ def emerge_main():
 		action_search(trees[settings["ROOT"]]["root_config"],
 			myopts, myfiles, spinner)
 
-	elif myaction in ('clean', 'depclean', 'prune', 'unmerge'):
+	elif myaction in ('clean', 'depclean', 'deselect', 'prune', 'unmerge'):
 		validate_ebuild_environment(trees)
 		rval = action_uninstall(settings, trees, mtimedb["ldpath"],
 			myopts, myaction, myfiles, spinner)
-		if not (buildpkgonly or fetchonly or pretend):
+		if not (myaction == 'deselect' or buildpkgonly or fetchonly or pretend):
 			post_emerge(root_config, myopts, mtimedb, rval)
 		return rval
 

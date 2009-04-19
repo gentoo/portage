@@ -130,6 +130,13 @@ unmerge matched packages that have no reverse dependencies. Use
 \fB\-\-depclean\fR together with \fB\-\-verbose\fR to show reverse
 dependencies.
 .TP
+.BR "\-\-deselect[=n]"
+Remove atoms from the world file. This action is implied
+by uninstall actions, including \fB-\-depclean\fR,
+\fB-\-prune\fR and \fB-\-unmerge\fR. Use \fB-\-deselect=n\fR
+in order to prevent uninstall actions from removing
+atoms from the world file.
+.TP
 .BR "\-\-help " (\fB\-h\fR)
 Displays help information for emerge.  Adding one of the additional
 arguments listed above will give you more specific help information
