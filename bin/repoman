@@ -1900,7 +1900,7 @@ else:
 			print
 			print "(Didn't find any changed files...)"
 			print
-			sys.exit(0)
+			sys.exit(1)
 
 	# Manifests need to be regenerated after all other commits, so don't commit
 	# them now even if they have changed.
