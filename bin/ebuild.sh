@@ -629,7 +629,7 @@ _eapi2_src_compile() {
 }
 
 ebuild_phase() {
-	[ "$(type -t ${1})" == "function" ] && qa_call ${1}
+	declare -F "$1" >/dev/null && qa_call $1
 }
 
 ebuild_phase_with_hooks() {
@@ -1261,7 +1261,7 @@ inherit() {
 		if [[ -n ${!__export_funcs_var} ]] ; then
 			for x in ${!__export_funcs_var} ; do
 				debug-print "EXPORT_FUNCTIONS: $x -> ${ECLASS}_$x"
-				[[ $(type -t ${ECLASS}_$x) = function ]] || \
+				declare -F "${ECLASS}_$x" >/dev/null || \
 					die "EXPORT_FUNCTIONS: ${ECLASS}_$x is not defined"
 				eval "$x() { ${ECLASS}_$x \"\$@\" ; }" > /dev/null
 			done
@@ -1440,7 +1440,7 @@ _ebuild_phase_funcs() {
 	local x y default_func=""
 
 	for x in pkg_nofetch src_unpack src_test ; do
-		[[ $(type -t $x) = function ]] || \
+		declare -F $x >/dev/null || \
 			eval "$x() { _eapi0_$x \"\$@\" ; }"
 	done
 
@@ -1448,7 +1448,7 @@ _ebuild_phase_funcs() {
 
 		0|1)
 
-			if [[ $(type -t src_compile) != function ]] ; then
+			if ! declare -F src_compile >/dev/null ; then
 				case $eapi in
 					0)
 						src_compile() { _eapi0_src_compile "$@" ; }
@@ -1473,10 +1473,10 @@ _ebuild_phase_funcs() {
 
 		*)
 
-			[[ $(type -t src_configure) = function ]] || \
+			declare -F src_configure >/dev/null || \
 				src_configure() { _eapi2_src_configure "$@" ; }
 
-			[[ $(type -t src_compile) = function ]] || \
+			declare -F src_compile >/dev/null || \
 				src_compile() { _eapi2_src_compile "$@" ; }
 
 			if hasq $phase_func $default_phases ; then
@@ -1838,7 +1838,7 @@ _source_ebuild() {
 	[[ -n $EAPI ]] || EAPI=0
 
 	# alphabetically ordered by $EBUILD_PHASE value
-	local valid_phases
+	local f valid_phases
 	case "$EAPI" in
 		0|1)
 			valid_phases="src_compile pkg_config pkg_info src_install
@@ -1854,7 +1854,7 @@ _source_ebuild() {
 
 	DEFINED_PHASES=
 	for f in $valid_phases ; do
-		if [[ $(type -t $f) = function ]] ; then
+		if declare -F $f >/dev/null ; then
 			f=${f#pkg_}
 			DEFINED_PHASES+=" ${f#src_}"
 		fi
@@ -1954,8 +1954,8 @@ ebuild_main() {
 		exit 1
 		;;
 	prerm|postrm|postinst|config|info)
-		if hasq ${EBUILD_SH_ARGS} config info && \
-			[ "$(type -t pkg_${EBUILD_SH_ARGS})" != "function" ]; then
+		if hasq "$EBUILD_SH_ARGS" config info && \
+			! declare -F "pkg_$EBUILD_SH_ARGS" >/dev/null ; then
 			ewarn  "pkg_${EBUILD_SH_ARGS}() is not defined: '${EBUILD##*/}'"
 		fi
 		export SANDBOX_ON="0"
