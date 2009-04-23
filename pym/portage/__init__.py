@@ -15,6 +15,9 @@ try:
 	import codecs
 	import copy
 	import errno
+	if not hasattr(errno, 'ESTALE'):
+		# ESTALE may not be defined on some systems, such as interix.
+		errno.ESTALE = -1
 	import logging
 	import os
 	import re
