@@ -1914,6 +1914,7 @@ ebuild_main() {
 	esac
 
 	export PATH="/usr/local/sbin:/sbin:/usr/sbin:${ebuild_helpers_path}:/usr/local/bin:/bin:/usr/bin:${ROOTPATH}"
+	[[ -n $PREROOTPATH ]] && export PATH="${PREROOTPATH%%:}:$PATH"
 	unset ebuild_helpers_path
 
 	if ! hasq $EBUILD_SH_ARGS clean depend help info nofetch ; then
