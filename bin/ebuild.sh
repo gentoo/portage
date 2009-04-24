@@ -1444,6 +1444,14 @@ _ebuild_phase_funcs() {
 			eval "$x() { _eapi0_$x \"\$@\" ; }"
 	done
 
+	if ! hasq $eapi 0 1 2 ; then
+		for x in dosed dohard ; do
+			eval "$x() {
+				die \"$x has been banned for EAPI '$eapi'\"
+			}"
+		done
+	fi
+
 	case $eapi in
 
 		0|1)
