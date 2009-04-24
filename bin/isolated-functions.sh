@@ -498,8 +498,7 @@ save_ebuild_env() {
 		done
 		unset x
 
-		unset -f die diefunc dosed dohard dump_trace \
-			quiet_mode vecho elog_base eqawarn elog \
+		unset -f dump_trace die diefunc quiet_mode vecho elog_base eqawarn elog \
 			esyslog einfo einfon ewarn eerror ebegin _eend eend KV_major \
 			KV_minor KV_micro KV_to_int get_KV unset_colors set_colors has \
 			hasg hasgq hasv hasq qa_source qa_call \
