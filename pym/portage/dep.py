@@ -560,8 +560,9 @@ class Atom(object):
 
 	def intersects(self, other):
 		"""
-		Atoms with different operator or cpv attributes cause this method to
-		return False. TODO: Detect intersection when operators are present.
+		Atoms with different cpv, operator or use attributes cause this method
+		to return False even though there may actually be some intersection.
+		TODO: Detect more forms of intersection.
 		@param other: The package atom to match
 		@type other: Atom
 		@rtype: Boolean

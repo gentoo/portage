@@ -13641,12 +13641,12 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 				else:
 					inherited = inherited.split()
 
-				if inherited:
-					if tree_data.src_db.complete_eclass_entries and \
-						eclasses is None:
-						noise.corruption(cpv, "missing _eclasses_ field")
-						continue
+				if tree_data.src_db.complete_eclass_entries and \
+					eclasses is None:
+					noise.corruption(cpv, "missing _eclasses_ field")
+					continue
 
+				if inherited:
 					# Even if _eclasses_ already exists, replace it with data from
 					# eclass_cache, in order to insert local eclass paths.
 					try:
@@ -13660,6 +13660,8 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 						noise.eclass_stale(cpv)
 						continue
 					src['_eclasses_'] = eclasses
+				else:
+					src['_eclasses_'] = {}
 
 				if not eapi_supported:
 					src = {
@@ -13693,7 +13695,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 			dead_nodes.difference_update(tree_data.valid_nodes)
 			for cpv in dead_nodes:
 				try:
-					tree_data.dest_db[cpv]
+					del tree_data.dest_db[cpv]
 				except (KeyError, CacheError):
 					pass
 
@@ -16208,7 +16210,8 @@ def emerge_main():
 	if portage.secpass < 2:
 		# We've already allowed "--version" and "--help" above.
 		if "--pretend" not in myopts and myaction not in ("search","info"):
-			need_superuser = myaction in ('deselect',) or not \
+			need_superuser = myaction in ('clean', 'depclean', 'deselect',
+				'prune', 'unmerge') or not \
 				(fetchonly or \
 				(buildpkgonly and secpass >= 1) or \
 				myaction in ("metadata", "regen") or \
