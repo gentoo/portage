@@ -1,4 +1,4 @@
-#!/bin/bash
+#!@PORTAGE_BASH@
 # Copyright 2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
@@ -7,6 +7,6 @@
 # IPC to guarantee that the ebuild process and all of its children (including
 # this helper) are killed immediately, ensuring that "false success" is
 # impossible.
-source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 die "$@"
 exit 1

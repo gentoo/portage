@@ -71,6 +71,8 @@ unalias -a
 # Unset some variables that break things.
 unset GZIP BZIP BZIP2 CDPATH GREP_OPTIONS GREP_COLOR GLOBIGNORE
 
+#export PATH="/usr/local/sbin:/sbin:/usr/sbin:$PORTAGE_BIN_PATH/ebuild-helpers:/usr/local/bin:/bin:/usr/bin:${ROOTPATH}"
+# PREFIX: we deviate in path order, should we split up DEFAULT_PATH?
 export PATH="${DEFAULT_PATH}:$PORTAGE_BIN_PATH/ebuild-helpers:${ROOTPATH}"
 [ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
 
@@ -1923,7 +1925,9 @@ ebuild_main() {
 			;;
 	esac
 
-	export PATH="/usr/local/sbin:/sbin:/usr/sbin:${ebuild_helpers_path}:/usr/local/bin:/bin:/usr/bin:${ROOTPATH}"
+	#export PATH="/usr/local/sbin:/sbin:/usr/sbin:${ebuild_helpers_path}:/usr/local/bin:/bin:/usr/bin:${ROOTPATH}"
+	# PREFIX: same deviation as at the top of this file
+	export PATH="${DEFAULT_PATH}:${ebuild_helpers_path}:${ROOTPATH}"
 	[[ -n $PREROOTPATH ]] && export PATH="${PREROOTPATH%%:}:$PATH"
 	unset ebuild_helpers_path
 
