@@ -148,15 +148,6 @@ AC_TRY_LINK([
 		 ]
 )
 
-AC_ARG_ENABLE(just-compiled-sources,
-AC_HELP_STRING([--enable-just-compiled-sources],[install just the bytecode, not the sources (default no)]),
-[case "${enableval}" in
-  yes)	enable_py_sources=false;;
-  no)	enable_py_sources=true;;
-  *)	AC_MSG_ERROR(bad value ${enableval} for --enable-just-compiled-sources);;
-esac],
-[enable_py_sources=true])
-
 AC_ARG_WITH(portage-user,
 AC_HELP_STRING([--with-portage-user=myuser],[use user 'myuser' as portage owner (default portage)]),
 [case "${withval}" in
@@ -247,8 +238,6 @@ AC_SUBST(PORTAGE_WGET)
 AC_SUBST(PORTAGE_FIND)
 AC_SUBST(PORTAGE_XARGS)
 AC_SUBST(PORTAGE_GREP)
-
-AM_CONDITIONAL(INSTALL_PYTHON_SOURCES, test x$enable_py_sources = xtrue)
 
 AC_MSG_CHECKING([for a list of variables known by configure])
 pt_configvars=`sed -n -e "/^ac_subst_vars='/,/'$/p" ${srcdir}/configure | sed -e "s/^ac_subst_vars='//" -e "s/'$//"`

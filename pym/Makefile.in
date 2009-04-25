@@ -41,11 +41,6 @@ install:
 	; do echo $(INSTALL_PYsubst) ${srcdir}/$${f} $(DESTDIR)$(PORTAGE_PYM)/$${f} \
 	   ; $(INSTALL_PYsubst) ${srcdir}/$${f} $(DESTDIR)$(PORTAGE_PYM)/$${f} \
 	; done
-#	$(PYTHON) -c 'import compileall; compileall.compile_dir("$(DESTDIR)$(PORTAGE_PYM)")'
-#	$(PYTHON) -O -c 'import compileall; compileall.compile_dir("$(DESTDIR)$(PORTAGE_PYM)")'
-#@INSTALL_PYTHON_SOURCES_FALSE@	$(list_sourcedir) | while read f \
-#@INSTALL_PYTHON_SOURCES_FALSE@	; do rm -f $(DESTDIR)$(PORTAGE_PYM)/$${f} \
-#@INSTALL_PYTHON_SOURCES_FALSE@	; done
 
 distdir:
 	$(list_sourcedir_dirs) | while read f \
