@@ -1447,10 +1447,10 @@ def get_masking_status(pkg, pkgsettings, root_config):
 				pkg.metadata["CHOST"])
 
 	if pkg.built and not pkg.installed:
-		if not "EPREFIX" in metadata or not metadata["EPREFIX"]:
+		if not "EPREFIX" in pkg.metadata or not pkg.metadata["EPREFIX"]:
 			mreasons.append("missing EPREFIX")
-		elif len(metadata["EPREFIX"].strip()) < len(pkgsettings["EPREFIX"]):
-			mreasons.append("EPREFIX: '%s' too small" % metadata["EPREFIX"])
+		elif len(pkg.metadata["EPREFIX"].strip()) < len(pkgsettings["EPREFIX"]):
+			mreasons.append("EPREFIX: '%s' too small" % pkg.metadata["EPREFIX"])
 
 	if not pkg.metadata["SLOT"]:
 		mreasons.append("invalid: SLOT is undefined")
