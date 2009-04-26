@@ -1,72 +1,71 @@
-#!@BASH@
+#!@PORTAGE_BASH@
 
-SED="@PORTAGE_SED@"
-RM="@RM@"
-BASENAME="@BASENAME@"
-DIRNAME="@DIRNAME@"
+# for expansion below we need some things to be defined
+prefix="@prefix@"
+exec_prefix="@exec_prefix@"
 
-case "${SED}" in ""|@*@) SED=sed ;; esac
-case "${RM}" in ""|@*@) RM=rm ;; esac
-case "${BASENAME}" in ""|@*@) BASENAME=basename ;; esac
-case "${DIRNAME}" in ""|@*@) DIRNAME=dirname ;; esac
+# there are many ways to do this all dynamic, but we only care for raw
+# speed here, so let configure fill in this list and be done with it
+at='@'
+sedexp=(
+	-e "s,${at}DEFAULT_PATH${at},@DEFAULT_PATH@,g"
+	-e "s,${at}EGREP${at},@EGREP@,g"
+	-e "s,${at}PORTAGE_BASE${at},@PORTAGE_BASE@,g"
+	-e "s,${at}PORTAGE_BASENAME${at},@PORTAGE_BASENAME@,g"
+	-e "s,${at}PORTAGE_BASH${at},@PORTAGE_BASH@,g"
+	-e "s,${at}PORTAGE_DIRNAME${at},@PORTAGE_DIRNAME@,g"
+	-e "s,${at}PORTAGE_EPREFIX${at},@PORTAGE_EPREFIX@,g"
+	-e "s,${at}PORTAGE_FIND${at},@PORTAGE_FIND@,g"
+	-e "s,${at}PORTAGE_GREP${at},@PORTAGE_GREP@,g"
+	-e "s,${at}PORTAGE_MV${at},@PORTAGE_MV@,g"
+	-e "s,${at}PORTAGE_PYTHON${at},@PORTAGE_PYTHON@,g"
+	-e "s,${at}PORTAGE_RM${at},@PORTAGE_RM@,g"
+	-e "s,${at}PORTAGE_SED${at},@PORTAGE_SED@,g"
+	-e "s,${at}PORTAGE_WGET${at},@PORTAGE_WGET@,g"
+	-e "s,${at}PORTAGE_XARGS${at},@PORTAGE_XARGS@,g"
+	-e "s,${at}datadir${at},@datadir@,g"
+	-e "s,${at}portagegroup${at},@portagegroup@,g"
+	-e "s,${at}portageuser${at},@portageuser@,g"
+	-e "s,${at}rootgid${at},@rootgid@,g"
+	-e "s,${at}rootuid${at},@rootuid@,g"
+	-e "s,${at}rootuser${at},@rootuser@,g"
+	-e "s,${at}sysconfdir${at},@sysconfdir@,g"
+)
 
-mydir="`${DIRNAME} $0`"
-myname="`${BASENAME} $0`"
-mydir="`cd ${mydir};pwd`"
-me="${mydir}/${myname}"
+sources=( )
+target=
+args=( "$@" )
 
-. ${mydir}/subst-install.vars
-
-substinstall_tmpdir="${TMPDIR-/tmp}/${myname}.$$"
-trap "${RM} -rf \${substinstall_tmpdir}" "0"
-mkdir -p "${substinstall_tmpdir}" \
-|| { echo "cannot create directory ${substinstall_tmpdir}" >&2 ; exit 1 ; }
-
-substinstall_tmpsed="${substinstall_tmpdir}/sedscript"
-
-{	for v in ${all_configurevars}
-	do
-		eval "echo \"s,@${v}@,\${${v}},g;\""
-	done
-} | "${SED}" 's/^s,@/s@@/; s/@,/@@/; s/,g;$/@;/; s/[\\&,]/\\&/g;
-   s/^s@@/s,@/; s/@@/@,/; s/@;$/,g;/' > "${substinstall_tmpsed}"
-
-substinstall_installcmd=
-substinstall_sources=
-substinstall_target=
-
-while [ "$1" ]
-do
-	substinstall_arg="$1"
-	shift
-	case "${substinstall_arg}" in
-	--installcmd=*)
-		substinstall_installcmd=`echo "${substinstall_arg}" | "${SED}" -e 's,^--installcmd=,,'`
+while [[ ${#@} != 0 ]] ; do
+	case "$1" in
+		-t)
+			[[ -n ${target} ]] && sources=( "${sources[@]}" "${target##*/}" )
+			shift
+			target=":${1}"
 		;;
-	*)
-		substinstall_sources="${substinstall_sources} ${substinstall_target}"
-		substinstall_target="${substinstall_arg}"
+		-*)
+			shift
+		;;
+		*)
+			if [[ -z ${target} ]] ; then
+				target="${1}"
+			elif [[ ${target} != ":"* ]] ; then
+				sources=( "${sources[@]}" "${target##*/}" )
+				target="${1}"
+			else
+				sources=( "${sources[@]}" "${1##*/}" )
+			fi
 		;;
 	esac
+	shift
 done
 
-[ -n "${substinstall_installcmd}" ] || { echo "missing --installcmd=" ; exit 1 ; }
-
-substinstall_tmpsources=
-
-for substinstall_s in ${substinstall_sources}
-do
-	[ -r "${substinstall_s}" ] || { echo "cannot read ${substinstall_s}" >&2 ; exit 1 ; }
-	tmpsource="${substinstall_tmpdir}/`basename ${substinstall_s}`.subst"
-	"${SED}" -f "${substinstall_tmpsed}" < "${substinstall_s}" > "${tmpsource}" \
-	|| { echo "cannot sed from ${substinstall_s} to ${tmpsource}" >&2 ; exit 1 ; }
-	substinstall_tmpsources="${substinstall_tmpsources} ${tmpsource}"
-done
-
-eval "${substinstall_installcmd} ${substinstall_tmpsources} ${substinstall_target}"
-
-substinstall_installrv=$?
-
-"${RM}" -rf "${substinstall_tmpdir}"
-
-exit ${substinstall_installrv}
+target=${target#:}
+INSTALL="@INSTALL@"
+echo @INSTALL_DATA@ "${args[@]}"
+if [[ ! -d ${target} ]] ; then
+	# either install will die, or it was just a single file copy
+	@INSTALL_DATA@ "${args[@]}" && sed -i "${sedexp[@]}" "${target}"
+else
+	@INSTALL_DATA@ "${args[@]}" && sed -i "${sedexp[@]}" "${sources[@]/#/${target}/}"
+fi

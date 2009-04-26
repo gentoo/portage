@@ -30,7 +30,6 @@ rsync -a --exclude='.svn' . ${DEST}
 sed -i -e '/^VERSION=/s/^.*$/VERSION="'${V}-prefix'"/' ${DEST}/pym/portage/__init__.py
 sed -i -e "s/##VERSION##/${V}-prefix/g" ${DEST}/man/emerge.1
 sed -i -e "s/@version@/${V}/" ${DEST}/configure.in
-touch ${DEST}/subst-install.vars.in.in
 
 cd ${DEST}
 find -name '*~' | xargs --no-run-if-empty rm -f
@@ -40,7 +39,7 @@ cd $TMP
 rm -f ${PKG}-${V}/bin/emerge.py ${PKG}-${V}/bin/{pmake,sandbox} ${PKG}-${V}/{bin,pym}/'.#'* ${PKG}-${V}/{bin,pym}/*.{orig,diff} ${PKG}-${V}/{bin,pym}/*.py[oc]
 cd $TMP/${PKG}-${V}
 chmod a+x autogen.sh && ./autogen.sh || { echo "autogen failed!"; exit -1; };
-rm -f autogen.sh make-man-tarball.sh tabcheck.py tarball.sh ChangeLog.000 COPYING
+rm -f autogen.sh tabcheck.py tarball.sh commit svnlogmsg.awk
 cd $TMP
 tar -jcf ${TMP}/${PKG}-${V}.tar.bz2 ${PKG}-${V}
 rm -R ${TMP}/${PKG}-${V}

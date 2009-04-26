@@ -10,10 +10,10 @@ __all__ = ["EPREFIX", "SYSCONFDIR", "DATADIR", "PORTAGE_BASE",
 
 from os import path
 
-EPREFIX      = @PORTAGE_EPREFIX@
-SYSCONFDIR   = path.normpath("@sysconfdir@")
-DATADIR      = path.normpath("@datadir@")
-PORTAGE_BASE = path.normpath("@PORTAGE_BASE@")
+EPREFIX      = "@PORTAGE_EPREFIX@"
+SYSCONFDIR   = "@sysconfdir@"
+DATADIR      = "@datadir@"
+PORTAGE_BASE = "@PORTAGE_BASE@"
 
 portagegroup = "@portagegroup@"
 portageuser  = "@portageuser@"

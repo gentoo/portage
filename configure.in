@@ -17,10 +17,10 @@ AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE
 
 dnl Checks for programs.
-dnl store clfags prior, otherwise it's not propagated.
+dnl store cflags prior, otherwise it's not propagated.
 if test "x$CFLAGS" != "x"
 then
-CFLAGS=$CFLAGS
+	CFLAGS=$CFLAGS
 fi
 
 AC_PREFIX_DEFAULT([/usr])
@@ -46,7 +46,6 @@ GENTOO_PATH_GNUPROG(PORTAGE_XARGS, [xargs])
 GENTOO_PATH_GNUPROG(PORTAGE_GREP, [grep])
 
 dnl Checks for header files.
-AC_HEADER_STDC
 AC_CHECK_HEADERS([string.h strings.h errno.h unistd.h stdio.h stdlib.h])
 AC_CHECK_HEADERS([sys/stat.h sys/types.h dirent.h sys/time.h alloca.h])
 AC_CHECK_HEADERS([fcntl.h])
@@ -193,37 +192,25 @@ fi
 AC_ARG_WITH(offset-prefix, 
 AC_HELP_STRING([--with-offset-prefix],
 			   [specify the installation prefix for all packages, defaults to an empty string]),
-			   [DOMAIN_PREFIX=$withval],
-			   [DOMAIN_PREFIX=''])
+			   [PORTAGE_EPREFIX=$withval],
+			   [PORTAGE_EPREFIX=''])
 
-if test "x$DOMAIN_PREFIX" = "x"
+if test "x$PORTAGE_EPREFIX" != "x"
 then
-	PORTAGE_EPREFIX='""'
-else
-	PORTAGE_EPREFIX='path.normpath("'"$DOMAIN_PREFIX"'")'
+	PORTAGE_EPREFIX=`${PORTAGE_PYTHON} -c "import os; print os.path.normpath('$PORTAGE_EPREFIX')"`
 fi
 
-DEFAULT_PATH="${DOMAIN_PREFIX}/usr/bin:${DOMAIN_PREFIX}/usr/sbin:${DOMAIN_PREFIX}/bin:${DOMAIN_PREFIX}/sbin:${prefix}/bin"
+DEFAULT_PATH="${PORTAGE_EPREFIX}/usr/bin:${PORTAGE_EPREFIX}/usr/sbin:${PORTAGE_EPREFIX}/bin:${PORTAGE_EPREFIX}/sbin:${PORTAGE_EPREFIX}/bin"
 AC_ARG_WITH(default-path, 
 AC_HELP_STRING([--with-default-path], [specify additional PATHs available to the portage build environment ]),
 [DEFAULT_PATH="${DEFAULT_PATH}":$withval],
 [DEFAULT_PATH="${DEFAULT_PATH}"])
-
-AC_CONFIG_FILES([ Makefile ])
-AC_CONFIG_FILES([ subst-install ])
-AC_CONFIG_FILES([ subst-install.vars.in ])
-AC_CONFIG_FILES([ src/Makefile ])
-AC_CONFIG_FILES([ man/Makefile ])
-AC_CONFIG_FILES([ bin/Makefile ])
-AC_CONFIG_FILES([ pym/Makefile ])
-AC_CONFIG_FILES([ cnf/Makefile ])
 
 AC_SUBST(portageuser)
 AC_SUBST(portagegroup)
 AC_SUBST(rootuser)
 AC_SUBST(rootuid)
 AC_SUBST(rootgid)
-AC_SUBST(DOMAIN_PREFIX)
 AC_SUBST(PORTAGE_EPREFIX)
 AC_SUBST(DEFAULT_PATH)
 AC_SUBST(PORTAGE_BASE,['${exec_prefix}/lib/portage'])
@@ -239,20 +226,14 @@ AC_SUBST(PORTAGE_FIND)
 AC_SUBST(PORTAGE_XARGS)
 AC_SUBST(PORTAGE_GREP)
 
-AC_MSG_CHECKING([for a list of variables known by configure])
-pt_configvars=`sed -n -e "/^ac_subst_vars='/,/'$/p" ${srcdir}/configure | sed -e "s/^ac_subst_vars='//" -e "s/'$//"`
-{
-	pt_all_configurevars=
-	for pt_configvar in ${pt_configvars}
-	do
-		echo "${pt_configvar}=@${pt_configvar}@"
-		pt_all_configurevars="${pt_all_configurevars} ${pt_configvar}"
-	done
-
-	echo "all_configurevars='${pt_all_configurevars}'"
-
-} > subst-install.vars.in.in
-$as_unset pt_configvar pt_configvars pt_all_configurevars
-AC_MSG_RESULT([ok])
+AC_CONFIG_FILES([subst-install], [chmod +x subst-install])
+AC_CONFIG_FILES([
+				 Makefile
+				 src/Makefile
+				 man/Makefile
+				 bin/Makefile
+				 pym/Makefile
+				 cnf/Makefile
+])
 
 AC_OUTPUT

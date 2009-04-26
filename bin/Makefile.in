@@ -3,20 +3,18 @@ exec_prefix = @exec_prefix@
 sysconfdir = @sysconfdir@
 libdir = @libdir@
 
-srcdir=@srcdir@
-top_builddir=@top_builddir@
+srcdir = @srcdir@
+top_builddir = @top_builddir@
 
-portageuser = "@portageuser@"
-portagegroup = "@portagegroup@"
+portageuser = @portageuser@
+portagegroup = @portagegroup@
 
 PORTAGE_BIN = @PORTAGE_BASE@/bin
-EBUILD_HELPER_BIN = $(PORTAGE_BIN)/ebuild-helpers
 LN_S = @LN_S@
 INSTALL = @INSTALL@
-INSTALL_script = @INSTALL_PROGRAM@ -o "$(portageuser)" -g "$(portagegroup)" -m 755
-INSTALL_scriptsubst = $(SHELL) ${top_builddir}/subst-install --installcmd='${INSTALL_script}'
+INSTALL_subst = $(top_builddir)/subst-install
 
-user_binprogs = \
+usr_binprogs = \
 	ebuild \
 	egencache \
 	emerge \
@@ -24,7 +22,7 @@ user_binprogs = \
 	repoman \
 	xpak
 
-user_sbinprogs = \
+usr_sbinprogs = \
 	archive-conf \
 	dispatch-conf \
 	emaint \
@@ -35,41 +33,39 @@ user_sbinprogs = \
 	quickpkg \
 	regenworld
 
-ebuild_helperprogs = \
-	( cd ${srcdir}/ebuild-helpers && find . -name 'Makefile*' -prune \
-	-o -name '.svn' -prune -o -type f -print )
-
-list_sourcedir = \
-	  ( cd ${srcdir} && find . -name 'Makefile*' -prune \
-	  -o -name '.svn' -prune -o -name 'ebuild-helpers' -prune \
-	  -o -type f -print )
+list_sourcedir_dirs = \
+	( cd "$(srcdir)" && find . -name '.svn' -prune -o -type d -print )
 
 all:
 
 install:
 	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(PORTAGE_BIN)
-	$(list_sourcedir) | while read f \
-	; do echo "$(INSTALL_scriptsubst) ${srcdir}/$${f} $(DESTDIR)$(PORTAGE_BIN)/$${f}" \
-	   ; $(INSTALL_scriptsubst) ${srcdir}/$${f} $(DESTDIR)$(PORTAGE_BIN)/$${f} \
-	; done
-	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(EBUILD_HELPER_BIN)
-	$(ebuild_helperprogs) | while read f \
-	; do echo "$(INSTALL_scriptsubst) ${srcdir}/ebuild-helpers/$${f} $(DESTDIR)$(EBUILD_HELPER_BIN)/$${f}" \
-	   ; $(INSTALL_scriptsubst) ${srcdir}/ebuild-helpers/$${f} $(DESTDIR)$(EBUILD_HELPER_BIN)/$${f} \
-	; done
+	$(list_sourcedir_dirs) | while read f ; do \
+		files=( ) ; \
+		for t in "$(srcdir)/$${f}"/* ; do \
+			[[ -d $${t} ]] && continue ; \
+			[[ $${t} == Makefile* ]] && continue ; \
+			files=( "$${files[@]}" "$${t}" ) ; \
+		done ; \
+		$(INSTALL) -d -m 755 \
+			-o "$(portageuser)" -g "$(portagegroup)" \
+			"$(DESTDIR)$(PORTAGE_BIN)/$${f}" && \
+		$(INSTALL_subst) -m 755 \
+			-o "$(portageuser)" -g "$(portagegroup)" \
+			-t "$(DESTDIR)$(PORTAGE_BIN)/$${f}" \
+			"$${files[@]}" ; \
+	done
 	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(prefix)/bin
 	cd $(DESTDIR)$(prefix)/bin \
-	; for p in $(user_binprogs) \
+	; for p in $(usr_binprogs) \
 	; do test -f $(DESTDIR)$(PORTAGE_BIN)/$${p} \
 		 || { echo "$(DESTDIR)$(PORTAGE_BIN)/$${p} does not exist" ; exit 1 ; } \
-	   ; echo "rm -f $(DESTDIR)$(prefix)/bin/$${p}" \
 	   ; rm -f $(DESTDIR)$(prefix)/bin/$${p} \
-	   ; echo "$(LN_S) ../lib/portage/bin/$${p} $${p}" \
 	   ; $(LN_S) ../lib/portage/bin/$${p} $${p} || exit 1 \
 	; done
 	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(prefix)/sbin
 	cd $(DESTDIR)$(prefix)/sbin \
-	; for p in $(user_sbinprogs) \
+	; for p in $(usr_sbinprogs) \
 	; do test -f $(DESTDIR)$(PORTAGE_BIN)/$${p} \
 		 || { echo "$(DESTDIR)$(PORTAGE_BIN)/$${p} does not exist" ; exit 1 ; } \
 	   ; echo "rm -f $(DESTDIR)$(prefix)/sbin/$${p}" \
@@ -78,33 +74,4 @@ install:
 	   ; $(LN_S) ../lib/portage/bin/$${p} $${p} || exit 1 \
 	; done
 
-uninstall:
-	$(list_sourcedir) | while read f \
-	; do echo "rm -f $(DESTDIR)$(PORTAGE_BIN)/$${f}" \
-	   ; rm -f $(DESTDIR)$(PORTAGE_BIN)/$${f} \
-	; done
-	$(ebuild_helperprogs) | while read f \
-	; do echo "rm -f $(DESTDIR)$(EBUILD_HELPER_BIN)/$${f}" \
-	   ; rm -f $(DESTDIR)$(EBUILD_HELPER_BIN)/$${f} \
-	; done
-	for p in $(user_binprogs) \
-	; do echo "rm -f $(DESTDIR)$(prefix)/bin/$${p}" \
-	   ; rm -f $(DESTDIR)$(prefix)/bin/$${p} \
-	; done
-	for p in $(user_sbinprogs) \
-	; do echo "rm -f $(DESTDIR)$(prefix)/sbin/$${p}" \
-	   ; rm -f $(DESTDIR)$(prefix)/sbin/$${p} \
-	; done
-
-distdir:
-	$(list_sourcedir) | while read f \
-	; do echo "$(INSTALL_script) ${srcdir}/$${f} $(distdir)/$${f}" \
-	   ; $(INSTALL_script) ${srcdir}/$${f} $(distdir)/$${f} \
-	; done
-
-all dvi check installcheck:
-clean distclean maintainer-clean:
-
-.PHONY: all install distdir uninstall
-.PHONY: dvi check installcheck
-.PHONY: clean distclean maintainer-clean
+.PHONY: all install

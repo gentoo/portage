@@ -1,48 +1,36 @@
 prefix = @prefix@
 sysconfdir = @sysconfdir@
 datadir = @datadir@
-DEFAULT_PATH = @DEFAULT_PATH@
 
-srcdir=@srcdir@
-top_builddir=@top_builddir@
+srcdir = @srcdir@
+top_builddir = @top_builddir@
+PORTAGE_CONF = $(datadir)/portage/config
 
-portageuser = "@portageuser@"
-portagegroup = "@portagegroup@"
+portageuser = @portageuser@
+portagegroup = @portagegroup@
 
 INSTALL = @INSTALL@
-INSTALL_cnf = @INSTALL_PROGRAM@ -o "$(portageuser)" -g "$(portagegroup)" -m 644
-INSTALL_cnfsubst = $(SHELL) ${top_builddir}/subst-install --installcmd='${INSTALL_cnf}'
-
-list_sourcedir = \
-	  ( cd ${srcdir} \
-	&& find . -name 'CVS' -prune \
-		   -o -name 'Makefile*' -prune \
-		   -o -name 'make.*' -type f -print \
-		   -o -name 'dispatch-conf.conf' -type f -print \
-		   -o -name 'etc-update.conf' -type f -print \
-	 )
+INSTALL_subst = ${top_builddir}/subst-install
+LN_S = @LN_S@
 
 all:
 
 install:
-	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(datadir)/portage/config
-	$(INSTALL_cnfsubst) $(srcdir)/make.globals $(DESTDIR)$(datadir)/portage/config/make.globals
-	$(INSTALL_cnfsubst) $(srcdir)/make.conf $(DESTDIR)$(datadir)/portage/config/make.conf.example
-	$(INSTALL_cnfsubst) $(srcdir)/sets.conf $(DESTDIR)$(datadir)/portage/config/sets.conf
+	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(PORTAGE_CONF)
+	$(INSTALL_subst) \
+		-o "$(portageuser)" -g "$(portagegroup)" \
+		-t "$(DESTDIR)$(PORTAGE_CONF)" \
+		"$(srcdir)"/make.globals \
+		"$(srcdir)"/sets.conf
+	$(INSTALL_subst) \
+		-o "$(portageuser)" -g "$(portagegroup)" \
+		"$(srcdir)"/make.conf "$(DESTDIR)$(PORTAGE_CONF)"/make.conf.example
 	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(sysconfdir)
-	$(INSTALL_cnfsubst) $(srcdir)/dispatch-conf.conf $(DESTDIR)$(sysconfdir)/dispatch-conf.conf
-	$(INSTALL_cnfsubst) $(srcdir)/etc-update.conf $(DESTDIR)$(sysconfdir)/etc-update.conf
-	( cd $(DESTDIR)$(sysconfdir) && ln -s $(DESTDIR)$(datadir)/portage/config/make.globals )
-	
-distdir:
-	$(list_sourcedir) | while read f \
-	; do echo $(INSTALL_cnf) ${srcdir}/$${f} $(distdir)/$${f} \
-	   ; $(INSTALL_cnf) ${srcdir}/$${f} $(distdir)/$${f} \
-	; done
+	$(INSTALL_subst) \
+		-o "$(portageuser)" -g "$(portagegroup)" \
+		-t "$(DESTDIR)$(sysconfdir)" \
+		"$(srcdir)"/dispatch-conf.conf \
+		"$(srcdir)"/etc-update.conf
+	( cd $(DESTDIR)$(sysconfdir) && $(LN_S) $(DESTDIR)$(PORTAGE_CONF)/make.globals )
 
-all dvi check installcheck:
-uninstall clean distclean maintainer-clean:
-
-.PHONY: all install distdir uninstall
-.PHONY: dvi check installcheck
-.PHONY: clean distclean maintainer-clean
+.PHONY:	all install

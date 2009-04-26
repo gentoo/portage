@@ -7,64 +7,28 @@ PYTHON = @PORTAGE_PYTHON@
 srcdir=@srcdir@
 top_builddir=@top_builddir@
 
-portageuser = "@portageuser@"
-portagegroup = "@portagegroup@"
+portageuser = @portageuser@
+portagegroup = @portagegroup@
 
 PORTAGE_PYM = @PORTAGE_BASE@/pym
 INSTALL = @INSTALL@
-INSTALL_PY = @INSTALL_DATA@ -o "$(portageuser)" -g "$(portagegroup)"
-INSTALL_PYsubst = $(SHELL) ${top_builddir}/subst-install --installcmd='${INSTALL_PY}'
+INSTALL_subst = ${top_builddir}/subst-install
 
 list_sourcedir_dirs = \
-	( cd ${srcdir} && find . \
-	-name 'CVS' -prune \
-	-o -name '.svn' -prune \
-	-o -type d -print )
-
-list_sourcedir = \
-	( cd ${srcdir} && find . \
-	-name 'CVS' -prune \
-	-o -name '.\#*' -prune \
-	-o -name '.svn' -prune \
-	-o -type f -name '*.py' \
-	-print )
+	( cd "$(srcdir)" && find . -name '.svn' -prune -o -type d -print )
 
 all:
 
 install:
 	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(PORTAGE_PYM)
-	$(list_sourcedir_dirs) | while read f \
-	; do echo $(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(PORTAGE_PYM)/$${f} \
-	   ; $(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(PORTAGE_PYM)/$${f} \
-	; done
-	$(list_sourcedir) | while read f \
-	; do echo $(INSTALL_PYsubst) ${srcdir}/$${f} $(DESTDIR)$(PORTAGE_PYM)/$${f} \
-	   ; $(INSTALL_PYsubst) ${srcdir}/$${f} $(DESTDIR)$(PORTAGE_PYM)/$${f} \
-	; done
-
-distdir:
-	$(list_sourcedir_dirs) | while read f \
-	; do echo $(INSTALL) -d $(distdir)/$${f} \
-	   ; $(INSTALL) -d $(distdir)/$${f} \
-	; done
-	$(list_sourcedir) | while read f \
-	; do echo $(INSTALL) ${srcdir}/$${f} $(distdir)/$${f} \
-	   ; $(INSTALL) ${srcdir}/$${f} $(distdir)/$${f} \
+	$(list_sourcedir_dirs) | while read f ; do \
+		$(INSTALL) -d -m 755 \
+			-o "$(portageuser)" -g "$(portagegroup)" \
+			"$(DESTDIR)$(PORTAGE_PYM)/$${f}" && \
+		$(INSTALL_subst) \
+			-o "$(portageuser)" -g "$(portagegroup)" \
+			-t "$(DESTDIR)$(PORTAGE_PYM)/$${f}" \
+			"$(srcdir)/$${f}"/*.py \
 	; done
 
-uninstall:
-	$(list_sourcedir) | while read f \
-	; do echo rm -f $(DESTDIR)$(PORTAGE_PYM)/$${f} \
-	   ; rm -f $(DESTDIR)$(PORTAGE_PYM)/$${f} \
-	   ; echo rm -f $(DESTDIR)$(PORTAGE_PYM)/$${f}c \
-	   ; rm -f $(DESTDIR)$(PORTAGE_PYM)/$${f}c \
-	   ; echo rm -f $(DESTDIR)$(PORTAGE_PYM)/$${f}o \
-	   ; rm -f $(DESTDIR)$(PORTAGE_PYM)/$${f}o \
-	; done 
-	
-all dvi check installcheck:
-clean distclean maintainer-clean:
-
-.PHONY:	all install distdir
-.PHONY: dvi check installcheck
-.PHONY: clean distclean maintainer-clean
+.PHONY:	all install
