@@ -68,9 +68,7 @@ install:
 	; for p in $(usr_sbinprogs) \
 	; do test -f $(DESTDIR)$(PORTAGE_BIN)/$${p} \
 		 || { echo "$(DESTDIR)$(PORTAGE_BIN)/$${p} does not exist" ; exit 1 ; } \
-	   ; echo "rm -f $(DESTDIR)$(prefix)/sbin/$${p}" \
 	   ; rm -f $(DESTDIR)$(prefix)/sbin/$${p} \
-	   ; echo "$(LN_S) ../lib/portage/bin/$${p} $${p}" \
 	   ; $(LN_S) ../lib/portage/bin/$${p} $${p} || exit 1 \
 	; done
 
