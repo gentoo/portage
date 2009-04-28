@@ -1134,7 +1134,7 @@ class config(object):
 
 	# variables that break bash
 	_environ_filter += [
-		"POSIXLY_CORRECT",
+		"HISTFILE", "POSIXLY_CORRECT",
 	]
 
 	# portage config variables and variables set directly by portage

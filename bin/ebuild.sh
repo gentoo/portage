@@ -71,10 +71,14 @@ unalias -a
 # Unset some variables that break things.
 unset GZIP BZIP BZIP2 CDPATH GREP_OPTIONS GREP_COLOR GLOBIGNORE
 
-#export PATH="/usr/local/sbin:/sbin:/usr/sbin:$PORTAGE_BIN_PATH/ebuild-helpers:/usr/local/bin:/bin:/usr/bin:${ROOTPATH}"
+ROOTPATH=${ROOTPATH##:}
+ROOTPATH=${ROOTPATH%%:}
+PREROOTPATH=${PREROOTPATH##:}
+PREROOTPATH=${PREROOTPATH%%:}
+#PATH=$PORTAGE_BIN_PATH/ebuild-helpers:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/sbin:/usr/sbin:/usr/local/bin:/bin:/usr/bin${ROOTPATH:+:}$ROOTPATH
 # PREFIX: we deviate in path order, should we split up DEFAULT_PATH?
-export PATH="${DEFAULT_PATH}:$PORTAGE_BIN_PATH/ebuild-helpers:${ROOTPATH}"
-[ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
+PATH="$PORTAGE_BIN_PATH/ebuild-helpers:$PREROOTPATH${PREROOTPATH:+:}${DEFAULT_PATH}:${ROOTPATH:+:}$ROOTPATH"
+export PATH
 
 source "${PORTAGE_BIN_PATH}/isolated-functions.sh"  &>/dev/null
 
@@ -1632,7 +1636,7 @@ filter_readonly_variables() {
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
 		SANDBOX_LOG SANDBOX_ON"
 	filtered_vars="${readonly_bash_vars} ${READONLY_PORTAGE_VARS}
-		BASH_.* PATH POSIXLY_CORRECT"
+		BASH_.* HISTFILE PATH POSIXLY_CORRECT"
 	if hasq --filter-sandbox $* ; then
 		filtered_vars="${filtered_vars} SANDBOX_.*"
 	else
@@ -1925,10 +1929,9 @@ ebuild_main() {
 			;;
 	esac
 
-	#export PATH="/usr/local/sbin:/sbin:/usr/sbin:${ebuild_helpers_path}:/usr/local/bin:/bin:/usr/bin:${ROOTPATH}"
+	#PATH=$ebuild_helpers_path:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/sbin:/usr/sbin:/usr/local/bin:/bin:/usr/bin${ROOTPATH:+:}$ROOTPATH
 	# PREFIX: same deviation as at the top of this file
-	export PATH="${DEFAULT_PATH}:${ebuild_helpers_path}:${ROOTPATH}"
-	[[ -n $PREROOTPATH ]] && export PATH="${PREROOTPATH%%:}:$PATH"
+	PATH="$ebuild_helpers_path:$PREROOTPATH${PREROOTPATH:+:}${DEFAULT_PATH}${ROOTPATH:+:}$ROOTPATH"
 	unset ebuild_helpers_path
 
 	if ! hasq $EBUILD_SH_ARGS clean depend help info nofetch ; then

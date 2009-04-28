@@ -213,6 +213,23 @@ class EbuildUselessCdS(LineCheck):
 		elif self.method_re.match(line):
 			self.check_next_line = True
 
+class EapiDefinition(LineCheck):
+	""" Check that EAPI is defined before inherits"""
+	repoman_check_name = 'EAPI.definition'
+
+	eapi_re = re.compile(r'^EAPI=')
+	inherit_re = re.compile(r'^\s*inherit\s')
+
+	def new(self, pkg):
+		self.inherit_line = None
+
+	def check(self, num, line):
+		if self.eapi_re.match(line) is not None:
+			if self.inherit_line is not None:
+				return errors.EAPI_DEFINED_AFTER_INHERIT
+		elif self.inherit_re.match(line) is not None:
+			self.inherit_line = line
+
 class EbuildPatches(LineCheck):
 	"""Ensure ebuilds use bash arrays for PATCHES to ensure white space safety"""
 	repoman_check_name = 'ebuild.patches'
@@ -349,7 +366,7 @@ _constant_checks = tuple((c() for c in (
 	EbuildHeader, EbuildWhitespace, EbuildQuote,
 	EbuildAssignment, EbuildUselessDodoc,
 	EbuildUselessCdS, EbuildNestedDie,
-	EbuildPatches, EbuildQuotedA,
+	EbuildPatches, EbuildQuotedA, EapiDefinition,
 	IUseUndefined, ImplicitRuntimeDeps, InheritAutotools,
 	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS,
 	DeprecatedBindnowFlags, WantAutoDefaultValue)))
