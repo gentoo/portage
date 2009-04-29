@@ -71,13 +71,28 @@ class EbuildWhitespace(LineCheck):
 	ignore_line = re.compile(r'(^$)|(^(\t)*#)')
 	leading_spaces = re.compile(r'^[\S\t]')
 	trailing_whitespace = re.compile(r'.*([\S]$)')	
+	here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
+
+	def new(self, pkg):
+		self._here_doc_delim = None
 
 	def check(self, num, line):
-		if not self.leading_spaces.match(line):
-			return errors.LEADING_SPACES_ERROR
-		if not self.trailing_whitespace.match(line):
-			return errors.TRAILING_WHITESPACE_ERROR
 
+		# Check if we're inside a here-document.
+		if self._here_doc_delim is not None:
+			if self._here_doc_delim.match(line):
+				self._here_doc_delim = None
+		if self._here_doc_delim is None:
+			here_doc = self.here_doc_re.match(line)
+			if here_doc is not None:
+				self._here_doc_delim = re.compile('^%s$' % here_doc.group(1))
+
+		if self._here_doc_delim is None:
+			# We're not in a here-document.
+			if self.leading_spaces.match(line) is None:
+				return errors.LEADING_SPACES_ERROR
+			if self.trailing_whitespace.match(line) is None:
+				return errors.TRAILING_WHITESPACE_ERROR
 
 class EbuildQuote(LineCheck):
 	"""Ensure ebuilds have valid quoting around things like D,FILESDIR, etc..."""
