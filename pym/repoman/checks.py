@@ -229,6 +229,38 @@ class EapiDefinition(LineCheck):
 		elif self.inherit_re.match(line) is not None:
 			self.inherit_line = line
 
+class SrcUnpackPatches(LineCheck):
+	repoman_check_name = 'ebuild.minorsyn'
+
+	src_unpack_re = re.compile(r'^src_unpack\(\)')
+	func_end_re = re.compile(r'^\}$')
+	src_prepare_tools_re = re.compile(r'\s(e?patch|sed)\s')
+
+	def new(self, pkg):
+		if pkg.metadata['EAPI'] not in ('0', '1'):
+			self.eapi = pkg.metadata['EAPI']
+		else:
+			self.eapi = None
+		self.in_src_unpack = None
+
+	def check(self, num, line):
+
+		if self.eapi is not None:
+
+			if self.in_src_unpack is None and \
+				self.src_unpack_re.match(line) is not None:
+					self.in_src_unpack = True
+
+			if self.in_src_unpack is True and \
+				self.func_end_re.match(line) is not None:
+				self.in_src_unpack = False
+
+			if self.in_src_unpack:
+				m = self.src_prepare_tools_re.search(line)
+				if m is not None:
+					return ("'%s'" % m.group(1)) + \
+						" call should be moved to src_prepare from line: %d"
+
 class EbuildPatches(LineCheck):
 	"""Ensure ebuilds use bash arrays for PATCHES to ensure white space safety"""
 	repoman_check_name = 'ebuild.patches'
@@ -368,7 +400,7 @@ _constant_checks = tuple((c() for c in (
 	EbuildPatches, EbuildQuotedA, EapiDefinition,
 	IUseUndefined, ImplicitRuntimeDeps, InheritAutotools,
 	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS,
-	DeprecatedBindnowFlags, WantAutoDefaultValue)))
+	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue)))
 
 _here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
 
