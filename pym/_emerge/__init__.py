@@ -13842,9 +13842,6 @@ def action_info(settings, trees, myopts, myfiles):
 		global_vals = {}
 		pkgsettings = portage.config(clone=settings)
 
-		for myvar in mydesiredvars:
-			global_vals[myvar] = set(settings.get(myvar, "").split())
-
 		# Loop through each package
 		# Only print settings if they differ from global settings
 		header_title = "Package Settings"
@@ -13860,17 +13857,6 @@ def action_info(settings, trees, myopts, myfiles):
 				installed=True, metadata=izip(Package.metadata_keys,
 				(metadata.get(x, '') for x in Package.metadata_keys)),
 				root_config=root_config, type_name='installed')
-			valuesmap = {}
-			for k in auxkeys:
-				valuesmap[k] = set(metadata[k].split())
-
-			diff_values = {}
-			for myvar in mydesiredvars:
-				# If the package variable doesn't match the
-				# current global variable, something has changed
-				# so set diff_found so we know to print
-				if valuesmap[myvar] != global_vals[myvar]:
-					diff_values[myvar] = valuesmap[myvar]
 
 			print "\n%s was built with the following:" % \
 				colorize("INFORM", str(pkg.cpv))
@@ -13926,15 +13912,9 @@ def action_info(settings, trees, myopts, myfiles):
 				print '%s="%s"' % (varname, ' '.join(str(f) for f in flags)),
 			print
 
-			# If a difference was found, print the info for
-			# this package.
-			if diff_values:
-				# Print package info
-				for myvar in mydesiredvars:
-					if myvar in diff_values:
-						mylist = list(diff_values[myvar])
-						mylist.sort()
-						print "%s=\"%s\"" % (myvar, " ".join(mylist))
+			for myvar in mydesiredvars:
+				if metadata[myvar].split() != settings.get(myvar, '').split():
+					print "%s=\"%s\"" % (myvar, metadata[myvar])
 			print
 
 			if metadata['DEFINED_PHASES']:
