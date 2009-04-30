@@ -2788,6 +2788,7 @@ class config(object):
 		for mykey in myincrementals:
 
 			mydbs=self.configlist[:-1]
+			mydbs.append(self.backupenv)
 
 			myflags=[]
 			for curdb in mydbs:
