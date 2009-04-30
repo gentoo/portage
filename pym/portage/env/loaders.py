@@ -4,6 +4,7 @@
 # $Id$
 
 import os
+import stat
 
 class LoaderError(Exception):
 	
@@ -36,14 +37,18 @@ def RecursiveFileLoader(filename):
 	@rtype: list
 	@returns: List of files to process
 	"""
-	if not os.path.exists(filename):
+	try:
+		st = os.stat(filename)
+	except OSError:
 		return
-	elif os.path.isdir(filename):
+	if stat.S_ISDIR(st.st_mode):
 		for root, dirs, files in os.walk(filename):
-			if 'CVS' in dirs:
-				dirs.remove('CVS')
-			files = [f for f in files if not f.startswith('.') and not f.endswith('~')]
+			for d in list(dirs):
+				if d[:1] == '.' or d == 'CVS':
+					dirs.remove(d)
 			for f in files:
+				if f[:1] == '.' or f[-1:] == '~':
+					continue
 				yield os.path.join(root, f)
 	else:
 		yield filename
