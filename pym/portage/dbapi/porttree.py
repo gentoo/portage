@@ -190,8 +190,14 @@ class portdbapi(dbapi):
 						level=logging.ERROR, noiselevel=-1)
 				else:
 					porttrees.append(master_path)
+
 			if not porttrees:
-				porttrees.append(porttree_root)
+				# Make PORTDIR the default master, but only if this
+				# repo doesn't provide profiles.desc itself.
+				profiles_desc = os.path.join(path, 'profiles', 'profiles.desc')
+				if not os.path.exists(profiles_desc):
+					porttrees.append(porttree_root)
+
 			porttrees.append(path)
 
 			eclass_db = None
@@ -227,11 +233,15 @@ class portdbapi(dbapi):
 					db_ro=db_ro)
 		else:
 			for x in self.porttrees:
+				if x in self.auxdb:
+					continue
 				# location, label, auxdbkeys
 				self.auxdb[x] = self.auxdbmodule(
 					self.depcachedir, x, filtered_auxdbkeys, gid=portage_gid)
 		if "metadata-transfer" not in self.mysettings.features:
 			for x in self.porttrees:
+				if x in self._pregen_auxdb:
+					continue
 				if os.path.isdir(os.path.join(x, "metadata", "cache")):
 					self._pregen_auxdb[x] = self.metadbmodule(
 						x, "metadata/cache", filtered_auxdbkeys, readonly=True)
