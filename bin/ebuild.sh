@@ -698,7 +698,7 @@ dyn_clean() {
 	elif [ ! -d "${PORTAGE_BUILDDIR}" ] ; then
 		return 0
 	fi
-	if type -P chflags > /dev/null ; then
+	if hasq chflags $FEATURES ; then
 		chflags -R noschg,nouchg,nosappnd,nouappnd "${PORTAGE_BUILDDIR}"
 		chflags -R nosunlnk,nouunlnk "${PORTAGE_BUILDDIR}" 2>/dev/null
 	fi
