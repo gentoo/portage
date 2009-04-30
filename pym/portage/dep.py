@@ -417,6 +417,9 @@ class _use_dep(object):
 			return ""
 		return "[%s]" % (",".join(self.tokens),)
 
+	def __repr__(self):
+		return "portage.dep._use_dep(%s)" % repr(self.tokens)
+
 	def evaluate_conditionals(self, use):
 		"""
 		Create a new instance with conditionals evaluated.
