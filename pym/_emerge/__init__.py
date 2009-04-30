@@ -3005,7 +3005,7 @@ class EbuildMetadataPhase(SubProcess):
 	"""
 
 	__slots__ = ("cpv", "ebuild_path", "fd_pipes", "metadata_callback",
-		"ebuild_mtime", "portdb", "repo_path", "settings") + \
+		"ebuild_mtime", "metadata", "portdb", "repo_path", "settings") + \
 		("_raw_metadata",)
 
 	_file_names = ("ebuild",)
@@ -3110,8 +3110,9 @@ class EbuildMetadataPhase(SubProcess):
 				self.returncode = 1
 			else:
 				metadata = izip(portage.auxdbkeys, metadata_lines)
-				self.metadata_callback(self.cpv, self.ebuild_path,
-					self.repo_path, metadata, self.ebuild_mtime)
+				self.metadata = self.metadata_callback(self.cpv,
+					self.ebuild_path, self.repo_path, metadata,
+					self.ebuild_mtime)
 
 class EbuildProcess(SpawnProcess):
 
@@ -11557,7 +11558,8 @@ class Scheduler(PollScheduler):
 
 class MetadataRegen(PollScheduler):
 
-	def __init__(self, portdb, cp_iter=None, max_jobs=None, max_load=None):
+	def __init__(self, portdb, cp_iter=None, consumer=None,
+		max_jobs=None, max_load=None):
 		PollScheduler.__init__(self)
 		self._portdb = portdb
 		self._global_cleanse = False
@@ -11567,6 +11569,7 @@ class MetadataRegen(PollScheduler):
 			# iterate over every single cp.
 			self._global_cleanse = True
 		self._cp_iter = cp_iter
+		self._consumer = consumer
 
 		if max_jobs is None:
 			max_jobs = 1
@@ -11597,6 +11600,7 @@ class MetadataRegen(PollScheduler):
 		portdb = self._portdb
 		valid_pkgs = self._valid_pkgs
 		cp_set = self._cp_set
+		consumer = self._consumer
 
 		for cp in self._cp_iter:
 			cp_set.add(cp)
@@ -11605,11 +11609,19 @@ class MetadataRegen(PollScheduler):
 			for cpv in cpv_list:
 				valid_pkgs.add(cpv)
 				ebuild_path, repo_path = portdb.findname2(cpv)
-				metadata_process = portdb._metadata_process(
+				metadata, st, emtime = portdb._pull_valid_cache(
 					cpv, ebuild_path, repo_path)
-				if metadata_process is None:
+				if metadata is not None:
+					if consumer is not None:
+						consumer(cpv, ebuild_path,
+							repo_path, metadata)
 					continue
-				yield metadata_process
+
+				yield EbuildMetadataPhase(cpv=cpv, ebuild_path=ebuild_path,
+					ebuild_mtime=emtime,
+					metadata_callback=portdb._metadata_callback,
+					portdb=portdb, repo_path=repo_path,
+					settings=portdb.doebuild_settings)
 
 	def run(self):
 
@@ -11684,7 +11696,13 @@ class MetadataRegen(PollScheduler):
 
 	def _metadata_exit(self, metadata_process):
 		self._jobs -= 1
-		if metadata_process.returncode != os.EX_OK:
+		if metadata_process.returncode == os.EX_OK:
+			if self._consumer is not None:
+				self._consumer(metadata_process.cpv,
+					metadata_process.ebuild_path,
+					metadata_process.repo_path,
+					metadata_process.metadata)
+		else:
 			self.returncode = 1
 			self._error_count += 1
 			self._valid_pkgs.discard(metadata_process.cpv)
