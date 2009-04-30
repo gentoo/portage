@@ -39,3 +39,25 @@ class ReadOnlyRestriction(CacheError):
 		self.info = info
 	def __str__(self):
 		return "cache is non-modifiable"+str(self.info)
+
+class StatCollision(CacheError):
+	"""
+	If the content of a cache entry changes and neither the file mtime nor
+	size changes, it will prevent rsync from detecting changes. Cache backends
+	may raise this exception from _setitem() if they detect this type of stat
+	collision. See bug #139134.
+	"""
+	def __init__(self, key, filename, mtime, size):
+		self.key = key
+		self.filename = filename
+		self.mtime = mtime
+		self.size = size
+
+	def __str__(self):
+		return "%s has stat collision with size %s and mtime %s" % \
+			(self.key, self.size, self.mtime)
+
+	def __repr__(self):
+		return "portage.cache.cache_errors.StatCollision(%s)" % \
+			(', '.join((repr(self.key), repr(self.filename),
+			repr(self.mtime), repr(self.size))),)
