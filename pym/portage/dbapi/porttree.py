@@ -199,6 +199,7 @@ class portdbapi(dbapi):
 				tree_db = eclass_dbs.get(porttree)
 				if tree_db is None:
 					tree_db = eclass_cache.cache(porttree)
+					eclass_dbs[porttree] = tree_db
 				if eclass_db is None:
 					eclass_db = tree_db.copy()
 				else:
