@@ -9838,9 +9838,10 @@ class JobStatusDisplay(object):
 		'newline'         : 'nel',
 	}
 
-	def __init__(self, out=sys.stdout, quiet=False):
+	def __init__(self, out=sys.stdout, quiet=False, xterm_titles=True):
 		object.__setattr__(self, "out", out)
 		object.__setattr__(self, "quiet", quiet)
+		object.__setattr__(self, "xterm_titles", xterm_titles)
 		object.__setattr__(self, "maxval", 0)
 		object.__setattr__(self, "merges", 0)
 		object.__setattr__(self, "_changed", False)
@@ -10060,7 +10061,8 @@ class JobStatusDisplay(object):
 		else:
 			self._update(color_output.getvalue())
 
-		xtermTitle(" ".join(plain_output.split()))
+		if self.xterm_titles:
+			xtermTitle(" ".join(plain_output.split()))
 
 class ProgressHandler(object):
 	def __init__(self):
@@ -10204,7 +10206,8 @@ class Scheduler(PollScheduler):
 		# being in a fragile state. For example, see bug #259954.
 		self._unsatisfied_system_deps = set()
 
-		self._status_display = JobStatusDisplay()
+		self._status_display = JobStatusDisplay(
+			xterm_titles=('notitles' not in settings.features))
 		self._max_load = myopts.get("--load-average")
 		max_jobs = myopts.get("--jobs")
 		if max_jobs is None:
