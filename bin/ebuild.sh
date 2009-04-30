@@ -1919,14 +1919,11 @@ ebuild_main() {
 	if ! hasq $EBUILD_SH_ARGS clean depend help info nofetch ; then
 
 		if hasq distcc $FEATURES ; then
-			[[ -z ${PATH/*distcc*/} ]] && remove_path_entry distcc
 			export PATH="/usr/lib/distcc/bin:$PATH"
 			[[ -n $DISTCC_LOG ]] && addwrite "${DISTCC_LOG%/*}"
 		fi
 
 		if hasq ccache $FEATURES ; then
-			[[ -z ${PATH/*ccache*/} ]] && remove_path_entry ccache
-
 			export PATH="/usr/lib/ccache/bin:$PATH"
 
 			addread "$CCACHE_DIR"
