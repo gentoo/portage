@@ -266,6 +266,7 @@ qahelp={
 	"LICENSE.missing":"Ebuilds that have a missing or empty LICENSE variable",
 	"DESCRIPTION.missing":"Ebuilds that have a missing or empty DESCRIPTION variable",
 	"DESCRIPTION.toolong":"DESCRIPTION is over %d characters" % max_desc_len,
+	"EAPI.definition":"EAPI is defined after an inherit call (must be defined before)",
 	"EAPI.incompatible":"Ebuilds that use features that are only available with a different EAPI",
 	"EAPI.unsupported":"Ebuilds that have an unsupported EAPI version (you must upgrade portage)",
 	"SLOT.missing":"Ebuilds that have a missing or empty SLOT variable",
