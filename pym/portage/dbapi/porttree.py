@@ -486,6 +486,8 @@ class portdbapi(dbapi):
 						del auxdb[cpv]
 					except KeyError:
 						pass
+					except CacheError:
+						pass
 			else:
 				eapi = metadata.get('EAPI', '').strip()
 				if not eapi:
