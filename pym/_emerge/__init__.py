@@ -202,7 +202,7 @@ options=[
 "--help",         "--ignore-default-opts",
 "--keep-going",
 "--noconfmem",
-"--newuse",       "--nocolor",
+"--newuse",
 "--nodeps",       "--noreplace",
 "--nospinner",    "--oneshot",
 "--onlydeps",     "--pretend",
