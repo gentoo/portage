@@ -1861,11 +1861,6 @@ _source_ebuild() {
 	done
 	[[ -n $DEFINED_PHASES ]] || DEFINED_PHASES=-
 
-	if [[ -n $EBUILD_PHASE && $EBUILD_PHASE != depend ]] ; then
-		local phase_func=$(_ebuild_arg_to_phase "$EAPI" "$EBUILD_PHASE")
-		[[ -n $phase_func ]] && _ebuild_phase_funcs "$EAPI" "$phase_func"
-	fi
-
 	# This needs to be exported since prepstrip is a separate shell script.
 	[[ -n $QA_PRESTRIPPED ]] && export QA_PRESTRIPPED
 }
@@ -1931,6 +1926,11 @@ ebuild_main() {
 			# respect FEATURES="-ccache".
 			export CCACHE_DISABLE=1
 		fi
+	fi
+
+	if [[ $EBUILD_PHASE != depend ]] ; then
+		local phase_func=$(_ebuild_arg_to_phase "$EAPI" "$EBUILD_PHASE")
+		[[ -n $phase_func ]] && _ebuild_phase_funcs "$EAPI" "$phase_func"
 	fi
 
 	source_all_bashrcs
