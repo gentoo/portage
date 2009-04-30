@@ -3970,6 +3970,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 		myfile_path = os.path.join(mysettings["DISTDIR"], myfile)
 		has_space = True
+		has_space_superuser = False
 		file_lock = None
 		if listonly:
 			writemsg_stdout("\n", noiselevel=-1)
@@ -3987,17 +3988,29 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					mysize = 0
 				if (size - mysize + vfs_stat.f_bsize) >= \
 					(vfs_stat.f_bsize * vfs_stat.f_bavail):
-					if secpass < 2:
+
+					if (size - mysize + vfs_stat.f_bsize) >= \
+						(vfs_stat.f_bsize * vfs_stat.f_bfree):
+						has_space_superuser = True
+
+					if not has_space_superuser:
+						has_space = False
+					elif secpass < 2:
 						has_space = False
 					elif userfetch:
-						has_space = False
-					elif (size - mysize + vfs_stat.f_bsize) >= \
-						(vfs_stat.f_bsize * vfs_stat.f_bfree):
 						has_space = False
 
 			if not has_space:
 				writemsg("!!! Insufficient space to store %s in %s\n" % \
 					(myfile, mysettings["DISTDIR"]), noiselevel=-1)
+
+				if has_space_superuser:
+					writemsg("!!! Insufficient privileges to use " + \
+						"remaining space.\n", noiselevel=-1)
+					if userfetch:
+						writemsg("!!! You may set FEATURES=\"-userfetch\"" + \
+							" in /etc/make.conf in order to fetch with\n" + \
+							"!!! superuser privileges.\n", noiselevel=-1)
 
 			if distdir_writable and use_locks:
 
