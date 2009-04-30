@@ -1902,6 +1902,19 @@ fi
 ebuild_main() {
 	local f x
 
+	# we may want to make this configurable somewhere else
+	local ebuild_helpers_path
+	case ${EAPI} in
+		3|3_pre1)
+			ebuild_helpers_path="${PORTAGE_BIN_PATH}/ebuild-helpers/3:${PORTAGE_BIN_PATH}/ebuild-helpers"
+			;;
+		*)
+			ebuild_helpers_path="${PORTAGE_BIN_PATH}/ebuild-helpers"
+			;;
+	esac
+
+	export PATH="/usr/local/sbin:/sbin:/usr/sbin:${ebuild_helpers_path}:/usr/local/bin:/bin:/usr/bin:${ROOTPATH}"
+
 	if ! hasq $EBUILD_SH_ARGS clean depend help info nofetch ; then
 
 		if hasq distcc $FEATURES ; then
