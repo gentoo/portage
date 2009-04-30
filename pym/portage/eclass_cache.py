@@ -5,6 +5,7 @@
 
 __all__ = ["cache"]
 
+import warnings
 from portage.util import normalize_path, writemsg
 import errno, os, sys
 from portage.data import portage_gid
@@ -15,18 +16,47 @@ class cache(object):
 	Maintains the cache information about eclasses used in ebuild.
 	"""
 	def __init__(self, porttree_root, overlays=[]):
-		self.porttree_root = porttree_root
 
 		self.eclasses = {} # {"Name": ("location","_mtime_")}
 		self._eclass_locations = {}
 
 		# screw with the porttree ordering, w/out having bash inherit match it, and I'll hurt you.
 		# ~harring
-		self.porttrees = [self.porttree_root]+overlays
-		self.porttrees = tuple(map(normalize_path, self.porttrees))
-		self._master_eclass_root = os.path.join(self.porttrees[0],"eclass")
-		self._master_eclasses_overridden = {}
-		self.update_eclasses()
+		if porttree_root:
+			self.porttree_root = porttree_root
+			self.porttrees = [self.porttree_root] + overlays
+			self.porttrees = tuple(map(normalize_path, self.porttrees))
+			self._master_eclass_root = os.path.join(self.porttrees[0], "eclass")
+			self.update_eclasses()
+		else:
+			self.porttree_root = None
+			self.porttrees = ()
+			self._master_eclass_root = None
+
+	def copy(self):
+		return self.__copy__()
+
+	def __copy__(self):
+		result = self.__class__(None)
+		result.eclasses = self.eclasses.copy()
+		result._eclass_locations = self._eclass_locations.copy()
+		result.porttree_root = self.porttree_root
+		result.porttrees = self.porttrees
+		result._master_eclass_root = self._master_eclass_root
+		return result
+
+	def append(self, other):
+		"""
+		Append another instance to this instance. This will cause eclasses
+		from the other instance to override and eclases from this instance
+		that have the same name.
+		"""
+		if not isinstance(other, self.__class__):
+			raise TypeError(
+				"expected type %s, got %s" % (self.__class__, type(other)))
+		self.porttrees = self.porttrees + other.porttrees
+		self.eclasses.update(other.eclasses)
+		self._eclass_locations.update(other._eclass_locations)
 
 	def close_caches(self):
 		import traceback
@@ -77,8 +107,7 @@ class cache(object):
 						# It appears to be identical to the master,
 						# so prefer the master entry.
 						continue
-					else:
-						self._master_eclasses_overridden[ys] = x
+
 				self.eclasses[ys] = (x, mtime)
 				self._eclass_locations[ys] = x
 
@@ -100,8 +129,10 @@ class cache(object):
 		ec_dict = {}
 		for x in inherits:
 			ec_dict[x] = self.eclasses[x]
-			if from_master_only and \
-				self._eclass_locations[x] != self._master_eclass_root:
-				return None
+
+		if from_master_only is not False:
+			warnings.warn("portage.eclass_cache.cache.get_eclass_data(): " + \
+				"ignoring deprecated 'from_master_only' parameter",
+				DeprecationWarning)
 
 		return ec_dict

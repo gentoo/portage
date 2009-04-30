@@ -8,7 +8,8 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum',
 	'portage.dep:dep_getkey,match_from_list,paren_reduce,use_reduce',
-	'portage.util:ensure_dirs,writemsg',
+	'portage.env.loaders:KeyValuePairFileLoader',
+	'portage.util:ensure_dirs,writemsg,writemsg_level',
 	'portage.versions:best,catpkgsplit,pkgsplit,ver_regexp',
 )
 
@@ -25,7 +26,7 @@ from portage import eclass_cache, auxdbkeys, doebuild, flatten, \
 	listdir, dep_expand, eapi_is_supported, key_expand, dep_check, \
 	_eapi_is_deprecated
 
-import codecs, os, stat
+import codecs, logging, os, stat
 from itertools import izip
 
 def _src_uri_validate(cpv, eapi, src_uri):
@@ -95,6 +96,15 @@ def _src_uri_validate(cpv, eapi, src_uri):
 			"getFetchMap(): '%s' SRC_URI arrow missing right operand" % \
 			(cpv,))
 
+class _repo_info(object):
+	__slots__ = ('name', 'path', 'eclass_db', 'portdir', 'portdir_overlay')
+	def __init__(self, name, path, eclass_db):
+		self.name = name
+		self.path = path
+		self.eclass_db = eclass_db
+		self.portdir = eclass_db.porttrees[0]
+		self.portdir_overlay = ' '.join(eclass_db.porttrees[1:])
+
 class portdbapi(dbapi):
 	"""this tree will scan a portage directory located at root (passed to init)"""
 	portdbapi_instances = []
@@ -116,10 +126,8 @@ class portdbapi(dbapi):
 		# instance that is passed in.
 		self.doebuild_settings = config(clone=self.mysettings)
 
-		#self.root=settings["PORTDIR"]
+		porttree_root = os.path.realpath(porttree_root)
 		self.porttree_root = porttree_root
-		if porttree_root:
-			self.porttree_root = os.path.realpath(porttree_root)
 
 		self.depcachedir = os.path.realpath(self.mysettings.depcachedir)
 
@@ -132,8 +140,7 @@ class portdbapi(dbapi):
 				os.environ["SANDBOX_WRITE"] = \
 					":".join(filter(None, sandbox_write))
 
-		self.eclassdb = eclass_cache.cache(self.porttree_root,
-			overlays=self.mysettings["PORTDIR_OVERLAY"].split())
+		self.eclassdb = eclass_cache.cache(porttree_root)
 
 		# This is used as sanity check for aux_get(). If there is no
 		# root eclass dir, we assume that PORTDIR is invalid or
@@ -163,7 +170,43 @@ class portdbapi(dbapi):
 				# don't want to see a warning every time the portage module is
 				# imported.
 				pass
-		
+
+		self._repo_info = {}
+		eclass_dbs = {porttree_root : self.eclassdb}
+		for path in self.porttrees:
+			if path in self._repo_info:
+				continue
+
+			layout_filename = os.path.join(path, "metadata/layout.conf")
+			layout_file = KeyValuePairFileLoader(layout_filename, None, None)
+			layout_data, layout_errors = layout_file.load()
+			porttrees = []
+			for master_name in layout_data.get('masters', '').split():
+				master_path = self.treemap.get(master_name)
+				if master_path is None:
+					writemsg_level(("Unavailable repository '%s' " + \
+						"referenced by masters entry in '%s'\n") % \
+						(master_name, layout_filename),
+						level=logging.ERROR, noiselevel=-1)
+				else:
+					porttrees.append(master_path)
+			if not porttrees:
+				porttrees.append(porttree_root)
+			porttrees.append(path)
+
+			eclass_db = None
+			for porttree in porttrees:
+				tree_db = eclass_dbs.get(porttree)
+				if tree_db is None:
+					tree_db = eclass_cache.cache(porttree)
+				if eclass_db is None:
+					eclass_db = tree_db.copy()
+				else:
+					eclass_db.append(tree_db)
+
+			self._repo_info[path] = _repo_info(self._repository_map.get(path),
+				path, eclass_db)
+
 		self.auxdbmodule = self.mysettings.load_best_module("portdbapi.auxdbmodule")
 		self.auxdb = {}
 		self._pregen_auxdb = {}
@@ -191,6 +234,10 @@ class portdbapi(dbapi):
 				if os.path.isdir(os.path.join(x, "metadata", "cache")):
 					self._pregen_auxdb[x] = self.metadbmodule(
 						x, "metadata/cache", filtered_auxdbkeys, readonly=True)
+					try:
+						self._pregen_auxdb[x].ec = self._repo_info[x].eclass_db
+					except AttributeError:
+						pass
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
 			["DEPEND", "EAPI", "INHERITED", "IUSE", "KEYWORDS", "LICENSE",
