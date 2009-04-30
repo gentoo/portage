@@ -7,6 +7,7 @@ import portage.exception, socket, smtplib, os, sys, time
 from email.MIMEText import MIMEText as TextMessage
 from email.MIMEMultipart import MIMEMultipart as MultipartMessage
 from email.MIMEBase import MIMEBase as BaseMessage
+from email.header import Header
 
 def create_message(sender, recipient, subject, body, attachments=None):
 	if attachments == None:
@@ -25,7 +26,9 @@ def create_message(sender, recipient, subject, body, attachments=None):
 	mymessage.set_unixfrom(sender)
 	mymessage["To"] = recipient
 	mymessage["From"] = sender
-	mymessage["Subject"] = subject
+	# Use Header as a workaround so that long subject lines are wrapped
+	# correctly by <=python-2.6 (gentoo bug #263370, python issue #1974).
+	mymessage["Subject"] = Header(subject)
 	mymessage["Date"] = time.strftime("%a, %d %b %Y %H:%M:%S %z")
 	
 	return mymessage
