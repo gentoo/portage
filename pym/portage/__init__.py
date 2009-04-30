@@ -2215,7 +2215,6 @@ class config(object):
 		cpv_slot = self.mycpv
 		pkginternaluse = ""
 		iuse = ""
-		env_configdict = self.configdict["env"]
 		pkg_configdict = self.configdict["pkg"]
 		previous_iuse = pkg_configdict.get("IUSE")
 
@@ -2241,9 +2240,6 @@ class config(object):
 			repository = pkg_configdict.pop("repository", None)
 			if repository is not None:
 				pkg_configdict["PORTAGE_REPO_NAME"] = repository
-			for k in pkg_configdict:
-				if k != "USE":
-					env_configdict.pop(k, None)
 			slot = pkg_configdict["SLOT"]
 			iuse = pkg_configdict["IUSE"]
 			if pkg is None:
@@ -2312,6 +2308,14 @@ class config(object):
 
 		if has_changed:
 			self.reset(keeping_pkg=1,use_cache=use_cache)
+
+		# Ensure that "pkg" values are always preferred over "env" values.
+		# This must occur _after_ the above reset() call, since reset()
+		# copies values from self.backupenv.
+		env_configdict = self.configdict['env']
+		for k in pkg_configdict:
+			if k != 'USE':
+				env_configdict.pop(k, None)
 
 		env_configdict.addLazySingleton('ACCEPT_LICENSE',
 			self._lazy_accept_license(self))
