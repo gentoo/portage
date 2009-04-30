@@ -50,11 +50,10 @@ def parse_args(args):
 		action="store_true",
 		help="enable rsync stat collision workaround " + \
 			"for bug 139134 (use with --update)")
+	parser.add_option("--ignore-default-opts",
+		action="store_true",
+		help="do not use the EGENCACHE_DEFAULT_OPTS environment variable")
 	options, args = parser.parse_args(args)
-
-	if not options.update:
-		parser.error('No action specified (--update ' + \
-			'is the only available action)')
 
 	if options.jobs:
 		jobs = None
@@ -105,7 +104,7 @@ def parse_args(args):
 		if str(atom) != atom.cp:
 			parser.error('Atom is too specific: %s' % (atom,))
 
-	return options, args
+	return parser, options, args
 
 class GenCache(object):
 	def __init__(self, portdb, cp_iter=None, max_jobs=None, max_load=None,
@@ -223,7 +222,7 @@ class GenCache(object):
 					level=logging.ERROR, noiselevel=-1)
 
 def egencache_main(args):
-	options, args = parse_args(args)
+	parser, options, atoms = parse_args(args)
 
 	config_root = options.config_root
 	if config_root is None:
@@ -242,6 +241,27 @@ def egencache_main(args):
 	settings = portage.config(config_root=config_root,
 		target_root='/', env=env)
 
+	default_opts = None
+	if not options.ignore_default_opts:
+		default_opts = settings.get('EGENCACHE_DEFAULT_OPTS', '').split()
+
+	if default_opts:
+		parser, options, args = parse_args(default_opts + args)
+
+		if options.config_root is not None:
+			config_root = options.config_root
+
+		if options.cache_dir is not None:
+			env['PORTAGE_DEPCACHEDIR'] = options.cache_dir
+
+		settings = portage.config(config_root=config_root,
+			target_root='/', env=env)
+
+	if not options.update:
+		parser.error('No action specified (--update ' + \
+			'is the only available action)')
+		return 1
+
 	if 'metadata-transfer' not in settings.features:
 		writemsg_level("ecachegen: warning: " + \
 			"automatically enabling FEATURES=metadata-transfer\n",
@@ -255,8 +275,8 @@ def egencache_main(args):
 	portdb = portage.portdbapi(settings["PORTDIR"], mysettings=settings)
 
 	cp_iter = None
-	if args:
-		cp_iter = iter(args)
+	if atoms:
+		cp_iter = iter(atoms)
 
 	gen_cache = GenCache(portdb, cp_iter=cp_iter,
 		max_jobs=options.jobs,
