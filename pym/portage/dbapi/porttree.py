@@ -379,8 +379,8 @@ class portdbapi(dbapi):
 		metadata = dict(i)
 
 		if metadata.get("INHERITED", False):
-			metadata["_eclasses_"] = \
-				self.eclassdb.get_eclass_data(metadata["INHERITED"].split())
+			metadata["_eclasses_"] = self._repo_info[repo_path
+				].eclass_db.get_eclass_data(metadata["INHERITED"].split())
 		else:
 			metadata["_eclasses_"] = {}
 
@@ -418,6 +418,7 @@ class portdbapi(dbapi):
 		if pregen_auxdb is not None:
 			auxdbs.append(pregen_auxdb)
 		auxdbs.append(self.auxdb[repo_path])
+		eclass_db = self._repo_info[repo_path].eclass_db
 
 		doregen = True
 		for auxdb in auxdbs:
@@ -437,7 +438,7 @@ class portdbapi(dbapi):
 					eapi = '0'
 				if not (eapi[:1] == '-' and eapi_is_supported(eapi[1:])) and \
 					emtime == metadata['_mtime_'] and \
-					self.eclassdb.is_eclass_data_valid(metadata['_eclasses_']):
+					eclass_db.is_eclass_data_valid(metadata['_eclasses_']):
 					doregen = False
 
 			if not doregen:
@@ -514,8 +515,8 @@ class portdbapi(dbapi):
 				mycpv, myebuild, mylocation, mydata, emtime)
 
 			if mydata.get("INHERITED", False):
-				mydata["_eclasses_"] = \
-					self.eclassdb.get_eclass_data(mydata["INHERITED"].split())
+				mydata["_eclasses_"] = self._repo_info[mylocation
+					].eclass_db.get_eclass_data(mydata["INHERITED"].split())
 			else:
 				mydata["_eclasses_"] = {}
 
