@@ -1741,9 +1741,6 @@ class EbuildFetchonly(SlotObject):
 		ebuild_path = portdb.findname(pkg.cpv)
 		settings.setcpv(pkg)
 		debug = settings.get("PORTAGE_DEBUG") == "1"
-		use_cache = 1 # always true
-		portage.doebuild_environment(ebuild_path, "fetch",
-			settings["ROOT"], settings, debug, use_cache, portdb)
 		restrict_fetch = 'fetch' in settings['PORTAGE_RESTRICT'].split()
 
 		if restrict_fetch:
