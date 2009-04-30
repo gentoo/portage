@@ -48,14 +48,14 @@ for x in "$@" ; do
 			fi
 
 			install -m0644 "${x}" "${D}/usr/share/man/${mandir}/${name}"
-			((ret+=$?))
+			((ret|=$?))
 		elif [[ ! -e ${x} ]] ; then
 			echo "!!! ${0##*/}: $x does not exist" 1>&2
-			((++ret))
+			((ret|=1))
 		fi
 	else
 		vecho "doman: '${x}' is probably not a man page; skipping" 1>&2
-		((++ret))
+		((ret|=1))
 	fi
 done
 

@@ -54,7 +54,7 @@ funk_up_dir() {
 
 	# first we act on all the files
 	find "${dir}" -type f ${negate} -iname '*'${suffix} -print0 | ${XARGS} -0 ${binary}
-	((ret+=$?))
+	((ret|=$?))
 
 	find "${dir}" -type l -print0 | \
 	while read -d $'\0' brokenlink ; do
@@ -67,7 +67,7 @@ funk_up_dir() {
 		[[ ${act} == "compress" ]] \
 			&& ln -snf "${newdest}" "${brokenlink}${suffix}" \
 			|| ln -snf "${newdest}" "${brokenlink%${suffix}}"
-		((ret+=$?))
+		((ret|=$?))
 	done
 }
 

@@ -89,9 +89,9 @@ for x in "$@" ; do
 			mv "$TMP/1/$x_orig" "$x"
 		fi
 		while popd >/dev/null 2>&1 ; do true ; done
-		((++success))
+		((success|=1))
 	else
-		_doins "${x}" && ((++success))
+		_doins "${x}" && ((success|=1))
 	fi
 done
 rm -rf "$TMP"
