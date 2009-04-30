@@ -93,6 +93,18 @@ often required.  The src_unpack() function is also responsible for
 making the appropriate patches to the sources so that they're ready
 for compilation.
 .TP
+.BR prepare
+Prepares the extracted sources by running the \fIsrc_prepare()\fR
+function specified in the ebuild file. When src_prepare() starts, the
+current working directory will be set to ${S}. This function is supported
+beginning with \fBEAPI 2\fR.
+.TP
+.BR configure
+Configures the extracted sources by running the \fIsrc_configure()\fR
+function specified in the ebuild file. When src_configure() starts, the
+current working directory will be set to ${S}. This function is supported
+beginning with \fBEAPI 2\fR.
+.TP
 .BR compile
 Compiles the extracted sources by running the \fIsrc_compile()\fR
 function specified in the ebuild file.  When src_compile() starts, the
