@@ -1257,19 +1257,19 @@ class config(object):
 			self.mycpv    = copy.deepcopy(clone.mycpv)
 			self._setcpv_args_hash = copy.deepcopy(clone._setcpv_args_hash)
 
-			self.configlist = copy.deepcopy(clone.configlist)
+			self.configdict = copy.deepcopy(clone.configdict)
+			self.configlist = [
+				self.configdict['env.d'],
+				self.configdict['pkginternal'],
+				self.configdict['globals'],
+				self.configdict['defaults'],
+				self.configdict['conf'],
+				self.configdict['pkg'],
+				self.configdict['auto'],
+				self.configdict['env'],
+			]
 			self.lookuplist = self.configlist[:]
 			self.lookuplist.reverse()
-			self.configdict = {
-				"env.d":     self.configlist[0],
-				"pkginternal": self.configlist[1],
-				"globals":     self.configlist[2],
-				"defaults":    self.configlist[3],
-				"conf":        self.configlist[4],
-				"pkg":         self.configlist[5],
-				"auto":        self.configlist[6],
-				"backupenv":   self.configlist[7],
-				"env":         self.configlist[8] }
 			self._use_expand_dict = copy.deepcopy(clone._use_expand_dict)
 			self.profiles = copy.deepcopy(clone.profiles)
 			self.backupenv  = self.configdict["backupenv"]
@@ -1579,8 +1579,7 @@ class config(object):
 			self.configlist.append({})
 			self.configdict["auto"]=self.configlist[-1]
 
-			self.configlist.append(self.backupenv) # XXX Why though?
-			self.configdict["backupenv"]=self.configlist[-1]
+			self.configdict["backupenv"] = self.backupenv
 
 			# Don't allow the user to override certain variables in the env
 			for k in profile_only_variables:
