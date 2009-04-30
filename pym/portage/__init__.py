@@ -2092,8 +2092,7 @@ class config(object):
 			settings = self.settings
 			use = self.built_use
 			if use is None:
-				use = settings['PORTAGE_USE']
-			use = set(use.split())
+				use = frozenset(settings['PORTAGE_USE'].split())
 			values['ACCEPT_LICENSE'] = self._accept_license(use, settings)
 			values['PORTAGE_RESTRICT'] = self._restrict(use, settings)
 			return values
@@ -2232,7 +2231,7 @@ class config(object):
 			mydb = pkg.metadata
 			args_hash = (mycpv, id(pkg))
 			if pkg.built:
-				built_use = pkg.metadata['USE']
+				built_use = pkg.use.enabled
 		else:
 			args_hash = (mycpv, id(mydb))
 
