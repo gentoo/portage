@@ -56,6 +56,37 @@ def parse_args(args):
 		parser.error('No action specified (--update ' + \
 			'is the only available action)')
 
+	if options.jobs:
+		jobs = None
+		try:
+			jobs = int(options.jobs)
+		except ValueError:
+			jobs = -1
+
+		if jobs < 1:
+			parser.error("Invalid: --jobs='%s'" % \
+				(options.jobs,))
+
+		options.jobs = jobs
+
+	else:
+		options.jobs = None
+
+	if options.load_average:
+		try:
+			load_average = float(options.load_average)
+		except ValueError:
+			load_average = 0.0
+
+		if load_average <= 0.0:
+			parser.error("Invalid: --load-average='%s'" % \
+				(options.load_average,))
+
+		options.load_average = load_average
+
+	else:
+		options.load_average = None
+
 	if options.config_root is not None and \
 		not os.path.isdir(options.config_root):
 		parser.error("Not a directory: --config-root='%s'" % \
