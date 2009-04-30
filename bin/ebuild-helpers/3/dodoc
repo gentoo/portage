@@ -1,0 +1,50 @@
+#!/bin/bash
+# Copyright 1999-2009 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id$
+
+source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+
+if [ $# -lt 1 ] ; then
+	vecho "${0##*/}: at least one argument needed" 1>&2
+	exit 1
+fi
+
+dir="${D}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
+if [ ! -d "${dir}" ] ; then
+	install -d "${dir}"
+fi
+
+ret=0
+
+DOINSRECUR="n"
+
+if [[ "$1" == "-r" ]] ; then
+	DOINSRECUR="y"
+	shift
+fi
+
+for x in "$@" ; do
+
+	if [ -d "${x}" ] ; then
+		if [[ ${DOINSRECUR} == "n" ]] ; then
+			continue
+		fi
+
+		find "${x}" -mindepth 1 -maxdepth 1 -exec \
+			env \
+				_E_DOCDESTTREE_="$(basename "${x}")" \
+				${0} -r {} \;
+
+	elif [ -s "${x}" ] ; then
+		install -m0644 "${x}" "${dir}"
+		ecompress --queue "${dir}/${x##*/}"
+
+	elif [ ! -e "${x}" ] ; then
+		echo "!!! ${0##*/}: $x does not exist" 1>&2
+		((++ret))
+	fi
+
+done
+
+exit ${ret}
