@@ -589,7 +589,7 @@ for path in portdb.porttrees:
 	desc_path = os.path.join(path, 'profiles', 'profiles.desc')
 	try:
 		desc_file = codecs.open(desc_path, mode='r', errors='replace')
-	except OSError:
+	except EnvironmentError:
 		pass
 	else:
 		for i, x in enumerate(desc_file):
