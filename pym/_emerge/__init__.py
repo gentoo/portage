@@ -7023,6 +7023,13 @@ class depgraph(object):
 			writemsg("\n", noiselevel=-1)
 
 		scheduler_graph = self.digraph.copy()
+
+		if '--nodeps' in self.myopts:
+			# Preserve the package order given on the command line.
+			return ([node for node in scheduler_graph \
+				if isinstance(node, Package) \
+				and node.operation == 'merge'], scheduler_graph)
+
 		mygraph=self.digraph.copy()
 		# Prune "nomerge" root nodes if nothing depends on them, since
 		# otherwise they slow down merge order calculation. Don't remove
