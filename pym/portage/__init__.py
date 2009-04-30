@@ -2073,6 +2073,31 @@ class config(object):
 			DeprecationWarning)
 		return 1
 
+	class _lazy_accept_license(object):
+		"""
+		Generate a pruned version of ACCEPT_LICENSE, by intersection with
+		LICENSE. This is required since otherwise ACCEPT_LICENSE might be too
+		big (bigger than ARG_MAX), causing execve() calls to fail with E2BIG
+		errors as in bug #262647.
+		"""
+		__slots__ = ('settings',)
+
+		def __init__(self, settings):
+			self.settings = settings
+
+		def __call__(self):
+			settings = self.settings
+			try:
+				licenses = set(flatten(
+					dep.use_reduce(dep.paren_reduce(
+					settings['LICENSE']),
+					uselist=settings['PORTAGE_USE'].split())))
+			except exception.InvalidDependString:
+				licenses = set()
+			if '*' not in settings._accept_license:
+				licenses.intersection_update(settings._accept_license)
+			return ' '.join(sorted(licenses))
+
 	class _lazy_use_expand(object):
 		"""
 		Lazily evaluate USE_EXPAND variables since they are only needed when
@@ -2287,6 +2312,9 @@ class config(object):
 
 		if has_changed:
 			self.reset(keeping_pkg=1,use_cache=use_cache)
+
+		env_configdict.addLazySingleton('ACCEPT_LICENSE',
+			self._lazy_accept_license(self))
 
 		# If reset() has not been called, it's safe to return
 		# early if IUSE has not changed.
