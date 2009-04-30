@@ -1061,7 +1061,7 @@ class config(object):
 	# environment in order to prevent sandbox from sourcing /etc/profile
 	# in it's bashrc (causing major leakage).
 	_environ_whitelist += [
-		"BASH_ENV", "BUILD_PREFIX", "D",
+		"ACCEPT_LICENSE", "BASH_ENV", "BUILD_PREFIX", "D",
 		"DISTDIR", "DOC_SYMLINKS_DIR", "EBUILD",
 		"EBUILD_EXIT_STATUS_FILE", "EBUILD_FORCE_TEST",
 		"EBUILD_PHASE", "ECLASSDIR", "ECLASS_DEPTH", "EMERGE_FROM",
@@ -2080,18 +2080,22 @@ class config(object):
 		big (bigger than ARG_MAX), causing execve() calls to fail with E2BIG
 		errors as in bug #262647.
 		"""
-		__slots__ = ('settings',)
+		__slots__ = ('built_use', 'settings',)
 
-		def __init__(self, settings):
+		def __init__(self, built_use, settings):
+			self.built_use = built_use
 			self.settings = settings
 
 		def __call__(self):
 			settings = self.settings
+			use = self.built_use
+			if use is None:
+				use = settings['PORTAGE_USE']
 			try:
 				licenses = set(flatten(
 					dep.use_reduce(dep.paren_reduce(
 					settings['LICENSE']),
-					uselist=settings['PORTAGE_USE'].split())))
+					uselist=use.split())))
 			except exception.InvalidDependString:
 				licenses = set()
 			if '*' not in settings._accept_license:
@@ -2196,11 +2200,14 @@ class config(object):
 		self.modifying()
 
 		pkg = None
+		built_use = None
 		if not isinstance(mycpv, basestring):
 			pkg = mycpv
 			mycpv = pkg.cpv
 			mydb = pkg.metadata
 			args_hash = (mycpv, id(pkg))
+			if pkg.built:
+				built_use = pkg.metadata['USE']
 		else:
 			args_hash = (mycpv, id(mydb))
 
@@ -2318,7 +2325,7 @@ class config(object):
 				env_configdict.pop(k, None)
 
 		env_configdict.addLazySingleton('ACCEPT_LICENSE',
-			self._lazy_accept_license(self))
+			self._lazy_accept_license(built_use, self))
 
 		# If reset() has not been called, it's safe to return
 		# early if IUSE has not changed.
