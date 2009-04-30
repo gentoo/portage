@@ -26,6 +26,7 @@ import portage
 import _emerge
 from portage.cache.cache_errors import CacheError, StatCollision
 from portage.util import writemsg_level
+from portage import cpv_getkey
 
 def parse_args(args):
 	usage = "egencache [options] --update [atom] ..."
@@ -133,7 +134,7 @@ class GenCache(object):
 
 	def _metadata_callback(self, cpv, ebuild_path, repo_path, metadata):
 		self._existing_nodes.add(cpv)
-		self._cp_missing.discard(portage.cpv_getkey(cpv))
+		self._cp_missing.discard(cpv_getkey(cpv))
 		if metadata is not None:
 			if metadata.get('EAPI') == '0':
 				del metadata['EAPI']
@@ -179,10 +180,18 @@ class GenCache(object):
 		cp_missing = self._cp_missing
 
 		trg_cache = self._trg_cache
-		dead_nodes = None
+		dead_nodes = set()
 		if self._global_cleanse:
 			try:
-				dead_nodes = set(trg_cache.iterkeys())
+				for cpv in trg_cache.iterkeys():
+					cp = cpv_getkey(cpv)
+					if cp is None:
+						self.returncode |= 1
+						writemsg_level(
+							"Unable to parse cp for '%s'\n"  % (cpv,),
+							level=logging.ERROR, noiselevel=-1)
+					else:
+						dead_nodes.add(cpv)
 			except CacheError, ce:
 				self.returncode |= 1
 				writemsg_level(
@@ -193,12 +202,11 @@ class GenCache(object):
 
 		else:
 			cp_set = self._cp_set
-			cpv_getkey = portage.cpv_getkey
-			dead_nodes = set()
 			try:
 				for cpv in trg_cache.iterkeys():
 					cp = cpv_getkey(cpv)
 					if cp is None:
+						self.returncode |= 1
 						writemsg_level(
 							"Unable to parse cp for '%s'\n"  % (cpv,),
 							level=logging.ERROR, noiselevel=-1)
