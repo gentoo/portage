@@ -518,6 +518,7 @@ save_ebuild_env() {
 			source_all_bashrcs ebuild_main \
 			ebuild_phase ebuild_phase_with_hooks \
 			_ebuild_arg_to_phase _ebuild_phase_funcs default \
+			_source_ebuild \
 			${QA_INTERCEPTORS}
 
 		# portage config variables and variables set directly by portage
