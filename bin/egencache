@@ -143,7 +143,7 @@ class GenCache(object):
 					# file mtime nor size changes, it will prevent rsync from
 					# detecting changes. Cache backends may raise this
 					# exception from _setitem() if they detect this type of stat
-					# collision. These exceptions are be handled by bumping the
+					# collision. These exceptions are handled by bumping the
 					# mtime on the ebuild (and the corresponding cache entry).
 					# See bug #139134.
 					max_mtime = sc.mtime
