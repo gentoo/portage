@@ -56,8 +56,8 @@ qa_call() {
 	return $retval
 }
 
-# subshell die support
-EBUILD_MASTER_PID=$$
+# Subshell/helper die support (must export for the die helper).
+export EBUILD_MASTER_PID=$$
 trap 'exit 1' SIGTERM
 
 EBUILD_SH_ARGS="$*"
