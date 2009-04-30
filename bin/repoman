@@ -501,6 +501,7 @@ portdir = portdb.porttrees[0]
 # Generate an appropriate PORTDIR_OVERLAY value for passing into the
 # profile-specific config constructor calls.
 env = os.environ.copy()
+env['PORTDIR'] = portdir
 env['PORTDIR_OVERLAY'] = ' '.join(portdb.porttrees[1:])
 
 logging.info('Setting paths:')
