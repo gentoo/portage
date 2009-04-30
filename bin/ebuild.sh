@@ -142,12 +142,7 @@ useq() {
 	fi
 
 	# Make sure we have this USE flag in IUSE
-	if [[ -n ${PORTAGE_IUSE} ]] && \
-		[[ -n ${EBUILD_PHASE} ]] && \
-		! hasq ${EBUILD_PHASE} config depend info prerm postrm postinst && \
-		[[ ${EMERGE_FROM} != binary ]] ; then
-		# TODO: Implement PORTAGE_IUSE for binary packages. Currently,
-		# it is only valid for build time phases.
+	if [[ -n $PORTAGE_IUSE && -n $EBUILD_PHASE ]] ; then
 		[[ $u =~ $PORTAGE_IUSE ]] || \
 			eqawarn "QA Notice: USE Flag '${u}' not" \
 				"in IUSE for ${CATEGORY}/${PF}"
