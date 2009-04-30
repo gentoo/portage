@@ -3937,8 +3937,15 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					mysize = 0
 				if (size - mysize + vfs_stat.f_bsize) >= \
 					(vfs_stat.f_bsize * vfs_stat.f_bavail):
-					writemsg("!!! Insufficient space to store %s in %s\n" % (myfile, mysettings["DISTDIR"]), noiselevel=-1)
-					has_space = False
+					if 'userfetch' in features:
+						has_space = False
+					elif (size - mysize + vfs_stat.f_bfree) >= \
+						(vfs_stat.f_bfree * vfs_stat.f_bavail):
+						has_space = False
+
+			if not has_space:
+				writemsg("!!! Insufficient space to store %s in %s\n" % \
+					(myfile, mysettings["DISTDIR"]), noiselevel=-1)
 
 			if distdir_writable and use_locks:
 
