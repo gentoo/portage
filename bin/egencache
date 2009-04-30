@@ -34,6 +34,9 @@ def parse_args(args):
 	parser.add_option("--update",
 		action="store_true",
 		help="update metadata/cache/ (generate as necessary)")
+	parser.add_option("--repo",
+		action="store",
+		help="name of repo to operate on (default repo is located at $PORTDIR)")
 	parser.add_option("--cache-dir",
 		help="location of the metadata cache",
 		dest="cache_dir")
@@ -126,7 +129,7 @@ class GenCache(object):
 			max_jobs=max_jobs, max_load=max_load)
 		self.returncode = os.EX_OK
 		metadbmodule = portdb.mysettings.load_best_module("portdbapi.metadbmodule")
-		self._trg_cache = metadbmodule(portdb.porttree_root,
+		self._trg_cache = metadbmodule(portdb.porttrees[0],
 			"metadata/cache", portage.auxdbkeys[:])
 		if rsync:
 			self._trg_cache.raise_stat_collision = True
@@ -259,8 +262,8 @@ def egencache_main(args):
 	# completely controlled by commandline arguments.
 	env = {}
 
-	# TODO: Implement --repo for choosing a repo.
-	env['PORTDIR_OVERLAY'] = ''
+	if options.repo is None:
+		env['PORTDIR_OVERLAY'] = ''
 
 	if options.cache_dir is not None:
 		env['PORTAGE_DEPCACHEDIR'] = options.cache_dir
@@ -300,6 +303,15 @@ def egencache_main(args):
 	settings.lock()
 
 	portdb = portage.portdbapi(settings["PORTDIR"], mysettings=settings)
+	if options.repo is not None:
+		repo_path = portdb.getRepositoryPath(options.repo)
+		if repo_path is None:
+			parser.error("Unable to locate repository named '%s'" % \
+				(options.repo,))
+			return 1
+
+		# Limit ebuilds to the specified repo.
+		portdb.porttrees = [repo_path]
 
 	cp_iter = None
 	if atoms:
