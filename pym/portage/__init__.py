@@ -2098,6 +2098,7 @@ class config(object):
 					uselist=use.split())))
 			except exception.InvalidDependString:
 				licenses = set()
+			licenses.discard('||')
 			if '*' not in settings._accept_license:
 				licenses.intersection_update(settings._accept_license)
 			return ' '.join(sorted(licenses))
