@@ -1001,11 +1001,19 @@ def _lazy_iuse_regex(iuse_implicit):
 	return regex
 
 class _local_repo_config(object):
-	__slots__ = ('eclass_overrides', 'name',)
+	__slots__ = ('eclass_overrides', 'masters', 'name',)
 	def __init__(self, name, repo_opts):
 		self.name = name
-		self.eclass_overrides = \
-			tuple(repo_opts.get('eclass-overrides', '').split())
+
+		eclass_overrides = repo_opts.get('eclass-overrides')
+		if eclass_overrides is not None:
+			eclass_overrides = tuple(eclass_overrides.split())
+		self.eclass_overrides = eclass_overrides
+
+		masters = repo_opts.get('masters')
+		if masters is not None:
+			masters = tuple(masters.split())
+		self.masters = masters
 
 class config(object):
 	"""

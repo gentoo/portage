@@ -207,11 +207,27 @@ class portdbapi(dbapi):
 				continue
 
 			repo_name = self._repository_map.get(path)
+
+			loc_repo_conf = None
+			if local_repo_configs is not None:
+				if repo_name is not None:
+					loc_repo_conf = local_repo_configs.get(repo_name)
+				else:
+					loc_repo_conf = default_loc_repo_config
+
 			layout_filename = os.path.join(path, "metadata/layout.conf")
 			layout_file = KeyValuePairFileLoader(layout_filename, None, None)
 			layout_data, layout_errors = layout_file.load()
 			porttrees = []
-			for master_name in layout_data.get('masters', '').split():
+
+			masters = None
+			if loc_repo_conf is not None and \
+				loc_repo_conf.masters is not None:
+				masters = loc_repo_conf.masters
+			else:
+				masters = layout_data.get('masters', '').split()
+
+			for master_name in masters:
 				master_path = self.treemap.get(master_name)
 				if master_path is None:
 					writemsg_level(("Unavailable repository '%s' " + \
@@ -230,13 +246,8 @@ class portdbapi(dbapi):
 
 			porttrees.append(path)
 
-			if local_repo_configs is not None:
-				loc_repo_conf = None
-				if repo_name is not None:
-					loc_repo_conf = local_repo_configs.get(repo_name)
-				if loc_repo_conf is None:
-					loc_repo_conf = default_loc_repo_config
-				if loc_repo_conf is not None:
+			if loc_repo_conf is not None and \
+					loc_repo_conf.eclass_overrides is not None:
 					for other_name in loc_repo_conf.eclass_overrides:
 						other_path = self.treemap.get(other_name)
 						if other_path is None:
