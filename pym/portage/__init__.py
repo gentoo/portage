@@ -3973,8 +3973,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						has_space = False
 					elif userfetch:
 						has_space = False
-					elif (size - mysize + vfs_stat.f_bfree) >= \
-						(vfs_stat.f_bfree * vfs_stat.f_bavail):
+					elif (size - mysize + vfs_stat.f_bsize) >= \
+						(vfs_stat.f_bsize * vfs_stat.f_bfree):
 						has_space = False
 
 			if not has_space:
