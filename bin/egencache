@@ -1,0 +1,205 @@
+#!/usr/bin/python
+# Copyright 2009 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id$
+
+import sys
+# This block ensures that ^C interrupts are handled quietly.
+try:
+	import signal
+
+	def exithandler(signum,frame):
+		signal.signal(signal.SIGINT, signal.SIG_IGN)
+		signal.signal(signal.SIGTERM, signal.SIG_IGN)
+		sys.exit(1)
+
+	signal.signal(signal.SIGINT, exithandler)
+	signal.signal(signal.SIGTERM, exithandler)
+
+except KeyboardInterrupt:
+	sys.exit(1)
+
+import logging
+import optparse
+import os
+import portage
+import _emerge
+from portage.cache.cache_errors import CacheError
+from portage.util import writemsg_level
+
+def parse_args(args):
+	usage = "egencache [options] --update [atom] ..."
+	parser = optparse.OptionParser(usage=usage)
+	parser.add_option("--update",
+		action="store_true",
+		help="update metadata/cache/ (generate as necessary)")
+	parser.add_option("--cache-dir",
+		help="location of the metadata cache",
+		dest="cache_dir")
+	parser.add_option("--config-root",
+		help="location of portage config files",
+		dest="config_root")
+	parser.add_option("--jobs",
+		action="store",
+		help="max ebuild processes to spawn")
+	parser.add_option("--load-average",
+		action="store",
+		help="max load allowed when spawning multiple jobs",
+		dest="load_average")
+	options, args = parser.parse_args(args)
+
+	if not options.update:
+		parser.error('No action specified (--update ' + \
+			'is the only available action)')
+
+	if options.config_root is not None and \
+		not os.path.isdir(options.config_root):
+		parser.error("Not a directory: --config-root='%s'" % \
+			(options.config_root,))
+
+	if options.cache_dir is not None and not os.path.isdir(options.cache_dir):
+		parser.error("Not a directory: --cache-dir='%s'" % \
+			(options.cache_dir,))
+
+	for atom in args:
+		try:
+			atom = portage.dep.Atom(atom)
+		except portage.exception.InvalidAtom:
+			parser.error('Invalid atom: %s' % (atom,))
+
+		if str(atom) != atom.cp:
+			parser.error('Atom is too specific: %s' % (atom,))
+
+	return options, args
+
+class GenCache(object):
+	def __init__(self, portdb, cp_iter=None, max_jobs=None, max_load=None):
+		self._portdb = portdb
+		# We can globally cleanse stale cache only if we
+		# iterate over every single cp.
+		self._global_cleanse = cp_iter is None
+		if cp_iter is not None:
+			self._cp_set = set(cp_iter)
+			cp_iter = iter(self._cp_set)
+		else:
+			self._cp_set = None
+		self._regen = _emerge.MetadataRegen(portdb, cp_iter=cp_iter,
+			consumer=self._metadata_callback,
+			max_jobs=max_jobs, max_load=max_load)
+		self.returncode = os.EX_OK
+		metadbmodule = portdb.mysettings.load_best_module("portdbapi.metadbmodule")
+		self._trg_cache = metadbmodule(portdb.porttree_root,
+			"metadata/cache", portage.auxdbkeys[:])
+		self._existing_nodes = set()
+
+	def _metadata_callback(self, cpv, ebuild_path, repo_path, metadata):
+		self._existing_nodes.add(cpv)
+		if metadata is not None:
+			# TODO: Implement a workaround for bug 139134 here. The cache
+			# should be able to optionally raise an exception in order to
+			# indicate any mtime + size collisions that will prevent rsync
+			# from detecting changes. These exceptions will be handled by
+			# bumping the mtime on the ebuild (and the corresponding cache
+			# entry).
+			if metadata.get('EAPI') == '0':
+				del metadata['EAPI']
+			try:
+				self._trg_cache[cpv] = metadata
+			except CacheError, ce:
+				writemsg_level(
+					"%s writing target: %s\n" % (cpv, ce),
+					level=logging.ERROR, noiselevel=-1)
+
+	def run(self):
+		self._regen.run()
+		self.returncode |= self._regen.returncode
+
+		trg_cache = self._trg_cache
+		dead_nodes = None
+		if self._global_cleanse:
+			try:
+				dead_nodes = set(trg_cache.iterkeys())
+			except CacheError, ce:
+				self.returncode |= 1
+				writemsg_level(
+					"Error listing cache entries for " + \
+					"'%s/metadata/cache': %s, continuing...\n" % \
+					(self._portdb.porttree_root, ce),
+					level=logging.ERROR, noiselevel=-1)
+
+		else:
+			cp_set = self._cp_set
+			cpv_getkey = portage.cpv_getkey
+			try:
+				dead_nodes = set(cpv for cpv in \
+					trg_cache.iterkeys() \
+					if cpv_getkey(cpv) in cp_set)
+			except CacheError, ce:
+				self.returncode |= 1
+				writemsg_level(
+					"Error listing cache entries for " + \
+					"'%s/metadata/cache': %s, continuing...\n" % \
+					(self._portdb.porttree_root, ce),
+					level=logging.ERROR, noiselevel=-1)
+
+		if dead_nodes:
+			dead_nodes.difference_update(self._existing_nodes)
+			for k in dead_nodes:
+				try:
+					del trg_cache[k]
+				except KeyError:
+					pass
+				except CacheError:
+					self.returncode |= 1
+
+		if not trg_cache.autocommits:
+			try:
+				trg_cache.commit()
+			except CacheError, ce:
+				self.returncode |= 1
+				writemsg_level(
+					"committing target: %s\n" % (ce,),
+					level=logging.ERROR, noiselevel=-1)
+
+def egencache_main(args):
+	options, args = parse_args(args)
+
+	config_root = options.config_root
+	if config_root is None:
+		config_root = '/'
+
+	# The calling environment is ignored, so the program is
+	# completely controlled by commandline arguments.
+	env = {}
+
+	# TODO: Implement --repo for choosing a repo.
+	env['PORTDIR_OVERLAY'] = ''
+
+	if options.cache_dir is not None:
+		env['PORTAGE_DEPCACHEDIR'] = options.cache_dir
+
+	settings = portage.config(config_root=config_root,
+		target_root='/', env=env)
+
+	if 'metadata-transfer' not in settings.features:
+		writemsg_level("ecachegen: error: " + \
+			"FEATURES=metadata-transfer is not enabled\n",
+			level=logging.ERROR, noiselevel=-1)
+		return 1
+
+	portdb = portage.portdbapi(settings["PORTDIR"], mysettings=settings)
+
+	cp_iter = None
+	if args:
+		cp_iter = iter(args)
+
+	gen_cache = GenCache(portdb, cp_iter=cp_iter,
+		max_jobs=options.jobs,
+		max_load=options.load_average)
+	gen_cache.run()
+	return gen_cache.returncode
+
+if __name__ == "__main__":
+	portage._disable_legacy_globals()
+	portage.util.noiselimit = -1
+	sys.exit(egencache_main(sys.argv[1:]))
