@@ -1820,7 +1820,8 @@ class config(object):
 			# Expand license groups
 			# This has to do be done for each config layer before regenerate()
 			# in order for incremental negation to work properly.
-			if local_config:
+			#if local_config:
+			if False:
 				for c in self.configdict.itervalues():
 					v = c.get("ACCEPT_LICENSE")
 					if not v:
@@ -2083,7 +2084,7 @@ class config(object):
 			use = self.built_use
 			if use is None:
 				use = frozenset(settings['PORTAGE_USE'].split())
-			values['ACCEPT_LICENSE'] = self._accept_license(use, settings)
+			#values['ACCEPT_LICENSE'] = self._accept_license(use, settings)
 			values['PORTAGE_RESTRICT'] = self._restrict(use, settings)
 			return values
 
@@ -2339,8 +2340,8 @@ class config(object):
 				env_configdict.pop(k, None)
 
 		lazy_vars = self._lazy_vars(built_use, self)
-		env_configdict.addLazySingleton('ACCEPT_LICENSE',
-			lazy_vars.__getitem__, 'ACCEPT_LICENSE')
+		#env_configdict.addLazySingleton('ACCEPT_LICENSE',
+		#	lazy_vars.__getitem__, 'ACCEPT_LICENSE')
 		env_configdict.addLazySingleton('PORTAGE_RESTRICT',
 			lazy_vars.__getitem__, 'PORTAGE_RESTRICT')
 
