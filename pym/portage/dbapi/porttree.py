@@ -173,10 +173,15 @@ class portdbapi(dbapi):
 
 		self._repo_info = {}
 		eclass_dbs = {porttree_root : self.eclassdb}
+		local_repo_configs = self.mysettings._local_repo_configs
+		default_loc_repo_config = None
+		if local_repo_configs is not None:
+			default_loc_repo_config = local_repo_configs.get('DEFAULT')
 		for path in self.porttrees:
 			if path in self._repo_info:
 				continue
 
+			repo_name = self._repository_map.get(path)
 			layout_filename = os.path.join(path, "metadata/layout.conf")
 			layout_file = KeyValuePairFileLoader(layout_filename, None, None)
 			layout_data, layout_errors = layout_file.load()
@@ -200,6 +205,24 @@ class portdbapi(dbapi):
 
 			porttrees.append(path)
 
+			if local_repo_configs is not None:
+				loc_repo_conf = None
+				if repo_name is not None:
+					loc_repo_conf = local_repo_configs.get(repo_name)
+				if loc_repo_conf is None:
+					loc_repo_conf = default_loc_repo_config
+				if loc_repo_conf is not None:
+					for other_name in loc_repo_conf.eclass_overrides:
+						other_path = self.treemap.get(other_name)
+						if other_path is None:
+							writemsg_level(("Unavailable repository '%s' " + \
+								"referenced by eclass-overrides entry in " + \
+								"'%s'\n") % (other_name,
+								self.mysettings._local_repo_conf_path),
+								level=logging.ERROR, noiselevel=-1)
+							continue
+						porttrees.append(other_path)
+
 			eclass_db = None
 			for porttree in porttrees:
 				tree_db = eclass_dbs.get(porttree)
@@ -211,8 +234,7 @@ class portdbapi(dbapi):
 				else:
 					eclass_db.append(tree_db)
 
-			self._repo_info[path] = _repo_info(self._repository_map.get(path),
-				path, eclass_db)
+			self._repo_info[path] = _repo_info(repo_name, path, eclass_db)
 
 		self.auxdbmodule = self.mysettings.load_best_module("portdbapi.auxdbmodule")
 		self.auxdb = {}
