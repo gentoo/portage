@@ -3996,7 +3996,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 		myfile_path = os.path.join(mysettings["DISTDIR"], myfile)
 		has_space = True
-		has_space_superuser = False
+		has_space_superuser = True
 		file_lock = None
 		if listonly:
 			writemsg_stdout("\n", noiselevel=-1)
@@ -4017,7 +4017,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 					if (size - mysize + vfs_stat.f_bsize) >= \
 						(vfs_stat.f_bsize * vfs_stat.f_bfree):
-						has_space_superuser = True
+						has_space_superuser = False
 
 					if not has_space_superuser:
 						has_space = False
