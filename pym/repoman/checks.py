@@ -73,11 +73,10 @@ class EbuildWhitespace(LineCheck):
 	trailing_whitespace = re.compile(r'.*([\S]$)')	
 
 	def check(self, num, line):
-		if not self.leading_spaces.match(line):
+		if self.leading_spaces.match(line) is None:
 			return errors.LEADING_SPACES_ERROR
-		if not self.trailing_whitespace.match(line):
+		if self.trailing_whitespace.match(line) is None:
 			return errors.TRAILING_WHITESPACE_ERROR
-
 
 class EbuildQuote(LineCheck):
 	"""Ensure ebuilds have valid quoting around things like D,FILESDIR, etc..."""
@@ -230,6 +229,38 @@ class EapiDefinition(LineCheck):
 		elif self.inherit_re.match(line) is not None:
 			self.inherit_line = line
 
+class SrcUnpackPatches(LineCheck):
+	repoman_check_name = 'ebuild.minorsyn'
+
+	src_unpack_re = re.compile(r'^src_unpack\(\)')
+	func_end_re = re.compile(r'^\}$')
+	src_prepare_tools_re = re.compile(r'\s(e?patch|sed)\s')
+
+	def new(self, pkg):
+		if pkg.metadata['EAPI'] not in ('0', '1'):
+			self.eapi = pkg.metadata['EAPI']
+		else:
+			self.eapi = None
+		self.in_src_unpack = None
+
+	def check(self, num, line):
+
+		if self.eapi is not None:
+
+			if self.in_src_unpack is None and \
+				self.src_unpack_re.match(line) is not None:
+					self.in_src_unpack = True
+
+			if self.in_src_unpack is True and \
+				self.func_end_re.match(line) is not None:
+				self.in_src_unpack = False
+
+			if self.in_src_unpack:
+				m = self.src_prepare_tools_re.search(line)
+				if m is not None:
+					return ("'%s'" % m.group(1)) + \
+						" call should be moved to src_prepare from line: %d"
+
 class EbuildPatches(LineCheck):
 	"""Ensure ebuilds use bash arrays for PATCHES to ensure white space safety"""
 	repoman_check_name = 'ebuild.patches'
@@ -369,20 +400,36 @@ _constant_checks = tuple((c() for c in (
 	EbuildPatches, EbuildQuotedA, EapiDefinition,
 	IUseUndefined, ImplicitRuntimeDeps, InheritAutotools,
 	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS,
-	DeprecatedBindnowFlags, WantAutoDefaultValue)))
+	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue)))
+
+_here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
 
 def run_checks(contents, pkg):
 	checks = _constant_checks
+	here_doc_delim = None
 
 	for lc in checks:
 		lc.new(pkg)
 	for num, line in enumerate(contents):
-		for lc in checks:
-			ignore = lc.ignore_line
-			if not ignore or not ignore.match(line):
-				e = lc.check(num, line)
-				if e:
-					yield lc.repoman_check_name, e % (num + 1)
+
+		# Check if we're inside a here-document.
+		if here_doc_delim is not None:
+			if here_doc_delim.match(line):
+				here_doc_delim = None
+		if here_doc_delim is None:
+			here_doc = _here_doc_re.match(line)
+			if here_doc is not None:
+				here_doc_delim = re.compile('^%s$' % here_doc.group(1))
+
+		if here_doc_delim is None:
+			# We're not in a here-document.
+			for lc in checks:
+				ignore = lc.ignore_line
+				if not ignore or not ignore.match(line):
+					e = lc.check(num, line)
+					if e:
+						yield lc.repoman_check_name, e % (num + 1)
+
 	for lc in checks:
 		i = lc.end()
 		if i is not None:

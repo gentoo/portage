@@ -247,22 +247,26 @@ def nc_len(mystr):
 	tmp = re.sub(esc_seq + "^m]+m", "", mystr);
 	return len(tmp)
 
+_legal_terms_re = re.compile(r'^(xterm|xterm-color|Eterm|aterm|rxvt|screen|kterm|rxvt-unicode|gnome|interix)')
+_disable_xtermTitle = None
+_max_xtermTitle_len = 253
+
 def xtermTitle(mystr, raw=False):
-	if dotitles and "TERM" in os.environ and sys.stderr.isatty():
+	global _disable_xtermTitle
+	if _disable_xtermTitle is None:
+		_disable_xtermTitle = not (sys.stderr.isatty() and \
+		'TERM' in os.environ and \
+		_legal_terms_re.match(os.environ['TERM']) is not None)
+
+	if dotitles and not _disable_xtermTitle:
 		# If the title string is too big then the terminal can
 		# misbehave. Therefore, truncate it if it's too big.
-		max_len = 253
-		if len(mystr) > max_len:
-			mystr = mystr[:max_len]
-		myt=os.environ["TERM"]
-		legal_terms = ["xterm","xterm-color","Eterm","aterm","rxvt","screen","kterm","rxvt-unicode","gnome","interix"]
-		for term in legal_terms:
-			if myt.startswith(term):
-				if not raw:
-					mystr = "\x1b]0;%s\x07" % mystr
-				sys.stderr.write(mystr)
-				sys.stderr.flush()
-				break
+		if len(mystr) > _max_xtermTitle_len:
+			mystr = mystr[:_max_xtermTitle_len]
+		if not raw:
+			mystr = '\x1b]0;%s\x07' % mystr
+		sys.stderr.write(mystr)
+		sys.stderr.flush()
 
 default_xterm_title = None
 
