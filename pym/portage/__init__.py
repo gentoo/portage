@@ -5436,7 +5436,10 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		mysettings["PORTAGE_BUILDDIR"], ".exit_status")
 
 	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistent.
-	if mydo != "depend" and "KV" not in mysettings:
+	if mydo != 'depend' and 'KV' not in mysettings and \
+		mydo in ('compile', 'config', 'configure', 'info',
+		'install', 'nofetch', 'postinst', 'postrm', 'preinst',
+		'prepare', 'prerm', 'setup', 'test', 'unpack'):
 		mykv,err1=ExtractKernelVersion(os.path.join(myroot, EPREFIX_LSTRIP, "usr/src/linux"))
 		if mykv:
 			# Regular source tree

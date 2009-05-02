@@ -227,7 +227,7 @@ class portdbapi(dbapi):
 			if local_repo_configs is not None:
 				if repo_name is not None:
 					loc_repo_conf = local_repo_configs.get(repo_name)
-				else:
+				if loc_repo_conf is None:
 					loc_repo_conf = default_loc_repo_config
 
 			layout_filename = os.path.join(path, "metadata/layout.conf")
