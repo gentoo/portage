@@ -92,7 +92,7 @@ try:
 		DEPRECATED_PROFILE_FILE, USER_VIRTUALS_FILE, EBUILD_SH_ENV_FILE, \
 		INVALID_ENV_FILE, CUSTOM_MIRRORS_FILE, CONFIG_MEMORY_FILE,\
 		INCREMENTALS, EAPI, MISC_SH_BINARY, REPO_NAME_LOC, REPO_NAME_FILE, \
-		EPREFIX, EPREFIX_LSTRIP, BPREFIX, rootgid
+		EPREFIX, EPREFIX_LSTRIP, BPREFIX, rootuid, rootgid
 
 	from portage.data import ostype, lchown, userland, secpass, uid, wheelgid, \
 	                         portage_uid, portage_gid, userpriv_groups
@@ -137,7 +137,7 @@ def _shell_quote(s):
 
 bsd_chflags = None
 
-if platform.system() in ('FreeBSD',):
+if platform.system() in ('FreeBSD',) and rootuid == 0:
 
 	class bsd_chflags(object):
 
