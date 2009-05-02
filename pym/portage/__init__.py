@@ -2088,34 +2088,58 @@ class config(object):
 			DeprecationWarning)
 		return 1
 
-	class _lazy_accept_license(object):
-		"""
-		Generate a pruned version of ACCEPT_LICENSE, by intersection with
-		LICENSE. This is required since otherwise ACCEPT_LICENSE might be too
-		big (bigger than ARG_MAX), causing execve() calls to fail with E2BIG
-		errors as in bug #262647.
-		"""
-		__slots__ = ('built_use', 'settings',)
+	class _lazy_vars(object):
+
+		__slots__ = ('built_use', 'settings', 'values')
 
 		def __init__(self, built_use, settings):
 			self.built_use = built_use
 			self.settings = settings
+			self.values = None
 
-		def __call__(self):
+		def __getitem__(self, k):
+			if self.values is None:
+				self.values = self._init_values()
+			return self.values[k]
+
+		def _init_values(self):
+			values = {}
 			settings = self.settings
 			use = self.built_use
 			if use is None:
-				use = settings['PORTAGE_USE']
+				use = frozenset(settings['PORTAGE_USE'].split())
+			values['ACCEPT_LICENSE'] = self._accept_license(use, settings)
+			values['PORTAGE_RESTRICT'] = self._restrict(use, settings)
+			return values
+
+		def _accept_license(self, use, settings):
+			"""
+			Generate a pruned version of ACCEPT_LICENSE, by intersection with
+			LICENSE. This is required since otherwise ACCEPT_LICENSE might be
+			too big (bigger than ARG_MAX), causing execve() calls to fail with
+			E2BIG errors as in bug #262647.
+			"""
 			try:
 				licenses = set(flatten(
 					dep.use_reduce(dep.paren_reduce(
 					settings['LICENSE']),
-					uselist=use.split())))
+					uselist=use)))
 			except exception.InvalidDependString:
 				licenses = set()
+			licenses.discard('||')
 			if '*' not in settings._accept_license:
 				licenses.intersection_update(settings._accept_license)
 			return ' '.join(sorted(licenses))
+
+		def _restrict(self, use, settings):
+			try:
+				restrict = set(flatten(
+					dep.use_reduce(dep.paren_reduce(
+					settings['RESTRICT']),
+					uselist=use)))
+			except exception.InvalidDependString:
+				restrict = set()
+			return ' '.join(sorted(restrict))
 
 	class _lazy_use_expand(object):
 		"""
@@ -2222,7 +2246,7 @@ class config(object):
 			mydb = pkg.metadata
 			args_hash = (mycpv, id(pkg))
 			if pkg.built:
-				built_use = pkg.metadata['USE']
+				built_use = pkg.use.enabled
 		else:
 			args_hash = (mycpv, id(mydb))
 
@@ -2339,8 +2363,11 @@ class config(object):
 			if k != 'USE':
 				env_configdict.pop(k, None)
 
+		lazy_vars = self._lazy_vars(built_use, self)
 		env_configdict.addLazySingleton('ACCEPT_LICENSE',
-			self._lazy_accept_license(built_use, self))
+			lazy_vars.__getitem__, 'ACCEPT_LICENSE')
+		env_configdict.addLazySingleton('PORTAGE_RESTRICT',
+			lazy_vars.__getitem__, 'PORTAGE_RESTRICT')
 
 		# If reset() has not been called, it's safe to return
 		# early if IUSE has not changed.
@@ -3991,6 +4018,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 		myfile_path = os.path.join(mysettings["DISTDIR"], myfile)
 		has_space = True
+		has_space_superuser = False
 		file_lock = None
 		if listonly:
 			writemsg_stdout("\n", noiselevel=-1)
@@ -4008,17 +4036,29 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					mysize = 0
 				if (size - mysize + vfs_stat.f_bsize) >= \
 					(vfs_stat.f_bsize * vfs_stat.f_bavail):
-					if secpass < 2:
+
+					if (size - mysize + vfs_stat.f_bsize) >= \
+						(vfs_stat.f_bsize * vfs_stat.f_bfree):
+						has_space_superuser = True
+
+					if not has_space_superuser:
+						has_space = False
+					elif secpass < 2:
 						has_space = False
 					elif userfetch:
-						has_space = False
-					elif (size - mysize + vfs_stat.f_bsize) >= \
-						(vfs_stat.f_bsize * vfs_stat.f_bfree):
 						has_space = False
 
 			if not has_space:
 				writemsg("!!! Insufficient space to store %s in %s\n" % \
 					(myfile, mysettings["DISTDIR"]), noiselevel=-1)
+
+				if has_space_superuser:
+					writemsg("!!! Insufficient privileges to use " + \
+						"remaining space.\n", noiselevel=-1)
+					if userfetch:
+						writemsg("!!! You may set FEATURES=\"-userfetch\"" + \
+							" in /etc/make.conf in order to fetch with\n" + \
+							"!!! superuser privileges.\n", noiselevel=-1)
 
 			if distdir_writable and use_locks:
 
@@ -5351,14 +5391,6 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		if not eapi_is_supported(eapi):
 			# can't do anything with this.
 			raise portage.exception.UnsupportedAPIException(mycpv, eapi)
-		try:
-			mysettings["PORTAGE_RESTRICT"] = " ".join(flatten(
-				portage.dep.use_reduce(portage.dep.paren_reduce(
-				mysettings["RESTRICT"]),
-				uselist=mysettings["PORTAGE_USE"].split())))
-		except portage.exception.InvalidDependString:
-			# RESTRICT is validated again inside doebuild, so let this go
-			mysettings["PORTAGE_RESTRICT"] = ""
 
 	if mysplit[2] == "r0":
 		mysettings["PVR"]=mysplit[1]
