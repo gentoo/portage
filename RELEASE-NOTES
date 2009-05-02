@@ -21,6 +21,12 @@ portage-2.2
 * "world" no longer includes "system" unconditionally, but you can add
   "@system" to the world_sets file to restore the old state.
 
+portage-2.1.6.12
+==================================
+* If you want overlay eclasses to override eclasses from other repos then see
+  the portage(5) man page for information about the new layout.conf and
+  repos.conf configuration files.
+
 portage-2.1.6
 ==================================
 

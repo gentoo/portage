@@ -1062,7 +1062,7 @@ class config(object):
 	# environment in order to prevent sandbox from sourcing /etc/profile
 	# in it's bashrc (causing major leakage).
 	_environ_whitelist += [
-		"BASH_ENV", "BUILD_PREFIX", "D",
+		"ACCEPT_LICENSE", "BASH_ENV", "BUILD_PREFIX", "D",
 		"DISTDIR", "DOC_SYMLINKS_DIR", "EBUILD",
 		"EBUILD_EXIT_STATUS_FILE", "EBUILD_FORCE_TEST",
 		"EBUILD_PHASE", "ECLASSDIR", "ECLASS_DEPTH", "EMERGE_FROM",
@@ -1264,19 +1264,19 @@ class config(object):
 			self.mycpv    = copy.deepcopy(clone.mycpv)
 			self._setcpv_args_hash = copy.deepcopy(clone._setcpv_args_hash)
 
-			self.configlist = copy.deepcopy(clone.configlist)
+			self.configdict = copy.deepcopy(clone.configdict)
+			self.configlist = [
+				self.configdict['env.d'],
+				self.configdict['pkginternal'],
+				self.configdict['globals'],
+				self.configdict['defaults'],
+				self.configdict['conf'],
+				self.configdict['pkg'],
+				self.configdict['auto'],
+				self.configdict['env'],
+			]
 			self.lookuplist = self.configlist[:]
 			self.lookuplist.reverse()
-			self.configdict = {
-				"env.d":     self.configlist[0],
-				"pkginternal": self.configlist[1],
-				"globals":     self.configlist[2],
-				"defaults":    self.configlist[3],
-				"conf":        self.configlist[4],
-				"pkg":         self.configlist[5],
-				"auto":        self.configlist[6],
-				"backupenv":   self.configlist[7],
-				"env":         self.configlist[8] }
 			self._use_expand_dict = copy.deepcopy(clone._use_expand_dict)
 			self.profiles = copy.deepcopy(clone.profiles)
 			self.backupenv  = self.configdict["backupenv"]
@@ -1586,8 +1586,7 @@ class config(object):
 			self.configlist.append({})
 			self.configdict["auto"]=self.configlist[-1]
 
-			self.configlist.append(self.backupenv) # XXX Why though?
-			self.configdict["backupenv"]=self.configlist[-1]
+			self.configdict["backupenv"] = self.backupenv
 
 			# Don't allow the user to override certain variables in the env
 			for k in profile_only_variables:
@@ -2089,6 +2088,35 @@ class config(object):
 			DeprecationWarning)
 		return 1
 
+	class _lazy_accept_license(object):
+		"""
+		Generate a pruned version of ACCEPT_LICENSE, by intersection with
+		LICENSE. This is required since otherwise ACCEPT_LICENSE might be too
+		big (bigger than ARG_MAX), causing execve() calls to fail with E2BIG
+		errors as in bug #262647.
+		"""
+		__slots__ = ('built_use', 'settings',)
+
+		def __init__(self, built_use, settings):
+			self.built_use = built_use
+			self.settings = settings
+
+		def __call__(self):
+			settings = self.settings
+			use = self.built_use
+			if use is None:
+				use = settings['PORTAGE_USE']
+			try:
+				licenses = set(flatten(
+					dep.use_reduce(dep.paren_reduce(
+					settings['LICENSE']),
+					uselist=use.split())))
+			except exception.InvalidDependString:
+				licenses = set()
+			if '*' not in settings._accept_license:
+				licenses.intersection_update(settings._accept_license)
+			return ' '.join(sorted(licenses))
+
 	class _lazy_use_expand(object):
 		"""
 		Lazily evaluate USE_EXPAND variables since they are only needed when
@@ -2187,11 +2215,14 @@ class config(object):
 		self.modifying()
 
 		pkg = None
+		built_use = None
 		if not isinstance(mycpv, basestring):
 			pkg = mycpv
 			mycpv = pkg.cpv
 			mydb = pkg.metadata
 			args_hash = (mycpv, id(pkg))
+			if pkg.built:
+				built_use = pkg.metadata['USE']
 		else:
 			args_hash = (mycpv, id(mydb))
 
@@ -2206,7 +2237,6 @@ class config(object):
 		cpv_slot = self.mycpv
 		pkginternaluse = ""
 		iuse = ""
-		env_configdict = self.configdict["env"]
 		pkg_configdict = self.configdict["pkg"]
 		previous_iuse = pkg_configdict.get("IUSE")
 
@@ -2232,9 +2262,6 @@ class config(object):
 			repository = pkg_configdict.pop("repository", None)
 			if repository is not None:
 				pkg_configdict["PORTAGE_REPO_NAME"] = repository
-			for k in pkg_configdict:
-				if k != "USE":
-					env_configdict.pop(k, None)
 			slot = pkg_configdict["SLOT"]
 			iuse = pkg_configdict["IUSE"]
 			if pkg is None:
@@ -2303,6 +2330,17 @@ class config(object):
 
 		if has_changed:
 			self.reset(keeping_pkg=1,use_cache=use_cache)
+
+		# Ensure that "pkg" values are always preferred over "env" values.
+		# This must occur _after_ the above reset() call, since reset()
+		# copies values from self.backupenv.
+		env_configdict = self.configdict['env']
+		for k in pkg_configdict:
+			if k != 'USE':
+				env_configdict.pop(k, None)
+
+		env_configdict.addLazySingleton('ACCEPT_LICENSE',
+			self._lazy_accept_license(built_use, self))
 
 		# If reset() has not been called, it's safe to return
 		# early if IUSE has not changed.
@@ -2805,6 +2843,7 @@ class config(object):
 		for mykey in myincrementals:
 
 			mydbs=self.configlist[:-1]
+			mydbs.append(self.backupenv)
 
 			myflags=[]
 			for curdb in mydbs:
@@ -3973,8 +4012,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						has_space = False
 					elif userfetch:
 						has_space = False
-					elif (size - mysize + vfs_stat.f_bfree) >= \
-						(vfs_stat.f_bfree * vfs_stat.f_bavail):
+					elif (size - mysize + vfs_stat.f_bsize) >= \
+						(vfs_stat.f_bsize * vfs_stat.f_bfree):
 						has_space = False
 
 			if not has_space:
