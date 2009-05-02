@@ -176,7 +176,7 @@ elog_base() {
 			return 1
 			;;
 	esac
-	echo -e "$@" | while read ; do
+	echo -e "$@" | while read -r ; do
 		echo "$messagetype $REPLY" >> \
 			"${T}/logging/${EBUILD_PHASE:-other}"
 	done
@@ -186,8 +186,8 @@ elog_base() {
 eqawarn() {
 	elog_base QA "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo -e "$@" | while read ; do
-		vecho -e " $WARN*$NORMAL $REPLY" >&2
+	echo -e "$@" | while read -r ; do
+		vecho " $WARN*$NORMAL $REPLY" >&2
 	done
 	LAST_E_CMD="eqawarn"
 	return 0
@@ -196,8 +196,8 @@ eqawarn() {
 elog() {
 	elog_base LOG "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo -e "$@" | while read ; do
-		echo -e " $GOOD*$NORMAL $REPLY"
+	echo -e "$@" | while read -r ; do
+		echo " $GOOD*$NORMAL $REPLY"
 	done
 	LAST_E_CMD="elog"
 	return 0
@@ -226,8 +226,8 @@ esyslog() {
 einfo() {
 	elog_base INFO "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo -e "$@" | while read ; do
-		echo -e " $GOOD*$NORMAL $REPLY"
+	echo -e "$@" | while read -r ; do
+		echo " $GOOD*$NORMAL $REPLY"
 	done
 	LAST_E_CMD="einfo"
 	return 0
@@ -244,8 +244,8 @@ einfon() {
 ewarn() {
 	elog_base WARN "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo -e "$@" | while read ; do
-		echo -e " $WARN*$NORMAL $RC_INDENTATION$REPLY" >&2
+	echo -e "$@" | while read -r ; do
+		echo " $WARN*$NORMAL $RC_INDENTATION$REPLY" >&2
 	done
 	LAST_E_CMD="ewarn"
 	return 0
@@ -254,8 +254,8 @@ ewarn() {
 eerror() {
 	elog_base ERROR "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo -e "$@" | while read ; do
-		echo -e " $BAD*$NORMAL $RC_INDENTATION$REPLY" >&2
+	echo -e "$@" | while read -r ; do
+		echo " $BAD*$NORMAL $RC_INDENTATION$REPLY" >&2
 	done
 	LAST_E_CMD="eerror"
 	return 0

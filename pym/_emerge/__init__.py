@@ -951,6 +951,43 @@ class DepPriority(AbstractDepPriority):
 	__slots__ = ("satisfied", "optional", "rebuild")
 
 	def __int__(self):
+		"""
+		Note: These priorities are only used for measuring hardness
+		in the circular dependency display via digraph.debug_print(),
+		and nothing more. For actual merge order calculations, the
+		measures defined by the DepPriorityNormalRange and
+		DepPrioritySatisfiedRange classes are used.
+
+		Attributes                            Hardness
+
+		not satisfied and buildtime            8
+		not satisfied and runtime              7
+		not satisfied and runtime_post         6
+		satisfied and buildtime and rebuild    5
+		satisfied and buildtime                4
+		satisfied and runtime                  3
+		satisfied and runtime_post             2
+		optional                               1
+		(none of the above)                    0
+
+		"""
+		if not self.satisfied:
+			if self.buildtime:
+				return 8
+			if self.runtime:
+				return 7
+			if self.runtime_post:
+				return 6
+		if self.buildtime:
+			if self.rebuild:
+				return 5
+			return 4
+		if self.runtime:
+			return 3
+		if self.runtime_post:
+			return 2
+		if self.optional:
+			return 1
 		return 0
 
 	def __str__(self):
