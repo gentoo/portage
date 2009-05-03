@@ -142,7 +142,11 @@ useq() {
 	fi
 
 	# Make sure we have this USE flag in IUSE
-	if [[ -n $PORTAGE_IUSE && -n $EBUILD_PHASE ]] ; then
+	# Skip this during the "depend" phase because lots of ebuilds/eclasses
+	# have stuff in global scope that really belongs somewhere like pkg_setup
+	# or src_configure.
+	if [[ -n $PORTAGE_IUSE && -n $EBUILD_PHASE && \
+		$EBUILD_PHASE != depend ]] ; then
 		[[ $u =~ $PORTAGE_IUSE ]] || \
 			eqawarn "QA Notice: USE Flag '${u}' not" \
 				"in IUSE for ${CATEGORY}/${PF}"
