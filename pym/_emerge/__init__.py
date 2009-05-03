@@ -945,35 +945,23 @@ class DepPriority(AbstractDepPriority):
 
 		Attributes                            Hardness
 
-		not satisfied and buildtime            8
-		not satisfied and runtime              7
-		not satisfied and runtime_post         6
-		satisfied and buildtime and rebuild    5
-		satisfied and buildtime                4
-		satisfied and runtime                  3
-		satisfied and runtime_post             2
-		optional                               1
-		(none of the above)                    0
+		buildtime                               0
+		runtime                                -1
+		runtime_post                           -2
+		optional                               -3
+		(none of the above)                    -4
 
 		"""
-		if not self.satisfied:
-			if self.buildtime:
-				return 8
-			if self.runtime:
-				return 7
-			if self.runtime_post:
-				return 6
+
 		if self.buildtime:
-			if self.rebuild:
-				return 5
-			return 4
+			return 0
 		if self.runtime:
-			return 3
+			return -1
 		if self.runtime_post:
-			return 2
+			return -2
 		if self.optional:
-			return 1
-		return 0
+			return -3
+		return -4
 
 	def __str__(self):
 		if self.optional:
