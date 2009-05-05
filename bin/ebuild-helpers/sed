@@ -7,7 +7,7 @@ scriptpath=${BASH_SOURCE[0]}
 scriptname=${scriptpath##*/}
 
 if [[ ${EPREFIX} != "" ]] ; then
-	echo "using Prefix and hitting this lame BSD wrapper? die!" > /dev/stderr
+	echo "using Prefix and hitting this lame BSD wrapper? That's a bug!" > /dev/stderr
 	exit 1
 fi
 
