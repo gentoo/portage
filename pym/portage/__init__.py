@@ -2112,8 +2112,10 @@ class config(object):
 			except exception.InvalidDependString:
 				licenses = set()
 			licenses.discard('||')
-			if '*' not in settings._accept_license:
-				licenses.intersection_update(settings._accept_license)
+			# Do not expand * here, since that would make it appear to the
+			# check_license() function as if the user has accepted licenses
+			# which have not really been explicitly accepted.
+			licenses.intersection_update(settings._accept_license)
 			return ' '.join(sorted(licenses))
 
 		def _restrict(self, use, settings):
