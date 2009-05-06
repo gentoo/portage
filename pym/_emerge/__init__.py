@@ -16156,12 +16156,12 @@ def emerge_main():
 					myopts["--pretend"] = True
 					del myopts["--ask"]
 					print ("%s access is required... " + \
-						"adding --pretend to options.\n") % access_desc
+						"adding --pretend to options\n") % access_desc
 					if portage.secpass < 1 and not need_superuser:
 						portage_group_warning()
 				else:
-					sys.stderr.write(("emerge: %s access is " + \
-						"required.\n\n") % access_desc)
+					sys.stderr.write(("emerge: %s access is required\n") \
+						% access_desc)
 					if portage.secpass < 1 and not need_superuser:
 						portage_group_warning()
 					return 1
