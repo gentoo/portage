@@ -4822,7 +4822,10 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 			eout.eend(0)
 		for f in myfiles:
 			eout.ebegin("checking %s ;-)" % f)
-			mf.checkFileHashes(mf.findFile(f), f)
+			ftype = mf.findFile(f)
+			if ftype is None:
+				raise KeyError(f)
+			mf.checkFileHashes(ftype, f)
 			eout.eend(0)
 	except KeyError, e:
 		eout.eend(1)
