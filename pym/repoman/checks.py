@@ -232,6 +232,7 @@ class EapiDefinition(LineCheck):
 class SrcUnpackPatches(LineCheck):
 	repoman_check_name = 'ebuild.minorsyn'
 
+	ignore_line = re.compile(r'(^\s*#)')
 	src_unpack_re = re.compile(r'^src_unpack\(\)')
 	func_end_re = re.compile(r'^\}$')
 	src_prepare_tools_re = re.compile(r'\s(e?patch|sed)\s')
