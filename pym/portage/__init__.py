@@ -2127,8 +2127,10 @@ class config(object):
 			except exception.InvalidDependString:
 				licenses = set()
 			licenses.discard('||')
-			if '*' not in settings._accept_license:
-				licenses.intersection_update(settings._accept_license)
+			# Do not expand * here, since that would make it appear to the
+			# check_license() function as if the user has accepted licenses
+			# which have not really been explicitly accepted.
+			licenses.intersection_update(settings._accept_license)
 			return ' '.join(sorted(licenses))
 
 		def _restrict(self, use, settings):
@@ -4018,7 +4020,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 		myfile_path = os.path.join(mysettings["DISTDIR"], myfile)
 		has_space = True
-		has_space_superuser = False
+		has_space_superuser = True
 		file_lock = None
 		if listonly:
 			writemsg_stdout("\n", noiselevel=-1)
@@ -4039,7 +4041,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 					if (size - mysize + vfs_stat.f_bsize) >= \
 						(vfs_stat.f_bsize * vfs_stat.f_bfree):
-						has_space_superuser = True
+						has_space_superuser = False
 
 					if not has_space_superuser:
 						has_space = False
@@ -4842,7 +4844,10 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 			eout.eend(0)
 		for f in myfiles:
 			eout.ebegin("checking %s ;-)" % f)
-			mf.checkFileHashes(mf.findFile(f), f)
+			ftype = mf.findFile(f)
+			if ftype is None:
+				raise KeyError(f)
+			mf.checkFileHashes(ftype, f)
 			eout.eend(0)
 	except KeyError, e:
 		eout.eend(1)

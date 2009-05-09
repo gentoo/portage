@@ -719,10 +719,15 @@ class portdbapi(dbapi):
 			mysettings.setcpv(mypkg, mydb=self)
 			useflags = mysettings["PORTAGE_USE"].split()
 		uri_map = self.getFetchMap(mypkg, useflags=useflags, mytree=mytree)
-		uris = set()
-		for uri_set in uri_map.itervalues():
-			uris.update(uri_set)
-		return [list(uris), uri_map.keys()]
+
+		all_uris = []
+		all_files = []
+		for filename, uris in uri_map.iteritems():
+			for uri in uris:
+				all_uris.append(uri)
+				all_files.append(filename)
+
+		return [all_uris, all_files]
 
 	def getfetchsizes(self, mypkg, useflags=None, debug=0):
 		# returns a filename:size dictionnary of remaining downloads
