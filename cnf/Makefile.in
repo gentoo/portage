@@ -1,3 +1,5 @@
+SHELL = @PORTAGE_BASH@
+
 prefix = @prefix@
 sysconfdir = @sysconfdir@
 datadir = @datadir@

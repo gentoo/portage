@@ -1,3 +1,5 @@
+SHELL = @PORTAGE_BASH@
+
 man_MANS = \
 	chpathtool.5 \
 	color.map.5 \

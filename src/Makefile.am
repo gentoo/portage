@@ -1,3 +1,5 @@
+SHELL = @PORTAGE_BASH@
+
 SUBDIRS 	=
 
 bin_PROGRAMS	= chpathtool

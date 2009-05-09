@@ -1,3 +1,5 @@
+SHELL = @PORTAGE_BASH@
+
 all: xhtml xhtml-nochunks
 
 XMLTO_FLAGS = -m custom.xsl

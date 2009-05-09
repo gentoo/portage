@@ -1,4 +1,4 @@
-SHELL=@PORTAGE_BASH@
+SHELL = @PORTAGE_BASH@
 
 SUBDIRS = src man bin pym cnf
 
