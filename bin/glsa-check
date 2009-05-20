@@ -207,6 +207,11 @@ if mode in ["dump", "fix", "inject", "pretend"]:
 		elif mode == "fix":
 			sys.stdout.write("fixing "+myid+"\n")
 			mergelist = myglsa.getMergeList(least_change=least_change)
+			if mergelist == None:
+				sys.stdout.write(">>> no vulnerable packages installed\n")
+			elif mergelist == []:
+				sys.stdout.write(">>> cannot fix GLSA, no unaffected packages available\n")
+				sys.exit(2)
 			for pkg in mergelist:
 				sys.stdout.write(">>> merging "+pkg+"\n")
 				# using emerge for the actual merging as it contains the dependency
@@ -225,6 +230,11 @@ if mode in ["dump", "fix", "inject", "pretend"]:
 		elif mode == "pretend":
 			sys.stdout.write("Checking GLSA "+myid+"\n")
 			mergelist = myglsa.getMergeList(least_change=least_change)
+			if mergelist == None:
+				sys.stdout.write(">>> no vulnerable packages installed\n")
+			elif mergelist == []:
+				sys.stdout.write(">>> cannot fix GLSA, no unaffected packages available\n")
+				sys.exit(2)
 			if mergelist:
 				sys.stdout.write("The following updates will be performed for this GLSA:\n")
 				for pkg in mergelist:
