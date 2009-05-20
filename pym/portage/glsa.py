@@ -11,6 +11,7 @@ except ImportError:
 	from urllib import urlopen as urllib_request_urlopen
 import codecs
 import re
+import operator
 import xml.dom.minidom
 from io import StringIO
 
@@ -118,7 +119,7 @@ def get_glsa_list(myconfig):
 	
 	for f in dirlist:
 		try:
-			if f[:len(prefix)] == prefix:
+			if f[:len(prefix)] == prefix and f[-1*len(suffix):] == suffix:
 				rValue.append(f[len(prefix):-1*len(suffix)])
 		except IndexError:
 			pass
@@ -133,13 +134,11 @@ def getListElements(listnode):
 	@rtype:		List of Strings
 	@return:	a list that contains the value of the <li> elements
 	"""
-	rValue = []
 	if not listnode.nodeName in ["ul", "ol"]:
 		raise GlsaFormatException("Invalid function call: listnode is not <ul> or <ol>")
-	for li in listnode.childNodes:
-		if li.nodeType != xml.dom.Node.ELEMENT_NODE:
-			continue
-		rValue.append(getText(li, format="strip"))
+	rValue = [getText(li, format="strip") \
+		for li in listnode.childNodes \
+		if li.nodeType == xml.dom.Node.ELEMENT_NODE]
 	return rValue
 
 def getText(node, format, textfd = None):
@@ -227,9 +226,8 @@ def getMultiTagsText(rootnode, tagname, format):
 	@rtype:		List of Strings
 	@return:	a list containing the text of all I{tagname} childnodes
 	"""
-	rValue = []
-	for e in rootnode.getElementsByTagName(tagname):
-		rValue.append(getText(e, format))
+	rValue = [getText(e, format) \
+		for e in rootnode.getElementsByTagName(tagname)]
 	return rValue
 
 def makeAtom(pkgname, versionNode):
@@ -364,14 +362,9 @@ def getMinUpgrade(vulnerableList, unaffectedList, portdbapi, vardbapi, minimize=
 				the installed version.
 	"""
 	rValue = None
-	v_installed = []
-	u_installed = []
-	for v in vulnerableList:
-		v_installed += match(v, vardbapi)
+	v_installed = reduce(operator.add, [match(v, vardbapi) for v in vulnerableList], [])
+	u_installed = reduce(operator.add, [match(u, vardbapi) for u in unaffectedList], [])
 
-	for u in unaffectedList:
-		u_installed += match(u, vardbapi)
-	
 	install_unaffected = True
 	for i in v_installed:
 		if i not in u_installed:
@@ -624,21 +617,15 @@ class Glsa:
 			pass
 		if len(self.bugs) > 0:
 			outstream.write(_("\nRelated bugs:      "))
-			for i in range(0, len(self.bugs)):
-				outstream.write(self.bugs[i])
-				if i < len(self.bugs)-1:
-					outstream.write(", ")
-				else:
-					outstream.write("\n")				
+			outstream.write(", ".join(self.bugs))
+			outstream.write("\n")
 		if self.background:
 			outstream.write("\n"+wrap(self.background, width, caption=_("Background:       ")))
 		outstream.write("\n"+wrap(self.description, width, caption=_("Description:      ")))
 		outstream.write("\n"+wrap(self.impact_text, width, caption=_("Impact:           ")))
 		outstream.write("\n"+wrap(self.workaround, width, caption=_("Workaround:       ")))
 		outstream.write("\n"+wrap(self.resolution, width, caption=_("Resolution:       ")))
-		myreferences = ""
-		for r in self.references:
-			myreferences += (r.replace(" ", SPACE_ESCAPE)+NEWLINE_ESCAPE+" ")
+		myreferences = " ".join(r.replace(" ", SPACE_ESCAPE)+NEWLINE_ESCAPE for r in self.references)
 		outstream.write("\n"+wrap(myreferences, width, caption=_("References:       ")))
 		outstream.write("\n")
 	
