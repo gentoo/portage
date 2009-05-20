@@ -1,7 +1,7 @@
 # Copyright 2003-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import io
 import sys
@@ -9,8 +9,10 @@ try:
 	from urllib.request import urlopen as urllib_request_urlopen
 except ImportError:
 	from urllib import urlopen as urllib_request_urlopen
+import codecs
 import re
 import xml.dom.minidom
+from io import StringIO
 
 import portage
 from portage import os
@@ -140,7 +142,7 @@ def getListElements(listnode):
 		rValue.append(getText(li, format="strip"))
 	return rValue
 
-def getText(node, format):
+def getText(node, format, textfd = None):
 	"""
 	This is the main parser function. It takes a node and traverses
 	recursive over the subnodes, getting the text of each (and the
@@ -158,45 +160,54 @@ def getText(node, format):
 					replaces multiple spaces with one space.
 					I{xml} does some more formatting, depending on the
 					type of the encountered nodes.
+	@type	textfd: writable file-like object
+	@param	textfd: the file-like object to write the output to
 	@rtype:		String
 	@return:	the (formatted) content of the node and its subnodes
+			except if textfd was not none
 	"""
-	rValue = ""
+	if not textfd:
+		textfd = StringIO()
+		returnNone = False
+	else:
+		returnNone = True
 	if format in ["strip", "keep"]:
 		if node.nodeName in ["uri", "mail"]:
-			rValue += node.childNodes[0].data+": "+node.getAttribute("link")
+			textfd.write(node.childNodes[0].data+": "+node.getAttribute("link"))
 		else:
 			for subnode in node.childNodes:
 				if subnode.nodeName == "#text":
-					rValue += subnode.data
+					textfd.write(subnode.data)
 				else:
-					rValue += getText(subnode, format)
-	else:
+					getText(subnode, format, textfd)
+	else: # format = "xml"
 		for subnode in node.childNodes:
 			if subnode.nodeName == "p":
 				for p_subnode in subnode.childNodes:
 					if p_subnode.nodeName == "#text":
-						rValue += p_subnode.data.strip()
+						textfd.write(p_subnode.data.strip())
 					elif p_subnode.nodeName in ["uri", "mail"]:
-						rValue += p_subnode.childNodes[0].data
-						rValue += " ( "+p_subnode.getAttribute("link")+" )"
-				rValue += NEWLINE_ESCAPE
+						textfd.write(p_subnode.childNodes[0].data)
+						textfd.write(" ( "+p_subnode.getAttribute("link")+" )")
+				textfd.write(NEWLINE_ESCAPE)
 			elif subnode.nodeName == "ul":
 				for li in getListElements(subnode):
-					rValue += "-"+SPACE_ESCAPE+li+NEWLINE_ESCAPE+" "
+					textfd.write("-"+SPACE_ESCAPE+li+NEWLINE_ESCAPE+" ")
 			elif subnode.nodeName == "ol":
 				i = 0
 				for li in getListElements(subnode):
 					i = i+1
-					rValue += str(i)+"."+SPACE_ESCAPE+li+NEWLINE_ESCAPE+" "
+					textfd.write(str(i)+"."+SPACE_ESCAPE+li+NEWLINE_ESCAPE+" ")
 			elif subnode.nodeName == "code":
-				rValue += getText(subnode, format="keep").replace("\n", NEWLINE_ESCAPE)
-				if rValue[-1*len(NEWLINE_ESCAPE):] != NEWLINE_ESCAPE:
-					rValue += NEWLINE_ESCAPE
+				textfd.write(getText(subnode, format="keep").lstrip().replace("\n", NEWLINE_ESCAPE))
+				textfd.write(NEWLINE_ESCAPE)
 			elif subnode.nodeName == "#text":
-				rValue += subnode.data
+				textfd.write(subnode.data)
 			else:
 				raise GlsaFormatException(_("Invalid Tag found: "), subnode.nodeName)
+	if returnNone:
+		return None
+	rValue = textfd.getvalue()
 	if format == "strip":
 		rValue = rValue.strip(" \n\t")
 		rValue = re.sub("[\s]{2,}", " ", rValue)
@@ -578,16 +589,17 @@ class Glsa:
 		self.services = self.affected.getElementsByTagName("service")
 		return None
 
-	def dump(self, outstream=sys.stdout):
+	def dump(self, outstream=sys.stdout, encoding="utf-8"):
 		"""
 		Dumps a plaintext representation of this GLSA to I{outfile} or 
 		B{stdout} if it is ommitted. You can specify an alternate
-		I{encoding} if needed (default is latin1).
+		I{encoding} if needed (default is utf-8).
 		
 		@type	outstream: File
 		@param	outfile: Stream that should be used for writing
 						 (defaults to sys.stdout)
 		"""
+		outstream = codecs.getwriter(encoding)(outstream)
 		width = 76
 		outstream.write(("GLSA %s: \n%s" % (self.nr, self.title)).center(width)+"\n")
 		outstream.write((width*"=")+"\n")
