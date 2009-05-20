@@ -55,7 +55,7 @@ modes.add_option("-f", "--fix", action="store_const",
 		const="fix", dest="mode",
 		help="Try to auto-apply this GLSA (experimental)")
 modes.add_option("-i", "--inject", action="store_const", dest="mode",
-		help="Inject the given GLSA into the checkfile")
+		help="inject the given GLSA into the glsa_injected file")
 modes.add_option("-m", "--mail", action="store_const",
 		const="mail", dest="mode",
 		help="Send a mail with the given GLSAs to the administrator")
@@ -144,7 +144,7 @@ glsalist.extend([g for g in params if g not in glsalist])
 def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr, encoding="utf-8"):
 	fd1 = codecs.getwriter(encoding)(fd1)
 	fd2 = codecs.getwriter(encoding)(fd2)
-	fd2.write(white("[A]")+" means this GLSA was already applied,\n")
+	fd2.write(white("[A]")+" means this GLSA was marked as applied (injected),\n")
 	fd2.write(green("[U]")+" means the system is not affected and\n")
 	fd2.write(red("[N]")+" indicates that the system might be affected.\n\n")
 
@@ -156,7 +156,7 @@ def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr, encoding="utf-8"):
 			if verbose:
 				fd2.write(("invalid GLSA: %s (error message was: %s)\n" % (myid, e)))
 			continue
-		if myglsa.isApplied():
+		if myglsa.isInjected():
 			status = "[A]"
 			color = white
 		elif myglsa.isVulnerable():
@@ -229,7 +229,6 @@ if mode in ["dump", "fix", "inject", "pretend"]:
 						sys.exit(exitcode)
 			if len(mergelist):
 				sys.stdout.write("\n")
-			myglsa.inject()
 		elif mode == "pretend":
 			sys.stdout.write("Checking GLSA "+myid+"\n")
 			if not myglsa.isVulnerable():

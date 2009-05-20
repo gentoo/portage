@@ -22,7 +22,7 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.versions import pkgsplit, vercmp, best
 from portage.util import grabfile
-from portage.const import CACHE_PATH
+from portage.const import PRIVATE_PATH
 from portage.localization import _
 from portage.dep import _slot_separator
 
@@ -42,7 +42,7 @@ def get_applied_glsas(settings):
 	@rtype:		list
 	@return:	list of glsa IDs
 	"""
-	return grabfile(os.path.join(settings["EROOT"], CACHE_PATH, "glsa"))
+	return grabfile(os.path.join(settings["EROOT"], PRIVATE_PATH, "glsa_injected"))
 
 
 # TODO: use the textwrap module instead
@@ -661,14 +661,17 @@ class Glsa:
 										self.portdbapi, self.vardbapi))
 		return rValue
 	
-	def isApplied(self):
+	def isInjected(self):
 		"""
-		Looks if the GLSA IDis in the GLSA checkfile to check if this
-		GLSA was already applied.
+		Looks if the GLSA ID is in the GLSA checkfile to check if this
+		GLSA should be marked as applied.
 		
 		@rtype:		Boolean
-		@return:	True if the GLSA was applied, False if not
+		@returns:	True if the GLSA is in the inject file, False if not
 		"""
+		if not os.access(os.path.join(self.config["EROOT"],
+			PRIVATE_PATH, "glsa_injected"), os.R_OK):
+			return False
 		return (self.nr in get_applied_glsas(self.config))
 
 	def inject(self):
@@ -680,11 +683,11 @@ class Glsa:
 		@rtype:		None
 		@return:	None
 		"""
-		if not self.isApplied():
+		if not self.isInjected():
 			checkfile = io.open(
 				_unicode_encode(os.path.join(self.config["EROOT"],
-				CACHE_PATH, "glsa"),
-				encoding=_encodings['fs'], errors='strict'), 
+				PRIVATE_PATH, "glsa_injected"),
+				encoding=_encodings['fs'], errors='strict'),
 				mode='a+', encoding=_encodings['content'], errors='strict')
 			checkfile.write(_unicode_decode(self.nr + "\n"))
 			checkfile.close()
