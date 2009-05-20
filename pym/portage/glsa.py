@@ -366,26 +366,36 @@ def getMinUpgrade(vulnerableList, unaffectedList, portdbapi, vardbapi, minimize=
 	v_installed = reduce(operator.add, [match(v, vardbapi) for v in vulnerableList], [])
 	u_installed = reduce(operator.add, [match(u, vardbapi) for u in unaffectedList], [])
 
-	install_unaffected = True
-	for i in v_installed:
-		if i not in u_installed:
-			install_unaffected = False
+	# remove all unaffected atoms from vulnerable list
+	v_installed = list(set(v_installed).difference(set(u_installed)))
 
-	if install_unaffected:
+	if not v_installed:
 		return None
 
+	# this tuple holds all vulnerable atoms, and the related upgrade atom
+	vuln_update = []
+	avail_updates = set()
 	for u in unaffectedList:
-		mylist = match(u, portdbapi, match_type="match-all")
-		for c in mylist:
-			i = best(v_installed)
-			if vercmp(c.version, i.version) > 0 \
-					and (rValue == "" \
-						or not match("="+rValue, portdbapi) \
-						or (minimize ^ (vercmp(c.version, rValue.version) > 0)) \
-							and match("="+c, portdbapi)) \
-					and portdbapi._pkg_str(c, None).slot == vardbapi._pkg_str(best(v_installed), None).slot:
-				rValue = c
-	return rValue
+		# TODO: This had match_type="match-all" before. I don't think it should
+		# since we disregarded masked items later anyway (match(=rValue, "porttree"))
+		avail_updates.update(match(u, "porttree"))
+	# if an atom is already installed, we should not consider it for upgrades
+	avail_updates.difference_update(u_installed)
+
+	for vuln in v_installed:
+		update = ""
+		for c in avail_updates:
+			c_pv = portage.catpkgsplit(c)
+			if vercmp(c.version, vuln.version) > 0 \
+					and (update == "" \
+						or (minimize ^ (vercmp(c.version, update.version) > 0))) \
+					and portdbapi._pkg_str(c, None).slot == vardbapi._pkg_str(vuln, None).slot:
+				update = c_pv[0]+"/"+c_pv[1]+"-"+c_pv[2]
+				if c_pv[3] != "r0":		# we don't like -r0 for display
+					update += "-"+c_pv[3]
+		vuln_update.append([vuln, update])
+
+	return vuln_update
 
 def format_date(datestr):
 	"""
@@ -692,11 +702,18 @@ class Glsa:
 		@rtype:		List of Strings
 		@return:	list of package-versions that have to be merged
 		"""
-		rValue = []
-		for pkg in self.packages:
+		return list(set(update for (vuln, update) in self.getAffectionTable(least_change) if update))
+
+	def getAffectionTable(self, least_change=True):
+		"""
+		Will initialize the self.systemAffection list of
+		atoms installed on the system that are affected
+		by this GLSA, and the atoms that are minimal upgrades.
+		"""
+		systemAffection = []
+		for pkg in self.packages.keys():
 			for path in self.packages[pkg]:
-				update = getMinUpgrade(path["vul_atoms"], path["unaff_atoms"], \
-					self.portdbapi, self.vardbapi, minimize=least_change)
+				update = getMinUpgrade(path["vul_atoms"], path["unaff_atoms"], minimize=least_change)
 				if update:
-					rValue.append(update)
-		return rValue
+					systemAffection.extend(update)
+		return systemAffection

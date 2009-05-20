@@ -205,49 +205,47 @@ if mode in ["dump", "fix", "inject", "pretend"]:
 		if mode == "dump":
 			myglsa.dump()
 		elif mode == "fix":
-			sys.stdout.write("fixing "+myid+"\n")
-			mergelist = myglsa.getMergeList(least_change=least_change)
-			if mergelist == None:
+			sys.stdout.write("Fixing GLSA "+myid+"\n")
+			if not myglsa.isVulnerable():
 				sys.stdout.write(">>> no vulnerable packages installed\n")
-			elif mergelist == []:
-				sys.stdout.write(">>> cannot fix GLSA, no unaffected packages available\n")
-				sys.exit(2)
-			for pkg in mergelist:
-				sys.stdout.write(">>> merging "+pkg+"\n")
-				# using emerge for the actual merging as it contains the dependency
-				# code and we want to be consistent in behaviour. Also this functionality
-				# will be integrated in emerge later, so it shouldn't hurt much.
-				emergecmd = "emerge --oneshot " + portage.settings["EMERGE_OPTS"] + " =" + pkg
-				if verbose:
-					sys.stderr.write(emergecmd+"\n")
-				exitcode = os.system(emergecmd)
-				# system() returns the exitcode in the high byte of a 16bit integer
-				if exitcode >= 1<<8:
-					exitcode >>= 8
-				if exitcode:
-					sys.exit(exitcode)
+			else:
+				mergelist = myglsa.getMergeList(least_change=least_change)
+				if mergelist == []:
+					sys.stdout.write(">>> cannot fix GLSA, no unaffected packages available\n")
+					sys.exit(2)
+				for pkg in mergelist:
+					sys.stdout.write(">>> merging "+pkg+"\n")
+					# using emerge for the actual merging as it contains the dependency
+					# code and we want to be consistent in behaviour. Also this functionality
+					# will be integrated in emerge later, so it shouldn't hurt much.
+					emergecmd = "emerge --oneshot " + glsaconfig["EMERGE_OPTS"] + " =" + pkg
+					if verbose:
+						sys.stderr.write(emergecmd+"\n")
+					exitcode = os.system(emergecmd)
+					# system() returns the exitcode in the high byte of a 16bit integer
+					if exitcode >= 1<<8:
+						exitcode >>= 8
+					if exitcode:
+						sys.exit(exitcode)
+			if len(mergelist):
+				sys.stdout.write("\n")
 			myglsa.inject()
 		elif mode == "pretend":
 			sys.stdout.write("Checking GLSA "+myid+"\n")
-			mergelist = myglsa.getMergeList(least_change=least_change)
-			if mergelist == None:
+			if not myglsa.isVulnerable():
 				sys.stdout.write(">>> no vulnerable packages installed\n")
-			elif mergelist == []:
-				sys.stdout.write(">>> cannot fix GLSA, no unaffected packages available\n")
-				sys.exit(2)
-			if mergelist:
-				sys.stdout.write("The following updates will be performed for this GLSA:\n")
-				for pkg in mergelist:
-					oldver = None
-					for x in vardb.match(portage.cpv_getkey(pkg)):
-						if vardb._pkg_str(x, None).slot == portdb._pkg_str(pkg, None).slot:
-							oldver = x
-					if oldver == None:
-						raise ValueError("could not find old version for package %s" % pkg)
-					oldver = oldver[len(portage.cpv_getkey(oldver))+1:]
-					sys.stdout.write("     " + pkg + " (" + oldver + ")\n")
 			else:
-				sys.stdout.write("Nothing to do for this GLSA\n")
+				mergedict = {}
+				for (vuln, update) in myglsa.getAffectionTable(least_change=least_change):
+					mergedict.setdefault(update, []).append(vuln)
+				
+				sys.stdout.write(">>> The following updates will be performed for this GLSA:\n")
+				for pkg in mergedict:
+					if pkg != "":
+						sys.stdout.write("     " + pkg + " (vulnerable: " + ", ".join(mergedict[pkg]) + ")\n")
+				if "" in mergedict:
+					sys.stdout.write("\n>>> For the following packages, no upgrade path exists:\n")
+					sys.stdout.write("     " + ", ".join(mergedict[""]))
 		elif mode == "inject":
 			sys.stdout.write("injecting " + myid + "\n")
 			myglsa.inject()
