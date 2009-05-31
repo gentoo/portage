@@ -361,6 +361,7 @@ install_qa_check() {
 	if [[ -n ${PORTAGE_LOG_FILE} && -r ${PORTAGE_LOG_FILE} ]] ; then
 		local m msgs=(
 			": warning: dereferencing type-punned pointer will break strict-aliasing rules$"
+			": warning: dereferencing pointer .* does break strict-aliasing rules$"
 			": warning: implicit declaration of function "
 			": warning: incompatible implicit declaration of built-in function "
 			": warning: is used uninitialized in this function$" # we'll ignore "may" and "might"
