@@ -122,7 +122,7 @@ use() {
 
 usev() {
 	if useq ${1}; then
-		echo "${1}"
+		echo "${1#!}"
 		return 0
 	fi
 	return 1
