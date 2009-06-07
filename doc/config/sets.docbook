@@ -369,8 +369,8 @@
 			In single set configurations this class supports the following options:
 			</para>
 			<itemizedlist>
-			<listitem><varname>use_emerge_resolver</varname>: See
-				<xref linkend='config-set-classes-SecuritySet'/>SecuritySet
+			<listitem><para><varname>use_emerge_resolver</varname>: See
+				<xref linkend='config-set-classes-SecuritySet'/>SecuritySet</para>
 			</listitem>
 			</itemizedlist>
 			</sect3>
@@ -443,8 +443,8 @@
 			<listitem><para><varname>only_visible</varname>: Optional, defaults to <parameter>true</parameter>.
 				When set to <parameter>true</parameter> the set will only include visible packages, 
 				when set to <parameter>false</parameter> it will also include masked packages.
-				It's currently only effective in combination with the <parameter>porttree</parameter></para>
-				repository.
+				It's currently only effective in combination with the <parameter>porttree</parameter>
+				repository.</para>
 			</listitem>
 			</itemizedlist>
 			</sect3>
