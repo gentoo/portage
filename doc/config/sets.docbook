@@ -152,7 +152,7 @@
 		For descriptive purposes the file can be accompanied by a file with the 
 		same name plus a <filename>.metadata</filename> suffix which can contain
 		metadata sections for description, author, location and so on. Each section
-		has the form <msgtext>key: value</msgtext> where <varname>value</varname>
+		has the form key: value where <varname>value</varname>
 		can contain multiple lines. Therefore sections have to be separated by 
 		blank lines. For example:
 		<programlisting>
