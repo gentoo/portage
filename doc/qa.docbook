@@ -163,7 +163,7 @@
    version when linking.  The system linker will find the static library first
    and not bother searching for a dynamic version.  To overcome this, you need
    to use the <command>gen_usr_ldscript</command> function found in the
-   <funcsynopsisinfo>toolchain-funcs.eclass</funcsynopsisinfo>.  Refer to the
+   toolchain-funcs.eclass.  Refer to the
    man page for information on how to use it.  See this
    <ulink url="http://bugs.gentoo.org/4411">bug report</ulink> for some history
    on this issue.
@@ -200,7 +200,7 @@
   </para>
   <para>
    You may be able to cheat and use the <command>elibtoolize</command> function
-   in the <funcsynopsisinfo>libtool.eclass</funcsynopsisinfo>.  However, if
+   in the libtool.eclass.  However, if
    that does not help, you will probably need to regenerate all of the autotool
    files.
   </para>
