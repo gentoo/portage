@@ -221,7 +221,7 @@
 			</para>
 			<itemizedlist>
 			<listitem><para><varname>filename</varname>: See 
-				<xref linkend='config-set-classes-StaticFileSet'>StaticFileSet</xref></para>
+				<xref linkend='config-set-classes-StaticFileSet'/>StaticFileSet</para>
 			</listitem>
 			</itemizedlist>
 			</sect3>
@@ -316,7 +316,7 @@
 		<sect2 id='config-set-classes-NewGlsaSet'>
 		<title>portage.sets.security.NewGlsaSet</title>
 		<para>
-		Like <xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>,
+		Like <xref linkend='config-set-classes-SecuritySet'/>SecuritySet,
 		but ignores all GLSAs that were already applied or injected previously.
 		</para>
 
@@ -326,7 +326,7 @@
 			In single set configurations this class supports the following options:
 			<itemizedlist>
 			<listitem><para><varname>use_emerge_resolver</varname>: See
-				<xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref></para>
+				<xref linkend='config-set-classes-SecuritySet'/>SecuritySet</para>
 			</listitem>
 			</itemizedlist>
 			</para>
@@ -336,7 +336,7 @@
 		<sect2 id='config-set-classes-NewAffectedSet'>
 		<title>portage.sets.security.NewAffectedSet</title>
 		<para>
-		Like <xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>,
+		Like <xref linkend='config-set-classes-SecuritySet'/>SecuritySet,
 		but ignores all GLSAs that were already applied or injected previously,
 		and all GLSAs that don't affect the current system. Practically there
 		should be no difference to <classname>NewGlsaSet</classname> though.
@@ -349,7 +349,7 @@
 			</para>
 			<itemizedlist>
 			<listitem><para><varname>use_emerge_resolver</varname>: See
-				<xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref></para>
+				<xref linkend='config-set-classes-SecuritySet'/>SecuritySet</para>
 			</listitem>
 			</itemizedlist>
 			</sect3>
@@ -358,7 +358,7 @@
 		<sect2 id='config-set-classes-AffectedSet'>
 		<title>portage.sets.security.AffectedSet</title>
 		<para>
-		Like <xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>,
+		Like <xref linkend='config-set-classes-SecuritySet'/>SecuritySet,
 		but ignores all GLSAs that don't affect the current system. Practically
 		there should be no difference to <classname>SecuritySet</classname> though.
 		</para>
@@ -370,7 +370,7 @@
 			</para>
 			<itemizedlist>
 			<listitem><varname>use_emerge_resolver</varname>: See
-				<xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>
+				<xref linkend='config-set-classes-SecuritySet'/>SecuritySet
 			</listitem>
 			</itemizedlist>
 			</sect3>
