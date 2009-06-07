@@ -6,9 +6,6 @@
 PORTAGE_BIN_PATH="${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"
 PORTAGE_PYM_PATH="${PORTAGE_PYM_PATH:-@PORTAGE_BASE@/pym}"
 
-export SANDBOX_PREDICT="${SANDBOX_PREDICT:+${SANDBOX_PREDICT}:}/proc/self/maps:/dev/console:/dev/random"
-export SANDBOX_WRITE="${SANDBOX_WRITE:+${SANDBOX_WRITE}:}/dev/shm:/dev/stdout:/dev/stderr:${PORTAGE_TMPDIR}"
-export SANDBOX_READ="${SANDBOX_READ:+${SANDBOX_READ}:}/:/dev/shm:/dev/stdin:${PORTAGE_TMPDIR}"
 # Don't use sandbox's BASH_ENV for new shells because it does
 # 'source /etc/profile' which can interfere with the build
 # environment by modifying our PATH.
@@ -19,10 +16,6 @@ unset BASH_ENV
 if [ -n "${PORTAGE_ROOTPATH}" ] ; then
 	export ROOTPATH=${PORTAGE_ROOTPATH}
 	unset PORTAGE_ROOTPATH
-fi
-
-if [ ! -z "${PORTAGE_GPG_DIR}" ]; then
-	SANDBOX_PREDICT="${SANDBOX_PREDICT}:${PORTAGE_GPG_DIR}"
 fi
 
 # These two functions wrap sourcing and calling respectively.  At present they
@@ -107,6 +100,10 @@ addwrite()   { _sb_append_var WRITE   "$@" ; }
 adddeny()    { _sb_append_var DENY    "$@" ; }
 addpredict() { _sb_append_var PREDICT "$@" ; }
 
+addwrite "${PORTAGE_TMPDIR}"
+addread "/:${PORTAGE_TMPDIR}"
+[[ -n ${PORTAGE_GPG_DIR} ]] && addpredict "${PORTAGE_GPG_DIR}"
+
 lchown() {
 	chown -h "$@"
 }
@@ -127,7 +124,7 @@ use() {
 
 usev() {
 	if useq ${1}; then
-		echo "${1}"
+		echo "${1#!}"
 		return 0
 	fi
 	return 1
