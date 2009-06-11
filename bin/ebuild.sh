@@ -1297,68 +1297,6 @@ EXPORT_FUNCTIONS() {
 	eval $__export_funcs_var+=\" $*\"
 }
 
-# adds all parameters to E_DEPEND and E_RDEPEND, which get added to DEPEND
-# and RDEPEND after the ebuild has been processed. This is important to
-# allow users to use DEPEND="foo" without frying dependencies added by an
-# earlier inherit. It also allows RDEPEND to work properly, since a lot
-# of ebuilds assume that an unset RDEPEND gets its value from DEPEND.
-# Without eclasses, this is true. But with them, the eclass may set
-# RDEPEND itself (or at least used to) which would prevent RDEPEND from
-# getting its value from DEPEND. This is a side-effect that made eclasses
-# have unreliable dependencies.
-
-newdepend() {
-	debug-print-function newdepend $*
-	debug-print "newdepend: E_DEPEND=$E_DEPEND E_RDEPEND=$E_RDEPEND"
-
-	while [ -n "$1" ]; do
-		case $1 in
-		"/autotools")
-			do_newdepend DEPEND sys-devel/autoconf sys-devel/automake sys-devel/make
-			;;
-		"/c")
-			do_newdepend DEPEND sys-devel/gcc virtual/libc
-			do_newdepend RDEPEND virtual/libc
-			;;
-		*)
-			do_newdepend DEPEND $1
-			;;
-		esac
-		shift
-	done
-}
-
-newrdepend() {
-	debug-print-function newrdepend $*
-	do_newdepend RDEPEND $1
-}
-
-newpdepend() {
-	debug-print-function newpdepend $*
-	do_newdepend PDEPEND $1
-}
-
-do_newdepend() {
-	# This function does a generic change determining whether we're in an
-	# eclass or not. If we are, we change the E_* variables for deps.
-	debug-print-function do_newdepend $*
-	[ -z "$1" ] && die "do_newdepend without arguments"
-
-	# Grab what we're affecting... Figure out if we're affecting eclasses.
-	[[ ${ECLASS_DEPTH} > 0 ]] && TARGET="E_$1"
-	[[ ${ECLASS_DEPTH} > 0 ]] || TARGET="$1"
-	shift # $1 was a variable name.
-
-	while [ -n "$1" ]; do
-		# This bit of evil takes TARGET and uses it to evaluate down to a
-		# variable. This is a sneaky way to make this infinately expandable.
-		# The normal translation of this would look something like this:
-		# E_DEPEND="${E_DEPEND} $1"  ::::::  Cool, huh? :)
-		eval export ${TARGET}=\"\${${TARGET}} \$1\"
-		shift
-	done
-}
-
 # this is a function for removing any directory matching a passed in pattern from
 # PATH
 remove_path_entry() {
