@@ -8,41 +8,41 @@
 	<para>
 	Dependency resolution involves satisfaction of
 	many constraints:
+	</para>
 	<itemizedlist>
 	<listitem>
-		Persistent configuration parameters, like those that come from
-		make.profile, make.conf, and the /etc/portage directory.
+		<para>Persistent configuration parameters, like those that come from
+		make.profile, make.conf, and the /etc/portage directory.</para>
 	</listitem>
 	<listitem>
-		Current command parameters, which may include options, atoms, or sets.
+		<para>Current command parameters, which may include options, atoms, or sets.</para>
 	</listitem>
 	<listitem>
-	<link linkend='dependency-resolution-package-modeling-constraint-satisfaction-package-dependencies'>
-	Package Dependencies</link>
+	<para><link linkend='dependency-resolution-package-modeling-constraint-satisfaction-package-dependencies'>
+	Package Dependencies</link></para>
 	</listitem>
 	</itemizedlist>
-	</para>
 	</sect2>
 
 	<sect2 id='dependency-resolution-package-modeling-constraint-satisfaction-package-dependencies'>
 	<title>Package Dependencies</title>
 	<para>
 	Common types of package dependencies:
+	</para>
 	<itemizedlist>
 	<listitem>
-		Files required for building or installing. Downloads may
-		be necessary to satisfy these.
+		<para>Files required for building or installing. Downloads may
+		be necessary to satisfy these.</para>
 	</listitem>
 	<listitem>
-		Other packages required to be installed for
-		buildtime or runtime.
+		<para>Other packages required to be installed for
+		buildtime or runtime.</para>
 	</listitem>
 	<listitem>
-		Blockers that prevent conflicting packages from being installed
-		simultaneously.
+		<para>Blockers that prevent conflicting packages from being installed
+		simultaneously.</para>
 	</listitem>
 	</itemizedlist>
-	</para>
 	</sect2>
 </sect1>
 

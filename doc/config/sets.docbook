@@ -50,19 +50,21 @@
 			handler might be changed in future versions.</para></footnote>.
 			That option defines which handler class should be used to 
 			create the set. Other universal options available for single sets are:
+			</para>
 			<itemizedlist>
-			<listitem><varname>name</varname> (which is usually not needed as the name
+			<listitem><para><varname>name</varname> (which is usually not needed as the name
 			of the set is generated from the section name if <varname>name</varname>
-			is missing)</listitem>
-			<listitem><varname>world-candidate</varname>, which determines if
-			given package should be added to the <varname>world</varname> set</listitem>
-			<listitem><varname>extend</varname> to include the contents of other package sets
+			is missing)</para></listitem>
+			<listitem><para><varname>world-candidate</varname>, which determines if
+			given package should be added to the <varname>world</varname> set</para></listitem>
+			<listitem><para><varname>extend</varname> to include the contents of other package sets</para>
 			</listitem>
-			<listitem><varname>remove</varname> to remove the contents of other package sets
+			<listitem><para><varname>remove</varname> to remove the contents of other package sets</para>
 			</listitem>
-			<listitem><varname>intersect</varname> to only include packages that are also 
-			included in one or more other package sets</listitem>
+			<listitem><para><varname>intersect</varname> to only include packages that are also 
+			included in one or more other package sets</para></listitem>
 			</itemizedlist>
+			<para>
 			Some handler classes might require additional options for their configuration,
 			these will be covered later in this chapter.
 			</para>
@@ -150,7 +152,7 @@
 		For descriptive purposes the file can be accompanied by a file with the 
 		same name plus a <filename>.metadata</filename> suffix which can contain
 		metadata sections for description, author, location and so on. Each section
-		has the form <msgtext>key: value</msgtext> where <varname>value</varname>
+		has the form key: value where <varname>value</varname>
 		can contain multiple lines. Therefore sections have to be separated by 
 		blank lines. For example:
 		<programlisting>
@@ -168,36 +170,36 @@
 			<title>Single Set Configuration</title>
 			<para>
 			In a single set configuration this class supports the following options:
+			</para>
 			<itemizedlist>
-			<listitem><varname>filename</varname>: Required. Specifies the path to the file
-				that should be used for the package set.</listitem>
-			<listitem><varname>greedy</varname>: Optional, defaults to <parameter>false</parameter>.
+			<listitem><para><varname>filename</varname>: Required. Specifies the path to the file
+				that should be used for the package set.</para></listitem>
+			<listitem><para><varname>greedy</varname>: Optional, defaults to <parameter>false</parameter>.
 				Determines if atoms in the package should include all installed slots (when set to
 				<parameter>true</parameter>) or if no slot expansion is wanted (when set to 
 				<parameter>false</parameter>). This option only affects packages that have multiple
-				slots available (e.g. <parameter>sys-kernel/gentoo-sources</parameter>).</listitem>
+				slots available (e.g. <parameter>sys-kernel/gentoo-sources</parameter>).</para></listitem>
 			</itemizedlist>
-			</para>
 			</sect3>
 
 			<sect3>
 			<title>Multi Set Configuration</title>
 			<para>
 			In a multi set configuration this class supports the following options:
+			</para>
 			<itemizedlist>
-			<listitem><varname>directory</varname>: Optional, defaults to 
+			<listitem><para><varname>directory</varname>: Optional, defaults to 
 				<filename>/etc/portage/sets</filename>. Specifies the path to a directory
 				containing package set files. For each file (excluding metadata files) in 
-				that location a separate package set is created.
+				that location a separate package set is created.</para>
 			</listitem>
-			<listitem><varname>name_pattern</varname>: Optional, defaults to 
+			<listitem><para><varname>name_pattern</varname>: Optional, defaults to 
 				<parameter>$name</parameter>. This describes the naming pattern
 				to be used for creating the sets. It must contain either 
 				<parameter>$name</parameter> or <parameter>${name}</parameter>, which 
-				will be replaced by the filename (without any directory components).
+				will be replaced by the filename (without any directory components).</para>
 			</listitem>
 			</itemizedlist>
-			</para>
 			</sect3>
 		</sect2>
 		
@@ -216,35 +218,35 @@
 			<title>Single Set Configuration</title>
 			<para>
 			In a single set configuration this class supports the following options:
+			</para>
 			<itemizedlist>
-			<listitem><varname>filename</varname>: See 
-				<xref linkend='config-set-classes-StaticFileSet'>StaticFileSet</xref>
+			<listitem><para><varname>filename</varname>: See 
+				<xref linkend='config-set-classes-StaticFileSet'/>StaticFileSet</para>
 			</listitem>
 			</itemizedlist>
-			</para>
 			</sect3>
 			
 			<sect3>
 			<title>Multi Set Configuration</title>
 			<para>
 			In a multi set configuration this class supports the following options:
+			</para>
 			<itemizedlist>
-			<listitem><varname>directory</varname>: Optional, defaults to 
+			<listitem><para><varname>directory</varname>: Optional, defaults to 
 				<filename>/etc/portage</filename>. Specifies the path to a directory
 				containing one or more of the following portage configuration files:
 				<filename>package.use</filename>, <filename>package.keywords</filename>,
 				<filename>package.mask</filename> or <filename>package.unmask</filename>.
-				No other files in that directory will be used.
+				No other files in that directory will be used.</para>
 			</listitem>
-			<listitem><varname>name_pattern</varname>: Optional, defaults to 
+			<listitem><para><varname>name_pattern</varname>: Optional, defaults to 
 				<parameter>package_$suffix</parameter>. This describes the naming 
 				pattern to be used for creating the sets. It must contain either
 				<parameter>$suffix</parameter> or <parameter>${suffix}</parameter>, 
 				which will be replaced by the file suffix (e.g. 
-				<parameter>use</parameter> or <parameter>mask</parameter>).
+				<parameter>use</parameter> or <parameter>mask</parameter>).</para>
 			</listitem>
 			</itemizedlist>
-			</para>
 			</sect3>
 		</sect2>
 		
@@ -296,25 +298,25 @@
 			<title>Single Set Configuration</title>
 			<para>
 			In single set configurations this class supports the following options:
+			</para>
 			<itemizedlist>
-			<listitem><varname>use_emerge_resolver</varname>: Optional, defaults to 
+			<listitem><para><varname>use_emerge_resolver</varname>: Optional, defaults to 
 				<parameter>false</parameter>. This option determines which resolver 
 				strategy should be used for the set atoms. When set to 
 				<parameter>true</parameter>, it	will use the default emerge algorithm 
 				and use the highest visible version that matches the GLSA. If set 
 				to <parameter>false</parameter> it will use the default glsa-check 
 				algorithm and use the lowest version that matches the GLSA and is 
-				higher than the currently installed version (least change policy).
+				higher than the currently installed version (least change policy).</para>
 			</listitem>
 			</itemizedlist>
-			</para>
 			</sect3>
 		</sect2>
 		
 		<sect2 id='config-set-classes-NewGlsaSet'>
 		<title>portage.sets.security.NewGlsaSet</title>
 		<para>
-		Like <xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>,
+		Like <xref linkend='config-set-classes-SecuritySet'/>SecuritySet,
 		but ignores all GLSAs that were already applied or injected previously.
 		</para>
 
@@ -323,8 +325,8 @@
 			<para>
 			In single set configurations this class supports the following options:
 			<itemizedlist>
-			<listitem><varname>use_emerge_resolver</varname>: See
-				<xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>
+			<listitem><para><varname>use_emerge_resolver</varname>: See
+				<xref linkend='config-set-classes-SecuritySet'/>SecuritySet</para>
 			</listitem>
 			</itemizedlist>
 			</para>
@@ -334,7 +336,7 @@
 		<sect2 id='config-set-classes-NewAffectedSet'>
 		<title>portage.sets.security.NewAffectedSet</title>
 		<para>
-		Like <xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>,
+		Like <xref linkend='config-set-classes-SecuritySet'/>SecuritySet,
 		but ignores all GLSAs that were already applied or injected previously,
 		and all GLSAs that don't affect the current system. Practically there
 		should be no difference to <classname>NewGlsaSet</classname> though.
@@ -344,19 +346,19 @@
 			<title>Single Set Configuration</title>
 			<para>
 			In single set configurations this class supports the following options:
+			</para>
 			<itemizedlist>
-			<listitem><varname>use_emerge_resolver</varname>: See
-				<xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>
+			<listitem><para><varname>use_emerge_resolver</varname>: See
+				<xref linkend='config-set-classes-SecuritySet'/>SecuritySet</para>
 			</listitem>
 			</itemizedlist>
-			</para>
 			</sect3>
 		</sect2>
 		
 		<sect2 id='config-set-classes-AffectedSet'>
 		<title>portage.sets.security.AffectedSet</title>
 		<para>
-		Like <xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>,
+		Like <xref linkend='config-set-classes-SecuritySet'/>SecuritySet,
 		but ignores all GLSAs that don't affect the current system. Practically
 		there should be no difference to <classname>SecuritySet</classname> though.
 		</para>
@@ -365,12 +367,12 @@
 			<title>Single Set Configuration</title>
 			<para>
 			In single set configurations this class supports the following options:
+			</para>
 			<itemizedlist>
-			<listitem><varname>use_emerge_resolver</varname>: See
-				<xref linkend='config-set-classes-SecuritySet'>SecuritySet</xref>
+			<listitem><para><varname>use_emerge_resolver</varname>: See
+				<xref linkend='config-set-classes-SecuritySet'/>SecuritySet</para>
 			</listitem>
 			</itemizedlist>
-			</para>
 			</sect3>
 		</sect2>
 		
@@ -386,14 +388,14 @@
 			<title>Single Set Configuration</title>
 			<para>
 			In single set configurations this class supports the following options:
+			</para>
 			<itemizedlist>
-			<listitem><varname>command</varname>: Required. Specifies the command
+			<listitem><para><varname>command</varname>: Required. Specifies the command
 				that should be executed to generate the package set. It should 
 				output a newline separated list of simple and/or versioned atoms
-				on stdout.
+				on stdout.</para>
 			</listitem>
 			</itemizedlist>
-			</para>
 			</sect3>
 		</sect2>
 		
@@ -408,18 +410,18 @@
 			<title>Single Set Configuration</title>
 			<para>
 			In single set configurations this class supports the following options:
+			</para>
 			<itemizedlist>
-			<listitem><varname>age</varname>: Optional, defaults to 7. Specifies 
-				the number of days passed since installation to use as cut-off point.
+			<listitem><para><varname>age</varname>: Optional, defaults to 7. Specifies 
+				the number of days passed since installation to use as cut-off point.</para>
 			</listitem>
-			<listitem><varname>mode</varname>: Optional, defaults to "older". Must 
+			<listitem><para><varname>mode</varname>: Optional, defaults to "older". Must 
 				be either "older" or "newer" to select packages installed either 
 				before resp. after the cut-off-date given by <varname>age</varname>.
 				E.g. the defaults will select all installed packages that have been 
-				installed more than one week ago.
+				installed more than one week ago.</para>
 			</listitem>
 			</itemizedlist>
-			</para>
 			</sect3>
 		</sect2>
 		
@@ -433,39 +435,39 @@
 			<title>Single Set Configuration</title>
 			<para>
 			In single set configurations this class supports the following options:
+			</para>
 			<itemizedlist>
-			<listitem><varname>category</varname>: Required. The name of an existing ebuild
-				category which should be used to create the package set.
+			<listitem><para><varname>category</varname>: Required. The name of an existing ebuild
+				category which should be used to create the package set.</para>
 			</listitem>
-			<listitem><varname>only_visible</varname>: Optional, defaults to <parameter>true</parameter>.
+			<listitem><para><varname>only_visible</varname>: Optional, defaults to <parameter>true</parameter>.
 				When set to <parameter>true</parameter> the set will only include visible packages, 
 				when set to <parameter>false</parameter> it will also include masked packages.
 				It's currently only effective in combination with the <parameter>porttree</parameter>
-				repository.
+				repository.</para>
 			</listitem>
 			</itemizedlist>
-			</para>
 			</sect3>
 			
 			<sect3>
 			<title>Multi Set Configuration</title>
 			<para>
 			In multi set configurations this class supports the following options:
+			</para>
 			<itemizedlist>
-			<listitem><varname>categories</varname>: Optional, defaults to all categories.
+			<listitem><para><varname>categories</varname>: Optional, defaults to all categories.
 				If set it must be a space separated list of existing ebuild categories for
-				which package sets should be created.
+				which package sets should be created.</para>
 			</listitem>
-			<listitem><varname>repository</varname>: See previous section.</listitem>
-			<listitem><varname>only_visible</varname>: See previous section.</listitem>
-			<listitem><varname>name_pattern</varname>: Optional, defaults to 
+			<listitem><para><varname>repository</varname>: See previous section.</para></listitem>
+			<listitem><para><varname>only_visible</varname>: See previous section.</para></listitem>
+			<listitem><para><varname>name_pattern</varname>: Optional, defaults to 
 				<parameter>$category/*</parameter>. This describes the naming pattern
 				to be used for creating the sets. It must contain either 
 				<parameter>$category</parameter> or <parameter>${category}</parameter>, which 
-				will be replaced by the category name.
+				will be replaced by the category name.</para>
 			</listitem>
 			</itemizedlist>
-			</para>
 			</sect3>
 		</sect2>
 		
@@ -491,12 +493,12 @@
 		Package set which contains all packages
 		that own one or more files.
 		This class supports the following options:
+		</para>
 		<itemizedlist>
-		<listitem><varname>files</varname>: Required. A list of file paths
-		that should be used to create the package set.
+		<listitem><para><varname>files</varname>: Required. A list of file paths
+		that should be used to create the package set.</para>
 		</listitem>
 		</itemizedlist>
-		</para>
 		</sect2>
 		<sect2 id='config-set-classes-VariableSet'>
 		<title>portage.sets.dbapi.VariableSet</title>
@@ -504,23 +506,23 @@
 		Package set which contains all packages
 		that match specified values of specified variable.
 		This class supports the following options:
-		<itemizedlist>
-		<listitem><varname>variable</varname>: The name of
-		the specified variable whose values are checked.
-		</listitem>
-		<listitem><varname>includes</varname>: A list of
-		values that must be contained within the specified
-		variable.
-		</listitem>
-		<listitem><varname>excludes</varname>: A list of
-		values that must not be contained within the specified
-		variable.
-		</listitem>
-		<listitem><varname>metadata-source</varname>: Optional, defaults to
-		"vartree". Specifies the repository to use for getting the metadata
-		to check.</listitem>
-		</itemizedlist>
 		</para>
+		<itemizedlist>
+		<listitem><para><varname>variable</varname>: The name of
+		the specified variable whose values are checked.</para>
+		</listitem>
+		<listitem><para><varname>includes</varname>: A list of
+		values that must be contained within the specified
+		variable.</para>
+		</listitem>
+		<listitem><para><varname>excludes</varname>: A list of
+		values that must not be contained within the specified
+		variable.</para>
+		</listitem>
+		<listitem><para><varname>metadata-source</varname>: Optional, defaults to
+		"vartree". Specifies the repository to use for getting the metadata
+		to check.</para></listitem>
+		</itemizedlist>
 		</sect2>
 		<sect2 id='config-set-classes-UnavailableSet'>
 		<title>portage.sets.dbapi.UnavailableSet</title>
@@ -529,12 +531,12 @@
 		packages for which there are no visible ebuilds
 		corresponding to the same $CATEGORY/$PN:$SLOT.
 		This class supports the following options:
-		<itemizedlist>
-		<listitem><varname>metadata-source</varname>: Optional, defaults to
-		"porttree". Specifies the repository to use for getting the metadata
-		to check.</listitem>
-		</itemizedlist>
 		</para>
+		<itemizedlist>
+		<listitem><para><varname>metadata-source</varname>: Optional, defaults to
+		"porttree". Specifies the repository to use for getting the metadata
+		to check.</para></listitem>
+		</itemizedlist>
 		</sect2>
 		<sect2 id='config-set-classes-DowngradeSet'>
 		<title>portage.sets.dbapi.DowngradeSet</title>
@@ -556,12 +558,12 @@
 			<title>Single Set Configuration</title>
 			<para>
 			This class supports the following option:
+			</para>
 			<itemizedlist>
-			<listitem><varname>debug</varname>: Generate extra output useful to figure out why
-				certain packages are included in the set, as it's not always obvious.
+			<listitem><para><varname>debug</varname>: Generate extra output useful to figure out why
+				certain packages are included in the set, as it's not always obvious.</para>
 			</listitem>
 			</itemizedlist>
-			</para>
 			</sect3>
 		</sect2>
 	</sect1>
@@ -576,20 +578,20 @@
 	</para>
 	<para>
 	The default sets are:
-	<itemizedlist>
-	<listitem><varname>system</varname>: uses <classname>PackagesSystemSet</classname></listitem>
-	<listitem><varname>world</varname>: uses <classname>WorldSet</classname></listitem>
-	<listitem><varname>security</varname>: uses <classname>NewAffectedSet</classname> with default options</listitem>
-	<listitem><varname>installed</varname>: uses <classname>EverythingSet</classname></listitem>
-	<listitem><varname>preserved-rebuild</varname>: uses <classname>PreservedLibraryConsumerSet</classname></listitem>
-	<listitem><varname>live-rebuild</varname>: uses <classname>VariableSet</classname></listitem>
-	<listitem><varname>module-rebuild</varname>: uses <classname>OwnerSet</classname></listitem>
-	<listitem><varname>downgrade</varname>: uses <classname>DowngradeSet</classname></listitem>
-	<listitem><varname>unavailable</varname>: uses <classname>UnavailableSet</classname></listitem>
-	</itemizedlist>
-	Additionally the default configuration includes a multi set section based on
-	the <classname>StaticFileSet</classname> defaults that creates a set for each 
-	file in <filename>/etc/portage/sets</filename> for convenience.
 	</para>
+	<itemizedlist>
+	<listitem><para><varname>system</varname>: uses <classname>PackagesSystemSet</classname></para></listitem>
+	<listitem><para><varname>world</varname>: uses <classname>WorldSet</classname></para></listitem>
+	<listitem><para><varname>security</varname>: uses <classname>NewAffectedSet</classname> with default options</para></listitem>
+	<listitem><para><varname>installed</varname>: uses <classname>EverythingSet</classname></para></listitem>
+	<listitem><para><varname>preserved-rebuild</varname>: uses <classname>PreservedLibraryConsumerSet</classname></para></listitem>
+	<listitem><para><varname>live-rebuild</varname>: uses <classname>VariableSet</classname></para></listitem>
+	<listitem><para><varname>module-rebuild</varname>: uses <classname>OwnerSet</classname></para></listitem>
+	<listitem><para><varname>downgrade</varname>: uses <classname>DowngradeSet</classname></para></listitem>
+	<listitem><para><varname>unavailable</varname>: uses <classname>UnavailableSet</classname></para></listitem>
+	</itemizedlist>
+	<para>Additionally the default configuration includes a multi set section based on
+	the <classname>StaticFileSet</classname> defaults that creates a set for each 
+	file in <filename>/etc/portage/sets</filename> for convenience.</para>
 	</sect1>
 </chapter>

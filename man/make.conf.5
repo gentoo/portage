@@ -243,6 +243,13 @@ validation mechanism to work correctly.
 Fetch everything in \fBSRC_URI\fR regardless of \fBUSE\fR settings,
 except do not fetch anything when \fImirror\fR is in \fBRESTRICT\fR.
 .TP
+.B multilib\-strict
+Many Makefiles assume that their libraries should go to /usr/lib, or
+$(prefix)/lib. This assumption can cause a serious mess if /usr/lib
+isn't a symlink to /usr/lib64. To find the bad packages, we have a
+portage feature called \fImultilib\-strict\fR. It will prevent emerge
+from putting 64bit libraries into anything other than (/usr)/lib64.
+.TP
 .B noauto
 When utilizing \fBebuild\fR(1), only run the function requested.
 .TP
@@ -296,6 +303,10 @@ since otherwise file collisions between packages may result in files being
 overwritten or uninstalled at inappropriate times.
 If \fIcollision\-protect\fR is enabled then it takes precedence over
 \fIprotect\-owned\fR. 
+.TP
+.B python\-trace
+Output a verbose trace of python execution to stderr when a command's 
+\-\-debug option is enabled.
 .TP
 .B sandbox
 Enable sandbox\-ing when running \fBemerge\fR(1) and \fBebuild\fR(1).

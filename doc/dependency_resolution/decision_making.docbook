@@ -18,18 +18,18 @@
 	to satisfy constraints and minimize cost. The
 	following package states influence the cost calculation for
 	a given combination:
+	</para>
 	<itemizedlist>
 	<listitem>
-		installed
+		<para>installed</para>
 	</listitem>
 	<listitem>
-		selected (for installation)
+		<para>selected (for installation)</para>
 	</listitem>
 	<listitem>
-		not selected (for installation)
+		<para>not selected (for installation)</para>
 	</listitem>
 	</itemizedlist>
-	</para>
 	<para>
 	In cost calculations, virtual packages by themselves are
 	considered to cost nothing since they do not directly install anything.

@@ -10,36 +10,36 @@
 	</para>
 	<para>
 	The function names for the ebuild phases, listed in order of execution:
+	</para>
 	<itemizedlist>
 	<listitem>
-		pkg_setup
+		<para>pkg_setup</para>
 	</listitem>
 	<listitem>
-		src_unpack
+		<para>src_unpack</para>
 	</listitem>
 	<listitem>
-		src_compile
+		<para>src_compile</para>
 	</listitem>
 	<listitem>
-		src_test
+		<para>src_test</para>
 	</listitem>
 	<listitem>
-		src_install
+		<para>src_install</para>
 	</listitem>
 	<listitem>
-		pkg_preinst
+		<para>pkg_preinst</para>
 	</listitem>
 	<listitem>
-		pkg_postinst
+		<para>pkg_postinst</para>
 	</listitem>
 	<listitem>
-		pkg_prerm
+		<para>pkg_prerm</para>
 	</listitem>
 	<listitem>
-		pkg_postrm
+		<para>pkg_postrm</para>
 	</listitem>
 	</itemizedlist>
-	</para>
 	<section id='package-ebuild-phases-previous-installed'>
 	<title>Interaction with previous installed version</title>
 	<para>
@@ -48,22 +48,20 @@
 	</para>
 	<section id='package-ebuild-phases-before-2.1.5'>
 	<title>Upgrade/downgrade order used by versions less than 2.1.5 (deprecated)</title>
-	<para>
 	<itemizedlist>
 	<listitem>
-		pkg_preinst
+		<para>pkg_preinst</para>
 	</listitem>
 	<listitem>
-		pkg_postinst
+		<para>pkg_postinst</para>
 	</listitem>
 	<listitem>
-		pkg_prerm
+		<para>pkg_prerm</para>
 	</listitem>
 	<listitem>
-		pkg_postrm
+		<para>pkg_postrm</para>
 	</listitem>
 	</itemizedlist>
-	</para>
 	</section>
 	<section id='package-ebuild-phases-after-2.1.5'>
 	<title>Upgrade/downgrade order starting with version 2.1.5</title>
@@ -71,22 +69,20 @@
 	The new order for upgrades and downgrades is identical to the order used
 	for reinstall operations:
 	</para>
-	<para>
 	<itemizedlist>
 	<listitem>
-		pkg_preinst
+		<para>pkg_preinst</para>
 	</listitem>
 	<listitem>
-		pkg_prerm
+		<para>pkg_prerm</para>
 	</listitem>
 	<listitem>
-		pkg_postrm
+		<para>pkg_postrm</para>
 	</listitem>
 	<listitem>
-		pkg_postinst
+		<para>pkg_postinst</para>
 	</listitem>
 	</itemizedlist>
-	</para>
 	<para>
 	Now that pkg_postinst is called after all other phases, it's not possible to
 	call has_version in pkg_postinst to detect whether the current install
