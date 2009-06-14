@@ -17,6 +17,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage import auxdbkeys, dep_expand
+from portage.localization import _
 
 class dbapi(object):
 	_category_re = re.compile(r'^\w[-.+\w]*$')
@@ -190,14 +191,14 @@ class dbapi(object):
 	def invalidentry(self, mypath):
 		if mypath.endswith('portage_lockfile'):
 			if "PORTAGE_MASTER_PID" not in os.environ:
-				writemsg("Lockfile removed: %s\n" % mypath, 1)
+				writemsg(_("Lockfile removed: %s\n") % mypath, 1)
 				unlockfile((mypath, None, None))
 			else:
 				# Nothing we can do about it. We're probably sandboxed.
 				pass
 		elif '/-MERGING-' in mypath:
 			if os.path.exists(mypath):
-				writemsg(colorize("BAD","INCOMPLETE MERGE:")+" %s\n" % mypath,
+				writemsg(colorize("BAD", _("INCOMPLETE MERGE:"))+" %s\n" % mypath,
 					noiselevel=-1)
 		else:
 			writemsg("!!! Invalid db entry: %s\n" % mypath, noiselevel=-1)

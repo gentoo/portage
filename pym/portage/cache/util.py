@@ -7,6 +7,7 @@ __all__ = ["mirror_cache", "non_quiet_mirroring", "quiet_mirroring"]
 
 from itertools import chain
 from portage.cache import cache_errors
+from portage.localization import _
 
 def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, verbose_instance=None):
 
@@ -48,7 +49,7 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 		eapi_supported = eapi_is_supported(eapi)
 		if not eapi_supported:
 			if not _validate_cache_for_unsupported_eapis:
-				noise.misc(x, "unable to validate cache for EAPI='%s'" % eapi)
+				noise.misc(x, _("unable to validate cache for EAPI='%s'") % eapi)
 				continue
 
 		write_it = True

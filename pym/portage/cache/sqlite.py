@@ -8,6 +8,7 @@ import os
 from portage.cache.template import reconstruct_eclasses
 from portage.util import writemsg, apply_secpass_permissions
 from portage.data import portage_gid
+from portage.localization import _
 try:
 	import sqlite3 as db_module # sqlite3 is optional with >=python-2.5
 except ImportError:
@@ -101,7 +102,7 @@ class database(fs_template.FsBased):
 			if self._db_table_exists(v["table_name"]):
 				create_statement = self._db_table_get_create(v["table_name"])
 				if create_statement != v["create"]:
-					writemsg("sqlite: dropping old table: %s\n" % v["table_name"])
+					writemsg(_("sqlite: dropping old table: %s\n") % v["table_name"])
 					cursor.execute("DROP TABLE %s" % v["table_name"])
 					cursor.execute(v["create"])
 			else:

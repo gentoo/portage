@@ -17,6 +17,7 @@ from portage.cache.mappings import slot_dict_class
 from portage.dbapi.virtual import fakedbapi
 from portage.exception import InvalidPackageName, \
 	PermissionDenied, PortageException
+from portage.localization import _
 
 from portage import dep_expand, listdir, _check_distfile, _movefile
 
@@ -226,14 +227,14 @@ class binarytree(object):
 			mynewpkg = mynewcpv.split("/")[1]
 
 			if (mynewpkg != myoldpkg) and os.path.exists(self.getname(mynewcpv)):
-				writemsg("!!! Cannot update binary: Destination exists.\n",
+				writemsg(_("!!! Cannot update binary: Destination exists.\n"),
 					noiselevel=-1)
 				writemsg("!!! "+mycpv+" -> "+mynewcpv+"\n", noiselevel=-1)
 				continue
 
 			tbz2path = self.getname(mycpv)
 			if os.path.exists(tbz2path) and not os.access(tbz2path,os.W_OK):
-				writemsg("!!! Cannot update readonly binary: "+mycpv+"\n",
+				writemsg(_("!!! Cannot update readonly binary: %s\n") % mycpv,
 					noiselevel=-1)
 				continue
 
@@ -514,8 +515,8 @@ class binarytree(object):
 								self.dbapi._aux_cache[mycpv] = aux_cache
 							continue
 					if not os.access(full_path, os.R_OK):
-						writemsg("!!! Permission denied to read " + \
-							"binary package: '%s'\n" % full_path,
+						writemsg(_("!!! Permission denied to read " \
+							"binary package: '%s'\n") % full_path,
 							noiselevel=-1)
 						self.invalids.append(myfile[:-5])
 						continue
@@ -527,7 +528,7 @@ class binarytree(object):
 					mypkg = myfile[:-5]
 					if not mycat or not mypf or not slot:
 						#old-style or corrupt package
-						writemsg("\n!!! Invalid binary package: '%s'\n" % full_path,
+						writemsg(_("\n!!! Invalid binary package: '%s'\n") % full_path,
 							noiselevel=-1)
 						missing_keys = []
 						if not mycat:
@@ -539,10 +540,10 @@ class binarytree(object):
 						msg = []
 						if missing_keys:
 							missing_keys.sort()
-							msg.append("Missing metadata key(s): %s." % \
+							msg.append(_("Missing metadata key(s): %s.") % \
 								", ".join(missing_keys))
-						msg.append(" This binary package is not " + \
-							"recoverable and should be deleted.")
+						msg.append(_(" This binary package is not " \
+							"recoverable and should be deleted."))
 						from textwrap import wrap
 						for line in wrap("".join(msg), 72):
 							writemsg("!!! %s\n" % line, noiselevel=-1)
@@ -559,10 +560,10 @@ class binarytree(object):
 						# All is first, so it's preferred.
 						continue
 					if not self.dbapi._category_re.match(mycat):
-						writemsg(("!!! Binary package has an " + \
+						writemsg(_("!!! Binary package has an " \
 							"unrecognized category: '%s'\n") % full_path,
 							noiselevel=-1)
-						writemsg(("!!! '%s' has a category that is not" + \
+						writemsg(_("!!! '%s' has a category that is not" \
 							" listed in %setc/portage/categories\n") % \
 							(mycpv, self.settings["PORTAGE_CONFIGROOT"]),
 							noiselevel=-1)
@@ -594,7 +595,7 @@ class binarytree(object):
 					try:
 						self._eval_use_flags(mycpv, d)
 					except portage.exception.InvalidDependString:
-						writemsg("!!! Invalid binary package: '%s'\n" % \
+						writemsg(_("!!! Invalid binary package: '%s'\n") % \
 							self.getname(mycpv), noiselevel=-1)
 						self.dbapi.cpv_remove(mycpv)
 						del pkg_paths[mycpv]
@@ -630,7 +631,7 @@ class binarytree(object):
 					f.close()
 
 		if getbinpkgs and not self.settings["PORTAGE_BINHOST"]:
-			writemsg("!!! PORTAGE_BINHOST unset, but use is requested.\n",
+			writemsg(_("!!! PORTAGE_BINHOST unset, but use is requested.\n"),
 				noiselevel=-1)
 
 		if getbinpkgs and \
@@ -669,8 +670,8 @@ class binarytree(object):
 						pkgindex = None
 					else:
 						if not self._pkgindex_version_supported(rmt_idx):
-							writemsg("\n\n!!! Binhost package index version" + \
-							" is not supported: '%s'\n" % \
+							writemsg(_("\n\n!!! Binhost package index version" \
+							" is not supported: '%s'\n") % \
 							rmt_idx.header.get("VERSION"), noiselevel=-1)
 							pkgindex = None
 						elif local_timestamp != remote_timestamp:
@@ -679,8 +680,8 @@ class binarytree(object):
 				finally:
 					f.close()
 			except EnvironmentError, e:
-				writemsg("\n\n!!! Error fetching binhost package" + \
-					" info from '%s'\n" % base_url)
+				writemsg(_("\n\n!!! Error fetching binhost package" \
+					" info from '%s'\n") % base_url)
 				writemsg("!!! %s\n\n" % str(e))
 				del e
 				pkgindex = None
@@ -742,7 +743,7 @@ class binarytree(object):
 				chunk_size = 3000
 			writemsg_stdout("\n")
 			writemsg_stdout(
-				colorize("GOOD", "Fetching bininfo from ") + \
+				colorize("GOOD", _("Fetching bininfo from ")) + \
 				re.sub(r'//(.+):.+@(.+)/', r'//\1:*password*@\2/', base_url) + "\n")
 			self.remotepkgs = portage.getbinpkg.dir_get_metadata(
 				self.settings["PORTAGE_BINHOST"], chunk_size=chunk_size)
@@ -751,7 +752,7 @@ class binarytree(object):
 			for mypkg in self.remotepkgs.keys():
 				if "CATEGORY" not in self.remotepkgs[mypkg]:
 					#old-style or corrupt package
-					writemsg("!!! Invalid remote binary package: "+mypkg+"\n",
+					writemsg(_("!!! Invalid remote binary package: %s\n") % mypkg,
 						noiselevel=-1)
 					del self.remotepkgs[mypkg]
 					continue
@@ -765,10 +766,10 @@ class binarytree(object):
 					continue
 
 				if not self.dbapi._category_re.match(mycat):
-					writemsg(("!!! Remote binary package has an " + \
+					writemsg(_("!!! Remote binary package has an " \
 						"unrecognized category: '%s'\n") % fullpkg,
 						noiselevel=-1)
-					writemsg(("!!! '%s' has a category that is not" + \
+					writemsg(_("!!! '%s' has a category that is not" \
 						" listed in %setc/portage/categories\n") % \
 						(fullpkg, self.settings["PORTAGE_CONFIGROOT"]),
 						noiselevel=-1)
@@ -786,7 +787,7 @@ class binarytree(object):
 				except SystemExit, e:
 					raise
 				except:
-					writemsg("!!! Failed to inject remote binary package:"+str(fullpkg)+"\n",
+					writemsg(_("!!! Failed to inject remote binary package: %s\n") % fullpkg,
 						noiselevel=-1)
 					del self.remotepkgs[mypkg]
 					continue
@@ -815,13 +816,13 @@ class binarytree(object):
 			if e.errno != errno.ENOENT:
 				raise
 			del e
-			writemsg("!!! Binary package does not exist: '%s'\n" % full_path,
+			writemsg(_("!!! Binary package does not exist: '%s'\n") % full_path,
 				noiselevel=-1)
 			return
 		mytbz2 = portage.xpak.tbz2(full_path)
 		slot = mytbz2.getfile("SLOT")
 		if slot is None:
-			writemsg("!!! Invalid binary package: '%s'\n" % full_path,
+			writemsg(_("!!! Invalid binary package: '%s'\n") % full_path,
 				noiselevel=-1)
 			return
 		slot = slot.strip()
@@ -859,7 +860,7 @@ class binarytree(object):
 			try:
 				d = self._pkgindex_entry(cpv)
 			except portage.exception.InvalidDependString:
-				writemsg("!!! Invalid binary package: '%s'\n" % \
+				writemsg(_("!!! Invalid binary package: '%s'\n") % \
 					self.getname(cpv), noiselevel=-1)
 				self.dbapi.cpv_remove(cpv)
 				del self._pkg_paths[cpv]
@@ -1054,7 +1055,7 @@ class binarytree(object):
 				return
 			else:
 				resume = True
-				writemsg("Resuming download of this tbz2, but it is possible that it is corrupt.\n",
+				writemsg(_("Resuming download of this tbz2, but it is possible that it is corrupt.\n"),
 					noiselevel=-1)
 		
 		mydest = os.path.dirname(self.getname(pkgname))
@@ -1133,8 +1134,8 @@ class binarytree(object):
 			try:
 				digests["size"] = int(metadata["SIZE"])
 			except ValueError:
-				writemsg("!!! Malformed SIZE attribute in remote " + \
-				"metadata for '%s'\n" % cpv)
+				writemsg(_("!!! Malformed SIZE attribute in remote " \
+				"metadata for '%s'\n") % cpv)
 
 		if not digests:
 			return False
