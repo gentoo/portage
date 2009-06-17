@@ -339,7 +339,7 @@ class ConsoleStyleFile(object):
 		global havecolor
 		if havecolor and self._styles:
 			for style in self._styles:
-				self._file.write(color_codes[style])
+				self._file.write(map_code_to_color_code(style))
 			self._file.write(s)
 			self._file.write(color_codes["reset"])
 		else:
