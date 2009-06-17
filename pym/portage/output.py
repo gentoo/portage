@@ -26,7 +26,10 @@ havecolor=1
 dotitles=1
 
 codes = {}
+"""Maps color class to tuple of attribute names."""
+
 color_codes = {}
+"""Maps attribute name to ansi code."""
 
 esc_seq = "\x1b["
 
