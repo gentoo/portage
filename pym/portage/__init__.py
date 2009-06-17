@@ -5432,7 +5432,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mycolors = []
 	for c in ("GOOD", "WARN", "BAD", "HILITE", "BRACKET"):
 		mycolors.append("%s=$'%s'" % \
-			(c, portage.output.map_code_to_color_code(c)))
+			(c, portage.output.style_to_ansi_code(c)))
 	mysettings["PORTAGE_COLORMAP"] = "\n".join(mycolors)
 
 def prepare_build_dirs(myroot, mysettings, cleanup):

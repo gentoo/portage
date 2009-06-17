@@ -26,7 +26,7 @@ havecolor=1
 dotitles=1
 
 codes = {}
-"""Maps color class to tuple of attribute names."""
+"""Maps style class to tuple of attribute names."""
 
 color_codes = {}
 """Maps attribute name to ansi code."""
@@ -290,9 +290,16 @@ def nocolor():
 def resetColor():
 	return color_codes["reset"]
 
-def map_code_to_color_code(code):
+def style_to_ansi_code(style):
+	"""
+	@param style: A style name
+	@type style: String
+	@rtype: String
+	@return: A string containing one or more ansi escape codes that are
+		used to render the given style.
+	"""
 	ret = ""
-	for color_code in codes[code]:
+	for color_code in codes[style]:
 		# allow stuff that has found it's way through ansi_code_pattern
 		ret += color_codes.get(color_code, color_code)
 	return ret
@@ -303,7 +310,7 @@ def colorize(color_key, text):
 		if color_key in color_codes:
 			return color_codes[color_key] + text + color_codes["reset"]
 		elif color_key in codes:
-			return map_code_to_color_code(color_key) + text + color_codes["reset"]
+			return style_to_ansi_code(color_key) + text + color_codes["reset"]
 		else:
 			return text
 	else:
@@ -342,7 +349,7 @@ class ConsoleStyleFile(object):
 		global havecolor
 		if havecolor and self._styles:
 			for style in self._styles:
-				self._file.write(map_code_to_color_code(style))
+				self._file.write(style_to_ansi_code(style))
 			self._file.write(s)
 			self._file.write(color_codes["reset"])
 		else:
