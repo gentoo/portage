@@ -28,90 +28,90 @@ dotitles=1
 _styles = {}
 """Maps style class to tuple of attribute names."""
 
-color_codes = {}
+codes = {}
 """Maps attribute name to ansi code."""
 
 esc_seq = "\x1b["
 
-color_codes["normal"]       =  esc_seq + "0m"
-color_codes["reset"]        =  esc_seq + "39;49;00m"
+codes["normal"]       =  esc_seq + "0m"
+codes["reset"]        =  esc_seq + "39;49;00m"
 
-color_codes["bold"]         =  esc_seq + "01m"
-color_codes["faint"]        =  esc_seq + "02m"
-color_codes["standout"]     =  esc_seq + "03m"
-color_codes["underline"]    =  esc_seq + "04m"
-color_codes["blink"]        =  esc_seq + "05m"
-color_codes["overline"]     =  esc_seq + "06m"
-color_codes["reverse"]      =  esc_seq + "07m"
-color_codes["invisible"]    =  esc_seq + "08m"
+codes["bold"]         =  esc_seq + "01m"
+codes["faint"]        =  esc_seq + "02m"
+codes["standout"]     =  esc_seq + "03m"
+codes["underline"]    =  esc_seq + "04m"
+codes["blink"]        =  esc_seq + "05m"
+codes["overline"]     =  esc_seq + "06m"
+codes["reverse"]      =  esc_seq + "07m"
+codes["invisible"]    =  esc_seq + "08m"
 
-color_codes["no-attr"]      = esc_seq + "22m"
-color_codes["no-standout"]  = esc_seq + "23m"
-color_codes["no-underline"] = esc_seq + "24m"
-color_codes["no-blink"]     = esc_seq + "25m"
-color_codes["no-overline"]  = esc_seq + "26m"
-color_codes["no-reverse"]   = esc_seq + "27m"
+codes["no-attr"]      = esc_seq + "22m"
+codes["no-standout"]  = esc_seq + "23m"
+codes["no-underline"] = esc_seq + "24m"
+codes["no-blink"]     = esc_seq + "25m"
+codes["no-overline"]  = esc_seq + "26m"
+codes["no-reverse"]   = esc_seq + "27m"
 
-color_codes["bg_black"]      = esc_seq + "40m"
-color_codes["bg_darkred"]    = esc_seq + "41m"
-color_codes["bg_darkgreen"]  = esc_seq + "42m"
-color_codes["bg_brown"]      = esc_seq + "43m"
-color_codes["bg_darkblue"]   = esc_seq + "44m"
-color_codes["bg_purple"]     = esc_seq + "45m"
-color_codes["bg_teal"]       = esc_seq + "46m"
-color_codes["bg_lightgray"]  = esc_seq + "47m"
-color_codes["bg_default"]    = esc_seq + "49m"
-color_codes["bg_darkyellow"] = color_codes["bg_brown"]
+codes["bg_black"]      = esc_seq + "40m"
+codes["bg_darkred"]    = esc_seq + "41m"
+codes["bg_darkgreen"]  = esc_seq + "42m"
+codes["bg_brown"]      = esc_seq + "43m"
+codes["bg_darkblue"]   = esc_seq + "44m"
+codes["bg_purple"]     = esc_seq + "45m"
+codes["bg_teal"]       = esc_seq + "46m"
+codes["bg_lightgray"]  = esc_seq + "47m"
+codes["bg_default"]    = esc_seq + "49m"
+codes["bg_darkyellow"] = codes["bg_brown"]
 
 def color(fg, bg="default", attr=["normal"]):
-	mystr = color_codes[fg]
+	mystr = codes[fg]
 	for x in [bg]+attr:
-		mystr += color_codes[x]
+		mystr += codes[x]
 	return mystr
 
 
-ansi_color_codes = []
+ansi_codes = []
 for x in xrange(30, 38):
-	ansi_color_codes.append("%im" % x)
-	ansi_color_codes.append("%i;01m" % x)
+	ansi_codes.append("%im" % x)
+	ansi_codes.append("%i;01m" % x)
 
 rgb_ansi_colors = ['0x000000', '0x555555', '0xAA0000', '0xFF5555', '0x00AA00',
 	'0x55FF55', '0xAA5500', '0xFFFF55', '0x0000AA', '0x5555FF', '0xAA00AA',
 	'0xFF55FF', '0x00AAAA', '0x55FFFF', '0xAAAAAA', '0xFFFFFF']
 
 for x in xrange(len(rgb_ansi_colors)):
-	color_codes[rgb_ansi_colors[x]] = esc_seq + ansi_color_codes[x]
+	codes[rgb_ansi_colors[x]] = esc_seq + ansi_codes[x]
 
 del x
 
-color_codes["black"]     = color_codes["0x000000"]
-color_codes["darkgray"]  = color_codes["0x555555"]
+codes["black"]     = codes["0x000000"]
+codes["darkgray"]  = codes["0x555555"]
 
-color_codes["red"]       = color_codes["0xFF5555"]
-color_codes["darkred"]   = color_codes["0xAA0000"]
+codes["red"]       = codes["0xFF5555"]
+codes["darkred"]   = codes["0xAA0000"]
 
-color_codes["green"]     = color_codes["0x55FF55"]
-color_codes["darkgreen"] = color_codes["0x00AA00"]
+codes["green"]     = codes["0x55FF55"]
+codes["darkgreen"] = codes["0x00AA00"]
 
-color_codes["yellow"]    = color_codes["0xFFFF55"]
-color_codes["brown"]     = color_codes["0xAA5500"]
+codes["yellow"]    = codes["0xFFFF55"]
+codes["brown"]     = codes["0xAA5500"]
 
-color_codes["blue"]      = color_codes["0x5555FF"]
-color_codes["darkblue"]  = color_codes["0x0000AA"]
+codes["blue"]      = codes["0x5555FF"]
+codes["darkblue"]  = codes["0x0000AA"]
 
-color_codes["fuchsia"]   = color_codes["0xFF55FF"]
-color_codes["purple"]    = color_codes["0xAA00AA"]
+codes["fuchsia"]   = codes["0xFF55FF"]
+codes["purple"]    = codes["0xAA00AA"]
 
-color_codes["turquoise"] = color_codes["0x55FFFF"]
-color_codes["teal"]      = color_codes["0x00AAAA"]
+codes["turquoise"] = codes["0x55FFFF"]
+codes["teal"]      = codes["0x00AAAA"]
 
-color_codes["white"]     = color_codes["0xFFFFFF"]
-color_codes["lightgray"] = color_codes["0xAAAAAA"]
+codes["white"]     = codes["0xFFFFFF"]
+codes["lightgray"] = codes["0xAAAAAA"]
 
-color_codes["darkteal"]   = color_codes["turquoise"]
+codes["darkteal"]   = codes["turquoise"]
 # Some terminals have darkyellow instead of brown.
-color_codes["0xAAAA00"]   = color_codes["brown"]
-color_codes["darkyellow"] = color_codes["0xAAAA00"]
+codes["0xAAAA00"]   = codes["brown"]
+codes["darkyellow"] = codes["0xAAAA00"]
 
 
 
@@ -182,7 +182,7 @@ def _parse_color_map(onerror=None):
 
 			k = strip_quotes(split_line[0].strip())
 			v = strip_quotes(split_line[1].strip())
-			if not k in _styles and not k in color_codes:
+			if not k in _styles and not k in codes:
 				e = ParseError("'%s', line %s: %s'%s'" % (
 					myfile, lineno,
 					"Unknown variable: ", k))
@@ -194,16 +194,16 @@ def _parse_color_map(onerror=None):
 			if ansi_code_pattern.match(v):
 				if k in _styles:
 					_styles[k] = ( esc_seq + v, )
-				elif k in color_codes:
-					color_codes[k] = esc_seq + v
+				elif k in codes:
+					codes[k] = esc_seq + v
 			else:
 				code_list = []
 				for x in v.split():
-					if x in color_codes:
+					if x in codes:
 						if k in _styles:
 							code_list.append(x)
-						elif k in color_codes:
-							code_list.append(color_codes[x])
+						elif k in codes:
+							code_list.append(codes[x])
 					else:
 						e = ParseError("'%s', line %s: %s'%s'" % (
 							myfile, lineno,
@@ -214,8 +214,8 @@ def _parse_color_map(onerror=None):
 							raise e
 				if k in _styles:
 					_styles[k] = tuple(code_list)
-				elif k in color_codes:
-					color_codes[k] = "".join(code_list)
+				elif k in codes:
+					codes[k] = "".join(code_list)
 	except (IOError, OSError), e:
 		if e.errno == errno.ENOENT:
 			raise FileNotFound(myfile)
@@ -288,7 +288,7 @@ def nocolor():
 	havecolor=0
 
 def resetColor():
-	return color_codes["reset"]
+	return codes["reset"]
 
 def style_to_ansi_code(style):
 	"""
@@ -299,18 +299,18 @@ def style_to_ansi_code(style):
 		used to render the given style.
 	"""
 	ret = ""
-	for color_code in _styles[style]:
+	for attr_name in _styles[style]:
 		# allow stuff that has found it's way through ansi_code_pattern
-		ret += color_codes.get(color_code, color_code)
+		ret += codes.get(attr_name, attr_name)
 	return ret
 
 def colorize(color_key, text):
 	global havecolor
 	if havecolor:
-		if color_key in color_codes:
-			return color_codes[color_key] + text + color_codes["reset"]
+		if color_key in codes:
+			return codes[color_key] + text + codes["reset"]
 		elif color_key in _styles:
-			return style_to_ansi_code(color_key) + text + color_codes["reset"]
+			return style_to_ansi_code(color_key) + text + codes["reset"]
 		else:
 			return text
 	else:
@@ -351,7 +351,7 @@ class ConsoleStyleFile(object):
 			for style in self._styles:
 				self._file.write(style_to_ansi_code(style))
 			self._file.write(s)
-			self._file.write(color_codes["reset"])
+			self._file.write(codes["reset"])
 		else:
 			self._file.write(s)
 		if self.write_listener:
