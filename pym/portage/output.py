@@ -25,7 +25,7 @@ from portage.exception import CommandNotFound, FileNotFound, \
 havecolor=1
 dotitles=1
 
-codes = {}
+_styles = {}
 """Maps style class to tuple of attribute names."""
 
 color_codes = {}
@@ -116,29 +116,29 @@ color_codes["darkyellow"] = color_codes["0xAAAA00"]
 
 
 # Colors from /etc/init.d/functions.sh
-codes["NORMAL"]     = ( "normal", )
-codes["GOOD"]       = ( "green", )
-codes["WARN"]       = ( "yellow", )
-codes["BAD"]        = ( "red", )
-codes["HILITE"]     = ( "teal", )
-codes["BRACKET"]    = ( "blue", )
+_styles["NORMAL"]     = ( "normal", )
+_styles["GOOD"]       = ( "green", )
+_styles["WARN"]       = ( "yellow", )
+_styles["BAD"]        = ( "red", )
+_styles["HILITE"]     = ( "teal", )
+_styles["BRACKET"]    = ( "blue", )
 
 # Portage functions
-codes["INFORM"]                  = ( "darkgreen", )
-codes["UNMERGE_WARN"]            = ( "red", )
-codes["SECURITY_WARN"]           = ( "red", )
-codes["MERGE_LIST_PROGRESS"]     = ( "yellow", )
-codes["PKG_BLOCKER"]             = ( "red", )
-codes["PKG_BLOCKER_SATISFIED"]   = ( "darkblue", )
-codes["PKG_MERGE"]               = ( "darkgreen", )
-codes["PKG_MERGE_SYSTEM"]        = ( "darkgreen", )
-codes["PKG_MERGE_WORLD"]         = ( "green", )
-codes["PKG_UNINSTALL"]           = ( "red", )
-codes["PKG_NOMERGE"]             = ( "darkblue", )
-codes["PKG_NOMERGE_SYSTEM"]      = ( "darkblue", )
-codes["PKG_NOMERGE_WORLD"]       = ( "blue", )
-codes["PROMPT_CHOICE_DEFAULT"]   = ( "green", )
-codes["PROMPT_CHOICE_OTHER"]     = ( "red", )
+_styles["INFORM"]                  = ( "darkgreen", )
+_styles["UNMERGE_WARN"]            = ( "red", )
+_styles["SECURITY_WARN"]           = ( "red", )
+_styles["MERGE_LIST_PROGRESS"]     = ( "yellow", )
+_styles["PKG_BLOCKER"]             = ( "red", )
+_styles["PKG_BLOCKER_SATISFIED"]   = ( "darkblue", )
+_styles["PKG_MERGE"]               = ( "darkgreen", )
+_styles["PKG_MERGE_SYSTEM"]        = ( "darkgreen", )
+_styles["PKG_MERGE_WORLD"]         = ( "green", )
+_styles["PKG_UNINSTALL"]           = ( "red", )
+_styles["PKG_NOMERGE"]             = ( "darkblue", )
+_styles["PKG_NOMERGE_SYSTEM"]      = ( "darkblue", )
+_styles["PKG_NOMERGE_WORLD"]       = ( "blue", )
+_styles["PROMPT_CHOICE_DEFAULT"]   = ( "green", )
+_styles["PROMPT_CHOICE_OTHER"]     = ( "red", )
 
 def _parse_color_map(onerror=None):
 	"""
@@ -182,7 +182,7 @@ def _parse_color_map(onerror=None):
 
 			k = strip_quotes(split_line[0].strip())
 			v = strip_quotes(split_line[1].strip())
-			if not k in codes and not k in color_codes:
+			if not k in _styles and not k in color_codes:
 				e = ParseError("'%s', line %s: %s'%s'" % (
 					myfile, lineno,
 					"Unknown variable: ", k))
@@ -192,15 +192,15 @@ def _parse_color_map(onerror=None):
 					raise e
 				continue
 			if ansi_code_pattern.match(v):
-				if k in codes:
-					codes[k] = ( esc_seq + v, )
+				if k in _styles:
+					_styles[k] = ( esc_seq + v, )
 				elif k in color_codes:
 					color_codes[k] = esc_seq + v
 			else:
 				code_list = []
 				for x in v.split():
 					if x in color_codes:
-						if k in codes:
+						if k in _styles:
 							code_list.append(x)
 						elif k in color_codes:
 							code_list.append(color_codes[x])
@@ -212,8 +212,8 @@ def _parse_color_map(onerror=None):
 							onerror(e)
 						else:
 							raise e
-				if k in codes:
-					codes[k] = tuple(code_list)
+				if k in _styles:
+					_styles[k] = tuple(code_list)
 				elif k in color_codes:
 					color_codes[k] = "".join(code_list)
 	except (IOError, OSError), e:
@@ -299,7 +299,7 @@ def style_to_ansi_code(style):
 		used to render the given style.
 	"""
 	ret = ""
-	for color_code in codes[style]:
+	for color_code in _styles[style]:
 		# allow stuff that has found it's way through ansi_code_pattern
 		ret += color_codes.get(color_code, color_code)
 	return ret
@@ -309,7 +309,7 @@ def colorize(color_key, text):
 	if havecolor:
 		if color_key in color_codes:
 			return color_codes[color_key] + text + color_codes["reset"]
-		elif color_key in codes:
+		elif color_key in _styles:
 			return style_to_ansi_code(color_key) + text + color_codes["reset"]
 		else:
 			return text
