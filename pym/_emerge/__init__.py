@@ -16090,9 +16090,8 @@ def emerge_main():
 		myopts["--usepkg"] = True
 
 	# Allow -p to remove --ask
-	if ("--pretend" in myopts) and ("--ask" in myopts):
-		print ">>> --pretend disables --ask... removing --ask from options."
-		del myopts["--ask"]
+	if "--pretend" in myopts:
+		myopts.pop("--ask", None)
 
 	# forbid --ask when not in a terminal
 	# note: this breaks `emerge --ask | tee logfile`, but that doesn't work anyway.
