@@ -238,13 +238,15 @@ shortmapping={
 "v":"--verbose",   "V":"--version"
 }
 
+_emerge_log_dir = '/var/log'
+
 def emergelog(xterm_titles, mystr, short_msg=None):
 	if xterm_titles and short_msg:
 		if "HOSTNAME" in os.environ:
 			short_msg = os.environ["HOSTNAME"]+": "+short_msg
 		xtermTitle(short_msg)
 	try:
-		file_path = "/var/log/emerge.log"
+		file_path = os.path.join(_emerge_log_dir, 'emerge.log')
 		mylogfile = open(file_path, "a")
 		portage.util.apply_secpass_permissions(file_path,
 			uid=portage.portage_uid, gid=portage.portage_gid,
@@ -10137,7 +10139,7 @@ class Scheduler(PollScheduler):
 	_bad_resume_opts = set(["--ask", "--changelog",
 		"--resume", "--skipfirst"])
 
-	_fetch_log = "/var/log/emerge-fetch.log"
+	_fetch_log = os.path.join(_emerge_log_dir, 'emerge-fetch.log')
 
 	class _iface_class(SlotObject):
 		__slots__ = ("dblinkEbuildPhase", "dblinkDisplayMerge",
@@ -16180,6 +16182,20 @@ def emerge_main():
 		global emergelog
 		def emergelog(*pargs, **kargs):
 			pass
+
+	else:
+		if 'EMERGE_LOG_DIR' in settings:
+			try:
+				# At least the parent needs to exist for the lock file.
+				portage.util.ensure_dirs(settings['EMERGE_LOG_DIR'])
+			except portage.exception.PortageException, e:
+				writemsg_level("!!! Error creating directory for " + \
+					"EMERGE_LOG_DIR='%s':\n!!! %s\n" % \
+					(settings['EMERGE_LOG_DIR'], e),
+					noiselevel=-1, level=logging.ERROR)
+			else:
+				global _emerge_log_dir
+				_emerge_log_dir = settings['EMERGE_LOG_DIR']
 
 	if not "--pretend" in myopts:
 		emergelog(xterm_titles, "Started emerge on: "+\
