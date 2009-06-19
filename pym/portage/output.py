@@ -4,6 +4,7 @@
 
 __docformat__ = "epytext"
 
+import codecs
 import commands
 import errno
 import formatter
@@ -24,80 +25,62 @@ from portage.exception import CommandNotFound, FileNotFound, \
 havecolor=1
 dotitles=1
 
+_styles = {}
+"""Maps style class to tuple of attribute names."""
+
+codes = {}
+"""Maps attribute name to ansi code."""
+
 esc_seq = "\x1b["
 
-g_attr = {}
-g_attr["normal"]       =  0
+codes["normal"]       =  esc_seq + "0m"
+codes["reset"]        =  esc_seq + "39;49;00m"
 
-g_attr["bold"]         =  1
-g_attr["faint"]        =  2
-g_attr["standout"]     =  3
-g_attr["underline"]    =  4
-g_attr["blink"]        =  5
-g_attr["overline"]     =  6  # Why is overline actually useful?
-g_attr["reverse"]      =  7
-g_attr["invisible"]    =  8
+codes["bold"]         =  esc_seq + "01m"
+codes["faint"]        =  esc_seq + "02m"
+codes["standout"]     =  esc_seq + "03m"
+codes["underline"]    =  esc_seq + "04m"
+codes["blink"]        =  esc_seq + "05m"
+codes["overline"]     =  esc_seq + "06m"
+codes["reverse"]      =  esc_seq + "07m"
+codes["invisible"]    =  esc_seq + "08m"
 
-g_attr["no-attr"]      = 22
-g_attr["no-standout"]  = 23
-g_attr["no-underline"] = 24
-g_attr["no-blink"]     = 25
-g_attr["no-overline"]  = 26
-g_attr["no-reverse"]   = 27
-# 28 isn't defined?
-# 29 isn't defined?
-g_attr["black"]        = 30
-g_attr["red"]          = 31
-g_attr["green"]        = 32
-g_attr["yellow"]       = 33
-g_attr["blue"]         = 34
-g_attr["magenta"]      = 35
-g_attr["cyan"]         = 36
-g_attr["white"]        = 37
-# 38 isn't defined?
-g_attr["default"]      = 39
-g_attr["bg_black"]     = 40
-g_attr["bg_red"]       = 41
-g_attr["bg_green"]     = 42
-g_attr["bg_yellow"]    = 43
-g_attr["bg_blue"]      = 44
-g_attr["bg_magenta"]   = 45
-g_attr["bg_cyan"]      = 46
-g_attr["bg_white"]     = 47
-g_attr["bg_default"]   = 49
+codes["no-attr"]      = esc_seq + "22m"
+codes["no-standout"]  = esc_seq + "23m"
+codes["no-underline"] = esc_seq + "24m"
+codes["no-blink"]     = esc_seq + "25m"
+codes["no-overline"]  = esc_seq + "26m"
+codes["no-reverse"]   = esc_seq + "27m"
 
+codes["bg_black"]      = esc_seq + "40m"
+codes["bg_darkred"]    = esc_seq + "41m"
+codes["bg_darkgreen"]  = esc_seq + "42m"
+codes["bg_brown"]      = esc_seq + "43m"
+codes["bg_darkblue"]   = esc_seq + "44m"
+codes["bg_purple"]     = esc_seq + "45m"
+codes["bg_teal"]       = esc_seq + "46m"
+codes["bg_lightgray"]  = esc_seq + "47m"
+codes["bg_default"]    = esc_seq + "49m"
+codes["bg_darkyellow"] = codes["bg_brown"]
 
-# make_seq("blue", "black", "normal")
 def color(fg, bg="default", attr=["normal"]):
-	mystr = esc_seq[:] + "%02d" % g_attr[fg]
+	mystr = codes[fg]
 	for x in [bg]+attr:
-		mystr += ";%02d" % g_attr[x]
-	return mystr+"m"
+		mystr += codes[x]
+	return mystr
 
 
-
-codes={}
-codes["reset"]     = esc_seq + "39;49;00m"
-
-codes["bold"]      = esc_seq + "01m"
-codes["faint"]     = esc_seq + "02m"
-codes["standout"]  = esc_seq + "03m"
-codes["underline"] = esc_seq + "04m"
-codes["blink"]     = esc_seq + "05m"
-codes["overline"]  = esc_seq + "06m"  # Who made this up? Seriously.
-codes["reverse"]   = esc_seq + "07m"
-
-ansi_color_codes = []
+ansi_codes = []
 for x in xrange(30, 38):
-	ansi_color_codes.append("%im" % x)
-	ansi_color_codes.append("%i;01m" % x)
+	ansi_codes.append("%im" % x)
+	ansi_codes.append("%i;01m" % x)
 
 rgb_ansi_colors = ['0x000000', '0x555555', '0xAA0000', '0xFF5555', '0x00AA00',
 	'0x55FF55', '0xAA5500', '0xFFFF55', '0x0000AA', '0x5555FF', '0xAA00AA',
 	'0xFF55FF', '0x00AAAA', '0x55FFFF', '0xAAAAAA', '0xFFFFFF']
 
 for x in xrange(len(rgb_ansi_colors)):
-	codes[rgb_ansi_colors[x]] = esc_seq + ansi_color_codes[x]
+	codes[rgb_ansi_colors[x]] = esc_seq + ansi_codes[x]
 
 del x
 
@@ -130,43 +113,34 @@ codes["darkteal"]   = codes["turquoise"]
 codes["0xAAAA00"]   = codes["brown"]
 codes["darkyellow"] = codes["0xAAAA00"]
 
-codes["bg_black"]      = esc_seq + "40m"
-codes["bg_darkred"]    = esc_seq + "41m"
-codes["bg_darkgreen"]  = esc_seq + "42m"
-codes["bg_brown"]      = esc_seq + "43m"
-codes["bg_darkblue"]   = esc_seq + "44m"
-codes["bg_purple"]     = esc_seq + "45m"
-codes["bg_teal"]       = esc_seq + "46m"
-codes["bg_lightgray"]  = esc_seq + "47m"
 
-codes["bg_darkyellow"] = codes["bg_brown"]
 
 # Colors from /etc/init.d/functions.sh
-codes["NORMAL"]     = esc_seq + "0m"
-codes["GOOD"]       = codes["green"]
-codes["WARN"]       = codes["yellow"]
-codes["BAD"]        = codes["red"]
-codes["HILITE"]     = codes["teal"]
-codes["BRACKET"]    = codes["blue"]
+_styles["NORMAL"]     = ( "normal", )
+_styles["GOOD"]       = ( "green", )
+_styles["WARN"]       = ( "yellow", )
+_styles["BAD"]        = ( "red", )
+_styles["HILITE"]     = ( "teal", )
+_styles["BRACKET"]    = ( "blue", )
 
 # Portage functions
-codes["INFORM"]                  = codes["darkgreen"]
-codes["UNMERGE_WARN"]            = codes["red"]
-codes["SECURITY_WARN"]           = codes["red"]
-codes["MERGE_LIST_PROGRESS"]     = codes["yellow"]
-codes["PKG_BLOCKER"]             = codes["red"]
-codes["PKG_BLOCKER_SATISFIED"]   = codes["darkblue"]
-codes["PKG_MERGE"]               = codes["darkgreen"]
-codes["PKG_MERGE_SYSTEM"]        = codes["darkgreen"]
-codes["PKG_MERGE_WORLD"]         = codes["green"]
-codes["PKG_UNINSTALL"]           = codes["red"]
-codes["PKG_NOMERGE"]             = codes["darkblue"]
-codes["PKG_NOMERGE_SYSTEM"]      = codes["darkblue"]
-codes["PKG_NOMERGE_WORLD"]       = codes["blue"]
-codes["PROMPT_CHOICE_DEFAULT"]   = codes["green"]
-codes["PROMPT_CHOICE_OTHER"]     = codes["red"]
+_styles["INFORM"]                  = ( "darkgreen", )
+_styles["UNMERGE_WARN"]            = ( "red", )
+_styles["SECURITY_WARN"]           = ( "red", )
+_styles["MERGE_LIST_PROGRESS"]     = ( "yellow", )
+_styles["PKG_BLOCKER"]             = ( "red", )
+_styles["PKG_BLOCKER_SATISFIED"]   = ( "darkblue", )
+_styles["PKG_MERGE"]               = ( "darkgreen", )
+_styles["PKG_MERGE_SYSTEM"]        = ( "darkgreen", )
+_styles["PKG_MERGE_WORLD"]         = ( "green", )
+_styles["PKG_UNINSTALL"]           = ( "red", )
+_styles["PKG_NOMERGE"]             = ( "darkblue", )
+_styles["PKG_NOMERGE_SYSTEM"]      = ( "darkblue", )
+_styles["PKG_NOMERGE_WORLD"]       = ( "blue", )
+_styles["PROMPT_CHOICE_DEFAULT"]   = ( "green", )
+_styles["PROMPT_CHOICE_OTHER"]     = ( "red", )
 
-def parse_color_map(onerror=None):
+def _parse_color_map(onerror=None):
 	"""
 	Parse /etc/portage/color.map and return a dict of error codes.
 
@@ -177,32 +151,40 @@ def parse_color_map(onerror=None):
 	@return: a dictionary mapping color classes to color codes
 	"""
 	myfile = EPREFIX + COLOR_MAP_FILE
-	ansi_code_pattern = re.compile("^[0-9;]*m$")
-	def strip_quotes(token, quotes):
+	ansi_code_pattern = re.compile("^[0-9;]*m$") 
+	quotes = '\'"'
+	def strip_quotes(token):
 		if token[0] in quotes and token[0] == token[-1]:
 			token = token[1:-1]
 		return token
 	try:
-		s = shlex.shlex(open(myfile))
-		s.wordchars = s.wordchars + ";" # for ansi codes
-		while True:
-			k, o, v = s.get_token(), s.get_token(), s.get_token()
-			if k is s.eof:
-				break
-			if o != "=":
-				e = ParseError("%s%s'%s'" % (
-					s.error_leader(myfile, s.lineno),
-					"expected '=' operator: ", o))
+		lineno=0
+		for line in codecs.open( myfile, mode = 'r', errors = 'replace' ):
+			lineno += 1
+
+			commenter_pos = line.find("#")
+			line = line[:commenter_pos].strip()
+			
+			if len(line) == 0:
+				continue
+			
+			split_line = line.split("=")
+			if len(split_line) != 2:
+				e = ParseError("'%s', line %s: %s" % (
+					myfile, lineno,
+					"expected exactly one occurence of '=' operator"))
+				raise e
 				if onerror:
 					onerror(e)
 				else:
 					raise e
 				continue
-			k = strip_quotes(k, s.quotes)
-			v = strip_quotes(v, s.quotes)
-			if not k in codes:
-				e = ParseError("%s%s'%s'" % (
-					s.error_leader(myfile, s.lineno),
+
+			k = strip_quotes(split_line[0].strip())
+			v = strip_quotes(split_line[1].strip())
+			if not k in _styles and not k in codes:
+				e = ParseError("'%s', line %s: %s'%s'" % (
+					myfile, lineno,
 					"Unknown variable: ", k))
 				if onerror:
 					onerror(e)
@@ -210,38 +192,36 @@ def parse_color_map(onerror=None):
 					raise e
 				continue
 			if ansi_code_pattern.match(v):
-				codes[k] = esc_seq + v
+				if k in _styles:
+					_styles[k] = ( esc_seq + v, )
+				elif k in codes:
+					codes[k] = esc_seq + v
 			else:
 				code_list = []
-				for x in v.split(" "):
+				for x in v.split():
 					if x in codes:
-						code_list.append(codes[x])
+						if k in _styles:
+							code_list.append(x)
+						elif k in codes:
+							code_list.append(codes[x])
 					else:
-						e = ParseError("%s%s'%s'" % (
-							s.error_leader(myfile, s.lineno),
+						e = ParseError("'%s', line %s: %s'%s'" % (
+							myfile, lineno,
 							"Undefined: ", x))
 						if onerror:
 							onerror(e)
 						else:
 							raise e
-				codes[k] = "".join(code_list)
+				if k in _styles:
+					_styles[k] = tuple(code_list)
+				elif k in codes:
+					codes[k] = "".join(code_list)
 	except (IOError, OSError), e:
 		if e.errno == errno.ENOENT:
 			raise FileNotFound(myfile)
 		elif e.errno == errno.EACCES:
 			raise PermissionDenied(myfile)
 		raise
-
-try:
-	parse_color_map(onerror=lambda e: writemsg("%s\n" % str(e), noiselevel=-1))
-except FileNotFound:
-	pass
-except PermissionDenied, e:
-	writemsg("Permission denied: '%s'\n" % str(e), noiselevel=-1)
-	del e
-except PortageException, e:
-	writemsg("%s\n" % str(e), noiselevel=-1)
-	del e
 
 def nc_len(mystr):
 	tmp = re.sub(esc_seq + "^m]+m", "", mystr);
@@ -310,10 +290,29 @@ def nocolor():
 def resetColor():
 	return codes["reset"]
 
+def style_to_ansi_code(style):
+	"""
+	@param style: A style name
+	@type style: String
+	@rtype: String
+	@return: A string containing one or more ansi escape codes that are
+		used to render the given style.
+	"""
+	ret = ""
+	for attr_name in _styles[style]:
+		# allow stuff that has found it's way through ansi_code_pattern
+		ret += codes.get(attr_name, attr_name)
+	return ret
+
 def colorize(color_key, text):
 	global havecolor
 	if havecolor:
-		return codes[color_key] + text + codes["reset"]
+		if color_key in codes:
+			return codes[color_key] + text + codes["reset"]
+		elif color_key in _styles:
+			return style_to_ansi_code(color_key) + text + codes["reset"]
+		else:
+			return text
 	else:
 		return text
 
@@ -350,7 +349,7 @@ class ConsoleStyleFile(object):
 		global havecolor
 		if havecolor and self._styles:
 			for style in self._styles:
-				self._file.write(codes[style])
+				self._file.write(style_to_ansi_code(style))
 			self._file.write(s)
 			self._file.write(codes["reset"])
 		else:
@@ -715,3 +714,14 @@ class TermProgressBar(ProgressBar):
 			image = image + "[" + (bar_width * "=") + \
 				">" + ((max_bar_width - bar_width) * " ") + "]"
 			return image
+
+try:
+	_parse_color_map(onerror=lambda e: writemsg("%s\n" % str(e), noiselevel=-1))
+except FileNotFound:
+	pass
+except PermissionDenied, e:
+	writemsg("Permission denied: '%s'\n" % str(e), noiselevel=-1)
+	del e
+except PortageException, e:
+	writemsg("%s\n" % str(e), noiselevel=-1)
+	del e

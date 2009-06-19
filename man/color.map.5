@@ -9,8 +9,13 @@ Portage will check this file first for color classes settings. If no setting
 of given color class is found in /etc/portage/color.map, Portage uses default
 value defined internally.
 .SH "SYNTAX"
-\fBVARIABLE\fR = \fI[space delimited list of attributes]\fR
+\fBVARIABLE\fR = \fI[space delimited list of attributes or ansi code pattern]\fR
+.TP
+\fBATTRIBUTE\fR = \fI[space delimited list of attributes or ansi code pattern]\fR
 .SH "VARIABLES"
+.TP
+\fBNORMAL\fR = \fI"normal"\fR
+Defines color used for some words occuring in other contexts than those below.
 .TP
 \fBBAD\fR = \fI"red"\fR
 Defines color used for some words occuring in bad context.
@@ -89,9 +94,11 @@ Defines color used for warnings.
 .TP
 .B green
 .TP
-\fBbrown\fR = \fBdarkyellow\fR
+.B brown
 .TP
 .B yellow
+.TP
+.B darkyellow
 .TP
 .B darkblue
 .TP
@@ -103,7 +110,7 @@ Defines color used for warnings.
 .TP
 .B teal
 .TP
-.B turquoise
+\fBturquoise\fR = \fBdarkteal\fR
 .TP
 .B lightgray
 .TP
@@ -133,6 +140,10 @@ Defines color used for warnings.
 .B Other attributes
 .RS
 .TP
+.B normal
+.TP
+.B no\-attr
+.TP
 .B reset
 .TP
 .B bold
@@ -141,11 +152,25 @@ Defines color used for warnings.
 .TP
 .B standout
 .TP
+.B no\-standout
+.TP
 .B underline
+.TP
+.B no\-underline
 .TP
 .B blink
 .TP
+.B no\-blink
+.TP
+.B overline
+.TP
+.B no\-overline
+.TP
 .B reverse
+.TP
+.B no\-reverse
+.TP
+.B invisible
 .RE
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/

@@ -1113,8 +1113,11 @@ for x in scanlist:
 							relative_path + ': %s' % error_match.group(1))
 
 	del mydigests
-
-	if "ChangeLog" not in checkdirlist:
+	# Note: We don't use ChangeLogs in distributed SCMs.
+	# It will be generated on server side from scm log,
+	# before package moves to the rsync server.
+	# This is needed because we try to avoid merge collisions.
+	if vcs not in ( "git", ) and "ChangeLog" not in checkdirlist:
 		stats["changelog.missing"]+=1
 		fails["changelog.missing"].append(x+"/ChangeLog")
 	

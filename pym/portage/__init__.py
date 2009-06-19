@@ -1066,7 +1066,7 @@ class config(object):
 		"DISTDIR", "DOC_SYMLINKS_DIR", "EBUILD",
 		"EBUILD_EXIT_STATUS_FILE", "EBUILD_FORCE_TEST",
 		"EBUILD_PHASE", "ECLASSDIR", "ECLASS_DEPTH", "EMERGE_FROM",
-		"FEATURES", "FILESDIR", "HOME", "PATH",
+		"FEATURES", "FILESDIR", "HOME", "NOCOLOR", "PATH",
 		"PKGDIR",
 		"PKGUSE", "PKG_LOGDIR", "PKG_TMPDIR",
 		"PORTAGE_ACTUAL_DISTDIR", "PORTAGE_ARCHLIST",
@@ -1142,6 +1142,7 @@ class config(object):
 		"ACCEPT_KEYWORDS", "AUTOCLEAN",
 		"CLEAN_DELAY", "COLLISION_IGNORE", "CONFIG_PROTECT",
 		"CONFIG_PROTECT_MASK", "EGENCACHE_DEFAULT_OPTS", "EMERGE_DEFAULT_OPTS",
+		"EMERGE_LOG_DIR",
 		"EMERGE_WARNING_DELAY", "FETCHCOMMAND", "FETCHCOMMAND_FTP",
 		"FETCHCOMMAND_HTTP", "FETCHCOMMAND_SFTP",
 		"GENTOO_MIRRORS", "NOCONFMEM", "O",
@@ -5456,7 +5457,8 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	# Allow color.map to control colors associated with einfo, ewarn, etc...
 	mycolors = []
 	for c in ("GOOD", "WARN", "BAD", "HILITE", "BRACKET"):
-		mycolors.append("%s=$'%s'" % (c, portage.output.codes[c]))
+		mycolors.append("%s=$'%s'" % \
+			(c, portage.output.style_to_ansi_code(c)))
 	mysettings["PORTAGE_COLORMAP"] = "\n".join(mycolors)
 
 def prepare_build_dirs(myroot, mysettings, cleanup):
