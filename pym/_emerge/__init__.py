@@ -4754,6 +4754,7 @@ class depgraph(object):
 		self._unsatisfied_blockers_for_display = None
 		self._circular_deps_for_display = None
 		self._dep_stack = []
+		self._dep_disjunctive_stack = []
 		self._unsatisfied_deps = []
 		self._initially_unsatisfied_deps = []
 		self._ignored_deps = []
@@ -5035,16 +5036,21 @@ class depgraph(object):
 
 	def _create_graph(self, allow_unsatisfied=False):
 		dep_stack = self._dep_stack
-		while dep_stack:
+		dep_disjunctive_stack = self._dep_disjunctive_stack
+		while dep_stack or dep_disjunctive_stack:
 			self.spinner.update()
-			dep = dep_stack.pop()
-			if isinstance(dep, Package):
-				if not self._add_pkg_deps(dep,
-					allow_unsatisfied=allow_unsatisfied):
+			while dep_stack:
+				dep = dep_stack.pop()
+				if isinstance(dep, Package):
+					if not self._add_pkg_deps(dep,
+						allow_unsatisfied=allow_unsatisfied):
+						return 0
+					continue
+				if not self._add_dep(dep, allow_unsatisfied=allow_unsatisfied):
 					return 0
-				continue
-			if not self._add_dep(dep, allow_unsatisfied=allow_unsatisfied):
-				return 0
+			if dep_disjunctive_stack:
+				if not self._pop_disjunction(allow_unsatisfied):
+					return 0
 		return 1
 
 	def _add_dep(self, dep, allow_unsatisfied=False):
@@ -5354,6 +5360,9 @@ class depgraph(object):
 		debug = "--debug" in self.myopts
 		strict = mytype != "installed"
 		try:
+			if not strict:
+				portage.dep._dep_check_strict = False
+
 			for dep_root, dep_string, dep_priority in deps:
 				if not dep_string:
 					continue
@@ -5362,6 +5371,29 @@ class depgraph(object):
 					print "Parent:   ", jbigkey
 					print "Depstring:", dep_string
 					print "Priority:", dep_priority
+
+				try:
+
+					dep_string = portage.dep.paren_normalize(
+						portage.dep.use_reduce(
+						portage.dep.paren_reduce(dep_string),
+						uselist=pkg.use.enabled))
+
+					dep_string = list(self._queue_disjunctive_deps(
+						pkg, dep_root, dep_priority, dep_string))
+
+				except portage.exception.InvalidDependString, e:
+					if pkg.installed:
+						del e
+						continue
+					show_invalid_depstring_notice(pkg, dep_string, str(e))
+					return 0
+
+				if not dep_string:
+					continue
+
+				dep_string = portage.dep.paren_enclose(dep_string)
+
 				vardb = self.roots[dep_root].trees["vartree"].dbapi
 				try:
 					selected_atoms = self._select_atoms(dep_root,
@@ -5416,6 +5448,108 @@ class depgraph(object):
 			portage.writemsg("!!! Please notify the package maintainer " + \
 				"that atoms must be fully-qualified.\n", noiselevel=-1)
 			return 0
+		finally:
+			portage.dep._dep_check_strict = True
+		return 1
+
+	def _queue_disjunctive_deps(self, pkg, dep_root, dep_priority, dep_struct):
+		"""
+		Queue disjunctive (virtual and ||) deps in self._dep_disjunctive_stack.
+		Yields non-disjunctive deps. Raises InvalidDependString when 
+		necessary.
+		"""
+		i = 0
+		while i < len(dep_struct):
+			x = dep_struct[i]
+			if isinstance(x, list):
+				for y in self._queue_disjunctive_deps(
+					pkg, dep_root, dep_priority, x):
+					yield y
+			elif x == "||":
+				self._queue_disjunction(pkg, dep_root, dep_priority,
+					[ x, dep_struct[ i + 1 ] ] )
+				i += 1
+			else:
+				try:
+					x = portage.dep.Atom(x)
+				except portage.exception.InvalidAtom:
+					if not pkg.installed:
+						raise portage.exception.InvalidDependString(
+							"invalid atom: '%s'" % x)
+				else:
+					# Note: Eventually this will check for PROPERTIES=virtual
+					# or whatever other metadata gets implemented for this
+					# purpose.
+					if x.cp.startswith('virtual/'):
+						self._queue_disjunction( pkg, dep_root,
+							dep_priority, [ str(x) ] )
+					else:
+						yield str(x)
+			i += 1
+
+	def _queue_disjunction(self, pkg, dep_root, dep_priority, dep_struct):
+		self._dep_disjunctive_stack.append(
+			(pkg, dep_root, dep_priority, dep_struct))
+
+	def _pop_disjunction(self, allow_unsatisfied):
+		"""
+		Pop one disjunctive dep from self._dep_disjunctive_stack, and use it to
+		populate self._dep_stack.
+		"""
+		pkg, dep_root, dep_priority, dep_struct = \
+			self._dep_disjunctive_stack.pop()
+		depth = pkg.depth + 1
+		debug = "--debug" in self.myopts
+		strict = pkg.type_name != "installed"
+		dep_string = portage.dep.paren_enclose(dep_struct)
+
+		if debug:
+			print
+			print "Parent:   ", pkg
+			print "Depstring:", dep_string
+			print "Priority:", dep_priority
+
+		try:
+			selected_atoms = self._select_atoms(dep_root,
+				dep_string, myuse=pkg.use.enabled, parent=pkg,
+				strict=strict, priority=dep_priority)
+		except portage.exception.InvalidDependString, e:
+			show_invalid_depstring_notice(pkg, dep_string, str(e))
+			del e
+			if pkg.installed:
+				return 1
+			return 0
+
+		if debug:
+			print "Candidates:", selected_atoms
+
+		vardb = self.roots[dep_root].trees["vartree"].dbapi
+
+		for atom in selected_atoms:
+			try:
+
+				atom = portage.dep.Atom(atom)
+
+				mypriority = dep_priority.copy()
+				if not atom.blocker and vardb.match(atom):
+					mypriority.satisfied = True
+
+				if not self._add_dep(Dependency(atom=atom,
+					blocker=atom.blocker, depth=depth, parent=pkg,
+					priority=mypriority, root=dep_root),
+					allow_unsatisfied=allow_unsatisfied):
+					return 0
+
+			except portage.exception.InvalidAtom, e:
+				show_invalid_depstring_notice(
+					pkg, dep_string, str(e))
+				del e
+				if not pkg.installed:
+					return 0
+
+		if debug:
+			print "Exiting...", pkg
+
 		return 1
 
 	def _priority(self, **kwargs):
