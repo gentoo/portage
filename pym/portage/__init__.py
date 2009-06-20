@@ -5428,6 +5428,8 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		else:
 			mysettings["KV"]=""
 		mysettings.backup_changes("KV")
+	elif eapi not in ("0", "1", "2"):
+		mysettings.pop("KV", None)
 
 	# Allow color.map to control colors associated with einfo, ewarn, etc...
 	mycolors = []
