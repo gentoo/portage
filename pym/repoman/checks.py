@@ -92,7 +92,7 @@ class EbuildQuote(LineCheck):
 	var_names = ["D", "DISTDIR", "FILESDIR", "S", "T", "ROOT", "WORKDIR"]
 
 	# variables for games.eclass
-	var_names += ["Ddir", "dir", "GAMES_PREFIX_OPT", "GAMES_DATADIR",
+	var_names += ["Ddir", "GAMES_PREFIX_OPT", "GAMES_DATADIR",
 		"GAMES_DATADIR_BASE", "GAMES_SYSCONFDIR", "GAMES_STATEDIR",
 		"GAMES_LOGDIR", "GAMES_BINDIR"]
 
