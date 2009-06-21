@@ -62,7 +62,7 @@ class database(fs_template.FsBased):
 				database=self._dbpath, **connection_kwargs)
 			self._db_cursor = self._db_connection.cursor()
 			self._db_cursor.execute("PRAGMA encoding = %s" % self._db_escape_string("UTF-8"))
-			if not apply_secpass_permissions(self._dbpath, gid=portage_gid, mode=070, mask=02):
+			if not self._ensure_access(self._dbpath):
 				raise cache_errors.InitializationError(self.__class__, "can't ensure perms on %s" % self._dbpath)
 			self._db_init_cache_size(config["cache_bytes"])
 			self._db_init_synchronous(config["synchronous"])
