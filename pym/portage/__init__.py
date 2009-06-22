@@ -1201,6 +1201,7 @@ class config(object):
 		self.modifiedkeys = []
 		self.uvlist = []
 		self._accept_chost_re = None
+		self._accept_license = None
 
 		self.virtuals = {}
 		self.virts_p = {}
@@ -1818,18 +1819,6 @@ class config(object):
 			self["PORTAGE_PYM_PATH"] = PORTAGE_PYM_PATH
 			self.backup_changes("PORTAGE_PYM_PATH")
 
-			# Expand license groups
-			# This has to do be done for each config layer before regenerate()
-			# in order for incremental negation to work properly.
-			if local_config:
-				for c in self.configdict.itervalues():
-					v = c.get("ACCEPT_LICENSE")
-					if not v:
-						continue
-					v = " ".join(self.expandLicenseTokens(v.split()))
-					c["ACCEPT_LICENSE"] = v
-					del c, v
-
 			for var in ("PORTAGE_INST_UID", "PORTAGE_INST_GID"):
 				try:
 					self[var] = str(int(self.get(var, "0")))
@@ -1842,20 +1831,6 @@ class config(object):
 
 			# initialize self.features
 			self.regenerate()
-
-			if local_config:
-				self._accept_license = \
-					set(self.get("ACCEPT_LICENSE", "").split())
-				# In order to enforce explicit acceptance for restrictive
-				# licenses that require it, "*" will not be allowed in the
-				# user config.  Don't enforce this until license groups are
-				# fully implemented in the tree.
-				#self._accept_license.discard("*")
-				if not self._accept_license:
-					self._accept_license = set(["*"])
-			else:
-				# repoman will accept any license
-				self._accept_license = set(["*"])
 
 			if not portage.process.sandbox_capable and \
 				("sandbox" in self.features or "usersandbox" in self.features):
@@ -2113,10 +2088,19 @@ class config(object):
 			except exception.InvalidDependString:
 				licenses = set()
 			licenses.discard('||')
-			# Do not expand * here, since that would make it appear to the
-			# check_license() function as if the user has accepted licenses
-			# which have not really been explicitly accepted.
-			licenses.intersection_update(settings._accept_license)
+			if settings._accept_license:
+				acceptable_licenses = set()
+				for x in settings._accept_license:
+					if x == '*':
+						acceptable_licenses.update(licenses)
+					elif x == '-*':
+						acceptable_licenses.clear()
+					elif x[:1] == '-':
+						acceptable_licenses.discard(x[1:])
+					else:
+						acceptable_licenses.add(x)
+
+				licenses = acceptable_licenses
 			return ' '.join(sorted(licenses))
 
 		def _restrict(self, use, settings):
@@ -2676,15 +2660,30 @@ class config(object):
 		@rtype: List
 		@return: A list of licenses that have not been accepted.
 		"""
-		if "*" in self._accept_license:
+		if not self._accept_license:
 			return []
-		acceptable_licenses = self._accept_license
+		accept_license = self._accept_license
 		cpdict = self._plicensedict.get(dep_getkey(cpv), None)
 		if cpdict:
-			acceptable_licenses = self._accept_license.copy()
+			accept_license = list(self._accept_license)
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
 			for atom in match_to_list(cpv_slot, cpdict.keys()):
-				acceptable_licenses.update(cpdict[atom])
+				accept_license.extend(cpdict[atom])
+
+		licenses = set(flatten(dep.use_reduce(dep.paren_reduce(
+			metadata["LICENSE"]), matchall=1)))
+		licenses.discard('||')
+
+		acceptable_licenses = set()
+		for x in accept_license:
+			if x == '*':
+				acceptable_licenses.update(licenses)
+			elif x == '-*':
+				acceptable_licenses.clear()
+			elif x[:1] == '-':
+				acceptable_licenses.discard(x[1:])
+			else:
+				acceptable_licenses.add(x)
 
 		license_str = metadata["LICENSE"]
 		if "?" in license_str:
@@ -2854,10 +2853,26 @@ class config(object):
 			# an incremental!
 			myincrementals.remove("USE")
 
-		for mykey in myincrementals:
 
-			mydbs=self.configlist[:-1]
-			mydbs.append(self.backupenv)
+		mydbs = self.configlist[:-1]
+		mydbs.append(self.backupenv)
+
+		# ACCEPT_LICENSE is a lazily evaluated incremental, so that * can be
+		# used to match all licenses without every having to explicitly expand
+		# it to all licenses.
+		if self._accept_license is None:
+			if self.local_config:
+				mysplit = []
+				for curdb in mydbs:
+					mysplit.extend(curdb.get('ACCEPT_LICENSE', '').split())
+				if mysplit:
+					self.configlist[-1]['ACCEPT_LICENSE'] = ' '.join(mysplit)
+				self._accept_license = tuple(self.expandLicenseTokens(mysplit))
+			else:
+				# repoman will accept any license
+				self._accept_license = ()
+
+		for mykey in myincrementals:
 
 			myflags=[]
 			for curdb in mydbs:
