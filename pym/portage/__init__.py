@@ -5417,7 +5417,11 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		mysettings["PORTAGE_BUILDDIR"], ".exit_status")
 
 	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistent.
-	if eapi in ("0", "1", "2") and mydo != 'depend' and 'KV' not in mysettings and \
+	if eapi not in ('0', '1', '2'):
+		# Discard KV for EAPIs that don't support it. Cache KV is restored
+		# from the backupenv whenever config.reset() is called.
+		mysettings.pop('KV', None)
+	elif mydo != 'depend' and 'KV' not in mysettings and \
 		mydo in ('compile', 'config', 'configure', 'info',
 		'install', 'nofetch', 'postinst', 'postrm', 'preinst',
 		'prepare', 'prerm', 'setup', 'test', 'unpack'):
@@ -5428,8 +5432,6 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		else:
 			mysettings["KV"]=""
 		mysettings.backup_changes("KV")
-	elif eapi not in ("0", "1", "2"):
-		mysettings.pop("KV", None)
 
 	# Allow color.map to control colors associated with einfo, ewarn, etc...
 	mycolors = []
