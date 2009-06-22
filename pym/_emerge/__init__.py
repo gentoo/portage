@@ -53,36 +53,43 @@ from portage.sets.base import InternalPackageSet
 
 from itertools import chain, izip
 
-from _emerge.SlotObject import SlotObject
-from _emerge.DepPriority import DepPriority
-from _emerge.BlockerDepPriority import BlockerDepPriority
-from _emerge.UnmergeDepPriority import UnmergeDepPriority
-from _emerge.DepPriorityNormalRange import DepPriorityNormalRange
-from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
+from portage.cache.cache_errors import CacheError
+
 from _emerge.Task import Task
-from _emerge.Blocker import Blocker
-from _emerge.PollConstants import PollConstants
 from _emerge.AsynchronousTask import AsynchronousTask
 from _emerge.CompositeTask import CompositeTask
-from _emerge.EbuildFetcher import EbuildFetcher
-from _emerge.EbuildBuild import EbuildBuild
-from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
-from _emerge.EbuildPhase import EbuildPhase
-from _emerge.Binpkg import Binpkg
-from _emerge.BinpkgPrefetcher import BinpkgPrefetcher
-from _emerge.PackageMerge import PackageMerge
-from _emerge.DependencyArg import DependencyArg
-from _emerge.AtomArg import AtomArg
-from _emerge.PackageArg import PackageArg
-from _emerge.SetArg import SetArg
-from _emerge.Dependency import Dependency
-from _emerge.BlockerCache import BlockerCache
-from _emerge.PackageVirtualDbapi import PackageVirtualDbapi
-from _emerge.RepoDisplay import RepoDisplay
-from _emerge.UseFlagDisplay import UseFlagDisplay
-from _emerge.PollSelectAdapter import PollSelectAdapter
-from _emerge.SequentialTaskQueue import SequentialTaskQueue
-from _emerge.ProgressHandler import ProgressHandler
+
+import portage.proxy.lazyimport
+import portage.proxy as proxy
+proxy.lazyimport.lazyimport(globals(),
+	'_emerge.SlotObject:SlotObject',
+	'_emerge.DepPriority:DepPriority',
+	'_emerge.BlockerDepPriority:BlockerDepPriority',
+	'_emerge.UnmergeDepPriority:UnmergeDepPriority',
+	'_emerge.DepPriorityNormalRange:DepPriorityNormalRange',
+	'_emerge.DepPrioritySatisfiedRange:DepPrioritySatisfiedRange',
+	'_emerge.Blocker:Blocker',
+	'_emerge.PollConstants:PollConstants',
+	'_emerge.EbuildFetcher:EbuildFetcher',
+	'_emerge.EbuildBuild:EbuildBuild',
+	'_emerge.EbuildMetadataPhase:EbuildMetadataPhase',
+	'_emerge.EbuildPhase:EbuildPhase',
+	'_emerge.Binpkg:Binpkg',
+	'_emerge.BinpkgPrefetcher:BinpkgPrefetcher',
+	'_emerge.PackageMerge:PackageMerge',
+	'_emerge.DependencyArg:DependencyArg',
+	'_emerge.AtomArg:AtomArg',
+	'_emerge.PackageArg:PackageArg',
+	'_emerge.SetArg:SetArg',
+	'_emerge.Dependency:Dependency',
+	'_emerge.BlockerCache:BlockerCache',
+	'_emerge.PackageVirtualDbapi:PackageVirtualDbapi',
+	'_emerge.RepoDisplay:RepoDisplay',
+	'_emerge.UseFlagDisplay:UseFlagDisplay',
+	'_emerge.PollSelectAdapter:PollSelectAdapter',
+	'_emerge.SequentialTaskQueue:SequentialTaskQueue',
+	'_emerge.ProgressHandler:ProgressHandler',
+)
 
 try:
 	from cStringIO import StringIO
