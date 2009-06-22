@@ -2097,7 +2097,7 @@ class config(object):
 						acceptable_licenses.clear()
 					elif x[:1] == '-':
 						acceptable_licenses.discard(x[1:])
-					else:
+					elif x in licenses:
 						acceptable_licenses.add(x)
 
 				licenses = acceptable_licenses
