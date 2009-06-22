@@ -5,7 +5,14 @@
 
 import os
 from portage.cache import template
-from portage.data import portage_gid
+
+import portage.proxy.lazyimport
+import portage.proxy as proxy
+proxy.lazyimport.lazyimport(globals(),
+	'portage.data:portage_gid',
+	'portage.exception:PortageException',
+	'portage.util:apply_permissions',
+)
 
 class FsBased(template.database):
 	"""template wrapping fs needed options, and providing _ensure_access as a way to 
@@ -34,14 +41,11 @@ class FsBased(template.database):
 		"""returns true or false if it's able to ensure that path is properly chmod'd and chowned.
 		if mtime is specified, attempts to ensure that's correct also"""
 		try:
-			if self._gid != -1:
-				os.chown(path, -1, self._gid)
-			if self._perms != -1:
-				os.chmod(path, self._perms)
+			apply_permissions(path, gid=self._gid, mode=self._perms)
 			if mtime != -1:
 				mtime=long(mtime)
 				os.utime(path, (mtime, mtime))
-		except (OSError, IOError):
+		except (PortageException, EnvironmentError):
 			return False
 		return True
 
