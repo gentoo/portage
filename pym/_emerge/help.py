@@ -2,8 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-
-import os,sys
 from portage.output import bold, turquoise, green
 
 def shorthelp():
