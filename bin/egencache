@@ -23,7 +23,7 @@ import logging
 import optparse
 import os
 import portage
-import _emerge
+from _emerge.MetadataRegen import MetadataRegen
 from portage.cache.cache_errors import CacheError, StatCollision
 from portage.util import writemsg_level
 from portage import cpv_getkey
@@ -124,7 +124,7 @@ class GenCache(object):
 		else:
 			self._cp_set = None
 			self._cp_missing = set()
-		self._regen = _emerge.MetadataRegen(portdb, cp_iter=cp_iter,
+		self._regen = MetadataRegen(portdb, cp_iter=cp_iter,
 			consumer=self._metadata_callback,
 			max_jobs=max_jobs, max_load=max_load)
 		self.returncode = os.EX_OK
