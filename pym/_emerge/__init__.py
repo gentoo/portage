@@ -45,13 +45,6 @@ from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
 from _emerge.is_valid_package_atom import is_valid_package_atom
 from _emerge.stdout_spinner import stdout_spinner
 
-
-actions = frozenset([
-"clean", "config", "depclean",
-"info", "list-sets", "metadata",
-"prune", "regen",  "search",
-"sync",  "unmerge", "version",
-])
 options=[
 "--ask",          "--alphabetical",
 "--buildpkg",     "--buildpkgonly",
@@ -443,7 +436,14 @@ def parse_opts(tmpcmdline, silent=False):
 	myopts = {}
 	myfiles=[]
 
-	global actions, options, shortmapping
+	global options, shortmapping
+
+	actions = frozenset([
+		"clean", "config", "depclean",
+		"info", "list-sets", "metadata",
+		"prune", "regen",  "search",
+		"sync",  "unmerge", "version",
+	])
 
 	longopt_aliases = {"--cols":"--columns", "--skip-first":"--skipfirst"}
 	argument_options = {
