@@ -47,12 +47,6 @@ from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 from _emerge.UnmergeDepPriority import UnmergeDepPriority
 from _emerge.visible import visible
 
-import portage.proxy.lazyimport
-import portage.proxy as proxy
-proxy.lazyimport.lazyimport(globals(),
-	'_emerge.Scheduler:Scheduler',
-)
-#from _emerge.Scheduler import Scheduler
 class depgraph(object):
 
 	pkg_tree_map = RootConfig.pkg_tree_map
@@ -69,7 +63,8 @@ class depgraph(object):
 			self.edebug = 1
 		self.spinner = spinner
 		self._running_root = trees["/"]["root_config"]
-		self._opts_no_restart = Scheduler._opts_no_restart
+		self._opts_no_restart = frozenset(["--buildpkgonly",
+			"--fetchonly", "--fetch-all-uri", "--pretend"])
 		self.pkgsettings = {}
 		# Maps slot atom to package for each Package added to the graph.
 		self._slot_pkg_map = {}
@@ -2235,7 +2230,7 @@ class depgraph(object):
 			self._pkg_cache[pkg] = pkg
 		return pkg
 
-	def validate_blockers(self):
+	def _validate_blockers(self):
 		"""Remove any blockers from the digraph that do not match any of the
 		packages within the graph.  If necessary, create hard deps to ensure
 		correct merge order such that mutually blocking packages are never
@@ -2625,7 +2620,7 @@ class depgraph(object):
 		if not self._complete_graph():
 			raise self._unknown_internal_error()
 
-		if not self.validate_blockers():
+		if not self._validate_blockers():
 			raise self._unknown_internal_error()
 
 		if self._slot_collision_info:
@@ -3772,7 +3767,7 @@ class depgraph(object):
 					if "--changelog" in self.myopts:
 						inst_matches = vardb.match(pkg.slot_atom)
 						if inst_matches:
-							changelogs.extend(self.calc_changelog(
+							changelogs.extend(self._calc_changelog(
 								portdb.findname(pkg_key),
 								inst_matches[0], pkg_key))
 				else:
@@ -4267,7 +4262,7 @@ class depgraph(object):
 			show_mask_docs()
 			print
 
-	def calc_changelog(self,ebuildpath,current,next):
+	def _calc_changelog(self,ebuildpath,current,next):
 		if ebuildpath == None or not os.path.exists(ebuildpath):
 			return []
 		current = '-'.join(portage.catpkgsplit(current)[1:])
@@ -4301,7 +4296,7 @@ class depgraph(object):
 			return []
 		return divisions
 
-	def find_changelog_tags(self,changelog):
+	def _find_changelog_tags(self,changelog):
 		divs = []
 		release = None
 		while 1:
@@ -4376,7 +4371,7 @@ class depgraph(object):
 		if world_locked:
 			world_set.unlock()
 
-	def loadResumeCommand(self, resume_data, skip_masked=True,
+	def _loadResumeCommand(self, resume_data, skip_masked=True,
 		skip_missing=True):
 		"""
 		Add a resume command to the graph and validate it in the process.  This
@@ -4802,7 +4797,7 @@ def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 		mydepgraph = depgraph(settings, trees,
 			myopts, myparams, spinner)
 		try:
-			success = mydepgraph.loadResumeCommand(mtimedb["resume"],
+			success = mydepgraph._loadResumeCommand(mtimedb["resume"],
 				skip_masked=skip_masked)
 		except depgraph.UnsatisfiedResumeDep, e:
 			if not skip_unsatisfied:
