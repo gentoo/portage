@@ -10175,11 +10175,7 @@ class Scheduler(PollScheduler):
 	_bad_resume_opts = set(["--ask", "--changelog",
 		"--resume", "--skipfirst"])
 
-<<<<<<< .working
-	_fetch_log = EPREFIX + "/var/log/emerge-fetch.log"
-=======
 	_fetch_log = os.path.join(_emerge_log_dir, 'emerge-fetch.log')
->>>>>>> .merge-right.r13652
 
 	class _iface_class(SlotObject):
 		__slots__ = ("dblinkEbuildPhase", "dblinkDisplayMerge",
