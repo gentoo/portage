@@ -1527,7 +1527,12 @@ class vardbapi(dbapi):
 				return x
 
 			for path in path_iter:
-				name = os.path.basename(path.rstrip(os.path.sep))
+				is_basename = os.sep != path[:1]
+				if is_basename:
+					name = path
+				else:
+					name = os.path.basename(path.rstrip(os.path.sep))
+
 				if not name:
 					continue
 
@@ -1548,8 +1553,14 @@ class vardbapi(dbapi):
 
 						if current_hash != hash_value:
 							continue
-						if dblink(cpv).isowner(path, root):
-							yield dblink(cpv), path
+
+						if is_basename:
+							for p in dblink(cpv).getcontents():
+								if os.path.basename(p) == name:
+									yield dblink(cpv), p[len(root):]
+						else:
+							if dblink(cpv).isowner(path, root):
+								yield dblink(cpv), path
 
 class vartree(object):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"

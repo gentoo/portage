@@ -161,8 +161,8 @@ def owners(argv):
 	Given a list of files, print the packages that own the files and which
 	files belong to each package. Files owned by a package are listed on
 	the lines below it, indented by a single tab character (\\t). All file
-	paths must start with <root>. Returns 1 if no owners could be found,
-	and 0 otherwise.
+	paths must either start with <root> or be a basename alone.
+	Returns 1 if no owners could be found, and 0 otherwise.
 	"""
 	if len(argv) < 2:
 		sys.stderr.write("ERROR: insufficient parameters!\n")
@@ -183,18 +183,22 @@ def owners(argv):
 	files = []
 	for f in argv[1:]:
 		f = portage.normalize_path(f)
-		if not f.startswith(os.path.sep):
+		is_basename = os.sep not in f
+		if not is_basename and f[:1] != os.sep:
 			if cwd is None:
 				sys.stderr.write("ERROR: cwd does not exist!\n")
 				sys.stderr.flush()
 				return 2
 			f = os.path.join(cwd, f)
 			f = portage.normalize_path(f)
-		if not f.startswith(root):
+		if not is_basename and not f.startswith(root):
 			sys.stderr.write("ERROR: file paths must begin with <root>!\n")
 			sys.stderr.flush()
 			return 2
-		files.append(f[len(root):])
+		if is_basename:
+			files.append(f)
+		else:
+			files.append(f[len(root):])
 
 	owners = vardb._owners.get_owners(files)
 
