@@ -3825,7 +3825,7 @@ class dblink(object):
 					# destination file exists
 					if stat.S_ISDIR(mydmode):
 						# install of destination is blocked by an existing directory with the same name
-						moveme = 0
+						cfgprot = 1
 						showMessage("!!! %s\n" % mydest,
 							level=logging.ERROR, noiselevel=-1)
 					elif stat.S_ISREG(mydmode) or (stat.S_ISLNK(mydmode) and os.path.exists(mydest) and stat.S_ISREG(os.stat(mydest)[stat.ST_MODE])):
@@ -3860,8 +3860,8 @@ class dblink(object):
 								"""A previously remembered update has been
 								accepted, so it is removed from confmem."""
 								del cfgfiledict[myrealdest]
-						if cfgprot:
-							mydest = new_protect_filename(mydest, newmd5=mymd5)
+					if cfgprot:
+						mydest = new_protect_filename(mydest, newmd5=mymd5)
 
 				# whether config protection or not, we merge the new file the
 				# same way.  Unless moveme=0 (blocking directory)
