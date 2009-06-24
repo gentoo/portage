@@ -295,12 +295,23 @@ class portdbapi(dbapi):
 		self.auxdb = {}
 		self._pregen_auxdb = {}
 		self._init_cache_dirs()
+		depcachedir_w_ok = os.access(self.depcachedir, os.W_OK)
+		cache_kwargs = {
+			'gid'     : portage_gid,
+			'perms'   : 0664
+		}
+
+		if secpass < 1:
+			# portage_gid is irrelevant, so just obey umask
+			cache_kwargs['gid']   = -1
+			cache_kwargs['perms'] = -1
+
 		# XXX: REMOVE THIS ONCE UNUSED_0 IS YANKED FROM auxdbkeys
 		# ~harring
 		filtered_auxdbkeys = filter(lambda x: not x.startswith("UNUSED_0"), auxdbkeys)
 		filtered_auxdbkeys.sort()
 		from portage.cache import metadata_overlay, volatile
-		if secpass < 1:
+		if not depcachedir_w_ok:
 			for x in self.porttrees:
 				db_ro = self.auxdbmodule(self.depcachedir, x,
 					filtered_auxdbkeys, gid=portage_gid, readonly=True)
@@ -314,7 +325,7 @@ class portdbapi(dbapi):
 					continue
 				# location, label, auxdbkeys
 				self.auxdb[x] = self.auxdbmodule(
-					self.depcachedir, x, filtered_auxdbkeys, gid=portage_gid)
+					self.depcachedir, x, filtered_auxdbkeys, **cache_kwargs)
 				if self.auxdbmodule is metadata_overlay.database:
 					self.auxdb[x].db_ro.ec = self._repo_info[x].eclass_db
 		if "metadata-transfer" not in self.mysettings.features:

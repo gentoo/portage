@@ -5,7 +5,14 @@
 
 import os
 from portage.cache import template
-from portage.data import portage_gid
+
+import portage.proxy.lazyimport
+import portage.proxy as proxy
+proxy.lazyimport.lazyimport(globals(),
+	'portage.data:portage_gid',
+	'portage.exception:PortageException',
+	'portage.util:apply_permissions',
+)
 
 class FsBased(template.database):
 	"""template wrapping fs needed options, and providing _ensure_access as a way to 
@@ -17,7 +24,7 @@ class FsBased(template.database):
 		gid=portage_gid
 		perms=0665"""
 
-		for x,y in (("gid",portage_gid),("perms",0664)):
+		for x, y in (("gid", -1), ("perms", -1)):
 			if x in config:
 				setattr(self, "_"+x, config[x])
 				del config[x]
@@ -34,12 +41,11 @@ class FsBased(template.database):
 		"""returns true or false if it's able to ensure that path is properly chmod'd and chowned.
 		if mtime is specified, attempts to ensure that's correct also"""
 		try:
-			os.chown(path, -1, self._gid)
-			os.chmod(path, self._perms)
+			apply_permissions(path, gid=self._gid, mode=self._perms)
 			if mtime != -1:
 				mtime=long(mtime)
 				os.utime(path, (mtime, mtime))
-		except (OSError, IOError):
+		except (PortageException, EnvironmentError):
 			return False
 		return True
 
@@ -55,12 +61,19 @@ class FsBased(template.database):
 		for dir in path.lstrip(os.path.sep).rstrip(os.path.sep).split(os.path.sep):
 			base = os.path.join(base,dir)
 			if not os.path.exists(base):
-				um=os.umask(0)
+				if self._perms != -1:
+					um = os.umask(0)
 				try:
-					os.mkdir(base, self._perms | 0111)
-					os.chown(base, -1, self._gid)
+					perms = self._perms
+					if perms == -1:
+						perms = 0
+					perms |= 0755
+					os.mkdir(base, perms)
+					if self._gid != -1:
+						os.chown(base, -1, self._gid)
 				finally:
-					os.umask(um)
+					if self._perms != -1:
+						os.umask(um)
 
 	
 def gen_label(base, label):
