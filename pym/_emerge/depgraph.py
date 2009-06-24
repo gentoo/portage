@@ -174,6 +174,8 @@ class depgraph(object):
 					"--getbinpkgonly" in self.myopts)
 		del trees
 
+		#contains the args created by select_files
+		self._initial_arg_list = []
 		self.digraph=portage.digraph()
 		# contains all sets added to the graph
 		self._sets = {}
@@ -1065,7 +1067,8 @@ class depgraph(object):
 				yield arg, atom
 
 	def select_files(self, myfiles):
-		"""Given a list of .tbz2s, .ebuilds sets, and deps, create the
+		"""Given a list of .tbz2s, .ebuilds sets, and deps, populate
+		self._initial_arg_list and call self._resolve to create the 
 		appropriate depgraph and return a favorite list."""
 		debug = "--debug" in self.myopts
 		root_config = self.roots[self.target_root]
@@ -1323,14 +1326,25 @@ class depgraph(object):
 				myfavorites.add(arg.arg)
 		myfavorites = list(myfavorites)
 
-		pprovideddict = pkgsettings.pprovideddict
 		if debug:
 			portage.writemsg("\n", noiselevel=-1)
 		# Order needs to be preserved since a feature of --nodeps
 		# is to allow the user to force a specific merge order.
 		args.reverse()
-		while args:
-			arg = args.pop()
+		self._initial_arg_list = args[:]
+	
+		return self._resolve(myfavorites)
+	
+	def _resolve(self, myfavorites):
+		"""Given self._initial_arg_list, pull in the root nodes, 
+		call self._creategraph to process theier deps and return 
+		a favorite list."""
+		debug = "--debug" in self.myopts
+		onlydeps = "--onlydeps" in self.myopts
+		myroot = self.target_root
+		pkgsettings = self.pkgsettings[myroot]
+		pprovideddict = pkgsettings.pprovideddict
+		for arg in self._initial_arg_list:
 			for atom in arg.set:
 				self.spinner.update()
 				dep = Dependency(atom=atom, onlydeps=onlydeps,
