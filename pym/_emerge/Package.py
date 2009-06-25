@@ -72,7 +72,9 @@ class Package(Task):
 
 	class _iuse(object):
 
-		__slots__ = ("__weakref__", "all", "enabled", "disabled", "iuse_implicit", "regex", "tokens")
+		__slots__ = ("__weakref__", "all", "enabled", "disabled",
+			"iuse_implicit", "tokens") + \
+			('_regex',)
 
 		def __init__(self, tokens, iuse_implicit):
 			self.tokens = tuple(tokens)
@@ -92,20 +94,23 @@ class Package(Task):
 			self.disabled = frozenset(disabled)
 			self.all = frozenset(chain(enabled, disabled, other))
 
-		def __getattribute__(self, name):
-			if name == "regex":
-				try:
-					return object.__getattribute__(self, "regex")
-				except AttributeError:
-					all = object.__getattribute__(self, "all")
-					iuse_implicit = object.__getattribute__(self, "iuse_implicit")
-					# Escape anything except ".*" which is supposed
-					# to pass through from _get_implicit_iuse()
-					regex = (re.escape(x) for x in chain(all, iuse_implicit))
-					regex = "^(%s)$" % "|".join(regex)
-					regex = regex.replace("\\.\\*", ".*")
-					self.regex = re.compile(regex)
-			return object.__getattribute__(self, name)
+		@property
+		def regex(self):
+			"""
+			@returns: A regular expression that matches valid USE values which
+				may be specified in USE dependencies.
+			"""
+			try:
+				return self._regex
+			except AttributeError:
+				# Escape anything except ".*" which is supposed
+				# to pass through from _get_implicit_iuse()
+				regex = (re.escape(x) for x in \
+					chain(self.all, self.iuse_implicit))
+				regex = "^(%s)$" % "|".join(regex)
+				regex = re.compile(regex.replace("\\.\\*", ".*"))
+				self._regex = regex
+				return regex
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
