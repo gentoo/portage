@@ -1900,9 +1900,6 @@ class depgraph(object):
 							installed=installed, metadata=metadata,
 							onlydeps=onlydeps, root_config=root_config,
 							type_name=pkg_type)
-						metadata = pkg.metadata
-						if not built:
-							metadata['CHOST'] = pkgsettings.get('CHOST', '')
 						self._pkg_cache[pkg] = pkg
 
 					if not installed or (built and matched_packages):
