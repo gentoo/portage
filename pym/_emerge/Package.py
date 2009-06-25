@@ -10,7 +10,8 @@ except ImportError:
 	import portage
 
 from portage.cache.mappings import slot_dict_class
-
+from portage.dep import paren_reduce, use_reduce, \
+	paren_normalize, paren_enclose
 from _emerge.Task import Task
 
 class Package(Task):
@@ -21,7 +22,8 @@ class Package(Task):
 		"root_config", "type_name",
 		"category", "counter", "cp", "cpv_split",
 		"inherited", "iuse", "mtime",
-		"pf", "pv_split", "root", "slot", "slot_atom", "use")
+		"pf", "pv_split", "root", "slot", "slot_atom",) + \
+	("_use",)
 
 	metadata_keys = [
 		"CHOST", "COUNTER", "DEPEND", "EAPI",
@@ -33,6 +35,8 @@ class Package(Task):
 		Task.__init__(self, **kwargs)
 		self.root = self.root_config.root
 		self.metadata = _PackageMetadataWrapper(self, self.metadata)
+		if not self.built:
+			self.metadata['CHOST'] = self.root_config.settings.get('CHOST', '')
 		self.cp = portage.cpv_getkey(self.cpv)
 		slot = self.slot
 		if not slot:
@@ -44,12 +48,18 @@ class Package(Task):
 		self.cpv_split = portage.catpkgsplit(self.cpv)
 		self.pv_split = self.cpv_split[1:]
 
-	class _use(object):
+	class _use_class(object):
 
 		__slots__ = ("__weakref__", "enabled")
 
 		def __init__(self, use):
 			self.enabled = frozenset(use)
+
+	@property
+	def use(self):
+		if self._use is None:
+			self._use = self._use_class(self.metadata['USE'].split())
+		return self._use
 
 	class _iuse(object):
 
@@ -141,12 +151,37 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 
 	__slots__ = ("_pkg",)
 	_wrapped_keys = frozenset(
-		["COUNTER", "INHERITED", "IUSE", "SLOT", "USE", "_mtime_"])
+		["COUNTER", "INHERITED", "IUSE", "SLOT", "_mtime_"])
 
 	def __init__(self, pkg, metadata):
 		_PackageMetadataWrapperBase.__init__(self)
 		self._pkg = pkg
+		"""LICENSE with USE conditionals evaluated."""
+
+		if not pkg.built:
+			# USE is lazy, but we want it to show up in self.keys().
+			self['USE'] = ''
+
 		self.update(metadata)
+
+	def __getitem__(self, k):
+		v = _PackageMetadataWrapperBase.__getitem__(self, k)
+		if k in ('PROVIDE', 'LICENSE',):
+			if '?' in v:
+				v = paren_enclose(paren_normalize(use_reduce(
+					paren_reduce(v), uselist=self._pkg.use.enabled)))
+				self[k] = v
+
+		elif k == 'USE' and not self._pkg.built:
+			if not v:
+				# This is lazy because it's expensive.
+				pkgsettings = self._pkg.root_config.trees[
+					'porttree'].dbapi.doebuild_settings
+				pkgsettings.setcpv(self._pkg)
+				v = pkgsettings["PORTAGE_USE"]
+				self['USE'] = v
+
+		return v
 
 	def __setitem__(self, k, v):
 		_PackageMetadataWrapperBase.__setitem__(self, k, v)
@@ -164,9 +199,6 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 
 	def _set_slot(self, k, v):
 		self._pkg.slot = v
-
-	def _set_use(self, k, v):
-		self._pkg.use = self._pkg._use(v.split())
 
 	def _set_counter(self, k, v):
 		if isinstance(v, basestring):

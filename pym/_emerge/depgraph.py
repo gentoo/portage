@@ -1147,9 +1147,6 @@ class depgraph(object):
 				metadata = izip(db_keys, portdb.aux_get(mykey, db_keys))
 				pkg = Package(type_name="ebuild", root_config=root_config,
 					cpv=mykey, metadata=metadata, onlydeps=onlydeps)
-				pkgsettings.setcpv(pkg)
-				pkg.metadata["USE"] = pkgsettings["PORTAGE_USE"]
-				pkg.metadata['CHOST'] = pkgsettings.get('CHOST', '')
 				self._pkg_cache[pkg] = pkg
 				args.append(PackageArg(arg=x, package=pkg,
 					root_config=root_config))
@@ -1893,10 +1890,8 @@ class depgraph(object):
 						continue
 					reinstall_for_flags = None
 					cache_key = (pkg_type, root, cpv, pkg_status)
-					calculated_use = True
 					pkg = self._pkg_cache.get(cache_key)
 					if pkg is None:
-						calculated_use = False
 						try:
 							metadata = izip(db_keys, db.aux_get(cpv, db_keys))
 						except KeyError:
@@ -1908,14 +1903,6 @@ class depgraph(object):
 						metadata = pkg.metadata
 						if not built:
 							metadata['CHOST'] = pkgsettings.get('CHOST', '')
-						if not built and ("?" in metadata["LICENSE"] or \
-							"?" in metadata["PROVIDE"]):
-							# This is avoided whenever possible because
-							# it's expensive. It only needs to be done here
-							# if it has an effect on visibility.
-							pkgsettings.setcpv(pkg)
-							metadata["USE"] = pkgsettings["PORTAGE_USE"]
-							calculated_use = True
 						self._pkg_cache[pkg] = pkg
 
 					if not installed or (built and matched_packages):
@@ -1967,11 +1954,9 @@ class depgraph(object):
 										if not visible(pkgsettings, pkg_eb):
 											continue
 
-					if not pkg.built and not calculated_use:
-						# This is avoided whenever possible because
-						# it's expensive.
-						pkgsettings.setcpv(pkg)
-						pkg.metadata["USE"] = pkgsettings["PORTAGE_USE"]
+					# Calculation of USE for unbuilt ebuilds is relatively
+					# expensive, so it is only performed lazily, after the
+					# above visibility checks are complete.
 
 					if pkg.cp != atom.cp:
 						# A cpv can be returned from dbapi.match() as an
@@ -1984,8 +1969,6 @@ class depgraph(object):
 					myarg = None
 					if root == self.target_root:
 						try:
-							# Ebuild USE must have been calculated prior
-							# to this point, in case atoms have USE deps.
 							myarg = self._iter_atoms_for_pkg(pkg).next()
 						except StopIteration:
 							pass
@@ -2235,13 +2218,9 @@ class depgraph(object):
 				metadata = izip(db_keys, db.aux_get(cpv, db_keys))
 			except KeyError:
 				raise portage.exception.PackageNotFound(cpv)
-			pkg = Package(cpv=cpv, metadata=metadata,
+			pkg = Package(built=(type_name != "ebuild"), cpv=cpv,
+				metadata=metadata,
 				root_config=root_config, installed=installed)
-			if type_name == "ebuild":
-				settings = self.pkgsettings[root_config.root]
-				settings.setcpv(pkg)
-				pkg.metadata["USE"] = settings["PORTAGE_USE"]
-				pkg.metadata['CHOST'] = settings.get('CHOST', '')
 			self._pkg_cache[pkg] = pkg
 		return pkg
 
@@ -4381,11 +4360,6 @@ class depgraph(object):
 				installed=installed, metadata=metadata,
 				operation=action, root_config=root_config,
 				type_name=pkg_type)
-			if pkg_type == "ebuild":
-				pkgsettings = self.pkgsettings[myroot]
-				pkgsettings.setcpv(pkg)
-				pkg.metadata["USE"] = pkgsettings["PORTAGE_USE"]
-				pkg.metadata['CHOST'] = pkgsettings.get('CHOST', '')
 			self._pkg_cache[pkg] = pkg
 
 			root_config = self.roots[pkg.root]
@@ -4827,10 +4801,7 @@ def get_mask_info(root_config, cpv, pkgsettings,
 			db.aux_get(cpv, db_keys)))
 	except KeyError:
 		metadata = None
-	if metadata and not built:
-		pkgsettings.setcpv(cpv, mydb=metadata)
-		metadata["USE"] = pkgsettings["PORTAGE_USE"]
-		metadata['CHOST'] = pkgsettings.get('CHOST', '')
+
 	if metadata is None:
 		mreasons = ["corruption"]
 	else:
