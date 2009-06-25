@@ -21,6 +21,8 @@ def visible(pkgsettings, pkg):
 	if not pkg.metadata["SLOT"]:
 		return False
 	if not pkg.installed:
+		if pkg.invalid:
+			return False
 		if not pkgsettings._accept_chost(pkg.cpv, pkg.metadata):
 			return False
 	eapi = pkg.metadata["EAPI"]

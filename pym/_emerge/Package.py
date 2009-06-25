@@ -25,7 +25,7 @@ class Package(Task):
 		"installed", "metadata", "onlydeps", "operation",
 		"root_config", "type_name",
 		"category", "counter", "cp", "cpv_split",
-		"inherited", "iuse", "mtime",
+		"inherited", "invalid", "iuse", "mtime",
 		"pf", "pv_split", "root", "slot", "slot_atom",) + \
 	("_use",)
 
@@ -51,6 +51,11 @@ class Package(Task):
 		self.category, self.pf = portage.catsplit(self.cpv)
 		self.cpv_split = portage.catpkgsplit(self.cpv)
 		self.pv_split = self.cpv_split[1:]
+
+	def _invalid_metadata(self, msg):
+		if self.invalid is None:
+			self.invalid = []
+		self.invalid.append(msg)
 
 	class _use_class(object):
 
@@ -156,6 +161,8 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 	__slots__ = ("_pkg",)
 	_wrapped_keys = frozenset(
 		["COUNTER", "INHERITED", "IUSE", "SLOT", "_mtime_"])
+	_use_conditional_keys = frozenset(
+		['LICENSE', 'PROPERTIES', 'PROVIDE', 'RESTRICT',])
 
 	def __init__(self, pkg, metadata):
 		_PackageMetadataWrapperBase.__init__(self)
@@ -170,11 +177,17 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 
 	def __getitem__(self, k):
 		v = _PackageMetadataWrapperBase.__getitem__(self, k)
-		if k in ('PROVIDE', 'LICENSE',):
+		if k in self._use_conditional_keys:
 			if '?' in v:
-				v = paren_enclose(paren_normalize(use_reduce(
-					paren_reduce(v), uselist=self._pkg.use.enabled)))
-				self[k] = v
+				try:
+					v = paren_enclose(paren_normalize(use_reduce(
+						paren_reduce(v), uselist=self._pkg.use.enabled)))
+				except portage.exception.InvalidDependString:
+					# This error should already have been registered via
+					# self._pkg._invalid_metadata().
+					pass
+				else:
+					self[k] = v
 
 		elif k == 'USE' and not self._pkg.built:
 			if not v:
@@ -191,6 +204,11 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 		_PackageMetadataWrapperBase.__setitem__(self, k, v)
 		if k in self._wrapped_keys:
 			getattr(self, "_set_" + k.lower())(k, v)
+		elif k in self._use_conditional_keys:
+			try:
+				use_reduce(paren_reduce(v), matchall=1)
+			except portage.exception.InvalidDependString, e:
+				self._pkg._invalid_metadata("%s: %s" % (k, e))
 
 	def _set_inherited(self, k, v):
 		if isinstance(v, basestring):
