@@ -4007,18 +4007,8 @@ class depgraph(object):
 						else:
 							return colorize("PKG_NOMERGE", pkg_str)
 
-				try:
-					properties = flatten(use_reduce(paren_reduce(
-						pkg.metadata["PROPERTIES"]), uselist=pkg.use.enabled))
-				except portage.exception.InvalidDependString, e:
-					if not pkg.installed:
-						show_invalid_depstring_notice(pkg,
-							pkg.metadata["PROPERTIES"], str(e))
-						del e
-						return 1
-					properties = []
-				interactive = "interactive" in properties
-				if interactive and pkg.operation == "merge":
+				if 'interactive' in pkg.metadata.properties and \
+					pkg.operation == 'merge':
 					addl = colorize("WARN", "I") + addl[1:]
 					if ordered:
 						counters.interactive += 1

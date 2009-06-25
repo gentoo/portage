@@ -237,3 +237,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 			except ValueError:
 				v = 0
 		self._pkg.mtime = v
+
+	@property
+	def properties(self):
+		return self['PROPERTIES'].split()

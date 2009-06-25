@@ -328,14 +328,7 @@ class Scheduler(PollScheduler):
 			if not (isinstance(task, Package) and \
 				task.operation == "merge"):
 				continue
-			try:
-				properties = flatten(use_reduce(paren_reduce(
-					task.metadata["PROPERTIES"]), uselist=task.use.enabled))
-			except portage.exception.InvalidDependString, e:
-				show_invalid_depstring_notice(task,
-					task.metadata["PROPERTIES"], str(e))
-				raise self._unknown_internal_error()
-			if "interactive" in properties:
+			if 'interactive' in task.metadata.properties:
 				interactive_tasks.append(task)
 		return interactive_tasks
 
