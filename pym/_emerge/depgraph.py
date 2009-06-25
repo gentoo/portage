@@ -3709,18 +3709,8 @@ class depgraph(object):
 				else:
 					repo_path_real = portdb.getRepositoryPath(repo_name)
 				pkg_use = list(pkg.use.enabled)
-				try:
-					restrict = flatten(use_reduce(paren_reduce(
-						pkg.metadata["RESTRICT"]), uselist=pkg_use))
-				except portage.exception.InvalidDependString, e:
-					if not pkg.installed:
-						show_invalid_depstring_notice(x,
-							pkg.metadata["RESTRICT"], str(e))
-						del e
-						return 1
-					restrict = []
-				if "ebuild" == pkg_type and x[3] != "nomerge" and \
-					"fetch" in restrict:
+				if not pkg.built and pkg.operation == 'merge' and \
+					'fetch' in pkg.metadata.restrict:
 					fetch = red("F")
 					if ordered:
 						counters.restrict_fetch += 1

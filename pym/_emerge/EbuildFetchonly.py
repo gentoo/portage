@@ -24,9 +24,8 @@ class EbuildFetchonly(SlotObject):
 		ebuild_path = portdb.findname(pkg.cpv)
 		settings.setcpv(pkg)
 		debug = settings.get("PORTAGE_DEBUG") == "1"
-		restrict_fetch = 'fetch' in settings['PORTAGE_RESTRICT'].split()
 
-		if restrict_fetch:
+		if 'fetch' in pkg.metadata.restrict:
 			rval = self._execute_with_builddir()
 		else:
 			rval = portage.doebuild(ebuild_path, "fetch",

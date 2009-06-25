@@ -241,3 +241,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 	@property
 	def properties(self):
 		return self['PROPERTIES'].split()
+
+	@property
+	def restrict(self):
+		return self['RESTRICT'].split()
