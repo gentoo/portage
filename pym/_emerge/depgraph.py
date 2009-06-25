@@ -1875,9 +1875,7 @@ class depgraph(object):
 
 				if not cpv_list:
 					continue
-				pkg_status = "merge"
-				if installed or onlydeps:
-					pkg_status = "nomerge"
+
 				# descending order
 				cpv_list.reverse()
 				for cpv in cpv_list:
@@ -1889,18 +1887,11 @@ class depgraph(object):
 						# in case there is a visible downgrade.
 						continue
 					reinstall_for_flags = None
-					cache_key = (pkg_type, root, cpv, pkg_status)
-					pkg = self._pkg_cache.get(cache_key)
-					if pkg is None:
-						try:
-							metadata = izip(db_keys, db.aux_get(cpv, db_keys))
-						except KeyError:
-							continue
-						pkg = Package(built=built, cpv=cpv,
-							installed=installed, metadata=metadata,
-							onlydeps=onlydeps, root_config=root_config,
-							type_name=pkg_type)
-						self._pkg_cache[pkg] = pkg
+					try:
+						pkg = self._pkg(cpv, pkg_type, root_config,
+							installed=installed, onlydeps=onlydeps)
+					except portage.exception.PackageNotFound:
+						continue
 
 					if not installed or (built and matched_packages):
 						# Only enforce visibility on installed packages
@@ -2194,18 +2185,24 @@ class depgraph(object):
 					return 0
 		return 1
 
-	def _pkg(self, cpv, type_name, root_config, installed=False):
+	def _pkg(self, cpv, type_name, root_config, installed=False, 
+		onlydeps=False):
 		"""
 		Get a package instance from the cache, or create a new
-		one if necessary. Raises KeyError from aux_get if it
+		one if necessary. Raises PackageNotFound from aux_get if it
 		failures for some reason (package does not exist or is
 		corrupt).
 		"""
 		operation = "merge"
-		if installed:
+		if installed or onlydeps:
 			operation = "nomerge"
 		pkg = self._pkg_cache.get(
 			(type_name, root_config.root, cpv, operation))
+		if pkg is None and onlydeps and not installed:
+			# Maybe it already got pulled in as a "merge" node.
+			pkg = self.mydbapi[root_config.root].get(
+				(type_name, root_config.root, cpv, 'merge'))
+
 		if pkg is None:
 			tree_type = self.pkg_tree_map[type_name]
 			db = root_config.trees[tree_type].dbapi
@@ -2216,8 +2213,8 @@ class depgraph(object):
 			except KeyError:
 				raise portage.exception.PackageNotFound(cpv)
 			pkg = Package(built=(type_name != "ebuild"), cpv=cpv,
-				metadata=metadata,
-				root_config=root_config, installed=installed)
+				installed=installed, metadata=metadata,
+				root_config=root_config, type_name=type_name)
 			self._pkg_cache[pkg] = pkg
 		return pkg
 
