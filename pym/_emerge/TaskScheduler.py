@@ -1,3 +1,7 @@
+# Copyright 1999-2009 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id$
+
 from _emerge.QueueScheduler import QueueScheduler
 from _emerge.SequentialTaskQueue import SequentialTaskQueue
 
