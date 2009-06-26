@@ -119,6 +119,8 @@ class portdbapi(dbapi):
 		else:
 			from portage import settings
 			self.mysettings = config(clone=settings)
+		# Define self.settings, for conformity with other dbapi classes.
+		self.settings = self.mysettings
 		self._iuse_implicit = self.mysettings._get_implicit_iuse()
 		self._categories = self.mysettings.categories
 		# This is strictly for use in aux_get() doebuild calls when metadata
