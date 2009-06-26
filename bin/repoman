@@ -1237,14 +1237,15 @@ for x in scanlist:
 		#	if x.startswith("no"):
 		#		print "Bad RESTRICT value: %s" % x
 		try:
-			myaux["PROVIDE"] = portage.dep.use_reduce(
+			portage.dep.use_reduce(
 				portage.dep.paren_reduce(myaux["PROVIDE"]), matchall=1)
 		except portage.exception.InvalidDependString, e:
 			stats["PROVIDE.syntax"] = stats["PROVIDE.syntax"] + 1
 			fails["PROVIDE.syntax"].append(mykey+".ebuild PROVIDE: "+str(e))
 			del e
 			continue
-		myaux["PROVIDE"] = " ".join(portage.flatten(myaux["PROVIDE"]))
+
+		# The Package class automatically evaluates USE conditionals.
 		for myprovide in myaux["PROVIDE"].split():
 			prov_cp = portage.dep_getkey(myprovide)
 			if prov_cp != myprovide:
