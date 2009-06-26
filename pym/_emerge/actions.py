@@ -602,8 +602,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		calc_depclean(settings, trees, ldpath_mtimes,
 			myopts, action, args_set, spinner)
 
-	import gc
-	gc.collect()
+	clear_caches(trees)
 
 	if rval != os.EX_OK:
 		return rval
