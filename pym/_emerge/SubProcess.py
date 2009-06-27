@@ -1,0 +1,104 @@
+from _emerge.AbstractPollTask import AbstractPollTask
+import signal
+import os
+import errno
+class SubProcess(AbstractPollTask):
+
+	__slots__ = ("pid",) + \
+		("_files", "_reg_id")
+
+	# A file descriptor is required for the scheduler to monitor changes from
+	# inside a poll() loop. When logging is not enabled, create a pipe just to
+	# serve this purpose alone.
+	_dummy_pipe_fd = 9
+
+	def _poll(self):
+		if self.returncode is not None:
+			return self.returncode
+		if self.pid is None:
+			return self.returncode
+		if self._registered:
+			return self.returncode
+
+		try:
+			retval = os.waitpid(self.pid, os.WNOHANG)
+		except OSError, e:
+			if e.errno != errno.ECHILD:
+				raise
+			del e
+			retval = (self.pid, 1)
+
+		if retval == (0, 0):
+			return None
+		self._set_returncode(retval)
+		return self.returncode
+
+	def cancel(self):
+		if self.isAlive():
+			try:
+				os.kill(self.pid, signal.SIGTERM)
+			except OSError, e:
+				if e.errno != errno.ESRCH:
+					raise
+				del e
+
+		self.cancelled = True
+		if self.pid is not None:
+			self.wait()
+		return self.returncode
+
+	def isAlive(self):
+		return self.pid is not None and \
+			self.returncode is None
+
+	def _wait(self):
+
+		if self.returncode is not None:
+			return self.returncode
+
+		if self._registered:
+			self.scheduler.schedule(self._reg_id)
+			self._unregister()
+			if self.returncode is not None:
+				return self.returncode
+
+		try:
+			wait_retval = os.waitpid(self.pid, 0)
+		except OSError, e:
+			if e.errno != errno.ECHILD:
+				raise
+			del e
+			self._set_returncode((self.pid, 1))
+		else:
+			self._set_returncode(wait_retval)
+
+		return self.returncode
+
+	def _unregister(self):
+		"""
+		Unregister from the scheduler and close open files.
+		"""
+
+		self._registered = False
+
+		if self._reg_id is not None:
+			self.scheduler.unregister(self._reg_id)
+			self._reg_id = None
+
+		if self._files is not None:
+			for f in self._files.itervalues():
+				f.close()
+			self._files = None
+
+	def _set_returncode(self, wait_retval):
+
+		retval = wait_retval[1]
+
+		if retval != os.EX_OK:
+			if retval & 0xff:
+				retval = (retval & 0xff) << 8
+			else:
+				retval = retval >> 8
+
+		self.returncode = retval
+
