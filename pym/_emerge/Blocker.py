@@ -1,3 +1,7 @@
+# Copyright 1999-2009 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id$
+
 from _emerge.Task import Task
 # for an explanation on this logic, see pym/_emerge/__init__.py
 import os

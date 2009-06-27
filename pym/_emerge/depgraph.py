@@ -1,3 +1,7 @@
+# Copyright 1999-2009 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id$
+
 import gc
 import os
 import re
@@ -1771,6 +1775,77 @@ class depgraph(object):
 
 		print
 
+	def _iter_match_pkgs(self, root_config, pkg_type, atom, onlydeps=False):
+		"""
+		Iterate over Package instances of pkg_type matching the given atom.
+		This does not check visibility and it also does not match USE for
+		unbuilt ebuilds since USE are lazily calculated after visibility
+		checks (to avoid the expense when possible).
+		"""
+
+		db = root_config.trees[self.pkg_tree_map[pkg_type]].dbapi
+
+		if hasattr(db, "xmatch"):
+			cpv_list = db.xmatch("match-all", atom)
+		else:
+			cpv_list = db.match(atom)
+
+		# USE=multislot can make an installed package appear as if
+		# it doesn't satisfy a slot dependency. Rebuilding the ebuild
+		# won't do any good as long as USE=multislot is enabled since
+		# the newly built package still won't have the expected slot.
+		# Therefore, assume that such SLOT dependencies are already
+		# satisfied rather than forcing a rebuild.
+		installed = pkg_type == 'installed'
+		if installed and not cpv_list and atom.slot:
+			for cpv in db.match(atom.cp):
+				slot_available = False
+				for other_db, other_type, other_built, \
+					other_installed, other_keys in \
+					self._filtered_trees[root_config.root]["dbs"]:
+					try:
+						if atom.slot == \
+							other_db.aux_get(cpv, ["SLOT"])[0]:
+							slot_available = True
+							break
+					except KeyError:
+						pass
+				if not slot_available:
+					continue
+				inst_pkg = self._pkg(cpv, "installed",
+					root_config, installed=installed)
+				# Remove the slot from the atom and verify that
+				# the package matches the resulting atom.
+				atom_without_slot = portage.dep.remove_slot(atom)
+				if atom.use:
+					atom_without_slot += str(atom.use)
+				atom_without_slot = portage.dep.Atom(atom_without_slot)
+				if portage.match_from_list(
+					atom_without_slot, [inst_pkg]):
+					cpv_list = [inst_pkg.cpv]
+				break
+
+		if cpv_list:
+
+			# descending order
+			cpv_list.reverse()
+			for cpv in cpv_list:
+				try:
+					pkg = self._pkg(cpv, pkg_type, root_config,
+						installed=installed, onlydeps=onlydeps)
+				except portage.exception.PackageNotFound:
+					pass
+				else:
+					if pkg.cp != atom.cp:
+						# A cpv can be returned from dbapi.match() as an
+						# old-style virtual match even in cases when the
+						# package does not actually PROVIDE the virtual.
+						# Filter out any such false matches here.
+						if not InternalPackageSet(initial_atoms=(atom,)
+							).findAtomForPackage(pkg):
+							continue
+					yield pkg
+
 	def _select_pkg_highest_available(self, root, atom, onlydeps=False):
 		cache_key = (root, atom, onlydeps)
 		ret = self._highest_pkg_cache.get(cache_key)
@@ -1806,7 +1881,6 @@ class depgraph(object):
 		if not isinstance(atom, portage.dep.Atom):
 			atom = portage.dep.Atom(atom)
 		atom_cp = atom.cp
-		atom_set = InternalPackageSet(initial_atoms=(atom,))
 		existing_node = None
 		myeb = None
 		usepkgonly = "--usepkgonly" in self.myopts
@@ -1837,63 +1911,18 @@ class depgraph(object):
 						(found_available_arg and not selective)
 					if want_reinstall and matched_packages:
 						continue
-				if hasattr(db, "xmatch"):
-					cpv_list = db.xmatch("match-all", atom)
-				else:
-					cpv_list = db.match(atom)
 
-				# USE=multislot can make an installed package appear as if
-				# it doesn't satisfy a slot dependency. Rebuilding the ebuild
-				# won't do any good as long as USE=multislot is enabled since
-				# the newly built package still won't have the expected slot.
-				# Therefore, assume that such SLOT dependencies are already
-				# satisfied rather than forcing a rebuild.
-				if installed and not cpv_list and atom.slot:
-					for cpv in db.match(atom.cp):
-						slot_available = False
-						for other_db, other_type, other_built, \
-							other_installed, other_keys in dbs:
-							try:
-								if atom.slot == \
-									other_db.aux_get(cpv, ["SLOT"])[0]:
-									slot_available = True
-									break
-							except KeyError:
-								pass
-						if not slot_available:
-							continue
-						inst_pkg = self._pkg(cpv, "installed",
-							root_config, installed=installed)
-						# Remove the slot from the atom and verify that
-						# the package matches the resulting atom.
-						atom_without_slot = portage.dep.remove_slot(atom)
-						if atom.use:
-							atom_without_slot += str(atom.use)
-						atom_without_slot = portage.dep.Atom(atom_without_slot)
-						if portage.match_from_list(
-							atom_without_slot, [inst_pkg]):
-							cpv_list = [inst_pkg.cpv]
-						break
-
-				if not cpv_list:
-					continue
-
-				# descending order
-				cpv_list.reverse()
-				for cpv in cpv_list:
+				for pkg in self._iter_match_pkgs(root_config, pkg_type, atom, 
+					onlydeps=onlydeps):
+					cpv = pkg.cpv
 					# Make --noreplace take precedence over --newuse.
-					if not installed and noreplace and \
+					if not pkg.installed and noreplace and \
 						cpv in vardb.match(atom):
 						# If the installed version is masked, it may
 						# be necessary to look at lower versions,
 						# in case there is a visible downgrade.
 						continue
 					reinstall_for_flags = None
-					try:
-						pkg = self._pkg(cpv, pkg_type, root_config,
-							installed=installed, onlydeps=onlydeps)
-					except portage.exception.PackageNotFound:
-						continue
 
 					if not installed or (built and matched_packages):
 						# Only enforce visibility on installed packages
@@ -1947,14 +1976,6 @@ class depgraph(object):
 					# Calculation of USE for unbuilt ebuilds is relatively
 					# expensive, so it is only performed lazily, after the
 					# above visibility checks are complete.
-
-					if pkg.cp != atom.cp:
-						# A cpv can be returned from dbapi.match() as an
-						# old-style virtual match even in cases when the
-						# package does not actually PROVIDE the virtual.
-						# Filter out any such false matches here.
-						if not atom_set.findAtomForPackage(pkg):
-							continue
 
 					myarg = None
 					if root == self.target_root:

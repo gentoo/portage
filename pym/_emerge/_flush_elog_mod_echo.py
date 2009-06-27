@@ -1,3 +1,7 @@
+# Copyright 1999-2009 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id$
+
 def _flush_elog_mod_echo():
 	"""
 	Dump the mod_echo output now so that our other

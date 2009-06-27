@@ -1,3 +1,6 @@
+# Copyright 1999-2009 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id$
 
 # formats a size given in bytes nicely
 def format_size(mysize):
