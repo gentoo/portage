@@ -29,6 +29,7 @@ from _emerge.clear_caches import clear_caches
 from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.create_world_atom import create_world_atom
 from _emerge.DepPriority import DepPriority
+from _emerge.depgraph import depgraph
 from _emerge.EbuildFetcher import EbuildFetcher
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.emergelog import emergelog, _emerge_log_dir
@@ -43,12 +44,6 @@ from _emerge.RootConfig import RootConfig
 from _emerge.SlotObject import SlotObject
 from _emerge.SequentialTaskQueue import SequentialTaskQueue
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
-
-import portage.proxy.lazyimport
-import portage.proxy as proxy
-proxy.lazyimport.lazyimport(globals(),
-	'_emerge.depgraph:depgraph',
-)
 
 class Scheduler(PollScheduler):
 
