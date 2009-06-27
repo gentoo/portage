@@ -8,7 +8,9 @@ import termios
 import portage
 from portage.output import get_term_size, set_term_size
 from portage.tests import TestCase
-from _emerge import PipeReader, SpawnProcess, TaskScheduler
+from _emerge import TaskScheduler
+from _emerge.PipeReader import PipeReader
+from _emerge.SpawnProcess import SpawnProcess
 
 class PipeReaderTestCase(TestCase):
 
