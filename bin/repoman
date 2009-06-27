@@ -48,7 +48,8 @@ portage._disable_legacy_globals()
 from repoman.checks import run_checks
 from repoman import utilities
 
-from _emerge import Package, RootConfig
+from _emerge.Package import Package
+from _emerge.RootConfig import RootConfig
 from portage.sets import load_default_config
 
 import portage.checksum

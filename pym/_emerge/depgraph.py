@@ -176,6 +176,8 @@ class depgraph(object):
 					"--getbinpkgonly" in self.myopts)
 		del trees
 
+		#contains the args created by select_files
+		self._initial_arg_list = []
 		self.digraph=portage.digraph()
 		# contains all sets added to the graph
 		self._sets = {}
@@ -1067,7 +1069,8 @@ class depgraph(object):
 				yield arg, atom
 
 	def select_files(self, myfiles):
-		"""Given a list of .tbz2s, .ebuilds sets, and deps, create the
+		"""Given a list of .tbz2s, .ebuilds sets, and deps, populate
+		self._initial_arg_list and call self._resolve to create the 
 		appropriate depgraph and return a favorite list."""
 		debug = "--debug" in self.myopts
 		root_config = self.roots[self.target_root]
@@ -1146,9 +1149,6 @@ class depgraph(object):
 				metadata = izip(db_keys, portdb.aux_get(mykey, db_keys))
 				pkg = Package(type_name="ebuild", root_config=root_config,
 					cpv=mykey, metadata=metadata, onlydeps=onlydeps)
-				pkgsettings.setcpv(pkg)
-				pkg.metadata["USE"] = pkgsettings["PORTAGE_USE"]
-				pkg.metadata['CHOST'] = pkgsettings.get('CHOST', '')
 				self._pkg_cache[pkg] = pkg
 				args.append(PackageArg(arg=x, package=pkg,
 					root_config=root_config))
@@ -1325,14 +1325,25 @@ class depgraph(object):
 				myfavorites.add(arg.arg)
 		myfavorites = list(myfavorites)
 
-		pprovideddict = pkgsettings.pprovideddict
 		if debug:
 			portage.writemsg("\n", noiselevel=-1)
 		# Order needs to be preserved since a feature of --nodeps
 		# is to allow the user to force a specific merge order.
 		args.reverse()
-		while args:
-			arg = args.pop()
+		self._initial_arg_list = args[:]
+	
+		return self._resolve(myfavorites)
+	
+	def _resolve(self, myfavorites):
+		"""Given self._initial_arg_list, pull in the root nodes, 
+		call self._creategraph to process theier deps and return 
+		a favorite list."""
+		debug = "--debug" in self.myopts
+		onlydeps = "--onlydeps" in self.myopts
+		myroot = self.target_root
+		pkgsettings = self.pkgsettings[myroot]
+		pprovideddict = pkgsettings.pprovideddict
+		for arg in self._initial_arg_list:
 			for atom in arg.set:
 				self.spinner.update()
 				dep = Dependency(atom=atom, onlydeps=onlydeps,
@@ -1866,9 +1877,7 @@ class depgraph(object):
 
 				if not cpv_list:
 					continue
-				pkg_status = "merge"
-				if installed or onlydeps:
-					pkg_status = "nomerge"
+
 				# descending order
 				cpv_list.reverse()
 				for cpv in cpv_list:
@@ -1880,31 +1889,11 @@ class depgraph(object):
 						# in case there is a visible downgrade.
 						continue
 					reinstall_for_flags = None
-					cache_key = (pkg_type, root, cpv, pkg_status)
-					calculated_use = True
-					pkg = self._pkg_cache.get(cache_key)
-					if pkg is None:
-						calculated_use = False
-						try:
-							metadata = izip(db_keys, db.aux_get(cpv, db_keys))
-						except KeyError:
-							continue
-						pkg = Package(built=built, cpv=cpv,
-							installed=installed, metadata=metadata,
-							onlydeps=onlydeps, root_config=root_config,
-							type_name=pkg_type)
-						metadata = pkg.metadata
-						if not built:
-							metadata['CHOST'] = pkgsettings.get('CHOST', '')
-						if not built and ("?" in metadata["LICENSE"] or \
-							"?" in metadata["PROVIDE"]):
-							# This is avoided whenever possible because
-							# it's expensive. It only needs to be done here
-							# if it has an effect on visibility.
-							pkgsettings.setcpv(pkg)
-							metadata["USE"] = pkgsettings["PORTAGE_USE"]
-							calculated_use = True
-						self._pkg_cache[pkg] = pkg
+					try:
+						pkg = self._pkg(cpv, pkg_type, root_config,
+							installed=installed, onlydeps=onlydeps)
+					except portage.exception.PackageNotFound:
+						continue
 
 					if not installed or (built and matched_packages):
 						# Only enforce visibility on installed packages
@@ -1955,11 +1944,9 @@ class depgraph(object):
 										if not visible(pkgsettings, pkg_eb):
 											continue
 
-					if not pkg.built and not calculated_use:
-						# This is avoided whenever possible because
-						# it's expensive.
-						pkgsettings.setcpv(pkg)
-						pkg.metadata["USE"] = pkgsettings["PORTAGE_USE"]
+					# Calculation of USE for unbuilt ebuilds is relatively
+					# expensive, so it is only performed lazily, after the
+					# above visibility checks are complete.
 
 					if pkg.cp != atom.cp:
 						# A cpv can be returned from dbapi.match() as an
@@ -1972,8 +1959,6 @@ class depgraph(object):
 					myarg = None
 					if root == self.target_root:
 						try:
-							# Ebuild USE must have been calculated prior
-							# to this point, in case atoms have USE deps.
 							myarg = self._iter_atoms_for_pkg(pkg).next()
 						except StopIteration:
 							pass
@@ -2202,18 +2187,24 @@ class depgraph(object):
 					return 0
 		return 1
 
-	def _pkg(self, cpv, type_name, root_config, installed=False):
+	def _pkg(self, cpv, type_name, root_config, installed=False, 
+		onlydeps=False):
 		"""
 		Get a package instance from the cache, or create a new
-		one if necessary. Raises KeyError from aux_get if it
+		one if necessary. Raises PackageNotFound from aux_get if it
 		failures for some reason (package does not exist or is
 		corrupt).
 		"""
 		operation = "merge"
-		if installed:
+		if installed or onlydeps:
 			operation = "nomerge"
 		pkg = self._pkg_cache.get(
 			(type_name, root_config.root, cpv, operation))
+		if pkg is None and onlydeps and not installed:
+			# Maybe it already got pulled in as a "merge" node.
+			pkg = self.mydbapi[root_config.root].get(
+				(type_name, root_config.root, cpv, 'merge'))
+
 		if pkg is None:
 			tree_type = self.pkg_tree_map[type_name]
 			db = root_config.trees[tree_type].dbapi
@@ -2223,13 +2214,9 @@ class depgraph(object):
 				metadata = izip(db_keys, db.aux_get(cpv, db_keys))
 			except KeyError:
 				raise portage.exception.PackageNotFound(cpv)
-			pkg = Package(cpv=cpv, metadata=metadata,
-				root_config=root_config, installed=installed)
-			if type_name == "ebuild":
-				settings = self.pkgsettings[root_config.root]
-				settings.setcpv(pkg)
-				pkg.metadata["USE"] = settings["PORTAGE_USE"]
-				pkg.metadata['CHOST'] = settings.get('CHOST', '')
+			pkg = Package(built=(type_name != "ebuild"), cpv=cpv,
+				installed=installed, metadata=metadata,
+				root_config=root_config, type_name=type_name)
 			self._pkg_cache[pkg] = pkg
 		return pkg
 
@@ -4369,11 +4356,6 @@ class depgraph(object):
 				installed=installed, metadata=metadata,
 				operation=action, root_config=root_config,
 				type_name=pkg_type)
-			if pkg_type == "ebuild":
-				pkgsettings = self.pkgsettings[myroot]
-				pkgsettings.setcpv(pkg)
-				pkg.metadata["USE"] = pkgsettings["PORTAGE_USE"]
-				pkg.metadata['CHOST'] = pkgsettings.get('CHOST', '')
 			self._pkg_cache[pkg] = pkg
 
 			root_config = self.roots[pkg.root]
@@ -4815,10 +4797,7 @@ def get_mask_info(root_config, cpv, pkgsettings,
 			db.aux_get(cpv, db_keys)))
 	except KeyError:
 		metadata = None
-	if metadata and not built:
-		pkgsettings.setcpv(cpv, mydb=metadata)
-		metadata["USE"] = pkgsettings["PORTAGE_USE"]
-		metadata['CHOST'] = pkgsettings.get('CHOST', '')
+
 	if metadata is None:
 		mreasons = ["corruption"]
 	else:

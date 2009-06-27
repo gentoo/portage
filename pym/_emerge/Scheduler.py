@@ -1627,12 +1627,6 @@ class Scheduler(PollScheduler):
 		db_keys = list(self.trees[root_config.root][
 			tree_type].dbapi._aux_cache_keys)
 		metadata = izip(db_keys, db.aux_get(cpv, db_keys))
-		pkg = Package(cpv=cpv, metadata=metadata,
+		return Package(built=(type_name != 'ebuild'),
+			cpv=cpv, metadata=metadata,
 			root_config=root_config, installed=installed)
-		if type_name == "ebuild":
-			settings = self.pkgsettings[root_config.root]
-			settings.setcpv(pkg)
-			pkg.metadata["USE"] = settings["PORTAGE_USE"]
-			pkg.metadata['CHOST'] = settings.get('CHOST', '')
-
-		return pkg

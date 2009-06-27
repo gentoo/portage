@@ -836,6 +836,7 @@ class binarytree(object):
 		# process) and then updated it, all while holding a lock.
 		from portage.locks import lockfile, unlockfile
 		pkgindex_lock = None
+		created_symlink = False
 		try:
 			pkgindex_lock = lockfile(self._pkgindex_file,
 				wantnewlockfile=1)
@@ -846,6 +847,7 @@ class binarytree(object):
 			if self._all_directory and \
 				self.getname(cpv).split(os.path.sep)[-2] == "All":
 				self._create_symlink(cpv)
+				created_symlink = True
 			pkgindex = self._new_pkgindex()
 			try:
 				f = open(self._pkgindex_file)
@@ -877,8 +879,14 @@ class binarytree(object):
 					# Handle path collisions in $PKGDIR/All
 					# when CPV is not identical.
 					del pkgindex.packages[i]
-				elif cpv == d2.get("CPV") and path == d2.get("PATH", ""):
-					del pkgindex.packages[i]
+				elif cpv == d2.get("CPV"):
+					if path == d2.get("PATH", ""):
+						del pkgindex.packages[i]
+					elif created_symlink and not d2.get("PATH", ""):
+						# Delete entry for the package that was just
+						# overwritten by a symlink to this package.
+						del pkgindex.packages[i]
+
 			pkgindex.packages.append(d)
 
 			self._update_pkgindex_header(pkgindex.header)
