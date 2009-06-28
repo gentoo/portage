@@ -3711,18 +3711,8 @@ class depgraph(object):
 				else:
 					repo_path_real = portdb.getRepositoryPath(repo_name)
 				pkg_use = list(pkg.use.enabled)
-				try:
-					restrict = flatten(use_reduce(paren_reduce(
-						pkg.metadata["RESTRICT"]), uselist=pkg_use))
-				except portage.exception.InvalidDependString, e:
-					if not pkg.installed:
-						show_invalid_depstring_notice(x,
-							pkg.metadata["RESTRICT"], str(e))
-						del e
-						return 1
-					restrict = []
-				if "ebuild" == pkg_type and x[3] != "nomerge" and \
-					"fetch" in restrict:
+				if not pkg.built and pkg.operation == 'merge' and \
+					'fetch' in pkg.metadata.restrict:
 					fetch = red("F")
 					if ordered:
 						counters.restrict_fetch += 1
@@ -4009,18 +3999,8 @@ class depgraph(object):
 						else:
 							return colorize("PKG_NOMERGE", pkg_str)
 
-				try:
-					properties = flatten(use_reduce(paren_reduce(
-						pkg.metadata["PROPERTIES"]), uselist=pkg.use.enabled))
-				except portage.exception.InvalidDependString, e:
-					if not pkg.installed:
-						show_invalid_depstring_notice(pkg,
-							pkg.metadata["PROPERTIES"], str(e))
-						del e
-						return 1
-					properties = []
-				interactive = "interactive" in properties
-				if interactive and pkg.operation == "merge":
+				if 'interactive' in pkg.metadata.properties and \
+					pkg.operation == 'merge':
 					addl = colorize("WARN", "I") + addl[1:]
 					if ordered:
 						counters.interactive += 1
@@ -4912,6 +4892,9 @@ def get_masking_status(pkg, pkgsettings, root_config):
 		if not pkgsettings._accept_chost(pkg.cpv, pkg.metadata):
 			mreasons.append("CHOST: %s" % \
 				pkg.metadata["CHOST"])
+		if pkg.invalid:
+			for msg in pkg.invalid:
+				mreasons.append("invalid: %s" % (msg,))
 
 	if pkg.built and not pkg.installed:
 		if not "EPREFIX" in pkg.metadata or not pkg.metadata["EPREFIX"]:

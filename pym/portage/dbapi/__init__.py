@@ -50,7 +50,7 @@ class dbapi(object):
 		pass
 
 	def cp_list(self, cp, use_cache=1):
-		return
+		raise NotImplementedError(self)
 
 	def _cpv_sort_ascending(self, cpv_list):
 		"""

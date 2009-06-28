@@ -26,7 +26,7 @@ class Package(Task):
 		"installed", "metadata", "onlydeps", "operation",
 		"root_config", "type_name",
 		"category", "counter", "cp", "cpv_split",
-		"inherited", "iuse", "mtime",
+		"inherited", "invalid", "iuse", "mtime",
 		"pf", "pv_split", "root", "slot", "slot_atom",) + \
 	("_use",)
 
@@ -54,6 +54,11 @@ class Package(Task):
 		self.cpv_split = portage.catpkgsplit(self.cpv)
 		self.pv_split = self.cpv_split[1:]
 
+	def _invalid_metadata(self, msg):
+		if self.invalid is None:
+			self.invalid = []
+		self.invalid.append(msg)
+
 	class _use_class(object):
 
 		__slots__ = ("__weakref__", "enabled")
@@ -69,7 +74,9 @@ class Package(Task):
 
 	class _iuse(object):
 
-		__slots__ = ("__weakref__", "all", "enabled", "disabled", "iuse_implicit", "regex", "tokens")
+		__slots__ = ("__weakref__", "all", "enabled", "disabled",
+			"iuse_implicit", "tokens") + \
+			('_regex',)
 
 		def __init__(self, tokens, iuse_implicit):
 			self.tokens = tuple(tokens)
@@ -89,20 +96,23 @@ class Package(Task):
 			self.disabled = frozenset(disabled)
 			self.all = frozenset(chain(enabled, disabled, other))
 
-		def __getattribute__(self, name):
-			if name == "regex":
-				try:
-					return object.__getattribute__(self, "regex")
-				except AttributeError:
-					all = object.__getattribute__(self, "all")
-					iuse_implicit = object.__getattribute__(self, "iuse_implicit")
-					# Escape anything except ".*" which is supposed
-					# to pass through from _get_implicit_iuse()
-					regex = (re.escape(x) for x in chain(all, iuse_implicit))
-					regex = "^(%s)$" % "|".join(regex)
-					regex = regex.replace("\\.\\*", ".*")
-					self.regex = re.compile(regex)
-			return object.__getattribute__(self, name)
+		@property
+		def regex(self):
+			"""
+			@returns: A regular expression that matches valid USE values which
+				may be specified in USE dependencies.
+			"""
+			try:
+				return self._regex
+			except AttributeError:
+				# Escape anything except ".*" which is supposed
+				# to pass through from _get_implicit_iuse()
+				regex = (re.escape(x) for x in \
+					chain(self.all, self.iuse_implicit))
+				regex = "^(%s)$" % "|".join(regex)
+				regex = re.compile(regex.replace("\\.\\*", ".*"))
+				self._regex = regex
+				return regex
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
@@ -158,6 +168,8 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 	__slots__ = ("_pkg",)
 	_wrapped_keys = frozenset(
 		["COUNTER", "INHERITED", "IUSE", "SLOT", "_mtime_"])
+	_use_conditional_keys = frozenset(
+		['LICENSE', 'PROPERTIES', 'PROVIDE', 'RESTRICT',])
 
 	def __init__(self, pkg, metadata):
 		_PackageMetadataWrapperBase.__init__(self)
@@ -172,11 +184,17 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 
 	def __getitem__(self, k):
 		v = _PackageMetadataWrapperBase.__getitem__(self, k)
-		if k in ('PROVIDE', 'LICENSE',):
+		if k in self._use_conditional_keys:
 			if '?' in v:
-				v = paren_enclose(paren_normalize(use_reduce(
-					paren_reduce(v), uselist=self._pkg.use.enabled)))
-				self[k] = v
+				try:
+					v = paren_enclose(paren_normalize(use_reduce(
+						paren_reduce(v), uselist=self._pkg.use.enabled)))
+				except portage.exception.InvalidDependString:
+					# This error should already have been registered via
+					# self._pkg._invalid_metadata().
+					pass
+				else:
+					self[k] = v
 
 		elif k == 'USE' and not self._pkg.built:
 			if not v:
@@ -193,6 +211,11 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 		_PackageMetadataWrapperBase.__setitem__(self, k, v)
 		if k in self._wrapped_keys:
 			getattr(self, "_set_" + k.lower())(k, v)
+		elif k in self._use_conditional_keys:
+			try:
+				use_reduce(paren_reduce(v), matchall=1)
+			except portage.exception.InvalidDependString, e:
+				self._pkg._invalid_metadata("%s: %s" % (k, e))
 
 	def _set_inherited(self, k, v):
 		if isinstance(v, basestring):
@@ -221,3 +244,11 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 			except ValueError:
 				v = 0
 		self._pkg.mtime = v
+
+	@property
+	def properties(self):
+		return self['PROPERTIES'].split()
+
+	@property
+	def restrict(self):
+		return self['RESTRICT'].split()

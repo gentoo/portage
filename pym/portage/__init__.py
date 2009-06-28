@@ -1209,6 +1209,7 @@ class config(object):
 		self.uvlist = []
 		self._accept_chost_re = None
 		self._accept_license = None
+		self._accept_license_str = None
 
 		self.virtuals = {}
 		self.virts_p = {}
@@ -2876,17 +2877,19 @@ class config(object):
 		# ACCEPT_LICENSE is a lazily evaluated incremental, so that * can be
 		# used to match all licenses without every having to explicitly expand
 		# it to all licenses.
-		if self._accept_license is None:
-			if self.local_config:
-				mysplit = []
-				for curdb in mydbs:
-					mysplit.extend(curdb.get('ACCEPT_LICENSE', '').split())
-				if mysplit:
-					self.configlist[-1]['ACCEPT_LICENSE'] = ' '.join(mysplit)
+		if self.local_config:
+			mysplit = []
+			for curdb in mydbs:
+				mysplit.extend(curdb.get('ACCEPT_LICENSE', '').split())
+			accept_license_str = ' '.join(mysplit)
+			if accept_license_str:
+				self.configlist[-1]['ACCEPT_LICENSE'] = accept_license_str
+			if accept_license_str != self._accept_license_str:
+				self._accept_license_str = accept_license_str
 				self._accept_license = tuple(self.expandLicenseTokens(mysplit))
-			else:
-				# repoman will accept any license
-				self._accept_license = ()
+		else:
+			# repoman will accept any license
+			self._accept_license = ()
 
 		for mykey in myincrementals:
 
