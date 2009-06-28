@@ -29,7 +29,7 @@ import portage
 
 from portage import digraph
 from portage.cache.cache_errors import CacheError
-from portage.const import NEWS_LIB_PATH
+from portage.const import NEWS_LIB_PATH, EPREFIX
 from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 	red, yellow
 good = create_color_func("GOOD")
