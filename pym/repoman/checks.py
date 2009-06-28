@@ -82,6 +82,25 @@ class EbuildWhitespace(LineCheck):
 		if self.trailing_whitespace.match(line) is None:
 			return errors.TRAILING_WHITESPACE_ERROR
 
+class EbuildBlankLine(LineCheck):
+	repoman_check_name = 'ebuild.minorsyn'
+	blank_line = re.compile(r'^$')
+
+	def new(self, pkg):
+		self.line_is_blank = False
+
+	def check(self, num, line):
+		if self.line_is_blank and self.blank_line.match(line):
+			return 'Useless blank line on line: %d'
+		if self.blank_line.match(line):
+			self.line_is_blank = True
+		else:
+			self.line_is_blank = False
+
+	def end(self):
+		if self.line_is_blank:
+			yield 'Useless blank line on last line'
+
 class EbuildQuote(LineCheck):
 	"""Ensure ebuilds have valid quoting around things like D,FILESDIR, etc..."""
 
@@ -471,7 +490,7 @@ class Eapi3GoneVars(LineCheck):
 
 
 _constant_checks = tuple((c() for c in (
-	EbuildHeader, EbuildWhitespace, EbuildQuote,
+	EbuildHeader, EbuildWhitespace, EbuildBlankLine, EbuildQuote,
 	EbuildAssignment, EbuildUselessDodoc,
 	EbuildUselessCdS, EbuildNestedDie,
 	EbuildPatches, EbuildQuotedA, EapiDefinition,
