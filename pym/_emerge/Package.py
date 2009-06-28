@@ -187,14 +187,10 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 	def __getitem__(self, k):
 		v = _PackageMetadataWrapperBase.__getitem__(self, k)
 		if k in self._use_conditional_keys:
-			if '?' in v:
+			if self._pkg.root_config.settings.local_config and '?' in v:
 				try:
-					if self._pkg.root_config.settings.local_config:
-						v = paren_enclose(paren_normalize(use_reduce(
-							paren_reduce(v), uselist=self._pkg.use.enabled)))
-					else:
-						v = paren_enclose(paren_normalize(use_reduce(
-							paren_reduce(v), matchall=1)))
+					v = paren_enclose(paren_normalize(use_reduce(
+						paren_reduce(v), uselist=self._pkg.use.enabled)))
 				except portage.exception.InvalidDependString:
 					# This error should already have been registered via
 					# self._pkg._invalid_metadata().
