@@ -1598,6 +1598,7 @@ class config(object):
 			for blacklisted in self._env_blacklist:
 				for cfg in self.lookuplist:
 					cfg.pop(blacklisted, None)
+				self.backupenv.pop(blacklisted, None)
 			del blacklisted, cfg
 
 			self["PORTAGE_CONFIGROOT"] = config_root
