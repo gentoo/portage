@@ -560,7 +560,6 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	# that should have been pulled into the graph. On the other hand, it's
 	# relatively safe to ignore missing deps when only asked to remove
 	# specific packages.
-	allow_missing_deps = len(myfiles) > 0
 
 	msg = []
 	msg.append("Always study the list of packages to be cleaned for any obvious\n")
@@ -581,6 +580,59 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		portage.writemsg_stdout("\n")
 		for x in msg:
 			portage.writemsg_stdout(colorize("WARN", " * ") + x)
+
+	root_config = trees[settings['ROOT']]['root_config']
+	vardb = root_config.trees['vartree'].dbapi
+
+	args_set = InternalPackageSet()
+	if myfiles:
+		args_set.update(myfiles)
+		matched_packages = False
+		for x in args_set:
+			if vardb.match(x):
+				matched_packages = True
+				break
+		if not matched_packages:
+			writemsg_level(">>> No packages selected for removal by %s\n" % \
+				action)
+			return 0
+
+	# The calculation is done in a separate function so that depgraph
+	# references go out of scope and the corresponding memory
+	# is freed before we call unmerge().
+	rval, cleanlist, ordered, req_pkg_count = \
+		calc_depclean(settings, trees, ldpath_mtimes,
+			myopts, action, args_set, spinner)
+
+	clear_caches(trees)
+
+	if rval != os.EX_OK:
+		return rval
+
+	if cleanlist:
+		unmerge(root_config, myopts, "unmerge",
+			cleanlist, ldpath_mtimes, ordered=ordered)
+
+	if action == "prune":
+		return
+
+	if not cleanlist and "--quiet" in myopts:
+		return
+
+	print "Packages installed:   " + str(len(vardb.cpv_all()))
+	print "Packages in world:    " + \
+		str(len(root_config.sets["world"].getAtoms()))
+	print "Packages in system:   " + \
+		str(len(root_config.sets["system"].getAtoms()))
+	print "Required packages:    "+str(req_pkg_count)
+	if "--pretend" in myopts:
+		print "Number to remove:     "+str(len(cleanlist))
+	else:
+		print "Number removed:       "+str(len(cleanlist))
+
+def calc_depclean(settings, trees, ldpath_mtimes,
+	myopts, action, args_set, spinner):
+	allow_missing_deps = bool(args_set)
 
 	xterm_titles = "notitles" not in settings.features
 	myroot = settings["ROOT"]
@@ -622,19 +674,6 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	if action == "depclean":
 		emergelog(xterm_titles, " >>> depclean")
-
-	args_set = InternalPackageSet()
-	if myfiles:
-		args_set.update(myfiles)
-		matched_packages = False
-		for x in args_set:
-			if vardb.match(x):
-				matched_packages = True
-				break
-		if not matched_packages:
-			writemsg_level(">>> No packages selected for removal by %s\n" % \
-				action)
-			return
 
 	writemsg_level("\nCalculating dependencies  ")
 	resolver_params = create_depgraph_params(myopts, "remove")
@@ -731,7 +770,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	resolver.display_problems()
 
 	if not success:
-		return 1
+		return 1, [], False, 0
 
 	def unresolved_deps():
 
@@ -773,7 +812,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		return False
 
 	if unresolved_deps():
-		return 1
+		return 1, [], False, 0
 
 	graph = resolver.digraph.copy()
 	required_pkgs_total = 0
@@ -1027,16 +1066,16 @@ def action_depclean(settings, trees, ldpath_mtimes,
 						priority=UnmergeDepPriority(runtime=True),
 						root=pkg.root)):
 						resolver.display_problems()
-						return 1
+						return 1, [], False, 0
 
 			writemsg_level("\nCalculating dependencies  ")
 			success = resolver._complete_graph()
 			writemsg_level("\b\b... done!\n")
 			resolver.display_problems()
 			if not success:
-				return 1
+				return 1, [], False, 0
 			if unresolved_deps():
-				return 1
+				return 1, [], False, 0
 
 			graph = resolver.digraph.copy()
 			required_pkgs_total = 0
@@ -1045,7 +1084,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 					required_pkgs_total += 1
 			cleanlist = create_cleanlist()
 			if not cleanlist:
-				return 0
+				return 0, [], False, required_pkgs_total
 			clean_set = set(cleanlist)
 
 		# Use a topological sort to create an unmerge order such that
@@ -1137,25 +1176,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 					graph.remove(node)
 					cleanlist.append(node.cpv)
 
-		unmerge(root_config, myopts, "unmerge", cleanlist,
-			ldpath_mtimes, ordered=ordered)
-
-	if action == "prune":
-		return
-
-	if not cleanlist and "--quiet" in myopts:
-		return
-
-	print "Packages installed:   "+str(len(vardb.cpv_all()))
-	print "Packages in world:    " + \
-		str(len(root_config.sets["world"].getAtoms()))
-	print "Packages in system:   " + \
-		str(len(root_config.sets["system"].getAtoms()))
-	print "Required packages:    "+str(required_pkgs_total)
-	if "--pretend" in myopts:
-		print "Number to remove:     "+str(len(cleanlist))
-	else:
-		print "Number removed:       "+str(len(cleanlist))
+		return 0, cleanlist, ordered, required_pkgs_total
+	return 0, [], False, required_pkgs_total
 
 def action_deselect(settings, trees, opts, atoms):
 	root_config = trees[settings['ROOT']]['root_config']

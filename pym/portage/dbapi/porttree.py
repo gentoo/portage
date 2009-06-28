@@ -110,6 +110,20 @@ class portdbapi(dbapi):
 	"""this tree will scan a portage directory located at root (passed to init)"""
 	portdbapi_instances = []
 	_use_mutable = True
+
+	def _get_settings(self):
+		return self.mysettings
+
+	def _set_settings(self, settings):
+		self.mysettings = settings
+
+	def _del_settings (self):
+		del self.mysettings
+
+	settings = property(_get_settings, _set_settings, _del_settings,
+		"Define self.settings as an alias for self.mysettings, " + \
+		"for conformity with other dbapi classes.")
+
 	def __init__(self, porttree_root, mysettings=None):
 		portdbapi.portdbapi_instances.append(self)
 

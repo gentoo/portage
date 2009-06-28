@@ -33,13 +33,13 @@ if os.environ.__contains__("PORTAGE_PYTHONPATH"):
 	sys.path.insert(0, os.environ["PORTAGE_PYTHONPATH"])
 else:
 	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
-import _emerge
+from _emerge.main import emerge_main
 
 if __name__ == "__main__":
 	import sys
 	from portage.exception import ParseError, PermissionDenied
 	try:
-		retval = _emerge.emerge_main()
+		retval = emerge_main()
 	except PermissionDenied, e:
 		sys.stderr.write("Permission denied: '%s'\n" % str(e))
 		sys.exit(e.errno)
