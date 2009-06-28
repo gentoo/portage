@@ -16,8 +16,9 @@ import portage
 
 from portage.data import secpass
 from portage.output import xtermTitle
+from portage.const import EPREFIX
 	
-_emerge_log_dir = '/var/log'
+_emerge_log_dir = EPREFIX + '/var/log'
 
 def emergelog(xterm_titles, mystr, short_msg=None):
 	if xterm_titles and short_msg:

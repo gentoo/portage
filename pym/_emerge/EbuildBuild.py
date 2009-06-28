@@ -20,6 +20,7 @@ else:
 	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
 import portage
 from portage.output import colorize
+from portage.const import EPREFIX
 class EbuildBuild(CompositeTask):
 
 	__slots__ = ("args_set", "config_pool", "find_blockers",
@@ -53,7 +54,7 @@ class EbuildBuild(CompositeTask):
 			waiting_msg = "Fetching files " + \
 				"in the background. " + \
 				"To view fetch progress, run `tail -f " + \
-				"/var/log/emerge-fetch.log` in another " + \
+				EPREFIX + "/var/log/emerge-fetch.log` in another " + \
 				"terminal."
 			msg_prefix = colorize("GOOD", " * ")
 			from textwrap import wrap

@@ -19,6 +19,7 @@ else:
 	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
 import portage
 from portage.output import colorize
+from portage.const import EPREFIX
 class Binpkg(CompositeTask):
 
 	__slots__ = ("find_blockers",
@@ -82,7 +83,7 @@ class Binpkg(CompositeTask):
 			waiting_msg = ("Fetching '%s' " + \
 				"in the background. " + \
 				"To view fetch progress, run `tail -f " + \
-				"/var/log/emerge-fetch.log` in another " + \
+				EPREFIX + "/var/log/emerge-fetch.log` in another " + \
 				"terminal.") % prefetcher.pkg_path
 			msg_prefix = colorize("GOOD", " * ")
 			from textwrap import wrap
