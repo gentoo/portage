@@ -4898,8 +4898,9 @@ def get_masking_status(pkg, pkgsettings, root_config):
 			mreasons.append("CHOST: %s" % \
 				pkg.metadata["CHOST"])
 		if pkg.invalid:
-			for msg in pkg.invalid:
-				mreasons.append("invalid: %s" % (msg,))
+			for msg_type, msgs in pkg.invalid.iteritems():
+				for msg in msgs:
+					mreasons.append("invalid: %s" % (msg,))
 
 	if not pkg.metadata["SLOT"]:
 		mreasons.append("invalid: SLOT is undefined")
