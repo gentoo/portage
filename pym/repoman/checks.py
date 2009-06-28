@@ -19,6 +19,10 @@ class LineCheck(object):
 	def new(self, pkg):
 		pass
 
+	def check_eapi(self, eapi):
+		""" returns if the check should be run in the given EAPI (default is True) """
+		return True
+
 	def check(self, num, line):
 		"""Run the check on line and return error if there is one"""
 		if self.re.match(line):
@@ -198,7 +202,7 @@ class EbuildUselessDodoc(LineCheck):
 class EbuildUselessCdS(LineCheck):
 	"""Check for redundant cd ${S} statements"""
 	repoman_check_name = 'ebuild.minorsyn'
-	method_re = re.compile(r'^\s*src_(compile|install|test)\s*\(\)')
+	method_re = re.compile(r'^\s*src_(prepare|configure|compile|install|test)\s*\(\)')
 	cds_re = re.compile(r'^\s*cd\s+("\$(\{S\}|S)"|\$(\{S\}|S))\s')
 
 	def __init__(self):
@@ -229,39 +233,6 @@ class EapiDefinition(LineCheck):
 		elif self.inherit_re.match(line) is not None:
 			self.inherit_line = line
 
-class SrcUnpackPatches(LineCheck):
-	repoman_check_name = 'ebuild.minorsyn'
-
-	ignore_line = re.compile(r'(^\s*#)')
-	src_unpack_re = re.compile(r'^src_unpack\(\)')
-	func_end_re = re.compile(r'^\}$')
-	src_prepare_tools_re = re.compile(r'\s(e?patch|sed)\s')
-
-	def new(self, pkg):
-		if pkg.metadata['EAPI'] not in ('0', '1'):
-			self.eapi = pkg.metadata['EAPI']
-		else:
-			self.eapi = None
-		self.in_src_unpack = None
-
-	def check(self, num, line):
-
-		if self.eapi is not None:
-
-			if self.in_src_unpack is None and \
-				self.src_unpack_re.match(line) is not None:
-					self.in_src_unpack = True
-
-			if self.in_src_unpack is True and \
-				self.func_end_re.match(line) is not None:
-				self.in_src_unpack = False
-
-			if self.in_src_unpack:
-				m = self.src_prepare_tools_re.search(line)
-				if m is not None:
-					return ("'%s'" % m.group(1)) + \
-						" call should be moved to src_prepare from line: %d"
-
 class EbuildPatches(LineCheck):
 	"""Ensure ebuilds use bash arrays for PATCHES to ensure white space safety"""
 	repoman_check_name = 'ebuild.patches'
@@ -285,10 +256,14 @@ class ImplicitRuntimeDeps(LineCheck):
 	since this triggers implicit RDEPEND=$DEPEND assignment.
 	"""
 
-	repoman_check_name = 'RDEPEND.implicit'
 	_assignment_re = re.compile(r'^\s*(R?DEPEND)=')
 
 	def new(self, pkg):
+		# RDEPEND=DEPEND is no longer available in EAPI=3
+		if pkg.metadata['EAPI'] in ('0', '1', '2'):
+			self.repoman_check_name = 'RDEPEND.implicit'
+		else:
+			self.repoman_check_name = 'EAPI.incompatible'
 		self._rdepend = False
 		self._depend = False
 
@@ -394,6 +369,107 @@ class WantAutoDefaultValue(LineCheck):
 			return 'WANT_AUTO' + m.group(1) + \
 				' redundantly set to default value "latest" on line: %d'
 
+class PhaseCheck(LineCheck):
+	""" basic class for function detection """
+
+	ignore_line = re.compile(r'(^\s*#)')
+	func_end_re = re.compile(r'^\}$')
+	in_phase = ''
+
+	def __init__(self):
+		self.phases = ('pkg_setup', 'pkg_preinst', 'pkg_postinst', 'pkg_prerm', 'pkg_postrm', 'pkg_pretend',
+			'src_unpack', 'src_prepare', 'src_compile', 'src_test', 'src_install')
+		phase_re = '('
+		for phase in self.phases:
+			phase_re += phase + '|'
+		phase_re = phase_re[:-1] + ')'
+		self.phases_re = re.compile(phase_re)
+
+	def check(self, num, line):
+		m = self.phases_re.match(line)
+		if m is not None:
+			self.in_phase = m.group(1)
+		if self.in_phase != '' and \
+				self.func_end_re.match(line) is not None:
+			self.in_phase = ''
+
+		return self.phase_check(num, line)
+
+	def phase_check(self, num, line):
+		""" override this function for your checks """
+		pass
+
+class SrcCompileEconf(PhaseCheck):
+	repoman_check_name = 'ebuild.minorsyn'
+	configure_re = re.compile(r'\s(econf|./configure)')
+
+	def check_eapi(self, eapi):
+		return eapi not in ('0', '1')
+
+	def phase_check(self, num, line):
+		if self.in_phase == 'src_compile':
+			m = self.configure_re.match(line)
+			if m is not None:
+				return ("'%s'" % m.group(1)) + \
+					" call should be moved to src_configure from line: %d"
+
+class SrcUnpackPatches(PhaseCheck):
+	repoman_check_name = 'ebuild.minorsyn'
+	src_prepare_tools_re = re.compile(r'\s(e?patch|sed)\s')
+
+	def new(self, pkg):
+		if pkg.metadata['EAPI'] not in ('0', '1'):
+			self.eapi = pkg.metadata['EAPI']
+		else:
+			self.eapi = None
+		self.in_src_unpack = None
+
+	def check_eapi(self, eapi):
+		return eapi not in ('0', '1')
+
+	def phase_check(self, num, line):
+		if self.in_phase == 'src_unpack':
+			m = self.src_prepare_tools_re.search(line)
+			if m is not None:
+				return ("'%s'" % m.group(1)) + \
+					" call should be moved to src_prepare from line: %d"
+
+# EAPI-3 checks
+class Eapi3IncompatibleFuncs(LineCheck):
+	repoman_check_name = 'EAPI.incompatible'
+	ignore_line = re.compile(r'(^\s*#)')
+	banned_commands_re = re.compile(r'^\s*(dosed|dohard)')
+
+	def new(self, pkg):
+		self.eapi = pkg.metadata['EAPI']
+
+	def check_eapi(self, eapi):
+		return self.eapi not in ('0', '1', '2')
+
+	def check(self, num, line):
+		m = self.banned_commands_re.match(line)
+		if m is not None:
+			return ("'%s'" % m.group(1)) + \
+				" has been banned in EAPI=3 on line: %d"
+
+class Eapi3GoneVars(LineCheck):
+	repoman_check_name = 'EAPI.incompatible'
+	ignore_line = re.compile(r'(^\s*#)')
+	undefined_vars_re = re.compile(r'.*\$(\{(AA|KV)\}|(AA|KV))')
+
+	def new(self, pkg):
+		self.eapi = pkg.metadata['EAPI']
+
+	def check_eapi(self, eapi):
+		return self.eapi not in ('0', '1', '2')
+
+	def check(self, num, line):
+		m = self.undefined_vars_re.match(line)
+		if m is not None:
+			return ("variable '$%s'" % m.group(1)) + \
+				" is gone in EAPI=3 on line: %d"
+
+
 _constant_checks = tuple((c() for c in (
 	EbuildHeader, EbuildWhitespace, EbuildQuote,
 	EbuildAssignment, EbuildUselessDodoc,
@@ -401,7 +477,8 @@ _constant_checks = tuple((c() for c in (
 	EbuildPatches, EbuildQuotedA, EapiDefinition,
 	IUseUndefined, ImplicitRuntimeDeps, InheritAutotools,
 	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS,
-	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue)))
+	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
+	SrcCompileEconf, Eapi3IncompatibleFuncs, Eapi3GoneVars)))
 
 _here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
 
@@ -425,11 +502,12 @@ def run_checks(contents, pkg):
 		if here_doc_delim is None:
 			# We're not in a here-document.
 			for lc in checks:
-				ignore = lc.ignore_line
-				if not ignore or not ignore.match(line):
-					e = lc.check(num, line)
-					if e:
-						yield lc.repoman_check_name, e % (num + 1)
+				if lc.check_eapi(pkg.metadata['EAPI']):
+					ignore = lc.ignore_line
+					if not ignore or not ignore.match(line):
+						e = lc.check(num, line)
+						if e:
+							yield lc.repoman_check_name, e % (num + 1)
 
 	for lc in checks:
 		i = lc.end()
