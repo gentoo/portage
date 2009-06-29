@@ -9,6 +9,7 @@ from itertools import chain
 
 from portage.util import grabfile, write_atomic, ensure_dirs, normalize_path
 from portage.const import PRIVATE_PATH, USER_CONFIG_PATH
+from portage.localization import _
 from portage.locks import lockfile, unlockfile
 from portage import portage_gid
 from portage.sets.base import PackageSet, EditablePackageSet
@@ -31,7 +32,7 @@ class StaticFileSet(EditablePackageSet):
 		self.description = "Package set loaded from file %s" % self._filename
 		self.loader = ItemFileLoader(self._filename, self._validate)
 		if greedy and not dbapi:
-			self.errors.append("%s configured as greedy set, but no dbapi instance passed in constructor" % self._filename)
+			self.errors.append(_("%s configured as greedy set, but no dbapi instance passed in constructor") % self._filename)
 			greedy = False
 		self.greedy = greedy
 		self.dbapi = dbapi
@@ -95,7 +96,7 @@ class StaticFileSet(EditablePackageSet):
 		
 	def singleBuilder(self, options, settings, trees):
 		if not "filename" in options:
-			raise SetConfigError("no filename specified")
+			raise SetConfigError(_("no filename specified"))
 		greedy = get_boolean(options, "greedy", False)
 		filename = options["filename"]
 		# look for repository path variables
@@ -104,7 +105,7 @@ class StaticFileSet(EditablePackageSet):
 			try:
 				filename = self._repopath_sub.sub(trees["porttree"].dbapi.treemap[match.groupdict()["reponame"]], filename)
 			except KeyError:
-				raise SetConfigError("Could not find repository '%s'" % match.groupdict()["reponame"])
+				raise SetConfigError(_("Could not find repository '%s'") % match.groupdict()["reponame"])
 		return StaticFileSet(filename, greedy=greedy, dbapi=trees["vartree"].dbapi)
 	singleBuilder = classmethod(singleBuilder)
 	
@@ -113,7 +114,7 @@ class StaticFileSet(EditablePackageSet):
 		directory = options.get("directory", os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH.lstrip(os.sep), "sets"))
 		name_pattern = options.get("name_pattern", "${name}")
 		if not "$name" in name_pattern and not "${name}" in name_pattern:
-			raise SetConfigError("name_pattern doesn't include ${name} placeholder")
+			raise SetConfigError(_("name_pattern doesn't include ${name} placeholder"))
 		greedy = get_boolean(options, "greedy", False)
 		# look for repository path variables
 		match = self._repopath_match.match(directory)
@@ -121,7 +122,7 @@ class StaticFileSet(EditablePackageSet):
 			try:
 				directory = self._repopath_sub.sub(trees["porttree"].dbapi.treemap[match.groupdict()["reponame"]], directory)
 			except KeyError:
-				raise SetConfigError("Could not find repository '%s'" % match.groupdict()["reponame"])
+				raise SetConfigError(_("Could not find repository '%s'") % match.groupdict()["reponame"])
 		if os.path.isdir(directory):
 			directory = normalize_path(directory)
 			for parent, dirs, files in os.walk(directory):
@@ -156,7 +157,7 @@ class ConfigFileSet(PackageSet):
 	
 	def singleBuilder(self, options, settings, trees):
 		if not "filename" in options:
-			raise SetConfigError("no filename specified")
+			raise SetConfigError(_("no filename specified"))
 		return ConfigFileSet(options["filename"])
 	singleBuilder = classmethod(singleBuilder)
 	
@@ -165,7 +166,7 @@ class ConfigFileSet(PackageSet):
 		directory = options.get("directory", os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH.lstrip(os.sep)))
 		name_pattern = options.get("name_pattern", "sets/package_$suffix")
 		if not "$suffix" in name_pattern and not "${suffix}" in name_pattern:
-			raise SetConfigError("name_pattern doesn't include $suffix placeholder")
+			raise SetConfigError(_("name_pattern doesn't include $suffix placeholder"))
 		for suffix in ["keywords", "use", "mask", "unmask"]:
 			myname = name_pattern.replace("$suffix", suffix)
 			myname = myname.replace("${suffix}", suffix)

@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from portage.localization import _
 from portage.sets.base import PackageSet
 from portage.sets import get_boolean
 from portage.versions import catpkgsplit
@@ -49,7 +50,7 @@ class LibraryFileConsumerSet(LibraryConsumerSet):
 		import shlex
 		files = tuple(shlex.split(options.get("files", "")))
 		if not files:
-			raise SetConfigError("no files given")
+			raise SetConfigError(_("no files given"))
 		debug = get_boolean(options, "debug", False)
 		return LibraryFileConsumerSet(trees["vartree"].dbapi,
 			files, debug=debug)

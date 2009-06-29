@@ -13,6 +13,7 @@ from portage.exception import PortageException
 from portage.process import atexit_register
 from portage.elog.messages import collect_ebuild_messages, collect_messages
 from portage.elog.filtering import filter_loglevels
+from portage.localization import _
 
 import os
 
@@ -157,8 +158,8 @@ def elog_process(cpv, mysettings, phasefilter=None):
 					_elog_atexit_handlers.append(m.finalize)
 					atexit_register(m.finalize)
 			except (ImportError, AttributeError), e:
-				writemsg("!!! Error while importing logging modules " + \
-					"while loading \"mod_%s\":\n" % str(s))
+				writemsg(_("!!! Error while importing logging modules "
+					"while loading \"mod_%s\":\n") % str(s))
 				writemsg("%s\n" % str(e), noiselevel=-1)
 			except PortageException, e:
 				writemsg("%s\n" % str(e), noiselevel=-1)
