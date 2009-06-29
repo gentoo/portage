@@ -6984,14 +6984,15 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			prev_eapi = mytrees.get("eapi")
 			mytrees["eapi"] = virtual_eapi
 
-			mycheck = dep_check(depstring, mydbapi, mysettings, myroot=myroot,
-				trees=trees, **pkg_kwargs)
-
-			# Restore previous EAPI after recursion.
-			if prev_eapi is not None:
-				mytrees["eapi"] = prev_eapi
-			else:
-				del mytrees["eapi"]
+			try:
+				mycheck = dep_check(depstring, mydbapi, mysettings,
+					myroot=myroot, trees=trees, **pkg_kwargs)
+			finally:
+				# Restore previous EAPI after recursion.
+				if prev_eapi is not None:
+					mytrees["eapi"] = prev_eapi
+				else:
+					del mytrees["eapi"]
 
 			if not mycheck[0]:
 				raise portage.exception.ParseError(
