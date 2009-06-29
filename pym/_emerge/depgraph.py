@@ -1593,18 +1593,12 @@ class depgraph(object):
 		pkgsettings = self.pkgsettings[root]
 		if trees is None:
 			trees = self._filtered_trees
-		if not getattr(priority, "buildtime", False):
-			# The parent should only be passed to dep_check() for buildtime
-			# dependencies since that's the only case when it's appropriate
-			# to trigger the circular dependency avoidance code which uses it.
-			# It's important not to trigger the same circular dependency
-			# avoidance code for runtime dependencies since it's not needed
-			# and it can promote an incorrect package choice.
-			parent = None
 		if True:
 			try:
 				if parent is not None:
 					trees[root]["parent"] = parent
+				if priority is not None:
+					trees[root]["priority"] = priority
 				if not strict:
 					portage.dep._dep_check_strict = False
 				mycheck = portage.dep_check(depstring, None,
@@ -1613,6 +1607,8 @@ class depgraph(object):
 			finally:
 				if parent is not None:
 					trees[root].pop("parent")
+				if priority is not None:
+					trees[root].pop("priority")
 				portage.dep._dep_check_strict = True
 			if not mycheck[0]:
 				raise portage.exception.InvalidDependString(mycheck[1])

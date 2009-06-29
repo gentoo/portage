@@ -7058,6 +7058,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 
 	# Alias the trees we'll be checking availability against
 	parent   = trees[myroot].get("parent")
+	priority = trees[myroot].get("priority")
 	graph_db = trees[myroot].get("graph_db")
 	vardb = None
 	if "vartree" in trees[myroot]:
@@ -7134,12 +7135,14 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						all_in_graph = False
 						break
 				if all_in_graph:
-					if parent is None:
+					if parent is None or priority is None:
 						preferred_not_installed.append(this_choice)
-					else:
+					elif priority.buildtime:
 						# Check if the atom would result in a direct circular
 						# dependency and try to avoid that if it seems likely
-						# to be unresolvable.
+						# to be unresolvable. This is only relevant for
+						# buildtime deps that aren't already satisfied by an
+						# installed package.
 						cpv_slot_list = [parent]
 						circular_atom = None
 						for atom in atoms:
