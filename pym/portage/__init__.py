@@ -7073,10 +7073,10 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	# c) contains masked installed packages
 	# d) is the first item
 
-	preferred = []
-	preferred_not_installed = []
+	preferred_installed = []
+	preferred_in_graph = []
 	preferred_any_slot = []
-	possible_upgrades = []
+	preferred_non_installed = []
 	other = []
 
 	# Alias the trees we'll be checking availability against
@@ -7091,15 +7091,15 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	else:
 		mydbapi = trees[myroot]["porttree"].dbapi
 
-	# Sort the deps into preferred (installed) and other
-	# with values of [[required_atom], availablility]
+	# Sort the deps into installed, not installed but already 
+	# in the graph and other, not installed and not in the graph
+	# and other, with values of [[required_atom], availablility]
 	for dep, satisfied in izip(deps, satisfieds):
 		if isinstance(dep, list):
 			atoms = dep_zapdeps(dep, satisfied, myroot,
 				use_binaries=use_binaries, trees=trees)
 		else:
 			atoms = [dep]
-
 		if not vardb:
 			# called by repoman
 			other.append((atoms, None, False))
@@ -7124,8 +7124,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		this_choice = (atoms, versions, all_available)
 		if all_available:
 			# The "all installed" criterion is not version or slot specific.
-			# If any version of a package is installed then we assume that it
-			# is preferred over other possible packages choices.
+			# If any version of a package is already in the graph then we
+			# assume that it is preferred over other possible packages choices.
 			all_installed = True
 			for atom in set([dep_getkey(atom) for atom in atoms \
 				if atom[:1] != "!"]):
@@ -7144,7 +7144,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						break
 			if all_installed:
 				if all_installed_slots:
-					preferred.append(this_choice)
+					preferred_installed.append(this_choice)
 				else:
 					preferred_any_slot.append(this_choice)
 			elif graph_db is None:
@@ -7159,7 +7159,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						break
 				if all_in_graph:
 					if parent is None or priority is None:
-						preferred_not_installed.append(this_choice)
+						preferred_in_graph.append(this_choice)
 					elif priority.buildtime:
 						# Check if the atom would result in a direct circular
 						# dependency and try to avoid that if it seems likely
@@ -7181,11 +7181,11 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 								circular_atom = atom
 								break
 						if circular_atom is None:
-							preferred_not_installed.append(this_choice)
+							preferred_in_graph.append(this_choice)
 						else:
 							other.append(this_choice)
 				else:
-					possible_upgrades.append(this_choice)
+					preferred_non_installed.append(this_choice)
 		else:
 			other.append(this_choice)
 
@@ -7195,9 +7195,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	# into || ( highest version ... lowest version ).  We want to prefer the
 	# highest all_available version of the new-style virtual when there is a
 	# lower all_installed version.
-	preferred.extend(preferred_not_installed)
-	preferred.extend(preferred_any_slot)
-	preferred.extend(possible_upgrades)
+	preferred = preferred_in_graph + preferred_installed + preferred_any_slot + preferred_non_installed
 	possible_upgrades = preferred[1:]
 	for possible_upgrade in possible_upgrades:
 		atoms, versions, all_available = possible_upgrade
