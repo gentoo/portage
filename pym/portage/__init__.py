@@ -6876,7 +6876,12 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	# According to GLEP 37, RDEPEND is the only dependency type that is valid
 	# for new-style virtuals.  Repoman should enforce this.
 	dep_keys = ["RDEPEND", "DEPEND", "PDEPEND"]
-	portdb = trees[myroot]["porttree"].dbapi
+	mytrees = trees[myroot]
+	portdb = mytrees["porttree"].dbapi
+	parent = mytrees.get("parent")
+	eapi = mytrees.get("eapi")
+	if eapi is None and parent is not None:
+		eapi = parent.metadata["EAPI"]
 	repoman = not mysettings.local_config
 	if kwargs["use_binaries"]:
 		portdb = trees[myroot]["bintree"].dbapi
@@ -6899,6 +6904,11 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				if portage.dep._dep_check_strict:
 					raise portage.exception.ParseError(
 						"invalid atom: '%s'" % x)
+			else:
+				if x.blocker and x.blocker.overlap.forbid and \
+					eapi in ("0", "1") and portage.dep._dep_check_strict:
+					raise portage.exception.ParseError(
+						"invalid atom: '%s'" % (x,))
 
 		if repoman and x.use and x.use.conditional:
 			evaluated_atom = portage.dep.remove_slot(x)
@@ -6968,8 +6978,21 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			if edebug:
 				print "Virtual Parent:   ", y[0]
 				print "Virtual Depstring:", depstring
+
+			# Set EAPI used for validation in dep_check() recursion.
+			virtual_eapi, = db.aux_get(cpv, ["EAPI"])
+			prev_eapi = mytrees.get("eapi")
+			mytrees["eapi"] = virtual_eapi
+
 			mycheck = dep_check(depstring, mydbapi, mysettings, myroot=myroot,
 				trees=trees, **pkg_kwargs)
+
+			# Restore previous EAPI after recursion.
+			if prev_eapi is not None:
+				mytrees["eapi"] = prev_eapi
+			else:
+				del mytrees["eapi"]
+
 			if not mycheck[0]:
 				raise portage.exception.ParseError(
 					"%s: %s '%s'" % (y[0], mycheck[1], depstring))
