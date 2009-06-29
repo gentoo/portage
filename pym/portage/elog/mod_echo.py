@@ -5,6 +5,7 @@
 
 from portage.output import EOutput, colorize
 from portage.const import EBUILD_PHASES
+from portage.localization import _
 
 _items = []
 def process(mysettings, key, logentries, fulltext):
@@ -18,12 +19,13 @@ def finalize(mysettings=None):
 	global _items
 	printer = EOutput()
 	for mysettings, key, logentries in _items:
-		root_msg = ""
-		if mysettings["ROOT"] != "/":
-			root_msg = " merged to %s" % mysettings["ROOT"]
 		print
-		printer.einfo("Messages for package %s%s:" % \
-			(colorize("INFORM", key), root_msg))
+		if mysettings["ROOT"] == "/":
+			printer.einfo(_("Messages for package %s:") %
+				colorize("INFORM", key))
+		else:
+			printer.einfo(_("Messages for package %(pkg)s merged to %(root)s:") %
+				{"pkg": colorize("INFORM", key), "root": mysettings["ROOT"]})
 		print
 		for phase in EBUILD_PHASES:
 			if phase not in logentries:

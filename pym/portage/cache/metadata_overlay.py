@@ -16,6 +16,7 @@ class database(template.database):
 		*args, **config):
 		super_config = config.copy()
 		super_config.pop("gid", None)
+		super_config.pop("perms", None)
 		super(database, self).__init__(location, label, auxdbkeys,
 			*args, **super_config)
 		self.db_rw = db_rw(location, label, auxdbkeys, **config)

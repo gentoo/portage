@@ -1605,6 +1605,7 @@ class config(object):
 			for blacklisted in self._env_blacklist:
 				for cfg in self.lookuplist:
 					cfg.pop(blacklisted, None)
+				self.backupenv.pop(blacklisted, None)
 			del blacklisted, cfg
 
 			self["PORTAGE_CONFIGROOT"] = config_root
@@ -2265,9 +2266,12 @@ class config(object):
 		if mydb:
 			if not hasattr(mydb, "aux_get"):
 				for k in aux_keys:
-					v = mydb.get(k)
-					if v is not None:
-						pkg_configdict[k] = v
+					if k in mydb:
+						# Make these lazy, since __getitem__ triggers
+						# evaluation of USE conditionals which can't
+						# occur until PORTAGE_USE is calculated below.
+						pkg_configdict.addLazySingleton(k,
+							mydb.__getitem__, k)
 			else:
 				for k, v in izip(aux_keys, mydb.aux_get(self.mycpv, aux_keys)):
 					pkg_configdict[k] = v

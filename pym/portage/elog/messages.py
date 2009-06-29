@@ -10,6 +10,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage.const import EBUILD_PHASES
+from portage.localization import _
 
 import os
 import sys
@@ -32,7 +33,7 @@ def collect_ebuild_messages(path):
 	for msgfunction in mylogfiles:
 		filename = os.path.join(path, msgfunction)
 		if msgfunction not in EBUILD_PHASES:
-			writemsg("!!! can't process invalid log file: %s\n" % filename,
+			writemsg(_("!!! can't process invalid log file: %s\n") % filename,
 				noiselevel=-1)
 			continue
 		if not msgfunction in logentries:
@@ -45,8 +46,8 @@ def collect_ebuild_messages(path):
 			try:
 				msgtype, msg = l.split(" ", 1)
 			except ValueError:
-				writemsg("!!! malformed entry in " + \
-					"log file: '%s'\n" % filename, noiselevel=-1)
+				writemsg(_("!!! malformed entry in "
+					"log file: '%s'\n") % filename, noiselevel=-1)
 				continue
 
 			if lastmsgtype is None:

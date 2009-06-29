@@ -1199,6 +1199,14 @@ for x in scanlist:
 			continue
 
 		pkg = pkgs[y]
+
+		if pkg.invalid:
+			for k, msgs in pkg.invalid.iteritems():
+				for msg in msgs:
+					stats[k] = stats[k] + 1
+					fails[k].append("%s %s" % (relative_path, msg))
+			continue
+
 		myaux = pkg.metadata
 		eapi = myaux["EAPI"]
 		inherited = pkg.inherited
@@ -1232,21 +1240,9 @@ for x in scanlist:
 					"%s: '%s' found in thirdpartymirrors" % \
 					(relative_path, mirror))
 
-		# Test for negative logic and bad words in the RESTRICT var.
-		#for x in myaux[allvars.index("RESTRICT")].split():
-		#	if x.startswith("no"):
-		#		print "Bad RESTRICT value: %s" % x
-		try:
-			portage.dep.use_reduce(
-				portage.dep.paren_reduce(myaux["PROVIDE"]), matchall=1)
-		except portage.exception.InvalidDependString, e:
-			stats["PROVIDE.syntax"] = stats["PROVIDE.syntax"] + 1
-			fails["PROVIDE.syntax"].append(mykey+".ebuild PROVIDE: "+str(e))
-			del e
-			continue
-
 		# The Package class automatically evaluates USE conditionals.
-		for myprovide in myaux["PROVIDE"].split():
+		for myprovide in portage.flatten(portage.dep.use_reduce(
+			portage.dep.paren_reduce(pkg.metadata['PROVIDE']), matchall=1)):
 			prov_cp = portage.dep_getkey(myprovide)
 			if prov_cp != myprovide:
 				stats["virtual.versioned"]+=1
@@ -1404,7 +1400,11 @@ for x in scanlist:
 			if mytype in ("DEPEND", "RDEPEND", "PDEPEND"):
 				for token in mydepstr.split():
 					if token in operator_tokens or \
-						token.endswith("?"):
+						token[-1:] == "?":
+						if token == "test?" and mytype == "RDEPEND":
+							stats['RDEPEND.suspect'] += 1
+							fails['RDEPEND.suspect'].append(relative_path + \
+								": 'test?' USE conditional in RDEPEND")
 						continue
 					try:
 						atom = portage.dep.Atom(token)

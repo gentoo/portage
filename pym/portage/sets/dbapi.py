@@ -4,6 +4,7 @@
 
 from portage.versions import catpkgsplit, catsplit, pkgcmp, best
 from portage.dep import Atom
+from portage.localization import _
 from portage.sets.base import PackageSet
 from portage.sets import SetConfigError, get_boolean
 
@@ -81,7 +82,7 @@ class OwnerSet(PackageSet):
 
 	def singleBuilder(cls, options, settings, trees):
 		if not "files" in options:
-			raise SetConfigError("no files given")
+			raise SetConfigError(_("no files given"))
 
 		import shlex
 		return cls(vardb=trees["vartree"].dbapi,
@@ -119,17 +120,17 @@ class VariableSet(EverythingSet):
 
 		variable = options.get("variable")
 		if variable is None:
-			raise SetConfigError("missing required attribute: 'variable'")
+			raise SetConfigError(_("missing required attribute: 'variable'"))
 
 		includes = options.get("includes", "")
 		excludes = options.get("excludes", "")
 
 		if not (includes or excludes):
-			raise SetConfigError("no includes or excludes given")
+			raise SetConfigError(_("no includes or excludes given"))
 		
 		metadatadb = options.get("metadata-source", "vartree")
 		if not metadatadb in trees.keys():
-			raise SetConfigError("invalid value '%s' for option metadata-source" % metadatadb)
+			raise SetConfigError(_("invalid value '%s' for option metadata-source") % metadatadb)
 
 		return cls(trees["vartree"].dbapi,
 			metadatadb=trees[metadatadb].dbapi,
@@ -198,7 +199,7 @@ class UnavailableSet(EverythingSet):
 
 		metadatadb = options.get("metadata-source", "porttree")
 		if not metadatadb in trees:
-			raise SetConfigError(("invalid value '%s' for option " + \
+			raise SetConfigError(_("invalid value '%s' for option "
 				"metadata-source") % (metadatadb,))
 
 		return cls(trees["vartree"].dbapi,
@@ -234,11 +235,11 @@ class CategorySet(PackageSet):
 		
 	def singleBuilder(cls, options, settings, trees):
 		if not "category" in options:
-			raise SetConfigError("no category given")
+			raise SetConfigError(_("no category given"))
 
 		category = options["category"]
 		if not category in settings.categories:
-			raise SetConfigError("invalid category name '%s'" % category)
+			raise SetConfigError(_("invalid category name '%s'") % category)
 
 		visible = cls._builderGetVisible(options)
 		
@@ -252,7 +253,7 @@ class CategorySet(PackageSet):
 			categories = options["categories"].split()
 			invalid = set(categories).difference(settings.categories)
 			if invalid:
-				raise SetConfigError("invalid categories: %s" % ", ".join(list(invalid)))
+				raise SetConfigError(_("invalid categories: %s") % ", ".join(list(invalid)))
 		else:
 			categories = settings.categories
 	
@@ -260,7 +261,7 @@ class CategorySet(PackageSet):
 		name_pattern = options.get("name_pattern", "$category/*")
 	
 		if not "$category" in name_pattern and not "${category}" in name_pattern:
-			raise SetConfigError("name_pattern doesn't include $category placeholder")
+			raise SetConfigError(_("name_pattern doesn't include $category placeholder"))
 	
 		for cat in categories:
 			myset = CategorySet(cat, trees["porttree"].dbapi, only_visible=visible)
@@ -293,11 +294,11 @@ class AgeSet(EverythingSet):
 	def singleBuilder(cls, options, settings, trees):
 		mode = options.get("mode", "older")
 		if str(mode).lower() not in ["newer", "older"]:
-			raise SetConfigError("invalid 'mode' value %s (use either 'newer' or 'older')" % mode)
+			raise SetConfigError(_("invalid 'mode' value %s (use either 'newer' or 'older')") % mode)
 		try:
 			age = int(options.get("age", "7"))
 		except ValueError, e:
-			raise SetConfigError("value of option 'age' is not an integer")
+			raise SetConfigError(_("value of option 'age' is not an integer"))
 		return AgeSet(vardb=trees["vartree"].dbapi, mode=mode, age=age)
 
 	singleBuilder = classmethod(singleBuilder)

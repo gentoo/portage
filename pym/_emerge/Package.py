@@ -54,10 +54,14 @@ class Package(Task):
 		self.cpv_split = portage.catpkgsplit(self.cpv)
 		self.pv_split = self.cpv_split[1:]
 
-	def _invalid_metadata(self, msg):
+	def _invalid_metadata(self, msg_type, msg):
 		if self.invalid is None:
-			self.invalid = []
-		self.invalid.append(msg)
+			self.invalid = {}
+		msgs = self.invalid.get(msg_type)
+		if msgs is None:
+			msgs = []
+			self.invalid[msg_type] = msgs
+		msgs.append(msg)
 
 	class _use_class(object):
 
@@ -185,14 +189,10 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 	def __getitem__(self, k):
 		v = _PackageMetadataWrapperBase.__getitem__(self, k)
 		if k in self._use_conditional_keys:
-			if '?' in v:
+			if self._pkg.root_config.settings.local_config and '?' in v:
 				try:
-					if self._pkg.root_config.settings.local_config:
-						v = paren_enclose(paren_normalize(use_reduce(
-							paren_reduce(v), uselist=self._pkg.use.enabled)))
-					else:
-						v = paren_enclose(paren_normalize(use_reduce(
-							paren_reduce(v), matchall=1)))
+					v = paren_enclose(paren_normalize(use_reduce(
+						paren_reduce(v), uselist=self._pkg.use.enabled)))
 				except portage.exception.InvalidDependString:
 					# This error should already have been registered via
 					# self._pkg._invalid_metadata().
@@ -219,7 +219,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 			try:
 				use_reduce(paren_reduce(v), matchall=1)
 			except portage.exception.InvalidDependString, e:
-				self._pkg._invalid_metadata("%s: %s" % (k, e))
+				self._pkg._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
 
 	def _set_inherited(self, k, v):
 		if isinstance(v, basestring):
