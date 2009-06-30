@@ -6959,13 +6959,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			# dependency that needs to be satisfied.
 			newsplit.append(x)
 			continue
-		if not pkgs and len(mychoices) == 1:
-			newsplit.append(portage.dep.Atom(x.replace(mykey, mychoices[0])))
-			continue
-		if isblocker:
-			a = []
-		else:
-			a = ['||']
+
+		a = []
 		for y in pkgs:
 			cpv, pv_split, db = y
 			depstring = " ".join(db.aux_get(cpv, dep_keys))
@@ -7011,13 +7006,30 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				a.append(mycheck[1])
 		# Plain old-style virtuals.  New-style virtuals are preferred.
 		if not pkgs:
-			for y in mychoices:
-				a.append(portage.dep.Atom(x.replace(mykey, y, 1)))
-		if isblocker and not a:
-			# Probably a compound virtual.  Pass the atom through unprocessed.
+			if repoman:
+				# TODO: Add PROVIDE check for repoman.
+				for y in mychoices:
+					a.append(portage.dep.Atom(x.replace(mykey, y, 1)))
+			else:
+				for y in mychoices:
+					new_atom = portage.dep.Atom(x.replace(mykey, y, 1))
+					matches = portdb.match(new_atom)
+					# portdb is an instance of depgraph._dep_check_composite_db, so
+					# USE conditionals are already evaluated.
+					if matches and mykey in \
+						portdb.aux_get(matches[-1], ['PROVIDE'])[0].split():
+						a.append(new_atom)
+
+		if not a:
 			newsplit.append(x)
-			continue
-		newsplit.append(a)
+		elif len(a) == 1:
+			newsplit.append(a[0])
+		else:
+			if isblocker:
+				newsplit.extend(a)
+			else:
+				newsplit.append(['||'] + a)
+
 	return newsplit
 
 def dep_eval(deplist):
