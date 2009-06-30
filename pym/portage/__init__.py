@@ -7010,8 +7010,9 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				mycheck[1].append(portage.dep.Atom("="+y[0]))
 				a.append(mycheck[1])
 		# Plain old-style virtuals.  New-style virtuals are preferred.
-		for y in mychoices:
-			a.append(portage.dep.Atom(x.replace(mykey, y, 1)))
+		if not pkgs:
+			for y in mychoices:
+				a.append(portage.dep.Atom(x.replace(mykey, y, 1)))
 		if isblocker and not a:
 			# Probably a compound virtual.  Pass the atom through unprocessed.
 			newsplit.append(x)
