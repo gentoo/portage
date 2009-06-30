@@ -7191,49 +7191,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		else:
 			other.append(this_choice)
 
-	# Compare the "all_installed" choices against the "all_available" choices
-	# for possible missed upgrades.  The main purpose of this code is to find
-	# upgrades of new-style virtuals since _expand_new_virtuals() expands them
-	# into || ( highest version ... lowest version ).  We want to prefer the
-	# highest all_available version of the new-style virtual when there is a
-	# lower all_installed version.
-	preferred = preferred_in_graph + preferred_installed + preferred_any_slot + preferred_non_installed
-	possible_upgrades = preferred[1:]
-	for possible_upgrade in possible_upgrades:
-		atoms, versions, all_available = possible_upgrade
-		myslots = set(versions)
-		for other_choice in preferred:
-			if possible_upgrade is other_choice:
-				# possible_upgrade will not be promoted, so move on
-				break
-			o_atoms, o_versions, o_all_available = other_choice
-			intersecting_slots = myslots.intersection(o_versions)
-			if not intersecting_slots:
-				continue
-			has_upgrade = False
-			has_downgrade = False
-			for myslot in intersecting_slots:
-				myversion = versions[myslot]
-				o_version = o_versions[myslot]
-				difference = pkgcmp(catpkgsplit(myversion)[1:],
-					catpkgsplit(o_version)[1:])
-				if difference:
-					if difference > 0:
-						has_upgrade = True
-					else:
-						has_downgrade = True
-						break
-			if has_upgrade and not has_downgrade:
-				preferred.remove(possible_upgrade)
-				o_index = preferred.index(other_choice)
-				preferred.insert(o_index, possible_upgrade)
-				break
-
-	# preferred now contains a) and c) from the order above with
-	# the masked flag differentiating the two. other contains b)
-	# and d) so adding other to preferred will give us a suitable
-	# list to iterate over.
-	preferred.extend(other)
+	preferred = preferred_in_graph + preferred_installed + \
+		preferred_any_slot + preferred_non_installed + other
 
 	for allow_masked in (False, True):
 		for atoms, versions, all_available in preferred:
