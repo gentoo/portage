@@ -6886,6 +6886,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	if kwargs["use_binaries"]:
 		portdb = trees[myroot]["bintree"].dbapi
 	myvirtuals = mysettings.getvirtuals()
+	pprovideddict = mysettings.pprovideddict
 	myuse = kwargs["myuse"]
 	for x in mysplit:
 		if x == "||":
@@ -7023,6 +7024,14 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					if matches and mykey in \
 						portdb.aux_get(matches[-1], ['PROVIDE'])[0].split():
 						a.append(new_atom)
+
+		if not a and not isblocker and mychoices:
+			# Check for a virtual package.provided match.
+			for y in mychoices:
+				new_atom = portage.dep.Atom(x.replace(mykey, y, 1))
+				if match_from_list(new_atom,
+					pprovideddict.get(new_atom.cp, [])):
+					a.append(new_atom)
 
 		if not a:
 			newsplit.append(x)
