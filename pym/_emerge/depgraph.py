@@ -2091,6 +2091,11 @@ class depgraph(object):
 				break
 
 		if len(matched_packages) > 1:
+			if "--avoid-update" in self.myopts:
+				for pkg in matched_packages:
+					if pkg.installed:
+						return pkg, existing_node
+
 			bestmatch = portage.best(
 				[pkg.cpv for pkg in matched_packages])
 			matched_packages = [pkg for pkg in matched_packages \
