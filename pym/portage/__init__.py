@@ -6909,6 +6909,10 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					eapi in ("0", "1") and portage.dep._dep_check_strict:
 					raise portage.exception.ParseError(
 						"invalid atom: '%s'" % (x,))
+				if x.use and eapi in ("0", "1") and \
+					portage.dep._dep_check_strict:
+					raise portage.exception.ParseError(
+						"invalid atom: '%s'" % (x,))
 
 		if repoman and x.use and x.use.conditional:
 			evaluated_atom = portage.dep.remove_slot(x)
