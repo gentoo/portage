@@ -6848,7 +6848,7 @@ def dep_virtual(mysplit, mysettings):
 			mychoices = myvirtuals.get(mykey, None)
 			if mychoices:
 				if len(mychoices) == 1:
-					a = x.replace(mykey, mychoices[0])
+					a = x.replace(mykey, dep_getkey(mychoices[0]), 1)
 				else:
 					if x[0]=="!":
 						# blocker needs "and" not "or(||)".
@@ -6856,7 +6856,7 @@ def dep_virtual(mysplit, mysettings):
 					else:
 						a=['||']
 					for y in mychoices:
-						a.append(x.replace(mykey, y))
+						a.append(x.replace(mykey, dep_getkey(y), 1))
 				newsplit.append(a)
 			else:
 				newsplit.append(x)
@@ -7017,7 +7017,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					a.append(portage.dep.Atom(x.replace(mykey, y, 1)))
 			else:
 				for y in mychoices:
-					new_atom = portage.dep.Atom(x.replace(mykey, y, 1))
+					new_atom = portage.dep.Atom(
+						x.replace(mykey, dep_getkey(y), 1))
 					matches = portdb.match(new_atom)
 					# portdb is an instance of depgraph._dep_check_composite_db, so
 					# USE conditionals are already evaluated.
@@ -7028,7 +7029,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 		if not a and not isblocker and mychoices:
 			# Check for a virtual package.provided match.
 			for y in mychoices:
-				new_atom = portage.dep.Atom(x.replace(mykey, y, 1))
+				new_atom = portage.dep.Atom(x.replace(mykey, dep_getkey(y), 1))
 				if match_from_list(new_atom,
 					pprovideddict.get(new_atom.cp, [])):
 					a.append(new_atom)

@@ -89,7 +89,8 @@ def create_world_atom(pkg, args_set, root_config):
 			# pulled in by update or depclean.
 			providers = portdb.mysettings.getvirtuals().get(
 				portage.dep_getkey(system_atom))
-			if providers and len(providers) == 1 and providers[0] == cp:
+			if providers and len(providers) == 1 and \
+				portage.dep_getkey(providers[0]) == cp:
 				return None
 	return new_world_atom
 
