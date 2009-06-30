@@ -1358,6 +1358,7 @@ class depgraph(object):
 		myroot = self._frozen_config.target_root
 		pkgsettings = self._frozen_config.pkgsettings[myroot]
 		pprovideddict = pkgsettings.pprovideddict
+		virtuals = pkgsettings.getvirtuals()
 		for arg in self._dynamic_config._initial_arg_list:
 			for atom in arg.set:
 				self._frozen_config.spinner.update()
@@ -1383,6 +1384,22 @@ class depgraph(object):
 					pkg, existing_node = self._select_package(
 						myroot, atom, onlydeps=onlydeps)
 					if not pkg:
+						pprovided_match = False
+						for virt_choice in virtuals.get(atom.cp, []):
+							expanded_atom = portage.dep.Atom(
+								atom.replace(atom.cp,
+								portage.dep_getkey(virt_choice), 1))
+							pprovided = pprovideddict.get(expanded_atom.cp)
+							if pprovided and \
+								portage.match_from_list(expanded_atom, pprovided):
+								# A provided package has been
+								# specified on the command line.
+								self._dynamic_config._pprovided_args.append((arg, atom))
+								pprovided_match = True
+								break
+						if pprovided_match:
+							continue
+
 						if not (isinstance(arg, SetArg) and \
 							arg.name in ("system", "world")):
 							self._dynamic_config._unsatisfied_deps_for_display.append(
