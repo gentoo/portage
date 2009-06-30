@@ -6941,7 +6941,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			continue
 		match_atom = x
 		if isblocker:
-			match_atom = x[1:]
+			match_atom = x.lstrip("!")
+			isblocker = x[:-len(match_atom)]
 		pkgs = []
 		matches = portdb.match(match_atom)
 		# Use descending order to prefer higher versions.
@@ -7003,7 +7004,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				if len(virtual_atoms) == 1:
 					# It wouldn't make sense to block all the components of a
 					# compound virtual, so only a single atom block is allowed.
-					a.append(portage.dep.Atom("!" + virtual_atoms[0]))
+					a.append(portage.dep.Atom(isblocker + virtual_atoms[0]))
 			else:
 				# pull in the new-style virtual
 				mycheck[1].append(portage.dep.Atom("="+y[0]))
