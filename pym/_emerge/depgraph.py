@@ -1882,6 +1882,7 @@ class depgraph(object):
 		selective = "selective" in self.myparams
 		reinstall = False
 		noreplace = "--noreplace" in self.myopts
+		avoid_update = "--avoid-update" in self.myopts
 		# Behavior of the "selective" parameter depends on
 		# whether or not a package matches an argument atom.
 		# If an installed package provides an old-style
@@ -1918,7 +1919,9 @@ class depgraph(object):
 						continue
 					reinstall_for_flags = None
 
-					if not installed or (built and matched_packages):
+					if not pkg.installed or \
+						(pkg.built and matched_packages and \
+						not (avoid_update and pkg.installed)):
 						# Only enforce visibility on installed packages
 						# if there is at least one other visible package
 						# available. By filtering installed masked packages
@@ -2091,7 +2094,7 @@ class depgraph(object):
 				break
 
 		if len(matched_packages) > 1:
-			if "--avoid-update" in self.myopts:
+			if avoid_update:
 				for pkg in matched_packages:
 					if pkg.installed:
 						return pkg, existing_node
