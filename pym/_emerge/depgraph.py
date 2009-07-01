@@ -2877,28 +2877,16 @@ class depgraph(object):
 					ignore_priority = priority_range.ignore_priority[i]
 					nodes = get_nodes(ignore_priority=ignore_priority)
 					if nodes:
-						# If there is a mix of uninstall nodes with other
-						# types, save the uninstall nodes for later since
-						# sometimes a merge node will render an uninstall
-						# node unnecessary (due to occupying the same slot),
-						# and we want to avoid executing a separate uninstall
-						# task in that case.
+						# If there is a mixuture of merges and uninstalls,
+						# do the uninstalls first.
 						if len(nodes) > 1:
 							good_uninstalls = []
-							with_some_uninstalls_excluded = []
 							for node in nodes:
 								if node.operation == "uninstall":
-									slot_node = self._dynamic_config.mydbapi[node.root
-										].match_pkgs(node.slot_atom)
-									if slot_node and \
-										slot_node[0].operation == "merge":
-										continue
 									good_uninstalls.append(node)
-								with_some_uninstalls_excluded.append(node)
+
 							if good_uninstalls:
 								nodes = good_uninstalls
-							elif with_some_uninstalls_excluded:
-								nodes = with_some_uninstalls_excluded
 							else:
 								nodes = nodes
 
@@ -3149,6 +3137,17 @@ class depgraph(object):
 							priority=BlockerDepPriority.instance)
 						scheduler_graph.remove_edge(uninst_task, blocked_pkg)
 						scheduler_graph.add(blocked_pkg, uninst_task,
+							priority=BlockerDepPriority.instance)
+
+					# Sometimes a merge node will render an uninstall
+					# node unnecessary (due to occupying the same SLOT),
+					# and we want to avoid executing a separate uninstall
+					# task in that case.
+					slot_node = self._dynamic_config.mydbapi[uninst_task.root
+						].match_pkgs(uninst_task.slot_atom)
+					if slot_node and \
+						slot_node[0].operation == "merge":
+						mygraph.add(slot_node[0], uninst_task,
 							priority=BlockerDepPriority.instance)
 
 					# Reset the state variables for leaf node selection and
