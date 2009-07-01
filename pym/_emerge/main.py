@@ -78,6 +78,7 @@ options=[
 "--searchdesc",   "--selective",
 "--skipfirst",
 "--tree",
+"--avoid-update",
 "--update",
 "--usepkg",       "--usepkgonly",
 "--verbose",
@@ -1071,6 +1072,11 @@ def emerge_main():
 	if ("--ask" in myopts) and (not sys.stdin.isatty()):
 		portage.writemsg("!!! \"--ask\" should only be used in a terminal. Exiting.\n",
 			noiselevel=-1)
+		return 1
+
+	if "--avoid-update" in myopts and "--update" in myopts:
+		writemsg("!!! conflicting options given: " + \
+			"--update and --avoid-update\n", noiselevel=-1)
 		return 1
 
 	if settings.get("PORTAGE_DEBUG", "") == "1":

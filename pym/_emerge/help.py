@@ -235,6 +235,17 @@ def help(myaction,myopts,havecolor=1):
 		print "              to the prompt, so an accidental press of the \"Enter\" key at any"
 		print "              time prior to the prompt will be interpreted as a choice!"
 		print
+		print "       "+green("--avoid-update")
+		desc = "Tries to prevent package updates. This may not always be" + \
+			" possible since new packages or new dependencies due to USE" + \
+			" flag changes may require a newer version of an installed" + \
+			" package. Furthermore, this option may lead to slot conflicts" + \
+			" (Multiple package instances within a single package slot" + \
+			" have been pulled into the dependency graph). It is not" + \
+			" possible to use this option in such a case."
+		for line in wrap(desc, desc_width):
+			print desc_indent + line
+		print
 		print "       "+green("--buildpkg")+" ("+green("-b")+" short option)"
 		desc = "Tells emerge to build binary packages for all ebuilds processed in" + \
 			" addition to actually merging the packages. Useful for maintainers" + \

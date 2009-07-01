@@ -6873,7 +6873,7 @@ def dep_virtual(mysplit, mysettings):
 			mychoices = myvirtuals.get(mykey, None)
 			if mychoices:
 				if len(mychoices) == 1:
-					a = x.replace(mykey, mychoices[0])
+					a = x.replace(mykey, dep_getkey(mychoices[0]), 1)
 				else:
 					if x[0]=="!":
 						# blocker needs "and" not "or(||)".
@@ -6881,7 +6881,7 @@ def dep_virtual(mysplit, mysettings):
 					else:
 						a=['||']
 					for y in mychoices:
-						a.append(x.replace(mykey, y))
+						a.append(x.replace(mykey, dep_getkey(y), 1))
 				newsplit.append(a)
 			else:
 				newsplit.append(x)
@@ -6911,6 +6911,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	if kwargs["use_binaries"]:
 		portdb = trees[myroot]["bintree"].dbapi
 	myvirtuals = mysettings.getvirtuals()
+	pprovideddict = mysettings.pprovideddict
 	myuse = kwargs["myuse"]
 	for x in mysplit:
 		if x == "||":
@@ -6969,9 +6970,6 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			newsplit.append(x)
 			continue
 		match_atom = x
-		if isblocker:
-			match_atom = x.lstrip("!")
-			isblocker = x[:-len(match_atom)]
 		pkgs = []
 		matches = portdb.match(match_atom)
 		# Use descending order to prefer higher versions.
@@ -7022,17 +7020,10 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			if not mycheck[0]:
 				raise portage.exception.ParseError(
 					"%s: %s '%s'" % (y[0], mycheck[1], depstring))
-			if isblocker:
-				virtual_atoms = [atom for atom in mycheck[1] \
-					if not atom.startswith("!")]
-				if len(virtual_atoms) == 1:
-					# It wouldn't make sense to block all the components of a
-					# compound virtual, so only a single atom block is allowed.
-					a.append(portage.dep.Atom(isblocker + virtual_atoms[0]))
-			else:
-				# pull in the new-style virtual
-				mycheck[1].append(portage.dep.Atom("="+y[0]))
-				a.append(mycheck[1])
+
+			# pull in the new-style virtual
+			mycheck[1].append(portage.dep.Atom("="+y[0]))
+			a.append(mycheck[1])
 		# Plain old-style virtuals.  New-style virtuals are preferred.
 		if not pkgs:
 			if repoman:
@@ -7041,7 +7032,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					a.append(portage.dep.Atom(x.replace(mykey, y, 1)))
 			else:
 				for y in mychoices:
-					new_atom = portage.dep.Atom(x.replace(mykey, y, 1))
+					new_atom = portage.dep.Atom(
+						x.replace(mykey, dep_getkey(y), 1))
 					matches = portdb.match(new_atom)
 					# portdb is an instance of depgraph._dep_check_composite_db, so
 					# USE conditionals are already evaluated.
@@ -7049,15 +7041,20 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 						portdb.aux_get(matches[-1], ['PROVIDE'])[0].split():
 						a.append(new_atom)
 
+		if not a and mychoices:
+			# Check for a virtual package.provided match.
+			for y in mychoices:
+				new_atom = portage.dep.Atom(x.replace(mykey, dep_getkey(y), 1))
+				if match_from_list(new_atom,
+					pprovideddict.get(new_atom.cp, [])):
+					a.append(new_atom)
+
 		if not a:
 			newsplit.append(x)
 		elif len(a) == 1:
 			newsplit.append(a[0])
 		else:
-			if isblocker:
-				newsplit.extend(a)
-			else:
-				newsplit.append(['||'] + a)
+			newsplit.append(['||'] + a)
 
 	return newsplit
 
