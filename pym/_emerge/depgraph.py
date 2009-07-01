@@ -2877,7 +2877,7 @@ class depgraph(object):
 					ignore_priority = priority_range.ignore_priority[i]
 					nodes = get_nodes(ignore_priority=ignore_priority)
 					if nodes:
-						# If there is a mixuture of merges and uninstalls,
+						# If there is a mixture of merges and uninstalls,
 						# do the uninstalls first.
 						if len(nodes) > 1:
 							good_uninstalls = []
