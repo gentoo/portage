@@ -405,7 +405,7 @@ def action_build(settings, trees, mtimedb,
 			if retval != os.EX_OK:
 				return retval
 			if "--buildpkgonly" in myopts:
-				graph_copy = mydepgraph.digraph.clone()
+				graph_copy = mydepgraph._dynamic_config.digraph.copy()
 				removed_nodes = set()
 				for node in graph_copy:
 					if not isinstance(node, Package) or \
@@ -419,7 +419,7 @@ def action_build(settings, trees, mtimedb,
 					return 1
 	else:
 		if "--buildpkgonly" in myopts:
-			graph_copy = mydepgraph.digraph.clone()
+			graph_copy = mydepgraph._dynamic_config.digraph.copy()
 			removed_nodes = set()
 			for node in graph_copy:
 				if not isinstance(node, Package) or \
@@ -676,7 +676,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	writemsg_level("\nCalculating dependencies  ")
 	resolver_params = create_depgraph_params(myopts, "remove")
 	resolver = depgraph(settings, trees, myopts, resolver_params, spinner)
-	vardb = resolver.trees[myroot]["vartree"].dbapi
+	vardb = resolver._frozen_config.trees[myroot]["vartree"].dbapi
 
 	if action == "depclean":
 
@@ -755,12 +755,12 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	for s, package_set in required_sets.iteritems():
 		set_atom = SETPREFIX + s
 		set_arg = SetArg(arg=set_atom, set=package_set,
-			root_config=resolver.roots[myroot])
+			root_config=resolver._frozen_config.roots[myroot])
 		set_args[s] = set_arg
 		for atom in set_arg.set:
-			resolver._dep_stack.append(
+			resolver._dynamic_config._dep_stack.append(
 				Dependency(atom=atom, root=myroot, parent=set_arg))
-			resolver.digraph.add(set_arg, None)
+			resolver._dynamic_config.digraph.add(set_arg, None)
 
 	success = resolver._complete_graph()
 	writemsg_level("\b\b... done!\n")
@@ -773,7 +773,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	def unresolved_deps():
 
 		unresolvable = set()
-		for dep in resolver._initially_unsatisfied_deps:
+		for dep in resolver._dynamic_config._initially_unsatisfied_deps:
 			if isinstance(dep.parent, Package) and \
 				(dep.priority > UnmergeDepPriority.SOFT):
 				unresolvable.add((dep.atom, dep.parent.cpv))
@@ -812,7 +812,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	if unresolved_deps():
 		return 1, [], False, 0
 
-	graph = resolver.digraph.copy()
+	graph = resolver._dynamic_config.digraph.copy()
 	required_pkgs_total = 0
 	for node in graph:
 		if isinstance(node, Package):
@@ -1075,7 +1075,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			if unresolved_deps():
 				return 1, [], False, 0
 
-			graph = resolver.digraph.copy()
+			graph = resolver._dynamic_config.digraph.copy()
 			required_pkgs_total = 0
 			for node in graph:
 				if isinstance(node, Package):
@@ -1116,7 +1116,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				try:
 					portage.dep._dep_check_strict = False
 					success, atoms = portage.dep_check(depstr, None, settings,
-						myuse=node_use, trees=resolver._graph_trees,
+						myuse=node_use,
+						trees=resolver._frozen_config._graph_trees,
 						myroot=myroot)
 				finally:
 					portage.dep._dep_check_strict = True
