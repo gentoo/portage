@@ -1344,7 +1344,6 @@ class depgraph(object):
 			portage.writemsg("\n", noiselevel=-1)
 		# Order needs to be preserved since a feature of --nodeps
 		# is to allow the user to force a specific merge order.
-		args.reverse()
 		self._dynamic_config._initial_arg_list = args[:]
 	
 		return self._resolve(myfavorites)
