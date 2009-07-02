@@ -123,6 +123,7 @@ class _frozen_depgraph_config(object):
 				pass
 			filtered_tree.dbapi = _dep_check_composite_db(depgraph, myroot)
 			dynamic_config._filtered_trees[myroot]["porttree"] = filtered_tree
+			dynamic_config._visible_pkgs[myroot] = PackageVirtualDbapi(vardb.settings)
 
 			# Passing in graph_tree as the vartree here could lead to better
 			# atom selections in some cases by causing atoms for packages that
@@ -177,6 +178,9 @@ class _dynamic_depgraph_config(object):
 		# Contains a filtered view of preferred packages that are selected
 		# from available repositories.
 		self._filtered_trees = {}
+		# Caches visible packages returned from _select_package, for use in
+		# depgraph._iter_atoms_for_pkg() SLOT logic.
+		self._visible_pkgs = {}
 		# All Package instances
 		self._pkg_cache = {}
 		#contains the args created by select_files
@@ -1062,7 +1066,8 @@ class depgraph(object):
 			if atom_cp != pkg.cp and \
 				self._have_new_virt(pkg.root, atom_cp):
 				continue
-			visible_pkgs = root_config.visible_pkgs.match_pkgs(atom)
+			visible_pkgs = \
+				self._dynamic_config._visible_pkgs[pkg.root].match_pkgs(atom)
 			visible_pkgs.reverse() # descending order
 			higher_slot = None
 			for visible_pkg in visible_pkgs:
@@ -1889,7 +1894,7 @@ class depgraph(object):
 			settings = pkg.root_config.settings
 			if visible(settings, pkg) and not (pkg.installed and \
 				settings._getMissingKeywords(pkg.cpv, pkg.metadata)):
-				pkg.root_config.visible_pkgs.cpv_inject(pkg)
+				self._dynamic_config._visible_pkgs[pkg.root].cpv_inject(pkg)
 		return ret
 
 	def _select_pkg_highest_available_imp(self, root, atom, onlydeps=False):

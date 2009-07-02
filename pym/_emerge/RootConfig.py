@@ -28,5 +28,3 @@ class RootConfig(object):
 			self.sets = {}
 		else:
 			self.sets = self.setconfig.getSets()
-		self.visible_pkgs = PackageVirtualDbapi(self.settings)
-
