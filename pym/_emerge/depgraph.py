@@ -1127,12 +1127,9 @@ class depgraph(object):
 					os.path.realpath(self._frozen_config.trees[myroot]["bintree"].getname(mykey)):
 					print colorize("BAD", "\n*** You need to adjust PKGDIR to emerge this package.\n")
 					return 0, myfavorites
-				db_keys = list(bindb._aux_cache_keys)
-				metadata = izip(db_keys, bindb.aux_get(mykey, db_keys))
-				pkg = Package(type_name="binary", root_config=root_config,
-					cpv=mykey, built=True, metadata=metadata,
+
+				pkg = self._pkg(mykey, "binary", root_config,
 					onlydeps=onlydeps)
-				self._dynamic_config._pkg_cache[pkg] = pkg
 				args.append(PackageArg(arg=x, package=pkg,
 					root_config=root_config))
 			elif ext==".ebuild":
@@ -1165,11 +1162,8 @@ class depgraph(object):
 				else:
 					raise portage.exception.PackageNotFound(
 						"%s is not in a valid portage tree hierarchy or does not exist" % x)
-				db_keys = list(portdb._aux_cache_keys)
-				metadata = izip(db_keys, portdb.aux_get(mykey, db_keys))
-				pkg = Package(type_name="ebuild", root_config=root_config,
-					cpv=mykey, metadata=metadata, onlydeps=onlydeps)
-				self._dynamic_config._pkg_cache[pkg] = pkg
+				pkg = self._pkg(mykey, "ebuild", root_config,
+					onlydeps=onlydeps)
 				args.append(PackageArg(arg=x, package=pkg,
 					root_config=root_config))
 			elif x.startswith(os.path.sep):
@@ -2997,8 +2991,8 @@ class depgraph(object):
 						continue
 
 					root_config = self._frozen_config.roots[task.root]
-					inst_pkg = self._dynamic_config._pkg_cache[
-						("installed", task.root, task.cpv, "nomerge")]
+					inst_pkg = self._pkg(task.cpv, "installed", root_config,
+						installed=True)
 
 					if self._dynamic_config.digraph.contains(inst_pkg):
 						continue
@@ -3549,8 +3543,9 @@ class depgraph(object):
 
 			# Remove the corresponding "nomerge" node and substitute
 			# the Uninstall node.
-			inst_pkg = self._dynamic_config._pkg_cache[
-				("installed", uninstall.root, uninstall.cpv, "nomerge")]
+			inst_pkg = self._pkg(uninstall.cpv, "installed",
+				uninstall.root_config, installed=True)
+
 			try:
 				mygraph.remove(inst_pkg)
 			except KeyError:
@@ -4378,30 +4373,16 @@ class depgraph(object):
 				continue
 			if action != "merge":
 				continue
-			tree_type = self.pkg_tree_map[pkg_type]
-			mydb = trees[myroot][tree_type].dbapi
-			db_keys = list(self._frozen_config._trees_orig[myroot][
-				tree_type].dbapi._aux_cache_keys)
+			root_config = self._frozen_config.roots[myroot]
 			try:
-				metadata = izip(db_keys, mydb.aux_get(pkg_key, db_keys))
-			except KeyError:
+				pkg = self._pkg(pkg_key, pkg_type, root_config)
+			except portage.exception.PackageNotFound:
 				# It does no exist or it is corrupt.
-				if action == "uninstall":
-					continue
 				if skip_missing:
 					# TODO: log these somewhere
 					continue
-				raise portage.exception.PackageNotFound(pkg_key)
-			installed = action == "uninstall"
-			built = pkg_type != "ebuild"
-			root_config = self._frozen_config.roots[myroot]
-			pkg = Package(built=built, cpv=pkg_key,
-				installed=installed, metadata=metadata,
-				operation=action, root_config=root_config,
-				type_name=pkg_type)
-			self._dynamic_config._pkg_cache[pkg] = pkg
+				raise
 
-			root_config = self._frozen_config.roots[pkg.root]
 			if "merge" == pkg.operation and \
 				not visible(root_config.settings, pkg):
 				if skip_masked:
