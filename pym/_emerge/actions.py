@@ -1117,7 +1117,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 					portage.dep._dep_check_strict = False
 					success, atoms = portage.dep_check(depstr, None, settings,
 						myuse=node_use,
-						trees=resolver._frozen_config._graph_trees,
+						trees=resolver._dynamic_config._graph_trees,
 						myroot=myroot)
 				finally:
 					portage.dep._dep_check_strict = True
