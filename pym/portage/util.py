@@ -1122,6 +1122,23 @@ class LazyItemsDict(dict):
 		else:
 			return dict.__getitem__(self, item_key)
 
+	def pop(self, key, *args):
+		"""
+		dict.pop() bypasses our overridden __getitem__ implementation, so we
+		also have to implement our own pop().
+		"""
+		if len(args) > 1:
+			raise TypeError("pop expected at most 2 arguments, got " + \
+				repr(1 + len(args)))
+		try:
+			value = self[key]
+		except KeyError:
+			if args:
+				return args[0]
+			raise
+		del self[key]
+		return value
+
 	def __setitem__(self, item_key, value):
 		if item_key in self.lazy_items:
 			del self.lazy_items[item_key]
