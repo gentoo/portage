@@ -54,7 +54,7 @@ from _emerge.visible import visible
 
 class _frozen_depgraph_config(object):
 
-	def __init__(self, settings, trees, myopts, spinner, dynamic_config, depgraph):
+	def __init__(self, settings, trees, myopts, spinner):
 		self.settings = settings
 		self.target_root = settings["ROOT"]
 		self.myopts = myopts
@@ -69,9 +69,8 @@ class _frozen_depgraph_config(object):
 		self.trees = {}
 		self._trees_orig = trees
 		self.roots = {}
-		# Contains installed packages and new packages that have been added
-		# to the graph.
-		self._graph_trees = {}
+		# All Package instances
+		self._pkg_cache = {}
 		for myroot in trees:
 			self.trees[myroot] = {}
 			# Create a RootConfig instance that references
@@ -84,91 +83,15 @@ class _frozen_depgraph_config(object):
 				self.trees[myroot][tree] = trees[myroot][tree]
 			self.trees[myroot]["vartree"] = \
 				FakeVartree(trees[myroot]["root_config"],
-					pkg_cache=dynamic_config._pkg_cache)
+					pkg_cache=self._pkg_cache)
 			self.pkgsettings[myroot] = portage.config(
 				clone=self.trees[myroot]["vartree"].settings)
-			dynamic_config._slot_pkg_map[myroot] = {}
-			vardb = self.trees[myroot]["vartree"].dbapi
-			preload_installed_pkgs = "--nodeps" not in self.myopts and \
-				"--buildpkgonly" not in self.myopts
-			# This fakedbapi instance will model the state that the vdb will
-			# have after new packages have been installed.
-			fakedb = PackageVirtualDbapi(vardb.settings)
-			if preload_installed_pkgs:
-				for pkg in vardb:
-					self.spinner.update()
-					# This triggers metadata updates via FakeVartree.
-					vardb.aux_get(pkg.cpv, [])
-					fakedb.cpv_inject(pkg)
-
-			# Now that the vardb state is cached in our FakeVartree,
-			# we won't be needing the real vartree cache for awhile.
-			# To make some room on the heap, clear the vardbapi
-			# caches.
-			trees[myroot]["vartree"].dbapi._clear_cache()
-			gc.collect()
-
-			dynamic_config.mydbapi[myroot] = fakedb
-			def graph_tree():
-				pass
-			graph_tree.dbapi = fakedb
-			self._graph_trees[myroot] = {}
-			dynamic_config._filtered_trees[myroot] = {}
-			# Substitute the graph tree for the vartree in dep_check() since we
-			# want atom selections to be consistent with package selections
-			# have already been made.
-			self._graph_trees[myroot]["porttree"]   = graph_tree
-			self._graph_trees[myroot]["vartree"]    = graph_tree
-			def filtered_tree():
-				pass
-			filtered_tree.dbapi = _dep_check_composite_db(depgraph, myroot)
-			dynamic_config._filtered_trees[myroot]["porttree"] = filtered_tree
-			dynamic_config._visible_pkgs[myroot] = PackageVirtualDbapi(vardb.settings)
-
-			# Passing in graph_tree as the vartree here could lead to better
-			# atom selections in some cases by causing atoms for packages that
-			# have been added to the graph to be preferred over other choices.
-			# However, it can trigger atom selections that result in
-			# unresolvable direct circular dependencies. For example, this
-			# happens with gwydion-dylan which depends on either itself or
-			# gwydion-dylan-bin. In case gwydion-dylan is not yet installed,
-			# gwydion-dylan-bin needs to be selected in order to avoid a
-			# an unresolvable direct circular dependency.
-			#
-			# To solve the problem described above, pass in "graph_db" so that
-			# packages that have been added to the graph are distinguishable
-			# from other available packages and installed packages. Also, pass
-			# the parent package into self._select_atoms() calls so that
-			# unresolvable direct circular dependencies can be detected and
-			# avoided when possible.
-			dynamic_config._filtered_trees[myroot]["graph_db"] = graph_tree.dbapi
-			dynamic_config._filtered_trees[myroot]["vartree"] = self.trees[myroot]["vartree"]
-
-			dbs = []
-			portdb = self.trees[myroot]["porttree"].dbapi
-			bindb  = self.trees[myroot]["bintree"].dbapi
-			vardb  = self.trees[myroot]["vartree"].dbapi
-			#               (db, pkg_type, built, installed, db_keys)
-			if "--usepkgonly" not in self.myopts:
-				db_keys = list(portdb._aux_cache_keys)
-				dbs.append((portdb, "ebuild", False, False, db_keys))
-			if "--usepkg" in self.myopts:
-				db_keys = list(bindb._aux_cache_keys)
-				dbs.append((bindb,  "binary", True, False, db_keys))
-			db_keys = list(trees[myroot]["vartree"].dbapi._aux_cache_keys)
-			dbs.append((vardb, "installed", True, True, db_keys))
-			dynamic_config._filtered_trees[myroot]["dbs"] = dbs
-			if "--usepkg" in self.myopts:
-				self.trees[myroot]["bintree"].populate(
-					"--getbinpkg" in self.myopts,
-					"--getbinpkgonly" in self.myopts)
-		del trees
 
 		self._required_set_names = set(["system", "world"])
 
 class _dynamic_depgraph_config(object):
 
-	def __init__(self, myparams):
+	def __init__(self, depgraph, myparams):
 		self.myparams = myparams
 		# Maps slot atom to package for each Package added to the graph.
 		self._slot_pkg_map = {}
@@ -178,11 +101,12 @@ class _dynamic_depgraph_config(object):
 		# Contains a filtered view of preferred packages that are selected
 		# from available repositories.
 		self._filtered_trees = {}
+		# Contains installed packages and new packages that have been added
+		# to the graph.
+		self._graph_trees = {}
 		# Caches visible packages returned from _select_package, for use in
 		# depgraph._iter_atoms_for_pkg() SLOT logic.
 		self._visible_pkgs = {}
-		# All Package instances
-		self._pkg_cache = {}
 		#contains the args created by select_files
 		self._initial_arg_list = []
 		self.digraph = portage.digraph()
@@ -232,6 +156,87 @@ class _dynamic_depgraph_config(object):
 		self._ignored_deps = []
 		self._highest_pkg_cache = {}
 
+		for myroot in depgraph._frozen_config.trees:
+			self._slot_pkg_map[myroot] = {}
+			vardb = depgraph._frozen_config.trees[myroot]["vartree"].dbapi
+			preload_installed_pkgs = \
+				"--nodeps" not in depgraph._frozen_config.myopts and \
+				"--buildpkgonly" not in depgraph._frozen_config.myopts
+			# This fakedbapi instance will model the state that the vdb will
+			# have after new packages have been installed.
+			fakedb = PackageVirtualDbapi(vardb.settings)
+			if preload_installed_pkgs:
+				for pkg in vardb:
+					depgraph._frozen_config.spinner.update()
+					# This triggers metadata updates via FakeVartree.
+					vardb.aux_get(pkg.cpv, [])
+					fakedb.cpv_inject(pkg)
+
+			# Now that the vardb state is cached in our FakeVartree,
+			# we won't be needing the real vartree cache for awhile.
+			# To make some room on the heap, clear the vardbapi
+			# caches.
+			depgraph._frozen_config._trees_orig[myroot
+				]["vartree"].dbapi._clear_cache()
+			gc.collect()
+
+			self.mydbapi[myroot] = fakedb
+			def graph_tree():
+				pass
+			graph_tree.dbapi = fakedb
+			self._graph_trees[myroot] = {}
+			self._filtered_trees[myroot] = {}
+			# Substitute the graph tree for the vartree in dep_check() since we
+			# want atom selections to be consistent with package selections
+			# have already been made.
+			self._graph_trees[myroot]["porttree"]   = graph_tree
+			self._graph_trees[myroot]["vartree"]    = graph_tree
+			def filtered_tree():
+				pass
+			filtered_tree.dbapi = _dep_check_composite_db(depgraph, myroot)
+			self._filtered_trees[myroot]["porttree"] = filtered_tree
+			self._visible_pkgs[myroot] = PackageVirtualDbapi(vardb.settings)
+
+			# Passing in graph_tree as the vartree here could lead to better
+			# atom selections in some cases by causing atoms for packages that
+			# have been added to the graph to be preferred over other choices.
+			# However, it can trigger atom selections that result in
+			# unresolvable direct circular dependencies. For example, this
+			# happens with gwydion-dylan which depends on either itself or
+			# gwydion-dylan-bin. In case gwydion-dylan is not yet installed,
+			# gwydion-dylan-bin needs to be selected in order to avoid a
+			# an unresolvable direct circular dependency.
+			#
+			# To solve the problem described above, pass in "graph_db" so that
+			# packages that have been added to the graph are distinguishable
+			# from other available packages and installed packages. Also, pass
+			# the parent package into self._select_atoms() calls so that
+			# unresolvable direct circular dependencies can be detected and
+			# avoided when possible.
+			self._filtered_trees[myroot]["graph_db"] = graph_tree.dbapi
+			self._filtered_trees[myroot]["vartree"] = \
+				depgraph._frozen_config.trees[myroot]["vartree"]
+
+			dbs = []
+			portdb = depgraph._frozen_config.trees[myroot]["porttree"].dbapi
+			bindb  = depgraph._frozen_config.trees[myroot]["bintree"].dbapi
+			vardb  = depgraph._frozen_config.trees[myroot]["vartree"].dbapi
+			#               (db, pkg_type, built, installed, db_keys)
+			if "--usepkgonly" not in depgraph._frozen_config.myopts:
+				db_keys = list(portdb._aux_cache_keys)
+				dbs.append((portdb, "ebuild", False, False, db_keys))
+			if "--usepkg" in depgraph._frozen_config.myopts:
+				db_keys = list(bindb._aux_cache_keys)
+				dbs.append((bindb,  "binary", True, False, db_keys))
+			db_keys = list(depgraph._frozen_config._trees_orig[myroot
+				]["vartree"].dbapi._aux_cache_keys)
+			dbs.append((vardb, "installed", True, True, db_keys))
+			self._filtered_trees[myroot]["dbs"] = dbs
+			if "--usepkg" in depgraph._frozen_config.myopts:
+				depgraph._frozen_config._trees_orig[myroot
+					]["bintree"].populate(
+					"--getbinpkg" in self.myopts,
+					"--getbinpkgonly" in self.myopts)
 
 class depgraph(object):
 
@@ -239,11 +244,14 @@ class depgraph(object):
 
 	_dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 	
-	def __init__(self, settings, trees, myopts, myparams, spinner):	
-		self._dynamic_config = _dynamic_depgraph_config(myparams)
-		self._frozen_config = _frozen_depgraph_config(settings, trees, \
-			myopts, spinner, self._dynamic_config, self)
-		
+	def __init__(self, settings, trees, myopts, myparams, spinner,
+		frozen_config=None):	
+		if frozen_config is None:
+			frozen_config = _frozen_depgraph_config(settings, trees,
+			myopts, spinner)
+		self._frozen_config = frozen_config
+		self._dynamic_config = _dynamic_depgraph_config(self, myparams)
+
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
 
@@ -1611,7 +1619,7 @@ class depgraph(object):
 		added to the graph or those that are installed and have
 		not been scheduled for replacement.
 		"""
-		kwargs["trees"] = self._frozen_config._graph_trees
+		kwargs["trees"] = self._dynamic_config._graph_trees
 		return self._select_atoms_highest_available(*pargs, **kwargs)
 
 	def _select_atoms_highest_available(self, root, depstring,
@@ -2141,7 +2149,7 @@ class depgraph(object):
 		those that are installed and have not been scheduled for
 		replacement.
 		"""
-		graph_db = self._frozen_config._graph_trees[root]["porttree"].dbapi
+		graph_db = self._dynamic_config._graph_trees[root]["porttree"].dbapi
 		matches = graph_db.match_pkgs(atom)
 		if not matches:
 			return None, None
@@ -2249,7 +2257,7 @@ class depgraph(object):
 		operation = "merge"
 		if installed or onlydeps:
 			operation = "nomerge"
-		pkg = self._dynamic_config._pkg_cache.get(
+		pkg = self._frozen_config._pkg_cache.get(
 			(type_name, root_config.root, cpv, operation))
 		if pkg is None and onlydeps and not installed:
 			# Maybe it already got pulled in as a "merge" node.
@@ -2268,7 +2276,7 @@ class depgraph(object):
 			pkg = Package(built=(type_name != "ebuild"), cpv=cpv,
 				installed=installed, metadata=metadata,
 				root_config=root_config, type_name=type_name)
-			self._dynamic_config._pkg_cache[pkg] = pkg
+			self._frozen_config._pkg_cache[pkg] = pkg
 		return pkg
 
 	def _validate_blockers(self):
@@ -2370,7 +2378,7 @@ class depgraph(object):
 							try:
 								success, atoms = portage.dep_check(depstr,
 									final_db, pkgsettings, myuse=pkg.use.enabled,
-									trees=self._frozen_config._graph_trees, myroot=myroot)
+									trees=self._dynamic_config._graph_trees, myroot=myroot)
 							except Exception, e:
 								if isinstance(e, SystemExit):
 									raise
@@ -2549,7 +2557,6 @@ class depgraph(object):
 							operation="uninstall",
 							root_config=inst_pkg.root_config,
 							type_name=inst_pkg.type_name)
-						self._dynamic_config._pkg_cache[uninst_task] = uninst_task
 						# Enforce correct merge order with a hard dep.
 						self._dynamic_config.digraph.addnode(uninst_task, inst_task,
 							priority=BlockerDepPriority.instance)
