@@ -142,10 +142,10 @@ class PackageSet(object):
 			for atom in atoms:
 				if match_from_list(atom, cpv_slot_list):
 					yield atom
-		if not pkg.metadata["PROVIDE"]:
+		provides = pkg.metadata['PROVIDE']
+		if not provides:
 			return
-		provides = flatten(use_reduce(paren_reduce(pkg.metadata["PROVIDE"]),
-			uselist=pkg.metadata["USE"].split()))
+		provides = provides.split()
 		for provide in provides:
 			provided_cp = dep_getkey(provide)
 			atoms = self._atommap.get(provided_cp)
