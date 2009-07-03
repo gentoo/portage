@@ -235,8 +235,8 @@ class _dynamic_depgraph_config(object):
 			if "--usepkg" in depgraph._frozen_config.myopts:
 				depgraph._frozen_config._trees_orig[myroot
 					]["bintree"].populate(
-					"--getbinpkg" in self.myopts,
-					"--getbinpkgonly" in self.myopts)
+					"--getbinpkg" in depgraph._frozen_config.myopts,
+					"--getbinpkgonly" in depgraph._frozen_config.myopts)
 
 class depgraph(object):
 
