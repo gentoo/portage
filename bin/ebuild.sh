@@ -1758,13 +1758,10 @@ _source_ebuild() {
 			rm "$PORTAGE_BUILDDIR/.ebuild_changed"
 	fi
 
-	# This next line is not the same as export RDEPEND=${RDEPEND:-${DEPEND}}
-	# That will test for unset *or* NULL (""). We want just to set for unset...
-	# turn off glob expansion from here on in to prevent *'s and ? in the
-	# DEPEND syntax from getting expanded :)
-	set -f
-	if [ "${RDEPEND-unset}" == "unset" ] ; then
-		export RDEPEND=${DEPEND}
+	[[ -n $EAPI ]] || EAPI=0
+
+	if has "$EAPI" 0 1 2 ; then
+		export RDEPEND=${RDEPEND-${DEPEND}}
 		debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
 	fi
 
@@ -1775,9 +1772,6 @@ _source_ebuild() {
 	PDEPEND="${PDEPEND} ${E_PDEPEND}"
 
 	unset ECLASS E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
-	set +f
-
-	[[ -n $EAPI ]] || EAPI=0
 
 	# alphabetically ordered by $EBUILD_PHASE value
 	local f valid_phases
