@@ -4757,9 +4757,11 @@ def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 	skip_unsatisfied = True
 	mergelist = mtimedb["resume"]["mergelist"]
 	dropped_tasks = set()
+	frozen_config = _frozen_depgraph_config(settings, trees,
+		myopts, spinner)
 	while True:
 		mydepgraph = depgraph(settings, trees,
-			myopts, myparams, spinner)
+			myopts, myparams, spinner, frozen_config=frozen_config)
 		try:
 			success = mydepgraph._loadResumeCommand(mtimedb["resume"],
 				skip_masked=skip_masked)
