@@ -12,6 +12,7 @@ __all__ = ['apply_permissions', 'apply_recursive_permissions',
 	'unique_array', 'varexpand', 'write_atomic', 'writedict', 'writemsg',
 	'writemsg_level', 'writemsg_stdout']
 
+import codecs
 import os
 import errno
 import logging
@@ -366,7 +367,10 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		# Workaround for avoiding a silent error in shlex that
 		# is triggered by a source statement at the end of the file without a
 		# trailing newline after the source statement
-		f = StringIO("\n".join(open(mycfg, 'r').readlines()) + "\n")
+		content = codecs.open(mycfg, mode='r', errors='replace').read()
+		if content[-1] != u'\n':
+			content += u'\n'
+		f = StringIO(content)
 	except IOError, e:
 		if e.errno == PermissionDenied.errno:
 			raise PermissionDenied(mycfg)
