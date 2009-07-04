@@ -865,10 +865,8 @@ def config_protect_check(trees):
 				msg += " for '%s'" % root
 			writemsg_level(msg, level=logging.WARN, noiselevel=-1)
 
-def profile_check(trees, myaction, myopts):
-	if myaction in ("help", "info", "sync"):
-		return os.EX_OK
-	elif "--version" in myopts:
+def profile_check(trees, myaction):
+	if myaction in ("help", "info", "sync", "version"):
 		return os.EX_OK
 	for root, root_trees in trees.iteritems():
 		if root_trees["root_config"].settings.profiles:
@@ -906,7 +904,7 @@ def emerge_main():
 	os.umask(022)
 	settings, trees, mtimedb = load_emerge_config()
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
-	rval = profile_check(trees, myaction, myopts)
+	rval = profile_check(trees, myaction)
 	if rval != os.EX_OK:
 		return rval
 
