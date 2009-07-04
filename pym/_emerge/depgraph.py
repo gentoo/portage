@@ -2007,7 +2007,7 @@ class depgraph(object):
 		selective = "selective" in self._dynamic_config.myparams
 		reinstall = False
 		noreplace = "--noreplace" in self._frozen_config.myopts
-		avoid_update = "--avoid-update" in self._frozen_config.myopts
+		avoid_update = "--update" not in self._frozen_config.myopts
 		# Behavior of the "selective" parameter depends on
 		# whether or not a package matches an argument atom.
 		# If an installed package provides an old-style
