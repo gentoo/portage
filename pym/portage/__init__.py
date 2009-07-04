@@ -6070,7 +6070,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					if not mybytes[-1]:
 						break
 				os.close(pr)
-				mybytes = "".join(mybytes)
+				mybytes = u''.join(unicode(chunk,
+					encoding='utf_8', errors='replace') for chunk in mybytes)
 				global auxdbkeys
 				for k, v in izip(auxdbkeys, mybytes.splitlines()):
 					dbkey[k] = v

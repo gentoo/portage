@@ -123,7 +123,9 @@ class EbuildMetadataPhase(SubProcess):
 	def _set_returncode(self, wait_retval):
 		SubProcess._set_returncode(self, wait_retval)
 		if self.returncode == os.EX_OK:
-			metadata_lines = "".join(self._raw_metadata).splitlines()
+			metadata_lines = u''.join(unicode(chunk,
+				encoding='utf_8', errors='replace')
+				for chunk in self._raw_metadata).splitlines()
 			if len(portage.auxdbkeys) != len(metadata_lines):
 				# Don't trust bash's returncode if the
 				# number of lines is incorrect.
