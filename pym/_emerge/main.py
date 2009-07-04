@@ -1080,7 +1080,7 @@ def emerge_main():
 		print "myopts", myopts
 
 	if not myaction and not myfiles and "--resume" not in myopts:
-		_emerge.help.help(myaction, myopts, portage.output.havecolor)
+		_emerge.help.help(myopts, portage.output.havecolor)
 		return 1
 
 	pretend = "--pretend" in myopts
