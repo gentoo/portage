@@ -267,6 +267,10 @@ class depgraph(object):
 
 	def _show_missed_update(self):
 
+		if '--quiet' in self._frozen_config.myopts and \
+			'--debug' not in self._frozen_config.myopts:
+			return
+
 		missed_updates = {}
 		for pkg, mask_reasons in \
 			self._dynamic_config._runtime_pkg_mask.iteritems():
