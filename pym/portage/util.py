@@ -869,6 +869,11 @@ class atomic_ofstream(ObjectProxy):
 		"""Opens a temporary filename.pid in the same directory as filename."""
 		ObjectProxy.__init__(self)
 		object.__setattr__(self, '_aborted', False)
+		if 'b' in mode:
+			open_func = open
+		else:
+			open_func = codecs.open
+			kargs.setdefault('errors', 'replace')
 
 		if follow_links:
 			canonical_path = os.path.realpath(filename)
@@ -876,7 +881,7 @@ class atomic_ofstream(ObjectProxy):
 			tmp_name = "%s.%i" % (canonical_path, os.getpid())
 			try:
 				object.__setattr__(self, '_file',
-					open(tmp_name, mode=mode, **kargs))
+					open_func(tmp_name, mode=mode, **kargs))
 				return
 			except IOError, e:
 				if canonical_path == filename:
@@ -887,7 +892,8 @@ class atomic_ofstream(ObjectProxy):
 
 		object.__setattr__(self, '_real_name', filename)
 		tmp_name = "%s.%i" % (filename, os.getpid())
-		object.__setattr__(self, '_file', open(tmp_name, mode=mode, **kargs))
+		object.__setattr__(self, '_file',
+			open_func(tmp_name, mode=mode, **kargs))
 
 	def _get_target(self):
 		return object.__getattribute__(self, '_file')
@@ -946,10 +952,10 @@ class atomic_ofstream(ObjectProxy):
 		if base_destructor is not None:
 			base_destructor(self)
 
-def write_atomic(file_path, content):
+def write_atomic(file_path, content, **kwargs):
 	f = None
 	try:
-		f = atomic_ofstream(file_path)
+		f = atomic_ofstream(file_path, **kwargs)
 		f.write(content)
 		f.close()
 	except (IOError, OSError), e:
