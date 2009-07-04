@@ -25,6 +25,7 @@ from portage.exception import PortageException, FileNotFound, \
 import portage.exception
 from portage.dep import isvalidatom
 from portage.proxy.objectproxy import ObjectProxy
+from portage.cache.mappings import UserDict
 
 try:
 	import cPickle as pickle
@@ -1043,7 +1044,7 @@ def ensure_dirs(dir_path, *args, **kwargs):
 	perms_modified = apply_permissions(dir_path, *args, **kwargs)
 	return created_dir or perms_modified
 
-class LazyItemsDict(dict):
+class LazyItemsDict(UserDict):
 	"""A mapping object that behaves like a standard dict except that it allows
 	for lazy initialization of values via callable objects.  Lazy items can be
 	overwritten and deleted just as normal items."""
@@ -1052,19 +1053,8 @@ class LazyItemsDict(dict):
 
 	def __init__(self, *args, **kwargs):
 
-		if len(args) > 1:
-			raise TypeError(
-				"expected at most 1 positional argument, got " + \
-				repr(len(args)))
-
-		dict.__init__(self)
 		self.lazy_items = {}
-
-		if args:
-			self.update(args[0])
-
-		if kwargs:
-			self.update(kwargs)
+		UserDict.__init__(self, *args, **kwargs)
 
 	def addLazyItem(self, item_key, value_callable, *pargs, **kwargs):
 		"""Add a lazy item for the given key.  When the item is requested,
@@ -1072,7 +1062,7 @@ class LazyItemsDict(dict):
 		self.lazy_items[item_key] = \
 			self._LazyItem(value_callable, pargs, kwargs, False)
 		# make it show up in self.keys(), etc...
-		dict.__setitem__(self, item_key, None)
+		UserDict.__setitem__(self, item_key, None)
 
 	def addLazySingleton(self, item_key, value_callable, *pargs, **kwargs):
 		"""This is like addLazyItem except value_callable will only be called
@@ -1080,7 +1070,7 @@ class LazyItemsDict(dict):
 		self.lazy_items[item_key] = \
 			self._LazyItem(value_callable, pargs, kwargs, True)
 		# make it show up in self.keys(), etc...
-		dict.__setitem__(self, item_key, None)
+		UserDict.__setitem__(self, item_key, None)
 
 	def update(self, *args, **kwargs):
 		if len(args) > 1:
@@ -1096,14 +1086,14 @@ class LazyItemsDict(dict):
 		elif isinstance(map_obj, LazyItemsDict):
 			for k in map_obj:
 				if k in map_obj.lazy_items:
-					dict.__setitem__(self, k, None)
+					UserDict.__setitem__(self, k, None)
 				else:
-					dict.__setitem__(self, k, map_obj[k])
+					UserDict.__setitem__(self, k, map_obj[k])
 			self.lazy_items.update(map_obj.lazy_items)
 		else:
-			dict.update(self, map_obj)
+			UserDict.update(self, map_obj)
 		if kwargs:
-			dict.update(self, kwargs)
+			UserDict.update(self, kwargs)
 
 	def __getitem__(self, item_key):
 		if item_key in self.lazy_items:
@@ -1120,37 +1110,21 @@ class LazyItemsDict(dict):
 			return result
 
 		else:
-			return dict.__getitem__(self, item_key)
-
-	def pop(self, key, *args):
-		"""
-		dict.pop() bypasses our overridden __getitem__ implementation, so we
-		also have to implement our own pop().
-		"""
-		if len(args) > 1:
-			raise TypeError("pop expected at most 2 arguments, got " + \
-				repr(1 + len(args)))
-		try:
-			value = self[key]
-		except KeyError:
-			if args:
-				return args[0]
-			raise
-		del self[key]
-		return value
+			return UserDict.__getitem__(self, item_key)
 
 	def __setitem__(self, item_key, value):
 		if item_key in self.lazy_items:
 			del self.lazy_items[item_key]
-		dict.__setitem__(self, item_key, value)
+		UserDict.__setitem__(self, item_key, value)
+
 	def __delitem__(self, item_key):
 		if item_key in self.lazy_items:
 			del self.lazy_items[item_key]
-		dict.__delitem__(self, item_key)
+		UserDict.__delitem__(self, item_key)
 
 	def clear(self):
 		self.lazy_items.clear()
-		dict.clear(self)
+		UserDict.clear(self)
 
 	def copy(self):
 		return self.__copy__()
@@ -1192,11 +1166,12 @@ class LazyItemsDict(dict):
 				except TypeError:
 					if not lazy_item.singleton:
 						raise
-					dict.__setitem__(result, k_copy, deepcopy(self[k], memo))
+					UserDict.__setitem__(result,
+						k_copy, deepcopy(self[k], memo))
 				else:
-					dict.__setitem__(result, k_copy, None)
+					UserDict.__setitem__(result, k_copy, None)
 			else:
-				dict.__setitem__(result, k_copy, deepcopy(self[k], memo))
+				UserDict.__setitem__(result, k_copy, deepcopy(self[k], memo))
 		return result
 
 	class _LazyItem(object):
