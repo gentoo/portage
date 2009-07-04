@@ -331,6 +331,8 @@ def action_build(settings, trees, mtimedb,
 					allow_backtracking = False
 					runtime_pkg_mask = None
 				else:
+					if show_spinner:
+						print "\b\b... done!"
 					mydepgraph.display_problems()
 					return 1
 			else:
