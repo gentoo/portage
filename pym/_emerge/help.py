@@ -11,7 +11,7 @@ def shorthelp():
 	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] < "+turquoise("system")+" | "+turquoise("world")+" >"
 	print "   "+turquoise("emerge")+" < "+turquoise("--sync")+" | "+turquoise("--metadata")+" | "+turquoise("--info")+" >"
 	print "   "+turquoise("emerge")+" "+turquoise("--resume")+" [ "+green("--pretend")+" | "+green("--ask")+" | "+green("--skipfirst")+" ]"
-	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("system")+" | "+green("world")+" | "+green("--sync")+" ] "
+	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("--verbose")+" ] "
 	print bold("Options:")+" "+green("-")+"["+green("abBcCdDefgGhjkKlnNoOpqPsStuvV")+"]"
 	print "          [ " + green("--color")+" < " + turquoise("y") + " | "+ turquoise("n")+" >            ] [ "+green("--columns")+"    ]"
 	print "          [ "+green("--complete-graph")+"             ] [ "+green("--deep")+"       ]"
