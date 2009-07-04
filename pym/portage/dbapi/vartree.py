@@ -4017,7 +4017,10 @@ class dblink(object):
 		return mydata
 
 	def setfile(self,fname,data):
-		write_atomic(os.path.join(self.dbdir, fname), data)
+		mode = 'w'
+		if fname == 'environment.bz2' or not isinstance(data, basestring):
+			mode = 'wb'
+		write_atomic(os.path.join(self.dbdir, fname), data, mode=mode)
 
 	def getelements(self,ename):
 		if not os.path.exists(self.dbdir+"/"+ename):
