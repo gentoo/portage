@@ -338,7 +338,7 @@ def action_build(settings, trees, mtimedb,
 			else:
 				break
 
-		del frozen_config
+		del frozen_config, runtime_pkg_mask
 
 		if show_spinner:
 			print "\b\b... done!"
