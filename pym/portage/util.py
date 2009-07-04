@@ -317,7 +317,7 @@ def grablines(myfilename,recursive=0):
 					os.path.join(myfilename, f), recursive))
 	else:
 		try:
-			myfile = open(myfilename, "r")
+			myfile = codecs.open(myfilename, mode='r', errors='replace')
 			mylines = myfile.readlines()
 			myfile.close()
 		except IOError, e:
