@@ -368,7 +368,7 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		# is triggered by a source statement at the end of the file without a
 		# trailing newline after the source statement
 		content = codecs.open(mycfg, mode='r', errors='replace').read()
-		if content[-1] != u'\n':
+		if content and content[-1] != u'\n':
 			content += u'\n'
 		f = StringIO(content)
 	except IOError, e:
