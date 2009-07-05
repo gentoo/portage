@@ -658,11 +658,6 @@ def expand_set_arguments(myfiles, myaction, root_config):
 	ARG_START = "{"
 	ARG_END = "}"
 
-	# WARNING: all operators must be of equal length
-	IS_OPERATOR = "/@"
-	DIFF_OPERATOR = "-@"
-	UNION_OPERATOR = "+@"
-
 	for i in range(0, len(myfiles)):
 		if myfiles[i].startswith(SETPREFIX):
 			start = 0
@@ -727,44 +722,7 @@ def expand_set_arguments(myfiles, myaction, root_config):
 	unmerge_actions = ("unmerge", "prune", "clean", "depclean")
 
 	for a in myfiles:
-		if a.startswith(SETPREFIX):
-			# support simple set operations (intersection, difference and union)
-			# on the commandline. Expressions are evaluated strictly left-to-right
-			if IS_OPERATOR in a or DIFF_OPERATOR in a or UNION_OPERATOR in a:
-				expression = a[len(SETPREFIX):]
-				expr_sets = []
-				expr_ops = []
-				while IS_OPERATOR in expression or DIFF_OPERATOR in expression or UNION_OPERATOR in expression:
-					is_pos = expression.rfind(IS_OPERATOR)
-					diff_pos = expression.rfind(DIFF_OPERATOR)
-					union_pos = expression.rfind(UNION_OPERATOR)
-					op_pos = max(is_pos, diff_pos, union_pos)
-					s1 = expression[:op_pos]
-					s2 = expression[op_pos+len(IS_OPERATOR):]
-					op = expression[op_pos:op_pos+len(IS_OPERATOR)]
-					if not s2 in sets:
-						display_missing_pkg_set(root_config, s2)
-						return (None, 1)
-					expr_sets.insert(0, s2)
-					expr_ops.insert(0, op)
-					expression = s1
-				if not expression in sets:
-					display_missing_pkg_set(root_config, expression)
-					return (None, 1)
-				expr_sets.insert(0, expression)
-				result = set(setconfig.getSetAtoms(expression))
-				for i in range(0, len(expr_ops)):
-					s2 = setconfig.getSetAtoms(expr_sets[i+1])
-					if expr_ops[i] == IS_OPERATOR:
-						result.intersection_update(s2)
-					elif expr_ops[i] == DIFF_OPERATOR:
-						result.difference_update(s2)
-					elif expr_ops[i] == UNION_OPERATOR:
-						result.update(s2)
-					else:
-						raise NotImplementedError("unknown set operator %s" % expr_ops[i])
-				newargs.extend(result)
-			else:			
+		if a.startswith(SETPREFIX):		
 				s = a[len(SETPREFIX):]
 				if s not in sets:
 					display_missing_pkg_set(root_config, s)
