@@ -78,13 +78,12 @@ class database(flat_hash.database):
 
 		new_content = []
 		for k in self.auxdbkey_order:
-			new_content.append(unicode(values.get(k, ''), errors='replace'))
+			new_content.append(values.get(k, u''))
 			new_content.append(u'\n')
 		for i in xrange(magic_line_count - len(self.auxdbkey_order)):
 			new_content.append(u'\n')
 		new_content = u''.join(new_content)
-		new_content = new_content.encode(
-			sys.getdefaultencoding(), 'backslashreplace')
+		new_content = new_content.encode('utf_8', 'replace')
 
 		new_fp = os.path.join(self.location, cpv)
 		try:
