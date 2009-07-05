@@ -2223,6 +2223,8 @@ class depgraph(object):
 
 		if len(matched_packages) > 1:
 			if avoid_update:
+				if existing_node is not None:
+					return existing_node, existing_node
 				for pkg in matched_packages:
 					if pkg.installed:
 						return pkg, existing_node
