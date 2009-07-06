@@ -662,6 +662,10 @@ ebuild_phase_with_hooks() {
 	done
 }
 
+dyn_pretend() {
+	ebuild_phase_with_hooks pkg_pretend
+}
+
 dyn_setup() {
 	ebuild_phase_with_hooks pkg_setup
 }
@@ -1079,6 +1083,7 @@ dyn_help() {
 	echo "than one option is specified, each will be executed in order."
 	echo
 	echo "  help        : show this help screen"
+	echo "  pretend     : execute package specific pretend actions"
 	echo "  setup       : execute package specific setup actions"
 	echo "  fetch       : download source archive(s) and patches"
 	echo "  digest      : create a manifest file for the package"
@@ -1346,6 +1351,10 @@ _ebuild_arg_to_phase() {
 	local phase_func=""
 
 	case "$arg" in
+		pretend)
+			! hasq $eapi 0 1 2 && \
+				phase_func=pkg_pretend
+			;;
 		setup)
 			phase_func=pkg_setup
 			;;
@@ -1802,10 +1811,15 @@ _source_ebuild() {
 				pkg_nofetch pkg_postinst pkg_postrm pkg_preinst pkg_prerm
 				pkg_setup src_test src_unpack"
 			;;
-		*)
+		2)
 			valid_phases="src_compile pkg_config src_configure pkg_info
 				src_install pkg_nofetch pkg_postinst pkg_postrm pkg_preinst
 				src_prepare pkg_prerm pkg_setup src_test src_unpack"
+			;;
+		*)
+			valid_phases="src_compile pkg_config src_configure pkg_info
+				src_install pkg_nofetch pkg_postinst pkg_postrm pkg_preinst
+				src_prepare pkg_prerm pkg_pretend pkg_setup src_test src_unpack"
 			;;
 	esac
 
@@ -2003,7 +2017,7 @@ ebuild_main() {
 		fi
 		export SANDBOX_ON="0"
 		;;
-	help|setup|preinst)
+	help|pretend|setup|preinst)
 		#pkg_setup needs to be out of the sandbox for tmp file creation;
 		#for example, awking and piping a file in /tmp requires a temp file to be created
 		#in /etc.  If pkg_setup is in the sandbox, both our lilo and apache ebuilds break.
