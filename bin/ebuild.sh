@@ -491,6 +491,11 @@ econf() {
 			done
 		fi
 
+		# EAPI=3 adds --disable-dependency-tracking to econf
+		if ! hasq "$EAPI" 0 1 2 ; then
+			set -- --disable-dependency-tracking "$@"
+		fi
+
 		# if the profile defines a location to install libs to aside from default, pass it on.
 		# if the ebuild passes in --libdir, they're responsible for the conf_libdir fun.
 		local CONF_LIBDIR LIBDIR_VAR="LIBDIR_${ABI}"
