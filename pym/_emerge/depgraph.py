@@ -2000,6 +2000,7 @@ class depgraph(object):
 		if not isinstance(atom, portage.dep.Atom):
 			atom = portage.dep.Atom(atom)
 		atom_cp = atom.cp
+		atom_set = InternalPackageSet(initial_atoms=(atom,))
 		existing_node = None
 		myeb = None
 		usepkgonly = "--usepkgonly" in self._frozen_config.myopts
@@ -2135,7 +2136,9 @@ class depgraph(object):
 						e_pkg = self._dynamic_config._slot_pkg_map[root].get(pkg.slot_atom)
 						if not e_pkg:
 							break
-						if portage.dep.match_from_list(atom, [e_pkg]):
+						# Use PackageSet.findAtomForPackage()
+						# for PROVIDE support.
+						if atom_set.findAtomForPackage(e_pkg):
 							if highest_version and \
 								e_pkg.cp == atom_cp and \
 								e_pkg < highest_version and \
