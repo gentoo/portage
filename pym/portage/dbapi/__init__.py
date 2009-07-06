@@ -23,7 +23,7 @@ class dbapi(object):
 	_category_re = re.compile(r'^\w[-.+\w]*$')
 	_pkg_dir_name_re = re.compile(r'^\w[-+\w]*$')
 	_categories = None
-	_iuse_implicit = None
+	_iuse_implicit_re = None
 	_use_mutable = False
 	_known_keys = frozenset(x for x in auxdbkeys
 		if not x.startswith("UNUSED_0"))
@@ -149,20 +149,20 @@ class dbapi(object):
 		1) Check for required IUSE intersection (need implicit IUSE here).
 		2) Check enabled/disabled flag states.
 		"""
-		if self._iuse_implicit is None:
-			self._iuse_implicit = self.settings._get_implicit_iuse()
+		if self._iuse_implicit_re is None:
+			self._iuse_implicit_re = re.compile("^(%s)$" % \
+				"|".join(self.settings._get_implicit_iuse()))
+		iuse_implicit_re = self._iuse_implicit_re
 		for cpv in cpv_iter:
 			try:
 				iuse, slot, use = self.aux_get(cpv, ["IUSE", "SLOT", "USE"])
 			except KeyError:
 				continue
 			use = use.split()
-			iuse = self._iuse_implicit.union(
-				re.escape(x.lstrip("+-")) for x in iuse.split())
-			iuse_re = re.compile("^(%s)$" % "|".join(iuse))
+			iuse = frozenset(x.lstrip('+-') for x in iuse.split())
 			missing_iuse = False
 			for x in atom.use.required:
-				if iuse_re.match(x) is None:
+				if x not in iuse and iuse_implicit_re.match(x) is None:
 					missing_iuse = True
 					break
 			if missing_iuse:
