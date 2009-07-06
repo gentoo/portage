@@ -12,6 +12,7 @@ __all__ = ['apply_permissions', 'apply_recursive_permissions',
 	'unique_array', 'varexpand', 'write_atomic', 'writedict', 'writemsg',
 	'writemsg_level', 'writemsg_stdout']
 
+import codecs
 import os
 import errno
 import logging
@@ -25,6 +26,7 @@ from portage.exception import PortageException, FileNotFound, \
 import portage.exception
 from portage.dep import isvalidatom
 from portage.proxy.objectproxy import ObjectProxy
+from portage.cache.mappings import UserDict
 from portage.const import EPREFIX, EPREFIX_LSTRIP
 
 try:
@@ -316,7 +318,7 @@ def grablines(myfilename,recursive=0):
 					os.path.join(myfilename, f), recursive))
 	else:
 		try:
-			myfile = open(myfilename, "r")
+			myfile = codecs.open(myfilename, mode='r', errors='replace')
 			mylines = myfile.readlines()
 			myfile.close()
 		except IOError, e:
@@ -353,65 +355,6 @@ class _tolerant_shlex(shlex.shlex):
 				(self.infile, str(e)), noiselevel=-1)
 			return (newfile, StringIO())
 
-class _insert_newline_eof(ObjectProxy):
-	"""
-	Read functions insert anywhere from 0 and 2 newlines just before eof.
-	This is useful as a workaround for avoiding a silent error in shlex that
-	is triggered by a source statement at the end of the file without a
-	trailing newline after the source statement.
-	"""
-
-	def __init__(self, *pargs, **kargs):
-		ObjectProxy.__init__(self)
-		object.__setattr__(self, '_file', open(*pargs, **kargs))
-
-	def _get_target(self):
-		return object.__getattribute__(self, '_file')
-
-	def __getattribute__(self, attr):
-		if attr in ('read', 'readline', 'readlines'):
-			return object.__getattribute__(self, attr)
-		return getattr(object.__getattribute__(self, '_file'), attr)
-
-	def read(self, *args):
-		try:
-			object.__getattribute__(self, '_got_eof')
-			return ""
-		except AttributeError:
-			pass
-		rval = object.__getattribute__(self, '_file').read(*args)
-		if rval and not args and rval[-1:] != "\n":
-			rval += "\n"
-		if not rval:
-			object.__setattr__(self, '_got_eof', True)
-			return "\n"
-		return rval
-
-	def readline(self, *args):
-		try:
-			object.__getattribute__(self, '_got_eof')
-			return ""
-		except AttributeError:
-			pass
-		rval = object.__getattribute__(self, '_file').readline(*args)
-		if rval and rval[-1:] != "\n":
-			rval += "\n"
-		if not rval:
-			object.__setattr__(self, '_got_eof', True)
-			rval = "\n"
-		return rval
-
-	def readlines(self, *args):
-		try:
-			object.__getattribute__(self, '_got_eof')
-			return []
-		except AttributeError:
-			pass
-		lines = object.__getattribute__(self, '_file').readlines(*args)
-		if lines and lines[-1][-1:] != "\n":
-			lines[-1] += "\n"
-		return lines
-
 def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	if isinstance(expand, dict):
 		# Some existing variable definitions have been
@@ -422,7 +365,13 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		expand_map = {}
 	mykeys = {}
 	try:
-		f = _insert_newline_eof(mycfg)
+		# Workaround for avoiding a silent error in shlex that
+		# is triggered by a source statement at the end of the file without a
+		# trailing newline after the source statement
+		content = codecs.open(mycfg, mode='r', errors='replace').read()
+		if content and content[-1] != u'\n':
+			content += u'\n'
+		f = StringIO(content)
 	except IOError, e:
 		if e.errno == PermissionDenied.errno:
 			raise PermissionDenied(mycfg)
@@ -921,6 +870,11 @@ class atomic_ofstream(ObjectProxy):
 		"""Opens a temporary filename.pid in the same directory as filename."""
 		ObjectProxy.__init__(self)
 		object.__setattr__(self, '_aborted', False)
+		if 'b' in mode:
+			open_func = open
+		else:
+			open_func = codecs.open
+			kargs.setdefault('errors', 'replace')
 
 		if follow_links:
 			canonical_path = os.path.realpath(filename)
@@ -928,7 +882,7 @@ class atomic_ofstream(ObjectProxy):
 			tmp_name = "%s.%i" % (canonical_path, os.getpid())
 			try:
 				object.__setattr__(self, '_file',
-					open(tmp_name, mode=mode, **kargs))
+					open_func(tmp_name, mode=mode, **kargs))
 				return
 			except IOError, e:
 				if canonical_path == filename:
@@ -939,7 +893,8 @@ class atomic_ofstream(ObjectProxy):
 
 		object.__setattr__(self, '_real_name', filename)
 		tmp_name = "%s.%i" % (filename, os.getpid())
-		object.__setattr__(self, '_file', open(tmp_name, mode=mode, **kargs))
+		object.__setattr__(self, '_file',
+			open_func(tmp_name, mode=mode, **kargs))
 
 	def _get_target(self):
 		return object.__getattribute__(self, '_file')
@@ -998,10 +953,10 @@ class atomic_ofstream(ObjectProxy):
 		if base_destructor is not None:
 			base_destructor(self)
 
-def write_atomic(file_path, content):
+def write_atomic(file_path, content, **kwargs):
 	f = None
 	try:
-		f = atomic_ofstream(file_path)
+		f = atomic_ofstream(file_path, **kwargs)
 		f.write(content)
 		f.close()
 	except (IOError, OSError), e:
@@ -1044,7 +999,7 @@ def ensure_dirs(dir_path, *args, **kwargs):
 	perms_modified = apply_permissions(dir_path, *args, **kwargs)
 	return created_dir or perms_modified
 
-class LazyItemsDict(dict):
+class LazyItemsDict(UserDict):
 	"""A mapping object that behaves like a standard dict except that it allows
 	for lazy initialization of values via callable objects.  Lazy items can be
 	overwritten and deleted just as normal items."""
@@ -1053,19 +1008,8 @@ class LazyItemsDict(dict):
 
 	def __init__(self, *args, **kwargs):
 
-		if len(args) > 1:
-			raise TypeError(
-				"expected at most 1 positional argument, got " + \
-				repr(len(args)))
-
-		dict.__init__(self)
 		self.lazy_items = {}
-
-		if args:
-			self.update(args[0])
-
-		if kwargs:
-			self.update(kwargs)
+		UserDict.__init__(self, *args, **kwargs)
 
 	def addLazyItem(self, item_key, value_callable, *pargs, **kwargs):
 		"""Add a lazy item for the given key.  When the item is requested,
@@ -1073,7 +1017,7 @@ class LazyItemsDict(dict):
 		self.lazy_items[item_key] = \
 			self._LazyItem(value_callable, pargs, kwargs, False)
 		# make it show up in self.keys(), etc...
-		dict.__setitem__(self, item_key, None)
+		UserDict.__setitem__(self, item_key, None)
 
 	def addLazySingleton(self, item_key, value_callable, *pargs, **kwargs):
 		"""This is like addLazyItem except value_callable will only be called
@@ -1081,7 +1025,7 @@ class LazyItemsDict(dict):
 		self.lazy_items[item_key] = \
 			self._LazyItem(value_callable, pargs, kwargs, True)
 		# make it show up in self.keys(), etc...
-		dict.__setitem__(self, item_key, None)
+		UserDict.__setitem__(self, item_key, None)
 
 	def update(self, *args, **kwargs):
 		if len(args) > 1:
@@ -1097,14 +1041,14 @@ class LazyItemsDict(dict):
 		elif isinstance(map_obj, LazyItemsDict):
 			for k in map_obj:
 				if k in map_obj.lazy_items:
-					dict.__setitem__(self, k, None)
+					UserDict.__setitem__(self, k, None)
 				else:
-					dict.__setitem__(self, k, map_obj[k])
+					UserDict.__setitem__(self, k, map_obj[k])
 			self.lazy_items.update(map_obj.lazy_items)
 		else:
-			dict.update(self, map_obj)
+			UserDict.update(self, map_obj)
 		if kwargs:
-			dict.update(self, kwargs)
+			UserDict.update(self, kwargs)
 
 	def __getitem__(self, item_key):
 		if item_key in self.lazy_items:
@@ -1121,20 +1065,21 @@ class LazyItemsDict(dict):
 			return result
 
 		else:
-			return dict.__getitem__(self, item_key)
+			return UserDict.__getitem__(self, item_key)
 
 	def __setitem__(self, item_key, value):
 		if item_key in self.lazy_items:
 			del self.lazy_items[item_key]
-		dict.__setitem__(self, item_key, value)
+		UserDict.__setitem__(self, item_key, value)
+
 	def __delitem__(self, item_key):
 		if item_key in self.lazy_items:
 			del self.lazy_items[item_key]
-		dict.__delitem__(self, item_key)
+		UserDict.__delitem__(self, item_key)
 
 	def clear(self):
 		self.lazy_items.clear()
-		dict.clear(self)
+		UserDict.clear(self)
 
 	def copy(self):
 		return self.__copy__()
@@ -1176,11 +1121,12 @@ class LazyItemsDict(dict):
 				except TypeError:
 					if not lazy_item.singleton:
 						raise
-					dict.__setitem__(result, k_copy, deepcopy(self[k], memo))
+					UserDict.__setitem__(result,
+						k_copy, deepcopy(self[k], memo))
 				else:
-					dict.__setitem__(result, k_copy, None)
+					UserDict.__setitem__(result, k_copy, None)
 			else:
-				dict.__setitem__(result, k_copy, deepcopy(self[k], memo))
+				UserDict.__setitem__(result, k_copy, deepcopy(self[k], memo))
 		return result
 
 	class _LazyItem(object):

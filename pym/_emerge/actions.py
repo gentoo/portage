@@ -42,7 +42,7 @@ from _emerge.clear_caches import clear_caches
 from _emerge.countdown import countdown
 from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.Dependency import Dependency
-from _emerge.depgraph import depgraph, resume_depgraph
+from _emerge.depgraph import depgraph, resume_depgraph, _frozen_depgraph_config
 from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
 from _emerge.emergelog import emergelog
 from _emerge.is_valid_package_atom import is_valid_package_atom
@@ -299,25 +299,51 @@ def action_build(settings, trees, mtimedb,
 			print darkgreen("emerge: It seems we have nothing to resume...")
 			return os.EX_OK
 
-		myparams = create_depgraph_params(myopts, myaction)
 		if "--quiet" not in myopts and "--nodeps" not in myopts:
 			print "Calculating dependencies  ",
 			sys.stdout.flush()
-		mydepgraph = depgraph(settings, trees, myopts, myparams, spinner)
-		try:
-			retval, favorites = mydepgraph.select_files(myfiles)
-		except portage.exception.PackageNotFound, e:
-			portage.writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
-			return 1
-		except portage.exception.PackageSetNotFound, e:
-			root_config = trees[settings["ROOT"]]["root_config"]
-			display_missing_pkg_set(root_config, e.value)
-			return 1
+
+		runtime_pkg_mask = None
+		allow_backtracking = True
+		backtracked = False
+		frozen_config = _frozen_depgraph_config(settings, trees,
+			myopts, spinner)
+		myparams = create_depgraph_params(myopts, myaction)
+		while True:
+			mydepgraph = depgraph(settings, trees, myopts, myparams, spinner,
+				frozen_config=frozen_config,
+				allow_backtracking=allow_backtracking,
+				runtime_pkg_mask=runtime_pkg_mask)
+			try:
+				retval, favorites = mydepgraph.select_files(myfiles)
+			except portage.exception.PackageNotFound, e:
+				portage.writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
+				return 1
+			except portage.exception.PackageSetNotFound, e:
+				root_config = trees[settings["ROOT"]]["root_config"]
+				display_missing_pkg_set(root_config, e.value)
+				return 1
+			if not retval:
+				if mydepgraph.need_restart():
+					runtime_pkg_mask = mydepgraph.get_runtime_pkg_mask()
+					backtracked = True
+				elif backtracked and allow_backtracking:
+					# Backtracking failed, so disable it and do
+					# a plain dep calculation + error message.
+					allow_backtracking = False
+					runtime_pkg_mask = None
+				else:
+					if show_spinner:
+						print "\b\b... done!"
+					mydepgraph.display_problems()
+					return 1
+			else:
+				break
+
+		del frozen_config, runtime_pkg_mask
+
 		if show_spinner:
 			print "\b\b... done!"
-		if not retval:
-			mydepgraph.display_problems()
-			return 1
 
 	if "--pretend" not in myopts and \
 		("--ask" in myopts or "--tree" in myopts or \

@@ -93,8 +93,10 @@ class _frozen_depgraph_config(object):
 
 class _dynamic_depgraph_config(object):
 
-	def __init__(self, depgraph, myparams):
-		self.myparams = myparams
+	def __init__(self, depgraph, myparams, allow_backtracking,
+		runtime_pkg_mask):
+		self.myparams = myparams.copy()
+		self._allow_backtracking = allow_backtracking
 		# Maps slot atom to package for each Package added to the graph.
 		self._slot_pkg_map = {}
 		# Maps nodes to the reasons they were selected for reinstallation.
@@ -157,6 +159,13 @@ class _dynamic_depgraph_config(object):
 		self._initially_unsatisfied_deps = []
 		self._ignored_deps = []
 		self._highest_pkg_cache = {}
+		if runtime_pkg_mask is None:
+			runtime_pkg_mask = {}
+		else:
+			runtime_pkg_mask = dict((k, v.copy()) for (k, v) in \
+				runtime_pkg_mask.iteritems())
+		self._runtime_pkg_mask = runtime_pkg_mask
+		self._need_restart = False
 
 		for myroot in depgraph._frozen_config.trees:
 			self._slot_pkg_map[myroot] = {}
@@ -247,15 +256,66 @@ class depgraph(object):
 	_dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 	
 	def __init__(self, settings, trees, myopts, myparams, spinner,
-		frozen_config=None):	
+		frozen_config=None, runtime_pkg_mask=None, allow_backtracking=False):
 		if frozen_config is None:
 			frozen_config = _frozen_depgraph_config(settings, trees,
 			myopts, spinner)
 		self._frozen_config = frozen_config
-		self._dynamic_config = _dynamic_depgraph_config(self, myparams)
+		self._dynamic_config = _dynamic_depgraph_config(self, myparams,
+			allow_backtracking, runtime_pkg_mask)
 
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
+
+	def _show_missed_update(self):
+
+		if '--quiet' in self._frozen_config.myopts and \
+			'--debug' not in self._frozen_config.myopts:
+			return
+
+		missed_updates = {}
+		for pkg, mask_reasons in \
+			self._dynamic_config._runtime_pkg_mask.iteritems():
+			if mask_reasons.get("slot conflict"):
+				if pkg.slot_atom in missed_updates:
+					other_pkg, parent_atoms = missed_updates[pkg.slot_atom]
+					if other_pkg > pkg:
+						continue
+				missed_updates[pkg.slot_atom] = \
+					(pkg, mask_reasons["slot conflict"])
+
+		if not missed_updates:
+			return
+
+		msg = []
+		msg.append("\n!!! One or more updates have been skipped due to " + \
+			"a dependency conflict:\n\n")
+
+		indent = "  "
+		for pkg, parent_atoms in missed_updates.itervalues():
+			msg.append(str(pkg.slot_atom))
+			msg.append("\n\n")
+
+			for parent, atom in parent_atoms:
+				msg.append(indent)
+				msg.append(str(pkg))
+
+				msg.append(" conflicts with\n")
+				for parent, atom in parent_atoms:
+					msg.append(2*indent)
+					if isinstance(parent,
+						(PackageArg, AtomArg)):
+						# For PackageArg and AtomArg types, it's
+						# redundant to display the atom attribute.
+						msg.append(str(parent))
+					else:
+						# Display the specific atom from SetArg or
+						# Package types.
+						msg.append("%s required by %s" % (atom, parent))
+					msg.append("\n")
+				msg.append("\n")
+		sys.stderr.write("".join(msg))
+		sys.stderr.flush()
 
 	def _show_slot_collision_notice(self):
 		"""Show an informational message advising the user to mask one of the
@@ -698,6 +758,31 @@ class depgraph(object):
 								(dep.parent, dep.atom))
 					return 1
 				else:
+					# A slot conflict has occurred. 
+					if self._dynamic_config._allow_backtracking and \
+						not self._accept_blocker_conflicts():
+						self._add_slot_conflict(pkg)
+						if dep.atom is not None and dep.parent is not None:
+							self._add_parent_atom(pkg, (dep.parent, dep.atom))
+						if arg_atoms:
+							for parent_atom in arg_atoms:
+								parent, atom = parent_atom
+								self._add_parent_atom(pkg, parent_atom)
+						self._process_slot_conflicts()
+
+						parent_atoms = \
+							self._dynamic_config._parent_atoms.get(pkg, set())
+						if parent_atoms:
+							parent_atoms = self._dynamic_config._slot_conflict_parent_atoms.intersection(parent_atoms)
+						if pkg >= existing_node:
+							# We only care about the parent atoms
+							# when they trigger a downgrade.
+							parent_atoms = set()
+
+						self._dynamic_config._runtime_pkg_mask.setdefault(
+							existing_node, {})["slot conflict"] = parent_atoms
+						self._dynamic_config._need_restart = True
+						return 0
 
 					# A slot collision has occurred.  Sometimes this coincides
 					# with unresolvable blockers, so the slot collision will be
@@ -1382,8 +1467,10 @@ class depgraph(object):
 					if isinstance(arg, PackageArg):
 						if not self._add_pkg(arg.package, dep) or \
 							not self._create_graph():
-							sys.stderr.write(("\n\n!!! Problem resolving " + \
-								"dependencies for %s\n") % arg.arg)
+							if not self._dynamic_config._need_restart:
+								sys.stderr.write(("\n\n!!! Problem " + \
+									"resolving dependencies for %s\n") % \
+									arg.arg)
 							return 0, myfavorites
 						continue
 					if debug:
@@ -1443,7 +1530,9 @@ class depgraph(object):
 					# so that later dep_check() calls can use it as feedback
 					# for making more consistent atom selections.
 					if not self._add_pkg(pkg, dep):
-						if isinstance(arg, SetArg):
+						if self._dynamic_config._need_restart:
+							pass
+						elif isinstance(arg, SetArg):
 							sys.stderr.write(("\n\n!!! Problem resolving " + \
 								"dependencies for %s from %s\n") % \
 								(atom, arg.arg))
@@ -1920,7 +2009,7 @@ class depgraph(object):
 		selective = "selective" in self._dynamic_config.myparams
 		reinstall = False
 		noreplace = "--noreplace" in self._frozen_config.myopts
-		avoid_update = "--avoid-update" in self._frozen_config.myopts
+		avoid_update = "--update" not in self._frozen_config.myopts
 		# Behavior of the "selective" parameter depends on
 		# whether or not a package matches an argument atom.
 		# If an installed package provides an old-style
@@ -1947,6 +2036,9 @@ class depgraph(object):
 
 				for pkg in self._iter_match_pkgs(root_config, pkg_type, atom, 
 					onlydeps=onlydeps):
+					if pkg in self._dynamic_config._runtime_pkg_mask:
+						# The package has been masked by the backtracking logic
+						continue
 					cpv = pkg.cpv
 					# Make --noreplace take precedence over --newuse.
 					if not pkg.installed and noreplace and \
@@ -4214,8 +4306,10 @@ class depgraph(object):
 		if self._dynamic_config._unsatisfied_blockers_for_display is not None:
 			self._show_unsatisfied_blockers(
 				self._dynamic_config._unsatisfied_blockers_for_display)
-		else:
+		elif self._dynamic_config._slot_collision_info:
 			self._show_slot_collision_notice()
+		else:
+			self._show_missed_update()
 
 		# TODO: Add generic support for "set problem" handlers so that
 		# the below warnings aren't special cases for world only.
@@ -4573,6 +4667,12 @@ class depgraph(object):
 		used for is when neglected dependencies need to be added to the
 		graph in order to avoid making a potentially unsafe decision.
 		"""
+
+	def need_restart(self):
+		return self._dynamic_config._need_restart
+
+	def get_runtime_pkg_mask(self):
+		return self._dynamic_config._runtime_pkg_mask.copy()
 
 class _dep_check_composite_db(portage.dbapi):
 	"""

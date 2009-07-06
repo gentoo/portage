@@ -2,7 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import copy
 from _emerge.SlotObject import SlotObject
+
 class AbstractDepPriority(SlotObject):
 	__slots__ = ("buildtime", "runtime", "runtime_post")
 
@@ -25,6 +27,4 @@ class AbstractDepPriority(SlotObject):
 		return self.__int__() >= other
 
 	def copy(self):
-		import copy
 		return copy.copy(self)
-

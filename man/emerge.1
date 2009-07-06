@@ -16,7 +16,7 @@ emerge \- Command\-line interface to the Portage system
 \fB\-\-search\fR \fIsomestring\fR
 .TP
 .BR emerge
-\fB\-\-help\fR [\fB\-\-sync\fR]
+\fB\-\-help\fR [\fB\-\-verbose\fR]
 .SH "DESCRIPTION"
 \fBemerge\fR is the definitive command\-line interface to the Portage
 system.  It is primarily used for installing packages, and \fBemerge\fR
@@ -89,15 +89,6 @@ arguments can be \fIebuilds\fR, \fItbz2s\fR, \fIsets\fR, or
 option if you want to install a tbz2\fR.  The packages are added
 to the \fBworld\fR file at the end, so that they are considered for
 later updating.
-.TP
-.BR "\-\-avoid\-update "
-Tries to prevent package updates. This may not always be
-possible since new packages or new dependencies due to USE
-flag changes may require a newer version of an installed
-package. Furthermore, this option may lead to slot conflicts
-(Multiple package instances within a single package slot
-have been pulled into the dependency graph). It is not
-possible to use this option in such a case.
 .TP
 .BR "\-\-clean " (\fB\-c\fR)
 Cleans up the system by examining the installed packages and removing older
@@ -373,9 +364,6 @@ A USE flag was turned off for a package.
 
 USE flags may be toggled by your profile as well as your USE and package.use
 settings.
-
-\fB\-\-avoid\-update\fR may prevent updates of installed packages without 
-use flag changes. Note that \fB\-\-avoid-\update\fR may lead to slot conflicts.
 .TP
 .BR "\-\-noconfmem"
 Causes portage to disregard merge records indicating that a config file

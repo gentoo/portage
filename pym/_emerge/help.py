@@ -11,7 +11,7 @@ def shorthelp():
 	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] < "+turquoise("system")+" | "+turquoise("world")+" >"
 	print "   "+turquoise("emerge")+" < "+turquoise("--sync")+" | "+turquoise("--metadata")+" | "+turquoise("--info")+" >"
 	print "   "+turquoise("emerge")+" "+turquoise("--resume")+" [ "+green("--pretend")+" | "+green("--ask")+" | "+green("--skipfirst")+" ]"
-	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("system")+" | "+green("world")+" | "+green("--sync")+" ] "
+	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("--verbose")+" ] "
 	print bold("Options:")+" "+green("-")+"["+green("abBcCdDefgGhjkKlnNoOpqPsStuvV")+"]"
 	print "          [ " + green("--color")+" < " + turquoise("y") + " | "+ turquoise("n")+" >            ] [ "+green("--columns")+"    ]"
 	print "          [ "+green("--complete-graph")+"             ] [ "+green("--deep")+"       ]"
@@ -21,17 +21,17 @@ def shorthelp():
 	print "          [ "+green("--reinstall ")+turquoise("changed-use")+"      ] [ " + green("--with-bdeps")+" < " + turquoise("y") + " | "+ turquoise("n")+" >         ]"
 	print bold("Actions:")+"  [ "+green("--depclean")+" | "+green("--list-sets")+" | "+green("--search")+" | "+green("--sync")+" | "+green("--version")+"        ]"
 
-def help(myaction,myopts,havecolor=1):
+def help(myopts, havecolor=1):
 	# TODO: Implement a wrap() that accounts for console color escape codes.
 	from textwrap import wrap
 	desc_left_margin = 14
 	desc_indent = desc_left_margin * " "
 	desc_width = 80 - desc_left_margin - 5
-	if not myaction and ("--verbose" not in myopts):
+	if "--verbose" not in myopts:
 		shorthelp()
 		print
 		print "   For more help try 'emerge --help --verbose' or consult the man page."
-	elif not myaction:
+	else:
 		shorthelp()
 		print
 		print turquoise("Help (this screen):")
@@ -195,6 +195,20 @@ def help(myaction,myopts,havecolor=1):
 		print "                emerge -S applet"
 		print "                emerge -S 'perl.*module'"
 		print
+		print "       "+green("--sync")
+		print "              Tells emerge to update the Portage tree as specified in"
+		print "              The SYNC variable found in /etc/make.conf.  By default, SYNC instructs"
+		print "              emerge to perform an rsync-style update with rsync.gentoo.org."
+		print
+		print "              'emerge-webrsync' exists as a helper app to emerge --sync, providing a"
+		print "              method to receive the entire portage tree as a tarball that can be"
+		print "              extracted and used. First time syncs would benefit greatly from this."
+		print
+		print "              "+turquoise("WARNING:")
+		print "              If using our rsync server, emerge will clean out all files that do not"
+		print "              exist on it, including ones that you may have created. The exceptions"
+		print "              to this are the distfiles, local and packages directories."
+		print
 		print "       "+green("--unmerge")+" ("+green("-C")+" short option)"
 		print "              "+turquoise("WARNING: This action can remove important packages!")
 		print "              Removes all matching packages. This does no checking of"
@@ -234,17 +248,6 @@ def help(myaction,myopts,havecolor=1):
 		print "              the first choice.  Note that the input buffer is not cleared prior"
 		print "              to the prompt, so an accidental press of the \"Enter\" key at any"
 		print "              time prior to the prompt will be interpreted as a choice!"
-		print
-		print "       "+green("--avoid-update")
-		desc = "Tries to prevent package updates. This may not always be" + \
-			" possible since new packages or new dependencies due to USE" + \
-			" flag changes may require a newer version of an installed" + \
-			" package. Furthermore, this option may lead to slot conflicts" + \
-			" (Multiple package instances within a single package slot" + \
-			" have been pulled into the dependency graph). It is not" + \
-			" possible to use this option in such a case."
-		for line in wrap(desc, desc_width):
-			print desc_indent + line
 		print
 		print "       "+green("--buildpkg")+" ("+green("-b")+" short option)"
 		desc = "Tells emerge to build binary packages for all ebuilds processed in" + \
@@ -499,21 +502,4 @@ def help(myaction,myopts,havecolor=1):
 		print "              actions and 'y' for the --depclean action. This setting can be"
 		print "              added to EMERGE_DEFAULT_OPTS (see make.conf(5)) and later"
 		print "              overridden via the command line."
-		print
-	elif myaction == "sync":
-		print
-		print bold("Usage: ")+turquoise("emerge")+" "+turquoise("--sync")
-		print
-		print "       'emerge --sync' tells emerge to update the Portage tree as specified in"
-		print "       The SYNC variable found in /etc/make.conf.  By default, SYNC instructs"
-		print "       emerge to perform an rsync-style update with rsync.gentoo.org."
-		print
-		print "       'emerge-webrsync' exists as a helper app to emerge --sync, providing a"
-		print "       method to receive the entire portage tree as a tarball that can be"
-		print "       extracted and used. First time syncs would benefit greatly from this."
-		print
-		print "       "+turquoise("WARNING:")
-		print "       If using our rsync server, emerge will clean out all files that do not"
-		print "       exist on it, including ones that you may have created. The exceptions"
-		print "       to this are the distfiles, local and packages directories."
 		print

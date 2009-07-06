@@ -165,18 +165,6 @@ class database(fs_template.FsBased):
 			if k not in internal_columns:
 				d[k] = result[0][column_index]
 
-		# As a temporary workaround for bug #263081, convert unicode strings
-		# to raw byte strings. This avoids potential unicode errors that can
-		# be triggered elsewhere when attempting to join unicode strings with
-		# raw byte strings. TODO: Convert all string handling code to use
-		# unicode strings instead of raw byte strings (required for py3k
-		# compatibility).
-		for k, v in d.iteritems():
-			try:
-				d[k] = str(v)
-			except UnicodeEncodeError:
-				pass
-
 		return d
 
 	def _setitem(self, cpv, values):

@@ -67,7 +67,7 @@ options=[
 "--emptytree",
 "--fetchonly",    "--fetch-all-uri",
 "--getbinpkg",    "--getbinpkgonly",
-"--help",         "--ignore-default-opts",
+"--ignore-default-opts",
 "--keep-going",
 "--noconfmem",
 "--newuse",
@@ -78,7 +78,6 @@ options=[
 "--searchdesc",   "--selective",
 "--skipfirst",
 "--tree",
-"--avoid-update",
 "--update",
 "--usepkg",       "--usepkgonly",
 "--verbose",
@@ -216,7 +215,6 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 				if icount > 0:
 					out.einfo("Processed %d info files." % (icount,))
 
-
 def display_preserved_libs(vardbapi):
 	MAX_DISPLAY = 3
 
@@ -287,11 +285,10 @@ def display_preserved_libs(vardbapi):
 					print colorize("WARN", " * ") + "     used by %d other files" % (len(consumers) - MAX_DISPLAY)
 		print "Use " + colorize("GOOD", "emerge @preserved-rebuild") + " to rebuild packages using these libraries"
 
-
 def post_emerge(root_config, myopts, mtimedb, retval):
 	"""
 	Misc. things to run at the end of a merge session.
-	
+
 	Update Info Files
 	Update Config Files
 	Update News Items
@@ -360,13 +357,12 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 				portage.locks.unlockdir(vdb_lock)
 
 	chk_updated_cfg_files(target_root + EPREFIX, config_protect)
-	
+
 	display_news_notification(root_config, myopts)
 	if retval in (None, os.EX_OK) or (not "--pretend" in myopts):
 		display_preserved_libs(vardbapi)	
 
 	sys.exit(retval)
-
 
 def multiple_actions(action1, action2):
 	sys.stderr.write("\n!!! Multiple actions requested... Please choose one only.\n")
@@ -452,7 +448,7 @@ def parse_opts(tmpcmdline, silent=False):
 	global options, shortmapping
 
 	actions = frozenset([
-		"clean", "config", "depclean",
+		"clean", "config", "depclean", "help",
 		"info", "list-sets", "metadata",
 		"prune", "regen",  "search",
 		"sync",  "unmerge", "version",
@@ -679,7 +675,7 @@ def expand_set_arguments(myfiles, myaction, root_config):
 	IS_OPERATOR = "/@"
 	DIFF_OPERATOR = "-@"
 	UNION_OPERATOR = "+@"
-	
+
 	for i in range(0, len(myfiles)):
 		if myfiles[i].startswith(SETPREFIX):
 			start = 0
@@ -692,7 +688,7 @@ def expand_set_arguments(myfiles, myaction, root_config):
 				if start > 0 and start < end:
 					namepart = x[:start]
 					argpart = x[start+1:end]
-				
+
 					# TODO: implement proper quoting
 					args = argpart.split(",")
 					options = {}
@@ -709,13 +705,13 @@ def expand_set_arguments(myfiles, myaction, root_config):
 					newset += x
 					x = ""
 			myfiles[i] = SETPREFIX+newset
-				
+
 	sets = setconfig.getSets()
 
 	# display errors that occured while loading the SetConfig instance
 	for e in setconfig.errors:
 		print colorize("BAD", "Error during set creation: %s" % e)
-	
+
 	# emerge relies on the existance of sets with names "world" and "system"
 	required_sets = ("world", "system")
 	missing_sets = []
@@ -882,10 +878,8 @@ def config_protect_check(trees):
 				msg += " for '%s'" % root
 			writemsg_level(msg, level=logging.WARN, noiselevel=-1)
 
-def profile_check(trees, myaction, myopts):
-	if myaction in ("info", "sync"):
-		return os.EX_OK
-	elif "--version" in myopts or "--help" in myopts:
+def profile_check(trees, myaction):
+	if myaction in ("help", "info", "sync", "version"):
 		return os.EX_OK
 	for root, root_trees in trees.iteritems():
 		if root_trees["root_config"].settings.profiles:
@@ -923,7 +917,7 @@ def emerge_main():
 	os.umask(022)
 	settings, trees, mtimedb = load_emerge_config()
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
-	rval = profile_check(trees, myaction, myopts)
+	rval = profile_check(trees, myaction)
 	if rval != os.EX_OK:
 		return rval
 
@@ -1074,11 +1068,6 @@ def emerge_main():
 			noiselevel=-1)
 		return 1
 
-	if "--avoid-update" in myopts and "--update" in myopts:
-		writemsg("!!! conflicting options given: " + \
-			"--update and --avoid-update\n", noiselevel=-1)
-		return 1
-
 	if settings.get("PORTAGE_DEBUG", "") == "1":
 		spinner.update = spinner.update_quiet
 		portage.debug=1
@@ -1095,8 +1084,8 @@ def emerge_main():
 			settings.profile_path, settings["CHOST"],
 			trees[settings["ROOT"]]["vartree"].dbapi)
 		return 0
-	elif "--help" in myopts:
-		_emerge.help.help(myaction, myopts, portage.output.havecolor)
+	elif myaction == "help":
+		_emerge.help.help(myopts, portage.output.havecolor)
 		return 0
 
 	if "--debug" in myopts:
@@ -1104,7 +1093,7 @@ def emerge_main():
 		print "myopts", myopts
 
 	if not myaction and not myfiles and "--resume" not in myopts:
-		_emerge.help.help(myaction, myopts, portage.output.havecolor)
+		_emerge.help.help(myopts, portage.output.havecolor)
 		return 1
 
 	pretend = "--pretend" in myopts
