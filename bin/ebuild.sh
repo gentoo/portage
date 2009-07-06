@@ -632,6 +632,24 @@ _eapi2_src_compile() {
 	fi
 }
 
+_eapi3_src_install() {
+	if [[ -f Makefile || -f GNUmakefile || -f makefile ]] ; then
+		emake DESTDIR="${D}" install
+	fi
+
+	if [[ -z $DOCS ]] ; then
+		local d
+		for d in README* ChangeLog AUTHORS NEWS TODO CHANGES \
+				THANKS BUGS FAQ CREDITS CHANGELOG ; do
+			[[ -s "${d}" ]] && dodoc "${d}"
+		done
+	elif [[ $(declare -p DOCS) == "declare -a "* ]] ; then
+		dodoc "${DOCS[@]}"
+	else
+		dodoc ${DOCS}
+	fi
+}
+
 ebuild_phase() {
 	declare -F "$1" >/dev/null && qa_call $1
 }
@@ -1420,6 +1438,9 @@ _ebuild_phase_funcs() {
 
 			declare -F src_compile >/dev/null || \
 				src_compile() { _eapi2_src_compile "$@" ; }
+
+			[[ $eapi == 2 ]] || declare -F src_install >/dev/null || \
+				src_install() { _eapi3_src_install "$@" ; }
 
 			if hasq $phase_func $default_phases ; then
 
