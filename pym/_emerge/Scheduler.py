@@ -924,7 +924,9 @@ class Scheduler(PollScheduler):
 					noiselevel=-1)
 			writemsg(prefix + "\n", noiselevel=-1)
 
-		return rval
+		if self._failed_pkgs_all:
+			return 1
+		return os.EX_OK
 
 	def _elog_listener(self, mysettings, key, logentries, fulltext):
 		errors = portage.elog.filter_loglevels(logentries, ["ERROR"])
