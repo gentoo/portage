@@ -5749,13 +5749,12 @@ def _prepare_workdir(mysettings):
 			(mysettings["CATEGORY"], mysettings["PF"], logid_time))
 		del logid_path, logid_time
 	else:
-		# When sesandbox is enabled, only log if PORT_LOGDIR is explicitly
-		# enabled since it is possible that local SELinux security policies
-		# do not allow ouput to be piped out of the sesandbox domain.
-		if not (mysettings.selinux_enabled() and \
-			"sesandbox" in mysettings.features):
-			mysettings["PORTAGE_LOG_FILE"] = os.path.join(
-				mysettings["T"], "build.log")
+		# NOTE: When sesandbox is enabled, the local SELinux security policies
+		# may not allow output to be piped out of the sesandbox domain. The
+		# current policy will allow it to work when a pty is available, but
+		# not through a normal pipe. See bug #162404.
+		mysettings["PORTAGE_LOG_FILE"] = os.path.join(
+			mysettings["T"], "build.log")
 
 def _doebuild_exit_status_check(mydo, settings):
 	"""
