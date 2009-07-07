@@ -249,6 +249,13 @@ def help(myopts, havecolor=1):
 		print "              to the prompt, so an accidental press of the \"Enter\" key at any"
 		print "              time prior to the prompt will be interpreted as a choice!"
 		print
+		print "        " + green("--binpkg-respect-use") + \
+			" < " + turquoise("y") + " | " + turquoise("n") + " >"
+		desc = "Tells emerge to ignore binary packages if their use flags" + \
+			" don't match the current configuration. (default: 'n')"
+		for line in wrap(desc, desc_width):
+			print desc_indent + line
+		print
 		print "       "+green("--buildpkg")+" ("+green("-b")+" short option)"
 		desc = "Tells emerge to build binary packages for all ebuilds processed in" + \
 			" addition to actually merging the packages. Useful for maintainers" + \

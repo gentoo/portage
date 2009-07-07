@@ -249,6 +249,10 @@ it is interpreted as acceptance of the first choice.  Note that the input
 buffer is not cleared prior to the prompt, so an accidental press of the
 "Enter" key at any time prior to the prompt will be interpreted as a choice!\fR
 .TP
+.BR "\-\-binpkg\-respect\-use < y | n >"
+Tells emerge to ignore binary packages if their use flags
+don't match the current configuration. (default: \'n\')
+.TP
 .BR "\-\-buildpkg " (\fB\-b\fR)
 Tells emerge to build binary packages for all ebuilds processed in
 addition to actually merging the packages.  Useful for maintainers

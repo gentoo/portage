@@ -215,15 +215,21 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 				if icount > 0:
 					out.einfo("Processed %d info files." % (icount,))
 
-def display_preserved_libs(vardbapi):
+def display_preserved_libs(vardbapi, myopts):
 	MAX_DISPLAY = 3
 
 	# Ensure the registry is consistent with existing files.
 	vardbapi.plib_registry.pruneNonExisting()
 
 	if vardbapi.plib_registry.hasEntries():
-		print
-		print colorize("WARN", "!!!") + " existing preserved libs:"
+		if "--quiet" in myopts:
+			print
+			print colorize("WARN", "!!!") + " existing preserved libs found"
+			return
+		else:
+			print
+			print colorize("WARN", "!!!") + " existing preserved libs:"
+
 		plibdata = vardbapi.plib_registry.getPreservedLibs()
 		linkmap = vardbapi.linkmap
 		consumer_map = {}
@@ -360,7 +366,7 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 
 	display_news_notification(root_config, myopts)
 	if retval in (None, os.EX_OK) or (not "--pretend" in myopts):
-		display_preserved_libs(vardbapi)	
+		display_preserved_libs(vardbapi, myopts)	
 
 	sys.exit(retval)
 
@@ -381,6 +387,7 @@ def insert_optional_args(args):
 	jobs_opts = ("-j", "--jobs")
 	default_arg_opts = {
 		'--deselect'   : ('n',),
+		'--binpkg-respect-use'   : ('n', 'y',),
 		'--root-deps'  : ('rdeps',),
 	}
 	arg_stack = args[:]
@@ -499,6 +506,14 @@ def parse_opts(tmpcmdline, silent=False):
 			"type":"choice",
 			"choices":["changed-use"]
 		},
+
+		"--binpkg-respect-use": {
+			"help"    : "discard binary packages if their use flags \
+				don't match the current configuration",
+			"type"    : "choice",
+			"choices" : ("True", "y", "n")
+		},
+
 		"--root": {
 		 "help"   : "specify the target root filesystem for merging packages",
 		 "action" : "store"
@@ -539,6 +554,11 @@ def parse_opts(tmpcmdline, silent=False):
 
 	if myoptions.deselect == "True":
 		myoptions.deselect = True
+
+	if myoptions.binpkg_respect_use in ("y", "True",):
+		myoptions.binpkg_respect_use = True
+	else:
+		myoptions.binpkg_respect_use = None
 
 	if myoptions.root_deps == "True":
 		myoptions.root_deps = True

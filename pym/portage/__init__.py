@@ -4942,6 +4942,9 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 	if mydo == "prepare" and eapi in ("0", "1"):
 		return os.EX_OK
 
+	if mydo == "pretend" and eapi in ("0", "1", "2"):
+		return os.EX_OK
+
 	kwargs = actionmap[mydo]["args"]
 	mysettings["EBUILD_PHASE"] = mydo
 	_doebuild_exit_status_unlink(
@@ -5907,7 +5910,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 	clean_phases = ("clean", "cleanrm")
 	validcommands = ["help","clean","prerm","postrm","cleanrm","preinst","postinst",
-	                "config", "info", "setup", "depend",
+	                "config", "info", "setup", "depend", "pretend",
 	                "fetch", "fetchall", "digest",
 	                "unpack", "prepare", "configure", "compile", "test",
 	                "install", "rpm", "qmerge", "merge",
@@ -6476,6 +6479,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		# args are for the to spawn function
 		actionmap = {
+"pretend":  {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":1,         "sesandbox":0,         "fakeroot":0}},
 "setup":    {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":1,         "sesandbox":0,         "fakeroot":0}},
 "unpack":   {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox, "fakeroot":0}},
 "prepare":  {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox, "fakeroot":0}},
