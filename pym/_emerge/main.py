@@ -202,15 +202,21 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 				if icount > 0:
 					out.einfo("Processed %d info files." % (icount,))
 
-def display_preserved_libs(vardbapi):
+def display_preserved_libs(vardbapi, myopts):
 	MAX_DISPLAY = 3
 
 	# Ensure the registry is consistent with existing files.
 	vardbapi.plib_registry.pruneNonExisting()
 
 	if vardbapi.plib_registry.hasEntries():
-		print
-		print colorize("WARN", "!!!") + " existing preserved libs:"
+		if "--quiet" in myopts:
+			print
+			print colorize("WARN", "!!!") + " existing preserved libs found"
+			return
+		else:
+			print
+			print colorize("WARN", "!!!") + " existing preserved libs:"
+
 		plibdata = vardbapi.plib_registry.getPreservedLibs()
 		linkmap = vardbapi.linkmap
 		consumer_map = {}
@@ -347,7 +353,7 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 
 	display_news_notification(root_config, myopts)
 	if retval in (None, os.EX_OK) or (not "--pretend" in myopts):
-		display_preserved_libs(vardbapi)	
+		display_preserved_libs(vardbapi, myopts)	
 
 	sys.exit(retval)
 
