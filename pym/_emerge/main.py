@@ -368,6 +368,7 @@ def insert_optional_args(args):
 	jobs_opts = ("-j", "--jobs")
 	default_arg_opts = {
 		'--deselect'   : ('n',),
+		'--binpkg-respect-use'   : ('n', 'y',),
 		'--root-deps'  : ('rdeps',),
 	}
 	arg_stack = args[:]
@@ -486,6 +487,14 @@ def parse_opts(tmpcmdline, silent=False):
 			"type":"choice",
 			"choices":["changed-use"]
 		},
+
+		"--binpkg-respect-use": {
+			"help"    : "discard binary packages if their use flags \
+				don't match the current configuration",
+			"type"    : "choice",
+			"choices" : ("True", "y", "n")
+		},
+
 		"--root": {
 		 "help"   : "specify the target root filesystem for merging packages",
 		 "action" : "store"
@@ -526,6 +535,11 @@ def parse_opts(tmpcmdline, silent=False):
 
 	if myoptions.deselect == "True":
 		myoptions.deselect = True
+
+	if myoptions.binpkg_respect_use in ("y", "True",):
+		myoptions.binpkg_respect_use = True
+	else:
+		myoptions.binpkg_respect_use = None
 
 	if myoptions.root_deps == "True":
 		myoptions.root_deps = True

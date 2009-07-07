@@ -572,7 +572,8 @@ class depgraph(object):
 		orig_use, orig_iuse, cur_use, cur_iuse):
 		"""Return a set of flags that trigger reinstallation, or None if there
 		are no such flags."""
-		if "--newuse" in self._frozen_config.myopts:
+		if "--newuse" in self._frozen_config.myopts or \
+			"--binpkg-respect-use" in self._frozen_config.myopts:
 			flags = set(orig_iuse.symmetric_difference(
 				cur_iuse).difference(forced_flags))
 			flags.update(orig_iuse.intersection(orig_use).symmetric_difference(
@@ -2155,7 +2156,8 @@ class depgraph(object):
 					# reject the built package if necessary.
 					if built and not installed and \
 						("--newuse" in self._frozen_config.myopts or \
-						"--reinstall" in self._frozen_config.myopts):
+						"--reinstall" in self._frozen_config.myopts or \
+						"--binpkg-respect-use" in self._frozen_config.myopts):
 						iuses = pkg.iuse.all
 						old_use = pkg.use.enabled
 						if myeb:
