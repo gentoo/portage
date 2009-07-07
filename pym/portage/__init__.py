@@ -7204,6 +7204,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 							preferred_in_graph.append(this_choice)
 						else:
 							other.append(this_choice)
+					else:
+						preferred_in_graph.append(this_choice)
 				else:
 					preferred_non_installed.append(this_choice)
 		else:
