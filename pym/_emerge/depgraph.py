@@ -758,7 +758,19 @@ class depgraph(object):
 					return 1
 				else:
 					# A slot conflict has occurred. 
+					# The existing node should not already be in
+					# runtime_pkg_mask, since that would trigger an
+					# infinite backtracking loop.
 					if self._dynamic_config._allow_backtracking and \
+						existing_node in \
+						self._dynamic_config._runtime_pkg_mask:
+						if "--debug" in self._frozen_config.myopts:
+							writemsg(
+								"!!! backtracking loop detected: %s %s\n" % \
+								(existing_node,
+								self._dynamic_config._runtime_pkg_mask[
+								existing_node]), noiselevel=-1)
+					elif self._dynamic_config._allow_backtracking and \
 						not self._accept_blocker_conflicts():
 						self._add_slot_conflict(pkg)
 						if dep.atom is not None and dep.parent is not None:
