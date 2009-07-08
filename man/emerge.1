@@ -446,6 +446,10 @@ be enabled under normal circumstances. For currently supported
 \fBDEPEND\fR variable. However, behavior may change for new
 \fBEAPI\fRs when related extensions are added in the future.
 .TP
+.BR "\-\-selective"
+This is similar to the \fB\-\-noreplace\fR option, except that it
+does not take precedence over options such as \fB\-\-newuse\fR.
+.TP
 .BR "\-\-skipfirst"
 This option is only valid when used with \fB\-\-resume\fR.  It removes the 
 first package in the resume list. Dependencies are recalculated for

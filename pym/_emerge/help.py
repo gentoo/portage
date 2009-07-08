@@ -467,6 +467,12 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print desc_indent + line
 		print
+		print "       " + green("--selective")
+		desc = "This is similar to the --noreplace option, except that it " + \
+			"does not take precedence over options such as --newuse."
+		for line in wrap(desc, desc_width):
+			print desc_indent + line
+		print
 		print "       "+green("--skipfirst")
 		desc = "This option is only valid when " + \
 			"used with --resume.  It removes the " + \
