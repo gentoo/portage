@@ -370,13 +370,29 @@ def insert_optional_args(args):
 	this feature natively.
 	"""
 
+	class valid_integers(object):
+		def __contains__(self, s):
+			try:
+				int(s)
+			except (ValueError, OverflowError):
+				return False
+			return True
+
+	valid_integers = valid_integers()
+
 	new_args = []
-	jobs_opts = ("-j", "--jobs")
+
 	default_arg_opts = {
 		'--deselect'   : ('n',),
 		'--binpkg-respect-use'   : ('n', 'y',),
+		'--jobs'       : valid_integers,
 		'--root-deps'  : ('rdeps',),
 	}
+
+	short_arg_opts = {
+		'j' : valid_integers,
+	}
+
 	arg_stack = args[:]
 	arg_stack.reverse()
 	while arg_stack:
@@ -392,42 +408,54 @@ def insert_optional_args(args):
 				new_args.append('True')
 			continue
 
-		short_job_opt = bool("j" in arg and arg[:1] == "-" and arg[:2] != "--")
-		if not (short_job_opt or arg in jobs_opts):
+		if arg[:1] != "-" or arg[:2] == "--":
 			new_args.append(arg)
+			continue
+
+		match = None
+		for k, arg_choices in short_arg_opts.iteritems():
+			if k in arg:
+				match = k
+				break
+
+		if match is None:
+			new_args.append(arg)
+			continue
+
+		if len(arg) == 2:
+			new_args.append(arg)
+			if arg_stack and arg_stack[-1] in arg_choices:
+				new_args.append(arg_stack.pop())
+			else:
+				# insert default argument
+				new_args.append('True')
 			continue
 
 		# Insert an empty placeholder in order to
 		# satisfy the requirements of optparse.
 
-		new_args.append("--jobs")
-		job_count = None
+		new_args.append("-" + match)
+		opt_arg = None
 		saved_opts = None
-		if short_job_opt and len(arg) > 2:
-			if arg[:2] == "-j":
-				try:
-					job_count = int(arg[2:])
-				except ValueError:
-					saved_opts = arg[2:]
-			else:
-				job_count = "True"
-				saved_opts = arg[1:].replace("j", "")
 
-		if job_count is None and arg_stack:
-			try:
-				job_count = int(arg_stack[-1])
-			except ValueError:
-				pass
+		if arg[1:2] == match:
+			if arg[2:] in arg_choices:
+				opt_arg = arg[2:]
 			else:
-				# Discard the job count from the stack
-				# since we're consuming it here.
-				arg_stack.pop()
+				saved_opts = arg[2:]
+				opt_arg = "True"
+		else:
+			saved_opts = arg[1:].replace(match, "")
+			opt_arg = "True"
 
-		if job_count is None:
-			# unlimited number of jobs
+		if opt_arg is None and arg_stack and \
+			arg_stack[-1] in arg_choices:
+			opt_arg = arg_stack.pop()
+
+		if opt_arg is None:
 			new_args.append("True")
 		else:
-			new_args.append(str(job_count))
+			new_args.append(opt_arg)
 
 		if saved_opts is not None:
 			new_args.append("-" + saved_opts)
@@ -467,6 +495,8 @@ def parse_opts(tmpcmdline, silent=False):
 		},
 
 		"--jobs": {
+
+			"shortopt" : "-j",
 
 			"help"   : "Specifies the number of packages to build " + \
 				"simultaneously.",
@@ -532,7 +562,11 @@ def parse_opts(tmpcmdline, silent=False):
 			dest=myopt.lstrip("--").replace("-", "_"), default=False)
 
 	for myopt, kwargs in argument_options.iteritems():
-		parser.add_option(myopt,
+		shortopt = kwargs.pop("shortopt", None)
+		args = [myopt]
+		if shortopt is not None:
+			args.append(shortopt)
+		parser.add_option(*args,
 			dest=myopt.lstrip("--").replace("-", "_"), **kwargs)
 
 	tmpcmdline = insert_optional_args(tmpcmdline)
