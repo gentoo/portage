@@ -566,8 +566,8 @@ def parse_opts(tmpcmdline, silent=False):
 		args = [myopt]
 		if shortopt is not None:
 			args.append(shortopt)
-		parser.add_option(*args,
-			dest=myopt.lstrip("--").replace("-", "_"), **kwargs)
+		parser.add_option(dest=myopt.lstrip("--").replace("-", "_"),
+			*args, **kwargs)
 
 	tmpcmdline = insert_optional_args(tmpcmdline)
 
