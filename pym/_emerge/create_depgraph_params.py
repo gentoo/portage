@@ -31,7 +31,7 @@ def create_depgraph_params(myopts, myaction):
 	if "--nodeps" in myopts:
 		myparams.pop("recurse", None)
 	if "--deep" in myopts:
-		myparams["deep"] = True
+		myparams["deep"] = myopts["--deep"]
 	if "--complete-graph" in myopts:
 		myparams["complete"] = True
 	return myparams

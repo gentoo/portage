@@ -611,8 +611,8 @@ class depgraph(object):
 		buildpkgonly = "--buildpkgonly" in self._frozen_config.myopts
 		nodeps = "--nodeps" in self._frozen_config.myopts
 		empty = "empty" in self._dynamic_config.myparams
-		deep = "deep" in self._dynamic_config.myparams
-		update = "--update" in self._frozen_config.myopts and dep.depth <= 1
+		deep = self._dynamic_config.myparams.get("deep", 0)
+		recurse = empty or deep is True or dep.depth <= deep
 		if dep.blocker:
 			if not buildpkgonly and \
 				not nodeps and \
@@ -648,7 +648,7 @@ class depgraph(object):
 		# available for optimization of merge order.
 		if dep.priority.satisfied and \
 			not dep_pkg.installed and \
-			not (existing_node or empty or deep or update):
+			not (existing_node or recurse):
 			myarg = None
 			if dep.root == self._frozen_config.target_root:
 				try:
@@ -857,18 +857,20 @@ class depgraph(object):
 		    emerge --deep <pkgspec>; we need to recursively check dependencies of pkgspec
 		    If we are in --nodeps (no recursion) mode, we obviously only check 1 level of dependencies.
 		"""
+		if arg_atoms:
+			depth = 0
+		pkg.depth = depth
+		deep = self._dynamic_config.myparams.get("deep", 0)
+		empty = "empty" in self._dynamic_config.myparams
+		recurse = empty or deep is True or depth + 1 <= deep
 		dep_stack = self._dynamic_config._dep_stack
 		if "recurse" not in self._dynamic_config.myparams:
 			return 1
-		elif pkg.installed and \
-			"deep" not in self._dynamic_config.myparams:
+		elif pkg.installed and not recurse:
 			dep_stack = self._dynamic_config._ignored_deps
 
 		self._frozen_config.spinner.update()
 
-		if arg_atoms:
-			depth = 0
-		pkg.depth = depth
 		if not previously_added:
 			dep_stack.append(pkg)
 		return 1
@@ -2296,7 +2298,7 @@ class depgraph(object):
 		# accounted for.
 		self._select_atoms = self._select_atoms_from_graph
 		self._select_package = self._select_pkg_from_graph
-		already_deep = "deep" in self._dynamic_config.myparams
+		already_deep = self._dynamic_config.myparams.get("deep") is True
 		if not already_deep:
 			self._dynamic_config.myparams["deep"] = True
 

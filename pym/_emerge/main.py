@@ -49,7 +49,7 @@ options=[
 "--buildpkg",     "--buildpkgonly",
 "--changelog",    "--columns",
 "--complete-graph",
-"--debug",        "--deep",
+"--debug",
 "--digest",
 "--emptytree",
 "--fetchonly",    "--fetch-all-uri",
@@ -75,7 +75,7 @@ shortmapping={
 "a":"--ask",
 "b":"--buildpkg",  "B":"--buildpkgonly",
 "c":"--clean",     "C":"--unmerge",
-"d":"--debug",     "D":"--deep",
+"d":"--debug",
 "e":"--emptytree",
 "f":"--fetchonly", "F":"--fetch-all-uri",
 "g":"--getbinpkg", "G":"--getbinpkgonly",
@@ -383,6 +383,7 @@ def insert_optional_args(args):
 	new_args = []
 
 	default_arg_opts = {
+		'--deep'       : valid_integers,
 		'--deselect'   : ('n',),
 		'--binpkg-respect-use'   : ('n', 'y',),
 		'--jobs'       : valid_integers,
@@ -390,6 +391,7 @@ def insert_optional_args(args):
 	}
 
 	short_arg_opts = {
+		'D' : valid_integers,
 		'j' : valid_integers,
 	}
 
@@ -488,6 +490,18 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices":("y", "n")
 		},
 
+		"--deep": {
+
+			"shortopt" : "-D",
+
+			"help"   : "Specifies how deep to recurse into dependencies " + \
+				"of packages given as arguments. If no argument is given, " + \
+				"depth is unlimited. Default behavior is to skip " + \
+				"dependencies of installed packages.",
+
+			"action" : "store"
+		},
+
 		"--deselect": {
 			"help"    : "remove atoms from the world file",
 			"type"    : "choice",
@@ -583,6 +597,24 @@ def parse_opts(tmpcmdline, silent=False):
 
 	if myoptions.root_deps == "True":
 		myoptions.root_deps = True
+
+	if myoptions.deep is not None:
+		deep = None
+		if myoptions.deep == "True":
+			deep = True
+		else:
+			try:
+				deep = int(myoptions.deep)
+			except (OverflowError, ValueError):
+				deep = -1
+
+		if deep is not True and deep < 0:
+			deep = None
+			if not silent:
+				writemsg("!!! Invalid --deep parameter: '%s'\n" % \
+					(myoptions.deep,), noiselevel=-1)
+
+		myoptions.deep = deep
 
 	if myoptions.jobs:
 		jobs = None
