@@ -2298,7 +2298,7 @@ class depgraph(object):
 		self._select_package = self._select_pkg_from_graph
 		already_deep = "deep" in self._dynamic_config.myparams
 		if not already_deep:
-			self._dynamic_config.myparams.add("deep")
+			self._dynamic_config.myparams["deep"] = True
 
 		for root in self._frozen_config.roots:
 			required_set_names = self._frozen_config._required_set_names.copy()
@@ -3384,7 +3384,7 @@ class depgraph(object):
 		if have_uninstall_task and \
 			not complete and \
 			not unsolvable_blockers:
-			self._dynamic_config.myparams.add("complete")
+			self._dynamic_config.myparams["complete"] = True
 			raise self._serialize_tasks_retry("")
 
 		if unsolvable_blockers and \
@@ -4523,7 +4523,7 @@ class depgraph(object):
 			self._dynamic_config._scheduler_graph = self._dynamic_config.digraph
 		else:
 			self._select_package = self._select_pkg_from_graph
-			self._dynamic_config.myparams.add("selective")
+			self._dynamic_config.myparams["selective"] = True
 			# Always traverse deep dependencies in order to account for
 			# potentially unsatisfied dependencies of installed packages.
 			# This is necessary for correct --keep-going or --resume operation
@@ -4536,7 +4536,7 @@ class depgraph(object):
 			# deep depenedencies of a scheduled build, that build needs to
 			# be cancelled. In order for this type of situation to be
 			# recognized, deep traversal of dependencies is required.
-			self._dynamic_config.myparams.add("deep")
+			self._dynamic_config.myparams["deep"] = True
 
 			favorites = resume_data.get("favorites")
 			args_set = self._dynamic_config._sets["args"]
