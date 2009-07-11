@@ -281,6 +281,13 @@ class depgraph(object):
 						continue
 				missed_updates[pkg.slot_atom] = \
 					(pkg, mask_reasons["slot conflict"])
+			elif mask_reasons.get("missing dependency"):
+				if pkg.slot_atom in missed_updates:
+					other_pkg, parent_atoms = missed_updates[pkg.slot_atom]
+					if other_pkg > pkg:
+						continue
+				missed_updates[pkg.slot_atom] = \
+					(pkg, mask_reasons["missing dependency"])
 
 		if not missed_updates:
 			return
@@ -640,6 +647,24 @@ class depgraph(object):
 				return 1
 			self._dynamic_config._unsatisfied_deps_for_display.append(
 				((dep.root, dep.atom), {"myparent":dep.parent}))
+
+			# The parent node should not already be in
+			# runtime_pkg_mask, since that would trigger an
+			# infinite backtracking loop.
+			if self._dynamic_config._allow_backtracking:
+				if dep.parent in self._dynamic_config._runtime_pkg_mask:
+					if "--debug" in self._frozen_config.myopts:
+						writemsg(
+							"!!! backtracking loop detected: %s %s\n" % \
+							(dep.parent,
+							self._dynamic_config._runtime_pkg_mask[
+							dep.parent]), noiselevel=-1)
+				else:
+					self._dynamic_config._runtime_pkg_mask.setdefault(
+						dep.parent, {})["missing dependency"] = \
+							set([(dep.parent, dep.atom)])
+					self._dynamic_config._need_restart = True
+
 			return 0
 		# In some cases, dep_check will return deps that shouldn't
 		# be proccessed any further, so they are identified and
