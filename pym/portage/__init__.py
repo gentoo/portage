@@ -2387,25 +2387,18 @@ class config(object):
 		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
 		# that they are consistent. For optimal performance, use slice
 		# comparison instead of startswith().
-		use_expand_split = self.get("USE_EXPAND", "").split()
+		use_expand_split = set(self.get("USE_EXPAND", "").split())
 		lazy_use_expand = self._lazy_use_expand(use, self.usemask,
 			iuse_implicit, use_expand_split, self._use_expand_dict)
-		use_expand_iuse = set()
 		for key in use_expand_split:
 			prefix = key.lower() + '_'
 			prefix_len = len(prefix)
-			expand_flags = set( x[prefix_len:] for x in use \
+			use_expand_iuse = set( x for x in iuse_implicit \
 				if x[:prefix_len] == prefix )
-			use_expand_iuse.clear()
-			for x in iuse_implicit:
-				if x[:prefix_len] == prefix:
-					use_expand_iuse.add(x)
 			# * means to enable everything in IUSE that's not masked
-			if use_expand_iuse and '*' in expand_flags:
-				for x in use_expand_iuse:
-					if x not in usemask:
-						use.add(x)
 			if use_expand_iuse:
+				if prefix + '*' in use:
+					use.update( use_expand_iuse.difference(usemask) )
 				self.configdict['env'].addLazySingleton(
 					key, lazy_use_expand.__getitem__, key)
 			else:
