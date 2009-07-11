@@ -274,20 +274,15 @@ class depgraph(object):
 		missed_updates = {}
 		for pkg, mask_reasons in \
 			self._dynamic_config._runtime_pkg_mask.iteritems():
-			if mask_reasons.get("slot conflict"):
-				if pkg.slot_atom in missed_updates:
-					other_pkg, parent_atoms = missed_updates[pkg.slot_atom]
-					if other_pkg > pkg:
-						continue
-				missed_updates[pkg.slot_atom] = \
-					(pkg, mask_reasons["slot conflict"])
-			elif mask_reasons.get("missing dependency"):
-				if pkg.slot_atom in missed_updates:
-					other_pkg, parent_atoms = missed_updates[pkg.slot_atom]
-					if other_pkg > pkg:
-						continue
-				missed_updates[pkg.slot_atom] = \
-					(pkg, mask_reasons["missing dependency"])
+			if pkg.slot_atom in missed_updates:
+				other_pkg, parent_atoms = missed_updates[pkg.slot_atom]
+				if other_pkg > pkg:
+					continue
+			for mask_type, parent_atoms in mask_reasons.iteritems():
+				if not parent_atoms:
+					continue
+				missed_updates[pkg.slot_atom] = (pkg, parent_atoms)
+				break
 
 		if not missed_updates:
 			return
