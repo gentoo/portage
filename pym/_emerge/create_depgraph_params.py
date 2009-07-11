@@ -12,26 +12,27 @@ def create_depgraph_params(myopts, myaction):
 	# empty:     pretend nothing is merged
 	# complete:  completely account for all known dependencies
 	# remove:    build graph for use in removing packages
-	myparams = set(["recurse"])
+	myparams = {"recurse" : True}
 
 	if myaction == "remove":
-		myparams.add("remove")
-		myparams.add("complete")
+		myparams["remove"] = True
+		myparams["complete"] = True
 		return myparams
 
 	if "--update" in myopts or \
 		"--newuse" in myopts or \
 		"--reinstall" in myopts or \
-		"--noreplace" in myopts:
-		myparams.add("selective")
+		"--noreplace" in myopts or \
+		"--selective" in myopts:
+		myparams["selective"] = True
 	if "--emptytree" in myopts:
-		myparams.add("empty")
-		myparams.discard("selective")
+		myparams["empty"] = True
+		myparams.pop("selective", None)
 	if "--nodeps" in myopts:
-		myparams.discard("recurse")
+		myparams.pop("recurse", None)
 	if "--deep" in myopts:
-		myparams.add("deep")
+		myparams["deep"] = myopts["--deep"]
 	if "--complete-graph" in myopts:
-		myparams.add("complete")
+		myparams["complete"] = True
 	return myparams
 

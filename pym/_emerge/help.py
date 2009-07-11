@@ -220,8 +220,7 @@ def help(myopts, havecolor=1):
 		print "       "+green("--update")+" ("+green("-u")+" short option)"
 		print "              Updates packages to the best version available, which may not"
 		print "              always be the highest version number due to masking for testing"
-		print "              and development. This will also update direct dependencies which"
-		print "              may not be what you want. Package atoms specified on the command"
+		print "              and development. Package atoms specified on the command"
 		print "              line are greedy, meaning that unspecific atoms may match multiple"
 		print "              installed versions of slotted packages."
 		print
@@ -314,7 +313,8 @@ def help(myopts, havecolor=1):
 		print "              --debug is great for finding bash syntax errors as providing"
 		print "              very verbose information about the dependency and build process."
 		print
-		print "       "+green("--deep")+" ("+green("-D")+" short option)"
+		print "       "+green("--deep") + " " + turquoise("[DEPTH]") + \
+			" (" + green("-D") + " short option)"
 		print "              This flag forces emerge to consider the entire dependency tree of"
 		print "              packages, instead of checking only the immediate dependencies of"
 		print "              the packages. As an example, this catches updates in libraries"
@@ -464,6 +464,12 @@ def help(myopts, havecolor=1):
 			"EAPI values, the build-time dependencies are specified in the " + \
 			"DEPEND variable. However, behavior may change for new " + \
 			"EAPIs when related extensions are added in the future."
+		for line in wrap(desc, desc_width):
+			print desc_indent + line
+		print
+		print "       " + green("--selective")
+		desc = "This is similar to the --noreplace option, except that it " + \
+			"does not take precedence over options such as --newuse."
 		for line in wrap(desc, desc_width):
 			print desc_indent + line
 		print

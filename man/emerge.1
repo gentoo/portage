@@ -225,8 +225,8 @@ use \fB\-\-depclean\fR or \fB\-\-prune\fR.
 .TP
 .BR "\-\-update " (\fB\-u\fR)
 Updates packages to the best version available, which may not always be the 
-highest version number due to masking for testing and development.  This will 
-also update direct dependencies which may not be what you want.  Package atoms
+highest version number due to masking for testing and development.
+Package atoms
 specified on the command line are greedy, meaning that unspecific atoms may
 match multiple installed versions of slotted packages.
 .TP
@@ -301,7 +301,7 @@ mode the bash build environment will run with the \-x option, causing
 it to output verbose debugging information to stdout.  This also enables
 a plethora of other output (mostly dependency resolution messages).
 .TP
-.BR "\-\-deep " (\fB\-D\fR)
+.BR "\-\-deep [DEPTH] " (\fB\-D\fR)
 This flag forces
 \fBemerge\fR to consider the entire dependency tree of packages,
 instead of checking only the immediate dependencies of the packages.
@@ -445,6 +445,10 @@ be enabled under normal circumstances. For currently supported
 \fBEAPI\fR values, the build-time dependencies are specified in the
 \fBDEPEND\fR variable. However, behavior may change for new
 \fBEAPI\fRs when related extensions are added in the future.
+.TP
+.BR "\-\-selective"
+This is similar to the \fB\-\-noreplace\fR option, except that it
+does not take precedence over options such as \fB\-\-newuse\fR.
 .TP
 .BR "\-\-skipfirst"
 This option is only valid when used with \fB\-\-resume\fR.  It removes the 

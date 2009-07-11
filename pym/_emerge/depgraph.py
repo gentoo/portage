@@ -613,8 +613,8 @@ class depgraph(object):
 		buildpkgonly = "--buildpkgonly" in self._frozen_config.myopts
 		nodeps = "--nodeps" in self._frozen_config.myopts
 		empty = "empty" in self._dynamic_config.myparams
-		deep = "deep" in self._dynamic_config.myparams
-		update = "--update" in self._frozen_config.myopts and dep.depth <= 1
+		deep = self._dynamic_config.myparams.get("deep", 0)
+		recurse = empty or deep is True or dep.depth <= deep
 		if dep.blocker:
 			if not buildpkgonly and \
 				not nodeps and \
@@ -650,7 +650,7 @@ class depgraph(object):
 		# available for optimization of merge order.
 		if dep.priority.satisfied and \
 			not dep_pkg.installed and \
-			not (existing_node or empty or deep or update):
+			not (existing_node or recurse):
 			myarg = None
 			if dep.root == self._frozen_config.target_root:
 				try:
@@ -760,7 +760,19 @@ class depgraph(object):
 					return 1
 				else:
 					# A slot conflict has occurred. 
+					# The existing node should not already be in
+					# runtime_pkg_mask, since that would trigger an
+					# infinite backtracking loop.
 					if self._dynamic_config._allow_backtracking and \
+						existing_node in \
+						self._dynamic_config._runtime_pkg_mask:
+						if "--debug" in self._frozen_config.myopts:
+							writemsg(
+								"!!! backtracking loop detected: %s %s\n" % \
+								(existing_node,
+								self._dynamic_config._runtime_pkg_mask[
+								existing_node]), noiselevel=-1)
+					elif self._dynamic_config._allow_backtracking and \
 						not self._accept_blocker_conflicts():
 						self._add_slot_conflict(pkg)
 						if dep.atom is not None and dep.parent is not None:
@@ -847,18 +859,20 @@ class depgraph(object):
 		    emerge --deep <pkgspec>; we need to recursively check dependencies of pkgspec
 		    If we are in --nodeps (no recursion) mode, we obviously only check 1 level of dependencies.
 		"""
+		if arg_atoms:
+			depth = 0
+		pkg.depth = depth
+		deep = self._dynamic_config.myparams.get("deep", 0)
+		empty = "empty" in self._dynamic_config.myparams
+		recurse = empty or deep is True or depth + 1 <= deep
 		dep_stack = self._dynamic_config._dep_stack
 		if "recurse" not in self._dynamic_config.myparams:
 			return 1
-		elif pkg.installed and \
-			"deep" not in self._dynamic_config.myparams:
+		elif pkg.installed and not recurse:
 			dep_stack = self._dynamic_config._ignored_deps
 
 		self._frozen_config.spinner.update()
 
-		if arg_atoms:
-			depth = 0
-		pkg.depth = depth
 		if not previously_added:
 			dep_stack.append(pkg)
 		return 1
@@ -2286,9 +2300,9 @@ class depgraph(object):
 		# accounted for.
 		self._select_atoms = self._select_atoms_from_graph
 		self._select_package = self._select_pkg_from_graph
-		already_deep = "deep" in self._dynamic_config.myparams
+		already_deep = self._dynamic_config.myparams.get("deep") is True
 		if not already_deep:
-			self._dynamic_config.myparams.add("deep")
+			self._dynamic_config.myparams["deep"] = True
 
 		for root in self._frozen_config.roots:
 			required_set_names = self._frozen_config._required_set_names.copy()
@@ -3374,7 +3388,7 @@ class depgraph(object):
 		if have_uninstall_task and \
 			not complete and \
 			not unsolvable_blockers:
-			self._dynamic_config.myparams.add("complete")
+			self._dynamic_config.myparams["complete"] = True
 			raise self._serialize_tasks_retry("")
 
 		if unsolvable_blockers and \
@@ -4513,7 +4527,7 @@ class depgraph(object):
 			self._dynamic_config._scheduler_graph = self._dynamic_config.digraph
 		else:
 			self._select_package = self._select_pkg_from_graph
-			self._dynamic_config.myparams.add("selective")
+			self._dynamic_config.myparams["selective"] = True
 			# Always traverse deep dependencies in order to account for
 			# potentially unsatisfied dependencies of installed packages.
 			# This is necessary for correct --keep-going or --resume operation
@@ -4526,7 +4540,7 @@ class depgraph(object):
 			# deep depenedencies of a scheduled build, that build needs to
 			# be cancelled. In order for this type of situation to be
 			# recognized, deep traversal of dependencies is required.
-			self._dynamic_config.myparams.add("deep")
+			self._dynamic_config.myparams["deep"] = True
 
 			favorites = resume_data.get("favorites")
 			args_set = self._dynamic_config._sets["args"]
