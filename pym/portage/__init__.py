@@ -2386,27 +2386,37 @@ class config(object):
 		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
 		# that they are consistent. For optimal performance, use slice
 		# comparison instead of startswith().
-		use_expand_split = set(self.get("USE_EXPAND", "").split())
+		use_expand_split = set(x.lower() for \
+			x in self.get('USE_EXPAND', '').split())
 		lazy_use_expand = self._lazy_use_expand(use, self.usemask,
 			iuse_implicit, use_expand_split, self._use_expand_dict)
-		for key in use_expand_split:
-			prefix = key.lower() + '_'
-			prefix_len = len(prefix)
-			use_expand_iuse = set( x for x in iuse_implicit \
-				if x[:prefix_len] == prefix )
-			# * means to enable everything in IUSE that's not masked
-			if use_expand_iuse:
-				if prefix + '*' in use:
-					use.update( use_expand_iuse.difference(usemask) )
-				self.configdict['env'].addLazySingleton(
-					key, lazy_use_expand.__getitem__, key)
-			else:
-				# It's not in IUSE, so just allow the variable content
-				# to pass through if it is defined somewhere.  This
-				# allows packages that support LINGUAS but don't
-				# declare it in IUSE to use the variable outside of the
-				# USE_EXPAND context.
-				pass
+
+		use_expand_iuses = {}
+		for x in iuse_implicit:
+			x_split = x.split('_')
+			if len(x_split) == 1:
+				continue
+			for i in xrange(len(x_split) - 1):
+				k = '_'.join(x_split[:i+1])
+				if k in use_expand_split:
+					v = use_expand_iuses.get(k)
+					if v is None:
+						v = set()
+						use_expand_iuses[k] = v
+					v.add(x)
+					break
+
+		# If it's not in IUSE, variable content is allowed
+		# to pass through if it is defined somewhere.  This
+		# allows packages that support LINGUAS but don't
+		# declare it in IUSE to use the variable outside of the
+		# USE_EXPAND context.
+		for k, use_expand_iuse in use_expand_iuses.iteritems():
+			if k + '_*' in use:
+				use.update( x for x in use_expand_iuse if x not in usemask )
+			k = k.upper()
+			self.configdict['env'].addLazySingleton(k,
+				lazy_use_expand.__getitem__, k)
 
 		# Filtered for the ebuild environment. Store this in a separate
 		# attribute since we still want to be able to see global USE
