@@ -1309,7 +1309,7 @@ class config(object):
 
 			if not config_profile_path:
 				config_profile_path = \
-					os.path.join(config_root, PROFILE_PATH.lstrip(os.path.sep))
+					os.path.join(config_root, PROFILE_PATH)
 				if os.path.isdir(config_profile_path):
 					self.profile_path = config_profile_path
 				else:
@@ -1325,7 +1325,7 @@ class config(object):
 			self.module_priority    = ["user","default"]
 			self.modules            = {}
 			self.modules["user"] = getconfig(
-				os.path.join(config_root, MODULES_FILE_PATH.lstrip(os.path.sep)))
+				os.path.join(config_root, MODULES_FILE_PATH))
 			if self.modules["user"] is None:
 				self.modules["user"] = {}
 			self.modules["default"] = {
@@ -1389,7 +1389,7 @@ class config(object):
 					self.profiles = []
 			if local_config and self.profiles:
 				custom_prof = os.path.join(
-					config_root, CUSTOM_PROFILE_PATH.lstrip(os.path.sep))
+					config_root, CUSTOM_PROFILE_PATH)
 				if os.path.exists(custom_prof):
 					self.user_profile_dir = custom_prof
 					self.profiles.append(custom_prof)
@@ -1465,7 +1465,7 @@ class config(object):
 			del rawpuseforce
 
 			make_conf = getconfig(
-				os.path.join(config_root, MAKE_CONF_FILE.lstrip(os.path.sep)),
+				os.path.join(config_root, MAKE_CONF_FILE),
 				tolerant=tolerant, allow_sourcing=True)
 			if make_conf is None:
 				make_conf = {}
@@ -1561,7 +1561,7 @@ class config(object):
 			self.configdict["defaults"]=self.configlist[-1]
 
 			self.mygcfg = getconfig(
-				os.path.join(config_root, MAKE_CONF_FILE.lstrip(os.path.sep)),
+				os.path.join(config_root, MAKE_CONF_FILE),
 				tolerant=tolerant, allow_sourcing=True, expand=expand_map)
 			if self.mygcfg is None:
 				self.mygcfg = {}
@@ -1610,8 +1610,7 @@ class config(object):
 			self.pkeywordsdict = {}
 			self._plicensedict = {}
 			self.punmaskdict = {}
-			abs_user_config = os.path.join(config_root,
-				USER_CONFIG_PATH.lstrip(os.path.sep))
+			abs_user_config = os.path.join(config_root, USER_CONFIG_PATH)
 
 			# locations for "categories" and "arch.list" files
 			locations = [os.path.join(self["PORTDIR"], "profiles")]
@@ -1838,7 +1837,7 @@ class config(object):
 				("sandbox" in self.features or "usersandbox" in self.features):
 				if self.profile_path is not None and \
 					os.path.realpath(self.profile_path) == \
-					os.path.realpath(PROFILE_PATH):
+					os.path.realpath(os.path.join(config_root, PROFILE_PATH)):
 					""" Don't show this warning when running repoman and the
 					sandbox feature came from a profile that doesn't belong to
 					the user."""
@@ -1960,7 +1959,7 @@ class config(object):
 						noiselevel=-1)
 
 		abs_profile_path = os.path.join(self["PORTAGE_CONFIGROOT"],
-			PROFILE_PATH.lstrip(os.path.sep))
+			PROFILE_PATH)
 		if not self.profile_path or (not os.path.islink(abs_profile_path) and \
 			not os.path.exists(os.path.join(abs_profile_path, "parent")) and \
 			os.path.exists(os.path.join(self["PORTDIR"], "profiles"))):
@@ -1970,7 +1969,7 @@ class config(object):
 			writemsg("!!! (You can safely ignore this message when syncing. It's harmless.)\n\n\n")
 
 		abs_user_virtuals = os.path.join(self["PORTAGE_CONFIGROOT"],
-			USER_VIRTUALS_FILE.lstrip(os.path.sep))
+			USER_VIRTUALS_FILE)
 		if os.path.exists(abs_user_virtuals):
 			writemsg("\n!!! /etc/portage/virtuals is deprecated in favor of\n")
 			writemsg("!!! /etc/portage/profile/virtuals. Please move it to\n")
@@ -3781,7 +3780,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	check_config_instance(mysettings)
 
 	custommirrors = grabdict(os.path.join(mysettings["PORTAGE_CONFIGROOT"],
-		CUSTOM_MIRRORS_FILE.lstrip(os.path.sep)), recursive=1)
+		CUSTOM_MIRRORS_FILE), recursive=1)
 
 	mymirrors=[]
 
@@ -5430,7 +5429,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mysettings["T"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "temp")
 
 	mysettings["PORTAGE_BASHRC"] = os.path.join(
-		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_FILE.lstrip(os.path.sep))
+		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_FILE)
 	mysettings["EBUILD_EXIT_STATUS_FILE"] = os.path.join(
 		mysettings["PORTAGE_BUILDDIR"], ".exit_status")
 
@@ -7527,7 +7526,7 @@ def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_lo
 		if os.path.isdir(profdir):
 			locations.append(profdir)
 	locations.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
-		USER_CONFIG_PATH.lstrip(os.path.sep)))
+		USER_CONFIG_PATH))
 	locations.reverse()
 	pmasklists = [(x, grablines(os.path.join(x, "package.mask"), recursive=1)) for x in locations]
 
@@ -8404,9 +8403,9 @@ def init_legacy_globals():
 	selinux_enabled   = settings.selinux_enabled()
 	thirdpartymirrors = settings.thirdpartymirrors()
 	usedefaults       = settings.use_defs
-	profiledir  = None
-	if os.path.isdir(PROFILE_PATH):
-		profiledir = PROFILE_PATH
+	profiledir  = os.path.join(settings["PORTAGE_CONFIGROOT"], PROFILE_PATH)
+	if not os.path.isdir(profiledir):
+		profiledir = None
 	def flushmtimedb(record):
 		writemsg("portage.flushmtimedb() is DEPRECATED\n")
 	# ========================================================================

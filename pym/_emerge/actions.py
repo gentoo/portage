@@ -2203,12 +2203,13 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	chk_updated_cfg_files("/", settings.get("CONFIG_PROTECT","").split())
 
 	if myaction != "metadata":
-		if os.access(portage.USER_CONFIG_PATH + "/bin/post_sync", os.X_OK):
+		postsync = os.path.join(settings["PORTAGE_CONFIGROOT"],
+			portage.USER_CONFIG_PATH, "bin", "post_sync")
+		if os.access(postsync, os.X_OK):
 			retval = portage.process.spawn(
-				[os.path.join(portage.USER_CONFIG_PATH, "bin", "post_sync"),
-				dosyncuri], env=settings.environ())
+				[postsync, dosyncuri], env=settings.environ())
 			if retval != os.EX_OK:
-				print red(" * ")+bold("spawn failed of "+ portage.USER_CONFIG_PATH + "/bin/post_sync")
+				print red(" * ") + bold("spawn failed of " + postsync)
 
 	if(mybestpv != mypvs) and not "--quiet" in myopts:
 		print
