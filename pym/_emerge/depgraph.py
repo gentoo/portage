@@ -30,6 +30,7 @@ from _emerge.BlockerCache import BlockerCache
 from _emerge.BlockerDepPriority import BlockerDepPriority
 from _emerge.changelog import calc_changelog
 from _emerge.countdown import countdown
+from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.create_world_atom import create_world_atom
 from _emerge.Dependency import Dependency
 from _emerge.DependencyArg import DependencyArg
@@ -4886,6 +4887,37 @@ def insert_category_into_atom(atom, category):
 	else:
 		ret = None
 	return ret
+
+def backtrack_depgraph(settings, trees, myopts, myparams, 
+	myaction, myfiles, spinner):
+	"""
+	Raises PackageSetNotFound if myfiles contains a missing package set.
+	"""
+	runtime_pkg_mask = None
+	allow_backtracking = True
+	backtracked = False
+	frozen_config = _frozen_depgraph_config(settings, trees,
+		myopts, spinner)
+	while True:
+		mydepgraph = depgraph(settings, trees, myopts, myparams, spinner,
+			frozen_config=frozen_config,
+			allow_backtracking=allow_backtracking,
+			runtime_pkg_mask=runtime_pkg_mask)
+		success, favorites = mydepgraph.select_files(myfiles)
+		if not success:
+			if mydepgraph.need_restart():
+				runtime_pkg_mask = mydepgraph.get_runtime_pkg_mask()
+				backtracked = True
+			elif backtracked and allow_backtracking:
+				# Backtracking failed, so disable it and do
+				# a plain dep calculation + error message.
+				allow_backtracking = False
+				runtime_pkg_mask = None
+			else:
+				break
+		else:
+			break
+	return (success, mydepgraph, favorites)
 
 def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 	"""
