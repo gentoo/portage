@@ -67,6 +67,10 @@ class search(object):
 		self._dbs.append(vardb)
 		self._portdb = portdb
 
+	def _spinner_update(self):
+		if self.spinner:
+			self.spinner.update()
+
 	def _cp_all(self):
 		cp_all = set()
 		for db in self._dbs:
@@ -202,7 +206,7 @@ class search(object):
 		else:
 			self.searchre=re.compile(re.escape(self.searchkey), re.I)
 		for package in self.portdb.cp_all():
-			self.spinner.update()
+			self._spinner_update()
 
 			if match_category:
 				match_string  = package[:]
@@ -235,7 +239,7 @@ class search(object):
 
 		self.sdict = self.setconfig.getSets()
 		for setname in self.sdict:
-			self.spinner.update()
+			self._spinner_update()
 			if match_category:
 				match_string = setname
 			else:
