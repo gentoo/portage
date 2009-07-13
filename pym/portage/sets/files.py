@@ -110,7 +110,9 @@ class StaticFileSet(EditablePackageSet):
 	
 	def multiBuilder(self, options, settings, trees):
 		rValue = {}
-		directory = options.get("directory", os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH.lstrip(os.sep), "sets"))
+		directory = options.get("directory",
+			os.path.join(settings["PORTAGE_CONFIGROOT"],
+			USER_CONFIG_PATH, "sets"))
 		name_pattern = options.get("name_pattern", "${name}")
 		if not "$name" in name_pattern and not "${name}" in name_pattern:
 			raise SetConfigError(_("name_pattern doesn't include ${name} placeholder"))
@@ -162,7 +164,8 @@ class ConfigFileSet(PackageSet):
 	
 	def multiBuilder(self, options, settings, trees):
 		rValue = {}
-		directory = options.get("directory", os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH.lstrip(os.sep)))
+		directory = options.get("directory",
+			os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH))
 		name_pattern = options.get("name_pattern", "sets/package_$suffix")
 		if not "$suffix" in name_pattern and not "${suffix}" in name_pattern:
 			raise SetConfigError(_("name_pattern doesn't include $suffix placeholder"))

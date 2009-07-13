@@ -42,7 +42,7 @@ from _emerge.clear_caches import clear_caches
 from _emerge.countdown import countdown
 from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.Dependency import Dependency
-from _emerge.depgraph import depgraph, resume_depgraph, _frozen_depgraph_config
+from _emerge.depgraph import backtrack_depgraph, depgraph, resume_depgraph
 from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
 from _emerge.emergelog import emergelog
 from _emerge.is_valid_package_atom import is_valid_package_atom
@@ -303,47 +303,23 @@ def action_build(settings, trees, mtimedb,
 			print "Calculating dependencies  ",
 			sys.stdout.flush()
 
-		runtime_pkg_mask = None
-		allow_backtracking = True
-		backtracked = False
-		frozen_config = _frozen_depgraph_config(settings, trees,
-			myopts, spinner)
 		myparams = create_depgraph_params(myopts, myaction)
-		while True:
-			mydepgraph = depgraph(settings, trees, myopts, myparams, spinner,
-				frozen_config=frozen_config,
-				allow_backtracking=allow_backtracking,
-				runtime_pkg_mask=runtime_pkg_mask)
-			try:
-				retval, favorites = mydepgraph.select_files(myfiles)
-			except portage.exception.PackageNotFound, e:
-				portage.writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
-				return 1
-			except portage.exception.PackageSetNotFound, e:
-				root_config = trees[settings["ROOT"]]["root_config"]
-				display_missing_pkg_set(root_config, e.value)
-				return 1
-			if not retval:
-				if mydepgraph.need_restart():
-					runtime_pkg_mask = mydepgraph.get_runtime_pkg_mask()
-					backtracked = True
-				elif backtracked and allow_backtracking:
-					# Backtracking failed, so disable it and do
-					# a plain dep calculation + error message.
-					allow_backtracking = False
-					runtime_pkg_mask = None
-				else:
-					if show_spinner:
-						print "\b\b... done!"
-					mydepgraph.display_problems()
-					return 1
-			else:
-				break
-
-		del frozen_config, runtime_pkg_mask
+		try:
+			success, mydepgraph, favorites = backtrack_depgraph(
+				settings, trees, myopts, myparams, myaction, myfiles, spinner)
+		except portage.exception.PackageSetNotFound, e:
+			if show_spinner:
+				print "\b\b... done!"
+			root_config = trees[settings["ROOT"]]["root_config"]
+			display_missing_pkg_set(root_config, e.value)
+			return 1
 
 		if show_spinner:
 			print "\b\b... done!"
+
+		if not success:
+			mydepgraph.display_problems()
+			return 1
 
 	if "--pretend" not in myopts and \
 		("--ask" in myopts or "--tree" in myopts or \
@@ -2277,12 +2253,13 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	chk_updated_cfg_files("/", settings.get("CONFIG_PROTECT","").split())
 
 	if myaction != "metadata":
-		if os.access(portage.USER_CONFIG_PATH + "/bin/post_sync", os.X_OK):
+		postsync = os.path.join(settings["PORTAGE_CONFIGROOT"],
+			portage.USER_CONFIG_PATH, "bin", "post_sync")
+		if os.access(postsync, os.X_OK):
 			retval = portage.process.spawn(
-				[os.path.join(portage.USER_CONFIG_PATH, "bin", "post_sync"),
-				dosyncuri], env=settings.environ())
+				[postsync, dosyncuri], env=settings.environ())
 			if retval != os.EX_OK:
-				print red(" * ")+bold("spawn failed of "+ portage.USER_CONFIG_PATH + "/bin/post_sync")
+				print red(" * ") + bold("spawn failed of " + postsync)
 
 	if(mybestpv != mypvs) and not "--quiet" in myopts:
 		print

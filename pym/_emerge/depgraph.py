@@ -32,6 +32,7 @@ from _emerge.BlockerCache import BlockerCache
 from _emerge.BlockerDepPriority import BlockerDepPriority
 from _emerge.changelog import calc_changelog
 from _emerge.countdown import countdown
+from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.create_world_atom import create_world_atom
 from _emerge.Dependency import Dependency
 from _emerge.DependencyArg import DependencyArg
@@ -178,7 +179,7 @@ class _dynamic_depgraph_config(object):
 			fakedb = PackageVirtualDbapi(vardb.settings)
 			if preload_installed_pkgs:
 				for pkg in vardb:
-					depgraph._frozen_config.spinner.update()
+					depgraph._spinner_update()
 					# This triggers metadata updates via FakeVartree.
 					vardb.aux_get(pkg.cpv, [])
 					fakedb.cpv_inject(pkg)
@@ -267,6 +268,10 @@ class depgraph(object):
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
 
+	def _spinner_update(self):
+		if self._frozen_config.spinner:
+			self._frozen_config.spinner.update()
+
 	def _show_missed_update(self):
 
 		if '--quiet' in self._frozen_config.myopts and \
@@ -276,13 +281,19 @@ class depgraph(object):
 		missed_updates = {}
 		for pkg, mask_reasons in \
 			self._dynamic_config._runtime_pkg_mask.iteritems():
-			if mask_reasons.get("slot conflict"):
-				if pkg.slot_atom in missed_updates:
-					other_pkg, parent_atoms = missed_updates[pkg.slot_atom]
-					if other_pkg > pkg:
-						continue
-				missed_updates[pkg.slot_atom] = \
-					(pkg, mask_reasons["slot conflict"])
+			if pkg.installed:
+				# Exclude installed here since we only
+				# want to show available updates.
+				continue
+			if pkg.slot_atom in missed_updates:
+				other_pkg, parent_atoms = missed_updates[pkg.slot_atom]
+				if other_pkg > pkg:
+					continue
+			for mask_type, parent_atoms in mask_reasons.iteritems():
+				if not parent_atoms:
+					continue
+				missed_updates[pkg.slot_atom] = (pkg, parent_atoms)
+				break
 
 		if not missed_updates:
 			return
@@ -593,7 +604,7 @@ class depgraph(object):
 		dep_stack = self._dynamic_config._dep_stack
 		dep_disjunctive_stack = self._dynamic_config._dep_disjunctive_stack
 		while dep_stack or dep_disjunctive_stack:
-			self._frozen_config.spinner.update()
+			self._spinner_update()
 			while dep_stack:
 				dep = dep_stack.pop()
 				if isinstance(dep, Package):
@@ -642,6 +653,24 @@ class depgraph(object):
 				return 1
 			self._dynamic_config._unsatisfied_deps_for_display.append(
 				((dep.root, dep.atom), {"myparent":dep.parent}))
+
+			# The parent node should not already be in
+			# runtime_pkg_mask, since that would trigger an
+			# infinite backtracking loop.
+			if self._dynamic_config._allow_backtracking:
+				if dep.parent in self._dynamic_config._runtime_pkg_mask:
+					if "--debug" in self._frozen_config.myopts:
+						writemsg(
+							"!!! backtracking loop detected: %s %s\n" % \
+							(dep.parent,
+							self._dynamic_config._runtime_pkg_mask[
+							dep.parent]), noiselevel=-1)
+				else:
+					self._dynamic_config._runtime_pkg_mask.setdefault(
+						dep.parent, {})["missing dependency"] = \
+							set([(dep.parent, dep.atom)])
+					self._dynamic_config._need_restart = True
+
 			return 0
 		# In some cases, dep_check will return deps that shouldn't
 		# be proccessed any further, so they are identified and
@@ -871,7 +900,7 @@ class depgraph(object):
 		elif pkg.installed and not recurse:
 			dep_stack = self._dynamic_config._ignored_deps
 
-		self._frozen_config.spinner.update()
+		self._spinner_update()
 
 		if not previously_added:
 			dep_stack.append(pkg)
@@ -1469,7 +1498,7 @@ class depgraph(object):
 		virtuals = pkgsettings.getvirtuals()
 		for arg in self._dynamic_config._initial_arg_list:
 			for atom in arg.set:
-				self._frozen_config.spinner.update()
+				self._spinner_update()
 				dep = Dependency(atom=atom, onlydeps=onlydeps,
 					root=myroot, parent=arg)
 				atom_cp = portage.dep_getkey(atom)
@@ -2453,7 +2482,7 @@ class depgraph(object):
 
 					# If this node has any blockers, create a "nomerge"
 					# node for it so that they can be enforced.
-					self._frozen_config.spinner.update()
+					self._spinner_update()
 					blocker_data = blocker_cache.get(cpv)
 					if blocker_data is not None and \
 						blocker_data.counter != long(pkg.metadata["COUNTER"]):
@@ -2549,7 +2578,7 @@ class depgraph(object):
 			self._dynamic_config.digraph.difference_update(previous_uninstall_tasks)
 
 		for blocker in self._dynamic_config._blocker_parents.leaf_nodes():
-			self._frozen_config.spinner.update()
+			self._spinner_update()
 			root_config = self._frozen_config.roots[blocker.root]
 			virtuals = root_config.settings.getvirtuals()
 			myroot = blocker.root
@@ -2823,7 +2852,7 @@ class depgraph(object):
 					node.installed or node.onlydeps:
 					removed_nodes.add(node)
 			if removed_nodes:
-				self._frozen_config.spinner.update()
+				self._spinner_update()
 				mygraph.difference_update(removed_nodes)
 			if not removed_nodes:
 				break
@@ -2971,7 +3000,7 @@ class depgraph(object):
 		# unresolved blockers or circular dependencies.
 
 		while not mygraph.empty():
-			self._frozen_config.spinner.update()
+			self._spinner_update()
 			selected_nodes = None
 			ignore_priority = None
 			if drop_satisfied or (prefer_asap and asap_nodes):
@@ -4517,7 +4546,7 @@ class depgraph(object):
 
 			fakedb[myroot].cpv_inject(pkg)
 			serialized_tasks.append(pkg)
-			self._frozen_config.spinner.update()
+			self._spinner_update()
 
 		if self._dynamic_config._unsatisfied_deps_for_display:
 			return False
@@ -4868,6 +4897,37 @@ def insert_category_into_atom(atom, category):
 	else:
 		ret = None
 	return ret
+
+def backtrack_depgraph(settings, trees, myopts, myparams, 
+	myaction, myfiles, spinner):
+	"""
+	Raises PackageSetNotFound if myfiles contains a missing package set.
+	"""
+	runtime_pkg_mask = None
+	allow_backtracking = True
+	backtracked = False
+	frozen_config = _frozen_depgraph_config(settings, trees,
+		myopts, spinner)
+	while True:
+		mydepgraph = depgraph(settings, trees, myopts, myparams, spinner,
+			frozen_config=frozen_config,
+			allow_backtracking=allow_backtracking,
+			runtime_pkg_mask=runtime_pkg_mask)
+		success, favorites = mydepgraph.select_files(myfiles)
+		if not success:
+			if mydepgraph.need_restart():
+				runtime_pkg_mask = mydepgraph.get_runtime_pkg_mask()
+				backtracked = True
+			elif backtracked and allow_backtracking:
+				# Backtracking failed, so disable it and do
+				# a plain dep calculation + error message.
+				allow_backtracking = False
+				runtime_pkg_mask = None
+			else:
+				break
+		else:
+			break
+	return (success, mydepgraph, favorites)
 
 def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 	"""
