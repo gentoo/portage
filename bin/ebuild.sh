@@ -1433,7 +1433,7 @@ _ebuild_phase_funcs() {
 		src_compile src_install src_test"
 	local x y default_func=""
 
-	for x in pkg_nofetch src_unpack src_test ; do
+	for x in pkg_nofetch src_unpack src_install src_test ; do
 		declare -F $x >/dev/null || \
 			eval "$x() { _eapi0_$x \"\$@\" ; }"
 	done
