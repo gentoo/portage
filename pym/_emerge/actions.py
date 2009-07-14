@@ -1983,7 +1983,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			if mytimestamp != 0 and "--quiet" not in myopts:
 				print ">>> Checking server timestamp ..."
 
-			rsynccommand = ["/usr/bin/rsync"] + rsync_opts + extra_rsync_opts
+			rsynccommand = [EPREFIX + "/usr/bin/rsync"] + rsync_opts + extra_rsync_opts
 
 			if "--debug" in myopts:
 				print rsynccommand
