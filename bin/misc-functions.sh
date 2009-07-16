@@ -514,7 +514,7 @@ install_qa_check() {
 
 			# just warn on 32bit hosts but bail on 64bit hosts
 			case ${CHOST} in
-				alpha*|ia64*|powerpc64*|mips64*|sparc64*|sparcv9*|x86_64*) gentoo_bug=yes ;;
+				alpha*|hppa64*|ia64*|powerpc64*|mips64*|sparc64*|sparcv9*|x86_64*) gentoo_bug=yes ;;
 			esac
 
 			abort=yes
