@@ -664,10 +664,22 @@ class depgraph(object):
 							self._dynamic_config._runtime_pkg_mask[
 							dep.parent]), noiselevel=-1)
 				else:
-					self._dynamic_config._runtime_pkg_mask.setdefault(
-						dep.parent, {})["missing dependency"] = \
-							set([(dep.parent, dep.atom)])
-					self._dynamic_config._need_restart = True
+					# Do not backtrack if only USE have to be changed in
+					# order to satisfy the dependency.
+					atom_without_use = dep.atom
+					if dep.atom.use:
+						atom_without_use = portage.dep.remove_slot(dep.atom)
+						if dep.atom.slot:
+							atom_without_use += ":" + dep.atom.slot
+						atom_without_use = portage.dep.Atom(atom_without_use)
+					dep_pkg, existing_node = \
+						self._select_package(dep.root, atom_without_use,
+							onlydeps=dep.onlydeps)
+					if dep_pkg is None:
+						self._dynamic_config._runtime_pkg_mask.setdefault(
+							dep.parent, {})["missing dependency"] = \
+								set([(dep.parent, dep.atom)])
+						self._dynamic_config._need_restart = True
 
 			return 0
 		# In some cases, dep_check will return deps that shouldn't
