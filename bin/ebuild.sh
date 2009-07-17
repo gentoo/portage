@@ -566,6 +566,7 @@ einstall() {
 				mandir="${D}usr/share/man" \
 				sysconfdir="${D}etc" \
 				${LOCAL_EXTRA_EINSTALL} \
+				${MAKEOPTS} ${EXTRA_EMAKE} -j1 \
 				"$@" install
 		fi
 		${MAKE:-make} prefix="${D}usr" \
@@ -575,6 +576,7 @@ einstall() {
 			mandir="${D}usr/share/man" \
 			sysconfdir="${D}etc" \
 			${LOCAL_EXTRA_EINSTALL} \
+			${MAKEOPTS} ${EXTRA_EMAKE} -j1 \
 			"$@" install || die "einstall failed"
 	else
 		die "no Makefile found"
