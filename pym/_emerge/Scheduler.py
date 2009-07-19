@@ -606,6 +606,9 @@ class Scheduler(PollScheduler):
 				x.type_name != "ebuild":
 				continue
 
+			if x.operation == "uninstall":
+				continue
+
 			if not shown_verifying_msg:
 				shown_verifying_msg = True
 				self._status_msg("Verifying ebuild manifests")
