@@ -29,7 +29,7 @@ class database(fs_template.FsBased):
 		try:
 			myf = codecs.open(fp, mode='r', encoding='utf_8', errors='replace')
 			try:
-				d = self._parse_data(myf, cpv)
+				d = self._parse_data(myf.readlines(), cpv)
 				if '_mtime_' not in d:
 					# Backward compatibility with old cache
 					# that uses mtime mangling.
