@@ -44,8 +44,7 @@ class JobStatusDisplay(object):
 		'newline'         : 'nel',
 	}
 
-	def __init__(self, out=sys.stdout, quiet=False, xterm_titles=True):
-		object.__setattr__(self, "out", out)
+	def __init__(self, quiet=False, xterm_titles=True):
 		object.__setattr__(self, "quiet", quiet)
 		object.__setattr__(self, "xterm_titles", xterm_titles)
 		object.__setattr__(self, "maxval", 0)
@@ -56,7 +55,7 @@ class JobStatusDisplay(object):
 		object.__setattr__(self, "width", 80)
 		self.reset()
 
-		isatty = hasattr(out, "isatty") and out.isatty()
+		isatty = hasattr(self.out, "isatty") and self.out.isatty()
 		object.__setattr__(self, "_isatty", isatty)
 		if not isatty or not self._init_term():
 			term_codes = {}
@@ -67,6 +66,12 @@ class JobStatusDisplay(object):
 		for k, v in self._term_codes.items():
 			if not isinstance(v, basestring):
 				self._term_codes[k] = v.decode(encoding, 'replace')
+
+	@property
+	def out(self):
+		"""Use a lazy reference to sys.stdout, in case the API consumer has
+		temporarily overridden stdout."""
+		return sys.stdout
 
 	def _init_term(self):
 		"""
