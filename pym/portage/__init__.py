@@ -1682,8 +1682,8 @@ class config(object):
 				repo_conf_parser = SafeConfigParser()
 				try:
 					repo_conf_parser.readfp(
-						codecs.open(self._local_repo_conf_path,
-						mode='r', errors='replace'))
+						codecs.open(self._local_repo_conf_path, mode='r',
+						encoding='utf_8', errors='replace'))
 				except EnvironmentError, e:
 					if e.errno != errno.ENOENT:
 						raise

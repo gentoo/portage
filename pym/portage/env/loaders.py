@@ -139,7 +139,7 @@ class FileLoader(DataLoader):
 		# once, which may be expensive due to digging in child classes.
 		func = self.lineParser
 		for fn in RecursiveFileLoader(self.fname):
-			f = codecs.open(fn, mode='r', errors='replace')
+			f = codecs.open(fn, mode='r', encoding='utf_8', errors='replace')
 			for line_num, line in enumerate(f):
 				func(line, line_num, data, errors)
 		return (data, errors)
