@@ -2187,6 +2187,18 @@ class dblink(object):
 						del e
 					unlockdir(catdir_lock)
 
+		if log_path is not None:
+			try:
+				st = os.stat(log_path)
+			except OSError:
+				pass
+			else:
+				if st.st_size == 0:
+					try:
+						os.unlink(log_path)
+					except OSError:
+						pass
+
 		if log_path is not None and os.path.exists(log_path):
 			# Restore this since it gets lost somewhere above and it
 			# needs to be set for _display_merge() to be able to log.
