@@ -39,7 +39,7 @@ RESUMECOMMAND="/usr/bin/wget -c -t 5 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FIL
 
 # Default user options
 FEATURES="assume-digests distlocks fixpackages parallel-fetch protect-owned
-          sandbox sfperms strict unmerge-orphans userfetch"
+          sandbox sfperms strict unmerge-logs unmerge-orphans userfetch"
 
 # Ignore file collisions in /lib/modules since files inside this directory
 # are never unmerged, and therefore collisions must be ignored in order for
