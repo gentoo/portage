@@ -452,14 +452,6 @@ def action_build(settings, trees, mtimedb,
 				mtimedb["resume_backup"] = mtimedb["resume"]
 				del mtimedb["resume"]
 				mtimedb.commit()
-			mtimedb["resume"]={}
-			# Stored as a dict starting with portage-2.1.6_rc1, and supported
-			# by >=portage-2.1.3_rc8. Versions <portage-2.1.3_rc8 only support
-			# a list type for options.
-			mtimedb["resume"]["myopts"] = myopts.copy()
-
-			# Convert Atom instances to plain str.
-			mtimedb["resume"]["favorites"] = [str(x) for x in favorites]
 
 			pkglist = mydepgraph.altlist()
 			mydepgraph.saveNomergeFavorites()

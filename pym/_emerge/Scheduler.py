@@ -1424,6 +1424,15 @@ class Scheduler(PollScheduler):
 		a non-essential package with a broken digest.
 		"""
 		mtimedb = self._mtimedb
+
+		mtimedb["resume"] = {}
+		# Stored as a dict starting with portage-2.1.6_rc1, and supported
+		# by >=portage-2.1.3_rc8. Versions <portage-2.1.3_rc8 only support
+		# a list type for options.
+		mtimedb["resume"]["myopts"] = self.myopts.copy()
+
+		# Convert Atom instances to plain str.
+		mtimedb["resume"]["favorites"] = [str(x) for x in self._favorites]
 		mtimedb["resume"]["mergelist"] = [list(x) \
 			for x in self._mergelist \
 			if isinstance(x, Package) and x.operation == "merge"]
