@@ -3,6 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import codecs
 import os
 import stat
 from portage.localization import _
@@ -138,7 +139,7 @@ class FileLoader(DataLoader):
 		# once, which may be expensive due to digging in child classes.
 		func = self.lineParser
 		for fn in RecursiveFileLoader(self.fname):
-			f = open(fn)
+			f = codecs.open(fn, mode='r', errors='replace')
 			for line_num, line in enumerate(f):
 				func(line, line_num, data, errors)
 		return (data, errors)
