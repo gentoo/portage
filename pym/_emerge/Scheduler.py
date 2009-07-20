@@ -637,6 +637,8 @@ class Scheduler(PollScheduler):
 			# at the beginning, which annoy users, never
 			# spawn a prefetcher for the first package.
 			for pkg in self._mergelist[1:]:
+				if pkg.operation == "uninstall":
+					continue
 				prefetcher = self._create_prefetcher(pkg)
 				if prefetcher is not None:
 					self._task_queues.fetch.add(prefetcher)
