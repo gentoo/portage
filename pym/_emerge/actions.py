@@ -1142,7 +1142,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			cleanlist = [pkg.cpv for pkg in graph.order]
 		else:
 			# Order nodes from lowest to highest overall reference count for
-			# optimal root node selection.
+			# optimal root node selection (this can help minimize issues
+			# with unaccounted implicit dependencies).
 			node_refcounts = {}
 			for node in graph.order:
 				node_refcounts[node] = len(graph.parent_nodes(node))
