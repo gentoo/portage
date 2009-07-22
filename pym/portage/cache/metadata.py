@@ -34,7 +34,6 @@ class database(flat_hash.database):
 
 	def _parse_data(self, data, cpv):
 		_hashed_re_match = self._hashed_re.match
-		data = list(data)
 		d = {}
 
 		for line in data:

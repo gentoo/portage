@@ -608,6 +608,9 @@ class Scheduler(PollScheduler):
 				x.type_name != "ebuild":
 				continue
 
+			if x.operation == "uninstall":
+				continue
+
 			if not shown_verifying_msg:
 				shown_verifying_msg = True
 				self._status_msg("Verifying ebuild manifests")
@@ -636,6 +639,8 @@ class Scheduler(PollScheduler):
 			# at the beginning, which annoy users, never
 			# spawn a prefetcher for the first package.
 			for pkg in self._mergelist[1:]:
+				if pkg.operation == "uninstall":
+					continue
 				prefetcher = self._create_prefetcher(pkg)
 				if prefetcher is not None:
 					self._task_queues.fetch.add(prefetcher)

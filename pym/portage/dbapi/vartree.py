@@ -1420,6 +1420,8 @@ class vardbapi(dbapi):
 
 		returnme = []
 		for x in dir_list:
+			if not isinstance(x, unicode):
+				x = unicode(x, errors='replace')
 			if self._excluded_dirs.match(x) is not None:
 				continue
 			ps = pkgsplit(x)
@@ -1451,7 +1453,8 @@ class vardbapi(dbapi):
 		else:
 			def listdir(p, **kwargs):
 				try:
-					return [x for x in os.listdir(p) \
+					return [isinstance(x, unicode) and x or \
+						unicode(x, errors='replace') for x in os.listdir(p) \
 						if os.path.isdir(os.path.join(p, x))]
 				except EnvironmentError, e:
 					if e.errno == PermissionDenied.errno:
