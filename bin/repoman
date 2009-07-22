@@ -513,6 +513,14 @@ logging.info('Setting paths:')
 logging.info('PORTDIR = "' + portdir + '"')
 logging.info('PORTDIR_OVERLAY = "%s"' % env['PORTDIR_OVERLAY'])
 
+categories = []
+for path in set([portdir, portdir_overlay]):
+	categories.extend(portage.util.grabfile(
+		os.path.join(path, 'profiles', 'categories')))
+repoman_settings.categories = tuple(sorted(
+	portage.util.stack_lists([categories], incremental=1)))
+del categories
+
 portdb.mysettings = repoman_settings
 root_config = RootConfig(repoman_settings, trees[root], None)
 # We really only need to cache the metadata that's necessary for visibility
