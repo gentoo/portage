@@ -33,6 +33,7 @@ usr_sbinprogs = \
 	etc-update \
 	fixpackages \
 	quickpkg \
+	readpecoff \
 	regenworld
 
 list_sourcedir_dirs = \

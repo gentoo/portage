@@ -1,0 +1,109 @@
+#!@PORTAGE_BASH@
+# $Id$
+
+###################################################################
+# This script does the following: for implemented platforms,      #
+# it echos for each given path a line with the following format:  #
+#                                                                 #
+#  <arch>;<obj>;<soname>;<rpath1:rpathN>;<needed1,neededN>        #
+#                                                                 #
+# arch may be any string, e.g. "PE32". obj is the full (!) path   #
+# to the file itself. soname, rpath and needed should be self     #
+# explaining - rpath is ":" separated, needed is "," separated.   #
+#                                                                 #
+# WARNING: Depends on CHOST argument to decide what to do!        #
+#                                                                 #
+# WARNING: The Script does _never_ fail! If required binaries     #
+#          are missing, or information gathering fails, the       #
+#          script will SILENTLY (!) exit, to not disturb the      #
+#          normal merging process.                                #
+#                                                                 #
+# WARNING: The _first_ argument needs to be a valid CHOST!!!      #
+#                                                                 #
+###################################################################
+
+
+# Interix: Uses native objdump, since thats the only facility that
+# knows about the native shared library information data.
+# objdump is there in all interix installations where the GNU SDK
+# is installed, which is a prerequisite for prefix anyway.
+
+scanbin_interix() {
+	local _itx_objdump="/opt/gcc.3.3/bin/objdump"
+	[[ -x ${_itx_objdump} ]] || _itx_objdump="/opt/gcc.4.2/bin/objdump"
+	[[ -x ${_itx_objdump} ]] || exit 0
+
+	# objdump is there, so now gather the information
+	_itx_full_info() {
+		local obj="$(cd "$(dirname "$1")"; pwd)/${1##*/}"
+		local so=
+		local rp=
+		local ne=
+
+		{ file -L "${obj}" | grep "PE" > /dev/null 2>&1; } || return
+
+		_itx_gather() {
+			${_itx_objdump} -p "$1" | while IFS= read line; do
+				[[ ${line} == *RPATH* || ${line} == *NEEDED* || ${line} == *SONAME* ]] || continue
+
+				eval "$(echo "${line}" | sed -e 's,[[:space:]]*\([A-Z]*\)[[:space:]]*\(.*\)$,key=\1;value="\2",g')"
+
+				case "${key}" in
+				RPATH) echo "rp=\"${value}\"" ;;
+				NEEDED) echo "test -n \"\${ne}\" && ne=\"\${ne},${value}\"; test -z \"\${ne}\" && ne=\"${value}\"" ;;
+				SONAME) echo "so=\"${value}\"" ;;
+				esac
+			done
+		}
+
+		eval "$(_itx_gather ${obj})"
+		echo "386;${obj};${so};${rp};${ne}"
+	}
+
+	for x in "$@"; do
+		_itx_full_info "${x}"
+	done
+
+	exit 0
+}
+
+
+# Native Windows: Uses the winnt compiler ("parity") to gather
+# information. parity is the only one knowing about the location
+# and format of the relevant data, and it is there always when
+# wanting to build native win32 executables.
+
+scanbin_winnt() {
+	local _winnt_inspector="$(type -P "parity.inspector")"
+	[[ -x ${_winnt_inspector} ]] || exit 0
+
+	_winnt_full_info () {
+		local obj="$(cd "$(dirname "$1")"; pwd)/${1##*/}"
+
+		{ file -L "${obj}" | grep "PE" > /dev/null 2>&1; } || exit 0
+
+		# parity.inspector in --raw mode has exactly the format we
+		# want - wonder, wonder, i implemented that switch :)
+
+		local info="$(${_winnt_inspector} --raw "${obj}")"
+		echo "386;${obj};${info}"
+	}
+
+	for x in "$@"; do
+		_winnt_full_info "${x}"
+	done
+}
+
+# CHOST is the first argument!
+_chost=$1
+
+# verify CHOST...
+[[ -z ${_chost} ]] && { echo "CHOST not set!!"; exit 1; }
+[[ ${_chost} == *-*-* ]] || { echo "invalid CHOST!!"; exit 1; }
+shift
+
+case "${_chost}" in 
+*-interix*) scanbin_interix "$@" ;;
+*-winnt*) scanbin_winnt "$@" ;;
+esac
+

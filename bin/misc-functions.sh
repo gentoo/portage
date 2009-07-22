@@ -265,6 +265,129 @@ install_qa_check() {
 		PORTAGE_QUIET=${tmp_quiet}
 	fi
 
+	local _pfx_scan="readpecoff ${CHOST}"
+
+	# this one uses readpecoff, which supports multiple prefix platforms!
+	# this is absolutely _not_ optimized for speed, and there may be plenty
+	# of possibilities by introducing one or the other cache!
+	if [[ ${CHOST} == *-interix* || ${CHOST} == *-winnt* ]] && ! hasq binchecks ${RESTRICT}; then
+		# copied and adapted from the above scanelf code.
+		local qa_var insecure_rpath=0 tmp_quiet=${PORTAGE_QUIET}
+		local f x
+
+		# display warnings when using stricter because we die afterwards
+		if has stricter ${FEATURES} ; then
+			unset PORTAGE_QUIET
+		fi
+
+		local _exec_find_opt="-executable"
+		[[ ${CHOST} == *-winnt* ]] && _exec_find_opt='-name *.dll -o -name *.exe'
+
+		# Make sure we disallow insecure RUNPATH/RPATH's
+		# Don't want paths that point to the tree where the package was built
+		# (older, broken libtools would do this).  Also check for null paths
+		# because the loader will search $PWD when it finds null paths.
+
+		f=$(
+			find "${ED}" -type f '(' ${_exec_find_opt} ')' -print0 | xargs -0 ${_pfx_scan} | \
+			while IFS=";" read arch obj soname rpath needed ; do \
+			echo "${rpath}" | grep -E "(${PORTAGE_BUILDDIR}|: |::|^:|^ )" > /dev/null 2>&1 \
+				&& echo "${obj}"; done;
+		)
+		# Reject set*id binaries with $ORIGIN in RPATH #260331
+		x=$(
+			find "${ED}" -type f '(' -perm -u+s -o -perm -g+s ')' -print0 | \
+			xargs -0 ${_pfx_scan} | while IFS=";" read arch obj soname rpath needed; do \
+			echo "${rpath}" | grep '$ORIGIN' > /dev/null 2>&1 && echo "${obj}"; done;
+		)
+		if [[ -n ${f}${x} ]] ; then
+			vecho -ne '\a\n'
+			eqawarn "QA Notice: The following files contain insecure RUNPATH's"
+			eqawarn " Please file a bug about this at http://bugs.gentoo.org/"
+			eqawarn " with the maintaining herd of the package."
+			eqawarn "${f}${f:+${x:+\n}}${x}"
+			vecho -ne '\a\n'
+			if [[ -n ${x} ]] || has stricter ${FEATURES} ; then
+				insecure_rpath=1
+			else
+				eqawarn "cannot automatically fix runpaths on interix platforms!"
+			fi
+		fi
+
+		rm -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+		rm -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED.PECOFF.1
+
+		# Save NEEDED information after removing self-contained providers
+		find "${ED}" -type f '(' ${_exec_find_opt} ')' -print0 | xargs -0 ${_pfx_scan} | { while IFS=';' read arch obj soname rpath needed; do
+			# need to strip image dir from object name.
+			obj="/${obj#${D}}"
+			if [ -z "${rpath}" -o -n "${rpath//*ORIGIN*}" ]; then
+				# object doesn't contain $ORIGIN in its runpath attribute
+				echo "${obj} ${needed}"	>> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+				echo "${arch};${obj};${soname};${rpath};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.PECOFF.1
+			else
+				dir=${obj%/*}
+				# replace $ORIGIN with the dirname of the current object for the lookup
+				opath=$(echo :${rpath}: | sed -e "s#.*:\(.*\)\$ORIGIN\(.*\):.*#\1${dir}\2#")
+				sneeded=$(echo ${needed} | tr , ' ')
+				rneeded=""
+				for lib in ${sneeded}; do
+					found=0
+					for path in ${opath//:/ }; do
+						[ -e "${ED}/${path}/${lib}" ] && found=1 && break
+					done
+					[ "${found}" -eq 0 ] && rneeded="${rneeded},${lib}"
+				done
+				rneeded=${rneeded:1}
+				if [ -n "${rneeded}" ]; then
+					echo "${obj} ${rneeded}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+					echo "${arch};${obj};${soname};${rpath};${rneeded}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.PECOFF.1
+				fi
+			fi
+		done }
+		
+		if [[ ${insecure_rpath} -eq 1 ]] ; then
+			die "Aborting due to serious QA concerns with RUNPATH/RPATH"
+		elif [[ -n ${die_msg} ]] && has stricter ${FEATURES} ; then
+			die "Aborting due to QA concerns: ${die_msg}"
+		fi
+
+		local _so_ext='.so*'
+
+		case "${CHOST}" in
+		*-winnt*) _so_ext=".dll" ;; # no "*" intentionally!
+		esac
+
+		# Run some sanity checks on shared libraries
+		for d in "${ED}"lib* "${ED}"usr/lib* ; do
+			[[ -d "${d}" ]] || continue
+			f=$(find "${d}" -name "lib*${_so_ext}" -print0 | \
+				xargs -0 ${_pfx_scan} | while IFS=";" read arch obj soname rpath needed; \
+				do [[ -z "${soname}" ]] && echo "${obj}"; done)
+			if [[ -n ${f} ]] ; then
+				vecho -ne '\a\n'
+				eqawarn "QA Notice: The following shared libraries lack a SONAME"
+				eqawarn "${f}"
+				vecho -ne '\a\n'
+				sleep 1
+			fi
+
+			f=$(find "${d}" -name "lib*${_so_ext}" -print0 | \
+				xargs -0 ${_pfx_scan} | while IFS=";" read arch obj soname rpath needed; \
+				do [[ -z "${needed}" ]] && echo "${obj}"; done)
+			if [[ -n ${f} ]] ; then
+				vecho -ne '\a\n'
+				eqawarn "QA Notice: The following shared libraries lack NEEDED entries"
+				eqawarn "${f}"
+				vecho -ne '\a\n'
+				sleep 1
+			fi
+		done
+
+		PORTAGE_QUIET=${tmp_quiet}
+	fi
+
+
 	local unsafe_files=$(find "${ED}" -type f '(' -perm -2002 -o -perm -4002 ')')
 	if [[ -n ${unsafe_files} ]] ; then
 		eqawarn "QA Notice: Unsafe files detected (set*id and world writable)"
