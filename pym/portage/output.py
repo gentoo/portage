@@ -165,7 +165,8 @@ def _parse_color_map(onerror=None):
 		return token
 	try:
 		lineno=0
-		for line in codecs.open( myfile, mode = 'r', errors = 'replace' ):
+		for line in codecs.open( myfile, mode='r',
+			encoding='utf_8', errors='replace' ):
 			lineno += 1
 
 			commenter_pos = line.find("#")

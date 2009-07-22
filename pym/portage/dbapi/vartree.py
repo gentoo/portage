@@ -2564,6 +2564,7 @@ class dblink(object):
 		catdir_lock = None
 		scheduler = self._scheduler
 		retval = -1
+		failures = 0
 		try:
 			if myebuildpath:
 				catdir_lock = lockdir(catdir)
@@ -2591,6 +2592,7 @@ class dblink(object):
 
 				# XXX: Decide how to handle failures here.
 				if retval != os.EX_OK:
+					failures += 1
 					writemsg(_("!!! FAILED prerm: %s\n") % retval, noiselevel=-1)
 
 			self._unmerge_pkgfiles(pkgfiles, others_in_slot)
@@ -2613,6 +2615,7 @@ class dblink(object):
 
 				# XXX: Decide how to handle failures here.
 				if retval != os.EX_OK:
+					failures += 1
 					writemsg(_("!!! FAILED postrm: %s\n") % retval, noiselevel=-1)
 
 			# Skip this if another package in the same slot has just been
@@ -2712,6 +2715,25 @@ class dblink(object):
 							raise
 						del e
 					unlockdir(catdir_lock)
+
+		if log_path is not None:
+
+			if not failures and 'unmerge-logs' not in self.settings.features:
+				try:
+					os.unlink(log_path)
+				except OSError:
+					pass
+
+			try:
+				st = os.stat(log_path)
+			except OSError:
+				pass
+			else:
+				if st.st_size == 0:
+					try:
+						os.unlink(log_path)
+					except OSError:
+						pass
 
 		if log_path is not None and os.path.exists(log_path):
 			# Restore this since it gets lost somewhere above and it

@@ -454,14 +454,6 @@ def action_build(settings, trees, mtimedb,
 				mtimedb["resume_backup"] = mtimedb["resume"]
 				del mtimedb["resume"]
 				mtimedb.commit()
-			mtimedb["resume"]={}
-			# Stored as a dict starting with portage-2.1.6_rc1, and supported
-			# by >=portage-2.1.3_rc8. Versions <portage-2.1.3_rc8 only support
-			# a list type for options.
-			mtimedb["resume"]["myopts"] = myopts.copy()
-
-			# Convert Atom instances to plain str.
-			mtimedb["resume"]["favorites"] = [str(x) for x in favorites]
 
 			pkglist = mydepgraph.altlist()
 			mydepgraph.saveNomergeFavorites()
@@ -1152,7 +1144,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			cleanlist = [pkg.cpv for pkg in graph.order]
 		else:
 			# Order nodes from lowest to highest overall reference count for
-			# optimal root node selection.
+			# optimal root node selection (this can help minimize issues
+			# with unaccounted implicit dependencies).
 			node_refcounts = {}
 			for node in graph.order:
 				node_refcounts[node] = len(graph.parent_nodes(node))

@@ -590,7 +590,8 @@ for path in portdb.porttrees:
 
 	desc_path = os.path.join(path, 'profiles', 'profiles.desc')
 	try:
-		desc_file = codecs.open(desc_path, mode='r', errors='replace')
+		desc_file = codecs.open(desc_path, mode='r',
+			encoding='utf_8', errors='replace')
 	except EnvironmentError:
 		pass
 	else:
@@ -960,7 +961,8 @@ for x in scanlist:
 			continue
 		try:
 			line = 1
-			for l in codecs.open(checkdir+"/"+y, "r", "utf8"):
+			for l in codecs.open(os.path.join(checkdir, y), mode='r',
+				encoding='utf_8'):
 				line +=1
 		except UnicodeDecodeError, ue:
 			stats["file.UTF8"] += 1
