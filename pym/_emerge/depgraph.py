@@ -2428,7 +2428,7 @@ class depgraph(object):
 			except KeyError:
 				raise portage.exception.PackageNotFound(cpv)
 			pkg = Package(built=(type_name != "ebuild"), cpv=cpv,
-				installed=installed, metadata=metadata,
+				installed=installed, metadata=metadata, onlydeps=onlydeps,
 				root_config=root_config, type_name=type_name)
 			self._frozen_config._pkg_cache[pkg] = pkg
 		return pkg
