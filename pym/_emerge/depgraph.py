@@ -351,19 +351,19 @@ class depgraph(object):
 				msg.append(str(pkg))
 
 				msg.append(" conflicts with\n")
-				for parent, atom in parent_atoms:
-					msg.append(2*indent)
-					if isinstance(parent,
-						(PackageArg, AtomArg)):
-						# For PackageArg and AtomArg types, it's
-						# redundant to display the atom attribute.
-						msg.append(str(parent))
-					else:
-						# Display the specific atom from SetArg or
-						# Package types.
-						msg.append("%s required by %s" % (atom, parent))
-					msg.append("\n")
+				msg.append(2*indent)
+				if isinstance(parent,
+					(PackageArg, AtomArg)):
+					# For PackageArg and AtomArg types, it's
+					# redundant to display the atom attribute.
+					msg.append(str(parent))
+				else:
+					# Display the specific atom from SetArg or
+					# Package types.
+					msg.append("%s required by %s" % (atom, parent))
 				msg.append("\n")
+			msg.append("\n")
+
 		sys.stderr.write("".join(msg))
 		sys.stderr.flush()
 
