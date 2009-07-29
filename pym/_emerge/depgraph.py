@@ -285,15 +285,15 @@ class depgraph(object):
 				# Exclude installed here since we only
 				# want to show available updates.
 				continue
-			if pkg.slot_atom in missed_updates:
-				other_pkg, mask_type, parent_atoms = \
-					missed_updates[pkg.slot_atom]
+			k = (pkg.root, pkg.slot_atom)
+			if k in missed_updates:
+				other_pkg, mask_type, parent_atoms = missed_updates[k]
 				if other_pkg > pkg:
 					continue
 			for mask_type, parent_atoms in mask_reasons.iteritems():
 				if not parent_atoms:
 					continue
-				missed_updates[pkg.slot_atom] = (pkg, mask_type, parent_atoms)
+				missed_updates[k] = (pkg, mask_type, parent_atoms)
 				break
 
 		if not missed_updates:
@@ -323,6 +323,8 @@ class depgraph(object):
 				"due to unsatisfied dependencies:\n\n")
 
 			write(str(pkg.slot_atom))
+			if pkg.root != '/':
+				write(" for %s" % (pkg.root,))
 			write("\n")
 
 			for parent, root, atom in parent_atoms:
@@ -343,6 +345,8 @@ class depgraph(object):
 		indent = "  "
 		for pkg, parent_atoms in missed_updates:
 			msg.append(str(pkg.slot_atom))
+			if pkg.root != '/':
+				msg.append(" for %s" % (pkg.root,))
 			msg.append("\n\n")
 
 			for parent, atom in parent_atoms:
