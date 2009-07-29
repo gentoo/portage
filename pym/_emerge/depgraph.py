@@ -325,9 +325,8 @@ class depgraph(object):
 			write(str(pkg.slot_atom))
 			write("\n")
 
-			for parent, atom in parent_atoms:
-				# TODO: Account for which $ROOT the atom applies to.
-				self._show_unsatisfied_dep(parent.root, atom, myparent=parent)
+			for parent, root, atom in parent_atoms:
+				self._show_unsatisfied_dep(root, atom, myparent=parent)
 				write("\n")
 
 		sys.stderr.flush()
@@ -719,7 +718,7 @@ class depgraph(object):
 					if dep_pkg is None:
 						self._dynamic_config._runtime_pkg_mask.setdefault(
 							dep.parent, {})["missing dependency"] = \
-								set([(dep.parent, dep.atom)])
+								set([(dep.parent, dep.root, dep.atom)])
 						self._dynamic_config._need_restart = True
 
 			return 0
