@@ -2610,58 +2610,19 @@ def load_emerge_config(trees=None):
 	return settings, trees, mtimedb
 
 def chk_updated_cfg_files(target_root, config_protect):
-	if config_protect:
-		#number of directories with some protect files in them
-		procount=0
-		for x in config_protect:
-			x = os.path.join(target_root, x.lstrip(os.path.sep))
-			if not os.access(x, os.W_OK):
-				# Avoid Permission denied errors generated
-				# later by `find`.
-				continue
-			try:
-				mymode = os.lstat(x).st_mode
-			except OSError:
-				continue
-			if stat.S_ISLNK(mymode):
-				# We want to treat it like a directory if it
-				# is a symlink to an existing directory.
-				try:
-					real_mode = os.stat(x).st_mode
-					if stat.S_ISDIR(real_mode):
-						mymode = real_mode
-				except OSError:
-					pass
-			if stat.S_ISDIR(mymode):
-				mycommand = "find '%s' -name '.*' -type d -prune -o -name '._cfg????_*'" % x
-			else:
-				mycommand = "find '%s' -maxdepth 1 -name '._cfg????_%s'" % \
-					os.path.split(x.rstrip(os.path.sep))
-			mycommand += " ! -name '.*~' ! -iname '.*.bak' -print0"
-			a = commands.getstatusoutput(mycommand)
-			if a[0] != 0:
-				sys.stderr.write(" %s error scanning '%s': " % (bad("*"), x))
-				sys.stderr.flush()
-				# Show the error message alone, sending stdout to /dev/null.
-				os.system(mycommand + " 1>/dev/null")
-			else:
-				files = a[1].split('\0')
-				# split always produces an empty string as the last element
-				if files and not files[-1]:
-					del files[-1]
-				if files:
-					procount += 1
-					print "\n"+colorize("WARN", " * IMPORTANT:"),
-					if stat.S_ISDIR(mymode):
-						 print "%d config files in '%s' need updating." % \
-							(len(files), x)
-					else:
-						 print "config file '%s' needs updating." % x
+	result = portage.util.get_updated_config_files(target_root, config_protect)
 
-		if procount:
-			print " "+yellow("*")+" See the "+colorize("INFORM","CONFIGURATION FILES")+ \
-				" section of the " + bold("emerge")
-			print " "+yellow("*")+" man page to learn how to update config files."
+	for x in result:
+		print "\n"+colorize("WARN", " * IMPORTANT:"),
+		if not x[1]: # it's a protected file
+			print "config file '%s' needs updating." % x[0]
+		else: # it's a protected dir
+			print "%d config files in '%s' need updating." % (len(x[1]), x[0])
+
+	if result != []:
+		print " "+yellow("*")+" See the "+colorize("INFORM","CONFIGURATION FILES")\
+				+ " section of the " + bold("emerge")
+		print " "+yellow("*")+" man page to learn how to update config files."
 
 def display_news_notification(root_config, myopts):
 	target_root = root_config.root
