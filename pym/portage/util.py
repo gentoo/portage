@@ -1293,12 +1293,12 @@ def new_protect_filename(mydest, newmd5=None):
 
 def find_updated_config_files(target_root, config_protect):
 	"""
-	Return a list of configuration files that needs to be updated.
-	The list contains tuple organized like this:
+	Return a tuple of configuration files that needs to be updated.
+	The tuple contains lists organized like this:
 	[ protected_dir, file_list ]
-	If the protected config isn't a protected_dir but a procted_file, tuple is:
+	If the protected config isn't a protected_dir but a procted_file, list is:
 	[ protected_file, None ]
-	If no configuration files needs to be updated, [] is returned
+	If no configuration files needs to be updated, None is returned
 	"""
 
 	if config_protect:
