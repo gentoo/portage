@@ -198,7 +198,7 @@ def owners(argv):
 		if is_basename:
 			files.append(f)
 		else:
-			files.append(f[len(root):])
+			files.append(f[len(root)-1:])
 
 	owners = vardb._owners.get_owners(files)
 
