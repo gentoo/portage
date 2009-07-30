@@ -5,7 +5,7 @@
 __all__ = ['apply_permissions', 'apply_recursive_permissions',
 	'apply_secpass_permissions', 'apply_stat_permissions', 'atomic_ofstream',
 	'cmp_sort_key', 'ConfigProtect', 'dump_traceback', 'ensure_dirs',
-	'getconfig', 'getlibpaths', 'get_updated_config_files' 'grabdict',
+	'find_updated_config_files', 'getconfig', 'getlibpaths', 'grabdict',
 	'grabdict_package', 'grabfile', 'grabfile_package', 'grablines',
 	'initialize_logger', 'LazyItemsDict', 'map_dictlist_vals',
 	'new_protect_filename', 'normalize_path', 'pickle_read', 'stack_dictlist',
@@ -1291,7 +1291,7 @@ def new_protect_filename(mydest, newmd5=None):
 				return old_pfile
 	return new_pfile
 
-def get_updated_config_files(target_root, config_protect):
+def find_updated_config_files(target_root, config_protect):
 	"""
 	Return a list of configuration files that needs to be updated.
 	The list contains tuple organized like this:
@@ -1300,8 +1300,6 @@ def get_updated_config_files(target_root, config_protect):
 	[ protected_file, None ]
 	If no configuration files needs to be updated, [] is returned
 	"""
-
-	rval = []
 
 	if config_protect:
 		# directories with some protect files in them
@@ -1342,11 +1340,9 @@ def get_updated_config_files(target_root, config_protect):
 					del files[-1]
 				if files:
 					if stat.S_ISDIR(mymode):
-						rval.append([x, files])
+						yield (x, files)
 					else:
-						rval.append([x, None])
-
-	return rval
+						yield (x, None)
 
 def getlibpaths(root):
 	""" Return a list of paths that are used for library lookups """

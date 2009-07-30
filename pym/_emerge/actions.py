@@ -2610,7 +2610,8 @@ def load_emerge_config(trees=None):
 	return settings, trees, mtimedb
 
 def chk_updated_cfg_files(target_root, config_protect):
-	result = portage.util.get_updated_config_files(target_root, config_protect)
+	result = list(
+		portage.util.find_updated_config_files(target_root, config_protect))
 
 	for x in result:
 		print "\n"+colorize("WARN", " * IMPORTANT:"),
@@ -2619,7 +2620,7 @@ def chk_updated_cfg_files(target_root, config_protect):
 		else: # it's a protected dir
 			print "%d config files in '%s' need updating." % (len(x[1]), x[0])
 
-	if result != []:
+	if result:
 		print " "+yellow("*")+" See the "+colorize("INFORM","CONFIGURATION FILES")\
 				+ " section of the " + bold("emerge")
 		print " "+yellow("*")+" man page to learn how to update config files."
