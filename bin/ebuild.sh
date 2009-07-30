@@ -26,11 +26,14 @@ PATH=$PORTAGE_BIN_PATH/ebuild-helpers:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sb
 export PATH
 
 if [[ -z $PORTAGE_SETSID && -n $1 && $1 != depend ]] ; then
+	# If available, use setsid to create a new login session so that we can use
+	# SIGHUP to ensure that no orphaned subprocesses are left running.
 	if type -P setsid >/dev/null ; then
-		# Use setsid to create a new login session so that we can use SIGHUP
-		# to ensure that no orphaned subprocesses are left running.
 		export PORTAGE_SETSID=1
 		exec setsid "$PORTAGE_BIN_PATH/ebuild.sh" "$@"
+	elif [[ -x $PORTAGE_BIN_PATH/setsid ]] ; then
+		export PORTAGE_SETSID=1
+		exec "$PORTAGE_BIN_PATH/setsid" "$PORTAGE_BIN_PATH/ebuild.sh" "$@"
 	fi
 fi
 [[ $PORTAGE_SETSID = 1 ]] && trap 'trap : SIGHUP ; kill -s SIGHUP 0 ;' EXIT
