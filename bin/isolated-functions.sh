@@ -150,7 +150,7 @@ die() {
 	[ -n "$EBUILD_EXIT_STATUS_FILE" ] && > "$EBUILD_EXIT_STATUS_FILE"
 
 	# subshell die support
-	kill -s SIGTERM ${EBUILD_MASTER_PID}
+	[[ $BASHPID = $EBUILD_MASTER_PID ]] || kill -s SIGTERM $EBUILD_MASTER_PID
 	exit 1
 }
 
