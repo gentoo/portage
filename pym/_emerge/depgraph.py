@@ -398,6 +398,8 @@ class depgraph(object):
 		for (slot_atom, root), slot_nodes \
 			in self._dynamic_config._slot_collision_info.iteritems():
 			msg.append(str(slot_atom))
+			if root != '/':
+				msg.append(" for %s" % (root,))
 			msg.append("\n\n")
 
 			for node in slot_nodes:

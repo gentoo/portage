@@ -5,13 +5,14 @@
 __all__ = ['apply_permissions', 'apply_recursive_permissions',
 	'apply_secpass_permissions', 'apply_stat_permissions', 'atomic_ofstream',
 	'cmp_sort_key', 'ConfigProtect', 'dump_traceback', 'ensure_dirs',
-	'getconfig', 'getlibpaths', 'grabdict', 'grabdict_package', 'grabfile',
-	'grabfile_package', 'grablines', 'initialize_logger', 'LazyItemsDict',
-	'map_dictlist_vals', 'new_protect_filename', 'normalize_path',
-	'pickle_read', 'stack_dictlist', 'stack_dicts', 'stack_lists',
-	'unique_array', 'varexpand', 'write_atomic', 'writedict', 'writemsg',
-	'writemsg_level', 'writemsg_stdout']
+	'find_updated_config_files', 'getconfig', 'getlibpaths', 'grabdict',
+	'grabdict_package', 'grabfile', 'grabfile_package', 'grablines',
+	'initialize_logger', 'LazyItemsDict', 'map_dictlist_vals',
+	'new_protect_filename', 'normalize_path', 'pickle_read', 'stack_dictlist',
+	'stack_dicts', 'stack_lists', 'unique_array', 'varexpand', 'write_atomic',
+	'writedict', 'writemsg', 'writemsg_level', 'writemsg_stdout']
 
+import commands
 import codecs
 import os
 import errno
@@ -1290,6 +1291,59 @@ def new_protect_filename(mydest, newmd5=None):
 			if last_pfile_md5 == newmd5:
 				return old_pfile
 	return new_pfile
+
+def find_updated_config_files(target_root, config_protect):
+	"""
+	Return a tuple of configuration files that needs to be updated.
+	The tuple contains lists organized like this:
+	[ protected_dir, file_list ]
+	If the protected config isn't a protected_dir but a procted_file, list is:
+	[ protected_file, None ]
+	If no configuration files needs to be updated, None is returned
+	"""
+
+	if config_protect:
+		# directories with some protect files in them
+		for x in config_protect:
+			files = []
+
+			x = os.path.join(target_root, x.lstrip(os.path.sep))
+			if not os.access(x, os.W_OK):
+				continue
+			try:
+				mymode = os.lstat(x).st_mode
+			except OSError:
+				continue
+
+			if stat.S_ISLNK(mymode):
+				# We want to treat it like a directory if it
+				# is a symlink to an existing directory.
+				try:
+					real_mode = os.stat(x).st_mode
+					if stat.S_ISDIR(real_mode):
+						mymode = real_mode
+				except OSError:
+					pass
+
+			if stat.S_ISDIR(mymode):
+				mycommand = \
+					"find '%s' -name '.*' -type d -prune -o -name '._cfg????_*'" % x
+			else:
+				mycommand = "find '%s' -maxdepth 1 -name '._cfg????_%s'" % \
+						os.path.split(x.rstrip(os.path.sep))
+			mycommand += " ! -name '.*~' ! -iname '.*.bak' -print0"
+			a = commands.getstatusoutput(mycommand)
+
+			if a[0] == 0:
+				files = a[1].split('\0')
+				# split always produces an empty string as the last element
+				if files and not files[-1]:
+					del files[-1]
+				if files:
+					if stat.S_ISDIR(mymode):
+						yield (x, files)
+					else:
+						yield (x, None)
 
 def getlibpaths(root):
 	""" Return a list of paths that are used for library lookups """
