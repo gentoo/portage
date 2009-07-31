@@ -278,6 +278,8 @@ class depgraph(object):
 			'--debug' not in self._frozen_config.myopts:
 			return
 
+		# In order to minimize noise, show only the highest
+		# missed update from each SLOT.
 		missed_updates = {}
 		for pkg, mask_reasons in \
 			self._dynamic_config._runtime_pkg_mask.iteritems():
@@ -286,14 +288,52 @@ class depgraph(object):
 				# want to show available updates.
 				continue
 			if pkg.slot_atom in missed_updates:
-				other_pkg, parent_atoms = missed_updates[pkg.slot_atom]
+				other_pkg, mask_type, parent_atoms = \
+					missed_updates[pkg.slot_atom]
 				if other_pkg > pkg:
 					continue
 			for mask_type, parent_atoms in mask_reasons.iteritems():
 				if not parent_atoms:
 					continue
-				missed_updates[pkg.slot_atom] = (pkg, parent_atoms)
+				missed_updates[pkg.slot_atom] = (pkg, mask_type, parent_atoms)
 				break
+
+		if not missed_updates:
+			return
+
+		missed_update_types = {}
+		for pkg, mask_type, parent_atoms in missed_updates.itervalues():
+			missed_update_types.setdefault(mask_type,
+				[]).append((pkg, parent_atoms))
+
+		self._show_missed_update_slot_conflicts(
+			missed_update_types.get("slot conflict"))
+
+		self._show_missed_update_unsatisfied_dep(
+			missed_update_types.get("missing dependency"))
+
+	def _show_missed_update_unsatisfied_dep(self, missed_updates):
+
+		if not missed_updates:
+			return
+
+		write = sys.stderr.write
+
+		for pkg, parent_atoms in missed_updates:
+
+			write("\n!!! The following update has been skipped " + \
+				"due to unsatisfied dependencies:\n\n")
+
+			write(str(pkg.slot_atom))
+			write("\n")
+
+			for parent, root, atom in parent_atoms:
+				self._show_unsatisfied_dep(root, atom, myparent=parent)
+				write("\n")
+
+		sys.stderr.flush()
+
+	def _show_missed_update_slot_conflicts(self, missed_updates):
 
 		if not missed_updates:
 			return
@@ -303,7 +343,7 @@ class depgraph(object):
 			"a dependency conflict:\n\n")
 
 		indent = "  "
-		for pkg, parent_atoms in missed_updates.itervalues():
+		for pkg, parent_atoms in missed_updates:
 			msg.append(str(pkg.slot_atom))
 			msg.append("\n\n")
 
@@ -312,19 +352,19 @@ class depgraph(object):
 				msg.append(str(pkg))
 
 				msg.append(" conflicts with\n")
-				for parent, atom in parent_atoms:
-					msg.append(2*indent)
-					if isinstance(parent,
-						(PackageArg, AtomArg)):
-						# For PackageArg and AtomArg types, it's
-						# redundant to display the atom attribute.
-						msg.append(str(parent))
-					else:
-						# Display the specific atom from SetArg or
-						# Package types.
-						msg.append("%s required by %s" % (atom, parent))
-					msg.append("\n")
+				msg.append(2*indent)
+				if isinstance(parent,
+					(PackageArg, AtomArg)):
+					# For PackageArg and AtomArg types, it's
+					# redundant to display the atom attribute.
+					msg.append(str(parent))
+				else:
+					# Display the specific atom from SetArg or
+					# Package types.
+					msg.append("%s required by %s" % (atom, parent))
 				msg.append("\n")
+			msg.append("\n")
+
 		sys.stderr.write("".join(msg))
 		sys.stderr.flush()
 
@@ -680,7 +720,7 @@ class depgraph(object):
 					if dep_pkg is None:
 						self._dynamic_config._runtime_pkg_mask.setdefault(
 							dep.parent, {})["missing dependency"] = \
-								set([(dep.parent, dep.atom)])
+								set([(dep.parent, dep.root, dep.atom)])
 						self._dynamic_config._need_restart = True
 
 			return 0
@@ -1934,6 +1974,11 @@ class depgraph(object):
 			traversed_nodes.add(node)
 			msg.append('(dependency required by "%s" [%s])' % \
 				(colorize('INFORM', str(node.cpv)), node.type_name))
+
+			if node not in self._dynamic_config.digraph:
+				# The parent is not in the graph due to backtracking.
+				break
+
 			# When traversing to parents, prefer arguments over packages
 			# since arguments are root nodes. Never traverse the same
 			# package twice, in order to prevent an infinite loop.
@@ -2430,7 +2475,7 @@ class depgraph(object):
 			except KeyError:
 				raise portage.exception.PackageNotFound(cpv)
 			pkg = Package(built=(type_name != "ebuild"), cpv=cpv,
-				installed=installed, metadata=metadata,
+				installed=installed, metadata=metadata, onlydeps=onlydeps,
 				root_config=root_config, type_name=type_name)
 			self._frozen_config._pkg_cache[pkg] = pkg
 		return pkg
