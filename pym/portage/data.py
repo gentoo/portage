@@ -86,21 +86,26 @@ except KeyError:
 	portage_uid=0
 	portage_gid=0
 	writemsg("\n")
-	writemsg(  red("portage: "+portageuser+" user or "+portagegroup+" group missing.\n"))
-	writemsg(  red("         In Prefix Portage this is quite dramatic\n"))
-	writemsg(  red("         since it means you have thrown away yourself.\n"))
-	writemsg(      "         Re-add yourself or re-bootstrap Gentoo Prefix.\n")
-	writemsg("\n")
 	writemsg(colorize("BAD",
-		"portage: 'portage' user or group missing.") + "\n", noiselevel=-1)
-	writemsg(
-		"         For the defaults, line 1 goes into passwd, " + \
-		"and 2 into group.\n", noiselevel=-1)
-	writemsg(colorize("GOOD",
-		"         portage:x:250:250:portage:/var/tmp/portage:/bin/false") \
-		+ "\n", noiselevel=-1)
-	writemsg(colorize("GOOD", "         portage::250:portage") + "\n",
-		noiselevel=-1)
+		"portage: "+portageuser+" user or "+portagegroup+" group missing.") + "\n", noiselevel=-1)
+	writemsg(colorize("BAD",
+		"         In Prefix Portage this is quite dramatic") + "\n", noiselevel=-1)
+	writemsg(colorize("BAD",
+		"         since it means you have thrown away yourself.") + "\n", noiselevel=-1)
+	writemsg(colorize("BAD",
+		"         Re-add yourself or re-bootstrap Gentoo Prefix.") + "\n", noiselevel=-1)
+	writemsg("\n")
+# we need to fix this one day to distinguish prefix vs non-prefix
+#	writemsg(colorize("BAD",
+#		"portage: 'portage' user or group missing.") + "\n", noiselevel=-1)
+#	writemsg(
+#		"         For the defaults, line 1 goes into passwd, " + \
+#		"and 2 into group.\n", noiselevel=-1)
+#	writemsg(colorize("GOOD",
+#		"         portage:x:250:250:portage:/var/tmp/portage:/bin/false") \
+#		+ "\n", noiselevel=-1)
+#	writemsg(colorize("GOOD", "         portage::250:portage") + "\n",
+#		noiselevel=-1)
 	portage_group_warning()
 
 userpriv_groups = [portage_gid]
