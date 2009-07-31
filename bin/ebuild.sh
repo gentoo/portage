@@ -73,6 +73,17 @@ PREROOTPATH=${PREROOTPATH%%:}
 PATH="$PORTAGE_BIN_PATH/ebuild-helpers:$PREROOTPATH${PREROOTPATH:+:}${DEFAULT_PATH}:${ROOTPATH:+:}$ROOTPATH"
 export PATH
 
+if [[ -z $PORTAGE_SETSID && \
+	-n $EBUILD_SH_ARGS && $EBUILD_SH_ARGS != depend ]] ; then
+	if type -P setsid >/dev/null ; then
+		# Use setsid to create a new login session so that we can use SIGHUP
+		# to ensure that no orphaned subprocesses are left running.
+		export PORTAGE_SETSID=1
+		exec setsid "$PORTAGE_BIN_PATH/ebuild.sh" $EBUILD_SH_ARGS
+	fi
+fi
+trap '[[ $PORTAGE_SETSID = 1 ]] && { trap : SIGHUP ; kill -s SIGHUP 0 ; }' EXIT
+
 source "${PORTAGE_BIN_PATH}/isolated-functions.sh"  &>/dev/null
 
 # Set IMAGE for minimal backward compatibility with
