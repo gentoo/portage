@@ -368,10 +368,9 @@ def insert_optional_args(args):
 	class valid_integers(object):
 		def __contains__(self, s):
 			try:
-				int(s)
+				return int(s) >= 0
 			except (ValueError, OverflowError):
 				return False
-			return True
 
 	valid_integers = valid_integers()
 
