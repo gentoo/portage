@@ -287,7 +287,7 @@ def help(myopts, havecolor=1):
 		print "              Display the pretend output in a tabular form. Versions are"
 		print "              aligned vertically."
 		print
-		print "       "+green("--complete-graph")
+		print "       "+green("--complete-graph") + "[=%s]" % turquoise("n")
 		desc = "This causes emerge to consider the deep dependencies of all" + \
 			" packages from the system and world sets. With this option enabled," + \
 			" emerge will bail out if it determines that the given operation will" + \

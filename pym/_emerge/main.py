@@ -48,7 +48,6 @@ options=[
 "--ask",          "--alphabetical",
 "--buildpkg",     "--buildpkgonly",
 "--changelog",    "--columns",
-"--complete-graph",
 "--debug",
 "--digest",
 "--emptytree",
@@ -383,6 +382,7 @@ def insert_optional_args(args):
 	new_args = []
 
 	default_arg_opts = {
+		'--complete-graph' : ('n',),
 		'--deep'       : valid_integers,
 		'--deselect'   : ('n',),
 		'--binpkg-respect-use'   : ('n', 'y',),
@@ -490,6 +490,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices":("y", "n")
 		},
 
+		"--complete-graph": {
+			"help"    : "completely account for all known dependencies",
+			"type"    : "choice",
+			"choices" : ("True", "n")
+		},
+
 		"--deep": {
 
 			"shortopt" : "-D",
@@ -594,6 +600,11 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.binpkg_respect_use = True
 	else:
 		myoptions.binpkg_respect_use = None
+
+	if myoptions.complete_graph in ("y", "True",):
+		myoptions.complete_graph = True
+	else:
+		myoptions.complete_graph = None
 
 	if myoptions.root_deps == "True":
 		myoptions.root_deps = True
