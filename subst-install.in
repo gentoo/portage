@@ -4,6 +4,16 @@
 prefix="@prefix@"
 exec_prefix="@exec_prefix@"
 
+# for bug #279550 we have to do some nasty trick to make sure that sed
+# doesn't strip the backslash in the replacement value (because it can
+# be a backreference) and hence escape those.
+rootuser="@rootuser@"
+portagegroup="@portagegroup@"
+portageuser="@portageuser@"
+rootuser=${rootuser//\\/\\\\}
+portagegroup=${portagegroup//\\/\\\\}
+portageuser=${portageuser//\\/\\\\}
+
 # there are many ways to do this all dynamic, but we only care for raw
 # speed here, so let configure fill in this list and be done with it
 at='@'
@@ -24,11 +34,11 @@ sedexp=(
 	-e "s,${at}PORTAGE_WGET${at},@PORTAGE_WGET@,g"
 	-e "s,${at}PORTAGE_XARGS${at},@PORTAGE_XARGS@,g"
 	-e "s,${at}datadir${at},@datadir@,g"
-	-e "s,${at}portagegroup${at},@portagegroup@,g"
-	-e "s,${at}portageuser${at},@portageuser@,g"
+	-e "s,${at}portagegroup${at},${portagegroup},g"
+	-e "s,${at}portageuser${at},${portageuser},g"
 	-e "s,${at}rootgid${at},@rootgid@,g"
 	-e "s,${at}rootuid${at},@rootuid@,g"
-	-e "s,${at}rootuser${at},@rootuser@,g"
+	-e "s,${at}rootuser${at},${rootuser},g"
 	-e "s,${at}sysconfdir${at},@sysconfdir@,g"
 )
 
