@@ -287,7 +287,7 @@ def help(myopts, havecolor=1):
 		print "              Display the pretend output in a tabular form. Versions are"
 		print "              aligned vertically."
 		print
-		print "       "+green("--complete-graph")
+		print "       "+green("--complete-graph") + "[=%s]" % turquoise("n")
 		desc = "This causes emerge to consider the deep dependencies of all" + \
 			" packages from the system and world sets. With this option enabled," + \
 			" emerge will bail out if it determines that the given operation will" + \
@@ -338,13 +338,13 @@ def help(myopts, havecolor=1):
 		print "              Same as --fetchonly except that all package files, including those"
 		print "              not required to build the package, will be processed."
 		print
-		print "       "+green("--getbinpkg")+" ("+green("-g")+" short option)"
+		print "       "+green("--getbinpkg")+ "[=%s]" % turquoise("n") + " ("+green("-g")+" short option)"
 		print "              Using the server and location defined in PORTAGE_BINHOST, portage"
 		print "              will download the information from each binary file there and it"
 		print "              will use that information to help build the dependency list. This"
 		print "              option implies '-k'. (Use -gK for binary-only merging.)"
 		print
-		print "       "+green("--getbinpkgonly")+" ("+green("-G")+" short option)"
+		print "       "+green("--getbinpkgonly")+ "[=%s]" % turquoise("n") + " ("+green("-G")+" short option)"
 		print "              This option is identical to -g, as above, except it will not use"
 		print "              ANY information from the local machine. All binaries will be"
 		print "              downloaded from the remote server without consulting packages"
@@ -492,7 +492,7 @@ def help(myopts, havecolor=1):
 		print "              a package's dependencies follow the package. Only really useful"
 		print "              in combination with --emptytree, --update or --deep."
 		print
-		print "       "+green("--usepkg")+" ("+green("-k")+" short option)"
+		print "       "+green("--usepkg")+ "[=%s]" % turquoise("n") + " ("+green("-k")+" short option)"
 		print "              Tell emerge to use binary packages (from $PKGDIR) if they are"
 		print "              available, thus possibly avoiding some time-consuming compiles."
 		print "              This option is useful for CD installs; you can export"
@@ -500,7 +500,7 @@ def help(myopts, havecolor=1):
 		print "              emerge \"pull\" binary packages from the CD in order to satisfy" 
 		print "              dependencies."
 		print
-		print "       "+green("--usepkgonly")+" ("+green("-K")+" short option)"
+		print "       "+green("--usepkgonly")+ "[=%s]" % turquoise("n") + " ("+green("-K")+" short option)"
 		print "              Like --usepkg above, except this only allows the use of binary"
 		print "              packages, and it will abort the emerge if the package is not"
 		print "              available at the time of dependency calculation."

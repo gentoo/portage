@@ -281,7 +281,7 @@ is not a tty (by default, color is disabled unless stdout is a tty).
 Used alongside \fB\-\-pretend\fR to cause the package name, new version, 
 and old version to be displayed in an aligned format for easy cut\-n\-paste.
 .TP
-.BR "\-\-complete\-graph"
+.BR "\-\-complete\-graph[=n]"
 This causes \fBemerge\fR to consider the deep dependencies of all
 packages from the system and world sets. With this option enabled,
 \fBemerge\fR will bail out if it determines that the given operation will
@@ -324,14 +324,14 @@ packages (fetch things from SRC_URI based upon USE setting).
 Instead of doing any package building, just perform fetches for all
 packages (fetch everything in SRC_URI regardless of USE setting).
 .TP
-.BR "\-\-getbinpkg " (\fB\-g\fR)
+.BR "\-\-getbinpkg[=n] " (\fB\-g\fR)
 Using the server and location defined in \fIPORTAGE_BINHOST\fR (see 
 \fBmake.conf\fR(5)), portage will download the information from each binary 
 package found and it will use that information to help build the dependency 
 list.  This option implies \fB\-k\fR.  (Use \fB\-gK\fR for binary\-only 
 merging.)
 .TP
-.BR "\-\-getbinpkgonly " (\fB\-G\fR)
+.BR "\-\-getbinpkgonly[=n] " (\fB\-G\fR)
 This option is identical to \fB\-g\fR, as above, except binaries from the
 remote server are preferred over local packages if they are not identical.
 .TP
@@ -462,13 +462,13 @@ Shows the dependency tree for the given target by indenting dependencies.
 This is only really useful in combination with \fB\-\-emptytree\fR or 
 \fB\-\-update\fR and \fB\-\-deep\fR.
 .TP
-.BR "\-\-usepkg " (\fB\-k\fR) 
+.BR "\-\-usepkg[=n] " (\fB\-k\fR) 
 Tells emerge to use binary packages (from $PKGDIR) if they are available, thus 
 possibly avoiding some time\-consuming compiles.  This option is useful for CD 
 installs; you can export PKGDIR=/mnt/cdrom/packages and then use this option to 
 have emerge "pull" binary packages from the CD in order to satisfy dependencies.
 .TP
-.BR "\-\-usepkgonly " (\fB\-K\fR)
+.BR "\-\-usepkgonly[=n] " (\fB\-K\fR)
 Tells emerge to only use binary packages (from $PKGDIR).  All the binary 
 packages must be available at the time of dependency calculation or emerge 
 will simply abort.  Portage does not use $PORTDIR when calculating dependency 

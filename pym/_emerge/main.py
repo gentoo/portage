@@ -61,12 +61,10 @@ options=[
 "--ask",          "--alphabetical",
 "--buildpkg",     "--buildpkgonly",
 "--changelog",    "--columns",
-"--complete-graph",
 "--debug",
 "--digest",
 "--emptytree",
 "--fetchonly",    "--fetch-all-uri",
-"--getbinpkg",    "--getbinpkgonly",
 "--ignore-default-opts",
 "--keep-going",
 "--noconfmem",
@@ -79,7 +77,6 @@ options=[
 "--skipfirst",
 "--tree",
 "--update",
-"--usepkg",       "--usepkgonly",
 "--verbose",
 ]
 
@@ -91,9 +88,7 @@ shortmapping={
 "d":"--debug",
 "e":"--emptytree",
 "f":"--fetchonly", "F":"--fetch-all-uri",
-"g":"--getbinpkg", "G":"--getbinpkgonly",
 "h":"--help",
-"k":"--usepkg",    "K":"--usepkgonly",
 "l":"--changelog",
 "n":"--noreplace", "N":"--newuse",
 "o":"--onlydeps",  "O":"--nodeps",
@@ -386,26 +381,39 @@ def insert_optional_args(args):
 	class valid_integers(object):
 		def __contains__(self, s):
 			try:
-				int(s)
+				return int(s) >= 0
 			except (ValueError, OverflowError):
 				return False
-			return True
 
 	valid_integers = valid_integers()
 
 	new_args = []
 
 	default_arg_opts = {
+		'--complete-graph' : ('n',),
 		'--deep'       : valid_integers,
 		'--deselect'   : ('n',),
 		'--binpkg-respect-use'   : ('n', 'y',),
+		'--getbinpkg'            : ('n',),
+		'--getbinpkgonly'        : ('n',),
 		'--jobs'       : valid_integers,
 		'--root-deps'  : ('rdeps',),
+		'--usepkg'               : ('n',),
+		'--usepkgonly'           : ('n',),
 	}
 
 	short_arg_opts = {
 		'D' : valid_integers,
 		'j' : valid_integers,
+	}
+
+	# Don't make things like "-kn" expand to "-k n"
+	# since existence of -n makes it too ambiguous.
+	short_arg_opts_n = {
+		'g' : ('n',),
+		'G' : ('n',),
+		'k' : ('n',),
+		'K' : ('n',),
 	}
 
 	arg_stack = args[:]
@@ -434,6 +442,12 @@ def insert_optional_args(args):
 				break
 
 		if match is None:
+			for k, arg_choices in short_arg_opts_n.iteritems():
+				if k in arg:
+					match = k
+					break
+
+		if match is None:
 			new_args.append(arg)
 			continue
 
@@ -454,7 +468,7 @@ def insert_optional_args(args):
 		saved_opts = None
 
 		if arg[1:2] == match:
-			if arg[2:] in arg_choices:
+			if match not in short_arg_opts_n and arg[2:] in arg_choices:
 				opt_arg = arg[2:]
 			else:
 				saved_opts = arg[2:]
@@ -501,6 +515,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"help":"enable or disable color output",
 			"type":"choice",
 			"choices":("y", "n")
+		},
+
+		"--complete-graph": {
+			"help"    : "completely account for all known dependencies",
+			"type"    : "choice",
+			"choices" : ("True", "n")
 		},
 
 		"--deep": {
@@ -558,6 +578,20 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices" : ("True", "y", "n")
 		},
 
+		"--getbinpkg": {
+			"shortopt" : "-g",
+			"help"     : "fetch binary packages",
+			"type"     : "choice",
+			"choices"  : ("True", "n")
+		},
+
+		"--getbinpkgonly": {
+			"shortopt" : "-G",
+			"help"     : "fetch binary packages only",
+			"type"     : "choice",
+			"choices"  : ("True", "n")
+		},
+
 		"--root": {
 		 "help"   : "specify the target root filesystem for merging packages",
 		 "action" : "store"
@@ -568,6 +602,21 @@ def parse_opts(tmpcmdline, silent=False):
 			"type"    : "choice",
 			"choices" :("True", "rdeps")
 		},
+
+		"--usepkg": {
+			"shortopt" : "-k",
+			"help"     : "use binary packages",
+			"type"     : "choice",
+			"choices"  : ("True", "n")
+		},
+
+		"--usepkgonly": {
+			"shortopt" : "-K",
+			"help"     : "use only binary packages",
+			"type"     : "choice",
+			"choices"  : ("True", "n")
+		},
+
 	}
 
 	from optparse import OptionParser
@@ -607,6 +656,21 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.binpkg_respect_use = True
 	else:
 		myoptions.binpkg_respect_use = None
+
+	if myoptions.complete_graph in ("y", "True",):
+		myoptions.complete_graph = True
+	else:
+		myoptions.complete_graph = None
+
+	if myoptions.getbinpkg in ("True",):
+		myoptions.getbinpkg = True
+	else:
+		myoptions.getbinpkg = None
+
+	if myoptions.getbinpkgonly in ("True",):
+		myoptions.getbinpkgonly = True
+	else:
+		myoptions.getbinpkgonly = None
 
 	if myoptions.root_deps == "True":
 		myoptions.root_deps = True
@@ -661,6 +725,16 @@ def parse_opts(tmpcmdline, silent=False):
 					(myoptions.load_average,), noiselevel=-1)
 
 		myoptions.load_average = load_average
+
+	if myoptions.usepkg in ("True",):
+		myoptions.usepkg = True
+	else:
+		myoptions.usepkg = None
+
+	if myoptions.usepkgonly in ("True",):
+		myoptions.usepkgonly = True
+	else:
+		myoptions.usepkgonly = None
 
 	for myopt in options:
 		v = getattr(myoptions, myopt.lstrip("--").replace("-", "_"))
