@@ -713,7 +713,7 @@ class depgraph(object):
 					# Do not backtrack if only USE have to be changed in
 					# order to satisfy the dependency.
 					dep_pkg, existing_node = \
-						self._select_package(dep.root, atom.without_use,
+						self._select_package(dep.root, dep.atom.without_use,
 							onlydeps=dep.onlydeps)
 					if dep_pkg is None:
 						self._dynamic_config._runtime_pkg_mask.setdefault(
