@@ -511,7 +511,7 @@ class Atom(object):
 	_atoms = weakref.WeakValueDictionary()
 
 	__slots__ = ("__weakref__", "blocker", "cp", "cpv", "operator",
-		"slot", "use", "_str")
+		"slot", "use", "without_use", "_str",)
 
 	class _blocker(object):
 		__slots__ = ("overlap",)
@@ -550,9 +550,16 @@ class Atom(object):
 		use = dep_getusedeps(s)
 		if use:
 			use = _use_dep(use)
+			without_use = remove_slot(self)
+			if self.slot is not None:
+				without_use += ":" + self.slot
+			without_use = Atom(without_use)
 		else:
 			use = None
+			without_use = self
+
 		obj_setattr(self, "use", use)
+		obj_setattr(self, "without_use", without_use)
 
 	def __setattr__(self, name, value):
 		raise AttributeError("Atom instances are immutable",

@@ -712,14 +712,8 @@ class depgraph(object):
 				else:
 					# Do not backtrack if only USE have to be changed in
 					# order to satisfy the dependency.
-					atom_without_use = dep.atom
-					if dep.atom.use:
-						atom_without_use = portage.dep.remove_slot(dep.atom)
-						if dep.atom.slot:
-							atom_without_use += ":" + dep.atom.slot
-						atom_without_use = portage.dep.Atom(atom_without_use)
 					dep_pkg, existing_node = \
-						self._select_package(dep.root, atom_without_use,
+						self._select_package(dep.root, atom.without_use,
 							onlydeps=dep.onlydeps)
 					if dep_pkg is None:
 						self._dynamic_config._runtime_pkg_mask.setdefault(
@@ -1845,12 +1839,6 @@ class depgraph(object):
 	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None):
 		atom = portage.dep.Atom(atom)
 		atom_set = InternalPackageSet(initial_atoms=(atom,))
-		atom_without_use = atom
-		if atom.use:
-			atom_without_use = portage.dep.remove_slot(atom)
-			if atom.slot:
-				atom_without_use += ":" + atom.slot
-			atom_without_use = portage.dep.Atom(atom_without_use)
 		xinfo = '"%s"' % atom
 		if arg:
 			xinfo='"%s"' % arg
@@ -1871,9 +1859,9 @@ class depgraph(object):
 				continue
 			match = db.match
 			if hasattr(db, "xmatch"):
-				cpv_list = db.xmatch("match-all", atom_without_use)
+				cpv_list = db.xmatch("match-all", atom.without_use)
 			else:
-				cpv_list = db.match(atom_without_use)
+				cpv_list = db.match(atom.without_use)
 			# descending order
 			cpv_list.reverse()
 			for cpv in cpv_list:
