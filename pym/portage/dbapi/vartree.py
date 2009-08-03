@@ -1453,10 +1453,12 @@ class vardbapi(dbapi):
 			# apparently this user isn't allowed to access PRIVATE_PATH
 			self.plib_registry = None
 
-		if self.settings.get('CHOST').find('darwin') >= 0:
+		chost = self.settings.get('CHOST')
+		if not chost:
+			chost = 'lunix?' # this happens when profiles are not available
+		if chost.find('darwin') >= 0:
 			self.linkmap = LinkageMapMachO(self)
-		elif self.settings.get('CHOST').find('interix') >= 0 \
-				or self.settings.get('CHOST').find('winnt') >= 0:
+		elif chost.find('interix') >= 0 or chost.find('winnt') >= 0:
 			self.linkmap = LinkageMapPeCoff(self)
 		else:
 			self.linkmap = LinkageMap(self)
@@ -3307,10 +3309,10 @@ class dblink(object):
 		def path_to_node(path):
 			node = path_node_map.get(path)
 			if node is None:
-				if self.settings.get('CHOST').find('darwin') >= 0:
+				chost = self.settings.get('CHOST')
+				if chost.find('darwin') >= 0:
 					node = LinkageMapMachO._LibGraphNode(path, root)
-				elif self.settings.get('CHOST').find('interix') >= 0 \
-						or self.settings.get('CHOST').find('winnt') >= 0:
+				elif chost.find('interix') >= 0 or chost.find('winnt') >= 0:
 					node = LinkageMapPeCoff._LibGraphNode(path, root)
 				else:
 					node = LinkageMap._LibGraphNode(path, root)
@@ -3455,10 +3457,10 @@ class dblink(object):
 		def path_to_node(path):
 			node = path_node_map.get(path)
 			if node is None:
-				if self.settings.get('CHOST').find('darwin') >= 0:
+				chost = self.settings.get('CHOST')
+				if chost.find('darwin') >= 0:
 					node = LinkageMapMachO._LibGraphNode(path, root)
-				elif self.settings.get('CHOST').find('interix') >= 0 \
-						or self.settings.get('CHOST').find('winnt') >= 0:
+				elif chost.find('interix') >= 0 or chost.find('winnt') >= 0:
 					node = LinkageMapPeCoff._LibGraphNode(path, root)
 				else:
 					node = LinkageMap._LibGraphNode(path, root)
