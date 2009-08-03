@@ -1411,10 +1411,11 @@ for x in scanlist:
 				for token in mydepstr.split():
 					if token in operator_tokens or \
 						token[-1:] == "?":
-						if token == "test?" and mytype == "RDEPEND":
-							stats['RDEPEND.suspect'] += 1
-							fails['RDEPEND.suspect'].append(relative_path + \
-								": 'test?' USE conditional in RDEPEND")
+						if token == "test?" and \
+							mytype in ("RDEPEND", "PDEPEND"):
+							stats[mytype + '.suspect'] += 1
+							fails[mytype + '.suspect'].append(relative_path + \
+								": 'test?' USE conditional in %s" % mytype)
 						continue
 					try:
 						atom = portage.dep.Atom(token)
