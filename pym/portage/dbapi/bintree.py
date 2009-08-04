@@ -430,18 +430,8 @@ class binarytree(object):
 				dirs.remove("All")
 			dirs.sort()
 			dirs.insert(0, "All")
-			pkgindex = self._new_pkgindex()
+			pkgindex = self._load_pkgindex()
 			pf_index = None
-			try:
-				f = open(self._pkgindex_file)
-			except EnvironmentError:
-				pass
-			else:
-				try:
-					pkgindex.read(f)
-				finally:
-					f.close()
-					del f
 			if not self._pkgindex_version_supported(pkgindex):
 				pkgindex = self._new_pkgindex()
 			header = pkgindex.header
@@ -647,7 +637,8 @@ class binarytree(object):
 				urldata[1] + urldata[2], "Packages")
 			pkgindex = self._new_pkgindex()
 			try:
-				f = open(pkgindex_file)
+				f = codecs.open(pkgindex_file,
+					encoding='utf_8', errors='replace')
 				try:
 					pkgindex.read(f)
 				finally:
@@ -846,18 +837,8 @@ class binarytree(object):
 				self.getname(cpv).split(os.path.sep)[-2] == "All":
 				self._create_symlink(cpv)
 				created_symlink = True
-			pkgindex = self._new_pkgindex()
-			try:
-				f = codecs.open(self._pkgindex_file,
-					encoding='utf_8', errors='replace')
-			except EnvironmentError:
-				pass
-			else:
-				try:
-					pkgindex.read(f)
-				finally:
-					f.close()
-					del f
+			pkgindex = self._load_pkgindex()
+
 			if not self._pkgindex_version_supported(pkgindex):
 				pkgindex = self._new_pkgindex()
 
@@ -1098,7 +1079,8 @@ class binarytree(object):
 	def _load_pkgindex(self):
 		pkgindex = self._new_pkgindex()
 		try:
-			f = open(self._pkgindex_file)
+			f = codecs.open(self._pkgindex_file, 
+				encoding='utf8', errors='replace')
 		except EnvironmentError:
 			pass
 		else:
