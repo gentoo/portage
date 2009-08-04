@@ -1173,6 +1173,12 @@ class vardbapi(dbapi):
 			cache_mtime, metadata = pkg_data
 			cache_valid = cache_mtime == mydir_mtime
 		if cache_valid:
+			for k, v in metadata.iteritems():
+				if not isinstance(v, unicode):
+					# Migrate old metadata to unicode.
+					metadata[k] = unicode(v,
+						encoding='utf_8', errors='replace')
+
 			mydata.update(metadata)
 			pull_me.difference_update(mydata)
 
@@ -1193,7 +1199,7 @@ class vardbapi(dbapi):
 		if not mydata['SLOT']:
 			# Empty slot triggers InvalidAtom exceptions when generating slot
 			# atoms for packages, so translate it to '0' here.
-			mydata['SLOT'] = '0'
+			mydata['SLOT'] = u'0'
 		return [mydata[x] for x in wants]
 
 	def _aux_get(self, mycpv, wants, st=None):
@@ -1216,7 +1222,8 @@ class vardbapi(dbapi):
 				results.append(long(st.st_mtime))
 				continue
 			try:
-				myf = open(os.path.join(mydir, x), "r")
+				myf = codecs.open(os.path.join(mydir, x),
+					mode='r', encoding='utf_8', errors='replace')
 				try:
 					myd = myf.read()
 				finally:
