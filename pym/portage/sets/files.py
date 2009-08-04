@@ -132,6 +132,9 @@ class StaticFileSet(EditablePackageSet):
 					if d[:1] == '.':
 						dirs.remove(d)
 				for filename in files:
+					if not isinstance(filename, unicode):
+						filename = unicode(filename,
+							encoding='utf_8', errors='replace')
 					if filename[:1] == '.':
 						continue
 					if filename.endswith(".metadata"):
