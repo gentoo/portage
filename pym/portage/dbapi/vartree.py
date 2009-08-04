@@ -1233,9 +1233,9 @@ class vardbapi(dbapi):
 				if self._aux_multi_line_re.match(x) is None:
 					myd = " ".join(myd.split())
 			except IOError:
-				myd = ""
+				myd = u''
 			if x == "EAPI" and not myd:
-				results.append("0")
+				results.append(u'0')
 			else:
 				results.append(myd)
 		return results
