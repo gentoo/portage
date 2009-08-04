@@ -5111,6 +5111,11 @@ def show_masked_packages(masked_packages):
 				pass
 
 		print "- "+cpv+" (masked by: "+", ".join(mreasons)+")"
+
+		if sys.hexversion < 0x3000000 and isinstance(comment, unicode):
+			# avoid potential UnicodeEncodeError
+			comment = comment.encode('utf_8', 'replace')
+
 		if comment and comment not in shown_comments:
 			print filename+":"
 			print comment
