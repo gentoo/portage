@@ -6918,9 +6918,6 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				if portage.dep._dep_check_strict:
 					raise portage.exception.ParseError(
 						"invalid atom: '%s'" % x)
-				else:
-					# Only real Atom instances are allowed past this point.
-					continue
 			else:
 				if x.blocker and x.blocker.overlap.forbid and \
 					eapi in ("0", "1") and portage.dep._dep_check_strict:
@@ -7134,42 +7131,26 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 			atoms = [dep]
 		if not vardb:
 			# called by repoman
-			other.append((atoms, None, True, True))
+			other.append((atoms, None, False))
 			continue
 
 		all_available = True
-		all_use_satisfied = True
 		versions = {}
 		for atom in atoms:
 			if atom[:1] == "!":
 				continue
-			# Ignore USE dependencies here since we don't want USE
-			# settings to adversely affect || preference evaluation.
-			avail_pkg = mydbapi.match(atom.without_use)
+			avail_pkg = mydbapi.match(atom)
 			if avail_pkg:
 				avail_pkg = avail_pkg[-1] # highest (ascending order)
 				avail_slot = "%s:%s" % (dep_getkey(atom),
 					mydbapi.aux_get(avail_pkg, ["SLOT"])[0])
 			if not avail_pkg:
 				all_available = False
-				all_use_satisfied = False
 				break
-
-			if atom.use:
-				avail_pkg_use = mydbapi.match(atom)
-				if not avail_pkg_use:
-					all_use_satisfied = False
-				else:
-					# highest (ascending order)
-					avail_pkg_use = avail_pkg_use[-1]
-					if avail_pkg_use != avail_pkg:
-						avail_pkg = avail_pkg_use
-						avail_slot = "%s:%s" % (dep_getkey(atom),
-							mydbapi.aux_get(avail_pkg, ["SLOT"])[0])
 
 			versions[avail_slot] = avail_pkg
 
-		this_choice = (atoms, versions, all_available, all_use_satisfied)
+		this_choice = (atoms, versions, all_available)
 		if all_available:
 			# The "all installed" criterion is not version or slot specific.
 			# If any version of a package is already in the graph then we
@@ -7243,12 +7224,9 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		preferred_any_slot + preferred_non_installed + other
 
 	for allow_masked in (False, True):
-		for allow_unsatisfied_use in (False, True):
-			for atoms, versions, all_available, all_use_satisfied in preferred:
-				if all_use_satisfied or \
-					(all_available and allow_unsatisfied_use) \
-					or allow_masked:
-					return atoms
+		for atoms, versions, all_available in preferred:
+			if all_available or allow_masked:
+				return atoms
 
 	assert(False) # This point should not be reachable
 
