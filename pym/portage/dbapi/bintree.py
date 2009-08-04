@@ -21,6 +21,7 @@ from portage.localization import _
 
 from portage import dep_expand, listdir, _check_distfile, _movefile
 
+import codecs
 import os, errno, stat
 import re
 from itertools import chain, izip
@@ -847,7 +848,8 @@ class binarytree(object):
 				created_symlink = True
 			pkgindex = self._new_pkgindex()
 			try:
-				f = open(self._pkgindex_file)
+				f = codecs.open(self._pkgindex_file,
+					encoding='utf_8', errors='replace')
 			except EnvironmentError:
 				pass
 			else:
