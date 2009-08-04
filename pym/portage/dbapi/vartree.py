@@ -37,6 +37,7 @@ from portage import listdir, dep_expand, digraph, flatten, key_expand, \
 
 from portage.cache.mappings import slot_dict_class
 
+import codecs
 import os, re, shutil, stat, errno, copy, subprocess
 import logging
 import shlex
@@ -1864,7 +1865,8 @@ class dblink(object):
 			return self.contentscache
 		pkgfiles = {}
 		try:
-			myc = open(contents_file,"r")
+			myc = codecs.open(contents_file, mode='r',
+				encoding='utf_8', errors='replace')
 		except EnvironmentError, e:
 			if e.errno != errno.ENOENT:
 				raise
@@ -3432,7 +3434,8 @@ class dblink(object):
 		lcfile.close()
 
 		# open CONTENTS file (possibly overwriting old one) for recording
-		outfile = open(os.path.join(self.dbtmpdir, "CONTENTS"),"w")
+		outfile = codecs.open(os.path.join(self.dbtmpdir, 'CONTENTS'),
+			mode='w', encoding='utf_8', errors='replace')
 
 		self.updateprotect()
 
