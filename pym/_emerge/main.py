@@ -31,7 +31,7 @@ import portage
 
 import _emerge.help
 import portage.xpak, commands, errno, re, time
-from portage.output import colorize, xtermTitleReset
+from portage.output import colorize, xtermTitle, xtermTitleReset
 from portage.output import create_color_func
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
@@ -1046,6 +1046,8 @@ def emerge_main():
 		portdb = trees[settings["ROOT"]]["porttree"].dbapi
 
 	xterm_titles = "notitles" not in settings.features
+	if xterm_titles:
+		xtermTitle("emerge")
 
 	tmpcmdline = []
 	if "--ignore-default-opts" not in myopts:
@@ -1306,7 +1308,7 @@ def emerge_main():
 		"""This gets out final log message in before we quit."""
 		if "--pretend" not in myopts:
 			emergelog(xterm_titles, " *** terminating.")
-		if "notitles" not in settings.features:
+		if xterm_titles:
 			xtermTitleReset()
 	portage.atexit_register(emergeexit)
 
