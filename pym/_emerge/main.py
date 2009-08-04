@@ -747,6 +747,10 @@ def parse_opts(tmpcmdline, silent=False):
 	if myaction is None and myoptions.deselect is True:
 		myaction = 'deselect'
 
+	if myargs and not isinstance(myargs[0], unicode):
+		for i in xrange(len(myargs)):
+			myargs[i] = unicode(myargs[i], encoding='utf_8', errors='replace')
+
 	myfiles += myargs
 
 	return myaction, myopts, myfiles
