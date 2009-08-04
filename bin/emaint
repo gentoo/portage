@@ -116,13 +116,8 @@ class BinhostHandler(object):
 		myroot = portage.settings["ROOT"]
 		self._bintree = portage.db[myroot]["bintree"]
 		self._bintree.populate()
-		self._pkgindex_file = os.path.join(self._bintree.pkgdir, "Packages")
-		self._pkgindex = self._bintree._new_pkgindex()
-		f = open(self._pkgindex_file, 'r')
-		try:
-			self._pkgindex.read(f)
-		finally:
-			f.close()
+		self._pkgindex_file = self._bintree._pkgindex_file
+		self._pkgindex = self._bintree._load_pkgindex()
 
 	def check(self, onProgress=None):
 		missing = []
@@ -178,13 +173,8 @@ class BinhostHandler(object):
 				cpv_all = self._bintree.dbapi.cpv_all()
 				cpv_all.sort()
 
-				pkgindex = bintree._new_pkgindex()
+				pkgindex = bintree._load_pkgindex()
 				self._pkgindex = pkgindex
-				f = open(self._pkgindex_file, 'r')
-				try:
-					self._pkgindex.read(f)
-				finally:
-					f.close()
 
 				metadata = {}
 				for d in pkgindex.packages:
