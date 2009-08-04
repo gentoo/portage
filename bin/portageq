@@ -605,10 +605,15 @@ def main():
 		sys.path.insert(0, pym_path)
 		import portage
 
+	args = sys.argv[2:]
+	if args and not isinstance(args[0], unicode):
+		for i in xrange(len(args)):
+			args[i] = unicode(args[i], encoding='utf_8', errors='replace')
+
 	try:
 		if uses_root:
-			sys.argv[2] = portage.settings["ROOT"]
-		retval = function(sys.argv[2:])
+			args[0] = portage.settings["ROOT"]
+		retval = function(args)
 		if retval:
 			sys.exit(retval)
 	except portage.exception.PermissionDenied, e:
