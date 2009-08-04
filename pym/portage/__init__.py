@@ -7134,7 +7134,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 			atoms = [dep]
 		if not vardb:
 			# called by repoman
-			other.append((atoms, None, False))
+			other.append((atoms, None, True, True))
 			continue
 
 		all_available = True
