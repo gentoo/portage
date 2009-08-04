@@ -68,14 +68,14 @@ def xpak(rootdir,outfile=None):
 	mylist.sort()
 	mydata = {}
 	for x in mylist:
-		a = open(x, "r")
+		a = open(x, 'rb')
 		mydata[x] = a.read()
 		a.close()
 	os.chdir(origdir)
 
 	xpak_segment = xpak_mem(mydata)
 	if outfile:
-		outf = open(outfile, "w")
+		outf = open(outfile, 'wb')
 		outf.write(xpak_segment)
 		outf.close()
 	else:
@@ -104,7 +104,7 @@ def xsplit(infile):
 	"""(infile) -- Splits the infile into two files.
 	'infile.index' contains the index segment.
 	'infile.dat' contails the data segment."""
-	myfile=open(infile,"r")
+	myfile = open(infile, 'rb')
 	mydat=myfile.read()
 	myfile.close()
 	
@@ -112,10 +112,10 @@ def xsplit(infile):
 	if not splits:
 		return False
 	
-	myfile=open(infile+".index","w")
+	myfile = open(infile + '.index', 'wb')
 	myfile.write(splits[0])
 	myfile.close()
-	myfile=open(infile+".dat","w")
+	myfile = open(infile + '.dat', 'wb')
 	myfile.write(splits[1])
 	myfile.close()
 	return True
@@ -130,7 +130,7 @@ def xsplit_mem(mydat):
 
 def getindex(infile):
 	"""(infile) -- grabs the index segment from the infile and returns it."""
-	myfile=open(infile,"r")
+	myfile = open(infile, 'rb')
 	myheader=myfile.read(16)
 	if myheader[0:8]!="XPAKPACK":
 		myfile.close()
@@ -143,7 +143,7 @@ def getindex(infile):
 def getboth(infile):
 	"""(infile) -- grabs the index and data segments from the infile.
 	Returns an array [indexSegment,dataSegment]"""
-	myfile=open(infile,"r")
+	myfile = open(infile, 'rb')
 	myheader=myfile.read(16)
 	if myheader[0:8]!="XPAKPACK":
 		myfile.close()
@@ -217,7 +217,7 @@ def xpand(myid,mydest):
 		if dirname:
 			if not os.path.exists(dirname):
 				os.makedirs(dirname)
-		mydat=open(myname,"w")
+		mydat = open(myname, 'wb')
 		mydat.write(mydata[datapos:datapos+datalen])
 		mydat.close()
 		startpos=startpos+namelen+12
@@ -262,7 +262,7 @@ class tbz2(object):
 
 	def recompose_mem(self, xpdata):
 		self.scan() # Don't care about condition... We'll rewrite the data anyway.
-		myfile=open(self.file,"a+")
+		myfile = open(self.file, 'ab+')
 		if not myfile:
 			raise IOError
 		myfile.seek(-self.xpaksize,2) # 0,2 or -0,2 just mean EOF.
@@ -298,7 +298,7 @@ class tbz2(object):
 				if not changed:
 					return 1
 			self.filestat=mystat
-			a=open(self.file,"r")
+			a = open(self.file, 'rb')
 			a.seek(-16,2)
 			trailer=a.read()
 			self.infosize=0
@@ -341,7 +341,7 @@ class tbz2(object):
 		myresult=searchindex(self.index,myfile)
 		if not myresult:
 			return mydefault
-		a=open(self.file,"r")
+		a = open(self.file, 'rb')
 		a.seek(self.datapos+myresult[0],0)
 		myreturn=a.read(myresult[1])
 		a.close()
@@ -365,7 +365,7 @@ class tbz2(object):
 		except:
 			os.chdir("/")
 			origdir="/"
-		a=open(self.file,"r")
+		a = open(self.file, 'rb')
 		if not os.path.exists(mydest):
 			os.makedirs(mydest)
 		os.chdir(mydest)
@@ -379,7 +379,7 @@ class tbz2(object):
 			if dirname:
 				if not os.path.exists(dirname):
 					os.makedirs(dirname)
-			mydat=open(myname,"w")
+			mydat = open(myname, 'wb')
 			a.seek(self.datapos+datapos)
 			mydat.write(a.read(datalen))
 			mydat.close()
@@ -392,7 +392,7 @@ class tbz2(object):
 		"""Returns all the files from the dataSegment as a map object."""
 		if not self.scan():
 			return 0
-		a = open(self.file, "r")
+		a = open(self.file, 'rb')
 		mydata = {}
 		startpos=0
 		while ((startpos+8)<self.indexsize):
@@ -411,7 +411,7 @@ class tbz2(object):
 		if not self.scan():
 			return None
 
-		a = open(self.file,"r")
+		a = open(self.file, 'rb')
 		a.seek(self.datapos)
 		mydata =a.read(self.datasize)
 		a.close()
