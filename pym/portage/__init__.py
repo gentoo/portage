@@ -6943,9 +6943,6 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				if portage.dep._dep_check_strict:
 					raise portage.exception.ParseError(
 						"invalid atom: '%s'" % x)
-				else:
-					# Only real Atom instances are allowed past this point.
-					continue
 			else:
 				if x.blocker and x.blocker.overlap.forbid and \
 					eapi in ("0", "1") and portage.dep._dep_check_strict:
@@ -7167,9 +7164,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		for atom in atoms:
 			if atom[:1] == "!":
 				continue
-			# Ignore USE dependencies here since we don't want USE
-			# settings to adversely affect || preference evaluation.
-			avail_pkg = mydbapi.match(atom.without_use)
+			avail_pkg = mydbapi.match(atom)
 			if avail_pkg:
 				avail_pkg = avail_pkg[-1] # highest (ascending order)
 				avail_slot = "%s:%s" % (dep_getkey(atom),
