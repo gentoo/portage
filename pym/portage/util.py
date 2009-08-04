@@ -56,6 +56,9 @@ def writemsg(mystr,noiselevel=0,fd=None):
 	if fd is None:
 		fd = sys.stderr
 	if noiselevel <= noiselimit:
+		if sys.hexversion < 0x3000000 and isinstance(mystr, unicode):
+			# avoid potential UnicodeEncodeError
+			mystr = mystr.encode('utf_8', 'replace')
 		fd.write(mystr)
 		fd.flush()
 
