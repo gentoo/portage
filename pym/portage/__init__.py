@@ -7138,6 +7138,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 			continue
 
 		all_available = True
+		all_use_satisfied = True
 		versions = {}
 		for atom in atoms:
 			if atom[:1] == "!":
@@ -7153,9 +7154,21 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				all_available = False
 				break
 
+			if atom.use:
+				avail_pkg_use = mydbapi.match(atom)
+				if not avail_pkg_use:
+					all_use_satisfied = False
+				else:
+					# highest (ascending order)
+					avail_pkg_use = avail_pkg_use[-1]
+					if avail_pkg_use != avail_pkg:
+						avail_pkg = avail_pkg_use
+						avail_slot = "%s:%s" % (dep_getkey(atom),
+							mydbapi.aux_get(avail_pkg, ["SLOT"])[0])
+
 			versions[avail_slot] = avail_pkg
 
-		this_choice = (atoms, versions, all_available)
+		this_choice = (atoms, versions, all_available, all_use_satisfied)
 		if all_available:
 			# The "all installed" criterion is not version or slot specific.
 			# If any version of a package is already in the graph then we
@@ -7229,9 +7242,12 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		preferred_any_slot + preferred_non_installed + other
 
 	for allow_masked in (False, True):
-		for atoms, versions, all_available in preferred:
-			if all_available or allow_masked:
-				return atoms
+		for allow_unsatisfied_use in (False, True):
+			for atoms, versions, all_available, all_use_satisfied in preferred:
+				if all_use_satisfied or \
+					(all_available and allow_unsatisfied_use) \
+					or allow_masked:
+					return atoms
 
 	assert(False) # This point should not be reachable
 
