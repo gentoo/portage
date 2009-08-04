@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import codecs
 import logging
 import os
 import sys
@@ -476,7 +477,8 @@ class Scheduler(PollScheduler):
 		return self._pkg(cpv, type_name, root_config, installed=installed)
 
 	def _append_to_log_path(self, log_path, msg):
-		f = open(log_path, 'a')
+		f = codecs.open(log_path, mode='a',
+			encoding='utf_8', errors='replace')
 		try:
 			f.write(msg)
 		finally:
@@ -490,7 +492,8 @@ class Scheduler(PollScheduler):
 		background = self._background
 
 		if background and log_path is not None:
-			log_file = open(log_path, 'a')
+			log_file = codecs.open(log_path, mode='a',
+				encoding='utf_8', errors='replace')
 			out = log_file
 
 		try:
@@ -865,7 +868,8 @@ class Scheduler(PollScheduler):
 			log_path = self._locate_failure_log(failed_pkg)
 			if log_path is not None:
 				try:
-					log_file = open(log_path)
+					log_file = codecs.open(log_path, mode='r',
+						encoding='utf_8', errors='replace')
 				except IOError:
 					pass
 
