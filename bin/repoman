@@ -284,6 +284,7 @@ qahelp={
 	"DEPEND.badmaskedindev":"Masked ebuilds with bad DEPEND settings (matched against *all* ebuilds) in developing arch",
 	"RDEPEND.badmaskedindev":"Masked ebuilds with RDEPEND settings (matched against *all* ebuilds) in developing arch",
 	"PDEPEND.badmaskedindev":"Masked ebuilds with PDEPEND settings (matched against *all* ebuilds) in developing arch",
+	"PDEPEND.suspect":"PDEPEND contains a package that usually only belongs in DEPEND.",
 	"DEPEND.syntax":"Syntax error in DEPEND (usually an extra/missing space/parenthesis)",
 	"RDEPEND.syntax":"Syntax error in RDEPEND (usually an extra/missing space/parenthesis)",
 	"PDEPEND.syntax":"Syntax error in PDEPEND (usually an extra/missing space/parenthesis)",
@@ -342,6 +343,7 @@ qawarnings = set((
 "KEYWORDS.stupid",
 "KEYWORDS.missing",
 "IUSE.undefined",
+"PDEPEND.suspect",
 "RDEPEND.implicit",
 "RDEPEND.suspect",
 "RESTRICT.invalid",
@@ -1430,11 +1432,11 @@ for x in scanlist:
 							portage.dep_getkey(atom) == "virtual/jdk":
 							stats['java.eclassesnotused'] += 1
 							fails['java.eclassesnotused'].append(relative_path)
-						elif mytype == "RDEPEND":
+						elif mytype in ("PDEPEND", "RDEPEND"):
 							if not is_blocker and \
 								portage.dep_getkey(atom) in suspect_rdepend:
-								stats['RDEPEND.suspect'] += 1
-								fails['RDEPEND.suspect'].append(
+								stats[mytype + '.suspect'] += 1
+								fails[mytype + '.suspect'].append(
 									relative_path + ": '%s'" % atom)
 						if eapi == "0":
 							if portage.dep.dep_getslot(atom):
