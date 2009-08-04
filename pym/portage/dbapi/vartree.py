@@ -4147,7 +4147,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 				tarinfo.size = 0
 				tar.addfile(tarinfo)
 			else:
-				f = open(path)
+				f = open(path, 'rb')
 				try:
 					tar.addfile(tarinfo, f)
 				finally:
