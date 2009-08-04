@@ -7152,6 +7152,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 					mydbapi.aux_get(avail_pkg, ["SLOT"])[0])
 			if not avail_pkg:
 				all_available = False
+				all_use_satisfied = False
 				break
 
 			if atom.use:
