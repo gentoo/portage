@@ -1103,7 +1103,7 @@ class binarytree(object):
 		pkgindex = self._new_pkgindex()
 		try:
 			f = codecs.open(self._pkgindex_file, 
-				encoding='utf8', errors='replace')
+				encoding='utf_8', errors='replace')
 		except EnvironmentError:
 			pass
 		else:
