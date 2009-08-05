@@ -5275,7 +5275,7 @@ def eapi_is_supported(eapi):
 # the ebuild.
 _validate_cache_for_unsupported_eapis = True
 
-_parse_eapi_ebuild_head_re = re.compile(r'^EAPI=[\'"]?([^\'"]*)')
+_parse_eapi_ebuild_head_re = re.compile(r'^EAPI=[\'"]?([^\'"#]*)')
 _parse_eapi_ebuild_head_max_lines = 30
 
 def _parse_eapi_ebuild_head(f):
