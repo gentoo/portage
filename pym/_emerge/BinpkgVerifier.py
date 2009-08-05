@@ -6,6 +6,7 @@ from _emerge.AsynchronousTask import AsynchronousTask
 from portage.util import writemsg
 import sys
 # for an explanation on this logic, see pym/_emerge/__init__.py
+import codecs
 import os
 import sys
 if os.environ.__contains__("PORTAGE_PYTHONPATH"):
@@ -31,7 +32,8 @@ class BinpkgVerifier(AsynchronousTask):
 		stderr_orig = sys.stderr
 		log_file = None
 		if self.background and self.logfile is not None:
-			log_file = open(self.logfile, 'a')
+			log_file = codecs.open(self.logfile, mode='a',
+				encoding='utf_8', errors='replace')
 		try:
 			if log_file is not None:
 				sys.stdout = log_file

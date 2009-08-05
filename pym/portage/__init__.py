@@ -727,7 +727,8 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 
 	ldsoconf_path = os.path.join(target_root, EPREFIX_LSTRIP, "etc", "ld.so.conf")
 	try:
-		myld = open(ldsoconf_path)
+		myld = codecs.open(ldsoconf_path, mode='r',
+			encoding='utf_8', errors='replace')
 		myldlines=myld.readlines()
 		myld.close()
 		oldld=[]
@@ -5034,7 +5035,8 @@ def _check_build_log(mysettings, out=None):
 	if logfile is None:
 		return
 	try:
-		f = open(logfile)
+		f = codecs.open(logfile, mode='r',
+			encoding='utf_8', errors='replace')
 	except EnvironmentError:
 		return
 
@@ -5295,7 +5297,7 @@ def eapi_is_supported(eapi):
 # the ebuild.
 _validate_cache_for_unsupported_eapis = True
 
-_parse_eapi_ebuild_head_re = re.compile(r'^EAPI=[\'"]?([^\'"]*)')
+_parse_eapi_ebuild_head_re = re.compile(r'^EAPI=[\'"]?([^\'"#]*)')
 _parse_eapi_ebuild_head_max_lines = 30
 
 def _parse_eapi_ebuild_head(f):

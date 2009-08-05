@@ -25,6 +25,7 @@ from portage import dep_expand, listdir, _check_distfile, _movefile
 import codecs
 import os, errno, stat
 import re
+import sys
 from itertools import chain, izip
 
 class bindbapi(fakedbapi):
@@ -68,7 +69,12 @@ class bindbapi(fakedbapi):
 			tbz2_path = self.bintree.getname(mycpv)
 			if not os.path.exists(tbz2_path):
 				raise KeyError(mycpv)
-			getitem = portage.xpak.tbz2(tbz2_path).getfile
+			tbz2 = portage.xpak.tbz2(tbz2_path)
+			def getitem(k):
+				v = tbz2.getfile(k)
+				if v is not None and not isinstance(v, unicode):
+					v = unicode(v, encoding='utf_8', errors='replace')
+				return v
 		else:
 			getitem = self.bintree._remotepkgs[mycpv].get
 		mydata = {}
@@ -81,15 +87,16 @@ class bindbapi(fakedbapi):
 			# or the tbz2 is corrupt.
 			if myval:
 				mydata[x] = " ".join(myval.split())
-		if "EAPI" in mykeys:
-			if not mydata.setdefault("EAPI", "0"):
-				mydata["EAPI"] = "0"
+
+		if not mydata.setdefault('EAPI', u'0'):
+			mydata['EAPI'] = u'0'
+
 		if cache_me:
 			aux_cache = self._aux_cache_slot_dict()
 			for x in self._aux_cache_keys:
-				aux_cache[x] = mydata.get(x, "")
+				aux_cache[x] = mydata.get(x, u'')
 			self._aux_cache[mycpv] = aux_cache
-		return [mydata.get(x, "") for x in wants]
+		return [mydata.get(x, u'') for x in wants]
 
 	def aux_update(self, cpv, values):
 		if not self.bintree.populated:
@@ -99,7 +106,23 @@ class bindbapi(fakedbapi):
 			raise KeyError(cpv)
 		mytbz2 = portage.xpak.tbz2(tbz2path)
 		mydata = mytbz2.get_data()
-		mydata.update(values)
+
+		if sys.hexversion < 0x3000000:
+			for k, v in values.iteritems():
+				if isinstance(k, unicode):
+					k = k.encode('utf_8', 'replace')
+				if isinstance(v, unicode):
+					v = v.encode('utf_8', 'replace')
+				mydata[k] = v
+
+		else:
+			for k, v in values.iteritems():
+				if isinstance(k, str):
+					k = k.encode('utf_8', 'replace')
+				if isinstance(v, str):
+					v = v.encode('utf_8', 'replace')
+				mydata[k] = v
+
 		for k, v in mydata.items():
 			if not v:
 				del mydata[k]
@@ -1083,7 +1106,7 @@ class binarytree(object):
 		pkgindex = self._new_pkgindex()
 		try:
 			f = codecs.open(self._pkgindex_file, 
-				encoding='utf8', errors='replace')
+				encoding='utf_8', errors='replace')
 		except EnvironmentError:
 			pass
 		else:

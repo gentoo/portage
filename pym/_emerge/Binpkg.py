@@ -11,6 +11,7 @@ from _emerge.EbuildMerge import EbuildMerge
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from portage.util import writemsg
 # for an explanation on this logic, see pym/_emerge/__init__.py
+import codecs
 import os
 import sys
 if os.environ.__contains__("PORTAGE_PYTHONPATH"):
@@ -36,7 +37,8 @@ class Binpkg(CompositeTask):
 
 		log_path = self.settings.get("PORTAGE_LOG_FILE")
 		if  log_path is not None:
-			f = open(log_path, 'a')
+			f = codecs.open(log_path, mode='a',
+				encoding='utf_8', errors='replace')
 			try:
 				f.write(msg)
 			finally:
@@ -229,7 +231,8 @@ class Binpkg(CompositeTask):
 			else:
 				continue
 
-			f = open(os.path.join(infloc, k), 'wb')
+			f = codecs.open(os.path.join(infloc, k), mode='w',
+				encoding='utf_8', errors='replace')
 			try:
 				f.write(v + "\n")
 			finally:

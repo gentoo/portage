@@ -12,6 +12,7 @@ from _emerge.EbuildFetchonly import EbuildFetchonly
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from portage.util import writemsg
 # for an explanation on this logic, see pym/_emerge/__init__.py
+import codecs
 import os
 import sys
 if os.environ.__contains__("PORTAGE_PYTHONPATH"):
@@ -188,7 +189,8 @@ class EbuildBuild(CompositeTask):
 
 			log_path = self.settings.get("PORTAGE_LOG_FILE")
 			if log_path is not None:
-				log_file = open(log_path, 'a')
+				log_file = codecs.open(log_path, mode='a',
+					encoding='utf_8', errors='replace')
 				try:
 					log_file.write(msg)
 				finally:

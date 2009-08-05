@@ -487,7 +487,9 @@ def insert_optional_args(args):
 			new_args.append(opt_arg)
 
 		if saved_opts is not None:
-			new_args.append("-" + saved_opts)
+			# Recycle these on arg_stack since they
+			# might contain another match.
+			arg_stack.append("-" + saved_opts)
 
 	return new_args
 

@@ -4356,6 +4356,14 @@ class depgraph(object):
 		if "--changelog" in self._frozen_config.myopts:
 			print
 			for revision,text in changelogs:
+
+				if sys.hexversion < 0x3000000:
+					# avoid potential UnicodeEncodeError
+					if isinstance(revision, unicode):
+						revision = revision.encode('utf_8', 'replace')
+					if isinstance(text, unicode):
+						text = text.encode('utf_8', 'replace')
+
 				print bold('*'+revision)
 				sys.stdout.write(text)
 
@@ -5113,6 +5121,11 @@ def show_masked_packages(masked_packages):
 				pass
 
 		print "- "+cpv+" (masked by: "+", ".join(mreasons)+")"
+
+		if sys.hexversion < 0x3000000 and isinstance(comment, unicode):
+			# avoid potential UnicodeEncodeError
+			comment = comment.encode('utf_8', 'replace')
+
 		if comment and comment not in shown_comments:
 			print filename+":"
 			print comment
