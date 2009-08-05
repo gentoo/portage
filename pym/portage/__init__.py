@@ -5012,7 +5012,8 @@ def _check_build_log(mysettings, out=None):
 	if logfile is None:
 		return
 	try:
-		f = open(logfile)
+		f = codecs.open(logfile, mode='r',
+			encoding='utf_8', errors='replace')
 	except EnvironmentError:
 		return
 
