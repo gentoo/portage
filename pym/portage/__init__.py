@@ -685,6 +685,18 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 			# broken symlink or file removed by a concurrent process
 			writemsg("!!! File Not Found: '%s'\n" % file_path, noiselevel=-1)
 			continue
+
+		# TODO: Make getconfig() return unicode.
+		unicode_config = {}
+		for k, v in myconfig.iteritems():
+			if not isinstance(k, unicode):
+				k = unicode(k, encoding='utf8', errors='replace')
+			if not isinstance(v, unicode):
+				v = unicode(v, encoding='utf8', errors='replace')
+			unicode_config[k] = v
+		myconfig = unicode_config
+		del unicode_config
+
 		config_list.append(myconfig)
 		if "SPACE_SEPARATED" in myconfig:
 			space_separated.update(myconfig["SPACE_SEPARATED"].split())
