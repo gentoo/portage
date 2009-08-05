@@ -4,15 +4,17 @@
 prefix="@prefix@"
 exec_prefix="@exec_prefix@"
 
-# for bug #279550 we have to do some nasty trick to make sure that sed
+# For bug #279550 we have to do some nasty trick to make sure that sed
 # doesn't strip the backslash in the replacement value (because it can
-# be a backreference) and hence escape those.
+# be a backreference) and hence escape those.  Eventually in strings we
+# need to escape the backslash too, such that the single backslash
+# doesn't get lost when considered an invalid escape
 rootuser="@rootuser@"
 portagegroup="@portagegroup@"
 portageuser="@portageuser@"
 rootuser=${rootuser//\\/\\\\}
-portagegroup=${portagegroup//\\/\\\\}
-portageuser=${portageuser//\\/\\\\}
+portagegroup=${portagegroup//\\/\\\\\\\\}
+portageuser=${portageuser//\\/\\\\\\\\}
 
 # there are many ways to do this all dynamic, but we only care for raw
 # speed here, so let configure fill in this list and be done with it

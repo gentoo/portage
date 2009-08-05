@@ -494,6 +494,8 @@ class _AtomCache(type):
 	identical instances when available.
 	"""
 	def __call__(cls, s):
+		if isinstance(s, Atom):
+			return s
 		instance = cls._atoms.get(s)
 		if instance is None:
 			instance = super(_AtomCache, cls).__call__(s)
@@ -620,7 +622,7 @@ class Atom(object):
 		return repr(self._str)
 
 	def __str__(self):
-		return str(self._str)
+		return self._str
 
 	def endswith(self, *pargs, **kargs):
 		return self._str.endswith(*pargs, **kargs)

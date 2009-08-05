@@ -1212,6 +1212,7 @@ class config(object):
 		self._accept_chost_re = None
 		self._accept_license = None
 		self._accept_license_str = None
+		self._license_groups = {}
 
 		self.virtuals = {}
 		self.virts_p = {}
@@ -1297,6 +1298,7 @@ class config(object):
 
 			self._accept_license = copy.deepcopy(clone._accept_license)
 			self._plicensedict = copy.deepcopy(clone._plicensedict)
+			self._license_groups = copy.deepcopy(clone._license_groups)
 		else:
 
 			def check_var_directory(varname, var):
@@ -1793,7 +1795,6 @@ class config(object):
 					self.pprovideddict[mycatpkg]=[x]
 
 			# parse licensegroups
-			self._license_groups = {}
 			for x in locations:
 				self._license_groups.update(
 					grabdict(os.path.join(x, "license_groups")))
