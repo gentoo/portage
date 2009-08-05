@@ -726,7 +726,8 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 
 	ldsoconf_path = os.path.join(target_root, "etc", "ld.so.conf")
 	try:
-		myld = open(ldsoconf_path)
+		myld = codecs.open(ldsoconf_path, mode='r',
+			encoding='utf_8', errors='replace')
 		myldlines=myld.readlines()
 		myld.close()
 		oldld=[]
