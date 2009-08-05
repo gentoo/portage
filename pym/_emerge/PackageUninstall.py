@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import codecs
 import logging
 import os
 
@@ -47,7 +48,8 @@ class PackageUninstall(AsynchronousTask):
 				portage.util.writemsg_level(msg,
 					level=level, noiselevel=noiselevel)
 
-			f = open(log_path, 'a')
+			f = codecs.open(log_path, mode='a',
+				encoding='utf_8', errors='replace')
 			try:
 				f.write(msg)
 			finally:

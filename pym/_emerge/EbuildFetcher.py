@@ -12,6 +12,7 @@ except ImportError:
 	import sys
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
+import codecs
 import os
 from portage.elog.messages import eerror
 class EbuildFetcher(SpawnProcess):
@@ -92,7 +93,8 @@ class EbuildFetcher(SpawnProcess):
 				elog_out = None
 				if self.logfile is not None:
 					if self.background:
-						elog_out = open(self.logfile, 'a')
+						elog_out = codecs.open(self.logfile, mode='a',
+							encoding='utf_8', errors='replace')
 				msg = "Fetch failed for '%s'" % (self.pkg.cpv,)
 				if self.logfile is not None:
 					msg += ", Log file:"

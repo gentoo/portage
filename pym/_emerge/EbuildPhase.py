@@ -13,6 +13,7 @@ except ImportError:
 	import sys
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
+import codecs
 import os
 class EbuildPhase(CompositeTask):
 
@@ -36,7 +37,8 @@ class EbuildPhase(CompositeTask):
 			log_path = self.settings.get("PORTAGE_LOG_FILE")
 			log_file = None
 			if self.background and log_path is not None:
-				log_file = open(log_path, 'a')
+				log_file = codecs.open(log_path, mode='a',
+					encoding='utf_8', errors='replace')
 				out = log_file
 			try:
 				portage._check_build_log(self.settings, out=out)

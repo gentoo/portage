@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import codecs
 import os
 import sys
 import time
@@ -24,7 +25,8 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 		xtermTitle(short_msg)
 	try:
 		file_path = os.path.join(_emerge_log_dir, 'emerge.log')
-		mylogfile = open(file_path, "a")
+		mylogfile = codecs.open(file_path, mode='a',
+			encoding='utf_8', errors='replace')
 		portage.util.apply_secpass_permissions(file_path,
 			uid=portage.portage_uid, gid=portage.portage_gid,
 			mode=0660)

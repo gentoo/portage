@@ -17,6 +17,7 @@ except ImportError:
 	import sys
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
+import codecs
 import os
 from portage.output import colorize
 class Binpkg(CompositeTask):
@@ -35,7 +36,8 @@ class Binpkg(CompositeTask):
 
 		log_path = self.settings.get("PORTAGE_LOG_FILE")
 		if  log_path is not None:
-			f = open(log_path, 'a')
+			f = codecs.open(log_path, mode='a',
+				encoding='utf_8', errors='replace')
 			try:
 				f.write(msg)
 			finally:
@@ -228,7 +230,8 @@ class Binpkg(CompositeTask):
 			else:
 				continue
 
-			f = open(os.path.join(infloc, k), 'wb')
+			f = codecs.open(os.path.join(infloc, k), mode='w',
+				encoding='utf_8', errors='replace')
 			try:
 				f.write(v + "\n")
 			finally:

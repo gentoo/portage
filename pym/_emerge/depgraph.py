@@ -4354,6 +4354,14 @@ class depgraph(object):
 		if "--changelog" in self._frozen_config.myopts:
 			print
 			for revision,text in changelogs:
+
+				if sys.hexversion < 0x3000000:
+					# avoid potential UnicodeEncodeError
+					if isinstance(revision, unicode):
+						revision = revision.encode('utf_8', 'replace')
+					if isinstance(text, unicode):
+						text = text.encode('utf_8', 'replace')
+
 				print bold('*'+revision)
 				sys.stdout.write(text)
 

@@ -18,6 +18,7 @@ except ImportError:
 	import sys
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
+import codecs
 import os
 from portage.output import colorize
 class EbuildBuild(CompositeTask):
@@ -187,7 +188,8 @@ class EbuildBuild(CompositeTask):
 
 			log_path = self.settings.get("PORTAGE_LOG_FILE")
 			if log_path is not None:
-				log_file = open(log_path, 'a')
+				log_file = codecs.open(log_path, mode='a',
+					encoding='utf_8', errors='replace')
 				try:
 					log_file.write(msg)
 				finally:

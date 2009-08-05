@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import codecs
 import os
 import re
 
@@ -24,7 +25,8 @@ def calc_changelog(ebuildpath,current,next):
 		next = next[:-3]
 	changelogpath = os.path.join(os.path.split(ebuildpath)[0],'ChangeLog')
 	try:
-		changelog = open(changelogpath).read()
+		changelog = codecs.open(changelogpath, mode='r',
+			encoding='utf_8', errors='replace').read()
 	except SystemExit, e:
 		raise # Needed else can't exit
 	except:

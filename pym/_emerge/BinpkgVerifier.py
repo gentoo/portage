@@ -12,6 +12,7 @@ except ImportError:
 	import sys
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
+import codecs
 import os
 class BinpkgVerifier(AsynchronousTask):
 	__slots__ = ("logfile", "pkg",)
@@ -31,7 +32,8 @@ class BinpkgVerifier(AsynchronousTask):
 		stderr_orig = sys.stderr
 		log_file = None
 		if self.background and self.logfile is not None:
-			log_file = open(self.logfile, 'a')
+			log_file = codecs.open(self.logfile, mode='a',
+				encoding='utf_8', errors='replace')
 		try:
 			if log_file is not None:
 				sys.stdout = log_file
