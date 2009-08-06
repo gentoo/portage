@@ -477,6 +477,10 @@ class Scheduler(PollScheduler):
 		return self._pkg(cpv, type_name, root_config, installed=installed)
 
 	def _append_to_log_path(self, log_path, msg):
+
+		if not isinstance(msg, unicode):
+			msg = unicode(msg, encoding='utf_8', errors='replace')
+
 		f = codecs.open(log_path, mode='a',
 			encoding='utf_8', errors='replace')
 		try:

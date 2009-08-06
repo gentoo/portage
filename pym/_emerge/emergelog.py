@@ -19,6 +19,13 @@ from portage.output import xtermTitle
 _emerge_log_dir = '/var/log'
 
 def emergelog(xterm_titles, mystr, short_msg=None):
+
+	if not isinstance(mystr, unicode):
+		mystr = unicode(mystr, encoding='utf_8', errors='replace')
+
+	if short_msg is not None and not isinstance(short_msg, unicode):
+		short_msg = unicode(short_msg, encoding='utf_8', errors='replace')
+
 	if xterm_titles and short_msg:
 		if "HOSTNAME" in os.environ:
 			short_msg = os.environ["HOSTNAME"]+": "+short_msg
