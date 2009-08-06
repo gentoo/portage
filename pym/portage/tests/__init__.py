@@ -18,7 +18,7 @@ def main():
   # the os.walk help mentions relative paths as being quirky
 	# I was tired of adding dirs to the list, so now we add __test__
 	# to each dir we want tested.
-	for root, dirs, files in os.walk(os.getcwd()):
+	for root, dirs, files in os.walk(basedir):
 		if ".svn" in dirs:
 			dirs.remove('.svn')
 		if TEST_FILE in files:
