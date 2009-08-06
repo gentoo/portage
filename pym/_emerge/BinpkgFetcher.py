@@ -5,7 +5,7 @@
 from _emerge.SpawnProcess import SpawnProcess
 import urlparse
 import sys
-import shlex
+
 try:
 	import portage
 except ImportError:
@@ -83,7 +83,7 @@ class BinpkgFetcher(SpawnProcess):
 
 		fetch_env = dict(settings.iteritems())
 		fetch_args = [portage.util.varexpand(x, mydict=fcmd_vars) \
-			for x in shlex.split(fcmd)]
+			for x in portage.util.shlex_split(fcmd)]
 
 		if self.fd_pipes is None:
 			self.fd_pipes = {}

@@ -6,6 +6,7 @@ from portage.localization import _
 from portage.sets.base import PackageSet
 from portage.sets import get_boolean
 from portage.versions import catpkgsplit
+import portage
 
 class LibraryConsumerSet(PackageSet):
 	_operations = ["merge", "unmerge"]
@@ -47,8 +48,7 @@ class LibraryFileConsumerSet(LibraryConsumerSet):
 		self._setAtoms(self.mapPathsToAtoms(consumers))
 
 	def singleBuilder(cls, options, settings, trees):
-		import shlex
-		files = tuple(shlex.split(options.get("files", "")))
+		files = tuple(portage.util.shlex_split(options.get("files", "")))
 		if not files:
 			raise SetConfigError(_("no files given"))
 		debug = get_boolean(options, "debug", False)

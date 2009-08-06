@@ -40,7 +40,6 @@ from portage.cache.mappings import slot_dict_class
 import codecs
 import os, re, shutil, stat, errno, copy, subprocess
 import logging
-import shlex
 import sys
 from itertools import izip
 
@@ -1809,8 +1808,9 @@ class dblink(object):
 
 		self.myroot=myroot
 		protect_obj = ConfigProtect(myroot,
-			shlex.split(mysettings.get("CONFIG_PROTECT", "")),
-			shlex.split(mysettings.get("CONFIG_PROTECT_MASK", "")))
+			portage.util.shlex_split(mysettings.get("CONFIG_PROTECT", "")),
+			portage.util.shlex_split(
+			mysettings.get("CONFIG_PROTECT_MASK", "")))
 		self.updateprotect = protect_obj.updateprotect
 		self.isprotected = protect_obj.isprotected
 		self._installed_instance = None
@@ -2907,7 +2907,8 @@ class dblink(object):
 
 	def _collision_protect(self, srcroot, destroot, mypkglist, mycontents):
 			collision_ignore = set([normalize_path(myignore) for myignore in \
-				shlex.split(self.settings.get("COLLISION_IGNORE", ""))])
+				portage.util.shlex_split(
+				self.settings.get("COLLISION_IGNORE", ""))])
 
 			# For collisions with preserved libraries, the current package
 			# will assume ownership and the libraries will be unregistered.

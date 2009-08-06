@@ -3848,9 +3848,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		# no digests because fetch was not called for a specific package
 		mydigests = {}
 
-	import shlex
 	ro_distdirs = [x for x in \
-		shlex.split(mysettings.get("PORTAGE_RO_DISTDIRS", "")) \
+		util.shlex_split(mysettings.get("PORTAGE_RO_DISTDIRS", "")) \
 		if os.path.isdir(x)]
 
 	fsmirrors = []
@@ -4408,8 +4407,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						"URI":     loc,
 						"FILE":    myfile
 					}
-					import shlex
-					myfetch = shlex.split(locfetch)
+
+					myfetch = util.shlex_split(locfetch)
 					myfetch = [varexpand(x, mydict=variables) for x in myfetch]
 					myret = -1
 					try:

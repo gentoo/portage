@@ -7,6 +7,7 @@ from portage.dep import Atom
 from portage.localization import _
 from portage.sets.base import PackageSet
 from portage.sets import SetConfigError, get_boolean
+import portage
 
 __all__ = ["CategorySet", "DowngradeSet",
 	"EverythingSet", "OwnerSet", "VariableSet"]
@@ -84,9 +85,8 @@ class OwnerSet(PackageSet):
 		if not "files" in options:
 			raise SetConfigError(_("no files given"))
 
-		import shlex
 		return cls(vardb=trees["vartree"].dbapi,
-			files=frozenset(shlex.split(options["files"])))
+			files=frozenset(portage.util.shlex_split(options["files"])))
 
 	singleBuilder = classmethod(singleBuilder)
 

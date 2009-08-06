@@ -5,7 +5,7 @@
 
 from portage.output import colorize
 from portage.cache.mappings import slot_dict_class
-import portage.xpak
+import portage
 import HTMLParser
 import sys
 import os
@@ -400,10 +400,10 @@ def file_get(baseurl,dest,conn=None,fcmd=None):
 		"URI":     baseurl,
 		"FILE":    os.path.basename(baseurl)
 	}
-	import shlex
+
 	from portage.util import varexpand
 	from portage.process import spawn
-	myfetch = shlex.split(fcmd)
+	myfetch = portage.util.shlex_split(fcmd)
 	myfetch = [varexpand(x, mydict=variables) for x in myfetch]
 	fd_pipes= {
 		0:sys.stdin.fileno(),

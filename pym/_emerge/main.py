@@ -3,7 +3,6 @@
 # $Id$
 
 import logging
-import shlex
 import signal
 import sys
 import textwrap
@@ -779,7 +778,7 @@ def ionice(settings):
 
 	ionice_cmd = settings.get("PORTAGE_IONICE_COMMAND")
 	if ionice_cmd:
-		ionice_cmd = shlex.split(ionice_cmd)
+		ionice_cmd = portage.util.shlex_split(ionice_cmd)
 	if not ionice_cmd:
 		return
 

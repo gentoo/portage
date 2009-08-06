@@ -9,7 +9,6 @@ import os
 import platform
 import pwd
 import re
-import shlex
 import signal
 import socket
 import stat
@@ -1833,8 +1832,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			# defaults.
 
 			portage.writemsg("Using PORTAGE_RSYNC_OPTS instead of hardcoded defaults\n", 1)
-			rsync_opts.extend(
-				shlex.split(settings.get("PORTAGE_RSYNC_OPTS","")))
+			rsync_opts.extend(portage.util.shlex_split(
+				settings.get("PORTAGE_RSYNC_OPTS", "")))
 			for opt in ("--recursive", "--times"):
 				if opt not in rsync_opts:
 					portage.writemsg(yellow("WARNING:") + " adding required option " + \
@@ -1912,7 +1911,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			user_name=""
 		updatecache_flg=True
 		all_rsync_opts = set(rsync_opts)
-		extra_rsync_opts = shlex.split(
+		extra_rsync_opts = portage.util.shlex_split(
 			settings.get("PORTAGE_RSYNC_EXTRA_OPTS",""))
 		all_rsync_opts.update(extra_rsync_opts)
 		family = socket.AF_INET

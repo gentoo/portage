@@ -238,7 +238,7 @@ def format_qa_output(formatter, stats, fails, dofull, dofail, options, qawarning
 def editor_is_executable(editor):
 	"""
 	Given an EDITOR string, validate that it refers to
-	an executable. This uses shlex.split() to split the
+	an executable. This uses shlex_split() to split the
 	first component and do a PATH lookup if necessary.
 
 	@param editor: An EDITOR value from the environment.
@@ -246,8 +246,7 @@ def editor_is_executable(editor):
 	@rtype: bool
 	@returns: True if an executable is found, False otherwise.
 	"""
-	import shlex
-	editor_split = shlex.split(editor)
+	editor_split = util.shlex_split(editor)
 	if not editor_split:
 		return False
 	filename = editor_split[0]
