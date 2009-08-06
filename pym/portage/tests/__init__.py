@@ -12,7 +12,7 @@ def main():
 
 	TEST_FILE = '__test__'
 	suite = unittest.TestSuite()
-	basedir = os.path.dirname(__file__)
+	basedir = os.path.dirname(os.path.realpath(__file__))
 	testDirs = []
 
   # the os.walk help mentions relative paths as being quirky
