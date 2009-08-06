@@ -3221,6 +3221,12 @@ class dblink(object):
 		myfilelist = []
 		mylinklist = []
 		paths_with_newlines = []
+
+		if isinstance(srcroot, unicode):
+			# Avoid UnicodeDecodeError raised from
+			# os.path.join when called by os.walk.
+			srcroot = srcroot.encode('utf_8', 'replace')
+
 		srcroot_len = len(srcroot)
 		def onerror(e):
 			raise

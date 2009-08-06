@@ -146,6 +146,12 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 	protect - list of paths from CONFIG_PROTECT
 	protect_mask - list of paths from CONFIG_PROTECT_MASK
 	update_iter - list of update commands as returned from parse_updates()"""
+
+	if isinstance(config_root, unicode):
+		# Avoid UnicodeDecodeError raised from
+		# os.path.join when called by os.walk.
+		config_root = config_root.encode('utf_8', 'replace')
+
 	config_root = normalize_path(config_root)
 	update_files = {}
 	file_contents = {}

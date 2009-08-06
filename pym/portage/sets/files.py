@@ -125,9 +125,22 @@ class StaticFileSet(EditablePackageSet):
 				directory = self._repopath_sub.sub(trees["porttree"].dbapi.treemap[match.groupdict()["reponame"]], directory)
 			except KeyError:
 				raise SetConfigError(_("Could not find repository '%s'") % match.groupdict()["reponame"])
+
+		if isinstance(directory, unicode):
+			# Avoid UnicodeDecodeError raised from
+			# os.path.join when called by os.walk.
+			directory_unicode = directory
+			directory = directory.encode('utf_8', 'replace')
+		else:
+			directory_unicode = unicode(directory,
+				encoding='utf_8', errors='replace')
+
 		if os.path.isdir(directory):
 			directory = normalize_path(directory)
 			for parent, dirs, files in os.walk(directory):
+				if not isinstance(parent, unicode):
+					parent = unicode(parent,
+						encoding='utf_8', errors='replace')
 				for d in dirs[:]:
 					if d[:1] == '.':
 						dirs.remove(d)
@@ -140,7 +153,7 @@ class StaticFileSet(EditablePackageSet):
 					if filename.endswith(".metadata"):
 						continue
 					filename = os.path.join(parent,
-						filename)[1 + len(directory):]
+						filename)[1 + len(directory_unicode):]
 					myname = name_pattern.replace("$name", filename)
 					myname = myname.replace("${name}", filename)
 					rValue[myname] = StaticFileSet(

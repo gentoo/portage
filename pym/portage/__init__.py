@@ -4901,6 +4901,11 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	""" epatch will just grab all the patches out of a directory, so we have to
 	make sure there aren't any foreign files that it might grab."""
 	filesdir = os.path.join(pkgdir, "files")
+	if isinstance(filesdir, unicode):
+		# Avoid UnicodeDecodeError raised from
+		# os.path.join when called by os.walk.
+		filesdir = filesdir.encode('utf_8', 'replace')
+
 	for parent, dirs, files in os.walk(filesdir):
 		for d in dirs:
 			if d.startswith(".") or d == "CVS":
@@ -5157,6 +5162,12 @@ def _post_src_install_uid_fix(mysettings):
 			(_shell_quote(mysettings["D"]),))
 		os.system("chflags -R nosunlnk,nouunlnk %s 2>/dev/null" % \
 			(_shell_quote(mysettings["D"]),))
+
+	destdir = mysettings["D"]
+	if isinstance(destdir, unicode):
+		# Avoid UnicodeDecodeError raised from
+		# os.path.join when called by os.walk.
+		destdir = destdir.encode('utf_8', 'replace')
 
 	for parent, dirs, files in os.walk(mysettings["D"]):
 		for fname in chain(dirs, files):
