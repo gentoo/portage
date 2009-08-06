@@ -5169,7 +5169,7 @@ def _post_src_install_uid_fix(mysettings):
 		# os.path.join when called by os.walk.
 		destdir = destdir.encode('utf_8', 'replace')
 
-	for parent, dirs, files in os.walk(mysettings["D"]):
+	for parent, dirs, files in os.walk(destdir):
 		for fname in chain(dirs, files):
 			fpath = os.path.join(parent, fname)
 			mystat = os.lstat(fpath)
