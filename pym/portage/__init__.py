@@ -6706,8 +6706,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			if destexists and not stat.S_ISDIR(dstat[stat.ST_MODE]):
 				os.unlink(dest)
 			if selinux_enabled:
-				sid = selinux.get_lsid(src)
-				selinux.secure_symlink(target,dest,sid)
+				selinux.symlink(target, dest, src)
 			else:
 				os.symlink(target,dest)
 			lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
@@ -6762,7 +6761,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 	if not hardlinked and (selinux_enabled or sstat.st_dev == dstat.st_dev):
 		try:
 			if selinux_enabled:
-				ret=selinux.secure_rename(src,dest)
+				ret = selinux.rename(src, dest)
 			else:
 				ret=os.rename(src,dest)
 			renamefailed=0
@@ -6780,8 +6779,8 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		if stat.S_ISREG(sstat[stat.ST_MODE]):
 			try: # For safety copy then move it over.
 				if selinux_enabled:
-					selinux.secure_copy(src,dest+"#new")
-					selinux.secure_rename(dest+"#new",dest)
+					selinux.copyfile(src, dest + "#new")
+					selinux.rename(dest + "#new", dest)
 				else:
 					shutil.copyfile(src,dest+"#new")
 					os.rename(dest+"#new",dest)
@@ -6794,15 +6793,13 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 				return None
 		else:
 			#we don't yet handle special, so we need to fall back to /bin/mv
-			if selinux_enabled:
-				a=commands.getstatusoutput(MOVE_BINARY+" -c -f "+"'"+src+"' '"+dest+"'")
-			else:
-				a=commands.getstatusoutput(MOVE_BINARY+" -f "+"'"+src+"' '"+dest+"'")
-				if a[0]!=0:
-					print "!!! Failed to move special file:"
-					print "!!! '"+src+"' to '"+dest+"'"
-					print "!!!",a
-					return None # failure
+			a = commands.getstatusoutput("%s -f %s %s" % \
+				(MOVE_BINARY, _shell_quote(src), _shell_quote(dest)))
+			if a[0] != os.EX_OK:
+				writemsg("!!! Failed to move special file:\n", noiselevel=-1)
+				writemsg("!!! '%s' to '%s'\n" % (src, dest), noiselevel=-1)
+				writemsg("!!! %s\n" % a, noiselevel=-1)
+				return None # failure
 		try:
 			if didcopy:
 				if stat.S_ISLNK(sstat[stat.ST_MODE]):
