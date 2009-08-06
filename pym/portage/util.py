@@ -387,7 +387,11 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		# trailing newline after the source statement
 		# NOTE: shex doesn't seem to supported unicode objects
 		# (produces spurious \0 characters with python-2.6.2)
-		content = open(mycfg).read()
+		if sys.hexversion < 0x3000000:
+			content = open(mycfg, 'rb').read()
+		else:
+			content = open(mycfg, mode='r',
+				encoding='utf_8', errors='replace').read()
 		if content and content[-1] != '\n':
 			content += '\n'
 	except IOError, e:
