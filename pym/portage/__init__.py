@@ -5169,10 +5169,14 @@ def _post_src_install_uid_fix(mysettings):
 		# os.path.join when called by os.walk.
 		destdir = destdir.encode('utf_8', 'replace')
 
+	size = 0
+
 	for parent, dirs, files in os.walk(destdir):
 		for fname in chain(dirs, files):
 			fpath = os.path.join(parent, fname)
 			mystat = os.lstat(fpath)
+			if stat.S_ISREG(mystat.st_mode):
+				size += mystat.st_size
 			if mystat.st_uid != portage_uid and \
 				mystat.st_gid != portage_gid:
 				continue
@@ -5185,6 +5189,9 @@ def _post_src_install_uid_fix(mysettings):
 			apply_secpass_permissions(fpath, uid=myuid, gid=mygid,
 				mode=mystat.st_mode, stat_cached=mystat,
 				follow_links=False)
+
+	open(os.path.join(mysettings['PORTAGE_BUILDDIR'],
+		'build-info', 'SIZE'), 'w').write(str(size) + '\n')
 
 	if bsd_chflags:
 		# Restore all of the flags saved above.
