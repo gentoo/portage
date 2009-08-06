@@ -22,7 +22,7 @@ ROOTPATH=${ROOTPATH##:}
 ROOTPATH=${ROOTPATH%%:}
 PREROOTPATH=${PREROOTPATH##:}
 PREROOTPATH=${PREROOTPATH%%:}
-PATH=$PORTAGE_BIN_PATH/ebuild-helpers:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/sbin:/usr/sbin:/usr/local/bin:/bin:/usr/bin${ROOTPATH:+:}$ROOTPATH
+PATH=$PORTAGE_BIN_PATH/ebuild-helpers:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${ROOTPATH:+:}$ROOTPATH
 export PATH
 
 # These two functions wrap sourcing and calling respectively.  At present they
@@ -1891,7 +1891,7 @@ ebuild_main() {
 			;;
 	esac
 
-	PATH=$ebuild_helpers_path:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/sbin:/usr/sbin:/usr/local/bin:/bin:/usr/bin${ROOTPATH:+:}$ROOTPATH
+	PATH=$ebuild_helpers_path:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${ROOTPATH:+:}$ROOTPATH
 	unset ebuild_helpers_path
 
 	if ! hasq $EBUILD_SH_ARGS clean depend help info nofetch ; then
