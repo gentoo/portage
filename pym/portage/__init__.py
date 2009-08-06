@@ -8007,8 +8007,8 @@ def _gen_missing_encodings(missing_encodings):
 			decode=utf8decode,
 			incrementalencoder=Utf8IncrementalEncoder,
 			incrementaldecoder=Utf8IncrementalDecoder,
-			streamreader=Utf8StreamWriter,
-			streamwriter=Utf8StreamReader,
+			streamreader=Utf8StreamReader,
+			streamwriter=Utf8StreamWriter,
 		)
 
 		for alias in ('utf_8', 'u8', 'utf', 'utf8', 'utf8_ucs2', 'utf8_ucs4'):
