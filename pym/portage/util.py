@@ -447,6 +447,10 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 					raise portage.exception.CorruptionError("ParseError: Unexpected EOF: "+str(mycfg)+": line "+str(lex.lineno))
 				else:
 					return mykeys
+			if not isinstance(key, unicode):
+				key = unicode(key, encoding='utf_8', errors='replace')
+			if not isinstance(val, unicode):
+				val = unicode(val, encoding='utf_8', errors='replace')
 			if expand:
 				mykeys[key] = varexpand(val, expand_map)
 				expand_map[key] = mykeys[key]
