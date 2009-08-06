@@ -73,6 +73,13 @@ class JobStatusDisplay(object):
 		temporarily overridden stdout."""
 		return sys.stdout
 
+	def _write(self, s):
+		if sys.hexversion < 0x3000000 and isinstance(s, unicode):
+			# avoid potential UnicodeEncodeError
+			s = s.encode('utf_8', 'replace')
+		self.out.write(s)
+		self.out.flush()
+
 	def _init_term(self):
 		"""
 		Initialize term control codes.
@@ -110,23 +117,19 @@ class JobStatusDisplay(object):
 		return ">>> %s" % msg
 
 	def _erase(self):
-		self.out.write(
+		self._write(
 			self._term_codes['carriage_return'] + \
 			self._term_codes['clr_eol'])
-		self.out.flush()
 		self._displayed = False
 
 	def _display(self, line):
-		self.out.write(line)
-		self.out.flush()
+		self._write(line)
 		self._displayed = True
 
 	def _update(self, msg):
 
-		out = self.out
 		if not self._isatty:
-			out.write(self._format_msg(msg) + self._term_codes['newline'])
-			self.out.flush()
+			self._write(self._format_msg(msg) + self._term_codes['newline'])
 			self._displayed = True
 			return
 
@@ -142,8 +145,7 @@ class JobStatusDisplay(object):
 		if self._isatty and self._displayed:
 			self._erase()
 
-		self.out.write(self._format_msg(msg) + self._term_codes['newline'])
-		self.out.flush()
+		self._write(self._format_msg(msg) + self._term_codes['newline'])
 		self._displayed = False
 
 		if was_displayed:
@@ -157,8 +159,7 @@ class JobStatusDisplay(object):
 			object.__setattr__(self, name, 0)
 
 		if self._displayed:
-			self.out.write(self._term_codes['newline'])
-			self.out.flush()
+			self._write(self._term_codes['newline'])
 			self._displayed = False
 
 	def __setattr__(self, name, value):
