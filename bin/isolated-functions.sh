@@ -53,7 +53,23 @@ dump_trace() {
 	done
 }
 
+nonfatal() {
+	if has "${EAPI:-0}" 0 1 2; then
+		die "$FUNCNAME() not supported in this EAPI"
+	fi
+	if [[ $# -lt 1 ]]; then
+		die "$FUNCNAME(): Missing argument"
+	fi
+
+	PORTAGE_NONFATAL=1 "$@"
+}
+
 die() {
+	if [[ $PORTAGE_NONFATAL -eq 1 ]]; then
+		echo -e " $WARN*$NORMAL ${FUNCNAME[1]}: WARNING: $@" >&2
+		return 1
+	fi
+
 	set +e
 	if [ -n "${QA_INTERCEPTORS}" ] ; then
 		# die was called from inside inherit. We need to clean up
