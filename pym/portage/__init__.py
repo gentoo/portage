@@ -1519,7 +1519,17 @@ class config(object):
 			# backupenv is used for calculating incremental variables.
 			if env is None:
 				env = os.environ
-			self.backupenv = env.copy()
+
+			# Avoid potential UnicodeDecodeError exceptions later.
+			env_unicode = {}
+			for k, v in env.iteritems():
+				if not isinstance(k, unicode):
+					k = unicode(k, encoding='utf_8', errors='replace')
+				if not isinstance(v, unicode):
+					v = unicode(v, encoding='utf_8', errors='replace')
+				env_unicode[k] = v
+
+			self.backupenv = env_unicode
 
 			if env_d:
 				# Remove duplicate values so they don't override updated
