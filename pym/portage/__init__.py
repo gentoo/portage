@@ -3197,8 +3197,15 @@ class config(object):
 		"set a value; will be thrown away at reset() time"
 		if not isinstance(myvalue, basestring):
 			raise ValueError("Invalid type being used as a value: '%s': '%s'" % (str(mykey),str(myvalue)))
+
+		# Avoid potential UnicodeDecodeError exceptions later.
+		if not isinstance(mykey, unicode):
+			mykey = unicode(mykey, encoding='utf_8', errors='replace')
+		if not isinstance(myvalue, unicode):
+			myvalue = unicode(myvalue, encoding='utf_8', errors='replace')
+
 		self.modifying()
-		self.modifiedkeys += [mykey]
+		self.modifiedkeys.append(mykey)
 		self.configdict["env"][mykey]=myvalue
 
 	def environ(self):
