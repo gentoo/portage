@@ -14,7 +14,8 @@ except ImportError:
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
 
-from portage.output import  bold as white, darkgreen, green, red
+from portage.output import  bold, bold as white, darkgreen, green, red
+from portage.util import writemsg_stdout
 
 from _emerge.Package import Package
 from _emerge.visible import visible
@@ -288,9 +289,14 @@ class search(object):
 					full_package = match
 					match        = portage.cpv_getkey(match)
 				elif mtype == "set":
-					print green("*")+"  "+white(match)
-					print "     ", darkgreen("Description:")+"  ", self.sdict[match].getMetadata("DESCRIPTION")
-					print
+					msg = []
+					msg.append(green("*") + "  " + bold(match) + "\n")
+					if self.verbose:
+						msg.append("      " + darkgreen("Description:") + \
+							"   " + \
+							self.sdict[match].getMetadata("DESCRIPTION") \
+							+ "\n\n")
+					writemsg_stdout(''.join(msg), noiselevel=-1)
 				if full_package:
 					try:
 						desc, homepage, license = self.portdb.aux_get(
@@ -350,16 +356,20 @@ class search(object):
 						file_size_str = mystr + " kB"
 
 					if self.verbose:
+						msg = []
 						if available:
 							print "     ", darkgreen("Latest version available:"),myversion
 						print "     ", self.getInstallationStatus(mycat+'/'+mypkg)
 						if myebuild:
 							print "      %s %s" % \
 								(darkgreen("Size of files:"), file_size_str)
-						print "     ", darkgreen("Homepage:")+"     ",homepage
-						print "     ", darkgreen("Description:")+"  ",desc
-						print "     ", darkgreen("License:")+"      ",license
-						print
+						msg.append("      " + darkgreen("Homepage:") + \
+							"      " + homepage + "\n")
+						msg.append("      " + darkgreen("Description:") \
+							+ "   " + desc + "\n")
+						msg.append("      " + darkgreen("License:") + \
+							"       " + license + "\n\n")
+						writemsg_stdout(''.join(msg), noiselevel=-1)
 	#
 	# private interface
 	#
