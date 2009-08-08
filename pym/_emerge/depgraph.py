@@ -4349,7 +4349,7 @@ class depgraph(object):
 			print
 			print counters
 			if show_repos:
-				sys.stdout.write(str(repo_display))
+				writemsg_stdout(str(repo_display), noiselevel=-1)
 
 		if "--changelog" in self._frozen_config.myopts:
 			writemsg_stdout('\n', noiselevel=-1)
