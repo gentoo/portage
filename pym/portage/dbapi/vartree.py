@@ -303,6 +303,8 @@ class LinkageMap(object):
 				raise CommandNotFound(args[0])
 			else:
 				for l in proc.stdout:
+					if not isinstance(l, unicode):
+						l = unicode(l, encoding='utf_8', errors='replace')
 					l = l[3:].rstrip("\n")
 					if not l:
 						continue
