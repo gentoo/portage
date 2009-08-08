@@ -534,16 +534,13 @@ def usage(argv):
 	# Show our commands -- we do this by scanning the functions in this
 	# file, and formatting each functions documentation.
 	#
-	commands = [x for x in globals() if x not in \
-				("usage", "__doc__", "__name__", "main", "os", "portage", \
-				"sys", "__builtins__", "types", "string","exithandler")]
-	commands.sort()
+	commands = sorted(k for k, v in globals().iteritems() \
+		if type(v) is types.FunctionType and \
+		k not in ('usage', 'main', 'exithandler'))
 
 	for name in commands:
 		# Drop non-functions
 		obj = globals()[name]
-		if  (type(obj) != types.FunctionType):
-			continue
 
 		doc = obj.__doc__
 		if (doc == None):
