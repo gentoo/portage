@@ -5176,12 +5176,15 @@ def _post_src_install_uid_fix(mysettings):
 		destdir = destdir.encode('utf_8', 'replace')
 
 	size = 0
+	counted_inodes = set()
 
 	for parent, dirs, files in os.walk(destdir):
 		for fname in chain(dirs, files):
 			fpath = os.path.join(parent, fname)
 			mystat = os.lstat(fpath)
-			if stat.S_ISREG(mystat.st_mode):
+			if stat.S_ISREG(mystat.st_mode) and \
+				mystat.st_ino not in counted_inodes:
+				counted_inodes.add(mystat.st_ino)
 				size += mystat.st_size
 			if mystat.st_uid != portage_uid and \
 				mystat.st_gid != portage_gid:
