@@ -143,8 +143,7 @@ def metadata(argv):
 	try:
 			values = trees[root][type_map[pkgtype]].dbapi.aux_get(
 				pkgspec, metakeys)
-			for value in values:
-				print value
+			writemsg_stdout(''.join('%s\n' % x for x in values), noiselevel=-1)
 	except KeyError:
 		print >> sys.stderr, "Package not found: '%s'" % pkgspec
 		sys.exit(1)
@@ -169,11 +168,8 @@ def contents(argv):
 	cat, pkg = portage.catsplit(cpv)
 	db = portage.dblink(cat, pkg, root, vartree.settings,
 		treetype="vartree", vartree=vartree)
-	file_list = db.getcontents().keys()
-	file_list.sort()
-	for f in file_list:
-		sys.stdout.write("%s\n" % f)
-	sys.stdout.flush()
+	writemsg_stdout(''.join('%s\n' % x for x in sorted(db.getcontents())),
+		noiselevel=-1)
 contents.uses_root = True
 
 def owners(argv):
@@ -222,14 +218,17 @@ def owners(argv):
 
 	owners = vardb._owners.get_owners(files)
 
+	msg = []
 	for pkg, owned_files in owners.iteritems():
 		cpv = pkg.mycpv
-		sys.stdout.write("%s\n" % cpv)
+		msg.append("%s\n" % cpv)
 		for f in sorted(owned_files):
-			sys.stdout.write("\t%s\n" % \
+			msg.append("\t%s\n" % \
 				os.path.join(root, f.lstrip(os.path.sep)))
+
+	writemsg_stdout(''.join(msg), noiselevel=-1)
+
 	if owners:
-		sys.stdout.flush()
 		return 0
 
 	sys.stderr.write("None of the installed packages claim the file(s).\n")
@@ -529,12 +528,14 @@ def list_preserved_libs(argv):
 		sys.exit(2)
 	mylibs = portage.db[argv[0]]["vartree"].dbapi.plib_registry.getPreservedLibs()
 	rValue = 0
-	for cpv in mylibs:
-		print cpv,
+	msg = []
+	for cpv in sorted(mylibs):
+		msg.append(cpv)
 		for path in mylibs[cpv]:
-			print path,
+			msg.append(' ' + path)
 			rValue = 1
-		print
+		msg.append('\n')
+	writemsg_stdout(''.join(msg), noiselevel=-1)
 	return rValue
 list_preserved_libs.uses_root = True
 
