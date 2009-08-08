@@ -23,6 +23,26 @@ import os
 
 import types
 
+# Avoid sandbox violations after python upgrade.
+pym_path = os.path.join(os.path.dirname(
+	os.path.dirname(os.path.realpath(__file__))), "pym")
+if os.environ.get("SANDBOX_ON") == "1":
+	sandbox_write = os.environ.get("SANDBOX_WRITE", "").split(":")
+	if pym_path not in sandbox_write:
+		sandbox_write.append(pym_path)
+		os.environ["SANDBOX_WRITE"] = \
+			":".join(filter(None, sandbox_write))
+	del sandbox_write
+
+try:
+	import portage
+except ImportError:
+	sys.path.insert(0, pym_path)
+	import portage
+del pym_path
+
+from portage.util import writemsg, writemsg_stdout
+
 #-----------------------------------------------------------------------------
 #
 # To add functionality to this tool, add a function below.
@@ -534,9 +554,10 @@ def usage(argv):
 	# Show our commands -- we do this by scanning the functions in this
 	# file, and formatting each functions documentation.
 	#
+	non_commands = frozenset(['exithandler', 'main',
+		'usage', 'writemsg', 'writemsg_stdout'])
 	commands = sorted(k for k, v in globals().iteritems() \
-		if type(v) is types.FunctionType and \
-		k not in ('usage', 'main', 'exithandler'))
+		if type(v) is types.FunctionType and k not in non_commands)
 
 	for name in commands:
 		# Drop non-functions
@@ -583,24 +604,6 @@ def main():
 			sys.stderr.flush()
 			sys.exit(os.EX_USAGE)
 		os.environ["ROOT"] = sys.argv[2]
-
-	# Avoid sandbox violations after python upgrade.
-	from os import path as osp
-	pym_path = osp.join(osp.dirname(
-		osp.dirname(osp.realpath(__file__))), "pym")
-	if os.environ.get("SANDBOX_ON") == "1":
-		sandbox_write = os.environ.get("SANDBOX_WRITE", "").split(":")
-		if pym_path not in sandbox_write:
-			sandbox_write.append(pym_path)
-			os.environ["SANDBOX_WRITE"] = \
-				":".join(filter(None, sandbox_write))
-
-	global portage
-	try:
-		import portage
-	except ImportError:
-		sys.path.insert(0, pym_path)
-		import portage
 
 	args = sys.argv[2:]
 	if args and not isinstance(args[0], unicode):
