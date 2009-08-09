@@ -35,7 +35,8 @@ class CommandOutputSet(PackageSet):
 		pipe = subprocess.Popen(self._command, stdout=subprocess.PIPE, shell=True)
 		stdout, stderr = pipe.communicate()
 		if pipe.wait() == os.EX_OK:
-			self._setAtoms(unicode(stdout, errors='replace').splitlines())
+			self._setAtoms(unicode(stdout,
+				encoding='utf_8', errors='replace').splitlines())
 
 	def singleBuilder(self, options, settings, trees):
 		if not "command" in options:

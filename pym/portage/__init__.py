@@ -247,7 +247,7 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 		ftype = []
 		for x in list:
 			if not isinstance(x, unicode):
-				x = unicode(x, errors='replace')
+				x = unicode(x, encoding='utf_8', errors='replace')
 			try:
 				if followSymlinks:
 					pathstat = os.stat(mypath+"/"+x)
