@@ -48,7 +48,12 @@ def filter_bash_environment(pattern, file_in, file_out):
 				quote = var_assign_match.group(3)
 				filter_this = pattern.match(var_assign_match.group(2)) \
 					is not None
-				if quote is not None and not have_end_quote(quote, line):
+				# Exclude the start quote when searching for the end quote,
+				# to ensure that the first quote is not identified as the
+				# end quote (happends if there is a newline immediately after
+				# the start quote).
+				if quote is not None and not \
+					have_end_quote(quote, line[var_assign_match.end(2)+2:]):
 					multi_line_quote = quote
 					multi_line_quote_filter = filter_this
 				if not filter_this:
