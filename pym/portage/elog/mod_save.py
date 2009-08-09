@@ -3,6 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import codecs
 import os, time
 from portage.data import portage_uid, portage_gid
 from portage.util import ensure_dirs
@@ -17,7 +18,8 @@ def process(mysettings, key, logentries, fulltext):
 	ensure_dirs(elogdir, uid=portage_uid, gid=portage_gid, mode=02770)
 
 	elogfilename = elogdir+"/"+path+":"+time.strftime("%Y%m%d-%H%M%S", time.gmtime(time.time()))+".log"
-	elogfile = open(elogfilename, "w")
+	elogfile = codecs.open(elogfilename, mode='w',
+		encoding='utf_8', errors='replace')
 	elogfile.write(fulltext)
 	elogfile.close()
 
