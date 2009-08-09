@@ -12,6 +12,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 from portage.const import EBUILD_PHASES
 from portage.localization import _
 
+import codecs
 import os
 import sys
 
@@ -40,7 +41,8 @@ def collect_ebuild_messages(path):
 			logentries[msgfunction] = []
 		lastmsgtype = None
 		msgcontent = []
-		for l in open(filename):
+		for l in codecs.open(filename, mode='r',
+			encoding='utf_8', errors='replace'):
 			if not l:
 				continue
 			try:
