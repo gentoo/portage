@@ -7,7 +7,6 @@ import portage.mail, socket, os, time
 from portage.exception import PortageException
 from portage.localization import _
 from portage.util import writemsg
-from email.MIMEText import MIMEText as TextMessage
 
 _items = {}
 def process(mysettings, key, logentries, fulltext):
