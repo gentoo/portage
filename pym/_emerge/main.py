@@ -31,7 +31,7 @@ import portage.locks
 import portage.exception
 from portage.data import secpass
 from portage.util import normalize_path as normpath
-from portage.util import writemsg, writemsg_level
+from portage.util import writemsg, writemsg_level, writemsg_stdout
 from portage.sets import SETPREFIX
 
 from _emerge.actions import action_config, action_sync, action_metadata, \
@@ -1108,8 +1108,7 @@ def emerge_main():
 
 	root_config = trees[settings["ROOT"]]["root_config"]
 	if myaction == "list-sets":
-		sys.stdout.write("".join("%s\n" % s for s in sorted(root_config.sets)))
-		sys.stdout.flush()
+		writemsg_stdout("".join("%s\n" % s for s in sorted(root_config.sets)))
 		return os.EX_OK
 
 	# only expand sets for actions taking package arguments
