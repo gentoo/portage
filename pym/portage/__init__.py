@@ -3483,9 +3483,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		spawn_func = portage.process.spawn_sandbox
 
 	if sesandbox:
-		con = selinux.getcontext()
-		con = con.replace(mysettings["PORTAGE_T"],
-			mysettings["PORTAGE_SANDBOX_T"])
+		con = selinux.settype(mysettings["PORTAGE_SANDBOX_T"])
 		selinux.setexec(con)
 
 	returnpid = keywords.get("returnpid")
@@ -3496,7 +3494,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		if logfile:
 			os.close(slave_fd)
 		if sesandbox:
-			selinux.setexec(None)
+			selinux.setexec()
 
 	if returnpid:
 		return mypids
@@ -3574,8 +3572,7 @@ def _spawn_fetch(settings, args, **kwargs):
 	try:
 
 		if settings.selinux_enabled():
-			con = selinux.getcontext()
-			con = con.replace(settings["PORTAGE_T"], settings["PORTAGE_FETCH_T"])
+			con = selinux.settype(settings["PORTAGE_FETCH_T"])
 			selinux.setexec(con)
 			# bash is an allowed entrypoint, while most binaries are not
 			if args[0] != BASH_BINARY:
@@ -3586,7 +3583,7 @@ def _spawn_fetch(settings, args, **kwargs):
 
 	finally:
 		if settings.selinux_enabled():
-			selinux.setexec(None)
+			selinux.setexec()
 
 	return rval
 
