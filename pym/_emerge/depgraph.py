@@ -1015,6 +1015,8 @@ class depgraph(object):
 			edepend["DEPEND"] = ""
 
 		bdeps_root = "/"
+		if removal_action:
+			bdeps_root = myroot
 		root_deps = self._frozen_config.myopts.get("--root-deps")
 		if root_deps is not None:
 			if root_deps is True:
