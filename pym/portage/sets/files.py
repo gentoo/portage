@@ -126,17 +126,18 @@ class StaticFileSet(EditablePackageSet):
 			except KeyError:
 				raise SetConfigError(_("Could not find repository '%s'") % match.groupdict()["reponame"])
 
-		if isinstance(directory, unicode):
-			# Avoid UnicodeDecodeError raised from
-			# os.path.join when called by os.walk.
-			directory_unicode = directory
-			directory = directory.encode('utf_8', 'replace')
-		else:
-			directory_unicode = unicode(directory,
-				encoding='utf_8', errors='replace')
-
 		if os.path.isdir(directory):
 			directory = normalize_path(directory)
+
+			if isinstance(directory, unicode):
+				# Avoid UnicodeDecodeError raised from
+				# os.path.join when called by os.walk.
+				directory_unicode = directory
+				directory = directory.encode('utf_8', 'replace')
+			else:
+				directory_unicode = unicode(directory,
+					encoding='utf_8', errors='replace')
+
 			for parent, dirs, files in os.walk(directory):
 				if not isinstance(parent, unicode):
 					parent = unicode(parent,
