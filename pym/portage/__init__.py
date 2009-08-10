@@ -188,6 +188,8 @@ if sys.hexversion >= 0x3000000:
 	def _unicode_module_wrapper(mod):
 		return mod
 
+os = _unicode_module_wrapper(os)
+
 def _shell_quote(s):
 	"""
 	Quote a string in double-quotes and use backslashes to

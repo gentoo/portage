@@ -39,12 +39,12 @@ from portage import listdir, dep_expand, digraph, flatten, key_expand, \
 from portage.cache.mappings import slot_dict_class
 
 import codecs
-import os, re, shutil, stat, errno, copy, subprocess
+import re, shutil, stat, errno, copy, subprocess
 import logging
 import sys
 from itertools import izip
 
-os = _unicode_module_wrapper(os)
+os = portage.os
 
 try:
 	import cPickle as pickle
