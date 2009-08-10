@@ -33,7 +33,8 @@ from portage.localization import _
 
 from portage import listdir, dep_expand, digraph, flatten, key_expand, \
 	doebuild_environment, doebuild, env_update, prepare_build_dirs, \
-	abssymlink, movefile, _movefile, bsd_chflags, cpv_getkey
+	abssymlink, movefile, _movefile, bsd_chflags, cpv_getkey, \
+	_unicode_module_wrapper
 
 from portage.cache.mappings import slot_dict_class
 
@@ -42,6 +43,8 @@ import os, re, shutil, stat, errno, copy, subprocess
 import logging
 import sys
 from itertools import izip
+
+os = _unicode_module_wrapper(os)
 
 try:
 	import cPickle as pickle
