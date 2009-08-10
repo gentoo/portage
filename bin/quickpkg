@@ -6,6 +6,13 @@
 import errno, signal, sys, os
 from itertools import izip
 
+try:
+	import portage
+except ImportError:
+	from os import path as osp
+	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
+	import portage
+
 def quickpkg_main(options, args, eout):
 	from portage import catsplit, dep_expand, flatten, isvalidatom, xpak
 	from portage.dep import use_reduce, paren_reduce
