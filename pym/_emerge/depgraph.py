@@ -1014,15 +1014,16 @@ class depgraph(object):
 		if removal_action and self._frozen_config.myopts.get("--with-bdeps", "y") == "n":
 			edepend["DEPEND"] = ""
 
-		bdeps_root = "/"
 		if removal_action:
 			bdeps_root = myroot
-		root_deps = self._frozen_config.myopts.get("--root-deps")
-		if root_deps is not None:
-			if root_deps is True:
-				bdeps_root = myroot
-			elif root_deps == "rdeps":
-				edepend["DEPEND"] = ""
+		else:
+			bdeps_root = "/"
+			root_deps = self._frozen_config.myopts.get("--root-deps")
+			if root_deps is not None:
+				if root_deps is True:
+					bdeps_root = myroot
+				elif root_deps == "rdeps":
+					edepend["DEPEND"] = ""
 
 		deps = (
 			(bdeps_root, edepend["DEPEND"],
