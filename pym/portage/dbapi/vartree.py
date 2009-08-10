@@ -50,12 +50,16 @@ except ImportError:
 
 class PreservedLibsRegistry(object):
 	""" This class handles the tracking of preserved library objects """
-	def __init__(self, filename, autocommit=True):
-		""" @param filename: absolute path for saving the preserved libs records
+	def __init__(self, root, filename, autocommit=True):
+		""" 
+			@param root: root used to check existence of paths in pruneNonExisting
+		    @type root: String
+			@param filename: absolute path for saving the preserved libs records
 		    @type filename: String
 			@param autocommit: determines if the file is written after every update
 			@type autocommit: Boolean
 		"""
+		self._root = root
 		self._filename = filename
 		self._autocommit = autocommit
 		self.load()
@@ -132,7 +136,8 @@ class PreservedLibsRegistry(object):
 		""" Remove all records for objects that no longer exist on the filesystem. """
 		for cps in self._data.keys():
 			cpv, counter, paths = self._data[cps]
-			paths = [f for f in paths if os.path.exists(f)]
+			paths = [f for f in paths \
+				if os.path.exists(os.path.join(self._root, f.lstrip(os.sep)))]
 			if len(paths) > 0:
 				self._data[cps] = (cpv, counter, paths)
 			else:
@@ -763,7 +768,7 @@ class vardbapi(dbapi):
 			CACHE_PATH.lstrip(os.path.sep), "counter")
 
 		try:
-			self.plib_registry = PreservedLibsRegistry(
+			self.plib_registry = PreservedLibsRegistry(self.root,
 				os.path.join(self.root, PRIVATE_PATH, "preserved_libs_registry"))
 		except PermissionDenied:
 			# apparently this user isn't allowed to access PRIVATE_PATH
