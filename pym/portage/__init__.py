@@ -61,6 +61,9 @@ try:
 		'portage.checksum',
 		'portage.checksum:perform_checksum,perform_md5,prelink_capable',
 		'portage.cvstree',
+		'portage.data',
+		'portage.data:lchown,ostype,portage_gid,portage_uid,secpass,' + \
+			'uid,userland,userpriv_groups,wheelgid',
 		'portage.dep',
 		'portage.dep:best_match_to_list,dep_getcpv,dep_getkey,' + \
 			'get_operator,isjustname,isspecific,isvalidatom,' + \
@@ -101,8 +104,6 @@ try:
 		INVALID_ENV_FILE, CUSTOM_MIRRORS_FILE, CONFIG_MEMORY_FILE,\
 		INCREMENTALS, EAPI, MISC_SH_BINARY, REPO_NAME_LOC, REPO_NAME_FILE
 
-	from portage.data import ostype, lchown, userland, secpass, uid, wheelgid, \
-	                         portage_uid, portage_gid, userpriv_groups
 	from portage.manifest import Manifest
 	import portage.exception
 	from portage.localization import _

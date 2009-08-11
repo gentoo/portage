@@ -35,6 +35,9 @@ if not lchown:
 					" exist.  Please rebuild python.\n", noiselevel=-1)
 			lchown()
 
+if sys.hexversion < 0x3000000:
+	lchown = portage._unicode_func_wrapper(lchown)
+
 def portage_group_warning():
 	warn_prefix = colorize("BAD", "*** WARNING ***  ")
 	mylines = [
