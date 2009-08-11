@@ -111,19 +111,6 @@ except ImportError, e:
 	sys.stderr.write("    "+str(e)+"\n\n")
 	raise
 
-
-try:
-	import portage._selinux as selinux
-except OSError, e:
-	writemsg("!!! SELinux not loaded: %s\n" % str(e), noiselevel=-1)
-	del e
-except ImportError:
-	pass
-
-# ===========================================================================
-# END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END
-# ===========================================================================
-
 def _unicode_encode(s):
 	if isinstance(s, unicode):
 		s = s.encode('utf_8', 'replace')
@@ -189,6 +176,19 @@ if sys.hexversion >= 0x3000000:
 		return mod
 
 os = _unicode_module_wrapper(os)
+shutil = _unicode_module_wrapper(shutil)
+
+try:
+	import portage._selinux as selinux
+except OSError, e:
+	writemsg("!!! SELinux not loaded: %s\n" % str(e), noiselevel=-1)
+	del e
+except ImportError:
+	pass
+
+# ===========================================================================
+# END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END
+# ===========================================================================
 
 def _shell_quote(s):
 	"""
