@@ -19,9 +19,7 @@ try:
 		# ESTALE may not be defined on some systems, such as interix.
 		errno.ESTALE = -1
 	import logging
-	import os
 	import re
-	import shutil
 	import time
 	import types
 	try:
@@ -36,6 +34,14 @@ try:
 	from itertools import chain, izip
 	import platform
 	import warnings
+
+	# Temporarily delete these imports, to ensure that only the
+	# wrapped versions are imported by portage internals.
+	import os
+	del os
+	import shutil
+	del shutil
+
 except ImportError, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete python imports. These are internal modules for\n")
@@ -175,7 +181,9 @@ if sys.hexversion >= 0x3000000:
 	def _unicode_module_wrapper(mod):
 		return mod
 
+import os
 os = _unicode_module_wrapper(os)
+import shutil
 shutil = _unicode_module_wrapper(shutil)
 
 try:
