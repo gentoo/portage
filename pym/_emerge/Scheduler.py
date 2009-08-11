@@ -4,20 +4,13 @@
 
 import codecs
 import logging
-import os
 import sys
 import textwrap
 import time
 import weakref
 from itertools import izip
-
-try:
-	import portage
-except ImportError:
-	from os import path as osp
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
-
+import portage
+from portage import os
 from portage.cache.mappings import slot_dict_class
 from portage.elog.messages import eerror
 from portage.output import colorize, create_color_func, darkgreen, red
@@ -478,13 +471,10 @@ class Scheduler(PollScheduler):
 
 	def _append_to_log_path(self, log_path, msg):
 
-		if not isinstance(msg, unicode):
-			msg = unicode(msg, encoding='utf_8', errors='replace')
-
-		f = codecs.open(log_path, mode='a',
+		f = codecs.open(portage._unicode_encode(log_path), mode='a',
 			encoding='utf_8', errors='replace')
 		try:
-			f.write(msg)
+			f.write(portage._unicode_decode(msg))
 		finally:
 			f.close()
 
@@ -496,7 +486,7 @@ class Scheduler(PollScheduler):
 		background = self._background
 
 		if background and log_path is not None:
-			log_file = codecs.open(log_path, mode='a',
+			log_file = codecs.open(portage._unicode_encode(log_path), mode='a',
 				encoding='utf_8', errors='replace')
 			out = log_file
 
@@ -872,8 +862,8 @@ class Scheduler(PollScheduler):
 			log_path = self._locate_failure_log(failed_pkg)
 			if log_path is not None:
 				try:
-					log_file = codecs.open(log_path, mode='r',
-						encoding='utf_8', errors='replace')
+					log_file = codecs.open(portage._unicode_encode(log_path),
+						mode='r', encoding='utf_8', errors='replace')
 				except IOError:
 					pass
 

@@ -2,10 +2,11 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from portage import os
 from _emerge.AbstractPollTask import AbstractPollTask
 import signal
-import os
 import errno
+
 class SubProcess(AbstractPollTask):
 
 	__slots__ = ("pid",) + \

@@ -4,16 +4,8 @@
 
 import codecs
 import logging
-import os
-
-try:
-	import portage
-except ImportError:
-	from os import path as osp
-	import sys
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
-
+import portage
+from portage import os
 from _emerge.AsynchronousTask import AsynchronousTask
 from _emerge.unmerge import unmerge
 from _emerge.UninstallFailure import UninstallFailure
