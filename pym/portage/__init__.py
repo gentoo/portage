@@ -66,6 +66,7 @@ try:
 			'get_operator,isjustname,isspecific,isvalidatom,' + \
 			'match_from_list,match_to_list',
 		'portage.eclass_cache',
+		'portage.exception',
 		'portage.getbinpkg',
 		'portage.locks',
 		'portage.locks:lockdir,lockfile,unlockdir,unlockfile',
