@@ -313,8 +313,6 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 			raise portage.exception.PermissionDenied(mypath)
 		ftype = []
 		for x in list:
-			if not isinstance(x, unicode):
-				x = unicode(x, encoding='utf_8', errors='replace')
 			try:
 				if followSymlinks:
 					pathstat = os.stat(mypath+"/"+x)
@@ -1588,13 +1586,8 @@ class config(object):
 				env = os.environ
 
 			# Avoid potential UnicodeDecodeError exceptions later.
-			env_unicode = {}
-			for k, v in env.iteritems():
-				if not isinstance(k, unicode):
-					k = unicode(k, encoding='utf_8', errors='replace')
-				if not isinstance(v, unicode):
-					v = unicode(v, encoding='utf_8', errors='replace')
-				env_unicode[k] = v
+			env_unicode = dict((_unicode_decode(k), _unicode_decode(v))
+				for k, v in env.iteritems())
 
 			self.backupenv = env_unicode
 
@@ -3266,10 +3259,8 @@ class config(object):
 			raise ValueError("Invalid type being used as a value: '%s': '%s'" % (str(mykey),str(myvalue)))
 
 		# Avoid potential UnicodeDecodeError exceptions later.
-		if not isinstance(mykey, unicode):
-			mykey = unicode(mykey, encoding='utf_8', errors='replace')
-		if not isinstance(myvalue, unicode):
-			myvalue = unicode(myvalue, encoding='utf_8', errors='replace')
+		mykey = _unicode_decode(mykey)
+		myvalue = _unicode_decode(myvalue)
 
 		self.modifying()
 		self.modifiedkeys.append(mykey)
@@ -4971,16 +4962,14 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	""" epatch will just grab all the patches out of a directory, so we have to
 	make sure there aren't any foreign files that it might grab."""
 	filesdir = os.path.join(pkgdir, "files")
-	if isinstance(filesdir, unicode):
-		# Avoid UnicodeDecodeError raised from
-		# os.path.join when called by os.walk.
-		filesdir = filesdir.encode('utf_8', 'replace')
 
 	for parent, dirs, files in os.walk(filesdir):
+		parent = _unicode_decode(parent)
 		for d in dirs:
 			if d.startswith(".") or d == "CVS":
 				dirs.remove(d)
 		for f in files:
+			f = _unicode_decode(f)
 			if f.startswith("."):
 				continue
 			f = os.path.join(parent, f)[len(filesdir) + 1:]
@@ -5234,16 +5223,14 @@ def _post_src_install_uid_fix(mysettings):
 			(_shell_quote(mysettings["D"]),))
 
 	destdir = mysettings["D"]
-	if isinstance(destdir, unicode):
-		# Avoid UnicodeDecodeError raised from
-		# os.path.join when called by os.walk.
-		destdir = destdir.encode('utf_8', 'replace')
 
 	size = 0
 	counted_inodes = set()
 
 	for parent, dirs, files in os.walk(destdir):
+		parent = _unicode_decode(parent)
 		for fname in chain(dirs, files):
+			fname = _unicode_decode(fname)
 			fpath = os.path.join(parent, fname)
 			mystat = os.lstat(fpath)
 			if stat.S_ISREG(mystat.st_mode) and \
@@ -6188,8 +6175,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					if not mybytes[-1]:
 						break
 				os.close(pr)
-				mybytes = u''.join(unicode(chunk,
-					encoding='utf_8', errors='replace') for chunk in mybytes)
 				global auxdbkeys
 				for k, v in izip(auxdbkeys, mybytes.splitlines()):
 					dbkey[k] = v
