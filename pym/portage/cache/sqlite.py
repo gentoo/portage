@@ -4,10 +4,10 @@
 
 from portage.cache import fs_template
 from portage.cache import cache_errors
-import os
+from portage import os
+from portage import _unicode_encode
 from portage.cache.template import reconstruct_eclasses
-from portage.util import writemsg, apply_secpass_permissions
-from portage.data import portage_gid
+from portage.util import writemsg
 from portage.localization import _
 try:
 	import sqlite3 as db_module # sqlite3 is optional with >=python-2.5
@@ -59,7 +59,7 @@ class database(fs_template.FsBased):
 		try:
 			self._ensure_dirs()
 			self._db_connection = self._db_module.connect(
-				database=self._dbpath, **connection_kwargs)
+				database=_unicode_encode(self._dbpath), **connection_kwargs)
 			self._db_cursor = self._db_connection.cursor()
 			self._db_cursor.execute("PRAGMA encoding = %s" % self._db_escape_string("UTF-8"))
 			if not self._ensure_access(self._dbpath):

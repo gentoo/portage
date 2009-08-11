@@ -9,8 +9,8 @@ __all__ = ['database']
 from portage.cache import fs_template
 from portage.versions import catsplit
 from portage import cpv_getkey
-from portage.util import writemsg
-import os
+from portage import os
+from portage import _unicode_decode
 import xattr
 from errno import ENODATA,ENOSPC,E2BIG
 
@@ -154,14 +154,9 @@ class database(fs_template.FsBased):
 
 	def __iter__(self):
 
-		portdir = self.portdir
-		if isinstance(portdir, unicode):
-			# Avoid UnicodeDecodeError raised from
-			# os.path.join when called by os.walk.
-			portdir = portdir.encode('utf_8', 'replace')
-
-		for root, dirs, files in os.walk(portdir):
+		for root, dirs, files in os.walk(self.portdir):
 			for file in files:
+				file = _unicode_decode(file)
 				if file[-7:] == '.ebuild':
 					cat = os.path.basename(os.path.dirname(root))
 					pn_pv = file[:-7]
