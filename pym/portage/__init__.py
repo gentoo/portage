@@ -6176,7 +6176,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 						break
 				os.close(pr)
 				global auxdbkeys
-				for k, v in izip(auxdbkeys, mybytes.splitlines()):
+				for k, v in izip(auxdbkeys, ''.join(mybytes).splitlines()):
 					dbkey[k] = v
 				retval = os.waitpid(mypids[0], 0)[1]
 				portage.process.spawned_pids.remove(mypids[0])
