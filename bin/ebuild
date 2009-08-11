@@ -62,6 +62,8 @@ except ImportError:
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
 
+from portage import os
+
 if not opts.ignore_default_opts:
 	default_opts = portage.settings.get("EBUILD_DEFAULT_OPTS", "").split()
 	opts, pargs = parser.parse_args(default_opts + sys.argv[1:])

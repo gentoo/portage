@@ -3,7 +3,8 @@
 # $Id$
 
 from _emerge.AsynchronousTask import AsynchronousTask
-import os
+from portage import os
+
 class CompositeTask(AsynchronousTask):
 
 	__slots__ = ("scheduler",) + ("_current_task",)

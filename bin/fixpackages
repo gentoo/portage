@@ -12,6 +12,7 @@ except ImportError:
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
 
+from portage import os
 mysettings = portage.settings
 mytrees = portage.db
 mtimedb = portage.mtimedb

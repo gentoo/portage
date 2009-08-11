@@ -41,6 +41,7 @@ except ImportError:
 	import portage
 del pym_path
 
+from portage import os
 from portage.util import writemsg, writemsg_stdout
 
 #-----------------------------------------------------------------------------
@@ -609,7 +610,7 @@ def main():
 	args = sys.argv[2:]
 	if args and not isinstance(args[0], unicode):
 		for i in xrange(len(args)):
-			args[i] = unicode(args[i], encoding='utf_8', errors='replace')
+			args[i] = portage._unicode_decode(args[i])
 
 	try:
 		if uses_root:

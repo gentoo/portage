@@ -3,15 +3,10 @@
 # $Id$
 
 from _emerge.SlotObject import SlotObject
-try:
-	import portage
-except ImportError:
-	from os import path as osp
-	import sys
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
-import os
+import portage
+from portage import os
 import errno
+
 class EbuildBuildDir(SlotObject):
 
 	__slots__ = ("dir_path", "pkg", "settings",

@@ -3,7 +3,6 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import os
 import sys
 
 try:
@@ -13,6 +12,7 @@ except ImportError:
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
 
+from portage import os
 from portage.output import *
 
 from optparse import OptionGroup, OptionParser

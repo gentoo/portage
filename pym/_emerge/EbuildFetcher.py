@@ -5,16 +5,11 @@
 from _emerge.SpawnProcess import SpawnProcess
 from _emerge.EbuildBuildDir import EbuildBuildDir
 import sys
-try:
-	import portage
-except ImportError:
-	from os import path as osp
-	import sys
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
+import portage
+from portage import os
 import codecs
-import os
 from portage.elog.messages import eerror
+
 class EbuildFetcher(SpawnProcess):
 
 	__slots__ = ("config_pool", "fetchonly", "fetchall", "pkg", "prefetch") + \

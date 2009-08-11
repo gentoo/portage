@@ -5,15 +5,9 @@
 from _emerge.SpawnProcess import SpawnProcess
 import urlparse
 import sys
+import portage
+from portage import os
 
-try:
-	import portage
-except ImportError:
-	from os import path as osp
-	import sys
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
-import os
 class BinpkgFetcher(SpawnProcess):
 
 	__slots__ = ("pkg", "pretend",

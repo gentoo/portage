@@ -2,8 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import os
-
+from portage import os
 from portage.output import colorize
 
 from _emerge.Binpkg import Binpkg

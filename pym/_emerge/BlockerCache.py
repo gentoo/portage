@@ -4,18 +4,14 @@
 
 from portage.util import writemsg
 from portage.data import secpass
-try:
-	import portage
-except ImportError:
-	from os import path as osp
-	import sys
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
+import portage
+from portage import os
+
 try:
 	import cPickle as pickle
 except ImportError:
 	import pickle
-import os
+
 class BlockerCache(portage.cache.mappings.MutableMapping):
 	"""This caches blockers of installed packages so that dep_check does not
 	have to be done for every single installed package on every invocation of

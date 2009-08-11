@@ -3,13 +3,15 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import sys, os
+import sys
 try:
 	import portage
 except ImportError:
 	from os import path as osp
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
+
+from portage import os
 import re
 import portage.exception
 

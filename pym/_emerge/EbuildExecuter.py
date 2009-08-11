@@ -5,14 +5,9 @@
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.TaskSequence import TaskSequence
 from _emerge.CompositeTask import CompositeTask
-try:
-	import portage
-except ImportError:
-	from os import path as osp
-	import sys
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
-import os
+import portage
+from portage import os
+
 class EbuildExecuter(CompositeTask):
 
 	__slots__ = ("pkg", "scheduler", "settings") + ("_tree",)

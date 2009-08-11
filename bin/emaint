@@ -1,6 +1,5 @@
 #!/usr/bin/python -O
 # vim: noet :
-import os
 import re
 import signal
 import sys
@@ -15,7 +14,7 @@ except ImportError:
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
 
-import portage.const, portage.exception, portage.output
+from portage import os
 
 class WorldHandler(object):
 

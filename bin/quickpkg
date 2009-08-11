@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import errno, signal, sys, os
+import errno, signal, sys
 from itertools import izip
 
 try:
@@ -12,6 +12,8 @@ except ImportError:
 	from os import path as osp
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
+
+from portage import os
 
 def quickpkg_main(options, args, eout):
 	from portage import catsplit, dep_expand, flatten, isvalidatom, xpak

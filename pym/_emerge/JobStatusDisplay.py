@@ -3,7 +3,6 @@
 # $Id$
 
 import formatter
-import os
 import sys
 import time
 
@@ -12,13 +11,8 @@ try:
 except ImportError:
 	from StringIO import StringIO
 
-try:
-	import portage
-except ImportError:
-	from os import path as osp
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
-
+import portage
+from portage import os
 from portage.output import xtermTitle
 
 from _emerge.getloadavg import getloadavg
@@ -76,7 +70,7 @@ class JobStatusDisplay(object):
 	def _write(self, s):
 		if sys.hexversion < 0x3000000 and isinstance(s, unicode):
 			# avoid potential UnicodeEncodeError
-			s = s.encode('utf_8', 'replace')
+			s = portage._unicode_encode(s)
 		self.out.write(s)
 		self.out.flush()
 

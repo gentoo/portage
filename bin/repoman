@@ -13,7 +13,6 @@ import errno
 import formatter
 import logging
 import optparse
-import os
 import re
 import signal
 import stat
@@ -40,6 +39,7 @@ except ImportError:
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
 portage._disable_legacy_globals()
+from portage import os
 
 try:
 	from repoman.checks import run_checks
