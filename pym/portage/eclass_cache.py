@@ -6,10 +6,10 @@
 __all__ = ["cache"]
 
 import warnings
-from portage.util import normalize_path, writemsg
-import errno, os, sys
-from portage.data import portage_gid
+from portage.util import normalize_path
+import errno
 from portage.exception import PermissionDenied
+from portage import os
 
 class cache(object):
 	"""

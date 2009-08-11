@@ -3,13 +3,13 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import portage
 from portage.const import PRIVATE_PATH,PRELINK_BINARY,HASHING_BLOCKSIZE
-import os
+from portage import os
+from portage import _unicode_encode
 import errno
 import stat
 import tempfile
-import portage.exception
-import portage.process
 import commands
 
 #dict of all available hash functions
@@ -25,7 +25,7 @@ def _generate_hash_function(hashtype, hashobject, origin="unknown"):
 		@type filename: String
 		@return: The hash and size of the data
 		"""
-		f = open(filename, 'rb')
+		f = open(_unicode_encode(filename), 'rb')
 		blocksize = HASHING_BLOCKSIZE
 		data = f.read(blocksize)
 		size = 0L
