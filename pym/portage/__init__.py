@@ -1140,7 +1140,7 @@ class config(object):
 	# environment in order to prevent sandbox from sourcing /etc/profile
 	# in it's bashrc (causing major leakage).
 	_environ_whitelist += [
-		"ACCEPT_LICENSE", "ACCEPT_PROPERTIES", "BASH_ENV", "BUILD_PREFIX", "D",
+		"ACCEPT_LICENSE", "BASH_ENV", "BUILD_PREFIX", "D",
 		"DISTDIR", "DOC_SYMLINKS_DIR", "EBUILD",
 		"EBUILD_EXIT_STATUS_FILE", "EBUILD_FORCE_TEST",
 		"EBUILD_PHASE", "ECLASSDIR", "ECLASS_DEPTH", "EMERGE_FROM",
@@ -1211,7 +1211,7 @@ class config(object):
 
 	# portage config variables and variables set directly by portage
 	_environ_filter += [
-		"ACCEPT_KEYWORDS", "AUTOCLEAN",
+		"ACCEPT_KEYWORDS", "ACCEPT_PROPERTIES", "AUTOCLEAN",
 		"CLEAN_DELAY", "COLLISION_IGNORE", "CONFIG_PROTECT",
 		"CONFIG_PROTECT_MASK", "EGENCACHE_DEFAULT_OPTS", "EMERGE_DEFAULT_OPTS",
 		"EMERGE_LOG_DIR",
