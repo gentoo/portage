@@ -20,11 +20,14 @@ from portage.exception import InvalidPackageName, \
 from portage.localization import _
 
 from portage import dep_expand, listdir, _check_distfile, _movefile
+from portage import os
+from portage import _unicode_decode
+from portage import _unicode_encode
 
 import codecs
-import os, errno, stat
+import errno
 import re
-import sys
+import stat
 from itertools import chain, izip
 
 class bindbapi(fakedbapi):
@@ -70,8 +73,8 @@ class bindbapi(fakedbapi):
 			tbz2 = portage.xpak.tbz2(tbz2_path)
 			def getitem(k):
 				v = tbz2.getfile(k)
-				if v is not None and not isinstance(v, unicode):
-					v = unicode(v, encoding='utf_8', errors='replace')
+				if v is not None:
+					v = _unicode_decode(v)
 				return v
 		else:
 			getitem = self.bintree._remotepkgs[mycpv].get
@@ -105,21 +108,10 @@ class bindbapi(fakedbapi):
 		mytbz2 = portage.xpak.tbz2(tbz2path)
 		mydata = mytbz2.get_data()
 
-		if sys.hexversion < 0x3000000:
-			for k, v in values.iteritems():
-				if isinstance(k, unicode):
-					k = k.encode('utf_8', 'replace')
-				if isinstance(v, unicode):
-					v = v.encode('utf_8', 'replace')
-				mydata[k] = v
-
-		else:
-			for k, v in values.iteritems():
-				if isinstance(k, str):
-					k = k.encode('utf_8', 'replace')
-				if isinstance(v, str):
-					v = v.encode('utf_8', 'replace')
-				mydata[k] = v
+		for k, v in values.iteritems():
+			k = _unicode_encode(k)
+			v = _unicode_encode(v)
+			mydata[k] = v
 
 		for k, v in mydata.items():
 			if not v:
@@ -660,7 +652,7 @@ class binarytree(object):
 				urldata[1] + urldata[2], "Packages")
 			pkgindex = self._new_pkgindex()
 			try:
-				f = codecs.open(pkgindex_file,
+				f = codecs.open(_unicode_encode(pkgindex_file),
 					encoding='utf_8', errors='replace')
 				try:
 					pkgindex.read(f)
@@ -1102,7 +1094,7 @@ class binarytree(object):
 	def _load_pkgindex(self):
 		pkgindex = self._new_pkgindex()
 		try:
-			f = codecs.open(self._pkgindex_file, 
+			f = codecs.open(_unicode_encode(self._pkgindex_file), 
 				encoding='utf_8', errors='replace')
 		except EnvironmentError:
 			pass

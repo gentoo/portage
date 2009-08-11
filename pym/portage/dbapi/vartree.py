@@ -37,6 +37,7 @@ from portage import listdir, dep_expand, digraph, flatten, key_expand, \
 
 # This is a special version of the os module, wrapped for unicode support.
 from portage import os
+from portage import _unicode_encode
 
 from portage.cache.mappings import slot_dict_class
 
@@ -72,7 +73,8 @@ class PreservedLibsRegistry(object):
 		""" Reload the registry data from file """
 		self._data = None
 		try:
-			self._data = pickle.load(open(self._filename, 'rb'))
+			self._data = pickle.load(
+				open(_unicode_encode(self._filename), 'rb'))
 		except (ValueError, pickle.UnpicklingError), e:
 			writemsg_level(_("!!! Error loading '%s': %s\n") % \
 				(self._filename, e), level=logging.ERROR, noiselevel=-1)
@@ -1079,7 +1081,8 @@ class vardbapi(dbapi):
 			# python-2.x, but buffering makes it much worse.
 			open_kwargs["buffering"] = 0
 		try:
-			f = open(self._aux_cache_filename, mode='rb', **open_kwargs)
+			f = open(_unicode_encode(self._aux_cache_filename),
+				mode='rb', **open_kwargs)
 			mypickle = pickle.Unpickler(f)
 			try:
 				mypickle.find_global = None
@@ -1225,7 +1228,7 @@ class vardbapi(dbapi):
 				results.append(long(st.st_mtime))
 				continue
 			try:
-				myf = codecs.open(os.path.join(mydir, x),
+				myf = codecs.open(_unicode_encode(os.path.join(mydir, x)),
 					mode='r', encoding='utf_8', errors='replace')
 				try:
 					myd = myf.read()
@@ -1294,7 +1297,8 @@ class vardbapi(dbapi):
 		new_vdb = False
 		counter = -1
 		try:
-			cfile = open(self._counter_path, "r")
+			cfile = codecs.open(_unicode_encode(self._counter_path), mode='r',
+				encoding='utf_8', errors='replace')
 		except EnvironmentError, e:
 			new_vdb = not bool(self.cpv_all())
 			if not new_vdb:
@@ -1877,7 +1881,7 @@ class dblink(object):
 			return self.contentscache
 		pkgfiles = {}
 		try:
-			myc = codecs.open(contents_file, mode='r',
+			myc = codecs.open(_unicode_encode(contents_file), mode='r',
 				encoding='utf_8', errors='replace')
 		except EnvironmentError, e:
 			if e.errno != errno.ENOENT:
@@ -3164,7 +3168,9 @@ class dblink(object):
 		slot = ''
 		for var_name in ('CHOST', 'SLOT'):
 			try:
-				val = open(os.path.join(inforoot, var_name)).readline().strip()
+				val = codecs.open(_unicode_encode(
+					os.path.join(inforoot, var_name)), mode='r',
+					encoding='utf_8', errors='replace').readline().strip()
 			except EnvironmentError, e:
 				if e.errno != errno.ENOENT:
 					raise
@@ -3454,12 +3460,12 @@ class dblink(object):
 
 		# write local package counter for recording
 		counter = self.vartree.dbapi.counter_tick(self.myroot, mycpv=self.mycpv)
-		lcfile = open(os.path.join(self.dbtmpdir, "COUNTER"),"w")
-		lcfile.write(str(counter))
-		lcfile.close()
+		open(_unicode_encode(os.path.join(self.dbtmpdir, 'COUNTER')),
+			'w').write(str(counter))
 
 		# open CONTENTS file (possibly overwriting old one) for recording
-		outfile = codecs.open(os.path.join(self.dbtmpdir, 'CONTENTS'),
+		outfile = codecs.open(_unicode_encode(
+			os.path.join(self.dbtmpdir, 'CONTENTS')),
 			mode='w', encoding='utf_8', errors='replace')
 
 		self.updateprotect()
@@ -4054,9 +4060,8 @@ class dblink(object):
 		"returns contents of a file with whitespace converted to spaces"
 		if not os.path.exists(self.dbdir+"/"+name):
 			return ""
-		myfile = open(self.dbdir+"/"+name,"r")
-		mydata = myfile.read().split()
-		myfile.close()
+		mydata = codecs.open(_unicode_encode(os.path.join(self.dbdir, name)),
+			mode='r', encoding='utf_8', errors='replace').read().split()
 		return " ".join(mydata)
 
 	def copyfile(self,fname):
@@ -4065,10 +4070,8 @@ class dblink(object):
 	def getfile(self,fname):
 		if not os.path.exists(self.dbdir+"/"+fname):
 			return ""
-		myfile = open(self.dbdir+"/"+fname,"r")
-		mydata = myfile.read()
-		myfile.close()
-		return mydata
+		return codecs.open(_unicode_encode(os.path.join(self.dbdir, fname)), 
+			mode='r', encoding='utf_8', errors='replace').read()
 
 	def setfile(self,fname,data):
 		mode = 'w'
@@ -4079,17 +4082,19 @@ class dblink(object):
 	def getelements(self,ename):
 		if not os.path.exists(self.dbdir+"/"+ename):
 			return []
-		myelement = open(self.dbdir+"/"+ename,"r")
-		mylines = myelement.readlines()
+		mylines = codecs.open(_unicode_encode(
+			os.path.join(self.dbdir, ename)), mode='r',
+			encoding='utf_8', errors='replace').readlines()
 		myreturn = []
 		for x in mylines:
 			for y in x[:-1].split():
 				myreturn.append(y)
-		myelement.close()
 		return myreturn
 
 	def setelements(self,mylist,ename):
-		myelement = open(self.dbdir+"/"+ename,"w")
+		myelement = codecs.open(_unicode_encode(
+			os.path.join(self.dbdir, ename)), mode='w',
+			encoding='utf_8', errors='replace')
 		for x in mylist:
 			myelement.write(x+"\n")
 		myelement.close()
@@ -4166,7 +4171,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 				tarinfo.size = 0
 				tar.addfile(tarinfo)
 			else:
-				f = open(path, 'rb')
+				f = open(_unicode_encode(path), 'rb')
 				try:
 					tar.addfile(tarinfo, f)
 				finally:
