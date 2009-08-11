@@ -34,6 +34,8 @@ def visible(pkgsettings, pkg):
 	try:
 		if pkgsettings._getMissingLicenses(pkg.cpv, pkg.metadata):
 			return False
+		if pkgsettings._getMissingProperties(pkg.cpv, pkg.metadata):
+			return False
 	except portage.exception.InvalidDependString:
 		return False
 	return True
