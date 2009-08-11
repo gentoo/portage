@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import os 
+from portage import os
 
 getloadavg = getattr(os, "getloadavg", None)
 if getloadavg is None:

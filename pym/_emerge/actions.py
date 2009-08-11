@@ -5,7 +5,6 @@
 import commands
 import errno
 import logging
-import os
 import platform
 import pwd
 import re
@@ -17,13 +16,8 @@ import textwrap
 import time
 from itertools import chain, izip
 
-try:
-	import portage
-except ImportError:
-	from os import path as osp
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
-
+import portage
+from portage import os
 from portage import digraph
 from portage.cache.cache_errors import CacheError
 from portage.const import NEWS_LIB_PATH

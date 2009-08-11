@@ -6,16 +6,9 @@ import logging
 import signal
 import sys
 import textwrap
-import os
 import platform
-
-try:
-	import portage
-except ImportError:
-	from os import path as osp
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
-
+import portage
+from portage import os
 import _emerge.help
 import portage.xpak, commands, errno, re, time
 from portage.output import colorize, xtermTitle, xtermTitleReset
@@ -750,7 +743,7 @@ def parse_opts(tmpcmdline, silent=False):
 
 	if myargs and not isinstance(myargs[0], unicode):
 		for i in xrange(len(myargs)):
-			myargs[i] = unicode(myargs[i], encoding='utf_8', errors='replace')
+			myargs[i] = portage._unicode_decode(myargs[i])
 
 	myfiles += myargs
 

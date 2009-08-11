@@ -3,18 +3,11 @@
 # $Id$
 
 import logging
-import os
 import sys
 import textwrap
 from itertools import izip
-
-try:
-	import portage
-except ImportError:
-	from os import path as osp
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
-
+import portage
+from portage import os
 from portage.output import bold, colorize, darkgreen, green
 from portage.sets import SETPREFIX
 from portage.util import cmp_sort_key

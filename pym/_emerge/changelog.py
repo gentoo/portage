@@ -3,16 +3,10 @@
 # $Id$
 
 import codecs
-import os
 import re
 
-try:
-	import portage
-except ImportError:
-	from os import path as osp
-	import sys
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
+import portage
+from portage import os
 
 def calc_changelog(ebuildpath,current,next):
 	if ebuildpath == None or not os.path.exists(ebuildpath):
@@ -25,8 +19,8 @@ def calc_changelog(ebuildpath,current,next):
 		next = next[:-3]
 	changelogpath = os.path.join(os.path.split(ebuildpath)[0],'ChangeLog')
 	try:
-		changelog = codecs.open(changelogpath, mode='r',
-			encoding='utf_8', errors='replace').read()
+		changelog = codecs.open(portage._unicode_encode(changelogpath),
+			mode='r', encoding='utf_8', errors='replace').read()
 	except SystemExit, e:
 		raise # Needed else can't exit
 	except:

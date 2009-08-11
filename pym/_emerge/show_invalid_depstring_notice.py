@@ -3,17 +3,9 @@
 # $Id$
 
 import logging
-import os
 import textwrap
-
-try:
-	import portage
-except ImportError:
-	from os import path as osp
-	import sys
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
-
+import portage
+from portage import os
 from portage.util import writemsg_level
 
 def show_invalid_depstring_notice(parent_node, depstring, error_msg):
