@@ -6168,16 +6168,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					mysettings,
 					fd_pipes=fd_pipes, returnpid=True, droppriv=droppriv)
 				os.close(pw) # belongs exclusively to the child process now
-				maxbytes = 1024
-				mybytes = []
-				while True:
-					mybytes.append(os.read(pr, maxbytes))
-					if not mybytes[-1]:
-						break
-				os.close(pr)
-				global auxdbkeys
-				for k, v in izip(auxdbkeys, ''.join(mybytes).splitlines()):
+				f = os.fdopen(pr, 'rb')
+				for k, v in izip(auxdbkeys,
+					(_unicode_decode(line).rstrip('\n') for line in f)):
 					dbkey[k] = v
+				f.close()
 				retval = os.waitpid(mypids[0], 0)[1]
 				portage.process.spawned_pids.remove(mypids[0])
 				# If it got a signal, return the signal that was sent, but
