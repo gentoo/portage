@@ -8,6 +8,7 @@ import os
 import atexit
 import signal
 import sys
+import traceback
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -244,6 +245,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 			# propogate out of this function and cause exiting
 			# with anything other than os._exit()
 			sys.stderr.write("%s:\n   %s\n" % (e, " ".join(mycommand)))
+			traceback.print_exc()
 			sys.stderr.flush()
 			os._exit(1)
 
