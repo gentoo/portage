@@ -204,6 +204,138 @@ from portage.manifest import Manifest
 # END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END
 # ===========================================================================
 
+def _gen_missing_encodings(missing_encodings):
+
+	encodings = {}
+
+	if 'ascii' in missing_encodings:
+
+		class AsciiIncrementalEncoder(codecs.IncrementalEncoder):
+			def encode(self, input, final=False):
+				return codecs.ascii_encode(input, self.errors)[0]
+
+		class AsciiIncrementalDecoder(codecs.IncrementalDecoder):
+			def decode(self, input, final=False):
+				return codecs.ascii_decode(input, self.errors)[0]
+
+		class AsciiStreamWriter(codecs.StreamWriter):
+			encode = codecs.ascii_encode
+
+		class AsciiStreamReader(codecs.StreamReader):
+			decode = codecs.ascii_decode
+
+		codec_info =  codecs.CodecInfo(
+			name='ascii',
+			encode=codecs.ascii_encode,
+			decode=codecs.ascii_decode,
+			incrementalencoder=AsciiIncrementalEncoder,
+			incrementaldecoder=AsciiIncrementalDecoder,
+			streamwriter=AsciiStreamWriter,
+			streamreader=AsciiStreamReader,
+		)
+
+		for alias in ('ascii', '646', 'ansi_x3.4_1968', 'ansi_x3_4_1968',
+			'ansi_x3.4_1986', 'cp367', 'csascii', 'ibm367', 'iso646_us',
+			'iso_646.irv_1991', 'iso_ir_6', 'us', 'us_ascii'):
+			encodings[alias] = codec_info
+
+	if 'utf_8' in missing_encodings:
+
+		def utf8decode(input, errors='strict'):
+			return codecs.utf_8_decode(input, errors, True)
+
+		class Utf8IncrementalEncoder(codecs.IncrementalEncoder):
+			def encode(self, input, final=False):
+				return codecs.utf_8_encode(input, self.errors)[0]
+
+		class Utf8IncrementalDecoder(codecs.BufferedIncrementalDecoder):
+			_buffer_decode = codecs.utf_8_decode
+
+		class Utf8StreamWriter(codecs.StreamWriter):
+			encode = codecs.utf_8_encode
+
+		class Utf8StreamReader(codecs.StreamReader):
+			decode = codecs.utf_8_decode
+
+		codec_info = codecs.CodecInfo(
+			name='utf-8',
+			encode=codecs.utf_8_encode,
+			decode=utf8decode,
+			incrementalencoder=Utf8IncrementalEncoder,
+			incrementaldecoder=Utf8IncrementalDecoder,
+			streamreader=Utf8StreamReader,
+			streamwriter=Utf8StreamWriter,
+		)
+
+		for alias in ('utf_8', 'u8', 'utf', 'utf8', 'utf8_ucs2', 'utf8_ucs4'):
+			encodings[alias] = codec_info
+
+	return encodings
+
+def _ensure_default_encoding():
+	"""
+	The python that's inside stage 1 or 2 is built with a minimal
+	configuration which does not include the /usr/lib/pythonX.Y/encodings
+	directory. This results in error like the following:
+
+	  LookupError: no codec search functions registered: can't find encoding
+
+	In order to solve this problem, detect it early and manually register
+	a search function for the ascii and utf_8 codecs. Starting with python-3.0
+	this problem is more noticeable because of stricter handling of encoding
+	and decoding between strings of characters and bytes.
+	"""
+
+	default_fallback = 'utf_8'
+	default_encoding = sys.getdefaultencoding().lower().replace('-', '_')
+	required_encodings = set(['ascii', 'utf_8'])
+	required_encodings.add(default_encoding)
+	missing_encodings = set()
+	for codec_name in required_encodings:
+		try:
+			codecs.lookup(codec_name)
+		except LookupError:
+			missing_encodings.add(codec_name)
+
+	if not missing_encodings:
+		return
+
+	encodings = _gen_missing_encodings(missing_encodings)
+
+	if default_encoding in missing_encodings and \
+		default_encoding not in encodings:
+		# Make the fallback codec correspond to whatever name happens
+		# to be returned by sys.getdefaultencoding().
+
+		try:
+			encodings[default_encoding] = codecs.lookup(default_fallback)
+		except LookupError:
+			encodings[default_encoding] = encodings[default_fallback]
+
+	def search_function(name):
+		name = name.lower()
+		name = name.replace('-', '_')
+		codec_info = encodings.get(name)
+		if codec_info is not None:
+			return codecs.CodecInfo(
+				name=codec_info.name,
+				encode=codec_info.encode,
+				decode=codec_info.decode,
+				incrementalencoder=codec_info.incrementalencoder,
+				incrementaldecoder=codec_info.incrementaldecoder,
+				streamreader=codec_info.streamreader,
+				streamwriter=codec_info.streamwriter,
+			)
+		return None
+
+	codecs.register(search_function)
+
+	del codec_name, default_encoding, default_fallback, missing_encodings, \
+		required_encodings, search_function
+
+# Do this ASAP since writemsg() might not work without it.
+_ensure_default_encoding()
+
 def _shell_quote(s):
 	"""
 	Quote a string in double-quotes and use backslashes to
@@ -8188,135 +8320,6 @@ def portageexit():
 
 atexit_register(portageexit)
 
-def _gen_missing_encodings(missing_encodings):
-
-	encodings = {}
-
-	if 'ascii' in missing_encodings:
-
-		class AsciiIncrementalEncoder(codecs.IncrementalEncoder):
-			def encode(self, input, final=False):
-				return codecs.ascii_encode(input, self.errors)[0]
-
-		class AsciiIncrementalDecoder(codecs.IncrementalDecoder):
-			def decode(self, input, final=False):
-				return codecs.ascii_decode(input, self.errors)[0]
-
-		class AsciiStreamWriter(codecs.StreamWriter):
-			encode = codecs.ascii_encode
-
-		class AsciiStreamReader(codecs.StreamReader):
-			decode = codecs.ascii_decode
-
-		codec_info =  codecs.CodecInfo(
-			name='ascii',
-			encode=codecs.ascii_encode,
-			decode=codecs.ascii_decode,
-			incrementalencoder=AsciiIncrementalEncoder,
-			incrementaldecoder=AsciiIncrementalDecoder,
-			streamwriter=AsciiStreamWriter,
-			streamreader=AsciiStreamReader,
-		)
-
-		for alias in ('ascii', '646', 'ansi_x3.4_1968', 'ansi_x3_4_1968',
-			'ansi_x3.4_1986', 'cp367', 'csascii', 'ibm367', 'iso646_us',
-			'iso_646.irv_1991', 'iso_ir_6', 'us', 'us_ascii'):
-			encodings[alias] = codec_info
-
-	if 'utf_8' in missing_encodings:
-
-		def utf8decode(input, errors='strict'):
-			return codecs.utf_8_decode(input, errors, True)
-
-		class Utf8IncrementalEncoder(codecs.IncrementalEncoder):
-			def encode(self, input, final=False):
-				return codecs.utf_8_encode(input, self.errors)[0]
-
-		class Utf8IncrementalDecoder(codecs.BufferedIncrementalDecoder):
-			_buffer_decode = codecs.utf_8_decode
-
-		class Utf8StreamWriter(codecs.StreamWriter):
-			encode = codecs.utf_8_encode
-
-		class Utf8StreamReader(codecs.StreamReader):
-			decode = codecs.utf_8_decode
-
-		codec_info = codecs.CodecInfo(
-			name='utf-8',
-			encode=codecs.utf_8_encode,
-			decode=utf8decode,
-			incrementalencoder=Utf8IncrementalEncoder,
-			incrementaldecoder=Utf8IncrementalDecoder,
-			streamreader=Utf8StreamReader,
-			streamwriter=Utf8StreamWriter,
-		)
-
-		for alias in ('utf_8', 'u8', 'utf', 'utf8', 'utf8_ucs2', 'utf8_ucs4'):
-			encodings[alias] = codec_info
-
-	return encodings
-
-def _ensure_default_encoding():
-	"""
-	The python that's inside stage 1 or 2 is built with a minimal
-	configuration which does not include the /usr/lib/pythonX.Y/encodings
-	directory. This results in error like the following:
-
-	  LookupError: no codec search functions registered: can't find encoding
-
-	In order to solve this problem, detect it early and manually register
-	a search function for the ascii and utf_8 codecs. Starting with python-3.0
-	this problem is more noticeable because of stricter handling of encoding
-	and decoding between strings of characters and bytes.
-	"""
-
-	default_fallback = 'utf_8'
-	default_encoding = sys.getdefaultencoding().lower().replace('-', '_')
-	required_encodings = set(['ascii', 'utf_8'])
-	required_encodings.add(default_encoding)
-	missing_encodings = set()
-	for codec_name in required_encodings:
-		try:
-			codecs.lookup(codec_name)
-		except LookupError:
-			missing_encodings.add(codec_name)
-
-	if not missing_encodings:
-		return
-
-	encodings = _gen_missing_encodings(missing_encodings)
-
-	if default_encoding in missing_encodings and \
-		default_encoding not in encodings:
-		# Make the fallback codec correspond to whatever name happens
-		# to be returned by sys.getdefaultencoding().
-
-		try:
-			encodings[default_encoding] = codecs.lookup(default_fallback)
-		except LookupError:
-			encodings[default_encoding] = encodings[default_fallback]
-
-	def search_function(name):
-		name = name.lower()
-		name = name.replace('-', '_')
-		codec_info = encodings.get(name)
-		if codec_info is not None:
-			return codecs.CodecInfo(
-				name=codec_info.name,
-				encode=codec_info.encode,
-				decode=codec_info.decode,
-				incrementalencoder=codec_info.incrementalencoder,
-				incrementaldecoder=codec_info.incrementaldecoder,
-				streamreader=codec_info.streamreader,
-				streamwriter=codec_info.streamwriter,
-			)
-		return None
-
-	codecs.register(search_function)
-
-	del codec_name, default_encoding, default_fallback, missing_encodings, \
-		required_encodings, search_function
-
 def _global_updates(trees, prev_mtimes):
 	"""
 	Perform new global updates if they exist in $PORTDIR/profiles/updates/.
@@ -8702,8 +8705,6 @@ if True:
 		"pkglines", "thirdpartymirrors", "usedefaults", "profiledir",
 		"flushmtimedb"):
 		globals()[k] = _LegacyGlobalProxy(k)
-
-	_ensure_default_encoding()
 
 # Clear the cache
 dircache={}
