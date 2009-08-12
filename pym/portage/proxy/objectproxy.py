@@ -64,3 +64,6 @@ class ObjectProxy(object):
 
 	def __nonzero__(self):
 		return bool(object.__getattribute__(self, '_get_target')())
+
+	def __int__(self):
+		return int(object.__getattribute__(self, '_get_target')())
