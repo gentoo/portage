@@ -910,7 +910,7 @@ class atomic_ofstream(ObjectProxy):
 			tmp_name = "%s.%i" % (canonical_path, os.getpid())
 			try:
 				object.__setattr__(self, '_file',
-					open_func(tmp_name, mode=mode, **kargs))
+					open_func(_unicode_encode(tmp_name), mode=mode, **kargs))
 				return
 			except IOError, e:
 				if canonical_path == filename:
@@ -922,7 +922,7 @@ class atomic_ofstream(ObjectProxy):
 		object.__setattr__(self, '_real_name', filename)
 		tmp_name = "%s.%i" % (filename, os.getpid())
 		object.__setattr__(self, '_file',
-			open_func(tmp_name, mode=mode, **kargs))
+			open_func(_unicode_encode(tmp_name), mode=mode, **kargs))
 
 	def _get_target(self):
 		return object.__getattribute__(self, '_file')

@@ -193,7 +193,7 @@ shutil = _unicode_module_wrapper(shutil)
 try:
 	import portage._selinux as selinux
 except OSError, e:
-	writemsg("!!! SELinux not loaded: %s\n" % str(e), noiselevel=-1)
+	sys.stderr.write("!!! SELinux not loaded: %s\n" % str(e))
 	del e
 except ImportError:
 	pass
@@ -806,7 +806,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 
 	ldsoconf_path = os.path.join(target_root, "etc", "ld.so.conf")
 	try:
-		myld = codecs.open(ldsoconf_path, mode='r',
+		myld = codecs.open(_unicode_encode(ldsoconf_path), mode='r',
 			encoding='utf_8', errors='replace')
 		myldlines=myld.readlines()
 		myld.close()
@@ -1786,7 +1786,8 @@ class config(object):
 				repo_conf_parser = SafeConfigParser()
 				try:
 					repo_conf_parser.readfp(
-						codecs.open(self._local_repo_conf_path, mode='r',
+						codecs.open(
+						_unicode_encode(self._local_repo_conf_path), mode='r',
 						encoding='utf_8', errors='replace'))
 				except EnvironmentError, e:
 					if e.errno != errno.ENOENT:
@@ -5244,7 +5245,7 @@ def _check_build_log(mysettings, out=None):
 	if logfile is None:
 		return
 	try:
-		f = codecs.open(logfile, mode='r',
+		f = codecs.open(_unicode_encode(logfile), mode='r',
 			encoding='utf_8', errors='replace')
 	except EnvironmentError:
 		return
@@ -5640,7 +5641,8 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 			# From parse-eapi-glep-55 above.
 			pass
 		elif 'parse-eapi-ebuild-head' in mysettings.features:
-			eapi = _parse_eapi_ebuild_head(codecs.open(ebuild_path,
+			eapi = _parse_eapi_ebuild_head(
+				codecs.open(_unicode_encode(ebuild_path),
 				mode='r', encoding='utf_8', errors='replace'))
 
 		if eapi is not None:
