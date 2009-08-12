@@ -1120,7 +1120,8 @@ def ExtractKernelVersion(base_dir):
 	lines = []
 	pathname = os.path.join(base_dir, 'Makefile')
 	try:
-		f = open(pathname, 'r')
+		f = codecs.open(_unicode_encode(pathname), mode='r',
+			encoding='utf_8', errors='replace')
 	except OSError, details:
 		return (None, str(details))
 	except IOError, details:
@@ -1576,7 +1577,9 @@ class config(object):
 					parentsFile = os.path.join(currentPath, "parent")
 					eapi_file = os.path.join(currentPath, "eapi")
 					try:
-						eapi = open(eapi_file).readline().strip()
+						eapi = codecs.open(_unicode_encode(eapi_file),
+							mode='r', encoding='utf_8', errors='replace'
+							).readline().strip()
 					except IOError:
 						pass
 					else:
@@ -3846,7 +3849,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		return mypids
 
 	if logfile:
-		log_file = open(logfile, mode='ab')
+		log_file = open(_unicode_encode(logfile), mode='ab')
 		stdout_file = os.fdopen(os.dup(fd_pipes_orig[1]), 'wb')
 		master_file = os.fdopen(master_fd, 'rb')
 		iwtd = [master_file]
@@ -4828,7 +4831,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								# Fetch failed... Try the next one... Kill 404 files though.
 								if (mystat[stat.ST_SIZE]<100000) and (len(myfile)>4) and not ((myfile[-5:]==".html") or (myfile[-4:]==".htm")):
 									html404=re.compile("<title>.*(not found|404).*</title>",re.I|re.M)
-									if html404.search(open(mysettings["DISTDIR"]+"/"+myfile).read()):
+									if html404.search(codecs.open(
+										_unicode_encode(myfile_path), mode='r',
+										encoding='utf_8', errors='replace'
+										).read()):
 										try:
 											os.unlink(mysettings["DISTDIR"]+"/"+myfile)
 											writemsg(">>> Deleting invalid distfile. (Improper 404 redirect from server.)\n")
@@ -5538,8 +5544,8 @@ def _post_src_install_uid_fix(mysettings):
 				mode=mystat.st_mode, stat_cached=mystat,
 				follow_links=False)
 
-	open(os.path.join(mysettings['PORTAGE_BUILDDIR'],
-		'build-info', 'SIZE'), 'w').write(str(size) + '\n')
+	open(_unicode_encode(os.path.join(mysettings['PORTAGE_BUILDDIR'],
+		'build-info', 'SIZE')), 'w').write(str(size) + '\n')
 
 	if bsd_chflags:
 		# Restore all of the flags saved above.
@@ -5940,13 +5946,14 @@ def _adjust_perms_msg(settings, msg):
 
 	if background and log_path is not None:
 		try:
-			log_file = open(log_path, 'a')
+			log_file = codecs.open(_unicode_encode(log_path), mode='a',
+				encoding='utf_8', errors='replace')
 		except IOError:
 			def write(msg):
 				pass
 		else:
 			def write(msg):
-				log_file.write(msg)
+				log_file.write(_unicode_decode(msg))
 				log_file.flush()
 
 	try:
@@ -6108,9 +6115,7 @@ def _prepare_workdir(mysettings):
 		os.access(mysettings["PORT_LOGDIR"], os.W_OK):
 		logid_path = os.path.join(mysettings["PORTAGE_BUILDDIR"], ".logid")
 		if not os.path.exists(logid_path):
-			f = open(logid_path, "w")
-			f.close()
-			del f
+			open(_unicode_encode(logid_path), 'w')
 		logid_time = time.strftime("%Y%m%d-%H%M%S",
 			time.gmtime(os.stat(logid_path).st_mtime))
 		mysettings["PORTAGE_LOG_FILE"] = os.path.join(
@@ -6588,7 +6593,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					# This is a signal to ebuild.sh, so that it knows to filter
 					# out things like SANDBOX_{DENY,PREDICT,READ,WRITE} that
 					# would be preserved between normal phases.
-					open(env_file + ".raw", "w")
+					open(_unicode_encode(env_file + '.raw'), 'w')
 				else:
 					writemsg(("!!! Error extracting saved " + \
 						"environment: '%s'\n") % \
@@ -8203,7 +8208,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 		xptbz2.unpackinfo(infloc)
 		mysettings.setcpv(mycat + "/" + mypkg, mydb=mydbapi)
 		# Store the md5sum in the vdb.
-		fp = open(os.path.join(infloc, "BINPKGMD5"), "w")
+		fp = open(_unicode_encode(os.path.join(infloc, 'BINPKGMD5')), 'w')
 		fp.write(str(portage.checksum.perform_md5(mytbz2))+"\n")
 		fp.close()
 
@@ -8264,9 +8269,8 @@ def deprecated_profile_check(settings=None):
 		DEPRECATED_PROFILE_FILE.lstrip(os.sep))
 	if not os.access(deprecated_profile_file, os.R_OK):
 		return False
-	deprecatedfile = open(deprecated_profile_file, "r")
-	dcontent = deprecatedfile.readlines()
-	deprecatedfile.close()
+	dcontent = codecs.open(_unicode_encode(deprecated_profile_file), 
+		mode='r', encoding='utf_8', errors='replace').readlines()
 	writemsg(colorize("BAD", "\n!!! Your current profile is " + \
 		"deprecated and not supported anymore.") + "\n", noiselevel=-1)
 	if not dcontent:
@@ -8470,7 +8474,7 @@ class MtimeDB(dict):
 
 	def _load(self, filename):
 		try:
-			f = open(filename, 'rb')
+			f = open(_unicode_encode(filename), 'rb')
 			mypickle = pickle.Unpickler(f)
 			try:
 				mypickle.find_global = None
