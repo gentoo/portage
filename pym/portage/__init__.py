@@ -178,6 +178,8 @@ class _unicode_module_wrapper(object):
 		return result
 
 if sys.hexversion >= 0x3000000:
+	def _unicode_func_wrapper(func):
+		return func
 	def _unicode_module_wrapper(mod):
 		return mod
 
