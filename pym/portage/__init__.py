@@ -104,8 +104,6 @@ try:
 		INVALID_ENV_FILE, CUSTOM_MIRRORS_FILE, CONFIG_MEMORY_FILE,\
 		INCREMENTALS, EAPI, MISC_SH_BINARY, REPO_NAME_LOC, REPO_NAME_FILE
 
-	from portage.manifest import Manifest
-	import portage.exception
 	from portage.localization import _
 
 except ImportError, e:
@@ -188,6 +186,8 @@ os = _unicode_module_wrapper(os)
 import shutil
 shutil = _unicode_module_wrapper(shutil)
 
+# Imports below this point rely on the above unicode wrapper definitions.
+
 try:
 	import portage._selinux as selinux
 except OSError, e:
@@ -195,6 +195,8 @@ except OSError, e:
 	del e
 except ImportError:
 	pass
+
+from portage.manifest import Manifest
 
 # ===========================================================================
 # END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END
