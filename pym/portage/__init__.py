@@ -167,17 +167,24 @@ class _unicode_module_wrapper(object):
 	"""
 	Wraps a module and wraps all functions with _unicode_func_wrapper.
 	"""
-	__slots__ = ('_mod',)
+	__slots__ = ('_mod', '_overrides')
 
-	def __init__(self, mod):
+	def __init__(self, mod, overrides=None):
 		object.__setattr__(self, '_mod', mod)
+		object.__setattr__(self, '_overrides', overrides)
 
 	def __getattribute__(self, attr):
 		result = getattr(object.__getattribute__(self, '_mod'), attr)
-		if isinstance(result, type):
+		overrides = object.__getattribute__(self, '_overrides')
+		override = None
+		if overrides is not None:
+			override = overrides.get(id(result))
+		if override is not None:
+			result = override
+		elif isinstance(result, type):
 			pass
 		elif type(result) is types.ModuleType:
-			result = _unicode_module_wrapper(result)
+			result = _unicode_module_wrapper(result, overrides=overrides)
 		elif hasattr(result, '__call__'):
 			result = _unicode_func_wrapper(result)
 		return result
@@ -189,7 +196,7 @@ if sys.hexversion >= 0x3000000:
 		return mod
 
 import os
-os = _unicode_module_wrapper(os)
+os = _unicode_module_wrapper(os, overrides={id(os.read):os.read})
 import shutil
 shutil = _unicode_module_wrapper(shutil)
 
