@@ -117,19 +117,19 @@ except ImportError, e:
 	sys.stderr.write("    "+str(e)+"\n\n")
 	raise
 
-def _unicode_encode(s):
+def _unicode_encode(s, encoding='utf_8', errors='replace'):
 	if isinstance(s, unicode):
-		s = s.encode('utf_8', 'replace')
+		s = s.encode(encoding, errors)
 	return s
 
-def _unicode_decode(s):
+def _unicode_decode(s, encoding='utf_8', errors='replace'):
 	if not isinstance(s, unicode):
 		if sys.hexversion < 0x3000000:
 			if isinstance(s, basestring):
-				s = unicode(s, encoding='utf_8', errors='replace')
+				s = unicode(s, encoding=encoding, errors=errors)
 		else:
 			if isinstance(s, bytes):
-				s = unicode(s, encoding='utf_8', errors='replace')
+				s = unicode(s, encoding=encoding, errors=errors)
 	return s
 
 class _unicode_func_wrapper(object):
@@ -137,16 +137,19 @@ class _unicode_func_wrapper(object):
 	Wraps a function, converts arguments from unicode to bytes,
 	and return values to unicode from bytes.
 	"""
-	__slots__ = ('_func',)
+	__slots__ = ('_func', '_encoding')
 
-	def __init__(self, func):
+	def __init__(self, func, encoding='utf_8'):
 		self._func = func
+		self._encoding = encoding
 
 	def __call__(self, *args, **kwargs):
 
+		encoding = self._encoding
 		wrapped_args = [_unicode_encode(x) for x in args]
 		if kwargs:
-			wrapped_kwargs = dict((_unicode_encode(k), _unicode_encode(v)) \
+			wrapped_kwargs = dict((_unicode_encode(k, encoding=encoding),
+				_unicode_encode(v, encoding=encoding)) \
 				for k, v in kwargs.iteritems())
 		else:
 			wrapped_kwargs = {}
@@ -155,11 +158,12 @@ class _unicode_func_wrapper(object):
 
 		if isinstance(rval, (basestring, list, tuple)):
 			if isinstance(rval, basestring):
-				rval = _unicode_decode(rval)
+				rval = _unicode_decode(rval, encoding=encoding)
 			elif isinstance(rval, list):
-				rval = [_unicode_decode(x) for x in rval]
+				rval = [_unicode_decode(x, encoding=encoding) for x in rval]
 			elif isinstance(rval, tuple):
-				rval = tuple(_unicode_decode(x) for x in rval)
+				rval = tuple(_unicode_decode(x, encoding=encoding) \
+					for x in rval)
 
 		return rval
 
@@ -167,14 +171,16 @@ class _unicode_module_wrapper(object):
 	"""
 	Wraps a module and wraps all functions with _unicode_func_wrapper.
 	"""
-	__slots__ = ('_mod', '_overrides')
+	__slots__ = ('_mod', '_encoding', '_overrides')
 
-	def __init__(self, mod, overrides=None):
+	def __init__(self, mod, encoding='utf_8', overrides=None):
 		object.__setattr__(self, '_mod', mod)
+		object.__setattr__(self, '_encoding', encoding)
 		object.__setattr__(self, '_overrides', overrides)
 
 	def __getattribute__(self, attr):
 		result = getattr(object.__getattribute__(self, '_mod'), attr)
+		encoding = object.__getattribute__(self, '_encoding')
 		overrides = object.__getattribute__(self, '_overrides')
 		override = None
 		if overrides is not None:
@@ -184,9 +190,10 @@ class _unicode_module_wrapper(object):
 		elif isinstance(result, type):
 			pass
 		elif type(result) is types.ModuleType:
-			result = _unicode_module_wrapper(result, overrides=overrides)
+			result = _unicode_module_wrapper(result,
+				encoding=encoding, overrides=overrides)
 		elif hasattr(result, '__call__'):
-			result = _unicode_func_wrapper(result)
+			result = _unicode_func_wrapper(result, encoding=encoding)
 		return result
 
 if sys.hexversion >= 0x3000000:
