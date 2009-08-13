@@ -196,16 +196,22 @@ class _unicode_module_wrapper(object):
 			result = _unicode_func_wrapper(result, encoding=encoding)
 		return result
 
-if sys.hexversion >= 0x3000000:
-	def _unicode_func_wrapper(func):
-		return func
-	def _unicode_module_wrapper(mod):
-		return mod
+# TODO: Change this to sys.getfilesystemencoding() after all of
+# the merge code has been updated to use _merge_encoding.
+_merge_encoding = 'utf_8'
 
-import os
-os = _unicode_module_wrapper(os, overrides={id(os.read):os.read})
-import shutil
-shutil = _unicode_module_wrapper(shutil)
+import os as _os
+_os_overrides = {
+	id(_os.fdopen)        : _os.fdopen,
+	id(_os.read)          : _os.read,
+}
+
+os = _unicode_module_wrapper(_os, overrides=_os_overrides)
+_os_merge = _unicode_module_wrapper(_os,
+	encoding=_merge_encoding, overrides=_os_overrides)
+
+import shutil as _shutil
+shutil = _unicode_module_wrapper(_shutil)
 
 # Imports below this point rely on the above unicode wrapper definitions.
 
