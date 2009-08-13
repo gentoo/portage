@@ -123,8 +123,13 @@ def _unicode_encode(s):
 	return s
 
 def _unicode_decode(s):
-	if not isinstance(s, unicode) and isinstance(s, basestring):
-		s = unicode(s, encoding='utf_8', errors='replace')
+	if not isinstance(s, unicode):
+		if sys.hexversion < 0x3000000:
+			if isinstance(s, basestring):
+				s = unicode(s, encoding='utf_8', errors='replace')
+		else:
+			if isinstance(s, bytes):
+				s = unicode(s, encoding='utf_8', errors='replace')
 	return s
 
 class _unicode_func_wrapper(object):
