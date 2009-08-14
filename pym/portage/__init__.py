@@ -3680,11 +3680,7 @@ class config(object):
 					writemsg("!!! SELinux module not found. Please verify that it was installed.\n",
 						noiselevel=-1)
 					self._selinux_enabled = 0
-			if self._selinux_enabled == 0:
-				try:	
-					del sys.modules["selinux"]
-				except KeyError:
-					pass
+
 		return self._selinux_enabled
 
 	if sys.hexversion >= 0x3000000:
