@@ -2376,6 +2376,20 @@ class dblink(object):
 					scheduler.scheduleYield()
 
 				obj = normalize_path(objkey)
+				if os is _os_merge:
+					try:
+						_unicode_encode(obj, encoding=_merge_encoding, errors='strict')
+					except UnicodeEncodeError:
+						# The package appears to have been merged with a 
+						# different value of sys.getfilesystemencoding(),
+						# so fall back to utf_8 if appropriate.
+						try:
+							_unicode_encode(obj, encoding='utf_8', errors='strict')
+						except UnicodeEncodeError:
+							pass
+						else:
+							os = portage.os
+
 				file_data = pkgfiles[objkey]
 				file_type = file_data[0]
 				statobj = None
