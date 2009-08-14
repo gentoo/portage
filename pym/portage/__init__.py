@@ -5293,12 +5293,37 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	filesdir = os.path.join(pkgdir, "files")
 
 	for parent, dirs, files in os.walk(filesdir):
-		parent = _unicode_decode(parent)
+		try:
+			parent = _unicode_decode(parent,
+				encoding=_fs_encoding, errors='strict')
+		except UnicodeDecodeError:
+			parent = _unicode_decode(parent,
+				encoding=_fs_encoding, errors='replace')
+			writemsg("!!! Path contains invalid " + \
+				"character(s) for encoding '%s': '%s'" \
+				% (_fs_encoding, parent), noiselevel=-1)
+			if strict:
+				return 0
+			continue
 		for d in dirs:
 			if d.startswith(".") or d == "CVS":
 				dirs.remove(d)
 		for f in files:
-			f = _unicode_decode(f)
+			try:
+				f = _unicode_decode(f,
+					encoding=_fs_encoding, errors='strict')
+			except UnicodeDecodeError:
+				f = _unicode_decode(f,
+					encoding=_fs_encoding, errors='replace')
+				if f.startswith("."):
+					continue
+				f = os.path.join(parent, f)[len(filesdir) + 1:]
+				writemsg("!!! File name contains invalid " + \
+					"character(s) for encoding '%s': '%s'" \
+					% (_fs_encoding, f), noiselevel=-1)
+				if strict:
+					return 0
+				continue
 			if f.startswith("."):
 				continue
 			f = os.path.join(parent, f)[len(filesdir) + 1:]
