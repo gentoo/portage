@@ -17,18 +17,10 @@ if not hasattr(__builtins__, "set"):
 
 from stat import *
 from random import *
-import atexit, commands, os, re, shutil, stat, sys
+import atexit, commands, re, shutil, stat, sys
 
-# for an explanation on this logic, see pym/_emerge/__init__.py
-import os
-import sys
-if os.environ.__contains__("PORTAGE_PYTHONPATH"):
-	sys.path.insert(0, os.environ["PORTAGE_PYTHONPATH"])
-else:
-	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
-import portage
-
-from portage import dispatch_conf, const
+from portage import os
+from portage import dispatch_conf
 from portage.process import find_binary
 
 FIND_EXTANT_CONFIGS  = "find '%s' %s -name '._cfg????_%s' ! -name '.*~' ! -iname '.*.bak' -print"

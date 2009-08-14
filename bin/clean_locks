@@ -3,18 +3,18 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import os,sys,errno
-
+import sys, errno
 # for an explanation on this logic, see pym/_emerge/__init__.py
-import os
-import sys
-if os.environ.__contains__("PORTAGE_PYTHONPATH"):
-	sys.path.insert(0, os.environ["PORTAGE_PYTHONPATH"])
+from os import environ as ose
+from os import path as osp
+if ose.__contains__("PORTAGE_PYTHONPATH"):
+    sys.path.insert(0, ose["PORTAGE_PYTHONPATH"])
 else:
-	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
-import portage.locks
+    sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.                    realpath(__file__))), "pym"))
+import portage
 
 from portage.const import EPREFIX
+from portage import os
 
 if not sys.argv[1:] or "--help" in sys.argv or "-h" in sys.argv:
 	import portage

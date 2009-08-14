@@ -3,31 +3,22 @@
 # $Id$
 
 import codecs
-import os
 import sys
 import time
-# for an explanation on this logic, see pym/_emerge/__init__.py
-import os
-import sys
-if os.environ.__contains__("PORTAGE_PYTHONPATH"):
-	sys.path.insert(0, os.environ["PORTAGE_PYTHONPATH"])
-else:
-	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
 import portage
-
+from portage import os
 from portage.data import secpass
 from portage.output import xtermTitle
 from portage.const import EPREFIX
-	
+
 _emerge_log_dir = EPREFIX + '/var/log'
 
 def emergelog(xterm_titles, mystr, short_msg=None):
 
-	if not isinstance(mystr, unicode):
-		mystr = unicode(mystr, encoding='utf_8', errors='replace')
+	mystr = portage._unicode_decode(mystr)
 
-	if short_msg is not None and not isinstance(short_msg, unicode):
-		short_msg = unicode(short_msg, encoding='utf_8', errors='replace')
+	if short_msg is not None:
+		short_msg = portage._unicode_decode(short_msg)
 
 	if xterm_titles and short_msg:
 		if "HOSTNAME" in os.environ:
@@ -35,7 +26,7 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 		xtermTitle(short_msg)
 	try:
 		file_path = os.path.join(_emerge_log_dir, 'emerge.log')
-		mylogfile = codecs.open(file_path, mode='a',
+		mylogfile = codecs.open(portage._unicode_encode(file_path), mode='a',
 			encoding='utf_8', errors='replace')
 		portage.util.apply_secpass_permissions(file_path,
 			uid=portage.portage_uid, gid=portage.portage_gid,

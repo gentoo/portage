@@ -7,14 +7,11 @@ from _emerge.EbuildBuildDir import EbuildBuildDir
 # for an explanation on this logic, see pym/_emerge/__init__.py
 import os
 import sys
-if os.environ.__contains__("PORTAGE_PYTHONPATH"):
-	sys.path.insert(0, os.environ["PORTAGE_PYTHONPATH"])
-else:
-	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
 import portage
+from portage import os
 import codecs
-import os
 from portage.elog.messages import eerror
+
 class EbuildFetcher(SpawnProcess):
 
 	__slots__ = ("config_pool", "fetchonly", "fetchall", "pkg", "prefetch") + \

@@ -3,7 +3,8 @@
 # $Id$
 
 from _emerge.EbuildProcess import EbuildProcess
-import os
+from portage import os
+
 class EbuildBinpkg(EbuildProcess):
 	"""
 	This assumes that src_install() has successfully completed.

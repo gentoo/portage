@@ -2,10 +2,11 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from portage import os
 from _emerge.CompositeTask import CompositeTask
 from _emerge.AsynchronousTask import AsynchronousTask
-import os
 from collections import deque
+
 class TaskSequence(CompositeTask):
 	"""
 	A collection of tasks that executes sequentially. Each task

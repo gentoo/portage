@@ -3,7 +3,8 @@
 # $Id$
 
 from portage.output import teal
-import os
+from portage import os
+
 class RepoDisplay(object):
 	def __init__(self, roots):
 		self._shown_repos = {}

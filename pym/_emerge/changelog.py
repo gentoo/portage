@@ -3,17 +3,10 @@
 # $Id$
 
 import codecs
-import os
 import re
 
-# for an explanation on this logic, see pym/_emerge/__init__.py
-import os
-import sys
-if os.environ.__contains__("PORTAGE_PYTHONPATH"):
-	sys.path.insert(0, os.environ["PORTAGE_PYTHONPATH"])
-else:
-	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
 import portage
+from portage import os
 
 def calc_changelog(ebuildpath,current,next):
 	if ebuildpath == None or not os.path.exists(ebuildpath):
@@ -26,8 +19,8 @@ def calc_changelog(ebuildpath,current,next):
 		next = next[:-3]
 	changelogpath = os.path.join(os.path.split(ebuildpath)[0],'ChangeLog')
 	try:
-		changelog = codecs.open(changelogpath, mode='r',
-			encoding='utf_8', errors='replace').read()
+		changelog = codecs.open(portage._unicode_encode(changelogpath),
+			mode='r', encoding='utf_8', errors='replace').read()
 	except SystemExit, e:
 		raise # Needed else can't exit
 	except:

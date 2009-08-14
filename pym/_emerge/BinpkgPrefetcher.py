@@ -5,7 +5,8 @@
 from _emerge.BinpkgFetcher import BinpkgFetcher
 from _emerge.CompositeTask import CompositeTask
 from _emerge.BinpkgVerifier import BinpkgVerifier
-import os
+from portage import os
+
 class BinpkgPrefetcher(CompositeTask):
 
 	__slots__ = ("pkg",) + \

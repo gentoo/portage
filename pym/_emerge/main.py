@@ -6,28 +6,9 @@ import logging
 import signal
 import sys
 import textwrap
-import os
 import platform
-
-# Portage module path logic (Prefix way)
-# In principle we don't want to be dependant on the environment
-# (PYTHONPATH) and/or python hardcoded default search path.
-# (PYTHONPATH).  Since Gentoo patches Python to include Portage's python
-# modules in the default search path, any Gentoo python interpreter is
-# an enemy for Portage once it is not installed in the path hardcoded
-# during Python compilation.  This is the case when bootstrapping
-# Prefix Portage on a Gentoo Linux system, or when bootstrapping Prefix
-# Portage using another Prefix instance on the same system.  For this
-# reason we ignore the entire search path, and allow a backdoor for
-# developers via the PORTAGE_PYTHONPATH variable.
-import os
-import sys
-if os.environ.__contains__("PORTAGE_PYTHONPATH"):
-	sys.path.insert(0, os.environ["PORTAGE_PYTHONPATH"])
-else:
-	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
 import portage
-
+from portage import os
 import _emerge.help
 import portage.xpak, commands, errno, re, time
 from portage.output import colorize, xtermTitle, xtermTitleReset
@@ -763,7 +744,7 @@ def parse_opts(tmpcmdline, silent=False):
 
 	if myargs and not isinstance(myargs[0], unicode):
 		for i in xrange(len(myargs)):
-			myargs[i] = unicode(myargs[i], encoding='utf_8', errors='replace')
+			myargs[i] = portage._unicode_decode(myargs[i])
 
 	myfiles += myargs
 

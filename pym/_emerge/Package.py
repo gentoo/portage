@@ -4,16 +4,7 @@
 
 import re
 from itertools import chain
-
-# for an explanation on this logic, see pym/_emerge/__init__.py
-import os
-import sys
-if os.environ.__contains__("PORTAGE_PYTHONPATH"):
-	sys.path.insert(0, os.environ["PORTAGE_PYTHONPATH"])
-else:
-	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
 import portage
-
 from portage.cache.mappings import slot_dict_class
 from portage.dep import paren_reduce, use_reduce, \
 	paren_normalize, paren_enclose

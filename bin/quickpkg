@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import errno, signal, sys, os
+import errno, signal, sys
 from itertools import izip
 
 # for an explanation on this logic, see pym/_emerge/__init__.py
@@ -12,6 +12,8 @@ if os.environ.__contains__("PORTAGE_PYTHONPATH"):
 else:
 	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
 import portage
+
+from portage import os
 
 def quickpkg_main(options, args, eout):
 	from portage import catsplit, dep_expand, flatten, isvalidatom, xpak

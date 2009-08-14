@@ -999,11 +999,13 @@ class portdbapi(dbapi):
 					continue
 				if local_config:
 					metadata["USE"] = ""
-					if "?" in metadata["LICENSE"]:
+					if "?" in metadata["LICENSE"] or "?" in metadata["PROPERTIES"]:
 						self.doebuild_settings.setcpv(cpv, mydb=metadata)
 						metadata["USE"] = self.doebuild_settings.get("USE", "")
 					try:
 						if settings._getMissingLicenses(cpv, metadata):
+							continue
+						if settings._getMissingProperties(cpv, metadata):
 							continue
 					except InvalidDependString:
 						continue
@@ -1110,11 +1112,13 @@ class portdbapi(dbapi):
 				if not accept_chost(mycpv, metadata):
 					continue
 				metadata["USE"] = ""
-				if "?" in metadata["LICENSE"]:
+				if "?" in metadata["LICENSE"] or "?" in metadata["PROPERTIES"]:
 					self.doebuild_settings.setcpv(mycpv, mydb=metadata)
 					metadata['USE'] = self.doebuild_settings['PORTAGE_USE']
 				try:
 					if self.mysettings._getMissingLicenses(mycpv, metadata):
+						continue
+					if self.mysettings._getMissingProperties(mycpv, metadata):
 						continue
 				except InvalidDependString:
 					continue

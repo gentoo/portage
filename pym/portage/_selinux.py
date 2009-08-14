@@ -2,16 +2,15 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import os
+import portage
+from portage import os
+from portage import shutil
 import selinux
-import shutil
 from selinux import is_selinux_enabled, getfilecon, lgetfilecon
 
 def copyfile(src, dest):
-	if isinstance(src, unicode):
-		src = src.encode('utf_8', 'replace')
-	if isinstance(dest, unicode):
-		dest = dest.encode('utf_8', 'replace')
+	src = portage._unicode_encode(src)
+	dest = portage._unicode_encode(dest)
 	(rc, ctx) = selinux.lgetfilecon(src)
 	if rc < 0:
 		raise OSError("copyfile: Failed getting context of \"%s\"." % src)
@@ -30,10 +29,8 @@ def getcontext():
 	return ctx
 
 def mkdir(target, refdir):
-	if isinstance(target, unicode):
-		target = target.encode('utf_8', 'replace')
-	if isinstance(refdir, unicode):
-		refdir = refdir.encode('utf_8', 'replace')
+	target = portage._unicode_encode(target)
+	refdir = portage._unicode_encode(refdir)
 	(rc, ctx) = selinux.getfilecon(refdir)
 	if rc < 0:
 		raise OSError(
@@ -47,10 +44,8 @@ def mkdir(target, refdir):
 		setfscreatecon()
 
 def rename(src, dest):
-	if isinstance(src, unicode):
-		src = src.encode('utf_8', 'replace')
-	if isinstance(dest, unicode):
-		dest = dest.encode('utf_8', 'replace')
+	src = portage._unicode_encode(src)
+	dest = portage._unicode_encode(dest)
 	(rc, ctx) = selinux.lgetfilecon(src)
 	if rc < 0:
 		raise OSError("rename: Failed getting context of \"%s\"." % src)
@@ -73,13 +68,13 @@ def setexec(ctx="\n"):
 		raise OSError("setexec: Failed setting exec() context \"%s\"." % ctx)
 
 def setfscreate(ctx="\n"):
-	if isinstance(ctx, unicode):
-		ctx = ctx.encode('utf_8', 'replace')
+	ctx = portage._unicode_encode(ctx)
 	if selinux.setfscreatecon(ctx) < 0:
 		raise OSError(
 			"setfscreate: Failed setting fs create context \"%s\"." % ctx)
 
 def spawn(selinux_type, spawn_func, mycommand, opt_name=None, **keywords):
+	selinux_type = portage._unicode_encode(selinux_type)
 	con = settype(selinux_type)
 	setexec(con)
 	try:
@@ -88,12 +83,9 @@ def spawn(selinux_type, spawn_func, mycommand, opt_name=None, **keywords):
 		setexec()
 
 def symlink(target, link, reflnk):
-	if isinstance(target, unicode):
-		target = target.encode('utf_8', 'replace')
-	if isinstance(link, unicode):
-		link = link.encode('utf_8', 'replace')
-	if isinstance(reflnk, unicode):
-		reflnk = reflnk.encode('utf_8', 'replace')
+	target = portage._unicode_encode(target)
+	link = portage._unicode_encode(link)
+	reflnk = portage._unicode_encode(reflnk)
 	(rc, ctx) = selinux.lgetfilecon(reflnk)
 	if rc < 0:
 		raise OSError(

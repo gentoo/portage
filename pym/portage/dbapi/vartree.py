@@ -34,18 +34,18 @@ from portage.localization import _
 
 from portage import listdir, dep_expand, digraph, flatten, key_expand, \
 	doebuild_environment, doebuild, env_update, prepare_build_dirs, \
-	abssymlink, movefile, _movefile, bsd_chflags, cpv_getkey, \
-	_unicode_module_wrapper
+	abssymlink, movefile, _movefile, bsd_chflags, cpv_getkey
+
+# This is a special version of the os module, wrapped for unicode support.
+from portage import os
 
 from portage.cache.mappings import slot_dict_class
 
 import codecs
-import os, re, shutil, stat, errno, copy, subprocess
+import re, shutil, stat, errno, copy, subprocess
 import logging
 import sys
 from itertools import izip
-
-os = _unicode_module_wrapper(os)
 
 try:
 	import cPickle as pickle
@@ -312,8 +312,7 @@ class LinkageMap(object):
 				raise CommandNotFound(args[0])
 			else:
 				for l in proc.stdout:
-					if not isinstance(l, unicode):
-						l = unicode(l, encoding='utf_8', errors='replace')
+					l = portage._unicode_decode(l)
 					l = l[3:].rstrip("\n")
 					if not l:
 						continue
@@ -1430,7 +1429,7 @@ class vardbapi(dbapi):
 		now has a categories property that is generated from the
 		available packages.
 		"""
-		self.root = root[:]
+		self.root = portage._unicode_decode(root)
 
 		#cache for category directory mtimes
 		self.mtdircache = {}
@@ -1602,8 +1601,6 @@ class vardbapi(dbapi):
 
 		returnme = []
 		for x in dir_list:
-			if not isinstance(x, unicode):
-				x = unicode(x, encoding='utf_8', errors='replace')
 			if self._excluded_dirs.match(x) is not None:
 				continue
 			ps = pkgsplit(x)
@@ -1635,9 +1632,7 @@ class vardbapi(dbapi):
 		else:
 			def listdir(p, **kwargs):
 				try:
-					return [isinstance(x, unicode) and x or \
-						unicode(x, encoding='utf_8', errors='replace') \
-						for x in os.listdir(p) \
+					return [x for x in os.listdir(p) \
 						if os.path.isdir(os.path.join(p, x))]
 				except EnvironmentError, e:
 					if e.errno == PermissionDenied.errno:
@@ -1881,11 +1876,9 @@ class vardbapi(dbapi):
 			cache_mtime, metadata = pkg_data
 			cache_valid = cache_mtime == mydir_mtime
 		if cache_valid:
+			# Migrate old metadata to unicode.
 			for k, v in metadata.iteritems():
-				if not isinstance(v, unicode):
-					# Migrate old metadata to unicode.
-					metadata[k] = unicode(v,
-						encoding='utf_8', errors='replace')
+				metadata[k] = portage._unicode_decode(v)
 
 			mydata.update(metadata)
 			pull_me.difference_update(mydata)
@@ -2061,16 +2054,12 @@ class vardbapi(dbapi):
 		if not hasattr(pkg, "getcontents"):
 			pkg = self._dblink(pkg)
 		root = self.root
-		if not isinstance(root, unicode):
-			root = unicode(root, encoding='utf_8', errors='replace')
 		root_len = len(root) - 1
 		new_contents = pkg.getcontents().copy()
 		removed = 0
 
 		for filename in paths:
-			if not isinstance(filename, unicode):
-				filename = unicode(filename, 
-					encoding='utf_8', errors='replace')
+			filename = portage._unicode_decode(filename)
 			filename = normalize_path(filename)
 			if relative_paths:
 				relative_filename = filename
@@ -2138,7 +2127,7 @@ class vardbapi(dbapi):
 			h = self._new_hash()
 			# Always use a constant utf_8 encoding here, since
 			# the "default" encoding can change.
-			h.update(s.encode('utf_8', 'replace'))
+			h.update(portage._unicode_encode(s))
 			h = h.hexdigest()
 			h = h[-self._hex_chars:]
 			h = int(h, 16)
@@ -3247,13 +3236,9 @@ class dblink(object):
 			if the file is not owned by this package.
 		"""
 
-		if not isinstance(filename, unicode):
-			filename = unicode(filename,
-				encoding='utf_8', errors='replace')
+		filename = portage._unicode_decode(filename)
 
-		if not isinstance(destroot, unicode):
-			destroot = unicode(destroot,
-				encoding='utf_8', errors='replace')
+		destroot = portage._unicode_decode(destroot)
 
 		destfile = normalize_path(
 			os.path.join(destroot, filename.lstrip(os.path.sep)))
@@ -3443,8 +3428,7 @@ class dblink(object):
 		new_contents = self.getcontents().copy()
 		old_contents = self._installed_instance.getcontents()
 		for f in sorted(preserve_paths):
-			if not isinstance(f, unicode):
-				f = unicode(f, encoding='utf_8', errors='replace')
+			f = portage._unicode_decode(f)
 			f_abs = os.path.join(root, f.lstrip(os.sep))
 			contents_entry = old_contents.get(f_abs)
 			if contents_entry is None:
@@ -3874,6 +3858,11 @@ class dblink(object):
 		not existing; we will merge these symlinks at a later time.
 		"""
 
+		srcroot = portage._unicode_decode(srcroot)
+		destroot = portage._unicode_decode(destroot)
+		inforoot = portage._unicode_decode(inforoot)
+		myebuild = portage._unicode_decode(myebuild)
+
 		showMessage = self._display_merge
 		scheduler = self._scheduler
 
@@ -3961,17 +3950,13 @@ class dblink(object):
 		myfilelist = []
 		mylinklist = []
 		paths_with_newlines = []
-
-		if isinstance(srcroot, unicode):
-			# Avoid UnicodeDecodeError raised from
-			# os.path.join when called by os.walk.
-			srcroot = srcroot.encode('utf_8', 'replace')
-
 		srcroot_len = len(srcroot)
 		def onerror(e):
 			raise
 		for parent, dirs, files in os.walk(srcroot, onerror=onerror):
+			parent = portage._unicode_decode(parent)
 			for f in files:
+				f = portage._unicode_decode(f)
 				file_path = os.path.join(parent, f)
 				relative_path = file_path[srcroot_len:]
 
@@ -4451,7 +4436,8 @@ class dblink(object):
 		writemsg = self._display_merge
 		scheduler = self._scheduler
 
-		from os.path import sep, join
+		sep = portage.os.sep
+		join = portage.os.path.join
 		srcroot = normalize_path(srcroot).rstrip(sep) + sep
 		destroot = normalize_path(destroot).rstrip(sep) + sep
 		
@@ -4474,9 +4460,6 @@ class dblink(object):
 			mydest = join(destroot, offset, x)
 			# myrealdest is mydest without the $ROOT prefix (makes a difference if ROOT!="/")
 			myrealdest = join(sep, offset, x)
-			if not isinstance(myrealdest, unicode):
-				myrealdest = unicode(myrealdest,
-					encoding='utf_8', errors='replace')
 			# stat file once, test using S_* macros many times (faster that way)
 			mystat = os.lstat(mysrc)
 			mymode = mystat[stat.ST_MODE]

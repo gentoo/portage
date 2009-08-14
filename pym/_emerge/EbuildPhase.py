@@ -6,15 +6,10 @@ from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.EbuildProcess import EbuildProcess
 from _emerge.CompositeTask import CompositeTask
 from portage.util import writemsg
-# for an explanation on this logic, see pym/_emerge/__init__.py
-import codecs
-import os
-import sys
-if os.environ.__contains__("PORTAGE_PYTHONPATH"):
-	sys.path.insert(0, os.environ["PORTAGE_PYTHONPATH"])
-else:
-	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
 import portage
+from portage import os
+import codecs
+
 class EbuildPhase(CompositeTask):
 
 	__slots__ = ("background", "pkg", "phase",

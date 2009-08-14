@@ -19,9 +19,7 @@ try:
 		# ESTALE may not be defined on some systems, such as interix.
 		errno.ESTALE = -1
 	import logging
-	import os
 	import re
-	import shutil
 	import time
 	import types
 	try:
@@ -36,6 +34,14 @@ try:
 	from itertools import chain, izip
 	import platform
 	import warnings
+
+	# Temporarily delete these imports, to ensure that only the
+	# wrapped versions are imported by portage internals.
+	import os
+	del os
+	import shutil
+	del shutil
+
 except ImportError, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete python imports. These are internal modules for\n")
@@ -112,19 +118,6 @@ except ImportError, e:
 	sys.stderr.write("    "+str(e)+"\n\n")
 	raise
 
-
-try:
-	import portage._selinux as selinux
-except OSError, e:
-	writemsg("!!! SELinux not loaded: %s\n" % str(e), noiselevel=-1)
-	del e
-except ImportError:
-	pass
-
-# ===========================================================================
-# END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END
-# ===========================================================================
-
 def _unicode_encode(s):
 	if isinstance(s, unicode):
 		s = s.encode('utf_8', 'replace')
@@ -188,6 +181,23 @@ class _unicode_module_wrapper(object):
 if sys.hexversion >= 0x3000000:
 	def _unicode_module_wrapper(mod):
 		return mod
+
+import os
+os = _unicode_module_wrapper(os)
+import shutil
+shutil = _unicode_module_wrapper(shutil)
+
+try:
+	import portage._selinux as selinux
+except OSError, e:
+	writemsg("!!! SELinux not loaded: %s\n" % str(e), noiselevel=-1)
+	del e
+except ImportError:
+	pass
+
+# ===========================================================================
+# END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END
+# ===========================================================================
 
 def _shell_quote(s):
 	"""
@@ -312,8 +322,6 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 			raise portage.exception.PermissionDenied(mypath)
 		ftype = []
 		for x in list:
-			if not isinstance(x, unicode):
-				x = unicode(x, encoding='utf_8', errors='replace')
 			try:
 				if followSymlinks:
 					pathstat = os.stat(mypath+"/"+x)
@@ -1132,7 +1140,7 @@ class config(object):
 	# environment in order to prevent sandbox from sourcing /etc/profile
 	# in it's bashrc (causing major leakage).
 	_environ_whitelist += [
-		"ACCEPT_LICENSE", "BASH_ENV", "BUILD_PREFIX", "D",
+		"ACCEPT_LICENSE", "ACCEPT_PROPERTIES", "BASH_ENV", "BUILD_PREFIX", "D",
 		"DISTDIR", "DOC_SYMLINKS_DIR", "EBUILD",
 		"EBUILD_EXIT_STATUS_FILE", "EBUILD_FORCE_TEST",
 		"EBUILD_PHASE", "ECLASSDIR", "ECLASS_DEPTH", "EMERGE_FROM",
@@ -1281,6 +1289,7 @@ class config(object):
 		self._accept_license = None
 		self._accept_license_str = None
 		self._license_groups = {}
+		self._accept_properties = None
 
 		self.virtuals = {}
 		self.virts_p = {}
@@ -1367,6 +1376,8 @@ class config(object):
 			self._accept_license = copy.deepcopy(clone._accept_license)
 			self._plicensedict = copy.deepcopy(clone._plicensedict)
 			self._license_groups = copy.deepcopy(clone._license_groups)
+			self._accept_properties = copy.deepcopy(clone._accept_properties)
+			self._ppropertiesdict = copy.deepcopy(clone._ppropertiesdict)
 		else:
 
 			def check_var_directory(varname, var):
@@ -1593,13 +1604,8 @@ class config(object):
 				env = os.environ
 
 			# Avoid potential UnicodeDecodeError exceptions later.
-			env_unicode = {}
-			for k, v in env.iteritems():
-				if not isinstance(k, unicode):
-					k = unicode(k, encoding='utf_8', errors='replace')
-				if not isinstance(v, unicode):
-					v = unicode(v, encoding='utf_8', errors='replace')
-				env_unicode[k] = v
+			env_unicode = dict((_unicode_decode(k), _unicode_decode(v))
+				for k, v in env.iteritems())
 
 			self.backupenv = env_unicode
 
@@ -1702,6 +1708,7 @@ class config(object):
 			self.pusedict = {}
 			self.pkeywordsdict = {}
 			self._plicensedict = {}
+			self._ppropertiesdict = {}
 			self.punmaskdict = {}
 			abs_user_config = os.path.join(config_root, USER_CONFIG_PATH)
 
@@ -1765,6 +1772,17 @@ class config(object):
 						cp_dict = {}
 						self._plicensedict[cp] = cp_dict
 					cp_dict[k] = self.expandLicenseTokens(v)
+
+				#package.properties
+				propdict = grabdict_package(os.path.join(
+					abs_user_config, "package.properties"), recursive=1)
+				for k, v in propdict.iteritems():
+					cp = dep_getkey(k)
+					cp_dict = self._ppropertiesdict.get(cp)
+					if not cp_dict:
+						cp_dict = {}
+						self._ppropertiesdict[cp] = cp_dict
+					cp_dict[k] = v
 
 				self._local_repo_configs = {}
 				self._local_repo_conf_path = \
@@ -2167,6 +2185,7 @@ class config(object):
 			if use is None:
 				use = frozenset(settings['PORTAGE_USE'].split())
 			values['ACCEPT_LICENSE'] = self._accept_license(use, settings)
+			values['ACCEPT_PROPERTIES'] = self._accept_properties(use, settings)
 			values['PORTAGE_RESTRICT'] = self._restrict(use, settings)
 			return values
 
@@ -2199,6 +2218,35 @@ class config(object):
 
 				licenses = acceptable_licenses
 			return ' '.join(sorted(licenses))
+
+		def _accept_properties(self, use, settings):
+			"""
+			Generated a pruned version of ACCEPT_PROPERTIES, by intersection with
+			PROPERTIES.
+			Please, look at self._accept_license() to know why it is required.
+			"""
+			try:
+				properties = set(flatten(
+					dep.use_reduce(dep.paren_reduce(
+						settings['PROPERTIES']),
+						uselist=use)))
+			except exception.InvalidDependString:
+				properties = set()
+			properties.discard('||')
+			if settings._accept_properties:
+				acceptable_properties = set()
+				for x in settings._accept_properties:
+					if x == '*':
+						acceptable_properties.update(properties)
+					elif x == '-*':
+						acceptable_properties.clear()
+					elif x[1] == '-':
+						acceptable_properties.discard(x[1:])
+					elif x in properties:
+						acceptable_properties.add(x)
+
+				properties = acceptable_properties
+			return ' '.join(sorted(properties))
 
 		def _restrict(self, use, settings):
 			try:
@@ -2438,6 +2486,8 @@ class config(object):
 		lazy_vars = self._lazy_vars(built_use, self)
 		env_configdict.addLazySingleton('ACCEPT_LICENSE',
 			lazy_vars.__getitem__, 'ACCEPT_LICENSE')
+		env_configdict.addLazySingleton('ACCEPT_PROPERTIES',
+			lazy_vars.__getitem__, 'ACCEPT_PROPERTIES')
 		env_configdict.addLazySingleton('PORTAGE_RESTRICT',
 			lazy_vars.__getitem__, 'PORTAGE_RESTRICT')
 
@@ -2831,6 +2881,87 @@ class config(object):
 					ret.append(element)
 		return ret
 
+	def _getMissingProperties(self, cpv, metadata):
+		"""
+		Take a PROPERTIES string and return a list of any properties the user may
+		may need to accept for the given package.  The returned list will not
+		contain any properties that have already been accepted.  This method
+		can throw an InvalidDependString exception.
+
+		@param cpv: The package name (for package.properties support)
+		@type cpv: String
+		@param metadata: A dictionary of raw package metadata
+		@type metadata: dict
+		@rtype: List
+		@return: A list of properties that have not been accepted.
+		"""
+		if not self._accept_properties:
+			return []
+		accept_properties = self._accept_properties
+		cpdict = self._ppropertiesdict.get(dep_getkey(cpv), None)
+		if cpdict:
+			accept_properties = list(self._accept_properties)
+			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
+			for atom in match_to_list(cpv_slot, cpdict.keys()):
+				accept_properties.extend(cpdict[atom])
+
+		properties = set(flatten(dep.use_reduce(dep.paren_reduce(
+			metadata["PROPERTIES"]), matchall=1)))
+		properties.discard('||')
+
+		acceptable_properties = set()
+		for x in accept_properties:
+			if x == '*':
+				acceptable_properties.update(properties)
+			elif x == '-*':
+				acceptable_properties.clear()
+			elif x[:1] == '-':
+				acceptable_properties.discard(x[1:])
+			else:
+				acceptable_properties.add(x)
+
+		properties_str = metadata["PROPERTIES"]
+		if "?" in properties_str:
+			use = metadata["USE"].split()
+		else:
+			use = []
+
+		properties_struct = portage.dep.use_reduce(
+			portage.dep.paren_reduce(properties_str), uselist=use)
+		properties_struct = portage.dep.dep_opconvert(properties_struct)
+		return self._getMaskedProperties(properties_struct, acceptable_properties)
+
+	def _getMaskedProperties(self, properties_struct, acceptable_properties):
+		if not properties_struct:
+			return []
+		if properties_struct[0] == "||":
+			ret = []
+			for element in properties_struct[1:]:
+				if isinstance(element, list):
+					if element:
+						ret.append(self._getMaskedProperties(
+							element, acceptable_properties))
+						if not ret[-1]:
+							return []
+				else:
+					if element in acceptable_properties:
+						return[]
+					ret.append(element)
+			# Return all masked properties, since we don't know which combination
+			# (if any) the user will decide to unmask
+			return flatten(ret)
+
+		ret = []
+		for element in properties_struct:
+			if isinstance(element, list):
+				if element:
+					ret.extend(self._getMaskedProperties(element,
+						acceptable_properties))
+			else:
+				if element not in acceptable_properties:
+					ret.append(element)
+		return ret
+
 	def _accept_chost(self, cpv, metadata):
 		"""
 		@return True if pkg CHOST is accepted, False otherwise.
@@ -2977,6 +3108,19 @@ class config(object):
 		else:
 			# repoman will accept any license
 			self._accept_license = ()
+
+		# ACCEPT_PROPERTIES works like ACCEPT_LICENSE, without groups
+		if self.local_config:
+			mysplit = []
+			for curdb in mydbs:
+				mysplit.extend(curdb.get('ACCEPT_PROPERTIES', '').split())
+			if mysplit:
+				self.configlist[-1]['ACCEPT_PROPERTIES'] = ' '.join(mysplit)
+			if tuple(mysplit) != self._accept_properties:
+				self._accept_properties = tuple(mysplit)
+		else:
+			# repoman will accept any property
+			self._accept_properties = ()
 
 		for mykey in myincrementals:
 
@@ -3280,10 +3424,8 @@ class config(object):
 			raise ValueError("Invalid type being used as a value: '%s': '%s'" % (str(mykey),str(myvalue)))
 
 		# Avoid potential UnicodeDecodeError exceptions later.
-		if not isinstance(mykey, unicode):
-			mykey = unicode(mykey, encoding='utf_8', errors='replace')
-		if not isinstance(myvalue, unicode):
-			myvalue = unicode(myvalue, encoding='utf_8', errors='replace')
+		mykey = _unicode_decode(mykey)
+		myvalue = _unicode_decode(myvalue)
 
 		self.modifying()
 		self.modifiedkeys.append(mykey)
@@ -4991,16 +5133,14 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	""" epatch will just grab all the patches out of a directory, so we have to
 	make sure there aren't any foreign files that it might grab."""
 	filesdir = os.path.join(pkgdir, "files")
-	if isinstance(filesdir, unicode):
-		# Avoid UnicodeDecodeError raised from
-		# os.path.join when called by os.walk.
-		filesdir = filesdir.encode('utf_8', 'replace')
 
 	for parent, dirs, files in os.walk(filesdir):
+		parent = _unicode_decode(parent)
 		for d in dirs:
 			if d.startswith(".") or d == "CVS":
 				dirs.remove(d)
 		for f in files:
+			f = _unicode_decode(f)
 			if f.startswith("."):
 				continue
 			f = os.path.join(parent, f)[len(filesdir) + 1:]
@@ -5254,16 +5394,14 @@ def _post_src_install_uid_fix(mysettings):
 			(_shell_quote(mysettings["D"]),))
 
 	destdir = mysettings["D"]
-	if isinstance(destdir, unicode):
-		# Avoid UnicodeDecodeError raised from
-		# os.path.join when called by os.walk.
-		destdir = destdir.encode('utf_8', 'replace')
 
 	size = 0
 	counted_inodes = set()
 
 	for parent, dirs, files in os.walk(destdir):
+		parent = _unicode_decode(parent)
 		for fname in chain(dirs, files):
+			fname = _unicode_decode(fname)
 			fpath = os.path.join(parent, fname)
 			mystat = os.lstat(fpath)
 			if stat.S_ISREG(mystat.st_mode) and \
@@ -6204,18 +6342,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					mysettings,
 					fd_pipes=fd_pipes, returnpid=True, droppriv=droppriv)
 				os.close(pw) # belongs exclusively to the child process now
-				maxbytes = 1024
-				mybytes = []
-				while True:
-					mybytes.append(os.read(pr, maxbytes))
-					if not mybytes[-1]:
-						break
-				os.close(pr)
-				mybytes = u''.join(unicode(chunk,
-					encoding='utf_8', errors='replace') for chunk in mybytes)
-				global auxdbkeys
-				for k, v in izip(auxdbkeys, mybytes.splitlines()):
+				f = os.fdopen(pr, 'rb')
+				for k, v in izip(auxdbkeys,
+					(_unicode_decode(line).rstrip('\n') for line in f)):
 					dbkey[k] = v
+				f.close()
 				retval = os.waitpid(mypids[0], 0)[1]
 				portage.process.spawned_pids.remove(mypids[0])
 				# If it got a signal, return the signal that was sent, but
@@ -7752,6 +7883,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 	eapi = metadata["EAPI"]
 	mygroups = settings._getKeywords(mycpv, metadata)
 	licenses = metadata["LICENSE"]
+	properties = metadata["PROPERTIES"]
 	slot = metadata["SLOT"]
 	if eapi.startswith("-"):
 		eapi = eapi[1:]
@@ -7827,6 +7959,20 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 			rValue.append(" ".join(msg))
 	except portage.exception.InvalidDependString, e:
 		rValue.append("LICENSE: "+str(e))
+
+	try:
+		missing_properties = settings._getMissingProperties(mycpv, metadata)
+		if missing_properties:
+			allowed_tokens = set(["||", "(", ")"])
+			allowed_tokens.update(missing_properties)
+			properties_split = properties.split()
+			properties_split = [x for x in properties_split \
+					if x in allowed_tokens]
+			msg = properties_split[:]
+			msg.append("properties")
+			rValue.append(" ".join(msg))
+	except portage.exception.InvalidDependString, e:
+		rValue.append("PROPERTIES: "+srt(e))
 
 	# Only show KEYWORDS masks for installed packages
 	# if they're not masked for any other reason.

@@ -3,7 +3,6 @@
 # $Id$
 
 import formatter
-import os
 import sys
 import time
 
@@ -12,15 +11,8 @@ try:
 except ImportError:
 	from StringIO import StringIO
 
-# for an explanation on this logic, see pym/_emerge/__init__.py
-import os
-import sys
-if os.environ.__contains__("PORTAGE_PYTHONPATH"):
-	sys.path.insert(0, os.environ["PORTAGE_PYTHONPATH"])
-else:
-	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
 import portage
-
+from portage import os
 from portage.output import xtermTitle
 
 from _emerge.getloadavg import getloadavg
@@ -78,7 +70,7 @@ class JobStatusDisplay(object):
 	def _write(self, s):
 		if sys.hexversion < 0x3000000 and isinstance(s, unicode):
 			# avoid potential UnicodeEncodeError
-			s = s.encode('utf_8', 'replace')
+			s = portage._unicode_encode(s)
 		self.out.write(s)
 		self.out.flush()
 

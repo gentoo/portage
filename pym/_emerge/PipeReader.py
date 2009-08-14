@@ -2,12 +2,13 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from portage import os
 from _emerge.AbstractPollTask import AbstractPollTask
 from _emerge.PollConstants import PollConstants
 import sys
-import os
 import fcntl
 import array
+
 class PipeReader(AbstractPollTask):
 
 	"""

@@ -27,6 +27,14 @@ signal.signal(signal.SIGUSR1, debug_signal)
 import optparse
 import os
 
+# for an explanation on this logic, see pym/_emerge/__init__.py
+from os import environ as ose
+from os import path as osp
+if ose.__contains__("PORTAGE_PYTHONPATH"):
+    sys.path.insert(0, ose["PORTAGE_PYTHONPATH"])
+else:
+    sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.                    realpath(__file__))), "pym"))
+
 description = "See the ebuild(1) man page for more info"
 usage = "Usage: ebuild <ebuild file> <command> [command] ..."
 parser = optparse.OptionParser(description=description, usage=usage)
@@ -56,14 +64,7 @@ if "merge" in pargs:
 
 os.environ["PORTAGE_CALLER"]="ebuild"
 
-# for an explanation on this logic, see pym/_emerge/__init__.py
-import os
-import sys
-if os.environ.__contains__("PORTAGE_PYTHONPATH"):
-	sys.path.insert(0, os.environ["PORTAGE_PYTHONPATH"])
-else:
-	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
-import portage
+from portage import os
 
 if not opts.ignore_default_opts:
 	default_opts = portage.settings.get("EBUILD_DEFAULT_OPTS", "").split()
