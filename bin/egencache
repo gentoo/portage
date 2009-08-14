@@ -22,7 +22,14 @@ except KeyboardInterrupt:
 import logging
 import optparse
 import os
-import portage
+
+try:
+	import portage
+except ImportError:
+	from os import path as osp
+	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
+	import portage
+
 from _emerge.MetadataRegen import MetadataRegen
 from portage.cache.cache_errors import CacheError, StatCollision
 from portage.util import writemsg_level
