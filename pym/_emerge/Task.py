@@ -37,5 +37,8 @@ class Task(SlotObject):
 		return key in self._get_hash_key()
 
 	def __str__(self):
-		return str(self._get_hash_key())
-
+		"""
+		Emulate tuple.__repr__, but don't show 'foo' as u'foo' for unicode
+		strings.
+		"""
+		return "(%s)" % ", ".join(("'%s'" % x for x in self._get_hash_key()))

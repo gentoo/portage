@@ -23,6 +23,30 @@ import os
 
 import types
 
+# for an explanation on this logic, see pym/_emerge/__init__.py
+if os.environ.__contains__("PORTAGE_PYTHONPATH"):
+	pym_path = os.environ["PORTAGE_PYTHONPATH"]
+else:
+	pym_path = os.path.join(os.path.dirname(
+		os.path.dirname(os.path.realpath(__file__))), "pym")
+# Avoid sandbox violations after python upgrade.
+if os.environ.get("SANDBOX_ON") == "1":
+	sandbox_write = os.environ.get("SANDBOX_WRITE", "").split(":")
+	if pym_path not in sandbox_write:
+		sandbox_write.append(pym_path)
+		os.environ["SANDBOX_WRITE"] = \
+			":".join(filter(None, sandbox_write))
+	del sandbox_write
+
+try:
+	import portage
+except ImportError:
+	sys.path.insert(0, pym_path)
+	import portage
+del pym_path
+
+from portage.util import writemsg, writemsg_stdout
+
 #-----------------------------------------------------------------------------
 #
 # To add functionality to this tool, add a function below.
@@ -123,8 +147,7 @@ def metadata(argv):
 	try:
 			values = trees[root][type_map[pkgtype]].dbapi.aux_get(
 				pkgspec, metakeys)
-			for value in values:
-				print value
+			writemsg_stdout(''.join('%s\n' % x for x in values), noiselevel=-1)
 	except KeyError:
 		print >> sys.stderr, "Package not found: '%s'" % pkgspec
 		sys.exit(1)
@@ -149,11 +172,8 @@ def contents(argv):
 	cat, pkg = portage.catsplit(cpv)
 	db = portage.dblink(cat, pkg, root, vartree.settings,
 		treetype="vartree", vartree=vartree)
-	file_list = db.getcontents().keys()
-	file_list.sort()
-	for f in file_list:
-		sys.stdout.write("%s\n" % f)
-	sys.stdout.flush()
+	writemsg_stdout(''.join('%s\n' % x for x in sorted(db.getcontents())),
+		noiselevel=-1)
 contents.uses_root = True
 
 def owners(argv):
@@ -202,14 +222,17 @@ def owners(argv):
 
 	owners = vardb._owners.get_owners(files)
 
+	msg = []
 	for pkg, owned_files in owners.iteritems():
 		cpv = pkg.mycpv
-		sys.stdout.write("%s\n" % cpv)
+		msg.append("%s\n" % cpv)
 		for f in sorted(owned_files):
-			sys.stdout.write("\t%s\n" % \
+			msg.append("\t%s\n" % \
 				os.path.join(root, f.lstrip(os.path.sep)))
+
+	writemsg_stdout(''.join(msg), noiselevel=-1)
+
 	if owners:
-		sys.stdout.flush()
 		return 0
 
 	sys.stderr.write("None of the installed packages claim the file(s).\n")
@@ -509,12 +532,14 @@ def list_preserved_libs(argv):
 		sys.exit(2)
 	mylibs = portage.db[argv[0]]["vartree"].dbapi.plib_registry.getPreservedLibs()
 	rValue = 0
-	for cpv in mylibs:
-		print cpv,
+	msg = []
+	for cpv in sorted(mylibs):
+		msg.append(cpv)
 		for path in mylibs[cpv]:
-			print path,
+			msg.append(' ' + path)
 			rValue = 1
-		print
+		msg.append('\n')
+	writemsg_stdout(''.join(msg), noiselevel=-1)
 	return rValue
 list_preserved_libs.uses_root = True
 
@@ -534,16 +559,14 @@ def usage(argv):
 	# Show our commands -- we do this by scanning the functions in this
 	# file, and formatting each functions documentation.
 	#
-	commands = [x for x in globals() if x not in \
-				("usage", "__doc__", "__name__", "main", "os", "portage", \
-				"sys", "__builtins__", "types", "string","exithandler")]
-	commands.sort()
+	non_commands = frozenset(['exithandler', 'main',
+		'usage', 'writemsg', 'writemsg_stdout'])
+	commands = sorted(k for k, v in globals().iteritems() \
+		if type(v) is types.FunctionType and k not in non_commands)
 
 	for name in commands:
 		# Drop non-functions
 		obj = globals()[name]
-		if  (type(obj) != types.FunctionType):
-			continue
 
 		doc = obj.__doc__
 		if (doc == None):
@@ -586,25 +609,6 @@ def main():
 			sys.stderr.flush()
 			sys.exit(os.EX_USAGE)
 		os.environ["ROOT"] = sys.argv[2]
-
-	# Avoid sandbox violations after python upgrade.
-	from os import path as osp
-	# for an explanation on this logic, see pym/_emerge/__init__.py
-	if os.environ.__contains__("PORTAGE_PYTHONPATH"):
-		pym_path = os.environ["PORTAGE_PYTHONPATH"]
-	else:
-		pym_path = osp.join(osp.dirname(
-			osp.dirname(osp.realpath(__file__))), "pym")
-	if os.environ.get("SANDBOX_ON") == "1":
-		sandbox_write = os.environ.get("SANDBOX_WRITE", "").split(":")
-		if pym_path not in sandbox_write:
-			sandbox_write.append(pym_path)
-			os.environ["SANDBOX_WRITE"] = \
-				":".join(filter(None, sandbox_write))
-
-	global portage
-	sys.path.insert(0, pym_path)
-	import portage
 
 	args = sys.argv[2:]
 	if args and not isinstance(args[0], unicode):
