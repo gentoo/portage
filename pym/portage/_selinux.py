@@ -2,9 +2,12 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+# Don't use the unicode-wrapped os and shutil modules here since
+# the whole _selinux module itself will be wrapped.
+import os
+import shutil
+
 import portage
-from portage import os
-from portage import shutil
 import selinux
 from selinux import is_selinux_enabled, getfilecon, lgetfilecon
 
