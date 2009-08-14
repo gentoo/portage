@@ -3,10 +3,14 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import portage.mail, socket, os, time
+import portage
 from portage.exception import PortageException
 from portage.localization import _
 from portage.util import writemsg
+from portage import os
+
+import socket
+import time
 
 _items = {}
 def process(mysettings, key, logentries, fulltext):

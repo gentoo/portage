@@ -73,6 +73,7 @@ try:
 		'portage.getbinpkg',
 		'portage.locks',
 		'portage.locks:lockdir,lockfile,unlockdir,unlockfile',
+		'portage.mail',
 		'portage.output',
 		'portage.output:bold,colorize',
 		'portage.process',

@@ -4,7 +4,8 @@
 # $Id$
 
 import codecs
-import os, time
+import time
+from portage import os
 from portage.data import portage_uid, portage_gid
 from portage.localization import _
 from portage.util import ensure_dirs, apply_permissions

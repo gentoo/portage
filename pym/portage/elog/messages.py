@@ -11,9 +11,9 @@ portage.proxy.lazyimport.lazyimport(globals(),
 
 from portage.const import EBUILD_PHASES
 from portage.localization import _
+from portage import os
 
 import codecs
-import os
 import sys
 
 def collect_ebuild_messages(path):
