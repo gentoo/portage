@@ -204,6 +204,7 @@ import os as _os
 _os_overrides = {
 	id(_os.fdopen)        : _os.fdopen,
 	id(_os.read)          : _os.read,
+	id(_os.system)        : _os.system,
 }
 
 os = _unicode_module_wrapper(_os, overrides=_os_overrides)
@@ -216,6 +217,7 @@ shutil = _unicode_module_wrapper(_shutil)
 # Imports below this point rely on the above unicode wrapper definitions.
 _selinux = None
 selinux = None
+_selinux_merge = _unicode_module_wrapper(_selinux, encoding=_merge_encoding)
 try:
 	import portage._selinux
 	selinux = _unicode_module_wrapper(_selinux)
@@ -401,9 +403,9 @@ if platform.system() in ('FreeBSD',):
 				return
 			# Try to generate an ENOENT error if appropriate.
 			if 'h' in opts:
-				os.lstat(path)
+				_os_merge.lstat(path)
 			else:
-				os.stat(path)
+				_os_merge.stat(path)
 			# Make sure the binary exists.
 			if not portage.process.find_binary('chflags'):
 				raise portage.exception.CommandNotFound('chflags')
@@ -5533,6 +5535,9 @@ def _post_src_install_uid_fix(mysettings):
 	S_ISUID and S_ISGID bits, so those bits are restored if
 	necessary.
 	"""
+
+	os = _os_merge
+
 	inst_uid = int(mysettings["PORTAGE_INST_UID"])
 	inst_gid = int(mysettings["PORTAGE_INST_GID"])
 
@@ -5552,9 +5557,9 @@ def _post_src_install_uid_fix(mysettings):
 	counted_inodes = set()
 
 	for parent, dirs, files in os.walk(destdir):
-		parent = _unicode_decode(parent)
+		parent = _unicode_decode(parent, encoding=_merge_encoding)
 		for fname in chain(dirs, files):
-			fname = _unicode_decode(fname)
+			fname = _unicode_decode(fname, encoding=_merge_encoding)
 			fpath = os.path.join(parent, fname)
 			mystat = os.lstat(fpath)
 			if stat.S_ISREG(mystat.st_mode) and \
@@ -5570,7 +5575,9 @@ def _post_src_install_uid_fix(mysettings):
 				myuid = inst_uid
 			if mystat.st_gid == portage_gid:
 				mygid = inst_gid
-			apply_secpass_permissions(fpath, uid=myuid, gid=mygid,
+			apply_secpass_permissions(
+				_unicode_encode(fpath, encoding=_merge_encoding),
+				uid=myuid, gid=mygid,
 				mode=mystat.st_mode, stat_cached=mystat,
 				follow_links=False)
 

@@ -24,6 +24,8 @@ import sys
 
 import portage
 from portage import os
+from portage import _merge_encoding
+from portage import _os_merge
 from portage import _unicode_encode
 from portage import _unicode_decode
 from portage.exception import PortageException, FileNotFound, \
@@ -1203,6 +1205,9 @@ class ConfigProtect(object):
 	def updateprotect(self):
 		"""Update internal state for isprotected() calls.  Nonexistent paths
 		are ignored."""
+
+		os = _os_merge
+
 		self.protect = []
 		self._dirs = set()
 		for x in self.protect_list:
@@ -1279,6 +1284,9 @@ def new_protect_filename(mydest, newmd5=None):
 	# config protection filename format:
 	# ._cfg0000_foo
 	# 0123456789012
+
+	os = _os_merge
+
 	prot_num = -1
 	last_pfile = ""
 
@@ -1307,7 +1315,7 @@ def new_protect_filename(mydest, newmd5=None):
 	if last_pfile and newmd5:
 		import portage.checksum
 		try:
-			last_pfile_md5 = portage.checksum.perform_md5(old_pfile)
+			last_pfile_md5 = portage.checksum._perform_md5_merge(old_pfile)
 		except FileNotFound:
 			# The file suddenly disappeared or it's a broken symlink.
 			pass
@@ -1325,6 +1333,8 @@ def find_updated_config_files(target_root, config_protect):
 	[ protected_file, None ]
 	If no configuration files needs to be updated, None is returned
 	"""
+
+	os = _os_merge
 
 	if config_protect:
 		# directories with some protect files in them
