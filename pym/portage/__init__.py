@@ -23,6 +23,7 @@ try:
 	import re
 	import shutil
 	import time
+	import types
 	try:
 		import cPickle as pickle
 	except ImportError:
@@ -123,6 +124,70 @@ except ImportError:
 # ===========================================================================
 # END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END
 # ===========================================================================
+
+def _unicode_encode(s):
+	if isinstance(s, unicode):
+		s = s.encode('utf_8', 'replace')
+	return s
+
+def _unicode_decode(s):
+	if not isinstance(s, unicode) and isinstance(s, basestring):
+		s = unicode(s, encoding='utf_8', errors='replace')
+	return s
+
+class _unicode_func_wrapper(object):
+	"""
+	Wraps a function, converts arguments from unicode to bytes,
+	and return values to unicode from bytes.
+	"""
+	__slots__ = ('_func',)
+
+	def __init__(self, func):
+		self._func = func
+
+	def __call__(self, *args, **kwargs):
+
+		wrapped_args = [_unicode_encode(x) for x in args]
+		if kwargs:
+			wrapped_kwargs = dict((_unicode_encode(k), _unicode_encode(v)) \
+				for k, v in kwargs.iteritems())
+		else:
+			wrapped_kwargs = {}
+
+		rval = self._func(*wrapped_args, **wrapped_kwargs)
+
+		if isinstance(rval, (basestring, list, tuple)):
+			if isinstance(rval, basestring):
+				rval = _unicode_decode(rval)
+			elif isinstance(rval, list):
+				rval = [_unicode_decode(x) for x in rval]
+			elif isinstance(rval, tuple):
+				rval = tuple(_unicode_decode(x) for x in rval)
+
+		return rval
+
+class _unicode_module_wrapper(object):
+	"""
+	Wraps a module and wraps all functions with _unicode_func_wrapper.
+	"""
+	__slots__ = ('_mod',)
+
+	def __init__(self, mod):
+		object.__setattr__(self, '_mod', mod)
+
+	def __getattribute__(self, attr):
+		result = getattr(object.__getattribute__(self, '_mod'), attr)
+		if isinstance(result, type):
+			pass
+		elif type(result) is types.ModuleType:
+			result = _unicode_module_wrapper(result)
+		elif hasattr(result, '__call__'):
+			result = _unicode_func_wrapper(result)
+		return result
+
+if sys.hexversion >= 0x3000000:
+	def _unicode_module_wrapper(mod):
+		return mod
 
 def _shell_quote(s):
 	"""
@@ -3505,9 +3570,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		spawn_func = portage.process.spawn_sandbox
 
 	if sesandbox:
-		con = selinux.getcontext()
-		con = con.replace(mysettings["PORTAGE_T"],
-			mysettings["PORTAGE_SANDBOX_T"])
+		con = selinux.settype(mysettings["PORTAGE_SANDBOX_T"])
 		selinux.setexec(con)
 
 	returnpid = keywords.get("returnpid")
@@ -3518,7 +3581,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		if logfile:
 			os.close(slave_fd)
 		if sesandbox:
-			selinux.setexec(None)
+			selinux.setexec()
 
 	if returnpid:
 		return mypids
@@ -3596,8 +3659,7 @@ def _spawn_fetch(settings, args, **kwargs):
 	try:
 
 		if settings.selinux_enabled():
-			con = selinux.getcontext()
-			con = con.replace(settings["PORTAGE_T"], settings["PORTAGE_FETCH_T"])
+			con = selinux.settype(settings["PORTAGE_FETCH_T"])
 			selinux.setexec(con)
 			# bash is an allowed entrypoint, while most binaries are not
 			if args[0] != BASH_BINARY:
@@ -3608,7 +3670,7 @@ def _spawn_fetch(settings, args, **kwargs):
 
 	finally:
 		if settings.selinux_enabled():
-			selinux.setexec(None)
+			selinux.setexec()
 
 	return rval
 

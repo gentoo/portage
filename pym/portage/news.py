@@ -7,6 +7,7 @@ __all__ = ["NewsManager", "NewsItem", "DisplayRestriction",
 	"DisplayProfileRestriction", "DisplayKeywordRestriction",
 	"DisplayInstalledRestriction"]
 
+import codecs
 import logging
 import os
 import re
@@ -116,6 +117,8 @@ class NewsManager(object):
 					itemid + "." + self.language_id + ".txt")
 				if not os.path.isfile(filename):
 					continue
+				if not isinstance(itemid, unicode):
+					itemid = unicode(itemid, encoding='utf_8', errors='replace')
 				item = NewsItem(filename, itemid)
 				if not item.isValid():
 					continue
@@ -224,7 +227,8 @@ class NewsItem(object):
 		return self._valid
 
 	def parse(self):
-		lines = open(self.path).readlines()
+		lines = codecs.open(self.path, mode='r',
+			encoding='utf_8', errors='replace').readlines()
 		self.restrictions = []
 		invalids = []
 		for i, line in enumerate(lines):

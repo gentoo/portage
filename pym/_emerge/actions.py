@@ -1030,7 +1030,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				line in wrap(msg, 70)), level=logging.WARNING, noiselevel=-1)
 
 			msg = []
-			for pkg, consumers in consumer_map.iteritems():
+			for pkg in sorted(consumer_map, key=cmp_sort_key(cmp_pkg_cpv)):
+				consumers = consumer_map[pkg]
 				unique_consumers = set(chain(*consumers.values()))
 				unique_consumers = sorted(consumer.mycpv \
 					for consumer in unique_consumers)

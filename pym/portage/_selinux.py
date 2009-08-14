@@ -61,19 +61,27 @@ def rename(src, dest):
 	finally:
 		setfscreate()
 
+def settype(newtype):
+	ret = getcontext().split(":")
+	ret[2] = newtype
+	return ":".join(ret)
+
 def setexec(ctx="\n"):
+	if isinstance(ctx, unicode):
+		ctx = ctx.encode('utf_8', 'replace')
 	if selinux.setexeccon(ctx) < 0:
 		raise OSError("setexec: Failed setting exec() context \"%s\"." % ctx)
 
 def setfscreate(ctx="\n"):
+	if isinstance(ctx, unicode):
+		ctx = ctx.encode('utf_8', 'replace')
 	if selinux.setfscreatecon(ctx) < 0:
 		raise OSError(
 			"setfscreate: Failed setting fs create context \"%s\"." % ctx)
 
 def spawn(selinux_type, spawn_func, mycommand, opt_name=None, **keywords):
-	con = getcontext().split(":")
-	con[2] = selinux_type
-	setexec(":".join(con))
+	con = settype(selinux_type)
+	setexec(con)
 	try:
 		return spawn_func(mycommand, opt_name=opt_name, **keywords)
 	finally:
