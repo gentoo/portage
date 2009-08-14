@@ -214,7 +214,8 @@ import shutil as _shutil
 shutil = _unicode_module_wrapper(_shutil)
 
 # Imports below this point rely on the above unicode wrapper definitions.
-
+_selinux = None
+selinux = None
 try:
 	import portage._selinux
 	selinux = _unicode_module_wrapper(_selinux)
@@ -3670,7 +3671,7 @@ class config(object):
 		if getattr(self, "_selinux_enabled", None) is None:
 			self._selinux_enabled = 0
 			if "selinux" in self["USE"].split():
-				if "selinux" in globals():
+				if selinux:
 					if selinux.is_selinux_enabled() == 1:
 						self._selinux_enabled = 1
 					else:
