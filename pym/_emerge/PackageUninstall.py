@@ -12,12 +12,14 @@ from _emerge.UninstallFailure import UninstallFailure
 
 class PackageUninstall(AsynchronousTask):
 
-	__slots__ = ("ldpath_mtimes", "opts", "pkg", "scheduler", "settings")
+	__slots__ = ("clean_world", "ldpath_mtimes", "opts",
+		"pkg", "scheduler", "settings")
 
 	def _start(self):
 		try:
 			unmerge(self.pkg.root_config, self.opts, "unmerge",
-				[self.pkg.cpv], self.ldpath_mtimes, clean_world=0,
+				[self.pkg.cpv], self.ldpath_mtimes,
+				clean_world=self.clean_world,
 				clean_delay=0, raise_on_error=1, scheduler=self.scheduler,
 				writemsg_level=self._writemsg_level)
 		except UninstallFailure, e:
