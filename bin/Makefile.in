@@ -21,8 +21,7 @@ usr_binprogs = \
 	egencache \
 	emerge \
 	portageq \
-	repoman \
-	xpak
+	repoman
 
 usr_sbinprogs = \
 	archive-conf \
