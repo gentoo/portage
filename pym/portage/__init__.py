@@ -686,6 +686,18 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 			# broken symlink or file removed by a concurrent process
 			writemsg("!!! File Not Found: '%s'\n" % file_path, noiselevel=-1)
 			continue
+
+		# TODO: Make getconfig() return unicode.
+		unicode_config = {}
+		for k, v in myconfig.iteritems():
+			if not isinstance(k, unicode):
+				k = unicode(k, encoding='utf8', errors='replace')
+			if not isinstance(v, unicode):
+				v = unicode(v, encoding='utf8', errors='replace')
+			unicode_config[k] = v
+		myconfig = unicode_config
+		del unicode_config
+
 		config_list.append(myconfig)
 		if "SPACE_SEPARATED" in myconfig:
 			space_separated.update(myconfig["SPACE_SEPARATED"].split())
@@ -4911,6 +4923,11 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	""" epatch will just grab all the patches out of a directory, so we have to
 	make sure there aren't any foreign files that it might grab."""
 	filesdir = os.path.join(pkgdir, "files")
+	if isinstance(filesdir, unicode):
+		# Avoid UnicodeDecodeError raised from
+		# os.path.join when called by os.walk.
+		filesdir = filesdir.encode('utf_8', 'replace')
+
 	for parent, dirs, files in os.walk(filesdir):
 		for d in dirs:
 			if d.startswith(".") or d == "CVS":
@@ -5168,7 +5185,13 @@ def _post_src_install_uid_fix(mysettings):
 		os.system("chflags -R nosunlnk,nouunlnk %s 2>/dev/null" % \
 			(_shell_quote(mysettings["D"]),))
 
-	for parent, dirs, files in os.walk(mysettings["D"]):
+	destdir = mysettings["D"]
+	if isinstance(destdir, unicode):
+		# Avoid UnicodeDecodeError raised from
+		# os.path.join when called by os.walk.
+		destdir = destdir.encode('utf_8', 'replace')
+
+	for parent, dirs, files in os.walk(destdir):
 		for fname in chain(dirs, files):
 			fpath = os.path.join(parent, fname)
 			mystat = os.lstat(fpath)
@@ -8057,8 +8080,8 @@ def _gen_missing_encodings(missing_encodings):
 			decode=utf8decode,
 			incrementalencoder=Utf8IncrementalEncoder,
 			incrementaldecoder=Utf8IncrementalDecoder,
-			streamreader=Utf8StreamWriter,
-			streamwriter=Utf8StreamReader,
+			streamreader=Utf8StreamReader,
+			streamwriter=Utf8StreamWriter,
 		)
 
 		for alias in ('utf_8', 'u8', 'utf', 'utf8', 'utf8_ucs2', 'utf8_ucs4'):

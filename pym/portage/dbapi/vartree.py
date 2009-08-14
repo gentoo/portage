@@ -2119,7 +2119,7 @@ class vardbapi(dbapi):
 			h = self._new_hash()
 			# Always use a constant utf_8 encoding here, since
 			# the "default" encoding can change.
-			h.update(s)
+			h.update(s.encode('utf_8', 'replace'))
 			h = h.hexdigest()
 			h = h[-self._hex_chars:]
 			h = int(h, 16)
@@ -3930,6 +3930,12 @@ class dblink(object):
 		myfilelist = []
 		mylinklist = []
 		paths_with_newlines = []
+
+		if isinstance(srcroot, unicode):
+			# Avoid UnicodeDecodeError raised from
+			# os.path.join when called by os.walk.
+			srcroot = srcroot.encode('utf_8', 'replace')
+
 		srcroot_len = len(srcroot)
 		def onerror(e):
 			raise

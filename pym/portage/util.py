@@ -781,6 +781,11 @@ def apply_recursive_permissions(top, uid=-1, gid=-1,
 	Returns True if all permissions are applied and False if some are left
 	unapplied."""
 
+	if isinstance(top, unicode):
+		# Avoid UnicodeDecodeError raised from
+		# os.path.join when called by os.walk.
+		top = top.encode('utf_8', 'replace')
+
 	if onerror is None:
 		# Default behavior is to dump errors to stderr so they won't
 		# go unnoticed.  Callers can pass in a quiet instance.

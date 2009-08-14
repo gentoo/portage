@@ -12,13 +12,13 @@ def main():
 
 	TEST_FILE = '__test__'
 	suite = unittest.TestSuite()
-	basedir = os.path.dirname(__file__)
+	basedir = os.path.dirname(os.path.realpath(__file__))
 	testDirs = []
 
   # the os.walk help mentions relative paths as being quirky
 	# I was tired of adding dirs to the list, so now we add __test__
 	# to each dir we want tested.
-	for root, dirs, files in os.walk(os.getcwd()):
+	for root, dirs, files in os.walk(basedir):
 		if ".svn" in dirs:
 			dirs.remove('.svn')
 		if TEST_FILE in files:

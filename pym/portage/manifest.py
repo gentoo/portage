@@ -306,7 +306,14 @@ class Manifest(object):
 		cpvlist = []
 		pn = os.path.basename(self.pkgdir.rstrip(os.path.sep))
 		cat = self._pkgdir_category()
-		for pkgdir, pkgdir_dirs, pkgdir_files in os.walk(self.pkgdir):
+
+		pkgdir = self.pkgdir
+		if isinstance(pkgdir, unicode):
+			# Avoid UnicodeDecodeError raised from
+			# os.path.join when called by os.walk.
+			pkgdir = pkgdir.encode('utf_8', 'replace')
+
+		for pkgdir, pkgdir_dirs, pkgdir_files in os.walk(pkgdir):
 			break
 		for f in pkgdir_files:
 			if f[:1] == ".":
@@ -334,8 +341,15 @@ class Manifest(object):
 				continue
 			self.fhashdict[mytype][f] = perform_multiple_checksums(self.pkgdir+f, self.hashes)
 		recursive_files = []
-		cut_len = len(os.path.join(self.pkgdir, "files") + os.sep)
-		for parentdir, dirs, files in os.walk(os.path.join(self.pkgdir, "files")):
+
+		pkgdir = self.pkgdir
+		if isinstance(pkgdir, unicode):
+			# Avoid UnicodeDecodeError raised from
+			# os.path.join when called by os.walk.
+			pkgdir = pkgdir.encode('utf_8', 'replace')
+
+		cut_len = len(os.path.join(pkgdir, "files") + os.sep)
+		for parentdir, dirs, files in os.walk(os.path.join(pkgdir, "files")):
 			for f in files:
 				full_path = os.path.join(parentdir, f)
 				recursive_files.append(full_path[cut_len:])

@@ -153,7 +153,14 @@ class database(fs_template.FsBased):
 		return os.path.exists(self.__get_path(cpv))
 
 	def __iter__(self):
-		for root,dirs,files in os.walk(self.portdir):
+
+		portdir = self.portdir
+		if isinstance(portdir, unicode):
+			# Avoid UnicodeDecodeError raised from
+			# os.path.join when called by os.walk.
+			portdir = portdir.encode('utf_8', 'replace')
+
+		for root, dirs, files in os.walk(portdir):
 			for file in files:
 				if file[-7:] == '.ebuild':
 					cat = os.path.basename(os.path.dirname(root))

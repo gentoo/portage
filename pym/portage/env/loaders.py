@@ -39,6 +39,12 @@ def RecursiveFileLoader(filename):
 	@rtype: list
 	@returns: List of files to process
 	"""
+
+	if isinstance(filename, unicode):
+		# Avoid UnicodeDecodeError raised from
+		# os.path.join when called by os.walk.
+		filename = filename.encode('utf_8', 'replace')
+
 	try:
 		st = os.stat(filename)
 	except OSError:
