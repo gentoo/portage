@@ -61,11 +61,15 @@ try:
 		'portage.checksum',
 		'portage.checksum:perform_checksum,perform_md5,prelink_capable',
 		'portage.cvstree',
+		'portage.data',
+		'portage.data:lchown,ostype,portage_gid,portage_uid,secpass,' + \
+			'uid,userland,userpriv_groups,wheelgid',
 		'portage.dep',
 		'portage.dep:best_match_to_list,dep_getcpv,dep_getkey,' + \
 			'get_operator,isjustname,isspecific,isvalidatom,' + \
 			'match_from_list,match_to_list',
 		'portage.eclass_cache',
+		'portage.exception',
 		'portage.getbinpkg',
 		'portage.locks',
 		'portage.locks:lockdir,lockfile,unlockdir,unlockfile',
@@ -101,10 +105,6 @@ try:
 		INCREMENTALS, EAPI, MISC_SH_BINARY, REPO_NAME_LOC, REPO_NAME_FILE, \
 		EPREFIX, EPREFIX_LSTRIP, BPREFIX, rootuid, rootgid
 
-	from portage.data import ostype, lchown, userland, secpass, uid, wheelgid, \
-	                         portage_uid, portage_gid, userpriv_groups
-	from portage.manifest import Manifest
-	import portage.exception
 	from portage.localization import _
 
 except ImportError, e:
@@ -179,6 +179,8 @@ class _unicode_module_wrapper(object):
 		return result
 
 if sys.hexversion >= 0x3000000:
+	def _unicode_func_wrapper(func):
+		return func
 	def _unicode_module_wrapper(mod):
 		return mod
 
@@ -187,6 +189,8 @@ os = _unicode_module_wrapper(os)
 import shutil
 shutil = _unicode_module_wrapper(shutil)
 
+# Imports below this point rely on the above unicode wrapper definitions.
+
 try:
 	import portage._selinux as selinux
 except OSError, e:
@@ -194,6 +198,8 @@ except OSError, e:
 	del e
 except ImportError:
 	pass
+
+from portage.manifest import Manifest
 
 # ===========================================================================
 # END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END
@@ -1140,7 +1146,7 @@ class config(object):
 	# environment in order to prevent sandbox from sourcing /etc/profile
 	# in it's bashrc (causing major leakage).
 	_environ_whitelist += [
-		"ACCEPT_LICENSE", "ACCEPT_PROPERTIES", "BASH_ENV", "BUILD_PREFIX", "D",
+		"ACCEPT_LICENSE", "BASH_ENV", "BUILD_PREFIX", "D",
 		"DISTDIR", "DOC_SYMLINKS_DIR", "EBUILD",
 		"EBUILD_EXIT_STATUS_FILE", "EBUILD_FORCE_TEST",
 		"EBUILD_PHASE", "ECLASSDIR", "ECLASS_DEPTH", "EMERGE_FROM",
@@ -1217,7 +1223,7 @@ class config(object):
 
 	# portage config variables and variables set directly by portage
 	_environ_filter += [
-		"ACCEPT_KEYWORDS", "AUTOCLEAN",
+		"ACCEPT_KEYWORDS", "ACCEPT_PROPERTIES", "AUTOCLEAN",
 		"CLEAN_DELAY", "COLLISION_IGNORE", "CONFIG_PROTECT",
 		"CONFIG_PROTECT_MASK", "EGENCACHE_DEFAULT_OPTS", "EMERGE_DEFAULT_OPTS",
 		"EMERGE_LOG_DIR",

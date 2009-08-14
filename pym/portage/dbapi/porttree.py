@@ -26,8 +26,12 @@ from portage.manifest import Manifest
 from portage import eclass_cache, auxdbkeys, doebuild, flatten, \
 	listdir, dep_expand, eapi_is_supported, key_expand, dep_check, \
 	_eapi_is_deprecated
+from portage import _unicode_encode
+from portage import os
 
-import codecs, logging, os, stat
+import codecs
+import logging
+import stat
 from itertools import izip
 
 def _src_uri_validate(cpv, eapi, src_uri):
@@ -167,7 +171,8 @@ class portdbapi(dbapi):
 				continue
 			repo_name_path = os.path.join(path, REPO_NAME_LOC)
 			try:
-				repo_name = codecs.open(repo_name_path, mode='r',
+				repo_name = codecs.open(
+					_unicode_encode(repo_name_path), mode='r',
 					encoding='utf_8', errors='replace').readline().strip()
 			except EnvironmentError:
 				# warn about missing repo_name at some other time, since we
@@ -615,8 +620,9 @@ class portdbapi(dbapi):
 					os.path.basename(myebuild))
 			if eapi is None and \
 				'parse-eapi-ebuild-head' in self.doebuild_settings.features:
-				eapi = portage._parse_eapi_ebuild_head(codecs.open(myebuild,
-					mode='r', encoding='utf_8', errors='replace'))
+				eapi = portage._parse_eapi_ebuild_head(codecs.open(
+					_unicode_encode(myebuild), mode='r',
+					encoding='utf_8', errors='replace'))
 
 			if eapi is not None:
 				self.doebuild_settings.configdict['pkg']['EAPI'] = eapi
@@ -878,9 +884,6 @@ class portdbapi(dbapi):
 			except OSError:
 				continue
 			for x in file_list:
-				if not isinstance(x, unicode):
-					x = unicode(x, encoding='utf_8', errors='replace')
-
 				pf = None
 				if glep55:
 					pf, eapi = portage._split_ebuild_name_glep55(x)

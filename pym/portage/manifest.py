@@ -2,7 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import errno, os
+import codecs
+import errno
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -10,7 +11,12 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:write_atomic',
 )
 
-from portage.exception import *
+from portage import os
+from portage import _unicode_decode
+from portage import _unicode_encode
+from portage.exception import DigestException, FileNotFound, \
+	InvalidDataType, MissingParameter, PermissionDenied, \
+	PortageException, PortagePackageException
 
 class FileNotInManifestException(PortageException):
 	pass
@@ -93,7 +99,7 @@ class Manifest(object):
 		    Do not parse Manifest file if from_scratch == True (only for internal use)
 			The fetchlist_dict parameter is required only for generation of
 			a Manifest (not needed for parsing and checking sums)."""
-		self.pkgdir = pkgdir.rstrip(os.sep) + os.sep
+		self.pkgdir = _unicode_decode(pkgdir).rstrip(os.sep) + os.sep
 		self.fhashdict = {}
 		self.hashes = set()
 		self.hashes.update(portage.const.MANIFEST2_HASH_FUNCTIONS)
@@ -135,7 +141,8 @@ class Manifest(object):
 		"""Parse a manifest.  If myhashdict is given then data will be added too it.
 		   Otherwise, a new dict will be created and returned."""
 		try:
-			fd = open(file_path, "r")
+			fd = codecs.open(_unicode_encode(file_path), mode='r',
+				encoding='utf_8', errors='replace')
 			if myhashdict is None:
 				myhashdict = {}
 			self._parseDigests(fd, myhashdict=myhashdict, **kwargs)
@@ -221,7 +228,8 @@ class Manifest(object):
 			update_manifest = True
 			if not force:
 				try:
-					f = open(self.getFullname(), "r")
+					f = codecs.open(_unicode_encode(self.getFullname()),
+						mode='r', encoding='utf_8', errors='replace')
 					oldentries = list(self._parseManifestLines(f))
 					f.close()
 					if len(oldentries) == len(myentries):
@@ -308,14 +316,11 @@ class Manifest(object):
 		cat = self._pkgdir_category()
 
 		pkgdir = self.pkgdir
-		if isinstance(pkgdir, unicode):
-			# Avoid UnicodeDecodeError raised from
-			# os.path.join when called by os.walk.
-			pkgdir = pkgdir.encode('utf_8', 'replace')
 
 		for pkgdir, pkgdir_dirs, pkgdir_files in os.walk(pkgdir):
 			break
 		for f in pkgdir_files:
+			f = _unicode_decode(f)
 			if f[:1] == ".":
 				continue
 			pf = None
@@ -343,11 +348,6 @@ class Manifest(object):
 		recursive_files = []
 
 		pkgdir = self.pkgdir
-		if isinstance(pkgdir, unicode):
-			# Avoid UnicodeDecodeError raised from
-			# os.path.join when called by os.walk.
-			pkgdir = pkgdir.encode('utf_8', 'replace')
-
 		cut_len = len(os.path.join(pkgdir, "files") + os.sep)
 		for parentdir, dirs, files in os.walk(os.path.join(pkgdir, "files")):
 			for f in files:
@@ -508,7 +508,8 @@ class Manifest(object):
 		mfname = self.getFullname()
 		if not os.path.exists(mfname):
 			return rVal
-		myfile = open(mfname, "r")
+		myfile = codecs.open(_unicode_encode(mfname),
+			mode='r', encoding='utf_8', errors='replace')
 		lines = myfile.readlines()
 		myfile.close()
 		for l in lines:

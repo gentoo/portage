@@ -4,7 +4,6 @@
 
 __all__ = ["dbapi"]
 
-import os
 import re
 
 import portage
@@ -16,6 +15,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.versions:catpkgsplit,vercmp',
 )
 
+from portage import os
 from portage import auxdbkeys, dep_expand
 from portage.localization import _
 

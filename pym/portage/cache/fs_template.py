@@ -3,16 +3,16 @@
 # License: GPL2
 # $Id$
 
-import os
 from portage.cache import template
+from portage import os
 
-import portage.proxy.lazyimport
-import portage.proxy as proxy
-proxy.lazyimport.lazyimport(globals(),
+from portage.proxy.lazyimport import lazyimport
+lazyimport(globals(),
 	'portage.data:portage_gid',
 	'portage.exception:PortageException',
 	'portage.util:apply_permissions',
 )
+del lazyimport
 
 class FsBased(template.database):
 	"""template wrapping fs needed options, and providing _ensure_access as a way to 

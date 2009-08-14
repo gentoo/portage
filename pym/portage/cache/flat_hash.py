@@ -6,9 +6,11 @@
 import codecs
 from portage.cache import fs_template
 from portage.cache import cache_errors
-import errno, os, stat
-from portage.cache.template import reconstruct_eclasses
-# store the current key order *here*.
+import errno
+import stat
+from portage import os
+from portage import _unicode_encode
+
 class database(fs_template.FsBased):
 
 	autocommits = True
@@ -27,7 +29,8 @@ class database(fs_template.FsBased):
 	def _getitem(self, cpv):
 		fp = os.path.join(self.location, cpv)
 		try:
-			myf = codecs.open(fp, mode='r', encoding='utf_8', errors='replace')
+			myf = codecs.open(_unicode_encode(fp),
+				mode='r', encoding='utf_8', errors='replace')
 			try:
 				d = self._parse_data(myf.readlines(), cpv)
 				if '_mtime_' not in d:
@@ -55,13 +58,13 @@ class database(fs_template.FsBased):
 		s = cpv.rfind("/")
 		fp = os.path.join(self.location,cpv[:s],".update.%i.%s" % (os.getpid(), cpv[s+1:]))
 		try:
-			myf = codecs.open(fp, mode='w',
+			myf = codecs.open(_unicode_encode(fp), mode='w',
 				encoding='utf_8', errors='replace')
 		except (IOError, OSError), e:
 			if errno.ENOENT == e.errno:
 				try:
 					self._ensure_dirs(cpv)
-					myf = codecs.open(fp, mode='w',
+					myf = codecs.open(_unicode_encode(fp), mode='w',
 						encoding='utf_8', errors='replace')
 				except (OSError, IOError),e:
 					raise cache_errors.CacheCorruption(cpv, e)

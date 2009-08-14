@@ -8,7 +8,8 @@ try:
 	import cPickle as pickle
 except ImportError:
 	import pickle
-import os
+from portage import _unicode_encode
+from portage import os
 import sys
 from portage.cache import fs_template
 from portage.cache import cache_errors
@@ -30,8 +31,8 @@ class database(fs_template.FsBased):
 		self._db_path = os.path.join(self.location, fs_template.gen_label(self.location, self.label)+default_db)
 		self.__db = None
 		try:
-			self.__db = anydbm_module.open(self._db_path, "w", self._perms)
-				
+			self.__db = anydbm_module.open(
+				_unicode_encode(self._db_path), 'w', self._perms)
 		except anydbm_module.error:
 			# XXX handle this at some point
 			try:
@@ -43,7 +44,8 @@ class database(fs_template.FsBased):
 			# try again if failed
 			try:
 				if self.__db == None:
-					self.__db = anydbm_module.open(self._db_path, "c", self._perms)
+					self.__db = anydbm_module.open(
+						_unicode_encode(self._db_path), 'c', self._perms)
 			except anydbm_module.error, e:
 				raise cache_errors.InitializationError(self.__class__, e)
 		self._ensure_access(self._db_path)

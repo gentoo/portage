@@ -22,9 +22,12 @@ import stat
 import string
 import sys
 
+import portage
+from portage import os
+from portage import _unicode_encode
+from portage import _unicode_decode
 from portage.exception import PortageException, FileNotFound, \
        OperationNotPermitted, PermissionDenied, ReadOnlyFileSystem
-import portage.exception
 from portage.dep import isvalidatom
 from portage.proxy.objectproxy import ObjectProxy
 from portage.cache.mappings import UserDict
@@ -57,9 +60,9 @@ def writemsg(mystr,noiselevel=0,fd=None):
 	if fd is None:
 		fd = sys.stderr
 	if noiselevel <= noiselimit:
-		if sys.hexversion < 0x3000000 and isinstance(mystr, unicode):
+		if sys.hexversion < 0x3000000:
 			# avoid potential UnicodeEncodeError
-			mystr = mystr.encode('utf_8', 'replace')
+			mystr = _unicode_encode(mystr)
 		fd.write(mystr)
 		fd.flush()
 
@@ -322,8 +325,8 @@ def grablines(myfilename,recursive=0):
 					os.path.join(myfilename, f), recursive))
 	else:
 		try:
-			myfile = codecs.open(myfilename, mode='r',
-				encoding='utf_8', errors='replace')
+			myfile = codecs.open(_unicode_encode(myfilename),
+				mode='r', encoding='utf_8', errors='replace')
 			mylines = myfile.readlines()
 			myfile.close()
 		except IOError, e:
@@ -358,10 +361,10 @@ def shlex_split(s):
 	"""
 	is_unicode = sys.hexversion < 0x3000000 and isinstance(s, unicode)
 	if is_unicode:
-		s = s.encode('utf_8', 'replace')
+		s = _unicode_encode(s)
 	rval = shlex.split(s)
 	if is_unicode:
-		rval = [unicode(x, encoding='utf_8', errors='replace') for x in rval]
+		rval = [_unicode_decode(x) for x in rval]
 	return rval
 
 class _tolerant_shlex(shlex.shlex):
@@ -389,9 +392,9 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		# NOTE: shex doesn't seem to supported unicode objects
 		# (produces spurious \0 characters with python-2.6.2)
 		if sys.hexversion < 0x3000000:
-			content = open(mycfg, 'rb').read()
+			content = open(_unicode_encode(mycfg), 'rb').read()
 		else:
-			content = open(mycfg, mode='r',
+			content = open(_unicode_encode(mycfg), mode='r',
 				encoding='utf_8', errors='replace').read()
 		if content and content[-1] != '\n':
 			content += '\n'
@@ -452,10 +455,8 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 					raise portage.exception.CorruptionError("ParseError: Unexpected EOF: "+str(mycfg)+": line "+str(lex.lineno))
 				else:
 					return mykeys
-			if not isinstance(key, unicode):
-				key = unicode(key, encoding='utf_8', errors='replace')
-			if not isinstance(val, unicode):
-				val = unicode(val, encoding='utf_8', errors='replace')
+			key = _unicode_decode(key)
+			val = _unicode_decode(val)
 			if expand:
 				mykeys[key] = varexpand(val, expand_map)
 				expand_map[key] = mykeys[key]
@@ -586,7 +587,7 @@ def pickle_read(filename,default=None,debug=0):
 		return default
 	data = None
 	try:
-		myf = open(filename, 'rb')
+		myf = open(_unicode_encode(filename), 'rb')
 		mypickle = pickle.Unpickler(myf)
 		data = mypickle.load()
 		myf.close()
@@ -801,11 +802,6 @@ def apply_recursive_permissions(top, uid=-1, gid=-1,
 	function; it will be called with one argument, a PortageException instance.
 	Returns True if all permissions are applied and False if some are left
 	unapplied."""
-
-	if isinstance(top, unicode):
-		# Avoid UnicodeDecodeError raised from
-		# os.path.join when called by os.walk.
-		top = top.encode('utf_8', 'replace')
 
 	if onerror is None:
 		# Default behavior is to dump errors to stderr so they won't

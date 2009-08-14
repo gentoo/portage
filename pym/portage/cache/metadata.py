@@ -3,7 +3,10 @@
 # License: GPL2
 # $Id$
 
-import errno, os, re, sys
+import errno
+import re
+from portage import os
+from portage import _unicode_encode
 from portage.cache import cache_errors, flat_hash
 import portage.eclass_cache
 from portage.cache.template import reconstruct_eclasses
@@ -82,11 +85,11 @@ class database(flat_hash.database):
 		for i in xrange(magic_line_count - len(self.auxdbkey_order)):
 			new_content.append(u'\n')
 		new_content = u''.join(new_content)
-		new_content = new_content.encode('utf_8', 'replace')
+		new_content = _unicode_encode(new_content)
 
 		new_fp = os.path.join(self.location, cpv)
 		try:
-			f = open(new_fp, 'rb')
+			f = open(_unicode_encode(new_fp), 'rb')
 		except EnvironmentError:
 			pass
 		else:
@@ -114,12 +117,12 @@ class database(flat_hash.database):
 		fp = os.path.join(self.location,cpv[:s],
 			".update.%i.%s" % (os.getpid(), cpv[s+1:]))
 		try:
-			myf = open(fp, 'wb')
+			myf = open(_unicode_encode(fp), 'wb')
 		except EnvironmentError, e:
 			if errno.ENOENT == e.errno:
 				try:
 					self._ensure_dirs(cpv)
-					myf = open(fp, 'wb')
+					myf = open(_unicode_encode(fp), 'wb')
 				except EnvironmentError, e:
 					raise cache_errors.CacheCorruption(cpv, e)
 			else:

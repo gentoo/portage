@@ -1,6 +1,10 @@
 from portage.cache import fs_template
 from portage.cache import cache_errors
-import errno, os, stat
+from portage import os
+from portage import _unicode_encode
+import codecs
+import errno
+import stat
 
 # store the current key order *here*.
 class database(fs_template.FsBased):
@@ -27,7 +31,8 @@ class database(fs_template.FsBased):
 	def _getitem(self, cpv):
 		d = {}
 		try:
-			myf = open(os.path.join(self._base, cpv),"r")
+			myf = codecs.open(_unicode_encode(os.path.join(self._base, cpv)),
+				mode='r', encoding='utf_8', errors='replace')
 			for k,v in zip(self.auxdbkey_order, myf):
 				d[k] = v.rstrip("\n")
 		except (OSError, IOError),e:
@@ -48,12 +53,14 @@ class database(fs_template.FsBased):
 		s = cpv.rfind("/")
 		fp=os.path.join(self._base,cpv[:s],".update.%i.%s" % (os.getpid(), cpv[s+1:]))
 		try:
-			myf = open(fp, "w")
+			myf = codecs.open(_unicode_encode(fp), mode='w',
+				encoding='utf_8', errors='replace')
 		except (OSError, IOError), e:
 			if errno.ENOENT == e.errno:
 				try:
 					self._ensure_dirs(cpv)
-					myf=open(fp,"w")
+					myf = codecs.open(_unicode_encode(fp), mode='w',
+						encoding='utf_8', errors='replace')
 				except (OSError, IOError),e:
 					raise cache_errors.CacheCorruption(cpv, e)
 			else:
