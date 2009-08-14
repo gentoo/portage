@@ -37,6 +37,7 @@ from portage import listdir, dep_expand, digraph, flatten, key_expand, \
 
 # This is a special version of the os module, wrapped for unicode support.
 from portage import os
+from portage import _fs_encoding
 from portage import _merge_encoding
 from portage import _os_merge
 from portage import _selinux_merge
@@ -2385,7 +2386,7 @@ class dblink(object):
 						# different value of sys.getfilesystemencoding(),
 						# so fall back to utf_8 if appropriate.
 						try:
-							_unicode_encode(obj, encoding='utf_8', errors='strict')
+							_unicode_encode(obj, encoding=_fs_encoding, errors='strict')
 						except UnicodeEncodeError:
 							pass
 						else:

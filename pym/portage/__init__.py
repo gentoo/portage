@@ -209,12 +209,13 @@ _os_overrides = {
 	id(_os.system)        : _os.system,
 }
 
-os = _unicode_module_wrapper(_os, overrides=_os_overrides)
+os = _unicode_module_wrapper(_os, overrides=_os_overrides,
+	encoding=_fs_encoding)
 _os_merge = _unicode_module_wrapper(_os,
 	encoding=_merge_encoding, overrides=_os_overrides)
 
 import shutil as _shutil
-shutil = _unicode_module_wrapper(_shutil)
+shutil = _unicode_module_wrapper(_shutil, encoding=_fs_encoding)
 
 # Imports below this point rely on the above unicode wrapper definitions.
 _selinux = None
@@ -222,7 +223,7 @@ selinux = None
 _selinux_merge = _unicode_module_wrapper(_selinux, encoding=_merge_encoding)
 try:
 	import portage._selinux
-	selinux = _unicode_module_wrapper(_selinux)
+	selinux = _unicode_module_wrapper(_selinux, encoding=_fs_encoding)
 except OSError, e:
 	sys.stderr.write("!!! SELinux not loaded: %s\n" % str(e))
 	del e
@@ -7111,7 +7112,7 @@ def _movefile(src, dest, **kwargs):
 			"mv '%s' '%s'" % (src, dest))
 
 def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
-		hardlink_candidates=None, encoding='utf_8'):
+		hardlink_candidates=None, encoding=_fs_encoding):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
 	be preserved even when moving across filesystems.  Returns true on success and false on
 	failure.  Move is atomic."""
