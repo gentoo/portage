@@ -2,9 +2,12 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+# Don't use the unicode-wrapped os and shutil modules here since
+# the whole _selinux module itself will be wrapped.
+import os
+import shutil
+
 import portage
-from portage import os
-from portage import shutil
 import selinux
 from selinux import is_selinux_enabled, getfilecon, lgetfilecon
 
@@ -73,14 +76,18 @@ def setfscreate(ctx="\n"):
 		raise OSError(
 			"setfscreate: Failed setting fs create context \"%s\"." % ctx)
 
-def spawn(selinux_type, spawn_func, mycommand, opt_name=None, **keywords):
-	selinux_type = portage._unicode_encode(selinux_type)
-	con = settype(selinux_type)
-	setexec(con)
-	try:
-		return spawn_func(mycommand, opt_name=opt_name, **keywords)
-	finally:
-		setexec()
+def spawn_wrapper(spawn_func, selinux_type):
+
+	def wrapper_func(*args, **kwargs):
+		selinux_type = portage._unicode_encode(selinux_type)
+		con = settype(selinux_type)
+		setexec(con)
+		try:
+			return spawn_func(*args, **kwargs)
+		finally:
+			setexec()
+
+	return wrapper_func
 
 def symlink(target, link, reflnk):
 	target = portage._unicode_encode(target)

@@ -6,6 +6,7 @@
 import portage
 from portage.const import PRIVATE_PATH,PRELINK_BINARY,HASHING_BLOCKSIZE
 from portage import os
+from portage import _merge_encoding
 from portage import _unicode_encode
 import errno
 import stat
@@ -116,6 +117,9 @@ if os.path.exists(PRELINK_BINARY):
 
 def perform_md5(x, calc_prelink=0):
 	return perform_checksum(x, "MD5", calc_prelink)[0]
+
+def _perform_md5_merge(x, **kwargs):
+	return perform_md5(_unicode_encode(x, encoding=_merge_encoding), **kwargs)
 
 def perform_all(x, calc_prelink=0):
 	mydict = {}

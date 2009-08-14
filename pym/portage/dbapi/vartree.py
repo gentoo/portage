@@ -9,7 +9,7 @@ __all__ = ["PreservedLibsRegistry", "LinkageMap",
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.checksum:perform_md5',
+	'portage.checksum:_perform_md5_merge@perform_md5',
 	'portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list,' + \
 	 	'use_reduce,paren_reduce',
 	'portage.elog:elog_process',
@@ -38,6 +38,9 @@ from portage import listdir, dep_expand, digraph, flatten, key_expand, \
 
 # This is a special version of the os module, wrapped for unicode support.
 from portage import os
+from portage import _merge_encoding
+from portage import _os_merge
+from portage import _selinux_merge
 from portage import _unicode_encode
 
 from portage.cache.mappings import slot_dict_class
@@ -140,6 +143,9 @@ class PreservedLibsRegistry(object):
 	
 	def pruneNonExisting(self):
 		""" Remove all records for objects that no longer exist on the filesystem. """
+
+		os = _os_merge
+
 		for cps in self._data.keys():
 			cpv, counter, paths = self._data[cps]
 			paths = [f for f in paths \
@@ -239,6 +245,9 @@ class LinkageMap(object):
 				2. realpath of object if object does not exist.
 
 			"""
+
+			os = _os_merge
+
 			abs_path = os.path.join(root, obj.lstrip(os.sep))
 			try:
 				object_stat = os.stat(abs_path)
@@ -276,6 +285,8 @@ class LinkageMap(object):
 		Raises CommandNotFound if there are preserved libs
 		and the scanelf binary is not available.
 		"""
+
+		os = _os_merge
 		root = self._root
 		root_len = len(root) - 1
 		self._clear_cache()
@@ -395,6 +406,9 @@ class LinkageMap(object):
 			object that have no corresponding libraries to fulfill the dependency.
 
 		"""
+
+		os = _os_merge
+
 		class _LibraryCache(object):
 
 			"""
@@ -541,6 +555,7 @@ class LinkageMap(object):
 			2. False if obj is not a master link
 
 		"""
+		os = _os_merge
 		basename = os.path.basename(obj)
 		obj_key = self._obj_key(obj)
 		if obj_key not in self._obj_properties:
@@ -608,6 +623,9 @@ class LinkageMap(object):
 		set-of-library-paths satisfy soname.
 
 		"""
+
+		os = _os_merge
+
 		rValue = {}
 
 		if not self._libs:
@@ -668,6 +686,9 @@ class LinkageMap(object):
 		set-of-library-paths satisfy soname.
 
 		"""
+
+		os = _os_merge
+
 		rValue = set()
 
 		if not self._libs:
@@ -2962,6 +2983,7 @@ class dblink(object):
 		@rtype: None
 		"""
 
+		os = _os_merge
 		showMessage = self._display_merge
 		scheduler = self._scheduler
 
@@ -3240,6 +3262,8 @@ class dblink(object):
 			if the file is not owned by this package.
 		"""
 
+		os = _os_merge
+
 		filename = portage._unicode_decode(filename)
 
 		destroot = portage._unicode_decode(destroot)
@@ -3324,6 +3348,7 @@ class dblink(object):
 			"preserve-libs" in self.settings.features):
 			return None
 
+		os = _os_merge
 		linkmap = self.vartree.dbapi.linkmap
 		installed_instance = self._installed_instance
 		old_contents = installed_instance.getcontents()
@@ -3425,6 +3450,7 @@ class dblink(object):
 		if not preserve_paths:
 			return
 
+		os = _os_merge
 		showMessage = self._display_merge
 		root = self.myroot
 
@@ -3432,7 +3458,7 @@ class dblink(object):
 		new_contents = self.getcontents().copy()
 		old_contents = self._installed_instance.getcontents()
 		for f in sorted(preserve_paths):
-			f = portage._unicode_decode(f)
+			f = portage._unicode_decode(f, encoding=_merge_encoding)
 			f_abs = os.path.join(root, f.lstrip(os.sep))
 			contents_entry = old_contents.get(f_abs)
 			if contents_entry is None:
@@ -3577,6 +3603,8 @@ class dblink(object):
 		Remove files returned from _find_unused_preserved_libs().
 		"""
 
+		os = _os_merge
+
 		files_to_remove = set()
 		for files in cpv_lib_map.itervalues():
 			files_to_remove.update(files)
@@ -3618,6 +3646,9 @@ class dblink(object):
 		self.vartree.dbapi.plib_registry.pruneNonExisting()
 
 	def _collision_protect(self, srcroot, destroot, mypkglist, mycontents):
+
+			os = _os_merge
+
 			collision_ignore = set([normalize_path(myignore) for myignore in \
 				portage.util.shlex_split(
 				self.settings.get("COLLISION_IGNORE", ""))])
@@ -3729,6 +3760,9 @@ class dblink(object):
 		Multiple paths may reference the same inode due to hardlinks.
 		All lstat() calls are relative to self.myroot.
 		"""
+
+		os = _os_merge
+
 		root = self.myroot
 		inode_map = {}
 		for f in path_iter:
@@ -3751,6 +3785,8 @@ class dblink(object):
 	def _security_check(self, installed_instances):
 		if not installed_instances:
 			return 0
+
+		os = _os_merge
 
 		showMessage = self._display_merge
 		scheduler = self._scheduler
@@ -3862,6 +3898,8 @@ class dblink(object):
 		not existing; we will merge these symlinks at a later time.
 		"""
 
+		os = _os_merge
+
 		srcroot = portage._unicode_decode(srcroot)
 		destroot = portage._unicode_decode(destroot)
 		inforoot = portage._unicode_decode(inforoot)
@@ -3960,9 +3998,9 @@ class dblink(object):
 		def onerror(e):
 			raise
 		for parent, dirs, files in os.walk(srcroot, onerror=onerror):
-			parent = portage._unicode_decode(parent)
+			parent = portage._unicode_decode(parent, encoding=_merge_encoding)
 			for f in files:
-				f = portage._unicode_decode(f)
+				f = portage._unicode_decode(f, encoding=_merge_encoding)
 				file_path = os.path.join(parent, f)
 				relative_path = file_path[srcroot_len:]
 
@@ -4442,8 +4480,9 @@ class dblink(object):
 		writemsg = self._display_merge
 		scheduler = self._scheduler
 
-		sep = portage.os.sep
-		join = portage.os.path.join
+		os = _os_merge
+		sep = os.sep
+		join = os.path.join
 		srcroot = normalize_path(srcroot).rstrip(sep) + sep
 		destroot = normalize_path(destroot).rstrip(sep) + sep
 		
@@ -4526,7 +4565,9 @@ class dblink(object):
 					secondhand.append(mysrc[len(srcroot):])
 					continue
 				# unlinking no longer necessary; "movefile" will overwrite symlinks atomically and correctly
-				mymtime = movefile(mysrc, mydest, newmtime=thismtime, sstat=mystat, mysettings=self.settings)
+				mymtime = movefile(mysrc, mydest, newmtime=thismtime,
+					sstat=mystat, mysettings=self.settings,
+					encoding=_merge_encoding)
 				if mymtime != None:
 					showMessage(">>> %s -> %s\n" % (mydest, myto))
 					outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime)+"\n")
@@ -4564,15 +4605,15 @@ class dblink(object):
 							bsd_chflags.lchflags(mydest, dflags)
 					else:
 						# a non-directory and non-symlink-to-directory.  Won't work for us.  Move out of the way.
-						if movefile(mydest, mydest+".backup", mysettings=self.settings) is None:
+						if movefile(mydest, mydest+".backup",
+							mysettings=self.settings,
+							encoding=_merge_encoding) is None:
 							return 1
 						showMessage(_("bak %s %s.backup\n") % (mydest, mydest),
 							level=logging.ERROR, noiselevel=-1)
 						#now create our directory
 						if self.settings.selinux_enabled():
-							import selinux
-							sid = selinux.get_sid(mysrc)
-							selinux.secure_mkdir(mydest,sid)
+							_selinux_merge.mkdir(mydest, mysrc)
 						else:
 							os.mkdir(mydest)
 						if bsd_chflags:
@@ -4583,9 +4624,7 @@ class dblink(object):
 				else:
 					#destination doesn't exist
 					if self.settings.selinux_enabled():
-						import selinux
-						sid = selinux.get_sid(mysrc)
-						selinux.secure_mkdir(mydest, sid)
+						_selinux_merge.mkdir(mydest, mysrc)
 					else:
 						os.mkdir(mydest)
 					os.chmod(mydest, mystat[0])
@@ -4672,7 +4711,8 @@ class dblink(object):
 
 					mymtime = movefile(mysrc, mydest, newmtime=thismtime,
 						sstat=mystat, mysettings=self.settings,
-						hardlink_candidates=hardlink_candidates)
+						hardlink_candidates=hardlink_candidates,
+						encoding=_merge_encoding)
 					if mymtime is None:
 						return 1
 					if hardlink_candidates is not None:
@@ -4687,7 +4727,9 @@ class dblink(object):
 				zing = "!!!"
 				if mydmode is None:
 					# destination doesn't exist
-					if movefile(mysrc, mydest, newmtime=thismtime, sstat=mystat, mysettings=self.settings) != None:
+					if movefile(mysrc, mydest, newmtime=thismtime,
+						sstat=mystat, mysettings=self.settings,
+						encoding=_merge_encoding) is not None:
 						zing = ">>>"
 					else:
 						return 1
@@ -4838,6 +4880,7 @@ def write_contents(contents, root, f):
 		f.write(line)
 
 def tar_contents(contents, root, tar, protect=None, onProgress=None):
+	os = _os_merge
 	from portage.util import normalize_path
 	import tarfile
 	root = normalize_path(root).rstrip(os.path.sep) + os.path.sep
@@ -4884,7 +4927,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 				tarinfo.size = 0
 				tar.addfile(tarinfo)
 			else:
-				f = open(_unicode_encode(path), 'rb')
+				f = open(_unicode_encode(path, encoding=_merge_encoding), 'rb')
 				try:
 					tar.addfile(tarinfo, f)
 				finally:
