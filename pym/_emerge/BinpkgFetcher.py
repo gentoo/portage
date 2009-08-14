@@ -5,7 +5,7 @@
 from _emerge.SpawnProcess import SpawnProcess
 import urlparse
 import sys
-import shlex
+
 # for an explanation on this logic, see pym/_emerge/__init__.py
 import os
 import sys
@@ -83,7 +83,7 @@ class BinpkgFetcher(SpawnProcess):
 
 		fetch_env = dict(settings.iteritems())
 		fetch_args = [portage.util.varexpand(x, mydict=fcmd_vars) \
-			for x in shlex.split(fcmd)]
+			for x in portage.util.shlex_split(fcmd)]
 
 		if self.fd_pipes is None:
 			self.fd_pipes = {}

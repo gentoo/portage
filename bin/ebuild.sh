@@ -22,7 +22,7 @@ ROOTPATH=${ROOTPATH##:}
 ROOTPATH=${ROOTPATH%%:}
 PREROOTPATH=${PREROOTPATH##:}
 PREROOTPATH=${PREROOTPATH%%:}
-#PATH=$PORTAGE_BIN_PATH/ebuild-helpers:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/sbin:/usr/sbin:/usr/local/bin:/bin:/usr/bin${ROOTPATH:+:}$ROOTPATH
+#PATH=$PORTAGE_BIN_PATH/ebuild-helpers:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${ROOTPATH:+:}$ROOTPATH
 # PREFIX: we deviate in path order, should we split up DEFAULT_PATH?
 PATH="$PORTAGE_BIN_PATH/ebuild-helpers:$PREROOTPATH${PREROOTPATH:+:}${DEFAULT_PATH}:${ROOTPATH:+:}$ROOTPATH"
 export PATH
@@ -1911,7 +1911,7 @@ ebuild_main() {
 			;;
 	esac
 
-	#PATH=$ebuild_helpers_path:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/sbin:/usr/sbin:/usr/local/bin:/bin:/usr/bin${ROOTPATH:+:}$ROOTPATH
+	#PATH=$ebuild_helpers_path:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${ROOTPATH:+:}$ROOTPATH
 	# PREFIX: same deviation as at the top of this file
 	PATH="$ebuild_helpers_path:$PREROOTPATH${PREROOTPATH:+:}${DEFAULT_PATH}${ROOTPATH:+:}$ROOTPATH"
 	unset ebuild_helpers_path

@@ -1061,7 +1061,8 @@ class config(object):
 		"A", "AA", "CATEGORY", "DEPEND", "DESCRIPTION", "EAPI",
 		"EBUILD_PHASE", "EMERGE_FROM", "HOMEPAGE", "INHERITED", "IUSE",
 		"KEYWORDS", "LICENSE", "PDEPEND", "PF", "PKGUSE",
-		"PORTAGE_CONFIGROOT", "PORTAGE_IUSE", "PORTAGE_REPO_NAME",
+		"PORTAGE_CONFIGROOT", "PORTAGE_IUSE",
+		"PORTAGE_NONFATAL", "PORTAGE_REPO_NAME",
 		"PORTAGE_USE", "PROPERTIES", "PROVIDE", "RDEPEND", "RESTRICT",
 		"ROOT", "SLOT", "SRC_URI", "EPREFIX", "EROOT"
 	]
@@ -3869,9 +3870,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		# no digests because fetch was not called for a specific package
 		mydigests = {}
 
-	import shlex
 	ro_distdirs = [x for x in \
-		shlex.split(mysettings.get("PORTAGE_RO_DISTDIRS", "")) \
+		util.shlex_split(mysettings.get("PORTAGE_RO_DISTDIRS", "")) \
 		if os.path.isdir(x)]
 
 	fsmirrors = []
@@ -4429,8 +4429,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						"URI":     loc,
 						"FILE":    myfile
 					}
-					import shlex
-					myfetch = shlex.split(locfetch)
+
+					myfetch = util.shlex_split(locfetch)
 					myfetch = [varexpand(x, mydict=variables) for x in myfetch]
 					myret = -1
 					try:
@@ -5191,10 +5191,14 @@ def _post_src_install_uid_fix(mysettings):
 		# os.path.join when called by os.walk.
 		destdir = destdir.encode('utf_8', 'replace')
 
+	size = 0
+
 	for parent, dirs, files in os.walk(destdir):
 		for fname in chain(dirs, files):
 			fpath = os.path.join(parent, fname)
 			mystat = os.lstat(fpath)
+			if stat.S_ISREG(mystat.st_mode):
+				size += mystat.st_size
 			if mystat.st_uid != portage_uid and \
 				mystat.st_gid != portage_gid:
 				continue
@@ -5207,6 +5211,9 @@ def _post_src_install_uid_fix(mysettings):
 			apply_secpass_permissions(fpath, uid=myuid, gid=mygid,
 				mode=mystat.st_mode, stat_cached=mystat,
 				follow_links=False)
+
+	open(os.path.join(mysettings['PORTAGE_BUILDDIR'],
+		'build-info', 'SIZE'), 'w').write(str(size) + '\n')
 
 	if bsd_chflags:
 		# Restore all of the flags saved above.
@@ -6724,8 +6731,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			if destexists and not stat.S_ISDIR(dstat[stat.ST_MODE]):
 				os.unlink(dest)
 			if selinux_enabled:
-				sid = selinux.get_lsid(src)
-				selinux.secure_symlink(target,dest,sid)
+				selinux.symlink(target, dest, src)
 			else:
 				os.symlink(target,dest)
 			lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
@@ -6780,7 +6786,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 	if not hardlinked and (selinux_enabled or sstat.st_dev == dstat.st_dev):
 		try:
 			if selinux_enabled:
-				ret=selinux.secure_rename(src,dest)
+				ret = selinux.rename(src, dest)
 			else:
 				ret=os.rename(src,dest)
 			renamefailed=0
@@ -6798,8 +6804,8 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		if stat.S_ISREG(sstat[stat.ST_MODE]):
 			try: # For safety copy then move it over.
 				if selinux_enabled:
-					selinux.secure_copy(src,dest+"#new")
-					selinux.secure_rename(dest+"#new",dest)
+					selinux.copyfile(src, dest + "#new")
+					selinux.rename(dest + "#new", dest)
 				else:
 					shutil.copyfile(src,dest+"#new")
 					os.rename(dest+"#new",dest)
@@ -6812,15 +6818,13 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 				return None
 		else:
 			#we don't yet handle special, so we need to fall back to /bin/mv
-			if selinux_enabled:
-				a=commands.getstatusoutput(MOVE_BINARY+" -c -f "+"'"+src+"' '"+dest+"'")
-			else:
-				a=commands.getstatusoutput(MOVE_BINARY+" -f "+"'"+src+"' '"+dest+"'")
-				if a[0]!=0:
-					print "!!! Failed to move special file:"
-					print "!!! '"+src+"' to '"+dest+"'"
-					print "!!!",a
-					return None # failure
+			a = commands.getstatusoutput("%s -f %s %s" % \
+				(MOVE_BINARY, _shell_quote(src), _shell_quote(dest)))
+			if a[0] != os.EX_OK:
+				writemsg("!!! Failed to move special file:\n", noiselevel=-1)
+				writemsg("!!! '%s' to '%s'\n" % (src, dest), noiselevel=-1)
+				writemsg("!!! %s\n" % a, noiselevel=-1)
+				return None # failure
 		try:
 			if didcopy:
 				if stat.S_ISLNK(sstat[stat.ST_MODE]):

@@ -79,15 +79,23 @@ def _elog_base(level, msg, phase="other", key=None, color=None, out=None):
 
 	global _msgbuffer
 
-	if color == None:
+	if out is None:
+		out = sys.stdout
+
+	if color is None:
 		color = "GOOD"
+
+	if not isinstance(msg, unicode):
+		msg = unicode(msg, encoding='utf_8', errors='replace')
 
 	formatted_msg = colorize(color, " * ") + msg + "\n"
 
-	if out is None:
-		sys.stdout.write(formatted_msg)
-	else:
-		out.write(formatted_msg)
+	if sys.hexversion < 0x3000000 and \
+		out in (sys.stdout, sys.stderr) and isinstance(formatted_msg, unicode):
+		# avoid potential UnicodeEncodeError
+		formatted_msg = formatted_msg.encode('utf_8', 'replace')
+
+	out.write(formatted_msg)
 
 	if key not in _msgbuffer:
 		_msgbuffer[key] = {}

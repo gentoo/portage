@@ -251,12 +251,12 @@ def is_protected(argv):
 		err.flush()
 		return 2
 
-	import shlex
 	from portage.util import ConfigProtect
 
 	settings = portage.settings
-	protect = shlex.split(settings.get("CONFIG_PROTECT", ""))
-	protect_mask = shlex.split(settings.get("CONFIG_PROTECT_MASK", ""))
+	protect = portage.util.shlex_split(settings.get("CONFIG_PROTECT", ""))
+	protect_mask = portage.util.shlex_split(
+		settings.get("CONFIG_PROTECT_MASK", ""))
 	protect_obj = ConfigProtect(root, protect, protect_mask)
 
 	if protect_obj.isprotected(f):
@@ -284,12 +284,12 @@ def filter_protected(argv):
 	except OSError:
 		pass
 
-	import shlex
 	from portage.util import ConfigProtect
 
 	settings = portage.settings
-	protect = shlex.split(settings.get("CONFIG_PROTECT", ""))
-	protect_mask = shlex.split(settings.get("CONFIG_PROTECT_MASK", ""))
+	protect = portage.util.shlex_split(settings.get("CONFIG_PROTECT", ""))
+	protect_mask = portage.util.shlex_split(
+		settings.get("CONFIG_PROTECT_MASK", ""))
 	protect_obj = ConfigProtect(root, protect, protect_mask)
 
 	protected = 0

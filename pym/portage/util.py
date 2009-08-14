@@ -351,6 +351,19 @@ def writedict(mydict,myfilename,writekey=True):
 		return 0
 	return 1
 
+def shlex_split(s):
+	"""
+	This is equivalent to shlex.split but it temporarily encodes unicode
+	strings to bytes since shlex.split() doesn't handle unicode strings.
+	"""
+	is_unicode = isinstance(s, unicode)
+	if is_unicode:
+		s = s.encode('utf_8', 'replace')
+	rval = shlex.split(s)
+	if is_unicode:
+		rval = [unicode(x, encoding='utf_8', errors='replace') for x in rval]
+	return rval
+
 class _tolerant_shlex(shlex.shlex):
 	def sourcehook(self, newfile):
 		try:

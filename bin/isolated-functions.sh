@@ -53,7 +53,23 @@ dump_trace() {
 	done
 }
 
+nonfatal() {
+	if has "${EAPI:-0}" 0 1 2; then
+		die "$FUNCNAME() not supported in this EAPI"
+	fi
+	if [[ $# -lt 1 ]]; then
+		die "$FUNCNAME(): Missing argument"
+	fi
+
+	PORTAGE_NONFATAL=1 "$@"
+}
+
 die() {
+	if [[ $PORTAGE_NONFATAL -eq 1 ]]; then
+		echo -e " $WARN*$NORMAL ${FUNCNAME[1]}: WARNING: $@" >&2
+		return 1
+	fi
+
 	set +e
 	if [ -n "${QA_INTERCEPTORS}" ] ; then
 		# die was called from inside inherit. We need to clean up
@@ -537,7 +553,7 @@ save_ebuild_env() {
 			PORTAGE_COLORMAP PORTAGE_CONFIGROOT PORTAGE_DEBUG \
 			PORTAGE_DEPCACHEDIR PORTAGE_GID PORTAGE_INST_GID \
 			PORTAGE_INST_UID PORTAGE_LOG_FILE PORTAGE_MASTER_PID \
-			PORTAGE_QUIET \
+			PORTAGE_NONFATAL PORTAGE_QUIET \
 			PORTAGE_REPO_NAME PORTAGE_RESTRICT PORTAGE_UPDATE_ENV \
 			PORTAGE_VERBOSE PORTAGE_WORKDIR_MODE PORTDIR \
 			PORTDIR_OVERLAY ${!PORTAGE_SANDBOX_*} PREROOTPATH \

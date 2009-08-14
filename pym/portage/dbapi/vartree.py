@@ -41,7 +41,6 @@ from portage.cache.mappings import slot_dict_class
 import codecs
 import os, re, shutil, stat, errno, copy, subprocess
 import logging
-import shlex
 import sys
 from itertools import izip
 
@@ -2047,11 +2046,16 @@ class vardbapi(dbapi):
 		if not hasattr(pkg, "getcontents"):
 			pkg = self._dblink(pkg)
 		root = self.root
+		if not isinstance(root, unicode):
+			root = unicode(root, encoding='utf_8', errors='replace')
 		root_len = len(root) - 1
 		new_contents = pkg.getcontents().copy()
 		removed = 0
 
 		for filename in paths:
+			if not isinstance(filename, unicode):
+				filename = unicode(filename, 
+					encoding='utf_8', errors='replace')
 			filename = normalize_path(filename)
 			if relative_paths:
 				relative_filename = filename
@@ -2498,8 +2502,9 @@ class dblink(object):
 
 		self.myroot=myroot
 		protect_obj = ConfigProtect(myroot,
-			shlex.split(mysettings.get("CONFIG_PROTECT", "")),
-			shlex.split(mysettings.get("CONFIG_PROTECT_MASK", "")))
+			portage.util.shlex_split(mysettings.get("CONFIG_PROTECT", "")),
+			portage.util.shlex_split(
+			mysettings.get("CONFIG_PROTECT_MASK", "")))
 		self.updateprotect = protect_obj.updateprotect
 		self.isprotected = protect_obj.isprotected
 		self._installed_instance = None
@@ -3227,6 +3232,14 @@ class dblink(object):
 			if the file is not owned by this package.
 		"""
 
+		if not isinstance(filename, unicode):
+			filename = unicode(filename,
+				encoding='utf_8', errors='replace')
+
+		if not isinstance(destroot, unicode):
+			destroot = unicode(destroot,
+				encoding='utf_8', errors='replace')
+
 		destfile = normalize_path(
 			os.path.join(destroot, filename.lstrip(os.path.sep)))
 
@@ -3415,6 +3428,8 @@ class dblink(object):
 		new_contents = self.getcontents().copy()
 		old_contents = self._installed_instance.getcontents()
 		for f in sorted(preserve_paths):
+			if not isinstance(f, unicode):
+				f = unicode(f, encoding='utf_8', errors='replace')
 			f_abs = os.path.join(root, f.lstrip(os.sep))
 			contents_entry = old_contents.get(f_abs)
 			if contents_entry is None:
@@ -3601,7 +3616,8 @@ class dblink(object):
 
 	def _collision_protect(self, srcroot, destroot, mypkglist, mycontents):
 			collision_ignore = set([normalize_path(myignore) for myignore in \
-				shlex.split(self.settings.get("COLLISION_IGNORE", ""))])
+				portage.util.shlex_split(
+				self.settings.get("COLLISION_IGNORE", ""))])
 
 			# For collisions with preserved libraries, the current package
 			# will assume ownership and the libraries will be unregistered.
@@ -4443,6 +4459,9 @@ class dblink(object):
 			mydest = join(destroot, offset, x)
 			# myrealdest is mydest without the $ROOT prefix (makes a difference if ROOT!="/")
 			myrealdest = join(sep, offset, x)
+			if not isinstance(myrealdest, unicode):
+				myrealdest = unicode(myrealdest,
+					encoding='utf_8', errors='replace')
 			# stat file once, test using S_* macros many times (faster that way)
 			mystat = os.lstat(mysrc)
 			mymode = mystat[stat.ST_MODE]
