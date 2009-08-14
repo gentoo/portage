@@ -216,7 +216,8 @@ shutil = _unicode_module_wrapper(_shutil)
 # Imports below this point rely on the above unicode wrapper definitions.
 
 try:
-	import portage._selinux as selinux
+	import portage._selinux
+	selinux = _unicode_module_wrapper(_selinux)
 except OSError, e:
 	sys.stderr.write("!!! SELinux not loaded: %s\n" % str(e))
 	del e
@@ -7029,16 +7030,25 @@ def _movefile(src, dest, **kwargs):
 			"mv '%s' '%s'" % (src, dest))
 
 def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
-		hardlink_candidates=None):
+		hardlink_candidates=None, encoding='utf_8'):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
 	be preserved even when moving across filesystems.  Returns true on success and false on
 	failure.  Move is atomic."""
 	#print "movefile("+str(src)+","+str(dest)+","+str(newmtime)+","+str(sstat)+")"
-	global lchown
+
 	if mysettings is None:
 		global settings
 		mysettings = settings
+
 	selinux_enabled = mysettings.selinux_enabled()
+	if selinux_enabled:
+		selinux = _unicode_module_wrapper(_selinux, encoding=encoding)
+
+	lchown = _unicode_func_wrapper(data.lchown, encoding=encoding)
+	os = _unicode_module_wrapper(_os,
+		encoding=encoding, overrides=_os_overrides)
+	shutil = _unicode_module_wrapper(_shutil, encoding=encoding)
+
 	try:
 		if not sstat:
 			sstat=os.lstat(src)
