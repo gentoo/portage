@@ -5623,33 +5623,9 @@ def _post_src_install_uid_fix(mysettings, out=None):
 			break
 
 	if unicode_errors:
-		from textwrap import wrap
 		from portage.elog.messages import eerror
-		def _eerror(l):
+		for l in _merge_unicode_error(unicode_errors):
 			eerror(l, phase='install', key=mysettings.mycpv, out=out)
-
-		msg = "This package installs one or more file names containing " + \
-			"characters that do not match your current locale " + \
-			"settings. The current setting for filesystem encoding is '%s'." \
-			% _merge_encoding
-		for l in wrap(msg, 72):
-			_eerror(l)
-
-		_eerror("")
-		for x in unicode_errors:
-			_eerror("\t" + x)
-		_eerror("")
-
-		if _merge_encoding.lower().replace('_', '').replace('-', '') != 'utf8':
-			msg = "For best results, UTF-8 encoding is recommended. See " + \
-				"the Gentoo Linux Localization Guide for instructions " + \
-				"about how to configure your locale for UTF-8 encoding:"
-			for l in wrap(msg, 72):
-				_eerror(l)
-			_eerror("")
-			_eerror("\t" + \
-				"http://www.gentoo.org/doc/en/guide-localization.xml")
-			_eerror("")
 
 	open(_unicode_encode(os.path.join(mysettings['PORTAGE_BUILDDIR'],
 		'build-info', 'SIZE')), 'w').write(str(size) + '\n')
@@ -5659,6 +5635,33 @@ def _post_src_install_uid_fix(mysettings, out=None):
 		os.system("mtree -e -p %s -U -k flags < %s > /dev/null" % \
 			(_shell_quote(mysettings["D"]),
 			_shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree"))))
+
+def _merge_unicode_error(errors):
+	from textwrap import wrap
+	lines = []
+
+	msg = "This package installs one or more file names containing " + \
+		"characters that do not match your current locale " + \
+		"settings. The current setting for filesystem encoding is '%s'." \
+		% _merge_encoding
+	lines.extend(wrap(msg, 72))
+
+	lines.append("")
+	errors.sort()
+	lines.extend("\t" + x for x in errors)
+	lines.append("")
+
+	if _merge_encoding.lower().replace('_', '').replace('-', '') != 'utf8':
+		msg = "For best results, UTF-8 encoding is recommended. See " + \
+			"the Gentoo Linux Localization Guide for instructions " + \
+			"about how to configure your locale for UTF-8 encoding:"
+		lines.extend(wrap(msg, 72))
+		lines.append("")
+		lines.append("\t" + \
+			"http://www.gentoo.org/doc/en/guide-localization.xml")
+		lines.append("")
+
+	return lines
 
 def _post_pkg_preinst_cmd(mysettings):
 	"""
