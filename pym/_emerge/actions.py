@@ -903,7 +903,6 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		# packages and any dependencies need to be added to the graph.
 		real_vardb = trees[myroot]["vartree"].dbapi
 		linkmap = real_vardb.linkmap
-		liblist = linkmap.listLibraryObjects()
 		consumer_cache = {}
 		provider_cache = {}
 		soname_cache = {}
@@ -913,23 +912,20 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 		for pkg in cleanlist:
 			pkg_dblink = real_vardb._dblink(pkg.cpv)
-			provided_libs = set()
-
-			for lib in liblist:
-				if pkg_dblink.isowner(lib, myroot):
-					provided_libs.add(lib)
-
-			if not provided_libs:
-				continue
-
 			consumers = {}
-			for lib in provided_libs:
-				lib_consumers = consumer_cache.get(lib)
+
+			for lib in pkg_dblink.getcontents():
+				lib = lib[len(myroot):]
+				lib_key = linkmap._obj_key(lib)
+				lib_consumers = consumer_cache.get(lib_key)
 				if lib_consumers is None:
-					lib_consumers = linkmap.findConsumers(lib)
-					consumer_cache[lib] = lib_consumers
+					try:
+						lib_consumers = linkmap.findConsumers(lib_key)
+					except KeyError:
+						continue
+					consumer_cache[lib_key] = lib_consumers
 				if lib_consumers:
-					consumers[lib] = lib_consumers
+					consumers[lib_key] = lib_consumers
 
 			if not consumers:
 				continue
