@@ -38,6 +38,7 @@ from portage import listdir, dep_expand, digraph, flatten, key_expand, \
 # This is a special version of the os module, wrapped for unicode support.
 from portage import os
 from portage import _unicode_encode
+from portage import selinux
 
 from portage.cache.mappings import slot_dict_class
 
@@ -3857,9 +3858,7 @@ class dblink(object):
 							level=logging.ERROR, noiselevel=-1)
 						#now create our directory
 						if self.settings.selinux_enabled():
-							import selinux
-							sid = selinux.get_sid(mysrc)
-							selinux.secure_mkdir(mydest,sid)
+							selinux.mkdir(mydest, mysrc)
 						else:
 							os.mkdir(mydest)
 						if bsd_chflags:
@@ -3870,9 +3869,7 @@ class dblink(object):
 				else:
 					#destination doesn't exist
 					if self.settings.selinux_enabled():
-						import selinux
-						sid = selinux.get_sid(mysrc)
-						selinux.secure_mkdir(mydest, sid)
+						selinux.mkdir(mydest, mysrc)
 					else:
 						os.mkdir(mydest)
 					os.chmod(mydest, mystat[0])
