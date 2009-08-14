@@ -313,8 +313,10 @@ def _ensure_default_encoding():
 
 	default_fallback = 'utf_8'
 	default_encoding = sys.getdefaultencoding().lower().replace('-', '_')
+	filesystem_encoding = sys.getfilesystemencoding().lower().replace('-', '_')
 	required_encodings = set(['ascii', 'utf_8'])
 	required_encodings.add(default_encoding)
+	required_encodings.add(filesystem_encoding)
 	missing_encodings = set()
 	for codec_name in required_encodings:
 		try:
@@ -330,12 +332,22 @@ def _ensure_default_encoding():
 	if default_encoding in missing_encodings and \
 		default_encoding not in encodings:
 		# Make the fallback codec correspond to whatever name happens
-		# to be returned by sys.getdefaultencoding().
+		# to be returned by sys.getfilesystemencoding().
 
 		try:
 			encodings[default_encoding] = codecs.lookup(default_fallback)
 		except LookupError:
 			encodings[default_encoding] = encodings[default_fallback]
+
+	if filesystem_encoding in missing_encodings and \
+		filesystem_encoding not in encodings:
+		# Make the fallback codec correspond to whatever name happens
+		# to be returned by sys.getdefaultencoding().
+
+		try:
+			encodings[filesystem_encoding] = codecs.lookup(default_fallback)
+		except LookupError:
+			encodings[filesystem_encoding] = encodings[default_fallback]
 
 	def search_function(name):
 		name = name.lower()
@@ -355,7 +367,8 @@ def _ensure_default_encoding():
 
 	codecs.register(search_function)
 
-	del codec_name, default_encoding, default_fallback, missing_encodings, \
+	del codec_name, default_encoding, default_fallback, \
+		filesystem_encoding, missing_encodings, \
 		required_encodings, search_function
 
 # Do this ASAP since writemsg() might not work without it.
