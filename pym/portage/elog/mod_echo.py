@@ -10,7 +10,7 @@ from portage.localization import _
 _items = []
 def process(mysettings, key, logentries, fulltext):
 	global _items
-	_items.append((mysettings, key, logentries))
+	_items.append((mysettings["ROOT"], key, logentries))
 
 def finalize(mysettings=None):
 	"""The mysettings parameter is just for backward compatibility since
@@ -18,14 +18,14 @@ def finalize(mysettings=None):
 	when it upgrades itself."""
 	global _items
 	printer = EOutput()
-	for mysettings, key, logentries in _items:
+	for root, key, logentries in _items:
 		print
-		if mysettings["ROOT"] == "/":
+		if root == "/":
 			printer.einfo(_("Messages for package %s:") %
 				colorize("INFORM", key))
 		else:
 			printer.einfo(_("Messages for package %(pkg)s merged to %(root)s:") %
-				{"pkg": colorize("INFORM", key), "root": mysettings["ROOT"]})
+				{"pkg": colorize("INFORM", key), "root": root})
 		print
 		for phase in EBUILD_PHASES:
 			if phase not in logentries:
