@@ -196,9 +196,7 @@ class _unicode_module_wrapper(object):
 			result = _unicode_func_wrapper(result, encoding=encoding)
 		return result
 
-# TODO: Change this to sys.getfilesystemencoding() after all of
-# the merge code has been updated to use _merge_encoding.
-_merge_encoding = 'utf_8'
+_merge_encoding = sys.getfilesystemencoding()
 
 import os as _os
 _os_overrides = {
