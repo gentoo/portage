@@ -12,6 +12,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage import os
+from portage import _fs_encoding
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.exception import DigestException, FileNotFound, \
@@ -141,7 +142,8 @@ class Manifest(object):
 		"""Parse a manifest.  If myhashdict is given then data will be added too it.
 		   Otherwise, a new dict will be created and returned."""
 		try:
-			fd = codecs.open(_unicode_encode(file_path), mode='r',
+			fd = codecs.open(_unicode_encode(file_path,
+				encoding=_fs_encoding, errors='strict'), mode='r',
 				encoding='utf_8', errors='replace')
 			if myhashdict is None:
 				myhashdict = {}
@@ -228,7 +230,8 @@ class Manifest(object):
 			update_manifest = True
 			if not force:
 				try:
-					f = codecs.open(_unicode_encode(self.getFullname()),
+					f = codecs.open(_unicode_encode(self.getFullname(),
+						encoding=_fs_encoding, errors='strict'),
 						mode='r', encoding='utf_8', errors='replace')
 					oldentries = list(self._parseManifestLines(f))
 					f.close()
@@ -320,7 +323,11 @@ class Manifest(object):
 		for pkgdir, pkgdir_dirs, pkgdir_files in os.walk(pkgdir):
 			break
 		for f in pkgdir_files:
-			f = _unicode_decode(f)
+			try:
+				f = _unicode_decode(f,
+					encoding=_fs_encoding, errors='strict')
+			except UnicodeDecodeError:
+				continue
 			if f[:1] == ".":
 				continue
 			pf = None
@@ -351,6 +358,11 @@ class Manifest(object):
 		cut_len = len(os.path.join(pkgdir, "files") + os.sep)
 		for parentdir, dirs, files in os.walk(os.path.join(pkgdir, "files")):
 			for f in files:
+				try:
+					f = _unicode_decode(f,
+						encoding=_fs_encoding, errors='strict')
+				except UnicodeDecodeError:
+					continue
 				full_path = os.path.join(parentdir, f)
 				recursive_files.append(full_path[cut_len:])
 		for f in recursive_files:
@@ -508,7 +520,8 @@ class Manifest(object):
 		mfname = self.getFullname()
 		if not os.path.exists(mfname):
 			return rVal
-		myfile = codecs.open(_unicode_encode(mfname),
+		myfile = codecs.open(_unicode_encode(mfname,
+			encoding=_fs_encoding, errors='strict'),
 			mode='r', encoding='utf_8', errors='replace')
 		lines = myfile.readlines()
 		myfile.close()
