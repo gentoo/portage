@@ -3870,8 +3870,8 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		spawn_func = portage.process.spawn_sandbox
 
 	if sesandbox:
-		con = selinux.settype(mysettings["PORTAGE_SANDBOX_T"])
-		selinux.setexec(con)
+		spawn_func = selinux.spawn_wrapper(spawn_func,
+			mysettings["PORTAGE_SANDBOX_T"])
 
 	returnpid = keywords.get("returnpid")
 	keywords["returnpid"] = True
@@ -3880,8 +3880,6 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	finally:
 		if logfile:
 			os.close(slave_fd)
-		if sesandbox:
-			selinux.setexec()
 
 	if returnpid:
 		return mypids
@@ -3956,21 +3954,17 @@ def _spawn_fetch(settings, args, **kwargs):
 		os.getuid() == 0 and portage_gid and portage_uid:
 		kwargs.update(_userpriv_spawn_kwargs)
 
-	try:
+	spawn_func = portage.process.spawn
 
-		if settings.selinux_enabled():
-			con = selinux.settype(settings["PORTAGE_FETCH_T"])
-			selinux.setexec(con)
-			# bash is an allowed entrypoint, while most binaries are not
-			if args[0] != BASH_BINARY:
-				args = [BASH_BINARY, "-c", "exec \"$@\"", args[0]] + args
+	if settings.selinux_enabled():
+		spawn_func = selinux.spawn_wrapper(spawn_func,
+			settings["PORTAGE_FETCH_T"])
 
-		rval = portage.process.spawn(args,
-			env=dict(settings.iteritems()), **kwargs)
+		# bash is an allowed entrypoint, while most binaries are not
+		if args[0] != BASH_BINARY:
+			args = [BASH_BINARY, "-c", "exec \"$@\"", args[0]] + args
 
-	finally:
-		if settings.selinux_enabled():
-			selinux.setexec()
+	rval = spawn_func(args, env=dict(settings.iteritems()), **kwargs)
 
 	return rval
 
