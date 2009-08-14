@@ -516,7 +516,7 @@ def run_checks(contents, pkg):
 		if here_doc_delim is None:
 			here_doc = _here_doc_re.match(line)
 			if here_doc is not None:
-				here_doc_delim = re.compile('^%s$' % here_doc.group(1))
+				here_doc_delim = re.compile(r'^\s*%s$' % here_doc.group(1))
 
 		if here_doc_delim is None:
 			# We're not in a here-document.

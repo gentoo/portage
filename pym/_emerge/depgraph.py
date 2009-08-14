@@ -4949,9 +4949,10 @@ def backtrack_depgraph(settings, trees, myopts, myparams,
 	"""
 	Raises PackageSetNotFound if myfiles contains a missing package set.
 	"""
+	backtrack_max = 30
 	runtime_pkg_mask = None
 	allow_backtracking = True
-	backtracked = False
+	backtracked = 0
 	frozen_config = _frozen_depgraph_config(settings, trees,
 		myopts, spinner)
 	while True:
@@ -4961,9 +4962,9 @@ def backtrack_depgraph(settings, trees, myopts, myparams,
 			runtime_pkg_mask=runtime_pkg_mask)
 		success, favorites = mydepgraph.select_files(myfiles)
 		if not success:
-			if mydepgraph.need_restart():
+			if mydepgraph.need_restart() and backtracked < backtrack_max:
 				runtime_pkg_mask = mydepgraph.get_runtime_pkg_mask()
-				backtracked = True
+				backtracked += 1
 			elif backtracked and allow_backtracking:
 				# Backtracking failed, so disable it and do
 				# a plain dep calculation + error message.

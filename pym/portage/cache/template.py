@@ -224,6 +224,9 @@ def reconstruct_eclasses(cpv, eclass_string):
 			# The old format contains paths that will be discarded.
 			for x in xrange(0, len(eclasses), 3):
 				d[eclasses[x]] = (eclasses[x + 1], long(eclasses[x + 2]))
+	except IndexError:
+		raise cache_errors.CacheCorruption(cpv,
+			"_eclasses_ was of invalid len %i" % len(eclasses))
 	except ValueError:
 		raise cache_errors.CacheCorruption(cpv, "_eclasses_ mtime conversion to long failed")
 	del eclasses
