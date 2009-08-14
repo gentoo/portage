@@ -5525,7 +5525,7 @@ def _post_src_install_chost_fix(settings):
 		write_atomic(os.path.join(settings['PORTAGE_BUILDDIR'],
 			'build-info', 'CHOST'), chost + '\n')
 
-def _post_src_install_uid_fix(mysettings):
+def _post_src_install_uid_fix(mysettings, out=None):
 	"""
 	Files in $D with user and group bits that match the "portage"
 	user or group are automatically mapped to PORTAGE_INST_UID and
@@ -5550,34 +5550,106 @@ def _post_src_install_uid_fix(mysettings):
 			(_shell_quote(mysettings["D"]),))
 
 	destdir = mysettings["D"]
+	unicode_errors = []
 
-	size = 0
-	counted_inodes = set()
+	while True:
 
-	for parent, dirs, files in os.walk(destdir):
-		parent = _unicode_decode(parent, encoding=_merge_encoding)
-		for fname in chain(dirs, files):
-			fname = _unicode_decode(fname, encoding=_merge_encoding)
-			fpath = os.path.join(parent, fname)
-			mystat = os.lstat(fpath)
-			if stat.S_ISREG(mystat.st_mode) and \
-				mystat.st_ino not in counted_inodes:
-				counted_inodes.add(mystat.st_ino)
-				size += mystat.st_size
-			if mystat.st_uid != portage_uid and \
-				mystat.st_gid != portage_gid:
-				continue
-			myuid = -1
-			mygid = -1
-			if mystat.st_uid == portage_uid:
-				myuid = inst_uid
-			if mystat.st_gid == portage_gid:
-				mygid = inst_gid
-			apply_secpass_permissions(
-				_unicode_encode(fpath, encoding=_merge_encoding),
-				uid=myuid, gid=mygid,
-				mode=mystat.st_mode, stat_cached=mystat,
-				follow_links=False)
+		unicode_error = False
+		size = 0
+		counted_inodes = set()
+
+		for parent, dirs, files in os.walk(destdir):
+			try:
+				parent = _unicode_decode(parent,
+					encoding=_merge_encoding, errors='strict')
+			except UnicodeDecodeError:
+				new_parent = _unicode_decode(parent,
+					encoding=_merge_encoding, errors='replace')
+				new_parent = _unicode_encode(new_parent,
+					encoding=_merge_encoding, errors='backslashreplace')
+				new_parent = _unicode_decode(new_parent,
+					encoding=_merge_encoding, errors='replace')
+				os.rename(parent, new_parent)
+				unicode_error = True
+				unicode_errors.append(new_parent[len(destdir):])
+				break
+
+			for fname in chain(dirs, files):
+				try:
+					fname = _unicode_decode(fname,
+						encoding=_merge_encoding, errors='strict')
+				except UnicodeDecodeError:
+					fpath = _os.path.join(
+						parent.encode(_merge_encoding), fname)
+					new_fname = _unicode_decode(fname,
+						encoding=_merge_encoding, errors='replace')
+					new_fname = _unicode_encode(new_fname,
+						encoding=_merge_encoding, errors='backslashreplace')
+					new_fname = _unicode_decode(new_fname,
+						encoding=_merge_encoding, errors='replace')
+					new_fpath = os.path.join(parent, new_fname)
+					os.rename(fpath, new_fpath)
+					unicode_error = True
+					unicode_errors.append(new_fpath[len(destdir):])
+					fname = new_fname
+					fpath = new_fpath
+				else:
+					fpath = os.path.join(parent, fname)
+
+				mystat = os.lstat(fpath)
+				if stat.S_ISREG(mystat.st_mode) and \
+					mystat.st_ino not in counted_inodes:
+					counted_inodes.add(mystat.st_ino)
+					size += mystat.st_size
+				if mystat.st_uid != portage_uid and \
+					mystat.st_gid != portage_gid:
+					continue
+				myuid = -1
+				mygid = -1
+				if mystat.st_uid == portage_uid:
+					myuid = inst_uid
+				if mystat.st_gid == portage_gid:
+					mygid = inst_gid
+				apply_secpass_permissions(
+					_unicode_encode(fpath, encoding=_merge_encoding),
+					uid=myuid, gid=mygid,
+					mode=mystat.st_mode, stat_cached=mystat,
+					follow_links=False)
+
+			if unicode_error:
+				break
+
+		if not unicode_error:
+			break
+
+	if unicode_errors:
+		from textwrap import wrap
+		from portage.elog.messages import eerror
+		def _eerror(l):
+			eerror(l, phase='install', key=mysettings.mycpv, out=out)
+
+		msg = "This package installs one or more file names containing " + \
+			"characters that do not match your current locale " + \
+			"settings. The current setting for filesystem encoding is '%s'." \
+			% _merge_encoding
+		for l in wrap(msg, 72):
+			_eerror(l)
+
+		_eerror("")
+		for x in unicode_errors:
+			_eerror("\t" + x)
+		_eerror("")
+
+		if _merge_encoding.lower().replace('_', '').replace('-', '') != 'utf8':
+			msg = "For best results, UTF-8 encoding is recommended. See " + \
+				"the Gentoo Linux Localization Guide for instructions " + \
+				"about how to configure your locale for UTF-8 encoding:"
+			for l in wrap(msg, 72):
+				_eerror(l)
+			_eerror("")
+			_eerror("\t" + \
+				"http://www.gentoo.org/doc/en/guide-localization.xml")
+			_eerror("")
 
 	open(_unicode_encode(os.path.join(mysettings['PORTAGE_BUILDDIR'],
 		'build-info', 'SIZE')), 'w').write(str(size) + '\n')

@@ -48,8 +48,17 @@ class EbuildPhase(CompositeTask):
 		settings = self.settings
 
 		if self.phase == "install":
+			out = None
+			log_path = self.settings.get("PORTAGE_LOG_FILE")
+			log_file = None
+			if self.background and log_path is not None:
+				log_file = codecs.open(log_path, mode='a',
+					encoding='utf_8', errors='replace')
+				out = log_file
 			portage._post_src_install_chost_fix(settings)
-			portage._post_src_install_uid_fix(settings)
+			portage._post_src_install_uid_fix(settings, out=out)
+			if log_file is not None:
+				log_file.close()
 
 		post_phase_cmds = self._post_phase_cmds.get(self.phase)
 		if post_phase_cmds is not None:
