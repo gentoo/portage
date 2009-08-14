@@ -8,7 +8,7 @@ from portage.const import EBUILD_PHASES
 def filter_loglevels(logentries, loglevels):
 	# remove unwanted entries from all logentries
 	rValue = {}
-	loglevels = map(str.upper, loglevels)
+	loglevels = [x.upper() for x in loglevels]
 	for phase in logentries:
 		for msgtype, msgcontent in logentries[phase]:
 			if msgtype.upper() in loglevels or "*" in loglevels:
@@ -20,7 +20,7 @@ def filter_loglevels(logentries, loglevels):
 def filter_phases(logentries, phases):
 	rValue1 = {}
 	rValue2 = {}
-	phases = map(str.lower, phases)
+	phases = [x.lower() for x in phases]
 	for phase in logentries:
 		if phase in phases:
 			rValue1[phase] = logentries[phase]

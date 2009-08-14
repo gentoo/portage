@@ -356,7 +356,7 @@ def shlex_split(s):
 	This is equivalent to shlex.split but it temporarily encodes unicode
 	strings to bytes since shlex.split() doesn't handle unicode strings.
 	"""
-	is_unicode = isinstance(s, unicode)
+	is_unicode = sys.hexversion < 0x3000000 and isinstance(s, unicode)
 	if is_unicode:
 		s = s.encode('utf_8', 'replace')
 	rval = shlex.split(s)
@@ -388,7 +388,11 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		# trailing newline after the source statement
 		# NOTE: shex doesn't seem to supported unicode objects
 		# (produces spurious \0 characters with python-2.6.2)
-		content = open(mycfg).read()
+		if sys.hexversion < 0x3000000:
+			content = open(mycfg, 'rb').read()
+		else:
+			content = open(mycfg, mode='r',
+				encoding='utf_8', errors='replace').read()
 		if content and content[-1] != '\n':
 			content += '\n'
 	except IOError, e:
@@ -448,6 +452,10 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 					raise portage.exception.CorruptionError("ParseError: Unexpected EOF: "+str(mycfg)+": line "+str(lex.lineno))
 				else:
 					return mykeys
+			if not isinstance(key, unicode):
+				key = unicode(key, encoding='utf_8', errors='replace')
+			if not isinstance(val, unicode):
+				val = unicode(val, encoding='utf_8', errors='replace')
 			if expand:
 				mykeys[key] = varexpand(val, expand_map)
 				expand_map[key] = mykeys[key]

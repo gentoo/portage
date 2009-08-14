@@ -178,6 +178,17 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	if isinstance(mycommand, basestring):
 		mycommand = mycommand.split()
 
+	# Avoid a potential UnicodeEncodeError from os.execve().
+	env_bytes = {}
+	for k, v in env.iteritems():
+		if isinstance(k, unicode):
+			k = k.encode('utf_8', 'replace')
+		if isinstance(v, unicode):
+			v = v.encode('utf_8', 'replace')
+		env_bytes[k] = v
+	env = env_bytes
+	del env_bytes
+
 	# If an absolute path to an executable file isn't given
 	# search for it unless we've been told not to.
 	binary = mycommand[0]

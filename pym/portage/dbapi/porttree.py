@@ -167,7 +167,8 @@ class portdbapi(dbapi):
 				continue
 			repo_name_path = os.path.join(path, REPO_NAME_LOC)
 			try:
-				repo_name = open(repo_name_path, 'r').readline().strip()
+				repo_name = codecs.open(repo_name_path, mode='r',
+					encoding='utf_8', errors='replace').readline().strip()
 			except EnvironmentError:
 				# warn about missing repo_name at some other time, since we
 				# don't want to see a warning every time the portage module is

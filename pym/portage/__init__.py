@@ -687,17 +687,6 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 			writemsg("!!! File Not Found: '%s'\n" % file_path, noiselevel=-1)
 			continue
 
-		# TODO: Make getconfig() return unicode.
-		unicode_config = {}
-		for k, v in myconfig.iteritems():
-			if not isinstance(k, unicode):
-				k = unicode(k, encoding='utf8', errors='replace')
-			if not isinstance(v, unicode):
-				v = unicode(v, encoding='utf8', errors='replace')
-			unicode_config[k] = v
-		myconfig = unicode_config
-		del unicode_config
-
 		config_list.append(myconfig)
 		if "SPACE_SEPARATED" in myconfig:
 			space_separated.update(myconfig["SPACE_SEPARATED"].split())
@@ -1537,7 +1526,17 @@ class config(object):
 			# backupenv is used for calculating incremental variables.
 			if env is None:
 				env = os.environ
-			self.backupenv = env.copy()
+
+			# Avoid potential UnicodeDecodeError exceptions later.
+			env_unicode = {}
+			for k, v in env.iteritems():
+				if not isinstance(k, unicode):
+					k = unicode(k, encoding='utf_8', errors='replace')
+				if not isinstance(v, unicode):
+					v = unicode(v, encoding='utf_8', errors='replace')
+				env_unicode[k] = v
+
+			self.backupenv = env_unicode
 
 			if env_d:
 				# Remove duplicate values so they don't override updated
@@ -3214,8 +3213,15 @@ class config(object):
 		"set a value; will be thrown away at reset() time"
 		if not isinstance(myvalue, basestring):
 			raise ValueError("Invalid type being used as a value: '%s': '%s'" % (str(mykey),str(myvalue)))
+
+		# Avoid potential UnicodeDecodeError exceptions later.
+		if not isinstance(mykey, unicode):
+			mykey = unicode(mykey, encoding='utf_8', errors='replace')
+		if not isinstance(myvalue, unicode):
+			myvalue = unicode(myvalue, encoding='utf_8', errors='replace')
+
 		self.modifying()
-		self.modifiedkeys += [mykey]
+		self.modifiedkeys.append(mykey)
 		self.configdict["env"][mykey]=myvalue
 
 	def environ(self):
@@ -5192,12 +5198,15 @@ def _post_src_install_uid_fix(mysettings):
 		destdir = destdir.encode('utf_8', 'replace')
 
 	size = 0
+	counted_inodes = set()
 
 	for parent, dirs, files in os.walk(destdir):
 		for fname in chain(dirs, files):
 			fpath = os.path.join(parent, fname)
 			mystat = os.lstat(fpath)
-			if stat.S_ISREG(mystat.st_mode):
+			if stat.S_ISREG(mystat.st_mode) and \
+				mystat.st_ino not in counted_inodes:
+				counted_inodes.add(mystat.st_ino)
 				size += mystat.st_size
 			if mystat.st_uid != portage_uid and \
 				mystat.st_gid != portage_gid:
