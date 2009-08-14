@@ -3,7 +3,8 @@
 # $Id$
 
 import logging
-import os
+
+from portage import os
 from portage.util import grabfile_package, stack_lists
 from portage.sets.base import PackageSet
 from portage.sets import get_boolean

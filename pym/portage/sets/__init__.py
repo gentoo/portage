@@ -5,7 +5,7 @@
 __all__ = ["SETPREFIX", "get_boolean", "SetConfigError",
 	"SetConfig", "load_default_config"]
 
-import os
+from portage import os
 from ConfigParser import SafeConfigParser, NoOptionError
 from portage import load_mod
 from portage.const import USER_CONFIG_PATH, GLOBAL_CONFIG_PATH
