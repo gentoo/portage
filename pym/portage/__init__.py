@@ -118,12 +118,20 @@ except ImportError, e:
 	sys.stderr.write("    "+str(e)+"\n\n")
 	raise
 
-def _unicode_encode(s, encoding='utf_8', errors='replace'):
+# Assume utf_8 encoding for content of all files.
+_content_encoding = 'utf_8'
+
+# Assume utf_8 fs encoding everywhere except in merge code.
+_fs_encoding = 'utf_8'
+
+_merge_encoding = sys.getfilesystemencoding()
+
+def _unicode_encode(s, encoding=_content_encoding, errors='replace'):
 	if isinstance(s, unicode):
 		s = s.encode(encoding, errors)
 	return s
 
-def _unicode_decode(s, encoding='utf_8', errors='replace'):
+def _unicode_decode(s, encoding=_content_encoding, errors='replace'):
 	if not isinstance(s, unicode):
 		if sys.hexversion < 0x3000000:
 			if isinstance(s, basestring):
@@ -196,11 +204,6 @@ class _unicode_module_wrapper(object):
 		elif hasattr(result, '__call__'):
 			result = _unicode_func_wrapper(result, encoding=encoding)
 		return result
-
-# Assume utf_8 fs encoding everywhere except in merge code.
-_fs_encoding = 'utf_8'
-
-_merge_encoding = sys.getfilesystemencoding()
 
 import os as _os
 _os_overrides = {

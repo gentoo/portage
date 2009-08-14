@@ -12,6 +12,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage import os
+from portage import _content_encoding
 from portage import _fs_encoding
 from portage import _unicode_decode
 from portage import _unicode_encode
@@ -144,7 +145,7 @@ class Manifest(object):
 		try:
 			fd = codecs.open(_unicode_encode(file_path,
 				encoding=_fs_encoding, errors='strict'), mode='r',
-				encoding='utf_8', errors='replace')
+				encoding=_content_encoding, errors='replace')
 			if myhashdict is None:
 				myhashdict = {}
 			self._parseDigests(fd, myhashdict=myhashdict, **kwargs)
@@ -232,7 +233,7 @@ class Manifest(object):
 				try:
 					f = codecs.open(_unicode_encode(self.getFullname(),
 						encoding=_fs_encoding, errors='strict'),
-						mode='r', encoding='utf_8', errors='replace')
+						mode='r', encoding=_content_encoding, errors='replace')
 					oldentries = list(self._parseManifestLines(f))
 					f.close()
 					if len(oldentries) == len(myentries):
@@ -522,7 +523,7 @@ class Manifest(object):
 			return rVal
 		myfile = codecs.open(_unicode_encode(mfname,
 			encoding=_fs_encoding, errors='strict'),
-			mode='r', encoding='utf_8', errors='replace')
+			mode='r', encoding=_content_encoding, errors='replace')
 		lines = myfile.readlines()
 		myfile.close()
 		for l in lines:
