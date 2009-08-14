@@ -856,6 +856,8 @@ class LinkageMapMachO(object):
 				raise CommandNotFound(args[0])
 			else:
 				for l in proc.stdout:
+					if not isinstance(l, unicode):
+						l = unicode(l, encoding='utf_8', errors='replace')
 					l = l.rstrip("\n")
 					if not l:
 						continue
@@ -1323,7 +1325,7 @@ class LinkageMapPeCoff(LinkageMap):
 		if self._dbapi.plib_registry and self._dbapi.plib_registry.getPreservedLibs():
 			args = ["readpecoff", self._dbapi.settings.get('CHOST')]
 			for items in self._dbapi.plib_registry.getPreservedLibs().values():
-				args.extend(os.path.join(root, x.lstrip("." + os.sep)) \
+				args.extend(os.path.join(root, x.lstrip("." + os.path.sep)) \
 					for x in items)
 			try:
 				proc = subprocess.Popen(args, stdout=subprocess.PIPE)
@@ -1333,6 +1335,8 @@ class LinkageMapPeCoff(LinkageMap):
 				raise CommandNotFound(args[0])
 			else:
 				for l in proc.stdout:
+					if not isinstance(l, unicode):
+						l = unicode(l, encoding='utf_8', errors='replace')
 					l = l.lstrip().rstrip()
 					if not l:
 						continue
