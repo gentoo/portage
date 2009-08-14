@@ -223,10 +223,11 @@ shutil = _unicode_module_wrapper(_shutil, encoding=_fs_encoding)
 # Imports below this point rely on the above unicode wrapper definitions.
 _selinux = None
 selinux = None
-_selinux_merge = _unicode_module_wrapper(_selinux, encoding=_merge_encoding)
+_selinux_merge = None
 try:
 	import portage._selinux
 	selinux = _unicode_module_wrapper(_selinux, encoding=_fs_encoding)
+	_selinux_merge = _unicode_module_wrapper(_selinux, encoding=_merge_encoding)
 except OSError, e:
 	sys.stderr.write("!!! SELinux not loaded: %s\n" % str(e))
 	del e
