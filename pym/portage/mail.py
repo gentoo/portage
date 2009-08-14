@@ -10,6 +10,17 @@ from email.MIMEBase import MIMEBase as BaseMessage
 from email.header import Header
 
 def create_message(sender, recipient, subject, body, attachments=None):
+
+	if sys.hexversion < 0x3000000:
+		if isinstance(sender, unicode):
+			sender = sender.encode('utf_8', 'replace')
+		if isinstance(recipient, unicode):
+			recipient = recipient.encode('utf_8', 'replace')
+		if isinstance(subject, unicode):
+			subject = subject.encode('utf_8', 'replace')
+		if isinstance(body, unicode):
+			body = body.encode('utf_8', 'replace')
+
 	if attachments == None:
 		mymessage = TextMessage(body)
 	else:
@@ -19,6 +30,8 @@ def create_message(sender, recipient, subject, body, attachments=None):
 			if isinstance(x, BaseMessage):
 				mymessage.attach(x)
 			elif isinstance(x, basestring):
+				if sys.hexversion < 0x3000000 and isinstance(x, unicode):
+					x = x.encode('utf_8', 'replace')
 				mymessage.attach(TextMessage(x))
 			else:
 				raise portage.exception.PortageException("Can't handle type of attachment: %s" % type(x))
@@ -66,7 +79,21 @@ def send_mail(mysettings, message):
 		myrecipient = mysettings["PORTAGE_ELOG_MAILURI"]
 	
 	myfrom = message.get("From")
-		
+
+	if sys.hexversion < 0x3000000:
+		if isinstance(myrecipient, unicode):
+			myrecipient = myrecipient.encode('utf_8', 'replace')
+		if isinstance(mymailhost, unicode):
+			mymailhost = mymailhost.encode('utf_8', 'replace')
+		if isinstance(mymailport, unicode):
+			mymailport = mymailport.encode('utf_8', 'replace')
+		if isinstance(myfrom, unicode):
+			myfrom = myfrom.encode('utf_8', 'replace')
+		if isinstance(mymailuser, unicode):
+			mymailuser = mymailuser.encode('utf_8', 'replace')
+		if isinstance(mymailpasswd, unicode):
+			mymailpasswd = mymailpasswd.encode('utf_8', 'replace')
+
 	# user wants to use a sendmail binary instead of smtp
 	if mymailhost[0] == os.sep and os.path.exists(mymailhost):
 		fd = os.popen(mymailhost+" -f "+myfrom+" "+myrecipient, "w")

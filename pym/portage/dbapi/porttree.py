@@ -879,7 +879,7 @@ class portdbapi(dbapi):
 				continue
 			for x in file_list:
 				if not isinstance(x, unicode):
-					x = unicode(x, errors='replace')
+					x = unicode(x, encoding='utf_8', errors='replace')
 
 				pf = None
 				if glep55:

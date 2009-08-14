@@ -466,6 +466,13 @@ class EOutput(object):
 		sys.stdout.flush()
 		sys.stderr.flush()
 
+	def _write(self, f, s):
+		if sys.hexversion < 0x3000000 and isinstance(s, unicode):
+			# avoid potential UnicodeEncodeError
+			s = s.encode('utf_8', 'replace')
+		f.write(s)
+		f.flush()
+
 	def __eend(self, caller, errno, msg):
 		if errno == 0:
 			status_brackets = colorize("BRACKET", "[ ") + colorize("GOOD", "ok") + colorize("BRACKET", " ]")
@@ -480,9 +487,9 @@ class EOutput(object):
 			self.__last_e_len = 0
 		if not self.quiet:
 			out = sys.stdout
-			out.write("%*s%s\n" % ((self.term_columns - self.__last_e_len - 6),
+			self._write(out,
+				"%*s%s\n" % ((self.term_columns - self.__last_e_len - 6),
 				"", status_brackets))
-			out.flush()
 
 	def ebegin(self, msg):
 		"""
@@ -524,9 +531,8 @@ class EOutput(object):
 		out = sys.stderr
 		if not self.quiet:
 			if self.__last_e_cmd == "ebegin":
-				out.write("\n")
-			out.write(colorize("BAD", " * ") + msg + "\n")
-			out.flush()
+				self._write(out, "\n")
+			self._write(out, colorize("BAD", " * ") + msg + "\n")
 		self.__last_e_cmd = "eerror"
 
 	def einfo(self, msg):
@@ -539,9 +545,8 @@ class EOutput(object):
 		out = sys.stdout
 		if not self.quiet:
 			if self.__last_e_cmd == "ebegin":
-				out.write("\n")
-			out.write(colorize("GOOD", " * ") + msg + "\n")
-			out.flush()
+				self._write(out, "\n")
+			self._write(out, colorize("GOOD", " * ") + msg + "\n")
 		self.__last_e_cmd = "einfo"
 
 	def einfon(self, msg):
@@ -554,9 +559,8 @@ class EOutput(object):
 		out = sys.stdout
 		if not self.quiet:
 			if self.__last_e_cmd == "ebegin":
-				out.write("\n")
-			out.write(colorize("GOOD", " * ") + msg)
-			out.flush()
+				self._write(out, "\n")
+			self._write(out, colorize("GOOD", " * ") + msg)
 		self.__last_e_cmd = "einfon"
 
 	def ewarn(self, msg):
@@ -569,9 +573,8 @@ class EOutput(object):
 		out = sys.stderr
 		if not self.quiet:
 			if self.__last_e_cmd == "ebegin":
-				out.write("\n")
-			out.write(colorize("WARN", " * ") + msg + "\n")
-			out.flush()
+				self._write(out, "\n")
+			self._write(out, colorize("WARN", " * ") + msg + "\n")
 		self.__last_e_cmd = "ewarn"
 
 	def ewend(self, errno, *msg):
