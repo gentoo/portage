@@ -7293,11 +7293,12 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 				return None
 		else:
 			#we don't yet handle special, so we need to fall back to /bin/mv
-			a = commands.getstatusoutput("%s -f %s %s" % \
-				(MOVE_BINARY, _shell_quote(src), _shell_quote(dest)))
-			if a[0] != os.EX_OK:
+			a = process.spawn([MOVE_BINARY, '-f', src, dest], env=os.environ)
+			if a != os.EX_OK:
 				writemsg("!!! Failed to move special file:\n", noiselevel=-1)
-				writemsg("!!! '%s' to '%s'\n" % (src, dest), noiselevel=-1)
+				writemsg("!!! '%s' to '%s'\n" % \
+					(_unicode_decode(src, encoding=encoding),
+					_unicode_decode(dest, encoding=encoding)), noiselevel=-1)
 				writemsg("!!! %s\n" % a, noiselevel=-1)
 				return None # failure
 		try:
