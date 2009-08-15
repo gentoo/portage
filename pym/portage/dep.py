@@ -23,6 +23,7 @@ import weakref
 from itertools import chain
 import portage.exception
 from portage.exception import InvalidData, InvalidAtom
+from portage.localization import _
 from portage.versions import catpkgsplit, catsplit, pkgcmp, pkgsplit, ververify
 import portage.cache.mappings
 
@@ -50,7 +51,7 @@ def cpvequal(cpv1, cpv2):
 	split2 = catpkgsplit(cpv2)
 	
 	if not split1 or not split2:
-		raise portage.exception.PortageException("Invalid data '%s, %s', parameter was not a CPV" % (cpv1, cpv2))
+		raise portage.exception.PortageException(_("Invalid data '%s, %s', parameter was not a CPV") % (cpv1, cpv2))
 	
 	if split1[0] != split2[0]:
 		return False
@@ -93,7 +94,7 @@ def paren_reduce(mystr,tokenize=1):
 		m = _paren_whitespace_re.search(mystr)
 		if m is not None:
 			raise portage.exception.InvalidDependString(
-				"missing space by parenthesis: '%s'" % m.group(0))
+				_("missing space by parenthesis: '%s'") % m.group(0))
 	mylist = []
 	while mystr:
 		left_paren = mystr.find("(")
@@ -108,13 +109,13 @@ def paren_reduce(mystr,tokenize=1):
 			return [mylist,mystr[1:]]
 		elif has_left_paren and not has_right_paren:
 			raise portage.exception.InvalidDependString(
-				"missing right parenthesis: '%s'" % mystr)
+				_("missing right parenthesis: '%s'") % mystr)
 		elif has_left_paren and left_paren < right_paren:
 			freesec,subsec = mystr.split("(",1)
 			sublist = paren_reduce(subsec, tokenize=tokenize)
 			if len(sublist) != 2:
 				raise portage.exception.InvalidDependString(
-					"malformed syntax: '%s'" % mystr)
+					_("malformed syntax: '%s'") % mystr)
 			subsec, tail = sublist
 		else:
 			subsec,tail = mystr.split(")",1)
@@ -124,7 +125,7 @@ def paren_reduce(mystr,tokenize=1):
 			return mylist+[subsec],tail
 		if not isinstance(tail, basestring):
 			raise portage.exception.InvalidDependString(
-				"malformed syntax: '%s'" % mystr)
+				_("malformed syntax: '%s'") % mystr)
 		mystr = tail
 		if freesec:
 			if tokenize:
@@ -219,9 +220,9 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 	for x, y in enumerate(deparray):
 		if y == '||':
 			if len(deparray) - 1 == x or not isinstance(deparray[x+1], list):
-				raise portage.exception.InvalidDependString(deparray[x]+" missing atom list in \""+paren_enclose(deparray)+"\"")
+				raise portage.exception.InvalidDependString(_('%(dep)s missing atom list in "%(deparray)s"') % {"dep": deparray[x], "deparray": paren_enclose(deparray)})
 	if deparray and deparray[-1] and deparray[-1][-1] == "?":
-		raise portage.exception.InvalidDependString("Conditional without target in \""+paren_enclose(deparray)+"\"")
+		raise portage.exception.InvalidDependString(_('Conditional without target in "%s"') % paren_enclose(deparray))
 
 	global _dep_check_strict
 
@@ -248,15 +249,15 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 					if mydeparray:
 						newdeparray.append(mydeparray.pop(0))
 					else:
-						raise ValueError("Conditional with no target.")
+						raise ValueError(_("Conditional with no target."))
 
 				# Deprecation checks
 				warned = 0
 				if len(newdeparray[-1]) == 0:
-					sys.stderr.write("Note: Empty target in string. (Deprecated)\n")
+					sys.stderr.write(_("Note: Empty target in string. (Deprecated)\n"))
 					warned = 1
 				if len(newdeparray) != 2:
-					sys.stderr.write("Note: Nested use flags without parenthesis (Deprecated)\n")
+					sys.stderr.write(_("Note: Nested use flags without parenthesis (Deprecated)\n"))
 					warned = 1
 				if warned:
 					sys.stderr.write("  --> "+" ".join(map(str,[head]+newdeparray))+"\n")
@@ -286,7 +287,7 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 						ismatch = False
 				if missing_flag:
 					raise portage.exception.InvalidDependString(
-						"Conditional without flag: \"" + \
+						_('Conditional without flag: "') + \
 						paren_enclose([head+"?", newdeparray[-1]])+"\"")
 
 				# If they all match, process the target
@@ -301,7 +302,7 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 						rlist.append(target)
 					else:
 						raise portage.exception.InvalidDependString(
-							"Conditional without parenthesis: '%s?'" % head)
+							_("Conditional without parenthesis: '%s?'") % head)
 
 			else:
 				rlist += [head]
@@ -406,7 +407,7 @@ class _use_dep(object):
 
 	def _validate_flag(self, token, flag):
 		if self._valid_use_re.match(flag) is None:
-			raise InvalidAtom("Invalid use dep: '%s'" % (token,))
+			raise InvalidAtom(_("Invalid use dep: '%s'") % (token,))
 		return flag
 
 	def __nonzero__(self):
@@ -802,30 +803,30 @@ def dep_getusedeps( depend ):
 	while( open_bracket != -1 ):
 		bracket_count += 1
 		if bracket_count > 1:
-			raise InvalidAtom("USE Dependency with more " + \
-				"than one set of brackets: %s" % (depend,))
+			raise InvalidAtom(_("USE Dependency with more "
+				"than one set of brackets: %s") % (depend,))
 		close_bracket = depend.find(']', open_bracket )
 		if close_bracket == -1:
-			raise InvalidAtom("USE Dependency with no closing bracket: %s" % depend )
+			raise InvalidAtom(_("USE Dependency with no closing bracket: %s") % depend )
 		use = depend[open_bracket + 1: close_bracket]
 		# foo[1:1] may return '' instead of None, we don't want '' in the result
 		if not use:
-			raise InvalidAtom("USE Dependency with " + \
-				"no use flag ([]): %s" % depend )
+			raise InvalidAtom(_("USE Dependency with "
+				"no use flag ([]): %s") % depend )
 		if not comma_separated:
 			comma_separated = "," in use
 
 		if comma_separated and bracket_count > 1:
-			raise InvalidAtom("USE Dependency contains a mixture of " + \
-				"comma and bracket separators: %s" % depend )
+			raise InvalidAtom(_("USE Dependency contains a mixture of "
+				"comma and bracket separators: %s") % depend )
 
 		if comma_separated:
 			for x in use.split(","):
 				if x:
 					use_list.append(x)
 				else:
-					raise InvalidAtom("USE Dependency with no use " + \
-						"flag next to comma: %s" % depend )
+					raise InvalidAtom(_("USE Dependency with no use "
+						"flag next to comma: %s") % depend )
 		else:
 			use_list.append(use)
 
@@ -1088,13 +1089,13 @@ def match_from_list(mydep, candidate_list):
 	else:
 		cat, pkg, ver, rev = mycpv_cps
 		if mydep == mycpv:
-			raise KeyError("Specific key requires an operator" + \
-				" (%s) (try adding an '=')" % (mydep))
+			raise KeyError(_("Specific key requires an operator"
+				" (%s) (try adding an '=')") % (mydep))
 
 	if ver and rev:
 		operator = get_operator(mydep)
 		if not operator:
-			writemsg("!!! Invalid atom: %s\n" % mydep, noiselevel=-1)
+			writemsg(_("!!! Invalid atom: %s\n") % mydep, noiselevel=-1)
 			return []
 	else:
 		operator = None
@@ -1163,7 +1164,7 @@ def match_from_list(mydep, candidate_list):
 			try:
 				result = pkgcmp(xs, mysplit)
 			except ValueError: # pkgcmp may return ValueError during int() conversion
-				writemsg("\nInvalid package name: %s\n" % x, noiselevel=-1)
+				writemsg(_("\nInvalid package name: %s\n") % x, noiselevel=-1)
 				raise
 			if result is None:
 				continue
@@ -1180,9 +1181,9 @@ def match_from_list(mydep, candidate_list):
 				if result <= 0:
 					mylist.append(x)
 			else:
-				raise KeyError("Unknown operator: %s" % mydep)
+				raise KeyError(_("Unknown operator: %s") % mydep)
 	else:
-		raise KeyError("Unknown operator: %s" % mydep)
+		raise KeyError(_("Unknown operator: %s") % mydep)
 
 	if slot is not None:
 		candidate_list = mylist

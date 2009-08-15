@@ -5,6 +5,7 @@
 
 import portage
 from portage.const import PRIVATE_PATH,PRELINK_BINARY,HASHING_BLOCKSIZE
+from portage.localization import _
 from portage import os
 from portage import _fs_encoding
 from portage import _merge_encoding
@@ -162,7 +163,7 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 	try:
 		mysize = os.stat(filename)[stat.ST_SIZE]
 		if mydict["size"] != mysize:
-			return False,("Filesize does not match recorded size", mysize, mydict["size"])
+			return False,(_("Filesize does not match recorded size"), mysize, mydict["size"])
 	except OSError, e:
 		if e.errno == errno.ENOENT:
 			raise portage.exception.FileNotFound(filename)
@@ -181,7 +182,7 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 		got = list(got)
 		got.sort()
 		got = " ".join(got)
-		return False, ("Insufficient data for checksum verification", got, expected)
+		return False, (_("Insufficient data for checksum verification"), got, expected)
 
 	for x in mydict:
 		if   x == "size":

@@ -31,6 +31,7 @@ from portage import _unicode_decode
 from portage.exception import PortageException, FileNotFound, \
        OperationNotPermitted, PermissionDenied, ReadOnlyFileSystem
 from portage.dep import isvalidatom
+from portage.localization import _
 from portage.proxy.objectproxy import ObjectProxy
 from portage.cache.mappings import UserDict
 
@@ -294,7 +295,7 @@ def grabdict_package(myfilename, juststrings=0, recursive=0):
 	for x in pkgs.keys():
 		if not isvalidatom(x):
 			del(pkgs[x])
-			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, x),
+			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, x),
 				noiselevel=-1)
 	return pkgs
 
@@ -308,7 +309,7 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0):
 		if pkg[:1] == "*":
 			pkg = pkg[1:]
 		if not isvalidatom(pkg):
-			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, pkgs[x]),
+			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, pkgs[x]),
 				noiselevel=-1)
 			del(pkgs[x])
 	return pkgs
@@ -373,7 +374,7 @@ class _tolerant_shlex(shlex.shlex):
 		try:
 			return shlex.shlex.sourcehook(self, newfile)
 		except EnvironmentError, e:
-			writemsg("!!! Parse error in '%s': source command failed: %s\n" % \
+			writemsg(_("!!! Parse error in '%s': source command failed: %s\n") % \
 				(self.infile, str(e)), noiselevel=-1)
 			return (newfile, StringIO())
 
@@ -390,7 +391,7 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		# Workaround for avoiding a silent error in shlex that
 		# is triggered by a source statement at the end of the file without a
 		# trailing newline after the source statement
-		# NOTE: shex doesn't seem to supported unicode objects
+		# NOTE: shex doesn't seem to support unicode objects
 		# (produces spurious \0 characters with python-2.6.2)
 		if sys.hexversion < 0x3000000:
 			content = open(_unicode_encode(mycfg), 'rb').read()
@@ -432,17 +433,17 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 				#unexpected end of file
 				#lex.error_leader(self.filename,lex.lineno)
 				if not tolerant:
-					writemsg("!!! Unexpected end of config file: variable "+str(key)+"\n",
+					writemsg(_("!!! Unexpected end of config file: variable %s\n") % key,
 						noiselevel=-1)
-					raise Exception("ParseError: Unexpected EOF: "+str(mycfg)+": on/before line "+str(lex.lineno))
+					raise Exception(_("ParseError: Unexpected EOF: %s: on/before line %s") % (mycfg, lex.lineno))
 				else:
 					return mykeys
 			elif (equ!='='):
 				#invalid token
 				#lex.error_leader(self.filename,lex.lineno)
 				if not tolerant:
-					raise Exception("ParseError: Invalid token " + \
-						"'%s' (not '='): %s: line %s" % \
+					raise Exception(_("ParseError: Invalid token "
+						"'%s' (not '='): %s: line %s") % \
 						(equ, mycfg, lex.lineno))
 				else:
 					return mykeys
@@ -451,9 +452,9 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 				#unexpected end of file
 				#lex.error_leader(self.filename,lex.lineno)
 				if not tolerant:
-					writemsg("!!! Unexpected end of config file: variable "+str(key)+"\n",
+					writemsg(_("!!! Unexpected end of config file: variable %s\n") % key,
 						noiselevel=-1)
-					raise portage.exception.CorruptionError("ParseError: Unexpected EOF: "+str(mycfg)+": line "+str(lex.lineno))
+					raise portage.exception.CorruptionError(_("ParseError: Unexpected EOF: %s: line %s") % (mycfg, lex.lineno))
 				else:
 					return mykeys
 			key = _unicode_decode(key)
@@ -584,7 +585,7 @@ pickle_write = None
 def pickle_read(filename,default=None,debug=0):
 	import os
 	if not os.access(filename, os.R_OK):
-		writemsg("pickle_read(): File not readable. '"+filename+"'\n",1)
+		writemsg(_("pickle_read(): File not readable. '")+filename+"'\n",1)
 		return default
 	data = None
 	try:
@@ -593,11 +594,11 @@ def pickle_read(filename,default=None,debug=0):
 		data = mypickle.load()
 		myf.close()
 		del mypickle,myf
-		writemsg("pickle_read(): Loaded pickle. '"+filename+"'\n",1)
+		writemsg(_("pickle_read(): Loaded pickle. '")+filename+"'\n",1)
 	except SystemExit, e:
 		raise
 	except Exception, e:
-		writemsg("!!! Failed to load pickle: "+str(e)+"\n",1)
+		writemsg(_("!!! Failed to load pickle: ")+str(e)+"\n",1)
 		data = default
 	return data
 
@@ -809,10 +810,10 @@ def apply_recursive_permissions(top, uid=-1, gid=-1,
 		# go unnoticed.  Callers can pass in a quiet instance.
 		def onerror(e):
 			if isinstance(e, OperationNotPermitted):
-				writemsg("Operation Not Permitted: %s\n" % str(e),
+				writemsg(_("Operation Not Permitted: %s\n") % str(e),
 					noiselevel=-1)
 			elif isinstance(e, FileNotFound):
-				writemsg("File Not Found: '%s'\n" % str(e), noiselevel=-1)
+				writemsg(_("File Not Found: '%s'\n") % str(e), noiselevel=-1)
 			else:
 				raise
 
@@ -917,7 +918,7 @@ class atomic_ofstream(ObjectProxy):
 			except IOError, e:
 				if canonical_path == filename:
 					raise
-				writemsg("!!! Failed to open file: '%s'\n" % tmp_name,
+				writemsg(_("!!! Failed to open file: '%s'\n") % tmp_name,
 					noiselevel=-1)
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 

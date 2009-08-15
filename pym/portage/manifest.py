@@ -19,6 +19,7 @@ from portage import _unicode_encode
 from portage.exception import DigestException, FileNotFound, \
 	InvalidDataType, MissingParameter, PermissionDenied, \
 	PortageException, PortagePackageException
+from portage.localization import _
 
 class FileNotInManifestException(PortageException):
 	pass
@@ -221,7 +222,7 @@ class Manifest(object):
 		for t in self.fhashdict:
 			for f in self.fhashdict[t]:
 				if portage.const.MANIFEST2_REQUIRED_HASH not in self.fhashdict[t][f]:
-					raise MissingParameter("Missing %s checksum: %s %s" % (portage.const.MANIFEST2_REQUIRED_HASH, t, f))
+					raise MissingParameter(_("Missing %s checksum: %s %s") % (portage.const.MANIFEST2_REQUIRED_HASH, t, f))
 
 	def write(self, sign=False, force=False):
 		""" Write Manifest instance to disk, optionally signing it """
@@ -342,11 +343,11 @@ class Manifest(object):
 				cpv = "%s/%s" % (cat, pf)
 				if not ps:
 					raise PortagePackageException(
-						"Invalid package name: '%s'" % cpv)
+						_("Invalid package name: '%s'") % cpv)
 				if ps[0] != pn:
 					raise PortagePackageException(
-						"Package name does not " + \
-						"match directory name: '%s'" % cpv)
+						_("Package name does not "
+						"match directory name: '%s'") % cpv)
 				cpvlist.append(cpv)
 			elif manifest2MiscfileFilter(f):
 				mytype = "MISC"
@@ -437,7 +438,7 @@ class Manifest(object):
 		except FileNotFound, e:
 			if not ignoreMissing:
 				raise
-			return False, "File Not Found: '%s'" % str(e)
+			return False, _("File Not Found: '%s'") % str(e)
 
 	def checkCpvHashes(self, cpv, checkDistfiles=True, onlyDistfiles=False, checkMiscfiles=False):
 		""" check the hashes for all files associated to the given cpv, include all

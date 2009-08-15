@@ -21,6 +21,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 from portage.const import COLOR_MAP_FILE
 from portage.exception import CommandNotFound, FileNotFound, \
 	ParseError, PermissionDenied, PortageException
+from portage.localization import _
 
 havecolor=1
 dotitles=1
@@ -177,9 +178,8 @@ def _parse_color_map(onerror=None):
 			
 			split_line = line.split("=")
 			if len(split_line) != 2:
-				e = ParseError("'%s', line %s: %s" % (
-					myfile, lineno,
-					"expected exactly one occurence of '=' operator"))
+				e = ParseError(_("'%s', line %s: expected exactly one occurence of '=' operator") % \
+					(myfile, lineno))
 				raise e
 				if onerror:
 					onerror(e)
@@ -190,9 +190,8 @@ def _parse_color_map(onerror=None):
 			k = strip_quotes(split_line[0].strip())
 			v = strip_quotes(split_line[1].strip())
 			if not k in _styles and not k in codes:
-				e = ParseError("'%s', line %s: %s'%s'" % (
-					myfile, lineno,
-					"Unknown variable: ", k))
+				e = ParseError(_("'%s', line %s: Unknown variable: '%s'") % \
+					(myfile, lineno, k))
 				if onerror:
 					onerror(e)
 				else:
@@ -212,9 +211,8 @@ def _parse_color_map(onerror=None):
 						elif k in codes:
 							code_list.append(codes[x])
 					else:
-						e = ParseError("'%s', line %s: %s'%s'" % (
-							myfile, lineno,
-							"Undefined: ", x))
+						e = ParseError(_("'%s', line %s: Undefined: '%s'") % \
+							(myfile, lineno, x))
 						if onerror:
 							onerror(e)
 						else:
@@ -427,7 +425,7 @@ def set_term_size(lines, columns, fd):
 	try:
 		spawn(cmd, env=os.environ, fd_pipes={0:fd})
 	except CommandNotFound:
-		writemsg("portage: stty: command not found\n", noiselevel=-1)
+		writemsg(_("portage: stty: command not found\n"), noiselevel=-1)
 
 class EOutput(object):
 	"""
@@ -730,7 +728,7 @@ try:
 except FileNotFound:
 	pass
 except PermissionDenied, e:
-	writemsg("Permission denied: '%s'\n" % str(e), noiselevel=-1)
+	writemsg(_("Permission denied: '%s'\n") % str(e), noiselevel=-1)
 	del e
 except PortageException, e:
 	writemsg("%s\n" % str(e), noiselevel=-1)
