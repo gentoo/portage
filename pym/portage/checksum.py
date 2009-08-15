@@ -120,7 +120,8 @@ def perform_md5(x, calc_prelink=0):
 	return perform_checksum(x, "MD5", calc_prelink)[0]
 
 def _perform_md5_merge(x, **kwargs):
-	return perform_md5(_unicode_encode(x, encoding=_merge_encoding), **kwargs)
+	return perform_md5(_unicode_encode(x,
+		encoding=_merge_encoding, errors='strict'), **kwargs)
 
 def perform_all(x, calc_prelink=0):
 	mydict = {}
@@ -200,7 +201,10 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 
 def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 	"""
-	Run a specific checksum against a file.
+	Run a specific checksum against a file. The filename can
+	be either unicode or an encoded byte string. If filename
+	is unicode then a UnicodeDecodeError will be raised if
+	necessary.
 
 	@param filename: File to run the checksum against
 	@type filename: String
@@ -212,7 +216,11 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 	@return: The hash and size of the data
 	"""
 	global prelink_capable
-	myfilename      = filename[:]
+	# Make sure filename is encoded with the correct encoding before
+	# it is passed to spawn (for prelink) and/or the hash function.
+	filename = _unicode_encode(filename,
+		encoding=_fs_encoding, errors='strict')
+	myfilename = filename
 	prelink_tmpfile = None
 	try:
 		if calc_prelink and prelink_capable:
@@ -234,8 +242,7 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 			if hashname not in hashfunc_map:
 				raise portage.exception.DigestException(hashname + \
 					" hash function not available (needs dev-python/pycrypto)")
-			myhash, mysize = hashfunc_map[hashname](_unicode_encode(myfilename,
-				encoding=_fs_encoding, errors='strict'))
+			myhash, mysize = hashfunc_map[hashname](myfilename)
 		except (OSError, IOError), e:
 			if e.errno == errno.ENOENT:
 				raise portage.exception.FileNotFound(myfilename)
