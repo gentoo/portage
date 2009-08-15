@@ -8214,7 +8214,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 			msg.append("properties")
 			rValue.append(" ".join(msg))
 	except portage.exception.InvalidDependString, e:
-		rValue.append("PROPERTIES: "+srt(e))
+		rValue.append("PROPERTIES: "+str(e))
 
 	# Only show KEYWORDS masks for installed packages
 	# if they're not masked for any other reason.
