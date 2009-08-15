@@ -1566,8 +1566,8 @@ class Scheduler(PollScheduler):
 
 	def _world_atom(self, pkg):
 		"""
-		Add the package to the world file, but only if
-		it's supposed to be added. Otherwise, do nothing.
+		Add or remove the package to the world file, but only if
+		it's supposed to be added or removed. Otherwise, do nothing.
 		"""
 
 		if set(("--buildpkgonly", "--fetchonly",
@@ -1596,17 +1596,25 @@ class Scheduler(PollScheduler):
 			if hasattr(world_set, "load"):
 				world_set.load() # maybe it's changed on disk
 
-			atom = create_world_atom(pkg, args_set, root_config)
-			if atom:
-				if hasattr(world_set, "add"):
-					self._status_msg(('Recording %s in "world" ' + \
-						'favorites file...') % atom)
-					logger.log(" === (%s of %s) Updating world file (%s)" % \
-						(pkg_count.curval, pkg_count.maxval, pkg.cpv))
-					world_set.add(atom)
-				else:
-					writemsg_level('\n!!! Unable to record %s in "world"\n' % \
-						(atom,), level=logging.WARN, noiselevel=-1)
+			if pkg.operation == "uninstall":
+				if hasattr(world_set, "cleanPackage"):
+					world_set.cleanPackage(pkg.root_config.trees["vartree"].dbapi,
+							pkg.cpv)
+				if hasattr(world_set, "remove"):
+					for s in pkg.root_config.setconfig.active:
+						world_set.remove(SETPREFIX+s)
+			else:
+				atom = create_world_atom(pkg, args_set, root_config)
+				if atom:
+					if hasattr(world_set, "add"):
+						self._status_msg(('Recording %s in "world" ' + \
+							'favorites file...') % atom)
+						logger.log(" === (%s of %s) Updating world file (%s)" % \
+							(pkg_count.curval, pkg_count.maxval, pkg.cpv))
+						world_set.add(atom)
+					else:
+						writemsg_level('\n!!! Unable to record %s in "world"\n' % \
+							(atom,), level=logging.WARN, noiselevel=-1)
 		finally:
 			if world_locked:
 				world_set.unlock()

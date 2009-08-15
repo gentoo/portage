@@ -132,7 +132,8 @@ class MergeListItem(CompositeTask):
 
 				uninstall = PackageUninstall(background=self.background,
 					ldpath_mtimes=ldpath_mtimes, opts=self.emerge_opts,
-					pkg=pkg, scheduler=scheduler, settings=settings)
+					pkg=pkg, scheduler=scheduler, settings=settings,
+					world_atom=world_atom)
 
 				uninstall.start()
 				retval = uninstall.wait()
