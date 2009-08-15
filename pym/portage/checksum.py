@@ -6,6 +6,7 @@
 import portage
 from portage.const import PRIVATE_PATH,PRELINK_BINARY,HASHING_BLOCKSIZE
 from portage import os
+from portage import _fs_encoding
 from portage import _merge_encoding
 from portage import _unicode_encode
 import errno
@@ -233,7 +234,8 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 			if hashname not in hashfunc_map:
 				raise portage.exception.DigestException(hashname + \
 					" hash function not available (needs dev-python/pycrypto)")
-			myhash, mysize = hashfunc_map[hashname](myfilename)
+			myhash, mysize = hashfunc_map[hashname](_unicode_encode(myfilename,
+				encoding=_fs_encoding, errors='strict'))
 		except (OSError, IOError), e:
 			if e.errno == errno.ENOENT:
 				raise portage.exception.FileNotFound(myfilename)
