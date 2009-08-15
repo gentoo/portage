@@ -294,8 +294,13 @@ class WorldSet(EditablePackageSet):
 		self._lock = None
 
 	def cleanPackage(self, vardb, cpv):
-		self.lock()
-		self._load() # loads latest from disk
+		'''
+		Before calling this function you should call lock and load.
+		After calling this function you should call unlock.
+		'''
+		if not self._lock:
+			raise AssertionError('cleanPackage needs the set to be locked')
+
 		worldlist = list(self._atoms)
 		mykey = cpv_getkey(cpv)
 		newworldlist = []
@@ -317,7 +322,6 @@ class WorldSet(EditablePackageSet):
 
 		newworldlist.extend(self._nonatoms)
 		self.replace(newworldlist)
-		self.unlock()
 
 	def singleBuilder(self, options, settings, trees):
 		return WorldSet(settings["ROOT"])
