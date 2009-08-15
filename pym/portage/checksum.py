@@ -27,7 +27,8 @@ def _generate_hash_function(hashtype, hashobject, origin="unknown"):
 		@type filename: String
 		@return: The hash and size of the data
 		"""
-		f = open(_unicode_encode(filename), 'rb')
+		f = open(_unicode_encode(filename,
+			encoding=_fs_encoding, errors='strict'), 'rb')
 		blocksize = HASHING_BLOCKSIZE
 		data = f.read(blocksize)
 		size = 0L
