@@ -586,10 +586,10 @@ einstall() {
 _eapi0_pkg_nofetch() {
 	[ -z "${SRC_URI}" ] && return
 
-	echo "!!! The following are listed in SRC_URI for ${PN}:"
+	elog "The following are listed in SRC_URI for ${PN}:"
 	local x
 	for x in $(echo ${SRC_URI}); do
-		echo "!!!   ${x}"
+		elog "   ${x}"
 	done
 }
 
