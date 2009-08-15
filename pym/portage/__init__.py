@@ -2361,7 +2361,6 @@ class config(object):
 			if use is None:
 				use = frozenset(settings['PORTAGE_USE'].split())
 			values['ACCEPT_LICENSE'] = self._accept_license(use, settings)
-			values['ACCEPT_PROPERTIES'] = self._accept_properties(use, settings)
 			values['PORTAGE_RESTRICT'] = self._restrict(use, settings)
 			return values
 
@@ -2394,35 +2393,6 @@ class config(object):
 
 				licenses = acceptable_licenses
 			return ' '.join(sorted(licenses))
-
-		def _accept_properties(self, use, settings):
-			"""
-			Generated a pruned version of ACCEPT_PROPERTIES, by intersection with
-			PROPERTIES.
-			Please, look at self._accept_license() to know why it is required.
-			"""
-			try:
-				properties = set(flatten(
-					dep.use_reduce(dep.paren_reduce(
-						settings['PROPERTIES']),
-						uselist=use)))
-			except exception.InvalidDependString:
-				properties = set()
-			properties.discard('||')
-			if settings._accept_properties:
-				acceptable_properties = set()
-				for x in settings._accept_properties:
-					if x == '*':
-						acceptable_properties.update(properties)
-					elif x == '-*':
-						acceptable_properties.clear()
-					elif x[1] == '-':
-						acceptable_properties.discard(x[1:])
-					elif x in properties:
-						acceptable_properties.add(x)
-
-				properties = acceptable_properties
-			return ' '.join(sorted(properties))
 
 		def _restrict(self, use, settings):
 			try:
@@ -2662,8 +2632,6 @@ class config(object):
 		lazy_vars = self._lazy_vars(built_use, self)
 		env_configdict.addLazySingleton('ACCEPT_LICENSE',
 			lazy_vars.__getitem__, 'ACCEPT_LICENSE')
-		env_configdict.addLazySingleton('ACCEPT_PROPERTIES',
-			lazy_vars.__getitem__, 'ACCEPT_PROPERTIES')
 		env_configdict.addLazySingleton('PORTAGE_RESTRICT',
 			lazy_vars.__getitem__, 'PORTAGE_RESTRICT')
 
