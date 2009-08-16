@@ -1108,7 +1108,7 @@ class Scheduler(PollScheduler):
 		pkg_queue = self._pkg_queue
 		failed_pkgs = self._failed_pkgs
 		portage.locks._quiet = self._background
-		portage.elog._emerge_elog_listener = self._elog_listener
+		portage.elog.add_listener(self._elog_listener)
 		rval = os.EX_OK
 
 		try:
@@ -1116,7 +1116,7 @@ class Scheduler(PollScheduler):
 		finally:
 			self._main_loop_cleanup()
 			portage.locks._quiet = False
-			portage.elog._emerge_elog_listener = None
+			portage.elog.remove_listener(self._elog_listener)
 			if failed_pkgs:
 				rval = failed_pkgs[-1].returncode
 

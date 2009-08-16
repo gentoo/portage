@@ -56,11 +56,23 @@ def _load_mod(name):
 		_elog_mod_imports[name] = m
 	return m
 
-_emerge_elog_listener = None
+_elog_listeners = []
+def add_listener(listener):
+	'''
+	Listeners should accept four arguments: settings, key, logentries and logtext
+	'''
+	_elog_listeners.append(listener)
+
+def remove_listener(listener):
+	'''
+	Remove previously added listener
+	'''
+	_elog_listeners.remove(listener)
+
 _elog_atexit_handlers = []
 _preserve_logentries = {}
 def elog_process(cpv, mysettings, phasefilter=None):
-	global _elog_atexit_handlers, _emerge_elog_listener, _preserve_logentries
+	global _elog_atexit_handlers, _preserve_logentries
 	
 	logsystems = mysettings.get("PORTAGE_ELOG_SYSTEM","").split()
 	for s in logsystems:
@@ -123,9 +135,9 @@ def elog_process(cpv, mysettings, phasefilter=None):
 
 		default_fulllog = _combine_logentries(default_logentries)
 
-		if _emerge_elog_listener is not None:
-			_emerge_elog_listener(mysettings, str(key),
-				default_logentries, default_fulllog)
+		# call listeners
+		for listener in _elog_listeners:
+			listener(mysettings, str(key), default_logentries, default_fulllog)
 
 		# pass the processing to the individual modules
 		for s, levels in logsystems.iteritems():
