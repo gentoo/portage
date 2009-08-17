@@ -12,3 +12,6 @@ class testDecodeIntTestCase(TestCase):
 		
 		for n in xrange(1000):
 			self.assertEqual(decodeint(encodeint(n)), n)
+
+		for n in (2 ** 32 - 1,):
+			self.assertEqual(decodeint(encodeint(n)), n)
