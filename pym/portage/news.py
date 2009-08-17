@@ -9,8 +9,13 @@ __all__ = ["NewsManager", "NewsItem", "DisplayRestriction",
 
 import codecs
 import logging
-import os
+import os as _os
 import re
+from portage import os
+from portage import _content_encoding
+from portage import _fs_encoding
+from portage import _unicode_decode
+from portage import _unicode_encode
 from portage.util import apply_secpass_permissions, ensure_dirs, \
 	grabfile, normalize_path, write_atomic, writemsg_level
 from portage.data import portage_gid
@@ -94,7 +99,8 @@ class NewsManager(object):
 
 		news_dir = self._news_dir(repoid)
 		try:
-			news = os.listdir(news_dir)
+			news = _os.listdir(_unicode_encode(news_dir,
+				encoding=_fs_encoding, errors='strict'))
 		except OSError:
 			return
 
@@ -112,14 +118,23 @@ class NewsManager(object):
 
 			updates = []
 			for itemid in news:
+				try:
+					itemid = _unicode_decode(itemid,
+						encoding=_fs_encoding, errors='strict')
+				except UnicodeDecodeError:
+					itemid = _unicode_decode(itemid,
+						encoding=_fs_encoding, errors='replace')
+					writemsg_level(
+						"!!! Invalid encoding in news item name: '%s'\n" % \
+						itemid, level=logging.ERROR, noiselevel=-1)
+					continue
+
 				if itemid in skip:
 					continue
 				filename = os.path.join(news_dir, itemid,
 					itemid + "." + self.language_id + ".txt")
 				if not os.path.isfile(filename):
 					continue
-				if not isinstance(itemid, unicode):
-					itemid = unicode(itemid, encoding='utf_8', errors='replace')
 				item = NewsItem(filename, itemid)
 				if not item.isValid():
 					continue
@@ -228,8 +243,9 @@ class NewsItem(object):
 		return self._valid
 
 	def parse(self):
-		lines = codecs.open(self.path, mode='r',
-			encoding='utf_8', errors='replace').readlines()
+		lines = codecs.open(_unicode_encode(self.path,
+			encoding=_fs_encoding, errors='strict'),
+			mode='r', encoding=_content_encoding, errors='replace').readlines()
 		self.restrictions = []
 		invalids = []
 		for i, line in enumerate(lines):
