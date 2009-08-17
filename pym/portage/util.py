@@ -14,7 +14,6 @@ __all__ = ['apply_permissions', 'apply_recursive_permissions',
 
 import commands
 import codecs
-import os
 import errno
 import logging
 import shlex
@@ -24,7 +23,8 @@ import sys
 
 import portage
 from portage import os
-from portage import _merge_encoding
+from portage import _content_encoding
+from portage import _fs_encoding
 from portage import _os_merge
 from portage import _unicode_encode
 from portage import _unicode_decode
@@ -327,8 +327,9 @@ def grablines(myfilename,recursive=0):
 					os.path.join(myfilename, f), recursive))
 	else:
 		try:
-			myfile = codecs.open(_unicode_encode(myfilename),
-				mode='r', encoding='utf_8', errors='replace')
+			myfile = codecs.open(_unicode_encode(myfilename,
+				encoding=_fs_encoding, errors='strict'),
+				mode='r', encoding=_content_encoding, errors='replace')
 			mylines = myfile.readlines()
 			myfile.close()
 		except IOError, e:
@@ -394,10 +395,12 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		# NOTE: shex doesn't seem to support unicode objects
 		# (produces spurious \0 characters with python-2.6.2)
 		if sys.hexversion < 0x3000000:
-			content = open(_unicode_encode(mycfg), 'rb').read()
+			content = open(_unicode_encode(mycfg,
+				encoding=_fs_encoding, errors='strict'), 'rb').read()
 		else:
-			content = open(_unicode_encode(mycfg), mode='r',
-				encoding='utf_8', errors='replace').read()
+			content = open(_unicode_encode(mycfg,
+				encoding=_fs_encoding, errors='strict'), mode='r',
+				encoding=_content_encoding, errors='replace').read()
 		if content and content[-1] != '\n':
 			content += '\n'
 	except IOError, e:
@@ -589,7 +592,8 @@ def pickle_read(filename,default=None,debug=0):
 		return default
 	data = None
 	try:
-		myf = open(_unicode_encode(filename), 'rb')
+		myf = open(_unicode_encode(filename,
+			encoding=_fs_encoding, errors='strict'), 'rb')
 		mypickle = pickle.Unpickler(myf)
 		data = mypickle.load()
 		myf.close()
@@ -904,7 +908,7 @@ class atomic_ofstream(ObjectProxy):
 			open_func = open
 		else:
 			open_func = codecs.open
-			kargs.setdefault('encoding', 'utf_8')
+			kargs.setdefault('encoding', _content_encoding)
 			kargs.setdefault('errors', 'replace')
 
 		if follow_links:
@@ -913,7 +917,9 @@ class atomic_ofstream(ObjectProxy):
 			tmp_name = "%s.%i" % (canonical_path, os.getpid())
 			try:
 				object.__setattr__(self, '_file',
-					open_func(_unicode_encode(tmp_name), mode=mode, **kargs))
+					open_func(_unicode_encode(tmp_name,
+						encoding=_fs_encoding, errors='strict'),
+						mode=mode, **kargs))
 				return
 			except IOError, e:
 				if canonical_path == filename:
@@ -925,7 +931,9 @@ class atomic_ofstream(ObjectProxy):
 		object.__setattr__(self, '_real_name', filename)
 		tmp_name = "%s.%i" % (filename, os.getpid())
 		object.__setattr__(self, '_file',
-			open_func(_unicode_encode(tmp_name), mode=mode, **kargs))
+			open_func(_unicode_encode(tmp_name,
+				encoding=_fs_encoding, errors='strict'),
+				mode=mode, **kargs))
 
 	def _get_target(self):
 		return object.__getattribute__(self, '_file')
