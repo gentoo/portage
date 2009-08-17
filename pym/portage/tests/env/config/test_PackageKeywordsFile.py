@@ -3,10 +3,10 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from portage import os
 from portage.tests import TestCase
 from portage.env.config import PackageKeywordsFile
 from tempfile import mkstemp
-import os
 
 class PackageKeywordsFileTestCase(TestCase):
 
@@ -38,5 +38,4 @@ class PackageKeywordsFileTestCase(TestCase):
 		f.close()
 
 	def NukeFile(self):
-		import os
 		os.unlink(self.fname)

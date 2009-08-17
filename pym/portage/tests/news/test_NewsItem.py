@@ -3,10 +3,9 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import os
+from portage import os
 from portage.tests import TestCase
 from portage.news import NewsItem
-from portage.const import PROFILE_PATH
 from portage.dbapi.virtual import testdbapi
 from tempfile import mkstemp
 # TODO(antarus) Make newsitem use a loader so we can load using a string instead of a tempfile

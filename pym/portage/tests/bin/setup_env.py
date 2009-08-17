@@ -3,15 +3,17 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import os, shutil, sys
-from os.path import dirname, abspath, join
+from portage import os
+from portage import shutil
 from portage.tests import TestCase
 from portage.process import spawn
 from portage.const import PORTAGE_BIN_PATH
 
-bindir = join(dirname(dirname(abspath(__file__))),
+bindir = os.path.join(os.path.dirname(os.path.dirname(
+	os.path.abspath(__file__))),
 	"..", "..", "..", "bin", "ebuild-helpers")
-basedir = join(dirname(dirname(abspath(__file__))), "bin", "root")
+basedir = os.path.join(os.path.dirname(os.path.dirname(
+	os.path.abspath(__file__))), "bin", "root")
 os.environ["D"] = os.path.join(basedir, "image")
 os.environ["T"] = os.path.join(basedir, "temp")
 os.environ["S"] = os.path.join(basedir, "workdir")
@@ -52,7 +54,7 @@ def xexists_in_D(path):
 def portage_func(func, args, exit_status=0):
 	# we don't care about the output of the programs,
 	# just their exit value and the state of $D
-	f = open('/dev/null', 'w')
+	f = open('/dev/null', 'wb')
 	fd_pipes = {0:0,1:f.fileno(),2:f.fileno()}
 	spawn(func+" "+args, env=os.environ, fd_pipes=fd_pipes)
 	f.close()

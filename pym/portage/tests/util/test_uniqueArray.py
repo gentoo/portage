@@ -3,6 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from portage import os
 from portage.tests import TestCase
 from portage.util import unique_array
 
@@ -12,8 +13,6 @@ class UniqueArrayTestCase(TestCase):
 		"""
 		test portage.util.uniqueArray()
 		"""
-
-		import os
 
 		tests = [ ( ["a","a","a",os,os,[],[],[]], ['a',os,[]] ), 
 			  ( [1,1,1,2,3,4,4] , [1,2,3,4]) ]

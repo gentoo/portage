@@ -3,8 +3,9 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import tempfile, os
+import tempfile
 
+from portage import os
 from portage.tests import TestCase, test_cps
 from portage.sets.files import ConfigFileSet
 
