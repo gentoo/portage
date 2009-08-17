@@ -199,7 +199,6 @@ class NewsItem(object):
 	"display if arch: x86" and so forth.
 
 	Creation of a news item involves passing in the path to the particular news item.
-
 	"""
 
 	def __init__(self, path, name):
@@ -218,24 +217,33 @@ class NewsItem(object):
 		and a vardb so we can look at installed packages).
 		Each restriction will pluck out the items that are required for it to match
 		or raise a ValueError exception if the required object is not present.
+
+		Restrictions of the form Display-X are OR'd with like-restrictions;
+		otherwise restrictions are AND'd.  any_match is the ORing and
+		all_match is the ANDing.
 		"""
 
 		if not self._parsed:
 			self.parse()
 
 		if not len(self.restrictions):
-			return True # no restrictions to match means everyone should see it
+			return True
 
 		kwargs = \
 			{ 'vardb' : vardb,
 				'config' : config,
 				'profile' : profile }
 
-		for restriction in self.restrictions:
-			if restriction.checkRestriction(**kwargs):
-				return True
+		all_match = True
+		for values in self.restrictions.itervalues():
+			any_match = False
+			for restriction in values:
+				if restriction.checkRestriction(**kwargs):
+					any_match = True
+			if not any_match:
+				all_match = False
 
-		return False # No restrictions were met; thus we aren't relevant :(
+		return all_match
 
 	def isValid(self):
 		if not self._parsed:
@@ -246,11 +254,11 @@ class NewsItem(object):
 		lines = codecs.open(_unicode_encode(self.path,
 			encoding=_fs_encoding, errors='strict'),
 			mode='r', encoding=_content_encoding, errors='replace').readlines()
-		self.restrictions = []
+		self.restrictions = {}
 		invalids = []
 		for i, line in enumerate(lines):
-			#Optimization to ignore regex matchines on lines that
-			#will never match
+			# Optimization to ignore regex matchines on lines that
+			# will never match
 			if not line.startswith('D'):
 				continue
 			restricts = {  _installedRE : DisplayInstalledRestriction,
@@ -259,9 +267,12 @@ class NewsItem(object):
 			for regex, restriction in restricts.iteritems():
 				match = regex.match(line)
 				if match:
-					self.restrictions.append(restriction(match.groups()[0].strip()))
-					if not self.restrictions[-1].isValid():
+					restrict = restriction(match.groups()[0].strip())
+					if not restrict.isValid():
 						invalids.append((i + 1, line.rstrip("\n")))
+					else:
+						self.restrictions.setdefault(
+							id(restriction), []).append(restrict)
 					continue
 		if invalids:
 			self._valid = False
