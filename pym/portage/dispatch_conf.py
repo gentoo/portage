@@ -7,7 +7,6 @@
 # Library by Wayne Davison <gentoo@blorf.net>, derived from code
 # written by Jeremy Wohl (http://igmus.org)
 
-from stat import *
 import os, sys, commands, shutil
 
 import portage
@@ -86,8 +85,8 @@ def rcs_archive(archive, curconf, newconf, mrgconf):
                 # This puts the results of the merge into mrgconf.
                 ret = os.system(RCS_MERGE % (archive, mrgconf))
                 mystat = os.lstat(newconf)
-                os.chmod(mrgconf, mystat[ST_MODE])
-                os.chown(mrgconf, mystat[ST_UID], mystat[ST_GID])
+                os.chmod(mrgconf, mystat.st_mode)
+                os.chown(mrgconf, mystat.st_uid, mystat.st_gid)
         os.rename(archive, archive + '.dist.new')
     return ret
 
@@ -137,8 +136,8 @@ def file_archive(archive, curconf, newconf, mrgconf):
             # This puts the results of the merge into mrgconf.
             ret = os.system(DIFF3_MERGE % (curconf, archive + '.dist', newconf, mrgconf))
             mystat = os.lstat(newconf)
-            os.chmod(mrgconf, mystat[ST_MODE])
-            os.chown(mrgconf, mystat[ST_UID], mystat[ST_GID])
+            os.chmod(mrgconf, mystat.st_mode)
+            os.chown(mrgconf, mystat.st_uid, mystat.st_gid)
 
         return ret
 
