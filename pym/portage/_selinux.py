@@ -7,15 +7,17 @@
 import os
 import shutil
 
-import portage
+from portage import _content_encoding
+from portage import _fs_encoding
+from portage import _unicode_encode
 from portage.localization import _
 
 import selinux
-from selinux import is_selinux_enabled, getfilecon, lgetfilecon
+from selinux import is_selinux_enabled
 
 def copyfile(src, dest):
-	src = portage._unicode_encode(src)
-	dest = portage._unicode_encode(dest)
+	src = _unicode_encode(src, encoding=_fs_encoding, errors='strict')
+	dest = _unicode_encode(dest, encoding=_fs_encoding, errors='strict')
 	(rc, ctx) = selinux.lgetfilecon(src)
 	if rc < 0:
 		raise OSError(_("copyfile: Failed getting context of \"%s\".") % src)
@@ -34,23 +36,23 @@ def getcontext():
 	return ctx
 
 def mkdir(target, refdir):
-	target = portage._unicode_encode(target)
-	refdir = portage._unicode_encode(refdir)
+	target = _unicode_encode(target, encoding=_fs_encoding, errors='strict')
+	refdir = _unicode_encode(refdir, encoding=_fs_encoding, errors='strict')
 	(rc, ctx) = selinux.getfilecon(refdir)
 	if rc < 0:
 		raise OSError(
 			_("mkdir: Failed getting context of reference directory \"%s\".") \
 			% refdir)
 
-	setfscreatecon(ctx)
+	selinux.setfscreatecon(ctx)
 	try:
 		os.mkdir(target)
 	finally:
-		setfscreatecon()
+		selinux.setfscreatecon()
 
 def rename(src, dest):
-	src = portage._unicode_encode(src)
-	dest = portage._unicode_encode(dest)
+	src = _unicode_encode(src, encoding=_fs_encoding, errors='strict')
+	dest = _unicode_encode(dest, encoding=_fs_encoding, errors='strict')
 	(rc, ctx) = selinux.lgetfilecon(src)
 	if rc < 0:
 		raise OSError(_("rename: Failed getting context of \"%s\".") % src)
@@ -67,21 +69,23 @@ def settype(newtype):
 	return ":".join(ret)
 
 def setexec(ctx="\n"):
-	if isinstance(ctx, unicode):
-		ctx = ctx.encode('utf_8', 'replace')
+	ctx = _unicode_encode(ctx, encoding=_content_encoding, errors='strict')
 	if selinux.setexeccon(ctx) < 0:
 		raise OSError(_("setexec: Failed setting exec() context \"%s\".") % ctx)
 
 def setfscreate(ctx="\n"):
-	ctx = portage._unicode_encode(ctx)
+	ctx = _unicode_encode(ctx,
+		encoding=_content_encoding, errors='strict')
 	if selinux.setfscreatecon(ctx) < 0:
 		raise OSError(
 			_("setfscreate: Failed setting fs create context \"%s\".") % ctx)
 
 def spawn_wrapper(spawn_func, selinux_type):
 
+	selinux_type = _unicode_encode(selinux_type,
+		encoding=_content_encoding, errors='strict')
+
 	def wrapper_func(*args, **kwargs):
-		selinux_type = portage._unicode_encode(selinux_type)
 		con = settype(selinux_type)
 		setexec(con)
 		try:
@@ -92,9 +96,9 @@ def spawn_wrapper(spawn_func, selinux_type):
 	return wrapper_func
 
 def symlink(target, link, reflnk):
-	target = portage._unicode_encode(target)
-	link = portage._unicode_encode(link)
-	reflnk = portage._unicode_encode(reflnk)
+	target = _unicode_encode(target, encoding=_fs_encoding, errors='strict')
+	link = _unicode_encode(link, encoding=_fs_encoding, errors='strict')
+	reflnk = _unicode_encode(reflnk, encoding=_fs_encoding, errors='strict')
 	(rc, ctx) = selinux.lgetfilecon(reflnk)
 	if rc < 0:
 		raise OSError(
