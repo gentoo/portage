@@ -3,24 +3,32 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import portage.exception, socket, smtplib, os, sys, time
 from email.MIMEText import MIMEText as TextMessage
 from email.MIMEMultipart import MIMEMultipart as MultipartMessage
 from email.MIMEBase import MIMEBase as BaseMessage
 from email.header import Header
+import smtplib
+import socket
+import sys
+import time
+
+from portage import os
+from portage import _content_encoding
+from portage import _unicode_encode
 from portage.localization import _
+import portage
 
 def create_message(sender, recipient, subject, body, attachments=None):
 
 	if sys.hexversion < 0x3000000:
-		if isinstance(sender, unicode):
-			sender = sender.encode('utf_8', 'replace')
-		if isinstance(recipient, unicode):
-			recipient = recipient.encode('utf_8', 'replace')
-		if isinstance(subject, unicode):
-			subject = subject.encode('utf_8', 'replace')
-		if isinstance(body, unicode):
-			body = body.encode('utf_8', 'replace')
+		sender = _unicode_encode(sender,
+			encoding=_content_encoding, errors='strict')
+		recipient = _unicode_encode(recipient,
+			encoding=_content_encoding, errors='strict')
+		subject = _unicode_encode(subject,
+			encoding=_content_encoding, errors='replace')
+		body = _unicode_encode(body,
+			encoding=_content_encoding, errors='replace')
 
 	if attachments == None:
 		mymessage = TextMessage(body)
@@ -31,8 +39,9 @@ def create_message(sender, recipient, subject, body, attachments=None):
 			if isinstance(x, BaseMessage):
 				mymessage.attach(x)
 			elif isinstance(x, basestring):
-				if sys.hexversion < 0x3000000 and isinstance(x, unicode):
-					x = x.encode('utf_8', 'replace')
+				if sys.hexversion < 0x3000000:
+					x = _unicode_encode(x,
+						encoding=_content_encoding, errors='replace')
 				mymessage.attach(TextMessage(x))
 			else:
 				raise portage.exception.PortageException(_("Can't handle type of attachment: %s") % type(x))
@@ -82,18 +91,18 @@ def send_mail(mysettings, message):
 	myfrom = message.get("From")
 
 	if sys.hexversion < 0x3000000:
-		if isinstance(myrecipient, unicode):
-			myrecipient = myrecipient.encode('utf_8', 'replace')
-		if isinstance(mymailhost, unicode):
-			mymailhost = mymailhost.encode('utf_8', 'replace')
-		if isinstance(mymailport, unicode):
-			mymailport = mymailport.encode('utf_8', 'replace')
-		if isinstance(myfrom, unicode):
-			myfrom = myfrom.encode('utf_8', 'replace')
-		if isinstance(mymailuser, unicode):
-			mymailuser = mymailuser.encode('utf_8', 'replace')
-		if isinstance(mymailpasswd, unicode):
-			mymailpasswd = mymailpasswd.encode('utf_8', 'replace')
+		myrecipient = _unicode_encode(myrecipient,
+			encoding=_content_encoding, errors='strict')
+		mymailhost = _unicode_encode(mymailhost,
+			encoding=_content_encoding, errors='strict')
+		mymailport = _unicode_encode(mymailport,
+			encoding=_content_encoding, errors='strict')
+		myfrom = _unicode_encode(myfrom,
+			encoding=_content_encoding, errors='strict')
+		mymailuser = _unicode_encode(mymailuser,
+			encoding=_content_encoding, errors='strict')
+		mymailpasswd = _unicode_encode(mymailpasswd,
+			encoding=_content_encoding, errors='strict')
 
 	# user wants to use a sendmail binary instead of smtp
 	if mymailhost[0] == os.sep and os.path.exists(mymailhost):
