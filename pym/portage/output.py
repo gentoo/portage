@@ -8,9 +8,7 @@ import codecs
 import commands
 import errno
 import formatter
-import os
 import re
-import shlex
 import sys
 
 import portage
@@ -18,6 +16,10 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:writemsg',
 )
 
+from portage import os
+from portage import _content_encoding
+from portage import _fs_encoding
+from portage import _unicode_encode
 from portage.const import COLOR_MAP_FILE
 from portage.exception import CommandNotFound, FileNotFound, \
 	ParseError, PermissionDenied, PortageException
@@ -166,8 +168,9 @@ def _parse_color_map(config_root='/', onerror=None):
 		return token
 	try:
 		lineno=0
-		for line in codecs.open( myfile, mode='r',
-			encoding='utf_8', errors='replace' ):
+		for line in codecs.open(_unicode_encode(myfile,
+			encoding=_fs_encoding, errors='strict'),
+			mode='r', encoding=_content_encoding, errors='replace'):
 			lineno += 1
 
 			commenter_pos = line.find("#")
@@ -467,7 +470,7 @@ class EOutput(object):
 	def _write(self, f, s):
 		if sys.hexversion < 0x3000000 and isinstance(s, unicode):
 			# avoid potential UnicodeEncodeError
-			s = s.encode('utf_8', 'replace')
+			s = s.encode(_content_encoding, 'replace')
 		f.write(s)
 		f.flush()
 
