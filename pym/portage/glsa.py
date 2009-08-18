@@ -338,14 +338,17 @@ def revisionMatch(revisionAtom, dbapi, match_type="default"):
 
 def getMinUpgrade(vulnerableList, unaffectedList, portdbapi, vardbapi, minimize=True):
 	"""
-	Checks if the systemstate is matching an atom in
-	I{vulnerableList} and returns string describing
-	the lowest version for the package that matches an atom in 
-	I{unaffectedList} and is greater than the currently installed
-	version. It will return an empty list if the system is affected,
-	and no upgrade is possible or None if the system is not affected.
-	Both I{vulnerableList} and I{unaffectedList} should have the
-	same base package.
+	Checks if the state of installed packages matches an atom in
+	I{vulnerableList} and returns an update path.
+
+        Return value is:
+         * None if the system is not affected
+         * a list of tuples (a,b) where
+                  a  is a cpv describing an installed vulnerable atom
+                  b  is a cpv describing an uninstalled unaffected atom
+                       in the same slot as a
+                     OR the empty string ("") which means no upgrade
+                       is possible
 	
 	@type	vulnerableList: List of Strings
 	@param	vulnerableList: atoms matching vulnerable package versions
@@ -358,11 +361,9 @@ def getMinUpgrade(vulnerableList, unaffectedList, portdbapi, vardbapi, minimize=
 	@type	minimize:	Boolean
 	@param	minimize:	True for a least-change upgrade, False for emerge-like algorithm
 	
-	@rtype:		String | None
-	@return:	the lowest unaffected version that is greater than
-				the installed version.
+	@rtype:		List | None
+	@return:	None if unaffected or a list of (vuln, upgrade) atoms.
 	"""
-	rValue = ""
 	v_installed = reduce(operator.add, [match(v, vardbapi) for v in vulnerableList], [])
 	u_installed = reduce(operator.add, [match(u, vardbapi) for u in unaffectedList], [])
 
@@ -384,12 +385,17 @@ def getMinUpgrade(vulnerableList, unaffectedList, portdbapi, vardbapi, minimize=
 
 	for vuln in v_installed:
 		update = ""
+		# find the best update path for the vuln atom
 		for c in avail_updates:
 			c_pv = portage.catpkgsplit(c)
-			if vercmp(c.version, vuln.version) > 0 \
-					and (update == "" \
-						or (minimize ^ (vercmp(c.version, update.version) > 0))) \
-					and portdbapi._pkg_str(c, None).slot == vardbapi._pkg_str(vuln, None).slot:
+			if vercmp(c.version, vuln.version) <= 0:
+				# c is less or equal than vuln
+				continue
+			if portdbapi._pkg_str(c, None).slot != \
+			   vardbapi._pkg_str(vuln, None).slot:
+				# upgrade to a different slot
+				continue
+			if update == ""	or (minimize ^ (vercmp(c.version, update.version) > 0)):
 				update = c_pv[0]+"/"+c_pv[1]+"-"+c_pv[2]
 				if c_pv[3] != "r0":		# we don't like -r0 for display
 					update += "-"+c_pv[3]
