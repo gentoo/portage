@@ -7,9 +7,12 @@ from portage.output import colorize
 from portage.cache.mappings import slot_dict_class
 from portage.localization import _
 import portage
+from portage import os
+from portage import _encodings
+from portage import _unicode_encode
+
 import HTMLParser
 import sys
-import os
 import socket
 import time
 import tempfile
@@ -486,7 +489,8 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 
 	out = sys.stdout
 	try:
-		metadatafile = open(metadatafilename, 'rb')
+		metadatafile = open(_unicode_encode(metadatafilename,
+			encoding=_encodings['fs'], errors='strict'), 'rb')
 		mypickle = pickle.Unpickler(metadatafile)
 		try:
 			mypickle.find_global = None
@@ -581,7 +585,8 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 					sys.stderr.write("!!! "+str(e)+"\n")
 					sys.stderr.flush()
 			try:
-				metadatafile = open(metadatafilename, 'wb')
+				metadatafile = open(_unicode_encode(metadatafilename,
+					encoding=_encodings['fs'], errors='strict'), 'wb')
 				pickle.dump(metadata, metadatafile, protocol=2)
 				metadatafile.close()
 			except SystemExit, e:
@@ -673,11 +678,13 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	try:
 		if "modified" in metadata[baseurl] and metadata[baseurl]["modified"]:
 			metadata[baseurl]["timestamp"] = int(time.time())
-			metadatafile = open(metadatafilename, 'wb')
+			metadatafile = open(_unicode_encode(metadatafilename,
+				encoding=_encodings['fs'], errors='strict'), 'wb')
 			pickle.dump(metadata, metadatafile, protocol=2)
 			metadatafile.close()
 		if makepickle:
-			metadatafile = open(makepickle, 'wb')
+			metadatafile = open(_unicode_encode(makepickle,
+				encoding=_encodings['fs'], errors='strict'), 'wb')
 			pickle.dump(metadata[baseurl]["data"], metadatafile, protocol=2)
 			metadatafile.close()
 	except SystemExit, e:
