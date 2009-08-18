@@ -141,7 +141,7 @@ _styles["PKG_NOMERGE_WORLD"]       = ( "blue", )
 _styles["PROMPT_CHOICE_DEFAULT"]   = ( "green", )
 _styles["PROMPT_CHOICE_OTHER"]     = ( "red", )
 
-def _parse_color_map(onerror=None):
+def _parse_color_map(config_root='/', onerror=None):
 	"""
 	Parse /etc/portage/color.map and return a dict of error codes.
 
@@ -157,7 +157,7 @@ def _parse_color_map(onerror=None):
 	# that can be called in order adjust the location that color.map
 	# is read from.
 	global codes, _styles
-	myfile = os.path.join('/', COLOR_MAP_FILE)
+	myfile = os.path.join(config_root, COLOR_MAP_FILE)
 	ansi_code_pattern = re.compile("^[0-9;]*m$") 
 	quotes = '\'"'
 	def strip_quotes(token):
@@ -723,13 +723,46 @@ class TermProgressBar(ProgressBar):
 				">" + ((max_bar_width - bar_width) * " ") + "]"
 			return image
 
-try:
-	_parse_color_map(onerror=lambda e: writemsg("%s\n" % str(e), noiselevel=-1))
-except FileNotFound:
-	pass
-except PermissionDenied, e:
-	writemsg(_("Permission denied: '%s'\n") % str(e), noiselevel=-1)
-	del e
-except PortageException, e:
-	writemsg("%s\n" % str(e), noiselevel=-1)
-	del e
+_color_map_loaded = False
+
+def _init(config_root='/'):
+	"""
+	Load color.map from the given config_root. This is called automatically
+	on first access of the codes or _styles attributes (unless it has already
+	been called for some other reason).
+	"""
+
+	global _color_map_loaded, codes, _styles
+	if _color_map_loaded:
+		return
+
+	_color_map_loaded = True
+	codes = object.__getattribute__(codes, '_attr')
+	_styles = object.__getattribute__(_styles, '_attr')
+
+	try:
+		_parse_color_map(config_root=config_root,
+			onerror=lambda e: writemsg("%s\n" % str(e), noiselevel=-1))
+	except FileNotFound:
+		pass
+	except PermissionDenied, e:
+		writemsg(_("Permission denied: '%s'\n") % str(e), noiselevel=-1)
+		del e
+	except PortageException, e:
+		writemsg("%s\n" % str(e), noiselevel=-1)
+		del e
+
+class _LazyInitColorMap(portage.proxy.objectproxy.ObjectProxy):
+
+	__slots__ = ('_attr',)
+
+	def __init__(self, attr):
+		portage.proxy.objectproxy.ObjectProxy.__init__(self)
+		object.__setattr__(self, '_attr', attr)
+
+	def _get_target(self):
+		_init()
+		return object.__getattribute__(self, '_attr')
+
+codes = _LazyInitColorMap(codes)
+_styles = _LazyInitColorMap(_styles)
