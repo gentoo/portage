@@ -186,6 +186,7 @@ class NewsManager(object):
 			if unread_lock:
 				unlockfile(unread_lock)
 
+_formatRE = re.compile("News-Item-Format:\s*([^\s]*)\s*$")
 _installedRE = re.compile("Display-If-Installed:(.*)\n")
 _profileRE = re.compile("Display-If-Profile:(.*)\n")
 _keywordRE = re.compile("Display-If-Keyword:(.*)\n")
@@ -259,6 +260,10 @@ class NewsItem(object):
 		for i, line in enumerate(lines):
 			# Optimization to ignore regex matchines on lines that
 			# will never match
+			format_match = _formatRE.match(line)
+			if format_match is not None and format_match.group(1) != '1.0':
+				invalids.append((i + 1, line.rstrip('\n')))
+				break
 			if not line.startswith('D'):
 				continue
 			restricts = {  _installedRE : DisplayInstalledRestriction,
