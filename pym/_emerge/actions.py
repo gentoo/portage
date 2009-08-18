@@ -2596,7 +2596,7 @@ def load_emerge_config(trees=None):
 
 	mtimedbfile = os.path.join("/", portage.CACHE_PATH.lstrip(os.path.sep), "mtimedb")
 	mtimedb = portage.MtimeDB(mtimedbfile)
-	
+	portage.output._init(config_root=settings['PORTAGE_CONFIGROOT'])
 	return settings, trees, mtimedb
 
 def chk_updated_cfg_files(target_root, config_protect):

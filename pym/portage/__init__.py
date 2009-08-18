@@ -8805,6 +8805,7 @@ def init_legacy_globals():
 			break
 
 	root = settings["ROOT"]
+	output._init(config_root=settings['PORTAGE_CONFIGROOT'])
 
 
 	# ========================================================================
