@@ -131,7 +131,8 @@ _content_encoding = _encodings['content']
 _fs_encoding = _encodings['fs']
 _merge_encoding = _encodings['merge']
 
-def _unicode_encode(s, encoding=_encodings['content'], errors='replace'):
+def _unicode_encode(s, encoding=_encodings['content'],
+	errors='backslashreplace'):
 	if isinstance(s, unicode):
 		s = s.encode(encoding, errors)
 	return s
