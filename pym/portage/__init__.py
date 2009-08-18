@@ -118,20 +118,25 @@ except ImportError, e:
 	sys.stderr.write("    "+str(e)+"\n\n")
 	raise
 
-# Assume utf_8 encoding for content of all files.
-_content_encoding = 'utf_8'
+# Assume utf_8 fs encoding everywhere except in merge code, where the
+# user's locale is respected.
+_encodings = {
+	'content'                : 'utf_8',
+	'fs'                     : 'utf_8',
+	'merge'                  : sys.getfilesystemencoding(),
+}
 
-# Assume utf_8 fs encoding everywhere except in merge code.
-_fs_encoding = 'utf_8'
+# Deprecated attributes. Instead use _encodings directly.
+_content_encoding = _encodings['content']
+_fs_encoding = _encodings['fs']
+_merge_encoding = _encodings['merge']
 
-_merge_encoding = sys.getfilesystemencoding()
-
-def _unicode_encode(s, encoding=_content_encoding, errors='replace'):
+def _unicode_encode(s, encoding=_encodings['content'], errors='replace'):
 	if isinstance(s, unicode):
 		s = s.encode(encoding, errors)
 	return s
 
-def _unicode_decode(s, encoding=_content_encoding, errors='replace'):
+def _unicode_decode(s, encoding=_encodings['content'], errors='replace'):
 	if not isinstance(s, unicode):
 		if sys.hexversion < 0x3000000:
 			if isinstance(s, basestring):
@@ -154,7 +159,7 @@ class _unicode_func_wrapper(object):
 	"""
 	__slots__ = ('_func', '_encoding')
 
-	def __init__(self, func, encoding='utf_8'):
+	def __init__(self, func, encoding=_encodings['fs']):
 		self._func = func
 		self._encoding = encoding
 
@@ -200,7 +205,7 @@ class _unicode_module_wrapper(object):
 	"""
 	__slots__ = ('_mod', '_encoding', '_overrides')
 
-	def __init__(self, mod, encoding='utf_8', overrides=None):
+	def __init__(self, mod, encoding=_encodings['fs'], overrides=None):
 		object.__setattr__(self, '_mod', mod)
 		object.__setattr__(self, '_encoding', encoding)
 		object.__setattr__(self, '_overrides', overrides)
@@ -232,12 +237,12 @@ _os_overrides = {
 }
 
 os = _unicode_module_wrapper(_os, overrides=_os_overrides,
-	encoding=_fs_encoding)
+	encoding=_encodings['fs'])
 _os_merge = _unicode_module_wrapper(_os,
-	encoding=_merge_encoding, overrides=_os_overrides)
+	encoding=_encodings['merge'], overrides=_os_overrides)
 
 import shutil as _shutil
-shutil = _unicode_module_wrapper(_shutil, encoding=_fs_encoding)
+shutil = _unicode_module_wrapper(_shutil, encoding=_encodings['fs'])
 
 # Imports below this point rely on the above unicode wrapper definitions.
 _selinux = None
@@ -245,8 +250,10 @@ selinux = None
 _selinux_merge = None
 try:
 	import portage._selinux
-	selinux = _unicode_module_wrapper(_selinux, encoding=_fs_encoding)
-	_selinux_merge = _unicode_module_wrapper(_selinux, encoding=_merge_encoding)
+	selinux = _unicode_module_wrapper(_selinux,
+		encoding=_encodings['fs'])
+	_selinux_merge = _unicode_module_wrapper(_selinux,
+		encoding=_encodings['merge'])
 except OSError, e:
 	sys.stderr.write("!!! SELinux not loaded: %s\n" % str(e))
 	del e
@@ -1006,8 +1013,9 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 
 	ldsoconf_path = os.path.join(target_root, "etc", "ld.so.conf")
 	try:
-		myld = codecs.open(_unicode_encode(ldsoconf_path), mode='r',
-			encoding='utf_8', errors='replace')
+		myld = codecs.open(_unicode_encode(ldsoconf_path,
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['content'], errors='replace')
 		myldlines=myld.readlines()
 		myld.close()
 		oldld=[]
@@ -1188,8 +1196,9 @@ def ExtractKernelVersion(base_dir):
 	lines = []
 	pathname = os.path.join(base_dir, 'Makefile')
 	try:
-		f = codecs.open(_unicode_encode(pathname), mode='r',
-			encoding='utf_8', errors='replace')
+		f = codecs.open(_unicode_encode(pathname,
+			encoding=_encodings['fs'], errors='strict'), mode='r',
+			encoding=_encodings['content'], errors='replace')
 	except OSError, details:
 		return (None, str(details))
 	except IOError, details:
@@ -1645,8 +1654,9 @@ class config(object):
 					parentsFile = os.path.join(currentPath, "parent")
 					eapi_file = os.path.join(currentPath, "eapi")
 					try:
-						eapi = codecs.open(_unicode_encode(eapi_file),
-							mode='r', encoding='utf_8', errors='replace'
+						eapi = codecs.open(_unicode_encode(eapi_file,
+							encoding=_encodings['fs'], errors='strict'),
+							mode='r', encoding=_encodings['content'], errors='replace'
 							).readline().strip()
 					except IOError:
 						pass
@@ -1990,8 +2000,10 @@ class config(object):
 				try:
 					repo_conf_parser.readfp(
 						codecs.open(
-						_unicode_encode(self._local_repo_conf_path), mode='r',
-						encoding='utf_8', errors='replace'))
+						_unicode_encode(self._local_repo_conf_path,
+						encoding=_encodings['fs'], errors='strict'),
+						mode='r', encoding=_encodings['content'], errors='replace')
+					)
 				except EnvironmentError, e:
 					if e.errno != errno.ENOENT:
 						raise
@@ -4857,8 +4869,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								if (mystat[stat.ST_SIZE]<100000) and (len(myfile)>4) and not ((myfile[-5:]==".html") or (myfile[-4:]==".htm")):
 									html404=re.compile("<title>.*(not found|404).*</title>",re.I|re.M)
 									if html404.search(codecs.open(
-										_unicode_encode(myfile_path), mode='r',
-										encoding='utf_8', errors='replace'
+										_unicode_encode(myfile_path,
+										encoding=_encodings['fs'], errors='strict'),
+										mode='r', encoding=_encodings['content'], errors='replace'
 										).read()):
 										try:
 											os.unlink(mysettings["DISTDIR"]+"/"+myfile)
@@ -5285,13 +5298,13 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	for parent, dirs, files in os.walk(filesdir):
 		try:
 			parent = _unicode_decode(parent,
-				encoding=_fs_encoding, errors='strict')
+				encoding=_encodings['fs'], errors='strict')
 		except UnicodeDecodeError:
 			parent = _unicode_decode(parent,
-				encoding=_fs_encoding, errors='replace')
+				encoding=_encodings['fs'], errors='replace')
 			writemsg(_("!!! Path contains invalid "
 				"character(s) for encoding '%s': '%s'") \
-				% (_fs_encoding, parent), noiselevel=-1)
+				% (_encodings['fs'], parent), noiselevel=-1)
 			if strict:
 				return 0
 			continue
@@ -5301,16 +5314,16 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 		for f in files:
 			try:
 				f = _unicode_decode(f,
-					encoding=_fs_encoding, errors='strict')
+					encoding=_encodings['fs'], errors='strict')
 			except UnicodeDecodeError:
 				f = _unicode_decode(f,
-					encoding=_fs_encoding, errors='replace')
+					encoding=_encodings['fs'], errors='replace')
 				if f.startswith("."):
 					continue
 				f = os.path.join(parent, f)[len(filesdir) + 1:]
 				writemsg(_("!!! File name contains invalid "
 					"character(s) for encoding '%s': '%s'") \
-					% (_fs_encoding, f), noiselevel=-1)
+					% (_encodings['fs'], f), noiselevel=-1)
 				if strict:
 					return 0
 				continue
@@ -5433,8 +5446,9 @@ def _check_build_log(mysettings, out=None):
 	if logfile is None:
 		return
 	try:
-		f = codecs.open(_unicode_encode(logfile), mode='r',
-			encoding='utf_8', errors='replace')
+		f = codecs.open(_unicode_encode(logfile,
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['content'], errors='replace')
 	except EnvironmentError:
 		return
 
@@ -5581,14 +5595,14 @@ def _post_src_install_uid_fix(mysettings, out=None):
 		for parent, dirs, files in os.walk(destdir):
 			try:
 				parent = _unicode_decode(parent,
-					encoding=_merge_encoding, errors='strict')
+					encoding=_encodings['merge'], errors='strict')
 			except UnicodeDecodeError:
 				new_parent = _unicode_decode(parent,
-					encoding=_merge_encoding, errors='replace')
+					encoding=_encodings['merge'], errors='replace')
 				new_parent = _unicode_encode(new_parent,
-					encoding=_merge_encoding, errors='backslashreplace')
+					encoding=_encodings['merge'], errors='backslashreplace')
 				new_parent = _unicode_decode(new_parent,
-					encoding=_merge_encoding, errors='replace')
+					encoding=_encodings['merge'], errors='replace')
 				os.rename(parent, new_parent)
 				unicode_error = True
 				unicode_errors.append(new_parent[len(destdir):])
@@ -5597,16 +5611,16 @@ def _post_src_install_uid_fix(mysettings, out=None):
 			for fname in chain(dirs, files):
 				try:
 					fname = _unicode_decode(fname,
-						encoding=_merge_encoding, errors='strict')
+						encoding=_encodings['merge'], errors='strict')
 				except UnicodeDecodeError:
 					fpath = _os.path.join(
-						parent.encode(_merge_encoding), fname)
+						parent.encode(_encodings['merge']), fname)
 					new_fname = _unicode_decode(fname,
-						encoding=_merge_encoding, errors='replace')
+						encoding=_encodings['merge'], errors='replace')
 					new_fname = _unicode_encode(new_fname,
-						encoding=_merge_encoding, errors='backslashreplace')
+						encoding=_encodings['merge'], errors='backslashreplace')
 					new_fname = _unicode_decode(new_fname,
-						encoding=_merge_encoding, errors='replace')
+						encoding=_encodings['merge'], errors='replace')
 					new_fpath = os.path.join(parent, new_fname)
 					os.rename(fpath, new_fpath)
 					unicode_error = True
@@ -5631,7 +5645,7 @@ def _post_src_install_uid_fix(mysettings, out=None):
 				if mystat.st_gid == portage_gid:
 					mygid = inst_gid
 				apply_secpass_permissions(
-					_unicode_encode(fpath, encoding=_merge_encoding),
+					_unicode_encode(fpath, encoding=_encodings['merge']),
 					uid=myuid, gid=mygid,
 					mode=mystat.st_mode, stat_cached=mystat,
 					follow_links=False)
@@ -5663,7 +5677,7 @@ def _merge_unicode_error(errors):
 	msg = _("This package installs one or more file names containing "
 		"characters that do not match your current locale "
 		"settings. The current setting for filesystem encoding is '%s'.") \
-		% _merge_encoding
+		% _encodings['merge']
 	lines.extend(wrap(msg, 72))
 
 	lines.append("")
@@ -5671,7 +5685,7 @@ def _merge_unicode_error(errors):
 	lines.extend("\t" + x for x in errors)
 	lines.append("")
 
-	if _merge_encoding.lower().replace('_', '').replace('-', '') != 'utf8':
+	if _encodings['merge'].lower().replace('_', '').replace('-', '') != 'utf8':
 		msg = _("For best results, UTF-8 encoding is recommended. See "
 			"the Gentoo Linux Localization Guide for instructions "
 			"about how to configure your locale for UTF-8 encoding:")
@@ -5910,8 +5924,9 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 			pass
 		elif 'parse-eapi-ebuild-head' in mysettings.features:
 			eapi = _parse_eapi_ebuild_head(
-				codecs.open(_unicode_encode(ebuild_path),
-				mode='r', encoding='utf_8', errors='replace'))
+				codecs.open(_unicode_encode(ebuild_path,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['content'], errors='replace'))
 
 		if eapi is not None:
 			if not eapi_is_supported(eapi):
@@ -6076,8 +6091,9 @@ def _adjust_perms_msg(settings, msg):
 
 	if background and log_path is not None:
 		try:
-			log_file = codecs.open(_unicode_encode(log_path), mode='a',
-				encoding='utf_8', errors='replace')
+			log_file = codecs.open(_unicode_encode(log_path,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='a', encoding=_encodings['content'], errors='replace')
 		except IOError:
 			def write(msg):
 				pass
@@ -7126,7 +7142,7 @@ def _movefile(src, dest, **kwargs):
 			"mv '%s' '%s'" % (src, dest))
 
 def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
-		hardlink_candidates=None, encoding=_fs_encoding):
+		hardlink_candidates=None, encoding=_encodings['fs']):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
 	be preserved even when moving across filesystems.  Returns true on success and false on
 	failure.  Move is atomic."""
@@ -8408,8 +8424,9 @@ def deprecated_profile_check(settings=None):
 		DEPRECATED_PROFILE_FILE.lstrip(os.sep))
 	if not os.access(deprecated_profile_file, os.R_OK):
 		return False
-	dcontent = codecs.open(_unicode_encode(deprecated_profile_file), 
-		mode='r', encoding='utf_8', errors='replace').readlines()
+	dcontent = codecs.open(_unicode_encode(deprecated_profile_file,
+		encoding=_encodings['fs'], errors='strict'), 
+		mode='r', encoding=_encodings['content'], errors='replace').readlines()
 	writemsg(colorize("BAD", _("\n!!! Your current profile is "
 		"deprecated and not supported anymore.")) + "\n", noiselevel=-1)
 	if not dcontent:
