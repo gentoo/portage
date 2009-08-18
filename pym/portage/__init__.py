@@ -226,6 +226,7 @@ class _unicode_module_wrapper(object):
 import os as _os
 _os_overrides = {
 	id(_os.fdopen)        : _os.fdopen,
+	id(_os.popen)         : _os.popen,
 	id(_os.read)          : _os.read,
 	id(_os.system)        : _os.system,
 }
