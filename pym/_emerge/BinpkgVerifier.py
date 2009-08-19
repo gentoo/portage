@@ -7,6 +7,8 @@ from portage.util import writemsg
 import sys
 import portage
 from portage import os
+from portage import _encodings
+from portage import _unicode_encode
 import codecs
 
 class BinpkgVerifier(AsynchronousTask):
@@ -27,8 +29,9 @@ class BinpkgVerifier(AsynchronousTask):
 		stderr_orig = sys.stderr
 		log_file = None
 		if self.background and self.logfile is not None:
-			log_file = codecs.open(self.logfile, mode='a',
-				encoding='utf_8', errors='replace')
+			log_file = codecs.open(_unicode_encode(self.logfile,
+			encoding=_encodings['fs'], errors='strict'),
+				mode='a', encoding=_encodings['content'], errors='replace')
 		try:
 			if log_file is not None:
 				sys.stdout = log_file
