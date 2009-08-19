@@ -13,6 +13,8 @@ from _emerge.EbuildBuildDir import EbuildBuildDir
 from portage.util import writemsg
 import portage
 from portage import os
+from portage import _encodings
+from portage import _unicode_encode
 import codecs
 from portage.output import colorize
 class EbuildBuild(CompositeTask):
@@ -182,8 +184,9 @@ class EbuildBuild(CompositeTask):
 
 			log_path = self.settings.get("PORTAGE_LOG_FILE")
 			if log_path is not None:
-				log_file = codecs.open(log_path, mode='a',
-					encoding='utf_8', errors='replace')
+				log_file = codecs.open(_unicode_encode(log_path,
+					encoding=_encodings['fs'], errors='strict'),
+					mode='a', encoding=_encodings['content'], errors='replace')
 				try:
 					log_file.write(msg)
 				finally:

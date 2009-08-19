@@ -8,6 +8,8 @@ import sys
 from portage.cache.mappings import slot_dict_class
 import portage
 from portage import os
+from portage import _encodings
+from portage import _unicode_encode
 from itertools import izip
 import fcntl
 import codecs
@@ -38,8 +40,11 @@ class EbuildMetadataPhase(SubProcess):
 				os.path.basename(ebuild_path))
 		if eapi is None and \
 			'parse-eapi-ebuild-head' in settings.features:
-			eapi = portage._parse_eapi_ebuild_head(codecs.open(ebuild_path,
-				mode='r', encoding='utf_8', errors='replace'))
+			eapi = portage._parse_eapi_ebuild_head(
+				codecs.open(_unicode_encode(ebuild_path,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['repo.content'],
+				errors='replace'))
 
 		if eapi is not None:
 			if not portage.eapi_is_supported(eapi):
@@ -82,7 +87,7 @@ class EbuildMetadataPhase(SubProcess):
 		fd_pipes[self._metadata_fd] = slave_fd
 
 		self._raw_metadata = []
-		files.ebuild = os.fdopen(master_fd, 'r')
+		files.ebuild = os.fdopen(master_fd, 'rb')
 		self._reg_id = self.scheduler.register(files.ebuild.fileno(),
 			self._registered_events, self._output_handler)
 		self._registered = True
@@ -118,8 +123,8 @@ class EbuildMetadataPhase(SubProcess):
 	def _set_returncode(self, wait_retval):
 		SubProcess._set_returncode(self, wait_retval)
 		if self.returncode == os.EX_OK:
-			metadata_lines = u''.join(unicode(chunk,
-				encoding='utf_8', errors='replace')
+			metadata_lines = ''.join(unicode(chunk,
+				encoding=_encodings['repo.content'], errors='replace')
 				for chunk in self._raw_metadata).splitlines()
 			if len(portage.auxdbkeys) != len(metadata_lines):
 				# Don't trust bash's returncode if the

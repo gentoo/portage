@@ -7,6 +7,8 @@ from _emerge.EbuildBuildDir import EbuildBuildDir
 import sys
 import portage
 from portage import os
+from portage import _encodings
+from portage import _unicode_encode
 import codecs
 from portage.elog.messages import eerror
 
@@ -88,8 +90,9 @@ class EbuildFetcher(SpawnProcess):
 				elog_out = None
 				if self.logfile is not None:
 					if self.background:
-						elog_out = codecs.open(self.logfile, mode='a',
-							encoding='utf_8', errors='replace')
+						elog_out = codecs.open(_unicode_encode(self.logfile,
+							encoding=_encodings['fs'], errors='strict'),
+							mode='a', encoding=_encodings['content'], errors='replace')
 				msg = "Fetch failed for '%s'" % (self.pkg.cpv,)
 				if self.logfile is not None:
 					msg += ", Log file:"
