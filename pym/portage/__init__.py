@@ -127,6 +127,10 @@ _encodings = {
 	'repo.content'           : 'utf_8',
 }
 
+# This can happen if python is built with USE=build (stage 1).
+if _encodings['merge'] is None:
+	_encodings['merge'] = 'ascii'
+
 # Deprecated attributes. Instead use _encodings directly.
 _content_encoding = _encodings['content']
 _fs_encoding = _encodings['fs']
@@ -352,7 +356,7 @@ def _ensure_default_encoding():
 
 	default_fallback = 'utf_8'
 	default_encoding = sys.getdefaultencoding().lower().replace('-', '_')
-	filesystem_encoding = sys.getfilesystemencoding().lower().replace('-', '_')
+	filesystem_encoding = encodings['merge'].lower().replace('-', '_')
 	required_encodings = set(['ascii', 'utf_8'])
 	required_encodings.add(default_encoding)
 	required_encodings.add(filesystem_encoding)
