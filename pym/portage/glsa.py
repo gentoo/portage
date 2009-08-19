@@ -2,12 +2,16 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import os
+import codecs
 import sys
 import urllib
 import re
 import xml.dom.minidom
 
+from portage import os
+from portage import _encodings
+from portage import _unicode_decode
+from portage import _unicode_encode
 from portage.versions import pkgsplit, catpkgsplit, pkgcmp, best
 from portage.util import grabfile
 from portage.const import CACHE_PATH
@@ -435,6 +439,8 @@ class Glsa:
 		@type	portdbapi: portage.dbapi.porttree.portdbapi
 		@param	portdbapi: ebuild repository
 		"""
+		myid = _unicode_decode(myid,
+			encoding=_encodings['content'], errors='strict')
 		if re.match(r'\d{6}-\d{2}', myid):
 			self.type = "id"
 		elif os.path.exists(myid):
@@ -647,7 +653,11 @@ class Glsa:
 		@returns:	None
 		"""
 		if not self.isApplied():
-			checkfile = open(os.path.join(os.sep, self.config["ROOT"], CACHE_PATH.lstrip(os.sep), "glsa"), "a+")
+			checkfile = codecs.open(
+				_unicode_encode(os.path.join(os.sep, self.config["ROOT"],
+				CACHE_PATH.lstrip(os.sep), "glsa"),
+				encoding=_encodings['fs'], errors='strict'), 
+				mode='a+', encoding=_encodings['content'], errors='strict')
 			checkfile.write(self.nr+"\n")
 			checkfile.close()
 		return None
