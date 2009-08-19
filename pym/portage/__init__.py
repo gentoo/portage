@@ -356,7 +356,7 @@ def _ensure_default_encoding():
 
 	default_fallback = 'utf_8'
 	default_encoding = sys.getdefaultencoding().lower().replace('-', '_')
-	filesystem_encoding = encodings['merge'].lower().replace('-', '_')
+	filesystem_encoding = _encodings['merge'].lower().replace('-', '_')
 	required_encodings = set(['ascii', 'utf_8'])
 	required_encodings.add(default_encoding)
 	required_encodings.add(filesystem_encoding)
