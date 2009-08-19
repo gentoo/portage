@@ -124,6 +124,7 @@ _encodings = {
 	'content'                : 'utf_8',
 	'fs'                     : 'utf_8',
 	'merge'                  : sys.getfilesystemencoding(),
+	'repo.content'           : 'utf_8',
 }
 
 # Deprecated attributes. Instead use _encodings directly.

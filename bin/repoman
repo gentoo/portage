@@ -40,6 +40,8 @@ except ImportError:
 	import portage
 portage._disable_legacy_globals()
 from portage import os
+from portage import _encodings
+from portage import _unicode_encode
 
 try:
 	from repoman.checks import run_checks
@@ -600,8 +602,9 @@ for path in portdb.porttrees:
 
 	desc_path = os.path.join(path, 'profiles', 'profiles.desc')
 	try:
-		desc_file = codecs.open(desc_path, mode='r',
-			encoding='utf_8', errors='replace')
+		desc_file = codecs.open(_unicode_encode(desc_path,
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['repo.content'], errors='replace')
 	except EnvironmentError:
 		pass
 	else:
@@ -971,8 +974,9 @@ for x in scanlist:
 			continue
 		try:
 			line = 1
-			for l in codecs.open(os.path.join(checkdir, y), mode='r',
-				encoding='utf_8'):
+			for l in codecs.open(_unicode_encode(os.path.join(checkdir, y),
+				encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['repo.content']):
 				line +=1
 		except UnicodeDecodeError, ue:
 			stats["file.UTF8"] += 1
@@ -1553,7 +1557,9 @@ for x in scanlist:
 		full_path = os.path.join(repodir, relative_path)
 		try:
 			# All ebuilds should have utf_8 encoding.
-			f = codecs.open(full_path, mode='r', encoding='utf_8')
+			f = codecs.open(_unicode_encode(full_path,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['repo.content'])
 			try:
 				for check_name, e in run_checks(f, pkg):
 					stats[check_name] += 1
