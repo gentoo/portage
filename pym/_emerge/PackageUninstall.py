@@ -6,6 +6,8 @@ import codecs
 import logging
 import portage
 from portage import os
+from portage import _encodings
+from portage import _unicode_encode
 from _emerge.AsynchronousTask import AsynchronousTask
 from _emerge.unmerge import unmerge
 from _emerge.UninstallFailure import UninstallFailure
@@ -45,8 +47,9 @@ class PackageUninstall(AsynchronousTask):
 				portage.util.writemsg_level(msg,
 					level=level, noiselevel=noiselevel)
 
-			f = codecs.open(log_path, mode='a',
-				encoding='utf_8', errors='replace')
+			f = codecs.open(_unicode_encode(log_path,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='a', encoding=_encodings['content'], errors='replace')
 			try:
 				f.write(msg)
 			finally:
