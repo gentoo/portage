@@ -11,10 +11,14 @@ import weakref
 from itertools import izip
 import portage
 from portage import os
+from portage import _encodings
+from portage import _unicode_decode
+from portage import _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.elog.messages import eerror
 from portage.output import colorize, create_color_func, darkgreen, red
 bad = create_color_func("BAD")
+from portage.sets import SETPREFIX
 from portage.sets.base import InternalPackageSet
 from portage.util import writemsg, writemsg_level
 
@@ -471,10 +475,13 @@ class Scheduler(PollScheduler):
 
 	def _append_to_log_path(self, log_path, msg):
 
-		f = codecs.open(portage._unicode_encode(log_path), mode='a',
-			encoding='utf_8', errors='replace')
+		f = codecs.open(_unicode_encode(log_path,
+			encoding=_encodings['fs'], errors='strict'),
+			mode='a', encoding=_encodings['content'],
+			errors='backslashreplace')
 		try:
-			f.write(portage._unicode_decode(msg))
+			f.write(_unicode_decode(msg,
+				encoding=_encodings['content'], errors='replace'))
 		finally:
 			f.close()
 
@@ -486,8 +493,10 @@ class Scheduler(PollScheduler):
 		background = self._background
 
 		if background and log_path is not None:
-			log_file = codecs.open(portage._unicode_encode(log_path), mode='a',
-				encoding='utf_8', errors='replace')
+			log_file = codecs.open(_unicode_encode(log_path,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='a', encoding=_encodings['content'],
+				errors='backslashreplace')
 			out = log_file
 
 		try:
@@ -862,8 +871,9 @@ class Scheduler(PollScheduler):
 			log_path = self._locate_failure_log(failed_pkg)
 			if log_path is not None:
 				try:
-					log_file = codecs.open(portage._unicode_encode(log_path),
-						mode='r', encoding='utf_8', errors='replace')
+					log_file = codecs.open(_unicode_encode(log_path,
+					encoding=_encodings['fs'], errors='strict'),
+					mode='r', encoding=_encodings['content'], errors='replace')
 				except IOError:
 					pass
 
