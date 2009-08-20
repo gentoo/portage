@@ -7,6 +7,8 @@ import sys
 import time
 import portage
 from portage import os
+from portage import _encodings
+from portage import _unicode_encode
 from portage.data import secpass
 from portage.output import xtermTitle
 
@@ -25,8 +27,10 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 		xtermTitle(short_msg)
 	try:
 		file_path = os.path.join(_emerge_log_dir, 'emerge.log')
-		mylogfile = codecs.open(portage._unicode_encode(file_path), mode='a',
-			encoding='utf_8', errors='replace')
+		mylogfile = codecs.open(_unicode_encode(file_path,
+			encoding=_encodings['fs'], errors='strict'),
+			mode='a', encoding=_encodings['content'],
+			errors='backslashreplace')
 		portage.util.apply_secpass_permissions(file_path,
 			uid=portage.portage_uid, gid=portage.portage_gid,
 			mode=0660)
