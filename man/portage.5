@@ -143,6 +143,18 @@ settings, use \fB/etc/portage/profile/\fR (it supports all of the same file
 types that \fB/etc/make.profile/\fR does, except parent). Do NOT edit the
 settings in \fB/etc/make.profile/\fR because they WILL be lost with the next
 `emerge \-\-sync`.
+
+Any file in this directory, directories of other profiles or top-level
+"profiles" directory that begins with "package." or "use." can be more than
+just a flat file.  If it is a directory, then all the files in that directory
+will be sorted in ascending alphabetical order by file name and summed together
+as if it were a single file.
+
+.I Example:
+.nf
+/usr/portage/profiles/package.mask/removals
+/usr/portage/profiles/package.mask/testing
+.fi
 .RS
 .TP
 .BR deprecated
