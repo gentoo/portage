@@ -71,7 +71,7 @@ class JobStatusDisplay(object):
 	def _write(self, s):
 		if sys.hexversion < 0x3000000 and isinstance(s, unicode):
 			# avoid potential UnicodeEncodeError
-			s = s.encode(_encodings['stdio'], errors='backslashreplace')
+			s = s.encode(_encodings['stdio'], 'backslashreplace')
 		self.out.write(s)
 		self.out.flush()
 
