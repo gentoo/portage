@@ -63,7 +63,8 @@ def writemsg(mystr,noiselevel=0,fd=None):
 	if noiselevel <= noiselimit:
 		if sys.hexversion < 0x3000000:
 			# avoid potential UnicodeEncodeError
-			mystr = _unicode_encode(mystr)
+			mystr = _unicode_encode(mystr,
+				encoding=_encodings['stdio'], errors='backslashreplace')
 		fd.write(mystr)
 		fd.flush()
 

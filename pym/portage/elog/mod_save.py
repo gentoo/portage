@@ -6,6 +6,8 @@
 import codecs
 import time
 from portage import os
+from portage import _encodings
+from portage import _unicode_encode
 from portage.data import portage_uid, portage_gid
 from portage.util import ensure_dirs
 
@@ -19,8 +21,9 @@ def process(mysettings, key, logentries, fulltext):
 	ensure_dirs(elogdir, uid=portage_uid, gid=portage_gid, mode=02770)
 
 	elogfilename = elogdir+"/"+path+":"+time.strftime("%Y%m%d-%H%M%S", time.gmtime(time.time()))+".log"
-	elogfile = codecs.open(elogfilename, mode='w',
-		encoding='utf_8', errors='replace')
+	elogfile = codecs.open(_unicode_encode(elogfilename,
+		encoding=_encodings['fs'], errors='strict'),
+		mode='w', encoding=_encodings['content'], errors='backslashreplace')
 	elogfile.write(fulltext)
 	elogfile.close()
 

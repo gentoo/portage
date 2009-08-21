@@ -125,6 +125,7 @@ _encodings = {
 	'fs'                     : 'utf_8',
 	'merge'                  : sys.getfilesystemencoding(),
 	'repo.content'           : 'utf_8',
+	'stdio'                  : 'utf_8',
 }
 
 # This can happen if python is built with USE=build (stage 1).
