@@ -9,6 +9,7 @@ from portage.cache import cache_errors
 import errno
 import stat
 from portage import os
+from portage import _encodings
 from portage import _unicode_encode
 
 class database(fs_template.FsBased):
@@ -29,8 +30,10 @@ class database(fs_template.FsBased):
 	def _getitem(self, cpv):
 		fp = os.path.join(self.location, cpv)
 		try:
-			myf = codecs.open(_unicode_encode(fp),
-				mode='r', encoding='utf_8', errors='replace')
+			myf = codecs.open(_unicode_encode(fp,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['repo.content'],
+				errors='replace')
 			try:
 				d = self._parse_data(myf.readlines(), cpv)
 				if '_mtime_' not in d:
@@ -58,14 +61,18 @@ class database(fs_template.FsBased):
 		s = cpv.rfind("/")
 		fp = os.path.join(self.location,cpv[:s],".update.%i.%s" % (os.getpid(), cpv[s+1:]))
 		try:
-			myf = codecs.open(_unicode_encode(fp), mode='w',
-				encoding='utf_8', errors='replace')
+			myf = codecs.open(_unicode_encode(fp,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='w', encoding=_encodings['repo.content'],
+				errors='backslashreplace')
 		except (IOError, OSError), e:
 			if errno.ENOENT == e.errno:
 				try:
 					self._ensure_dirs(cpv)
-					myf = codecs.open(_unicode_encode(fp), mode='w',
-						encoding='utf_8', errors='replace')
+					myf = codecs.open(_unicode_encode(fp,
+						encoding=_encodings['fs'], errors='strict'),
+						mode='w', encoding=_encodings['repo.content'],
+						errors='backslashreplace')
 				except (OSError, IOError),e:
 					raise cache_errors.CacheCorruption(cpv, e)
 			else:

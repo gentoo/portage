@@ -6,6 +6,7 @@
 import errno
 import re
 from portage import os
+from portage import _encodings
 from portage import _unicode_encode
 from portage.cache import cache_errors, flat_hash
 import portage.eclass_cache
@@ -80,16 +81,18 @@ class database(flat_hash.database):
 
 		new_content = []
 		for k in self.auxdbkey_order:
-			new_content.append(values.get(k, u''))
-			new_content.append(u'\n')
+			new_content.append(values.get(k, ''))
+			new_content.append('\n')
 		for i in xrange(magic_line_count - len(self.auxdbkey_order)):
-			new_content.append(u'\n')
-		new_content = u''.join(new_content)
-		new_content = _unicode_encode(new_content)
+			new_content.append('\n')
+		new_content = ''.join(new_content)
+		new_content = _unicode_encode(new_content,
+			_encodings['repo.content'], errors='backslashreplace')
 
 		new_fp = os.path.join(self.location, cpv)
 		try:
-			f = open(_unicode_encode(new_fp), 'rb')
+			f = open(_unicode_encode(new_fp,
+				encoding=_encodings['fs'], errors='strict'), 'rb')
 		except EnvironmentError:
 			pass
 		else:
@@ -117,12 +120,14 @@ class database(flat_hash.database):
 		fp = os.path.join(self.location,cpv[:s],
 			".update.%i.%s" % (os.getpid(), cpv[s+1:]))
 		try:
-			myf = open(_unicode_encode(fp), 'wb')
+			myf = open(_unicode_encode(fp,
+				encoding=_encodings['fs'], errors='strict'), 'wb')
 		except EnvironmentError, e:
 			if errno.ENOENT == e.errno:
 				try:
 					self._ensure_dirs(cpv)
-					myf = open(_unicode_encode(fp), 'wb')
+					myf = open(_unicode_encode(fp,
+						encoding=_encodings['fs'], errors='strict'), 'wb')
 				except EnvironmentError, e:
 					raise cache_errors.CacheCorruption(cpv, e)
 			else:
