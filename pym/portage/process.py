@@ -10,7 +10,7 @@ import sys
 import traceback
 
 from portage import os
-from portage import _content_encoding
+from portage import _encodings
 from portage import _unicode_encode
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -184,8 +184,8 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	# Avoid a potential UnicodeEncodeError from os.execve().
 	env_bytes = {}
 	for k, v in env.iteritems():
-		env_bytes[_unicode_encode(k, encoding=_content_encoding)] = \
-			_unicode_encode(v, encoding=_content_encoding)
+		env_bytes[_unicode_encode(k, encoding=_encodings['content'])] = \
+			_unicode_encode(v, encoding=_encodings['content'])
 	env = env_bytes
 	del env_bytes
 

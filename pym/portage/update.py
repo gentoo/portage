@@ -8,8 +8,7 @@ import re
 import sys
 
 from portage import os
-from portage import _content_encoding
-from portage import _fs_encoding
+from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 import portage
@@ -72,8 +71,8 @@ def fixdbentries(update_iter, dbdir):
 	for myfile in [f for f in os.listdir(dbdir) if f not in ignored_dbentries]:
 		file_path = os.path.join(dbdir, myfile)
 		mydata[myfile] = codecs.open(_unicode_encode(file_path,
-			encoding=_fs_encoding, errors='strict'),
-			mode='r', encoding=_content_encoding,
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['repo.content'],
 			errors='replace').read()
 	updated_items = update_dbentries(update_iter, mydata)
 	for myfile, mycontent in updated_items.iteritems():
@@ -110,8 +109,9 @@ def grab_updates(updpath, prev_mtimes=None):
 		if file_path not in prev_mtimes or \
 		long(prev_mtimes[file_path]) != long(mystat.st_mtime):
 			content = codecs.open(_unicode_encode(file_path,
-				encoding=_fs_encoding, errors='strict'),
-				mode='r', encoding=_content_encoding, errors='replace').read()
+				encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['repo.content'], errors='replace'
+				).read()
 			update_data.append((file_path, mystat, content))
 	return update_data
 
@@ -172,7 +172,7 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 				for y in dirs:
 					try:
 						y = _unicode_decode(y,
-							encoding=_fs_encoding, errors='strict')
+							encoding=_encodings['fs'], errors='strict')
 					except UnicodeDecodeError:
 						dirs.remove(y)
 						continue
@@ -181,7 +181,7 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 				for y in files:
 					try:
 						y = _unicode_decode(y,
-							encoding=_fs_encoding, errors='strict')
+							encoding=_encodings['fs'], errors='strict')
 					except UnicodeDecodeError:
 						continue
 					if y.startswith("."):
@@ -195,8 +195,8 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 		try:
 			file_contents[x] = codecs.open(
 				_unicode_encode(os.path.join(abs_user_config, x),
-				encoding=_fs_encoding, errors='strict'),
-				mode='r', encoding=_content_encoding,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['content'],
 				errors='replace').readlines()
 		except IOError:
 			if file_contents.has_key(x):

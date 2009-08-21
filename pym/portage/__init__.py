@@ -132,11 +132,6 @@ _encodings = {
 if _encodings['merge'] is None:
 	_encodings['merge'] = 'ascii'
 
-# Deprecated attributes. Instead use _encodings directly.
-_content_encoding = _encodings['content']
-_fs_encoding = _encodings['fs']
-_merge_encoding = _encodings['merge']
-
 def _unicode_encode(s, encoding=_encodings['content'],
 	errors='backslashreplace'):
 	if isinstance(s, unicode):

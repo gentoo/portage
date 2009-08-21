@@ -7,8 +7,7 @@ import portage
 from portage.const import PRIVATE_PATH,PRELINK_BINARY,HASHING_BLOCKSIZE
 from portage.localization import _
 from portage import os
-from portage import _fs_encoding
-from portage import _merge_encoding
+from portage import _encodings
 from portage import _unicode_encode
 import errno
 import stat
@@ -29,7 +28,7 @@ def _generate_hash_function(hashtype, hashobject, origin="unknown"):
 		@return: The hash and size of the data
 		"""
 		f = open(_unicode_encode(filename,
-			encoding=_fs_encoding, errors='strict'), 'rb')
+			encoding=_encodings['fs'], errors='strict'), 'rb')
 		blocksize = HASHING_BLOCKSIZE
 		data = f.read(blocksize)
 		size = 0L
@@ -123,7 +122,7 @@ def perform_md5(x, calc_prelink=0):
 
 def _perform_md5_merge(x, **kwargs):
 	return perform_md5(_unicode_encode(x,
-		encoding=_merge_encoding, errors='strict'), **kwargs)
+		encoding=_encodings['merge'], errors='strict'), **kwargs)
 
 def perform_all(x, calc_prelink=0):
 	mydict = {}
@@ -221,7 +220,7 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 	# Make sure filename is encoded with the correct encoding before
 	# it is passed to spawn (for prelink) and/or the hash function.
 	filename = _unicode_encode(filename,
-		encoding=_fs_encoding, errors='strict')
+		encoding=_encodings['fs'], errors='strict')
 	myfilename = filename
 	prelink_tmpfile = None
 	try:

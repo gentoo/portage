@@ -13,7 +13,7 @@ import sys
 import time
 
 from portage import os
-from portage import _content_encoding
+from portage import _encodings
 from portage import _unicode_encode
 from portage.localization import _
 import portage
@@ -22,13 +22,13 @@ def create_message(sender, recipient, subject, body, attachments=None):
 
 	if sys.hexversion < 0x3000000:
 		sender = _unicode_encode(sender,
-			encoding=_content_encoding, errors='strict')
+			encoding=_encodings['content'], errors='strict')
 		recipient = _unicode_encode(recipient,
-			encoding=_content_encoding, errors='strict')
+			encoding=_encodings['content'], errors='strict')
 		subject = _unicode_encode(subject,
-			encoding=_content_encoding, errors='replace')
+			encoding=_encodings['content'], errors='backslashreplace')
 		body = _unicode_encode(body,
-			encoding=_content_encoding, errors='replace')
+			encoding=_encodings['content'], errors='backslashreplace')
 
 	if attachments == None:
 		mymessage = TextMessage(body)
@@ -41,7 +41,8 @@ def create_message(sender, recipient, subject, body, attachments=None):
 			elif isinstance(x, basestring):
 				if sys.hexversion < 0x3000000:
 					x = _unicode_encode(x,
-						encoding=_content_encoding, errors='replace')
+						encoding=_encodings['content'],
+						errors='backslashreplace')
 				mymessage.attach(TextMessage(x))
 			else:
 				raise portage.exception.PortageException(_("Can't handle type of attachment: %s") % type(x))
@@ -92,17 +93,17 @@ def send_mail(mysettings, message):
 
 	if sys.hexversion < 0x3000000:
 		myrecipient = _unicode_encode(myrecipient,
-			encoding=_content_encoding, errors='strict')
+			encoding=_encodings['content'], errors='strict')
 		mymailhost = _unicode_encode(mymailhost,
-			encoding=_content_encoding, errors='strict')
+			encoding=_encodings['content'], errors='strict')
 		mymailport = _unicode_encode(mymailport,
-			encoding=_content_encoding, errors='strict')
+			encoding=_encodings['content'], errors='strict')
 		myfrom = _unicode_encode(myfrom,
-			encoding=_content_encoding, errors='strict')
+			encoding=_encodings['content'], errors='strict')
 		mymailuser = _unicode_encode(mymailuser,
-			encoding=_content_encoding, errors='strict')
+			encoding=_encodings['content'], errors='strict')
 		mymailpasswd = _unicode_encode(mymailpasswd,
-			encoding=_content_encoding, errors='strict')
+			encoding=_encodings['content'], errors='strict')
 
 	# user wants to use a sendmail binary instead of smtp
 	if mymailhost[0] == os.sep and os.path.exists(mymailhost):

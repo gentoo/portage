@@ -12,8 +12,7 @@ import logging
 import os as _os
 import re
 from portage import os
-from portage import _content_encoding
-from portage import _fs_encoding
+from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.util import apply_secpass_permissions, ensure_dirs, \
@@ -100,7 +99,7 @@ class NewsManager(object):
 		news_dir = self._news_dir(repoid)
 		try:
 			news = _os.listdir(_unicode_encode(news_dir,
-				encoding=_fs_encoding, errors='strict'))
+				encoding=_encodings['fs'], errors='strict'))
 		except OSError:
 			return
 
@@ -120,10 +119,10 @@ class NewsManager(object):
 			for itemid in news:
 				try:
 					itemid = _unicode_decode(itemid,
-						encoding=_fs_encoding, errors='strict')
+						encoding=_encodings['fs'], errors='strict')
 				except UnicodeDecodeError:
 					itemid = _unicode_decode(itemid,
-						encoding=_fs_encoding, errors='replace')
+						encoding=_encodings['fs'], errors='replace')
 					writemsg_level(
 						"!!! Invalid encoding in news item name: '%s'\n" % \
 						itemid, level=logging.ERROR, noiselevel=-1)
@@ -253,8 +252,9 @@ class NewsItem(object):
 
 	def parse(self):
 		lines = codecs.open(_unicode_encode(self.path,
-			encoding=_fs_encoding, errors='strict'),
-			mode='r', encoding=_content_encoding, errors='replace').readlines()
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['content'], errors='replace'
+			).readlines()
 		self.restrictions = {}
 		invalids = []
 		for i, line in enumerate(lines):

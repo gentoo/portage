@@ -10,7 +10,7 @@ from portage.cache import fs_template
 from portage.versions import catsplit
 from portage import cpv_getkey
 from portage import os
-from portage import _fs_encoding
+from portage import _encoding
 from portage import _unicode_decode
 import xattr
 from errno import ENODATA,ENOSPC,E2BIG
@@ -159,7 +159,7 @@ class database(fs_template.FsBased):
 			for file in files:
 				try:
 					file = _unicode_decode(file,
-						encoding=_fs_encoding, errors='strict')
+						encoding=_encodings['fs'], errors='strict')
 				except UnicodeDecodeError:
 					continue
 				if file[-7:] == '.ebuild':
