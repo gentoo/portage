@@ -277,20 +277,20 @@ install_qa_check() {
 		fi
 
 		# Check for shared libraries lacking NEEDED entries
-		qa_var="QA_NEEDED_${ARCH/-/_}"
-		eval "[[ -n \${!qa_var} ]] && QA_NEEDED=(\"\${${qa_var}[@]}\")"
+		qa_var="QA_DT_NEEDED_${ARCH/-/_}"
+		eval "[[ -n \${!qa_var} ]] && QA_DT_NEEDED=(\"\${${qa_var}[@]}\")"
 		f=$(scanelf -ByF '%n %p' "${D}"{,usr/}lib*.so* | gawk '$2 == "" { print }' | sed -e "s:^[[:space:]]${D}:/:")
 		if [[ -n ${f} ]] ; then
 			echo "${f}" > "${T}"/scanelf-missing-NEEDED.log
-			if [[ "${QA_STRICT_NEEDED-unset}" == unset ]] ; then
-				if [[ ${#QA_NEEDED[@]} -gt 1 ]] ; then
-					for x in "${QA_NEEDED[@]}" ; do
+			if [[ "${QA_STRICT_DT_NEEDED-unset}" == unset ]] ; then
+				if [[ ${#QA_DT_NEEDED[@]} -gt 1 ]] ; then
+					for x in "${QA_DT_NEEDED[@]}" ; do
 						sed -e "s#^/${x#/}\$##" -i "${T}"/scanelf-missing-NEEDED.log
 					done
 				else
 					local shopts=$-
 					set -o noglob
-					for x in ${QA_NEEDED} ; do
+					for x in ${QA_DT_NEEDED} ; do
 						sed -e "s#^/${x#/}\$##" -i "${T}"/scanelf-missing-NEEDED.log
 					done
 					set +o noglob
