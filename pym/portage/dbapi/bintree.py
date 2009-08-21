@@ -21,6 +21,7 @@ from portage.localization import _
 
 from portage import dep_expand, listdir, _check_distfile, _movefile
 from portage import os
+from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 
@@ -74,7 +75,8 @@ class bindbapi(fakedbapi):
 			def getitem(k):
 				v = tbz2.getfile(k)
 				if v is not None:
-					v = _unicode_decode(v)
+					v = _unicode_decode(v,
+						encoding=_encodings['repo.content'], errors='replace')
 				return v
 		else:
 			getitem = self.bintree._remotepkgs[mycpv].get
@@ -109,8 +111,10 @@ class bindbapi(fakedbapi):
 		mydata = mytbz2.get_data()
 
 		for k, v in values.iteritems():
-			k = _unicode_encode(k)
-			v = _unicode_encode(v)
+			k = _unicode_encode(k,
+				encoding=_encodings['repo.content'], errors='backslashreplace')
+			v = _unicode_encode(v,
+				encoding=_encodings['repo.content'], errors='backslashreplace')
 			mydata[k] = v
 
 		for k, v in mydata.items():
@@ -652,8 +656,10 @@ class binarytree(object):
 				urldata[1] + urldata[2], "Packages")
 			pkgindex = self._new_pkgindex()
 			try:
-				f = codecs.open(_unicode_encode(pkgindex_file),
-					encoding='utf_8', errors='replace')
+				f = codecs.open(_unicode_encode(pkgindex_file,
+					encoding=_encodings['fs'], errors='strict'),
+					mode='r', encoding=_encodings['repo.content'],
+					errors='replace')
 				try:
 					pkgindex.read(f)
 				finally:
@@ -1094,8 +1100,10 @@ class binarytree(object):
 	def _load_pkgindex(self):
 		pkgindex = self._new_pkgindex()
 		try:
-			f = codecs.open(_unicode_encode(self._pkgindex_file), 
-				encoding='utf_8', errors='replace')
+			f = codecs.open(_unicode_encode(self._pkgindex_file,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['repo.content'],
+				errors='replace')
 		except EnvironmentError:
 			pass
 		else:
