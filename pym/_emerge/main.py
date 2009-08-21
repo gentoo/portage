@@ -52,7 +52,7 @@ options=[
 "--nospinner",    "--oneshot",
 "--onlydeps",     "--pretend",
 "--quiet",        "--resume",
-"--searchdesc",   "--selective",
+"--searchdesc",
 "--skipfirst",
 "--tree",
 "--update",
@@ -377,6 +377,7 @@ def insert_optional_args(args):
 		'--getbinpkgonly'        : ('n',),
 		'--jobs'       : valid_integers,
 		'--root-deps'  : ('rdeps',),
+		'--selective'            : ('n',),
 		'--usepkg'               : ('n',),
 		'--usepkgonly'           : ('n',),
 	}
@@ -584,6 +585,13 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices" :("True", "rdeps")
 		},
 
+		"--selective": {
+			"help"    : "similar to the --noreplace but does not take " + \
+			            "precedence over options such as --newuse",
+			"type"    : "choice",
+			"choices" : ("True", "n")
+		},
+
 		"--usepkg": {
 			"shortopt" : "-k",
 			"help"     : "use binary packages",
@@ -655,6 +663,9 @@ def parse_opts(tmpcmdline, silent=False):
 
 	if myoptions.root_deps == "True":
 		myoptions.root_deps = True
+
+	if myoptions.selective == "True":
+		myoptions.selective = True
 
 	if myoptions.deep is not None:
 		deep = None

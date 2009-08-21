@@ -2,6 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import logging
+from portage.util import writemsg_level
+
 def create_depgraph_params(myopts, myaction):
 	#configure emerge engine parameters
 	#
@@ -23,7 +26,7 @@ def create_depgraph_params(myopts, myaction):
 		"--newuse" in myopts or \
 		"--reinstall" in myopts or \
 		"--noreplace" in myopts or \
-		"--selective" in myopts:
+		myopts.get("--selective", "n") != "n":
 		myparams["selective"] = True
 	if "--emptytree" in myopts:
 		myparams["empty"] = True
@@ -34,5 +37,15 @@ def create_depgraph_params(myopts, myaction):
 		myparams["deep"] = myopts["--deep"]
 	if "--complete-graph" in myopts:
 		myparams["complete"] = True
+	if myopts.get("--selective") == "n":
+		# --selective=n can be used to remove selective
+		# behavior that may have been implied by some
+		# other option like --update.
+		myparams.pop("selective", None)
+
+	if '--debug' in myopts:
+		writemsg_level('\n\nmyparams %s\n\n' % myparams,
+			noiselevel=-1, level=logging.DEBUG)
+
 	return myparams
 
