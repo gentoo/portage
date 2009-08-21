@@ -45,7 +45,6 @@ options=[
 "--emptytree",
 "--fetchonly",    "--fetch-all-uri",
 "--ignore-default-opts",
-"--keep-going",
 "--noconfmem",
 "--newuse",
 "--nodeps",       "--noreplace",
@@ -376,6 +375,7 @@ def insert_optional_args(args):
 		'--getbinpkg'            : ('n',),
 		'--getbinpkgonly'        : ('n',),
 		'--jobs'       : valid_integers,
+		'--keep-going'           : ('n',),
 		'--root-deps'  : ('rdeps',),
 		'--selective'            : ('n',),
 		'--usepkg'               : ('n',),
@@ -533,6 +533,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"action" : "store"
 		},
 
+		"--keep-going": {
+			"help"    : "continue as much as possible after an error",
+			"type"    : "choice",
+			"choices" : ("True", "n")
+		},
+
 		"--load-average": {
 
 			"help"   :"Specifies that no new builds should be started " + \
@@ -660,6 +666,11 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.getbinpkgonly = True
 	else:
 		myoptions.getbinpkgonly = None
+
+	if myoptions.keep_going in ("True",):
+		myoptions.keep_going = True
+	else:
+		myoptions.keep_going = None
 
 	if myoptions.root_deps == "True":
 		myoptions.root_deps = True

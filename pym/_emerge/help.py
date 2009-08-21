@@ -360,7 +360,7 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print desc_indent + line
 		print
-		print "       "+green("--keep-going")
+		print "       " + green("--keep-going") + "[=%s]" % turquoise("n")
 		desc = "Continue as much as possible after " + \
 			"an error. When an error occurs, " + \
 			"dependencies are recalculated for " + \
