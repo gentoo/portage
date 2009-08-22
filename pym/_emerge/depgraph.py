@@ -4370,7 +4370,9 @@ class depgraph(object):
 			print
 			print counters
 			if show_repos:
-				writemsg_stdout(str(repo_display), noiselevel=-1)
+				# In python-2.x, str() can trigger a UnicodeEncodeError here,
+				# so call __str__() directly.
+				writemsg_stdout(repo_display.__str__(), noiselevel=-1)
 
 		if "--changelog" in self._frozen_config.myopts:
 			writemsg_stdout('\n', noiselevel=-1)
