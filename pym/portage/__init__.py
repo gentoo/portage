@@ -2065,7 +2065,7 @@ class config(object):
 				else:
 					self.punmaskdict[mycatpkg]=[x]
 
-			pkgprovidedlines = [grabfile(os.path.join(x, "package.provided")) for x in self.profiles]
+			pkgprovidedlines = [grabfile(os.path.join(x, "package.provided"), recursive=1) for x in self.profiles]
 			pkgprovidedlines = stack_lists(pkgprovidedlines, incremental=1)
 			has_invalid_data = False
 			for x in range(len(pkgprovidedlines)-1, -1, -1):
