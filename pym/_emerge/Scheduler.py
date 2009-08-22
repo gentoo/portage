@@ -1360,7 +1360,7 @@ class Scheduler(PollScheduler):
 			if pkg.installed:
 				merge = PackageMerge(merge=task)
 				merge.addExitListener(self._merge_exit)
-				self._task_queues.merge.add(merge)
+				self._task_queues.merge.addFront(merge)
 
 			elif pkg.built:
 				self._jobs += 1
