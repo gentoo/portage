@@ -1164,12 +1164,22 @@ class Scheduler(PollScheduler):
 		self._prune_digraph()
 
 		chosen_pkg = None
-		later = set(self._pkg_queue)
+
+		# Prefer uninstall operations when available.
+		graph = self._digraph
 		for pkg in self._pkg_queue:
-			later.remove(pkg)
-			if not self._dependent_on_scheduled_merges(pkg, later):
+			if pkg.operation == 'uninstall' and \
+				not graph.child_nodes(pkg):
 				chosen_pkg = pkg
 				break
+
+		if chosen_pkg is None:
+			later = set(self._pkg_queue)
+			for pkg in self._pkg_queue:
+				later.remove(pkg)
+				if not self._dependent_on_scheduled_merges(pkg, later):
+					chosen_pkg = pkg
+					break
 
 		if chosen_pkg is not None:
 			self._pkg_queue.remove(chosen_pkg)
