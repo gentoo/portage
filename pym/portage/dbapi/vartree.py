@@ -249,6 +249,21 @@ class LinkageMap(object):
 
 			os = _os_merge
 
+			try:
+				_unicode_encode(obj,
+					encoding=_encodings['merge'], errors='strict')
+			except UnicodeEncodeError:
+				# The package appears to have been merged with a 
+				# different value of sys.getfilesystemencoding(),
+				# so fall back to utf_8 if appropriate.
+				try:
+					_unicode_encode(obj,
+						encoding=_encodings['fs'], errors='strict')
+				except UnicodeEncodeError:
+					pass
+				else:
+					os = portage.os
+
 			abs_path = os.path.join(root, obj.lstrip(os.sep))
 			try:
 				object_stat = os.stat(abs_path)
