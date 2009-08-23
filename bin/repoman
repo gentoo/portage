@@ -302,6 +302,7 @@ qahelp={
 	"variable.invalidchar":"A variable contains an invalid character that is not part of the ASCII character set",
 	"variable.readonly":"Assigning a readonly variable",
 	"LIVEVCS.stable":"This ebuild is a live checkout from a VCS but has stable keywords.",
+	"LIVEVCS.unmasked":"This ebuild is a live checkout from a VCS but has keywords and is not masked in the global package.mask.",
 	"IUSE.invalid":"This ebuild has a variable in IUSE that is not in the use.desc or use.local.desc file",
 	"IUSE.undefined":"This ebuild does not define IUSE (style guideline says to define IUSE even when empty)",
 	"LICENSE.invalid":"This ebuild is listing a license that doesnt exist in portages license/ dir.",
@@ -362,7 +363,8 @@ qawarnings = set((
 "virtual.unavailable",
 "usage.obsolete",
 "upstream.workaround",
-"LIVEVCS.stable"
+"LIVEVCS.stable",
+"LIVEVCS.unmasked",
 ))
 
 non_ascii_re = re.compile(r'[^\x00-\x7f]')
@@ -570,6 +572,7 @@ valid_profile_types = frozenset(['dev', 'exp', 'stable'])
 kwlist = set()
 liclist = set()
 uselist = set()
+global_pmasklines = []
 
 for path in portdb.porttrees:
 	try:
@@ -599,6 +602,9 @@ for path in portdb.porttrees:
 				x = x.split()
 				if x:
 					uselist.add(use_prefix + x[0])
+
+	global_pmasklines.append(portage.util.grabfile_package(
+		os.path.join(path, 'profiles', 'package.mask'), recursive=1))
 
 	desc_path = os.path.join(path, 'profiles', 'profiles.desc')
 	try:
@@ -634,6 +640,21 @@ for path in portdb.porttrees:
 
 repoman_settings['PORTAGE_ARCHLIST'] = ' '.join(sorted(kwlist))
 repoman_settings.backup_changes('PORTAGE_ARCHLIST')
+
+global_pmasklines = portage.util.stack_lists(global_pmasklines, incremental=1)
+global_pmaskdict = {}
+for x in global_pmasklines:
+	global_pmaskdict.setdefault(portage.dep_getkey(x), []).append(x)
+del global_pmasklines
+
+def has_global_mask(pkg):
+	mask_atoms = global_pmaskdict.get(pkg.cp)
+	if mask_atoms:
+		pkg_list = [pkg]
+		for x in mask_atoms:
+			if portage.dep.match_from_list(x, pkg_list):
+				return x
+	return None
 
 # Ensure that profile sub_path attributes are unique. Process in reverse order
 # so that profiles with duplicate sub_path from overlays will override
@@ -1346,6 +1367,10 @@ for x in scanlist:
 					x + "/" + y + ".ebuild with stable keywords:%s " % \
 						bad_stable_keywords)
 			del bad_stable_keywords
+
+			if keywords and not has_global_mask(pkg):
+				stats["LIVEVCS.unmasked"] += 1
+				fails["LIVEVCS.unmasked"].append(relative_path)
 
 		if options.ignore_arches:
 			arches = [[repoman_settings["ARCH"], repoman_settings["ARCH"],
