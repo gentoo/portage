@@ -2,6 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import time
+
+from portage import os
 from portage.versions import catpkgsplit, catsplit, pkgcmp, best
 from portage.dep import Atom
 from portage.localization import _
@@ -280,7 +283,6 @@ class AgeSet(EverythingSet):
 		self._age = age
 
 	def _filter(self, atom):
-		import time, os
 	
 		cpv = self._db.match(atom)[0]
 		path = self._db.getpath(cpv, filename="COUNTER")

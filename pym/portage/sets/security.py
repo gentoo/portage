@@ -2,9 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import os
 import portage.glsa as glsa
-from portage.util import grabfile, write_atomic
 from portage.sets.base import PackageSet
 from portage.versions import catpkgsplit, pkgcmp
 from portage.sets import get_boolean

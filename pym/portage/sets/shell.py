@@ -3,8 +3,9 @@
 # $Id$
 
 import subprocess
-import os
 
+from portage import os
+from portage import _unicode_decode
 from portage.sets.base import PackageSet
 from portage.sets import SetConfigError
 
@@ -35,8 +36,7 @@ class CommandOutputSet(PackageSet):
 		pipe = subprocess.Popen(self._command, stdout=subprocess.PIPE, shell=True)
 		stdout, stderr = pipe.communicate()
 		if pipe.wait() == os.EX_OK:
-			self._setAtoms(unicode(stdout,
-				encoding='utf_8', errors='replace').splitlines())
+			self._setAtoms(_unicode_decode(stdout).splitlines())
 
 	def singleBuilder(self, options, settings, trees):
 		if not "command" in options:

@@ -73,6 +73,7 @@ try:
 		'portage.getbinpkg',
 		'portage.locks',
 		'portage.locks:lockdir,lockfile,unlockdir,unlockfile',
+		'portage.mail',
 		'portage.output',
 		'portage.output:bold,colorize',
 		'portage.process',
@@ -118,12 +119,20 @@ except ImportError, e:
 	sys.stderr.write("    "+str(e)+"\n\n")
 	raise
 
-def _unicode_encode(s, encoding='utf_8', errors='replace'):
+# Assume utf_8 encoding for content of all files.
+_content_encoding = 'utf_8'
+
+# Assume utf_8 fs encoding everywhere except in merge code.
+_fs_encoding = 'utf_8'
+
+_merge_encoding = sys.getfilesystemencoding()
+
+def _unicode_encode(s, encoding=_content_encoding, errors='replace'):
 	if isinstance(s, unicode):
 		s = s.encode(encoding, errors)
 	return s
 
-def _unicode_decode(s, encoding='utf_8', errors='replace'):
+def _unicode_decode(s, encoding=_content_encoding, errors='replace'):
 	if not isinstance(s, unicode):
 		if sys.hexversion < 0x3000000:
 			if isinstance(s, basestring):
@@ -197,8 +206,6 @@ class _unicode_module_wrapper(object):
 			result = _unicode_func_wrapper(result, encoding=encoding)
 		return result
 
-_merge_encoding = sys.getfilesystemencoding()
-
 import os as _os
 _os_overrides = {
 	id(_os.fdopen)        : _os.fdopen,
@@ -206,20 +213,22 @@ _os_overrides = {
 	id(_os.system)        : _os.system,
 }
 
-os = _unicode_module_wrapper(_os, overrides=_os_overrides)
+os = _unicode_module_wrapper(_os, overrides=_os_overrides,
+	encoding=_fs_encoding)
 _os_merge = _unicode_module_wrapper(_os,
 	encoding=_merge_encoding, overrides=_os_overrides)
 
 import shutil as _shutil
-shutil = _unicode_module_wrapper(_shutil)
+shutil = _unicode_module_wrapper(_shutil, encoding=_fs_encoding)
 
 # Imports below this point rely on the above unicode wrapper definitions.
 _selinux = None
 selinux = None
-_selinux_merge = _unicode_module_wrapper(_selinux, encoding=_merge_encoding)
+_selinux_merge = None
 try:
 	import portage._selinux
-	selinux = _unicode_module_wrapper(_selinux)
+	selinux = _unicode_module_wrapper(_selinux, encoding=_fs_encoding)
+	_selinux_merge = _unicode_module_wrapper(_selinux, encoding=_merge_encoding)
 except OSError, e:
 	sys.stderr.write("!!! SELinux not loaded: %s\n" % str(e))
 	del e
@@ -5310,12 +5319,37 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	filesdir = os.path.join(pkgdir, "files")
 
 	for parent, dirs, files in os.walk(filesdir):
-		parent = _unicode_decode(parent)
+		try:
+			parent = _unicode_decode(parent,
+				encoding=_fs_encoding, errors='strict')
+		except UnicodeDecodeError:
+			parent = _unicode_decode(parent,
+				encoding=_fs_encoding, errors='replace')
+			writemsg("!!! Path contains invalid " + \
+				"character(s) for encoding '%s': '%s'" \
+				% (_fs_encoding, parent), noiselevel=-1)
+			if strict:
+				return 0
+			continue
 		for d in dirs:
 			if d.startswith(".") or d == "CVS":
 				dirs.remove(d)
 		for f in files:
-			f = _unicode_decode(f)
+			try:
+				f = _unicode_decode(f,
+					encoding=_fs_encoding, errors='strict')
+			except UnicodeDecodeError:
+				f = _unicode_decode(f,
+					encoding=_fs_encoding, errors='replace')
+				if f.startswith("."):
+					continue
+				f = os.path.join(parent, f)[len(filesdir) + 1:]
+				writemsg("!!! File name contains invalid " + \
+					"character(s) for encoding '%s': '%s'" \
+					% (_fs_encoding, f), noiselevel=-1)
+				if strict:
+					return 0
+				continue
 			if f.startswith("."):
 				continue
 			f = os.path.join(parent, f)[len(filesdir) + 1:]
@@ -5645,33 +5679,9 @@ def _post_src_install_uid_fix(mysettings, out=None):
 			break
 
 	if unicode_errors:
-		from textwrap import wrap
 		from portage.elog.messages import eerror
-		def _eerror(l):
+		for l in _merge_unicode_error(unicode_errors):
 			eerror(l, phase='install', key=mysettings.mycpv, out=out)
-
-		msg = "This package installs one or more file names containing " + \
-			"characters that do not match your current locale " + \
-			"settings. The current setting for filesystem encoding is '%s'." \
-			% _merge_encoding
-		for l in wrap(msg, 72):
-			_eerror(l)
-
-		_eerror("")
-		for x in unicode_errors:
-			_eerror("\t" + x)
-		_eerror("")
-
-		if _merge_encoding.lower().replace('_', '').replace('-', '') != 'utf8':
-			msg = "For best results, UTF-8 encoding is recommended. See " + \
-				"the Gentoo Linux Localization Guide for instructions " + \
-				"about how to configure your locale for UTF-8 encoding:"
-			for l in wrap(msg, 72):
-				_eerror(l)
-			_eerror("")
-			_eerror("\t" + \
-				"http://www.gentoo.org/doc/en/guide-localization.xml")
-			_eerror("")
 
 	open(_unicode_encode(os.path.join(mysettings['PORTAGE_BUILDDIR'],
 		'build-info', 'SIZE')), 'w').write(str(size) + '\n')
@@ -5681,6 +5691,33 @@ def _post_src_install_uid_fix(mysettings, out=None):
 		os.system("mtree -e -p %s -U -k flags < %s > /dev/null" % \
 			(_shell_quote(mysettings["D"]),
 			_shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree"))))
+
+def _merge_unicode_error(errors):
+	from textwrap import wrap
+	lines = []
+
+	msg = "This package installs one or more file names containing " + \
+		"characters that do not match your current locale " + \
+		"settings. The current setting for filesystem encoding is '%s'." \
+		% _merge_encoding
+	lines.extend(wrap(msg, 72))
+
+	lines.append("")
+	errors.sort()
+	lines.extend("\t" + x for x in errors)
+	lines.append("")
+
+	if _merge_encoding.lower().replace('_', '').replace('-', '') != 'utf8':
+		msg = "For best results, UTF-8 encoding is recommended. See " + \
+			"the Gentoo Linux Localization Guide for instructions " + \
+			"about how to configure your locale for UTF-8 encoding:"
+		lines.extend(wrap(msg, 72))
+		lines.append("")
+		lines.append("\t" + \
+			"http://www.gentoo.org/doc/en/guide-localization.xml")
+		lines.append("")
+
+	return lines
 
 def _post_pkg_preinst_cmd(mysettings):
 	"""
@@ -7129,7 +7166,7 @@ def _movefile(src, dest, **kwargs):
 			"mv '%s' '%s'" % (src, dest))
 
 def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
-		hardlink_candidates=None, encoding='utf_8'):
+		hardlink_candidates=None, encoding=_fs_encoding):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
 	be preserved even when moving across filesystems.  Returns true on success and false on
 	failure.  Move is atomic."""

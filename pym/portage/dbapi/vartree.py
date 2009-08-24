@@ -38,9 +38,11 @@ from portage import listdir, dep_expand, digraph, flatten, key_expand, \
 
 # This is a special version of the os module, wrapped for unicode support.
 from portage import os
+from portage import _fs_encoding
 from portage import _merge_encoding
 from portage import _os_merge
 from portage import _selinux_merge
+from portage import _unicode_decode
 from portage import _unicode_encode
 
 from portage.cache.mappings import slot_dict_class
@@ -3074,6 +3076,20 @@ class dblink(object):
 					scheduler.scheduleYield()
 
 				obj = normalize_path(objkey)
+				if os is _os_merge:
+					try:
+						_unicode_encode(obj, encoding=_merge_encoding, errors='strict')
+					except UnicodeEncodeError:
+						# The package appears to have been merged with a 
+						# different value of sys.getfilesystemencoding(),
+						# so fall back to utf_8 if appropriate.
+						try:
+							_unicode_encode(obj, encoding=_fs_encoding, errors='strict')
+						except UnicodeEncodeError:
+							pass
+						else:
+							os = portage.os
+
 				file_data = pkgfiles[objkey]
 				file_type = file_data[0]
 				statobj = None
@@ -3991,30 +4007,81 @@ class dblink(object):
 					max_dblnk = dblnk
 			self._installed_instance = max_dblnk
 
-		myfilelist = []
-		mylinklist = []
-		paths_with_newlines = []
-		srcroot_len = len(srcroot)
-		def onerror(e):
-			raise
-		for parent, dirs, files in os.walk(srcroot, onerror=onerror):
-			parent = portage._unicode_decode(parent, encoding=_merge_encoding)
-			for f in files:
-				f = portage._unicode_decode(f, encoding=_merge_encoding)
-				file_path = os.path.join(parent, f)
-				relative_path = file_path[srcroot_len:]
+		# We check for unicode encoding issues after src_install. However,
+		# the check must be repeated here for binary packages (it's
+		# inexpensive since we call os.walk() here anyway).
+		unicode_errors = []
 
-				if "\n" in relative_path:
-					paths_with_newlines.append(relative_path)
+		while True:
 
-				file_mode = os.lstat(file_path).st_mode
-				if stat.S_ISREG(file_mode):
-					myfilelist.append(relative_path)
-				elif stat.S_ISLNK(file_mode):
-					# Note: os.walk puts symlinks to directories in the "dirs"
-					# list and it does not traverse them since that could lead
-					# to an infinite recursion loop.
-					mylinklist.append(relative_path)
+			unicode_error = False
+
+			myfilelist = []
+			mylinklist = []
+			paths_with_newlines = []
+			srcroot_len = len(srcroot)
+			def onerror(e):
+				raise
+			for parent, dirs, files in os.walk(srcroot, onerror=onerror):
+				try:
+					parent = _unicode_decode(parent,
+						encoding=_merge_encoding, errors='strict')
+				except UnicodeDecodeError:
+					new_parent = _unicode_decode(parent,
+						encoding=_merge_encoding, errors='replace')
+					new_parent = _unicode_encode(new_parent,
+						encoding=_merge_encoding, errors='backslashreplace')
+					new_parent = _unicode_decode(new_parent,
+						encoding=_merge_encoding, errors='replace')
+					os.rename(parent, new_parent)
+					unicode_error = True
+					unicode_errors.append(new_parent[srcroot_len:])
+					break
+
+				for fname in files:
+					try:
+						fname = _unicode_decode(fname,
+							encoding=_merge_encoding, errors='strict')
+					except UnicodeDecodeError:
+						fpath = portage._os.path.join(
+							parent.encode(_merge_encoding), fname)
+						new_fname = _unicode_decode(fname,
+							encoding=_merge_encoding, errors='replace')
+						new_fname = _unicode_encode(new_fname,
+							encoding=_merge_encoding, errors='backslashreplace')
+						new_fname = _unicode_decode(new_fname,
+							encoding=_merge_encoding, errors='replace')
+						new_fpath = os.path.join(parent, new_fname)
+						os.rename(fpath, new_fpath)
+						unicode_error = True
+						unicode_errors.append(new_fpath[srcroot_len:])
+						fname = new_fname
+						fpath = new_fpath
+					else:
+						fpath = os.path.join(parent, fname)
+
+					relative_path = fpath[srcroot_len:]
+
+					if "\n" in relative_path:
+						paths_with_newlines.append(relative_path)
+
+					file_mode = os.lstat(fpath).st_mode
+					if stat.S_ISREG(file_mode):
+						myfilelist.append(relative_path)
+					elif stat.S_ISLNK(file_mode):
+						# Note: os.walk puts symlinks to directories in the "dirs"
+						# list and it does not traverse them since that could lead
+						# to an infinite recursion loop.
+						mylinklist.append(relative_path)
+
+				if unicode_error:
+					break
+
+			if not unicode_error:
+				break
+
+		if unicode_errors:
+			eerror(portage._merge_unicode_error(unicode_errors))
 
 		if paths_with_newlines:
 			msg = []
