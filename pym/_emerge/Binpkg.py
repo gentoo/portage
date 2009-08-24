@@ -22,11 +22,8 @@ else:
 	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
 import portage
 from portage.output import colorize
-<<<<<<< .working
 from portage.const import EPREFIX
-=======
 
->>>>>>> .merge-right.r13998
 class Binpkg(CompositeTask):
 
 	__slots__ = ("find_blockers",
