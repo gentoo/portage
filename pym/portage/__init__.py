@@ -126,16 +126,12 @@ _encodings = {
 	'fs'                     : 'utf_8',
 	'merge'                  : sys.getfilesystemencoding(),
 	'repo.content'           : 'utf_8',
+	'stdio'                  : 'utf_8',
 }
 
 # This can happen if python is built with USE=build (stage 1).
 if _encodings['merge'] is None:
 	_encodings['merge'] = 'ascii'
-
-# Deprecated attributes. Instead use _encodings directly.
-_content_encoding = _encodings['content']
-_fs_encoding = _encodings['fs']
-_merge_encoding = _encodings['merge']
 
 def _unicode_encode(s, encoding=_encodings['content'],
 	errors='backslashreplace'):

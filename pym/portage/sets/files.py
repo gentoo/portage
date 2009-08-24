@@ -6,7 +6,7 @@ import re
 from itertools import chain
 
 from portage import os
-from portage import _fs_encoding
+from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.util import grabfile, write_atomic, ensure_dirs, normalize_path
@@ -130,16 +130,16 @@ class StaticFileSet(EditablePackageSet):
 
 		try:
 			directory = _unicode_decode(directory,
-				encoding=_fs_encoding, errors='strict')
+				encoding=_encodings['fs'], errors='strict')
 			# Now verify that we can also encode it.
 			_unicode_encode(directory,
-				encoding=_fs_encoding, errors='strict')
+				encoding=_encodings['fs'], errors='strict')
 		except UnicodeError:
 			directory = _unicode_decode(directory,
-				encoding=_fs_encoding, errors='replace')
+				encoding=_encodings['fs'], errors='replace')
 			raise SetConfigError(
 				_("Directory path contains invalid character(s) for encoding '%s': '%s'") \
-				% (_fs_encoding, directory))
+				% (_encodings['fs'], directory))
 
 		if os.path.isdir(directory):
 			directory = normalize_path(directory)
@@ -147,7 +147,7 @@ class StaticFileSet(EditablePackageSet):
 			for parent, dirs, files in os.walk(directory):
 				try:
 					parent = _unicode_decode(parent,
-						encoding=_fs_encoding, errors='strict')
+						encoding=_encodings['fs'], errors='strict')
 				except UnicodeDecodeError:
 					continue
 				for d in dirs[:]:
@@ -156,7 +156,7 @@ class StaticFileSet(EditablePackageSet):
 				for filename in files:
 					try:
 						filename = _unicode_decode(filename,
-							encoding=_fs_encoding, errors='strict')
+							encoding=_encodings['fs'], errors='strict')
 					except UnicodeDecodeError:
 						continue
 					if filename[:1] == '.':

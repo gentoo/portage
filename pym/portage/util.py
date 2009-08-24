@@ -23,8 +23,7 @@ import sys
 
 import portage
 from portage import os
-from portage import _content_encoding
-from portage import _fs_encoding
+from portage import _encodings
 from portage import _os_merge
 from portage import _unicode_encode
 from portage import _unicode_decode
@@ -65,7 +64,8 @@ def writemsg(mystr,noiselevel=0,fd=None):
 	if noiselevel <= noiselimit:
 		if sys.hexversion < 0x3000000:
 			# avoid potential UnicodeEncodeError
-			mystr = _unicode_encode(mystr)
+			mystr = _unicode_encode(mystr,
+				encoding=_encodings['stdio'], errors='backslashreplace')
 		fd.write(mystr)
 		fd.flush()
 
@@ -329,8 +329,8 @@ def grablines(myfilename,recursive=0):
 	else:
 		try:
 			myfile = codecs.open(_unicode_encode(myfilename,
-				encoding=_fs_encoding, errors='strict'),
-				mode='r', encoding=_content_encoding, errors='replace')
+				encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['content'], errors='replace')
 			mylines = myfile.readlines()
 			myfile.close()
 		except IOError, e:
@@ -397,11 +397,11 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		# (produces spurious \0 characters with python-2.6.2)
 		if sys.hexversion < 0x3000000:
 			content = open(_unicode_encode(mycfg,
-				encoding=_fs_encoding, errors='strict'), 'rb').read()
+				encoding=_encodings['fs'], errors='strict'), 'rb').read()
 		else:
 			content = open(_unicode_encode(mycfg,
-				encoding=_fs_encoding, errors='strict'), mode='r',
-				encoding=_content_encoding, errors='replace').read()
+				encoding=_encodings['fs'], errors='strict'), mode='r',
+				encoding=_encodings['content'], errors='replace').read()
 		if content and content[-1] != '\n':
 			content += '\n'
 	except IOError, e:
@@ -594,7 +594,7 @@ def pickle_read(filename,default=None,debug=0):
 	data = None
 	try:
 		myf = open(_unicode_encode(filename,
-			encoding=_fs_encoding, errors='strict'), 'rb')
+			encoding=_encodings['fs'], errors='strict'), 'rb')
 		mypickle = pickle.Unpickler(myf)
 		data = mypickle.load()
 		myf.close()
@@ -909,8 +909,8 @@ class atomic_ofstream(ObjectProxy):
 			open_func = open
 		else:
 			open_func = codecs.open
-			kargs.setdefault('encoding', _content_encoding)
-			kargs.setdefault('errors', 'replace')
+			kargs.setdefault('encoding', _encodings['content'])
+			kargs.setdefault('errors', 'backslashreplace')
 
 		if follow_links:
 			canonical_path = os.path.realpath(filename)
@@ -919,7 +919,7 @@ class atomic_ofstream(ObjectProxy):
 			try:
 				object.__setattr__(self, '_file',
 					open_func(_unicode_encode(tmp_name,
-						encoding=_fs_encoding, errors='strict'),
+						encoding=_encodings['fs'], errors='strict'),
 						mode=mode, **kargs))
 				return
 			except IOError, e:
@@ -933,7 +933,7 @@ class atomic_ofstream(ObjectProxy):
 		tmp_name = "%s.%i" % (filename, os.getpid())
 		object.__setattr__(self, '_file',
 			open_func(_unicode_encode(tmp_name,
-				encoding=_fs_encoding, errors='strict'),
+				encoding=_encodings['fs'], errors='strict'),
 				mode=mode, **kargs))
 
 	def _get_target(self):

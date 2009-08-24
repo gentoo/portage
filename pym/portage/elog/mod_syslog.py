@@ -6,6 +6,7 @@
 import sys
 import syslog
 from portage.const import EBUILD_PHASES
+from portage import _encodings
 
 _pri = {
 	"INFO"   : syslog.LOG_INFO, 
@@ -25,6 +26,7 @@ def process(mysettings, key, logentries, fulltext):
 			msgtext = "%s: %s: %s" % (key, phase, msgtext)
 			if sys.hexversion < 0x3000000 and isinstance(msgtext, unicode):
 				# Avoid TypeError from syslog.syslog()
-				msgtext = msgtext.encode('utf_8', 'replace')
+				msgtext = msgtext.encode(_encodings['content'], 
+					'backslashreplace')
 			syslog.syslog(_pri[msgtype], msgtext)
 	syslog.closelog()

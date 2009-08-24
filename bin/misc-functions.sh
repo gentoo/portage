@@ -167,6 +167,8 @@ install_qa_check() {
 
 		# Check for files built without respecting LDFLAGS
 		if [[ "${LDFLAGS}" == *--hash-style=gnu* ]] && [[ "${PN}" != *-bin ]] ; then
+			qa_var="QA_DT_HASH_${ARCH/-/_}"
+			eval "[[ -n \${!qa_var} ]] && QA_DT_HASH=(\"\${${qa_var}[@]}\")"
 			f=$(scanelf -qyRF '%k %p' -k .hash "${D}" | sed -e "s:\.hash ::")
 			if [[ -n ${f} ]] ; then
 				echo "${f}" > "${T}"/scanelf-ignored-LDFLAGS.log
@@ -241,26 +243,71 @@ install_qa_check() {
 			die "Aborting due to QA concerns: ${die_msg}"
 		fi
 
-		# Run some sanity checks on shared libraries
-		for d in "${D}"lib* "${D}"usr/lib* ; do
-			f=$(scanelf -ByF '%S %p' "${d}"/lib*.so* | gawk '$2 == "" { print }')
+		# Check for shared libraries lacking SONAMEs
+		qa_var="QA_SONAME_${ARCH/-/_}"
+		eval "[[ -n \${!qa_var} ]] && QA_SONAME=(\"\${${qa_var}[@]}\")"
+		f=$(scanelf -ByF '%S %p' "${D}"{,usr/}lib*/lib*.so* | gawk '$2 == "" { print }' | sed -e "s:^[[:space:]]${D}:/:")
+		if [[ -n ${f} ]] ; then
+			echo "${f}" > "${T}"/scanelf-missing-SONAME.log
+			if [[ "${QA_STRICT_SONAME-unset}" == unset ]] ; then
+				if [[ ${#QA_SONAME[@]} -gt 1 ]] ; then
+					for x in "${QA_SONAME[@]}" ; do
+						sed -e "s#^/${x#/}\$##" -i "${T}"/scanelf-missing-SONAME.log
+					done
+				else
+					local shopts=$-
+					set -o noglob
+					for x in ${QA_SONAME} ; do
+						sed -e "s#^/${x#/}\$##" -i "${T}"/scanelf-missing-SONAME.log
+					done
+					set +o noglob
+					set -${shopts}
+				fi
+			fi
+			f=$(<"${T}"/scanelf-missing-SONAME.log)
 			if [[ -n ${f} ]] ; then
 				vecho -ne '\a\n'
 				eqawarn "QA Notice: The following shared libraries lack a SONAME"
 				eqawarn "${f}"
 				vecho -ne '\a\n'
 				sleep 1
+			else
+				rm -f "${T}"/scanelf-missing-SONAME.log
 			fi
+		fi
 
-			f=$(scanelf -ByF '%n %p' "${d}"/lib*.so* | gawk '$2 == "" { print }')
+		# Check for shared libraries lacking NEEDED entries
+		qa_var="QA_DT_NEEDED_${ARCH/-/_}"
+		eval "[[ -n \${!qa_var} ]] && QA_DT_NEEDED=(\"\${${qa_var}[@]}\")"
+		f=$(scanelf -ByF '%n %p' "${D}"{,usr/}lib*.so* | gawk '$2 == "" { print }' | sed -e "s:^[[:space:]]${D}:/:")
+		if [[ -n ${f} ]] ; then
+			echo "${f}" > "${T}"/scanelf-missing-NEEDED.log
+			if [[ "${QA_STRICT_DT_NEEDED-unset}" == unset ]] ; then
+				if [[ ${#QA_DT_NEEDED[@]} -gt 1 ]] ; then
+					for x in "${QA_DT_NEEDED[@]}" ; do
+						sed -e "s#^/${x#/}\$##" -i "${T}"/scanelf-missing-NEEDED.log
+					done
+				else
+					local shopts=$-
+					set -o noglob
+					for x in ${QA_DT_NEEDED} ; do
+						sed -e "s#^/${x#/}\$##" -i "${T}"/scanelf-missing-NEEDED.log
+					done
+					set +o noglob
+					set -${shopts}
+				fi
+			fi
+			f=$(<"${T}"/scanelf-missing-NEEDED.log)
 			if [[ -n ${f} ]] ; then
 				vecho -ne '\a\n'
 				eqawarn "QA Notice: The following shared libraries lack NEEDED entries"
 				eqawarn "${f}"
 				vecho -ne '\a\n'
 				sleep 1
+			else
+				rm -f "${T}"/scanelf-missing-NEEDED.log
 			fi
-		done
+		fi
 
 		PORTAGE_QUIET=${tmp_quiet}
 	fi

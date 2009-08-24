@@ -7,8 +7,7 @@ import codecs
 import errno
 import stat
 from portage import os
-from portage import _content_encoding
-from portage import _fs_encoding
+from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.localization import _
@@ -57,7 +56,7 @@ def RecursiveFileLoader(filename):
 			for f in files:
 				try:
 					f = _unicode_decode(f,
-						encoding=_fs_encoding, errors='strict')
+						encoding=_encodings['fs'], errors='strict')
 				except UnicodeDecodeError:
 					continue
 				if f[:1] == '.' or f[-1:] == '~':
@@ -152,8 +151,8 @@ class FileLoader(DataLoader):
 		for fn in RecursiveFileLoader(self.fname):
 			try:
 				f = codecs.open(_unicode_encode(fn,
-					encoding=_fs_encoding, errors='strict'), mode='r',
-					encoding=_content_encoding, errors='replace')
+					encoding=_encodings['fs'], errors='strict'), mode='r',
+					encoding=_encodings['content'], errors='replace')
 			except EnvironmentError, e:
 				if e.errno not in (errno.ENOENT, errno.ESTALE):
 					raise

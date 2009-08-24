@@ -26,8 +26,9 @@ from portage.manifest import Manifest
 from portage import eclass_cache, auxdbkeys, doebuild, flatten, \
 	listdir, dep_expand, eapi_is_supported, key_expand, dep_check, \
 	_eapi_is_deprecated
-from portage import _unicode_encode
 from portage import os
+from portage import _encodings
+from portage import _unicode_encode
 
 import codecs
 import logging
@@ -172,8 +173,10 @@ class portdbapi(dbapi):
 			repo_name_path = os.path.join(path, REPO_NAME_LOC)
 			try:
 				repo_name = codecs.open(
-					_unicode_encode(repo_name_path), mode='r',
-					encoding='utf_8', errors='replace').readline().strip()
+					_unicode_encode(repo_name_path,
+					encoding=_encodings['fs'], errors='strict'),
+					mode='r', encoding=_encodings['repo.content'],
+					errors='replace').readline().strip()
 			except EnvironmentError:
 				# warn about missing repo_name at some other time, since we
 				# don't want to see a warning every time the portage module is
@@ -621,8 +624,10 @@ class portdbapi(dbapi):
 			if eapi is None and \
 				'parse-eapi-ebuild-head' in self.doebuild_settings.features:
 				eapi = portage._parse_eapi_ebuild_head(codecs.open(
-					_unicode_encode(myebuild), mode='r',
-					encoding='utf_8', errors='replace'))
+					_unicode_encode(myebuild,
+					encoding=_encodings['fs'], errors='strict'),
+					mode='r', encoding=_encodings['repo.content'],
+					errors='replace'))
 
 			if eapi is not None:
 				self.doebuild_settings.configdict['pkg']['EAPI'] = eapi

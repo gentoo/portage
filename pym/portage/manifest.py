@@ -12,8 +12,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage import os
-from portage import _content_encoding
-from portage import _fs_encoding
+from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.exception import DigestException, FileNotFound, \
@@ -145,8 +144,8 @@ class Manifest(object):
 		   Otherwise, a new dict will be created and returned."""
 		try:
 			fd = codecs.open(_unicode_encode(file_path,
-				encoding=_fs_encoding, errors='strict'), mode='r',
-				encoding=_content_encoding, errors='replace')
+				encoding=_encodings['fs'], errors='strict'), mode='r',
+				encoding=_encodings['repo.content'], errors='replace')
 			if myhashdict is None:
 				myhashdict = {}
 			self._parseDigests(fd, myhashdict=myhashdict, **kwargs)
@@ -233,8 +232,9 @@ class Manifest(object):
 			if not force:
 				try:
 					f = codecs.open(_unicode_encode(self.getFullname(),
-						encoding=_fs_encoding, errors='strict'),
-						mode='r', encoding=_content_encoding, errors='replace')
+						encoding=_encodings['fs'], errors='strict'),
+						mode='r', encoding=_encodings['repo.content'],
+						errors='replace')
 					oldentries = list(self._parseManifestLines(f))
 					f.close()
 					if len(oldentries) == len(myentries):
@@ -327,7 +327,7 @@ class Manifest(object):
 		for f in pkgdir_files:
 			try:
 				f = _unicode_decode(f,
-					encoding=_fs_encoding, errors='strict')
+					encoding=_encodings['fs'], errors='strict')
 			except UnicodeDecodeError:
 				continue
 			if f[:1] == ".":
@@ -362,7 +362,7 @@ class Manifest(object):
 			for f in files:
 				try:
 					f = _unicode_decode(f,
-						encoding=_fs_encoding, errors='strict')
+						encoding=_encodings['fs'], errors='strict')
 				except UnicodeDecodeError:
 					continue
 				full_path = os.path.join(parentdir, f)
@@ -523,8 +523,8 @@ class Manifest(object):
 		if not os.path.exists(mfname):
 			return rVal
 		myfile = codecs.open(_unicode_encode(mfname,
-			encoding=_fs_encoding, errors='strict'),
-			mode='r', encoding=_content_encoding, errors='replace')
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['repo.content'], errors='replace')
 		lines = myfile.readlines()
 		myfile.close()
 		for l in lines:

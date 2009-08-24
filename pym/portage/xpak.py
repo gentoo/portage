@@ -22,7 +22,7 @@ import shutil
 
 from portage import os
 from portage import normalize_path
-from portage import _fs_encoding
+from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 
@@ -30,23 +30,24 @@ def addtolist(mylist, curdir):
 	"""(list, dir) --- Takes an array(list) and appends all files from dir down
 	the directory tree. Returns nothing. list is modified."""
 	curdir = normalize_path(_unicode_decode(curdir,
-		encoding=_fs_encoding, errors='strict'))
+		encoding=_encodings['fs'], errors='strict'))
 	for parent, dirs, files in os.walk(curdir):
 
 		parent = _unicode_decode(parent,
-			encoding=_fs_encoding, errors='strict')
+			encoding=_encodings['fs'], errors='strict')
 		if parent != curdir:
 			mylist.append(parent[len(curdir) + 1:] + os.sep)
 
 		for x in dirs:
 			try:
-				_unicode_decode(x, encoding=_fs_encoding, errors='strict')
+				_unicode_decode(x, encoding=_encodings['fs'], errors='strict')
 			except UnicodeDecodeError:
 				dirs.remove(x)
 
 		for x in files:
 			try:
-				x = _unicode_decode(x, encoding=_fs_encoding, errors='strict')
+				x = _unicode_decode(x,
+					encoding=_encodings['fs'], errors='strict')
 			except UnicodeDecodeError:
 				continue
 			mylist.append(os.path.join(parent, x)[len(curdir) + 1:])
@@ -82,13 +83,13 @@ def xpak(rootdir,outfile=None):
 	mylist.sort()
 	mydata = {}
 	for x in mylist:
-		x = _unicode_encode(x, encoding=_fs_encoding, errors='strict')
+		x = _unicode_encode(x, encoding=_encodings['fs'], errors='strict')
 		mydata[x] = open(os.path.join(rootdir, x), 'rb').read()
 
 	xpak_segment = xpak_mem(mydata)
 	if outfile:
 		outf = open(_unicode_encode(outfile,
-			encoding=_fs_encoding, errors='strict'), 'wb')
+			encoding=_encodings['fs'], errors='strict'), 'wb')
 		outf.write(xpak_segment)
 		outf.close()
 	else:
@@ -118,9 +119,9 @@ def xsplit(infile):
 	'infile.index' contains the index segment.
 	'infile.dat' contails the data segment."""
 	infile = _unicode_decode(infile,
-		encoding=_fs_encoding, errors='strict')
+		encoding=_encodings['fs'], errors='strict')
 	myfile = open(_unicode_encode(infile,
-		encoding=_fs_encoding, errors='strict'), 'rb')
+		encoding=_encodings['fs'], errors='strict'), 'rb')
 	mydat=myfile.read()
 	myfile.close()
 	
@@ -129,11 +130,11 @@ def xsplit(infile):
 		return False
 	
 	myfile = open(_unicode_encode(infile + '.index',
-		encoding=_fs_encoding, errors='strict'), 'wb')
+		encoding=_encodings['fs'], errors='strict'), 'wb')
 	myfile.write(splits[0])
 	myfile.close()
 	myfile = open(_unicode_encode(infile + '.dat',
-		encoding=_fs_encoding, errors='strict'), 'wb')
+		encoding=_encodings['fs'], errors='strict'), 'wb')
 	myfile.write(splits[1])
 	myfile.close()
 	return True
@@ -149,7 +150,7 @@ def xsplit_mem(mydat):
 def getindex(infile):
 	"""(infile) -- grabs the index segment from the infile and returns it."""
 	myfile = open(_unicode_encode(infile,
-		encoding=_fs_encoding, errors='strict'), 'rb')
+		encoding=_encodings['fs'], errors='strict'), 'rb')
 	myheader=myfile.read(16)
 	if myheader[0:8] != _unicode_encode('XPAKPACK'):
 		myfile.close()
@@ -163,7 +164,7 @@ def getboth(infile):
 	"""(infile) -- grabs the index and data segments from the infile.
 	Returns an array [indexSegment,dataSegment]"""
 	myfile = open(_unicode_encode(infile,
-		encoding=_fs_encoding, errors='strict'), 'rb')
+		encoding=_encodings['fs'], errors='strict'), 'rb')
 	myheader=myfile.read(16)
 	if myheader[0:8] != _unicode_encode('XPAKPACK'):
 		myfile.close()
@@ -238,7 +239,7 @@ def xpand(myid,mydest):
 			if not os.path.exists(dirname):
 				os.makedirs(dirname)
 		mydat = open(_unicode_encode(myname,
-			encoding=_fs_encoding, errors='strict'), 'wb')
+			encoding=_encodings['fs'], errors='strict'), 'wb')
 		mydat.write(mydata[datapos:datapos+datalen])
 		mydat.close()
 		startpos=startpos+namelen+12
@@ -284,7 +285,7 @@ class tbz2(object):
 	def recompose_mem(self, xpdata):
 		self.scan() # Don't care about condition... We'll rewrite the data anyway.
 		myfile = open(_unicode_encode(self.file,
-			encoding=_fs_encoding, errors='strict'), 'ab+')
+			encoding=_encodings['fs'], errors='strict'), 'ab+')
 		if not myfile:
 			raise IOError
 		myfile.seek(-self.xpaksize,2) # 0,2 or -0,2 just mean EOF.
@@ -322,7 +323,7 @@ class tbz2(object):
 					return 1
 			self.filestat=mystat
 			a = open(_unicode_encode(self.file,
-				encoding=_fs_encoding, errors='strict'), 'rb')
+				encoding=_encodings['fs'], errors='strict'), 'rb')
 			a.seek(-16,2)
 			trailer=a.read()
 			self.infosize=0
@@ -366,7 +367,7 @@ class tbz2(object):
 		if not myresult:
 			return mydefault
 		a = open(_unicode_encode(self.file,
-			encoding=_fs_encoding, errors='strict'), 'rb')
+			encoding=_encodings['fs'], errors='strict'), 'rb')
 		a.seek(self.datapos+myresult[0],0)
 		myreturn=a.read(myresult[1])
 		a.close()
@@ -391,7 +392,7 @@ class tbz2(object):
 			os.chdir("/")
 			origdir="/"
 		a = open(_unicode_encode(self.file,
-			encoding=_fs_encoding, errors='strict'), 'rb')
+			encoding=_encodings['fs'], errors='strict'), 'rb')
 		if not os.path.exists(mydest):
 			os.makedirs(mydest)
 		os.chdir(mydest)
@@ -406,7 +407,7 @@ class tbz2(object):
 				if not os.path.exists(dirname):
 					os.makedirs(dirname)
 			mydat = open(_unicode_encode(myname,
-				encoding=_fs_encoding, errors='strict'), 'wb')
+				encoding=_encodings['fs'], errors='strict'), 'wb')
 			a.seek(self.datapos+datapos)
 			mydat.write(a.read(datalen))
 			mydat.close()
@@ -420,7 +421,7 @@ class tbz2(object):
 		if not self.scan():
 			return 0
 		a = open(_unicode_encode(self.file,
-			encoding=_fs_encoding, errors='strict'), 'rb')
+			encoding=_encodings['fs'], errors='strict'), 'rb')
 		mydata = {}
 		startpos=0
 		while ((startpos+8)<self.indexsize):
@@ -440,7 +441,7 @@ class tbz2(object):
 			return None
 
 		a = open(_unicode_encode(self.file,
-			encoding=_fs_encoding, errors='strict'), 'rb')
+			encoding=_encodings['fs'], errors='strict'), 'rb')
 		a.seek(self.datapos)
 		mydata =a.read(self.datasize)
 		a.close()

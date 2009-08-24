@@ -13,6 +13,7 @@ except ImportError:
 
 import portage
 from portage import os
+from portage import _encodings
 from portage.output import xtermTitle
 
 from _emerge.getloadavg import getloadavg
@@ -70,7 +71,7 @@ class JobStatusDisplay(object):
 	def _write(self, s):
 		if sys.hexversion < 0x3000000 and isinstance(s, unicode):
 			# avoid potential UnicodeEncodeError
-			s = portage._unicode_encode(s)
+			s = s.encode(_encodings['stdio'], 'backslashreplace')
 		self.out.write(s)
 		self.out.flush()
 
