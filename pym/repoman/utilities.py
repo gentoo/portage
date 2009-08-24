@@ -18,16 +18,19 @@ __all__ = [
 	"parse_metadata_use"
 ]
 
+import codecs
 import commands
 import errno
 import itertools
 import logging
-import os
 import sys
 
 from xml.dom import minidom
 from xml.dom import NotFoundErr
 from xml.parsers.expat import ExpatError
+from portage import os
+from portage import _encodings
+from portage import _unicode_encode
 from portage import output
 from portage.output import red, green
 from portage.process import find_binary
@@ -282,7 +285,10 @@ def get_commit_message_with_editor(editor, message=None):
 		if not (os.WIFEXITED(retval) and os.WEXITSTATUS(retval) == os.EX_OK):
 			return None
 		try:
-			mylines = open(filename).readlines()
+			mylines = codecs.open(_unicode_encode(filename,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['content'], errors='replace'
+				).readlines()
 		except OSError, e:
 			if e.errno != errno.ENOENT:
 				raise

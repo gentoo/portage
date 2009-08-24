@@ -3,9 +3,13 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import codecs
+import re
+import time
 
-import os,time,sys,re
-from stat import *
+from portage import os
+from portage import _encodings
+from portage import _unicode_encode
 
 # [D]/Name/Version/Date/Flags/Tags
 
@@ -43,7 +47,10 @@ def isadded(entries, path):
 	filename=os.path.basename(path)
 
 	try:
-		myfile=open(basedir+"/CVS/Entries","r")
+		myfile = codecs.open(
+			_unicode_encode(os.path.join(basedir, 'CVS', 'Entries'),
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['content'], errors='strict')
 	except IOError:
 		return 0
 	mylines=myfile.readlines()
@@ -194,7 +201,9 @@ def getentries(mydir,recursive=0):
 	if not os.path.exists(mydir):
 		return entries
 	try:
-		myfile=open(myfn, "r")
+		myfile = codecs.open(_unicode_encode(myfn,
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['content'], errors='strict')
 		mylines=myfile.readlines()
 		myfile.close()
 	except SystemExit, e:
@@ -269,7 +278,7 @@ def getentries(mydir,recursive=0):
 				if file=="digest-framerd-2.4.3":
 					print "stat'ing"
 				mystat=os.stat(mydir+"/"+file)
-				mytime=time.asctime(time.gmtime(mystat[ST_MTIME]))
+				mytime = time.asctime(time.gmtime(long(mystat.st_mtime)))
 				if "status" not in entries["files"][file]:
 					if file=="digest-framerd-2.4.3":
 						print "status not set"

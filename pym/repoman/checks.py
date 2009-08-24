@@ -6,7 +6,6 @@
 """This module contains functions used in Repoman to ascertain the quality
 and correctness of an ebuild."""
 
-import os
 import re
 import time
 import repoman.errors as errors

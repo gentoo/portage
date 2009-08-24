@@ -38,6 +38,7 @@ from portage import listdir, dep_expand, digraph, flatten, key_expand, \
 
 # This is a special version of the os module, wrapped for unicode support.
 from portage import os
+from portage import _content_encoding
 from portage import _fs_encoding
 from portage import _merge_encoding
 from portage import _os_merge
@@ -1537,7 +1538,8 @@ class vardbapi(dbapi):
 				counter, = self.aux_get(cpv, aux_keys)
 			except KeyError:
 				continue
-			h.update(counter)
+			h.update(_unicode_encode(counter,
+				encoding=_content_encoding, errors='replace'))
 		return h.hexdigest()
 
 	def cpv_inject(self, mycpv):
@@ -1949,8 +1951,10 @@ class vardbapi(dbapi):
 				results.append(long(st.st_mtime))
 				continue
 			try:
-				myf = codecs.open(_unicode_encode(os.path.join(mydir, x)),
-					mode='r', encoding='utf_8', errors='replace')
+				myf = codecs.open(
+					_unicode_encode(os.path.join(mydir, x),
+					encoding=_fs_encoding, errors='strict'),
+					mode='r', encoding=_content_encoding, errors='replace')
 				try:
 					myd = myf.read()
 				finally:
@@ -2018,8 +2022,10 @@ class vardbapi(dbapi):
 		new_vdb = False
 		counter = -1
 		try:
-			cfile = codecs.open(_unicode_encode(self._counter_path), mode='r',
-				encoding='utf_8', errors='replace')
+			cfile = codecs.open(
+				_unicode_encode(self._counter_path,
+				encoding=_fs_encoding, errors='strict'),
+				mode='r', encoding=_content_encoding, errors='replace')
 		except EnvironmentError, e:
 			new_vdb = not bool(self.cpv_all())
 			if not new_vdb:
@@ -2154,7 +2160,8 @@ class vardbapi(dbapi):
 			h = self._new_hash()
 			# Always use a constant utf_8 encoding here, since
 			# the "default" encoding can change.
-			h.update(portage._unicode_encode(s))
+			h.update(_unicode_encode(s,
+				encoding=_content_encoding, errors='replace'))
 			h = h.hexdigest()
 			h = h[-self._hex_chars:]
 			h = int(h, 16)
@@ -2602,8 +2609,9 @@ class dblink(object):
 			return self.contentscache
 		pkgfiles = {}
 		try:
-			myc = codecs.open(_unicode_encode(contents_file), mode='r',
-				encoding='utf_8', errors='replace')
+			myc = codecs.open(_unicode_encode(contents_file,
+				encoding=_content_encoding, errors='strict'),
+				mode='r', encoding=_content_encoding, errors='replace')
 		except EnvironmentError, e:
 			if e.errno != errno.ENOENT:
 				raise
@@ -3938,8 +3946,10 @@ class dblink(object):
 		for var_name in ('CHOST', 'SLOT'):
 			try:
 				val = codecs.open(_unicode_encode(
-					os.path.join(inforoot, var_name)), mode='r',
-					encoding='utf_8', errors='replace').readline().strip()
+					os.path.join(inforoot, var_name),
+					encoding=_fs_encoding, errors='strict'),
+					mode='r', encoding=_content_encoding, errors='replace'
+					).readline().strip()
 			except EnvironmentError, e:
 				if e.errno != errno.ENOENT:
 					raise
@@ -4285,8 +4295,9 @@ class dblink(object):
 
 		# open CONTENTS file (possibly overwriting old one) for recording
 		outfile = codecs.open(_unicode_encode(
-			os.path.join(self.dbtmpdir, 'CONTENTS')),
-			mode='w', encoding='utf_8', errors='replace')
+			os.path.join(self.dbtmpdir, 'CONTENTS'),
+			encoding=_fs_encoding, errors='strict'),
+			mode='w', encoding=_content_encoding, errors='replace')
 
 		self.updateprotect()
 
@@ -4884,8 +4895,11 @@ class dblink(object):
 		"returns contents of a file with whitespace converted to spaces"
 		if not os.path.exists(self.dbdir+"/"+name):
 			return ""
-		mydata = codecs.open(_unicode_encode(os.path.join(self.dbdir, name)),
-			mode='r', encoding='utf_8', errors='replace').read().split()
+		mydata = codecs.open(
+			_unicode_encode(os.path.join(self.dbdir, name),
+			encoding=_fs_encoding, errors='strict'),
+			mode='r', encoding=_content_encoding, errors='replace'
+			).read().split()
 		return " ".join(mydata)
 
 	def copyfile(self,fname):
@@ -4894,8 +4908,9 @@ class dblink(object):
 	def getfile(self,fname):
 		if not os.path.exists(self.dbdir+"/"+fname):
 			return ""
-		return codecs.open(_unicode_encode(os.path.join(self.dbdir, fname)), 
-			mode='r', encoding='utf_8', errors='replace').read()
+		return codecs.open(_unicode_encode(os.path.join(self.dbdir, fname),
+			encoding=_fs_encoding, errors='strict'), 
+			mode='r', encoding=_content_encoding, errors='replace').read()
 
 	def setfile(self,fname,data):
 		mode = 'w'
@@ -4907,8 +4922,9 @@ class dblink(object):
 		if not os.path.exists(self.dbdir+"/"+ename):
 			return []
 		mylines = codecs.open(_unicode_encode(
-			os.path.join(self.dbdir, ename)), mode='r',
-			encoding='utf_8', errors='replace').readlines()
+			os.path.join(self.dbdir, ename),
+			encoding=_fs_encoding, errors='strict'),
+			mode='r', encoding=_content_encoding, errors='replace').readlines()
 		myreturn = []
 		for x in mylines:
 			for y in x[:-1].split():
@@ -4917,8 +4933,9 @@ class dblink(object):
 
 	def setelements(self,mylist,ename):
 		myelement = codecs.open(_unicode_encode(
-			os.path.join(self.dbdir, ename)), mode='w',
-			encoding='utf_8', errors='replace')
+			os.path.join(self.dbdir, ename),
+			encoding=_fs_encoding, errors='strict'), mode='w',
+			encoding=_content_encoding, errors='replace')
 		for x in mylist:
 			myelement.write(x+"\n")
 		myelement.close()
