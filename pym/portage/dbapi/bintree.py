@@ -263,13 +263,21 @@ class binarytree(object):
 			mydata = mytbz2.get_data()
 			updated_items = update_dbentries([mylist], mydata)
 			mydata.update(updated_items)
-			mydata["PF"] = mynewpkg + "\n"
-			mydata["CATEGORY"] = mynewcat+"\n"
+			mydata[_unicode_encode('PF',
+				encoding=_encodings['repo.content'])] = \
+				_unicode_encode(mynewpkg + "\n",
+				encoding=_encodings['repo.content'])
+			mydata[_unicode_encode('CATEGORY',
+				encoding=_encodings['repo.content'])] = \
+				_unicode_encode(mynewcat + "\n",
+				encoding=_encodings['repo.content'])
 			if mynewpkg != myoldpkg:
-				ebuild_data = mydata.get(myoldpkg+".ebuild")
+				ebuild_data = mydata.pop(_unicode_encode(myoldpkg + '.ebuild',
+					encoding=_encodings['repo.content']), None)
 				if ebuild_data is not None:
-					mydata[mynewpkg+".ebuild"] = ebuild_data
-					del mydata[myoldpkg+".ebuild"]
+					mydata[_unicode_encode(mynewpkg + '.ebuild',
+						encoding=_encodings['repo.content'])] = ebuild_data
+
 			mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
 
 			self.dbapi.cpv_remove(mycpv)

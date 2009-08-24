@@ -97,6 +97,17 @@ def xpak(rootdir,outfile=None):
 
 def xpak_mem(mydata):
 	"""Create an xpack segement from a map object."""
+
+	mydata_encoded = {}
+	for k, v in mydata.iteritems():
+		k = _unicode_encode(k,
+			encoding=_encodings['repo.content'], errors='backslashreplace')
+		v = _unicode_encode(v,
+			encoding=_encodings['repo.content'], errors='backslashreplace')
+		mydata_encoded[k] = v
+	mydata = mydata_encoded
+	del mydata_encoded
+
 	indexglob = _unicode_encode('')
 	indexpos=0
 	dataglob = _unicode_encode('')

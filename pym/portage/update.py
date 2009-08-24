@@ -55,12 +55,18 @@ def update_dbentries(update_iter, mydata):
 	dict containing only the updated items."""
 	updated_items = {}
 	for k, mycontent in mydata.iteritems():
-		if k not in ignored_dbentries:
+		k_unicode = _unicode_decode(k,
+			encoding=_encodings['repo.content'], errors='replace')
+		if k_unicode not in ignored_dbentries:
+			mycontent = _unicode_decode(mycontent,
+				encoding=_encodings['repo.content'], errors='replace')
 			orig_content = mycontent
 			for update_cmd in update_iter:
 				mycontent = update_dbentry(update_cmd, mycontent)
 			if mycontent != orig_content:
-				updated_items[k] = mycontent
+				updated_items[k] = _unicode_encode(mycontent,
+					encoding=_encodings['repo.content'],
+					errors='backslashreplace')
 	return updated_items
 
 def fixdbentries(update_iter, dbdir):
@@ -77,7 +83,7 @@ def fixdbentries(update_iter, dbdir):
 	updated_items = update_dbentries(update_iter, mydata)
 	for myfile, mycontent in updated_items.iteritems():
 		file_path = os.path.join(dbdir, myfile)
-		write_atomic(file_path, mycontent)
+		write_atomic(file_path, mycontent, encoding=_encodings['repo.content'])
 	return len(updated_items) > 0
 
 def grab_updates(updpath, prev_mtimes=None):
