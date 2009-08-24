@@ -8,6 +8,8 @@ from _emerge.CompositeTask import CompositeTask
 from portage.util import writemsg
 import portage
 from portage import os
+from portage import _encodings
+from portage import _unicode_encode
 import codecs
 
 class EbuildPhase(CompositeTask):
@@ -32,8 +34,9 @@ class EbuildPhase(CompositeTask):
 			log_path = self.settings.get("PORTAGE_LOG_FILE")
 			log_file = None
 			if self.background and log_path is not None:
-				log_file = codecs.open(log_path, mode='a',
-					encoding='utf_8', errors='replace')
+				log_file = codecs.open(_unicode_encode(log_path,
+					encoding=_encodings['fs'], errors='strict'),
+					mode='a', encoding=_encodings['content'], errors='replace')
 				out = log_file
 			try:
 				portage._check_build_log(self.settings, out=out)
@@ -52,8 +55,9 @@ class EbuildPhase(CompositeTask):
 			log_path = self.settings.get("PORTAGE_LOG_FILE")
 			log_file = None
 			if self.background and log_path is not None:
-				log_file = codecs.open(log_path, mode='a',
-					encoding='utf_8', errors='replace')
+				log_file = codecs.open(_unicode_encode(log_path,
+					encoding=_encodings['fs'], errors='strict'),
+					mode='a', encoding=_encodings['content'], errors='replace')
 				out = log_file
 			portage._post_src_install_chost_fix(settings)
 			portage._post_src_install_uid_fix(settings, out=out)

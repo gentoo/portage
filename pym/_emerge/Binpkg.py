@@ -12,6 +12,8 @@ from _emerge.EbuildBuildDir import EbuildBuildDir
 from portage.util import writemsg
 import portage
 from portage import os
+from portage import _encodings
+from portage import _unicode_encode
 import codecs
 import sys
 if os.environ.__contains__("PORTAGE_PYTHONPATH"):
@@ -41,8 +43,9 @@ class Binpkg(CompositeTask):
 
 		log_path = self.settings.get("PORTAGE_LOG_FILE")
 		if  log_path is not None:
-			f = codecs.open(log_path, mode='a',
-				encoding='utf_8', errors='replace')
+			f = codecs.open(_unicode_encode(log_path,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='a', encoding=_encodings['content'], errors='replace')
 			try:
 				f.write(msg)
 			finally:
@@ -235,15 +238,18 @@ class Binpkg(CompositeTask):
 			else:
 				continue
 
-			f = codecs.open(os.path.join(infloc, k), mode='w',
-				encoding='utf_8', errors='replace')
+			f = codecs.open(_unicode_encode(os.path.join(infloc, k),
+				encoding=_encodings['fs'], errors='strict'),
+				mode='w', encoding=_encodings['content'], errors='replace')
 			try:
 				f.write(v + "\n")
 			finally:
 				f.close()
 
 		# Store the md5sum in the vdb.
-		f = open(os.path.join(infloc, "BINPKGMD5"), "w")
+		f = codecs.open(_unicode_encode(os.path.join(infloc, 'BINPKGMD5'),
+			encoding=_encodings['fs'], errors='strict'),
+			mode='w', encoding=_encodings['content'], errors='strict')
 		try:
 			f.write(str(portage.checksum.perform_md5(pkg_path)) + "\n")
 		finally:
