@@ -4,12 +4,14 @@
 # $Id$
 
 
-import os
 import atexit
 import signal
 import sys
 import traceback
 
+from portage import os
+from portage import _content_encoding
+from portage import _unicode_encode
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:dump_traceback',
@@ -182,11 +184,8 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	# Avoid a potential UnicodeEncodeError from os.execve().
 	env_bytes = {}
 	for k, v in env.iteritems():
-		if isinstance(k, unicode):
-			k = k.encode('utf_8', 'replace')
-		if isinstance(v, unicode):
-			v = v.encode('utf_8', 'replace')
-		env_bytes[k] = v
+		env_bytes[_unicode_encode(k, encoding=_content_encoding)] = \
+			_unicode_encode(v, encoding=_content_encoding)
 	env = env_bytes
 	del env_bytes
 

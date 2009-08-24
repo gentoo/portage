@@ -1110,14 +1110,14 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 			# an older package installed ON TOP of a newer version will cause ldconfig
 			# to overwrite the symlinks we just made. -X means no links. After 'clean'
 			# we can safely create links.
-			writemsg_level(">>> Regenerating %s/etc/ld.so.cache...\n" % \
+			writemsg_level(_(">>> Regenerating %setc/ld.so.cache...\n") % \
 				(target_root + EPREFIX_LSTRIP,))
 			if makelinks:
 				os.system("cd / ; %s -r '%s'" % (ldconfig, target_root))
 			else:
 				os.system("cd / ; %s -X -r '%s'" % (ldconfig, target_root))
 		elif ostype in ("FreeBSD","DragonFly"):
-			writemsg_level(">>> Regenerating %svar/run/ld-elf.so.hints...\n" % \
+			writemsg_level(_(">>> Regenerating %svar/run/ld-elf.so.hints...\n") % \
 				target_root + EPREFIX_LSTRIP)
 			os.system(("cd / ; %s -elf -i " + \
 				"-f '%svar/run/ld-elf.so.hints' '%setc/ld.so.conf'") % \
@@ -1570,7 +1570,7 @@ class config(object):
 
 			def check_var_directory(varname, var):
 				if not os.path.isdir(var):
-					writemsg(("!!! Error: %s='%s' is not a directory. " + \
+					writemsg(_("!!! Error: %s='%s' is not a directory. "
 						"Please correct this.\n") % (varname, var),
 						noiselevel=-1)
 					raise portage.exception.DirectoryNotFound(var)
@@ -1640,15 +1640,15 @@ class config(object):
 						pass
 					else:
 						if not eapi_is_supported(eapi):
-							raise portage.exception.ParseError(
-								"Profile contains unsupported " + \
-								"EAPI '%s': '%s'" % \
+							raise portage.exception.ParseError(_(
+								"Profile contains unsupported "
+								"EAPI '%s': '%s'") % \
 								(eapi, os.path.realpath(eapi_file),))
 					if os.path.exists(parentsFile):
 						parents = grabfile(parentsFile)
 						if not parents:
 							raise portage.exception.ParseError(
-								"Empty parent file: '%s'" % parentsFile)
+								_("Empty parent file: '%s'") % parentsFile)
 						for parentPath in parents:
 							parentPath = normalize_path(os.path.join(
 								currentPath, parentPath))
@@ -1656,13 +1656,13 @@ class config(object):
 								addProfile(parentPath)
 							else:
 								raise portage.exception.ParseError(
-									"Parent '%s' not found: '%s'" %  \
+									_("Parent '%s' not found: '%s'") %  \
 									(parentPath, parentsFile))
 					self.profiles.append(currentPath)
 				try:
 					addProfile(os.path.realpath(self.profile_path))
 				except portage.exception.ParseError, e:
-					writemsg("!!! Unable to parse profile: '%s'\n" % \
+					writemsg(_("!!! Unable to parse profile: '%s'\n") % \
 						self.profile_path, noiselevel=-1)
 					writemsg("!!! ParseError: %s\n" % str(e), noiselevel=-1)
 					del e
@@ -1990,7 +1990,7 @@ class config(object):
 					del e
 				except ParsingError, e:
 					portage.util.writemsg_level(
-						"!!! Error parsing '%s': %s\n"  % \
+						_("!!! Error parsing '%s': %s\n")  % \
 						(self._local_repo_conf_path, e),
 						level=logging.ERROR, noiselevel=-1)
 					del e
@@ -2049,26 +2049,26 @@ class config(object):
 			for x in range(len(pkgprovidedlines)-1, -1, -1):
 				myline = pkgprovidedlines[x]
 				if not isvalidatom("=" + myline):
-					writemsg("Invalid package name in package.provided:" + \
-						" %s\n" % myline, noiselevel=-1)
+					writemsg(_("Invalid package name in package.provided: %s\n") % \
+						myline, noiselevel=-1)
 					has_invalid_data = True
 					del pkgprovidedlines[x]
 					continue
 				cpvr = catpkgsplit(pkgprovidedlines[x])
 				if not cpvr or cpvr[0] == "null":
-					writemsg("Invalid package name in package.provided: "+pkgprovidedlines[x]+"\n",
+					writemsg(_("Invalid package name in package.provided: ")+pkgprovidedlines[x]+"\n",
 						noiselevel=-1)
 					has_invalid_data = True
 					del pkgprovidedlines[x]
 					continue
 				if cpvr[0] == "virtual":
-					writemsg("Virtual package in package.provided: %s\n" % \
+					writemsg(_("Virtual package in package.provided: %s\n") % \
 						myline, noiselevel=-1)
 					has_invalid_data = True
 					del pkgprovidedlines[x]
 					continue
 			if has_invalid_data:
-				writemsg("See portage(5) for correct package.provided usage.\n",
+				writemsg(_("See portage(5) for correct package.provided usage.\n"),
 					noiselevel=-1)
 			self.pprovideddict = {}
 			for x in pkgprovidedlines:
@@ -2107,8 +2107,8 @@ class config(object):
 					if os.path.isdir(ov):
 						new_ov.append(ov)
 					else:
-						writemsg("!!! Invalid PORTDIR_OVERLAY" + \
-							" (not a dir): '%s'\n" % ov, noiselevel=-1)
+						writemsg(_("!!! Invalid PORTDIR_OVERLAY"
+							" (not a dir): '%s'\n") % ov, noiselevel=-1)
 				self["PORTDIR_OVERLAY"] = " ".join(new_ov)
 				self.backup_changes("PORTDIR_OVERLAY")
 
@@ -2125,7 +2125,7 @@ class config(object):
 				try:
 					self[var] = str(int(self.get(var, "0")))
 				except ValueError:
-					writemsg(("!!! %s='%s' is not a valid integer.  " + \
+					writemsg(_("!!! %s='%s' is not a valid integer.  "
 						"Falling back to '0'.\n") % (var, self[var]),
 						noiselevel=-1)
 					self[var] = "0"
@@ -2142,8 +2142,8 @@ class config(object):
 					""" Don't show this warning when running repoman and the
 					sandbox feature came from a profile that doesn't belong to
 					the user."""
-					writemsg(colorize("BAD", "!!! Problem with sandbox" + \
-						" binary. Disabling...\n\n"), noiselevel=-1)
+					writemsg(colorize("BAD", _("!!! Problem with sandbox"
+						" binary. Disabling...\n\n")), noiselevel=-1)
 				if "sandbox" in self.features:
 					self.features.remove("sandbox")
 				if "usersandbox" in self.features:
@@ -2196,7 +2196,7 @@ class config(object):
 			try:
 				portage.util.ensure_dirs(mydir, gid=gid, mode=mode, mask=modemask)
 			except portage.exception.PortageException, e:
-				writemsg("!!! Directory initialization failed: '%s'\n" % mydir,
+				writemsg(_("!!! Directory initialization failed: '%s'\n") % mydir,
 					noiselevel=-1)
 				writemsg("!!! %s\n" % str(e),
 					noiselevel=-1)
@@ -2226,20 +2226,20 @@ class config(object):
 			traversed_groups = set()
 		license_group = self._license_groups.get(group_name)
 		if group_name in traversed_groups:
-			writemsg(("Circular license group reference" + \
+			writemsg(_("Circular license group reference"
 				" detected in '%s'\n") % group_name, noiselevel=-1)
 			rValue.append("@"+group_name)
 		elif license_group:
 			traversed_groups.add(group_name)
 			for l in license_group:
 				if l.startswith("-"):
-					writemsg(("Skipping invalid element %s" + \
+					writemsg(_("Skipping invalid element %s"
 						" in license group '%s'\n") % (l, group_name),
 						noiselevel=-1)
 				else:
 					rValue.extend(self._expandLicenseToken(l, traversed_groups))
 		else:
-			writemsg("Undefined license group '%s'\n" % group_name,
+			writemsg(_("Undefined license group '%s'\n") % group_name,
 				noiselevel=-1)
 			rValue.append("@"+group_name)
 		if negate:
@@ -2253,14 +2253,14 @@ class config(object):
 		groups = self["ACCEPT_KEYWORDS"].split()
 		archlist = self.archlist()
 		if not archlist:
-			writemsg("--- 'profiles/arch.list' is empty or " + \
-				"not available. Empty portage tree?\n", noiselevel=1)
+			writemsg(_("--- 'profiles/arch.list' is empty or "
+				"not available. Empty portage tree?\n"), noiselevel=1)
 		else:
 			for group in groups:
 				if group not in archlist and \
 					not (group.startswith("-") and group[1:] in archlist) and \
 					group not in ("*", "~*", "**"):
-					writemsg("!!! INVALID ACCEPT_KEYWORDS: %s\n" % str(group),
+					writemsg(_("!!! INVALID ACCEPT_KEYWORDS: %s\n") % str(group),
 						noiselevel=-1)
 
 		abs_profile_path = os.path.join(self["PORTAGE_CONFIGROOT"],
@@ -2268,10 +2268,10 @@ class config(object):
 		if not self.profile_path or (not os.path.islink(abs_profile_path) and \
 			not os.path.exists(os.path.join(abs_profile_path, "parent")) and \
 			os.path.exists(os.path.join(self["PORTDIR"], "profiles"))):
-			writemsg("\a\n\n!!! %s is not a symlink and will probably prevent most merges.\n" % abs_profile_path,
+			writemsg(_("\a\n\n!!! %s is not a symlink and will probably prevent most merges.\n") % abs_profile_path,
 				noiselevel=-1)
-			writemsg("!!! It should point into a profile within %s/profiles/\n" % self["PORTDIR"])
-			writemsg("!!! (You can safely ignore this message when syncing. It's harmless.)\n\n\n")
+			writemsg(_("!!! It should point into a profile within %s/profiles/\n") % self["PORTDIR"])
+			writemsg(_("!!! (You can safely ignore this message when syncing. It's harmless.)\n\n\n"))
 
 		abs_user_virtuals = os.path.join(self["PORTAGE_CONFIGROOT"],
 			USER_VIRTUALS_FILE)
@@ -2282,8 +2282,8 @@ class config(object):
 
 		if "fakeroot" in self.features and \
 			not portage.process.fakeroot_capable:
-			writemsg("!!! FEATURES=fakeroot is enabled, but the " + \
-				"fakeroot binary is not installed.\n", noiselevel=-1)
+			writemsg(_("!!! FEATURES=fakeroot is enabled, but the "
+				"fakeroot binary is not installed.\n"), noiselevel=-1)
 
 	def loadVirtuals(self,root):
 		"""Not currently used by portage."""
@@ -2314,14 +2314,14 @@ class config(object):
 
 	def modifying(self):
 		if self.locked:
-			raise Exception("Configuration is locked.")
+			raise Exception(_("Configuration is locked."))
 
 	def backup_changes(self,key=None):
 		self.modifying()
 		if key and key in self.configdict["env"]:
 			self.backupenv[key] = copy.deepcopy(self.configdict["env"][key])
 		else:
-			raise KeyError("No such key defined in environment: %s" % key)
+			raise KeyError(_("No such key defined in environment: %s") % key)
 
 	def reset(self,keeping_pkg=0,use_cache=1):
 		"""
@@ -2376,7 +2376,6 @@ class config(object):
 			if use is None:
 				use = frozenset(settings['PORTAGE_USE'].split())
 			values['ACCEPT_LICENSE'] = self._accept_license(use, settings)
-			values['ACCEPT_PROPERTIES'] = self._accept_properties(use, settings)
 			values['PORTAGE_RESTRICT'] = self._restrict(use, settings)
 			return values
 
@@ -2409,35 +2408,6 @@ class config(object):
 
 				licenses = acceptable_licenses
 			return ' '.join(sorted(licenses))
-
-		def _accept_properties(self, use, settings):
-			"""
-			Generated a pruned version of ACCEPT_PROPERTIES, by intersection with
-			PROPERTIES.
-			Please, look at self._accept_license() to know why it is required.
-			"""
-			try:
-				properties = set(flatten(
-					dep.use_reduce(dep.paren_reduce(
-						settings['PROPERTIES']),
-						uselist=use)))
-			except exception.InvalidDependString:
-				properties = set()
-			properties.discard('||')
-			if settings._accept_properties:
-				acceptable_properties = set()
-				for x in settings._accept_properties:
-					if x == '*':
-						acceptable_properties.update(properties)
-					elif x == '-*':
-						acceptable_properties.clear()
-					elif x[1] == '-':
-						acceptable_properties.discard(x[1:])
-					elif x in properties:
-						acceptable_properties.add(x)
-
-				properties = acceptable_properties
-			return ' '.join(sorted(properties))
 
 		def _restrict(self, use, settings):
 			try:
@@ -2677,8 +2647,6 @@ class config(object):
 		lazy_vars = self._lazy_vars(built_use, self)
 		env_configdict.addLazySingleton('ACCEPT_LICENSE',
 			lazy_vars.__getitem__, 'ACCEPT_LICENSE')
-		env_configdict.addLazySingleton('ACCEPT_PROPERTIES',
-			lazy_vars.__getitem__, 'ACCEPT_PROPERTIES')
 		env_configdict.addLazySingleton('PORTAGE_RESTRICT',
 			lazy_vars.__getitem__, 'PORTAGE_RESTRICT')
 
@@ -2702,7 +2670,7 @@ class config(object):
 		if ebuild_force_test and \
 			not hasattr(self, "_ebuild_force_test_msg_shown"):
 				self._ebuild_force_test_msg_shown = True
-				writemsg("Forcing test.\n", noiselevel=-1)
+				writemsg(_("Forcing test.\n"), noiselevel=-1)
 		if "test" in self.features and "test" in iuse_implicit:
 			if "test" in self.usemask and not ebuild_force_test:
 				# "test" is in IUSE and USE=test is masked, so execution
@@ -2965,8 +2933,8 @@ class config(object):
 		hastesting = False
 		for gp in mygroups:
 			if gp == "*" or (gp == "-*" and len(mygroups) == 1):
-				writemsg(("--- WARNING: Package '%s' uses" + \
-					" '%s' keyword.\n") % (cpv, gp), noiselevel=-1)
+				writemsg(_("--- WARNING: Package '%(cpv)s' uses"
+					" '%(keyword)s' keyword.\n") % {"cpv": cpv, "keyword": gp}, noiselevel=-1)
 				if gp == "*":
 					match = 1
 					break
@@ -3169,7 +3137,7 @@ class config(object):
 				try:
 					self._accept_chost_re = re.compile(r'^%s$' % accept_chost[0])
 				except re.error, e:
-					writemsg("!!! Invalid ACCEPT_CHOSTS value: '%s': %s\n" % \
+					writemsg(_("!!! Invalid ACCEPT_CHOSTS value: '%s': %s\n") % \
 						(accept_chost[0], e), noiselevel=-1)
 					self._accept_chost_re = re.compile("^$")
 			else:
@@ -3177,7 +3145,7 @@ class config(object):
 					self._accept_chost_re = re.compile(
 						r'^(%s)$' % "|".join(accept_chost))
 				except re.error, e:
-					writemsg("!!! Invalid ACCEPT_CHOSTS value: '%s': %s\n" % \
+					writemsg(_("!!! Invalid ACCEPT_CHOSTS value: '%s': %s\n") % \
 						(" ".join(accept_chost), e), noiselevel=-1)
 					self._accept_chost_re = re.compile("^$")
 
@@ -3332,7 +3300,7 @@ class config(object):
 					if x[0]=="+":
 						# Not legal. People assume too much. Complain.
 						writemsg(colorize("BAD",
-							"USE flags should not start with a '+': %s" % x) \
+							_("USE flags should not start with a '+': %s") % x) \
 							+ "\n", noiselevel=-1)
 						x=x[1:]
 						if not x:
@@ -3391,8 +3359,8 @@ class config(object):
 					continue
 
 				if x[0] == "+":
-					writemsg(colorize("BAD", "USE flags should not start " + \
-						"with a '+': %s\n" % x), noiselevel=-1)
+					writemsg(colorize("BAD", _("USE flags should not start "
+						"with a '+': %s\n") % x), noiselevel=-1)
 					x = x[1:]
 					if not x:
 						continue
@@ -3415,20 +3383,20 @@ class config(object):
 				for x in curdb[var].split():
 					if x[0] == "+":
 						if is_not_incremental:
-							writemsg(colorize("BAD", "Invalid '+' " + \
-								"operator in non-incremental variable " + \
-								 "'%s': '%s'\n" % (var, x)), noiselevel=-1)
+							writemsg(colorize("BAD", _("Invalid '+' "
+								"operator in non-incremental variable "
+								 "'%s': '%s'\n") % (var, x)), noiselevel=-1)
 							continue
 						else:
-							writemsg(colorize("BAD", "Invalid '+' " + \
-								"operator in incremental variable " + \
-								 "'%s': '%s'\n" % (var, x)), noiselevel=-1)
+							writemsg(colorize("BAD", _("Invalid '+' "
+								"operator in incremental variable "
+								 "'%s': '%s'\n") % (var, x)), noiselevel=-1)
 						x = x[1:]
 					if x[0] == "-":
 						if is_not_incremental:
-							writemsg(colorize("BAD", "Invalid '-' " + \
-								"operator in non-incremental variable " + \
-								 "'%s': '%s'\n" % (var, x)), noiselevel=-1)
+							writemsg(colorize("BAD", _("Invalid '-' "
+								"operator in non-incremental variable "
+								 "'%s': '%s'\n") % (var, x)), noiselevel=-1)
 							continue
 						myflags.discard(var_lower + "_" + x[1:])
 						continue
@@ -3475,7 +3443,7 @@ class config(object):
 			virtuals_dict = grabdict(virtuals_file)
 			for k in virtuals_dict.keys():
 				if not isvalidatom(k) or dep_getkey(k) != k:
-					writemsg("--- Invalid virtuals atom in %s: %s\n" % \
+					writemsg(_("--- Invalid virtuals atom in %s: %s\n") % \
 						(virtuals_file, k), noiselevel=-1)
 					del virtuals_dict[k]
 					continue
@@ -3486,7 +3454,7 @@ class config(object):
 						# allow incrementals
 						myatom = x[1:]
 					if not isvalidatom(myatom):
-						writemsg("--- Invalid atom in %s: %s\n" % \
+						writemsg(_("--- Invalid atom in %s: %s\n") % \
 							(virtuals_file, x), noiselevel=-1)
 						myvalues.remove(x)
 				if not myvalues:
@@ -3642,7 +3610,7 @@ class config(object):
 				continue
 			myvalue = self[x]
 			if not isinstance(myvalue, basestring):
-				writemsg("!!! Non-string value in config: %s=%s\n" % \
+				writemsg(_("!!! Non-string value in config: %s=%s\n") % \
 					(x, myvalue), noiselevel=-1)
 				continue
 			if filter_calling_env and \
@@ -3702,7 +3670,7 @@ class config(object):
 					else:
 						self._selinux_enabled = 0
 				else:
-					writemsg("!!! SELinux module not found. Please verify that it was installed.\n",
+					writemsg(_("!!! SELinux module not found. Please verify that it was installed.\n"),
 						noiselevel=-1)
 					self._selinux_enabled = 0
 
@@ -4073,11 +4041,11 @@ def _check_digests(filename, digests, show_errors=1):
 	verified_ok, reason = portage.checksum.verify_all(filename, digests)
 	if not verified_ok:
 		if show_errors:
-			writemsg("!!! Previously fetched" + \
-				" file: '%s'\n" % filename, noiselevel=-1)
-			writemsg("!!! Reason: %s\n" % reason[0],
+			writemsg(_("!!! Previously fetched"
+				" file: '%s'\n") % filename, noiselevel=-1)
+			writemsg(_("!!! Reason: %s\n") % reason[0],
 				noiselevel=-1)
-			writemsg(("!!! Got:      %s\n" + \
+			writemsg(_("!!! Got:      %s\n"
 				"!!! Expected: %s\n") % \
 				(reason[1], reason[2]), noiselevel=-1)
 		return False
@@ -4103,7 +4071,7 @@ def _check_distfile(filename, digests, eout, show_errors=1):
 		return (False, st)
 	if not digests:
 		if size is not None:
-			eout.ebegin("%s %s ;-)" % (os.path.basename(filename), "size"))
+			eout.ebegin(_("%s size ;-)") % os.path.basename(filename))
 			eout.eend(0)
 		elif st.st_size == 0:
 			# Zero-byte distfiles are always invalid.
@@ -4150,7 +4118,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		if ("mirror" in features) and ("lmirror" not in features):
 			# lmirror should allow you to bypass mirror restrictions.
 			# XXX: This is not a good thing, and is temporary at best.
-			print ">>> \"mirror\" mode desired and \"mirror\" restriction found; skipping fetch."
+			print _(">>> \"mirror\" mode desired and \"mirror\" restriction found; skipping fetch.")
 			return 1
 
 	# Generally, downloading the same file repeatedly from
@@ -4162,18 +4130,18 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		v = int(mysettings.get("PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS",
 			checksum_failure_max_tries))
 	except (ValueError, OverflowError):
-		writemsg("!!! Variable PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS" + \
-			" contains non-integer value: '%s'\n" % \
+		writemsg(_("!!! Variable PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS"
+			" contains non-integer value: '%s'\n") % \
 			mysettings["PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS"], noiselevel=-1)
-		writemsg("!!! Using PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS " + \
-			"default value: %s\n" % checksum_failure_max_tries,
+		writemsg(_("!!! Using PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS "
+			"default value: %s\n") % checksum_failure_max_tries,
 			noiselevel=-1)
 		v = checksum_failure_max_tries
 	if v < 1:
-		writemsg("!!! Variable PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS" + \
-			" contains value less than 1: '%s'\n" % v, noiselevel=-1)
-		writemsg("!!! Using PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS " + \
-			"default value: %s\n" % checksum_failure_max_tries,
+		writemsg(_("!!! Variable PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS"
+			" contains value less than 1: '%s'\n") % v, noiselevel=-1)
+		writemsg(_("!!! Using PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS "
+			"default value: %s\n") % checksum_failure_max_tries,
 			noiselevel=-1)
 		v = checksum_failure_max_tries
 	checksum_failure_max_tries = v
@@ -4189,11 +4157,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		match = _fetch_resume_size_re.match(fetch_resume_size)
 		if match is None or \
 			(match.group(2).upper() not in _size_suffix_map):
-			writemsg("!!! Variable PORTAGE_FETCH_RESUME_MIN_SIZE" + \
-				" contains an unrecognized format: '%s'\n" % \
+			writemsg(_("!!! Variable PORTAGE_FETCH_RESUME_MIN_SIZE"
+				" contains an unrecognized format: '%s'\n") % \
 				mysettings["PORTAGE_FETCH_RESUME_MIN_SIZE"], noiselevel=-1)
-			writemsg("!!! Using PORTAGE_FETCH_RESUME_MIN_SIZE " + \
-				"default value: %s\n" % fetch_resume_size_default,
+			writemsg(_("!!! Using PORTAGE_FETCH_RESUME_MIN_SIZE "
+				"default value: %s\n") % fetch_resume_size_default,
 				noiselevel=-1)
 			fetch_resume_size = None
 	if fetch_resume_size is None:
@@ -4234,10 +4202,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	if not os.access(mysettings["DISTDIR"],os.W_OK) and fetch_to_ro:
 		if use_locks:
 			writemsg(colorize("BAD",
-				"!!! For fetching to a read-only filesystem, " + \
-				"locking should be turned off.\n"), noiselevel=-1)
-			writemsg("!!! This can be done by adding -distlocks to " + \
-				"FEATURES in /etc/make.conf\n", noiselevel=-1)
+				_("!!! For fetching to a read-only filesystem, "
+				"locking should be turned off.\n")), noiselevel=-1)
+			writemsg(_("!!! This can be done by adding -distlocks to "
+				"FEATURES in /etc/make.conf\n"), noiselevel=-1)
 #			use_locks = 0
 
 	# local mirrors are always added
@@ -4322,9 +4290,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					thirdpartymirror_uris.setdefault(myfile, []).extend(uris)
 
 				if not filedict[myfile]:
-					writemsg("No known mirror by the name: %s\n" % (mirrorname))
+					writemsg(_("No known mirror by the name: %s\n") % (mirrorname))
 			else:
-				writemsg("Invalid mirror definition in SRC_URI:\n", noiselevel=-1)
+				writemsg(_("Invalid mirror definition in SRC_URI:\n"), noiselevel=-1)
 				writemsg("  %s\n" % (myuri), noiselevel=-1)
 		else:
 			if restrict_fetch:
@@ -4394,7 +4362,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						# The directory has just been created
 						# and therefore it must be empty.
 						continue
-					writemsg("Adjusting permissions recursively: '%s'\n" % mydir,
+					writemsg(_("Adjusting permissions recursively: '%s'\n") % mydir,
 						noiselevel=-1)
 					def onerror(e):
 						raise # bail out on the first error that occurs during recursion
@@ -4402,24 +4370,24 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						gid=dir_gid, dirmode=dirmode, dirmask=modemask,
 						filemode=filemode, filemask=modemask, onerror=onerror):
 						raise portage.exception.OperationNotPermitted(
-							"Failed to apply recursive permissions for the portage group.")
+							_("Failed to apply recursive permissions for the portage group."))
 		except portage.exception.PortageException, e:
 			if not os.path.isdir(mysettings["DISTDIR"]):
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
-				writemsg("!!! Directory Not Found: DISTDIR='%s'\n" % mysettings["DISTDIR"], noiselevel=-1)
-				writemsg("!!! Fetching will fail!\n", noiselevel=-1)
+				writemsg(_("!!! Directory Not Found: DISTDIR='%s'\n") % mysettings["DISTDIR"], noiselevel=-1)
+				writemsg(_("!!! Fetching will fail!\n"), noiselevel=-1)
 
 	if can_fetch and \
 		not fetch_to_ro and \
 		not os.access(mysettings["DISTDIR"], os.W_OK):
-		writemsg("!!! No write access to '%s'\n" % mysettings["DISTDIR"],
+		writemsg(_("!!! No write access to '%s'\n") % mysettings["DISTDIR"],
 			noiselevel=-1)
 		can_fetch = False
 
 	if can_fetch and use_locks and locks_in_subdir:
 			distlocks_subdir = os.path.join(mysettings["DISTDIR"], locks_in_subdir)
 			if not os.access(distlocks_subdir, os.W_OK):
-				writemsg("!!! No write access to write to %s.  Aborting.\n" % distlocks_subdir,
+				writemsg(_("!!! No write access to write to %s.  Aborting.\n") % distlocks_subdir,
 					noiselevel=-1)
 				return 0
 			del distlocks_subdir
@@ -4483,16 +4451,16 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						has_space = False
 
 			if not has_space:
-				writemsg("!!! Insufficient space to store %s in %s\n" % \
+				writemsg(_("!!! Insufficient space to store %s in %s\n") % \
 					(myfile, mysettings["DISTDIR"]), noiselevel=-1)
 
 				if has_space_superuser:
-					writemsg("!!! Insufficient privileges to use " + \
-						"remaining space.\n", noiselevel=-1)
+					writemsg(_("!!! Insufficient privileges to use "
+						"remaining space.\n"), noiselevel=-1)
 					if userfetch:
-						writemsg("!!! You may set FEATURES=\"-userfetch\"" + \
-							" in /etc/make.conf in order to fetch with\n" + \
-							"!!! superuser privileges.\n", noiselevel=-1)
+						writemsg(_("!!! You may set FEATURES=\"-userfetch\""
+							" in /etc/make.conf in order to fetch with\n"
+							"!!! superuser privileges.\n"), noiselevel=-1)
 
 			if distdir_writable and use_locks:
 
@@ -4510,7 +4478,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					file_lock = portage.locks.lockfile(myfile_path,
 						wantnewlockfile=1, **lock_kwargs)
 				except portage.exception.TryAgain:
-					writemsg((">>> File '%s' is already locked by " + \
+					writemsg(_(">>> File '%s' is already locked by "
 						"another fetcher. Continuing...\n") % myfile,
 						noiselevel=-1)
 					continue
@@ -4529,8 +4497,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								stat_cached=mystat)
 						except portage.exception.PortageException, e:
 							if not os.access(myfile_path, os.R_OK):
-								writemsg("!!! Failed to adjust permissions:" + \
-									" %s\n" % str(e), noiselevel=-1)
+								writemsg(_("!!! Failed to adjust permissions:"
+									" %s\n") % str(e), noiselevel=-1)
 							del e
 					continue
 
@@ -4544,8 +4512,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				if mystat is not None:
 					if stat.S_ISDIR(mystat.st_mode):
 						portage.util.writemsg_level(
-							("!!! Unable to fetch file since " + \
-							"a directory is in the way: \n" + \
+							_("!!! Unable to fetch file since "
+							"a directory is in the way: \n"
 							"!!!   %s\n") % myfile_path,
 							level=logging.ERROR, noiselevel=-1)
 						return 0
@@ -4567,21 +4535,21 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							# in order to force the old digests to be replaced.
 							# Since the user may want to keep this file, rename
 							# it instead of deleting it.
-							writemsg((">>> Renaming distfile with size " + \
-								"%d (smaller than " "PORTAGE_FETCH_RESU" + \
+							writemsg(_(">>> Renaming distfile with size "
+								"%d (smaller than " "PORTAGE_FETCH_RESU"
 								"ME_MIN_SIZE)\n") % mystat.st_size)
 							temp_filename = \
 								_checksum_failure_temp_file(
 								mysettings["DISTDIR"], myfile)
-							writemsg_stdout("Refetching... " + \
-								"File renamed to '%s'\n\n" % \
+							writemsg_stdout(_("Refetching... "
+								"File renamed to '%s'\n\n") % \
 								temp_filename, noiselevel=-1)
 						elif mystat.st_size >= size:
 							temp_filename = \
 								_checksum_failure_temp_file(
 								mysettings["DISTDIR"], myfile)
-							writemsg_stdout("Refetching... " + \
-								"File renamed to '%s'\n\n" % \
+							writemsg_stdout(_("Refetching... "
+								"File renamed to '%s'\n\n") % \
 								temp_filename, noiselevel=-1)
 
 				if distdir_writable and ro_distdirs:
@@ -4608,8 +4576,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						mirror_file = os.path.join(mydir, myfile)
 						try:
 							shutil.copyfile(mirror_file, myfile_path)
-							writemsg(_("Local mirror has file:" + \
-								" %(file)s\n" % {"file":myfile}))
+							writemsg(_("Local mirror has file: %s\n") % myfile)
 							break
 						except (IOError, OSError), e:
 							if e.errno not in (errno.ENOENT, errno.ESTALE):
@@ -4629,8 +4596,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							stat_cached=mystat)
 					except portage.exception.PortageException, e:
 						if not os.access(myfile_path, os.R_OK):
-							writemsg("!!! Failed to adjust permissions:" + \
-								" %s\n" % str(e), noiselevel=-1)
+							writemsg(_("!!! Failed to adjust permissions:"
+								" %s\n") % str(e), noiselevel=-1)
 
 					# If the file is empty then it's obviously invalid. Remove
 					# the empty file and try to download if possible.
@@ -4661,21 +4628,21 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							verified_ok, reason = portage.checksum.verify_all(
 								myfile_path, mydigests[myfile])
 							if not verified_ok:
-								writemsg("!!! Previously fetched" + \
-									" file: '%s'\n" % myfile, noiselevel=-1)
-								writemsg("!!! Reason: %s\n" % reason[0],
+								writemsg(_("!!! Previously fetched"
+									" file: '%s'\n") % myfile, noiselevel=-1)
+								writemsg(_("!!! Reason: %s\n") % reason[0],
 									noiselevel=-1)
-								writemsg(("!!! Got:      %s\n" + \
+								writemsg(_("!!! Got:      %s\n"
 									"!!! Expected: %s\n") % \
 									(reason[1], reason[2]), noiselevel=-1)
-								if reason[0] == "Insufficient data for checksum verification":
+								if reason[0] == _("Insufficient data for checksum verification"):
 									return 0
 								if distdir_writable:
 									temp_filename = \
 										_checksum_failure_temp_file(
 										mysettings["DISTDIR"], myfile)
-									writemsg_stdout("Refetching... " + \
-										"File renamed to '%s'\n\n" % \
+									writemsg_stdout(_("Refetching... "
+										"File renamed to '%s'\n\n") % \
 										temp_filename, noiselevel=-1)
 							else:
 								eout = portage.output.EOutput()
@@ -4716,7 +4683,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					fetchcommand = mysettings.get(fetchcommand_var)
 					if fetchcommand is None:
 						portage.util.writemsg_level(
-							("!!! %s is unset. It should " + \
+							_("!!! %s is unset. It should "
 							"have been defined in\n!!! %s/make.globals.\n") \
 							% (fetchcommand_var,
 							portage.const.GLOBAL_CONFIG_PATH),
@@ -4724,7 +4691,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						return 0
 				if "${FILE}" not in fetchcommand:
 					portage.util.writemsg_level(
-						("!!! %s does not contain the required ${FILE}" + \
+						_("!!! %s does not contain the required ${FILE}"
 						" parameter.\n") % fetchcommand_var,
 						level=logging.ERROR, noiselevel=-1)
 					missing_file_param = True
@@ -4736,7 +4703,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					resumecommand = mysettings.get(resumecommand_var)
 					if resumecommand is None:
 						portage.util.writemsg_level(
-							("!!! %s is unset. It should " + \
+							_("!!! %s is unset. It should "
 							"have been defined in\n!!! %s/make.globals.\n") \
 							% (resumecommand_var,
 							portage.const.GLOBAL_CONFIG_PATH),
@@ -4744,16 +4711,16 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						return 0
 				if "${FILE}" not in resumecommand:
 					portage.util.writemsg_level(
-						("!!! %s does not contain the required ${FILE}" + \
+						_("!!! %s does not contain the required ${FILE}"
 						" parameter.\n") % resumecommand_var,
 						level=logging.ERROR, noiselevel=-1)
 					missing_file_param = True
 
 				if missing_file_param:
 					portage.util.writemsg_level(
-						"!!! Refer to the make.conf(5) man page for " + \
-						"information about how to\n!!! correctly specify " + \
-						"FETCHCOMMAND and RESUMECOMMAND.\n",
+						_("!!! Refer to the make.conf(5) man page for "
+						"information about how to\n!!! correctly specify "
+						"FETCHCOMMAND and RESUMECOMMAND.\n"),
 						level=logging.ERROR, noiselevel=-1)
 					if myfile != os.path.basename(loc):
 						return 0
@@ -4769,13 +4736,13 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							mysize = 0
 
 						if mysize == 0:
-							writemsg("!!! File %s isn't fetched but unable to get it.\n" % myfile,
+							writemsg(_("!!! File %s isn't fetched but unable to get it.\n") % myfile,
 								noiselevel=-1)
 						elif size is None or size > mysize:
-							writemsg("!!! File %s isn't fully fetched, but unable to complete it\n" % myfile,
+							writemsg(_("!!! File %s isn't fully fetched, but unable to complete it\n") % myfile,
 								noiselevel=-1)
 						else:
-							writemsg(("!!! File %s is incorrect size, " + \
+							writemsg(_("!!! File %s is incorrect size, "
 								"but unable to retry.\n") % myfile, noiselevel=-1)
 						return 0
 					else:
@@ -4793,8 +4760,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							fetched = 0
 						else:
 							if mystat.st_size < fetch_resume_size:
-								writemsg((">>> Deleting distfile with size " + \
-									"%d (smaller than " "PORTAGE_FETCH_RESU" + \
+								writemsg(_(">>> Deleting distfile with size "
+									"%d (smaller than " "PORTAGE_FETCH_RESU"
 									"ME_MIN_SIZE)\n") % mystat.st_size)
 								try:
 									os.unlink(myfile_path)
@@ -4806,14 +4773,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								fetched = 0
 					if fetched == 1:
 						#resume mode:
-						writemsg(">>> Resuming download...\n")
+						writemsg(_(">>> Resuming download...\n"))
 						locfetch=resumecommand
 						command_var = resumecommand_var
 					else:
 						#normal mode:
 						locfetch=fetchcommand
 						command_var = fetchcommand_var
-					writemsg_stdout(">>> Downloading '%s'\n" % \
+					writemsg_stdout(_(">>> Downloading '%s'\n") % \
 						re.sub(r'//(.+):.+@(.+)/',r'//\1:*password*@\2/', loc))
 					variables = {
 						"DISTDIR": mysettings["DISTDIR"],
@@ -4836,8 +4803,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							pass
 						except portage.exception.PortageException, e:
 							if not os.access(myfile_path, os.R_OK):
-								writemsg("!!! Failed to adjust permissions:" + \
-									" %s\n" % str(e), noiselevel=-1)
+								writemsg(_("!!! Failed to adjust permissions:"
+									" %s\n") % str(e), noiselevel=-1)
 
 					# If the file is empty then it's obviously invalid.  Don't
 					# trust the return value from the fetcher.  Remove the
@@ -4865,16 +4832,16 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								# contains wget's -P option where it should
 								# instead have -O.
 								portage.util.writemsg_level(
-									("!!! The command specified in the " + \
-									"%s variable appears to have\n!!! " + \
-									"created a directory instead of a " + \
+									_("!!! The command specified in the "
+									"%s variable appears to have\n!!! "
+									"created a directory instead of a "
 									"normal file.\n") % command_var,
 									level=logging.ERROR, noiselevel=-1)
 								portage.util.writemsg_level(
-									"!!! Refer to the make.conf(5) " + \
-									"man page for information about how " + \
-									"to\n!!! correctly specify " + \
-									"FETCHCOMMAND and RESUMECOMMAND.\n",
+									_("!!! Refer to the make.conf(5) "
+									"man page for information about how "
+									"to\n!!! correctly specify "
+									"FETCHCOMMAND and RESUMECOMMAND.\n"),
 									level=logging.ERROR, noiselevel=-1)
 								return 0
 
@@ -4898,7 +4865,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 										).read()):
 										try:
 											os.unlink(mysettings["DISTDIR"]+"/"+myfile)
-											writemsg(">>> Deleting invalid distfile. (Improper 404 redirect from server.)\n")
+											writemsg(_(">>> Deleting invalid distfile. (Improper 404 redirect from server.)\n"))
 											fetched = 0
 											continue
 										except (IOError, OSError):
@@ -4913,19 +4880,19 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								verified_ok,reason = portage.checksum.verify_all(mysettings["DISTDIR"]+"/"+myfile, mydigests[myfile])
 								if not verified_ok:
 									print reason
-									writemsg("!!! Fetched file: "+str(myfile)+" VERIFY FAILED!\n",
+									writemsg(_("!!! Fetched file: %s VERIFY FAILED!\n") % myfile,
 										noiselevel=-1)
-									writemsg("!!! Reason: "+reason[0]+"\n",
+									writemsg(_("!!! Reason: %s\n") % reason[0],
 										noiselevel=-1)
-									writemsg("!!! Got:      %s\n!!! Expected: %s\n" % \
+									writemsg(_("!!! Got:      %s\n!!! Expected: %s\n") % \
 										(reason[1], reason[2]), noiselevel=-1)
-									if reason[0] == "Insufficient data for checksum verification":
+									if reason[0] == _("Insufficient data for checksum verification"):
 										return 0
 									temp_filename = \
 										_checksum_failure_temp_file(
 										mysettings["DISTDIR"], myfile)
-									writemsg_stdout("Refetching... " + \
-										"File renamed to '%s'\n\n" % \
+									writemsg_stdout(_("Refetching... "
+										"File renamed to '%s'\n\n") % \
 										temp_filename, noiselevel=-1)
 									fetched=0
 									checksum_failure_count += 1
@@ -4957,7 +4924,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							fetched=2
 							break
 						elif mydigests!=None:
-							writemsg("No digest file available and download failed.\n\n",
+							writemsg(_("No digest file available and download failed.\n\n"),
 								noiselevel=-1)
 		finally:
 			if use_locks and file_lock:
@@ -4968,11 +4935,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		if fetched != 2:
 			if restrict_fetch and not restrict_fetch_msg:
 				restrict_fetch_msg = True
-				msg = ("\n!!! %s/%s" + \
-					" has fetch restriction turned on.\n" + \
-					"!!! This probably means that this " + \
-					"ebuild's files must be downloaded\n" + \
-					"!!! manually.  See the comments in" + \
+				msg = _("\n!!! %s/%s"
+					" has fetch restriction turned on.\n"
+					"!!! This probably means that this "
+					"ebuild's files must be downloaded\n"
+					"!!! manually.  See the comments in"
 					" the ebuild for more information.\n\n") % \
 					(mysettings["CATEGORY"], mysettings["PF"])
 				portage.util.writemsg_level(msg,
@@ -5038,10 +5005,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			elif listonly:
 				pass
 			elif not filedict[myfile]:
-				writemsg("Warning: No mirrors available for file" + \
-					" '%s'\n" % (myfile), noiselevel=-1)
+				writemsg(_("Warning: No mirrors available for file"
+					" '%s'\n") % (myfile), noiselevel=-1)
 			else:
-				writemsg("!!! Couldn't download '%s'. Aborting.\n" % myfile,
+				writemsg(_("!!! Couldn't download '%s'. Aborting.\n") % myfile,
 					noiselevel=-1)
 
 			if listonly:
@@ -5154,30 +5121,30 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 						st = None
 
 					if not fetch({myfile : uris}, fetch_settings):
-						writemsg(("!!! Fetch failed for %s, can't update " + \
+						writemsg(_("!!! Fetch failed for %s, can't update "
 							"Manifest\n") % myfile, noiselevel=-1)
 						if myfile in dist_hashes and \
 							st is not None and st.st_size > 0:
 							# stat result is obtained before calling fetch(),
 							# since fetch may rename the existing file if the
 							# digest does not match.
-							writemsg("!!! If you would like to " + \
-								"forcefully replace the existing " + \
-								"Manifest entry\n!!! for %s, use the " % \
-								myfile + "following command:\n" + \
+							writemsg(_("!!! If you would like to "
+								"forcefully replace the existing "
+								"Manifest entry\n!!! for %s, use "
+								"the following command:\n") % myfile + \
 								"!!!    " + colorize("INFORM",
 								"ebuild --force %s manifest" % \
 								os.path.basename(myebuild)) + "\n",
 								noiselevel=-1)
 						return 0
-		writemsg_stdout(">>> Creating Manifest for %s\n" % mysettings["O"])
+		writemsg_stdout(_(">>> Creating Manifest for %s\n") % mysettings["O"])
 		try:
 			mf.create(requiredDistfiles=myarchives,
 				assumeDistHashesSometimes=True,
 				assumeDistHashesAlways=(
 				"assume-digests" in mysettings.features))
 		except portage.exception.FileNotFound, e:
-			writemsg(("!!! File %s doesn't exist, can't update " + \
+			writemsg(_("!!! File %s doesn't exist, can't update "
 				"Manifest\n") % e, noiselevel=-1)
 			return 0
 		except portage.exception.PortagePackageException, e:
@@ -5186,7 +5153,7 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 		try:
 			mf.write(sign=False)
 		except portage.exception.PermissionDenied, e:
-			writemsg("!!! Permission Denied: %s\n" % (e,), noiselevel=-1)
+			writemsg(_("!!! Permission Denied: %s\n") % (e,), noiselevel=-1)
 			return 0
 		if "assume-digests" not in mysettings.features:
 			distlist = mf.fhashdict.get("DIST", {}).keys()
@@ -5245,7 +5212,7 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	pkgdir = mysettings["O"]
 	manifest_path = os.path.join(pkgdir, "Manifest")
 	if not os.path.exists(manifest_path):
-		writemsg("!!! Manifest file not found: '%s'\n" % manifest_path,
+		writemsg(_("!!! Manifest file not found: '%s'\n") % manifest_path,
 			noiselevel=-1)
 		if strict:
 			return 0
@@ -5258,7 +5225,7 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 			manifest_empty = False
 			break
 	if manifest_empty:
-		writemsg("!!! Manifest is empty: '%s'\n" % manifest_path,
+		writemsg(_("!!! Manifest is empty: '%s'\n") % manifest_path,
 			noiselevel=-1)
 		if strict:
 			return 0
@@ -5268,17 +5235,17 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
 	try:
 		if strict and "PORTAGE_PARALLEL_FETCHONLY" not in mysettings:
-			eout.ebegin("checking ebuild checksums ;-)")
+			eout.ebegin(_("checking ebuild checksums ;-)"))
 			mf.checkTypeHashes("EBUILD")
 			eout.eend(0)
-			eout.ebegin("checking auxfile checksums ;-)")
+			eout.ebegin(_("checking auxfile checksums ;-)"))
 			mf.checkTypeHashes("AUX")
 			eout.eend(0)
-			eout.ebegin("checking miscfile checksums ;-)")
+			eout.ebegin(_("checking miscfile checksums ;-)"))
 			mf.checkTypeHashes("MISC", ignoreMissingFiles=True)
 			eout.eend(0)
 		for f in myfiles:
-			eout.ebegin("checking %s ;-)" % f)
+			eout.ebegin(_("checking %s ;-)") % f)
 			ftype = mf.findFile(f)
 			if ftype is None:
 				raise KeyError(f)
@@ -5286,20 +5253,20 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 			eout.eend(0)
 	except KeyError, e:
 		eout.eend(1)
-		writemsg("\n!!! Missing digest for %s\n" % str(e), noiselevel=-1)
+		writemsg(_("\n!!! Missing digest for %s\n") % str(e), noiselevel=-1)
 		return 0
 	except portage.exception.FileNotFound, e:
 		eout.eend(1)
-		writemsg("\n!!! A file listed in the Manifest could not be found: %s\n" % str(e),
+		writemsg(_("\n!!! A file listed in the Manifest could not be found: %s\n") % str(e),
 			noiselevel=-1)
 		return 0
 	except portage.exception.DigestException, e:
 		eout.eend(1)
-		writemsg("\n!!! Digest verification failed:\n", noiselevel=-1)
+		writemsg(_("\n!!! Digest verification failed:\n"), noiselevel=-1)
 		writemsg("!!! %s\n" % e.value[0], noiselevel=-1)
-		writemsg("!!! Reason: %s\n" % e.value[1], noiselevel=-1)
-		writemsg("!!! Got: %s\n" % e.value[2], noiselevel=-1)
-		writemsg("!!! Expected: %s\n" % e.value[3], noiselevel=-1)
+		writemsg(_("!!! Reason: %s\n") % e.value[1], noiselevel=-1)
+		writemsg(_("!!! Got: %s\n") % e.value[2], noiselevel=-1)
+		writemsg(_("!!! Expected: %s\n") % e.value[3], noiselevel=-1)
 		return 0
 	# Make sure that all of the ebuilds are actually listed in the Manifest.
 	glep55 = 'parse-eapi-glep-55' in mysettings.features
@@ -5310,7 +5277,7 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 		elif f[-7:] == '.ebuild':
 			pf = f[:-7]
 		if pf is not None and not mf.hasFile("EBUILD", f):
-			writemsg("!!! A file is not listed in the Manifest: '%s'\n" % \
+			writemsg(_("!!! A file is not listed in the Manifest: '%s'\n") % \
 				os.path.join(pkgdir, f), noiselevel=-1)
 			if strict:
 				return 0
@@ -5325,8 +5292,8 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 		except UnicodeDecodeError:
 			parent = _unicode_decode(parent,
 				encoding=_fs_encoding, errors='replace')
-			writemsg("!!! Path contains invalid " + \
-				"character(s) for encoding '%s': '%s'" \
+			writemsg(_("!!! Path contains invalid "
+				"character(s) for encoding '%s': '%s'") \
 				% (_fs_encoding, parent), noiselevel=-1)
 			if strict:
 				return 0
@@ -5344,8 +5311,8 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 				if f.startswith("."):
 					continue
 				f = os.path.join(parent, f)[len(filesdir) + 1:]
-				writemsg("!!! File name contains invalid " + \
-					"character(s) for encoding '%s': '%s'" \
+				writemsg(_("!!! File name contains invalid "
+					"character(s) for encoding '%s': '%s'") \
 					% (_fs_encoding, f), noiselevel=-1)
 				if strict:
 					return 0
@@ -5355,7 +5322,7 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 			f = os.path.join(parent, f)[len(filesdir) + 1:]
 			file_type = mf.findFile(f)
 			if file_type != "AUX" and not f.startswith("digest-"):
-				writemsg("!!! A file is not listed in the Manifest: '%s'\n" % \
+				writemsg(_("!!! A file is not listed in the Manifest: '%s'\n") % \
 					os.path.join(filesdir, f), noiselevel=-1)
 				if strict:
 					return 0
@@ -5452,7 +5419,7 @@ def _post_src_install_checks(mysettings):
 	global _post_phase_cmds
 	retval = _spawn_misc_sh(mysettings, _post_phase_cmds["install"])
 	if retval != os.EX_OK:
-		writemsg("!!! install_qa_check failed; exiting.\n",
+		writemsg(_("!!! install_qa_check failed; exiting.\n"),
 			noiselevel=-1)
 	return retval
 
@@ -5529,43 +5496,43 @@ def _check_build_log(mysettings, out=None):
 	wrap_width = 70
 
 	if am_maintainer_mode:
-		msg = ["QA Notice: Automake \"maintainer mode\" detected:"]
+		msg = [_("QA Notice: Automake \"maintainer mode\" detected:")]
 		msg.append("")
 		msg.extend("\t" + line for line in am_maintainer_mode)
 		msg.append("")
-		msg.extend(wrap(
-			"If you patch Makefile.am, " + \
-			"configure.in,  or configure.ac then you " + \
-			"should use autotools.eclass and " + \
-			"eautomake or eautoreconf. Exceptions " + \
-			"are limited to system packages " + \
-			"for which it is impossible to run " + \
-			"autotools during stage building. " + \
-			"See http://www.gentoo.org/p" + \
-			"roj/en/qa/autofailure.xml for more information.",
+		msg.extend(wrap(_(
+			"If you patch Makefile.am, "
+			"configure.in,  or configure.ac then you "
+			"should use autotools.eclass and "
+			"eautomake or eautoreconf. Exceptions "
+			"are limited to system packages "
+			"for which it is impossible to run "
+			"autotools during stage building. "
+			"See http://www.gentoo.org/p"
+			"roj/en/qa/autofailure.xml for more information."),
 			wrap_width))
 		_eqawarn(msg)
 
 	if bash_command_not_found:
-		msg = ["QA Notice: command not found:"]
+		msg = [_("QA Notice: command not found:")]
 		msg.append("")
 		msg.extend("\t" + line for line in bash_command_not_found)
 		_eqawarn(msg)
 
 	if helper_missing_file:
-		msg = ["QA Notice: file does not exist:"]
+		msg = [_("QA Notice: file does not exist:")]
 		msg.append("")
 		msg.extend("\t" + line[4:] for line in helper_missing_file)
 		_eqawarn(msg)
 
 	if configure_opts_warn:
-		msg = ["QA Notice: Unrecognized configure options:"]
+		msg = [_("QA Notice: Unrecognized configure options:")]
 		msg.append("")
 		msg.extend("\t" + line for line in configure_opts_warn)
 		_eqawarn(msg)
 
 	if make_jobserver:
-		msg = ["QA Notice: make jobserver unavailable:"]
+		msg = [_("QA Notice: make jobserver unavailable:")]
 		msg.append("")
 		msg.extend("\t" + line for line in make_jobserver)
 		_eqawarn(msg)
@@ -5696,9 +5663,9 @@ def _merge_unicode_error(errors):
 	from textwrap import wrap
 	lines = []
 
-	msg = "This package installs one or more file names containing " + \
-		"characters that do not match your current locale " + \
-		"settings. The current setting for filesystem encoding is '%s'." \
+	msg = _("This package installs one or more file names containing "
+		"characters that do not match your current locale "
+		"settings. The current setting for filesystem encoding is '%s'.") \
 		% _merge_encoding
 	lines.extend(wrap(msg, 72))
 
@@ -5708,9 +5675,9 @@ def _merge_unicode_error(errors):
 	lines.append("")
 
 	if _merge_encoding.lower().replace('_', '').replace('-', '') != 'utf8':
-		msg = "For best results, UTF-8 encoding is recommended. See " + \
-			"the Gentoo Linux Localization Guide for instructions " + \
-			"about how to configure your locale for UTF-8 encoding:"
+		msg = _("For best results, UTF-8 encoding is recommended. See "
+			"the Gentoo Linux Localization Guide for instructions "
+			"about how to configure your locale for UTF-8 encoding:")
 		lines.extend(wrap(msg, 72))
 		lines.append("")
 		lines.append("\t" + \
@@ -5874,7 +5841,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mysplit=pkgsplit(mypv,silent=0)
 	if mysplit is None:
 		raise portage.exception.IncorrectParameter(
-			"Invalid ebuild path: '%s'" % myebuild)
+			_("Invalid ebuild path: '%s'") % myebuild)
 
 	# Make a backup of PORTAGE_TMPDIR prior to calling config.reset()
 	# so that the caller can override it.
@@ -6048,7 +6015,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 				pass
 			elif errno.EPERM == oe.errno:
 				writemsg("%s\n" % oe, noiselevel=-1)
-				writemsg("Operation Not Permitted: rmtree('%s')\n" % \
+				writemsg(_("Operation Not Permitted: rmtree('%s')\n") % \
 					clean_dir, noiselevel=-1)
 				return 1
 			else:
@@ -6062,7 +6029,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 				pass
 			elif errno.EPERM == oe.errno:
 				writemsg("%s\n" % oe, noiselevel=-1)
-				writemsg("Operation Not Permitted: makedirs('%s')\n" % \
+				writemsg(_("Operation Not Permitted: makedirs('%s')\n") % \
 					dir_path, noiselevel=-1)
 				return False
 			else:
@@ -6089,13 +6056,13 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			portage.util.apply_secpass_permissions(mysettings[dir_key],
 				uid=portage_uid, gid=portage_gid)
 	except portage.exception.PermissionDenied, e:
-		writemsg("Permission Denied: %s\n" % str(e), noiselevel=-1)
+		writemsg(_("Permission Denied: %s\n") % str(e), noiselevel=-1)
 		return 1
 	except portage.exception.OperationNotPermitted, e:
-		writemsg("Operation Not Permitted: %s\n" % str(e), noiselevel=-1)
+		writemsg(_("Operation Not Permitted: %s\n") % str(e), noiselevel=-1)
 		return 1
 	except portage.exception.FileNotFound, e:
-		writemsg("File Not Found: '%s'\n" % str(e), noiselevel=-1)
+		writemsg(_("File Not Found: '%s'\n") % str(e), noiselevel=-1)
 		return 1
 
 	_prepare_workdir(mysettings)
@@ -6198,13 +6165,13 @@ def _prepare_features_dirs(mysettings):
 					if droppriv_fix:
 						_adjust_perms_msg(mysettings,
 							colorize("WARN", " * ") + \
-							"Adjusting permissions " + \
-							"for FEATURES=userpriv: '%s'\n" % mydir)
+							_("Adjusting permissions "
+							"for FEATURES=userpriv: '%s'\n") % mydir)
 					elif modified:
 						_adjust_perms_msg(mysettings,
 							colorize("WARN", " * ") + \
-							"Adjusting permissions " + \
-							"for FEATURES=%s: '%s'\n" % (myfeature, mydir))
+							_("Adjusting permissions "
+							"for FEATURES=%s: '%s'\n") % (myfeature, mydir))
 
 					if modified or kwargs["always_recurse"] or droppriv_fix:
 						def onerror(e):
@@ -6214,21 +6181,21 @@ def _prepare_features_dirs(mysettings):
 						gid=portage_gid, dirmode=dirmode, dirmask=modemask,
 						filemode=filemode, filemask=modemask, onerror=onerror):
 							raise portage.exception.OperationNotPermitted(
-								"Failed to apply recursive permissions for the portage group.")
+								_("Failed to apply recursive permissions for the portage group."))
 
 			except portage.exception.DirectoryNotFound, e:
 				failure = True
-				writemsg("\n!!! Directory does not exist: '%s'\n" % \
+				writemsg(_("\n!!! Directory does not exist: '%s'\n") % \
 					(e,), noiselevel=-1)
-				writemsg("!!! Disabled FEATURES='%s'\n" % myfeature,
+				writemsg(_("!!! Disabled FEATURES='%s'\n") % myfeature,
 					noiselevel=-1)
 
 			except portage.exception.PortageException, e:
 				failure = True
 				writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
-				writemsg("!!! Failed resetting perms on %s='%s'\n" % \
+				writemsg(_("!!! Failed resetting perms on %s='%s'\n") % \
 					(kwargs["basedir_var"], basedir), noiselevel=-1)
-				writemsg("!!! Disabled FEATURES='%s'\n" % myfeature,
+				writemsg(_("!!! Disabled FEATURES='%s'\n") % myfeature,
 					noiselevel=-1)
 
 			if failure:
@@ -6251,11 +6218,11 @@ def _prepare_workdir(mysettings):
 		else:
 			workdir_mode = parsed_mode
 	except KeyError, e:
-		writemsg("!!! PORTAGE_WORKDIR_MODE is unset, using %s.\n" % oct(workdir_mode))
+		writemsg(_("!!! PORTAGE_WORKDIR_MODE is unset, using %s.\n") % oct(workdir_mode))
 	except ValueError, e:
 		if len(str(e)) > 0:
 			writemsg("%s\n" % e)
-		writemsg("!!! Unable to parse PORTAGE_WORKDIR_MODE='%s', using %s.\n" % \
+		writemsg(_("!!! Unable to parse PORTAGE_WORKDIR_MODE='%s', using %s.\n") % \
 		(mysettings["PORTAGE_WORKDIR_MODE"], oct(workdir_mode)))
 	mysettings["PORTAGE_WORKDIR_MODE"] = oct(workdir_mode)
 	try:
@@ -6275,9 +6242,9 @@ def _prepare_workdir(mysettings):
 					uid=portage_uid, gid=portage_gid, mode=02770)
 		except portage.exception.PortageException, e:
 			writemsg("!!! %s\n" % str(e), noiselevel=-1)
-			writemsg("!!! Permission issues with PORT_LOGDIR='%s'\n" % \
+			writemsg(_("!!! Permission issues with PORT_LOGDIR='%s'\n") % \
 				mysettings["PORT_LOGDIR"], noiselevel=-1)
-			writemsg("!!! Disabling logging.\n", noiselevel=-1)
+			writemsg(_("!!! Disabling logging.\n"), noiselevel=-1)
 			while "PORT_LOGDIR" in mysettings:
 				del mysettings["PORT_LOGDIR"]
 	if "PORT_LOGDIR" in mysettings and \
@@ -6308,25 +6275,25 @@ def _doebuild_exit_status_check(mydo, settings):
 	if not exit_status_file or \
 		os.path.exists(exit_status_file):
 		return None
-	msg = ("The ebuild phase '%s' has exited " % mydo) + \
-	"unexpectedly. This type of behavior " + \
-	"is known to be triggered " + \
-	"by things such as failed variable " + \
-	"assignments (bug #190128) or bad substitution " + \
-	"errors (bug #200313). Normally, before exiting, bash should " + \
-	"have displayed an error message above. If bash did not " + \
-	"produce an error message above, it's possible " + \
-	"that the ebuild has called `exit` when it " + \
-	"should have called `die` instead. This behavior may also " + \
-	"be triggered by a corrupt bash binary or a hardware " + \
-	"problem such as memory or cpu malfunction. If the problem is not " + \
-	"reproducible or it appears to occur randomly, then it is likely " + \
-	"to be triggered by a hardware problem. " + \
-	"If you suspect a hardware problem then you should " + \
-	"try some basic hardware diagnostics such as memtest. " + \
-	"Please do not report this as a bug unless it is consistently " + \
-	"reproducible and you are sure that your bash binary and hardware " + \
-	"are functioning properly."
+	msg = _("The ebuild phase '%s' has exited "
+	"unexpectedly. This type of behavior "
+	"is known to be triggered "
+	"by things such as failed variable "
+	"assignments (bug #190128) or bad substitution "
+	"errors (bug #200313). Normally, before exiting, bash should "
+	"have displayed an error message above. If bash did not "
+	"produce an error message above, it's possible "
+	"that the ebuild has called `exit` when it "
+	"should have called `die` instead. This behavior may also "
+	"be triggered by a corrupt bash binary or a hardware "
+	"problem such as memory or cpu malfunction. If the problem is not "
+	"reproducible or it appears to occur randomly, then it is likely "
+	"to be triggered by a hardware problem. "
+	"If you suspect a hardware problem then you should "
+	"try some basic hardware diagnostics such as memtest. "
+	"Please do not report this as a bug unless it is consistently "
+	"reproducible and you are sure that your bash binary and hardware "
+	"are functioning properly.") % mydo
 	return msg
 
 def _doebuild_exit_status_check_and_log(settings, mydo, retval):
@@ -6503,7 +6470,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			_doebuild_manifest_cache = None
 			if not os.path.exists(manifest_path):
 				out = portage.output.EOutput()
-				out.eerror("Manifest not found for '%s'" % (myebuild,))
+				out.eerror(_("Manifest not found for '%s'") % (myebuild,))
 				_doebuild_broken_ebuilds.add(myebuild)
 				return 1
 			mf = Manifest(pkgdir, mysettings["DISTDIR"])
@@ -6515,22 +6482,22 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			mf.checkFileHashes("EBUILD", os.path.basename(myebuild))
 		except KeyError:
 			out = portage.output.EOutput()
-			out.eerror("Missing digest for '%s'" % (myebuild,))
+			out.eerror(_("Missing digest for '%s'") % (myebuild,))
 			_doebuild_broken_ebuilds.add(myebuild)
 			return 1
 		except portage.exception.FileNotFound:
 			out = portage.output.EOutput()
-			out.eerror("A file listed in the Manifest " + \
-				"could not be found: '%s'" % (myebuild,))
+			out.eerror(_("A file listed in the Manifest "
+				"could not be found: '%s'") % (myebuild,))
 			_doebuild_broken_ebuilds.add(myebuild)
 			return 1
 		except portage.exception.DigestException, e:
 			out = portage.output.EOutput()
-			out.eerror("Digest verification failed:")
+			out.eerror(_("Digest verification failed:"))
 			out.eerror("%s" % e.value[0])
-			out.eerror("Reason: %s" % e.value[1])
-			out.eerror("Got: %s" % e.value[2])
-			out.eerror("Expected: %s" % e.value[3])
+			out.eerror(_("Reason: %s") % e.value[1])
+			out.eerror(_("Got: %s") % e.value[2])
+			out.eerror(_("Expected: %s") % e.value[3])
 			_doebuild_broken_ebuilds.add(myebuild)
 			return 1
 
@@ -6552,8 +6519,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					f = os.path.join(pkgdir, f)
 					if f not in _doebuild_broken_ebuilds:
 						out = portage.output.EOutput()
-						out.eerror("A file is not listed in the " + \
-							"Manifest: '%s'" % (f,))
+						out.eerror(_("A file is not listed in the "
+							"Manifest: '%s'") % (f,))
 					_doebuild_broken_manifests.add(manifest_path)
 					return 1
 
@@ -6672,11 +6639,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		if "PORTAGE_TMPDIR" not in mysettings or \
 			not os.path.isdir(mysettings["PORTAGE_TMPDIR"]):
-			writemsg("The directory specified in your " + \
-				"PORTAGE_TMPDIR variable, '%s',\n" % \
-				mysettings.get("PORTAGE_TMPDIR", ""), noiselevel=-1)
-			writemsg("does not exist.  Please create this directory or " + \
-				"correct your PORTAGE_TMPDIR setting.\n", noiselevel=-1)
+			writemsg(_("The directory specified in your "
+				"PORTAGE_TMPDIR variable, '%s',\n"
+				"does not exist.  Please create this directory or "
+				"correct your PORTAGE_TMPDIR setting.\n") % mysettings.get("PORTAGE_TMPDIR", ""), noiselevel=-1)
 			return 1
 		
 		# as some people use a separate PORTAGE_TMPDIR mount
@@ -6688,20 +6654,20 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			checkdir = mysettings["PORTAGE_TMPDIR"]
 
 		if not os.access(checkdir, os.W_OK):
-			writemsg("%s is not writable.\n" % checkdir + \
-				"Likely cause is that you've mounted it as readonly.\n" \
-				, noiselevel=-1)
+			writemsg(_("%s is not writable.\n"
+				"Likely cause is that you've mounted it as readonly.\n") % checkdir,
+				noiselevel=-1)
 			return 1
 		else:
 			from tempfile import NamedTemporaryFile
 			fd = NamedTemporaryFile(prefix="exectest-", dir=checkdir)
 			os.chmod(fd.name, 0755)
 			if not os.access(fd.name, os.X_OK):
-				writemsg("Can not execute files in %s\n" % checkdir + \
-					"Likely cause is that you've mounted it with one of the\n" + \
-					"following mount options: 'noexec', 'user', 'users'\n\n" + \
-					"Please make sure that portage can execute files in this directory.\n" \
-					, noiselevel=-1)
+				writemsg(_("Can not execute files in %s\n"
+					"Likely cause is that you've mounted it with one of the\n"
+					"following mount options: 'noexec', 'user', 'users'\n\n"
+					"Please make sure that portage can execute files in this directory.\n") % checkdir,
+					noiselevel=-1)
 				fd.close()
 				return 1
 			fd.close()
@@ -6764,7 +6730,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					# would be preserved between normal phases.
 					open(_unicode_encode(env_file + '.raw'), 'w')
 				else:
-					writemsg(("!!! Error extracting saved " + \
+					writemsg(_("!!! Error extracting saved "
 						"environment: '%s'\n") % \
 						saved_env, noiselevel=-1)
 					try:
@@ -6781,11 +6747,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					value = mysettings.get(var)
 					if value and value.strip():
 						continue
-					msg = ("%s is not set... " % var) + \
-						("Are you missing the '%setc/make.profile' symlink? " % \
-						mysettings["PORTAGE_CONFIGROOT"]) + \
-						"Is the symlink correct? " + \
-						"Is your portage tree complete?"
+					msg = _("%(var)s is not set... "
+						"Are you missing the '%(configroot)setc/make.profile' symlink? "
+						"Is the symlink correct? "
+						"Is your portage tree complete?") % \
+						{"var": var, "configroot": mysettings["PORTAGE_CONFIGROOT"]}
 					from portage.elog.messages import eerror
 					from textwrap import wrap
 					for line in wrap(msg, 70):
@@ -6838,7 +6804,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					mysettings, debug=debug, free=1, logfile=logfile)
 				phase_retval = exit_status_check(phase_retval)
 				if phase_retval != os.EX_OK:
-					writemsg("!!! post preinst failed; exiting.\n",
+					writemsg(_("!!! post preinst failed; exiting.\n"),
 						noiselevel=-1)
 			return phase_retval
 		elif mydo == "postinst":
@@ -6859,7 +6825,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					mysettings, debug=debug, free=1, logfile=logfile)
 				phase_retval = exit_status_check(phase_retval)
 				if phase_retval != os.EX_OK:
-					writemsg("!!! post postinst failed; exiting.\n",
+					writemsg(_("!!! post postinst failed; exiting.\n"),
 						noiselevel=-1)
 			return phase_retval
 		elif mydo in ("prerm", "postrm", "config", "info"):
@@ -6897,7 +6863,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				aalist = mydbapi.getFetchMap(mycpv, mytree=mytree)
 			except portage.exception.InvalidDependString, e:
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
-				writemsg("!!! Invalid SRC_URI for '%s'.\n" % mycpv,
+				writemsg(_("!!! Invalid SRC_URI for '%s'.\n") % mycpv,
 					noiselevel=-1)
 				del e
 				return 1
@@ -6941,7 +6907,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				# and it can interfere with parallel tasks.
 				digestgen(aalist, mysettings, overwrite=0, myportdb=mydbapi)
 		except portage.exception.PermissionDenied, e:
-			writemsg("!!! Permission Denied: %s\n" % (e,), noiselevel=-1)
+			writemsg(_("!!! Permission Denied: %s\n") % (e,), noiselevel=-1)
 			if mydo in ("digest", "manifest"):
 				return 1
 
@@ -7049,7 +7015,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			# forget it and are using ebuild
 			if not os.path.exists(
 				os.path.join(mysettings["PORTAGE_BUILDDIR"], ".installed")):
-				writemsg("!!! mydo=qmerge, but the install phase has not been run\n",
+				writemsg(_("!!! mydo=qmerge, but the install phase has not been run\n"),
 					noiselevel=-1)
 				return 1
 			# qmerge is a special phase that implies noclean.
@@ -7079,7 +7045,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					myebuild=mysettings["EBUILD"], mytree=tree, mydbapi=mydbapi,
 					vartree=vartree, prev_mtimes=prev_mtimes)
 		else:
-			print "!!! Unknown mydo:",mydo
+			print _("!!! Unknown mydo: %s") % mydo
 			return 1
 
 		return retval
@@ -7144,10 +7110,10 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 				k, metadata[k], str(e)))
 
 	if not metadata["SLOT"]:
-		msgs.append("  SLOT is undefined\n")
+		msgs.append(_("  SLOT is undefined\n"))
 
 	if msgs:
-		portage.util.writemsg_level("Error(s) in metadata for '%s':\n" % \
+		portage.util.writemsg_level(_("Error(s) in metadata for '%s':\n") % \
 			(mysettings.mycpv,), level=logging.ERROR, noiselevel=-1)
 		for x in msgs:
 			portage.util.writemsg_level(x,
@@ -7192,7 +7158,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 	except SystemExit, e:
 		raise
 	except Exception, e:
-		print "!!! Stating source file failed... movefile()"
+		print _("!!! Stating source file failed... movefile()")
 		print "!!!",e
 		return None
 
@@ -7241,7 +7207,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		except SystemExit, e:
 			raise
 		except Exception, e:
-			print "!!! failed to properly create symlink:"
+			print _("!!! failed to properly create symlink:")
 			print "!!!",dest,"->",target
 			print "!!!",e
 			return None
@@ -7259,7 +7225,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			os.unlink(hardlink_tmp)
 		except OSError, e:
 			if e.errno != errno.ENOENT:
-				writemsg("!!! Failed to remove hardlink temp file: %s\n" % \
+				writemsg(_("!!! Failed to remove hardlink temp file: %s\n") % \
 					(hardlink_tmp,), noiselevel=-1)
 				writemsg("!!! %s\n" % (e,), noiselevel=-1)
 				return None
@@ -7273,7 +7239,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 				try:
 					os.rename(hardlink_tmp, dest)
 				except OSError, e:
-					writemsg("!!! Failed to rename %s to %s\n" % \
+					writemsg(_("!!! Failed to rename %s to %s\n") % \
 						(hardlink_tmp, dest), noiselevel=-1)
 					writemsg("!!! %s\n" % (e,), noiselevel=-1)
 					return None
@@ -7295,7 +7261,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		except Exception, e:
 			if e[0]!=errno.EXDEV:
 				# Some random error.
-				print "!!! Failed to move",src,"to",dest
+				print _("!!! Failed to move %(src)s to %(dest)s") % {"src": src, "dest": dest}
 				print "!!!",e
 				return None
 			# Invalid cross-device-link 'bind' mounted or actually Cross-Device
@@ -7313,16 +7279,17 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			except SystemExit, e:
 				raise
 			except Exception, e:
-				print '!!! copy',src,'->',dest,'failed.'
+				print _('!!! copy %(src)s -> %(dest)s failed.') % {"src": src, "dest": dest}
 				print "!!!",e
 				return None
 		else:
 			#we don't yet handle special, so we need to fall back to /bin/mv
-			a = commands.getstatusoutput("%s -f %s %s" % \
-				(MOVE_BINARY, _shell_quote(src), _shell_quote(dest)))
-			if a[0] != os.EX_OK:
-				writemsg("!!! Failed to move special file:\n", noiselevel=-1)
-				writemsg("!!! '%s' to '%s'\n" % (src, dest), noiselevel=-1)
+			a = process.spawn([MOVE_BINARY, '-f', src, dest], env=os.environ)
+			if a != os.EX_OK:
+				writemsg(_("!!! Failed to move special file:\n"), noiselevel=-1)
+				writemsg(_("!!! '%(src)s' to '%(dest)s'\n") % \
+					{"src": _unicode_decode(src, encoding=encoding),
+					"dest": _unicode_decode(dest, encoding=encoding)}, noiselevel=-1)
 				writemsg("!!! %s\n" % a, noiselevel=-1)
 				return None # failure
 		try:
@@ -7336,7 +7303,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		except SystemExit, e:
 			raise
 		except Exception, e:
-			print "!!! Failed to chown/chmod/unlink in movefile()"
+			print _("!!! Failed to chown/chmod/unlink in movefile()")
 			print "!!!",dest
 			print "!!!",e
 			return None
@@ -7356,7 +7323,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		try:
 			newmtime = long(os.stat(dest).st_mtime)
 		except OSError, e:
-			writemsg("!!! Failed to stat in movefile()\n", noiselevel=-1)
+			writemsg(_("!!! Failed to stat in movefile()\n"), noiselevel=-1)
 			writemsg("!!! %s\n" % dest, noiselevel=-1)
 			writemsg("!!! %s\n" % str(e), noiselevel=-1)
 			return None
@@ -7372,7 +7339,7 @@ def merge(mycat, mypkg, pkgloc, infloc, myroot, mysettings, myebuild=None,
 	mytree=None, mydbapi=None, vartree=None, prev_mtimes=None, blockers=None,
 	scheduler=None):
 	if not os.access(myroot + EPREFIX_LSTRIP, os.W_OK):
-		writemsg("Permission denied: access('%s', W_OK)\n" %
+		writemsg(_("Permission denied: access('%s', W_OK)\n") %
 				(myroot + EPREFIX_LSTRIP), noiselevel=-1)
 		return errno.EACCES
 	mylink = dblink(mycat, mypkg, myroot, mysettings, treetype=mytree,
@@ -7472,16 +7439,16 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			except portage.exception.InvalidAtom:
 				if portage.dep._dep_check_strict:
 					raise portage.exception.ParseError(
-						"invalid atom: '%s'" % x)
+						_("invalid atom: '%s'") % x)
 			else:
 				if x.blocker and x.blocker.overlap.forbid and \
 					eapi in ("0", "1") and portage.dep._dep_check_strict:
 					raise portage.exception.ParseError(
-						"invalid atom: '%s'" % (x,))
+						_("invalid atom: '%s'") % (x,))
 				if x.use and eapi in ("0", "1") and \
 					portage.dep._dep_check_strict:
 					raise portage.exception.ParseError(
-						"invalid atom: '%s'" % (x,))
+						_("invalid atom: '%s'") % (x,))
 
 		if repoman and x.use and x.use.conditional:
 			evaluated_atom = portage.dep.remove_slot(x)
@@ -7542,8 +7509,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				use_split = db.aux_get(cpv, ["USE"])[0].split()
 				pkg_kwargs["myuse"] = use_split
 			if edebug:
-				print "Virtual Parent:   ", y[0]
-				print "Virtual Depstring:", depstring
+				print _("Virtual Parent:   "), y[0]
+				print _("Virtual Depstring:"), depstring
 
 			# Set EAPI used for validation in dep_check() recursion.
 			virtual_eapi, = db.aux_get(cpv, ["EAPI"])
@@ -7879,7 +7846,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	mysplit2=mysplit[:]
 	mysplit2=dep_wordreduce(mysplit2,mysettings,mydbapi,mode,use_cache=use_cache)
 	if mysplit2 is None:
-		return [0,"Invalid token"]
+		return [0, _("Invalid token")]
 
 	writemsg("\n\n\n", 1)
 	writemsg("mysplit:  %s\n" % (mysplit), 1)
@@ -7893,7 +7860,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 			raise # This shouldn't happen.
 		# dbapi.match() failed due to an invalid atom in
 		# the dependencies of an installed package.
-		return [0, "Invalid atom: '%s'" % (e,)]
+		return [0, _("Invalid atom: '%s'") % (e,)]
 
 	mylist = flatten(myzaps)
 	writemsg("myzaps:   %s\n" % (myzaps), 1)
@@ -8014,11 +7981,11 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 						# dbapi.cp_list().
 						if mydb.cp_list(dep_getkey(vkey), use_cache=use_cache):
 							mykey = vkey
-							writemsg("virts chosen: %s\n" % (mykey), 1)
+							writemsg(_("virts chosen: %s\n") % (mykey), 1)
 							break
 					if mykey == mykey_orig:
 						mykey=virts[mykey][0]
-						writemsg("virts defaulted: %s\n" % (mykey), 1)
+						writemsg(_("virts defaulted: %s\n") % (mykey), 1)
 			#we only perform virtual expansion if we are passed a dbapi
 	else:
 		#specific cpv, no category, ie. "foo-1.0"
@@ -8075,7 +8042,7 @@ def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_lo
 		portdb = globals()["portdb"]
 	mysplit = catpkgsplit(mycpv)
 	if not mysplit:
-		raise ValueError("invalid CPV: %s" % mycpv)
+		raise ValueError(_("invalid CPV: %s") % mycpv)
 	if metadata is None:
 		db_keys = list(portdb._aux_cache_keys)
 		try:
@@ -8151,7 +8118,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 
 	mysplit = catpkgsplit(mycpv)
 	if not mysplit:
-		raise ValueError("invalid CPV: %s" % mycpv)
+		raise ValueError(_("invalid CPV: %s") % mycpv)
 	if metadata is None:
 		db_keys = list(portdb._aux_cache_keys)
 		try:
@@ -8270,7 +8237,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 			msg.append("properties")
 			rValue.append(" ".join(msg))
 	except portage.exception.InvalidDependString, e:
-		rValue.append("PROPERTIES: "+srt(e))
+		rValue.append("PROPERTIES: "+str(e))
 
 	# Only show KEYWORDS masks for installed packages
 	# if they're not masked for any other reason.
@@ -8338,7 +8305,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 	if vartree is None:
 		vartree = db[myroot]["vartree"]
 	if mytbz2[-5:]!=".tbz2":
-		print "!!! Not a .tbz2 file"
+		print _("!!! Not a .tbz2 file")
 		return 1
 
 	tbz2_lock = None
@@ -8355,7 +8322,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 		xptbz2 = portage.xpak.tbz2(mytbz2)
 		mycat = xptbz2.getfile("CATEGORY")
 		if not mycat:
-			writemsg("!!! CATEGORY info missing from info chunk, aborting...\n",
+			writemsg(_("!!! CATEGORY info missing from info chunk, aborting...\n"),
 				noiselevel=-1)
 			return 1
 		mycat = mycat.strip()
@@ -8393,7 +8360,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 		for mydir in (builddir, pkgloc, infloc):
 			portage.util.ensure_dirs(mydir, uid=portage_uid,
 				gid=portage_gid, mode=0755)
-		writemsg_stdout(">>> Extracting info\n")
+		writemsg_stdout(_(">>> Extracting info\n"))
 		xptbz2.unpackinfo(infloc)
 		mysettings.setcpv(mycat + "/" + mypkg, mydb=mydbapi)
 		# Store the md5sum in the vdb.
@@ -8418,15 +8385,15 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 		retval = doebuild(myebuild, "setup", myroot, mysettings, debug=debug,
 			tree="bintree", mydbapi=mydbapi, vartree=vartree)
 		if retval != os.EX_OK:
-			writemsg("!!! Setup failed: %s\n" % retval, noiselevel=-1)
+			writemsg(_("!!! Setup failed: %s\n") % retval, noiselevel=-1)
 			return retval
 
-		writemsg_stdout(">>> Extracting %s\n" % mypkg)
+		writemsg_stdout(_(">>> Extracting %s\n") % mypkg)
 		retval = portage.process.spawn_bash(
 			"bzip2 -dqc -- '%s' | tar -xp -C '%s' -f -" % (mytbz2, pkgloc),
 			env=mysettings.environ())
 		if retval != os.EX_OK:
-			writemsg("!!! Error Extracting '%s'\n" % mytbz2, noiselevel=-1)
+			writemsg(_("!!! Error Extracting '%s'\n") % mytbz2, noiselevel=-1)
 			return retval
 		#portage.locks.unlockfile(tbz2_lock)
 		#tbz2_lock = None
@@ -8486,18 +8453,18 @@ def deprecated_profile_check(settings=None):
 		return False
 	dcontent = codecs.open(_unicode_encode(deprecated_profile_file), 
 		mode='r', encoding='utf_8', errors='replace').readlines()
-	writemsg(colorize("BAD", "\n!!! Your current profile is " + \
-		"deprecated and not supported anymore.") + "\n", noiselevel=-1)
+	writemsg(colorize("BAD", _("\n!!! Your current profile is "
+		"deprecated and not supported anymore.")) + "\n", noiselevel=-1)
 	if not dcontent:
-		writemsg(colorize("BAD","!!! Please refer to the " + \
-			"Gentoo Upgrading Guide.") + "\n", noiselevel=-1)
+		writemsg(colorize("BAD", _("!!! Please refer to the "
+			"Gentoo Upgrading Guide.")) + "\n", noiselevel=-1)
 		return True
 	newprofile = dcontent[0]
-	writemsg(colorize("BAD", "!!! Please upgrade to the " + \
-		"following profile if possible:") + "\n", noiselevel=-1)
+	writemsg(colorize("BAD", _("!!! Please upgrade to the "
+		"following profile if possible:")) + "\n", noiselevel=-1)
 	writemsg(8*" " + colorize("GOOD", newprofile) + "\n", noiselevel=-1)
 	if len(dcontent) > 1:
-		writemsg("To upgrade do the following steps:\n", noiselevel=-1)
+		writemsg(_("To upgrade do the following steps:\n"), noiselevel=-1)
 		for myline in dcontent[1:]:
 			writemsg(myline, noiselevel=-1)
 		writemsg("\n\n", noiselevel=-1)
@@ -8566,8 +8533,8 @@ def _global_updates(trees, prev_mtimes):
 		else:
 			update_data = grab_updates(updpath, prev_mtimes)
 	except portage.exception.DirectoryNotFound:
-		writemsg("--- 'profiles/updates' is empty or " + \
-			"not available. Empty portage tree?\n", noiselevel=1)
+		writemsg(_("--- 'profiles/updates' is empty or "
+			"not available. Empty portage tree?\n"), noiselevel=1)
 		return
 	myupd = None
 	if len(update_data) > 0:
@@ -8577,15 +8544,13 @@ def _global_updates(trees, prev_mtimes):
 		for mykey, mystat, mycontent in update_data:
 			writemsg_stdout("\n\n")
 			writemsg_stdout(colorize("GOOD",
-				"Performing Global Updates: ")+bold(mykey)+"\n")
-			writemsg_stdout("(Could take a couple of minutes if you have a lot of binary packages.)\n")
-			writemsg_stdout("  " + bold(".") + "='update pass'  " + \
-				bold("*") + "='binary update'  " + bold("#") + \
-				"='/var/db update'  " + bold("@") + "='/var/db move'\n" + \
-				"  " + bold("s") + "='/var/db SLOT move'  " + \
-				bold("%") + "='binary move'  " + bold("S") + \
-				"='binary SLOT move'\n  " + \
-				bold("p") + "='update /etc/portage/package.*'\n")
+				_("Performing Global Updates: "))+bold(mykey)+"\n")
+			writemsg_stdout(_("(Could take a couple of minutes if you have a lot of binary packages.)\n"))
+			writemsg_stdout(_("  %s='update pass'  %s='binary update'  "
+				"%s='/var/db update'  %s='/var/db move'\n"
+				"  %s='/var/db SLOT move'  %s='binary move'  "
+				"%s='binary SLOT move'\n  %s='update /etc/portage/package.*'\n") % \
+				(bold("."), bold("*"), bold("#"), bold("@"), bold("s"), bold("%"), bold("S"), bold("p")))
 			valid_updates, errors = parse_updates(mycontent)
 			myupd.extend(valid_updates)
 			writemsg_stdout(len(valid_updates) * "." + "\n")
@@ -8673,8 +8638,8 @@ def _global_updates(trees, prev_mtimes):
 
 		if do_upgrade_packagesmessage and bindb and \
 			bindb.cpv_all():
-			writemsg_stdout(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
-			writemsg_stdout("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
+			writemsg_stdout(_(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the tbz2's in the packages directory.\n"))
+			writemsg_stdout(bold(_("Note: This can take a very long time.")))
 			writemsg_stdout("\n")
 	if myupd:
 		return myupd
@@ -8701,7 +8666,7 @@ class MtimeDB(dict):
 			del f
 		except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError), e:
 			if isinstance(e, pickle.UnpicklingError):
-				writemsg("!!! Error loading '%s': %s\n" % \
+				writemsg(_("!!! Error loading '%s': %s\n") % \
 					(filename, str(e)), noiselevel=-1)
 			del e
 			d = {}
@@ -8722,7 +8687,7 @@ class MtimeDB(dict):
 
 		for k in d.keys():
 			if k not in mtimedbkeys:
-				writemsg("Deleting invalid mtimedb key: %s\n" % str(k))
+				writemsg(_("Deleting invalid mtimedb key: %s\n") % str(k))
 				del d[k]
 		self.update(d)
 		self._clean_data = copy.deepcopy(d)

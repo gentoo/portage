@@ -15,6 +15,7 @@ from portage.util import apply_secpass_permissions, ensure_dirs, \
 	grabfile, normalize_path, write_atomic, writemsg_level
 from portage.data import portage_gid
 from portage.dep import isvalidatom
+from portage.localization import _
 from portage.locks import lockfile, unlockfile
 from portage.exception import InvalidLocation, OperationNotPermitted, \
 	PermissionDenied
@@ -70,7 +71,7 @@ class NewsManager(object):
 	def _news_dir(self, repoid):
 		repo_path = self.portdb.getRepositoryPath(repoid)
 		if repo_path is None:
-			raise AssertionError("Invalid repoID: %s" % repoid)
+			raise AssertionError(_("Invalid repoID: %s") % repoid)
 		return os.path.join(repo_path, self.news_path)
 
 	def updateItems(self, repoid):
@@ -249,9 +250,9 @@ class NewsItem(object):
 		if invalids:
 			self._valid = False
 			msg = []
-			msg.append("Invalid news item: %s" % (self.path,))
+			msg.append(_("Invalid news item: %s") % (self.path,))
 			for lineno, line in invalids:
-				msg.append("  line %d: %s" % (lineno, line))
+				msg.append(_("  line %d: %s") % (lineno, line))
 			writemsg_level("".join("!!! %s\n" % x for x in msg),
 				level=logging.ERROR, noiselevel=-1)
 
@@ -270,7 +271,7 @@ class DisplayRestriction(object):
 		return True
 
 	def checkRestriction(self, **kwargs):
-		raise NotImplementedError('Derived class should over-ride this method')
+		raise NotImplementedError('Derived class should override this method')
 
 class DisplayProfileRestriction(DisplayRestriction):
 	"""

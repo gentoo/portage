@@ -11,6 +11,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.output:colorize',
 	'portage.util:writemsg',
 )
+from portage.localization import _
 
 ostype=platform.system()
 userland = None
@@ -34,9 +35,9 @@ if not lchown:
 			lchown = missingos.lchown
 		except ImportError:
 			def lchown(*pos_args, **key_args):
-				writemsg(colorize("BAD", "!!!") + \
-					" It seems that os.lchown does not" + \
-					" exist.  Please rebuild python.\n", noiselevel=-1)
+				writemsg(colorize("BAD", "!!!") + _(
+					" It seems that os.lchown does not"
+					" exist.  Please rebuild python.\n"), noiselevel=-1)
 			lchown()
 
 lchown = portage._unicode_func_wrapper(lchown)
@@ -88,6 +89,7 @@ except KeyError:
 	portage_uid=0
 	portage_gid=0
 	writemsg("\n")
+	# warning: not localised
 	writemsg(colorize("BAD",
 		"portage: "+portageuser+" user or "+portagegroup+" group missing.") + "\n", noiselevel=-1)
 	writemsg(colorize("BAD",
@@ -96,13 +98,11 @@ except KeyError:
 		"         since it means you have thrown away yourself.") + "\n", noiselevel=-1)
 	writemsg(colorize("BAD",
 		"         Re-add yourself or re-bootstrap Gentoo Prefix.") + "\n", noiselevel=-1)
-	writemsg("\n")
 # we need to fix this one day to distinguish prefix vs non-prefix
-#	writemsg(colorize("BAD",
-#		"portage: 'portage' user or group missing.") + "\n", noiselevel=-1)
-#	writemsg(
-#		"         For the defaults, line 1 goes into passwd, " + \
-#		"and 2 into group.\n", noiselevel=-1)
+#		_("portage: 'portage' user or group missing.")) + "\n", noiselevel=-1)
+#	writemsg(_(
+#		"         For the defaults, line 1 goes into passwd, "
+#		"and 2 into group.\n"), noiselevel=-1)
 #	writemsg(colorize("GOOD",
 #		"         portage:x:250:250:portage:/var/tmp/portage:/bin/false") \
 #		+ "\n", noiselevel=-1)

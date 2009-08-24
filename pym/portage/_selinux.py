@@ -8,6 +8,8 @@ import os
 import shutil
 
 import portage
+from portage.localization import _
+
 import selinux
 from selinux import is_selinux_enabled, getfilecon, lgetfilecon
 
@@ -16,7 +18,7 @@ def copyfile(src, dest):
 	dest = portage._unicode_encode(dest)
 	(rc, ctx) = selinux.lgetfilecon(src)
 	if rc < 0:
-		raise OSError("copyfile: Failed getting context of \"%s\"." % src)
+		raise OSError(_("copyfile: Failed getting context of \"%s\".") % src)
 
 	setfscreate(ctx)
 	try:
@@ -27,7 +29,7 @@ def copyfile(src, dest):
 def getcontext():
 	(rc, ctx) = selinux.getcon()
 	if rc < 0:
-		raise OSError("getcontext: Failed getting current process context.")
+		raise OSError(_("getcontext: Failed getting current process context."))
 
 	return ctx
 
@@ -37,7 +39,7 @@ def mkdir(target, refdir):
 	(rc, ctx) = selinux.getfilecon(refdir)
 	if rc < 0:
 		raise OSError(
-			"mkdir: Failed getting context of reference directory \"%s\"." \
+			_("mkdir: Failed getting context of reference directory \"%s\".") \
 			% refdir)
 
 	setfscreatecon(ctx)
@@ -51,7 +53,7 @@ def rename(src, dest):
 	dest = portage._unicode_encode(dest)
 	(rc, ctx) = selinux.lgetfilecon(src)
 	if rc < 0:
-		raise OSError("rename: Failed getting context of \"%s\"." % src)
+		raise OSError(_("rename: Failed getting context of \"%s\".") % src)
 
 	setfscreate(ctx)
 	try:
@@ -68,13 +70,13 @@ def setexec(ctx="\n"):
 	if isinstance(ctx, unicode):
 		ctx = ctx.encode('utf_8', 'replace')
 	if selinux.setexeccon(ctx) < 0:
-		raise OSError("setexec: Failed setting exec() context \"%s\"." % ctx)
+		raise OSError(_("setexec: Failed setting exec() context \"%s\".") % ctx)
 
 def setfscreate(ctx="\n"):
 	ctx = portage._unicode_encode(ctx)
 	if selinux.setfscreatecon(ctx) < 0:
 		raise OSError(
-			"setfscreate: Failed setting fs create context \"%s\"." % ctx)
+			_("setfscreate: Failed setting fs create context \"%s\".") % ctx)
 
 def spawn_wrapper(spawn_func, selinux_type):
 
@@ -96,7 +98,7 @@ def symlink(target, link, reflnk):
 	(rc, ctx) = selinux.lgetfilecon(reflnk)
 	if rc < 0:
 		raise OSError(
-			"symlink: Failed getting context of reference symlink \"%s\"." \
+			_("symlink: Failed getting context of reference symlink \"%s\".") \
 			% reflnk)
 
 	setfscreate(ctx)

@@ -8,6 +8,7 @@ from email.MIMEText import MIMEText as TextMessage
 from email.MIMEMultipart import MIMEMultipart as MultipartMessage
 from email.MIMEBase import MIMEBase as BaseMessage
 from email.header import Header
+from portage.localization import _
 
 def create_message(sender, recipient, subject, body, attachments=None):
 
@@ -34,7 +35,7 @@ def create_message(sender, recipient, subject, body, attachments=None):
 					x = x.encode('utf_8', 'replace')
 				mymessage.attach(TextMessage(x))
 			else:
-				raise portage.exception.PortageException("Can't handle type of attachment: %s" % type(x))
+				raise portage.exception.PortageException(_("Can't handle type of attachment: %s") % type(x))
 
 	mymessage.set_unixfrom(sender)
 	mymessage["To"] = recipient
@@ -68,7 +69,7 @@ def send_mail(mysettings, message):
 			try:
 				mymailuser,mymailpasswd = myauthdata.split(":")
 			except ValueError:
-				print "!!! invalid SMTP AUTH configuration, trying unauthenticated ..."
+				print _("!!! invalid SMTP AUTH configuration, trying unauthenticated ...")
 		else:
 			myconndata = mymailuri
 		if ":" in myconndata:
@@ -99,14 +100,14 @@ def send_mail(mysettings, message):
 		fd = os.popen(mymailhost+" -f "+myfrom+" "+myrecipient, "w")
 		fd.write(message.as_string())
 		if fd.close() != None:
-			sys.stderr.write("!!! %s returned with a non-zero exit code. This generally indicates an error.\n" % mymailhost)
+			sys.stderr.write(_("!!! %s returned with a non-zero exit code. This generally indicates an error.\n") % mymailhost)
 	else:
 		try:
 			if int(mymailport) > 100000:
 				myconn = smtplib.SMTP(mymailhost, int(mymailport) - 100000)
 				myconn.ehlo()
 				if not myconn.has_extn("STARTTLS"):
-					raise portage.exception.PortageException("!!! TLS support requested for logmail but not suported by server")
+					raise portage.exception.PortageException(_("!!! TLS support requested for logmail but not suported by server"))
 				myconn.starttls()
 				myconn.ehlo()
 			else:
@@ -116,8 +117,8 @@ def send_mail(mysettings, message):
 			myconn.sendmail(myfrom, myrecipient, message.as_string())
 			myconn.quit()
 		except smtplib.SMTPException, e:
-			raise portage.exception.PortageException("!!! An error occured while trying to send logmail:\n"+str(e))
+			raise portage.exception.PortageException(_("!!! An error occured while trying to send logmail:\n")+str(e))
 		except socket.error, e:
-			raise portage.exception.PortageException("!!! A network error occured while trying to send logmail:\n"+str(e)+"\nSure you configured PORTAGE_ELOG_MAILURI correctly?")
+			raise portage.exception.PortageException(_("!!! A network error occured while trying to send logmail:\n%s\nSure you configured PORTAGE_ELOG_MAILURI correctly?") % str(e))
 	return
 	

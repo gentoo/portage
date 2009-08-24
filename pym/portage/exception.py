@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from portage.localization import _
 
 class PortageException(Exception):
 	"""General superclass for portage exceptions"""
@@ -95,10 +96,10 @@ class UnsupportedAPIException(PortagePackageException):
 	def __init__(self, cpv, eapi):
 		self.cpv, self.eapi = cpv, eapi
 	def __str__(self):
-		msg = ("Unable to do any operations on '%s', since " + \
-		"it's EAPI is higher than this portage version's. Please upgrade" + \
-		" to a portage version that supports EAPI '%s'.") % \
-		(self.cpv, str(self.eapi).lstrip("-"))
+		msg = _("Unable to do any operations on '%(cpv)s', since "
+		"it's EAPI is higher than this portage version's. Please upgrade"
+		" to a portage version that supports EAPI '%(eapi)s'.") % \
+		{"cpv": self.cpv, "eapi": str(self.eapi).lstrip("-")}
 		return msg
 
 

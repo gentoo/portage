@@ -12,8 +12,9 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.versions:ververify'
 )
 
-from portage.exception import DirectoryNotFound, PortageException
 from portage.const import USER_CONFIG_PATH, WORLD_FILE
+from portage.exception import DirectoryNotFound, PortageException
+from portage.localization import _
 
 ignored_dbentries = ("CONTENTS", "environment.bz2")
 
@@ -115,25 +116,25 @@ def parse_updates(mycontent):
 		if len(mysplit) == 0:
 			continue
 		if mysplit[0] not in ("move", "slotmove"):
-			errors.append("ERROR: Update type not recognized '%s'" % myline)
+			errors.append(_("ERROR: Update type not recognized '%s'") % myline)
 			continue
 		if mysplit[0] == "move":
 			if len(mysplit) != 3:
-				errors.append("ERROR: Update command invalid '%s'" % myline)
+				errors.append(_("ERROR: Update command invalid '%s'") % myline)
 				continue
 			orig_value, new_value = mysplit[1], mysplit[2]
 			for cp in (orig_value, new_value):
 				if not (isvalidatom(cp) and isjustname(cp)):
 					errors.append(
-						"ERROR: Malformed update entry '%s'" % myline)
+						_("ERROR: Malformed update entry '%s'") % myline)
 					continue
 		if mysplit[0] == "slotmove":
 			if len(mysplit)!=4:
-				errors.append("ERROR: Update command invalid '%s'" % myline)
+				errors.append(_("ERROR: Update command invalid '%s'") % myline)
 				continue
 			pkg, origslot, newslot = mysplit[1], mysplit[2], mysplit[3]
 			if not isvalidatom(pkg):
-				errors.append("ERROR: Malformed update entry '%s'" % myline)
+				errors.append(_("ERROR: Malformed update entry '%s'") % myline)
 				continue
 		
 		# The list of valid updates is filtered by continue statements above.
@@ -215,7 +216,7 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 			write_atomic(updating_file, "".join(file_contents[x]))
 		except PortageException, e:
 			writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
-			writemsg("!!! An error occured while updating a config file:" + \
+			writemsg(_("!!! An error occured while updating a config file:") + \
 				" '%s'\n" % updating_file, noiselevel=-1)
 			continue
 

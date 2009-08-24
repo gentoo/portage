@@ -2986,6 +2986,7 @@ class dblink(object):
 		"""
 
 		os = _os_merge
+		perf_md5 = perform_md5
 		showMessage = self._display_merge
 		scheduler = self._scheduler
 
@@ -3089,6 +3090,7 @@ class dblink(object):
 							pass
 						else:
 							os = portage.os
+							perf_md5 = portage.checksum.perform_md5
 
 				file_data = pkgfiles[objkey]
 				file_type = file_data[0]
@@ -3179,7 +3181,7 @@ class dblink(object):
 						continue
 					mymd5 = None
 					try:
-						mymd5 = perform_md5(obj, calc_prelink=1)
+						mymd5 = perf_md5(obj, calc_prelink=1)
 					except FileNotFound, e:
 						# the file has disappeared between now and our stat call
 						show_unmerge("---", unmerge_desc["!obj"], file_type, obj)
