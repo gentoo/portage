@@ -1841,7 +1841,7 @@ _source_ebuild() {
 
 	# This needs to be exported since prepstrip is a separate shell script.
 	[[ -n $QA_PRESTRIPPED ]] && export QA_PRESTRIPPED
-	eval "[[ -n \$QA_PRESTRIPPED_$ARCH ]] && export QA_PRESTRIPPED_$ARCH"
+	eval "[[ -n \$QA_PRESTRIPPED_${ARCH/-/_} ]] && export QA_PRESTRIPPED_${ARCH/-/_}"
 }
 
 if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
