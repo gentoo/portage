@@ -857,6 +857,7 @@ class Scheduler(PollScheduler):
 			self._failed_pkgs_all.extend(failed_pkgs)
 			del failed_pkgs[:]
 
+		printer = portage.output.EOutput()
 		background = self._background
 		failure_log_shown = False
 		if background and len(self._failed_pkgs_all) == 1:
@@ -895,7 +896,6 @@ class Scheduler(PollScheduler):
 			self._failed_pkgs_die_msgs and \
 			not mod_echo_output:
 
-			printer = portage.output.EOutput()
 			for mysettings, key, logentries in self._failed_pkgs_die_msgs:
 				root_msg = ""
 				if mysettings["ROOT"] != "/":
@@ -926,17 +926,20 @@ class Scheduler(PollScheduler):
 			else:
 				msg = "The following package has " + \
 					"failed to build or install:"
-			prefix = bad(" * ")
-			writemsg(prefix + "\n", noiselevel=-1)
-			from textwrap import wrap
-			for line in wrap(msg, 72):
-				writemsg("%s%s\n" % (prefix, line), noiselevel=-1)
-			writemsg(prefix + "\n", noiselevel=-1)
+
+			printer.eerror("")
+			for line in textwrap.wrap(msg, 72):
+				printer.eerror(line)
+			printer.eerror("")
 			for failed_pkg in self._failed_pkgs_all:
-				writemsg("%s\t%s\n" % (prefix,
-					colorize("INFORM", str(failed_pkg.pkg))),
-					noiselevel=-1)
-			writemsg(prefix + "\n", noiselevel=-1)
+				msg = " %s" % (colorize('INFORM', failed_pkg.pkg.__str__()),)
+				log_path = self._locate_failure_log(failed_pkg)
+				if log_path is not None:
+					msg += ", Log file:"
+				printer.eerror(msg)
+				if log_path is not None:
+					printer.eerror("  '%s'" % colorize('INFORM', log_path))
+			printer.eerror("")
 
 		if self._failed_pkgs_all:
 			return 1
