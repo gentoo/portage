@@ -3,6 +3,7 @@
 # $Id$
 
 import gc
+import logging
 import re
 import sys
 import textwrap
@@ -17,6 +18,7 @@ bad = create_color_func("BAD")
 from portage.sets import SETPREFIX
 from portage.sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, writemsg_stdout
+from portage.util import writemsg_level
 
 from _emerge.AtomArg import AtomArg
 from _emerge.Blocker import Blocker
@@ -24,7 +26,6 @@ from _emerge.BlockerCache import BlockerCache
 from _emerge.BlockerDepPriority import BlockerDepPriority
 from _emerge.changelog import calc_changelog
 from _emerge.countdown import countdown
-from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.create_world_atom import create_world_atom
 from _emerge.Dependency import Dependency
 from _emerge.DependencyArg import DependencyArg
@@ -714,6 +715,18 @@ class depgraph(object):
 							dep.parent, {})["missing dependency"] = \
 								set([(dep.parent, dep.root, dep.atom)])
 						self._dynamic_config._need_restart = True
+						if "--debug" in self._frozen_config.myopts:
+							msg = []
+							msg.append("")
+							msg.append("")
+							msg.append("backtracking due to unsatisfied dep:")
+							msg.append("    parent: %s" % dep.parent)
+							msg.append("  priority: %s" % dep.priority)
+							msg.append("      root: %s" % dep.root)
+							msg.append("      atom: %s" % dep.atom)
+							msg.append("")
+							writemsg_level("".join("%s\n" % l for l in msg),
+								noiselevel=-1, level=logging.DEBUG)
 
 			return 0
 		# In some cases, dep_check will return deps that shouldn't
@@ -868,6 +881,19 @@ class depgraph(object):
 						self._dynamic_config._runtime_pkg_mask.setdefault(
 							existing_node, {})["slot conflict"] = parent_atoms
 						self._dynamic_config._need_restart = True
+						if "--debug" in self._frozen_config.myopts:
+							msg = []
+							msg.append("")
+							msg.append("")
+							msg.append("backtracking due to slot conflict:")
+							msg.append("   package: %s" % existing_node)
+							msg.append("      slot: %s" % existing_node.slot_atom)
+							msg.append("   parents: %s" % \
+								[(str(parent), atom) \
+								for parent, atom in parent_atoms])
+							msg.append("")
+							writemsg_level("".join("%s\n" % l for l in msg),
+								noiselevel=-1, level=logging.DEBUG)
 						return 0
 
 					# A slot collision has occurred.  Sometimes this coincides
@@ -3866,8 +3892,6 @@ class depgraph(object):
 				depth >= mylist[i+1][1]:
 					del mylist[i]
 
-		from portage import flatten
-		from portage.dep import use_reduce, paren_reduce
 		# files to fetch list - avoids counting a same file twice
 		# in size display (verbose mode)
 		myfetchlist=[]
@@ -4346,7 +4370,9 @@ class depgraph(object):
 			print
 			print counters
 			if show_repos:
-				writemsg_stdout(str(repo_display), noiselevel=-1)
+				# In python-2.x, str() can trigger a UnicodeEncodeError here,
+				# so call __str__() directly.
+				writemsg_stdout(repo_display.__str__(), noiselevel=-1)
 
 		if "--changelog" in self._frozen_config.myopts:
 			writemsg_stdout('\n', noiselevel=-1)
@@ -4966,6 +4992,10 @@ def backtrack_depgraph(settings, trees, myopts, myparams,
 				runtime_pkg_mask = mydepgraph.get_runtime_pkg_mask()
 				backtracked += 1
 			elif backtracked and allow_backtracking:
+				if "--debug" in myopts:
+					writemsg_level(
+						"\n\nbacktracking aborted after %s tries\n\n" % \
+						backtracked, noiselevel=-1, level=logging.DEBUG)
 				# Backtracking failed, so disable it and do
 				# a plain dep calculation + error message.
 				allow_backtracking = False

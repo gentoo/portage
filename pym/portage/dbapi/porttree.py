@@ -604,15 +604,11 @@ class portdbapi(dbapi):
 		mydata, st, emtime = self._pull_valid_cache(mycpv, myebuild, mylocation)
 		doregen = mydata is None
 
-		writemsg(_("auxdb is valid: ")+str(not doregen)+" "+str(pkg)+"\n", 2)
-
 		if doregen:
 			if myebuild in self._broken_ebuilds:
 				raise KeyError(mycpv)
 			if not self._have_root_eclass_dir:
 				raise KeyError(mycpv)
-			writemsg("doregen: %s %s\n" % (doregen, mycpv), 2)
-			writemsg(_("Generating cache entry(0) for: ")+str(myebuild)+"\n", 1)
 
 			self.doebuild_settings.setcpv(mycpv)
 			mydata = {}
@@ -831,7 +827,7 @@ class portdbapi(dbapi):
 						os.path.join(self.mysettings["DISTDIR"], x), mysums[x])
 				except FileNotFound, e:
 					ok = False
-					reason = _("File Not Found: '%s'") % str(e)
+					reason = _("File Not Found: '%s'") % (e,)
 			if not ok:
 				failures[x] = reason
 		if failures:
@@ -1105,7 +1101,7 @@ class portdbapi(dbapi):
 			except PortageException, e:
 				writemsg("!!! Error: aux_get('%s', %s)\n" % (mycpv, aux_keys),
 					noiselevel=-1)
-				writemsg("!!! %s\n" % str(e), noiselevel=-1)
+				writemsg("!!! %s\n" % (e,), noiselevel=-1)
 				del e
 				continue
 			eapi = metadata["EAPI"]

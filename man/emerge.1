@@ -343,7 +343,7 @@ Specifies the number of packages to build simultaneously. If this option is
 given without an argument, emerge will not limit the number of jobs that can
 run simultaneously. Also see the related \fB\-\-load\-average\fR option.
 .TP
-.BR "\-\-keep\-going"
+.BR "\-\-keep\-going[=n]"
 Continue as much as possible after an error. When an error occurs,
 dependencies are recalculated for remaining packages and any with
 unsatisfied dependencies are automatically dropped. Also see
@@ -446,9 +446,12 @@ be enabled under normal circumstances. For currently supported
 \fBDEPEND\fR variable. However, behavior may change for new
 \fBEAPI\fRs when related extensions are added in the future.
 .TP
-.BR "\-\-selective"
+.BR "\-\-selective"[=n]
 This is similar to the \fB\-\-noreplace\fR option, except that it
 does not take precedence over options such as \fB\-\-newuse\fR.
+Some options, such as \fB\-\-update\fR, imply \fB\-\-selective\fR.
+Use \fB\-\-selective=n\fR if you want to forcefully disable
+\fB\-\-selective\fR, regardless of options like \fB\-\-update\fR.
 .TP
 .BR "\-\-skipfirst"
 This option is only valid when used with \fB\-\-resume\fR.  It removes the 

@@ -264,6 +264,7 @@ install_qa_check() {
 					set -${shopts}
 				fi
 			fi
+			sed -e "/^\$/d" -i "${T}"/scanelf-missing-SONAME.log
 			f=$(<"${T}"/scanelf-missing-SONAME.log)
 			if [[ -n ${f} ]] ; then
 				vecho -ne '\a\n'
@@ -297,6 +298,7 @@ install_qa_check() {
 					set -${shopts}
 				fi
 			fi
+			sed -e "/^\$/d" -i "${T}"/scanelf-missing-NEEDED.log
 			f=$(<"${T}"/scanelf-missing-NEEDED.log)
 			if [[ -n ${f} ]] ; then
 				vecho -ne '\a\n'

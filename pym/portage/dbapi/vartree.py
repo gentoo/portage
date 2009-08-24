@@ -3849,6 +3849,22 @@ class dblink(object):
 				0 == i % self._file_merge_yield_interval:
 				scheduler.scheduleYield()
 
+			if os is _os_merge:
+				try:
+					_unicode_encode(path,
+						encoding=_encodings['merge'], errors='strict')
+				except UnicodeEncodeError:
+					# The package appears to have been merged with a 
+					# different value of sys.getfilesystemencoding(),
+					# so fall back to utf_8 if appropriate.
+					try:
+						_unicode_encode(path,
+							encoding=_encodings['fs'], errors='strict')
+					except UnicodeEncodeError:
+						pass
+					else:
+						os = portage.os
+
 			try:
 				s = os.lstat(path)
 			except OSError, e:

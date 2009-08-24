@@ -48,6 +48,10 @@ class RepoDisplay(object):
 		return s
 
 	def __str__(self):
+		"""
+		In python-2.x, str() can trigger a UnicodeEncodeError here,
+		so call __str__() directly.
+		"""
 		output = []
 		shown_repos = self._shown_repos
 		unknown_repo = self._unknown_repo

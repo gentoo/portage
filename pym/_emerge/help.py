@@ -360,7 +360,7 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print desc_indent + line
 		print
-		print "       "+green("--keep-going")
+		print "       " + green("--keep-going") + "[=%s]" % turquoise("n")
 		desc = "Continue as much as possible after " + \
 			"an error. When an error occurs, " + \
 			"dependencies are recalculated for " + \
@@ -467,9 +467,12 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print desc_indent + line
 		print
-		print "       " + green("--selective")
+		print "       " + green("--selective") + "[=%s]" % turquoise("n")
 		desc = "This is similar to the --noreplace option, except that it " + \
-			"does not take precedence over options such as --newuse."
+			"does not take precedence over options such as --newuse. " + \
+			"Some options, such as --update, imply --selective. " + \
+			"Use --selective=n if you want to forcefully disable " + \
+			"--selective, regardless of options like --update."
 		for line in wrap(desc, desc_width):
 			print desc_indent + line
 		print

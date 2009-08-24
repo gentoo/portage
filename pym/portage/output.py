@@ -252,6 +252,9 @@ def xtermTitle(mystr, raw=False):
 			mystr = mystr[:_max_xtermTitle_len]
 		if not raw:
 			mystr = '\x1b]0;%s\x07' % mystr
+		if sys.hexversion < 0x3000000 and isinstance(mystr, unicode):
+			# avoid potential UnicodeEncodeError
+			mystr = mystr.encode(_encodings['stdio'], 'backslashreplace')
 		sys.stderr.write(mystr)
 		sys.stderr.flush()
 
