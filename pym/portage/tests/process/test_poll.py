@@ -2,11 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import errno, os, sys
-import fcntl
-import termios
-import portage
-from portage.output import get_term_size, set_term_size
+import sys
+from portage import os
 from portage.tests import TestCase
 from _emerge.TaskScheduler import TaskScheduler
 from _emerge.PipeReader import PipeReader

@@ -145,7 +145,13 @@ def _unicode_decode(s, encoding=_content_encoding, errors='replace'):
 class _unicode_func_wrapper(object):
 	"""
 	Wraps a function, converts arguments from unicode to bytes,
-	and return values to unicode from bytes.
+	and return values to unicode from bytes. Function calls
+	will raise UnicodeEncodeError if an argument fails to be
+	encoded with the required encoding. Return values that
+	are single strings are decoded with errors='replace'. Return 
+	values that are lists of strings are decoded with errors='strict'
+	and elements that fail to be decoded are omitted from the returned
+	list.
 	"""
 	__slots__ = ('_func', '_encoding')
 
@@ -156,10 +162,12 @@ class _unicode_func_wrapper(object):
 	def __call__(self, *args, **kwargs):
 
 		encoding = self._encoding
-		wrapped_args = [_unicode_encode(x) for x in args]
+		wrapped_args = [_unicode_encode(x, encoding=encoding, errors='strict')
+			for x in args]
 		if kwargs:
-			wrapped_kwargs = dict((_unicode_encode(k, encoding=encoding),
-				_unicode_encode(v, encoding=encoding)) \
+			wrapped_kwargs = dict(
+				(_unicode_encode(k, encoding=encoding, errors='strict'),
+				_unicode_encode(v, encoding=encoding, errors='strict'))
 				for k, v in kwargs.iteritems())
 		else:
 			wrapped_kwargs = {}
@@ -168,7 +176,8 @@ class _unicode_func_wrapper(object):
 
 		if isinstance(rval, (basestring, list, tuple)):
 			if isinstance(rval, basestring):
-				rval = _unicode_decode(rval, encoding=encoding)
+				rval = _unicode_decode(rval,
+					encoding=encoding, errors='replace')
 			else:
 				decoded_rval = []
 				for x in rval:
@@ -218,6 +227,7 @@ class _unicode_module_wrapper(object):
 import os as _os
 _os_overrides = {
 	id(_os.fdopen)        : _os.fdopen,
+	id(_os.popen)         : _os.popen,
 	id(_os.read)          : _os.read,
 	id(_os.system)        : _os.system,
 }

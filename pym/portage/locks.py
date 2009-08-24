@@ -7,7 +7,10 @@ __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
 	"hardlock_name", "hardlink_is_mine", "hardlink_lockfile", \
 	"unhardlink_lockfile", "hardlock_cleanup"]
 
-import errno, os, stat, time
+import errno
+import stat
+import time
+from portage import os
 from portage.exception import DirectoryNotFound, FileNotFound, \
 	InvalidData, TryAgain, OperationNotPermitted, PermissionDenied
 from portage.data import portage_gid
