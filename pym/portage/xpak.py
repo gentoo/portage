@@ -16,29 +16,50 @@
 # (integer) == encodeint(integer)  ===> 4 characters (big-endian copy)
 # '+' means concatenate the fields ===> All chunks are strings
 
-import sys,os,shutil,errno
-from stat import *
+import array
+import errno
+import shutil
 
-def addtolist(mylist,curdir):
+from portage import os
+from portage import normalize_path
+from portage import _fs_encoding
+from portage import _unicode_decode
+from portage import _unicode_encode
+
+def addtolist(mylist, curdir):
 	"""(list, dir) --- Takes an array(list) and appends all files from dir down
 	the directory tree. Returns nothing. list is modified."""
-	for x in os.listdir("."):
-		if os.path.isdir(x):
-			os.chdir(x)
-			addtolist(mylist,curdir+x+"/")
-			os.chdir("..")
-		else:
-			if curdir+x not in mylist:
-				mylist.append(curdir+x)
+	curdir = normalize_path(_unicode_decode(curdir,
+		encoding=_fs_encoding, errors='strict'))
+	for parent, dirs, files in os.walk(curdir):
+
+		parent = _unicode_decode(parent,
+			encoding=_fs_encoding, errors='strict')
+		if parent != curdir:
+			mylist.append(parent[len(curdir) + 1:] + os.sep)
+
+		for x in dirs:
+			try:
+				_unicode_decode(x, encoding=_fs_encoding, errors='strict')
+			except UnicodeDecodeError:
+				dirs.remove(x)
+
+		for x in files:
+			try:
+				x = _unicode_decode(x, encoding=_fs_encoding, errors='strict')
+			except UnicodeDecodeError:
+				continue
+			mylist.append(os.path.join(parent, x)[len(curdir) + 1:])
 
 def encodeint(myint):
 	"""Takes a 4 byte integer and converts it into a string of 4 characters.
 	Returns the characters in a string."""
-	part1=chr((myint >> 24 ) & 0x000000ff)
-	part2=chr((myint >> 16 ) & 0x000000ff)
-	part3=chr((myint >> 8 ) & 0x000000ff)
-	part4=chr(myint & 0x000000ff)
-	return part1+part2+part3+part4
+	a = array.array('B')
+	a.append((myint >> 24 ) & 0xff)
+	a.append((myint >> 16 ) & 0xff)
+	a.append((myint >> 8 ) & 0xff)
+	a.append(myint & 0xff)
+	return a.tostring()
 
 def decodeint(mystring):
 	"""Takes a 4 byte string and converts it into a 4 byte integer.
@@ -54,28 +75,20 @@ def xpak(rootdir,outfile=None):
 	"""(rootdir,outfile) -- creates an xpak segment of the directory 'rootdir'
 	and under the name 'outfile' if it is specified. Otherwise it returns the
 	xpak segment."""
-	try:
-		origdir=os.getcwd()
-	except SystemExit, e:
-		raise
-	except:
-		os.chdir("/")
-		origdir="/"
-	os.chdir(rootdir)
+
 	mylist=[]
 
-	addtolist(mylist,"")
+	addtolist(mylist, rootdir)
 	mylist.sort()
 	mydata = {}
 	for x in mylist:
-		a = open(x, 'rb')
-		mydata[x] = a.read()
-		a.close()
-	os.chdir(origdir)
+		x = _unicode_encode(x, encoding=_fs_encoding, errors='strict')
+		mydata[x] = open(os.path.join(rootdir, x), 'rb').read()
 
 	xpak_segment = xpak_mem(mydata)
 	if outfile:
-		outf = open(outfile, 'wb')
+		outf = open(_unicode_encode(outfile,
+			encoding=_fs_encoding, errors='strict'), 'wb')
 		outf.write(xpak_segment)
 		outf.close()
 	else:
@@ -83,9 +96,9 @@ def xpak(rootdir,outfile=None):
 
 def xpak_mem(mydata):
 	"""Create an xpack segement from a map object."""
-	indexglob=""
+	indexglob = _unicode_encode('')
 	indexpos=0
-	dataglob=""
+	dataglob = _unicode_encode('')
 	datapos=0
 	for x, newglob in mydata.iteritems():
 		mydatasize=len(newglob)
@@ -93,18 +106,21 @@ def xpak_mem(mydata):
 		indexpos=indexpos+4+len(x)+4+4
 		dataglob=dataglob+newglob
 		datapos=datapos+mydatasize
-	return "XPAKPACK" \
+	return _unicode_encode('XPAKPACK') \
 	+ encodeint(len(indexglob)) \
 	+ encodeint(len(dataglob)) \
 	+ indexglob \
 	+ dataglob \
-	+ "XPAKSTOP"
+	+ _unicode_encode('XPAKSTOP')
 
 def xsplit(infile):
 	"""(infile) -- Splits the infile into two files.
 	'infile.index' contains the index segment.
 	'infile.dat' contails the data segment."""
-	myfile = open(infile, 'rb')
+	infile = _unicode_decode(infile,
+		encoding=_fs_encoding, errors='strict')
+	myfile = open(_unicode_encode(infile,
+		encoding=_fs_encoding, errors='strict'), 'rb')
 	mydat=myfile.read()
 	myfile.close()
 	
@@ -112,27 +128,30 @@ def xsplit(infile):
 	if not splits:
 		return False
 	
-	myfile = open(infile + '.index', 'wb')
+	myfile = open(_unicode_encode(infile + '.index',
+		encoding=_fs_encoding, errors='strict'), 'wb')
 	myfile.write(splits[0])
 	myfile.close()
-	myfile = open(infile + '.dat', 'wb')
+	myfile = open(_unicode_encode(infile + '.dat',
+		encoding=_fs_encoding, errors='strict'), 'wb')
 	myfile.write(splits[1])
 	myfile.close()
 	return True
 
 def xsplit_mem(mydat):
-	if mydat[0:8]!="XPAKPACK":
+	if mydat[0:8] != _unicode_encode('XPAKPACK'):
 		return None
-	if mydat[-8:]!="XPAKSTOP":
+	if mydat[-8:] != _unicode_encode('XPAKSTOP'):
 		return None
 	indexsize=decodeint(mydat[8:12])
 	return (mydat[16:indexsize+16], mydat[indexsize+16:-8])
 
 def getindex(infile):
 	"""(infile) -- grabs the index segment from the infile and returns it."""
-	myfile = open(infile, 'rb')
+	myfile = open(_unicode_encode(infile,
+		encoding=_fs_encoding, errors='strict'), 'rb')
 	myheader=myfile.read(16)
-	if myheader[0:8]!="XPAKPACK":
+	if myheader[0:8] != _unicode_encode('XPAKPACK'):
 		myfile.close()
 		return
 	indexsize=decodeint(myheader[8:12])
@@ -143,9 +162,10 @@ def getindex(infile):
 def getboth(infile):
 	"""(infile) -- grabs the index and data segments from the infile.
 	Returns an array [indexSegment,dataSegment]"""
-	myfile = open(infile, 'rb')
+	myfile = open(_unicode_encode(infile,
+		encoding=_fs_encoding, errors='strict'), 'rb')
 	myheader=myfile.read(16)
-	if myheader[0:8]!="XPAKPACK":
+	if myheader[0:8] != _unicode_encode('XPAKPACK'):
 		myfile.close()
 		return
 	indexsize=decodeint(myheader[8:12])
@@ -217,7 +237,8 @@ def xpand(myid,mydest):
 		if dirname:
 			if not os.path.exists(dirname):
 				os.makedirs(dirname)
-		mydat = open(myname, 'wb')
+		mydat = open(_unicode_encode(myname,
+			encoding=_fs_encoding, errors='strict'), 'wb')
 		mydat.write(mydata[datapos:datapos+datalen])
 		mydat.close()
 		startpos=startpos+namelen+12
@@ -227,7 +248,7 @@ class tbz2(object):
 	def __init__(self,myfile):
 		self.file=myfile
 		self.filestat=None
-		self.index=""
+		self.index = _unicode_encode('')
 		self.infosize=0
 		self.xpaksize=0
 		self.indexsize=None
@@ -262,12 +283,13 @@ class tbz2(object):
 
 	def recompose_mem(self, xpdata):
 		self.scan() # Don't care about condition... We'll rewrite the data anyway.
-		myfile = open(self.file, 'ab+')
+		myfile = open(_unicode_encode(self.file,
+			encoding=_fs_encoding, errors='strict'), 'ab+')
 		if not myfile:
 			raise IOError
 		myfile.seek(-self.xpaksize,2) # 0,2 or -0,2 just mean EOF.
 		myfile.truncate()
-		myfile.write(xpdata+encodeint(len(xpdata))+"STOP")
+		myfile.write(xpdata+encodeint(len(xpdata)) + _unicode_encode('STOP'))
 		myfile.flush()
 		myfile.close()
 		return 1
@@ -292,28 +314,30 @@ class tbz2(object):
 			mystat=os.stat(self.file)
 			if self.filestat:
 				changed=0
-				for x in [ST_SIZE, ST_MTIME, ST_CTIME]:
-					if mystat[x] != self.filestat[x]:
-						changed=1
+				if mystat.st_size != self.filestat.st_size \
+					or mystat.st_mtime != self.filestat.st_mtime \
+					or mystat.st_ctime != self.filestat.st_ctime:
+					changed = True
 				if not changed:
 					return 1
 			self.filestat=mystat
-			a = open(self.file, 'rb')
+			a = open(_unicode_encode(self.file,
+				encoding=_fs_encoding, errors='strict'), 'rb')
 			a.seek(-16,2)
 			trailer=a.read()
 			self.infosize=0
 			self.xpaksize=0
-			if trailer[-4:]!="STOP":
+			if trailer[-4:] != _unicode_encode('STOP'):
 				a.close()
 				return 0
-			if trailer[0:8]!="XPAKSTOP":
+			if trailer[0:8] != _unicode_encode('XPAKSTOP'):
 				a.close()
 				return 0
 			self.infosize=decodeint(trailer[8:12])
 			self.xpaksize=self.infosize+8
 			a.seek(-(self.xpaksize),2)
 			header=a.read(16)
-			if header[0:8]!="XPAKPACK":
+			if header[0:8] != _unicode_encode('XPAKPACK'):
 				a.close()
 				return 0
 			self.indexsize=decodeint(header[8:12])
@@ -341,7 +365,8 @@ class tbz2(object):
 		myresult=searchindex(self.index,myfile)
 		if not myresult:
 			return mydefault
-		a = open(self.file, 'rb')
+		a = open(_unicode_encode(self.file,
+			encoding=_fs_encoding, errors='strict'), 'rb')
 		a.seek(self.datapos+myresult[0],0)
 		myreturn=a.read(myresult[1])
 		a.close()
@@ -365,7 +390,8 @@ class tbz2(object):
 		except:
 			os.chdir("/")
 			origdir="/"
-		a = open(self.file, 'rb')
+		a = open(_unicode_encode(self.file,
+			encoding=_fs_encoding, errors='strict'), 'rb')
 		if not os.path.exists(mydest):
 			os.makedirs(mydest)
 		os.chdir(mydest)
@@ -379,7 +405,8 @@ class tbz2(object):
 			if dirname:
 				if not os.path.exists(dirname):
 					os.makedirs(dirname)
-			mydat = open(myname, 'wb')
+			mydat = open(_unicode_encode(myname,
+				encoding=_fs_encoding, errors='strict'), 'wb')
 			a.seek(self.datapos+datapos)
 			mydat.write(a.read(datalen))
 			mydat.close()
@@ -392,7 +419,8 @@ class tbz2(object):
 		"""Returns all the files from the dataSegment as a map object."""
 		if not self.scan():
 			return 0
-		a = open(self.file, 'rb')
+		a = open(_unicode_encode(self.file,
+			encoding=_fs_encoding, errors='strict'), 'rb')
 		mydata = {}
 		startpos=0
 		while ((startpos+8)<self.indexsize):
@@ -411,7 +439,8 @@ class tbz2(object):
 		if not self.scan():
 			return None
 
-		a = open(self.file, 'rb')
+		a = open(_unicode_encode(self.file,
+			encoding=_fs_encoding, errors='strict'), 'rb')
 		a.seek(self.datapos)
 		mydata =a.read(self.datasize)
 		a.close()

@@ -59,7 +59,10 @@ def install(basename, dirname, options, prefix=""):
 	else:
 		destdir = options.ED + "/usr/share/doc/" + options.PF + "/html/" + options.doc_prefix + "/" + prefix
 
-	if os.path.isfile(fullpath):
+	if not os.path.exists(fullpath):
+		sys.stderr.write("!!! dohtml: %s does not exist\n" % fullpath)
+		return False
+	elif os.path.isfile(fullpath):
 		ext = os.path.splitext(basename)[1]
 		if (len(ext) and ext[1:] in options.allowed_exts) or basename in options.allowed_files:
 			dodir(destdir)

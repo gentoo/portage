@@ -169,11 +169,20 @@ class _unicode_func_wrapper(object):
 		if isinstance(rval, (basestring, list, tuple)):
 			if isinstance(rval, basestring):
 				rval = _unicode_decode(rval, encoding=encoding)
-			elif isinstance(rval, list):
-				rval = [_unicode_decode(x, encoding=encoding) for x in rval]
-			elif isinstance(rval, tuple):
-				rval = tuple(_unicode_decode(x, encoding=encoding) \
-					for x in rval)
+			else:
+				decoded_rval = []
+				for x in rval:
+					try:
+						x = _unicode_decode(x, encoding=encoding, errors='strict')
+					except UnicodeDecodeError:
+						pass
+					else:
+						decoded_rval.append(x)
+
+				if isinstance(rval, tuple):
+					rval = tuple(decoded_rval)
+				else:
+					rval = decoded_rval
 
 		return rval
 

@@ -3,14 +3,21 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import os
 import sys
 import time
 import unittest
 
+from portage import os
+from portage import _fs_encoding
+from portage import _unicode_encode
+from portage import _unicode_decode
+
 def main():
 
-	TEST_FILE = '__test__'
+	TEST_FILE = _unicode_encode('__test__',
+		encoding=_fs_encoding, errors='strict')
+	svn_dirname = _unicode_encode('.svn',
+		encoding=_fs_encoding, errors='strict')
 	suite = unittest.TestSuite()
 	basedir = os.path.dirname(os.path.realpath(__file__))
 	testDirs = []
@@ -19,8 +26,14 @@ def main():
 	# I was tired of adding dirs to the list, so now we add __test__
 	# to each dir we want tested.
 	for root, dirs, files in os.walk(basedir):
-		if ".svn" in dirs:
-			dirs.remove('.svn')
+		if svn_dirname in dirs:
+			dirs.remove(svn_dirname)
+		try:
+			root = _unicode_decode(root,
+				encoding=_fs_encoding, errors='strict')
+		except UnicodeDecodeError:
+			continue
+
 		if TEST_FILE in files:
 			testDirs.append(root)
 
