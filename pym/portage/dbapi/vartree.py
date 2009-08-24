@@ -3424,6 +3424,23 @@ class dblink(object):
 		provider_nodes = set()
 		# Create provider nodes and add them to the graph.
 		for f_abs in old_contents:
+
+			if os is _os_merge:
+				try:
+					_unicode_encode(f_abs,
+						encoding=_encodings['merge'], errors='strict')
+				except UnicodeEncodeError:
+					# The package appears to have been merged with a 
+					# different value of sys.getfilesystemencoding(),
+					# so fall back to utf_8 if appropriate.
+					try:
+						_unicode_encode(f_abs,
+							encoding=_encodings['fs'], errors='strict')
+					except UnicodeEncodeError:
+						pass
+					else:
+						os = portage.os
+
 			f = f_abs[root_len:]
 			if self.isowner(f, root):
 				continue
