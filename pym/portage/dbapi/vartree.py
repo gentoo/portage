@@ -3339,23 +3339,65 @@ class dblink(object):
 			if the file is not owned by this package.
 		"""
 
-		os = _os_merge
-
 		filename = _unicode_decode(filename,
 			encoding=_encodings['content'], errors='strict')
 
 		destroot = _unicode_decode(destroot,
 			encoding=_encodings['content'], errors='strict')
 
+		# The given filename argument might have a different encoding than the
+		# the filenames contained in the contents, so use separate wrapped os
+		# modules for each. The basename is more likely to contain non-ascii
+		# characters than the directory path, so use os_filename_arg for all
+		# operations involving the basename of the filename arg.
+		os_filename_arg = _os_merge
+		os = _os_merge
+
+		try:
+			_unicode_encode(filename,
+				encoding=_encodings['merge'], errors='strict')
+		except UnicodeEncodeError:
+			# The package appears to have been merged with a
+			# different value of sys.getfilesystemencoding(),
+			# so fall back to utf_8 if appropriate.
+			try:
+				_unicode_encode(filename,
+					encoding=_encodings['fs'], errors='strict')
+			except UnicodeEncodeError:
+				pass
+			else:
+				os_filename_arg = portage.os
+
 		destfile = normalize_path(
-			os.path.join(destroot, filename.lstrip(os.path.sep)))
+			os_filename_arg.path.join(destroot,
+			filename.lstrip(os_filename_arg.path.sep)))
 
 		pkgfiles = self.getcontents()
 		if pkgfiles and destfile in pkgfiles:
 			return destfile
 		if pkgfiles:
-			basename = os.path.basename(destfile)
+			basename = os_filename_arg.path.basename(destfile)
 			if self._contents_basenames is None:
+
+				try:
+					for x in pkgfiles:
+						_unicode_encode(x,
+							encoding=_encodings['merge'],
+							errors='strict')
+				except UnicodeEncodeError:
+					# The package appears to have been merged with a
+					# different value of sys.getfilesystemencoding(),
+					# so fall back to utf_8 if appropriate.
+					try:
+						for x in pkgfiles:
+							_unicode_encode(x,
+								encoding=_encodings['fs'],
+								errors='strict')
+					except UnicodeEncodeError:
+						pass
+					else:
+						os = portage.os
+
 				self._contents_basenames = set(
 					os.path.basename(x) for x in pkgfiles)
 			if basename not in self._contents_basenames:
@@ -3366,15 +3408,36 @@ class dblink(object):
 
 			# Use stat rather than lstat since we want to follow
 			# any symlinks to the real parent directory.
-			parent_path = os.path.dirname(destfile)
+			parent_path = os_filename_arg.path.dirname(destfile)
 			try:
-				parent_stat = os.stat(parent_path)
+				parent_stat = os_filename_arg.stat(parent_path)
 			except EnvironmentError, e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
 				return False
 			if self._contents_inodes is None:
+
+				if os is _os_merge:
+					try:
+						for x in pkgfiles:
+							_unicode_encode(x,
+								encoding=_encodings['merge'],
+								errors='strict')
+					except UnicodeEncodeError:
+						# The package appears to have been merged with a 
+						# different value of sys.getfilesystemencoding(),
+						# so fall back to utf_8 if appropriate.
+						try:
+							for x in pkgfiles:
+								_unicode_encode(x,
+									encoding=_encodings['fs'],
+									errors='strict')
+						except UnicodeEncodeError:
+							pass
+						else:
+							os = portage.os
+
 				self._contents_inodes = {}
 				parent_paths = set()
 				for x in pkgfiles:
@@ -3396,11 +3459,12 @@ class dblink(object):
 							self._contents_inodes[inode_key] = p_path_list
 						if p_path not in p_path_list:
 							p_path_list.append(p_path)
+
 			p_path_list = self._contents_inodes.get(
 				(parent_stat.st_dev, parent_stat.st_ino))
 			if p_path_list:
 				for p_path in p_path_list:
-					x = os.path.join(p_path, basename)
+					x = os_filename_arg.path.join(p_path, basename)
 					if x in pkgfiles:
 						return x
 

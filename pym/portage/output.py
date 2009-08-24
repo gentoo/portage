@@ -152,11 +152,6 @@ def _parse_color_map(config_root='/', onerror=None):
 	@rtype: dict
 	@return: a dictionary mapping color classes to color codes
 	"""
-	# FIXME: use config_root iso / (breaks Prefix)
-	# We can use ObjectProxy to implement lazy initialization of
-	# codes and _styles, and add an init(config_root="/") function
-	# that can be called in order adjust the location that color.map
-	# is read from.
 	global codes, _styles
 	myfile = os.path.join(config_root, COLOR_MAP_FILE)
 	ansi_code_pattern = re.compile("^[0-9;]*m$") 
