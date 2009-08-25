@@ -1891,9 +1891,8 @@ class depgraph(object):
 				metadata, mreasons  = get_mask_info(root_config, cpv,
 					pkgsettings, db, pkg_type, built, installed, db_keys)
 				if metadata is not None:
-					pkg = Package(built=built, cpv=cpv,
-						installed=installed, metadata=metadata,
-						root_config=root_config)
+					pkg = self._pkg(cpv, pkg_type, root_config,
+						installed=installed)
 					if pkg.cp != atom.cp:
 						# A cpv can be returned from dbapi.match() as an
 						# old-style virtual match even in cases when the
@@ -1901,6 +1900,11 @@ class depgraph(object):
 						# Filter out any such false matches here.
 						if not atom_set.findAtomForPackage(pkg):
 							continue
+					if pkg in self._dynamic_config._runtime_pkg_mask:
+						backtrack_reasons = \
+							self._dynamic_config._runtime_pkg_mask[pkg]
+						mreasons.append('backtracking: %s' % \
+							', '.join(sorted(backtrack_reasons)))
 					if mreasons:
 						masked_pkg_instances.add(pkg)
 					if atom.use:
