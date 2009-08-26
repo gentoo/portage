@@ -22,6 +22,7 @@ import atexit, commands, re, shutil, stat, sys
 from portage import os
 from portage import dispatch_conf
 from portage.process import find_binary
+from portage.const import EPREFIX
 
 FIND_EXTANT_CONFIGS  = "find '%s' %s -name '._cfg????_%s' ! -name '.*~' ! -iname '.*.bak' -print"
 DIFF_CONTENTS        = "diff -Nu '%s' '%s'"
@@ -33,7 +34,7 @@ oldmask = os.umask(0077)
 SCRATCH_DIR = None
 while SCRATCH_DIR is None:
     try:
-        mydir = portage.const.EPREFIX+"/var/tmp/dispatch-conf."
+        mydir = EPREFIX+"/var/tmp/dispatch-conf."
         for x in range(0,8):
             if int(random() * 3) == 0:
                 mydir += chr(int(65+random()*26.0))
@@ -82,7 +83,7 @@ class dispatch:
         #
 
         for path in config_paths.split ():
-            path = portage.normalize_path(portage.const.EPREFIX + path)
+            path = portage.normalize_path(EPREFIX + path)
             try:
                 mymode = os.stat(path).st_mode
             except OSError:
