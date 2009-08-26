@@ -43,11 +43,11 @@ def mkdir(target, refdir):
 			_("mkdir: Failed getting context of reference directory \"%s\".") \
 			% refdir)
 
-	selinux.setfscreatecon(ctx)
+	setfscreate(ctx)
 	try:
 		os.mkdir(target)
 	finally:
-		selinux.setfscreatecon()
+		setfscreate()
 
 def rename(src, dest):
 	src = _unicode_encode(src, encoding=_encodings['fs'], errors='strict')
