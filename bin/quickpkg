@@ -6,11 +6,12 @@
 import errno, signal, sys
 from itertools import izip
 
-# for an explanation on this logic, see pym/_emerge/__init__.py
-if os.environ.__contains__("PORTAGE_PYTHONPATH"):
-	sys.path.insert(0, os.environ["PORTAGE_PYTHONPATH"])
+from os import environ as ose
+from os import path as osp
+if ose.__contains__("PORTAGE_PYTHONPATH"):
+    sys.path.insert(0, ose["PORTAGE_PYTHONPATH"])
 else:
-	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
+    sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.                    realpath(__file__))), "pym"))
 import portage
 
 from portage import os
