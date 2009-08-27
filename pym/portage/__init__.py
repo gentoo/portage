@@ -7641,9 +7641,11 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 
 	preferred_installed = []
 	preferred_in_graph = []
-	preferred_unsatisfied_use = []
 	preferred_any_slot = []
 	preferred_non_installed = []
+	unsat_use_in_graph = []
+	unsat_use_installed = []
+	unsat_use_non_installed = []
 	other = []
 
 	# Alias the trees we'll be checking availability against
@@ -7735,7 +7737,10 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 					else:
 						preferred_non_installed.append(this_choice)
 				else:
-					other.append(this_choice)
+					if all_installed_slots:
+						unsat_use_installed.append(this_choice)
+					else:
+						unsat_use_non_installed.append(this_choice)
 			else:
 				all_in_graph = True
 				for slot_atom in versions:
@@ -7781,18 +7786,21 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						else:
 							preferred_non_installed.append(this_choice)
 					else:
-						if all_in_graph or all_installed:
-							preferred_unsatisfied_use.append(this_choice)
+						if all_in_graph:
+							unsat_use_in_graph.append(this_choice)
+						elif all_installed_slots:
+							unsat_use_installed.append(this_choice)
 						else:
-							other.append(this_choice)
+							unsat_use_non_installed.append(this_choice)
 		else:
 			other.append(this_choice)
 
-	# preferred_unsatisfied_use must come after preferred_non_installed
+	# unsat_use_* must come after preferred_non_installed
 	# for correct ordering in cases like || ( foo[a] foo[b] ).
 	preferred = preferred_in_graph + preferred_installed + \
 		preferred_any_slot + preferred_non_installed + \
-		preferred_unsatisfied_use + other
+		unsat_use_in_graph + unsat_use_installed + unsat_use_non_installed + \
+		other
 
 	for allow_masked in (False, True):
 		for atoms, versions, all_available in preferred:
