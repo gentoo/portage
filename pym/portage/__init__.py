@@ -7705,7 +7705,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						not slot_atom.startswith("virtual/"):
 						all_installed_slots = False
 						break
-			if all_installed:
+			if graph_db is None and all_installed:
 				if all_installed_slots:
 					preferred_installed.append(this_choice)
 				else:
@@ -7750,7 +7750,13 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 					else:
 						preferred_in_graph.append(this_choice)
 				else:
-					preferred_non_installed.append(this_choice)
+					if all_installed:
+						if all_installed_slots:
+							preferred_installed.append(this_choice)
+						else:
+							preferred_any_slot.append(this_choice)
+					else:
+						preferred_non_installed.append(this_choice)
 		else:
 			other.append(this_choice)
 
