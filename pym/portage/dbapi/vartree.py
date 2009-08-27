@@ -4400,6 +4400,26 @@ def write_contents(contents, root, f):
 
 def tar_contents(contents, root, tar, protect=None, onProgress=None):
 	os = _os_merge
+
+	try:
+		for x in contents:
+			_unicode_encode(x,
+				encoding=_encodings['merge'],
+				errors='strict')
+	except UnicodeEncodeError:
+		# The package appears to have been merged with a
+		# different value of sys.getfilesystemencoding(),
+		# so fall back to utf_8 if appropriate.
+		try:
+			for x in contents:
+				_unicode_encode(x,
+					encoding=_encodings['fs'],
+					errors='strict')
+		except UnicodeEncodeError:
+			pass
+		else:
+			os = portage.os
+
 	from portage.util import normalize_path
 	import tarfile
 	root = normalize_path(root).rstrip(os.path.sep) + os.path.sep
@@ -4447,7 +4467,8 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 				tar.addfile(tarinfo)
 			else:
 				f = open(_unicode_encode(path,
-					encoding=_encodings['merge'], errors='strict'), 'rb')
+					encoding=object.__getattribute__(os, '_encoding'),
+					errors='strict'), 'rb')
 				try:
 					tar.addfile(tarinfo, f)
 				finally:
