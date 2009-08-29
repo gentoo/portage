@@ -69,6 +69,7 @@ try:
 			'get_operator,isjustname,isspecific,isvalidatom,' + \
 			'match_from_list,match_to_list',
 		'portage.eclass_cache',
+		'portage.env.loaders',
 		'portage.exception',
 		'portage.getbinpkg',
 		'portage.locks',
@@ -1625,8 +1626,10 @@ class config(object):
 
 			self.module_priority    = ["user","default"]
 			self.modules            = {}
-			self.modules["user"] = getconfig(
-				os.path.join(config_root, MODULES_FILE_PATH))
+			modules_loader = portage.env.loaders.KeyValuePairFileLoader(
+				os.path.join(config_root, MODULES_FILE_PATH), None, None)
+			modules_dict, modules_errors = modules_loader.load()
+			self.modules["user"] = modules_dict
 			if self.modules["user"] is None:
 				self.modules["user"] = {}
 			self.modules["default"] = {
