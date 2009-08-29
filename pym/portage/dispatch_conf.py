@@ -21,14 +21,18 @@ RCS_MERGE = "rcsmerge -p -r" + RCS_BRANCH + " '%s' > '%s'"
 DIFF3_MERGE = "diff3 -mE '%s' '%s' '%s' > '%s'"
 
 def read_config(mandatory_opts):
-    try:
-        opts = portage.getconfig('/etc/dispatch-conf.conf')
-    except:
-        opts = None
-
+    loader = portage.env.loaders.KeyValuePairFileLoader(
+        '/etc/dispatch-conf.conf', None)
+    opts, errors = loader.load()
     if not opts:
         print >> sys.stderr, _('dispatch-conf: Error reading /etc/dispatch-conf.conf; fatal')
         sys.exit(1)
+
+	# Handle quote removal here, since KeyValuePairFileLoader doesn't do that.
+    quotes = "\"'"
+    for k, v in opts.iteritems():
+        if v[:1] in quotes and v[:1] == v[-1:]:
+            opts[k] = v[1:-1]
 
     for key in mandatory_opts:
         if key not in opts:
