@@ -406,6 +406,7 @@ suspect_rdepend = frozenset([
 	"dev-util/byacc",
 	"dev-util/cmake",
 	"dev-util/ftjam",
+	"dev-util/gperf",
 	"dev-util/gtk-doc",
 	"dev-util/gtk-doc-am",
 	"dev-util/intltool",

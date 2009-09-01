@@ -47,8 +47,12 @@ class database(fs_template.FsBased):
 
 	def _db_escape_string(self, s):
 		"""meta escaping, returns quoted string for use in sql statements"""
+		if not isinstance(s, basestring):
+			# Avoid potential UnicodeEncodeError in python-2.x by
+			# only calling str() when it's absolutely necessary.
+			s = str(s)
 		# This is equivalent to the _quote function from pysqlite 1.1.
-		return "'%s'" % str(s).replace("'","''")
+		return "'%s'" % s.replace("'", "''")
 
 	def _db_init_connection(self, config):
 		self._dbpath = self.location + ".sqlite"
