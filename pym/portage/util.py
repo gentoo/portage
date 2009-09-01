@@ -16,6 +16,7 @@ import commands
 import codecs
 import errno
 import logging
+import re
 import shlex
 import stat
 import string
@@ -380,6 +381,8 @@ class _tolerant_shlex(shlex.shlex):
 				(self.infile, str(e)), noiselevel=-1)
 			return (newfile, StringIO())
 
+_invalid_var_name_re = re.compile(r'^\d|\W')
+
 def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	if isinstance(expand, dict):
 		# Some existing variable definitions have been
@@ -463,6 +466,16 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 					return mykeys
 			key = _unicode_decode(key)
 			val = _unicode_decode(val)
+
+			if _invalid_var_name_re.search(key) is not None:
+				if not tolerant:
+					raise Exception(_(
+						"ParseError: Invalid variable name '%s': line %s") % \
+						(key, lex.lineno - 1))
+				writemsg(_("!!! Invalid variable name '%s': line %s in %s\n") \
+					% (key, lex.lineno - 1, mycfg), noiselevel=-1)
+				continue
+
 			if expand:
 				mykeys[key] = varexpand(val, expand_map)
 				expand_map[key] = mykeys[key]

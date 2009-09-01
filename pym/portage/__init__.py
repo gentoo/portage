@@ -69,6 +69,7 @@ try:
 			'get_operator,isjustname,isspecific,isvalidatom,' + \
 			'match_from_list,match_to_list',
 		'portage.eclass_cache',
+		'portage.env.loaders',
 		'portage.exception',
 		'portage.getbinpkg',
 		'portage.locks',
@@ -1632,8 +1633,10 @@ class config(object):
 
 			self.module_priority    = ["user","default"]
 			self.modules            = {}
-			self.modules["user"] = getconfig(
-				os.path.join(config_root, MODULES_FILE_PATH))
+			modules_loader = portage.env.loaders.KeyValuePairFileLoader(
+				os.path.join(config_root, MODULES_FILE_PATH), None, None)
+			modules_dict, modules_errors = modules_loader.load()
+			self.modules["user"] = modules_dict
 			if self.modules["user"] is None:
 				self.modules["user"] = {}
 			self.modules["default"] = {
@@ -7477,6 +7480,9 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				if portage.dep._dep_check_strict:
 					raise portage.exception.ParseError(
 						_("invalid atom: '%s'") % x)
+				else:
+					# Only real Atom instances are allowed past this point.
+					continue
 			else:
 				if x.blocker and x.blocker.overlap.forbid and \
 					eapi in ("0", "1") and portage.dep._dep_check_strict:
@@ -7665,6 +7671,9 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	preferred_in_graph = []
 	preferred_any_slot = []
 	preferred_non_installed = []
+	unsat_use_in_graph = []
+	unsat_use_installed = []
+	unsat_use_non_installed = []
 	other = []
 
 	# Alias the trees we'll be checking availability against
@@ -7694,18 +7703,34 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 			continue
 
 		all_available = True
+		all_use_satisfied = True
 		versions = {}
 		for atom in atoms:
 			if atom[:1] == "!":
 				continue
-			avail_pkg = mydbapi.match(atom)
+			# Ignore USE dependencies here since we don't want USE
+			# settings to adversely affect || preference evaluation.
+			avail_pkg = mydbapi.match(atom.without_use)
 			if avail_pkg:
 				avail_pkg = avail_pkg[-1] # highest (ascending order)
 				avail_slot = "%s:%s" % (dep_getkey(atom),
 					mydbapi.aux_get(avail_pkg, ["SLOT"])[0])
 			if not avail_pkg:
 				all_available = False
+				all_use_satisfied = False
 				break
+
+			if atom.use:
+				avail_pkg_use = mydbapi.match(atom)
+				if not avail_pkg_use:
+					all_use_satisfied = False
+				else:
+					# highest (ascending order)
+					avail_pkg_use = avail_pkg_use[-1]
+					if avail_pkg_use != avail_pkg:
+						avail_pkg = avail_pkg_use
+						avail_slot = "%s:%s" % (dep_getkey(atom),
+							mydbapi.aux_get(avail_pkg, ["SLOT"])[0])
 
 			versions[avail_slot] = avail_pkg
 
@@ -7730,13 +7755,20 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						not slot_atom.startswith("virtual/"):
 						all_installed_slots = False
 						break
-			if all_installed:
-				if all_installed_slots:
-					preferred_installed.append(this_choice)
+			if graph_db is None:
+				if all_use_satisfied:
+					if all_installed:
+						if all_installed_slots:
+							preferred_installed.append(this_choice)
+						else:
+							preferred_any_slot.append(this_choice)
+					else:
+						preferred_non_installed.append(this_choice)
 				else:
-					preferred_any_slot.append(this_choice)
-			elif graph_db is None:
-				preferred_non_installed.append(this_choice)
+					if all_installed_slots:
+						unsat_use_installed.append(this_choice)
+					else:
+						unsat_use_non_installed.append(this_choice)
 			else:
 				all_in_graph = True
 				for slot_atom in versions:
@@ -7745,9 +7777,10 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						not slot_atom.startswith("virtual/"):
 						all_in_graph = False
 						break
+				circular_atom = None
 				if all_in_graph:
 					if parent is None or priority is None:
-						preferred_in_graph.append(this_choice)
+						pass
 					elif priority.buildtime:
 						# Check if the atom would result in a direct circular
 						# dependency and try to avoid that if it seems likely
@@ -7755,7 +7788,6 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						# buildtime deps that aren't already satisfied by an
 						# installed package.
 						cpv_slot_list = [parent]
-						circular_atom = None
 						for atom in atoms:
 							if "!" == atom[:1]:
 								continue
@@ -7768,19 +7800,35 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 							if match_from_list(atom, cpv_slot_list):
 								circular_atom = atom
 								break
-						if circular_atom is None:
-							preferred_in_graph.append(this_choice)
-						else:
-							other.append(this_choice)
-					else:
-						preferred_in_graph.append(this_choice)
+				if circular_atom is not None:
+					other.append(this_choice)
 				else:
-					preferred_non_installed.append(this_choice)
+					if all_use_satisfied:
+						if all_in_graph:
+							preferred_in_graph.append(this_choice)
+						elif all_installed:
+							if all_installed_slots:
+								preferred_installed.append(this_choice)
+							else:
+								preferred_any_slot.append(this_choice)
+						else:
+							preferred_non_installed.append(this_choice)
+					else:
+						if all_in_graph:
+							unsat_use_in_graph.append(this_choice)
+						elif all_installed_slots:
+							unsat_use_installed.append(this_choice)
+						else:
+							unsat_use_non_installed.append(this_choice)
 		else:
 			other.append(this_choice)
 
+	# unsat_use_* must come after preferred_non_installed
+	# for correct ordering in cases like || ( foo[a] foo[b] ).
 	preferred = preferred_in_graph + preferred_installed + \
-		preferred_any_slot + preferred_non_installed + other
+		preferred_any_slot + preferred_non_installed + \
+		unsat_use_in_graph + unsat_use_installed + unsat_use_non_installed + \
+		other
 
 	for allow_masked in (False, True):
 		for atoms, versions, all_available in preferred:

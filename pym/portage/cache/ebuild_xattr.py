@@ -1,6 +1,5 @@
-# -*- coding: UTF8 -*-
 # Copyright: 2009 Gentoo Foundation
-# Author(s): Petteri Räty (betelgeuse@gentoo.org)
+# Author(s): Petteri R&#228;ty (betelgeuse@gentoo.org)
 # License: GPL2
 # $Id$
 
