@@ -1145,7 +1145,7 @@ def emerge_main():
 
 	if '--emptytree' in myopts and '--noreplace' in myopts:
 		writemsg_level("emerge: can't specify both of " + \
-			"\"--empty\" and \"--noreplace\".\n",
+			"\"--emptytree\" and \"--noreplace\".\n",
 			level=logging.ERROR, noiselevel=-1)
 		return 1
 
