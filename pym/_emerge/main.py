@@ -1144,6 +1144,12 @@ def emerge_main():
 		print "emerge: can't specify both of \"--tree\" and \"--columns\"."
 		return 1
 
+	if '--emptytree' in myopts and '--noreplace' in myopts:
+		writemsg_level("emerge: can't specify both of " + \
+			"\"--emptytree\" and \"--noreplace\".\n",
+			level=logging.ERROR, noiselevel=-1)
+		return 1
+
 	if ("--quiet" in myopts):
 		spinner.update = spinner.update_quiet
 		portage.util.noiselimit = -1
