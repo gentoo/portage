@@ -1522,9 +1522,9 @@ class vardbapi(dbapi):
 			"repository", "RESTRICT" , "SLOT", "USE"])
 		self._aux_cache_obj = None
 		self._aux_cache_filename = os.path.join(self.root,
-			CACHE_PATH.lstrip(os.path.sep), "vdb_metadata.pickle")
+			CACHE_PATH, "vdb_metadata.pickle")
 		self._counter_path = os.path.join(root,
-			CACHE_PATH.lstrip(os.path.sep), "counter")
+			CACHE_PATH, "counter")
 
 		try:
 			self.plib_registry = PreservedLibsRegistry(self.root,
@@ -1785,7 +1785,7 @@ class vardbapi(dbapi):
 			return list(self._iter_match(mydep,
 				self.cp_list(mydep.cp, use_cache=use_cache)))
 		try:
-			curmtime = os.stat(self.root+VDB_PATH+"/"+mycat).st_mtime
+			curmtime = os.stat(os.path.join(self.root, VDB_PATH, mycat)).st_mtime
 		except (IOError, OSError):
 			curmtime=0
 
