@@ -10,7 +10,7 @@ from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.util import grabfile, write_atomic, ensure_dirs, normalize_path
-from portage.const import PRIVATE_PATH, USER_CONFIG_PATH, EPREFIX_LSTRIP
+from portage.const import USER_CONFIG_PATH, WORLD_FILE, WORLD_SETS_FILE
 from portage.localization import _
 from portage.locks import lockfile, unlockfile
 from portage import portage_gid
@@ -212,11 +212,11 @@ class WorldSet(EditablePackageSet):
 		# most attributes exist twice as atoms and non-atoms are stored in 
 		# separate files
 		self._lock = None
-		self._filename = os.path.join(os.sep, root, PRIVATE_PATH, "world")
+		self._filename = os.path.join(os.sep, root, WORLD_FILE)
 		self.loader = ItemFileLoader(self._filename, self._validate)
 		self._mtime = None
 		
-		self._filename2 = os.path.join(os.sep, root, PRIVATE_PATH, "world_sets")
+		self._filename2 = os.path.join(os.sep, root, WORLD_SETS_FILE)
 		self.loader2 = ItemFileLoader(self._filename2, self._validate2)
 		self._mtime2 = None
 		

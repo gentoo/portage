@@ -61,6 +61,7 @@ CACHE_PATH               = EPREFIX_LSTRIP + "/" + "var/cache/edb"
 DEPCACHE_PATH            = CACHE_PATH + "/dep"  # FIXME: does not seem to use ROOT when used
 PRIVATE_PATH             = EPREFIX_LSTRIP + "/" + "var/lib/portage"
 WORLD_FILE               = PRIVATE_PATH + "/world"
+WORLD_SETS_FILE          = PRIVATE_PATH + "/world_sets"
 CONFIG_MEMORY_FILE       = PRIVATE_PATH + "/config"
 NEWS_LIB_PATH            = EPREFIX_LSTRIP + "/" + "var/lib/gentoo"
 
