@@ -2198,12 +2198,12 @@ class config(object):
 		if not os.access(self["ROOT"], os.W_OK):
 			return
 
-		#                                     gid, mode, mask, preserve_perms
+		#                                gid, mode, mask, preserve_perms
 		dir_mode_map = {
-			"tmp"             : (                      -1, 01777,  0,  True),
-			"var/tmp"         : (                      -1, 01777,  0,  True),
-			PRIVATE_PATH      : (             portage_gid, 02750, 02,  False),
-			CACHE_PATH.lstrip(os.path.sep) : (portage_gid,  0755, 02,  False)
+			"tmp"             : (         -1, 01777,  0,  True),
+			"var/tmp"         : (         -1, 01777,  0,  True),
+			PRIVATE_PATH      : (portage_gid, 02750, 02,  False),
+			CACHE_PATH        : (portage_gid,  0755, 02,  False)
 		}
 
 		for mypath, (gid, mode, modemask, preserve_perms) \
@@ -8811,8 +8811,8 @@ class _MtimedbProxy(proxy.objectproxy.ObjectProxy):
 	def _get_target(self):
 		global mtimedb, mtimedbfile, _mtimedb_initialized
 		if not _mtimedb_initialized:
-			mtimedbfile = os.path.join("/",
-				CACHE_PATH.lstrip(os.path.sep), "mtimedb")
+			mtimedbfile = os.path.join(os.path.sep,
+				CACHE_PATH, "mtimedb")
 			mtimedb = MtimeDB(mtimedbfile)
 			_mtimedb_initialized = True
 		name = object.__getattribute__(self, '_name')

@@ -37,7 +37,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 		self._vardb = vardb
 		self._virtuals = vardb.settings.getvirtuals()
 		self._cache_filename = os.path.join(myroot,
-			portage.CACHE_PATH.lstrip(os.path.sep), "vdb_blockers.pickle")
+			portage.CACHE_PATH, "vdb_blockers.pickle")
 		self._cache_version = "1"
 		self._cache_data = None
 		self._modified = set()

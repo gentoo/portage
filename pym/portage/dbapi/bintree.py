@@ -660,7 +660,7 @@ class binarytree(object):
 			from portage.const import CACHE_PATH
 			from urlparse import urlparse
 			urldata = urlparse(base_url)
-			pkgindex_file = os.path.join(CACHE_PATH, "binhost",
+			pkgindex_file = os.path.join(self.settings["ROOT"], CACHE_PATH, "binhost",
 				urldata[1] + urldata[2], "Packages")
 			pkgindex = self._new_pkgindex()
 			try:
