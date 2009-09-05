@@ -1528,7 +1528,7 @@ class vardbapi(dbapi):
 
 		try:
 			self.plib_registry = PreservedLibsRegistry(self.root,
-				os.path.join(self.root, EPREFIX_LSTRIP, PRIVATE_PATH, "preserved_libs_registry"))
+				os.path.join(self.root, PRIVATE_PATH, "preserved_libs_registry"))
 		except PermissionDenied:
 			# apparently this user isn't allowed to access PRIVATE_PATH
 			self.plib_registry = None
