@@ -58,7 +58,6 @@ DEPRECATED_PROFILE_FILE  = PROFILE_PATH + "/deprecated"
 # have a leading '/' since they are used directly with os.path.join)
 VDB_PATH                 = EPREFIX_LSTRIP + "/" + "var/db/pkg"
 CACHE_PATH               = EPREFIX_LSTRIP + "/" + "var/cache/edb"
-DEPCACHE_PATH            = CACHE_PATH + "/dep"  # FIXME: does not seem to use ROOT when used
 PRIVATE_PATH             = EPREFIX_LSTRIP + "/" + "var/lib/portage"
 WORLD_FILE               = PRIVATE_PATH + "/world"
 WORLD_SETS_FILE          = PRIVATE_PATH + "/world_sets"
@@ -66,6 +65,7 @@ CONFIG_MEMORY_FILE       = PRIVATE_PATH + "/config"
 NEWS_LIB_PATH            = EPREFIX_LSTRIP + "/" + "var/lib/gentoo"
 
 # these variables are not used with target_root or config_root
+DEPCACHE_PATH            = EPREFIX + "/var/cache/edb/dep"
 GLOBAL_CONFIG_PATH       = DATADIR + "/portage/config"
 PORTAGE_BASE_PATH        = PORTAGE_BASE
 PORTAGE_BIN_PATH         = PORTAGE_BASE_PATH + "/bin"
