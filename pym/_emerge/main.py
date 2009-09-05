@@ -9,6 +9,8 @@ import textwrap
 import platform
 import portage
 from portage import os
+from portage import _encodings
+from portage import _unicode_decode
 import _emerge.help
 import portage.xpak, commands, errno, re, time
 from portage.output import colorize, xtermTitle, xtermTitleReset
@@ -1297,7 +1299,9 @@ def emerge_main():
 
 	if not "--pretend" in myopts:
 		emergelog(xterm_titles, "Started emerge on: "+\
-			time.strftime("%b %d, %Y %H:%M:%S", time.localtime()))
+			_unicode_decode(
+				time.strftime("%b %d, %Y %H:%M:%S", time.localtime()),
+				encoding=_encodings['content'], errors='replace'))
 		myelogstr=""
 		if myopts:
 			myelogstr=" ".join(myopts)

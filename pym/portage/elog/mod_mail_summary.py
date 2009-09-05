@@ -8,6 +8,8 @@ from portage.exception import PortageException
 from portage.localization import _
 from portage.util import writemsg
 from portage import os
+from portage import _encodings
+from portage import _unicode_decode
 
 import socket
 import time
@@ -15,8 +17,11 @@ import time
 _items = {}
 def process(mysettings, key, logentries, fulltext):
 	global _items
+	time_str = _unicode_decode(
+		time.strftime("%Y%m%d-%H%M%S %Z", time.localtime(time.time())),
+		encoding=_encodings['content'], errors='replace')
 	header = _(">>> Messages generated for package %(pkg)s by process %(pid)d on %(time)s:\n\n") % \
-		{"pkg": key, "pid": os.getpid(), "time": time.strftime("%Y%m%d-%H%M%S %Z", time.localtime(time.time()))}
+		{"pkg": key, "pid": os.getpid(), "time": time_str}
 	config_root = mysettings["PORTAGE_CONFIGROOT"]
 	mysettings, items = _items.setdefault(config_root, (mysettings, {}))
 	items[key] = header + fulltext

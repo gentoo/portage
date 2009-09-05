@@ -404,7 +404,8 @@ def format_date(datestr):
 		return datestr
 	
 	# TODO We could format to local date format '%x' here?
-	return d.strftime("%B %d, %Y")
+	return _unicode_decode(d.strftime("%B %d, %Y"),
+		encoding=_encodings['content'], errors='replace')
 
 # simple Exception classes to catch specific errors
 class GlsaTypeException(Exception):
