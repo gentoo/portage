@@ -123,7 +123,14 @@ class PollScheduler(object):
 		try:
 			while event_handlers:
 				f, event = self._next_poll_event()
-				handler, reg_id = event_handlers[f]
+				try:
+					handler, reg_id = event_handlers[f]
+				except KeyError:
+					# This means unregister was called for a file descriptor
+					# that still had a pending event in _poll_event_queue.
+					# Since unregister has been called, we should assume that
+					# the event can be safely ignored.
+					continue
 				handler(f, event)
 				event_handled = True
 		except StopIteration:
