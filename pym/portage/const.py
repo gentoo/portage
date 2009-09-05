@@ -45,7 +45,6 @@ DEPRECATED_PROFILE_FILE  = PROFILE_PATH + "/deprecated"
 # have a leading '/' since they are used directly with os.path.join)
 VDB_PATH                 = "var/db/pkg"
 CACHE_PATH               = "var/cache/edb"
-DEPCACHE_PATH            = CACHE_PATH + "/dep"  # FIXME: does not seem to use ROOT when used
 PRIVATE_PATH             = "var/lib/portage"
 WORLD_FILE               = PRIVATE_PATH + "/world"
 WORLD_SETS_FILE          = PRIVATE_PATH + "/world_sets"
@@ -53,6 +52,7 @@ CONFIG_MEMORY_FILE       = PRIVATE_PATH + "/config"
 NEWS_LIB_PATH            = "var/lib/gentoo"
 
 # these variables are not used with target_root or config_root
+DEPCACHE_PATH            = "/var/cache/edb/dep"
 GLOBAL_CONFIG_PATH       = "/usr/share/portage/config"
 PORTAGE_BASE_PATH        = os.path.join(os.sep, os.sep.join(__file__.split(os.sep)[:-3]))
 PORTAGE_BIN_PATH         = PORTAGE_BASE_PATH + "/bin"
