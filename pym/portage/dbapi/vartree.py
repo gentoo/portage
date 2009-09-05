@@ -790,6 +790,10 @@ class vardbapi(dbapi):
 		self.root = _unicode_decode(root,
 			encoding=_encodings['content'], errors='strict')
 
+		# Used by emerge to check whether any packages
+		# have been added or removed.
+		self._pkgs_changed = False
+
 		#cache for category directory mtimes
 		self.mtdircache = {}
 
@@ -1041,9 +1045,11 @@ class vardbapi(dbapi):
 		self._aux_cache_obj = None
 
 	def _add(self, pkg_dblink):
+		self._pkgs_changed = True
 		self._clear_pkg_cache(pkg_dblink)
 
 	def _remove(self, pkg_dblink):
+		self._pkgs_changed = True
 		self._clear_pkg_cache(pkg_dblink)
 
 	def _clear_pkg_cache(self, pkg_dblink):

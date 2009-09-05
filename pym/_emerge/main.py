@@ -314,9 +314,7 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 
 	_flush_elog_mod_echo()
 
-	counter_hash = settings.get("PORTAGE_COUNTER_HASH")
-	if "--pretend" in myopts or (counter_hash is not None and \
-		counter_hash == vardbapi._counter_hash()):
+	if not vardbapi._pkgs_changed:
 		display_news_notification(root_config, myopts)
 		# If vdb state has not changed then there's nothing else to do.
 		sys.exit(retval)
@@ -1075,11 +1073,6 @@ def emerge_main():
 		mysettings =  trees[myroot]["vartree"].settings
 		mysettings.unlock()
 		adjust_config(myopts, mysettings)
-		if '--pretend' not in myopts and myaction in \
-			(None, 'clean', 'depclean', 'prune', 'unmerge'):
-			mysettings["PORTAGE_COUNTER_HASH"] = \
-				trees[myroot]["vartree"].dbapi._counter_hash()
-			mysettings.backup_changes("PORTAGE_COUNTER_HASH")
 		mysettings.lock()
 		del myroot, mysettings
 
