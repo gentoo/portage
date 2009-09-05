@@ -292,8 +292,6 @@ def catpkgsplit(mydata,silent=1):
 	"""
 
 	try:
-		if not catcache[mydata]:
-			return None
 		return catcache[mydata]
 	except KeyError:
 		pass

@@ -480,7 +480,7 @@ Note that objects that violate these rules may fail on some architectures.
 \fBQA_TEXTRELS\fR
 This variable can be set to a list of file paths, relative to the image
 directory, of files that contain text relocations that cannot be eliminated.
-The paths may contain regular expressions.
+The paths may contain fnmatch patterns.
 .br
 This variable is intended to be used on closed\-source binary objects that
 cannot be altered.
@@ -488,7 +488,7 @@ cannot be altered.
 \fBQA_EXECSTACK\fR
 This should contain a list of file paths, relative to the image directory, of
 objects that require executable stack in order to run.
-The paths may contain regular expressions.
+The paths may contain fnmatch patterns.
 .br
 This variable is intended to be used on objects that truly need executable
 stack (i.e. not those marked to need it which in fact do not).
@@ -496,7 +496,7 @@ stack (i.e. not those marked to need it which in fact do not).
 \fBQA_WX_LOAD\fR
 This should contain a list of file paths, relative to the image directory, of
 files that contain writable and executable segments.  These are rare.
-The paths may contain regular expressions.
+The paths may contain fnmatch patterns.
 .TP
 \fBQA_DT_HASH\fR
 This should contain a list of file paths, relative to the image directory, of
