@@ -8471,7 +8471,7 @@ def deprecated_profile_check(settings=None):
 	if settings is not None:
 		config_root = settings["PORTAGE_CONFIGROOT"]
 	deprecated_profile_file = os.path.join(config_root,
-		DEPRECATED_PROFILE_FILE.lstrip(os.sep))
+		DEPRECATED_PROFILE_FILE)
 	if not os.access(deprecated_profile_file, os.R_OK):
 		return False
 	dcontent = codecs.open(_unicode_encode(deprecated_profile_file,
