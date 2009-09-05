@@ -1069,7 +1069,7 @@ class vardbapi(dbapi):
 			return list(self._iter_match(mydep,
 				self.cp_list(mydep.cp, use_cache=use_cache)))
 		try:
-			curmtime = os.stat(self.root+VDB_PATH+"/"+mycat).st_mtime
+			curmtime = os.stat(os.path.join(self.root, VDB_PATH, mycat)).st_mtime
 		except (IOError, OSError):
 			curmtime=0
 

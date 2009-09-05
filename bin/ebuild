@@ -135,7 +135,7 @@ if not portage.catpkgsplit(cpv):
 	print "!!! %s does not follow correct package syntax." % (cpv)
 	sys.exit(1)
 
-if ebuild.startswith(portage.root + portage.const.VDB_PATH):
+if ebuild.startswith(os.path.join(portage.root, portage.const.VDB_PATH)):
 	mytree = "vartree"
 
 	portage_ebuild = portage.db[portage.root][mytree].dbapi.findname(cpv)
