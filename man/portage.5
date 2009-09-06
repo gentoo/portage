@@ -53,6 +53,7 @@ modules
 package.keywords
 package.license
 package.mask
+package.properties
 package.unmask
 package.use
 repos.conf
@@ -540,6 +541,15 @@ versions earlier than 1.0.4496.  No problem!
 # drivers and later
 >=media\-video/nvidia\-kernel\-1.0.4496
 >=media\-video/nvidia\-glx\-1.0.4496
+.fi
+.TP
+.BR package.properties
+This will allow ACCEPT_PROPERTIES to be augmented for a single package.
+
+.I Format:
+.nf
+\- comment lines begin with # (no inline comments)
+\- one DEPEND atom per line followed by additional properties
 .fi
 .TP
 .BR package.unmask
