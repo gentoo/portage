@@ -51,6 +51,7 @@ color.map
 mirrors
 modules
 package.keywords
+package.license
 package.mask
 package.unmask
 package.use
@@ -512,6 +513,15 @@ package.keywords like this:
 
 games-fps/quake3-demo x86
 
+.TP
+.BR package.license
+This will allow ACCEPT_LICENSE to be augmented for a single package.
+
+.I Format:
+.nf
+\- comment lines begin with # (no inline comments)
+\- one DEPEND atom per line followed by additional licenses or groups
+.fi
 .TP
 .BR package.mask
 A list of package atoms to mask.  Useful if specific versions of packages do
