@@ -853,25 +853,6 @@ class vardbapi(dbapi):
 			level=logging.ERROR, noiselevel=-1)
 		return 0
 
-	def _counter_hash(self):
-		try:
-			from hashlib import md5 as new_hash
-		except ImportError:
-			from md5 import new as new_hash
-		h = new_hash()
-		aux_keys = ["COUNTER"]
-		cpv_list = self.cpv_all()
-		cpv_list.sort()
-		for cpv in cpv_list:
-			try:
-				counter, = self.aux_get(cpv, aux_keys)
-			except KeyError:
-				continue
-			h.update(_unicode_encode(counter,
-				encoding=_encodings['repo.content'],
-				errors='backslashreplace'))
-		return h.hexdigest()
-
 	def cpv_inject(self, mycpv):
 		"injects a real package into our on-disk database; assumes mycpv is valid and doesn't already exist"
 		os.makedirs(self.getpath(mycpv))
