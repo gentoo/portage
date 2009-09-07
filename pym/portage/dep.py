@@ -3,7 +3,6 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-
 # DEPEND SYNTAX:
 #
 # 'use?' only affects the immediately following word!
@@ -24,7 +23,8 @@ from itertools import chain
 import portage.exception
 from portage.exception import InvalidData, InvalidAtom
 from portage.localization import _
-from portage.versions import catpkgsplit, catsplit, pkgcmp, pkgsplit, ververify
+from portage.versions import catpkgsplit, catsplit, \
+	pkgcmp, pkgsplit, ververify, _version
 import portage.cache.mappings
 
 def cpvequal(cpv1, cpv2):
@@ -308,7 +308,6 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 				rlist += [head]
 
 	return rlist
-
 
 def dep_opconvert(deplist):
 	"""
@@ -834,8 +833,30 @@ def dep_getusedeps( depend ):
 		open_bracket = depend.find( '[', open_bracket+1 )
 	return tuple(use_list)
 
-_valid_category = re.compile("^\w[\w-]*")
-_invalid_atom_chars_regexp = re.compile("[()|@]")
+# 2.1.1 A category name may contain any of the characters [A-Za-z0-9+_.-].
+# It must not begin with a hyphen or a dot.
+_cat = r'[A-Za-z0-9+_][A-Za-z0-9+_.-]*'
+
+# 2.1.2 A package name may contain any of the characters [A-Za-z0-9+_-].
+# It must not begin with a hyphen,
+# and must not end in a hyphen followed by one or more digits.
+# FIXME: this regex doesn't check 'must not end in' clause.
+_pkg = r'[A-Za-z0-9+_][A-Za-z0-9+_-]*'
+
+# 2.1.3 A slot name may contain any of the characters [A-Za-z0-9+_.-].
+# It must not begin with a hyphen or a dot.
+_slot = r'(:[A-Za-z0-9+_][A-Za-z0-9+_.-]*)?'
+
+_use = r'(\[.*\])?'
+_op = r'([=><~]|([><]=))'
+_cp = _cat + '/' + _pkg
+_cpv = _cp + '-' + _version
+
+_atom = re.compile(r'^(' +
+	'(' + _op + _cpv + _slot + _use + ')|' +
+	'(=' + _cpv + r'\*' + _slot + _use + ')|' +
+	'(' + _cp + _slot + _use + ')' +
+	')$')
 
 def isvalidatom(atom, allow_blockers=False):
 	"""
@@ -843,85 +864,38 @@ def isvalidatom(atom, allow_blockers=False):
 
 	Example usage:
 		>>> isvalidatom('media-libs/test-3.0')
-		0
+		False
 		>>> isvalidatom('>=media-libs/test-3.0')
-		1
+		True
 
 	@param atom: The depend atom to check against
-	@type atom: String
-	@rtype: Integer
+	@type atom: String or Atom
+	@rtype: Boolean
 	@return: One of the following:
-		1) 0 if the atom is invalid
-		2) 1 if the atom is valid
+		1) False if the atom is invalid
+		2) True if the atom is valid
 	"""
 	existing_atom = Atom._atoms.get(atom)
 	if existing_atom is not None:
 		atom = existing_atom
 	if isinstance(atom, Atom):
-		if atom.blocker and not allow_blockers:
-			return 0
-		return 1
-	global _invalid_atom_chars_regexp
-	if _invalid_atom_chars_regexp.search(atom):
-		return 0
-	if allow_blockers and atom[:1] == "!":
-		if atom[1:2] == "!":
+		return allow_blockers or not atom.blocker
+	if len(atom) < 2:
+		return False
+	if allow_blockers and atom[0] == '!':
+		if atom[1] == '!':
 			atom = atom[2:]
 		else:
 			atom = atom[1:]
-
-	if dep_getslot(atom) == "":
-		# empty slot is invalid (None is valid)
-		return 0
-
+	if _atom.match(atom) is None:
+		return False
 	try:
 		use = dep_getusedeps(atom)
 		if use:
 			use = _use_dep(use)
+		return True
 	except InvalidAtom:
-		return 0
-
-	cpv = dep_getcpv(atom)
-	cpv_catsplit = catsplit(cpv)
-	without_slot = remove_slot(atom)
-	mycpv_cps = None
-	if cpv:
-		if len(cpv_catsplit) == 2:
-			if _valid_category.match(cpv_catsplit[0]) is None:
-				return 0
-			if cpv_catsplit[0] == "null":
-				# "null" category is valid, missing category is not.
-				mycpv_cps = catpkgsplit(cpv.replace("null/", "cat/", 1))
-				if mycpv_cps:
-					mycpv_cps = list(mycpv_cps)
-					mycpv_cps[0] = "null"
-		if not mycpv_cps:
-			mycpv_cps = catpkgsplit(cpv)
-		if mycpv_cps is None and cpv != without_slot:
-			return 0
-
-	operator = get_operator(atom)
-	if operator:
-		if operator[0] in "<>" and without_slot[-1:] == "*":
-			return 0
-		if mycpv_cps:
-			if len(cpv_catsplit) == 2:
-				# >=cat/pkg-1.0
-				return 1
-			else:
-				return 0
-		else:
-			# >=cat/pkg or >=pkg-1.0 (no category)
-			return 0
-	if mycpv_cps:
-		# cat/pkg-1.0
-		return 0
-
-	if len(cpv_catsplit) == 2:
-		# cat/pkg
-		return 1
-	else:
-		return 0
+		return False
 
 def isjustname(mypkg):
 	"""
