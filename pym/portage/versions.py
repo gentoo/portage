@@ -271,7 +271,7 @@ def catpkgsplit(mydata,silent=1):
 		return catcache[mydata]
 	except KeyError:
 		pass
-	mysplit=mydata.split("/")
+	mysplit = mydata.split('/', 1)
 	p_split=None
 	if len(mysplit)==1:
 		retval=["null"]
