@@ -274,16 +274,15 @@ def catpkgsplit(mydata,silent=1):
 	mysplit = mydata.split('/', 1)
 	p_split=None
 	if len(mysplit)==1:
-		retval=["null"]
+		cat = "null"
 		p_split=pkgsplit(mydata,silent=silent)
 	elif len(mysplit)==2:
-		retval=[mysplit[0]]
+		cat = mysplit[0]
 		p_split=pkgsplit(mysplit[1],silent=silent)
 	if not p_split:
 		catcache[mydata]=None
 		return None
-	retval.extend(p_split)
-	retval = tuple(retval)
+	retval = (cat, p_split[0], p_split[1], p_split[2])
 	catcache[mydata]=retval
 	return retval
 
