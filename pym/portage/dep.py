@@ -840,8 +840,9 @@ _cat = r'[A-Za-z0-9+_][A-Za-z0-9+_.-]*'
 # 2.1.2 A package name may contain any of the characters [A-Za-z0-9+_-].
 # It must not begin with a hyphen,
 # and must not end in a hyphen followed by one or more digits.
-# FIXME: this regex doesn't check 'must not end in' clause.
-_pkg = r'[A-Za-z0-9+_][A-Za-z0-9+_-]*'
+_pkg = r'([A-Za-z+_]+[A-Za-z0-9+_]+|([A-Za-z0-9+_](' + \
+	'[A-Za-z0-9+_-]?|' + \
+	'([A-Za-z0-9+_-]*(([A-Za-z0-9+_][A-Za-z+_-]+)|([A-Za-z+_][A-Za-z0-9+_]+))))))'
 
 # 2.1.3 A slot name may contain any of the characters [A-Za-z0-9+_.-].
 # It must not begin with a hyphen or a dot.
@@ -852,7 +853,7 @@ _op = r'([=><~]|([><]=))'
 _cp = _cat + '/' + _pkg
 _cpv = _cp + '-' + _version
 
-_atom = re.compile(r'^(' +
+_atom_re = re.compile(r'^(' +
 	'(' + _op + _cpv + _slot + _use + ')|' +
 	'(=' + _cpv + r'\*' + _slot + _use + ')|' +
 	'(' + _cp + _slot + _use + ')' +
@@ -887,7 +888,7 @@ def isvalidatom(atom, allow_blockers=False):
 			atom = atom[2:]
 		else:
 			atom = atom[1:]
-	if _atom.match(atom) is None:
+	if _atom_re.match(atom) is None:
 		return False
 	try:
 		use = dep_getusedeps(atom)

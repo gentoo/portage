@@ -62,13 +62,22 @@ class IsValidAtom(TestCase):
 			  ( ">=null/portage-2.1", True ),
 			  ( "~null/portage-2.1", True ),
 			  ( "=null/portage-2.1*", True ),
-			  ( "=foo/bar-123-1", True ),
-			  ( "=foo/bar-123-1-r1", True ),
+
+			# These are invalid because pkg name must not end in hyphen
+			# followed by numbers
+			  ( "=foo/bar-123-1", False ),
+			  ( "=foo/bar-123-1-r1", False ),
+			  ( "foo/bar-1", False ),
+
 			  ( "=foo/bar--baz-1-r1", True ),
 			  ( "=foo/bar-baz--1-r1", True ),
 			  ( "=foo/bar-baz---1-r1", True ),
 			  ( "=foo/bar-baz---1", True ),
 			  ( "=foo/bar-baz-1--r1", False ),
+			  ( "games-strategy/ufo2000", True ),
+			  ( "~games-strategy/ufo2000-0.1", True ),
+			  ( "=media-libs/x264-20060810", True ),
+			  ( "foo/b", True ),
 		]
 
 		for test in tests:
