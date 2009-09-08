@@ -853,6 +853,7 @@ _op = r'([=><~]|([><]=))'
 _cp = _cat + '/' + _pkg
 _cpv = _cp + '-' + _version
 
+_cpv_re = re.compile('^' + _cpv + '$')
 _atom_re = re.compile(r'^(' +
 	'(' + _op + _cpv + _slot + _use + ')|' +
 	'(=' + _cpv + r'\*' + _slot + _use + ')|' +
@@ -932,27 +933,24 @@ def isspecific(mypkg):
 
 	Example usage:
 		>>> isspecific('media-libs/test')
-		0
+		False
 		>>> isspecific('media-libs/test-3.0')
-		1
+		True
 
 	@param mypkg: The package depstring to check against
 	@type mypkg: String
-	@rtype: Integer
+	@rtype: Boolean
 	@return: One of the following:
-		1) 0 if the package string is not specific
-		2) 1 if it is
+		1) False if the package string is not specific
+		2) True if it is
 	"""
 	try:
 		return iscache[mypkg]
 	except KeyError:
 		pass
-	mysplit = mypkg.split("/")
-	if not isjustname(mysplit[-1]):
-			iscache[mypkg] = 1
-			return 1
-	iscache[mypkg] = 0
-	return 0
+	retval = _cpv_re.match(mypkg) is not None
+	iscache[mypkg] = retval
+	return retval
 
 def dep_getkey(mydep):
 	"""
