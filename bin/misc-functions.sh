@@ -408,6 +408,9 @@ install_qa_check() {
 
 	# Evaluate misc gcc warnings
 	if [[ -n ${PORTAGE_LOG_FILE} && -r ${PORTAGE_LOG_FILE} ]] ; then
+		# In debug mode, this variable definition will produce
+		# a false positive if it's shown in the trace.
+		[[ $PORTAGE_DEBUG = 1 ]] && set +x
 		local m msgs=(
 			": warning: dereferencing type-punned pointer will break strict-aliasing rules$"
 			": warning: dereferencing pointer .* does break strict-aliasing rules$"
@@ -417,6 +420,7 @@ install_qa_check() {
 			": warning: comparisons like X<=Y<=Z do not have their mathematical meaning$"
 			": warning: null argument where non-null required "
 		)
+		[[ $PORTAGE_DEBUG = 1 ]] && set -x
 		abort="no"
 		i=0
 		while [[ -n ${msgs[${i}]} ]] ; do
