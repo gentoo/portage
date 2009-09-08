@@ -78,6 +78,9 @@ class IsValidAtom(TestCase):
 			  ( "~games-strategy/ufo2000-0.1", True ),
 			  ( "=media-libs/x264-20060810", True ),
 			  ( "foo/b", True ),
+			  ( "app-text/7plus", True ),
+			  ( "foo/666", True ),
+			  ( "=dev-libs/poppler-qt3-0.11*", True ),
 		]
 
 		for test in tests:

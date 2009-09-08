@@ -833,32 +833,40 @@ def dep_getusedeps( depend ):
 		open_bracket = depend.find( '[', open_bracket+1 )
 	return tuple(use_list)
 
+# \w is [a-zA-Z0-9_]
+
 # 2.1.1 A category name may contain any of the characters [A-Za-z0-9+_.-].
 # It must not begin with a hyphen or a dot.
-_cat = r'[A-Za-z0-9+_][A-Za-z0-9+_.-]*'
+_cat = r'[\w+][\w+.-]*'
 
 # 2.1.2 A package name may contain any of the characters [A-Za-z0-9+_-].
 # It must not begin with a hyphen,
 # and must not end in a hyphen followed by one or more digits.
-_pkg = r'([A-Za-z+_]+[A-Za-z0-9+_]+|([A-Za-z0-9+_](' + \
-	'[A-Za-z0-9+_-]?|' + \
-	'([A-Za-z0-9+_-]*(([A-Za-z0-9+_][A-Za-z+_-]+)|([A-Za-z+_][A-Za-z0-9+_]+))))))'
+_pkg = \
+r'''([\w+](
+	-?                    # All other 2-char are handled by next
+	|[\w+]*               # No hyphens - no problems
+	|[\w+-]+(             # String with a hyphen...
+		[A-Za-z+_-]       # ... must end in nondigit
+		|[A-Za-z+_][\w+]+ # ... or in nondigit and then nonhyphens
+	)
+))'''
 
 # 2.1.3 A slot name may contain any of the characters [A-Za-z0-9+_.-].
 # It must not begin with a hyphen or a dot.
-_slot = r'(:[A-Za-z0-9+_][A-Za-z0-9+_.-]*)?'
+_slot = r'(:[\w+][\w+.-]*)?'
 
 _use = r'(\[.*\])?'
-_op = r'([=><~]|([><]=))'
+_op = r'([=~]|[><]=?)'
 _cp = _cat + '/' + _pkg
 _cpv = _cp + '-' + _version
 
-_cpv_re = re.compile('^' + _cpv + '$')
+_cpv_re = re.compile('^' + _cpv + '$', re.VERBOSE)
 _atom_re = re.compile(r'^(' +
 	'(' + _op + _cpv + _slot + _use + ')|' +
 	'(=' + _cpv + r'\*' + _slot + _use + ')|' +
 	'(' + _cp + _slot + _use + ')' +
-	')$')
+	')$', re.VERBOSE)
 
 def isvalidatom(atom, allow_blockers=False):
 	"""
