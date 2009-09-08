@@ -62,6 +62,7 @@ class IsValidAtom(TestCase):
 			  ( ">=null/portage-2.1", True ),
 			  ( "~null/portage-2.1", True ),
 			  ( "=null/portage-2.1*", True ),
+			  ( "null/portage-2.1*", False ),
 
 			# These are invalid because pkg name must not end in hyphen
 			# followed by numbers
