@@ -3443,26 +3443,47 @@ class config(object):
 		for x in self.profiles:
 			virtuals_file = os.path.join(x, "virtuals")
 			virtuals_dict = grabdict(virtuals_file)
-			for k in virtuals_dict.keys():
-				if not isvalidatom(k) or dep_getkey(k) != k:
+			atoms_dict = {}
+			for k, v in virtuals_dict.iteritems():
+				try:
+					virt_atom = portage.dep.Atom(k)
+				except portage.exception.InvalidAtom:
+					virt_atom = None
+				else:
+					if virt_atom.blocker or \
+						str(virt_atom) != str(virt_atom.cp):
+						virt_atom = None
+				if virt_atom is None:
 					writemsg(_("--- Invalid virtuals atom in %s: %s\n") % \
 						(virtuals_file, k), noiselevel=-1)
-					del virtuals_dict[k]
 					continue
-				myvalues = virtuals_dict[k]
-				for x in myvalues:
-					myatom = x
-					if x.startswith("-"):
+				providers = []
+				for atom in v:
+					atom_orig = atom
+					if atom[:1] == '-':
 						# allow incrementals
-						myatom = x[1:]
-					if not isvalidatom(myatom):
+						atom = atom[1:]
+					try:
+						atom = portage.dep.Atom(atom)
+					except portage.exception.InvalidAtom:
+						atom = None
+					else:
+						if atom.blocker:
+							atom = None
+					if atom is None:
 						writemsg(_("--- Invalid atom in %s: %s\n") % \
-							(virtuals_file, x), noiselevel=-1)
-						myvalues.remove(x)
-				if not myvalues:
-					del virtuals_dict[k]
-			if virtuals_dict:
-				virtuals_list.append(virtuals_dict)
+							(virtuals_file, myatom), noiselevel=-1)
+					else:
+						if atom_orig == str(atom):
+							# normal atom, so return as Atom instance
+							providers.append(atom)
+						else:
+							# atom has special prefix, so return as string
+							providers.append(atom_orig)
+				if providers:
+					atoms_dict[virt_atom] = providers
+			if atoms_dict:
+				virtuals_list.append(atoms_dict)
 
 		self.dirVirtuals = stack_dictlist(virtuals_list, incremental=True)
 		del virtuals_list
@@ -8038,11 +8059,11 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 						# version from the atom before it is passed into
 						# dbapi.cp_list().
 						if mydb.cp_list(dep_getkey(vkey), use_cache=use_cache):
-							mykey = vkey
+							mykey = str(vkey)
 							writemsg(_("virts chosen: %s\n") % (mykey), 1)
 							break
 					if mykey == mykey_orig:
-						mykey=virts[mykey][0]
+						mykey = str(virts[mykey][0])
 						writemsg(_("virts defaulted: %s\n") % (mykey), 1)
 			#we only perform virtual expansion if we are passed a dbapi
 	else:
