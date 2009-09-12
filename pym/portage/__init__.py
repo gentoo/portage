@@ -7561,7 +7561,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			if repoman:
 				# TODO: Add PROVIDE check for repoman.
 				for y in mychoices:
-					a.append(portage.dep.Atom(x.replace(mykey, y, 1)))
+					a.append(portage.dep.Atom(x.replace(mykey, str(y.cp), 1)))
 			else:
 				for y in mychoices:
 					new_atom = portage.dep.Atom(
