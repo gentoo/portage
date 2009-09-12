@@ -1709,11 +1709,8 @@ class config(object):
 			# revmaskdict
 			self.prevmaskdict={}
 			for x in self.packages:
-				mycatpkg=dep_getkey(x)
-				if mycatpkg not in self.prevmaskdict:
-					self.prevmaskdict[mycatpkg]=[x]
-				else:
-					self.prevmaskdict[mycatpkg].append(x)
+				x = portage.dep.Atom(x.lstrip('*'))
+				self.prevmaskdict.setdefault(x.cp, []).append(x)
 
 			self._pkeywords_list = []
 			rawpkeywords = [grabdict_package(
@@ -1722,7 +1719,7 @@ class config(object):
 			for pkeyworddict in rawpkeywords:
 				cpdict = {}
 				for k, v in pkeyworddict.iteritems():
-					cpdict.setdefault(dep_getkey(k), {})[k] = v
+					cpdict.setdefault(k.cp, {})[k] = v
 				self._pkeywords_list.append(cpdict)
 
 			# get profile-masked use flags -- INCREMENTAL Child over parent
@@ -1740,7 +1737,7 @@ class config(object):
 			for pusemaskdict in rawpusemask:
 				cpdict = {}
 				for k, v in pusemaskdict.iteritems():
-					cpdict.setdefault(dep_getkey(k), {})[k] = v
+					cpdict.setdefault(k.cp, {})[k] = v
 				self.pusemask_list.append(cpdict)
 			del rawpusemask
 
@@ -1750,7 +1747,7 @@ class config(object):
 			for rawpusedict in rawprofileuse:
 				cpdict = {}
 				for k, v in rawpusedict.iteritems():
-					cpdict.setdefault(dep_getkey(k), {})[k] = v
+					cpdict.setdefault(k.cp, {})[k] = v
 				self.pkgprofileuse.append(cpdict)
 			del rawprofileuse
 
@@ -1766,7 +1763,7 @@ class config(object):
 			for rawpusefdict in rawpuseforce:
 				cpdict = {}
 				for k, v in rawpusefdict.iteritems():
-					cpdict.setdefault(dep_getkey(k), {})[k] = v
+					cpdict.setdefault(k.cp, {})[k] = v
 				self.puseforce_list.append(cpdict)
 			del rawpuseforce
 
@@ -1946,19 +1943,16 @@ class config(object):
 				pmask_locations.append(abs_user_config)
 				pusedict = grabdict_package(
 					os.path.join(abs_user_config, "package.use"), recursive=1)
-				for key in pusedict.keys():
-					cp = dep_getkey(key)
-					if cp not in self.pusedict:
-						self.pusedict[cp] = {}
-					self.pusedict[cp][key] = pusedict[key]
+				for k, v in pusedict.iteritems():
+					self.pusedict.setdefault(k.cp, {})[k] = v
 
 				#package.keywords
 				pkgdict = grabdict_package(
 					os.path.join(abs_user_config, "package.keywords"),
 					recursive=1)
-				for key in pkgdict.keys():
+				for k, v in pkgdict.iteritems():
 					# default to ~arch if no specific keyword is given
-					if not pkgdict[key]:
+					if not v:
 						mykeywordlist = []
 						if self.configdict["defaults"] and \
 							"ACCEPT_KEYWORDS" in self.configdict["defaults"]:
@@ -1968,17 +1962,14 @@ class config(object):
 						for keyword in groups:
 							if not keyword[0] in "~-":
 								mykeywordlist.append("~"+keyword)
-						pkgdict[key] = mykeywordlist
-					cp = dep_getkey(key)
-					if cp not in self.pkeywordsdict:
-						self.pkeywordsdict[cp] = {}
-					self.pkeywordsdict[cp][key] = pkgdict[key]
-				
+						v = mykeywordlist
+					self.pkeywordsdict.setdefault(k.cp, {})[k] = v
+
 				#package.license
 				licdict = grabdict_package(os.path.join(
 					abs_user_config, "package.license"), recursive=1)
 				for k, v in licdict.iteritems():
-					cp = dep_getkey(k)
+					cp = k.cp
 					cp_dict = self._plicensedict.get(cp)
 					if not cp_dict:
 						cp_dict = {}
@@ -1989,7 +1980,7 @@ class config(object):
 				propdict = grabdict_package(os.path.join(
 					abs_user_config, "package.properties"), recursive=1)
 				for k, v in propdict.iteritems():
-					cp = dep_getkey(k)
+					cp = k.cp
 					cp_dict = self._ppropertiesdict.get(cp)
 					if not cp_dict:
 						cp_dict = {}
@@ -2054,18 +2045,10 @@ class config(object):
 
 			self.pmaskdict = {}
 			for x in pkgmasklines:
-				mycatpkg=dep_getkey(x)
-				if mycatpkg in self.pmaskdict:
-					self.pmaskdict[mycatpkg].append(x)
-				else:
-					self.pmaskdict[mycatpkg]=[x]
+				self.pmaskdict.setdefault(x.cp, []).append(x)
 
 			for x in pkgunmasklines:
-				mycatpkg=dep_getkey(x)
-				if mycatpkg in self.punmaskdict:
-					self.punmaskdict[mycatpkg].append(x)
-				else:
-					self.punmaskdict[mycatpkg]=[x]
+				self.punmaskdict.setdefault(x.cp, []).append(x)
 
 			pkgprovidedlines = [grabfile(os.path.join(x, "package.provided"), recursive=1) for x in self.profiles]
 			pkgprovidedlines = stack_lists(pkgprovidedlines, incremental=1)
@@ -2877,7 +2860,7 @@ class config(object):
 		if profile_atoms:
 			pkg_list = ["%s:%s" % (cpv, metadata["SLOT"])]
 			for x in profile_atoms:
-				if match_from_list(x.lstrip("*"), pkg_list):
+				if match_from_list(x, pkg_list):
 					continue
 				return x
 		return None
