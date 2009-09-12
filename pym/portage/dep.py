@@ -922,7 +922,7 @@ def isjustname(mypkg):
 	Raises InvalidAtom if the input is invalid.
 
 	Example usage:
-		>>> isjustname('media-libs/test-3.0')
+		>>> isjustname('=media-libs/test-3.0')
 		False
 		>>> isjustname('media-libs/test')
 		True
