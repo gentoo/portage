@@ -934,7 +934,16 @@ def isjustname(mypkg):
 		1) False if the package string is not just the package name
 		2) True if it is
 	"""
-	return str(mypkg) == str(Atom(mypkg).cp)
+	try:
+		return mypkg == Atom(mypkg).cp
+	except InvalidAtom:
+		pass
+
+	myparts = mypkg.split('-')
+	for x in myparts:
+		if ververify(x):
+			return False
+	return True
 
 iscache = {}
 
