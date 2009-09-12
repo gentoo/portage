@@ -34,6 +34,7 @@ from _emerge.MetadataRegen import MetadataRegen
 from portage.cache.cache_errors import CacheError, StatCollision
 from portage.util import writemsg_level
 from portage import cpv_getkey
+from portage.dep import isjustname
 
 def parse_args(args):
 	usage = "egencache [options] --update [atom] ..."
@@ -112,7 +113,7 @@ def parse_args(args):
 		except portage.exception.InvalidAtom:
 			parser.error('Invalid atom: %s' % (atom,))
 
-		if str(atom) != atom.cp:
+		if not isjustname(atom):
 			parser.error('Atom is too specific: %s' % (atom,))
 
 	return parser, options, args

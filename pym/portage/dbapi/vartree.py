@@ -9,7 +9,7 @@ __all__ = ["PreservedLibsRegistry", "LinkageMap",
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum:_perform_md5_merge@perform_md5',
-	'portage.dep:dep_getkey,match_from_list,' + \
+	'portage.dep:dep_getkey,isjustname,match_from_list,' + \
 	 	'use_reduce,paren_reduce',
 	'portage.elog:elog_process',
 	'portage.elog.filtering:filter_mergephases,filter_unmergephases',
@@ -874,7 +874,7 @@ class vardbapi(dbapi):
 
 		# sanity check
 		for atom in (origcp, newcp):
-			if atom.cp != atom:
+			if not isjustname(atom):
 				raise InvalidPackageName(str(atom))
 		origmatches = self.match(origcp, use_cache=0)
 		moves = 0

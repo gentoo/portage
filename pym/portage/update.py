@@ -13,7 +13,8 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.dep:Atom,dep_getkey,get_operator,isvalidatom,remove_slot',
+	'portage.dep:Atom,dep_getkey,get_operator,isjustname,isvalidatom,' + \
+	'remove_slot',
 	'portage.util:ConfigProtect,grabfile,new_protect_filename,' + \
 		'normalize_path,write_atomic,writemsg',
 	'portage.versions:ververify'

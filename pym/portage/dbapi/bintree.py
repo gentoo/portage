@@ -6,7 +6,7 @@ __all__ = ["bindbapi", "binarytree"]
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.dep:dep_getkey,match_from_list',
+	'portage.dep:dep_getkey,isjustname,match_from_list',
 	'portage.output:EOutput,colorize',
 	'portage.update:update_dbentries',
 	'portage.util:ensure_dirs,normalize_path,writemsg,writemsg_stdout',
@@ -231,7 +231,7 @@ class binarytree(object):
 		newcp = mylist[2]
 		# sanity check
 		for atom in (origcp, newcp):
-			if atom.cp != atom:
+			if not isjustname(atom):
 				raise InvalidPackageName(str(atom))
 		origcat = origcp.split("/")[0]
 		mynewcat = newcp.split("/")[0]
