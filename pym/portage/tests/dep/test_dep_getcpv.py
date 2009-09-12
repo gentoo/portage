@@ -12,30 +12,25 @@ class DepGetCPV(TestCase):
 
 	def testDepGetCPV(self):
 		
-		prefix_ops = ["<", ">", "=", "~", "!", "<=", 
-			      ">=", "!=", "!<", "!>", "!~",""]
+		prefix_ops = ["<", ">", "=", "~", "<=", 
+			      ">=", "!=", "!<", "!>", "!~"]
 
 		bad_prefix_ops = [ ">~", "<~", "~>", "~<" ]
-		postfix_ops = [ "*", "" ]
+		postfix_ops = [ ("=", "*"), ]
 
-		cpvs = ["sys-apps/portage", "sys-apps/portage-2.1", "sys-apps/portage-2.1",
+		cpvs = ["sys-apps/portage-2.1", "sys-apps/portage-2.1",
 				"sys-apps/portage-2.1"]
-		slots = [None,":",":2"]
+		slots = [None, ":foo", ":2"]
 		for cpv in cpvs:
 			for slot in slots:
 				for prefix in prefix_ops:
-					for postfix in postfix_ops:
-						if slot:
-							self.assertEqual( dep_getcpv( 
-								prefix + cpv + slot + postfix ), cpv )
-						else:
-							self.assertEqual( dep_getcpv( 
-								prefix + cpv + postfix ), cpv )
-				for prefix in bad_prefix_ops:
-					for postfix in postfix_ops:
-						if slot:
-							self.assertNotEqual( dep_getcpv(
-								prefix + cpv + slot + postfix ), cpv )
-						else:
-							self.assertNotEqual( dep_getcpv(
-								prefix + cpv + postfix ), cpv )
+					mycpv = prefix + cpv
+					if slot:
+						mycpv += slot
+					self.assertEqual( dep_getcpv( mycpv ), cpv )
+
+				for prefix, postfix in postfix_ops:
+					mycpv = prefix + cpv + postfix
+					if slot:
+						mycpv += slot
+					self.assertEqual( dep_getcpv( mycpv ), cpv )
