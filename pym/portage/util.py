@@ -306,13 +306,14 @@ def grabdict_package(myfilename, juststrings=0, recursive=0):
 
 def grabfile_package(myfilename, compatlevel=0, recursive=0):
 	pkgs=grabfile(myfilename, compatlevel, recursive=recursive)
+	mybasename = os.path.basename(myfilename)
 	atoms = []
 	for pkg in pkgs:
 		pkg_orig = pkg
 		# for packages and package.mask files
 		if pkg[:1] == "-":
 			pkg = pkg[1:]
-		if pkg[:1] == "*":
+		if pkg[:1] == '*' and mybasename == 'packages':
 			pkg = pkg[1:]
 		try:
 			pkg = Atom(pkg)
