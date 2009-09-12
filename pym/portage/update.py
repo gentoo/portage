@@ -20,7 +20,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage.const import USER_CONFIG_PATH
-from portage.exception import DirectoryNotFound, PortageException
+from portage.exception import DirectoryNotFound, InvalidAtom, PortageException
 from portage.localization import _
 
 ignored_dbentries = ("CONTENTS", "environment.bz2")
