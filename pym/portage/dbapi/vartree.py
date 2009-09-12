@@ -9,7 +9,7 @@ __all__ = ["PreservedLibsRegistry", "LinkageMap",
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum:_perform_md5_merge@perform_md5',
-	'portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list,' + \
+	'portage.dep:dep_getkey,match_from_list,' + \
 	 	'use_reduce,paren_reduce',
 	'portage.elog:elog_process',
 	'portage.elog.filtering:filter_mergephases,filter_unmergephases',
@@ -873,9 +873,9 @@ class vardbapi(dbapi):
 		newcp = mylist[2]
 
 		# sanity check
-		for cp in [origcp, newcp]:
-			if not (isvalidatom(cp) and isjustname(cp)):
-				raise InvalidPackageName(cp)
+		for atom in (origcp, newcp):
+			if atom.cp != atom:
+				raise InvalidPackageName(str(atom))
 		origmatches = self.match(origcp, use_cache=0)
 		moves = 0
 		if not origmatches:
@@ -1766,7 +1766,6 @@ class vartree(object):
 				appendme = [mysplit[0]+"/"+x, [mysplit[0], mypsplit[0], mypsplit[1], mypsplit[2]]]
 				returnme.append(appendme)
 		return returnme
-
 
 	def getslot(self, mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
