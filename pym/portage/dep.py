@@ -919,7 +919,6 @@ def isvalidatom(atom, allow_blockers=False):
 def isjustname(mypkg):
 	"""
 	Checks to see if the atom is only the package name (no version parts).
-	Raises InvalidAtom if the input is invalid.
 
 	Example usage:
 		>>> isjustname('=media-libs/test-3.0')
