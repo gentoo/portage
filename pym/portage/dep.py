@@ -657,6 +657,15 @@ class Atom(object):
 	def rstrip(self, *pargs, **kargs):
 		return self._str.rstrip(*pargs, **kargs)
 
+	def __copy__(self):
+		"""Immutable, so returns self."""
+		return self
+
+	def __deepcopy__(self, memo=None):
+		"""Immutable, so returns self."""
+		memo[id(self)] = self
+		return self
+
 def get_operator(mydep):
 	"""
 	Return the operator used in a depstring.

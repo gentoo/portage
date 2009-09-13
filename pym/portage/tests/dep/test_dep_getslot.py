@@ -19,13 +19,11 @@ class DepGetSlot(TestCase):
 		for cpv in cpvs:
 			for version in versions:
 				for slot in slots:
-					mycpv = cpv[:]
+					mycpv = cpv
 					if version:
-						cpv += version
-					if slot:
+						mycpv = '=' + mycpv + '-' + version
+					if slot is not None:
 						self.assertEqual( dep_getslot( 
-							cpv + slot_char + slot ), slot )
+							mycpv + slot_char + slot ), slot )
 					else:
-						self.assertEqual( dep_getslot( cpv ), slot )
-
-		self.assertEqual( dep_getslot( "sys-apps/portage:"), "" )
+						self.assertEqual( dep_getslot( mycpv ), slot )
