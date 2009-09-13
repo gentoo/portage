@@ -5,8 +5,10 @@
 
 import re
 
-# PREFIX hack: -r(\\d+) -> -r(\\d+|0\\d+\\.\\d+) (see below)
-ver_regexp = re.compile("^(cvs\\.)?(\\d+)((\\.\\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\\d*)*)(-r(\\d+|0\\d+\\.\\d+))?$")
+# PREFIX hack: -r(\d+) -> -r(\d+|0\d+\.\d+) (see below)
+_version = r'(cvs\.)?(\d+)((\.\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\d*)*)(-r(\d+|0\d+\.\d+))?'
+
+ver_regexp = re.compile("^" + _version + "$")
 suffix_regexp = re.compile("^(alpha|beta|rc|pre|p)(\\d*)$")
 suffix_value = {"pre": -2, "p": 0, "alpha": -4, "beta": -3, "rc": -1}
 endversion_keys = ["pre", "p", "alpha", "beta", "rc"]
@@ -295,19 +297,18 @@ def catpkgsplit(mydata,silent=1):
 		return catcache[mydata]
 	except KeyError:
 		pass
-	mysplit=mydata.split("/")
+	mysplit = mydata.split('/', 1)
 	p_split=None
 	if len(mysplit)==1:
-		retval=["null"]
+		cat = "null"
 		p_split=pkgsplit(mydata,silent=silent)
 	elif len(mysplit)==2:
-		retval=[mysplit[0]]
+		cat = mysplit[0]
 		p_split=pkgsplit(mysplit[1],silent=silent)
 	if not p_split:
 		catcache[mydata]=None
 		return None
-	retval.extend(p_split)
-	retval = tuple(retval)
+	retval = (cat, p_split[0], p_split[1], p_split[2])
 	catcache[mydata]=retval
 	return retval
 

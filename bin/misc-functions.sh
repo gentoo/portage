@@ -652,6 +652,13 @@ install_qa_check() {
 
 	# Evaluate misc gcc warnings
 	if [[ -n ${PORTAGE_LOG_FILE} && -r ${PORTAGE_LOG_FILE} ]] ; then
+		# In debug mode, this variable definition and corresponding grep calls
+		# will produce false positives if they're shown in the trace.
+		local reset_debug=0
+		if [[ ${-/x/} != $- ]] ; then
+			set +x
+			reset_debug=1
+		fi
 		local m msgs=(
 			": warning: dereferencing type-punned pointer will break strict-aliasing rules$"
 			": warning: dereferencing pointer .* does break strict-aliasing rules$"
@@ -676,6 +683,7 @@ install_qa_check() {
 				abort="yes"
 			fi
 		done
+		[[ $reset_debug = 1 ]] && set -x
 		f=$(cat "${PORTAGE_LOG_FILE}" | \
 			"$PORTAGE_BIN_PATH"/check-implicit-pointer-usage.py)
 		if [[ -n ${f} ]] ; then

@@ -7575,7 +7575,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					"%s: %s '%s'" % (y[0], mycheck[1], depstring))
 
 			# pull in the new-style virtual
-			mycheck[1].append(portage.dep.Atom("="+y[0]))
+			mycheck[1].append(dep.Atom('=' + cpv))
 			a.append(mycheck[1])
 		# Plain old-style virtuals.  New-style virtuals are preferred.
 		if not pkgs:
@@ -7938,7 +7938,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	writemsg("mysplit2: %s\n" % (mysplit2), 1)
 
 	try:
-		myzaps = dep_zapdeps(mysplit, mysplit2, myroot,
+		selected_atoms = dep_zapdeps(mysplit, mysplit2, myroot,
 			use_binaries=use_binaries, trees=trees)
 	except portage.exception.InvalidAtom, e:
 		if portage.dep._dep_check_strict:
@@ -7947,15 +7947,30 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		# the dependencies of an installed package.
 		return [0, _("Invalid atom: '%s'") % (e,)]
 
-	mylist = flatten(myzaps)
-	writemsg("myzaps:   %s\n" % (myzaps), 1)
-	writemsg("mylist:   %s\n" % (mylist), 1)
-	#remove duplicates
-	mydict={}
-	for x in mylist:
-		mydict[x]=1
-	writemsg("mydict:   %s\n" % (mydict), 1)
-	return [1,mydict.keys()]
+	# In order to optimize selection of virtual dependencies,
+	# _expand_new_virtuals() performs a lookahead on new-style
+	# virtuals, which causes expansion of indirect virtual deps.
+	# In order to avoid distorting the dependency graph, we want
+	# to discard the expanded indirect virtual deps after they
+	# are no longer needed, and return only the atom which
+	# corresponds to the virtual package which has been chosen
+	# to satisfy a direct dependency.
+	if ' ' not in depstring:
+		# The depgraph only passes in one virtual atom at at time
+		# here, since it delays evaluation of disjuctive deps.
+		try:
+			virt_atom = dep.Atom(depstring)
+		except exception.InvalidAtom:
+			pass
+		else:
+			# Note: selected_atoms[-1] comes from the following line
+			# inside _expand_new_virtuals():
+			#   mycheck[1].append(dep.Atom('=' + cpv))
+			if virt_atom.cp.startswith('virtual/') and \
+				selected_atoms and selected_atoms[-1].cp == virt_atom.cp:
+				selected_atoms = [selected_atoms[-1]]
+
+	return [1, selected_atoms]
 
 def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 	"Reduces the deplist to ones and zeros"
