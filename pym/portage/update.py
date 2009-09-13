@@ -13,22 +13,24 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.dep:dep_getkey,get_operator,isvalidatom,isjustname,remove_slot',
+	'portage.dep:Atom,dep_getkey,get_operator,isjustname,isvalidatom,' + \
+	'remove_slot',
 	'portage.util:ConfigProtect,grabfile,new_protect_filename,' + \
 		'normalize_path,write_atomic,writemsg',
 	'portage.versions:ververify'
 )
 
 from portage.const import USER_CONFIG_PATH
-from portage.exception import DirectoryNotFound, PortageException
+from portage.exception import DirectoryNotFound, InvalidAtom, PortageException
 from portage.localization import _
 
 ignored_dbentries = ("CONTENTS", "environment.bz2")
 
 def update_dbentry(update_cmd, mycontent):
 	if update_cmd[0] == "move":
-		old_value, new_value = update_cmd[1], update_cmd[2]
+		old_value = str(update_cmd[1])
 		if old_value in mycontent:
+			new_value = str(update_cmd[2])
 			old_value = re.escape(old_value);
 			mycontent = re.sub(old_value+"(:|$|\\s)", new_value+"\\1", mycontent)
 			def myreplace(matchobj):
@@ -41,7 +43,7 @@ def update_dbentry(update_cmd, mycontent):
 				else:
 					return "".join(matchobj.groups())
 			mycontent = re.sub("(%s-)(\\S*)" % old_value, myreplace, mycontent)
-	elif update_cmd[0] == "slotmove" and get_operator(update_cmd[1]) is None:
+	elif update_cmd[0] == "slotmove" and update_cmd[1].operator is None:
 		pkg, origslot, newslot = update_cmd[1:]
 		old_value = "%s:%s" % (pkg, origslot)
 		if old_value in mycontent:
@@ -137,21 +139,38 @@ def parse_updates(mycontent):
 			if len(mysplit) != 3:
 				errors.append(_("ERROR: Update command invalid '%s'") % myline)
 				continue
-			orig_value, new_value = mysplit[1], mysplit[2]
-			for cp in (orig_value, new_value):
-				if not (isvalidatom(cp) and isjustname(cp)):
+			for i in (1, 2):
+				try:
+					atom = Atom(mysplit[i])
+				except InvalidAtom:
+					atom = None
+				else:
+					if atom.blocker or atom != atom.cp:
+						atom = None
+				if atom is not None:
+					mysplit[i] = atom
+				else:
 					errors.append(
 						_("ERROR: Malformed update entry '%s'") % myline)
-					continue
+					break
 		if mysplit[0] == "slotmove":
 			if len(mysplit)!=4:
 				errors.append(_("ERROR: Update command invalid '%s'") % myline)
 				continue
 			pkg, origslot, newslot = mysplit[1], mysplit[2], mysplit[3]
-			if not isvalidatom(pkg):
+			try:
+				atom = Atom(pkg)
+			except InvalidAtom:
+				atom = None
+			else:
+				if atom.blocker:
+					atom = None
+			if atom is not None:
+				mysplit[1] = atom
+			else:
 				errors.append(_("ERROR: Malformed update entry '%s'") % myline)
 				continue
-		
+
 		# The list of valid updates is filtered by continue statements above.
 		myupd.append(mysplit)
 	return myupd, errors

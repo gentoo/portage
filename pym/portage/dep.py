@@ -918,28 +918,32 @@ def isvalidatom(atom, allow_blockers=False):
 
 def isjustname(mypkg):
 	"""
-	Checks to see if the depstring is only the package name (no version parts)
+	Checks to see if the atom is only the package name (no version parts).
+	Raises InvalidAtom if the input is invalid.
 
 	Example usage:
-		>>> isjustname('media-libs/test-3.0')
-		0
-		>>> isjustname('test')
-		1
+		>>> isjustname('=media-libs/test-3.0')
+		False
 		>>> isjustname('media-libs/test')
-		1
+		True
 
 	@param mypkg: The package atom to check
-	@param mypkg: String
+	@param mypkg: String or Atom
 	@rtype: Integer
 	@return: One of the following:
-		1) 0 if the package string is not just the package name
-		2) 1 if it is
+		1) False if the package string is not just the package name
+		2) True if it is
 	"""
+	try:
+		return mypkg == Atom(mypkg).cp
+	except InvalidAtom:
+		pass
+
 	myparts = mypkg.split('-')
 	for x in myparts:
 		if ververify(x):
-			return 0
-	return 1
+			return False
+	return True
 
 iscache = {}
 
