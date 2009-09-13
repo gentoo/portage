@@ -3197,7 +3197,7 @@ class dblink(object):
 					continue
 
 				if pkgfiles[objkey][0] == "dir":
-					if statobj is None or not stat.S_ISDIR(statobj.st_mode):
+					if lstatobj is None or not stat.S_ISDIR(lstatobj.st_mode):
 						show_unmerge("---", unmerge_desc["!dir"], file_type, obj)
 						continue
 					mydirs.append(obj)
