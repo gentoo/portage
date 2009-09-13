@@ -527,9 +527,8 @@ class Atom(object):
 		def __init__(self, forbid_overlap=False):
 			self.overlap = self._overlap(forbid=forbid_overlap)
 
-	def __init__(self, s):
-		if not isvalidatom(s, allow_blockers=True):
-			raise InvalidAtom(s)
+	def __init__(self, mypkg):
+		s = mypkg
 		obj_setattr = object.__setattr__
 		obj_setattr(self, '_str', s)
 
@@ -543,11 +542,29 @@ class Atom(object):
 		else:
 			blocker = False
 		obj_setattr(self, "blocker", blocker)
-
-		obj_setattr(self, "cp", dep_getkey(s))
-		obj_setattr(self, "cpv", dep_getcpv(s))
-		obj_setattr(self, "slot", dep_getslot(s))
-		obj_setattr(self, "operator", get_operator(s))
+		m = _atom_re.match(s)
+		if m is None:
+			raise InvalidAtom(mypkg)
+		if m.group('op'):
+			op = m.group(_atom_re.groupindex['op'] + 1)
+			cpv = m.group(_atom_re.groupindex['op'] + 2)
+			cp = m.group(_atom_re.groupindex['op'] + 3)
+			slot = m.group(_atom_re.groupindex['star'] - 2)
+		elif m.group('star'):
+			op = '=*'
+			cpv = m.group(_atom_re.groupindex['star'] + 1)
+			cp = m.group(_atom_re.groupindex['star'] + 2)
+			slot = m.group(_atom_re.groupindex['simple'] - 2)
+		elif m.group('simple'):
+			op = None
+			cpv = cp = m.group(_atom_re.groupindex['simple'] + 1)
+			slot = m.group(_atom_re.groups - 1)
+		else:
+			raise AssertionError("required group not found in atom: '%s'" % s)
+		obj_setattr(self, "cp", cp)
+		obj_setattr(self, "cpv", cpv)
+		obj_setattr(self, "slot", slot)
+		obj_setattr(self, "operator", op)
 
 		use = dep_getusedeps(s)
 		if use:
@@ -852,30 +869,32 @@ _cat = r'[\w+][\w+.-]*'
 # It must not begin with a hyphen,
 # and must not end in a hyphen followed by one or more digits.
 _pkg = \
-r'''([\w+](
-	-?                    # All other 2-char are handled by next
-	|[\w+]*               # No hyphens - no problems
-	|[\w+-]+(             # String with a hyphen...
-		[A-Za-z+_-]       # ... must end in nondigit
-		|[A-Za-z+_][\w+]+ # ... or in nondigit and then nonhyphens
+r'''[\w+](?:
+	-?                     # All other 2-char are handled by next
+	|[\w+]*?               # No hyphens - no problems
+	|[\w+-]+?(?:           # String with a hyphen...
+		[A-Za-z+_-]        # ... must end in nondigit
+		|[A-Za-z+_][\w+]+? # ... or in nondigit and then nonhyphens
 	)
-))'''
+)'''
 
 # 2.1.3 A slot name may contain any of the characters [A-Za-z0-9+_.-].
 # It must not begin with a hyphen or a dot.
-_slot = r'(:[\w+][\w+.-]*)?'
+_slot = r':([\w+][\w+.-]*)'
+_optional_slot = '(?:' + _slot + ')?'
 
 _use = r'(\[.*\])?'
 _op = r'([=~]|[><]=?)'
-_cp = _cat + '/' + _pkg
-_cpv = _cp + '-' + _version
+_cp = '(' + _cat + '/' + _pkg + ')'
+_cpv = '(' + _cp + '-' + _version + ')'
 
 _cpv_re = re.compile('^' + _cpv + '$', re.VERBOSE)
-_atom_re = re.compile(r'^(' +
-	'(' + _op + _cpv + _slot + _use + ')|' +
-	'(=' + _cpv + r'\*' + _slot + _use + ')|' +
-	'(' + _cp + _slot + _use + ')' +
+_atom_re = re.compile('^(?:' +
+	'(?P<op>' + _op + _cpv + _optional_slot + _use + ')|' +
+	'(?P<star>=' + _cpv + r'\*' + _optional_slot + _use + ')|' +
+	'(?P<simple>' + _cp + _optional_slot + _use + ')' +
 	')$', re.VERBOSE)
+_key_re = re.compile(_cp + '(?:-' + _version + '|' + _slot + '|$)', re.VERBOSE)
 
 def isvalidatom(atom, allow_blockers=False):
 	"""
@@ -919,7 +938,6 @@ def isvalidatom(atom, allow_blockers=False):
 def isjustname(mypkg):
 	"""
 	Checks to see if the atom is only the package name (no version parts).
-	Raises InvalidAtom if the input is invalid.
 
 	Example usage:
 		>>> isjustname('=media-libs/test-3.0')

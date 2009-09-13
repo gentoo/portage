@@ -2093,7 +2093,7 @@ class config(object):
 				cpv=catpkgsplit(x)
 				if not x:
 					continue
-				mycatpkg=dep_getkey(x)
+				mycatpkg = cpv_getkey(x)
 				if mycatpkg in self.pprovideddict:
 					self.pprovideddict[mycatpkg].append(x)
 				else:
@@ -2882,7 +2882,7 @@ class config(object):
 		return None
 
 	def _getKeywords(self, cpv, metadata):
-		cp = dep_getkey(cpv)
+		cp = cpv_getkey(cpv)
 		pkg = "%s:%s" % (cpv, metadata["SLOT"])
 		keywords = [[x for x in metadata["KEYWORDS"].split() if x != "-*"]]
 		pos = len(keywords)
@@ -2925,7 +2925,7 @@ class config(object):
 		# Repoman may modify this attribute as necessary.
 		pgroups = self["ACCEPT_KEYWORDS"].split()
 		match=0
-		cp = dep_getkey(cpv)
+		cp = cpv_getkey(cpv)
 		pkgdict = self.pkeywordsdict.get(cp)
 		matches = False
 		if pkgdict:
