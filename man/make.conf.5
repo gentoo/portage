@@ -36,6 +36,17 @@ set this to '~ppc'.  This is an incremental variable.  Only define a
 .br
 Defaults to the value of $ARCH.
 .TP
+\fBACCEPT_LICENSE\fR = \fI[space delimited list of licenses or groups]\fR
+This variable is used to mask packages based on licensing restrictions.
+.br
+Defaults to the value of * -@EULA.
+.TP
+\fBACCEPT_PROPERTIES\fR = \fI[space delimited list of properties]\fR
+This variable is used to mask packages based on PROPERTIES restrictions.
+See \fBebuild\fR(5) for more information about PROPERTIES.
+.br
+Defaults to the value of *.
+.TP
 .B CBUILD
 This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
 as \fI\-\-build=${CBUILD}\fR only if it is defined.  Do not set this yourself

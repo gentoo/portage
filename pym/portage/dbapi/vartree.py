@@ -1498,6 +1498,10 @@ class vardbapi(dbapi):
 		self.root = _unicode_decode(root,
 			encoding=_encodings['content'], errors='strict')
 
+		# Used by emerge to check whether any packages
+		# have been added or removed.
+		self._pkgs_changed = False
+
 		#cache for category directory mtimes
 		self.mtdircache = {}
 
@@ -1564,25 +1568,6 @@ class vardbapi(dbapi):
 			"resetting to value of 0\n") % (mycpv,),
 			level=logging.ERROR, noiselevel=-1)
 		return 0
-
-	def _counter_hash(self):
-		try:
-			from hashlib import md5 as new_hash
-		except ImportError:
-			from md5 import new as new_hash
-		h = new_hash()
-		aux_keys = ["COUNTER"]
-		cpv_list = self.cpv_all()
-		cpv_list.sort()
-		for cpv in cpv_list:
-			try:
-				counter, = self.aux_get(cpv, aux_keys)
-			except KeyError:
-				continue
-			h.update(_unicode_encode(counter,
-				encoding=_encodings['repo.content'],
-				errors='backslashreplace'))
-		return h.hexdigest()
 
 	def cpv_inject(self, mycpv):
 		"injects a real package into our on-disk database; assumes mycpv is valid and doesn't already exist"
@@ -1757,9 +1742,11 @@ class vardbapi(dbapi):
 		self._aux_cache_obj = None
 
 	def _add(self, pkg_dblink):
+		self._pkgs_changed = True
 		self._clear_pkg_cache(pkg_dblink)
 
 	def _remove(self, pkg_dblink):
+		self._pkgs_changed = True
 		self._clear_pkg_cache(pkg_dblink)
 
 	def _clear_pkg_cache(self, pkg_dblink):

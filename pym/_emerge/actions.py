@@ -2674,6 +2674,12 @@ def display_news_notification(root_config, myopts):
 	newsReaderDisplay = False
 	update = "--pretend" not in myopts
 
+	if not settings.treeVirtuals:
+		# Populate these using our existing vartree, to avoid
+		# having a temporary one instantiated.
+		settings.treeVirtuals = portage.util.map_dictlist_vals(
+			portage.getCPFromCPV, trees["vartree"].get_all_provides())
+
 	for repo in portdb.getRepositories():
 		unreadItems = checkUpdatedNewsItems(
 			portdb, vardb, NEWS_PATH, UNREAD_PATH, repo, update=update)

@@ -7,10 +7,10 @@ class Task(SlotObject):
 	__slots__ = ("_hash_key", "_hash_value")
 
 	def _get_hash_key(self):
-		hash_key = getattr(self, "_hash_key", None)
-		if hash_key is None:
+		try:
+			return self._hash_key
+		except AttributeError:
 			raise NotImplementedError(self)
-		return hash_key
 
 	def __eq__(self, other):
 		return self._get_hash_key() == other

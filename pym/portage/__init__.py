@@ -1445,7 +1445,6 @@ class config(object):
 		"GENTOO_MIRRORS", "NOCONFMEM", "O",
 		"PORTAGE_BACKGROUND",
 		"PORTAGE_BINHOST_CHUNKSIZE", "PORTAGE_CALLER",
-		"PORTAGE_COUNTER_HASH",
 		"PORTAGE_ELOG_CLASSES",
 		"PORTAGE_ELOG_MAILFROM", "PORTAGE_ELOG_MAILSUBJECT",
 		"PORTAGE_ELOG_MAILURI", "PORTAGE_ELOG_SYSTEM",
@@ -6292,8 +6291,9 @@ def _prepare_workdir(mysettings):
 		logid_path = os.path.join(mysettings["PORTAGE_BUILDDIR"], ".logid")
 		if not os.path.exists(logid_path):
 			open(_unicode_encode(logid_path), 'w')
-		logid_time = time.strftime("%Y%m%d-%H%M%S",
-			time.gmtime(os.stat(logid_path).st_mtime))
+		logid_time = _unicode_decode(time.strftime("%Y%m%d-%H%M%S",
+			time.gmtime(os.stat(logid_path).st_mtime)),
+			encoding=_encodings['content'], errors='replace')
 		mysettings["PORTAGE_LOG_FILE"] = os.path.join(
 			mysettings["PORT_LOGDIR"], "%s:%s:%s.log" % \
 			(mysettings["CATEGORY"], mysettings["PF"], logid_time))

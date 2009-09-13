@@ -652,6 +652,22 @@ variable to allow or disallow the emerging of a package masked by
 versions of packages, you should update your 
 \fI/etc/portage/package.keywords\fR file to list the packages you want the 
 \'testing\' version.  See \fBportage\fR(5) for more information.
+.TP
+.BR LICENSE
+The \fBLICENSE\fR variable in an \fBebuild\fR file can be used to mask
+packages based on licensing restrictions. \fBemerge\fR examines the
+\fBACCEPT_LICENSE\fR environment variable to allow or disallow the emerging
+of a package masked by \fBLICENSE\fR. See \fBmake.conf\fR(5) for information
+about \fBACCEPT_LICENSE\fR, and see \fBportage\fR(5) for information about
+\fI/etc/portage/package.license\fR.
+.TP
+.BR PROPERTIES
+The \fBPROPERTIES\fR variable in an \fBebuild\fR file can be used to mask
+packages based on properties restrictions. \fBemerge\fR examines the
+\fBACCEPT_PROPERTIES\fR environment variable to allow or disallow the emerging
+of a package masked by \fBPROPERTIES\fR. See \fBmake.conf\fR(5) for information
+about \fBACCEPT_PROPERTIES\fR, and see \fBportage\fR(5) for information about
+\fI/etc/portage/package.properties\fR.
 .SH "CONFIGURATION FILES"
 Portage has a special feature called "config file protection". The purpose of
 this feature is to prevent new package installs from clobbering existing

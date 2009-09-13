@@ -51,7 +51,9 @@ color.map
 mirrors
 modules
 package.keywords
+package.license
 package.mask
+package.properties
 package.unmask
 package.use
 repos.conf
@@ -513,6 +515,15 @@ package.keywords like this:
 games-fps/quake3-demo x86
 
 .TP
+.BR package.license
+This will allow ACCEPT_LICENSE to be augmented for a single package.
+
+.I Format:
+.nf
+\- comment lines begin with # (no inline comments)
+\- one DEPEND atom per line followed by additional licenses or groups
+.fi
+.TP
 .BR package.mask
 A list of package atoms to mask.  Useful if specific versions of packages do
 not work well for you.  For example, you swear by the Nvidia drivers, but only
@@ -530,6 +541,15 @@ versions earlier than 1.0.4496.  No problem!
 # drivers and later
 >=media\-video/nvidia\-kernel\-1.0.4496
 >=media\-video/nvidia\-glx\-1.0.4496
+.fi
+.TP
+.BR package.properties
+This will allow ACCEPT_PROPERTIES to be augmented for a single package.
+
+.I Format:
+.nf
+\- comment lines begin with # (no inline comments)
+\- one DEPEND atom per line followed by additional properties
 .fi
 .TP
 .BR package.unmask

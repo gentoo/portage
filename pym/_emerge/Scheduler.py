@@ -607,6 +607,8 @@ class Scheduler(PollScheduler):
 			quiet_settings[myroot] = quiet_config
 			del quiet_config
 
+		failures = 0
+
 		for x in self._mergelist:
 			if not isinstance(x, Package) or \
 				x.type_name != "ebuild":
@@ -624,8 +626,10 @@ class Scheduler(PollScheduler):
 			quiet_config = quiet_settings[root_config.root]
 			quiet_config["O"] = os.path.dirname(portdb.findname(x.cpv))
 			if not portage.digestcheck([], quiet_config, strict=True):
-				return 1
+				failures |= 1
 
+		if failures:
+			return 1
 		return os.EX_OK
 
 	def _add_prefetchers(self):
