@@ -70,9 +70,12 @@ class IsValidAtom(TestCase):
 			  ( "null/portage-2.1*", False ),
 			  ( "app-doc/php-docs-20071125", False),
 			  ( "app-doc/php-docs-20071125-r2", False),
+			  ( "=foo/bar-1-r1-1-r1", False ),
+			  ( "foo/-z-1", False ),
 
 			# These are invalid because pkg name must not end in hyphen
 			# followed by numbers
+			  ( "=foo/bar-1-r1-1-r1", False ),
 			  ( "=foo/bar-123-1", False ),
 			  ( "=foo/bar-123-1*", False ),
 			  ( "foo/bar-123", False ),
