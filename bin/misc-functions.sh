@@ -475,7 +475,7 @@ install_qa_check() {
 		# know they don't work (bug #196294) so as long as that one
 		# remains an issue, simply remove them as they won't work
 		# anyway
-		if [[ -d "${ED}"/etc/conf.d || "${ED}"/etc/init.d ]] ; then
+		if [[ -d "${ED}"/etc/conf.d || -d "${ED}"/etc/init.d ]] ; then
 			ewarn "removed /etc/init.d and /etc/conf.d directories until bug #196294 has been resolved"
 			rm -Rf "${ED}"/etc/{conf,init}.d
 		fi
