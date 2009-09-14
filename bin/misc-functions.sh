@@ -483,6 +483,8 @@ install_qa_check() {
 			line=${f##*:}
 			# shebang always appears on the first line ;)
 			[[ ${pos} != 1 ]] && continue
+			# remove some paths that often contain false positives
+			[[ ${fn} == "${ED}usr/share/doc/"* ]] && continue
 			line=( ${line#"#!"} )
 			[[ ${WHITELIST} == *" ${line[0]} "* ]] && continue
 			if [[ ${WARNLIST} == *" ${line[0]} "* ]] ; then
