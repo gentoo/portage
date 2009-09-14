@@ -12,6 +12,7 @@ from itertools import chain, izip
 import portage
 from portage import os
 from portage import digraph
+from portage.dep import Atom
 from portage.output import bold, blue, colorize, create_color_func, darkblue, \
 	darkgreen, green, nc_len, red, teal, turquoise, yellow
 bad = create_color_func("BAD")
@@ -1146,7 +1147,12 @@ class depgraph(object):
 
 		vardb = self._frozen_config.roots[dep_root].trees["vartree"].dbapi
 
-		for atom in selected_atoms:
+		# TODO: Write code to add selected indirect virtual deps to
+		# the graph. This will take advantage of circular dependency
+		# avoidance that's done by dep_zapdeps. For now, only handle
+		# direct deps here, since we don't want to distort the
+		# dependency graph by mixing indirect deps.
+		for atom in selected_atoms[pkg]:
 			try:
 
 				atom = portage.dep.Atom(atom)
@@ -1780,12 +1786,14 @@ class depgraph(object):
 		for pkg in greedy_pkgs + [highest_pkg]:
 			dep_str = " ".join(pkg.metadata[k] for k in blocker_dep_keys)
 			try:
-				atoms = self._select_atoms(
+				selected_atoms = self._select_atoms(
 					pkg.root, dep_str, pkg.use.enabled,
 					parent=pkg, strict=True)
 			except portage.exception.InvalidDependString:
 				continue
-			blocker_atoms = (x for x in atoms if x.blocker)
+			blocker_atoms = []
+			for atoms in selected_atoms.itervalues():
+				blocker_atoms.extend(x for x in atoms if x.blocker)
 			blockers[pkg] = InternalPackageSet(initial_atoms=blocker_atoms)
 
 		if highest_pkg not in blockers:
@@ -1862,17 +1870,21 @@ class depgraph(object):
 		if parent is None:
 			selected_atoms = mycheck[1]
 		else:
-			if parent.cpv in atom_graph:
-				# TODO: Write code to add selected indirect virtual deps to
-				# the graph. This will take advantage of circular dependency
-				# avoidance that's done by dep_zapdeps. For now, only return
-				# direct deps here, since we don't want to distort the
-				# dependency graph by mixing indirect deps.
-				direct_deps = set(atom_graph.child_nodes(parent.cpv))
-				selected_atoms = [atom for atom in mycheck[1] \
-					if atom in direct_deps]
-			else:
-				selected_atoms = []
+			chosen_atoms = frozenset(mycheck[1])
+			selected_atoms = {parent : []}
+			for node in atom_graph:
+				if isinstance(node, Atom):
+					continue
+				if node == parent.cpv:
+					pkg = parent
+				else:
+					pkg, existing_node = self._select_package(
+						root, Atom('=' + node))
+					if pkg is None:
+						raise AssertionError(node)
+				selected_atoms[pkg] = [atom for atom in \
+					atom_graph.child_nodes(node) if atom in chosen_atoms]
+
 		return selected_atoms
 
 	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None):
@@ -3027,9 +3039,10 @@ class depgraph(object):
 					"'%svar/db/pkg/%s/RDEPEND': %s\n" % \
 					(running_root, running_portage.cpv, e), noiselevel=-1)
 				del e
-				portage_rdepend = []
-			runtime_deps.update(atom for atom in portage_rdepend \
-				if not atom.startswith("!"))
+				portage_rdepend = {running_portage : []}
+			for atoms in portage_rdepend.itervalues():
+				runtime_deps.update(atom for atom in atoms \
+					if not atom.blocker)
 
 		def gather_deps(ignore_priority, mergeable_nodes,
 			selected_nodes, node):
