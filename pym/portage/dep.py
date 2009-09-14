@@ -892,7 +892,6 @@ _op = r'([=~]|[><]=?)'
 _cp = '(' + _cat + '/' + _pkg + '(-' + _version + ')?)'
 _cpv = '(' + _cp + '-' + _version + ')'
 
-_cpv_re = re.compile('^' + _cpv + '$', re.VERBOSE)
 _atom_re = re.compile('^(?:' +
 	'(?P<op>' + _op + _cpv + ')|' +
 	'(?P<star>=' + _cpv + r'\*)|' +
@@ -945,23 +944,20 @@ def isjustname(mypkg):
 	except InvalidAtom:
 		pass
 
-	myparts = mypkg.split('-')
-	for x in myparts:
+	for x in mypkg.split('-')[-2:]:
 		if ververify(x):
 			return False
 	return True
 
-iscache = {}
-
 def isspecific(mypkg):
 	"""
-	Checks to see if a package is in category/package-version or package-version format,
-	possibly returning a cached result.
+	Checks to see if a package is in =category/package-version or
+	package-version format.
 
 	Example usage:
 		>>> isspecific('media-libs/test')
 		False
-		>>> isspecific('media-libs/test-3.0')
+		>>> isspecific('=media-libs/test-3.0')
 		True
 
 	@param mypkg: The package depstring to check against
@@ -972,12 +968,12 @@ def isspecific(mypkg):
 		2) True if it is
 	"""
 	try:
-		return iscache[mypkg]
-	except KeyError:
+		return mypkg != Atom(mypkg).cp
+	except InvalidAtom:
 		pass
-	retval = _cpv_re.match(mypkg) is not None
-	iscache[mypkg] = retval
-	return retval
+
+	# Fall back to legacy code for backward compatibility.
+	return not isjustname(mypkg)
 
 def dep_getkey(mydep):
 	"""
