@@ -895,6 +895,7 @@ _use = r'(\[.*\])?'
 _op = r'([=~]|[><]=?)'
 _cp = '(' + _cat + '/' + _pkg + '(-' + _version + ')?)'
 _cpv = '(' + _cp + '-' + _version + ')'
+_cpv_re = re.compile(_cpv)
 
 _atom_re = re.compile('^(?:' +
 	'(?P<op>' + _op + _cpv + ')|' +
