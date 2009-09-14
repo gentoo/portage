@@ -915,40 +915,10 @@ def isvalidatom(atom, allow_blockers=False):
 		1) False if the atom is invalid
 		2) True if the atom is valid
 	"""
-	existing_atom = Atom._atoms.get(atom)
-	if existing_atom is not None:
-		atom = existing_atom
-	if isinstance(atom, Atom):
-		return allow_blockers or not atom.blocker
-	if len(atom) < 2:
-		return False
-	if allow_blockers and atom[0] == '!':
-		if atom[1] == '!':
-			atom = atom[2:]
-		else:
-			atom = atom[1:]
-	m = _atom_re.match(atom)
-	if m is None:
-		return False
-
-	# Package name must not end in pattern
-	# which appears to be a valid version.
-	if m.group('op') is not None:
-		if m.group(_atom_re.groupindex['op'] + 4) is not None:
-			return False
-	elif m.group('star') is not None:
-		if m.group(_atom_re.groupindex['star'] + 3) is not None:
-			return False
-	elif m.group('simple') is not None:
-		if m.group(_atom_re.groupindex['simple'] + 2) is not None:
-			return False
-	else:
-		raise AssertionError(_("required group not found in atom: '%s'") % atom)
-
 	try:
-		use = dep_getusedeps(atom)
-		if use:
-			use = _use_dep(use)
+		atom = Atom(atom)
+		if not allow_blockers and atom.blocker:
+			return False
 		return True
 	except InvalidAtom:
 		return False
