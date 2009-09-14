@@ -7416,6 +7416,10 @@ def dep_virtual(mysplit, mysettings):
 				newsplit.append(x)
 	return newsplit
 
+# According to GLEP 37, RDEPEND is the only dependency type that is valid
+# for new-style virtuals. Repoman should enforce this.
+_virt_dep_keys = ("RDEPEND",)
+
 def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	trees=None, use_mask=None, use_force=None, **kwargs):
 	"""Recursively expand new-style virtuals so as to collapse one or more
@@ -7427,15 +7431,21 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	the matches are sorted from highest to lowest versions and the atom is
 	expanded to || ( highest match ... lowest match )."""
 	newsplit = []
-	# According to GLEP 37, RDEPEND is the only dependency type that is valid
-	# for new-style virtuals.  Repoman should enforce this.
-	dep_keys = ["RDEPEND", "DEPEND", "PDEPEND"]
 	mytrees = trees[myroot]
 	portdb = mytrees["porttree"].dbapi
+	atom_graph = mytrees.get("atom_graph")
 	parent = mytrees.get("parent")
-	eapi = mytrees.get("eapi")
-	if eapi is None and parent is not None:
-		eapi = parent.metadata["EAPI"]
+	virt_parent = mytrees.get("virt_parent")
+	virt_eapi = mytrees.get("virt_eapi")
+	parent_cpv = None
+	eapi = None
+	if parent is not None:
+		if virt_parent is not None:
+			parent_cpv = virt_parent
+			eapi = virt_eapi
+		else:
+			parent_cpv = parent.cpv
+			eapi = parent.metadata["EAPI"]
 	repoman = not mysettings.local_config
 	if kwargs["use_binaries"]:
 		portdb = trees[myroot]["bintree"].dbapi
@@ -7492,6 +7502,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 		mykey = dep_getkey(x)
 		if not mykey.startswith("virtual/"):
 			newsplit.append(x)
+			if parent_cpv is not None:
+				atom_graph.add(x, parent_cpv)
 			continue
 		mychoices = myvirtuals.get(mykey, [])
 		isblocker = x.startswith("!")
@@ -7500,6 +7512,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			# the un-expanded virtual atom is more useful for
 			# maintaining a cache of blocker atoms.
 			newsplit.append(x)
+			if parent_cpv is not None:
+				atom_graph.add(x, parent_cpv)
 			continue
 		match_atom = x
 		pkgs = []
@@ -7517,12 +7531,14 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			# atom is not eliminated here since it may still represent a
 			# dependency that needs to be satisfied.
 			newsplit.append(x)
+			if parent_cpv is not None:
+				atom_graph.add(x, parent_cpv)
 			continue
 
 		a = []
 		for y in pkgs:
 			cpv, pv_split, db = y
-			depstring = " ".join(db.aux_get(cpv, dep_keys))
+			depstring = " ".join(db.aux_get(cpv, _virt_dep_keys))
 			pkg_kwargs = kwargs.copy()
 			if repoman:
 				pass
@@ -7535,27 +7551,32 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				print _("Virtual Depstring:"), depstring
 
 			# Set EAPI used for validation in dep_check() recursion.
-			virtual_eapi, = db.aux_get(cpv, ["EAPI"])
-			prev_eapi = mytrees.get("eapi")
-			mytrees["eapi"] = virtual_eapi
+			new_eapi, = db.aux_get(cpv, ["EAPI"])
+			mytrees["virt_eapi"] = new_eapi
+			mytrees["virt_parent"] = cpv
 
 			try:
 				mycheck = dep_check(depstring, mydbapi, mysettings,
 					myroot=myroot, trees=trees, **pkg_kwargs)
 			finally:
 				# Restore previous EAPI after recursion.
-				if prev_eapi is not None:
-					mytrees["eapi"] = prev_eapi
+				if virt_parent is not None:
+					mytrees["virt_parent"] = virt_parent
+					mytrees["virt_eapi"] = virt_eapi
 				else:
-					del mytrees["eapi"]
+					del mytrees["virt_parent"]
+					del mytrees["virt_eapi"]
 
 			if not mycheck[0]:
 				raise portage.exception.ParseError(
 					"%s: %s '%s'" % (y[0], mycheck[1], depstring))
 
 			# pull in the new-style virtual
-			mycheck[1].append(dep.Atom('=' + cpv))
+			virt_atom = dep.Atom('=' + cpv)
+			mycheck[1].append(virt_atom)
 			a.append(mycheck[1])
+			if parent_cpv is not None:
+				atom_graph.add(virt_atom, parent_cpv)
 		# Plain old-style virtuals.  New-style virtuals are preferred.
 		if not pkgs:
 			if repoman:
@@ -7572,6 +7593,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					if matches and mykey in \
 						portdb.aux_get(matches[-1], ['PROVIDE'])[0].split():
 						a.append(new_atom)
+						if parent_cpv is not None:
+							atom_graph.add(new_atom, parent_cpv)
 
 		if not a and mychoices:
 			# Check for a virtual package.provided match.
@@ -7580,9 +7603,13 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				if match_from_list(new_atom,
 					pprovideddict.get(new_atom.cp, [])):
 					a.append(new_atom)
+					if parent_cpv is not None:
+						atom_graph.add(new_atom, parent_cpv)
 
 		if not a:
 			newsplit.append(x)
+			if parent_cpv is not None:
+				atom_graph.add(x, parent_cpv)
 		elif len(a) == 1:
 			newsplit.append(a[0])
 		else:
@@ -7925,29 +7952,6 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		# dbapi.match() failed due to an invalid atom in
 		# the dependencies of an installed package.
 		return [0, _("Invalid atom: '%s'") % (e,)]
-
-	# In order to optimize selection of virtual dependencies,
-	# _expand_new_virtuals() performs a lookahead on new-style
-	# virtuals, which causes expansion of indirect virtual deps.
-	# In order to avoid distorting the dependency graph, we want
-	# to discard the expanded indirect virtual deps after they
-	# are no longer needed, and return only the atom which
-	# corresponds to the virtual package which has been chosen
-	# to satisfy a direct dependency.
-	if ' ' not in depstring:
-		# The depgraph only passes in one virtual atom at at time
-		# here, since it delays evaluation of disjuctive deps.
-		try:
-			virt_atom = dep.Atom(depstring)
-		except exception.InvalidAtom:
-			pass
-		else:
-			# Note: selected_atoms[-1] comes from the following line
-			# inside _expand_new_virtuals():
-			#   mycheck[1].append(dep.Atom('=' + cpv))
-			if virt_atom.cp.startswith('virtual/') and \
-				selected_atoms and selected_atoms[-1].cp == virt_atom.cp:
-				selected_atoms = [selected_atoms[-1]]
 
 	return [1, selected_atoms]
 

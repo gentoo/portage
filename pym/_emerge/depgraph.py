@@ -1837,10 +1837,12 @@ class depgraph(object):
 		pkgsettings = self._frozen_config.pkgsettings[root]
 		if trees is None:
 			trees = self._dynamic_config._filtered_trees
+		atom_graph = digraph()
 		if True:
 			try:
 				if parent is not None:
 					trees[root]["parent"] = parent
+					trees[root]["atom_graph"] = atom_graph
 				if priority is not None:
 					trees[root]["priority"] = priority
 				if not strict:
@@ -1851,12 +1853,26 @@ class depgraph(object):
 			finally:
 				if parent is not None:
 					trees[root].pop("parent")
+					trees[root].pop("atom_graph")
 				if priority is not None:
 					trees[root].pop("priority")
 				portage.dep._dep_check_strict = True
 			if not mycheck[0]:
 				raise portage.exception.InvalidDependString(mycheck[1])
+		if parent is None:
 			selected_atoms = mycheck[1]
+		else:
+			if parent.cpv in atom_graph:
+				# TODO: Write code to add selected indirect virtual deps to
+				# the graph. This will take advantage of circular dependency
+				# avoidance that's done by dep_zapdeps. For now, only return
+				# direct deps here, since we don't want to distort the
+				# dependency graph by mixing indirect deps.
+				direct_deps = set(atom_graph.child_nodes(parent.cpv))
+				selected_atoms = [atom for atom in mycheck[1] \
+					if atom in direct_deps]
+			else:
+				selected_atoms = []
 		return selected_atoms
 
 	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None):
