@@ -549,21 +549,18 @@ class Atom(object):
 			op = m.group(_atom_re.groupindex['op'] + 1)
 			cpv = m.group(_atom_re.groupindex['op'] + 2)
 			cp = m.group(_atom_re.groupindex['op'] + 3)
-			slot = m.group(_atom_re.groupindex['star'] - 2)
 		elif m.group('star'):
 			op = '=*'
 			cpv = m.group(_atom_re.groupindex['star'] + 1)
 			cp = m.group(_atom_re.groupindex['star'] + 2)
-			slot = m.group(_atom_re.groupindex['simple'] - 2)
 		elif m.group('simple'):
 			op = None
 			cpv = cp = m.group(_atom_re.groupindex['simple'] + 1)
-			slot = m.group(_atom_re.groups - 1)
 		else:
 			raise AssertionError("required group not found in atom: '%s'" % s)
 		obj_setattr(self, "cp", cp)
 		obj_setattr(self, "cpv", cpv)
-		obj_setattr(self, "slot", slot)
+		obj_setattr(self, "slot", m.group(_atom_re.groups - 1))
 		obj_setattr(self, "operator", op)
 
 		use = dep_getusedeps(s)
@@ -890,11 +887,9 @@ _cpv = '(' + _cp + '-' + _version + ')'
 
 _cpv_re = re.compile('^' + _cpv + '$', re.VERBOSE)
 _atom_re = re.compile('^(?:' +
-	'(?P<op>' + _op + _cpv + _optional_slot + _use + ')|' +
-	'(?P<star>=' + _cpv + r'\*' + _optional_slot + _use + ')|' +
-	'(?P<simple>' + _cp + _optional_slot + _use + ')' +
-	')$', re.VERBOSE)
-_key_re = re.compile(_cp + '(?:-' + _version + '|' + _slot + '|$)', re.VERBOSE)
+	'(?P<op>' + _op + _cpv + ')|' +
+	'(?P<star>=' + _cpv + r'\*)|' +
+	'(?P<simple>' + _cp + '))' + _optional_slot + _use + '$', re.VERBOSE)
 
 def isvalidatom(atom, allow_blockers=False):
 	"""
