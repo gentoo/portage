@@ -1123,7 +1123,7 @@ def match_from_list(mydep, candidate_list):
 		for x in candidate_list:
 			xcpv = getattr(x, "cpv", None)
 			if xcpv is None:
-				xcpv = dep_getcpv(x)
+				xcpv = remove_slot(x)
 			if not cpvequal(xcpv, mycpv):
 				continue
 			mylist.append(x)
