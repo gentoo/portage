@@ -484,7 +484,6 @@ install_qa_check() {
 		# /bin/sh - in most cases just ok, not cool, might actually
 		# break if the script assumes posix shell (/bin/sh usually is
 		# bourne shell for us)
-		local WARNLIST=" /bin/sh "
 		local WHITELIST=" /usr/bin/env "
 		# this is hell expensive, but how else?
 		find "${ED}" -type f | xargs grep -H -n -m1 "^#!" | while read f ; do
@@ -497,19 +496,21 @@ install_qa_check() {
 			[[ ${fn} == "${ED}usr/share/doc/"* ]] && continue
 			line=( ${line#"#!"} )
 			[[ ${WHITELIST} == *" ${line[0]} "* ]] && continue
-			if [[ ${WARNLIST} == *" ${line[0]} "* ]] ; then
-				eqawarn "QA Notice: ${fn#${D}} uses ${line[0]} in shebang which might break on some systems"
-				continue
-			fi
 			# does the shebang start with ${EPREFIX}?
 			[[ ${line[0]} == ${EPREFIX}* ]] && continue
+			# can we just fix it(tm)?
+			if [[ -x ${EPREFIX}${line[0]} || -x ${ED}${line[0]} ]] ; then
+				ewarn "prefixing shebang of ${fn#${D}}"
+				sed -i -e '1s:^#1 \?:#!'"${EPREFIX}"':' "${fn}"
+				continue
+			fi
 			# all else is an error
 			echo "${fn#${D}}:${line[0]}" >> "${T}"/non-prefix-shebangs-errs
 		done
 		if [[ -e "${T}"/non-prefix-shebangs-errs ]] ; then
-			eqawarn "QA Notice: the following files use non-prefixed shebangs:"
+			eqawarn "QA Notice: the following files use invalid (possible non-prefixed) shebangs:"
 			eqawarn "$(<"${T}"/non-prefix-shebangs-errs)"
-			die "Aborting due to QA concerns: non-prefixed shebangs found"
+			die "Aborting due to QA concerns: invalid shebangs found"
 			rm -f "${T}"/non-prefix-shebangs-errs
 		fi
 	fi
