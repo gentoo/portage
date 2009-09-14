@@ -995,6 +995,16 @@ def dep_getkey(mydep):
 	cp = getattr(mydep, "cp", None)
 	if cp is not None:
 		return cp
+
+	try:
+		return Atom(mydep).cp
+	except InvalidAtom:
+		try:
+			return Atom('=' + mydep).cp
+		except InvalidAtom:
+			pass
+
+	# Fall back to legacy code for backward compatibility.
 	mydep = dep_getcpv(mydep)
 	if mydep and isspecific(mydep):
 		mysplit = catpkgsplit(mydep)
