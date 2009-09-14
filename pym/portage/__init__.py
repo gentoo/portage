@@ -7994,22 +7994,7 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 	return deplist
 
 def cpv_getkey(mycpv):
-	m = dep._cpv_re.search(mycpv)
-	if m is not None and m.group(2) is not None:
-		return m.group(2)
-
-	# Fall back to legacy code for backward compatibility.
-	myslash=mycpv.split("/")
-	mysplit=pkgsplit(myslash[-1])
-	if mysplit is None:
-		return None
-	mylen=len(myslash)
-	if mylen==2:
-		return myslash[0]+"/"+mysplit[0]
-	elif mylen==1:
-		return mysplit[0]
-	else:
-		return mysplit
+	return dep.dep_getkey('=' + mycpv)
 
 def key_expand(mykey, mydb=None, use_cache=1, settings=None):
 	mysplit=mykey.split("/")
