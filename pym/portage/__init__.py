@@ -7515,6 +7515,23 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			if parent_cpv is not None:
 				atom_graph.add(x, parent_cpv)
 			continue
+
+		if repoman:
+			if portdb.cp_list(x.cp):
+				newsplit.append(x)
+			else:
+				# TODO: Add PROVIDE check for repoman.
+				a = []
+				for y in mychoices:
+					a.append(portage.dep.Atom(x.replace(mykey, str(y.cp), 1)))
+				if not a:
+					newsplit.append(x)
+				elif len(a) == 1:
+					newsplit.append(a[0])
+				else:
+					newsplit.append(['||'] + a)
+			continue
+
 		match_atom = x
 		pkgs = []
 		matches = portdb.match(match_atom)
@@ -7579,11 +7596,6 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				atom_graph.add(virt_atom, parent_cpv)
 		# Plain old-style virtuals.  New-style virtuals are preferred.
 		if not pkgs:
-			if repoman:
-				# TODO: Add PROVIDE check for repoman.
-				for y in mychoices:
-					a.append(portage.dep.Atom(x.replace(mykey, str(y.cp), 1)))
-			else:
 				for y in mychoices:
 					new_atom = portage.dep.Atom(
 						x.replace(mykey, dep_getkey(y), 1))
