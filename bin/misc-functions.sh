@@ -481,9 +481,6 @@ install_qa_check() {
 		fi
 
 		rm -f "${T}"/non-prefix-shebangs-errs
-		# /bin/sh - in most cases just ok, not cool, might actually
-		# break if the script assumes posix shell (/bin/sh usually is
-		# bourne shell for us)
 		local WHITELIST=" /usr/bin/env "
 		# this is hell expensive, but how else?
 		find "${ED}" -type f | xargs grep -H -n -m1 "^#!" | while read f ; do
