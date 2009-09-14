@@ -545,6 +545,21 @@ class Atom(object):
 		m = _atom_re.match(s)
 		if m is None:
 			raise InvalidAtom(mypkg)
+
+		# Package name must not end in pattern
+		# which appears to be a valid version.
+		if m.group('op') is not None:
+			if m.group(_atom_re.groupindex['op'] + 4) is not None:
+				raise InvalidAtom(mypkg)
+		elif m.group('star') is not None:
+			if m.group(_atom_re.groupindex['star'] + 3) is not None:
+				raise InvalidAtom(mypkg)
+		elif m.group('simple') is not None:
+			if m.group(_atom_re.groupindex['simple'] + 2) is not None:
+				raise InvalidAtom(mypkg)
+		else:
+			raise AssertionError(_("required group not found in atom: '%s'") % mypkg)
+
 		if m.group('op'):
 			op = m.group(_atom_re.groupindex['op'] + 1)
 			cpv = m.group(_atom_re.groupindex['op'] + 2)
@@ -557,7 +572,7 @@ class Atom(object):
 			op = None
 			cpv = cp = m.group(_atom_re.groupindex['simple'] + 1)
 		else:
-			raise AssertionError("required group not found in atom: '%s'" % s)
+			raise AssertionError(_("required group not found in atom: '%s'") % s)
 		obj_setattr(self, "cp", cp)
 		obj_setattr(self, "cpv", cpv)
 		obj_setattr(self, "slot", m.group(_atom_re.groups - 1))
@@ -865,15 +880,7 @@ _cat = r'[\w+][\w+.-]*'
 # 2.1.2 A package name may contain any of the characters [A-Za-z0-9+_-].
 # It must not begin with a hyphen,
 # and must not end in a hyphen followed by one or more digits.
-_pkg = \
-r'''[\w+](?:
-	-?                     # All other 2-char are handled by next
-	|[\w+]*?               # No hyphens - no problems
-	|[\w+-]+?(?:           # String with a hyphen...
-		[A-Za-z+_-]        # ... must end in nondigit
-		|[A-Za-z+_][\w+]+? # ... or in nondigit and then nonhyphens
-	)
-)'''
+_pkg = r'[\w+][\w+-]*?'
 
 # 2.1.3 A slot name may contain any of the characters [A-Za-z0-9+_.-].
 # It must not begin with a hyphen or a dot.
@@ -882,7 +889,7 @@ _optional_slot = '(?:' + _slot + ')?'
 
 _use = r'(\[.*\])?'
 _op = r'([=~]|[><]=?)'
-_cp = '(' + _cat + '/' + _pkg + ')'
+_cp = '(' + _cat + '/' + _pkg + '(-' + _version + ')?)'
 _cpv = '(' + _cp + '-' + _version + ')'
 
 _cpv_re = re.compile('^' + _cpv + '$', re.VERBOSE)
@@ -920,8 +927,24 @@ def isvalidatom(atom, allow_blockers=False):
 			atom = atom[2:]
 		else:
 			atom = atom[1:]
-	if _atom_re.match(atom) is None:
+	m = _atom_re.match(atom)
+	if m is None:
 		return False
+
+	# Package name must not end in pattern
+	# which appears to be a valid version.
+	if m.group('op') is not None:
+		if m.group(_atom_re.groupindex['op'] + 4) is not None:
+			return False
+	elif m.group('star') is not None:
+		if m.group(_atom_re.groupindex['star'] + 3) is not None:
+			return False
+	elif m.group('simple') is not None:
+		if m.group(_atom_re.groupindex['simple'] + 2) is not None:
+			return False
+	else:
+		raise AssertionError(_("required group not found in atom: '%s'") % atom)
+
 	try:
 		use = dep_getusedeps(atom)
 		if use:
