@@ -545,6 +545,21 @@ class Atom(object):
 		m = _atom_re.match(s)
 		if m is None:
 			raise InvalidAtom(mypkg)
+
+		# Package name must not end in pattern
+		# which appears to be a valid version.
+		if m.group('op') is not None:
+			if m.group(_atom_re.groupindex['op'] + 4) is not None:
+				raise InvalidAtom(mypkg)
+		elif m.group('star') is not None:
+			if m.group(_atom_re.groupindex['star'] + 3) is not None:
+				raise InvalidAtom(mypkg)
+		elif m.group('simple') is not None:
+			if m.group(_atom_re.groupindex['simple'] + 2) is not None:
+				raise InvalidAtom(mypkg)
+		else:
+			raise AssertionError(_("required group not found in atom: '%s'") % mypkg)
+
 		if m.group('op'):
 			op = m.group(_atom_re.groupindex['op'] + 1)
 			cpv = m.group(_atom_re.groupindex['op'] + 2)
@@ -557,7 +572,7 @@ class Atom(object):
 			op = None
 			cpv = cp = m.group(_atom_re.groupindex['simple'] + 1)
 		else:
-			raise AssertionError("required group not found in atom: '%s'" % s)
+			raise AssertionError(_("required group not found in atom: '%s'") % s)
 		obj_setattr(self, "cp", cp)
 		obj_setattr(self, "cpv", cpv)
 		obj_setattr(self, "slot", m.group(_atom_re.groups - 1))
@@ -695,9 +710,13 @@ def get_operator(mydep):
 	@return: The operator. One of:
 		'~', '=', '>', '<', '=*', '>=', or '<='
 	"""
-	operator = getattr(mydep, "operator", False)
-	if operator is not False:
-		return operator
+	try:
+		return Atom(mydep).operator
+	except InvalidAtom:
+		pass
+
+	# Fall back to legacy code for backward compatibility.
+	operator = None
 	if mydep:
 		mydep = remove_slot(mydep)
 	if not mydep:
@@ -865,15 +884,7 @@ _cat = r'[\w+][\w+.-]*'
 # 2.1.2 A package name may contain any of the characters [A-Za-z0-9+_-].
 # It must not begin with a hyphen,
 # and must not end in a hyphen followed by one or more digits.
-_pkg = \
-r'''[\w+](?:
-	-?                     # All other 2-char are handled by next
-	|[\w+]*?               # No hyphens - no problems
-	|[\w+-]+?(?:           # String with a hyphen...
-		[A-Za-z+_-]        # ... must end in nondigit
-		|[A-Za-z+_][\w+]+? # ... or in nondigit and then nonhyphens
-	)
-)'''
+_pkg = r'[\w+][\w+-]*?'
 
 # 2.1.3 A slot name may contain any of the characters [A-Za-z0-9+_.-].
 # It must not begin with a hyphen or a dot.
@@ -882,10 +893,9 @@ _optional_slot = '(?:' + _slot + ')?'
 
 _use = r'(\[.*\])?'
 _op = r'([=~]|[><]=?)'
-_cp = '(' + _cat + '/' + _pkg + ')'
+_cp = '(' + _cat + '/' + _pkg + '(-' + _version + ')?)'
 _cpv = '(' + _cp + '-' + _version + ')'
 
-_cpv_re = re.compile('^' + _cpv + '$', re.VERBOSE)
 _atom_re = re.compile('^(?:' +
 	'(?P<op>' + _op + _cpv + ')|' +
 	'(?P<star>=' + _cpv + r'\*)|' +
@@ -908,24 +918,10 @@ def isvalidatom(atom, allow_blockers=False):
 		1) False if the atom is invalid
 		2) True if the atom is valid
 	"""
-	existing_atom = Atom._atoms.get(atom)
-	if existing_atom is not None:
-		atom = existing_atom
-	if isinstance(atom, Atom):
-		return allow_blockers or not atom.blocker
-	if len(atom) < 2:
-		return False
-	if allow_blockers and atom[0] == '!':
-		if atom[1] == '!':
-			atom = atom[2:]
-		else:
-			atom = atom[1:]
-	if _atom_re.match(atom) is None:
-		return False
 	try:
-		use = dep_getusedeps(atom)
-		if use:
-			use = _use_dep(use)
+		atom = Atom(atom)
+		if not allow_blockers and atom.blocker:
+			return False
 		return True
 	except InvalidAtom:
 		return False
@@ -952,23 +948,20 @@ def isjustname(mypkg):
 	except InvalidAtom:
 		pass
 
-	myparts = mypkg.split('-')
-	for x in myparts:
+	for x in mypkg.split('-')[-2:]:
 		if ververify(x):
 			return False
 	return True
 
-iscache = {}
-
 def isspecific(mypkg):
 	"""
-	Checks to see if a package is in category/package-version or package-version format,
-	possibly returning a cached result.
+	Checks to see if a package is in =category/package-version or
+	package-version format.
 
 	Example usage:
 		>>> isspecific('media-libs/test')
 		False
-		>>> isspecific('media-libs/test-3.0')
+		>>> isspecific('=media-libs/test-3.0')
 		True
 
 	@param mypkg: The package depstring to check against
@@ -979,12 +972,12 @@ def isspecific(mypkg):
 		2) True if it is
 	"""
 	try:
-		return iscache[mypkg]
-	except KeyError:
+		return mypkg != Atom(mypkg).cp
+	except InvalidAtom:
 		pass
-	retval = _cpv_re.match(mypkg) is not None
-	iscache[mypkg] = retval
-	return retval
+
+	# Fall back to legacy code for backward compatibility.
+	return not isjustname(mypkg)
 
 def dep_getkey(mydep):
 	"""
@@ -999,9 +992,16 @@ def dep_getkey(mydep):
 	@rtype: String
 	@return: The package category/package-version
 	"""
-	cp = getattr(mydep, "cp", None)
-	if cp is not None:
-		return cp
+
+	try:
+		return Atom(mydep).cp
+	except InvalidAtom:
+		try:
+			return Atom('=' + mydep).cp
+		except InvalidAtom:
+			pass
+
+	# Fall back to legacy code for backward compatibility.
 	mydep = dep_getcpv(mydep)
 	if mydep and isspecific(mydep):
 		mysplit = catpkgsplit(mydep)
