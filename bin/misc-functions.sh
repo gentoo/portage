@@ -470,6 +470,16 @@ install_qa_check() {
 
 	# Check shebangs, bug #282539
 	if [[ -n ${EPREFIX} ]] ; then
+		# this does not really belong here, but it's closely tied to
+		# this code; many runscripts generate positives here, and we
+		# know they don't work (bug #196294) so as long as that one
+		# remains an issue, simply remove them as they won't work
+		# anyway
+		if [[ -d "${ED}"/etc/conf.d || "${ED}"/etc/init.d ]] ; then
+			ewarn "removed /etc/init.d and /etc/conf.d directories until bug #196294 has been resolved"
+			rm -Rf "${ED}"/etc/{conf,init}.d
+		fi
+
 		rm -f "${T}"/non-prefix-shebangs-errs
 		# /bin/sh - in most cases just ok, not cool, might actually
 		# break if the script assumes posix shell (/bin/sh usually is
