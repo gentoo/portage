@@ -1182,10 +1182,9 @@ class depgraph(object):
 			# accurate since multilple levels of indirect virtual deps may
 			# have been traversed. The _add_pkg call will reset the depth to
 			# 0 if this package happens to match an argument.
-			virt_pkg.depth = depth + 1
 			if not self._add_pkg(virt_pkg,
 				Dependency(atom=Atom('=' + virt_pkg.cpv),
-				depth=depth, parent=pkg, priority=dep_priority.copy(),
+				depth=(depth + 1), parent=pkg, priority=dep_priority.copy(),
 				root=dep_root)):
 				return 0
 
