@@ -436,7 +436,6 @@ install_qa_check() {
 		PORTAGE_QUIET=${tmp_quiet}
 	fi
 
-
 	local unsafe_files=$(find "${ED}" -type f '(' -perm -2002 -o -perm -4002 ')')
 	if [[ -n ${unsafe_files} ]] ; then
 		eqawarn "QA Notice: Unsafe files detected (set*id and world writable)"
@@ -466,6 +465,40 @@ install_qa_check() {
 			eqawarn "QA Notice: the following files are outside of the prefix:"
 			eqawarn "${INSTALLTOD}"
 			die "Aborting due to QA concerns: there are files installed outside the prefix"
+		fi
+	fi
+
+	# Check shebangs, bug #282539
+	if [[ -n ${EPREFIX} ]] ; then
+		rm -f "${T}"/non-prefix-shebangs-errs
+		# /bin/sh - in most cases just ok, not cool, might actually
+		# break if the script assumes posix shell (/bin/sh usually is
+		# bourne shell for us)
+		local WARNLIST=" /bin/sh "
+		local WHITELIST=" /usr/bin/env "
+		# this is hell expensive, but how else?
+		find "${ED}" -type f | xargs grep -H -n -m1 "^#!" | while read f ; do
+			fn=${f%%:*}
+			pos=${f#*:} ; pos=${pos%:*}
+			line=${f##*:}
+			# shebang always appears on the first line ;)
+			[[ ${pos} != 1 ]] && continue
+			line=( ${line#"#!"} )
+			[[ ${WHITELIST} == *" ${line[0]} "* ]] && continue
+			if [[ ${WARNLIST} == *" ${line[0]} "* ]] ; then
+				eqawarn "QA Notice: ${fn#${D}} uses ${line[0]} in shebang which might break on some systems"
+				continue
+			fi
+			# does the shebang start with ${EPREFIX}?
+			[[ ${line[0]} == ${EPREFIX}* ]] && continue
+			# all else is an error
+			echo "${fn#${D}}:${line[0]}" >> "${T}"/non-prefix-shebangs-errs
+		done
+		if [[ -e "${T}"/non-prefix-shebangs-errs ]] ; then
+			eqawarn "QA Notice: the following files use non-prefixed shebangs:"
+			eqawarn "$(<"${T}"/non-prefix-shebangs-errs)"
+			die "Aborting due to QA concerns: non-prefixed shebangs found"
+			rm -f "${T}"/non-prefix-shebangs-errs
 		fi
 	fi
 
