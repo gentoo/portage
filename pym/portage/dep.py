@@ -710,9 +710,13 @@ def get_operator(mydep):
 	@return: The operator. One of:
 		'~', '=', '>', '<', '=*', '>=', or '<='
 	"""
-	operator = getattr(mydep, "operator", False)
-	if operator is not False:
-		return operator
+	try:
+		return Atom(mydep).operator
+	except InvalidAtom:
+		pass
+
+	# Fall back to legacy code for backward compatibility.
+	operator = None
 	if mydep:
 		mydep = remove_slot(mydep)
 	if not mydep:
@@ -988,9 +992,6 @@ def dep_getkey(mydep):
 	@rtype: String
 	@return: The package category/package-version
 	"""
-	cp = getattr(mydep, "cp", None)
-	if cp is not None:
-		return cp
 
 	try:
 		return Atom(mydep).cp
