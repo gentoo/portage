@@ -483,8 +483,8 @@ install_qa_check() {
 		rm -f "${T}"/non-prefix-shebangs-errs
 		local WHITELIST=" /usr/bin/env "
 		# this is hell expensive, but how else?
-		find "${ED}" -type f -executable \
-				| xargs grep -H -n -m1 "^#!" \
+		find "${ED}" -type f -executable -print0 \
+				| xargs -0 grep -H -n -m1 "^#!" \
 				| while read f ;
 		do
 			fn=${f%%:*}
