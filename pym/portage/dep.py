@@ -738,8 +738,6 @@ def get_operator(mydep):
 
 	return operator
 
-_dep_getcpv_cache = {}
-
 def dep_getcpv(mydep):
 	"""
 	Return the category-package-version with any operators/slot specifications stripped off
@@ -753,13 +751,13 @@ def dep_getcpv(mydep):
 	@rtype: String
 	@return: The depstring with the operator removed
 	"""
-	cpv = getattr(mydep, "cpv", None)
-	if cpv is not None:
-		return cpv
-	global _dep_getcpv_cache
-	retval = _dep_getcpv_cache.get(mydep, None)
-	if retval is not None:
-		return retval
+
+	try:
+		return Atom(mydep).cpv
+	except InvalidAtom:
+		pass
+
+	# Fall back to legacy code for backward compatibility.
 	mydep_orig = mydep
 	if mydep:
 		mydep = remove_slot(mydep)
@@ -776,7 +774,6 @@ def dep_getcpv(mydep):
 		mydep = mydep[2:]
 	elif mydep[:1] in "=<>~":
 		mydep = mydep[1:]
-	_dep_getcpv_cache[mydep_orig] = mydep
 	return mydep
 
 def dep_getslot(mydep):
@@ -1122,7 +1119,7 @@ def match_from_list(mydep, candidate_list):
 		for x in candidate_list:
 			xcpv = getattr(x, "cpv", None)
 			if xcpv is None:
-				xcpv = dep_getcpv(x)
+				xcpv = remove_slot(x)
 			if not cpvequal(xcpv, mycpv):
 				continue
 			mylist.append(x)
