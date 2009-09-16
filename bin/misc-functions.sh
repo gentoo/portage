@@ -483,14 +483,15 @@ install_qa_check() {
 		rm -f "${T}"/non-prefix-shebangs-errs
 		local WHITELIST=" /usr/bin/env "
 		# this is hell expensive, but how else?
-		find "${ED}" -type f | xargs grep -H -n -m1 "^#!" | while read f ; do
+		find "${ED}" -type f -executable \
+				| xargs grep -H -n -m1 "^#!" \
+				| while read f ;
+		do
 			fn=${f%%:*}
 			pos=${f#*:} ; pos=${pos%:*}
 			line=${f##*:}
 			# shebang always appears on the first line ;)
 			[[ ${pos} != 1 ]] && continue
-			# remove some paths that often contain false positives
-			[[ ${fn} == "${ED}usr/share/doc/"* ]] && continue
 			line=( ${line#"#!"} )
 			[[ ${WHITELIST} == *" ${line[0]} "* ]] && continue
 			# does the shebang start with ${EPREFIX}?
