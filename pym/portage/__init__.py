@@ -7416,10 +7416,6 @@ def dep_virtual(mysplit, mysettings):
 				newsplit.append(x)
 	return newsplit
 
-# According to GLEP 37, RDEPEND is the only dependency type that is valid
-# for new-style virtuals. Repoman should enforce this.
-_virt_dep_keys = ("RDEPEND",)
-
 def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	trees=None, use_mask=None, use_force=None, **kwargs):
 	"""Recursively expand new-style virtuals so as to collapse one or more
@@ -7436,15 +7432,14 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	atom_graph = mytrees.get("atom_graph")
 	parent = mytrees.get("parent")
 	virt_parent = mytrees.get("virt_parent")
-	virt_eapi = mytrees.get("virt_eapi")
-	parent_cpv = None
+	graph_parent = None
 	eapi = None
 	if parent is not None:
 		if virt_parent is not None:
-			parent_cpv = virt_parent
-			eapi = virt_eapi
+			graph_parent = virt_parent
+			eapi = virt_parent[0].metadata['EAPI']
 		else:
-			parent_cpv = parent.cpv
+			graph_parent = parent
 			eapi = parent.metadata["EAPI"]
 	repoman = not mysettings.local_config
 	if kwargs["use_binaries"]:
@@ -7502,8 +7497,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 		mykey = dep_getkey(x)
 		if not mykey.startswith("virtual/"):
 			newsplit.append(x)
-			if parent_cpv is not None:
-				atom_graph.add(x, parent_cpv)
+			if atom_graph is not None:
+				atom_graph.add(x, graph_parent)
 			continue
 		mychoices = myvirtuals.get(mykey, [])
 		isblocker = x.startswith("!")
@@ -7512,11 +7507,11 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			# the un-expanded virtual atom is more useful for
 			# maintaining a cache of blocker atoms.
 			newsplit.append(x)
-			if parent_cpv is not None:
-				atom_graph.add(x, parent_cpv)
+			if atom_graph is not None:
+				atom_graph.add(x, graph_parent)
 			continue
 
-		if repoman:
+		if repoman or not hasattr(portdb, 'match_pkgs'):
 			if portdb.cp_list(x.cp):
 				newsplit.append(x)
 			else:
@@ -7532,15 +7527,17 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					newsplit.append(['||'] + a)
 			continue
 
-		match_atom = x
 		pkgs = []
-		matches = portdb.match(match_atom)
+		# Ignore USE deps here, since otherwise we might not
+		# get any matches. Choices with correct USE settings
+		# will be preferred in dep_zapdeps().
+		matches = portdb.match_pkgs(x.without_use)
 		# Use descending order to prefer higher versions.
 		matches.reverse()
-		for cpv in matches:
+		for pkg in matches:
 			# only use new-style matches
-			if cpv.startswith("virtual/"):
-				pkgs.append((cpv, catpkgsplit(cpv)[1:], portdb))
+			if pkg.cp.startswith("virtual/"):
+				pkgs.append(pkg)
 		if not (pkgs or mychoices):
 			# This one couldn't be expanded as a new-style virtual.  Old-style
 			# virtuals have already been expanded by dep_virtual, so this one
@@ -7548,29 +7545,30 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			# atom is not eliminated here since it may still represent a
 			# dependency that needs to be satisfied.
 			newsplit.append(x)
-			if parent_cpv is not None:
-				atom_graph.add(x, parent_cpv)
+			if atom_graph is not None:
+				atom_graph.add(x, graph_parent)
 			continue
 
 		a = []
-		for y in pkgs:
-			cpv, pv_split, db = y
-			depstring = " ".join(db.aux_get(cpv, _virt_dep_keys))
+		for pkg in pkgs:
+			virt_atom = '=' + pkg.cpv
+			if x.use:
+				virt_atom += str(x.use)
+			virt_atom = dep.Atom(virt_atom)
+			# According to GLEP 37, RDEPEND is the only dependency
+			# type that is valid for new-style virtuals. Repoman
+			# should enforce this.
+			depstring = pkg.metadata['RDEPEND']
 			pkg_kwargs = kwargs.copy()
-			if repoman:
-				pass
-			else:
-				# for emerge
-				use_split = db.aux_get(cpv, ["USE"])[0].split()
-				pkg_kwargs["myuse"] = use_split
+			pkg_kwargs["myuse"] = pkg.use.enabled
 			if edebug:
-				print _("Virtual Parent:   "), y[0]
-				print _("Virtual Depstring:"), depstring
+				util.writemsg_level(_("Virtual Parent:      %s\n") \
+					% (pkg,), noiselevel=-1, level=logging.DEBUG)
+				util.writemsg_level(_("Virtual Depstring:   %s\n") \
+					% (depstring,), noiselevel=-1, level=logging.DEBUG)
 
 			# Set EAPI used for validation in dep_check() recursion.
-			new_eapi, = db.aux_get(cpv, ["EAPI"])
-			mytrees["virt_eapi"] = new_eapi
-			mytrees["virt_parent"] = cpv
+			mytrees["virt_parent"] = (pkg, virt_atom)
 
 			try:
 				mycheck = dep_check(depstring, mydbapi, mysettings,
@@ -7579,21 +7577,18 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				# Restore previous EAPI after recursion.
 				if virt_parent is not None:
 					mytrees["virt_parent"] = virt_parent
-					mytrees["virt_eapi"] = virt_eapi
 				else:
 					del mytrees["virt_parent"]
-					del mytrees["virt_eapi"]
 
 			if not mycheck[0]:
 				raise portage.exception.ParseError(
 					"%s: %s '%s'" % (y[0], mycheck[1], depstring))
 
 			# pull in the new-style virtual
-			virt_atom = dep.Atom('=' + cpv)
 			mycheck[1].append(virt_atom)
 			a.append(mycheck[1])
-			if parent_cpv is not None:
-				atom_graph.add(virt_atom, parent_cpv)
+			if atom_graph is not None:
+				atom_graph.add(virt_atom, graph_parent)
 		# Plain old-style virtuals.  New-style virtuals are preferred.
 		if not pkgs:
 				for y in mychoices:
@@ -7605,8 +7600,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					if matches and mykey in \
 						portdb.aux_get(matches[-1], ['PROVIDE'])[0].split():
 						a.append(new_atom)
-						if parent_cpv is not None:
-							atom_graph.add(new_atom, parent_cpv)
+						if atom_graph is not None:
+							atom_graph.add(new_atom, graph_parent)
 
 		if not a and mychoices:
 			# Check for a virtual package.provided match.
@@ -7615,13 +7610,13 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				if match_from_list(new_atom,
 					pprovideddict.get(new_atom.cp, [])):
 					a.append(new_atom)
-					if parent_cpv is not None:
-						atom_graph.add(new_atom, parent_cpv)
+					if atom_graph is not None:
+						atom_graph.add(new_atom, graph_parent)
 
 		if not a:
 			newsplit.append(x)
-			if parent_cpv is not None:
-				atom_graph.add(x, parent_cpv)
+			if atom_graph is not None:
+				atom_graph.add(x, graph_parent)
 		elif len(a) == 1:
 			newsplit.append(a[0])
 		else:

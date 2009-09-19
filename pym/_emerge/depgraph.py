@@ -1901,16 +1901,20 @@ class depgraph(object):
 			for node in atom_graph:
 				if isinstance(node, Atom):
 					continue
-				if node == parent.cpv:
+				if node is parent:
 					pkg = parent
 				else:
-					virt_atom = Atom('=' + node)
+					pkg, virt_atom = node
 					if virt_atom not in chosen_atoms:
 						continue
-					pkg, existing_node = self._select_package(
-						root, virt_atom)
-					if pkg is None:
-						raise AssertionError(node)
+					if not portage.match_from_list(virt_atom, [pkg]):
+						# Typically this means that the atom
+						# specifies USE deps that are unsatisfied
+						# by the selected package. The caller will
+						# record this as an unsatisfied dependency
+						# when necessary.
+						continue
+
 				selected_atoms[pkg] = [atom for atom in \
 					atom_graph.child_nodes(node) if atom in chosen_atoms]
 
@@ -5000,6 +5004,8 @@ class _dep_check_composite_db(portage.dbapi):
 		metadata = self._cpv_pkg_map[cpv].metadata
 		return [metadata.get(x, "") for x in wants]
 
+	def match_pkgs(self, atom):
+		return [self._cpv_pkg_map[cpv] for cpv in self.match(atom)]
 
 def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
 
