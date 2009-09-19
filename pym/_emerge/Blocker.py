@@ -17,7 +17,7 @@ class Blocker(Task):
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
-		self.cp = portage.dep_getkey(self.atom)
+		self.cp = self.atom.cp
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)

@@ -949,7 +949,7 @@ class portdbapi(dbapi):
 			#this stuff only runs on first call of xmatch()
 			#create mydep, mykey from origdep
 			mydep = dep_expand(origdep, mydb=self, settings=self.mysettings)
-			mykey = dep_getkey(mydep)
+			mykey = mydep.cp
 
 		if level == "list-visible":
 			#a list of all visible packages, not called directly (just by xmatch())
@@ -1132,7 +1132,6 @@ class portdbapi(dbapi):
 def close_portdbapi_caches():
 	for i in portdbapi.portdbapi_instances:
 		i.close_caches()
-
 
 class portagetree(object):
 	def __init__(self, root="/", virtual=None, clone=None, settings=None):

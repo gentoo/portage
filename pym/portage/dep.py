@@ -990,6 +990,8 @@ def match_to_list(mypkg, mylist):
 	"""
 	matches = []
 	for x in mylist:
+		if not isinstance(x, Atom):
+			x = Atom(x)
 		if match_from_list(x, [mypkg]):
 			if x not in matches:
 				matches.append(x)
@@ -1024,7 +1026,7 @@ def best_match_to_list(mypkg, mylist):
 			if maxvalue < 3:
 				maxvalue = 3
 				bestm = x
-		op_val = operator_values[get_operator(x)]
+		op_val = operator_values[x.operator]
 		if op_val > maxvalue:
 			maxvalue = op_val
 			bestm  = x
@@ -1051,9 +1053,9 @@ def match_from_list(mydep, candidate_list):
 	if not isinstance(mydep, Atom):
 		mydep = Atom(mydep)
 
-	mycpv     = dep_getcpv(mydep)
+	mycpv     = mydep.cpv
 	mycpv_cps = catpkgsplit(mycpv) # Can be None if not specific
-	slot      = dep_getslot(mydep)
+	slot      = mydep.slot
 
 	if not mycpv_cps:
 		cat, pkg = catsplit(mycpv)
@@ -1066,7 +1068,7 @@ def match_from_list(mydep, candidate_list):
 				" (%s) (try adding an '=')") % (mydep))
 
 	if ver and rev:
-		operator = get_operator(mydep)
+		operator = mydep.operator
 		if not operator:
 			writemsg(_("!!! Invalid atom: %s\n") % mydep, noiselevel=-1)
 			return []
