@@ -683,6 +683,8 @@ def get_operator(mydep):
 	@return: The operator. One of:
 		'~', '=', '>', '<', '=*', '>=', or '<='
 	"""
+	if isinstance(mydep, Atom):
+		return mydep.operator
 	try:
 		return Atom(mydep).operator
 	except InvalidAtom:
@@ -724,7 +726,8 @@ def dep_getcpv(mydep):
 	@rtype: String
 	@return: The depstring with the operator removed
 	"""
-
+	if isinstance(mydep, Atom):
+		return mydep.cpv
 	try:
 		return Atom(mydep).cpv
 	except InvalidAtom:
@@ -885,7 +888,8 @@ def isvalidatom(atom, allow_blockers=False):
 		2) True if the atom is valid
 	"""
 	try:
-		atom = Atom(atom)
+		if not isinstance(atom, Atom):
+			atom = Atom(atom)
 		if not allow_blockers and atom.blocker:
 			return False
 		return True
@@ -910,7 +914,9 @@ def isjustname(mypkg):
 		2) True if it is
 	"""
 	try:
-		return mypkg == Atom(mypkg).cp
+		if not isinstance(mypkg, Atom):
+			mypkg = Atom(mypkg)
+		return mypkg == mypkg.cp
 	except InvalidAtom:
 		pass
 
@@ -938,7 +944,9 @@ def isspecific(mypkg):
 		2) True if it is
 	"""
 	try:
-		return mypkg != Atom(mypkg).cp
+		if not isinstance(mypkg, Atom):
+			mypkg = Atom(mypkg)
+		return mypkg != mypkg.cp
 	except InvalidAtom:
 		pass
 
@@ -956,9 +964,10 @@ def dep_getkey(mydep):
 	@param mydep: The depstring to retrieve the category/package-name of
 	@type mydep: String
 	@rtype: String
-	@return: The package category/package-version
+	@return: The package category/package-name
 	"""
-
+	if isinstance(mydep, Atom):
+		return mydep.cp
 	try:
 		return Atom(mydep).cp
 	except InvalidAtom:
