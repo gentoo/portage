@@ -1148,23 +1148,16 @@ class depgraph(object):
 		vardb = self._frozen_config.roots[dep_root].trees["vartree"].dbapi
 
 		for atom in selected_atoms[pkg]:
-			try:
-				mypriority = dep_priority.copy()
-				if not atom.blocker and vardb.match(atom):
-					mypriority.satisfied = True
 
-				if not self._add_dep(Dependency(atom=atom,
-					blocker=atom.blocker, depth=depth, parent=pkg,
-					priority=mypriority, root=dep_root),
-					allow_unsatisfied=allow_unsatisfied):
-					return 0
+			mypriority = dep_priority.copy()
+			if not atom.blocker and vardb.match(atom):
+				mypriority.satisfied = True
 
-			except portage.exception.InvalidAtom, e:
-				show_invalid_depstring_notice(
-					pkg, dep_string, str(e))
-				del e
-				if not pkg.installed:
-					return 0
+			if not self._add_dep(Dependency(atom=atom,
+				blocker=atom.blocker, depth=depth, parent=pkg,
+				priority=mypriority, root=dep_root),
+				allow_unsatisfied=allow_unsatisfied):
+				return 0
 
 		selected_atoms.pop(pkg)
 
