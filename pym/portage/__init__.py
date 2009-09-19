@@ -213,10 +213,10 @@ class _unicode_module_wrapper(object):
 		object.__setattr__(self, '_encoding', encoding)
 		object.__setattr__(self, '_overrides', overrides)
 
-	def __getattr__(self, attr):
-		result = getattr(self._mod, attr)
-		encoding = self._encoding
-		overrides = self._overrides
+	def __getattribute__(self, attr):
+		result = getattr(object.__getattribute__(self, '_mod'), attr)
+		encoding = object.__getattribute__(self, '_encoding')
+		overrides = object.__getattribute__(self, '_overrides')
 		override = None
 		if overrides is not None:
 			override = overrides.get(id(result))
