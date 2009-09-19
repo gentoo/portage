@@ -3182,7 +3182,7 @@ class config(object):
 		virts = flatten(portage.dep.use_reduce(portage.dep.paren_reduce(provides), uselist=myuse.split()))
 
 		modified = False
-		cp = dep_getkey(mycpv)
+		cp = dep.Atom(cpv_getkey(mycpv))
 		for virt in virts:
 			virt = dep_getkey(virt)
 			providers = self.virtuals.get(virt)
