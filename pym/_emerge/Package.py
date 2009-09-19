@@ -5,7 +5,6 @@
 import re
 from itertools import chain
 import portage
-from portage.cache.mappings import slot_dict_class
 from portage.dep import paren_reduce, use_reduce, \
 	paren_normalize, paren_enclose
 from _emerge.Task import Task
@@ -151,33 +150,56 @@ _all_metadata_keys = set(x for x in portage.auxdbkeys \
 	if not x.startswith("UNUSED_"))
 _all_metadata_keys.discard("CDEPEND")
 _all_metadata_keys.update(Package.metadata_keys)
+_all_metadata_keys = frozenset(_all_metadata_keys)
 
-_PackageMetadataWrapperBase = slot_dict_class(_all_metadata_keys)
-
-class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
+class _PackageMetadataWrapper(dict):
 	"""
 	Detect metadata updates and synchronize Package attributes.
 	"""
 
 	__slots__ = ("_pkg",)
-	_wrapped_keys = frozenset(
-		["COUNTER", "INHERITED", "IUSE", "SLOT", "_mtime_"])
 	_use_conditional_keys = frozenset(
 		['LICENSE', 'PROPERTIES', 'PROVIDE', 'RESTRICT',])
 
 	def __init__(self, pkg, metadata):
-		_PackageMetadataWrapperBase.__init__(self)
 		self._pkg = pkg
-		"""LICENSE with USE conditionals evaluated."""
-
 		if not pkg.built:
 			# USE is lazy, but we want it to show up in self.keys().
 			self['USE'] = ''
-
 		self.update(metadata)
+		for k, v in self.iteritems():
+			if k == 'INHERITED':
+				if isinstance(v, basestring):
+					v = frozenset(v.split())
+				self._pkg.inherited = v
+			elif k == 'SLOT':
+				self._pkg.slot = v
+			elif k == 'IUSE':
+				self._pkg.iuse = self._pkg._iuse(
+					v.split(), self._pkg.root_config.iuse_implicit)
+			elif k == 'COUNTER':
+				if isinstance(v, basestring):
+					try:
+						v = long(v.strip())
+					except ValueError:
+						v = 0
+						self['COUNTER'] = str(v)
+				self._pkg.counter = v
+			elif k == '_mtime_':
+				if isinstance(v, basestring):
+					try:
+						v = long(v.strip())
+					except ValueError:
+						v = 0
+				self._pkg.mtime = v
+			elif k in self._use_conditional_keys:
+				try:
+					use_reduce(paren_reduce(v), matchall=1)
+				except portage.exception.InvalidDependString, e:
+					self._pkg._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
 
 	def __getitem__(self, k):
-		v = _PackageMetadataWrapperBase.__getitem__(self, k)
+		v = dict.__getitem__(self, k)
 		if k in self._use_conditional_keys:
 			if self._pkg.root_config.settings.local_config and '?' in v:
 				try:
@@ -200,44 +222,6 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 				self['USE'] = v
 
 		return v
-
-	def __setitem__(self, k, v):
-		_PackageMetadataWrapperBase.__setitem__(self, k, v)
-		if k in self._wrapped_keys:
-			getattr(self, "_set_" + k.lower())(k, v)
-		elif k in self._use_conditional_keys:
-			try:
-				use_reduce(paren_reduce(v), matchall=1)
-			except portage.exception.InvalidDependString, e:
-				self._pkg._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
-
-	def _set_inherited(self, k, v):
-		if isinstance(v, basestring):
-			v = frozenset(v.split())
-		self._pkg.inherited = v
-
-	def _set_iuse(self, k, v):
-		self._pkg.iuse = self._pkg._iuse(
-			v.split(), self._pkg.root_config.iuse_implicit)
-
-	def _set_slot(self, k, v):
-		self._pkg.slot = v
-
-	def _set_counter(self, k, v):
-		if isinstance(v, basestring):
-			try:
-				v = long(v.strip())
-			except ValueError:
-				v = 0
-		self._pkg.counter = v
-
-	def _set__mtime_(self, k, v):
-		if isinstance(v, basestring):
-			try:
-				v = long(v.strip())
-			except ValueError:
-				v = 0
-		self._pkg.mtime = v
 
 	@property
 	def properties(self):
