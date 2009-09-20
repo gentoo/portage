@@ -5881,12 +5881,18 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	# so that the caller can override it.
 	tmpdir = mysettings["PORTAGE_TMPDIR"]
 
-	if mycpv != mysettings.mycpv:
-		if mydo == 'depend':
+	if mydo == 'depend':
+		if mycpv != mysettings.mycpv:
 			# Don't pass in mydbapi here since the resulting aux_get
 			# call would lead to infinite 'depend' phase recursion.
 			mysettings.setcpv(mycpv)
-		else:
+	else:
+		# If IUSE isn't in configdict['pkg'], it means that setcpv()
+		# hasn't been called with the mydb argument, so we have to
+		# call it here (portage code always calls setcpv properly,
+		# but api consumers might not).
+		if mycpv != mysettings.mycpv or \
+			'IUSE' not in mysettings.configdict['pkg']:
 			# Reload env.d variables and reset any previous settings.
 			mysettings.reload()
 			mysettings.reset()
