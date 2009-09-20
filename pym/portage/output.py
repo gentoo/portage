@@ -362,14 +362,24 @@ class ConsoleStyleFile(object):
 		s = _unicode_decode(s)
 		global havecolor
 		if havecolor and self._styles:
+			styled_s = []
 			for style in self._styles:
-				self._file.write(style_to_ansi_code(style))
-			self._file.write(s)
-			self._file.write(codes["reset"])
+				styled_s.append(style_to_ansi_code(style))
+			styled_s.append(s)
+			styled_s.append(codes["reset"])
+			self._write(self._file, "".join(styled_s))
 		else:
-			self._file.write(s)
+			self._write(self._file, s)
 		if self.write_listener:
-			self.write_listener.write(s)
+			self._write(self.write_listener, s)
+
+	def _write(self, f, s):
+		if sys.hexversion < 0x3000000 and \
+			isinstance(s, unicode) and \
+			f in (sys.stdout, sys.stderr):
+			# avoid potential UnicodeEncodeError
+			s = s.encode(_encodings['stdio'], 'backslashreplace')
+		f.write(s)
 
 	def writelines(self, lines):
 		for s in lines:
