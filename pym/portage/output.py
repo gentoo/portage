@@ -355,6 +355,11 @@ class ConsoleStyleFile(object):
 		self._styles = styles
 
 	def write(self, s):
+		# In python-2.6, DumbWriter.send_line_break() can write
+		# non-unicode '\n' which fails with TypeError if self._file
+		# is a text stream such as io.StringIO. Therefore, make sure
+		# input is converted to unicode when necessary.
+		s = _unicode_decode(s)
 		global havecolor
 		if havecolor and self._styles:
 			for style in self._styles:
