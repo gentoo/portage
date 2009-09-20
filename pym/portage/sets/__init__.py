@@ -97,7 +97,7 @@ class SetConfig(object):
 					newsets = {}
 					try:
 						newsets = setclass.multiBuilder(optdict, self.settings, self.trees)
-					except SetConfigError, e:
+					except SetConfigError as e:
 						self.errors.append(_("Configuration error in section '%s': %s") % (sname, str(e)))
 						continue
 					for x in newsets:
@@ -126,7 +126,7 @@ class SetConfig(object):
 						if parser.has_option(sname, "world-candidate") and \
 							not parser.getboolean(sname, "world-candidate"):
 							self.psets[setname].world_candidate = False
-					except SetConfigError, e:
+					except SetConfigError as e:
 						self.errors.append(_("Configuration error in section '%s': %s") % (sname, str(e)))
 						continue
 				else:

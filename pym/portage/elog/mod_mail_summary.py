@@ -73,7 +73,7 @@ def _finalize(mysettings, items):
 			portage.mail.send_mail(mysettings, mymessage)
 		finally:
 			signal.alarm(0)
-	except PortageException, e:
+	except PortageException as e:
 		writemsg("%s\n" % str(e), noiselevel=-1)
 
 	return

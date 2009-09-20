@@ -89,7 +89,7 @@ for mykey in biglist:
 	except (portage.exception.InvalidAtom, KeyError):
 		if "--debug" in sys.argv:
 			print "* ignoring broken log entry for %s (likely injected)" % mykey
-	except ValueError, e:
+	except ValueError as e:
 		print "* %s is an ambigous package name, candidates are:\n%s" % (mykey, e)
 		continue
 	if mylist:

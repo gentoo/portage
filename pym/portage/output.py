@@ -218,7 +218,7 @@ def _parse_color_map(config_root='/', onerror=None):
 					_styles[k] = tuple(code_list)
 				elif k in codes:
 					codes[k] = "".join(code_list)
-	except (IOError, OSError), e:
+	except (IOError, OSError) as e:
 		if e.errno == errno.ENOENT:
 			raise FileNotFound(myfile)
 		elif e.errno == errno.EACCES:
@@ -745,10 +745,10 @@ def _init(config_root='/'):
 			onerror=lambda e: writemsg("%s\n" % str(e), noiselevel=-1))
 	except FileNotFound:
 		pass
-	except PermissionDenied, e:
+	except PermissionDenied as e:
 		writemsg(_("Permission denied: '%s'\n") % str(e), noiselevel=-1)
 		del e
-	except PortageException, e:
+	except PortageException as e:
 		writemsg("%s\n" % str(e), noiselevel=-1)
 		del e
 

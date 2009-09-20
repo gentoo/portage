@@ -117,7 +117,7 @@ def parse_metadata_use(mylines, uselist=None):
 		uselist = []
 	try:
 		metadatadom = minidom.parse(mylines)
-	except ExpatError, e:
+	except ExpatError as e:
 		raise exception.ParseError("metadata.xml: %s" % (e,))
 
 	try:
@@ -289,7 +289,7 @@ def get_commit_message_with_editor(editor, message=None):
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['content'], errors='replace'
 				).readlines()
-		except OSError, e:
+		except OSError as e:
 			if e.errno != errno.ENOENT:
 				raise
 			del e

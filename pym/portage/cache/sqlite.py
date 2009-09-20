@@ -70,7 +70,7 @@ class database(fs_template.FsBased):
 				raise cache_errors.InitializationError(self.__class__, "can't ensure perms on %s" % self._dbpath)
 			self._db_init_cache_size(config["cache_bytes"])
 			self._db_init_synchronous(config["synchronous"])
-		except self._db_error, e:
+		except self._db_error as e:
 			raise cache_errors.InitializationError(self.__class__, e)
 
 	def _db_init_structures(self):
@@ -189,7 +189,7 @@ class database(fs_template.FsBased):
 		try:
 			s = " ".join(update_statement)
 			cursor.execute(s)
-		except self._db_error, e:
+		except self._db_error as e:
 			writemsg("%s: %s\n" % (cpv, str(e)))
 			raise
 

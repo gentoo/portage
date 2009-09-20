@@ -173,7 +173,7 @@ class database(object):
 					restricts[key] = re.compile(match).match
 				else:
 					restricts[key] = re.compile(match[0],match[1]).match
-			except re.error, e:
+			except re.error as e:
 				raise InvalidRestriction(key, match, e)
 			if key not in self.__known_keys:
 				raise InvalidRestriction(key, match, "Key isn't valid")

@@ -77,7 +77,7 @@ class StaticFileSet(EditablePackageSet):
 				for fname in errors:
 					for e in errors[fname]:
 						self.errors.append(fname+": "+e)
-			except EnvironmentError, e:
+			except EnvironmentError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
@@ -249,7 +249,7 @@ class WorldSet(EditablePackageSet):
 				for fname in errors:
 					for e in errors[fname]:
 						self.errors.append(fname+": "+e)
-			except EnvironmentError, e:
+			except EnvironmentError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
@@ -269,7 +269,7 @@ class WorldSet(EditablePackageSet):
 				for fname in errors:
 					for e in errors[fname]:
 						self.errors.append(fname+": "+e)
-			except EnvironmentError, e:
+			except EnvironmentError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e

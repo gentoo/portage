@@ -157,7 +157,7 @@ class GenCache(object):
 			try:
 				try:
 					self._trg_cache[cpv] = metadata
-				except StatCollision, sc:
+				except StatCollision as sc:
 					# If the content of a cache entry changes and neither the
 					# file mtime nor size changes, it will prevent rsync from
 					# detecting changes. Cache backends may raise this
@@ -174,7 +174,7 @@ class GenCache(object):
 					max_mtime = long(max_mtime)
 					try:
 						os.utime(ebuild_path, (max_mtime, max_mtime))
-					except OSError, e:
+					except OSError as e:
 						self.returncode |= 1
 						writemsg_level(
 							"%s writing target: %s\n" % (cpv, e),
@@ -184,7 +184,7 @@ class GenCache(object):
 						self._trg_cache[cpv] = metadata
 						self._portdb.auxdb[repo_path][cpv] = metadata
 
-			except CacheError, ce:
+			except CacheError as ce:
 				self.returncode |= 1
 				writemsg_level(
 					"%s writing target: %s\n" % (cpv, ce),
@@ -208,7 +208,7 @@ class GenCache(object):
 							level=logging.ERROR, noiselevel=-1)
 					else:
 						dead_nodes.add(cpv)
-			except CacheError, ce:
+			except CacheError as ce:
 				self.returncode |= 1
 				writemsg_level(
 					"Error listing cache entries for " + \
@@ -230,7 +230,7 @@ class GenCache(object):
 						cp_missing.discard(cp)
 						if cp in cp_set:
 							dead_nodes.add(cpv)
-			except CacheError, ce:
+			except CacheError as ce:
 				self.returncode |= 1
 				writemsg_level(
 					"Error listing cache entries for " + \
@@ -252,7 +252,7 @@ class GenCache(object):
 					del trg_cache[k]
 				except KeyError:
 					pass
-				except CacheError, ce:
+				except CacheError as ce:
 					self.returncode |= 1
 					writemsg_level(
 						"%s deleting stale cache: %s\n" % (k, ce),
@@ -261,7 +261,7 @@ class GenCache(object):
 		if not trg_cache.autocommits:
 			try:
 				trg_cache.commit()
-			except CacheError, ce:
+			except CacheError as ce:
 				self.returncode |= 1
 				writemsg_level(
 					"committing target: %s\n" % (ce,),

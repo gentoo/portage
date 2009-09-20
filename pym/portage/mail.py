@@ -126,9 +126,9 @@ def send_mail(mysettings, message):
 				myconn.login(mymailuser, mymailpasswd)
 			myconn.sendmail(myfrom, myrecipient, message.as_string())
 			myconn.quit()
-		except smtplib.SMTPException, e:
+		except smtplib.SMTPException as e:
 			raise portage.exception.PortageException(_("!!! An error occured while trying to send logmail:\n")+str(e))
-		except socket.error, e:
+		except socket.error as e:
 			raise portage.exception.PortageException(_("!!! A network error occured while trying to send logmail:\n%s\nSure you configured PORTAGE_ELOG_MAILURI correctly?") % str(e))
 	return
 	

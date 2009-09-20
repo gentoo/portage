@@ -792,7 +792,7 @@ class depgraph(object):
 		if True:
 			try:
 				arg_atoms = list(self._iter_atoms_for_pkg(pkg))
-			except portage.exception.InvalidDependString, e:
+			except portage.exception.InvalidDependString as e:
 				if not pkg.installed:
 					show_invalid_depstring_notice(
 						pkg, pkg.metadata["PROVIDE"], str(e))
@@ -931,7 +931,7 @@ class depgraph(object):
 					settings.unlock()
 					settings.setinst(pkg.cpv, pkg.metadata)
 					settings.lock()
-				except portage.exception.InvalidDependString, e:
+				except portage.exception.InvalidDependString as e:
 					show_invalid_depstring_notice(
 						pkg, pkg.metadata["PROVIDE"], str(e))
 					del e
@@ -1079,7 +1079,7 @@ class depgraph(object):
 					dep_string = list(self._queue_disjunctive_deps(
 						pkg, dep_root, dep_priority, dep_string))
 
-				except portage.exception.InvalidDependString, e:
+				except portage.exception.InvalidDependString as e:
 					if pkg.installed:
 						del e
 						continue
@@ -1096,7 +1096,7 @@ class depgraph(object):
 					allow_unsatisfied):
 					return 0
 
-		except portage.exception.AmbiguousPackageName, e:
+		except portage.exception.AmbiguousPackageName as e:
 			pkgs = e.args[0]
 			portage.writemsg("\n\n!!! An atom in the dependencies " + \
 				"is not fully-qualified. Multiple matches:\n\n", noiselevel=-1)
@@ -1135,7 +1135,7 @@ class depgraph(object):
 			selected_atoms = self._select_atoms(dep_root,
 				dep_string, myuse=pkg.use.enabled, parent=pkg,
 				strict=strict, priority=dep_priority)
-		except portage.exception.InvalidDependString, e:
+		except portage.exception.InvalidDependString as e:
 			show_invalid_depstring_notice(pkg, dep_string, str(e))
 			del e
 			if pkg.installed:
@@ -1678,23 +1678,23 @@ class depgraph(object):
 								"dependencies for %s\n") % atom)
 						return 0, myfavorites
 
-				except portage.exception.MissingSignature, e:
+				except portage.exception.MissingSignature as e:
 					portage.writemsg("\n\n!!! A missing gpg signature is preventing portage from calculating the\n")
 					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
 					portage.writemsg("!!! to aid in the detection of malicious intent.\n\n")
 					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF TAMPERED FILES -- CHECK CAREFULLY.\n")
 					portage.writemsg("!!! Affected file: %s\n" % (e), noiselevel=-1)
 					return 0, myfavorites
-				except portage.exception.InvalidSignature, e:
+				except portage.exception.InvalidSignature as e:
 					portage.writemsg("\n\n!!! An invalid gpg signature is preventing portage from calculating the\n")
 					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
 					portage.writemsg("!!! to aid in the detection of malicious intent.\n\n")
 					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF TAMPERED FILES -- CHECK CAREFULLY.\n")
 					portage.writemsg("!!! Affected file: %s\n" % (e), noiselevel=-1)
 					return 0, myfavorites
-				except SystemExit, e:
+				except SystemExit as e:
 					raise # Needed else can't exit
-				except Exception, e:
+				except Exception as e:
 					print >> sys.stderr, "\n\n!!! Problem in '%s' dependencies." % atom
 					print >> sys.stderr, "!!!", str(e), getattr(e, "__module__", None)
 					raise
@@ -2648,7 +2648,7 @@ class depgraph(object):
 								success, atoms = portage.dep_check(depstr,
 									final_db, pkgsettings, myuse=pkg.use.enabled,
 									trees=self._dynamic_config._graph_trees, myroot=myroot)
-							except Exception, e:
+							except Exception as e:
 								if isinstance(e, SystemExit):
 									raise
 								# This is helpful, for example, if a ValueError
@@ -2684,7 +2684,7 @@ class depgraph(object):
 								blocker = Blocker(atom=portage.dep.Atom(atom),
 									eapi=pkg.metadata["EAPI"], root=myroot)
 								self._dynamic_config._blocker_parents.add(blocker, pkg)
-						except portage.exception.InvalidAtom, e:
+						except portage.exception.InvalidAtom as e:
 							depstr = " ".join(vardb.aux_get(pkg.cpv, dep_keys))
 							show_invalid_depstring_notice(
 								pkg, depstr, "Invalid Atom: %s" % (e,))
@@ -3055,7 +3055,7 @@ class depgraph(object):
 					running_root, running_portage.metadata["RDEPEND"],
 					myuse=running_portage.use.enabled,
 					parent=running_portage, strict=False)
-			except portage.exception.InvalidDependString, e:
+			except portage.exception.InvalidDependString as e:
 				portage.writemsg("!!! Invalid RDEPEND in " + \
 					"'%svar/db/pkg/%s/RDEPEND': %s\n" % \
 					(running_root, running_portage.cpv, e), noiselevel=-1)
@@ -3291,7 +3291,7 @@ class depgraph(object):
 						try:
 							runtime_dep_atoms = \
 								list(runtime_deps.iterAtomsForPackage(task))
-						except portage.exception.InvalidDependString, e:
+						except portage.exception.InvalidDependString as e:
 							portage.writemsg("!!! Invalid PROVIDE in " + \
 								"'%svar/db/pkg/%s/PROVIDE': %s\n" % \
 								(task.root, task.cpv, e), noiselevel=-1)
@@ -3326,7 +3326,7 @@ class depgraph(object):
 								"system"].iterAtomsForPackage(task):
 								skip = True
 								break
-						except portage.exception.InvalidDependString, e:
+						except portage.exception.InvalidDependString as e:
 							portage.writemsg("!!! Invalid PROVIDE in " + \
 								"'%svar/db/pkg/%s/PROVIDE': %s\n" % \
 								(task.root, task.cpv, e), noiselevel=-1)
@@ -3361,7 +3361,7 @@ class depgraph(object):
 									skip = True
 									self._dynamic_config._blocked_world_pkgs[inst_pkg] = atom
 									break
-						except portage.exception.InvalidDependString, e:
+						except portage.exception.InvalidDependString as e:
 							portage.writemsg("!!! Invalid PROVIDE in " + \
 								"'%svar/db/pkg/%s/PROVIDE': %s\n" % \
 								(task.root, task.cpv, e), noiselevel=-1)
@@ -4196,7 +4196,7 @@ class depgraph(object):
 						try:
 							myfilesdict = portdb.getfetchsizes(pkg_key,
 								useflags=pkg_use, debug=self._frozen_config.edebug)
-						except portage.exception.InvalidDependString, e:
+						except portage.exception.InvalidDependString as e:
 							src_uri = portdb.aux_get(pkg_key, ["SRC_URI"])[0]
 							show_invalid_depstring_notice(x, src_uri, str(e))
 							del e
@@ -4252,7 +4252,7 @@ class depgraph(object):
 				if "COLUMNWIDTH" in self._frozen_config.settings:
 					try:
 						mywidth = int(self._frozen_config.settings["COLUMNWIDTH"])
-					except ValueError, e:
+					except ValueError as e:
 						portage.writemsg("!!! %s\n" % str(e), noiselevel=-1)
 						portage.writemsg(
 							"!!! Unable to parse COLUMNWIDTH='%s'\n" % \
@@ -4601,7 +4601,7 @@ class depgraph(object):
 					if myfavkey in added_favorites:
 						continue
 					added_favorites.add(myfavkey)
-			except portage.exception.InvalidDependString, e:
+			except portage.exception.InvalidDependString as e:
 				writemsg("\n\n!!! '%s' has invalid PROVIDE: %s\n" % \
 					(pkg_key, str(e)), noiselevel=-1)
 				writemsg("!!! see '%s'\n\n" % os.path.join(
@@ -5080,7 +5080,7 @@ def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 		try:
 			success = mydepgraph._loadResumeCommand(mtimedb["resume"],
 				skip_masked=skip_masked)
-		except depgraph.UnsatisfiedResumeDep, e:
+		except depgraph.UnsatisfiedResumeDep as e:
 			if not skip_unsatisfied:
 				raise
 

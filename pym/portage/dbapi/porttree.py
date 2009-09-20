@@ -388,7 +388,7 @@ class portdbapi(dbapi):
 		try:
 			ensure_dirs(self.depcachedir, gid=portage_gid,
 				mode=dirmode, mask=modemask)
-		except PortageException, e:
+		except PortageException as e:
 			pass
 
 	def close_caches(self):
@@ -789,7 +789,7 @@ class portdbapi(dbapi):
 			mystat = None
 			try:
 				mystat = os.stat(file_path)
-			except OSError, e:
+			except OSError as e:
 				pass
 			if mystat is None:
 				existing_size = 0
@@ -825,7 +825,7 @@ class portdbapi(dbapi):
 				try:
 					ok, reason = portage.checksum.verify_all(
 						os.path.join(self.mysettings["DISTDIR"], x), mysums[x])
-				except FileNotFound, e:
+				except FileNotFound as e:
 					ok = False
 					reason = _("File Not Found: '%s'") % (e,)
 			if not ok:
@@ -1098,7 +1098,7 @@ class portdbapi(dbapi):
 				metadata.update(izip(aux_keys, self.aux_get(mycpv, aux_keys)))
 			except KeyError:
 				continue
-			except PortageException, e:
+			except PortageException as e:
 				writemsg("!!! Error: aux_get('%s', %s)\n" % (mycpv, aux_keys),
 					noiselevel=-1)
 				writemsg("!!! %s\n" % (e,), noiselevel=-1)
@@ -1213,8 +1213,8 @@ class portagetree(object):
 		myslot = ""
 		try:
 			myslot = self.dbapi.aux_get(mycatpkg, ["SLOT"])[0]
-		except SystemExit, e:
+		except SystemExit as e:
 			raise
-		except Exception, e:
+		except Exception as e:
 			pass
 		return myslot

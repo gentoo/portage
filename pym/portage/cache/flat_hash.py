@@ -43,7 +43,7 @@ class database(fs_template.FsBased):
 				return d
 			finally:
 				myf.close()
-		except (IOError, OSError), e:
+		except (IOError, OSError) as e:
 			if e.errno != errno.ENOENT:
 				raise cache_errors.CacheCorruption(cpv, e)
 			raise KeyError(cpv)
@@ -51,7 +51,7 @@ class database(fs_template.FsBased):
 	def _parse_data(self, data, cpv):
 		try:
 			d = dict(map(lambda x:x.rstrip("\n").split("=", 1), data))
-		except ValueError, e:
+		except ValueError as e:
 			# If a line is missing an "=", the split length is 1 instead of 2.
 			raise cache_errors.CacheCorruption(cpv, e)
 		return d
@@ -65,7 +65,7 @@ class database(fs_template.FsBased):
 				encoding=_encodings['fs'], errors='strict'),
 				mode='w', encoding=_encodings['repo.content'],
 				errors='backslashreplace')
-		except (IOError, OSError), e:
+		except (IOError, OSError) as e:
 			if errno.ENOENT == e.errno:
 				try:
 					self._ensure_dirs(cpv)
@@ -73,7 +73,7 @@ class database(fs_template.FsBased):
 						encoding=_encodings['fs'], errors='strict'),
 						mode='w', encoding=_encodings['repo.content'],
 						errors='backslashreplace')
-				except (OSError, IOError),e:
+				except (OSError, IOError) as e:
 					raise cache_errors.CacheCorruption(cpv, e)
 			else:
 				raise cache_errors.CacheCorruption(cpv, e)
@@ -93,7 +93,7 @@ class database(fs_template.FsBased):
 		new_fp = os.path.join(self.location,cpv)
 		try:
 			os.rename(fp, new_fp)
-		except (OSError, IOError), e:
+		except (OSError, IOError) as e:
 			os.remove(fp)
 			raise cache_errors.CacheCorruption(cpv, e)
 
@@ -102,7 +102,7 @@ class database(fs_template.FsBased):
 #		import pdb;pdb.set_trace()
 		try:
 			os.remove(os.path.join(self.location,cpv))
-		except OSError, e:
+		except OSError as e:
 			if errno.ENOENT == e.errno:
 				raise KeyError(cpv)
 			else:
@@ -120,7 +120,7 @@ class database(fs_template.FsBased):
 		while len(dirs):
 			try:
 				dir_list = os.listdir(dirs[0])
-			except OSError, e:
+			except OSError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e

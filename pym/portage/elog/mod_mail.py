@@ -38,7 +38,7 @@ def process(mysettings, key, logentries, fulltext):
 	mymessage = portage.mail.create_message(myfrom, myrecipient, mysubject, fulltext)
 	try:
 		portage.mail.send_mail(mysettings, mymessage)
-	except PortageException, e:
+	except PortageException as e:
 		writemsg("%s\n" % str(e), noiselevel=-1)
 
 	return

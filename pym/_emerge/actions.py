@@ -204,7 +204,7 @@ def action_build(settings, trees, mtimedb,
 			success, mydepgraph, dropped_tasks = resume_depgraph(
 				settings, trees, mtimedb, myopts, myparams, spinner)
 		except (portage.exception.PackageNotFound,
-			depgraph.UnsatisfiedResumeDep), e:
+			depgraph.UnsatisfiedResumeDep) as e:
 			if isinstance(e, depgraph.UnsatisfiedResumeDep):
 				mydepgraph = e.depgraph
 			if show_spinner:
@@ -298,7 +298,7 @@ def action_build(settings, trees, mtimedb,
 		try:
 			success, mydepgraph, favorites = backtrack_depgraph(
 				settings, trees, myopts, myparams, myaction, myfiles, spinner)
-		except portage.exception.PackageSetNotFound, e:
+		except portage.exception.PackageSetNotFound as e:
 			if show_spinner:
 				print "\b\b... done!"
 			root_config = trees[settings["ROOT"]]["root_config"]
@@ -484,7 +484,7 @@ def action_config(settings, trees, myopts, myfiles):
 	print
 	try:
 		pkgs = trees[settings["ROOT"]]["vartree"].dbapi.match(myfiles[0])
-	except portage.exception.AmbiguousPackageName, e:
+	except portage.exception.AmbiguousPackageName as e:
 		# Multiple matches thrown from cpv_expand
 		pkgs = e.args[0]
 	if len(pkgs) == 0:
@@ -682,7 +682,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 					if args_set.findAtomForPackage(pkg) is None:
 						world_temp_set.add("=" + pkg.cpv)
 						continue
-				except portage.exception.InvalidDependString, e:
+				except portage.exception.InvalidDependString as e:
 					show_invalid_depstring_notice(pkg,
 						pkg.metadata["PROVIDE"], str(e))
 					del e
@@ -731,7 +731,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				if args_set.findAtomForPackage(pkg) is None:
 					world_temp_set.add("=" + pkg.cpv)
 					continue
-			except portage.exception.InvalidDependString, e:
+			except portage.exception.InvalidDependString as e:
 				show_invalid_depstring_notice(pkg,
 					pkg.metadata["PROVIDE"], str(e))
 				del e
@@ -1531,11 +1531,11 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 				tree_data.valid_nodes.add(cpv)
 				try:
 					src = tree_data.src_db[cpv]
-				except KeyError, e:
+				except KeyError as e:
 					noise.missing_entry(cpv)
 					del e
 					continue
-				except CacheError, ce:
+				except CacheError as ce:
 					noise.exception(cpv, ce)
 					del ce
 					continue
@@ -1585,7 +1585,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 				try:
 					inherited = src.get('INHERITED', '')
 					eclasses = src.get('_eclasses_')
-				except CacheError, ce:
+				except CacheError as ce:
 					noise.exception(cpv, ce)
 					del ce
 					continue
@@ -1630,7 +1630,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 
 				try:
 					tree_data.dest_db[cpv] = src
-				except CacheError, ce:
+				except CacheError as ce:
 					noise.exception(cpv, ce)
 					del ce
 
@@ -1644,7 +1644,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 	for tree_data in porttrees_data:
 		try:
 			dead_nodes = set(tree_data.dest_db.iterkeys())
-		except CacheError, e:
+		except CacheError as e:
 			writemsg_level("Error listing cache entries for " + \
 				"'%s': %s, continuing...\n" % (tree_data.path, e),
 				level=logging.ERROR, noiselevel=-1)
@@ -1673,7 +1673,7 @@ def action_regen(settings, portdb, max_jobs, max_load):
 	portage.writemsg_stdout("Regenerating cache entries...\n")
 	try:
 		os.close(sys.stdin.fileno())
-	except SystemExit, e:
+	except SystemExit as e:
 		raise # Needed else can't exit
 	except:
 		pass
@@ -1696,7 +1696,7 @@ def action_search(root_config, myopts, myfiles, spinner):
 		for mysearch in myfiles:
 			try:
 				searchinstance.execute(mysearch)
-			except re.error, comment:
+			except re.error as comment:
 				print "\n!!! Regular expression error in \"%s\": %s" % ( mysearch, comment )
 				sys.exit(1)
 			searchinstance.output()
@@ -1888,7 +1888,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 		try:
 			maxretries=int(settings["PORTAGE_RSYNC_RETRIES"])
-		except SystemExit, e:
+		except SystemExit as e:
 			raise # Needed else can't exit
 		except:
 			maxretries=3 #default number of retries
@@ -1928,9 +1928,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 							ips.append(addrinfo[4][0])
 					from random import shuffle
 					shuffle(ips)
-				except SystemExit, e:
+				except SystemExit as e:
 					raise # Needed else can't exit
-				except Exception, e:
+				except Exception as e:
 					print "Notice:",str(e)
 					dosyncuri=syncuri
 
@@ -1939,9 +1939,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					dosyncuri = syncuri.replace(
 						"//" + user_name + hostname + port + "/",
 						"//" + user_name + ips[0] + port + "/", 1)
-				except SystemExit, e:
+				except SystemExit as e:
 					raise # Needed else can't exit
-				except Exception, e:
+				except Exception as e:
 					print "Notice:",str(e)
 					dosyncuri=syncuri
 
@@ -2008,7 +2008,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 							os.unlink(tmpservertimestampfile)
 						except OSError:
 							pass
-				except portage.exception.PortageException, e:
+				except portage.exception.PortageException as e:
 					# timed out
 					print e
 					del e
@@ -2129,7 +2129,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				sys.exit(1)
 			try:
 				os.rmdir(myportdir)
-			except OSError, e:
+			except OSError as e:
 				if e.errno != errno.ENOENT:
 					sys.stderr.write(
 						"!!! existing '%s' directory; exiting.\n" % myportdir)
@@ -2224,7 +2224,7 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 			try:
 				valid_atoms.append(
 					portage.dep_expand(x, mydb=vardb, settings=settings))
-			except portage.exception.AmbiguousPackageName, e:
+			except portage.exception.AmbiguousPackageName as e:
 				msg = "The short ebuild name \"" + x + \
 					"\" is ambiguous.  Please specify " + \
 					"one of the following " + \
@@ -2326,7 +2326,7 @@ def adjust_config(myopts, settings):
 	CLEAN_DELAY = 5
 	try:
 		CLEAN_DELAY = int(settings.get("CLEAN_DELAY", str(CLEAN_DELAY)))
-	except ValueError, e:
+	except ValueError as e:
 		portage.writemsg("!!! %s\n" % str(e), noiselevel=-1)
 		portage.writemsg("!!! Unable to parse integer: CLEAN_DELAY='%s'\n" % \
 			settings["CLEAN_DELAY"], noiselevel=-1)
@@ -2337,7 +2337,7 @@ def adjust_config(myopts, settings):
 	try:
 		EMERGE_WARNING_DELAY = int(settings.get(
 			"EMERGE_WARNING_DELAY", str(EMERGE_WARNING_DELAY)))
-	except ValueError, e:
+	except ValueError as e:
 		portage.writemsg("!!! %s\n" % str(e), noiselevel=-1)
 		portage.writemsg("!!! Unable to parse integer: EMERGE_WARNING_DELAY='%s'\n" % \
 			settings["EMERGE_WARNING_DELAY"], noiselevel=-1)
@@ -2367,7 +2367,7 @@ def adjust_config(myopts, settings):
 			portage.writemsg("!!! PORTAGE_DEBUG must be either 0 or 1\n",
 				noiselevel=-1)
 			PORTAGE_DEBUG = 0
-	except ValueError, e:
+	except ValueError as e:
 		portage.writemsg("!!! %s\n" % str(e), noiselevel=-1)
 		portage.writemsg("!!! Unable to parse integer: PORTAGE_DEBUG='%s'\n" %\
 			settings["PORTAGE_DEBUG"], noiselevel=-1)
@@ -2458,7 +2458,7 @@ def git_sync_timestamps(settings, portdir):
 	try:
 		cache_db = settings.load_best_module("portdbapi.metadbmodule")(
 			portdir, "metadata/cache", portage.auxdbkeys[:], readonly=True)
-	except CacheError, e:
+	except CacheError as e:
 		writemsg_level("!!! Unable to instantiate cache: %s\n" % (e,),
 			level=logging.ERROR, noiselevel=-1)
 		return 1
@@ -2467,7 +2467,7 @@ def git_sync_timestamps(settings, portdir):
 	try:
 		ec_names = set(f[:-7] for f in os.listdir(ec_dir) \
 			if f.endswith(".eclass"))
-	except OSError, e:
+	except OSError as e:
 		writemsg_level("!!! Unable to list eclasses: %s\n" % (e,),
 			level=logging.ERROR, noiselevel=-1)
 		return 1
@@ -2508,7 +2508,7 @@ def git_sync_timestamps(settings, portdir):
 			writemsg_level("!!! Missing cache entry: %s\n" % (cpv,),
 				level=logging.ERROR, noiselevel=-1)
 			continue
-		except CacheError, e:
+		except CacheError as e:
 			writemsg_level("!!! Unable to access cache entry: %s %s\n" % \
 				(cpv, e), level=logging.ERROR, noiselevel=-1)
 			continue

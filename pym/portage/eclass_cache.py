@@ -80,7 +80,7 @@ class cache(object):
 		for x in [normalize_path(os.path.join(y,"eclass")) for y in self.porttrees]:
 			try:
 				eclass_filenames = os.listdir(x)
-			except OSError, e:
+			except OSError as e:
 				if e.errno in ignored_listdir_errnos:
 					del e
 					continue

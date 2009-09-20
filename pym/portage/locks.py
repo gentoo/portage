@@ -65,7 +65,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 		try:
 			try:
 				myfd = os.open(lockfilename, os.O_CREAT|os.O_RDWR, 0660)
-			except OSError, e:
+			except OSError as e:
 				func_call = "open('%s')" % lockfilename
 				if e.errno == OperationNotPermitted.errno:
 					raise OperationNotPermitted(func_call)
@@ -78,7 +78,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 				try:
 					if os.stat(lockfilename).st_gid != portage_gid:
 						os.chown(lockfilename, -1, portage_gid)
-				except OSError, e:
+				except OSError as e:
 					if e.errno in (errno.ENOENT, errno.ESTALE):
 						return lockfile(mypath,
 							wantnewlockfile=wantnewlockfile,
@@ -103,7 +103,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 	locking_method = fcntl.lockf
 	try:
 		fcntl.lockf(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
-	except IOError, e:
+	except IOError as e:
 		if "errno" not in dir(e):
 			raise
 		if e.errno in (errno.EACCES, errno.EAGAIN):
@@ -123,7 +123,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 			# try for the exclusive lock now.
 			try:
 				fcntl.lockf(myfd, fcntl.LOCK_EX)
-			except EnvironmentError, e:
+			except EnvironmentError as e:
 				out.eend(1, str(e))
 				raise
 			out.eend(os.EX_OK)
@@ -168,7 +168,7 @@ def _fstat_nlink(fd):
 	"""
 	try:
 		return os.fstat(fd).st_nlink
-	except EnvironmentError, e:
+	except EnvironmentError as e:
 		if e.errno in (errno.ENOENT, errno.ESTALE):
 			# Some filesystems such as CIFS return
 			# ENOENT which means st_nlink == 0.
@@ -229,7 +229,7 @@ def unlockfile(mytuple):
 				writemsg(_("lockfile does not exist '%s'\n") % lockfilename, 1)
 				os.close(myfd)
 				return False
-	except Exception, e:
+	except Exception as e:
 		writemsg(_("Failed to get lock... someone took it.\n"), 1)
 		writemsg(str(e)+"\n",1)
 

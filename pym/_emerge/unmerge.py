@@ -171,7 +171,7 @@ def unmerge(root_config, myopts, unmerge_action,
 			# what will and will not get unmerged
 			try:
 				mymatch = vartree.dbapi.match(x)
-			except portage.exception.AmbiguousPackageName, errpkgs:
+			except portage.exception.AmbiguousPackageName as errpkgs:
 				print "\n\n!!! The short ebuild name \"" + \
 					x + "\" is ambiguous.  Please specify"
 				print "!!! one of the following fully-qualified " + \

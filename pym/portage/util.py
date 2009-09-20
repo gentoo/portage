@@ -347,7 +347,7 @@ def grablines(myfilename,recursive=0):
 				mode='r', encoding=_encodings['content'], errors='replace')
 			mylines = myfile.readlines()
 			myfile.close()
-		except IOError, e:
+		except IOError as e:
 			if e.errno == PermissionDenied.errno:
 				raise PermissionDenied(myfilename)
 			pass
@@ -389,7 +389,7 @@ class _tolerant_shlex(shlex.shlex):
 	def sourcehook(self, newfile):
 		try:
 			return shlex.shlex.sourcehook(self, newfile)
-		except EnvironmentError, e:
+		except EnvironmentError as e:
 			writemsg(_("!!! Parse error in '%s': source command failed: %s\n") % \
 				(self.infile, str(e)), noiselevel=-1)
 			return (newfile, StringIO())
@@ -420,7 +420,7 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 				encoding=_encodings['content'], errors='replace').read()
 		if content and content[-1] != '\n':
 			content += '\n'
-	except IOError, e:
+	except IOError as e:
 		if e.errno == PermissionDenied.errno:
 			raise PermissionDenied(mycfg)
 		if e.errno != errno.ENOENT:
@@ -494,9 +494,9 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 				expand_map[key] = mykeys[key]
 			else:
 				mykeys[key] = val
-	except SystemExit, e:
+	except SystemExit as e:
 		raise
-	except Exception, e:
+	except Exception as e:
 		raise portage.exception.ParseError(str(e)+" in "+mycfg)
 	return mykeys
 	
@@ -626,9 +626,9 @@ def pickle_read(filename,default=None,debug=0):
 		myf.close()
 		del mypickle,myf
 		writemsg(_("pickle_read(): Loaded pickle. '")+filename+"'\n",1)
-	except SystemExit, e:
+	except SystemExit as e:
 		raise
-	except Exception, e:
+	except Exception as e:
 		writemsg(_("!!! Failed to load pickle: ")+str(e)+"\n",1)
 		data = default
 	return data
@@ -736,7 +736,7 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 				stat_cached = os.stat(filename)
 			else:
 				stat_cached = os.lstat(filename)
-		except OSError, oe:
+		except OSError as oe:
 			func_call = "stat('%s')" % filename
 			if oe.errno == errno.EPERM:
 				raise OperationNotPermitted(func_call)
@@ -756,7 +756,7 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 				import portage.data
 				portage.data.lchown(filename, uid, gid)
 			modified = True
-		except OSError, oe:
+		except OSError as oe:
 			func_call = "chown('%s', %i, %i)" % (filename, uid, gid)
 			if oe.errno == errno.EPERM:
 				raise OperationNotPermitted(func_call)
@@ -809,7 +809,7 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 		try:
 			os.chmod(filename, new_mode)
 			modified = True
-		except OSError, oe:
+		except OSError as oe:
 			func_call = "chmod('%s', %s)" % (filename, oct(new_mode))
 			if oe.errno == errno.EPERM:
 				raise OperationNotPermitted(func_call)
@@ -855,7 +855,7 @@ def apply_recursive_permissions(top, uid=-1, gid=-1,
 				uid=uid, gid=gid, mode=dirmode, mask=dirmask)
 			if not applied:
 				all_applied = False
-		except PortageException, e:
+		except PortageException as e:
 			all_applied = False
 			onerror(e)
 
@@ -865,7 +865,7 @@ def apply_recursive_permissions(top, uid=-1, gid=-1,
 					uid=uid, gid=gid, mode=filemode, mask=filemask)
 				if not applied:
 					all_applied = False
-			except PortageException, e:
+			except PortageException as e:
 				# Ignore InvalidLocation exceptions such as FileNotFound
 				# and DirectoryNotFound since sometimes things disappear,
 				# like when adjusting permissions on DISTCC_DIR.
@@ -890,7 +890,7 @@ def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 				stat_cached = os.stat(filename)
 			else:
 				stat_cached = os.lstat(filename)
-		except OSError, oe:
+		except OSError as oe:
 			func_call = "stat('%s')" % filename
 			if oe.errno == errno.EPERM:
 				raise OperationNotPermitted(func_call)
@@ -948,7 +948,7 @@ class atomic_ofstream(ObjectProxy):
 						encoding=_encodings['fs'], errors='strict'),
 						mode=mode, **kargs))
 				return
-			except IOError, e:
+			except IOError as e:
 				if canonical_path == filename:
 					raise
 				writemsg(_("!!! Failed to open file: '%s'\n") % tmp_name,
@@ -986,7 +986,7 @@ class atomic_ofstream(ObjectProxy):
 						pass
 					except FileNotFound:
 						pass
-					except OSError, oe: # from the above os.stat call
+					except OSError as oe: # from the above os.stat call
 						if oe.errno in (errno.ENOENT, errno.EPERM):
 							pass
 						else:
@@ -997,7 +997,7 @@ class atomic_ofstream(ObjectProxy):
 				# even if an exception is raised.
 				try:
 					os.unlink(f.name)
-				except OSError, oe:
+				except OSError as oe:
 					pass
 
 	def abort(self):
@@ -1025,7 +1025,7 @@ def write_atomic(file_path, content, **kwargs):
 		f = atomic_ofstream(file_path, **kwargs)
 		f.write(content)
 		f.close()
-	except (IOError, OSError), e:
+	except (IOError, OSError) as e:
 		if f:
 			f.abort()
 		func_call = "write_atomic('%s')" % file_path
@@ -1050,7 +1050,7 @@ def ensure_dirs(dir_path, *args, **kwargs):
 	try:
 		os.makedirs(dir_path)
 		created_dir = True
-	except OSError, oe:
+	except OSError as oe:
 		func_call = "makedirs('%s')" % dir_path
 		if oe.errno in (errno.EEXIST, errno.EISDIR):
 			pass

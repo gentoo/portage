@@ -151,7 +151,7 @@ class Manifest(object):
 			self._parseDigests(fd, myhashdict=myhashdict, **kwargs)
 			fd.close()
 			return myhashdict
-		except (OSError, IOError), e:
+		except (OSError, IOError) as e:
 			if e.errno == errno.ENOENT:
 				raise FileNotFound(file_path)
 			else:
@@ -243,7 +243,7 @@ class Manifest(object):
 							if oldentries[i] != myentries[i]:
 								update_manifest = True
 								break
-				except (IOError, OSError), e:
+				except (IOError, OSError) as e:
 					if e.errno == errno.ENOENT:
 						pass
 					else:
@@ -253,7 +253,7 @@ class Manifest(object):
 					"".join("%s\n" % str(myentry) for myentry in myentries))
 			if sign:
 				self.sign()
-		except (IOError, OSError), e:
+		except (IOError, OSError) as e:
 			if e.errno == errno.EACCES:
 				raise PermissionDenied(str(e))
 			raise
@@ -435,7 +435,7 @@ class Manifest(object):
 			if not ok:
 				raise DigestException(tuple([self._getAbsname(ftype, fname)]+list(reason)))
 			return ok, reason
-		except FileNotFound, e:
+		except FileNotFound as e:
 			if not ignoreMissing:
 				raise
 			return False, _("File Not Found: '%s'") % str(e)

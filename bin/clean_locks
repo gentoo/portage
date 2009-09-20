@@ -38,7 +38,7 @@ for x in sys.argv[1:]:
 			print y
 		print
 		
-	except OSError, e:
+	except OSError as e:
 		if e.errno in (errno.ENOENT, errno.ENOTDIR):
 			print "!!! %s is not a directory or does not exist" % x
 		else:

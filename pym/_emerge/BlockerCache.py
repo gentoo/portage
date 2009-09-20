@@ -55,7 +55,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 			self._cache_data = mypickle.load()
 			f.close()
 			del f
-		except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError), e:
+		except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError) as e:
 			if isinstance(e, pickle.UnpicklingError):
 				writemsg("!!! Error loading '%s': %s\n" % \
 					(self._cache_filename, str(e)), noiselevel=-1)
@@ -140,7 +140,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 				f.close()
 				portage.util.apply_secpass_permissions(
 					self._cache_filename, gid=portage.portage_gid, mode=0644)
-			except (IOError, OSError), e:
+			except (IOError, OSError) as e:
 				pass
 			self._modified.clear()
 
