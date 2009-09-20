@@ -254,6 +254,7 @@ def getentries(mydir,recursive=0):
 			print(mydir,file)
 		if os.path.isdir(mydir+"/"+file):
 			if file not in entries["dirs"]:
+				entries["dirs"][file]={"dirs":{},"files":{}}
 				# It's normal for a directory to be unlisted in Entries
 				# when checked out without -P (see bug #257660).
 				rentries=getentries(mydir+"/"+file,recursive)
