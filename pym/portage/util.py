@@ -24,7 +24,13 @@ import shlex
 import stat
 import string
 import sys
-from io import StringIO
+try:
+	from io import StringIO
+except ImportError:
+	# Needed for python-2.6 with USE=build since
+	# io imports threading which imports thread
+	# which is unavailable.
+	from StringIO import StringIO
 
 import portage
 from portage import os
