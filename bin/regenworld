@@ -5,6 +5,8 @@
 
 # NOTE: this file does not respect ROOT
 
+from __future__ import print_function
+
 import sys
 try:
 	import portage

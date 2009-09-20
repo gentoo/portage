@@ -7,6 +7,8 @@
 # Then, check to make sure deps are satisfiable (to avoid "can't find match for" problems)
 # that last one is tricky because multiple profiles need to be checked.
 
+from __future__ import print_function
+
 import codecs
 import commands
 import errno

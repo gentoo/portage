@@ -12,6 +12,8 @@
 #  dialog menus
 #
 
+from __future__ import print_function
+
 if not hasattr(__builtins__, "set"):
     from sets import Set as set
 
