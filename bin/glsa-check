@@ -268,7 +268,7 @@ if mode == "test":
 # mail mode as requested by solar
 if mode == "mail":
 	import portage.mail, socket
-	from StringIO import StringIO
+	from io import StringIO
 	from email.mime.text import MIMEText
 	
 	# color doesn't make any sense for mail

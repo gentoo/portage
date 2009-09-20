@@ -7,7 +7,11 @@
 # Library by Wayne Davison <gentoo@blorf.net>, derived from code
 # written by Jeremy Wohl (http://igmus.org)
 
-import os, sys, commands, shutil
+import os, sys, shutil
+try:
+	from subprocess import getoutput as subprocess_getoutput
+except ImportError:
+	from commands import getoutput as subprocess_getoutput
 
 import portage
 from portage.localization import _
@@ -110,7 +114,7 @@ def file_archive(archive, curconf, newconf, mrgconf):
 
     # Archive the current config file if it isn't already saved
     if os.path.exists(archive) \
-     and len(commands.getoutput("diff -aq '%s' '%s'" % (curconf,archive))) != 0:
+     and len(subprocess_getoutput("diff -aq '%s' '%s'" % (curconf,archive))) != 0:
         suf = 1
         while suf < 9 and os.path.exists(archive + '.' + str(suf)):
             suf += 1

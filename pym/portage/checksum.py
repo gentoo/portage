@@ -12,7 +12,10 @@ from portage import _unicode_encode
 import errno
 import stat
 import tempfile
-import commands
+try:
+	from subprocess import getstatusoutput as subprocess_getstatusoutput
+except ImportError:
+	from commands import getstatusoutput as subprocess_getstatusoutput
 
 #dict of all available hash functions
 hashfunc_map = {}
@@ -112,7 +115,7 @@ hashfunc_map["size"] = getsize
 
 prelink_capable = False
 if os.path.exists(PRELINK_BINARY):
-	results = commands.getstatusoutput(PRELINK_BINARY+" --version > /dev/null 2>&1")
+	results = subprocess_getstatusoutput(PRELINK_BINARY+" --version > /dev/null 2>&1")
 	if (results[0] >> 8) == 0:
 		prelink_capable=1
 	del results

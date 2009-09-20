@@ -4,7 +4,10 @@
 
 import codecs
 import sys
-import urllib
+try:
+	from urllib.request import urlopen as urllib_request_urlopen
+except ImportError:
+	from urllib import urlopen as urllib_request_urlopen
 import re
 import xml.dom.minidom
 
@@ -470,7 +473,7 @@ class Glsa:
 			myurl = "file://"+self.nr
 		else:
 			myurl = repository + "glsa-%s.xml" % str(self.nr)
-		self.parse(urllib.urlopen(myurl))
+		self.parse(urllib_request_urlopen(myurl))
 		return None
 
 	def parse(self, myfile):

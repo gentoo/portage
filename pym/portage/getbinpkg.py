@@ -11,13 +11,21 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_encode
 
-import HTMLParser
 import sys
 import socket
 import time
 import tempfile
 import base64
-import urllib2
+
+try:
+	from html.parser import HTMLParser as html_parser_HTMLParser
+except ImportError:
+	from HTMLParser import HTMLParser as html_parser_HTMLParser
+
+try:
+	from urllib.parse import unquote as urllib_parse_unquote
+except:
+	from urllib2 import unquote as urllib_parse_unquote
 
 try:
 	import cPickle as pickle
@@ -30,9 +38,18 @@ except ImportError as e:
 	sys.stderr.write(colorize("BAD","!!! CANNOT IMPORT FTPLIB: ")+str(e)+"\n")
 
 try:
-	import httplib
+	try:
+		from http.client import HTTPConnection as http_client_HTTPConnection
+		from http.client import HTTPSConnection as http_client_HTTPConnection
+		from http.client import BadStatusLine as http_client_HTTPConnection
+		from http.client import ResponseNotReady as http_client_HTTPConnection
+	except ImportError:
+		from httplib import HTTPConnection as http_client_HTTPConnection
+		from httplib import HTTPSConnection as http_client_HTTPConnection
+		from httplib import BadStatusLine as http_client_HTTPConnection
+		from httplib import ResponseNotReady as http_client_HTTPConnection
 except ImportError as e:
-	sys.stderr.write(colorize("BAD","!!! CANNOT IMPORT HTTPLIB: ")+str(e)+"\n")
+	sys.stderr.write(colorize("BAD","!!! CANNOT IMPORT HTTP.CLIENT: ")+str(e)+"\n")
 
 def make_metadata_dict(data):
 	myid,myglob = data
@@ -43,12 +60,12 @@ def make_metadata_dict(data):
 
 	return mydict
 
-class ParseLinks(HTMLParser.HTMLParser):
+class ParseLinks(html_parser_HTMLParser):
 	"""Parser class that overrides HTMLParser to grab all anchors from an html
 	page and provide suffix and prefix limitors"""
 	def __init__(self):
 		self.PL_anchors = []
-		HTMLParser.HTMLParser.__init__(self)
+		html_parser_HTMLParser.__init__(self)
 
 	def get_anchors(self):
 		return self.PL_anchors
@@ -77,7 +94,7 @@ class ParseLinks(HTMLParser.HTMLParser):
 			for x in attrs:
 				if x[0] == 'href':
 					if x[1] not in self.PL_anchors:
-						self.PL_anchors.append(urllib2.unquote(x[1]))
+						self.PL_anchors.append(urllib_parse_unquote(x[1]))
 
 
 def create_conn(baseurl,conn=None):
@@ -132,9 +149,9 @@ def create_conn(baseurl,conn=None):
 
 	if not conn:
 		if protocol == "https":
-			conn = httplib.HTTPSConnection(host)
+			conn = http_client_HTTPSConnection(host)
 		elif protocol == "http":
-			conn = httplib.HTTPConnection(host)
+			conn = http_client_HTTPConnection(host)
 		elif protocol == "ftp":
 			passive = 1
 			if(host[-1] == "*"):
@@ -637,14 +654,14 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 						"/".join((baseurl.rstrip("/"), x.lstrip("/"))),
 						conn, chunk_size)
 					break
-				except httplib.BadStatusLine:
+				except http_client_BadStatusLine:
 					# Sometimes this error is thrown from conn.getresponse() in
 					# make_http_request().  The docstring for this error in
 					# httplib.py says "Presumably, the server closed the
 					# connection before sending a valid response".
 					conn, protocol, address, params, headers = create_conn(
 						baseurl)
-				except httplib.ResponseNotReady:
+				except http_client_ResponseNotReady:
 					# With some http servers this error is known to be thrown
 					# from conn.getresponse() in make_http_request() when the
 					# remote file does not have appropriate read permissions.

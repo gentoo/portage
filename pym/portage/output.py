@@ -5,7 +5,10 @@
 __docformat__ = "epytext"
 
 import codecs
-import commands
+try:
+	from subprocess import getstatusoutput as subprocess_getstatusoutput
+except ImportError:
+	from commands import getstatusoutput as subprocess_getstatusoutput
 import errno
 import formatter
 import re
@@ -405,7 +408,7 @@ def get_term_size():
 			pass
 	except ImportError:
 		pass
-	st, out = commands.getstatusoutput('stty size')
+	st, out = subprocess_getstatusoutput('stty size')
 	if st == os.EX_OK:
 		out = out.split()
 		if len(out) == 2:

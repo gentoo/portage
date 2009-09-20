@@ -28,7 +28,10 @@ try:
 		import pickle
 
 	import stat
-	import commands
+	try:
+		from subprocess import getstatusoutput as subprocess_getstatusoutput
+	except ImportError:
+		from commands import getstatusoutput as subprocess_getstatusoutput
 	from time import sleep
 	from random import shuffle
 	from itertools import chain, izip
@@ -434,7 +437,7 @@ if platform.system() in ('FreeBSD',):
 		@classmethod
 		def chflags(cls, path, flags, opts=""):
 			cmd = 'chflags %s %o %s' % (opts, flags, _shell_quote(path))
-			status, output = commands.getstatusoutput(cmd)
+			status, output = subprocess_getstatusoutput(cmd)
 			if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
 				return
 			# Try to generate an ENOENT error if appropriate.
@@ -1990,7 +1993,10 @@ class config(object):
 				self._local_repo_configs = {}
 				self._local_repo_conf_path = \
 					os.path.join(abs_user_config, 'repos.conf')
-				from ConfigParser import SafeConfigParser, ParsingError
+				try:
+					from configparser import SafeConfigParser, ParsingError
+				except ImportError:
+					from ConfigParser import SafeConfigParser, ParsingError
 				repo_conf_parser = SafeConfigParser()
 				try:
 					repo_conf_parser.readfp(

@@ -7,12 +7,16 @@ import signal
 import sys
 import textwrap
 import platform
+try:
+	from subprocess import getstatusoutput as subprocess_getstatusoutput
+except ImportError:
+	from commands import getstatusoutput as subprocess_getstatusoutput
 import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 import _emerge.help
-import portage.xpak, commands, errno, re, time
+import portage.xpak, errno, re, time
 from portage.output import colorize, xtermTitle, xtermTitleReset
 from portage.output import create_color_func
 good = create_color_func("GOOD")
@@ -142,7 +146,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 									raise
 								del e
 					processed_count += 1
-					myso=commands.getstatusoutput("LANG=C LANGUAGE=C /usr/bin/install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x)[1]
+					myso=subprocess_getstatusoutput("LANG=C LANGUAGE=C /usr/bin/install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x)[1]
 					existsstr="already exists, for file `"
 					if myso!="":
 						if re.search(existsstr,myso):

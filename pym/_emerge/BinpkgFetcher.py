@@ -3,7 +3,10 @@
 # $Id$
 
 from _emerge.SpawnProcess import SpawnProcess
-import urlparse
+try:
+	from urllib.parse import urlparse as urllib_parse_urlparse
+except ImportError:
+	from urlparse import urlparse as urllib_parse_urlparse
 import sys
 import portage
 from portage import os
@@ -61,7 +64,7 @@ class BinpkgFetcher(SpawnProcess):
 			self.wait()
 			return
 
-		protocol = urlparse.urlparse(uri)[0]
+		protocol = urllib_parse_urlparse(uri)[0]
 		fcmd_prefix = "FETCHCOMMAND"
 		if resume:
 			fcmd_prefix = "RESUMECOMMAND"
