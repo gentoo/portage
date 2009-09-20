@@ -40,14 +40,14 @@ except ImportError as e:
 try:
 	try:
 		from http.client import HTTPConnection as http_client_HTTPConnection
-		from http.client import HTTPSConnection as http_client_HTTPConnection
-		from http.client import BadStatusLine as http_client_HTTPConnection
-		from http.client import ResponseNotReady as http_client_HTTPConnection
+		from http.client import HTTPSConnection as http_client_HTTPSConnection
+		from http.client import BadStatusLine as http_client_BadStatusLine
+		from http.client import ResponseNotReady as http_client_ResponseNotReady
 	except ImportError:
 		from httplib import HTTPConnection as http_client_HTTPConnection
-		from httplib import HTTPSConnection as http_client_HTTPConnection
-		from httplib import BadStatusLine as http_client_HTTPConnection
-		from httplib import ResponseNotReady as http_client_HTTPConnection
+		from httplib import HTTPSConnection as http_client_HTTPSConnection
+		from httplib import BadStatusLine as http_client_BadStatusLine
+		from httplib import ResponseNotReady as http_client_ResponseNotReady
 except ImportError as e:
 	sys.stderr.write(colorize("BAD","!!! CANNOT IMPORT HTTP.CLIENT: ")+str(e)+"\n")
 
