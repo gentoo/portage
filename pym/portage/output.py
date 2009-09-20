@@ -22,6 +22,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+from portage import _unicode_decode
 from portage.const import COLOR_MAP_FILE
 from portage.exception import CommandNotFound, FileNotFound, \
 	ParseError, PermissionDenied, PortageException
@@ -742,6 +743,12 @@ def _init(config_root='/'):
 	_color_map_loaded = True
 	codes = object.__getattribute__(codes, '_attr')
 	_styles = object.__getattribute__(_styles, '_attr')
+
+	for k, v in codes.iteritems():
+		codes[k] = _unicode_decode(v)
+
+	for k, v in _styles.iteritems():
+		_styles[k] = _unicode_decode(v)
 
 	try:
 		_parse_color_map(config_root=config_root,
