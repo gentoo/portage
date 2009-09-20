@@ -210,14 +210,24 @@ class _unicode_module_wrapper(object):
 	"""
 	Wraps a module and wraps all functions with _unicode_func_wrapper.
 	"""
-	__slots__ = ('_mod', '_encoding', '_overrides')
+	__slots__ = ('_mod', '_encoding', '_overrides', '_cache')
 
-	def __init__(self, mod, encoding=_encodings['fs'], overrides=None):
+	def __init__(self, mod, encoding=_encodings['fs'], overrides=None, cache=True):
 		object.__setattr__(self, '_mod', mod)
 		object.__setattr__(self, '_encoding', encoding)
 		object.__setattr__(self, '_overrides', overrides)
+		if cache:
+			cache = {}
+		else:
+			cache = None
+		object.__setattr__(self, '_cache', cache)
 
 	def __getattribute__(self, attr):
+		cache = object.__getattribute__(self, '_cache')
+		if cache is not None:
+			result = cache.get(attr)
+			if result is not None:
+				return result
 		result = getattr(object.__getattribute__(self, '_mod'), attr)
 		encoding = object.__getattribute__(self, '_encoding')
 		overrides = object.__getattribute__(self, '_overrides')
@@ -233,6 +243,8 @@ class _unicode_module_wrapper(object):
 				encoding=encoding, overrides=overrides)
 		elif hasattr(result, '__call__'):
 			result = _unicode_func_wrapper(result, encoding=encoding)
+		if cache is not None:
+			cache[attr] = result
 		return result
 
 import os as _os
