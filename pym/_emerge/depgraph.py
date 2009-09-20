@@ -2635,7 +2635,7 @@ class depgraph(object):
 						continue
 
 					if blocker_data:
-						blocker_atoms = [Atom(atom) for atom in blocker_data.atoms)]
+						blocker_atoms = [Atom(atom) for atom in blocker_data.atoms]
 					else:
 						# Use aux_get() to trigger FakeVartree global
 						# updates on *DEPEND when appropriate.
