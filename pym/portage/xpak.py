@@ -190,7 +190,7 @@ def getboth(infile):
 def listindex(myindex):
 	"""Print to the terminal the filenames listed in the indexglob passed in."""
 	for x in getindex_mem(myindex):
-		print x
+		print(x)
 
 def getindex_mem(myindex):
 	"""Returns the filenames listed in the indexglob passed in."""

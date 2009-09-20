@@ -198,12 +198,12 @@ def display_preserved_libs(vardbapi, myopts):
 
 	if vardbapi.plib_registry.hasEntries():
 		if "--quiet" in myopts:
-			print
-			print colorize("WARN", "!!!") + " existing preserved libs found"
+			print()
+			print(colorize("WARN", "!!!") + " existing preserved libs found")
 			return
 		else:
-			print
-			print colorize("WARN", "!!!") + " existing preserved libs:"
+			print()
+			print(colorize("WARN", "!!!") + " existing preserved libs:")
 
 		plibdata = vardbapi.plib_registry.getPreservedLibs()
 		linkmap = vardbapi.linkmap
@@ -239,7 +239,7 @@ def display_preserved_libs(vardbapi, myopts):
 			owners = vardbapi._owners.getFileOwnerMap(search_for_owners)
 
 		for cpv in plibdata:
-			print colorize("WARN", ">>>") + " package: %s" % cpv
+			print(colorize("WARN", ">>>") + " package: %s" % cpv)
 			samefile_map = {}
 			for f in plibdata[cpv]:
 				obj_key = linkmap._obj_key(f)
@@ -252,19 +252,19 @@ def display_preserved_libs(vardbapi, myopts):
 			for alt_paths in samefile_map.itervalues():
 				alt_paths = sorted(alt_paths)
 				for p in alt_paths:
-					print colorize("WARN", " * ") + " - %s" % (p,)
+					print(colorize("WARN", " * ") + " - %s" % (p,))
 				f = alt_paths[0]
 				consumers = consumer_map.get(f, [])
 				for c in consumers[:MAX_DISPLAY]:
-					print colorize("WARN", " * ") + "     used by %s (%s)" % \
-						(c, ", ".join(x.mycpv for x in owners.get(c, [])))
+					print(colorize("WARN", " * ") + "     used by %s (%s)" % \
+						(c, ", ".join(x.mycpv for x in owners.get(c, []))))
 				if len(consumers) == MAX_DISPLAY + 1:
-					print colorize("WARN", " * ") + "     used by %s (%s)" % \
+					print(colorize("WARN", " * ") + "     used by %s (%s)" % \
 						(consumers[MAX_DISPLAY], ", ".join(x.mycpv \
-						for x in owners.get(consumers[MAX_DISPLAY], [])))
+						for x in owners.get(consumers[MAX_DISPLAY], []))))
 				elif len(consumers) > MAX_DISPLAY:
-					print colorize("WARN", " * ") + "     used by %d other files" % (len(consumers) - MAX_DISPLAY)
-		print "Use " + colorize("GOOD", "emerge @preserved-rebuild") + " to rebuild packages using these libraries"
+					print(colorize("WARN", " * ") + "     used by %d other files" % (len(consumers) - MAX_DISPLAY))
+		print("Use " + colorize("GOOD", "emerge @preserved-rebuild") + " to rebuild packages using these libraries")
 
 def post_emerge(root_config, myopts, mtimedb, retval):
 	"""
@@ -872,7 +872,7 @@ def expand_set_arguments(myfiles, myaction, root_config):
 
 	# display errors that occured while loading the SetConfig instance
 	for e in setconfig.errors:
-		print colorize("BAD", "Error during set creation: %s" % e)
+		print(colorize("BAD", "Error during set creation: %s" % e))
 
 	# emerge relies on the existance of sets with names "world" and "system"
 	required_sets = ("world", "system")
@@ -921,13 +921,13 @@ def expand_set_arguments(myfiles, myaction, root_config):
 						"not support unmerge operations\n")
 					retval = 1
 				elif not set_atoms:
-					print "emerge: '%s' is an empty set" % s
+					print("emerge: '%s' is an empty set" % s)
 				elif myaction not in do_not_expand:
 					newargs.extend(set_atoms)
 				else:
 					newargs.append(SETPREFIX+s)
 				for e in sets[s].errors:
-					print e
+					print(e)
 		else:
 			newargs.append(a)
 	return (newargs, retval)
@@ -1095,7 +1095,7 @@ def emerge_main():
 	del mytrees, mydb
 
 	if "moo" in myfiles:
-		print """
+		print("""
 
   Larry loves Gentoo (""" + platform.system() + """)
 
@@ -1108,12 +1108,12 @@ def emerge_main():
                 ||----w |
                 ||     ||
 
-"""
+""")
 
 	for x in myfiles:
 		ext = os.path.splitext(x)[1]
 		if (ext == ".ebuild" or ext == ".tbz2") and os.path.exists(os.path.abspath(x)):
-			print colorize("BAD", "\n*** emerging by path is broken and may not always work!!!\n")
+			print(colorize("BAD", "\n*** emerging by path is broken and may not always work!!!\n"))
 			break
 
 	root_config = trees[settings["ROOT"]]["root_config"]
@@ -1131,11 +1131,11 @@ def emerge_main():
 		# Need to handle empty sets specially, otherwise emerge will react 
 		# with the help message for empty argument lists
 		if oldargs and not myfiles:
-			print "emerge: no targets left after set expansion"
+			print("emerge: no targets left after set expansion")
 			return 0
 
 	if ("--tree" in myopts) and ("--columns" in myopts):
-		print "emerge: can't specify both of \"--tree\" and \"--columns\"."
+		print("emerge: can't specify both of \"--tree\" and \"--columns\".")
 		return 1
 
 	if '--emptytree' in myopts and '--noreplace' in myopts:
@@ -1207,17 +1207,17 @@ def emerge_main():
 			spinner.update = spinner.update_basic
 
 	if myaction == 'version':
-		print getportageversion(settings["PORTDIR"], settings["ROOT"],
+		print(getportageversion(settings["PORTDIR"], settings["ROOT"],
 			settings.profile_path, settings["CHOST"],
-			trees[settings["ROOT"]]["vartree"].dbapi)
+			trees[settings["ROOT"]]["vartree"].dbapi))
 		return 0
 	elif myaction == "help":
 		_emerge.help.help(myopts, portage.output.havecolor)
 		return 0
 
 	if "--debug" in myopts:
-		print "myaction", myaction
-		print "myopts", myopts
+		print("myaction", myaction)
+		print("myopts", myopts)
 
 	if not myaction and not myfiles and "--resume" not in myopts:
 		_emerge.help.help(myopts, portage.output.havecolor)
@@ -1249,8 +1249,8 @@ def emerge_main():
 				if "--ask" in myopts:
 					myopts["--pretend"] = True
 					del myopts["--ask"]
-					print ("%s access is required... " + \
-						"adding --pretend to options\n") % access_desc
+					print(("%s access is required... " + \
+						"adding --pretend to options\n") % access_desc)
 					if portage.secpass < 1 and not need_superuser:
 						portage_group_warning()
 				else:

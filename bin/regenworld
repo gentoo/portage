@@ -49,10 +49,10 @@ world_file = os.path.join("/", portage.WORLD_FILE)
 
 # show a little description if we have arguments
 if len(sys.argv) >= 2 and sys.argv[1] in ["-h", "--help"]:
-	print "This script regenerates the portage world file by checking the portage"
-	print "logfile for all actions that you've done in the past. It ignores any"
-	print "arguments except --help. It is recommended that you make a backup of"
-	print "your existing world file (%s) before using this tool." % world_file
+	print("This script regenerates the portage world file by checking the portage")
+	print("logfile for all actions that you've done in the past. It ignores any")
+	print("arguments except --help. It is recommended that you make a backup of")
+	print("your existing world file (%s) before using this tool." % world_file)
 	sys.exit(0)
 
 worldlist = portage.grabfile(os.path.join("/", portage.WORLD_FILE))
@@ -88,15 +88,15 @@ for mykey in biglist:
 		mylist=portage.db["/"]["vartree"].dbapi.match(mykey)
 	except (portage.exception.InvalidAtom, KeyError):
 		if "--debug" in sys.argv:
-			print "* ignoring broken log entry for %s (likely injected)" % mykey
+			print("* ignoring broken log entry for %s (likely injected)" % mykey)
 	except ValueError as e:
-		print "* %s is an ambigous package name, candidates are:\n%s" % (mykey, e)
+		print("* %s is an ambigous package name, candidates are:\n%s" % (mykey, e))
 		continue
 	if mylist:
 		#print "mylist:",mylist
 		myfavkey=portage.cpv_getkey(mylist[0])
 		if (myfavkey not in realsyslist) and (myfavkey not in worldlist):
-			print "add to world:",myfavkey
+			print("add to world:",myfavkey)
 			worldlist.append(myfavkey)
 
 portage.write_atomic(os.path.join("/", portage.WORLD_FILE),

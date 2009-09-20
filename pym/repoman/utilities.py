@@ -309,7 +309,7 @@ def get_commit_message_with_stdin():
 	@rtype: string or None
 	@returns: A string on success or None if an error occurs.
 	"""
-	print "Please enter a commit message. Use Ctrl-d to finish or Ctrl-c to abort."
+	print("Please enter a commit message. Use Ctrl-d to finish or Ctrl-c to abort.")
 	commitmessage = []
 	while True:
 		commitmessage.append(sys.stdin.readline())

@@ -159,7 +159,7 @@ def quickpkg_main(options, args, eout):
 	if not successes:
 		eout.eerror("No packages found")
 		return 1
-	print
+	print()
 	eout.einfo("Packages now in '%s':" % bintree.pkgdir)
 	import math
 	units = {10:'K', 20:'M', 30:'G', 40:'T',
@@ -183,11 +183,11 @@ def quickpkg_main(options, args, eout):
 				size_str = str(size)
 		eout.einfo("%s: %s" % (cpv, size_str))
 	if config_files_excluded:
-		print
+		print()
 		eout.ewarn("Excluded config files: %d" % config_files_excluded)
 		eout.ewarn("See --help if you would like to include config files.")
 	if missing:
-		print
+		print()
 		eout.ewarn("The following packages could not be found:")
 		eout.ewarn(" ".join(missing))
 		return 2

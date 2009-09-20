@@ -51,7 +51,7 @@ if len(pargs) < 2:
 	parser.error("missing required args")
 
 if "merge" in pargs:
-	print "Disabling noauto in features... merge disables it. (qmerge doesn't)"
+	print("Disabling noauto in features... merge disables it. (qmerge doesn't)")
 	os.environ["FEATURES"] = os.environ.get("FEATURES", "") + " -noauto"
 
 os.environ["PORTAGE_CALLER"]="ebuild"
@@ -117,7 +117,7 @@ ebuild = os.path.join(ebuild_portdir, *ebuild.split(os.path.sep)[-3:])
 if ebuild_portdir not in portage.portdb.porttrees:
 	os.environ["PORTDIR_OVERLAY"] = \
 		os.environ.get("PORTDIR_OVERLAY","") + " " + ebuild_portdir
-	print "Appending %s to PORTDIR_OVERLAY..." % ebuild_portdir
+	print("Appending %s to PORTDIR_OVERLAY..." % ebuild_portdir)
 	portage.close_portdbapi_caches()
 	reload(portage)
 del portage.portdb.porttrees[1:]
@@ -125,14 +125,14 @@ if ebuild_portdir != portage.portdb.porttree_root:
 	portage.portdb.porttrees.append(ebuild_portdir)
 
 if not os.path.exists(ebuild):
-	print "'%s' does not exist." % ebuild
+	print("'%s' does not exist." % ebuild)
 	sys.exit(1)
 
 ebuild_split = ebuild.split("/")
 cpv = "%s/%s" % (ebuild_split[-3], pf)
 
 if not portage.catpkgsplit(cpv):
-	print "!!! %s does not follow correct package syntax." % (cpv)
+	print("!!! %s does not follow correct package syntax." % (cpv))
 	sys.exit(1)
 
 if ebuild.startswith(os.path.join(portage.root, portage.const.VDB_PATH)):
@@ -141,7 +141,7 @@ if ebuild.startswith(os.path.join(portage.root, portage.const.VDB_PATH)):
 	portage_ebuild = portage.db[portage.root][mytree].dbapi.findname(cpv)
 
 	if os.path.realpath(portage_ebuild) != ebuild:
-		print "!!! Portage seems to think that %s is at %s" % (cpv, portage_ebuild)
+		print("!!! Portage seems to think that %s is at %s" % (cpv, portage_ebuild))
 		sys.exit(1)
 
 else:
@@ -150,11 +150,11 @@ else:
 	portage_ebuild = portage.portdb.findname(cpv)
 
 	if not portage_ebuild or portage_ebuild != ebuild:
-		print "!!! %s does not seem to have a valid PORTDIR structure." % ebuild
+		print("!!! %s does not seem to have a valid PORTDIR structure." % ebuild)
 		sys.exit(1)
 
 if len(pargs) > 1 and "config" in pargs:
-	print "config must be called on it's own, not combined with any other phase"
+	print("config must be called on it's own, not combined with any other phase")
 	sys.exit(1)
 
 def discard_digests(myebuild, mysettings, mydbapi):
@@ -250,7 +250,7 @@ for arg in pargs:
 		a = portage.doebuild(ebuild, arg, portage.root, tmpsettings,
 			debug=debug, tree=mytree)
 	except KeyboardInterrupt:
-		print "Interrupted."
+		print("Interrupted.")
 		a = 1
 	except KeyError:
 		# aux_get error
@@ -269,7 +269,7 @@ for arg in pargs:
 		portage.writemsg("!!! Permission Denied: %s\n" % (e,), noiselevel=-1)
 		a = 1
 	if a == None:
-		print "Could not run the required binary?"
+		print("Could not run the required binary?")
 		a = 127
 	if a:
 		sys.exit(a)

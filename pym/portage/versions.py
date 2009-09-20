@@ -20,7 +20,7 @@ def ververify(myver, silent=1):
 		return 1
 	else:
 		if not silent:
-			print _("!!! syntax error in version: %s") % myver
+			print(_("!!! syntax error in version: %s") % myver)
 		return 0
 
 vercmp_cache = {}
@@ -61,11 +61,11 @@ def vercmp(ver1, ver2, silent=1):
 	# checking that the versions are valid
 	if not match1 or not match1.groups():
 		if not silent:
-			print _("!!! syntax error in version: %s") % ver1
+			print(_("!!! syntax error in version: %s") % ver1)
 		return None
 	if not match2 or not match2.groups():
 		if not silent:
-			print _("!!! syntax error in version: %s") % ver2
+			print(_("!!! syntax error in version: %s") % ver2)
 		return None
 
 	# shortcut for cvs ebuilds (new style)
@@ -221,7 +221,7 @@ def pkgsplit(mypkg,silent=1):
 	
 	if len(myparts)<2:
 		if not silent:
-			print _("!!! Name error in %s: missing a version or name part.") % mypkg
+			print(_("!!! Name error in %s: missing a version or name part.") % mypkg)
 		pkgcache[mypkg]=None
 		return None
 

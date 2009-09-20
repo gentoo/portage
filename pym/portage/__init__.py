@@ -4143,7 +4143,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		if ("mirror" in features) and ("lmirror" not in features):
 			# lmirror should allow you to bypass mirror restrictions.
 			# XXX: This is not a good thing, and is temporary at best.
-			print _(">>> \"mirror\" mode desired and \"mirror\" restriction found; skipping fetch.")
+			print(_(">>> \"mirror\" mode desired and \"mirror\" restriction found; skipping fetch."))
 			return 1
 
 	# Generally, downloading the same file repeatedly from
@@ -4905,7 +4905,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								# from another mirror...
 								verified_ok,reason = portage.checksum.verify_all(mysettings["DISTDIR"]+"/"+myfile, mydigests[myfile])
 								if not verified_ok:
-									print reason
+									print(reason)
 									writemsg(_("!!! Fetched file: %s VERIFY FAILED!\n") % myfile,
 										noiselevel=-1)
 									writemsg(_("!!! Reason: %s\n") % reason[0],
@@ -7071,7 +7071,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					myebuild=mysettings["EBUILD"], mytree=tree, mydbapi=mydbapi,
 					vartree=vartree, prev_mtimes=prev_mtimes)
 		else:
-			print _("!!! Unknown mydo: %s") % mydo
+			print(_("!!! Unknown mydo: %s") % mydo)
 			return 1
 
 		return retval
@@ -7184,8 +7184,8 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 	except SystemExit as e:
 		raise
 	except Exception as e:
-		print _("!!! Stating source file failed... movefile()")
-		print "!!!",e
+		print(_("!!! Stating source file failed... movefile()"))
+		print("!!!",e)
 		return None
 
 	destexists=1
@@ -7233,9 +7233,9 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		except SystemExit as e:
 			raise
 		except Exception as e:
-			print _("!!! failed to properly create symlink:")
-			print "!!!",dest,"->",target
-			print "!!!",e
+			print(_("!!! failed to properly create symlink:"))
+			print("!!!",dest,"->",target)
+			print("!!!",e)
 			return None
 
 	hardlinked = False
@@ -7287,8 +7287,8 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		except Exception as e:
 			if e[0]!=errno.EXDEV:
 				# Some random error.
-				print _("!!! Failed to move %(src)s to %(dest)s") % {"src": src, "dest": dest}
-				print "!!!",e
+				print(_("!!! Failed to move %(src)s to %(dest)s") % {"src": src, "dest": dest})
+				print("!!!",e)
 				return None
 			# Invalid cross-device-link 'bind' mounted or actually Cross-Device
 	if renamefailed:
@@ -7305,8 +7305,8 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			except SystemExit as e:
 				raise
 			except Exception as e:
-				print _('!!! copy %(src)s -> %(dest)s failed.') % {"src": src, "dest": dest}
-				print "!!!",e
+				print(_('!!! copy %(src)s -> %(dest)s failed.') % {"src": src, "dest": dest})
+				print("!!!",e)
 				return None
 		else:
 			#we don't yet handle special, so we need to fall back to /bin/mv
@@ -7329,9 +7329,9 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		except SystemExit as e:
 			raise
 		except Exception as e:
-			print _("!!! Failed to chown/chmod/unlink in movefile()")
-			print "!!!",dest
-			print "!!!",e
+			print(_("!!! Failed to chown/chmod/unlink in movefile()"))
+			print("!!!",dest)
+			print("!!!",e)
 			return None
 
 	try:
@@ -8405,7 +8405,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 	if vartree is None:
 		vartree = db[myroot]["vartree"]
 	if mytbz2[-5:]!=".tbz2":
-		print _("!!! Not a .tbz2 file")
+		print(_("!!! Not a .tbz2 file"))
 		return 1
 
 	tbz2_lock = None
@@ -8697,8 +8697,8 @@ def _global_updates(trees, prev_mtimes):
 		# Update progress above is indicated by characters written to stdout so
 		# we print a couple new lines here to separate the progress output from
 		# what follows.
-		print
-		print
+		print()
+		print()
 
 		if do_upgrade_packagesmessage and bindb and \
 			bindb.cpv_all():

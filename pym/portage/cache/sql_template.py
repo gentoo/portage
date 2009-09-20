@@ -284,7 +284,7 @@ class SQLDatabase(template.database):
 		else:
 			query = ''
 
-		print "query = SELECT cpv from package_cache natural join values_cache WHERE label=%s %s" % (self.label, query)
+		print("query = SELECT cpv from package_cache natural join values_cache WHERE label=%s %s" % (self.label, query))
 		try:
 			self.con.execute("SELECT cpv from package_cache natural join values_cache WHERE label=%s %s" % \
 				(self.label, query))

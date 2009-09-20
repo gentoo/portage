@@ -514,19 +514,19 @@ class LinkageMap(object):
 							# XXX This is most often due to soname symlinks not in
 							# a library's directory.  We could catalog symlinks in
 							# LinkageMap to avoid checking for this edge case here.
-							print _("Found provider outside of findProviders:"), \
+							print(_("Found provider outside of findProviders:"), \
 									os.path.join(directory, soname), "->", \
-									self._obj_properties[cachedKey][4], libraries
+									self._obj_properties[cachedKey][4], libraries)
 						# A valid library has been found, so there is no need to
 						# continue.
 						break
 					if debug and cachedArch == arch and \
 							cachedKey in self._obj_properties:
-						print _("Broken symlink or missing/bad soname: %(dir_soname)s -> %(cachedKey)s "
+						print(_("Broken symlink or missing/bad soname: %(dir_soname)s -> %(cachedKey)s "
 							"with soname %(cachedSoname)s but expecting %(soname)s") % \
 							{"dir_soname":os.path.join(directory, soname),
 							"cachedKey": self._obj_properties[cachedKey],
-							"cachedSoname": cachedSoname, "soname":soname}
+							"cachedSoname": cachedSoname, "soname":soname})
 				# This conditional checks if there are no libraries to satisfy the
 				# soname (empty set).
 				if not validLibraries:
@@ -542,10 +542,10 @@ class LinkageMap(object):
 						rValue.setdefault(lib, set()).add(soname)
 						if debug:
 							if not os.path.isfile(lib):
-								print _("Missing library:"), lib
+								print(_("Missing library:"), lib)
 							else:
-								print _("Possibly missing symlink:"), \
-										os.path.join(os.path.dirname(lib), soname)
+								print(_("Possibly missing symlink:"), \
+										os.path.join(os.path.dirname(lib), soname))
 		return rValue
 
 	def listProviders(self):
