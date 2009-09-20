@@ -18,14 +18,14 @@ def process(mysettings, key, logentries, fulltext):
 		elogdir = os.path.join(mysettings["PORT_LOGDIR"], "elog")
 	else:
 		elogdir = os.path.join(os.sep, "var", "log", "portage", "elog")
-	ensure_dirs(elogdir, uid=portage_uid, gid=portage_gid, mode=02770)
+	ensure_dirs(elogdir, uid=portage_uid, gid=portage_gid, mode=0o2770)
 
 	# TODO: Locking
 	elogfilename = elogdir+"/summary.log"
 	elogfile = codecs.open(_unicode_encode(elogfilename,
 		encoding=_encodings['fs'], errors='strict'),
 		mode='a', encoding=_encodings['content'], errors='backslashreplace')
-	apply_permissions(elogfilename, mode=060, mask=0)
+	apply_permissions(elogfilename, mode=0o60, mask=0)
 	time_str = time.strftime("%Y-%m-%d %H:%M:%S %Z",
 		time.localtime(time.time()))
 	# Avoid potential UnicodeDecodeError later.

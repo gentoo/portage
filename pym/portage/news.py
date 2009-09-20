@@ -52,9 +52,9 @@ class NewsManager(object):
 		#   execute) bits set. News files should be world readable.
 		self._uid = int(self.config["PORTAGE_INST_UID"])
 		self._gid = portage_gid
-		self._file_mode = 00064
-		self._dir_mode  = 00074
-		self._mode_mask = 00000
+		self._file_mode = 0o0064
+		self._dir_mode  = 0o0074
+		self._mode_mask = 0o0000
 
 		portdir = portdb.porttree_root
 		profiles_base = os.path.join(portdir, 'profiles') + os.path.sep

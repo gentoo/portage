@@ -283,7 +283,7 @@ class WorldSet(EditablePackageSet):
 			self._setAtoms(atoms+nonatoms)
 		
 	def _ensure_dirs(self):
-		ensure_dirs(os.path.dirname(self._filename), gid=portage_gid, mode=02750, mask=02)
+		ensure_dirs(os.path.dirname(self._filename), gid=portage_gid, mode=0o2750, mask=0o2)
 
 	def lock(self):
 		self._ensure_dirs()

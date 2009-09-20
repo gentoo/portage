@@ -202,7 +202,7 @@ class Binpkg(CompositeTask):
 		pkg = self.pkg
 		pkg_path = self._pkg_path
 
-		dir_mode = 0755
+		dir_mode = 0o755
 		for mydir in (dir_path, self._image_dir, infloc):
 			portage.util.ensure_dirs(mydir, uid=portage.data.portage_uid,
 				gid=portage.data.portage_gid, mode=dir_mode)

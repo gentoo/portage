@@ -1096,7 +1096,7 @@ class vardbapi(dbapi):
 				pickle.dump(self._aux_cache, f, protocol=2)
 				f.close()
 				apply_secpass_permissions(
-					self._aux_cache_filename, gid=portage_gid, mode=0644)
+					self._aux_cache_filename, gid=portage_gid, mode=0o644)
 			except (IOError, OSError) as e:
 				pass
 			self._aux_cache["modified"] = set()
@@ -2098,7 +2098,7 @@ class dblink(object):
 			else:
 				catdir = os.path.dirname(self.settings["PORTAGE_BUILDDIR"])
 				ensure_dirs(os.path.dirname(catdir), uid=portage_uid,
-					gid=portage_gid, mode=070, mask=0)
+					gid=portage_gid, mode=0o70, mask=0)
 
 		builddir_lock = None
 		catdir_lock = None
@@ -2110,7 +2110,7 @@ class dblink(object):
 				catdir_lock = lockdir(catdir)
 				ensure_dirs(catdir,
 					uid=portage_uid, gid=portage_gid,
-					mode=070, mask=0)
+					mode=0o70, mask=0)
 				builddir_lock = lockdir(
 					self.settings["PORTAGE_BUILDDIR"])
 				try:
@@ -3785,7 +3785,7 @@ class dblink(object):
 		cfgfiledict.pop("IGNORE", None)
 		if cfgfiledict != cfgfiledict_orig:
 			ensure_dirs(os.path.dirname(conf_mem_file),
-				gid=portage_gid, mode=02750, mask=02)
+				gid=portage_gid, mode=0o2750, mask=0o2)
 			writedict(cfgfiledict, conf_mem_file)
 
 		# These caches are populated during collision-protect and the data
@@ -4258,7 +4258,7 @@ class dblink(object):
 				settings["PORTAGE_TMPDIR"])
 			from portage.process import atexit_register
 			atexit_register(shutil.rmtree, base_path_tmp)
-			dir_perms = 0755
+			dir_perms = 0o755
 			for subdir in "bin", "pym":
 				var_name = "PORTAGE_%s_PATH" % subdir.upper()
 				var_orig = settings[var_name]

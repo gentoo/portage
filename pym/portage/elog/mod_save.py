@@ -19,7 +19,7 @@ def process(mysettings, key, logentries, fulltext):
 		elogdir = os.path.join(mysettings["PORT_LOGDIR"], "elog")
 	else:
 		elogdir = os.path.join(os.sep, "var", "log", "portage", "elog")
-	ensure_dirs(elogdir, uid=portage_uid, gid=portage_gid, mode=02770)
+	ensure_dirs(elogdir, uid=portage_uid, gid=portage_gid, mode=0o2770)
 
 	elogfilename = os.path.join(elogdir, path + ":" + _unicode_decode(
 		time.strftime("%Y%m%d-%H%M%S", time.gmtime(time.time())),

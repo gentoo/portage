@@ -324,7 +324,7 @@ class portdbapi(dbapi):
 		depcachedir_w_ok = os.access(self.depcachedir, os.W_OK)
 		cache_kwargs = {
 			'gid'     : portage_gid,
-			'perms'   : 0664
+			'perms'   : 0o664
 		}
 
 		if secpass < 1:
@@ -381,9 +381,9 @@ class portdbapi(dbapi):
 		"""Create /var/cache/edb/dep and adjust permissions for the portage
 		group."""
 
-		dirmode = 02070
-		filemode =   060
-		modemask =    02
+		dirmode  = 0o2070
+		filemode =   0o60
+		modemask =    0o2
 
 		try:
 			ensure_dirs(self.depcachedir, gid=portage_gid,

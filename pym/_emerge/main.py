@@ -1039,7 +1039,7 @@ def emerge_main():
 		os.environ["ROOT"] = myopts["--root"]
 
 	# Portage needs to ensure a sane umask for the files it creates.
-	os.umask(022)
+	os.umask(0o22)
 	settings, trees, mtimedb = load_emerge_config()
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
 	rval = profile_check(trees, myaction)

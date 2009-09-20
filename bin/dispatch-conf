@@ -37,7 +37,7 @@ DIFF_CVS_INTERP      = "diff -Nu '%s' '%s' | grep '^[+-][^+-]' | grep -v '# .Hea
 DIFF_WSCOMMENTS      = "diff -Nu '%s' '%s' | grep '^[+-][^+-]' | grep -v '^[-+]#' | grep -v '^[-+][:space:]*$'"
 
 # We need a secure scratch dir and python does silly verbose errors on the use of tempnam
-oldmask = os.umask(0077)
+oldmask = os.umask(0o077)
 SCRATCH_DIR = None
 while SCRATCH_DIR is None:
     try:
@@ -81,7 +81,7 @@ class dispatch:
             if os.path.isfile(self.options["log-file"]) \
                or not os.path.exists(self.options["log-file"]):
                 open(self.options["log-file"], 'w').close() # Truncate it
-                os.chmod(self.options["log-file"], 0600)
+                os.chmod(self.options["log-file"], 0o600)
         else:
             self.options["log-file"] = "/dev/null"
 

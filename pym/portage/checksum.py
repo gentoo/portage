@@ -31,7 +31,7 @@ def _generate_hash_function(hashtype, hashobject, origin="unknown"):
 			encoding=_encodings['fs'], errors='strict'), 'rb')
 		blocksize = HASHING_BLOCKSIZE
 		data = f.read(blocksize)
-		size = 0L
+		size = 0
 		checksum = hashobject()
 		while data:
 			checksum.update(data)
