@@ -1442,7 +1442,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 	if porttrees is None:
 		porttrees = portdb.porttrees
 	portage.writemsg_stdout("\n>>> Updating Portage cache\n")
-	old_umask = os.umask(0002)
+	old_umask = os.umask(0o002)
 	cachedir = os.path.normpath(settings.depcachedir)
 	if cachedir in ["/",    "/bin", "/dev",  "/etc",  "/home",
 					"/lib", "/opt", "/proc", "/root", "/sbin",
@@ -1717,15 +1717,15 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		st = None
 	if st is None:
 		print(">>>",myportdir,"not found, creating it.")
-		os.makedirs(myportdir,0755)
+		os.makedirs(myportdir,0o755)
 		st = os.stat(myportdir)
 
 	spawn_kwargs = {}
 	spawn_kwargs["env"] = settings.environ()
 	if 'usersync' in settings.features and \
 		portage.data.secpass >= 2 and \
-		(st.st_uid != os.getuid() and st.st_mode & 0700 or \
-		st.st_gid != os.getgid() and st.st_mode & 0070):
+		(st.st_uid != os.getuid() and st.st_mode & 0o700 or \
+		st.st_gid != os.getgid() and st.st_mode & 0o070):
 		try:
 			homedir = pwd.getpwuid(st.st_uid).pw_dir
 		except KeyError:
@@ -1737,9 +1737,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			spawn_kwargs["gid"]    = st.st_gid
 			spawn_kwargs["groups"] = [st.st_gid]
 			spawn_kwargs["env"]["HOME"] = homedir
-			umask = 0002
-			if not st.st_mode & 0020:
-				umask = umask | 0020
+			umask = 0o002
+			if not st.st_mode & 0o020:
+				umask = umask | 0o020
 			spawn_kwargs["umask"] = umask
 
 	syncuri = settings.get("SYNC", "").strip()
@@ -1751,7 +1751,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	vcs_dirs = frozenset([".git", ".svn", "CVS", ".hg"])
 	vcs_dirs = vcs_dirs.intersection(os.listdir(myportdir))
 
-	os.umask(0022)
+	os.umask(0o022)
 	dosyncuri = syncuri
 	updatecache_flg = False
 	if myaction == "metadata":
