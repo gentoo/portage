@@ -3980,14 +3980,14 @@ class depgraph(object):
 					counters.blocks += 1
 					if x.satisfied:
 						counters.blocks_satisfied += 1
-				resolved = portage.key_expand(
+				resolved = portage.dep_expand(
 					str(x.atom).lstrip("!"), mydb=vardb, settings=pkgsettings)
 				if "--columns" in self._frozen_config.myopts and "--quiet" in self._frozen_config.myopts:
-					addl += " " + colorize(blocker_style, resolved)
+					addl += " " + colorize(blocker_style, str(resolved))
 				else:
 					addl = "[%s %s] %s%s" % \
 						(colorize(blocker_style, "blocks"),
-						addl, indent, colorize(blocker_style, resolved))
+						addl, indent, colorize(blocker_style, str(resolved)))
 				block_parents = self._dynamic_config._blocker_parents.parent_nodes(x)
 				block_parents = set([pnode[2] for pnode in block_parents])
 				block_parents = ", ".join(block_parents)
