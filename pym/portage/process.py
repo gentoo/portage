@@ -386,8 +386,7 @@ def find_binary(binary):
 	@rtype: None or string
 	@returns: full path to binary or None if the binary could not be located.
 	"""
-	
-	for path in os.getenv("PATH", "").split(":"):
+	for path in os.environ.get("PATH", "").split(":"):
 		filename = "%s/%s" % (path, binary)
 		if os.access(filename, os.X_OK) and os.path.isfile(filename):
 			return filename
