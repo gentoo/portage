@@ -11,6 +11,7 @@ import traceback
 
 from portage import os
 from portage import _encodings
+from portage import _unicode_decode
 from portage import _unicode_encode
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -372,8 +373,13 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	if pre_exec:
 		pre_exec()
 
+	# Decode all keys for compatibility with Python 3.
+	env_decoded = {}
+	for k, v in env.items():
+		env_decoded[_unicode_decode(k)] = v
+
 	# And switch to the new process.
-	os.execve(binary, myargs, env)
+	os.execve(binary, myargs, env_decoded)
 
 def find_binary(binary):
 	"""
