@@ -519,6 +519,8 @@ class Atom(_atom_base):
 			raise TypeError(_("Expected %s, got %s") % \
 				(_atom_base, type(s)))
 
+		_atom_base.__init__(s)
+
 		if "!" == s[:1]:
 			blocker = self._blocker(forbid_overlap=("!" == s[1:2]))
 			if blocker.overlap.forbid:
