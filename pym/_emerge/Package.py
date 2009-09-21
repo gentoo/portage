@@ -3,11 +3,15 @@
 # $Id$
 
 import re
+import sys
 from itertools import chain
 import portage
 from portage.dep import paren_reduce, use_reduce, \
 	paren_normalize, paren_enclose
 from _emerge.Task import Task
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 class Package(Task):
 

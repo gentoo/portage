@@ -45,6 +45,9 @@ from _emerge.RootConfig import RootConfig
 from _emerge.SlotObject import SlotObject
 from _emerge.SequentialTaskQueue import SequentialTaskQueue
 
+if sys.hexversion >= 0x3000000:
+	basestring = str
+
 class Scheduler(PollScheduler):
 
 	_opts_ignore_blockers = \

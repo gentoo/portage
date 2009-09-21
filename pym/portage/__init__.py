@@ -124,6 +124,9 @@ except ImportError as e:
 	sys.stderr.write("    "+str(e)+"\n\n")
 	raise
 
+if sys.hexversion >= 0x3000000:
+	basestring = str
+
 # Assume utf_8 fs encoding everywhere except in merge code, where the
 # user's locale is respected.
 _encodings = {

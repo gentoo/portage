@@ -27,6 +27,9 @@ from portage.versions import catpkgsplit, catsplit, \
 	pkgcmp, pkgsplit, ververify, _version
 import portage.cache.mappings
 
+if sys.hexversion >= 0x3000000:
+	basestring = str
+
 def cpvequal(cpv1, cpv2):
 	"""
 	

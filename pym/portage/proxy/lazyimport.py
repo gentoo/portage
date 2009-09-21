@@ -14,6 +14,9 @@ except ImportError:
 
 from portage.proxy.objectproxy import ObjectProxy
 
+if sys.hexversion >= 0x3000000:
+	basestring = str
+
 _module_proxies = {}
 _module_proxies_lock = threading.RLock()
 

@@ -18,6 +18,9 @@ from portage import _unicode_encode
 from portage.localization import _
 import portage
 
+if sys.hexversion >= 0x3000000:
+	basestring = str
+
 def create_message(sender, recipient, subject, body, attachments=None):
 
 	if sys.hexversion < 0x3000000:
