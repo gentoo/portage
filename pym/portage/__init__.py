@@ -182,8 +182,7 @@ class _unicode_func_wrapper(object):
 			for x in args]
 		if kwargs:
 			wrapped_kwargs = dict(
-				(_unicode_encode(k, encoding=encoding, errors='strict'),
-				_unicode_encode(v, encoding=encoding, errors='strict'))
+				(k, _unicode_encode(v, encoding=encoding, errors='strict'))
 				for k, v in kwargs.items())
 		else:
 			wrapped_kwargs = {}
