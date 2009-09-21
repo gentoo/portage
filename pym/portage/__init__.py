@@ -6286,7 +6286,7 @@ def _prepare_workdir(mysettings):
 			writemsg("%s\n" % e)
 		writemsg(_("!!! Unable to parse PORTAGE_WORKDIR_MODE='%s', using %s.\n") % \
 		(mysettings["PORTAGE_WORKDIR_MODE"], oct(workdir_mode)))
-	mysettings["PORTAGE_WORKDIR_MODE"] = oct(workdir_mode)
+	mysettings["PORTAGE_WORKDIR_MODE"] = oct(workdir_mode).replace('o', '')
 	try:
 		apply_secpass_permissions(mysettings["WORKDIR"],
 		uid=portage_uid, gid=portage_gid, mode=workdir_mode)
