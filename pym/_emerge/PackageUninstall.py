@@ -23,7 +23,7 @@ class PackageUninstall(AsynchronousTask):
 				[self.pkg.cpv], self.ldpath_mtimes, clean_world=0,
 				clean_delay=0, raise_on_error=1, scheduler=self.scheduler,
 				writemsg_level=self._writemsg_level)
-		except UninstallFailure, e:
+		except UninstallFailure as e:
 			self.returncode = e.status
 		else:
 			self.returncode = os.EX_OK

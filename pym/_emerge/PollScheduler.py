@@ -95,7 +95,7 @@ class PollScheduler(object):
 			try:
 				self._poll_event_queue.extend(self._poll_obj.poll(timeout))
 				break
-			except select.error, e:
+			except select.error as e:
 				writemsg_level("\n!!! select error: %s\n" % (e,),
 					level=logging.ERROR, noiselevel=-1)
 				del e

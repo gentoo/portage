@@ -46,7 +46,7 @@ def quickpkg_main(options, args, eout):
 	for arg in args:
 		try:
 			atom = dep_expand(arg, mydb=vardb, settings=vartree.settings)
-		except ValueError, e:
+		except ValueError as e:
 			# Multiple matches thrown from cpv_expand
 			eout.eerror("Please use a more specific atom: %s" % \
 				" ".join(e.args[0]))
@@ -84,7 +84,7 @@ def quickpkg_main(options, args, eout):
 				try:
 					restrict = flatten(use_reduce(
 						paren_reduce(restrict), uselist=use))
-				except InvalidDependString, e:
+				except InvalidDependString as e:
 					eout.eerror("Invalid RESTRICT metadata " + \
 						"for '%s': %s; skipping" % (cpv, str(e)))
 					del e
@@ -141,7 +141,7 @@ def quickpkg_main(options, args, eout):
 			binpkg_path = bintree.getname(cpv)
 			try:
 				s = os.stat(binpkg_path)
-			except OSError, e:
+			except OSError as e:
 				# Sanity check, shouldn't happen normally.
 				eout.eend(1)
 				eout.eerror(str(e))

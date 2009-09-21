@@ -622,13 +622,13 @@ def main():
 		retval = function(args)
 		if retval:
 			sys.exit(retval)
-	except portage.exception.PermissionDenied, e:
+	except portage.exception.PermissionDenied as e:
 		sys.stderr.write("Permission denied: '%s'\n" % str(e))
 		sys.exit(e.errno)
-	except portage.exception.ParseError, e:
+	except portage.exception.ParseError as e:
 		sys.stderr.write("%s\n" % str(e))
 		sys.exit(1)
-	except ValueError, e:
+	except ValueError as e:
 		if not e.args or \
 			not hasattr(e.args[0], "__len__") or \
 			len(e.args[0]) < 2:

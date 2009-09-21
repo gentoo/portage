@@ -61,7 +61,7 @@ class database(flat_hash.database):
 				try:
 					d["_eclasses_"] = self.ec.get_eclass_data(
 						d["INHERITED"].split())
-				except KeyError, e:
+				except KeyError as e:
 					# INHERITED contains a non-existent eclass.
 					raise cache_errors.CacheCorruption(cpv, e)
 				del d["INHERITED"]
@@ -122,13 +122,13 @@ class database(flat_hash.database):
 		try:
 			myf = open(_unicode_encode(fp,
 				encoding=_encodings['fs'], errors='strict'), 'wb')
-		except EnvironmentError, e:
+		except EnvironmentError as e:
 			if errno.ENOENT == e.errno:
 				try:
 					self._ensure_dirs(cpv)
 					myf = open(_unicode_encode(fp,
 						encoding=_encodings['fs'], errors='strict'), 'wb')
-				except EnvironmentError, e:
+				except EnvironmentError as e:
 					raise cache_errors.CacheCorruption(cpv, e)
 			else:
 				raise cache_errors.CacheCorruption(cpv, e)
@@ -141,7 +141,7 @@ class database(flat_hash.database):
 
 		try:
 			os.rename(fp, new_fp)
-		except EnvironmentError, e:
+		except EnvironmentError as e:
 			try:
 				os.unlink(fp)
 			except EnvironmentError:

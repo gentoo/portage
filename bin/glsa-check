@@ -126,7 +126,7 @@ if "affected" in params:
 	for x in todolist:
 		try:
 			myglsa = Glsa(x, portage.settings, vardb, portdb)
-		except (GlsaTypeException, GlsaFormatException), e:
+		except (GlsaTypeException, GlsaFormatException) as e:
 			if verbose:
 				sys.stderr.write(("invalid GLSA: %s (error message was: %s)\n" % (x, e)))
 			continue
@@ -151,7 +151,7 @@ def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr):
 	for myid in myglsalist:
 		try:
 			myglsa = Glsa(myid, portage.settings, vardb, portdb)
-		except (GlsaTypeException, GlsaFormatException), e:
+		except (GlsaTypeException, GlsaFormatException) as e:
 			if verbose:
 				fd2.write(("invalid GLSA: %s (error message was: %s)\n" % (myid, e)))
 			continue
@@ -197,7 +197,7 @@ if mode in ["dump", "fix", "inject", "pretend"]:
 	for myid in glsalist:
 		try:
 			myglsa = Glsa(myid, portage.settings, vardb, portdb)
-		except (GlsaTypeException, GlsaFormatException), e:
+		except (GlsaTypeException, GlsaFormatException) as e:
 			if verbose:
 				sys.stderr.write(("invalid GLSA: %s (error message was: %s)\n" % (myid, e)))
 			continue
@@ -249,7 +249,7 @@ if mode == "test":
 	for myid in glsalist:
 		try:
 			myglsa = Glsa(myid, portage.settings, vardb, portdb)
-		except (GlsaTypeException, GlsaFormatException), e:
+		except (GlsaTypeException, GlsaFormatException) as e:
 			if verbose:
 				sys.stderr.write(("invalid GLSA: %s (error message was: %s)\n" % (myid, e)))
 			continue
@@ -298,7 +298,7 @@ if mode == "mail":
 	for myid in glsalist:
 		try:
 			myglsa = Glsa(myid, portage.settings, vardb, portdb)
-		except (GlsaTypeException, GlsaFormatException), e:
+		except (GlsaTypeException, GlsaFormatException) as e:
 			if verbose:
 				sys.stderr.write(("invalid GLSA: %s (error message was: %s)\n" % (myid, e)))
 			continue

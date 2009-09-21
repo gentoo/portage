@@ -44,7 +44,7 @@ class EbuildFetchonly(SlotObject):
 		from tempfile import mkdtemp
 		try:
 			private_tmpdir = mkdtemp("", "._portage_fetch_.", global_tmpdir)
-		except OSError, e:
+		except OSError as e:
 			if e.errno != portage.exception.PermissionDenied.errno:
 				raise
 			raise portage.exception.PermissionDenied(global_tmpdir)

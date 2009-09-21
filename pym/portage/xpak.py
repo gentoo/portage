@@ -232,7 +232,7 @@ def xpand(myid,mydest):
 	mydata=myid[1]
 	try:
 		origdir=os.getcwd()
-	except SystemExit, e:
+	except SystemExit as e:
 		raise
 	except:
 		os.chdir("/")
@@ -313,7 +313,7 @@ class tbz2(object):
 			# thus the above sanity check.
 			try:
 				shutil.rmtree(datadir)
-			except OSError, oe:
+			except OSError as oe:
 				if oe.errno == errno.ENOENT:
 					pass
 				else:
@@ -359,7 +359,7 @@ class tbz2(object):
 			self.datapos=a.tell()
 			a.close()
 			return 2
-		except SystemExit, e:
+		except SystemExit as e:
 			raise
 		except:
 			return 0
@@ -397,7 +397,7 @@ class tbz2(object):
 			return 0
 		try:
 			origdir=os.getcwd()
-		except SystemExit, e:
+		except SystemExit as e:
 			raise
 		except:
 			os.chdir("/")

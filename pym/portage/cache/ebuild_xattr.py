@@ -35,7 +35,7 @@ class database(fs_template.FsBased):
 		path = os.path.join(self.portdir,'profiles/repo_name')
 		try:
 			return int(self.__get(path,'value_max_len'))
-		except NoValueException,e:
+		except NoValueException as e:
 			max = self.__calc_max(path)
 			self.__set(path,'value_max_len',str(max))
 			return max
@@ -54,7 +54,7 @@ class database(fs_template.FsBased):
 			while True:
 				self.__set(path,'test_max',s)
 				s+=hundred
-		except IOError,e:
+		except IOError as e:
 			# ext based give wrong errno
 			# http://bugzilla.kernel.org/show_bug.cgi?id=12793
 			if e.errno in (E2BIG,ENOSPC):
@@ -64,7 +64,7 @@ class database(fs_template.FsBased):
 
 		try:
 			self.__remove(path,'test_max')
-		except IOError,e:
+		except IOError as e:
 			if e.errno is not ENODATA:
 				raise e
 
@@ -77,7 +77,7 @@ class database(fs_template.FsBased):
 	def __has_cache(self,path):
 		try:
 			self.__get(path,'_mtime_')
-		except NoValueException,e:
+		except NoValueException as e:
 			return False
 
 		return True
@@ -85,7 +85,7 @@ class database(fs_template.FsBased):
 	def __get(self,path,key,default=None):
 		try:
 			return xattr.get(path,key,namespace=self.ns)
-		except IOError,e:
+		except IOError as e:
 			if not default is None and ENODATA == e.errno:
 				return default
 			else:

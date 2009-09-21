@@ -778,7 +778,7 @@ else:
 		else:
 			must_fetch=0
 
-	except (OSError,IOError), e:
+	except (OSError,IOError) as e:
 		if e.errno != 2:
 			print red("!!!")+" caught exception '%s' for %s/metadata.dtd, bailing" % (str(e), portage.CACHE_PATH)
 			sys.exit(1)
@@ -791,16 +791,16 @@ else:
 		try:
 			try:
 				os.unlink(metadata_dtd)
-			except OSError, e:
+			except OSError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
 			val=portage.fetch(['http://www.gentoo.org/dtd/metadata.dtd'],repoman_settings,fetchonly=0, \
 				try_mirrors=0)
 
-		except SystemExit, e:
+		except SystemExit as e:
 			raise  # Need to propogate this
-		except Exception,e:
+		except Exception as e:
 			print
 			print red("!!!")+" attempting to fetch 'http://www.gentoo.org/dtd/metadata.dtd', caught"
 			print red("!!!")+" exception '%s' though." % str(e)
@@ -999,7 +999,7 @@ for x in scanlist:
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content']):
 				line +=1
-		except UnicodeDecodeError, ue:
+		except UnicodeDecodeError as ue:
 			stats["file.UTF8"] += 1
 			s = ue.object[:ue.start]
 			l2 = s.count("\n")
@@ -1071,7 +1071,7 @@ for x in scanlist:
 	for mykey in fetchlist_dict:
 		try:
 			myfiles_all.extend(fetchlist_dict[mykey])
-		except portage.exception.InvalidDependString, e:
+		except portage.exception.InvalidDependString as e:
 			src_uri_error = True
 			try:
 				portdb.aux_get(mykey, ["SRC_URI"])
@@ -1107,7 +1107,7 @@ for x in scanlist:
 			full_path = os.path.join(repodir, relative_path)
 			try:
 				mystat = os.stat(full_path)
-			except OSError, oe:
+			except OSError as oe:
 				if oe.errno == 2:
 					# don't worry about it.  it likely was removed via fix above.
 					continue
@@ -1174,7 +1174,7 @@ for x in scanlist:
 			f = open(os.path.join(checkdir, "metadata.xml"))
 			utilities.parse_metadata_use(f, muselist)
 			f.close()
-		except (EnvironmentError, ParseError), e:
+		except (EnvironmentError, ParseError) as e:
 			metadata_bad = True
 			stats["metadata.bad"] += 1
 			fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
@@ -1416,14 +1416,14 @@ for x in scanlist:
 			except ValueError:
 				badsyntax.append("parenthesis mismatch")
 				mydeplist = []
-			except portage.exception.InvalidDependString, e:
+			except portage.exception.InvalidDependString as e:
 				badsyntax.append(str(e))
 				del e
 				mydeplist = []
 
 			try:
 				portage.dep.use_reduce(mydeplist, matchall=1)
-			except portage.exception.InvalidDependString, e:
+			except portage.exception.InvalidDependString as e:
 				badsyntax.append(str(e))
 
 			for token in operator_tokens:
@@ -1565,7 +1565,7 @@ for x in scanlist:
 		try:
 			myrestrict = portage.dep.use_reduce(
 				portage.dep.paren_reduce(myaux["RESTRICT"]), matchall=1)
-		except portage.exception.InvalidDependString, e:
+		except portage.exception.InvalidDependString as e:
 			stats["RESTRICT.syntax"] = stats["RESTRICT.syntax"] + 1
 			fails["RESTRICT.syntax"].append(
 				"%s: RESTRICT: %s" % (relative_path, e))
@@ -1833,7 +1833,7 @@ else:
 		try:
 			myvcstree=portage.cvstree.getentries("./",recursive=1)
 			myunadded=portage.cvstree.findunadded(myvcstree,recursive=1,basedir="./")
-		except SystemExit, e:
+		except SystemExit as e:
 			raise  # TODO propogate this
 		except:
 			err("Error retrieving CVS tree; exiting.")
@@ -1841,7 +1841,7 @@ else:
 		try:
 			svnstatus=os.popen("svn status --no-ignore").readlines()
 			myunadded = [ "./"+elem.rstrip().split()[1] for elem in svnstatus if elem.startswith("?") or elem.startswith("I") ]
-		except SystemExit, e:
+		except SystemExit as e:
 			raise  # TODO propogate this
 		except:
 			err("Error retrieving SVN info; exiting.")
@@ -2005,7 +2005,7 @@ else:
 			commitmessage = f.read()
 			f.close()
 			del f
-		except (IOError, OSError), e:
+		except (IOError, OSError) as e:
 			if e.errno == errno.ENOENT:
 				portage.writemsg("!!! File Not Found: --commitmsgfile='%s'\n" % options.commitmsgfile)
 			else:
@@ -2252,7 +2252,7 @@ else:
 					if not os.path.isdir(repoman_settings["O"]):
 						continue
 					gpgsign(os.path.join(repoman_settings["O"], "Manifest"))
-		except portage.exception.PortageException, e:
+		except portage.exception.PortageException as e:
 			portage.writemsg("!!! %s\n" % str(e))
 			portage.writemsg("!!! Disabled FEATURES='sign'\n")
 			signed = False

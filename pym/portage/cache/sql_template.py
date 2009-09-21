@@ -74,7 +74,7 @@ class SQLDatabase(template.database):
 					self.SCHEMA_PACKAGE_NAME)
 			try:
 				self.con.execute(self.SCHEMA_PACKAGE_CREATE)
-			except  self._BaseError, e:
+			except  self._BaseError as e:
 				raise cache_errors.InitializationError(self.__class__, e)
 
 		if not self._table_exists(self.SCHEMA_VALUES_NAME):
@@ -83,7 +83,7 @@ class SQLDatabase(template.database):
 					self.SCHEMA_VALUES_NAME)
 			try:
 				self.con.execute(self.SCHEMA_VALUES_CREATE)
-			except	self._BaseError, e:
+			except	self._BaseError as e:
 				raise cache_errors.InitializationError(self.__class__, e)
 
 
@@ -103,7 +103,7 @@ class SQLDatabase(template.database):
 			self.con.execute("SELECT key, value FROM %s NATURAL JOIN %s "
 			"WHERE label=%s AND cpv=%s" % (self.SCHEMA_PACKAGE_NAME, self.SCHEMA_VALUES_NAME,
 			self.label, self._sfilter(cpv)))
-		except self._BaseError, e:
+		except self._BaseError as e:
 			raise cache_errors.CacheCorruption(self, cpv, e)
 
 		rows = self.con.fetchall()
@@ -126,7 +126,7 @@ class SQLDatabase(template.database):
 				(self.SCHEMA_PACKAGE_NAME, self.label, self._sfilter(cpv)))
 				if self.autocommits:
 					self.commit()
-			except self._BaseError, e:
+			except self._BaseError as e:
 				raise cache_errors.CacheCorruption(self, cpv, e)
 			if self.con.rowcount <= 0:
 				raise KeyError(cpv)
@@ -148,7 +148,7 @@ class SQLDatabase(template.database):
 			# insert.
 			try:
 				pkgid = self._insert_cpv(cpv)
-			except self._BaseError, e:
+			except self._BaseError as e:
 				raise cache_errors.CacheCorruption(cpv, e)
 
 			# __getitem__ fills out missing values, 
@@ -162,7 +162,7 @@ class SQLDatabase(template.database):
 				try:
 					self.con.executemany("INSERT INTO %s (pkgid, key, value) VALUES(\"%s\", %%(key)s, %%(value)s)" % \
 					(self.SCHEMA_VALUES_NAME, str(pkgid)), db_values)
-				except self._BaseError, e:
+				except self._BaseError as e:
 					raise cache_errors.CacheCorruption(cpv, e)
 			if self.autocommits:
 				self.commit()
@@ -210,13 +210,13 @@ class SQLDatabase(template.database):
 		if not self.autocommits:
 			try:
 				self.commit()
-			except self._BaseError, e:
+			except self._BaseError as e:
 				raise cache_errors.GeneralCacheCorruption(e)
 
 		try:
 			self.con.execute("SELECT cpv FROM %s WHERE label=%s AND cpv=%s" % \
 				(self.SCHEMA_PACKAGE_NAME, self.label, self._sfilter(cpv)))
-		except self._BaseError, e:
+		except self._BaseError as e:
 			raise cache_errors.GeneralCacheCorruption(e)
 		return self.con.rowcount > 0
 
@@ -225,13 +225,13 @@ class SQLDatabase(template.database):
 		if not self.autocommits:
 			try:
 				self.commit()
-			except self._BaseError, e:
+			except self._BaseError as e:
 				raise cache_errors.GeneralCacheCorruption(e)
 
 		try:
 			self.con.execute("SELECT cpv FROM %s WHERE label=%s" % 
 				(self.SCHEMA_PACKAGE_NAME, self.label))
-		except self._BaseError, e:
+		except self._BaseError as e:
 			raise cache_errors.GeneralCacheCorruption(e)
 #		return [ row[0] for row in self.con.fetchall() ]
 		for x in self.con.fetchall():
@@ -242,7 +242,7 @@ class SQLDatabase(template.database):
 			self.con.execute("SELECT cpv, key, value FROM %s NATURAL JOIN %s "
 			"WHERE label=%s" % (self.SCHEMA_PACKAGE_NAME, self.SCHEMA_VALUES_NAME,
 			self.label))
-		except self._BaseError, e:
+		except self._BaseError as e:
 			raise cache_errors.CacheCorruption(self, cpv, e)
 		
 		oldcpv = None
@@ -288,7 +288,7 @@ class SQLDatabase(template.database):
 		try:
 			self.con.execute("SELECT cpv from package_cache natural join values_cache WHERE label=%s %s" % \
 				(self.label, query))
-		except self._BaseError, e:
+		except self._BaseError as e:
 			raise cache_errors.GeneralCacheCorruption(e)
 
 		return [ row[0] for row in self.con.fetchall() ]

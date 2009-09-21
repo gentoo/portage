@@ -315,13 +315,13 @@ class search(object):
 							pkgdir, self.settings["DISTDIR"])
 						try:
 							uri_map = self.portdb.getFetchMap(mycpv)
-						except portage.exception.InvalidDependString, e:
+						except portage.exception.InvalidDependString as e:
 							file_size_str = "Unknown (%s)" % (e,)
 							del e
 						else:
 							try:
 								mysum[0] = mf.getDistfilesSize(uri_map)
-							except KeyError, e:
+							except KeyError as e:
 								file_size_str = "Unknown (missing " + \
 									"digest for %s)" % (e,)
 								del e

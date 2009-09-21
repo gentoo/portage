@@ -64,7 +64,7 @@ def rcs_archive(archive, curconf, newconf, mrgconf):
 
     try:
         shutil.copy2(curconf, archive)
-    except(IOError, os.error), why:
+    except(IOError, os.error) as why:
         print >> sys.stderr, _('dispatch-conf: Error copying %(curconf)s to %(archive)s: %(reason)s; fatal') % \
               {"curconf": curconf, "archive": archive, "reason": str(why)}
     if os.path.exists(archive + ',v'):
@@ -80,7 +80,7 @@ def rcs_archive(archive, curconf, newconf, mrgconf):
 
         try:
             shutil.copy2(newconf, archive)
-        except(IOError, os.error), why:
+        except(IOError, os.error) as why:
             print >> sys.stderr, _('dispatch-conf: Error copying %(newconf)s to %(archive)s: %(reason)s; fatal') % \
                   {"newconf": newconf, "archive": archive, "reason": str(why)}
 
@@ -123,7 +123,7 @@ def file_archive(archive, curconf, newconf, mrgconf):
 
     try:
         shutil.copy2(curconf, archive)
-    except(IOError, os.error), why:
+    except(IOError, os.error) as why:
         print >> sys.stderr, _('dispatch-conf: Error copying %(curconf)s to %(archive)s: %(reason)s; fatal') % \
               {"curconf": curconf, "archive": archive, "reason": str(why)}
 
@@ -131,7 +131,7 @@ def file_archive(archive, curconf, newconf, mrgconf):
         # Save off new config file in the archive dir with .dist.new suffix
         try:
             shutil.copy2(newconf, archive + '.dist.new')
-        except(IOError, os.error), why:
+        except(IOError, os.error) as why:
             print >> sys.stderr, _('dispatch-conf: Error copying %(newconf)s to %(archive)s: %(reason)s; fatal') % \
                   {"newconf": newconf, "archive": archive + '.dist.new', "reason": str(why)}
 

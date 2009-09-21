@@ -138,7 +138,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 							try:
 								os.rename(dir_file + ext, dir_file + ext + ".old")
 								moved_old_dir = True
-							except EnvironmentError, e:
+							except EnvironmentError as e:
 								if e.errno != errno.ENOENT:
 									raise
 								del e
@@ -165,7 +165,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 					for ext in dir_extensions:
 						try:
 							os.rename(dir_file + ext + ".old", dir_file + ext)
-						except EnvironmentError, e:
+						except EnvironmentError as e:
 							if e.errno != errno.ENOENT:
 								raise
 							del e
@@ -175,7 +175,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 				for ext in dir_extensions:
 					try:
 						os.unlink(dir_file + ext + ".old")
-					except EnvironmentError, e:
+					except EnvironmentError as e:
 						if e.errno != errno.ENOENT:
 							raise
 						del e
@@ -214,7 +214,7 @@ def display_preserved_libs(vardbapi, myopts):
 
 		try:
 			linkmap.rebuild()
-		except portage.exception.CommandNotFound, e:
+		except portage.exception.CommandNotFound as e:
 			writemsg_level("!!! Command Not Found: %s\n" % (e,),
 				level=logging.ERROR, noiselevel=-1)
 			del e
@@ -784,7 +784,7 @@ def apply_priorities(settings):
 def nice(settings):
 	try:
 		os.nice(int(settings.get("PORTAGE_NICENESS", "0")))
-	except (OSError, ValueError), e:
+	except (OSError, ValueError) as e:
 		out = portage.output.EOutput()
 		out.eerror("Failed to change nice value to '%s'" % \
 			settings["PORTAGE_NICENESS"])
@@ -911,7 +911,7 @@ def expand_set_arguments(myfiles, myaction, root_config):
 				setconfig.active.append(s)
 				try:
 					set_atoms = setconfig.getSetAtoms(s)
-				except portage.exception.PackageSetNotFound, e:
+				except portage.exception.PackageSetNotFound as e:
 					writemsg_level(("emerge: the given set '%s' " + \
 						"contains a non-existent set named '%s'.\n") % \
 						(s, e), level=logging.ERROR, noiselevel=-1)
@@ -1282,7 +1282,7 @@ def emerge_main():
 			try:
 				# At least the parent needs to exist for the lock file.
 				portage.util.ensure_dirs(settings['EMERGE_LOG_DIR'])
-			except portage.exception.PortageException, e:
+			except portage.exception.PortageException as e:
 				writemsg_level("!!! Error creating directory for " + \
 					"EMERGE_LOG_DIR='%s':\n!!! %s\n" % \
 					(settings['EMERGE_LOG_DIR'], e),
@@ -1365,7 +1365,7 @@ def emerge_main():
 				try:
 					valid_atoms.append(
 						portage.dep_expand(x, mydb=vardb, settings=settings))
-				except portage.exception.AmbiguousPackageName, e:
+				except portage.exception.AmbiguousPackageName as e:
 					msg = "The short ebuild name \"" + x + \
 						"\" is ambiguous.  Please specify " + \
 						"one of the following " + \

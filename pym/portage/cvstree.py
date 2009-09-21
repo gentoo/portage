@@ -206,7 +206,7 @@ def getentries(mydir,recursive=0):
 			mode='r', encoding=_encodings['content'], errors='strict')
 		mylines=myfile.readlines()
 		myfile.close()
-	except SystemExit, e:
+	except SystemExit as e:
 		raise
 	except:
 		mylines=[]
@@ -296,9 +296,9 @@ def getentries(mydir,recursive=0):
 					print "stat done"
 				
 				del mystat
-			except SystemExit, e:
+			except SystemExit as e:
 				raise
-			except Exception, e:
+			except Exception as e:
 				print "failed to stat",file
 				print e
 				return

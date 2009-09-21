@@ -38,7 +38,7 @@ class database(fs_template.FsBased):
 			try:
 				self._ensure_dirs()
 				self._ensure_dirs(self._db_path)
-			except (OSError, IOError), e:
+			except (OSError, IOError) as e:
 				raise cache_errors.InitializationError(self.__class__, e)
 
 			# try again if failed
@@ -46,7 +46,7 @@ class database(fs_template.FsBased):
 				if self.__db == None:
 					self.__db = anydbm_module.open(
 						_unicode_encode(self._db_path), 'c', self._perms)
-			except anydbm_module.error, e:
+			except anydbm_module.error as e:
 				raise cache_errors.InitializationError(self.__class__, e)
 		self._ensure_access(self._db_path)
 

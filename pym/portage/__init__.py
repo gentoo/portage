@@ -42,7 +42,7 @@ try:
 	import shutil
 	del shutil
 
-except ImportError, e:
+except ImportError as e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete python imports. These are internal modules for\n")
 	sys.stderr.write("!!! python and failure here indicates that you have a problem with python\n")
@@ -109,7 +109,7 @@ try:
 
 	from portage.localization import _
 
-except ImportError, e:
+except ImportError as e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete portage imports. There are internal modules for\n")
 	sys.stderr.write("!!! portage and failure here indicates that you have a problem with your\n")
@@ -258,7 +258,7 @@ try:
 		encoding=_encodings['fs'])
 	_selinux_merge = _unicode_module_wrapper(_selinux,
 		encoding=_encodings['merge'])
-except OSError, e:
+except OSError as e:
 	sys.stderr.write("!!! SELinux not loaded: %s\n" % str(e))
 	del e
 except ImportError:
@@ -514,7 +514,7 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 			mtime = pathstat.st_mtime
 		else:
 			raise portage.exception.DirectoryNotFound(mypath)
-	except EnvironmentError, e:
+	except EnvironmentError as e:
 		if e.errno == portage.exception.PermissionDenied.errno:
 			raise portage.exception.PermissionDenied(mypath)
 		del e
@@ -531,7 +531,7 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 			cacheStale += 1
 		try:
 			list = os.listdir(mypath)
-		except EnvironmentError, e:
+		except EnvironmentError as e:
 			if e.errno != errno.EACCES:
 				raise
 			del e
@@ -967,7 +967,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 		file_path = os.path.join(envd_dir, x)
 		try:
 			myconfig = getconfig(file_path, expand=False)
-		except portage.exception.ParseError, e:
+		except portage.exception.ParseError as e:
 			writemsg("!!! '%s'\n" % str(e), noiselevel=-1)
 			del e
 			continue
@@ -1028,7 +1028,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 			if x[0]=="#":
 				continue
 			oldld.append(x[:-1])
-	except (IOError, OSError), e:
+	except (IOError, OSError) as e:
 		if e.errno != errno.ENOENT:
 			raise
 		oldld = None
@@ -1088,7 +1088,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 		try:
 			newldpathtime = long(os.stat(x).st_mtime)
 			lib_dirs.add(normalize_path(x))
-		except OSError, oe:
+		except OSError as oe:
 			if oe.errno == errno.ENOENT:
 				try:
 					del prev_mtimes[x]
@@ -1203,17 +1203,17 @@ def ExtractKernelVersion(base_dir):
 		f = codecs.open(_unicode_encode(pathname,
 			encoding=_encodings['fs'], errors='strict'), mode='r',
 			encoding=_encodings['content'], errors='replace')
-	except OSError, details:
+	except OSError as details:
 		return (None, str(details))
-	except IOError, details:
+	except IOError as details:
 		return (None, str(details))
 
 	try:
 		for i in range(4):
 			lines.append(f.readline())
-	except OSError, details:
+	except OSError as details:
 		return (None, str(details))
-	except IOError, details:
+	except IOError as details:
 		return (None, str(details))
 
 	lines = [l.strip() for l in lines]
@@ -1694,7 +1694,7 @@ class config(object):
 					self.profiles.append(currentPath)
 				try:
 					addProfile(os.path.realpath(self.profile_path))
-				except portage.exception.ParseError, e:
+				except portage.exception.ParseError as e:
 					writemsg(_("!!! Unable to parse profile: '%s'\n") % \
 						self.profile_path, noiselevel=-1)
 					writemsg("!!! ParseError: %s\n" % str(e), noiselevel=-1)
@@ -2010,11 +2010,11 @@ class config(object):
 						encoding=_encodings['fs'], errors='strict'),
 						mode='r', encoding=_encodings['content'], errors='replace')
 					)
-				except EnvironmentError, e:
+				except EnvironmentError as e:
 					if e.errno != errno.ENOENT:
 						raise
 					del e
-				except ParsingError, e:
+				except ParsingError as e:
 					portage.util.writemsg_level(
 						_("!!! Error parsing '%s': %s\n")  % \
 						(self._local_repo_conf_path, e),
@@ -2213,7 +2213,7 @@ class config(object):
 				continue
 			try:
 				portage.util.ensure_dirs(mydir, gid=gid, mode=mode, mask=modemask)
-			except portage.exception.PortageException, e:
+			except portage.exception.PortageException as e:
 				writemsg(_("!!! Directory initialization failed: '%s'\n") % mydir,
 					noiselevel=-1)
 				writemsg("!!! %s\n" % str(e),
@@ -3154,7 +3154,7 @@ class config(object):
 			elif len(accept_chost) == 1:
 				try:
 					self._accept_chost_re = re.compile(r'^%s$' % accept_chost[0])
-				except re.error, e:
+				except re.error as e:
 					writemsg(_("!!! Invalid ACCEPT_CHOSTS value: '%s': %s\n") % \
 						(accept_chost[0], e), noiselevel=-1)
 					self._accept_chost_re = re.compile("^$")
@@ -3162,7 +3162,7 @@ class config(object):
 				try:
 					self._accept_chost_re = re.compile(
 						r'^(%s)$' % "|".join(accept_chost))
-				except re.error, e:
+				except re.error as e:
 					writemsg(_("!!! Invalid ACCEPT_CHOSTS value: '%s': %s\n") % \
 						(" ".join(accept_chost), e), noiselevel=-1)
 					self._accept_chost_re = re.compile("^$")
@@ -3761,7 +3761,7 @@ def _create_pty_or_pipe(copy_term_size=None):
 		try:
 			master_fd, slave_fd = openpty()
 			got_pty = True
-		except EnvironmentError, e:
+		except EnvironmentError as e:
 			_disable_openpty = True
 			writemsg("openpty failed: '%s'\n" % str(e),
 				noiselevel=-1)
@@ -4418,7 +4418,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						filemode=filemode, filemask=modemask, onerror=onerror):
 						raise portage.exception.OperationNotPermitted(
 							_("Failed to apply recursive permissions for the portage group."))
-		except portage.exception.PortageException, e:
+		except portage.exception.PortageException as e:
 			if not os.path.isdir(mysettings["DISTDIR"]):
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 				writemsg(_("!!! Directory Not Found: DISTDIR='%s'\n") % mysettings["DISTDIR"], noiselevel=-1)
@@ -4478,7 +4478,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				vfs_stat = os.statvfs(mysettings["DISTDIR"])
 				try:
 					mysize = os.stat(myfile_path).st_size
-				except OSError, e:
+				except OSError as e:
 					if e.errno not in (errno.ENOENT, errno.ESTALE):
 						raise
 					del e
@@ -4542,7 +4542,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							apply_secpass_permissions(myfile_path,
 								gid=portage_gid, mode=0664, mask=02,
 								stat_cached=mystat)
-						except portage.exception.PortageException, e:
+						except portage.exception.PortageException as e:
 							if not os.access(myfile_path, os.R_OK):
 								writemsg(_("!!! Failed to adjust permissions:"
 									" %s\n") % str(e), noiselevel=-1)
@@ -4611,7 +4611,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					if readonly_file is not None:
 						try:
 							os.unlink(myfile_path)
-						except OSError, e:
+						except OSError as e:
 							if e.errno not in (errno.ENOENT, errno.ESTALE):
 								raise
 							del e
@@ -4625,14 +4625,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							shutil.copyfile(mirror_file, myfile_path)
 							writemsg(_("Local mirror has file: %s\n") % myfile)
 							break
-						except (IOError, OSError), e:
+						except (IOError, OSError) as e:
 							if e.errno not in (errno.ENOENT, errno.ESTALE):
 								raise
 							del e
 
 				try:
 					mystat = os.stat(myfile_path)
-				except OSError, e:
+				except OSError as e:
 					if e.errno not in (errno.ENOENT, errno.ESTALE):
 						raise
 					del e
@@ -4641,7 +4641,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						apply_secpass_permissions(
 							myfile_path, gid=portage_gid, mode=0664, mask=02,
 							stat_cached=mystat)
-					except portage.exception.PortageException, e:
+					except portage.exception.PortageException as e:
 						if not os.access(myfile_path, os.R_OK):
 							writemsg(_("!!! Failed to adjust permissions:"
 								" %s\n") % str(e), noiselevel=-1)
@@ -4776,7 +4776,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					if fetched != 2:
 						try:
 							mysize = os.stat(myfile_path).st_size
-						except OSError, e:
+						except OSError as e:
 							if e.errno not in (errno.ENOENT, errno.ESTALE):
 								raise
 							del e
@@ -4800,7 +4800,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					if fetched == 1:
 						try:
 							mystat = os.stat(myfile_path)
-						except OSError, e:
+						except OSError as e:
 							if e.errno not in (errno.ENOENT, errno.ESTALE):
 								raise
 							del e
@@ -4812,7 +4812,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 									"ME_MIN_SIZE)\n") % mystat.st_size)
 								try:
 									os.unlink(myfile_path)
-								except OSError, e:
+								except OSError as e:
 									if e.errno not in \
 										(errno.ENOENT, errno.ESTALE):
 										raise
@@ -4846,9 +4846,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						try:
 							apply_secpass_permissions(myfile_path,
 								gid=portage_gid, mode=0664, mask=02)
-						except portage.exception.FileNotFound, e:
+						except portage.exception.FileNotFound as e:
 							pass
-						except portage.exception.PortageException, e:
+						except portage.exception.PortageException as e:
 							if not os.access(myfile_path, os.R_OK):
 								writemsg(_("!!! Failed to adjust permissions:"
 									" %s\n") % str(e), noiselevel=-1)
@@ -4867,7 +4867,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					if mydigests is not None and myfile in mydigests:
 						try:
 							mystat = os.stat(myfile_path)
-						except OSError, e:
+						except OSError as e:
 							if e.errno not in (errno.ENOENT, errno.ESTALE):
 								raise
 							del e
@@ -5009,7 +5009,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					try:
 						private_tmpdir = mkdtemp("", "._portage_fetch_.",
 							global_tmpdir)
-					except OSError, e:
+					except OSError as e:
 						if e.errno != portage.exception.PermissionDenied.errno:
 							raise
 						raise portage.exception.PermissionDenied(global_tmpdir)
@@ -5089,7 +5089,7 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 			try:
 				for myfile in fetchlist_dict[cpv]:
 					distfiles_map.setdefault(myfile, []).append(cpv)
-			except portage.exception.InvalidDependString, e:
+			except portage.exception.InvalidDependString as e:
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 				del e
 				return 0
@@ -5128,7 +5128,7 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 
 			try:
 				st = os.stat(os.path.join(mysettings["DISTDIR"], myfile))
-			except OSError, e:
+			except OSError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
@@ -5191,16 +5191,16 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 				assumeDistHashesSometimes=True,
 				assumeDistHashesAlways=(
 				"assume-digests" in mysettings.features))
-		except portage.exception.FileNotFound, e:
+		except portage.exception.FileNotFound as e:
 			writemsg(_("!!! File %s doesn't exist, can't update "
 				"Manifest\n") % e, noiselevel=-1)
 			return 0
-		except portage.exception.PortagePackageException, e:
+		except portage.exception.PortagePackageException as e:
 			writemsg(("!!! %s\n") % (e,), noiselevel=-1)
 			return 0
 		try:
 			mf.write(sign=False)
-		except portage.exception.PermissionDenied, e:
+		except portage.exception.PermissionDenied as e:
 			writemsg(_("!!! Permission Denied: %s\n") % (e,), noiselevel=-1)
 			return 0
 		if "assume-digests" not in mysettings.features:
@@ -5299,16 +5299,16 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 				raise KeyError(f)
 			mf.checkFileHashes(ftype, f)
 			eout.eend(0)
-	except KeyError, e:
+	except KeyError as e:
 		eout.eend(1)
 		writemsg(_("\n!!! Missing digest for %s\n") % str(e), noiselevel=-1)
 		return 0
-	except portage.exception.FileNotFound, e:
+	except portage.exception.FileNotFound as e:
 		eout.eend(1)
 		writemsg(_("\n!!! A file listed in the Manifest could not be found: %s\n") % str(e),
 			noiselevel=-1)
 		return 0
-	except portage.exception.DigestException, e:
+	except portage.exception.DigestException as e:
 		eout.eend(1)
 		writemsg(_("\n!!! Digest verification failed:\n"), noiselevel=-1)
 		writemsg("!!! %s\n" % e.value[0], noiselevel=-1)
@@ -6060,7 +6060,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 	for clean_dir in clean_dirs:
 		try:
 			shutil.rmtree(clean_dir)
-		except OSError, oe:
+		except OSError as oe:
 			if errno.ENOENT == oe.errno:
 				pass
 			elif errno.EPERM == oe.errno:
@@ -6074,7 +6074,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 	def makedirs(dir_path):
 		try:
 			os.makedirs(dir_path)
-		except OSError, oe:
+		except OSError as oe:
 			if errno.EEXIST == oe.errno:
 				pass
 			elif errno.EPERM == oe.errno:
@@ -6105,13 +6105,13 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 			portage.util.ensure_dirs(mysettings[dir_key], mode=0775)
 			portage.util.apply_secpass_permissions(mysettings[dir_key],
 				uid=portage_uid, gid=portage_gid)
-	except portage.exception.PermissionDenied, e:
+	except portage.exception.PermissionDenied as e:
 		writemsg(_("Permission Denied: %s\n") % str(e), noiselevel=-1)
 		return 1
-	except portage.exception.OperationNotPermitted, e:
+	except portage.exception.OperationNotPermitted as e:
 		writemsg(_("Operation Not Permitted: %s\n") % str(e), noiselevel=-1)
 		return 1
-	except portage.exception.FileNotFound, e:
+	except portage.exception.FileNotFound as e:
 		writemsg(_("File Not Found: '%s'\n") % str(e), noiselevel=-1)
 		return 1
 
@@ -6234,14 +6234,14 @@ def _prepare_features_dirs(mysettings):
 							raise portage.exception.OperationNotPermitted(
 								_("Failed to apply recursive permissions for the portage group."))
 
-			except portage.exception.DirectoryNotFound, e:
+			except portage.exception.DirectoryNotFound as e:
 				failure = True
 				writemsg(_("\n!!! Directory does not exist: '%s'\n") % \
 					(e,), noiselevel=-1)
 				writemsg(_("!!! Disabled FEATURES='%s'\n") % myfeature,
 					noiselevel=-1)
 
-			except portage.exception.PortageException, e:
+			except portage.exception.PortageException as e:
 				failure = True
 				writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
 				writemsg(_("!!! Failed resetting perms on %s='%s'\n") % \
@@ -6268,9 +6268,9 @@ def _prepare_workdir(mysettings):
 			raise ValueError("Invalid file mode: %s" % mode)
 		else:
 			workdir_mode = parsed_mode
-	except KeyError, e:
+	except KeyError as e:
 		writemsg(_("!!! PORTAGE_WORKDIR_MODE is unset, using %s.\n") % oct(workdir_mode))
-	except ValueError, e:
+	except ValueError as e:
 		if len(str(e)) > 0:
 			writemsg("%s\n" % e)
 		writemsg(_("!!! Unable to parse PORTAGE_WORKDIR_MODE='%s', using %s.\n") % \
@@ -6291,7 +6291,7 @@ def _prepare_workdir(mysettings):
 			if modified:
 				apply_secpass_permissions(mysettings["PORT_LOGDIR"],
 					uid=portage_uid, gid=portage_gid, mode=02770)
-		except portage.exception.PortageException, e:
+		except portage.exception.PortageException as e:
 			writemsg("!!! %s\n" % str(e), noiselevel=-1)
 			writemsg(_("!!! Permission issues with PORT_LOGDIR='%s'\n") % \
 				mysettings["PORT_LOGDIR"], noiselevel=-1)
@@ -6543,7 +6543,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				"could not be found: '%s'") % (myebuild,))
 			_doebuild_broken_ebuilds.add(myebuild)
 			return 1
-		except portage.exception.DigestException, e:
+		except portage.exception.DigestException as e:
 			out = portage.output.EOutput()
 			out.eerror(_("Digest verification failed:"))
 			out.eerror("%s" % e.value[0])
@@ -6754,7 +6754,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			saved_env = None
 			try:
 				env_stat = os.stat(env_file)
-			except OSError, e:
+			except OSError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
@@ -6770,7 +6770,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					_shell_quote(env_file)))
 				try:
 					env_stat = os.stat(env_file)
-				except OSError, e:
+				except OSError as e:
 					if e.errno != errno.ENOENT:
 						raise
 					del e
@@ -6787,7 +6787,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 						saved_env, noiselevel=-1)
 					try:
 						os.unlink(env_file)
-					except OSError, e:
+					except OSError as e:
 						if e.errno != errno.ENOENT:
 							raise
 						del e
@@ -6913,7 +6913,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				alist = mydbapi.getFetchMap(mycpv, useflags=useflags,
 					mytree=mytree)
 				aalist = mydbapi.getFetchMap(mycpv, mytree=mytree)
-			except portage.exception.InvalidDependString, e:
+			except portage.exception.InvalidDependString as e:
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 				writemsg(_("!!! Invalid SRC_URI for '%s'.\n") % mycpv,
 					noiselevel=-1)
@@ -6957,7 +6957,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				# for fetch (especially parallel-fetch) since it's not needed
 				# and it can interfere with parallel tasks.
 				digestgen(aalist, mysettings, overwrite=0, myportdb=mydbapi)
-		except portage.exception.PermissionDenied, e:
+		except portage.exception.PermissionDenied as e:
 			writemsg(_("!!! Permission Denied: %s\n") % (e,), noiselevel=-1)
 			if mydo in ("digest", "manifest"):
 				return 1
@@ -7156,7 +7156,7 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 		try:
 			portage.dep.use_reduce(
 				portage.dep.paren_reduce(metadata[k]), matchall=True)
-		except portage.exception.InvalidDependString, e:
+		except portage.exception.InvalidDependString as e:
 			msgs.append("  %s: %s\n    %s\n" % (
 				k, metadata[k], str(e)))
 
@@ -7206,9 +7206,9 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		if not sstat:
 			sstat=os.lstat(src)
 
-	except SystemExit, e:
+	except SystemExit as e:
 		raise
-	except Exception, e:
+	except Exception as e:
 		print _("!!! Stating source file failed... movefile()")
 		print "!!!",e
 		return None
@@ -7234,9 +7234,9 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			try:
 				os.unlink(dest)
 				destexists=0
-			except SystemExit, e:
+			except SystemExit as e:
 				raise
-			except Exception, e:
+			except Exception as e:
 				pass
 
 	if stat.S_ISLNK(sstat[stat.ST_MODE]):
@@ -7255,9 +7255,9 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			# utime() only works on the target of a symlink, so it's not
 			# possible to perserve mtime on symlinks.
 			return os.lstat(dest)[stat.ST_MTIME]
-		except SystemExit, e:
+		except SystemExit as e:
 			raise
-		except Exception, e:
+		except Exception as e:
 			print _("!!! failed to properly create symlink:")
 			print "!!!",dest,"->",target
 			print "!!!",e
@@ -7274,7 +7274,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			(tail, os.getpid()))
 		try:
 			os.unlink(hardlink_tmp)
-		except OSError, e:
+		except OSError as e:
 			if e.errno != errno.ENOENT:
 				writemsg(_("!!! Failed to remove hardlink temp file: %s\n") % \
 					(hardlink_tmp,), noiselevel=-1)
@@ -7289,7 +7289,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			else:
 				try:
 					os.rename(hardlink_tmp, dest)
-				except OSError, e:
+				except OSError as e:
 					writemsg(_("!!! Failed to rename %s to %s\n") % \
 						(hardlink_tmp, dest), noiselevel=-1)
 					writemsg("!!! %s\n" % (e,), noiselevel=-1)
@@ -7307,9 +7307,9 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			else:
 				ret=os.rename(src,dest)
 			renamefailed=0
-		except SystemExit, e:
+		except SystemExit as e:
 			raise
-		except Exception, e:
+		except Exception as e:
 			if e[0]!=errno.EXDEV:
 				# Some random error.
 				print _("!!! Failed to move %(src)s to %(dest)s") % {"src": src, "dest": dest}
@@ -7327,9 +7327,9 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 					shutil.copyfile(src,dest+"#new")
 					os.rename(dest+"#new",dest)
 				didcopy=1
-			except SystemExit, e:
+			except SystemExit as e:
 				raise
-			except Exception, e:
+			except Exception as e:
 				print _('!!! copy %(src)s -> %(dest)s failed.') % {"src": src, "dest": dest}
 				print "!!!",e
 				return None
@@ -7351,9 +7351,9 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 					os.chown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
 				os.chmod(dest, stat.S_IMODE(sstat[stat.ST_MODE])) # Sticky is reset on chown
 				os.unlink(src)
-		except SystemExit, e:
+		except SystemExit as e:
 			raise
-		except Exception, e:
+		except Exception as e:
 			print _("!!! Failed to chown/chmod/unlink in movefile()")
 			print "!!!",dest
 			print "!!!",e
@@ -7373,7 +7373,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		# Instead of failing, use stat to return the mtime if possible.
 		try:
 			newmtime = long(os.stat(dest).st_mtime)
-		except OSError, e:
+		except OSError as e:
 			writemsg(_("!!! Failed to stat in movefile()\n"), noiselevel=-1)
 			writemsg("!!! %s\n" % dest, noiselevel=-1)
 			writemsg("!!! %s\n" % str(e), noiselevel=-1)
@@ -7930,7 +7930,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	#convert parenthesis to sublists
 	try:
 		mysplit = portage.dep.paren_reduce(depstring)
-	except portage.exception.InvalidDependString, e:
+	except portage.exception.InvalidDependString as e:
 		return [0, str(e)]
 
 	mymasks = set()
@@ -7952,7 +7952,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	try:
 		mysplit = portage.dep.use_reduce(mysplit, uselist=myusesplit,
 			masklist=mymasks, matchall=(use=="all"), excludeall=useforce)
-	except portage.exception.InvalidDependString, e:
+	except portage.exception.InvalidDependString as e:
 		return [0, str(e)]
 
 	# Do the || conversions
@@ -7969,7 +7969,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 			use=use, mode=mode, myuse=myuse,
 			use_force=useforce, use_mask=mymasks, use_cache=use_cache,
 			use_binaries=use_binaries, myroot=myroot, trees=trees)
-	except portage.exception.ParseError, e:
+	except portage.exception.ParseError as e:
 		return [0, str(e)]
 
 	mysplit2=mysplit[:]
@@ -7984,7 +7984,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	try:
 		selected_atoms = dep_zapdeps(mysplit, mysplit2, myroot,
 			use_binaries=use_binaries, trees=trees)
-	except portage.exception.InvalidAtom, e:
+	except portage.exception.InvalidAtom as e:
 		if portage.dep._dep_check_strict:
 			raise # This shouldn't happen.
 		# dbapi.match() failed due to an invalid atom in
@@ -8348,7 +8348,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 			msg = license_split[:]
 			msg.append("license(s)")
 			rValue.append(" ".join(msg))
-	except portage.exception.InvalidDependString, e:
+	except portage.exception.InvalidDependString as e:
 		rValue.append("LICENSE: "+str(e))
 
 	try:
@@ -8362,7 +8362,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 			msg = properties_split[:]
 			msg.append("properties")
 			rValue.append(" ".join(msg))
-	except portage.exception.InvalidDependString, e:
+	except portage.exception.InvalidDependString as e:
 		rValue.append("PROPERTIES: "+str(e))
 
 	# Only show KEYWORDS masks for installed packages
@@ -8478,7 +8478,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 			uid=portage_uid, gid=portage_gid, mode=070, mask=0)
 		try:
 			shutil.rmtree(builddir)
-		except (IOError, OSError), e:
+		except (IOError, OSError) as e:
 			if e.errno != errno.ENOENT:
 				raise
 			del e
@@ -8563,7 +8563,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 			try:
 				if success:
 					shutil.rmtree(builddir)
-			except (IOError, OSError), e:
+			except (IOError, OSError) as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
@@ -8621,7 +8621,7 @@ def commit_mtimedb(mydict=None, filename=None):
 		f.close()
 		portage.util.apply_secpass_permissions(filename,
 			uid=uid, gid=portage_gid, mode=0644)
-	except (IOError, OSError), e:
+	except (IOError, OSError) as e:
 		pass
 
 def portageexit():
@@ -8790,7 +8790,7 @@ class MtimeDB(dict):
 			d = mypickle.load()
 			f.close()
 			del f
-		except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError), e:
+		except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError) as e:
 			if isinstance(e, pickle.UnpicklingError):
 				writemsg(_("!!! Error loading '%s': %s\n") % \
 					(filename, str(e)), noiselevel=-1)

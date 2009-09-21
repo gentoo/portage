@@ -67,7 +67,7 @@ try:
 	from Crypto.Hash import SHA256, RIPEMD
 	sha256hash = _generate_hash_function("SHA256", SHA256.new, origin="pycrypto")
 	rmd160hash = _generate_hash_function("RMD160", RIPEMD.new, origin="pycrypto")
-except ImportError, e:
+except ImportError as e:
 	pass
 
 # Use hashlib from python-2.5 if available and prefer it over pycrypto and internal fallbacks.
@@ -86,7 +86,7 @@ try:
 		def rmd160():
 			return hashlib.new('ripemd160')
 		rmd160hash = _generate_hash_function("RMD160", rmd160, origin="hashlib")
-except ImportError, e:
+except ImportError as e:
 	pass
 	
 
@@ -163,7 +163,7 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 		mysize = os.stat(filename)[stat.ST_SIZE]
 		if mydict["size"] != mysize:
 			return False,(_("Filesize does not match recorded size"), mysize, mydict["size"])
-	except OSError, e:
+	except OSError as e:
 		if e.errno == errno.ENOENT:
 			raise portage.exception.FileNotFound(filename)
 		return False, (str(e), None, None)
@@ -244,7 +244,7 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 				raise portage.exception.DigestException(hashname + \
 					" hash function not available (needs dev-python/pycrypto)")
 			myhash, mysize = hashfunc_map[hashname](myfilename)
-		except (OSError, IOError), e:
+		except (OSError, IOError) as e:
 			if e.errno == errno.ENOENT:
 				raise portage.exception.FileNotFound(myfilename)
 			raise
@@ -253,7 +253,7 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 		if prelink_tmpfile:
 			try:
 				os.unlink(prelink_tmpfile)
-			except OSError, e:
+			except OSError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e

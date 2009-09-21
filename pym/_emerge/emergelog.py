@@ -47,6 +47,6 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 			if mylock:
 				portage.locks.unlockfile(mylock)
 			mylogfile.close()
-	except (IOError,OSError,portage.exception.PortageException), e:
+	except (IOError,OSError,portage.exception.PortageException) as e:
 		if secpass >= 1:
 			print >> sys.stderr, "emergelog():",e

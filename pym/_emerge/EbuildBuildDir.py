@@ -84,7 +84,7 @@ class EbuildBuildDir(SlotObject):
 			if catdir_lock:
 				try:
 					os.rmdir(catdir)
-				except OSError, e:
+				except OSError as e:
 					if e.errno not in (errno.ENOENT,
 						errno.ENOTEMPTY, errno.EEXIST):
 						raise

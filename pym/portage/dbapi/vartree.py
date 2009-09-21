@@ -81,10 +81,10 @@ class PreservedLibsRegistry(object):
 			self._data = pickle.load(
 				open(_unicode_encode(self._filename,
 					encoding=_encodings['fs'], errors='strict'), 'rb'))
-		except (ValueError, pickle.UnpicklingError), e:
+		except (ValueError, pickle.UnpicklingError) as e:
 			writemsg_level(_("!!! Error loading '%s': %s\n") % \
 				(self._filename, e), level=logging.ERROR, noiselevel=-1)
-		except (EOFError, IOError), e:
+		except (EOFError, IOError) as e:
 			if isinstance(e, EOFError) or e.errno == errno.ENOENT:
 				pass
 			elif e.errno == PermissionDenied.errno:
@@ -105,7 +105,7 @@ class PreservedLibsRegistry(object):
 			f = atomic_ofstream(self._filename, 'wb')
 			pickle.dump(self._data, f, protocol=2)
 			f.close()
-		except EnvironmentError, e:
+		except EnvironmentError as e:
 			if e.errno != PermissionDenied.errno:
 				writemsg("!!! %s %s\n" % (e, self._filename), noiselevel=-1)
 		else:
@@ -336,7 +336,7 @@ class LinkageMap(object):
 					for x in items)
 			try:
 				proc = subprocess.Popen(args, stdout=subprocess.PIPE)
-			except EnvironmentError, e:
+			except EnvironmentError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				raise CommandNotFound(args[0])
@@ -1623,7 +1623,7 @@ class vardbapi(dbapi):
 				try:
 					os.rename(os.path.join(newpath, old_pf + ".ebuild"),
 						os.path.join(newpath, new_pf + ".ebuild"))
-				except EnvironmentError, e:
+				except EnvironmentError as e:
 					if e.errno != errno.ENOENT:
 						raise
 					del e
@@ -1647,7 +1647,7 @@ class vardbapi(dbapi):
 		cat_dir = self.getpath(mysplit[0])
 		try:
 			dir_list = os.listdir(cat_dir)
-		except EnvironmentError, e:
+		except EnvironmentError as e:
 			if e.errno == PermissionDenied.errno:
 				raise PermissionDenied(cat_dir)
 			del e
@@ -1688,7 +1688,7 @@ class vardbapi(dbapi):
 				try:
 					return [x for x in os.listdir(p) \
 						if os.path.isdir(os.path.join(p, x))]
-				except EnvironmentError, e:
+				except EnvironmentError as e:
 					if e.errno == PermissionDenied.errno:
 						raise PermissionDenied(p)
 					del e
@@ -1813,7 +1813,7 @@ class vardbapi(dbapi):
 				f.close()
 				apply_secpass_permissions(
 					self._aux_cache_filename, gid=portage_gid, mode=0644)
-			except (IOError, OSError), e:
+			except (IOError, OSError) as e:
 				pass
 			self._aux_cache["modified"] = set()
 
@@ -1845,7 +1845,7 @@ class vardbapi(dbapi):
 			aux_cache = mypickle.load()
 			f.close()
 			del f
-		except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError), e:
+		except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError) as e:
 			if isinstance(e, pickle.UnpicklingError):
 				writemsg(_("!!! Error loading '%s': %s\n") % \
 					(self._aux_cache_filename, str(e)), noiselevel=-1)
@@ -1909,7 +1909,7 @@ class vardbapi(dbapi):
 		mydir_stat = None
 		try:
 			mydir_stat = os.stat(mydir)
-		except OSError, e:
+		except OSError as e:
 			if e.errno != errno.ENOENT:
 				raise
 			raise KeyError(mycpv)
@@ -1967,7 +1967,7 @@ class vardbapi(dbapi):
 		if st is None:
 			try:
 				st = os.stat(mydir)
-			except OSError, e:
+			except OSError as e:
 				if e.errno == errno.ENOENT:
 					raise KeyError(mycpv)
 				elif e.errno == PermissionDenied.errno:
@@ -2059,7 +2059,7 @@ class vardbapi(dbapi):
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
 				errors='replace')
-		except EnvironmentError, e:
+		except EnvironmentError as e:
 			new_vdb = not bool(self.cpv_all())
 			if not new_vdb:
 				writemsg(_("!!! Unable to read COUNTER file: '%s'\n") % \
@@ -2072,7 +2072,7 @@ class vardbapi(dbapi):
 					counter = long(cfile.readline().strip())
 				finally:
 					cfile.close()
-			except (OverflowError, ValueError), e:
+			except (OverflowError, ValueError) as e:
 				writemsg(_("!!! COUNTER file is corrupt: '%s'\n") % \
 					self._counter_path, noiselevel=-1)
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
@@ -2390,9 +2390,9 @@ class vartree(object):
 						mys = myprovide.split("/")
 					myprovides += [mys[0] + "/" + mys[1]]
 			return myprovides
-		except SystemExit, e:
+		except SystemExit as e:
 			raise
-		except Exception, e:
+		except Exception as e:
 			mydir = os.path.join(self.root, VDB_PATH, mycpv)
 			writemsg(_("\nParse Error reading PROVIDE and USE in '%s'\n") % mydir,
 				noiselevel=-1)
@@ -2647,7 +2647,7 @@ class dblink(object):
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
 				errors='replace')
-		except EnvironmentError, e:
+		except EnvironmentError as e:
 			if e.errno != errno.ENOENT:
 				raise
 			del e
@@ -2805,7 +2805,7 @@ class dblink(object):
 			try:
 				doebuild_environment(myebuildpath, "prerm", self.myroot,
 					self.settings, 0, 0, self.vartree.dbapi)
-			except UnsupportedAPIException, e:
+			except UnsupportedAPIException as e:
 				# Sometimes this happens due to corruption of the EAPI file.
 				writemsg(_("!!! FAILED prerm: %s\n") % \
 					os.path.join(self.dbdir, "EAPI"), noiselevel=-1)
@@ -2965,7 +2965,7 @@ class dblink(object):
 				if catdir_lock:
 					try:
 						os.rmdir(catdir)
-					except OSError, e:
+					except OSError as e:
 						if e.errno not in (errno.ENOENT,
 							errno.ENOTEMPTY, errno.EEXIST):
 							raise
@@ -3184,7 +3184,7 @@ class dblink(object):
 					not self.isprotected(obj):
 					try:
 						unlink(obj, lstatobj)
-					except EnvironmentError, e:
+					except EnvironmentError as e:
 						if e.errno not in ignored_unlink_errnos:
 							raise
 						del e
@@ -3215,7 +3215,7 @@ class dblink(object):
 					try:
 						unlink(obj, lstatobj)
 						show_unmerge("<<<", "", file_type, obj)
-					except (OSError, IOError),e:
+					except (OSError, IOError) as e:
 						if e.errno not in ignored_unlink_errnos:
 							raise
 						del e
@@ -3227,7 +3227,7 @@ class dblink(object):
 					mymd5 = None
 					try:
 						mymd5 = perf_md5(obj, calc_prelink=1)
-					except FileNotFound, e:
+					except FileNotFound as e:
 						# the file has disappeared between now and our stat call
 						show_unmerge("---", unmerge_desc["!obj"], file_type, obj)
 						continue
@@ -3239,7 +3239,7 @@ class dblink(object):
 						continue
 					try:
 						unlink(obj, lstatobj)
-					except (OSError, IOError), e:
+					except (OSError, IOError) as e:
 						if e.errno not in ignored_unlink_errnos:
 							raise
 						del e
@@ -3277,7 +3277,7 @@ class dblink(object):
 							# Restore the parent flags we saved before unlinking
 							bsd_chflags.chflags(parent_name, pflags)
 					show_unmerge("<<<", "", "dir", obj)
-				except EnvironmentError, e:
+				except EnvironmentError as e:
 					if e.errno not in ignored_rmdir_errnos:
 						raise
 					if e.errno != errno.ENOENT:
@@ -3397,7 +3397,7 @@ class dblink(object):
 			parent_path = os_filename_arg.path.dirname(destfile)
 			try:
 				parent_stat = os_filename_arg.stat(parent_path)
-			except EnvironmentError, e:
+			except EnvironmentError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
@@ -3461,7 +3461,7 @@ class dblink(object):
 			return
 		try:
 			self.vartree.dbapi.linkmap.rebuild(**kwargs)
-		except CommandNotFound, e:
+		except CommandNotFound as e:
 			self._linkmap_broken = True
 			self._display_merge(_("!!! Disabling preserve-libs " \
 				"due to error: Command Not Found: %s\n") % (e,),
@@ -3769,7 +3769,7 @@ class dblink(object):
 				obj_type = _("obj")
 			try:
 				os.unlink(obj)
-			except OSError, e:
+			except OSError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
@@ -3832,7 +3832,7 @@ class dblink(object):
 					os.path.join(destroot, f.lstrip(os.path.sep)))
 				try:
 					dest_lstat = os.lstat(dest_path)
-				except EnvironmentError, e:
+				except EnvironmentError as e:
 					if e.errno == errno.ENOENT:
 						del e
 						continue
@@ -3847,7 +3847,7 @@ class dblink(object):
 							try:
 								dest_lstat = os.lstat(parent_path)
 								break
-							except EnvironmentError, e:
+							except EnvironmentError as e:
 								if e.errno != errno.ENOTDIR:
 									raise
 								del e
@@ -3916,7 +3916,7 @@ class dblink(object):
 			path = os.path.join(root, f.lstrip(os.sep))
 			try:
 				st = os.lstat(path)
-			except OSError, e:
+			except OSError as e:
 				if e.errno not in (errno.ENOENT, errno.ENOTDIR):
 					raise
 				del e
@@ -3967,7 +3967,7 @@ class dblink(object):
 
 			try:
 				s = os.lstat(path)
-			except OSError, e:
+			except OSError as e:
 				if e.errno not in (errno.ENOENT, errno.ENOTDIR):
 					raise
 				del e
@@ -4091,7 +4091,7 @@ class dblink(object):
 					encoding=_encodings['fs'], errors='strict'),
 					mode='r', encoding=_encodings['repo.content'],
 					errors='replace').readline().strip()
-			except EnvironmentError, e:
+			except EnvironmentError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
@@ -4400,7 +4400,7 @@ class dblink(object):
 		try:
 			os.unlink(os.path.join(
 				os.path.dirname(normalize_path(srcroot)), ".installed"))
-		except OSError, e:
+		except OSError as e:
 			if e.errno != errno.ENOENT:
 				raise
 			del e
@@ -4737,7 +4737,7 @@ class dblink(object):
 			try:
 				mydstat = os.lstat(mydest)
 				mydmode = mydstat.st_mode
-			except OSError, e:
+			except OSError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
@@ -5151,7 +5151,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 		curval += 1
 		try:
 			lst = os.lstat(path)
-		except OSError, e:
+		except OSError as e:
 			if e.errno != errno.ENOENT:
 				raise
 			del e

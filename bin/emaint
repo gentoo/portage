@@ -385,7 +385,7 @@ class VdbKeyHandler(object):
 								keyfile = open(mydir+os.sep+k, "w")
 								keyfile.write(s+"\n")
 								keyfile.close()
-							except (IOError, OSError), e:
+							except (IOError, OSError) as e:
 								errors.append("Could not write %s, reason was: %s" % (mydir+k, e))
 		
 		return errors

@@ -46,7 +46,7 @@ class SpawnTestCase(TestCase):
 			if logfile:
 				try:
 					os.unlink(logfile)
-				except EnvironmentError, e:
+				except EnvironmentError as e:
 					if e.errno != errno.ENOENT:
 						raise
 					del e

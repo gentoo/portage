@@ -94,7 +94,7 @@ def grab_updates(updpath, prev_mtimes=None):
 	given then only updates with differing mtimes are considered."""
 	try:
 		mylist = os.listdir(updpath)
-	except OSError, oe:
+	except OSError as oe:
 		if oe.errno == errno.ENOENT:
 			raise DirectoryNotFound(updpath)
 		raise
@@ -256,7 +256,7 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 			updating_file = new_protect_filename(updating_file)
 		try:
 			write_atomic(updating_file, "".join(file_contents[x]))
-		except PortageException, e:
+		except PortageException as e:
 			writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
 			writemsg(_("!!! An error occured while updating a config file:") + \
 				" '%s'\n" % updating_file, noiselevel=-1)

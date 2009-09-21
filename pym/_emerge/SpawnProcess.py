@@ -157,7 +157,7 @@ class SpawnProcess(SubProcess):
 								write_successful = True
 							files.stdout.flush()
 							break
-						except IOError, e:
+						except IOError as e:
 							if e.errno != errno.EAGAIN:
 								raise
 							del e

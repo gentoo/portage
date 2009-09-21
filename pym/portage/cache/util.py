@@ -33,11 +33,11 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 		dead_nodes.discard(x)
 		try:
 			entry = src_cache[x]
-		except KeyError, e:
+		except KeyError as e:
 			noise.missing_entry(x)
 			del e
 			continue
-		except cache_errors.CacheError, ce:
+		except cache_errors.CacheError as ce:
 			noise.exception(x, ce)
 			del ce
 			continue
@@ -82,7 +82,7 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 			try:
 				inherited = entry.get("INHERITED", "")
 				eclasses = entry.get("_eclasses_")
-			except cache_errors.CacheError, ce:
+			except cache_errors.CacheError as ce:
 				noise.exception(x, ce)
 				del ce
 				continue
@@ -123,7 +123,7 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 			# been updated/translated (if needs be, for metadata/cache mainly)
 			try:
 				trg_cache[x] = entry
-			except cache_errors.CacheError, ce:
+			except cache_errors.CacheError as ce:
 				noise.exception(x, ce)
 				del ce
 				continue
@@ -141,7 +141,7 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 			del trg_cache[key]
 		except KeyError:
 			pass
-		except cache_errors.CacheError, ce:
+		except cache_errors.CacheError as ce:
 			noise.exception(ce)
 			del ce
 	noise.finish()

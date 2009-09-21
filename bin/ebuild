@@ -257,17 +257,17 @@ for arg in pargs:
 	except KeyError:
 		# aux_get error
 		a = 1
-	except UnsupportedAPIException, e:
+	except UnsupportedAPIException as e:
 		from textwrap import wrap
 		msg = wrap(str(e), 70)
 		del e
 		for x in msg:
 			portage.writemsg("!!! %s\n" % x, noiselevel=-1)
 		a = 1
-	except PortagePackageException, e:
+	except PortagePackageException as e:
 		portage.writemsg("!!! %s\n" % (e,), noiselevel=-1)
 		a = 1
-	except PermissionDenied, e:
+	except PermissionDenied as e:
 		portage.writemsg("!!! Permission Denied: %s\n" % (e,), noiselevel=-1)
 		a = 1
 	if a == None:

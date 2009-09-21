@@ -66,7 +66,7 @@ def archive_conf():
             file = file.rstrip()
             try:
                 contents = open(file, "r")
-            except IOError, e:
+            except IOError as e:
                 print >> sys.stderr, 'archive-conf: Unable to open %s: %s' % (file, e)
                 sys.exit(1)
             lines = contents.readlines()

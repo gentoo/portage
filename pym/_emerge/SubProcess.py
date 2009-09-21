@@ -27,7 +27,7 @@ class SubProcess(AbstractPollTask):
 
 		try:
 			retval = os.waitpid(self.pid, os.WNOHANG)
-		except OSError, e:
+		except OSError as e:
 			if e.errno != errno.ECHILD:
 				raise
 			del e
@@ -42,7 +42,7 @@ class SubProcess(AbstractPollTask):
 		if self.isAlive():
 			try:
 				os.kill(self.pid, signal.SIGTERM)
-			except OSError, e:
+			except OSError as e:
 				if e.errno != errno.ESRCH:
 					raise
 				del e
@@ -69,7 +69,7 @@ class SubProcess(AbstractPollTask):
 
 		try:
 			wait_retval = os.waitpid(self.pid, 0)
-		except OSError, e:
+		except OSError as e:
 			if e.errno != errno.ECHILD:
 				raise
 			del e

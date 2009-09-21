@@ -25,7 +25,7 @@ def calc_changelog(ebuildpath,current,next):
 			encoding=_encodings['fs'], errors='strict'),
 			mode='r', encoding=_encodings['repo.content'], errors='replace'
 		).read()
-	except SystemExit, e:
+	except SystemExit as e:
 		raise # Needed else can't exit
 	except:
 		return []

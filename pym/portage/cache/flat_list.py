@@ -38,14 +38,14 @@ class database(fs_template.FsBased):
 				errors='replace')
 			for k,v in zip(self.auxdbkey_order, myf):
 				d[k] = v.rstrip("\n")
-		except (OSError, IOError),e:
+		except (OSError, IOError) as e:
 			if errno.ENOENT == e.errno:
 				raise KeyError(cpv)
 			raise cache_errors.CacheCorruption(cpv, e)
 
 		try:
 			d["_mtime_"] = long(os.fstat(myf.fileno()).st_mtime)
-		except OSError, e:	
+		except OSError as e:	
 			myf.close()
 			raise cache_errors.CacheCorruption(cpv, e)
 		myf.close()
@@ -60,7 +60,7 @@ class database(fs_template.FsBased):
 				encoding=_encodings['fs'], errors='strict'),
 				mode='w', encoding=_encodings['repo.content'],
 				errors='backslashreplace')
-		except (OSError, IOError), e:
+		except (OSError, IOError) as e:
 			if errno.ENOENT == e.errno:
 				try:
 					self._ensure_dirs(cpv)
@@ -68,7 +68,7 @@ class database(fs_template.FsBased):
 						encoding=_encodings['fs'], errors='strict'),
 						mode='w', encoding=_encodings['repo.content'],
 						errors='backslashreplace')
-				except (OSError, IOError),e:
+				except (OSError, IOError) as e:
 					raise cache_errors.CacheCorruption(cpv, e)
 			else:
 				raise cache_errors.CacheCorruption(cpv, e)
@@ -83,7 +83,7 @@ class database(fs_template.FsBased):
 		new_fp = os.path.join(self._base,cpv)
 		try:
 			os.rename(fp, new_fp)
-		except (OSError, IOError), e:
+		except (OSError, IOError) as e:
 			os.remove(fp)
 			raise cache_errors.CacheCorruption(cpv, e)
 
@@ -91,7 +91,7 @@ class database(fs_template.FsBased):
 	def _delitem(self, cpv):
 		try:
 			os.remove(os.path.join(self._base,cpv))
-		except OSError, e:
+		except OSError as e:
 			if errno.ENOENT == e.errno:
 				raise KeyError(cpv)
 			else:

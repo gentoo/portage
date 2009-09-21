@@ -312,7 +312,7 @@ class binarytree(object):
 			os.unlink(mylink)
 		try:
 			os.rmdir(os.path.join(self.pkgdir, mycat))
-		except OSError, e:
+		except OSError as e:
 			if e.errno not in (errno.ENOENT,
 				errno.ENOTEMPTY, errno.EEXIST):
 				raise
@@ -327,7 +327,7 @@ class binarytree(object):
 		self._ensure_dir(os.path.dirname(full_path))
 		try:
 			os.unlink(full_path)
-		except OSError, e:
+		except OSError as e:
 			if e.errno != errno.ENOENT:
 				raise
 			del e
@@ -411,7 +411,7 @@ class binarytree(object):
 		src_path = os.path.join(self.pkgdir, mycat, myfile)
 		try:
 			mystat = os.lstat(src_path)
-		except OSError, e:
+		except OSError as e:
 			mystat = None
 		if mystat and stat.S_ISREG(mystat.st_mode):
 			self._ensure_dir(os.path.join(self.pkgdir, "All"))
@@ -677,7 +677,7 @@ class binarytree(object):
 					pkgindex.read(f)
 				finally:
 					f.close()
-			except EnvironmentError, e:
+			except EnvironmentError as e:
 				if e.errno != errno.ENOENT:
 					raise
 			local_timestamp = pkgindex.header.get("TIMESTAMP", None)
@@ -705,7 +705,7 @@ class binarytree(object):
 							pkgindex = rmt_idx
 				finally:
 					f.close()
-			except EnvironmentError, e:
+			except EnvironmentError as e:
 				writemsg(_("\n\n!!! Error fetching binhost package" \
 					" info from '%s'\n") % base_url)
 				writemsg("!!! %s\n\n" % str(e))
@@ -810,7 +810,7 @@ class binarytree(object):
 						remote_metadata[k] = v.strip()
 					self._remotepkgs[fullpkg] = remote_metadata
 					#print "  -- Injected"
-				except SystemExit, e:
+				except SystemExit as e:
 					raise
 				except:
 					writemsg(_("!!! Failed to inject remote binary package: %s\n") % fullpkg,
@@ -838,7 +838,7 @@ class binarytree(object):
 			full_path = filename
 		try:
 			s = os.stat(full_path)
-		except OSError, e:
+		except OSError as e:
 			if e.errno != errno.ENOENT:
 				raise
 			del e
@@ -1004,7 +1004,7 @@ class binarytree(object):
 				deps = use_reduce(deps, uselist=raw_use)
 				deps = paren_normalize(deps)
 				deps = paren_enclose(deps)
-			except portage.exception.InvalidDependString, e:
+			except portage.exception.InvalidDependString as e:
 				writemsg("%s: %s\n" % (k, str(e)),
 					noiselevel=-1)
 				raise
@@ -1184,8 +1184,8 @@ class binarytree(object):
 		myslot = ""
 		try:
 			myslot = self.dbapi.aux_get(mycatpkg,["SLOT"])[0]
-		except SystemExit, e:
+		except SystemExit as e:
 			raise
-		except Exception, e:
+		except Exception as e:
 			pass
 		return myslot

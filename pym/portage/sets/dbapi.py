@@ -299,7 +299,7 @@ class AgeSet(EverythingSet):
 			raise SetConfigError(_("invalid 'mode' value %s (use either 'newer' or 'older')") % mode)
 		try:
 			age = int(options.get("age", "7"))
-		except ValueError, e:
+		except ValueError as e:
 			raise SetConfigError(_("value of option 'age' is not an integer"))
 		return AgeSet(vardb=trees["vartree"].dbapi, mode=mode, age=age)
 

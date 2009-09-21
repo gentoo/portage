@@ -42,7 +42,7 @@ class BinpkgVerifier(AsynchronousTask):
 				writemsg("!!! Fetching Binary failed " + \
 					"for '%s'\n" % pkg.cpv, noiselevel=-1)
 				rval = 1
-			except portage.exception.DigestException, e:
+			except portage.exception.DigestException as e:
 				writemsg("\n!!! Digest verification failed:\n",
 					noiselevel=-1)
 				writemsg("!!! %s\n" % e.value[0],

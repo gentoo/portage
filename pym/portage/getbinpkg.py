@@ -27,12 +27,12 @@ except ImportError:
 
 try:
 	import ftplib
-except ImportError, e:
+except ImportError as e:
 	sys.stderr.write(colorize("BAD","!!! CANNOT IMPORT FTPLIB: ")+str(e)+"\n")
 
 try:
 	import httplib
-except ImportError, e:
+except ImportError as e:
 	sys.stderr.write(colorize("BAD","!!! CANNOT IMPORT HTTPLIB: ")+str(e)+"\n")
 
 def make_metadata_dict(data):
@@ -208,7 +208,7 @@ def make_ftp_request(conn, address, rest=None, dest=None):
 
 		return mydata,not (fsize==data_size),""
 
-	except ValueError, e:
+	except ValueError as e:
 		return None,int(str(e)[:4]),str(e)
 	
 
@@ -224,9 +224,9 @@ def make_http_request(conn, address, params={}, headers={}, dest=None):
 			if (rc != 0):
 				conn,ignore,ignore,ignore,ignore = create_conn(address)
 			conn.request("GET", address, params, headers)
-		except SystemExit, e:
+		except SystemExit as e:
 			raise
-		except Exception, e:
+		except Exception as e:
 			return None,None,"Server request failed: "+str(e)
 		response = conn.getresponse()
 		rc = response.status
@@ -482,7 +482,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 
 	try:
 		conn, protocol, address, params, headers = create_conn(baseurl, conn)
-	except socket.error, e:
+	except socket.error as e:
 		# ftplib.FTP(host) can raise errors like this:
 		#   socket.error: (111, 'Connection refused')
 		sys.stderr.write("!!! %s\n" % (e,))
@@ -523,7 +523,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	import portage.exception
 	try:
 		filelist = dir_get_list(baseurl, conn)
-	except portage.exception.PortageException, e:
+	except portage.exception.PortageException as e:
 		sys.stderr.write(_("!!! Error connecting to '%s'.\n") % baseurl)
 		sys.stderr.write("!!! %s\n" % str(e))
 		del e
@@ -548,7 +548,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 					if mytempfile.tell() > len(data):
 						mytempfile.seek(0)
 						data = mytempfile.read()
-				except ValueError, e:
+				except ValueError as e:
 					sys.stderr.write("--- "+str(e)+"\n")
 					if trynum < 3:
 						sys.stderr.write(_("Retrying...\n"))
@@ -563,9 +563,9 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 						mytempfile.seek(0)
 						gzindex = gzip.GzipFile(mfile[:-3],'rb',9,mytempfile)
 						data = gzindex.read()
-					except SystemExit, e:
+					except SystemExit as e:
 						raise
-					except Exception, e:
+					except Exception as e:
 						mytempfile.close()
 						sys.stderr.write(_("!!! Failed to use gzip: ")+str(e)+"\n")
 						sys.stderr.flush()
@@ -579,9 +579,9 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 					out.write(_("Pickle loaded.\n"))
 					out.flush()
 					break
-				except SystemExit, e:
+				except SystemExit as e:
 					raise
-				except Exception, e:
+				except Exception as e:
 					sys.stderr.write(_("!!! Failed to read data from index: ")+str(mfile)+"\n")
 					sys.stderr.write("!!! "+str(e)+"\n")
 					sys.stderr.flush()
@@ -590,9 +590,9 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 					encoding=_encodings['fs'], errors='strict'), 'wb')
 				pickle.dump(metadata, metadatafile, protocol=2)
 				metadatafile.close()
-			except SystemExit, e:
+			except SystemExit as e:
 				raise
-			except Exception, e:
+			except Exception as e:
 				sys.stderr.write(_("!!! Failed to write binary metadata to disk!\n"))
 				sys.stderr.write("!!! "+str(e)+"\n")
 				sys.stderr.flush()
@@ -688,9 +688,9 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 				encoding=_encodings['fs'], errors='strict'), 'wb')
 			pickle.dump(metadata[baseurl]["data"], metadatafile, protocol=2)
 			metadatafile.close()
-	except SystemExit, e:
+	except SystemExit as e:
 		raise
-	except Exception, e:
+	except Exception as e:
 		sys.stderr.write(_("!!! Failed to write binary metadata to disk!\n"))
 		sys.stderr.write("!!! "+str(e)+"\n")
 		sys.stderr.flush()

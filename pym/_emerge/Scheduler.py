@@ -1498,7 +1498,7 @@ class Scheduler(PollScheduler):
 			success, mydepgraph, dropped_tasks = resume_depgraph(
 				self.settings, self.trees, self._mtimedb, self.myopts,
 				myparams, self._spinner)
-		except depgraph.UnsatisfiedResumeDep, exc:
+		except depgraph.UnsatisfiedResumeDep as exc:
 			# rename variable to avoid python-3.0 error:
 			# SyntaxError: can not delete variable 'e' referenced in nested
 			#              scope
