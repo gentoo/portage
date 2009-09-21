@@ -774,7 +774,7 @@ class portdbapi(dbapi):
 		checksums = mf.getDigests()
 		if not checksums:
 			if debug: 
-				print "[empty/missing/bad digest]: "+mypkg
+				print("[empty/missing/bad digest]: "+mypkg)
 			return None
 		filesdict={}
 		myfiles = self.getFetchMap(mypkg, useflags=useflags)
@@ -1043,7 +1043,7 @@ class portdbapi(dbapi):
 			else:
 				myval = list(self._iter_match(mydep, self.cp_list(mykey)))
 		else:
-			print "ERROR: xmatch doesn't handle", level, "query!"
+			print("ERROR: xmatch doesn't handle", level, "query!")
 			raise KeyError
 
 		if self.frozen and (level not in ["match-list", "bestmatch-list"]):

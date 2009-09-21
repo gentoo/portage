@@ -904,10 +904,10 @@ class Scheduler(PollScheduler):
 				root_msg = ""
 				if mysettings["ROOT"] != "/":
 					root_msg = " merged to %s" % mysettings["ROOT"]
-				print
+				print()
 				printer.einfo("Error messages for package %s%s:" % \
 					(colorize("INFORM", key), root_msg))
-				print
+				print()
 				for phase in portage.const.EBUILD_PHASES:
 					if phase not in logentries:
 						continue
@@ -1472,7 +1472,7 @@ class Scheduler(PollScheduler):
 		@rtype: bool
 		@returns: True if successful, False otherwise.
 		"""
-		print colorize("GOOD", "*** Resuming merge...")
+		print(colorize("GOOD", "*** Resuming merge..."))
 
 		if self._show_list():
 			if "--tree" in self.myopts:
@@ -1489,7 +1489,7 @@ class Scheduler(PollScheduler):
 			"--nodeps" not in self.myopts
 
 		if show_spinner:
-			print "Calculating dependencies  ",
+			print("Calculating dependencies  ", end=' ')
 
 		myparams = create_depgraph_params(self.myopts, None)
 		success = False
@@ -1507,7 +1507,7 @@ class Scheduler(PollScheduler):
 			dropped_tasks = set()
 
 		if show_spinner:
-			print "\b\b... done!"
+			print("\b\b... done!")
 
 		if e is not None:
 			def unsatisfied_resume_dep_msg():

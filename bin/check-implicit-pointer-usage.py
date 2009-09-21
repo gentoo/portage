@@ -51,6 +51,6 @@ while True:
             pointer_linenum = int(m.group(2))
             if (last_implicit_filename == pointer_filename
                 and last_implicit_linenum == pointer_linenum):
-                print "Function `%s' implicitly converted to pointer at " \
+                print(("Function `%s' implicitly converted to pointer at " \
                       "%s:%d" % (last_implicit_func, last_implicit_filename,
-                                 last_implicit_linenum)
+                                 last_implicit_linenum)))

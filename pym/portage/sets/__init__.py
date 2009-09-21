@@ -201,8 +201,8 @@ if __name__ == "__main__":
 	sc = load_default_config(portage.settings, portage.db["/"])
 	l, e = sc.getSets()
 	for x in l:
-		print x+":"
-		print "DESCRIPTION = %s" % l[x].getMetadata("Description")
+		print(x+":")
+		print("DESCRIPTION = %s" % l[x].getMetadata("Description"))
 		for n in sorted(l[x].getAtoms()):
-			print "- "+n
-		print
+			print("- "+n)
+		print()

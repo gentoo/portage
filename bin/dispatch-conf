@@ -106,9 +106,8 @@ class dispatch:
         if self.options['use-rcs'] == 'yes':
             for rcs_util in ("rcs", "ci", "co", "rcsmerge"):
                 if not find_binary(rcs_util):
-                    print >> sys.stderr, \
-                        'dispatch-conf: Error finding all RCS utils and " + \
-                        "use-rcs=yes in config; fatal'
+                    print('dispatch-conf: Error finding all RCS utils and " + \
+                        "use-rcs=yes in config; fatal', file=sys.stderr)
                     return False
 
 
@@ -227,9 +226,9 @@ class dispatch:
                     cmd = self.options['diff'] % (conf['current'], newconf)
                     spawn_shell(cmd)
 
-                print
-                print '>> (%i of %i) -- %s' % (count, len(confs), conf ['current'])
-                print '>> q quit, h help, n next, e edit-new, z zap-new, u use-new\n   m merge, t toggle-merge, l look-merge: ',
+                print()
+                print('>> (%i of %i) -- %s' % (count, len(confs), conf ['current']))
+                print('>> q quit, h help, n next, e edit-new, z zap-new, u use-new\n   m merge, t toggle-merge, l look-merge: ', end=' ')
 
                 # In some cases getch() will return some spurious characters
                 # that do not represent valid input. If we don't validate the
@@ -257,10 +256,10 @@ class dispatch:
                     break
                 elif c == 'm':
                     merged = SCRATCH_DIR+"/"+os.path.basename(conf['current'])
-                    print
+                    print()
                     ret = os.system (self.options['merge'] % (merged, conf ['current'], newconf))
                     if ret:
-                        print "Failure running 'merge' command"
+                        print("Failure running 'merge' command")
                         continue
                     shutil.copyfile(merged, mrgconf)
                     os.remove(merged)
@@ -294,12 +293,12 @@ class dispatch:
                     raise AssertionError("Invalid Input: %s" % c)
 
         if auto_zapped:
-            print
-            print " One or more updates are frozen and have been automatically zapped:"
-            print
+            print()
+            print(" One or more updates are frozen and have been automatically zapped:")
+            print()
             for frozen in auto_zapped:
-                print "  * '%s'" % frozen
-            print
+                print("  * '%s'" % frozen)
+            print()
 
     def replace (self, newconf, curconf):
         """Replace current config with the new/merged version.  Also logs
@@ -308,8 +307,8 @@ class dispatch:
         try:
             os.rename(newconf, curconf)
         except (IOError, os.error) as why:
-            print >> sys.stderr, 'dispatch-conf: Error renaming %s to %s: %s; fatal' % \
-                  (newconf, curconf, str(why))
+            print('dispatch-conf: Error renaming %s to %s: %s; fatal' % \
+                  (newconf, curconf, str(why)), file=sys.stderr)
 
 
     def post_process(self, curconf):
@@ -356,19 +355,19 @@ class dispatch:
 
 
     def do_help (self):
-        print; print
+        print(); print
 
-        print '  u -- update current config with new config and continue'
-        print '  z -- zap (delete) new config and continue'
-        print '  n -- skip to next config, leave all intact'
-        print '  e -- edit new config'
-        print '  m -- interactively merge current and new configs'
-        print '  l -- look at diff between pre-merged and merged configs'
-        print '  t -- toggle new config between merged and pre-merged state'
-        print '  h -- this screen'
-        print '  q -- quit'
+        print('  u -- update current config with new config and continue')
+        print('  z -- zap (delete) new config and continue')
+        print('  n -- skip to next config, leave all intact')
+        print('  e -- edit new config')
+        print('  m -- interactively merge current and new configs')
+        print('  l -- look at diff between pre-merged and merged configs')
+        print('  t -- toggle new config between merged and pre-merged state')
+        print('  h -- this screen')
+        print('  q -- quit')
 
-        print; print 'press any key to return to diff...',
+        print(); print('press any key to return to diff...', end=' ')
 
         getch ()
 

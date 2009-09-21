@@ -67,7 +67,7 @@ def archive_conf():
             try:
                 contents = open(file, "r")
             except IOError as e:
-                print >> sys.stderr, 'archive-conf: Unable to open %s: %s' % (file, e)
+                print('archive-conf: Unable to open %s: %s' % (file, e), file=sys.stderr)
                 sys.exit(1)
             lines = contents.readlines()
             for line in lines:
@@ -100,4 +100,4 @@ def archive_conf():
 if len(sys.argv) > 1:
     archive_conf()
 else:
-    print >> sys.stderr, 'Usage: archive-conf /CONFIG/FILE [/CONFIG/FILE...]'
+    print('Usage: archive-conf /CONFIG/FILE [/CONFIG/FILE...]', file=sys.stderr)

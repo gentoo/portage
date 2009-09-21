@@ -61,13 +61,13 @@ class cache(object):
 	def close_caches(self):
 		import traceback
 		traceback.print_stack()
-		print "%s close_cache is deprecated" % self.__class__
+		print("%s close_cache is deprecated" % self.__class__)
 		self.eclasses.clear()
 
 	def flush_cache(self):
 		import traceback
 		traceback.print_stack()
-		print "%s flush_cache is deprecated" % self.__class__
+		print("%s flush_cache is deprecated" % self.__class__)
 
 		self.update_eclasses()
 

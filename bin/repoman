@@ -88,7 +88,7 @@ if repoman_settings.get("NOCOLOR", "").lower() in ("yes", "true") or \
 	nocolor()
 
 def warn(txt):
-	print "repoman: " + txt
+	print("repoman: " + txt)
 
 def err(txt):
 	warn(txt)
@@ -436,7 +436,7 @@ no_exec = frozenset(["Manifest","ChangeLog","metadata.xml"])
 options, arguments = ParseArgs(sys.argv, qahelp)
 
 if options.version:
-	print "Portage", portage.VERSION
+	print("Portage", portage.VERSION)
 	sys.exit(0)
 
 # Set this to False when an extraordinary issue (generally
@@ -482,7 +482,7 @@ if vcs == "cvs" and \
 		prefix = bad(" * ")
 		from textwrap import wrap
 		for line in wrap(msg, 70):
-			print prefix + line
+			print(prefix + line)
 		sys.exit(1)
 	del repo_lines
 
@@ -541,10 +541,10 @@ repolevel = len(reposplit)
 # Reason for this is if they're trying to commit in just $FILESDIR/*, the Manifest needs updating.
 # this check ensures that repoman knows where it is, and the manifest recommit is at least possible.
 if options.mode == 'commit' and repolevel not in [1,2,3]:
-	print red("***")+" Commit attempts *must* be from within a vcs co, category, or package directory."
-	print red("***")+" Attempting to commit from a packages files directory will be blocked for instance."
-	print red("***")+" This is intended behaviour, to ensure the manifest is recommited for a package."
-	print red("***")
+	print(red("***")+" Commit attempts *must* be from within a vcs co, category, or package directory.")
+	print(red("***")+" Attempting to commit from a packages files directory will be blocked for instance.")
+	print(red("***")+" This is intended behaviour, to ensure the manifest is recommited for a package.")
+	print(red("***"))
 	err("Unable to identify level we're commiting from for %s" % '/'.join(reposplit))
 
 startdir = normalize_path(mydir)
@@ -672,10 +672,10 @@ for x in repoman_settings.archlist():
 	if x[0] == "~":
 		continue
 	if x not in profiles:
-		print red("\""+x+"\" doesn't have a valid profile listed in profiles.desc.")
-		print red("You need to either \"cvs update\" your profiles dir or follow this")
-		print red("up with the "+x+" team.")
-		print
+		print(red("\""+x+"\" doesn't have a valid profile listed in profiles.desc."))
+		print(red("You need to either \"cvs update\" your profiles dir or follow this"))
+		print(red("up with the "+x+" team."))
+		print()
 
 if not liclist:
 	logging.fatal("Couldn't find licenses?")
@@ -760,9 +760,9 @@ metadata_dtd = os.path.join(repoman_settings["DISTDIR"], 'metadata.dtd')
 if options.mode == "manifest":
 	pass
 elif not find_binary('xmllint'):
-	print red("!!! xmllint not found. Can't check metadata.xml.\n")
+	print(red("!!! xmllint not found. Can't check metadata.xml.\n"))
 	if options.xml_parse or repolevel==3:
-		print red("!!!")+" sorry, xmllint is needed.  failing\n"
+		print(red("!!!")+" sorry, xmllint is needed.  failing\n")
 		sys.exit(1)
 else:
 	#hardcoded paths/urls suck. :-/
@@ -780,13 +780,13 @@ else:
 
 	except (OSError,IOError) as e:
 		if e.errno != 2:
-			print red("!!!")+" caught exception '%s' for %s/metadata.dtd, bailing" % (str(e), portage.CACHE_PATH)
+			print(red("!!!")+" caught exception '%s' for %s/metadata.dtd, bailing" % (str(e), portage.CACHE_PATH))
 			sys.exit(1)
 
 	if must_fetch:
-		print 
-		print green("***")+" the local copy of metadata.dtd needs to be refetched, doing that now"
-		print
+		print() 
+		print(green("***")+" the local copy of metadata.dtd needs to be refetched, doing that now")
+		print()
 		val = 0
 		try:
 			try:
@@ -801,12 +801,12 @@ else:
 		except SystemExit as e:
 			raise  # Need to propogate this
 		except Exception as e:
-			print
-			print red("!!!")+" attempting to fetch 'http://www.gentoo.org/dtd/metadata.dtd', caught"
-			print red("!!!")+" exception '%s' though." % str(e)
+			print()
+			print(red("!!!")+" attempting to fetch 'http://www.gentoo.org/dtd/metadata.dtd', caught")
+			print(red("!!!")+" exception '%s' though." % str(e))
 			val=0
 		if not val:
-			print red("!!!")+" fetching new metadata.dtd failed, aborting"
+			print(red("!!!")+" fetching new metadata.dtd failed, aborting")
 			sys.exit(1)
 	#this can be problematic if xmllint changes their output
 	xmllint_capable=True
@@ -817,9 +817,9 @@ if options.mode == 'commit' and vcs:
 if options.mode == "manifest":
 	pass
 elif options.pretend:
-	print green("\nRepoMan does a once-over of the neighborhood...")
+	print(green("\nRepoMan does a once-over of the neighborhood..."))
 else:
-	print green("\nRepoMan scours the neighborhood...")
+	print(green("\nRepoMan scours the neighborhood..."))
 
 new_ebuilds = set()
 modified_changelogs = set()
@@ -908,7 +908,7 @@ for x in scanlist:
 
 		repoman_settings["O"] = checkdir
 		if not portage.digestgen([], repoman_settings, myportdb=portdb):
-			print "Unable to generate manifest."
+			print("Unable to generate manifest.")
 			dofail = 1
 		if options.mode == "manifest":
 			if not dofail and options.force and auto_assumed and \
@@ -1188,9 +1188,9 @@ for x in scanlist:
 				"xmllint --nonet --noout --dtdvalid '%s' '%s'" % \
 				 (metadata_dtd, os.path.join(checkdir, "metadata.xml")))
 			if st != os.EX_OK:
-				print red("!!!") + " metadata.xml is invalid:"
+				print(red("!!!") + " metadata.xml is invalid:")
 				for z in out.splitlines():
-					print red("!!! ")+z
+					print(red("!!! ")+z)
 				stats["metadata.bad"]+=1
 				fails["metadata.bad"].append(x+"/metadata.xml")
 
@@ -1230,7 +1230,7 @@ for x in scanlist:
 			fails["ebuild.invalidname"].append(x+"/"+y+".ebuild")
 			continue
 		elif myesplit[0]!=pkgdir:
-			print pkgdir,myesplit[0]
+			print(pkgdir,myesplit[0])
 			stats["ebuild.namenomatch"]=stats["ebuild.namenomatch"]+1
 			fails["ebuild.namenomatch"].append(x+"/"+y+".ebuild")
 			continue
@@ -1792,41 +1792,41 @@ if have_dev_keywords and not options.include_dev:
 	suggest_include_dev = True
 
 if suggest_ignore_masked or suggest_include_dev:
-	print
+	print()
 	if suggest_ignore_masked:
-		print bold("Note: use --without-mask to check " + \
-			"KEYWORDS on dependencies of masked packages")
+		print(bold("Note: use --without-mask to check " + \
+			"KEYWORDS on dependencies of masked packages"))
 
 	if suggest_include_dev:
-		print bold("Note: use --include-dev (-d) to check " + \
-			"dependencies for 'dev' profiles")
-	print
+		print(bold("Note: use --include-dev (-d) to check " + \
+			"dependencies for 'dev' profiles"))
+	print()
 
 if options.mode != 'commit':
 	if dofull:
-		print bold("Note: type \"repoman full\" for a complete listing.")
+		print(bold("Note: type \"repoman full\" for a complete listing."))
 	if dowarn and not dofail:
-		print green("RepoMan sez:"),"\"You're only giving me a partial QA payment?\n              I'll take it this time, but I'm not happy.\""
+		print(green("RepoMan sez:"),"\"You're only giving me a partial QA payment?\n              I'll take it this time, but I'm not happy.\"")
 	elif not dofail:
-		print green("RepoMan sez:"),"\"If everyone were like you, I'd be out of business!\""
+		print(green("RepoMan sez:"),"\"If everyone were like you, I'd be out of business!\"")
 	elif dofail:
-		print turquoise("Please fix these important QA issues first.")
-		print green("RepoMan sez:"),"\"Make your QA payment on time and you'll never see the likes of me.\"\n"
+		print(turquoise("Please fix these important QA issues first."))
+		print(green("RepoMan sez:"),"\"Make your QA payment on time and you'll never see the likes of me.\"\n")
 		sys.exit(1)
 else:
 	if dofail and can_force and options.force and not options.pretend:
-		print green("RepoMan sez:") + \
+		print(green("RepoMan sez:") + \
 			" \"You want to commit even with these QA issues?\n" + \
-			"              I'll take it this time, but I'm not happy.\"\n"
+			"              I'll take it this time, but I'm not happy.\"\n")
 	elif dofail:
 		if options.force and not can_force:
-			print bad("The --force option has been disabled due to extraordinary issues.")
-		print turquoise("Please fix these important QA issues first.")
-		print green("RepoMan sez:"),"\"Make your QA payment on time and you'll never see the likes of me.\"\n"
+			print(bad("The --force option has been disabled due to extraordinary issues."))
+		print(turquoise("Please fix these important QA issues first."))
+		print(green("RepoMan sez:"),"\"Make your QA payment on time and you'll never see the likes of me.\"\n")
 		sys.exit(1)
 
 	if options.pretend:
-		print green("RepoMan sez:"), "\"So, you want to play it safe. Good call.\"\n"
+		print(green("RepoMan sez:"), "\"So, you want to play it safe. Good call.\"\n")
 
 	myunadded = []
 	if vcs == "cvs":
@@ -1856,7 +1856,7 @@ else:
 		for x in range(len(myunadded)-1,-1,-1):
 			xs=myunadded[x].split("/")
 			if xs[-1]=="files":
-				print "!!! files dir is not added! Please correct this."
+				print("!!! files dir is not added! Please correct this.")
 				sys.exit(-1)
 			elif xs[-1]=="Manifest":
 				# It's a manifest... auto add
@@ -1864,14 +1864,14 @@ else:
 				del myunadded[x]
 
 	if myautoadd:
-		print ">>> Auto-Adding missing Manifest(s)..."
+		print(">>> Auto-Adding missing Manifest(s)...")
 		if options.pretend:
 			if vcs == "cvs":
-				print "(cvs add "+" ".join(myautoadd)+")"
+				print("(cvs add "+" ".join(myautoadd)+")")
 			if vcs == "svn":
-				print "(svn add "+" ".join(myautoadd)+")"
+				print("(svn add "+" ".join(myautoadd)+")")
 			elif vcs == "git":
-				print "(git add "+" ".join(myautoadd)+")"
+				print("(git add "+" ".join(myautoadd)+")")
 			retval=0
 		else:
 			if vcs == "cvs":
@@ -1886,12 +1886,12 @@ else:
 			sys.exit(retval)
 
 	if myunadded:
-		print red("!!! The following files are in your local tree but are not added to the master")
-		print red("!!! tree. Please remove them from the local tree or add them to the master tree.")
+		print(red("!!! The following files are in your local tree but are not added to the master"))
+		print(red("!!! tree. Please remove them from the local tree or add them to the master tree."))
 		for x in myunadded:
-			print "   ",x
-		print
-		print
+			print("   ",x)
+		print()
+		print()
 		sys.exit(1)
 
 	if vcs == "cvs":
@@ -1946,10 +1946,10 @@ else:
 
 	if vcs:
 		if not (mychanged or mynew or myremoved):
-			print green("RepoMan sez:"), "\"Doing nothing is not always good for QA.\""
-			print
-			print "(Didn't find any changed files...)"
-			print
+			print(green("RepoMan sez:"), "\"Doing nothing is not always good for QA.\"")
+			print()
+			print("(Didn't find any changed files...)")
+			print()
 			sys.exit(1)
 
 	# Manifests need to be regenerated after all other commits, so don't commit
@@ -1985,16 +1985,16 @@ else:
 		if myout[0] == 0:
 			myheaders.append(myfile)
 
-	print "* %s files being committed..." % green(str(len(myupdates))),
+	print("* %s files being committed..." % green(str(len(myupdates))), end=' ')
 	if vcs == 'git':
 		# With git, there's never any keyword expansion, so there's
 		# no need to regenerate manifests and all files will be
 		# committed in one big commit at the end.
-		print
+		print()
 	else:
-		print "%s have headers that will change." % green(str(len(myheaders)))
-		print "* Files with headers will cause the " + \
-			"manifests to be made and recommited."
+		print("%s have headers that will change." % green(str(len(myheaders))))
+		print("* Files with headers will cause the " + \
+			"manifests to be made and recommited.")
 	logging.info("myupdates: %s", myupdates)
 	logging.info("myheaders: %s", myheaders)
 
@@ -2023,7 +2023,7 @@ else:
 		except KeyboardInterrupt:
 			exithandler()
 		if not commitmessage or not commitmessage.strip():
-			print "* no commit message?  aborting commit."
+			print("* no commit message?  aborting commit.")
 			sys.exit(1)
 	commitmessage = commitmessage.rstrip()
 	portage_version = getattr(portage, "VERSION", None)
@@ -2051,12 +2051,12 @@ else:
 		mymsg.write(commitmessage)
 		mymsg.close()
 
-		print
-		print green("Using commit message:")
-		print green("------------------------------------------------------------------------------")
-		print commitmessage
-		print green("------------------------------------------------------------------------------")
-		print
+		print()
+		print(green("Using commit message:"))
+		print(green("------------------------------------------------------------------------------"))
+		print(commitmessage)
+		print(green("------------------------------------------------------------------------------"))
+		print()
 
 		# Having a leading ./ prefix on file paths can trigger a bug in
 		# the cvs server when committing files to multiple directories,
@@ -2072,7 +2072,7 @@ else:
 
 		try:
 			if options.pretend:
-				print "(%s)" % (" ".join(commit_cmd),)
+				print("(%s)" % (" ".join(commit_cmd),))
 			else:
 				retval = spawn(commit_cmd, env=os.environ)
 				if retval != os.EX_OK:
@@ -2109,7 +2109,7 @@ else:
 		if "PORTAGE_GPG_DIR" in repoman_settings:
 			gpgcmd += " --homedir "+repoman_settings["PORTAGE_GPG_DIR"]
 		if options.pretend:
-			print "("+gpgcmd+" "+filename+")"
+			print("("+gpgcmd+" "+filename+")")
 		else:
 			rValue = os.system(gpgcmd+" "+filename)
 			if rValue == os.EX_OK:
@@ -2161,7 +2161,7 @@ else:
 				portage.digestgen([], repoman_settings, manifestonly=1,
 					myportdb=portdb)
 		elif repolevel==1: # repo-cvsroot
-			print green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n"
+			print(green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n")
 			for x in myfiles:
 				xs=x.split("/")
 				if len(xs) < 4-repolevel:
@@ -2177,7 +2177,7 @@ else:
 				portage.digestgen([], repoman_settings, manifestonly=1,
 					myportdb=portdb)
 		else:
-			print red("I'm confused... I don't know where I am!")
+			print(red("I'm confused... I don't know where I am!"))
 			sys.exit(1)
 
 		# Force an unsigned commit when more than one Manifest needs to be signed.
@@ -2198,7 +2198,7 @@ else:
 
 			try:
 				if options.pretend:
-					print "(%s)" % (" ".join(commit_cmd),)
+					print("(%s)" % (" ".join(commit_cmd),))
 				else:
 					retval = spawn(commit_cmd, env=os.environ)
 					if retval:
@@ -2237,7 +2237,7 @@ else:
 						continue
 					gpgsign(os.path.join(repoman_settings["O"], "Manifest"))
 			elif repolevel==1: # repo-cvsroot
-				print green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n"
+				print(green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n")
 				mydone=[]
 				for x in myfiles:
 					xs=x.split("/")
@@ -2269,7 +2269,7 @@ else:
 		update_index_cmd = ["git", "update-index"]
 		update_index_cmd.extend(f.lstrip("./") for f in myfiles)
 		if options.pretend:
-			print "(%s)" % (" ".join(update_index_cmd),)
+			print("(%s)" % (" ".join(update_index_cmd),))
 		else:
 			retval = spawn(update_index_cmd, env=os.environ)
 			if retval != os.EX_OK:
@@ -2309,7 +2309,7 @@ else:
 
 		try:
 			if options.pretend:
-				print "(%s)" % (" ".join(commit_cmd),)
+				print("(%s)" % (" ".join(commit_cmd),))
 			else:
 				retval = spawn(commit_cmd, env=os.environ)
 				if retval != os.EX_OK:
@@ -2323,11 +2323,11 @@ else:
 			except OSError:
 				pass
 
-	print
+	print()
 	if vcs:
-		print "Commit complete."
+		print("Commit complete.")
 	else:
-		print "repoman was too scared by not seeing any familiar version control file that he forgot to commit anything"
-	print green("RepoMan sez:"), "\"If everyone were like you, I'd be out of business!\"\n"
+		print("repoman was too scared by not seeing any familiar version control file that he forgot to commit anything")
+	print(green("RepoMan sez:"), "\"If everyone were like you, I'd be out of business!\"\n")
 sys.exit(0)
 

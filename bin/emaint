@@ -520,7 +520,7 @@ def emaint_main(myargv):
 	if parser.action:
 		action = parser.action
 	else:
-		print "Defaulting to --check"
+		print("Defaulting to --check")
 		action = "-c/--check"
 
 	if args[0] == "all":
@@ -538,7 +538,7 @@ def emaint_main(myargv):
 
 	isatty = sys.stdout.isatty()
 	for task in tasks:
-		print status % task.name()
+		print(status % task.name())
 		inst = task()
 		onProgress = None
 		if isatty:
@@ -556,14 +556,14 @@ def emaint_main(myargv):
 		if isatty:
 			# make sure the final progress is displayed
 			progressHandler.display()
-			print
+			print()
 			signal.signal(signal.SIGWINCH, signal.SIG_DFL)
 		if result:
-			print
-			print "\n".join(result)
-			print "\n"
+			print()
+			print("\n".join(result))
+			print("\n")
 
-	print "Finished"
+	print("Finished")
 
 if __name__ == "__main__":
 	emaint_main(sys.argv[1:])

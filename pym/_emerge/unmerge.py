@@ -74,9 +74,9 @@ def unmerge(root_config, myopts, unmerge_action,
 	
 		if not unmerge_files:
 			if unmerge_action == "unmerge":
-				print
-				print bold("emerge unmerge") + " can only be used with specific package names"
-				print
+				print()
+				print(bold("emerge unmerge") + " can only be used with specific package names")
+				print()
 				return 0
 			else:
 				global_unmerge = 1
@@ -90,7 +90,7 @@ def unmerge(root_config, myopts, unmerge_action,
 		else:
 			#we've got command-line arguments
 			if not unmerge_files:
-				print "\nNo packages to unmerge have been provided.\n"
+				print("\nNo packages to unmerge have been provided.\n")
 				return 0
 			for x in unmerge_files:
 				arg_parts = x.split('/')
@@ -99,14 +99,14 @@ def unmerge(root_config, myopts, unmerge_action,
 					#possible cat/pkg or dep; treat as such
 					candidate_catpkgs.append(x)
 				elif unmerge_action in ["prune","clean"]:
-					print "\n!!! Prune and clean do not accept individual" + \
-						" ebuilds as arguments;\n    skipping.\n"
+					print("\n!!! Prune and clean do not accept individual" + \
+						" ebuilds as arguments;\n    skipping.\n")
 					continue
 				else:
 					# it appears that the user is specifying an installed
 					# ebuild and we're in "unmerge" mode, so it's ok.
 					if not os.path.exists(x):
-						print "\n!!! The path '"+x+"' doesn't exist.\n"
+						print("\n!!! The path '"+x+"' doesn't exist.\n")
 						return 0
 	
 					absx   = os.path.abspath(x)
@@ -124,26 +124,26 @@ def unmerge(root_config, myopts, unmerge_action,
 					sp_vdb_len = len(sp_vdb)
 	
 					if not os.path.exists(absx+"/CONTENTS"):
-						print "!!! Not a valid db dir: "+str(absx)
+						print("!!! Not a valid db dir: "+str(absx))
 						return 0
 	
 					if sp_absx_len <= sp_vdb_len:
 						# The Path is shorter... so it can't be inside the vdb.
-						print sp_absx
-						print absx
-						print "\n!!!",x,"cannot be inside "+ \
-							vdb_path+"; aborting.\n"
+						print(sp_absx)
+						print(absx)
+						print("\n!!!",x,"cannot be inside "+ \
+							vdb_path+"; aborting.\n")
 						return 0
 	
 					for idx in range(0,sp_vdb_len):
 						if idx >= sp_absx_len or sp_vdb[idx] != sp_absx[idx]:
-							print sp_absx
-							print absx
-							print "\n!!!", x, "is not inside "+\
-								vdb_path+"; aborting.\n"
+							print(sp_absx)
+							print(absx)
+							print("\n!!!", x, "is not inside "+\
+								vdb_path+"; aborting.\n")
 							return 0
 	
-					print "="+"/".join(sp_absx[sp_vdb_len:])
+					print("="+"/".join(sp_absx[sp_vdb_len:]))
 					candidate_catpkgs.append(
 						"="+"/".join(sp_absx[sp_vdb_len:]))
 	
@@ -172,13 +172,13 @@ def unmerge(root_config, myopts, unmerge_action,
 			try:
 				mymatch = vartree.dbapi.match(x)
 			except portage.exception.AmbiguousPackageName as errpkgs:
-				print "\n\n!!! The short ebuild name \"" + \
-					x + "\" is ambiguous.  Please specify"
-				print "!!! one of the following fully-qualified " + \
-					"ebuild names instead:\n"
+				print("\n\n!!! The short ebuild name \"" + \
+					x + "\" is ambiguous.  Please specify")
+				print("!!! one of the following fully-qualified " + \
+					"ebuild names instead:\n")
 				for i in errpkgs[0]:
-					print "    " + green(i)
-				print
+					print("    " + green(i))
+				print()
 				sys.exit(1)
 	
 			if not mymatch and x[0] not in "<>=~":
@@ -379,9 +379,9 @@ def unmerge(root_config, myopts, unmerge_action,
 				#print colorize("WARN", "Package %s is going to be unmerged," % cpv)
 				#print colorize("WARN", "but still listed in the following package sets:")
 				#print "    %s\n" % ", ".join(parents)
-				print colorize("WARN", "Not unmerging package %s as it is" % cpv)
-				print colorize("WARN", "still referenced by the following package sets:")
-				print "    %s\n" % ", ".join(parents)
+				print(colorize("WARN", "Not unmerging package %s as it is" % cpv))
+				print(colorize("WARN", "still referenced by the following package sets:"))
+				print("    %s\n" % ", ".join(parents))
 				# adjust pkgmap so the display output is correct
 				pkgmap[cp]["selected"].remove(cpv)
 				all_selected.remove(cpv)
@@ -484,9 +484,9 @@ def unmerge(root_config, myopts, unmerge_action,
 		if userquery("Would you like to unmerge these packages?")=="No":
 			# enter pretend mode for correct formatting of results
 			myopts["--pretend"] = True
-			print
-			print "Quitting."
-			print
+			print()
+			print("Quitting.")
+			print()
 			return 0
 	#the real unmerging begins, after a short delay....
 	if clean_delay and not autoclean:

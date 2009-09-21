@@ -1071,7 +1071,7 @@ class binarytree(object):
 	def gettbz2(self, pkgname):
 		"""Fetches the package from a remote site, if necessary.  Attempts to
 		resume if the file appears to be partially downloaded."""
-		print "Fetching '"+str(pkgname)+"'"
+		print("Fetching '"+str(pkgname)+"'")
 		tbz2_path = self.getname(pkgname)
 		tbz2name = os.path.basename(tbz2_path)
 		resume = False

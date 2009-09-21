@@ -161,9 +161,9 @@ class quiet_mirroring(object):
 	
 class non_quiet_mirroring(quiet_mirroring):
 	call_update_min=1
-	def update(self,key,*arg):	print "processed",key
-	def exception(self, key, *arg):	print "exec",key,arg
-	def missing(self,key):		print "key %s is missing", key
-	def corruption(self,key,*arg):	print "corrupt %s:" % key,arg
-	def eclass_stale(self,key,*arg):print "stale %s:"%key,arg
+	def update(self,key,*arg):	print("processed",key)
+	def exception(self, key, *arg):	print("exec",key,arg)
+	def missing(self,key):		print("key %s is missing", key)
+	def corruption(self,key,*arg):	print("corrupt %s:" % key,arg)
+	def eclass_stale(self,key,*arg):print("stale %s:"%key,arg)
 

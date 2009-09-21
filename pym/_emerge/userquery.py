@@ -33,7 +33,7 @@ def userquery(prompt, responses=None, colours=None):
 	elif colours is None:
 		colours=[bold]
 	colours=(colours*len(responses))[:len(responses)]
-	print bold(prompt),
+	print(bold(prompt), end=' ')
 	try:
 		while True:
 			response=raw_input("["+"/".join([colours[i](responses[i]) for i in range(len(responses))])+"] ")
@@ -41,8 +41,8 @@ def userquery(prompt, responses=None, colours=None):
 				# An empty response will match the first value in responses.
 				if response.upper()==key[:len(response)].upper():
 					return key
-			print "Sorry, response '%s' not understood." % response,
+			print("Sorry, response '%s' not understood." % response, end=' ')
 	except (EOFError, KeyboardInterrupt):
-		print "Interrupted."
+		print("Interrupted.")
 		sys.exit(1)
 

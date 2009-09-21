@@ -65,10 +65,10 @@ class PreservedLibraryConsumerSet(LibraryConsumerSet):
 			for libs in plib_dict.itervalues():
 				for lib in libs:
 					if self.debug:
-						print lib
+						print(lib)
 						for x in sorted(self.dbapi.linkmap.findConsumers(lib)):
-							print "    ", x
-						print "-"*40
+							print("    ", x)
+						print("-"*40)
 					consumers.update(self.dbapi.linkmap.findConsumers(lib))
 			# Don't rebuild packages just because they contain preserved
 			# libs that happen to be consumers of other preserved libs.

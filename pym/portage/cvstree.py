@@ -219,7 +219,7 @@ def getentries(mydir,recursive=0):
 			break
 		mysplit=line.split("/")
 		if len(mysplit)!=6:
-			print "Confused:",mysplit
+			print("Confused:",mysplit)
 			continue
 		if mysplit[0]=="D":
 			entries["dirs"][mysplit[1]]={"dirs":{},"files":{},"status":[]}
@@ -249,7 +249,7 @@ def getentries(mydir,recursive=0):
 		if file=="CVS":
 			continue
 		if file=="digest-framerd-2.4.3":
-			print mydir,file
+			print(mydir,file)
 		if os.path.isdir(mydir+"/"+file):
 			if file not in entries["dirs"]:
 				# It's normal for a directory to be unlisted in Entries
@@ -264,49 +264,49 @@ def getentries(mydir,recursive=0):
 				entries["dirs"][file]["status"]=["exists"]
 		elif os.path.isfile(mydir+"/"+file):
 			if file=="digest-framerd-2.4.3":
-				print "isfile"
+				print("isfile")
 			if file not in entries["files"]:
 				entries["files"][file]={"revision":"","date":"","flags":"","tags":""}
 			if "status" in entries["files"][file]:
 				if file=="digest-framerd-2.4.3":
-					print "has status"
+					print("has status")
 				if "exists" not in entries["files"][file]["status"]:
 					if file=="digest-framerd-2.4.3":
-						print "no exists in status"
+						print("no exists in status")
 					entries["files"][file]["status"]+=["exists"]
 			else:
 				if file=="digest-framerd-2.4.3":
-					print "no status"
+					print("no status")
 				entries["files"][file]["status"]=["exists"]
 			try:
 				if file=="digest-framerd-2.4.3":
-					print "stat'ing"
+					print("stat'ing")
 				mystat=os.stat(mydir+"/"+file)
 				mytime = time.asctime(time.gmtime(long(mystat.st_mtime)))
 				if "status" not in entries["files"][file]:
 					if file=="digest-framerd-2.4.3":
-						print "status not set"
+						print("status not set")
 					entries["files"][file]["status"]=[]
 				if file=="digest-framerd-2.4.3":
-					print "date:",entries["files"][file]["date"]
-					print "sdate:",mytime
+					print("date:",entries["files"][file]["date"])
+					print("sdate:",mytime)
 				if mytime==entries["files"][file]["date"]:
 					entries["files"][file]["status"]+=["current"]
 				if file=="digest-framerd-2.4.3":
-					print "stat done"
+					print("stat done")
 				
 				del mystat
 			except SystemExit as e:
 				raise
 			except Exception as e:
-				print "failed to stat",file
-				print e
+				print("failed to stat",file)
+				print(e)
 				return
 				
 		else:
-			print
-			print "File of unknown type:",mydir+"/"+file
-			print
+			print()
+			print("File of unknown type:",mydir+"/"+file)
+			print()
 	return entries
 
 #class cvstree:

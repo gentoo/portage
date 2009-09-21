@@ -79,7 +79,7 @@ def send_mail(mysettings, message):
 			try:
 				mymailuser,mymailpasswd = myauthdata.split(":")
 			except ValueError:
-				print _("!!! invalid SMTP AUTH configuration, trying unauthenticated ...")
+				print(_("!!! invalid SMTP AUTH configuration, trying unauthenticated ..."))
 		else:
 			myconndata = mymailuri
 		if ":" in myconndata:

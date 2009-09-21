@@ -106,19 +106,19 @@ class OptionsClass:
 def print_help():
 	opts = OptionsClass()
 
-	print "dohtml [-a .foo,.bar] [-A .foo,.bar] [-f foo,bar] [-x foo,bar]"
-	print "       [-r] [-V] <file> [file ...]"
-	print
-	print " -a   Set the list of allowed to those that are specified."
-	print "      Default:", ",".join(opts.allowed_exts)
-	print " -A   Extend the list of allowed file types."
-	print " -f   Set list of allowed extensionless file names."
-	print " -x   Set directories to be excluded from recursion."
-	print "      Default:", ",".join(opts.disallowed_dirs)
-	print " -p   Set a document prefix for installed files (empty by default)."
-	print " -r   Install files and directories recursively."
-	print " -V   Be verbose."
-	print
+	print("dohtml [-a .foo,.bar] [-A .foo,.bar] [-f foo,bar] [-x foo,bar]")
+	print("       [-r] [-V] <file> [file ...]")
+	print()
+	print(" -a   Set the list of allowed to those that are specified.")
+	print("      Default:", ",".join(opts.allowed_exts))
+	print(" -A   Extend the list of allowed file types.")
+	print(" -f   Set list of allowed extensionless file names.")
+	print(" -x   Set directories to be excluded from recursion.")
+	print("      Default:", ",".join(opts.disallowed_dirs))
+	print(" -p   Set a document prefix for installed files (empty by default).")
+	print(" -r   Install files and directories recursively.")
+	print(" -V   Be verbose.")
+	print()
 
 def parse_args():
 	options = OptionsClass()
@@ -163,9 +163,9 @@ def main():
 	(options, args) = parse_args()
 
 	if options.verbose:
-		print "Allowed extensions:", options.allowed_exts
-		print "Document prefix : '" + options.doc_prefix	 + "'"
-		print "Allowed files :", options.allowed_files
+		print("Allowed extensions:", options.allowed_exts)
+		print("Document prefix : '" + options.doc_prefix	 + "'")
+		print("Allowed files :", options.allowed_files)
 
 	success = False
 	

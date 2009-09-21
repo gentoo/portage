@@ -21,6 +21,6 @@ except (OSError, ValueError) as e:
 
 portage._global_updates(mytrees, mtimedb["updates"])
 
-print
-print "Done."
-print
+print()
+print("Done.")
+print()

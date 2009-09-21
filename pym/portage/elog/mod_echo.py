@@ -19,14 +19,14 @@ def finalize(mysettings=None):
 	global _items
 	printer = EOutput()
 	for root, key, logentries in _items:
-		print
+		print()
 		if root == "/":
 			printer.einfo(_("Messages for package %s:") %
 				colorize("INFORM", key))
 		else:
 			printer.einfo(_("Messages for package %(pkg)s merged to %(root)s:") %
 				{"pkg": colorize("INFORM", key), "root": root})
-		print
+		print()
 		for phase in EBUILD_PHASES:
 			if phase not in logentries:
 				continue
