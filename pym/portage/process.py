@@ -188,13 +188,14 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	if isinstance(mycommand, basestring):
 		mycommand = mycommand.split()
 
-	# Avoid a potential UnicodeEncodeError from os.execve().
-	env_bytes = {}
-	for k, v in env.items():
-		env_bytes[_unicode_encode(k, encoding=_encodings['content'])] = \
-			_unicode_encode(v, encoding=_encodings['content'])
-	env = env_bytes
-	del env_bytes
+	if sys.hexversion < 0x3000000:
+		# Avoid a potential UnicodeEncodeError from os.execve().
+		env_bytes = {}
+		for k, v in env.items():
+			env_bytes[_unicode_encode(k, encoding=_encodings['content'])] = \
+				_unicode_encode(v, encoding=_encodings['content'])
+		env = env_bytes
+		del env_bytes
 
 	# If an absolute path to an executable file isn't given
 	# search for it unless we've been told not to.
@@ -373,13 +374,8 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	if pre_exec:
 		pre_exec()
 
-	# Decode all keys for compatibility with Python 3.
-	env_decoded = {}
-	for k, v in env.items():
-		env_decoded[_unicode_decode(k)] = v
-
 	# And switch to the new process.
-	os.execve(binary, myargs, env_decoded)
+	os.execve(binary, myargs, env)
 
 def find_binary(binary):
 	"""
