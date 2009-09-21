@@ -177,7 +177,7 @@ def create_conn(baseurl,conn=None):
 			t.connect(username=username, password=password)
 			conn = paramiko.SFTPClient.from_transport(t)
 		else:
-			raise NotImplementedError, _("%s is not a supported protocol.") % protocol
+			raise NotImplementedError(_("%s is not a supported protocol.") % protocol)
 
 	return (conn,protocol,address, http_params, http_headers)
 

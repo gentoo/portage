@@ -279,6 +279,6 @@ def perform_multiple_checksums(filename, hashes=["MD5"], calc_prelink=0):
 	rVal = {}
 	for x in hashes:
 		if x not in hashfunc_map:
-			raise portage.exception.DigestException, x+" hash function not available (needs dev-python/pycrypto or >=dev-lang/python-2.5)"
+			raise portage.exception.DigestException(x+" hash function not available (needs dev-python/pycrypto or >=dev-lang/python-2.5)")
 		rVal[x] = perform_checksum(filename, x, calc_prelink)[0]
 	return rVal
