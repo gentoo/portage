@@ -3631,7 +3631,7 @@ class config(object):
 			yield (k, self[k])
 
 	def items(self):
-		return list(self.items())
+		return list(self.iteritems())
 
 	def __setitem__(self,mykey,myvalue):
 		"set a value; will be thrown away at reset() time"
