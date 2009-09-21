@@ -19,6 +19,7 @@
 import array
 import errno
 import shutil
+import sys
 
 from portage import os
 from portage import normalize_path
@@ -65,11 +66,13 @@ def encodeint(myint):
 def decodeint(mystring):
 	"""Takes a 4 byte string and converts it into a 4 byte integer.
 	Returns an integer."""
-	myint=0
-	myint=myint+ord(mystring[3])
-	myint=myint+(ord(mystring[2]) << 8)
-	myint=myint+(ord(mystring[1]) << 16)
-	myint=myint+(ord(mystring[0]) << 24)
+	if sys.hexversion < 0x3000000:
+		mystring = [ord(x) for x in mystring]
+	myint = 0
+	myint += mystring[3]
+	myint += mystring[2] << 8
+	myint += mystring[1] << 16
+	myint += mystring[0] << 24
 	return myint
 
 def xpak(rootdir,outfile=None):
