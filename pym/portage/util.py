@@ -319,7 +319,7 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0):
 		try:
 			pkg = Atom(pkg)
 		except InvalidAtom:
-			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, pkgs[x]),
+			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, pkg),
 				noiselevel=-1)
 		else:
 			if pkg_orig == str(pkg):
