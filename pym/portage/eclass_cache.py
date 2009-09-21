@@ -114,7 +114,7 @@ class cache(object):
 	def is_eclass_data_valid(self, ec_dict):
 		if not isinstance(ec_dict, dict):
 			return False
-		for eclass, tup in ec_dict.iteritems():
+		for eclass, tup in ec_dict.items():
 			cached_data = self.eclasses.get(eclass, None)
 			""" Only use the mtime for validation since the probability of a
 			collision is small and, depending on the cache implementation, the

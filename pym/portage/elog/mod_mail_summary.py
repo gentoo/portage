@@ -31,7 +31,7 @@ def finalize(mysettings=None):
 	an older version of portage will import the module from a newer version
 	when it upgrades itself."""
 	global _items
-	for mysettings, items in _items.itervalues():
+	for mysettings, items in _items.values():
 		_finalize(mysettings, items)
 	_items.clear()
 
@@ -59,7 +59,7 @@ def _finalize(mysettings, items):
 		 mybody += "- %s\n" % key
 
 	mymessage = portage.mail.create_message(myfrom, myrecipient, mysubject,
-		mybody, attachments=items.values())
+		mybody, attachments=list(items.values()))
 
 	def timeout_handler(signum, frame):
 		raise PortageException("Timeout in finalize() for elog system 'mail_summary'")

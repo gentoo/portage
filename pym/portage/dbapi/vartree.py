@@ -605,8 +605,8 @@ class LinkageMap(object):
 		rValue = []
 		if not self._libs:
 			self.rebuild()
-		for arch_map in self._libs.itervalues():
-			for soname_map in arch_map.itervalues():
+		for arch_map in self._libs.values():
+			for soname_map in arch_map.values():
 				for obj_key in soname_map.providers:
 					rValue.extend(self._obj_properties[obj_key][4])
 		return rValue
@@ -1019,7 +1019,7 @@ class vardbapi(dbapi):
 				self.invalidentry(self.getpath(y))
 				continue
 			d[mysplit[0]+"/"+mysplit[1]] = None
-		return d.keys()
+		return list(d.keys())
 
 	def checkblockers(self, origdep):
 		pass
@@ -1224,7 +1224,7 @@ class vardbapi(dbapi):
 			cache_valid = cache_mtime == mydir_mtime
 		if cache_valid:
 			# Migrate old metadata to unicode.
-			for k, v in metadata.iteritems():
+			for k, v in metadata.items():
 				metadata[k] = _unicode_decode(v,
 					encoding=_encodings['repo.content'], errors='replace')
 
@@ -1298,7 +1298,7 @@ class vardbapi(dbapi):
 		treetype="vartree", vartree=self.vartree)
 		if not mylink.exists():
 			raise KeyError(cpv)
-		for k, v in values.iteritems():
+		for k, v in values.items():
 			if v:
 				mylink.setfile(k, v)
 			else:
@@ -1561,7 +1561,7 @@ class vardbapi(dbapi):
 		def getFileOwnerMap(self, path_iter):
 			owners = self.get_owners(path_iter)
 			file_owners = {}
-			for pkg_dblink, files in owners.iteritems():
+			for pkg_dblink, files in owners.items():
 				for f in files:
 					owner_set = file_owners.get(f)
 					if owner_set is None:
@@ -2183,7 +2183,7 @@ class dblink(object):
 			cpv_lib_map = self._find_unused_preserved_libs()
 			if cpv_lib_map:
 				self._remove_preserved_libs(cpv_lib_map)
-				for cpv, removed in cpv_lib_map.iteritems():
+				for cpv, removed in cpv_lib_map.items():
 					if not self.vartree.dbapi.cpv_exists(cpv):
 						for dblnk in others_in_slot:
 							if dblnk.mycpv == cpv:
@@ -2359,7 +2359,7 @@ class dblink(object):
 
 		if pkgfiles:
 			self.updateprotect()
-			mykeys = pkgfiles.keys()
+			mykeys = list(pkgfiles.keys())
 			mykeys.sort()
 			mykeys.reverse()
 
@@ -2829,7 +2829,7 @@ class dblink(object):
 
 		# Create consumer nodes and add them to the graph.
 		# Note that consumers can also be providers.
-		for provider_node, consumers in consumer_map.iteritems():
+		for provider_node, consumers in consumer_map.items():
 			for c in consumers:
 				if self.isowner(c, root):
 					continue
@@ -2955,7 +2955,7 @@ class dblink(object):
 			return node
 
 		linkmap = self.vartree.dbapi.linkmap
-		for cpv, plibs in plib_dict.iteritems():
+		for cpv, plibs in plib_dict.items():
 			for f in plibs:
 				path_cpv_map[f] = cpv
 				preserved_node = path_to_node(f)
@@ -3036,7 +3036,7 @@ class dblink(object):
 		os = _os_merge
 
 		files_to_remove = set()
-		for files in cpv_lib_map.itervalues():
+		for files in cpv_lib_map.values():
 			files_to_remove.update(files)
 		files_to_remove = sorted(files_to_remove)
 		showMessage = self._display_merge
@@ -3088,7 +3088,7 @@ class dblink(object):
 			plib_dict = self.vartree.dbapi.plib_registry.getPreservedLibs()
 			plib_cpv_map = {}
 			plib_paths = set()
-			for cpv, paths in plib_dict.iteritems():
+			for cpv, paths in plib_dict.items():
 				plib_paths.update(paths)
 				for f in paths:
 					plib_cpv_map[f] = cpv
@@ -3266,7 +3266,7 @@ class dblink(object):
 				k = (s.st_dev, s.st_ino)
 				inode_map.setdefault(k, []).append((path, s))
 		suspicious_hardlinks = []
-		for path_list in inode_map.itervalues():
+		for path_list in inode_map.values():
 			path, s = path_list[0]
 			if len(path_list) == s.st_nlink:
 				# All hardlinks seem to be owned by this package.
@@ -3644,7 +3644,7 @@ class dblink(object):
 			owners = self.vartree.dbapi._owners.get_owners(collisions)
 			self.vartree.dbapi.flush_cache()
 
-			for pkg, owned_files in owners.iteritems():
+			for pkg, owned_files in owners.items():
 				cpv = pkg.mycpv
 				msg = []
 				msg.append("%s" % cpv)
@@ -3891,7 +3891,7 @@ class dblink(object):
 		# and update the contents of the packages that owned them.
 		plib_registry = self.vartree.dbapi.plib_registry
 		plib_dict = plib_registry.getPreservedLibs()
-		for cpv, paths in plib_collisions.iteritems():
+		for cpv, paths in plib_collisions.items():
 			if cpv not in plib_dict:
 				continue
 			if cpv == self.mycpv:
@@ -3948,7 +3948,7 @@ class dblink(object):
 		cpv_lib_map = self._find_unused_preserved_libs()
 		if cpv_lib_map:
 			self._remove_preserved_libs(cpv_lib_map)
-			for cpv, removed in cpv_lib_map.iteritems():
+			for cpv, removed in cpv_lib_map.items():
 				if not self.vartree.dbapi.cpv_exists(cpv):
 					continue
 				self.vartree.dbapi.removeFromContents(cpv, removed)
@@ -4428,7 +4428,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 	curval = 0
 	if onProgress:
 		onProgress(maxval, 0)
-	paths = contents.keys()
+	paths = list(contents.keys())
 	paths.sort()
 	for path in paths:
 		curval += 1

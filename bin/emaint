@@ -209,7 +209,7 @@ class BinhostHandler(object):
 				bintree.populated = False
 
 				del pkgindex.packages[:]
-				pkgindex.packages.extend(metadata.itervalues())
+				pkgindex.packages.extend(metadata.values())
 				from portage.util import atomic_ofstream
 				f = atomic_ofstream(self._pkgindex_file)
 				try:
@@ -475,7 +475,7 @@ def emaint_main(myargv):
 		"cleanresume":CleanResume
 	}
 
-	module_names = modules.keys()
+	module_names = list(modules.keys())
 	module_names.sort()
 	module_names.insert(0, "all")
 

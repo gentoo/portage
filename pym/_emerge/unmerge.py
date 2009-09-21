@@ -243,7 +243,7 @@ def unmerge(root_config, myopts, unmerge_action,
 					slotmap[myslot][vartree.dbapi.cpv_counter(mypkg)] = mypkg
 
 				for myslot in slotmap:
-					counterkeys = slotmap[myslot].keys()
+					counterkeys = list(slotmap[myslot].keys())
 					if not counterkeys:
 						continue
 					counterkeys.sort()
@@ -411,7 +411,7 @@ def unmerge(root_config, myopts, unmerge_action,
 				unordered[cp] = cp_dict
 				for k in d:
 					cp_dict[k] = set()
-			for k, v in d.iteritems():
+			for k, v in d.items():
 				cp_dict[k].update(v)
 		pkgmap = [unordered[cp] for cp in sorted(unordered)]
 
@@ -419,7 +419,7 @@ def unmerge(root_config, myopts, unmerge_action,
 		selected = pkgmap[x]["selected"]
 		if not selected:
 			continue
-		for mytype, mylist in pkgmap[x].iteritems():
+		for mytype, mylist in pkgmap[x].items():
 			if mytype == "selected":
 				continue
 			mylist.difference_update(all_selected)

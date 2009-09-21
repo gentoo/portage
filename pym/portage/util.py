@@ -220,7 +220,7 @@ def stack_dicts(dicts, incremental=0, incrementals=[], ignore_none=0):
 				return None
 		if final_dict is None:
 			final_dict = {}
-		for y in mydict.keys():
+		for y in list(mydict.keys()):
 			if True:
 				if y in final_dict and (incremental or (y in incrementals)):
 					final_dict[y] += " "+mydict[y][:]
@@ -247,7 +247,7 @@ def stack_lists(lists, incremental=1):
 					new_list[y] = True
 			else:
 				new_list[y] = True
-	return new_list.keys()
+	return list(new_list.keys())
 
 def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 	"""
@@ -287,7 +287,7 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 		else:
 			newdict[myline[0]] = myline[1:]
 	if juststrings:
-		for k, v in newdict.iteritems():
+		for k, v in newdict.items():
 			newdict[k] = " ".join(v)
 	return newdict
 
@@ -299,7 +299,7 @@ def grabdict_package(myfilename, juststrings=0, recursive=0):
 	# "RuntimeError: dictionary changed size during iteration"
 	# when an invalid atom is deleted.
 	atoms = {}
-	for k, v in pkgs.iteritems():
+	for k, v in pkgs.items():
 		try:
 			k = Atom(k)
 		except InvalidAtom:

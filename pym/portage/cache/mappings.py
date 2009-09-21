@@ -23,7 +23,7 @@ class Mapping(object):
 	"""
 
 	def __iter__(self):
-		return self.iterkeys()
+		return iter(self.keys())
 
 	def keys(self):
 		return list(self.__iter__())
@@ -48,14 +48,14 @@ class Mapping(object):
 		return self.__iter__()
 
 	def itervalues(self):
-		for _, v in self.iteritems():
+		for _, v in self.items():
 			yield v
 
 	def values(self):
-		return [v for _, v in self.iteritems()]
+		return [v for _, v in self.items()]
 
 	def items(self):
-		return list(self.iteritems())
+		return list(self.items())
 
 	def get(self, key, default=None):
 		try:
@@ -64,10 +64,10 @@ class Mapping(object):
 			return default
 
 	def __repr__(self):
-		return repr(dict(self.iteritems()))
+		return repr(dict(self.items()))
 
 	def __len__(self):
-		return len(self.keys())
+		return len(list(self.keys()))
 
 	if sys.hexversion >= 0x3000000:
 		items = iteritems
@@ -80,7 +80,7 @@ class MutableMapping(Mapping):
 	"""
 
 	def clear(self):
-		for key in self.keys():
+		for key in list(self.keys()):
 			del self[key]
 
 	def setdefault(self, key, default=None):
@@ -105,7 +105,7 @@ class MutableMapping(Mapping):
 
 	def popitem(self):
 		try:
-			k, v = self.iteritems().next()
+			k, v = iter(self.items()).next()
 		except StopIteration:
 			raise KeyError('container is empty')
 		del self[k]
@@ -226,9 +226,9 @@ class ProtectedDict(MutableMapping):
 			
 
 	def __iter__(self):
-		for k in self.new.iterkeys():
+		for k in self.new.keys():
 			yield k
-		for k in self.orig.iterkeys():
+		for k in self.orig.keys():
 			if k not in self.blacklist and k not in self.new:
 				yield k
 
@@ -333,12 +333,12 @@ def slot_dict_class(keys, prefix="_val_"):
 					self.update(kwargs)
 
 			def __iter__(self):
-				for k, v in self.iteritems():
+				for k, v in self.items():
 					yield k
 
 			def __len__(self):
 				l = 0
-				for i in self.iteritems():
+				for i in self.items():
 					l += 1
 				return l
 
@@ -353,14 +353,14 @@ def slot_dict_class(keys, prefix="_val_"):
 						pass
 
 			def items(self):
-				return list(self.iteritems())
+				return list(self.items())
 
 			def itervalues(self):
-				for k, v in self.iteritems():
+				for k, v in self.items():
 					yield v
 
 			def values(self):
-				return list(self.itervalues())
+				return list(self.values())
 
 			def __delitem__(self, k):
 				try:
@@ -442,7 +442,7 @@ def slot_dict_class(keys, prefix="_val_"):
 
 			def popitem(self):
 				try:
-					k, v = self.iteritems().next()
+					k, v = iter(self.items()).next()
 				except StopIteration:
 					raise KeyError('container is empty')
 				del self[k]
@@ -461,7 +461,7 @@ def slot_dict_class(keys, prefix="_val_"):
 						pass
 
 			def __str__(self):
-				return str(dict(self.iteritems()))
+				return str(dict(self.items()))
 
 			if sys.hexversion >= 0x3000000:
 				items = iteritems

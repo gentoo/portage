@@ -153,7 +153,7 @@ def ParseArgs(args, qahelp):
 		'scan' : 'Scan directory tree for QA issues' 
 	}
 
-	mode_keys = modes.keys()
+	mode_keys = list(modes.keys())
 	mode_keys.sort()
 
 	parser = RepomanOptionParser(formatter=RepomanHelpFormatter(), usage="%prog [options] [mode]")
@@ -198,7 +198,7 @@ def ParseArgs(args, qahelp):
 	parser.add_option('--without-mask', dest='without_mask', action='store_true',
 		default=False, help='behave as if no package.mask entries exist (not allowed with commit mode)')
 
-	parser.add_option('--mode', type='choice', dest='mode', choices=modes.keys(), 
+	parser.add_option('--mode', type='choice', dest='mode', choices=list(modes.keys()), 
 		help='specify which mode repoman will run in (default=full)')
 
 	parser.on_tail("\n " + green("Modes".ljust(20) + " Description\n"))
@@ -208,7 +208,7 @@ def ParseArgs(args, qahelp):
 
 	parser.on_tail("\n " + green("QA keyword".ljust(20) + " Description\n"))
 
-	sorted_qa = qahelp.keys()
+	sorted_qa = list(qahelp.keys())
 	sorted_qa.sort()
 	for k in sorted_qa:
 		parser.on_tail(" %s %s\n" % (k.ljust(20), qahelp[k]))
@@ -330,7 +330,7 @@ qahelp={
 	"upstream.workaround":"The ebuild works around an upstream bug, an upstream bug should be filed and tracked in bugs.gentoo.org"
 }
 
-qacats = qahelp.keys()
+qacats = list(qahelp.keys())
 qacats.sort()
 
 qawarnings = set((
@@ -735,7 +735,7 @@ def dev_keywords(profiles):
 	want to add the --include-dev option.
 	"""
 	type_arch_map = {}
-	for arch, arch_profiles in profiles.iteritems():
+	for arch, arch_profiles in profiles.items():
 		for prof in arch_profiles:
 			arch_set = type_arch_map.get(prof.status)
 			if arch_set is None:
@@ -872,7 +872,7 @@ check_ebuild_notadded = not \
 	(vcs == "svn" and repolevel < 3 and options.mode != "commit")
 
 # Build a regex from thirdpartymirrors for the SRC_URI.mirror check.
-thirdpartymirrors = portage.flatten(repoman_settings.thirdpartymirrors().values())
+thirdpartymirrors = portage.flatten(list(repoman_settings.thirdpartymirrors().values()))
 
 for x in scanlist:
 	#ebuilds and digests added to cvs respectively.
@@ -900,7 +900,7 @@ for x in scanlist:
 					fetchlist_dict=fetchlist_dict)
 				mf.create(requiredDistfiles=None,
 					assumeDistHashesAlways=True)
-				for distfiles in fetchlist_dict.itervalues():
+				for distfiles in fetchlist_dict.values():
 					for distfile in distfiles:
 						if os.path.isfile(os.path.join(distdir, distfile)):
 							mf.fhashdict['DIST'].pop(distfile, None)
@@ -1242,7 +1242,7 @@ for x in scanlist:
 		pkg = pkgs[y]
 
 		if pkg.invalid:
-			for k, msgs in pkg.invalid.iteritems():
+			for k, msgs in pkg.invalid.items():
 				for msg in msgs:
 					stats[k] = stats[k] + 1
 					fails[k].append("%s %s" % (relative_path, msg))
@@ -1253,7 +1253,7 @@ for x in scanlist:
 		inherited = pkg.inherited
 		live_ebuild = live_eclasses.intersection(inherited)
 
-		for k, v in myaux.iteritems():
+		for k, v in myaux.items():
 			if not isinstance(v, basestring):
 				continue
 			m = non_ascii_re.search(v)

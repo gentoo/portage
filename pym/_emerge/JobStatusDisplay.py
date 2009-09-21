@@ -60,7 +60,7 @@ class JobStatusDisplay(object):
 		object.__setattr__(self, "_isatty", isatty)
 		if not isatty or not self._init_term():
 			term_codes = {}
-			for k, capname in self._termcap_name_map.iteritems():
+			for k, capname in self._termcap_name_map.items():
 				term_codes[k] = self._default_term_codes[capname]
 			object.__setattr__(self, "_term_codes", term_codes)
 		encoding = sys.getdefaultencoding()
@@ -106,7 +106,7 @@ class JobStatusDisplay(object):
 			return False
 
 		term_codes = {}
-		for k, capname in self._termcap_name_map.iteritems():
+		for k, capname in self._termcap_name_map.items():
 			code = tigetstr(capname)
 			if code is None:
 				code = self._default_term_codes[capname]

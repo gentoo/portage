@@ -10,7 +10,7 @@ class RepoDisplay(object):
 		self._shown_repos = {}
 		self._unknown_repo = False
 		repo_paths = set()
-		for root_config in roots.itervalues():
+		for root_config in roots.values():
 			portdir = root_config.settings.get("PORTDIR")
 			if portdir:
 				repo_paths.add(portdir)
@@ -23,7 +23,7 @@ class RepoDisplay(object):
 			for repo_path in repo_paths ]
 
 		# pre-allocate index for PORTDIR so that it always has index 0.
-		for root_config in roots.itervalues():
+		for root_config in roots.values():
 			portdb = root_config.trees["porttree"].dbapi
 			portdir = portdb.porttree_root
 			if portdir:
@@ -58,7 +58,7 @@ class RepoDisplay(object):
 		if shown_repos or self._unknown_repo:
 			output.append("Portage tree and overlays:\n")
 		show_repo_paths = list(shown_repos)
-		for repo_path, repo_index in shown_repos.iteritems():
+		for repo_path, repo_index in shown_repos.items():
 			show_repo_paths[repo_index] = repo_path
 		if show_repo_paths:
 			for index, repo_path in enumerate(show_repo_paths):

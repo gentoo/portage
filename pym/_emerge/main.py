@@ -255,7 +255,7 @@ def display_preserved_libs(vardbapi, myopts):
 					samefile_map[obj_key] = alt_paths
 				alt_paths.add(f)
 
-			for alt_paths in samefile_map.itervalues():
+			for alt_paths in samefile_map.values():
 				alt_paths = sorted(alt_paths)
 				for p in alt_paths:
 					print(colorize("WARN", " * ") + " - %s" % (p,))
@@ -422,13 +422,13 @@ def insert_optional_args(args):
 			continue
 
 		match = None
-		for k, arg_choices in short_arg_opts.iteritems():
+		for k, arg_choices in short_arg_opts.items():
 			if k in arg:
 				match = k
 				break
 
 		if match is None:
-			for k, arg_choices in short_arg_opts_n.iteritems():
+			for k, arg_choices in short_arg_opts_n.items():
 				if k in arg:
 					match = k
 					break
@@ -631,14 +631,14 @@ def parse_opts(tmpcmdline, silent=False):
 	for myopt in options:
 		parser.add_option(myopt, action="store_true",
 			dest=myopt.lstrip("--").replace("-", "_"), default=False)
-	for shortopt, longopt in shortmapping.iteritems():
+	for shortopt, longopt in shortmapping.items():
 		parser.add_option("-" + shortopt, action="store_true",
 			dest=longopt.lstrip("--").replace("-", "_"), default=False)
-	for myalias, myopt in longopt_aliases.iteritems():
+	for myalias, myopt in longopt_aliases.items():
 		parser.add_option(myalias, action="store_true",
 			dest=myopt.lstrip("--").replace("-", "_"), default=False)
 
-	for myopt, kwargs in argument_options.iteritems():
+	for myopt, kwargs in argument_options.items():
 		shortopt = kwargs.pop("shortopt", None)
 		args = [myopt]
 		if shortopt is not None:
@@ -941,7 +941,7 @@ def expand_set_arguments(myfiles, myaction, root_config):
 
 def repo_name_check(trees):
 	missing_repo_names = set()
-	for root, root_trees in trees.iteritems():
+	for root, root_trees in trees.items():
 		if "porttree" in root_trees:
 			portdb = root_trees["porttree"].dbapi
 			missing_repo_names.update(portdb.porttrees)
@@ -973,7 +973,7 @@ def repo_name_check(trees):
 
 def repo_name_duplicate_check(trees):
 	ignored_repos = {}
-	for root, root_trees in trees.iteritems():
+	for root, root_trees in trees.items():
 		if 'porttree' in root_trees:
 			portdb = root_trees['porttree'].dbapi
 			if portdb.mysettings.get('PORTAGE_REPO_DUPLICATE_WARN') != '0':
@@ -1003,7 +1003,7 @@ def repo_name_duplicate_check(trees):
 	return bool(ignored_repos)
 
 def config_protect_check(trees):
-	for root, root_trees in trees.iteritems():
+	for root, root_trees in trees.items():
 		if not root_trees["root_config"].settings.get("CONFIG_PROTECT"):
 			msg = "!!! CONFIG_PROTECT is empty"
 			if root != "/":
@@ -1013,7 +1013,7 @@ def config_protect_check(trees):
 def profile_check(trees, myaction):
 	if myaction in ("help", "info", "sync", "version"):
 		return os.EX_OK
-	for root, root_trees in trees.iteritems():
+	for root, root_trees in trees.items():
 		if root_trees["root_config"].settings.profiles:
 			continue
 		# generate some profile related warning messages
@@ -1095,7 +1095,7 @@ def emerge_main():
 		repo_name_duplicate_check(trees)
 		config_protect_check(trees)
 
-	for mytrees in trees.itervalues():
+	for mytrees in trees.values():
 		mydb = mytrees["porttree"].dbapi
 		# Freeze the portdbapi for performance (memoize all xmatch results).
 		mydb.freeze()

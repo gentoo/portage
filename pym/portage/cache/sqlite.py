@@ -106,7 +106,7 @@ class database(fs_template.FsBased):
 			self._allowed_keys
 
 		cursor = self._db_cursor
-		for k, v in self._db_table.iteritems():
+		for k, v in self._db_table.items():
 			if self._db_table_exists(v["table_name"]):
 				create_statement = self._db_table_get_create(v["table_name"])
 				if create_statement != v["create"]:

@@ -189,7 +189,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 
 	# Avoid a potential UnicodeEncodeError from os.execve().
 	env_bytes = {}
-	for k, v in env.iteritems():
+	for k, v in env.items():
 		env_bytes[_unicode_encode(k, encoding=_encodings['content'])] = \
 			_unicode_encode(v, encoding=_encodings['content'])
 	env = env_bytes

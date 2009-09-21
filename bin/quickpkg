@@ -124,7 +124,7 @@ def quickpkg_main(options, args, eout):
 				required_metadata["CATEGORY"] = category
 				required_metadata["PF"] = pf
 				update_metadata = {}
-				for k, v in required_metadata.iteritems():
+				for k, v in required_metadata.items():
 					if v != existing_metadata[k]:
 						update_metadata[k] = v
 				if update_metadata:

@@ -93,7 +93,7 @@ class StaticFileSet(EditablePackageSet):
 					# in the latest new slot that may be available.
 					atoms.append(a)
 			else:
-				atoms = data.keys()
+				atoms = list(data.keys())
 			self._setAtoms(atoms)
 			self._mtime = mtime
 		
@@ -183,7 +183,7 @@ class ConfigFileSet(PackageSet):
 
 	def load(self):
 		data, errors = self.loader.load()
-		self._setAtoms(data.keys())
+		self._setAtoms(list(data.keys()))
 	
 	def singleBuilder(self, options, settings, trees):
 		if not "filename" in options:
@@ -254,7 +254,7 @@ class WorldSet(EditablePackageSet):
 					raise
 				del e
 				data = {}
-			atoms = data.keys()
+			atoms = list(data.keys())
 			self._mtime = mtime
 			atoms_changed = True
 		else:
@@ -274,7 +274,7 @@ class WorldSet(EditablePackageSet):
 					raise
 				del e
 				data = {}
-			nonatoms = data.keys()
+			nonatoms = list(data.keys())
 			self._mtime2 = mtime
 			atoms_changed = True
 		else:

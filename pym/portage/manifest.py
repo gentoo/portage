@@ -68,13 +68,13 @@ def parseManifest2(mysplit):
 class ManifestEntry(object):
 	__slots__ = ("type", "name", "hashes")
 	def __init__(self, **kwargs):
-		for k, v in kwargs.iteritems():
+		for k, v in kwargs.items():
 			setattr(self, k, v)
 
 class Manifest2Entry(ManifestEntry):
 	def __str__(self):
 		myline = " ".join([self.type, self.name, str(self.hashes["size"])])
-		myhashkeys = self.hashes.keys()
+		myhashkeys = list(self.hashes.keys())
 		myhashkeys.remove("size")
 		myhashkeys.sort()
 		for h in myhashkeys:
@@ -202,15 +202,15 @@ class Manifest(object):
 		return myhashdict
 
 	def _createManifestEntries(self):
-		mytypes = self.fhashdict.keys()
+		mytypes = list(self.fhashdict.keys())
 		mytypes.sort()
 		for t in mytypes:
-			myfiles = self.fhashdict[t].keys()
+			myfiles = list(self.fhashdict[t].keys())
 			myfiles.sort()
 			for f in myfiles:
 				myentry = Manifest2Entry(
 					type=t, name=f, hashes=self.fhashdict[t][f].copy())
-				myhashkeys = myentry.hashes.keys()
+				myhashkeys = list(myentry.hashes.keys())
 				myhashkeys.sort()
 				for h in myhashkeys:
 					if h not in ["size"] + portage.const.MANIFEST2_HASH_FUNCTIONS:

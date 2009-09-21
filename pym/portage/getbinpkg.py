@@ -801,7 +801,7 @@ class PackageIndex(object):
 			if not mycpv:
 				continue
 			if self._default_pkg_data:
-				for k, v in self._default_pkg_data.iteritems():
+				for k, v in self._default_pkg_data.items():
 					d.setdefault(k, v)
 			if self._inherited_keys:
 				for k in self._inherited_keys:
@@ -814,7 +814,7 @@ class PackageIndex(object):
 		if self.modified:
 			self.header["TIMESTAMP"] = str(long(time.time()))
 			self.header["PACKAGES"] = str(len(self.packages))
-		keys = self.header.keys()
+		keys = list(self.header.keys())
 		keys.sort()
 		self._writepkgindex(pkgfile, [(k, self.header[k]) \
 			for k in keys if self.header[k]])
@@ -827,10 +827,10 @@ class PackageIndex(object):
 					if v is not None and v == metadata.get(k):
 						del metadata[k]
 			if self._default_pkg_data:
-				for k, v in self._default_pkg_data.iteritems():
+				for k, v in self._default_pkg_data.items():
 					if metadata.get(k) == v:
 						metadata.pop(k, None)
-			keys = metadata.keys()
+			keys = list(metadata.keys())
 			keys.sort()
 			self._writepkgindex(pkgfile,
 				[(k, metadata[k]) for k in keys if metadata[k]])

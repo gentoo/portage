@@ -222,7 +222,7 @@ def owners(argv):
 	owners = vardb._owners.get_owners(files)
 
 	msg = []
-	for pkg, owned_files in owners.iteritems():
+	for pkg, owned_files in owners.items():
 		cpv = pkg.mycpv
 		msg.append("%s\n" % cpv)
 		for f in sorted(owned_files):
@@ -560,7 +560,7 @@ def usage(argv):
 	#
 	non_commands = frozenset(['exithandler', 'main',
 		'usage', 'writemsg', 'writemsg_stdout'])
-	commands = sorted(k for k, v in globals().iteritems() \
+	commands = sorted(k for k, v in globals().items() \
 		if type(v) is types.FunctionType and k not in non_commands)
 
 	for name in commands:

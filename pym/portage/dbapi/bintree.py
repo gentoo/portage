@@ -114,7 +114,7 @@ class bindbapi(fakedbapi):
 		mytbz2 = portage.xpak.tbz2(tbz2path)
 		mydata = mytbz2.get_data()
 
-		for k, v in values.iteritems():
+		for k, v in values.items():
 			k = _unicode_encode(k,
 				encoding=_encodings['repo.content'], errors='backslashreplace')
 			v = _unicode_encode(v,
@@ -645,7 +645,7 @@ class binarytree(object):
 			# from xpak.
 			if update_pkgindex and os.access(self.pkgdir, os.W_OK):
 				del pkgindex.packages[:]
-				pkgindex.packages.extend(metadata.itervalues())
+				pkgindex.packages.extend(iter(metadata.values()))
 				self._update_pkgindex_header(pkgindex.header)
 				from portage.util import atomic_ofstream
 				f = atomic_ofstream(self._pkgindex_file)
@@ -741,7 +741,7 @@ class binarytree(object):
 					# Remote package instances override local package
 					# if they are not identical.
 					hash_names = ["SIZE"] + self._pkgindex_hashes
-					for cpv, local_metadata in metadata.iteritems():
+					for cpv, local_metadata in metadata.items():
 						remote_metadata = self._remotepkgs.get(cpv)
 						if remote_metadata is None:
 							continue

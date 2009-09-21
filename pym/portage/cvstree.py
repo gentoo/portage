@@ -89,12 +89,12 @@ def findoption(entries, pattern, recursive=0, basedir=""):
 	basedir."""
 	if not basedir.endswith("/"):
 		basedir += "/"
-	for myfile, mydata in entries["files"].iteritems():
+	for myfile, mydata in entries["files"].items():
 		if "cvs" in mydata["status"]:
 			if pattern.search(mydata["flags"]):
 				yield basedir+myfile
 	if recursive:
-		for mydir, mydata in entries["dirs"].iteritems():
+		for mydir, mydata in entries["dirs"].items():
 			for x in findoption(mydata, pattern,
 				recursive, basedir+mydir):
 				yield x

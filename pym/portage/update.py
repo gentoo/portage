@@ -56,7 +56,7 @@ def update_dbentries(update_iter, mydata):
 	"""Performs update commands and returns a
 	dict containing only the updated items."""
 	updated_items = {}
-	for k, mycontent in mydata.iteritems():
+	for k, mycontent in mydata.items():
 		k_unicode = _unicode_decode(k,
 			encoding=_encodings['repo.content'], errors='replace')
 		if k_unicode not in ignored_dbentries:
@@ -83,7 +83,7 @@ def fixdbentries(update_iter, dbdir):
 			mode='r', encoding=_encodings['repo.content'],
 			errors='replace').read()
 	updated_items = update_dbentries(update_iter, mydata)
-	for myfile, mycontent in updated_items.iteritems():
+	for myfile, mycontent in updated_items.items():
 		file_path = os.path.join(dbdir, myfile)
 		write_atomic(file_path, mycontent, encoding=_encodings['repo.content'])
 	return len(updated_items) > 0
@@ -231,7 +231,7 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 	# update /etc/portage/packages.*
 	ignore_line_re = re.compile(r'^#|^\s*$')
 	for update_cmd in update_iter:
-		for x, contents in file_contents.iteritems():
+		for x, contents in file_contents.items():
 			for pos, line in enumerate(contents):
 				if ignore_line_re.match(line):
 					continue

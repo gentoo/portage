@@ -91,7 +91,7 @@ class SubProcess(AbstractPollTask):
 			self._reg_id = None
 
 		if self._files is not None:
-			for f in self._files.itervalues():
+			for f in self._files.values():
 				f.close()
 			self._files = None
 

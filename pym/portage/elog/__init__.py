@@ -100,7 +100,7 @@ def elog_process(cpv, mysettings, phasefilter=None):
 	else:
 		all_logentries[cpv] = ebuild_logentries
 
-	for key in _preserve_logentries.keys():
+	for key in list(_preserve_logentries.keys()):
 		if key in all_logentries:
 			all_logentries[key] = _merge_logentries(_preserve_logentries[key], all_logentries[key])
 		else:
@@ -140,7 +140,7 @@ def elog_process(cpv, mysettings, phasefilter=None):
 			listener(mysettings, str(key), default_logentries, default_fulllog)
 
 		# pass the processing to the individual modules
-		for s, levels in logsystems.iteritems():
+		for s, levels in logsystems.items():
 			# allow per module overrides of PORTAGE_ELOG_CLASSES
 			if levels:
 				mod_logentries = filter_loglevels(all_logentries[key], levels)
