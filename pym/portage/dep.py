@@ -488,15 +488,17 @@ class _use_dep(object):
 
 		return _use_dep(tokens)
 
-class Atom(object):
+if sys.hexversion < 0x3000000:
+	_atom_base = unicode
+else:
+	_atom_base = str
+
+class Atom(_atom_base):
 
 	"""
 	For compatibility with existing atom string manipulation code, this
 	class emulates most of the str methods that are useful with atoms.
 	"""
-
-	__slots__ = ("__weakref__", "blocker", "cp", "cpv", "operator",
-		"slot", "use", "without_use", "_str",)
 
 	class _blocker(object):
 		__slots__ = ("overlap",)
@@ -510,10 +512,12 @@ class Atom(object):
 		def __init__(self, forbid_overlap=False):
 			self.overlap = self._overlap(forbid=forbid_overlap)
 
-	def __init__(self, mypkg):
-		s = mypkg = str(mypkg)
-		obj_setattr = object.__setattr__
-		obj_setattr(self, '_str', s)
+	def __init__(self, s):
+		if isinstance(s, Atom):
+			# This is an efficiency assertion, to ensure that the Atom
+			# constructor is not called redundantly.
+			raise TypeError(_("Expected %s, got %s") % \
+				(_atom_base, type(s)))
 
 		if "!" == s[:1]:
 			blocker = self._blocker(forbid_overlap=("!" == s[1:2]))
@@ -523,10 +527,10 @@ class Atom(object):
 				s = s[1:]
 		else:
 			blocker = False
-		obj_setattr(self, "blocker", blocker)
+		self.__dict__['blocker'] = blocker
 		m = _atom_re.match(s)
 		if m is None:
-			raise InvalidAtom(mypkg)
+			raise InvalidAtom(self)
 
 		if m.group('op') is not None:
 			base = _atom_re.groupindex['op']
@@ -534,25 +538,25 @@ class Atom(object):
 			cpv = m.group(base + 2)
 			cp = m.group(base + 3)
 			if m.group(base + 4) is not None:
-				raise InvalidAtom(mypkg)
+				raise InvalidAtom(self)
 		elif m.group('star') is not None:
 			base = _atom_re.groupindex['star']
 			op = '=*'
 			cpv = m.group(base + 1)
 			cp = m.group(base + 2)
 			if m.group(base + 3) is not None:
-				raise InvalidAtom(mypkg)
+				raise InvalidAtom(self)
 		elif m.group('simple') is not None:
 			op = None
 			cpv = cp = m.group(_atom_re.groupindex['simple'] + 1)
 			if m.group(_atom_re.groupindex['simple'] + 2) is not None:
-				raise InvalidAtom(mypkg)
+				raise InvalidAtom(self)
 		else:
-			raise AssertionError(_("required group not found in atom: '%s'") % s)
-		obj_setattr(self, "cp", cp)
-		obj_setattr(self, "cpv", cpv)
-		obj_setattr(self, "slot", m.group(_atom_re.groups - 1))
-		obj_setattr(self, "operator", op)
+			raise AssertionError(_("required group not found in atom: '%s'") % self)
+		self.__dict__['cp'] = cp
+		self.__dict__['cpv'] = cpv
+		self.__dict__['slot'] = m.group(_atom_re.groups - 1)
+		self.__dict__['operator'] = op
 
 		use_str = m.group(_atom_re.groups)
 		if use_str is not None:
@@ -562,8 +566,8 @@ class Atom(object):
 			use = None
 			without_use = self
 
-		obj_setattr(self, "use", use)
-		obj_setattr(self, "without_use", without_use)
+		self.__dict__['use'] = use
+		self.__dict__['without_use'] = without_use
 
 	def __setattr__(self, name, value):
 		raise AttributeError("Atom instances are immutable",
@@ -599,65 +603,6 @@ class Atom(object):
 			return True
 
 		return False
-
-	# Implement some common str methods.
-
-	def __eq__(self, other):
-		return self._str == other
-
-	def __getitem__(self, key):
-		return self._str[key]
-
-	def __hash__(self):
-		return hash(self._str)
-
-	def __len__(self):
-		return len(self._str)
-
-	def __lt__(self, other):
-		return self._str < other
-
-	def __ne__(self, other):
-		return self._str != other
-
-	def __repr__(self):
-		return repr(self._str)
-
-	def __str__(self):
-		return self._str
-
-	def endswith(self, *pargs, **kargs):
-		return self._str.endswith(*pargs, **kargs)
-
-	def find(self, *pargs, **kargs):
-		return self._str.find(*pargs, **kargs)
-
-	def index(self, *pargs, **kargs):
-		return self._str.index(*pargs, **kargs)
-
-	def lstrip(self, *pargs, **kargs):
-		return self._str.lstrip(*pargs, **kargs)
-
-	def replace(self, *pargs, **kargs):
-		return self._str.replace(*pargs, **kargs)
-
-	def startswith(self, *pargs, **kargs):
-		return self._str.startswith(*pargs, **kargs)
-
-	def split(self, *pargs, **kargs):
-		return self._str.split(*pargs, **kargs)
-
-	def strip(self, *pargs, **kargs):
-		return self._str.strip(*pargs, **kargs)
-
-	def rindex(self, *pargs, **kargs):
-		return self._str.rindex(*pargs, **kargs)
-
-	def rfind(self, *pargs, **kargs):
-		return self._str.rfind(*pargs, **kargs)
-
-	def rstrip(self, *pargs, **kargs):
-		return self._str.rstrip(*pargs, **kargs)
 
 	def __copy__(self):
 		"""Immutable, so returns self."""

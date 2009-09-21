@@ -2604,8 +2604,7 @@ class depgraph(object):
 						except KeyError:
 							pass
 					if blockers is not None:
-						blockers = set(str(blocker.atom) \
-							for blocker in blockers)
+						blockers = set(blocker.atom for blocker in blockers)
 
 					# If this node has any blockers, create a "nomerge"
 					# node for it so that they can be enforced.
@@ -2636,7 +2635,7 @@ class depgraph(object):
 						continue
 
 					if blocker_data:
-						blocker_atoms = blocker_data.atoms
+						blocker_atoms = [Atom(atom) for atom in blocker_data.atoms]
 					else:
 						# Use aux_get() to trigger FakeVartree global
 						# updates on *DEPEND when appropriate.
@@ -2675,7 +2674,7 @@ class depgraph(object):
 							show_invalid_depstring_notice(pkg, depstr, atoms)
 							return False
 						blocker_atoms = [myatom for myatom in atoms \
-							if myatom.startswith("!")]
+							if myatom.blocker]
 						blocker_atoms.sort()
 						counter = long(pkg.metadata["COUNTER"])
 						blocker_cache[cpv] = \
@@ -2683,7 +2682,7 @@ class depgraph(object):
 					if blocker_atoms:
 						try:
 							for atom in blocker_atoms:
-								blocker = Blocker(atom=portage.dep.Atom(atom),
+								blocker = Blocker(atom=atom,
 									eapi=pkg.metadata["EAPI"], root=myroot)
 								self._dynamic_config._blocker_parents.add(blocker, pkg)
 						except portage.exception.InvalidAtom as e:

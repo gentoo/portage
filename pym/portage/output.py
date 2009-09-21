@@ -22,6 +22,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+from portage import _unicode_decode
 from portage.const import COLOR_MAP_FILE, EPREFIX
 from portage.exception import CommandNotFound, FileNotFound, \
 	ParseError, PermissionDenied, PortageException
@@ -354,16 +355,31 @@ class ConsoleStyleFile(object):
 		self._styles = styles
 
 	def write(self, s):
+		# In python-2.6, DumbWriter.send_line_break() can write
+		# non-unicode '\n' which fails with TypeError if self._file
+		# is a text stream such as io.StringIO. Therefore, make sure
+		# input is converted to unicode when necessary.
+		s = _unicode_decode(s)
 		global havecolor
 		if havecolor and self._styles:
+			styled_s = []
 			for style in self._styles:
-				self._file.write(style_to_ansi_code(style))
-			self._file.write(s)
-			self._file.write(codes["reset"])
+				styled_s.append(style_to_ansi_code(style))
+			styled_s.append(s)
+			styled_s.append(codes["reset"])
+			self._write(self._file, "".join(styled_s))
 		else:
-			self._file.write(s)
+			self._write(self._file, s)
 		if self.write_listener:
-			self.write_listener.write(s)
+			self._write(self.write_listener, s)
+
+	def _write(self, f, s):
+		if sys.hexversion < 0x3000000 and \
+			isinstance(s, unicode) and \
+			f in (sys.stdout, sys.stderr):
+			# avoid potential UnicodeEncodeError
+			s = s.encode(_encodings['stdio'], 'backslashreplace')
+		f.write(s)
 
 	def writelines(self, lines):
 		for s in lines:
@@ -742,6 +758,12 @@ def _init(config_root='/'):
 	_color_map_loaded = True
 	codes = object.__getattribute__(codes, '_attr')
 	_styles = object.__getattribute__(_styles, '_attr')
+
+	for k, v in codes.iteritems():
+		codes[k] = _unicode_decode(v)
+
+	for k, v in _styles.iteritems():
+		_styles[k] = _unicode_decode(v)
 
 	try:
 		_parse_color_map(config_root=config_root,
