@@ -35,6 +35,7 @@ from portage import _unicode_encode
 import codecs
 import logging
 import stat
+import warnings
 
 def _src_uri_validate(cpv, eapi, src_uri):
 	"""
@@ -1196,6 +1197,9 @@ class portagetree(object):
 		return "/".join([self.portroot, mysplit[0], psplit[0], mysplit[1]])+".ebuild"
 
 	def resolve_specific(self, myspec):
+		warnings.warn(
+			"portage.dbapi.porttree.portagetree.resolve_specific() is deprecated",
+			DeprecationWarning)
 		cps = catpkgsplit(myspec)
 		if not cps:
 			return None

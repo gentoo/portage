@@ -143,18 +143,19 @@ if _encodings['merge'] is None:
 
 def _unicode_encode(s, encoding=_encodings['content'],
 	errors='backslashreplace'):
-	if isinstance(s, unicode):
+	if sys.hexversion >= 0x3000000:
+		if isinstance(s, str):
+			s = s.encode(encoding, errors)
+	elif isinstance(s, unicode):
 		s = s.encode(encoding, errors)
 	return s
 
 def _unicode_decode(s, encoding=_encodings['content'], errors='replace'):
-	if not isinstance(s, unicode):
-		if sys.hexversion < 0x3000000:
-			if isinstance(s, basestring):
-				s = unicode(s, encoding=encoding, errors=errors)
+	if isinstance(s, bytes):
+		if sys.hexversion >= 0x3000000:
+			s = str(s, encoding=encoding, errors=errors)
 		else:
-			if isinstance(s, bytes):
-				s = unicode(s, encoding=encoding, errors=errors)
+			s = unicode(s, encoding=encoding, errors=errors)
 	return s
 
 class _unicode_func_wrapper(object):
@@ -8084,6 +8085,9 @@ def cpv_getkey(mycpv):
 getCPFromCPV = cpv_getkey
 
 def key_expand(mykey, mydb=None, use_cache=1, settings=None):
+	"""This is deprecated because it just returns the first match instead of
+	raising AmbiguousPackageName like cpv_expand does."""
+	warnings.warn("portage.key_expand() is deprecated", DeprecationWarning)
 	mysplit=mykey.split("/")
 	if settings is None:
 		settings = globals()["settings"]
@@ -8093,15 +8097,17 @@ def key_expand(mykey, mydb=None, use_cache=1, settings=None):
 		if hasattr(mydb, "cp_list"):
 			for x in mydb.categories:
 				if mydb.cp_list(x+"/"+mykey,use_cache=use_cache):
-					return x+"/"+mykey
+					return dep.Atom(x + "/" + mykey)
 			if mykey in virts_p:
 				return(virts_p[mykey][0])
-		return "null/"+mykey
+		return dep.Atom("null/" + mykey)
 	elif mydb:
 		if hasattr(mydb, "cp_list"):
 			if not mydb.cp_list(mykey, use_cache=use_cache) and \
 				virts and mykey in virts:
 				return virts[mykey][0]
+		if not isinstance(mykey, dep.Atom):
+			mykey = dep.Atom(mykey)
 		return mykey
 
 def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):

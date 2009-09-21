@@ -52,6 +52,7 @@ import codecs
 import re, shutil, stat, errno, copy, subprocess
 import logging
 import sys
+import warnings
 
 try:
 	import cPickle as pickle
@@ -2450,6 +2451,9 @@ class vartree(object):
 		return self.dbapi.cp_all()
 
 	def exists_specific_cat(self, cpv, use_cache=1):
+		warnings.warn(
+			"portage.dbapi.vartree.vartree.exists_specific_cat() is deprecated",
+			DeprecationWarning)
 		cpv = key_expand(cpv, mydb=self.dbapi, use_cache=use_cache,
 			settings=self.settings)
 		a = catpkgsplit(cpv)
@@ -2470,6 +2474,9 @@ class vartree(object):
 		return self.getpath(fullpackage, filename=package+".ebuild")
 
 	def getnode(self, mykey, use_cache=1):
+		warnings.warn(
+			"portage.dbapi.vartree.vartree.getnode() is deprecated",
+			DeprecationWarning)
 		mykey = key_expand(mykey, mydb=self.dbapi, use_cache=use_cache,
 			settings=self.settings)
 		if not mykey:
@@ -2496,6 +2503,9 @@ class vartree(object):
 
 	def hasnode(self, mykey, use_cache):
 		"""Does the particular node (cat/pkg key) exist?"""
+		warnings.warn(
+			"portage.dbapi.vartree.vartree.hadnode() is deprecated",
+			DeprecationWarning)
 		mykey = key_expand(mykey, mydb=self.dbapi, use_cache=use_cache,
 			settings=self.settings)
 		mysplit = catsplit(mykey)

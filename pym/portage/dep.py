@@ -18,7 +18,7 @@
 #
 
 import re, sys
-import weakref
+import warnings
 from itertools import chain
 import portage.exception
 from portage.exception import InvalidData, InvalidAtom
@@ -641,6 +641,9 @@ def get_operator(mydep):
 		pass
 
 	# Fall back to legacy code for backward compatibility.
+	warnings.warn(_("%s is deprecated, use %s instead") % \
+		('portage.dep.get_operator()', 'portage.dep.Atom.operator'),
+		DeprecationWarning)
 	operator = None
 	if mydep:
 		mydep = remove_slot(mydep)
@@ -684,6 +687,9 @@ def dep_getcpv(mydep):
 		pass
 
 	# Fall back to legacy code for backward compatibility.
+	warnings.warn(_("%s is deprecated, use %s instead") % \
+		('portage.dep.dep_getcpv()', 'portage.dep.Atom.cpv'),
+		DeprecationWarning)
 	mydep_orig = mydep
 	if mydep:
 		mydep = remove_slot(mydep)
@@ -927,6 +933,9 @@ def dep_getkey(mydep):
 			pass
 
 	# Fall back to legacy code for backward compatibility.
+	warnings.warn(_("%s is deprecated, use %s instead") % \
+		('portage.dep.dep_getkey()', 'portage.dep.Atom.cp'),
+		DeprecationWarning)
 	mydep = dep_getcpv(mydep)
 	if mydep and isspecific(mydep):
 		mysplit = catpkgsplit(mydep)
@@ -947,14 +956,7 @@ def match_to_list(mypkg, mylist):
 	@rtype: List
 	@return: A unique list of package atoms that match the given package atom
 	"""
-	matches = []
-	for x in mylist:
-		if not isinstance(x, Atom):
-			x = Atom(x)
-		if match_from_list(x, [mypkg]):
-			if x not in matches:
-				matches.append(x)
-	return matches
+	return [ x for x in set(mylist) if match_from_list(x, [mypkg]) ]
 
 def best_match_to_list(mypkg, mylist):
 	"""
