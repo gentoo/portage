@@ -1278,8 +1278,8 @@ class depgraph(object):
 
 		deps = []
 		for cat in categories:
-			deps.append(insert_category_into_atom(
-				atom_without_category, cat))
+			deps.append(Atom(insert_category_into_atom(
+				atom_without_category, cat)))
 		return deps
 
 	def _have_new_virt(self, root, atom_cp):
@@ -1441,15 +1441,14 @@ class depgraph(object):
 				#   2) It takes away freedom from the resolver to choose other
 				#      possible expansions when necessary.
 				if "/" in x:
-					args.append(AtomArg(arg=x, atom=x,
+					args.append(AtomArg(arg=x, atom=Atom(x),
 						root_config=root_config))
 					continue
 				expanded_atoms = self._dep_expand(root_config, x)
 				installed_cp_set = set()
 				for atom in expanded_atoms:
-					atom_cp = portage.dep_getkey(atom)
-					if vardb.cp_list(atom_cp):
-						installed_cp_set.add(atom_cp)
+					if vardb.cp_list(atom.cp):
+						installed_cp_set.add(atom.cp)
 
 				if len(installed_cp_set) > 1:
 					non_virtual_cps = set()
@@ -1462,7 +1461,7 @@ class depgraph(object):
 				if len(expanded_atoms) > 1 and len(installed_cp_set) == 1:
 					installed_cp = iter(installed_cp_set).next()
 					expanded_atoms = [atom for atom in expanded_atoms \
-						if portage.dep_getkey(atom) == installed_cp]
+						if atom.cp == installed_cp]
 
 				if len(expanded_atoms) > 1:
 					print()
@@ -1473,15 +1472,14 @@ class depgraph(object):
 				if expanded_atoms:
 					atom = expanded_atoms[0]
 				else:
-					null_atom = insert_category_into_atom(x, "null")
-					null_cp = portage.dep_getkey(null_atom)
-					cat, atom_pn = portage.catsplit(null_cp)
+					null_atom = Atom(insert_category_into_atom(x, "null"))
+					cat, atom_pn = portage.catsplit(null_atom.cp)
 					virts_p = root_config.settings.get_virts_p().get(atom_pn)
 					if virts_p:
 						# Allow the depgraph to choose which virtual.
-						atom = insert_category_into_atom(x, "virtual")
+						atom = Atom(null_atom.replace('null/', 'virtual/', 1))
 					else:
-						atom = insert_category_into_atom(x, "null")
+						null_atom
 
 				args.append(AtomArg(arg=x, atom=atom,
 					root_config=root_config))
@@ -1514,9 +1512,9 @@ class depgraph(object):
 				if not slot:
 					# portage now masks packages with missing slot, but it's
 					# possible that one was installed by an older version
-					atom = portage.cpv_getkey(cpv)
+					atom = Atom(portage.cpv_getkey(cpv))
 				else:
-					atom = "%s:%s" % (portage.cpv_getkey(cpv), slot)
+					atom = Atom("%s:%s" % (portage.cpv_getkey(cpv), slot))
 				args.append(AtomArg(arg=atom, atom=atom,
 					root_config=root_config))
 
@@ -4806,7 +4804,9 @@ class depgraph(object):
 				args.append(SetArg(arg=x, set=expanded_set,
 					root_config=root_config))
 			else:
-				if not portage.isvalidatom(x):
+				try:
+					x = Atom(x)
+				except portage.exception.InvalidAtom:
 					continue
 				args.append(AtomArg(arg=x, atom=x,
 					root_config=root_config))
@@ -4976,15 +4976,14 @@ class _dep_check_composite_db(portage.dbapi):
 		if expanded_atoms:
 			atom = expanded_atoms[0]
 		else:
-			null_atom = insert_category_into_atom(atom, "null")
-			null_cp = portage.dep_getkey(null_atom)
-			cat, atom_pn = portage.catsplit(null_cp)
+			null_atom = Atom(insert_category_into_atom(atom, "null"))
+			cat, atom_pn = portage.catsplit(null_atom.cp)
 			virts_p = root_config.settings.get_virts_p().get(atom_pn)
 			if virts_p:
 				# Allow the resolver to choose which virtual.
-				atom = insert_category_into_atom(atom, "virtual")
+				atom = Atom(null_atom.replace('null/', 'virtual/', 1))
 			else:
-				atom = insert_category_into_atom(atom, "null")
+				atom = null_atom
 		return atom
 
 	def aux_get(self, cpv, wants):
