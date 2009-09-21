@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from itertools import izip
 import portage
 from portage import os
 from _emerge.Package import Package
@@ -50,7 +49,7 @@ class FakeVartree(portage.vartree):
 				if pkg is not None:
 					metadata = pkg.metadata
 				else:
-					metadata = dict(izip(mykeys, real_dbapi.aux_get(cpv, mykeys)))
+					metadata = dict(zip(mykeys, real_dbapi.aux_get(cpv, mykeys)))
 				myslot = metadata["SLOT"]
 				mycp = portage.cpv_getkey(cpv)
 				myslot_atom = "%s:%s" % (mycp, myslot)
@@ -110,7 +109,7 @@ class FakeVartree(portage.vartree):
 		self._aux_get_history.add(pkg)
 		try:
 			# Use the live ebuild metadata if possible.
-			live_metadata = dict(izip(self._portdb_keys,
+			live_metadata = dict(zip(self._portdb_keys,
 				self._portdb.aux_get(pkg, self._portdb_keys)))
 			if not portage.eapi_is_supported(live_metadata["EAPI"]):
 				raise KeyError(pkg)
@@ -195,7 +194,7 @@ class FakeVartree(portage.vartree):
 		root_config = self._root_config
 		real_vardb = root_config.trees["vartree"].dbapi
 		pkg = Package(cpv=cpv, installed=True,
-			metadata=izip(self._db_keys,
+			metadata=zip(self._db_keys,
 			real_vardb.aux_get(cpv, self._db_keys)),
 			root_config=root_config,
 			type_name="installed")
@@ -224,7 +223,7 @@ def grab_global_updates(portdir):
 def perform_global_updates(mycpv, mydb, mycommands):
 	from portage.update import update_dbentries
 	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
-	aux_dict = dict(izip(aux_keys, mydb.aux_get(mycpv, aux_keys)))
+	aux_dict = dict(zip(aux_keys, mydb.aux_get(mycpv, aux_keys)))
 	updates = update_dbentries(mycommands, aux_dict)
 	if updates:
 		mydb.aux_update(mycpv, updates)

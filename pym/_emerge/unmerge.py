@@ -7,7 +7,6 @@ from __future__ import print_function
 import logging
 import sys
 import textwrap
-from itertools import izip
 import portage
 from portage import os
 from portage.output import bold, colorize, darkgreen, green
@@ -42,7 +41,7 @@ def unmerge(root_config, myopts, unmerge_action,
 		pkg = pkg_cache.get(cpv)
 		if pkg is None:
 			pkg = Package(cpv=cpv, installed=True,
-				metadata=izip(db_keys, vartree.dbapi.aux_get(cpv, db_keys)),
+				metadata=zip(db_keys, vartree.dbapi.aux_get(cpv, db_keys)),
 				root_config=root_config,
 				type_name="installed")
 			pkg_cache[cpv] = pkg

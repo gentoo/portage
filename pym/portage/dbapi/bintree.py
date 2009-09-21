@@ -30,7 +30,7 @@ import codecs
 import errno
 import re
 import stat
-from itertools import chain, izip
+from itertools import chain
 
 class bindbapi(fakedbapi):
 	_known_keys = frozenset(list(fakedbapi._known_keys) + \
@@ -613,7 +613,7 @@ class binarytree(object):
 					d["MTIME"] = str(long(s.st_mtime))
 					d["SIZE"] = str(s.st_size)
 
-					d.update(izip(self._pkgindex_aux_keys,
+					d.update(zip(self._pkgindex_aux_keys,
 						self.dbapi.aux_get(mycpv, self._pkgindex_aux_keys)))
 					try:
 						self._eval_use_flags(mycpv, d)
@@ -936,7 +936,7 @@ class binarytree(object):
 		pkg_path = self.getname(cpv)
 		from portage.checksum import perform_multiple_checksums
 
-		d = dict(izip(self._pkgindex_aux_keys,
+		d = dict(zip(self._pkgindex_aux_keys,
 			self.dbapi.aux_get(cpv, self._pkgindex_aux_keys)))
 
 		d.update(perform_multiple_checksums(

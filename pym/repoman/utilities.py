@@ -20,7 +20,6 @@ __all__ = [
 
 import codecs
 import errno
-import itertools
 import logging
 import sys
 try:
@@ -221,7 +220,7 @@ def format_qa_output(formatter, stats, fails, dofull, dofail, options, qawarning
 	full = options.mode == 'full'
 	# we only want key value pairs where value > 0 
 	for category, number in \
-		itertools.ifilter(lambda myitem: myitem[1] > 0, stats.iteritems()):
+		filter(lambda myitem: myitem[1] > 0, stats.iteritems()):
 		formatter.add_literal_data(_unicode_decode("  " + category.ljust(30)))
 		if category in qawarnings:
 			formatter.push_style("WARN")

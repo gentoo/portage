@@ -19,7 +19,7 @@ import stat
 import sys
 import textwrap
 import time
-from itertools import chain, izip
+from itertools import chain
 
 import portage
 from portage import os
@@ -1364,9 +1364,9 @@ def action_info(settings, trees, myopts, myfiles):
 		out = EOutput()
 		for cpv in mypkgs:
 			# Get all package specific variables
-			metadata = dict(izip(auxkeys, vardb.aux_get(cpv, auxkeys)))
+			metadata = dict(zip(auxkeys, vardb.aux_get(cpv, auxkeys)))
 			pkg = Package(built=True, cpv=cpv,
-				installed=True, metadata=izip(Package.metadata_keys,
+				installed=True, metadata=zip(Package.metadata_keys,
 				(metadata.get(x, '') for x in Package.metadata_keys)),
 				root_config=root_config, type_name='installed')
 

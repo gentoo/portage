@@ -8,7 +8,6 @@ from __future__ import print_function
 import errno
 import signal
 import sys
-from itertools import izip
 
 from os import environ as ose
 from os import path as osp
@@ -119,7 +118,7 @@ def quickpkg_main(options, args, eout):
 									return False
 						excluded_config_files.append(filename)
 						return True
-				existing_metadata = dict(izip(fix_metadata_keys,
+				existing_metadata = dict(zip(fix_metadata_keys,
 					vardb.aux_get(cpv, fix_metadata_keys)))
 				category, pf = portage.catsplit(cpv)
 				required_metadata = {}

@@ -27,7 +27,7 @@ import time
 import platform
 
 from io import StringIO
-from itertools import chain, izip
+from itertools import chain
 from stat import S_ISDIR, ST_CTIME
 
 if not hasattr(__builtins__, "set"):
@@ -947,7 +947,7 @@ for x in scanlist:
 			ebuildlist.append(pf)
 			cpv = "%s/%s" % (catdir, pf)
 			try:
-				myaux = dict(izip(allvars, portdb.aux_get(cpv, allvars)))
+				myaux = dict(zip(allvars, portdb.aux_get(cpv, allvars)))
 			except KeyError:
 				stats["ebuild.syntax"] += 1
 				fails["ebuild.syntax"].append(os.path.join(x, y))
