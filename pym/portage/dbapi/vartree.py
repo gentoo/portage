@@ -1088,13 +1088,13 @@ class LinkageMapMachO(object):
 						# XXX This is most often due to soname symlinks not in
 						# a library's directory.  We could catalog symlinks in
 						# LinkageMap to avoid checking for this edge case here.
-						print "Found provider outside of findProviders:", \
-								install_name, "->", cachedRealpath
+						print(_("Found provider outside of findProviders:"), \
+								install_name, "->", cachedRealpath)
 				if debug and cachedArch == arch and \
 						cachedKey in self._obj_properties:
-					print "Broken symlink or missing/bad install_name:", \
+					print(_("Broken symlink or missing/bad install_name:"), \
 							install_name, '->', cachedRealpath, \
-							"with install_name", cachedInstallname, "but expecting", install_name
+							"with install_name", cachedInstallname, "but expecting", install_name)
 				# This conditional checks if there are no libraries to
 				# satisfy the install_name (empty set).
 				if not validLibrary:
@@ -1111,10 +1111,10 @@ class LinkageMapMachO(object):
 						rValue.setdefault(lib, set()).add(install_name)
 						if debug:
 							if not os.path.isfile(lib):
-								print "Missing library:", lib
+								print(_("Missing library:"), lib)
 							else:
-								print "Possibly missing symlink:", \
-										install_name
+								print(_("Possibly missing symlink:"), \
+										install_name)
 		return rValue
 
 	def listProviders(self):

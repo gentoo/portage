@@ -2158,17 +2158,17 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	elif syncuri[:11]=="svn+http://" or syncuri[:6]=="svn://" or syncuri[:12]=="svn+https://":
 		# Gentoo Prefix hardcoded SVN support
 		if not os.path.exists(EPREFIX + "/usr/bin/svn"):
-			print "!!! " + EPREFIX + "/usr/bin/svn does not exist, so SVN support is disabled."
-			print "!!! Type \"emerge dev-util/subversion\" to enable SVN support."
+			print("!!! " + EPREFIX + "/usr/bin/svn does not exist, so SVN support is disabled.")
+			print("!!! Type \"emerge dev-util/subversion\" to enable SVN support.")
 			sys.exit(1)
 		svndir=os.path.dirname(myportdir)
 		if not os.path.exists(myportdir+"/.svn"):
 			#initial checkout
 			if syncuri[:4] == "svn+":
 				syncuri = syncuri[4:]
-			print ">>> Starting initial svn checkout with "+syncuri+"..."
+			print(">>> Starting initial svn checkout with "+syncuri+"...")
 			if os.path.exists(svndir+"/prefix-overlay"):
-				print "!!! existing",svndir+"/prefix-overlay directory; exiting."
+				print("!!! existing",svndir+"/prefix-overlay directory; exiting.")
 				sys.exit(1)
 			try:
 				os.rmdir(myportdir)
@@ -2179,12 +2179,12 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					sys.exit(1)
 				del e
 			if portage.spawn("cd "+svndir+"; svn checkout "+syncuri,settings,free=1):
-				print "!!! svn checkout error; exiting."
+				print("!!! svn checkout error; exiting.")
 				sys.exit(1)
 			os.rename(os.path.join(svndir, "prefix-overlay"), myportdir)
 		else:
 			#svn update
-			print ">>> Starting svn update..."
+			print(">>> Starting svn update...")
 			retval = portage.spawn("cd '%s'; svn update" % myportdir, \
 				settings, free=1)
 			if retval != os.EX_OK:
