@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import sys
 from portage.cache import fs_template
 from portage.cache import cache_errors
 from portage import os
@@ -14,6 +15,9 @@ try:
 except ImportError:
 	from pysqlite2 import dbapi2 as db_module
 DBError = db_module.Error
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 class database(fs_template.FsBased):
 

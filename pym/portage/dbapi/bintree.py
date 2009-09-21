@@ -29,7 +29,11 @@ import codecs
 import errno
 import re
 import stat
+import sys
 from itertools import chain
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 class bindbapi(fakedbapi):
 	_known_keys = frozenset(list(fakedbapi._known_keys) + \

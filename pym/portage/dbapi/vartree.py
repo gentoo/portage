@@ -57,6 +57,9 @@ try:
 except ImportError:
 	import pickle
 
+if sys.hexversion >= 0x3000000:
+	basestring = str
+
 class PreservedLibsRegistry(object):
 	""" This class handles the tracking of preserved library objects """
 	def __init__(self, root, filename, autocommit=True):

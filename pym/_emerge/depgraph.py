@@ -51,6 +51,9 @@ from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 from _emerge.UnmergeDepPriority import UnmergeDepPriority
 from _emerge.visible import visible
 
+if sys.hexversion >= 0x3000000:
+	basestring = str
+
 class _frozen_depgraph_config(object):
 
 	def __init__(self, settings, trees, myopts, spinner):

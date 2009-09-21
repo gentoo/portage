@@ -5,6 +5,7 @@
 
 import errno
 import re
+import sys
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
@@ -12,6 +13,9 @@ from portage.cache import cache_errors, flat_hash
 import portage.eclass_cache
 from portage.cache.template import reconstruct_eclasses
 from portage.cache.mappings import ProtectedDict
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 # this is the old cache format, flat_list.  count maintained here.
 magic_line_count = 22

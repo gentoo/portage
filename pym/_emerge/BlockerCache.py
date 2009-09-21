@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import sys
 from portage.util import writemsg
 from portage.data import secpass
 import portage
@@ -11,6 +12,9 @@ try:
 	import cPickle as pickle
 except ImportError:
 	import pickle
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 class BlockerCache(portage.cache.mappings.MutableMapping):
 	"""This caches blockers of installed packages so that dep_check does not

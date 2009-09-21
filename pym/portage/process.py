@@ -26,6 +26,9 @@ try:
 except ImportError:
 	max_fd_limit = 256
 
+if sys.hexversion >= 0x3000000:
+	basestring = str
+
 if os.path.isdir("/proc/%i/fd" % os.getpid()):
 	def get_open_fds():
 		return (int(fd) for fd in os.listdir("/proc/%i/fd" % os.getpid()) \

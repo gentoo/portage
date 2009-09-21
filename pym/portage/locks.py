@@ -9,6 +9,7 @@ __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
 
 import errno
 import stat
+import sys
 import time
 from portage import os
 from portage.exception import DirectoryNotFound, FileNotFound, \
@@ -17,6 +18,9 @@ from portage.data import portage_gid
 from portage.output import EOutput
 from portage.util import writemsg
 from portage.localization import _
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 HARDLINK_FD = -2
 

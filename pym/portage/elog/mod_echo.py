@@ -5,9 +5,13 @@
 
 from __future__ import print_function
 
+import sys
 from portage.output import EOutput, colorize
 from portage.const import EBUILD_PHASES
 from portage.localization import _
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 _items = []
 def process(mysettings, key, logentries, fulltext):

@@ -21,6 +21,9 @@ from portage.output import xtermTitle
 
 from _emerge.getloadavg import getloadavg
 
+if sys.hexversion >= 0x3000000:
+	basestring = str
+
 class JobStatusDisplay(object):
 
 	_bound_properties = ("curval", "failed", "running")

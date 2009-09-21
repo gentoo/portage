@@ -72,6 +72,9 @@ from portage.output import bold, create_color_func, darkgreen, \
 from portage.output import ConsoleStyleFile, StyleWriter
 from portage.util import cmp_sort_key, writemsg_level
 
+if sys.hexversion >= 0x3000000:
+	basestring = str
+
 util.initialize_logger()
 
 # 14 is the length of DESCRIPTION=""

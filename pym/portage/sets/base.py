@@ -2,10 +2,14 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import sys
 from portage import cpv_getkey, flatten
 from portage.dep import Atom, isvalidatom, match_from_list, \
      best_match_to_list, dep_getkey, use_reduce, paren_reduce
 from portage.exception import InvalidAtom
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 OPERATIONS = ["merge", "unmerge"]
 
