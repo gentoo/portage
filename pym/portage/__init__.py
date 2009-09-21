@@ -7892,21 +7892,31 @@ def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
 		mydep=mydep[1:]
 	orig_dep = mydep
 	if isinstance(orig_dep, dep.Atom):
-		mydep = orig_dep.cpv
+		mydep = orig_dep.cp
 	else:
-		mydep = dep_getcpv(orig_dep)
-	myindex = orig_dep.index(mydep)
-	prefix = orig_dep[:myindex]
-	postfix = orig_dep[myindex+len(mydep):]
+		mydep = orig_dep
+		has_cat = '/' in orig_dep
+		if not has_cat:
+			alphanum = re.search(r'\w', orig_dep)
+			if alphanum:
+				mydep = orig_dep[:alphanum.start()] + "null/" + \
+					orig_dep[alphanum.start():]
+		try:
+			mydep = dep.Atom(mydep)
+		except exception.InvalidAtom:
+			# Missing '=' prefix is allowed for backward compatibility.
+			if not dep.isvalidatom("=" + mydep):
+				raise
+			mydep = dep.Atom('=' + mydep)
+			orig_dep = '=' + orig_dep
+		if not has_cat:
+			null_cat, pn = catsplit(mydep.cp)
+			mydep = pn
+		else:
+			mydep = mydep.cp
 	expanded = cpv_expand(mydep, mydb=mydb,
 		use_cache=use_cache, settings=settings)
-	try:
-		return portage.dep.Atom(prefix + expanded + postfix)
-	except portage.exception.InvalidAtom:
-		# Missing '=' prefix is allowed for backward compatibility.
-		if not isvalidatom("=" + prefix + expanded + postfix):
-			raise
-		return portage.dep.Atom("=" + prefix + expanded + postfix)
+	return portage.dep.Atom(orig_dep.replace(mydep, expanded, 1))
 
 def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	use_cache=1, use_binaries=0, myroot="/", trees=None):
