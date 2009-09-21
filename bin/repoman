@@ -968,12 +968,12 @@ for x in scanlist:
 
 	# Sort ebuilds in ascending order for the KEYWORDS.dropped check.
 	pkgsplits = {}
-	for i in xrange(len(ebuildlist)):
+	for i in range(len(ebuildlist)):
 		ebuild_split = portage.pkgsplit(ebuildlist[i])
 		pkgsplits[ebuild_split] = ebuildlist[i]
 		ebuildlist[i] = ebuild_split
 	ebuildlist.sort(key=cmp_sort_key(portage.pkgcmp))
-	for i in xrange(len(ebuildlist)):
+	for i in range(len(ebuildlist)):
 		ebuildlist[i] = pkgsplits[ebuildlist[i]]
 	del pkgsplits
 

@@ -2728,7 +2728,7 @@ class config(object):
 			x_split = x.split('_')
 			if len(x_split) == 1:
 				continue
-			for i in xrange(len(x_split) - 1):
+			for i in range(len(x_split) - 1):
 				k = '_'.join(x_split[:i+1])
 				if k in use_expand_split:
 					v = use_expand_iuses.get(k)
@@ -8208,7 +8208,7 @@ def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_lo
 				comment_valid = -1
 				for pmask in pmasklists:
 					pmask_filename = os.path.join(pmask[0], "package.mask")
-					for i in xrange(len(pmask[1])):
+					for i in range(len(pmask[1])):
 						l = pmask[1][i].strip()
 						if l == "":
 							comment = ""

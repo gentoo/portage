@@ -1830,11 +1830,11 @@ class depgraph(object):
 		# If two packages conflict, discard the lower version.
 		discard_pkgs = set()
 		greedy_pkgs.sort(reverse=True)
-		for i in xrange(len(greedy_pkgs) - 1):
+		for i in range(len(greedy_pkgs) - 1):
 			pkg1 = greedy_pkgs[i]
 			if pkg1 in discard_pkgs:
 				continue
-			for j in xrange(i + 1, len(greedy_pkgs)):
+			for j in range(i + 1, len(greedy_pkgs)):
 				pkg2 = greedy_pkgs[j]
 				if pkg2 in discard_pkgs:
 					continue
@@ -3148,7 +3148,7 @@ class depgraph(object):
 						break
 			if not selected_nodes and \
 				not (prefer_asap and asap_nodes):
-				for i in xrange(priority_range.NONE,
+				for i in range(priority_range.NONE,
 					priority_range.MEDIUM_SOFT + 1):
 					ignore_priority = priority_range.ignore_priority[i]
 					nodes = get_nodes(ignore_priority=ignore_priority)
@@ -3194,7 +3194,7 @@ class depgraph(object):
 					mergeable_nodes = set(nodes)
 					if prefer_asap and asap_nodes:
 						nodes = asap_nodes
-					for i in xrange(priority_range.SOFT,
+					for i in range(priority_range.SOFT,
 						priority_range.MEDIUM_SOFT + 1):
 						ignore_priority = priority_range.ignore_priority[i]
 						for node in nodes:
@@ -3930,7 +3930,7 @@ class depgraph(object):
 			mylist.append((x, 0, True))
 
 		last_merge_depth = 0
-		for i in xrange(len(mylist)-1,-1,-1):
+		for i in range(len(mylist)-1,-1,-1):
 			graph_key, depth, ordered = mylist[i]
 			if not ordered and depth == 0 and i > 0 \
 				and graph_key == mylist[i-1][0] and \
@@ -3955,7 +3955,7 @@ class depgraph(object):
 		# and disable the entire repo display in this case.
 		repoadd_set = set()
 
-		for mylist_index in xrange(len(mylist)):
+		for mylist_index in range(len(mylist)):
 			x, depth, ordered = mylist[mylist_index]
 			pkg_type = x[0]
 			myroot = x[1]

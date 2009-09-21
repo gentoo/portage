@@ -13,7 +13,7 @@ def countdown(secs=5, doing="Starting"):
 	if secs:
 		print(">>> Waiting",secs,"seconds before starting...")
 		print(">>> (Control-C to abort)...\n"+doing+" in: ", end=' ')
-		ticks=range(secs)
+		ticks=list(range(secs))
 		ticks.reverse()
 		for sec in ticks:
 			sys.stdout.write(colorize("UNMERGE_WARN", str(sec+1)+" "))

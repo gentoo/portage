@@ -20,7 +20,7 @@ if getloadavg is None:
 		if len(loadavg_split) < 3:
 			raise OSError('unknown')
 		loadavg_floats = []
-		for i in xrange(3):
+		for i in range(3):
 			try:
 				loadavg_floats.append(float(loadavg_split[i]))
 			except ValueError:

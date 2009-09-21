@@ -35,7 +35,7 @@ if os.path.isdir("/proc/%i/fd" % os.getpid()):
 			if fd.isdigit())
 else:
 	def get_open_fds():
-		return xrange(max_fd_limit)
+		return range(max_fd_limit)
 
 sandbox_capable = (os.path.isfile(SANDBOX_BINARY) and
                    os.access(SANDBOX_BINARY, os.X_OK))

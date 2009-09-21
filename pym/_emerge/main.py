@@ -770,7 +770,7 @@ def parse_opts(tmpcmdline, silent=False):
 		myaction = 'deselect'
 
 	if myargs and not isinstance(myargs[0], unicode):
-		for i in xrange(len(myargs)):
+		for i in range(len(myargs)):
 			myargs[i] = portage._unicode_decode(myargs[i])
 
 	myfiles += myargs

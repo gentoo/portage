@@ -87,7 +87,7 @@ class database(flat_hash.database):
 		for k in self.auxdbkey_order:
 			new_content.append(values.get(k, ''))
 			new_content.append('\n')
-		for i in xrange(magic_line_count - len(self.auxdbkey_order)):
+		for i in range(magic_line_count - len(self.auxdbkey_order)):
 			new_content.append('\n')
 		new_content = ''.join(new_content)
 		new_content = _unicode_encode(new_content,

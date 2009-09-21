@@ -648,7 +648,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 				cache_stats.update()
 			metadata[baseurl]["modified"] = 1
 			myid = None
-			for retry in xrange(3):
+			for retry in range(3):
 				try:
 					myid = file_get_metadata(
 						"/".join((baseurl.rstrip("/"), x.lstrip("/"))),

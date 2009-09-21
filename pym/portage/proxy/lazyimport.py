@@ -137,7 +137,7 @@ def lazyimport(scope, *args):
 
 			components = name.split('.')
 			parent_scope = scope
-			for i in xrange(len(components)):
+			for i in range(len(components)):
 				alias = components[i]
 				if i < len(components) - 1:
 					parent_name = ".".join(components[:i+1])

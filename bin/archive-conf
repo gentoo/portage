@@ -34,7 +34,7 @@ except ImportError:
     import md5
     def md5_to_hex(md5sum):
         hexform = ""
-        for ix in xrange(len(md5sum)):
+        for ix in range(len(md5sum)):
             hexform = hexform + "%02x" % ord(md5sum[ix])
         return hexform.lower()
     

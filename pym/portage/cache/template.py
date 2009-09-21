@@ -221,11 +221,11 @@ def reconstruct_eclasses(cpv, eclass_string):
 	d={}
 	try:
 		if eclasses[1].isdigit():
-			for x in xrange(0, len(eclasses), 2):
+			for x in range(0, len(eclasses), 2):
 				d[eclasses[x]] = ("", long(eclasses[x + 1]))
 		else:
 			# The old format contains paths that will be discarded.
-			for x in xrange(0, len(eclasses), 3):
+			for x in range(0, len(eclasses), 3):
 				d[eclasses[x]] = (eclasses[x + 1], long(eclasses[x + 2]))
 	except IndexError:
 		raise cache_errors.CacheCorruption(cpv,
