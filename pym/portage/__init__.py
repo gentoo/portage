@@ -3741,6 +3741,10 @@ class config(object):
 # stop trying to use it after the first failure.
 _disable_openpty = False
 
+if sys.hexversion >= 0x3000000:
+	# This is a temporary workaround for http://bugs.python.org/issue5380.
+	_disable_openpty = True
+
 def _create_pty_or_pipe(copy_term_size=None):
 	"""
 	Try to create a pty and if then fails then create a normal
