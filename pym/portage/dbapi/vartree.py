@@ -1538,7 +1538,7 @@ class vardbapi(dbapi):
 			# Delete any stale cache.
 			stale_hashes = cached_hashes.difference(valid_pkg_hashes)
 			if stale_hashes:
-				for base_name_hash, bucket in base_names.items():
+				for base_name_hash, bucket in list(base_names.items()):
 					for hash_value in stale_hashes.intersection(bucket):
 						del bucket[hash_value]
 					if not bucket:
