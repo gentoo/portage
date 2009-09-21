@@ -61,6 +61,7 @@ except ImportError:
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
+	long = int
 
 class PreservedLibsRegistry(object):
 	""" This class handles the tracking of preserved library objects """

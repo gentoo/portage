@@ -45,6 +45,9 @@ from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
 from _emerge.is_valid_package_atom import is_valid_package_atom
 from _emerge.stdout_spinner import stdout_spinner
 
+if sys.hexversion >= 0x3000000:
+	long = int
+
 options=[
 "--ask",          "--alphabetical",
 "--buildpkg",     "--buildpkgonly",

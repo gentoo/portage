@@ -6,6 +6,10 @@ from portage import _unicode_encode
 import codecs
 import errno
 import stat
+import sys
+
+if sys.hexversion >= 0x3000000:
+	long = int
 
 # store the current key order *here*.
 class database(fs_template.FsBased):

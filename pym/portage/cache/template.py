@@ -11,6 +11,7 @@ import warnings
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
+	long = int
 
 class database(object):
 	# this is for metadata/cache transfer.

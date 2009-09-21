@@ -16,6 +16,7 @@ from portage.cache.mappings import ProtectedDict
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
+	long = int
 
 # this is the old cache format, flat_list.  count maintained here.
 magic_line_count = 22

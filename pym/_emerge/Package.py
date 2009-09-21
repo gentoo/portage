@@ -12,6 +12,7 @@ from _emerge.Task import Task
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
+	long = int
 
 class Package(Task):
 

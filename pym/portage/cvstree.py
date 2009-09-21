@@ -7,11 +7,15 @@ from __future__ import print_function
 
 import codecs
 import re
+import sys
 import time
 
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+
+if sys.hexversion >= 0x3000000:
+	long = int
 
 # [D]/Name/Version/Date/Flags/Tags
 

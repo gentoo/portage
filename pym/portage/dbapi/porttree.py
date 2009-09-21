@@ -35,7 +35,11 @@ from portage import _unicode_encode
 import codecs
 import logging
 import stat
+import sys
 import warnings
+
+if sys.hexversion >= 0x3000000:
+	long = int
 
 def _src_uri_validate(cpv, eapi, src_uri):
 	"""

@@ -11,6 +11,9 @@ import sys
 import portage
 from portage import os
 
+if sys.hexversion >= 0x3000000:
+	long = int
+
 class BinpkgFetcher(SpawnProcess):
 
 	__slots__ = ("pkg", "pretend",

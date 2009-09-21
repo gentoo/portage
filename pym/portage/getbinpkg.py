@@ -52,6 +52,9 @@ try:
 except ImportError as e:
 	sys.stderr.write(colorize("BAD","!!! CANNOT IMPORT HTTP.CLIENT: ")+str(e)+"\n")
 
+if sys.hexversion >= 0x3000000:
+	long = int
+
 def make_metadata_dict(data):
 	myid,myglob = data
 	
