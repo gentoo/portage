@@ -1911,7 +1911,6 @@ class depgraph(object):
 		return selected_atoms
 
 	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None):
-		atom = portage.dep.Atom(atom)
 		atom_set = InternalPackageSet(initial_atoms=(atom,))
 		xinfo = '"%s"' % atom
 		if arg:
