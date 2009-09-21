@@ -9,6 +9,7 @@ from portage.cache.mappings import slot_dict_class
 import portage
 from portage import os
 from portage import _encodings
+from portage import _unicode_decode
 from portage import _unicode_encode
 import fcntl
 import codecs
@@ -122,7 +123,7 @@ class EbuildMetadataPhase(SubProcess):
 	def _set_returncode(self, wait_retval):
 		SubProcess._set_returncode(self, wait_retval)
 		if self.returncode == os.EX_OK:
-			metadata_lines = ''.join(unicode(chunk,
+			metadata_lines = ''.join(_unicode_decode(chunk,
 				encoding=_encodings['repo.content'], errors='replace')
 				for chunk in self._raw_metadata).splitlines()
 			if len(portage.auxdbkeys) != len(metadata_lines):

@@ -142,18 +142,16 @@ if _encodings['merge'] is None:
 
 def _unicode_encode(s, encoding=_encodings['content'],
 	errors='backslashreplace'):
-	if isinstance(s, unicode):
+	if not isinstance(s, bytes):
 		s = s.encode(encoding, errors)
 	return s
 
 def _unicode_decode(s, encoding=_encodings['content'], errors='replace'):
-	if not isinstance(s, unicode):
-		if sys.hexversion < 0x3000000:
-			if isinstance(s, basestring):
-				s = unicode(s, encoding=encoding, errors=errors)
+	if isinstance(s, bytes):
+		if sys.hexversion >= 0x3000000:
+			s = str(s, encoding=encoding, errors=errors)
 		else:
-			if isinstance(s, bytes):
-				s = unicode(s, encoding=encoding, errors=errors)
+			s = unicode(s, encoding=encoding, errors=errors)
 	return s
 
 class _unicode_func_wrapper(object):

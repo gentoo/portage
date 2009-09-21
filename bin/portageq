@@ -610,7 +610,7 @@ def main():
 		os.environ["ROOT"] = sys.argv[2]
 
 	args = sys.argv[2:]
-	if args and not isinstance(args[0], unicode):
+	if args and sys.hexversion < 0x3000000 and not isinstance(args[0], unicode):
 		for i in range(len(args)):
 			args[i] = portage._unicode_decode(args[i])
 

@@ -769,7 +769,7 @@ def parse_opts(tmpcmdline, silent=False):
 	if myaction is None and myoptions.deselect is True:
 		myaction = 'deselect'
 
-	if myargs and not isinstance(myargs[0], unicode):
+	if sys.hexversion < 0x3000000 and not isinstance(myargs[0], unicode):
 		for i in range(len(myargs)):
 			myargs[i] = portage._unicode_decode(myargs[i])
 
