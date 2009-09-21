@@ -189,8 +189,8 @@ class _unicode_func_wrapper(object):
 
 		rval = self._func(*wrapped_args, **wrapped_kwargs)
 
-		if isinstance(rval, (basestring, list, tuple)):
-			if isinstance(rval, basestring):
+		if isinstance(rval, (bytes, basestring, list, tuple)):
+			if isinstance(rval, (bytes, basestring)):
 				rval = _unicode_decode(rval,
 					encoding=encoding, errors='replace')
 			else:
