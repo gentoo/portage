@@ -119,7 +119,7 @@ class BlockerDB(object):
 			blocker_atoms = InternalPackageSet(initial_atoms=blocker_atoms)
 			for inst_pkg in installed_pkgs:
 				try:
-					blocker_atoms.iterAtomsForPackage(inst_pkg).next()
+					next(blocker_atoms.iterAtomsForPackage(inst_pkg))
 				except (portage.exception.InvalidDependString, StopIteration):
 					continue
 				blocking_pkgs.add(inst_pkg)

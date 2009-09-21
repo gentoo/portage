@@ -105,7 +105,7 @@ class MutableMapping(Mapping):
 
 	def popitem(self):
 		try:
-			k, v = iter(self.items()).next()
+			k, v = next(iter(self.items()))
 		except StopIteration:
 			raise KeyError('container is empty')
 		del self[k]
@@ -442,7 +442,7 @@ def slot_dict_class(keys, prefix="_val_"):
 
 			def popitem(self):
 				try:
-					k, v = iter(self.items()).next()
+					k, v = next(iter(self.items()))
 				except StopIteration:
 					raise KeyError('container is empty')
 				del self[k]

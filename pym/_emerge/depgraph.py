@@ -747,7 +747,7 @@ class depgraph(object):
 			myarg = None
 			if dep.root == self._frozen_config.target_root:
 				try:
-					myarg = self._iter_atoms_for_pkg(dep_pkg).next()
+					myarg = next(self._iter_atoms_for_pkg(dep_pkg))
 				except StopIteration:
 					pass
 				except portage.exception.InvalidDependString:
@@ -1463,7 +1463,7 @@ class depgraph(object):
 						installed_cp_set = non_virtual_cps
 
 				if len(expanded_atoms) > 1 and len(installed_cp_set) == 1:
-					installed_cp = iter(installed_cp_set).next()
+					installed_cp = next(iter(installed_cp_set))
 					expanded_atoms = [atom for atom in expanded_atoms \
 						if atom.cp == installed_cp]
 
@@ -2280,7 +2280,7 @@ class depgraph(object):
 					myarg = None
 					if root == self._frozen_config.target_root:
 						try:
-							myarg = self._iter_atoms_for_pkg(pkg).next()
+							myarg = next(self._iter_atoms_for_pkg(pkg))
 						except StopIteration:
 							pass
 						except portage.exception.InvalidDependString:
@@ -4925,7 +4925,7 @@ class _dep_check_composite_db(portage.dbapi):
 	def _visible(self, pkg):
 		if pkg.installed and "selective" not in self._depgraph._dynamic_config.myparams:
 			try:
-				arg = self._depgraph._iter_atoms_for_pkg(pkg).next()
+				arg = next(self._depgraph._iter_atoms_for_pkg(pkg))
 			except (StopIteration, portage.exception.InvalidDependString):
 				arg = None
 			if arg:

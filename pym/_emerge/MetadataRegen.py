@@ -135,7 +135,7 @@ class MetadataRegen(PollScheduler):
 		"""
 		while self._can_add_job():
 			try:
-				metadata_process = self._process_iter.next()
+				metadata_process = next(self._process_iter)
 			except StopIteration:
 				return False
 

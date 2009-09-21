@@ -6,7 +6,7 @@ import sys
 from portage.cache import fs_template
 from portage.cache import cache_errors
 from portage import os
-from portage import _unicode_encode
+from portage import _unicode_decode
 from portage.cache.template import reconstruct_eclasses
 from portage.util import writemsg
 from portage.localization import _
@@ -67,7 +67,7 @@ class database(fs_template.FsBased):
 		try:
 			self._ensure_dirs()
 			self._db_connection = self._db_module.connect(
-				database=_unicode_encode(self._dbpath), **connection_kwargs)
+				database=_unicode_decode(self._dbpath), **connection_kwargs)
 			self._db_cursor = self._db_connection.cursor()
 			self._db_cursor.execute("PRAGMA encoding = %s" % self._db_escape_string("UTF-8"))
 			if not self._ensure_access(self._dbpath):

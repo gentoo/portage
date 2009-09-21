@@ -153,7 +153,7 @@ class paren_normalize(list):
 		for x in i:
 			if isinstance(x, basestring):
 				if x == '||':
-					x = self._zap_parens(i.next(), [], disjunction=True)
+					x = self._zap_parens(next(i), [], disjunction=True)
 					if len(x) == 1:
 						dest.append(x[0])
 					else:
@@ -161,7 +161,7 @@ class paren_normalize(list):
 						dest.append(x)
 				elif x.endswith("?"):
 					dest.append(x)
-					dest.append(self._zap_parens(i.next(), []))
+					dest.append(self._zap_parens(next(i), []))
 				else:
 					dest.append(x)
 			else:

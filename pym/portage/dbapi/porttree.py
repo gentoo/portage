@@ -970,7 +970,7 @@ class portdbapi(dbapi):
 			if mydep != mykey:
 				cpv_iter = self._iter_match(mydep, cpv_iter)
 			try:
-				myval = cpv_iter.next()
+				myval = next(cpv_iter)
 			except StopIteration:
 				myval = ""
 
