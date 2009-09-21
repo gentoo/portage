@@ -8057,6 +8057,9 @@ def cpv_getkey(mycpv):
 getCPFromCPV = cpv_getkey
 
 def key_expand(mykey, mydb=None, use_cache=1, settings=None):
+	"""This is deprecated because it just returns the first match instead of
+	raising AmbiguousPackageName like cpv_expand does."""
+	warnings.warn("portage.key_expand() is deprecated", DeprecationWarning)
 	mysplit=mykey.split("/")
 	if settings is None:
 		settings = globals()["settings"]
