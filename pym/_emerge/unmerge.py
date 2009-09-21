@@ -404,7 +404,7 @@ def unmerge(root_config, myopts, unmerge_action,
 			selected = d["selected"]
 			if not selected:
 				continue
-			cp = portage.cpv_getkey(iter(selected).next())
+			cp = portage.cpv_getkey(next(iter(selected)))
 			cp_dict = unordered.get(cp)
 			if cp_dict is None:
 				cp_dict = {}
@@ -423,7 +423,7 @@ def unmerge(root_config, myopts, unmerge_action,
 			if mytype == "selected":
 				continue
 			mylist.difference_update(all_selected)
-		cp = portage.cpv_getkey(iter(selected).next())
+		cp = portage.cpv_getkey(next(iter(selected)))
 		for y in localtree.dep_match(cp):
 			if y not in pkgmap[x]["omitted"] and \
 				y not in pkgmap[x]["selected"] and \
