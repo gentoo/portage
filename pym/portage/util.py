@@ -120,7 +120,7 @@ def grabfile(myfilename, compat_level=0, recursive=0):
 	for x in mylines:
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
 		#into single spaces.
-		myline = u' '.join(x.split())
+		myline = _unicode_decode(' ').join(x.split())
 		if not len(myline):
 			continue
 		if myline[0]=="#":

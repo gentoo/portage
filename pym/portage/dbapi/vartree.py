@@ -1960,7 +1960,7 @@ class vardbapi(dbapi):
 		if not mydata['SLOT']:
 			# Empty slot triggers InvalidAtom exceptions when generating slot
 			# atoms for packages, so translate it to '0' here.
-			mydata['SLOT'] = u'0'
+			mydata['SLOT'] = _unicode_decode('0')
 		return [mydata[x] for x in wants]
 
 	def _aux_get(self, mycpv, wants, st=None):
@@ -1997,9 +1997,9 @@ class vardbapi(dbapi):
 				if self._aux_multi_line_re.match(x) is None:
 					myd = " ".join(myd.split())
 			except IOError:
-				myd = u''
+				myd = _unicode_decode('')
 			if x == "EAPI" and not myd:
-				results.append(u'0')
+				results.append(_unicode_decode('0'))
 			else:
 				results.append(myd)
 		return results

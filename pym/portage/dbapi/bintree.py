@@ -93,15 +93,15 @@ class bindbapi(fakedbapi):
 			if myval:
 				mydata[x] = " ".join(myval.split())
 
-		if not mydata.setdefault('EAPI', u'0'):
-			mydata['EAPI'] = u'0'
+		if not mydata.setdefault('EAPI', _unicode_decode('0')):
+			mydata['EAPI'] = _unicode_decode('0')
 
 		if cache_me:
 			aux_cache = self._aux_cache_slot_dict()
 			for x in self._aux_cache_keys:
-				aux_cache[x] = mydata.get(x, u'')
+				aux_cache[x] = mydata.get(x, _unicode_decode(''))
 			self._aux_cache[mycpv] = aux_cache
-		return [mydata.get(x, u'') for x in wants]
+		return [mydata.get(x, _unicode_decode('')) for x in wants]
 
 	def aux_update(self, cpv, values):
 		if not self.bintree.populated:
