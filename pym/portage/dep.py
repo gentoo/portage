@@ -488,29 +488,12 @@ class _use_dep(object):
 
 		return _use_dep(tokens)
 
-class _AtomCache(type):
-	"""
-	Cache Atom instances from constructor calls and reuse
-	identical instances when available.
-	"""
-	def __call__(cls, s):
-		if isinstance(s, Atom):
-			return s
-		instance = cls._atoms.get(s)
-		if instance is None:
-			instance = super(_AtomCache, cls).__call__(s)
-			cls._atoms[s] = instance
-		return instance
-
 class Atom(object):
 
 	"""
 	For compatibility with existing atom string manipulation code, this
 	class emulates most of the str methods that are useful with atoms.
 	"""
-
-	__metaclass__ = _AtomCache
-	_atoms = weakref.WeakValueDictionary()
 
 	__slots__ = ("__weakref__", "blocker", "cp", "cpv", "operator",
 		"slot", "use", "without_use", "_str",)
@@ -528,12 +511,11 @@ class Atom(object):
 			self.overlap = self._overlap(forbid=forbid_overlap)
 
 	def __init__(self, mypkg):
-		s = mypkg
+		s = mypkg = str(mypkg)
 		obj_setattr = object.__setattr__
 		obj_setattr(self, '_str', s)
 
-		blocker = "!" == s[:1]
-		if blocker:
+		if "!" == s[:1]:
 			blocker = self._blocker(forbid_overlap=("!" == s[1:2]))
 			if blocker.overlap.forbid:
 				s = s[2:]
@@ -546,31 +528,25 @@ class Atom(object):
 		if m is None:
 			raise InvalidAtom(mypkg)
 
-		# Package name must not end in pattern
-		# which appears to be a valid version.
 		if m.group('op') is not None:
-			if m.group(_atom_re.groupindex['op'] + 4) is not None:
+			base = _atom_re.groupindex['op']
+			op = m.group(base + 1)
+			cpv = m.group(base + 2)
+			cp = m.group(base + 3)
+			if m.group(base + 4) is not None:
 				raise InvalidAtom(mypkg)
 		elif m.group('star') is not None:
-			if m.group(_atom_re.groupindex['star'] + 3) is not None:
+			base = _atom_re.groupindex['star']
+			op = '=*'
+			cpv = m.group(base + 1)
+			cp = m.group(base + 2)
+			if m.group(base + 3) is not None:
 				raise InvalidAtom(mypkg)
 		elif m.group('simple') is not None:
-			if m.group(_atom_re.groupindex['simple'] + 2) is not None:
-				raise InvalidAtom(mypkg)
-		else:
-			raise AssertionError(_("required group not found in atom: '%s'") % mypkg)
-
-		if m.group('op'):
-			op = m.group(_atom_re.groupindex['op'] + 1)
-			cpv = m.group(_atom_re.groupindex['op'] + 2)
-			cp = m.group(_atom_re.groupindex['op'] + 3)
-		elif m.group('star'):
-			op = '=*'
-			cpv = m.group(_atom_re.groupindex['star'] + 1)
-			cp = m.group(_atom_re.groupindex['star'] + 2)
-		elif m.group('simple'):
 			op = None
 			cpv = cp = m.group(_atom_re.groupindex['simple'] + 1)
+			if m.group(_atom_re.groupindex['simple'] + 2) is not None:
+				raise InvalidAtom(mypkg)
 		else:
 			raise AssertionError(_("required group not found in atom: '%s'") % s)
 		obj_setattr(self, "cp", cp)
@@ -578,13 +554,10 @@ class Atom(object):
 		obj_setattr(self, "slot", m.group(_atom_re.groups - 1))
 		obj_setattr(self, "operator", op)
 
-		use = dep_getusedeps(s)
-		if use:
-			use = _use_dep(use)
-			without_use = remove_slot(self)
-			if self.slot is not None:
-				without_use += ":" + self.slot
-			without_use = Atom(without_use)
+		use_str = m.group(_atom_re.groups)
+		if use_str is not None:
+			use = _use_dep(dep_getusedeps(s))
+			without_use = Atom(m.group('without_use'))
 		else:
 			use = None
 			without_use = self
@@ -830,9 +803,6 @@ def dep_getusedeps( depend ):
 	@rtype: List
 	@return: List of use flags ( or [] if no flags exist )
 	"""
-	use = getattr(depend, "use", None)
-	if use is not None and hasattr(use, "tokens"):
-		return use.tokens
 	use_list = []
 	open_bracket = depend.find('[')
 	# -1 = failure (think c++ string::npos)
@@ -886,17 +856,16 @@ _pkg = r'[\w+][\w+-]*?'
 # 2.1.3 A slot name may contain any of the characters [A-Za-z0-9+_.-].
 # It must not begin with a hyphen or a dot.
 _slot = r':([\w+][\w+.-]*)'
-_optional_slot = '(?:' + _slot + ')?'
 
-_use = r'(\[.*\])?'
+_use = r'\[.*\]'
 _op = r'([=~]|[><]=?)'
 _cp = '(' + _cat + '/' + _pkg + '(-' + _version + ')?)'
 _cpv = '(' + _cp + '-' + _version + ')'
 
-_atom_re = re.compile('^(?:' +
+_atom_re = re.compile('^(?P<without_use>(?:' +
 	'(?P<op>' + _op + _cpv + ')|' +
 	'(?P<star>=' + _cpv + r'\*)|' +
-	'(?P<simple>' + _cp + '))' + _optional_slot + _use + '$', re.VERBOSE)
+	'(?P<simple>' + _cp + '))(?:' + _slot + ')?)(' + _use + ')?$', re.VERBOSE)
 
 def isvalidatom(atom, allow_blockers=False):
 	"""
@@ -1021,6 +990,8 @@ def match_to_list(mypkg, mylist):
 	"""
 	matches = []
 	for x in mylist:
+		if not isinstance(x, Atom):
+			x = Atom(x)
 		if match_from_list(x, [mypkg]):
 			if x not in matches:
 				matches.append(x)
@@ -1055,7 +1026,7 @@ def best_match_to_list(mypkg, mylist):
 			if maxvalue < 3:
 				maxvalue = 3
 				bestm = x
-		op_val = operator_values[get_operator(x)]
+		op_val = operator_values[x.operator]
 		if op_val > maxvalue:
 			maxvalue = op_val
 			bestm  = x
@@ -1082,9 +1053,9 @@ def match_from_list(mydep, candidate_list):
 	if not isinstance(mydep, Atom):
 		mydep = Atom(mydep)
 
-	mycpv     = dep_getcpv(mydep)
+	mycpv     = mydep.cpv
 	mycpv_cps = catpkgsplit(mycpv) # Can be None if not specific
-	slot      = dep_getslot(mydep)
+	slot      = mydep.slot
 
 	if not mycpv_cps:
 		cat, pkg = catsplit(mycpv)
@@ -1097,7 +1068,7 @@ def match_from_list(mydep, candidate_list):
 				" (%s) (try adding an '=')") % (mydep))
 
 	if ver and rev:
-		operator = get_operator(mydep)
+		operator = mydep.operator
 		if not operator:
 			writemsg(_("!!! Invalid atom: %s\n") % mydep, noiselevel=-1)
 			return []

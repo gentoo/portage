@@ -104,9 +104,8 @@ class PackageSet(object):
 			self._atommap.clear()
 			atoms = self._atoms
 		for a in atoms:
-			cp = dep_getkey(a)
-			self._atommap.setdefault(cp, set())
-			self._atommap[cp].add(a)
+			self._atommap.setdefault(a.cp, set())
+			self._atommap[a.cp].add(a)
 	
 	# Not sure if this one should really be in PackageSet
 	def findAtomForPackage(self, pkg):

@@ -76,8 +76,7 @@ class FakeVartree(portage.vartree):
 				portage.locks.unlockdir(vdb_lock)
 		# Populate the old-style virtuals using the cached values.
 		if not self.settings.treeVirtuals:
-			self.settings.treeVirtuals = portage.util.map_dictlist_vals(
-				portage.getCPFromCPV, self.get_all_provides())
+			self.settings._populate_treeVirtuals(self)
 
 		# Intialize variables needed for lazy cache pulls of the live ebuild
 		# metadata.  This ensures that the vardb lock is released ASAP, without

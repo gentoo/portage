@@ -1148,26 +1148,16 @@ class depgraph(object):
 		vardb = self._frozen_config.roots[dep_root].trees["vartree"].dbapi
 
 		for atom in selected_atoms[pkg]:
-			try:
 
-				atom = portage.dep.Atom(atom)
+			mypriority = dep_priority.copy()
+			if not atom.blocker and vardb.match(atom):
+				mypriority.satisfied = True
 
-				mypriority = dep_priority.copy()
-				if not atom.blocker and vardb.match(atom):
-					mypriority.satisfied = True
-
-				if not self._add_dep(Dependency(atom=atom,
-					blocker=atom.blocker, depth=depth, parent=pkg,
-					priority=mypriority, root=dep_root),
-					allow_unsatisfied=allow_unsatisfied):
-					return 0
-
-			except portage.exception.InvalidAtom, e:
-				show_invalid_depstring_notice(
-					pkg, dep_string, str(e))
-				del e
-				if not pkg.installed:
-					return 0
+			if not self._add_dep(Dependency(atom=atom,
+				blocker=atom.blocker, depth=depth, parent=pkg,
+				priority=mypriority, root=dep_root),
+				allow_unsatisfied=allow_unsatisfied):
+				return 0
 
 		selected_atoms.pop(pkg)
 
@@ -1306,16 +1296,15 @@ class depgraph(object):
 		atom_arg_map = self._dynamic_config._atom_arg_map
 		root_config = self._frozen_config.roots[pkg.root]
 		for atom in self._dynamic_config._set_atoms.iterAtomsForPackage(pkg):
-			atom_cp = portage.dep_getkey(atom)
-			if atom_cp != pkg.cp and \
-				self._have_new_virt(pkg.root, atom_cp):
+			if atom.cp != pkg.cp and \
+				self._have_new_virt(pkg.root, atom.cp):
 				continue
 			visible_pkgs = \
 				self._dynamic_config._visible_pkgs[pkg.root].match_pkgs(atom)
 			visible_pkgs.reverse() # descending order
 			higher_slot = None
 			for visible_pkg in visible_pkgs:
-				if visible_pkg.cp != atom_cp:
+				if visible_pkg.cp != atom.cp:
 					continue
 				if pkg >= visible_pkg:
 					# This is descending order, and we're not
@@ -1606,9 +1595,8 @@ class depgraph(object):
 				self._spinner_update()
 				dep = Dependency(atom=atom, onlydeps=onlydeps,
 					root=myroot, parent=arg)
-				atom_cp = portage.dep_getkey(atom)
 				try:
-					pprovided = pprovideddict.get(portage.dep_getkey(atom))
+					pprovided = pprovideddict.get(atom.cp)
 					if pprovided and portage.match_from_list(atom, pprovided):
 						# A provided package has been specified on the command line.
 						self._dynamic_config._pprovided_args.append((arg, atom))
@@ -1651,10 +1639,10 @@ class depgraph(object):
 							return 0, myfavorites
 						self._dynamic_config._missing_args.append((arg, atom))
 						continue
-					if atom_cp != pkg.cp:
+					if atom.cp != pkg.cp:
 						# For old-style virtuals, we need to repeat the
 						# package.provided check against the selected package.
-						expanded_atom = atom.replace(atom_cp, pkg.cp)
+						expanded_atom = atom.replace(atom.cp, pkg.cp)
 						pprovided = pprovideddict.get(pkg.cp)
 						if pprovided and \
 							portage.match_from_list(expanded_atom, pprovided):
@@ -1901,16 +1889,20 @@ class depgraph(object):
 			for node in atom_graph:
 				if isinstance(node, Atom):
 					continue
-				if node == parent.cpv:
+				if node is parent:
 					pkg = parent
 				else:
-					virt_atom = Atom('=' + node)
+					pkg, virt_atom = node
 					if virt_atom not in chosen_atoms:
 						continue
-					pkg, existing_node = self._select_package(
-						root, virt_atom)
-					if pkg is None:
-						raise AssertionError(node)
+					if not portage.match_from_list(virt_atom, [pkg]):
+						# Typically this means that the atom
+						# specifies USE deps that are unsatisfied
+						# by the selected package. The caller will
+						# record this as an unsatisfied dependency
+						# when necessary.
+						continue
+
 				selected_atoms[pkg] = [atom for atom in \
 					atom_graph.child_nodes(node) if atom in chosen_atoms]
 
@@ -2392,7 +2384,7 @@ class depgraph(object):
 
 		# Filter out any old-style virtual matches if they are
 		# mixed with new-style virtual matches.
-		cp = portage.dep_getkey(atom)
+		cp = atom.cp
 		if len(matched_packages) > 1 and \
 			"virtual" == portage.catsplit(cp)[0]:
 			for pkg in matched_packages:
@@ -2733,8 +2725,8 @@ class depgraph(object):
 				for provider_entry in virtuals[blocker.cp]:
 					provider_cp = \
 						portage.dep_getkey(provider_entry)
-					atoms.append(blocker.atom.replace(
-						blocker.cp, provider_cp))
+					atoms.append(Atom(blocker.atom.replace(
+						blocker.cp, provider_cp)))
 			else:
 				atoms = [blocker.atom]
 
@@ -4892,7 +4884,6 @@ class _dep_check_composite_db(portage.dbapi):
 			# any matching slots in the graph db.
 			slots = set()
 			slots.add(pkg.metadata["SLOT"])
-			atom_cp = portage.dep_getkey(atom)
 			if pkg.cp.startswith("virtual/"):
 				# For new-style virtual lookahead that occurs inside
 				# dep_check(), examine all slots. This is needed
@@ -4913,7 +4904,7 @@ class _dep_check_composite_db(portage.dbapi):
 				ret.append(pkg.cpv)
 			slots.remove(pkg.metadata["SLOT"])
 			while slots:
-				slot_atom = "%s:%s" % (atom_cp, slots.pop())
+				slot_atom = Atom("%s:%s" % (atom.cp, slots.pop()))
 				pkg, existing = self._depgraph._select_package(
 					self._root, slot_atom)
 				if not pkg:
@@ -5000,6 +4991,8 @@ class _dep_check_composite_db(portage.dbapi):
 		metadata = self._cpv_pkg_map[cpv].metadata
 		return [metadata.get(x, "") for x in wants]
 
+	def match_pkgs(self, atom):
+		return [self._cpv_pkg_map[cpv] for cpv in self.match(atom)]
 
 def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
 

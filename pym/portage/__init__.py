@@ -3265,7 +3265,6 @@ class config(object):
 			# an incremental!
 			myincrementals.remove("USE")
 
-
 		mydbs = self.configlist[:-1]
 		mydbs.append(self.backupenv)
 
@@ -3512,11 +3511,20 @@ class config(object):
 		if self.local_config and not self.treeVirtuals:
 			temp_vartree = vartree(myroot, None,
 				categories=self.categories, settings=self)
-			# Reduce the provides into a list by CP.
-			self.treeVirtuals = map_dictlist_vals(getCPFromCPV,temp_vartree.get_all_provides())
+			self._populate_treeVirtuals(temp_vartree)
 
 		self.virtuals = self.__getvirtuals_compile()
 		return self.virtuals
+
+	def _populate_treeVirtuals(self, vartree):
+		"""Reduce the provides into a list by CP."""
+		for provide, cpv_list in vartree.get_all_provides().iteritems():
+			try:
+				provide = dep.Atom(provide)
+			except exception.InvalidAtom:
+				continue
+			self.treeVirtuals[provide.cp] = \
+				[dep.Atom(cpv_getkey(cpv)) for cpv in cpv_list]
 
 	def __getvirtuals_compile(self):
 		"""Stack installed and profile virtuals.  Preference for virtuals
@@ -6928,7 +6936,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			# so do not check them again.
 			checkme = []
 
-
 		if not emerge_skip_distfiles and \
 			need_distfiles and not fetch(
 			fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
@@ -7411,10 +7418,6 @@ def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None,
 		vartree.dbapi.linkmap._clear_cache()
 		mylink.unlockdb()
 
-def getCPFromCPV(mycpv):
-	"""Calls pkgsplit on a cpv and returns only the cp."""
-	return pkgsplit(mycpv)[0]
-
 def dep_virtual(mysplit, mysettings):
 	"Does virtual dependency conversion"
 	newsplit=[]
@@ -7441,10 +7444,6 @@ def dep_virtual(mysplit, mysettings):
 				newsplit.append(x)
 	return newsplit
 
-# According to GLEP 37, RDEPEND is the only dependency type that is valid
-# for new-style virtuals. Repoman should enforce this.
-_virt_dep_keys = ("RDEPEND",)
-
 def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	trees=None, use_mask=None, use_force=None, **kwargs):
 	"""Recursively expand new-style virtuals so as to collapse one or more
@@ -7461,15 +7460,14 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	atom_graph = mytrees.get("atom_graph")
 	parent = mytrees.get("parent")
 	virt_parent = mytrees.get("virt_parent")
-	virt_eapi = mytrees.get("virt_eapi")
-	parent_cpv = None
+	graph_parent = None
 	eapi = None
 	if parent is not None:
 		if virt_parent is not None:
-			parent_cpv = virt_parent
-			eapi = virt_eapi
+			graph_parent = virt_parent
+			eapi = virt_parent[0].metadata['EAPI']
 		else:
-			parent_cpv = parent.cpv
+			graph_parent = parent
 			eapi = parent.metadata["EAPI"]
 	repoman = not mysettings.local_config
 	if kwargs["use_binaries"]:
@@ -7524,31 +7522,30 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				evaluated_atom += str(x.use.evaluate_conditionals(myuse))
 				x = portage.dep.Atom(evaluated_atom)
 
-		mykey = dep_getkey(x)
+		mykey = x.cp
 		if not mykey.startswith("virtual/"):
 			newsplit.append(x)
-			if parent_cpv is not None:
-				atom_graph.add(x, parent_cpv)
+			if atom_graph is not None:
+				atom_graph.add(x, graph_parent)
 			continue
 		mychoices = myvirtuals.get(mykey, [])
-		isblocker = x.startswith("!")
-		if isblocker:
+		if x.blocker:
 			# Virtual blockers are no longer expanded here since
 			# the un-expanded virtual atom is more useful for
 			# maintaining a cache of blocker atoms.
 			newsplit.append(x)
-			if parent_cpv is not None:
-				atom_graph.add(x, parent_cpv)
+			if atom_graph is not None:
+				atom_graph.add(x, graph_parent)
 			continue
 
-		if repoman:
+		if repoman or not hasattr(portdb, 'match_pkgs'):
 			if portdb.cp_list(x.cp):
 				newsplit.append(x)
 			else:
 				# TODO: Add PROVIDE check for repoman.
 				a = []
 				for y in mychoices:
-					a.append(portage.dep.Atom(x.replace(mykey, str(y.cp), 1)))
+					a.append(dep.Atom(x.replace(x.cp, y.cp, 1)))
 				if not a:
 					newsplit.append(x)
 				elif len(a) == 1:
@@ -7557,15 +7554,17 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					newsplit.append(['||'] + a)
 			continue
 
-		match_atom = x
 		pkgs = []
-		matches = portdb.match(match_atom)
+		# Ignore USE deps here, since otherwise we might not
+		# get any matches. Choices with correct USE settings
+		# will be preferred in dep_zapdeps().
+		matches = portdb.match_pkgs(x.without_use)
 		# Use descending order to prefer higher versions.
 		matches.reverse()
-		for cpv in matches:
+		for pkg in matches:
 			# only use new-style matches
-			if cpv.startswith("virtual/"):
-				pkgs.append((cpv, catpkgsplit(cpv)[1:], portdb))
+			if pkg.cp.startswith("virtual/"):
+				pkgs.append(pkg)
 		if not (pkgs or mychoices):
 			# This one couldn't be expanded as a new-style virtual.  Old-style
 			# virtuals have already been expanded by dep_virtual, so this one
@@ -7573,29 +7572,30 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			# atom is not eliminated here since it may still represent a
 			# dependency that needs to be satisfied.
 			newsplit.append(x)
-			if parent_cpv is not None:
-				atom_graph.add(x, parent_cpv)
+			if atom_graph is not None:
+				atom_graph.add(x, graph_parent)
 			continue
 
 		a = []
-		for y in pkgs:
-			cpv, pv_split, db = y
-			depstring = " ".join(db.aux_get(cpv, _virt_dep_keys))
+		for pkg in pkgs:
+			virt_atom = '=' + pkg.cpv
+			if x.use:
+				virt_atom += str(x.use)
+			virt_atom = dep.Atom(virt_atom)
+			# According to GLEP 37, RDEPEND is the only dependency
+			# type that is valid for new-style virtuals. Repoman
+			# should enforce this.
+			depstring = pkg.metadata['RDEPEND']
 			pkg_kwargs = kwargs.copy()
-			if repoman:
-				pass
-			else:
-				# for emerge
-				use_split = db.aux_get(cpv, ["USE"])[0].split()
-				pkg_kwargs["myuse"] = use_split
+			pkg_kwargs["myuse"] = pkg.use.enabled
 			if edebug:
-				print _("Virtual Parent:   "), y[0]
-				print _("Virtual Depstring:"), depstring
+				util.writemsg_level(_("Virtual Parent:      %s\n") \
+					% (pkg,), noiselevel=-1, level=logging.DEBUG)
+				util.writemsg_level(_("Virtual Depstring:   %s\n") \
+					% (depstring,), noiselevel=-1, level=logging.DEBUG)
 
 			# Set EAPI used for validation in dep_check() recursion.
-			new_eapi, = db.aux_get(cpv, ["EAPI"])
-			mytrees["virt_eapi"] = new_eapi
-			mytrees["virt_parent"] = cpv
+			mytrees["virt_parent"] = (pkg, virt_atom)
 
 			try:
 				mycheck = dep_check(depstring, mydbapi, mysettings,
@@ -7604,49 +7604,45 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				# Restore previous EAPI after recursion.
 				if virt_parent is not None:
 					mytrees["virt_parent"] = virt_parent
-					mytrees["virt_eapi"] = virt_eapi
 				else:
 					del mytrees["virt_parent"]
-					del mytrees["virt_eapi"]
 
 			if not mycheck[0]:
 				raise portage.exception.ParseError(
 					"%s: %s '%s'" % (y[0], mycheck[1], depstring))
 
 			# pull in the new-style virtual
-			virt_atom = dep.Atom('=' + cpv)
 			mycheck[1].append(virt_atom)
 			a.append(mycheck[1])
-			if parent_cpv is not None:
-				atom_graph.add(virt_atom, parent_cpv)
+			if atom_graph is not None:
+				atom_graph.add(virt_atom, graph_parent)
 		# Plain old-style virtuals.  New-style virtuals are preferred.
 		if not pkgs:
 				for y in mychoices:
-					new_atom = portage.dep.Atom(
-						x.replace(mykey, dep_getkey(y), 1))
+					new_atom = dep.Atom(x.replace(x.cp, y.cp, 1))
 					matches = portdb.match(new_atom)
 					# portdb is an instance of depgraph._dep_check_composite_db, so
 					# USE conditionals are already evaluated.
 					if matches and mykey in \
 						portdb.aux_get(matches[-1], ['PROVIDE'])[0].split():
 						a.append(new_atom)
-						if parent_cpv is not None:
-							atom_graph.add(new_atom, parent_cpv)
+						if atom_graph is not None:
+							atom_graph.add(new_atom, graph_parent)
 
 		if not a and mychoices:
 			# Check for a virtual package.provided match.
 			for y in mychoices:
-				new_atom = portage.dep.Atom(x.replace(mykey, dep_getkey(y), 1))
+				new_atom = dep.Atom(x.replace(x.cp, y.cp, 1))
 				if match_from_list(new_atom,
 					pprovideddict.get(new_atom.cp, [])):
 					a.append(new_atom)
-					if parent_cpv is not None:
-						atom_graph.add(new_atom, parent_cpv)
+					if atom_graph is not None:
+						atom_graph.add(new_atom, graph_parent)
 
 		if not a:
 			newsplit.append(x)
-			if parent_cpv is not None:
-				atom_graph.add(x, parent_cpv)
+			if atom_graph is not None:
+				atom_graph.add(x, graph_parent)
 		elif len(a) == 1:
 			newsplit.append(a[0])
 		else:
@@ -7692,12 +7688,12 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 
 	if unreduced[0] != "||":
 		unresolved = []
-		for dep, satisfied in izip(unreduced, reduced):
-			if isinstance(dep, list):
-				unresolved += dep_zapdeps(dep, satisfied, myroot,
+		for x, satisfied in izip(unreduced, reduced):
+			if isinstance(x, list):
+				unresolved += dep_zapdeps(x, satisfied, myroot,
 					use_binaries=use_binaries, trees=trees)
 			elif not satisfied:
-				unresolved.append(dep)
+				unresolved.append(x)
 		return unresolved
 
 	# We're at a ( || atom ... ) type level and need to make a choice
@@ -7734,12 +7730,12 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	# Sort the deps into installed, not installed but already 
 	# in the graph and other, not installed and not in the graph
 	# and other, with values of [[required_atom], availablility]
-	for dep, satisfied in izip(deps, satisfieds):
-		if isinstance(dep, list):
-			atoms = dep_zapdeps(dep, satisfied, myroot,
+	for x, satisfied in izip(deps, satisfieds):
+		if isinstance(x, list):
+			atoms = dep_zapdeps(x, satisfied, myroot,
 				use_binaries=use_binaries, trees=trees)
 		else:
-			atoms = [dep]
+			atoms = [x]
 		if not vardb:
 			# called by repoman
 			other.append((atoms, None, False))
@@ -7749,15 +7745,15 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		all_use_satisfied = True
 		versions = {}
 		for atom in atoms:
-			if atom[:1] == "!":
+			if atom.blocker:
 				continue
 			# Ignore USE dependencies here since we don't want USE
 			# settings to adversely affect || preference evaluation.
 			avail_pkg = mydbapi.match(atom.without_use)
 			if avail_pkg:
 				avail_pkg = avail_pkg[-1] # highest (ascending order)
-				avail_slot = "%s:%s" % (dep_getkey(atom),
-					mydbapi.aux_get(avail_pkg, ["SLOT"])[0])
+				avail_slot = dep.Atom("%s:%s" % (atom.cp,
+					mydbapi.aux_get(avail_pkg, ["SLOT"])[0]))
 			if not avail_pkg:
 				all_available = False
 				all_use_satisfied = False
@@ -7772,8 +7768,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 					avail_pkg_use = avail_pkg_use[-1]
 					if avail_pkg_use != avail_pkg:
 						avail_pkg = avail_pkg_use
-						avail_slot = "%s:%s" % (dep_getkey(atom),
-							mydbapi.aux_get(avail_pkg, ["SLOT"])[0])
+						avail_slot = dep.Atom("%s:%s" % (atom.cp,
+							mydbapi.aux_get(avail_pkg, ["SLOT"])[0]))
 
 			versions[avail_slot] = avail_pkg
 
@@ -7783,8 +7779,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 			# If any version of a package is already in the graph then we
 			# assume that it is preferred over other possible packages choices.
 			all_installed = True
-			for atom in set([dep_getkey(atom) for atom in atoms \
-				if atom[:1] != "!"]):
+			for atom in set(dep.Atom(atom.cp) for atom in atoms \
+				if not atom.blocker):
 				# New-style virtuals have zero cost to install.
 				if not vardb.match(atom) and not atom.startswith("virtual/"):
 					all_installed = False
@@ -7832,13 +7828,13 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						# installed package.
 						cpv_slot_list = [parent]
 						for atom in atoms:
-							if "!" == atom[:1]:
+							if atom.blocker:
 								continue
 							if vardb.match(atom):
 								# If the atom is satisfied by an installed
 								# version then it's not a circular dep.
 								continue
-							if dep_getkey(atom) != parent.cp:
+							if atom.cp != parent.cp:
 								continue
 							if match_from_list(atom, cpv_slot_list):
 								circular_atom = atom
@@ -7880,14 +7876,19 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 
 	assert(False) # This point should not be reachable
 
-
 def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
+	'''
+	@rtype: Atom
+	'''
 	if not len(mydep):
 		return mydep
 	if mydep[0]=="*":
 		mydep=mydep[1:]
 	orig_dep = mydep
-	mydep = dep_getcpv(orig_dep)
+	if isinstance(orig_dep, dep.Atom):
+		mydep = orig_dep.cpv
+	else:
+		mydep = dep_getcpv(orig_dep)
 	myindex = orig_dep.index(mydep)
 	prefix = orig_dep[:myindex]
 	postfix = orig_dep[myindex+len(mydep):]
@@ -8004,7 +8005,7 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 		elif token[:1] == "!":
 			deplist[mypos] = False
 		else:
-			mykey = dep_getkey(deplist[mypos])
+			mykey = deplist[mypos].cp
 			if mysettings and mykey in mysettings.pprovideddict and \
 			        match_from_list(deplist[mypos], mysettings.pprovideddict[mykey]):
 				deplist[mypos]=True
@@ -8034,8 +8035,23 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 					return None
 	return deplist
 
+_cpv_key_re = re.compile('^' + dep._cpv + '$', re.VERBOSE)
 def cpv_getkey(mycpv):
-	return dep.dep_getkey('=' + mycpv)
+	"""Calls pkgsplit on a cpv and returns only the cp."""
+	m = _cpv_key_re.match(mycpv)
+	if m is not None:
+		return m.group(2)
+	myslash = mycpv.split("/", 1)
+	mysplit=pkgsplit(myslash[-1])
+	if mysplit is None:
+		return None
+	mylen=len(myslash)
+	if mylen==2:
+		return myslash[0]+"/"+mysplit[0]
+	else:
+		return mysplit[0]
+
+getCPFromCPV = cpv_getkey
 
 def key_expand(mykey, mydb=None, use_cache=1, settings=None):
 	mysplit=mykey.split("/")
@@ -8355,7 +8371,6 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 		rValue.append(kmask+" keyword")
 
 	return rValue
-
 
 auxdbkeys=[
   'DEPEND',    'RDEPEND',   'SLOT',      'SRC_URI',
@@ -8960,7 +8975,6 @@ def init_legacy_globals():
 
 	root = settings["ROOT"]
 	output._init(config_root=settings['PORTAGE_CONFIGROOT'])
-
 
 	# ========================================================================
 	# COMPATIBILITY
