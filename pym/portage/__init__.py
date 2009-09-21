@@ -256,6 +256,7 @@ _os_overrides = {
 	id(_os.fdopen)        : _os.fdopen,
 	id(_os.popen)         : _os.popen,
 	id(_os.read)          : _os.read,
+	id(_os.statvfs)       : _os.statvfs,
 	id(_os.system)        : _os.system,
 }
 
