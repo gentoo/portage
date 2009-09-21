@@ -2,6 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from __future__ import print_function
+
 __all__ = ["PreservedLibsRegistry", "LinkageMap",
 	"LinkageMapMachO", "LinkageMapPeCoff",
 	"vardbapi", "vartree", "dblink"] + \

@@ -5,6 +5,8 @@
 __all__ = ["SETPREFIX", "get_boolean", "SetConfigError",
 	"SetConfig", "load_default_config"]
 
+from __future__ import print_function
+
 try:
 	from configparser import SafeConfigParser, NoOptionError
 except ImportError:

@@ -10,6 +10,8 @@ VERSION="$Rev$"[6:-2] + "-svn"
 # START OF IMPORTS -- START OF IMPORTS -- START OF IMPORTS -- START OF IMPORT
 # ===========================================================================
 
+from __future__ import print_function
+
 try:
 	import sys
 	import codecs

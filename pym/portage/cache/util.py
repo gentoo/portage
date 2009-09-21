@@ -3,6 +3,8 @@
 # License: GPL2
 # $Id$
 
+from __future__ import print_function
+
 __all__ = ["mirror_cache", "non_quiet_mirroring", "quiet_mirroring"]
 
 from itertools import chain
