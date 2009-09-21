@@ -956,14 +956,7 @@ def match_to_list(mypkg, mylist):
 	@rtype: List
 	@return: A unique list of package atoms that match the given package atom
 	"""
-	matches = []
-	for x in mylist:
-		if not isinstance(x, Atom):
-			x = Atom(x)
-		if match_from_list(x, [mypkg]):
-			if x not in matches:
-				matches.append(x)
-	return matches
+	return [ x for x in set(mylist) if match_from_list(x, [mypkg]) ]
 
 def best_match_to_list(mypkg, mylist):
 	"""
