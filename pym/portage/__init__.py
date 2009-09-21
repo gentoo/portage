@@ -940,7 +940,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 	if env is None:
 		env = os.environ
 	envd_dir = os.path.join(target_root, EPREFIX_LSTRIP, "etc", "env.d")
-	portage.util.ensure_dirs(envd_dir, mode=0755)
+	portage.util.ensure_dirs(envd_dir, mode=0o755)
 	fns = listdir(envd_dir, EmptyOnError=1)
 	fns.sort()
 	templist = []
@@ -2197,10 +2197,10 @@ class config(object):
 
 		#                                gid, mode, mask, preserve_perms
 		dir_mode_map = {
-			EPREFIX_LSTRIP+"/tmp"           : (         -1, 01777,  0,  True),
-			EPREFIX_LSTRIP+"/var/tmp"       : (         -1, 01777,  0,  True),
-			PRIVATE_PATH      : (portage_gid, 02750, 02,  False),
-			CACHE_PATH        : (portage_gid,  0755, 02,  False)
+			EPREFIX_LSTRIP+"/tmp"           : (         -1, 0o1777,  0,  True),
+			EPREFIX_LSTRIP+"/var/tmp"       : (         -1, 0o1777,  0,  True),
+			PRIVATE_PATH      : (portage_gid, 0o2750, 0o2, False),
+			CACHE_PATH        : (portage_gid,  0o755, 0o2, False)
 		}
 
 		for mypath, (gid, mode, modemask, preserve_perms) \
@@ -3896,7 +3896,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	fakeroot = fakeroot and uid != 0 and portage.process.fakeroot_capable
 	if droppriv and not uid and portage_gid and portage_uid:
 		keywords.update({"uid":portage_uid,"gid":portage_gid,
-			"groups":userpriv_groups,"umask":002})
+			"groups":userpriv_groups,"umask":0o02})
 	if not free:
 		free=((droppriv and "usersandbox" not in features) or \
 			(not droppriv and "sandbox" not in features and \
@@ -3972,7 +3972,7 @@ _userpriv_spawn_kwargs = (
 	("uid",    portage_uid),
 	("gid",    portage_gid),
 	("groups", userpriv_groups),
-	("umask",  002),
+	("umask",  0o02),
 )
 
 def _spawn_fetch(settings, args, **kwargs):
@@ -4372,9 +4372,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 	if can_fetch and not fetch_to_ro:
 		global _userpriv_test_write_file_cache
-		dirmode  = 02070
-		filemode =   060
-		modemask =    02
+		dirmode  = 0o2070
+		filemode =   0o60
+		modemask =    0o2
 		dir_gid = portage_gid
 		if "FAKED_MODE" in mysettings:
 			# When inside fakeroot, directories with portage's gid appear
@@ -4540,7 +4540,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					if distdir_writable:
 						try:
 							apply_secpass_permissions(myfile_path,
-								gid=portage_gid, mode=0664, mask=02,
+								gid=portage_gid, mode=0o664, mask=0o2,
 								stat_cached=mystat)
 						except portage.exception.PortageException as e:
 							if not os.access(myfile_path, os.R_OK):
@@ -4639,7 +4639,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				else:
 					try:
 						apply_secpass_permissions(
-							myfile_path, gid=portage_gid, mode=0664, mask=02,
+							myfile_path, gid=portage_gid, mode=0o664, mask=0o2,
 							stat_cached=mystat)
 					except portage.exception.PortageException as e:
 						if not os.access(myfile_path, os.R_OK):
@@ -4845,7 +4845,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					finally:
 						try:
 							apply_secpass_permissions(myfile_path,
-								gid=portage_gid, mode=0664, mask=02)
+								gid=portage_gid, mode=0o664, mask=0o2)
 						except portage.exception.FileNotFound as e:
 							pass
 						except portage.exception.PortageException as e:
@@ -5459,8 +5459,8 @@ def _post_phase_userpriv_perms(mysettings):
 		""" Privileged phases may have left files that need to be made
 		writable to a less privileged user."""
 		apply_recursive_permissions(mysettings["T"],
-			uid=portage_uid, gid=portage_gid, dirmode=070, dirmask=0,
-			filemode=060, filemask=0)
+			uid=portage_uid, gid=portage_gid, dirmode=0o70, dirmask=0,
+			filemode=0o60, filemask=0)
 
 def _post_src_install_checks(mysettings):
 	_post_src_install_uid_fix(mysettings)
@@ -6095,14 +6095,14 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 		for mydir in mydirs:
 			portage.util.ensure_dirs(mydir)
 			portage.util.apply_secpass_permissions(mydir,
-				gid=portage_gid, uid=portage_uid, mode=070, mask=0)
+				gid=portage_gid, uid=portage_uid, mode=0o70, mask=0)
 		for dir_key in ("PORTAGE_BUILDDIR", "HOME", "PKG_LOGDIR", "T"):
 			"""These directories don't necessarily need to be group writable.
 			However, the setup phase is commonly run as a privileged user prior
 			to the other phases being run by an unprivileged user.  Currently,
 			we use the portage group to ensure that the unprivleged user still
 			has write access to these directories in any case."""
-			portage.util.ensure_dirs(mysettings[dir_key], mode=0775)
+			portage.util.ensure_dirs(mysettings[dir_key], mode=0o775)
 			portage.util.apply_secpass_permissions(mysettings[dir_key],
 				uid=portage_uid, gid=portage_gid)
 	except portage.exception.PermissionDenied as e:
@@ -6164,9 +6164,9 @@ def _prepare_features_dirs(mysettings):
 			"subdirs":("lock", "state"),
 			"always_recurse":True}
 	}
-	dirmode  = 02070
-	filemode =   060
-	modemask =    02
+	dirmode  = 0o2070
+	filemode =   0o60
+	modemask =    0o2
 	restrict = mysettings.get("PORTAGE_RESTRICT","").split()
 	from portage.data import secpass
 	droppriv = secpass >= 2 and \
@@ -6255,7 +6255,7 @@ def _prepare_features_dirs(mysettings):
 				time.sleep(5)
 
 def _prepare_workdir(mysettings):
-	workdir_mode = 0700
+	workdir_mode = 0o700
 	try:
 		mode = mysettings["PORTAGE_WORKDIR_MODE"]
 		if mode.isdigit():
@@ -6264,7 +6264,7 @@ def _prepare_workdir(mysettings):
 			raise KeyError()
 		else:
 			raise ValueError()
-		if parsed_mode & 07777 != parsed_mode:
+		if parsed_mode & 0o7777 != parsed_mode:
 			raise ValueError("Invalid file mode: %s" % mode)
 		else:
 			workdir_mode = parsed_mode
@@ -6290,7 +6290,7 @@ def _prepare_workdir(mysettings):
 			modified = portage.util.ensure_dirs(mysettings["PORT_LOGDIR"])
 			if modified:
 				apply_secpass_permissions(mysettings["PORT_LOGDIR"],
-					uid=portage_uid, gid=portage_gid, mode=02770)
+					uid=portage_uid, gid=portage_gid, mode=0o2770)
 		except portage.exception.PortageException as e:
 			writemsg("!!! %s\n" % str(e), noiselevel=-1)
 			writemsg(_("!!! Permission issues with PORT_LOGDIR='%s'\n") % \
@@ -6713,7 +6713,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		else:
 			from tempfile import NamedTemporaryFile
 			fd = NamedTemporaryFile(prefix="exectest-", dir=checkdir)
-			os.chmod(fd.name, 0755)
+			os.chmod(fd.name, 0o755)
 			if not os.access(fd.name, os.X_OK):
 				writemsg(_("Can not execute files in %s\n"
 					"Likely cause is that you've mounted it with one of the\n"
@@ -6834,8 +6834,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				""" Privileged phases may have left files that need to be made
 				writable to a less privileged user."""
 				apply_recursive_permissions(mysettings["T"],
-					uid=portage_uid, gid=portage_gid, dirmode=070, dirmask=0,
-					filemode=060, filemask=0)
+					uid=portage_uid, gid=portage_gid, dirmode=0o70, dirmask=0,
+					filemode=0o60, filemask=0)
 			return retval
 		elif mydo == "preinst":
 			phase_retval = spawn(
@@ -6976,7 +6976,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			mysettings["PORTAGE_ACTUAL_DISTDIR"] = orig_distdir
 			edpath = mysettings["DISTDIR"] = \
 				os.path.join(mysettings["PORTAGE_BUILDDIR"], "distdir")
-			portage.util.ensure_dirs(edpath, gid=portage_gid, mode=0755)
+			portage.util.ensure_dirs(edpath, gid=portage_gid, mode=0o755)
 
 			# Remove any unexpected files or directories.
 			for x in os.listdir(edpath):
@@ -8472,10 +8472,10 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 		myebuild = os.path.join(
 			infloc, os.path.basename(mytbz2)[:-4] + "ebuild")
 		portage.util.ensure_dirs(os.path.dirname(catdir),
-			uid=portage_uid, gid=portage_gid, mode=070, mask=0)
+			uid=portage_uid, gid=portage_gid, mode=0o70, mask=0)
 		catdir_lock = portage.locks.lockdir(catdir)
 		portage.util.ensure_dirs(catdir,
-			uid=portage_uid, gid=portage_gid, mode=070, mask=0)
+			uid=portage_uid, gid=portage_gid, mode=0o70, mask=0)
 		try:
 			shutil.rmtree(builddir)
 		except (IOError, OSError) as e:
@@ -8484,7 +8484,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 			del e
 		for mydir in (builddir, pkgloc, infloc):
 			portage.util.ensure_dirs(mydir, uid=portage_uid,
-				gid=portage_gid, mode=0755)
+				gid=portage_gid, mode=0o755)
 		writemsg_stdout(_(">>> Extracting info\n"))
 		xptbz2.unpackinfo(infloc)
 		mysettings.setcpv(mycat + "/" + mypkg, mydb=mydbapi)
@@ -8620,7 +8620,7 @@ def commit_mtimedb(mydict=None, filename=None):
 		pickle.dump(d, f, protocol=2)
 		f.close()
 		portage.util.apply_secpass_permissions(filename,
-			uid=uid, gid=portage_gid, mode=0644)
+			uid=uid, gid=portage_gid, mode=0o644)
 	except (IOError, OSError) as e:
 		pass
 
@@ -8955,7 +8955,7 @@ def init_legacy_globals():
 	profiledir, flushmtimedb
 
 	# Portage needs to ensure a sane umask for the files it creates.
-	os.umask(022)
+	os.umask(0o22)
 
 	kwargs = {}
 	kwargs["config_root"] = os.environ.get("PORTAGE_CONFIGROOT", EPREFIX + "/")

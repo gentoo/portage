@@ -45,13 +45,13 @@ class EbuildBuildDir(SlotObject):
 
 		portage.util.ensure_dirs(os.path.dirname(catdir),
 			gid=portage.portage_gid,
-			mode=070, mask=0)
+			mode=0o70, mask=0)
 		catdir_lock = None
 		try:
 			catdir_lock = portage.locks.lockdir(catdir)
 			portage.util.ensure_dirs(catdir,
 				gid=portage.portage_gid,
-				mode=070, mask=0)
+				mode=0o70, mask=0)
 			self._lock_obj = portage.locks.lockdir(dir_path)
 		finally:
 			self.locked = self._lock_obj is not None

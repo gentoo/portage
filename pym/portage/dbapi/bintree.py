@@ -395,7 +395,7 @@ class binarytree(object):
 			ensure_dirs(path)
 			return
 		pkgdir_gid = pkgdir_st.st_gid
-		pkgdir_grp_mode = 02070 & pkgdir_st.st_mode
+		pkgdir_grp_mode = 0o2070 & pkgdir_st.st_mode
 		try:
 			ensure_dirs(path, gid=pkgdir_gid, mode=pkgdir_grp_mode, mask=0)
 		except PortageException:

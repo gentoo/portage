@@ -65,7 +65,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 		old_mask = os.umask(000)
 		try:
 			try:
-				myfd = os.open(lockfilename, os.O_CREAT|os.O_RDWR, 0660)
+				myfd = os.open(lockfilename, os.O_CREAT|os.O_RDWR, 0o660)
 			except OSError as e:
 				func_call = "open('%s')" % lockfilename
 				if e.errno == OperationNotPermitted.errno:
@@ -202,7 +202,7 @@ def unlockfile(mytuple):
 
 	try:
 		if myfd is None:
-			myfd = os.open(lockfilename, os.O_WRONLY,0660)
+			myfd = os.open(lockfilename, os.O_WRONLY,0o660)
 			unlinkfile = 1
 		locking_method(myfd,fcntl.LOCK_UN)
 	except OSError:
@@ -269,7 +269,7 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 	
 	while(time.time() < (start_time + max_wait)):
 		# We only need it to exist.
-		myfd = os.open(myhardlock, os.O_CREAT|os.O_RDWR,0660)
+		myfd = os.open(myhardlock, os.O_CREAT|os.O_RDWR,0o660)
 		os.close(myfd)
 	
 		if not os.path.exists(myhardlock):

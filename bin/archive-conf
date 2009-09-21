@@ -36,7 +36,7 @@ except ImportError:
         f = open(filename, 'rb')
         blocksize=32768
         data = f.read(blocksize)
-        size = 0L
+        size = 0
         sum = md5.new()
         while data:
             sum.update(data)

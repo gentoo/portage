@@ -78,7 +78,7 @@ class SpawnProcess(SubProcess):
 			files.log = open(logfile, mode='ab')
 			portage.util.apply_secpass_permissions(logfile,
 				uid=portage.portage_uid, gid=portage.portage_gid,
-				mode=0660)
+				mode=0o660)
 
 			if not self.background:
 				files.stdout = os.fdopen(os.dup(fd_pipes_orig[1]), 'wb')

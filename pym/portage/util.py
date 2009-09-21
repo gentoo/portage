@@ -552,19 +552,19 @@ def varexpand(mystring, mydict={}):
 					a=mystring[pos+1]
 					pos=pos+2
 					if a=='a':
-						newstring=newstring+chr(007)
+						newstring=newstring+chr(0o07)
 					elif a=='b':
-						newstring=newstring+chr(010)
+						newstring=newstring+chr(0o10)
 					elif a=='e':
-						newstring=newstring+chr(033)
+						newstring=newstring+chr(0o33)
 					elif (a=='f') or (a=='n'):
-						newstring=newstring+chr(012)
+						newstring=newstring+chr(0o12)
 					elif a=='r':
-						newstring=newstring+chr(015)
+						newstring=newstring+chr(0o15)
 					elif a=='t':
-						newstring=newstring+chr(011)
+						newstring=newstring+chr(0o11)
 					elif a=='v':
-						newstring=newstring+chr(013)
+						newstring=newstring+chr(0o13)
 					elif a!='\n':
 						#remove backslash only, as bash does: this takes care of \\ and \' and \" as well
 						newstring=newstring+mystring[pos-1:pos]
@@ -771,18 +771,18 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 				raise
 
 	new_mode = -1
-	st_mode = stat_cached.st_mode & 07777 # protect from unwanted bits
+	st_mode = stat_cached.st_mode & 0o7777 # protect from unwanted bits
 	if mask >= 0:
 		if mode == -1:
 			mode = 0 # Don't add any mode bits when mode is unspecified.
 		else:
-			mode = mode & 07777
+			mode = mode & 0o7777
 		if	(mode & st_mode != mode) or \
 			((mask ^ st_mode) & st_mode != st_mode):
 			new_mode = mode | st_mode
 			new_mode = (mask ^ new_mode) & new_mode
 	elif mode != -1:
-		mode = mode & 07777 # protect from unwanted bits
+		mode = mode & 0o7777 # protect from unwanted bits
 		if mode != st_mode:
 			new_mode = mode
 
@@ -793,7 +793,7 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 		if mode == -1:
 			new_mode = st_mode
 		else:
-			mode = mode & 07777
+			mode = mode & 0o7777
 			if mask >= 0:
 				new_mode = mode | st_mode
 				new_mode = (mask ^ new_mode) & new_mode

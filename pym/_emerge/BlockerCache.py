@@ -139,7 +139,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 				pickle.dump(self._cache_data, f, protocol=2)
 				f.close()
 				portage.util.apply_secpass_permissions(
-					self._cache_filename, gid=portage.portage_gid, mode=0644)
+					self._cache_filename, gid=portage.portage_gid, mode=0o644)
 			except (IOError, OSError) as e:
 				pass
 			self._modified.clear()
