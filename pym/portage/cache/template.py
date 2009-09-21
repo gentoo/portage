@@ -67,7 +67,7 @@ class database(object):
 			raise cache_errors.ReadOnlyRestriction()
 		if self.cleanse_keys:
 			d=ProtectedDict(values)
-			for k in d.keys():
+			for k in list(d.keys()):
 				if d[k] == '':
 					del d[k]
 			if self.serialize_eclasses and "_eclasses_" in values:
@@ -109,17 +109,17 @@ class database(object):
 		return cpv in self
 
 	def keys(self):
-		return tuple(self.iterkeys())
+		return tuple(self.keys())
 
 	def iterkeys(self):
 		return iter(self)
 
 	def iteritems(self):
-		for x in self.iterkeys():
+		for x in self.keys():
 			yield (x, self[x])
 
 	def items(self):
-		return list(self.iteritems())
+		return list(self.items())
 
 	def sync(self, rate=0):
 		self.sync_rate = rate
@@ -151,7 +151,7 @@ class database(object):
 		if self.iterkeys is database.iterkeys:
 			# prevent a possible recursive loop
 			raise NotImplementedError(self)
-		return self.iterkeys()
+		return iter(self.keys())
 
 	def get(self, k, x=None):
 		try:
@@ -169,7 +169,7 @@ class database(object):
 
 		import re
 		restricts = {}
-		for key,match in match_dict.iteritems():
+		for key,match in match_dict.items():
 			# XXX this sucks.
 			try:
 				if isinstance(match, basestring):
@@ -181,10 +181,10 @@ class database(object):
 			if key not in self.__known_keys:
 				raise InvalidRestriction(key, match, "Key isn't valid")
 
-		for cpv in self.iterkeys():
+		for cpv in self.keys():
 			cont = True
 			vals = self[cpv]
-			for key, match in restricts.iteritems():
+			for key, match in restricts.items():
 				if not match(vals[key]):
 					cont = False
 					break

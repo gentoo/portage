@@ -71,7 +71,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 			# Validate all the atoms and counters so that
 			# corruption is detected as soon as possible.
 			invalid_items = set()
-			for k, v in self._cache_data["blockers"].iteritems():
+			for k, v in self._cache_data["blockers"].items():
 				if not isinstance(k, basestring):
 					invalid_items.add(k)
 					continue

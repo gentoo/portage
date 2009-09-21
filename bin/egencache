@@ -168,7 +168,7 @@ class GenCache(object):
 					# mtime on the ebuild (and the corresponding cache entry).
 					# See bug #139134.
 					max_mtime = sc.mtime
-					for ec, (loc, ec_mtime) in metadata['_eclasses_'].iteritems():
+					for ec, (loc, ec_mtime) in metadata['_eclasses_'].items():
 						if max_mtime < ec_mtime:
 							max_mtime = ec_mtime
 					if max_mtime == sc.mtime:
@@ -201,7 +201,7 @@ class GenCache(object):
 		dead_nodes = set()
 		if self._global_cleanse:
 			try:
-				for cpv in trg_cache.iterkeys():
+				for cpv in trg_cache.keys():
 					cp = cpv_getkey(cpv)
 					if cp is None:
 						self.returncode |= 1
@@ -221,7 +221,7 @@ class GenCache(object):
 		else:
 			cp_set = self._cp_set
 			try:
-				for cpv in trg_cache.iterkeys():
+				for cpv in trg_cache.keys():
 					cp = cpv_getkey(cpv)
 					if cp is None:
 						self.returncode |= 1

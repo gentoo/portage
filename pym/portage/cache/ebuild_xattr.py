@@ -123,7 +123,7 @@ class database(fs_template.FsBased):
 	def _setitem(self, cpv, values):
 		path = self.__get_path(cpv)
 		max = self.max_len
-		for key,value in values.iteritems():
+		for key,value in values.items():
 			# mtime comes in as long so need to convert to strings
 			s = str(value)
 			# We need to split long values

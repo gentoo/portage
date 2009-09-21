@@ -201,10 +201,10 @@ class portdbapi(dbapi):
 		# earlier ones that correspond to the same name.
 		porttrees = [x for x in porttrees if x not in identically_named_paths]
 		ignored_map = {}
-		for path, repo_name in identically_named_paths.iteritems():
+		for path, repo_name in identically_named_paths.items():
 			ignored_map.setdefault(repo_name, []).append(path)
 		self._ignored_repos = tuple((repo_name, tuple(paths)) \
-			for repo_name, paths in ignored_map.iteritems())
+			for repo_name, paths in ignored_map.items())
 
 		self.porttrees = porttrees
 		porttree_root = porttrees[0]
@@ -232,7 +232,7 @@ class portdbapi(dbapi):
 		repo_aliases = {}
 		if local_repo_configs is not None:
 			default_loc_repo_config = local_repo_configs.get('DEFAULT')
-			for repo_name, loc_repo_conf in local_repo_configs.iteritems():
+			for repo_name, loc_repo_conf in local_repo_configs.items():
 				if loc_repo_conf.aliases is not None:
 					for alias in loc_repo_conf.aliases:
 						overridden_alias = repo_aliases.get(alias)
@@ -503,7 +503,7 @@ class portdbapi(dbapi):
 
 		i = metadata
 		if hasattr(metadata, "iteritems"):
-			i = metadata.iteritems()
+			i = iter(metadata.items())
 		metadata = dict(i)
 
 		if metadata.get("INHERITED", False):
@@ -761,7 +761,7 @@ class portdbapi(dbapi):
 
 		all_uris = []
 		all_files = []
-		for filename, uris in uri_map.iteritems():
+		for filename, uris in uri_map.items():
 			for uri in uris:
 				all_uris.append(uri)
 				all_files.append(filename)
@@ -858,7 +858,7 @@ class portdbapi(dbapi):
 						y == "CVS":
 						continue
 					d[x+"/"+y] = None
-		l = d.keys()
+		l = list(d.keys())
 		l.sort()
 		return l
 
@@ -915,7 +915,7 @@ class portdbapi(dbapi):
 				(mycp, self.mysettings["PORTAGE_CONFIGROOT"]), noiselevel=-1)
 			mylist = []
 		else:
-			mylist = d.keys()
+			mylist = list(d.keys())
 		# Always sort in ascending order here since it's handy
 		# and the result can be easily cached and reused.
 		self._cpv_sort_ascending(mylist)

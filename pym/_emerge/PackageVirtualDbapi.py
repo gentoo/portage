@@ -32,13 +32,13 @@ class PackageVirtualDbapi(portage.dbapi):
 		obj = PackageVirtualDbapi(self.settings)
 		obj._match_cache = self._match_cache.copy()
 		obj._cp_map = self._cp_map.copy()
-		for k, v in obj._cp_map.iteritems():
+		for k, v in obj._cp_map.items():
 			obj._cp_map[k] = v[:]
 		obj._cpv_map = self._cpv_map.copy()
 		return obj
 
 	def __iter__(self):
-		return self._cpv_map.itervalues()
+		return iter(self._cpv_map.values())
 
 	def __contains__(self, item):
 		existing = self._cpv_map.get(item.cpv)

@@ -15,7 +15,7 @@ class RootConfig(object):
 	}
 
 	tree_pkg_map = {}
-	for k, v in pkg_tree_map.iteritems():
+	for k, v in pkg_tree_map.items():
 		tree_pkg_map[v] = k
 
 	def __init__(self, settings, trees, setconfig):

@@ -759,10 +759,10 @@ def _init(config_root='/'):
 	codes = object.__getattribute__(codes, '_attr')
 	_styles = object.__getattribute__(_styles, '_attr')
 
-	for k, v in codes.iteritems():
+	for k, v in codes.items():
 		codes[k] = _unicode_decode(v)
 
-	for k, v in _styles.iteritems():
+	for k, v in _styles.items():
 		_styles[k] = _unicode_decode(v)
 
 	try:

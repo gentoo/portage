@@ -50,7 +50,7 @@ def _unregister_module_proxy(name):
 				object.__getattribute__(proxy, '_get_target')()
 
 			modules = sys.modules
-			for name, proxy_list in list(_module_proxies.iteritems()):
+			for name, proxy_list in list(_module_proxies.items()):
 				if name not in modules:
 					continue
 				# First delete this name from the dict so that

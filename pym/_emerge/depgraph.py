@@ -163,7 +163,7 @@ class _dynamic_depgraph_config(object):
 			runtime_pkg_mask = {}
 		else:
 			runtime_pkg_mask = dict((k, v.copy()) for (k, v) in \
-				runtime_pkg_mask.iteritems())
+				runtime_pkg_mask.items())
 		self._runtime_pkg_mask = runtime_pkg_mask
 		self._need_restart = False
 
@@ -281,7 +281,7 @@ class depgraph(object):
 		# missed update from each SLOT.
 		missed_updates = {}
 		for pkg, mask_reasons in \
-			self._dynamic_config._runtime_pkg_mask.iteritems():
+			self._dynamic_config._runtime_pkg_mask.items():
 			if pkg.installed:
 				# Exclude installed here since we only
 				# want to show available updates.
@@ -291,7 +291,7 @@ class depgraph(object):
 				other_pkg, mask_type, parent_atoms = missed_updates[k]
 				if other_pkg > pkg:
 					continue
-			for mask_type, parent_atoms in mask_reasons.iteritems():
+			for mask_type, parent_atoms in mask_reasons.items():
 				if not parent_atoms:
 					continue
 				missed_updates[k] = (pkg, mask_type, parent_atoms)
@@ -301,7 +301,7 @@ class depgraph(object):
 			return
 
 		missed_update_types = {}
-		for pkg, mask_type, parent_atoms in missed_updates.itervalues():
+		for pkg, mask_type, parent_atoms in missed_updates.values():
 			missed_update_types.setdefault(mask_type,
 				[]).append((pkg, parent_atoms))
 
@@ -395,7 +395,7 @@ class depgraph(object):
 		explanation_columns = 70
 		explanations = 0
 		for (slot_atom, root), slot_nodes \
-			in self._dynamic_config._slot_collision_info.iteritems():
+			in self._dynamic_config._slot_collision_info.items():
 			msg.append(str(slot_atom))
 			if root != '/':
 				msg.append(" for %s" % (root,))
@@ -599,7 +599,7 @@ class depgraph(object):
 		packages that have been pulled into a given slot.
 		"""
 		for (slot_atom, root), slot_nodes \
-			in self._dynamic_config._slot_collision_info.iteritems():
+			in self._dynamic_config._slot_collision_info.items():
 
 			all_parent_atoms = set()
 			for pkg in slot_nodes:
@@ -1171,7 +1171,7 @@ class depgraph(object):
 		# by dep_zapdeps. We preserve actual parent/child relationships
 		# here in order to avoid distorting the dependency graph like
 		# <=portage-2.1.6.x did.
-		for virt_pkg, atoms in selected_atoms.iteritems():
+		for virt_pkg, atoms in selected_atoms.items():
 
 			# Just assume depth + 1 here for now, though it's not entirely
 			# accurate since multilple levels of indirect virtual deps may
@@ -1744,7 +1744,7 @@ class depgraph(object):
 			args_set.add(atom)
 
 		self._dynamic_config._set_atoms.clear()
-		self._dynamic_config._set_atoms.update(chain(*self._dynamic_config._sets.itervalues()))
+		self._dynamic_config._set_atoms.update(chain(*self._dynamic_config._sets.values()))
 		atom_arg_map = self._dynamic_config._atom_arg_map
 		atom_arg_map.clear()
 		for arg in args:
@@ -1760,7 +1760,7 @@ class depgraph(object):
 		# Invalidate the package selection cache, since
 		# arguments influence package selections.
 		self._dynamic_config._highest_pkg_cache.clear()
-		for trees in self._dynamic_config._filtered_trees.itervalues():
+		for trees in self._dynamic_config._filtered_trees.values():
 			trees["porttree"].dbapi._clear_cache()
 
 	def _greedy_slots(self, root_config, atom, blocker_lookahead=False):
@@ -1809,7 +1809,7 @@ class depgraph(object):
 			except portage.exception.InvalidDependString:
 				continue
 			blocker_atoms = []
-			for atoms in selected_atoms.itervalues():
+			for atoms in selected_atoms.values():
 				blocker_atoms.extend(x for x in atoms if x.blocker)
 			blockers[pkg] = InternalPackageSet(initial_atoms=blocker_atoms)
 
@@ -3062,7 +3062,7 @@ class depgraph(object):
 					(running_root, running_portage.cpv, e), noiselevel=-1)
 				del e
 				portage_rdepend = {running_portage : []}
-			for atoms in portage_rdepend.itervalues():
+			for atoms in portage_rdepend.values():
 				runtime_deps.update(atom for atom in atoms \
 					if not atom.blocker)
 
@@ -3648,7 +3648,7 @@ class depgraph(object):
 			# Reduce noise by pruning packages that are only
 			# pulled in by other conflict packages.
 			pruned_pkgs = set()
-			for pkg, parent_atoms in conflict_pkgs.iteritems():
+			for pkg, parent_atoms in conflict_pkgs.items():
 				relevant_parent = False
 				for parent, atom in parent_atoms:
 					if parent not in conflict_pkgs:
@@ -3665,7 +3665,7 @@ class depgraph(object):
 			indent = "  "
 			# Max number of parents shown, to avoid flooding the display.
 			max_parents = 3
-			for pkg, parent_atoms in conflict_pkgs.iteritems():
+			for pkg, parent_atoms in conflict_pkgs.items():
 
 				pruned_list = set()
 
@@ -4538,7 +4538,7 @@ class depgraph(object):
 					"merged because it is listed in\n")
 			msg.append("package.provided:\n\n")
 			problems_sets = set()
-			for (arg, atom), refs in arg_refs.iteritems():
+			for (arg, atom), refs in arg_refs.items():
 				ref_string = ""
 				if refs:
 					problems_sets.update(refs)
@@ -5243,7 +5243,7 @@ def get_masking_status(pkg, pkgsettings, root_config):
 			mreasons.append("CHOST: %s" % \
 				pkg.metadata["CHOST"])
 		if pkg.invalid:
-			for msg_type, msgs in pkg.invalid.iteritems():
+			for msg_type, msgs in pkg.invalid.items():
 				for msg in msgs:
 					mreasons.append("invalid: %s" % (msg,))
 

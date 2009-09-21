@@ -744,7 +744,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				continue
 
 	set_args = {}
-	for s, package_set in required_sets.iteritems():
+	for s, package_set in required_sets.items():
 		set_atom = SETPREFIX + s
 		set_arg = SetArg(arg=set_atom, set=package_set,
 			root_config=resolver._frozen_config.roots[myroot])
@@ -927,7 +927,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			if not consumers:
 				continue
 
-			for lib, lib_consumers in consumers.items():
+			for lib, lib_consumers in list(consumers.items()):
 				for consumer_file in list(lib_consumers):
 					if pkg_dblink.isowner(consumer_file, myroot):
 						lib_consumers.remove(consumer_file)
@@ -937,7 +937,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			if not consumers:
 				continue
 
-			for lib, lib_consumers in consumers.iteritems():
+			for lib, lib_consumers in consumers.items():
 
 				soname = soname_cache.get(lib)
 				if soname is None:
@@ -963,8 +963,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		if consumer_map:
 
 			search_files = set()
-			for consumers in consumer_map.itervalues():
-				for lib, consumer_providers in consumers.iteritems():
+			for consumers in consumer_map.values():
+				for lib, consumer_providers in consumers.items():
 					for lib_consumer, providers in consumer_providers:
 						search_files.add(lib_consumer)
 						search_files.update(providers)
@@ -972,8 +972,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			writemsg_level(">>> Assigning files to packages...\n")
 			file_owners = real_vardb._owners.getFileOwnerMap(search_files)
 
-			for pkg, consumers in consumer_map.items():
-				for lib, consumer_providers in consumers.items():
+			for pkg, consumers in list(consumer_map.items()):
+				for lib, consumer_providers in list(consumers.items()):
 					lib_consumers = set()
 
 					for lib_consumer, providers in consumer_providers:
@@ -1044,7 +1044,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			# and also add any dependencies pulled in by the provider.
 			writemsg_level(">>> Adding lib providers to graph...\n")
 
-			for pkg, consumers in consumer_map.iteritems():
+			for pkg, consumers in consumer_map.items():
 				for consumer_dblink in set(chain(*consumers.values())):
 					consumer_pkg = vardb.get(("installed", myroot,
 						consumer_dblink.mycpv, "nomerge"))
@@ -1287,7 +1287,7 @@ def action_info(settings, trees, myopts, myfiles):
 	libtool_vers = ",".join(trees["/"]["vartree"].dbapi.match("sys-devel/libtool"))
 
 	if "--verbose" in myopts:
-		myvars=settings.keys()
+		myvars=list(settings.keys())
 	else:
 		myvars = ['GENTOO_MIRRORS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
 		          'PORTDIR', 'DISTDIR', 'PKGDIR', 'PORTAGE_TMPDIR',
@@ -1647,7 +1647,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 
 	for tree_data in porttrees_data:
 		try:
-			dead_nodes = set(tree_data.dest_db.iterkeys())
+			dead_nodes = set(tree_data.dest_db.keys())
 		except CacheError as e:
 			writemsg_level("Error listing cache entries for " + \
 				"'%s': %s, continuing...\n" % (tree_data.path, e),
@@ -2601,7 +2601,7 @@ def git_sync_timestamps(settings, portdir):
 			continue
 
 		inconsistent = False
-		for ec, (ec_path, ec_mtime) in ec_mtimes.iteritems():
+		for ec, (ec_path, ec_mtime) in ec_mtimes.items():
 			updated_mtime = updated_ec_mtimes.get(ec)
 			if updated_mtime is not None and updated_mtime != ec_mtime:
 				writemsg_level("!!! Inconsistent eclass mtime: %s %s\n" % \
@@ -2615,7 +2615,7 @@ def git_sync_timestamps(settings, portdir):
 		if current_eb_mtime != eb_mtime:
 			os.utime(eb_path, (eb_mtime, eb_mtime))
 
-		for ec, (ec_path, ec_mtime) in ec_mtimes.iteritems():
+		for ec, (ec_path, ec_mtime) in ec_mtimes.items():
 			if ec in updated_ec_mtimes:
 				continue
 			ec_path = os.path.join(ec_dir, ec + ".eclass")
@@ -2634,7 +2634,7 @@ def load_emerge_config(trees=None):
 			kwargs[k] = v
 	trees = portage.create_trees(trees=trees, **kwargs)
 
-	for root, root_trees in trees.iteritems():
+	for root, root_trees in trees.items():
 		settings = root_trees["vartree"].settings
 		setconfig = load_default_config(settings, root_trees)
 		root_trees["root_config"] = RootConfig(settings, root_trees, setconfig)

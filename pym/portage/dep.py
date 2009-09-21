@@ -393,16 +393,16 @@ class _use_dep(object):
 		self.required = frozenset(chain(
 			enabled_flags,
 			disabled_flags,
-			*conditional.values()
+			*list(conditional.values())
 		))
 
 		self.enabled = frozenset(enabled_flags)
 		self.disabled = frozenset(disabled_flags)
 		self.conditional = None
 
-		for v in conditional.itervalues():
+		for v in conditional.values():
 			if v:
-				for k, v in conditional.iteritems():
+				for k, v in conditional.items():
 					conditional[k] = frozenset(v)
 				self.conditional = conditional
 				break

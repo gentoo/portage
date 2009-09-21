@@ -36,7 +36,7 @@ def read_config(mandatory_opts):
 
 	# Handle quote removal here, since KeyValuePairFileLoader doesn't do that.
     quotes = "\"'"
-    for k, v in opts.iteritems():
+    for k, v in opts.items():
         if v[:1] in quotes and v[:1] == v[-1:]:
             opts[k] = v[1:-1]
 

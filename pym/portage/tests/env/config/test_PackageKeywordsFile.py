@@ -23,7 +23,7 @@ class PackageKeywordsFileTestCase(TestCase):
 			f = PackageKeywordsFile(self.fname)
 			f.load()
 			i = 0
-			for cpv, keyword in f.iteritems():
+			for cpv, keyword in f.items():
 				self.assertEqual( cpv, self.cpv[i] )
 				[k for k in keyword if self.assertTrue(k in self.keywords)]
 				i = i + 1

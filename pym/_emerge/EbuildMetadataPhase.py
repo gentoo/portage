@@ -70,7 +70,7 @@ class EbuildMetadataPhase(SubProcess):
 		fd_pipes.setdefault(2, sys.stderr.fileno())
 
 		# flush any pending output
-		for fd in fd_pipes.itervalues():
+		for fd in fd_pipes.values():
 			if fd == sys.stdout.fileno():
 				sys.stdout.flush()
 			if fd == sys.stderr.fileno():

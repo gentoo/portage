@@ -561,7 +561,7 @@ class Scheduler(PollScheduler):
 
 		digest = '--digest' in self.myopts
 		if not digest:
-			for pkgsettings in self.pkgsettings.itervalues():
+			for pkgsettings in self.pkgsettings.values():
 				if 'digest' in pkgsettings.features:
 					digest = True
 					break
@@ -604,7 +604,7 @@ class Scheduler(PollScheduler):
 
 		shown_verifying_msg = False
 		quiet_settings = {}
-		for myroot, pkgsettings in self.pkgsettings.iteritems():
+		for myroot, pkgsettings in self.pkgsettings.items():
 			quiet_config = portage.config(clone=pkgsettings)
 			quiet_config["PORTAGE_QUIET"] = "1"
 			quiet_config.backup_changes("PORTAGE_QUIET")
@@ -759,7 +759,7 @@ class Scheduler(PollScheduler):
 		# any of bad_resume_opts from leaking in
 		# via EMERGE_DEFAULT_OPTS.
 		resume_opts["--ignore-default-opts"] = True
-		for myopt, myarg in resume_opts.iteritems():
+		for myopt, myarg in resume_opts.items():
 			if myopt not in bad_resume_opts:
 				if myarg is True:
 					mynewargv.append(myopt)

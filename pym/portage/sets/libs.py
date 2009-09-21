@@ -64,7 +64,7 @@ class PreservedLibraryConsumerSet(LibraryConsumerSet):
 		consumers = set()
 		if reg:
 			plib_dict = reg.getPreservedLibs()
-			for libs in plib_dict.itervalues():
+			for libs in plib_dict.values():
 				for lib in libs:
 					if self.debug:
 						print(lib)
@@ -74,7 +74,7 @@ class PreservedLibraryConsumerSet(LibraryConsumerSet):
 					consumers.update(self.dbapi.linkmap.findConsumers(lib))
 			# Don't rebuild packages just because they contain preserved
 			# libs that happen to be consumers of other preserved libs.
-			for libs in plib_dict.itervalues():
+			for libs in plib_dict.values():
 				consumers.difference_update(libs)
 		else:
 			return

@@ -24,7 +24,7 @@ class PipeReader(AbstractPollTask):
 	def _start(self):
 		self._reg_ids = set()
 		self._read_data = []
-		for k, f in self.input_files.iteritems():
+		for k, f in self.input_files.items():
 			fcntl.fcntl(f.fileno(), fcntl.F_SETFL,
 				fcntl.fcntl(f.fileno(), fcntl.F_GETFL) | os.O_NONBLOCK)
 			self._reg_ids.add(self.scheduler.register(f.fileno(),
@@ -65,7 +65,7 @@ class PipeReader(AbstractPollTask):
 
 		if event & PollConstants.POLLIN:
 
-			for f in self.input_files.itervalues():
+			for f in self.input_files.values():
 				if fd == f.fileno():
 					break
 
@@ -97,7 +97,7 @@ class PipeReader(AbstractPollTask):
 			self._reg_ids = None
 
 		if self.input_files is not None:
-			for f in self.input_files.itervalues():
+			for f in self.input_files.values():
 				f.close()
 			self.input_files = None
 

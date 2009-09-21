@@ -89,7 +89,7 @@ class trace_handler(object):
 
 		# We omit items that will lead to unreasonable bloat of the trace
 		# output (and resulting log file).
-		for k, v in my_locals.iteritems():
+		for k, v in my_locals.items():
 			my_repr = repr(v)
 			if len(my_repr) > self.max_repr_length:
 				my_locals[k] = "omitted"

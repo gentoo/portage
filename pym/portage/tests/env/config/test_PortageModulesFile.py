@@ -32,7 +32,7 @@ class PortageModulesFileTestCase(TestCase):
 	def BuildFile(self):
 		fd, self.fname = mkstemp()
 		f = os.fdopen(fd, 'w')
-		for k, v in self.items.iteritems():
+		for k, v in self.items.items():
 			f.write('%s=%s\n' % (k,v))
 		f.close()
 

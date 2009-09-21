@@ -22,7 +22,7 @@ class PackageUseFileTestCase(TestCase):
 		try:
 			f = PackageUseFile(self.fname)
 			f.load()
-			for cpv, use in f.iteritems():
+			for cpv, use in f.items():
 				self.assertEqual( cpv, self.cpv )
 				[flag for flag in use if self.assertTrue(flag in self.useflags)]
 		finally:

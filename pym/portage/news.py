@@ -235,7 +235,7 @@ class NewsItem(object):
 				'profile' : profile }
 
 		all_match = True
-		for values in self.restrictions.itervalues():
+		for values in self.restrictions.values():
 			any_match = False
 			for restriction in values:
 				if restriction.checkRestriction(**kwargs):
@@ -269,7 +269,7 @@ class NewsItem(object):
 			restricts = {  _installedRE : DisplayInstalledRestriction,
 					_profileRE : DisplayProfileRestriction,
 					_keywordRE : DisplayKeywordRestriction }
-			for regex, restriction in restricts.iteritems():
+			for regex, restriction in restricts.items():
 				match = regex.match(line)
 				if match:
 					restrict = restriction(match.groups()[0].strip())

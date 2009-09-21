@@ -172,7 +172,7 @@ class _PackageMetadataWrapper(dict):
 			# USE is lazy, but we want it to show up in self.keys().
 			self['USE'] = ''
 		self.update(metadata)
-		for k, v in self.iteritems():
+		for k, v in self.items():
 			if k == 'INHERITED':
 				if isinstance(v, basestring):
 					v = frozenset(v.split())

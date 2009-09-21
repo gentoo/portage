@@ -184,7 +184,7 @@ class _unicode_func_wrapper(object):
 			wrapped_kwargs = dict(
 				(_unicode_encode(k, encoding=encoding, errors='strict'),
 				_unicode_encode(v, encoding=encoding, errors='strict'))
-				for k, v in kwargs.iteritems())
+				for k, v in kwargs.items())
 		else:
 			wrapped_kwargs = {}
 
@@ -785,13 +785,13 @@ class digraph(object):
 			return list(self.nodes[node][0])
 		children = []
 		if hasattr(ignore_priority, '__call__'):
-			for child, priorities in self.nodes[node][0].iteritems():
+			for child, priorities in self.nodes[node][0].items():
 				for priority in priorities:
 					if not ignore_priority(priority):
 						children.append(child)
 						break
 		else:
-			for child, priorities in self.nodes[node][0].iteritems():
+			for child, priorities in self.nodes[node][0].items():
 				if ignore_priority < priorities[-1]:
 					children.append(child)
 		return children
@@ -802,13 +802,13 @@ class digraph(object):
 			return list(self.nodes[node][1])
 		parents = []
 		if hasattr(ignore_priority, '__call__'):
-			for parent, priorities in self.nodes[node][1].iteritems():
+			for parent, priorities in self.nodes[node][1].items():
 				for priority in priorities:
 					if not ignore_priority(priority):
 						parents.append(parent)
 						break
 		else:
-			for parent, priorities in self.nodes[node][1].iteritems():
+			for parent, priorities in self.nodes[node][1].items():
 				if ignore_priority < priorities[-1]:
 					parents.append(parent)
 		return parents
@@ -827,7 +827,7 @@ class digraph(object):
 		elif hasattr(ignore_priority, '__call__'):
 			for node in self.order:
 				is_leaf_node = True
-				for child, priorities in self.nodes[node][0].iteritems():
+				for child, priorities in self.nodes[node][0].items():
 					for priority in priorities:
 						if not ignore_priority(priority):
 							is_leaf_node = False
@@ -839,7 +839,7 @@ class digraph(object):
 		else:
 			for node in self.order:
 				is_leaf_node = True
-				for child, priorities in self.nodes[node][0].iteritems():
+				for child, priorities in self.nodes[node][0].items():
 					if ignore_priority < priorities[-1]:
 						is_leaf_node = False
 						break
@@ -861,7 +861,7 @@ class digraph(object):
 		elif hasattr(ignore_priority, '__call__'):
 			for node in self.order:
 				is_root_node = True
-				for parent, priorities in self.nodes[node][1].iteritems():
+				for parent, priorities in self.nodes[node][1].items():
 					for priority in priorities:
 						if not ignore_priority(priority):
 							is_root_node = False
@@ -873,7 +873,7 @@ class digraph(object):
 		else:
 			for node in self.order:
 				is_root_node = True
-				for parent, priorities in self.nodes[node][1].iteritems():
+				for parent, priorities in self.nodes[node][1].items():
 					if ignore_priority < priorities[-1]:
 						is_root_node = False
 						break
@@ -889,16 +889,16 @@ class digraph(object):
 		clone = digraph()
 		clone.nodes = {}
 		memo = {}
-		for children, parents, node in self.nodes.itervalues():
+		for children, parents, node in self.nodes.values():
 			children_clone = {}
-			for child, priorities in children.iteritems():
+			for child, priorities in children.items():
 				priorities_clone = memo.get(id(priorities))
 				if priorities_clone is None:
 					priorities_clone = priorities[:]
 					memo[id(priorities)] = priorities_clone
 				children_clone[child] = priorities_clone
 			parents_clone = {}
-			for parent, priorities in parents.iteritems():
+			for parent, priorities in parents.items():
 				priorities_clone = memo.get(id(priorities))
 				if priorities_clone is None:
 					priorities_clone = priorities[:]
@@ -942,7 +942,7 @@ class digraph(object):
 				output("depends on\n")
 			else:
 				output("(no children)\n")
-			for child, priorities in self.nodes[node][0].iteritems():
+			for child, priorities in self.nodes[node][0].items():
 				output("  %s (%s)\n" % (child, priorities[-1],))
 
 #parse /etc/env.d and generate /etc/profile.env
@@ -1136,7 +1136,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 		not ld_cache_update and \
 		contents is not None:
 		libdir_contents_changed = False
-		for mypath, mydata in contents.iteritems():
+		for mypath, mydata in contents.items():
 			if mydata[0] not in ("obj","sym"):
 				continue
 			head, tail = os.path.split(mypath)
@@ -1747,7 +1747,7 @@ class config(object):
 				for x in self.profiles]
 			for pkeyworddict in rawpkeywords:
 				cpdict = {}
-				for k, v in pkeyworddict.iteritems():
+				for k, v in pkeyworddict.items():
 					cpdict.setdefault(k.cp, {})[k] = v
 				self._pkeywords_list.append(cpdict)
 
@@ -1765,7 +1765,7 @@ class config(object):
 				recursive=1) for x in self.profiles]
 			for pusemaskdict in rawpusemask:
 				cpdict = {}
-				for k, v in pusemaskdict.iteritems():
+				for k, v in pusemaskdict.items():
 					cpdict.setdefault(k.cp, {})[k] = v
 				self.pusemask_list.append(cpdict)
 			del rawpusemask
@@ -1775,7 +1775,7 @@ class config(object):
 				juststrings=True, recursive=1) for x in self.profiles]
 			for rawpusedict in rawprofileuse:
 				cpdict = {}
-				for k, v in rawpusedict.iteritems():
+				for k, v in rawpusedict.items():
 					cpdict.setdefault(k.cp, {})[k] = v
 				self.pkgprofileuse.append(cpdict)
 			del rawprofileuse
@@ -1791,7 +1791,7 @@ class config(object):
 				for x in self.profiles]
 			for rawpusefdict in rawpuseforce:
 				cpdict = {}
-				for k, v in rawpusefdict.iteritems():
+				for k, v in rawpusefdict.items():
 					cpdict.setdefault(k.cp, {})[k] = v
 				self.puseforce_list.append(cpdict)
 			del rawpuseforce
@@ -1847,7 +1847,7 @@ class config(object):
 
 			# Avoid potential UnicodeDecodeError exceptions later.
 			env_unicode = dict((_unicode_decode(k), _unicode_decode(v))
-				for k, v in env.iteritems())
+				for k, v in env.items())
 
 			self.backupenv = env_unicode
 
@@ -1855,7 +1855,7 @@ class config(object):
 				# Remove duplicate values so they don't override updated
 				# profile.env values later (profile.env is reloaded in each
 				# call to self.regenerate).
-				for k, v in env_d.iteritems():
+				for k, v in env_d.items():
 					try:
 						if self.backupenv[k] == v:
 							del self.backupenv[k]
@@ -1976,14 +1976,14 @@ class config(object):
 				pmask_locations.append(abs_user_config)
 				pusedict = grabdict_package(
 					os.path.join(abs_user_config, "package.use"), recursive=1)
-				for k, v in pusedict.iteritems():
+				for k, v in pusedict.items():
 					self.pusedict.setdefault(k.cp, {})[k] = v
 
 				#package.keywords
 				pkgdict = grabdict_package(
 					os.path.join(abs_user_config, "package.keywords"),
 					recursive=1)
-				for k, v in pkgdict.iteritems():
+				for k, v in pkgdict.items():
 					# default to ~arch if no specific keyword is given
 					if not v:
 						mykeywordlist = []
@@ -2001,7 +2001,7 @@ class config(object):
 				#package.license
 				licdict = grabdict_package(os.path.join(
 					abs_user_config, "package.license"), recursive=1)
-				for k, v in licdict.iteritems():
+				for k, v in licdict.items():
 					cp = k.cp
 					cp_dict = self._plicensedict.get(cp)
 					if not cp_dict:
@@ -2012,7 +2012,7 @@ class config(object):
 				#package.properties
 				propdict = grabdict_package(os.path.join(
 					abs_user_config, "package.properties"), recursive=1)
-				for k, v in propdict.iteritems():
+				for k, v in propdict.items():
 					cp = k.cp
 					cp_dict = self._ppropertiesdict.get(cp)
 					if not cp_dict:
@@ -2229,7 +2229,7 @@ class config(object):
 		}
 
 		for mypath, (gid, mode, modemask, preserve_perms) \
-			in dir_mode_map.iteritems():
+			in dir_mode_map.items():
 			mydir = os.path.join(self["ROOT"], mypath)
 			if preserve_perms and os.path.isdir(mydir):
 				# Only adjust permissions on some directories if
@@ -2632,7 +2632,7 @@ class config(object):
 		for i, pkgprofileuse_dict in enumerate(self.pkgprofileuse):
 			cpdict = pkgprofileuse_dict.get(cp)
 			if cpdict:
-				keys = cpdict.keys()
+				keys = list(cpdict.keys())
 				while keys:
 					bestmatch = best_match_to_list(cpv_slot, keys)
 					if bestmatch:
@@ -2662,7 +2662,7 @@ class config(object):
 		self.puse = ""
 		cpdict = self.pusedict.get(cp)
 		if cpdict:
-			keys = cpdict.keys()
+			keys = list(cpdict.keys())
 			while keys:
 				self.pusekey = best_match_to_list(cpv_slot, keys)
 				if self.pusekey:
@@ -2759,7 +2759,7 @@ class config(object):
 		# allows packages that support LINGUAS but don't
 		# declare it in IUSE to use the variable outside of the
 		# USE_EXPAND context.
-		for k, use_expand_iuse in use_expand_iuses.iteritems():
+		for k, use_expand_iuse in use_expand_iuses.items():
 			if k + '_*' in use:
 				use.update( x for x in use_expand_iuse if x not in usemask )
 			k = k.upper()
@@ -2815,7 +2815,7 @@ class config(object):
 		for i, pusemask_dict in enumerate(self.pusemask_list):
 			cpdict = pusemask_dict.get(cp)
 			if cpdict:
-				keys = cpdict.keys()
+				keys = list(cpdict.keys())
 				while keys:
 					best_match = best_match_to_list(pkg, keys)
 					if best_match:
@@ -2838,7 +2838,7 @@ class config(object):
 		for i, puseforce_dict in enumerate(self.puseforce_list):
 			cpdict = puseforce_dict.get(cp)
 			if cpdict:
-				keys = cpdict.keys()
+				keys = list(cpdict.keys())
 				while keys:
 					best_match = best_match_to_list(pkg, keys)
 					if best_match:
@@ -2955,7 +2955,7 @@ class config(object):
 		matches = False
 		if pkgdict:
 			cpv_slot_list = ["%s:%s" % (cpv, metadata["SLOT"])]
-			for atom, pkgkeywords in pkgdict.iteritems():
+			for atom, pkgkeywords in pkgdict.items():
 				if match_from_list(atom, cpv_slot_list):
 					matches = True
 					pgroups.extend(pkgkeywords)
@@ -3023,7 +3023,7 @@ class config(object):
 		if cpdict:
 			accept_license = list(self._accept_license)
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			for atom in match_to_list(cpv_slot, cpdict.keys()):
+			for atom in match_to_list(cpv_slot, list(cpdict.keys())):
 				accept_license.extend(cpdict[atom])
 
 		licenses = set(flatten(dep.use_reduce(dep.paren_reduce(
@@ -3104,7 +3104,7 @@ class config(object):
 		if cpdict:
 			accept_properties = list(self._accept_properties)
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			for atom in match_to_list(cpv_slot, cpdict.keys()):
+			for atom in match_to_list(cpv_slot, list(cpdict.keys())):
 				accept_properties.extend(cpdict[atom])
 
 		properties = set(flatten(dep.use_reduce(dep.paren_reduce(
@@ -3484,7 +3484,7 @@ class config(object):
 			virtuals_file = os.path.join(x, "virtuals")
 			virtuals_dict = grabdict(virtuals_file)
 			atoms_dict = {}
-			for k, v in virtuals_dict.iteritems():
+			for k, v in virtuals_dict.items():
 				try:
 					virt_atom = portage.dep.Atom(k)
 				except portage.exception.InvalidAtom:
@@ -3543,7 +3543,7 @@ class config(object):
 
 	def _populate_treeVirtuals(self, vartree):
 		"""Reduce the provides into a list by CP."""
-		for provide, cpv_list in vartree.get_all_provides().iteritems():
+		for provide, cpv_list in vartree.get_all_provides().items():
 			try:
 				provide = dep.Atom(provide)
 			except exception.InvalidAtom:
@@ -3563,7 +3563,7 @@ class config(object):
 		# Virtuals by profile+tree preferences.
 		ptVirtuals   = {}
 
-		for virt, installed_list in self.treeVirtuals.iteritems():
+		for virt, installed_list in self.treeVirtuals.items():
 			profile_list = self.dirVirtuals.get(virt, None)
 			if not profile_list:
 				continue
@@ -3647,7 +3647,7 @@ class config(object):
 			yield (k, self[k])
 
 	def items(self):
-		return list(self.iteritems())
+		return list(self.items())
 
 	def __setitem__(self,mykey,myvalue):
 		"set a value; will be thrown away at reset() time"
@@ -3872,7 +3872,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	# it needs to be flushed before allowing a child process to use it
 	# so that output always shows in the correct order.
 	stdout_filenos = (sys.stdout.fileno(), sys.stderr.fileno())
-	for fd in fd_pipes.itervalues():
+	for fd in fd_pipes.values():
 		if fd in stdout_filenos:
 			sys.stdout.flush()
 			sys.stderr.flush()
@@ -4033,7 +4033,7 @@ def _spawn_fetch(settings, args, **kwargs):
 		if args[0] != BASH_BINARY:
 			args = [BASH_BINARY, "-c", "exec \"$@\"", args[0]] + args
 
-	rval = spawn_func(args, env=dict(settings.iteritems()), **kwargs)
+	rval = spawn_func(args, env=dict(iter(settings.items())), **kwargs)
 
 	return rval
 
@@ -4324,7 +4324,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 	file_uri_tuples = []
 	if isinstance(myuris, dict):
-		for myfile, uri_set in myuris.iteritems():
+		for myfile, uri_set in myuris.items():
 			for myuri in uri_set:
 				file_uri_tuples.append((myfile, myuri))
 	else:
@@ -4387,7 +4387,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 	# Prefer thirdpartymirrors over normal mirrors in cases when
 	# the file does not yet exist on the normal mirrors.
-	for myfile, uris in thirdpartymirror_uris.iteritems():
+	for myfile, uris in thirdpartymirror_uris.items():
 		primaryuri_dict.setdefault(myfile, []).extend(uris)
 
 	can_fetch=True
@@ -4722,7 +4722,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 									mysettings.get("PORTAGE_QUIET", None) == "1"
 								digests = mydigests.get(myfile)
 								if digests:
-									digests = digests.keys()
+									digests = list(digests.keys())
 									digests.sort()
 									eout.ebegin(
 										"%s %s ;-)" % (myfile, " ".join(digests)))
@@ -5229,7 +5229,7 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 			writemsg(_("!!! Permission Denied: %s\n") % (e,), noiselevel=-1)
 			return 0
 		if "assume-digests" not in mysettings.features:
-			distlist = mf.fhashdict.get("DIST", {}).keys()
+			distlist = list(mf.fhashdict.get("DIST", {}).keys())
 			distlist.sort()
 			auto_assumed = []
 			for filename in distlist:
@@ -5293,7 +5293,7 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 			return 1
 	mf = Manifest(pkgdir, mysettings["DISTDIR"])
 	manifest_empty = True
-	for d in mf.fhashdict.itervalues():
+	for d in mf.fhashdict.values():
 		if d:
 			manifest_empty = False
 			break
@@ -6203,7 +6203,7 @@ def _prepare_features_dirs(mysettings):
 	droppriv = secpass >= 2 and \
 		"userpriv" in mysettings.features and \
 		"userpriv" not in restrict
-	for myfeature, kwargs in features_dirs.iteritems():
+	for myfeature, kwargs in features_dirs.items():
 		if myfeature in mysettings.features:
 			failure = False
 			basedir = mysettings.get(kwargs["basedir_var"])
@@ -8332,7 +8332,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 	matches = False
 	if pkgdict:
 		cpv_slot_list = ["%s:%s" % (mycpv, metadata["SLOT"])]
-		for atom, pkgkeywords in pkgdict.iteritems():
+		for atom, pkgkeywords in pkgdict.items():
 			if match_from_list(atom, cpv_slot_list):
 				matches = True
 				pgroups.extend(pkgkeywords)
@@ -8438,9 +8438,9 @@ class FetchlistDict(portage.cache.mappings.Mapping):
 		self.portdb = mydbapi
 	def __getitem__(self, pkg_key):
 		"""Returns the complete fetch list for a given package."""
-		return self.portdb.getFetchMap(pkg_key, mytree=self.mytree).keys()
+		return list(self.portdb.getFetchMap(pkg_key, mytree=self.mytree).keys())
 	def __contains__(self, cpv):
-		return cpv in self.keys()
+		return cpv in list(self.keys())
 	def has_key(self, pkg_key):
 		"""Returns true if the given package exists within pkgdir."""
 		return pkg_key in self
@@ -8774,7 +8774,7 @@ def _global_updates(trees, prev_mtimes):
 			# until after _all_ of the above updates have
 			# been processed because the mtimedb will
 			# automatically commit when killed by ctrl C.
-			for mykey, mtime in timestamps.iteritems():
+			for mykey, mtime in timestamps.items():
 				prev_mtimes[mykey] = mtime
 
 		# We gotta do the brute force updates for these now.
@@ -8847,7 +8847,7 @@ class MtimeDB(dict):
 		mtimedbkeys = set(("info", "ldpath", "resume", "resume_backup",
 			"starttime", "updates", "version"))
 
-		for k in d.keys():
+		for k in list(d.keys()):
 			if k not in mtimedbkeys:
 				writemsg(_("Deleting invalid mtimedb key: %s\n") % str(k))
 				del d[k]

@@ -134,7 +134,7 @@ def perform_all(x, calc_prelink=0):
 	return mydict
 
 def get_valid_checksum_keys():
-	return hashfunc_map.keys()
+	return list(hashfunc_map.keys())
 
 def get_hash_origin(hashtype):
 	if hashtype not in hashfunc_map:

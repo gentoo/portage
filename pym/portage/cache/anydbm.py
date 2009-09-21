@@ -51,7 +51,7 @@ class database(fs_template.FsBased):
 		self._ensure_access(self._db_path)
 
 	def iteritems(self):
-		return self.__db.iteritems()
+		return iter(self.__db.items())
 
 	def _getitem(self, cpv):
 		# we override getitem because it's just a cpickling of the data handed in.
@@ -64,7 +64,7 @@ class database(fs_template.FsBased):
 		del self.__db[cpv]
 
 	def __iter__(self):
-		return iter(self.__db.keys())
+		return iter(list(self.__db.keys()))
 
 	def __contains__(self, cpv):
 		return cpv in self.__db
