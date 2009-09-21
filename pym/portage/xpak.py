@@ -209,6 +209,8 @@ def getindex_mem(myindex):
 def searchindex(myindex,myitem):
 	"""(index,item) -- Finds the offset and length of the file 'item' in the
 	datasegment via the index 'index' provided."""
+	myitem = _unicode_encode(myitem,
+		encoding=_encodings['repo.content'], errors='backslashreplace')
 	mylen=len(myitem)
 	myindexlen=len(myindex)
 	startpos=0
@@ -416,6 +418,8 @@ class tbz2(object):
 			datapos=decodeint(self.index[startpos+4+namelen:startpos+8+namelen]);
 			datalen=decodeint(self.index[startpos+8+namelen:startpos+12+namelen]);
 			myname=self.index[startpos+4:startpos+4+namelen]
+			myname = _unicode_decode(myname,
+				encoding=_encodings['repo.content'], errors='replace')
 			dirname=os.path.dirname(myname)
 			if dirname:
 				if not os.path.exists(dirname):
