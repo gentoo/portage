@@ -6,7 +6,6 @@ from portage import os
 from portage.tests import TestCase
 from portage.env.config import PortageModulesFile
 from tempfile import mkstemp
-from itertools import izip
 
 class PortageModulesFileTestCase(TestCase):
 
@@ -16,7 +15,7 @@ class PortageModulesFileTestCase(TestCase):
 
 	def setUp(self):
 		self.items = {}
-		for k, v in izip(self.keys + self.invalid_keys, 
+		for k, v in zip(self.keys + self.invalid_keys, 
 				self.modules):
 			self.items[k] = v
 

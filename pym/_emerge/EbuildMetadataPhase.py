@@ -10,7 +10,6 @@ import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
-from itertools import izip
 import fcntl
 import codecs
 
@@ -131,7 +130,7 @@ class EbuildMetadataPhase(SubProcess):
 				# number of lines is incorrect.
 				self.returncode = 1
 			else:
-				metadata = izip(portage.auxdbkeys, metadata_lines)
+				metadata = zip(portage.auxdbkeys, metadata_lines)
 				self.metadata = self.metadata_callback(self.cpv,
 					self.ebuild_path, self.repo_path, metadata,
 					self.ebuild_mtime)

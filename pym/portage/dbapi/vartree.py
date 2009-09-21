@@ -51,7 +51,6 @@ import codecs
 import re, shutil, stat, errno, copy, subprocess
 import logging
 import sys
-from itertools import izip
 
 try:
 	import cPickle as pickle
@@ -1231,7 +1230,7 @@ class vardbapi(dbapi):
 		if pull_me:
 			# pull any needed data and cache it
 			aux_keys = list(pull_me)
-			for k, v in izip(aux_keys,
+			for k, v in zip(aux_keys,
 				self._aux_get(mycpv, aux_keys, st=mydir_stat)):
 				mydata[k] = v
 			if not cache_valid or cache_these.difference(metadata):

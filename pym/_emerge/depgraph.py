@@ -9,7 +9,7 @@ import logging
 import re
 import sys
 import textwrap
-from itertools import chain, izip
+from itertools import chain
 
 import portage
 from portage import os
@@ -2538,7 +2538,7 @@ class depgraph(object):
 			db_keys = list(self._frozen_config._trees_orig[root_config.root][
 				tree_type].dbapi._aux_cache_keys)
 			try:
-				metadata = izip(db_keys, db.aux_get(cpv, db_keys))
+				metadata = zip(db_keys, db.aux_get(cpv, db_keys))
 			except KeyError:
 				raise portage.exception.PackageNotFound(cpv)
 			pkg = Package(built=(type_name != "ebuild"), cpv=cpv,
@@ -5140,7 +5140,7 @@ def get_mask_info(root_config, cpv, pkgsettings,
 	db, pkg_type, built, installed, db_keys):
 	eapi_masked = False
 	try:
-		metadata = dict(izip(db_keys,
+		metadata = dict(zip(db_keys,
 			db.aux_get(cpv, db_keys)))
 	except KeyError:
 		metadata = None

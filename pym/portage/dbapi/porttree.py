@@ -35,7 +35,6 @@ from portage import _unicode_encode
 import codecs
 import logging
 import stat
-from itertools import izip
 
 def _src_uri_validate(cpv, eapi, src_uri):
 	"""
@@ -988,7 +987,7 @@ class portdbapi(dbapi):
 				iterfunc = reversed
 			for cpv in iterfunc(mylist):
 				try:
-					metadata = dict(izip(aux_keys,
+					metadata = dict(zip(aux_keys,
 						self.aux_get(cpv, aux_keys)))
 				except KeyError:
 					# ebuild masked by corruption
@@ -1070,7 +1069,7 @@ class portdbapi(dbapi):
 		getProfileMaskAtom = self.mysettings._getProfileMaskAtom
 		for cpv in mylist:
 			try:
-				metadata = dict(izip(db_keys, self.aux_get(cpv, db_keys)))
+				metadata = dict(zip(db_keys, self.aux_get(cpv, db_keys)))
 			except KeyError:
 				# masked by corruption
 				continue
@@ -1097,7 +1096,7 @@ class portdbapi(dbapi):
 		for mycpv in mylist:
 			metadata.clear()
 			try:
-				metadata.update(izip(aux_keys, self.aux_get(mycpv, aux_keys)))
+				metadata.update(zip(aux_keys, self.aux_get(mycpv, aux_keys)))
 			except KeyError:
 				continue
 			except PortageException as e:

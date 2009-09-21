@@ -35,7 +35,7 @@ try:
 		from commands import getstatusoutput as subprocess_getstatusoutput
 	from time import sleep
 	from random import shuffle
-	from itertools import chain, izip
+	from itertools import chain
 	import platform
 	import warnings
 
@@ -2586,7 +2586,7 @@ class config(object):
 						pkg_configdict.addLazySingleton(k,
 							mydb.__getitem__, k)
 			else:
-				for k, v in izip(aux_keys, mydb.aux_get(self.mycpv, aux_keys)):
+				for k, v in zip(aux_keys, mydb.aux_get(self.mycpv, aux_keys)):
 					pkg_configdict[k] = v
 			repository = pkg_configdict.pop("repository", None)
 			if repository is not None:
@@ -6653,7 +6653,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					fd_pipes=fd_pipes, returnpid=True, droppriv=droppriv)
 				os.close(pw) # belongs exclusively to the child process now
 				f = os.fdopen(pr, 'rb')
-				for k, v in izip(auxdbkeys,
+				for k, v in zip(auxdbkeys,
 					(_unicode_decode(line).rstrip('\n') for line in f)):
 					dbkey[k] = v
 				f.close()
@@ -7136,7 +7136,7 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 	misc_keys = ["LICENSE", "PROPERTIES", "PROVIDE", "RESTRICT", "SRC_URI"]
 	other_keys = ["SLOT"]
 	all_keys = dep_keys + misc_keys + other_keys
-	metadata = dict(izip(all_keys,
+	metadata = dict(zip(all_keys,
 		mydbapi.aux_get(mysettings.mycpv, all_keys)))
 
 	class FakeTree(object):
@@ -7690,7 +7690,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 
 	if unreduced[0] != "||":
 		unresolved = []
-		for x, satisfied in izip(unreduced, reduced):
+		for x, satisfied in zip(unreduced, reduced):
 			if isinstance(x, list):
 				unresolved += dep_zapdeps(x, satisfied, myroot,
 					use_binaries=use_binaries, trees=trees)
@@ -7732,7 +7732,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	# Sort the deps into installed, not installed but already 
 	# in the graph and other, not installed and not in the graph
 	# and other, with values of [[required_atom], availablility]
-	for x, satisfied in izip(deps, satisfieds):
+	for x, satisfied in zip(deps, satisfieds):
 		if isinstance(x, list):
 			atoms = dep_zapdeps(x, satisfied, myroot,
 				use_binaries=use_binaries, trees=trees)
@@ -8174,7 +8174,7 @@ def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_lo
 	if metadata is None:
 		db_keys = list(portdb._aux_cache_keys)
 		try:
-			metadata = dict(izip(db_keys, portdb.aux_get(mycpv, db_keys)))
+			metadata = dict(zip(db_keys, portdb.aux_get(mycpv, db_keys)))
 		except KeyError:
 			if not portdb.cpv_exists(mycpv):
 				raise
@@ -8250,7 +8250,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 	if metadata is None:
 		db_keys = list(portdb._aux_cache_keys)
 		try:
-			metadata = dict(izip(db_keys, portdb.aux_get(mycpv, db_keys)))
+			metadata = dict(zip(db_keys, portdb.aux_get(mycpv, db_keys)))
 		except KeyError:
 			if not portdb.cpv_exists(mycpv):
 				raise

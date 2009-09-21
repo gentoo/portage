@@ -5,7 +5,6 @@
 from __future__ import print_function
 
 import re
-from itertools import izip
 import portage
 from portage import os
 from portage.output import  bold, bold as white, darkgreen, green, red
@@ -142,7 +141,7 @@ class search(object):
 				else:
 					db_keys = list(db._aux_cache_keys)
 					for cpv in db.match(atom):
-						metadata = izip(db_keys,
+						metadata = zip(db_keys,
 							db.aux_get(cpv, db_keys))
 						if not self._visible(db, cpv, metadata):
 							continue
@@ -165,7 +164,7 @@ class search(object):
 					for cpv in reversed(db.match(atom)):
 						if portage.cpv_getkey(cpv) != cp:
 							continue
-						metadata = izip(db_keys,
+						metadata = zip(db_keys,
 							db.aux_get(cpv, db_keys))
 						if not self._visible(db, cpv, metadata):
 							continue

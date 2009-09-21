@@ -221,14 +221,13 @@ class dbapi(object):
 		aux_get = self.aux_get
 		aux_update = self.aux_update
 		update_keys = ["DEPEND", "RDEPEND", "PDEPEND", "PROVIDE"]
-		from itertools import izip
 		from portage.update import update_dbentries
 		if onUpdate:
 			onUpdate(maxval, 0)
 		if onProgress:
 			onProgress(maxval, 0)
 		for i, cpv in enumerate(cpv_all):
-			metadata = dict(izip(update_keys, aux_get(cpv, update_keys)))
+			metadata = dict(zip(update_keys, aux_get(cpv, update_keys)))
 			metadata_updates = update_dbentries(updates, metadata)
 			if metadata_updates:
 				aux_update(cpv, metadata_updates)
