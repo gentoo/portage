@@ -305,7 +305,7 @@ def unmerge(root_config, myopts, unmerge_action,
 	# listed in "world" as they would be remerged on the next update of "world" or the 
 	# relevant package sets.
 	unknown_sets = set()
-	for cp in xrange(len(pkgmap)):
+	for cp in range(len(pkgmap)):
 		for cpv in pkgmap[cp]["selected"].copy():
 			try:
 				pkg = _pkg(cpv)
@@ -415,7 +415,7 @@ def unmerge(root_config, myopts, unmerge_action,
 				cp_dict[k].update(v)
 		pkgmap = [unordered[cp] for cp in sorted(unordered)]
 
-	for x in xrange(len(pkgmap)):
+	for x in range(len(pkgmap)):
 		selected = pkgmap[x]["selected"]
 		if not selected:
 			continue
@@ -493,7 +493,7 @@ def unmerge(root_config, myopts, unmerge_action,
 	if clean_delay and not autoclean:
 		countdown(int(settings["CLEAN_DELAY"]), ">>> Unmerging")
 
-	for x in xrange(len(pkgmap)):
+	for x in range(len(pkgmap)):
 		for y in pkgmap[x]["selected"]:
 			writemsg_level(">>> Unmerging "+y+"...\n", noiselevel=-1)
 			emergelog(xterm_titles, "=== Unmerging... ("+y+")")

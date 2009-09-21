@@ -77,7 +77,7 @@ def color(fg, bg="default", attr=["normal"]):
 
 
 ansi_codes = []
-for x in xrange(30, 38):
+for x in range(30, 38):
 	ansi_codes.append("%im" % x)
 	ansi_codes.append("%i;01m" % x)
 
@@ -85,7 +85,7 @@ rgb_ansi_colors = ['0x000000', '0x555555', '0xAA0000', '0xFF5555', '0x00AA00',
 	'0x55FF55', '0xAA5500', '0xFFFF55', '0x0000AA', '0x5555FF', '0xAA00AA',
 	'0xFF55FF', '0x00AAAA', '0x55FFFF', '0xAAAAAA', '0xFFFFFF']
 
-for x in xrange(len(rgb_ansi_colors)):
+for x in range(len(rgb_ansi_colors)):
 	codes[rgb_ansi_colors[x]] = esc_seq + ansi_codes[x]
 
 del x

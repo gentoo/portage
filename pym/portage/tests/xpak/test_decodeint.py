@@ -10,7 +10,7 @@ class testDecodeIntTestCase(TestCase):
 
 	def testDecodeInt(self):
 		
-		for n in xrange(1000):
+		for n in range(1000):
 			self.assertEqual(decodeint(encodeint(n)), n)
 
 		for n in (2 ** 32 - 1,):

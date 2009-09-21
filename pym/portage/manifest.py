@@ -239,7 +239,7 @@ class Manifest(object):
 					f.close()
 					if len(oldentries) == len(myentries):
 						update_manifest = False
-						for i in xrange(len(oldentries)):
+						for i in range(len(oldentries)):
 							if oldentries[i] != myentries[i]:
 								update_manifest = True
 								break
