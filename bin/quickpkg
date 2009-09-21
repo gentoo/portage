@@ -3,7 +3,11 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import errno, signal, sys
+from __future__ import print_function
+
+import errno
+import signal
+import sys
 from itertools import izip
 
 from os import environ as ose

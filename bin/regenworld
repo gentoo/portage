@@ -5,6 +5,8 @@
 
 # NOTE: this file does not respect ROOT
 
+from __future__ import print_function
+
 import sys
 # for an explanation on this logic, see pym/_emerge/__init__.py 
 from os import environ as ose

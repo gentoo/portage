@@ -10,6 +10,8 @@
 #  Jeremy Wohl's dispatch-conf script and the portage chkcontents script.
 #
 
+from __future__ import print_function
+
 import sys
 
 from portage import os
