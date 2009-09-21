@@ -8068,15 +8068,17 @@ def key_expand(mykey, mydb=None, use_cache=1, settings=None):
 		if hasattr(mydb, "cp_list"):
 			for x in mydb.categories:
 				if mydb.cp_list(x+"/"+mykey,use_cache=use_cache):
-					return x+"/"+mykey
+					return dep.Atom(x + "/" + mykey)
 			if mykey in virts_p:
 				return(virts_p[mykey][0])
-		return "null/"+mykey
+		return dep.Atom("null/" + mykey)
 	elif mydb:
 		if hasattr(mydb, "cp_list"):
 			if not mydb.cp_list(mykey, use_cache=use_cache) and \
 				virts and mykey in virts:
 				return virts[mykey][0]
+		if not isinstance(mykey, dep.Atom):
+			mykey = dep.Atom(mykey)
 		return mykey
 
 def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
