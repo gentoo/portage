@@ -24,6 +24,9 @@ from portage.const import USER_CONFIG_PATH
 from portage.exception import DirectoryNotFound, InvalidAtom, PortageException
 from portage.localization import _
 
+if sys.hexversion >= 0x3000000:
+	long = int
+
 ignored_dbentries = ("CONTENTS", "environment.bz2")
 
 def update_dbentry(update_cmd, mycontent):

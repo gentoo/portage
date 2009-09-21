@@ -125,6 +125,7 @@ except ImportError as e:
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
+	long = int
 
 # Assume utf_8 fs encoding everywhere except in merge code, where the
 # user's locale is respected.

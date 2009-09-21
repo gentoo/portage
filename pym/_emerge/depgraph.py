@@ -53,6 +53,7 @@ from _emerge.visible import visible
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
+	long = int
 
 class _frozen_depgraph_config(object):
 

@@ -2,6 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import sys
+
 import portage
 from portage import os
 from portage import digraph
@@ -10,6 +12,9 @@ from portage.sets.base import InternalPackageSet
 from _emerge.BlockerCache import BlockerCache
 from _emerge.FakeVartree import FakeVartree
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
+
+if sys.hexversion >= 0x3000000:
+	long = int
 
 class BlockerDB(object):
 

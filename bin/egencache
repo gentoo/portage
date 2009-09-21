@@ -38,6 +38,9 @@ from portage.util import writemsg_level
 from portage import cpv_getkey
 from portage.dep import isjustname
 
+if sys.hexversion >= 0x3000000:
+	long = int
+
 def parse_args(args):
 	usage = "egencache [options] --update [atom] ..."
 	parser = optparse.OptionParser(usage=usage)

@@ -8,9 +8,13 @@ from portage.cache import fs_template
 from portage.cache import cache_errors
 import errno
 import stat
+import sys
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+
+if sys.hexversion >= 0x3000000:
+	long = int
 
 class database(fs_template.FsBased):
 

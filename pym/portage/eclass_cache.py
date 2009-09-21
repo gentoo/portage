@@ -5,11 +5,15 @@
 
 __all__ = ["cache"]
 
+import sys
 import warnings
 from portage.util import normalize_path
 import errno
 from portage.exception import PermissionDenied
 from portage import os
+
+if sys.hexversion >= 0x3000000:
+	long = int
 
 class cache(object):
 	"""

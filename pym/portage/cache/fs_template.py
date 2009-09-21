@@ -3,6 +3,7 @@
 # License: GPL2
 # $Id$
 
+import sys
 from portage.cache import template
 from portage import os
 
@@ -13,6 +14,9 @@ lazyimport(globals(),
 	'portage.util:apply_permissions',
 )
 del lazyimport
+
+if sys.hexversion >= 0x3000000:
+	long = int
 
 class FsBased(template.database):
 	"""template wrapping fs needed options, and providing _ensure_access as a way to 

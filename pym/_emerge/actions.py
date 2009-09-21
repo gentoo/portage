@@ -55,6 +55,9 @@ from _emerge.UnmergeDepPriority import UnmergeDepPriority
 from _emerge.UseFlagDisplay import UseFlagDisplay
 from _emerge.userquery import userquery
 
+if sys.hexversion >= 0x3000000:
+	long = int
+
 def action_build(settings, trees, mtimedb,
 	myopts, myaction, myfiles, spinner):
 

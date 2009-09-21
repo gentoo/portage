@@ -2,10 +2,15 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import sys
+
 import portage
 from portage import os
 from _emerge.Package import Package
 from _emerge.PackageVirtualDbapi import PackageVirtualDbapi
+
+if sys.hexversion >= 0x3000000:
+	long = int
 
 class FakeVartree(portage.vartree):
 	"""This is implements an in-memory copy of a vartree instance that provides

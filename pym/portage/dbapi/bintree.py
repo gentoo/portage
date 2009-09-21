@@ -34,6 +34,7 @@ from itertools import chain
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
+	long = int
 
 class bindbapi(fakedbapi):
 	_known_keys = frozenset(list(fakedbapi._known_keys) + \

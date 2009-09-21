@@ -15,6 +15,7 @@ except ImportError:
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
+	long = int
 
 class BlockerCache(portage.cache.mappings.MutableMapping):
 	"""This caches blockers of installed packages so that dep_check does not
