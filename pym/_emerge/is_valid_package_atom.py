@@ -10,4 +10,4 @@ def is_valid_package_atom(x):
 		alphanum = re.search(r'\w', x)
 		if alphanum:
 			x = x[:alphanum.start()] + "cat/" + x[alphanum.start():]
-	return portage.isvalidatom(x)
+	return portage.isvalidatom(x, allow_blockers=False)
