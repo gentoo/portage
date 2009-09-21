@@ -18,7 +18,6 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 	emerge.  The cache is invalidated whenever it is detected that something
 	has changed that might alter the results of dep_check() calls:
 		1) the set of installed packages (including COUNTER) has changed
-		2) the old-style virtuals have changed
 	"""
 
 	# Number of uncached packages to trigger cache update, since
@@ -35,7 +34,6 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 
 	def __init__(self, myroot, vardb):
 		self._vardb = vardb
-		self._virtuals = vardb.settings.getvirtuals()
 		self._cache_filename = os.path.join(myroot,
 			portage.CACHE_PATH, "vdb_blockers.pickle")
 		self._cache_version = "1"
@@ -113,7 +111,6 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 		if not cache_valid:
 			self._cache_data = {"version":self._cache_version}
 			self._cache_data["blockers"] = {}
-			self._cache_data["virtuals"] = self._virtuals
 		self._modified.clear()
 
 	def flush(self):
@@ -129,7 +126,6 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 		{
 			version : "1",
 			"blockers" : {cpv1:(counter,(atom1, atom2...)), cpv2...},
-			"virtuals" : vardb.settings.getvirtuals()
 		}
 		"""
 		if len(self._modified) >= self._cache_threshold and \

@@ -1732,7 +1732,9 @@ class config(object):
 			# revmaskdict
 			self.prevmaskdict={}
 			for x in self.packages:
-				x = portage.dep.Atom(x.lstrip('*'))
+				# Negative atoms are filtered by the above stack_lists() call.
+				if not isinstance(x, dep.Atom):
+					x = dep.Atom(x.lstrip('*'))
 				self.prevmaskdict.setdefault(x.cp, []).append(x)
 
 			self._pkeywords_list = []
