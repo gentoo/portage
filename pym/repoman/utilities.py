@@ -19,11 +19,14 @@ __all__ = [
 ]
 
 import codecs
-import commands
 import errno
 import itertools
 import logging
 import sys
+try:
+	from subprocess import getstatusoutput as subprocess_getstatusoutput
+except ImportError:
+	from commands import getstatusoutput as subprocess_getstatusoutput
 
 from xml.dom import minidom
 from xml.dom import NotFoundErr
@@ -59,13 +62,13 @@ def detect_vcs_conflicts(options, vcs):
 	if vcs == 'cvs':
 		logging.info("Performing a " + output.green("cvs -n up") + \
 			" with a little magic grep to check for updates.")
-		retval = commands.getstatusoutput("cvs -n up 2>&1 | " + \
+		retval = subprocess_getstatusoutput("cvs -n up 2>&1 | " + \
 			"egrep '^[^\?] .*' | " + \
 			"egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
 	if vcs == 'svn':
 		logging.info("Performing a " + output.green("svn status -u") + \
 			" with a little magic grep to check for updates.")
-		retval = commands.getstatusoutput("svn status -u 2>&1 | " + \
+		retval = subprocess_getstatusoutput("svn status -u 2>&1 | " + \
 			"egrep -v '^.  +.*/digest-[^/]+' | " + \
 			"head -n-1")
 

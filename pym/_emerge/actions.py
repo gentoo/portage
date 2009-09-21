@@ -2,7 +2,10 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import commands
+try:
+	from subprocess import getstatusoutput as subprocess_getstatusoutput
+except ImportError:
+	from commands import getstatusoutput as subprocess_getstatusoutput
 import errno
 import logging
 import platform
@@ -1240,7 +1243,7 @@ def action_info(settings, trees, myopts, myfiles):
 	else:
 		print("Unknown")
 
-	output=commands.getstatusoutput("distcc --version")
+	output=subprocess_getstatusoutput("distcc --version")
 	if not output[0]:
 		print(str(output[1].split("\n",1)[0]), end=' ')
 		if "distcc" in settings.features:
@@ -1248,7 +1251,7 @@ def action_info(settings, trees, myopts, myfiles):
 		else:
 			print("[disabled]")
 
-	output=commands.getstatusoutput("ccache -V")
+	output=subprocess_getstatusoutput("ccache -V")
 	if not output[0]:
 		print(str(output[1].split("\n",1)[0]), end=' ')
 		if "ccache" in settings.features:
@@ -2709,16 +2712,16 @@ def getgccversion(chost):
 	"!!! other terminals also.\n"
 	)
 
-	mystatus, myoutput = commands.getstatusoutput("gcc-config -c")
+	mystatus, myoutput = subprocess_getstatusoutput("gcc-config -c")
 	if mystatus == os.EX_OK and myoutput.startswith(chost + "-"):
 		return myoutput.replace(chost + "-", gcc_ver_prefix, 1)
 
-	mystatus, myoutput = commands.getstatusoutput(
+	mystatus, myoutput = subprocess_getstatusoutput(
 		chost + "-" + gcc_ver_command)
 	if mystatus == os.EX_OK:
 		return gcc_ver_prefix + myoutput
 
-	mystatus, myoutput = commands.getstatusoutput(gcc_ver_command)
+	mystatus, myoutput = subprocess_getstatusoutput(gcc_ver_command)
 	if mystatus == os.EX_OK:
 		return gcc_ver_prefix + myoutput
 

@@ -663,7 +663,10 @@ class binarytree(object):
 
 			base_url = self.settings["PORTAGE_BINHOST"]
 			from portage.const import CACHE_PATH
-			from urlparse import urlparse
+			try:
+				from urllib.parse import urlparse
+			except ImportError:
+				from urlparse import urlparse
 			urldata = urlparse(base_url)
 			pkgindex_file = os.path.join(self.settings["ROOT"], CACHE_PATH, "binhost",
 				urldata[1] + urldata[2], "Packages")
@@ -681,13 +684,16 @@ class binarytree(object):
 				if e.errno != errno.ENOENT:
 					raise
 			local_timestamp = pkgindex.header.get("TIMESTAMP", None)
-			import urllib, urlparse
+			try:
+				from urllib.request import urlopen as urllib_request_urlopen
+			except ImportError:
+				from urllib import urlopen as urllib_request_urlopen
 			rmt_idx = self._new_pkgindex()
 			try:
 				# urlparse.urljoin() only works correctly with recognized
 				# protocols and requires the base url to have a trailing
 				# slash, so join manually...
-				f = urllib.urlopen(base_url.rstrip("/") + "/Packages")
+				f = urllib_request_urlopen(base_url.rstrip("/") + "/Packages")
 				try:
 					rmt_idx.readHeader(f)
 					remote_timestamp = rmt_idx.header.get("TIMESTAMP", None)
@@ -1085,7 +1091,10 @@ class binarytree(object):
 		
 		mydest = os.path.dirname(self.getname(pkgname))
 		self._ensure_dir(mydest)
-		from urlparse import urlparse
+		try:
+			from urllib.parse import urlparse
+		except ImportError:
+			from urlparse import urlparse
 		# urljoin doesn't work correctly with unrecognized protocols like sftp
 		if self._remote_has_index:
 			rel_url = self._remotepkgs[pkgname].get("PATH")

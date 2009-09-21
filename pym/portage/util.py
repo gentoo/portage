@@ -12,7 +12,10 @@ __all__ = ['apply_permissions', 'apply_recursive_permissions',
 	'stack_dicts', 'stack_lists', 'unique_array', 'varexpand', 'write_atomic',
 	'writedict', 'writemsg', 'writemsg_level', 'writemsg_stdout']
 
-import commands
+try:
+	from subprocess import getstatusoutput as subprocess_getstatusoutput
+except ImportError:
+	from commands import getstatusoutput as subprocess_getstatusoutput
 import codecs
 import errno
 import logging
@@ -21,6 +24,7 @@ import shlex
 import stat
 import string
 import sys
+from io import StringIO
 
 import portage
 from portage import os
@@ -40,11 +44,6 @@ try:
 	import cPickle as pickle
 except ImportError:
 	import pickle
-
-try:
-	from cStringIO import StringIO
-except ImportError:
-	from StringIO import StringIO
 
 noiselimit = 0
 
@@ -1403,7 +1402,7 @@ def find_updated_config_files(target_root, config_protect):
 				mycommand = "find '%s' -maxdepth 1 -name '._cfg????_%s'" % \
 						os.path.split(x.rstrip(os.path.sep))
 			mycommand += " ! -name '.*~' ! -iname '.*.bak' -print0"
-			a = commands.getstatusoutput(mycommand)
+			a = subprocess_getstatusoutput(mycommand)
 
 			if a[0] == 0:
 				files = a[1].split('\0')

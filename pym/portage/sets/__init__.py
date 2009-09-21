@@ -5,8 +5,11 @@
 __all__ = ["SETPREFIX", "get_boolean", "SetConfigError",
 	"SetConfig", "load_default_config"]
 
+try:
+	from configparser import SafeConfigParser, NoOptionError
+except ImportError:
+	from ConfigParser import SafeConfigParser, NoOptionError
 from portage import os
-from ConfigParser import SafeConfigParser, NoOptionError
 from portage import load_mod
 from portage.const import USER_CONFIG_PATH, GLOBAL_CONFIG_PATH
 from portage.exception import PackageSetNotFound
