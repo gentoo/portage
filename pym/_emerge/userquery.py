@@ -38,7 +38,10 @@ def userquery(prompt, responses=None, colours=None):
 	print(bold(prompt), end=' ')
 	try:
 		while True:
-			response=raw_input("["+"/".join([colours[i](responses[i]) for i in range(len(responses))])+"] ")
+			if sys.hexversion >= 0x3000000:
+				response=input("["+"/".join([colours[i](responses[i]) for i in range(len(responses))])+"] ")
+			else:
+				response=raw_input("["+"/".join([colours[i](responses[i]) for i in range(len(responses))])+"] ")
 			for key in responses:
 				# An empty response will match the first value in responses.
 				if response.upper()==key[:len(response)].upper():
