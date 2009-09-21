@@ -52,10 +52,10 @@ class Mapping(object):
 			yield v
 
 	def values(self):
-		return [v for _, v in self.items()]
+		return [v for _, v in self.iteritems()]
 
 	def items(self):
-		return list(self.items())
+		return list(self.iteritems())
 
 	def get(self, key, default=None):
 		try:
@@ -353,14 +353,14 @@ def slot_dict_class(keys, prefix="_val_"):
 						pass
 
 			def items(self):
-				return list(self.items())
+				return list(self.iteritems())
 
 			def itervalues(self):
 				for k, v in self.items():
 					yield v
 
 			def values(self):
-				return list(self.values())
+				return list(self.itervalues())
 
 			def __delitem__(self, k):
 				try:

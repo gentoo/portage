@@ -105,9 +105,14 @@ def normalize_path(mypath):
 	We dislike this behavior so we create our own normpath func
 	to fix it.
 	"""
-	if mypath.startswith(os.path.sep):
+	if sys.hexversion >= 0x3000000 and isinstance(mypath, bytes):
+		path_sep = os.path.sep.encode()
+	else:
+		path_sep = os.path.sep
+
+	if mypath.startswith(path_sep):
 		# posixpath.normpath collapses 3 or more leading slashes to just 1.
-		return os.path.normpath(2*os.path.sep + mypath)
+		return os.path.normpath(2*path_sep + mypath)
 	else:
 		return os.path.normpath(mypath)
 
