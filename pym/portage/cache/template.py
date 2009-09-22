@@ -120,7 +120,7 @@ class database(object):
 			yield (x, self[x])
 
 	def items(self):
-		return list(self.items())
+		return list(self.iteritems())
 
 	def sync(self, rate=0):
 		self.sync_rate = rate
