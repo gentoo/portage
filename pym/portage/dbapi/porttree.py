@@ -30,8 +30,10 @@ from portage import eclass_cache, auxdbkeys, doebuild, flatten, \
 	_eapi_is_deprecated
 from portage import os
 from portage import _encodings
+from portage import _unicode_decode
 from portage import _unicode_encode
 
+import os as _os
 import codecs
 import logging
 import stat
@@ -448,11 +450,16 @@ class portdbapi(dbapi):
 		the file we wanted.
 		"""
 		if not mycpv:
-			return "",0
+			return ("", 0)
 		mysplit = mycpv.split("/")
 		psplit = pkgsplit(mysplit[1])
 		if psplit is None or len(mysplit) != 2:
 			raise InvalidPackageName(mycpv)
+
+		# For optimal performace in this hot spot, we do manual unicode
+		# handling here instead of using the wrapped os module.
+		encoding = _encodings['fs']
+		errors = 'strict'
 
 		if mytree:
 			mytrees = [mytree]
@@ -460,30 +467,37 @@ class portdbapi(dbapi):
 			mytrees = self.porttrees[:]
 			mytrees.reverse()
 
-		relative_path = os.path.join(mysplit[0], psplit[0],
-			mysplit[1] + ".ebuild")
+		relative_path = mysplit[0] + _os.sep + psplit[0] + _os.sep + \
+			mysplit[1] + ".ebuild"
 
 		if 'parse-eapi-glep-55' in self.doebuild_settings.features:
 			glep55_startswith = '%s.ebuild-' % mysplit[1]
 			for x in mytrees:
-				filename = x + os.sep + relative_path
-				if os.access(filename, os.R_OK):
+				filename = x + _os.sep + relative_path
+				if _os.access(_unicode_encode(filename,
+					encoding=encoding, errors=errors), _os.R_OK):
 					return (filename, x)
 
-				pkgdir = os.path.join(x, mysplit[0], psplit[0])
+				pkgdir = _os.path.join(x, mysplit[0], psplit[0])
 				try:
-					files = os.listdir(pkgdir)
+					files = _os.listdir(_unicode_encode(pkgdir,
+						encoding=encoding, errors=errors))
 				except OSError:
 					continue
 				for y in files:
+					try:
+						y = _unicode_decode(y, encoding=encoding, errors=errors)
+					except UnicodeDecodeError:
+						continue
 					if y.startswith(glep55_startswith):
-						return (os.path.join(pkgdir, y), x)
+						return (_os.path.join(pkgdir, y), x)
 		else:
 			for x in mytrees:
-				file = x + os.sep + relative_path
-				if os.access(file, os.R_OK):
-					return[file, x]
-		return None, 0
+				filename = x + _os.sep + relative_path
+				if _os.access(_unicode_encode(filename,
+					encoding=encoding, errors=errors), _os.R_OK):
+					return (filename, x)
+		return (None, 0)
 
 	def _metadata_process(self, cpv, ebuild_path, repo_path):
 		"""
