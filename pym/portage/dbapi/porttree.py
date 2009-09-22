@@ -506,7 +506,7 @@ class portdbapi(dbapi):
 	def _metadata_callback(self, cpv, ebuild_path, repo_path, metadata, mtime):
 
 		i = metadata
-		if hasattr(metadata, "iteritems"):
+		if hasattr(metadata, "items"):
 			i = iter(metadata.items())
 		metadata = dict(i)
 
