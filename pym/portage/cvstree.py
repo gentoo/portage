@@ -235,9 +235,6 @@ def getentries(mydir,recursive=0):
 				entries["dirs"][mysplit[1]]["flags"]=mysplit[2:]
 				if recursive:
 					rentries=getentries(mydir+"/"+mysplit[1],recursive)
-					#print rentries.keys()
-					#print entries["files"].keys()
-					#print entries["files"][mysplit[1]]
 					entries["dirs"][mysplit[1]]["dirs"]=rentries["dirs"]
 					entries["dirs"][mysplit[1]]["files"]=rentries["files"]
 		else:
@@ -315,18 +312,3 @@ def getentries(mydir,recursive=0):
 			print("File of unknown type:",mydir+"/"+file)
 			print()
 	return entries
-
-#class cvstree:
-#	def __init__(self,basedir):
-#		self.refdir=os.cwd()
-#		self.basedir=basedir
-#		self.entries={}
-#		self.entries["dirs"]={}
-#		self.entries["files"]={}
-#		self.entries["dirs"][self.basedir]=getentries(self.basedir)
-#		self.getrealdirs(self.dirs, self.files)
-#	def getrealdirs(self,dirs,files):
-#		for mydir in dirs.keys():
-#			list = os.listdir(
-			
-		
