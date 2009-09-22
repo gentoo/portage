@@ -346,9 +346,10 @@ def slot_dict_class(keys, prefix="_val_"):
 				return list(self)
 
 			def iteritems(self):
+				prefix = self._prefix
 				for k in self.allowed_keys:
 					try:
-						yield (k, getattr(self, self._prefix + k))
+						yield (k, getattr(self, prefix + k))
 					except AttributeError:
 						pass
 
