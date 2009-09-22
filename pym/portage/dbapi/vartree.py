@@ -1515,7 +1515,7 @@ class vardbapi(dbapi):
 			base_names = self._vardb._aux_cache["owners"]["base_names"]
 
 			# Take inventory of all cached package hashes.
-			for name, hash_values in base_names.items():
+			for name, hash_values in list(base_names.items()):
 				if not isinstance(hash_values, dict):
 					del base_names[name]
 					continue
