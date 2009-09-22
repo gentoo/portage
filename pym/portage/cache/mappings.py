@@ -333,12 +333,12 @@ def slot_dict_class(keys, prefix="_val_"):
 					self.update(kwargs)
 
 			def __iter__(self):
-				for k, v in self.items():
+				for k, v in self.iteritems():
 					yield k
 
 			def __len__(self):
 				l = 0
-				for i in self.items():
+				for i in self.iteritems():
 					l += 1
 				return l
 
@@ -356,7 +356,7 @@ def slot_dict_class(keys, prefix="_val_"):
 				return list(self.iteritems())
 
 			def itervalues(self):
-				for k, v in self.items():
+				for k, v in self.iteritems():
 					yield v
 
 			def values(self):
@@ -442,7 +442,7 @@ def slot_dict_class(keys, prefix="_val_"):
 
 			def popitem(self):
 				try:
-					k, v = next(iter(self.items()))
+					k, v = self.iteritems().next()
 				except StopIteration:
 					raise KeyError('container is empty')
 				del self[k]
@@ -461,7 +461,7 @@ def slot_dict_class(keys, prefix="_val_"):
 						pass
 
 			def __str__(self):
-				return str(dict(self.items()))
+				return str(dict(self.iteritems()))
 
 			if sys.hexversion >= 0x3000000:
 				items = iteritems
