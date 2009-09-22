@@ -783,7 +783,7 @@ class binarytree(object):
 				self.settings["PORTAGE_BINHOST"], chunk_size=chunk_size)
 			#writemsg(green("  -- DONE!\n\n"))
 
-			for mypkg in self.remotepkgs.keys():
+			for mypkg in list(self.remotepkgs):
 				if "CATEGORY" not in self.remotepkgs[mypkg]:
 					#old-style or corrupt package
 					writemsg(_("!!! Invalid remote binary package: %s\n") % mypkg,

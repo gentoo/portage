@@ -153,7 +153,7 @@ class PreservedLibsRegistry(object):
 
 		os = _os_merge
 
-		for cps in self._data.keys():
+		for cps in list(self._data):
 			cpv, counter, paths = self._data[cps]
 			paths = [f for f in paths \
 				if os.path.exists(os.path.join(self._root, f.lstrip(os.sep)))]
@@ -1020,7 +1020,7 @@ class vardbapi(dbapi):
 				self.invalidentry(self.getpath(y))
 				continue
 			d[mysplit[0]+"/"+mysplit[1]] = None
-		return list(d.keys())
+		return list(d)
 
 	def checkblockers(self, origdep):
 		pass
@@ -1093,7 +1093,7 @@ class vardbapi(dbapi):
 			secpass >= 2:
 			self._owners.populate() # index any unindexed contents
 			valid_nodes = set(self.cpv_all())
-			for cpv in self._aux_cache["packages"].keys():
+			for cpv in list(self._aux_cache["packages"]):
 				if cpv not in valid_nodes:
 					del self._aux_cache["packages"][cpv]
 			del self._aux_cache["modified"]
@@ -2360,7 +2360,7 @@ class dblink(object):
 
 		if pkgfiles:
 			self.updateprotect()
-			mykeys = list(pkgfiles.keys())
+			mykeys = list(pkgfiles)
 			mykeys.sort()
 			mykeys.reverse()
 
@@ -4429,7 +4429,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 	curval = 0
 	if onProgress:
 		onProgress(maxval, 0)
-	paths = list(contents.keys())
+	paths = list(contents)
 	paths.sort()
 	for path in paths:
 		curval += 1
