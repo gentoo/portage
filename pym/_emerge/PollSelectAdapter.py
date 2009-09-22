@@ -48,7 +48,7 @@ class PollSelectAdapter(PollConstants):
 
 		select_args = self._select_args
 		if select_args is None:
-			select_args = [list(self._registered.keys()), [], []]
+			select_args = [list(self._registered), [], []]
 
 		if timeout is not None:
 			select_args = select_args[:]
