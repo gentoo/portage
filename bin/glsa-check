@@ -172,12 +172,12 @@ def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr):
 
 		fd1.write(color(myglsa.nr) + " " + color(status) + " " + color(access) + myglsa.title + " (")
 		if not verbose:
-			for pkg in list(myglsa.packages.keys())[:3]:
+			for pkg in list(myglsa.packages)[:3]:
 				fd1.write(" " + pkg + " ")
 			if len(myglsa.packages) > 3:
 				fd1.write("... ")
 		else:
-			for pkg in myglsa.packages.keys():
+			for pkg in myglsa.packages:
 				mylist = vardb.match(portage.dep_getkey(str(pkg)))
 				if len(mylist) > 0:
 					pkg = color(" ".join(mylist))

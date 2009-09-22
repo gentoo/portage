@@ -475,7 +475,7 @@ def emaint_main(myargv):
 		"cleanresume":CleanResume
 	}
 
-	module_names = list(modules.keys())
+	module_names = list(modules)
 	module_names.sort()
 	module_names.insert(0, "all")
 
