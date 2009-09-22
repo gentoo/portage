@@ -222,12 +222,11 @@ def stack_dicts(dicts, incremental=0, incrementals=[], ignore_none=0):
 			continue
 		if final_dict is None:
 			final_dict = {}
-		for y in mydict:
-			if True:
-				if y in final_dict and (incremental or (y in incrementals)):
-					final_dict[y] += " "+mydict[y][:]
-				else:
-					final_dict[y]  = mydict[y][:]
+		for k, v in mydict.items():
+			if k in final_dict and (incremental or (k in incrementals)):
+				final_dict[k] += " " + v
+			else:
+				final_dict[k]  = v
 	return final_dict
 
 def stack_lists(lists, incremental=1):
