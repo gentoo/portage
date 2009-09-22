@@ -218,11 +218,8 @@ def stack_dicts(dicts, incremental=0, incrementals=[], ignore_none=0):
 	Returns a single dict."""
 	final_dict = None
 	for mydict in dicts:
-		if mydict is None:
-			if ignore_none:
-				continue
-			else:
-				return None
+		if not mydict:
+			continue
 		if final_dict is None:
 			final_dict = {}
 		for y in mydict:
