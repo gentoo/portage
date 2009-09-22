@@ -225,13 +225,12 @@ def stack_dicts(dicts, incremental=0, incrementals=[], ignore_none=0):
 				return None
 		if final_dict is None:
 			final_dict = {}
-		for y in list(mydict.keys()):
+		for y in mydict:
 			if True:
 				if y in final_dict and (incremental or (y in incrementals)):
 					final_dict[y] += " "+mydict[y][:]
 				else:
 					final_dict[y]  = mydict[y][:]
-			mydict[y] = " ".join(mydict[y].split()) # Remove extra spaces.
 	return final_dict
 
 def stack_lists(lists, incremental=1):
@@ -252,7 +251,7 @@ def stack_lists(lists, incremental=1):
 					new_list[y] = True
 			else:
 				new_list[y] = True
-	return list(new_list.keys())
+	return list(new_list)
 
 def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 	"""

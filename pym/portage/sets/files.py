@@ -84,7 +84,7 @@ class StaticFileSet(EditablePackageSet):
 				data = {}
 			if self.greedy:
 				atoms = []
-				for a in data.keys():
+				for a in data:
 					matches = self.dbapi.match(a)
 					for cpv in matches:
 						atoms.append("%s:%s" % (cpv_getkey(cpv),
@@ -93,7 +93,7 @@ class StaticFileSet(EditablePackageSet):
 					# in the latest new slot that may be available.
 					atoms.append(a)
 			else:
-				atoms = list(data.keys())
+				atoms = iter(data)
 			self._setAtoms(atoms)
 			self._mtime = mtime
 		
@@ -183,7 +183,7 @@ class ConfigFileSet(PackageSet):
 
 	def load(self):
 		data, errors = self.loader.load()
-		self._setAtoms(list(data.keys()))
+		self._setAtoms(iter(data))
 	
 	def singleBuilder(self, options, settings, trees):
 		if not "filename" in options:
@@ -254,7 +254,7 @@ class WorldSet(EditablePackageSet):
 					raise
 				del e
 				data = {}
-			atoms = list(data.keys())
+			atoms = list(data)
 			self._mtime = mtime
 			atoms_changed = True
 		else:
@@ -274,7 +274,7 @@ class WorldSet(EditablePackageSet):
 					raise
 				del e
 				data = {}
-			nonatoms = list(data.keys())
+			nonatoms = list(data)
 			self._mtime2 = mtime
 			atoms_changed = True
 		else:

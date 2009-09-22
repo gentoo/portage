@@ -581,7 +581,7 @@ class Glsa:
 		outstream.write(_("Announced on:      %s\n") % self.announced)
 		outstream.write(_("Last revised on:   %s : %02d\n\n") % (self.revised, self.count))
 		if self.glsatype == "ebuild":
-			for k in self.packages.keys():
+			for k in self.packages:
 				pkg = self.packages[k]
 				for path in pkg:
 					vul_vers = "".join(path["vul_vers"])
@@ -626,7 +626,7 @@ class Glsa:
 		@returns:	True if the system is affected, False if not
 		"""
 		rValue = False
-		for k in self.packages.keys():
+		for k in self.packages:
 			pkg = self.packages[k]
 			for path in pkg:
 				if path["arch"] == "*" or self.config["ARCH"] in path["arch"].split():
@@ -679,7 +679,7 @@ class Glsa:
 		@return:	list of package-versions that have to be merged
 		"""
 		rValue = []
-		for pkg in self.packages.keys():
+		for pkg in self.packages:
 			for path in self.packages[pkg]:
 				update = getMinUpgrade(path["vul_atoms"], path["unaff_atoms"], \
 					self.portdbapi, self.vardbapi, minimize=least_change)
