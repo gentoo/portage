@@ -45,7 +45,15 @@ class ObjectProxy(object):
 		return iter(object.__getattribute__(self, '_get_target')())
 
 	def __len__(self):
-		return len(object.__getattribute__(self, '_get_target')())
+		try:
+			return len(object.__getattribute__(self, '_get_target')())
+		except TypeError:
+			# For python 3.x with boolean target, len() results in
+			# TypeError, so return 0 or 1.
+			if bool(object.__getattribute__(self, '_get_target')()):
+				return 1
+			else:
+				return 0
 
 	def __repr__(self):
 		return repr(object.__getattribute__(self, '_get_target')())
