@@ -1887,7 +1887,7 @@ class config(object):
 					else:
 						self.make_defaults_use.append("")
 				self.mygcfg = stack_dicts(mygcfg_dlists,
-					incrementals=portage.const.INCREMENTALS, ignore_none=1)
+					incrementals=portage.const.INCREMENTALS)
 				if self.mygcfg is None:
 					self.mygcfg = {}
 			self.configlist.append(self.mygcfg)
