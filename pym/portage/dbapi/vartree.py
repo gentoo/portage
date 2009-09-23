@@ -892,12 +892,12 @@ class vardbapi(dbapi):
 		if not origmatches:
 			return moves
 		for mycpv in origmatches:
-			mycpsplit = catpkgsplit(mycpv)
-			mynewcpv = newcp + "-" + mycpsplit[2]
-			mynewcat = newcp.split("/")[0]
-			if mycpsplit[3] != "r0":
-				mynewcpv += "-" + mycpsplit[3]
-			mycpsplit_new = catpkgsplit(mynewcpv)
+			mycpv_cp = cpv_getkey(mycpv)
+			if mycpv_cp != origcp:
+				# Ignore PROVIDE virtual match.
+				continue
+			mynewcpv = mycpv.replace(mycpv_cp, str(newcp), 1)
+			mynewcat = catsplit(newcp)[0]
 			origpath = self.getpath(mycpv)
 			if not os.path.exists(origpath):
 				continue

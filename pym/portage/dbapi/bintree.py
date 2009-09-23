@@ -2,6 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from __future__ import print_function
+
 __all__ = ["bindbapi", "binarytree"]
 
 import portage
@@ -238,20 +240,19 @@ class binarytree(object):
 		for atom in (origcp, newcp):
 			if not isjustname(atom):
 				raise InvalidPackageName(str(atom))
-		origcat = origcp.split("/")[0]
-		mynewcat = newcp.split("/")[0]
+		mynewcat = catsplit(newcp)[0]
 		origmatches=self.dbapi.cp_list(origcp)
 		moves = 0
 		if not origmatches:
 			return moves
 		for mycpv in origmatches:
-
-			mycpsplit = catpkgsplit(mycpv)
-			mynewcpv = newcp + "-" + mycpsplit[2]
-			if mycpsplit[3] != "r0":
-				mynewcpv += "-" + mycpsplit[3]
-			myoldpkg = mycpv.split("/")[1]
-			mynewpkg = mynewcpv.split("/")[1]
+			mycpv_cp = portage.cpv_getkey(mycpv)
+			if mycpv_cp != origcp:
+				# Ignore PROVIDE virtual match.
+				continue
+			mynewcpv = mycpv.replace(mycpv_cp, str(newcp), 1)
+			myoldpkg = catsplit(mycpv)[1]
+			mynewpkg = catsplit(mynewcpv)[1]
 
 			if (mynewpkg != myoldpkg) and os.path.exists(self.getname(mynewcpv)):
 				writemsg(_("!!! Cannot update binary: Destination exists.\n"),
