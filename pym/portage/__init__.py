@@ -8403,7 +8403,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 auxdbkeys=[
   'DEPEND',    'RDEPEND',   'SLOT',      'SRC_URI',
 	'RESTRICT',  'HOMEPAGE',  'LICENSE',   'DESCRIPTION',
-	'KEYWORDS',  'INHERITED', 'IUSE',      'CDEPEND',
+	'KEYWORDS',  'INHERITED', 'IUSE', 'UNUSED_00',
 	'PDEPEND',   'PROVIDE', 'EAPI',
 	'PROPERTIES', 'DEFINED_PHASES', 'UNUSED_05', 'UNUSED_04',
 	'UNUSED_03', 'UNUSED_02', 'UNUSED_01',
