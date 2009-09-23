@@ -50,6 +50,7 @@ from portage.cache.mappings import slot_dict_class
 import codecs
 import re, shutil, stat, errno, copy, subprocess
 import logging
+import os as _os
 import sys
 import warnings
 
@@ -839,9 +840,13 @@ class vardbapi(dbapi):
 		self._owners = self._owners_db(self)
 
 	def getpath(self, mykey, filename=None):
-		rValue = os.path.join(self.root, VDB_PATH, mykey)
-		if filename != None:
-			rValue = os.path.join(rValue, filename)
+		# This is an optimized hotspot, so don't use unicode-wrapped
+		# os module and don't use os.path.join().
+		rValue = self.root + _os.sep + VDB_PATH + _os.sep + mykey
+		if filename is not None:
+			# If filename is always relative, we can do just
+			# rValue += _os.sep + filename
+			rValue = _os.path.join(rValue, filename)
 		return rValue
 
 	def cpv_exists(self, mykey):
