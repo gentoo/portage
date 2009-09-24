@@ -8078,6 +8078,10 @@ def cpv_getkey(mycpv):
 	m = _cpv_key_re.match(mycpv)
 	if m is not None:
 		return m.group(2)
+
+	warnings.warn("portage.cpv_getkey() called with invalid cpv: '%s'",
+		DeprecationWarning)
+
 	myslash = mycpv.split("/", 1)
 	mysplit=pkgsplit(myslash[-1])
 	if mysplit is None:
