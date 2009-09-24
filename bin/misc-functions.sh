@@ -504,9 +504,13 @@ install_qa_check() {
 			fi
 			# all else is an error if the found script is in $PATH
 			local fp=${fn#${D}} ; fp=${fp%/*}
-			[[ ":${PATH}:" == *":${fp}:"* || hasq stricter ${FEATURES} ]] \
-				&& echo "${fn#${D}}:${line[0]}" >> "${T}"/non-prefix-shebangs-errs \
-				|| eqawarn "invalid shebang in ${fn#${D}}: ${line[0]}"
+			if [[ ":${PATH}:" == *":${fp}:"* ]] || hasq stricter ${FEATURES} ;
+			then
+				echo "${fn#${D}}:${line[0]}" \
+					>> "${T}"/non-prefix-shebangs-errs
+			else
+				eqawarn "invalid shebang in ${fn#${D}}: ${line[0]}"
+			fi
 		done
 		if [[ -e "${T}"/non-prefix-shebangs-errs ]] ; then
 			eqawarn "QA Notice: the following files use invalid (possible non-prefixed) shebangs:"
