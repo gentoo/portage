@@ -3,6 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import codecs
 import os, re, sys
 
 here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
@@ -112,6 +113,13 @@ if __name__ == "__main__":
 		parser.error("Missing required PATTERN argument.")
 	file_in = sys.stdin
 	file_out = sys.stdout
+	if sys.hexversion >= 0x3000000:
+		file_in = codecs.iterdecode(sys.stdin.buffer.raw,
+			'utf_8', errors='replace')
+		import io
+		file_out = io.TextIOWrapper(sys.stdout.buffer,
+			'utf_8', errors='backslashreplace')
+
 	var_pattern = args[0].split()
 
 	# Filter invalid variable names that are not supported by bash.
