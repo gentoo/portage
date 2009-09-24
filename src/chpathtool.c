@@ -1,4 +1,4 @@
-/* Copyright Gentoo Foundation 2006-2007
+/* Copyright Gentoo Foundation 2006-2009
  * Author: Fabian Groffen <grobian@gentoo.org>
  * $Id$
  *
@@ -132,6 +132,11 @@ static int chpath(const char *fi, const char *fo) {
 		len += pos;
 		if ((tmp = memstr(buf, magic, len)) != NULL) {
 			if (tmp == buf) {
+				if (len < magiclen) {
+					/* must be last piece */
+					padding = padonwrite(padding, buf, len, fout);
+					break;
+				}
 				/* do some magic, overwrite it basically */
 				fwrite(value, valuelen, 1, fout);
 				/* store what we need to correct */
