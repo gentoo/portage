@@ -3743,8 +3743,7 @@ def _test_pty_eof():
 	"""
 	Returns True if this issues is fixed for the currently
 	running version of python: http://bugs.python.org/issue5380
-	Returns None if openpty fails, and False if the above issue
-	is not fixed.
+	Raises an EnvironmentError from openpty() if it fails.
 	"""
 
 	import array, pty, termios
@@ -3752,12 +3751,8 @@ def _test_pty_eof():
 	test_string = _unicode_decode(test_string,
 		encoding='utf_8', errors='strict')
 
-	try:
-		master_fd, slave_fd = pty.openpty()
-	except EnvironmentError:
-		global _disable_openpty
-		_disable_openpty = True
-		return None
+	# may raise EnvironmentError
+	master_fd, slave_fd = pty.openpty()
 
 	master_file = os.fdopen(master_fd, 'rb')
 	slave_file = os.fdopen(slave_fd, 'wb')
@@ -3820,9 +3815,15 @@ def _create_pty_or_pipe(copy_term_size=None):
 	got_pty = False
 
 	global _disable_openpty, _tested_pty
-	if not _tested_pty:
-		if not _test_pty_eof():
+	if not (_tested_pty or _disable_openpty):
+		try:
+			if not _test_pty_eof():
+				_disable_openpty = True
+		except EnvironmentError as e:
 			_disable_openpty = True
+			writemsg("openpty failed: '%s'\n" % str(e),
+				noiselevel=-1)
+			del e
 		_tested_pty = True
 
 	if _disable_openpty:

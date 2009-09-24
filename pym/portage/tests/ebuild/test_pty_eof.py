@@ -15,8 +15,8 @@ class PtyEofTestCase(TestCase):
 		#   http://bugs.python.org/issue5380
 		# Since it might not be fixed, mark as todo.
 		self.todo = True
-		result = portage._test_pty_eof()
-		# The result is only valid if openpty works (result is
-		# True or False, not None).
-		if result is not None:
-			self.assertEqual(result, True)
+		# The result is only valid if openpty does not raise EnvironmentError.
+		try:
+			self.assertEqual(portage._test_pty_eof(), True)
+		except EnvironmentError:
+			pass
