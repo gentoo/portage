@@ -3739,13 +3739,65 @@ class config(object):
 		keys = __iter__
 		items = iteritems
 
+def _test_pty_eof():
+	"""
+	Returns True if this issues is fixed for the currently
+	running version of python: http://bugs.python.org/issue5380
+	"""
+
+	import array, pty, termios
+	test_string = 2 * "blah blah blah\n"
+	test_string = _unicode_decode(test_string,
+		encoding='utf_8', errors='strict')
+
+	try:
+		master_fd, slave_fd = pty.openpty()
+	except EnvironmentError:
+		return False
+
+	master_file = os.fdopen(master_fd, 'rb')
+	slave_file = os.fdopen(slave_fd, 'wb')
+
+	# Disable post-processing of output since otherwise weird
+	# things like \n -> \r\n transformations may occur.
+	mode = termios.tcgetattr(slave_fd)
+	mode[1] &= ~termios.OPOST
+	termios.tcsetattr(slave_fd, termios.TCSANOW, mode)
+
+	# Simulate a subprocess writing some data to the
+	# slave end of the pipe, and then exiting.
+	slave_file.write(_unicode_encode(test_string,
+		encoding='utf_8', errors='strict'))
+	slave_file.close()
+
+	eof = False
+	data = []
+
+	while not eof:
+
+		buf = array.array('B')
+		try:
+			buf.fromfile(master_file, 1024)
+		except EOFError:
+			eof = True
+		except IOError:
+			# This is where data loss occurs.
+			eof = True
+
+		if not buf:
+			eof = True
+		else:
+			data.append(_unicode_decode(buf.tostring(),
+				encoding='utf_8', errors='strict'))
+
+	master_file.close()
+
+	return test_string == ''.join(data)
+
 # In some cases, openpty can be slow when it fails. Therefore,
 # stop trying to use it after the first failure.
 _disable_openpty = False
-
-if sys.hexversion >= 0x3000000:
-	# This is a temporary workaround for http://bugs.python.org/issue5380.
-	_disable_openpty = True
+_tested_pty = False
 
 def _create_pty_or_pipe(copy_term_size=None):
 	"""
@@ -3763,7 +3815,12 @@ def _create_pty_or_pipe(copy_term_size=None):
 
 	got_pty = False
 
-	global _disable_openpty
+	global _disable_openpty, _tested_pty
+	if not _tested_pty:
+		if not _test_pty_eof():
+			_disable_openpty = True
+		_tested_pty = True
+
 	if _disable_openpty:
 		master_fd, slave_fd = os.pipe()
 	else:
