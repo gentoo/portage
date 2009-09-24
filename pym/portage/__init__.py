@@ -183,8 +183,7 @@ class _unicode_func_wrapper(object):
 			for x in args]
 		if kwargs:
 			wrapped_kwargs = dict(
-				(_unicode_encode(k, encoding=encoding, errors='strict'),
-				_unicode_encode(v, encoding=encoding, errors='strict'))
+				(k, _unicode_encode(v, encoding=encoding, errors='strict'))
 				for k, v in kwargs.items())
 		else:
 			wrapped_kwargs = {}
@@ -3763,6 +3762,10 @@ if platform.system() in ["SunOS"]:
 else:
 	_disable_openpty = False
 
+if sys.hexversion >= 0x3000000:
+	# This is a temporary workaround for http://bugs.python.org/issue5380.
+	_disable_openpty = True
+
 def _create_pty_or_pipe(copy_term_size=None):
 	"""
 	Try to create a pty and if then fails then create a normal
@@ -6307,7 +6310,7 @@ def _prepare_workdir(mysettings):
 			writemsg("%s\n" % e)
 		writemsg(_("!!! Unable to parse PORTAGE_WORKDIR_MODE='%s', using %s.\n") % \
 		(mysettings["PORTAGE_WORKDIR_MODE"], oct(workdir_mode)))
-	mysettings["PORTAGE_WORKDIR_MODE"] = oct(workdir_mode)
+	mysettings["PORTAGE_WORKDIR_MODE"] = oct(workdir_mode).replace('o', '')
 	try:
 		apply_secpass_permissions(mysettings["WORKDIR"],
 		uid=portage_uid, gid=portage_gid, mode=workdir_mode)

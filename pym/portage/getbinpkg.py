@@ -822,7 +822,8 @@ class PackageIndex(object):
 		keys.sort()
 		self._writepkgindex(pkgfile, [(k, self.header[k]) \
 			for k in keys if self.header[k]])
-		for metadata in sorted(self.packages, _cmp_cpv):
+		for metadata in sorted(self.packages,
+			key=portage.util.cmp_sort_key(_cmp_cpv)):
 			metadata = metadata.copy()
 			cpv = metadata["CPV"]
 			if self._inherited_keys:

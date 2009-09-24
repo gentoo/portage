@@ -19,6 +19,7 @@
 import array
 import errno
 import shutil
+import sys
 
 from portage import os
 from portage import normalize_path
@@ -65,11 +66,13 @@ def encodeint(myint):
 def decodeint(mystring):
 	"""Takes a 4 byte string and converts it into a 4 byte integer.
 	Returns an integer."""
-	myint=0
-	myint=myint+ord(mystring[3])
-	myint=myint+(ord(mystring[2]) << 8)
-	myint=myint+(ord(mystring[1]) << 16)
-	myint=myint+(ord(mystring[0]) << 24)
+	if sys.hexversion < 0x3000000:
+		mystring = [ord(x) for x in mystring]
+	myint = 0
+	myint += mystring[3]
+	myint += mystring[2] << 8
+	myint += mystring[1] << 16
+	myint += mystring[0] << 24
 	return myint
 
 def xpak(rootdir,outfile=None):
@@ -206,6 +209,8 @@ def getindex_mem(myindex):
 def searchindex(myindex,myitem):
 	"""(index,item) -- Finds the offset and length of the file 'item' in the
 	datasegment via the index 'index' provided."""
+	myitem = _unicode_encode(myitem,
+		encoding=_encodings['repo.content'], errors='backslashreplace')
 	mylen=len(myitem)
 	myindexlen=len(myindex)
 	startpos=0
@@ -413,6 +418,8 @@ class tbz2(object):
 			datapos=decodeint(self.index[startpos+4+namelen:startpos+8+namelen]);
 			datalen=decodeint(self.index[startpos+8+namelen:startpos+12+namelen]);
 			myname=self.index[startpos+4:startpos+4+namelen]
+			myname = _unicode_decode(myname,
+				encoding=_encodings['repo.content'], errors='replace')
 			dirname=os.path.dirname(myname)
 			if dirname:
 				if not os.path.exists(dirname):
