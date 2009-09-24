@@ -379,9 +379,6 @@ class portdbapi(dbapi):
 			"PDEPEND", "PROPERTIES", "PROVIDE", "RDEPEND", "repository",
 			"RESTRICT", "SLOT"])
 
-		# Repoman modifies _aux_cache_keys, so delay _aux_cache_slot_dict
-		# initialization until the first aux_get call.
-		self._aux_cache_slot_dict = None
 		self._aux_cache = {}
 		self._broken_ebuilds = set()
 
@@ -546,9 +543,10 @@ class portdbapi(dbapi):
 		return metadata
 
 	def _pull_valid_cache(self, cpv, ebuild_path, repo_path):
-
 		try:
-			st = os.stat(ebuild_path)
+			# Don't use unicode-wrapped os module, for better performance.
+			st = _os.stat(_unicode_encode(ebuild_path,
+				encoding=_encodings['fs'], errors='strict'))
 			emtime = st[stat.ST_MTIME]
 		except OSError:
 			writemsg(_("!!! aux_get(): ebuild for " \
@@ -668,8 +666,7 @@ class portdbapi(dbapi):
 				mydata["_eclasses_"] = {}
 
 		# do we have a origin repository name for the current package
-		mydata["repository"] = self._repository_map.get(
-			os.path.sep.join(myebuild.split(os.path.sep)[:-3]), "")
+		mydata["repository"] = self._repository_map.get(mylocation, "")
 
 		mydata["INHERITED"] = ' '.join(mydata.get("_eclasses_", []))
 		mydata["_mtime_"] = long(st.st_mtime)
@@ -687,10 +684,7 @@ class portdbapi(dbapi):
 		returnme = [mydata.get(x, "") for x in mylist]
 
 		if cache_me:
-			if self._aux_cache_slot_dict is None:
-				self._aux_cache_slot_dict = \
-					slot_dict_class(self._aux_cache_keys)
-			aux_cache = self._aux_cache_slot_dict()
+			aux_cache = {}
 			for x in self._aux_cache_keys:
 				aux_cache[x] = mydata.get(x, "")
 			self._aux_cache[mycpv] = aux_cache

@@ -52,7 +52,7 @@ class database(flat_hash.database):
 				d.clear()
 				try:
 					for i, key in enumerate(self.auxdbkey_order):
-						d[key] = data[i].rstrip("\n")
+						d[key] = data[i]
 				except IndexError:
 					pass
 				break
