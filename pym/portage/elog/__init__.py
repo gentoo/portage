@@ -100,7 +100,7 @@ def elog_process(cpv, mysettings, phasefilter=None):
 	else:
 		all_logentries[cpv] = ebuild_logentries
 
-	for key in list(_preserve_logentries.keys()):
+	for key in list(_preserve_logentries):
 		if key in all_logentries:
 			all_logentries[key] = _merge_logentries(_preserve_logentries[key], all_logentries[key])
 		else:

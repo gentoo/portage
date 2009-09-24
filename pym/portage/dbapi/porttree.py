@@ -876,7 +876,7 @@ class portdbapi(dbapi):
 						y == "CVS":
 						continue
 					d[x+"/"+y] = None
-		l = list(d.keys())
+		l = list(d)
 		l.sort()
 		return l
 
@@ -933,7 +933,7 @@ class portdbapi(dbapi):
 				(mycp, self.mysettings["PORTAGE_CONFIGROOT"]), noiselevel=-1)
 			mylist = []
 		else:
-			mylist = list(d.keys())
+			mylist = list(d)
 		# Always sort in ascending order here since it's handy
 		# and the result can be easily cached and reused.
 		self._cpv_sort_ascending(mylist)

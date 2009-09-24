@@ -132,7 +132,7 @@ class VariableSet(EverythingSet):
 			raise SetConfigError(_("no includes or excludes given"))
 		
 		metadatadb = options.get("metadata-source", "vartree")
-		if not metadatadb in trees.keys():
+		if not metadatadb in trees:
 			raise SetConfigError(_("invalid value '%s' for option metadata-source") % metadatadb)
 
 		return cls(trees["vartree"].dbapi,

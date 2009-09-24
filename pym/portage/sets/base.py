@@ -126,7 +126,7 @@ class PackageSet(object):
 				rev_transform[atom] = atom
 			else:
 				rev_transform[Atom(atom.replace(atom.cp, pkg.cp, 1))] = atom
-		best_match = best_match_to_list(pkg, iter(rev_transform.keys()))
+		best_match = best_match_to_list(pkg, iter(rev_transform))
 		if best_match:
 			return rev_transform[best_match]
 		return None

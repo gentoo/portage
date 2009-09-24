@@ -1894,7 +1894,7 @@ class config(object):
 					else:
 						self.make_defaults_use.append("")
 				self.mygcfg = stack_dicts(mygcfg_dlists,
-					incrementals=portage.const.INCREMENTALS, ignore_none=1)
+					incrementals=portage.const.INCREMENTALS)
 				if self.mygcfg is None:
 					self.mygcfg = {}
 			self.configlist.append(self.mygcfg)
@@ -2635,7 +2635,7 @@ class config(object):
 		for i, pkgprofileuse_dict in enumerate(self.pkgprofileuse):
 			cpdict = pkgprofileuse_dict.get(cp)
 			if cpdict:
-				keys = list(cpdict.keys())
+				keys = list(cpdict)
 				while keys:
 					bestmatch = best_match_to_list(cpv_slot, keys)
 					if bestmatch:
@@ -2665,7 +2665,7 @@ class config(object):
 		self.puse = ""
 		cpdict = self.pusedict.get(cp)
 		if cpdict:
-			keys = list(cpdict.keys())
+			keys = list(cpdict)
 			while keys:
 				self.pusekey = best_match_to_list(cpv_slot, keys)
 				if self.pusekey:
@@ -2818,7 +2818,7 @@ class config(object):
 		for i, pusemask_dict in enumerate(self.pusemask_list):
 			cpdict = pusemask_dict.get(cp)
 			if cpdict:
-				keys = list(cpdict.keys())
+				keys = list(cpdict)
 				while keys:
 					best_match = best_match_to_list(pkg, keys)
 					if best_match:
@@ -2841,7 +2841,7 @@ class config(object):
 		for i, puseforce_dict in enumerate(self.puseforce_list):
 			cpdict = puseforce_dict.get(cp)
 			if cpdict:
-				keys = list(cpdict.keys())
+				keys = list(cpdict)
 				while keys:
 					best_match = best_match_to_list(pkg, keys)
 					if best_match:
@@ -3026,7 +3026,7 @@ class config(object):
 		if cpdict:
 			accept_license = list(self._accept_license)
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			for atom in match_to_list(cpv_slot, list(cpdict.keys())):
+			for atom in match_to_list(cpv_slot, list(cpdict)):
 				accept_license.extend(cpdict[atom])
 
 		licenses = set(flatten(dep.use_reduce(dep.paren_reduce(
@@ -3107,7 +3107,7 @@ class config(object):
 		if cpdict:
 			accept_properties = list(self._accept_properties)
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			for atom in match_to_list(cpv_slot, list(cpdict.keys())):
+			for atom in match_to_list(cpv_slot, list(cpdict)):
 				accept_properties.extend(cpdict[atom])
 
 		properties = set(flatten(dep.use_reduce(dep.paren_reduce(
@@ -4729,7 +4729,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 									mysettings.get("PORTAGE_QUIET", None) == "1"
 								digests = mydigests.get(myfile)
 								if digests:
-									digests = list(digests.keys())
+									digests = list(digests)
 									digests.sort()
 									eout.ebegin(
 										"%s %s ;-)" % (myfile, " ".join(digests)))
@@ -5236,7 +5236,7 @@ def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None
 			writemsg(_("!!! Permission Denied: %s\n") % (e,), noiselevel=-1)
 			return 0
 		if "assume-digests" not in mysettings.features:
-			distlist = list(mf.fhashdict.get("DIST", {}).keys())
+			distlist = list(mf.fhashdict.get("DIST", {}))
 			distlist.sort()
 			auto_assumed = []
 			for filename in distlist:
@@ -8455,9 +8455,9 @@ class FetchlistDict(portage.cache.mappings.Mapping):
 		self.portdb = mydbapi
 	def __getitem__(self, pkg_key):
 		"""Returns the complete fetch list for a given package."""
-		return list(self.portdb.getFetchMap(pkg_key, mytree=self.mytree).keys())
+		return list(self.portdb.getFetchMap(pkg_key, mytree=self.mytree))
 	def __contains__(self, cpv):
-		return cpv in list(self.keys())
+		return cpv in self.__iter__()
 	def has_key(self, pkg_key):
 		"""Returns true if the given package exists within pkgdir."""
 		return pkg_key in self
@@ -8864,7 +8864,7 @@ class MtimeDB(dict):
 		mtimedbkeys = set(("info", "ldpath", "resume", "resume_backup",
 			"starttime", "updates", "version"))
 
-		for k in list(d.keys()):
+		for k in list(d):
 			if k not in mtimedbkeys:
 				writemsg(_("Deleting invalid mtimedb key: %s\n") % str(k))
 				del d[k]

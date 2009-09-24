@@ -68,8 +68,8 @@ class database(object):
 			raise cache_errors.ReadOnlyRestriction()
 		if self.cleanse_keys:
 			d=ProtectedDict(values)
-			for k in list(d.keys()):
-				if d[k] == '':
+			for k, v in list(d.items()):
+				if not v:
 					del d[k]
 			if self.serialize_eclasses and "_eclasses_" in values:
 				d["_eclasses_"] = serialize_eclasses(d["_eclasses_"])
@@ -110,13 +110,13 @@ class database(object):
 		return cpv in self
 
 	def keys(self):
-		return tuple(self.keys())
+		return list(self)
 
 	def iterkeys(self):
 		return iter(self)
 
 	def iteritems(self):
-		for x in self.keys():
+		for x in self:
 			yield (x, self[x])
 
 	def items(self):
@@ -182,7 +182,7 @@ class database(object):
 			if key not in self.__known_keys:
 				raise InvalidRestriction(key, match, "Key isn't valid")
 
-		for cpv in self.keys():
+		for cpv in self:
 			cont = True
 			vals = self[cpv]
 			for key, match in restricts.items():

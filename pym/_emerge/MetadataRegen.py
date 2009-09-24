@@ -89,7 +89,7 @@ class MetadataRegen(PollScheduler):
 		if self._global_cleanse:
 			for mytree in portdb.porttrees:
 				try:
-					dead_nodes[mytree] = set(portdb.auxdb[mytree].keys())
+					dead_nodes[mytree] = set(portdb.auxdb[mytree])
 				except CacheError as e:
 					portage.writemsg("Error listing cache entries for " + \
 						"'%s': %s, continuing...\n" % (mytree, e),
@@ -103,7 +103,7 @@ class MetadataRegen(PollScheduler):
 			for mytree in portdb.porttrees:
 				try:
 					dead_nodes[mytree] = set(cpv for cpv in \
-						portdb.auxdb[mytree].keys() \
+						portdb.auxdb[mytree] \
 						if cpv_getkey(cpv) in cp_set)
 				except CacheError as e:
 					portage.writemsg("Error listing cache entries for " + \

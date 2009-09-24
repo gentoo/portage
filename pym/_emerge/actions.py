@@ -1290,7 +1290,7 @@ def action_info(settings, trees, myopts, myfiles):
 	libtool_vers = ",".join(trees["/"]["vartree"].dbapi.match("sys-devel/libtool"))
 
 	if "--verbose" in myopts:
-		myvars=list(settings.keys())
+		myvars = list(settings)
 	else:
 		myvars = ['GENTOO_MIRRORS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
 		          'PORTDIR', 'DISTDIR', 'PKGDIR', 'PORTAGE_TMPDIR',
@@ -1650,7 +1650,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 
 	for tree_data in porttrees_data:
 		try:
-			dead_nodes = set(tree_data.dest_db.keys())
+			dead_nodes = set(tree_data.dest_db)
 		except CacheError as e:
 			writemsg_level("Error listing cache entries for " + \
 				"'%s': %s, continuing...\n" % (tree_data.path, e),

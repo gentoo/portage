@@ -243,7 +243,7 @@ def unmerge(root_config, myopts, unmerge_action,
 					slotmap[myslot][vartree.dbapi.cpv_counter(mypkg)] = mypkg
 
 				for myslot in slotmap:
-					counterkeys = list(slotmap[myslot].keys())
+					counterkeys = list(slotmap[myslot])
 					if not counterkeys:
 						continue
 					counterkeys.sort()

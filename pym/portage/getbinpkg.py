@@ -818,7 +818,7 @@ class PackageIndex(object):
 		if self.modified:
 			self.header["TIMESTAMP"] = str(long(time.time()))
 			self.header["PACKAGES"] = str(len(self.packages))
-		keys = list(self.header.keys())
+		keys = list(self.header)
 		keys.sort()
 		self._writepkgindex(pkgfile, [(k, self.header[k]) \
 			for k in keys if self.header[k]])
@@ -835,7 +835,7 @@ class PackageIndex(object):
 				for k, v in self._default_pkg_data.items():
 					if metadata.get(k) == v:
 						metadata.pop(k, None)
-			keys = list(metadata.keys())
+			keys = list(metadata)
 			keys.sort()
 			self._writepkgindex(pkgfile,
 				[(k, metadata[k]) for k in keys if metadata[k]])

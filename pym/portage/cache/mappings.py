@@ -226,9 +226,9 @@ class ProtectedDict(MutableMapping):
 			
 
 	def __iter__(self):
-		for k in self.new.keys():
+		for k in self.new:
 			yield k
-		for k in self.orig.keys():
+		for k in self.orig:
 			if k not in self.blacklist and k not in self.new:
 				yield k
 

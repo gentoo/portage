@@ -74,7 +74,7 @@ class ManifestEntry(object):
 class Manifest2Entry(ManifestEntry):
 	def __str__(self):
 		myline = " ".join([self.type, self.name, str(self.hashes["size"])])
-		myhashkeys = list(self.hashes.keys())
+		myhashkeys = list(self.hashes)
 		myhashkeys.remove("size")
 		myhashkeys.sort()
 		for h in myhashkeys:
@@ -202,15 +202,15 @@ class Manifest(object):
 		return myhashdict
 
 	def _createManifestEntries(self):
-		mytypes = list(self.fhashdict.keys())
+		mytypes = list(self.fhashdict)
 		mytypes.sort()
 		for t in mytypes:
-			myfiles = list(self.fhashdict[t].keys())
+			myfiles = list(self.fhashdict[t])
 			myfiles.sort()
 			for f in myfiles:
 				myentry = Manifest2Entry(
 					type=t, name=f, hashes=self.fhashdict[t][f].copy())
-				myhashkeys = list(myentry.hashes.keys())
+				myhashkeys = list(myentry.hashes)
 				myhashkeys.sort()
 				for h in myhashkeys:
 					if h not in ["size"] + portage.const.MANIFEST2_HASH_FUNCTIONS:
