@@ -487,9 +487,9 @@ install_qa_check() {
 				| xargs -0 grep -H -n -m1 "^#!" \
 				| while read f ;
 		do
-			fn=${f%%:*}
-			pos=${f#*:} ; pos=${pos%:*}
-			line=${f##*:}
+			local fn=${f%%:*}
+			local pos=${f#*:} ; pos=${pos%:*}
+			local line=${f##*:}
 			# shebang always appears on the first line ;)
 			[[ ${pos} != 1 ]] && continue
 			line=( ${line#"#!"} )
@@ -502,8 +502,11 @@ install_qa_check() {
 				sed -i -e '1s:^#1 \?:#!'"${EPREFIX}"':' "${fn}"
 				continue
 			fi
-			# all else is an error
-			echo "${fn#${D}}:${line[0]}" >> "${T}"/non-prefix-shebangs-errs
+			# all else is an error if the found script is in $PATH
+			local fp=${fn#${D}} ; fp=${fp%/*}
+			[[ ":${PATH}:" == *":${fp}:"* || hasq stricter ${FEATURES} ]] \
+				&& echo "${fn#${D}}:${line[0]}" >> "${T}"/non-prefix-shebangs-errs \
+				|| eqawarn "invalid shebang in ${fn#${D}}: ${line[0]}"
 		done
 		if [[ -e "${T}"/non-prefix-shebangs-errs ]] ; then
 			eqawarn "QA Notice: the following files use invalid (possible non-prefixed) shebangs:"
