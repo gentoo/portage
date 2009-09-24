@@ -19,7 +19,7 @@ class StackDictsTestCase(TestCase):
 			  False, ["a"], False ),
 			  ( [ { "a":"b" }, None ], { "a":"b" },
 			  False, [], True ),
-			  ( [ None ], None, False, [], False ),
+			  ( [ None ], {}, False, [], False ),
 			  ( [ None, {}], {}, False, [], True ) ]
 
 

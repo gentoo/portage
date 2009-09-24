@@ -9,6 +9,7 @@ from portage.cache import cache_errors
 import errno
 import stat
 import sys
+import os as _os
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
@@ -32,33 +33,33 @@ class database(fs_template.FsBased):
 			self._ensure_dirs()
 
 	def _getitem(self, cpv):
-		fp = os.path.join(self.location, cpv)
+		# Don't use os.path.join, for better performance.
+		fp = self.location + _os.sep + cpv
 		try:
 			myf = codecs.open(_unicode_encode(fp,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
 				errors='replace')
 			try:
-				d = self._parse_data(myf.readlines(), cpv)
+				d = self._parse_data(myf.read().split("\n"), cpv)
 				if '_mtime_' not in d:
 					# Backward compatibility with old cache
 					# that uses mtime mangling.
-					d['_mtime_'] = long(os.fstat(myf.fileno()).st_mtime)
+					d['_mtime_'] = long(_os.fstat(myf.fileno()).st_mtime)
 				return d
 			finally:
 				myf.close()
 		except (IOError, OSError) as e:
 			if e.errno != errno.ENOENT:
 				raise cache_errors.CacheCorruption(cpv, e)
-			raise KeyError(cpv)
+			raise KeyError(cpv, e)
 
 	def _parse_data(self, data, cpv):
 		try:
-			d = dict(map(lambda x:x.rstrip("\n").split("=", 1), data))
+			return dict( x.split("=", 1) for x in data )
 		except ValueError as e:
 			# If a line is missing an "=", the split length is 1 instead of 2.
 			raise cache_errors.CacheCorruption(cpv, e)
-		return d
 
 	def _setitem(self, cpv, values):
 #		import pdb;pdb.set_trace()
@@ -101,7 +102,6 @@ class database(fs_template.FsBased):
 			os.remove(fp)
 			raise cache_errors.CacheCorruption(cpv, e)
 
-
 	def _delitem(self, cpv):
 #		import pdb;pdb.set_trace()
 		try:
@@ -112,10 +112,8 @@ class database(fs_template.FsBased):
 			else:
 				raise cache_errors.CacheCorruption(cpv, e)
 
-
 	def __contains__(self, cpv):
 		return os.path.exists(os.path.join(self.location, cpv))
-
 
 	def __iter__(self):
 		"""generator for walking the dir struct"""
@@ -140,4 +138,3 @@ class database(fs_template.FsBased):
 					continue
 				yield p[len_base+1:]
 			dirs.pop(0)
-
