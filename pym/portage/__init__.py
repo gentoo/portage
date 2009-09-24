@@ -3743,6 +3743,8 @@ def _test_pty_eof():
 	"""
 	Returns True if this issues is fixed for the currently
 	running version of python: http://bugs.python.org/issue5380
+	Returns None if openpty fails, and False if the above issue
+	is not fixed.
 	"""
 
 	import array, pty, termios
@@ -3753,7 +3755,9 @@ def _test_pty_eof():
 	try:
 		master_fd, slave_fd = pty.openpty()
 	except EnvironmentError:
-		return False
+		global _disable_openpty
+		_disable_openpty = True
+		return None
 
 	master_file = os.fdopen(master_fd, 'rb')
 	slave_file = os.fdopen(slave_fd, 'wb')
