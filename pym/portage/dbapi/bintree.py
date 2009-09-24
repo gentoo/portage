@@ -124,7 +124,7 @@ class bindbapi(fakedbapi):
 				encoding=_encodings['repo.content'], errors='backslashreplace')
 			mydata[k] = v
 
-		for k, v in mydata.items():
+		for k, v in list(mydata.items()):
 			if not v:
 				del mydata[k]
 		mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))

@@ -142,22 +142,26 @@ _encodings = {
 if _encodings['merge'] is None:
 	_encodings['merge'] = 'ascii'
 
-def _unicode_encode(s, encoding=_encodings['content'],
-	errors='backslashreplace'):
-	if sys.hexversion >= 0x3000000:
+if sys.hexversion >= 0x3000000:
+	def _unicode_encode(s, encoding=_encodings['content'], errors='backslashreplace'):
 		if isinstance(s, str):
 			s = s.encode(encoding, errors)
-	elif isinstance(s, unicode):
-		s = s.encode(encoding, errors)
-	return s
+		return s
 
-def _unicode_decode(s, encoding=_encodings['content'], errors='replace'):
-	if isinstance(s, bytes):
-		if sys.hexversion >= 0x3000000:
+	def _unicode_decode(s, encoding=_encodings['content'], errors='replace'):
+		if isinstance(s, bytes):
 			s = str(s, encoding=encoding, errors=errors)
-		else:
+		return s
+else:
+	def _unicode_encode(s, encoding=_encodings['content'], errors='backslashreplace'):
+		if isinstance(s, unicode):
+			s = s.encode(encoding, errors)
+		return s
+
+	def _unicode_decode(s, encoding=_encodings['content'], errors='replace'):
+		if isinstance(s, bytes):
 			s = unicode(s, encoding=encoding, errors=errors)
-	return s
+		return s
 
 class _unicode_func_wrapper(object):
 	"""
@@ -190,24 +194,22 @@ class _unicode_func_wrapper(object):
 
 		rval = self._func(*wrapped_args, **wrapped_kwargs)
 
-		if isinstance(rval, (bytes, basestring, list, tuple)):
-			if isinstance(rval, (bytes, basestring)):
-				rval = _unicode_decode(rval,
-					encoding=encoding, errors='replace')
-			else:
-				decoded_rval = []
-				for x in rval:
-					try:
-						x = _unicode_decode(x, encoding=encoding, errors='strict')
-					except UnicodeDecodeError:
-						pass
-					else:
-						decoded_rval.append(x)
-
-				if isinstance(rval, tuple):
-					rval = tuple(decoded_rval)
+		if isinstance(rval, (list, tuple)):
+			decoded_rval = []
+			for x in rval:
+				try:
+					x = _unicode_decode(x, encoding=encoding, errors='strict')
+				except UnicodeDecodeError:
+					pass
 				else:
-					rval = decoded_rval
+					decoded_rval.append(x)
+
+			if isinstance(rval, tuple):
+				rval = tuple(decoded_rval)
+			else:
+				rval = decoded_rval
+		else:
+			rval = _unicode_decode(rval, encoding=encoding, errors='replace')
 
 		return rval
 
@@ -257,6 +259,7 @@ _os_overrides = {
 	id(_os.fdopen)        : _os.fdopen,
 	id(_os.popen)         : _os.popen,
 	id(_os.read)          : _os.read,
+	id(_os.statvfs)       : _os.statvfs,
 	id(_os.system)        : _os.system,
 }
 
