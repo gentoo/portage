@@ -19,7 +19,7 @@ class database(fs_template.FsBased):
 	# do not screw with this ordering. _eclasses_ needs to be last
 	auxdbkey_order=('DEPEND', 'RDEPEND', 'SLOT', 'SRC_URI',
 		'RESTRICT',  'HOMEPAGE',  'LICENSE', 'DESCRIPTION',
-		'KEYWORDS',  'IUSE', 'CDEPEND',
+		'KEYWORDS',  'IUSE', 'UNUSED_00',
 		'PDEPEND',   'PROVIDE', 'EAPI', 'PROPERTIES', 'DEFINED_PHASES')
 
 	def __init__(self, label, auxdbkeys, **config):

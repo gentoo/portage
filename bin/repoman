@@ -375,7 +375,6 @@ non_ascii_re = re.compile(r'[^\x00-\x7f]')
 
 missingvars=["KEYWORDS","LICENSE","DESCRIPTION","HOMEPAGE","SLOT"]
 allvars = set(x for x in portage.auxdbkeys if not x.startswith("UNUSED_"))
-allvars.discard("CDEPEND")
 allvars.update(Package.metadata_keys)
 allvars = sorted(allvars)
 commitmessage=None
@@ -1498,8 +1497,8 @@ for x in scanlist:
 			stats[m+".syntax"] += 1
 			fails[m+".syntax"].append(catpkg+".ebuild "+m+": "+b)
 
-		badlicsyntax = len(filter(lambda x:x=="LICENSE", type_list))
-		badprovsyntax = len(filter(lambda x:x=="PROVIDE", type_list))
+		badlicsyntax = len([x for x in type_list if x == "LICENSE"])
+		badprovsyntax = len([x for x in type_list if x == "PROVIDE"])
 		baddepsyntax = len(type_list) != badlicsyntax + badprovsyntax 
 		badlicsyntax = badlicsyntax > 0
 		badprovsyntax = badprovsyntax > 0

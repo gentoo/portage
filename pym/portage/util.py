@@ -217,12 +217,10 @@ def stack_dicts(dicts, incremental=0, incrementals=[], ignore_none=0):
 	"""Stacks an array of dict-types into one array. Optionally merging or
 	overwriting matching key/value pairs for the dict[key]->string.
 	Returns a single dict."""
-	final_dict = None
+	final_dict = {}
 	for mydict in dicts:
 		if not mydict:
 			continue
-		if final_dict is None:
-			final_dict = {}
 		for k, v in mydict.items():
 			if k in final_dict and (incremental or (k in incrementals)):
 				final_dict[k] += " " + v

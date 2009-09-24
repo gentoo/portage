@@ -51,6 +51,7 @@ from portage.cache.mappings import slot_dict_class
 import codecs
 import re, shutil, stat, errno, copy, subprocess
 import logging
+import os as _os
 import sys
 import warnings
 
@@ -1555,9 +1556,13 @@ class vardbapi(dbapi):
 		self._owners = self._owners_db(self)
 
 	def getpath(self, mykey, filename=None):
-		rValue = os.path.join(self.root, VDB_PATH, mykey)
-		if filename != None:
-			rValue = os.path.join(rValue, filename)
+		# This is an optimized hotspot, so don't use unicode-wrapped
+		# os module and don't use os.path.join().
+		rValue = self.root + _os.sep + VDB_PATH + _os.sep + mykey
+		if filename is not None:
+			# If filename is always relative, we can do just
+			# rValue += _os.sep + filename
+			rValue = _os.path.join(rValue, filename)
 		return rValue
 
 	def cpv_exists(self, mykey):
@@ -1603,12 +1608,12 @@ class vardbapi(dbapi):
 		if not origmatches:
 			return moves
 		for mycpv in origmatches:
-			mycpsplit = catpkgsplit(mycpv)
-			mynewcpv = newcp + "-" + mycpsplit[2]
-			mynewcat = newcp.split("/")[0]
-			if mycpsplit[3] != "r0":
-				mynewcpv += "-" + mycpsplit[3]
-			mycpsplit_new = catpkgsplit(mynewcpv)
+			mycpv_cp = cpv_getkey(mycpv)
+			if mycpv_cp != origcp:
+				# Ignore PROVIDE virtual match.
+				continue
+			mynewcpv = mycpv.replace(mycpv_cp, str(newcp), 1)
+			mynewcat = catsplit(newcp)[0]
 			origpath = self.getpath(mycpv)
 			if not os.path.exists(origpath):
 				continue
