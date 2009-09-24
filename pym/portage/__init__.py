@@ -5357,6 +5357,20 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 				return 0
 			continue
 		for d in dirs:
+			try:
+				d = _unicode_decode(d,
+					encoding=_encodings['fs'], errors='strict')
+			except UnicodeDecodeError:
+				d = _unicode_decode(d,
+					encoding=_encodings['fs'], errors='replace')
+				writemsg(_("!!! Path contains invalid "
+					"character(s) for encoding '%s': '%s'") \
+					% (_encodings['fs'], os.path.join(parent, d)),
+					noiselevel=-1)
+				if strict:
+					return 0
+				dirs.remove(d)
+				continue
 			if d.startswith(".") or d == "CVS":
 				dirs.remove(d)
 		for f in files:
