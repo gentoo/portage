@@ -687,8 +687,19 @@ class depgraph(object):
 					root=dep.parent.root)
 				self._dynamic_config._blocker_parents.add(blocker, dep.parent)
 			return 1
-		dep_pkg, existing_node = self._select_package(dep.root, dep.atom,
-			onlydeps=dep.onlydeps)
+
+		if dep.child is None:
+			dep_pkg, existing_node = self._select_package(dep.root, dep.atom,
+				onlydeps=dep.onlydeps)
+		else:
+			# The caller has selected a specific package
+			# via self._minimize_packages().
+			dep_pkg = dep.child
+			existing_node = self._dynamic_config._slot_pkg_map[
+				dep.root].get(dep_pkg.slot_atom)
+			if existing_node is not dep_pkg:
+				existing_node = None 
+
 		if not dep_pkg:
 			if dep.priority.optional:
 				# This could be an unecessary build-time dep
@@ -1151,16 +1162,18 @@ class depgraph(object):
 		if debug:
 			print("Candidates:", selected_atoms)
 
-		vardb = self._frozen_config.roots[dep_root].trees["vartree"].dbapi
+		root_config = self._frozen_config.roots[dep_root]
+		vardb = root_config.trees["vartree"].dbapi
 
-		for atom in selected_atoms[pkg]:
+		for atom, child in self._minimize_children(
+			pkg, dep_priority, root_config, selected_atoms[pkg]):
 
 			mypriority = dep_priority.copy()
 			if not atom.blocker and vardb.match(atom):
 				mypriority.satisfied = True
 
 			if not self._add_dep(Dependency(atom=atom,
-				blocker=atom.blocker, depth=depth, parent=pkg,
+				blocker=atom.blocker, child=child, depth=depth, parent=pkg,
 				priority=mypriority, root=dep_root),
 				allow_unsatisfied=allow_unsatisfied):
 				return 0
@@ -1184,14 +1197,15 @@ class depgraph(object):
 				root=dep_root)):
 				return 0
 
-			for atom in atoms:
+			for atom, child in self._minimize_children(
+				pkg, self._priority(runtime=True), root_config, atoms):
 				# This is a GLEP 37 virtual, so its deps are all runtime.
 				mypriority = self._priority(runtime=True)
 				if not atom.blocker and vardb.match(atom):
 					mypriority.satisfied = True
 
 				if not self._add_dep(Dependency(atom=atom,
-					blocker=atom.blocker, depth=virt_pkg.depth,
+					blocker=atom.blocker, child=child, depth=virt_pkg.depth,
 					parent=virt_pkg, priority=mypriority, root=dep_root),
 					allow_unsatisfied=allow_unsatisfied):
 					return 0
@@ -1200,6 +1214,73 @@ class depgraph(object):
 			print("Exiting...", pkg)
 
 		return 1
+
+	def _minimize_children(self, parent, priority, root_config, atoms):
+		"""
+		Selects packages to satisfy the given atoms, and minimizes the
+		number of selected packages. This serves to identify and eliminate
+		redundant package selections when multiple atoms happen to specify
+		a version range.
+		"""
+
+		atom_pkg_map = {}
+
+		for atom in atoms:
+			if atom.blocker:
+				yield (atom, None)
+				continue
+			dep_pkg, existing_node = self._select_package(
+				root_config.root, atom)
+			if dep_pkg is None:
+				yield (atom, None)
+				continue
+			atom_pkg_map[atom] = dep_pkg
+
+		if len(atom_pkg_map) < 2:
+			for item in atom_pkg_map.items():
+				yield item
+			return
+
+		cp_pkg_map = {}
+		pkg_atom_map = {}
+		for atom, pkg in atom_pkg_map.items():
+			pkg_atom_map.setdefault(pkg, set()).add(atom)
+			cp_pkg_map.setdefault(pkg.cp, set()).add(pkg)
+
+		for cp, pkgs in cp_pkg_map.items():
+			if len(pkgs) < 2:
+				for pkg in pkgs:
+					for atom in pkg_atom_map[pkg]:
+						yield (atom, pkg)
+				continue
+
+			# Use a digraph to identify and eliminate any
+			# redundant package selections.
+			atom_pkg_graph = digraph()
+			cp_atoms = set()
+			for pkg1 in pkgs:
+				for atom in pkg_atom_map[pkg1]:
+					cp_atoms.add(atom)
+					atom_pkg_graph.add(pkg1, atom)
+					atom_set = InternalPackageSet(initial_atoms=(atom,))
+					for pkg2 in pkgs:
+						if pkg2 is pkg1:
+							continue
+						if atom_set.findAtomForPackage(pkg2):
+							atom_pkg_graph.add(pkg2, atom)
+
+			for pkg in pkgs:
+				eliminate_pkg = True
+				for atom in atom_pkg_graph.parent_nodes(pkg):
+					if len(atom_pkg_graph.child_nodes(atom)) < 2:
+						eliminate_pkg = False
+						break
+				if eliminate_pkg:
+					atom_pkg_graph.remove(pkg)
+
+			for atom in cp_atoms:
+				child_pkgs = atom_pkg_graph.child_nodes(atom)
+				yield (atom, child_pkgs[0])
 
 	def _queue_disjunctive_deps(self, pkg, dep_root, dep_priority, dep_struct):
 		"""
