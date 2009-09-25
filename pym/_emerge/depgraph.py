@@ -1483,7 +1483,7 @@ class depgraph(object):
 						# Allow the depgraph to choose which virtual.
 						atom = Atom(null_atom.replace('null/', 'virtual/', 1))
 					else:
-						null_atom
+						atom = null_atom
 
 				args.append(AtomArg(arg=x, atom=atom,
 					root_config=root_config))
