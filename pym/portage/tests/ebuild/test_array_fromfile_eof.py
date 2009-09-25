@@ -18,9 +18,10 @@ class ArrayFromfileEofTestCase(TestCase):
 		#   http://bugs.python.org/issue5334
 
 		input_data = "an arbitrary string"
+		input_bytes = _unicode_encode(input_data,
+			encoding='utf_8', errors='strict')
 		f = tempfile.TemporaryFile()
-		f.write(_unicode_encode(input_data,
-			encoding='utf_8', errors='strict'))
+		f.write(input_bytes)
 
 		f.seek(0)
 		data = []
@@ -28,7 +29,7 @@ class ArrayFromfileEofTestCase(TestCase):
 		while not eof:
 			a = array.array('B')
 			try:
-				a.fromfile(f, len(input_data) + 1)
+				a.fromfile(f, len(input_bytes) + 1)
 			except EOFError:
 				# python-3.0 lost data here
 				eof = True
