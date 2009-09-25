@@ -3,7 +3,6 @@
 # $Id$
 
 import array
-import pty
 import tempfile
 
 from portage import _unicode_decode
