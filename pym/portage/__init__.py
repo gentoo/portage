@@ -5419,6 +5419,7 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 				return 0
 			continue
 		for d in dirs:
+			d_bytes = d
 			try:
 				d = _unicode_decode(d,
 					encoding=_encodings['fs'], errors='strict')
@@ -5434,7 +5435,7 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 				dirs.remove(d)
 				continue
 			if d.startswith(".") or d == "CVS":
-				dirs.remove(d)
+				dirs.remove(d_bytes)
 		for f in files:
 			try:
 				f = _unicode_decode(f,
