@@ -5432,7 +5432,7 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 					noiselevel=-1)
 				if strict:
 					return 0
-				dirs.remove(d)
+				dirs.remove(d_bytes)
 				continue
 			if d.startswith(".") or d == "CVS":
 				dirs.remove(d_bytes)
