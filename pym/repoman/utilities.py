@@ -346,7 +346,7 @@ def FindPortdir(settings):
 	Args:
 		settings - portage.config instance, preferably repoman_settings
 	Returns:
-		tuple(portdir, portdir_overlay, location)
+		list(portdir, portdir_overlay, location)
 	"""
 
 	portdir = None
@@ -430,4 +430,4 @@ def FindPortdir(settings):
 	if not portdir.endswith('/'):
 		portdir += '/'
 
-	return map(normalize_path, (portdir, portdir_overlay, location))
+	return [normalize_path(x) for x in (portdir, portdir_overlay, location)]

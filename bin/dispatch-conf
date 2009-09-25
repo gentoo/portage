@@ -205,7 +205,7 @@ class dispatch:
             else:
                 return True
 
-        confs = filter (f, confs)
+        confs = [x for x in confs if f(x)]
 
         #
         # Interactively process remaining
