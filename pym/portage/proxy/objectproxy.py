@@ -2,6 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import sys
+
 __all__ = ['ObjectProxy']
 
 class ObjectProxy(object):
@@ -70,8 +72,11 @@ class ObjectProxy(object):
 	def __ne__(self, other):
 		return object.__getattribute__(self, '_get_target')() != other
 
-	def __nonzero__(self):
+	def __bool__(self):
 		return bool(object.__getattribute__(self, '_get_target')())
+
+	if sys.hexversion < 0x3000000:
+		__nonzero__ = __bool__
 
 	def __int__(self):
 		return int(object.__getattribute__(self, '_get_target')())

@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import sys
 from _emerge.SlotObject import SlotObject
 from collections import deque
 class SequentialTaskQueue(SlotObject):
@@ -79,9 +80,11 @@ class SequentialTaskQueue(SlotObject):
 			task.cancel()
 		self._dirty = False
 
-	def __nonzero__(self):
+	def __bool__(self):
 		return bool(self._task_queue or self.running_tasks)
+
+	if sys.hexversion < 0x3000000:
+		__nonzero__ = __bool__
 
 	def __len__(self):
 		return len(self._task_queue) + len(self.running_tasks)
-
