@@ -103,7 +103,7 @@ class database(fs_template.FsBased):
 		self._db_table["packages"]["create"] = " ".join(create_statement)
 		self._db_table["packages"]["columns"] = \
 			self._db_table["packages"]["internal_columns"] + \
-			self._allowed_keys
+			sorted(self._allowed_keys)
 
 		cursor = self._db_cursor
 		for k, v in self._db_table.items():

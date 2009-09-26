@@ -412,8 +412,11 @@ class _use_dep(object):
 			raise InvalidAtom(_("Invalid use dep: '%s'") % (token,))
 		return flag
 
-	def __nonzero__(self):
+	def __bool__(self):
 		return bool(self.tokens)
+
+	if sys.hexversion < 0x3000000:
+		__nonzero__ = __bool__
 
 	def __str__(self):
 		if not self.tokens:

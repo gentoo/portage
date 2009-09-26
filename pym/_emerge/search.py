@@ -341,7 +341,7 @@ class search(object):
 							break
 
 					if myebuild and file_size_str is None:
-						mystr = str(mysum[0] / 1024)
+						mystr = str(mysum[0] // 1024)
 						mycount = len(mystr)
 						while (mycount > 3):
 							mycount -= 3

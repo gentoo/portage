@@ -1127,7 +1127,7 @@ for x in scanlist:
 			# current policy is no files over 20k, this is the check.
 			elif mystat.st_size > 20480:
 				stats["file.size"] += 1
-				fails["file.size"].append("("+ str(mystat.st_size/1024) + "K) "+x+"/files/"+y)
+				fails["file.size"].append("("+ str(mystat.st_size//1024) + "K) "+x+"/files/"+y)
 
 			m = disallowed_filename_chars_re.search(
 				os.path.basename(y.rstrip(os.sep)))

@@ -26,6 +26,7 @@ def debug_signal(signum, frame):
 	pdb.set_trace()
 signal.signal(signal.SIGUSR1, debug_signal)
 
+import imp
 import optparse
 import os
 
@@ -123,7 +124,7 @@ if ebuild_portdir not in portage.portdb.porttrees:
 		os.environ.get("PORTDIR_OVERLAY","") + " " + ebuild_portdir
 	print("Appending %s to PORTDIR_OVERLAY..." % ebuild_portdir)
 	portage.close_portdbapi_caches()
-	reload(portage)
+	imp.reload(portage)
 del portage.portdb.porttrees[1:]
 if ebuild_portdir != portage.portdb.porttree_root:
 	portage.portdb.porttrees.append(ebuild_portdir)

@@ -2,6 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import sys
+
 __all__ = ['ObjectProxy']
 
 class ObjectProxy(object):
@@ -45,15 +47,7 @@ class ObjectProxy(object):
 		return iter(object.__getattribute__(self, '_get_target')())
 
 	def __len__(self):
-		try:
-			return len(object.__getattribute__(self, '_get_target')())
-		except TypeError:
-			# For python 3.x with boolean target, len() results in
-			# TypeError, so return 0 or 1.
-			if bool(object.__getattribute__(self, '_get_target')()):
-				return 1
-			else:
-				return 0
+		return len(object.__getattribute__(self, '_get_target')())
 
 	def __repr__(self):
 		return repr(object.__getattribute__(self, '_get_target')())
@@ -70,8 +64,11 @@ class ObjectProxy(object):
 	def __ne__(self, other):
 		return object.__getattribute__(self, '_get_target')() != other
 
-	def __nonzero__(self):
+	def __bool__(self):
 		return bool(object.__getattribute__(self, '_get_target')())
+
+	if sys.hexversion < 0x3000000:
+		__nonzero__ = __bool__
 
 	def __int__(self):
 		return int(object.__getattribute__(self, '_get_target')())

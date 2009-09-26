@@ -5,7 +5,7 @@
 from _emerge.DepPriority import DepPriority
 from _emerge.SlotObject import SlotObject
 class Dependency(SlotObject):
-	__slots__ = ("atom", "blocker", "depth",
+	__slots__ = ("atom", "blocker", "child", "depth",
 		"parent", "onlydeps", "priority", "root")
 	def __init__(self, **kwargs):
 		SlotObject.__init__(self, **kwargs)

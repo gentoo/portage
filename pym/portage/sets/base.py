@@ -41,9 +41,12 @@ class PackageSet(object):
 		for x in self._nonatoms:
 			yield x
 
-	def __nonzero__(self):
+	def __bool__(self):
 		self._load()
 		return bool(self._atoms or self._nonatoms)
+
+	if sys.hexversion < 0x3000000:
+		__nonzero__ = __bool__
 
 	def supportsOperation(self, op):
 		if not op in OPERATIONS:
