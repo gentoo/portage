@@ -22,6 +22,8 @@ class EbuildFetcher(SpawnProcess):
 		root_config = self.pkg.root_config
 		portdb = root_config.trees["porttree"].dbapi
 		ebuild_path = portdb.findname(self.pkg.cpv)
+		if ebuild_path is None:
+			raise AssertionError("ebuild not found for '%s'" % self.pkg.cpv)
 		settings = self.config_pool.allocate()
 		settings.setcpv(self.pkg)
 

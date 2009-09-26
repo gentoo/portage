@@ -31,6 +31,9 @@ class EbuildBuildDir(SlotObject):
 			root_config = self.pkg.root_config
 			portdb = root_config.trees["porttree"].dbapi
 			ebuild_path = portdb.findname(self.pkg.cpv)
+			if ebuild_path is None:
+				raise AssertionError(
+					"ebuild not found for '%s'" % self.pkg.cpv)
 			settings = self.settings
 			settings.setcpv(self.pkg)
 			debug = settings.get("PORTAGE_DEBUG") == "1"

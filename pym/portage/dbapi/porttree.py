@@ -447,7 +447,7 @@ class portdbapi(dbapi):
 		the file we wanted.
 		"""
 		if not mycpv:
-			return ("", 0)
+			return (None, 0)
 		mysplit = mycpv.split("/")
 		psplit = pkgsplit(mysplit[1])
 		if psplit is None or len(mysplit) != 2:
@@ -614,9 +614,8 @@ class portdbapi(dbapi):
 		myebuild, mylocation = self.findname2(mycpv, mytree)
 
 		if not myebuild:
-			writemsg(_("!!! aux_get(): ebuild path for '%s' not specified:\n") % mycpv,
-				noiselevel=1)
-			writemsg("!!!            %s\n" % myebuild, noiselevel=1)
+			writemsg("!!! aux_get(): %s\n" % \
+				_("ebuild not found for '%s'") % mycpv, noiselevel=1)
 			raise KeyError(mycpv)
 
 		mydata, st, emtime = self._pull_valid_cache(mycpv, myebuild, mylocation)
@@ -783,6 +782,8 @@ class portdbapi(dbapi):
 	def getfetchsizes(self, mypkg, useflags=None, debug=0):
 		# returns a filename:size dictionnary of remaining downloads
 		myebuild = self.findname(mypkg)
+		if myebuild is None:
+			raise AssertionError("ebuild not found for '%s'" % mypkg)
 		pkgdir = os.path.dirname(myebuild)
 		mf = Manifest(pkgdir, self.mysettings["DISTDIR"])
 		checksums = mf.getDigests()
@@ -826,6 +827,8 @@ class portdbapi(dbapi):
 				useflags = mysettings["USE"].split()
 		myfiles = self.getFetchMap(mypkg, useflags=useflags)
 		myebuild = self.findname(mypkg)
+		if myebuild is None:
+			raise AssertionError("ebuild not found for '%s'" % mypkg)
 		pkgdir = os.path.dirname(myebuild)
 		mf = Manifest(pkgdir, self.mysettings["DISTDIR"])
 		mysums = mf.getDigests()

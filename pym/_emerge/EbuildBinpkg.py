@@ -18,7 +18,9 @@ class EbuildBinpkg(EbuildProcess):
 		root_config = pkg.root_config
 		portdb = root_config.trees["porttree"].dbapi
 		bintree = root_config.trees["bintree"]
-		ebuild_path = portdb.findname(self.pkg.cpv)
+		ebuild_path = portdb.findname(pkg.cpv)
+		if ebuild_path is None:
+			raise AssertionError("ebuild not found for '%s'" % pkg.cpv)
 		settings = self.settings
 		debug = settings.get("PORTAGE_DEBUG") == "1"
 

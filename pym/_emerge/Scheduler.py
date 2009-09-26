@@ -580,11 +580,8 @@ class Scheduler(PollScheduler):
 				continue
 			portdb = x.root_config.trees['porttree'].dbapi
 			ebuild_path = portdb.findname(x.cpv)
-			if not ebuild_path:
-				writemsg_level(
-					"!!! Could not locate ebuild for '%s'.\n" \
-					% x.cpv, level=logging.ERROR, noiselevel=-1)
-				return 1
+			if ebuild_path is None:
+				raise AssertionError("ebuild not found for '%s'" % x.cpv)
 			pkgsettings['O'] = os.path.dirname(ebuild_path)
 			if not portage.digestgen([], pkgsettings, myportdb=portdb):
 				writemsg_level(
@@ -628,7 +625,10 @@ class Scheduler(PollScheduler):
 			root_config = x.root_config
 			portdb = root_config.trees["porttree"].dbapi
 			quiet_config = quiet_settings[root_config.root]
-			quiet_config["O"] = os.path.dirname(portdb.findname(x.cpv))
+			ebuild_path = portdb.findname(x.cpv)
+			if ebuild_path is None:
+				raise AssertionError("ebuild not found for '%s'" % x.cpv)
+			quiet_config["O"] = os.path.dirname(ebuild_path)
 			if not portage.digestcheck([], quiet_config, strict=True):
 				failures |= 1
 
