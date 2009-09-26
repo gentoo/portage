@@ -67,7 +67,7 @@ class Mapping(object):
 		return repr(dict(self.items()))
 
 	def __len__(self):
-		return len(list(self.keys()))
+		return len(list(self))
 
 	if sys.hexversion >= 0x3000000:
 		items = iteritems
@@ -80,7 +80,7 @@ class MutableMapping(Mapping):
 	"""
 
 	def clear(self):
-		for key in list(self.keys()):
+		for key in list(self):
 			del self[key]
 
 	def setdefault(self, key, default=None):
