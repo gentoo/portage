@@ -499,7 +499,7 @@ install_qa_check() {
 			# can we just fix it(tm)?
 			if [[ -x ${EPREFIX}${line[0]} || -x ${ED}${line[0]} ]] ; then
 				ewarn "prefixing shebang of ${fn#${D}}"
-				sed -i -e '1s:^#1 \?:#!'"${EPREFIX}"':' "${fn}"
+				sed -i -e '1s:^#! \?:#!'"${EPREFIX}"':' "${fn}"
 				continue
 			fi
 			# all else is an error if the found script is in $PATH
