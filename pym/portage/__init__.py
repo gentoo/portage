@@ -3811,10 +3811,14 @@ def _test_pty_eof():
 
 # In some cases, openpty can be slow when it fails. Therefore,
 # stop trying to use it after the first failure.
-if platform.system() in ["SunOS"]:
+if platform.system() in ["SunOS", "Darwin"]:
 	# disable the use of openpty on Solaris as it seems Python's openpty
 	# implementation doesn't play nice on Solaris with Portage's
 	# behaviour causing hangs/deadlocks.
+	# disable on Darwin also, it used to work fine, but since the
+	# introduction of _test_pty_eof Portage hangs (on the
+	# slave_file.close()) indicating some other problems with openpty on
+	# Darwin there
 	_disable_openpty = True
 else:
 	_disable_openpty = False
