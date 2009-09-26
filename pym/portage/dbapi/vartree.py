@@ -388,7 +388,7 @@ class LinkageMap(object):
 				for x in filter(None, fields[3].replace(
 				"${ORIGIN}", os.path.dirname(obj)).replace(
 				"$ORIGIN", os.path.dirname(obj)).split(":"))])
-			needed = filter(None, fields[4].split(","))
+			needed = [x for x in fields[4].split(",") if x]
 
 			obj_key = self._obj_key(obj)
 			indexed = True

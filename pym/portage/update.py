@@ -227,8 +227,6 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 				mode='r', encoding=_encodings['content'],
 				errors='replace').readlines()
 		except IOError:
-			if file_contents.has_key(x):
-				del file_contents[x]
 			continue
 
 	# update /etc/portage/packages.*

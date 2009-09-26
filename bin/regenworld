@@ -59,18 +59,16 @@ if len(sys.argv) >= 2 and sys.argv[1] in ["-h", "--help"]:
 	sys.exit(0)
 
 worldlist = portage.grabfile(os.path.join(portage.const.EPREFIX, portage.WORLD_FILE))
-syslist = portage.settings.packages
-syslist = filter(issyspkg, syslist)
+syslist = [x for x in portage.settings.packages if issyspkg(x)]
 
 logfile = portage.grabfile(portage.const.EPREFIX+"/var/log/emerge.log")
-biglist = filter(iscandidate, logfile)
-biglist = map(getpkginfo, biglist)
+biglist = [getpkginfo(x) for x in logfile if iscandidate(x)]
 tmplist = []
 for l in biglist:
 	tmplist += l.split()
-biglist = filter(isunwanted, tmplist)
+biglist = [x for x in tmplist if isunwanted(x)]
 #for p in biglist:
-#	print p
+#	print(p)
 #sys.exit(0)
 
 # resolving virtuals
@@ -78,7 +76,7 @@ realsyslist = []
 for mykey in syslist:
 	# drop the asterix
 	mykey = mykey[1:]
-	#print "candidate:",mykey
+	#print("candidate:",mykey)
 	mylist=portage.db["/"]["vartree"].dbapi.match(mykey)
 	if mylist:
 		mykey=portage.cpv_getkey(mylist[0])
@@ -86,7 +84,7 @@ for mykey in syslist:
 			realsyslist.append(mykey)
 
 for mykey in biglist:
-	#print "checking:",mykey
+	#print("checking:",mykey)
 	try:
 		mylist=portage.db["/"]["vartree"].dbapi.match(mykey)
 	except (portage.exception.InvalidAtom, KeyError):

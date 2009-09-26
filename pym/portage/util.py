@@ -151,7 +151,7 @@ def map_dictlist_vals(func,myDict):
 	new_dl = {}
 	for key in myDict:
 		new_dl[key] = []
-		new_dl[key] = map(func,myDict[key])
+		new_dl[key] = [func(x) for x in myDict[key]]
 	return new_dl
 
 def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0):

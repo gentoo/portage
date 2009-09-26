@@ -511,7 +511,8 @@ class Glsa:
 		# <revised count="2">2007-12-30</revised>
 		revisedEl = myroot.getElementsByTagName("revised")[0]
 		self.revised = getText(revisedEl, format="strip")
-		if (revisedEl.attributes.has_key("count")):
+		if ((sys.hexversion >= 0x3000000 and "count" in revisedEl.attributes) or
+			(sys.hexversion < 0x3000000 and revisedEl.attributes.has_key("count"))):
 			count = revisedEl.getAttribute("count")
 		elif (self.revised.find(":") >= 0):
 			(self.revised, count) = self.revised.split(":")

@@ -41,7 +41,10 @@ class database(fs_template.FsBased):
 				mode='r', encoding=_encodings['repo.content'],
 				errors='replace')
 			try:
-				d = self._parse_data(myf.read().split("\n"), cpv)
+				lines = myf.read().split("\n")
+				if not lines[-1]:
+					lines.pop()
+				d = self._parse_data(lines, cpv)
 				if '_mtime_' not in d:
 					# Backward compatibility with old cache
 					# that uses mtime mangling.
