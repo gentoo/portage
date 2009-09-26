@@ -33,7 +33,9 @@ class database(fs_template.FsBased):
 
 	def __init__(self, *args, **config):
 		super(database, self).__init__(*args, **config)
-		self._allowed_keys = ["_mtime_", "_eclasses_"] + self._known_keys
+		self._allowed_keys = ["_mtime_", "_eclasses_"]
+		self._allowed_keys.extend(self._known_keys)
+		self._allowed_keys.sort()
 		self.location = os.path.join(self.location, 
 			self.label.lstrip(os.path.sep).rstrip(os.path.sep))
 
@@ -103,7 +105,7 @@ class database(fs_template.FsBased):
 		self._db_table["packages"]["create"] = " ".join(create_statement)
 		self._db_table["packages"]["columns"] = \
 			self._db_table["packages"]["internal_columns"] + \
-			sorted(self._allowed_keys)
+			self._allowed_keys
 
 		cursor = self._db_cursor
 		for k, v in self._db_table.items():

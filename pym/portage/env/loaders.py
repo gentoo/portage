@@ -317,7 +317,4 @@ class KeyValuePairFileLoader(FileLoader):
 				_("Value validation failed at line: %s, data %s")
 				% (line_num + 1, value))
 			return
-		if key in data:
-			data[key].append(value)
-		else:
-			data[key] = value
+		data[key] = value
