@@ -35,6 +35,7 @@ except ImportError:
 
 from portage import os
 from portage import dispatch_conf
+from portage import _unicode_decode
 from portage.process import find_binary
 
 FIND_EXTANT_CONFIGS  = "find '%s' %s -name '._cfg????_%s' ! -name '.*~' ! -iname '.*.bak' -print"
@@ -397,7 +398,7 @@ def clear_screen():
         import curses
         try:
             curses.setupterm()
-            sys.stdout.write(curses.tigetstr("clear"))
+            sys.stdout.write(_unicode_decode(curses.tigetstr("clear")))
             sys.stdout.flush()
             return
         except curses.error:
