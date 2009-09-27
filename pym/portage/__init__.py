@@ -3779,7 +3779,6 @@ def _test_pty_eof():
 		os._exit(os.EX_OK)
 	else:
 		slave_file.close()
-		os.waitpid(pid, 0)
 
 	eof = False
 	data = []
@@ -3809,6 +3808,7 @@ def _test_pty_eof():
 			data.append(_unicode_decode(buf.tostring(),
 				encoding='utf_8', errors='strict'))
 
+	os.waitpid(pid, 0)
 	master_file.close()
 
 	return test_string == ''.join(data)
