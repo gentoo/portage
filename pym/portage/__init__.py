@@ -3754,9 +3754,6 @@ def _test_pty_eof():
 	# may raise EnvironmentError
 	master_fd, slave_fd = pty.openpty()
 
-	master_file = os.fdopen(master_fd, 'rb')
-	slave_file = os.fdopen(slave_fd, 'wb')
-
 	# Non-blocking mode is required for Darwin kernel.
 	fcntl.fcntl(master_fd, fcntl.F_SETFL,
 		fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
@@ -3769,17 +3766,18 @@ def _test_pty_eof():
 
 	# Simulate a subprocess writing some data to the
 	# slave end of the pipe, and then exiting. Do a
-	# real fork here since otherwise slave_file.close()
+	# real fork here since otherwise os.close(slave_fd)
 	# would block on some platforms such as Darwin.
 	pid = os.fork()
 	if pid == 0:
-		slave_file.write(_unicode_encode(test_string,
+		os.write(slave_fd, _unicode_encode(test_string,
 			encoding='utf_8', errors='strict'))
-		slave_file.close()
+		os.close(slave_fd)
 		os._exit(os.EX_OK)
 	else:
-		slave_file.close()
+		os.close(slave_fd)
 
+	master_file = os.fdopen(master_fd, 'rb')
 	eof = False
 	data = []
 	iwtd = [master_file]
