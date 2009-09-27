@@ -3768,10 +3768,18 @@ def _test_pty_eof():
 	termios.tcsetattr(slave_fd, termios.TCSANOW, mode)
 
 	# Simulate a subprocess writing some data to the
-	# slave end of the pipe, and then exiting.
-	slave_file.write(_unicode_encode(test_string,
-		encoding='utf_8', errors='strict'))
-	slave_file.close()
+	# slave end of the pipe, and then exiting. Do a
+	# real fork here since otherwise slave_file.close()
+	# would block on some platforms such as Darwin.
+	pid = os.fork()
+	if pid == 0:
+		slave_file.write(_unicode_encode(test_string,
+			encoding='utf_8', errors='strict'))
+		slave_file.close()
+		os._exit(os.EX_OK)
+	else:
+		slave_file.close()
+		os.waitpid(pid, 0)
 
 	eof = False
 	data = []
