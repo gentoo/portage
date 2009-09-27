@@ -9,11 +9,12 @@ from portage import os
 from portage import shutil
 from portage.tests import TestCase
 from portage.process import spawn
-from portage.const import PORTAGE_BIN_PATH
 
-bindir = os.path.join(os.path.dirname(os.path.dirname(
+basepath = os.path.join(os.path.dirname(os.path.dirname(
 	os.path.abspath(__file__))),
-	"..", "..", "..", "bin", "ebuild-helpers")
+	"..", "..", "..")
+bindir = os.path.join(basepath, "bin")
+pymdir = os.path.join(basepath, "pym")
 basedir = None
 env = None
 
@@ -35,7 +36,8 @@ def binTestsInit():
 	env["S"] = os.path.join(basedir, "workdir")
 	env["PF"] = "portage-tests-0.09-r1"
 	env["PATH"] = bindir + ":" + env["PATH"]
-	env["PORTAGE_BIN_PATH"] = PORTAGE_BIN_PATH
+	env["PORTAGE_BIN_PATH"] = bindir
+	env["PORTAGE_PYM_PATH"] = pymdir
 	os.mkdir(env["D"])
 	os.mkdir(env["T"])
 	os.mkdir(env["S"])
@@ -76,9 +78,10 @@ def create_portage_wrapper(bin):
 		return portage_func(*newargs)
 	return derived_func
 
-for bin in os.listdir(bindir):
+for bin in os.listdir(os.path.join(bindir, "ebuild-helpers")):
 	if bin.startswith("do") or \
 	   bin.startswith("new") or \
 	   bin.startswith("prep") or \
 	   bin in ["ecompress","ecompressdir","fowners","fperms"]:
-		globals()[bin] = create_portage_wrapper(os.path.join(bindir, bin))
+		globals()[bin] = create_portage_wrapper(
+			os.path.join(bindir, "ebuild-helpers", bin))
