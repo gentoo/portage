@@ -60,6 +60,8 @@ class MetadataRegen(PollScheduler):
 			for cpv in cpv_list:
 				valid_pkgs.add(cpv)
 				ebuild_path, repo_path = portdb.findname2(cpv)
+				if ebuild_path is None:
+					raise AssertionError("ebuild not found for '%s'" % cpv)
 				metadata, st, emtime = portdb._pull_valid_cache(
 					cpv, ebuild_path, repo_path)
 				if metadata is not None:

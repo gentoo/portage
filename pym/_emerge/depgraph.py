@@ -4097,10 +4097,11 @@ class depgraph(object):
 				metadata = pkg.metadata
 				ebuild_path = None
 				repo_name = metadata["repository"]
-				if pkg_type == "ebuild":
-					ebuild_path = portdb.findname(pkg_key)
-					if not ebuild_path: # shouldn't happen
-						raise portage.exception.PackageNotFound(pkg_key)
+				if pkg.type_name == "ebuild":
+					ebuild_path = portdb.findname(pkg.cpv)
+					if ebuild_path is None:
+						raise AssertionError(
+							"ebuild not found for '%s'" % pkg.cpv)
 					repo_path_real = os.path.dirname(os.path.dirname(
 						os.path.dirname(ebuild_path)))
 				else:
@@ -4163,9 +4164,14 @@ class depgraph(object):
 					if "--changelog" in self._frozen_config.myopts:
 						inst_matches = vardb.match(pkg.slot_atom)
 						if inst_matches:
-							changelogs.extend(calc_changelog(
-								portdb.findname(pkg_key),
-								inst_matches[0], pkg_key))
+							ebuild_path_cl = ebuild_path
+							if ebuild_path_cl is None:
+								# binary package
+								ebuild_path_cl = portdb.findname(pkg.cpv)
+
+							if ebuild_path_cl is not None:
+								changelogs.extend(calc_changelog(
+									ebuild_path_cl, inst_matches[0], pkg.cpv))
 				else:
 					addl = " " + green("N") + " " + fetch + "  "
 					if ordered:
