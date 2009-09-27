@@ -498,7 +498,7 @@ install_qa_check() {
 			[[ ${line[0]} == ${EPREFIX}* ]] && continue
 			# can we just fix it(tm)?
 			if [[ -x ${EPREFIX}${line[0]} || -x ${ED}${line[0]} ]] ; then
-				ewarn "prefixing shebang of ${fn#${D}}"
+				eqawarn "prefixing shebang of ${fn#${D}}"
 				sed -i -e '1s:^#! \?:#!'"${EPREFIX}"':' "${fn}"
 				continue
 			fi
