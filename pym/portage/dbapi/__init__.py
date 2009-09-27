@@ -12,7 +12,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.locks:unlockfile',
 	'portage.output:colorize',
 	'portage.util:cmp_sort_key,writemsg',
-	'portage.versions:catpkgsplit,vercmp',
+	'portage.versions:catsplit,catpkgsplit,vercmp',
 )
 
 from portage import os
@@ -39,11 +39,8 @@ class dbapi(object):
 		"""
 		if self._categories is not None:
 			return self._categories
-		categories = set()
-		cat_pattern = re.compile(r'(.*)/.*')
-		for cp in self.cp_all():
-			categories.add(cat_pattern.match(cp).group(1))
-		self._categories = tuple(sorted(categories))
+		self._categories = tuple(sorted(set(catsplit(x)[0] \
+			for x in self.cp_all())))
 		return self._categories
 
 	def close_caches(self):
