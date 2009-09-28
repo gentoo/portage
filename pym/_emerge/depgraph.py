@@ -1578,7 +1578,7 @@ class depgraph(object):
 			for x in lookup_owners:
 				if not search_for_multiple and os.path.isdir(x):
 					search_for_multiple = True
-				relative_paths.append(x[len(myroot):])
+				relative_paths.append(x[len(myroot)-1:])
 
 			owners = set()
 			for pkg, relative_path in \

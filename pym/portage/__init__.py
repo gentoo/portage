@@ -3762,7 +3762,7 @@ def _test_pty_eof():
 	Raises an EnvironmentError from openpty() if it fails.
 	"""
 
-	import array, pty, termios
+	import array, fcntl, pty, select, termios
 	test_string = 2 * "blah blah blah\n"
 	test_string = _unicode_decode(test_string,
 		encoding='utf_8', errors='strict')
@@ -3770,8 +3770,9 @@ def _test_pty_eof():
 	# may raise EnvironmentError
 	master_fd, slave_fd = pty.openpty()
 
-	master_file = os.fdopen(master_fd, 'rb')
-	slave_file = os.fdopen(slave_fd, 'wb')
+	# Non-blocking mode is required for Darwin kernel.
+	fcntl.fcntl(master_fd, fcntl.F_SETFL,
+		fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 
 	# Disable post-processing of output since otherwise weird
 	# things like \n -> \r\n transformations may occur.
@@ -3780,15 +3781,32 @@ def _test_pty_eof():
 	termios.tcsetattr(slave_fd, termios.TCSANOW, mode)
 
 	# Simulate a subprocess writing some data to the
-	# slave end of the pipe, and then exiting.
-	slave_file.write(_unicode_encode(test_string,
-		encoding='utf_8', errors='strict'))
-	slave_file.close()
+	# slave end of the pipe, and then exiting. Do a
+	# real fork here since otherwise os.close(slave_fd)
+	# would block on some platforms such as Darwin.
+	pids = process.spawn_bash(_unicode_encode("echo -n '%s'" % test_string,
+		encoding='utf_8', errors='strict'), env=os.environ,
+		fd_pipes={0:sys.stdin.fileno(), 1:slave_fd, 2:slave_fd},
+		returnpid=True)
+	if isinstance(pids, int):
+		os.close(master_fd)
+		os.close(slave_fd)
+		raise EnvironmentError('spawn failed')
+	os.close(slave_fd)
 
+	master_file = os.fdopen(master_fd, 'rb')
 	eof = False
 	data = []
+	iwtd = [master_file]
+	owtd = []
+	ewtd = []
 
 	while not eof:
+
+		events = select.select(iwtd, owtd, ewtd)
+		if not events[0]:
+			eof = True
+			break
 
 		buf = array.array('B')
 		try:
@@ -3805,6 +3823,7 @@ def _test_pty_eof():
 			data.append(_unicode_decode(buf.tostring(),
 				encoding='utf_8', errors='strict'))
 
+	os.waitpid(pids[0], 0)
 	master_file.close()
 
 	return test_string == ''.join(data)
