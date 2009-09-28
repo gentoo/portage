@@ -2271,7 +2271,7 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 		for x in lookup_owners:
 			if not search_for_multiple and os.path.isdir(x):
 				search_for_multiple = True
-			relative_paths.append(x[len(root):])
+			relative_paths.append(x[len(root)-1:])
 
 		owners = set()
 		for pkg, relative_path in \
