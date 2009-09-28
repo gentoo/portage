@@ -59,7 +59,7 @@ install_qa_check() {
 		sleep 1
 	done
 
-	if type -P scanelf > /dev/null && ! hasq binchecks ${RESTRICT}; then
+	if [[ ${CHOST} != *-darwin* ]] && type -P scanelf > /dev/null && ! hasq binchecks ${RESTRICT}; then
 		local qa_var insecure_rpath=0 tmp_quiet=${PORTAGE_QUIET}
 		local f x
 
@@ -520,7 +520,7 @@ install_qa_check() {
 		fi
 	fi
 
-	if [[ ${CHOST} == *-darwin* ]] ; then
+	if [[ ${CHOST} == *-darwin* ]] && ! hasq binchecks ${RESTRICT} ; then
 		# on Darwin, dynamic libraries are called .dylibs instead of
 		# .sos.  In addition the version component is before the
 		# extension, not after it.  Check for this, and *only* warn
