@@ -3,9 +3,9 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from email.MIMEText import MIMEText as TextMessage
-from email.MIMEMultipart import MIMEMultipart as MultipartMessage
-from email.MIMEBase import MIMEBase as BaseMessage
+from email.mime.text import MIMEText as TextMessage
+from email.mime.multipart import MIMEMultipart as MultipartMessage
+from email.mime.base import MIMEBase as BaseMessage
 from email.header import Header
 import smtplib
 import socket
