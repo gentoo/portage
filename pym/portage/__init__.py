@@ -8573,11 +8573,14 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 
 		mypkg = os.path.basename(mytbz2)[:-5]
 		xptbz2 = portage.xpak.tbz2(mytbz2)
-		mycat = xptbz2.getfile("CATEGORY")
+		mycat = xptbz2.getfile(_unicode_encode("CATEGORY",
+			encoding=_encodings['repo.content']))
 		if not mycat:
 			writemsg(_("!!! CATEGORY info missing from info chunk, aborting...\n"),
 				noiselevel=-1)
 			return 1
+		mycat = _unicode_decode(mycat,
+			encoding=_encodings['repo.content'], errors='replace')
 		mycat = mycat.strip()
 
 		# These are the same directories that would be used at build time.

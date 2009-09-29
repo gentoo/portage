@@ -78,9 +78,11 @@ class bindbapi(fakedbapi):
 			tbz2_path = self.bintree.getname(mycpv)
 			if not os.path.exists(tbz2_path):
 				raise KeyError(mycpv)
-			tbz2 = portage.xpak.tbz2(tbz2_path)
+			metadata_bytes = portage.xpak.tbz2(tbz2_path).get_data()
 			def getitem(k):
-				v = tbz2.getfile(k)
+				v = metadata_bytes.get(_unicode_encode(k,
+					encoding=_encodings['repo.content'],
+					errors='backslashreplace'))
 				if v is not None:
 					v = _unicode_decode(v,
 						encoding=_encodings['repo.content'], errors='replace')
@@ -377,8 +379,12 @@ class binarytree(object):
 
 		if st is not None:
 			# For invalid packages, other_cat could be None.
-			other_cat = portage.xpak.tbz2(dest_path).getfile("CATEGORY")
+			other_cat = portage.xpak.tbz2(dest_path).getfile(
+				_unicode_encode("CATEGORY",
+				encoding=_encodings['repo.content']))
 			if other_cat:
+				other_cat = _unicode_decode(other_cat,
+					encoding=_encodings['repo.content'], errors='replace')
 				other_cat = other_cat.strip()
 				other_cpv = other_cat + "/" + mypkg
 				self._move_from_all(other_cpv)
@@ -546,11 +552,19 @@ class binarytree(object):
 							noiselevel=-1)
 						self.invalids.append(myfile[:-5])
 						continue
-					mytbz2 = portage.xpak.tbz2(full_path)
-					# For invalid packages, mycat could be None.
-					mycat = mytbz2.getfile("CATEGORY")
-					mypf = mytbz2.getfile("PF")
-					slot = mytbz2.getfile("SLOT")
+					metadata_bytes = portage.xpak.tbz2(full_path).get_data()
+					mycat = _unicode_decode(metadata_bytes.get(
+						_unicode_encode("CATEGORY",
+						encoding=_encodings['repo.content']), ""),
+						encoding=_encodings['repo.content'], errors='replace')
+					mypf = _unicode_decode(metadata_bytes.get(
+						_unicode_encode("PF",
+						encoding=_encodings['repo.content']), ""),
+						encoding=_encodings['repo.content'], errors='replace')
+					slot = _unicode_decode(metadata_bytes.get(
+						_unicode_encode("SLOT",
+						encoding=_encodings['repo.content']), ""),
+						encoding=_encodings['repo.content'], errors='replace')
 					mypkg = myfile[:-5]
 					if not mycat or not mypf or not slot:
 						#old-style or corrupt package

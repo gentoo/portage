@@ -215,7 +215,8 @@ class Binpkg(CompositeTask):
 		check_missing_metadata = ("CATEGORY", "PF")
 		missing_metadata = set()
 		for k in check_missing_metadata:
-			v = pkg_xpak.getfile(k)
+			v = pkg_xpak.getfile(_unicode_encode(k,
+				encoding=_encodings['repo.content']))
 			if not v:
 				missing_metadata.add(k)
 
