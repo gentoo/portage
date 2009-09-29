@@ -272,7 +272,6 @@ class tbz2(object):
 		self.datasize=None
 		self.indexpos=None
 		self.datapos=None
-		self.scan()
 
 	def decompose(self,datadir,cleanup=1):
 		"""Alias for unpackinfo() --- Complement to recompose() but optionally
