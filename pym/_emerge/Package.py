@@ -162,45 +162,41 @@ class _PackageMetadataWrapper(dict):
 	"""
 
 	__slots__ = ("_pkg",)
+	_wrapped_keys = frozenset(
+		["COUNTER", "INHERITED", "IUSE", "SLOT", "_mtime_"])
 	_use_conditional_keys = frozenset(
 		['LICENSE', 'PROPERTIES', 'PROVIDE', 'RESTRICT',])
 
 	def __init__(self, pkg, metadata):
+		dict.__init__(self)
 		self._pkg = pkg
 		if not pkg.built:
 			# USE is lazy, but we want it to show up in self.keys().
 			self['USE'] = ''
+
 		self.update(metadata)
-		for k, v in self.items():
-			if k == 'INHERITED':
-				if isinstance(v, basestring):
-					v = frozenset(v.split())
-				self._pkg.inherited = v
-			elif k == 'SLOT':
-				self._pkg.slot = v
-			elif k == 'IUSE':
-				self._pkg.iuse = self._pkg._iuse(
-					v.split(), self._pkg.root_config.iuse_implicit)
-			elif k == 'COUNTER':
-				if isinstance(v, basestring):
-					try:
-						v = long(v.strip())
-					except ValueError:
-						v = 0
-						self['COUNTER'] = str(v)
-				self._pkg.counter = v
-			elif k == '_mtime_':
-				if isinstance(v, basestring):
-					try:
-						v = long(v.strip())
-					except ValueError:
-						v = 0
-				self._pkg.mtime = v
-			elif k in self._use_conditional_keys:
-				try:
-					use_reduce(paren_reduce(v), matchall=1)
-				except portage.exception.InvalidDependString as e:
-					self._pkg._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
+
+	def update(self, *args, **kwargs):
+		"""dict.update() bypasses __setitem__, so override it."""
+		if len(args) > 1:
+			raise TypeError(
+				"expected at most 1 positional argument, got " + \
+				repr(len(args)))
+
+		other = None
+		if args:
+			other = args[0]
+
+		if other is not None:
+			try:
+				i = other.items()
+			except AttributeError:
+				i = other
+			for k, v in i:
+				self[k] = v
+
+		if kwargs:
+			self.update(kwargs)
 
 	def __getitem__(self, k):
 		v = dict.__getitem__(self, k)
@@ -226,6 +222,44 @@ class _PackageMetadataWrapper(dict):
 				self['USE'] = v
 
 		return v
+
+	def __setitem__(self, k, v):
+		dict.__setitem__(self, k, v)
+		if k in self._wrapped_keys:
+			getattr(self, "_set_" + k.lower())(k, v)
+		elif k in self._use_conditional_keys:
+			try:
+				use_reduce(paren_reduce(v), matchall=1)
+			except portage.exception.InvalidDependString, e:
+				self._pkg._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
+
+	def _set_inherited(self, k, v):
+		if isinstance(v, basestring):
+			v = frozenset(v.split())
+		self._pkg.inherited = v
+
+	def _set_iuse(self, k, v):
+		self._pkg.iuse = self._pkg._iuse(
+			v.split(), self._pkg.root_config.iuse_implicit)
+
+	def _set_slot(self, k, v):
+		self._pkg.slot = v
+
+	def _set_counter(self, k, v):
+		if isinstance(v, basestring):
+			try:
+				v = long(v.strip())
+			except ValueError:
+				v = 0
+		self._pkg.counter = v
+
+	def _set__mtime_(self, k, v):
+		if isinstance(v, basestring):
+			try:
+				v = long(v.strip())
+			except ValueError:
+				v = 0
+		self._pkg.mtime = v
 
 	@property
 	def properties(self):
