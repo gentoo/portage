@@ -436,7 +436,7 @@ class tbz2(object):
 	def get_data(self):
 		"""Returns all the files from the dataSegment as a map object."""
 		if not self.scan():
-			return 0
+			return {}
 		a = open(_unicode_encode(self.file,
 			encoding=_encodings['fs'], errors='strict'), 'rb')
 		mydata = {}
