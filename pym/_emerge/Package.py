@@ -6,6 +6,7 @@ import re
 import sys
 from itertools import chain
 import portage
+from portage.cache.mappings import slot_dict_class
 from portage.dep import paren_reduce, use_reduce, \
 	paren_normalize, paren_enclose
 from _emerge.Task import Task
@@ -156,7 +157,9 @@ _all_metadata_keys = set(x for x in portage.auxdbkeys \
 _all_metadata_keys.update(Package.metadata_keys)
 _all_metadata_keys = frozenset(_all_metadata_keys)
 
-class _PackageMetadataWrapper(dict):
+_PackageMetadataWrapperBase = slot_dict_class(_all_metadata_keys)
+
+class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 	"""
 	Detect metadata updates and synchronize Package attributes.
 	"""
@@ -168,7 +171,7 @@ class _PackageMetadataWrapper(dict):
 		['LICENSE', 'PROPERTIES', 'PROVIDE', 'RESTRICT',])
 
 	def __init__(self, pkg, metadata):
-		dict.__init__(self)
+		_PackageMetadataWrapperBase.__init__(self)
 		self._pkg = pkg
 		if not pkg.built:
 			# USE is lazy, but we want it to show up in self.keys().
@@ -176,30 +179,8 @@ class _PackageMetadataWrapper(dict):
 
 		self.update(metadata)
 
-	def update(self, *args, **kwargs):
-		"""dict.update() bypasses __setitem__, so override it."""
-		if len(args) > 1:
-			raise TypeError(
-				"expected at most 1 positional argument, got " + \
-				repr(len(args)))
-
-		other = None
-		if args:
-			other = args[0]
-
-		if other is not None:
-			try:
-				i = other.items()
-			except AttributeError:
-				i = other
-			for k, v in i:
-				self[k] = v
-
-		if kwargs:
-			self.update(kwargs)
-
 	def __getitem__(self, k):
-		v = dict.__getitem__(self, k)
+		v = _PackageMetadataWrapperBase.__getitem__(self, k)
 		if k in self._use_conditional_keys:
 			if self._pkg.root_config.settings.local_config and '?' in v:
 				try:
@@ -224,7 +205,7 @@ class _PackageMetadataWrapper(dict):
 		return v
 
 	def __setitem__(self, k, v):
-		dict.__setitem__(self, k, v)
+		_PackageMetadataWrapperBase.__setitem__(self, k, v)
 		if k in self._wrapped_keys:
 			getattr(self, "_set_" + k.lower())(k, v)
 		elif k in self._use_conditional_keys:
