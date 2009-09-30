@@ -12,7 +12,7 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum:_perform_md5_merge@perform_md5',
 	'portage.dep:dep_getkey,isjustname,match_from_list,' + \
-	 	'use_reduce,paren_reduce',
+	 	'use_reduce,paren_reduce,_slot_re',
 	'portage.elog:elog_process',
 	'portage.elog.filtering:filter_mergephases,filter_unmergephases',
 	'portage.locks:lockdir,unlockdir',
@@ -1251,10 +1251,12 @@ class vardbapi(dbapi):
 					cache_data[aux_key] = mydata[aux_key]
 				self._aux_cache["packages"][mycpv] = (mydir_mtime, cache_data)
 				self._aux_cache["modified"].add(mycpv)
-		if not mydata['SLOT']:
-			# Empty slot triggers InvalidAtom exceptions when generating slot
-			# atoms for packages, so translate it to '0' here.
+
+		if _slot_re.match(mydata['SLOT']) is None:
+			# Empty or invalid slot triggers InvalidAtom exceptions when
+			# generating slot atoms for packages, so translate it to '0' here.
 			mydata['SLOT'] = _unicode_decode('0')
+
 		return [mydata[x] for x in wants]
 
 	def _aux_get(self, mycpv, wants, st=None):

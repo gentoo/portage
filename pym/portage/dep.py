@@ -808,7 +808,8 @@ def dep_getusedeps( depend ):
 
 # 2.1.3 A slot name may contain any of the characters [A-Za-z0-9+_.-].
 # It must not begin with a hyphen or a dot.
-_slot = r':([\w+][\w+.-]*)'
+_slot = r'([\w+][\w+.-]*)'
+_slot_re = re.compile('^' + _slot + '$', re.VERBOSE)
 
 _use = r'\[.*\]'
 _op = r'([=~]|[><]=?)'
@@ -816,7 +817,7 @@ _op = r'([=~]|[><]=?)'
 _atom_re = re.compile('^(?P<without_use>(?:' +
 	'(?P<op>' + _op + _cpv + ')|' +
 	'(?P<star>=' + _cpv + r'\*)|' +
-	'(?P<simple>' + _cp + '))(?:' + _slot + ')?)(' + _use + ')?$', re.VERBOSE)
+	'(?P<simple>' + _cp + '))(:' + _slot + ')?)(' + _use + ')?$', re.VERBOSE)
 
 def isvalidatom(atom, allow_blockers=False):
 	"""
