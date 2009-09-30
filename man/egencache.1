@@ -54,6 +54,11 @@ This option should only be needed for distribution via something like
 (see \fBbug 139134\fR). It's not needed with \fBgit\fR(1) since that uses a
 more thorough mechanism which allows it to detect changed inode numbers
 (described in \fIracy-git.txt\fR in the git technical docs).
+.TP
+.BR "\-\-tolerant"
+Exit successfully if only minor errors occurred, such as skipped cache
+updates due to ebuilds that either fail to source or are not sourced
+due to invalid Manifest entries.
 .SH "ENVIRONMENT OPTIONS"
 .TP
 \fBEGENCACHE_DEFAULT_OPTS\fR

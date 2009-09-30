@@ -67,6 +67,9 @@ def parse_args(args):
 		action="store_true",
 		help="enable rsync stat collision workaround " + \
 			"for bug 139134 (use with --update)")
+	parser.add_option("--tolerant",
+		action="store_true",
+		help="exit successfully if only minor errors occurred")
 	parser.add_option("--ignore-default-opts",
 		action="store_true",
 		help="do not use the EGENCACHE_DEFAULT_OPTS environment variable")
@@ -343,6 +346,8 @@ def egencache_main(args):
 		max_load=options.load_average,
 		rsync=options.rsync)
 	gen_cache.run()
+	if options.tolerant:
+		return os.EX_OK
 	return gen_cache.returncode
 
 if __name__ == "__main__":
