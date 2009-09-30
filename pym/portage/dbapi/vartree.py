@@ -4161,12 +4161,20 @@ class dblink(object):
 				protected = self.isprotected(mydest)
 				if mydmode != None:
 					# destination file exists
-					cfgprot = 0
+					
 					if stat.S_ISDIR(mydmode):
 						# install of destination is blocked by an existing directory with the same name
-						cfgprot = 1
-						showMessage("!!! %s\n" % mydest,
-							level=logging.ERROR, noiselevel=-1)
+						newdest = new_protect_filename(mydest, newmd5=mymd5)
+						msg = []
+						msg.append("")
+						msg.append("Installation of a regular file is blocked by a directory:")
+						msg.append("  '%s'" % mydest)
+						msg.append("This file will be merged with a different name:")
+						msg.append("  '%s'" % newdest)
+						msg.append("")
+						self._eerror("preinst", msg)
+						mydest = newdest
+
 					elif stat.S_ISREG(mydmode) or (stat.S_ISLNK(mydmode) and os.path.exists(mydest) and stat.S_ISREG(os.stat(mydest)[stat.ST_MODE])):
 						# install of destination is blocked by an existing regular file,
 						# or by a symlink to an existing regular file;
@@ -4174,6 +4182,7 @@ class dblink(object):
 						# we only need to tweak mydest if cfg file management is in play.
 						if protected:
 							# we have a protection path; enable config file management.
+							cfgprot = 0
 							destmd5 = perform_md5(mydest, calc_prelink=1)
 							if mymd5 == destmd5:
 								#file already in place; simply update mtimes of destination
@@ -4198,8 +4207,9 @@ class dblink(object):
 								"""A previously remembered update has been
 								accepted, so it is removed from confmem."""
 								del cfgfiledict[myrealdest]
-					if cfgprot:
-						mydest = new_protect_filename(mydest, newmd5=mymd5)
+
+							if cfgprot:
+								mydest = new_protect_filename(mydest, newmd5=mymd5)
 
 				# whether config protection or not, we merge the new file the
 				# same way.  Unless moveme=0 (blocking directory)
