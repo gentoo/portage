@@ -8154,7 +8154,7 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 					return None
 	return deplist
 
-_cpv_key_re = re.compile('^' + dep._cpv + '$', re.VERBOSE)
+_cpv_key_re = re.compile('^' + versions._cpv + '$', re.VERBOSE)
 def cpv_getkey(mycpv):
 	"""Calls pkgsplit on a cpv and returns only the cp."""
 	m = _cpv_key_re.match(mycpv)

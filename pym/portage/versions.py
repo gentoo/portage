@@ -5,9 +5,27 @@
 
 import re
 
-_version = r'(cvs\.)?(\d+)((\.\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\d*)*)(-r(\d+))?'
 
-ver_regexp = re.compile("^" + _version + "$")
+# \w is [a-zA-Z0-9_]
+
+# 2.1.1 A category name may contain any of the characters [A-Za-z0-9+_.-].
+# It must not begin with a hyphen or a dot.
+_cat = r'[\w+][\w+.-]*'
+
+# 2.1.2 A package name may contain any of the characters [A-Za-z0-9+_-].
+# It must not begin with a hyphen,
+# and must not end in a hyphen followed by one or more digits.
+_pkg = r'[\w+][\w+-]*?'
+
+_v = r'(cvs\.)?(\d+)((\.\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\d*)*)'
+_rev = r'\d+'
+_vr = _v + '(-r(' + _rev + '))?'
+
+_cp = '(' + _cat + '/' + _pkg + '(-' + _vr + ')?)'
+_cpv = '(' + _cp + '-' + _vr + ')'
+_pv = '(?P<pn>' + _pkg + '(?P<pn_inval>-' + _vr + ')?)' + '-(?P<ver>' + _v + ')(-r(?P<rev>' + _rev + '))?'
+
+ver_regexp = re.compile("^" + _vr + "$")
 suffix_regexp = re.compile("^(alpha|beta|rc|pre|p)(\\d*)$")
 suffix_value = {"pre": -2, "p": 0, "alpha": -4, "beta": -3, "rc": -1}
 endversion_keys = ["pre", "p", "alpha", "beta", "rc"]
@@ -208,50 +226,24 @@ def pkgcmp(pkg1, pkg2):
 		return None
 	return vercmp("-".join(pkg1[1:]), "-".join(pkg2[1:]))
 
-pkgcache={}
+_pv_re = re.compile('^' + _pv + '$', re.VERBOSE)
 
 def pkgsplit(mypkg,silent=1):
-	try:
-		if not pkgcache[mypkg]:
-			return None
-		return pkgcache[mypkg]
-	except KeyError:
-		pass
-	myparts=mypkg.split("-")
-	
-	if len(myparts)<2:
-		if not silent:
-			print(_("!!! Name error in %s: missing a version or name part.") % mypkg)
-		pkgcache[mypkg]=None
+
+	m = _pv_re.match(mypkg)
+	if m is None:
 		return None
 
-	#verify rev
-	revok=0
-	myrev=myparts[-1]
-	if len(myrev) and myrev[0]=="r":
-		try:
-			int(myrev[1:])
-			revok=1
-		except ValueError: # from int()
-			pass
-	if revok:
-		verPos = -2
-		revision = myparts[-1]
-	else:
-		verPos = -1
-		revision = "r0"
-
-	if ververify(myparts[verPos]):
-		if len(myparts)== (-1*verPos):
-			pkgcache[mypkg]=None
-			return None
-		else:
-			myval=("-".join(myparts[:verPos]),myparts[verPos],revision)
-			pkgcache[mypkg]=myval
-			return myval
-	else:
-		pkgcache[mypkg]=None
+	if m.group('pn_inval') is not None:
+		# package name appears to have a version-like suffix
 		return None
+
+	rev = m.group('rev')
+	if rev is None:
+		rev = '0'
+	rev = 'r' + rev
+
+	return  (m.group('pn'), m.group('ver'), rev) 
 
 catcache={}
 def catpkgsplit(mydata,silent=1):
