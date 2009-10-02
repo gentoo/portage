@@ -2332,18 +2332,17 @@ class depgraph(object):
 									different_version = avail_pkg
 									break
 							if different_version is not None:
-
-								if installed and \
-									pkgsettings._getMissingKeywords(
-									pkg.cpv, pkg.metadata):
-									continue
-
 								# If the ebuild no longer exists or it's
 								# keywords have been dropped, reject built
 								# instances (installed or binary).
 								# If --usepkgonly is enabled, assume that
 								# the ebuild status should be ignored.
-								if not usepkgonly:
+								if usepkgonly:
+									if installed and \
+										pkgsettings._getMissingKeywords(
+										pkg.cpv, pkg.metadata):
+										continue
+								else:
 									try:
 										pkg_eb = self._pkg(
 											pkg.cpv, "ebuild", root_config)
