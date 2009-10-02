@@ -268,37 +268,6 @@ class EbuildQuotedA(LineCheck):
 		if match:
 			return "Quoted \"${A}\" on line: %d"
 
-class ImplicitRuntimeDeps(LineCheck):
-	"""
-	Detect the case where DEPEND is set and RDEPEND is unset in the ebuild,
-	since this triggers implicit RDEPEND=$DEPEND assignment.
-	"""
-
-	_assignment_re = re.compile(r'^\s*(R?DEPEND)=')
-
-	def new(self, pkg):
-		# RDEPEND=DEPEND is no longer available in EAPI=3
-		if pkg.metadata['EAPI'] in ('0', '1', '2'):
-			self.repoman_check_name = 'RDEPEND.implicit'
-		else:
-			self.repoman_check_name = 'EAPI.incompatible'
-		self._rdepend = False
-		self._depend = False
-
-	def check(self, num, line):
-		if not self._rdepend:
-			m = self._assignment_re.match(line)
-			if m is None:
-				pass
-			elif m.group(1) == "RDEPEND":
-				self._rdepend = True
-			elif m.group(1) == "DEPEND":
-				self._depend = True
-
-	def end(self):
-		if self._depend and not self._rdepend:
-			yield 'RDEPEND is not explicitly assigned'
-
 class InheritAutotools(LineCheck):
 	"""
 	Make sure appropriate functions are called in
@@ -493,7 +462,7 @@ _constant_checks = tuple((c() for c in (
 	EbuildAssignment, EbuildUselessDodoc,
 	EbuildUselessCdS, EbuildNestedDie,
 	EbuildPatches, EbuildQuotedA, EapiDefinition,
-	IUseUndefined, ImplicitRuntimeDeps, InheritAutotools,
+	IUseUndefined, InheritAutotools,
 	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS,
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
 	SrcCompileEconf, Eapi3IncompatibleFuncs, Eapi3GoneVars)))

@@ -212,7 +212,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 		elif k in self._use_conditional_keys:
 			try:
 				use_reduce(paren_reduce(v), matchall=1)
-			except portage.exception.InvalidDependString, e:
+			except portage.exception.InvalidDependString as e:
 				self._pkg._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
 
 	def _set_inherited(self, k, v):

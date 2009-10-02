@@ -24,7 +24,7 @@ import portage.exception
 from portage.exception import InvalidData, InvalidAtom
 from portage.localization import _
 from portage.versions import catpkgsplit, catsplit, \
-	pkgcmp, pkgsplit, ververify, _version
+	pkgcmp, pkgsplit, ververify, _cp, _cpv
 import portage.cache.mappings
 
 if sys.hexversion >= 0x3000000:
@@ -806,28 +806,18 @@ def dep_getusedeps( depend ):
 
 # \w is [a-zA-Z0-9_]
 
-# 2.1.1 A category name may contain any of the characters [A-Za-z0-9+_.-].
-# It must not begin with a hyphen or a dot.
-_cat = r'[\w+][\w+.-]*'
-
-# 2.1.2 A package name may contain any of the characters [A-Za-z0-9+_-].
-# It must not begin with a hyphen,
-# and must not end in a hyphen followed by one or more digits.
-_pkg = r'[\w+][\w+-]*?'
-
 # 2.1.3 A slot name may contain any of the characters [A-Za-z0-9+_.-].
 # It must not begin with a hyphen or a dot.
-_slot = r':([\w+][\w+.-]*)'
+_slot = r'([\w+][\w+.-]*)'
+_slot_re = re.compile('^' + _slot + '$', re.VERBOSE)
 
 _use = r'\[.*\]'
 _op = r'([=~]|[><]=?)'
-_cp = '(' + _cat + '/' + _pkg + '(-' + _version + ')?)'
-_cpv = '(' + _cp + '-' + _version + ')'
 
 _atom_re = re.compile('^(?P<without_use>(?:' +
 	'(?P<op>' + _op + _cpv + ')|' +
 	'(?P<star>=' + _cpv + r'\*)|' +
-	'(?P<simple>' + _cp + '))(?:' + _slot + ')?)(' + _use + ')?$', re.VERBOSE)
+	'(?P<simple>' + _cp + '))(:' + _slot + ')?)(' + _use + ')?$', re.VERBOSE)
 
 def isvalidatom(atom, allow_blockers=False):
 	"""

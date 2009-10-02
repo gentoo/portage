@@ -426,7 +426,6 @@ suspect_rdepend = frozenset([
 	"sys-devel/bison",
 	"sys-devel/dev86",
 	"sys-devel/flex",
-	"sys-devel/libtool",
 	"sys-devel/m4",
 	"sys-devel/pmake",
 	"x11-misc/bdftopcf",
