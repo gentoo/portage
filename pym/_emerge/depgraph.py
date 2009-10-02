@@ -2304,8 +2304,7 @@ class depgraph(object):
 					reinstall_for_flags = None
 
 					if not pkg.installed or \
-						(pkg.built and matched_packages and \
-						not (avoid_update and pkg.installed)):
+						(matched_packages and not avoid_update):
 						# Only enforce visibility on installed packages
 						# if there is at least one other visible package
 						# available. By filtering installed masked packages
@@ -2323,8 +2322,8 @@ class depgraph(object):
 						# with visible KEYWORDS when the installed
 						# version is masked by KEYWORDS, but never
 						# reinstall the same exact version only due
-						# to a KEYWORDS mask.
-						if built and matched_packages:
+						# to a KEYWORDS mask. See bug #252167.
+						if matched_packages:
 
 							different_version = None
 							for avail_pkg in matched_packages:
