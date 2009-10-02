@@ -257,38 +257,8 @@ def pkgsplit(mypkg,silent=1):
 	if m is None:
 		return None
 
-<<<<<<< .working
-	#verify rev
-	revok=0
-	myrev=myparts[-1]
-	if len(myrev) and myrev[0]=="r":
-		try:
-			# PREFIX hack: allow floats in revisions
-			float(myrev[1:])
-			revok=1
-		except ValueError: # from int()
-			pass
-	if revok:
-		verPos = -2
-		revision = myparts[-1]
-	else:
-		verPos = -1
-		revision = "r0"
-
-	if ververify(myparts[verPos]):
-		if len(myparts)== (-1*verPos):
-			pkgcache[mypkg]=None
-			return None
-		else:
-			myval=("-".join(myparts[:verPos]),myparts[verPos],revision)
-			pkgcache[mypkg]=myval
-			return myval
-	else:
-		pkgcache[mypkg]=None
-=======
 	if m.group('pn_inval') is not None:
 		# package name appears to have a version-like suffix
->>>>>>> .merge-right.r14472
 		return None
 
 	rev = m.group('rev')
