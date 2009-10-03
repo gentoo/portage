@@ -3768,8 +3768,6 @@ def _test_pty_eof():
 
 	# Simulate a subprocess writing some data to the
 	# slave end of the pipe, and then exiting.
-	# Using a fork here gave inconsistent results,
-	# so it's disabled now.
 	pid = None
 	if use_fork:
 		pids = process.spawn_bash(_unicode_encode("echo -n '%s'" % test_string,
@@ -3785,6 +3783,12 @@ def _test_pty_eof():
 		os.write(slave_fd, _unicode_encode(test_string,
 			encoding='utf_8', errors='strict'))
 	os.close(slave_fd)
+
+	# If using a fork, we must wait for the child here,
+	# in order to avoid a race condition that would
+	# lead to inconsistent results.
+	if pid is not None:
+		os.waitpid(pid, 0)
 
 	master_file = os.fdopen(master_fd, 'rb')
 	eof = False
@@ -3815,8 +3819,6 @@ def _test_pty_eof():
 			data.append(_unicode_decode(buf.tostring(),
 				encoding='utf_8', errors='strict'))
 
-	if pid is not None:
-		os.waitpid(pid, 0)
 	master_file.close()
 
 	return test_string == ''.join(data)
