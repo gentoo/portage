@@ -3511,13 +3511,7 @@ class dblink(object):
 		def path_to_node(path):
 			node = path_node_map.get(path)
 			if node is None:
-				chost = self.settings.get('CHOST')
-				if chost.find('darwin') >= 0:
-					node = LinkageMapMachO._LibGraphNode(path, root)
-				elif chost.find('interix') >= 0 or chost.find('winnt') >= 0:
-					node = LinkageMapPeCoff._LibGraphNode(path, root)
-				else:
-					node = LinkageMap._LibGraphNode(path, root)
+				node = linkmap._LibGraphNode(path, root)
 				alt_path_node = lib_graph.get(node)
 				if alt_path_node is not None:
 					node = alt_path_node
