@@ -85,7 +85,7 @@ die() {
 		(( n-- ))
 	done
 	(( n == 0 )) && (( n = ${#FUNCNAME[@]} - 1 ))
-	while (( n >= 0 )); do
+	while (( n > 0 )); do
 		sourcefile=${BASH_SOURCE[${n}]} sourcefile=${sourcefile##*/}
 		lineno=${BASH_LINENO[${n}]}
 		((filespacing < ${#sourcefile})) && filespacing=${#sourcefile}
@@ -93,8 +93,9 @@ die() {
 		(( n-- ))
 	done
 
+	eerror "ERROR: $CATEGORY/$PF failed:"
+	eerror "  ${*:-(no error message)}"
 	eerror
-	eerror "ERROR: $CATEGORY/$PF failed."
 	dump_trace 2 ${filespacing} ${linespacing}
 	eerror "  $(printf "%${filespacing}s" "${BASH_SOURCE[1]##*/}"), line $(printf "%${linespacing}s" "${BASH_LINENO[0]}"):  Called die"
 	eerror "The specific snippet of code:"
@@ -119,21 +120,8 @@ die() {
 		${BASH_SOURCE[1]} \
 		| sed -e '1d' -e 's:^:RETAIN-LEADING-SPACE:' \
 		| while read -r n ; do eerror "  ${n#RETAIN-LEADING-SPACE}" ; done
-	eerror " The die message:"
-	eerror "  ${*:-(no error message)}"
 	eerror
 	eerror "If you need support, post the topmost build error, and the call stack if relevant."
-	[[ -n ${PORTAGE_LOG_FILE} ]] \
-		&& eerror "A complete build log is located at '${PORTAGE_LOG_FILE}'."
-	if [ -f "${T}/environment" ] ; then
-		eerror "The ebuild environment file is located at '${T}/environment'."
-	elif [ -d "${T}" ] ; then
-		{
-			set
-			export
-		} > "${T}/die.env"
-		eerror "The ebuild environment file is located at '${T}/die.env'."
-	fi
 	if [[ -n ${EBUILD_OVERLAY_ECLASSES} ]] ; then
 		eerror "This ebuild used the following eclasses from overlays:"
 		local x
@@ -161,7 +149,6 @@ die() {
 				"named '$PORTAGE_REPO_NAME'"
 		fi
 	fi
-	eerror
 
 	if [[ "${EBUILD_PHASE/depend}" == "${EBUILD_PHASE}" ]] ; then
 		local x
@@ -169,6 +156,19 @@ die() {
 			${x} "$@" >&2 1>&2
 		done
 	fi
+
+	[[ -n ${PORTAGE_LOG_FILE} ]] \
+		&& eerror "A complete build log is located at '${PORTAGE_LOG_FILE}'."
+	if [ -f "${T}/environment" ] ; then
+		eerror "The ebuild environment file is located at '${T}/environment'."
+	elif [ -d "${T}" ] ; then
+		{
+			set
+			export
+		} > "${T}/die.env"
+		eerror "The ebuild environment file is located at '${T}/die.env'."
+	fi
+	eerror "S: '${S}'"
 
 	[ -n "$EBUILD_EXIT_STATUS_FILE" ] && > "$EBUILD_EXIT_STATUS_FILE"
 
