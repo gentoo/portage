@@ -318,8 +318,18 @@ class depgraph(object):
 			return
 
 		write = sys.stderr.write
+		backtrack_masked = []
 
 		for pkg, parent_atoms in missed_updates:
+
+			try:
+				for parent, root, atom in parent_atoms:
+					self._show_unsatisfied_dep(root, atom, myparent=parent,
+						check_backtrack=True)
+			except self._backtrack_mask:
+				# This is displayed below in abbreviated form.
+				backtrack_masked.append((pkg, parent_atoms))
+				continue
 
 			write("\n!!! The following update has been skipped " + \
 				"due to unsatisfied dependencies:\n\n")
@@ -331,6 +341,18 @@ class depgraph(object):
 
 			for parent, root, atom in parent_atoms:
 				self._show_unsatisfied_dep(root, atom, myparent=parent)
+				write("\n")
+
+		if backtrack_masked:
+			# These are shown in abbreviated form, in order to avoid terminal
+			# flooding from mask messages as reported in bug #285832.
+			write("\n!!! The following update(s) have been skipped " + \
+				"due to unsatisfied dependencies\n" + \
+				"!!! triggered by backtracking:\n\n")
+			for pkg, parent_atoms in backtrack_masked:
+				write(str(pkg.slot_atom))
+				if pkg.root != '/':
+					write(" for %s" % (pkg.root,))
 				write("\n")
 
 		sys.stderr.flush()
@@ -1993,7 +2015,14 @@ class depgraph(object):
 
 		return selected_atoms
 
-	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None):
+	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None,
+		check_backtrack=False):
+		"""
+		When check_backtrack=True, no output is produced and
+		the method either returns or raises _backtrack_mask if
+		a matching package has been masked by backtracking.
+		"""
+		backtrack_mask = False
 		atom_set = InternalPackageSet(initial_atoms=(atom,))
 		xinfo = '"%s"' % atom
 		if arg:
@@ -2038,6 +2067,7 @@ class depgraph(object):
 							self._dynamic_config._runtime_pkg_mask[pkg]
 						mreasons.append('backtracking: %s' % \
 							', '.join(sorted(backtrack_reasons)))
+						backtrack_mask = True
 					if mreasons:
 						masked_pkg_instances.add(pkg)
 					if atom.use:
@@ -2046,6 +2076,12 @@ class depgraph(object):
 							continue
 				masked_packages.append(
 					(root_config, pkgsettings, cpv, metadata, mreasons))
+
+		if check_backtrack:
+			if backtrack_mask:
+				raise self._backtrack_mask()
+			else:
+				return
 
 		missing_use_reasons = []
 		missing_iuse_reasons = []
@@ -4931,6 +4967,13 @@ class depgraph(object):
 		be called again for some reason. The only case that it's currently
 		used for is when neglected dependencies need to be added to the
 		graph in order to avoid making a potentially unsafe decision.
+		"""
+
+	class _backtrack_mask(_internal_exception):
+		"""
+		This is raised by _show_unsatisfied_dep() when it's called with
+		check_backtrack=True and a matching package has been masked by
+		backtracking.
 		"""
 
 	def need_restart(self):
