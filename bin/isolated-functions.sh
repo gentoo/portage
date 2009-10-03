@@ -48,7 +48,7 @@ dump_trace() {
 			done
 			(( p -= ${BASH_ARGC[${n} - 1]} ))
 		fi
-		eerror "  $(printf "%${filespacing}s" "${sourcefile}"):$(printf "%${linespacing}s" "${lineno}"): <call ${funcname}${args:+ ${args}}>"
+		eerror "  $(printf "%${filespacing}s" "${sourcefile}"), line $(printf "%${linespacing}s" "${lineno}"):  Called ${funcname}${args:+ ${args}}"
 		(( n-- ))
 	done
 }
