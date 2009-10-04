@@ -229,7 +229,12 @@ def pkgcmp(pkg1, pkg2):
 _pv_re = re.compile('^' + _pv + '$', re.VERBOSE)
 
 def _pkgsplit(mypkg):
-
+	"""
+	@param mypkg: pv
+	@return:
+	1. None if input is invalid.
+	2. (pn, ver, rev) if input is pv
+	"""
 	m = _pv_re.match(mypkg)
 	if m is None:
 		return None

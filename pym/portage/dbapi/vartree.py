@@ -21,7 +21,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:apply_secpass_permissions,ConfigProtect,ensure_dirs,' + \
 		'writemsg,writemsg_level,write_atomic,atomic_ofstream,writedict,' + \
 		'grabfile,grabdict,normalize_path,new_protect_filename,getlibpaths',
-	'portage.versions:best,catpkgsplit,catsplit,pkgcmp,pkgsplit',
+	'portage.versions:best,catpkgsplit,catsplit,pkgcmp,_pkgsplit@pkgsplit',
 )
 
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, \
