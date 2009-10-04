@@ -6004,7 +6004,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		mypv = os.path.basename(ebuild_path)[:-7]
 
 	mycpv = cat+"/"+mypv
-	mysplit=pkgsplit(mypv,silent=0)
+	mysplit = versions._pkgsplit(mypv)
 	if mysplit is None:
 		raise portage.exception.IncorrectParameter(
 			_("Invalid ebuild path: '%s'") % myebuild)
@@ -8176,7 +8176,7 @@ def cpv_getkey(mycpv):
 		% (mycpv,), DeprecationWarning)
 
 	myslash = mycpv.split("/", 1)
-	mysplit=pkgsplit(myslash[-1])
+	mysplit = versions._pkgsplit(myslash[-1])
 	if mysplit is None:
 		return None
 	mylen=len(myslash)
@@ -8219,7 +8219,7 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 	virtual is a valid choice and defaults to the first element when there
 	are no installed/available candidates."""
 	myslash=mycpv.split("/")
-	mysplit=pkgsplit(myslash[-1])
+	mysplit = versions._pkgsplit(myslash[-1])
 	if settings is None:
 		settings = globals()["settings"]
 	virts = settings.getvirtuals("/")
