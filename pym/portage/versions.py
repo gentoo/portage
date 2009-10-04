@@ -228,7 +228,7 @@ def pkgcmp(pkg1, pkg2):
 
 _pv_re = re.compile('^' + _pv + '$', re.VERBOSE)
 
-def pkgsplit(mypkg,silent=1):
+def _pkgsplit(mypkg):
 
 	m = _pv_re.match(mypkg)
 	if m is None:
@@ -269,16 +269,33 @@ def catpkgsplit(mydata,silent=1):
 	p_split=None
 	if len(mysplit)==1:
 		cat = "null"
-		p_split=pkgsplit(mydata,silent=silent)
+		p_split = _pkgsplit(mydata)
 	elif len(mysplit)==2:
 		cat = mysplit[0]
-		p_split=pkgsplit(mysplit[1],silent=silent)
+		p_split = _pkgsplit(mysplit[1])
 	if not p_split:
 		catcache[mydata]=None
 		return None
 	retval = (cat, p_split[0], p_split[1], p_split[2])
 	catcache[mydata]=retval
 	return retval
+
+def pkgsplit(mypkg, silent=1):
+	"""
+	@param mypkg: either a pv or cpv
+	@return:
+	1. None if input is invalid.
+	2. (pn, ver, rev) if input is pv
+	3. (cp, ver, rev) if input is a cpv
+	"""
+	catpsplit = catpkgsplit(mypkg)
+	if catpsplit is None:
+		return None
+	cat, pn, ver, rev = catpsplit
+	if cat == 'null':
+		return (pn, ver, rev)
+	else:
+		return (cat + '/' + pn, ver, rev)
 
 def catsplit(mydep):
         return mydep.split("/", 1)
