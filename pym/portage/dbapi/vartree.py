@@ -3065,7 +3065,7 @@ class dblink(object):
 					raise
 				del e
 			else:
-				showMessage(_("<<< !needed   %s %s\n") % (obj_type, obj),
+				showMessage(_("<<< !needed  %s %s\n") % (obj_type, obj),
 					noiselevel=-1)
 
 		# Remove empty parent directories if possible.
