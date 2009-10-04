@@ -38,8 +38,8 @@ class PhaseCheck(LineCheck):
 	in_phase = ''
 
 	def __init__(self):
-		self.phases = ('pkg_setup', 'pkg_preinst', 'pkg_postinst', 'pkg_prerm', 'pkg_postrm', 'pkg_pretend',
-			'src_unpack', 'src_prepare', 'src_compile', 'src_test', 'src_install')
+		self.phases = ('pkg_pretend', 'pkg_setup', 'src_unpack', 'src_prepare', 'src_configure', 'src_compile',
+			'src_test', 'src_install', 'pkg_preinst', 'pkg_postinst', 'pkg_prerm', 'pkg_postrm', 'pkg_config')
 		phase_re = '('
 		for phase in self.phases:
 			phase_re += phase + '|'
