@@ -4688,6 +4688,26 @@ class dblink(object):
 
 		return os.EX_OK
 
+	def _new_backup_path(self, p):
+		"""
+		The works for any type path, such as a regular file, symlink,
+		or directory. The parent directory is assumed to exist.
+		The returned filename is of the form p + '.backup.' + x, where
+		x guarantees that the returned path does not exist yet.
+		"""
+		os = _os_merge
+
+		x = -1
+		while True:
+			x += 1
+			backup_p = p + '.backup.' + str(x).rjust(4, '0')
+			try:
+				os.lstat(backup_p)
+			except OSError:
+				break
+
+		return backup_p
+
 	def mergeme(self, srcroot, destroot, outfile, secondhand, stufftomerge, cfgfiledict, thismtime):
 		"""
 		
@@ -4845,7 +4865,16 @@ class dblink(object):
 							bsd_chflags.lchflags(mydest, dflags)
 					else:
 						# a non-directory and non-symlink-to-directory.  Won't work for us.  Move out of the way.
-						if movefile(mydest, mydest+".backup",
+						backup_dest = self._new_backup_path(mydest)
+						msg = []
+						msg.append("")
+						msg.append("Installation of a directory is blocked by a file:")
+						msg.append("  '%s'" % mydest)
+						msg.append("This file will be renamed to a different name:")
+						msg.append("  '%s'" % backup_dest)
+						msg.append("")
+						self._eerror("preinst", msg)
+						if movefile(mydest, backup_dest,
 							mysettings=self.settings,
 							encoding=_encodings['merge']) is None:
 							return 1
@@ -4889,7 +4918,7 @@ class dblink(object):
 					
 					if stat.S_ISDIR(mydmode):
 						# install of destination is blocked by an existing directory with the same name
-						newdest = new_protect_filename(mydest, newmd5=mymd5)
+						newdest = self._new_backup_path(mydest)
 						msg = []
 						msg.append("")
 						msg.append("Installation of a regular file is blocked by a directory:")
