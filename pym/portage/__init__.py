@@ -8686,6 +8686,8 @@ def deprecated_profile_check(settings=None):
 		mode='r', encoding=_encodings['content'], errors='replace').readlines()
 	writemsg(colorize("BAD", _("\n!!! Your current profile is "
 		"deprecated and not supported anymore.")) + "\n", noiselevel=-1)
+	writemsg(colorize("BAD", _("!!! Use eselect profile to update your "
+		"profile.")) + "\n", noiselevel=-1)
 	if not dcontent:
 		writemsg(colorize("BAD", _("!!! Please refer to the "
 			"Gentoo Upgrading Guide.")) + "\n", noiselevel=-1)
