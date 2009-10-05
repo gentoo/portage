@@ -250,6 +250,7 @@ def _pkgsplit(mypkg):
 
 	return  (m.group('pn'), m.group('ver'), rev) 
 
+_missing_cat = 'null'
 catcache={}
 def catpkgsplit(mydata,silent=1):
 	"""
@@ -273,7 +274,7 @@ def catpkgsplit(mydata,silent=1):
 	mysplit = mydata.split('/', 1)
 	p_split=None
 	if len(mysplit)==1:
-		cat = "null"
+		cat = _missing_cat
 		p_split = _pkgsplit(mydata)
 	elif len(mysplit)==2:
 		cat = mysplit[0]
@@ -297,7 +298,7 @@ def pkgsplit(mypkg, silent=1):
 	if catpsplit is None:
 		return None
 	cat, pn, ver, rev = catpsplit
-	if cat == 'null':
+	if cat is _missing_cat and '/' not in mypkg:
 		return (pn, ver, rev)
 	else:
 		return (cat + '/' + pn, ver, rev)
