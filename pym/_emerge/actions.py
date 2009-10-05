@@ -642,7 +642,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		required_sets[s] = InternalPackageSet(
 			initial_atoms=getSetAtoms(s))
 
-	
+
 	# When removing packages, use a temporary version of world
 	# which excludes packages that are intended to be eligible for
 	# removal.
@@ -1148,7 +1148,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			def cmp_reference_count(node1, node2):
 				return node_refcounts[node1] - node_refcounts[node2]
 			graph.order.sort(key=cmp_sort_key(cmp_reference_count))
-	
+
 			ignore_priority_range = [None]
 			ignore_priority_range.extend(
 				range(UnmergeDepPriority.MIN, UnmergeDepPriority.MAX + 1))
@@ -1837,7 +1837,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					portage.writemsg(yellow("WARNING:") + " adding required option " + \
 					"%s not included in PORTAGE_RSYNC_OPTS\n" % opt)
 					rsync_opts.append(opt)
-	
+
 			for exclude in ("distfiles", "local", "packages"):
 				opt = "--exclude=/%s" % exclude
 				if opt not in rsync_opts:
@@ -1845,7 +1845,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					" adding required option %s not included in "  % opt + \
 					"PORTAGE_RSYNC_OPTS (can be overridden with --exclude='!')\n")
 					rsync_opts.append(opt)
-	
+
 			if syncuri.rstrip("/").endswith(".gentoo.org/gentoo-portage"):
 				def rsync_opt_startswith(opt_prefix):
 					for x in rsync_opts:
@@ -2208,7 +2208,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		print()
 		print(red(" * ")+"To update portage, run 'emerge portage' now.")
 		print()
-	
+
 	display_news_notification(root_config, myopts)
 	return os.EX_OK
 
@@ -2632,6 +2632,8 @@ def display_news_notification(root_config, myopts):
 	UNREAD_PATH = os.path.join(target_root, NEWS_LIB_PATH, "news")
 	newsReaderDisplay = False
 	update = "--pretend" not in myopts
+	if "news" not in settings.features:
+		return
 
 	if not settings.treeVirtuals:
 		# Populate these using our existing vartree, to avoid
@@ -2647,8 +2649,8 @@ def display_news_notification(root_config, myopts):
 				print()
 			print(colorize("WARN", " * IMPORTANT:"), end=' ')
 			print("%s news items need reading for repository '%s'." % (unreadItems, repo))
-			
-	
+
+
 	if newsReaderDisplay:
 		print(colorize("WARN", " *"), end=' ')
 		print("Use " + colorize("GOOD", "eselect news") + " to read news items.")
@@ -2690,7 +2692,7 @@ def checkUpdatedNewsItems(portdb, vardb, NEWS_PATH, UNREAD_PATH, repo_id,
 	"""
 	Examines news items in repodir + '/' + NEWS_PATH and attempts to find unread items
 	Returns the number of unread (yet relevent) items.
-	
+
 	@param portdb: a portage tree database
 	@type portdb: pordbapi
 	@param vardb: an installed package database
@@ -2704,7 +2706,7 @@ def checkUpdatedNewsItems(portdb, vardb, NEWS_PATH, UNREAD_PATH, repo_id,
 	@rtype: Integer
 	@returns:
 	1.  The number of unread but relevant news items.
-	
+
 	"""
 	from portage.news import NewsManager
 	manager = NewsManager(portdb, vardb, NEWS_PATH, UNREAD_PATH)
