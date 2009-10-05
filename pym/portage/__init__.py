@@ -1479,6 +1479,12 @@ class config(object):
 
 	_environ_filter = frozenset(_environ_filter)
 
+	_undef_lic_groups = set()
+	_default_globals = (
+		('ACCEPT_LICENSE',           '* -@EULA'),
+		('ACCEPT_PROPERTIES',        '*'),
+	)
+
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
 		local_config=True, env=None):
@@ -1871,6 +1877,9 @@ class config(object):
 
 			if self.mygcfg is None:
 				self.mygcfg = {}
+
+			for k, v in self._default_globals:
+				self.mygcfg.setdefault(k, v)
 
 			self.configlist.append(self.mygcfg)
 			self.configdict["globals"]=self.configlist[-1]
@@ -2270,8 +2279,11 @@ class config(object):
 				else:
 					rValue.extend(self._expandLicenseToken(l, traversed_groups))
 		else:
-			writemsg(_("Undefined license group '%s'\n") % group_name,
-				noiselevel=-1)
+			if self._license_groups and \
+				group_name not in self._undef_lic_groups:
+				self._undef_lic_groups.add(group_name)
+				writemsg(_("Undefined license group '%s'\n") % group_name,
+					noiselevel=-1)
 			rValue.append("@"+group_name)
 		if negate:
 			rValue = ["-" + token for token in rValue]
@@ -3003,8 +3015,6 @@ class config(object):
 		@rtype: List
 		@return: A list of licenses that have not been accepted.
 		"""
-		if not self._accept_license:
-			return []
 		accept_license = self._accept_license
 		cpdict = self._plicensedict.get(dep_getkey(cpv), None)
 		if cpdict:
@@ -3084,8 +3094,6 @@ class config(object):
 		@rtype: List
 		@return: A list of properties that have not been accepted.
 		"""
-		if not self._accept_properties:
-			return []
 		accept_properties = self._accept_properties
 		cpdict = self._ppropertiesdict.get(dep_getkey(cpv), None)
 		if cpdict:
@@ -3236,6 +3244,25 @@ class config(object):
 			# env_d will be None if profile.env doesn't exist.
 			self.configdict["env.d"].update(env_d)
 
+	def _prune_incremental(self, split):
+		"""
+		Prune off any parts of an incremental variable that are
+		made irrelevant by the latest occuring * or -*. This
+		could be more aggressive but that might be confusing
+		and the point is just to reduce noise a bit.
+		"""
+		for i, x in enumerate(reversed(split)):
+			if x == '*':
+				split = split[-i-1:]
+				break
+			elif x == '-*':
+				if i == 0:
+					split = []
+				else:
+					split = split[-i:]
+				break
+		return split
+
 	def regenerate(self,useonly=0,use_cache=1):
 		"""
 		Regenerate settings
@@ -3287,28 +3314,28 @@ class config(object):
 			mysplit = []
 			for curdb in mydbs:
 				mysplit.extend(curdb.get('ACCEPT_LICENSE', '').split())
+			mysplit = self._prune_incremental(mysplit)
 			accept_license_str = ' '.join(mysplit)
-			if accept_license_str:
-				self.configlist[-1]['ACCEPT_LICENSE'] = accept_license_str
+			self.configlist[-1]['ACCEPT_LICENSE'] = accept_license_str
 			if accept_license_str != self._accept_license_str:
 				self._accept_license_str = accept_license_str
 				self._accept_license = tuple(self.expandLicenseTokens(mysplit))
 		else:
 			# repoman will accept any license
-			self._accept_license = ()
+			self._accept_license = ('*',)
 
 		# ACCEPT_PROPERTIES works like ACCEPT_LICENSE, without groups
 		if self.local_config:
 			mysplit = []
 			for curdb in mydbs:
 				mysplit.extend(curdb.get('ACCEPT_PROPERTIES', '').split())
-			if mysplit:
-				self.configlist[-1]['ACCEPT_PROPERTIES'] = ' '.join(mysplit)
+			mysplit = self._prune_incremental(mysplit)
+			self.configlist[-1]['ACCEPT_PROPERTIES'] = ' '.join(mysplit)
 			if tuple(mysplit) != self._accept_properties:
 				self._accept_properties = tuple(mysplit)
 		else:
 			# repoman will accept any property
-			self._accept_properties = ()
+			self._accept_properties = ('*',)
 
 		for mykey in myincrementals:
 
