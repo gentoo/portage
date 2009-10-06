@@ -83,6 +83,7 @@ shortmapping={
 "o":"--onlydeps",  "O":"--nodeps",
 "p":"--pretend",   "P":"--prune",
 "q":"--quiet",
+"r":"--resume",
 "s":"--search",    "S":"--searchdesc",
 "t":"--tree",
 "u":"--update",

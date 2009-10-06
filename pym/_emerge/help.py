@@ -14,7 +14,7 @@ def shorthelp():
 	print("   "+turquoise("emerge")+" < "+turquoise("--sync")+" | "+turquoise("--metadata")+" | "+turquoise("--info")+" >")
 	print("   "+turquoise("emerge")+" "+turquoise("--resume")+" [ "+green("--pretend")+" | "+green("--ask")+" | "+green("--skipfirst")+" ]")
 	print("   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("--verbose")+" ] ")
-	print(bold("Options:")+" "+green("-")+"["+green("abBcCdDefgGhjkKlnNoOpqPsStuvV")+"]")
+	print(bold("Options:")+" "+green("-")+"["+green("abBcCdDefgGhjkKlnNoOpPqrsStuvV")+"]")
 	print("          [ " + green("--color")+" < " + turquoise("y") + " | "+ turquoise("n")+" >            ] [ "+green("--columns")+"    ]")
 	print("          [ "+green("--complete-graph")+"             ] [ "+green("--deep")+"       ]")
 	print("          [ "+green("--jobs") + " " + turquoise("JOBS")+" ] [ "+green("--keep-going")+" ] [ " + green("--load-average")+" " + turquoise("LOAD") + "            ]")
@@ -161,7 +161,7 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
-		print("       "+green("--resume"))
+		print("       "+green("--resume")+" ("+green("-r")+" short option)")
 		print("              Resumes the most recent merge list that has been aborted due to an")
 		print("              error. Please note that this operation will only return an error")
 		print("              on failure. If there is nothing for portage to do, then portage")
