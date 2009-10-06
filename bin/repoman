@@ -1503,8 +1503,8 @@ for x in scanlist:
 			stats[m+".syntax"] += 1
 			fails[m+".syntax"].append(catpkg+".ebuild "+m+": "+b)
 
-		badlicsyntax = len([x for x in type_list if x == "LICENSE"])
-		badprovsyntax = len([x for x in type_list if x == "PROVIDE"])
+		badlicsyntax = len([z for z in type_list if z == "LICENSE"])
+		badprovsyntax = len([z for z in type_list if z == "PROVIDE"])
 		baddepsyntax = len(type_list) != badlicsyntax + badprovsyntax 
 		badlicsyntax = badlicsyntax > 0
 		badprovsyntax = badprovsyntax > 0
