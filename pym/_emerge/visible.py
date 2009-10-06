@@ -27,6 +27,11 @@ def visible(pkgsettings, pkg):
 			return False
 		if pkgsettings._getMissingKeywords(pkg.cpv, pkg.metadata):
 			return False
+		try:
+			if pkgsettings._getMissingProperties(pkg.cpv, pkg.metadata):
+				return False
+		except portage.exception.InvalidDependString:
+			return False
 	if pkgsettings._getMaskAtom(pkg.cpv, pkg.metadata):
 		return False
 	if pkgsettings._getProfileMaskAtom(pkg.cpv, pkg.metadata):
@@ -34,9 +39,6 @@ def visible(pkgsettings, pkg):
 	try:
 		if pkgsettings._getMissingLicenses(pkg.cpv, pkg.metadata):
 			return False
-		if pkgsettings._getMissingProperties(pkg.cpv, pkg.metadata):
-			return False
 	except portage.exception.InvalidDependString:
 		return False
 	return True
-
