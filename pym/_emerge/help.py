@@ -232,6 +232,22 @@ def help(myopts, havecolor=1):
 		print("              "+bold("emerge info")+" for more advanced information.")
 		print()
 		print(turquoise("Options:"))
+		print("       "+green("--accept-properties=ACCEPT_PROPERTIES"))
+		desc = "This option temporarily overrides the ACCEPT_PROPERTIES " + \
+			"variable. The ACCEPT_PROPERTIES variable is incremental, " + \
+			"which means that the specified setting is appended to the " + \
+			"existing value from your configuration. The special -* " + \
+			"token can be used to discard the existing configuration " + \
+			"value and start fresh. See the MASKED PACKAGES section " + \
+			"and make.conf(5) for more information about " + \
+			"ACCEPT_PROPERTIES. A typical usage example for this option " + \
+			"would be to use --accept-properties=-interactive to " + \
+			"temporarily mask interactive packages. With default " + \
+			"configuration, this would result in an effective " + \
+			"ACCEPT_PROPERTIES value of \"* -interactive\"."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
 		print("       "+green("--alphabetical"))
 		print("              When displaying USE and other flag output, combines the enabled")
 		print("              and disabled flags into a single list and sorts it alphabetically.")

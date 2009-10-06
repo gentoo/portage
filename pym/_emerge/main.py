@@ -498,6 +498,10 @@ def parse_opts(tmpcmdline, silent=False):
 
 	longopt_aliases = {"--cols":"--columns", "--skip-first":"--skipfirst"}
 	argument_options = {
+		"--accept-properties": {
+			"help":"temporarily override ACCEPT_PROPERTIES",
+			"action":"store"
+		},
 		"--config-root": {
 			"help":"specify the location for portage configuration files",
 			"action":"store"
@@ -1047,6 +1051,8 @@ def emerge_main():
 		os.environ["PORTAGE_CONFIGROOT"] = myopts["--config-root"]
 	if "--root" in myopts:
 		os.environ["ROOT"] = myopts["--root"]
+	if "--accept-properties" in myopts:
+		os.environ["ACCEPT_PROPERTIES"] = myopts["--accept-properties"]
 
 	# Portage needs to ensure a sane umask for the files it creates.
 	os.umask(0o22)

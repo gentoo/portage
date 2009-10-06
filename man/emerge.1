@@ -234,6 +234,20 @@ match multiple installed versions of slotted packages.
 Displays the version number of \fBemerge\fR.
 .SH "OPTIONS"
 .TP
+.BR \-\-accept\-properties=ACCEPT_PROPERTIES
+This option temporarily overrides the \fBACCEPT_PROPERTIES\fR
+variable. The \fBACCEPT_PROPERTIES\fR variable is incremental,
+which means that the specified setting is appended to the
+existing value from your configuration. The special \fB-*\fR
+token can be used to discard the existing configuration
+value and start fresh. See the \fBMASKED PACKAGES\fR section
+and \fBmake.conf\fR(5) for more information about
+ACCEPT_PROPERTIES. A typical usage example for this option
+would be to use \fI\-\-accept\-properties=-interactive\fR to
+temporarily mask interactive packages. With default
+configuration, this would result in an effective
+\fBACCEPT_PROPERTIES\fR value of "* -interactive".
+.TP
 .BR "\-\-alphabetical "
 When displaying USE and other flag output, combines the enabled and
 disabled lists into one list and sorts the whole list alphabetically.
@@ -667,7 +681,8 @@ packages based on properties restrictions. \fBemerge\fR examines the
 \fBACCEPT_PROPERTIES\fR environment variable to allow or disallow the emerging
 of a package masked by \fBPROPERTIES\fR. See \fBmake.conf\fR(5) for information
 about \fBACCEPT_PROPERTIES\fR, and see \fBportage\fR(5) for information about
-\fI/etc/portage/package.properties\fR.
+\fI/etc/portage/package.properties\fR. Use the \fB\-\-accept\-properties\fR
+option to temporarily override \fBACCEPT_PROPERTIES\fR.
 .SH "CONFIGURATION FILES"
 Portage has a special feature called "config file protection". The purpose of
 this feature is to prevent new package installs from clobbering existing
