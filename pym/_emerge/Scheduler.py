@@ -309,7 +309,10 @@ class Scheduler(PollScheduler):
 					writemsg_level(">>> Setting --jobs=1 due " + \
 						"to the above interactive package(s)\n",
 						level=logging.INFO, noiselevel=-1)
-
+					writemsg_level(">>> In order to temporarily mask " + \
+						"interactive updates, you may\n" + \
+						">>> specify --accept-properties=-interactive\n",
+						level=logging.INFO, noiselevel=-1)
 		self._status_display.quiet = \
 			not background or \
 			("--quiet" in self.myopts and \
