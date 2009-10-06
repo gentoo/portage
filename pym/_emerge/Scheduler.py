@@ -753,7 +753,9 @@ class Scheduler(PollScheduler):
 		mtimedb["resume"]["mergelist"].remove(list(pkg))
 		mtimedb.commit()
 		portage.run_exitfuncs()
-		mynewargv = [sys.argv[0], "--resume"]
+		# Don't trust sys.argv[0] here because eselect-python may modify it.
+		emerge_binary = os.path.join(portage.const.PORTAGE_BIN_PATH, 'emerge')
+		mynewargv = [emerge_binary, "--resume"]
 		resume_opts = self.myopts.copy()
 		# For automatic resume, we need to prevent
 		# any of bad_resume_opts from leaking in
