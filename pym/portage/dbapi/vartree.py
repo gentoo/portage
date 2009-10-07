@@ -4349,7 +4349,10 @@ class dblink(object):
 
 			# Process ebuild logfiles
 			elog_process(self.mycpv, self.settings, phasefilter=filter_mergephases)
-			if retval == os.EX_OK and "noclean" not in self.settings.features:
+			if 'noclean' not in self.settings.features and \
+				(retval == os.EX_OK or \
+				('fail-clean' in self.settings.features and \
+				os.path.isdir(self.settings['PORTAGE_BUILDDIR']))):
 				if myebuild is None:
 					myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
 
