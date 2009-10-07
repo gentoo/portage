@@ -3852,7 +3852,7 @@ def _test_pty_eof():
 
 # In some cases, openpty can be slow when it fails. Therefore,
 # stop trying to use it after the first failure.
-if platform.system() not in ["Linux"]:
+if platform.system() not in ["FreeBSD", "Linux"]:
 	# Disable the use of openpty on Solaris as it seems Python's openpty
 	# implementation doesn't play nice on Solaris with Portage's
 	# behaviour causing hangs/deadlocks.
