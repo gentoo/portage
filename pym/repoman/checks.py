@@ -30,6 +30,36 @@ class LineCheck(object):
 	def end(self):
 		pass
 
+class PhaseCheck(LineCheck):
+	""" basic class for function detection """
+
+	ignore_line = re.compile(r'(^\s*#)')
+	func_end_re = re.compile(r'^\}$')
+	in_phase = ''
+
+	def __init__(self):
+		self.phases = ('pkg_pretend', 'pkg_setup', 'src_unpack', 'src_prepare', 'src_configure', 'src_compile',
+			'src_test', 'src_install', 'pkg_preinst', 'pkg_postinst', 'pkg_prerm', 'pkg_postrm', 'pkg_config')
+		phase_re = '('
+		for phase in self.phases:
+			phase_re += phase + '|'
+		phase_re = phase_re[:-1] + ')'
+		self.phases_re = re.compile(phase_re)
+
+	def check(self, num, line):
+		m = self.phases_re.match(line)
+		if m is not None:
+			self.in_phase = m.group(1)
+		if self.in_phase != '' and \
+				self.func_end_re.match(line) is not None:
+			self.in_phase = ''
+
+		return self.phase_check(num, line)
+
+	def phase_check(self, num, line):
+		""" override this function for your checks """
+		pass
+
 class EbuildHeader(LineCheck):
 	"""Ensure ebuilds have proper headers
 		Copyright header errors
@@ -327,11 +357,16 @@ class IUseUndefined(LineCheck):
 		if self._iuse_def is None:
 			yield 'IUSE is not defined'
 
-class EMakeParallelDisabled(LineCheck):
+class EMakeParallelDisabled(PhaseCheck):
 	"""Check for emake -j1 calls which disable parallelization."""
 	repoman_check_name = 'upstream.workaround'
 	re = re.compile(r'^\s*emake\s+.*-j\s*1\b')
 	error = errors.EMAKE_PARALLEL_DISABLED
+
+	def phase_check(self, num, line):
+		if self.in_phase == 'src_compile' or self.in_phase == 'src_install':
+			if self.re.match(line):
+				return self.error
 
 class EMakeParallelDisabledViaMAKEOPTS(LineCheck):
 	"""Check for MAKEOPTS=-j1 that disables parallelization."""
@@ -355,36 +390,6 @@ class WantAutoDefaultValue(LineCheck):
 		if m is not None:
 			return 'WANT_AUTO' + m.group(1) + \
 				' redundantly set to default value "latest" on line: %d'
-
-class PhaseCheck(LineCheck):
-	""" basic class for function detection """
-
-	ignore_line = re.compile(r'(^\s*#)')
-	func_end_re = re.compile(r'^\}$')
-	in_phase = ''
-
-	def __init__(self):
-		self.phases = ('pkg_setup', 'pkg_preinst', 'pkg_postinst', 'pkg_prerm', 'pkg_postrm', 'pkg_pretend',
-			'src_unpack', 'src_prepare', 'src_compile', 'src_test', 'src_install')
-		phase_re = '('
-		for phase in self.phases:
-			phase_re += phase + '|'
-		phase_re = phase_re[:-1] + ')'
-		self.phases_re = re.compile(phase_re)
-
-	def check(self, num, line):
-		m = self.phases_re.match(line)
-		if m is not None:
-			self.in_phase = m.group(1)
-		if self.in_phase != '' and \
-				self.func_end_re.match(line) is not None:
-			self.in_phase = ''
-
-		return self.phase_check(num, line)
-
-	def phase_check(self, num, line):
-		""" override this function for your checks """
-		pass
 
 class SrcCompileEconf(PhaseCheck):
 	repoman_check_name = 'ebuild.minorsyn'

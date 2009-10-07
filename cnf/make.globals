@@ -24,6 +24,9 @@ SYNC="rsync://rsync.prefix.freens.org/gentoo-portage-prefix"
 # Default distfiles mirrors
 GENTOO_MIRRORS="http://distfiles.gentoo.org http://distro.ibiblio.org/pub/linux/distributions/gentoo"
 
+ACCEPT_LICENSE="* -@EULA"
+ACCEPT_PROPERTIES="*"
+
 # Repository Paths
 PORTDIR="@PORTAGE_EPREFIX@/usr/portage"
 DISTDIR="@PORTAGE_EPREFIX@/usr/portage/distfiles"

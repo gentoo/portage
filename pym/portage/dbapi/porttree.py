@@ -12,7 +12,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dep:dep_getkey,match_from_list,paren_reduce,use_reduce',
 	'portage.env.loaders:KeyValuePairFileLoader',
 	'portage.util:ensure_dirs,writemsg,writemsg_level',
-	'portage.versions:best,catpkgsplit,pkgsplit,ver_regexp',
+	'portage.versions:best,catpkgsplit,_pkgsplit@pkgsplit,ver_regexp',
 )
 
 from portage.cache.cache_errors import CacheError
