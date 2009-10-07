@@ -3852,7 +3852,21 @@ def _test_pty_eof():
 
 # In some cases, openpty can be slow when it fails. Therefore,
 # stop trying to use it after the first failure.
-_disable_openpty = False
+if platform.system() not in ["Linux"]:
+	# Disable the use of openpty on Solaris as it seems Python's openpty
+	# implementation doesn't play nice on Solaris with Portage's
+	# behaviour causing hangs/deadlocks.
+	# Disable on Darwin also, it used to work fine, but since the
+	# introduction of _test_pty_eof Portage hangs (on the
+	# slave_file.close()) indicating some other problems with openpty on
+	# Darwin there
+	# On AIX, haubi reported that the openpty code doesn't work any
+	# longer since the introduction of _test_pty_eof either.
+	# Looks like Python's openpty module is too fragile to use on UNIX,
+	# so only use it on Linux
+	_disable_openpty = True
+else:
+	_disable_openpty = False
 _tested_pty = False
 
 def _create_pty_or_pipe(copy_term_size=None):
