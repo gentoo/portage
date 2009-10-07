@@ -259,7 +259,8 @@ qahelp={
 	"changelog.notadded":"ChangeLogs that exist but have not been added to cvs",
 	"filedir.missing":"Package lacks a files directory",
 	"file.executable":"Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do note need the executable bit",
-	"file.size":"Files in the files directory must be under 20k",
+	"file.size":"Files in the files directory must be under 20 KiB",
+	"file.size.fatal":"Files in the files directory must be under 60 KiB",
 	"file.name":"File/dir name must be composed of only the following chars: %s " % allowed_filename_chars,
 	"file.UTF8":"File is not UTF8 compliant",
 	"inherit.autotools":"Ebuild inherits autotools but does not call eautomake, eautoconf or eautoreconf",
@@ -1130,10 +1131,14 @@ for x in scanlist:
 					if z == "CVS" or z == ".svn":
 						continue
 					filesdirlist.append(y+"/"+z)
-			# current policy is no files over 20k, this is the check.
+			# Current policy is no files over 20 KiB, these are the checks. File size between
+			# 20 KiB and 60 KiB causes a warning, while file size over 60 KiB causes an error.
+			elif mystat.st_size > 61440:
+				stats["file.size.fatal"] += 1
+				fails["file.size.fatal"].append("("+ str(mystat.st_size//1024) + " KiB) "+x+"/files/"+y)
 			elif mystat.st_size > 20480:
 				stats["file.size"] += 1
-				fails["file.size"].append("("+ str(mystat.st_size//1024) + "K) "+x+"/files/"+y)
+				fails["file.size"].append("("+ str(mystat.st_size//1024) + " KiB) "+x+"/files/"+y)
 
 			m = disallowed_filename_chars_re.search(
 				os.path.basename(y.rstrip(os.sep)))

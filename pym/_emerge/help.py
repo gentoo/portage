@@ -374,7 +374,10 @@ def help(myopts, havecolor=1):
 			"given without an argument, emerge will not " + \
 			"limit the number of jobs that " + \
 			"can run simultaneously. Also see " + \
-			"the related --load-average option."
+			"the related --load-average option. " + \
+			"Note that interactive packages currently force a setting " + \
+			"of --jobs=1. This issue can be temporarily avoided " + \
+			"by specifying --accept-properties=-interactive."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
