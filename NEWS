@@ -7,6 +7,9 @@ portage-2.2
   in order to protect against uninstallation of required libraries.
 * Add license visibility filtering (GLEP 23)
 * Add support for generic package sets (also see RELEASE-NOTES)
+* Add --accept-properties option for emerge which allows you to use
+  --accept-properties=-interactive in order to temporarily exclude
+  interactive updates.
 
 portage-2.1.6
 -------------

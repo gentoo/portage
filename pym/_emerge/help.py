@@ -14,7 +14,7 @@ def shorthelp():
 	print("   "+turquoise("emerge")+" < "+turquoise("--sync")+" | "+turquoise("--metadata")+" | "+turquoise("--info")+" >")
 	print("   "+turquoise("emerge")+" "+turquoise("--resume")+" [ "+green("--pretend")+" | "+green("--ask")+" | "+green("--skipfirst")+" ]")
 	print("   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("--verbose")+" ] ")
-	print(bold("Options:")+" "+green("-")+"["+green("abBcCdDefgGhjkKlnNoOpqPsStuvV")+"]")
+	print(bold("Options:")+" "+green("-")+"["+green("abBcCdDefgGhjkKlnNoOpPqrsStuvV")+"]")
 	print("          [ " + green("--color")+" < " + turquoise("y") + " | "+ turquoise("n")+" >            ] [ "+green("--columns")+"    ]")
 	print("          [ "+green("--complete-graph")+"             ] [ "+green("--deep")+"       ]")
 	print("          [ "+green("--jobs") + " " + turquoise("JOBS")+" ] [ "+green("--keep-going")+" ] [ " + green("--load-average")+" " + turquoise("LOAD") + "            ]")
@@ -161,7 +161,7 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
-		print("       "+green("--resume"))
+		print("       "+green("--resume")+" ("+green("-r")+" short option)")
 		print("              Resumes the most recent merge list that has been aborted due to an")
 		print("              error. Please note that this operation will only return an error")
 		print("              on failure. If there is nothing for portage to do, then portage")
@@ -232,6 +232,22 @@ def help(myopts, havecolor=1):
 		print("              "+bold("emerge info")+" for more advanced information.")
 		print()
 		print(turquoise("Options:"))
+		print("       "+green("--accept-properties=ACCEPT_PROPERTIES"))
+		desc = "This option temporarily overrides the ACCEPT_PROPERTIES " + \
+			"variable. The ACCEPT_PROPERTIES variable is incremental, " + \
+			"which means that the specified setting is appended to the " + \
+			"existing value from your configuration. The special -* " + \
+			"token can be used to discard the existing configuration " + \
+			"value and start fresh. See the MASKED PACKAGES section " + \
+			"and make.conf(5) for more information about " + \
+			"ACCEPT_PROPERTIES. A typical usage example for this option " + \
+			"would be to use --accept-properties=-interactive to " + \
+			"temporarily mask interactive packages. With default " + \
+			"configuration, this would result in an effective " + \
+			"ACCEPT_PROPERTIES value of \"* -interactive\"."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
 		print("       "+green("--alphabetical"))
 		print("              When displaying USE and other flag output, combines the enabled")
 		print("              and disabled flags into a single list and sorts it alphabetically.")

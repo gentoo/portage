@@ -43,7 +43,9 @@ Defaults to the value of * -@EULA.
 .TP
 \fBACCEPT_PROPERTIES\fR = \fI[space delimited list of properties]\fR
 This variable is used to mask packages based on PROPERTIES restrictions.
-See \fBebuild\fR(5) for more information about PROPERTIES.
+This varable can be temporarily overridden using the the
+\fB\-\-accept\-properties\fR option of \fBemerge\fR(1).
+See \fBebuild\fR(5) for more information about PROPERTIES. 
 .br
 Defaults to the value of *.
 .TP
@@ -265,6 +267,10 @@ $(prefix)/lib. This assumption can cause a serious mess if /usr/lib
 isn't a symlink to /usr/lib64. To find the bad packages, we have a
 portage feature called \fImultilib\-strict\fR. It will prevent emerge
 from putting 64bit libraries into anything other than (/usr)/lib64.
+.TP
+.B news
+Enable GLEP 42 new support. See
+\fIhttp://www.gentoo.org/proj/en/glep/glep-0042.html\fR.
 .TP
 .B noauto
 When utilizing \fBebuild\fR(1), only run the function requested.

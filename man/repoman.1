@@ -216,6 +216,12 @@ ChangeLogs that exist but have not been added to cvs
 .B digest.assumed
 Existing digest must be assumed correct (Package level only)
 .TP
+.B digest.missing
+Some files listed in SRC_URI aren't referenced in the Manifest
+.TP
+.B digest.unused
+Some files listed in the Manifest aren't referenced in SRC_URI
+.TP
 .B ebuild.allmasked
 All ebuilds are masked for this package (Package level only)
 .TP

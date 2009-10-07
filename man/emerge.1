@@ -182,7 +182,7 @@ a sync operation. In order to specify parallel \fB\-\-regen\fR behavior, use
 the \fB\-\-jobs\fR and \fB\-\-load\-average\fR options. If you would like to
 generate and distribute cache for use by others, use \fBegencache\fR(1).
 .TP
-.BR "\-\-resume"
+.BR "\-\-resume" (\fB\-r\fR)
 Resumes the most recent merge list that has been aborted due to an error.
 Please note that this operation will only return an error on failure.  If there
 is nothing for portage to do, then portage will exit with a message and a
@@ -233,6 +233,20 @@ match multiple installed versions of slotted packages.
 .BR "\-\-version " (\fB\-V\fR)
 Displays the version number of \fBemerge\fR.
 .SH "OPTIONS"
+.TP
+.BR \-\-accept\-properties=ACCEPT_PROPERTIES
+This option temporarily overrides the \fBACCEPT_PROPERTIES\fR
+variable. The \fBACCEPT_PROPERTIES\fR variable is incremental,
+which means that the specified setting is appended to the
+existing value from your configuration. The special \fB-*\fR
+token can be used to discard the existing configuration
+value and start fresh. See the \fBMASKED PACKAGES\fR section
+and \fBmake.conf\fR(5) for more information about
+ACCEPT_PROPERTIES. A typical usage example for this option
+would be to use \fI\-\-accept\-properties=-interactive\fR to
+temporarily mask interactive packages. With default
+configuration, this would result in an effective
+\fBACCEPT_PROPERTIES\fR value of "* -interactive".
 .TP
 .BR "\-\-alphabetical "
 When displaying USE and other flag output, combines the enabled and
@@ -667,7 +681,8 @@ packages based on properties restrictions. \fBemerge\fR examines the
 \fBACCEPT_PROPERTIES\fR environment variable to allow or disallow the emerging
 of a package masked by \fBPROPERTIES\fR. See \fBmake.conf\fR(5) for information
 about \fBACCEPT_PROPERTIES\fR, and see \fBportage\fR(5) for information about
-\fI/etc/portage/package.properties\fR.
+\fI/etc/portage/package.properties\fR. Use the \fB\-\-accept\-properties\fR
+option to temporarily override \fBACCEPT_PROPERTIES\fR.
 .SH "CONFIGURATION FILES"
 Portage has a special feature called "config file protection". The purpose of
 this feature is to prevent new package installs from clobbering existing

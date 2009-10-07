@@ -309,7 +309,10 @@ class Scheduler(PollScheduler):
 					writemsg_level(">>> Setting --jobs=1 due " + \
 						"to the above interactive package(s)\n",
 						level=logging.INFO, noiselevel=-1)
-
+					writemsg_level(">>> In order to temporarily mask " + \
+						"interactive updates, you may\n" + \
+						">>> specify --accept-properties=-interactive\n",
+						level=logging.INFO, noiselevel=-1)
 		self._status_display.quiet = \
 			not background or \
 			("--quiet" in self.myopts and \
@@ -753,7 +756,9 @@ class Scheduler(PollScheduler):
 		mtimedb["resume"]["mergelist"].remove(list(pkg))
 		mtimedb.commit()
 		portage.run_exitfuncs()
-		mynewargv = [sys.argv[0], "--resume"]
+		# Don't trust sys.argv[0] here because eselect-python may modify it.
+		emerge_binary = os.path.join(portage.const.PORTAGE_BIN_PATH, 'emerge')
+		mynewargv = [emerge_binary, "--resume"]
 		resume_opts = self.myopts.copy()
 		# For automatic resume, we need to prevent
 		# any of bad_resume_opts from leaking in
