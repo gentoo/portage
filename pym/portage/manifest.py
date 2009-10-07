@@ -339,7 +339,7 @@ class Manifest(object):
 				pf = f[:-7]
 			if pf is not None:
 				mytype = "EBUILD"
-				ps = portage.versions.pkgsplit(pf)
+				ps = portage.versions._pkgsplit(pf)
 				cpv = "%s/%s" % (cat, pf)
 				if not ps:
 					raise PortagePackageException(
