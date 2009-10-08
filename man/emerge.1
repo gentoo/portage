@@ -330,6 +330,13 @@ specifications while differing from the installed set of packages as
 little as possible.  You should run with \fB\-\-pretend\fR first to make 
 sure the result is what you expect.
 .TP
+.BR "\-\-fail\-clean[=n]"
+Clean up temporary files after a build failure. This is
+particularly useful if you have \fBPORTAGE_TMPDIR\fR on
+tmpfs. If this option is enabled, you probably also want
+to enable \fBPORT_LOGDIR\fR (see \fBmake.conf\fR(5)) in
+order to save the build log.
+.TP
 .BR "\-\-fetchonly " (\fB\-f\fR)
 Instead of doing any package building, just perform fetches for all
 packages (fetch things from SRC_URI based upon USE setting).

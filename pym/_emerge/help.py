@@ -346,6 +346,15 @@ def help(myopts, havecolor=1):
 		print("              it possible for developers to get a complete overview of the")
 		print("              complete dependency tree of a certain package.")
 		print()
+		print("       "+green("--fail-clean[=n]"))
+		desc = "Clean up temporary files after a build failure. This is " + \
+			"particularly useful if you have PORTAGE_TMPDIR on " + \
+			"tmpfs. If this option is enabled, you probably also want " + \
+			"to enable PORT_LOGDIR (see make.conf(5)) in " + \
+			"order to save the build log."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
 		print("       "+green("--fetchonly")+" ("+green("-f")+" short option)")
 		print("              Instead of doing any package building, just perform fetches for")
 		print("              all packages (main package as well as all dependencies.) When")

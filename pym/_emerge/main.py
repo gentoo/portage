@@ -382,6 +382,7 @@ def insert_optional_args(args):
 		'--deep'       : valid_integers,
 		'--deselect'   : ('n',),
 		'--binpkg-respect-use'   : ('n', 'y',),
+		'--fail-clean'           : ('n',),
 		'--getbinpkg'            : ('n',),
 		'--getbinpkgonly'        : ('n',),
 		'--jobs'       : valid_integers,
@@ -537,6 +538,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices" : ("True", "n")
 		},
 
+		"--fail-clean": {
+			"help"    : "clean temp files after build failure",
+			"type"    : "choice",
+			"choices" : ("True", "n")
+		},
+
 		"--jobs": {
 
 			"shortopt" : "-j",
@@ -670,6 +677,9 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.complete_graph = True
 	else:
 		myoptions.complete_graph = None
+
+	if myoptions.fail_clean == "True":
+		myoptions.fail_clean = True
 
 	if myoptions.getbinpkg in ("True",):
 		myoptions.getbinpkg = True
