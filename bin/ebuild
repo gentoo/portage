@@ -40,6 +40,8 @@ force_help = "When used together with the digest or manifest " + \
 	"that do not already exist in ${DISTDIR} will be automatically fetched."
 
 parser.add_option("--force", help=force_help, action="store_true", dest="force")
+parser.add_option("--color", help="enable or disable color output",
+	type="choice", choices=("y", "n"))
 parser.add_option("--debug", help="show debug output",
 	action="store_true", dest="debug")
 parser.add_option("--ignore-default-opts",
@@ -83,8 +85,14 @@ if debug and "python-trace" in portage.features:
 	import portage.debug
 	portage.debug.set_trace(True)
 
-if portage.settings["NOCOLOR"] in ("yes","true") or not sys.stdout.isatty():
+if not opts.color == 'y' and \
+	(opts.color == 'n' or \
+	portage.settings.get('NOCOLOR') in ('yes', 'true') or \
+	not sys.stdout.isatty()):
 	portage.output.nocolor()
+	portage.settings.unlock()
+	portage.settings['NOCOLOR'] = 'true'
+	portage.settings.lock()
 
 ebuild = pargs.pop(0)
 
