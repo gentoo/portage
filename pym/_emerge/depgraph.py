@@ -1572,7 +1572,7 @@ class depgraph(object):
 
 				# If a non-virtual package and one or more virtual packages
 				# are in expanded_atoms, use the non-virtual package.
- 				if len(expanded_atoms) > 1:
+				if len(expanded_atoms) > 1:
 					number_of_virtuals = 0
 					for expanded_atom in expanded_atoms:
 						if expanded_atom.cp.startswith("virtual/"):
