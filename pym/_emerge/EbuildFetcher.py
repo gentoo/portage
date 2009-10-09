@@ -66,6 +66,11 @@ class EbuildFetcher(SpawnProcess):
 		if debug:
 			fetch_args.append("--debug")
 
+		if not self.background and nocolor not in ('yes', 'true'):
+			# Force consistent color output, in case we are capturing fetch
+			# output through a normal pipe due to unavailability of ptys.
+			fetch_args.append('--color=y')
+
 		self.args = fetch_args
 		self.env = fetch_env
 		SpawnProcess._start(self)
