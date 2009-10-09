@@ -2316,14 +2316,6 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 def adjust_config(myopts, settings):
 	"""Make emerge specific adjustments to the config."""
 
-	# To enhance usability, make some vars case insensitive by forcing them to
-	# lower case.
-	for myvar in ("AUTOCLEAN", "NOCOLOR"):
-		if myvar in settings:
-			settings[myvar] = settings[myvar].lower()
-			settings.backup_changes(myvar)
-	del myvar
-
 	# Kill noauto as it will break merges otherwise.
 	if "noauto" in settings.features:
 		settings.features.remove('noauto')

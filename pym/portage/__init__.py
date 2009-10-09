@@ -1485,6 +1485,10 @@ class config(object):
 		('ACCEPT_PROPERTIES',        '*'),
 	)
 
+	# To enhance usability, make some vars case insensitive
+	# by forcing them to lower case.
+	_case_insensitive_vars = ('AUTOCLEAN', 'NOCOLOR',)
+
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
 		local_config=True, env=None):
@@ -2206,6 +2210,11 @@ class config(object):
 				_glep_55_enabled = True
 
 			self._init_dirs()
+
+		for k in self._case_insensitive_vars:
+			if k in self:
+				self[k] = self[k].lower()
+				self.backup_changes(k)
 
 		if mycpv:
 			self.setcpv(mycpv)
