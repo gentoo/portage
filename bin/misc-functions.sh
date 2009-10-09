@@ -68,7 +68,7 @@ install_qa_check() {
 			unset PORTAGE_QUIET
 		fi
 
-		# Make sure we disallow insecure RUNPATH/RPATH's
+		# Make sure we disallow insecure RUNPATH/RPATHs
 		# Don't want paths that point to the tree where the package was built
 		# (older, broken libtools would do this).  Also check for null paths
 		# because the loader will search $PWD when it finds null paths.
@@ -80,7 +80,7 @@ install_qa_check() {
 		)
 		if [[ -n ${f}${x} ]] ; then
 			vecho -ne '\a\n'
-			eqawarn "QA Notice: The following files contain insecure RUNPATH's"
+			eqawarn "QA Notice: The following files contain insecure RUNPATHs"
 			eqawarn " Please file a bug about this at http://bugs.gentoo.org/"
 			eqawarn " with the maintaining herd of the package."
 			eqawarn "${f}${f:+${x:+\n}}${x}"
@@ -93,7 +93,7 @@ install_qa_check() {
 			fi
 		fi
 
-		# TEXTREL's are baaaaaaaad
+		# TEXTRELs are baaaaaaaad
 		# Allow devs to mark things as ignorable ... e.g. things that are
 		# binary-only and upstream isn't cooperating (nvidia-glx) ... we
 		# allow ebuild authors to set QA_TEXTRELS_arch and QA_TEXTRELS ...

@@ -140,8 +140,8 @@ package will be required to have a version of portage that recognizes
 the EAPI to which this package conforms.
 .TP
 \fBSRC_URI\fR = \fI"http://happy.com/little/${P}.tar.gz"\fR
-Contains a list of URI's for the required source files.  It can contain
-multiple URI's for a single source file.  The list is processed in order
+Contains a list of URIs for the required source files.  It can contain
+multiple URIs for a single source file.  The list is processed in order
 if the file was not found on any of the \fIGENTOO_MIRRORS\fR.
 Beginning with \fBEAPI 2\fR, the output file name of a given URI may be
 customized with a "->" operator on the right hand side, followed by the
@@ -149,7 +149,7 @@ desired output file name. All tokens, including the operator and output
 file name, should be separated by whitespace.
 .TP
 \fBHOMEPAGE\fR = \fI"http://happy.com/"\fR
-Should contain a list of URL's for the sources main sites and other further
+Should contain a list of URIs for the sources main sites and other further
 package dependent information.
 .TP
 \fBKEYWORDS\fR = \fI[\-~][x86,ppc,sparc,mips,alpha,arm,hppa]\fR
@@ -421,7 +421,7 @@ binaries that are not compatible with debugedit.
 files in \fBSRC_URI\fR will not be downloaded from the \fBGENTOO_MIRRORS\fR.
 .TP
 .I primaryuri
-fetch from URL's in \fBSRC_URI\fR before \fBGENTOO_MIRRORS\fR.
+fetch from URIs in \fBSRC_URI\fR before \fBGENTOO_MIRRORS\fR.
 .TP
 .I strip
 final binaries/libraries will not be stripped of debug symbols.

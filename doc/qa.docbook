@@ -17,7 +17,7 @@
   <title>Scanelf: Insecure RUNPATHs</title>
   <para>
    <programlisting>
-    QA Notice: The following files contain insecure RUNPATH's
+    QA Notice: The following files contain insecure RUNPATHs
    </programlisting>
   </para>
   <para>

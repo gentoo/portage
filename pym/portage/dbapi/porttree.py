@@ -433,7 +433,7 @@ class portdbapi(dbapi):
 	def getRepositories(self):
 		"""
 		This function is required for GLEP 42 compliance; it will return a list of
-		repository ID's
+		repository IDs
 		TreeMap = {id: path}
 		"""
 		return [k for k in self.treemap if k]

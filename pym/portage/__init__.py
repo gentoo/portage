@@ -6578,7 +6578,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	@type dbkey: Dict or String
 	@param use_cache: Enables the cache
 	@type use_cache: Boolean
-	@param fetchall: Used to wrap fetch(), fetches all URI's (even ones invalid due to USE conditionals)
+	@param fetchall: Used to wrap fetch(), fetches all URIs (even ones invalid due to USE conditionals)
 	@type fetchall: Boolean
 	@param tree: Which tree to use ('vartree','porttree','bintree', etc..), defaults to 'porttree'
 	@type tree: String

@@ -107,7 +107,7 @@ def create_conn(baseurl,conn=None):
 
 	parts = baseurl.split("://",1)
 	if len(parts) != 2:
-		raise ValueError(_("Provided URL does not "
+		raise ValueError(_("Provided URI does not "
 			"contain protocol identifier. '%s'") % baseurl)
 	protocol,url_parts = parts
 	del parts
@@ -315,7 +315,7 @@ def match_in_array(array, prefix="", suffix="", match_both=1, allow_overlap=0):
 
 def dir_get_list(baseurl,conn=None):
 	"""(baseurl[,connection]) -- Takes a base url to connect to and read from.
-	URL should be in the for <proto>://<site>[:port]<path>
+	URI should be in the form <proto>://<site>[:port]<path>
 	Connection is used for persistent connection instances."""
 
 	if not conn:
@@ -363,7 +363,7 @@ def dir_get_list(baseurl,conn=None):
 
 def file_get_metadata(baseurl,conn=None, chunk_size=3000):
 	"""(baseurl[,connection]) -- Takes a base url to connect to and read from.
-	URL should be in the for <proto>://<site>[:port]<path>
+	URI should be in the form <proto>://<site>[:port]<path>
 	Connection is used for persistent connection instances."""
 
 	if not conn:
@@ -414,7 +414,7 @@ def file_get_metadata(baseurl,conn=None, chunk_size=3000):
 
 def file_get(baseurl,dest,conn=None,fcmd=None):
 	"""(baseurl,dest,fcmd=) -- Takes a base url to connect to and read from.
-	URL should be in the for <proto>://[user[:pass]@]<site>[:port]<path>"""
+	URI should be in the form <proto>://[user[:pass]@]<site>[:port]<path>"""
 
 	if not fcmd:
 		return file_get_lib(baseurl,dest,conn)
@@ -442,7 +442,7 @@ def file_get(baseurl,dest,conn=None,fcmd=None):
 
 def file_get_lib(baseurl,dest,conn=None):
 	"""(baseurl[,connection]) -- Takes a base url to connect to and read from.
-	URL should be in the for <proto>://<site>[:port]<path>
+	URI should be in the form <proto>://<site>[:port]<path>
 	Connection is used for persistent connection instances."""
 
 	if not conn:
