@@ -6476,10 +6476,18 @@ def _prepare_workdir(mysettings):
 		logid_time = _unicode_decode(time.strftime("%Y%m%d-%H%M%S",
 			time.gmtime(os.stat(logid_path).st_mtime)),
 			encoding=_encodings['content'], errors='replace')
-		mysettings["PORTAGE_LOG_FILE"] = os.path.join(
-			mysettings["PORT_LOGDIR"], "%s:%s:%s.log" % \
-			(mysettings["CATEGORY"], mysettings["PF"], logid_time))
-		del logid_path, logid_time
+
+		if "split-log" in mysettings.features:
+			mysettings["PORTAGE_LOG_FILE"] = os.path.join(
+				mysettings["PORT_LOGDIR"], "build", "%s/%s:%s.log" % \
+				(mysettings["CATEGORY"], mysettings["PF"], logid_time))
+		else:
+			mysettings["PORTAGE_LOG_FILE"] = os.path.join(
+				mysettings["PORT_LOGDIR"], "%s:%s:%s.log" % \
+				(mysettings["CATEGORY"], mysettings["PF"], logid_time))
+
+		util.ensure_dirs(os.path.dirname(mysettings["PORTAGE_LOG_FILE"]))
+
 	else:
 		# NOTE: When sesandbox is enabled, the local SELinux security policies
 		# may not allow output to be piped out of the sesandbox domain. The

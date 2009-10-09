@@ -21,9 +21,20 @@ def process(mysettings, key, logentries, fulltext):
 		elogdir = os.path.join(os.sep, "var", "log", "portage", "elog")
 	ensure_dirs(elogdir, uid=portage_uid, gid=portage_gid, mode=0o2770)
 
-	elogfilename = os.path.join(elogdir, path + ":" + _unicode_decode(
+	cat = mysettings['CATEGORY']
+	pf = mysettings['PF']
+
+	elogfilename = pf + ":" + _unicode_decode(
 		time.strftime("%Y%m%d-%H%M%S", time.gmtime(time.time())),
-		encoding=_encodings['content'], errors='replace') + ".log")
+		encoding=_encodings['content'], errors='replace') + ".log"
+
+	if "split-elog" in mysettings.features:
+		elogfilename = os.path.join(elogdir, cat, elogfilename)
+	else:
+		elogfilename = os.path.join(elogdir, cat + ':' + elogfilename)
+	ensure_dirs(os.path.dirname(elogfilename),
+		uid=portage_uid, gid=portage_gid, mode=0o2770)
+
 	elogfile = codecs.open(_unicode_encode(elogfilename,
 		encoding=_encodings['fs'], errors='strict'),
 		mode='w', encoding=_encodings['content'], errors='backslashreplace')
