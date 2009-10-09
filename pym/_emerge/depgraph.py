@@ -1570,6 +1570,18 @@ class depgraph(object):
 					expanded_atoms = [atom for atom in expanded_atoms \
 						if atom.cp == installed_cp]
 
+				# If a non-virtual package and one or more virtual packages
+				# are in expanded_atoms, use the non-virtual package.
+ 				if len(expanded_atoms) > 1:
+					number_of_virtuals = 0
+					for expanded_atom in expanded_atoms:
+						if expanded_atom.cp.startswith("virtual/"):
+							number_of_virtuals += 1
+						else:
+							candidate = expanded_atom
+					if len(expanded_atoms) - number_of_virtuals == 1:
+						expanded_atoms = [ candidate ]
+
 				if len(expanded_atoms) > 1:
 					print()
 					print()
