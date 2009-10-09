@@ -50,6 +50,7 @@ if sys.hexversion >= 0x3000000:
 options=[
 "--ask",          "--alphabetical",
 "--buildpkg",     "--buildpkgonly",
+"--changed-use",
 "--changelog",    "--columns",
 "--debug",
 "--digest",
@@ -664,6 +665,10 @@ def parse_opts(tmpcmdline, silent=False):
 	tmpcmdline = insert_optional_args(tmpcmdline)
 
 	myoptions, myargs = parser.parse_args(args=tmpcmdline)
+
+	if myoptions.changed_use is not None:
+		myoptions.reinstall = "changed-use"
+		myoptions.changed_use = None
 
 	if myoptions.deselect == "True":
 		myoptions.deselect = True
