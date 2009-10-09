@@ -4161,6 +4161,8 @@ class depgraph(object):
 					if ordered:
 						if pkg_merge:
 							counters.reinst += 1
+							if pkg_type == "binary":
+								counters.binary += 1
 						elif pkg_status == "uninstall":
 							counters.uninst += 1
 				# filter out old-style virtual matches
@@ -4183,17 +4185,23 @@ class depgraph(object):
 							addl += turquoise("U")+blue("D")
 							if ordered:
 								counters.downgrades += 1
+								if pkg_type == "binary":
+									counters.binary += 1
 						else:
 							# Update in slot
 							addl += turquoise("U") + " "
 							if ordered:
 								counters.upgrades += 1
+								if pkg_type == "binary":
+									counters.binary += 1
 					else:
 						# New slot, mark it new.
 						addl = " " + green("NS") + fetch + "  "
 						myoldbest = vardb.match(portage.cpv_getkey(pkg_key))
 						if ordered:
 							counters.newslot += 1
+							if pkg_type == "binary":
+								counters.binary += 1
 
 					if "--changelog" in self._frozen_config.myopts:
 						inst_matches = vardb.match(pkg.slot_atom)
@@ -4210,6 +4218,8 @@ class depgraph(object):
 					addl = " " + green("N") + " " + fetch + "  "
 					if ordered:
 						counters.new += 1
+						if pkg_type == "binary":
+							counters.binary += 1
 
 				verboseadd = ""
 				repoadd = None

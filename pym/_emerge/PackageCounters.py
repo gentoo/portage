@@ -22,6 +22,7 @@ class PackageCounters(object):
 		self.restrict_fetch           = 0
 		self.restrict_fetch_satisfied = 0
 		self.interactive              = 0
+		self.binary                   = 0
 
 	def __str__(self):
 		total_installs = self.upgrades + self.downgrades + self.newslot + self.new + self.reinst
@@ -50,6 +51,10 @@ class PackageCounters(object):
 			details.append("%s reinstall" % self.reinst)
 			if self.reinst > 1:
 				details[-1] += "s"
+		if self.binary > 0:
+			details.append("%s binary" % self.binary)
+			if self.binary > 1:
+				details[-1] = details[-1][:-1] + "ies"
 		if self.uninst > 0:
 			details.append("%s uninstall" % self.uninst)
 			if self.uninst > 1:
