@@ -121,8 +121,8 @@ die() {
 		| sed -e '1d' -e 's:^:RETAIN-LEADING-SPACE:' \
 		| while read -r n ; do eerror "  ${n#RETAIN-LEADING-SPACE}" ; done
 	eerror
-	eerror "If you need support, post emerge --info, the complete build log"
-	eerror "and the output of emerge -pqv =$CATEGORY/$PF."
+	eerror "If you need support, post the output of 'emerge --info =$CATEGORY/$PF',"
+	eerror "the complete build log and the output of 'emerge -pqv =$CATEGORY/$PF'."
 	if [[ -n ${EBUILD_OVERLAY_ECLASSES} ]] ; then
 		eerror "This ebuild used the following eclasses from overlays:"
 		local x
