@@ -666,9 +666,9 @@ def parse_opts(tmpcmdline, silent=False):
 
 	myoptions, myargs = parser.parse_args(args=tmpcmdline)
 
-	if myoptions.changed_use is not None:
+	if myoptions.changed_use is not False:
 		myoptions.reinstall = "changed-use"
-		myoptions.changed_use = None
+		myoptions.changed_use = False
 
 	if myoptions.deselect == "True":
 		myoptions.deselect = True
