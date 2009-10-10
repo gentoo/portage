@@ -27,6 +27,10 @@ portage-2.1.7
   updated when necessary. In order to ensure that all packages are updated
   when possible, you must now specify the -u/--update option. See bug #275945
   for the rationale behind this change.
+* If using python3, you may notice that some types of program output which
+  require a tty device (like the wget progress bar) will be disabled. This
+  is due to an upstream python issue: http://bugs.python.org/issue5380. See
+  bug #287648 for more information.
 
 portage-2.1.6.12
 ==================================

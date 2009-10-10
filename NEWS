@@ -14,6 +14,8 @@ portage-2.1.7
 * Add --accept-properties option for emerge which allows you to use
   --accept-properties=-interactive in order to temporarily exclude
   interactive updates.
+* Add support for Python 3.0. At least Python 2.6 is now required in order to
+  support the new syntax which is used by Python 3.0.
 
 portage-2.1.6
 -------------
