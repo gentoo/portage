@@ -653,6 +653,13 @@ to find out how to unmask in various cases.  Also note that if you give
 \fBemerge\fR an ebuild, then all forms of masking will be ignored and
 \fBemerge\fR will attempt to emerge the package.
 .TP
+.BR backtracking
+When packages are masked for \fBbacktracking\fR, it means that the dependency
+resolver has temporarily masked them in order to avoid dependency conflicts
+and/or unsatisfied dependencies. This type of mask is typically accompanied
+by a message about a missed package update which has been skipped in order to
+avoid dependency conflicts and/or unsatisfied dependencies.
+.TP
 .BR package.mask
 The \fBpackage.mask\fR file primarily blocks the use of packages that cause
 problems or are known to have issues on different systems.  It resides in
