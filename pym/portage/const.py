@@ -47,7 +47,6 @@ VDB_PATH                 = "var/db/pkg"
 CACHE_PATH               = "var/cache/edb"
 PRIVATE_PATH             = "var/lib/portage"
 WORLD_FILE               = PRIVATE_PATH + "/world"
-WORLD_SETS_FILE          = PRIVATE_PATH + "/world_sets"
 CONFIG_MEMORY_FILE       = PRIVATE_PATH + "/config"
 NEWS_LIB_PATH            = "var/lib/gentoo"
 

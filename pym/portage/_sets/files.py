@@ -11,7 +11,7 @@ from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.util import grabfile, write_atomic, ensure_dirs, normalize_path
-from portage.const import USER_CONFIG_PATH, WORLD_FILE, WORLD_SETS_FILE
+from portage.const import USER_CONFIG_PATH, WORLD_FILE
 from portage.localization import _
 from portage.locks import lockfile, unlockfile
 from portage import portage_gid
@@ -34,25 +34,16 @@ class WorldSet(EditablePackageSet):
 		self._filename = os.path.join(os.sep, root, WORLD_FILE)
 		self.loader = ItemFileLoader(self._filename, self._validate)
 		self._mtime = None
-		
-		self._filename2 = os.path.join(os.sep, root, WORLD_SETS_FILE)
-		self.loader2 = ItemFileLoader(self._filename2, self._validate2)
-		self._mtime2 = None
-		
+
 	def _validate(self, atom):
 		return ValidAtomValidator(atom)
-
-	def _validate2(self, setname):
-		return setname.startswith(SETPREFIX)
 
 	def write(self):
 		write_atomic(self._filename,
 			"".join(sorted("%s\n" % x for x in self._atoms)))
-		write_atomic(self._filename2, "\n".join(sorted(self._nonatoms))+"\n")
-	
+
 	def load(self):
 		atoms = []
-		nonatoms = []
 		atoms_changed = False
 		# load atoms and non-atoms from different files so the worldfile is 
 		# backwards-compatible with older versions and other PMs, even though 
@@ -77,28 +68,9 @@ class WorldSet(EditablePackageSet):
 			atoms_changed = True
 		else:
 			atoms.extend(self._atoms)
-		try:
-			mtime = os.stat(self._filename2).st_mtime
-		except (OSError, IOError):
-			mtime = None
-		if (not self._loaded or self._mtime2 != mtime):
-			try:
-				data, errors = self.loader2.load()
-				for fname in errors:
-					for e in errors[fname]:
-						self.errors.append(fname+": "+e)
-			except EnvironmentError as e:
-				if e.errno != errno.ENOENT:
-					raise
-				del e
-				data = {}
-			nonatoms = list(data)
-			self._mtime2 = mtime
-			atoms_changed = True
-		else:
-			nonatoms.extend(self._nonatoms)
+
 		if atoms_changed:
-			self._setAtoms(atoms+nonatoms)
+			self._setAtoms(atoms)
 		
 	def _ensure_dirs(self):
 		ensure_dirs(os.path.dirname(self._filename), gid=portage_gid, mode=0o2750, mask=0o2)
