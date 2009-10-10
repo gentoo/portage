@@ -54,7 +54,15 @@ class BinpkgVerifier(AsynchronousTask):
 				writemsg("!!! Expected: %s\n" % e.value[3],
 					noiselevel=-1)
 				rval = 1
-			if rval != os.EX_OK:
+			if rval == os.EX_OK:
+				# If this was successful, discard the log here since otherwise
+				# we'll get multiple logs for the same package.
+				if log_file is not None:
+					try:
+						os.unlink(self.logfile)
+					except OSError:
+						pass
+			else:
 				pkg_path = bintree.getname(pkg.cpv)
 				head, tail = os.path.split(pkg_path)
 				temp_filename = portage._checksum_failure_temp_file(head, tail)
