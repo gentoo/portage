@@ -5,8 +5,12 @@ portage-2.2
 
 * Add link level dependency awareness to emerge --depclean and --prune actions
   in order to protect against uninstallation of required libraries.
-* Add license visibility filtering (GLEP 23)
 * Add support for generic package sets (also see RELEASE-NOTES)
+
+portage-2.1.7
+-------------
+
+* Add license visibility filtering (GLEP 23)
 * Add --accept-properties option for emerge which allows you to use
   --accept-properties=-interactive in order to temporarily exclude
   interactive updates.
