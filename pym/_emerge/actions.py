@@ -569,7 +569,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	msg.append("unless *all* required dependencies have been resolved.  As a\n")
 	msg.append("consequence, it is often necessary to run %s\n" % \
 		good("`emerge --update"))
-	msg.append(good("--newuse --deep @system @world`") + \
+	msg.append(good("--newuse --deep world`") + \
 		" prior to depclean.\n")
 
 	if action == "depclean" and "--quiet" not in myopts and not myfiles:
@@ -790,7 +790,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				msg.append("    %s" % (parent,))
 				msg.append("")
 			msg.append("Have you forgotten to run " + \
-				good("`emerge --update --newuse --deep @system @world`") + " prior")
+				good("`emerge --update --newuse --deep world`") + " prior")
 			msg.append(("to %s? It may be necessary to manually " + \
 				"uninstall packages that no longer") % action)
 			msg.append("exist in the portage tree since " + \

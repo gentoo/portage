@@ -9,7 +9,7 @@ from portage.output import bold, turquoise, green
 def shorthelp():
 	print(bold("emerge:")+" the other white meat (command-line interface to the Portage system)")
 	print(bold("Usage:"))
-	print("   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] [ "+turquoise("ebuild")+" | "+turquoise("tbz2")+" | "+turquoise("file")+" | "+turquoise("@set")+" | "+turquoise("atom")+" ] [ ... ]")
+	print("   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] [ "+turquoise("ebuild")+" | "+turquoise("tbz2")+" | "+turquoise("file")+" | "+turquoise("set")+" | "+turquoise("atom")+" ] [ ... ]")
 	print("   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] < "+turquoise("system")+" | "+turquoise("world")+" >")
 	#print("   "+turquoise("emerge")+" < "+turquoise("--sync")+" | "+turquoise("--metadata")+" | "+turquoise("--info")+" >")
 	print("   "+turquoise("emerge")+" "+turquoise("--resume")+" [ "+green("--pretend")+" | "+green("--ask")+" | "+green("--skipfirst")+" ]")
@@ -21,7 +21,7 @@ def shorthelp():
 	print("          [ "+green("--newuse")+"    ] [ "+green("--noconfmem")+"  ] [ "+green("--nospinner")+"  ]")
 	print("          [ "+green("--oneshot")+"   ] [ "+green("--onlydeps")+"   ]")
 	print("          [ "+green("--reinstall ")+turquoise("changed-use")+"      ] [ " + green("--with-bdeps")+" < " + turquoise("y") + " | "+ turquoise("n")+" >         ]")
-	print(bold("Actions:")+"  [ "+green("--depclean")+" | "+green("--list-sets")+" | "+green("--search")+" | "+green("--sync")+" | "+green("--version")+"        ]")
+	print(bold("Actions:")+"  [ "+green("--depclean")+" | "+" | "+green("--search")+" | "+green("--sync")+" | "+green("--version")+"        ]")
 
 def help(myopts, havecolor=1):
 	# TODO: Implement a wrap() that accounts for console color escape codes.
@@ -70,8 +70,8 @@ def help(myopts, havecolor=1):
 
 		paragraph = "Cleans the system by removing packages that are " + \
 		"not associated with explicitly merged packages. Depclean works " + \
-		"by creating the full dependency tree from the @system and " + \
-		"@world sets, then comparing it to installed packages. Packages " + \
+		"by creating the full dependency tree from the system and " + \
+		"world sets, then comparing it to installed packages. Packages " + \
 		"installed, but not part of the dependency tree, will be " + \
 		"uninstalled by depclean. See --with-bdeps for behavior with " + \
 		"respect to build time dependencies that are not strictly " + \
@@ -80,7 +80,7 @@ def help(myopts, havecolor=1):
 		"emerge --noreplace <atom>. As a safety measure, depclean " + \
 		"will not remove any packages unless *all* required dependencies " + \
 		"have been resolved. As a consequence, it is often necessary to " + \
-		"run emerge --update --newuse --deep @system @world " + \
+		"run emerge --update --newuse --deep world " + \
 		"prior to depclean."
 
 		for line in wrap(paragraph, desc_width):
@@ -127,12 +127,6 @@ def help(myopts, havecolor=1):
 		print("              for bug reports and verification of settings. All settings in")
 		print("              make.{conf,globals,defaults} and the environment show up if")
 		print("              run with the '--verbose' flag.")
-		print()
-		print("       " + green("--list-sets"))
-		paragraph = "Displays a list of available package sets."
-
-		for line in wrap(paragraph, desc_width):
-			print(desc_indent + line)
 		print()
 		print("       "+green("--metadata"))
 		print("              Transfers metadata cache from ${PORTDIR}/metadata/cache/ to")

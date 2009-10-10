@@ -182,10 +182,10 @@ class search(object):
 		self.packagematches = []
 		if self.searchdesc:
 			self.searchdesc=1
-			self.matches = {"pkg":[], "desc":[], "set":[]}
+			self.matches = {"pkg":[], "desc":[],}
 		else:
 			self.searchdesc=0
-			self.matches = {"pkg":[], "set":[]}
+			self.matches = {"pkg":[],}
 		print("Searching...   ", end=' ')
 
 		regexsearch = False
@@ -231,21 +231,6 @@ class search(object):
 				if self.searchre.search(full_desc):
 					self.matches["desc"].append([full_package,masked])
 
-		self.sdict = self.setconfig.getSets()
-		for setname in self.sdict:
-			self._spinner_update()
-			if match_category:
-				match_string = setname
-			else:
-				match_string = setname.split("/")[-1]
-			
-			if self.searchre.search(match_string):
-				self.matches["set"].append([setname, False])
-			elif self.searchdesc:
-				if self.searchre.search(
-					self.sdict[setname].getMetadata("DESCRIPTION")):
-					self.matches["set"].append([setname, False])
-			
 		self.mlen=0
 		for mtype in self.matches:
 			self.matches[mtype].sort()
@@ -281,15 +266,7 @@ class search(object):
 				elif mtype == "desc":
 					full_package = match
 					match        = portage.cpv_getkey(match)
-				elif mtype == "set":
-					msg = []
-					msg.append(green("*") + "  " + bold(match) + "\n")
-					if self.verbose:
-						msg.append("      " + darkgreen("Description:") + \
-							"   " + \
-							self.sdict[match].getMetadata("DESCRIPTION") \
-							+ "\n\n")
-					writemsg_stdout(''.join(msg), noiselevel=-1)
+
 				if full_package:
 					try:
 						desc, homepage, license = self.portdb.aux_get(

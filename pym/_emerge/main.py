@@ -416,7 +416,7 @@ def parse_opts(tmpcmdline, silent=False):
 
 	actions = frozenset([
 		"clean", "config", "depclean", "help",
-		"info", "list-sets", "metadata",
+		"info", "metadata",
 		"prune", "regen",  "search",
 		"sync",  "unmerge", "version",
 	])
@@ -766,123 +766,34 @@ def ionice(settings):
 		out.eerror("See the make.conf(5) man page for PORTAGE_IONICE_COMMAND usage instructions.")
 
 def expand_set_arguments(myfiles, myaction, root_config):
-	retval = os.EX_OK
-	setconfig = root_config.setconfig
 
-	sets = setconfig.getSets()
+	if myaction != "search":
 
-	# In order to know exactly which atoms/sets should be added to the
-	# world file, the depgraph performs set expansion later. It will get
-	# confused about where the atoms came from if it's not allowed to
-	# expand them itself.
-	do_not_expand = (None, )
-	newargs = []
-	for a in myfiles:
-		if a in ("system", "world"):
-			newargs.append(SETPREFIX+a)
-		else:
-			newargs.append(a)
-	myfiles = newargs
-	del newargs
-	newargs = []
+		world = False
+		system = False
 
-	# separators for set arguments
-	ARG_START = "{"
-	ARG_END = "}"
+		for x in myfiles:
+			if x[:1] == SETPREFIX:
+				msg = []
+				msg.append("'%s' is not a valid package atom." % (x,))
+				msg.append("Please check ebuild(5) for full details.")
+				writemsg_level("".join("!!! %s\n" % line for line in msg),
+					level=logging.ERROR, noiselevel=-1)
+				return (myfiles, 1)
+			elif x == "system":
+				system = True
+			elif x == "world":
+				world = True
 
-	for i in range(0, len(myfiles)):
-		if myfiles[i].startswith(SETPREFIX):
-			start = 0
-			end = 0
-			x = myfiles[i][len(SETPREFIX):]
-			newset = ""
-			while x:
-				start = x.find(ARG_START)
-				end = x.find(ARG_END)
-				if start > 0 and start < end:
-					namepart = x[:start]
-					argpart = x[start+1:end]
+		if myaction is not None:
+			if system:
+				multiple_actions("system", myaction)
+				return (myfiles, 1)
+			elif world:
+				multiple_actions("world", myaction)
+				return (myfiles, 1)
 
-					# TODO: implement proper quoting
-					args = argpart.split(",")
-					options = {}
-					for a in args:
-						if "=" in a:
-							k, v  = a.split("=", 1)
-							options[k] = v
-						else:
-							options[a] = "True"
-					setconfig.update(namepart, options)
-					newset += (x[:start-len(namepart)]+namepart)
-					x = x[end+len(ARG_END):]
-				else:
-					newset += x
-					x = ""
-			myfiles[i] = SETPREFIX+newset
-
-	sets = setconfig.getSets()
-
-	# display errors that occured while loading the SetConfig instance
-	for e in setconfig.errors:
-		print(colorize("BAD", "Error during set creation: %s" % e))
-
-	# emerge relies on the existance of sets with names "world" and "system"
-	required_sets = ("world", "system")
-	missing_sets = []
-
-	for s in required_sets:
-		if s not in sets:
-			missing_sets.append(s)
-	if missing_sets:
-		if len(missing_sets) > 2:
-			missing_sets_str = ", ".join('"%s"' % s for s in missing_sets[:-1])
-			missing_sets_str += ', and "%s"' % missing_sets[-1]
-		elif len(missing_sets) == 2:
-			missing_sets_str = '"%s" and "%s"' % tuple(missing_sets)
-		else:
-			missing_sets_str = '"%s"' % missing_sets[-1]
-		msg = ["emerge: incomplete set configuration, " + \
-			"missing set(s): %s" % missing_sets_str]
-		if sets:
-			msg.append("        sets defined: %s" % ", ".join(sets))
-		msg.append("        This usually means that '%s'" % \
-			(os.path.join(portage.const.GLOBAL_CONFIG_PATH, "sets.conf"),))
-		msg.append("        is missing or corrupt.")
-		for line in msg:
-			writemsg_level(line + "\n", level=logging.ERROR, noiselevel=-1)
-		return (None, 1)
-	unmerge_actions = ("unmerge", "prune", "clean", "depclean")
-
-	for a in myfiles:
-		if a.startswith(SETPREFIX):		
-				s = a[len(SETPREFIX):]
-				if s not in sets:
-					display_missing_pkg_set(root_config, s)
-					return (None, 1)
-				setconfig.active.append(s)
-				try:
-					set_atoms = setconfig.getSetAtoms(s)
-				except portage.exception.PackageSetNotFound as e:
-					writemsg_level(("emerge: the given set '%s' " + \
-						"contains a non-existent set named '%s'.\n") % \
-						(s, e), level=logging.ERROR, noiselevel=-1)
-					return (None, 1)
-				if myaction in unmerge_actions and \
-						not sets[s].supportsOperation("unmerge"):
-					sys.stderr.write("emerge: the given set '%s' does " % s + \
-						"not support unmerge operations\n")
-					retval = 1
-				elif not set_atoms:
-					print("emerge: '%s' is an empty set" % s)
-				elif myaction not in do_not_expand:
-					newargs.extend(set_atoms)
-				else:
-					newargs.append(SETPREFIX+s)
-				for e in sets[s].errors:
-					print(e)
-		else:
-			newargs.append(a)
-	return (newargs, retval)
+	return (myfiles, os.EX_OK)
 
 def repo_name_check(trees):
 	missing_repo_names = set()
@@ -1071,9 +982,6 @@ def emerge_main():
 			break
 
 	root_config = trees[settings["ROOT"]]["root_config"]
-	if myaction == "list-sets":
-		writemsg_stdout("".join("%s\n" % s for s in sorted(root_config.sets)))
-		return os.EX_OK
 
 	# only expand sets for actions taking package arguments
 	oldargs = myfiles[:]
