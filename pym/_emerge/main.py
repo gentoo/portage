@@ -1038,7 +1038,7 @@ def emerge_main():
 
 	if "--quiet" not in myopts:
 		portage.deprecated_profile_check(settings=settings)
-		repo_name_check(trees)
+		#repo_name_check(trees)
 		repo_name_duplicate_check(trees)
 		config_protect_check(trees)
 
