@@ -49,9 +49,6 @@ FEATURES="assume-digests distlocks fixpackages news parallel-fetch protect-owned
 # FEATURES=protect-owned to operate smoothly in all cases.
 COLLISION_IGNORE="/lib/modules"
 
-# Enable for global testing
-FEATURES="${FEATURES} preserve-libs"
-
 # Default chunksize for binhost comms
 PORTAGE_BINHOST_CHUNKSIZE="3000"
 

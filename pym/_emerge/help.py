@@ -11,7 +11,7 @@ def shorthelp():
 	print(bold("Usage:"))
 	print("   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] [ "+turquoise("ebuild")+" | "+turquoise("tbz2")+" | "+turquoise("file")+" | "+turquoise("@set")+" | "+turquoise("atom")+" ] [ ... ]")
 	print("   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] < "+turquoise("system")+" | "+turquoise("world")+" >")
-	print("   "+turquoise("emerge")+" < "+turquoise("--sync")+" | "+turquoise("--metadata")+" | "+turquoise("--info")+" >")
+	#print("   "+turquoise("emerge")+" < "+turquoise("--sync")+" | "+turquoise("--metadata")+" | "+turquoise("--info")+" >")
 	print("   "+turquoise("emerge")+" "+turquoise("--resume")+" [ "+green("--pretend")+" | "+green("--ask")+" | "+green("--skipfirst")+" ]")
 	print("   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("--verbose")+" ] ")
 	print(bold("Options:")+" "+green("-")+"["+green("abBcCdDefgGhjkKlnNoOpPqrsStuvV")+"]")
@@ -92,7 +92,10 @@ def help(myopts, havecolor=1):
 		"packages will be uninstalled. Always study the list of packages " + \
 		"to be cleaned for any obvious mistakes. Note that packages " + \
 		"listed in package.provided (see portage(5)) may be removed by " + \
-		"depclean, even if they are part of the world set."
+		"depclean, even if they are part of the world set. Also note that " + \
+		"depclean may break link level dependencies. Thus, it is " + \
+		"recommended to use a tool such as revdep-rebuild(1) " + \
+		"in order to detect such breakage."
 
 		for line in wrap(paragraph, desc_width):
 			print(desc_indent + line)

@@ -7584,8 +7584,6 @@ def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None,
 	try:
 		mylink.lockdb()
 		if mylink.exists():
-			vartree.dbapi.plib_registry.load()
-			vartree.dbapi.plib_registry.pruneNonExisting()
 			retval = mylink.unmerge(trimworld=mytrimworld, cleanup=1,
 				ldpath_mtimes=ldpath_mtimes)
 			if retval == os.EX_OK:
@@ -7593,7 +7591,6 @@ def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None,
 			return retval
 		return os.EX_OK
 	finally:
-		vartree.dbapi.linkmap._clear_cache()
 		mylink.unlockdb()
 
 def dep_virtual(mysplit, mysettings):

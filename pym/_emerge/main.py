@@ -201,82 +201,6 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 				if icount > 0:
 					out.einfo("Processed %d info files." % (icount,))
 
-def display_preserved_libs(vardbapi, myopts):
-	MAX_DISPLAY = 3
-
-	# Ensure the registry is consistent with existing files.
-	vardbapi.plib_registry.pruneNonExisting()
-
-	if vardbapi.plib_registry.hasEntries():
-		if "--quiet" in myopts:
-			print()
-			print(colorize("WARN", "!!!") + " existing preserved libs found")
-			return
-		else:
-			print()
-			print(colorize("WARN", "!!!") + " existing preserved libs:")
-
-		plibdata = vardbapi.plib_registry.getPreservedLibs()
-		linkmap = vardbapi.linkmap
-		consumer_map = {}
-		owners = {}
-		linkmap_broken = False
-
-		try:
-			linkmap.rebuild()
-		except portage.exception.CommandNotFound as e:
-			writemsg_level("!!! Command Not Found: %s\n" % (e,),
-				level=logging.ERROR, noiselevel=-1)
-			del e
-			linkmap_broken = True
-		else:
-			search_for_owners = set()
-			for cpv in plibdata:
-				internal_plib_keys = set(linkmap._obj_key(f) \
-					for f in plibdata[cpv])
-				for f in plibdata[cpv]:
-					if f in consumer_map:
-						continue
-					consumers = []
-					for c in linkmap.findConsumers(f):
-						# Filter out any consumers that are also preserved libs
-						# belonging to the same package as the provider.
-						if linkmap._obj_key(c) not in internal_plib_keys:
-							consumers.append(c)
-					consumers.sort()
-					consumer_map[f] = consumers
-					search_for_owners.update(consumers[:MAX_DISPLAY+1])
-
-			owners = vardbapi._owners.getFileOwnerMap(search_for_owners)
-
-		for cpv in plibdata:
-			print(colorize("WARN", ">>>") + " package: %s" % cpv)
-			samefile_map = {}
-			for f in plibdata[cpv]:
-				obj_key = linkmap._obj_key(f)
-				alt_paths = samefile_map.get(obj_key)
-				if alt_paths is None:
-					alt_paths = set()
-					samefile_map[obj_key] = alt_paths
-				alt_paths.add(f)
-
-			for alt_paths in samefile_map.values():
-				alt_paths = sorted(alt_paths)
-				for p in alt_paths:
-					print(colorize("WARN", " * ") + " - %s" % (p,))
-				f = alt_paths[0]
-				consumers = consumer_map.get(f, [])
-				for c in consumers[:MAX_DISPLAY]:
-					print(colorize("WARN", " * ") + "     used by %s (%s)" % \
-						(c, ", ".join(x.mycpv for x in owners.get(c, []))))
-				if len(consumers) == MAX_DISPLAY + 1:
-					print(colorize("WARN", " * ") + "     used by %s (%s)" % \
-						(consumers[MAX_DISPLAY], ", ".join(x.mycpv \
-						for x in owners.get(consumers[MAX_DISPLAY], []))))
-				elif len(consumers) > MAX_DISPLAY:
-					print(colorize("WARN", " * ") + "     used by %d other files" % (len(consumers) - MAX_DISPLAY))
-		print("Use " + colorize("GOOD", "emerge @preserved-rebuild") + " to rebuild packages using these libraries")
-
 def post_emerge(root_config, myopts, mtimedb, retval):
 	"""
 	Misc. things to run at the end of a merge session.
@@ -349,8 +273,6 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 	chk_updated_cfg_files(target_root, config_protect)
 
 	display_news_notification(root_config, myopts)
-	if retval in (None, os.EX_OK) or (not "--pretend" in myopts):
-		display_preserved_libs(vardbapi, myopts)	
 
 	sys.exit(retval)
 

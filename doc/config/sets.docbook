@@ -547,25 +547,6 @@
 		This class doesn't support any extra options.
 		</para>
 		</sect2>
-		<sect2 id='config-set-classes-PreservedLibraryConsumerSet'>
-		<title>portage.sets.libs.PreservedLibraryConsumerSet</title>
-		<para>
-		A special set used to rebuild all packages that need a preserved library that only
-		remains due to <varname>FEATURES="preserve-libs"</varname>.
-		</para>
-
-			<sect3>
-			<title>Single Set Configuration</title>
-			<para>
-			This class supports the following option:
-			</para>
-			<itemizedlist>
-			<listitem><para><varname>debug</varname>: Generate extra output useful to figure out why
-				certain packages are included in the set, as it's not always obvious.</para>
-			</listitem>
-			</itemizedlist>
-			</sect3>
-		</sect2>
 	</sect1>
 	
 	<sect1 id='config-set-defaults'>
@@ -584,7 +565,6 @@
 	<listitem><para><varname>world</varname>: uses <classname>WorldSet</classname></para></listitem>
 	<listitem><para><varname>security</varname>: uses <classname>NewAffectedSet</classname> with default options</para></listitem>
 	<listitem><para><varname>installed</varname>: uses <classname>EverythingSet</classname></para></listitem>
-	<listitem><para><varname>preserved-rebuild</varname>: uses <classname>PreservedLibraryConsumerSet</classname></para></listitem>
 	<listitem><para><varname>live-rebuild</varname>: uses <classname>VariableSet</classname></para></listitem>
 	<listitem><para><varname>module-rebuild</varname>: uses <classname>OwnerSet</classname></para></listitem>
 	<listitem><para><varname>downgrade</varname>: uses <classname>DowngradeSet</classname></para></listitem>

@@ -475,7 +475,6 @@ def action_build(settings, trees, mtimedb,
 				portage.writemsg_stdout(colorize("WARN", "WARNING:")
 					+ " AUTOCLEAN is disabled.  This can cause serious"
 					+ " problems due to overlapping packages.\n")
-			trees[settings["ROOT"]]["vartree"].dbapi.plib_registry.pruneNonExisting()
 
 		return retval
 
@@ -555,6 +554,10 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	# specific packages.
 
 	msg = []
+	msg.append("Depclean may break link level dependencies.  Thus, it is\n")
+	msg.append("recommended to use a tool such as " + good("`revdep-rebuild`") + " (from\n")
+	msg.append("app-portage/gentoolkit) in order to detect such breakage.\n")
+	msg.append("\n")
 	msg.append("Always study the list of packages to be cleaned for any obvious\n")
 	msg.append("mistakes. Packages that are part of the world set will always\n")
 	msg.append("be kept.  They can be manually added to this set with\n")
@@ -897,185 +900,6 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 	if len(cleanlist):
 		clean_set = set(cleanlist)
-
-		# Check if any of these package are the sole providers of libraries
-		# with consumers that have not been selected for removal. If so, these
-		# packages and any dependencies need to be added to the graph.
-		real_vardb = trees[myroot]["vartree"].dbapi
-		linkmap = real_vardb.linkmap
-		consumer_cache = {}
-		provider_cache = {}
-		soname_cache = {}
-		consumer_map = {}
-
-		writemsg_level(">>> Checking for lib consumers...\n")
-
-		for pkg in cleanlist:
-			pkg_dblink = real_vardb._dblink(pkg.cpv)
-			consumers = {}
-
-			for lib in pkg_dblink.getcontents():
-				lib = lib[len(myroot):]
-				lib_key = linkmap._obj_key(lib)
-				lib_consumers = consumer_cache.get(lib_key)
-				if lib_consumers is None:
-					try:
-						lib_consumers = linkmap.findConsumers(lib_key)
-					except KeyError:
-						continue
-					consumer_cache[lib_key] = lib_consumers
-				if lib_consumers:
-					consumers[lib_key] = lib_consumers
-
-			if not consumers:
-				continue
-
-			for lib, lib_consumers in list(consumers.items()):
-				for consumer_file in list(lib_consumers):
-					if pkg_dblink.isowner(consumer_file, myroot):
-						lib_consumers.remove(consumer_file)
-				if not lib_consumers:
-					del consumers[lib]
-
-			if not consumers:
-				continue
-
-			for lib, lib_consumers in consumers.items():
-
-				soname = soname_cache.get(lib)
-				if soname is None:
-					soname = linkmap.getSoname(lib)
-					soname_cache[lib] = soname
-
-				consumer_providers = []
-				for lib_consumer in lib_consumers:
-					providers = provider_cache.get(lib)
-					if providers is None:
-						providers = linkmap.findProviders(lib_consumer)
-						provider_cache[lib_consumer] = providers
-					if soname not in providers:
-						# Why does this happen?
-						continue
-					consumer_providers.append(
-						(lib_consumer, providers[soname]))
-
-				consumers[lib] = consumer_providers
-
-			consumer_map[pkg] = consumers
-
-		if consumer_map:
-
-			search_files = set()
-			for consumers in consumer_map.values():
-				for lib, consumer_providers in consumers.items():
-					for lib_consumer, providers in consumer_providers:
-						search_files.add(lib_consumer)
-						search_files.update(providers)
-
-			writemsg_level(">>> Assigning files to packages...\n")
-			file_owners = real_vardb._owners.getFileOwnerMap(search_files)
-
-			for pkg, consumers in list(consumer_map.items()):
-				for lib, consumer_providers in list(consumers.items()):
-					lib_consumers = set()
-
-					for lib_consumer, providers in consumer_providers:
-						owner_set = file_owners.get(lib_consumer)
-						provider_dblinks = set()
-						provider_pkgs = set()
-
-						if len(providers) > 1:
-							for provider in providers:
-								provider_set = file_owners.get(provider)
-								if provider_set is not None:
-									provider_dblinks.update(provider_set)
-
-						if len(provider_dblinks) > 1:
-							for provider_dblink in provider_dblinks:
-								pkg_key = ("installed", myroot,
-									provider_dblink.mycpv, "nomerge")
-								if pkg_key not in clean_set:
-									provider_pkgs.add(vardb.get(pkg_key))
-
-						if provider_pkgs:
-							continue
-
-						if owner_set is not None:
-							lib_consumers.update(owner_set)
-
-					for consumer_dblink in list(lib_consumers):
-						if ("installed", myroot, consumer_dblink.mycpv,
-							"nomerge") in clean_set:
-							lib_consumers.remove(consumer_dblink)
-							continue
-
-					if lib_consumers:
-						consumers[lib] = lib_consumers
-					else:
-						del consumers[lib]
-				if not consumers:
-					del consumer_map[pkg]
-
-		if consumer_map:
-			# TODO: Implement a package set for rebuilding consumer packages.
-
-			msg = "In order to avoid breakage of link level " + \
-				"dependencies, one or more packages will not be removed. " + \
-				"This can be solved by rebuilding " + \
-				"the packages that pulled them in."
-
-			prefix = bad(" * ")
-			from textwrap import wrap
-			writemsg_level("".join(prefix + "%s\n" % line for \
-				line in wrap(msg, 70)), level=logging.WARNING, noiselevel=-1)
-
-			msg = []
-			for pkg in sorted(consumer_map, key=cmp_sort_key(cmp_pkg_cpv)):
-				consumers = consumer_map[pkg]
-				unique_consumers = set(chain(*consumers.values()))
-				unique_consumers = sorted(consumer.mycpv \
-					for consumer in unique_consumers)
-				msg.append("")
-				msg.append("  %s pulled in by:" % (pkg.cpv,))
-				for consumer in unique_consumers:
-					msg.append("    %s" % (consumer,))
-			msg.append("")
-			writemsg_level("".join(prefix + "%s\n" % line for line in msg),
-				level=logging.WARNING, noiselevel=-1)
-
-			# Add lib providers to the graph as children of lib consumers,
-			# and also add any dependencies pulled in by the provider.
-			writemsg_level(">>> Adding lib providers to graph...\n")
-
-			for pkg, consumers in consumer_map.items():
-				for consumer_dblink in set(chain(*consumers.values())):
-					consumer_pkg = vardb.get(("installed", myroot,
-						consumer_dblink.mycpv, "nomerge"))
-					if not resolver._add_pkg(pkg,
-						Dependency(parent=consumer_pkg,
-						priority=UnmergeDepPriority(runtime=True),
-						root=pkg.root)):
-						resolver.display_problems()
-						return 1, [], False, 0
-
-			writemsg_level("\nCalculating dependencies  ")
-			success = resolver._complete_graph()
-			writemsg_level("\b\b... done!\n")
-			resolver.display_problems()
-			if not success:
-				return 1, [], False, 0
-			if unresolved_deps():
-				return 1, [], False, 0
-
-			graph = resolver._dynamic_config.digraph.copy()
-			required_pkgs_total = 0
-			for node in graph:
-				if isinstance(node, Package):
-					required_pkgs_total += 1
-			cleanlist = create_cleanlist()
-			if not cleanlist:
-				return 0, [], False, required_pkgs_total
-			clean_set = set(cleanlist)
 
 		# Use a topological sort to create an unmerge order such that
 		# each package is unmerged before it's dependencies. This is
