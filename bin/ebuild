@@ -201,6 +201,11 @@ if "test" in pargs:
 		tmpsettings["FEATURES"] = " ".join(sorted(tmpsettings.features))
 		tmpsettings.backup_changes("FEATURES")
 
+if 'fail-clean' in tmpsettings.features:
+	tmpsettings.features.remove('fail-clean')
+	tmpsettings["FEATURES"] = " ".join(sorted(tmpsettings.features))
+	tmpsettings.backup_changes("FEATURES")
+
 if opts.skip_manifest:
 	tmpsettings["EBUILD_SKIP_MANIFEST"] = "1"
 	tmpsettings.backup_changes("EBUILD_SKIP_MANIFEST")

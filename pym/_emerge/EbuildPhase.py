@@ -45,6 +45,11 @@ class EbuildPhase(CompositeTask):
 					log_file.close()
 
 		if self._default_exit(ebuild_process) != os.EX_OK:
+			if self.phase != 'clean' and \
+				'noclean' not in self.settings.features and \
+				'fail-clean' in self.settings.features:
+				self._fail_clean()
+				return
 			self.wait()
 			return
 
@@ -80,7 +85,27 @@ class EbuildPhase(CompositeTask):
 		if self._final_exit(post_phase) != os.EX_OK:
 			writemsg("!!! post %s failed; exiting.\n" % self.phase,
 				noiselevel=-1)
+			if self.phase != 'clean' and \
+				'noclean' not in self.settings.features and \
+				'fail-clean' in self.settings.features:
+				self._fail_clean()
+				return
 		self._current_task = None
 		self.wait()
 		return
 
+	def _fail_clean(self):
+		self.returncode = None
+		portage.elog.elog_process(self.pkg.cpv, self.settings)
+		phase = "clean"
+		clean_phase = EbuildPhase(background=self.background,
+			pkg=self.pkg, phase=phase,
+			scheduler=self.scheduler, settings=self.settings,
+			tree=self.tree)
+		self._start_task(clean_phase, self._fail_clean_exit)
+		return
+
+	def _fail_clean_exit(self, clean_phase):
+		self._final_exit(clean_phase)
+		self.returncode = 1
+		self.wait()

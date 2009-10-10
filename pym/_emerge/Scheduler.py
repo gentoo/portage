@@ -816,18 +816,20 @@ class Scheduler(PollScheduler):
 			self.pkgsettings[root] = portage.config(
 				clone=root_config.settings)
 
-		rval = self._generate_digests()
-		if rval != os.EX_OK:
-			return rval
-
-		rval = self._check_manifests()
-		if rval != os.EX_OK:
-			return rval
-
 		keep_going = "--keep-going" in self.myopts
 		fetchonly = self._build_opts.fetchonly
 		mtimedb = self._mtimedb
 		failed_pkgs = self._failed_pkgs
+
+		rval = self._generate_digests()
+		if rval != os.EX_OK:
+			return rval
+
+		# TODO: Immediately recalculate deps here if --keep-going
+		#       is enabled and corrupt manifests are detected.
+		rval = self._check_manifests()
+		if rval != os.EX_OK and not keep_going:
+			return rval
 
 		while True:
 			rval = self._merge()

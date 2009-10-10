@@ -121,7 +121,8 @@ die() {
 		| sed -e '1d' -e 's:^:RETAIN-LEADING-SPACE:' \
 		| while read -r n ; do eerror "  ${n#RETAIN-LEADING-SPACE}" ; done
 	eerror
-	eerror "If you need support, post the topmost build error, and the call stack if relevant."
+	eerror "If you need support, post the output of 'emerge --info =$CATEGORY/$PF',"
+	eerror "the complete build log and the output of 'emerge -pqv =$CATEGORY/$PF'."
 	if [[ -n ${EBUILD_OVERLAY_ECLASSES} ]] ; then
 		eerror "This ebuild used the following eclasses from overlays:"
 		local x
@@ -158,7 +159,7 @@ die() {
 	fi
 
 	[[ -n ${PORTAGE_LOG_FILE} ]] \
-		&& eerror "A complete build log is located at '${PORTAGE_LOG_FILE}'."
+		&& eerror "The complete build log is located at '${PORTAGE_LOG_FILE}'."
 	if [ -f "${T}/environment" ] ; then
 		eerror "The ebuild environment file is located at '${T}/environment'."
 	elif [ -d "${T}" ] ; then

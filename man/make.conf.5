@@ -213,6 +213,13 @@ when a problem arises (normally due to a crash or disconnect).
 Enable fakeroot for the install and package phases when a non-root user runs
 the \fBebuild\fR(1) command.
 .TP
+.B fail\-clean
+Clean up temporary files after a build failure. This is particularly useful
+if you have \fBPORTAGE_TMPDIR\fR on tmpfs. If this feature is enabled, you
+probably also want to enable \fBPORT_LOGDIR\fR in order to save the build log.
+Both the \fBebuild\fR(1) command and the \fInoclean\fR feature cause the
+\fIfail\-clean\fR feature to be automatically disabled.
+.TP
 .B fixpackages
 Runs the script that will fix the dependencies in all binary packages.  This is 
 run whenever packages are moved around in the portage tree.  Please note that this 
@@ -269,7 +276,7 @@ portage feature called \fImultilib\-strict\fR. It will prevent emerge
 from putting 64bit libraries into anything other than (/usr)/lib64.
 .TP
 .B news
-Enable GLEP 42 new support. See
+Enable GLEP 42 news support. See
 \fIhttp://www.gentoo.org/proj/en/glep/glep-0042.html\fR.
 .TP
 .B noauto
