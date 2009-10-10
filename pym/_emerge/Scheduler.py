@@ -19,8 +19,8 @@ from portage.cache.mappings import slot_dict_class
 from portage.elog.messages import eerror
 from portage.output import colorize, create_color_func, darkgreen, red
 bad = create_color_func("BAD")
-from portage.sets import SETPREFIX
-from portage.sets.base import InternalPackageSet
+from portage._sets import SETPREFIX
+from portage._sets.base import InternalPackageSet
 from portage.util import writemsg, writemsg_level
 
 from _emerge.BinpkgPrefetcher import BinpkgPrefetcher

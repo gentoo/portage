@@ -18,8 +18,8 @@ from portage.dep import Atom
 from portage.output import bold, blue, colorize, create_color_func, darkblue, \
 	darkgreen, green, nc_len, red, teal, turquoise, yellow
 bad = create_color_func("BAD")
-from portage.sets import SETPREFIX
-from portage.sets.base import InternalPackageSet
+from portage._sets import SETPREFIX
+from portage._sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, writemsg_stdout
 from portage.util import writemsg_level
 

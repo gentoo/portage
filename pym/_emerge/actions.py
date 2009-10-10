@@ -30,8 +30,8 @@ from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 	red, yellow
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
-from portage.sets import load_default_config, SETPREFIX
-from portage.sets.base import InternalPackageSet
+from portage._sets import load_default_config, SETPREFIX
+from portage._sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, writemsg_level
 
 from _emerge.clear_caches import clear_caches

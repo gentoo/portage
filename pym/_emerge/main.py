@@ -33,7 +33,7 @@ import portage.exception
 from portage.data import secpass
 from portage.util import normalize_path as normpath
 from portage.util import writemsg, writemsg_level, writemsg_stdout
-from portage.sets import SETPREFIX
+from portage._sets import SETPREFIX
 
 from _emerge.actions import action_config, action_sync, action_metadata, \
 	action_regen, action_search, action_uninstall, action_info, action_build, \
