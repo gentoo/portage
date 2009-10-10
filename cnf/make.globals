@@ -89,9 +89,9 @@ CONFIG_PROTECT="/etc"
 USE_ORDER="env:pkg:conf:defaults:pkginternal:env.d"
 
 # Default portage user/group
-PORTAGE_USER="@portageuser@"
-PORTAGE_GROUP="@portagegroup@"
-PORTAGE_ROOT_USER="@rootuser@"
+PORTAGE_USER='@portageuser@'
+PORTAGE_GROUP='@portagegroup@'
+PORTAGE_ROOT_USER='@rootuser@'
 
 # Default ownership of installed files.
 PORTAGE_INST_UID="@rootuid@"
