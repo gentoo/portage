@@ -22,7 +22,7 @@ portage-2.2
   "@system" to the world_sets file to restore the old state.
 
 portage-2.1.7
--------------
+==================================
 * Default behavior for emerge commands has changed so that packages are only
   updated when necessary. In order to ensure that all packages are updated
   when possible, you must now specify the -u/--update option. See bug #275945
