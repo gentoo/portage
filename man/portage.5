@@ -427,7 +427,7 @@ media\-other
 Contains variables customizing colors. See \fBcolor.map\fR(5).
 .TP
 .BR mirrors
-Whenever portage encounters a mirror:// style URL it will look up the actual 
+Whenever portage encounters a mirror:// style URI it will look up the actual 
 hosts here.  If the mirror set is not found here, it will check the global 
 mirrors file at /usr/portage/profiles/thirdpartymirrors.  You may also set a 
 special mirror type called "local".  This list of mirrors will be checked 
@@ -755,7 +755,7 @@ may contain any of the characters [A\-Za\-z0\-9_\-]. It must not begin with a
 hyphen.
 .TP
 .BR thirdpartymirrors
-Controls the mapping of mirror:// style URLs to actual lists of 
+Controls the mapping of mirror:// style URIs to actual lists of 
 mirrors.  Keeps us from overloading a single server.
 
 .I Format:

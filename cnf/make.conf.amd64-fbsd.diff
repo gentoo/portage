@@ -37,7 +37,7 @@
 +# 
 +# CRITICAL WARNINGS: ****************************************************** #
 +# K6 markings are deceptive. Avoid setting -march for them. See Bug #24379. #
-+# Pentium-M CPU's should not enable sse2 until at least gcc-3.4. Bug 50616. #
++# Pentium-M CPUs should not enable sse2 until at least gcc-3.4. Bug 50616. #
 +# GCC 3.3 doesnt support an amd64 specific -march setting, use 3.4.         #
 +# ************************************************************************* #
  #

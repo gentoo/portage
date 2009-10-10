@@ -73,7 +73,7 @@
 +#
 +# CRITICAL WARNINGS: ****************************************************** #
 +# K6 markings are deceptive. Avoid setting -march for them. See Bug #24379. #
-+# Pentium-M CPU's should not enable sse2 until at least gcc-3.4. Bug 50616. #
++# Pentium-M CPUs should not enable sse2 until at least gcc-3.4. Bug 50616. #
 +# ************************************************************************* #
 +#
 +# NOTE: the -On optimization levels are set with the letter O, not -0 (zero).

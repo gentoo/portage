@@ -1182,7 +1182,7 @@ class depgraph(object):
 			return 0
 
 		if debug:
-			print("Candidates:", selected_atoms)
+			print("Candidates:", [str(x) for x in selected_atoms[pkg]])
 
 		root_config = self._frozen_config.roots[dep_root]
 		vardb = root_config.trees["vartree"].dbapi
@@ -1208,6 +1208,10 @@ class depgraph(object):
 		# here in order to avoid distorting the dependency graph like
 		# <=portage-2.1.6.x did.
 		for virt_pkg, atoms in selected_atoms.items():
+
+			if debug:
+				print("Candidates: %s: %s" % \
+					(virt_pkg.cpv, [str(x) for x in atoms]))
 
 			# Just assume depth + 1 here for now, though it's not entirely
 			# accurate since multilple levels of indirect virtual deps may

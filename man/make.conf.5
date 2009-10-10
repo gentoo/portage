@@ -367,6 +367,15 @@ a read-only NFS share. A read-only \fBDISTDIR\fR is not compatible with the
 \fBFEATURES\fR in order to avoid warning messages that are triggered by this
 incompatibility.
 .TP
+split\-elog
+Store logs created by \fBPORTAGE_ELOG_SYSTEM="save"\fR in category
+subdirectories of \fBPORT_LOGDIR/elog\fR, instead of using
+\fBPORT_LOGDIR/elog\fR directly.
+.TP 
+.B split\-log
+Store build logs in category subdirectories of \fBPORT_LOGDIR/build\fR,
+instead of using \fBPORT_LOGDIR\fR directly.
+.TP
 .B splitdebug
 Prior to stripping ELF etdyn and etexec files, the debugging info is 
 stored for later use by various debuggers.  This feature is disabled by
@@ -432,7 +441,7 @@ place\-holders \\${DISTDIR}, \\${FILE} and \\${URI}.  The command should be
 written to place the fetched file at \\${DISTDIR}/\\${FILE}.
 Also see \fBRESUMECOMMAND\fR.
 .TP
-\fBGENTOO_MIRRORS\fR = \fI[URLs]\fR
+\fBGENTOO_MIRRORS\fR = \fI[URIs]\fR
 Insert your space\-seperated list of local mirrors here.  These
 locations are used to download files before the ones listed in
 the \fIebuild scripts\fR. Merging 'mirrorselect' can help.  Entries in this
