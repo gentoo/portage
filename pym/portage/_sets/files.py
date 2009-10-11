@@ -44,6 +44,7 @@ class WorldSet(EditablePackageSet):
 
 	def load(self):
 		atoms = []
+		nonatoms = ["@system"]
 		atoms_changed = False
 		# load atoms and non-atoms from different files so the worldfile is 
 		# backwards-compatible with older versions and other PMs, even though 
@@ -70,7 +71,7 @@ class WorldSet(EditablePackageSet):
 			atoms.extend(self._atoms)
 
 		if atoms_changed:
-			self._setAtoms(atoms)
+			self._setAtoms(atoms+nonatoms)
 		
 	def _ensure_dirs(self):
 		ensure_dirs(os.path.dirname(self._filename), gid=portage_gid, mode=0o2750, mask=0o2)
