@@ -609,7 +609,11 @@ class portdbapi(dbapi):
 				return [aux_cache.get(x, "") for x in mylist]
 			cache_me = True
 		global auxdbkeys, auxdbkeylen
-		cat,pkg = mycpv.split("/", 1)
+		try:
+			cat, pkg = mycpv.split("/", 1)
+		except ValueError:
+			# Missing slash. Can't find ebuild so raise KeyError.
+			raise KeyError(mycpv)
 
 		myebuild, mylocation = self.findname2(mycpv, mytree)
 
