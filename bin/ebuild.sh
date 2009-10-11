@@ -227,13 +227,6 @@ best_version() {
 	esac
 }
 
-dohtml() {
-	# Set EPYTHON variable as empty so that dohtml doesn't try
-	# to use potentially unsupported version of Python.
-	EPYTHON= PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-	"${PORTAGE_BIN_PATH}/ebuild-helpers/dohtml" "$@"
-}
-
 use_with() {
 	if [ -z "$1" ]; then
 		echo "!!! use_with() called without a parameter." >&2
