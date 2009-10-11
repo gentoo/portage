@@ -626,11 +626,7 @@ def main():
 	except portage.exception.ParseError as e:
 		sys.stderr.write("%s\n" % str(e))
 		sys.exit(1)
-	except ValueError as e:
-		if not e.args or \
-			not hasattr(e.args[0], "__len__") or \
-			len(e.args[0]) < 2:
-			raise
+	except portage.exception.AmbiguousPackageName as e:
 		# Multiple matches thrown from cpv_expand
 		pkgs = e.args[0]
 		# An error has occurred so we writemsg to stderr and exit nonzero.
