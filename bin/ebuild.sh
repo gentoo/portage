@@ -160,13 +160,16 @@ useq() {
 	fi
 }
 
+# Return true if given package is installed. Otherwise return false.
+# Takes single depend-type atoms.
 has_version() {
 	if [ "${EBUILD_PHASE}" == "depend" ]; then
 		die "portageq calls (has_version calls portageq) are not allowed in the global scope"
 	fi
-	# return shell-true/shell-false if exists.
-	# Takes single depend-type atoms.
-	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
+
+	# Set EPYTHON variable as empty so that portageq doesn't try
+	# to use potentially unsupported version of Python.
+	EPYTHON= PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
 	"${PORTAGE_BIN_PATH}"/portageq has_version "${ROOT}" "$1"
 	local retval=$?
 	case "${retval}" in
@@ -186,7 +189,10 @@ portageq() {
 	if [ "${EBUILD_PHASE}" == "depend" ]; then
 		die "portageq calls are not allowed in the global scope"
 	fi
-	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
+
+	# Set EPYTHON variable as empty so that portageq doesn't try
+	# to use potentially unsupported version of Python.
+	EPYTHON= PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
 	"${PORTAGE_BIN_PATH}/portageq" "$@"
 }
 
@@ -196,13 +202,16 @@ portageq() {
 # ----------------------------------------------------------------------------
 
 
+# Returns the best/most-current match.
+# Takes single depend-type atoms.
 best_version() {
 	if [ "${EBUILD_PHASE}" == "depend" ]; then
 		die "portageq calls (best_version calls portageq) are not allowed in the global scope"
 	fi
-	# returns the best/most-current match.
-	# Takes single depend-type atoms.
-	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
+
+	# Set EPYTHON variable as empty so that portageq doesn't try
+	# to use potentially unsupported version of Python.
+	EPYTHON= PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
 	"${PORTAGE_BIN_PATH}/portageq" 'best_version' "${ROOT}" "$1"
 	local retval=$?
 	case "${retval}" in
@@ -216,6 +225,13 @@ best_version() {
 			die "unexpected portageq exit code: ${retval}"
 			;;
 	esac
+}
+
+dohtml() {
+	# Set EPYTHON variable as empty so that dohtml doesn't try
+	# to use potentially unsupported version of Python.
+	EPYTHON= PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
+	"${PORTAGE_BIN_PATH}/ebuild-helpers/dohtml" "$@"
 }
 
 use_with() {
