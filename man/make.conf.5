@@ -37,13 +37,20 @@ set this to '~ppc'.  This is an incremental variable.  Only define a
 Defaults to the value of $ARCH.
 .TP
 \fBACCEPT_LICENSE\fR = \fI[space delimited list of licenses or groups]\fR
-This variable is used to mask packages based on licensing restrictions.
+This variable is used to mask packages based on licensing restrictions. It
+make contain both license and group names, where group names are prefixed
+with the '@' symbol. License groups are defined in the \fIlicense_groups\fR
+file (see \fBportage\fR(5)). In addition to license and group names, the
+\fI*\fR and \fI-*\fR wildcard tokens are also supported. Refer to GLEP 23
+for further information:
+\fIhttp://www.gentoo.org/proj/en/glep/glep-0023.html\fR.
 .br
 Defaults to the value of * -@EULA.
 .TP
 \fBACCEPT_PROPERTIES\fR = \fI[space delimited list of properties]\fR
 This variable is used to mask packages based on PROPERTIES restrictions.
-This varable can be temporarily overridden using the the
+In addition to property names, the \fI*\fR and \fI-*\fR wildcard tokens are
+also supported. This varable can be temporarily overridden using the
 \fB\-\-accept\-properties\fR option of \fBemerge\fR(1).
 See \fBebuild\fR(5) for more information about PROPERTIES. 
 .br
