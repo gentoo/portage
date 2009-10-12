@@ -8611,6 +8611,11 @@ class FetchlistDict(portage.cache.mappings.Mapping):
 	def __iter__(self):
 		return iter(self.portdb.cp_list(self.cp, mytree=self.mytree))
 
+	def __len__(self):
+		"""This needs to be implemented in order to avoid
+		infinite recursion in some cases."""
+		return len(self.portdb.cp_list(self.cp, mytree=self.mytree))
+
 	def keys(self):
 		"""Returns keys for all packages within pkgdir"""
 		return self.portdb.cp_list(self.cp, mytree=self.mytree)
