@@ -31,6 +31,10 @@ portage-2.1.7
   require a tty device (like the wget progress bar) will be disabled. This
   is due to an upstream python issue: http://bugs.python.org/issue5380. See
   bug #287648 for more information.
+* Licenses in the @EULA license group are now masked by the default
+  ACCEPT_LICENSE setting. You can unmask all licenses by setting
+  ACCEPT_LICENSE="*" in /etc/make.conf. See the make.conf(5) man page for
+  more information about ACCEPT_LICENSE.
 
 portage-2.1.6.12
 ==================================
