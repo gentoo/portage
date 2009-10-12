@@ -73,6 +73,7 @@ arch.list
 categories
 info_pkgs
 info_vars
+license_groups
 package.mask
 profiles.desc
 repo_name
@@ -682,8 +683,24 @@ sys\-kernel
 .BR info_pkgs
 A list of all the packages which will be displayed when you run `emerge info`.
 .TP
-.BR info_vars
-A list of all the variables which will be displayed when you run `emerge info`.
+.BR license_groups
+This contains groups of licenses that may be specifed in the
+\fBACCEPT_LICENSE\fR variable (see \fBmake.conf\fR(5)).
+
+.I Format:
+.nf
+\- comments begin with # (no inline comments)
+\- one group name, followed by list of licenses and nested groups
+\- nested groups are prefixed with the @ symbol
+.fi
+
+.I Example:
+.nf
+# The FSF-APPROVED group includes the entire GPL-COMPATIBLE group and more.
+FSF-APPROVED @GPL-COMPATIBLE Apache-1.1 BSD-4 MPL-1.0 MPL-1.1
+# The GPL-COMPATIBLE group includes all licenses compatible with the GNU GPL.
+GPL-COMPATIBLE Apache-2.0 BSD BSD-2 GPL-2 GPL-3 LGPL-2.1 LGPL-3 X11 ZLIB
+.fi
 .TP
 .BR package.keywords
 Per\-profile KEYWORDS. Useful for cases in which the effective KEYWORDS of a
