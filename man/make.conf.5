@@ -46,6 +46,16 @@ for further information:
 \fIhttp://www.gentoo.org/proj/en/glep/glep-0023.html\fR.
 .br
 Defaults to the value of * -@EULA.
+.br
+.I Examples:
+.nf
+# Accept any license
+ACCEPT_LICENSE="*"
+# Accept any license except the "public-domain" license
+ACCEPT_LICENSE="* -public-domain"
+# Only accept licenses in the FSF-APPROVED license group
+ACCEPT_LICENSE="-* @FSF-APPROVED"
+.fi
 .TP
 \fBACCEPT_PROPERTIES\fR = \fI[space delimited list of properties]\fR
 This variable is used to mask packages based on PROPERTIES restrictions.
@@ -55,6 +65,14 @@ also supported. This varable can be temporarily overridden using the
 See \fBebuild\fR(5) for more information about PROPERTIES. 
 .br
 Defaults to the value of *.
+.br
+.I Examples:
+.nf
+# Accept any properties
+ACCEPT_PROPERTIES="*"
+# Accept any properties except the "interactive" property
+ACCEPT_PROPERTIES="* -interactive"
+.fi
 .TP
 .B CBUILD
 This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
