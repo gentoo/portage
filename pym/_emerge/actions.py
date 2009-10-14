@@ -1032,13 +1032,20 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			msg = []
 			for pkg in sorted(consumer_map, key=cmp_sort_key(cmp_pkg_cpv)):
 				consumers = consumer_map[pkg]
+				consumer_libs = {}
+				for lib, lib_consumers in consumers.items():
+					for consumer in lib_consumers:
+						consumer_libs.setdefault(
+							consumer.mycpv, set()).add(linkmap.getSoname(lib))
 				unique_consumers = set(chain(*consumers.values()))
 				unique_consumers = sorted(consumer.mycpv \
 					for consumer in unique_consumers)
 				msg.append("")
 				msg.append("  %s pulled in by:" % (pkg.cpv,))
 				for consumer in unique_consumers:
-					msg.append("    %s" % (consumer,))
+					libs = consumer_libs[consumer]
+					msg.append("    %s needs %s" % \
+						(consumer, ', '.join(sorted(libs))))
 			msg.append("")
 			writemsg_level("".join(prefix + "%s\n" % line for line in msg),
 				level=logging.WARNING, noiselevel=-1)

@@ -685,13 +685,15 @@ A list of all the packages which will be displayed when you run `emerge info`.
 .TP
 .BR license_groups
 This contains groups of licenses that may be specifed in the
-\fBACCEPT_LICENSE\fR variable (see \fBmake.conf\fR(5)).
+\fBACCEPT_LICENSE\fR variable (see \fBmake.conf\fR(5)). Refer
+to GLEP 23 for further information:
+\fIhttp://www.gentoo.org/proj/en/glep/glep-0023.html\fR.
 
 .I Format:
 .nf
 \- comments begin with # (no inline comments)
 \- one group name, followed by list of licenses and nested groups
-\- nested groups are prefixed with the @ symbol
+\- nested groups are prefixed with the '@' symbol
 .fi
 
 .I Example:
