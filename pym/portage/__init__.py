@@ -2725,7 +2725,7 @@ class config(object):
 			not hasattr(self, "_ebuild_force_test_msg_shown"):
 				self._ebuild_force_test_msg_shown = True
 				writemsg(_("Forcing test.\n"), noiselevel=-1)
-		if "test" in self.features and "test" in iuse_implicit:
+		if "test" in self.features:
 			if "test" in self.usemask and not ebuild_force_test:
 				# "test" is in IUSE and USE=test is masked, so execution
 				# of src_test() probably is not reliable. Therefore,
@@ -2814,6 +2814,13 @@ class config(object):
 		# build and bootstrap flags used by bootstrap.sh
 		iuse_implicit.add("build")
 		iuse_implicit.add("bootstrap")
+
+		# Controlled by FEATURES=test. Make this implicit, so handling
+		# of FEATURES=test is consistent regardless of explicit IUSE.
+		# Users may use use.mask/package.use.mask to control
+		# FEATURES=test for all ebuilds, regardless of explicit IUSE.
+		iuse_implicit.add("test")
+
 		return iuse_implicit
 
 	def _getUseMask(self, pkg):
