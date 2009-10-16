@@ -5225,6 +5225,7 @@ def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 	"""
 	Construct a depgraph for the given resume list. This will raise
 	PackageNotFound or depgraph.UnsatisfiedResumeDep when necessary.
+	TODO: Return reasons for dropped_tasks, for display/logging.
 	@rtype: tuple
 	@returns: (success, depgraph, dropped_tasks)
 	"""
