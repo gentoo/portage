@@ -904,8 +904,8 @@ def expand_set_arguments(myfiles, myaction, root_config):
 	for e in setconfig.errors:
 		print(colorize("BAD", "Error during set creation: %s" % e))
 
-	# emerge relies on the existance of sets with names "world" and "system"
-	required_sets = ("world", "system")
+	# emerge requires existence of "world", "selected", and "system"
+	required_sets = ("selected", "system", "world",)
 	missing_sets = []
 
 	for s in required_sets:

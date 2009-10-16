@@ -566,7 +566,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	msg.append("unless *all* required dependencies have been resolved.  As a\n")
 	msg.append("consequence, it is often necessary to run %s\n" % \
 		good("`emerge --update"))
-	msg.append(good("--newuse --deep @system @world`") + \
+	msg.append(good("--newuse --deep @world`") + \
 		" prior to depclean.\n")
 
 	if action == "depclean" and "--quiet" not in myopts and not myfiles:
@@ -614,7 +614,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	print("Packages installed:   " + str(len(vardb.cpv_all())))
 	print("Packages in world:    " + \
-		str(len(root_config.sets["world"].getAtoms())))
+		str(len(root_config.sets["selected"].getAtoms())))
 	print("Packages in system:   " + \
 		str(len(root_config.sets["system"].getAtoms())))
 	print("Required packages:    "+str(req_pkg_count))
@@ -634,7 +634,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	vardb = trees[myroot]["vartree"].dbapi
 	deselect = myopts.get('--deselect') != 'n'
 
-	required_set_names = ("system", "world")
+	required_set_names = ("world",)
 	required_sets = {}
 	set_args = []
 
@@ -647,7 +647,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	# which excludes packages that are intended to be eligible for
 	# removal.
 	world_temp_set = required_sets["world"]
-	system_set = required_sets["system"]
+	system_set = root_config.sets["system"]
 
 	if not system_set or not world_temp_set:
 
@@ -787,7 +787,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				msg.append("    %s" % (parent,))
 				msg.append("")
 			msg.append("Have you forgotten to run " + \
-				good("`emerge --update --newuse --deep @system @world`") + " prior")
+				good("`emerge --update --newuse --deep @world`") + " prior")
 			msg.append(("to %s? It may be necessary to manually " + \
 				"uninstall packages that no longer") % action)
 			msg.append("exist in the portage tree since " + \
@@ -1176,9 +1176,9 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 def action_deselect(settings, trees, opts, atoms):
 	root_config = trees[settings['ROOT']]['root_config']
-	world_set = root_config.sets['world']
+	world_set = root_config.sets['selected']
 	if not hasattr(world_set, 'update'):
-		writemsg_level("World set does not appear to be mutable.\n",
+		writemsg_level("World @selected set does not appear to be mutable.\n",
 			level=logging.ERROR, noiselevel=-1)
 		return 1
 

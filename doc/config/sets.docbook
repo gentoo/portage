@@ -74,9 +74,15 @@
 			<programlisting>
 			# The classic world set
 			[world]
-			class = portage.sets.files.WorldSet
+			class = portage.sets.base.DummyPackageSet
 			world-candidate = False
-			
+			packages = @selected @system
+
+			# The selected set
+			[selected]
+			class = portage.sets.files.WorldSelectedSet
+			world-candidate = False
+
 			# The classic system set
 			[system]
 			class = portage.sets.profiles.PackagesSystemSet
@@ -250,8 +256,8 @@
 			</sect3>
 		</sect2>
 		
-		<sect2 id='config-set-classes-WorldSet'>
-		<title>portage.sets.files.WorldSet</title>
+		<sect2 id='config-set-classes-WorldSelectedSet'>
+		<title>portage.sets.files.WorldSelectedSet</title>
 		<para>
 		A minor variation of <classname>StaticFileSet</classname>, mainly for implementation 
 		reasons. It should never be used in user configurations as it's already configured
@@ -580,8 +586,9 @@
 	The default sets are:
 	</para>
 	<itemizedlist>
+	<listitem><para><varname>world</varname>: uses <classname>DummySet</classname></para></listitem>
+	<listitem><para><varname>selected</varname>: uses <classname>WorldSelectedSet</classname></para></listitem>
 	<listitem><para><varname>system</varname>: uses <classname>PackagesSystemSet</classname></para></listitem>
-	<listitem><para><varname>world</varname>: uses <classname>WorldSet</classname></para></listitem>
 	<listitem><para><varname>security</varname>: uses <classname>NewAffectedSet</classname> with default options</para></listitem>
 	<listitem><para><varname>installed</varname>: uses <classname>EverythingSet</classname></para></listitem>
 	<listitem><para><varname>preserved-rebuild</varname>: uses <classname>PreservedLibraryConsumerSet</classname></para></listitem>

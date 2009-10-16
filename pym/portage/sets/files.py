@@ -21,7 +21,7 @@ from portage.env.loaders import ItemFileLoader, KeyListFileLoader
 from portage.env.validators import ValidAtomValidator
 from portage import dep_getkey, cpv_getkey
 
-__all__ = ["StaticFileSet", "ConfigFileSet", "WorldSet"]
+__all__ = ["StaticFileSet", "ConfigFileSet", "WorldSelectedSet"]
 
 class StaticFileSet(EditablePackageSet):
 	_operations = ["merge", "unmerge"]
@@ -205,11 +205,11 @@ class ConfigFileSet(PackageSet):
 		return rValue
 	multiBuilder = classmethod(multiBuilder)
 
-class WorldSet(EditablePackageSet):
+class WorldSelectedSet(EditablePackageSet):
 	description = "Set of packages that were directly installed by the user"
 	
 	def __init__(self, root):
-		super(WorldSet, self).__init__()
+		super(WorldSelectedSet, self).__init__()
 		# most attributes exist twice as atoms and non-atoms are stored in 
 		# separate files
 		self._lock = None
@@ -324,5 +324,5 @@ class WorldSet(EditablePackageSet):
 		self.replace(newworldlist)
 
 	def singleBuilder(self, options, settings, trees):
-		return WorldSet(settings["ROOT"])
+		return WorldSelectedSet(settings["ROOT"])
 	singleBuilder = classmethod(singleBuilder)

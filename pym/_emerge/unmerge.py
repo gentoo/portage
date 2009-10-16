@@ -283,9 +283,9 @@ def unmerge(root_config, myopts, unmerge_action,
 	
 	from portage.sets.base import EditablePackageSet
 	
-	# generate a list of package sets that are directly or indirectly listed in "world",
+	# generate a list of package sets that are directly or indirectly listed in "selected",
 	# as there is no persistent list of "installed" sets
-	installed_sets = ["world"]
+	installed_sets = ["selected"]
 	stop = False
 	pos = 0
 	while not stop:
@@ -333,7 +333,8 @@ def unmerge(root_config, myopts, unmerge_action,
 				# skip sets that the user requested to unmerge, and skip world 
 				# unless we're unmerging a package set (as the package would be 
 				# removed from "world" later on)
-				if s in root_config.setconfig.active or (s == "world" and not root_config.setconfig.active):
+				if s in root_config.setconfig.active or \
+					(s == "selected" and not root_config.setconfig.active):
 					continue
 
 				if s not in sets:
@@ -510,22 +511,22 @@ def unmerge(root_config, myopts, unmerge_action,
 					raise UninstallFailure(retval)
 				sys.exit(retval)
 			else:
-				if clean_world and hasattr(sets["world"], "cleanPackage")\
-						and hasattr(sets["world"], "lock"):
-					sets["world"].lock()
-					if hasattr(sets["world"], "load"):
-						sets["world"].load()
-					sets["world"].cleanPackage(vartree.dbapi, y)
-					sets["world"].unlock()
+				if clean_world and hasattr(sets["selected"], "cleanPackage")\
+						and hasattr(sets["selected"], "lock"):
+					sets["selected"].lock()
+					if hasattr(sets["selected"], "load"):
+						sets["selected"].load()
+					sets["selected"].cleanPackage(vartree.dbapi, y)
+					sets["selected"].unlock()
 				emergelog(xterm_titles, " >>> unmerge success: "+y)
 
-	if clean_world and hasattr(sets["world"], "remove")\
-			and hasattr(sets["world"], "lock"):
-		sets["world"].lock()
+	if clean_world and hasattr(sets["selected"], "remove")\
+			and hasattr(sets["selected"], "lock"):
+		sets["selected"].lock()
 		# load is called inside remove()
 		for s in root_config.setconfig.active:
-			sets["world"].remove(SETPREFIX+s)
-		sets["world"].unlock()
+			sets["selected"].remove(SETPREFIX + s)
+		sets["selected"].unlock()
 
 	return 1
 
