@@ -2071,6 +2071,9 @@ class depgraph(object):
 				if metadata is not None:
 					pkg = self._pkg(cpv, pkg_type, root_config,
 						installed=installed)
+					# pkg.metadata contains calculated USE for ebuilds,
+					# required later for getMissingLicenses.
+					metadata = pkg.metadata
 					if pkg.cp != atom.cp:
 						# A cpv can be returned from dbapi.match() as an
 						# old-style virtual match even in cases when the
