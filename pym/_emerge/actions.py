@@ -905,7 +905,6 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		linkmap = real_vardb.linkmap
 		consumer_cache = {}
 		provider_cache = {}
-		soname_cache = {}
 		consumer_map = {}
 
 		writemsg_level(">>> Checking for lib consumers...\n")
@@ -942,10 +941,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 			for lib, lib_consumers in consumers.items():
 
-				soname = soname_cache.get(lib)
-				if soname is None:
-					soname = linkmap.getSoname(lib)
-					soname_cache[lib] = soname
+				soname = linkmap.getSoname(lib)
 
 				consumer_providers = []
 				for lib_consumer in lib_consumers:
