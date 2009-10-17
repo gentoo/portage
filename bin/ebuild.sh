@@ -565,7 +565,7 @@ einstall() {
 		CONF_LIBDIR="${!LIBDIR_VAR}"
 	fi
 	unset LIBDIR_VAR
-	if [ -n "${CONF_LIBDIR}" ] && [ "${CONF_PREFIX+set}" = set ]; then
+	if [ -n "${CONF_LIBDIR}" ] && [ "${CONF_PREFIX:+set}" = set ]; then
 		EI_DESTLIBDIR="${D}/${CONF_PREFIX}/${CONF_LIBDIR}"
 		EI_DESTLIBDIR="$(strip_duplicate_slashes ${EI_DESTLIBDIR})"
 		LOCAL_EXTRA_EINSTALL="libdir=${EI_DESTLIBDIR} ${LOCAL_EXTRA_EINSTALL}"
