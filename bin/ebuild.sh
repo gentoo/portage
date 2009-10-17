@@ -565,7 +565,7 @@ einstall() {
 		CONF_LIBDIR="${!LIBDIR_VAR}"
 	fi
 	unset LIBDIR_VAR
-	if [ -n "${CONF_LIBDIR}" ] && [ "${CONF_PREFIX:-unset}" != "unset" ]; then
+	if [ -n "${CONF_LIBDIR}" ] && [ "${CONF_PREFIX+set}" = set ]; then
 		EI_DESTLIBDIR="${D}/${CONF_PREFIX}/${CONF_LIBDIR}"
 		EI_DESTLIBDIR="$(strip_duplicate_slashes ${EI_DESTLIBDIR})"
 		LOCAL_EXTRA_EINSTALL="libdir=${EI_DESTLIBDIR} ${LOCAL_EXTRA_EINSTALL}"
@@ -1311,10 +1311,10 @@ inherit() {
 
 		# Retain the old data and restore it later.
 		unset B_IUSE B_DEPEND B_RDEPEND B_PDEPEND
-		[ "${IUSE-unset}"    != "unset" ] && B_IUSE="${IUSE}"
-		[ "${DEPEND-unset}"  != "unset" ] && B_DEPEND="${DEPEND}"
-		[ "${RDEPEND-unset}" != "unset" ] && B_RDEPEND="${RDEPEND}"
-		[ "${PDEPEND-unset}" != "unset" ] && B_PDEPEND="${PDEPEND}"
+		[ "${IUSE+set}"       = set ] && B_IUSE="${IUSE}"
+		[ "${DEPEND+set}"     = set ] && B_DEPEND="${DEPEND}"
+		[ "${RDEPEND+set}"    = set ] && B_RDEPEND="${RDEPEND}"
+		[ "${PDEPEND+set}"    = set ] && B_PDEPEND="${PDEPEND}"
 		unset IUSE DEPEND RDEPEND PDEPEND
 		#turn on glob expansion
 		set +f
@@ -1326,22 +1326,22 @@ inherit() {
 
 		# If each var has a value, append it to the global variable E_* to
 		# be applied after everything is finished. New incremental behavior.
-		[ "${IUSE-unset}"    != "unset" ] && export E_IUSE="${E_IUSE} ${IUSE}"
-		[ "${DEPEND-unset}"  != "unset" ] && export E_DEPEND="${E_DEPEND} ${DEPEND}"
-		[ "${RDEPEND-unset}" != "unset" ] && export E_RDEPEND="${E_RDEPEND} ${RDEPEND}"
-		[ "${PDEPEND-unset}" != "unset" ] && export E_PDEPEND="${E_PDEPEND} ${PDEPEND}"
+		[ "${IUSE+set}"       = set ] && export E_IUSE="${E_IUSE} ${IUSE}"
+		[ "${DEPEND+set}"     = set ] && export E_DEPEND="${E_DEPEND} ${DEPEND}"
+		[ "${RDEPEND+set}"    = set ] && export E_RDEPEND="${E_RDEPEND} ${RDEPEND}"
+		[ "${PDEPEND+set}"    = set ] && export E_PDEPEND="${E_PDEPEND} ${PDEPEND}"
 
-		[ "${B_IUSE-unset}"    != "unset" ] && IUSE="${B_IUSE}"
-		[ "${B_IUSE-unset}"    != "unset" ] || unset IUSE
+		[ "${B_IUSE+set}"     = set ] && IUSE="${B_IUSE}"
+		[ "${B_IUSE+set}"     = set ] || unset IUSE
 
-		[ "${B_DEPEND-unset}"  != "unset" ] && DEPEND="${B_DEPEND}"
-		[ "${B_DEPEND-unset}"  != "unset" ] || unset DEPEND
+		[ "${B_DEPEND+set}"   = set ] && DEPEND="${B_DEPEND}"
+		[ "${B_DEPEND+set}"   = set ] || unset DEPEND
 
-		[ "${B_RDEPEND-unset}" != "unset" ] && RDEPEND="${B_RDEPEND}"
-		[ "${B_RDEPEND-unset}" != "unset" ] || unset RDEPEND
+		[ "${B_RDEPEND+set}"  = set ] && RDEPEND="${B_RDEPEND}"
+		[ "${B_RDEPEND+set}"  = set ] || unset RDEPEND
 
-		[ "${B_PDEPEND-unset}" != "unset" ] && PDEPEND="${B_PDEPEND}"
-		[ "${B_PDEPEND-unset}" != "unset" ] || unset PDEPEND
+		[ "${B_PDEPEND+set}"  = set ] && PDEPEND="${B_PDEPEND}"
+		[ "${B_PDEPEND+set}"  = set ] || unset PDEPEND
 
 		#turn on glob expansion
 		set +f
@@ -2016,7 +2016,7 @@ ebuild_main() {
 
 			for x in ASFLAGS CCACHE_DIR CCACHE_SIZE \
 				CFLAGS CXXFLAGS LDFLAGS LIBCFLAGS LIBCXXFLAGS ; do
-				[[ ${!x-unset} != unset ]] && export $x
+				[[ ${!x+set} = set ]] && export $x
 			done
 
 			hasq distcc $FEATURES && [[ -n $DISTCC_DIR ]] && \
