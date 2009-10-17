@@ -7924,6 +7924,19 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	unsat_use_non_installed = []
 	other = []
 
+	# unsat_use_* must come after preferred_non_installed
+	# for correct ordering in cases like || ( foo[a] foo[b] ).
+	choice_bins = (
+		preferred_in_graph,
+		preferred_installed,
+		preferred_any_slot,
+		preferred_non_installed,
+		unsat_use_in_graph,
+		unsat_use_installed,
+		unsat_use_non_installed,
+		other,
+	)
+
 	# Alias the trees we'll be checking availability against
 	parent   = trees[myroot].get("parent")
 	priority = trees[myroot].get("priority")
@@ -7947,12 +7960,13 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 			atoms = [x]
 		if not vardb:
 			# called by repoman
-			other.append((atoms, None, False))
+			other.append((atoms, None, None, False))
 			continue
 
 		all_available = True
 		all_use_satisfied = True
-		versions = {}
+		slot_map = {}
+		cp_map = {}
 		for atom in atoms:
 			if atom.blocker:
 				continue
@@ -7980,9 +7994,15 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						avail_slot = dep.Atom("%s:%s" % (atom.cp,
 							mydbapi.aux_get(avail_pkg, ["SLOT"])[0]))
 
-			versions[avail_slot] = avail_pkg
+			slot_map[avail_slot] = avail_pkg
+			pkg_cp = cpv_getkey(avail_pkg)
+			highest_cpv = cp_map.get(pkg_cp)
+			if highest_cpv is None or \
+				pkgcmp(catpkgsplit(avail_pkg)[1:],
+				catpkgsplit(highest_cpv)[1:]) > 0:
+				cp_map[pkg_cp] = avail_pkg
 
-		this_choice = (atoms, versions, all_available)
+		this_choice = (atoms, slot_map, cp_map, all_available)
 		if all_available:
 			# The "all installed" criterion is not version or slot specific.
 			# If any version of a package is already in the graph then we
@@ -7997,7 +8017,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 			all_installed_slots = False
 			if all_installed:
 				all_installed_slots = True
-				for slot_atom in versions:
+				for slot_atom in slot_map:
 					# New-style virtuals have zero cost to install.
 					if not vardb.match(slot_atom) and \
 						not slot_atom.startswith("virtual/"):
@@ -8019,7 +8039,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						unsat_use_non_installed.append(this_choice)
 			else:
 				all_in_graph = True
-				for slot_atom in versions:
+				for slot_atom in slot_map:
 					# New-style virtuals have zero cost to install.
 					if not graph_db.match(slot_atom) and \
 						not slot_atom.startswith("virtual/"):
@@ -8071,17 +8091,52 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		else:
 			other.append(this_choice)
 
-	# unsat_use_* must come after preferred_non_installed
-	# for correct ordering in cases like || ( foo[a] foo[b] ).
-	preferred = preferred_in_graph + preferred_installed + \
-		preferred_any_slot + preferred_non_installed + \
-		unsat_use_in_graph + unsat_use_installed + unsat_use_non_installed + \
-		other
+	# Prefer choices which contain upgrades to higher slots. This helps
+	# for deps such as || ( foo:1 foo:2 ), where we want to prefer the
+	# atom which matches the higher version rather than the atom furthest
+	# to the left. Sorting is done separately for each of choice_bins, so
+	# as not to interfere with the ordering of the bins. Because of the
+	# bin separation, the main function of this code is to allow
+	# --depclean to remove old slots (rather than to pull in new slots).
+	for choices in choice_bins:
+		if len(choices) < 2:
+			continue
+		for choice_1 in choices[1:]:
+			atoms_1, slot_map_1, cp_map_1, all_available_1 = choice_1
+			cps = set(cp_map_1)
+			for choice_2 in choices:
+				if choice_1 is choice_2:
+					# choice_1 will not be promoted, so move on
+					break
+				atoms_2, slot_map_2, cp_map_2, all_available_2 = choice_2
+				intersecting_cps = cps.intersection(cp_map_2)
+				if not intersecting_cps:
+					continue
+				has_upgrade = False
+				has_downgrade = False
+				for cp in intersecting_cps:
+					version_1 = cp_map_1[cp]
+					version_2 = cp_map_2[cp]
+					difference = pkgcmp(catpkgsplit(version_1)[1:],
+						catpkgsplit(version_2)[1:])
+					if difference != 0:
+						if difference > 0:
+							has_upgrade = True
+						else:
+							has_downgrade = True
+							break
+				if has_upgrade and not has_downgrade:
+					# promote choice_1 in front of choice_2
+					choices.remove(choice_1)
+					index_2 = choices.index(choice_2)
+					choices.insert(index_2, choice_1)
+					break
 
 	for allow_masked in (False, True):
-		for atoms, versions, all_available in preferred:
-			if all_available or allow_masked:
-				return atoms
+		for choices in choice_bins:
+			for atoms, slot_map, cp_map, all_available in choices:
+				if all_available or allow_masked:
+					return atoms
 
 	assert(False) # This point should not be reachable
 
