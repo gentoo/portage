@@ -897,6 +897,15 @@ abort_install() {
 	exit 1
 }
 
+has_phase_defined_up_to() {
+	for phase in unpack prepare configure compile install; do
+		has ${phase} ${DEFINED_PHASES} && return 0
+		[[ ${phase} == $1 ]] && return 1
+	done
+	# We shouldn't actually get here
+	return 1
+}
+
 dyn_prepare() {
 
 	if [[ -e $PORTAGE_BUILDDIR/.prepared ]] ; then
@@ -909,9 +918,7 @@ dyn_prepare() {
 		cd "${S}"
 	elif hasq $EAPI 0 1 2; then
 		cd "${WORKDIR}"
-	elif [[ -z ${A} ]] && \
-			! hasq unpack ${DEFINED_PHASES} && \
-			! hasq prepare ${DEFINED_PHASES} ; then
+	elif [[ -z ${A} ]] && ! has_phase_defined_up_to prepare; then
 		cd "${WORKDIR}"
 	else
 		die "The source directory '${S}' doesn't exist"
@@ -942,10 +949,7 @@ dyn_configure() {
 		cd "${S}"
 	elif hasq $EAPI 0 1 2; then
 		cd "${WORKDIR}"
-	elif [[ -z ${A} ]] && \
-			! hasq unpack ${DEFINED_PHASES} && \
-			! hasq prepare ${DEFINED_PHASES} && \
-			! hasq configure ${DEFINED_PHASES} ; then
+	elif [[ -z ${A} ]] && ! has_phase_defined_up_to configure; then
 		cd "${WORKDIR}"
 	else
 		die "The source directory '${S}' doesn't exist"
@@ -978,11 +982,7 @@ dyn_compile() {
 		cd "${S}"
 	elif hasq $EAPI 0 1 2; then
 		cd "${WORKDIR}"
-	elif [[ -z ${A} ]] && \
-			! hasq unpack ${DEFINED_PHASES} && \
-			! hasq prepare ${DEFINED_PHASES} && \
-			! hasq configure ${DEFINED_PHASES} && \
-			! hasq compile ${DEFINED_PHASES} ; then
+	elif [[ -z ${A} ]] && ! has_phase_defined_up_to compile; then
 		cd "${WORKDIR}"
 	else
 		die "The source directory '${S}' doesn't exist"
@@ -1060,12 +1060,7 @@ dyn_install() {
 		cd "${S}"
 	elif hasq $EAPI 0 1 2; then
 		cd "${WORKDIR}"
-	elif [[ -z ${A} ]] && \
-			! hasq unpack ${DEFINED_PHASES} && \
-			! hasq prepare ${DEFINED_PHASES} && \
-			! hasq configure ${DEFINED_PHASES} && \
-			! hasq compile ${DEFINED_PHASES} && \
-			! hasq install ${DEFINED_PHASES}; then
+	elif [[ -z ${A} ]] && ! has_phase_defined_up_to install; then
 		cd "${WORKDIR}"
 	else
 		die "The source directory '${S}' doesn't exist"
