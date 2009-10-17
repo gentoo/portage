@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2007 Gentoo Foundation
+# Copyright 1999-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
@@ -25,6 +25,15 @@ if [[ ${INSDESTTREE#${D}} != "${INSDESTTREE}" ]]; then
 	exit 1
 fi
 
+case "$EAPI" in
+	0|1|2)
+		PRESERVE_SYMLINKS=n
+		;;
+	*)
+		PRESERVE_SYMLINKS=y
+		;;
+esac
+
 export TMP=$T/.doins_tmp
 # Use separate directories to avoid potential name collisions.
 mkdir -p "$TMP"/{1,2}
@@ -35,9 +44,15 @@ _doins() {
 	local mysrc="$1" mydir="$2" cleanup="" rval
 
 	if [ -L "$mysrc" ] ; then
-		cp "$mysrc" "$TMP/2"
-		mysrc="$TMP/2/${mysrc##*/}"
-		cleanup=${mysrc}
+		if [ $PRESERVE_SYMLINKS = y ] ; then
+			rm -rf "$D$INSDESTTREE/$mydir/${mysrc##*/}" || return $?
+			cp -P "$mysrc" "$D$INSDESTTREE/$mydir/${mysrc##*/}"
+			return $?
+		else
+			cp "$mysrc" "$TMP/2/${mysrc##*/}" || return $?
+			mysrc="$TMP/2/${mysrc##*/}"
+			cleanup=$mysrc
+		fi
 	fi
 
 	install ${INSOPTIONS} "${mysrc}" "${D}${INSDESTTREE}/${mydir}"
@@ -56,7 +71,8 @@ _xdoins() {
 success=0
 
 for x in "$@" ; do
-	if [ -d "$x" ] ; then
+	if [[ $PRESERVE_SYMLINKS = n && -d $x ]] || \
+		[[ $PRESERVE_SYMLINKS = y && -d $x && ! -L $x ]] ; then
 		if [ "${DOINSRECUR}" == "n" ] ; then
 			continue
 		fi
