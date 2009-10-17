@@ -898,6 +898,7 @@ abort_install() {
 }
 
 has_phase_defined_up_to() {
+	local phase
 	for phase in unpack prepare configure compile install; do
 		has ${phase} ${DEFINED_PHASES} && return 0
 		[[ ${phase} == $1 ]] && return 1
