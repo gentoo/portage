@@ -905,13 +905,17 @@ dyn_prepare() {
 		return 0
 	fi
 
-	local srcdir
 	if [[ -d $S ]] ; then
-		srcdir=$S
+		cd "${S}"
+	elif hasq $EAPI 0 1 2; then
+		cd "${WORKDIR}"
+	elif [[ -z ${A} ]] && \
+			! hasq unpack ${DEFINED_PHASES} && \
+			! hasq prepare ${DEFINED_PHASES} ; then
+		cd "${WORKDIR}"
 	else
-		srcdir=$WORKDIR
+		die "The source directory '${S}' doesn't exist"
 	fi
-	cd "$srcdir"
 
 	trap abort_prepare SIGINT SIGQUIT
 
@@ -932,6 +936,19 @@ dyn_configure() {
 		vecho ">>> It appears that '$PF' is already configured; skipping."
 		vecho ">>> Remove '$PORTAGE_BUILDDIR/.configured' to force configuration."
 		return 0
+	fi
+
+	if [[ -d $S ]] ; then
+		cd "${S}"
+	elif hasq $EAPI 0 1 2; then
+		cd "${WORKDIR}"
+	elif [[ -z ${A} ]] && \
+			! hasq unpack ${DEFINED_PHASES} && \
+			! hasq prepare ${DEFINED_PHASES} && \
+			! hasq configure ${DEFINED_PHASES} ; then
+		cd "${WORKDIR}"
+	else
+		die "The source directory '${S}' doesn't exist"
 	fi
 
 	trap abort_configure SIGINT SIGQUIT
@@ -955,6 +972,20 @@ dyn_compile() {
 		vecho ">>> It appears that '${PF}' is already compiled; skipping."
 		vecho ">>> Remove '$PORTAGE_BUILDDIR/.compiled' to force compilation."
 		return 0
+	fi
+
+	if [[ -d $S ]] ; then
+		cd "${S}"
+	elif hasq $EAPI 0 1 2; then
+		cd "${WORKDIR}"
+	elif [[ -z ${A} ]] && \
+			! hasq unpack ${DEFINED_PHASES} && \
+			! hasq prepare ${DEFINED_PHASES} && \
+			! hasq configure ${DEFINED_PHASES} && \
+			! hasq compile ${DEFINED_PHASES} ; then
+		cd "${WORKDIR}"
+	else
+		die "The source directory '${S}' doesn't exist"
 	fi
 
 	trap abort_compile SIGINT SIGQUIT
@@ -989,6 +1020,7 @@ dyn_test() {
 	else
 		cd "${WORKDIR}"
 	fi
+
 	if ! hasq test $FEATURES && [ "${EBUILD_FORCE_TEST}" != "1" ]; then
 		vecho ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
 	elif hasq test $RESTRICT; then
@@ -1023,11 +1055,22 @@ dyn_install() {
 	ebuild_phase pre_src_install
 	rm -rf "${PORTAGE_BUILDDIR}/image"
 	mkdir "${PORTAGE_BUILDDIR}/image"
-	if [ -d "${S}" ]; then
+	local srcdir
+	if [[ -d $S ]] ; then
 		cd "${S}"
-	else
+	elif hasq $EAPI 0 1 2; then
 		cd "${WORKDIR}"
+	elif [[ -z ${A} ]] && \
+			! hasq unpack ${DEFINED_PHASES} && \
+			! hasq prepare ${DEFINED_PHASES} && \
+			! hasq configure ${DEFINED_PHASES} && \
+			! hasq compile ${DEFINED_PHASES} && \
+			! hasq install ${DEFINED_PHASES}; then
+		cd "${WORKDIR}"
+	else
+		die "The source directory '${S}' doesn't exist"
 	fi
+
 	vecho
 	vecho ">>> Install ${PF} into ${D} category ${CATEGORY}"
 	#our custom version of libtool uses $S and $D to fix
@@ -2014,13 +2057,6 @@ ebuild_main() {
 				cp "$EBUILD" "build-info/$PF.ebuild"
 			fi
 
-			local srcdir
-			if [[ -d $S ]] ; then
-				srcdir=$S
-			else
-				srcdir=$WORKDIR
-			fi
-			cd "$srcdir"
 			#our custom version of libtool uses $S and $D to fix
 			#invalid paths in .la files
 			export S D
