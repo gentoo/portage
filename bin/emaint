@@ -46,7 +46,7 @@ class WorldHandler(object):
 
 		from portage.sets import SETPREFIX
 		sets = self._sets
-		world_atoms = list(sets["world"])
+		world_atoms = list(sets["selected"])
 		maxval = len(world_atoms)
 		if onProgress:
 			onProgress(maxval, 0)
@@ -88,7 +88,7 @@ class WorldHandler(object):
 		return errors
 
 	def fix(self, onProgress=None):
-		world_set = self._sets["world"]
+		world_set = self._sets["selected"]
 		world_set.lock()
 		try:
 			world_set.load() # maybe it's changed on disk
