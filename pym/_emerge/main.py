@@ -720,6 +720,7 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.root_deps = True
 
 	if myoptions.select == "True":
+		myoptions.select = True
 		myoptions.oneshot = False
 	elif myoptions.select == "n":
 		myoptions.oneshot = True
