@@ -144,7 +144,7 @@ class SetConfig(object):
 		self._parse()
 		return self.psets.copy()
 
-	def getSetAtoms(self, setname, ignorelist=None):
+	def getSetAtoms(self, setname, ignorelist=None, expand_nested_sets=True):
 		"""
 		This raises PackageSetNotFound if the give setname does not exist.
 		"""
@@ -158,7 +158,7 @@ class SetConfig(object):
 		extend = set()
 		remove = set()
 		intersect = set()
-		
+
 		if ignorelist is None:
 			ignorelist = set()
 
@@ -171,27 +171,32 @@ class SetConfig(object):
 				remove.update(parser.get(myset.creator, "remove").split())
 			if parser.has_option(myset.creator, "intersect"):
 				intersect.update(parser.get(myset.creator, "intersect").split())
-						
+
 		ignorelist.add(setname)
-		for n in myset.getNonAtoms():
-			if n.startswith(SETPREFIX):
-				s = n[len(SETPREFIX):]
-				if s in self.psets:
-					extend.add(n[len(SETPREFIX):])
-				else:
-					raise PackageSetNotFound(s)
+
+		if expand_nested_sets:
+			for n in myset.getNonAtoms():
+				if n.startswith(SETPREFIX):
+					s = n[len(SETPREFIX):]
+					if s in self.psets:
+						extend.add(n[len(SETPREFIX):])
+					else:
+						raise PackageSetNotFound(s)
 
 		for s in ignorelist:
 			extend.discard(s)
 			remove.discard(s)
 			intersect.discard(s)
-		
+
 		for s in extend:
-			myatoms.update(self.getSetAtoms(s, ignorelist=ignorelist))
+			myatoms.update(self.getSetAtoms(s,
+				ignorelist=ignorelist, expand_nested_sets=expand_nested_sets))
 		for s in remove:
-			myatoms.difference_update(self.getSetAtoms(s, ignorelist=ignorelist))
+			myatoms.difference_update(self.getSetAtoms(s,
+				ignorelist=ignorelist, expand_nested_sets=expand_nested_sets))
 		for s in intersect:
-			myatoms.intersection_update(self.getSetAtoms(s, ignorelist=ignorelist))
+			myatoms.intersection_update(self.getSetAtoms(s,
+				ignorelist=ignorelist, expand_nested_sets=expand_nested_sets))
 
 		return myatoms
 
