@@ -525,6 +525,7 @@ save_ebuild_env() {
 		unset -f dump_trace die diefunc quiet_mode vecho elog_base eqawarn elog \
 			esyslog einfo einfon ewarn eerror ebegin _eend eend KV_major \
 			KV_minor KV_micro KV_to_int get_KV unset_colors set_colors has \
+			has_phase_defined_up_to \
 			hasg hasgq hasv hasq qa_source qa_call \
 			addread addwrite adddeny addpredict _sb_append_var \
 			lchown lchgrp esyslog use usev useq has_version portageq \
