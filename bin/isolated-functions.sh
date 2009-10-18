@@ -573,8 +573,8 @@ save_ebuild_env() {
 		# user config variables
 		unset DOC_SYMLINKS_DIR INSTALL_MASK PKG_INSTALL_MASK
 
-		set
-		export
+		declare -p
+		declare -fp
 	)
 }
 
