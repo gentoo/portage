@@ -40,13 +40,18 @@ class SetConfig(object):
 		# system and world sets is hardcoded below.
 		parser = self._parser
 
+		parser.add_section("world")
+		parser.set("world", "class", "portage._sets.base.DummyPackageSet")
+		parser.set("world", "world-candidate", "False")
+		parser.set("world", "packages", "@selected @system")
+
+		parser.add_section("selected")
+		parser.set("selected", "class", "portage._sets.files.WorldSelectedSet")
+		parser.set("selected", "world-candidate", "False")
+
 		parser.add_section("system")
 		parser.set("system", "class", "portage._sets.profiles.PackagesSystemSet")
 		parser.set("system", "world-candidate", "False")
-
-		parser.add_section("world")
-		parser.set("world", "class", "portage._sets.files.WorldSet")
-		parser.set("world", "world-candidate", "False")
 
 		self.errors = []
 		self.psets = {}

@@ -617,7 +617,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	print("Packages installed:   " + str(len(vardb.cpv_all())))
 	print("Packages in world:    " + \
-		str(len(root_config.sets["world"].getAtoms())))
+		str(len(root_config.sets["selected"].getAtoms())))
 	print("Packages in system:   " + \
 		str(len(root_config.sets["system"].getAtoms())))
 	print("Required packages:    "+str(req_pkg_count))
@@ -637,7 +637,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	vardb = trees[myroot]["vartree"].dbapi
 	deselect = myopts.get('--deselect') != 'n'
 
-	required_set_names = ("system", "world")
+	required_set_names = ("world",)
 	required_sets = {}
 	set_args = []
 
@@ -650,7 +650,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	# which excludes packages that are intended to be eligible for
 	# removal.
 	world_temp_set = required_sets["world"]
-	system_set = required_sets["system"]
+	system_set = root_config.sets["system"]
 
 	if not system_set or not world_temp_set:
 
@@ -997,9 +997,9 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 def action_deselect(settings, trees, opts, atoms):
 	root_config = trees[settings['ROOT']]['root_config']
-	world_set = root_config.sets['world']
+	world_set = root_config.sets['selected']
 	if not hasattr(world_set, 'update'):
-		writemsg_level("World set does not appear to be mutable.\n",
+		writemsg_level("World @selected set does not appear to be mutable.\n",
 			level=logging.ERROR, noiselevel=-1)
 		return 1
 

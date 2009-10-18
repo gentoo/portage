@@ -424,22 +424,22 @@ def unmerge(root_config, myopts, unmerge_action,
 					raise UninstallFailure(retval)
 				sys.exit(retval)
 			else:
-				if clean_world and hasattr(sets["world"], "cleanPackage")\
-						and hasattr(sets["world"], "lock"):
-					sets["world"].lock()
-					if hasattr(sets["world"], "load"):
-						sets["world"].load()
-					sets["world"].cleanPackage(vartree.dbapi, y)
-					sets["world"].unlock()
+				if clean_world and hasattr(sets["selected"], "cleanPackage")\
+						and hasattr(sets["selected"], "lock"):
+					sets["selected"].lock()
+					if hasattr(sets["selected"], "load"):
+						sets["selected"].load()
+					sets["selected"].cleanPackage(vartree.dbapi, y)
+					sets["selected"].unlock()
 				emergelog(xterm_titles, " >>> unmerge success: "+y)
 
-	if clean_world and hasattr(sets["world"], "remove")\
-			and hasattr(sets["world"], "lock"):
-		sets["world"].lock()
+	if clean_world and hasattr(sets["selected"], "remove")\
+			and hasattr(sets["selected"], "lock"):
+		sets["selected"].lock()
 		# load is called inside remove()
 		for s in root_config.setconfig.active:
-			sets["world"].remove(SETPREFIX+s)
-		sets["world"].unlock()
+			sets["selected"].remove(SETPREFIX + s)
+		sets["selected"].unlock()
 
 	return 1
 

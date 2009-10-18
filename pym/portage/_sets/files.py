@@ -21,13 +21,13 @@ from portage.env.loaders import ItemFileLoader, KeyListFileLoader
 from portage.env.validators import ValidAtomValidator
 from portage import dep_getkey, cpv_getkey
 
-__all__ = ["WorldSet",]
+__all__ = ["WorldSelectedSet",]
 
-class WorldSet(EditablePackageSet):
+class WorldSelectedSet(EditablePackageSet):
 	description = "Set of packages that were directly installed by the user"
 	
 	def __init__(self, root):
-		super(WorldSet, self).__init__()
+		super(WorldSelectedSet, self).__init__()
 		# most attributes exist twice as atoms and non-atoms are stored in 
 		# separate files
 		self._lock = None
@@ -44,7 +44,7 @@ class WorldSet(EditablePackageSet):
 
 	def load(self):
 		atoms = []
-		nonatoms = ["@system"]
+		nonatoms = []
 		atoms_changed = False
 		# load atoms and non-atoms from different files so the worldfile is 
 		# backwards-compatible with older versions and other PMs, even though 
@@ -115,5 +115,5 @@ class WorldSet(EditablePackageSet):
 		self.replace(newworldlist)
 
 	def singleBuilder(self, options, settings, trees):
-		return WorldSet(settings["ROOT"])
+		return WorldSelectedSet(settings["ROOT"])
 	singleBuilder = classmethod(singleBuilder)

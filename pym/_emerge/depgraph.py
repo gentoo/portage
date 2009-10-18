@@ -90,7 +90,7 @@ class _frozen_depgraph_config(object):
 			self.pkgsettings[myroot] = portage.config(
 				clone=self.trees[myroot]["vartree"].settings)
 
-		self._required_set_names = set(["system", "world"])
+		self._required_set_names = set(["world"])
 
 class _dynamic_depgraph_config(object):
 
@@ -1756,7 +1756,7 @@ class depgraph(object):
 							continue
 
 						if not (isinstance(arg, SetArg) and \
-							arg.name in ("system", "world")):
+							arg.name in ("selected", "system", "world")):
 							self._dynamic_config._unsatisfied_deps_for_display.append(
 								((myroot, atom), {}))
 							return 0, myfavorites
@@ -1783,7 +1783,7 @@ class depgraph(object):
 						# out here if the atom is not from either the system or
 						# world set.
 						if not (isinstance(arg, SetArg) and \
-							arg.name in ("system", "world")):
+							arg.name in ("selected", "system", "world")):
 							return 0, myfavorites
 
 					# Add the selected package to the graph as soon as possible
@@ -3486,7 +3486,7 @@ class depgraph(object):
 						skip = False
 						try:
 							for atom in root_config.sets[
-								"world"].iterAtomsForPackage(task):
+								"selected"].iterAtomsForPackage(task):
 								satisfied = False
 								for pkg in graph_db.match_pkgs(atom):
 									if pkg == inst_pkg:
@@ -4428,7 +4428,7 @@ class depgraph(object):
 				pkg_cp = xs[0]
 				root_config = self._frozen_config.roots[myroot]
 				system_set = root_config.sets["system"]
-				world_set  = root_config.sets["world"]
+				world_set  = root_config.sets["selected"]
 
 				pkg_system = False
 				pkg_world = False
@@ -4647,9 +4647,9 @@ class depgraph(object):
 			if "world" in self._dynamic_config._sets:
 				# Filter out indirect members of world (from nested sets)
 				# since only direct members of world are desired here.
-				world_set = self._frozen_config.roots[self._frozen_config.target_root].sets["world"]
+				world_set = self._frozen_config.roots[self._frozen_config.target_root].sets["selected"]
 				for arg, atom in self._dynamic_config._missing_args:
-					if arg.name == "world" and atom in world_set:
+					if arg.name in ("selected", "world") and atom in world_set:
 						world_problems = True
 						break
 
@@ -4698,7 +4698,7 @@ class depgraph(object):
 					ref_string = " pulled in by " + ref_string
 				msg.append("  %s%s\n" % (colorize("INFORM", str(arg)), ref_string))
 			msg.append("\n")
-			if "world" in problems_sets:
+			if "selected" in problems_sets or "world" in problems_sets:
 				msg.append("This problem can be solved in one of the following ways:\n\n")
 				msg.append("  A) Use emaint to clean offending packages from world (if not installed).\n")
 				msg.append("  B) Uninstall offending packages (cleans them from world).\n")
@@ -4729,7 +4729,7 @@ class depgraph(object):
 			if x in self._frozen_config.myopts:
 				return
 		root_config = self._frozen_config.roots[self._frozen_config.target_root]
-		world_set = root_config.sets["world"]
+		world_set = root_config.sets["selected"]
 
 		world_locked = False
 		if hasattr(world_set, "lock"):
@@ -4761,7 +4761,8 @@ class depgraph(object):
 				del e
 		all_added = []
 		for k in self._dynamic_config._sets:
-			if k in ("args", "world") or not root_config.sets[k].world_candidate:
+			if k in ("args", "selected", "world") or \
+				not root_config.sets[k].world_candidate:
 				continue
 			s = SETPREFIX + k
 			if s in world_set:
