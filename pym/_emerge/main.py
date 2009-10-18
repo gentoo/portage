@@ -311,6 +311,7 @@ def insert_optional_args(args):
 		'--jobs'       : valid_integers,
 		'--keep-going'           : ('n',),
 		'--root-deps'  : ('rdeps',),
+		'--select'               : ('n',),
 		'--selective'            : ('n',),
 		'--usepkg'               : ('n',),
 		'--usepkgonly'           : ('n',),
@@ -535,6 +536,13 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices" :("True", "rdeps")
 		},
 
+		"--select": {
+			"help"    : "add specified packages to the world set " + \
+			            "(inverse of --oneshot)",
+			"type"    : "choice",
+			"choices" : ("True", "n")
+		},
+
 		"--selective": {
 			"help"    : "similar to the --noreplace but does not take " + \
 			            "precedence over options such as --newuse",
@@ -625,6 +633,11 @@ def parse_opts(tmpcmdline, silent=False):
 
 	if myoptions.root_deps == "True":
 		myoptions.root_deps = True
+
+	if myoptions.select == "True":
+		myoptions.oneshot = False
+	elif myoptions.select == "n":
+		myoptions.oneshot = True
 
 	if myoptions.selective == "True":
 		myoptions.selective = True

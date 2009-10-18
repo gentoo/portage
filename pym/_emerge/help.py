@@ -499,6 +499,14 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
+		print("       " + green("--select") + "[=%s]" % turquoise("n"))
+		desc = "Add specified packages to the world set (inverse of " + \
+			"--oneshot). This is useful if you want to " + \
+			"use EMERGE_DEFAULT_OPTS to make " + \
+			"--oneshot behavior default."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
 		print("       " + green("--selective") + "[=%s]" % turquoise("n"))
 		desc = "This is similar to the --noreplace option, except that it " + \
 			"does not take precedence over options such as --newuse. " + \

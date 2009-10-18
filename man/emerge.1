@@ -469,6 +469,12 @@ be enabled under normal circumstances. For currently supported
 \fBDEPEND\fR variable. However, behavior may change for new
 \fBEAPI\fRs when related extensions are added in the future.
 .TP
+.BR "\-\-select"[=n]
+Add specified packages to the world set (inverse of
+\fB\-\-oneshot\fR). This is useful if you want to
+use \fBEMERGE_DEFAULT_OPTS\fR to make
+\fB\-\-oneshot\fR behavior default.
+.TP
 .BR "\-\-selective"[=n]
 This is similar to the \fB\-\-noreplace\fR option, except that it
 does not take precedence over options such as \fB\-\-newuse\fR.
