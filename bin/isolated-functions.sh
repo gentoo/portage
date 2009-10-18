@@ -497,10 +497,6 @@ save_ebuild_env() {
 			fi
 		fi
 
-		# misc variables set by bash
-		unset BASH HOSTTYPE IFS MACHTYPE OLDPWD \
-			OPTERR OPTIND OSTYPE PS4 PWD SHELL SHLVL
-
 		# misc variables inherited from the calling environment
 		unset COLORTERM DISPLAY EDITOR LESS LESSOPEN LOGNAME LS_COLORS PAGER \
 			TERM TERMCAP USER
@@ -543,6 +539,7 @@ save_ebuild_env() {
 			source_all_bashrcs ebuild_main \
 			ebuild_phase ebuild_phase_with_hooks \
 			_ebuild_arg_to_phase _ebuild_phase_funcs default \
+			_pipestatus \
 			${QA_INTERCEPTORS}
 
 		# portage config variables and variables set directly by portage
