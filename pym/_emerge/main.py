@@ -392,6 +392,7 @@ def insert_optional_args(args):
 		'--root-deps'  : ('rdeps',),
 		'--select'               : ('n',),
 		'--selective'            : ('n',),
+		"--use-ebuild-visibility": ('n',),
 		'--usepkg'               : ('n',),
 		'--usepkgonly'           : ('n',),
 	}
@@ -629,6 +630,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices" : ("True", "n")
 		},
 
+		"--use-ebuild-visibility": {
+			"help"     : "use unbuilt ebuild metadata for visibility checks on built packages",
+			"type"     : "choice",
+			"choices"  : ("True", "n")
+		},
+
 		"--usepkg": {
 			"shortopt" : "-k",
 			"help"     : "use binary packages",
@@ -714,6 +721,7 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.root_deps = True
 
 	if myoptions.select == "True":
+		myoptions.select = True
 		myoptions.oneshot = False
 	elif myoptions.select == "n":
 		myoptions.oneshot = True
@@ -771,6 +779,11 @@ def parse_opts(tmpcmdline, silent=False):
 					(myoptions.load_average,), noiselevel=-1)
 
 		myoptions.load_average = load_average
+
+	if myoptions.use_ebuild_visibility in ("True",):
+		myoptions.use_ebuild_visibility = True
+	else:
+		myoptions.use_ebuild_visibility = None
 
 	if myoptions.usepkg in ("True",):
 		myoptions.usepkg = True
@@ -893,6 +906,7 @@ def missing_sets_warning(root_config, missing_sets):
 	msg.append("        This usually means that '%s'" % \
 		(os.path.join(portage.const.GLOBAL_CONFIG_PATH, "sets.conf"),))
 	msg.append("        is missing or corrupt.")
+	msg.append("        Falling back to default world and system set configuration!!!")
 	for line in msg:
 		writemsg_level(line + "\n", level=logging.ERROR, noiselevel=-1)
 

@@ -1654,8 +1654,8 @@ PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 # variables out and discards them. See bug #190128.
 filter_readonly_variables() {
 	local x filtered_vars
-	local readonly_bash_vars="DIRSTACK EUID FUNCNAME GROUPS
-		PIPESTATUS PPID SHELLOPTS UID"
+	local readonly_bash_vars="BASHPID DIRSTACK EUID FUNCNAME
+		GROUPS PIPESTATUS PPID SHELLOPTS UID"
 	local filtered_sandbox_vars="SANDBOX_ACTIVE SANDBOX_BASHRC
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
 		SANDBOX_LOG SANDBOX_ON"
@@ -1838,78 +1838,75 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm depend && \
 	[[ -n $EAPI ]] || EAPI=0
 fi
 
-_source_ebuild() {
-	# The bashrcs get an opportunity here to set aliases that will be expanded
-	# during sourcing of ebuilds and eclasses.
-	source_all_bashrcs
-
-	# *DEPEND and IUSE will be set during the sourcing of the ebuild.
-	# In order to ensure correct interaction between ebuilds and
-	# eclasses, they need to be unset before this process of
-	# interaction begins.
-	unset DEPEND RDEPEND PDEPEND IUSE
-	source "${EBUILD}" || die "error sourcing ebuild"
-
-	if [ "${EBUILD_PHASE}" != "depend" ] ; then
-		RESTRICT=${PORTAGE_RESTRICT}
-		[[ -e $PORTAGE_BUILDDIR/.ebuild_changed ]] && \
-			rm "$PORTAGE_BUILDDIR/.ebuild_changed"
-	fi
-
-	[[ -n $EAPI ]] || EAPI=0
-
-	if has "$EAPI" 0 1 2 ; then
-		export RDEPEND=${RDEPEND-${DEPEND}}
-		debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
-	fi
-
-	# add in dependency info from eclasses
-	IUSE="${IUSE} ${E_IUSE}"
-	DEPEND="${DEPEND} ${E_DEPEND}"
-	RDEPEND="${RDEPEND} ${E_RDEPEND}"
-	PDEPEND="${PDEPEND} ${E_PDEPEND}"
-
-	unset ECLASS E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
-
-	# alphabetically ordered by $EBUILD_PHASE value
-	local f valid_phases
-	case "$EAPI" in
-		0|1)
-			valid_phases="src_compile pkg_config pkg_info src_install
-				pkg_nofetch pkg_postinst pkg_postrm pkg_preinst pkg_prerm
-				pkg_setup src_test src_unpack"
-			;;
-		2)
-			valid_phases="src_compile pkg_config src_configure pkg_info
-				src_install pkg_nofetch pkg_postinst pkg_postrm pkg_preinst
-				src_prepare pkg_prerm pkg_setup src_test src_unpack"
-			;;
-		*)
-			valid_phases="src_compile pkg_config src_configure pkg_info
-				src_install pkg_nofetch pkg_postinst pkg_postrm pkg_preinst
-				src_prepare pkg_prerm pkg_pretend pkg_setup src_test src_unpack"
-			;;
-	esac
-
-	DEFINED_PHASES=
-	for f in $valid_phases ; do
-		if declare -F $f >/dev/null ; then
-			f=${f#pkg_}
-			DEFINED_PHASES+=" ${f#src_}"
-		fi
-	done
-	[[ -n $DEFINED_PHASES ]] || DEFINED_PHASES=-
-
-	# This needs to be exported since prepstrip is a separate shell script.
-	[[ -n $QA_PRESTRIPPED ]] && export QA_PRESTRIPPED
-	eval "[[ -n \$QA_PRESTRIPPED_${ARCH/-/_} ]] && export QA_PRESTRIPPED_${ARCH/-/_}"
-}
-
 if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
 	if [[ $EBUILD_PHASE = depend || ! -f $T/environment || \
 		-f $PORTAGE_BUILDDIR/.ebuild_changed ]] || \
 		hasq noauto $FEATURES ; then
-		_source_ebuild
+		# The bashrcs get an opportunity here to set aliases that will be expanded
+		# during sourcing of ebuilds and eclasses.
+		source_all_bashrcs
+
+		# *DEPEND and IUSE will be set during the sourcing of the ebuild.
+		# In order to ensure correct interaction between ebuilds and
+		# eclasses, they need to be unset before this process of
+		# interaction begins.
+		unset DEPEND RDEPEND PDEPEND IUSE
+		source "${EBUILD}" || die "error sourcing ebuild"
+
+		if [[ "${EBUILD_PHASE}" != "depend" ]] ; then
+			RESTRICT=${PORTAGE_RESTRICT}
+			[[ -e $PORTAGE_BUILDDIR/.ebuild_changed ]] && \
+			rm "$PORTAGE_BUILDDIR/.ebuild_changed"
+		fi
+
+		[[ -n $EAPI ]] || EAPI=0
+
+		if has "$EAPI" 0 1 2 ; then
+			export RDEPEND=${RDEPEND-${DEPEND}}
+			debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
+		fi
+
+		# add in dependency info from eclasses
+		IUSE="${IUSE} ${E_IUSE}"
+		DEPEND="${DEPEND} ${E_DEPEND}"
+		RDEPEND="${RDEPEND} ${E_RDEPEND}"
+		PDEPEND="${PDEPEND} ${E_PDEPEND}"
+
+		unset ECLASS E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
+
+		# alphabetically ordered by $EBUILD_PHASE value
+		case "$EAPI" in
+			0|1)
+				_valid_phases="src_compile pkg_config pkg_info src_install
+					pkg_nofetch pkg_postinst pkg_postrm pkg_preinst pkg_prerm
+					pkg_setup src_test src_unpack"
+				;;
+			2)
+				_valid_phases="src_compile pkg_config src_configure pkg_info
+					src_install pkg_nofetch pkg_postinst pkg_postrm pkg_preinst
+					src_prepare pkg_prerm pkg_setup src_test src_unpack"
+				;;
+			*)
+				_valid_phases="src_compile pkg_config src_configure pkg_info
+					src_install pkg_nofetch pkg_postinst pkg_postrm pkg_preinst
+					src_prepare pkg_prerm pkg_pretend pkg_setup src_test src_unpack"
+				;;
+		esac
+
+		DEFINED_PHASES=
+		for _f in $_valid_phases ; do
+			if declare -F $_f >/dev/null ; then
+				_f=${_f#pkg_}
+				DEFINED_PHASES+=" ${_f#src_}"
+			fi
+		done
+		[[ -n $DEFINED_PHASES ]] || DEFINED_PHASES=-
+
+		unset _f _valid_phases
+
+		# This needs to be exported since prepstrip is a separate shell script.
+		[[ -n $QA_PRESTRIPPED ]] && export QA_PRESTRIPPED
+		eval "[[ -n \$QA_PRESTRIPPED_${ARCH/-/_} ]] && export QA_PRESTRIPPED_${ARCH/-/_}"
 	fi
 fi
 
