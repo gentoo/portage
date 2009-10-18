@@ -161,7 +161,10 @@ class SetConfig(object):
 		
 		if ignorelist is None:
 			ignorelist = set()
-		if not setname in ignorelist:
+
+		# If sets.conf is corrupt then emerge generates
+		# fallback sets without the 'creator' attribute.
+		if setname not in ignorelist and hasattr(myset, 'creator'):
 			if parser.has_option(myset.creator, "extend"):
 				extend.update(parser.get(myset.creator, "extend").split())
 			if parser.has_option(myset.creator, "remove"):
