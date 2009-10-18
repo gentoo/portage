@@ -2740,7 +2740,7 @@ class config(object):
 			not hasattr(self, "_ebuild_force_test_msg_shown"):
 				self._ebuild_force_test_msg_shown = True
 				writemsg(_("Forcing test.\n"), noiselevel=-1)
-		if "test" in self.features and "test" in iuse_implicit:
+		if "test" in self.features:
 			if "test" in self.usemask and not ebuild_force_test:
 				# "test" is in IUSE and USE=test is masked, so execution
 				# of src_test() probably is not reliable. Therefore,
@@ -2829,6 +2829,12 @@ class config(object):
 		# build and bootstrap flags used by bootstrap.sh
 		iuse_implicit.add("build")
 		iuse_implicit.add("bootstrap")
+
+		# Controlled by FEATURES=test. Make this implicit, so handling
+		# of FEATURES=test is consistent regardless of explicit IUSE.
+		# Users may use use.mask/package.use.mask to control
+		# FEATURES=test for all ebuilds, regardless of explicit IUSE.
+		iuse_implicit.add("test")
 
 		return iuse_implicit
 
@@ -3793,6 +3799,15 @@ class config(object):
 		keys = __iter__
 		items = iteritems
 
+def _can_test_pty_eof():
+	"""
+	The _test_pty_eof() function seems to hang on most
+	kernels other than Linux.
+	@rtype: bool
+	@returns: True if _test_pty_eof() won't hang, False otherwise.
+	"""
+	return platform.system() in ("Linux",)
+
 def _test_pty_eof():
 	"""
 	Returns True if this issues is fixed for the currently
@@ -3877,9 +3892,13 @@ def _test_pty_eof():
 
 	return test_string == ''.join(data)
 
-# In some cases, openpty can be slow when it fails. Therefore,
-# stop trying to use it after the first failure.
-if platform.system() not in ["FreeBSD", "Linux"]:
+# If _test_pty_eof() can't be used for runtime detection of
+# http://bugs.python.org/issue5380, openpty can't safely be used
+# unless we can guarantee that the current version of python has
+# been fixed (affects all current versions of python3). When
+# this issue is fixed in python3, we can add another sys.hexversion
+# conditional to enable openpty support in the fixed versions.
+if sys.hexversion >= 0x3000000 and not _can_test_pty_eof():
 	# Disable the use of openpty on Solaris as it seems Python's openpty
 	# implementation doesn't play nice on Solaris with Portage's
 	# behaviour causing hangs/deadlocks.
@@ -3895,6 +3914,10 @@ if platform.system() not in ["FreeBSD", "Linux"]:
 else:
 	_disable_openpty = False
 _tested_pty = False
+
+if not _can_test_pty_eof():
+	# Skip _test_pty_eof() on systems where it hangs.
+	_tested_pty = True
 
 def _create_pty_or_pipe(copy_term_size=None):
 	"""

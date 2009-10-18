@@ -1629,7 +1629,7 @@ class Scheduler(PollScheduler):
 		logger = self._logger
 		pkg_count = self._pkg_count
 		root_config = pkg.root_config
-		world_set = root_config.sets["world"]
+		world_set = root_config.sets["selected"]
 		world_locked = False
 		if hasattr(world_set, "lock"):
 			world_set.lock()

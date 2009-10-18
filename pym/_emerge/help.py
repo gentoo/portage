@@ -70,8 +70,8 @@ def help(myopts, havecolor=1):
 
 		paragraph = "Cleans the system by removing packages that are " + \
 		"not associated with explicitly merged packages. Depclean works " + \
-		"by creating the full dependency tree from the @system and " + \
-		"@world sets, then comparing it to installed packages. Packages " + \
+		"by creating the full dependency tree from the " + \
+		"@world set, then comparing it to installed packages. Packages " + \
 		"installed, but not part of the dependency tree, will be " + \
 		"uninstalled by depclean. See --with-bdeps for behavior with " + \
 		"respect to build time dependencies that are not strictly " + \
@@ -80,7 +80,7 @@ def help(myopts, havecolor=1):
 		"emerge --noreplace <atom>. As a safety measure, depclean " + \
 		"will not remove any packages unless *all* required dependencies " + \
 		"have been resolved. As a consequence, it is often necessary to " + \
-		"run emerge --update --newuse --deep @system @world " + \
+		"run emerge --update --newuse --deep @world " + \
 		"prior to depclean."
 
 		for line in wrap(paragraph, desc_width):
@@ -312,7 +312,7 @@ def help(myopts, havecolor=1):
 		print()
 		print("       "+green("--complete-graph") + "[=%s]" % turquoise("n"))
 		desc = "This causes emerge to consider the deep dependencies of all" + \
-			" packages from the system and world sets. With this option enabled," + \
+			" packages from the world set. With this option enabled," + \
 			" emerge will bail out if it determines that the given operation will" + \
 			" break any dependencies of the packages that have been added to the" + \
 			" graph. Like the --deep option, the --complete-graph" + \
@@ -499,6 +499,14 @@ def help(myopts, havecolor=1):
 			"EAPI values, the build-time dependencies are specified in the " + \
 			"DEPEND variable. However, behavior may change for new " + \
 			"EAPIs when related extensions are added in the future."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
+		print("       " + green("--select") + "[=%s]" % turquoise("n"))
+		desc = "Add specified packages to the world set (inverse of " + \
+			"--oneshot). This is useful if you want to " + \
+			"use EMERGE_DEFAULT_OPTS to make " + \
+			"--oneshot behavior default."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()

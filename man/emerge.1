@@ -58,10 +58,13 @@ would like to query the owners of one or more files or directories.
 .TP
 .BR set
 A \fIset\fR is a convenient shorthand for a large group of
-packages.  Two sets are currently always available: \fBsystem\fR
-and \fBworld\fR.  \fBsystem\fR refers to a set of packages
-deemed necessary for your system to run properly. \fBworld\fR
-contains all the packages listed in \fB/var/lib/portage/world\fR.  [See
+packages. Three sets are currently always available: \fBselected\fR,
+\fBsystem\fR and \fBworld\fR. \fBselected\fR contains the user-selected
+"world" packages that are listed in \fB/var/lib/portage/world\fR,
+and nested sets that may be listed
+in \fB/var/lib/portage/world_sets\fR. \fBsystem\fR refers to a set of
+packages deemed necessary for your system to run properly. \fBworld\fR
+encompasses both the \fBselected\fR and \fBsystem\fR sets. [See
 \fBFILES\fR below for more information.] Other sets can exist depending
 on the current configuration. The default set configuration is located
 in \fB/usr/share/portage/config/sets.conf\fR. Note that a \fIset\fR
@@ -105,7 +108,7 @@ setups that the user may wish to run.
 .BR \-\-depclean
 Cleans the system by removing packages that are not associated
 with explicitly merged packages. Depclean works by creating the
-full dependency tree from the @system and @world sets,
+full dependency tree from the @world set,
 then comparing it to installed packages. Packages installed, but
 not part of the dependency tree, will be uninstalled by depclean.
 See \fB\-\-with\-bdeps\fR for behavior with respect to build time dependencies
@@ -114,7 +117,7 @@ always be kept. They can be manually added to this set with \fIemerge
 \-\-noreplace <atom>\fR. As a safety measure, depclean will not remove any
 packages unless *all* required dependencies have been resolved. As a
 consequence, it is often necessary to run \fIemerge \-\-update \-\-newuse
-\-\-deep @system @world\fR prior to depclean. 
+\-\-deep @world\fR prior to depclean. 
 
 \fBWARNING:\fR
 Inexperienced users are advised to use \fB\-\-pretend\fR with this
@@ -300,7 +303,7 @@ and old version to be displayed in an aligned format for easy cut\-n\-paste.
 .TP
 .BR "\-\-complete\-graph[=n]"
 This causes \fBemerge\fR to consider the deep dependencies of all
-packages from the system and world sets. With this option enabled,
+packages from the world set. With this option enabled,
 \fBemerge\fR will bail out if it determines that the given operation will
 break any dependencies of the packages that have been added to the
 graph. Like the \fB\-\-deep\fR option, the \fB\-\-complete\-graph\fR
@@ -472,6 +475,12 @@ be enabled under normal circumstances. For currently supported
 \fBEAPI\fR values, the build-time dependencies are specified in the
 \fBDEPEND\fR variable. However, behavior may change for new
 \fBEAPI\fRs when related extensions are added in the future.
+.TP
+.BR "\-\-select"[=n]
+Add specified packages to the world set (inverse of
+\fB\-\-oneshot\fR). This is useful if you want to
+use \fBEMERGE_DEFAULT_OPTS\fR to make
+\fB\-\-oneshot\fR behavior default.
 .TP
 .BR "\-\-selective"[=n]
 This is similar to the \fB\-\-noreplace\fR option, except that it
