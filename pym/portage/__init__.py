@@ -7955,10 +7955,10 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				use_binaries=use_binaries, trees=trees)
 		else:
 			atoms = [x]
-		if not vardb:
-			# called by repoman
-			other.append((atoms, None, None, False))
-			continue
+		if vardb is None:
+			# When called by repoman, we can simply return the first choice
+			# because dep_eval() handles preference selection.
+			return atoms
 
 		all_available = True
 		all_use_satisfied = True
