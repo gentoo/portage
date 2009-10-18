@@ -915,7 +915,7 @@ dyn_prepare() {
 
 	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
 	ebuild_phase pre_src_prepare
-	vecho ">>> Preparing source in $srcdir ..."
+	vecho ">>> Preparing source in $PWD ..."
 	ebuild_phase src_prepare
 	touch "$PORTAGE_BUILDDIR"/.prepared
 	vecho ">>> Source prepared."
@@ -947,7 +947,7 @@ dyn_configure() {
 	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
 	ebuild_phase pre_src_configure
 
-	vecho ">>> Configuring source in $srcdir ..."
+	vecho ">>> Configuring source in $PWD ..."
 	ebuild_phase src_configure
 	touch "$PORTAGE_BUILDDIR"/.configured
 	vecho ">>> Source configured."
@@ -980,7 +980,7 @@ dyn_compile() {
 	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
 	ebuild_phase pre_src_compile
 
-	vecho ">>> Compiling source in ${srcdir} ..."
+	vecho ">>> Compiling source in $PWD ..."
 	ebuild_phase src_compile
 	touch "$PORTAGE_BUILDDIR"/.compiled
 	vecho ">>> Source compiled."
@@ -1042,7 +1042,6 @@ dyn_install() {
 	ebuild_phase pre_src_install
 	rm -rf "${PORTAGE_BUILDDIR}/image"
 	mkdir "${PORTAGE_BUILDDIR}/image"
-	local srcdir
 	if [[ -d $S ]] ; then
 		cd "${S}"
 	elif hasq $EAPI 0 1 2; then
