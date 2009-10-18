@@ -13,7 +13,8 @@ class PtyEofTestCase(TestCase):
 		# Since it might not be fixed, mark as todo.
 		self.todo = True
 		# The result is only valid if openpty does not raise EnvironmentError.
-		try:
-			self.assertEqual(portage._test_pty_eof(), True)
-		except EnvironmentError:
-			pass
+		if portage._can_test_pty_eof():
+			try:
+				self.assertEqual(portage._test_pty_eof(), True)
+			except EnvironmentError:
+				pass
