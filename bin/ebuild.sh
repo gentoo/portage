@@ -697,7 +697,7 @@ dyn_unpack() {
 	if [ -e "${WORKDIR}" ]; then
 		local x
 		local checkme
-		for x in ${AA}; do
+		for x in $A ; do
 			vecho ">>> Checking ${x}'s mtime..."
 			if [ "${PORTAGE_ACTUAL_DISTDIR:-${DISTDIR}}/${x}" -nt "${WORKDIR}" ]; then
 				vecho ">>> ${x} has been updated; recreating WORKDIR..."
