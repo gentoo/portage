@@ -240,15 +240,8 @@ use_with() {
 		return 1
 	fi
 
-	local UW_SUFFIX=""
-	if [ ! -z "${3}" ]; then
-		UW_SUFFIX="=${3}"
-	fi
-
-	local UWORD="$2"
-	if [ -z "${UWORD}" ]; then
-		UWORD="$1"
-	fi
+	local UW_SUFFIX=${3:+=$3}
+	local UWORD=${2:-$1}
 
 	if useq $1; then
 		echo "--with-${UWORD}${UW_SUFFIX}"
@@ -265,15 +258,8 @@ use_enable() {
 		return 1
 	fi
 
-	local UE_SUFFIX=""
-	if [ ! -z "${3}" ]; then
-		UE_SUFFIX="=${3}"
-	fi
-
-	local UWORD="$2"
-	if [ -z "${UWORD}" ]; then
-		UWORD="$1"
-	fi
+	local UE_SUFFIX=${3:+=$3}
+	local UWORD=${2:-$1}
 
 	if useq $1; then
 		echo "--enable-${UWORD}${UE_SUFFIX}"
