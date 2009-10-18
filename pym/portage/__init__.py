@@ -8309,12 +8309,11 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 					return None
 	return deplist
 
-_cpv_key_re = re.compile('^' + versions._cpv + '$', re.VERBOSE)
 def cpv_getkey(mycpv):
 	"""Calls pkgsplit on a cpv and returns only the cp."""
-	m = _cpv_key_re.match(mycpv)
-	if m is not None:
-		return m.group(2)
+	mysplit = versions.catpkgsplit(mycpv)
+	if mysplit is not None:
+		return mysplit[0] + '/' + mysplit[1]
 
 	warnings.warn("portage.cpv_getkey() called with invalid cpv: '%s'" \
 		% (mycpv,), DeprecationWarning)
