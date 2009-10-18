@@ -165,6 +165,11 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 			return iter([])
 		return iter(self._cache_data["blockers"])
 
+	def __len__(self):
+		"""This needs to be implemented in order to avoid
+		infinite recursion in some cases."""
+		return len(self._cache_data["blockers"])
+
 	def __delitem__(self, cpv):
 		del self._cache_data["blockers"][cpv]
 
