@@ -10,6 +10,15 @@ import sys
 import textwrap
 import time
 import weakref
+
+try:
+	from io import StringIO
+except ImportError:
+	# Needed for python-2.6 with USE=build since
+	# io imports threading which imports thread
+	# which is unavailable.
+	from StringIO import StringIO
+
 import portage
 from portage import os
 from portage import _encodings
@@ -495,23 +504,19 @@ class Scheduler(PollScheduler):
 	def _dblink_elog(self, pkg_dblink, phase, func, msgs):
 
 		log_path = pkg_dblink.settings.get("PORTAGE_LOG_FILE")
-		log_file = None
-		out = sys.stdout
 		background = self._background
+		out = StringIO()
 
-		if background and log_path is not None:
-			log_file = codecs.open(_unicode_encode(log_path,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='a', encoding=_encodings['content'],
-				errors='backslashreplace')
-			out = log_file
+		for msg in msgs:
+			func(msg, phase=phase, key=pkg_dblink.mycpv, out=out)
 
-		try:
-			for msg in msgs:
-				func(msg, phase=phase, key=pkg_dblink.mycpv, out=out)
-		finally:
-			if log_file is not None:
-				log_file.close()
+		out_str = out.getvalue()
+
+		if not background:
+			portage.util.writemsg_stdout(out_str, noiselevel=-1)
+
+		if log_path is not None:
+			self._append_to_log_path(log_path, out_str)
 
 	def _dblink_emerge_log(self, msg):
 		self._logger.log(msg)
