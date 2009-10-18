@@ -538,6 +538,12 @@ def help(myopts, havecolor=1):
 		print("              a package's dependencies follow the package. Only really useful")
 		print("              in combination with --emptytree, --update or --deep.")
 		print()
+		print("       " + green("--use-ebuild-visibility") + "[=%s]" % turquoise("n"))
+		desc = "Use unbuilt ebuild metadata for visibility " + \
+			"checks on built packages."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
 		print("       "+green("--usepkg")+ "[=%s]" % turquoise("n") + " ("+green("-k")+" short option)")
 		print("              Tell emerge to use binary packages (from $PKGDIR) if they are")
 		print("              available, thus possibly avoiding some time-consuming compiles.")

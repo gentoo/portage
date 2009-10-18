@@ -391,6 +391,7 @@ def insert_optional_args(args):
 		'--root-deps'  : ('rdeps',),
 		'--select'               : ('n',),
 		'--selective'            : ('n',),
+		"--use-ebuild-visibility": ('n',),
 		'--usepkg'               : ('n',),
 		'--usepkgonly'           : ('n',),
 	}
@@ -628,6 +629,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices" : ("True", "n")
 		},
 
+		"--use-ebuild-visibility": {
+			"help"     : "use unbuilt ebuild metadata for visibility checks on built packages",
+			"type"     : "choice",
+			"choices"  : ("True", "n")
+		},
+
 		"--usepkg": {
 			"shortopt" : "-k",
 			"help"     : "use binary packages",
@@ -770,6 +777,11 @@ def parse_opts(tmpcmdline, silent=False):
 					(myoptions.load_average,), noiselevel=-1)
 
 		myoptions.load_average = load_average
+
+	if myoptions.use_ebuild_visibility in ("True",):
+		myoptions.use_ebuild_visibility = True
+	else:
+		myoptions.use_ebuild_visibility = None
 
 	if myoptions.usepkg in ("True",):
 		myoptions.usepkg = True

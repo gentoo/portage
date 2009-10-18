@@ -2319,6 +2319,8 @@ class depgraph(object):
 		reinstall = False
 		noreplace = "--noreplace" in self._frozen_config.myopts
 		avoid_update = "--update" not in self._frozen_config.myopts
+		use_ebuild_visibility = self._frozen_config.myopts.get(
+			'--use-ebuild-visibility', 'n') != 'n'
 		# Behavior of the "selective" parameter depends on
 		# whether or not a package matches an argument atom.
 		# If an installed package provides an old-style
@@ -2392,7 +2394,7 @@ class depgraph(object):
 								# instances (installed or binary).
 								# If --usepkgonly is enabled, assume that
 								# the ebuild status should be ignored.
-								if usepkgonly:
+								if not use_ebuild_visibility and usepkgonly:
 									if installed and \
 										pkgsettings._getMissingKeywords(
 										pkg.cpv, pkg.metadata):
