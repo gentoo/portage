@@ -2599,6 +2599,7 @@ def load_emerge_config(trees=None):
 
 	for root, root_trees in trees.items():
 		settings = root_trees["vartree"].settings
+		settings._init_dirs()
 		setconfig = load_default_config(settings, root_trees)
 		root_trees["root_config"] = RootConfig(settings, root_trees, setconfig)
 

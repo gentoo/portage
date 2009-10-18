@@ -2211,8 +2211,6 @@ class config(object):
 				_validate_cache_for_unsupported_eapis = False
 				_glep_55_enabled = True
 
-			self._init_dirs()
-
 		for k in self._case_insensitive_vars:
 			if k in self:
 				self[k] = self[k].lower()
