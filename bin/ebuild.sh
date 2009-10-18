@@ -242,15 +242,8 @@ use_with() {
 		return 1
 	fi
 
-	local UW_SUFFIX=""
-	if [ ! -z "${3}" ]; then
-		UW_SUFFIX="=${3}"
-	fi
-
-	local UWORD="$2"
-	if [ -z "${UWORD}" ]; then
-		UWORD="$1"
-	fi
+	local UW_SUFFIX=${3:+=$3}
+	local UWORD=${2:-$1}
 
 	if useq $1; then
 		echo "--with-${UWORD}${UW_SUFFIX}"
@@ -267,15 +260,8 @@ use_enable() {
 		return 1
 	fi
 
-	local UE_SUFFIX=""
-	if [ ! -z "${3}" ]; then
-		UE_SUFFIX="=${3}"
-	fi
-
-	local UWORD="$2"
-	if [ -z "${UWORD}" ]; then
-		UWORD="$1"
-	fi
+	local UE_SUFFIX=${3:+=$3}
+	local UWORD=${2:-$1}
 
 	if useq $1; then
 		echo "--enable-${UWORD}${UE_SUFFIX}"
@@ -567,7 +553,7 @@ einstall() {
 		CONF_LIBDIR="${!LIBDIR_VAR}"
 	fi
 	unset LIBDIR_VAR
-	if [ -n "${CONF_LIBDIR}" ] && [ "${CONF_PREFIX:-unset}" != "unset" ]; then
+	if [ -n "${CONF_LIBDIR}" ] && [ "${CONF_PREFIX:+set}" = set ]; then
 		EI_DESTLIBDIR="${D}/${CONF_PREFIX}/${CONF_LIBDIR}"
 		EI_DESTLIBDIR="$(strip_duplicate_slashes ${EI_DESTLIBDIR})"
 		LOCAL_EXTRA_EINSTALL="libdir=${EI_DESTLIBDIR} ${LOCAL_EXTRA_EINSTALL}"
@@ -716,7 +702,7 @@ dyn_unpack() {
 	if [ -e "${WORKDIR}" ]; then
 		local x
 		local checkme
-		for x in ${AA}; do
+		for x in $A ; do
 			vecho ">>> Checking ${x}'s mtime..."
 			if [ "${PORTAGE_ACTUAL_DISTDIR:-${DISTDIR}}/${x}" -nt "${WORKDIR}" ]; then
 				vecho ">>> ${x} has been updated; recreating WORKDIR..."
@@ -916,6 +902,16 @@ abort_install() {
 	exit 1
 }
 
+has_phase_defined_up_to() {
+	local phase
+	for phase in unpack prepare configure compile install; do
+		has ${phase} ${DEFINED_PHASES} && return 0
+		[[ ${phase} == $1 ]] && return 1
+	done
+	# We shouldn't actually get here
+	return 1
+}
+
 dyn_prepare() {
 
 	if [[ -e $PORTAGE_BUILDDIR/.prepared ]] ; then
@@ -924,13 +920,15 @@ dyn_prepare() {
 		return 0
 	fi
 
-	local srcdir
 	if [[ -d $S ]] ; then
-		srcdir=$S
+		cd "${S}"
+	elif hasq $EAPI 0 1 2; then
+		cd "${WORKDIR}"
+	elif [[ -z ${A} ]] && ! has_phase_defined_up_to prepare; then
+		cd "${WORKDIR}"
 	else
-		srcdir=$WORKDIR
+		die "The source directory '${S}' doesn't exist"
 	fi
-	cd "$srcdir"
 
 	trap abort_prepare SIGINT SIGQUIT
 
@@ -951,6 +949,16 @@ dyn_configure() {
 		vecho ">>> It appears that '$PF' is already configured; skipping."
 		vecho ">>> Remove '$PORTAGE_BUILDDIR/.configured' to force configuration."
 		return 0
+	fi
+
+	if [[ -d $S ]] ; then
+		cd "${S}"
+	elif hasq $EAPI 0 1 2; then
+		cd "${WORKDIR}"
+	elif [[ -z ${A} ]] && ! has_phase_defined_up_to configure; then
+		cd "${WORKDIR}"
+	else
+		die "The source directory '${S}' doesn't exist"
 	fi
 
 	trap abort_configure SIGINT SIGQUIT
@@ -974,6 +982,16 @@ dyn_compile() {
 		vecho ">>> It appears that '${PF}' is already compiled; skipping."
 		vecho ">>> Remove '$PORTAGE_BUILDDIR/.compiled' to force compilation."
 		return 0
+	fi
+
+	if [[ -d $S ]] ; then
+		cd "${S}"
+	elif hasq $EAPI 0 1 2; then
+		cd "${WORKDIR}"
+	elif [[ -z ${A} ]] && ! has_phase_defined_up_to compile; then
+		cd "${WORKDIR}"
+	else
+		die "The source directory '${S}' doesn't exist"
 	fi
 
 	trap abort_compile SIGINT SIGQUIT
@@ -1008,6 +1026,7 @@ dyn_test() {
 	else
 		cd "${WORKDIR}"
 	fi
+
 	if ! hasq test $FEATURES && [ "${EBUILD_FORCE_TEST}" != "1" ]; then
 		vecho ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
 	elif hasq test $RESTRICT; then
@@ -1042,11 +1061,17 @@ dyn_install() {
 	ebuild_phase pre_src_install
 	rm -rf "${PORTAGE_BUILDDIR}/image"
 	mkdir "${PORTAGE_BUILDDIR}/image"
-	if [ -d "${S}" ]; then
+	local srcdir
+	if [[ -d $S ]] ; then
 		cd "${S}"
-	else
+	elif hasq $EAPI 0 1 2; then
 		cd "${WORKDIR}"
+	elif [[ -z ${A} ]] && ! has_phase_defined_up_to install; then
+		cd "${WORKDIR}"
+	else
+		die "The source directory '${S}' doesn't exist"
 	fi
+
 	vecho
 	vecho ">>> Install ${PF} into ${ED} category ${CATEGORY}"
 	#our custom version of libtool uses $S and $ED to fix
@@ -1292,10 +1317,10 @@ inherit() {
 
 		# Retain the old data and restore it later.
 		unset B_IUSE B_DEPEND B_RDEPEND B_PDEPEND
-		[ "${IUSE-unset}"    != "unset" ] && B_IUSE="${IUSE}"
-		[ "${DEPEND-unset}"  != "unset" ] && B_DEPEND="${DEPEND}"
-		[ "${RDEPEND-unset}" != "unset" ] && B_RDEPEND="${RDEPEND}"
-		[ "${PDEPEND-unset}" != "unset" ] && B_PDEPEND="${PDEPEND}"
+		[ "${IUSE+set}"       = set ] && B_IUSE="${IUSE}"
+		[ "${DEPEND+set}"     = set ] && B_DEPEND="${DEPEND}"
+		[ "${RDEPEND+set}"    = set ] && B_RDEPEND="${RDEPEND}"
+		[ "${PDEPEND+set}"    = set ] && B_PDEPEND="${PDEPEND}"
 		unset IUSE DEPEND RDEPEND PDEPEND
 		#turn on glob expansion
 		set +f
@@ -1307,22 +1332,22 @@ inherit() {
 
 		# If each var has a value, append it to the global variable E_* to
 		# be applied after everything is finished. New incremental behavior.
-		[ "${IUSE-unset}"    != "unset" ] && export E_IUSE="${E_IUSE} ${IUSE}"
-		[ "${DEPEND-unset}"  != "unset" ] && export E_DEPEND="${E_DEPEND} ${DEPEND}"
-		[ "${RDEPEND-unset}" != "unset" ] && export E_RDEPEND="${E_RDEPEND} ${RDEPEND}"
-		[ "${PDEPEND-unset}" != "unset" ] && export E_PDEPEND="${E_PDEPEND} ${PDEPEND}"
+		[ "${IUSE+set}"       = set ] && export E_IUSE="${E_IUSE} ${IUSE}"
+		[ "${DEPEND+set}"     = set ] && export E_DEPEND="${E_DEPEND} ${DEPEND}"
+		[ "${RDEPEND+set}"    = set ] && export E_RDEPEND="${E_RDEPEND} ${RDEPEND}"
+		[ "${PDEPEND+set}"    = set ] && export E_PDEPEND="${E_PDEPEND} ${PDEPEND}"
 
-		[ "${B_IUSE-unset}"    != "unset" ] && IUSE="${B_IUSE}"
-		[ "${B_IUSE-unset}"    != "unset" ] || unset IUSE
+		[ "${B_IUSE+set}"     = set ] && IUSE="${B_IUSE}"
+		[ "${B_IUSE+set}"     = set ] || unset IUSE
 
-		[ "${B_DEPEND-unset}"  != "unset" ] && DEPEND="${B_DEPEND}"
-		[ "${B_DEPEND-unset}"  != "unset" ] || unset DEPEND
+		[ "${B_DEPEND+set}"   = set ] && DEPEND="${B_DEPEND}"
+		[ "${B_DEPEND+set}"   = set ] || unset DEPEND
 
-		[ "${B_RDEPEND-unset}" != "unset" ] && RDEPEND="${B_RDEPEND}"
-		[ "${B_RDEPEND-unset}" != "unset" ] || unset RDEPEND
+		[ "${B_RDEPEND+set}"  = set ] && RDEPEND="${B_RDEPEND}"
+		[ "${B_RDEPEND+set}"  = set ] || unset RDEPEND
 
-		[ "${B_PDEPEND-unset}" != "unset" ] && PDEPEND="${B_PDEPEND}"
-		[ "${B_PDEPEND-unset}" != "unset" ] || unset PDEPEND
+		[ "${B_PDEPEND+set}"  = set ] && PDEPEND="${B_PDEPEND}"
+		[ "${B_PDEPEND+set}"  = set ] || unset PDEPEND
 
 		#turn on glob expansion
 		set +f
@@ -2000,7 +2025,7 @@ ebuild_main() {
 
 			for x in ASFLAGS CCACHE_DIR CCACHE_SIZE \
 				CFLAGS CXXFLAGS LDFLAGS LIBCFLAGS LIBCXXFLAGS ; do
-				[[ ${!x-unset} != unset ]] && export $x
+				[[ ${!x+set} = set ]] && export $x
 			done
 
 			hasq distcc $FEATURES && [[ -n $DISTCC_DIR ]] && \
@@ -2037,13 +2062,6 @@ ebuild_main() {
 				cp "$EBUILD" "build-info/$PF.ebuild"
 			fi
 
-			local srcdir
-			if [[ -d $S ]] ; then
-				srcdir=$S
-			else
-				srcdir=$WORKDIR
-			fi
-			cd "$srcdir"
 			#our custom version of libtool uses $S and $D to fix
 			#invalid paths in .la files
 			export S D

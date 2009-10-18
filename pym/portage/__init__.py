@@ -3714,6 +3714,7 @@ class config(object):
 		mydict={}
 		environ_filter = self._environ_filter
 
+		eapi = self.get('EAPI')
 		phase = self.get('EBUILD_PHASE')
 		filter_calling_env = False
 		if phase not in ('clean', 'cleanrm', 'depend'):
@@ -3757,6 +3758,10 @@ class config(object):
 
 		# Filtered by IUSE and implicit IUSE.
 		mydict["USE"] = self.get("PORTAGE_USE", "")
+
+		# Don't export AA to the ebuild environment in EAPIs that forbid it
+		if eapi not in ("0", "1", "2"):
+			mydict.pop("AA", None)
 
 		# sandbox's bashrc sources /etc/profile which unsets ROOTPATH,
 		# so we have to back it up and restore it.
