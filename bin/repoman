@@ -295,6 +295,9 @@ qahelp={
 	"DEPEND.syntax":"Syntax error in DEPEND (usually an extra/missing space/parenthesis)",
 	"RDEPEND.syntax":"Syntax error in RDEPEND (usually an extra/missing space/parenthesis)",
 	"PDEPEND.syntax":"Syntax error in PDEPEND (usually an extra/missing space/parenthesis)",
+	"DEPEND.badtilde":"DEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)",
+	"RDEPEND.badtilde":"RDEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)",
+	"PDEPEND.badtilde":"PDEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)",
 	"LICENSE.syntax":"Syntax error in LICENSE (usually an extra/missing space/parenthesis)",
 	"PROVIDE.syntax":"Syntax error in PROVIDE (usually an extra/missing space/parenthesis)",
 	"PROPERTIES.syntax":"Syntax error in PROPERTIES (usually an extra/missing space/parenthesis)",
@@ -349,6 +352,7 @@ qawarnings = set((
 "DEPEND.badmasked","RDEPEND.badmasked","PDEPEND.badmasked",
 "DEPEND.badindev","RDEPEND.badindev","PDEPEND.badindev",
 "DEPEND.badmaskedindev","RDEPEND.badmaskedindev","PDEPEND.badmaskedindev",
+"DEPEND.badtilde", "RDEPEND.badtilde", "PDEPEND.badtilde",
 "DESCRIPTION.toolong",
 "KEYWORDS.dropped",
 "KEYWORDS.stupid",
@@ -1501,6 +1505,14 @@ for x in scanlist:
 								(relative_path + ": %s new blocker syntax" + \
 								" not supported with EAPI='%s':" + \
 								" '%s'") % (mytype, eapi, atom))
+
+						if atom.operator == "~" and \
+							portage.versions.catpkgsplit(atom.cpv)[3] != "r0":
+							stats[mytype + '.badtilde'] += 1
+							fails[mytype + '.badtilde'].append(
+								(relative_path + ": %s uses the ~ operator"
+								 " with a non-zero revision:" + \
+								 " '%s'") % (mytype, atom))
 
 			type_list.extend([mytype] * (len(badsyntax) - len(type_list)))
 

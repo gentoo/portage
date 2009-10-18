@@ -98,6 +98,9 @@ Masked ebuilds with bad DEPEND settings (matched against *all* ebuilds)
 .B DEPEND.badmaskedindev
 Masked ebuilds with bad DEPEND settings (matched against *all* ebuilds) in developing arch
 .TP
+.B DEPEND.badtilde
+DEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)
+.TP
 .B DEPEND.syntax
 Syntax error in DEPEND (usually an extra/missing space/parenthesis)
 .TP
@@ -165,6 +168,9 @@ Masked ebuilds with PDEPEND settings (matched against *all* ebuilds)
 .B PDEPEND.badmaskedindev
 Masked ebuilds with PDEPEND settings (matched against *all* ebuilds) in developing arch
 .TP
+.B PDEPEND.badtilde
+PDEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)
+.TP
 .B PDEPEND.suspect
 PDEPEND contains a package that usually only belongs in DEPEND
 .TP
@@ -185,6 +191,9 @@ Masked ebuilds with RDEPEND settings (matched against *all* ebuilds)
 .TP
 .B RDEPEND.badmaskedindev
 Masked ebuilds with RDEPEND settings (matched against *all* ebuilds) in developing arch
+.TP
+.B RDEPEND.badtilde
+RDEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)
 .TP
 .B RDEPEND.suspect
 RDEPEND contains a package that usually only belongs in DEPEND
