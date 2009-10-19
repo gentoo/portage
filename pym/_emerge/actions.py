@@ -633,32 +633,44 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	xterm_titles = "notitles" not in settings.features
 	myroot = settings["ROOT"]
 	root_config = trees[myroot]["root_config"]
-	getSetAtoms = root_config.setconfig.getSetAtoms
+	psets = root_config.setconfig.psets
 	vardb = trees[myroot]["vartree"].dbapi
 	deselect = myopts.get('--deselect') != 'n'
 
-	required_set_names = ("world",)
+	required_set_stack = ["world"]
 	required_sets = {}
 	set_args = []
 
-	for s in required_set_names:
-		required_sets[s] = InternalPackageSet(
-			initial_atoms=getSetAtoms(s))
+	# Recursively create InternalPackageSet instances for world
+	# and any sets nested within it.
+	while required_set_stack:
+		s = required_set_stack.pop()
+		if s in required_sets:
+			continue
+		pset = psets.get(s)
+		if pset is not None:
+			required_sets[s] = InternalPackageSet(
+				initial_atoms=pset.getAtoms())
+			for n in pset.getNonAtoms():
+				if n.startswith(SETPREFIX):
+					required_set_stack.append(n[len(SETPREFIX):])
 
-
-	# When removing packages, use a temporary version of world
-	# which excludes packages that are intended to be eligible for
+	# When removing packages, use a temporary version of world 'selected'
+	# set which excludes packages that are intended to be eligible for
 	# removal.
-	world_temp_set = required_sets["world"]
-	system_set = root_config.sets["system"]
+	selected_set = required_sets["selected"]
+	protected_set = InternalPackageSet()
+	protected_set_name = '____depclean_protected_set____'
+	required_sets[protected_set_name] = protected_set
+	system_set = required_sets.get("system")
 
-	if not system_set or not world_temp_set:
+	if not system_set or not selected_set:
 
 		if not system_set:
 			writemsg_level("!!! You have no system list.\n",
 				level=logging.ERROR, noiselevel=-1)
 
-		if not world_temp_set:
+		if not selected_set:
 			writemsg_level("!!! You have no world file.\n",
 					level=logging.WARNING, noiselevel=-1)
 
@@ -681,7 +693,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		if args_set:
 
 			if deselect:
-				world_temp_set.clear()
+				selected_set.clear()
 
 			# Pull in everything that's installed but not matched
 			# by an argument atom since we don't want to clean any
@@ -691,23 +703,23 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 				try:
 					if args_set.findAtomForPackage(pkg) is None:
-						world_temp_set.add("=" + pkg.cpv)
+						protected_set.add("=" + pkg.cpv)
 						continue
 				except portage.exception.InvalidDependString as e:
 					show_invalid_depstring_notice(pkg,
 						pkg.metadata["PROVIDE"], str(e))
 					del e
-					world_temp_set.add("=" + pkg.cpv)
+					protected_set.add("=" + pkg.cpv)
 					continue
 
 	elif action == "prune":
 
 		if deselect:
-			world_temp_set.clear()
+			selected_set.clear()
 
 		# Pull in everything that's installed since we don't
 		# to prune a package if something depends on it.
-		world_temp_set.update(vardb.cp_all())
+		protected_set.update(vardb.cp_all())
 
 		if not args_set:
 
@@ -730,7 +742,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			highest_version = pkgs_for_cp[-1]
 			if pkg == highest_version:
 				# pkg is the highest version
-				world_temp_set.add("=" + pkg.cpv)
+				protected_set.add("=" + pkg.cpv)
 				continue
 
 			if len(pkgs_for_cp) <= 1:
@@ -740,27 +752,16 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 			try:
 				if args_set.findAtomForPackage(pkg) is None:
-					world_temp_set.add("=" + pkg.cpv)
+					protected_set.add("=" + pkg.cpv)
 					continue
 			except portage.exception.InvalidDependString as e:
 				show_invalid_depstring_notice(pkg,
 					pkg.metadata["PROVIDE"], str(e))
 				del e
-				world_temp_set.add("=" + pkg.cpv)
+				protected_set.add("=" + pkg.cpv)
 				continue
 
-	set_args = {}
-	for s, package_set in required_sets.items():
-		set_atom = SETPREFIX + s
-		set_arg = SetArg(arg=set_atom, set=package_set,
-			root_config=resolver._frozen_config.roots[myroot])
-		set_args[s] = set_arg
-		for atom in set_arg.set:
-			resolver._dynamic_config._dep_stack.append(
-				Dependency(atom=atom, root=myroot, parent=set_arg))
-			resolver._dynamic_config.digraph.add(set_arg, None)
-
-	success = resolver._complete_graph()
+	success = resolver._complete_graph(required_sets={myroot:required_sets})
 	writemsg_level("\b\b... done!\n")
 
 	resolver.display_problems()
@@ -844,6 +845,13 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			return -1
 
 	def create_cleanlist():
+
+		# Never display the special internal protected_set.
+		for node in graph:
+			if isinstance(node, SetArg) and node.name == protected_set_name:
+				graph.remove(node)
+				break
+
 		pkgs_to_remove = []
 
 		if action == "depclean":
@@ -871,9 +879,6 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 						show_parents(pkg)
 
 		elif action == "prune":
-			# Prune really uses all installed instead of world. It's not
-			# a real reverse dependency so don't display it as such.
-			graph.remove(set_args["world"])
 
 			for atom in args_set:
 				for pkg in vardb.match_pkgs(atom):
