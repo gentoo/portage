@@ -3974,7 +3974,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	Optiosn include:
 
 	Sandbox: Sandbox means the spawned process will be limited in its ability t
-	read and write files (normally this means it is restricted to ${IMAGE}/)
+	read and write files (normally this means it is restricted to ${D}/)
 	SElinux Sandbox: Enables sandboxing on SElinux
 	Reduced Privileges: Drops privilages such that the process runs as portage:portage
 	instead of as root.
