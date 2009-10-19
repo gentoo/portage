@@ -79,10 +79,6 @@ unset GZIP BZIP BZIP2 CDPATH GREP_OPTIONS GREP_COLOR GLOBIGNORE
 
 source "${PORTAGE_BIN_PATH}/isolated-functions.sh"  &>/dev/null
 
-# Set IMAGE for minimal backward compatibility with
-# overlays or user's bashrc, but don't export it.
-[ "${EBUILD_PHASE}" == "preinst" ] && IMAGE=${D}
-
 [[ $PORTAGE_QUIET != "" ]] && export PORTAGE_QUIET
 
 # the sandbox is disabled by default except when overridden in the relevant stages
