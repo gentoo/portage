@@ -659,6 +659,10 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	# set which excludes packages that are intended to be eligible for
 	# removal.
 	selected_set = required_sets["selected"]
+	# Rename 'selected' to 'world', since 'selected' is currently
+	# considered to be an internal set and we don't want it to be
+	# displayed to the user as a reverse dependency.
+	required_sets["world"] = required_sets.pop("selected")
 	protected_set = InternalPackageSet()
 	protected_set_name = '____depclean_protected_set____'
 	required_sets[protected_set_name] = protected_set
