@@ -826,6 +826,7 @@ def missing_sets_warning(root_config, missing_sets):
 	msg.append("        This usually means that '%s'" % \
 		(os.path.join(portage.const.GLOBAL_CONFIG_PATH, "sets.conf"),))
 	msg.append("        is missing or corrupt.")
+	msg.append("        Falling back to default world and system set configuration!!!")
 	for line in msg:
 		writemsg_level(line + "\n", level=logging.ERROR, noiselevel=-1)
 
