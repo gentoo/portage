@@ -2132,9 +2132,11 @@ class config(object):
 					self.pprovideddict[mycatpkg]=[x]
 
 			# parse licensegroups
+			license_groups = self._license_groups
 			for x in locations:
-				self._license_groups.update(
-					grabdict(os.path.join(x, "license_groups")))
+				for k, v in grabdict(
+					os.path.join(x, "license_groups")).items():
+					license_groups.setdefault(k, []).extend(v)
 
 			# reasonable defaults; this is important as without USE_ORDER,
 			# USE will always be "" (nothing set)!
