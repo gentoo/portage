@@ -1875,8 +1875,8 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
 		DEFINED_PHASES=
 		for _f in $_valid_phases ; do
 			if declare -F $_f >/dev/null ; then
-				f=${f#pkg_}
-				DEFINED_PHASES+=" ${f#src_}"
+				_f=${_f#pkg_}
+				DEFINED_PHASES+=" ${_f#src_}"
 			fi
 		done
 		[[ -n $DEFINED_PHASES ]] || DEFINED_PHASES=-
