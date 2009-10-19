@@ -494,6 +494,10 @@ Shows the dependency tree for the given target by indenting dependencies.
 This is only really useful in combination with \fB\-\-emptytree\fR or 
 \fB\-\-update\fR and \fB\-\-deep\fR.
 .TP
+.BR "\-\-use\-ebuild\-visibility[=n]"
+Use unbuilt ebuild metadata for visibility
+checks on built packages.
+.TP
 .BR "\-\-usepkg[=n] " (\fB\-k\fR) 
 Tells emerge to use binary packages (from $PKGDIR) if they are available, thus 
 possibly avoiding some time\-consuming compiles.  This option is useful for CD 
