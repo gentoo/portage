@@ -1634,11 +1634,15 @@ filter_readonly_variables() {
 	local x filtered_vars
 	local readonly_bash_vars="BASHPID DIRSTACK EUID FUNCNAME
 		GROUPS PIPESTATUS PPID SHELLOPTS UID"
+	local bash_misc_vars="BASH BASH_.* COMP_WORDBREAKS HISTCMD
+		HISTFILE HOSTNAME HOSTTYPE IFS LINENO MACHTYPE OLDPWD
+		OPTERR OPTIND OSTYPE POSIXLY_CORRECT PS4 PWD RANDOM
+		SECONDS SHELL SHLVL"
 	local filtered_sandbox_vars="SANDBOX_ACTIVE SANDBOX_BASHRC
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
 		SANDBOX_LOG SANDBOX_ON"
-	filtered_vars="${readonly_bash_vars} ${READONLY_PORTAGE_VARS}
-		BASH_.* HISTFILE PATH POSIXLY_CORRECT"
+	filtered_vars="$readonly_bash_vars $bash_misc_vars
+		$READONLY_PORTAGE_VARS PATH"
 	if hasq --filter-sandbox $* ; then
 		filtered_vars="${filtered_vars} SANDBOX_.*"
 	else
