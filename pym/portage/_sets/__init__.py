@@ -172,43 +172,20 @@ class SetConfig(object):
 			raise PackageSetNotFound(setname)
 		myatoms = myset.getAtoms()
 		parser = self._parser
-		extend = set()
-		remove = set()
-		intersect = set()
-		
+
 		if ignorelist is None:
 			ignorelist = set()
 
-		# If sets.conf is corrupt then emerge generates
-		# fallback sets without the 'creator' attribute.
-		if setname not in ignorelist and hasattr(myset, 'creator'):
-			if parser.has_option(myset.creator, "extend"):
-				extend.update(parser.get(myset.creator, "extend").split())
-			if parser.has_option(myset.creator, "remove"):
-				remove.update(parser.get(myset.creator, "remove").split())
-			if parser.has_option(myset.creator, "intersect"):
-				intersect.update(parser.get(myset.creator, "intersect").split())
-						
 		ignorelist.add(setname)
 		for n in myset.getNonAtoms():
 			if n.startswith(SETPREFIX):
 				s = n[len(SETPREFIX):]
 				if s in self.psets:
-					extend.add(n[len(SETPREFIX):])
+					if s not in ignorelist:
+						myatoms.update(self.getSetAtoms(s,
+							ignorelist=ignorelist))
 				else:
 					raise PackageSetNotFound(s)
-
-		for s in ignorelist:
-			extend.discard(s)
-			remove.discard(s)
-			intersect.discard(s)
-		
-		for s in extend:
-			myatoms.update(self.getSetAtoms(s, ignorelist=ignorelist))
-		for s in remove:
-			myatoms.difference_update(self.getSetAtoms(s, ignorelist=ignorelist))
-		for s in intersect:
-			myatoms.intersection_update(self.getSetAtoms(s, ignorelist=ignorelist))
 
 		return myatoms
 
