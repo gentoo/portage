@@ -2143,9 +2143,11 @@ class config(object):
 					self.pprovideddict[mycatpkg]=[x]
 
 			# parse licensegroups
+			license_groups = self._license_groups
 			for x in locations:
-				self._license_groups.update(
-					grabdict(os.path.join(x, "license_groups")))
+				for k, v in grabdict(
+					os.path.join(x, "license_groups")).items():
+					license_groups.setdefault(k, []).extend(v)
 
 			# reasonable defaults; this is important as without USE_ORDER,
 			# USE will always be "" (nothing set)!
@@ -3988,7 +3990,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	Optiosn include:
 
 	Sandbox: Sandbox means the spawned process will be limited in its ability t
-	read and write files (normally this means it is restricted to ${IMAGE}/)
+	read and write files (normally this means it is restricted to ${D}/)
 	SElinux Sandbox: Enables sandboxing on SElinux
 	Reduced Privileges: Drops privilages such that the process runs as portage:portage
 	instead of as root.

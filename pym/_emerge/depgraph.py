@@ -2565,7 +2565,7 @@ class depgraph(object):
 		in_graph = self._dynamic_config._slot_pkg_map[root].get(pkg.slot_atom)
 		return pkg, in_graph
 
-	def _complete_graph(self):
+	def _complete_graph(self, required_sets=None):
 		"""
 		Add any deep dependencies of required sets (args, system, world) that
 		have not been pulled into the graph yet. This ensures that the graph
@@ -2576,6 +2576,10 @@ class depgraph(object):
 
 		Since this method can consume enough time to disturb users, it is
 		currently only enabled by the --complete-graph option.
+
+		@param required_sets: contains required sets (currently only used
+			for depclean and prune removal operations)
+		@type required_sets: dict
 		"""
 		if "--buildpkgonly" in self._frozen_config.myopts or \
 			"recurse" not in self._dynamic_config.myparams:
@@ -2598,11 +2602,16 @@ class depgraph(object):
 			self._dynamic_config.myparams["deep"] = True
 
 		for root in self._frozen_config.roots:
-			required_set_names = self._frozen_config._required_set_names.copy()
+			if required_sets is None or root not in required_sets:
+				required_set_names = self._frozen_config._required_set_names.copy()
+			else:
+				required_set_names = set(required_sets[root])
 			if root == self._frozen_config.target_root and \
 				(already_deep or "empty" in self._dynamic_config.myparams):
 				required_set_names.difference_update(self._dynamic_config._sets)
-			if not required_set_names and not self._dynamic_config._ignored_deps:
+			if not required_set_names and \
+				not self._dynamic_config._ignored_deps and \
+				not self._dynamic_config._dep_stack:
 				continue
 			root_config = self._frozen_config.roots[root]
 			setconfig = root_config.setconfig
@@ -2618,11 +2627,16 @@ class depgraph(object):
 					required_set_names.remove(arg.name)
 			# Create new SetArg instances only when necessary.
 			for s in required_set_names:
-				expanded_set = InternalPackageSet(
-					initial_atoms=setconfig.getSetAtoms(s))
+				if required_sets is None or root not in required_sets:
+					expanded_set = InternalPackageSet(
+						initial_atoms=setconfig.getSetAtoms(s))
+				else:
+					expanded_set = required_sets[root][s]
 				atom = SETPREFIX + s
 				args.append(SetArg(arg=atom, set=expanded_set,
 					root_config=root_config))
+				if root == self._frozen_config.target_root:
+					self._dynamic_config._sets[s] = expanded_set
 			vardb = root_config.trees["vartree"].dbapi
 			for arg in args:
 				for atom in arg.set:

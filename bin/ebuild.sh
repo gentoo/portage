@@ -81,10 +81,6 @@ unset GZIP BZIP BZIP2 CDPATH GREP_OPTIONS GREP_COLOR GLOBIGNORE
 
 source "${PORTAGE_BIN_PATH}/isolated-functions.sh"  &>/dev/null
 
-# Set IMAGE for minimal backward compatibility with
-# overlays or user's bashrc, but don't export it.
-[ "${EBUILD_PHASE}" == "preinst" ] && IMAGE=${D}
-
 [[ $PORTAGE_QUIET != "" ]] && export PORTAGE_QUIET
 
 # the sandbox is disabled by default except when overridden in the relevant stages
@@ -934,7 +930,7 @@ dyn_prepare() {
 
 	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
 	ebuild_phase pre_src_prepare
-	vecho ">>> Preparing source in $srcdir ..."
+	vecho ">>> Preparing source in $PWD ..."
 	ebuild_phase src_prepare
 	touch "$PORTAGE_BUILDDIR"/.prepared
 	vecho ">>> Source prepared."
@@ -966,7 +962,7 @@ dyn_configure() {
 	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
 	ebuild_phase pre_src_configure
 
-	vecho ">>> Configuring source in $srcdir ..."
+	vecho ">>> Configuring source in $PWD ..."
 	ebuild_phase src_configure
 	touch "$PORTAGE_BUILDDIR"/.configured
 	vecho ">>> Source configured."
@@ -999,7 +995,7 @@ dyn_compile() {
 	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
 	ebuild_phase pre_src_compile
 
-	vecho ">>> Compiling source in ${srcdir} ..."
+	vecho ">>> Compiling source in $PWD ..."
 	ebuild_phase src_compile
 	touch "$PORTAGE_BUILDDIR"/.compiled
 	vecho ">>> Source compiled."
@@ -1061,7 +1057,6 @@ dyn_install() {
 	ebuild_phase pre_src_install
 	rm -rf "${PORTAGE_BUILDDIR}/image"
 	mkdir "${PORTAGE_BUILDDIR}/image"
-	local srcdir
 	if [[ -d $S ]] ; then
 		cd "${S}"
 	elif hasq $EAPI 0 1 2; then
@@ -1656,11 +1651,15 @@ filter_readonly_variables() {
 	local x filtered_vars
 	local readonly_bash_vars="BASHPID DIRSTACK EUID FUNCNAME
 		GROUPS PIPESTATUS PPID SHELLOPTS UID"
+	local bash_misc_vars="BASH BASH_.* COMP_WORDBREAKS HISTCMD
+		HISTFILE HOSTNAME HOSTTYPE IFS LINENO MACHTYPE OLDPWD
+		OPTERR OPTIND OSTYPE POSIXLY_CORRECT PS4 PWD RANDOM
+		SECONDS SHELL SHLVL"
 	local filtered_sandbox_vars="SANDBOX_ACTIVE SANDBOX_BASHRC
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
 		SANDBOX_LOG SANDBOX_ON"
-	filtered_vars="${readonly_bash_vars} ${READONLY_PORTAGE_VARS}
-		BASH_.* HISTFILE PATH POSIXLY_CORRECT"
+	filtered_vars="$readonly_bash_vars $bash_misc_vars
+		$READONLY_PORTAGE_VARS PATH"
 	if hasq --filter-sandbox $* ; then
 		filtered_vars="${filtered_vars} SANDBOX_.*"
 	else
