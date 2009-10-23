@@ -66,6 +66,7 @@ options=[
 "--searchdesc",
 "--skipfirst",
 "--tree",
+"--unordered-display",
 "--update",
 "--verbose",
 ]

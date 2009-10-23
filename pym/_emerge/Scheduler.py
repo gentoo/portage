@@ -1492,9 +1492,14 @@ class Scheduler(PollScheduler):
 
 		if self._show_list():
 			if "--tree" in self.myopts:
-				portage.writemsg_stdout("\n" + \
-					darkgreen("These are the packages that " + \
-					"would be merged, in reverse order:\n\n"))
+				if "--unordered-display" in self.myopts:
+					portage.writemsg_stdout("\n" + \
+						darkgreen("These are the packages that " + \
+						"would be merged:") + "\n\n")
+				else:
+					portage.writemsg_stdout("\n" + \
+						darkgreen("These are the packages that " + \
+						"would be merged, in reverse order:") + "\n\n")
 
 			else:
 				portage.writemsg_stdout("\n" + \

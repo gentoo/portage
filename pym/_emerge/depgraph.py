@@ -4534,6 +4534,40 @@ class depgraph(object):
 				for blocker in uninstall_parents:
 					mygraph.add(upgrade_node, blocker)
 
+		if "--unordered-display" in self._frozen_config.myopts:
+			display_list = self._unordered_tree_display(mygraph, mylist)
+		else:
+			display_list = self._ordered_tree_display(mygraph, mylist)
+
+		self._prune_tree_display(display_list)
+
+		return display_list
+
+	def _unordered_tree_display(self, mygraph, mylist):
+		display_list = []
+		seen_nodes = set()
+
+		def print_node(node, depth):
+
+			if node in seen_nodes:
+				pass
+			else:
+				seen_nodes.add(node)
+
+				if isinstance(node, Package):
+					display_list.append((node, depth, True))
+				else:
+					depth = -1
+
+				for child_node in mygraph.child_nodes(node):
+					print_node(child_node, depth + 1)
+
+		for root_node in mygraph.root_nodes():
+			print_node(root_node, 0)
+
+		return display_list
+
+	def _ordered_tree_display(self, mygraph, mylist):
 		depth = 0
 		shown_edges = set()
 		tree_nodes = []
@@ -4594,6 +4628,9 @@ class depgraph(object):
 				tree_nodes = []
 				add_parents(x, True)
 
+		return display_list
+
+	def _prune_tree_display(self, display_list):
 		last_merge_depth = 0
 		for i in range(len(display_list) - 1, -1, -1):
 			node, depth, ordered = display_list[i]
@@ -4612,8 +4649,6 @@ class depgraph(object):
 				i < len(display_list) - 1 and \
 				depth >= display_list[i+1][1]:
 					del display_list[i]
-
-		return display_list
 
 	def display_problems(self):
 		"""
