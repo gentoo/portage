@@ -5247,11 +5247,62 @@ def insert_category_into_atom(atom, category):
 		ret = None
 	return ret
 
+def _spinner_start(spinner, myopts):
+	if spinner is None:
+		return
+	if "--quiet" not in myopts and \
+		("--pretend" in myopts or "--ask" in myopts or \
+		"--tree" in myopts or "--verbose" in myopts):
+		action = ""
+		if "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
+			action = "fetched"
+		elif "--buildpkgonly" in myopts:
+			action = "built"
+		else:
+			action = "merged"
+		if "--tree" in myopts and action != "fetched": # Tree doesn't work with fetching
+			if "--unordered-display" in myopts:
+				portage.writemsg_stdout("\n" + \
+					darkgreen("These are the packages that " + \
+					"would be %s:" % action) + "\n\n")
+			else:
+				portage.writemsg_stdout("\n" + \
+					darkgreen("These are the packages that " + \
+					"would be %s, in reverse order:" % action) + "\n\n")
+		else:
+			portage.writemsg_stdout("\n" + \
+				darkgreen("These are the packages that " + \
+				"would be %s, in order:" % action) + "\n\n")
+
+	show_spinner = "--quiet" not in myopts and "--nodeps" not in myopts
+	if not show_spinner:
+		spinner.update = spinner.update_quiet
+
+	if show_spinner:
+		portage.writemsg_stdout("Calculating dependencies  ")
+
+def _spinner_stop(spinner):
+	if spinner is None or \
+		spinner.update is spinner.update_quiet:
+		return
+
+	portage.writemsg_stdout("\b\b... done!\n")
+
 def backtrack_depgraph(settings, trees, myopts, myparams, 
 	myaction, myfiles, spinner):
 	"""
 	Raises PackageSetNotFound if myfiles contains a missing package set.
 	"""
+	_spinner_start(spinner, myopts)
+	try:
+		return _backtrack_depgraph(settings, trees, myopts, myparams, 
+			myaction, myfiles, spinner)
+	finally:
+		_spinner_stop(spinner)
+
+def _backtrack_depgraph(settings, trees, myopts, myparams, 
+	myaction, myfiles, spinner):
+
 	backtrack_max = 30
 	runtime_pkg_mask = None
 	allow_backtracking = True
@@ -5284,6 +5335,17 @@ def backtrack_depgraph(settings, trees, myopts, myparams,
 	return (success, mydepgraph, favorites)
 
 def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
+	"""
+	Raises PackageSetNotFound if myfiles contains a missing package set.
+	"""
+	_spinner_start(spinner, myopts)
+	try:
+		return _resume_depgraph(settings, trees, mtimedb, myopts,
+			myparams, spinner)
+	finally:
+		_spinner_stop(spinner)
+
+def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 	"""
 	Construct a depgraph for the given resume list. This will raise
 	PackageNotFound or depgraph.UnsatisfiedResumeDep when necessary.

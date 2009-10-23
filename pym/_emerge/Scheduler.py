@@ -1490,28 +1490,6 @@ class Scheduler(PollScheduler):
 		"""
 		print(colorize("GOOD", "*** Resuming merge..."))
 
-		if self._show_list():
-			if "--tree" in self.myopts:
-				if "--unordered-display" in self.myopts:
-					portage.writemsg_stdout("\n" + \
-						darkgreen("These are the packages that " + \
-						"would be merged:") + "\n\n")
-				else:
-					portage.writemsg_stdout("\n" + \
-						darkgreen("These are the packages that " + \
-						"would be merged, in reverse order:") + "\n\n")
-
-			else:
-				portage.writemsg_stdout("\n" + \
-					darkgreen("These are the packages that " + \
-					"would be merged, in order:\n\n"))
-
-		show_spinner = "--quiet" not in self.myopts and \
-			"--nodeps" not in self.myopts
-
-		if show_spinner:
-			print("Calculating dependencies  ", end=' ')
-
 		myparams = create_depgraph_params(self.myopts, None)
 		success = False
 		e = None
@@ -1526,9 +1504,6 @@ class Scheduler(PollScheduler):
 			e = exc
 			mydepgraph = e.depgraph
 			dropped_tasks = set()
-
-		if show_spinner:
-			print("\b\b... done!")
 
 		if e is not None:
 			def unsatisfied_resume_dep_msg():
