@@ -3876,6 +3876,7 @@ class depgraph(object):
 		oneshot = "--oneshot" in self._frozen_config.myopts or \
 			"--onlydeps" in self._frozen_config.myopts
 		columns = "--columns" in self._frozen_config.myopts
+		tree_display = "--tree" in self._frozen_config.myopts
 		changelogs=[]
 		p=[]
 		blockers = []
@@ -3953,150 +3954,22 @@ class depgraph(object):
 				return ret
 
 		repo_display = RepoDisplay(self._frozen_config.roots)
-
-		tree_nodes = []
-		display_list = []
-		mygraph = self._dynamic_config.digraph.copy()
-
-		# If there are any Uninstall instances, add the corresponding
-		# blockers to the digraph (useful for --tree display).
-
-		executed_uninstalls = set(node for node in mylist \
-			if isinstance(node, Package) and node.operation == "unmerge")
-
-		for uninstall in self._dynamic_config._blocker_uninstalls.leaf_nodes():
-			uninstall_parents = \
-				self._dynamic_config._blocker_uninstalls.parent_nodes(uninstall)
-			if not uninstall_parents:
-				continue
-
-			# Remove the corresponding "nomerge" node and substitute
-			# the Uninstall node.
-			inst_pkg = self._pkg(uninstall.cpv, "installed",
-				uninstall.root_config, installed=True)
-
-			try:
-				mygraph.remove(inst_pkg)
-			except KeyError:
-				pass
-
-			try:
-				inst_pkg_blockers = self._dynamic_config._blocker_parents.child_nodes(inst_pkg)
-			except KeyError:
-				inst_pkg_blockers = []
-
-			# Break the Package -> Uninstall edges.
-			mygraph.remove(uninstall)
-
-			# Resolution of a package's blockers
-			# depend on it's own uninstallation.
-			for blocker in inst_pkg_blockers:
-				mygraph.add(uninstall, blocker)
-
-			# Expand Package -> Uninstall edges into
-			# Package -> Blocker -> Uninstall edges.
-			for blocker in uninstall_parents:
-				mygraph.add(uninstall, blocker)
-				for parent in self._dynamic_config._blocker_parents.parent_nodes(blocker):
-					if parent != inst_pkg:
-						mygraph.add(blocker, parent)
-
-			# If the uninstall task did not need to be executed because
-			# of an upgrade, display Blocker -> Upgrade edges since the
-			# corresponding Blocker -> Uninstall edges will not be shown.
-			upgrade_node = \
-				self._dynamic_config._slot_pkg_map[uninstall.root].get(uninstall.slot_atom)
-			if upgrade_node is not None and \
-				uninstall not in executed_uninstalls:
-				for blocker in uninstall_parents:
-					mygraph.add(upgrade_node, blocker)
-
 		unsatisfied_blockers = []
-		i = 0
-		depth = 0
-		shown_edges = set()
+		ordered_nodes = []
 		for x in mylist:
 			if isinstance(x, Blocker) and not x.satisfied:
 				unsatisfied_blockers.append(x)
-				continue
-			graph_key = x
-			if "--tree" in self._frozen_config.myopts:
-				depth = len(tree_nodes)
-				while depth and graph_key not in \
-					mygraph.child_nodes(tree_nodes[depth-1]):
-						depth -= 1
-				if depth:
-					tree_nodes = tree_nodes[:depth]
-					tree_nodes.append(graph_key)
-					display_list.append((x, depth, True))
-					shown_edges.add((graph_key, tree_nodes[depth-1]))
-				else:
-					traversed_nodes = set() # prevent endless circles
-					traversed_nodes.add(graph_key)
-					def add_parents(current_node, ordered):
-						parent_nodes = None
-						# Do not traverse to parents if this node is an
-						# an argument or a direct member of a set that has
-						# been specified as an argument (system or world).
-						if current_node not in self._dynamic_config._set_nodes:
-							parent_nodes = mygraph.parent_nodes(current_node)
-						if parent_nodes:
-							child_nodes = set(mygraph.child_nodes(current_node))
-							selected_parent = None
-							# First, try to avoid a direct cycle.
-							for node in parent_nodes:
-								if not isinstance(node, (Blocker, Package)):
-									continue
-								if node not in traversed_nodes and \
-									node not in child_nodes:
-									edge = (current_node, node)
-									if edge in shown_edges:
-										continue
-									selected_parent = node
-									break
-							if not selected_parent:
-								# A direct cycle is unavoidable.
-								for node in parent_nodes:
-									if not isinstance(node, (Blocker, Package)):
-										continue
-									if node not in traversed_nodes:
-										edge = (current_node, node)
-										if edge in shown_edges:
-											continue
-										selected_parent = node
-										break
-							if selected_parent:
-								shown_edges.add((current_node, selected_parent))
-								traversed_nodes.add(selected_parent)
-								add_parents(selected_parent, False)
-						display_list.append((current_node,
-							len(tree_nodes), ordered))
-						tree_nodes.append(current_node)
-					tree_nodes = []
-					add_parents(graph_key, True)
 			else:
-				display_list.append((x, depth, True))
+				ordered_nodes.append(x)
+
+		if tree_display:
+			display_list = self._tree_display(ordered_nodes)
+		else:
+			display_list = [(x, 0, True) for x in ordered_nodes]
+
 		mylist = display_list
 		for x in unsatisfied_blockers:
 			mylist.append((x, 0, True))
-
-		last_merge_depth = 0
-		for i in range(len(mylist)-1,-1,-1):
-			graph_key, depth, ordered = mylist[i]
-			if not ordered and depth == 0 and i > 0 \
-				and graph_key == mylist[i-1][0] and \
-				mylist[i-1][1] == 0:
-				# An ordered node got a consecutive duplicate when the tree was
-				# being filled in.
-				del mylist[i]
-				continue
-			if ordered and graph_key[-1] != "nomerge":
-				last_merge_depth = depth
-				continue
-			if depth >= last_merge_depth or \
-				i < len(mylist) - 1 and \
-				depth >= mylist[i+1][1]:
-					del mylist[i]
 
 		# files to fetch list - avoids counting a same file twice
 		# in size display (verbose mode)
@@ -4604,6 +4477,143 @@ class depgraph(object):
 
 		sys.stdout.flush()
 		return os.EX_OK
+
+	def _tree_display(self, mylist):
+
+		# If there are any Uninstall instances, add the
+		# corresponding blockers to the digraph.
+		mygraph = self._dynamic_config.digraph.copy()
+
+		executed_uninstalls = set(node for node in mylist \
+			if isinstance(node, Package) and node.operation == "unmerge")
+
+		for uninstall in self._dynamic_config._blocker_uninstalls.leaf_nodes():
+			uninstall_parents = \
+				self._dynamic_config._blocker_uninstalls.parent_nodes(uninstall)
+			if not uninstall_parents:
+				continue
+
+			# Remove the corresponding "nomerge" node and substitute
+			# the Uninstall node.
+			inst_pkg = self._pkg(uninstall.cpv, "installed",
+				uninstall.root_config, installed=True)
+
+			try:
+				mygraph.remove(inst_pkg)
+			except KeyError:
+				pass
+
+			try:
+				inst_pkg_blockers = self._dynamic_config._blocker_parents.child_nodes(inst_pkg)
+			except KeyError:
+				inst_pkg_blockers = []
+
+			# Break the Package -> Uninstall edges.
+			mygraph.remove(uninstall)
+
+			# Resolution of a package's blockers
+			# depend on it's own uninstallation.
+			for blocker in inst_pkg_blockers:
+				mygraph.add(uninstall, blocker)
+
+			# Expand Package -> Uninstall edges into
+			# Package -> Blocker -> Uninstall edges.
+			for blocker in uninstall_parents:
+				mygraph.add(uninstall, blocker)
+				for parent in self._dynamic_config._blocker_parents.parent_nodes(blocker):
+					if parent != inst_pkg:
+						mygraph.add(blocker, parent)
+
+			# If the uninstall task did not need to be executed because
+			# of an upgrade, display Blocker -> Upgrade edges since the
+			# corresponding Blocker -> Uninstall edges will not be shown.
+			upgrade_node = \
+				self._dynamic_config._slot_pkg_map[uninstall.root].get(uninstall.slot_atom)
+			if upgrade_node is not None and \
+				uninstall not in executed_uninstalls:
+				for blocker in uninstall_parents:
+					mygraph.add(upgrade_node, blocker)
+
+		depth = 0
+		shown_edges = set()
+		tree_nodes = []
+		display_list = []
+
+		for x in mylist:
+			depth = len(tree_nodes)
+			while depth and x not in \
+				mygraph.child_nodes(tree_nodes[depth-1]):
+					depth -= 1
+			if depth:
+				tree_nodes = tree_nodes[:depth]
+				tree_nodes.append(x)
+				display_list.append((x, depth, True))
+				shown_edges.add((x, tree_nodes[depth-1]))
+			else:
+				traversed_nodes = set() # prevent endless circles
+				traversed_nodes.add(x)
+				def add_parents(current_node, ordered):
+					parent_nodes = None
+					# Do not traverse to parents if this node is an
+					# an argument or a direct member of a set that has
+					# been specified as an argument (system or world).
+					if current_node not in self._dynamic_config._set_nodes:
+						parent_nodes = mygraph.parent_nodes(current_node)
+					if parent_nodes:
+						child_nodes = set(mygraph.child_nodes(current_node))
+						selected_parent = None
+						# First, try to avoid a direct cycle.
+						for node in parent_nodes:
+							if not isinstance(node, (Blocker, Package)):
+								continue
+							if node not in traversed_nodes and \
+								node not in child_nodes:
+								edge = (current_node, node)
+								if edge in shown_edges:
+									continue
+								selected_parent = node
+								break
+						if not selected_parent:
+							# A direct cycle is unavoidable.
+							for node in parent_nodes:
+								if not isinstance(node, (Blocker, Package)):
+									continue
+								if node not in traversed_nodes:
+									edge = (current_node, node)
+									if edge in shown_edges:
+										continue
+									selected_parent = node
+									break
+						if selected_parent:
+							shown_edges.add((current_node, selected_parent))
+							traversed_nodes.add(selected_parent)
+							add_parents(selected_parent, False)
+					display_list.append((current_node,
+						len(tree_nodes), ordered))
+					tree_nodes.append(current_node)
+				tree_nodes = []
+				add_parents(x, True)
+
+		last_merge_depth = 0
+		for i in range(len(display_list) - 1, -1, -1):
+			node, depth, ordered = display_list[i]
+			if not ordered and depth == 0 and i > 0 \
+				and node == display_list[i-1][0] and \
+				display_list[i-1][1] == 0:
+				# An ordered node got a consecutive duplicate
+				# when the tree was being filled in.
+				del display_list[i]
+				continue
+			if ordered and isinstance(node, Package) \
+				and node.operation == 'merge':
+				last_merge_depth = depth
+				continue
+			if depth >= last_merge_depth or \
+				i < len(display_list) - 1 and \
+				depth >= display_list[i+1][1]:
+					del display_list[i]
+
+		return display_list
 
 	def display_problems(self):
 		"""
