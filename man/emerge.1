@@ -264,7 +264,17 @@ without \fB\-\-pretend\fR, as dependencies will only need to be calculated once.
 \fBWARNING: If the "Enter" key is pressed at the prompt (with no other input),
 it is interpreted as acceptance of the first choice.  Note that the input
 buffer is not cleared prior to the prompt, so an accidental press of the
-"Enter" key at any time prior to the prompt will be interpreted as a choice!\fR
+"Enter" key at any time prior to the prompt will be interpreted as a choice!
+Use the \-\-ask\-enter\-invalid option if you want a single "Enter" key
+press to be interpreted as invalid input.\fR
+.TP
+.BR "\-\-ask\-enter\-invalid"
+When used together with the \fB\-\-ask\fR option,
+interpret a single "Enter" key press as
+invalid input. This helps prevent accidental
+acceptance of the first choice. This option is
+intended to be set in the \fBmake.conf\fR(5)
+\fBEMERGE_DEFAULT_OPTS\fR variable.
 .TP
 .BR "\-\-binpkg\-respect\-use < y | n >"
 Tells emerge to ignore binary packages if their use flags
