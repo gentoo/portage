@@ -219,12 +219,6 @@ system.  Its arguments can be \fIatoms\fR or
 \fIebuilds\fR. For a dependency aware version of \fB\-\-unmerge\fR,
 use \fB\-\-depclean\fR or \fB\-\-prune\fR.
 .TP
-.BR "\-\-unordered-display "
-By default the displayed merge list is sorted using the order in
-which the packages will be merged. When \fB\-\-tree\fR is used together 
-with this option, this constraint is removed, hopefully leading to a 
-more readable dependency tree.
-.TP
 .BR "\-\-update " (\fB\-u\fR)
 Updates packages to the best version available, which may not always be the 
 highest version number due to masking for testing and development.
@@ -499,6 +493,13 @@ masked will be automatically dropped. Also see the related
 Shows the dependency tree for the given target by indenting dependencies.
 This is only really useful in combination with \fB\-\-emptytree\fR or 
 \fB\-\-update\fR and \fB\-\-deep\fR.
+.TP
+.BR "\-\-unordered\-display"
+By default the displayed merge list is sorted using the
+order in which the packages will be merged. When
+\fB\-\-tree\fR is used together with this option, this
+constraint is removed, hopefully leading to a more
+readable dependency tree.
 .TP
 .BR "\-\-use\-ebuild\-visibility[=n]"
 Use unbuilt ebuild metadata for visibility
