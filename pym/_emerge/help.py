@@ -255,16 +255,29 @@ def help(myopts, havecolor=1):
 		print("              be displayed as USE=\"-bar dar -foo\"")
 		print()
 		print("       "+green("--ask")+" ("+green("-a")+" short option)")
-		print("              before performing the merge, display what ebuilds and tbz2s will")
-		print("              be installed, in the same format as when using --pretend; then")
-		print("              ask whether to continue with the merge or abort. Using --ask is")
-		print("              more efficient than using --pretend and then executing the same")
-		print("              command without --pretend, as dependencies will only need to be")
-		print("              calculated once. WARNING: If the \"Enter\" key is pressed at the")
-		print("              prompt (with no other input), it is interpreted as acceptance of")
-		print("              the first choice.  Note that the input buffer is not cleared prior")
-		print("              to the prompt, so an accidental press of the \"Enter\" key at any")
-		print("              time prior to the prompt will be interpreted as a choice!")
+		desc = "Before performing the action, display what will take place (server info for " + \
+			"--sync, --pretend output for merge, and so forth), then ask " + \
+			"whether to proceed with the action or abort.  Using --ask is more " + \
+			"efficient than using --pretend and then executing the same command " + \
+			"without --pretend, as dependencies will only need to be calculated once. " + \
+			"WARNING: If the \"Enter\" key is pressed at the prompt (with no other input), " + \
+			"it is interpreted as acceptance of the first choice.  Note that the input " + \
+			"buffer is not cleared prior to the prompt, so an accidental press of the " + \
+			"\"Enter\" key at any time prior to the prompt will be interpreted as a choice! " + \
+			"Use the --ask-enter-invalid option if you want a single \"Enter\" key " + \
+			"press to be interpreted as invalid input."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
+		print("        " + green("--ask-enter-invalid"))
+		desc = "When used together with the --ask option, " + \
+			"interpret a single \"Enter\" key press as " + \
+			"invalid input. This helps prevent accidental " + \
+			"acceptance of the first choice. This option is " + \
+			"intended to be set in the make.conf(5) " + \
+			"EMERGE_DEFAULT_OPTS variable."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
 		print()
 		print("        " + green("--binpkg-respect-use") + \
 			" < " + turquoise("y") + " | " + turquoise("n") + " >")
@@ -537,6 +550,15 @@ def help(myopts, havecolor=1):
 		print("              The packages are also listed in reverse merge order so that")
 		print("              a package's dependencies follow the package. Only really useful")
 		print("              in combination with --emptytree, --update or --deep.")
+		print()
+		print("       " + green("--unordered-display"))
+		desc = "By default the displayed merge list is sorted using the " + \
+			"order in which the packages will be merged. When " + \
+			"--tree is used together with this option, this " + \
+			"constraint is removed, hopefully leading to a more " + \
+			"readable dependency tree."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
 		print()
 		print("       " + green("--use-ebuild-visibility") + "[=%s]" % turquoise("n"))
 		desc = "Use unbuilt ebuild metadata for visibility " + \

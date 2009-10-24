@@ -97,6 +97,7 @@ class _dynamic_depgraph_config(object):
 	def __init__(self, depgraph, myparams, allow_backtracking,
 		runtime_pkg_mask):
 		self.myparams = myparams.copy()
+		self._vdb_loaded = False
 		self._allow_backtracking = allow_backtracking
 		# Maps slot atom to package for each Package added to the graph.
 		self._slot_pkg_map = {}
@@ -171,26 +172,9 @@ class _dynamic_depgraph_config(object):
 		for myroot in depgraph._frozen_config.trees:
 			self._slot_pkg_map[myroot] = {}
 			vardb = depgraph._frozen_config.trees[myroot]["vartree"].dbapi
-			preload_installed_pkgs = \
-				"--nodeps" not in depgraph._frozen_config.myopts and \
-				"--buildpkgonly" not in depgraph._frozen_config.myopts
-			# This fakedbapi instance will model the state that the vdb will
+			# This dbapi instance will model the state that the vdb will
 			# have after new packages have been installed.
 			fakedb = PackageVirtualDbapi(vardb.settings)
-			if preload_installed_pkgs:
-				for pkg in vardb:
-					depgraph._spinner_update()
-					# This triggers metadata updates via FakeVartree.
-					vardb.aux_get(pkg.cpv, [])
-					fakedb.cpv_inject(pkg)
-
-			# Now that the vardb state is cached in our FakeVartree,
-			# we won't be needing the real vartree cache for awhile.
-			# To make some room on the heap, clear the vardbapi
-			# caches.
-			depgraph._frozen_config._trees_orig[myroot
-				]["vartree"].dbapi._clear_cache()
-			gc.collect()
 
 			self.mydbapi[myroot] = fakedb
 			def graph_tree():
@@ -267,6 +251,43 @@ class depgraph(object):
 
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
+
+	def _load_vdb(self):
+		"""
+		Load installed package metadata if appropriate. This used to be called
+		from the constructor, but that wasn't very nice since this procedure
+		is slow and it generates spinner output. So, now it's called on-demand
+		by various methods when necessary.
+		"""
+
+		if self._dynamic_config._vdb_loaded:
+			return
+
+		for myroot in self._frozen_config.trees:
+
+			preload_installed_pkgs = \
+				"--nodeps" not in self._frozen_config.myopts and \
+				"--buildpkgonly" not in self._frozen_config.myopts
+
+			if preload_installed_pkgs:
+				fakedb = self._dynamic_config._graph_trees[
+					myroot]["vartree"].dbapi
+				vardb = self._frozen_config.trees[myroot]["vartree"].dbapi
+				for pkg in vardb:
+					self._spinner_update()
+					# This triggers metadata updates via FakeVartree.
+					vardb.aux_get(pkg.cpv, [])
+					fakedb.cpv_inject(pkg)
+
+				# Now that the vardb state is cached in our FakeVartree,
+				# we won't be needing the real vartree cache for awhile.
+				# To make some room on the heap, clear the vardbapi
+				# caches.
+				self._frozen_config._trees_orig[myroot
+					]["vartree"].dbapi._clear_cache()
+				gc.collect()
+
+		self._dynamic_config._vdb_loaded = True
 
 	def _spinner_update(self):
 		if self._frozen_config.spinner:
@@ -1438,6 +1459,7 @@ class depgraph(object):
 		"""Given a list of .tbz2s, .ebuilds sets, and deps, populate
 		self._dynamic_config._initial_arg_list and call self._resolve to create the 
 		appropriate depgraph and return a favorite list."""
+		self._load_vdb()
 		debug = "--debug" in self._frozen_config.myopts
 		root_config = self._frozen_config.roots[self._frozen_config.target_root]
 		sets = root_config.sets
@@ -2588,6 +2610,8 @@ class depgraph(object):
 		if "complete" not in self._dynamic_config.myparams:
 			# Skip this to avoid consuming enough time to disturb users.
 			return 1
+
+		self._load_vdb()
 
 		# Put the depgraph into a mode that causes it to only
 		# select packages that have already been added to the
@@ -3876,6 +3900,7 @@ class depgraph(object):
 		oneshot = "--oneshot" in self._frozen_config.myopts or \
 			"--onlydeps" in self._frozen_config.myopts
 		columns = "--columns" in self._frozen_config.myopts
+		tree_display = "--tree" in self._frozen_config.myopts
 		changelogs=[]
 		p=[]
 		blockers = []
@@ -3953,150 +3978,22 @@ class depgraph(object):
 				return ret
 
 		repo_display = RepoDisplay(self._frozen_config.roots)
-
-		tree_nodes = []
-		display_list = []
-		mygraph = self._dynamic_config.digraph.copy()
-
-		# If there are any Uninstall instances, add the corresponding
-		# blockers to the digraph (useful for --tree display).
-
-		executed_uninstalls = set(node for node in mylist \
-			if isinstance(node, Package) and node.operation == "unmerge")
-
-		for uninstall in self._dynamic_config._blocker_uninstalls.leaf_nodes():
-			uninstall_parents = \
-				self._dynamic_config._blocker_uninstalls.parent_nodes(uninstall)
-			if not uninstall_parents:
-				continue
-
-			# Remove the corresponding "nomerge" node and substitute
-			# the Uninstall node.
-			inst_pkg = self._pkg(uninstall.cpv, "installed",
-				uninstall.root_config, installed=True)
-
-			try:
-				mygraph.remove(inst_pkg)
-			except KeyError:
-				pass
-
-			try:
-				inst_pkg_blockers = self._dynamic_config._blocker_parents.child_nodes(inst_pkg)
-			except KeyError:
-				inst_pkg_blockers = []
-
-			# Break the Package -> Uninstall edges.
-			mygraph.remove(uninstall)
-
-			# Resolution of a package's blockers
-			# depend on it's own uninstallation.
-			for blocker in inst_pkg_blockers:
-				mygraph.add(uninstall, blocker)
-
-			# Expand Package -> Uninstall edges into
-			# Package -> Blocker -> Uninstall edges.
-			for blocker in uninstall_parents:
-				mygraph.add(uninstall, blocker)
-				for parent in self._dynamic_config._blocker_parents.parent_nodes(blocker):
-					if parent != inst_pkg:
-						mygraph.add(blocker, parent)
-
-			# If the uninstall task did not need to be executed because
-			# of an upgrade, display Blocker -> Upgrade edges since the
-			# corresponding Blocker -> Uninstall edges will not be shown.
-			upgrade_node = \
-				self._dynamic_config._slot_pkg_map[uninstall.root].get(uninstall.slot_atom)
-			if upgrade_node is not None and \
-				uninstall not in executed_uninstalls:
-				for blocker in uninstall_parents:
-					mygraph.add(upgrade_node, blocker)
-
 		unsatisfied_blockers = []
-		i = 0
-		depth = 0
-		shown_edges = set()
+		ordered_nodes = []
 		for x in mylist:
 			if isinstance(x, Blocker) and not x.satisfied:
 				unsatisfied_blockers.append(x)
-				continue
-			graph_key = x
-			if "--tree" in self._frozen_config.myopts:
-				depth = len(tree_nodes)
-				while depth and graph_key not in \
-					mygraph.child_nodes(tree_nodes[depth-1]):
-						depth -= 1
-				if depth:
-					tree_nodes = tree_nodes[:depth]
-					tree_nodes.append(graph_key)
-					display_list.append((x, depth, True))
-					shown_edges.add((graph_key, tree_nodes[depth-1]))
-				else:
-					traversed_nodes = set() # prevent endless circles
-					traversed_nodes.add(graph_key)
-					def add_parents(current_node, ordered):
-						parent_nodes = None
-						# Do not traverse to parents if this node is an
-						# an argument or a direct member of a set that has
-						# been specified as an argument (system or world).
-						if current_node not in self._dynamic_config._set_nodes:
-							parent_nodes = mygraph.parent_nodes(current_node)
-						if parent_nodes:
-							child_nodes = set(mygraph.child_nodes(current_node))
-							selected_parent = None
-							# First, try to avoid a direct cycle.
-							for node in parent_nodes:
-								if not isinstance(node, (Blocker, Package)):
-									continue
-								if node not in traversed_nodes and \
-									node not in child_nodes:
-									edge = (current_node, node)
-									if edge in shown_edges:
-										continue
-									selected_parent = node
-									break
-							if not selected_parent:
-								# A direct cycle is unavoidable.
-								for node in parent_nodes:
-									if not isinstance(node, (Blocker, Package)):
-										continue
-									if node not in traversed_nodes:
-										edge = (current_node, node)
-										if edge in shown_edges:
-											continue
-										selected_parent = node
-										break
-							if selected_parent:
-								shown_edges.add((current_node, selected_parent))
-								traversed_nodes.add(selected_parent)
-								add_parents(selected_parent, False)
-						display_list.append((current_node,
-							len(tree_nodes), ordered))
-						tree_nodes.append(current_node)
-					tree_nodes = []
-					add_parents(graph_key, True)
 			else:
-				display_list.append((x, depth, True))
+				ordered_nodes.append(x)
+
+		if tree_display:
+			display_list = self._tree_display(ordered_nodes)
+		else:
+			display_list = [(x, 0, True) for x in ordered_nodes]
+
 		mylist = display_list
 		for x in unsatisfied_blockers:
 			mylist.append((x, 0, True))
-
-		last_merge_depth = 0
-		for i in range(len(mylist)-1,-1,-1):
-			graph_key, depth, ordered = mylist[i]
-			if not ordered and depth == 0 and i > 0 \
-				and graph_key == mylist[i-1][0] and \
-				mylist[i-1][1] == 0:
-				# An ordered node got a consecutive duplicate when the tree was
-				# being filled in.
-				del mylist[i]
-				continue
-			if ordered and graph_key[-1] != "nomerge":
-				last_merge_depth = depth
-				continue
-			if depth >= last_merge_depth or \
-				i < len(mylist) - 1 and \
-				depth >= mylist[i+1][1]:
-					del mylist[i]
 
 		# files to fetch list - avoids counting a same file twice
 		# in size display (verbose mode)
@@ -4605,6 +4502,178 @@ class depgraph(object):
 		sys.stdout.flush()
 		return os.EX_OK
 
+	def _tree_display(self, mylist):
+
+		# If there are any Uninstall instances, add the
+		# corresponding blockers to the digraph.
+		mygraph = self._dynamic_config.digraph.copy()
+
+		executed_uninstalls = set(node for node in mylist \
+			if isinstance(node, Package) and node.operation == "unmerge")
+
+		for uninstall in self._dynamic_config._blocker_uninstalls.leaf_nodes():
+			uninstall_parents = \
+				self._dynamic_config._blocker_uninstalls.parent_nodes(uninstall)
+			if not uninstall_parents:
+				continue
+
+			# Remove the corresponding "nomerge" node and substitute
+			# the Uninstall node.
+			inst_pkg = self._pkg(uninstall.cpv, "installed",
+				uninstall.root_config, installed=True)
+
+			try:
+				mygraph.remove(inst_pkg)
+			except KeyError:
+				pass
+
+			try:
+				inst_pkg_blockers = self._dynamic_config._blocker_parents.child_nodes(inst_pkg)
+			except KeyError:
+				inst_pkg_blockers = []
+
+			# Break the Package -> Uninstall edges.
+			mygraph.remove(uninstall)
+
+			# Resolution of a package's blockers
+			# depend on it's own uninstallation.
+			for blocker in inst_pkg_blockers:
+				mygraph.add(uninstall, blocker)
+
+			# Expand Package -> Uninstall edges into
+			# Package -> Blocker -> Uninstall edges.
+			for blocker in uninstall_parents:
+				mygraph.add(uninstall, blocker)
+				for parent in self._dynamic_config._blocker_parents.parent_nodes(blocker):
+					if parent != inst_pkg:
+						mygraph.add(blocker, parent)
+
+			# If the uninstall task did not need to be executed because
+			# of an upgrade, display Blocker -> Upgrade edges since the
+			# corresponding Blocker -> Uninstall edges will not be shown.
+			upgrade_node = \
+				self._dynamic_config._slot_pkg_map[uninstall.root].get(uninstall.slot_atom)
+			if upgrade_node is not None and \
+				uninstall not in executed_uninstalls:
+				for blocker in uninstall_parents:
+					mygraph.add(upgrade_node, blocker)
+
+		if "--unordered-display" in self._frozen_config.myopts:
+			display_list = self._unordered_tree_display(mygraph, mylist)
+		else:
+			display_list = self._ordered_tree_display(mygraph, mylist)
+
+		self._prune_tree_display(display_list)
+
+		return display_list
+
+	def _unordered_tree_display(self, mygraph, mylist):
+		display_list = []
+		seen_nodes = set()
+
+		def print_node(node, depth):
+
+			if node in seen_nodes:
+				pass
+			else:
+				seen_nodes.add(node)
+
+				if isinstance(node, Package):
+					display_list.append((node, depth, True))
+				else:
+					depth = -1
+
+				for child_node in mygraph.child_nodes(node):
+					print_node(child_node, depth + 1)
+
+		for root_node in mygraph.root_nodes():
+			print_node(root_node, 0)
+
+		return display_list
+
+	def _ordered_tree_display(self, mygraph, mylist):
+		depth = 0
+		shown_edges = set()
+		tree_nodes = []
+		display_list = []
+
+		for x in mylist:
+			depth = len(tree_nodes)
+			while depth and x not in \
+				mygraph.child_nodes(tree_nodes[depth-1]):
+					depth -= 1
+			if depth:
+				tree_nodes = tree_nodes[:depth]
+				tree_nodes.append(x)
+				display_list.append((x, depth, True))
+				shown_edges.add((x, tree_nodes[depth-1]))
+			else:
+				traversed_nodes = set() # prevent endless circles
+				traversed_nodes.add(x)
+				def add_parents(current_node, ordered):
+					parent_nodes = None
+					# Do not traverse to parents if this node is an
+					# an argument or a direct member of a set that has
+					# been specified as an argument (system or world).
+					if current_node not in self._dynamic_config._set_nodes:
+						parent_nodes = mygraph.parent_nodes(current_node)
+					if parent_nodes:
+						child_nodes = set(mygraph.child_nodes(current_node))
+						selected_parent = None
+						# First, try to avoid a direct cycle.
+						for node in parent_nodes:
+							if not isinstance(node, (Blocker, Package)):
+								continue
+							if node not in traversed_nodes and \
+								node not in child_nodes:
+								edge = (current_node, node)
+								if edge in shown_edges:
+									continue
+								selected_parent = node
+								break
+						if not selected_parent:
+							# A direct cycle is unavoidable.
+							for node in parent_nodes:
+								if not isinstance(node, (Blocker, Package)):
+									continue
+								if node not in traversed_nodes:
+									edge = (current_node, node)
+									if edge in shown_edges:
+										continue
+									selected_parent = node
+									break
+						if selected_parent:
+							shown_edges.add((current_node, selected_parent))
+							traversed_nodes.add(selected_parent)
+							add_parents(selected_parent, False)
+					display_list.append((current_node,
+						len(tree_nodes), ordered))
+					tree_nodes.append(current_node)
+				tree_nodes = []
+				add_parents(x, True)
+
+		return display_list
+
+	def _prune_tree_display(self, display_list):
+		last_merge_depth = 0
+		for i in range(len(display_list) - 1, -1, -1):
+			node, depth, ordered = display_list[i]
+			if not ordered and depth == 0 and i > 0 \
+				and node == display_list[i-1][0] and \
+				display_list[i-1][1] == 0:
+				# An ordered node got a consecutive duplicate
+				# when the tree was being filled in.
+				del display_list[i]
+				continue
+			if ordered and isinstance(node, Package) \
+				and node.operation == 'merge':
+				last_merge_depth = depth
+				continue
+			if depth >= last_merge_depth or \
+				i < len(display_list) - 1 and \
+				depth >= display_list[i+1][1]:
+					del display_list[i]
+
 	def display_problems(self):
 		"""
 		Display problems with the dependency graph such as slot collisions.
@@ -4801,6 +4870,8 @@ class depgraph(object):
 		Add a resume command to the graph and validate it in the process.  This
 		will raise a PackageNotFound exception if a package is not available.
 		"""
+
+		self._load_vdb()
 
 		if not isinstance(resume_data, dict):
 			return False
@@ -5202,11 +5273,62 @@ def insert_category_into_atom(atom, category):
 		ret = None
 	return ret
 
+def _spinner_start(spinner, myopts):
+	if spinner is None:
+		return
+	if "--quiet" not in myopts and \
+		("--pretend" in myopts or "--ask" in myopts or \
+		"--tree" in myopts or "--verbose" in myopts):
+		action = ""
+		if "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
+			action = "fetched"
+		elif "--buildpkgonly" in myopts:
+			action = "built"
+		else:
+			action = "merged"
+		if "--tree" in myopts and action != "fetched": # Tree doesn't work with fetching
+			if "--unordered-display" in myopts:
+				portage.writemsg_stdout("\n" + \
+					darkgreen("These are the packages that " + \
+					"would be %s:" % action) + "\n\n")
+			else:
+				portage.writemsg_stdout("\n" + \
+					darkgreen("These are the packages that " + \
+					"would be %s, in reverse order:" % action) + "\n\n")
+		else:
+			portage.writemsg_stdout("\n" + \
+				darkgreen("These are the packages that " + \
+				"would be %s, in order:" % action) + "\n\n")
+
+	show_spinner = "--quiet" not in myopts and "--nodeps" not in myopts
+	if not show_spinner:
+		spinner.update = spinner.update_quiet
+
+	if show_spinner:
+		portage.writemsg_stdout("Calculating dependencies  ")
+
+def _spinner_stop(spinner):
+	if spinner is None or \
+		spinner.update is spinner.update_quiet:
+		return
+
+	portage.writemsg_stdout("\b\b... done!\n")
+
 def backtrack_depgraph(settings, trees, myopts, myparams, 
 	myaction, myfiles, spinner):
 	"""
 	Raises PackageSetNotFound if myfiles contains a missing package set.
 	"""
+	_spinner_start(spinner, myopts)
+	try:
+		return _backtrack_depgraph(settings, trees, myopts, myparams, 
+			myaction, myfiles, spinner)
+	finally:
+		_spinner_stop(spinner)
+
+def _backtrack_depgraph(settings, trees, myopts, myparams, 
+	myaction, myfiles, spinner):
+
 	backtrack_max = 30
 	runtime_pkg_mask = None
 	allow_backtracking = True
@@ -5239,6 +5361,17 @@ def backtrack_depgraph(settings, trees, myopts, myparams,
 	return (success, mydepgraph, favorites)
 
 def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
+	"""
+	Raises PackageSetNotFound if myfiles contains a missing package set.
+	"""
+	_spinner_start(spinner, myopts)
+	try:
+		return _resume_depgraph(settings, trees, mtimedb, myopts,
+			myparams, spinner)
+	finally:
+		_spinner_stop(spinner)
+
+def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 	"""
 	Construct a depgraph for the given resume list. This will raise
 	PackageNotFound or depgraph.UnsatisfiedResumeDep when necessary.

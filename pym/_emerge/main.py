@@ -50,6 +50,7 @@ if sys.hexversion >= 0x3000000:
 
 options=[
 "--ask",          "--alphabetical",
+"--ask-enter-invalid",
 "--buildpkg",     "--buildpkgonly",
 "--changed-use",
 "--changelog",    "--columns",
@@ -67,6 +68,7 @@ options=[
 "--searchdesc",
 "--skipfirst",
 "--tree",
+"--unordered-display",
 "--update",
 "--verbose",
 ]

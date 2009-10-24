@@ -27,6 +27,7 @@ def unmerge(root_config, myopts, unmerge_action,
 	if clean_world:
 		clean_world = myopts.get('--deselect') != 'n'
 	quiet = "--quiet" in myopts
+	enter_invalid = '--ask-enter-invalid' in myopts
 	settings = root_config.settings
 	sets = root_config.sets
 	vartree = root_config.trees["vartree"]
@@ -483,7 +484,8 @@ def unmerge(root_config, myopts, unmerge_action,
 		#we're done... return
 		return 0
 	if "--ask" in myopts:
-		if userquery("Would you like to unmerge these packages?")=="No":
+		if userquery("Would you like to unmerge these packages?",
+			enter_invalid) == "No":
 			# enter pretend mode for correct formatting of results
 			myopts["--pretend"] = True
 			print()
