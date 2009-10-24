@@ -3075,7 +3075,7 @@ class dblink(object):
 			os.path.sep
 		dest_root_len = len(dest_root) - 1
 
-		conf_mem_file = os.path.join(dest_root, EPREFIX_LSTRIP, CONFIG_MEMORY_FILE)
+		conf_mem_file = os.path.join(dest_root, CONFIG_MEMORY_FILE)
 		cfgfiledict = grabdict(conf_mem_file)
 		stale_confmem = []
 
