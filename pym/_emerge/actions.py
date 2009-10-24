@@ -165,42 +165,10 @@ def action_build(settings, trees, mtimedb,
 			writemsg("%s%s\n" % (prefix, line))
 		writemsg(prefix + "\n")
 
-	if "--quiet" not in myopts and \
-		("--pretend" in myopts or "--ask" in myopts or \
-		"--tree" in myopts or "--verbose" in myopts):
-		action = ""
-		if "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
-			action = "fetched"
-		elif "--buildpkgonly" in myopts:
-			action = "built"
-		else:
-			action = "merged"
-		if "--tree" in myopts and action != "fetched": # Tree doesn't work with fetching
-			if "--unordered-display" in myopts:
-				portage.writemsg_stdout("\n" + \
-					darkgreen("These are the packages that " + \
-					"would be %s:" % action) + "\n\n")
-			else:
-				portage.writemsg_stdout("\n" + \
-					darkgreen("These are the packages that " + \
-					"would be %s, in reverse order:" % action) + "\n\n")
-			print()
-		else:
-			print()
-			print(darkgreen("These are the packages that would be %s, in order:") % action)
-			print()
-
-	show_spinner = "--quiet" not in myopts and "--nodeps" not in myopts
-	if not show_spinner:
-		spinner.update = spinner.update_quiet
-
 	if resume:
 		favorites = mtimedb["resume"].get("favorites")
 		if not isinstance(favorites, list):
 			favorites = []
-
-		if show_spinner:
-			print("Calculating dependencies  ", end=' ')
 		myparams = create_depgraph_params(myopts, myaction)
 
 		resume_data = mtimedb["resume"]
@@ -221,8 +189,7 @@ def action_build(settings, trees, mtimedb,
 			depgraph.UnsatisfiedResumeDep) as e:
 			if isinstance(e, depgraph.UnsatisfiedResumeDep):
 				mydepgraph = e.depgraph
-			if show_spinner:
-				print()
+
 			from textwrap import wrap
 			from portage.output import EOutput
 			out = EOutput()
@@ -274,9 +241,6 @@ def action_build(settings, trees, mtimedb,
 					"the operation manually."
 				for line in wrap(msg, 72):
 					out.eerror(line)
-		else:
-			if show_spinner:
-				print("\b\b... done!")
 
 		if success:
 			if dropped_tasks:
@@ -304,23 +268,14 @@ def action_build(settings, trees, mtimedb,
 			print(darkgreen("emerge: It seems we have nothing to resume..."))
 			return os.EX_OK
 
-		if "--quiet" not in myopts and "--nodeps" not in myopts:
-			print("Calculating dependencies  ", end=' ')
-			sys.stdout.flush()
-
 		myparams = create_depgraph_params(myopts, myaction)
 		try:
 			success, mydepgraph, favorites = backtrack_depgraph(
 				settings, trees, myopts, myparams, myaction, myfiles, spinner)
 		except portage.exception.PackageSetNotFound as e:
-			if show_spinner:
-				print("\b\b... done!")
 			root_config = trees[settings["ROOT"]]["root_config"]
 			display_missing_pkg_set(root_config, e.value)
 			return 1
-
-		if show_spinner:
-			print("\b\b... done!")
 
 		if not success:
 			mydepgraph.display_problems()
