@@ -8,11 +8,12 @@ import sys
 
 from portage.output import bold, create_color_func
 
-def userquery(prompt, responses=None, colours=None):
+def userquery(prompt, enter_invalid, responses=None, colours=None):
 	"""Displays a prompt and a set of responses, then waits for a response
 	which is checked against the responses and the first to match is
-	returned.  An empty response will match the first value in responses.  The
-	input buffer is *not* cleared prior to the prompt!
+	returned. An empty response will match the first value in responses,
+	unless enter_invalid is True. The input buffer is *not* cleared prior
+	to the prompt!
 
 	prompt: a String.
 	responses: a List of Strings.
@@ -42,10 +43,12 @@ def userquery(prompt, responses=None, colours=None):
 				response=input("["+"/".join([colours[i](responses[i]) for i in range(len(responses))])+"] ")
 			else:
 				response=raw_input("["+"/".join([colours[i](responses[i]) for i in range(len(responses))])+"] ")
-			for key in responses:
-				# An empty response will match the first value in responses.
-				if response.upper()==key[:len(response)].upper():
-					return key
+			if response or not enter_invalid:
+				for key in responses:
+					# An empty response will match the
+					# first value in responses.
+					if response.upper()==key[:len(response)].upper():
+						return key
 			print("Sorry, response '%s' not understood." % response, end=' ')
 	except (EOFError, KeyboardInterrupt):
 		print("Interrupted.")

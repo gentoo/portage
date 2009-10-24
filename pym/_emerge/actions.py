@@ -134,6 +134,7 @@ def action_build(settings, trees, mtimedb,
 	pretend = "--pretend" in myopts
 	fetchonly = "--fetchonly" in myopts or "--fetch-all-uri" in myopts
 	ask = "--ask" in myopts
+	enter_invalid = '--ask-enter-invalid' in myopts
 	nodeps = "--nodeps" in myopts
 	oneshot = "--oneshot" in myopts or "--onlydeps" in myopts
 	tree = "--tree" in myopts
@@ -340,7 +341,7 @@ def action_build(settings, trees, mtimedb,
 			else:
 				prompt="Would you like to merge these packages?"
 		print()
-		if "--ask" in myopts and userquery(prompt) == "No":
+		if "--ask" in myopts and userquery(prompt, enter_invalid) == "No":
 			print()
 			print("Quitting.")
 			print()
@@ -440,6 +441,7 @@ def action_build(settings, trees, mtimedb,
 		return retval
 
 def action_config(settings, trees, myopts, myfiles):
+	enter_invalid = '--ask-enter-invalid' in myopts
 	if len(myfiles) != 1:
 		print(red("!!! config can only take a single package atom at this time\n"))
 		sys.exit(1)
@@ -469,7 +471,7 @@ def action_config(settings, trees, myopts, myfiles):
 				print(options[-1]+") "+pkg)
 			print("X) Cancel")
 			options.append("X")
-			idx = userquery("Selection?", options)
+			idx = userquery("Selection?", enter_invalid, responses=options)
 			if idx == "X":
 				sys.exit(0)
 			pkg = pkgs[int(idx)-1]
@@ -484,7 +486,7 @@ def action_config(settings, trees, myopts, myfiles):
 
 	print()
 	if "--ask" in myopts:
-		if userquery("Ready to configure "+pkg+"?") == "No":
+		if userquery("Ready to configure %s?" % pkg, enter_invalid) == "No":
 			sys.exit(0)
 	else:
 		print("Configuring pkg...")
@@ -966,6 +968,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	return 0, [], False, required_pkgs_total
 
 def action_deselect(settings, trees, opts, atoms):
+	enter_invalid = '--ask-enter-invalid' in opts
 	root_config = trees[settings['ROOT']]['root_config']
 	world_set = root_config.sets['selected']
 	if not hasattr(world_set, 'update'):
@@ -1008,7 +1011,7 @@ def action_deselect(settings, trees, opts, atoms):
 			if '--ask' in opts:
 				prompt = "Would you like to remove these " + \
 					"packages from your world favorites?"
-				if userquery(prompt) == 'No':
+				if userquery(prompt, enter_invalid) == 'No':
 					return os.EX_OK
 
 			remaining = set(world_set)
@@ -1503,6 +1506,7 @@ def action_search(root_config, myopts, myfiles, spinner):
 			searchinstance.output()
 
 def action_sync(settings, trees, mtimedb, myopts, myaction):
+	enter_invalid = '--ask-enter-invalid' in myopts
 	xterm_titles = "notitles" not in settings.features
 	emergelog(xterm_titles, " === sync")
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
@@ -1748,7 +1752,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 			if (retries==0):
 				if "--ask" in myopts:
-					if userquery("Do you want to sync your Portage tree with the mirror at\n" + blue(dosyncuri) + bold("?"))=="No":
+					if userquery("Do you want to sync your Portage tree " + \
+						"with the mirror at\n" + blue(dosyncuri) + bold("?"),
+						enter_invalid) == "No":
 						print()
 						print("Quitting.")
 						print()
