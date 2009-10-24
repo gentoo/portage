@@ -25,6 +25,7 @@ import sys
 import tempfile
 import time
 import platform
+import urllib
 
 from io import StringIO
 from itertools import chain
@@ -440,6 +441,10 @@ suspect_rdepend = frozenset([
 	"x11-misc/imake",
 ])
 
+metadata_dtd_uri = 'http://www.gentoo.org/dtd/metadata.dtd'
+# force refetch if the local copy creation time is older than this
+metadata_dtd_ctime_interval = 60 * 60 * 24 * 7 # 7 days
+
 # file.executable
 no_exec = frozenset(["Manifest","ChangeLog","metadata.xml"])
 
@@ -765,8 +770,70 @@ desktop_pattern = re.compile(r'.*\.desktop$')
 for x in qacats:
 	stats[x]=0
 	fails[x]=[]
+
 xmllint_capable = False
 metadata_dtd = os.path.join(repoman_settings["DISTDIR"], 'metadata.dtd')
+
+def fetch_metadata_dtd():
+	"""
+	Fetch metadata.dtd if it doesn't exist or the ctime is older than
+	metadata_dtd_ctime_interval.
+	@rtype: bool
+	@returns: True if successful, otherwise False
+	"""
+
+	must_fetch = True
+	metadata_dtd_st = None
+	current_time = int(time.time())
+	try:
+		metadata_dtd_st = os.stat(metadata_dtd)
+	except EnvironmentError as e:
+		if e.errno not in (errno.ENOENT, errno.ESTALE):
+			raise
+		del e
+	else:
+		# Trigger fetch if metadata.dtd mtime is old or clock is wrong.
+		if abs(current_time - metadata_dtd_st.st_ctime) \
+			< metadata_dtd_ctime_interval:
+			must_fetch = False
+
+	if must_fetch:
+		print()
+		print(green("***") + " the local copy of metadata.dtd " + \
+			"needs to be refetched, doing that now")
+		print()
+		try:
+			url_f = urllib.urlopen(metadata_dtd_uri)
+			last_modified = url_f.info().getdate('last-modified')
+			if last_modified is not None:
+				last_modified = time.mktime(last_modified)
+
+			metadata_dtd_tmp = "%s.%s" % (metadata_dtd, os.getpid())
+			try:
+				local_f = open(metadata_dtd_tmp, mode='wb')
+				local_f.write(url_f.read())
+				local_f.close()
+				if last_modified is not None:
+					os.utime(metadata_dtd_tmp,
+						(int(last_modified), int(last_modified)))
+				os.rename(metadata_dtd_tmp, metadata_dtd)
+			finally:
+				try:
+					os.unlink(metadata_dtd_tmp)
+				except OSError:
+					pass
+
+			url_f.close()
+
+		except EnvironmentError as e:
+			print()
+			print(red("!!!")+" attempting to fetch '%s', caught" % metadata_dtd_uri)
+			print(red("!!!")+" exception '%s' though." % (e,))
+			print(red("!!!")+" fetching new metadata.dtd failed, aborting")
+			return False
+
+	return True
+
 if options.mode == "manifest":
 	pass
 elif not find_binary('xmllint'):
@@ -775,49 +842,8 @@ elif not find_binary('xmllint'):
 		print(red("!!!")+" sorry, xmllint is needed.  failing\n")
 		sys.exit(1)
 else:
-	#hardcoded paths/urls suck. :-/
-	must_fetch=1
-	backup_exists=0
-	try:
-		# if it's been over a week since fetching (or the system clock is fscked), grab an updated copy of metadata.dtd 
-		# clock is fscked or it's been a week. time to grab a new one.
-		ct = os.stat(metadata_dtd)[ST_CTIME]
-		if abs(time.time() - ct) > (60*60*24*7):
-			# don't trap the exception, we're watching for errno 2 (file not found), anything else is a bug.
-			backup_exists=1
-		else:
-			must_fetch=0
-
-	except (OSError,IOError) as e:
-		if e.errno != 2:
-			print(red("!!!")+" caught exception '%s' for %s/metadata.dtd, bailing" % (str(e), portage.CACHE_PATH))
-			sys.exit(1)
-
-	if must_fetch:
-		print() 
-		print(green("***")+" the local copy of metadata.dtd needs to be refetched, doing that now")
-		print()
-		val = 0
-		try:
-			try:
-				os.unlink(metadata_dtd)
-			except OSError as e:
-				if e.errno != errno.ENOENT:
-					raise
-				del e
-			val=portage.fetch(['http://www.gentoo.org/dtd/metadata.dtd'],repoman_settings,fetchonly=0, \
-				try_mirrors=0)
-
-		except SystemExit as e:
-			raise  # Need to propogate this
-		except Exception as e:
-			print()
-			print(red("!!!")+" attempting to fetch 'http://www.gentoo.org/dtd/metadata.dtd', caught")
-			print(red("!!!")+" exception '%s' though." % str(e))
-			val=0
-		if not val:
-			print(red("!!!")+" fetching new metadata.dtd failed, aborting")
-			sys.exit(1)
+	if not fetch_metadata_dtd():
+		sys.exit(1)
 	#this can be problematic if xmllint changes their output
 	xmllint_capable=True
 
