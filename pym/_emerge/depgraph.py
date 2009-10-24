@@ -97,6 +97,7 @@ class _dynamic_depgraph_config(object):
 	def __init__(self, depgraph, myparams, allow_backtracking,
 		runtime_pkg_mask):
 		self.myparams = myparams.copy()
+		self._vdb_loaded = False
 		self._allow_backtracking = allow_backtracking
 		# Maps slot atom to package for each Package added to the graph.
 		self._slot_pkg_map = {}
@@ -171,26 +172,9 @@ class _dynamic_depgraph_config(object):
 		for myroot in depgraph._frozen_config.trees:
 			self._slot_pkg_map[myroot] = {}
 			vardb = depgraph._frozen_config.trees[myroot]["vartree"].dbapi
-			preload_installed_pkgs = \
-				"--nodeps" not in depgraph._frozen_config.myopts and \
-				"--buildpkgonly" not in depgraph._frozen_config.myopts
-			# This fakedbapi instance will model the state that the vdb will
+			# This dbapi instance will model the state that the vdb will
 			# have after new packages have been installed.
 			fakedb = PackageVirtualDbapi(vardb.settings)
-			if preload_installed_pkgs:
-				for pkg in vardb:
-					depgraph._spinner_update()
-					# This triggers metadata updates via FakeVartree.
-					vardb.aux_get(pkg.cpv, [])
-					fakedb.cpv_inject(pkg)
-
-			# Now that the vardb state is cached in our FakeVartree,
-			# we won't be needing the real vartree cache for awhile.
-			# To make some room on the heap, clear the vardbapi
-			# caches.
-			depgraph._frozen_config._trees_orig[myroot
-				]["vartree"].dbapi._clear_cache()
-			gc.collect()
 
 			self.mydbapi[myroot] = fakedb
 			def graph_tree():
@@ -267,6 +251,43 @@ class depgraph(object):
 
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
+
+	def _load_vdb(self):
+		"""
+		Load installed package metadata if appropriate. This used to be called
+		from the constructor, but that wasn't very nice since this procedure
+		is slow and it generates spinner output. So, now it's called on-demand
+		by various methods when necessary.
+		"""
+
+		if self._dynamic_config._vdb_loaded:
+			return
+
+		for myroot in self._frozen_config.trees:
+
+			preload_installed_pkgs = \
+				"--nodeps" not in self._frozen_config.myopts and \
+				"--buildpkgonly" not in self._frozen_config.myopts
+
+			if preload_installed_pkgs:
+				fakedb = self._dynamic_config._graph_trees[
+					myroot]["vartree"].dbapi
+				vardb = self._frozen_config.trees[myroot]["vartree"].dbapi
+				for pkg in vardb:
+					self._spinner_update()
+					# This triggers metadata updates via FakeVartree.
+					vardb.aux_get(pkg.cpv, [])
+					fakedb.cpv_inject(pkg)
+
+				# Now that the vardb state is cached in our FakeVartree,
+				# we won't be needing the real vartree cache for awhile.
+				# To make some room on the heap, clear the vardbapi
+				# caches.
+				self._frozen_config._trees_orig[myroot
+					]["vartree"].dbapi._clear_cache()
+				gc.collect()
+
+		self._dynamic_config._vdb_loaded = True
 
 	def _spinner_update(self):
 		if self._frozen_config.spinner:
@@ -1438,6 +1459,7 @@ class depgraph(object):
 		"""Given a list of .tbz2s, .ebuilds sets, and deps, populate
 		self._dynamic_config._initial_arg_list and call self._resolve to create the 
 		appropriate depgraph and return a favorite list."""
+		self._load_vdb()
 		debug = "--debug" in self._frozen_config.myopts
 		root_config = self._frozen_config.roots[self._frozen_config.target_root]
 		sets = root_config.sets
@@ -2588,6 +2610,8 @@ class depgraph(object):
 		if "complete" not in self._dynamic_config.myparams:
 			# Skip this to avoid consuming enough time to disturb users.
 			return 1
+
+		self._load_vdb()
 
 		# Put the depgraph into a mode that causes it to only
 		# select packages that have already been added to the
@@ -4846,6 +4870,8 @@ class depgraph(object):
 		Add a resume command to the graph and validate it in the process.  This
 		will raise a PackageNotFound exception if a package is not available.
 		"""
+
+		self._load_vdb()
 
 		if not isinstance(resume_data, dict):
 			return False
