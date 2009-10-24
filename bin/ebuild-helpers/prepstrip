@@ -187,8 +187,8 @@ then
 	# Preserve directory structure.
 	# Needed after running save_elf_sources.
 	# https://bugzilla.redhat.com/show_bug.cgi?id=444310
-	while read -r emptydir
+	while read -r -d $'\0' emptydir
 	do
 		touch "$emptydir"/.keepdir
-	done < <(find "${D}${prepstrip_sources_dir}/" -type d -empty)
+	done < <(find "${D}${prepstrip_sources_dir}/" -type d -empty -print0)
 fi
