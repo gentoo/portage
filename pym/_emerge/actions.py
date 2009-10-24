@@ -176,8 +176,14 @@ def action_build(settings, trees, mtimedb,
 		else:
 			action = "merged"
 		if "--tree" in myopts and action != "fetched": # Tree doesn't work with fetching
-			print()
-			print(darkgreen("These are the packages that would be %s, in reverse order:") % action)
+			if "--unordered-display" in myopts:
+				portage.writemsg_stdout("\n" + \
+					darkgreen("These are the packages that " + \
+					"would be %s:" % action) + "\n\n")
+			else:
+				portage.writemsg_stdout("\n" + \
+					darkgreen("These are the packages that " + \
+					"would be %s, in reverse order:" % action) + "\n\n")
 			print()
 		else:
 			print()
