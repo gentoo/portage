@@ -9,6 +9,7 @@
 
 from __future__ import print_function
 
+import calendar
 import codecs
 try:
 	from subprocess import getstatusoutput as subprocess_getstatusoutput
@@ -824,7 +825,7 @@ def fetch_metadata_dtd():
 			elif last_modified is not None:
 				last_modified = parsedate(last_modified)
 				if last_modified is not None:
-					last_modified = time.mktime(last_modified)
+					last_modified = calendar.timegm(last_modified)
 
 			metadata_dtd_tmp = "%s.%s" % (metadata_dtd, os.getpid())
 			try:
