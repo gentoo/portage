@@ -25,7 +25,16 @@ import sys
 import tempfile
 import time
 import platform
-import urllib
+
+try:
+	from urllib.request import urlopen as urllib_request_urlopen
+except ImportError:
+	from urllib import urlopen as urllib_request_urlopen
+
+try:
+	from rfc822 import parsedate
+except ImportError:
+	parsedate = None
 
 from io import StringIO
 from itertools import chain
@@ -803,10 +812,19 @@ def fetch_metadata_dtd():
 			"needs to be refetched, doing that now")
 		print()
 		try:
-			url_f = urllib.urlopen(metadata_dtd_uri)
-			last_modified = url_f.info().getdate('last-modified')
-			if last_modified is not None:
-				last_modified = time.mktime(last_modified)
+			url_f = urllib_request_urlopen(metadata_dtd_uri)
+			msg_info = url_f.info()
+			last_modified = msg_info.get('last-modified')
+			# Date parsing isn't supported in python3 since it has no
+			# equivalent of the rfc822.parsedate() function.
+			# TODO: Convert the last-modified field to locale-independent
+			# format and then use time.strptime() to parse it.
+			if parsedate is None:
+				last_modified = None
+			elif last_modified is not None:
+				last_modified = parsedate(last_modified)
+				if last_modified is not None:
+					last_modified = time.mktime(last_modified)
 
 			metadata_dtd_tmp = "%s.%s" % (metadata_dtd, os.getpid())
 			try:
