@@ -3793,6 +3793,11 @@ def _can_test_pty_eof():
 	"""
 	The _test_pty_eof() function seems to hang on most
 	kernels other than Linux.
+	This was reported for the following kernels which used to work fine
+	without this EOF test: Darwin, AIX, FreeBSD.  They seem to hang on
+	the slave_file.close() call.  Note that Python's implementation of
+	openpty on Solaris already caused random hangs without this EOF test
+	and hence is globally disabled.
 	@rtype: bool
 	@returns: True if _test_pty_eof() won't hang, False otherwise.
 	"""
@@ -3889,20 +3894,14 @@ def _test_pty_eof():
 # this issue is fixed in python3, we can add another sys.hexversion
 # conditional to enable openpty support in the fixed versions.
 if sys.hexversion >= 0x3000000 and not _can_test_pty_eof():
+	_disable_openpty = True
+else:
 	# Disable the use of openpty on Solaris as it seems Python's openpty
 	# implementation doesn't play nice on Solaris with Portage's
 	# behaviour causing hangs/deadlocks.
-	# Disable on Darwin also, it used to work fine, but since the
-	# introduction of _test_pty_eof Portage hangs (on the
-	# slave_file.close()) indicating some other problems with openpty on
-	# Darwin there
-	# On AIX, haubi reported that the openpty code doesn't work any
-	# longer since the introduction of _test_pty_eof either.
-	# Looks like Python's openpty module is too fragile to use on UNIX,
-	# so only use it on Linux
-	_disable_openpty = True
-else:
-	_disable_openpty = False
+	# Additional note for the future: on Interix, pipes do NOT work, so
+	# _disable_openpty on Interix must *never* be True
+	_disable_openpty = platform.system() in ("SunOS",)
 _tested_pty = False
 
 if not _can_test_pty_eof():
