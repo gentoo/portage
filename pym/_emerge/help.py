@@ -14,7 +14,7 @@ def shorthelp():
 	print("   "+turquoise("emerge")+" < "+turquoise("--sync")+" | "+turquoise("--metadata")+" | "+turquoise("--info")+" >")
 	print("   "+turquoise("emerge")+" "+turquoise("--resume")+" [ "+green("--pretend")+" | "+green("--ask")+" | "+green("--skipfirst")+" ]")
 	print("   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("--verbose")+" ] ")
-	print(bold("Options:")+" "+green("-")+"["+green("abBcCdDefgGhjkKlnNoOpPqrRsStuvV")+"]")
+	print(bold("Options:")+" "+green("-")+"["+green("abBcCdDefgGhjkKlnNoOpPqrsStuvV")+"]")
 	print("          [ " + green("--color")+" < " + turquoise("y") + " | "+ turquoise("n")+" >            ] [ "+green("--columns")+"    ]")
 	print("          [ "+green("--complete-graph")+"             ] [ "+green("--deep")+"       ]")
 	print("          [ "+green("--jobs") + " " + turquoise("JOBS")+" ] [ "+green("--keep-going")+" ] [ " + green("--load-average")+" " + turquoise("LOAD") + "            ]")
@@ -42,7 +42,7 @@ def help(myopts, havecolor=1):
 		print("              emerge to display detailed help.")
 		print()
 		print(turquoise("Actions:"))
-		print("       "+green("--clean")+" ("+green("-c")+" short option)")
+		print("       "+green("--clean"))
 		print("              Cleans the system by removing outdated packages which will not")
 		print("              remove functionalities or prevent your system from working.")
 		print("              The arguments can be in several different formats :")
@@ -66,7 +66,7 @@ def help(myopts, havecolor=1):
 		print("              emerge process has completed.  This usually entails configuration")
 		print("              file setup or other similar setups that the user may wish to run.")
 		print()
-		print("       "+green("--depclean")+" ("+green("-R")+" short option)")
+		print("       "+green("--depclean")+" ("+green("-c")+" short option)")
 
 		paragraph = "Cleans the system by removing packages that are " + \
 		"not associated with explicitly merged packages. Depclean works " + \
