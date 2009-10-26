@@ -87,6 +87,7 @@ shortmapping={
 "p":"--pretend",   "P":"--prune",
 "q":"--quiet",
 "r":"--resume",
+"R":"--depclean",
 "s":"--search",    "S":"--searchdesc",
 "t":"--tree",
 "u":"--update",
