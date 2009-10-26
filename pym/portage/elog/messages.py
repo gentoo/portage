@@ -96,11 +96,12 @@ def _elog_base(level, msg, phase="other", key=None, color=None, out=None):
 
 	formatted_msg = colorize(color, " * ") + msg + "\n"
 
-	if sys.hexversion < 0x3000000 and \
-		out in (sys.stdout, sys.stderr) and isinstance(formatted_msg, unicode):
-		# avoid potential UnicodeEncodeError
-		formatted_msg = formatted_msg.encode(
-			_encodings['stdio'], 'backslashreplace')
+	# avoid potential UnicodeEncodeError
+	if out in (sys.stdout, sys.stderr):
+		formatted_msg = _unicode_encode(formatted_msg,
+			encoding=_encodings['stdio'], errors='backslashreplace')
+		if sys.hexversion >= 0x3000000:
+			out = out.buffer
 
 	out.write(formatted_msg)
 
