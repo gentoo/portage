@@ -52,6 +52,7 @@ import re, shutil, stat, errno, copy, subprocess
 import logging
 import os as _os
 import sys
+import time
 import warnings
 
 try:
@@ -132,6 +133,19 @@ class vardbapi(dbapi):
 			# rValue += _os.sep + filename
 			rValue = _os.path.join(rValue, filename)
 		return rValue
+
+	def _bump_mtime(self, cpv):
+		"""
+		This is called before an after any modifications, so that consumers
+		can use directory mtimes to validate caches. See bug #290428.
+		"""
+		base = self.root + _os.sep + VDB_PATH
+		cat = catsplit(cpv)[0]
+		catdir = base + _os.sep + cat
+		t = time.time()
+		t = (t, t)
+		for x in (catdir, base):
+			os.utime(x, t)
 
 	def cpv_exists(self, mykey):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
@@ -585,6 +599,7 @@ class vardbapi(dbapi):
 		return results
 
 	def aux_update(self, cpv, values):
+		self._bump_mtime(cpv)
 		cat, pkg = catsplit(cpv)
 		mylink = dblink(cat, pkg, self.root, self.settings,
 		treetype="vartree", vartree=self.vartree)
@@ -598,6 +613,7 @@ class vardbapi(dbapi):
 					os.unlink(os.path.join(self.getpath(cpv), k))
 				except EnvironmentError:
 					pass
+		self._bump_mtime(cpv)
 
 	def counter_tick(self, myroot, mycpv=None):
 		return self.counter_tick_core(myroot, incrementing=1, mycpv=mycpv)
@@ -719,9 +735,11 @@ class vardbapi(dbapi):
 				removed += 1
 
 		if removed:
+			self._bump_mtime(pkg.mycpv)
 			f = atomic_ofstream(os.path.join(pkg.dbdir, "CONTENTS"))
 			write_contents(new_contents, root, f)
 			f.close()
+			self._bump_mtime(pkg.mycpv)
 			pkg._clear_contents_cache()
 
 	class _owners_cache(object):
@@ -1350,6 +1368,7 @@ class dblink(object):
 		The caller must ensure that lockdb() and unlockdb() are called
 		before and after this method.
 		"""
+		self.vartree.dbapi._bump_mtime(self.mycpv)
 		showMessage = self._display_merge
 		if self.vartree.dbapi._categories is not None:
 			self.vartree.dbapi._categories = None
@@ -1459,6 +1478,7 @@ class dblink(object):
 					writemsg(_("!!! FAILED postrm: %s\n") % retval, noiselevel=-1)
 
 		finally:
+			self.vartree.dbapi._bump_mtime(self.mycpv)
 			if builddir_lock:
 				try:
 					if myebuildpath:
@@ -3198,6 +3218,7 @@ class dblink(object):
 		mydbapi=None, prev_mtimes=None):
 		retval = -1
 		self.lockdb()
+		self.vartree.dbapi._bump_mtime(self.mycpv)
 		try:
 			retval = self.treewalk(mergeroot, myroot, inforoot, myebuild,
 				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes)
@@ -3220,6 +3241,7 @@ class dblink(object):
 						self, mydbapi, myebuild, "clean")
 		finally:
 			self.unlockdb()
+			self.vartree.dbapi._bump_mtime(self.mycpv)
 		return retval
 
 	def getstring(self,name):
