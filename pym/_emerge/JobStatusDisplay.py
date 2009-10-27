@@ -17,6 +17,7 @@ import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
+from portage import _unicode_encode
 from portage.output import xtermTitle
 
 from _emerge.getloadavg import getloadavg
@@ -75,11 +76,14 @@ class JobStatusDisplay(object):
 		return sys.stdout
 
 	def _write(self, s):
-		if sys.hexversion < 0x3000000 and isinstance(s, unicode):
-			# avoid potential UnicodeEncodeError
-			s = s.encode(_encodings['stdio'], 'backslashreplace')
-		self.out.write(s)
-		self.out.flush()
+		# avoid potential UnicodeEncodeError
+		s = _unicode_encode(s,
+			encoding=_encodings['stdio'], errors='backslashreplace')
+		out = self.out
+		if sys.hexversion >= 0x3000000:
+			out = out.buffer
+		out.write(s)
+		out.flush()
 
 	def _init_term(self):
 		"""
