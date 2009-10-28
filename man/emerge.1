@@ -93,7 +93,7 @@ option if you want to install a tbz2\fR.  The packages are added
 to the \fBworld\fR file at the end, so that they are considered for
 later updating.
 .TP
-.BR "\-\-clean " (\fB\-c\fR)
+.BR \-\-clean
 Cleans up the system by examining the installed packages and removing older
 packages.  This is accomplished by looking at each installed package and separating
 the installed versions by \fBslot\fR.  Clean will \fBremove all but the most recently
@@ -105,7 +105,7 @@ Run package specific actions needed to be executed after the emerge process
 has completed.  This usually entails configuration file setup or other similar 
 setups that the user may wish to run.
 .TP
-.BR \-\-depclean
+.BR "\-\-depclean (-c)"
 Cleans the system by removing packages that are not associated
 with explicitly merged packages. Depclean works by creating the
 full dependency tree from the @world set,

@@ -42,7 +42,7 @@ def help(myopts, havecolor=1):
 		print("              emerge to display detailed help.")
 		print()
 		print(turquoise("Actions:"))
-		print("       "+green("--clean")+" ("+green("-c")+" short option)")
+		print("       "+green("--clean"))
 		print("              Cleans the system by removing outdated packages which will not")
 		print("              remove functionalities or prevent your system from working.")
 		print("              The arguments can be in several different formats :")
@@ -66,7 +66,7 @@ def help(myopts, havecolor=1):
 		print("              emerge process has completed.  This usually entails configuration")
 		print("              file setup or other similar setups that the user may wish to run.")
 		print()
-		print("       "+green("--depclean"))
+		print("       "+green("--depclean")+" ("+green("-c")+" short option)")
 
 		paragraph = "Cleans the system by removing packages that are " + \
 		"not associated with explicitly merged packages. Depclean works " + \

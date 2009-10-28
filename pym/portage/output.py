@@ -251,11 +251,15 @@ def xtermTitle(mystr, raw=False):
 			mystr = mystr[:_max_xtermTitle_len]
 		if not raw:
 			mystr = '\x1b]0;%s\x07' % mystr
-		if sys.hexversion < 0x3000000 and isinstance(mystr, unicode):
-			# avoid potential UnicodeEncodeError
-			mystr = mystr.encode(_encodings['stdio'], 'backslashreplace')
-		sys.stderr.write(mystr)
-		sys.stderr.flush()
+
+		# avoid potential UnicodeEncodeError
+		mystr = _unicode_encode(mystr,
+			encoding=_encodings['stdio'], errors='backslashreplace')
+		f = sys.stderr
+		if sys.hexversion >= 0x3000000:
+			f = f.buffer
+		f.write(mystr)
+		f.flush()
 
 default_xterm_title = None
 
@@ -374,11 +378,12 @@ class ConsoleStyleFile(object):
 			self._write(self.write_listener, s)
 
 	def _write(self, f, s):
-		if sys.hexversion < 0x3000000 and \
-			isinstance(s, unicode) and \
-			f in (sys.stdout, sys.stderr):
-			# avoid potential UnicodeEncodeError
-			s = s.encode(_encodings['stdio'], 'backslashreplace')
+		# avoid potential UnicodeEncodeError
+		if f in (sys.stdout, sys.stderr):
+			s = _unicode_encode(s,
+				encoding=_encodings['stdio'], errors='backslashreplace')
+			if sys.hexversion >= 0x3000000:
+				f = f.buffer
 		f.write(s)
 
 	def writelines(self, lines):
@@ -484,9 +489,12 @@ class EOutput(object):
 		sys.stderr.flush()
 
 	def _write(self, f, s):
-		if sys.hexversion < 0x3000000 and isinstance(s, unicode):
-			# avoid potential UnicodeEncodeError
-			s = s.encode(_encodings['stdio'], 'backslashreplace')
+		# avoid potential UnicodeEncodeError
+		s = _unicode_encode(s,
+			encoding=_encodings['stdio'], errors='backslashreplace')
+		f = sys.stderr
+		if sys.hexversion >= 0x3000000:
+			f = f.buffer
 		f.write(s)
 		f.flush()
 

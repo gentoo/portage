@@ -9,6 +9,7 @@
 
 from __future__ import print_function
 
+import calendar
 import codecs
 try:
 	from subprocess import getstatusoutput as subprocess_getstatusoutput
@@ -25,7 +26,11 @@ import sys
 import tempfile
 import time
 import platform
-import urllib
+
+try:
+	from urllib.request import urlopen as urllib_request_urlopen
+except ImportError:
+	from urllib import urlopen as urllib_request_urlopen
 
 from io import StringIO
 from itertools import chain
@@ -774,6 +779,33 @@ for x in qacats:
 xmllint_capable = False
 metadata_dtd = os.path.join(repoman_settings["DISTDIR"], 'metadata.dtd')
 
+def parsedate(s):
+	"""Parse a RFC 822 date and time string.
+	This is required for python3 compatibility, since the
+	rfc822.parsedate() function is not available."""
+
+	s_split = []
+	for x in s.upper().split():
+		for y in x.split(','):
+			if y:
+				s_split.append(y)
+
+	if len(s_split) != 6:
+		return None
+
+	# %a, %d %b %Y %H:%M:%S %Z
+	a, d, b, Y, H_M_S, Z = s_split
+
+	# Convert month to integer, since strptime %w is locale-dependent.
+	month_map = {'JAN':1, 'FEB':2, 'MAR':3, 'APR':4, 'MAY':5, 'JUN':6,
+		'JUL':7, 'AUG':8, 'SEP':9, 'OCT':10, 'NOV':11, 'DEC':12}
+	m = month_map.get(b)
+	if m is None:
+		return None
+	m = str(m).rjust(2, '0')
+
+	return time.strptime(':'.join((Y, m, d, H_M_S)), '%Y:%m:%d:%H:%M:%S')
+
 def fetch_metadata_dtd():
 	"""
 	Fetch metadata.dtd if it doesn't exist or the ctime is older than
@@ -803,10 +835,13 @@ def fetch_metadata_dtd():
 			"needs to be refetched, doing that now")
 		print()
 		try:
-			url_f = urllib.urlopen(metadata_dtd_uri)
-			last_modified = url_f.info().getdate('last-modified')
+			url_f = urllib_request_urlopen(metadata_dtd_uri)
+			msg_info = url_f.info()
+			last_modified = msg_info.get('last-modified')
 			if last_modified is not None:
-				last_modified = time.mktime(last_modified)
+				last_modified = parsedate(last_modified)
+				if last_modified is not None:
+					last_modified = calendar.timegm(last_modified)
 
 			metadata_dtd_tmp = "%s.%s" % (metadata_dtd, os.getpid())
 			try:
