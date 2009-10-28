@@ -5655,6 +5655,7 @@ _post_phase_cmds = {
 		"install_symlink_html_docs"],
 
 	"preinst" : [
+		"preinst_aix",
 		"preinst_bsdflags",
 		"preinst_sfperms",
 		"preinst_selinux_labels",
@@ -5662,6 +5663,7 @@ _post_phase_cmds = {
 		"preinst_mask"],
 
 	"postinst" : [
+		"postinst_aix",
 		"postinst_bsdflags"]
 }
 

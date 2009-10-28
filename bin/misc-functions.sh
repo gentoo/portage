@@ -436,6 +436,114 @@ install_qa_check() {
 		PORTAGE_QUIET=${tmp_quiet}
 	fi
 
+	if [[ ${CHOST} == *-aix* ]] && ! hasq binchecks ${RESTRICT}; then
+		local tmp_quiet=${PORTAGE_QUIET}
+		local queryline deplib
+		local insecure_rpath_list= undefined_symbols_list=
+
+		# display warnings when using stricter because we die afterwards
+		if has stricter ${FEATURES} ; then
+			unset PORTAGE_QUIET
+		fi
+
+		rm -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED.XCOFF.1
+		find "${ED}" -not -type d -exec \
+			"${EPREFIX}/usr/bin/aixdll-query" '{}' FILE MEMBER FLAGS FORMAT RUNPATH DEPLIBS ';' \
+			> "${T}"/needed 2>/dev/null
+
+		# Symlinking archive libraries is not a good idea on aix,
+		# as there is nothing like "soname" on pure filesystem level.
+		# So we create a copy instead of the symlink.
+		local prev_FILE=
+		while read queryline
+		do
+			local FILE= MEMBER= FLAGS= FORMAT= RUNPATH= DEPLIBS=
+			eval ${queryline}
+
+			if [[ ${prev_FILE} != ${FILE} ]]; then
+				prev_FILE=${FILE}
+				if [[ -n ${MEMBER} || " ${FLAGS} " == *" SHROBJ "* ]] && [[ -h ${FILE} ]]; then
+					local target=$(readlink "${FILE}")
+					if [[ ${target} == /* ]]; then
+						target=${D}${target}
+					else
+						target=${FILE%/*}/${target}
+					fi
+					rm -f "${FILE}" || die "cannot prune ${FILE#${ED}}"
+					cp -f "${target}" "${FILE}" || die "cannot copy ${target#${ED}} to ${FILE#${ED}}"
+				fi
+			fi
+		done <"${T}"/needed
+
+		prev_FILE=
+		while read queryline
+		do
+			local FILE= MEMBER= FLAGS= FORMAT= RUNPATH= DEPLIBS=
+			eval ${queryline}
+
+			if [[ ${prev_FILE} != ${FILE} ]]; then
+				# Save NEEDED information for the archive library stub
+				echo "${FORMAT##* }${FORMAT%%-*};${FILE#${D%/}};${FILE##*/};;" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.XCOFF.1
+			fi
+
+			# Make sure we disallow insecure RUNPATH's
+			# Don't want paths that point to the tree where the package was built
+			# (older, broken libtools would do this).  Also check for null paths
+			# because the loader will search $PWD when it finds null paths.
+			# And we really want absolute paths only.
+			if [[ -n $(echo ":${RUNPATH}:" | grep -E "(${PORTAGE_BUILDDIR}|::|:[^/])") ]]; then
+				insecure_rpath_list="${insecure_rpath_list}\n${FILE}"
+			fi
+
+			# Although we do have runtime linking, we don't want undefined symbols.
+			# AIX does indicate this by needing either '.' or '..'
+			local needed=${FILE##*/}
+			for deplib in ${DEPLIBS}; do
+				eval deplib=${deplib}
+				if [[ ${deplib} == '.' || ${deplib} == '..' ]]; then
+					undefined_symbols_list="${undefined_symbols_list}\n${FILE}"
+				else
+					needed="${needed},${deplib}"
+				fi
+			done
+
+			FILE=${FILE#${D%/}}
+
+			[[ -n ${MEMBER} ]] && MEMBER="[${MEMBER}]"
+			# Save NEEDED information
+			echo "${FORMAT##* }${FORMAT%%-*};${FILE}${MEMBER};${FILE##*/}${MEMBER};${RUNPATH};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.XCOFF.1
+		done <"${T}"/needed
+
+		if [[ -n ${undefined_symbols_list} ]]; then
+			vecho -ne '\a\n'
+			eqawarn "QA Notice: The following files contain undefined symbols."
+			eqawarn " Please file a bug about this at http://bugs.gentoo.org/"
+			eqawarn " with 'prefix' as the maintaining herd of the package."
+			eqawarn "${undefined_symbols_list}"
+			vecho -ne '\a\n'
+		fi
+
+		if [[ -n ${insecure_rpath_list} ]] ; then
+			vecho -ne '\a\n'
+			eqawarn "QA Notice: The following files contain insecure RUNPATH's"
+			eqawarn " Please file a bug about this at http://bugs.gentoo.org/"
+			eqawarn " with 'prefix' as the maintaining herd of the package."
+			eqawarn "${insecure_rpath_list}"
+			vecho -ne '\a\n'
+			if [[ -n ${x} ]] || has stricter ${FEATURES} ; then
+				insecure_rpath=1
+			fi
+		fi
+
+		if [[ ${insecure_rpath} -eq 1 ]] ; then
+			die "Aborting due to serious QA concerns with RUNPATH/RPATH"
+		elif [[ -n ${die_msg} ]] && has stricter ${FEATURES} ; then
+			die "Aborting due to QA concerns: ${die_msg}"
+		fi
+
+		PORTAGE_QUIET=${tmp_quiet}
+	fi
+
 	local unsafe_files=$(find "${ED}" -type f '(' -perm -2002 -o -perm -4002 ')')
 	if [[ -n ${unsafe_files} ]] ; then
 		eqawarn "QA Notice: Unsafe files detected (set*id and world writable)"
@@ -860,6 +968,167 @@ postinst_bsdflags() {
 	hasq chflags $FEATURES || return
 	# Restore all the file flags that were saved before installation.
 	mtree -e -p "${EROOT}" -U -k flags < "${T}/bsdflags.mtree" &> /dev/null
+}
+
+preinst_aix() {
+	if [[ ${CHOST} != *-aix* ]] || hasq binchecks ${RESTRICT}; then
+		return 0
+	fi
+	local ar strip
+	if type ${CHOST}-ar >/dev/null 2>&1 && type ${CHOST}-strip >/dev/null 2>&1; then
+		ar=${CHOST}-ar
+		strip=${CHOST}-strip
+	elif [[ ${CBUILD} == "${CHOST}" ]] && type ar >/dev/null 2>&1 && type strip >/dev/null 2>&1; then
+		ar=ar
+		strip=strip
+	elif [[ -x /usr/ccs/bin/ar && -x /usr/ccs/bin/strip ]]; then
+		ar=/usr/ccs/bin/ar
+		strip=/usr/ccs/bin/strip
+	else
+		die "cannot find where to use 'ar' and 'strip' from"
+	fi
+
+	local archive prev_archive= archives=()
+	while read archive; do
+		archive=${archive#*;}
+		archive=${archive%%;*}
+		if [[ ${archive} == *'['*']' ]]; then
+			archive=${archive%[*}
+			[[ ${prev_archive} == ${archive} ]] && continue
+			prev_archive=${archive}
+			archives[${#archives[@]}]=${archive#${EPREFIX}/}
+		fi
+	done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED.XCOFF.1
+	unset prev_archive
+
+	local libmetadir members preservemembers member contentmember chmod400files=() prunedirs=()
+	for archive in "${archives[@]}"; do
+		libmetadir=${ED}${archive%/*}/.${archive##*/}
+		[[ ! -e ${libmetadir} ]] || rm -rf "${libmetadir}" || die "cannot prune ${libmetadir}"
+		mkdir "${libmetadir}" || die "cannot create ${libmetadir}"
+		pushd "${libmetadir}" >/dev/null || die "cannot cd to ${libmetadir}"
+		${ar} -X32_64 -x "${ED}${archive}" || die "cannot unpack ${archive}"
+		members=" $(echo *) "
+		preservemembers=
+		if [[ -e ${EROOT}${archive} ]]; then
+			for member in $(${ar} -X32_64 -t "${EROOT}${archive}"); do
+				[[ ${members} == *" ${member} "* ]] && continue
+				preservemembers="${preservemembers} ${member}"
+			done
+			if [[ -n ${preservemembers} ]]; then
+				einfo "preserving (on spec)${preservemembers}"
+				${ar} -X32_64 -x "${EROOT}${archive}" ${preservemembers} || die "cannot extract ${preservemembers} from ${EROOT}${archive}"
+				chmod u+w ${preservemembers} || die "cannot chmod${preservedmembers}"
+				${strip} -X32_64 -e ${preservemembers} || die "cannot strip${preservemembers}"
+				${ar} -X32_64 -q "${ED}${archive}" ${preservemembers} || die "cannot update ${archive}"
+				eend $?
+			fi
+		fi
+		for member in ${members}; do
+			contentmember="${archive%/*}/.${archive##*/}[${member}]"
+			# portage does os.lstat() on merged files every now
+			# and then, so keep stamp-files for archive members
+			# around to get the preserve-libs feature working.
+			{	echo "Please leave this file alone, it is an important helper"
+				echo "for portage to implement the 'preserve-libs' feature on AIX." 
+			} > "${ED}${contentmember}" || die "cannot create ${contentmember}"
+			chmod400files[${#chmod400files[@]}]=${ED}${contentmember}
+		done
+		popd >/dev/null || die "cannot leave ${libmetadir}"
+		prunedirs[${#prunedirs[@]}]=${libmetadir}
+	done
+	[[ ${#chmod400files[@]} == 0 ]] ||
+	chmod 0400 "${chmod400files[@]}" || die "cannot chmod ${chmod400files[@]}"
+	[[ ${#prunedirs[@]} == 0 ]] ||
+	rm -rf "${prunedirs[@]}" || die "cannot prune ${prunedirs[@]}"
+	return 0
+}
+
+postinst_aix() {
+	if [[ ${CHOST} != *-aix* ]] || hasq binchecks ${RESTRICT}; then
+		return 0
+	fi
+	local MY_PR=${PR%r0}
+	local ar strip
+	if type ${CHOST}-ar >/dev/null 2>&1 && type ${CHOST}-strip >/dev/null 2>&1; then
+		ar=${CHOST}-ar
+		strip=${CHOST}-strip
+	elif [[ ${CBUILD} == "${CHOST}" ]] && type ar >/dev/null 2>&1 && type strip >/dev/null 2>&1; then
+		ar=ar
+		strip=strip
+	elif [[ -x /usr/ccs/bin/ar && -x /usr/ccs/bin/strip ]]; then
+		ar=/usr/ccs/bin/ar
+		strip=/usr/ccs/bin/strip
+	else
+		die "cannot find where to use 'ar' and 'strip' from"
+	fi
+
+	local member contentmember activecontentmembers= prev_archive= archive activearchives=
+	while read member; do
+		member=${member#*;} # drop "^type;"
+		member=${member%%;*} # drop ";soname;runpath;needed$"
+		[[ ${member##*/} == *'['*']' ]] || continue
+		contentmember=${member%/*}/.${member##*/}
+		activecontentmembers="${activecontentmembers}:(${contentmember}):"
+		archive=${member%[*}
+		[[ ${prev_archive} != ${archive} ]] || continue
+		prev_archive=${archive}
+		activearchives="${activearchives}:(${archive}):"
+	done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED.XCOFF.1
+
+	local type allcontentmembers= all_archives=()
+	prev_archive=
+	while read type contentmember; do
+		contentmember=${contentmember% *} # drop " timestamp$"
+		contentmember=${contentmember% *} # drop " hash$"
+		[[ ${contentmember##*/} == *'['*']' ]] || continue
+		allcontentmembers="${allcontentmembers}:(${contentmember}):"
+		member=${contentmember%/.*}/${contentmember##*/.}
+		archive=${member%[*}
+		[[ ${prev_archive} != ${archive} ]] || continue
+		prev_archive=${archive}
+		all_archives[${#all_archives[@]}]=${archive}
+	done < "${EPREFIX}/var/db/pkg/${CATEGORY}/${P}${MY_PR:+-}${MY_PR}/CONTENTS"
+
+	local delmembers oldmembers libmetadir prunemembers=() prunedirs=()
+	for archive in "${all_archives[@]}"; do
+		[[ -r ${ROOT}${archive} && -w ${ROOT}${archive} ]] ||
+		chmod a+r,u+w "${ROOT}${archive}" || die "cannot chmod ${archive}"
+		delmembers= oldmembers=
+		for member in $(${ar} -X32_64 -t "${ROOT}${archive}"); do
+			contentmember="${archive%/*}/.${archive##*/}[${member}]"
+			if [[ ${allcontentmembers} != *":(${contentmember}):"* ]]; then
+				# not existent any more, just drop it
+				delmembers="${delmembers} ${member}"
+				prunemembers[${#prunemembers[@]}]=${ROOT}${contentmember}
+			elif [[ ${activecontentmembers} != *":(${contentmember}):"* ]]; then
+				oldmembers="${oldmembers} ${member}"
+			fi
+		done
+		if [[ -n ${delmembers} ]]; then
+			einfo "dropping${delmembers}"
+			${ar} -X32_64 -z -o -d "${ROOT}${archive}" ${delmembers} || die "cannot remove${delmembers} from ${archive}"
+			eend $?
+		fi
+		if [[ -n ${oldmembers} && ${activearchives} != *":(${archive}):"* ]]; then
+			einfo "preserving (extra)${oldmembers}"
+			libmetadir=${ROOT}${archive%/*}/.${archive##*/}
+			[[ ! -e ${libmetadir} ]] || rm -rf "${libmetadir}" || die "cannot prune ${libmetadir}"
+			mkdir "${libmetadir}" || die "cannot create ${libmetadir}"
+			pushd "${libmetadir}" >/dev/null || die "cannot cd to ${libmetadir}"
+			${ar} -X32_64 -x "${ROOT}${archive}" ${oldmembers} || die "cannot unpack ${archive}"
+			${strip} -e ${oldmembers} || die "cannot strip ${oldmembers}"
+			${ar} -X32_64 -z -o -r "${ROOT}${archive}" ${oldmembers} || die "cannot update${oldmembers} in ${archive}"
+			popd > /dev/null || die "cannot leave ${libmetadir}"
+			prunedirs[${#prunedirs[@]}]=${libmetadir}
+			eend $?
+		fi
+	done
+	[[ ${#prunedirs[@]} == 0 ]] ||
+	rm -rf "${prunedirs[@]}" || die "cannot prune ${prunedirs[@]}"
+	[[ ${#prunemembers[@]} == 0 ]] ||
+	rm -f "${prunemembers[@]}" || die "cannot prune ${contentmenbers[@]}"
+	return 0
 }
 
 preinst_mask() {
