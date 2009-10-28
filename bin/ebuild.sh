@@ -597,10 +597,6 @@ _eapi0_src_compile() {
 	_eapi2_src_compile
 }
 
-_eapi0_src_install() {
-	_eapi1_src_install
-}
-
 _eapi0_src_test() {
 	if emake -j1 check -n &> /dev/null; then
 		vecho ">>> Test phase [check]: ${CATEGORY}/${PF}"
@@ -622,15 +618,6 @@ _eapi0_src_test() {
 _eapi1_src_compile() {
 	_eapi2_src_configure
 	_eapi2_src_compile
-}
-
-_eapi1_src_install() {
-	if use prefix ; then
-		# this avoids misc QA errors in Prefix because it doesn't exist
-		# by default
-		mkdir -p "${ED}"
-		return
-	fi
 }
 
 _eapi2_src_configure() {
@@ -661,10 +648,6 @@ _eapi3_src_install() {
 	else
 		dodoc ${DOCS}
 	fi
-
-	# this avoids misc QA errors in Prefix because it doesn't exist
-	# by default
-	use prefix && mkdir -p "${ED}"
 }
 
 ebuild_phase() {

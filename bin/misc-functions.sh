@@ -18,7 +18,9 @@ shift $#
 source @PORTAGE_BASE@/bin/ebuild.sh
 
 install_symlink_html_docs() {
-	cd "${ED}" || die "cd failed"
+	cd "${D}" || die "cd failed"
+	[[ ! -d ${ED} ]] && dodir /
+	cd "${ED}" || die "cd shouldn't have failed"
 	#symlink the html documentation (if DOC_SYMLINKS_DIR is set in make.conf)
 	if [ -n "${DOC_SYMLINKS_DIR}" ] ; then
 		local mydocdir docdir
@@ -42,7 +44,7 @@ install_symlink_html_docs() {
 }
 
 install_qa_check() {
-	cd "${ED}" || die "cd failed"
+	cd "${D}" || die "cd failed"
 
 	export STRIP_MASK
 	prepall
@@ -59,7 +61,36 @@ install_qa_check() {
 		sleep 1
 	done
 
-	if [[ ${CHOST} != *-darwin* ]] && type -P scanelf > /dev/null && ! hasq binchecks ${RESTRICT}; then
+	case ${CHOST} in
+		*-darwin*)
+			# Mach-O platforms (NeXT, Darwin, OSX)
+			install_qa_check_macho
+		;;
+		*-interix*|*-winnt*)
+			# PECOFF platforms (Windows/Interix)
+			install_qa_check_pecoff
+		;;
+		*-aix*)
+			# XCOFF platforms (AIX)
+			install_qa_check_xcoff
+		;;
+		*)
+			# because this is the majority: ELF platforms (Linux,
+			# Solaris, *BSD, IRIX, etc.)
+			install_qa_check_elf
+		;;
+	esac
+
+	# this is basically here such that the diff with trunk remains just
+	# offsetted and not out of order
+	install_qa_check_misc
+
+	# Prefix specific checks
+	[[ -n ${EPREFIX} ]] && install_qa_check_prefix
+}
+
+install_qa_check_elf() {
+	if type -P scanelf > /dev/null && ! hasq binchecks ${RESTRICT}; then
 		local qa_var insecure_rpath=0 tmp_quiet=${PORTAGE_QUIET}
 		local f x
 
@@ -313,237 +344,9 @@ install_qa_check() {
 
 		PORTAGE_QUIET=${tmp_quiet}
 	fi
+}
 
-	local _pfx_scan="readpecoff ${CHOST}"
-
-	# this one uses readpecoff, which supports multiple prefix platforms!
-	# this is absolutely _not_ optimized for speed, and there may be plenty
-	# of possibilities by introducing one or the other cache!
-	if [[ ${CHOST} == *-interix* || ${CHOST} == *-winnt* ]] && ! hasq binchecks ${RESTRICT}; then
-		# copied and adapted from the above scanelf code.
-		local qa_var insecure_rpath=0 tmp_quiet=${PORTAGE_QUIET}
-		local f x
-
-		# display warnings when using stricter because we die afterwards
-		if has stricter ${FEATURES} ; then
-			unset PORTAGE_QUIET
-		fi
-
-		local _exec_find_opt="-executable"
-		[[ ${CHOST} == *-winnt* ]] && _exec_find_opt='-name *.dll -o -name *.exe'
-
-		# Make sure we disallow insecure RUNPATH/RPATH's
-		# Don't want paths that point to the tree where the package was built
-		# (older, broken libtools would do this).  Also check for null paths
-		# because the loader will search $PWD when it finds null paths.
-
-		f=$(
-			find "${ED}" -type f '(' ${_exec_find_opt} ')' -print0 | xargs -0 ${_pfx_scan} | \
-			while IFS=";" read arch obj soname rpath needed ; do \
-			echo "${rpath}" | grep -E "(${PORTAGE_BUILDDIR}|: |::|^:|^ )" > /dev/null 2>&1 \
-				&& echo "${obj}"; done;
-		)
-		# Reject set*id binaries with $ORIGIN in RPATH #260331
-		x=$(
-			find "${ED}" -type f '(' -perm -u+s -o -perm -g+s ')' -print0 | \
-			xargs -0 ${_pfx_scan} | while IFS=";" read arch obj soname rpath needed; do \
-			echo "${rpath}" | grep '$ORIGIN' > /dev/null 2>&1 && echo "${obj}"; done;
-		)
-		if [[ -n ${f}${x} ]] ; then
-			vecho -ne '\a\n'
-			eqawarn "QA Notice: The following files contain insecure RUNPATH's"
-			eqawarn " Please file a bug about this at http://bugs.gentoo.org/"
-			eqawarn " with the maintaining herd of the package."
-			eqawarn "${f}${f:+${x:+\n}}${x}"
-			vecho -ne '\a\n'
-			if [[ -n ${x} ]] || has stricter ${FEATURES} ; then
-				insecure_rpath=1
-			else
-				eqawarn "cannot automatically fix runpaths on interix platforms!"
-			fi
-		fi
-
-		rm -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED
-		rm -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED.PECOFF.1
-
-		# Save NEEDED information after removing self-contained providers
-		find "${ED}" -type f '(' ${_exec_find_opt} ')' -print0 | xargs -0 ${_pfx_scan} | { while IFS=';' read arch obj soname rpath needed; do
-			# need to strip image dir from object name.
-			obj="/${obj#${D}}"
-			if [ -z "${rpath}" -o -n "${rpath//*ORIGIN*}" ]; then
-				# object doesn't contain $ORIGIN in its runpath attribute
-				echo "${obj} ${needed}"	>> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
-				echo "${arch};${obj};${soname};${rpath};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.PECOFF.1
-			else
-				dir=${obj%/*}
-				# replace $ORIGIN with the dirname of the current object for the lookup
-				opath=$(echo :${rpath}: | sed -e "s#.*:\(.*\)\$ORIGIN\(.*\):.*#\1${dir}\2#")
-				sneeded=$(echo ${needed} | tr , ' ')
-				rneeded=""
-				for lib in ${sneeded}; do
-					found=0
-					for path in ${opath//:/ }; do
-						[ -e "${ED}/${path}/${lib}" ] && found=1 && break
-					done
-					[ "${found}" -eq 0 ] && rneeded="${rneeded},${lib}"
-				done
-				rneeded=${rneeded:1}
-				if [ -n "${rneeded}" ]; then
-					echo "${obj} ${rneeded}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
-					echo "${arch};${obj};${soname};${rpath};${rneeded}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.PECOFF.1
-				fi
-			fi
-		done }
-		
-		if [[ ${insecure_rpath} -eq 1 ]] ; then
-			die "Aborting due to serious QA concerns with RUNPATH/RPATH"
-		elif [[ -n ${die_msg} ]] && has stricter ${FEATURES} ; then
-			die "Aborting due to QA concerns: ${die_msg}"
-		fi
-
-		local _so_ext='.so*'
-
-		case "${CHOST}" in
-		*-winnt*) _so_ext=".dll" ;; # no "*" intentionally!
-		esac
-
-		# Run some sanity checks on shared libraries
-		for d in "${ED}"lib* "${ED}"usr/lib* ; do
-			[[ -d "${d}" ]] || continue
-			f=$(find "${d}" -name "lib*${_so_ext}" -print0 | \
-				xargs -0 ${_pfx_scan} | while IFS=";" read arch obj soname rpath needed; \
-				do [[ -z "${soname}" ]] && echo "${obj}"; done)
-			if [[ -n ${f} ]] ; then
-				vecho -ne '\a\n'
-				eqawarn "QA Notice: The following shared libraries lack a SONAME"
-				eqawarn "${f}"
-				vecho -ne '\a\n'
-				sleep 1
-			fi
-
-			f=$(find "${d}" -name "lib*${_so_ext}" -print0 | \
-				xargs -0 ${_pfx_scan} | while IFS=";" read arch obj soname rpath needed; \
-				do [[ -z "${needed}" ]] && echo "${obj}"; done)
-			if [[ -n ${f} ]] ; then
-				vecho -ne '\a\n'
-				eqawarn "QA Notice: The following shared libraries lack NEEDED entries"
-				eqawarn "${f}"
-				vecho -ne '\a\n'
-				sleep 1
-			fi
-		done
-
-		PORTAGE_QUIET=${tmp_quiet}
-	fi
-
-	if [[ ${CHOST} == *-aix* ]] && ! hasq binchecks ${RESTRICT}; then
-		local tmp_quiet=${PORTAGE_QUIET}
-		local queryline deplib
-		local insecure_rpath_list= undefined_symbols_list=
-
-		# display warnings when using stricter because we die afterwards
-		if has stricter ${FEATURES} ; then
-			unset PORTAGE_QUIET
-		fi
-
-		rm -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED.XCOFF.1
-		find "${ED}" -not -type d -exec \
-			"${EPREFIX}/usr/bin/aixdll-query" '{}' FILE MEMBER FLAGS FORMAT RUNPATH DEPLIBS ';' \
-			> "${T}"/needed 2>/dev/null
-
-		# Symlinking archive libraries is not a good idea on aix,
-		# as there is nothing like "soname" on pure filesystem level.
-		# So we create a copy instead of the symlink.
-		local prev_FILE=
-		while read queryline
-		do
-			local FILE= MEMBER= FLAGS= FORMAT= RUNPATH= DEPLIBS=
-			eval ${queryline}
-
-			if [[ ${prev_FILE} != ${FILE} ]]; then
-				prev_FILE=${FILE}
-				if [[ -n ${MEMBER} || " ${FLAGS} " == *" SHROBJ "* ]] && [[ -h ${FILE} ]]; then
-					local target=$(readlink "${FILE}")
-					if [[ ${target} == /* ]]; then
-						target=${D}${target}
-					else
-						target=${FILE%/*}/${target}
-					fi
-					rm -f "${FILE}" || die "cannot prune ${FILE#${ED}}"
-					cp -f "${target}" "${FILE}" || die "cannot copy ${target#${ED}} to ${FILE#${ED}}"
-				fi
-			fi
-		done <"${T}"/needed
-
-		prev_FILE=
-		while read queryline
-		do
-			local FILE= MEMBER= FLAGS= FORMAT= RUNPATH= DEPLIBS=
-			eval ${queryline}
-
-			if [[ ${prev_FILE} != ${FILE} ]]; then
-				# Save NEEDED information for the archive library stub
-				echo "${FORMAT##* }${FORMAT%%-*};${FILE#${D%/}};${FILE##*/};;" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.XCOFF.1
-			fi
-
-			# Make sure we disallow insecure RUNPATH's
-			# Don't want paths that point to the tree where the package was built
-			# (older, broken libtools would do this).  Also check for null paths
-			# because the loader will search $PWD when it finds null paths.
-			# And we really want absolute paths only.
-			if [[ -n $(echo ":${RUNPATH}:" | grep -E "(${PORTAGE_BUILDDIR}|::|:[^/])") ]]; then
-				insecure_rpath_list="${insecure_rpath_list}\n${FILE}"
-			fi
-
-			# Although we do have runtime linking, we don't want undefined symbols.
-			# AIX does indicate this by needing either '.' or '..'
-			local needed=${FILE##*/}
-			for deplib in ${DEPLIBS}; do
-				eval deplib=${deplib}
-				if [[ ${deplib} == '.' || ${deplib} == '..' ]]; then
-					undefined_symbols_list="${undefined_symbols_list}\n${FILE}"
-				else
-					needed="${needed},${deplib}"
-				fi
-			done
-
-			FILE=${FILE#${D%/}}
-
-			[[ -n ${MEMBER} ]] && MEMBER="[${MEMBER}]"
-			# Save NEEDED information
-			echo "${FORMAT##* }${FORMAT%%-*};${FILE}${MEMBER};${FILE##*/}${MEMBER};${RUNPATH};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.XCOFF.1
-		done <"${T}"/needed
-
-		if [[ -n ${undefined_symbols_list} ]]; then
-			vecho -ne '\a\n'
-			eqawarn "QA Notice: The following files contain undefined symbols."
-			eqawarn " Please file a bug about this at http://bugs.gentoo.org/"
-			eqawarn " with 'prefix' as the maintaining herd of the package."
-			eqawarn "${undefined_symbols_list}"
-			vecho -ne '\a\n'
-		fi
-
-		if [[ -n ${insecure_rpath_list} ]] ; then
-			vecho -ne '\a\n'
-			eqawarn "QA Notice: The following files contain insecure RUNPATH's"
-			eqawarn " Please file a bug about this at http://bugs.gentoo.org/"
-			eqawarn " with 'prefix' as the maintaining herd of the package."
-			eqawarn "${insecure_rpath_list}"
-			vecho -ne '\a\n'
-			if [[ -n ${x} ]] || has stricter ${FEATURES} ; then
-				insecure_rpath=1
-			fi
-		fi
-
-		if [[ ${insecure_rpath} -eq 1 ]] ; then
-			die "Aborting due to serious QA concerns with RUNPATH/RPATH"
-		elif [[ -n ${die_msg} ]] && has stricter ${FEATURES} ; then
-			die "Aborting due to QA concerns: ${die_msg}"
-		fi
-
-		PORTAGE_QUIET=${tmp_quiet}
-	fi
-
+install_qa_check_misc() {
 	local unsafe_files=$(find "${ED}" -type f '(' -perm -2002 -o -perm -4002 ')')
 	if [[ -n ${unsafe_files} ]] ; then
 		eqawarn "QA Notice: Unsafe files detected (set*id and world writable)"
@@ -551,118 +354,12 @@ install_qa_check() {
 		die "Unsafe files found in \${ED}.  Portage will not install them."
 	fi
 
-	if [[ -d ${ED}/${D} ]] ; then
-		find "${ED}/${D}" | \
+	if [[ -d ${D}/${D} ]] ; then
+		find "${D}/${D}" | \
 		while read i ; do
-			eqawarn "QA Notice: /${i##${ED}/${D}} installed in \${ED}/\${D}"
+			eqawarn "QA Notice: /${i##${D}/${D}} installed in \${D}/\${D}"
 		done
-		die "Aborting due to QA concerns: files installed in ${ED}/${D}"
-	fi
-
-	if [[ -n ${EPREFIX} && -d ${ED}/${EPREFIX} ]] ; then
-		find "${ED}/${EPREFIX}/" | \
-		while read i ; do
-			eqawarn "QA Notice: ${i#${D}} double prefix"
-		done
-		die "Aborting due to QA concerns: double prefix files installed"
-	fi
-
-	if [[ -n ${EPREFIX} && -d ${D} ]] ; then
-		INSTALLTOD=$(find ${D%/} | egrep -v "^${ED}" | sed -e "s|^${D%/}||" | awk '{if (length($0) <= length("'"${EPREFIX}"'")) { if (substr("'"${EPREFIX}"'", 1, length($0)) != $0) {print $0;} } else if (substr($0, 1, length("'"${EPREFIX}"'")) != "'"${EPREFIX}"'") {print $0;} }') 
-		if [[ -n ${INSTALLTOD} ]] ; then
-			eqawarn "QA Notice: the following files are outside of the prefix:"
-			eqawarn "${INSTALLTOD}"
-			die "Aborting due to QA concerns: there are files installed outside the prefix"
-		fi
-	fi
-
-	# Check shebangs, bug #282539
-	if [[ -n ${EPREFIX} ]] ; then
-		# this does not really belong here, but it's closely tied to
-		# this code; many runscripts generate positives here, and we
-		# know they don't work (bug #196294) so as long as that one
-		# remains an issue, simply remove them as they won't work
-		# anyway, avoid etc/init.d/functions.sh from being thrown away
-		if [[ ( -d "${ED}"/etc/conf.d || -d "${ED}"/etc/init.d ) && ! -f "${ED}"/etc/init.d/functions.sh ]] ; then
-			ewarn "removed /etc/init.d and /etc/conf.d directories until bug #196294 has been resolved"
-			rm -Rf "${ED}"/etc/{conf,init}.d
-		fi
-
-		rm -f "${T}"/non-prefix-shebangs-errs
-		local WHITELIST=" /usr/bin/env "
-		# this is hell expensive, but how else?
-		find "${ED}" -type f -executable -print0 \
-				| xargs -0 grep -H -n -m1 "^#!" \
-				| while read f ;
-		do
-			local fn=${f%%:*}
-			local pos=${f#*:} ; pos=${pos%:*}
-			local line=${f##*:}
-			# shebang always appears on the first line ;)
-			[[ ${pos} != 1 ]] && continue
-			line=( ${line#"#!"} )
-			[[ ${WHITELIST} == *" ${line[0]} "* ]] && continue
-			# does the shebang start with ${EPREFIX}?
-			[[ ${line[0]} == ${EPREFIX}* ]] && continue
-			# can we just fix it(tm)?
-			if [[ -x ${EPREFIX}${line[0]} || -x ${ED}${line[0]} ]] ; then
-				eqawarn "prefixing shebang of ${fn#${D}}"
-				sed -i -e '1s:^#! \?:#!'"${EPREFIX}"':' "${fn}"
-				continue
-			fi
-			# all else is an error if the found script is in $PATH
-			local fp=${fn#${D}} ; fp=${fp%/*}
-			if [[ ":${PATH}:" == *":${fp}:"* ]] || hasq stricter ${FEATURES} ;
-			then
-				echo "${fn#${D}}:${line[0]}" \
-					>> "${T}"/non-prefix-shebangs-errs
-			else
-				eqawarn "invalid shebang in ${fn#${D}}: ${line[0]}"
-			fi
-		done
-		if [[ -e "${T}"/non-prefix-shebangs-errs ]] ; then
-			eqawarn "QA Notice: the following files use invalid (possible non-prefixed) shebangs:"
-			eqawarn "$(<"${T}"/non-prefix-shebangs-errs)"
-			die "Aborting due to QA concerns: invalid shebangs found"
-			rm -f "${T}"/non-prefix-shebangs-errs
-		fi
-	fi
-
-	if [[ ${CHOST} == *-darwin* ]] && ! hasq binchecks ${RESTRICT} ; then
-		# on Darwin, dynamic libraries are called .dylibs instead of
-		# .sos.  In addition the version component is before the
-		# extension, not after it.  Check for this, and *only* warn
-		# about it.  Some packages do ship .so files on Darwin and make
-		# it work (ugly!).
-		rm -f "${T}/mach-o.check"
-		find ${ED%/} -name "*.so" -or -name "*.so.*" | \
-		while read i ; do
-			[[ $(file $i) == *"Mach-O"* ]] && \
-				echo "${i#${D}}" >> "${T}/mach-o.check"
-		done
-		if [[ -f ${T}/mach-o.check ]] ; then
-			f=$(< "${T}/mach-o.check")
-			vecho -ne '\a\n'
-			eqawarn "QA Notice: Found .so dynamic libraries on Darwin:"
-			eqawarn "    ${f//$'\n'/\n    }"
-		fi
-		rm -f "${T}/mach-o.check"
-
-		# The naming for dynamic libraries is different on Darwin; the
-		# version component is before the extention, instead of after
-		# it, as with .sos.  Again, make this a warning only.
-		rm -f "${T}/mach-o.check"
-		find ${ED%/} -name "*.dylib.*" | \
-		while read i ; do
-			echo "${i#${D}}" >> "${T}/mach-o.check"
-		done
-		if [[ -f "${T}/mach-o.check" ]] ; then
-			f=$(< "${T}/mach-o.check")
-			vecho -ne '\a\n'
-			eqawarn "QA Notice: Found wrongly named dynamic libraries on Darwin:"
-			eqawarn "    ${f// /\n    }"
-		fi
-		rm -f "${T}/mach-o.check"
+		die "Aborting due to QA concerns: files installed in ${D}/${D}"
 	fi
 
 	# this should help to ensure that all (most?) shared libraries are executable
@@ -745,69 +442,6 @@ install_qa_check() {
 		fi
 	done
 	[[ ${abort} == "yes" ]] && die "soiled libtool library files found"
-
-	# While we generate the NEEDED files, check that we don't get kernel
-	# traps at runtime because of broken install_names on Darwin.
-	rm -f "${T}"/.install_name_check_failed
-	[[ ${CHOST} == *-darwin* ]] && scanmacho -qyRF '%a;%p;%S;%n' "${D}" | { while IFS= read l ; do
-		arch=${l%%;*}; l=${l#*;}
-		obj="/${l%%;*}"; l=${l#*;}
-		install_name=${l%%;*}; l=${l#*;}
-		needed=${l%%;*}; l=${l#*;}
-
-		# See if the self-reference install_name points to an existing
-		# and to be installed file.  This usually is a symlink for the
-		# major version.
-		if [[ ! -e ${D}${install_name} ]] ; then
-			eqawarn "QA Notice: invalid self-reference install_name ${install_name} in ${obj}"
-			# remember we are in an implicit subshell, that's
-			# why we touch a file here ... ideally we should be
-			# able to die correctly/nicely here
-			touch "${T}"/.install_name_check_failed
-		fi
-
-		# this is ugly, paths with spaces won't work
-		reevaluate=0
-		for lib in $(echo ${needed} | tr , ' '); do
-			if [[ ! -e ${lib} && ! -e ${D}${lib} && ${lib} != "@executable_path/"* && *${lib} != "@loader_path/"* ]] ; then
-				# try to "repair" this if possible, happens because of
-				# gen_usr_ldscript tactics
-				s=${lib%usr/*}${lib##*/usr/}
-				if [[ -e ${D}${s} ]] ; then
-					ewarn "correcting install_name from ${lib} to ${s} in ${obj}"
-					install_name_tool -change \
-						"${lib}" "${s}" "${D}${obj}"
-					reevaluate=1
-				else
-					eqawarn "QA Notice: invalid reference to ${lib} in ${obj}"
-					# remember we are in an implicit subshell, that's
-					# why we touch a file here ... ideally we should be
-					# able to die correctly/nicely here
-					touch "${T}"/.install_name_check_failed
-				fi
-			fi
-		done
-		if [[ ${reevaluate} == 1 ]]; then
-			# install_name(s) have been changed, refresh data so we
-			# store the correct meta data
-			l=$(scanmacho -qyF '%a;%p;%S;%n' ${D}${obj})
-			arch=${l%%;*}; l=${l#*;}
-			obj="/${l%%;*}"; l=${l#*;}
-			install_name=${l%%;*}; l=${l#*;}
-			needed=${l%%;*}; l=${l#*;}
-		fi
-
-		# backwards compatability
-		echo "${obj} ${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
-		# what we use
-		echo "${arch};${obj};${install_name};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.MACHO.3
-	done }
-	if [[ -f ${T}/.install_name_check_failed ]] ; then
-		# secret switch "allow_broken_install_names" to get
-		# around this and install broken crap (not a good idea)
-		hasq allow_broken_install_names ${FEATURES} || \
-			die "invalid install_name found, your application or library will crash at runtime"
-	fi
 
 	# Evaluate misc gcc warnings
 	if [[ -n ${PORTAGE_LOG_FILE} && -r ${PORTAGE_LOG_FILE} ]] ; then
@@ -927,6 +561,421 @@ install_qa_check() {
 			done
 		done
 		[[ ${abort} == yes ]] && die "multilib-strict check failed!"
+	fi
+}
+
+install_qa_check_prefix() {
+	if [[ -d ${ED}/${D} ]] ; then
+		find "${ED}/${D}" | \
+		while read i ; do
+			eqawarn "QA Notice: /${i##${ED}/${D}} installed in \${ED}/\${D}"
+		done
+		die "Aborting due to QA concerns: files installed in ${ED}/${D}"
+	fi
+
+	if [[ -d ${ED}/${EPREFIX} ]] ; then
+		find "${ED}/${EPREFIX}/" | \
+		while read i ; do
+			eqawarn "QA Notice: ${i#${D}} double prefix"
+		done
+		die "Aborting due to QA concerns: double prefix files installed"
+	fi
+
+	if [[ -n ${EPREFIX} && -d ${D} ]] ; then
+		INSTALLTOD=$(find ${D%/} | egrep -v "^${ED}" | sed -e "s|^${D%/}||" | awk '{if (length($0) <= length("'"${EPREFIX}"'")) { if (substr("'"${EPREFIX}"'", 1, length($0)) != $0) {print $0;} } else if (substr($0, 1, length("'"${EPREFIX}"'")) != "'"${EPREFIX}"'") {print $0;} }') 
+		if [[ -n ${INSTALLTOD} ]] ; then
+			eqawarn "QA Notice: the following files are outside of the prefix:"
+			eqawarn "${INSTALLTOD}"
+			die "Aborting due to QA concerns: there are files installed outside the prefix"
+		fi
+	fi
+
+	# Check shebangs, bug #282539
+	if [[ -n ${EPREFIX} ]] ; then
+		# this does not really belong here, but it's closely tied to
+		# this code; many runscripts generate positives here, and we
+		# know they don't work (bug #196294) so as long as that one
+		# remains an issue, simply remove them as they won't work
+		# anyway, avoid etc/init.d/functions.sh from being thrown away
+		if [[ ( -d "${ED}"/etc/conf.d || -d "${ED}"/etc/init.d ) && ! -f "${ED}"/etc/init.d/functions.sh ]] ; then
+			ewarn "removed /etc/init.d and /etc/conf.d directories until bug #196294 has been resolved"
+			rm -Rf "${ED}"/etc/{conf,init}.d
+		fi
+
+		rm -f "${T}"/non-prefix-shebangs-errs
+		local WHITELIST=" /usr/bin/env "
+		# this is hell expensive, but how else?
+		find "${ED}" -type f -executable -print0 \
+				| xargs -0 grep -H -n -m1 "^#!" \
+				| while read f ;
+		do
+			local fn=${f%%:*}
+			local pos=${f#*:} ; pos=${pos%:*}
+			local line=${f##*:}
+			# shebang always appears on the first line ;)
+			[[ ${pos} != 1 ]] && continue
+			line=( ${line#"#!"} )
+			[[ ${WHITELIST} == *" ${line[0]} "* ]] && continue
+			# does the shebang start with ${EPREFIX}?
+			[[ ${line[0]} == ${EPREFIX}* ]] && continue
+			# can we just fix it(tm)?
+			if [[ -x ${EPREFIX}${line[0]} || -x ${ED}${line[0]} ]] ; then
+				eqawarn "prefixing shebang of ${fn#${D}}"
+				sed -i -e '1s:^#! \?:#!'"${EPREFIX}"':' "${fn}"
+				continue
+			fi
+			# all else is an error if the found script is in $PATH
+			local fp=${fn#${D}} ; fp=${fp%/*}
+			if [[ ":${PATH}:" == *":${fp}:"* ]] || hasq stricter ${FEATURES} ;
+			then
+				echo "${fn#${D}}:${line[0]}" \
+					>> "${T}"/non-prefix-shebangs-errs
+			else
+				eqawarn "invalid shebang in ${fn#${D}}: ${line[0]}"
+			fi
+		done
+		if [[ -e "${T}"/non-prefix-shebangs-errs ]] ; then
+			eqawarn "QA Notice: the following files use invalid (possible non-prefixed) shebangs:"
+			eqawarn "$(<"${T}"/non-prefix-shebangs-errs)"
+			die "Aborting due to QA concerns: invalid shebangs found"
+			rm -f "${T}"/non-prefix-shebangs-errs
+		fi
+	fi
+}
+
+install_qa_check_macho() {
+	if ! hasq binchecks ${RESTRICT} ; then
+		# on Darwin, dynamic libraries are called .dylibs instead of
+		# .sos.  In addition the version component is before the
+		# extension, not after it.  Check for this, and *only* warn
+		# about it.  Some packages do ship .so files on Darwin and make
+		# it work (ugly!).
+		rm -f "${T}/mach-o.check"
+		find ${ED%/} -name "*.so" -or -name "*.so.*" | \
+		while read i ; do
+			[[ $(file $i) == *"Mach-O"* ]] && \
+				echo "${i#${D}}" >> "${T}/mach-o.check"
+		done
+		if [[ -f ${T}/mach-o.check ]] ; then
+			f=$(< "${T}/mach-o.check")
+			vecho -ne '\a\n'
+			eqawarn "QA Notice: Found .so dynamic libraries on Darwin:"
+			eqawarn "    ${f//$'\n'/\n    }"
+		fi
+		rm -f "${T}/mach-o.check"
+
+		# The naming for dynamic libraries is different on Darwin; the
+		# version component is before the extention, instead of after
+		# it, as with .sos.  Again, make this a warning only.
+		rm -f "${T}/mach-o.check"
+		find ${ED%/} -name "*.dylib.*" | \
+		while read i ; do
+			echo "${i#${D}}" >> "${T}/mach-o.check"
+		done
+		if [[ -f "${T}/mach-o.check" ]] ; then
+			f=$(< "${T}/mach-o.check")
+			vecho -ne '\a\n'
+			eqawarn "QA Notice: Found wrongly named dynamic libraries on Darwin:"
+			eqawarn "    ${f// /\n    }"
+		fi
+		rm -f "${T}/mach-o.check"
+	fi
+
+	# While we generate the NEEDED files, check that we don't get kernel
+	# traps at runtime because of broken install_names on Darwin.
+	rm -f "${T}"/.install_name_check_failed
+	scanmacho -qyRF '%a;%p;%S;%n' "${D}" | { while IFS= read l ; do
+		arch=${l%%;*}; l=${l#*;}
+		obj="/${l%%;*}"; l=${l#*;}
+		install_name=${l%%;*}; l=${l#*;}
+		needed=${l%%;*}; l=${l#*;}
+
+		# See if the self-reference install_name points to an existing
+		# and to be installed file.  This usually is a symlink for the
+		# major version.
+		if [[ ! -e ${D}${install_name} ]] ; then
+			eqawarn "QA Notice: invalid self-reference install_name ${install_name} in ${obj}"
+			# remember we are in an implicit subshell, that's
+			# why we touch a file here ... ideally we should be
+			# able to die correctly/nicely here
+			touch "${T}"/.install_name_check_failed
+		fi
+
+		# this is ugly, paths with spaces won't work
+		reevaluate=0
+		for lib in $(echo ${needed} | tr , ' '); do
+			if [[ ! -e ${lib} && ! -e ${D}${lib} && ${lib} != "@executable_path/"* && *${lib} != "@loader_path/"* ]] ; then
+				# try to "repair" this if possible, happens because of
+				# gen_usr_ldscript tactics
+				s=${lib%usr/*}${lib##*/usr/}
+				if [[ -e ${D}${s} ]] ; then
+					ewarn "correcting install_name from ${lib} to ${s} in ${obj}"
+					install_name_tool -change \
+						"${lib}" "${s}" "${D}${obj}"
+					reevaluate=1
+				else
+					eqawarn "QA Notice: invalid reference to ${lib} in ${obj}"
+					# remember we are in an implicit subshell, that's
+					# why we touch a file here ... ideally we should be
+					# able to die correctly/nicely here
+					touch "${T}"/.install_name_check_failed
+				fi
+			fi
+		done
+		if [[ ${reevaluate} == 1 ]]; then
+			# install_name(s) have been changed, refresh data so we
+			# store the correct meta data
+			l=$(scanmacho -qyF '%a;%p;%S;%n' ${D}${obj})
+			arch=${l%%;*}; l=${l#*;}
+			obj="/${l%%;*}"; l=${l#*;}
+			install_name=${l%%;*}; l=${l#*;}
+			needed=${l%%;*}; l=${l#*;}
+		fi
+
+		# backwards compatability
+		echo "${obj} ${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+		# what we use
+		echo "${arch};${obj};${install_name};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.MACHO.3
+	done }
+	if [[ -f ${T}/.install_name_check_failed ]] ; then
+		# secret switch "allow_broken_install_names" to get
+		# around this and install broken crap (not a good idea)
+		hasq allow_broken_install_names ${FEATURES} || \
+			die "invalid install_name found, your application or library will crash at runtime"
+	fi
+}
+
+install_qa_check_pecoff() {
+	local _pfx_scan="readpecoff ${CHOST}"
+
+	# this one uses readpecoff, which supports multiple prefix platforms!
+	# this is absolutely _not_ optimized for speed, and there may be plenty
+	# of possibilities by introducing one or the other cache!
+	if ! hasq binchecks ${RESTRICT}; then
+		# copied and adapted from the above scanelf code.
+		local qa_var insecure_rpath=0 tmp_quiet=${PORTAGE_QUIET}
+		local f x
+
+		# display warnings when using stricter because we die afterwards
+		if has stricter ${FEATURES} ; then
+			unset PORTAGE_QUIET
+		fi
+
+		local _exec_find_opt="-executable"
+		[[ ${CHOST} == *-winnt* ]] && _exec_find_opt='-name *.dll -o -name *.exe'
+
+		# Make sure we disallow insecure RUNPATH/RPATH's
+		# Don't want paths that point to the tree where the package was built
+		# (older, broken libtools would do this).  Also check for null paths
+		# because the loader will search $PWD when it finds null paths.
+
+		f=$(
+			find "${ED}" -type f '(' ${_exec_find_opt} ')' -print0 | xargs -0 ${_pfx_scan} | \
+			while IFS=";" read arch obj soname rpath needed ; do \
+			echo "${rpath}" | grep -E "(${PORTAGE_BUILDDIR}|: |::|^:|^ )" > /dev/null 2>&1 \
+				&& echo "${obj}"; done;
+		)
+		# Reject set*id binaries with $ORIGIN in RPATH #260331
+		x=$(
+			find "${ED}" -type f '(' -perm -u+s -o -perm -g+s ')' -print0 | \
+			xargs -0 ${_pfx_scan} | while IFS=";" read arch obj soname rpath needed; do \
+			echo "${rpath}" | grep '$ORIGIN' > /dev/null 2>&1 && echo "${obj}"; done;
+		)
+		if [[ -n ${f}${x} ]] ; then
+			vecho -ne '\a\n'
+			eqawarn "QA Notice: The following files contain insecure RUNPATH's"
+			eqawarn " Please file a bug about this at http://bugs.gentoo.org/"
+			eqawarn " with the maintaining herd of the package."
+			eqawarn "${f}${f:+${x:+\n}}${x}"
+			vecho -ne '\a\n'
+			if [[ -n ${x} ]] || has stricter ${FEATURES} ; then
+				insecure_rpath=1
+			else
+				eqawarn "cannot automatically fix runpaths on interix platforms!"
+			fi
+		fi
+
+		rm -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+		rm -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED.PECOFF.1
+
+		# Save NEEDED information after removing self-contained providers
+		find "${ED}" -type f '(' ${_exec_find_opt} ')' -print0 | xargs -0 ${_pfx_scan} | { while IFS=';' read arch obj soname rpath needed; do
+			# need to strip image dir from object name.
+			obj="/${obj#${D}}"
+			if [ -z "${rpath}" -o -n "${rpath//*ORIGIN*}" ]; then
+				# object doesn't contain $ORIGIN in its runpath attribute
+				echo "${obj} ${needed}"	>> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+				echo "${arch};${obj};${soname};${rpath};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.PECOFF.1
+			else
+				dir=${obj%/*}
+				# replace $ORIGIN with the dirname of the current object for the lookup
+				opath=$(echo :${rpath}: | sed -e "s#.*:\(.*\)\$ORIGIN\(.*\):.*#\1${dir}\2#")
+				sneeded=$(echo ${needed} | tr , ' ')
+				rneeded=""
+				for lib in ${sneeded}; do
+					found=0
+					for path in ${opath//:/ }; do
+						[ -e "${ED}/${path}/${lib}" ] && found=1 && break
+					done
+					[ "${found}" -eq 0 ] && rneeded="${rneeded},${lib}"
+				done
+				rneeded=${rneeded:1}
+				if [ -n "${rneeded}" ]; then
+					echo "${obj} ${rneeded}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+					echo "${arch};${obj};${soname};${rpath};${rneeded}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.PECOFF.1
+				fi
+			fi
+		done }
+		
+		if [[ ${insecure_rpath} -eq 1 ]] ; then
+			die "Aborting due to serious QA concerns with RUNPATH/RPATH"
+		elif [[ -n ${die_msg} ]] && has stricter ${FEATURES} ; then
+			die "Aborting due to QA concerns: ${die_msg}"
+		fi
+
+		local _so_ext='.so*'
+
+		case "${CHOST}" in
+			*-winnt*) _so_ext=".dll" ;; # no "*" intentionally!
+		esac
+
+		# Run some sanity checks on shared libraries
+		for d in "${ED}"lib* "${ED}"usr/lib* ; do
+			[[ -d "${d}" ]] || continue
+			f=$(find "${d}" -name "lib*${_so_ext}" -print0 | \
+				xargs -0 ${_pfx_scan} | while IFS=";" read arch obj soname rpath needed; \
+				do [[ -z "${soname}" ]] && echo "${obj}"; done)
+			if [[ -n ${f} ]] ; then
+				vecho -ne '\a\n'
+				eqawarn "QA Notice: The following shared libraries lack a SONAME"
+				eqawarn "${f}"
+				vecho -ne '\a\n'
+				sleep 1
+			fi
+
+			f=$(find "${d}" -name "lib*${_so_ext}" -print0 | \
+				xargs -0 ${_pfx_scan} | while IFS=";" read arch obj soname rpath needed; \
+				do [[ -z "${needed}" ]] && echo "${obj}"; done)
+			if [[ -n ${f} ]] ; then
+				vecho -ne '\a\n'
+				eqawarn "QA Notice: The following shared libraries lack NEEDED entries"
+				eqawarn "${f}"
+				vecho -ne '\a\n'
+				sleep 1
+			fi
+		done
+
+		PORTAGE_QUIET=${tmp_quiet}
+	fi
+}
+
+install_qa_check_xcoff() {
+	if ! hasq binchecks ${RESTRICT}; then
+		local tmp_quiet=${PORTAGE_QUIET}
+		local queryline deplib
+		local insecure_rpath_list= undefined_symbols_list=
+
+		# display warnings when using stricter because we die afterwards
+		if has stricter ${FEATURES} ; then
+			unset PORTAGE_QUIET
+		fi
+
+		rm -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED.XCOFF.1
+		find "${ED}" -not -type d -exec \
+			"${EPREFIX}/usr/bin/aixdll-query" '{}' FILE MEMBER FLAGS FORMAT RUNPATH DEPLIBS ';' \
+			> "${T}"/needed 2>/dev/null
+
+		# Symlinking archive libraries is not a good idea on aix,
+		# as there is nothing like "soname" on pure filesystem level.
+		# So we create a copy instead of the symlink.
+		local prev_FILE=
+		while read queryline
+		do
+			local FILE= MEMBER= FLAGS= FORMAT= RUNPATH= DEPLIBS=
+			eval ${queryline}
+
+			if [[ ${prev_FILE} != ${FILE} ]]; then
+				prev_FILE=${FILE}
+				if [[ -n ${MEMBER} || " ${FLAGS} " == *" SHROBJ "* ]] && [[ -h ${FILE} ]]; then
+					local target=$(readlink "${FILE}")
+					if [[ ${target} == /* ]]; then
+						target=${D}${target}
+					else
+						target=${FILE%/*}/${target}
+					fi
+					rm -f "${FILE}" || die "cannot prune ${FILE#${ED}}"
+					cp -f "${target}" "${FILE}" || die "cannot copy ${target#${ED}} to ${FILE#${ED}}"
+				fi
+			fi
+		done <"${T}"/needed
+
+		prev_FILE=
+		while read queryline
+		do
+			local FILE= MEMBER= FLAGS= FORMAT= RUNPATH= DEPLIBS=
+			eval ${queryline}
+
+			if [[ ${prev_FILE} != ${FILE} ]]; then
+				# Save NEEDED information for the archive library stub
+				echo "${FORMAT##* }${FORMAT%%-*};${FILE#${D%/}};${FILE##*/};;" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.XCOFF.1
+			fi
+
+			# Make sure we disallow insecure RUNPATH's
+			# Don't want paths that point to the tree where the package was built
+			# (older, broken libtools would do this).  Also check for null paths
+			# because the loader will search $PWD when it finds null paths.
+			# And we really want absolute paths only.
+			if [[ -n $(echo ":${RUNPATH}:" | grep -E "(${PORTAGE_BUILDDIR}|::|:[^/])") ]]; then
+				insecure_rpath_list="${insecure_rpath_list}\n${FILE}"
+			fi
+
+			# Although we do have runtime linking, we don't want undefined symbols.
+			# AIX does indicate this by needing either '.' or '..'
+			local needed=${FILE##*/}
+			for deplib in ${DEPLIBS}; do
+				eval deplib=${deplib}
+				if [[ ${deplib} == '.' || ${deplib} == '..' ]]; then
+					undefined_symbols_list="${undefined_symbols_list}\n${FILE}"
+				else
+					needed="${needed},${deplib}"
+				fi
+			done
+
+			FILE=${FILE#${D%/}}
+
+			[[ -n ${MEMBER} ]] && MEMBER="[${MEMBER}]"
+			# Save NEEDED information
+			echo "${FORMAT##* }${FORMAT%%-*};${FILE}${MEMBER};${FILE##*/}${MEMBER};${RUNPATH};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.XCOFF.1
+		done <"${T}"/needed
+
+		if [[ -n ${undefined_symbols_list} ]]; then
+			vecho -ne '\a\n'
+			eqawarn "QA Notice: The following files contain undefined symbols."
+			eqawarn " Please file a bug about this at http://bugs.gentoo.org/"
+			eqawarn " with 'prefix' as the maintaining herd of the package."
+			eqawarn "${undefined_symbols_list}"
+			vecho -ne '\a\n'
+		fi
+
+		if [[ -n ${insecure_rpath_list} ]] ; then
+			vecho -ne '\a\n'
+			eqawarn "QA Notice: The following files contain insecure RUNPATH's"
+			eqawarn " Please file a bug about this at http://bugs.gentoo.org/"
+			eqawarn " with 'prefix' as the maintaining herd of the package."
+			eqawarn "${insecure_rpath_list}"
+			vecho -ne '\a\n'
+			if [[ -n ${x} ]] || has stricter ${FEATURES} ; then
+				insecure_rpath=1
+			fi
+		fi
+
+		if [[ ${insecure_rpath} -eq 1 ]] ; then
+			die "Aborting due to serious QA concerns with RUNPATH/RPATH"
+		elif [[ -n ${die_msg} ]] && has stricter ${FEATURES} ; then
+			die "Aborting due to QA concerns: ${die_msg}"
+		fi
+
+		PORTAGE_QUIET=${tmp_quiet}
 	fi
 }
 
