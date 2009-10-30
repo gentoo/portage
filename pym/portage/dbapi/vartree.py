@@ -1798,7 +1798,7 @@ class vardbapi(dbapi):
 			self.linkmap = LinkageMapMachO(self)
 		elif chost.find('interix') >= 0 or chost.find('winnt') >= 0:
 			self.linkmap = LinkageMapPeCoff(self)
-		elif chost.find('aix'):
+		elif chost.find('aix') >= 0:
 			self.linkmap = LinkageMapXCoff(self)
 		else:
 			self.linkmap = LinkageMap(self)
