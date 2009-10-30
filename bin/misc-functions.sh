@@ -881,6 +881,13 @@ install_qa_check_xcoff() {
 		fi
 
 		rm -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED.XCOFF.1
+
+		local neededfd
+		for neededfd in {3..1024} none; do ( : <&${neededfd} ) 2>/dev/null || break; done
+		[[ ${neededfd} != none ]] || die "cannot find free file descriptor handle"
+
+		eval "exec ${neededfd}>\"${PORTAGE_BUILDDIR}\"/build-info/NEEDED.XCOFF.1" || die "cannot open ${PORTAGE_BUILDDIR}/build-info/NEEDED.XCOFF.1"
+
 		find "${ED}" -not -type d -exec \
 			"${EPREFIX}/usr/bin/aixdll-query" '{}' FILE MEMBER FLAGS FORMAT RUNPATH DEPLIBS ';' \
 			> "${T}"/needed 2>/dev/null
@@ -917,7 +924,7 @@ install_qa_check_xcoff() {
 
 			if [[ ${prev_FILE} != ${FILE} ]]; then
 				# Save NEEDED information for the archive library stub
-				echo "${FORMAT##* }${FORMAT%%-*};${FILE#${D%/}};${FILE##*/};;" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.XCOFF.1
+				echo "${FORMAT##* }${FORMAT%%-*};${FILE#${D%/}};${FILE##*/};;" >&${neededfd}
 			fi
 
 			# Make sure we disallow insecure RUNPATH's
@@ -925,8 +932,8 @@ install_qa_check_xcoff() {
 			# (older, broken libtools would do this).  Also check for null paths
 			# because the loader will search $PWD when it finds null paths.
 			# And we really want absolute paths only.
-			if [[ -n $(echo ":${RUNPATH}:" | grep -E "(${PORTAGE_BUILDDIR}|::|:[^/])") ]]; then
-				insecure_rpath_list="${insecure_rpath_list}\n${FILE}"
+			if [[ " ${FLAGS} " == *" SHROBJ "* && -n $(echo ":${RUNPATH}:" | grep -E "(${PORTAGE_BUILDDIR}|::|:[^/])") ]]; then
+				insecure_rpath_list="${insecure_rpath_list}\n${FILE}${MEMBER:+[${MEMBER}]}"
 			fi
 
 			# Although we do have runtime linking, we don't want undefined symbols.
@@ -945,8 +952,10 @@ install_qa_check_xcoff() {
 
 			[[ -n ${MEMBER} ]] && MEMBER="[${MEMBER}]"
 			# Save NEEDED information
-			echo "${FORMAT##* }${FORMAT%%-*};${FILE}${MEMBER};${FILE##*/}${MEMBER};${RUNPATH};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.XCOFF.1
+			echo "${FORMAT##* }${FORMAT%%-*};${FILE}${MEMBER};${FILE##*/}${MEMBER};${RUNPATH};${needed}" >&${neededfd}
 		done <"${T}"/needed
+
+		eval "exec ${neededfd}>&-" || die "cannot close handle to ${PORTAGE_BUILDDIR}/build-info/NEEDED.XCOFF.1"
 
 		if [[ -n ${undefined_symbols_list} ]]; then
 			vecho -ne '\a\n'
@@ -964,7 +973,7 @@ install_qa_check_xcoff() {
 			eqawarn " with 'prefix' as the maintaining herd of the package."
 			eqawarn "${insecure_rpath_list}"
 			vecho -ne '\a\n'
-			if [[ -n ${x} ]] || has stricter ${FEATURES} ; then
+			if has stricter ${FEATURES} ; then
 				insecure_rpath=1
 			fi
 		fi
