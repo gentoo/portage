@@ -332,10 +332,9 @@ def unmerge(root_config, myopts, unmerge_action,
 			parents = []
 			for s in installed_sets:
 				# skip sets that the user requested to unmerge, and skip world 
-				# unless we're unmerging a package set (as the package would be 
-				# removed from "world" later on)
-				if s in root_config.setconfig.active or \
-					(s == "selected" and not root_config.setconfig.active):
+				# user-selected set, since the package will be removed from
+				# that set later on.
+				if s in root_config.setconfig.active or s == "selected":
 					continue
 
 				if s not in sets:
