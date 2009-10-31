@@ -510,6 +510,15 @@ def parse_opts(tmpcmdline, silent=False):
 			"help":"temporarily override ACCEPT_PROPERTIES",
 			"action":"store"
 		},
+
+		"--backtrack": {
+
+			"help"   : "Specifies how many times to backtrack if dependency " + \
+				"calculation fails ",
+
+			"action" : "store"
+		},
+
 		"--config-root": {
 			"help":"specify the location for portage configuration files",
 			"action":"store"
@@ -730,6 +739,21 @@ def parse_opts(tmpcmdline, silent=False):
 
 	if myoptions.selective == "True":
 		myoptions.selective = True
+
+	if myoptions.backtrack is not None:
+
+		try:
+			backtrack = int(myoptions.backtrack)
+		except (OverflowError, ValueError):
+			backtrack = -1
+
+		if backtrack < 0:
+			backtrack = None
+			if not silent:
+				writemsg("!!! Invalid --backtrack parameter: '%s'\n" % \
+					(myoptions.backtrack,), noiselevel=-1)
+
+		myoptions.backtrack = backtrack
 
 	if myoptions.deep is not None:
 		deep = None
