@@ -176,14 +176,15 @@ def main():
 		dirname  = os.path.dirname(x)
 		success |= install(basename, dirname, options)
 
-	if success:
+	global skipped_directories
+	for x in skipped_directories:
+		eqawarn(["QA Notice: dohtml on directory " + \
+			"'%s' without recursion option" % x])
+
+	if success and not skipped_directories:
 		retcode = 0
 	else:
 		retcode = 1
-		global skipped_directories
-		for x in skipped_directories:
-			eqawarn(["QA Notice: dohtml on directory " + \
-				"'%s' without recursion option" % x])
 
 	sys.exit(retcode)
 
