@@ -1947,6 +1947,11 @@ class dblink(object):
 			return
 
 		shutil.rmtree(self.dbdir)
+		# If empty, remove parent category directory.
+		try:
+			os.rmdir(os.path.dirname(self.dbdir))
+		except OSError:
+			pass
 		self.vartree.dbapi._remove(self)
 
 	def clearcontents(self):
