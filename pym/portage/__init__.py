@@ -542,13 +542,9 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 		if e.errno == portage.exception.PermissionDenied.errno:
 			raise portage.exception.PermissionDenied(mypath)
 		del e
-		if EmptyOnError:
-			return [], []
-		return None, None
+		return [], []
 	except portage.exception.PortageException:
-		if EmptyOnError:
-			return [], []
-		return None, None
+		return [], []
 	# Python retuns mtime in seconds, so if it was changed in the last few seconds, it could be invalid
 	if mtime != cached_mtime or time.time() - mtime < 4:
 		if mypath in dircache:
@@ -615,7 +611,7 @@ def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelis
 	@type ignorelist: List
 	@param followSymlinks: Follow Symlink'd files and directories
 	@type followSymlinks: Boolean
-	@param EmptyOnError: Return [] if an error occurs.
+	@param EmptyOnError: Return [] if an error occurs (deprecated, always True)
 	@type EmptyOnError: Boolean
 	@param dirsonly: Only return directories.
 	@type dirsonly: Boolean
