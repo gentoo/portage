@@ -181,7 +181,7 @@ def main():
 		eqawarn(["QA Notice: dohtml on directory " + \
 			"'%s' without recursion option" % x])
 
-	if success and not skipped_directories:
+	if success:
 		retcode = 0
 	else:
 		retcode = 1
