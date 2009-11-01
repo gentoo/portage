@@ -21,8 +21,9 @@ class FakeVartree(portage.vartree):
 	allows things like vardb global updates to be done in memory so that the
 	user doesn't necessarily need write access to the vardb in cases where
 	global updates are necessary (updates are performed when necessary if there
-	is not a matching ebuild in the tree)."""
-	def __init__(self, root_config, pkg_cache=None, acquire_lock=1):
+	is not a matching ebuild in the tree). Instances of this class are not
+	populated until the sync() method is called."""
+	def __init__(self, root_config, pkg_cache=None):
 		self._root_config = root_config
 		if pkg_cache is None:
 			pkg_cache = {}
@@ -48,8 +49,6 @@ class FakeVartree(portage.vartree):
 		self._portdb_keys = ["EAPI", "DEPEND", "RDEPEND", "PDEPEND"]
 		self._portdb = portdb
 		self._global_updates = None
-
-		self.sync()
 
 	def _match_wrapper(self, cpv, use_cache=1):
 		"""
