@@ -36,51 +36,6 @@ class FakeVartree(portage.vartree):
 		self._db_keys = mykeys
 		self._pkg_cache = pkg_cache
 		self.dbapi = PackageVirtualDbapi(real_vartree.settings)
-		vdb_path = os.path.join(self.root, portage.VDB_PATH)
-		try:
-			# At least the parent needs to exist for the lock file.
-			portage.util.ensure_dirs(vdb_path)
-		except portage.exception.PortageException:
-			pass
-		vdb_lock = None
-		try:
-			if acquire_lock and os.access(vdb_path, os.W_OK):
-				vdb_lock = portage.locks.lockdir(vdb_path)
-			real_dbapi = real_vartree.dbapi
-			slot_counters = {}
-			for cpv in real_dbapi.cpv_all():
-				cache_key = ("installed", self.root, cpv, "nomerge")
-				pkg = self._pkg_cache.get(cache_key)
-				if pkg is not None:
-					metadata = pkg.metadata
-				else:
-					metadata = dict(zip(mykeys, real_dbapi.aux_get(cpv, mykeys)))
-				myslot = metadata["SLOT"]
-				mycp = portage.cpv_getkey(cpv)
-				myslot_atom = "%s:%s" % (mycp, myslot)
-				try:
-					mycounter = long(metadata["COUNTER"])
-				except ValueError:
-					mycounter = 0
-					metadata["COUNTER"] = str(mycounter)
-				other_counter = slot_counters.get(myslot_atom, None)
-				if other_counter is not None:
-					if other_counter > mycounter:
-						continue
-				slot_counters[myslot_atom] = mycounter
-				if pkg is None:
-					pkg = Package(built=True, cpv=cpv,
-						installed=True, metadata=metadata,
-						root_config=root_config, type_name="installed")
-				self._pkg_cache[pkg] = pkg
-				self.dbapi.cpv_inject(pkg)
-			real_dbapi.flush_cache()
-		finally:
-			if vdb_lock:
-				portage.locks.unlockdir(vdb_lock)
-		# Populate the old-style virtuals using the cached values.
-		if not self.settings.treeVirtuals:
-			self.settings._populate_treeVirtuals(self)
 
 		# Intialize variables needed for lazy cache pulls of the live ebuild
 		# metadata.  This ensures that the vardb lock is released ASAP, without
@@ -93,6 +48,8 @@ class FakeVartree(portage.vartree):
 		self._portdb_keys = ["EAPI", "DEPEND", "RDEPEND", "PDEPEND"]
 		self._portdb = portdb
 		self._global_updates = None
+
+		self.sync()
 
 	def _match_wrapper(self, cpv, use_cache=1):
 		"""
@@ -147,6 +104,10 @@ class FakeVartree(portage.vartree):
 		finally:
 			if vdb_lock:
 				portage.locks.unlockdir(vdb_lock)
+
+		# Populate the old-style virtuals using the cached values.
+		if not self.settings.treeVirtuals:
+			self.settings._populate_treeVirtuals(self)
 
 	def _sync(self):
 
