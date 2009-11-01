@@ -279,6 +279,13 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
+		print("       " + green("--backtrack") + " " + turquoise("COUNT"))
+		desc = "Specifies an integer number of times to backtrack if " + \
+			"dependency calculation fails due to a conflict or an " + \
+			"unsatisfied dependency (default: '5')."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
 		print("        " + green("--binpkg-respect-use") + \
 			" < " + turquoise("y") + " | " + turquoise("n") + " >")
 		desc = "Tells emerge to ignore binary packages if their use flags" + \

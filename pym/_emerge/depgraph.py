@@ -5329,7 +5329,7 @@ def backtrack_depgraph(settings, trees, myopts, myparams,
 def _backtrack_depgraph(settings, trees, myopts, myparams, 
 	myaction, myfiles, spinner):
 
-	backtrack_max = 30
+	backtrack_max = myopts.get('--backtrack', 5)
 	runtime_pkg_mask = None
 	allow_backtracking = True
 	backtracked = 0

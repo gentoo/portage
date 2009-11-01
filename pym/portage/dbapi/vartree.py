@@ -1824,8 +1824,11 @@ class vardbapi(dbapi):
 		catdir = base + _os.sep + cat
 		t = time.time()
 		t = (t, t)
-		for x in (catdir, base):
-			os.utime(x, t)
+		try:
+			for x in (catdir, base):
+				os.utime(x, t)
+		except OSError:
+			os.makedirs(catdir)
 
 	def cpv_exists(self, mykey):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
@@ -2908,6 +2911,11 @@ class dblink(object):
 			return
 
 		shutil.rmtree(self.dbdir)
+		# If empty, remove parent category directory.
+		try:
+			os.rmdir(os.path.dirname(self.dbdir))
+		except OSError:
+			pass
 		self.vartree.dbapi._remove(self)
 
 	def clearcontents(self):

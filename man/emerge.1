@@ -276,6 +276,11 @@ acceptance of the first choice. This option is
 intended to be set in the \fBmake.conf\fR(5)
 \fBEMERGE_DEFAULT_OPTS\fR variable.
 .TP
+.BR \-\-backtrack=COUNT
+Specifies an integer number of times to backtrack if
+dependency calculation fails due to a conflict or an
+unsatisfied dependency (default: \'5\').
+.TP
 .BR "\-\-binpkg\-respect\-use < y | n >"
 Tells emerge to ignore binary packages if their use flags
 don't match the current configuration. (default: \'n\')
