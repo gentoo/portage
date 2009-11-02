@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import sys
 import portage
 
 class PackageVirtualDbapi(portage.dbapi):
@@ -36,6 +37,12 @@ class PackageVirtualDbapi(portage.dbapi):
 			obj._cp_map[k] = v[:]
 		obj._cpv_map = self._cpv_map.copy()
 		return obj
+
+	def __bool__(self):
+		return bool(self._cpv_map)
+
+	if sys.hexversion < 0x3000000:
+		__nonzero__ = __bool__
 
 	def __iter__(self):
 		return iter(self._cpv_map.values())
