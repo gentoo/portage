@@ -2633,6 +2633,10 @@ class depgraph(object):
 			self._dynamic_config.myparams["deep"] = True
 
 		for root in self._frozen_config.roots:
+			if root != self._frozen_config.target_root and \
+				"remove" in self._dynamic_config.myparams:
+				# Only pull in deps for the relevant root.
+				continue
 			if required_sets is None or root not in required_sets:
 				required_set_names = self._frozen_config._required_set_names.copy()
 			else:
