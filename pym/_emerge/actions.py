@@ -24,6 +24,7 @@ from itertools import chain
 import portage
 from portage import os
 from portage import digraph
+from portage import _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import NEWS_LIB_PATH
 from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
@@ -2465,7 +2466,7 @@ def git_sync_timestamps(settings, portdir):
 		portage._shell_quote(portdir)]
 	import subprocess
 	proc = subprocess.Popen(args, stdout=subprocess.PIPE)
-	modified_files = set(l.rstrip("\n") for l in proc.stdout)
+	modified_files = set(_unicode_decode(l).rstrip("\n") for l in proc.stdout)
 	rval = proc.wait()
 	if rval != os.EX_OK:
 		return rval
