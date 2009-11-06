@@ -1824,7 +1824,7 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
 		# interaction begins.
 		unset DEPEND RDEPEND PDEPEND IUSE
 
-		if [[ $PORTAGE_DEBUG != 1 ]] || [[ ${-/x/} != $- ]] ; then
+		if [[ $PORTAGE_DEBUG != 1 || ${-/x/} != $- ]] ; then
 			source "$EBUILD" || die "error sourcing ebuild"
 		else
 			set -x
