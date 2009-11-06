@@ -1823,7 +1823,14 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
 		# eclasses, they need to be unset before this process of
 		# interaction begins.
 		unset DEPEND RDEPEND PDEPEND IUSE
-		source "${EBUILD}" || die "error sourcing ebuild"
+
+		if [[ $PORTAGE_DEBUG != 1 ]] || [[ ${-/x/} != $- ]] ; then
+			source "$EBUILD" || die "error sourcing ebuild"
+		else
+			set -x
+			source "$EBUILD" || die "error sourcing ebuild"
+			set +x
+		fi
 
 		if [[ "${EBUILD_PHASE}" != "depend" ]] ; then
 			RESTRICT=${PORTAGE_RESTRICT}
