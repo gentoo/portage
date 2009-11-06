@@ -940,7 +940,9 @@ class depgraph(object):
 						parent_atoms = \
 							self._dynamic_config._parent_atoms.get(pkg, set())
 						if parent_atoms:
-							parent_atoms = self._dynamic_config._slot_conflict_parent_atoms.intersection(parent_atoms)
+							conflict_atoms = self._dynamic_config._slot_conflict_parent_atoms.intersection(parent_atoms)
+							if conflict_atoms:
+								parent_atoms = conflict_atoms
 						if pkg >= existing_node:
 							# We only care about the parent atoms
 							# when they trigger a downgrade.
@@ -1337,7 +1339,18 @@ class depgraph(object):
 				if eliminate_pkg:
 					atom_pkg_graph.remove(pkg)
 
+			# Yield < and <= atoms first, since those are more likely to
+			# cause a slot conflicts, and we want those atoms to be displayed
+			# in the resulting slot conflict message (see bug #291142).
+			less_than = []
+			not_less_than = []
 			for atom in cp_atoms:
+				if atom.operator in ('<', '<='):
+					less_than.append(atom)
+				else:
+					not_less_than.append(atom)
+
+			for atom in chain(less_than, not_less_than):
 				child_pkgs = atom_pkg_graph.child_nodes(atom)
 				yield (atom, child_pkgs[0])
 
