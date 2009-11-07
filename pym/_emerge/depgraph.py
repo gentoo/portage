@@ -270,7 +270,10 @@ class depgraph(object):
 				"--buildpkgonly" not in self._frozen_config.myopts
 
 			fake_vartree = self._frozen_config.trees[myroot]["vartree"]
-			fake_vartree.sync()
+			if not fake_vartree.dbapi:
+				# This needs to be called for the first depgraph, but not for
+				# backtracking depgraphs that share the same frozen_config.
+				fake_vartree.sync()
 
 			if preload_installed_pkgs:
 				vardb = fake_vartree.dbapi
