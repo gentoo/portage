@@ -1133,10 +1133,12 @@ class depgraph(object):
 				if not dep_string:
 					continue
 				if debug:
-					print()
-					print("Parent:   ", jbigkey)
-					print("Depstring:", dep_string)
-					print("Priority:", dep_priority)
+					writemsg_level("\nParent:    %s\n" % (pkg,),
+						noiselevel=-1, level=logging.DEBUG)
+					writemsg_level("Depstring: %s\n" % (dep_string,),
+						noiselevel=-1, level=logging.DEBUG)
+					writemsg_level("Priority:  %s\n" % (dep_priority,),
+						noiselevel=-1, level=logging.DEBUG)
 
 				try:
 
@@ -1272,7 +1274,8 @@ class depgraph(object):
 					return 0
 
 		if debug:
-			print("Exiting...", pkg)
+			writemsg_level("Exiting... %s\n" % (pkg,),
+				noiselevel=-1, level=logging.DEBUG)
 
 		return 1
 
