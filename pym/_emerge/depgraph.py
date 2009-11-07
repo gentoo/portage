@@ -269,10 +269,14 @@ class depgraph(object):
 				"--nodeps" not in self._frozen_config.myopts and \
 				"--buildpkgonly" not in self._frozen_config.myopts
 
+			fake_vartree = self._frozen_config.trees[myroot]["vartree"]
+			fake_vartree.sync()
+
 			if preload_installed_pkgs:
+				vardb = fake_vartree.dbapi
 				fakedb = self._dynamic_config._graph_trees[
 					myroot]["vartree"].dbapi
-				vardb = self._frozen_config.trees[myroot]["vartree"].dbapi
+
 				for pkg in vardb:
 					self._spinner_update()
 					# This triggers metadata updates via FakeVartree.
