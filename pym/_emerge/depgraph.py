@@ -1193,10 +1193,12 @@ class depgraph(object):
 		strict = pkg.type_name != "installed"
 
 		if debug:
-			print()
-			print("Parent:   ", pkg)
-			print("Depstring:", dep_string)
-			print("Priority:", dep_priority)
+			writemsg_level("\nParent:    %s\n" % (pkg,),
+				noiselevel=-1, level=logging.DEBUG)
+			writemsg_level("Depstring: %s\n" % (dep_string,),
+				noiselevel=-1, level=logging.DEBUG)
+			writemsg_level("Priority:  %s\n" % (dep_priority,),
+				noiselevel=-1, level=logging.DEBUG)
 
 		try:
 			selected_atoms = self._select_atoms(dep_root,
@@ -1210,7 +1212,9 @@ class depgraph(object):
 			return 0
 
 		if debug:
-			print("Candidates:", [str(x) for x in selected_atoms[pkg]])
+			writemsg_level("Candidates: %s\n" % \
+				([str(x) for x in selected_atoms[pkg]],),
+				noiselevel=-1, level=logging.DEBUG)
 
 		root_config = self._frozen_config.roots[dep_root]
 		vardb = root_config.trees["vartree"].dbapi
@@ -1238,8 +1242,9 @@ class depgraph(object):
 		for virt_pkg, atoms in selected_atoms.items():
 
 			if debug:
-				print("Candidates: %s: %s" % \
-					(virt_pkg.cpv, [str(x) for x in atoms]))
+				writemsg_level("Candidates: %s: %s\n" % \
+					(virt_pkg.cpv, [str(x) for x in atoms]),
+					noiselevel=-1, level=logging.DEBUG)
 
 			# Just assume depth + 1 here for now, though it's not entirely
 			# accurate since multilple levels of indirect virtual deps may
