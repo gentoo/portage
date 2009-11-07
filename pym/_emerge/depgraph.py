@@ -1343,7 +1343,7 @@ class depgraph(object):
 					atom_pkg_graph.remove(pkg)
 
 			# Yield < and <= atoms first, since those are more likely to
-			# cause a slot conflicts, and we want those atoms to be displayed
+			# cause slot conflicts, and we want those atoms to be displayed
 			# in the resulting slot conflict message (see bug #291142).
 			less_than = []
 			not_less_than = []
