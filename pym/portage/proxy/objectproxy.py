@@ -55,6 +55,9 @@ class ObjectProxy(object):
 	def __str__(self):
 		return str(object.__getattribute__(self, '_get_target')())
 
+	def __add__(self, other):
+		return self.__str__() + other
+
 	def __hash__(self):
 		return hash(object.__getattribute__(self, '_get_target')())
 
