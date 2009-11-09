@@ -37,7 +37,7 @@ from portage.sets import SETPREFIX
 
 from _emerge.actions import action_config, action_sync, action_metadata, \
 	action_regen, action_search, action_uninstall, action_info, action_build, \
-	adjust_config, chk_updated_cfg_files, display_missing_pkg_set, \
+	adjust_configs, chk_updated_cfg_files, display_missing_pkg_set, \
 	display_news_notification, getportageversion, load_emerge_config
 from _emerge.emergelog import emergelog
 from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
@@ -1181,13 +1181,7 @@ def emerge_main():
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
 		portdb = trees[settings["ROOT"]]["porttree"].dbapi
 
-	for myroot in trees:
-		mysettings =  trees[myroot]["vartree"].settings
-		mysettings.unlock()
-		adjust_config(myopts, mysettings)
-		mysettings.lock()
-		del myroot, mysettings
-
+	adjust_configs(myopts, trees)
 	apply_priorities(settings)
 
 	spinner = stdout_spinner()
