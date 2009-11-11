@@ -1269,7 +1269,8 @@ def action_info(settings, trees, myopts, myfiles):
 		myvars = ['GENTOO_MIRRORS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
 		          'PORTDIR', 'DISTDIR', 'PKGDIR', 'PORTAGE_TMPDIR',
 		          'PORTDIR_OVERLAY', 'USE', 'CHOST', 'CFLAGS', 'CXXFLAGS',
-		          'ACCEPT_KEYWORDS', 'SYNC', 'FEATURES', 'EMERGE_DEFAULT_OPTS']
+		          'ACCEPT_KEYWORDS', 'ACCEPT_LICENSE', 'SYNC', 'FEATURES',
+		          'EMERGE_DEFAULT_OPTS']
 
 		myvars.extend(portage.util.grabfile(settings["PORTDIR"]+"/profiles/info_vars"))
 
