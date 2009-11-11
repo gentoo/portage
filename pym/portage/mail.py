@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from email.mime.text import MIMEText as TextMessage
+from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart as MultipartMessage
 from email.mime.base import MIMEBase as BaseMessage
 from email.header import Header
@@ -20,6 +20,12 @@ import portage
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
+
+if sys.hexversion >= 0x3000000:
+	def TextMessage(_text):
+		return MIMEText(_text, _charset="UTF-8")
+else:
+	TextMessage = MIMEText
 
 def create_message(sender, recipient, subject, body, attachments=None):
 
@@ -127,9 +133,7 @@ def send_mail(mysettings, message):
 				myconn = smtplib.SMTP(mymailhost, mymailport)
 			if mymailuser != "" and mymailpasswd != "":
 				myconn.login(mymailuser, mymailpasswd)
-			msg = _unicode_encode(message.as_string(),
-				encoding=_encodings['content'], errors='backslashreplace')
-			myconn.sendmail(myfrom, myrecipient, msg)
+			myconn.sendmail(myfrom, myrecipient, message.as_string())
 			myconn.quit()
 		except smtplib.SMTPException as e:
 			raise portage.exception.PortageException(_("!!! An error occured while trying to send logmail:\n")+str(e))
