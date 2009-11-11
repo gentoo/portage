@@ -48,6 +48,7 @@ from portage import _unicode_encode
 from portage.cache.mappings import slot_dict_class
 
 import codecs
+from collections import deque
 import re, shutil, stat, errno, copy, subprocess
 import logging
 import os as _os
@@ -1618,12 +1619,17 @@ class vardbapi(dbapi):
 			base_names = self._vardb._aux_cache["owners"]["base_names"]
 
 			dblink_cache = {}
+			dblink_fifo = deque()
 
 			def dblink(cpv):
 				x = dblink_cache.get(cpv)
 				if x is None:
+					if len(dblink_fifo) >= 25:
+						# Ensure that we don't run out of memory.
+						del dblink_cache[dblink_fifo.popleft().mycpv]
 					x = self._vardb._dblink(cpv)
 					dblink_cache[cpv] = x
+					dblink_fifo.append(x)
 				return x
 
 			for path in path_iter:
