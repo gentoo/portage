@@ -269,10 +269,17 @@ class depgraph(object):
 				"--nodeps" not in self._frozen_config.myopts and \
 				"--buildpkgonly" not in self._frozen_config.myopts
 
+			fake_vartree = self._frozen_config.trees[myroot]["vartree"]
+			if not fake_vartree.dbapi:
+				# This needs to be called for the first depgraph, but not for
+				# backtracking depgraphs that share the same frozen_config.
+				fake_vartree.sync()
+
 			if preload_installed_pkgs:
+				vardb = fake_vartree.dbapi
 				fakedb = self._dynamic_config._graph_trees[
 					myroot]["vartree"].dbapi
-				vardb = self._frozen_config.trees[myroot]["vartree"].dbapi
+
 				for pkg in vardb:
 					self._spinner_update()
 					# This triggers metadata updates via FakeVartree.
@@ -933,7 +940,9 @@ class depgraph(object):
 						parent_atoms = \
 							self._dynamic_config._parent_atoms.get(pkg, set())
 						if parent_atoms:
-							parent_atoms = self._dynamic_config._slot_conflict_parent_atoms.intersection(parent_atoms)
+							conflict_atoms = self._dynamic_config._slot_conflict_parent_atoms.intersection(parent_atoms)
+							if conflict_atoms:
+								parent_atoms = conflict_atoms
 						if pkg >= existing_node:
 							# We only care about the parent atoms
 							# when they trigger a downgrade.
@@ -1186,10 +1195,12 @@ class depgraph(object):
 		strict = pkg.type_name != "installed"
 
 		if debug:
-			print()
-			print("Parent:   ", pkg)
-			print("Depstring:", dep_string)
-			print("Priority:", dep_priority)
+			writemsg_level("\nParent:    %s\n" % (pkg,),
+				noiselevel=-1, level=logging.DEBUG)
+			writemsg_level("Depstring: %s\n" % (dep_string,),
+				noiselevel=-1, level=logging.DEBUG)
+			writemsg_level("Priority:  %s\n" % (dep_priority,),
+				noiselevel=-1, level=logging.DEBUG)
 
 		try:
 			selected_atoms = self._select_atoms(dep_root,
@@ -1203,7 +1214,9 @@ class depgraph(object):
 			return 0
 
 		if debug:
-			print("Candidates:", [str(x) for x in selected_atoms[pkg]])
+			writemsg_level("Candidates: %s\n" % \
+				([str(x) for x in selected_atoms[pkg]],),
+				noiselevel=-1, level=logging.DEBUG)
 
 		root_config = self._frozen_config.roots[dep_root]
 		vardb = root_config.trees["vartree"].dbapi
@@ -1231,8 +1244,9 @@ class depgraph(object):
 		for virt_pkg, atoms in selected_atoms.items():
 
 			if debug:
-				print("Candidates: %s: %s" % \
-					(virt_pkg.cpv, [str(x) for x in atoms]))
+				writemsg_level("Candidates: %s: %s\n" % \
+					(virt_pkg.cpv, [str(x) for x in atoms]),
+					noiselevel=-1, level=logging.DEBUG)
 
 			# Just assume depth + 1 here for now, though it's not entirely
 			# accurate since multilple levels of indirect virtual deps may
@@ -1325,7 +1339,18 @@ class depgraph(object):
 				if eliminate_pkg:
 					atom_pkg_graph.remove(pkg)
 
+			# Yield < and <= atoms first, since those are more likely to
+			# cause a slot conflicts, and we want those atoms to be displayed
+			# in the resulting slot conflict message (see bug #291142).
+			less_than = []
+			not_less_than = []
 			for atom in cp_atoms:
+				if atom.operator in ('<', '<='):
+					less_than.append(atom)
+				else:
+					not_less_than.append(atom)
+
+			for atom in chain(less_than, not_less_than):
 				child_pkgs = atom_pkg_graph.child_nodes(atom)
 				yield (atom, child_pkgs[0])
 
@@ -2626,6 +2651,10 @@ class depgraph(object):
 			self._dynamic_config.myparams["deep"] = True
 
 		for root in self._frozen_config.roots:
+			if root != self._frozen_config.target_root and \
+				"remove" in self._dynamic_config.myparams:
+				# Only pull in deps for the relevant root.
+				continue
 			if required_sets is None or root not in required_sets:
 				required_set_names = self._frozen_config._required_set_names.copy()
 			else:

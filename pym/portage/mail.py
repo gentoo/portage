@@ -127,7 +127,9 @@ def send_mail(mysettings, message):
 				myconn = smtplib.SMTP(mymailhost, mymailport)
 			if mymailuser != "" and mymailpasswd != "":
 				myconn.login(mymailuser, mymailpasswd)
-			myconn.sendmail(myfrom, myrecipient, message.as_string())
+			msg = _unicode_encode(message.as_string(),
+				encoding=_encodings['content'], errors='backslashreplace')
+			myconn.sendmail(myfrom, myrecipient, msg)
 			myconn.quit()
 		except smtplib.SMTPException as e:
 			raise portage.exception.PortageException(_("!!! An error occured while trying to send logmail:\n")+str(e))

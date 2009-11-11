@@ -21,8 +21,9 @@ class FakeVartree(portage.vartree):
 	allows things like vardb global updates to be done in memory so that the
 	user doesn't necessarily need write access to the vardb in cases where
 	global updates are necessary (updates are performed when necessary if there
-	is not a matching ebuild in the tree)."""
-	def __init__(self, root_config, pkg_cache=None, acquire_lock=1):
+	is not a matching ebuild in the tree). Instances of this class are not
+	populated until the sync() method is called."""
+	def __init__(self, root_config, pkg_cache=None):
 		self._root_config = root_config
 		if pkg_cache is None:
 			pkg_cache = {}
@@ -36,51 +37,6 @@ class FakeVartree(portage.vartree):
 		self._db_keys = mykeys
 		self._pkg_cache = pkg_cache
 		self.dbapi = PackageVirtualDbapi(real_vartree.settings)
-		vdb_path = os.path.join(self.root, portage.VDB_PATH)
-		try:
-			# At least the parent needs to exist for the lock file.
-			portage.util.ensure_dirs(vdb_path)
-		except portage.exception.PortageException:
-			pass
-		vdb_lock = None
-		try:
-			if acquire_lock and os.access(vdb_path, os.W_OK):
-				vdb_lock = portage.locks.lockdir(vdb_path)
-			real_dbapi = real_vartree.dbapi
-			slot_counters = {}
-			for cpv in real_dbapi.cpv_all():
-				cache_key = ("installed", self.root, cpv, "nomerge")
-				pkg = self._pkg_cache.get(cache_key)
-				if pkg is not None:
-					metadata = pkg.metadata
-				else:
-					metadata = dict(zip(mykeys, real_dbapi.aux_get(cpv, mykeys)))
-				myslot = metadata["SLOT"]
-				mycp = portage.cpv_getkey(cpv)
-				myslot_atom = "%s:%s" % (mycp, myslot)
-				try:
-					mycounter = long(metadata["COUNTER"])
-				except ValueError:
-					mycounter = 0
-					metadata["COUNTER"] = str(mycounter)
-				other_counter = slot_counters.get(myslot_atom, None)
-				if other_counter is not None:
-					if other_counter > mycounter:
-						continue
-				slot_counters[myslot_atom] = mycounter
-				if pkg is None:
-					pkg = Package(built=True, cpv=cpv,
-						installed=True, metadata=metadata,
-						root_config=root_config, type_name="installed")
-				self._pkg_cache[pkg] = pkg
-				self.dbapi.cpv_inject(pkg)
-			real_dbapi.flush_cache()
-		finally:
-			if vdb_lock:
-				portage.locks.unlockdir(vdb_lock)
-		# Populate the old-style virtuals using the cached values.
-		if not self.settings.treeVirtuals:
-			self.settings._populate_treeVirtuals(self)
 
 		# Intialize variables needed for lazy cache pulls of the live ebuild
 		# metadata.  This ensures that the vardb lock is released ASAP, without
@@ -147,6 +103,10 @@ class FakeVartree(portage.vartree):
 		finally:
 			if vdb_lock:
 				portage.locks.unlockdir(vdb_lock)
+
+		# Populate the old-style virtuals using the cached values.
+		if not self.settings.treeVirtuals:
+			self.settings._populate_treeVirtuals(self)
 
 	def _sync(self):
 

@@ -29,15 +29,13 @@ class BlockerDB(object):
 	def _get_fake_vartree(self, acquire_lock=0):
 		fake_vartree = self._fake_vartree
 		if fake_vartree is None:
-			fake_vartree = FakeVartree(self._root_config,
-				acquire_lock=acquire_lock)
+			fake_vartree = FakeVartree(self._root_config)
 			self._fake_vartree = fake_vartree
 			self._dep_check_trees = { self._vartree.root : {
 				"porttree"    :  fake_vartree,
 				"vartree"     :  fake_vartree,
 			}}
-		else:
-			fake_vartree.sync(acquire_lock=acquire_lock)
+		fake_vartree.sync(acquire_lock=acquire_lock)
 		return fake_vartree
 
 	def findInstalledBlockers(self, new_pkg, acquire_lock=0):
