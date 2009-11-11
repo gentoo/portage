@@ -294,7 +294,8 @@ class Scheduler(PollScheduler):
 		@returns: True if background mode is enabled, False otherwise.
 		"""
 		background = (self._max_jobs is True or \
-			self._max_jobs > 1 or "--quiet" in self.myopts) and \
+			self._max_jobs > 1 or "--quiet" in self.myopts \
+			or "--quiet-build" in self.myopts) and \
 			not bool(self._opts_no_background.intersection(self.myopts))
 
 		if background:

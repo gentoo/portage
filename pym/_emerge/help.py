@@ -497,6 +497,12 @@ def help(myopts, havecolor=1):
 		print("              Effects vary, but the general outcome is a reduced or condensed")
 		print("              output from portage's displays.")
 		print()
+		print("       "+green("--quiet-build"))
+		desc = "Redirect all build output to logs alone, and do not " + \
+			"display it on stdout."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
 		print("       "+green("--reinstall ") + turquoise("changed-use"))
 		print("              Tells emerge to include installed packages where USE flags have")
 		print("              changed since installation.  Unlike --newuse, this option does")
