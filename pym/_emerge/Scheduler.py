@@ -436,7 +436,7 @@ class Scheduler(PollScheduler):
 		Schedule a setup phase on the merge queue, in order to
 		serialize unsandboxed access to the live filesystem.
 		"""
-		self._task_queues.merge.addFront(setup_phase)
+		self._task_queues.merge.add(setup_phase)
 		self._schedule()
 
 	def _schedule_unpack(self, unpack_phase):
