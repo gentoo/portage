@@ -2343,7 +2343,7 @@ def adjust_config(myopts, settings):
 	settings["EMERGE_WARNING_DELAY"] = str(EMERGE_WARNING_DELAY)
 	settings.backup_changes("EMERGE_WARNING_DELAY")
 
-	if "--quiet" in myopts:
+	if "--quiet" in myopts or "--quiet-build" in myopts:
 		settings["PORTAGE_QUIET"]="1"
 		settings.backup_changes("PORTAGE_QUIET")
 
