@@ -908,7 +908,7 @@ class vardbapi(dbapi):
 			def dblink(cpv):
 				x = dblink_cache.get(cpv)
 				if x is None:
-					if len(dblink_fifo) >= 25:
+					if len(dblink_fifo) >= 100:
 						# Ensure that we don't run out of memory.
 						del dblink_cache[dblink_fifo.popleft().mycpv]
 					x = self._vardb._dblink(cpv)
@@ -1201,6 +1201,14 @@ class dblink(object):
 		self._contents_inodes = None
 		self._contents_basenames = None
 		self._md5_merge_map = {}
+		self._hash_key = (self.myroot, self.mycpv)
+
+	def __hash__(self):
+		return hash(self._hash_key)
+
+	def __eq__(self, other):
+		return isinstance(other, dblink) and \
+			self._hash_key == other._hash_key
 
 	def lockdb(self):
 		if self._lock_vdb:
