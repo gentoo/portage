@@ -247,9 +247,11 @@ class search(object):
 
 	def output(self):
 		"""Outputs the results of the search."""
-		print("\b\b  \n[ Results for search key : "+white(self.searchkey)+" ]")
-		print("[ Applications found : "+white(str(self.mlen))+" ]")
-		print(" ")
+		msg = []
+		msg.append("\b\b  \n[ Results for search key : " + \
+			bold(self.searchkey) + " ]\n")
+		msg.append("[ Applications found : " + \
+			bold(str(self.mlen)) + " ]\n\n")
 		vardb = self.vartree.dbapi
 		for mtype in self.matches:
 			for match,masked in self.matches[mtype]:
@@ -272,12 +274,13 @@ class search(object):
 						desc, homepage, license = self.portdb.aux_get(
 							full_package, ["DESCRIPTION","HOMEPAGE","LICENSE"])
 					except KeyError:
-						print("emerge: search: aux_get() failed, skipping")
+						msg.append("emerge: search: aux_get() failed, skipping\n")
 						continue
 					if masked:
-						print(green("*")+"  "+white(match)+" "+red("[ Masked ]"))
+						msg.append(green("*") + "  " + \
+							white(match) + " " + red("[ Masked ]") + "\n")
 					else:
-						print(green("*")+"  "+white(match))
+						msg.append(green("*") + "  " + bold(match) + "\n")
 					myversion = self.getVersion(full_package, search.VERSION_RELEASE)
 
 					mysum = [0,0]
@@ -326,12 +329,14 @@ class search(object):
 						file_size_str = mystr + " kB"
 
 					if self.verbose:
-						msg = []
 						if available:
-							print("     ", darkgreen("Latest version available:"),myversion)
-						print("     ", self.getInstallationStatus(mycat+'/'+mypkg))
+							msg.append("      %s %s\n" % \
+								(darkgreen("Latest version available:"),
+								myversion))
+						msg.append("      %s\n" % \
+							self.getInstallationStatus(mycat+'/'+mypkg))
 						if myebuild:
-							print("      %s %s" % \
+							msg.append("      %s %s\n" % \
 								(darkgreen("Size of files:"), file_size_str))
 						msg.append("      " + darkgreen("Homepage:") + \
 							"      " + homepage + "\n")
@@ -339,7 +344,7 @@ class search(object):
 							+ "   " + desc + "\n")
 						msg.append("      " + darkgreen("License:") + \
 							"       " + license + "\n\n")
-						writemsg_stdout(''.join(msg), noiselevel=-1)
+		writemsg_stdout(''.join(msg), noiselevel=-1)
 	#
 	# private interface
 	#
