@@ -21,8 +21,11 @@ import portage
 if sys.hexversion >= 0x3000000:
 	basestring = str
 
-def TextMessage(_text):
-	return MIMEText(_text, _charset="UTF-8")
+if sys.hexversion >= 0x3000000:
+	def TextMessage(_text):
+		return MIMEText(_text, _charset="UTF-8")
+else:
+	TextMessage = MIMEText
 
 def create_message(sender, recipient, subject, body, attachments=None):
 
