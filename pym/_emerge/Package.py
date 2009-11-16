@@ -8,7 +8,7 @@ from itertools import chain
 import portage
 from portage.cache.mappings import slot_dict_class
 from portage.dep import paren_reduce, use_reduce, \
-	paren_normalize, paren_enclose
+	paren_normalize, paren_enclose, _slot_re
 from _emerge.Task import Task
 
 if sys.hexversion >= 0x3000000:
@@ -40,7 +40,9 @@ class Package(Task):
 			self.metadata['CHOST'] = self.root_config.settings.get('CHOST', '')
 		self.cp = portage.cpv_getkey(self.cpv)
 		slot = self.slot
-		if not slot:
+		if _slot_re.match(slot) is None:
+			self._invalid_metadata('SLOT.invalid',
+				"SLOT: invalid value: '%s'" % slot)
 			# Avoid an InvalidAtom exception when creating slot_atom.
 			# This package instance will be masked due to empty SLOT.
 			slot = '0'
