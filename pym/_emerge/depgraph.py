@@ -2196,6 +2196,8 @@ class depgraph(object):
 			else:
 				show_missing_use = unmasked_iuse_reasons
 
+		mask_docs = False
+
 		if show_missing_use:
 			print("\nemerge: there are no ebuilds built with USE flags to satisfy "+green(xinfo)+".")
 			print("!!! One of the following packages is required to complete your request:")
@@ -2219,7 +2221,7 @@ class depgraph(object):
 				for line in wrap(msg, 75):
 					print(line)
 			print()
-			show_mask_docs()
+			mask_docs = True
 		else:
 			print("\nemerge: there are no ebuilds to satisfy "+green(xinfo)+".")
 
@@ -2253,6 +2255,10 @@ class depgraph(object):
 			print(line)
 
 		print()
+
+		if mask_docs:
+			show_mask_docs()
+			print()
 
 	def _iter_match_pkgs(self, root_config, pkg_type, atom, onlydeps=False):
 		"""
