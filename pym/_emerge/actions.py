@@ -1968,6 +1968,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 	# Reload the whole config from scratch.
 	settings, trees, mtimedb = load_emerge_config(trees=trees)
+	adjust_configs(myopts, trees)
 	root_config = trees[settings["ROOT"]]["root_config"]
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
 
@@ -1982,6 +1983,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		mtimedb.commit()
 		# Reload the whole config from scratch.
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
+		adjust_configs(myopts, trees)
 		portdb = trees[settings["ROOT"]]["porttree"].dbapi
 		root_config = trees[settings["ROOT"]]["root_config"]
 
@@ -2113,6 +2115,13 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 			opts, action, valid_atoms, spinner)
 
 	return rval
+
+def adjust_configs(myopts, trees):
+	for myroot in trees:
+		mysettings =  trees[myroot]["vartree"].settings
+		mysettings.unlock()
+		adjust_config(myopts, mysettings)
+		mysettings.lock()
 
 def adjust_config(myopts, settings):
 	"""Make emerge specific adjustments to the config."""
