@@ -2816,9 +2816,12 @@ class depgraph(object):
 							# version that is not masked for any other reason.
 							# Only do this for complete or deep graphs since
 							# otherwise it is likely a waste of time.
+							got_mask = False
 							for db, pkg_type, built, installed, db_keys in dbs:
 								if installed:
 									continue
+								if got_mask:
+									break
 								for upgrade_pkg in self._iter_match_pkgs(
 									root_config, pkg_type, pkg.slot_atom):
 									if upgrade_pkg <= pkg:
@@ -2829,6 +2832,7 @@ class depgraph(object):
 									if pkgsettings._getMissingLicenses(
 										upgrade_pkg.cpv, upgrade_pkg.metadata):
 										self._dynamic_config._masked_license_updates.add(upgrade_pkg)
+										got_mask = True
 										break
 
 					blocker_atoms = None
