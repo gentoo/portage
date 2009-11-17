@@ -23,7 +23,9 @@ if sys.hexversion >= 0x3000000:
 
 if sys.hexversion >= 0x3000000:
 	def TextMessage(_text):
-		return MIMEText(_text, _charset="UTF-8")
+		mimetext = MIMEText(_text)
+		mimetext.set_charset("UTF-8")
+		return mimetext
 else:
 	TextMessage = MIMEText
 
