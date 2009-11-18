@@ -281,6 +281,7 @@ qahelp={
 	"EAPI.definition":"EAPI is defined after an inherit call (must be defined before)",
 	"EAPI.incompatible":"Ebuilds that use features that are only available with a different EAPI",
 	"EAPI.unsupported":"Ebuilds that have an unsupported EAPI version (you must upgrade portage)",
+	"SLOT.invalid":"Ebuilds that have an invalid SLOT variable value",
 	"SLOT.missing":"Ebuilds that have a missing or empty SLOT variable",
 	"HOMEPAGE.missing":"Ebuilds that have a missing or empty HOMEPAGE variable",
 	"DEPEND.bad":"User-visible ebuilds with bad DEPEND settings (matched against *visible* ebuilds)",
