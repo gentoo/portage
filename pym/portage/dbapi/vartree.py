@@ -338,9 +338,11 @@ class LinkageMap(object):
 
 		# have to call scanelf for preserved libs here as they aren't 
 		# registered in NEEDED.ELF.2 files
+		plibs = set()
 		if self._dbapi.plib_registry and self._dbapi.plib_registry.getPreservedLibs():
 			args = [EPREFIX+"/usr/bin/scanelf", "-qF", "%a;%F;%S;%r;%n"]
 			for items in self._dbapi.plib_registry.getPreservedLibs().values():
+				plibs.update(items)
 				args.extend(os.path.join(root, x.lstrip("." + os.sep)) \
 					for x in items)
 			try:
@@ -370,8 +372,19 @@ class LinkageMap(object):
 							level=logging.ERROR, noiselevel=-1)
 						continue
 					fields[1] = fields[1][root_len:]
+					plibs.discard(fields[1])
 					lines.append(";".join(fields))
 				proc.wait()
+
+		if plibs:
+			# Preserved libraries that did not appear in the scanelf output.
+			# This is known to happen with statically linked libraries.
+			# Generate dummy lines for these, so we can assume that every
+			# preserved library has an entry in self._obj_properties. This
+			# is important in order to prevent findConsumers from raising
+			# an unwanted KeyError.
+			for x in plibs:
+				lines.append(";".join(['', x, '', '', '']))
 
 		for l in lines:
 			l = l.rstrip("\n")
