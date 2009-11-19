@@ -4,7 +4,7 @@
 
 import portage
 
-def visible(pkgsettings, pkg):
+def visible(pkgsettings, pkg, ignore=None):
 	"""
 	Check if a package is visible. This can raise an InvalidDependString
 	exception if LICENSE is invalid.
@@ -44,7 +44,8 @@ def visible(pkgsettings, pkg):
 		return False
 	try:
 		if pkgsettings._getMissingLicenses(pkg.cpv, pkg.metadata):
-			return False
+			if ignore is None or 'LICENSE' not in ignore:
+				return False
 	except portage.exception.InvalidDependString:
 		return False
 	return True
