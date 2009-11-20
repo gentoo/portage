@@ -5278,7 +5278,10 @@ class _dep_check_composite_db(portage.dbapi):
 			# conflicts).
 			highest_visible, in_graph = self._depgraph._select_package(
 				self._root, pkg.slot_atom)
-			if pkg != highest_visible:
+			# Note: highest_visible is not necessarily the real highest
+			# visible, especially when --update is not enabled, so use
+			# < operator instead of !=.
+			if pkg < highest_visible:
 				return False
 		elif in_graph != pkg:
 			# Mask choices for packages that would trigger a slot
