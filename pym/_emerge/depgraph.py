@@ -4738,7 +4738,7 @@ class depgraph(object):
 				del display_list[i]
 				continue
 			if ordered and isinstance(node, Package) \
-				and node.operation == 'merge':
+				and node.operation in ('merge', 'uninstall'):
 				last_merge_depth = depth
 				continue
 			if depth >= last_merge_depth or \
