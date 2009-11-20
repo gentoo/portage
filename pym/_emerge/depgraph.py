@@ -5419,7 +5419,7 @@ def _backtrack_depgraph(settings, trees, myopts, myparams,
 
 	backtrack_max = myopts.get('--backtrack', 5)
 	runtime_pkg_mask = None
-	allow_backtracking = True
+	allow_backtracking = backtrack_max > 0
 	backtracked = 0
 	frozen_config = _frozen_depgraph_config(settings, trees,
 		myopts, spinner)
