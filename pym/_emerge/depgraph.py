@@ -3772,9 +3772,8 @@ class depgraph(object):
 					# it serves as an indicator that blocking packages
 					# will be temporarily installed simultaneously.
 					for blocker in solved_blockers:
-						retlist.append(Blocker(atom=blocker.atom,
-							root=blocker.root, eapi=blocker.eapi,
-							satisfied=True))
+						blocker.satisfied = True
+						retlist.append(blocker)
 
 		unsolvable_blockers = set(self._dynamic_config._unsolvable_blockers.leaf_nodes())
 		for node in myblocker_uninstalls.root_nodes():
@@ -4053,8 +4052,13 @@ class depgraph(object):
 		unsatisfied_blockers = []
 		ordered_nodes = []
 		for x in mylist:
-			if isinstance(x, Blocker) and not x.satisfied:
-				unsatisfied_blockers.append(x)
+			if isinstance(x, Blocker):
+				counters.blocks += 1
+				if x.satisfied:
+					ordered_nodes.append(x)
+					counters.blocks_satisfied += 1
+				else:
+					unsatisfied_blockers.append(x)
 			else:
 				ordered_nodes.append(x)
 
@@ -4096,10 +4100,6 @@ class depgraph(object):
 				else:
 					blocker_style = "PKG_BLOCKER"
 					addl = "%s  %s  " % (colorize(blocker_style, "B"), fetch)
-				if ordered:
-					counters.blocks += 1
-					if x.satisfied:
-						counters.blocks_satisfied += 1
 				resolved = portage.dep_expand(
 					str(x.atom).lstrip("!"), mydb=vardb, settings=pkgsettings)
 				if "--columns" in self._frozen_config.myopts and "--quiet" in self._frozen_config.myopts:
@@ -4650,7 +4650,7 @@ class depgraph(object):
 			else:
 				seen_nodes.add(node)
 
-				if isinstance(node, Package):
+				if isinstance(node, (Blocker, Package)):
 					display_list.append((node, depth, True))
 				else:
 					depth = -1
