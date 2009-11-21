@@ -3759,7 +3759,9 @@ class depgraph(object):
 					for blocker in blocker_nodes:
 						if not myblocker_uninstalls.child_nodes(blocker):
 							myblocker_uninstalls.remove(blocker)
-							solved_blockers.add(blocker)
+							if blocker not in \
+								self._dynamic_config._unsolvable_blockers:
+								solved_blockers.add(blocker)
 
 				retlist.append(node)
 
@@ -3772,9 +3774,7 @@ class depgraph(object):
 					# it serves as an indicator that blocking packages
 					# will be temporarily installed simultaneously.
 					for blocker in solved_blockers:
-						if blocker not in \
-							self._dynamic_config._unsolvable_blockers:
-							blocker.satisfied = True
+						blocker.satisfied = True
 						retlist.append(blocker)
 
 		unsolvable_blockers = set(self._dynamic_config._unsolvable_blockers.leaf_nodes())
