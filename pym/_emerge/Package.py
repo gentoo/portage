@@ -22,8 +22,8 @@ class Package(Task):
 		"installed", "metadata", "onlydeps", "operation",
 		"root_config", "type_name",
 		"category", "counter", "cp", "cpv_split",
-		"inherited", "invalid", "iuse", "mtime",
-		"pf", "pv_split", "root", "slot", "slot_atom",) + \
+		"inherited", "invalid", "iuse", "masks", "mtime",
+		"pf", "pv_split", "root", "slot", "slot_atom", "visible",) + \
 	("_use",)
 
 	metadata_keys = [
@@ -50,6 +50,83 @@ class Package(Task):
 		self.category, self.pf = portage.catsplit(self.cpv)
 		self.cpv_split = portage.catpkgsplit(self.cpv)
 		self.pv_split = self.cpv_split[1:]
+		self.masks = self._masks()
+		self.visible = self._visible(self.masks)
+
+	def _masks(self):
+		masks = {}
+		settings = self.root_config.settings
+
+		if self.invalid is not None:
+			masks['invalid'] = self.invalid
+
+		if not settings._accept_chost(self.cpv, self.metadata):
+			masks['CHOST'] = self.metadata['CHOST']
+
+		eapi = self.metadata["EAPI"]
+		if not portage.eapi_is_supported(eapi):
+			masks['EAPI.unsupported'] = eapi
+		if portage._eapi_is_deprecated(eapi):
+			masks['EAPI.deprecated'] = eapi
+
+		missing_keywords = settings._getMissingKeywords(
+			self.cpv, self.metadata)
+		if missing_keywords:
+			masks['KEYWORDS'] = missing_keywords
+
+		try:
+			missing_properties = settings._getMissingProperties(
+				self.cpv, self.metadata)
+			if missing_properties:
+				masks['PROPERTIES'] = missing_properties
+		except portage.exception.InvalidDependString:
+			# already recorded as 'invalid'
+			pass
+
+		mask_atom = settings._getMaskAtom(self.cpv, self.metadata)
+		if mask_atom is not None:
+			masks['package.mask'] = mask_atom
+
+		system_mask = settings._getProfileMaskAtom(
+			self.cpv, self.metadata)
+		if system_mask is not None:
+			masks['profile.system'] = system_mask
+
+		try:
+			missing_licenses = settings._getMissingLicenses(
+				self.cpv, self.metadata)
+			if missing_licenses:
+				masks['LICENSE'] = missing_licenses
+		except portage.exception.InvalidDependString:
+			# already recorded as 'invalid'
+			pass
+
+		if not masks:
+			masks = None
+
+		return masks
+
+	def _visible(self, masks):
+
+		if masks is not None:
+
+			if 'EAPI.unsupported' in masks:
+				return False
+
+			if not self.installed and ( \
+				'invalid' in masks or \
+				'CHOST' in masks or \
+				'EAPI.deprecated' in masks or \
+				'KEYWORDS' in masks or \
+				'PROPERTIES' in masks):
+				return False
+
+			if 'package.mask' in masks or \
+				'profile.system' in masks or \
+				'LICENSE' in masks:
+				return False
+
+		return True
 
 	def _invalid_metadata(self, msg_type, msg):
 		if self.invalid is None:
