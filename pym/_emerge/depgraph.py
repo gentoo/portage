@@ -3772,7 +3772,9 @@ class depgraph(object):
 					# it serves as an indicator that blocking packages
 					# will be temporarily installed simultaneously.
 					for blocker in solved_blockers:
-						blocker.satisfied = True
+						if blocker not in \
+							self._dynamic_config._unsolvable_blockers:
+							blocker.satisfied = True
 						retlist.append(blocker)
 
 		unsolvable_blockers = set(self._dynamic_config._unsolvable_blockers.leaf_nodes())
