@@ -2810,11 +2810,12 @@ class depgraph(object):
 							self._dynamic_config._masked_installed.add(pkg)
 						elif pkgsettings._getMissingLicenses(pkg.cpv, pkg.metadata):
 							self._dynamic_config._masked_installed.add(pkg)
-						elif complete or deep:
+						elif pkg_in_graph or complete or deep:
 							# Check for upgrades in the same slot that are
 							# masked due to a LICENSE change in a newer
 							# version that is not masked for any other reason.
-							# Only do this for complete or deep graphs since
+							# Only do this for packages that are already in
+							# the graph, or complete or deep graphs, since
 							# otherwise it is likely a waste of time.
 							got_mask = False
 							for db, pkg_type, built, installed, db_keys in dbs:
