@@ -7512,10 +7512,8 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			else:
 				ret=os.rename(src,dest)
 			renamefailed=0
-		except SystemExit as e:
-			raise
-		except Exception as e:
-			if e[0]!=errno.EXDEV:
+		except OSError as e:
+			if e.errno != errno.EXDEV:
 				# Some random error.
 				print(_("!!! Failed to move %(src)s to %(dest)s") % {"src": src, "dest": dest})
 				print("!!!",e)
