@@ -124,6 +124,7 @@
 			[installed category packages]
 			class = portage.sets.dbapi.CategorySet
 			multiset = true
+			repository = vartree
 			name_pattern = $category/*
 			</programlisting>
 			</para>
@@ -437,6 +438,13 @@
 			<itemizedlist>
 			<listitem><para><varname>category</varname>: Required. The name of an existing ebuild
 				category which should be used to create the package set.</para>
+			</listitem>
+			<listitem><para><varname>repository</varname>: Optional, defaults to 
+				<parameter>porttree</parameter>. It determines which repository class should
+				be used to create the package set. Valid values for this option are:
+				<parameter>porttree</parameter> (normal ebuild repository), 
+				<parameter>vartree</parameter> (installed package repository)
+				and <parameter>bintree</parameter> (local binary package repository).</para>
 			</listitem>
 			<listitem><para><varname>only_visible</varname>: Optional, defaults to <parameter>true</parameter>.
 				When set to <parameter>true</parameter> the set will only include visible packages, 
