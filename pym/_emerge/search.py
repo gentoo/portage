@@ -11,7 +11,6 @@ from portage.output import  bold, bold as white, darkgreen, green, red
 from portage.util import writemsg_stdout
 
 from _emerge.Package import Package
-from _emerge.visible import visible
 
 class search(object):
 
@@ -111,9 +110,10 @@ class search(object):
 			pkg_type = "installed"
 		elif built:
 			pkg_type = "binary"
-		return visible(self.settings,
-			Package(type_name=pkg_type, root_config=self.root_config,
-			cpv=cpv, built=built, installed=installed, metadata=metadata))
+		return Package(type_name=pkg_type,
+			root_config=self.root_config,
+			cpv=cpv, built=built, installed=installed,
+			metadata=metadata).visible
 
 	def _xmatch(self, level, atom):
 		"""
