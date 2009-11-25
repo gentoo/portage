@@ -1024,17 +1024,17 @@ install_mask() {
 preinst_bsdflags() {
 	hasq chflags $FEATURES || return
 	# Save all the file flags for restoration after installation.
-	mtree -c -p "${ED}" -k flags > "${T}/bsdflags.mtree"
+	mtree -c -p "${D}" -k flags > "${T}/bsdflags.mtree"
 	# Remove all the file flags so that the merge phase can do anything
 	# necessary.
-	chflags -R noschg,nouchg,nosappnd,nouappnd "${ED}"
-	chflags -R nosunlnk,nouunlnk "${ED}" 2>/dev/null
+	chflags -R noschg,nouchg,nosappnd,nouappnd "${D}"
+	chflags -R nosunlnk,nouunlnk "${D}" 2>/dev/null
 }
 
 postinst_bsdflags() {
 	hasq chflags $FEATURES || return
 	# Restore all the file flags that were saved before installation.
-	mtree -e -p "${EROOT}" -U -k flags < "${T}/bsdflags.mtree" &> /dev/null
+	mtree -e -p "${ROOT}" -U -k flags < "${T}/bsdflags.mtree" &> /dev/null
 }
 
 preinst_aix() {
@@ -1231,7 +1231,7 @@ preinst_sfperms() {
 	# Smart FileSystem Permissions
 	if hasq sfperms $FEATURES; then
 		local i
-		find "${ED}" -type f -perm -4000 -print0 | \
+		find "${D}" -type f -perm -4000 -print0 | \
 		while read -d $'\0' i ; do
 			if [ -n "$(find "$i" -perm -2000)" ] ; then
 				ebegin ">>> SetUID and SetGID: [chmod o-r] /${i#${D}}"
@@ -1243,7 +1243,7 @@ preinst_sfperms() {
 				eend $?
 			fi
 		done
-		find "${ED}" -type f -perm -2000 -print0 | \
+		find "${D}" -type f -perm -2000 -print0 | \
 		while read -d $'\0' i ; do
 			if [ -n "$(find "$i" -perm -4000)" ] ; then
 				# This case is already handled
@@ -1272,7 +1272,7 @@ preinst_suid_scan() {
 		# can easly be bypassed using the addwrite() function
 		addwrite "${sfconf}"
 		vecho ">>> Performing suid scan in ${D}"
-		for i in $(find "${ED}" -type f \( -perm -4000 -o -perm -2000 \) ); do
+		for i in $(find "${D}" -type f \( -perm -4000 -o -perm -2000 \) ); do
 			if [ -s "${sfconf}" ]; then
 				install_path=/${i#${D}}
 				if grep -q "^${install_path}\$" "${sfconf}" ; then
@@ -1315,7 +1315,7 @@ preinst_selinux_labels() {
 	
 				addwrite /selinux/context;
 	
-				"${EPREFIX}"/usr/sbin/setfiles "${file_contexts_path}" -r "${ED}" "${ED}"
+				"${EPREFIX}"/usr/sbin/setfiles "${file_contexts_path}" -r "${D}" "${D}"
 			) || die "Failed to set SELinux security labels."
 		else
 			# nonfatal, since merging can happen outside a SE kernel
