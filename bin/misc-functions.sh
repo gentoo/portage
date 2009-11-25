@@ -1137,7 +1137,7 @@ postinst_aix() {
 		[[ ${member##*/} == *'['*']' ]] || continue
 		contentmember=${member%/*}/.${member##*/}
 		activecontentmembers="${activecontentmembers}:(${contentmember}):"
-		archive=${member%[*}
+		archive=${member%[*]}
 		[[ ${prev_archive} != ${archive} ]] || continue
 		prev_archive=${archive}
 		activearchives="${activearchives}:(${archive}):"
