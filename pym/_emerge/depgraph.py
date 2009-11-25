@@ -538,6 +538,14 @@ class depgraph(object):
 		msg.append("satisfy simultaneously.  If such a conflict exists in ")
 		msg.append("the dependencies of two different packages, then those ")
 		msg.append("packages can not be installed simultaneously.")
+		backtrack_opt = self._frozen_config.myopts.get('--backtrack')
+		if not self._dynamic_config._allow_backtracking and \
+			(backtrack_opt is None or \
+			(backtrack_opt > 0 and backtrack_opt < 30)):
+			msg.append(" You may want to try a larger value of the ")
+			msg.append("--backtrack option, such as --backtrack=30, ")
+			msg.append("in order to see if that will solve this conflict ")
+			msg.append("automatically.")
 
 		from formatter import AbstractFormatter, DumbWriter
 		f = AbstractFormatter(DumbWriter(sys.stderr, maxcol=72))
