@@ -52,34 +52,39 @@ install_qa_check() {
 	ecompress --dequeue
 
 	# Now we look for all world writable files.
-	for i in $(find "${ED}/" -type f -perm -2); do
+	for i in $(find "${D}/" -type f -perm -2); do
 		vecho -ne '\a'
 		vecho "QA Security Notice:"
-		vecho "- ${i:${#ED}:${#i}} will be a world writable file."
+		vecho "- ${i:${#D}:${#i}} will be a world writable file."
 		vecho "- This may or may not be a security problem, most of the time it is one."
 		vecho "- Please double check that $PF really needs a world writeable bit and file bugs accordingly."
 		sleep 1
 	done
 
-	case ${CHOST} in
-		*-darwin*)
-			# Mach-O platforms (NeXT, Darwin, OSX)
-			install_qa_check_macho
-		;;
-		*-interix*|*-winnt*)
-			# PECOFF platforms (Windows/Interix)
-			install_qa_check_pecoff
-		;;
-		*-aix*)
-			# XCOFF platforms (AIX)
-			install_qa_check_xcoff
-		;;
-		*)
-			# because this is the majority: ELF platforms (Linux,
-			# Solaris, *BSD, IRIX, etc.)
-			install_qa_check_elf
-		;;
-	esac
+	# anything outside the prefix should be caught by the Prefix QA
+	# check, so if there's nothing in ED, we skip searching for QA
+	# checks there, the specific QA funcs can hence rely on ED existing
+	if [[ -d ${ED} ]] ; then
+		case ${CHOST} in
+			*-darwin*)
+				# Mach-O platforms (NeXT, Darwin, OSX)
+				install_qa_check_macho
+			;;
+			*-interix*|*-winnt*)
+				# PECOFF platforms (Windows/Interix)
+				install_qa_check_pecoff
+			;;
+			*-aix*)
+				# XCOFF platforms (AIX)
+				install_qa_check_xcoff
+			;;
+			*)
+				# because this is the majority: ELF platforms (Linux,
+				# Solaris, *BSD, IRIX, etc.)
+				install_qa_check_elf
+			;;
+		esac
+	fi
 
 	# this is basically here such that the diff with trunk remains just
 	# offsetted and not out of order
@@ -103,7 +108,7 @@ install_qa_check_elf() {
 		# Don't want paths that point to the tree where the package was built
 		# (older, broken libtools would do this).  Also check for null paths
 		# because the loader will search $PWD when it finds null paths.
-		f=$(scanelf -qyRF '%r %p' "${ED}" | grep -E "(${PORTAGE_BUILDDIR}|: |::|^:|^ )")
+		f=$(scanelf -qyRF '%r %p' "${D}" | grep -E "(${PORTAGE_BUILDDIR}|: |::|^:|^ )")
 		# Reject set*id binaries with $ORIGIN in RPATH #260331
 		x=$(
 			find "${D}" -type f \( -perm -u+s -o -perm -g+s \) -print0 | \
@@ -133,7 +138,7 @@ install_qa_check_elf() {
 		[[ -n ${!qa_var} ]] && QA_TEXTRELS=${!qa_var}
 		[[ -n ${QA_STRICT_TEXTRELS} ]] && QA_TEXTRELS=""
 		export QA_TEXTRELS="${QA_TEXTRELS} lib*/modules/*.ko"
-		f=$(scanelf -qyRF '%t %p' "${ED}" | grep -v 'usr/lib/debug/')
+		f=$(scanelf -qyRF '%t %p' "${D}" | grep -v 'usr/lib/debug/')
 		if [[ -n ${f} ]] ; then
 			scanelf -qyRAF '%T %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-textrel.log
 			vecho -ne '\a\n'
@@ -173,7 +178,7 @@ install_qa_check_elf() {
 					[[ -n ${QA_STRICT_WX_LOAD} ]] && QA_WX_LOAD=""
 					export QA_EXECSTACK="${QA_EXECSTACK} lib*/modules/*.ko"
 					export QA_WX_LOAD="${QA_WX_LOAD} lib*/modules/*.ko"
-					f=$(scanelf -qyRAF '%e %p' "${ED}" | grep -v 'usr/lib/debug/')
+					f=$(scanelf -qyRAF '%e %p' "${D}" | grep -v 'usr/lib/debug/')
 					;;
 			esac
 			;;
@@ -200,7 +205,9 @@ install_qa_check_elf() {
 		if [[ "${LDFLAGS}" == *--hash-style=gnu* ]] && [[ "${PN}" != *-bin ]] ; then
 			qa_var="QA_DT_HASH_${ARCH/-/_}"
 			eval "[[ -n \${!qa_var} ]] && QA_DT_HASH=(\"\${${qa_var}[@]}\")"
-			f=$(scanelf -qyRF '%k %p' -k .hash "${D}" | sed -e "s:\.hash ::")
+			# use ED here, for the rest of the checks of scanelf's
+			# output, scanelf is silent on non-existing ED
+			f=$(scanelf -qyRF '%k %p' -k .hash "${ED}" | sed -e "s:\.hash ::")
 			if [[ -n ${f} ]] ; then
 				echo "${f}" > "${T}"/scanelf-ignored-LDFLAGS.log
 				if [ "${QA_STRICT_DT_HASH-unset}" == unset ] ; then
@@ -311,7 +318,7 @@ install_qa_check_elf() {
 		# Check for shared libraries lacking NEEDED entries
 		qa_var="QA_DT_NEEDED_${ARCH/-/_}"
 		eval "[[ -n \${!qa_var} ]] && QA_DT_NEEDED=(\"\${${qa_var}[@]}\")"
-		f=$(scanelf -ByF '%n %p' "${D}"{,usr/}lib*.so* | gawk '$2 == "" { print }' | sed -e "s:^[[:space:]]${D}:/:")
+		f=$(scanelf -ByF '%n %p' "${ED}"{,usr/}lib*.so* | gawk '$2 == "" { print }' | sed -e "s:^[[:space:]]${D}:/:")
 		if [[ -n ${f} ]] ; then
 			echo "${f}" > "${T}"/scanelf-missing-NEEDED.log
 			if [[ "${QA_STRICT_DT_NEEDED-unset}" == unset ]] ; then
@@ -347,11 +354,11 @@ install_qa_check_elf() {
 }
 
 install_qa_check_misc() {
-	local unsafe_files=$(find "${ED}" -type f '(' -perm -2002 -o -perm -4002 ')')
+	local unsafe_files=$(find "${D}" -type f '(' -perm -2002 -o -perm -4002 ')')
 	if [[ -n ${unsafe_files} ]] ; then
 		eqawarn "QA Notice: Unsafe files detected (set*id and world writable)"
 		eqawarn "${unsafe_files}"
-		die "Unsafe files found in \${ED}.  Portage will not install them."
+		die "Unsafe files found in \${D}.  Portage will not install them."
 	fi
 
 	if [[ -d ${D}/${D} ]] ; then
@@ -581,7 +588,7 @@ install_qa_check_prefix() {
 		die "Aborting due to QA concerns: double prefix files installed"
 	fi
 
-	if [[ -n ${EPREFIX} && -d ${D} ]] ; then
+	if [[ -d ${D} ]] ; then
 		INSTALLTOD=$(find ${D%/} | egrep -v "^${ED}" | sed -e "s|^${D%/}||" | awk '{if (length($0) <= length("'"${EPREFIX}"'")) { if (substr("'"${EPREFIX}"'", 1, length($0)) != $0) {print $0;} } else if (substr($0, 1, length("'"${EPREFIX}"'")) != "'"${EPREFIX}"'") {print $0;} }') 
 		if [[ -n ${INSTALLTOD} ]] ; then
 			eqawarn "QA Notice: the following files are outside of the prefix:"
@@ -590,56 +597,57 @@ install_qa_check_prefix() {
 		fi
 	fi
 
-	# Check shebangs, bug #282539
-	if [[ -n ${EPREFIX} ]] ; then
-		# this does not really belong here, but it's closely tied to
-		# this code; many runscripts generate positives here, and we
-		# know they don't work (bug #196294) so as long as that one
-		# remains an issue, simply remove them as they won't work
-		# anyway, avoid etc/init.d/functions.sh from being thrown away
-		if [[ ( -d "${ED}"/etc/conf.d || -d "${ED}"/etc/init.d ) && ! -f "${ED}"/etc/init.d/functions.sh ]] ; then
-			ewarn "removed /etc/init.d and /etc/conf.d directories until bug #196294 has been resolved"
-			rm -Rf "${ED}"/etc/{conf,init}.d
-		fi
+	# all further checks rely on ${ED} existing
+	[[ -d ${ED} ]] || return
 
-		rm -f "${T}"/non-prefix-shebangs-errs
-		local WHITELIST=" /usr/bin/env "
-		# this is hell expensive, but how else?
-		find "${ED}" -type f -executable -print0 \
-				| xargs -0 grep -H -n -m1 "^#!" \
-				| while read f ;
-		do
-			local fn=${f%%:*}
-			local pos=${f#*:} ; pos=${pos%:*}
-			local line=${f##*:}
-			# shebang always appears on the first line ;)
-			[[ ${pos} != 1 ]] && continue
-			line=( ${line#"#!"} )
-			[[ ${WHITELIST} == *" ${line[0]} "* ]] && continue
-			# does the shebang start with ${EPREFIX}?
-			[[ ${line[0]} == ${EPREFIX}* ]] && continue
-			# can we just fix it(tm)?
-			if [[ -x ${EPREFIX}${line[0]} || -x ${ED}${line[0]} ]] ; then
-				eqawarn "prefixing shebang of ${fn#${D}}"
-				sed -i -e '1s:^#! \?:#!'"${EPREFIX}"':' "${fn}"
-				continue
-			fi
-			# all else is an error if the found script is in $PATH
-			local fp=${fn#${D}} ; fp=${fp%/*}
-			if [[ ":${PATH}:" == *":${fp}:"* ]] || hasq stricter ${FEATURES} ;
-			then
-				echo "${fn#${D}}:${line[0]}" \
-					>> "${T}"/non-prefix-shebangs-errs
-			else
-				eqawarn "invalid shebang in ${fn#${D}}: ${line[0]}"
-			fi
-		done
-		if [[ -e "${T}"/non-prefix-shebangs-errs ]] ; then
-			eqawarn "QA Notice: the following files use invalid (possible non-prefixed) shebangs:"
-			eqawarn "$(<"${T}"/non-prefix-shebangs-errs)"
-			die "Aborting due to QA concerns: invalid shebangs found"
-			rm -f "${T}"/non-prefix-shebangs-errs
+	# this does not really belong here, but it's closely tied to
+	# the code below; many runscripts generate positives here, and we
+	# know they don't work (bug #196294) so as long as that one
+	# remains an issue, simply remove them as they won't work
+	# anyway, avoid etc/init.d/functions.sh from being thrown away
+	if [[ ( -d "${ED}"/etc/conf.d || -d "${ED}"/etc/init.d ) && ! -f "${ED}"/etc/init.d/functions.sh ]] ; then
+		ewarn "removed /etc/init.d and /etc/conf.d directories until bug #196294 has been resolved"
+		rm -Rf "${ED}"/etc/{conf,init}.d
+	fi
+
+	# check shebangs, bug #282539
+	rm -f "${T}"/non-prefix-shebangs-errs
+	local WHITELIST=" /usr/bin/env "
+	# this is hell expensive, but how else?
+	find "${ED}" -type f -executable -print0 \
+			| xargs -0 grep -H -n -m1 "^#!" \
+			| while read f ;
+	do
+		local fn=${f%%:*}
+		local pos=${f#*:} ; pos=${pos%:*}
+		local line=${f##*:}
+		# shebang always appears on the first line ;)
+		[[ ${pos} != 1 ]] && continue
+		line=( ${line#"#!"} )
+		[[ ${WHITELIST} == *" ${line[0]} "* ]] && continue
+		# does the shebang start with ${EPREFIX}?
+		[[ ${line[0]} == ${EPREFIX}* ]] && continue
+		# can we just fix it(tm)?
+		if [[ -x ${EPREFIX}${line[0]} || -x ${ED}${line[0]} ]] ; then
+			eqawarn "prefixing shebang of ${fn#${D}}"
+			sed -i -e '1s:^#! \?:#!'"${EPREFIX}"':' "${fn}"
+			continue
 		fi
+		# all else is an error if the found script is in $PATH
+		local fp=${fn#${D}} ; fp=${fp%/*}
+		if [[ ":${PATH}:" == *":${fp}:"* ]] || hasq stricter ${FEATURES} ;
+		then
+			echo "${fn#${D}}:${line[0]}" \
+				>> "${T}"/non-prefix-shebangs-errs
+		else
+			eqawarn "invalid shebang in ${fn#${D}}: ${line[0]}"
+		fi
+	done
+	if [[ -e "${T}"/non-prefix-shebangs-errs ]] ; then
+		eqawarn "QA Notice: the following files use invalid (possible non-prefixed) shebangs:"
+		eqawarn "$(<"${T}"/non-prefix-shebangs-errs)"
+		die "Aborting due to QA concerns: invalid shebangs found"
+		rm -f "${T}"/non-prefix-shebangs-errs
 	fi
 }
 
