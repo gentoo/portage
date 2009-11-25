@@ -1060,7 +1060,7 @@ preinst_aix() {
 		archive=${archive#*;}
 		archive=${archive%%;*}
 		if [[ ${archive} == *'['*']' ]]; then
-			archive=${archive%[*]}
+			archive=${archive%"["*}
 			[[ ${prev_archive} == ${archive} ]] && continue
 			prev_archive=${archive}
 			archives[${#archives[@]}]=${archive#${EPREFIX}/}
@@ -1137,7 +1137,7 @@ postinst_aix() {
 		[[ ${member##*/} == *'['*']' ]] || continue
 		contentmember=${member%/*}/.${member##*/}
 		activecontentmembers="${activecontentmembers}:(${contentmember}):"
-		archive=${member%[*]}
+		archive=${member%"["*}
 		[[ ${prev_archive} != ${archive} ]] || continue
 		prev_archive=${archive}
 		activearchives="${activearchives}:(${archive}):"
