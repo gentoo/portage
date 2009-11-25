@@ -922,10 +922,11 @@ install_qa_check_xcoff() {
 			local FILE= MEMBER= FLAGS= FORMAT= RUNPATH= DEPLIBS=
 			eval ${queryline}
 
-			if [[ ${prev_FILE} != ${FILE} ]]; then
+			if [[ -n ${MEMBER} && ${prev_FILE} != ${FILE} ]]; then
 				# Save NEEDED information for the archive library stub
 				echo "${FORMAT##* }${FORMAT%%-*};${FILE#${D%/}};${FILE##*/};;" >&${neededfd}
 			fi
+			prev_FILE=${FILE}
 
 			# Make sure we disallow insecure RUNPATH's
 			# Don't want paths that point to the tree where the package was built
