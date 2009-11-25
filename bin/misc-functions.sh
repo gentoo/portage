@@ -1060,7 +1060,7 @@ preinst_aix() {
 		archive=${archive#*;}
 		archive=${archive%%;*}
 		if [[ ${archive} == *'['*']' ]]; then
-			archive=${archive%[*}
+			archive=${archive%[*]}
 			[[ ${prev_archive} == ${archive} ]] && continue
 			prev_archive=${archive}
 			archives[${#archives[@]}]=${archive#${EPREFIX}/}
