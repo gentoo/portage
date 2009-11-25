@@ -158,7 +158,7 @@ class FakeVartree(portage.vartree):
 	def _pkg(self, cpv):
 		root_config = self._root_config
 		real_vardb = root_config.trees["vartree"].dbapi
-		pkg = Package(cpv=cpv, installed=True,
+		pkg = Package(cpv=cpv, built=True, installed=True,
 			metadata=zip(self._db_keys,
 			real_vardb.aux_get(cpv, self._db_keys)),
 			root_config=root_config,
