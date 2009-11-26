@@ -7565,6 +7565,8 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 	try:
 		if hardlinked:
 			newmtime = long(os.stat(dest).st_mtime)
+		elif not renamefailed:
+			newmtime = long(sstat.st_mtime)
 		else:
 			if newmtime is not None:
 				os.utime(dest, (newmtime, newmtime))
