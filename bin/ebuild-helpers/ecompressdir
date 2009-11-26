@@ -26,10 +26,10 @@ case $1 in
 		;;
 	--dequeue)
 		[[ -n $2 ]] && vecho "${0##*/}: --dequeue takes no additional arguments" 1>&2
-		find "${ED}" -name '*.ecompress.dir' -print0 \
+		find "${D}" -name '*.ecompress.dir' -print0 \
 			| sed -e 's:\.ecompress\.dir::g' -e "s:${ED}:/:g" \
 			| ${XARGS} -0 ecompressdir
-		find "${ED}" -name '*.ecompress.skip' -print0 | ${XARGS} -0 rm -f
+		find "${D}" -name '*.ecompress.skip' -print0 | ${XARGS} -0 rm -f
 		exit 0
 		;;
 	--*)
