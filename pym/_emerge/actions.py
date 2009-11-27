@@ -595,7 +595,6 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	myroot = settings["ROOT"]
 	root_config = trees[myroot]["root_config"]
 	psets = root_config.setconfig.psets
-	vardb = trees[myroot]["vartree"].dbapi
 	deselect = myopts.get('--deselect') != 'n'
 
 	required_set_stack = ["world"]
@@ -647,6 +646,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	writemsg_level("\nCalculating dependencies  ")
 	resolver_params = create_depgraph_params(myopts, "remove")
 	resolver = depgraph(settings, trees, myopts, resolver_params, spinner)
+	resolver._load_vdb()
 	vardb = resolver._frozen_config.trees[myroot]["vartree"].dbapi
 
 	if action == "depclean":
