@@ -7565,13 +7565,15 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 	try:
 		if hardlinked:
 			newmtime = long(os.stat(dest).st_mtime)
-		elif not renamefailed:
-			newmtime = long(sstat.st_mtime)
 		else:
 			if newmtime is not None:
 				os.utime(dest, (newmtime, newmtime))
 			else:
-				os.utime(dest, (sstat.st_atime, sstat.st_mtime))
+				if renamefailed:
+					# If rename succeeded then this is not necessary, since
+					# rename automatically preserves timestamps with complete
+					# precision.
+					os.utime(dest, (sstat.st_atime, sstat.st_mtime))
 				newmtime = long(sstat.st_mtime)
 	except OSError:
 		# The utime can fail here with EPERM even though the move succeeded.
