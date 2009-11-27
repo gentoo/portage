@@ -7566,6 +7566,9 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		if hardlinked:
 			newmtime = long(os.stat(dest).st_mtime)
 		else:
+			# Note: It is not possible to preserve nanosecond precision
+			# (supported in POSIX.1-2008 via utimensat) with the IEEE 754
+			# double precision float which only has a 53 bit significand.
 			if newmtime is not None:
 				os.utime(dest, (newmtime, newmtime))
 			else:
