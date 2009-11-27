@@ -2056,6 +2056,11 @@ ebuild_main() {
 		export SANDBOX_ON="0"
 		;;
 	help|pretend|setup|preinst)
+		if [[ $EBUILD_SH_ARGS = setup ]] ; then
+			einfo "CPV:  $CATEGORY/$PF"
+			einfo "REPO: $PORTAGE_REPO_NAME"
+			einfo "USE:  $USE"
+		fi
 		#pkg_setup needs to be out of the sandbox for tmp file creation;
 		#for example, awking and piping a file in /tmp requires a temp file to be created
 		#in /etc.  If pkg_setup is in the sandbox, both our lilo and apache ebuilds break.
