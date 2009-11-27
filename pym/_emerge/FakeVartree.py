@@ -106,7 +106,13 @@ class FakeVartree(portage.vartree):
 
 		# Populate the old-style virtuals using the cached values.
 		if not self.settings.treeVirtuals:
-			self.settings._populate_treeVirtuals(self)
+			# Skip the aux_get wrapper here, to avoid unwanted
+			# cache generation.
+			try:
+				self.dbapi.aux_get = self._aux_get
+				self.settings._populate_treeVirtuals(self)
+			finally:
+				self.dbapi.aux_get = self._aux_get_wrapper
 
 	def _sync(self):
 
