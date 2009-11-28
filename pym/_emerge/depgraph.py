@@ -3775,15 +3775,11 @@ class depgraph(object):
 					# it serves as an indicator that blocking packages
 					# will be temporarily installed simultaneously.
 					for blocker in solved_blockers:
-						blocker.satisfied = True
 						retlist.append(blocker)
 
 		unsolvable_blockers = set(self._dynamic_config._unsolvable_blockers.leaf_nodes())
 		for node in myblocker_uninstalls.root_nodes():
 			unsolvable_blockers.add(node)
-
-		for blocker in unsolvable_blockers:
-			retlist.append(blocker)
 
 		# If any Uninstall tasks need to be executed in order
 		# to avoid a conflict, complete the graph with any
@@ -3795,6 +3791,16 @@ class depgraph(object):
 			not unsolvable_blockers:
 			self._dynamic_config.myparams["complete"] = True
 			raise self._serialize_tasks_retry("")
+
+		# Set satisfied state on blockers, but not before the
+		# above retry path, since we don't want to modify the
+		# state in that case.
+		for node in retlist:
+			if isinstance(node, Blocker):
+				node.satisfied = True
+
+		for blocker in unsolvable_blockers:
+			retlist.append(blocker)
 
 		if unsolvable_blockers and \
 			not self._accept_blocker_conflicts():
