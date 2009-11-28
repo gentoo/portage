@@ -2823,7 +2823,7 @@ class config(object):
 	def _getUseMask(self, pkg):
 		cp = getattr(pkg, "cp", None)
 		if cp is None:
-			cp = dep_getkey(pkg)
+			cp = cpv_getkey(dep.remove_slot(pkg))
 		usemask = []
 		pos = 0
 		for i, pusemask_dict in enumerate(self.pusemask_list):
@@ -2846,7 +2846,7 @@ class config(object):
 	def _getUseForce(self, pkg):
 		cp = getattr(pkg, "cp", None)
 		if cp is None:
-			cp = dep_getkey(pkg)
+			cp = cpv_getkey(dep.remove_slot(pkg))
 		useforce = []
 		pos = 0
 		for i, puseforce_dict in enumerate(self.puseforce_list):
