@@ -997,6 +997,7 @@ class depgraph(object):
 				self._dynamic_config._slot_pkg_map[pkg.root][pkg.slot_atom] = pkg
 				self._dynamic_config.mydbapi[pkg.root].cpv_inject(pkg)
 				self._dynamic_config._filtered_trees[pkg.root]["porttree"].dbapi._clear_cache()
+				self._dynamic_config._highest_pkg_cache.clear()
 				self._check_masks(pkg)
 
 			if not pkg.installed:
