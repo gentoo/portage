@@ -63,15 +63,19 @@ def update_dbentries(update_iter, mydata):
 		k_unicode = _unicode_decode(k,
 			encoding=_encodings['repo.content'], errors='replace')
 		if k_unicode not in ignored_dbentries:
+			orig_content = mycontent
 			mycontent = _unicode_decode(mycontent,
 				encoding=_encodings['repo.content'], errors='replace')
+			is_encoded = mycontent is not orig_content
 			orig_content = mycontent
 			for update_cmd in update_iter:
 				mycontent = update_dbentry(update_cmd, mycontent)
 			if mycontent != orig_content:
-				updated_items[k] = _unicode_encode(mycontent,
-					encoding=_encodings['repo.content'],
-					errors='backslashreplace')
+				if is_encoded:
+					mycontent = _unicode_encode(mycontent,
+						encoding=_encodings['repo.content'],
+						errors='backslashreplace')
+				updated_items[k] = mycontent
 	return updated_items
 
 def fixdbentries(update_iter, dbdir):
