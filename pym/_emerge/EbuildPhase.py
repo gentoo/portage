@@ -5,10 +5,11 @@
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.EbuildProcess import EbuildProcess
 from _emerge.CompositeTask import CompositeTask
-from portage.util import writemsg
+from portage.util import writemsg, writemsg_stdout
 import portage
 from portage import os
 from portage import _encodings
+from portage import _unicode_decode
 from portage import _unicode_encode
 import codecs
 
@@ -30,16 +31,22 @@ class EbuildPhase(CompositeTask):
 	def _ebuild_exit(self, ebuild_process):
 
 		if self.phase == "install":
-			out = None
+			out = portage.StringIO()
 			log_path = self.settings.get("PORTAGE_LOG_FILE")
 			log_file = None
-			if self.background and log_path is not None:
+			if log_path is not None:
 				log_file = codecs.open(_unicode_encode(log_path,
 					encoding=_encodings['fs'], errors='strict'),
 					mode='a', encoding=_encodings['content'], errors='replace')
-				out = log_file
 			try:
 				portage._check_build_log(self.settings, out=out)
+				msg = _unicode_decode(out.getvalue(),
+					encoding=_encodings['content'], errors='replace')
+				if msg:
+					if not self.background:
+						writemsg_stdout(msg, noiselevel=-1)
+					if log_file is not None:
+						log_file.write(msg)
 			finally:
 				if log_file is not None:
 					log_file.close()

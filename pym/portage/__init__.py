@@ -33,6 +33,15 @@ try:
 		from subprocess import getstatusoutput as subprocess_getstatusoutput
 	except ImportError:
 		from commands import getstatusoutput as subprocess_getstatusoutput
+
+	try:
+		from io import StringIO
+	except ImportError:
+		# Needed for python-2.6 with USE=build since
+		# io imports threading which imports thread
+		# which is unavailable.
+		from StringIO import StringIO
+
 	from time import sleep
 	from random import shuffle
 	from itertools import chain
@@ -5620,7 +5629,23 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 
 	_post_phase_userpriv_perms(mysettings)
 	if mydo == "install":
-		_check_build_log(mysettings)
+		out = StringIO()
+		_check_build_log(mysettings, out=out)
+		msg = _unicode_decode(out.getvalue(),
+			encoding=_encodings['content'], errors='replace')
+		if msg:
+			writemsg_stdout(msg, noiselevel=-1)
+			if logfile is not None:
+				try:
+					f = codecs.open(_unicode_encode(logfile,
+						encoding=_encodings['fs'], errors='strict'),
+						mode='a', encoding=_encodings['content'],
+						errors='replace')
+				except EnvironmentError:
+					pass
+				else:
+					f.write(msg)
+					f.close()
 		if phase_retval == os.EX_OK:
 			_post_src_install_chost_fix(mysettings)
 			phase_retval = _post_src_install_checks(mysettings)
