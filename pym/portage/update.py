@@ -201,15 +201,20 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 		config_file = os.path.join(abs_user_config, x)
 		if os.path.isdir(config_file):
 			for parent, dirs, files in os.walk(config_file):
-				for y in dirs:
+				try:
+					parent = _unicode_decode(parent,
+						encoding=_encodings['fs'], errors='strict')
+				except UnicodeDecodeError:
+					continue
+				for y_enc in dirs:
 					try:
-						y = _unicode_decode(y,
+						y = _unicode_decode(y_enc,
 							encoding=_encodings['fs'], errors='strict')
 					except UnicodeDecodeError:
-						dirs.remove(y)
+						dirs.remove(y_enc)
 						continue
 					if y.startswith("."):
-						dirs.remove(y)
+						dirs.remove(y_enc)
 				for y in files:
 					try:
 						y = _unicode_decode(y,
