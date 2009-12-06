@@ -260,7 +260,11 @@ use_enable() {
 }
 
 register_die_hook() {
-	export EBUILD_DEATH_HOOKS="${EBUILD_DEATH_HOOKS} $*"
+	local x
+	for x in $* ; do
+		hasq $x $EBUILD_DEATH_HOOKS || \
+			export EBUILD_DEATH_HOOKS="$EBUILD_DEATH_HOOKS $x"
+	done
 }
 
 # Ensure that $PWD is sane whenever possible, to protect against
