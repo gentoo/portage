@@ -33,6 +33,15 @@ try:
 		from subprocess import getstatusoutput as subprocess_getstatusoutput
 	except ImportError:
 		from commands import getstatusoutput as subprocess_getstatusoutput
+
+	try:
+		from io import StringIO
+	except ImportError:
+		# Needed for python-2.6 with USE=build since
+		# io imports threading which imports thread
+		# which is unavailable.
+		from StringIO import StringIO
+
 	from time import sleep
 	from random import shuffle
 	from itertools import chain
@@ -2209,21 +2218,6 @@ class config(object):
 			# initialize self.features
 			self.regenerate()
 
-			if not portage.process.sandbox_capable and \
-				("sandbox" in self.features or "usersandbox" in self.features):
-				if self.profile_path is not None and \
-					os.path.realpath(self.profile_path) == \
-					os.path.realpath(os.path.join(config_root, PROFILE_PATH)):
-					""" Don't show this warning when running repoman and the
-					sandbox feature came from a profile that doesn't belong to
-					the user."""
-					writemsg(colorize("BAD", _("!!! Problem with sandbox"
-						" binary. Disabling...\n\n")), noiselevel=-1)
-				if "sandbox" in self.features:
-					self.features.remove("sandbox")
-				if "usersandbox" in self.features:
-					self.features.remove("usersandbox")
-
 			if bsd_chflags:
 				self.features.add('chflags')
 
@@ -2359,6 +2353,18 @@ class config(object):
 			writemsg("\n!!! /etc/portage/virtuals is deprecated in favor of\n")
 			writemsg("!!! /etc/portage/profile/virtuals. Please move it to\n")
 			writemsg("!!! this new location.\n\n")
+
+		if not process.sandbox_capable and \
+			("sandbox" in self.features or "usersandbox" in self.features):
+			if self.profile_path is not None and \
+				os.path.realpath(self.profile_path) == \
+				os.path.realpath(os.path.join(
+				self["PORTAGE_CONFIGROOT"], PROFILE_PATH)):
+				# Don't show this warning when running repoman and the
+				# sandbox feature came from a profile that doesn't belong
+				# to the user.
+				writemsg(colorize("BAD", _("!!! Problem with sandbox"
+					" binary. Disabling...\n\n")), noiselevel=-1)
 
 		if "fakeroot" in self.features and \
 			not portage.process.fakeroot_capable:
@@ -4077,11 +4083,24 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		if 1 not in fd_pipes or 2 not in fd_pipes:
 			raise ValueError(fd_pipes)
 
+		got_pty, master_fd, slave_fd = \
+			_create_pty_or_pipe(copy_term_size=fd_pipes[1])
+
+		if not got_pty and 'sesandbox' in mysettings.features \
+			and mysettings.selinux_enabled():
+			# With sesandbox, logging works through a pty but not through a
+			# normal pipe. So, disable logging if ptys are broken.
+			# See Bug #162404.
+			logfile = None
+			os.close(master_fd)
+			master_fd = None
+			os.close(slave_fd)
+			slave_fd = None
+
+	if logfile:
+
 		fd_pipes.setdefault(0, sys.stdin.fileno())
 		fd_pipes_orig = fd_pipes.copy()
-
-		got_pty, master_fd, slave_fd = \
-			_create_pty_or_pipe(copy_term_size=fd_pipes_orig[1])
 
 		# We must set non-blocking mode before we close the slave_fd
 		# since otherwise the fcntl call can fail on FreeBSD (the child
@@ -4109,6 +4128,9 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		free=((droppriv and "usersandbox" not in features) or \
 			(not droppriv and "sandbox" not in features and \
 			"usersandbox" not in features and not fakeroot))
+
+	if not free and not (fakeroot or process.sandbox_capable):
+		free = True
 
 	if free or "SANDBOX_ACTIVE" in os.environ:
 		keywords["opt_name"] += " bash"
@@ -5649,7 +5671,23 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 
 	_post_phase_userpriv_perms(mysettings)
 	if mydo == "install":
-		_check_build_log(mysettings)
+		out = StringIO()
+		_check_build_log(mysettings, out=out)
+		msg = _unicode_decode(out.getvalue(),
+			encoding=_encodings['content'], errors='replace')
+		if msg:
+			writemsg_stdout(msg, noiselevel=-1)
+			if logfile is not None:
+				try:
+					f = codecs.open(_unicode_encode(logfile,
+						encoding=_encodings['fs'], errors='strict'),
+						mode='a', encoding=_encodings['content'],
+						errors='replace')
+				except EnvironmentError:
+					pass
+				else:
+					f.write(msg)
+					f.close()
 		if phase_retval == os.EX_OK:
 			_post_src_install_chost_fix(mysettings)
 			phase_retval = _post_src_install_checks(mysettings)
@@ -5690,7 +5728,8 @@ def _post_phase_userpriv_perms(mysettings):
 def _post_src_install_checks(mysettings):
 	_post_src_install_uid_fix(mysettings)
 	global _post_phase_cmds
-	retval = _spawn_misc_sh(mysettings, _post_phase_cmds["install"])
+	retval = _spawn_misc_sh(mysettings, _post_phase_cmds["install"],
+		phase='internal_post_src_install')
 	if retval != os.EX_OK:
 		writemsg(_("!!! install_qa_check failed; exiting.\n"),
 			noiselevel=-1)
@@ -5995,7 +6034,7 @@ def _post_pkg_postinst_cmd(mysettings):
 
 	return myargs
 
-def _spawn_misc_sh(mysettings, commands, **kwargs):
+def _spawn_misc_sh(mysettings, commands, phase=None, **kwargs):
 	"""
 	@param mysettings: the ebuild config
 	@type mysettings: config
@@ -6015,14 +6054,14 @@ def _spawn_misc_sh(mysettings, commands, **kwargs):
 		mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 	debug = mysettings.get("PORTAGE_DEBUG") == "1"
 	logfile = mysettings.get("PORTAGE_LOG_FILE")
-	mydo = mysettings["EBUILD_PHASE"]
+	mysettings.pop("EBUILD_PHASE", None)
 	try:
 		rval = spawn(mycommand, mysettings, debug=debug,
 			logfile=logfile, **kwargs)
 	finally:
 		pass
 
-	msg = _doebuild_exit_status_check(mydo, mysettings)
+	msg = _doebuild_exit_status_check(phase, mysettings)
 	if msg:
 		if rval == os.EX_OK:
 			rval = 1
@@ -6345,6 +6384,13 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 	except portage.exception.FileNotFound as e:
 		writemsg(_("File Not Found: '%s'\n") % str(e), noiselevel=-1)
 		return 1
+
+	# Reset state for things like noauto and keepwork in FEATURES.
+	for x in ('.die_hooks',):
+		try:
+			os.unlink(os.path.join(mysettings['PORTAGE_BUILDDIR'], x))
+		except OSError:
+			pass
 
 	_prepare_workdir(mysettings)
 	if mysettings.get('EBUILD_PHASE') != 'fetch':
@@ -7253,6 +7299,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			"nouserpriv" in restrict):
 			nosandbox = ("sandbox" not in features and \
 				"usersandbox" not in features)
+
+		if not process.sandbox_capable:
+			nosandbox = True
 
 		sesandbox = mysettings.selinux_enabled() and \
 			"sesandbox" in mysettings.features

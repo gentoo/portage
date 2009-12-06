@@ -2,13 +2,13 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from _emerge.SpawnProcess import SpawnProcess
+from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
 import portage
 from portage import os
 
-class EbuildProcess(SpawnProcess):
+class EbuildProcess(AbstractEbuildProcess):
 
-	__slots__ = ("phase", "pkg", "settings", "tree")
+	__slots__ = ('tree',)
 
 	def _start(self):
 		# Don't open the log file during the clean phase since the
@@ -16,13 +16,7 @@ class EbuildProcess(SpawnProcess):
 		# prevents the clean phase from removing $T.
 		if self.phase not in ("clean", "cleanrm"):
 			self.logfile = self.settings.get("PORTAGE_LOG_FILE")
-		SpawnProcess._start(self)
-
-	def _pipe(self, fd_pipes):
-		stdout_pipe = fd_pipes.get(1)
-		got_pty, master_fd, slave_fd = \
-			portage._create_pty_or_pipe(copy_term_size=stdout_pipe)
-		return (master_fd, slave_fd)
+		AbstractEbuildProcess._start(self)
 
 	def _spawn(self, args, **kwargs):
 
@@ -40,7 +34,7 @@ class EbuildProcess(SpawnProcess):
 		return rval
 
 	def _set_returncode(self, wait_retval):
-		SpawnProcess._set_returncode(self, wait_retval)
+		AbstractEbuildProcess._set_returncode(self, wait_retval)
 
 		if self.phase not in ("clean", "cleanrm"):
 			self.returncode = portage._doebuild_exit_status_check_and_log(

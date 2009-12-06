@@ -262,7 +262,19 @@ use_enable() {
 }
 
 register_die_hook() {
-	export EBUILD_DEATH_HOOKS="${EBUILD_DEATH_HOOKS} $*"
+	local x
+	for x in $* ; do
+		hasq $x $EBUILD_DEATH_HOOKS || \
+			export EBUILD_DEATH_HOOKS="$EBUILD_DEATH_HOOKS $x"
+	done
+}
+
+register_success_hook() {
+	local x
+	for x in $* ; do
+		hasq $x $EBUILD_SUCCESS_HOOKS || \
+			export EBUILD_SUCCESS_HOOKS="$EBUILD_SUCCESS_HOOKS $x"
+	done
 }
 
 # Ensure that $PWD is sane whenever possible, to protect against
@@ -739,7 +751,8 @@ dyn_clean() {
 
 	if [[ $EMERGE_FROM = binary ]] || ! hasq keepwork $FEATURES; then
 		rm -f "$PORTAGE_BUILDDIR"/.{ebuild_changed,exit_status,logid,unpacked,prepared} \
-			"$PORTAGE_BUILDDIR"/.{configured,compiled,tested,packaged}
+			"$PORTAGE_BUILDDIR"/.{configured,compiled,tested,packaged} \
+			"$PORTAGE_BUILDDIR"/.die_hooks
 
 		rm -rf "${PORTAGE_BUILDDIR}/build-info"
 		rm -rf "${WORKDIR}"

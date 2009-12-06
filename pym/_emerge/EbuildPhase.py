@@ -5,10 +5,11 @@
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.EbuildProcess import EbuildProcess
 from _emerge.CompositeTask import CompositeTask
-from portage.util import writemsg
+from portage.util import writemsg, writemsg_stdout
 import portage
 from portage import os
 from portage import _encodings
+from portage import _unicode_decode
 from portage import _unicode_encode
 import codecs
 
@@ -30,27 +31,28 @@ class EbuildPhase(CompositeTask):
 	def _ebuild_exit(self, ebuild_process):
 
 		if self.phase == "install":
-			out = None
+			out = portage.StringIO()
 			log_path = self.settings.get("PORTAGE_LOG_FILE")
 			log_file = None
-			if self.background and log_path is not None:
+			if log_path is not None:
 				log_file = codecs.open(_unicode_encode(log_path,
 					encoding=_encodings['fs'], errors='strict'),
 					mode='a', encoding=_encodings['content'], errors='replace')
-				out = log_file
 			try:
 				portage._check_build_log(self.settings, out=out)
+				msg = _unicode_decode(out.getvalue(),
+					encoding=_encodings['content'], errors='replace')
+				if msg:
+					if not self.background:
+						writemsg_stdout(msg, noiselevel=-1)
+					if log_file is not None:
+						log_file.write(msg)
 			finally:
 				if log_file is not None:
 					log_file.close()
 
 		if self._default_exit(ebuild_process) != os.EX_OK:
-			if self.phase != 'clean' and \
-				'noclean' not in self.settings.features and \
-				'fail-clean' in self.settings.features:
-				self._fail_clean()
-				return
-			self.wait()
+			self._die_hooks()
 			return
 
 		settings = self.settings
@@ -85,14 +87,30 @@ class EbuildPhase(CompositeTask):
 		if self._final_exit(post_phase) != os.EX_OK:
 			writemsg("!!! post %s failed; exiting.\n" % self.phase,
 				noiselevel=-1)
-			if self.phase != 'clean' and \
-				'noclean' not in self.settings.features and \
-				'fail-clean' in self.settings.features:
-				self._fail_clean()
-				return
+			self._die_hooks()
+			return
 		self._current_task = None
 		self.wait()
 		return
+
+	def _die_hooks(self):
+		self.returncode = None
+		phase = 'die_hooks'
+		die_hooks = MiscFunctionsProcess(background=self.background,
+			commands=[phase], phase=phase, pkg=self.pkg,
+			scheduler=self.scheduler, settings=self.settings)
+		self._start_task(die_hooks, self._die_hooks_exit)
+
+	def _die_hooks_exit(self, die_hooks):
+		if self.phase != 'clean' and \
+			'noclean' not in self.settings.features and \
+			'fail-clean' in self.settings.features:
+			self._default_exit(die_hooks)
+			self._fail_clean()
+			return
+		self._final_exit(die_hooks)
+		self.returncode = 1
+		self.wait()
 
 	def _fail_clean(self):
 		self.returncode = None

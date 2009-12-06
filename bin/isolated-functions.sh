@@ -156,6 +156,7 @@ die() {
 		for x in $EBUILD_DEATH_HOOKS; do
 			${x} "$@" >&2 1>&2
 		done
+		> "$PORTAGE_BUILDDIR/.die_hooks"
 	fi
 
 	[[ -n ${PORTAGE_LOG_FILE} ]] \

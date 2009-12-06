@@ -409,7 +409,8 @@ live_eclasses = frozenset([
 	"darcs",
 	"git",
 	"mercurial",
-	"subversion"
+	"subversion",
+	"tla",
 ])
 
 suspect_rdepend = frozenset([

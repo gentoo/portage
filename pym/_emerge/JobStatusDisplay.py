@@ -5,15 +5,9 @@
 import formatter
 import sys
 import time
-try:
-	from io import StringIO
-except ImportError:
-	# Needed for python-2.6 with USE=build since
-	# io imports threading which imports thread
-	# which is unavailable.
-	from StringIO import StringIO
 
 import portage
+from portage import StringIO
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode

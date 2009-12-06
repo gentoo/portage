@@ -20,7 +20,8 @@ class EbuildExecuter(CompositeTask):
 		"darcs",
 		"git",
 		"mercurial",
-		"subversion"
+		"subversion",
+		"tla",
 	])
 
 	def _start(self):
