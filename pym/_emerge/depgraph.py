@@ -4691,7 +4691,11 @@ class depgraph(object):
 					# an argument or a direct member of a set that has
 					# been specified as an argument (system or world).
 					if current_node not in self._dynamic_config._set_nodes:
-						parent_nodes = mygraph.parent_nodes(current_node)
+						try:
+							parent_nodes = mygraph.parent_nodes(current_node)
+						except KeyError:
+							# This can happen sometimes for blockers.
+							pass
 					if parent_nodes:
 						child_nodes = set(mygraph.child_nodes(current_node))
 						selected_parent = None
