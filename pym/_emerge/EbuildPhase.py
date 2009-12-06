@@ -52,12 +52,7 @@ class EbuildPhase(CompositeTask):
 					log_file.close()
 
 		if self._default_exit(ebuild_process) != os.EX_OK:
-			if self.phase != 'clean' and \
-				'noclean' not in self.settings.features and \
-				'fail-clean' in self.settings.features:
-				self._fail_clean()
-				return
-			self.wait()
+			self._die_hooks()
 			return
 
 		settings = self.settings
@@ -92,14 +87,30 @@ class EbuildPhase(CompositeTask):
 		if self._final_exit(post_phase) != os.EX_OK:
 			writemsg("!!! post %s failed; exiting.\n" % self.phase,
 				noiselevel=-1)
-			if self.phase != 'clean' and \
-				'noclean' not in self.settings.features and \
-				'fail-clean' in self.settings.features:
-				self._fail_clean()
-				return
+			self._die_hooks()
+			return
 		self._current_task = None
 		self.wait()
 		return
+
+	def _die_hooks(self):
+		self.returncode = None
+		phase = 'die_hooks'
+		die_hooks = MiscFunctionsProcess(background=self.background,
+			commands=[phase], phase=phase, pkg=self.pkg,
+			scheduler=self.scheduler, settings=self.settings)
+		self._start_task(die_hooks, self._die_hooks_exit)
+
+	def _die_hooks_exit(self, die_hooks):
+		if self.phase != 'clean' and \
+			'noclean' not in self.settings.features and \
+			'fail-clean' in self.settings.features:
+			self._default_exit(die_hooks)
+			self._fail_clean()
+			return
+		self._final_exit(die_hooks)
+		self.returncode = 1
+		self.wait()
 
 	def _fail_clean(self):
 		self.returncode = None

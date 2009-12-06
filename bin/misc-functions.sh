@@ -781,6 +781,22 @@ dyn_rpm() {
 		die "Failed to move rpm"
 }
 
+die_hooks() {
+	[[ -f $PORTAGE_BUILDDIR/.die_hooks ]] && return
+	local x
+	for x in $EBUILD_DEATH_HOOKS ; do
+		$x >&2
+	done
+	> "$PORTAGE_BUILDDIR/.die_hooks"
+}
+
+success_hooks() {
+	local x
+	for x in $EBUILD_SUCCESS_HOOKS ; do
+		$x
+	done
+}
+
 if [ -n "${MISC_FUNCTIONS_ARGS}" ]; then
 	source_all_bashrcs
 	[ "$PORTAGE_DEBUG" == "1" ] && set -x

@@ -6351,6 +6351,13 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 		writemsg(_("File Not Found: '%s'\n") % str(e), noiselevel=-1)
 		return 1
 
+	# Reset state for things like noauto and keepwork in FEATURES.
+	for x in ('.die_hooks',):
+		try:
+			os.unlink(os.path.join(mysettings['PORTAGE_BUILDDIR'], x))
+		except OSError:
+			pass
+
 	_prepare_workdir(mysettings)
 	if mysettings.get('EBUILD_PHASE') != 'fetch':
 		# Avoid spurious permissions adjustments when fetching with

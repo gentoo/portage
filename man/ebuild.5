@@ -703,6 +703,17 @@ VERINS="$(best_version net\-ftp/glftpd)"
 .br
 (VERINS now has the value "net\-ftp/glftpd\-1.27" if glftpd\-1.27 is installed)
 .RE
+.SH "HELPER FUNCTIONS: HOOKS"
+.TP
+\fBregister_die_hook\fR \fI[list of function names]\fR
+Register one or more functions to call when the ebuild fails for any reason,
+including file collisions with other packages.
+.TP
+\fBregister_success_hook\fR \fI[list of function names]\fR
+Register one or more functions to call when the ebuild builds and/or installs
+successfully.
+.TP
+.RE
 .SH "HELPER FUNCTIONS: OUTPUT"
 .TP
 \fBeinfo\fR \fI"disposable message"\fR
