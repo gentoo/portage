@@ -3245,6 +3245,18 @@ class dblink(object):
 			retval = self.treewalk(mergeroot, myroot, inforoot, myebuild,
 				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 
+			if retval == os.EX_OK:
+				phase = 'success_hooks'
+			else:
+				phase = 'die_hooks'
+
+			if self._scheduler is None:
+				portage._spawn_misc_sh(self.settings, [phase],
+					phase=phase)
+			else:
+				self._scheduler.dblinkEbuildPhase(
+					self, mydbapi, myebuild, phase)
+
 			# Process ebuild logfiles
 			elog_process(self.mycpv, self.settings, phasefilter=filter_mergephases)
 			if 'noclean' not in self.settings.features and \

@@ -10,6 +10,7 @@ from _emerge.CompositeTask import CompositeTask
 from _emerge.EbuildMerge import EbuildMerge
 from _emerge.EbuildFetchonly import EbuildFetchonly
 from _emerge.EbuildBuildDir import EbuildBuildDir
+from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from portage.util import writemsg
 import portage
 from portage import os
@@ -215,14 +216,13 @@ class EbuildBuild(CompositeTask):
 			return
 
 		if self.opts.buildpkgonly:
-			# Need to call "clean" phase for buildpkgonly mode
-			portage.elog.elog_process(self.pkg.cpv, self.settings)
-			phase = "clean"
-			clean_phase = EbuildPhase(background=self.background,
-				pkg=self.pkg, phase=phase,
-				scheduler=self.scheduler, settings=self.settings,
-				tree=self._tree)
-			self._start_task(clean_phase, self._clean_exit)
+			phase = 'success_hooks'
+			success_hooks = MiscFunctionsProcess(
+				background=self.background,
+				commands=[phase], phase=phase, pkg=self.pkg,
+				scheduler=self.scheduler, settings=self.settings)
+			self._start_task(success_hooks,
+				self._buildpkgonly_success_hook_exit)
 			return
 
 		# Continue holding the builddir lock until
@@ -230,6 +230,18 @@ class EbuildBuild(CompositeTask):
 		self._current_task = None
 		self.returncode = packager.returncode
 		self.wait()
+
+	def _buildpkgonly_success_hook_exit(self, success_hooks):
+		self._default_exit(success_hooks)
+		self.returncode = None
+		# Need to call "clean" phase for buildpkgonly mode
+		portage.elog.elog_process(self.pkg.cpv, self.settings)
+		phase = 'clean'
+		clean_phase = EbuildPhase(background=self.background,
+			pkg=self.pkg, phase=phase,
+			scheduler=self.scheduler, settings=self.settings,
+			tree=self._tree)
+		self._start_task(clean_phase, self._clean_exit)
 
 	def _clean_exit(self, clean_phase):
 		if self._final_exit(clean_phase) != os.EX_OK or \

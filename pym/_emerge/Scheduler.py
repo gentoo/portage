@@ -40,6 +40,7 @@ from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_dep
 from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
 from _emerge.JobStatusDisplay import JobStatusDisplay
 from _emerge.MergeListItem import MergeListItem
+from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.Package import Package
 from _emerge.PackageMerge import PackageMerge
 from _emerge.PollScheduler import PollScheduler
@@ -543,9 +544,14 @@ class Scheduler(PollScheduler):
 		background = self._background
 		log_path = settings.get("PORTAGE_LOG_FILE")
 
-		ebuild_phase = EbuildPhase(background=background,
-			pkg=pkg, phase=phase, scheduler=scheduler,
-			settings=settings, tree=pkg_dblink.treetype)
+		if phase in ('die_hooks', 'success_hooks'):
+			ebuild_phase = MiscFunctionsProcess(background=background,
+				commands=[phase], phase=phase, pkg=pkg,
+				scheduler=scheduler, settings=settings)
+		else:
+			ebuild_phase = EbuildPhase(background=background,
+				pkg=pkg, phase=phase, scheduler=scheduler,
+				settings=settings, tree=pkg_dblink.treetype)
 		ebuild_phase.start()
 		ebuild_phase.wait()
 

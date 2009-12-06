@@ -273,6 +273,14 @@ register_die_hook() {
 	done
 }
 
+register_success_hook() {
+	local x
+	for x in $* ; do
+		hasq $x $EBUILD_SUCCESS_HOOKS || \
+			export EBUILD_SUCCESS_HOOKS="$EBUILD_SUCCESS_HOOKS $x"
+	done
+}
+
 # Ensure that $PWD is sane whenever possible, to protect against
 # exploitation of insecure search path for python -c in ebuilds.
 # See bug #239560.
@@ -747,7 +755,8 @@ dyn_clean() {
 
 	if [[ $EMERGE_FROM = binary ]] || ! hasq keepwork $FEATURES; then
 		rm -f "$PORTAGE_BUILDDIR"/.{ebuild_changed,exit_status,logid,unpacked,prepared} \
-			"$PORTAGE_BUILDDIR"/.{configured,compiled,tested,packaged}
+			"$PORTAGE_BUILDDIR"/.{configured,compiled,tested,packaged} \
+			"$PORTAGE_BUILDDIR"/.die_hooks
 
 		rm -rf "${PORTAGE_BUILDDIR}/build-info"
 		rm -rf "${WORKDIR}"
