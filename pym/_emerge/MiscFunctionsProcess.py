@@ -2,16 +2,16 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from _emerge.SpawnProcess import SpawnProcess
+from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
 import portage
 from portage import os
 
-class MiscFunctionsProcess(SpawnProcess):
+class MiscFunctionsProcess(AbstractEbuildProcess):
 	"""
 	Spawns misc-functions.sh with an existing ebuild environment.
 	"""
 
-	__slots__ = ("commands", "phase", "pkg", "settings")
+	__slots__ = ('commands',)
 
 	def _start(self):
 		settings = self.settings
@@ -26,7 +26,7 @@ class MiscFunctionsProcess(SpawnProcess):
 		portage._doebuild_exit_status_unlink(
 			settings.get("EBUILD_EXIT_STATUS_FILE"))
 
-		SpawnProcess._start(self)
+		AbstractEbuildProcess._start(self)
 
 	def _spawn(self, args, **kwargs):
 		settings = self.settings
@@ -35,7 +35,7 @@ class MiscFunctionsProcess(SpawnProcess):
 			debug=debug, **kwargs)
 
 	def _set_returncode(self, wait_retval):
-		SpawnProcess._set_returncode(self, wait_retval)
+		AbstractEbuildProcess._set_returncode(self, wait_retval)
 		self.returncode = portage._doebuild_exit_status_check_and_log(
 			self.settings, self.phase, self.returncode)
 
