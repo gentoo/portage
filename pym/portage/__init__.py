@@ -2192,21 +2192,6 @@ class config(object):
 			# initialize self.features
 			self.regenerate()
 
-			if not portage.process.sandbox_capable and \
-				("sandbox" in self.features or "usersandbox" in self.features):
-				if self.profile_path is not None and \
-					os.path.realpath(self.profile_path) == \
-					os.path.realpath(os.path.join(config_root, PROFILE_PATH)):
-					""" Don't show this warning when running repoman and the
-					sandbox feature came from a profile that doesn't belong to
-					the user."""
-					writemsg(colorize("BAD", _("!!! Problem with sandbox"
-						" binary. Disabling...\n\n")), noiselevel=-1)
-				if "sandbox" in self.features:
-					self.features.remove("sandbox")
-				if "usersandbox" in self.features:
-					self.features.remove("usersandbox")
-
 			if bsd_chflags:
 				self.features.add('chflags')
 
@@ -2339,6 +2324,18 @@ class config(object):
 			writemsg("\n!!! /etc/portage/virtuals is deprecated in favor of\n")
 			writemsg("!!! /etc/portage/profile/virtuals. Please move it to\n")
 			writemsg("!!! this new location.\n\n")
+
+		if not process.sandbox_capable and \
+			("sandbox" in self.features or "usersandbox" in self.features):
+			if self.profile_path is not None and \
+				os.path.realpath(self.profile_path) == \
+				os.path.realpath(os.path.join(
+				self["PORTAGE_CONFIGROOT"], PROFILE_PATH)):
+				# Don't show this warning when running repoman and the
+				# sandbox feature came from a profile that doesn't belong
+				# to the user.
+				writemsg(colorize("BAD", _("!!! Problem with sandbox"
+					" binary. Disabling...\n\n")), noiselevel=-1)
 
 		if "fakeroot" in self.features and \
 			not portage.process.fakeroot_capable:
@@ -4102,6 +4099,9 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		free=((droppriv and "usersandbox" not in features) or \
 			(not droppriv and "sandbox" not in features and \
 			"usersandbox" not in features and not fakeroot))
+
+	if not free and not (fakeroot or process.sandbox_capable):
+		free = True
 
 	if free or "SANDBOX_ACTIVE" in os.environ:
 		keywords["opt_name"] += " bash"
@@ -7257,6 +7257,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			"nouserpriv" in restrict):
 			nosandbox = ("sandbox" not in features and \
 				"usersandbox" not in features)
+
+		if not process.sandbox_capable:
+			nosandbox = True
 
 		sesandbox = mysettings.selinux_enabled() and \
 			"sesandbox" in mysettings.features
