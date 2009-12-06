@@ -24,6 +24,13 @@ class EbuildProcess(SpawnProcess):
 			portage._create_pty_or_pipe(copy_term_size=stdout_pipe)
 		return (master_fd, slave_fd)
 
+	def _can_log(self, slave_fd):
+		# With sesandbox, logging works through a pty but not through a
+		# normal pipe. So, disable logging if ptys are broken.
+		# See Bug #162404.
+		return not ('sesandbox' in self.settings.features \
+			and self.settings.selinux_enabled()) or os.isatty(slave_fd)
+
 	def _spawn(self, args, **kwargs):
 
 		root_config = self.pkg.root_config

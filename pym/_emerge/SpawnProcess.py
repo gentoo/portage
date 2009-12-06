@@ -49,13 +49,16 @@ class SpawnProcess(SubProcess):
 			if fd == sys.stderr.fileno():
 				sys.stderr.flush()
 
-		logfile = self.logfile
 		self._files = self._files_dict()
 		files = self._files
 
 		master_fd, slave_fd = self._pipe(fd_pipes)
 		fcntl.fcntl(master_fd, fcntl.F_SETFL,
 			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+
+		logfile = None
+		if self._can_log(slave_fd):
+			logfile = self.logfile
 
 		null_input = None
 		fd_pipes_orig = fd_pipes.copy()
@@ -124,6 +127,9 @@ class SpawnProcess(SubProcess):
 
 		self.pid = retval[0]
 		portage.process.spawned_pids.remove(self.pid)
+
+	def _can_log(self, slave_fd):
+		return True
 
 	def _pipe(self, fd_pipes):
 		"""

@@ -4057,11 +4057,24 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		if 1 not in fd_pipes or 2 not in fd_pipes:
 			raise ValueError(fd_pipes)
 
+		got_pty, master_fd, slave_fd = \
+			_create_pty_or_pipe(copy_term_size=fd_pipes[1])
+
+		if not got_pty and 'sesandbox' in mysettings.features \
+			and mysettings.selinux_enabled():
+			# With sesandbox, logging works through a pty but not through a
+			# normal pipe. So, disable logging if ptys are broken.
+			# See Bug #162404.
+			logfile = None
+			os.close(master_fd)
+			master_fd = None
+			os.close(slave_fd)
+			slave_fd = None
+
+	if logfile:
+
 		fd_pipes.setdefault(0, sys.stdin.fileno())
 		fd_pipes_orig = fd_pipes.copy()
-
-		got_pty, master_fd, slave_fd = \
-			_create_pty_or_pipe(copy_term_size=fd_pipes_orig[1])
 
 		# We must set non-blocking mode before we close the slave_fd
 		# since otherwise the fcntl call can fail on FreeBSD (the child
