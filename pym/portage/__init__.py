@@ -5697,7 +5697,8 @@ def _post_phase_userpriv_perms(mysettings):
 def _post_src_install_checks(mysettings):
 	_post_src_install_uid_fix(mysettings)
 	global _post_phase_cmds
-	retval = _spawn_misc_sh(mysettings, _post_phase_cmds["install"])
+	retval = _spawn_misc_sh(mysettings, _post_phase_cmds["install"],
+		phase='internal_post_src_install')
 	if retval != os.EX_OK:
 		writemsg(_("!!! install_qa_check failed; exiting.\n"),
 			noiselevel=-1)
@@ -6002,7 +6003,7 @@ def _post_pkg_postinst_cmd(mysettings):
 
 	return myargs
 
-def _spawn_misc_sh(mysettings, commands, **kwargs):
+def _spawn_misc_sh(mysettings, commands, phase=None, **kwargs):
 	"""
 	@param mysettings: the ebuild config
 	@type mysettings: config
@@ -6022,14 +6023,14 @@ def _spawn_misc_sh(mysettings, commands, **kwargs):
 		mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 	debug = mysettings.get("PORTAGE_DEBUG") == "1"
 	logfile = mysettings.get("PORTAGE_LOG_FILE")
-	mydo = mysettings["EBUILD_PHASE"]
+	mysettings.pop("EBUILD_PHASE", None)
 	try:
 		rval = spawn(mycommand, mysettings, debug=debug,
 			logfile=logfile, **kwargs)
 	finally:
 		pass
 
-	msg = _doebuild_exit_status_check(mydo, mysettings)
+	msg = _doebuild_exit_status_check(phase, mysettings)
 	if msg:
 		if rval == os.EX_OK:
 			rval = 1
