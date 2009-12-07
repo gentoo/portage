@@ -3263,22 +3263,23 @@ class dblink(object):
 					self._scheduler.dblinkEbuildPhase(
 						self, mydbapi, myebuild, phase)
 
-			# Process ebuild logfiles
-			elog_process(self.mycpv, self.settings, phasefilter=filter_mergephases)
-			if 'noclean' not in self.settings.features and \
-				(retval == os.EX_OK or \
-				('fail-clean' in self.settings.features and \
-				os.path.isdir(self.settings['PORTAGE_BUILDDIR']))):
-				if myebuild is None:
-					myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
+				elog_process(self.mycpv, self.settings,
+					phasefilter=filter_mergephases)
 
-				if self._scheduler is None:
-					doebuild(myebuild, "clean", myroot,
-						self.settings, tree=self.treetype,
-						mydbapi=mydbapi, vartree=self.vartree)
-				else:
-					self._scheduler.dblinkEbuildPhase(
-						self, mydbapi, myebuild, "clean")
+				if 'noclean' not in self.settings.features and \
+					(retval == os.EX_OK or \
+					'fail-clean' in self.settings.features):
+					if myebuild is None:
+						myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
+
+					if self._scheduler is None:
+						doebuild(myebuild, "clean", myroot,
+							self.settings, tree=self.treetype,
+							mydbapi=mydbapi, vartree=self.vartree)
+					else:
+						self._scheduler.dblinkEbuildPhase(
+							self, mydbapi, myebuild, "clean")
+
 		finally:
 			self.unlockdb()
 			self.vartree.dbapi._bump_mtime(self.mycpv)
