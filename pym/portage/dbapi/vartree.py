@@ -14,7 +14,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dep:dep_getkey,isjustname,match_from_list,' + \
 	 	'use_reduce,paren_reduce,_slot_re',
 	'portage.elog:elog_process',
-	'portage.elog.filtering:filter_mergephases,filter_unmergephases',
 	'portage.locks:lockdir,unlockdir',
 	'portage.output:bold,colorize',
 	'portage.update:fixdbentries',
@@ -1543,7 +1542,7 @@ class dblink(object):
 							self._eerror(ebuild_phase, msg_lines)
 
 						# process logs created during pre/postrm
-						elog_process(self.mycpv, self.settings, phasefilter=filter_unmergephases)
+						elog_process(self.mycpv, self.settings)
 						if retval == os.EX_OK:
 							if scheduler is None:
 								doebuild(myebuildpath, "cleanrm", self.myroot,
@@ -3229,8 +3228,7 @@ class dblink(object):
 				os.chmod(var_new, dir_perms)
 			os.chmod(base_path_tmp, dir_perms)
 			# This serves so pre-load the modules.
-			elog_process(self.mycpv, self.settings,
-				phasefilter=filter_mergephases)
+			elog_process(self.mycpv, self.settings)
 
 		return self._merge(mergeroot, inforoot,
 				myroot, myebuild=myebuild, cleanup=cleanup,
@@ -3263,8 +3261,7 @@ class dblink(object):
 					self._scheduler.dblinkEbuildPhase(
 						self, mydbapi, myebuild, phase)
 
-				elog_process(self.mycpv, self.settings,
-					phasefilter=filter_mergephases)
+				elog_process(self.mycpv, self.settings)
 
 				if 'noclean' not in self.settings.features and \
 					(retval == os.EX_OK or \
