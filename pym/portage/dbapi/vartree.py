@@ -15,7 +15,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dep:dep_getkey,isjustname,match_from_list,' + \
 	 	'use_reduce,paren_reduce,_slot_re',
 	'portage.elog:elog_process',
-	'portage.elog.filtering:filter_mergephases,filter_unmergephases',
 	'portage.locks:lockdir,unlockdir',
 	'portage.output:bold,colorize',
 	'portage.update:fixdbentries',
@@ -3296,7 +3295,7 @@ class dblink(object):
 							self._eerror(ebuild_phase, msg_lines)
 
 						# process logs created during pre/postrm
-						elog_process(self.mycpv, self.settings, phasefilter=filter_unmergephases)
+						elog_process(self.mycpv, self.settings)
 						if retval == os.EX_OK:
 							if scheduler is None:
 								doebuild(myebuildpath, "cleanrm", self.myroot,
@@ -5387,8 +5386,7 @@ class dblink(object):
 				os.chmod(var_new, dir_perms)
 			os.chmod(base_path_tmp, dir_perms)
 			# This serves so pre-load the modules.
-			elog_process(self.mycpv, self.settings,
-				phasefilter=filter_mergephases)
+			elog_process(self.mycpv, self.settings)
 
 		return self._merge(mergeroot, inforoot,
 				myroot, myebuild=myebuild, cleanup=cleanup,
@@ -5405,34 +5403,40 @@ class dblink(object):
 			retval = self.treewalk(mergeroot, myroot, inforoot, myebuild,
 				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 
-			if retval == os.EX_OK:
-				phase = 'success_hooks'
-			else:
-				phase = 'die_hooks'
+			# If PORTAGE_BUILDDIR doesn't exist, then it probably means
+			# fail-clean is enabled, and the success/die hooks have
+			# already been called by _emerge.EbuildPhase (via
+			# self._scheduler.dblinkEbuildPhase) prior to cleaning.
+			if os.path.isdir(self.settings['PORTAGE_BUILDDIR']):
 
-			if self._scheduler is None:
-				portage._spawn_misc_sh(self.settings, [phase],
-					phase=phase)
-			else:
-				self._scheduler.dblinkEbuildPhase(
-					self, mydbapi, myebuild, phase)
-
-			# Process ebuild logfiles
-			elog_process(self.mycpv, self.settings, phasefilter=filter_mergephases)
-			if 'noclean' not in self.settings.features and \
-				(retval == os.EX_OK or \
-				('fail-clean' in self.settings.features and \
-				os.path.isdir(self.settings['PORTAGE_BUILDDIR']))):
-				if myebuild is None:
-					myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
+				if retval == os.EX_OK:
+					phase = 'success_hooks'
+				else:
+					phase = 'die_hooks'
 
 				if self._scheduler is None:
-					doebuild(myebuild, "clean", myroot,
-						self.settings, tree=self.treetype,
-						mydbapi=mydbapi, vartree=self.vartree)
+					portage._spawn_misc_sh(self.settings, [phase],
+						phase=phase)
 				else:
 					self._scheduler.dblinkEbuildPhase(
-						self, mydbapi, myebuild, "clean")
+						self, mydbapi, myebuild, phase)
+
+				elog_process(self.mycpv, self.settings)
+
+				if 'noclean' not in self.settings.features and \
+					(retval == os.EX_OK or \
+					'fail-clean' in self.settings.features):
+					if myebuild is None:
+						myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
+
+					if self._scheduler is None:
+						doebuild(myebuild, "clean", myroot,
+							self.settings, tree=self.treetype,
+							mydbapi=mydbapi, vartree=self.vartree)
+					else:
+						self._scheduler.dblinkEbuildPhase(
+							self, mydbapi, myebuild, "clean")
+
 		finally:
 			self.vartree.dbapi.linkmap._clear_cache()
 			self.unlockdb()

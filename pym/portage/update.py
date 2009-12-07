@@ -206,7 +206,7 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 						encoding=_encodings['fs'], errors='strict')
 				except UnicodeDecodeError:
 					continue
-				for y_enc in dirs:
+				for y_enc in list(dirs):
 					try:
 						y = _unicode_decode(y_enc,
 							encoding=_encodings['fs'], errors='strict')
