@@ -16,23 +16,3 @@ def filter_loglevels(logentries, loglevels):
 					rValue[phase] = []
 				rValue[phase].append((msgtype, msgcontent))
 	return rValue
-	
-def filter_phases(logentries, phases):
-	rValue1 = {}
-	rValue2 = {}
-	phases = [x.lower() for x in phases]
-	for phase in logentries:
-		if phase in phases:
-			rValue1[phase] = logentries[phase]
-		else:
-			rValue2[phase] = logentries[phase]
-	return (rValue1, rValue2)
-
-def filter_mergephases(logentries):
-	myphases = EBUILD_PHASES[:]
-	myphases.remove("prerm")
-	myphases.remove("postrm")
-	return filter_phases(logentries, myphases)
-
-def filter_unmergephases(logentries):
-	return filter_phases(logentries, ["prerm", "postrm", "other"])
