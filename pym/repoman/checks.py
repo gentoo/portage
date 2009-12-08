@@ -426,8 +426,8 @@ class SrcUnpackPatches(PhaseCheck):
 				return ("'%s'" % m.group(1)) + \
 					" call should be moved to src_prepare from line: %d"
 
-# EAPI-3 checks
-class Eapi3IncompatibleFuncs(LineCheck):
+# EAPI-4 checks
+class Eapi4IncompatibleFuncs(LineCheck):
 	repoman_check_name = 'EAPI.incompatible'
 	ignore_line = re.compile(r'(^\s*#)')
 	banned_commands_re = re.compile(r'^\s*(dosed|dohard)')
@@ -436,15 +436,15 @@ class Eapi3IncompatibleFuncs(LineCheck):
 		self.eapi = pkg.metadata['EAPI']
 
 	def check_eapi(self, eapi):
-		return self.eapi not in ('0', '1', '2')
+		return self.eapi not in ('0', '1', '2', '3')
 
 	def check(self, num, line):
 		m = self.banned_commands_re.match(line)
 		if m is not None:
 			return ("'%s'" % m.group(1)) + \
-				" has been banned in EAPI=3 on line: %d"
+				" has been banned in EAPI=4 on line: %d"
 
-class Eapi3GoneVars(LineCheck):
+class Eapi4GoneVars(LineCheck):
 	repoman_check_name = 'EAPI.incompatible'
 	ignore_line = re.compile(r'(^\s*#)')
 	undefined_vars_re = re.compile(r'.*\$(\{(AA|KV)\}|(AA|KV))')
@@ -453,13 +453,13 @@ class Eapi3GoneVars(LineCheck):
 		self.eapi = pkg.metadata['EAPI']
 
 	def check_eapi(self, eapi):
-		return self.eapi not in ('0', '1', '2')
+		return self.eapi not in ('0', '1', '2', '3')
 
 	def check(self, num, line):
 		m = self.undefined_vars_re.match(line)
 		if m is not None:
 			return ("variable '$%s'" % m.group(1)) + \
-				" is gone in EAPI=3 on line: %d"
+				" is gone in EAPI=4 on line: %d"
 
 
 _constant_checks = tuple((c() for c in (
@@ -470,7 +470,7 @@ _constant_checks = tuple((c() for c in (
 	IUseUndefined, InheritAutotools,
 	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS,
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
-	SrcCompileEconf, Eapi3IncompatibleFuncs, Eapi3GoneVars)))
+	SrcCompileEconf, Eapi4IncompatibleFuncs, Eapi4GoneVars)))
 
 _here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
 
