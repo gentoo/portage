@@ -15,7 +15,6 @@ else:
     sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.                    realpath(__file__))), "pym"))
 import portage
 
-from portage.const import EPREFIX
 from portage import os
 
 if not sys.argv[1:] or "--help" in sys.argv or "-h" in sys.argv:
