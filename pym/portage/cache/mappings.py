@@ -188,6 +188,32 @@ class UserDict(MutableMapping):
 	if sys.hexversion >= 0x3000000:
 		keys = __iter__
 
+class OrderedDict(UserDict):
+
+	def __init__(self, *args, **kwargs):
+		self._order = []
+		UserDict.__init__(self, *args, **kwargs)
+
+	def __iter__(self):
+		return iter(self._order)
+
+	def __setitem__(self, key, item):
+		if key in self:
+			self._order.remove(key)
+		UserDict.__setitem__(self, key, item)
+		self._order.append(key)
+
+	def __delitem__(self, key):
+		UserDict.__delitem__(self, key)
+		self._order.remove(key)
+
+	def clear(self):
+		UserDict.clear(self)
+		del self._order[:]
+
+	if sys.hexversion >= 0x3000000:
+		keys = __iter__
+
 class ProtectedDict(MutableMapping):
 	"""
 	given an initial dict, this wraps that dict storing changes in a secondary dict, protecting

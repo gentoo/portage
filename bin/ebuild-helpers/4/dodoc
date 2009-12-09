@@ -1,16 +1,16 @@
-#!@PORTAGE_BASH@
+#!/bin/bash
 # Copyright 1999-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
+source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 if [ $# -lt 1 ] ; then
 	vecho "${0##*/}: at least one argument needed" 1>&2
 	exit 1
 fi
 
-dir="${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
+dir="${D}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
 if [ ! -d "${dir}" ] ; then
 	install -d "${dir}"
 fi

@@ -16,7 +16,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage.cache.cache_errors import CacheError
-from portage.cache.mappings import slot_dict_class
+from portage.cache.mappings import OrderedDict
 from portage.const import REPO_NAME_LOC
 from portage.data import portage_gid, secpass
 from portage.dbapi import dbapi
@@ -734,7 +734,7 @@ class portdbapi(dbapi):
 			matchall=(useflags is None))
 		myuris = flatten(myuris)
 
-		uri_map = {}
+		uri_map = OrderedDict()
 
 		myuris.reverse()
 		while myuris:
