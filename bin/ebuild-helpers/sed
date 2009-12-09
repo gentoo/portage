@@ -6,8 +6,8 @@
 scriptpath=${BASH_SOURCE[0]}
 scriptname=${scriptpath##*/}
 
-if [[ ${EPREFIX} != "" ]] ; then
-	echo "using Prefix and hitting this lame BSD sed wrapper in ${scriptpath}? That's a bug!" > /dev/stderr
+if [[ -n ${EPREFIX} ]] ; then
+	echo "When using Prefix, this BSD sed wrapper should not exist (in ${scriptpath})!  This is a bug!" > /dev/stderr
 	exit 1
 fi
 
