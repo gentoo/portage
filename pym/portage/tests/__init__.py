@@ -6,7 +6,11 @@
 import sys
 import time
 import unittest
-from unittest import TestResult
+
+try:
+	from unittest.runner import _TextTestResult # new in python-2.7
+except ImportError:
+	from unittest import _TextTestResult
 
 from portage import os
 from portage import _encodings
@@ -70,26 +74,17 @@ def getTests(path, base_path):
 		result.append(unittest.TestLoader().loadTestsFromModule(mod))
 	return result
 
-class TextTestResult(TestResult):
+class TextTestResult(_TextTestResult):
 	"""
-	We need a subclass of unittest.TestResult to handle tests with TODO
-	Most of this class is copied from the unittest._TextTestResult that's
-	included with python-2.6 (but not included with python-2.7).
+	We need a subclass of unittest._TextTestResult to handle tests with TODO
 
 	This just adds an addTodo method that can be used to add tests
 	that are marked TODO; these can be displayed later
 	by the test runner.
 	"""
 
-	separator1 = '=' * 70
-	separator2 = '-' * 70
-
 	def __init__(self, stream, descriptions, verbosity):
-		unittest.TestResult.__init__(self)
-		self.stream = stream
-		self.showAll = verbosity > 1
-		self.dots = verbosity == 1
-		self.descriptions = descriptions
+		super(TextTestResult, self).__init__(stream, descriptions, verbosity)
 		self.todoed = []
 
 	def addTodo(self, test, info):
@@ -105,50 +100,6 @@ class TextTestResult(TestResult):
 			self.printErrorList('ERROR', self.errors)
 			self.printErrorList('FAIL', self.failures)
 			self.printErrorList('TODO', self.todoed)
-
-	def getDescription(self, test):
-		if self.descriptions:
-			return test.shortDescription() or str(test)
-		else:
-			return str(test)
-
-	def startTest(self, test):
-		TestResult.startTest(self, test)
-		if self.showAll:
-			self.stream.write(self.getDescription(test))
-			self.stream.write(" ... ")
-			self.stream.flush()
-
-	def addSuccess(self, test):
-		TestResult.addSuccess(self, test)
-		if self.showAll:
-			self.stream.writeln("ok")
-		elif self.dots:
-			self.stream.write('.')
-			self.stream.flush()
-
-	def addError(self, test, err):
-		TestResult.addError(self, test, err)
-		if self.showAll:
-			self.stream.writeln("ERROR")
-		elif self.dots:
-			self.stream.write('E')
-			self.stream.flush()
-
-	def addFailure(self, test, err):
-		TestResult.addFailure(self, test, err)
-		if self.showAll:
-			self.stream.writeln("FAIL")
-		elif self.dots:
-			self.stream.write('F')
-			self.stream.flush()
-
-	def printErrorList(self, flavour, errors):
-		for test, err in errors:
-			self.stream.writeln(self.separator1)
-			self.stream.writeln("%s: %s" % (flavour,self.getDescription(test)))
-			self.stream.writeln(self.separator2)
-			self.stream.writeln("%s" % err)
 
 class TestCase(unittest.TestCase):
 	"""
