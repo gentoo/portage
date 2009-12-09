@@ -1069,9 +1069,11 @@ dyn_install() {
 
 	vecho
 	vecho ">>> Install ${PF} into ${ED} category ${CATEGORY}"
-	#our custom version of libtool uses $S and $ED to fix
+	#our custom version of libtool uses $S and $D to fix
 	#invalid paths in .la files
-	export S ED
+	# PREFIX: I think this is very old, and can't find any patches that
+	# look like they are doing this for 1.5 and 2.2
+	export S D
 	#some packages uses an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
