@@ -29,8 +29,12 @@ ROOTPATH=${ROOTPATH%%:}
 PREROOTPATH=${PREROOTPATH##:}
 PREROOTPATH=${PREROOTPATH%%:}
 #PATH=$PORTAGE_BIN_PATH/ebuild-helpers:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${ROOTPATH:+:}$ROOTPATH
-# PREFIX: we deviate in path order, should we split up DEFAULT_PATH?
-PATH="$PORTAGE_BIN_PATH/ebuild-helpers:$PREROOTPATH${PREROOTPATH:+:}${DEFAULT_PATH}:${ROOTPATH:+:}$ROOTPATH"
+# PREFIX: our DEFAULT_PATH is equal to the above when not using an
+# offset prefix.  With such prefix, the usr/local bits are excluded, and
+# the prefixed variants of {usr/,}{s,}bin are taken.  The additional
+# paths given during configure, always come as last thing since they
+# should never override anything from the prefix itself.
+PATH="$PORTAGE_BIN_PATH/ebuild-helpers:$PREROOTPATH${PREROOTPATH:+:}${DEFAULT_PATH}${ROOTPATH:+:}$ROOTPATH${EXTRA_PATH:+:}${EXTRA_PATH}"
 export PATH
 
 # These two functions wrap sourcing and calling respectively.  At present they
@@ -1953,8 +1957,8 @@ ebuild_main() {
 	esac
 
 	#PATH=$ebuild_helpers_path:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${ROOTPATH:+:}$ROOTPATH
-	# PREFIX: same deviation as at the top of this file
-	PATH="$ebuild_helpers_path:$PREROOTPATH${PREROOTPATH:+:}${DEFAULT_PATH}${ROOTPATH:+:}$ROOTPATH"
+	# PREFIX: same notes apply as at the top of this file
+	PATH="$ebuild_helpers_path:$PREROOTPATH${PREROOTPATH:+:}${DEFAULT_PATH}${ROOTPATH:+:}$ROOTPATH${EXTRA_PATH:+:}${EXTRA_PATH}"
 	unset ebuild_helpers_path
 
 	if ! hasq $EBUILD_SH_ARGS clean depend help info nofetch ; then

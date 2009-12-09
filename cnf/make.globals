@@ -99,6 +99,8 @@ PORTAGE_INST_GID="@rootgid@"
 
 # Default PATH for ebuild env
 DEFAULT_PATH="@DEFAULT_PATH@"
+# Any extra PATHs to add to the ebuild environment's PATH (if any)
+EXTRA_PATH="@EXTRA_PATH@"
 
 # Mode bits for ${WORKDIR} (see ebuild.5).
 PORTAGE_WORKDIR_MODE="0700"

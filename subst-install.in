@@ -21,6 +21,7 @@ portageuser=${portageuser//\\/\\\\\\\\}
 at='@'
 sedexp=(
 	-e "s,${at}DEFAULT_PATH${at},@DEFAULT_PATH@,g"
+	-e "s,${at}EXTRA_PATH${at},@EXTRA_PATH@,g"
 	-e "s,${at}EGREP${at},@EGREP@,g"
 	-e "s,${at}PORTAGE_BASE${at},@PORTAGE_BASE@,g"
 	-e "s,${at}PORTAGE_BASENAME${at},@PORTAGE_BASENAME@,g"
