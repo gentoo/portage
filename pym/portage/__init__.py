@@ -1432,6 +1432,11 @@ class config(object):
 		"TERM", "TERMCAP", "USER",
 	]
 
+	# tempdir settings
+	_environ_whitelist += [
+		"TMPDIR", "TEMP", "TMP",
+	]
+
 	# other variables inherited from the calling environment
 	_environ_whitelist += [
 		"CVS_RSH", "ECHANGELOG_USER",
