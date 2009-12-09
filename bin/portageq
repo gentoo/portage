@@ -488,7 +488,7 @@ def distdir(argv):
 def envvar(argv):
 	"""<variable>+
 	Returns a specific environment variable as exists prior to ebuild.sh.
-	Similar to: emerge --verbose --info | @EGREP@ '^<variable>='
+	Similar to: emerge --verbose --info | egrep '^<variable>='
 	"""
 	verbose = "-v" in argv
 	if verbose:
