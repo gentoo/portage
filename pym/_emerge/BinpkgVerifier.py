@@ -29,9 +29,21 @@ class BinpkgVerifier(AsynchronousTask):
 		stderr_orig = sys.stderr
 		log_file = None
 		if self.background and self.logfile is not None:
-			log_file = codecs.open(_unicode_encode(self.logfile,
-			encoding=_encodings['fs'], errors='strict'),
-				mode='a', encoding=_encodings['content'], errors='replace')
+			if sys.hexversion >= 0x3000000:
+				# Since we are replacing the sys.std* streams,
+				# we need to use the normal open() function
+				# so that we get the right class (otherwise our
+				# code that expects the 'buffer' attribute
+				# will break).
+				log_file = open(_unicode_encode(self.logfile,
+					encoding=_encodings['fs'], errors='strict'),
+					mode='a', encoding=_encodings['content'],
+					errors='backslashreplace')
+			else:
+				# For python2, sys.std* are expected to be binary streams.
+				log_file = open(_unicode_encode(self.logfile,
+					encoding=_encodings['fs'], errors='strict'),
+					mode='ab')
 		try:
 			if log_file is not None:
 				sys.stdout = log_file

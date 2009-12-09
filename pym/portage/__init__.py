@@ -1450,6 +1450,18 @@ class config(object):
 		"TERM", "TERMCAP", "USER",
 	]
 
+	# tempdir settings
+	_environ_whitelist += [
+		"TMPDIR", "TEMP", "TMP",
+	]
+
+	# localization settings
+	_environ_whitelist += [
+		"LANG", "LC_COLLATE", "LC_CTYPE", "LC_MESSAGES",
+		"LC_MONETARY", "LC_NUMERIC", "LC_TIME", "LC_PAPER",
+		"LC_ALL",
+	]
+
 	# other variables inherited from the calling environment
 	_environ_whitelist += [
 		"CVS_RSH", "ECHANGELOG_USER",
