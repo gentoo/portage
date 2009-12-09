@@ -7623,9 +7623,12 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			print("!!!",e)
 			return None
 
+	# Always use stat_obj[stat.ST_MTIME] for the integral timestamp which
+	# is returned,, since the stat_obj.st_mtime float attribute rounds *up*
+	# if the nanosecond part of the timestamp is 999999881 ns or greater.
 	try:
 		if hardlinked:
-			newmtime = long(os.stat(dest).st_mtime)
+			newmtime = os.stat(dest)[stat.ST_MTIME]
 		else:
 			# Note: It is not possible to preserve nanosecond precision
 			# (supported in POSIX.1-2008 via utimensat) with the IEEE 754
@@ -7638,12 +7641,12 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 					# rename automatically preserves timestamps with complete
 					# precision.
 					os.utime(dest, (sstat.st_atime, sstat.st_mtime))
-				newmtime = long(sstat.st_mtime)
+				newmtime = sstat[stat.ST_MTIME]
 	except OSError:
 		# The utime can fail here with EPERM even though the move succeeded.
 		# Instead of failing, use stat to return the mtime if possible.
 		try:
-			newmtime = long(os.stat(dest).st_mtime)
+			newmtime = os.stat(dest)[stat.ST_MTIME]
 		except OSError as e:
 			writemsg(_("!!! Failed to stat in movefile()\n"), noiselevel=-1)
 			writemsg("!!! %s\n" % dest, noiselevel=-1)
