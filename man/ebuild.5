@@ -19,7 +19,7 @@ Here's a simple example ebuild:
 # Distributed under the terms of the GNU General Public License v2
 # $Header: $
 
-EAPI="prefix"
+EAPI="3"
 
 inherit some_eclass another_eclass
 
@@ -35,10 +35,9 @@ IUSE=""
 RDEPEND=""
 DEPEND="nls? ( sys-devel/gettext )"
 
-src_compile() {
+src_configure() {
 	econf \\
 		\-\-bindir="${EPREFIX}"/bin
-	emake || die "emake failed"
 }
 
 src_install() {
