@@ -9,8 +9,7 @@ if [[ -n $1 ]] ; then
 	vecho "${0##*/}: invalid usage; takes no arguments" 1>&2
 fi
 
-cd "${ED}"
-[[ -d usr/share/doc ]] || exit 0
+[[ -d "${ED}"/usr/share/doc ]] || exit 0
 
 ecompressdir --ignore /usr/share/doc/${PF}/html
 ecompressdir --queue /usr/share/doc
