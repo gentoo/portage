@@ -7640,7 +7640,25 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 					# If rename succeeded then this is not necessary, since
 					# rename automatically preserves timestamps with complete
 					# precision.
-					os.utime(dest, (sstat.st_atime, sstat.st_mtime))
+					if sstat[stat.ST_MTIME] == long(sstat.st_mtime):
+						newmtime = sstat.st_mtime
+					else:
+						# Prevent mtime from rounding up to the next second.
+						int_mtime = sstat[stat.ST_MTIME]
+						mtime_str = "%i.9999999" % int_mtime
+						min_len = len(str(int_mtime)) + 2
+						while True:
+							mtime_str = mtime_str[:-1]
+							newmtime = float(mtime_str)
+							if int_mtime == long(newmtime):
+								break
+							elif len(mtime_str) <= min_len:
+								# This shouldn't happen, but let's make sure
+								# we can never have an infinite loop.
+								newmtime = int_mtime
+								break
+
+					os.utime(dest, (newmtime, newmtime))
 				newmtime = sstat[stat.ST_MTIME]
 	except OSError:
 		# The utime can fail here with EPERM even though the move succeeded.
