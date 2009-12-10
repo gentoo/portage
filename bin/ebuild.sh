@@ -17,6 +17,12 @@ export SANDBOX_READ="${SANDBOX_READ:+${SANDBOX_READ}:}/dev/stdin"
 # environment by modifying our PATH.
 unset BASH_ENV
 
+# Avoid sandbox violations in temporary directories.
+for x in TEMP TMP TMPDIR ; do
+	[[ -n ${!x} ]] && export SANDBOX_WRITE="${SANDBOX_WRITE:+${SANDBOX_WRITE}:}${!x}"
+done
+unset x
+
 # sandbox's bashrc sources /etc/profile which unsets ROOTPATH,
 # so we have to back it up and restore it.
 if [ -n "${PORTAGE_ROOTPATH}" ] ; then
