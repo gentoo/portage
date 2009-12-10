@@ -35,13 +35,15 @@ class BinpkgVerifier(AsynchronousTask):
 				# so that we get the right class (otherwise our
 				# code that expects the 'buffer' attribute
 				# will break).
-				open_func = open
+				log_file = open(_unicode_encode(self.logfile,
+					encoding=_encodings['fs'], errors='strict'),
+					mode='a', encoding=_encodings['content'],
+					errors='backslashreplace')
 			else:
-				open_func = codecs.open
-			log_file = open_func(_unicode_encode(self.logfile,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='a', encoding=_encodings['content'],
-				errors='backslashreplace')
+				# For python2, sys.std* are expected to be binary streams.
+				log_file = open(_unicode_encode(self.logfile,
+					encoding=_encodings['fs'], errors='strict'),
+					mode='ab')
 		try:
 			if log_file is not None:
 				sys.stdout = log_file
