@@ -3748,7 +3748,7 @@ class config(object):
 		mydict["USE"] = self.get("PORTAGE_USE", "")
 
 		# Don't export AA to the ebuild environment in EAPIs that forbid it
-		if eapi not in ("0", "1", "2"):
+		if eapi not in ("0", "1", "2", "3"):
 			mydict.pop("AA", None)
 
 		# sandbox's bashrc sources /etc/profile which unsets ROOTPATH,
@@ -5613,7 +5613,7 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 	if mydo == "prepare" and eapi in ("0", "1"):
 		return os.EX_OK
 
-	if mydo == "pretend" and eapi in ("0", "1", "2"):
+	if mydo == "pretend" and eapi in ("0", "1", "2", "3"):
 		return os.EX_OK
 
 	kwargs = actionmap[mydo]["args"]
@@ -6042,7 +6042,7 @@ def _spawn_misc_sh(mysettings, commands, phase=None, **kwargs):
 	return rval
 
 _testing_eapis = frozenset()
-_deprecated_eapis = frozenset(["2_pre3", "2_pre2", "2_pre1"])
+_deprecated_eapis = frozenset(["3_pre1", "2_pre3", "2_pre2", "2_pre1"])
 
 def _eapi_is_deprecated(eapi):
 	return eapi in _deprecated_eapis
@@ -6261,7 +6261,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		mysettings["PORTAGE_BUILDDIR"], ".exit_status")
 
 	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistent.
-	if eapi not in ('0', '1', '2'):
+	if eapi not in ('0', '1', '2', '3'):
 		# Discard KV for EAPIs that don't support it. Cache KV is restored
 		# from the backupenv whenever config.reset() is called.
 		mysettings.pop('KV', None)
