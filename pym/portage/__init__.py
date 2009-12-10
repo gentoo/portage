@@ -7624,7 +7624,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			return None
 
 	# Always use stat_obj[stat.ST_MTIME] for the integral timestamp which
-	# is returned,, since the stat_obj.st_mtime float attribute rounds *up*
+	# is returned, since the stat_obj.st_mtime float attribute rounds *up*
 	# if the nanosecond part of the timestamp is 999999881 ns or greater.
 	try:
 		if hardlinked:
