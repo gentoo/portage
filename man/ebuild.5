@@ -15,7 +15,7 @@ Here's a simple example ebuild:
 
 .DS
 .nf
-# Copyright 1999\-2007 Gentoo Foundation
+# Copyright 1999\-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Header: $
 
@@ -105,8 +105,9 @@ location in the portage tree.  Do not modify this variable.
 .B EPREFIX
 Contains the offset that this Portage was configured for during
 installation.  The offset is sometimes necessary in an ebuild or eclass,
-and is available in such cases as ${EPREFIX}.  Do not modify this
-variable.
+and is available in such cases as ${EPREFIX}.  EPREFIX does not contain
+a trailing slash, therefore an absent offset is represented by the empty
+string.  Do not modify this variable.
 .TP
 \fBS\fR = \fI"${WORKDIR}/${P}"\fR
 Contains the path to the temporary \fIbuild directory\fR.  This variable
@@ -118,13 +119,15 @@ be modified to match the extraction directory of a tarball for the package.
 Contains the path to a \fItemporary directory\fR.  You may use this for
 whatever you like.
 .TP
-\fBD\fR = \fI"${PORTAGE_TMPDIR}/portage/${CATEGORY}/${PF}/image"\fR
+\fBD\fR = \fI"${PORTAGE_TMPDIR}/portage/${CATEGORY}/${PF}/image/"\fR
 Contains the path to the temporary \fIinstall directory\fR.  Every write
 operation that does not involve the helper tools and functions (found below)
-should be prefixed with ${D}.  Do not modify this variable.
+should be prefixed with ${D}.  Often the offset prefix needs to be taken
+into account here, for which the variable ${ED} is provided (see below).
+Do not modify this variable.
 .TP
-\fBED\fT = \fI"${PORTAGE_TMPDIR}/portage/${CATEGORY}/${PF}/image/${EPREFIX}"\fR
-Contains the path "${D}${EPREFIX}" for convenience purposes.  Do not
+\fBED\fT = \fI"${PORTAGE_TMPDIR}/portage/${CATEGORY}/${PF}/image/${EPREFIX}/"\fR
+Contains the path "${D%/}${EPREFIX}/" for convenience purposes.  Do not
 modify this variable.
 .TP
 .B PORTAGE_LOG_FILE
@@ -134,10 +137,12 @@ Contains the path of the build log. If \fBPORT_LOGDIR\fR variable is unset then
 \fBROOT\fR = \fI"/"\fR
 Contains the path that portage should use as the root of the live filesystem.
 When packages wish to make changes to the live filesystem, they should do so in
-the tree prefixed by ${ROOT}.  Do not modify this variable.
+the tree prefixed by ${ROOT}.  Often the offset prefix needs to be taken
+into account here, for which the variable ${EROOT} is provided (see
+below).  Do not modify this variable.
 .TP
-\fBEROOT\fR = \fI"${ROOT}${EPREFIX%/}"\fR
-Contains "${ROOT}${EPREFIX%/}" for convenience purposes.  Do not modify
+\fBEROOT\fR = \fI"${ROOT%/}${EPREFIX}/"\fR
+Contains "${ROOT%/}${EPREFIX}/" for convenience purposes.  Do not modify
 this variable.
 .TP
 \fBDESCRIPTION\fR = \fI"A happy little package"\fR
