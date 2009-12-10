@@ -492,7 +492,6 @@ class EOutput(object):
 		# avoid potential UnicodeEncodeError
 		s = _unicode_encode(s,
 			encoding=_encodings['stdio'], errors='backslashreplace')
-		f = sys.stderr
 		if sys.hexversion >= 0x3000000:
 			f = f.buffer
 		f.write(s)
