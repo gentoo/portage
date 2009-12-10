@@ -4511,7 +4511,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		locations = mymirrors
 
 	file_uri_tuples = []
-	if isinstance(myuris, dict):
+	# Check for 'items' attribute since OrderedDict is not a dict.
+	if hasattr(myuris, 'items'):
 		for myfile, uri_set in myuris.items():
 			for myuri in uri_set:
 				file_uri_tuples.append((myfile, myuri))
