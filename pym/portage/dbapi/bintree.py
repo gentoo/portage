@@ -742,10 +742,17 @@ class binarytree(object):
 			if pkgindex is rmt_idx:
 				pkgindex.modified = False # don't update the header
 				from portage.util import atomic_ofstream, ensure_dirs
-				ensure_dirs(os.path.dirname(pkgindex_file))
-				f = atomic_ofstream(pkgindex_file)
-				pkgindex.write(f)
-				f.close()
+				try:
+					ensure_dirs(os.path.dirname(pkgindex_file))
+					f = atomic_ofstream(pkgindex_file)
+					pkgindex.write(f)
+					f.close()
+				except PortageException:
+					if os.access(os.path.join(
+						self.settings["ROOT"], CACHE_PATH), os.W_OK):
+						raise
+					# The current user doesn't have permission to cache the
+					# file, but that's alright.
 			if pkgindex:
 				self._remotepkgs = {}
 				for d in pkgindex.packages:
