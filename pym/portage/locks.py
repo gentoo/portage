@@ -18,7 +18,6 @@ from portage.data import portage_gid
 from portage.output import EOutput
 from portage.util import writemsg
 from portage.localization import _
-import portage.const
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
