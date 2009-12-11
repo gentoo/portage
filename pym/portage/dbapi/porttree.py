@@ -16,7 +16,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage.cache.cache_errors import CacheError
-from portage.cache.mappings import OrderedDict
 from portage.const import REPO_NAME_LOC
 from portage.data import portage_gid, secpass
 from portage.dbapi import dbapi
@@ -32,6 +31,7 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
+from portage import OrderedDict
 
 import os as _os
 import codecs
