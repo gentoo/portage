@@ -7682,6 +7682,15 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 							mtime_str = mtime_str[:-1]
 							newmtime = float(mtime_str)
 							if int_mtime == long(newmtime):
+								another_digit = None
+								for i in range(1, 9):
+									i_str = str(i)
+									if int_mtime != long(float(mtime_str + i_str)):
+										break
+									else:
+										another_digit = i_str
+								if another_digit is not None:
+									mtime_str += another_digit
 								break
 							elif len(mtime_str) <= min_len:
 								# This shouldn't happen, but let's make sure
