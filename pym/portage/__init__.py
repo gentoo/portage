@@ -3780,6 +3780,12 @@ class config(object):
 		if eapi not in ("0", "1", "2", "3"):
 			mydict.pop("AA", None)
 
+		# Prefix variables are supported starting with EAPI 3.
+		if eapi in ("0", "1", "2"):
+			mydict.pop("ED", None)
+			mydict.pop("EPREFIX", None)
+			mydict.pop("EROOT", None)
+
 		# sandbox's bashrc sources /etc/profile which unsets ROOTPATH,
 		# so we have to back it up and restore it.
 		rootpath = mydict.get("ROOTPATH")
