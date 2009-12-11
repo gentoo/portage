@@ -7676,28 +7676,28 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 					else:
 						# Prevent mtime from rounding up to the next second.
 						int_mtime = sstat[stat.ST_MTIME]
-						mtime_str = "%i.9999999" % int_mtime
-						min_len = len(str(int_mtime)) + 2
-						while True:
-							mtime_str = mtime_str[:-1]
-							newmtime = float(mtime_str)
-							if int_mtime == long(newmtime):
-								another_digit = None
-								for i in range(1, 9):
-									i_str = str(i)
-									if int_mtime != long(float(mtime_str + i_str)):
-										break
-									else:
-										another_digit = i_str
-								if another_digit is not None:
-									mtime_str += another_digit
-									newmtime = float(mtime_str)
+						mtime_str = "%i." % int_mtime
+						digits = 0
+						max_digits = 9
+						while digits < max_digits:
+							if int_mtime == long(float(mtime_str + "9")):
+								mtime_str += "9"
+								digits += 1
+							else:
+								if digits < max_digits:
+									another_digit = None
+									for i in range(1, 9):
+										i_str = str(i)
+										if int_mtime != \
+											long(float(mtime_str + i_str)):
+											break
+										else:
+											another_digit = i_str
+									if another_digit is not None:
+										mtime_str += another_digit
+										digits += 1
 								break
-							elif len(mtime_str) <= min_len:
-								# This shouldn't happen, but let's make sure
-								# we can never have an infinite loop.
-								newmtime = int_mtime
-								break
+						newmtime = float(mtime_str)
 
 					os.utime(dest, (newmtime, newmtime))
 				newmtime = sstat[stat.ST_MTIME]
