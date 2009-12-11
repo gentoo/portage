@@ -7697,7 +7697,10 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 										mtime_str += another_digit
 										digits += 1
 								break
-						newmtime = float(mtime_str)
+						if digits > 0:
+							newmtime = float(mtime_str)
+						else:
+							newmtime = int_mtime
 
 					os.utime(dest, (newmtime, newmtime))
 				newmtime = sstat[stat.ST_MTIME]
