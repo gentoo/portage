@@ -123,13 +123,18 @@ whatever you like.
 \fBD\fR = \fI"${PORTAGE_TMPDIR}/portage/${CATEGORY}/${PF}/image/"\fR
 Contains the path to the temporary \fIinstall directory\fR.  Every write
 operation that does not involve the helper tools and functions (found below)
-should be prefixed with ${D}.  Often the offset prefix needs to be taken
-into account here, for which the variable ${ED} is provided (see below).
+should be prefixed with ${D}.
+Beginning with \fBEAPI 3\fR, the offset prefix often needs
+to be taken into account here, for which the variable
+${ED} is provided (see below).
 Do not modify this variable.
 .TP
 \fBED\fT = \fI"${PORTAGE_TMPDIR}/portage/${CATEGORY}/${PF}/image/${EPREFIX}/"\fR
 Beginning with \fBEAPI 3\fR, contains the path
 "${D%/}${EPREFIX}/" for convenience purposes.
+For \fBEAPI\fR values prior to \fBEAPI 3\fR which do
+not support \fB${ED}\fR, helpers use \fB${D}\fR where
+they would otherwise use \fB${ED}\fR.
 Do not modify this variable.
 .TP
 .B PORTAGE_LOG_FILE
@@ -792,6 +797,8 @@ Note that the \fIEXTRA_ECONF\fR is for users only, not for ebuild
 writers.  If you wish to pass more options to configure, just pass the
 extra arguments to \fBeconf\fR. Also note that \fBeconf\fR automatically
 calls \fBdie\fR if the configure script fails.
+Beginning with \fBEAPI 3\fR, \fBeconf\fR uses the \fB${EPREFIX}\fR
+variable which is disregared for prior \fBEAPI\fR values.
 .TP
 \fBemake\fR \fI[make options]\fR
 This is used as a replacement for make.  Performs 'make ${MAKEOPTS}
