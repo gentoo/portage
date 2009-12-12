@@ -67,6 +67,12 @@ except ImportError as e:
 	raise
 
 try:
+
+	try:
+		from collections import OrderedDict
+	except ImportError:
+		from portage.cache.mappings import OrderedDict
+
 	from portage.cache.cache_errors import CacheError
 	import portage.proxy.lazyimport
 	import portage.proxy as proxy
@@ -4550,7 +4556,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		for myuri in myuris:
 			file_uri_tuples.append((os.path.basename(myuri), myuri))
 
-	filedict={}
+	filedict = OrderedDict()
 	primaryuri_indexes={}
 	primaryuri_dict = {}
 	thirdpartymirror_uris = {}
