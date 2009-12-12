@@ -783,13 +783,15 @@ directory. The function will append \fIsource\fR to the \fBDISTDIR\fR variable.
 This is used as a replacement for configure.  Performs:
 .nf
 ${\fIECONF_SOURCE\fR:-.}/configure \\
-	\-\-prefix="${EPREFIX}"/usr \\
-	\-\-host="${EPREFIX}${CHOST} \\
-	\-\-mandir="${EPREFIX}"/usr/share/man \\
-	\-\-infodir="${EPREFIX}"/usr/share/info \\
+	${CBUILD:+\-\-build=${CBUILD}} \\
 	\-\-datadir="${EPREFIX}"/usr/share \\
-	\-\-sysconfdir="${EPREFIX}"/etc \\
+	\-\-host=${CHOST} \\
+	\-\-infodir="${EPREFIX}"/usr/share/info \\
 	\-\-localstatedir="${EPREFIX}"/var/lib \\
+	\-\-prefix="${EPREFIX}"/usr \\
+	\-\-mandir="${EPREFIX}"/usr/share/man \\
+	\-\-sysconfdir="${EPREFIX}"/etc \\
+	${CTARGET:+\-\-target=${CTARGET}} \\
 	\fI${EXTRA_ECONF}\fR \\
 	\fIconfigure options\fR || die "econf failed"
 .fi
