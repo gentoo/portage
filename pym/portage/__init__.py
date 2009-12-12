@@ -1418,7 +1418,7 @@ class config(object):
 		"PORTAGE_TMPDIR", "PORTAGE_UPDATE_ENV",
 		"PORTAGE_VERBOSE", "PORTAGE_WORKDIR_MODE",
 		"PORTDIR", "PORTDIR_OVERLAY", "PREROOTPATH", "PROFILE_PATHS",
-		"ROOT", "ROOTPATH", "STARTDIR", "T", "TMP", "TMPDIR",
+		"ROOT", "ROOTPATH", "T", "TMP", "TMPDIR",
 		"USE_EXPAND", "USE_ORDER", "WORKDIR",
 		"XARGS",
 	]
@@ -6200,7 +6200,6 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mysettings["EROOT"]    = myroot
 
 	mysettings["ROOT"]     = myroot
-	mysettings["STARTDIR"] = getcwd()
 	mysettings["EBUILD"]   = ebuild_path
 	mysettings["O"]        = pkg_dir
 	mysettings.configdict["pkg"]["CATEGORY"] = cat
