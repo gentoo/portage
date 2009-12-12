@@ -6080,7 +6080,11 @@ def _eapi_is_deprecated(eapi):
 	return eapi in _deprecated_eapis
 
 def eapi_is_supported(eapi):
-	eapi = str(eapi).strip()
+	if not isinstance(eapi, basestring):
+		# Only call str() when necessary since with python2 it
+		# can trigger UnicodeEncodeError if EAPI is corrupt.
+		eapi = str(eapi)
+	eapi = eapi.strip()
 
 	if _eapi_is_deprecated(eapi):
 		return True
