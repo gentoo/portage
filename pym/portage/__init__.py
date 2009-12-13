@@ -1396,7 +1396,7 @@ class config(object):
 	# in it's bashrc (causing major leakage).
 	_environ_whitelist += [
 		"ACCEPT_LICENSE", "BASH_ENV", "BUILD_PREFIX", "D",
-		"DISTDIR", "DOC_SYMLINKS_DIR", "EBUILD",
+		"DISTDIR", "DOC_SYMLINKS_DIR", "EAPI", "EBUILD",
 		"EBUILD_EXIT_STATUS_FILE", "EBUILD_FORCE_TEST",
 		"EBUILD_PHASE", "ECLASSDIR", "ECLASS_DEPTH", "ED",
 		"EMERGE_FROM", "EPREFIX", "EROOT",
