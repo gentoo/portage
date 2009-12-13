@@ -103,7 +103,8 @@ Contains the path to the 'files' sub folder in the package specific
 location in the portage tree.  Do not modify this variable.
 .TP
 .B EPREFIX
-Contains the offset that this Portage was configured for during
+Beginning with \fBEAPI 3\fR, contains the offset
+that this Portage was configured for during
 installation.  The offset is sometimes necessary in an ebuild or eclass,
 and is available in such cases as ${EPREFIX}.  EPREFIX does not contain
 a trailing slash, therefore an absent offset is represented by the empty
@@ -127,8 +128,9 @@ into account here, for which the variable ${ED} is provided (see below).
 Do not modify this variable.
 .TP
 \fBED\fT = \fI"${PORTAGE_TMPDIR}/portage/${CATEGORY}/${PF}/image/${EPREFIX}/"\fR
-Contains the path "${D%/}${EPREFIX}/" for convenience purposes.  Do not
-modify this variable.
+Beginning with \fBEAPI 3\fR, contains the path
+"${D%/}${EPREFIX}/" for convenience purposes.
+Do not modify this variable.
 .TP
 .B PORTAGE_LOG_FILE
 Contains the path of the build log. If \fBPORT_LOGDIR\fR variable is unset then
@@ -142,8 +144,9 @@ into account here, for which the variable ${EROOT} is provided (see
 below).  Do not modify this variable.
 .TP
 \fBEROOT\fR = \fI"${ROOT%/}${EPREFIX}/"\fR
-Contains "${ROOT%/}${EPREFIX}/" for convenience purposes.  Do not modify
-this variable.
+Beginning with \fBEAPI 3\fR, contains
+"${ROOT%/}${EPREFIX}/" for convenience
+purposes. Do not modify this variable.
 .TP
 \fBDESCRIPTION\fR = \fI"A happy little package"\fR
 Should contain a short description of the package.
