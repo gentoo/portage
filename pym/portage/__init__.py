@@ -7678,7 +7678,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 						mtime_str = "%i." % int_mtime
 						nonzero_digits = 0
 						decimal_places = 9
-						for i in range(max_digits):
+						for i in range(decimal_places):
 							for digit in range(9, -1, -1):
 								digit_str = str(digit)
 								if int_mtime == long(float(mtime_str + digit_str)):
