@@ -1369,7 +1369,7 @@ class config(object):
 
 	_env_blacklist = [
 		"A", "AA", "CATEGORY", "DEPEND", "DESCRIPTION", "EAPI",
-		"EBUILD_PHASE", "ED", "EMERGE_FROM", "EPREFIX", "EROOT",
+		"EBUILD_PHASE", "EMERGE_FROM", "EPREFIX", "EROOT",
 		"HOMEPAGE", "INHERITED", "IUSE",
 		"KEYWORDS", "LICENSE", "PDEPEND", "PF", "PKGUSE",
 		"PORTAGE_CONFIGROOT", "PORTAGE_IUSE",
@@ -1392,7 +1392,8 @@ class config(object):
 		"ACCEPT_LICENSE", "BASH_ENV", "BUILD_PREFIX", "D",
 		"DISTDIR", "DOC_SYMLINKS_DIR", "EBUILD",
 		"EBUILD_EXIT_STATUS_FILE", "EBUILD_FORCE_TEST",
-		"EBUILD_PHASE", "ECLASSDIR", "ECLASS_DEPTH", "EMERGE_FROM",
+		"EBUILD_PHASE", "ECLASSDIR", "ECLASS_DEPTH", "ED",
+		"EMERGE_FROM", "EPREFIX", "EROOT",
 		"FEATURES", "FILESDIR", "HOME", "NOCOLOR", "PATH",
 		"PKGDIR",
 		"PKGUSE", "PKG_LOGDIR", "PKG_TMPDIR",
@@ -1972,6 +1973,12 @@ class config(object):
 			self["ROOT"] = target_root
 			self.backup_changes("ROOT")
 
+			# Prefix forward compatability, set EPREFIX to the empty string
+			self["EPREFIX"] = ''
+			self.backup_changes("EPREFIX")
+			self["EROOT"] = target_root
+			self.backup_changes("EROOT")
+
 			self.pusedict = {}
 			self.pkeywordsdict = {}
 			self._plicensedict = {}
@@ -2215,6 +2222,10 @@ class config(object):
 			if 'parse-eapi-glep-55' in self.features:
 				_validate_cache_for_unsupported_eapis = False
 				_glep_55_enabled = True
+
+			# inject EPREFIX as it needs to be available using portageq
+			# TODO: this is just forward compatability, need to use EPREFIX
+			self["EPREFIX"] = ''
 
 		for k in self._case_insensitive_vars:
 			if k in self:
@@ -6176,6 +6187,10 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		# due to how it's coded... Don't overwrite this so we can use it.
 		mysettings["PORTAGE_DEBUG"] = "1"
 
+	# Prefix forward compatability
+	mysettings["EPREFIX"]  = ''
+	mysettings["EROOT"]    = myroot
+
 	mysettings["ROOT"]     = myroot
 	mysettings["STARTDIR"] = getcwd()
 	mysettings["EBUILD"]   = ebuild_path
@@ -6267,6 +6282,9 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mysettings["WORKDIR"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "work")
 	mysettings["D"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image") + os.sep
 	mysettings["T"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "temp")
+
+	# Prefix forward compatability
+	mysettings["ED"] = mysettings["D"]
 
 	mysettings["PORTAGE_BASHRC"] = os.path.join(
 		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_FILE)
