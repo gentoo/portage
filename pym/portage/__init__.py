@@ -3777,7 +3777,7 @@ class config(object):
 		mydict["USE"] = self.get("PORTAGE_USE", "")
 
 		# Don't export AA to the ebuild environment in EAPIs that forbid it
-		if eapi not in ("0", "1", "2", "3"):
+		if eapi not in ("0", "1", "2", "3", "3_pre2"):
 			mydict.pop("AA", None)
 
 		# Prefix variables are supported starting with EAPI 3.
@@ -5649,7 +5649,7 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 	if mydo == "prepare" and eapi in ("0", "1"):
 		return os.EX_OK
 
-	if mydo == "pretend" and eapi in ("0", "1", "2", "3"):
+	if mydo == "pretend" and eapi in ("0", "1", "2", "3", "3_pre2"):
 		return os.EX_OK
 
 	kwargs = actionmap[mydo]["args"]
@@ -6304,7 +6304,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		mysettings["PORTAGE_BUILDDIR"], ".exit_status")
 
 	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistent.
-	if eapi not in ('0', '1', '2', '3'):
+	if eapi not in ('0', '1', '2', '3', '3_pre2'):
 		# Discard KV for EAPIs that don't support it. Cache KV is restored
 		# from the backupenv whenever config.reset() is called.
 		mysettings.pop('KV', None)
