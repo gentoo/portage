@@ -71,6 +71,7 @@ try:
 	import portage.proxy.lazyimport
 	import portage.proxy as proxy
 	proxy.lazyimport.lazyimport(globals(),
+		'portage.cache.mappings:OrderedDict',
 		'portage.checksum',
 		'portage.checksum:perform_checksum,perform_md5,prelink_capable',
 		'portage.cvstree',
@@ -131,6 +132,13 @@ except ImportError as e:
 	sys.stderr.write("!!! a recovery of portage.\n")
 	sys.stderr.write("    "+str(e)+"\n\n")
 	raise
+
+try:
+	from collections import OrderedDict
+except ImportError:
+	# lazy import is above
+	# from portage.cache.mappings import OrderedDict
+	pass
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -4531,7 +4539,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		for myuri in myuris:
 			file_uri_tuples.append((os.path.basename(myuri), myuri))
 
-	filedict={}
+	filedict = OrderedDict()
 	primaryuri_indexes={}
 	primaryuri_dict = {}
 	thirdpartymirror_uris = {}
