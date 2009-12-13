@@ -445,7 +445,7 @@ unpack() {
 				_unpack_tar lzma
 				;;
 			xz)
-				if hasq $eapi 0 1 2 3 ; then
+				if hasq $eapi 0 1 2 ; then
 					vecho "unpack ${x}: file format not recognized. Ignoring."
 				else
 					_unpack_tar xz
