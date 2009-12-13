@@ -1657,7 +1657,18 @@ filter_readonly_variables() {
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
 		SANDBOX_LOG SANDBOX_ON"
 	filtered_vars="$readonly_bash_vars $bash_misc_vars
-		$READONLY_PORTAGE_VARS ED EPREFIX EROOT PATH"
+		$READONLY_PORTAGE_VARS PATH"
+
+	# Don't filter/interfere with prefix variables unless they are
+	# supported by the current EAPI.
+	case "${EAPI:-0}" in
+		0|1|2)
+			;;
+		*)
+			filtered_vars+=" ED EPREFIX EROOT"
+			;;
+	esac
+
 	if hasq --filter-sandbox $* ; then
 		filtered_vars="${filtered_vars} SANDBOX_.*"
 	else
