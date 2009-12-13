@@ -67,11 +67,16 @@ except ImportError as e:
 	raise
 
 try:
+
+	try:
+		from collections import OrderedDict
+	except ImportError:
+		from portage.cache.mappings import OrderedDict
+
 	from portage.cache.cache_errors import CacheError
 	import portage.proxy.lazyimport
 	import portage.proxy as proxy
 	proxy.lazyimport.lazyimport(globals(),
-		'portage.cache.mappings:OrderedDict',
 		'portage.checksum',
 		'portage.checksum:perform_checksum,perform_md5,prelink_capable',
 		'portage.cvstree',
@@ -132,13 +137,6 @@ except ImportError as e:
 	sys.stderr.write("!!! a recovery of portage.\n")
 	sys.stderr.write("    "+str(e)+"\n\n")
 	raise
-
-try:
-	from collections import OrderedDict
-except ImportError:
-	# lazy import is above
-	# from portage.cache.mappings import OrderedDict
-	pass
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
