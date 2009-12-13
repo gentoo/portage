@@ -7671,29 +7671,23 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 						newmtime = sstat.st_mtime
 					else:
 						# Prevent mtime from rounding up to the next second.
+						# Generate nanosecond resolution (9 decimal places) in
+						# order to ensure that the floating point representation
+						# is the highest value possible without rounding up.
 						int_mtime = sstat[stat.ST_MTIME]
 						mtime_str = "%i." % int_mtime
-						digits = 0
-						max_digits = 9
-						while digits < max_digits:
-							if int_mtime == long(float(mtime_str + "9")):
-								mtime_str += "9"
-								digits += 1
-							else:
-								if digits < max_digits:
-									another_digit = None
-									for i in range(1, 9):
-										i_str = str(i)
-										if int_mtime != \
-											long(float(mtime_str + i_str)):
-											break
-										else:
-											another_digit = i_str
-									if another_digit is not None:
-										mtime_str += another_digit
-										digits += 1
-								break
-						if digits > 0:
+						nonzero_digits = 0
+						decimal_places = 9
+						for i in range(max_digits):
+							for digit in range(9, -1, -1):
+								digit_str = str(digit)
+								if int_mtime == long(float(mtime_str + digit_str)):
+									break
+							if digit > 0:
+								nonzero_digits += 1
+							mtime_str += digit_str
+
+						if nonzero_digits > 0:
 							newmtime = float(mtime_str)
 						else:
 							newmtime = int_mtime
