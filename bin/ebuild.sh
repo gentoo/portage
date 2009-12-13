@@ -1943,6 +1943,13 @@ export TMPDIR="${T}"
 # declare them only after it has already run.
 if [ "${EBUILD_PHASE}" != "depend" ] ; then
 	declare -r ${READONLY_EBUILD_METADATA} ${READONLY_PORTAGE_VARS}
+	case "$EAPI" in
+		0|1|2)
+			;;
+		*)
+			declare -r ED EPREFIX EROOT
+			;;
+	esac
 fi
 
 ebuild_main() {
