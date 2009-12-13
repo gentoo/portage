@@ -26,8 +26,7 @@ fi
 # new_args: global array used to return revised arguments
 decompress_args() {
 	local suffix=$1 binary=$2
-	shift
-	shift
+	shift 2
 
 	# Initialize the global new_args array.
 	new_args=()
