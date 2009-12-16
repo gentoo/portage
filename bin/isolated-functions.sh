@@ -506,11 +506,6 @@ save_ebuild_env() {
 		unset ECHANGELOG_USER GPG_AGENT_INFO \
 		SSH_AGENT_PID SSH_AUTH_SOCK STY WINDOW XAUTHORITY
 
-		# localization settings
-		unset LANG LC_COLLATE LC_CTYPE LC_MESSAGES \
-			LC_MONETARY LC_NUMERIC LC_TIME LC_PAPER \
-			LC_ALL
-
 		# CCACHE and DISTCC config
 		unset ${!CCACHE_*} ${!DISTCC_*}
 

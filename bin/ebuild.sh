@@ -1632,6 +1632,12 @@ PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 # phase. However, if FEATURES exist inside environment.bz2 then they
 # should be overridden by current settings.
 #
+# --filter-locale causes locale related variables such as LANG and LC_*
+# variables to be filtered. These variables should persist between phases,
+# in case they are modified by the ebuild. However, the current user
+# settings should be used when loading the environment from a binary or
+# installed package.
+#
 # ---allow-extra-vars causes some extra vars to be allowd through, such
 # as ${PORTAGE_SAVED_READONLY_VARS} and ${PORTAGE_MUTABLE_FILTERED_VARS}.
 #
@@ -1671,6 +1677,11 @@ filter_readonly_variables() {
 	if hasq --filter-features $* ; then
 		filtered_vars="${filtered_vars} FEATURES"
 	fi
+	if hasq --filter-locale $* ; then
+		filtered_vars+=" LANG LC_ALL LC_COLLATE
+			LC_CTYPE LC_MESSAGES LC_MONETARY
+			LC_NUMERIC LC_PAPER LC_TIME"
+	fi
 	if ! hasq --allow-extra-vars $* ; then
 		filtered_vars="
 			${filtered_vars}
@@ -1696,7 +1707,7 @@ preprocess_ebuild_env() {
 		# environment may contain stale SANDBOX_{DENY,PREDICT,READ,WRITE}
 		# and FEATURES variables that should be filtered out. Between
 		# phases, these variables are normally preserved.
-		filter_opts="--filter-sandbox --filter-features ${filter_opts}"
+		filter_opts+=" --filter-sandbox --filter-features --filter-locale"
 	fi
 	filter_readonly_variables ${filter_opts} < "${T}"/environment \
 		> "${T}"/environment.filtered || return $?
