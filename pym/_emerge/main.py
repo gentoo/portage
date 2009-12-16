@@ -1135,7 +1135,7 @@ def check_procfs():
 	if platform.system() not in ("Linux",) or \
 		os.path.ismount(procfs_path):
 		return os.EX_OK
-	msg = "It sees that %s is not mounted. You have been warned." % procfs_path
+	msg = "It seems that %s is not mounted. You have been warned." % procfs_path
 	writemsg_level("".join("!!! %s\n" % l for l in textwrap.wrap(msg, 70)),
 		level=logging.ERROR, noiselevel=-1)
 	return 1
