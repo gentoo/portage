@@ -8,8 +8,10 @@ import os
 import shutil
 
 from portage import _encodings
+from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.localization import _
+from portage.util import writemsg
 
 import selinux
 from selinux import is_selinux_enabled
@@ -70,7 +72,14 @@ def settype(newtype):
 def setexec(ctx="\n"):
 	ctx = _unicode_encode(ctx, encoding=_encodings['content'], errors='strict')
 	if selinux.setexeccon(ctx) < 0:
-		raise OSError(_("setexec: Failed setting exec() context \"%s\".") % ctx)
+		ctx = _unicode_decode(ctx, encoding=_encodings['content'],
+			errors='replace')
+		if selinux.security_getenforce() == 1:
+			raise OSError(_("Failed setting exec() context \"%s\".") % ctx)
+		else:
+			writemsg("!!! " + \
+				_("Failed setting exec() context \"%s\".") % ctx, \
+				noiselevel=-1)
 
 def setfscreate(ctx="\n"):
 	ctx = _unicode_encode(ctx,
