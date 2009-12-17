@@ -7,11 +7,11 @@
 import os
 import shutil
 
+import portage
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.localization import _
-from portage.util import writemsg
 
 import selinux
 from selinux import is_selinux_enabled
@@ -81,7 +81,7 @@ def setexec(ctx="\n"):
 		if selinux.security_getenforce() == 1:
 			raise OSError(_("Failed setting exec() context \"%s\".") % ctx)
 		else:
-			writemsg("!!! " + \
+			portage.writemsg("!!! " + \
 				_("Failed setting exec() context \"%s\".") % ctx, \
 				noiselevel=-1)
 
