@@ -1771,7 +1771,7 @@ unset E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
 shopt -u extglob
 
 if [[ ${EBUILD_PHASE} == depend ]] ; then
-	QA_INTERCEPTORS="awk bash cc egrep fgrep g++
+	QA_INTERCEPTORS="awk bash cc egrep equery fgrep g++
 		gawk gcc grep javac java-config nawk perl
 		pkg-config python python-config sed"
 elif [[ ${EBUILD_PHASE} == clean* ]] ; then
