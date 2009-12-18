@@ -743,7 +743,7 @@ class depgraph(object):
 				# the parent is or will be installed.
 				blocker = Blocker(atom=dep.atom,
 					eapi=dep.parent.metadata["EAPI"],
-					root=dep.parent.root)
+					priority=dep.priority, root=dep.parent.root)
 				self._dynamic_config._blocker_parents.add(blocker, dep.parent)
 			return 1
 
@@ -2809,7 +2809,10 @@ class depgraph(object):
 			# due to the performance penalty that is incurred by all the
 			# additional dep_check calls that are required.
 
-			dep_keys = ["DEPEND","RDEPEND","PDEPEND"]
+			# For installed packages, always ignore blockers from DEPEND since
+			# only runtime dependencies should be relevant for packages that
+			# are already built.
+			dep_keys = ["RDEPEND", "PDEPEND"]
 			for myroot in self._frozen_config.trees:
 				vardb = self._frozen_config.trees[myroot]["vartree"].dbapi
 				portdb = self._frozen_config.trees[myroot]["porttree"].dbapi
@@ -2852,6 +2855,11 @@ class depgraph(object):
 								self._dynamic_config._irrelevant_blockers.child_nodes(pkg))
 						except KeyError:
 							pass
+						if blockers:
+							# Select just the runtime blockers.
+							blockers = [blocker for blocker in blockers \
+								if blocker.priority.runtime or \
+								blocker.priority.runtime_post]
 					if blockers is not None:
 						blockers = set(blocker.atom for blocker in blockers)
 
@@ -2932,7 +2940,9 @@ class depgraph(object):
 						try:
 							for atom in blocker_atoms:
 								blocker = Blocker(atom=atom,
-									eapi=pkg.metadata["EAPI"], root=myroot)
+									eapi=pkg.metadata["EAPI"],
+									priority=self._priority(runtime=True),
+									root=myroot)
 								self._dynamic_config._blocker_parents.add(blocker, pkg)
 						except portage.exception.InvalidAtom as e:
 							depstr = " ".join(vardb.aux_get(pkg.cpv, dep_keys))

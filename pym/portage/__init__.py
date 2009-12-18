@@ -6096,7 +6096,11 @@ def _eapi_is_deprecated(eapi):
 	return eapi in _deprecated_eapis
 
 def eapi_is_supported(eapi):
-	eapi = str(eapi).strip()
+	if not isinstance(eapi, basestring):
+		# Only call str() when necessary since with python2 it
+		# can trigger UnicodeEncodeError if EAPI is corrupt.
+		eapi = str(eapi)
+	eapi = eapi.strip()
 
 	if _eapi_is_deprecated(eapi):
 		return True
@@ -7671,37 +7675,17 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			if newmtime is not None:
 				os.utime(dest, (newmtime, newmtime))
 			else:
-				if renamefailed:
-					# If rename succeeded then this is not necessary, since
-					# rename automatically preserves timestamps with complete
-					# precision.
-					if sstat[stat.ST_MTIME] == long(sstat.st_mtime):
-						newmtime = sstat.st_mtime
-					else:
-						# Prevent mtime from rounding up to the next second.
-						# Generate nanosecond resolution (9 decimal places) in
-						# order to ensure that the floating point representation
-						# is the highest value possible without rounding up.
-						int_mtime = sstat[stat.ST_MTIME]
-						mtime_str = "%i." % int_mtime
-						nonzero_digits = 0
-						decimal_places = 9
-						for i in range(decimal_places):
-							for digit in range(9, -1, -1):
-								digit_str = str(digit)
-								if int_mtime == long(float(mtime_str + digit_str)):
-									break
-							if digit > 0:
-								nonzero_digits += 1
-							mtime_str += digit_str
-
-						if nonzero_digits > 0:
-							newmtime = float(mtime_str)
-						else:
-							newmtime = int_mtime
-
-					os.utime(dest, (newmtime, newmtime))
 				newmtime = sstat[stat.ST_MTIME]
+				if renamefailed:
+					# If rename succeeded then timestamps are automatically
+					# preserved with complete precision because the source
+					# and destination inode are the same. Otherwise, round
+					# down to the nearest whole second since python's float
+					# st_mtime cannot be used to preserve the st_mtim.tv_nsec
+					# field with complete precision. Note that we have to use
+					# stat_obj[stat.ST_MTIME] here because the float
+					# stat_obj.st_mtime rounds *up* sometimes.
+					os.utime(dest, (newmtime, newmtime))
 	except OSError:
 		# The utime can fail here with EPERM even though the move succeeded.
 		# Instead of failing, use stat to return the mtime if possible.

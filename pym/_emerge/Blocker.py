@@ -14,7 +14,7 @@ import portage
 class Blocker(Task):
 
 	__hash__ = Task.__hash__
-	__slots__ = ("root", "atom", "cp", "eapi", "satisfied")
+	__slots__ = ("root", "atom", "cp", "eapi", "priority", "satisfied")
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
