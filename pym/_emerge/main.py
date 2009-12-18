@@ -1131,6 +1131,16 @@ def profile_check(trees, myaction):
 		return 1
 	return os.EX_OK
 
+def check_procfs():
+	procfs_path = '/proc'
+	if platform.system() not in ("Linux",) or \
+		os.path.ismount(procfs_path):
+		return os.EX_OK
+	msg = "It seems that %s is not mounted. You have been warned." % procfs_path
+	writemsg_level("".join("!!! %s\n" % l for l in textwrap.wrap(msg, 70)),
+		level=logging.ERROR, noiselevel=-1)
+	return 1
+
 def emerge_main():
 	global portage	# NFC why this is necessary now - genone
 	portage._disable_legacy_globals()
@@ -1194,6 +1204,7 @@ def emerge_main():
 		repo_name_check(trees)
 		repo_name_duplicate_check(trees)
 		config_protect_check(trees)
+	check_procfs()
 
 	for mytrees in trees.values():
 		mydb = mytrees["porttree"].dbapi

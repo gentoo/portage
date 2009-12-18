@@ -20,6 +20,53 @@ if [[ ${PORTAGE_COMPRESS_FLAGS+set} != "set" ]] ; then
 	esac
 fi
 
+# decompress_args(suffix, binary)
+#	- suffix: the compression suffix to work with
+#	- binary: the program to execute that'll compress/decompress
+# new_args: global array used to return revised arguments
+decompress_args() {
+	local suffix=$1 binary=$2
+	shift 2
+
+	# Initialize the global new_args array.
+	new_args=()
+	declare -a decompress_args=()
+	local x i=0 decompress_count=0
+	for x in "$@" ; do
+		if [[ ${x%$suffix} = $x ]] ; then
+			new_args[$i]=$x
+		else
+			new_args[$i]=${x%$suffix}
+			decompress_args[$decompress_count]=$x
+			((decompress_count++))
+		fi
+		((i++))
+	done
+
+	if [ $decompress_count -gt 0 ] ; then
+		${binary} "${decompress_args[@]}"
+		if [ $? -ne 0 ] ; then
+			# Apparently decompression failed for one or more files, so
+			# drop those since we don't want to compress them twice.
+			new_args=()
+			local x i=0
+			for x in "$@" ; do
+				if [[ ${x%$suffix} = $x ]] ; then
+					new_args[$i]=$x
+					((i++))
+				elif [[ -f ${x%$suffix} ]] ; then
+					new_args[$i]=${x%$suffix}
+					((i++))
+				else
+					# Apparently decompression failed for this one, so drop
+					# it since we don't want to compress it twice.
+					true
+				fi
+			done
+		fi
+	fi
+}
+
 case $1 in
 	--suffix)
 		[[ -n $2 ]] && vecho "${0##*/}: --suffix takes no additional arguments" 1>&2
@@ -63,6 +110,15 @@ case $1 in
 		exit 1
 		;;
 	*)
+		# Since dodoc calls ecompress on files that are already compressed,
+		# perform decompression here (similar to ecompressdir behavior).
+		decompress_args ".Z" "gunzip -f" "$@"
+		set -- "${new_args[@]}"
+		decompress_args ".gz" "gunzip -f" "$@"
+		set -- "${new_args[@]}"
+		decompress_args ".bz2" "bunzip2 -f" "$@"
+		set -- "${new_args[@]}"
+
 		mask_ext_re=""
 		set -f
 		for x in $PORTAGE_COMPRESS_EXCLUDE_SUFFIXES ; do
