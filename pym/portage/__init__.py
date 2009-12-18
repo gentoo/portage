@@ -2249,9 +2249,6 @@ class config(object):
 				_validate_cache_for_unsupported_eapis = False
 				_glep_55_enabled = True
 
-			# inject EPREFIX as it needs to be available using portageq
-			self["EPREFIX"] = EPREFIX
-
 		for k in self._case_insensitive_vars:
 			if k in self:
 				self[k] = self[k].lower()
