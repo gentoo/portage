@@ -54,7 +54,7 @@ dump_trace() {
 }
 
 nonfatal() {
-	if has "${EAPI:-0}" 0 1 2 3; then
+	if has "${EAPI:-0}" 0 1 2 3 3_pre2 ; then
 		die "$FUNCNAME() not supported in this EAPI"
 	fi
 	if [[ $# -lt 1 ]]; then

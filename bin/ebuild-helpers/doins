@@ -26,7 +26,7 @@ if [[ ${INSDESTTREE#${D}} != "${INSDESTTREE}" ]]; then
 fi
 
 case "$EAPI" in
-	0|1|2|3)
+	0|1|2|3|3_pre2)
 		PRESERVE_SYMLINKS=n
 		;;
 	*)

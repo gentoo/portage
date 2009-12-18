@@ -1413,7 +1413,7 @@ class config(object):
 	# in it's bashrc (causing major leakage).
 	_environ_whitelist += [
 		"ACCEPT_LICENSE", "BASH_ENV", "BUILD_PREFIX", "D",
-		"DISTDIR", "DOC_SYMLINKS_DIR", "EBUILD",
+		"DISTDIR", "DOC_SYMLINKS_DIR", "EAPI", "EBUILD",
 		"EBUILD_EXIT_STATUS_FILE", "EBUILD_FORCE_TEST",
 		"EBUILD_PHASE", "ECLASSDIR", "ECLASS_DEPTH", "ED",
 		"EMERGE_FROM", "EPREFIX", "EROOT",
@@ -3796,7 +3796,7 @@ class config(object):
 		mydict["USE"] = self.get("PORTAGE_USE", "")
 
 		# Don't export AA to the ebuild environment in EAPIs that forbid it
-		if eapi not in ("0", "1", "2", "3"):
+		if eapi not in ("0", "1", "2", "3", "3_pre2"):
 			mydict.pop("AA", None)
 
 		# sandbox's bashrc sources /etc/profile which unsets ROOTPATH,
@@ -5662,7 +5662,7 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 	if mydo == "prepare" and eapi in ("0", "1"):
 		return os.EX_OK
 
-	if mydo == "pretend" and eapi in ("0", "1", "2", "3"):
+	if mydo == "pretend" and eapi in ("0", "1", "2", "3", "3_pre2"):
 		return os.EX_OK
 
 	kwargs = actionmap[mydo]["args"]
@@ -6092,7 +6092,7 @@ def _spawn_misc_sh(mysettings, commands, phase=None, **kwargs):
 
 	return rval
 
-_testing_eapis = frozenset()
+_testing_eapis = frozenset(["3_pre2"])
 _deprecated_eapis = frozenset(["3_pre1", "2_pre3", "2_pre2", "2_pre1"])
 
 def _eapi_is_deprecated(eapi):
@@ -6315,7 +6315,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		mysettings["PORTAGE_BUILDDIR"], ".exit_status")
 
 	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistent.
-	if eapi not in ('0', '1', '2', '3'):
+	if eapi not in ('0', '1', '2', '3', '3_pre2'):
 		# Discard KV for EAPIs that don't support it. Cache KV is restored
 		# from the backupenv whenever config.reset() is called.
 		mysettings.pop('KV', None)
@@ -7687,18 +7687,31 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 					else:
 						# Prevent mtime from rounding up to the next second.
 						int_mtime = sstat[stat.ST_MTIME]
-						mtime_str = "%i.9999999" % int_mtime
-						min_len = len(str(int_mtime)) + 2
-						while True:
-							mtime_str = mtime_str[:-1]
+						mtime_str = "%i." % int_mtime
+						digits = 0
+						max_digits = 9
+						while digits < max_digits:
+							if int_mtime == long(float(mtime_str + "9")):
+								mtime_str += "9"
+								digits += 1
+							else:
+								if digits < max_digits:
+									another_digit = None
+									for i in range(1, 9):
+										i_str = str(i)
+										if int_mtime != \
+											long(float(mtime_str + i_str)):
+											break
+										else:
+											another_digit = i_str
+									if another_digit is not None:
+										mtime_str += another_digit
+										digits += 1
+								break
+						if digits > 0:
 							newmtime = float(mtime_str)
-							if int_mtime == long(newmtime):
-								break
-							elif len(mtime_str) <= min_len:
-								# This shouldn't happen, but let's make sure
-								# we can never have an infinite loop.
-								newmtime = int_mtime
-								break
+						else:
+							newmtime = int_mtime
 
 					os.utime(dest, (newmtime, newmtime))
 				newmtime = sstat[stat.ST_MTIME]

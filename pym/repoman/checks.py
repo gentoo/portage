@@ -436,7 +436,7 @@ class Eapi4IncompatibleFuncs(LineCheck):
 		self.eapi = pkg.metadata['EAPI']
 
 	def check_eapi(self, eapi):
-		return self.eapi not in ('0', '1', '2', '3')
+		return self.eapi not in ('0', '1', '2', '3', '3_pre2')
 
 	def check(self, num, line):
 		m = self.banned_commands_re.match(line)
@@ -453,7 +453,7 @@ class Eapi4GoneVars(LineCheck):
 		self.eapi = pkg.metadata['EAPI']
 
 	def check_eapi(self, eapi):
-		return self.eapi not in ('0', '1', '2', '3')
+		return self.eapi not in ('0', '1', '2', '3', '3_pre2')
 
 	def check(self, num, line):
 		m = self.undefined_vars_re.match(line)
