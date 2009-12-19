@@ -5,7 +5,7 @@
 # We need this next line for "die" and "assert". It expands
 # It _must_ preceed all the calls to die and assert.
 shopt -s expand_aliases
-alias assert='for _pipestatus in ${PIPESTATUS[*]} ; do [ $_pipestatus -eq 0 ] || die ; done'
+alias assert='_pipestatus="${PIPESTATUS[*]}"; [[ "${_pipestatus// /}" -eq 0 ]] || die'
 alias save_IFS='[ "${IFS:-unset}" != "unset" ] && old_IFS="${IFS}"'
 alias restore_IFS='if [ "${old_IFS:-unset}" != "unset" ]; then IFS="${old_IFS}"; unset old_IFS; else unset IFS; fi'
 
