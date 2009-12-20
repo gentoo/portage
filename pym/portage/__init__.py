@@ -1438,7 +1438,8 @@ class config(object):
 		"ROOT", "ROOTPATH", "T", "TMP", "TMPDIR",
 		"USE_EXPAND", "USE_ORDER", "WORKDIR",
 		"XARGS",
-		"BPREFIX", "DEFAULT_PATH", "PORTAGE_GROUP", "PORTAGE_USER"
+		"BPREFIX", "DEFAULT_PATH", "EXTRA_PATH",
+		"PORTAGE_GROUP", "PORTAGE_USER",
 	]
 
 	# user config variables
