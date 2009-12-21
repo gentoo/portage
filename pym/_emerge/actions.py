@@ -2566,7 +2566,7 @@ def git_sync_timestamps(settings, portdir):
 			if ec in updated_ec_mtimes:
 				continue
 			ec_path = os.path.join(ec_dir, ec + ".eclass")
-			current_mtime = long(os.stat(ec_path).st_mtime)
+			current_mtime = os.stat(ec_path)[stat.ST_MTIME]
 			if current_mtime != ec_mtime:
 				os.utime(ec_path, (ec_mtime, ec_mtime))
 			updated_ec_mtimes[ec] = ec_mtime

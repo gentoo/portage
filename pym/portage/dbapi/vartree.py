@@ -51,6 +51,7 @@ from collections import deque
 import re, shutil, stat, errno, copy, subprocess
 import logging
 import os as _os
+import stat
 import sys
 import time
 import warnings
@@ -962,7 +963,7 @@ class vardbapi(dbapi):
 		if mysplit[0] == '*':
 			mysplit[0] = mysplit[0][1:]
 		try:
-			mystat = os.stat(self.getpath(mysplit[0]))[stat.ST_MTIME]
+			mystat = os.stat(self.getpath(mysplit[0])).st_mtime
 		except OSError:
 			mystat = 0
 		if use_cache and mycp in self.cpcache:
@@ -1238,7 +1239,7 @@ class vardbapi(dbapi):
 			if e.errno != errno.ENOENT:
 				raise
 			raise KeyError(mycpv)
-		mydir_mtime = long(mydir_stat.st_mtime)
+		mydir_mtime = mydir_stat[stat.ST_MTIME]
 		pkg_data = self._aux_cache["packages"].get(mycpv)
 		pull_me = cache_these.union(wants)
 		mydata = {"_mtime_" : mydir_mtime}
@@ -1306,7 +1307,7 @@ class vardbapi(dbapi):
 		results = []
 		for x in wants:
 			if x == "_mtime_":
-				results.append(long(st.st_mtime))
+				results.append(st[stat.ST_MTIME])
 				continue
 			try:
 				myf = codecs.open(
@@ -4279,7 +4280,7 @@ class dblink(object):
 									cfgprot = cfgfiledict["IGNORE"]
 									if not moveme:
 										zing = "---"
-										mymtime = long(mystat.st_mtime)
+										mymtime = mystat[stat.ST_MTIME]
 								else:
 									moveme = 1
 									cfgprot = 1
