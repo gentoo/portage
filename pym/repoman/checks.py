@@ -374,6 +374,12 @@ class EMakeParallelDisabledViaMAKEOPTS(LineCheck):
 	re = re.compile(r'^\s*MAKEOPTS=(\'|")?.*-j\s*1\b')
 	error = errors.EMAKE_PARALLEL_DISABLED_VIA_MAKEOPTS
 
+class NoAsNeeded(LineCheck):
+	"""Check for calls to the no-as-needed function."""
+	repoman_check_name = 'upstream.workaround'
+	re = re.compile(r'.*\$\(no-as-needed\)')
+	error = errors.NO_AS_NEEDED
+
 class DeprecatedBindnowFlags(LineCheck):
 	"""Check for calls to the deprecated bindnow-flags function."""
 	repoman_check_name = 'ebuild.minorsyn'
@@ -468,7 +474,7 @@ _constant_checks = tuple((c() for c in (
 	EbuildUselessCdS, EbuildNestedDie,
 	EbuildPatches, EbuildQuotedA, EapiDefinition,
 	IUseUndefined, InheritAutotools,
-	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS,
+	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS, NoAsNeeded,
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
 	SrcCompileEconf, Eapi4IncompatibleFuncs, Eapi4GoneVars)))
 
