@@ -212,7 +212,7 @@ class Binpkg(CompositeTask):
 		pkg_path = self._pkg_path
 
 		dir_mode = 0o755
-		for mydir in (dir_path, self._image_dir, infloc):
+		for mydir in (dir_path, self._image_dir, self._work_dir, infloc):
 			portage.util.ensure_dirs(mydir, uid=portage.data.portage_uid,
 				gid=portage.data.portage_gid, mode=dir_mode)
 
@@ -297,9 +297,9 @@ class Binpkg(CompositeTask):
 		# if the prefix differs, we copy it to the image after
 		# extraction using chpathtool
 		if (self._buildprefix != EPREFIX):
-			pkgloc = self._image_dir
-		else:
 			pkgloc = self._work_dir
+		else:
+			pkgloc = self._image_dir
 
 		extractor = BinpkgExtractorAsync(background=self.background,
 			image_dir=pkgloc,
@@ -319,7 +319,7 @@ class Binpkg(CompositeTask):
 			chpathtool = BinpkgChpathtoolAsync(background=self.background,
 				image_dir=self._image_dir, work_dir=self._work_dir,
 				buildprefix=self._buildprefix, eprefix=EPREFIX,
-				scheduler=self.scheduler)
+				pkg=self.pkg, scheduler=self.scheduler)
 			self._writemsg_level(">>> Adjusting Prefix to %s\n" % EPREFIX)
 			self._start_task(chpathtool, self._chpathtool_exit)
 		else:

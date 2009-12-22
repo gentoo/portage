@@ -13,9 +13,11 @@ else:
 import portage
 class BinpkgChpathtoolAsync(SpawnProcess):
 
-	__slots__ = ("buildprefix", "eprefix", "image_dir", "work_dir")
+	__slots__ = ("buildprefix", "eprefix", "image_dir", "pkg", "work_dir")
 
 	_shell_binary = portage.const.BASH_BINARY
+	_chpathtool_binary = \
+			os.path.join(portage.const.PORTAGE_BIN_PATH, "chpathtool")
 
 	def _start(self):
 		b = os.path.join(self.work_dir, self.buildprefix.lstrip(os.path.sep))
@@ -26,8 +28,8 @@ class BinpkgChpathtoolAsync(SpawnProcess):
 		portage.util.ensure_dirs(i)
 		os.rmdir(i)
 		self.args = [self._shell_binary, "-c",
-			"chpathtool -q '%s' '%s' '%s' '%s'" % \
-				(b, i, self.buildprefix, self.eprefix)]
+			"%s -q '%s' '%s' '%s' '%s'" % \
+				(self._chpathtool_binary, b, i, self.buildprefix, self.eprefix)]
 
 		self.env = self.pkg.root_config.settings.environ()
 		SpawnProcess._start(self)
