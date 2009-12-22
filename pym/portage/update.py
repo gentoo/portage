@@ -5,6 +5,7 @@
 import codecs
 import errno
 import re
+import stat
 import sys
 
 from portage import os
@@ -122,7 +123,7 @@ def grab_updates(updpath, prev_mtimes=None):
 		file_path = os.path.join(updpath, myfile)
 		mystat = os.stat(file_path)
 		if file_path not in prev_mtimes or \
-		long(prev_mtimes[file_path]) != long(mystat.st_mtime):
+		long(prev_mtimes[file_path]) != mystat[stat.ST_MTIME]:
 			content = codecs.open(_unicode_encode(file_path,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'], errors='replace'

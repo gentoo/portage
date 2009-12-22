@@ -5,6 +5,7 @@
 
 __all__ = ["cache"]
 
+import stat
 import sys
 import warnings
 from portage.util import normalize_path
@@ -95,7 +96,7 @@ class cache(object):
 				if not y.endswith(".eclass"):
 					continue
 				try:
-					mtime = long(os.stat(os.path.join(x, y)).st_mtime)
+					mtime = os.stat(os.path.join(x, y))[stat.ST_MTIME]
 				except OSError:
 					continue
 				ys=y[:-eclass_len]

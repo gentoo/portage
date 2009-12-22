@@ -1135,7 +1135,7 @@ def dolinkingstuff(target_root, specials, prelink_capable, makelinks,
 	for lib_dir in portage.util.unique_array(specials["LDPATH"]+['usr/lib','usr/lib64','usr/lib32','lib','lib64','lib32']):
 		x = os.path.join(target_root, lib_dir.lstrip(os.sep))
 		try:
-			newldpathtime = long(os.stat(x).st_mtime)
+			newldpathtime = os.stat(x)[stat.ST_MTIME]
 			lib_dirs.add(normalize_path(x))
 		except OSError as oe:
 			if oe.errno == errno.ENOENT:
@@ -9087,7 +9087,7 @@ def _global_updates(trees, prev_mtimes):
 			if len(errors) == 0:
 				# Update our internal mtime since we
 				# processed all of our directives.
-				timestamps[mykey] = long(mystat.st_mtime)
+				timestamps[mykey] = mystat[stat.ST_MTIME]
 			else:
 				for msg in errors:
 					writemsg("%s\n" % msg, noiselevel=-1)

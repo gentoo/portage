@@ -7,6 +7,7 @@ from __future__ import print_function
 
 import codecs
 import re
+import stat
 import sys
 import time
 
@@ -251,8 +252,6 @@ def getentries(mydir,recursive=0):
 	for file in apply_cvsignore_filter(os.listdir(mydir)):
 		if file=="CVS":
 			continue
-		if file=="digest-framerd-2.4.3":
-			print(mydir,file)
 		if os.path.isdir(mydir+"/"+file):
 			if file not in entries["dirs"]:
 				entries["dirs"][file]={"dirs":{},"files":{}}
@@ -267,39 +266,20 @@ def getentries(mydir,recursive=0):
 			else:
 				entries["dirs"][file]["status"]=["exists"]
 		elif os.path.isfile(mydir+"/"+file):
-			if file=="digest-framerd-2.4.3":
-				print("isfile")
 			if file not in entries["files"]:
 				entries["files"][file]={"revision":"","date":"","flags":"","tags":""}
 			if "status" in entries["files"][file]:
-				if file=="digest-framerd-2.4.3":
-					print("has status")
 				if "exists" not in entries["files"][file]["status"]:
-					if file=="digest-framerd-2.4.3":
-						print("no exists in status")
 					entries["files"][file]["status"]+=["exists"]
 			else:
-				if file=="digest-framerd-2.4.3":
-					print("no status")
 				entries["files"][file]["status"]=["exists"]
 			try:
-				if file=="digest-framerd-2.4.3":
-					print("stat'ing")
 				mystat=os.stat(mydir+"/"+file)
-				mytime = time.asctime(time.gmtime(long(mystat.st_mtime)))
+				mytime = time.asctime(time.gmtime(mystat[stat.ST_MTIME]))
 				if "status" not in entries["files"][file]:
-					if file=="digest-framerd-2.4.3":
-						print("status not set")
 					entries["files"][file]["status"]=[]
-				if file=="digest-framerd-2.4.3":
-					print("date:",entries["files"][file]["date"])
-					print("sdate:",mytime)
 				if mytime==entries["files"][file]["date"]:
 					entries["files"][file]["status"]+=["current"]
-				if file=="digest-framerd-2.4.3":
-					print("stat done")
-				
-				del mystat
 			except SystemExit as e:
 				raise
 			except Exception as e:

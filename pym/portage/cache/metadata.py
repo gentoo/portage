@@ -5,6 +5,7 @@
 
 import errno
 import re
+import stat
 import sys
 from portage import os
 from portage import _encodings
@@ -110,7 +111,7 @@ class database(flat_hash.database):
 			except EnvironmentError:
 				pass
 			else:
-				existing_mtime = long(existing_st.st_mtime)
+				existing_mtime = existing_st[stat.ST_MTIME]
 				if values['_mtime_'] == existing_mtime and \
 					existing_content == new_content:
 					return

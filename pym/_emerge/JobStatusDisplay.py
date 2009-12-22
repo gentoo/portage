@@ -87,7 +87,9 @@ class JobStatusDisplay(object):
 			False otherwise.
 		"""
 
-		term_type = os.environ.get("TERM", "vt100")
+		term_type = os.environ.get("TERM", "").strip()
+		if not term_type:
+			return False
 		tigetstr = None
 
 		try:
