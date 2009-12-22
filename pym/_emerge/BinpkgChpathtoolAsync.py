@@ -11,7 +11,7 @@ if os.environ.__contains__("PORTAGE_PYTHONPATH"):
 else:
 	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
 import portage
-class BinpkgExtractorAsync(SpawnProcess):
+class BinpkgChpathtoolAsync(SpawnProcess):
 
 	__slots__ = ("buildprefix", "eprefix", "image_dir", "work_dir")
 
