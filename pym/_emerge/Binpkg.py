@@ -5,6 +5,7 @@
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.BinpkgFetcher import BinpkgFetcher
 from _emerge.BinpkgExtractorAsync import BinpkgExtractorAsync
+from _emerge.BinpkgChpathtoolAsync import BinpkgChpathtoolAsync
 from _emerge.CompositeTask import CompositeTask
 from _emerge.BinpkgVerifier import BinpkgVerifier
 from _emerge.EbuildMerge import EbuildMerge
@@ -29,8 +30,8 @@ class Binpkg(CompositeTask):
 	__slots__ = ("find_blockers",
 		"ldpath_mtimes", "logger", "opts",
 		"pkg", "pkg_count", "prefetcher", "settings", "world_atom") + \
-		("_bintree", "_build_dir", "_ebuild_path", "_fetched_pkg",
-		"_image_dir", "_infloc", "_pkg_path", "_tree", "_verify")
+		("_buildprefix", "_bintree", "_build_dir", "_ebuild_path", "_fetched_pkg",
+		"_image_dir", "_infloc", "_pkg_path", "_tree", "_verify", "_work_dir")
 
 	def _writemsg_level(self, msg, level=0, noiselevel=0):
 
@@ -62,6 +63,7 @@ class Binpkg(CompositeTask):
 		self._build_dir = EbuildBuildDir(dir_path=dir_path,
 			pkg=pkg, settings=settings)
 		self._image_dir = os.path.join(dir_path, "image")
+		self._work_dir = os.path.join(dir_path, "work")
 		self._infloc = os.path.join(dir_path, "build-info")
 		self._ebuild_path = os.path.join(self._infloc, pkg.pf + ".ebuild")
 		settings["EBUILD"] = self._ebuild_path
@@ -253,6 +255,23 @@ class Binpkg(CompositeTask):
 		finally:
 			f.close()
 
+		# Retrieve the EPREFIX this package was built with
+		self._buildprefix = pkg_xpak.getfile(_unicode_encode("EPREFIX",
+			encoding=_encodings['repo.content']))
+		if not self._buildprefix:
+			self._buildprefix = ''
+		else:
+			self._buildprefix = self._buildprefix.strip()
+		# We want to install in "our" prefix, not the binary one
+		self.settings["EPREFIX"] = EPREFIX
+		f = codecs.open(_unicode_encode(os.path.join(infloc, 'EPREFIX'),
+			encoding=_encodings['fs'], errors='strict'),
+			mode='w', encoding=_encodings['content'], errors='strict')
+		try:
+			f.write(EPREFIX + "\n")
+		finally:
+			f.close()
+
 		# This gives bashrc users an opportunity to do various things
 		# such as remove binary packages after they're installed.
 		settings = self.settings
@@ -275,8 +294,15 @@ class Binpkg(CompositeTask):
 			self.wait()
 			return
 
+		# if the prefix differs, we copy it to the image after
+		# extraction using chpathtool
+		if (self._buildprefix != EPREFIX):
+			pkgloc = self._image_dir
+		else:
+			pkgloc = self._work_dir
+
 		extractor = BinpkgExtractorAsync(background=self.background,
-			image_dir=self._image_dir,
+			image_dir=pkgloc,
 			pkg=self.pkg, pkg_path=self._pkg_path, scheduler=self.scheduler)
 		self._writemsg_level(">>> Extracting %s\n" % self.pkg.cpv)
 		self._start_task(extractor, self._extractor_exit)
@@ -285,6 +311,24 @@ class Binpkg(CompositeTask):
 		if self._final_exit(extractor) != os.EX_OK:
 			self._unlock_builddir()
 			writemsg("!!! Error Extracting '%s'\n" % self._pkg_path,
+				noiselevel=-1)
+			self.wait()
+			return
+
+		if self._buildprefix != EPREFIX:
+			chpathtool = BinpkgChpathtoolAsync(background=self.background,
+				image_dir=self._image_dir, work_dir=self._work_dir,
+				buildprefix=self._buildprefix, eprefix=EPREFIX,
+				scheduler=self.scheduler)
+			self._writemsg_level(">>> Adjusting Prefix to %s\n" % EPREFIX)
+			self._start_task(chpathtool, self._chpathtool_exit)
+		else:
+			self.wait()
+
+	def _chpathtool_exit(self, chpathtool):
+		if self._final_exit(chpathtool) != os.EX_OK:
+			self._unlock_builddir()
+			writemsg("!!! Error Adjusting Prefix to %s\n" % EPREFIX,
 				noiselevel=-1)
 		self.wait()
 
