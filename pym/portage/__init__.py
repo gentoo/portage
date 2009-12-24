@@ -3782,12 +3782,6 @@ class config(object):
 			mydict.pop("EPREFIX", None)
 			mydict.pop("EROOT", None)
 
-		# sandbox's bashrc sources /etc/profile which unsets ROOTPATH,
-		# so we have to back it up and restore it.
-		rootpath = mydict.get("ROOTPATH")
-		if rootpath:
-			mydict["PORTAGE_ROOTPATH"] = rootpath
-
 		return mydict
 
 	def thirdpartymirrors(self):
