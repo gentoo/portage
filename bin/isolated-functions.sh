@@ -5,9 +5,15 @@
 # We need this next line for "die" and "assert". It expands
 # It _must_ preceed all the calls to die and assert.
 shopt -s expand_aliases
-alias assert='_pipestatus="${PIPESTATUS[*]}"; [[ "${_pipestatus// /}" -eq 0 ]] || die'
 alias save_IFS='[ "${IFS:-unset}" != "unset" ] && old_IFS="${IFS}"'
 alias restore_IFS='if [ "${old_IFS:-unset}" != "unset" ]; then IFS="${old_IFS}"; unset old_IFS; else unset IFS; fi'
+
+assert() {
+	local x pipestatus=${PIPESTATUS[*]}
+	for x in $pipestatus ; do
+		[[ $x -eq 0 ]] || die "$@"
+	done
+}
 
 shopt -s extdebug
 
@@ -519,7 +525,8 @@ save_ebuild_env() {
 		done
 		unset x
 
-		unset -f dump_trace die diefunc quiet_mode vecho elog_base eqawarn elog \
+		unset -f assert dump_trace die diefunc \
+			quiet_mode vecho elog_base eqawarn elog \
 			esyslog einfo einfon ewarn eerror ebegin _eend eend KV_major \
 			KV_minor KV_micro KV_to_int get_KV unset_colors set_colors has \
 			has_phase_defined_up_to \
