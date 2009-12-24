@@ -1097,7 +1097,7 @@ dyn_install() {
 	unset f
 
 	save_ebuild_env --exclude-init-phases | filter_readonly_variables \
-		--filter-sandbox --allow-extra-vars > environment
+		--filter-path --filter-sandbox --allow-extra-vars > environment
 
 	bzip2 -f9 environment
 
@@ -1631,6 +1631,11 @@ PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 # settings should be used when loading the environment from a binary or
 # installed package.
 #
+# --filter-path causes the PATH variable to be filtered. This variable
+# should persist between phases, in case it is modified by the ebuild.
+# However, old settings should be overridden when loading the
+# environment from a binary or installed package.
+#
 # ---allow-extra-vars causes some extra vars to be allowd through, such
 # as ${PORTAGE_SAVED_READONLY_VARS} and ${PORTAGE_MUTABLE_FILTERED_VARS}.
 #
@@ -1650,7 +1655,7 @@ filter_readonly_variables() {
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
 		SANDBOX_LOG SANDBOX_ON"
 	filtered_vars="$readonly_bash_vars $bash_misc_vars
-		$READONLY_PORTAGE_VARS PATH"
+		$READONLY_PORTAGE_VARS"
 
 	# Don't filter/interfere with prefix variables unless they are
 	# supported by the current EAPI.
@@ -1669,6 +1674,9 @@ filter_readonly_variables() {
 	fi
 	if hasq --filter-features $* ; then
 		filtered_vars="${filtered_vars} FEATURES"
+	fi
+	if hasq --filter-path $* ; then
+		filtered_vars+=" PATH"
 	fi
 	if hasq --filter-locale $* ; then
 		filtered_vars+=" LANG LC_ALL LC_COLLATE
@@ -1700,7 +1708,7 @@ preprocess_ebuild_env() {
 		# environment may contain stale SANDBOX_{DENY,PREDICT,READ,WRITE}
 		# and FEATURES variables that should be filtered out. Between
 		# phases, these variables are normally preserved.
-		filter_opts+=" --filter-sandbox --filter-features --filter-locale"
+		filter_opts+=" --filter-features --filter-locale --filter-path --filter-sandbox"
 	fi
 	filter_readonly_variables ${filter_opts} < "${T}"/environment \
 		> "${T}"/environment.filtered || return $?
@@ -1917,6 +1925,37 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
 
 		unset _f _valid_phases
 
+		if [[ $EBUILD_PHASE != depend ]] ; then
+
+			case "$EAPI" in
+				4|4_pre1)
+					_ebuild_helpers_path="$PORTAGE_BIN_PATH/ebuild-helpers/4:$PORTAGE_BIN_PATH/ebuild-helpers"
+					;;
+				*)
+					_ebuild_helpers_path="$PORTAGE_BIN_PATH/ebuild-helpers"
+					;;
+			esac
+
+			PATH=$_ebuild_helpers_path:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${ROOTPATH:+:}$ROOTPATH
+			unset _ebuild_helpers_path
+
+			if hasq distcc $FEATURES ; then
+				PATH="/usr/lib/distcc/bin:$PATH"
+				[[ -n $DISTCC_LOG ]] && addwrite "${DISTCC_LOG%/*}"
+			fi
+
+			if hasq ccache $FEATURES ; then
+				PATH="/usr/lib/ccache/bin:$PATH"
+
+				if [[ -n $CCACHE_DIR ]] ; then
+					addread "$CCACHE_DIR"
+					addwrite "$CCACHE_DIR"
+				fi
+
+				[[ -n $CCACHE_SIZE ]] && ccache -M $CCACHE_SIZE &> /dev/null
+			fi
+		fi
+
 		# This needs to be exported since prepstrip is a separate shell script.
 		[[ -n $QA_PRESTRIPPED ]] && export QA_PRESTRIPPED
 		eval "[[ -n \$QA_PRESTRIPPED_${ARCH/-/_} ]] && export QA_PRESTRIPPED_${ARCH/-/_}"
@@ -1959,42 +1998,11 @@ fi
 ebuild_main() {
 	local f x
 
-	# we may want to make this configurable somewhere else
-	local ebuild_helpers_path
-	case ${EAPI} in
-		4|4_pre1)
-			ebuild_helpers_path="${PORTAGE_BIN_PATH}/ebuild-helpers/4:${PORTAGE_BIN_PATH}/ebuild-helpers"
-			;;
-		*)
-			ebuild_helpers_path="${PORTAGE_BIN_PATH}/ebuild-helpers"
-			;;
-	esac
-
-	PATH=$ebuild_helpers_path:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${ROOTPATH:+:}$ROOTPATH
-	unset ebuild_helpers_path
-
-	if ! hasq $EBUILD_SH_ARGS clean depend help info nofetch ; then
-
-		if hasq distcc $FEATURES ; then
-			export PATH="/usr/lib/distcc/bin:$PATH"
-			[[ -n $DISTCC_LOG ]] && addwrite "${DISTCC_LOG%/*}"
-		fi
-
-		if hasq ccache $FEATURES ; then
-			export PATH="/usr/lib/ccache/bin:$PATH"
-
-			addread "$CCACHE_DIR"
-			addwrite "$CCACHE_DIR"
-
-			[[ -n $CCACHE_SIZE ]] && ccache -M $CCACHE_SIZE &> /dev/null
-		else
-			# Force configure scripts that automatically detect ccache to
-			# respect FEATURES="-ccache".
-			export CCACHE_DISABLE=1
-		fi
-	fi
-
 	if [[ $EBUILD_PHASE != depend ]] ; then
+		# Force configure scripts that automatically detect ccache to
+		# respect FEATURES="-ccache".
+		hasq ccache $FEATURES || export CCACHE_DISABLE=1
+
 		local phase_func=$(_ebuild_arg_to_phase "$EAPI" "$EBUILD_PHASE")
 		[[ -n $phase_func ]] && _ebuild_phase_funcs "$EAPI" "$phase_func"
 		unset phase_func
@@ -2024,7 +2032,8 @@ ebuild_main() {
 			# Update environment.bz2 in case installation phases
 			# need to pass some variables to uninstallation phases.
 			save_ebuild_env --exclude-init-phases | \
-				filter_readonly_variables --filter-sandbox --allow-extra-vars \
+				filter_readonly_variables --filter-path \
+				--filter-sandbox --allow-extra-vars \
 				| bzip2 -c -f9 > "$PORTAGE_UPDATE_ENV"
 		fi
 		;;
