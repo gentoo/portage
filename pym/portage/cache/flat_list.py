@@ -48,7 +48,7 @@ class database(fs_template.FsBased):
 			raise cache_errors.CacheCorruption(cpv, e)
 
 		try:
-			d["_mtime_"] = long(os.fstat(myf.fileno()).st_mtime)
+			d["_mtime_"] = os.fstat(myf.fileno())[stat.ST_MTIME]
 		except OSError as e:	
 			myf.close()
 			raise cache_errors.CacheCorruption(cpv, e)
