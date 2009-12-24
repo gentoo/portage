@@ -23,13 +23,7 @@ for x in TEMP TMP TMPDIR ; do
 done
 unset x
 
-# sandbox's bashrc sources /etc/profile which unsets ROOTPATH,
-# so we have to back it up and restore it.
-if [ -n "${PORTAGE_ROOTPATH}" ] ; then
-	export ROOTPATH=${PORTAGE_ROOTPATH}
-	unset PORTAGE_ROOTPATH
-fi
-
+echo ROOTPATH=$ROOTPATH
 ROOTPATH=${ROOTPATH##:}
 ROOTPATH=${ROOTPATH%%:}
 PREROOTPATH=${PREROOTPATH##:}
