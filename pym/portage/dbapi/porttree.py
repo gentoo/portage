@@ -672,7 +672,7 @@ class portdbapi(dbapi):
 		mydata["repository"] = self._repository_map.get(mylocation, "")
 
 		mydata["INHERITED"] = ' '.join(mydata.get("_eclasses_", []))
-		mydata["_mtime_"] = long(st.st_mtime)
+		mydata["_mtime_"] = st[stat.ST_MTIME]
 
 		eapi = mydata.get("EAPI")
 		if not eapi:

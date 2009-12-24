@@ -509,7 +509,7 @@ class binarytree(object):
 						match = None
 						for d in possibilities:
 							try:
-								if long(d["MTIME"]) != long(s.st_mtime):
+								if long(d["MTIME"]) != s[stat.ST_MTIME]:
 									continue
 							except (KeyError, ValueError):
 								continue
@@ -614,7 +614,7 @@ class binarytree(object):
 					d = metadata.get(mycpv, {})
 					if d:
 						try:
-							if long(d["MTIME"]) != long(s.st_mtime):
+							if long(d["MTIME"]) != s[stat.ST_MTIME]:
 								d.clear()
 						except (KeyError, ValueError):
 							d.clear()
@@ -627,7 +627,7 @@ class binarytree(object):
 
 					d["CPV"] = mycpv
 					d["SLOT"] = slot
-					d["MTIME"] = str(long(s.st_mtime))
+					d["MTIME"] = str(s[stat.ST_MTIME])
 					d["SIZE"] = str(s.st_size)
 
 					d.update(zip(self._pkgindex_aux_keys,
@@ -968,7 +968,7 @@ class binarytree(object):
 
 		d["CPV"] = cpv
 		st = os.stat(pkg_path)
-		d["MTIME"] = str(long(st.st_mtime))
+		d["MTIME"] = str(st[stat.ST_MTIME])
 		d["SIZE"] = str(st.st_size)
 
 		rel_path = self._pkg_paths[cpv]

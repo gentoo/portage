@@ -7,6 +7,7 @@ try:
 	from urllib.parse import urlparse as urllib_parse_urlparse
 except ImportError:
 	from urlparse import urlparse as urllib_parse_urlparse
+import stat
 import sys
 import portage
 from portage import os
@@ -115,7 +116,7 @@ class BinpkgFetcher(SpawnProcess):
 						pass
 					else:
 						try:
-							local_mtime = long(os.stat(self.pkg_path).st_mtime)
+							local_mtime = os.stat(self.pkg_path)[stat.ST_MTIME]
 						except OSError:
 							pass
 						else:

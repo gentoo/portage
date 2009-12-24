@@ -7,6 +7,7 @@ from __future__ import print_function
 
 import codecs
 import re
+import stat
 import sys
 import time
 
@@ -274,7 +275,7 @@ def getentries(mydir,recursive=0):
 				entries["files"][file]["status"]=["exists"]
 			try:
 				mystat=os.stat(mydir+"/"+file)
-				mytime = time.asctime(time.gmtime(long(mystat.st_mtime)))
+				mytime = time.asctime(time.gmtime(mystat[stat.ST_MTIME]))
 				if "status" not in entries["files"][file]:
 					entries["files"][file]["status"]=[]
 				if mytime==entries["files"][file]["date"]:

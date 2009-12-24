@@ -48,7 +48,7 @@ class database(fs_template.FsBased):
 				if '_mtime_' not in d:
 					# Backward compatibility with old cache
 					# that uses mtime mangling.
-					d['_mtime_'] = long(_os.fstat(myf.fileno()).st_mtime)
+					d['_mtime_'] = _os.fstat(myf.fileno())[stat.ST_MTIME]
 				return d
 			finally:
 				myf.close()

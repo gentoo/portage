@@ -6,6 +6,7 @@ from __future__ import print_function
 
 import logging
 import signal
+import stat
 import sys
 import textwrap
 import platform
@@ -106,7 +107,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 				continue
 			inforoot=normpath(root+z)
 			if os.path.isdir(inforoot):
-				infomtime = long(os.stat(inforoot).st_mtime)
+				infomtime = os.stat(inforoot)[stat.ST_MTIME]
 				if inforoot not in prev_mtimes or \
 					prev_mtimes[inforoot] != infomtime:
 						regen_infodirs.append(inforoot)
@@ -196,7 +197,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 						del e
 
 				#update mtime so we can potentially avoid regenerating.
-				prev_mtimes[inforoot] = long(os.stat(inforoot).st_mtime)
+				prev_mtimes[inforoot] = os.stat(inforoot)[stat.ST_MTIME]
 
 			if badcount:
 				out.eerror("Processed %d info files; %d errors." % \
