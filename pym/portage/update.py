@@ -5,6 +5,7 @@
 import codecs
 import errno
 import re
+import stat
 import sys
 
 from portage import os
