@@ -1934,9 +1934,9 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
 					;;
 			esac
 
-			#PATH=$ebuild_helpers_path:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${ROOTPATH:+:}$ROOTPATH
+			#PATH=$_ebuild_helpers_path:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${ROOTPATH:+:}$ROOTPATH
 			# PREFIX: same notes apply as at the top of this file
-			PATH="$ebuild_helpers_path:$PREROOTPATH${PREROOTPATH:+:}${DEFAULT_PATH}${ROOTPATH:+:}$ROOTPATH${EXTRA_PATH:+:}${EXTRA_PATH}"
+			PATH="$_ebuild_helpers_path:$PREROOTPATH${PREROOTPATH:+:}${DEFAULT_PATH}${ROOTPATH:+:}$ROOTPATH${EXTRA_PATH:+:}${EXTRA_PATH}"
 			unset _ebuild_helpers_path
 
 			if hasq distcc $FEATURES ; then
