@@ -504,8 +504,6 @@ save_ebuild_env() {
 
 		if hasq --exclude-init-phases $* ; then
 			unset S _E_DOCDESTTREE_ _E_EXEDESTTREE_
-			unset -f pkg_nofetch src_unpack src_prepare src_configure \
-			src_compile src_test src_install
 			if [[ -n $PYTHONPATH ]] ; then
 				export PYTHONPATH=${PYTHONPATH/${PORTAGE_PYM_PATH}:}
 				[[ -z $PYTHONPATH ]] && unset PYTHONPATH
