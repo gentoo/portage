@@ -22,7 +22,6 @@ if sys.hexversion >= 0x3000000:
 class JobStatusDisplay(object):
 
 	_bound_properties = ("curval", "failed", "running")
-	_jobs_column_width = 48
 
 	# Don't update the display unless at least this much
 	# time has passed, in units of seconds.
@@ -48,7 +47,12 @@ class JobStatusDisplay(object):
 		object.__setattr__(self, "_changed", False)
 		object.__setattr__(self, "_displayed", False)
 		object.__setattr__(self, "_last_display_time", 0)
-		object.__setattr__(self, "width", 80)
+
+		width = portage.output.get_term_size()[1]
+		if width <= 0 or width > 80:
+			width = 80
+		object.__setattr__(self, "width", width)
+		object.__setattr__(self, "_jobs_column_width", width - 32)
 		self.reset()
 
 		isatty = hasattr(self.out, "isatty") and self.out.isatty()
