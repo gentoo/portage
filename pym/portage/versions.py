@@ -100,10 +100,14 @@ def vercmp(ver1, ver2, silent=1):
 	list2 = [int(match2.group(2))]
 
 	# this part would greatly benefit from a fixed-length version pattern
-	if len(match1.group(3)) or len(match2.group(3)):
+	if match1.group(3) or match2.group(3):
 		vlist1 = match1.group(3)[1:].split(".")
 		vlist2 = match2.group(3)[1:].split(".")
+	else:
+		vlist1 = []
+		vlist2 = []
 
+	if match1.group(5) or match2.group(5):
 		# and now the final letter
 		if match1.group(5):
 			vlist1.append(str(ord(match1.group(5))))
@@ -113,6 +117,8 @@ def vercmp(ver1, ver2, silent=1):
 			vlist2.append(str(ord(match2.group(5))))
 		else:
 			vlist2.append('0')
+
+	if vlist1 or vlist2:
 
 		for i in range(0, max(len(vlist1), len(vlist2))):
 			# Implcit .0 is given a value of -1, so that 1.0.0 > 1.0, since it
