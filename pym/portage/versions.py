@@ -103,6 +103,17 @@ def vercmp(ver1, ver2, silent=1):
 	if len(match1.group(3)) or len(match2.group(3)):
 		vlist1 = match1.group(3)[1:].split(".")
 		vlist2 = match2.group(3)[1:].split(".")
+
+		# and now the final letter
+		if match1.group(5):
+			vlist1.append(str(ord(match1.group(5))))
+		else:
+			vlist1.append('0')
+		if match2.group(5):
+			vlist2.append(str(ord(match2.group(5))))
+		else:
+			vlist2.append('0')
+
 		for i in range(0, max(len(vlist1), len(vlist2))):
 			# Implcit .0 is given a value of -1, so that 1.0.0 > 1.0, since it
 			# would be ambiguous if two versions that aren't literally equal
@@ -130,12 +141,6 @@ def vercmp(ver1, ver2, silent=1):
 				max_len = max(len(vlist1[i]), len(vlist2[i]))
 				list1.append(int(vlist1[i].ljust(max_len, "0")))
 				list2.append(int(vlist2[i].ljust(max_len, "0")))
-
-	# and now the final letter
-	if len(match1.group(5)):
-		list1.append(ord(match1.group(5)))
-	if len(match2.group(5)):
-		list2.append(ord(match2.group(5)))
 
 	for i in range(0, max(len(list1), len(list2))):
 		if len(list1) <= i:
