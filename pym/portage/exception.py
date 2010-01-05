@@ -3,6 +3,7 @@
 # $Id$
 
 import sys
+from portage import _unicode_encode
 from portage.localization import _
 
 if sys.hexversion >= 0x3000000:
@@ -12,6 +13,10 @@ class PortageException(Exception):
 	"""General superclass for portage exceptions"""
 	def __init__(self,value):
 		self.value = value[:]
+		if sys.hexversion < 0x3000000 and isinstance(self.value, unicode):
+			# Workaround for string formatting operator and unicode value
+			# attribute triggering empty output in formatted string.
+			self.value = _unicode_encode(self.value)
 	def __str__(self):
 		if isinstance(self.value, basestring):
 			return self.value
