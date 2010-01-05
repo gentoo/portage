@@ -101,9 +101,10 @@ def vercmp(ver1, ver2, silent=1):
 	list2 = [int(match2.group(2))]
 
 	# this part would greatly benefit from a fixed-length version pattern
-	if len(match1.group(3)) or len(match2.group(3)):
+	if match1.group(3) or match2.group(3):
 		vlist1 = match1.group(3)[1:].split(".")
 		vlist2 = match2.group(3)[1:].split(".")
+
 		for i in range(0, max(len(vlist1), len(vlist2))):
 			# Implcit .0 is given a value of -1, so that 1.0.0 > 1.0, since it
 			# would be ambiguous if two versions that aren't literally equal
@@ -133,6 +134,11 @@ def vercmp(ver1, ver2, silent=1):
 				list2.append(int(vlist2[i].ljust(max_len, "0")))
 
 	# and now the final letter
+	# NOTE: Behavior changed in r2309 (between portage-2.0.x and portage-2.1).
+	# The new behavior is 12.2.5 > 12.2b which, depending on how you look at,
+	# may seem counter-intuitive. However, if you really think about it, it
+	# seems like it's probably safe to assume that this is the behavior that
+	# is intended by anyone who would use versions such as these.
 	if len(match1.group(5)):
 		list1.append(ord(match1.group(5)))
 	if len(match2.group(5)):

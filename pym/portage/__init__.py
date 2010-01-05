@@ -294,6 +294,9 @@ selinux = None
 _selinux_merge = None
 try:
 	import portage._selinux
+	# Make sure the _selinux attribute is correctly reinitialized after
+	# reload(portage) is called. See bug #298310.
+	_selinux = sys.modules['portage._selinux']
 	selinux = _unicode_module_wrapper(_selinux,
 		encoding=_encodings['fs'])
 	_selinux_merge = _unicode_module_wrapper(_selinux,
