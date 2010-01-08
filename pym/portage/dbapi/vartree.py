@@ -3524,6 +3524,10 @@ class dblink(object):
 				# upgraded. We effectively only want one half of the config protection
 				# functionality for /lib/modules. For portage-ng both capabilities
 				# should be able to be independently specified.
+				# TODO: For rebuilds, re-parent previous modules to the new
+				# installed instance (so they are not orphans). For normal
+				# uninstall (not rebuild/reinstall), remove the modules along
+				# with all other files (leave no orphans).
 				if obj.startswith(modprotect):
 					show_unmerge("---", unmerge_desc["cfgpro"], file_type, obj)
 					continue

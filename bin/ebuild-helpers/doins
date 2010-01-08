@@ -71,16 +71,12 @@ _doins() {
 }
 
 _xdoins() {
-	local -i success=0 failed=0
+	local -i failed=0
 	while read -d $'\0' x ; do
 		_doins "$x" "${x%/*}"
-		if [[ $? -eq 0 ]] ; then
-			((success|=1))
-		else
-			((failed|=1))
-		fi
+		((failed|=$?))
 	done
-	[[ $failed -ne 0 || $success -eq 0 ]] && return 1 || return 0
+	return $failed
 }
 
 success=0
@@ -117,6 +113,9 @@ for x in "$@" ; do
 		find "$x_orig" -type d -exec dodir "${INSDESTTREE}/{}" \;
 		find "$x_orig" \( -type f -or -type l \) -print0 | _xdoins
 		if [[ ${PIPESTATUS[1]} -eq 0 ]] ; then
+			# NOTE: Even if only an empty directory is installed here, it
+			# still counts as success, since an empty directory given as
+			# an argument to doins -r should not trigger failure.
 			((success|=1))
 		else
 			((failed|=1))

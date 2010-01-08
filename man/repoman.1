@@ -119,6 +119,9 @@ Ebuilds that have an unsupported EAPI version (you must upgrade portage)
 .B HOMEPAGE.missing
 Ebuilds that have a missing or empty HOMEPAGE variable
 .TP
+.B HOMEPAGE.virtual
+Virtuals that have a non-empty HOMEPAGE variable
+.TP
 .B IUSE.invalid
 This ebuild has a variable in IUSE that is not in the use.desc or its metadata.xml file
 .TP
@@ -148,6 +151,9 @@ Ebuilds that have a missing or empty LICENSE variable
 .TP
 .B LICENSE.syntax
 Syntax error in LICENSE (usually an extra/missing space/parenthesis)
+.TP
+.B LICENSE.virtual
+Virtuals that have a non-empty LICENSE variable
 .TP
 .B LIVEVCS.stable
 Ebuild is a live ebuild (cvs, git, darcs, svn, etc) checkout with stable keywords.
