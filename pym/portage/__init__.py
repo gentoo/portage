@@ -1682,7 +1682,7 @@ class config(object):
 					raise portage.exception.DirectoryNotFound(var)
 
 			if config_root is None:
-				config_root = EPREFIX
+				config_root = EPREFIX + os.path.sep
 
 			config_root = normalize_path(os.path.abspath(
 				config_root)).rstrip(os.path.sep) + os.path.sep
