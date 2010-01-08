@@ -1159,8 +1159,7 @@ postinst_aix() {
 
 	local delmembers oldmembers libmetadir prunemembers=() prunedirs=()
 	for archive in "${all_archives[@]}"; do
-		[[ -r ${ROOT}${archive} && -w ${ROOT}${archive} ]] ||
-		chmod a+r,u+w "${ROOT}${archive}" || die "cannot chmod ${archive}"
+		[[ -r ${ROOT}${archive} && -w ${ROOT}${archive} ]] || chmod a+r,u+w "${ROOT}${archive}" || die "cannot chmod ${archive}"
 		delmembers= oldmembers=
 		for member in $(${ar} -X32_64 -t "${ROOT}${archive}"); do
 			contentmember="${archive%/*}/.${archive##*/}[${member}]"
@@ -1191,10 +1190,8 @@ postinst_aix() {
 			eend $?
 		fi
 	done
-	[[ ${#prunedirs[@]} == 0 ]] ||
-	rm -rf "${prunedirs[@]}" || die "cannot prune ${prunedirs[@]}"
-	[[ ${#prunemembers[@]} == 0 ]] ||
-	rm -f "${prunemembers[@]}" || die "cannot prune ${contentmenbers[@]}"
+	[[ ${#prunedirs[@]} == 0 ]] || rm -rf "${prunedirs[@]}" || die "cannot prune ${prunedirs[@]}"
+	[[ ${#prunemembers[@]} == 0 ]] || rm -f "${prunemembers[@]}" || die "cannot prune ${contentmenbers[@]}"
 	return 0
 }
 
