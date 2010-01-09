@@ -32,7 +32,18 @@ class RepoDisplay(object):
 	def repoStr(self, repo_path_real):
 		real_index = -1
 		if repo_path_real:
-			real_index = self._repo_paths_real.index(repo_path_real)
+			try:
+				real_index = self._repo_paths_real.index(repo_path_real)
+			except ValueError:
+				# This typically happens when a repo is on a symlink and
+				# the symlink is switched to a different target during
+				# the dep-calculations, causing the realpath here to
+				# resolve in a different location than the one
+				# formally known.  Since this should be pretty rare
+				# (although I hit it often enough to fix it), making
+				# this case equal to an "unknown repo" should be
+				# sufficient to cover the case.
+				real_index = -1
 		if real_index == -1:
 			s = "?"
 			self._unknown_repo = True
