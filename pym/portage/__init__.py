@@ -1053,13 +1053,13 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 	if EPREFIX == '':
 		sleep_for_mtime_granularity = dolinkingstuff(
 				target_root, specials, prelink_capable,
-				makelinks, contents)
+				makelinks, contents, prev_mtimes)
 	else:
 		sleep_for_mtime_granularity = False
 	writeshellprofile(target_root, env, sleep_for_mtime_granularity)
 
 def dolinkingstuff(target_root, specials, prelink_capable, makelinks,
-		contents):
+		contents, prev_mtimes):
 	# updating this stuff will never work in an offset, other than ROOT
 	# (e.g. not in Prefix), hence the EPREFIX is not taken into account
 	# here since this code should never be triggered on an offset install
