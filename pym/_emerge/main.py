@@ -1170,7 +1170,8 @@ def emerge_main():
 	if rval != os.EX_OK:
 		return rval
 
-	if portage._global_updates(trees, mtimedb["updates"]):
+	if myaction not in ('help', 'info', 'version') and \
+		portage._global_updates(trees, mtimedb["updates"]):
 		mtimedb.commit()
 		# Reload the whole config from scratch.
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
