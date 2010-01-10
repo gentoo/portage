@@ -483,11 +483,13 @@ if os.path.isdir(".svn"):
 	vcs = "svn"
 elif os.path.isdir(os.path.join(portdir_overlay, ".git")):
 	vcs = "git"
+elif os.path.isdir(os.path.join(portdir_overlay, ".bzr")):
+	vcs = "bzr"
 
 vcs_local_opts = repoman_settings.get("REPOMAN_VCS_LOCAL_OPTS", "").split()
 vcs_global_opts = repoman_settings.get("REPOMAN_VCS_GLOBAL_OPTS")
 if vcs_global_opts is None:
-	if vcs != "git":
+	if vcs not in ["git", "bzr"]:
 		vcs_global_opts = "-q"
 	else:
 		vcs_global_opts = ""
@@ -925,6 +927,11 @@ elif vcs == "git":
 		mynew = [elem[repo_subdir_len:] for elem in mynew \
 			if elem[:repo_subdir_len] == repo_subdir]
 	mynew = ["./" + elem[:-1] for elem in mynew]
+elif vcs == "bzr":
+	bzrstatus = os.popen("bzr status -S").readlines()
+	mychanged = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and elem[1:2] == "M" ]
+	mynew     = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and ( elem[1:2] == "NK" or elem[0:1] == "R" ) ]
+
 if vcs:
 	new_ebuilds.update(x for x in mynew if x.endswith(".ebuild"))
 	modified_changelogs.update(x for x in chain(mychanged, mynew) \
@@ -1094,12 +1101,14 @@ for x in scanlist:
 					os.path.join(x, os.path.basename(l[:-1])))
 		myf.close()
 
-	if vcs in ("cvs", "svn") and check_ebuild_notadded:
+	if vcs in ("cvs", "svn", "bzr") and check_ebuild_notadded:
 		try:
 			if vcs == "cvs":
 				myf=open(checkdir+"/CVS/Entries","r")
 			if vcs == "svn":
 				myf = os.popen("svn status --depth=files --verbose " + checkdir)
+			if vcs == "bzr":
+				myf = os.popen("bzr status -S " + checkdir)
 			myl = myf.readlines()
 			myf.close()
 			for l in myl:
@@ -1120,6 +1129,12 @@ for x in scanlist:
 					l = l.split()[-1]
 					if l[-7:] == ".ebuild":
 						eadded.append(os.path.basename(l[:-7]))
+				if vcs == "bzr":
+					if l[1:2] == "?":
+						continue
+					l = l.split()[-1]
+					if l[-7:] == ".ebuild":
+						eadded.append(os.path.basename(l[:-7]))
 			if vcs == "svn":
 				myf = os.popen("svn status " + checkdir)
 				myl=myf.readlines()
@@ -1130,12 +1145,16 @@ for x in scanlist:
 						if l[-7:] == ".ebuild":
 							eadded.append(os.path.basename(l[:-7]))
 		except IOError:
-			if options.mode == 'commit' and vcs == "cvs":
-				stats["CVS/Entries.IO_error"] += 1
-				fails["CVS/Entries.IO_error"].append(checkdir+"/CVS/Entries")
-			if options.mode == 'commit' and vcs == "svn":
-				stats["svn.IO_error"] += 1
-				fails["svn.IO_error"].append(checkdir+"svn info")
+			if options.mode == 'commit':
+				if vcs == "cvs":
+					stats["CVS/Entries.IO_error"] += 1
+					fails["CVS/Entries.IO_error"].append(checkdir+"/CVS/Entries")
+				elif vcs == "svn":
+					stats["svn.IO_error"] += 1
+					fails["svn.IO_error"].append(checkdir)
+				elif vcs == "bzr":
+					stats["bzr.IO_error"] += 1
+					fails["bzr.IO_error"].append(checkdir)
 			continue
 
 	mf = Manifest(checkdir, repoman_settings["DISTDIR"])
@@ -1304,7 +1323,7 @@ for x in scanlist:
 		if stat.S_IMODE(os.stat(full_path).st_mode) & 0o111:
 			stats["file.executable"] += 1
 			fails["file.executable"].append(x+"/"+y+".ebuild")
-		if vcs in ("cvs", "svn") and check_ebuild_notadded and y not in eadded:
+		if vcs in ("cvs", "svn", "bzr") and check_ebuild_notadded and y not in eadded:
 			#ebuild not added to vcs
 			stats["ebuild.notadded"]=stats["ebuild.notadded"]+1
 			fails["ebuild.notadded"].append(x+"/"+y+".ebuild")
@@ -1949,6 +1968,15 @@ else:
 		myf = os.popen("git ls-files --others")
 		myunadded = [ "./" + elem[:-1] for elem in myf ]
 		myf.close()
+	if vcs == "bzr":
+		try:
+			bzrstatus=os.popen("bzr status -S").readlines()
+			myunadded = [ "./"+elem.rstrip().split()[1].split('/')[-1:][0] for elem in bzrstatus if elem.startswith("?") or elem[0:2] == " D" ]
+		except SystemExit as e:
+			raise  # TODO propogate this
+		except:
+			err("Error retrieving bzr info; exiting.")
+
 
 	myautoadd=[]
 	if myunadded:
@@ -1967,18 +1995,22 @@ else:
 		if options.pretend:
 			if vcs == "cvs":
 				print("(cvs add "+" ".join(myautoadd)+")")
-			if vcs == "svn":
+			elif vcs == "svn":
 				print("(svn add "+" ".join(myautoadd)+")")
 			elif vcs == "git":
 				print("(git add "+" ".join(myautoadd)+")")
+			elif vcs == "bzr":
+				print("(bzr add "+" ".join(myautoadd)+")")
 			retval=0
 		else:
 			if vcs == "cvs":
 				retval=os.system("cvs add "+" ".join(myautoadd))
-			if vcs == "svn":
+			elif vcs == "svn":
 				retval=os.system("svn add "+" ".join(myautoadd))
 			elif vcs == "git":
 				retval=os.system("git add "+" ".join(myautoadd))
+			elif vcs == "bzr":
+				retval=os.system("bzr add "+" ".join(myautoadd))
 		if retval:
 			writemsg_level("!!! Exiting on %s (shell) error code: %s\n" % \
 				(vcs, retval), level=logging.ERROR, noiselevel=-1)
@@ -2043,6 +2075,14 @@ else:
 				if elem[:repo_subdir_len] == repo_subdir]
 		myremoved = ["./" + elem[:-1] for elem in myremoved]
 
+	if vcs == "bzr":
+		bzrstatus = os.popen("bzr status -S").readlines()
+		mychanged = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and elem[1:2] == "M" ]
+		mynew     = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and ( elem[1:2] in "NK" or elem[0:1] == "R" ) ]
+		myremoved = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem.startswith("-") ]
+		myremoved = [ "./" + elem.split()[-3:-2][0].split('/')[-1:][0] for elem in bzrstatus if elem and ( elem[1:2] == "K" or elem[0:1] == "R" ) ]
+		# Bazaar expands nothing.
+
 	if vcs:
 		if not (mychanged or mynew or myremoved):
 			print(green("RepoMan sez:"), "\"Doing nothing is not always good for QA.\"")
@@ -2085,9 +2125,9 @@ else:
 			myheaders.append(myfile)
 
 	print("* %s files being committed..." % green(str(len(myupdates))), end=' ')
-	if vcs == 'git':
-		# With git, there's never any keyword expansion, so there's
-		# no need to regenerate manifests and all files will be
+	if vcs in ('git', 'bzr'):
+		# With git and bzr, there's never any keyword expansion, so
+		# there's no need to regenerate manifests and all files will be
 		# committed in one big commit at the end.
 		print()
 	else:
@@ -2141,7 +2181,7 @@ else:
 		commitmessage += ", RepoMan options: --force"
 	commitmessage += ")"
 
-	if vcs != 'git' and (myupdates or myremoved):
+	if vcs not in ['git', 'bzr'] and (myupdates or myremoved):
 		myfiles = myupdates + myremoved
 		if not myheaders and "sign" not in repoman_settings.features:
 			myfiles += mymanifests
@@ -2234,7 +2274,7 @@ else:
 			write_atomic(x, "".join(mylines))
 
 	manifest_commit_required = True
-	if vcs != 'git' and (myupdates or myremoved):
+	if vcs not in ['git', 'bzr'] and (myupdates or myremoved):
 		myfiles = myupdates + myremoved
 		for x in range(len(myfiles)-1, -1, -1):
 			if myfiles[x].count("/") < 4-repolevel:
@@ -2377,10 +2417,10 @@ else:
 					level=logging.ERROR, noiselevel=-1)
 				sys.exit(retval)
 
-	if vcs == 'git' or manifest_commit_required or signed:
+	if vcs in ['git', 'bzr'] or manifest_commit_required or signed:
 
 		myfiles = mymanifests[:]
-		if vcs == 'git':
+		if vcs in ['git', 'bzr']:
 			myfiles += myupdates
 			myfiles += myremoved
 		myfiles.sort()
