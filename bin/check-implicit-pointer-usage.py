@@ -19,8 +19,6 @@ from __future__ import print_function
 import re
 import sys
 
-from portage import _unicode_decode
-
 implicit_pattern = re.compile("([^:]*):(\d+): warning: implicit declaration "
                               + "of function [`']([^']*)'")
 pointer_pattern = re.compile(
@@ -40,7 +38,7 @@ last_implicit_func = ""
 
 while True:
     if sys.hexversion >= 0x3000000:
-        line = _unicode_decode(sys.stdin.buffer.readline())
+        line = sys.stdin.buffer.readline().decode('utf_8', 'replace')
     else:
         line = sys.stdin.readline()
     if line == '':
