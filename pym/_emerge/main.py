@@ -1324,7 +1324,9 @@ def emerge_main():
 			portage.debug.set_trace(True)
 
 	if not ("--quiet" in myopts):
-		if not sys.stdout.isatty() or ("--nospinner" in myopts):
+		if '--nospinner' in myopts or \
+			settings.get('TERM') == 'dumb' or \
+			not sys.stdout.isatty():
 			spinner.update = spinner.update_basic
 
 	if myaction == 'version':

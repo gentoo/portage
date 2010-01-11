@@ -1467,8 +1467,10 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 
 	porttrees = [tree_data.path for tree_data in porttrees_data]
 
-	isatty = sys.stdout.isatty()
-	quiet = not isatty or '--quiet' in myopts
+	quiet = settings.get('TERM') == 'dumb' or \
+		'--quiet' in myopts or \
+		not sys.stdout.isatty()
+
 	onProgress = None
 	if not quiet:
 		progressBar = portage.output.TermProgressBar()
@@ -2389,7 +2391,8 @@ def adjust_config(myopts, settings):
 			portage.output.havecolor = 0
 			settings["NOCOLOR"] = "true"
 		settings.backup_changes("NOCOLOR")
-	elif not sys.stdout.isatty() and settings.get("NOCOLOR") != "no":
+	elif settings.get('TERM') == 'dumb' or \
+		not sys.stdout.isatty():
 		portage.output.havecolor = 0
 		settings["NOCOLOR"] = "true"
 		settings.backup_changes("NOCOLOR")

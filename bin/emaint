@@ -536,7 +536,7 @@ def emaint_main(myargv):
 		status = "Attempting to fix %s"
 		func = "fix"
 
-	isatty = sys.stdout.isatty()
+	isatty = os.environ.get('TERM') != 'dumb' and sys.stdout.isatty()
 	for task in tasks:
 		print(status % task.name())
 		inst = task()

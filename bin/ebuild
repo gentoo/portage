@@ -88,6 +88,7 @@ if debug and "python-trace" in portage.features:
 if not opts.color == 'y' and \
 	(opts.color == 'n' or \
 	portage.settings.get('NOCOLOR') in ('yes', 'true') or \
+	portage.settings.get('TERM') == 'dumb' or \
 	not sys.stdout.isatty()):
 	portage.output.nocolor()
 	portage.settings.unlock()
