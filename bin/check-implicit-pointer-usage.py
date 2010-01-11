@@ -19,6 +19,8 @@ from __future__ import print_function
 import re
 import sys
 
+from portage import _unicode_decode
+
 implicit_pattern = re.compile("([^:]*):(\d+): warning: implicit declaration "
                               + "of function [`']([^']*)'")
 pointer_pattern = re.compile(
@@ -37,7 +39,10 @@ last_implicit_linenum = -1
 last_implicit_func = ""
 
 while True:
-    line = sys.stdin.readline()
+    if sys.hexversion >= 0x3000000:
+        line = _unicode_decode(sys.stdin.buffer.readline())
+    else:
+        line = sys.stdin.readline()
     if line == '':
         break
     # translate unicode open/close quotes to ascii ones

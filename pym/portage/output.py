@@ -270,7 +270,10 @@ def xtermTitleReset():
 		if prompt_command == "":
 			default_xterm_title = ""
 		elif prompt_command is not None:
-			if dotitles and "TERM" in os.environ and sys.stderr.isatty():
+			if dotitles and \
+				'TERM' in os.environ and \
+				_legal_terms_re.match(os.environ['TERM']) is not None and \
+				sys.stderr.isatty():
 				from portage.process import find_binary, spawn
 				shell = os.environ.get("SHELL")
 				if not shell or not os.access(shell, os.EX_OK):
