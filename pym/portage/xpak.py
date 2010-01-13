@@ -86,6 +86,9 @@ def xpak(rootdir,outfile=None):
 	mylist.sort()
 	mydata = {}
 	for x in mylist:
+		if x == 'CONTENTS':
+			# CONTENTS is generated during the merge process.
+			continue
 		x = _unicode_encode(x, encoding=_encodings['fs'], errors='strict')
 		mydata[x] = open(os.path.join(rootdir, x), 'rb').read()
 
