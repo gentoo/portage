@@ -1109,7 +1109,7 @@ for x in scanlist:
 			if vcs == "svn":
 				myf = os.popen("svn status --depth=files --verbose " + checkdir)
 			if vcs == "bzr":
-				myf = os.popen("bzr status -S " + checkdir)
+				myf = os.popen("bzr ls -v --kind=file " + checkdir)
 			myl = myf.readlines()
 			myf.close()
 			for l in myl:
