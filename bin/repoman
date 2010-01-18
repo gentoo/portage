@@ -492,7 +492,7 @@ elif os.path.isdir(os.path.join(portdir_overlay, ".hg")):
 vcs_local_opts = repoman_settings.get("REPOMAN_VCS_LOCAL_OPTS", "").split()
 vcs_global_opts = repoman_settings.get("REPOMAN_VCS_GLOBAL_OPTS")
 if vcs_global_opts is None:
-	if vcs not in ("git", "bzr", "hg"):
+	if vcs in ('cvs', 'svn'):
 		vcs_global_opts = "-q"
 	else:
 		vcs_global_opts = ""
@@ -2223,7 +2223,7 @@ else:
 		commitmessage += ", RepoMan options: --force"
 	commitmessage += ")"
 
-	if vcs not in ['git', 'bzr', 'hg'] and (myupdates or myremoved):
+	if vcs in ('cvs', 'svn') and (myupdates or myremoved):
 		myfiles = myupdates + myremoved
 		if not myheaders and "sign" not in repoman_settings.features:
 			myfiles += mymanifests
@@ -2316,7 +2316,7 @@ else:
 			write_atomic(x, "".join(mylines))
 
 	manifest_commit_required = True
-	if vcs not in ['git', 'bzr', 'hg'] and (myupdates or myremoved):
+	if vcs in ('cvs', 'svn') and (myupdates or myremoved):
 		myfiles = myupdates + myremoved
 		for x in range(len(myfiles)-1, -1, -1):
 			if myfiles[x].count("/") < 4-repolevel:
