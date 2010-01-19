@@ -2485,12 +2485,12 @@ else:
 		commit_cmd.extend(vcs_global_opts)
 		commit_cmd.append("commit")
 		commit_cmd.extend(vcs_local_opts)
-		if vcs in ('git', 'bzr'):
-			commit_cmd.extend(["-F", commitmessagefile])
-			commit_cmd.extend(f.lstrip("./") for f in myfiles)
-		elif vcs == "hg":
+		if vcs == "hg":
 			commit_cmd.extend(["--logfile", commitmessagefile])
 			commit_cmd.extend(myfiles)
+		else:
+			commit_cmd.extend(["-F", commitmessagefile])
+			commit_cmd.extend(f.lstrip("./") for f in myfiles)
 
 		try:
 			if options.pretend:
