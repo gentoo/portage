@@ -179,15 +179,3 @@ def load_default_config(settings, trees):
 	setconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
 		USER_CONFIG_PATH, "sets.conf"))
 	return SetConfig(setconfigpaths, settings, trees)
-
-# adhoc test code
-if __name__ == "__main__":
-	import portage
-	sc = load_default_config(portage.settings, portage.db["/"])
-	l, e = sc.getSets()
-	for x in l:
-		print(x+":")
-		print("DESCRIPTION = %s" % l[x].getMetadata("Description"))
-		for n in sorted(l[x].getAtoms()):
-			print("- "+n)
-		print()
