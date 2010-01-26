@@ -432,6 +432,12 @@ class SrcUnpackPatches(PhaseCheck):
 				return ("'%s'" % m.group(1)) + \
 					" call should be moved to src_prepare from line: %d"
 
+class BuiltWithUse(LineCheck):
+	repoman_check_name = 'ebuild.minorsyn'
+	ignore_line = re.compile(r'^\s*#')
+	re = re.compile('^.*built_with_use')
+	error = errors.BUILT_WITH_USE
+
 # EAPI-4 checks
 class Eapi4IncompatibleFuncs(LineCheck):
 	repoman_check_name = 'EAPI.incompatible'
@@ -467,7 +473,6 @@ class Eapi4GoneVars(LineCheck):
 			return ("variable '$%s'" % m.group(1)) + \
 				" is gone in EAPI=4 on line: %d"
 
-
 _constant_checks = tuple((c() for c in (
 	EbuildHeader, EbuildWhitespace, EbuildBlankLine, EbuildQuote,
 	EbuildAssignment, EbuildUselessDodoc,
@@ -476,7 +481,7 @@ _constant_checks = tuple((c() for c in (
 	IUseUndefined, InheritAutotools,
 	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS, NoAsNeeded,
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
-	SrcCompileEconf, Eapi4IncompatibleFuncs, Eapi4GoneVars)))
+	SrcCompileEconf, Eapi4IncompatibleFuncs, Eapi4GoneVars, BuiltWithUse)))
 
 _here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
 
