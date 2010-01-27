@@ -46,6 +46,16 @@ del pym_path
 from portage import os
 from portage.util import writemsg, writemsg_stdout
 
+def eval_atom_use(atom):
+	if atom.use.conditional and 'USE' in os.environ:
+		use = os.environ['USE'].split()
+		evaluated_atom = portage.dep.remove_slot(atom)
+		if atom.slot:
+			evaluated_atom += ":%s" % atom.slot
+		evaluated_atom += str(atom.use.evaluate_conditionals(use))
+		atom = portage.dep.Atom(evaluated_atom)
+	return atom
+
 #-----------------------------------------------------------------------------
 #
 # To add functionality to this tool, add a function below.
@@ -74,12 +84,20 @@ def has_version(argv):
 	if (len(argv) < 2):
 		print("ERROR: insufficient parameters!")
 		sys.exit(2)
-	if atom_validate_strict and not portage.isvalidatom(argv[1]):
-		portage.writemsg("ERROR: Invalid atom: '%s'\n" % argv[1],
-			noiselevel=-1)
-		return 2
 	try:
-		mylist=portage.db[argv[0]]["vartree"].dbapi.match(argv[1])
+		atom = portage.dep.Atom(argv[1])
+	except portage.exception.InvalidAtom:
+		if atom_validate_strict:
+			portage.writemsg("ERROR: Invalid atom: '%s'\n" % argv[1],
+				noiselevel=-1)
+			return 2
+		else:
+			atom = argv[1]
+	else:
+		atom = eval_atom_use(atom)
+
+	try:
+		mylist = portage.db[argv[0]]["vartree"].dbapi.match(atom)
 		if mylist:
 			sys.exit(0)
 		else:
@@ -96,12 +114,19 @@ def best_version(argv):
 	if (len(argv) < 2):
 		print("ERROR: insufficient parameters!")
 		sys.exit(2)
-	if atom_validate_strict and not portage.isvalidatom(argv[1]):
-		portage.writemsg("ERROR: Invalid atom: '%s'\n" % argv[1],
-			noiselevel=-1)
-		return 2
 	try:
-		mylist=portage.db[argv[0]]["vartree"].dbapi.match(argv[1])
+		atom = portage.dep.Atom(argv[1])
+	except portage.exception.InvalidAtom:
+		if atom_validate_strict:
+			portage.writemsg("ERROR: Invalid atom: '%s'\n" % argv[1],
+				noiselevel=-1)
+			return 2
+		else:
+			atom = argv[1]
+	else:
+		atom = eval_atom_use(atom)
+	try:
+		mylist = portage.db[argv[0]]["vartree"].dbapi.match(atom)
 		print(portage.best(mylist))
 	except KeyError:
 		sys.exit(1)
@@ -558,7 +583,7 @@ def usage(argv):
 	# Show our commands -- we do this by scanning the functions in this
 	# file, and formatting each functions documentation.
 	#
-	non_commands = frozenset(['exithandler', 'main',
+	non_commands = frozenset(['eval_atom_use', 'exithandler', 'main',
 		'usage', 'writemsg', 'writemsg_stdout'])
 	commands = sorted(k for k, v in globals().items() \
 		if type(v) is types.FunctionType and k not in non_commands)
