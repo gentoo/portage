@@ -7832,11 +7832,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 		if not repoman and \
 			myuse is not None and isinstance(x, portage.dep.Atom) and x.use:
 			if x.use.conditional:
-				evaluated_atom = portage.dep.remove_slot(x)
-				if x.slot:
-					evaluated_atom += ":%s" % x.slot
-				evaluated_atom += str(x.use.evaluate_conditionals(myuse))
-				x = portage.dep.Atom(evaluated_atom)
+				x = x.evaluate_conditionals(myuse)
 
 		mykey = x.cp
 		if not mykey.startswith("virtual/"):

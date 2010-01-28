@@ -612,6 +612,22 @@ class Atom(_atom_base):
 
 		return False
 
+	def evaluate_conditionals(self, use):
+		"""
+		Create an atom instance with any USE conditionals evaluated.
+		@param use: The set of enabled USE flags
+		@type use: set
+		@rtype: Atom
+		@return: an atom instance with any USE conditionals evaluated
+		"""
+		if not (self.use and self.use.conditional):
+			return self
+		atom = remove_slot(self)
+		if self.slot:
+			atom += ":%s" % self.slot
+		atom += str(self.use.evaluate_conditionals(use))
+		return Atom(atom)
+
 	def __copy__(self):
 		"""Immutable, so returns self."""
 		return self
