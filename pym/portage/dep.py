@@ -616,7 +616,7 @@ class Atom(_atom_base):
 		"""
 		Create an atom instance with any USE conditionals evaluated.
 		@param use: The set of enabled USE flags
-		@type other: set
+		@type use: set
 		@rtype: Atom
 		@return: an atom instance with any USE conditionals evaluated
 		"""
