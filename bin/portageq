@@ -47,8 +47,8 @@ from portage import os
 from portage.util import writemsg, writemsg_stdout
 
 def eval_atom_use(atom):
-	if atom.use.conditional and 'USE' in os.environ:
-		use = os.environ['USE'].split()
+	if 'USE' in os.environ:
+		use = frozenset(os.environ['USE'].split())
 		atom = atom.evaluate_conditionals(use)
 	return atom
 
