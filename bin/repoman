@@ -486,11 +486,13 @@ elif os.path.isdir(os.path.join(portdir_overlay, ".git")):
 	vcs = "git"
 elif os.path.isdir(os.path.join(portdir_overlay, ".bzr")):
 	vcs = "bzr"
+elif os.path.isdir(os.path.join(portdir_overlay, ".hg")):
+	vcs = "hg"
 
 vcs_local_opts = repoman_settings.get("REPOMAN_VCS_LOCAL_OPTS", "").split()
 vcs_global_opts = repoman_settings.get("REPOMAN_VCS_GLOBAL_OPTS")
 if vcs_global_opts is None:
-	if vcs not in ["git", "bzr"]:
+	if vcs not in ("git", "bzr", "hg"):
 		vcs_global_opts = "-q"
 	else:
 		vcs_global_opts = ""
@@ -932,6 +934,11 @@ elif vcs == "bzr":
 	bzrstatus = os.popen("bzr status -S .").readlines()
 	mychanged = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and elem[1:2] == "M" ]
 	mynew     = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and ( elem[1:2] == "NK" or elem[0:1] == "R" ) ]
+elif vcs == "hg":
+	mychanged = os.popen("hg status --no-status --modified .").readlines()
+	mychanged = ["./" + elem.rstrip() for elem in mychanged]
+	mynew = os.popen("hg status --no-status --added .").readlines()
+	mynew = ["./" + elem.rstrip() for elem in mynew]
 
 if vcs:
 	new_ebuilds.update(x for x in mynew if x.endswith(".ebuild"))
@@ -1092,9 +1099,13 @@ for x in scanlist:
 				s = s[s.rfind("\n") + 1:]
 			fails["file.UTF8"].append("%s/%s: line %i, just after: '%s'" % (checkdir, y, line, s))
 
-	if vcs == "git" and check_ebuild_notadded:
-		myf = os.popen("git ls-files --others %s" % \
-			(portage._shell_quote(checkdir_relative),))
+	if vcs in ("git", "hg") and check_ebuild_notadded:
+		if vcs == "git":
+			myf = os.popen("git ls-files --others %s" % \
+				(portage._shell_quote(checkdir_relative),))
+		if vcs == "hg":
+			myf = os.popen("hg status --no-status --unknown %s" % \
+				(portage._shell_quote(checkdir_relative),))
 		for l in myf:
 			if l[:-1][-7:] == ".ebuild":
 				stats["ebuild.notadded"] += 1
@@ -1259,7 +1270,7 @@ for x in scanlist:
 	# It will be generated on server side from scm log,
 	# before package moves to the rsync server.
 	# This is needed because we try to avoid merge collisions.
-	if vcs not in ( "git", ) and "ChangeLog" not in checkdirlist:
+	if vcs not in ("git", "hg") and "ChangeLog" not in checkdirlist:
 		stats["changelog.missing"]+=1
 		fails["changelog.missing"].append(x+"/ChangeLog")
 	
@@ -1977,6 +1988,15 @@ else:
 			raise  # TODO propogate this
 		except:
 			err("Error retrieving bzr info; exiting.")
+	if vcs == "hg":
+		myunadded = os.popen("hg status --no-status --unknown .").readlines()
+		myunadded = ["./" + elem.rstrip() for elem in myunadded]
+		
+		# Mercurial doesn't handle manually deleted files as removed from
+		# the repository, so the user need to remove them before commit,
+		# using "hg remove [FILES]"
+		mydeleted = os.popen("hg status --no-status --deleted .").readlines()
+		mydeleted = ["./" + elem.rstrip() for elem in mydeleted]
 
 
 	myautoadd=[]
@@ -2002,6 +2022,8 @@ else:
 				print("(git add "+" ".join(myautoadd)+")")
 			elif vcs == "bzr":
 				print("(bzr add "+" ".join(myautoadd)+")")
+			elif vcs == "hg":
+				print("(hg add "+" ".join(myautoadd)+")")
 			retval=0
 		else:
 			if vcs == "cvs":
@@ -2012,6 +2034,8 @@ else:
 				retval=os.system("git add "+" ".join(myautoadd))
 			elif vcs == "bzr":
 				retval=os.system("bzr add "+" ".join(myautoadd))
+			elif vcs == "hg":
+				retval=os.system("hg add "+" ".join(myautoadd))
 		if retval:
 			writemsg_level("!!! Exiting on %s (shell) error code: %s\n" % \
 				(vcs, retval), level=logging.ERROR, noiselevel=-1)
@@ -2021,6 +2045,15 @@ else:
 		print(red("!!! The following files are in your local tree but are not added to the master"))
 		print(red("!!! tree. Please remove them from the local tree or add them to the master tree."))
 		for x in myunadded:
+			print("   ",x)
+		print()
+		print()
+		sys.exit(1)
+
+	if vcs == "hg" and mydeleted:
+		print(red("!!! The following files are removed manually from your local tree but are not"))
+		print(red("!!! removed from the repository. Please remove them, using \"hg remove [FILES]\"."))
+		for x in mydeleted:
 			print("   ",x)
 		print()
 		print()
@@ -2084,8 +2117,16 @@ else:
 		myremoved = [ "./" + elem.split()[-3:-2][0].split('/')[-1:][0] for elem in bzrstatus if elem and ( elem[1:2] == "K" or elem[0:1] == "R" ) ]
 		# Bazaar expands nothing.
 
+	if vcs == "hg":
+		mychanged = os.popen("hg status --no-status --modified .").readlines()
+		mychanged = ["./" + elem.rstrip() for elem in mychanged]
+		mynew = os.popen("hg status --no-status --added .").readlines()
+		mynew = ["./" + elem.rstrip() for elem in mynew]
+		myremoved = os.popen("hg status --no-status --removed .").readlines()
+		myremoved = ["./" + elem.rstrip() for elem in myremoved]
+
 	if vcs:
-		if not (mychanged or mynew or myremoved):
+		if not (mychanged or mynew or myremoved or (vcs == "hg" and mydeleted)):
 			print(green("RepoMan sez:"), "\"Doing nothing is not always good for QA.\"")
 			print()
 			print("(Didn't find any changed files...)")
@@ -2101,7 +2142,7 @@ else:
 			mymanifests.add(f)
 		else:
 			myupdates.add(f)
-	if vcs == 'git':
+	if vcs in ('git', 'hg'):
 		myupdates.difference_update(myremoved)
 	myupdates = list(myupdates)
 	mymanifests = list(mymanifests)
@@ -2126,8 +2167,8 @@ else:
 			myheaders.append(myfile)
 
 	print("* %s files being committed..." % green(str(len(myupdates))), end=' ')
-	if vcs in ('git', 'bzr'):
-		# With git and bzr, there's never any keyword expansion, so
+	if vcs in ('git', 'bzr', 'hg'):
+		# With git, bzr and hg, there's never any keyword expansion, so
 		# there's no need to regenerate manifests and all files will be
 		# committed in one big commit at the end.
 		print()
@@ -2182,7 +2223,7 @@ else:
 		commitmessage += ", RepoMan options: --force"
 	commitmessage += ")"
 
-	if vcs not in ['git', 'bzr'] and (myupdates or myremoved):
+	if vcs not in ['git', 'bzr', 'hg'] and (myupdates or myremoved):
 		myfiles = myupdates + myremoved
 		if not myheaders and "sign" not in repoman_settings.features:
 			myfiles += mymanifests
@@ -2275,7 +2316,7 @@ else:
 			write_atomic(x, "".join(mylines))
 
 	manifest_commit_required = True
-	if vcs not in ['git', 'bzr'] and (myupdates or myremoved):
+	if vcs not in ['git', 'bzr', 'hg'] and (myupdates or myremoved):
 		myfiles = myupdates + myremoved
 		for x in range(len(myfiles)-1, -1, -1):
 			if myfiles[x].count("/") < 4-repolevel:
@@ -2418,10 +2459,10 @@ else:
 					level=logging.ERROR, noiselevel=-1)
 				sys.exit(retval)
 
-	if vcs in ['git', 'bzr'] or manifest_commit_required or signed:
+	if vcs in ['git', 'bzr', 'hg'] or manifest_commit_required or signed:
 
 		myfiles = mymanifests[:]
-		if vcs in ['git', 'bzr']:
+		if vcs in ['git', 'bzr', 'hg']:
 			myfiles += myupdates
 			myfiles += myremoved
 		myfiles.sort()
@@ -2444,8 +2485,12 @@ else:
 		commit_cmd.extend(vcs_global_opts)
 		commit_cmd.append("commit")
 		commit_cmd.extend(vcs_local_opts)
-		commit_cmd.extend(["-F", commitmessagefile])
-		commit_cmd.extend(f.lstrip("./") for f in myfiles)
+		if vcs in ('git', 'bzr'):
+			commit_cmd.extend(["-F", commitmessagefile])
+			commit_cmd.extend(f.lstrip("./") for f in myfiles)
+		elif vcs == "hg":
+			commit_cmd.extend(["--logfile", commitmessagefile])
+			commit_cmd.extend(myfiles)
 
 		try:
 			if options.pretend:
