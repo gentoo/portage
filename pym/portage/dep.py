@@ -620,7 +620,7 @@ class Atom(_atom_base):
 		@rtype: Atom
 		@return: an atom instance with any USE conditionals evaluated
 		"""
-		if not self.use.conditional:
+		if not (self.use and self.use.conditional):
 			return self
 		atom = remove_slot(self)
 		if self.slot:
