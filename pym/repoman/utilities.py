@@ -124,28 +124,30 @@ def parse_metadata_use(mylines, uselist=None):
 		raise exception.ParseError("metadata.xml: %s" % (e,))
 
 	try:
-		usetag = metadatadom.getElementsByTagName("use")
-		if not usetag:
+
+		try:
+			usetag = metadatadom.getElementsByTagName("use")
+			if not usetag:
+				return uselist
+		except NotFoundErr:
 			return uselist
-	except NotFoundErr:
+
+		try:
+			flags = usetag[0].getElementsByTagName("flag")
+		except NotFoundErr:
+			raise exception.ParseError("metadata.xml: " + \
+				"Malformed input: missing 'flag' tag(s)")
+
+		for flag in flags:
+			pkg_flag = flag.getAttribute("name")
+			if not pkg_flag:
+				raise exception.ParseError("metadata.xml: " + \
+					"Malformed input: missing 'name' attribute for 'flag' tag")
+			uselist.append(pkg_flag)
 		return uselist
 
-	try:
-		flags = usetag[0].getElementsByTagName("flag")
-	except NotFoundErr:
-		raise exception.ParseError("metadata.xml: " + \
-			"Malformed input: missing 'flag' tag(s)")
-
-	for flag in flags:
-		pkg_flag = flag.getAttribute("name")
-		if not pkg_flag:
-			raise exception.ParseError("metadata.xml: " + \
-				"Malformed input: missing 'name' attribute for 'flag' tag")
-		uselist.append(pkg_flag)
-
-	metadatadom.unlink()
-	return uselist
-
+	finally:
+		metadatadom.unlink()
 
 def FindPackagesToScan(settings, startdir, reposplit):
 	""" Try to find packages that need to be scanned
