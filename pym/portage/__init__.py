@@ -3781,6 +3781,9 @@ class config(object):
 			mydict.pop("EPREFIX", None)
 			mydict.pop("EROOT", None)
 
+		if phase == 'depend':
+			mydict.pop('FILESDIR', None)
+
 		return mydict
 
 	def thirdpartymirrors(self):
