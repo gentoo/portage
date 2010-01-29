@@ -1017,9 +1017,10 @@ The default path is /.
 Can be used to define options for the install function used in
 \fBdoins\fR.  The default is \fI\-m0644\fR.
 .TP
-\fBdoins\fR \fI<file> [list of more files]\fR
+\fBdoins\fR \fI[-r] <file> [list of more files]\fR
 Installs files into the path controlled by \fBinsinto\fR.  This function
 uses \fBinstall\fR(1).  Creates all necessary dirs.
+Setting -r sets recursive.
 .TP
 \fBexeinto\fR \fI[path]\fR
 Sets the destination path for the \fBdoexe\fR function.
