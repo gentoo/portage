@@ -288,23 +288,19 @@ import shutil as _shutil
 shutil = _unicode_module_wrapper(_shutil, encoding=_encodings['fs'])
 
 # Imports below this point rely on the above unicode wrapper definitions.
-_selinux = None
-selinux = None
-_selinux_merge = None
 try:
 	import portage._selinux
-	# Make sure the _selinux attribute is correctly reinitialized after
-	# reload(portage) is called. See bug #298310.
-	_selinux = sys.modules['portage._selinux']
 	selinux = _unicode_module_wrapper(_selinux,
 		encoding=_encodings['fs'])
 	_selinux_merge = _unicode_module_wrapper(_selinux,
 		encoding=_encodings['merge'])
-except OSError as e:
-	sys.stderr.write("!!! SELinux not loaded: %s\n" % str(e))
+except (ImportError, OSError) as e:
+	if isinstance(e, OSError):
+		sys.stderr.write("!!! SELinux not loaded: %s\n" % str(e))
 	del e
-except ImportError:
-	pass
+	_selinux = None
+	selinux = None
+	_selinux_merge = None
 
 from portage.manifest import Manifest
 
