@@ -1009,9 +1009,13 @@ class atomic_ofstream(ObjectProxy):
 	def __del__(self):
 		"""If the user does not explicitely call close(), it is
 		assumed that an error has occurred, so we abort()."""
-		f = object.__getattribute__(self, '_file')
-		if not f.closed:
-			self.abort()
+		try:
+			f = object.__getattribute__(self, '_file')
+		except AttributeError:
+			pass
+		else:
+			if not f.closed:
+				self.abort()
 		# ensure destructor from the base class is called
 		base_destructor = getattr(ObjectProxy, '__del__', None)
 		if base_destructor is not None:
