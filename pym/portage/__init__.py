@@ -6089,8 +6089,8 @@ def _spawn_misc_sh(mysettings, commands, phase=None, **kwargs):
 
 	return rval
 
-_testing_eapis = frozenset(["3_pre2"])
-_deprecated_eapis = frozenset(["3_pre1", "2_pre3", "2_pre2", "2_pre1"])
+_testing_eapis = frozenset()
+_deprecated_eapis = frozenset(["3_pre2", "3_pre1", "2_pre3", "2_pre2", "2_pre1"])
 
 def _eapi_is_deprecated(eapi):
 	return eapi in _deprecated_eapis

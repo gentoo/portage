@@ -1157,16 +1157,11 @@ for x in scanlist:
 						if l[-7:] == ".ebuild":
 							eadded.append(os.path.basename(l[:-7]))
 		except IOError:
-			if options.mode == 'commit':
-				if vcs == "cvs":
-					stats["CVS/Entries.IO_error"] += 1
-					fails["CVS/Entries.IO_error"].append(checkdir+"/CVS/Entries")
-				elif vcs == "svn":
-					stats["svn.IO_error"] += 1
-					fails["svn.IO_error"].append(checkdir)
-				elif vcs == "bzr":
-					stats["bzr.IO_error"] += 1
-					fails["bzr.IO_error"].append(checkdir)
+			if vcs == "cvs":
+				stats["CVS/Entries.IO_error"] += 1
+				fails["CVS/Entries.IO_error"].append(checkdir+"/CVS/Entries")
+			else:
+				raise
 			continue
 
 	mf = Manifest(checkdir, repoman_settings["DISTDIR"])
