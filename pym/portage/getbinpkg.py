@@ -638,7 +638,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 			self.out.flush()
 
 	cache_stats = CacheStats(out)
-	have_tty = out.isatty()
+	have_tty = os.environ.get('TERM') != 'dumb' and out.isatty()
 	if have_tty:
 		cache_stats.display()
 	binpkg_filenames = set()

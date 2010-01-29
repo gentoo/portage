@@ -55,7 +55,9 @@ class JobStatusDisplay(object):
 		object.__setattr__(self, "_jobs_column_width", width - 32)
 		self.reset()
 
-		isatty = hasattr(self.out, "isatty") and self.out.isatty()
+		isatty = os.environ.get('TERM') != 'dumb' and \
+			hasattr(self.out, 'isatty') and \
+			self.out.isatty()
 		object.__setattr__(self, "_isatty", isatty)
 		if not isatty or not self._init_term():
 			term_codes = {}
