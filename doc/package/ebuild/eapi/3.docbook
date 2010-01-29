@@ -1,10 +1,10 @@
-<section id='package-ebuild-eapi-3_pre2'>
-<title>EAPI 3_pre2</title>
-<section id='package-ebuild-eapi-3_pre2-helpers'>
+<section id='package-ebuild-eapi-3'>
+<title>EAPI 3</title>
+<section id='package-ebuild-eapi-3-helpers'>
 <title>Helpers</title>
-<section id='package-ebuild-eapi-3_pre2-helpers-unpack'>
+<section id='package-ebuild-eapi-3-helpers-unpack'>
 <title>unpack</title>
-<section id='package-ebuild-eapi-3_pre2-helpers-unpack-xz'>
+<section id='package-ebuild-eapi-3-helpers-unpack-xz'>
 <title>Support for the xz file extension</title>
 <para>
 The unpack helper now supports the xz file extension.
@@ -12,15 +12,15 @@ The unpack helper now supports the xz file extension.
 </section>
 </section>
 </section>
-<section id='package-ebuild-eapi-3_pre2-prefix'>
+<section id='package-ebuild-eapi-3-prefix'>
 <title>Support for installation prefix</title>
-<section id='package-ebuild-eapi-3_pre2-prefix-helpers'>
+<section id='package-ebuild-eapi-3-prefix-helpers'>
 <title>Helpers</title>
 <para>
 Beginning with EAPI 3, all helpers use ${ED} instead of ${D}
 when appropriate. For example, see econf and einstall below.
 </para>
-<section id='package-ebuild-eapi-3_pre2-prefix-helpers-econf'>
+<section id='package-ebuild-eapi-3-prefix-helpers-econf'>
 <title>econf</title>
 <programlisting>
 ${ECONF_SOURCE:-.}/configure \
@@ -37,7 +37,7 @@ ${ECONF_SOURCE:-.}/configure \
 	configure options || die "econf failed"
 </programlisting>
 </section>
-<section id='package-ebuild-eapi-3_pre2-prefix-helpers-einstall'>
+<section id='package-ebuild-eapi-3-prefix-helpers-einstall'>
 <title>einstall</title>
 <para>
 Note that, for make-based packages, 'emake install DESTDIR=${D}' (with
@@ -57,7 +57,7 @@ make \
 </programlisting>
 </section>
 </section>
-<section id='package-ebuild-eapi-3_pre2-prefix-variables'>
+<section id='package-ebuild-eapi-3-prefix-variables'>
 <title>Variables</title>
 <table><title>Installation Prefix Variables</title>
 	<tgroup cols='2' align='left' >
