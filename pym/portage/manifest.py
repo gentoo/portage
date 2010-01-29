@@ -59,7 +59,10 @@ def parseManifest2(mysplit):
 	if len(mysplit) > 4 and mysplit[0] in portage.const.MANIFEST2_IDENTIFIERS:
 		mytype = mysplit[0]
 		myname = mysplit[1]
-		mysize = int(mysplit[2])
+		try:
+			mysize = int(mysplit[2])
+		except ValueError:
+			return None
 		myhashes = dict(zip(mysplit[3::2], mysplit[4::2]))
 		myhashes["size"] = mysize
 		myentry = Manifest2Entry(type=mytype, name=myname, hashes=myhashes)
