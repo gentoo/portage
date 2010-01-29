@@ -278,6 +278,7 @@ qahelp={
 	"KEYWORDS.stable":"Ebuilds that have been added directly with stable KEYWORDS",
 	"KEYWORDS.stupid":"Ebuilds that use KEYWORDS=-* instead of package.mask", 
 	"LICENSE.missing":"Ebuilds that have a missing or empty LICENSE variable",
+	"LICENSE.virtual":"Virtuals that have a non-empty LICENSE variable",
 	"DESCRIPTION.missing":"Ebuilds that have a missing or empty DESCRIPTION variable",
 	"DESCRIPTION.toolong":"DESCRIPTION is over %d characters" % max_desc_len,
 	"EAPI.definition":"EAPI is defined after an inherit call (must be defined before)",
@@ -285,6 +286,7 @@ qahelp={
 	"EAPI.unsupported":"Ebuilds that have an unsupported EAPI version (you must upgrade portage)",
 	"SLOT.invalid":"Ebuilds that have a missing or invalid SLOT variable value",
 	"HOMEPAGE.missing":"Ebuilds that have a missing or empty HOMEPAGE variable",
+	"HOMEPAGE.virtual":"Virtuals that have a non-empty HOMEPAGE variable",
 	"DEPEND.bad":"User-visible ebuilds with bad DEPEND settings (matched against *visible* ebuilds)",
 	"RDEPEND.bad":"User-visible ebuilds with bad RDEPEND settings (matched against *visible* ebuilds)",
 	"PDEPEND.bad":"User-visible ebuilds with bad PDEPEND settings (matched against *visible* ebuilds)",
@@ -360,6 +362,8 @@ qawarnings = set((
 "DEPEND.badmaskedindev","RDEPEND.badmaskedindev","PDEPEND.badmaskedindev",
 "DEPEND.badtilde", "RDEPEND.badtilde", "PDEPEND.badtilde",
 "DESCRIPTION.toolong",
+"HOMEPAGE.virtual",
+"LICENSE.virtual",
 "KEYWORDS.dropped",
 "KEYWORDS.stupid",
 "KEYWORDS.missing",
@@ -1380,6 +1384,13 @@ for x in scanlist:
 				myqakey=missingvars[pos]+".missing"
 				stats[myqakey]=stats[myqakey]+1
 				fails[myqakey].append(x+"/"+y+".ebuild")
+
+		if catdir == "virtual":
+			for var in ("HOMEPAGE", "LICENSE"):
+				if myaux.get(var):
+					myqakey = var + ".virtual"
+					stats[myqakey] = stats[myqakey] + 1
+					fails[myqakey].append(relative_path)
 
 		# 14 is the length of DESCRIPTION=""
 		if len(myaux['DESCRIPTION']) > max_desc_len:
