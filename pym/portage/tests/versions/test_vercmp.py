@@ -17,7 +17,8 @@ class VerCmpTestCase(TestCase):
 			("1.0-r1", "1.0"),
 			("999999999999999999999999999999", "999999999999999999999999999998"),
 			("1.0.0", "1.0"),
-			("12.2.5", "12.2b"),
+			("1.0b", "1.0.0"),
+			("12.2b", "12.2.5"),
 		]
 		for test in tests:
 			self.failIf( vercmp( test[0], test[1] ) <= 0, msg="%s < %s? Wrong!" % (test[0],test[1]) )
@@ -35,7 +36,8 @@ class VerCmpTestCase(TestCase):
 			("1.0-r0", "1.0-r1"),
 			("1.0", "1.0-r1"),
 			("1.0", "1.0.0"),
-			("12.2b", "12.2.5"),
+			("1.0.0", "1.0b"),
+			("12.2.5", "12.2b"),
 		]
 		for test in tests:
 			self.failIf( vercmp( test[0], test[1]) >= 0, msg="%s > %s? Wrong!" % (test[0],test[1]))
