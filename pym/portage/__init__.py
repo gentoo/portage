@@ -4158,6 +4158,8 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 
 	if logfile:
 		log_file = open(_unicode_encode(logfile), mode='ab')
+		apply_secpass_permissions(logfile,
+			uid=portage_uid, gid=portage_gid, mode=0o664)
 		stdout_file = os.fdopen(os.dup(fd_pipes_orig[1]), 'wb')
 		master_file = os.fdopen(master_fd, 'rb')
 		iwtd = [master_file]
