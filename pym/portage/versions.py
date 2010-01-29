@@ -103,22 +103,6 @@ def vercmp(ver1, ver2, silent=1):
 	if match1.group(3) or match2.group(3):
 		vlist1 = match1.group(3)[1:].split(".")
 		vlist2 = match2.group(3)[1:].split(".")
-	else:
-		vlist1 = []
-		vlist2 = []
-
-	if match1.group(5) or match2.group(5):
-		# and now the final letter
-		if match1.group(5):
-			vlist1.append(str(ord(match1.group(5))))
-		else:
-			vlist1.append('0')
-		if match2.group(5):
-			vlist2.append(str(ord(match2.group(5))))
-		else:
-			vlist2.append('0')
-
-	if vlist1 or vlist2:
 
 		for i in range(0, max(len(vlist1), len(vlist2))):
 			# Implcit .0 is given a value of -1, so that 1.0.0 > 1.0, since it
@@ -147,6 +131,17 @@ def vercmp(ver1, ver2, silent=1):
 				max_len = max(len(vlist1[i]), len(vlist2[i]))
 				list1.append(int(vlist1[i].ljust(max_len, "0")))
 				list2.append(int(vlist2[i].ljust(max_len, "0")))
+
+	# and now the final letter
+	# NOTE: Behavior changed in r2309 (between portage-2.0.x and portage-2.1).
+	# The new behavior is 12.2.5 > 12.2b which, depending on how you look at,
+	# may seem counter-intuitive. However, if you really think about it, it
+	# seems like it's probably safe to assume that this is the behavior that
+	# is intended by anyone who would use versions such as these.
+	if len(match1.group(5)):
+		list1.append(ord(match1.group(5)))
+	if len(match2.group(5)):
+		list2.append(ord(match2.group(5)))
 
 	for i in range(0, max(len(list1), len(list2))):
 		if len(list1) <= i:
