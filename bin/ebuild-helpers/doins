@@ -63,12 +63,20 @@ _doins() {
 }
 
 _xdoins() {
+	local -i success=0 failed=0
 	while read -d $'\0' x ; do
 		_doins "$x" "${x%/*}"
+		if [[ $? -eq 0 ]] ; then
+			((success|=1))
+		else
+			((failed|=1))
+		fi
 	done
+	[[ $failed -ne 0 || $success -eq 0 ]] && return 1 || return 0
 }
 
 success=0
+failed=0
 
 for x in "$@" ; do
 	if [[ $PRESERVE_SYMLINKS = n && -d $x ]] || \
@@ -100,15 +108,24 @@ for x in "$@" ; do
 		fi
 		find "$x_orig" -type d -exec dodir "${INSDESTTREE}/{}" \;
 		find "$x_orig" \( -type f -or -type l \) -print0 | _xdoins
+		if [[ ${PIPESTATUS[1]} -eq 0 ]] ; then
+			((success|=1))
+		else
+			((failed|=1))
+		fi
 		if [[ $x != $x_orig ]] ; then
 			popd >/dev/null
 			mv "$TMP/1/$x_orig" "$x"
 		fi
 		while popd >/dev/null 2>&1 ; do true ; done
-		((success|=1))
 	else
-		_doins "${x}" && ((success|=1))
+		_doins "${x}"
+		if [[ $? -eq 0 ]] ; then
+			((success|=1))
+		else
+			((failed|=1))
+		fi
 	fi
 done
 rm -rf "$TMP"
-[ $success -gt 0 ] && exit 0 || exit 1
+[[ $failed -ne 0 || $success -eq 0 ]] && exit 1 || exit 0
