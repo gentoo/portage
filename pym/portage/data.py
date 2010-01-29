@@ -84,6 +84,7 @@ try:
 except KeyError:
 	portage_uid=0
 	portage_gid=0
+	userpriv_groups = [portage_gid]
 	writemsg(colorize("BAD",
 		_("portage: 'portage' user or group missing.")) + "\n", noiselevel=-1)
 	writemsg(_(
