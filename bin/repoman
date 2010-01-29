@@ -928,7 +928,7 @@ elif vcs == "git":
 			if elem[:repo_subdir_len] == repo_subdir]
 	mynew = ["./" + elem[:-1] for elem in mynew]
 elif vcs == "bzr":
-	bzrstatus = os.popen("bzr status -S").readlines()
+	bzrstatus = os.popen("bzr status -S .").readlines()
 	mychanged = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and elem[1:2] == "M" ]
 	mynew     = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and ( elem[1:2] == "NK" or elem[0:1] == "R" ) ]
 
@@ -1970,7 +1970,7 @@ else:
 		myf.close()
 	if vcs == "bzr":
 		try:
-			bzrstatus=os.popen("bzr status -S").readlines()
+			bzrstatus=os.popen("bzr status -S .").readlines()
 			myunadded = [ "./"+elem.rstrip().split()[1].split('/')[-1:][0] for elem in bzrstatus if elem.startswith("?") or elem[0:2] == " D" ]
 		except SystemExit as e:
 			raise  # TODO propogate this
@@ -2076,7 +2076,7 @@ else:
 		myremoved = ["./" + elem[:-1] for elem in myremoved]
 
 	if vcs == "bzr":
-		bzrstatus = os.popen("bzr status -S").readlines()
+		bzrstatus = os.popen("bzr status -S .").readlines()
 		mychanged = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and elem[1:2] == "M" ]
 		mynew     = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem and ( elem[1:2] in "NK" or elem[0:1] == "R" ) ]
 		myremoved = [ "./" + elem.split()[-1:][0].split('/')[-1:][0] for elem in bzrstatus if elem.startswith("-") ]
