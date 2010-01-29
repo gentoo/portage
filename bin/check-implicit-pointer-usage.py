@@ -37,14 +37,19 @@ if sys.hexversion < 0x3000000:
     pointer_pattern = unicode(pointer_pattern, encoding='utf_8')
     unicode_quote_open = unicode('\xE2\x80\x98', encoding='utf_8')
     unicode_quote_close = unicode('\xE2\x80\x99', encoding='utf_8')
+    out = sys.stdout
 else:
     unicode_quote_open = '\u2018'
     unicode_quote_close = '\u2019'
+    out = sys.stdout.buffer
 pointer_pattern = re.compile(pointer_pattern)
 
 last_implicit_filename = ""
 last_implicit_linenum = -1
 last_implicit_func = ""
+
+def write(msg):
+    out.write(msg.encode('utf_8', 'backslashreplace'))
 
 while True:
     if sys.hexversion >= 0x3000000:
@@ -69,6 +74,7 @@ while True:
             pointer_linenum = int(m.group(2))
             if (last_implicit_filename == pointer_filename
                 and last_implicit_linenum == pointer_linenum):
-                print(("Function `%s' implicitly converted to pointer at " \
-                      "%s:%d" % (last_implicit_func, last_implicit_filename,
-                                 last_implicit_linenum)))
+                write("Function `%s' implicitly converted to pointer at " \
+                      "%s:%d\n" % (last_implicit_func,
+                                   last_implicit_filename,
+                                   last_implicit_linenum))
