@@ -2847,11 +2847,11 @@ class dblink(object):
 		finally:
 			self.settings.pop("PORTAGE_UPDATE_ENV", None)
 
-		# XXX: Decide how to handle failures here.
 		if a != os.EX_OK:
+			# It's stupid to bail out here, so keep going regardless of
+			# phase return code.
 			showMessage(_("!!! FAILED postinst: ")+str(a)+"\n",
 				level=logging.ERROR, noiselevel=-1)
-			return a
 
 		downgrade = False
 		for v in otherversions:
