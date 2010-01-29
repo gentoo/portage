@@ -89,8 +89,8 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 							unlinkfile=unlinkfile, waiting_msg=waiting_msg,
 							flags=flags)
 					else:
-						writemsg(_("Cannot chown a lockfile. This could "
-							"cause inconvenience later.\n"))
+						writemsg(_("Cannot chown a lockfile: '%s'\n") % \
+							lockfilename, noiselevel=-1)
 
 		finally:
 			os.umask(old_mask)
