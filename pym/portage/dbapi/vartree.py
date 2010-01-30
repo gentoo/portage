@@ -4593,8 +4593,9 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 				# Create an empty file as a place holder in order to avoid
 				# potential collision-protect issues.
 				f = tempfile.TemporaryFile()
-				f.write("# empty file because --include-config=n " + \
-					"when `quickpkg` was used\n")
+				f.write(_unicode_encode(
+					"# empty file because --include-config=n " + \
+					"when `quickpkg` was used\n"))
 				f.flush()
 				f.seek(0)
 				tarinfo.size = os.fstat(f.fileno()).st_size
