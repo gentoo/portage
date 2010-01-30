@@ -22,21 +22,21 @@ class database(fs_template.FsBased):
 		'KEYWORDS',  'IUSE', 'UNUSED_00',
 		'PDEPEND',   'PROVIDE', 'EAPI', 'PROPERTIES', 'DEFINED_PHASES')
 
-	def __init__(self, label, auxdbkeys, **config):
-		super(database,self).__init__(label, auxdbkeys, **config)
-		self._base = os.path.join(self._base, 
+	def __init__(self, *args, **config):
+		super(database,self).__init__(*args, **config)
+		self.location = os.path.join(self.location, 
 			self.label.lstrip(os.path.sep).rstrip(os.path.sep))
 
 		if len(self._known_keys) > len(self.auxdbkey_order) + 2:
 			raise Exception("less ordered keys then auxdbkeys")
-		if not os.path.exists(self._base):
+		if not os.path.exists(self.location):
 			self._ensure_dirs()
 
 
 	def _getitem(self, cpv):
 		d = {}
 		try:
-			myf = codecs.open(_unicode_encode(os.path.join(self._base, cpv),
+			myf = codecs.open(_unicode_encode(os.path.join(self.location, cpv),
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
 				errors='replace')
@@ -58,7 +58,7 @@ class database(fs_template.FsBased):
 
 	def _setitem(self, cpv, values):
 		s = cpv.rfind("/")
-		fp=os.path.join(self._base,cpv[:s],".update.%i.%s" % (os.getpid(), cpv[s+1:]))
+		fp=os.path.join(self.location,cpv[:s],".update.%i.%s" % (os.getpid(), cpv[s+1:]))
 		try:
 			myf = codecs.open(_unicode_encode(fp,
 				encoding=_encodings['fs'], errors='strict'),
@@ -84,7 +84,7 @@ class database(fs_template.FsBased):
 		myf.close()
 		self._ensure_access(fp, mtime=values["_mtime_"])
 		#update written.  now we move it.
-		new_fp = os.path.join(self._base,cpv)
+		new_fp = os.path.join(self.location,cpv)
 		try:
 			os.rename(fp, new_fp)
 		except (OSError, IOError) as e:
@@ -94,7 +94,7 @@ class database(fs_template.FsBased):
 
 	def _delitem(self, cpv):
 		try:
-			os.remove(os.path.join(self._base,cpv))
+			os.remove(os.path.join(self.location,cpv))
 		except OSError as e:
 			if errno.ENOENT == e.errno:
 				raise KeyError(cpv)
@@ -103,13 +103,13 @@ class database(fs_template.FsBased):
 
 
 	def __contains__(self, cpv):
-		return os.path.exists(os.path.join(self._base, cpv))
+		return os.path.exists(os.path.join(self.location, cpv))
 
 
 	def __iter__(self):
 		"""generator for walking the dir struct"""
-		dirs = [self._base]
-		len_base = len(self._base)
+		dirs = [self.location]
+		len_base = len(self.location)
 		while len(dirs):
 			for l in os.listdir(dirs[0]):
 				if l.endswith(".cpickle"):
