@@ -1583,12 +1583,14 @@ class config(object):
 		if clone:
 			# For immutable attributes, use shallow copy for
 			# speed and memory conservation.
+			self.categories = clone.categories
 			self.depcachedir = clone.depcachedir
 			self.incrementals = clone.incrementals
 			self.module_priority = clone.module_priority
 			self.profile_path = clone.profile_path
 			self.profiles = clone.profiles
 			self.packages = clone.packages
+			self.useforce_list = clone.useforce_list
 			self.usemask_list = clone.usemask_list
 
 			self.user_profile_dir = copy.deepcopy(clone.user_profile_dir)
@@ -1609,7 +1611,6 @@ class config(object):
 			self.usemask  = copy.deepcopy(clone.usemask)
 			self.pusemask_list = copy.deepcopy(clone.pusemask_list)
 			self.useforce      = copy.deepcopy(clone.useforce)
-			self.useforce_list = copy.deepcopy(clone.useforce_list)
 			self.puseforce_list = copy.deepcopy(clone.puseforce_list)
 			self.puse     = copy.deepcopy(clone.puse)
 			self.make_defaults_use = copy.deepcopy(clone.make_defaults_use)
@@ -1633,7 +1634,6 @@ class config(object):
 			self._use_expand_dict = copy.deepcopy(clone._use_expand_dict)
 			self.backupenv  = self.configdict["backupenv"]
 			self.pusedict   = copy.deepcopy(clone.pusedict)
-			self.categories = copy.deepcopy(clone.categories)
 			self.pkeywordsdict = copy.deepcopy(clone.pkeywordsdict)
 			self._pkeywords_list = copy.deepcopy(clone._pkeywords_list)
 			self.pmaskdict = copy.deepcopy(clone.pmaskdict)
@@ -1815,8 +1815,9 @@ class config(object):
 				self.pkgprofileuse.append(cpdict)
 			del rawprofileuse
 
-			self.useforce_list = [grabfile(os.path.join(x, "use.force"),
-				recursive=1) for x in self.profiles]
+			self.useforce_list = tuple(
+				tuple(grabfile(os.path.join(x, "use.force"), recursive=1))
+				for x in self.profiles)
 			self.useforce  = set(stack_lists(
 				self.useforce_list, incremental=True))
 
