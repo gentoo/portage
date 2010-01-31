@@ -135,7 +135,11 @@ class database(fs_template.FsBased):
 				if l.endswith(".cpickle"):
 					continue
 				p = os.path.join(dir_path, l)
-				st = os.lstat(p)
+				try:
+					st = os.lstat(p)
+				except OSError:
+					# Cache entry disappeared.
+					continue
 				if stat.S_ISDIR(st.st_mode):
 					# Only recurse 1 deep, in order to avoid iteration over
 					# entries from another nested cache instance. This can
