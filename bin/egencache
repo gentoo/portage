@@ -326,7 +326,7 @@ def egencache_main(args):
 
 	settings.lock()
 
-	portdb = portage.portdbapi(settings["PORTDIR"], mysettings=settings)
+	portdb = portage.portdbapi(mysettings=settings)
 	if options.repo is not None:
 		repo_path = portdb.getRepositoryPath(options.repo)
 		if repo_path is None:

@@ -85,26 +85,26 @@ REPO_NAME_LOC            = "profiles" + "/" + REPO_NAME_FILE
 
 PORTAGE_PACKAGE_ATOM     = "sys-apps/portage"
 
-INCREMENTALS             = ["USE", "USE_EXPAND", "USE_EXPAND_HIDDEN",
+INCREMENTALS             = ("USE", "USE_EXPAND", "USE_EXPAND_HIDDEN",
                            "FEATURES", "ACCEPT_KEYWORDS",
                            "CONFIG_PROTECT_MASK", "CONFIG_PROTECT",
                            "PRELINK_PATH", "PRELINK_PATH_MASK",
-                           "PROFILE_ONLY_VARIABLES"]
-EBUILD_PHASES            = ["setup", "unpack", "prepare", "configure",
+                           "PROFILE_ONLY_VARIABLES")
+EBUILD_PHASES            = ("setup", "unpack", "prepare", "configure",
                            "compile", "test", "install",
                            "package", "preinst", "postinst","prerm", "postrm",
-                           "nofetch", "config", "info", "other"]
+                           "nofetch", "config", "info", "other")
 
 EAPI                     = 3
 
 HASHING_BLOCKSIZE        = 32768
-MANIFEST1_HASH_FUNCTIONS = ["MD5", "SHA256", "RMD160"]
-MANIFEST2_HASH_FUNCTIONS = ["SHA1", "SHA256", "RMD160"]
+MANIFEST1_HASH_FUNCTIONS = ("MD5", "SHA256", "RMD160")
+MANIFEST2_HASH_FUNCTIONS = ("SHA1", "SHA256", "RMD160")
 
 MANIFEST1_REQUIRED_HASH  = "MD5"
 MANIFEST2_REQUIRED_HASH  = "SHA1"
 
-MANIFEST2_IDENTIFIERS    = ["AUX", "MISC", "DIST", "EBUILD"]
+MANIFEST2_IDENTIFIERS    = ("AUX", "MISC", "DIST", "EBUILD")
 # ===========================================================================
 # END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANT
 # ===========================================================================
