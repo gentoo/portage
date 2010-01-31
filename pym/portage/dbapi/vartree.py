@@ -54,6 +54,7 @@ import logging
 import os as _os
 import stat
 import sys
+import tempfile
 import time
 import warnings
 
@@ -5593,8 +5594,15 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 			if protect and protect(path):
 				# Create an empty file as a place holder in order to avoid
 				# potential collision-protect issues.
-				tarinfo.size = 0
-				tar.addfile(tarinfo)
+				f = tempfile.TemporaryFile()
+				f.write(_unicode_encode(
+					"# empty file because --include-config=n " + \
+					"when `quickpkg` was used\n"))
+				f.flush()
+				f.seek(0)
+				tarinfo.size = os.fstat(f.fileno()).st_size
+				tar.addfile(tarinfo, f)
+				f.close()
 			else:
 				f = open(_unicode_encode(path,
 					encoding=object.__getattribute__(os, '_encoding'),
