@@ -171,7 +171,7 @@ class dbapi(object):
 					continue
 			else:
 				# Check masked and forced flags for repoman.
-				mysettings = getattr(self, "mysettings", None)
+				mysettings = getattr(self, 'settings', None)
 				if mysettings is not None and not mysettings.local_config:
 
 					pkg = "%s:%s" % (cpv, slot)

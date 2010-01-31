@@ -557,7 +557,7 @@ repoman_settings.categories = tuple(sorted(
 	portage.util.stack_lists([categories], incremental=1)))
 del categories
 
-portdb.mysettings = repoman_settings
+portdb.settings = repoman_settings
 root_config = RootConfig(repoman_settings, trees[root], None)
 # We really only need to cache the metadata that's necessary for visibility
 # filtering. Anything else can be discarded to reduce memory consumption.
@@ -1770,7 +1770,7 @@ for x in scanlist:
 					arch_xmatch_caches[xmatch_cache_key] = xcache
 
 				trees["/"]["porttree"].settings = dep_settings
-				portdb.mysettings = dep_settings
+				portdb.settings = dep_settings
 				portdb.xcache = xcache
 				# for package.use.mask support inside dep_check
 				dep_settings.setcpv(pkg)

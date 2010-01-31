@@ -1080,7 +1080,7 @@ def repo_name_duplicate_check(trees):
 	for root, root_trees in trees.items():
 		if 'porttree' in root_trees:
 			portdb = root_trees['porttree'].dbapi
-			if portdb.mysettings.get('PORTAGE_REPO_DUPLICATE_WARN') != '0':
+			if portdb.settings.get('PORTAGE_REPO_DUPLICATE_WARN') != '0':
 				for repo_name, paths in portdb._ignored_repos:
 					k = (root, repo_name, portdb.getRepositoryPath(repo_name))
 					ignored_repos.setdefault(k, []).extend(paths)
