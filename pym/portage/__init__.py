@@ -2102,7 +2102,8 @@ class config(object):
 			#getting categories from an external file now
 			categories = [grabfile(os.path.join(x, "categories")) for x in locations]
 			self.categories = tuple(sorted(
-				stack_lists(categories, incremental=1)))
+				x for x in stack_lists(categories, incremental=1)
+				if dbapi._category_re.match(x) is not None))
 			del categories
 
 			archlist = [grabfile(os.path.join(x, "arch.list")) for x in locations]
