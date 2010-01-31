@@ -12,6 +12,8 @@ func_end_re = re.compile(r'^\}$')
 var_assign_re = re.compile(r'(^|^declare\s+-\S+\s+|^declare\s+|^export\s+)([^=\s]+)=("|\')?.*$')
 close_quote_re = re.compile(r'(\\"|"|\')\s*$')
 readonly_re = re.compile(r'^declare\s+-(\S*)r(\S*)\s+')
+# declare without assignment
+var_declare_re = re.compile(r'^declare(\s+-\S+)?\s+([^=\s]+)\s*$')
 
 def have_end_quote(quote, line):
 	"""
@@ -23,6 +25,21 @@ def have_end_quote(quote, line):
 	close_quote_match = close_quote_re.search(line)
 	return close_quote_match is not None and \
 		close_quote_match.group(1) == quote
+
+def filter_declare_readonly_opt(line):
+	readonly_match = readonly_re.match(line)
+	if readonly_match is not None:
+		declare_opts = ''
+		for i in (1, 2):
+			group = readonly_match.group(i)
+			if group is not None:
+				declare_opts += group
+		if declare_opts:
+			line = 'declare -%s %s' % \
+				(declare_opts, line[readonly_match.end():])
+		else:
+			line = 'declare ' + line[readonly_match.end():]
+	return line
 
 def filter_bash_environment(pattern, file_in, file_out):
 	# Filter out any instances of the \1 character from variable values
@@ -57,20 +74,20 @@ def filter_bash_environment(pattern, file_in, file_out):
 					multi_line_quote = quote
 					multi_line_quote_filter = filter_this
 				if not filter_this:
-					readonly_match = readonly_re.match(line)
-					if readonly_match is not None:
-						declare_opts = ""
-						for i in (1, 2):
-							group = readonly_match.group(i)
-							if group is not None:
-								declare_opts += group
-						if declare_opts:
-							line = "declare -%s %s" % \
-								(declare_opts, line[readonly_match.end():])
-						else:
-							line = "declare " + line[readonly_match.end():]
+					line = filter_declare_readonly_opt(line)
 					file_out.write(line.replace("\1", ""))
 				continue
+			else:
+				declare_match = var_declare_re.match(line)
+				if declare_match is not None:
+					# declare without assignment
+					filter_this = pattern.match(declare_match.group(2)) \
+						is not None
+					if not filter_this:
+						line = filter_declare_readonly_opt(line)
+						file_out.write(line)
+					continue
+
 		if here_doc_delim is not None:
 			if here_doc_delim.match(line):
 				here_doc_delim = None
