@@ -73,6 +73,9 @@ class EbuildFetcher(SpawnProcess):
 
 		self.args = fetch_args
 		self.env = fetch_env
+		if self._build_dir is None:
+			# Free settings now since we only have a local reference.
+			self.config_pool.deallocate(settings)
 		SpawnProcess._start(self)
 
 	def _pipe(self, fd_pipes):
