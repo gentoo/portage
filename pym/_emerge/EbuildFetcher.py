@@ -91,7 +91,7 @@ class EbuildFetcher(SpawnProcess):
 		distdir = settings["DISTDIR"]
 		use = None
 		if not self.fetchall:
-			use = frozenset(settings["PORTAGE_USE"].split())
+			use = self.pkg.use.enabled
 
 		try:
 			uri_map = portdb.getFetchMap(self.pkg.cpv,
