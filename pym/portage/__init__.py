@@ -8576,10 +8576,9 @@ def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_lo
 	if mycp in settings.pmaskdict:
 		for x in settings.pmaskdict[mycp]:
 			if match_from_list(x, cpv_slot_list):
-				comment = ""
-				l = "\n"
-				comment_valid = -1
 				for pmask in pmasklists:
+					comment = ""
+					comment_valid = -1
 					pmask_filename = os.path.join(pmask[0], "package.mask")
 					for i in range(len(pmask[1])):
 						l = pmask[1][i].strip()
