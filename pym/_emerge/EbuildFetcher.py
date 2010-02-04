@@ -28,6 +28,12 @@ class EbuildFetcher(SpawnProcess):
 			raise AssertionError("ebuild not found for '%s'" % self.pkg.cpv)
 		settings = self.config_pool.allocate()
 		settings.setcpv(self.pkg)
+		if self.prefetch and \
+			self._prefetch_size_ok(portdb, settings, ebuild_path):
+			self.config_pool.deallocate(settings)
+			self.returncode = os.EX_OK
+			self.wait()
+			return
 
 		# In prefetch mode, logging goes to emerge-fetch.log and the builddir
 		# should not be touched since otherwise it could interfere with
@@ -51,6 +57,7 @@ class EbuildFetcher(SpawnProcess):
 		# along here so that they are correctly considered by
 		# the config instance in the subproccess.
 		fetch_env = os.environ.copy()
+		fetch_env['PORTAGE_CONFIGROOT'] = settings['PORTAGE_CONFIGROOT']
 
 		nocolor = settings.get("NOCOLOR")
 		if nocolor is not None:
@@ -75,7 +82,58 @@ class EbuildFetcher(SpawnProcess):
 
 		self.args = fetch_args
 		self.env = fetch_env
+		if self._build_dir is None:
+			# Free settings now since we only have a local reference.
+			self.config_pool.deallocate(settings)
 		SpawnProcess._start(self)
+
+	def _prefetch_size_ok(self, portdb, settings, ebuild_path):
+		pkgdir = os.path.dirname(ebuild_path)
+		mytree = os.path.dirname(os.path.dirname(pkgdir))
+		distdir = settings["DISTDIR"]
+		use = None
+		if not self.fetchall:
+			use = self.pkg.use.enabled
+
+		try:
+			uri_map = portdb.getFetchMap(self.pkg.cpv,
+				useflags=use, mytree=mytree)
+		except portage.exception.InvalidDependString as e:
+			return False
+
+		sizes = {}
+		for filename in uri_map:
+			# Use stat rather than lstat since portage.fetch() creates
+			# symlinks when PORTAGE_RO_DISTDIRS is used.
+			try:
+				st = os.stat(os.path.join(distdir, filename))
+			except OSError:
+				return False
+			if st.st_size == 0:
+				return False
+			sizes[filename] = st.st_size
+
+		digests = portage.Manifest(pkgdir, distdir).getTypeDigests("DIST")
+		for filename, actual_size in sizes.items():
+			size = digests.get(filename, {}).get('size')
+			if size is None:
+				continue
+			if size != actual_size:
+				return False
+
+		# All files are present and sizes are ok. In this case the normal
+		# fetch code will be skipped, so we need to generate equivalent
+		# output here.
+		if self.logfile is not None:
+			f = codecs.open(_unicode_encode(self.logfile,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='a', encoding=_encodings['content'], errors='replace')
+			for filename in uri_map:
+				f.write((' * %s size ;-) ...' % \
+					filename).ljust(73) + '[ ok ]\n')
+			f.close()
+
+		return True
 
 	def _pipe(self, fd_pipes):
 		"""When appropriate, use a pty so that fetcher progress bars,

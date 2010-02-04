@@ -34,7 +34,11 @@ class SetConfigError(Exception):
 
 class SetConfig(object):
 	def __init__(self, paths, settings, trees):
-		self._parser = SafeConfigParser()
+		self._parser = SafeConfigParser(
+			defaults={
+				"PORTAGE_CONFIGROOT" : settings["PORTAGE_CONFIGROOT"],
+				"ROOT" : settings["ROOT"],
+			})
 		self._parser.read(paths)
 		self.errors = []
 		self.psets = {}

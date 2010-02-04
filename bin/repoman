@@ -89,8 +89,11 @@ bad = create_color_func("BAD")
 
 # A sane umask is needed for files that portage creates.
 os.umask(0o22)
-repoman_settings = portage.config(local_config=False,
-	config_incrementals=portage.const.INCREMENTALS)
+# Repoman sets it's own ACCEPT_KEYWORDS and we don't want it to
+# behave incrementally.
+repoman_incrementals = tuple(x for x in \
+	portage.const.INCREMENTALS if x != 'ACCEPT_KEYWORDS')
+repoman_settings = portage.config(local_config=False)
 repoman_settings.lock()
 
 if repoman_settings.get("NOCOLOR", "").lower() in ("yes", "true") or \
@@ -557,7 +560,7 @@ repoman_settings.categories = tuple(sorted(
 	portage.util.stack_lists([categories], incremental=1)))
 del categories
 
-portdb.mysettings = repoman_settings
+portdb.settings = repoman_settings
 root_config = RootConfig(repoman_settings, trees[root], None)
 # We really only need to cache the metadata that's necessary for visibility
 # filtering. Anything else can be discarded to reduce memory consumption.
@@ -1749,19 +1752,12 @@ for x in scanlist:
 				if dep_settings is None:
 					dep_settings = portage.config(
 						config_profile_path=prof.abs_path,
-						config_incrementals=portage.const.INCREMENTALS,
+						config_incrementals=repoman_incrementals,
 						local_config=False,
 						env=env)
 					if options.without_mask:
 						dep_settings.pmaskdict.clear()
 					arch_caches[prof.sub_path] = dep_settings
-					while True:
-						try:
-							# Protect ACCEPT_KEYWORDS from config.regenerate()
-							# (just in case)
-							dep_settings.incrementals.remove("ACCEPT_KEYWORDS")
-						except ValueError:
-							break
 
 				xmatch_cache_key = (prof.sub_path, tuple(groups))
 				xcache = arch_xmatch_caches.get(xmatch_cache_key)
@@ -1773,7 +1769,7 @@ for x in scanlist:
 					arch_xmatch_caches[xmatch_cache_key] = xcache
 
 				trees["/"]["porttree"].settings = dep_settings
-				portdb.mysettings = dep_settings
+				portdb.settings = dep_settings
 				portdb.xcache = xcache
 				# for package.use.mask support inside dep_check
 				dep_settings.setcpv(pkg)
