@@ -212,6 +212,7 @@ def vercmp(ver1, ver2, silent=1):
 			r3 = 0
 	else:
 		r1 = 0
+		r3 = 0
 	if match2.group(10):
 		if match2.group(10)[0] == '0' and '.' in match2.group(10):
 			t = match2.group(10)[1:].split(".")
@@ -222,6 +223,7 @@ def vercmp(ver1, ver2, silent=1):
 			r4 = 0
 	else:
 		r2 = 0
+		r4 = 0
 	if r1 == r2 and (r3 != 0 or r4 != 0):
 		r1 = r3
 		r2 = r4
