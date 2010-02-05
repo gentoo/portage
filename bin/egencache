@@ -144,7 +144,7 @@ class GenCache(object):
 			consumer=self._metadata_callback,
 			max_jobs=max_jobs, max_load=max_load)
 		self.returncode = os.EX_OK
-		metadbmodule = portdb.mysettings.load_best_module("portdbapi.metadbmodule")
+		metadbmodule = portdb.settings.load_best_module("portdbapi.metadbmodule")
 		self._trg_cache = metadbmodule(portdb.porttrees[0],
 			"metadata/cache", portage.auxdbkeys[:])
 		if rsync:
