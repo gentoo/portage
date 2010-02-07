@@ -32,7 +32,6 @@ try:
 except ImportError:
 	from urllib import urlopen as urllib_request_urlopen
 
-from io import StringIO
 from itertools import chain
 from stat import S_ISDIR, ST_CTIME
 
@@ -49,6 +48,7 @@ portage._disable_legacy_globals()
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+from portage import StringIO
 
 try:
 	from repoman.checks import run_checks
