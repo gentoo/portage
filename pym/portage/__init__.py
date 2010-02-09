@@ -1468,7 +1468,7 @@ class config(object):
 
 	# misc variables inherited from the calling environment
 	_environ_filter += [
-		"INFOPATH", "MANPATH",
+		"INFOPATH", "MANPATH", "USER",
 	]
 
 	# variables that break bash
