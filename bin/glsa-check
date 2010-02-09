@@ -178,7 +178,7 @@ def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr):
 				fd1.write("... ")
 		else:
 			for pkg in myglsa.packages:
-				mylist = vardb.match(portage.dep_getkey(str(pkg)))
+				mylist = vardb.match(pkg)
 				if len(mylist) > 0:
 					pkg = color(" ".join(mylist))
 				fd1.write(" " + pkg + " ")
@@ -228,12 +228,12 @@ if mode in ["dump", "fix", "inject", "pretend"]:
 				sys.stdout.write("The following updates will be performed for this GLSA:\n")
 				for pkg in mergelist:
 					oldver = None
-					for x in vardb.match(portage.dep_getkey(pkg)):
+					for x in vardb.match(portage.cpv_getkey(pkg)):
 						if vardb.aux_get(x, ["SLOT"]) == portdb.aux_get(pkg, ["SLOT"]):
 							oldver = x
 					if oldver == None:
 						raise ValueError("could not find old version for package %s" % pkg)
-					oldver = oldver[len(portage.dep_getkey(oldver))+1:]
+					oldver = oldver[len(portage.cpv_getkey(oldver))+1:]
 					sys.stdout.write("     " + pkg + " (" + oldver + ")\n")
 			else:
 				sys.stdout.write("Nothing to do for this GLSA\n")
