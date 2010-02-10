@@ -1758,6 +1758,10 @@ for x in scanlist:
 					if options.without_mask:
 						dep_settings.pmaskdict.clear()
 					arch_caches[prof.sub_path] = dep_settings
+					# Protect ACCEPT_KEYWORDS from config.regenerate()
+					# (just in case)
+					dep_settings.incrementals = tuple(v for v in \
+						dep_settings.incrementals if v != 'ACCEPT_KEYWORDS')
 
 				xmatch_cache_key = (prof.sub_path, tuple(groups))
 				xcache = arch_xmatch_caches.get(xmatch_cache_key)
