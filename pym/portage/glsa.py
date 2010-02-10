@@ -11,6 +11,7 @@ except ImportError:
 import re
 import xml.dom.minidom
 
+import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
@@ -551,6 +552,13 @@ class Glsa:
 		self.packages = {}
 		for p in self.affected.getElementsByTagName("package"):
 			name = p.getAttribute("name")
+			try:
+				name = portage.dep.Atom(name)
+			except portage.exception.InvalidAtom:
+				raise GlsaFormatException(_("invalid package name: %s") % name)
+			if name != name.cp:
+				raise GlsaFormatException(_("invalid package name: %s") % name)
+			name = name.cp
 			if name not in self.packages:
 				self.packages[name] = []
 			tmp = {}

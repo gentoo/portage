@@ -15,7 +15,7 @@ def create_world_atom(pkg, args_set, root_config):
 	arg_atom = args_set.findAtomForPackage(pkg)
 	if not arg_atom:
 		return None
-	cp = portage.dep_getkey(arg_atom)
+	cp = arg_atom.cp
 	new_world_atom = cp
 	sets = root_config.sets
 	portdb = root_config.trees["porttree"].dbapi
@@ -76,15 +76,14 @@ def create_world_atom(pkg, args_set, root_config):
 		# can't be safely excluded from world if they are slotted.
 		system_atom = sets["system"].findAtomForPackage(pkg)
 		if system_atom:
-			if not portage.dep_getkey(system_atom).startswith("virtual/"):
+			if not system_atom.cp.startswith("virtual/"):
 				return None
 			# System virtuals aren't safe to exclude from world since they can
 			# match multiple old-style virtuals but only one of them will be
 			# pulled in by update or depclean.
-			providers = portdb.settings.getvirtuals().get(
-				portage.dep_getkey(system_atom))
+			providers = portdb.settings.getvirtuals().get(system_atom.cp)
 			if providers and len(providers) == 1 and \
-				portage.dep_getkey(providers[0]) == cp:
+				providers[0].cp == arg_atom.cp:
 				return None
 	return new_world_atom
 

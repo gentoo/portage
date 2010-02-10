@@ -32,7 +32,6 @@ try:
 except ImportError:
 	from urllib import urlopen as urllib_request_urlopen
 
-from io import StringIO
 from itertools import chain
 from stat import S_ISDIR, ST_CTIME
 
@@ -53,6 +52,7 @@ portage._disable_legacy_globals()
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+from portage import StringIO
 
 from repoman.checks import run_checks
 from repoman import utilities
@@ -677,7 +677,7 @@ repoman_settings.backup_changes('PORTAGE_ARCHLIST')
 global_pmasklines = portage.util.stack_lists(global_pmasklines, incremental=1)
 global_pmaskdict = {}
 for x in global_pmasklines:
-	global_pmaskdict.setdefault(portage.dep_getkey(x), []).append(x)
+	global_pmaskdict.setdefault(x.cp, []).append(x)
 del global_pmasklines
 
 def has_global_mask(pkg):
@@ -1396,14 +1396,25 @@ for x in scanlist:
 					"%s: '%s' found in thirdpartymirrors" % \
 					(relative_path, mirror))
 
+		provide = portage.flatten(portage.dep.use_reduce(
+			portage.dep.paren_reduce(pkg.metadata['PROVIDE']), matchall=1))
+		provide_cps = []
+
 		# The Package class automatically evaluates USE conditionals.
-		for myprovide in portage.flatten(portage.dep.use_reduce(
-			portage.dep.paren_reduce(pkg.metadata['PROVIDE']), matchall=1)):
-			prov_cp = portage.dep_getkey(myprovide)
+		for myprovide in provide:
+			try:
+				myprovide = portage.dep.Atom(myprovide)
+			except portage.exception.InvalidAtom:
+				stats["PROVIDE.syntax"] = stats["PROVIDE.syntax"] + 1
+				fails["PROVIDE.syntax"].append("%s: %s" % \
+					(relative_path, myprovide))
+				continue
+			prov_cp = myprovide.cp
+			provide_cps.append(prov_cp)
 			if prov_cp != myprovide:
 				stats["virtual.versioned"]+=1
 				fails["virtual.versioned"].append(x+"/"+y+".ebuild: "+myprovide)
-			prov_pkg = portage.dep_getkey(
+			prov_pkg = portage.cpv_getkey(
 				portage.best(portdb.xmatch("match-all", prov_cp)))
 			if prov_cp == prov_pkg:
 				stats["virtual.exists"]+=1
@@ -1584,12 +1595,12 @@ for x in scanlist:
 						if mytype == "DEPEND" and \
 							not is_blocker and \
 							not inherited_java_eclass and \
-							portage.dep_getkey(atom) == "virtual/jdk":
+							atom.cp == "virtual/jdk":
 							stats['java.eclassesnotused'] += 1
 							fails['java.eclassesnotused'].append(relative_path)
 						elif mytype in ("PDEPEND", "RDEPEND"):
 							if not is_blocker and \
-								portage.dep_getkey(atom) in suspect_rdepend:
+								atom.cp in suspect_rdepend:
 								stats[mytype + '.suspect'] += 1
 								fails[mytype + '.suspect'].append(
 									relative_path + ": '%s'" % atom)
@@ -1781,8 +1792,7 @@ for x in scanlist:
 				# just in case, prevent config.reset() from nuking these.
 				dep_settings.backup_changes("ACCEPT_KEYWORDS")
 
-				for myprovide in myaux["PROVIDE"].split():
-					prov_cp = portage.dep_getkey(myprovide)
+				for prov_cp in provide_cps:
 					if prov_cp not in dep_settings.getvirtuals():
 						stats["virtual.unavailable"]+=1
 						fails["virtual.unavailable"].append("%s: %s(%s) %s" % \

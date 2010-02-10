@@ -452,6 +452,18 @@ class portdbapi(dbapi):
 			return self.treemap[repository_id]
 		return None
 
+	def getRepositoryName(self, canonical_repo_path):
+		"""
+		This is the inverse of getRepositoryPath().
+		@param canonical_repo_path: the canonical path of a repository, as
+			resolved by os.path.realpath()
+		@type canonical_repo_path: String
+		@returns: The repo_name for the corresponding repository, or None
+			if the path does not correspond a known repository
+		@rtype: String or None
+		"""
+		return self._repository_map.get(canonical_repo_path)
+
 	def getRepositories(self):
 		"""
 		This function is required for GLEP 42 compliance; it will return a list of
@@ -889,10 +901,12 @@ class portdbapi(dbapi):
 		else:
 			return 0
 
-	def cp_all(self):
+	def cp_all(self, categories=None):
 		"returns a list of all keys in our tree"
 		d = {}
-		for x in self.settings.categories:
+		if categories is None:
+			categories = self.settings.categories
+		for x in categories:
 			for oroot in self.porttrees:
 				for y in listdir(oroot+"/"+x, EmptyOnError=1, ignorecvs=1, dirsonly=1):
 					if not self._pkg_dir_name_re.match(y) or \
