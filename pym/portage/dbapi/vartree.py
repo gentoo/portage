@@ -3454,9 +3454,8 @@ class dblink(object):
 					# in a totally undefined state, hence we just bleed
 					# like hell and continue to hopefully finish all our
 					# administrative and pkg_postinst stuff.
-					showMessage(colorize("WARN", _("WARNING:"))
-							+ " Could not chmod or unlink %s: %s\n" % (file_name, ose),
-							level=logging.WARN, noiselevel=-1)
+					self._eerror("postrm", 
+						"Could not chmod or unlink '%s': %s\n" % (file_name, ose))
 				finally:
 					if bsd_chflags and pflags != 0:
 						# Restore the parent flags we saved before unlinking
