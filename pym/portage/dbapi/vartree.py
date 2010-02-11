@@ -2454,6 +2454,18 @@ class dblink(object):
 						# suid/sgid files are rendered harmless.
 						os.chmod(file_name, 0)
 					os.unlink(file_name)
+				except OSError as ose:
+					# If the chmod or unlink fails, you are in trouble.
+					# With Prefix this can be because the file is owned
+					# by someone else (a screwup by root?), on a normal
+					# system maybe filesystem corruption.  In any case,
+					# if we backtrace and die here, we leave the system
+					# in a totally undefined state, hence we just bleed
+					# like hell and continue to hopefully finish all our
+					# administrative and pkg_postinst stuff.
+					showMessage(colorize("WARN", _("WARNING:"))
+							+ " Could not chmod or unlink %s: %s\n" % (file_name, ose),
+							level=logging.WARN, noiselevel=-1)
 				finally:
 					if bsd_chflags and pflags != 0:
 						# Restore the parent flags we saved before unlinking
