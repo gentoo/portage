@@ -9198,8 +9198,13 @@ def create_trees(config_root=None, target_root=None, trees=None):
 
 		# When ROOT != "/" we only want overrides from the calling
 		# environment to apply to the config that's associated
-		# with ROOT != "/", so pass an empty dict for the env parameter.
-		settings = config(config_root=None, target_root="/", env={})
+		# with ROOT != "/", so pass a nearly empty dict for the env parameter.
+		clean_env = {}
+		for k in ('PATH', 'TERM'):
+			v = settings.get(k)
+			if v is not None:
+				clean_env[k] = v
+		settings = config(config_root=None, target_root="/", env=clean_env)
 		settings.lock()
 		myroots.append((settings["ROOT"], settings))
 
