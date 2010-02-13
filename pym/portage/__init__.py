@@ -1365,9 +1365,6 @@ class config(object):
 	virtuals ...etc you look in here.
 	"""
 
-	# Don't include anything that could be extremely long here (like SRC_URI)
-	# since that could cause execve() calls to fail with E2BIG errors. For
-	# example, see bug #262647.
 	_setcpv_aux_keys = ('SLOT', 'RESTRICT', 'LICENSE',
 		'KEYWORDS',  'INHERITED', 'IUSE', 'PROVIDE', 'EAPI',
 		'PROPERTIES', 'DEFINED_PHASES', 'repository')
@@ -1465,6 +1462,13 @@ class config(object):
 	# Filter selected variables in the config.environ() method so that
 	# they don't needlessly propagate down into the ebuild environment.
 	_environ_filter = []
+
+	# Exclude anything that could be extremely long here (like SRC_URI)
+	# since that could cause execve() calls to fail with E2BIG errors. For
+	# example, see bug #262647.
+	_environ_filter += [
+		'DEPEND', 'RDEPEND', 'PDEPEND', 'SRC_URI',
+	]
 
 	# misc variables inherited from the calling environment
 	_environ_filter += [
