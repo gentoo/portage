@@ -5872,6 +5872,7 @@ def _post_src_install_chost_fix(settings):
 
 _vdb_use_conditional_keys = ('DEPEND', 'LICENSE', 'PDEPEND',
 	'PROPERTIES', 'PROVIDE', 'RDEPEND', 'RESTRICT',)
+_vdb_use_conditional_atoms = frozenset(['DEPEND', 'PDEPEND', 'RDEPEND'])
 
 def _post_src_install_uid_fix(mysettings, out=None):
 	"""
@@ -5994,6 +5995,16 @@ def _post_src_install_uid_fix(mysettings, out=None):
 		v = dep.paren_enclose(v)
 		if not v:
 			continue
+		if v in _vdb_use_conditional_atoms:
+			v_split = []
+			for x in v.split():
+				try:
+					x = dep.Atom(x)
+				except exception.InvalidAtom:
+					v_split.append(x)
+				else:
+					v_split.append(str(x.evaluate_conditionals(use)))
+			v = ' '.join(v_split)
 		codecs.open(_unicode_encode(os.path.join(build_info_dir,
 			k), encoding=_encodings['fs'], errors='strict'),
 			mode='w', encoding=_encodings['repo.content'],
