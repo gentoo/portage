@@ -63,10 +63,11 @@ class EbuildBuildDir(SlotObject):
 	def clean_log(self):
 		"""Discard existing log."""
 		settings = self.settings
-
-		for x in ('.logid', 'temp/build.log'):
+		log_file = settings.get('PORTAGE_LOG_FILE')
+		if log_file is not None and os.path.isfile(log_file):
+			# Truncate rather than unlink, so tail -f still works.
 			try:
-				os.unlink(os.path.join(settings["PORTAGE_BUILDDIR"], x))
+				open(log_file, 'wb')
 			except OSError:
 				pass
 
