@@ -3242,8 +3242,9 @@ class config(object):
 						(" ".join(accept_chost), e), noiselevel=-1)
 					self._accept_chost_re = re.compile("^$")
 
-		return self._accept_chost_re.match(
-			metadata.get('CHOST', '')) is not None
+		pkg_chost = metadata.get('CHOST', '')
+		return not pkg_chost or \
+			self._accept_chost_re.match(pkg_chost) is not None
 
 	def setinst(self,mycpv,mydbapi):
 		"""This updates the preferences for old-style virtuals,
