@@ -5865,6 +5865,9 @@ def _post_src_install_chost_fix(settings):
 	CHOST variable, so revert it to the initial
 	setting.
 	"""
+	if settings.get('CATEGORY') == 'virtual':
+		return
+
 	chost = settings.get('CHOST')
 	if chost:
 		write_atomic(os.path.join(settings['PORTAGE_BUILDDIR'],
