@@ -1367,7 +1367,7 @@ class config(object):
 
 	_setcpv_aux_keys = ('DEFINED_PHASES', 'DEPEND', 'EAPI',
 		'INHERITED', 'IUSE', 'KEYWORDS', 'LICENSE', 'PDEPEND',
-		'PROPERTIES', 'PROVIDE', 'RDEPEND', 'SLOT', 'SRC_URI',
+		'PROPERTIES', 'PROVIDE', 'RDEPEND', 'SLOT',
 		'repository', 'RESTRICT', 'LICENSE',)
 
 	_env_blacklist = [
@@ -5871,7 +5871,7 @@ def _post_src_install_chost_fix(settings):
 			'build-info', 'CHOST'), chost + '\n')
 
 _vdb_use_conditional_keys = ('DEPEND', 'LICENSE', 'PDEPEND',
-	'PROPERTIES', 'PROVIDE', 'RDEPEND', 'RESTRICT', 'SRC_URI')
+	'PROPERTIES', 'PROVIDE', 'RDEPEND', 'RESTRICT',)
 
 def _post_src_install_uid_fix(mysettings, out=None):
 	"""
