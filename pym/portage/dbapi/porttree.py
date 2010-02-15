@@ -901,13 +901,22 @@ class portdbapi(dbapi):
 		else:
 			return 0
 
-	def cp_all(self, categories=None):
-		"returns a list of all keys in our tree"
+	def cp_all(self, categories=None, trees=None):
+		"""
+		This returns a list of all keys in our tree or trees
+		@param categories: optional list of categories to search or 
+			defaults to self.settings.categories
+		@param trees: optional list of trees to search the categories in or
+			defaults to self.porttrees
+		@rtype list of [cat/pkg,...]
+		"""
 		d = {}
 		if categories is None:
 			categories = self.settings.categories
+		if trees is None:
+			trees = self.porttrees
 		for x in categories:
-			for oroot in self.porttrees:
+			for oroot in trees:
 				for y in listdir(oroot+"/"+x, EmptyOnError=1, ignorecvs=1, dirsonly=1):
 					if not self._pkg_dir_name_re.match(y) or \
 						y == "CVS":
