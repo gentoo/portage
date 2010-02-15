@@ -4249,7 +4249,7 @@ def _spawn_fetch(settings, args, **kwargs):
 		if args[0] != BASH_BINARY:
 			args = [BASH_BINARY, "-c", "exec \"$@\"", args[0]] + args
 
-	rval = spawn_func(args, env=dict(iter(settings.items())), **kwargs)
+	rval = spawn_func(args, env=settings.environ(), **kwargs)
 
 	return rval
 
