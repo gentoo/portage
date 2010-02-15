@@ -5988,6 +5988,11 @@ def _post_src_install_uid_fix(mysettings, out=None):
 		'w', encoding=_encodings['repo.content'],
 		errors='strict').write(str(size) + '\n')
 
+	codecs.open(_unicode_encode(os.path.join(build_info_dir,
+		'BUILD_TIME'), encoding=_encodings['fs'], errors='strict'),
+		'w', encoding=_encodings['repo.content'],
+		errors='strict').write(str(int(time.time())) + '\n')
+
 	use = frozenset(mysettings['PORTAGE_USE'].split())
 	for k in _vdb_use_conditional_keys:
 		v = mysettings.configdict['pkg'].get(k)
