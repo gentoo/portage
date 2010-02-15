@@ -49,7 +49,7 @@ class bindbapi(fakedbapi):
 		self.cpdict={}
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
-			["CHOST", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
+			["BUILD_TIME", "CHOST", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
 			"LICENSE", "PDEPEND", "PROPERTIES", "PROVIDE",
 			"RDEPEND", "repository", "RESTRICT", "SLOT", "USE"])
 		self._aux_cache_slot_dict = slot_dict_class(self._aux_cache_keys)
@@ -187,7 +187,7 @@ class binarytree(object):
 			self._pkgindex_keys = self.dbapi._aux_cache_keys.copy()
 			self._pkgindex_keys.update(["CPV", "MTIME", "SIZE"])
 			self._pkgindex_aux_keys = \
-				["CHOST", "DEPEND", "DESCRIPTION", "EAPI",
+				["BUILD_TIME", "CHOST", "DEPEND", "DESCRIPTION", "EAPI",
 				"IUSE", "KEYWORDS", "LICENSE", "PDEPEND", "PROPERTIES",
 				"PROVIDE", "RDEPEND", "repository", "SLOT", "USE"]
 			self._pkgindex_aux_keys = list(self._pkgindex_aux_keys)
@@ -200,6 +200,7 @@ class binarytree(object):
 				"CHOST", "CONFIG_PROTECT", "CONFIG_PROTECT_MASK", "FEATURES",
 				"GENTOO_MIRRORS", "INSTALL_MASK", "SYNC", "USE"])
 			self._pkgindex_default_pkg_data = {
+				"BUILD_TIME"         : "",
 				"DEPEND"  : "",
 				"EAPI"    : "0",
 				"IUSE"    : "",
