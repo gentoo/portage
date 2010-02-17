@@ -229,11 +229,6 @@ class _dynamic_depgraph_config(object):
 				]["vartree"].dbapi._aux_cache_keys)
 			dbs.append((vardb, "installed", True, True, db_keys))
 			self._filtered_trees[myroot]["dbs"] = dbs
-			if "--usepkg" in depgraph._frozen_config.myopts:
-				depgraph._frozen_config._trees_orig[myroot
-					]["bintree"].populate(
-					"--getbinpkg" in depgraph._frozen_config.myopts,
-					"--getbinpkgonly" in depgraph._frozen_config.myopts)
 
 class depgraph(object):
 

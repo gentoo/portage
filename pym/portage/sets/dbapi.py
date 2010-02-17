@@ -21,7 +21,7 @@ class EverythingSet(PackageSet):
 		"atoms to match all installed packages"
 	_filter = None
 
-	def __init__(self, vdbapi):
+	def __init__(self, vdbapi, **kwargs):
 		super(EverythingSet, self).__init__()
 		self._db = vdbapi
 
@@ -311,5 +311,28 @@ class AgeSet(EverythingSet):
 		except ValueError as e:
 			raise SetConfigError(_("value of option 'age' is not an integer"))
 		return AgeSet(vardb=trees["vartree"].dbapi, mode=mode, age=age)
+
+	singleBuilder = classmethod(singleBuilder)
+
+class RebuiltBinaries(EverythingSet):
+	_operations = ('merge',)
+	_aux_keys = ('BUILD_TIME',)
+
+	def __init__(self, vardb, bindb=None):
+		super(RebuiltBinaries, self).__init__(vardb, bindb=bindb)
+		self._bindb = bindb
+
+	def _filter(self, atom):
+		cpv = self._db.match(atom)[0]
+		inst_build_time, = self._db.aux_get(cpv, self._aux_keys)
+		try:
+			bin_build_time, = self._bindb.aux_get(cpv, self._aux_keys)
+		except KeyError:
+			return False
+		return inst_build_time != bin_build_time
+
+	def singleBuilder(cls, options, settings, trees):
+		return RebuiltBinaries(trees["vartree"].dbapi,
+			bindb=trees["bintree"].dbapi)
 
 	singleBuilder = classmethod(singleBuilder)
