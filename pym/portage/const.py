@@ -71,6 +71,7 @@ REPO_NAME_FILE           = "repo_name"
 REPO_NAME_LOC            = "profiles" + "/" + REPO_NAME_FILE
 
 PORTAGE_PACKAGE_ATOM     = "sys-apps/portage"
+LIBC_PACKAGE_ATOM        = "virtual/libc"
 
 INCREMENTALS             = ("USE", "USE_EXPAND", "USE_EXPAND_HIDDEN",
                            "FEATURES", "ACCEPT_KEYWORDS",
