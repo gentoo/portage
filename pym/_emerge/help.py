@@ -510,8 +510,9 @@ def help(myopts, havecolor=1):
 		desc = "Replace installed packages with binary packages that have " + \
 			"been rebuilt. Rebuilds are detected by comparison of " + \
 			"BUILD_TIME package metadata. This option is enabled " + \
-			"automatically when using binary packages (see " + \
-			"--usepkg and --getbinpkg)."
+			"automatically when using binary packages " + \
+			"(--usepkg or --getbinpkg) together with " + \
+			"--update and --deep."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
