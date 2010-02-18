@@ -2630,8 +2630,7 @@ class depgraph(object):
 					elif pkg.built:
 						built_pkg = pkg
 				if built_pkg is not None and inst_pkg is not None:
-					if built_pkg >= inst_pkg and \
-						built_pkg.metadata['BUILD_TIME'] != \
+					if built_pkg.metadata['BUILD_TIME'] != \
 						inst_pkg.metadata['BUILD_TIME']:
 						return built_pkg, built_pkg
 
