@@ -125,9 +125,8 @@ class dispatch:
             diffutils = vardb.match('sys-apps/diffutils')
             if diffutils:
                 diffutils = diffutils[0]
-                diffutils_split = portage.catpkgsplit(diffutils)[1:]
-                if portage.vercmp(diffutils_split,
-                    portage.pkgsplit('diffutils-2.9')) >= 0:
+                diffutils_ver = '-'.join(portage.catpkgsplit(diffutils)[2:])
+                if portage.vercmp(diffutils_ver, '2.9') >= 0:
                     diffutils_2_9 = True
 
         # config file freezing support
