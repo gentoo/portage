@@ -3673,6 +3673,7 @@ class depgraph(object):
 					# best possible choice, but the current algorithm
 					# is simple and should be near optimal for most
 					# common cases.
+					self._spinner_update()
 					mergeable_parent = False
 					parent_deps = set()
 					for parent in mygraph.parent_nodes(task):
