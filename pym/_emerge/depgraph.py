@@ -2396,6 +2396,9 @@ class depgraph(object):
 		atom_set = InternalPackageSet(initial_atoms=(atom,))
 		existing_node = None
 		myeb = None
+		usepkg = "--usepkg" in self._frozen_config.myopts
+		rebuilt_binaries = usepkg and \
+			self._frozen_config.myopts.get('--rebuilt-binaries') != 'n'
 		usepkgonly = "--usepkgonly" in self._frozen_config.myopts
 		empty = "empty" in self._dynamic_config.myparams
 		selective = "selective" in self._dynamic_config.myparams
@@ -2615,10 +2618,26 @@ class depgraph(object):
 					if pkg.cp == cp]
 				break
 
+		if existing_node is not None and \
+			existing_node in matched_packages:
+			return existing_node, existing_node
+
 		if len(matched_packages) > 1:
+			if rebuilt_binaries:
+				inst_pkg = None
+				built_pkg = None
+				for pkg in matched_packages:
+					if pkg.installed:
+						inst_pkg = pkg
+					elif pkg.built:
+						built_pkg = pkg
+				if built_pkg is not None and inst_pkg is not None:
+					if built_pkg >= inst_pkg and \
+						built_pkg.metadata['BUILD_TIME'] != \
+						inst_pkg.metadata['BUILD_TIME']:
+						return built_pkg, built_pkg
+
 			if avoid_update:
-				if existing_node is not None:
-					return existing_node, existing_node
 				for pkg in matched_packages:
 					if pkg.installed:
 						return pkg, existing_node

@@ -395,6 +395,7 @@ def insert_optional_args(args):
 		'--getbinpkgonly'        : ('n',),
 		'--jobs'       : valid_integers,
 		'--keep-going'           : ('n',),
+		'--rebuilt-binaries'     : ('n',),
 		'--root-deps'  : ('rdeps',),
 		'--select'               : ('n',),
 		'--selective'            : ('n',),
@@ -620,6 +621,13 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices"  : ("True", "n")
 		},
 
+		"--rebuilt-binaries": {
+			"help"     : "replace installed packages with binary " + \
+			             "packages that have been rebuilt",
+			"type"     : "choice",
+			"choices"  : ("True", "n")
+		},
+
 		"--root": {
 		 "help"   : "specify the target root filesystem for merging packages",
 		 "action" : "store"
@@ -731,6 +739,10 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.keep_going = True
 	else:
 		myoptions.keep_going = None
+
+	if myoptions.rebuilt_binaries in ("True",):
+		# The depgraph will enable this by default unless 'n' is specified.
+		myoptions.rebuilt_binaries = None
 
 	if myoptions.root_deps == "True":
 		myoptions.root_deps = True

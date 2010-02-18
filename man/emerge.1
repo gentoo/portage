@@ -477,6 +477,13 @@ output from portage's displays.
 Redirect all build output to logs alone, and do not
 display it on stdout.
 .TP
+.BR "\-\-rebuilt\-binaries[=n]"
+Replace installed packages with binary packages that have
+been rebuilt. Rebuilds are detected by comparison of
+BUILD_TIME package metadata. This option is enabled
+automatically when using binary packages (see
+\fB\-\-usepkg\fR and \fB\-\-getbinpkg\fR).
+.TP
 .BR "\-\-reinstall changed\-use"
 Tells emerge to include installed packages where USE flags have
 changed since installation.  Unlike \fB\-\-newuse\fR, this option does
