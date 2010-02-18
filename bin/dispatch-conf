@@ -117,7 +117,6 @@ class dispatch:
                         "use-rcs=yes in config; fatal', file=sys.stderr)
                     return False
 
-        merge_cmd = self.options.get("merge", "").split()
 
         # config file freezing support
         frozen_files = set(self.options.get("frozen-files", "").split())
