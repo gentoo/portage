@@ -3680,7 +3680,7 @@ class config(object):
 	def has_key(self,mykey):
 		warnings.warn("portage.config.has_key() is deprecated, "
 			"use the in operator instead",
-			DeprecationWarning)
+			DeprecationWarning, stacklevel=2)
 		return mykey in self
 
 	def __contains__(self, mykey):
@@ -8461,7 +8461,7 @@ def cpv_getkey(mycpv):
 		return mysplit[0] + '/' + mysplit[1]
 
 	warnings.warn("portage.cpv_getkey() called with invalid cpv: '%s'" \
-		% (mycpv,), DeprecationWarning)
+		% (mycpv,), DeprecationWarning, stacklevel=2)
 
 	myslash = mycpv.split("/", 1)
 	mysplit = versions._pkgsplit(myslash[-1])
