@@ -3264,8 +3264,9 @@ class config(object):
 						(" ".join(accept_chost), e), noiselevel=-1)
 					self._accept_chost_re = re.compile("^$")
 
-		return self._accept_chost_re.match(
-			metadata.get('CHOST', '')) is not None
+		pkg_chost = metadata.get('CHOST', '')
+		return not pkg_chost or \
+			self._accept_chost_re.match(pkg_chost) is not None
 
 	def setinst(self,mycpv,mydbapi):
 		"""This updates the preferences for old-style virtuals,
@@ -4264,7 +4265,7 @@ def _spawn_fetch(settings, args, **kwargs):
 		if args[0] != BASH_BINARY:
 			args = [BASH_BINARY, "-c", "exec \"$@\"", args[0]] + args
 
-	rval = spawn_func(args, env=dict(iter(settings.items())), **kwargs)
+	rval = spawn_func(args, env=settings.environ(), **kwargs)
 
 	return rval
 
@@ -5883,6 +5884,9 @@ def _post_src_install_chost_fix(settings):
 	CHOST variable, so revert it to the initial
 	setting.
 	"""
+	if settings.get('CATEGORY') == 'virtual':
+		return
+
 	chost = settings.get('CHOST')
 	if chost:
 		write_atomic(os.path.join(settings['PORTAGE_BUILDDIR'],
@@ -5890,6 +5894,7 @@ def _post_src_install_chost_fix(settings):
 
 _vdb_use_conditional_keys = ('DEPEND', 'LICENSE', 'PDEPEND',
 	'PROPERTIES', 'PROVIDE', 'RDEPEND', 'RESTRICT',)
+_vdb_use_conditional_atoms = frozenset(['DEPEND', 'PDEPEND', 'RDEPEND'])
 
 def _post_src_install_uid_fix(mysettings, out=None):
 	"""
@@ -6001,6 +6006,11 @@ def _post_src_install_uid_fix(mysettings, out=None):
 		'w', encoding=_encodings['repo.content'],
 		errors='strict').write(str(size) + '\n')
 
+	codecs.open(_unicode_encode(os.path.join(build_info_dir,
+		'BUILD_TIME'), encoding=_encodings['fs'], errors='strict'),
+		'w', encoding=_encodings['repo.content'],
+		errors='strict').write(str(int(time.time())) + '\n')
+
 	use = frozenset(mysettings['PORTAGE_USE'].split())
 	for k in _vdb_use_conditional_keys:
 		v = mysettings.configdict['pkg'].get(k)
@@ -6012,6 +6022,16 @@ def _post_src_install_uid_fix(mysettings, out=None):
 		v = dep.paren_enclose(v)
 		if not v:
 			continue
+		if v in _vdb_use_conditional_atoms:
+			v_split = []
+			for x in v.split():
+				try:
+					x = dep.Atom(x)
+				except exception.InvalidAtom:
+					v_split.append(x)
+				else:
+					v_split.append(str(x.evaluate_conditionals(use)))
+			v = ' '.join(v_split)
 		codecs.open(_unicode_encode(os.path.join(build_info_dir,
 			k), encoding=_encodings['fs'], errors='strict'),
 			mode='w', encoding=_encodings['repo.content'],

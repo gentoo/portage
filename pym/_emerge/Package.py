@@ -28,7 +28,7 @@ class Package(Task):
 	("_use",)
 
 	metadata_keys = [
-		"CHOST", "COUNTER", "DEPEND", "EAPI",
+		"BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "EAPI",
 		"INHERITED", "IUSE", "KEYWORDS",
 		"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
 		"repository", "PROPERTIES", "RESTRICT", "SLOT", "USE", "_mtime_",

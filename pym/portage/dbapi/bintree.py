@@ -50,7 +50,7 @@ class bindbapi(fakedbapi):
 		self.cpdict={}
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
-			["CHOST", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
+			["BUILD_TIME", "CHOST", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
 			"LICENSE", "PDEPEND", "PROPERTIES", "PROVIDE",
 			"RDEPEND", "repository", "RESTRICT", "SLOT", "USE",
 			"EPREFIX"])
@@ -189,7 +189,7 @@ class binarytree(object):
 			self._pkgindex_keys = self.dbapi._aux_cache_keys.copy()
 			self._pkgindex_keys.update(["CPV", "MTIME", "SIZE"])
 			self._pkgindex_aux_keys = \
-				["CHOST", "DEPEND", "DESCRIPTION", "EAPI",
+				["BUILD_TIME", "CHOST", "DEPEND", "DESCRIPTION", "EAPI",
 				"IUSE", "KEYWORDS", "LICENSE", "PDEPEND", "PROPERTIES",
 				"PROVIDE", "RDEPEND", "repository", "SLOT", "USE",
 				"EPREFIX"]
@@ -203,6 +203,7 @@ class binarytree(object):
 				"CHOST", "CONFIG_PROTECT", "CONFIG_PROTECT_MASK", "FEATURES",
 				"GENTOO_MIRRORS", "INSTALL_MASK", "SYNC", "USE", "EPREFIX"])
 			self._pkgindex_default_pkg_data = {
+				"BUILD_TIME"         : "",
 				"DEPEND"  : "",
 				"EAPI"    : "0",
 				"IUSE"    : "",
@@ -1052,6 +1053,16 @@ class binarytree(object):
 				writemsg("%s: %s\n" % (k, str(e)),
 					noiselevel=-1)
 				raise
+			if k in portage._vdb_use_conditional_atoms:
+				v_split = []
+				for x in deps.split():
+					try:
+						x = portage.dep.Atom(x)
+					except portage.exception.InvalidAtom:
+						v_split.append(x)
+					else:
+						v_split.append(str(x.evaluate_conditionals(raw_use)))
+				deps = ' '.join(v_split)
 			metadata[k] = deps
 
 	def exists_specific(self, cpv):
