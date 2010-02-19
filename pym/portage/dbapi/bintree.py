@@ -32,6 +32,7 @@ import errno
 import re
 import stat
 import sys
+import warnings
 from itertools import chain
 
 if sys.hexversion >= 0x3000000:
@@ -443,8 +444,15 @@ class binarytree(object):
 		_movefile(src_path, dest_path, mysettings=self.settings)
 		self._pkg_paths[cpv] = mypath
 
-	def populate(self, getbinpkgs=0, getbinpkgsonly=0):
+	def populate(self, getbinpkgs=0, getbinpkgsonly=None):
 		"populates the binarytree"
+
+		if getbinpkgsonly is not None:
+			warnings.warn(
+				"portage.dbapi.bintree.binarytree.populate(): " + \
+				"getbinpkgsonly parameter is deprecated",
+				DeprecationWarning)
+
 		if self._populating:
 			return
 		from portage.locks import lockfile, unlockfile
@@ -454,13 +462,13 @@ class binarytree(object):
 				pkgindex_lock = lockfile(self._pkgindex_file,
 					wantnewlockfile=1)
 			self._populating = True
-			self._populate(getbinpkgs, getbinpkgsonly)
+			self._populate(getbinpkgs)
 		finally:
 			if pkgindex_lock:
 				unlockfile(pkgindex_lock)
 			self._populating = False
 
-	def _populate(self, getbinpkgs=0, getbinpkgsonly=0):
+	def _populate(self, getbinpkgs=0):
 		if (not os.path.isdir(self.pkgdir) and not getbinpkgs):
 			return 0
 
