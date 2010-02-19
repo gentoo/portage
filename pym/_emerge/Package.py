@@ -7,7 +7,7 @@ import sys
 from itertools import chain
 import portage
 from portage.cache.mappings import slot_dict_class
-from portage.dep import paren_reduce, use_reduce, \
+from portage.dep import isvalidatom, paren_reduce, use_reduce, \
 	paren_normalize, paren_enclose, _slot_re
 from _emerge.Task import Task
 
@@ -289,9 +289,15 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 			getattr(self, "_set_" + k.lower())(k, v)
 		elif k in self._use_conditional_keys:
 			try:
-				use_reduce(paren_reduce(v), matchall=1)
+				reduced = use_reduce(paren_reduce(v), matchall=1)
 			except portage.exception.InvalidDependString as e:
 				self._pkg._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
+			else:
+				if reduced and k == 'PROVIDE':
+					for x in portage.flatten(reduced):
+						if not isvalidatom(x):
+							self._pkg._invalid_metadata(k + ".syntax",
+								"%s: %s" % (k, x))
 
 	def _set_inherited(self, k, v):
 		if isinstance(v, basestring):
