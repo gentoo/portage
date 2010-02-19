@@ -396,6 +396,7 @@ def insert_optional_args(args):
 		'--getbinpkgonly'        : ('n',),
 		'--jobs'       : valid_integers,
 		'--keep-going'           : ('n',),
+		'--rebuilt-binaries'     : ('n',),
 		'--root-deps'  : ('rdeps',),
 		'--select'               : ('n',),
 		'--selective'            : ('n',),
@@ -621,6 +622,13 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices"  : ("True", "n")
 		},
 
+		"--rebuilt-binaries": {
+			"help"     : "replace installed packages with binary " + \
+			             "packages that have been rebuilt",
+			"type"     : "choice",
+			"choices"  : ("True", "n")
+		},
+
 		"--root": {
 		 "help"   : "specify the target root filesystem for merging packages",
 		 "action" : "store"
@@ -732,6 +740,10 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.keep_going = True
 	else:
 		myoptions.keep_going = None
+
+	if myoptions.rebuilt_binaries in ("True",):
+		# The depgraph will enable this by default unless 'n' is specified.
+		myoptions.rebuilt_binaries = None
 
 	if myoptions.root_deps == "True":
 		myoptions.root_deps = True
@@ -1209,10 +1221,43 @@ def emerge_main():
 		config_protect_check(trees)
 	check_procfs()
 
+	if "getbinpkg" in settings.features:
+		myopts["--getbinpkg"] = True
+
+	if "--getbinpkgonly" in myopts:
+		myopts["--getbinpkg"] = True
+
+	if "--getbinpkgonly" in myopts:
+		myopts["--usepkgonly"] = True
+
+	if "--getbinpkg" in myopts:
+		myopts["--usepkg"] = True
+
+	if "--usepkgonly" in myopts:
+		myopts["--usepkg"] = True
+
+	if "buildpkg" in settings.features or "--buildpkgonly" in myopts:
+		myopts["--buildpkg"] = True
+
+	if "--buildpkgonly" in myopts:
+		# --buildpkgonly will not merge anything, so
+		# it cancels all binary package options.
+		for opt in ("--getbinpkg", "--getbinpkgonly",
+			"--usepkg", "--usepkgonly"):
+			myopts.pop(opt, None)
+
 	for mytrees in trees.values():
 		mydb = mytrees["porttree"].dbapi
 		# Freeze the portdbapi for performance (memoize all xmatch results).
 		mydb.freeze()
+
+		if "--usepkg" in myopts:
+			# Populate the bintree with current --getbinpkg setting.
+			# This needs to happen before expand_set_arguments(), in case
+			# any sets use the bintree.
+			mytrees["bintree"].populate(
+				getbinpkgs="--getbinpkg" in myopts)
+
 	del mytrees, mydb
 
 	if "moo" in myfiles:
@@ -1271,41 +1316,11 @@ def emerge_main():
 		spinner.update = spinner.update_quiet
 		portage.util.noiselimit = -1
 
-	# Always create packages if FEATURES=buildpkg
-	# Imply --buildpkg if --buildpkgonly
-	if ("buildpkg" in settings.features) or ("--buildpkgonly" in myopts):
-		if "--buildpkg" not in myopts:
-			myopts["--buildpkg"] = True
-
-	# Always try and fetch binary packages if FEATURES=getbinpkg
-	if ("getbinpkg" in settings.features):
-		myopts["--getbinpkg"] = True
-
-	if "--buildpkgonly" in myopts:
-		# --buildpkgonly will not merge anything, so
-		# it cancels all binary package options.
-		for opt in ("--getbinpkg", "--getbinpkgonly",
-			"--usepkg", "--usepkgonly"):
-			myopts.pop(opt, None)
-
 	if "--fetch-all-uri" in myopts:
 		myopts["--fetchonly"] = True
 
 	if "--skipfirst" in myopts and "--resume" not in myopts:
 		myopts["--resume"] = True
-
-	if ("--getbinpkgonly" in myopts) and not ("--usepkgonly" in myopts):
-		myopts["--usepkgonly"] = True
-
-	if ("--getbinpkgonly" in myopts) and not ("--getbinpkg" in myopts):
-		myopts["--getbinpkg"] = True
-
-	if ("--getbinpkg" in myopts) and not ("--usepkg" in myopts):
-		myopts["--usepkg"] = True
-
-	# Also allow -K to apply --usepkg/-k
-	if ("--usepkgonly" in myopts) and not ("--usepkg" in myopts):
-		myopts["--usepkg"] = True
 
 	# Allow -p to remove --ask
 	if "--pretend" in myopts:

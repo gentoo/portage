@@ -506,6 +506,15 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
+		print("       "+green("--rebuilt-binaries") + "[=%s]" % turquoise("n"))
+		desc = "Replace installed packages with binary packages that have " + \
+			"been rebuilt. Rebuilds are detected by comparison of " + \
+			"BUILD_TIME package metadata. This option is enabled " + \
+			"automatically when using binary packages (see " + \
+			"--usepkg and --getbinpkg)."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
 		print("       "+green("--reinstall ") + turquoise("changed-use"))
 		print("              Tells emerge to include installed packages where USE flags have")
 		print("              changed since installation.  Unlike --newuse, this option does")

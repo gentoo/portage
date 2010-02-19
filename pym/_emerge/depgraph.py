@@ -229,11 +229,6 @@ class _dynamic_depgraph_config(object):
 				]["vartree"].dbapi._aux_cache_keys)
 			dbs.append((vardb, "installed", True, True, db_keys))
 			self._filtered_trees[myroot]["dbs"] = dbs
-			if "--usepkg" in depgraph._frozen_config.myopts:
-				depgraph._frozen_config._trees_orig[myroot
-					]["bintree"].populate(
-					"--getbinpkg" in depgraph._frozen_config.myopts,
-					"--getbinpkgonly" in depgraph._frozen_config.myopts)
 
 class depgraph(object):
 
@@ -2401,6 +2396,9 @@ class depgraph(object):
 		atom_set = InternalPackageSet(initial_atoms=(atom,))
 		existing_node = None
 		myeb = None
+		usepkg = "--usepkg" in self._frozen_config.myopts
+		rebuilt_binaries = usepkg and \
+			self._frozen_config.myopts.get('--rebuilt-binaries') != 'n'
 		usepkgonly = "--usepkgonly" in self._frozen_config.myopts
 		empty = "empty" in self._dynamic_config.myparams
 		selective = "selective" in self._dynamic_config.myparams
@@ -2620,10 +2618,26 @@ class depgraph(object):
 					if pkg.cp == cp]
 				break
 
+		if existing_node is not None and \
+			existing_node in matched_packages:
+			return existing_node, existing_node
+
 		if len(matched_packages) > 1:
+			if rebuilt_binaries:
+				inst_pkg = None
+				built_pkg = None
+				for pkg in matched_packages:
+					if pkg.installed:
+						inst_pkg = pkg
+					elif pkg.built:
+						built_pkg = pkg
+				if built_pkg is not None and inst_pkg is not None:
+					if built_pkg >= inst_pkg and \
+						built_pkg.metadata['BUILD_TIME'] != \
+						inst_pkg.metadata['BUILD_TIME']:
+						return built_pkg, built_pkg
+
 			if avoid_update:
-				if existing_node is not None:
-					return existing_node, existing_node
 				for pkg in matched_packages:
 					if pkg.installed:
 						return pkg, existing_node
@@ -3335,6 +3349,15 @@ class depgraph(object):
 				runtime_deps.update(atom for atom in atoms \
 					if not atom.blocker)
 
+		# Merge libc asap, in order to account for implicit
+		# dependencies. See bug #303567.
+		libc_pkg = self._dynamic_config.mydbapi[running_root].match_pkgs(
+			portage.const.LIBC_PACKAGE_ATOM)
+		if libc_pkg:
+			libc_pkg = libc_pkg[0]
+			if libc_pkg.operation == 'merge':
+				asap_nodes.append(libc_pkg)
+
 		def gather_deps(ignore_priority, mergeable_nodes,
 			selected_nodes, node):
 			"""
@@ -3523,6 +3546,10 @@ class depgraph(object):
 
 				min_parent_deps = None
 				uninst_task = None
+
+				# FIXME: This loop can be extremely slow when
+				#        there of lots of blockers to solve
+				#        (especially the gather_deps part).
 				for task in myblocker_uninstalls.leaf_nodes():
 					# Do some sanity checks so that system or world packages
 					# don't get uninstalled inappropriately here (only really
@@ -3646,6 +3673,7 @@ class depgraph(object):
 					# best possible choice, but the current algorithm
 					# is simple and should be near optimal for most
 					# common cases.
+					self._spinner_update()
 					mergeable_parent = False
 					parent_deps = set()
 					for parent in mygraph.parent_nodes(task):
