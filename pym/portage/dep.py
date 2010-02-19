@@ -937,9 +937,14 @@ def dep_getkey(mydep):
 		return Atom(mydep).cp
 	except InvalidAtom:
 		try:
-			return Atom('=' + mydep).cp
+			atom = Atom('=' + mydep)
 		except InvalidAtom:
 			pass
+		else:
+			warnings.warn(_("invalid input to %s: '%s', use %s instead") % \
+				('portage.dep.dep_getkey()', mydep, 'portage.cpv_getkey()'),
+				DeprecationWarning)
+			return atom.cp
 
 	# Fall back to legacy code for backward compatibility.
 	warnings.warn(_("%s is deprecated, use %s instead") % \
