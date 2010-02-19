@@ -7774,6 +7774,8 @@ def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None,
 
 def dep_virtual(mysplit, mysettings):
 	"Does virtual dependency conversion"
+	warnings.warn("portage.dep_virtual() is deprecated",
+		DeprecationWarning, stacklevel=2)
 	newsplit=[]
 	myvirtuals = mysettings.getvirtuals()
 	for x in mysplit:
