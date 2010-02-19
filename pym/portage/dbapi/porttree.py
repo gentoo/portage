@@ -1176,7 +1176,7 @@ def close_portdbapi_caches():
 		i.close_caches()
 
 class portagetree(object):
-	def __init__(self, root="/", virtual=None, clone=None, settings=None):
+	def __init__(self, root="/", virtual=None, settings=None):
 		"""
 		Constructor for a PortageTree
 		
@@ -1184,19 +1184,11 @@ class portagetree(object):
 		@type root: String/Path
 		@param virtual: UNUSED
 		@type virtual: No Idea
-		@param clone: Set this if you want a copy of Clone
-		@type clone: Existing portagetree Instance
 		@param settings: Portage Configuration object (portage.settings)
 		@type settings: Instance of portage.config
 		"""
 
-		if clone:
-			writemsg("portagetree.__init__(): deprecated " + \
-				"use of clone parameter\n", noiselevel=-1)
-			self.root = clone.root
-			self.portroot = clone.portroot
-			self.pkglines = clone.pkglines
-		else:
+		if True:
 			self.root = root
 			if settings is None:
 				from portage import settings
