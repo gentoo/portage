@@ -1382,12 +1382,10 @@ class config(object):
 	virtuals ...etc you look in here.
 	"""
 
-	# Don't include anything that could be extremely long here (like SRC_URI)
-	# since that could cause execve() calls to fail with E2BIG errors. For
-	# example, see bug #262647.
-	_setcpv_aux_keys = ('SLOT', 'RESTRICT', 'LICENSE',
-		'KEYWORDS',  'INHERITED', 'IUSE', 'PROVIDE', 'EAPI',
-		'PROPERTIES', 'DEFINED_PHASES', 'repository')
+	_setcpv_aux_keys = ('DEFINED_PHASES', 'DEPEND', 'EAPI',
+		'INHERITED', 'IUSE', 'KEYWORDS', 'LICENSE', 'PDEPEND',
+		'PROPERTIES', 'PROVIDE', 'RDEPEND', 'SLOT',
+		'repository', 'RESTRICT', 'LICENSE',)
 
 	_env_blacklist = [
 		"A", "AA", "CATEGORY", "DEPEND", "DESCRIPTION", "EAPI",
@@ -1485,6 +1483,13 @@ class config(object):
 	# Filter selected variables in the config.environ() method so that
 	# they don't needlessly propagate down into the ebuild environment.
 	_environ_filter = []
+
+	# Exclude anything that could be extremely long here (like SRC_URI)
+	# since that could cause execve() calls to fail with E2BIG errors. For
+	# example, see bug #262647.
+	_environ_filter += [
+		'DEPEND', 'RDEPEND', 'PDEPEND', 'SRC_URI',
+	]
 
 	# misc variables inherited from the calling environment
 	_environ_filter += [
@@ -5883,6 +5888,9 @@ def _post_src_install_chost_fix(settings):
 		write_atomic(os.path.join(settings['PORTAGE_BUILDDIR'],
 			'build-info', 'CHOST'), chost + '\n')
 
+_vdb_use_conditional_keys = ('DEPEND', 'LICENSE', 'PDEPEND',
+	'PROPERTIES', 'PROVIDE', 'RDEPEND', 'RESTRICT',)
+
 def _post_src_install_uid_fix(mysettings, out=None):
 	"""
 	Files in $D with user and group bits that match the "portage"
@@ -5985,8 +5993,29 @@ def _post_src_install_uid_fix(mysettings, out=None):
 		for l in _merge_unicode_error(unicode_errors):
 			eerror(l, phase='install', key=mysettings.mycpv, out=out)
 
-	open(_unicode_encode(os.path.join(mysettings['PORTAGE_BUILDDIR'],
-		'build-info', 'SIZE')), 'w').write(str(size) + '\n')
+	build_info_dir = os.path.join(mysettings['PORTAGE_BUILDDIR'],
+		'build-info')
+
+	codecs.open(_unicode_encode(os.path.join(build_info_dir,
+		'SIZE'), encoding=_encodings['fs'], errors='strict'),
+		'w', encoding=_encodings['repo.content'],
+		errors='strict').write(str(size) + '\n')
+
+	use = frozenset(mysettings['PORTAGE_USE'].split())
+	for k in _vdb_use_conditional_keys:
+		v = mysettings.configdict['pkg'].get(k)
+		if v is None:
+			continue
+		v = dep.paren_reduce(v)
+		v = dep.use_reduce(v, uselist=use)
+		v = dep.paren_normalize(v)
+		v = dep.paren_enclose(v)
+		if not v:
+			continue
+		codecs.open(_unicode_encode(os.path.join(build_info_dir,
+			k), encoding=_encodings['fs'], errors='strict'),
+			mode='w', encoding=_encodings['repo.content'],
+			errors='strict').write(v + '\n')
 
 	if bsd_chflags:
 		# Restore all of the flags saved above.
@@ -9252,8 +9281,13 @@ def create_trees(config_root=None, target_root=None, trees=None):
 
 		# When ROOT != "/" we only want overrides from the calling
 		# environment to apply to the config that's associated
-		# with ROOT != "/", so pass an empty dict for the env parameter.
-		settings = config(config_root=None, target_root="/", env={})
+		# with ROOT != "/", so pass a nearly empty dict for the env parameter.
+		clean_env = {}
+		for k in ('PATH', 'TERM'):
+			v = settings.get(k)
+			if v is not None:
+				clean_env[k] = v
+		settings = config(config_root=None, target_root="/", env=clean_env)
 		settings.lock()
 		myroots.append((settings["ROOT"], settings))
 

@@ -1089,17 +1089,22 @@ dyn_install() {
 	set -f
 	local f x
 	IFS=$' \t\n\r'
-	for f in ASFLAGS CATEGORY CBUILD CC CFLAGS CHOST CTARGET CXX \
-		CXXFLAGS DEFINED_PHASES DEPEND EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
-		FEATURES INHERITED IUSE LDFLAGS LIBCFLAGS LIBCXXFLAGS \
-		LICENSE PDEPEND PF PKGUSE PROPERTIES PROVIDE RDEPEND RESTRICT SLOT \
-		KEYWORDS HOMEPAGE SRC_URI DESCRIPTION; do
+	for f in CATEGORY DEFINED_PHASES FEATURES INHERITED IUSE  \
+		PF PKGUSE SLOT KEYWORDS HOMEPAGE DESCRIPTION ; do
 		x=$(echo -n ${!f})
 		[[ -n $x ]] && echo "$x" > $f
 	done
-	echo "${EPREFIX}"   > EPREFIX
+	if [[ $CATEGORY != virtual ]] ; then
+		for f in ASFLAGS CBUILD CC CFLAGS CHOST CTARGET CXX \
+			CXXFLAGS EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
+			LDFLAGS LIBCFLAGS LIBCXXFLAGS ; do
+			x=$(echo -n ${!f})
+			[[ -n $x ]] && echo "$x" > $f
+		done
+	fi
 	echo "${USE}"       > USE
 	echo "${EAPI:-0}"   > EAPI
+	echo "${EPREFIX}"   > EPREFIX
 	set +f
 
 	# local variables can leak into the saved environment.

@@ -11,6 +11,7 @@ if os.environ.__contains__("PORTAGE_PYTHONPATH"):
 else:
 	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
 import portage
+
 class BinpkgExtractorAsync(SpawnProcess):
 
 	__slots__ = ("image_dir", "pkg", "pkg_path")
@@ -19,10 +20,15 @@ class BinpkgExtractorAsync(SpawnProcess):
 
 	def _start(self):
 		self.args = [self._shell_binary, "-c",
-			"bzip2 -dqc -- %s | tar -xp -C %s -f -" % \
+			("bzip2 -dqc -- %s | tar -xp -C %s -f - ; " + \
+			"p=(${PIPESTATUS[@]}) ; " + \
+			"if [ ${p[0]} != 0 ] ; then " + \
+			"echo bzip2 failed with status ${p[0]} ; exit ${p[0]} ; fi ; " + \
+			"if [ ${p[1]} != 0 ] ; then " + \
+			"echo tar failed with status ${p[1]} ; exit ${p[1]} ; fi ; " + \
+			"exit 0 ;") % \
 			(portage._shell_quote(self.pkg_path),
 			portage._shell_quote(self.image_dir))]
 
-		self.env = self.pkg.root_config.settings.environ()
+		self.env = os.environ.copy()
 		SpawnProcess._start(self)
-

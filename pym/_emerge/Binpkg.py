@@ -22,6 +22,7 @@ if os.environ.__contains__("PORTAGE_PYTHONPATH"):
 else:
 	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
 import portage
+import logging
 from portage.output import colorize
 from portage.const import EPREFIX
 
@@ -303,15 +304,17 @@ class Binpkg(CompositeTask):
 
 		extractor = BinpkgExtractorAsync(background=self.background,
 			image_dir=pkgloc,
-			pkg=self.pkg, pkg_path=self._pkg_path, scheduler=self.scheduler)
+			pkg=self.pkg, pkg_path=self._pkg_path,
+			logfile=self.settings.get("PORTAGE_LOG_FILE"),
+			scheduler=self.scheduler)
 		self._writemsg_level(">>> Extracting %s\n" % self.pkg.cpv)
 		self._start_task(extractor, self._extractor_exit)
 
 	def _extractor_exit(self, extractor):
 		if self._final_exit(extractor) != os.EX_OK:
 			self._unlock_builddir()
-			writemsg("!!! Error Extracting '%s'\n" % self._pkg_path,
-				noiselevel=-1)
+			self._writemsg_level("!!! Error Extracting '%s'\n" % \
+				self._pkg_path, noiselevel=-1, level=logging.ERROR)
 			self.wait()
 			return
 
