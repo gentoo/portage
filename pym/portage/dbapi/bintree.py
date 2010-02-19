@@ -150,20 +150,8 @@ class bindbapi(fakedbapi):
 
 class binarytree(object):
 	"this tree scans for a list of all packages available in PKGDIR"
-	def __init__(self, root, pkgdir, virtual=None, settings=None, clone=None):
-		if clone:
-			writemsg("binartree.__init__(): deprecated " + \
-				"use of clone parameter\n", noiselevel=-1)
-			# XXX This isn't cloning. It's an instance of the same thing.
-			self.root = clone.root
-			self.pkgdir = clone.pkgdir
-			self.dbapi = clone.dbapi
-			self.populated = clone.populated
-			self.tree = clone.tree
-			self.remotepkgs = clone.remotepkgs
-			self.invalids = clone.invalids
-			self.settings = clone.settings
-		else:
+	def __init__(self, root, pkgdir, virtual=None, settings=None):
+		if True:
 			self.root = root
 			#self.pkgdir=settings["PKGDIR"]
 			self.pkgdir = normalize_path(pkgdir)
