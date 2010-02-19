@@ -2280,6 +2280,15 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 	if files and not valid_atoms:
 		return 1
 
+	if action == 'unmerge' and '--quiet' not in opts:
+		msg = "This action can remove important packages! " + \
+			"In order to be safer, use " + \
+			"`emerge -pv --depclean <atom>` to check for " + \
+			"reverse dependencies before removing packages."
+		out = portage.output.EOutput()
+		for line in textwrap.wrap(msg, 72):
+			out.ewarn(line)
+
 	if action in ('clean', 'unmerge') or \
 		(action == 'prune' and "--nodeps" in opts):
 		# When given a list of atoms, unmerge them in the order given.
