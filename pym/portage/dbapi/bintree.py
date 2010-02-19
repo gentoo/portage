@@ -845,7 +845,7 @@ class binarytree(object):
 						(fullpkg, self.settings["PORTAGE_CONFIGROOT"]),
 						noiselevel=-1)
 					continue
-				mykey = dep_getkey(fullpkg)
+				mykey = portage.cpv_getkey(fullpkg)
 				try:
 					# invalid tbz2's can hurt things.
 					#print "cpv_inject("+str(fullpkg)+")"
