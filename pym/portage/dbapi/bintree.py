@@ -457,7 +457,7 @@ class binarytree(object):
 			warnings.warn(
 				"portage.dbapi.bintree.binarytree.populate(): " + \
 				"getbinpkgsonly parameter is deprecated",
-				DeprecationWarning)
+				DeprecationWarning, stacklevel=2)
 
 		if self._populating:
 			return
