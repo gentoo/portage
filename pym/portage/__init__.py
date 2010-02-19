@@ -2441,11 +2441,6 @@ class config(object):
 				self.useforce_list, incremental=True))
 		self.regenerate(use_cache=use_cache)
 
-	def load_infodir(self,infodir):
-		warnings.warn("portage.config.load_infodir() is deprecated",
-			DeprecationWarning)
-		return 1
-
 	class _lazy_vars(object):
 
 		__slots__ = ('built_use', 'settings', 'values')
@@ -8477,32 +8472,6 @@ def cpv_getkey(mycpv):
 		return mysplit[0]
 
 getCPFromCPV = cpv_getkey
-
-def key_expand(mykey, mydb=None, use_cache=1, settings=None):
-	"""This is deprecated because it just returns the first match instead of
-	raising AmbiguousPackageName like cpv_expand does."""
-	warnings.warn("portage.key_expand() is deprecated", DeprecationWarning)
-	mysplit=mykey.split("/")
-	if settings is None:
-		settings = globals()["settings"]
-	virts = settings.getvirtuals("/")
-	virts_p = settings.get_virts_p("/")
-	if len(mysplit)==1:
-		if hasattr(mydb, "cp_list"):
-			for x in mydb.categories:
-				if mydb.cp_list(x+"/"+mykey,use_cache=use_cache):
-					return dep.Atom(x + "/" + mykey)
-			if mykey in virts_p:
-				return(virts_p[mykey][0])
-		return dep.Atom("null/" + mykey)
-	elif mydb:
-		if hasattr(mydb, "cp_list"):
-			if not mydb.cp_list(mykey, use_cache=use_cache) and \
-				virts and mykey in virts:
-				return virts[mykey][0]
-		if not isinstance(mykey, dep.Atom):
-			mykey = dep.Atom(mykey)
-		return mykey
 
 def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 	"""Given a string (packagename or virtual) expand it into a valid
