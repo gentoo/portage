@@ -3276,7 +3276,10 @@ class config(object):
 		modified = False
 		cp = dep.Atom(cpv_getkey(mycpv))
 		for virt in virts:
-			virt = dep_getkey(virt)
+			try:
+				virt = dep.Atom(virt).cp
+			except exception.InvalidAtom:
+				continue
 			providers = self.virtuals.get(virt)
 			if providers and cp in providers:
 				continue
@@ -8532,7 +8535,7 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 						# it may be necessary to remove the operator and
 						# version from the atom before it is passed into
 						# dbapi.cp_list().
-						if mydb.cp_list(dep_getkey(vkey), use_cache=use_cache):
+						if mydb.cp_list(vkey.cp):
 							mykey = str(vkey)
 							writemsg(_("virts chosen: %s\n") % (mykey), 1)
 							break
