@@ -742,8 +742,7 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.keep_going = None
 
 	if myoptions.rebuilt_binaries in ("True",):
-		# The depgraph will enable this by default unless 'n' is specified.
-		myoptions.rebuilt_binaries = None
+		myoptions.rebuilt_binaries = True
 
 	if myoptions.root_deps == "True":
 		myoptions.root_deps = True

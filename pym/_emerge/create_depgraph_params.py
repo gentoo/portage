@@ -15,6 +15,7 @@ def create_depgraph_params(myopts, myaction):
 	# empty:     pretend nothing is merged
 	# complete:  completely account for all known dependencies
 	# remove:    build graph for use in removing packages
+	# rebuilt_binaries: replace installed packages with rebuilt binaries
 	myparams = {"recurse" : True}
 
 	if myaction == "remove":
@@ -37,6 +38,15 @@ def create_depgraph_params(myopts, myaction):
 		myparams["deep"] = myopts["--deep"]
 	if "--complete-graph" in myopts:
 		myparams["complete"] = True
+
+	rebuilt_binaries = myopts.get('--rebuilt-binaries')
+	if rebuilt_binaries is True or \
+		rebuilt_binaries != 'n' and \
+		'--usepkg' in myopts and \
+		myopts.get('--deep') is True and \
+		'--update' in myopts:
+		myparams['rebuilt_binaries'] = True
+
 	if myopts.get("--selective") == "n":
 		# --selective=n can be used to remove selective
 		# behavior that may have been implied by some

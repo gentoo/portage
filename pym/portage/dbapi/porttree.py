@@ -793,30 +793,6 @@ class portdbapi(dbapi):
 
 		return uri_map
 
-	def getfetchlist(self, mypkg, useflags=None, mysettings=None,
-		all=0, mytree=None):
-
-		writemsg("!!! pordbapi.getfetchlist() is deprecated, " + \
-			"use getFetchMap() instead.\n", noiselevel=-1)
-
-		if all:
-			useflags = None
-		elif useflags is None:
-			if mysettings is None:
-				mysettings = self.doebuild_settings
-			mysettings.setcpv(mypkg, mydb=self)
-			useflags = mysettings["PORTAGE_USE"].split()
-		uri_map = self.getFetchMap(mypkg, useflags=useflags, mytree=mytree)
-
-		all_uris = []
-		all_files = []
-		for filename, uris in uri_map.items():
-			for uri in uris:
-				all_uris.append(uri)
-				all_files.append(filename)
-
-		return [all_uris, all_files]
-
 	def getfetchsizes(self, mypkg, useflags=None, debug=0):
 		# returns a filename:size dictionnary of remaining downloads
 		myebuild = self.findname(mypkg)
@@ -1200,7 +1176,7 @@ def close_portdbapi_caches():
 		i.close_caches()
 
 class portagetree(object):
-	def __init__(self, root="/", virtual=None, clone=None, settings=None):
+	def __init__(self, root="/", virtual=None, settings=None):
 		"""
 		Constructor for a PortageTree
 		
@@ -1208,19 +1184,11 @@ class portagetree(object):
 		@type root: String/Path
 		@param virtual: UNUSED
 		@type virtual: No Idea
-		@param clone: Set this if you want a copy of Clone
-		@type clone: Existing portagetree Instance
 		@param settings: Portage Configuration object (portage.settings)
 		@type settings: Instance of portage.config
 		"""
 
-		if clone:
-			writemsg("portagetree.__init__(): deprecated " + \
-				"use of clone parameter\n", noiselevel=-1)
-			self.root = clone.root
-			self.portroot = clone.portroot
-			self.pkglines = clone.pkglines
-		else:
+		if True:
 			self.root = root
 			if settings is None:
 				from portage import settings
