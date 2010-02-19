@@ -5,7 +5,7 @@
 import sys
 from portage import cpv_getkey, flatten
 from portage.dep import Atom, isvalidatom, match_from_list, \
-     best_match_to_list, dep_getkey, use_reduce, paren_reduce
+     best_match_to_list, use_reduce, paren_reduce
 from portage.exception import InvalidAtom
 
 if sys.hexversion >= 0x3000000:
@@ -153,7 +153,10 @@ class PackageSet(object):
 			return
 		provides = provides.split()
 		for provide in provides:
-			provided_cp = dep_getkey(provide)
+			try:
+				provided_cp = Atom(provide).cp
+			except InvalidAtom:
+				continue
 			atoms = self._atommap.get(provided_cp)
 			if atoms:
 				for atom in atoms:
@@ -201,7 +204,7 @@ class EditablePackageSet(PackageSet):
 	def removePackageAtoms(self, cp):
 		self._load()
 		for a in list(self._atoms):
-			if dep_getkey(a) == cp:
+			if a.cp == cp:
 				self.remove(a)
 		self.write()
 
