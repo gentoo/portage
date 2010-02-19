@@ -19,7 +19,7 @@ from portage.sets.base import PackageSet, EditablePackageSet
 from portage.sets import SetConfigError, SETPREFIX, get_boolean
 from portage.env.loaders import ItemFileLoader, KeyListFileLoader
 from portage.env.validators import ValidAtomValidator
-from portage import dep_getkey, cpv_getkey
+from portage import cpv_getkey
 
 __all__ = ["StaticFileSet", "ConfigFileSet", "WorldSelectedSet"]
 
@@ -305,7 +305,7 @@ class WorldSelectedSet(EditablePackageSet):
 		mykey = cpv_getkey(cpv)
 		newworldlist = []
 		for x in worldlist:
-			if dep_getkey(x) == mykey:
+			if x.cp == mykey:
 				matches = vardb.match(x, use_cache=0)
 				if not matches:
 					#zap our world entry
