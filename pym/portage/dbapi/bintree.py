@@ -1111,11 +1111,6 @@ class binarytree(object):
 		# package is downloaded, state is updated by self.inject().
 		return True
 
-	def get_use(self, pkgname):
-		writemsg("deprecated use of binarytree.get_use()," + \
-			" use dbapi.aux_get() instead", noiselevel=-1)
-		return self.dbapi.aux_get(pkgname, ["USE"])[0].split()
-
 	def gettbz2(self, pkgname):
 		"""Fetches the package from a remote site, if necessary.  Attempts to
 		resume if the file appears to be partially downloaded."""
