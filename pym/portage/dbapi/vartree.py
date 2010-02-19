@@ -2131,7 +2131,7 @@ class dblink(object):
 		if others_in_slot is None:
 			slot = self.vartree.dbapi.aux_get(self.mycpv, ["SLOT"])[0]
 			slot_matches = self.vartree.dbapi.match(
-				"%s:%s" % (dep_getkey(self.mycpv), slot))
+				"%s:%s" % (portage.cpv_getkey(self.mycpv), slot))
 			others_in_slot = []
 			for cur_cpv in slot_matches:
 				if cur_cpv == self.mycpv:
@@ -2403,7 +2403,7 @@ class dblink(object):
 			others_in_slot = []
 			slot = self.vartree.dbapi.aux_get(self.mycpv, ["SLOT"])[0]
 			slot_matches = self.vartree.dbapi.match(
-				"%s:%s" % (dep_getkey(self.mycpv), slot))
+				"%s:%s" % (portage.cpv_getkey(self.mycpv), slot))
 			for cur_cpv in slot_matches:
 				if cur_cpv == self.mycpv:
 					continue
