@@ -3,7 +3,14 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+__all__ = [
+	'best', 'catpkgsplit', 'catsplit',
+	'cpv_getkey', 'pkgcmp',  'pkgsplit',
+	'ververify', 'vercmp'
+]
+
 import re
+import warnings
 
 
 # \w is [a-zA-Z0-9_]
@@ -308,6 +315,26 @@ def pkgsplit(mypkg, silent=1):
 		return (pn, ver, rev)
 	else:
 		return (cat + '/' + pn, ver, rev)
+
+def cpv_getkey(mycpv):
+	"""Calls catpkgsplit on a cpv and returns only the cp."""
+	mysplit = catpkgsplit(mycpv)
+	if mysplit is not None:
+		return mysplit[0] + '/' + mysplit[1]
+
+	warnings.warn("portage.versions.cpv_getkey() " + \
+		"called with invalid cpv: '%s'" % (mycpv,),
+		DeprecationWarning, stacklevel=2)
+
+	myslash = mycpv.split("/", 1)
+	mysplit = _pkgsplit(myslash[-1])
+	if mysplit is None:
+		return None
+	mylen = len(myslash)
+	if mylen == 2:
+		return myslash[0] + "/" + mysplit[0]
+	else:
+		return mysplit[0]
 
 def catsplit(mydep):
         return mydep.split("/", 1)
