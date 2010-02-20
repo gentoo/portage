@@ -1124,6 +1124,7 @@ def config_protect_check(trees):
 			msg = "!!! CONFIG_PROTECT is empty"
 			if root != "/":
 				msg += " for '%s'" % root
+			msg += "\n"
 			writemsg_level(msg, level=logging.WARN, noiselevel=-1)
 
 def profile_check(trees, myaction):
