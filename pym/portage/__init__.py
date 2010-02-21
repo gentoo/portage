@@ -8801,6 +8801,10 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 	"""will merge a .tbz2 file, returning a list of runtime dependencies
 		that must be satisfied, or None if there was a merge error.	This
 		code assumes the package exists."""
+
+	warnings.warn("portage.pkgmerge() is deprecated",
+		DeprecationWarning, stacklevel=2)
+
 	global db
 	if mydbapi is None:
 		mydbapi = db[myroot]["bintree"].dbapi
