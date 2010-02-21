@@ -4,7 +4,9 @@
 
 from __future__ import print_function
 
-__all__ = ["portdbapi", "close_portdbapi_caches", "portagetree"]
+__all__ = [
+	"close_portdbapi_caches", "FetchlistDict", "portagetree", "portdbapi"
+]
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -1240,3 +1242,44 @@ class portagetree(object):
 		except Exception as e:
 			pass
 		return myslot
+
+class FetchlistDict(portage.cache.mappings.Mapping):
+	"""
+	This provide a mapping interface to retrieve fetch lists. It's used
+	to allow portage.manifest.Manifest to access fetch lists via a standard
+	mapping interface rather than use the dbapi directly.
+	"""
+	def __init__(self, pkgdir, settings, mydbapi):
+		"""pkgdir is a directory containing ebuilds and settings is passed into
+		portdbapi.getfetchlist for __getitem__ calls."""
+		self.pkgdir = pkgdir
+		self.cp = os.sep.join(pkgdir.split(os.sep)[-2:])
+		self.settings = settings
+		self.mytree = os.path.realpath(os.path.dirname(os.path.dirname(pkgdir)))
+		self.portdb = mydbapi
+
+	def __getitem__(self, pkg_key):
+		"""Returns the complete fetch list for a given package."""
+		return list(self.portdb.getFetchMap(pkg_key, mytree=self.mytree))
+
+	def __contains__(self, cpv):
+		return cpv in self.__iter__()
+
+	def has_key(self, pkg_key):
+		"""Returns true if the given package exists within pkgdir."""
+		return pkg_key in self
+
+	def __iter__(self):
+		return iter(self.portdb.cp_list(self.cp, mytree=self.mytree))
+
+	def __len__(self):
+		"""This needs to be implemented in order to avoid
+		infinite recursion in some cases."""
+		return len(self.portdb.cp_list(self.cp, mytree=self.mytree))
+
+	def keys(self):
+		"""Returns keys for all packages within pkgdir"""
+		return self.portdb.cp_list(self.cp, mytree=self.mytree)
+
+	if sys.hexversion >= 0x3000000:
+		keys = __iter__
