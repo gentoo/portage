@@ -3,6 +3,16 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+__all__ = [
+	'Atom', 'best_match_to_list', 'cpvequal',
+	'dep_getcpv', 'dep_getkey', 'dep_getslot',
+	'dep_getusedeps', 'dep_opconvert', 'flatten',
+	'get_operator', 'isjustname', 'isspecific',
+	'isvalidatom', 'match_from_list', 'match_to_list',
+	'paren_enclose', 'paren_normalize', 'paren_reduce',
+	'remove_slot', 'strip_empty', 'use_reduce'
+]
+
 # DEPEND SYNTAX:
 #
 # 'use?' only affects the immediately following word!
@@ -342,6 +352,28 @@ def dep_opconvert(deplist):
 			retlist.append(deplist[x])
 		x += 1
 	return retlist
+
+def flatten(mylist):
+	"""
+	Recursively traverse nested lists and return a single list containing
+	all non-list elements that are found.
+
+	Example usage:
+		>>> flatten([1, [2, 3, [4]]])
+		[1, 2, 3, 4]
+
+	@param mylist: A list containing nested lists and non-list elements.
+	@type mylist: List
+	@rtype: List
+	@return: A single list containing only non-list elements.
+	"""
+	newlist = []
+	for x in mylist:
+		if isinstance(x, list):
+			newlist.extend(flatten(x))
+		else:
+			newlist.append(x)
+	return newlist
 
 class _use_dep(object):
 

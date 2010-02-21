@@ -85,7 +85,7 @@ try:
 			'uid,userland,userpriv_groups,wheelgid',
 		'portage.dep',
 		'portage.dep:best_match_to_list,dep_getcpv,dep_getkey,' + \
-			'get_operator,isjustname,isspecific,isvalidatom,' + \
+			'flatten,get_operator,isjustname,isspecific,isvalidatom,' + \
 			'match_from_list,match_to_list',
 		'portage.eclass_cache',
 		'portage.env.loaders',
@@ -672,17 +672,6 @@ def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelis
 		rlist=list
 
 	return rlist
-
-def flatten(mytokens):
-	"""this function now turns a [1,[2,3]] list into
-	a [1,2,3] list and returns it."""
-	newlist=[]
-	for x in mytokens:
-		if isinstance(x, list):
-			newlist.extend(flatten(x))
-		else:
-			newlist.append(x)
-	return newlist
 
 #beautiful directed graph object
 
