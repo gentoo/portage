@@ -9,6 +9,7 @@ import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+from portage.package.ebuild.fetch import _checksum_failure_temp_file
 import codecs
 
 class BinpkgVerifier(AsynchronousTask):
@@ -77,7 +78,7 @@ class BinpkgVerifier(AsynchronousTask):
 			else:
 				pkg_path = bintree.getname(pkg.cpv)
 				head, tail = os.path.split(pkg_path)
-				temp_filename = portage._checksum_failure_temp_file(head, tail)
+				temp_filename = _checksum_failure_temp_file(head, tail)
 				writemsg("File renamed to '%s'\n" % (temp_filename,),
 					noiselevel=-1)
 		finally:
