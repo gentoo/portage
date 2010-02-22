@@ -85,7 +85,7 @@ try:
 			'uid,userland,userpriv_groups,wheelgid',
 		'portage.dep',
 		'portage.dep:best_match_to_list,dep_getcpv,dep_getkey,' + \
-			'get_operator,isjustname,isspecific,isvalidatom,' + \
+			'flatten,get_operator,isjustname,isspecific,isvalidatom,' + \
 			'match_from_list,match_to_list',
 		'portage.eclass_cache',
 		'portage.env.loaders',
@@ -110,7 +110,8 @@ try:
 			'stack_lists,unique_array,varexpand,writedict,writemsg,' + \
 			'writemsg_stdout,write_atomic',
 		'portage.versions',
-		'portage.versions:best,catpkgsplit,catsplit,endversion_keys,' + \
+		'portage.versions:best,catpkgsplit,catsplit,cpv_getkey,' + \
+			'cpv_getkey@getCPFromCPV,endversion_keys,' + \
 			'suffix_value@endversion,pkgcmp,pkgsplit,vercmp,ververify',
 		'portage.xpak',
 	)
@@ -672,17 +673,6 @@ def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelis
 		rlist=list
 
 	return rlist
-
-def flatten(mytokens):
-	"""this function now turns a [1,[2,3]] list into
-	a [1,2,3] list and returns it."""
-	newlist=[]
-	for x in mytokens:
-		if isinstance(x, list):
-			newlist.extend(flatten(x))
-		else:
-			newlist.append(x)
-	return newlist
 
 #beautiful directed graph object
 
@@ -3552,6 +3542,12 @@ class config(object):
 		self.already_in_regenerate = 0
 
 	def get_virts_p(self, myroot=None):
+
+		if myroot is not None:
+			warnings.warn("The 'myroot' parameter for " + \
+				"portage.config.get_virts_p() is deprecated",
+				DeprecationWarning, stacklevel=2)
+
 		if self.virts_p:
 			return self.virts_p
 		virts = self.getvirtuals()
@@ -3565,6 +3561,12 @@ class config(object):
 	def getvirtuals(self, myroot=None):
 		"""myroot is now ignored because, due to caching, it has always been
 		broken for all but the first call."""
+
+		if myroot is not None:
+			warnings.warn("The 'myroot' parameter for " + \
+				"portage.config.getvirtuals() is deprecated",
+				DeprecationWarning, stacklevel=2)
+
 		myroot = self["ROOT"]
 		if self.virtuals:
 			return self.virtuals
@@ -5494,6 +5496,9 @@ def digestParseFile(myfilename, mysettings=None):
 	as the values.
 	DEPRECATED: this function is now only a compability wrapper for
 	            portage.manifest.Manifest()."""
+
+	warnings.warn("portage.digestParseFile() is deprecated",
+		DeprecationWarning, stacklevel=2)
 
 	mysplit = myfilename.split(os.sep)
 	if mysplit[-2] == "files" and mysplit[-1].startswith("digest-"):
@@ -8471,27 +8476,6 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 					return None
 	return deplist
 
-def cpv_getkey(mycpv):
-	"""Calls pkgsplit on a cpv and returns only the cp."""
-	mysplit = versions.catpkgsplit(mycpv)
-	if mysplit is not None:
-		return mysplit[0] + '/' + mysplit[1]
-
-	warnings.warn("portage.cpv_getkey() called with invalid cpv: '%s'" \
-		% (mycpv,), DeprecationWarning, stacklevel=2)
-
-	myslash = mycpv.split("/", 1)
-	mysplit = versions._pkgsplit(myslash[-1])
-	if mysplit is None:
-		return None
-	mylen=len(myslash)
-	if mylen==2:
-		return myslash[0]+"/"+mysplit[0]
-	else:
-		return mysplit[0]
-
-getCPFromCPV = cpv_getkey
-
 def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 	"""Given a string (packagename or virtual) expand it into a valid
 	cat/package string. Virtuals use the mydb to determine which provided
@@ -8501,8 +8485,8 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 	mysplit = versions._pkgsplit(myslash[-1])
 	if settings is None:
 		settings = globals()["settings"]
-	virts = settings.getvirtuals("/")
-	virts_p = settings.get_virts_p("/")
+	virts = settings.getvirtuals()
+	virts_p = settings.get_virts_p()
 	if len(myslash)>2:
 		# this is illegal case.
 		mysplit=[]
@@ -8803,49 +8787,18 @@ from portage.dbapi import dbapi
 from portage.dbapi.virtual import fakedbapi
 from portage.dbapi.bintree import bindbapi, binarytree
 from portage.dbapi.vartree import vardbapi, vartree, dblink
-from portage.dbapi.porttree import close_portdbapi_caches, portdbapi, portagetree
-
-class FetchlistDict(portage.cache.mappings.Mapping):
-	"""This provide a mapping interface to retrieve fetch lists.  It's used
-	to allow portage.manifest.Manifest to access fetch lists via a standard
-	mapping interface rather than use the dbapi directly."""
-	def __init__(self, pkgdir, settings, mydbapi):
-		"""pkgdir is a directory containing ebuilds and settings is passed into
-		portdbapi.getfetchlist for __getitem__ calls."""
-		self.pkgdir = pkgdir
-		self.cp = os.sep.join(pkgdir.split(os.sep)[-2:])
-		self.settings = settings
-		self.mytree = os.path.realpath(os.path.dirname(os.path.dirname(pkgdir)))
-		self.portdb = mydbapi
-	def __getitem__(self, pkg_key):
-		"""Returns the complete fetch list for a given package."""
-		return list(self.portdb.getFetchMap(pkg_key, mytree=self.mytree))
-	def __contains__(self, cpv):
-		return cpv in self.__iter__()
-	def has_key(self, pkg_key):
-		"""Returns true if the given package exists within pkgdir."""
-		return pkg_key in self
-
-	def __iter__(self):
-		return iter(self.portdb.cp_list(self.cp, mytree=self.mytree))
-
-	def __len__(self):
-		"""This needs to be implemented in order to avoid
-		infinite recursion in some cases."""
-		return len(self.portdb.cp_list(self.cp, mytree=self.mytree))
-
-	def keys(self):
-		"""Returns keys for all packages within pkgdir"""
-		return self.portdb.cp_list(self.cp, mytree=self.mytree)
-
-	if sys.hexversion >= 0x3000000:
-		keys = __iter__
+from portage.dbapi.porttree import FetchlistDict, \
+	close_portdbapi_caches, portagetree, portdbapi
 
 def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 	vartree=None, prev_mtimes=None, blockers=None):
 	"""will merge a .tbz2 file, returning a list of runtime dependencies
 		that must be satisfied, or None if there was a merge error.	This
 		code assumes the package exists."""
+
+	warnings.warn("portage.pkgmerge() is deprecated",
+		DeprecationWarning, stacklevel=2)
+
 	global db
 	if mydbapi is None:
 		mydbapi = db[myroot]["bintree"].dbapi
@@ -9025,9 +8978,14 @@ def deprecated_profile_check(settings=None):
 
 # gets virtual package settings
 def getvirtuals(myroot):
+	"""
+	Calls portage.settings.getvirtuals().
+	@deprecated: Use portage.settings.getvirtuals().
+	"""
 	global settings
-	writemsg("--- DEPRECATED call to getvirtual\n")
-	return settings.getvirtuals(myroot)
+	warnings.warn("portage.getvirtuals() is deprecated",
+		DeprecationWarning, stacklevel=2)
+	return settings.getvirtuals()
 
 def commit_mtimedb(mydict=None, filename=None):
 	if mydict is None:
