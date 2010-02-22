@@ -638,7 +638,7 @@ install_qa_check_prefix() {
 			continue
 		fi
 		# all else is an error if the found script is in $PATH
-		local fp=${fn#${D}} ; fp=${fp%/*}
+		local fp=${fn#${D}} ; fp=/${fp%/*}
 		if [[ ":${PATH}:" == *":${fp}:"* ]] || hasq stricter ${FEATURES} ;
 		then
 			echo "${fn#${D}}:${line[0]}" \
