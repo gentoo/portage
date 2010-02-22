@@ -228,11 +228,13 @@ def ParseArgs(args, qahelp):
 	if opts.mode == 'help':
 		parser.print_help(short=False)
 
-	for arg in args:
+	for arg in args[1:]:
 		if arg in modes:
 			if not opts.mode:
 				opts.mode = arg
 				break
+		else:
+			parser.error("invalid mode: %s" % arg)
 
 	if not opts.mode:
 		opts.mode = 'full'

@@ -237,7 +237,7 @@ def unmerge(root_config, myopts, unmerge_action,
 					slotmap[myslot][localtree.dbapi.cpv_counter(mypkg)] = mypkg
 
 				for mypkg in vartree.dbapi.cp_list(
-					portage.dep_getkey(mymatch[0])):
+					portage.cpv_getkey(mymatch[0])):
 					myslot = vartree.getslot(mypkg)
 					if myslot not in slotmap:
 						slotmap[myslot] = {}
