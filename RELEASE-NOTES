@@ -24,7 +24,8 @@ portage-2.2
 * The new --rebuilt-binaries option will replace installed packages with binary
   packages that have been rebuilt. Rebuilds are detected by comparison of
   BUILD_TIME package metadata. This option is enabled automatically when using
-  binary packages (--usepkg or --getbinpkg) together with --update and --deep.
+  binary packages (--usepkgonly or --getbinpkgonly) together with --update and
+  --deep.
 
 portage-2.1.7
 ==================================
