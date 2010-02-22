@@ -83,6 +83,12 @@ try:
 		'portage.data',
 		'portage.data:lchown,ostype,portage_gid,portage_uid,secpass,' + \
 			'uid,userland,userpriv_groups,wheelgid',
+		'portage.dbapi:dbapi',
+		'portage.dbapi.bintree:bindbapi,binarytree',
+		'portage.dbapi.porttree:close_portdbapi_caches,FetchlistDict,' + \
+			'portagetree,portdbapi',
+		'portage.dbapi.vartree:vardbapi,vartree,dblink',
+		'portage.dbapi.virtual:fakedbapi',
 		'portage.dep',
 		'portage.dep:best_match_to_list,dep_getcpv,dep_getkey,' + \
 			'flatten,get_operator,isjustname,isspecific,isvalidatom,' + \
@@ -8765,13 +8771,6 @@ auxdbkeys=[
 	'UNUSED_03', 'UNUSED_02', 'UNUSED_01',
 	]
 auxdbkeylen=len(auxdbkeys)
-
-from portage.dbapi import dbapi
-from portage.dbapi.virtual import fakedbapi
-from portage.dbapi.bintree import bindbapi, binarytree
-from portage.dbapi.vartree import vardbapi, vartree, dblink
-from portage.dbapi.porttree import FetchlistDict, \
-	close_portdbapi_caches, portagetree, portdbapi
 
 def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 	vartree=None, prev_mtimes=None, blockers=None):
