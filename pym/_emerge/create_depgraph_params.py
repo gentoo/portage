@@ -42,7 +42,7 @@ def create_depgraph_params(myopts, myaction):
 	rebuilt_binaries = myopts.get('--rebuilt-binaries')
 	if rebuilt_binaries is True or \
 		rebuilt_binaries != 'n' and \
-		'--usepkg' in myopts and \
+		'--usepkgonly' in myopts and \
 		myopts.get('--deep') is True and \
 		'--update' in myopts:
 		myparams['rebuilt_binaries'] = True
