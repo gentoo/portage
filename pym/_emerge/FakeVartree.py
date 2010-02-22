@@ -8,11 +8,12 @@ import portage
 from portage import os
 from _emerge.Package import Package
 from _emerge.PackageVirtualDbapi import PackageVirtualDbapi
+from portage.dbapi.vartree import vartree
 
 if sys.hexversion >= 0x3000000:
 	long = int
 
-class FakeVartree(portage.vartree):
+class FakeVartree(vartree):
 	"""This is implements an in-memory copy of a vartree instance that provides
 	all the interfaces required for use by the depgraph.  The vardb is locked
 	during the constructor call just long enough to read a copy of the

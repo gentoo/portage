@@ -83,6 +83,12 @@ try:
 		'portage.data',
 		'portage.data:lchown,ostype,portage_gid,portage_uid,secpass,' + \
 			'uid,userland,userpriv_groups,wheelgid',
+		'portage.dbapi',
+		'portage.dbapi.bintree:bindbapi,binarytree',
+		'portage.dbapi.porttree:close_portdbapi_caches,FetchlistDict,' + \
+			'portagetree,portdbapi',
+		'portage.dbapi.vartree:vardbapi,vartree,dblink',
+		'portage.dbapi.virtual:fakedbapi',
 		'portage.dep',
 		'portage.dep:best_match_to_list,dep_getcpv,dep_getkey,' + \
 			'flatten,get_operator,isjustname,isspecific,isvalidatom,' + \
@@ -2118,9 +2124,10 @@ class config(object):
 
 			#getting categories from an external file now
 			categories = [grabfile(os.path.join(x, "categories")) for x in locations]
+			category_re = dbapi.dbapi._category_re
 			self.categories = tuple(sorted(
 				x for x in stack_lists(categories, incremental=1)
-				if dbapi._category_re.match(x) is not None))
+				if category_re.match(x) is not None))
 			del categories
 
 			archlist = [grabfile(os.path.join(x, "arch.list")) for x in locations]
@@ -8782,13 +8789,6 @@ auxdbkeys=[
 	'UNUSED_03', 'UNUSED_02', 'UNUSED_01',
 	]
 auxdbkeylen=len(auxdbkeys)
-
-from portage.dbapi import dbapi
-from portage.dbapi.virtual import fakedbapi
-from portage.dbapi.bintree import bindbapi, binarytree
-from portage.dbapi.vartree import vardbapi, vartree, dblink
-from portage.dbapi.porttree import FetchlistDict, \
-	close_portdbapi_caches, portagetree, portdbapi
 
 def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 	vartree=None, prev_mtimes=None, blockers=None):
