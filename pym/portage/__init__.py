@@ -99,6 +99,7 @@ try:
 		'portage.locks',
 		'portage.locks:lockdir,lockfile,unlockdir,unlockfile',
 		'portage.mail',
+		'portage.manifest:Manifest',
 		'portage.output',
 		'portage.output:bold,colorize',
 		'portage.package.ebuild.config:autouse,best_from_dict,' + \
@@ -311,8 +312,6 @@ except (ImportError, OSError) as e:
 	_selinux = None
 	selinux = None
 	_selinux_merge = None
-
-from portage.manifest import Manifest
 
 # ===========================================================================
 # END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END
