@@ -628,7 +628,11 @@ install_qa_check_prefix() {
 		# does the shebang start with ${EPREFIX}?
 		[[ ${line[0]} == ${EPREFIX}* ]] && continue
 		# can we just fix it(tm)?
-		if [[ -x ${EPREFIX}${line[0]} || -x ${ED}${line[0]} ]] ; then
+		local el=${EPREFIX}${line[0]} edl=${ED}${line[0]}
+		# follow symlinks, e.g. python is a symlink
+		[[ -L ${el} ]] && el=$(readlink "${el}")
+		[[ -L ${edl} ]] && edl=$(readlink "${edl}")
+		if [[ -x ${el} || -x ${edl} ]] ; then
 			eqawarn "prefixing shebang of ${fn#${D}}"
 			sed -i -e '1s:^#! \?:#!'"${EPREFIX}"':' "${fn}"
 			continue
