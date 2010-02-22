@@ -18,6 +18,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage.cache.cache_errors import CacheError
+from portage.cache.mappings import Mapping
 from portage.const import REPO_NAME_LOC
 from portage.data import portage_gid, secpass
 from portage.dbapi import dbapi
@@ -127,17 +128,17 @@ class portdbapi(dbapi):
 	_use_mutable = True
 
 	def _get_settings(self):
-		warnings.warn("Use portdbapi.settings insead of portdbapi.mysettings",
+		warnings.warn("Use portdbapi.settings instead of portdbapi.mysettings",
 			DeprecationWarning)
 		return self.settings
 
 	def _set_settings(self, settings):
-		warnings.warn("Use portdbapi.settings insead of portdbapi.mysettings",
+		warnings.warn("Use portdbapi.settings instead of portdbapi.mysettings",
 			DeprecationWarning)
 		self.settings = settings
 
 	def _del_settings (self):
-		warnings.warn("Use portdbapi.settings insead of portdbapi.mysettings",
+		warnings.warn("Use portdbapi.settings instead of portdbapi.mysettings",
 			DeprecationWarning)
 		del self.settings
 
@@ -1243,7 +1244,7 @@ class portagetree(object):
 			pass
 		return myslot
 
-class FetchlistDict(portage.cache.mappings.Mapping):
+class FetchlistDict(Mapping):
 	"""
 	This provide a mapping interface to retrieve fetch lists. It's used
 	to allow portage.manifest.Manifest to access fetch lists via a standard
