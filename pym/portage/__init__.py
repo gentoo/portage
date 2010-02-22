@@ -83,7 +83,7 @@ try:
 		'portage.data',
 		'portage.data:lchown,ostype,portage_gid,portage_uid,secpass,' + \
 			'uid,userland,userpriv_groups,wheelgid',
-		'portage.dbapi:dbapi',
+		'portage.dbapi',
 		'portage.dbapi.bintree:bindbapi,binarytree',
 		'portage.dbapi.porttree:close_portdbapi_caches,FetchlistDict,' + \
 			'portagetree,portdbapi',
@@ -2102,9 +2102,10 @@ class config(object):
 
 			#getting categories from an external file now
 			categories = [grabfile(os.path.join(x, "categories")) for x in locations]
+			category_re = dbapi.dbapi._category_re
 			self.categories = tuple(sorted(
 				x for x in stack_lists(categories, incremental=1)
-				if dbapi._category_re.match(x) is not None))
+				if category_re.match(x) is not None))
 			del categories
 
 			archlist = [grabfile(os.path.join(x, "arch.list")) for x in locations]

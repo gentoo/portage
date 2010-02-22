@@ -268,12 +268,12 @@ def makeVersion(versionNode):
 
 def match(atom, dbapi, match_type="default"):
 	"""
-	wrapper that calls revisionMatch() or portage.dbapi.match() depending on 
+	wrapper that calls revisionMatch() or portage.dbapi.dbapi.match() depending on 
 	the given atom.
 	
 	@type	atom: string
 	@param	atom: a <~ or >~ atom or a normal portage atom that contains the atom to match against
-	@type	dbapi: portage.dbapi
+	@type	dbapi: portage.dbapi.dbapi
 	@param	dbapi: one of the portage databases to use as information source
 	@type	match_type: string
 	@param	match_type: if != "default" passed as first argument to dbapi.xmatch 
@@ -297,7 +297,7 @@ def revisionMatch(revisionAtom, dbapi, match_type="default"):
 	
 	@type	revisionAtom: string
 	@param	revisionAtom: a <~ or >~ atom that contains the atom to match against
-	@type	dbapi: portage.dbapi
+	@type	dbapi: portage.dbapi.dbapi
 	@param	dbapi: one of the portage databases to use as information source
 	@type	match_type: string
 	@param	match_type: if != "default" passed as first argument to portdb.xmatch 
