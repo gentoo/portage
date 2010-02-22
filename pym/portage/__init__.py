@@ -2463,11 +2463,6 @@ class config(object):
 				self.useforce_list, incremental=True))
 		self.regenerate(use_cache=use_cache)
 
-	def load_infodir(self,infodir):
-		warnings.warn("portage.config.load_infodir() is deprecated",
-			DeprecationWarning)
-		return 1
-
 	class _lazy_vars(object):
 
 		__slots__ = ('built_use', 'settings', 'values')
@@ -3298,7 +3293,10 @@ class config(object):
 		modified = False
 		cp = dep.Atom(cpv_getkey(mycpv))
 		for virt in virts:
-			virt = dep_getkey(virt)
+			try:
+				virt = dep.Atom(virt).cp
+			except exception.InvalidAtom:
+				continue
 			providers = self.virtuals.get(virt)
 			if providers and cp in providers:
 				continue
@@ -3704,7 +3702,7 @@ class config(object):
 	def has_key(self,mykey):
 		warnings.warn("portage.config.has_key() is deprecated, "
 			"use the in operator instead",
-			DeprecationWarning)
+			DeprecationWarning, stacklevel=2)
 		return mykey in self
 
 	def __contains__(self, mykey):
@@ -7793,6 +7791,8 @@ def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None,
 
 def dep_virtual(mysplit, mysettings):
 	"Does virtual dependency conversion"
+	warnings.warn("portage.dep_virtual() is deprecated",
+		DeprecationWarning, stacklevel=2)
 	newsplit=[]
 	myvirtuals = mysettings.getvirtuals()
 	for x in mysplit:
@@ -8478,7 +8478,7 @@ def cpv_getkey(mycpv):
 		return mysplit[0] + '/' + mysplit[1]
 
 	warnings.warn("portage.cpv_getkey() called with invalid cpv: '%s'" \
-		% (mycpv,), DeprecationWarning)
+		% (mycpv,), DeprecationWarning, stacklevel=2)
 
 	myslash = mycpv.split("/", 1)
 	mysplit = versions._pkgsplit(myslash[-1])
@@ -8491,32 +8491,6 @@ def cpv_getkey(mycpv):
 		return mysplit[0]
 
 getCPFromCPV = cpv_getkey
-
-def key_expand(mykey, mydb=None, use_cache=1, settings=None):
-	"""This is deprecated because it just returns the first match instead of
-	raising AmbiguousPackageName like cpv_expand does."""
-	warnings.warn("portage.key_expand() is deprecated", DeprecationWarning)
-	mysplit=mykey.split("/")
-	if settings is None:
-		settings = globals()["settings"]
-	virts = settings.getvirtuals("/")
-	virts_p = settings.get_virts_p("/")
-	if len(mysplit)==1:
-		if hasattr(mydb, "cp_list"):
-			for x in mydb.categories:
-				if mydb.cp_list(x+"/"+mykey,use_cache=use_cache):
-					return dep.Atom(x + "/" + mykey)
-			if mykey in virts_p:
-				return(virts_p[mykey][0])
-		return dep.Atom("null/" + mykey)
-	elif mydb:
-		if hasattr(mydb, "cp_list"):
-			if not mydb.cp_list(mykey, use_cache=use_cache) and \
-				virts and mykey in virts:
-				return virts[mykey][0]
-		if not isinstance(mykey, dep.Atom):
-			mykey = dep.Atom(mykey)
-		return mykey
 
 def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 	"""Given a string (packagename or virtual) expand it into a valid
@@ -8549,7 +8523,7 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 						# it may be necessary to remove the operator and
 						# version from the atom before it is passed into
 						# dbapi.cp_list().
-						if mydb.cp_list(dep_getkey(vkey), use_cache=use_cache):
+						if mydb.cp_list(vkey.cp):
 							mykey = str(vkey)
 							writemsg(_("virts chosen: %s\n") % (mykey), 1)
 							break

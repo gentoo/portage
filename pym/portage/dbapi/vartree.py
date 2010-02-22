@@ -33,7 +33,7 @@ from portage.exception import CommandNotFound, \
 	FileNotFound, PermissionDenied, UnsupportedAPIException
 from portage.localization import _
 
-from portage import listdir, dep_expand, digraph, flatten, key_expand, \
+from portage import listdir, dep_expand, digraph, flatten, \
 	doebuild_environment, doebuild, env_update, prepare_build_dirs, \
 	abssymlink, movefile, _movefile, bsd_chflags, cpv_getkey
 
@@ -2689,7 +2689,7 @@ class vartree(object):
 			self.root = root[:]
 			if settings is None:
 				from portage import settings
-			self.settings = settings # for key_expand calls
+			self.settings = settings
 			if categories is None:
 				categories = settings.categories
 			self.dbapi = vardbapi(self.root, categories=categories,
@@ -2774,49 +2774,9 @@ class vartree(object):
 		masked package for nodes in this nodes list."""
 		return self.dbapi.cp_all()
 
-	def exists_specific_cat(self, cpv, use_cache=1):
-		warnings.warn(
-			"portage.dbapi.vartree.vartree.exists_specific_cat() is deprecated",
-			DeprecationWarning)
-		cpv = key_expand(cpv, mydb=self.dbapi, use_cache=use_cache,
-			settings=self.settings)
-		a = catpkgsplit(cpv)
-		if not a:
-			return 0
-		mylist = listdir(self.getpath(a[0]), EmptyOnError=1)
-		for x in mylist:
-			b = pkgsplit(x)
-			if not b:
-				self.dbapi.invalidentry(self.getpath(a[0], filename=x))
-				continue
-			if a[1] == b[0]:
-				return 1
-		return 0
-
 	def getebuildpath(self, fullpackage):
 		cat, package = catsplit(fullpackage)
 		return self.getpath(fullpackage, filename=package+".ebuild")
-
-	def getnode(self, mykey, use_cache=1):
-		warnings.warn(
-			"portage.dbapi.vartree.vartree.getnode() is deprecated",
-			DeprecationWarning)
-		mykey = key_expand(mykey, mydb=self.dbapi, use_cache=use_cache,
-			settings=self.settings)
-		if not mykey:
-			return []
-		mysplit = catsplit(mykey)
-		mydirlist = listdir(self.getpath(mysplit[0]),EmptyOnError=1)
-		returnme = []
-		for x in mydirlist:
-			mypsplit = pkgsplit(x)
-			if not mypsplit:
-				self.dbapi.invalidentry(self.getpath(mysplit[0], filename=x))
-				continue
-			if mypsplit[0] == mysplit[1]:
-				appendme = [mysplit[0]+"/"+x, [mysplit[0], mypsplit[0], mypsplit[1], mypsplit[2]]]
-				returnme.append(appendme)
-		return returnme
 
 	def getslot(self, mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
@@ -2824,24 +2784,6 @@ class vartree(object):
 			return self.dbapi.aux_get(mycatpkg, ["SLOT"])[0]
 		except KeyError:
 			return ""
-
-	def hasnode(self, mykey, use_cache):
-		"""Does the particular node (cat/pkg key) exist?"""
-		warnings.warn(
-			"portage.dbapi.vartree.vartree.hadnode() is deprecated",
-			DeprecationWarning)
-		mykey = key_expand(mykey, mydb=self.dbapi, use_cache=use_cache,
-			settings=self.settings)
-		mysplit = catsplit(mykey)
-		mydirlist = listdir(self.getpath(mysplit[0]), EmptyOnError=1)
-		for x in mydirlist:
-			mypsplit = pkgsplit(x)
-			if not mypsplit:
-				self.dbapi.invalidentry(self.getpath(mysplit[0], filename=x))
-				continue
-			if mypsplit[0] == mysplit[1]:
-				return 1
-		return 0
 
 	def populate(self):
 		self.populated=1

@@ -460,7 +460,7 @@ class binarytree(object):
 			warnings.warn(
 				"portage.dbapi.bintree.binarytree.populate(): " + \
 				"getbinpkgsonly parameter is deprecated",
-				DeprecationWarning)
+				DeprecationWarning, stacklevel=2)
 
 		if self._populating:
 			return
@@ -1049,7 +1049,7 @@ class binarytree(object):
 		return False
 
 	def _eval_use_flags(self, cpv, metadata):
-		use = metadata["USE"].split()
+		use = frozenset(metadata["USE"].split())
 		raw_use = use
 		iuse = set(f.lstrip("-+") for f in metadata["IUSE"].split())
 		use = [f for f in use if f in iuse]
