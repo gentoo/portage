@@ -18,6 +18,7 @@ import sys
 from portage import check_config_instance, doebuild_environment, OrderedDict, os, prepare_build_dirs, selinux, _encodings, _shell_quote, _unicode_encode
 from portage.checksum import perform_md5, verify_all
 from portage.const import BASH_BINARY, CUSTOM_MIRRORS_FILE, EBUILD_SH_BINARY, GLOBAL_CONFIG_PATH
+from portage.const import rootgid
 from portage.data import portage_gid, portage_uid, secpass, userpriv_groups
 from portage.exception import FileNotFound, OperationNotPermitted, PermissionDenied, PortageException, TryAgain
 from portage.localization import _
@@ -441,7 +442,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			# to have root's gid. Therefore, use root's gid instead of
 			# portage's gid to avoid spurrious permissions adjustments
 			# when inside fakeroot.
-			dir_gid = 0
+			dir_gid = rootgid
 		distdir_dirs = [""]
 		if "distlocks" in features:
 			distdir_dirs.append(".locks")
