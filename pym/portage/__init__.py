@@ -1376,17 +1376,23 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		return retval >> 8
 	return retval
 
-def digestgen(myarchives, mysettings, overwrite=1, manifestonly=0, myportdb=None):
+def digestgen(myarchives, mysettings, overwrite=None, manifestonly=None, myportdb=None):
 	"""
-	Generates a digest file if missing.  Assumes all files are available.
-	DEPRECATED: this now only is a compability wrapper for 
-	            portage.manifest.Manifest()
-	NOTE: manifestonly and overwrite are useless with manifest2 and
-	      are therefore ignored."""
+	Generates a digest file if missing. Fetches files if necessary.
+	"""
 	if myportdb is None:
-		writemsg("Warning: myportdb not specified to digestgen\n")
+		warnings.warn("portage.digestgen() called without 'myportdb' parameter",
+			DeprecationWarning, stacklevel=2)
 		global portdb
 		myportdb = portdb
+	if overwrite is not None:
+		warnings.warn("portage.digestgen() called with " + \
+			"deprecated 'overwrite' parameter",
+			DeprecationWarning, stacklevel=2)
+	if manifestonly is not None:
+		warnings.warn("portage.digestgen() called with " + \
+			"deprecated 'manifestonly' parameter",
+			DeprecationWarning, stacklevel=2)
 	global _doebuild_manifest_exempt_depend
 	try:
 		_doebuild_manifest_exempt_depend += 1
@@ -3354,17 +3360,15 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		try:
 			if mydo == "manifest":
-				return not digestgen(aalist, mysettings, overwrite=1,
-					manifestonly=1, myportdb=mydbapi)
+				return not digestgen(aalist, mysettings, myportdb=mydbapi)
 			elif mydo == "digest":
-				return not digestgen(aalist, mysettings, overwrite=1,
-					myportdb=mydbapi)
+				return not digestgen(aalist, mysettings, myportdb=mydbapi)
 			elif mydo != 'fetch' and not emerge_skip_digest and \
 				"digest" in mysettings.features:
 				# Don't do this when called by emerge or when called just
 				# for fetch (especially parallel-fetch) since it's not needed
 				# and it can interfere with parallel tasks.
-				digestgen(aalist, mysettings, overwrite=0, myportdb=mydbapi)
+				digestgen(aalist, mysettings, myportdb=mydbapi)
 		except portage.exception.PermissionDenied as e:
 			writemsg(_("!!! Permission Denied: %s\n") % (e,), noiselevel=-1)
 			if mydo in ("digest", "manifest"):
