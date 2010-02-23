@@ -26,7 +26,7 @@ from portage.const import CACHE_PATH, CUSTOM_PROFILE_PATH, \
 	DEPCACHE_PATH, GLOBAL_CONFIG_PATH, INCREMENTALS, MAKE_CONF_FILE, \
 	MODULES_FILE_PATH, PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, \
 	PRIVATE_PATH, PROFILE_PATH, USER_CONFIG_PATH, USER_VIRTUALS_FILE, \
-	EPREFIX
+	EPREFIX, EPREFIX_LSTRIP, BPREFIX
 from portage.data import portage_gid
 from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
