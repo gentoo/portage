@@ -1376,10 +1376,23 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		return retval >> 8
 	return retval
 
-def digestgen(myarchives, mysettings, overwrite=None, manifestonly=None, myportdb=None):
+def digestgen(myarchives=None, mysettings=None,
+	overwrite=None, manifestonly=None, myportdb=None):
 	"""
 	Generates a digest file if missing. Fetches files if necessary.
+	NOTE: myarchives and mysettings used to be positional arguments,
+		so their order must be preserved for backward compatibility.
+	@param mysettings: the ebuild config (mysettings["O"] must correspond
+		to the ebuild's parent directory)
+	@type mysettings: config
+	@param myportdb: a portdbapi instance
+	@type myportdb: portdbapi
+	@rtype: int
+	@returns: 1 on success and 0 on failure
 	"""
+	if mysettings is None:
+		raise TypeError("portage.digestgen(): missing" + \
+			" required 'mysettings' parameter")
 	if myportdb is None:
 		warnings.warn("portage.digestgen() called without 'myportdb' parameter",
 			DeprecationWarning, stacklevel=2)
@@ -1500,8 +1513,7 @@ def digestgen(myarchives, mysettings, overwrite=None, manifestonly=None, myportd
 						return 0
 		writemsg_stdout(_(">>> Creating Manifest for %s\n") % mysettings["O"])
 		try:
-			mf.create(requiredDistfiles=myarchives,
-				assumeDistHashesSometimes=True,
+			mf.create(assumeDistHashesSometimes=True,
 				assumeDistHashesAlways=(
 				"assume-digests" in mysettings.features))
 		except portage.exception.FileNotFound as e:
@@ -3360,15 +3372,15 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		try:
 			if mydo == "manifest":
-				return not digestgen(aalist, mysettings, myportdb=mydbapi)
+				return not digestgen(mysettings=mysettings, myportdb=mydbapi)
 			elif mydo == "digest":
-				return not digestgen(aalist, mysettings, myportdb=mydbapi)
+				return not digestgen(mysettings=mysettings, myportdb=mydbapi)
 			elif mydo != 'fetch' and not emerge_skip_digest and \
 				"digest" in mysettings.features:
 				# Don't do this when called by emerge or when called just
 				# for fetch (especially parallel-fetch) since it's not needed
 				# and it can interfere with parallel tasks.
-				digestgen(aalist, mysettings, myportdb=mydbapi)
+				digestgen(mysettings=mysettings, myportdb=mydbapi)
 		except portage.exception.PermissionDenied as e:
 			writemsg(_("!!! Permission Denied: %s\n") % (e,), noiselevel=-1)
 			if mydo in ("digest", "manifest"):
