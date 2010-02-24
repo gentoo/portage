@@ -3601,8 +3601,6 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 
 	return os.EX_OK
 
-expandcache={}
-
 def _movefile(src, dest, **kwargs):
 	"""Calls movefile and raises a PortageException if an error occurs."""
 	if movefile(src, dest, **kwargs) is None:
