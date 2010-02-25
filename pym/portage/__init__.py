@@ -136,7 +136,7 @@ try:
 			'cpv_getkey@getCPFromCPV,endversion_keys,' + \
 			'suffix_value@endversion,pkgcmp,pkgsplit,vercmp,ververify',
 		'portage.xpak',
-		'portage._deprecated:dep_virtual,digestParseFile,pkgmerge',
+		'portage._deprecated:dep_virtual,digestParseFile,getvirtuals,pkgmerge',
 	)
 
 	import portage.const
@@ -655,17 +655,6 @@ def deprecated_profile_check(settings=None):
 			writemsg(myline, noiselevel=-1)
 		writemsg("\n\n", noiselevel=-1)
 	return True
-
-# gets virtual package settings
-def getvirtuals(myroot):
-	"""
-	Calls portage.settings.getvirtuals().
-	@deprecated: Use portage.settings.getvirtuals().
-	"""
-	global settings
-	warnings.warn("portage.getvirtuals() is deprecated",
-		DeprecationWarning, stacklevel=2)
-	return settings.getvirtuals()
 
 def commit_mtimedb(mydict=None, filename=None):
 	if mydict is None:
