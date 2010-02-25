@@ -2642,14 +2642,14 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 
 	return rValue
 
-auxdbkeys=[
+auxdbkeys = (
   'DEPEND',    'RDEPEND',   'SLOT',      'SRC_URI',
 	'RESTRICT',  'HOMEPAGE',  'LICENSE',   'DESCRIPTION',
 	'KEYWORDS',  'INHERITED', 'IUSE', 'UNUSED_00',
 	'PDEPEND',   'PROVIDE', 'EAPI',
 	'PROPERTIES', 'DEFINED_PHASES', 'UNUSED_05', 'UNUSED_04',
 	'UNUSED_03', 'UNUSED_02', 'UNUSED_01',
-	]
+)
 auxdbkeylen=len(auxdbkeys)
 
 def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
