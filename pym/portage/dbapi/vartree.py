@@ -11,7 +11,7 @@ __all__ = ["PreservedLibsRegistry", "LinkageMap",
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum:_perform_md5_merge@perform_md5',
-	'portage.dep:dep_getkey,isjustname,match_from_list,' + \
+	'portage.dep:dep_getkey,isjustname,flatten,match_from_list,' + \
 	 	'use_reduce,paren_reduce,_slot_re',
 	'portage.elog:elog_process',
 	'portage.locks:lockdir,unlockdir',
@@ -23,7 +23,10 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:apply_secpass_permissions,ConfigProtect,ensure_dirs,' + \
 		'writemsg,writemsg_level,write_atomic,atomic_ofstream,writedict,' + \
 		'grabfile,grabdict,normalize_path,new_protect_filename,getlibpaths',
-	'portage.versions:best,catpkgsplit,catsplit,pkgcmp,_pkgsplit@pkgsplit',
+	'portage.util.digraph:digraph',
+	'portage.util.listdir:dircache,listdir',
+	'portage.versions:best,catpkgsplit,catsplit,cpv_getkey,pkgcmp,' + \
+		'_pkgsplit@pkgsplit',
 )
 
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, \
@@ -35,9 +38,8 @@ from portage.exception import CommandNotFound, \
 	FileNotFound, PermissionDenied, UnsupportedAPIException
 from portage.localization import _
 
-from portage import listdir, dep_expand, digraph, flatten, \
-	env_update, \
-	abssymlink, movefile, _movefile, bsd_chflags, cpv_getkey
+from portage import dep_expand, env_update, \
+	abssymlink, movefile, _movefile, bsd_chflags
 
 # This is a special version of the os module, wrapped for unicode support.
 from portage import os
@@ -1086,7 +1088,6 @@ class vardbapi(dbapi):
 		self.mtdircache.pop(pkg_dblink.cat, None)
 		self.matchcache.pop(pkg_dblink.cat, None)
 		self.cpcache.pop(pkg_dblink.mysplit[0], None)
-		from portage import dircache
 		dircache.pop(pkg_dblink.dbcatdir, None)
 
 	def match(self, origdep, use_cache=1):

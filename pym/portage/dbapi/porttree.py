@@ -11,9 +11,11 @@ __all__ = [
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum',
-	'portage.dep:dep_getkey,match_from_list,paren_reduce,use_reduce',
+	'portage.dep:dep_getkey,flatten,match_from_list,paren_reduce,use_reduce',
 	'portage.env.loaders:KeyValuePairFileLoader',
+	'portage.package.ebuild.doebuild:doebuild',
 	'portage.util:ensure_dirs,writemsg,writemsg_level',
+	'portage.util.listdir:listdir',
 	'portage.versions:best,catpkgsplit,_pkgsplit@pkgsplit,ver_regexp',
 )
 
@@ -27,8 +29,8 @@ from portage.exception import PortageException, \
 from portage.localization import _
 from portage.manifest import Manifest
 
-from portage import eclass_cache, auxdbkeys, doebuild, flatten, \
-	listdir, dep_expand, eapi_is_supported, dep_check, \
+from portage import eclass_cache, auxdbkeys, \
+	dep_expand, eapi_is_supported, dep_check, \
 	_eapi_is_deprecated
 from portage import os
 from portage import _encodings

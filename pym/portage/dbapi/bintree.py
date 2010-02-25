@@ -13,6 +13,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.doebuild:_vdb_use_conditional_atoms',
 	'portage.update:update_dbentries',
 	'portage.util:ensure_dirs,normalize_path,writemsg,writemsg_stdout',
+	'portage.util.listdir:listdir',
 	'portage.versions:best,catpkgsplit,catsplit',
 )
 
@@ -22,7 +23,7 @@ from portage.exception import InvalidPackageName, \
 	PermissionDenied, PortageException
 from portage.localization import _
 
-from portage import dep_expand, listdir, _movefile
+from portage import dep_expand, _movefile
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
