@@ -21,7 +21,7 @@ import time
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.config:check_config_instance',
-	'portage.util.digestgen:digestgen',
+	'portage.package.ebuild.digestgen:digestgen',
 	'portage.util.ExtractKernelVersion:ExtractKernelVersion'
 )
 
