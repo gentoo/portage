@@ -8,6 +8,7 @@ __all__ = ["bindbapi", "binarytree"]
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.dbapi.dep_expand:dep_expand',
 	'portage.dep:dep_getkey,isjustname,match_from_list',
 	'portage.output:EOutput,colorize',
 	'portage.package.ebuild.doebuild:_vdb_use_conditional_atoms',
@@ -23,7 +24,7 @@ from portage.exception import InvalidPackageName, \
 	PermissionDenied, PortageException
 from portage.localization import _
 
-from portage import dep_expand, _movefile
+from portage import _movefile
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode

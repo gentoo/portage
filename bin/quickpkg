@@ -19,7 +19,8 @@ except ImportError:
 from portage import os
 
 def quickpkg_main(options, args, eout):
-	from portage import catsplit, dep_expand, flatten, isvalidatom, xpak
+	from portage import catsplit, flatten, isvalidatom, xpak
+	from portage.dbapi.dep_expand import dep_expand
 	from portage.dep import use_reduce, paren_reduce
 	from portage.util import ConfigProtect, ensure_dirs
 	from portage.exception import InvalidAtom, InvalidData, InvalidDependString
