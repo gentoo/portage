@@ -9,7 +9,7 @@ from portage.exception import DigestException, FileNotFound
 from portage.localization import _
 from portage.manifest import Manifest
 from portage.output import EOutput
-from portagel.util import writemsg
+from portage.util import writemsg
 
 def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	"""
