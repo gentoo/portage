@@ -21,11 +21,12 @@ import time
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.config:check_config_instance',
+	'portage.package.ebuild.digestcheck:digestcheck',
 	'portage.package.ebuild.digestgen:digestgen',
 	'portage.util.ExtractKernelVersion:ExtractKernelVersion'
 )
 
-from portage import auxdbkeys, bsd_chflags, dep_check, digestcheck, \
+from portage import auxdbkeys, bsd_chflags, dep_check, \
 	eapi_is_supported, merge, os, selinux, StringIO, \
 	unmerge, _encodings, _parse_eapi_ebuild_head, _os_merge, \
 	_shell_quote, _split_ebuild_name_glep55, _unicode_decode, _unicode_encode

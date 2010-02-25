@@ -24,6 +24,7 @@ bad = create_color_func("BAD")
 from portage.sets import SETPREFIX
 from portage.sets.base import InternalPackageSet
 from portage.util import writemsg, writemsg_level
+from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
 
 from _emerge.BinpkgPrefetcher import BinpkgPrefetcher
@@ -638,7 +639,7 @@ class Scheduler(PollScheduler):
 			if ebuild_path is None:
 				raise AssertionError("ebuild not found for '%s'" % x.cpv)
 			quiet_config["O"] = os.path.dirname(ebuild_path)
-			if not portage.digestcheck([], quiet_config, strict=True):
+			if not digestcheck([], quiet_config, strict=True):
 				failures |= 1
 
 		if failures:

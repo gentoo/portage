@@ -104,6 +104,8 @@ try:
 			'doebuild_environment,spawn,spawnebuild',
 		'portage.package.ebuild.config:autouse,best_from_dict,' + \
 			'check_config_instance,config',
+		'portage.package.ebuild.digestcheck:digestcheck',
+		'portage.package.ebuild.digestgen:digestgen',
 		'portage.package.ebuild.fetch:fetch',
 		'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
 		'portage.process',
@@ -119,7 +121,6 @@ try:
 			'pickle_read,pickle_write,stack_dictlist,stack_dicts,' + \
 			'stack_lists,unique_array,varexpand,writedict,writemsg,' + \
 			'writemsg_stdout,write_atomic',
-		'portage.util.digestgen:digestgen',
 		'portage.util.digraph:digraph',
 		'portage.util.env_update:env_update',
 		'portage.util.ExtractKernelVersion:ExtractKernelVersion',
@@ -560,146 +561,6 @@ def digestParseFile(myfilename, mysettings=None):
 		mysettings = config(clone=settings)
 
 	return Manifest(pkgdir, mysettings["DISTDIR"]).getDigests()
-
-def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
-	"""Verifies checksums.  Assumes all files have been downloaded.
-	DEPRECATED: this is now only a compability wrapper for 
-	            portage.manifest.Manifest()."""
-	if mysettings.get("EBUILD_SKIP_MANIFEST") == "1":
-		return 1
-	pkgdir = mysettings["O"]
-	manifest_path = os.path.join(pkgdir, "Manifest")
-	if not os.path.exists(manifest_path):
-		writemsg(_("!!! Manifest file not found: '%s'\n") % manifest_path,
-			noiselevel=-1)
-		if strict:
-			return 0
-		else:
-			return 1
-	mf = Manifest(pkgdir, mysettings["DISTDIR"])
-	manifest_empty = True
-	for d in mf.fhashdict.values():
-		if d:
-			manifest_empty = False
-			break
-	if manifest_empty:
-		writemsg(_("!!! Manifest is empty: '%s'\n") % manifest_path,
-			noiselevel=-1)
-		if strict:
-			return 0
-		else:
-			return 1
-	eout = portage.output.EOutput()
-	eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
-	try:
-		if strict and "PORTAGE_PARALLEL_FETCHONLY" not in mysettings:
-			eout.ebegin(_("checking ebuild checksums ;-)"))
-			mf.checkTypeHashes("EBUILD")
-			eout.eend(0)
-			eout.ebegin(_("checking auxfile checksums ;-)"))
-			mf.checkTypeHashes("AUX")
-			eout.eend(0)
-			eout.ebegin(_("checking miscfile checksums ;-)"))
-			mf.checkTypeHashes("MISC", ignoreMissingFiles=True)
-			eout.eend(0)
-		for f in myfiles:
-			eout.ebegin(_("checking %s ;-)") % f)
-			ftype = mf.findFile(f)
-			if ftype is None:
-				raise KeyError(f)
-			mf.checkFileHashes(ftype, f)
-			eout.eend(0)
-	except KeyError as e:
-		eout.eend(1)
-		writemsg(_("\n!!! Missing digest for %s\n") % str(e), noiselevel=-1)
-		return 0
-	except portage.exception.FileNotFound as e:
-		eout.eend(1)
-		writemsg(_("\n!!! A file listed in the Manifest could not be found: %s\n") % str(e),
-			noiselevel=-1)
-		return 0
-	except portage.exception.DigestException as e:
-		eout.eend(1)
-		writemsg(_("\n!!! Digest verification failed:\n"), noiselevel=-1)
-		writemsg("!!! %s\n" % e.value[0], noiselevel=-1)
-		writemsg(_("!!! Reason: %s\n") % e.value[1], noiselevel=-1)
-		writemsg(_("!!! Got: %s\n") % e.value[2], noiselevel=-1)
-		writemsg(_("!!! Expected: %s\n") % e.value[3], noiselevel=-1)
-		return 0
-	# Make sure that all of the ebuilds are actually listed in the Manifest.
-	glep55 = 'parse-eapi-glep-55' in mysettings.features
-	for f in os.listdir(pkgdir):
-		pf = None
-		if glep55:
-			pf, eapi = _split_ebuild_name_glep55(f)
-		elif f[-7:] == '.ebuild':
-			pf = f[:-7]
-		if pf is not None and not mf.hasFile("EBUILD", f):
-			writemsg(_("!!! A file is not listed in the Manifest: '%s'\n") % \
-				os.path.join(pkgdir, f), noiselevel=-1)
-			if strict:
-				return 0
-	""" epatch will just grab all the patches out of a directory, so we have to
-	make sure there aren't any foreign files that it might grab."""
-	filesdir = os.path.join(pkgdir, "files")
-
-	for parent, dirs, files in os.walk(filesdir):
-		try:
-			parent = _unicode_decode(parent,
-				encoding=_encodings['fs'], errors='strict')
-		except UnicodeDecodeError:
-			parent = _unicode_decode(parent,
-				encoding=_encodings['fs'], errors='replace')
-			writemsg(_("!!! Path contains invalid "
-				"character(s) for encoding '%s': '%s'") \
-				% (_encodings['fs'], parent), noiselevel=-1)
-			if strict:
-				return 0
-			continue
-		for d in dirs:
-			d_bytes = d
-			try:
-				d = _unicode_decode(d,
-					encoding=_encodings['fs'], errors='strict')
-			except UnicodeDecodeError:
-				d = _unicode_decode(d,
-					encoding=_encodings['fs'], errors='replace')
-				writemsg(_("!!! Path contains invalid "
-					"character(s) for encoding '%s': '%s'") \
-					% (_encodings['fs'], os.path.join(parent, d)),
-					noiselevel=-1)
-				if strict:
-					return 0
-				dirs.remove(d_bytes)
-				continue
-			if d.startswith(".") or d == "CVS":
-				dirs.remove(d_bytes)
-		for f in files:
-			try:
-				f = _unicode_decode(f,
-					encoding=_encodings['fs'], errors='strict')
-			except UnicodeDecodeError:
-				f = _unicode_decode(f,
-					encoding=_encodings['fs'], errors='replace')
-				if f.startswith("."):
-					continue
-				f = os.path.join(parent, f)[len(filesdir) + 1:]
-				writemsg(_("!!! File name contains invalid "
-					"character(s) for encoding '%s': '%s'") \
-					% (_encodings['fs'], f), noiselevel=-1)
-				if strict:
-					return 0
-				continue
-			if f.startswith("."):
-				continue
-			f = os.path.join(parent, f)[len(filesdir) + 1:]
-			file_type = mf.findFile(f)
-			if file_type != "AUX" and not f.startswith("digest-"):
-				writemsg(_("!!! A file is not listed in the Manifest: '%s'\n") % \
-					os.path.join(filesdir, f), noiselevel=-1)
-				if strict:
-					return 0
-	return 1
 
 _testing_eapis = frozenset()
 _deprecated_eapis = frozenset(["3_pre2", "3_pre1", "2_pre3", "2_pre2", "2_pre1"])
