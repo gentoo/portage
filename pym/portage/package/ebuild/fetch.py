@@ -15,7 +15,13 @@ import shutil
 import stat
 import sys
 
-from portage import check_config_instance, doebuild_environment, OrderedDict, os, prepare_build_dirs, selinux, _encodings, _shell_quote, _unicode_encode
+
+import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.package.ebuild.config:check_config_instance,config',
+)
+
+from portage import doebuild_environment, OrderedDict, os, prepare_build_dirs, selinux, _encodings, _shell_quote, _unicode_encode
 from portage.checksum import perform_md5, verify_all
 from portage.const import BASH_BINARY, CUSTOM_MIRRORS_FILE, EBUILD_SH_BINARY, GLOBAL_CONFIG_PATH
 from portage.data import portage_gid, portage_uid, secpass, userpriv_groups
@@ -24,7 +30,6 @@ from portage.localization import _
 from portage.locks import lockfile, unlockfile
 from portage.manifest import Manifest
 from portage.output import colorize, EOutput
-from portage.package.ebuild.config import config
 from portage.util import apply_recursive_permissions, apply_secpass_permissions, ensure_dirs, grabdict, shlex_split, varexpand, writemsg, writemsg_level, writemsg_stdout
 from portage.process import spawn
 
