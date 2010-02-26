@@ -1296,16 +1296,25 @@ for x in scanlist:
 	else:
 		metadata_bad = False
 
-		# load USE flags from metadata.xml
+		# read metadata.xml into memory
 		try:
 			f = open(os.path.join(checkdir, "metadata.xml"))
-			utilities.parse_metadata_use(f, muselist)
+			_metadata_xml = f.read()
 			f.close()
-		except (EnvironmentError, ParseError) as e:
+		except (EnvironmentError, ) as e:
 			metadata_bad = True
 			stats["metadata.bad"] += 1
 			fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
 			del e
+		else:
+			# load USE flags from metadata.xml
+			try:
+				utilities.parse_metadata_use(_metadata_xml, muselist)
+			except (EnvironmentError, ParseError) as e:
+				metadata_bad = True
+				stats["metadata.bad"] += 1
+				fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
+				del e
 
 		#Only carry out if in package directory or check forced
 		if xmllint_capable and not metadata_bad:

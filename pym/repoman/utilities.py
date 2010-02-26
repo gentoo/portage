@@ -112,14 +112,14 @@ def have_profile_dir(path, maxdepth=3, filename="profiles.desc"):
 		path = normalize_path(path + "/..")
 		maxdepth -= 1
 
-def parse_metadata_use(mylines, uselist=None):
+def parse_metadata_use(metadata_xml_content, uselist=None):
 	"""
 	Records are wrapped in XML as per GLEP 56
 	returns a dict of the form a list of flags"""
 	if uselist is None:
 		uselist = []
 	try:
-		metadatadom = minidom.parse(mylines)
+		metadatadom = minidom.parseString(metadata_xml_content)
 	except ExpatError as e:
 		raise exception.ParseError("metadata.xml: %s" % (e,))
 
