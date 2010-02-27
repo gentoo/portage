@@ -17,6 +17,9 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.elog:elog_process',
 	'portage.locks:lockdir,unlockdir',
 	'portage.output:bold,colorize',
+	'portage.package.ebuild.doebuild:doebuild,doebuild_environment,' + \
+	 	'_spawn_misc_sh',
+	'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
 	'portage.update:fixdbentries',
 	'portage.util:apply_secpass_permissions,ConfigProtect,ensure_dirs,' + \
 		'writemsg,writemsg_level,write_atomic,atomic_ofstream,writedict,' + \
@@ -34,7 +37,7 @@ from portage.exception import CommandNotFound, \
 from portage.localization import _
 
 from portage import listdir, dep_expand, digraph, flatten, \
-	doebuild_environment, doebuild, env_update, prepare_build_dirs, \
+	env_update, \
 	abssymlink, movefile, _movefile, bsd_chflags, cpv_getkey
 
 # This is a special version of the os module, wrapped for unicode support.

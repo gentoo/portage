@@ -141,6 +141,10 @@ class _dynamic_depgraph_config(object):
 		# uninstallation but may not have been added to the graph
 		# if the graph is not complete yet.
 		self._blocked_world_pkgs = {}
+		# Contains packages whose dependencies have been traversed.
+		# This use used to check if we have accounted for blockers
+		# relevant to a package.
+		self._traversed_pkg_deps = set()
 		self._slot_collision_info = {}
 		# Slot collision nodes are not allowed to block other packages since
 		# blocker validation is only able to account for one package per slot.
@@ -1211,6 +1215,7 @@ class depgraph(object):
 			return 0
 		finally:
 			portage.dep._dep_check_strict = True
+		self._dynamic_config._traversed_pkg_deps.add(pkg)
 		return 1
 
 	def _add_pkg_dep_string(self, pkg, dep_root, dep_priority, dep_string,
@@ -2848,6 +2853,8 @@ class depgraph(object):
 					cpv = pkg.cpv
 					stale_cache.discard(cpv)
 					pkg_in_graph = self._dynamic_config.digraph.contains(pkg)
+					pkg_deps_added = \
+						pkg in self._dynamic_config._traversed_pkg_deps
 
 					# Check for masked installed packages. Only warn about
 					# packages that are in the graph in order to avoid warning
@@ -2864,7 +2871,7 @@ class depgraph(object):
 
 					blocker_atoms = None
 					blockers = None
-					if pkg_in_graph:
+					if pkg_deps_added:
 						blockers = []
 						try:
 							blockers.extend(

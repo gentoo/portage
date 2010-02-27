@@ -3,8 +3,9 @@
 # $Id$
 
 from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
-import portage
 from portage import os
+from portage.package.ebuild.doebuild import doebuild, \
+	_doebuild_exit_status_check_and_log, _post_phase_userpriv_perms
 
 class EbuildProcess(AbstractEbuildProcess):
 
@@ -26,8 +27,9 @@ class EbuildProcess(AbstractEbuildProcess):
 		settings = self.settings
 		ebuild_path = settings["EBUILD"]
 		debug = settings.get("PORTAGE_DEBUG") == "1"
+		
 
-		rval = portage.doebuild(ebuild_path, self.phase,
+		rval = doebuild(ebuild_path, self.phase,
 			root_config.root, settings, debug,
 			mydbapi=mydbapi, tree=tree, **kwargs)
 
@@ -37,12 +39,12 @@ class EbuildProcess(AbstractEbuildProcess):
 		AbstractEbuildProcess._set_returncode(self, wait_retval)
 
 		if self.phase not in ("clean", "cleanrm"):
-			self.returncode = portage._doebuild_exit_status_check_and_log(
+			self.returncode = _doebuild_exit_status_check_and_log(
 				self.settings, self.phase, self.returncode)
 
 		if self.phase == "test" and self.returncode != os.EX_OK and \
 			"test-fail-continue" in self.settings.features:
 			self.returncode = os.EX_OK
 
-		portage._post_phase_userpriv_perms(self.settings)
+		_post_phase_userpriv_perms(self.settings)
 

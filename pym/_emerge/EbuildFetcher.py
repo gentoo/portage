@@ -13,6 +13,7 @@ from portage import _encodings
 from portage import _unicode_encode
 import codecs
 from portage.elog.messages import eerror
+from portage.package.ebuild._pty import _create_pty_or_pipe
 
 class EbuildFetcher(SpawnProcess):
 
@@ -144,7 +145,7 @@ class EbuildFetcher(SpawnProcess):
 			return os.pipe()
 		stdout_pipe = fd_pipes.get(1)
 		got_pty, master_fd, slave_fd = \
-			portage._create_pty_or_pipe(copy_term_size=stdout_pipe)
+			_create_pty_or_pipe(copy_term_size=stdout_pipe)
 		return (master_fd, slave_fd)
 
 	def _set_returncode(self, wait_retval):

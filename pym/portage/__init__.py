@@ -102,9 +102,12 @@ try:
 		'portage.manifest:Manifest',
 		'portage.output',
 		'portage.output:bold,colorize',
+		'portage.package.ebuild.doebuild:doebuild,' + \
+			'doebuild_environment,spawn,spawnebuild',
 		'portage.package.ebuild.config:autouse,best_from_dict,' + \
 			'check_config_instance,config',
 		'portage.package.ebuild.fetch:fetch',
+		'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
 		'portage.process',
 		'portage.process:atexit_register,run_exitfuncs',
 		'portage.update:dep_transform,fixdbentries,grab_updates,' + \
@@ -1014,6 +1017,7 @@ def ExtractKernelVersion(base_dir):
 
 	return (version,None)
 
+<<<<<<< .working
 
 
 
@@ -1396,6 +1400,8 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		return retval >> 8
 	return retval
 
+=======
+>>>>>>> .merge-right.r15449
 def digestgen(myarchives=None, mysettings=None,
 	overwrite=None, manifestonly=None, myportdb=None):
 	"""
@@ -1739,500 +1745,6 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 					return 0
 	return 1
 
-# parse actionmap to spawn ebuild with the appropriate args
-def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
-	logfile=None, fd_pipes=None, returnpid=False):
-	if not returnpid and \
-		(alwaysdep or "noauto" not in mysettings.features):
-		# process dependency first
-		if "dep" in actionmap[mydo]:
-			retval = spawnebuild(actionmap[mydo]["dep"], actionmap,
-				mysettings, debug, alwaysdep=alwaysdep, logfile=logfile,
-				fd_pipes=fd_pipes, returnpid=returnpid)
-			if retval:
-				return retval
-
-	eapi = mysettings["EAPI"]
-
-	if mydo == "configure" and eapi in ("0", "1"):
-		return os.EX_OK
-
-	if mydo == "prepare" and eapi in ("0", "1"):
-		return os.EX_OK
-
-	if mydo == "pretend" and eapi in ("0", "1", "2", "3", "3_pre2"):
-		return os.EX_OK
-
-	kwargs = actionmap[mydo]["args"]
-	mysettings["EBUILD_PHASE"] = mydo
-	_doebuild_exit_status_unlink(
-		mysettings.get("EBUILD_EXIT_STATUS_FILE"))
-
-	try:
-		phase_retval = spawn(actionmap[mydo]["cmd"] % mydo,
-			mysettings, debug=debug, logfile=logfile,
-			fd_pipes=fd_pipes, returnpid=returnpid, **kwargs)
-	finally:
-		mysettings["EBUILD_PHASE"] = ""
-
-	if returnpid:
-		return phase_retval
-
-	msg = _doebuild_exit_status_check(mydo, mysettings)
-	if msg:
-		if phase_retval == os.EX_OK:
-			phase_retval = 1
-		from textwrap import wrap
-		from portage.elog.messages import eerror
-		for l in wrap(msg, 72):
-			eerror(l, phase=mydo, key=mysettings.mycpv)
-
-	_post_phase_userpriv_perms(mysettings)
-	if mydo == "install":
-		out = StringIO()
-		_check_build_log(mysettings, out=out)
-		msg = _unicode_decode(out.getvalue(),
-			encoding=_encodings['content'], errors='replace')
-		if msg:
-			writemsg_stdout(msg, noiselevel=-1)
-			if logfile is not None:
-				try:
-					f = codecs.open(_unicode_encode(logfile,
-						encoding=_encodings['fs'], errors='strict'),
-						mode='a', encoding=_encodings['content'],
-						errors='replace')
-				except EnvironmentError:
-					pass
-				else:
-					f.write(msg)
-					f.close()
-		if phase_retval == os.EX_OK:
-			_post_src_install_chost_fix(mysettings)
-			phase_retval = _post_src_install_checks(mysettings)
-
-	if mydo == "test" and phase_retval != os.EX_OK and \
-		"test-fail-continue" in mysettings.features:
-		phase_retval = os.EX_OK
-
-	return phase_retval
-
-_post_phase_cmds = {
-
-	"install" : [
-		"install_qa_check",
-		"install_symlink_html_docs"],
-
-	"preinst" : [
-		"preinst_aix",
-		"preinst_bsdflags",
-		"preinst_sfperms",
-		"preinst_selinux_labels",
-		"preinst_suid_scan",
-		"preinst_mask"],
-
-	"postinst" : [
-		"postinst_aix",
-		"postinst_bsdflags"]
-}
-
-def _post_phase_userpriv_perms(mysettings):
-	if "userpriv" in mysettings.features and secpass >= 2:
-		""" Privileged phases may have left files that need to be made
-		writable to a less privileged user."""
-		apply_recursive_permissions(mysettings["T"],
-			uid=portage_uid, gid=portage_gid, dirmode=0o70, dirmask=0,
-			filemode=0o60, filemask=0)
-
-def _post_src_install_checks(mysettings):
-	_post_src_install_uid_fix(mysettings)
-	global _post_phase_cmds
-	retval = _spawn_misc_sh(mysettings, _post_phase_cmds["install"],
-		phase='internal_post_src_install')
-	if retval != os.EX_OK:
-		writemsg(_("!!! install_qa_check failed; exiting.\n"),
-			noiselevel=-1)
-	return retval
-
-def _check_build_log(mysettings, out=None):
-	"""
-	Search the content of $PORTAGE_LOG_FILE if it exists
-	and generate the following QA Notices when appropriate:
-
-	  * Automake "maintainer mode"
-	  * command not found
-	  * Unrecognized configure options
-	"""
-	logfile = mysettings.get("PORTAGE_LOG_FILE")
-	if logfile is None:
-		return
-	try:
-		f = codecs.open(_unicode_encode(logfile,
-			encoding=_encodings['fs'], errors='strict'),
-			mode='r', encoding=_encodings['content'], errors='replace')
-	except EnvironmentError:
-		return
-
-	am_maintainer_mode = []
-	bash_command_not_found = []
-	bash_command_not_found_re = re.compile(
-		r'(.*): line (\d*): (.*): command not found$')
-	command_not_found_exclude_re = re.compile(r'/configure: line ')
-	helper_missing_file = []
-	helper_missing_file_re = re.compile(
-		r'^!!! (do|new).*: .* does not exist$')
-
-	configure_opts_warn = []
-	configure_opts_warn_re = re.compile(
-		r'^configure: WARNING: [Uu]nrecognized options: ')
-
-	# Exclude output from dev-libs/yaz-3.0.47 which looks like this:
-	#
-	#Configuration:
-	#  Automake:                   ${SHELL} /var/tmp/portage/dev-libs/yaz-3.0.47/work/yaz-3.0.47/config/missing --run automake-1.10
-	am_maintainer_mode_re = re.compile(r'/missing --run ')
-	am_maintainer_mode_exclude_re = \
-		re.compile(r'(/missing --run (autoheader|makeinfo)|^\s*Automake:\s)')
-
-	make_jobserver_re = \
-		re.compile(r'g?make\[\d+\]: warning: jobserver unavailable:')
-	make_jobserver = []
-
-	try:
-		for line in f:
-			if am_maintainer_mode_re.search(line) is not None and \
-				am_maintainer_mode_exclude_re.search(line) is None:
-				am_maintainer_mode.append(line.rstrip("\n"))
-
-			if bash_command_not_found_re.match(line) is not None and \
-				command_not_found_exclude_re.search(line) is None:
-				bash_command_not_found.append(line.rstrip("\n"))
-
-			if helper_missing_file_re.match(line) is not None:
-				helper_missing_file.append(line.rstrip("\n"))
-
-			if configure_opts_warn_re.match(line) is not None:
-				configure_opts_warn.append(line.rstrip("\n"))
-
-			if make_jobserver_re.match(line) is not None:
-				make_jobserver.append(line.rstrip("\n"))
-
-	finally:
-		f.close()
-
-	from portage.elog.messages import eqawarn
-	def _eqawarn(lines):
-		for line in lines:
-			eqawarn(line, phase="install", key=mysettings.mycpv, out=out)
-	from textwrap import wrap
-	wrap_width = 70
-
-	if am_maintainer_mode:
-		msg = [_("QA Notice: Automake \"maintainer mode\" detected:")]
-		msg.append("")
-		msg.extend("\t" + line for line in am_maintainer_mode)
-		msg.append("")
-		msg.extend(wrap(_(
-			"If you patch Makefile.am, "
-			"configure.in,  or configure.ac then you "
-			"should use autotools.eclass and "
-			"eautomake or eautoreconf. Exceptions "
-			"are limited to system packages "
-			"for which it is impossible to run "
-			"autotools during stage building. "
-			"See http://www.gentoo.org/p"
-			"roj/en/qa/autofailure.xml for more information."),
-			wrap_width))
-		_eqawarn(msg)
-
-	if bash_command_not_found:
-		msg = [_("QA Notice: command not found:")]
-		msg.append("")
-		msg.extend("\t" + line for line in bash_command_not_found)
-		_eqawarn(msg)
-
-	if helper_missing_file:
-		msg = [_("QA Notice: file does not exist:")]
-		msg.append("")
-		msg.extend("\t" + line[4:] for line in helper_missing_file)
-		_eqawarn(msg)
-
-	if configure_opts_warn:
-		msg = [_("QA Notice: Unrecognized configure options:")]
-		msg.append("")
-		msg.extend("\t" + line for line in configure_opts_warn)
-		_eqawarn(msg)
-
-	if make_jobserver:
-		msg = [_("QA Notice: make jobserver unavailable:")]
-		msg.append("")
-		msg.extend("\t" + line for line in make_jobserver)
-		_eqawarn(msg)
-
-def _post_src_install_chost_fix(settings):
-	"""
-	It's possible that the ebuild has changed the
-	CHOST variable, so revert it to the initial
-	setting.
-	"""
-	if settings.get('CATEGORY') == 'virtual':
-		return
-
-	chost = settings.get('CHOST')
-	if chost:
-		write_atomic(os.path.join(settings['PORTAGE_BUILDDIR'],
-			'build-info', 'CHOST'), chost + '\n')
-
-_vdb_use_conditional_keys = ('DEPEND', 'LICENSE', 'PDEPEND',
-	'PROPERTIES', 'PROVIDE', 'RDEPEND', 'RESTRICT',)
-_vdb_use_conditional_atoms = frozenset(['DEPEND', 'PDEPEND', 'RDEPEND'])
-
-def _post_src_install_uid_fix(mysettings, out=None):
-	"""
-	Files in $D with user and group bits that match the "portage"
-	user or group are automatically mapped to PORTAGE_INST_UID and
-	PORTAGE_INST_GID if necessary. The chown system call may clear
-	S_ISUID and S_ISGID bits, so those bits are restored if
-	necessary.
-	"""
-
-	os = _os_merge
-
-	inst_uid = int(mysettings["PORTAGE_INST_UID"])
-	inst_gid = int(mysettings["PORTAGE_INST_GID"])
-
-	if bsd_chflags:
-		# Temporarily remove all of the flags in order to avoid EPERM errors.
-		os.system("mtree -c -p %s -k flags > %s" % \
-			(_shell_quote(mysettings["D"]),
-			_shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree"))))
-		os.system("chflags -R noschg,nouchg,nosappnd,nouappnd %s" % \
-			(_shell_quote(mysettings["D"]),))
-		os.system("chflags -R nosunlnk,nouunlnk %s 2>/dev/null" % \
-			(_shell_quote(mysettings["D"]),))
-
-	destdir = mysettings["D"]
-	unicode_errors = []
-
-	while True:
-
-		unicode_error = False
-		size = 0
-		counted_inodes = set()
-
-		for parent, dirs, files in os.walk(destdir):
-			try:
-				parent = _unicode_decode(parent,
-					encoding=_encodings['merge'], errors='strict')
-			except UnicodeDecodeError:
-				new_parent = _unicode_decode(parent,
-					encoding=_encodings['merge'], errors='replace')
-				new_parent = _unicode_encode(new_parent,
-					encoding=_encodings['merge'], errors='backslashreplace')
-				new_parent = _unicode_decode(new_parent,
-					encoding=_encodings['merge'], errors='replace')
-				os.rename(parent, new_parent)
-				unicode_error = True
-				unicode_errors.append(new_parent[len(destdir):])
-				break
-
-			for fname in chain(dirs, files):
-				try:
-					fname = _unicode_decode(fname,
-						encoding=_encodings['merge'], errors='strict')
-				except UnicodeDecodeError:
-					fpath = _os.path.join(
-						parent.encode(_encodings['merge']), fname)
-					new_fname = _unicode_decode(fname,
-						encoding=_encodings['merge'], errors='replace')
-					new_fname = _unicode_encode(new_fname,
-						encoding=_encodings['merge'], errors='backslashreplace')
-					new_fname = _unicode_decode(new_fname,
-						encoding=_encodings['merge'], errors='replace')
-					new_fpath = os.path.join(parent, new_fname)
-					os.rename(fpath, new_fpath)
-					unicode_error = True
-					unicode_errors.append(new_fpath[len(destdir):])
-					fname = new_fname
-					fpath = new_fpath
-				else:
-					fpath = os.path.join(parent, fname)
-
-				mystat = os.lstat(fpath)
-				if stat.S_ISREG(mystat.st_mode) and \
-					mystat.st_ino not in counted_inodes:
-					counted_inodes.add(mystat.st_ino)
-					size += mystat.st_size
-				if mystat.st_uid != portage_uid and \
-					mystat.st_gid != portage_gid:
-					continue
-				myuid = -1
-				mygid = -1
-				if mystat.st_uid == portage_uid:
-					myuid = inst_uid
-				if mystat.st_gid == portage_gid:
-					mygid = inst_gid
-				apply_secpass_permissions(
-					_unicode_encode(fpath, encoding=_encodings['merge']),
-					uid=myuid, gid=mygid,
-					mode=mystat.st_mode, stat_cached=mystat,
-					follow_links=False)
-
-			if unicode_error:
-				break
-
-		if not unicode_error:
-			break
-
-	if unicode_errors:
-		from portage.elog.messages import eerror
-		for l in _merge_unicode_error(unicode_errors):
-			eerror(l, phase='install', key=mysettings.mycpv, out=out)
-
-	build_info_dir = os.path.join(mysettings['PORTAGE_BUILDDIR'],
-		'build-info')
-
-	codecs.open(_unicode_encode(os.path.join(build_info_dir,
-		'SIZE'), encoding=_encodings['fs'], errors='strict'),
-		'w', encoding=_encodings['repo.content'],
-		errors='strict').write(str(size) + '\n')
-
-	codecs.open(_unicode_encode(os.path.join(build_info_dir,
-		'BUILD_TIME'), encoding=_encodings['fs'], errors='strict'),
-		'w', encoding=_encodings['repo.content'],
-		errors='strict').write(str(int(time.time())) + '\n')
-
-	use = frozenset(mysettings['PORTAGE_USE'].split())
-	for k in _vdb_use_conditional_keys:
-		v = mysettings.configdict['pkg'].get(k)
-		if v is None:
-			continue
-		v = dep.paren_reduce(v)
-		v = dep.use_reduce(v, uselist=use)
-		v = dep.paren_normalize(v)
-		v = dep.paren_enclose(v)
-		if not v:
-			continue
-		if v in _vdb_use_conditional_atoms:
-			v_split = []
-			for x in v.split():
-				try:
-					x = dep.Atom(x)
-				except exception.InvalidAtom:
-					v_split.append(x)
-				else:
-					v_split.append(str(x.evaluate_conditionals(use)))
-			v = ' '.join(v_split)
-		codecs.open(_unicode_encode(os.path.join(build_info_dir,
-			k), encoding=_encodings['fs'], errors='strict'),
-			mode='w', encoding=_encodings['repo.content'],
-			errors='strict').write(v + '\n')
-
-	if bsd_chflags:
-		# Restore all of the flags saved above.
-		os.system("mtree -e -p %s -U -k flags < %s > /dev/null" % \
-			(_shell_quote(mysettings["D"]),
-			_shell_quote(os.path.join(mysettings["T"], "bsdflags.mtree"))))
-
-def _merge_unicode_error(errors):
-	from textwrap import wrap
-	lines = []
-
-	msg = _("This package installs one or more file names containing "
-		"characters that do not match your current locale "
-		"settings. The current setting for filesystem encoding is '%s'.") \
-		% _encodings['merge']
-	lines.extend(wrap(msg, 72))
-
-	lines.append("")
-	errors.sort()
-	lines.extend("\t" + x for x in errors)
-	lines.append("")
-
-	if _encodings['merge'].lower().replace('_', '').replace('-', '') != 'utf8':
-		msg = _("For best results, UTF-8 encoding is recommended. See "
-			"the Gentoo Linux Localization Guide for instructions "
-			"about how to configure your locale for UTF-8 encoding:")
-		lines.extend(wrap(msg, 72))
-		lines.append("")
-		lines.append("\t" + \
-			"http://www.gentoo.org/doc/en/guide-localization.xml")
-		lines.append("")
-
-	return lines
-
-def _post_pkg_preinst_cmd(mysettings):
-	"""
-	Post phase logic and tasks that have been factored out of
-	ebuild.sh. Call preinst_mask last so that INSTALL_MASK can
-	can be used to wipe out any gmon.out files created during
-	previous functions (in case any tools were built with -pg
-	in CFLAGS).
-	"""
-
-	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
-	misc_sh_binary = os.path.join(portage_bin_path,
-		os.path.basename(MISC_SH_BINARY))
-
-	mysettings["EBUILD_PHASE"] = ""
-	global _post_phase_cmds
-	myargs = [_shell_quote(misc_sh_binary)] + _post_phase_cmds["preinst"]
-
-	return myargs
-
-def _post_pkg_postinst_cmd(mysettings):
-	"""
-	Post phase logic and tasks that have been factored out of
-	build.sh.
-	"""
-
-	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
-	misc_sh_binary = os.path.join(portage_bin_path,
-		os.path.basename(MISC_SH_BINARY))
-
-	mysettings["EBUILD_PHASE"] = ""
-	global _post_phase_cmds
-	myargs = [_shell_quote(misc_sh_binary)] + _post_phase_cmds["postinst"]
-
-	return myargs
-
-def _spawn_misc_sh(mysettings, commands, phase=None, **kwargs):
-	"""
-	@param mysettings: the ebuild config
-	@type mysettings: config
-	@param commands: a list of function names to call in misc-functions.sh
-	@type commands: list
-	@rtype: int
-	@returns: the return value from the spawn() call
-	"""
-
-	# Note: PORTAGE_BIN_PATH may differ from the global
-	# constant when portage is reinstalling itself.
-	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
-	misc_sh_binary = os.path.join(portage_bin_path,
-		os.path.basename(MISC_SH_BINARY))
-	mycommand = " ".join([_shell_quote(misc_sh_binary)] + commands)
-	_doebuild_exit_status_unlink(
-		mysettings.get("EBUILD_EXIT_STATUS_FILE"))
-	debug = mysettings.get("PORTAGE_DEBUG") == "1"
-	logfile = mysettings.get("PORTAGE_LOG_FILE")
-	mysettings.pop("EBUILD_PHASE", None)
-	try:
-		rval = spawn(mycommand, mysettings, debug=debug,
-			logfile=logfile, **kwargs)
-	finally:
-		pass
-
-	msg = _doebuild_exit_status_check(phase, mysettings)
-	if msg:
-		if rval == os.EX_OK:
-			rval = 1
-		from textwrap import wrap
-		from portage.elog.messages import eerror
-		for l in wrap(msg, 72):
-			eerror(l, phase=mydo, key=mysettings.mycpv)
-
-	return rval
-
 _testing_eapis = frozenset()
 _deprecated_eapis = frozenset(["3_pre2", "3_pre1", "2_pre3", "2_pre2", "2_pre1"])
 
@@ -2298,6 +1810,7 @@ def _split_ebuild_name_glep55(name):
 		return (None, None)
 	return (m.group(1), m.group(3))
 
+<<<<<<< .working
 def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, mydbapi):
 
 	ebuild_path = os.path.abspath(myebuild)
@@ -3624,6 +3137,8 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 
 expandcache={}
 
+=======
+>>>>>>> .merge-right.r15449
 def _movefile(src, dest, **kwargs):
 	"""Calls movefile and raises a PortageException if an error occurs."""
 	if movefile(src, dest, **kwargs) is None:
@@ -4858,14 +4373,14 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 
 	return rValue
 
-auxdbkeys=[
+auxdbkeys = (
   'DEPEND',    'RDEPEND',   'SLOT',      'SRC_URI',
 	'RESTRICT',  'HOMEPAGE',  'LICENSE',   'DESCRIPTION',
 	'KEYWORDS',  'INHERITED', 'IUSE', 'UNUSED_00',
 	'PDEPEND',   'PROVIDE', 'EAPI',
 	'PROPERTIES', 'DEFINED_PHASES', 'UNUSED_05', 'UNUSED_04',
 	'UNUSED_03', 'UNUSED_02', 'UNUSED_01',
-	]
+)
 auxdbkeylen=len(auxdbkeys)
 
 def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
