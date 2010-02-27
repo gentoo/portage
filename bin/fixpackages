@@ -15,6 +15,7 @@ except ImportError:
 	import portage
 
 from portage import os
+from portage._global_updates import _global_updates
 mysettings = portage.settings
 mytrees = portage.db
 mtimedb = portage.mtimedb
@@ -27,7 +28,7 @@ except (OSError, ValueError) as e:
 	portage.writemsg("!!! %s\n" % str(e))
 	del e
 
-portage._global_updates(mytrees, mtimedb["updates"])
+_global_updates(mytrees, mtimedb["updates"])
 
 print()
 print("Done.")
