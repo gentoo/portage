@@ -131,12 +131,12 @@ def _prepare_features_dirs(mysettings):
 
 	features_dirs = {
 		"ccache":{
-			"path_dir": "/usr/lib/ccache/bin",
+			"path_dir": EPREFIX+"/usr/lib/ccache/bin",
 			"basedir_var":"CCACHE_DIR",
 			"default_dir":os.path.join(mysettings["PORTAGE_TMPDIR"], "ccache"),
 			"always_recurse":False},
 		"distcc":{
-			"path_dir": "/usr/lib/distcc/bin",
+			"path_dir": EPREFIX+"/usr/lib/distcc/bin",
 			"basedir_var":"DISTCC_DIR",
 			"default_dir":os.path.join(mysettings["BUILD_PREFIX"], ".distcc"),
 			"subdirs":("lock", "state"),

@@ -102,6 +102,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 		# due to how it's coded... Don't overwrite this so we can use it.
 		mysettings["PORTAGE_DEBUG"] = "1"
 
+	mysettings["EPREFIX"]  = EPREFIX.rstrip(os.path.sep)
 	mysettings["EBUILD"]   = ebuild_path
 	mysettings["O"]        = pkg_dir
 	mysettings.configdict["pkg"]["CATEGORY"] = cat
@@ -192,8 +193,9 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 	mysettings["D"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image") + os.sep
 	mysettings["T"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "temp")
 
-	# Prefix forward compatability
-	mysettings["ED"] = mysettings["D"]
+	## Prefix forward compatability
+	#mysettings["ED"] = mysettings["D"]
+	mysettings["ED"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image" + mysettings["EPREFIX"]) + os.sep
 
 	mysettings["PORTAGE_BASHRC"] = os.path.join(
 		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_FILE)
@@ -209,7 +211,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 		mydo in ('compile', 'config', 'configure', 'info',
 		'install', 'nofetch', 'postinst', 'postrm', 'preinst',
 		'prepare', 'prerm', 'setup', 'test', 'unpack'):
-		mykv,err1=ExtractKernelVersion(os.path.join(myroot, "usr/src/linux"))
+		mykv,err1=ExtractKernelVersion(os.path.join(myroot, EPREFIX_LSTRIP, "usr/src/linux"))
 		if mykv:
 			# Regular source tree
 			mysettings["KV"]=mykv
