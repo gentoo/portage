@@ -8,7 +8,7 @@ import re
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.dbapi.dep_expand:dep_expand',
+	'portage.dbapi.dep_expand:_dep_expand',
 	'portage.dep:match_from_list',
 	'portage.locks:unlockfile',
 	'portage.output:colorize',
@@ -122,7 +122,7 @@ class dbapi(object):
 		Returns:
 			a list of packages that match origdep
 		"""
-		mydep = dep_expand(origdep, mydb=self, settings=self.settings)
+		mydep = _dep_expand(origdep, mydb=self, settings=self.settings)
 		return list(self._iter_match(mydep,
 			self.cp_list(mydep.cp, use_cache=use_cache)))
 
