@@ -953,10 +953,3 @@ if True:
 		"pkglines", "thirdpartymirrors", "usedefaults", "profiledir",
 		"flushmtimedb"):
 		globals()[k] = _LegacyGlobalProxy(k)
-
-# Clear the cache
-dircache={}
-
-# ============================================================================
-# ============================================================================
-
