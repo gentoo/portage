@@ -27,6 +27,7 @@ from portage import digraph
 from portage import _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import NEWS_LIB_PATH, EPREFIX
+from portage.dbapi.dep_expand import dep_expand
 from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 	red, yellow
 good = create_color_func("GOOD")
@@ -2260,7 +2261,7 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 
 			try:
 				valid_atoms.append(
-					portage.dep_expand(x, mydb=vardb, settings=settings))
+					dep_expand(x, mydb=vardb, settings=settings))
 			except portage.exception.AmbiguousPackageName as e:
 				msg = "The short ebuild name \"" + x + \
 					"\" is ambiguous.  Please specify " + \

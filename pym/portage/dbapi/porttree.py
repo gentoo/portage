@@ -11,6 +11,7 @@ __all__ = [
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum',
+	'portage.dbapi.dep_expand:dep_expand',
 	'portage.dep:dep_getkey,flatten,match_from_list,paren_reduce,use_reduce',
 	'portage.env.loaders:KeyValuePairFileLoader',
 	'portage.package.ebuild.doebuild:doebuild',
@@ -30,7 +31,7 @@ from portage.localization import _
 from portage.manifest import Manifest
 
 from portage import eclass_cache, auxdbkeys, \
-	dep_expand, eapi_is_supported, dep_check, \
+	eapi_is_supported, dep_check, \
 	_eapi_is_deprecated
 from portage import os
 from portage import _encodings

@@ -33,6 +33,7 @@ import portage.locks
 import portage.exception
 from portage.const import EPREFIX, BPREFIX, EPREFIX_LSTRIP
 from portage.data import secpass
+from portage.dbapi.dep_expand import dep_expand
 from portage.util import normalize_path as normpath
 from portage.util import writemsg, writemsg_level, writemsg_stdout
 from portage.sets import SETPREFIX
@@ -1501,7 +1502,7 @@ def emerge_main():
 			if is_valid_package_atom(x):
 				try:
 					valid_atoms.append(
-						portage.dep_expand(x, mydb=vardb, settings=settings))
+						dep_expand(x, mydb=vardb, settings=settings))
 				except portage.exception.AmbiguousPackageName as e:
 					msg = "The short ebuild name \"" + x + \
 						"\" is ambiguous.  Please specify " + \

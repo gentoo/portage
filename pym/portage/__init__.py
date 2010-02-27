@@ -82,6 +82,8 @@ try:
 			'uid,userland,userpriv_groups,wheelgid',
 		'portage.dbapi',
 		'portage.dbapi.bintree:bindbapi,binarytree',
+		'portage.dbapi.cpv_expand:cpv_expand',
+		'portage.dbapi.dep_expand:dep_expand',
 		'portage.dbapi.porttree:close_portdbapi_caches,FetchlistDict,' + \
 			'portagetree,portdbapi',
 		'portage.dbapi.vartree:vardbapi,vartree,dblink',
@@ -104,6 +106,8 @@ try:
 			'doebuild_environment,spawn,spawnebuild',
 		'portage.package.ebuild.config:autouse,best_from_dict,' + \
 			'check_config_instance,config',
+		'portage.package.ebuild.digestcheck:digestcheck',
+		'portage.package.ebuild.digestgen:digestgen',
 		'portage.package.ebuild.fetch:fetch',
 		'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
 		'portage.process',
@@ -119,7 +123,6 @@ try:
 			'pickle_read,pickle_write,stack_dictlist,stack_dicts,' + \
 			'stack_lists,unique_array,varexpand,writedict,writemsg,' + \
 			'writemsg_stdout,write_atomic',
-		'portage.util.digestgen:digestgen',
 		'portage.util.digraph:digraph',
 		'portage.util.env_update:env_update',
 		'portage.util.ExtractKernelVersion:ExtractKernelVersion',
@@ -559,146 +562,6 @@ def digestParseFile(myfilename, mysettings=None):
 		mysettings = config(clone=settings)
 
 	return Manifest(pkgdir, mysettings["DISTDIR"]).getDigests()
-
-def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
-	"""Verifies checksums.  Assumes all files have been downloaded.
-	DEPRECATED: this is now only a compability wrapper for 
-	            portage.manifest.Manifest()."""
-	if mysettings.get("EBUILD_SKIP_MANIFEST") == "1":
-		return 1
-	pkgdir = mysettings["O"]
-	manifest_path = os.path.join(pkgdir, "Manifest")
-	if not os.path.exists(manifest_path):
-		writemsg(_("!!! Manifest file not found: '%s'\n") % manifest_path,
-			noiselevel=-1)
-		if strict:
-			return 0
-		else:
-			return 1
-	mf = Manifest(pkgdir, mysettings["DISTDIR"])
-	manifest_empty = True
-	for d in mf.fhashdict.values():
-		if d:
-			manifest_empty = False
-			break
-	if manifest_empty:
-		writemsg(_("!!! Manifest is empty: '%s'\n") % manifest_path,
-			noiselevel=-1)
-		if strict:
-			return 0
-		else:
-			return 1
-	eout = portage.output.EOutput()
-	eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
-	try:
-		if strict and "PORTAGE_PARALLEL_FETCHONLY" not in mysettings:
-			eout.ebegin(_("checking ebuild checksums ;-)"))
-			mf.checkTypeHashes("EBUILD")
-			eout.eend(0)
-			eout.ebegin(_("checking auxfile checksums ;-)"))
-			mf.checkTypeHashes("AUX")
-			eout.eend(0)
-			eout.ebegin(_("checking miscfile checksums ;-)"))
-			mf.checkTypeHashes("MISC", ignoreMissingFiles=True)
-			eout.eend(0)
-		for f in myfiles:
-			eout.ebegin(_("checking %s ;-)") % f)
-			ftype = mf.findFile(f)
-			if ftype is None:
-				raise KeyError(f)
-			mf.checkFileHashes(ftype, f)
-			eout.eend(0)
-	except KeyError as e:
-		eout.eend(1)
-		writemsg(_("\n!!! Missing digest for %s\n") % str(e), noiselevel=-1)
-		return 0
-	except portage.exception.FileNotFound as e:
-		eout.eend(1)
-		writemsg(_("\n!!! A file listed in the Manifest could not be found: %s\n") % str(e),
-			noiselevel=-1)
-		return 0
-	except portage.exception.DigestException as e:
-		eout.eend(1)
-		writemsg(_("\n!!! Digest verification failed:\n"), noiselevel=-1)
-		writemsg("!!! %s\n" % e.value[0], noiselevel=-1)
-		writemsg(_("!!! Reason: %s\n") % e.value[1], noiselevel=-1)
-		writemsg(_("!!! Got: %s\n") % e.value[2], noiselevel=-1)
-		writemsg(_("!!! Expected: %s\n") % e.value[3], noiselevel=-1)
-		return 0
-	# Make sure that all of the ebuilds are actually listed in the Manifest.
-	glep55 = 'parse-eapi-glep-55' in mysettings.features
-	for f in os.listdir(pkgdir):
-		pf = None
-		if glep55:
-			pf, eapi = _split_ebuild_name_glep55(f)
-		elif f[-7:] == '.ebuild':
-			pf = f[:-7]
-		if pf is not None and not mf.hasFile("EBUILD", f):
-			writemsg(_("!!! A file is not listed in the Manifest: '%s'\n") % \
-				os.path.join(pkgdir, f), noiselevel=-1)
-			if strict:
-				return 0
-	""" epatch will just grab all the patches out of a directory, so we have to
-	make sure there aren't any foreign files that it might grab."""
-	filesdir = os.path.join(pkgdir, "files")
-
-	for parent, dirs, files in os.walk(filesdir):
-		try:
-			parent = _unicode_decode(parent,
-				encoding=_encodings['fs'], errors='strict')
-		except UnicodeDecodeError:
-			parent = _unicode_decode(parent,
-				encoding=_encodings['fs'], errors='replace')
-			writemsg(_("!!! Path contains invalid "
-				"character(s) for encoding '%s': '%s'") \
-				% (_encodings['fs'], parent), noiselevel=-1)
-			if strict:
-				return 0
-			continue
-		for d in dirs:
-			d_bytes = d
-			try:
-				d = _unicode_decode(d,
-					encoding=_encodings['fs'], errors='strict')
-			except UnicodeDecodeError:
-				d = _unicode_decode(d,
-					encoding=_encodings['fs'], errors='replace')
-				writemsg(_("!!! Path contains invalid "
-					"character(s) for encoding '%s': '%s'") \
-					% (_encodings['fs'], os.path.join(parent, d)),
-					noiselevel=-1)
-				if strict:
-					return 0
-				dirs.remove(d_bytes)
-				continue
-			if d.startswith(".") or d == "CVS":
-				dirs.remove(d_bytes)
-		for f in files:
-			try:
-				f = _unicode_decode(f,
-					encoding=_encodings['fs'], errors='strict')
-			except UnicodeDecodeError:
-				f = _unicode_decode(f,
-					encoding=_encodings['fs'], errors='replace')
-				if f.startswith("."):
-					continue
-				f = os.path.join(parent, f)[len(filesdir) + 1:]
-				writemsg(_("!!! File name contains invalid "
-					"character(s) for encoding '%s': '%s'") \
-					% (_encodings['fs'], f), noiselevel=-1)
-				if strict:
-					return 0
-				continue
-			if f.startswith("."):
-				continue
-			f = os.path.join(parent, f)[len(filesdir) + 1:]
-			file_type = mf.findFile(f)
-			if file_type != "AUX" and not f.startswith("digest-"):
-				writemsg(_("!!! A file is not listed in the Manifest: '%s'\n") % \
-					os.path.join(filesdir, f), noiselevel=-1)
-				if strict:
-					return 0
-	return 1
 
 _testing_eapis = frozenset()
 _deprecated_eapis = frozenset(["3_pre2", "3_pre1", "2_pre3", "2_pre2", "2_pre1"])
@@ -1533,42 +1396,6 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 
 	assert(False) # This point should not be reachable
 
-def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
-	'''
-	@rtype: Atom
-	'''
-	if not len(mydep):
-		return mydep
-	if mydep[0]=="*":
-		mydep=mydep[1:]
-	orig_dep = mydep
-	if isinstance(orig_dep, dep.Atom):
-		mydep = orig_dep.cp
-	else:
-		mydep = orig_dep
-		has_cat = '/' in orig_dep
-		if not has_cat:
-			alphanum = re.search(r'\w', orig_dep)
-			if alphanum:
-				mydep = orig_dep[:alphanum.start()] + "null/" + \
-					orig_dep[alphanum.start():]
-		try:
-			mydep = dep.Atom(mydep)
-		except exception.InvalidAtom:
-			# Missing '=' prefix is allowed for backward compatibility.
-			if not dep.isvalidatom("=" + mydep):
-				raise
-			mydep = dep.Atom('=' + mydep)
-			orig_dep = '=' + orig_dep
-		if not has_cat:
-			null_cat, pn = catsplit(mydep.cp)
-			mydep = pn
-		else:
-			mydep = mydep.cp
-	expanded = cpv_expand(mydep, mydb=mydb,
-		use_cache=use_cache, settings=settings)
-	return portage.dep.Atom(orig_dep.replace(mydep, expanded, 1))
-
 def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	use_cache=1, use_binaries=0, myroot="/", trees=None):
 	"""Takes a depend string and parses the condition."""
@@ -1701,92 +1528,6 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 					#encountered invalid string
 					return None
 	return deplist
-
-def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
-	"""Given a string (packagename or virtual) expand it into a valid
-	cat/package string. Virtuals use the mydb to determine which provided
-	virtual is a valid choice and defaults to the first element when there
-	are no installed/available candidates."""
-	myslash=mycpv.split("/")
-	mysplit = versions._pkgsplit(myslash[-1])
-	if settings is None:
-		settings = globals()["settings"]
-	virts = settings.getvirtuals()
-	virts_p = settings.get_virts_p()
-	if len(myslash)>2:
-		# this is illegal case.
-		mysplit=[]
-		mykey=mycpv
-	elif len(myslash)==2:
-		if mysplit:
-			mykey=myslash[0]+"/"+mysplit[0]
-		else:
-			mykey=mycpv
-		if mydb and virts and mykey in virts:
-			writemsg("mydb.__class__: %s\n" % (mydb.__class__), 1)
-			if hasattr(mydb, "cp_list"):
-				if not mydb.cp_list(mykey, use_cache=use_cache):
-					writemsg("virts[%s]: %s\n" % (str(mykey),virts[mykey]), 1)
-					mykey_orig = mykey[:]
-					for vkey in virts[mykey]:
-						# The virtuals file can contain a versioned atom, so
-						# it may be necessary to remove the operator and
-						# version from the atom before it is passed into
-						# dbapi.cp_list().
-						if mydb.cp_list(vkey.cp):
-							mykey = str(vkey)
-							writemsg(_("virts chosen: %s\n") % (mykey), 1)
-							break
-					if mykey == mykey_orig:
-						mykey = str(virts[mykey][0])
-						writemsg(_("virts defaulted: %s\n") % (mykey), 1)
-			#we only perform virtual expansion if we are passed a dbapi
-	else:
-		#specific cpv, no category, ie. "foo-1.0"
-		if mysplit:
-			myp=mysplit[0]
-		else:
-			# "foo" ?
-			myp=mycpv
-		mykey=None
-		matches=[]
-		if mydb and hasattr(mydb, "categories"):
-			for x in mydb.categories:
-				if mydb.cp_list(x+"/"+myp,use_cache=use_cache):
-					matches.append(x+"/"+myp)
-		if len(matches) > 1:
-			virtual_name_collision = False
-			if len(matches) == 2:
-				for x in matches:
-					if not x.startswith("virtual/"):
-						# Assume that the non-virtual is desired.  This helps
-						# avoid the ValueError for invalid deps that come from
-						# installed packages (during reverse blocker detection,
-						# for example).
-						mykey = x
-					else:
-						virtual_name_collision = True
-			if not virtual_name_collision:
-				# AmbiguousPackageName inherits from ValueError,
-				# for backward compatibility with calling code
-				# that already handles ValueError.
-				raise portage.exception.AmbiguousPackageName(matches)
-		elif matches:
-			mykey=matches[0]
-
-		if not mykey and not isinstance(mydb, list):
-			if myp in virts_p:
-				mykey=virts_p[myp][0]
-			#again, we only perform virtual expansion if we have a dbapi (not a list)
-		if not mykey:
-			mykey="null/"+myp
-	if mysplit:
-		if mysplit[2]=="r0":
-			return mykey+"-"+mysplit[1]
-		else:
-			return mykey+"-"+mysplit[1]+"-"+mysplit[2]
-	else:
-		return mykey
 
 def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_location=False):
 	from portage.util import grablines

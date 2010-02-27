@@ -75,7 +75,7 @@ from portage.output import bold, create_color_func, darkgreen, \
 	green, nocolor, red, turquoise, yellow
 from portage.output import ConsoleStyleFile, StyleWriter
 from portage.util import cmp_sort_key, writemsg_level
-from portage.util.digestgen import digestgen
+from portage.package.ebuild.digestgen import digestgen
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
