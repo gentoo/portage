@@ -15,7 +15,9 @@ __all__ = [
 	"get_commit_message_with_editor",
 	"get_commit_message_with_stdin",
 	"have_profile_dir",
-	"parse_metadata_use"
+	"parse_metadata_use",
+	"UnknownHerdsError",
+	"check_metadata"
 ]
 
 import codecs
@@ -30,6 +32,7 @@ except ImportError:
 from xml.dom import minidom
 from xml.dom import NotFoundErr
 from xml.parsers.expat import ExpatError
+import xml.etree.ElementTree as ET
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
@@ -148,6 +151,34 @@ def parse_metadata_use(metadata_xml_content, uselist=None):
 
 	finally:
 		metadatadom.unlink()
+
+
+class UnknownHerdsError(ValueError):
+	def __init__(self, herd_names):
+		_plural = len(herd_names) != 1
+		super(UnknownHerdsError, self).__init__(
+			'Unknown %s %s' % (_plural and 'herds' or 'herd',
+			','.join('"%s"' % e for e in herd_names)))
+
+
+def check_metadata_herds(xml_tree, herd_base):
+	herd_nodes = xml_tree.findall('herd')
+	unknown_herds = [name for name in
+			(e.text.strip() for e in herd_nodes)
+			if not herd_base.known_herd(name)]
+
+	if unknown_herds:
+		raise UnknownHerdsError(unknown_herds)
+
+
+def check_metadata(metadata_xml_content, herd_base):
+	try:
+		xml_tree = ET.fromstring(metadata_xml_content)
+	except (ExpatError, ) as e:
+		raise exception.ParseError("metadata.xml: " + str(e))
+
+	check_metadata_herds(xml_tree, herd_base)
+
 
 def FindPackagesToScan(settings, startdir, reposplit):
 	""" Try to find packages that need to be scanned
