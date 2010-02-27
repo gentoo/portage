@@ -331,89 +331,8 @@ except (ImportError, OSError) as e:
 # END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END
 # ===========================================================================
 
-def _gen_missing_encodings(missing_encodings):
-
-	encodings = {}
-
-	if 'ascii' in missing_encodings:
-
-		class AsciiIncrementalEncoder(codecs.IncrementalEncoder):
-			def encode(self, input, final=False):
-				return codecs.ascii_encode(input, self.errors)[0]
-
-		class AsciiIncrementalDecoder(codecs.IncrementalDecoder):
-			def decode(self, input, final=False):
-				return codecs.ascii_decode(input, self.errors)[0]
-
-		class AsciiStreamWriter(codecs.StreamWriter):
-			encode = codecs.ascii_encode
-
-		class AsciiStreamReader(codecs.StreamReader):
-			decode = codecs.ascii_decode
-
-		codec_info =  codecs.CodecInfo(
-			name='ascii',
-			encode=codecs.ascii_encode,
-			decode=codecs.ascii_decode,
-			incrementalencoder=AsciiIncrementalEncoder,
-			incrementaldecoder=AsciiIncrementalDecoder,
-			streamwriter=AsciiStreamWriter,
-			streamreader=AsciiStreamReader,
-		)
-
-		for alias in ('ascii', '646', 'ansi_x3.4_1968', 'ansi_x3_4_1968',
-			'ansi_x3.4_1986', 'cp367', 'csascii', 'ibm367', 'iso646_us',
-			'iso_646.irv_1991', 'iso_ir_6', 'us', 'us_ascii'):
-			encodings[alias] = codec_info
-
-	if 'utf_8' in missing_encodings:
-
-		def utf8decode(input, errors='strict'):
-			return codecs.utf_8_decode(input, errors, True)
-
-		class Utf8IncrementalEncoder(codecs.IncrementalEncoder):
-			def encode(self, input, final=False):
-				return codecs.utf_8_encode(input, self.errors)[0]
-
-		class Utf8IncrementalDecoder(codecs.BufferedIncrementalDecoder):
-			_buffer_decode = codecs.utf_8_decode
-
-		class Utf8StreamWriter(codecs.StreamWriter):
-			encode = codecs.utf_8_encode
-
-		class Utf8StreamReader(codecs.StreamReader):
-			decode = codecs.utf_8_decode
-
-		codec_info = codecs.CodecInfo(
-			name='utf-8',
-			encode=codecs.utf_8_encode,
-			decode=utf8decode,
-			incrementalencoder=Utf8IncrementalEncoder,
-			incrementaldecoder=Utf8IncrementalDecoder,
-			streamreader=Utf8StreamReader,
-			streamwriter=Utf8StreamWriter,
-		)
-
-		for alias in ('utf_8', 'u8', 'utf', 'utf8', 'utf8_ucs2', 'utf8_ucs4'):
-			encodings[alias] = codec_info
-
-	return encodings
-
 def _ensure_default_encoding():
-	"""
-	The python that's inside stage 1 or 2 is built with a minimal
-	configuration which does not include the /usr/lib/pythonX.Y/encodings
-	directory. This results in error like the following:
 
-	  LookupError: no codec search functions registered: can't find encoding
-
-	In order to solve this problem, detect it early and manually register
-	a search function for the ascii and utf_8 codecs. Starting with python-3.0
-	this problem is more noticeable because of stricter handling of encoding
-	and decoding between strings of characters and bytes.
-	"""
-
-	default_fallback = 'utf_8'
 	default_encoding = sys.getdefaultencoding().lower().replace('-', '_')
 	filesystem_encoding = _encodings['merge'].lower().replace('-', '_')
 	required_encodings = set(['ascii', 'utf_8'])
@@ -429,49 +348,9 @@ def _ensure_default_encoding():
 	if not missing_encodings:
 		return
 
-	encodings = _gen_missing_encodings(missing_encodings)
-
-	if default_encoding in missing_encodings and \
-		default_encoding not in encodings:
-		# Make the fallback codec correspond to whatever name happens
-		# to be returned by sys.getfilesystemencoding().
-
-		try:
-			encodings[default_encoding] = codecs.lookup(default_fallback)
-		except LookupError:
-			encodings[default_encoding] = encodings[default_fallback]
-
-	if filesystem_encoding in missing_encodings and \
-		filesystem_encoding not in encodings:
-		# Make the fallback codec correspond to whatever name happens
-		# to be returned by sys.getdefaultencoding().
-
-		try:
-			encodings[filesystem_encoding] = codecs.lookup(default_fallback)
-		except LookupError:
-			encodings[filesystem_encoding] = encodings[default_fallback]
-
-	def search_function(name):
-		name = name.lower()
-		name = name.replace('-', '_')
-		codec_info = encodings.get(name)
-		if codec_info is not None:
-			return codecs.CodecInfo(
-				name=codec_info.name,
-				encode=codec_info.encode,
-				decode=codec_info.decode,
-				incrementalencoder=codec_info.incrementalencoder,
-				incrementaldecoder=codec_info.incrementaldecoder,
-				streamreader=codec_info.streamreader,
-				streamwriter=codec_info.streamwriter,
-			)
-		return None
-
-	codecs.register(search_function)
-
-	del codec_name, default_encoding, default_fallback, \
-		filesystem_encoding, missing_encodings, \
-		required_encodings, search_function
+	from portage import _ensure_encodings
+	_ensure_encodings._setup_encodings(default_encoding,
+		filesystem_encoding, missing_encodings)
 
 # Do this ASAP since writemsg() might not work without it.
 _ensure_default_encoding()
@@ -685,146 +564,6 @@ def portageexit():
 
 atexit_register(portageexit)
 
-def _global_updates(trees, prev_mtimes):
-	"""
-	Perform new global updates if they exist in $PORTDIR/profiles/updates/.
-
-	@param trees: A dictionary containing portage trees.
-	@type trees: dict
-	@param prev_mtimes: A dictionary containing mtimes of files located in
-		$PORTDIR/profiles/updates/.
-	@type prev_mtimes: dict
-	@rtype: None or List
-	@return: None if no were no updates, otherwise a list of update commands
-		that have been performed.
-	"""
-	# only do this if we're root and not running repoman/ebuild digest
-	global secpass
-	if secpass < 2 or "SANDBOX_ACTIVE" in os.environ:
-		return
-	root = "/"
-	mysettings = trees["/"]["vartree"].settings
-	updpath = os.path.join(mysettings["PORTDIR"], "profiles", "updates")
-
-	try:
-		if mysettings["PORTAGE_CALLER"] == "fixpackages":
-			update_data = grab_updates(updpath)
-		else:
-			update_data = grab_updates(updpath, prev_mtimes)
-	except portage.exception.DirectoryNotFound:
-		writemsg(_("--- 'profiles/updates' is empty or "
-			"not available. Empty portage tree?\n"), noiselevel=1)
-		return
-	myupd = None
-	if len(update_data) > 0:
-		do_upgrade_packagesmessage = 0
-		myupd = []
-		timestamps = {}
-		for mykey, mystat, mycontent in update_data:
-			writemsg_stdout("\n\n")
-			writemsg_stdout(colorize("GOOD",
-				_("Performing Global Updates: "))+bold(mykey)+"\n")
-			writemsg_stdout(_("(Could take a couple of minutes if you have a lot of binary packages.)\n"))
-			writemsg_stdout(_("  %s='update pass'  %s='binary update'  "
-				"%s='/var/db update'  %s='/var/db move'\n"
-				"  %s='/var/db SLOT move'  %s='binary move'  "
-				"%s='binary SLOT move'\n  %s='update /etc/portage/package.*'\n") % \
-				(bold("."), bold("*"), bold("#"), bold("@"), bold("s"), bold("%"), bold("S"), bold("p")))
-			valid_updates, errors = parse_updates(mycontent)
-			myupd.extend(valid_updates)
-			writemsg_stdout(len(valid_updates) * "." + "\n")
-			if len(errors) == 0:
-				# Update our internal mtime since we
-				# processed all of our directives.
-				timestamps[mykey] = mystat[stat.ST_MTIME]
-			else:
-				for msg in errors:
-					writemsg("%s\n" % msg, noiselevel=-1)
-
-		world_file = os.path.join(root, EPREFIX_LSTRIP, WORLD_FILE)
-		world_list = grabfile(world_file)
-		world_modified = False
-		for update_cmd in myupd:
-			for pos, atom in enumerate(world_list):
-				new_atom = update_dbentry(update_cmd, atom)
-				if atom != new_atom:
-					world_list[pos] = new_atom
-					world_modified = True
-		if world_modified:
-			world_list.sort()
-			write_atomic(world_file,
-				"".join("%s\n" % (x,) for x in world_list))
-
-		update_config_files("/",
-			mysettings.get("CONFIG_PROTECT","").split(),
-			mysettings.get("CONFIG_PROTECT_MASK","").split(),
-			myupd)
-
-		trees["/"]["bintree"] = binarytree("/", mysettings["PKGDIR"],
-			settings=mysettings)
-		vardb = trees["/"]["vartree"].dbapi
-		bindb = trees["/"]["bintree"].dbapi
-		if not os.access(bindb.bintree.pkgdir, os.W_OK):
-			bindb = None
-		for update_cmd in myupd:
-			if update_cmd[0] == "move":
-				moves = vardb.move_ent(update_cmd)
-				if moves:
-					writemsg_stdout(moves * "@")
-				if bindb:
-					moves = bindb.move_ent(update_cmd)
-					if moves:
-						writemsg_stdout(moves * "%")
-			elif update_cmd[0] == "slotmove":
-				moves = vardb.move_slot_ent(update_cmd)
-				if moves:
-					writemsg_stdout(moves * "s")
-				if bindb:
-					moves = bindb.move_slot_ent(update_cmd)
-					if moves:
-						writemsg_stdout(moves * "S")
-
-		# The above global updates proceed quickly, so they
-		# are considered a single mtimedb transaction.
-		if len(timestamps) > 0:
-			# We do not update the mtime in the mtimedb
-			# until after _all_ of the above updates have
-			# been processed because the mtimedb will
-			# automatically commit when killed by ctrl C.
-			for mykey, mtime in timestamps.items():
-				prev_mtimes[mykey] = mtime
-
-		# We gotta do the brute force updates for these now.
-		if mysettings["PORTAGE_CALLER"] == "fixpackages" or \
-		"fixpackages" in mysettings.features:
-			def onUpdate(maxval, curval):
-				if curval > 0:
-					writemsg_stdout("#")
-			vardb.update_ents(myupd, onUpdate=onUpdate)
-			if bindb:
-				def onUpdate(maxval, curval):
-					if curval > 0:
-						writemsg_stdout("*")
-				bindb.update_ents(myupd, onUpdate=onUpdate)
-		else:
-			do_upgrade_packagesmessage = 1
-
-		# Update progress above is indicated by characters written to stdout so
-		# we print a couple new lines here to separate the progress output from
-		# what follows.
-		print()
-		print()
-
-		if do_upgrade_packagesmessage and bindb and \
-			bindb.cpv_all():
-			writemsg_stdout(_(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the tbz2's in the packages directory.\n"))
-			writemsg_stdout(bold(_("Note: This can take a very long time.")))
-			writemsg_stdout("\n")
-	if myupd:
-		return myupd
-
-#continue setting up other trees
-
 class MtimeDB(dict):
 	def __init__(self, filename):
 		dict.__init__(self)
@@ -1010,7 +749,7 @@ def init_legacy_globals():
 
 	global db, settings, root, portdb, selinux_enabled, mtimedbfile, mtimedb, \
 	archlist, features, groups, pkglines, thirdpartymirrors, usedefaults, \
-	profiledir, flushmtimedb
+	profiledir
 
 	# Portage needs to ensure a sane umask for the files it creates.
 	os.umask(0o22)
@@ -1049,8 +788,6 @@ def init_legacy_globals():
 	profiledir  = os.path.join(settings["PORTAGE_CONFIGROOT"], PROFILE_PATH)
 	if not os.path.isdir(profiledir):
 		profiledir = None
-	def flushmtimedb(record):
-		writemsg("portage.flushmtimedb() is DEPRECATED\n")
 	# ========================================================================
 	# COMPATIBILITY
 	# These attributes should not be used
@@ -1070,13 +807,5 @@ if True:
 
 	for k in ("db", "settings", "root", "selinux_enabled",
 		"archlist", "features", "groups",
-		"pkglines", "thirdpartymirrors", "usedefaults", "profiledir",
-		"flushmtimedb"):
+		"pkglines", "thirdpartymirrors", "usedefaults", "profiledir"):
 		globals()[k] = _LegacyGlobalProxy(k)
-
-# Clear the cache
-dircache={}
-
-# ============================================================================
-# ============================================================================
-

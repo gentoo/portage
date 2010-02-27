@@ -1956,7 +1956,7 @@ if options.mode != 'commit':
 	elif not dofail:
 		print(green("RepoMan sez:"),"\"If everyone were like you, I'd be out of business!\"")
 	elif dofail:
-		print(turquoise("Please fix these important QA issues first."))
+		print(bad("Please fix these important QA issues first."))
 		print(green("RepoMan sez:"),"\"Make your QA payment on time and you'll never see the likes of me.\"\n")
 		sys.exit(1)
 else:
@@ -1967,7 +1967,7 @@ else:
 	elif dofail:
 		if options.force and not can_force:
 			print(bad("The --force option has been disabled due to extraordinary issues."))
-		print(turquoise("Please fix these important QA issues first."))
+		print(bad("Please fix these important QA issues first."))
 		print(green("RepoMan sez:"),"\"Make your QA payment on time and you'll never see the likes of me.\"\n")
 		sys.exit(1)
 

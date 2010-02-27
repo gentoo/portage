@@ -37,6 +37,7 @@ from portage.dbapi.dep_expand import dep_expand
 from portage.util import normalize_path as normpath
 from portage.util import writemsg, writemsg_level, writemsg_stdout
 from portage.sets import SETPREFIX
+from portage._global_updates import _global_updates
 
 from _emerge.actions import action_config, action_sync, action_metadata, \
 	action_regen, action_search, action_uninstall, action_info, action_build, \
@@ -1185,7 +1186,7 @@ def emerge_main():
 		return rval
 
 	if myaction not in ('help', 'info', 'version') and \
-		portage._global_updates(trees, mtimedb["updates"]):
+		_global_updates(trees, mtimedb["updates"]):
 		mtimedb.commit()
 		# Reload the whole config from scratch.
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
