@@ -67,11 +67,11 @@ class bindbapi(fakedbapi):
 
 	def cpv_inject(self, cpv, **kwargs):
 		self._aux_cache.pop(cpv, None)
-		fakedbapi.cpv_inject(cpv, **kwargs)
+		fakedbapi.cpv_inject(self, cpv, **kwargs)
 
 	def cpv_remove(self, cpv):
 		self._aux_cache.pop(cpv, None)
-		fakedbapi.cpv_remove(cpv)
+		fakedbapi.cpv_remove(self, cpv)
 
 	def aux_get(self, mycpv, wants):
 		if self.bintree and not self.bintree.populated:
