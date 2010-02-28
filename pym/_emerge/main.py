@@ -69,6 +69,7 @@ options=[
 "--onlydeps",     "--pretend",
 "--quiet",
 "--quiet-build",
+"--quiet-unmerge-warn",
 "--resume",
 "--searchdesc",
 "--skipfirst",

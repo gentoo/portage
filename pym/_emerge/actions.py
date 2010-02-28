@@ -2282,7 +2282,9 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 	if files and not valid_atoms:
 		return 1
 
-	if action == 'unmerge' and '--quiet' not in opts:
+	if action == 'unmerge' and \
+		'--quiet' not in opts and \
+		'--quiet-unmerge-warn' not in opts:
 		msg = "This action can remove important packages! " + \
 			"In order to be safer, use " + \
 			"`emerge -pv --depclean <atom>` to check for " + \
