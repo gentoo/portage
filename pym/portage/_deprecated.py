@@ -16,6 +16,11 @@ from portage.localization import _
 from portage.manifest import Manifest
 from portage.util import writemsg, writemsg_stdout
 
+def commit_mtimedb(mydict=None, filename=None):
+	warnings.warn("portage.commit_mtimedb() is deprecated, " + \
+		"use portage.mtimedb.commit() instead",
+		DeprecationWarning, stacklevel=2)
+
 def digestParseFile(myfilename, mysettings=None):
 	"""(filename) -- Parses a given file for entries matching:
 	<checksumkey> <checksum_hex_string> <filename> <filesize>

@@ -107,6 +107,8 @@ try:
 			'doebuild_environment,spawn,spawnebuild',
 		'portage.package.ebuild.config:autouse,best_from_dict,' + \
 			'check_config_instance,config',
+		'portage.package.ebuild.deprecated_profile_check:' + \
+			'deprecated_profile_check',
 		'portage.package.ebuild.digestcheck:digestcheck',
 		'portage.package.ebuild.digestgen:digestgen',
 		'portage.package.ebuild.fetch:fetch',
@@ -131,12 +133,14 @@ try:
 		'portage.util.ExtractKernelVersion:ExtractKernelVersion',
 		'portage.util.listdir:cacheddir,listdir',
 		'portage.util.movefile:movefile',
+		'portage.util.mtimedb:MtimeDB',
 		'portage.versions',
 		'portage.versions:best,catpkgsplit,catsplit,cpv_getkey,' + \
 			'cpv_getkey@getCPFromCPV,endversion_keys,' + \
 			'suffix_value@endversion,pkgcmp,pkgsplit,vercmp,ververify',
 		'portage.xpak',
-		'portage._deprecated:dep_virtual,digestParseFile,getvirtuals,pkgmerge',
+		'portage._deprecated:commit_mtimedb,dep_virtual,' + \
+			'digestParseFile,getvirtuals,pkgmerge',
 	)
 
 	import portage.const
@@ -504,121 +508,17 @@ auxdbkeys = (
 )
 auxdbkeylen=len(auxdbkeys)
 
-def deprecated_profile_check(settings=None):
-	config_root = "/"
-	if settings is not None:
-		config_root = settings["PORTAGE_CONFIGROOT"]
-	deprecated_profile_file = os.path.join(config_root,
-		DEPRECATED_PROFILE_FILE)
-	if not os.access(deprecated_profile_file, os.R_OK):
-		return False
-	dcontent = codecs.open(_unicode_encode(deprecated_profile_file,
-		encoding=_encodings['fs'], errors='strict'), 
-		mode='r', encoding=_encodings['content'], errors='replace').readlines()
-	writemsg(colorize("BAD", _("\n!!! Your current profile is "
-		"deprecated and not supported anymore.")) + "\n", noiselevel=-1)
-	writemsg(colorize("BAD", _("!!! Use eselect profile to update your "
-		"profile.")) + "\n", noiselevel=-1)
-	if not dcontent:
-		writemsg(colorize("BAD", _("!!! Please refer to the "
-			"Gentoo Upgrading Guide.")) + "\n", noiselevel=-1)
-		return True
-	newprofile = dcontent[0]
-	writemsg(colorize("BAD", _("!!! Please upgrade to the "
-		"following profile if possible:")) + "\n", noiselevel=-1)
-	writemsg(8*" " + colorize("GOOD", newprofile) + "\n", noiselevel=-1)
-	if len(dcontent) > 1:
-		writemsg(_("To upgrade do the following steps:\n"), noiselevel=-1)
-		for myline in dcontent[1:]:
-			writemsg(myline, noiselevel=-1)
-		writemsg("\n\n", noiselevel=-1)
-	return True
-
-def commit_mtimedb(mydict=None, filename=None):
-	if mydict is None:
-		global mtimedb
-		if "mtimedb" not in globals() or mtimedb is None:
-			return
-		mtimedb.commit()
-		return
-	if filename is None:
-		global mtimedbfile
-		filename = mtimedbfile
-	mydict["version"] = VERSION
-	d = {} # for full backward compat, pickle it as a plain dict object.
-	d.update(mydict)
-	try:
-		f = atomic_ofstream(filename, mode='wb')
-		pickle.dump(d, f, protocol=2)
-		f.close()
-		portage.util.apply_secpass_permissions(filename,
-			uid=uid, gid=portage_gid, mode=0o644)
-	except (IOError, OSError) as e:
-		pass
-
 def portageexit():
-	global uid,portage_gid,portdb,db
-	if secpass and os.environ.get("SANDBOX_ON") != "1":
+	if secpass > 1 and os.environ.get("SANDBOX_ON") != "1":
 		close_portdbapi_caches()
-		commit_mtimedb()
+		try:
+			mtimedb
+		except NameError:
+			pass
+		else:
+			mtimedb.commit()
 
 atexit_register(portageexit)
-
-class MtimeDB(dict):
-	def __init__(self, filename):
-		dict.__init__(self)
-		self.filename = filename
-		self._load(filename)
-
-	def _load(self, filename):
-		try:
-			f = open(_unicode_encode(filename), 'rb')
-			mypickle = pickle.Unpickler(f)
-			try:
-				mypickle.find_global = None
-			except AttributeError:
-				# TODO: If py3k, override Unpickler.find_class().
-				pass
-			d = mypickle.load()
-			f.close()
-			del f
-		except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError) as e:
-			if isinstance(e, pickle.UnpicklingError):
-				writemsg(_("!!! Error loading '%s': %s\n") % \
-					(filename, str(e)), noiselevel=-1)
-			del e
-			d = {}
-
-		if "old" in d:
-			d["updates"] = d["old"]
-			del d["old"]
-		if "cur" in d:
-			del d["cur"]
-
-		d.setdefault("starttime", 0)
-		d.setdefault("version", "")
-		for k in ("info", "ldpath", "updates"):
-			d.setdefault(k, {})
-
-		mtimedbkeys = set(("info", "ldpath", "resume", "resume_backup",
-			"starttime", "updates", "version"))
-
-		for k in list(d):
-			if k not in mtimedbkeys:
-				writemsg(_("Deleting invalid mtimedb key: %s\n") % str(k))
-				del d[k]
-		self.update(d)
-		self._clean_data = copy.deepcopy(d)
-
-	def commit(self):
-		if not self.filename:
-			return
-		d = {}
-		d.update(self)
-		# Only commit if the internal state has changed.
-		if d != self._clean_data:
-			commit_mtimedb(mydict=d, filename=self.filename)
-			self._clean_data = copy.deepcopy(d)
 
 def create_trees(config_root=None, target_root=None, trees=None):
 	if trees is None:
@@ -663,10 +563,6 @@ def create_trees(config_root=None, target_root=None, trees=None):
 	return trees
 
 class _LegacyGlobalProxy(proxy.objectproxy.ObjectProxy):
-	"""
-	Instances of these serve as proxies to global variables
-	that are initialized on demand.
-	"""
 
 	__slots__ = ('_name',)
 
@@ -675,52 +571,18 @@ class _LegacyGlobalProxy(proxy.objectproxy.ObjectProxy):
 		object.__setattr__(self, '_name', name)
 
 	def _get_target(self):
-		init_legacy_globals()
 		name = object.__getattribute__(self, '_name')
-		return globals()[name]
-
-class _PortdbProxy(proxy.objectproxy.ObjectProxy):
-	"""
-	The portdb is initialized separately from the rest
-	of the variables, since sometimes the other variables
-	are needed while the portdb is not.
-	"""
-
-	__slots__ = ()
-
-	def _get_target(self):
-		init_legacy_globals()
-		global db, portdb, root, _portdb_initialized
-		if not _portdb_initialized:
-			portdb = db[root]["porttree"].dbapi
-			_portdb_initialized = True
-		return portdb
-
-class _MtimedbProxy(proxy.objectproxy.ObjectProxy):
-	"""
-	The mtimedb is independent from the portdb and other globals.
-	"""
-
-	__slots__ = ('_name',)
-
-	def __init__(self, name):
-		proxy.objectproxy.ObjectProxy.__init__(self)
-		object.__setattr__(self, '_name', name)
-
-	def _get_target(self):
-		global mtimedb, mtimedbfile, _mtimedb_initialized
-		if not _mtimedb_initialized:
-			mtimedbfile = os.path.join(os.path.sep,
-				CACHE_PATH, "mtimedb")
-			mtimedb = MtimeDB(mtimedbfile)
-			_mtimedb_initialized = True
-		name = object.__getattribute__(self, '_name')
-		return globals()[name]
+		from portage._legacy_globals import _get_legacy_global
+		return _get_legacy_global(name)
 
 _legacy_global_var_names = ("archlist", "db", "features",
 	"groups", "mtimedb", "mtimedbfile", "pkglines",
 	"portdb", "profiledir", "root", "selinux_enabled",
 	"settings", "thirdpartymirrors", "usedefaults")
+
+for k in _legacy_global_var_names:
+	globals()[k] = _LegacyGlobalProxy(k)
+del k
 
 def _disable_legacy_globals():
 	"""
@@ -732,80 +594,3 @@ def _disable_legacy_globals():
 	global _legacy_global_var_names
 	for k in _legacy_global_var_names:
 		globals().pop(k, None)
-
-# Initialization of legacy globals.  No functions/classes below this point
-# please!  When the above functions and classes become independent of the
-# below global variables, it will be possible to make the below code
-# conditional on a backward compatibility flag (backward compatibility could
-# be disabled via an environment variable, for example).  This will enable new
-# code that is aware of this flag to import portage without the unnecessary
-# overhead (and other issues!) of initializing the legacy globals.
-
-def init_legacy_globals():
-	global _globals_initialized
-	if _globals_initialized:
-		return
-	_globals_initialized = True
-
-	global db, settings, root, portdb, selinux_enabled, mtimedbfile, mtimedb, \
-	archlist, features, groups, pkglines, thirdpartymirrors, usedefaults, \
-	profiledir
-
-	# Portage needs to ensure a sane umask for the files it creates.
-	os.umask(0o22)
-
-	kwargs = {}
-	kwargs["config_root"] = os.environ.get("PORTAGE_CONFIGROOT", EPREFIX + "/")
-	kwargs["target_root"] = os.environ.get("ROOT", "/")
-
-	global _initializing_globals
-	_initializing_globals = True
-	db = create_trees(**kwargs)
-	del _initializing_globals
-
-	settings = db["/"]["vartree"].settings
-
-	for myroot in db:
-		if myroot != "/":
-			settings = db[myroot]["vartree"].settings
-			break
-
-	root = settings["ROOT"]
-	output._init(config_root=settings['PORTAGE_CONFIGROOT'])
-
-	# ========================================================================
-	# COMPATIBILITY
-	# These attributes should not be used
-	# within Portage under any circumstances.
-	# ========================================================================
-	archlist    = settings.archlist()
-	features    = settings.features
-	groups      = settings["ACCEPT_KEYWORDS"].split()
-	pkglines    = settings.packages
-	selinux_enabled   = settings.selinux_enabled()
-	thirdpartymirrors = settings.thirdpartymirrors()
-	usedefaults       = settings.use_defs
-	profiledir  = os.path.join(settings["PORTAGE_CONFIGROOT"], PROFILE_PATH)
-	if not os.path.isdir(profiledir):
-		profiledir = None
-	# ========================================================================
-	# COMPATIBILITY
-	# These attributes should not be used
-	# within Portage under any circumstances.
-	# ========================================================================
-
-if True:
-
-	_mtimedb_initialized = False
-	mtimedb     = _MtimedbProxy("mtimedb")
-	mtimedbfile = _MtimedbProxy("mtimedbfile")
-
-	_portdb_initialized  = False
-	portdb = _PortdbProxy()
-
-	_globals_initialized = False
-
-	for k in ("db", "settings", "root", "selinux_enabled",
-		"archlist", "features", "groups",
-		"pkglines", "thirdpartymirrors", "usedefaults", "profiledir"):
-		globals()[k] = _LegacyGlobalProxy(k)
