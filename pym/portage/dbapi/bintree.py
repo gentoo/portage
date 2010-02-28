@@ -67,6 +67,14 @@ class bindbapi(fakedbapi):
 			self.bintree.populate()
 		return fakedbapi.match(self, *pargs, **kwargs)
 
+	def cpv_inject(self, cpv, **kwargs):
+		self._aux_cache.pop(cpv, None)
+		fakedbapi.cpv_inject(cpv, **kwargs)
+
+	def cpv_remove(self, cpv):
+		self._aux_cache.pop(cpv, None)
+		fakedbapi.cpv_remove(cpv)
+
 	def aux_get(self, mycpv, wants):
 		if self.bintree and not self.bintree.populated:
 			self.bintree.populate()
@@ -137,6 +145,7 @@ class bindbapi(fakedbapi):
 			if not v:
 				del mydata[k]
 		mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
+		# inject will clear stale caches via cpv_inject.
 		self.bintree.inject(cpv)
 
 	def cp_list(self, *pargs, **kwargs):
@@ -485,6 +494,13 @@ class binarytree(object):
 		if (not os.path.isdir(self.pkgdir) and not getbinpkgs):
 			return 0
 
+		# Clear all caches in case populate is called multiple times
+		# as may be the case when _global_updates calls populate()
+		# prior to performing package moves since it only wants to
+		# operate on local packages (getbinpkgs=0).
+		self._remotepkgs = None
+		self.dbapi._clear_cache()
+		self.dbapi._aux_cache.clear()
 		if True:
 			pkg_paths = {}
 			self._pkg_paths = pkg_paths
@@ -696,10 +712,7 @@ class binarytree(object):
 			writemsg(_("!!! PORTAGE_BINHOST unset, but use is requested.\n"),
 				noiselevel=-1)
 
-		if getbinpkgs and \
-			"PORTAGE_BINHOST" in self.settings and \
-			not self._remotepkgs:
-
+		if getbinpkgs and 'PORTAGE_BINHOST' in self.settings:
 			base_url = self.settings["PORTAGE_BINHOST"]
 			from portage.const import CACHE_PATH
 			try:
@@ -916,7 +929,6 @@ class binarytree(object):
 			return
 		slot = slot.strip()
 		self.dbapi.cpv_inject(cpv)
-		self.dbapi._aux_cache.pop(cpv, None)
 
 		# Reread the Packages index (in case it's been changed by another
 		# process) and then updated it, all while holding a lock.

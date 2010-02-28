@@ -94,6 +94,10 @@ def _global_updates(trees, prev_mtimes):
 		bindb = trees["/"]["bintree"].dbapi
 		if not os.access(bindb.bintree.pkgdir, os.W_OK):
 			bindb = None
+		else:
+			# Call binarytree.populate(), since we want to make sure it's
+			# only populated with local packages here (getbinpkgs=0).
+			bindb.bintree.populate()
 		for update_cmd in myupd:
 			if update_cmd[0] == "move":
 				moves = vardb.move_ent(update_cmd)
