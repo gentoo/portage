@@ -2,8 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from __future__ import print_function
-
 __all__ = ["bindbapi", "binarytree"]
 
 import portage
@@ -868,7 +866,6 @@ class binarytree(object):
 				mykey = portage.cpv_getkey(fullpkg)
 				try:
 					# invalid tbz2's can hurt things.
-					#print "cpv_inject("+str(fullpkg)+")"
 					self.dbapi.cpv_inject(fullpkg)
 					remote_metadata = self.__remotepkgs[mypkg]
 					for k, v in remote_metadata.items():
@@ -885,7 +882,6 @@ class binarytree(object):
 						remote_metadata.pop(k, None)
 
 					self._remotepkgs[fullpkg] = remote_metadata
-					#print "  -- Injected"
 				except SystemExit as e:
 					raise
 				except:
@@ -1151,7 +1147,6 @@ class binarytree(object):
 	def gettbz2(self, pkgname):
 		"""Fetches the package from a remote site, if necessary.  Attempts to
 		resume if the file appears to be partially downloaded."""
-		print("Fetching '"+str(pkgname)+"'")
 		tbz2_path = self.getname(pkgname)
 		tbz2name = os.path.basename(tbz2_path)
 		resume = False

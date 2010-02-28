@@ -5391,7 +5391,7 @@ class dblink(object):
 					phase = 'die_hooks'
 
 				if self._scheduler is None:
-					portage._spawn_misc_sh(self.settings, [phase],
+					_spawn_misc_sh(self.settings, [phase],
 						phase=phase)
 				else:
 					self._scheduler.dblinkEbuildPhase(
