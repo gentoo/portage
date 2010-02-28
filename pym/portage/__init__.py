@@ -14,21 +14,17 @@ VERSION="$Rev$"[6:-2] + "-svn"
 try:
 	import sys
 	import codecs
-	import copy
 	import errno
 	if not hasattr(errno, 'ESTALE'):
 		# ESTALE may not be defined on some systems, such as interix.
 		errno.ESTALE = -1
-	import logging
 	import re
-	import time
 	import types
 	try:
 		import cPickle as pickle
 	except ImportError:
 		import pickle
 
-	import stat
 	try:
 		from subprocess import getstatusoutput as subprocess_getstatusoutput
 	except ImportError:
@@ -43,7 +39,6 @@ try:
 		from StringIO import StringIO
 
 	import platform
-	import warnings
 
 	# Temporarily delete these imports, to ensure that only the
 	# wrapped versions are imported by portage internals.
@@ -152,8 +147,6 @@ try:
 		DEPRECATED_PROFILE_FILE, USER_VIRTUALS_FILE, EBUILD_SH_ENV_FILE, \
 		INVALID_ENV_FILE, CUSTOM_MIRRORS_FILE, CONFIG_MEMORY_FILE,\
 		INCREMENTALS, EAPI, MISC_SH_BINARY, REPO_NAME_LOC, REPO_NAME_FILE
-
-	from portage.localization import _
 
 except ImportError as e:
 	sys.stderr.write("\n\n")
