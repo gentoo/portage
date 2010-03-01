@@ -994,7 +994,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				# The merge phase handles this already.  Callers don't know how
 				# far this function got, so we have to call elog_process() here
 				# so that it's only called once.
-				from portage.elog import elog_process
 				elog_process(mysettings.mycpv, mysettings)
 			if retval == os.EX_OK:
 				retval = merge(mysettings["CATEGORY"], mysettings["PF"],
