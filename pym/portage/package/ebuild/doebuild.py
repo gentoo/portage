@@ -1621,7 +1621,6 @@ def _post_src_install_uid_fix(mysettings, out=None):
 			break
 
 	if unicode_errors:
-		from portage.elog.messages import eerror
 		for l in _merge_unicode_error(unicode_errors):
 			eerror(l, phase='install', key=mysettings.mycpv, out=out)
 
