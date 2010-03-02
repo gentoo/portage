@@ -5,7 +5,7 @@
 from _emerge.SpawnProcess import SpawnProcess
 import portage
 from portage import os
-from portage.package.ebuild._pty import _create_pty_or_pipe
+from portage.util._pty import _create_pty_or_pipe
 
 class AbstractEbuildProcess(SpawnProcess):
 
