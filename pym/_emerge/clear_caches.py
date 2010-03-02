@@ -4,6 +4,7 @@
 
 import gc
 import portage
+from portage.util.listdir import dircache
 
 def clear_caches(trees):
 	for d in trees.values():
@@ -11,5 +12,5 @@ def clear_caches(trees):
 		d["porttree"].dbapi._aux_cache.clear()
 		d["bintree"].dbapi._aux_cache.clear()
 		d["bintree"].dbapi._clear_cache()
-	portage.dircache.clear()
+	dircache.clear()
 	gc.collect()
