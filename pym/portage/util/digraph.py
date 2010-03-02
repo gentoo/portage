@@ -2,6 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from portage.util import writemsg
+
 class digraph(object):
 	"""
 	A directed graph object.
