@@ -5469,6 +5469,9 @@ def digestParseFile(myfilename, mysettings=None):
 	DEPRECATED: this function is now only a compability wrapper for
 	            portage.manifest.Manifest()."""
 
+	warnings.warn("portage.digestParseFile() is deprecated",
+		DeprecationWarning, stacklevel=2)
+
 	mysplit = myfilename.split(os.sep)
 	if mysplit[-2] == "files" and mysplit[-1].startswith("digest-"):
 		pkgdir = os.sep + os.sep.join(mysplit[:-2]).strip(os.sep)
