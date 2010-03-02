@@ -4408,9 +4408,7 @@ class depgraph(object):
 					# assign index for a previous version in the same slot
 					has_previous = False
 					repo_name_prev = None
-					slot_atom = "%s:%s" % (portage.dep_getkey(pkg_key),
-						metadata["SLOT"])
-					slot_matches = vardb.match(slot_atom)
+					slot_matches = vardb.match(pkg.slot_atom)
 					if slot_matches:
 						has_previous = True
 						repo_name_prev = vardb.aux_get(slot_matches[0],
