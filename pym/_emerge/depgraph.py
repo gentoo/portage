@@ -3546,6 +3546,10 @@ class depgraph(object):
 
 				min_parent_deps = None
 				uninst_task = None
+
+				# FIXME: This loop can be extremely slow when
+				#        there of lots of blockers to solve
+				#        (especially the gather_deps part).
 				for task in myblocker_uninstalls.leaf_nodes():
 					# Do some sanity checks so that system or world packages
 					# don't get uninstalled inappropriately here (only really
