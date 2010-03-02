@@ -7,6 +7,7 @@ __all__ = ['env_update']
 import codecs
 import errno
 import stat
+import sys
 import time
 
 import portage
@@ -19,6 +20,9 @@ from portage.process import find_binary
 from portage.util import atomic_ofstream, ensure_dirs, getconfig, \
 	normalize_path, writemsg
 from portage.util.listdir import listdir
+
+if sys.hexversion >= 0x3000000:
+	long = int
 
 def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 	env=None, writemsg_level=None):
