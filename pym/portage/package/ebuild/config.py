@@ -45,6 +45,9 @@ from portage.util import ensure_dirs, getconfig, grabdict, \
 	writemsg, writemsg_level
 from portage.versions import catpkgsplit, catsplit, cpv_getkey
 
+if sys.hexversion >= 0x3000000:
+	basestring = str
+
 def autouse(myvartree, use_cache=1, mysettings=None):
 	"""
 	autuse returns a list of USE variables auto-enabled to packages being installed
