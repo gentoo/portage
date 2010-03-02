@@ -14,6 +14,7 @@ from itertools import chain
 import portage
 from portage import os
 from portage import digraph
+from portage.dbapi import dbapi
 from portage.dep import Atom
 from portage.output import bold, blue, colorize, create_color_func, darkblue, \
 	darkgreen, green, nc_len, red, teal, turquoise, yellow
@@ -5236,7 +5237,7 @@ class depgraph(object):
 	def get_runtime_pkg_mask(self):
 		return self._dynamic_config._runtime_pkg_mask.copy()
 
-class _dep_check_composite_db(portage.dbapi):
+class _dep_check_composite_db(dbapi):
 	"""
 	A dbapi-like interface that is optimized for use in dep_check() calls.
 	This is built on top of the existing depgraph package selection logic.
@@ -5245,7 +5246,7 @@ class _dep_check_composite_db(portage.dbapi):
 	via dep_check().
 	"""
 	def __init__(self, depgraph, root):
-		portage.dbapi.__init__(self)
+		dbapi.__init__(self)
 		self._depgraph = depgraph
 		self._root = root
 		self._match_cache = {}

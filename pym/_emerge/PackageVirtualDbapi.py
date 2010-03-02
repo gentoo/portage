@@ -3,9 +3,9 @@
 # $Id$
 
 import sys
-import portage
+from portage.dbapi import dbapi
 
-class PackageVirtualDbapi(portage.dbapi):
+class PackageVirtualDbapi(dbapi):
 	"""
 	A dbapi-like interface class that represents the state of the installed
 	package database as new packages are installed, replacing any packages
@@ -14,7 +14,7 @@ class PackageVirtualDbapi(portage.dbapi):
 	internally (passed in via cpv_inject() and cpv_remove() calls).
 	"""
 	def __init__(self, settings):
-		portage.dbapi.__init__(self)
+		dbapi.__init__(self)
 		self.settings = settings
 		self._match_cache = {}
 		self._cp_map = {}
@@ -80,7 +80,7 @@ class PackageVirtualDbapi(portage.dbapi):
 		result = self._match_cache.get(origdep)
 		if result is not None:
 			return result[:]
-		result = portage.dbapi.match(self, origdep, use_cache=use_cache)
+		result = dbapi.match(self, origdep, use_cache=use_cache)
 		self._match_cache[origdep] = result
 		return result[:]
 
