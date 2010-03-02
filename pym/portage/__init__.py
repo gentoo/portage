@@ -110,7 +110,8 @@ try:
 			'stack_lists,unique_array,varexpand,writedict,writemsg,' + \
 			'writemsg_stdout,write_atomic',
 		'portage.versions',
-		'portage.versions:best,catpkgsplit,catsplit,endversion_keys,' + \
+		'portage.versions:best,catpkgsplit,catsplit,cpv_getkey,' + \
+			'cpv_getkey@getCPFromCPV,endversion_keys,' + \
 			'suffix_value@endversion,pkgcmp,pkgsplit,vercmp,ververify',
 		'portage.xpak',
 	)
@@ -8450,27 +8451,6 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 					#encountered invalid string
 					return None
 	return deplist
-
-def cpv_getkey(mycpv):
-	"""Calls pkgsplit on a cpv and returns only the cp."""
-	mysplit = versions.catpkgsplit(mycpv)
-	if mysplit is not None:
-		return mysplit[0] + '/' + mysplit[1]
-
-	warnings.warn("portage.cpv_getkey() called with invalid cpv: '%s'" \
-		% (mycpv,), DeprecationWarning, stacklevel=2)
-
-	myslash = mycpv.split("/", 1)
-	mysplit = versions._pkgsplit(myslash[-1])
-	if mysplit is None:
-		return None
-	mylen=len(myslash)
-	if mylen==2:
-		return myslash[0]+"/"+mysplit[0]
-	else:
-		return mysplit[0]
-
-getCPFromCPV = cpv_getkey
 
 def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 	"""Given a string (packagename or virtual) expand it into a valid
