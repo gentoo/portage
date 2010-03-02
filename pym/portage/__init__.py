@@ -750,7 +750,7 @@ def init_legacy_globals():
 
 	global db, settings, root, portdb, selinux_enabled, mtimedbfile, mtimedb, \
 	archlist, features, groups, pkglines, thirdpartymirrors, usedefaults, \
-	profiledir, flushmtimedb
+	profiledir
 
 	# Portage needs to ensure a sane umask for the files it creates.
 	os.umask(0o22)
@@ -789,8 +789,6 @@ def init_legacy_globals():
 	profiledir  = os.path.join(settings["PORTAGE_CONFIGROOT"], PROFILE_PATH)
 	if not os.path.isdir(profiledir):
 		profiledir = None
-	def flushmtimedb(record):
-		writemsg("portage.flushmtimedb() is DEPRECATED\n")
 	# ========================================================================
 	# COMPATIBILITY
 	# These attributes should not be used
@@ -810,6 +808,5 @@ if True:
 
 	for k in ("db", "settings", "root", "selinux_enabled",
 		"archlist", "features", "groups",
-		"pkglines", "thirdpartymirrors", "usedefaults", "profiledir",
-		"flushmtimedb"):
+		"pkglines", "thirdpartymirrors", "usedefaults", "profiledir"):
 		globals()[k] = _LegacyGlobalProxy(k)
