@@ -2336,6 +2336,13 @@ class dblink(object):
 
 		slot = ''
 		for var_name in ('CHOST', 'SLOT'):
+			if var_name == 'CHOST' and self.cat == 'virtual':
+				try:
+					os.unlink(os.path.join(inforoot, var_name))
+				except OSError:
+					pass
+				continue
+
 			try:
 				val = codecs.open(_unicode_encode(
 					os.path.join(inforoot, var_name),
