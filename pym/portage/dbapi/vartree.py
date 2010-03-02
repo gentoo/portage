@@ -1702,7 +1702,7 @@ class dblink(object):
 					# like hell and continue to hopefully finish all our
 					# administrative and pkg_postinst stuff.
 					self._eerror("postrm", 
-						["Could not chmod or unlink '%s': %s\n" % \
+						["Could not chmod or unlink '%s': %s" % \
 						(file_name, ose)])
 				finally:
 					if bsd_chflags and pflags != 0:
