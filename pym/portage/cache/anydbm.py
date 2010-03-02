@@ -63,10 +63,10 @@ class database(fs_template.FsBased):
 
 	def _getitem(self, cpv):
 		# we override getitem because it's just a cpickling of the data handed in.
-		return pickle.loads(self.__db[cpv])
+		return pickle.loads(self.__db[_unicode_encode(cpv)])
 
 	def _setitem(self, cpv, values):
-		self.__db[cpv] = pickle.dumps(values,pickle.HIGHEST_PROTOCOL)
+		self.__db[_unicode_encode(cpv)] = pickle.dumps(values,pickle.HIGHEST_PROTOCOL)
 
 	def _delitem(self, cpv):
 		del self.__db[cpv]
