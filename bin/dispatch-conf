@@ -42,7 +42,6 @@ FIND_EXTANT_CONFIGS  = "find '%s' %s -name '._cfg????_%s' ! -name '.*~' ! -iname
 DIFF_CONTENTS        = "diff -Nu '%s' '%s'"
 DIFF_CVS_INTERP      = "diff -Nu '%s' '%s' | grep '^[+-][^+-]' | grep -v '# .Header:.*'"
 DIFF_WSCOMMENTS      = "diff -Nu '%s' '%s' | grep '^[+-][^+-]' | grep -v '^[-+]#' | grep -v '^[-+][:space:]*$'"
-diffutils_2_9 = False
 
 # We need a secure scratch dir and python does silly verbose errors on the use of tempnam
 oldmask = os.umask(0o077)
@@ -119,15 +118,6 @@ class dispatch:
                     return False
 
         merge_cmd = self.options.get("merge", "").split()
-        global diffutils_2_9
-        if merge_cmd and merge_cmd[0] == 'sdiff':
-            vardb = portage.db['/']['vartree'].dbapi
-            diffutils = vardb.match('sys-apps/diffutils')
-            if diffutils:
-                diffutils = diffutils[0]
-                diffutils_ver = '-'.join(portage.catpkgsplit(diffutils)[2:])
-                if portage.vercmp(diffutils_ver, '2.9') >= 0:
-                    diffutils_2_9 = True
 
         # config file freezing support
         frozen_files = set(self.options.get("frozen-files", "").split())
@@ -279,9 +269,8 @@ class dispatch:
                     print()
                     ret = os.system (self.options['merge'] % (merged, conf ['current'], newconf))
                     ret = os.WEXITSTATUS(ret)
-                    if diffutils_2_9:
-                        if ret < 2:
-                            ret = 0
+                    if ret < 2:
+                        ret = 0
                     if ret:
                         print("Failure running 'merge' command")
                         continue
