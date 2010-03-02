@@ -24,7 +24,7 @@ bad = create_color_func("BAD")
 from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import writemsg, writemsg_level
-from portage.util.digestgen import digestgen
+from portage.package.ebuild.digestgen import digestgen
 
 from _emerge.BinpkgPrefetcher import BinpkgPrefetcher
 from _emerge.Blocker import Blocker
