@@ -510,7 +510,7 @@ auxdbkeys = (
 auxdbkeylen=len(auxdbkeys)
 
 def portageexit():
-	if secpass > 1 and os.environ.get("SANDBOX_ON") != "1":
+	if data.secpass > 1 and os.environ.get("SANDBOX_ON") != "1":
 		close_portdbapi_caches()
 		try:
 			mtimedb

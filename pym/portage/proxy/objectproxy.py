@@ -61,6 +61,18 @@ class ObjectProxy(object):
 	def __hash__(self):
 		return hash(object.__getattribute__(self, '_get_target')())
 
+	def __ge__(self, other):
+		return object.__getattribute__(self, '_get_target')() >= other
+
+	def __gt__(self, other):
+		return object.__getattribute__(self, '_get_target')() > other
+
+	def __le__(self, other):
+		return object.__getattribute__(self, '_get_target')() <= other
+
+	def __lt__(self, other):
+		return object.__getattribute__(self, '_get_target')() < other
+
 	def __eq__(self, other):
 		return object.__getattribute__(self, '_get_target')() == other
 
