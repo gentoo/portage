@@ -15,8 +15,12 @@ from portage.data import secpass
 from portage.output import xtermTitle
 
 _emerge_log_dir = '/var/log'
+_disable = False
 
 def emergelog(xterm_titles, mystr, short_msg=None):
+
+	if _disable:
+		return
 
 	mystr = portage._unicode_decode(mystr)
 
