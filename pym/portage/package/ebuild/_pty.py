@@ -11,6 +11,7 @@ import sys
 import termios
 
 from portage import os, _unicode_decode, _unicode_encode
+from portage.output import get_term_size, set_term_size
 from portage.process import spawn_bash
 from portage.util import writemsg
 
@@ -178,9 +179,8 @@ def _create_pty_or_pipe(copy_term_size=None):
 	if _disable_openpty:
 		master_fd, slave_fd = os.pipe()
 	else:
-		from pty import openpty
 		try:
-			master_fd, slave_fd = openpty()
+			master_fd, slave_fd = pty.openpty()
 			got_pty = True
 		except EnvironmentError as e:
 			_disable_openpty = True
@@ -192,7 +192,6 @@ def _create_pty_or_pipe(copy_term_size=None):
 	if got_pty:
 		# Disable post-processing of output since otherwise weird
 		# things like \n -> \r\n transformations may occur.
-		import termios
 		mode = termios.tcgetattr(slave_fd)
 		mode[1] &= ~termios.OPOST
 		termios.tcsetattr(slave_fd, termios.TCSANOW, mode)
@@ -200,7 +199,6 @@ def _create_pty_or_pipe(copy_term_size=None):
 	if got_pty and \
 		copy_term_size is not None and \
 		os.isatty(copy_term_size):
-		from portage.output import get_term_size, set_term_size
 		rows, columns = get_term_size()
 		set_term_size(rows, columns, slave_fd)
 
