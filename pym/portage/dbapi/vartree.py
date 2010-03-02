@@ -39,8 +39,9 @@ from portage.exception import CommandNotFound, \
 	InvalidData, InvalidPackageName, \
 	FileNotFound, PermissionDenied, UnsupportedAPIException
 from portage.localization import _
+from portage.util.movefile import movefile
 
-from portage import abssymlink, movefile, _movefile, bsd_chflags
+from portage import abssymlink, _movefile, bsd_chflags
 
 # This is a special version of the os module, wrapped for unicode support.
 from portage import os
