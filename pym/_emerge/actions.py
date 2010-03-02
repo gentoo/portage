@@ -35,6 +35,7 @@ bad = create_color_func("BAD")
 from portage._sets import load_default_config, SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, writemsg_level
+from portage._global_updates import _global_updates
 
 from _emerge.clear_caches import clear_caches
 from _emerge.countdown import countdown
@@ -1983,7 +1984,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		# the only one that's been synced here.
 		action_metadata(settings, portdb, myopts, porttrees=[myportdir])
 
-	if portage._global_updates(trees, mtimedb["updates"]):
+	if _global_updates(trees, mtimedb["updates"]):
 		mtimedb.commit()
 		# Reload the whole config from scratch.
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
