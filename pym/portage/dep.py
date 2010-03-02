@@ -923,7 +923,7 @@ def dep_getkey(mydep):
 	Return the category/package-name of a depstring.
 
 	Example usage:
-		>>> dep_getkey('media-libs/test-3.0')
+		>>> dep_getkey('=media-libs/test-3.0')
 		'media-libs/test'
 
 	@param mydep: The depstring to retrieve the category/package-name of
