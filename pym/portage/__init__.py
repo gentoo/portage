@@ -3520,6 +3520,12 @@ class config(object):
 		self.already_in_regenerate = 0
 
 	def get_virts_p(self, myroot=None):
+
+		if myroot is not None:
+			warnings.warn("The 'myroot' parameter for " + \
+				"portage.config.get_virts_p() is deprecated",
+				DeprecationWarning, stacklevel=2)
+
 		if self.virts_p:
 			return self.virts_p
 		virts = self.getvirtuals()
@@ -3533,6 +3539,12 @@ class config(object):
 	def getvirtuals(self, myroot=None):
 		"""myroot is now ignored because, due to caching, it has always been
 		broken for all but the first call."""
+
+		if myroot is not None:
+			warnings.warn("The 'myroot' parameter for " + \
+				"portage.config.getvirtuals() is deprecated",
+				DeprecationWarning, stacklevel=2)
+
 		myroot = self["ROOT"]
 		if self.virtuals:
 			return self.virtuals
@@ -8453,8 +8465,8 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 	mysplit = versions._pkgsplit(myslash[-1])
 	if settings is None:
 		settings = globals()["settings"]
-	virts = settings.getvirtuals("/")
-	virts_p = settings.get_virts_p("/")
+	virts = settings.getvirtuals()
+	virts_p = settings.get_virts_p()
 	if len(myslash)>2:
 		# this is illegal case.
 		mysplit=[]
@@ -8944,9 +8956,14 @@ def deprecated_profile_check(settings=None):
 
 # gets virtual package settings
 def getvirtuals(myroot):
+	"""
+	Calls portage.settings.getvirtuals().
+	@deprecated: Use portage.settings.getvirtuals().
+	"""
 	global settings
-	writemsg("--- DEPRECATED call to getvirtual\n")
-	return settings.getvirtuals(myroot)
+	warnings.warn("portage.getvirtuals() is deprecated",
+		DeprecationWarning, stacklevel=2)
+	return settings.getvirtuals()
 
 def commit_mtimedb(mydict=None, filename=None):
 	if mydict is None:
