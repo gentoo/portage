@@ -748,6 +748,12 @@ elif repolevel==3:
 		caterror(catdir)
 	scanlist.append(catdir+"/"+reposplit[-1])
 	repo_subdir = scanlist[-1] + os.sep
+else:
+	msg = 'Repoman is unable to determine PORTDIR or PORTDIR_OVERLAY' + \
+		' from the current working directory'
+	logging.critical(msg)
+	sys.exit(1)
+
 repo_subdir_len = len(repo_subdir)
 scanlist.sort()
 
