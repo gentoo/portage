@@ -1819,8 +1819,7 @@ class depgraph(object):
 						pprovided_match = False
 						for virt_choice in virtuals.get(atom.cp, []):
 							expanded_atom = portage.dep.Atom(
-								atom.replace(atom.cp,
-								portage.dep_getkey(virt_choice), 1))
+								atom.replace(atom.cp, virt_choice.cp, 1))
 							pprovided = pprovideddict.get(expanded_atom.cp)
 							if pprovided and \
 								portage.match_from_list(expanded_atom, pprovided):
@@ -3004,10 +3003,8 @@ class depgraph(object):
 			if provider_virtual:
 				atoms = []
 				for provider_entry in virtuals[blocker.cp]:
-					provider_cp = \
-						portage.dep_getkey(provider_entry)
 					atoms.append(Atom(blocker.atom.replace(
-						blocker.cp, provider_cp)))
+						blocker.cp, provider_entry.cp, 1)))
 			else:
 				atoms = [blocker.atom]
 
@@ -5352,14 +5349,14 @@ class _dep_check_composite_db(portage.dbapi):
 		if len(expanded_atoms) > 1:
 			non_virtual_atoms = []
 			for x in expanded_atoms:
-				if not portage.dep_getkey(x).startswith("virtual/"):
+				if not x.cp.startswith("virtual/"):
 					non_virtual_atoms.append(x)
 			if len(non_virtual_atoms) == 1:
 				expanded_atoms = non_virtual_atoms
 		if len(expanded_atoms) > 1:
 			# compatible with portage.cpv_expand()
 			raise portage.exception.AmbiguousPackageName(
-				[portage.dep_getkey(x) for x in expanded_atoms])
+				[x.cp for x in expanded_atoms])
 		if expanded_atoms:
 			atom = expanded_atoms[0]
 		else:
