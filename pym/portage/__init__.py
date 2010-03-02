@@ -862,6 +862,8 @@ def ExtractKernelVersion(base_dir):
 
 	return (version,None)
 
+_doebuild_manifest_exempt_depend = 0
+
 def digestgen(myarchives=None, mysettings=None,
 	overwrite=None, manifestonly=None, myportdb=None):
 	"""

@@ -278,7 +278,7 @@ def _doebuild_exit_status_unlink(exit_status_file):
 	if os.path.exists(exit_status_file):
 		os.unlink(exit_status_file)
 
-_doebuild_manifest_exempt_depend = 0
+
 _doebuild_manifest_cache = None
 _doebuild_broken_ebuilds = set()
 _doebuild_broken_manifests = set()
@@ -399,16 +399,13 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			noiselevel=-1)
 		return 1
 
-	global _doebuild_manifest_exempt_depend
-
 	if "strict" in features and \
 		"digest" not in features and \
 		tree == "porttree" and \
 		mydo not in ("digest", "manifest", "help") and \
-		not _doebuild_manifest_exempt_depend:
+		not portage._doebuild_manifest_exempt_depend:
 		# Always verify the ebuild checksums before executing it.
-		global _doebuild_manifest_cache, _doebuild_broken_ebuilds, \
-			_doebuild_broken_ebuilds
+		global _doebuild_manifest_cache, _doebuild_broken_ebuilds
 
 		if myebuild in _doebuild_broken_ebuilds:
 			return 1
@@ -506,7 +503,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if mydo in ("digest", "manifest", "help"):
 			# Temporarily exempt the depend phase from manifest checks, in case
 			# aux_get calls trigger cache generation.
-			_doebuild_manifest_exempt_depend += 1
+			portage._doebuild_manifest_exempt_depend += 1
 
 		# If we don't need much space and we don't need a constant location,
 		# we can temporarily override PORTAGE_TMPDIR with a random temp dir
@@ -1021,7 +1018,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if mydo in ("digest", "manifest", "help"):
 			# If necessary, depend phase has been triggered by aux_get calls
 			# and the exemption is no longer needed.
-			_doebuild_manifest_exempt_depend -= 1
+			portage._doebuild_manifest_exempt_depend -= 1
 
 def _validate_deps(mysettings, myroot, mydo, mydbapi):
 
