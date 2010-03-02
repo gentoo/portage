@@ -171,6 +171,14 @@ class Binpkg(CompositeTask):
 		if self._fetched_pkg:
 			self._bintree.inject(pkg.cpv, filename=pkg_path)
 
+		logfile = self.settings.get("PORTAGE_LOG_FILE")
+		if logfile is not None and os.path.isfile(logfile):
+			# Remove fetch log after successful fetch.
+			try:
+				os.unlink(logfile)
+			except OSError:
+				pass
+
 		if self.opts.fetchonly:
 			self._current_task = None
 			self.returncode = os.EX_OK
