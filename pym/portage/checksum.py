@@ -186,7 +186,7 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 		got = " ".join(got)
 		return False, (_("Insufficient data for checksum verification"), got, expected)
 
-	for x in mydict:
+	for x in sorted(mydict):
 		if   x == "size":
 			continue
 		elif x in hashfunc_map:
