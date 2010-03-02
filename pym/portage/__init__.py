@@ -2626,7 +2626,7 @@ class config(object):
 		has_changed = False
 		self.mycpv = mycpv
 		cat, pf = catsplit(mycpv)
-		cp = dep_getkey(mycpv)
+		cp = cpv_getkey(mycpv)
 		cpv_slot = self.mycpv
 		pkginternaluse = ""
 		iuse = ""
@@ -3071,7 +3071,7 @@ class config(object):
 		@return: A list of licenses that have not been accepted.
 		"""
 		accept_license = self._accept_license
-		cpdict = self._plicensedict.get(dep_getkey(cpv), None)
+		cpdict = self._plicensedict.get(cpv_getkey(cpv), None)
 		if cpdict:
 			accept_license = list(self._accept_license)
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
@@ -3150,7 +3150,7 @@ class config(object):
 		@return: A list of properties that have not been accepted.
 		"""
 		accept_properties = self._accept_properties
-		cpdict = self._ppropertiesdict.get(dep_getkey(cpv), None)
+		cpdict = self._ppropertiesdict.get(cpv_getkey(cpv), None)
 		if cpdict:
 			accept_properties = list(self._accept_properties)
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
