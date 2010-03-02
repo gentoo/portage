@@ -838,6 +838,17 @@ class binarytree(object):
 					remote_metadata = self.remotepkgs[mypkg]
 					for k, v in remote_metadata.items():
 						remote_metadata[k] = v.strip()
+
+					# Eliminate metadata values with names that digestCheck
+					# uses, since they are not valid when using the old
+					# protocol. Typically this is needed for SIZE metadata
+					# which corresponds to the size of the unpacked files
+					# rather than the binpkg file size, triggering digest
+					# verification failures as reported in bug #303211.
+					remote_metadata.pop('SIZE', None)
+					for k in portage.checksum.hashfunc_map:
+						remote_metadata.pop(k, None)
+
 					self._remotepkgs[fullpkg] = remote_metadata
 					#print "  -- Injected"
 				except SystemExit as e:
