@@ -22,6 +22,8 @@ class Mapping(object):
 	for UserDict.DictMixin so that code converted via 2to3 will run.
 	"""
 
+	__slots__ = ()
+
 	def __iter__(self):
 		return iter(self.keys())
 
@@ -78,6 +80,8 @@ class MutableMapping(Mapping):
 	"""
 	A mutable vesion of the Mapping class.
 	"""
+
+	__slots__ = ()
 
 	def clear(self):
 		for key in list(self):
@@ -146,6 +150,8 @@ class UserDict(MutableMapping):
 	     http://bugs.python.org/issue2876
 	"""
 
+	__slots__ = ('data',)
+
 	def __init__(self, *args, **kwargs):
 
 		self.data = {}
@@ -189,6 +195,8 @@ class UserDict(MutableMapping):
 		keys = __iter__
 
 class OrderedDict(UserDict):
+
+	__slots__ = ('_order',)
 
 	def __init__(self, *args, **kwargs):
 		self._order = []
