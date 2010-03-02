@@ -2396,9 +2396,7 @@ class depgraph(object):
 		atom_set = InternalPackageSet(initial_atoms=(atom,))
 		existing_node = None
 		myeb = None
-		usepkg = "--usepkg" in self._frozen_config.myopts
-		rebuilt_binaries = usepkg and \
-			self._frozen_config.myopts.get('--rebuilt-binaries') != 'n'
+		rebuilt_binaries = 'rebuilt_binaries' in self._dynamic_config.myparams
 		usepkgonly = "--usepkgonly" in self._frozen_config.myopts
 		empty = "empty" in self._dynamic_config.myparams
 		selective = "selective" in self._dynamic_config.myparams
