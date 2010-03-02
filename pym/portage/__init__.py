@@ -86,7 +86,7 @@ try:
 		'portage.dbapi.dep_expand:dep_expand',
 		'portage.dbapi.porttree:close_portdbapi_caches,FetchlistDict,' + \
 			'portagetree,portdbapi',
-		'portage.dbapi.vartree:vardbapi,vartree,dblink',
+		'portage.dbapi.vartree:dblink,merge,unmerge,vardbapi,vartree',
 		'portage.dbapi.virtual:fakedbapi',
 		'portage.dep',
 		'portage.dep:best_match_to_list,dep_getcpv,dep_getkey,' + \
@@ -615,35 +615,6 @@ def _movefile(src, dest, **kwargs):
 	if movefile(src, dest, **kwargs) is None:
 		raise portage.exception.PortageException(
 			"mv '%s' '%s'" % (src, dest))
-
-def merge(mycat, mypkg, pkgloc, infloc, myroot, mysettings, myebuild=None,
-	mytree=None, mydbapi=None, vartree=None, prev_mtimes=None, blockers=None,
-	scheduler=None):
-	if not os.access(myroot, os.W_OK):
-		writemsg(_("Permission denied: access('%s', W_OK)\n") % myroot,
-			noiselevel=-1)
-		return errno.EACCES
-	mylink = dblink(mycat, mypkg, myroot, mysettings, treetype=mytree,
-		vartree=vartree, blockers=blockers, scheduler=scheduler)
-	return mylink.merge(pkgloc, infloc, myroot, myebuild,
-		mydbapi=mydbapi, prev_mtimes=prev_mtimes)
-
-def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None,
-	ldpath_mtimes=None, scheduler=None):
-	mylink = dblink(cat, pkg, myroot, mysettings, treetype="vartree",
-		vartree=vartree, scheduler=scheduler)
-	vartree = mylink.vartree
-	try:
-		mylink.lockdb()
-		if mylink.exists():
-			retval = mylink.unmerge(trimworld=mytrimworld, cleanup=1,
-				ldpath_mtimes=ldpath_mtimes)
-			if retval == os.EX_OK:
-				mylink.delete()
-			return retval
-		return os.EX_OK
-	finally:
-		mylink.unlockdb()
 
 auxdbkeys = (
   'DEPEND',    'RDEPEND',   'SLOT',      'SRC_URI',
