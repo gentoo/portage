@@ -564,10 +564,6 @@ def create_trees(config_root=None, target_root=None, trees=None):
 	return trees
 
 class _LegacyGlobalProxy(proxy.objectproxy.ObjectProxy):
-	"""
-	Instances of these serve as proxies to global variables
-	that are initialized on demand.
-	"""
 
 	__slots__ = ('_name',)
 
@@ -576,52 +572,18 @@ class _LegacyGlobalProxy(proxy.objectproxy.ObjectProxy):
 		object.__setattr__(self, '_name', name)
 
 	def _get_target(self):
-		init_legacy_globals()
 		name = object.__getattribute__(self, '_name')
-		return globals()[name]
-
-class _PortdbProxy(proxy.objectproxy.ObjectProxy):
-	"""
-	The portdb is initialized separately from the rest
-	of the variables, since sometimes the other variables
-	are needed while the portdb is not.
-	"""
-
-	__slots__ = ()
-
-	def _get_target(self):
-		init_legacy_globals()
-		global db, portdb, root, _portdb_initialized
-		if not _portdb_initialized:
-			portdb = db[root]["porttree"].dbapi
-			_portdb_initialized = True
-		return portdb
-
-class _MtimedbProxy(proxy.objectproxy.ObjectProxy):
-	"""
-	The mtimedb is independent from the portdb and other globals.
-	"""
-
-	__slots__ = ('_name',)
-
-	def __init__(self, name):
-		proxy.objectproxy.ObjectProxy.__init__(self)
-		object.__setattr__(self, '_name', name)
-
-	def _get_target(self):
-		global mtimedb, mtimedbfile, _mtimedb_initialized
-		if not _mtimedb_initialized:
-			mtimedbfile = os.path.join(os.path.sep,
-				CACHE_PATH, "mtimedb")
-			mtimedb = MtimeDB(mtimedbfile)
-			_mtimedb_initialized = True
-		name = object.__getattribute__(self, '_name')
-		return globals()[name]
+		from portage._legacy_globals import _get_legacy_global
+		return _get_legacy_global(name)
 
 _legacy_global_var_names = ("archlist", "db", "features",
 	"groups", "mtimedb", "mtimedbfile", "pkglines",
 	"portdb", "profiledir", "root", "selinux_enabled",
 	"settings", "thirdpartymirrors", "usedefaults")
+
+for k in _legacy_global_var_names:
+	globals()[k] = _LegacyGlobalProxy(k)
+del k
 
 def _disable_legacy_globals():
 	"""
@@ -633,80 +595,3 @@ def _disable_legacy_globals():
 	global _legacy_global_var_names
 	for k in _legacy_global_var_names:
 		globals().pop(k, None)
-
-# Initialization of legacy globals.  No functions/classes below this point
-# please!  When the above functions and classes become independent of the
-# below global variables, it will be possible to make the below code
-# conditional on a backward compatibility flag (backward compatibility could
-# be disabled via an environment variable, for example).  This will enable new
-# code that is aware of this flag to import portage without the unnecessary
-# overhead (and other issues!) of initializing the legacy globals.
-
-def init_legacy_globals():
-	global _globals_initialized
-	if _globals_initialized:
-		return
-	_globals_initialized = True
-
-	global db, settings, root, portdb, selinux_enabled, mtimedbfile, mtimedb, \
-	archlist, features, groups, pkglines, thirdpartymirrors, usedefaults, \
-	profiledir
-
-	# Portage needs to ensure a sane umask for the files it creates.
-	os.umask(0o22)
-
-	kwargs = {}
-	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT")):
-		kwargs[k] = os.environ.get(envvar, "/")
-
-	global _initializing_globals
-	_initializing_globals = True
-	db = create_trees(**kwargs)
-	del _initializing_globals
-
-	settings = db["/"]["vartree"].settings
-
-	for myroot in db:
-		if myroot != "/":
-			settings = db[myroot]["vartree"].settings
-			break
-
-	root = settings["ROOT"]
-	output._init(config_root=settings['PORTAGE_CONFIGROOT'])
-
-	# ========================================================================
-	# COMPATIBILITY
-	# These attributes should not be used
-	# within Portage under any circumstances.
-	# ========================================================================
-	archlist    = settings.archlist()
-	features    = settings.features
-	groups      = settings["ACCEPT_KEYWORDS"].split()
-	pkglines    = settings.packages
-	selinux_enabled   = settings.selinux_enabled()
-	thirdpartymirrors = settings.thirdpartymirrors()
-	usedefaults       = settings.use_defs
-	profiledir  = os.path.join(settings["PORTAGE_CONFIGROOT"], PROFILE_PATH)
-	if not os.path.isdir(profiledir):
-		profiledir = None
-	# ========================================================================
-	# COMPATIBILITY
-	# These attributes should not be used
-	# within Portage under any circumstances.
-	# ========================================================================
-
-if True:
-
-	_mtimedb_initialized = False
-	mtimedb     = _MtimedbProxy("mtimedb")
-	mtimedbfile = _MtimedbProxy("mtimedbfile")
-
-	_portdb_initialized  = False
-	portdb = _PortdbProxy()
-
-	_globals_initialized = False
-
-	for k in ("db", "settings", "root", "selinux_enabled",
-		"archlist", "features", "groups",
-		"pkglines", "thirdpartymirrors", "usedefaults", "profiledir"):
-		globals()[k] = _LegacyGlobalProxy(k)
