@@ -220,6 +220,8 @@ class vardbapi(dbapi):
 				#dest already exists; keep this puppy where it is.
 				continue
 			_movefile(origpath, newpath, mysettings=self.settings)
+			self._clear_pkg_cache(self._dblink(mycpv))
+			self._clear_pkg_cache(self._dblink(mynewcpv))
 
 			# We need to rename the ebuild now.
 			old_pf = catsplit(mycpv)[1]
@@ -616,6 +618,7 @@ class vardbapi(dbapi):
 		treetype="vartree", vartree=self.vartree)
 		if not mylink.exists():
 			raise KeyError(cpv)
+		self._clear_pkg_cache(mylink)
 		for k, v in values.items():
 			if v:
 				mylink.setfile(k, v)
