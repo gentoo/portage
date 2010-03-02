@@ -1583,10 +1583,13 @@ class config(object):
 		if clone:
 			# For immutable attributes, use shallow copy for
 			# speed and memory conservation.
+			self.depcachedir = clone.depcachedir
 			self.incrementals = clone.incrementals
+			self.module_priority = clone.module_priority
 			self.profile_path = clone.profile_path
 			self.profiles = clone.profiles
 			self.packages = clone.packages
+			self.usemask_list = clone.usemask_list
 
 			self.user_profile_dir = copy.deepcopy(clone.user_profile_dir)
 			self.local_config = copy.deepcopy(clone.local_config)
@@ -1594,11 +1597,7 @@ class config(object):
 				copy.deepcopy(clone._local_repo_configs)
 			self._local_repo_conf_path = \
 				copy.deepcopy(clone._local_repo_conf_path)
-
-			self.module_priority = copy.deepcopy(clone.module_priority)
 			self.modules         = copy.deepcopy(clone.modules)
-
-			self.depcachedir = copy.deepcopy(clone.depcachedir)
 			self.virtuals = copy.deepcopy(clone.virtuals)
 			self.dirVirtuals = copy.deepcopy(clone.dirVirtuals)
 			self.treeVirtuals = copy.deepcopy(clone.treeVirtuals)
@@ -1608,7 +1607,6 @@ class config(object):
 
 			self.use_defs = copy.deepcopy(clone.use_defs)
 			self.usemask  = copy.deepcopy(clone.usemask)
-			self.usemask_list = copy.deepcopy(clone.usemask_list)
 			self.pusemask_list = copy.deepcopy(clone.pusemask_list)
 			self.useforce      = copy.deepcopy(clone.useforce)
 			self.useforce_list = copy.deepcopy(clone.useforce_list)
@@ -1685,7 +1683,7 @@ class config(object):
 			if not isinstance(self.incrementals, tuple):
 				self.incrementals = tuple(self.incrementals)
 
-			self.module_priority    = ["user","default"]
+			self.module_priority    = ("user", "default")
 			self.modules            = {}
 			modules_loader = portage.env.loaders.KeyValuePairFileLoader(
 				os.path.join(config_root, MODULES_FILE_PATH), None, None)
@@ -1788,8 +1786,9 @@ class config(object):
 				self._pkeywords_list.append(cpdict)
 
 			# get profile-masked use flags -- INCREMENTAL Child over parent
-			self.usemask_list = [grabfile(os.path.join(x, "use.mask"),
-				recursive=1) for x in self.profiles]
+			self.usemask_list = tuple(
+				tuple(grabfile(os.path.join(x, "use.mask"), recursive=1))
+				for x in self.profiles)
 			self.usemask  = set(stack_lists(
 				self.usemask_list, incremental=True))
 			use_defs_lists = [grabdict(os.path.join(x, "use.defaults")) for x in self.profiles]
