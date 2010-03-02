@@ -3,13 +3,9 @@
 # $Id$
 
 from _emerge.SpawnProcess import SpawnProcess
-try:
-	import portage
-except ImportError:
-	from os import path as osp
-	import sys
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-	import portage
+import portage
+import os
+
 class BinpkgExtractorAsync(SpawnProcess):
 
 	__slots__ = ("image_dir", "pkg", "pkg_path")
@@ -28,6 +24,5 @@ class BinpkgExtractorAsync(SpawnProcess):
 			(portage._shell_quote(self.pkg_path),
 			portage._shell_quote(self.image_dir))]
 
-		self.env = self.pkg.root_config.settings.environ()
+		self.env = os.environ.copy()
 		SpawnProcess._start(self)
-
