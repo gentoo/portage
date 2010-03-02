@@ -120,11 +120,12 @@ class database(fs_template.FsBased):
 
 	def __iter__(self):
 		"""generator for walking the dir struct"""
-		dirs = [self.location]
+		dirs = [(0, self.location)]
 		len_base = len(self.location)
 		while len(dirs):
 			try:
-				dir_list = os.listdir(dirs[0])
+				depth = dirs[0][0]
+				dir_list = os.listdir(dirs[0][1])
 			except OSError as e:
 				if e.errno != errno.ENOENT:
 					raise
@@ -134,10 +135,15 @@ class database(fs_template.FsBased):
 			for l in dir_list:
 				if l.endswith(".cpickle"):
 					continue
-				p = os.path.join(dirs[0],l)
+				p = os.path.join(dirs[0][1], l)
 				st = os.lstat(p)
 				if stat.S_ISDIR(st.st_mode):
-					dirs.append(p)
+					# Only recurse 1 deep, in order to avoid iteration over
+					# entries from another nested cache instance. This can
+					# happen if the user nests an overlay inside
+					# /usr/portage/local as in bug #302764.
+					if depth < 1:
+						dirs.append((depth+1, p))
 					continue
 				yield p[len_base+1:]
 			dirs.pop(0)
