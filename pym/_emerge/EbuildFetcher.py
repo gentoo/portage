@@ -101,8 +101,10 @@ class EbuildFetcher(SpawnProcess):
 
 		sizes = {}
 		for filename in uri_map:
+			# Use stat rather than lstat since portage.fetch() creates
+			# symlinks when PORTAGE_RO_DISTDIRS is used.
 			try:
-				st = os.lstat(os.path.join(distdir, filename))
+				st = os.stat(os.path.join(distdir, filename))
 			except OSError:
 				return False
 			if st.st_size == 0:
