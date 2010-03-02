@@ -122,20 +122,19 @@ class database(fs_template.FsBased):
 		"""generator for walking the dir struct"""
 		dirs = [(0, self.location)]
 		len_base = len(self.location)
-		while len(dirs):
+		while dirs:
+			depth, dir_path = dirs.pop()
 			try:
-				depth = dirs[0][0]
-				dir_list = os.listdir(dirs[0][1])
+				dir_list = os.listdir(dir_path)
 			except OSError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
-				dirs.pop(0)
 				continue
 			for l in dir_list:
 				if l.endswith(".cpickle"):
 					continue
-				p = os.path.join(dirs[0][1], l)
+				p = os.path.join(dir_path, l)
 				st = os.lstat(p)
 				if stat.S_ISDIR(st.st_mode):
 					# Only recurse 1 deep, in order to avoid iteration over
@@ -146,4 +145,3 @@ class database(fs_template.FsBased):
 						dirs.append((depth+1, p))
 					continue
 				yield p[len_base+1:]
-			dirs.pop(0)
