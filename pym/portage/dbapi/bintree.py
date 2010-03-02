@@ -21,11 +21,12 @@ from portage.exception import InvalidPackageName, \
 	PermissionDenied, PortageException
 from portage.localization import _
 
-from portage import dep_expand, listdir, _check_distfile, _movefile
+from portage import dep_expand, listdir, _movefile
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
+from portage.package.ebuild.fetch import _check_distfile
 
 import codecs
 import errno
