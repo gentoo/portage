@@ -482,6 +482,13 @@ class binarytree(object):
 		if (not os.path.isdir(self.pkgdir) and not getbinpkgs):
 			return 0
 
+		# Clear all caches in case populate is called multiple times
+		# as may be the case when _global_updates calls populate()
+		# prior to performing package moves since it only wants to
+		# operate on local packages (getbinpkgs=0).
+		self._remotepkgs = None
+		self.dbapi._clear_cache()
+		self.dbapi._aux_cache.clear()
 		if True:
 			pkg_paths = {}
 			self._pkg_paths = pkg_paths
@@ -693,10 +700,7 @@ class binarytree(object):
 			writemsg(_("!!! PORTAGE_BINHOST unset, but use is requested.\n"),
 				noiselevel=-1)
 
-		if getbinpkgs and \
-			"PORTAGE_BINHOST" in self.settings and \
-			not self._remotepkgs:
-
+		if getbinpkgs and 'PORTAGE_BINHOST' in self.settings:
 			base_url = self.settings["PORTAGE_BINHOST"]
 			from portage.const import CACHE_PATH
 			try:
