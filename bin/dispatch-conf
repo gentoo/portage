@@ -246,6 +246,8 @@ class dispatch:
                 while True:
                     c = getch()
                     if c in valid_input:
+                        sys.stdout.write('\n')
+                        sys.stdout.flush()
                         break
 
                 if c == 'q':
