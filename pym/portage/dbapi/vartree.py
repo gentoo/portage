@@ -24,6 +24,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 		'writemsg,writemsg_level,write_atomic,atomic_ofstream,writedict,' + \
 		'grabfile,grabdict,normalize_path,new_protect_filename,getlibpaths',
 	'portage.util.digraph:digraph',
+	'portage.util.env_update:env_update',
 	'portage.util.listdir:dircache,listdir',
 	'portage.versions:best,catpkgsplit,catsplit,cpv_getkey,pkgcmp,' + \
 		'_pkgsplit@pkgsplit',
@@ -38,7 +39,7 @@ from portage.exception import CommandNotFound, \
 	FileNotFound, PermissionDenied, UnsupportedAPIException
 from portage.localization import _
 
-from portage import dep_expand, env_update, \
+from portage import dep_expand, \
 	abssymlink, movefile, _movefile, bsd_chflags
 
 # This is a special version of the os module, wrapped for unicode support.
