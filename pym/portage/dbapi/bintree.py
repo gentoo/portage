@@ -1049,6 +1049,16 @@ class binarytree(object):
 				writemsg("%s: %s\n" % (k, str(e)),
 					noiselevel=-1)
 				raise
+			if k in portage._vdb_use_conditional_atoms:
+				v_split = []
+				for x in deps.split():
+					try:
+						x = portage.dep.Atom(x)
+					except portage.exception.InvalidAtom:
+						v_split.append(x)
+					else:
+						v_split.append(str(x.evaluate_conditionals(raw_use)))
+				deps = ' '.join(v_split)
 			metadata[k] = deps
 
 	def exists_specific(self, cpv):
