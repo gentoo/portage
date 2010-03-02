@@ -7195,7 +7195,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			mydo not in ("digest", "manifest") and "noauto" not in features)
 		alist = mysettings.configdict["pkg"].get("A")
 		aalist = mysettings.configdict["pkg"].get("AA")
-		if need_distfiles or alist is None or aalist is None:
+		if alist is None or aalist is None:
 			# Make sure we get the correct tree in case there are overlays.
 			mytree = os.path.realpath(
 				os.path.dirname(os.path.dirname(mysettings["O"])))
