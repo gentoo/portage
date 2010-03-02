@@ -15,6 +15,7 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_encode
 import codecs
+import logging
 from portage.output import colorize
 
 class Binpkg(CompositeTask):
@@ -270,15 +271,17 @@ class Binpkg(CompositeTask):
 
 		extractor = BinpkgExtractorAsync(background=self.background,
 			image_dir=self._image_dir,
-			pkg=self.pkg, pkg_path=self._pkg_path, scheduler=self.scheduler)
+			pkg=self.pkg, pkg_path=self._pkg_path,
+			logfile=self.settings.get("PORTAGE_LOG_FILE"),
+			scheduler=self.scheduler)
 		self._writemsg_level(">>> Extracting %s\n" % self.pkg.cpv)
 		self._start_task(extractor, self._extractor_exit)
 
 	def _extractor_exit(self, extractor):
 		if self._final_exit(extractor) != os.EX_OK:
 			self._unlock_builddir()
-			writemsg("!!! Error Extracting '%s'\n" % self._pkg_path,
-				noiselevel=-1)
+			self._writemsg_level("!!! Error Extracting '%s'\n" % \
+				self._pkg_path, noiselevel=-1, level=logging.ERROR)
 		self.wait()
 
 	def _unlock_builddir(self):
