@@ -438,6 +438,24 @@ class BuiltWithUse(LineCheck):
 	re = re.compile('^.*built_with_use')
 	error = errors.BUILT_WITH_USE
 
+# EAPI-3 checks
+class Eapi3DeprecatedFuncs(LineCheck):
+	repoman_check_name = 'EAPI.deprecated'
+	ignore_line = re.compile(r'(^\s*#)')
+	deprecated_commands_re = re.compile(r'^\s*(check_license)\b')
+
+	def new(self, pkg):
+		self.eapi = pkg.metadata['EAPI']
+
+	def check_eapi(self, eapi):
+		return self.eapi not in ('0', '1', '2')
+
+	def check(self, num, line):
+		m = self.deprecated_commands_re.match(line)
+		if m is not None:
+			return ("'%s'" % m.group(1)) + \
+				" has been deprecated in EAPI=3 on line: %d"
+
 # EAPI-4 checks
 class Eapi4IncompatibleFuncs(LineCheck):
 	repoman_check_name = 'EAPI.incompatible'
@@ -481,7 +499,8 @@ _constant_checks = tuple((c() for c in (
 	IUseUndefined, InheritAutotools,
 	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS, NoAsNeeded,
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
-	SrcCompileEconf, Eapi4IncompatibleFuncs, Eapi4GoneVars, BuiltWithUse)))
+	SrcCompileEconf, Eapi3DeprecatedFuncs,
+	Eapi4IncompatibleFuncs, Eapi4GoneVars, BuiltWithUse)))
 
 _here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
 
