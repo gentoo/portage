@@ -3335,6 +3335,15 @@ class depgraph(object):
 				runtime_deps.update(atom for atom in atoms \
 					if not atom.blocker)
 
+		# Merge libc asap, in order to account for implicit
+		# dependencies. See bug #303567.
+		libc_pkg = self._dynamic_config.mydbapi[running_root].match_pkgs(
+			portage.const.LIBC_PACKAGE_ATOM)
+		if libc_pkg:
+			libc_pkg = libc_pkg[0]
+			if libc_pkg.operation == 'merge':
+				asap_nodes.append(libc_pkg)
+
 		def gather_deps(ignore_priority, mergeable_nodes,
 			selected_nodes, node):
 			"""
