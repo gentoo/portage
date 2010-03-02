@@ -2292,7 +2292,7 @@ class config(object):
 			rValue.append(token)
 			return rValue
 		group_name = license_name[1:]
-		if not traversed_groups:
+		if traversed_groups is None:
 			traversed_groups = set()
 		license_group = self._license_groups.get(group_name)
 		if group_name in traversed_groups:
