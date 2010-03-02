@@ -65,9 +65,8 @@ class EbuildBuildDir(SlotObject):
 		settings = self.settings
 		log_file = settings.get('PORTAGE_LOG_FILE')
 		if log_file is not None and os.path.isfile(log_file):
-			# Truncate rather than unlink, so tail -f still works.
 			try:
-				open(log_file, 'wb')
+				os.unlink(log_file)
 			except OSError:
 				pass
 
