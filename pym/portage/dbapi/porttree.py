@@ -143,7 +143,7 @@ class portdbapi(dbapi):
 
 	def __init__(self, _unused_param=None, mysettings=None):
 		"""
-		@param _unused_param: deprecated
+		@param _unused_param: deprecated, use mysettings['PORTDIR'] instead
 		@type _unused_param: None
 		@param mysettings: an immutable config instance
 		@type mysettings: portage.config
@@ -157,7 +157,8 @@ class portdbapi(dbapi):
 			from portage import settings
 			self.mysettings = config(clone=settings)
 
-		if _unused_param is not None:
+		# enable this warning after this parameter is unused in stable portage
+		if False and _unused_param is not None:
 			warnings.warn("The first parameter of the " + \
 				"portage.dbapi.porttree.portdbapi" + \
 				" constructor is now unused. Use " + \
