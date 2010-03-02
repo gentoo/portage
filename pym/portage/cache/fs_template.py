@@ -72,7 +72,7 @@ class FsBased(template.database):
 					if perms == -1:
 						perms = 0
 					perms |= 0o755
-					os.makedirs(base, perms)
+					os.mkdir(base, perms)
 					if self._gid != -1:
 						os.chown(base, -1, self._gid)
 				finally:
