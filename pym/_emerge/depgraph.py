@@ -2640,8 +2640,13 @@ class depgraph(object):
 					elif pkg.built:
 						built_pkg = pkg
 				if built_pkg is not None and inst_pkg is not None:
-					if built_pkg.metadata['BUILD_TIME'] != \
-						inst_pkg.metadata['BUILD_TIME']:
+					# Only reinstall if binary package BUILD_TIME is
+					# non-empty, in order to avoid cases like to
+					# bug #306659 where BUILD_TIME fields are missing
+					# in local and/or remote Packages file.
+					if built_pkg.metadata['BUILD_TIME'] and \
+						(built_pkg.metadata['BUILD_TIME'] != \
+						inst_pkg.metadata['BUILD_TIME']):
 						return built_pkg, built_pkg
 
 			if avoid_update:
