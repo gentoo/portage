@@ -2,8 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from __future__ import print_function
-
 __all__ = [
 	"close_portdbapi_caches", "FetchlistDict", "portagetree", "portdbapi"
 ]
@@ -809,8 +807,8 @@ class portdbapi(dbapi):
 		checksums = mf.getDigests()
 		if not checksums:
 			if debug: 
-				print("[empty/missing/bad digest]: "+mypkg)
-			return None
+				writemsg("[empty/missing/bad digest]: %s\n" % (mypkg,))
+			return {}
 		filesdict={}
 		myfiles = self.getFetchMap(mypkg, useflags=useflags)
 		#XXX: maybe this should be improved: take partial downloads
@@ -1091,8 +1089,8 @@ class portdbapi(dbapi):
 			else:
 				myval = list(self._iter_match(mydep, self.cp_list(mykey)))
 		else:
-			print("ERROR: xmatch doesn't handle", level, "query!")
-			raise KeyError
+			raise AssertionError(
+				"Invalid level argument: '%s'" % level)
 
 		if self.frozen and (level not in ["match-list", "bestmatch-list"]):
 			self.xcache[level][mydep] = myval
