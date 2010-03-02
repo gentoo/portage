@@ -1576,7 +1576,7 @@ class depgraph(object):
 						print(colorize("BAD", "\n*** You need to adjust PORTDIR or PORTDIR_OVERLAY to emerge this package.\n"))
 						return 0, myfavorites
 					if mykey not in portdb.xmatch(
-						"match-visible", portage.dep_getkey(mykey)):
+						"match-visible", portage.cpv_getkey(mykey)):
 						print(colorize("BAD", "\n*** You are emerging a masked package. It is MUCH better to use"))
 						print(colorize("BAD", "*** /etc/portage/package.* to accomplish this. See portage(5) man"))
 						print(colorize("BAD", "*** page for details."))
