@@ -357,6 +357,9 @@ class Scheduler(PollScheduler):
 		Find system packages and their deep runtime dependencies. Before being
 		merged, these packages go to merge_wait_queue, to be merged when no
 		other packages are building.
+		NOTE: This can only find deep system deps if the system set has been
+		added to the graph and traversed deeply (the depgraph "complete"
+		parameter will do this, triggered by emerge --complete-graph option).
 		"""
 		deep_system_deps = self._deep_system_deps
 		deep_system_deps.clear()
