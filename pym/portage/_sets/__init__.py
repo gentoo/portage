@@ -34,8 +34,10 @@ class SetConfigError(Exception):
 
 class SetConfig(object):
 	def __init__(self, paths, settings, trees):
-		self._parser = SafeConfigParser(
-			defaults={"PORTAGE_CONFIGROOT" : settings["PORTAGE_CONFIGROOT"]})
+		defaults={
+			"PORTAGE_CONFIGROOT" : settings["PORTAGE_CONFIGROOT"],
+			"ROOT" : settings["ROOT"],
+		})
 		#self._parser.read(paths)
 		# The "paths" argument is ignored and the config for
 		# system and world sets is hardcoded below.
