@@ -708,7 +708,7 @@ def dep_getcpv(mydep):
 	# Fall back to legacy code for backward compatibility.
 	warnings.warn(_("%s is deprecated, use %s instead") % \
 		('portage.dep.dep_getcpv()', 'portage.dep.Atom.cpv'),
-		DeprecationWarning)
+		DeprecationWarning, stacklevel=2)
 	mydep_orig = mydep
 	if mydep:
 		mydep = remove_slot(mydep)
@@ -943,13 +943,13 @@ def dep_getkey(mydep):
 		else:
 			warnings.warn(_("invalid input to %s: '%s', use %s instead") % \
 				('portage.dep.dep_getkey()', mydep, 'portage.cpv_getkey()'),
-				DeprecationWarning)
+				DeprecationWarning, stacklevel=2)
 			return atom.cp
 
 	# Fall back to legacy code for backward compatibility.
 	warnings.warn(_("%s is deprecated, use %s instead") % \
 		('portage.dep.dep_getkey()', 'portage.dep.Atom.cp'),
-		DeprecationWarning)
+		DeprecationWarning, stacklevel=2)
 	mydep = dep_getcpv(mydep)
 	if mydep and isspecific(mydep):
 		mysplit = catpkgsplit(mydep)
