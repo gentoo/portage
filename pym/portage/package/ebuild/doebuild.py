@@ -49,10 +49,10 @@ from portage.manifest import Manifest
 from portage.output import style_to_ansi_code
 from portage.package.ebuild.fetch import fetch
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
-from portage.package.ebuild._pty import _create_pty_or_pipe
 from portage.util import apply_recursive_permissions, \
 	apply_secpass_permissions, noiselimit, normalize_path, \
 	writemsg, writemsg_stdout, write_atomic
+from portage.util._pty import _create_pty_or_pipe
 from portage.versions import _pkgsplit
 
 def doebuild_environment(myebuild, mydo, myroot, mysettings,
