@@ -591,7 +591,7 @@ class Scheduler(PollScheduler):
 			if ebuild_path is None:
 				raise AssertionError("ebuild not found for '%s'" % x.cpv)
 			pkgsettings['O'] = os.path.dirname(ebuild_path)
-			if not portage.digestgen([], pkgsettings, myportdb=portdb):
+			if not portage.digestgen(mysettings=pkgsettings, myportdb=portdb):
 				writemsg_level(
 					"!!! Unable to generate manifest for '%s'.\n" \
 					% x.cpv, level=logging.ERROR, noiselevel=-1)

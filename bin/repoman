@@ -1011,7 +1011,7 @@ for x in scanlist:
 				portage._doebuild_manifest_exempt_depend -= 1
 
 		repoman_settings["O"] = checkdir
-		if not portage.digestgen([], repoman_settings, myportdb=portdb):
+		if not portage.digestgen(mysettings=repoman_settings, myportdb=portdb):
 			print("Unable to generate manifest.")
 			dofail = 1
 		if options.mode == "manifest":
@@ -2335,7 +2335,7 @@ else:
 		mydone=[]
 		if repolevel==3:   # In a package dir
 			repoman_settings["O"] = startdir
-			portage.digestgen([], repoman_settings, myportdb=portdb)
+			portage.digestgen(mysettings=repoman_settings, myportdb=portdb)
 		elif repolevel==2: # In a category dir
 			for x in myfiles:
 				xs=x.split("/")
@@ -2349,7 +2349,7 @@ else:
 				repoman_settings["O"] = os.path.join(startdir, xs[0])
 				if not os.path.isdir(repoman_settings["O"]):
 					continue
-				portage.digestgen([], repoman_settings, myportdb=portdb)
+				portage.digestgen(mysettings=repoman_settings, myportdb=portdb)
 		elif repolevel==1: # repo-cvsroot
 			print(green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n")
 			for x in myfiles:
@@ -2364,7 +2364,7 @@ else:
 				repoman_settings["O"] = os.path.join(startdir, xs[0], xs[1])
 				if not os.path.isdir(repoman_settings["O"]):
 					continue
-				portage.digestgen([], repoman_settings, myportdb=portdb)
+				portage.digestgen(mysettings=repoman_settings, myportdb=portdb)
 		else:
 			print(red("I'm confused... I don't know where I am!"))
 			sys.exit(1)
