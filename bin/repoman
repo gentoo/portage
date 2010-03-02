@@ -91,8 +91,11 @@ bad = create_color_func("BAD")
 
 # A sane umask is needed for files that portage creates.
 os.umask(0o22)
-repoman_settings = portage.config(local_config=False,
-	config_incrementals=portage.const.INCREMENTALS)
+# Repoman sets it's own ACCEPT_KEYWORDS and we don't want it to
+# behave incrementally.
+repoman_incrementals = tuple(x for x in \
+	portage.const.INCREMENTALS if x != 'ACCEPT_KEYWORDS')
+repoman_settings = portage.config(local_config=False)
 repoman_settings.lock()
 
 if repoman_settings.get("NOCOLOR", "").lower() in ("yes", "true") or \
@@ -1749,16 +1752,12 @@ for x in scanlist:
 				if dep_settings is None:
 					dep_settings = portage.config(
 						config_profile_path=prof.abs_path,
-						config_incrementals=portage.const.INCREMENTALS,
+						config_incrementals=repoman_incrementals,
 						local_config=False,
 						env=env)
 					if options.without_mask:
 						dep_settings.pmaskdict.clear()
 					arch_caches[prof.sub_path] = dep_settings
-					# Protect ACCEPT_KEYWORDS from config.regenerate()
-					# (just in case)
-					dep_settings.incrementals = tuple(v for v in \
-						dep_settings.incrementals if v != 'ACCEPT_KEYWORDS')
 
 				xmatch_cache_key = (prof.sub_path, tuple(groups))
 				xcache = arch_xmatch_caches.get(xmatch_cache_key)
