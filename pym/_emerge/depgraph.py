@@ -1140,9 +1140,14 @@ class depgraph(object):
 		deps = (
 			(bdeps_root, edepend["DEPEND"],
 				self._priority(buildtime=(not bdeps_optional),
-				optional=bdeps_optional)),
-			(myroot, edepend["RDEPEND"], self._priority(runtime=True)),
-			(myroot, edepend["PDEPEND"], self._priority(runtime_post=True))
+				optional=bdeps_optional),
+				pkg.built),
+			(myroot, edepend["RDEPEND"],
+				self._priority(runtime=True),
+				False),
+			(myroot, edepend["PDEPEND"],
+				self._priority(runtime_post=True),
+				False)
 		)
 
 		debug = "--debug" in self._frozen_config.myopts
@@ -1151,7 +1156,7 @@ class depgraph(object):
 			if not strict:
 				portage.dep._dep_check_strict = False
 
-			for dep_root, dep_string, dep_priority in deps:
+			for dep_root, dep_string, dep_priority, ignore_blockers in deps:
 				if not dep_string:
 					continue
 				if debug:
@@ -1186,7 +1191,7 @@ class depgraph(object):
 
 				if not self._add_pkg_dep_string(
 					pkg, dep_root, dep_priority, dep_string,
-					allow_unsatisfied):
+					allow_unsatisfied, ignore_blockers=ignore_blockers):
 					return 0
 
 		except portage.exception.AmbiguousPackageName as e:
@@ -1213,7 +1218,7 @@ class depgraph(object):
 		return 1
 
 	def _add_pkg_dep_string(self, pkg, dep_root, dep_priority, dep_string,
-		allow_unsatisfied):
+		allow_unsatisfied, ignore_blockers=False):
 		depth = pkg.depth + 1
 		debug = "--debug" in self._frozen_config.myopts
 		strict = pkg.type_name != "installed"
@@ -1247,6 +1252,11 @@ class depgraph(object):
 
 		for atom, child in self._minimize_children(
 			pkg, dep_priority, root_config, selected_atoms[pkg]):
+
+			if ignore_blockers and atom.blocker:
+				# For --with-bdeps, ignore build-time only blockers
+				# that originate from built packages.
+				continue
 
 			mypriority = dep_priority.copy()
 			if not atom.blocker and vardb.match(atom):
