@@ -15,6 +15,7 @@ import portage
 from portage import os
 from portage import digraph
 from portage.dbapi import dbapi
+from portage.dbapi.dep_expand import dep_expand
 from portage.dep import Atom
 from portage.output import bold, blue, colorize, create_color_func, darkblue, \
 	darkgreen, green, nc_len, red, teal, turquoise, yellow
@@ -4160,7 +4161,7 @@ class depgraph(object):
 				else:
 					blocker_style = "PKG_BLOCKER"
 					addl = "%s  %s  " % (colorize(blocker_style, "B"), fetch)
-				resolved = portage.dep_expand(
+				resolved = dep_expand(
 					str(x.atom).lstrip("!"), mydb=vardb, settings=pkgsettings)
 				if "--columns" in self._frozen_config.myopts and "--quiet" in self._frozen_config.myopts:
 					addl += " " + colorize(blocker_style, str(resolved))

@@ -11,6 +11,7 @@ __all__ = [
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum:_perform_md5_merge@perform_md5',
+	'portage.dbapi.dep_expand:dep_expand',
 	'portage.dep:dep_getkey,isjustname,flatten,match_from_list,' + \
 	 	'use_reduce,paren_reduce,_slot_re',
 	'portage.elog:elog_process',
@@ -39,8 +40,7 @@ from portage.exception import CommandNotFound, \
 	FileNotFound, PermissionDenied, UnsupportedAPIException
 from portage.localization import _
 
-from portage import dep_expand, \
-	abssymlink, movefile, _movefile, bsd_chflags
+from portage import abssymlink, movefile, _movefile, bsd_chflags
 
 # This is a special version of the os module, wrapped for unicode support.
 from portage import os
