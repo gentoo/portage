@@ -5,6 +5,7 @@
 from _emerge.SpawnProcess import SpawnProcess
 import portage
 from portage import os
+from portage.package.ebuild._pty import _create_pty_or_pipe
 
 class AbstractEbuildProcess(SpawnProcess):
 
@@ -13,7 +14,7 @@ class AbstractEbuildProcess(SpawnProcess):
 	def _pipe(self, fd_pipes):
 		stdout_pipe = fd_pipes.get(1)
 		got_pty, master_fd, slave_fd = \
-			portage._create_pty_or_pipe(copy_term_size=stdout_pipe)
+			_create_pty_or_pipe(copy_term_size=stdout_pipe)
 		return (master_fd, slave_fd)
 
 	def _can_log(self, slave_fd):

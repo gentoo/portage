@@ -10,6 +10,7 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dep:dep_getkey,isjustname,match_from_list',
 	'portage.output:EOutput,colorize',
+	'portage.package.ebuild.doebuild:_vdb_use_conditional_atoms',
 	'portage.update:update_dbentries',
 	'portage.util:ensure_dirs,normalize_path,writemsg,writemsg_stdout',
 	'portage.versions:best,catpkgsplit,catsplit',
@@ -1065,7 +1066,7 @@ class binarytree(object):
 				writemsg("%s: %s\n" % (k, str(e)),
 					noiselevel=-1)
 				raise
-			if k in portage._vdb_use_conditional_atoms:
+			if k in _vdb_use_conditional_atoms:
 				v_split = []
 				for x in deps.split():
 					try:

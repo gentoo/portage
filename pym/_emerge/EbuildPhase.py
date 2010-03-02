@@ -5,6 +5,9 @@
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.EbuildProcess import EbuildProcess
 from _emerge.CompositeTask import CompositeTask
+from portage.package.ebuild.doebuild import _check_build_log, \
+	_post_phase_cmds, _post_src_install_chost_fix, \
+	_post_src_install_uid_fix
 from portage.util import writemsg, writemsg_stdout
 import portage
 from portage import os
@@ -17,8 +20,6 @@ class EbuildPhase(CompositeTask):
 
 	__slots__ = ("background", "pkg", "phase",
 		"scheduler", "settings", "tree")
-
-	_post_phase_cmds = portage._post_phase_cmds
 
 	def _start(self):
 
@@ -39,7 +40,7 @@ class EbuildPhase(CompositeTask):
 					encoding=_encodings['fs'], errors='strict'),
 					mode='a', encoding=_encodings['content'], errors='replace')
 			try:
-				portage._check_build_log(self.settings, out=out)
+				_check_build_log(self.settings, out=out)
 				msg = _unicode_decode(out.getvalue(),
 					encoding=_encodings['content'], errors='replace')
 				if msg:
@@ -66,12 +67,12 @@ class EbuildPhase(CompositeTask):
 					encoding=_encodings['fs'], errors='strict'),
 					mode='a', encoding=_encodings['content'], errors='replace')
 				out = log_file
-			portage._post_src_install_chost_fix(settings)
-			portage._post_src_install_uid_fix(settings, out=out)
+			_post_src_install_chost_fix(settings)
+			_post_src_install_uid_fix(settings, out=out)
 			if log_file is not None:
 				log_file.close()
 
-		post_phase_cmds = self._post_phase_cmds.get(self.phase)
+		post_phase_cmds = _post_phase_cmds.get(self.phase)
 		if post_phase_cmds is not None:
 			post_phase = MiscFunctionsProcess(background=self.background,
 				commands=post_phase_cmds, phase=self.phase, pkg=self.pkg,

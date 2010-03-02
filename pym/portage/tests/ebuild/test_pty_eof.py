@@ -4,6 +4,7 @@
 
 import portage
 from portage.tests import TestCase
+from portage.package.ebuild._pty import _can_test_pty_eof, _test_pty_eof
 
 class PtyEofTestCase(TestCase):
 
@@ -13,8 +14,8 @@ class PtyEofTestCase(TestCase):
 		# Since it might not be fixed, mark as todo.
 		self.todo = True
 		# The result is only valid if openpty does not raise EnvironmentError.
-		if portage._can_test_pty_eof():
+		if _can_test_pty_eof():
 			try:
-				self.assertEqual(portage._test_pty_eof(), True)
+				self.assertEqual(_test_pty_eof(), True)
 			except EnvironmentError:
 				pass
