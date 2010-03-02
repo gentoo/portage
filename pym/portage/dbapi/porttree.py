@@ -793,30 +793,6 @@ class portdbapi(dbapi):
 
 		return uri_map
 
-	def getfetchlist(self, mypkg, useflags=None, mysettings=None,
-		all=0, mytree=None):
-
-		writemsg("!!! pordbapi.getfetchlist() is deprecated, " + \
-			"use getFetchMap() instead.\n", noiselevel=-1)
-
-		if all:
-			useflags = None
-		elif useflags is None:
-			if mysettings is None:
-				mysettings = self.doebuild_settings
-			mysettings.setcpv(mypkg, mydb=self)
-			useflags = mysettings["PORTAGE_USE"].split()
-		uri_map = self.getFetchMap(mypkg, useflags=useflags, mytree=mytree)
-
-		all_uris = []
-		all_files = []
-		for filename, uris in uri_map.items():
-			for uri in uris:
-				all_uris.append(uri)
-				all_files.append(filename)
-
-		return [all_uris, all_files]
-
 	def getfetchsizes(self, mypkg, useflags=None, debug=0):
 		# returns a filename:size dictionnary of remaining downloads
 		myebuild = self.findname(mypkg)
