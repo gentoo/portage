@@ -51,7 +51,7 @@ class WorldHandler(object):
 		if onProgress:
 			onProgress(maxval, 0)
 		for i, atom in enumerate(world_atoms):
-			if not portage.isvalidatom(atom):
+			if not isinstance(atom, portage.dep.Atom):
 				if atom.startswith(SETPREFIX):
 					s = atom[len(SETPREFIX):]
 					if s in sets:
@@ -63,12 +63,11 @@ class WorldHandler(object):
 				if onProgress:
 					onProgress(maxval, i+1)
 				continue
-			cp = portage.dep_getkey(atom)
 			okay = True
 			if not vardb.match(atom):
 				self.not_installed.append(atom)
 				okay = False
-			if portage.catsplit(cp)[0] not in categories:
+			if portage.catsplit(atom.cp)[0] not in categories:
 				self.invalid_category.append(atom)
 				okay = False
 			if okay:
