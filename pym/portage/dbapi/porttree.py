@@ -25,7 +25,7 @@ from portage.localization import _
 from portage.manifest import Manifest
 
 from portage import eclass_cache, auxdbkeys, doebuild, flatten, \
-	listdir, dep_expand, eapi_is_supported, key_expand, dep_check, \
+	listdir, dep_expand, eapi_is_supported, dep_check, \
 	_eapi_is_deprecated
 from portage import os
 from portage import _encodings
@@ -1226,20 +1226,6 @@ class portagetree(object):
 		mysplit = pkgname.split("/")
 		psplit = pkgsplit(mysplit[1])
 		return "/".join([self.portroot, mysplit[0], psplit[0], mysplit[1]])+".ebuild"
-
-	def resolve_specific(self, myspec):
-		warnings.warn(
-			"portage.dbapi.porttree.portagetree.resolve_specific() is deprecated",
-			DeprecationWarning)
-		cps = catpkgsplit(myspec)
-		if not cps:
-			return None
-		mykey = key_expand(cps[0]+"/"+cps[1], mydb=self.dbapi,
-			settings=self.settings)
-		mykey = mykey + "-" + cps[2]
-		if cps[3] != "r0":
-			mykey = mykey + "-" + cps[3]
-		return mykey
 
 	def depcheck(self, mycheck, use="yes", myusesplit=None):
 		return dep_check(mycheck, self.dbapi, use=use, myuse=myusesplit)
