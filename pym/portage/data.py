@@ -96,22 +96,23 @@ except KeyError:
 	writemsg(colorize("GOOD", "         portage::250:portage") + "\n",
 		noiselevel=-1)
 	portage_group_warning()
-
-userpriv_groups = [portage_gid]
-if secpass >= 2:
-	# Get a list of group IDs for the portage user.  Do not use grp.getgrall()
-	# since it is known to trigger spurious SIGPIPE problems with nss_ldap.
-	try:
-		from subprocess import getstatusoutput
-	except ImportError:
-		from commands import getstatusoutput
-	mystatus, myoutput = getstatusoutput("id -G portage")
-	if mystatus == os.EX_OK:
-		for x in myoutput.split():
-			try:
-				userpriv_groups.append(int(x))
-			except ValueError:
-				pass
-			del x
-		userpriv_groups = list(set(userpriv_groups))
-	del getstatusoutput, mystatus, myoutput
+else:
+	userpriv_groups = [portage_gid]
+	if secpass >= 2:
+		# Get a list of group IDs for the portage user. Do not use
+		# grp.getgrall() since it is known to trigger spurious
+		# SIGPIPE problems with nss_ldap.
+		try:
+			from subprocess import getstatusoutput
+		except ImportError:
+			from commands import getstatusoutput
+		mystatus, myoutput = getstatusoutput("id -G portage")
+		if mystatus == os.EX_OK:
+			for x in myoutput.split():
+				try:
+					userpriv_groups.append(int(x))
+				except ValueError:
+					pass
+				del x
+			userpriv_groups = list(set(userpriv_groups))
+		del getstatusoutput, mystatus, myoutput
