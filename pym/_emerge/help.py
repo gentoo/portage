@@ -439,8 +439,11 @@ def help(myopts, havecolor=1):
 			print(desc_indent + line)
 		print()
 		print("       "+green("--newuse")+" ("+green("-N")+" short option)")
-		print("              Tells emerge to include installed packages where USE flags have ")
-		print("              changed since installation.")
+		desc = "Tells emerge to include installed packages where USE " + \
+			"flags have changed since compilation. This option " + \
+			"also implies the --selective option."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
 		print()
 		print("       "+green("--noconfmem"))
 		print("              Portage keeps track of files that have been placed into")

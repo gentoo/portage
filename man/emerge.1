@@ -396,8 +396,10 @@ analogous options that should be configured via \fBMAKEOPTS\fR in
 \fBmake.conf\fR(5).
 .TP
 .BR "\-\-newuse " (\fB\-N\fR)
-Tells emerge to include installed packages where USE flags have changed since 
-compilation.  USE flag changes include:
+Tells emerge to include installed packages where USE
+flags have changed since compilation. This option
+also implies the \fB\-\-selective\fR option.
+USE flag changes include:
 
 A USE flag was added to a package.
 A USE flag was removed from a package.
