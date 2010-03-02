@@ -35,16 +35,12 @@ class PhaseCheck(LineCheck):
 
 	ignore_line = re.compile(r'(^\s*#)')
 	func_end_re = re.compile(r'^\}$')
+	phases_re = re.compile('(%s)' % '|'.join((
+		'pkg_pretend', 'pkg_setup', 'src_unpack', 'src_prepare',
+		'src_configure', 'src_compile', 'src_test', 'src_install',
+		'pkg_preinst', 'pkg_postinst', 'pkg_prerm', 'pkg_postrm',
+		'pkg_config')))
 	in_phase = ''
-
-	def __init__(self):
-		self.phases = ('pkg_pretend', 'pkg_setup', 'src_unpack', 'src_prepare', 'src_configure', 'src_compile',
-			'src_test', 'src_install', 'pkg_preinst', 'pkg_postinst', 'pkg_prerm', 'pkg_postrm', 'pkg_config')
-		phase_re = '('
-		for phase in self.phases:
-			phase_re += phase + '|'
-		phase_re = phase_re[:-1] + ')'
-		self.phases_re = re.compile(phase_re)
 
 	def check(self, num, line):
 		m = self.phases_re.match(line)
