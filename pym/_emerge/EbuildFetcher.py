@@ -55,6 +55,7 @@ class EbuildFetcher(SpawnProcess):
 		# along here so that they are correctly considered by
 		# the config instance in the subproccess.
 		fetch_env = os.environ.copy()
+		fetch_env['PORTAGE_CONFIGROOT'] = settings['PORTAGE_CONFIGROOT']
 
 		nocolor = settings.get("NOCOLOR")
 		if nocolor is not None:
