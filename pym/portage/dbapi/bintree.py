@@ -65,6 +65,14 @@ class bindbapi(fakedbapi):
 			self.bintree.populate()
 		return fakedbapi.match(self, *pargs, **kwargs)
 
+	def cpv_inject(self, cpv, **kwargs):
+		self._aux_cache.pop(cpv, None)
+		fakedbapi.cpv_inject(cpv, **kwargs)
+
+	def cpv_remove(self, cpv):
+		self._aux_cache.pop(cpv, None)
+		fakedbapi.cpv_remove(cpv)
+
 	def aux_get(self, mycpv, wants):
 		if self.bintree and not self.bintree.populated:
 			self.bintree.populate()
@@ -135,6 +143,7 @@ class bindbapi(fakedbapi):
 			if not v:
 				del mydata[k]
 		mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
+		# inject will clear stale caches via cpv_inject.
 		self.bintree.inject(cpv)
 
 	def cp_list(self, *pargs, **kwargs):
@@ -917,7 +926,6 @@ class binarytree(object):
 			return
 		slot = slot.strip()
 		self.dbapi.cpv_inject(cpv)
-		self.dbapi._aux_cache.pop(cpv, None)
 
 		# Reread the Packages index (in case it's been changed by another
 		# process) and then updated it, all while holding a lock.
