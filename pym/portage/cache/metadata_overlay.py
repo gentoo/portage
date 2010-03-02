@@ -48,7 +48,10 @@ class database(template.database):
 			return value
 
 	def _setitem(self, name, values):
-		value_ro = self.db_ro.get(name, None)
+		try:
+			value_ro = self.db_ro.get(name)
+		except CacheCorruption:
+			value_ro = None
 		if value_ro is not None and \
 			self._are_values_identical(value_ro, values):
 			# we have matching values in the underlying db_ro
