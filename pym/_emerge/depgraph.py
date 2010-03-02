@@ -827,6 +827,10 @@ class depgraph(object):
 						# should have been masked.
 						raise
 			if not myarg:
+				# Existing child selection may not be valid unless
+				# it's added to the graph immediately, since "complete"
+				# mode may select a different child later.
+				dep.child = None
 				self._dynamic_config._ignored_deps.append(dep)
 				return 1
 
