@@ -8714,7 +8714,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 		valid keyword."""
 		myarch = pgroups[0].lstrip("~")
 
-	cp = dep_getkey(mycpv)
+	cp = cpv_getkey(mycpv)
 	pkgdict = settings.pkeywordsdict.get(cp)
 	matches = False
 	if pkgdict:
