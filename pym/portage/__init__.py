@@ -1581,8 +1581,13 @@ class config(object):
 		self._local_repo_conf_path = None
 
 		if clone:
-			self.incrementals = copy.deepcopy(clone.incrementals)
-			self.profile_path = copy.deepcopy(clone.profile_path)
+			# For immutable attributes, use shallow copy for
+			# speed and memory conservation.
+			self.incrementals = clone.incrementals
+			self.profile_path = clone.profile_path
+			self.profiles = clone.profiles
+			self.packages = clone.packages
+
 			self.user_profile_dir = copy.deepcopy(clone.user_profile_dir)
 			self.local_config = copy.deepcopy(clone.local_config)
 			self._local_repo_configs = \
@@ -1594,10 +1599,7 @@ class config(object):
 			self.modules         = copy.deepcopy(clone.modules)
 
 			self.depcachedir = copy.deepcopy(clone.depcachedir)
-
-			self.packages = copy.deepcopy(clone.packages)
 			self.virtuals = copy.deepcopy(clone.virtuals)
-
 			self.dirVirtuals = copy.deepcopy(clone.dirVirtuals)
 			self.treeVirtuals = copy.deepcopy(clone.treeVirtuals)
 			self.userVirtuals = copy.deepcopy(clone.userVirtuals)
@@ -1631,7 +1633,6 @@ class config(object):
 			self.lookuplist = self.configlist[:]
 			self.lookuplist.reverse()
 			self._use_expand_dict = copy.deepcopy(clone._use_expand_dict)
-			self.profiles = copy.deepcopy(clone.profiles)
 			self.backupenv  = self.configdict["backupenv"]
 			self.pusedict   = copy.deepcopy(clone.pusedict)
 			self.categories = copy.deepcopy(clone.categories)
@@ -1675,12 +1676,14 @@ class config(object):
 				else:
 					self.profile_path = None
 			else:
-				self.profile_path = config_profile_path[:]
+				self.profile_path = config_profile_path
 
 			if config_incrementals is None:
-				self.incrementals = copy.deepcopy(portage.const.INCREMENTALS)
+				self.incrementals = portage.const.INCREMENTALS
 			else:
-				self.incrementals = copy.deepcopy(config_incrementals)
+				self.incrementals = config_incrementals
+			if not isinstance(self.incrementals, tuple):
+				self.incrementals = tuple(self.incrementals)
 
 			self.module_priority    = ["user","default"]
 			self.modules            = {}
@@ -1760,8 +1763,9 @@ class config(object):
 					self.profiles.append(custom_prof)
 				del custom_prof
 
+			self.profiles = tuple(self.profiles)
 			self.packages_list = [grabfile_package(os.path.join(x, "packages")) for x in self.profiles]
-			self.packages      = stack_lists(self.packages_list, incremental=1)
+			self.packages      = tuple(stack_lists(self.packages_list, incremental=1))
 			del self.packages_list
 			#self.packages = grab_stacked("packages", self.profiles, grabfile, incremental_lines=1)
 
