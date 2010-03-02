@@ -14,6 +14,7 @@ import re
 import shutil
 import stat
 import sys
+import tempfile
 
 
 import portage
@@ -139,8 +140,8 @@ def _checksum_failure_temp_file(distdir, basename):
 			os.unlink(filename)
 			return temp_filename
 
-	from tempfile import mkstemp
-	fd, temp_filename = mkstemp("", basename + "._checksum_failure_.", distdir)
+	fd, temp_filename = \
+		tempfile.mkstemp("", basename + "._checksum_failure_.", distdir)
 	os.close(fd)
 	os.rename(filename, temp_filename)
 	return temp_filename
@@ -1063,9 +1064,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					# Use a temporary config instance to avoid altering
 					# the state of the one that's been passed in.
 					mysettings = config(clone=mysettings)
-					from tempfile import mkdtemp
 					try:
-						private_tmpdir = mkdtemp("", "._portage_fetch_.",
+						private_tmpdir = tempfile.mkdtemp("", "._portage_fetch_.",
 							global_tmpdir)
 					except OSError as e:
 						if e.errno != PermissionDenied.errno:
