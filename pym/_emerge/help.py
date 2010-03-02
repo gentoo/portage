@@ -503,7 +503,7 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
-		print("       "+green("--rebuilt-binaries[=n]"))
+		print("       "+green("--rebuilt-binaries") + "[=%s]" % turquoise("n"))
 		desc = "Replace installed packages with binary packages that have " + \
 			"been rebuilt. Rebuilds are detected by comparison of " + \
 			"BUILD_TIME package metadata. This option is enabled " + \
