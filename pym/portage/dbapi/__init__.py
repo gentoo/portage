@@ -8,7 +8,7 @@ import re
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.dbapi.dep_expand:_dep_expand',
+	'portage.dbapi.dep_expand:dep_expand@_dep_expand',
 	'portage.dep:match_from_list',
 	'portage.locks:unlockfile',
 	'portage.output:colorize',
