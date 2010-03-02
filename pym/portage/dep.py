@@ -1056,7 +1056,9 @@ def match_from_list(mydep, candidate_list):
 		for x in candidate_list:
 			cp = getattr(x, "cp", None)
 			if cp is None:
-				cp = dep_getkey(x)
+				mysplit = catpkgsplit(remove_slot(x))
+				if mysplit is not None:
+					cp = mysplit[0] + '/' + mysplit[1]
 			if cp != mycpv:
 				continue
 			mylist.append(x)
