@@ -1365,9 +1365,10 @@ class config(object):
 	virtuals ...etc you look in here.
 	"""
 
-	_setcpv_aux_keys = ('SLOT', 'RESTRICT', 'LICENSE',
-		'KEYWORDS',  'INHERITED', 'IUSE', 'PROVIDE', 'EAPI',
-		'PROPERTIES', 'DEFINED_PHASES', 'repository')
+	_setcpv_aux_keys = ('DEFINED_PHASES', 'DEPEND', 'EAPI',
+		'INHERITED', 'IUSE', 'KEYWORDS', 'LICENSE', 'PDEPEND',
+		'PROPERTIES', 'PROVIDE', 'RDEPEND', 'SLOT', 'SRC_URI',
+		'repository', 'RESTRICT', 'LICENSE',)
 
 	_env_blacklist = [
 		"A", "AA", "CATEGORY", "DEPEND", "DESCRIPTION", "EAPI",
@@ -5869,6 +5870,9 @@ def _post_src_install_chost_fix(settings):
 		write_atomic(os.path.join(settings['PORTAGE_BUILDDIR'],
 			'build-info', 'CHOST'), chost + '\n')
 
+_vdb_use_conditional_keys = ('DEPEND', 'LICENSE', 'PDEPEND',
+	'PROPERTIES', 'PROVIDE', 'RDEPEND', 'RESTRICT', 'SRC_URI')
+
 def _post_src_install_uid_fix(mysettings, out=None):
 	"""
 	Files in $D with user and group bits that match the "portage"
@@ -5971,8 +5975,29 @@ def _post_src_install_uid_fix(mysettings, out=None):
 		for l in _merge_unicode_error(unicode_errors):
 			eerror(l, phase='install', key=mysettings.mycpv, out=out)
 
-	open(_unicode_encode(os.path.join(mysettings['PORTAGE_BUILDDIR'],
-		'build-info', 'SIZE')), 'w').write(str(size) + '\n')
+	build_info_dir = os.path.join(mysettings['PORTAGE_BUILDDIR'],
+		'build-info')
+
+	codecs.open(_unicode_encode(os.path.join(build_info_dir,
+		'SIZE'), encoding=_encodings['fs'], errors='strict'),
+		'w', encoding=_encodings['repo.content'],
+		errors='strict').write(str(size) + '\n')
+
+	use = frozenset(mysettings['PORTAGE_USE'].split())
+	for k in _vdb_use_conditional_keys:
+		v = mysettings.configdict['pkg'].get(k)
+		if v is None:
+			continue
+		v = dep.paren_reduce(v)
+		v = dep.use_reduce(v, uselist=use)
+		v = dep.paren_normalize(v)
+		v = dep.paren_enclose(v)
+		if not v:
+			continue
+		codecs.open(_unicode_encode(os.path.join(build_info_dir,
+			k), encoding=_encodings['fs'], errors='strict'),
+			mode='w', encoding=_encodings['repo.content'],
+			errors='strict').write(v + '\n')
 
 	if bsd_chflags:
 		# Restore all of the flags saved above.
