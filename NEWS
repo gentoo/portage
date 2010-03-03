@@ -7,6 +7,12 @@ portage-2.2
   in order to protect against uninstallation of required libraries.
 * Add support for generic package sets (also see RELEASE-NOTES)
 
+portage-2.1.8
+-------------
+* The top-level __init__.py for the portage python package has been split into
+  many smaller python modules, making the code easier to navigate and allowing
+  small parts of the portage api to be imported with less overhead.
+
 portage-2.1.7
 -------------
 

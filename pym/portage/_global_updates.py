@@ -18,6 +18,8 @@ from portage.util import grabfile, writemsg, writemsg_stdout, write_atomic
 def _global_updates(trees, prev_mtimes):
 	"""
 	Perform new global updates if they exist in $PORTDIR/profiles/updates/.
+	This simply returns if ROOT != "/" (when len(trees) != 1). If ROOT != "/"
+	then the user should instead use emaint --fix movebin and/or moveinst.
 
 	@param trees: A dictionary containing portage trees.
 	@type trees: dict
@@ -30,8 +32,10 @@ def _global_updates(trees, prev_mtimes):
 	"""
 	# only do this if we're root and not running repoman/ebuild digest
 
-	if secpass < 2 or "SANDBOX_ACTIVE" in os.environ:
-		return
+	if secpass < 2 or \
+		"SANDBOX_ACTIVE" in os.environ or \
+		len(trees) != 1:
+		return 0
 	root = "/"
 	mysettings = trees["/"]["vartree"].settings
 	updpath = os.path.join(mysettings["PORTDIR"], "profiles", "updates")
@@ -44,7 +48,7 @@ def _global_updates(trees, prev_mtimes):
 	except DirectoryNotFound:
 		writemsg(_("--- 'profiles/updates' is empty or "
 			"not available. Empty portage tree?\n"), noiselevel=1)
-		return
+		return 0
 	myupd = None
 	if len(update_data) > 0:
 		do_upgrade_packagesmessage = 0
