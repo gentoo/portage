@@ -15,10 +15,21 @@ except ImportError:
 	import portage
 
 from portage import os
+from portage.output import EOutput
+from textwrap import wrap
 from portage._global_updates import _global_updates
 mysettings = portage.settings
 mytrees = portage.db
 mtimedb = portage.mtimedb
+
+if mysettings['ROOT'] != "/":
+	out = EOutput()
+	msg = "The fixpackages program is not intended for use with " + \
+		"ROOT != \"/\". Instead use `emaint --fix movebin` and/or " + \
+		"`emaint --fix moveinst."
+	for line in wrap(msg, 72):
+		out.eerror(line)
+	sys.exit(1)
 
 try:
 	os.nice(int(mysettings.get("PORTAGE_NICENESS", "0")))
