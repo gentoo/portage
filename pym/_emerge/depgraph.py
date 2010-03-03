@@ -4500,12 +4500,20 @@ class depgraph(object):
 
 				def pkgprint(pkg_str):
 					if pkg_merge:
-						if pkg_system:
-							return colorize("PKG_MERGE_SYSTEM", pkg_str)
-						elif pkg_world:
-							return colorize("PKG_MERGE_WORLD", pkg_str)
+						if built:
+							if pkg_system:
+								return colorize("PKG_BINARY_MERGE_SYSTEM", pkg_str)
+							elif pkg_world:
+								return colorize("PKG_BINARY_MERGE_WORLD", pkg_str)
+							else:
+								return colorize("PKG_BINARY_MERGE", pkg_str)
 						else:
-							return colorize("PKG_MERGE", pkg_str)
+							if pkg_system:
+								return colorize("PKG_MERGE_SYSTEM", pkg_str)
+							elif pkg_world:
+								return colorize("PKG_MERGE_WORLD", pkg_str)
+							else:
+								return colorize("PKG_MERGE", pkg_str)
 					elif pkg_status == "uninstall":
 						return colorize("PKG_UNINSTALL", pkg_str)
 					else:
