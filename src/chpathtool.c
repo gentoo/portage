@@ -1,4 +1,4 @@
-/* Copyright Gentoo Foundation 2006-2009
+/* Copyright Gentoo Foundation 2006-2010
  * Author: Fabian Groffen <grobian@gentoo.org>
  * $Id$
  *
@@ -38,6 +38,7 @@
  * value, hoping it is enough */
 #define MAX_PATH 1024
 
+/* structure to track and trace hardlinks */
 typedef struct _file_hlink {
 	dev_t    st_dev;            /* device inode resides on */
 	ino_t    st_ino;            /* inode's number */
@@ -102,6 +103,10 @@ static char *memstr(const char *buf, const char *needle, size_t len) {
 	return(NULL);
 }
 
+/**
+ * Copies the given file to the output file with prefix transformations
+ * on the fly.
+ */
 static int chpath(const char *fi, const char *fo) {
 	FILE *fin;
 	FILE *fout;
@@ -110,6 +115,9 @@ static int chpath(const char *fi, const char *fo) {
 	size_t padding;
 	char *tmp;
 	char buf[BUFSIZE + 1];
+	char firstblock;
+	char *lvalue = value;
+	size_t lvaluelen = valuelen;
 
 	/* make sure there is a trailing zero-byte, such that strstr and
 	 * strchr won't go out of bounds causing segfaults.  */
@@ -128,9 +136,40 @@ static int chpath(const char *fi, const char *fo) {
 
 	pos = 0;
 	padding = 0;
+	firstblock = 1;
 	while ((len = fread(buf + pos, 1, BUFSIZE - pos, fin)) != 0 || pos > 0) {
+		if (firstblock == 1) {
+			firstblock = 0;
+			/* examine the bytes we read to judge if they are binary or
+			 * text; in case of the latter we can avoid writing ugly
+			 * paths with zilions of backslashes */
+			for (pos = 0; pos < len; pos++) {
+				/* this is a very stupid assumption, but I don't know
+				 * anything better: if we find a byte that's out of
+				 * ASCII character scope, we assume this is binary */
+				if (buf[pos] < ' ' || buf[pos] > '~') {
+					/* Make sure we don't mess up code, GCC for instance
+					 * hardcodes the result of strlen("string") in
+					 * object code.  This means we can nicely replace
+					 * this string with a shorter NULL-terminated one,
+					 * but that won't change the hardcoded output of the
+					 * original strlen.  Hence, pad the value with
+					 * slashes until it is of same size as magic. */
+					lvalue = alloca(sizeof(char) * (magiclen + 1));
+					lvaluelen = magiclen;
+					snprintf(lvalue, lvaluelen + 1, "%*s",
+							(int)magiclen, value);
+					tmp = lvalue;
+					while (*tmp == ' ')
+						*tmp++ = '/';
+					break;
+				}
+			}
+			pos = 0;
+		}
 		len += pos;
 		if ((tmp = memstr(buf, magic, len)) != NULL) {
+			/* if binary : */
 			if (tmp == buf) {
 				if (len < magiclen) {
 					/* must be last piece */
@@ -138,9 +177,9 @@ static int chpath(const char *fi, const char *fo) {
 					break;
 				}
 				/* do some magic, overwrite it basically */
-				fwrite(value, valuelen, 1, fout);
+				fwrite(lvalue, lvaluelen, 1, fout);
 				/* store what we need to correct */
-				padding += magiclen - valuelen;
+				padding += magiclen - lvaluelen;
 				/* move away the magic */
 				pos = len - magiclen;
 				memmove(buf, buf + magiclen, pos);
@@ -190,7 +229,7 @@ int dirwalk(char *src, char *srcp, char *trg, char *trgp) {
 	char *tt;
 
 	if (lstat(trg, &s) != 0) {
-		/* initially create directory read/writably by owner, set
+		/* initially create directory read/writable by owner, set
 		 * permissions like src when we're done processing this
 		 * directory. */
 		if (mkdir(trg, S_IRWXU) != 0) {
@@ -445,6 +484,8 @@ int main(int argc, char **argv) {
 		fprintf(stderr, "usage: [-q] in-file out-file magic value\n");
 		fprintf(stderr, "       if in-file is a directory, out-file is "
 				"treated as one too\n");
+		fprintf(stderr, " -q  suppress messages about being unable to "
+				"write padding bytes\n");
 		return(-1);
 	}
 
