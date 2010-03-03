@@ -1,5 +1,11 @@
 News (mainly features/major bug fixes)
 
+portage-2.1.8
+-------------
+* The top-level __init__.py for the portage python package has been split into
+  many smaller python modules, making the code easier to navigate and allowing
+  small parts of the portage api to be imported with less overhead.
+
 portage-2.1.7
 -------------
 
