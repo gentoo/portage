@@ -12,11 +12,8 @@ __all__ = ['apply_permissions', 'apply_recursive_permissions',
 	'stack_dicts', 'stack_lists', 'unique_array', 'varexpand', 'write_atomic',
 	'writedict', 'writemsg', 'writemsg_level', 'writemsg_stdout']
 
-try:
-	from subprocess import getstatusoutput as subprocess_getstatusoutput
-except ImportError:
-	from commands import getstatusoutput as subprocess_getstatusoutput
 import codecs
+from copy import deepcopy
 import errno
 import logging
 import re
@@ -24,26 +21,24 @@ import shlex
 import stat
 import string
 import sys
+import traceback
 
 import portage
 from portage import StringIO
 from portage import os
+from portage import pickle
+from portage import subprocess_getstatusoutput
 from portage import _encodings
 from portage import _os_merge
 from portage import _unicode_encode
 from portage import _unicode_decode
 from portage.exception import InvalidAtom, PortageException, FileNotFound, \
        OperationNotPermitted, PermissionDenied, ReadOnlyFileSystem
-from portage.dep import Atom, isvalidatom
+from portage.dep import Atom
 from portage.localization import _
 from portage.proxy.objectproxy import ObjectProxy
 from portage.cache.mappings import UserDict
 from portage.const import EPREFIX, EPREFIX_LSTRIP
-
-try:
-	import cPickle as pickle
-except ImportError:
-	import pickle
 
 noiselimit = 0
 
@@ -612,7 +607,6 @@ def varexpand(mystring, mydict={}):
 pickle_write = None
 
 def pickle_read(filename,default=None,debug=0):
-	import os
 	if not os.access(filename, os.R_OK):
 		writemsg(_("pickle_read(): File not readable. '")+filename+"'\n",1)
 		return default
@@ -633,7 +627,6 @@ def pickle_read(filename,default=None,debug=0):
 	return data
 
 def dump_traceback(msg, noiselevel=1):
-	import sys, traceback
 	info = sys.exc_info()
 	if not info[2]:
 		stack = traceback.extract_stack()[:-1]
@@ -752,7 +745,6 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 			if follow_links:
 				os.chown(filename, uid, gid)
 			else:
-				import portage.data
 				portage.data.lchown(filename, uid, gid)
 			modified = True
 		except OSError as oe:
@@ -902,7 +894,6 @@ def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 
 	all_applied = True
 
-	import portage.data # not imported globally because of circular dep
 	if portage.data.secpass < 2:
 
 		if uid != -1 and \
@@ -1178,7 +1169,6 @@ class LazyItemsDict(UserDict):
 		"""
 		if memo is None:
 			memo = {}
-		from copy import deepcopy
 		result = self.__class__()
 		memo[id(self)] = result
 		for k in self:
@@ -1225,7 +1215,6 @@ class LazyItemsDict(UserDict):
 			"""
 			if memo is None:
 				memo = {}
-			from copy import deepcopy
 			result = self.__copy__()
 			memo[id(self)] = result
 			result.func = deepcopy(self.func, memo)
@@ -1252,7 +1241,6 @@ class ConfigProtect(object):
 		for x in self.protect_list:
 			ppath = normalize_path(
 				os.path.join(self.myroot + EPREFIX_LSTRIP, x.lstrip(os.path.sep)))
-			mystat = None
 			try:
 				if stat.S_ISDIR(os.stat(ppath).st_mode):
 					self._dirs.add(ppath)
@@ -1265,7 +1253,6 @@ class ConfigProtect(object):
 		for x in self.mask_list:
 			ppath = normalize_path(
 				os.path.join(self.myroot + EPREFIX_LSTRIP, x.lstrip(os.path.sep)))
-			mystat = None
 			try:
 				"""Use lstat so that anything, even a broken symlink can be
 				protected."""
@@ -1352,7 +1339,6 @@ def new_protect_filename(mydest, newmd5=None):
 		"._cfg" + str(prot_num).zfill(4) + "_" + real_filename))
 	old_pfile = normalize_path(os.path.join(real_dirname, last_pfile))
 	if last_pfile and newmd5:
-		import portage.checksum
 		try:
 			last_pfile_md5 = portage.checksum._perform_md5_merge(old_pfile)
 		except FileNotFound:

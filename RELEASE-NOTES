@@ -21,6 +21,9 @@ portage-2.2
 * "world" now includes separate "selected" and "system" sets, where the
   "selected" set includes packages listed in /var/lib/portage/world and nested
   sets that may be listed /var/lib/portage/world_sets.
+
+portage-2.1.8
+==================================
 * The new --rebuilt-binaries option will replace installed packages with binary
   packages that have been rebuilt. Rebuilds are detected by comparison of
   BUILD_TIME package metadata. This option is enabled automatically when using
