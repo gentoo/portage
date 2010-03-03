@@ -4,7 +4,7 @@
 
 import portage
 from portage import os
-from portage.const import CACHE_PATH, PROFILE_PATH
+from portage.const import CACHE_PATH, PROFILE_PATH, EPREFIX
 
 def _get_legacy_global(name):
 	constructed = portage._legacy_globals_constructed

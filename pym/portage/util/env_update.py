@@ -20,6 +20,7 @@ from portage.process import find_binary
 from portage.util import atomic_ofstream, ensure_dirs, getconfig, \
 	normalize_path, writemsg
 from portage.util.listdir import listdir
+from portage.const import EPREFIX, EPREFIX_LSTRIP
 
 if sys.hexversion >= 0x3000000:
 	long = int

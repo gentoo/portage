@@ -33,7 +33,7 @@ from portage import auxdbkeys, bsd_chflags, dep_check, \
 	unmerge, _encodings, _parse_eapi_ebuild_head, _os_merge, \
 	_shell_quote, _split_ebuild_name_glep55, _unicode_decode, _unicode_encode
 from portage.const import EBUILD_SH_ENV_FILE, EBUILD_SH_BINARY, \
-	INVALID_ENV_FILE, MISC_SH_BINARY
+	INVALID_ENV_FILE, MISC_SH_BINARY, EPREFIX, EPREFIX_LSTRIP
 from portage.data import portage_gid, portage_uid, secpass, \
 	uid, userpriv_groups
 from portage.dbapi.virtual import fakedbapi
