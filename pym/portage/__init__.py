@@ -575,6 +575,8 @@ for k in _legacy_global_var_names:
 	globals()[k] = _LegacyGlobalProxy(k)
 del k
 
+_legacy_globals_constructed = set()
+
 def _disable_legacy_globals():
 	"""
 	This deletes the ObjectProxy instances that are used

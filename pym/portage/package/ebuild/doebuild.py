@@ -2,19 +2,21 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from __future__ import print_function
-
 __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
 
+import array
 import codecs
 import errno
+import fcntl
 from itertools import chain
 import logging
 import os as _os
 import re
+import select
 import shutil
 import stat
 import sys
+import tempfile
 from textwrap import wrap
 import time
 
@@ -47,10 +49,10 @@ from portage.manifest import Manifest
 from portage.output import style_to_ansi_code
 from portage.package.ebuild.fetch import fetch
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
-from portage.package.ebuild._pty import _create_pty_or_pipe
 from portage.util import apply_recursive_permissions, \
 	apply_secpass_permissions, noiselimit, normalize_path, \
 	writemsg, writemsg_stdout, write_atomic
+from portage.util._pty import _create_pty_or_pipe
 from portage.versions import _pkgsplit
 
 def doebuild_environment(myebuild, mydo, myroot, mysettings,
@@ -525,8 +527,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# so that there's no need for locking and it can be used even if the
 		# user isn't in the portage group.
 		if mydo in ("info",):
-			from tempfile import mkdtemp
-			tmpdir = mkdtemp()
+			tmpdir = tempfile.mkdtemp()
 			tmpdir_orig = mysettings["PORTAGE_TMPDIR"]
 			mysettings["PORTAGE_TMPDIR"] = tmpdir
 
@@ -622,8 +623,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				noiselevel=-1)
 			return 1
 		else:
-			from tempfile import NamedTemporaryFile
-			fd = NamedTemporaryFile(prefix="exectest-", dir=checkdir)
+			fd = tempfile.NamedTemporaryFile(prefix="exectest-", dir=checkdir)
 			os.chmod(fd.name, 0o755)
 			if not os.access(fd.name, os.X_OK):
 				writemsg(_("Can not execute files in %s\n"
@@ -1004,7 +1004,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					myebuild=mysettings["EBUILD"], mytree=tree, mydbapi=mydbapi,
 					vartree=vartree, prev_mtimes=prev_mtimes)
 		else:
-			print(_("!!! Unknown mydo: %s") % mydo)
+			writemsg_stdout(_("!!! Unknown mydo: %s\n") % mydo, noiselevel=-1)
 			return 1
 
 		return retval
@@ -1190,7 +1190,6 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		# process might have already exited and closed slave_fd so we
 		# have to keep it open in order to avoid FreeBSD potentially
 		# generating an EAGAIN exception).
-		import fcntl
 		fcntl.fcntl(master_fd, fcntl.F_SETFL,
 			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 
@@ -1250,7 +1249,6 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		iwtd = [master_file]
 		owtd = []
 		ewtd = []
-		import array, select
 		buffsize = 65536
 		eof = False
 		while not eof:

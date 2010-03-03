@@ -11,6 +11,7 @@ import sys
 import termios
 
 from portage import os, _unicode_decode, _unicode_encode
+from portage.output import get_term_size, set_term_size
 from portage.process import spawn_bash
 from portage.util import writemsg
 
@@ -132,6 +133,8 @@ if not _can_test_pty_eof():
 	# Skip _test_pty_eof() on systems where it hangs.
 	_tested_pty = True
 
+_fbsd_test_pty = platform.system() == 'FreeBSD'
+
 def _create_pty_or_pipe(copy_term_size=None):
 	"""
 	Try to create a pty and if then fails then create a normal
@@ -148,7 +151,7 @@ def _create_pty_or_pipe(copy_term_size=None):
 
 	got_pty = False
 
-	global _disable_openpty, _tested_pty
+	global _disable_openpty, _fbsd_test_pty, _tested_pty
 	if not (_tested_pty or _disable_openpty):
 		try:
 			if not _test_pty_eof():
@@ -160,12 +163,24 @@ def _create_pty_or_pipe(copy_term_size=None):
 			del e
 		_tested_pty = True
 
+	if _fbsd_test_pty and not _disable_openpty:
+		# Test for python openpty breakage after freebsd7 to freebsd8
+		# upgrade, which results in a 'Function not implemented' error
+		# and the process being killed.
+		pid = os.fork()
+		if pid == 0:
+			pty.openpty()
+			os._exit(os.EX_OK)
+		pid, status = os.waitpid(pid, 0)
+		if (status & 0xff) == 140:
+			_disable_openpty = True
+		_fbsd_test_pty = False
+
 	if _disable_openpty:
 		master_fd, slave_fd = os.pipe()
 	else:
-		from pty import openpty
 		try:
-			master_fd, slave_fd = openpty()
+			master_fd, slave_fd = pty.openpty()
 			got_pty = True
 		except EnvironmentError as e:
 			_disable_openpty = True
@@ -177,7 +192,6 @@ def _create_pty_or_pipe(copy_term_size=None):
 	if got_pty:
 		# Disable post-processing of output since otherwise weird
 		# things like \n -> \r\n transformations may occur.
-		import termios
 		mode = termios.tcgetattr(slave_fd)
 		mode[1] &= ~termios.OPOST
 		termios.tcsetattr(slave_fd, termios.TCSANOW, mode)
@@ -185,7 +199,6 @@ def _create_pty_or_pipe(copy_term_size=None):
 	if got_pty and \
 		copy_term_size is not None and \
 		os.isatty(copy_term_size):
-		from portage.output import get_term_size, set_term_size
 		rows, columns = get_term_size()
 		set_term_size(rows, columns, slave_fd)
 

@@ -13,7 +13,7 @@ from portage import _encodings
 from portage import _unicode_encode
 import codecs
 from portage.elog.messages import eerror
-from portage.package.ebuild._pty import _create_pty_or_pipe
+from portage.util._pty import _create_pty_or_pipe
 
 class EbuildFetcher(SpawnProcess):
 

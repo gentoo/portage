@@ -6,25 +6,23 @@ import portage
 from portage import os
 from portage.const import CACHE_PATH, PROFILE_PATH
 
-_legacy_globals = {}
-
 def _get_legacy_global(name):
-	global _legacy_globals
-	target = _legacy_globals.get(name, _legacy_globals)
-	if target is not _legacy_globals:
-		return target
+	constructed = portage._legacy_globals_constructed
+	if name in constructed:
+		return getattr(portage, name)
 
 	if name == 'portdb':
 		portage.portdb = portage.db[portage.root]["porttree"].dbapi
-		_legacy_globals[name] = portage.portdb
-		return _legacy_globals[name]
+		constructed.add(name)
+		return getattr(portage, name)
+
 	elif name in ('mtimedb', 'mtimedbfile'):
 		portage.mtimedbfile = os.path.join(portage.root,
 			CACHE_PATH, "mtimedb")
-		_legacy_globals['mtimedbfile'] = portage.mtimedbfile
+		constructed.add('mtimedbfile')
 		portage.mtimedb = portage.MtimeDB(portage.mtimedbfile)
-		_legacy_globals['mtimedb'] = portage.mtimedb
-		return _legacy_globals[name]
+		constructed.add('mtimedb')
+		return getattr(portage, name)
 
 	# Portage needs to ensure a sane umask for the files it creates.
 	os.umask(0o22)
@@ -35,7 +33,7 @@ def _get_legacy_global(name):
 
 	portage._initializing_globals = True
 	portage.db = portage.create_trees(**kwargs)
-	_legacy_globals['db'] = portage.db
+	constructed.add('db')
 	del portage._initializing_globals
 
 	settings = portage.db["/"]["vartree"].settings
@@ -48,40 +46,40 @@ def _get_legacy_global(name):
 	portage.output._init(config_root=settings['PORTAGE_CONFIGROOT'])
 
 	portage.settings = settings
-	_legacy_globals['settings'] = settings
+	constructed.add('settings')
 
 	portage.root = root
-	_legacy_globals['root'] = root
+	constructed.add('root')
 
 	# COMPATIBILITY
 	# These attributes should not be used within
 	# Portage under any circumstances.
 
 	portage.archlist = settings.archlist()
-	_legacy_globals['archlist'] = portage.archlist
+	constructed.add('archlist')
 
 	portage.features = settings.features
-	_legacy_globals['features'] = portage.features
+	constructed.add('features')
 
 	portage.groups = settings["ACCEPT_KEYWORDS"].split()
-	_legacy_globals['groups'] = portage.groups
+	constructed.add('groups')
 
 	portage.pkglines = settings.packages
-	_legacy_globals['pkglines'] = portage.pkglines
+	constructed.add('pkglines')
 
 	portage.selinux_enabled = settings.selinux_enabled()
-	_legacy_globals['selinux_enabled'] = portage.selinux_enabled
+	constructed.add('selinux_enabled')
 
 	portage.thirdpartymirrors = settings.thirdpartymirrors()
-	_legacy_globals['thirdpartymirrors'] = portage.thirdpartymirrors
+	constructed.add('thirdpartymirrors')
 
 	portage.usedefaults = settings.use_defs
-	_legacy_globals['usedefaults'] = portage.usedefaults
+	constructed.add('usedefaults')
 
 	profiledir = os.path.join(settings["PORTAGE_CONFIGROOT"], PROFILE_PATH)
 	if not os.path.isdir(profiledir):
 		profiledir = None
 	portage.profiledir = profiledir
-	_legacy_globals['profiledir'] = portage.profiledir
+	constructed.add('profiledir')
 
-	return _legacy_globals[name]
+	return getattr(portage, name)

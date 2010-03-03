@@ -2,8 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from __future__ import print_function
-
 __all__ = ["PreservedLibsRegistry", "LinkageMap",
 	"LinkageMapMachO", "LinkageMapPeCoff", "LinkageMapXCoff"
 	"vardbapi", "vartree", "dblink"] + \
@@ -501,7 +499,7 @@ class LinkageMap(object):
 					if obj_key.file_exists():
 						# Get the arch and soname from LinkageMap._obj_properties if
 						# it exists. Otherwise, None.
-						arch, _, _, soname, _ = \
+						arch, _needed, _path, soname, _objs = \
 								self._obj_properties.get(obj_key, (None,)*5)
 						return cache_self.cache.setdefault(obj, \
 								(arch, soname, obj_key, True))
@@ -515,7 +513,7 @@ class LinkageMap(object):
 
 		# Iterate over all obj_keys and their providers.
 		for obj_key, sonames in providers.items():
-			arch, _, path, _, objs = self._obj_properties[obj_key]
+			arch, _needed, path, _soname, objs = self._obj_properties[obj_key]
 			path = path.union(self._defpath)
 			# Iterate over each needed soname and the set of library paths that
 			# fulfill the soname to determine if the dependency is broken.
@@ -545,19 +543,23 @@ class LinkageMap(object):
 							# XXX This is most often due to soname symlinks not in
 							# a library's directory.  We could catalog symlinks in
 							# LinkageMap to avoid checking for this edge case here.
-							print(_("Found provider outside of findProviders:"), \
-									os.path.join(directory, soname), "->", \
-									self._obj_properties[cachedKey][4], libraries)
+							writemsg(
+								_("Found provider outside of findProviders:") + \
+								(" %s -> %s %s\n" % (os.path.join(directory, soname),
+								self._obj_properties[cachedKey][4], libraries)),
+								noiselevel=-1)
 						# A valid library has been found, so there is no need to
 						# continue.
 						break
 					if debug and cachedArch == arch and \
 							cachedKey in self._obj_properties:
-						print(_("Broken symlink or missing/bad soname: %(dir_soname)s -> %(cachedKey)s "
+						writemsg((_("Broken symlink or missing/bad soname: " + \
+							"%(dir_soname)s -> %(cachedKey)s " + \
 							"with soname %(cachedSoname)s but expecting %(soname)s") % \
 							{"dir_soname":os.path.join(directory, soname),
 							"cachedKey": self._obj_properties[cachedKey],
-							"cachedSoname": cachedSoname, "soname":soname})
+							"cachedSoname": cachedSoname, "soname":soname}) + "\n",
+							noiselevel=-1)
 				# This conditional checks if there are no libraries to satisfy the
 				# soname (empty set).
 				if not validLibraries:
@@ -573,10 +575,12 @@ class LinkageMap(object):
 						rValue.setdefault(lib, set()).add(soname)
 						if debug:
 							if not os.path.isfile(lib):
-								print(_("Missing library:"), lib)
+								writemsg(_("Missing library:") + " %s\n" % (lib,),
+									noiselevel=-1)
 							else:
-								print(_("Possibly missing symlink:"), \
-										os.path.join(os.path.dirname(lib), soname))
+								writemsg(_("Possibly missing symlink:") + \
+									"%s\n" % (os.path.join(os.path.dirname(lib), soname)),
+									noiselevel=-1)
 		return rValue
 
 	def listProviders(self):
@@ -696,7 +700,7 @@ class LinkageMap(object):
 			if obj_key not in self._obj_properties:
 				raise KeyError("%s (%s) not in object list" % (obj_key, obj))
 
-		arch, needed, path, _, _ = self._obj_properties[obj_key]
+		arch, needed, path, _soname, _objs = self._obj_properties[obj_key]
 		path_keys = set(self._path_key(x) for x in path.union(self._defpath))
 		for soname in needed:
 			rValue[soname] = set()
@@ -783,12 +787,12 @@ class LinkageMap(object):
 		objs_dir_keys = set(self._path_key(os.path.dirname(x)) for x in objs)
 		defpath_keys = set(self._path_key(x) for x in self._defpath)
 
-		arch, _, _, soname, _ = self._obj_properties[obj_key]
+		arch, _needed, _path, soname, _objs = self._obj_properties[obj_key]
 		if arch in self._libs and soname in self._libs[arch]:
 			# For each potential consumer, add it to rValue if an object from the
 			# arguments resides in the consumer's runpath.
 			for consumer_key in self._libs[arch][soname].consumers:
-				_, _, path, _, consumer_objs = \
+				_arch, _needed, path, _soname, consumer_objs = \
 						self._obj_properties[consumer_key]
 				path_keys = defpath_keys.union(self._path_key(x) for x in path)
 				if objs_dir_keys.intersection(path_keys):
