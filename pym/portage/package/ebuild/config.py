@@ -730,6 +730,7 @@ class config(object):
 			# Don't allow the user to override certain variables in make.conf
 			profile_only_variables = self.configdict["defaults"].get(
 				"PROFILE_ONLY_VARIABLES", "").split()
+			profile_only_variables = stack_lists([profile_only_variables])
 			for k in profile_only_variables:
 				self.mygcfg.pop(k, None)
 
