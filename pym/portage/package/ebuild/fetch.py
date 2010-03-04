@@ -20,6 +20,7 @@ import tempfile
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.config:check_config_instance,config',
+	'portage.package.ebuild.doebuild:spawn@doebuild_spawn',
 )
 
 from portage import doebuild_environment, OrderedDict, os, prepare_build_dirs, selinux, _encodings, _shell_quote, _unicode_encode
@@ -1096,7 +1097,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					ebuild_phase = mysettings.get("EBUILD_PHASE")
 					try:
 						mysettings["EBUILD_PHASE"] = "nofetch"
-						spawn(_shell_quote(EBUILD_SH_BINARY) + \
+						doebuild_spawn(_shell_quote(EBUILD_SH_BINARY) + \
 							" nofetch", mysettings, fd_pipes=fd_pipes)
 					finally:
 						if ebuild_phase is None:
