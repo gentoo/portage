@@ -7,7 +7,7 @@ from __future__ import print_function
 import stat
 
 from portage import os
-from portage.const import WORLD_FILE
+from portage.const import WORLD_FILE, EPREFIX_LSTRIP
 from portage.data import secpass
 from portage.exception import DirectoryNotFound
 from portage.localization import _
