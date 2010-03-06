@@ -1651,7 +1651,7 @@ class LinkageMapXCoff(LinkageMap):
 						+ '; [[ -n ${MEMBER} ]] && MEMBER="[${MEMBER}]"'
 						+ '; [[ " ${FLAGS} " == *" SHROBJ "* ]] && soname=${FILE##*/}${MEMBER} || soname='
 						+ '; echo "${FORMAT##* }${FORMAT%%-*};${FILE#${ROOT%/}}${MEMBER};${soname};${RUNPATH};${needed}"'
-						+ '; [[ -n ${member} ]] || echo "${FORMAT##* }${FORMAT%%-*};${FILE#${ROOT%/}};${FILE##*/};;"'
+						+ '; [[ -z ${member} && -n ${MEMBER} ]] && echo "${FORMAT##* }${FORMAT%%-*};${FILE#${ROOT%/}};${FILE##*/};;"'
 					]
 					try:
 						proc = subprocess.Popen(args, stdout=subprocess.PIPE)

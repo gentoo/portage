@@ -896,30 +896,35 @@ install_qa_check_xcoff() {
 
 		eval "exec ${neededfd}>\"${PORTAGE_BUILDDIR}\"/build-info/NEEDED.XCOFF.1" || die "cannot open ${PORTAGE_BUILDDIR}/build-info/NEEDED.XCOFF.1"
 
-		find "${ED}" -not -type d -exec \
-			"${EPREFIX}/usr/bin/aixdll-query" '{}' FILE MEMBER FLAGS FORMAT RUNPATH DEPLIBS ';' \
-			> "${T}"/needed 2>/dev/null
+		(	# work around a problem in /usr/bin/dump (used by aixdll-query)
+			# dumping core when path names get too long.
+			cd "${ED}" >/dev/null &&
+			find . -not -type d -exec \
+				aixdll-query '{}' FILE MEMBER FLAGS FORMAT RUNPATH DEPLIBS ';'
+		) > "${T}"/needed 2>/dev/null
 
-		# Symlinking archive libraries is not a good idea on aix,
+		# Symlinking shared archive libraries is not a good idea on aix,
 		# as there is nothing like "soname" on pure filesystem level.
 		# So we create a copy instead of the symlink.
 		local prev_FILE=
+		local FILE MEMBER FLAGS FORMAT RUNPATH DEPLIBS
 		while read queryline
 		do
-			local FILE= MEMBER= FLAGS= FORMAT= RUNPATH= DEPLIBS=
+			FILE= MEMBER= FLAGS= FORMAT= RUNPATH= DEPLIBS=
 			eval ${queryline}
+			FILE=${FILE#./}
 
 			if [[ ${prev_FILE} != ${FILE} ]]; then
-				prev_FILE=${FILE}
-				if [[ -n ${MEMBER} || " ${FLAGS} " == *" SHROBJ "* ]] && [[ -h ${FILE} ]]; then
-					local target=$(readlink "${FILE}")
+				if [[ " ${FLAGS} " == *" SHROBJ "* && -h ${ED}${FILE} ]]; then
+					prev_FILE=${FILE}
+					local target=$(readlink "${ED}${FILE}")
 					if [[ ${target} == /* ]]; then
 						target=${D}${target}
 					else
 						target=${FILE%/*}/${target}
 					fi
-					rm -f "${FILE}" || die "cannot prune ${FILE#${ED}}"
-					cp -f "${target}" "${FILE}" || die "cannot copy ${target#${ED}} to ${FILE#${ED}}"
+					rm -f "${ED}${FILE}" || die "cannot prune ${FILE}"
+					cp -f "${ED}${target}" "${ED}${FILE}" || die "cannot copy ${target} to ${FILE}"
 				fi
 			fi
 		done <"${T}"/needed
@@ -927,37 +932,43 @@ install_qa_check_xcoff() {
 		prev_FILE=
 		while read queryline
 		do
-			local FILE= MEMBER= FLAGS= FORMAT= RUNPATH= DEPLIBS=
+			FILE= MEMBER= FLAGS= FORMAT= RUNPATH= DEPLIBS=
 			eval ${queryline}
+			FILE=${FILE#./}
 
 			if [[ -n ${MEMBER} && ${prev_FILE} != ${FILE} ]]; then
-				# Save NEEDED information for the archive library stub
-				echo "${FORMAT##* }${FORMAT%%-*};${FILE#${D%/}};${FILE##*/};;" >&${neededfd}
+				# Save NEEDED information for each archive library stub
+				# even if it is static only: the already installed archive
+				# may contain shared objects to be preserved.
+				echo "${FORMAT##* }${FORMAT%%-*};${EPREFIX}/${FILE};${FILE##*/};;" >&${neededfd}
 			fi
 			prev_FILE=${FILE}
+
+			[[ " ${FLAGS} " == *" SHROBJ "* ]] || continue
 
 			# Make sure we disallow insecure RUNPATH's
 			# Don't want paths that point to the tree where the package was built
 			# (older, broken libtools would do this).  Also check for null paths
 			# because the loader will search $PWD when it finds null paths.
 			# And we really want absolute paths only.
-			if [[ " ${FLAGS} " == *" SHROBJ "* && -n $(echo ":${RUNPATH}:" | grep -E "(${PORTAGE_BUILDDIR}|::|:[^/])") ]]; then
+			if [[ -n $(echo ":${RUNPATH}:" | grep -E "(${PORTAGE_BUILDDIR}|::|:[^/])") ]]; then
 				insecure_rpath_list="${insecure_rpath_list}\n${FILE}${MEMBER:+[${MEMBER}]}"
 			fi
 
-			# Although we do have runtime linking, we don't want undefined symbols.
-			# AIX does indicate this by needing either '.' or '..'
-			local needed=${FILE##*/}
+			local needed=
+			[[ -n ${MEMBER} ]] && needed=${FILE##*/}
 			for deplib in ${DEPLIBS}; do
 				eval deplib=${deplib}
 				if [[ ${deplib} == '.' || ${deplib} == '..' ]]; then
+					# Although we do have runtime linking, we don't want undefined symbols.
+					# AIX does indicate this by needing either '.' or '..'
 					undefined_symbols_list="${undefined_symbols_list}\n${FILE}"
 				else
-					needed="${needed},${deplib}"
+					needed="${needed}${needed:+,}${deplib}"
 				fi
 			done
 
-			FILE=${FILE#${D%/}}
+			FILE=${EPREFIX}/${FILE}
 
 			[[ -n ${MEMBER} ]] && MEMBER="[${MEMBER}]"
 			# Save NEEDED information
@@ -1054,58 +1065,67 @@ preinst_aix() {
 	else
 		die "cannot find where to use 'ar' and 'strip' from"
 	fi
-
-	local archive prev_archive= archives=()
-	while read archive; do
-		archive=${archive#*;}
-		archive=${archive%%;*}
-		if [[ ${archive} == *'['*']' ]]; then
-			archive=${archive%[*}
-			[[ ${prev_archive} == ${archive} ]] && continue
-			prev_archive=${archive}
-			archives[${#archives[@]}]=${archive#${EPREFIX}/}
+	local archives_members= archives=() chmod400files=()
+	local archive_member soname runpath needed archive contentmember
+	while read archive_member; do
+		archive_member=${archive_member#*;${EPREFIX}/} # drop "^type;EPREFIX/"
+		soname=${archive_member#*;}
+		runpath=${soname#*;}
+		needed=${runpath#*;}
+		soname=${soname%%;*}
+		runpath=${runpath%%;*}
+		archive_member=${archive_member%%;*} # drop ";soname;runpath;needed$"
+		archive=${archive_member%[*}
+		if [[ ${archive_member} != *'['*']' ]]; then
+			if [[ "${soname};${runpath};${needed}" == "${archive##*/};;" && -e ${EROOT}${archive} ]]; then
+				# most likely is an archive stub that already exists,
+				# may have to preserve members being a shared object.
+				archives[${#archives[@]}]=${archive}
+			fi
+			continue
 		fi
+		archives_members="${archives_members}:(${archive_member}):"
+		contentmember="${archive%/*}/.${archive##*/}${archive_member#${archive}}"
+		# portage does os.lstat() on merged files every now
+		# and then, so keep stamp-files for archive members
+		# around to get the preserve-libs feature working.
+		{	echo "Please leave this file alone, it is an important helper"
+			echo "for portage to implement the 'preserve-libs' feature on AIX." 
+		} > "${ED}${contentmember}" || die "cannot create ${contentmember}"
+		chmod400files[${#chmod400files[@]}]=${ED}${contentmember}
 	done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED.XCOFF.1
-	unset prev_archive
+	[[ ${#chmod400files[@]} == 0 ]] ||
+	chmod 0400 "${chmod400files[@]}" || die "cannot chmod ${chmod400files[@]}"
 
-	local libmetadir members preservemembers member contentmember chmod400files=() prunedirs=()
+	local preservemembers libmetadir prunedirs=()
+	local FILE MEMBER FLAGS
 	for archive in "${archives[@]}"; do
+		preservemembers=
+		while read line; do
+			[[ -n ${line} ]] || continue
+			FILE= MEMBER= FLAGS=
+			eval ${line}
+			[[ ${FILE} == ${EROOT}${archive} ]] ||
+			die "invalid result of aixdll-query for ${EROOT}${archive}"
+			[[ -n ${MEMBER} && " ${FLAGS} " == *" SHROBJ "* ]] || continue
+			[[ ${archives_members} == *":(${archive}[${MEMBER}]):"* ]] && continue
+			preservemembers="${preservemembers} ${MEMBER}"
+		done <<-EOF
+			$(aixdll-query "${EROOT}${archive}" FILE MEMBER FLAGS)
+		EOF
+		[[ -n ${preservemembers} ]] || continue
+		einfo "preserving (on spec) ${archive}[${preservemembers# }]"
 		libmetadir=${ED}${archive%/*}/.${archive##*/}
-		[[ ! -e ${libmetadir} ]] || rm -rf "${libmetadir}" || die "cannot prune ${libmetadir}"
 		mkdir "${libmetadir}" || die "cannot create ${libmetadir}"
 		pushd "${libmetadir}" >/dev/null || die "cannot cd to ${libmetadir}"
-		${ar} -X32_64 -x "${ED}${archive}" || die "cannot unpack ${archive}"
-		members=" $(echo *) "
-		preservemembers=
-		if [[ -e ${EROOT}${archive} ]]; then
-			for member in $(${ar} -X32_64 -t "${EROOT}${archive}"); do
-				[[ ${members} == *" ${member} "* ]] && continue
-				preservemembers="${preservemembers} ${member}"
-			done
-			if [[ -n ${preservemembers} ]]; then
-				einfo "preserving (on spec)${preservemembers}"
-				${ar} -X32_64 -x "${EROOT}${archive}" ${preservemembers} || die "cannot extract ${preservemembers} from ${EROOT}${archive}"
-				chmod u+w ${preservemembers} || die "cannot chmod${preservedmembers}"
-				${strip} -X32_64 -e ${preservemembers} || die "cannot strip${preservemembers}"
-				${ar} -X32_64 -q "${ED}${archive}" ${preservemembers} || die "cannot update ${archive}"
-				eend $?
-			fi
-		fi
-		for member in ${members}; do
-			contentmember="${archive%/*}/.${archive##*/}[${member}]"
-			# portage does os.lstat() on merged files every now
-			# and then, so keep stamp-files for archive members
-			# around to get the preserve-libs feature working.
-			{	echo "Please leave this file alone, it is an important helper"
-				echo "for portage to implement the 'preserve-libs' feature on AIX." 
-			} > "${ED}${contentmember}" || die "cannot create ${contentmember}"
-			chmod400files[${#chmod400files[@]}]=${ED}${contentmember}
-		done
+		${ar} -X32_64 -x "${EROOT}${archive}" ${preservemembers} || die "cannot unpack ${EROOT}${archive}"
+		chmod u+w ${preservemembers} || die "cannot chmod${preservemembers}"
+		${strip} -X32_64 -e ${preservemembers} || die "cannot strip${preservemembers}"
+		${ar} -X32_64 -q "${ED}${archive}" ${preservemembers} || die "cannot update ${archive}"
+		eend $?
 		popd >/dev/null || die "cannot leave ${libmetadir}"
 		prunedirs[${#prunedirs[@]}]=${libmetadir}
 	done
-	[[ ${#chmod400files[@]} == 0 ]] ||
-	chmod 0400 "${chmod400files[@]}" || die "cannot chmod ${chmod400files[@]}"
 	[[ ${#prunedirs[@]} == 0 ]] ||
 	rm -rf "${prunedirs[@]}" || die "cannot prune ${prunedirs[@]}"
 	return 0
@@ -1129,69 +1149,97 @@ postinst_aix() {
 	else
 		die "cannot find where to use 'ar' and 'strip' from"
 	fi
-
-	local member contentmember activecontentmembers= prev_archive= archive activearchives=
-	while read member; do
-		member=${member#*;} # drop "^type;"
-		member=${member%%;*} # drop ";soname;runpath;needed$"
-		[[ ${member##*/} == *'['*']' ]] || continue
-		contentmember=${member%/*}/.${member##*/}
-		activecontentmembers="${activecontentmembers}:(${contentmember}):"
-		archive=${member%[*}
-		[[ ${prev_archive} != ${archive} ]] || continue
-		prev_archive=${archive}
-		activearchives="${activearchives}:(${archive}):"
+	local archives_members= archives=() activearchives=
+	local archive_member soname runpath needed
+	while read archive_member; do
+		archive_member=${archive_member#*;${EPREFIX}/} # drop "^type;EPREFIX/"
+		soname=${archive_member#*;}
+		runpath=${soname#*;}
+		needed=${runpath#*;}
+		soname=${soname%%;*}
+		runpath=${runpath%%;*}
+		archive_member=${archive_member%%;*} # drop ";soname;runpath;needed$"
+		[[ ${archive_member} == *'['*']' ]] && continue
+		[[ "${soname};${runpath};${needed}" == "${archive_member##*/};;" ]] || continue
+		# most likely is an archive stub, we might have to
+		# drop members being preserved shared objects.
+		archives[${#archives[@]}]=${archive_member}
+		activearchives="${activearchives}:(${archive_member}):"
 	done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED.XCOFF.1
 
-	local type allcontentmembers= all_archives=()
-	prev_archive=
+	local type allcontentmembers= oldarchives=()
+	local contentmember
 	while read type contentmember; do
+		[[ ${type} == 'obj' ]] || continue
 		contentmember=${contentmember% *} # drop " timestamp$"
 		contentmember=${contentmember% *} # drop " hash$"
 		[[ ${contentmember##*/} == *'['*']' ]] || continue
+		contentmember=${contentmember#${EPREFIX}/}
 		allcontentmembers="${allcontentmembers}:(${contentmember}):"
-		member=${contentmember%/.*}/${contentmember##*/.}
-		archive=${member%[*}
-		[[ ${prev_archive} != ${archive} ]] || continue
-		prev_archive=${archive}
-		all_archives[${#all_archives[@]}]=${archive}
+		contentmember=${contentmember%[*}
+		contentmember=${contentmember%/.*}/${contentmember##*/.}
+		[[ ${activearchives} == *":(${contentmember}):"* ]] && continue
+		oldarchives[${#oldarchives[@]}]=${contentmember}
 	done < "${EPREFIX}/var/db/pkg/${CATEGORY}/${P}${MY_PR:+-}${MY_PR}/CONTENTS"
 
-	local delmembers oldmembers libmetadir prunemembers=() prunedirs=()
-	for archive in "${all_archives[@]}"; do
-		[[ -r ${ROOT}${archive} && -w ${ROOT}${archive} ]] || chmod a+r,u+w "${ROOT}${archive}" || die "cannot chmod ${archive}"
-		delmembers= oldmembers=
-		for member in $(${ar} -X32_64 -t "${ROOT}${archive}"); do
-			contentmember="${archive%/*}/.${archive##*/}[${member}]"
-			if [[ ${allcontentmembers} != *":(${contentmember}):"* ]]; then
-				# not existent any more, just drop it
-				delmembers="${delmembers} ${member}"
-				prunemembers[${#prunemembers[@]}]=${ROOT}${contentmember}
-			elif [[ ${activecontentmembers} != *":(${contentmember}):"* ]]; then
-				oldmembers="${oldmembers} ${member}"
-			fi
-		done
-		if [[ -n ${delmembers} ]]; then
-			einfo "dropping${delmembers}"
-			${ar} -X32_64 -z -o -d "${ROOT}${archive}" ${delmembers} || die "cannot remove${delmembers} from ${archive}"
-			eend $?
-		fi
-		if [[ -n ${oldmembers} && ${activearchives} != *":(${archive}):"* ]]; then
-			einfo "preserving (extra)${oldmembers}"
-			libmetadir=${ROOT}${archive%/*}/.${archive##*/}
+	local archive line delmembers
+	local FILE MEMBER FLAGS
+	for archive in "${archives[@]}"; do
+		[[ -r ${EROOT}${archive} && -w ${EROOT}${archive} ]] ||
+		chmod a+r,u+w "${EROOT}${archive}" || die "cannot chmod ${EROOT}${archive}"
+		delmembers=
+		while read line; do
+			[[ -n ${line} ]] || continue
+			FILE= MEMBER= FLAGS=
+			eval ${line}
+			[[ ${FILE} == "${EROOT}${archive}" ]] ||
+			die "invalid result '${FILE}' of aixdll-query, expected '${EROOT}${archive}'"
+			[[ -n ${MEMBER} && " ${FLAGS} " == *" SHROBJ "* ]] || continue
+			[[ ${allcontentmembers} == *":(${archive%/*}/.${archive##*/}[${MEMBER}]):"* ]] && continue
+			delmembers="${delmembers} ${MEMBER}"
+		done <<-EOF
+			$(aixdll-query "${EROOT}${archive}" FILE MEMBER FLAGS)
+		EOF
+		[[ -n ${delmembers} ]] || continue
+		einfo "dropping ${archive}[${delmembers# }]"
+		${ar} -X32_64 -z -o -d "${EROOT}${archive}" ${delmembers} || die "cannot remove${delmembers} from ${archive}"
+		eend $?
+	done
+	local libmetadir keepmembers prunedirs=()
+	for archive in "${oldarchives[@]}"; do
+		[[ -r ${EROOT}${archive} && -w ${EROOT}${archive} ]] ||
+		chmod a+r,u+w "${EROOT}${archive}" || die "cannot chmod ${EROOT}${archive}"
+		keepmembers=
+		while read line; do
+			FILE= MEMBER= FLAGS=
+			eval ${line}
+			[[ ${FILE} == "${EROOT}${archive}" ]] ||
+			die "invalid result of aixdll-query for ${EROOT}${archive}"
+			[[ -n ${MEMBER} && " ${FLAGS} " == *" SHROBJ "* ]] || continue
+			[[ ${allcontentmembers} == *":(${archive%/*}/.${archive##*/}[${MEMBER}]):"* ]] || continue
+			keepmembers="${keepmembers} ${MEMBER}"
+		done <<-EOF
+			$(aixdll-query "${EROOT}${archive}" FILE MEMBER FLAGS)
+		EOF
+
+		if [[ -n ${keepmembers} ]]; then
+			einfo "preserving (extra)${keepmembers}"
+			libmetadir=${EROOT}${archive%/*}/.${archive##*/}
 			[[ ! -e ${libmetadir} ]] || rm -rf "${libmetadir}" || die "cannot prune ${libmetadir}"
 			mkdir "${libmetadir}" || die "cannot create ${libmetadir}"
 			pushd "${libmetadir}" >/dev/null || die "cannot cd to ${libmetadir}"
-			${ar} -X32_64 -x "${ROOT}${archive}" ${oldmembers} || die "cannot unpack ${archive}"
-			${strip} -e ${oldmembers} || die "cannot strip ${oldmembers}"
-			${ar} -X32_64 -z -o -r "${ROOT}${archive}" ${oldmembers} || die "cannot update${oldmembers} in ${archive}"
+			${ar} -X32_64 -x "${EROOT}${archive}" ${keepmembers} || die "cannot unpack ${archive}"
+			${strip} -X32_64 -e ${keepmembers} || die "cannot strip ${keepmembers}"
+			rm -f "${EROOT}${archive}.new" || die "cannot prune ${EROOT}${archive}.new"
+			${ar} -X32_64 -q "${EROOT}${archive}.new" ${keepmembers} || die "cannot create ${EROOT}${archive}.new"
+			mv -f "${EROOT}${archive}.new" "${EROOT}${archive}" || die "cannot put ${EROOT}${archive} in place"
 			popd > /dev/null || die "cannot leave ${libmetadir}"
 			prunedirs[${#prunedirs[@]}]=${libmetadir}
 			eend $?
 		fi
 	done
-	[[ ${#prunedirs[@]} == 0 ]] || rm -rf "${prunedirs[@]}" || die "cannot prune ${prunedirs[@]}"
-	[[ ${#prunemembers[@]} == 0 ]] || rm -f "${prunemembers[@]}" || die "cannot prune ${contentmenbers[@]}"
+	[[ ${#prunedirs[@]} == 0 ]] ||
+	rm -rf "${prunedirs[@]}" || die "cannot prune ${prunedirs[@]}"
 	return 0
 }
 
