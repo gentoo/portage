@@ -25,6 +25,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.config:check_config_instance',
 	'portage.package.ebuild.digestcheck:digestcheck',
 	'portage.package.ebuild.digestgen:digestgen',
+	'portage.package.ebuild.fetch:fetch',
 	'portage.util.ExtractKernelVersion:ExtractKernelVersion'
 )
 
@@ -47,7 +48,6 @@ from portage.exception import DigestException, FileNotFound, \
 from portage.localization import _
 from portage.manifest import Manifest
 from portage.output import style_to_ansi_code
-from portage.package.ebuild.fetch import fetch
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
 from portage.util import apply_recursive_permissions, \
 	apply_secpass_permissions, noiselimit, normalize_path, \

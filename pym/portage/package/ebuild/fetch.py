@@ -20,19 +20,27 @@ import tempfile
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.config:check_config_instance,config',
+	'portage.package.ebuild.doebuild:doebuild_environment,' + \
+		'spawn@doebuild_spawn',
+	'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
 )
 
-from portage import doebuild_environment, OrderedDict, os, prepare_build_dirs, selinux, _encodings, _shell_quote, _unicode_encode
+from portage import OrderedDict, os, selinux, _encodings, \
+	_shell_quote, _unicode_encode
 from portage.checksum import perform_md5, verify_all
-from portage.const import BASH_BINARY, CUSTOM_MIRRORS_FILE, EBUILD_SH_BINARY, GLOBAL_CONFIG_PATH
+from portage.const import BASH_BINARY, CUSTOM_MIRRORS_FILE, \
+	EBUILD_SH_BINARY, GLOBAL_CONFIG_PATH
 from portage.const import rootgid
 from portage.data import portage_gid, portage_uid, secpass, userpriv_groups
-from portage.exception import FileNotFound, OperationNotPermitted, PermissionDenied, PortageException, TryAgain
+from portage.exception import FileNotFound, OperationNotPermitted, \
+	PermissionDenied, PortageException, TryAgain
 from portage.localization import _
 from portage.locks import lockfile, unlockfile
 from portage.manifest import Manifest
 from portage.output import colorize, EOutput
-from portage.util import apply_recursive_permissions, apply_secpass_permissions, ensure_dirs, grabdict, shlex_split, varexpand, writemsg, writemsg_level, writemsg_stdout
+from portage.util import apply_recursive_permissions, \
+	apply_secpass_permissions, ensure_dirs, grabdict, shlex_split, \
+	varexpand, writemsg, writemsg_level, writemsg_stdout
 from portage.process import spawn
 
 _userpriv_spawn_kwargs = (
@@ -1097,7 +1105,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					ebuild_phase = mysettings.get("EBUILD_PHASE")
 					try:
 						mysettings["EBUILD_PHASE"] = "nofetch"
-						spawn(_shell_quote(EBUILD_SH_BINARY) + \
+						doebuild_spawn(_shell_quote(EBUILD_SH_BINARY) + \
 							" nofetch", mysettings, fd_pipes=fd_pipes)
 					finally:
 						if ebuild_phase is None:

@@ -4,12 +4,17 @@
 
 __all__ = ['getmaskingstatus']
 
+import sys
+
 import portage
 from portage import eapi_is_supported, _eapi_is_deprecated
 from portage.dep import match_from_list
 from portage.localization import _
 from portage.package.ebuild.config import config
 from portage.versions import catpkgsplit, cpv_getkey
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 def getmaskingstatus(mycpv, settings=None, portdb=None):
 	if settings is None:
