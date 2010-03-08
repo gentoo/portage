@@ -88,11 +88,11 @@ def old_tree_timestamp_warn(portdir, settings):
 
 	if (unixtime - 86400 * warnsync) > lastsync:
 		if have_english_locale():
-			writemsg_stdout(">>> Last emerge sync was %s ago\n" % \
+			writemsg_stdout(">>> Last emerge --sync was %s ago\n" % \
 				whenago(unixtime - lastsync), noiselevel=-1)
 		else:
 			writemsg_stdout(">>> %s\n" % \
-				_("Last emerge sync was %s") % \
+				_("Last emerge --sync was %s") % \
 				time.strftime('%c', time.localtime(lastsync)),
 				noiselevel=-1)
 		return True
