@@ -232,13 +232,6 @@ def help(myopts, havecolor=1):
 		print("              ebuilds. For a dependency aware version of --unmerge, use")
 		print("              --depclean or --prune.")
 		print()
-		print("       "+green("--update")+" ("+green("-u")+" short option)")
-		print("              Updates packages to the best version available, which may not")
-		print("              always be the highest version number due to masking for testing")
-		print("              and development. Package atoms specified on the command")
-		print("              line are greedy, meaning that unspecific atoms may match multiple")
-		print("              installed versions of slotted packages.")
-		print()
 		print("       "+green("--version")+" ("+green("-V")+" short option)")
 		print("              Displays the currently installed version of portage along with")
 		print("              other information useful for quick reference on a system. See")
@@ -604,6 +597,15 @@ def help(myopts, havecolor=1):
 			"--tree is used together with this option, this " + \
 			"constraint is removed, hopefully leading to a more " + \
 			"readable dependency tree."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
+		print("       "+green("--update")+" ("+green("-u")+" short option)")
+		desc = "Updates packages to the best version available, which may " + \
+			"not always be the  highest version number due to masking " + \
+			"for testing and development. Package atoms specified on " + \
+			"the command line are greedy, meaning that unspecific " + \
+			"atoms may match multiple versions of slotted packages."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
