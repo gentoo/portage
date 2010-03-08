@@ -65,7 +65,8 @@ if sys.hexversion >= 0x3000000:
 def action_build(settings, trees, mtimedb,
 	myopts, myaction, myfiles, spinner):
 
-	old_tree_timestamp_warn(settings['PORTDIR'], settings)
+	if '--usepkgonly' not in myopts:
+		old_tree_timestamp_warn(settings['PORTDIR'], settings)
 
 	# validate the state of the resume data
 	# so that we can make assumptions later.
