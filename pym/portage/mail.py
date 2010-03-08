@@ -14,7 +14,7 @@ import time
 
 from portage import os
 from portage import _encodings
-from portage import _unicode_encode
+from portage import _unicode_decode, _unicode_encode
 from portage.localization import _
 import portage
 
@@ -135,7 +135,17 @@ def send_mail(mysettings, message):
 				myconn = smtplib.SMTP(mymailhost, mymailport)
 			if mymailuser != "" and mymailpasswd != "":
 				myconn.login(mymailuser, mymailpasswd)
-			myconn.sendmail(myfrom, myrecipient, message.as_string())
+
+			message_str = message.as_string()
+			if sys.hexversion >= 0x3000000:
+				# Force ascii encoding in order to avoid UnicodeEncodeError
+				# from smtplib.sendmail with python3 (bug #291331).
+				message_str = _unicode_encode(message_str,
+					encoding='ascii', errors='backslashreplace')
+				message_str = _unicode_decode(message_str,
+					encoding='ascii', errors='replace')
+
+			myconn.sendmail(myfrom, myrecipient, message_str)
 			myconn.quit()
 		except smtplib.SMTPException as e:
 			raise portage.exception.PortageException(_("!!! An error occured while trying to send logmail:\n")+str(e))
