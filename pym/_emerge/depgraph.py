@@ -3904,7 +3904,7 @@ class depgraph(object):
 			tempgraph.remove(node)
 		display_order.reverse()
 		self._frozen_config.myopts.pop("--quiet", None)
-		self._frozen_config.myopts.pop("--verbose", None)
+		self._frozen_config.myopts["--verbose"] = True
 		self._frozen_config.myopts["--tree"] = True
 		portage.writemsg("\n\n", noiselevel=-1)
 		self.display(display_order)
