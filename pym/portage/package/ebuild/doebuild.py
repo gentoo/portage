@@ -810,7 +810,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			mydo not in ("digest", "manifest") and "noauto" not in features)
 		alist = mysettings.configdict["pkg"].get("A")
 		aalist = mysettings.configdict["pkg"].get("AA")
-		if alist is None or aalist is None:
+		if alist is None or aalist is None or \
+			(not emerge_skip_distfiles and need_distfiles):
 			# Make sure we get the correct tree in case there are overlays.
 			mytree = os.path.realpath(
 				os.path.dirname(os.path.dirname(mysettings["O"])))
@@ -827,25 +828,26 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				return 1
 			mysettings.configdict["pkg"]["A"] = " ".join(alist)
 			mysettings.configdict["pkg"]["AA"] = " ".join(aalist)
+
+			if not emerge_skip_distfiles and need_distfiles:
+				if "mirror" in features or fetchall:
+					fetchme = aalist
+				else:
+					fetchme = alist
+				if not fetch(fetchme, mysettings, listonly=listonly,
+					fetchonly=fetchonly):
+					return 1
+
 		else:
 			alist = set(alist.split())
 			aalist = set(aalist.split())
-		if ("mirror" in features) or fetchall:
-			fetchme = aalist
-			checkme = aalist
-		else:
-			fetchme = alist
-			checkme = alist
 
 		if mydo == "fetch":
 			# Files are already checked inside fetch(),
 			# so do not check them again.
 			checkme = []
-
-		if not emerge_skip_distfiles and \
-			need_distfiles and not fetch(
-			fetchme, mysettings, listonly=listonly, fetchonly=fetchonly):
-			return 1
+		else:
+			checkme = alist
 
 		if mydo == "fetch" and listonly:
 			return 0
