@@ -202,7 +202,7 @@ For example, \fBemerge \-\-search "%^kde"\fR searches for any package whose
 name starts with "kde"; \fBemerge \-\-search "%gcc$"\fR searches for any 
 package that ends with "gcc"; \fBemerge \-\-search "office"\fR searches for 
 any package that contains the word "office".  If you want to include the 
-category into the search string, prepend an @: \fBemerge --search 
+category into the search string, prepend an @: \fBemerge \-\-search 
 "%@^dev-java.*jdk"\fR. If you want to search the package descriptions as well, 
 use the \fB\-\-searchdesc\fR action.
 .TP
@@ -212,11 +212,26 @@ the package name.  \fBTake caution\fR as the descriptions are also
 matched as regular expressions.
 .TP
 .BR \-\-sync
-Initiates a portage tree update with one of the rsync.gentoo.org
-mirrors.  \fBNote that any changes you have made to the portage
-tree will be erased\fR.  Except for special circumstances, 
-this uses \fBrsync\fR to do the update.  See \fBmake.conf\fR(5)'s 
-description of PORTDIR_OVERLAY for a method to avoid deletions.
+This updates the portage tree that is located in the
+directory that the PORTDIR variable refers to (default
+location is /usr/portage). The SYNC variable specifies
+the remote URI from which files will be synchronized.
+The \fBPORTAGE_SYNC_STALE\fR variable configures
+warnings that are shown when emerge \-\-sync has not
+been executed recently.
+
+\fBWARNING:\fR
+The emerge \-\-sync action will modify and/or delete
+files located inside the directory that the PORTDIR
+variable refers to (default location is /usr/portage).
+For more information, see the PORTDIR documentation in
+the make.conf(5) man page.
+
+\fBNOTE:\fR
+The \fBemerge\-webrsync\fR program will download the entire
+portage tree as a tarball, which is much faster than emerge
+\-\-sync for first time syncs.
+
 .TP
 .BR "\-\-unmerge " (\fB\-C\fR)
 \fBWARNING: This action can remove important packages!\fR Removes
@@ -225,13 +240,6 @@ it may remove packages necessary for the proper operation of your
 system.  Its arguments can be \fIatoms\fR or
 \fIebuilds\fR. For a dependency aware version of \fB\-\-unmerge\fR,
 use \fB\-\-depclean\fR or \fB\-\-prune\fR.
-.TP
-.BR "\-\-update " (\fB\-u\fR)
-Updates packages to the best version available, which may not always be the 
-highest version number due to masking for testing and development.
-Package atoms
-specified on the command line are greedy, meaning that unspecific atoms may
-match multiple installed versions of slotted packages.
 .TP
 .BR "\-\-version " (\fB\-V\fR)
 Displays the version number of \fBemerge\fR.
@@ -542,6 +550,13 @@ order in which the packages will be merged. When
 \fB\-\-tree\fR is used together with this option, this
 constraint is removed, hopefully leading to a more
 readable dependency tree.
+.TP
+.BR "\-\-update " (\fB\-u\fR)
+Updates packages to the best version available, which may
+not always be the  highest version number due to masking
+for testing and development. Package atoms specified on
+the command line are greedy, meaning that unspecific
+atoms may match multiple versions of slotted packages.
 .TP
 .BR "\-\-use\-ebuild\-visibility[=n]"
 Use unbuilt ebuild metadata for visibility

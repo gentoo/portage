@@ -20,6 +20,24 @@ if sys.hexversion >= 0x3000000:
 _module_proxies = {}
 _module_proxies_lock = threading.RLock()
 
+def _preload_portage_submodules():
+	"""
+	Load lazily referenced portage submodules into memory,
+	so imports won't fail during portage upgrade/downgrade.
+	Note that this recursively loads only the modules that
+	are lazily referenced by currently imported modules,
+	so some portage submodules may still remain unimported
+	after this function is called.
+	"""
+	while True:
+		remaining = False
+		for name in list(_module_proxies):
+			if name.startswith('portage.'):
+				remaining = True
+				_unregister_module_proxy(name)
+		if not remaining:
+			break
+
 def _register_module_proxy(name, proxy):
 	_module_proxies_lock.acquire()
 	try:
