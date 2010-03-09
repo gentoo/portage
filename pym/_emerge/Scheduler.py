@@ -432,7 +432,7 @@ class Scheduler(PollScheduler):
 					if pkg.root in libc_pkgs:
 						raise AssertionError(
 							"found 2 libc matches: %s and %s" % \
-							(libc_pkgs[pkg.root]), pkg)
+							(libc_pkgs[pkg.root], pkg))
 					libc_pkgs[pkg.root] = pkg
 				else:
 					earlier_libc = libc_pkgs.get(pkg.root)
