@@ -2429,19 +2429,38 @@ def display_missing_pkg_set(root_config, set_name):
 	writemsg_level("".join("%s\n" % l for l in msg),
 		level=logging.ERROR, noiselevel=-1)
 
+def relative_profile_path(portdir, abs_profile):
+	realpath = os.path.realpath(abs_profile)
+	basepath   = os.path.realpath(os.path.join(portdir, "profiles"))
+	if realpath.startswith(basepath):
+		profilever = realpath[1 + len(basepath):]
+	else:
+		profilever = None
+	return profilever
+
 def getportageversion(portdir, target_root, profile, chost, vardb):
-	profilever = "unavailable"
+	profilever = None
 	if profile:
-		realpath = os.path.realpath(profile)
-		basepath   = os.path.realpath(os.path.join(portdir, "profiles"))
-		if realpath.startswith(basepath):
-			profilever = realpath[1 + len(basepath):]
-		else:
+		profilever = relative_profile_path(portdir, profile)
+		if profilever is None:
 			try:
-				profilever = "!" + os.readlink(profile)
-			except (OSError):
+				for parent in portage.grabfile(
+					os.path.join(profile, 'parent')):
+					profilever = relative_profile_path(portdir,
+						os.path.join(profile, parent))
+					if profilever is not None:
+						break
+			except portage.exception.PortageException:
 				pass
-		del realpath, basepath
+
+			if profilever is None:
+				try:
+					profilever = "!" + os.readlink(profile)
+				except (OSError):
+					pass
+
+	if profilever is None:
+		profilever = "unavailable"
 
 	libcver=[]
 	libclist  = vardb.match("virtual/libc")
