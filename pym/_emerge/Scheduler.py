@@ -417,10 +417,13 @@ class Scheduler(PollScheduler):
 	def _implicit_libc_deps(self):
 		"""
 		Create implicit dependencies on libc, in order to ensure that libc
-		is installed as early as possible (see bug #303567).
+		is installed as early as possible (see bug #303567). If the merge
+		list contains both a new-style virtual and an old-style PROVIDE
+		virtual, the new-style virtual is used.
 		"""
 		libc_set = InternalPackageSet([LIBC_PACKAGE_ATOM])
-		libc_pkgs = {}
+		norm_libc_pkgs = {}
+		virt_libc_pkgs = {}
 		for pkg in self._mergelist:
 			if not isinstance(pkg, Package):
 				# a satisfied blocker
@@ -429,15 +432,36 @@ class Scheduler(PollScheduler):
 				continue
 			if pkg.operation == 'merge':
 				if libc_set.findAtomForPackage(pkg):
-					if pkg.root in libc_pkgs:
+					if pkg.category == 'virtual':
+						d = virt_libc_pkgs
+					else:
+						d = norm_libc_pkgs
+					if pkg.root in d:
 						raise AssertionError(
 							"found 2 libc matches: %s and %s" % \
-							(libc_pkgs[pkg.root], pkg))
-					libc_pkgs[pkg.root] = pkg
+							(d[pkg.root], pkg))
+					d[pkg.root] = pkg
+
+		# Prefer new-style virtuals over old-style PROVIDE virtuals.
+		libc_pkg_map = norm_libc_pkgs.copy()
+		libc_pkg_map.update(virt_libc_pkgs)
+		libc_pkgs = set(libc_pkg_map.values())
+		earlier_libc_pkgs = set()
+
+		for pkg in self._mergelist:
+			if not isinstance(pkg, Package):
+				# a satisfied blocker
+				continue
+			if pkg.installed:
+				continue
+			if pkg.operation == 'merge':
+				if pkg in libc_pkgs:
+					earlier_libc_pkgs.add(pkg)
 				else:
-					earlier_libc = libc_pkgs.get(pkg.root)
-					if earlier_libc is not None:
-						self._digraph.add(earlier_libc, pkg,
+					my_libc = libc_pkg_map.get(pkg.root)
+					if my_libc is not None and \
+						my_libc in earlier_libc_pkgs:
+						self._digraph.add(my_libc, pkg,
 							priority=DepPriority(buildtime=True))
 
 	class _pkg_failure(portage.exception.PortageException):
