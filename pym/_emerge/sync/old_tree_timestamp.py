@@ -9,7 +9,8 @@ import time
 from portage import os
 from portage.exception import PortageException
 from portage.localization import _
-from portage.util import grabfile, writemsg_level, writemsg_stdout
+from portage.output import EOutput
+from portage.util import grabfile, writemsg_level
 
 def have_english_locale():
 	lang, enc = locale.getdefaultlocale()
@@ -87,13 +88,12 @@ def old_tree_timestamp_warn(portdir, settings):
 		return False
 
 	if (unixtime - 86400 * warnsync) > lastsync:
+		out = EOutput()
 		if have_english_locale():
-			writemsg_stdout(">>> Last emerge --sync was %s ago\n" % \
-				whenago(unixtime - lastsync), noiselevel=-1)
+			out.ewarn("Last emerge --sync was %s ago" % \
+				whenago(unixtime - lastsync))
 		else:
-			writemsg_stdout(">>> %s\n" % \
-				_("Last emerge --sync was %s") % \
-				time.strftime('%c', time.localtime(lastsync)),
-				noiselevel=-1)
+			out.ewarn(_("Last emerge --sync was %s") % \
+				time.strftime('%c', time.localtime(lastsync)))
 		return True
 	return False
