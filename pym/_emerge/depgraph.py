@@ -3363,12 +3363,13 @@ class depgraph(object):
 
 		# Merge libc asap, in order to account for implicit
 		# dependencies. See bug #303567.
-		libc_pkg = self._dynamic_config.mydbapi[running_root].match_pkgs(
-			portage.const.LIBC_PACKAGE_ATOM)
-		if libc_pkg:
-			libc_pkg = libc_pkg[0]
-			if libc_pkg.operation == 'merge':
-				asap_nodes.append(libc_pkg)
+		for root in self._dynamic_config.mydbapi:
+			libc_pkg = self._dynamic_config.mydbapi[root].match_pkgs(
+				portage.const.LIBC_PACKAGE_ATOM)
+			if libc_pkg:
+				libc_pkg = libc_pkg[0]
+				if libc_pkg.operation == 'merge':
+					asap_nodes.append(libc_pkg)
 
 		def gather_deps(ignore_priority, mergeable_nodes,
 			selected_nodes, node):
