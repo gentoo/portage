@@ -234,13 +234,6 @@ system.  Its arguments can be \fIatoms\fR or
 \fIebuilds\fR. For a dependency aware version of \fB\-\-unmerge\fR,
 use \fB\-\-depclean\fR or \fB\-\-prune\fR.
 .TP
-.BR "\-\-update " (\fB\-u\fR)
-Updates packages to the best version available, which may not always be the 
-highest version number due to masking for testing and development.
-Package atoms
-specified on the command line are greedy, meaning that unspecific atoms may
-match multiple installed versions of slotted packages.
-.TP
 .BR "\-\-version " (\fB\-V\fR)
 Displays the version number of \fBemerge\fR.
 .SH "OPTIONS"
@@ -550,6 +543,13 @@ order in which the packages will be merged. When
 \fB\-\-tree\fR is used together with this option, this
 constraint is removed, hopefully leading to a more
 readable dependency tree.
+.TP
+.BR "\-\-update " (\fB\-u\fR)
+Updates packages to the best version available, which may
+not always be the  highest version number due to masking
+for testing and development. Package atoms specified on
+the command line are greedy, meaning that unspecific
+atoms may match multiple versions of slotted packages.
 .TP
 .BR "\-\-use\-ebuild\-visibility[=n]"
 Use unbuilt ebuild metadata for visibility
