@@ -3,11 +3,15 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart as MultipartMessage
-from email.mime.base import MIMEBase as BaseMessage
-from email.header import Header
-import smtplib
+# Since python ebuilds remove the 'email' module when USE=build
+# is enabled, use a local import so that
+# portage.proxy.lazyimport._preload_portage_submodules()
+# can load this module even though the 'email' module is missing.
+# The elog mail modules won't work, but at least an ImportError
+# won't cause portage to crash during stage builds. Since the
+# 'smtlib' module imports the 'email' module, that's imported
+# locally as well.
+
 import socket
 import sys
 import time
@@ -21,15 +25,18 @@ import portage
 if sys.hexversion >= 0x3000000:
 	basestring = str
 
-if sys.hexversion >= 0x3000000:
-	def TextMessage(_text):
-		mimetext = MIMEText(_text)
+def TextMessage(_text):
+	from email.mime.text import MIMEText
+	mimetext = MIMEText(_text)
+	if sys.hexversion >= 0x3000000:
 		mimetext.set_charset("UTF-8")
-		return mimetext
-else:
-	TextMessage = MIMEText
+	return mimetext
 
 def create_message(sender, recipient, subject, body, attachments=None):
+
+	from email.header import Header
+	from email.mime.base import MIMEBase as BaseMessage
+	from email.mime.multipart import MIMEMultipart as MultipartMessage
 
 	if sys.hexversion < 0x3000000:
 		sender = _unicode_encode(sender,
@@ -69,6 +76,9 @@ def create_message(sender, recipient, subject, body, attachments=None):
 	return mymessage
 
 def send_mail(mysettings, message):
+
+	import smtplib
+
 	mymailhost = "localhost"
 	mymailport = 25
 	mymailuser = ""
