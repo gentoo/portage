@@ -353,6 +353,10 @@ class Scheduler(PollScheduler):
 		self._prune_digraph()
 		self._prevent_builddir_collisions()
 		self._implicit_libc_deps()
+		if '--debug' in self.myopts:
+			writemsg("\nscheduler digraph:\n\n", noiselevel=-1)
+			self._digraph.debug_print()
+			writemsg("\n", noiselevel=-1)
 
 	def _find_system_deps(self):
 		"""
