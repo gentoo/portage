@@ -3369,7 +3369,10 @@ class depgraph(object):
 			if libc_pkg:
 				libc_pkg = libc_pkg[0]
 				if libc_pkg.operation == 'merge':
-					asap_nodes.append(libc_pkg)
+					# Only add a dep when the version changes.
+					if not libc_pkg.root_config.trees[
+						'vartree'].dbapi.cpv_exists(libc_pkg.cpv):
+						asap_nodes.append(libc_pkg)
 
 		def gather_deps(ignore_priority, mergeable_nodes,
 			selected_nodes, node):
