@@ -195,18 +195,31 @@ def help(myopts, havecolor=1):
 		print("                emerge -S 'perl.*module'")
 		print()
 		print("       "+green("--sync"))
-		print("              Tells emerge to update the Portage tree as specified in")
-		print("              The SYNC variable found in /etc/make.conf.  By default, SYNC instructs")
-		print("              emerge to perform an rsync-style update with rsync.gentoo.org.")
+		desc = "This updates the portage tree that is located in the " + \
+			"directory that the PORTDIR variable refers to (default " + \
+			"location is /usr/portage). The SYNC variable specifies " + \
+			"the remote URI from which files will be synchronized. " + \
+			"The PORTAGE_SYNC_STALE variable configures " + \
+			"warnings that are shown when emerge --sync has not " + \
+			"been executed recently."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
 		print()
-		print("              'emerge-webrsync' exists as a helper app to emerge --sync, providing a")
-		print("              method to receive the entire portage tree as a tarball that can be")
-		print("              extracted and used. First time syncs would benefit greatly from this.")
+		print(desc_indent + turquoise("WARNING:"))
+		desc = "The emerge --sync action will modify and/or delete " + \
+			"files located inside the directory that the PORTDIR " + \
+			"variable refers to (default location is /usr/portage). " + \
+			"For more information, see the PORTDIR documentation in " + \
+			"the make.conf(5) man page."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
 		print()
-		print("              "+turquoise("WARNING:"))
-		print("              If using our rsync server, emerge will clean out all files that do not")
-		print("              exist on it, including ones that you may have created. The exceptions")
-		print("              to this are the distfiles, local and packages directories.")
+		print(desc_indent + green("NOTE:"))
+		desc = "The emerge-webrsync program will download the entire " + \
+			"portage tree as a tarball, which is much faster than emerge " + \
+			"--sync for first time syncs."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
 		print()
 		print("       "+green("--unmerge")+" ("+green("-C")+" short option)")
 		print("              "+turquoise("WARNING: This action can remove important packages!"))
