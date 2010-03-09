@@ -425,6 +425,7 @@ class Scheduler(PollScheduler):
 		list contains both a new-style virtual and an old-style PROVIDE
 		virtual, the new-style virtual is used.
 		"""
+		implicit_libc_roots = set([self._running_root.root])
 		libc_set = InternalPackageSet([LIBC_PACKAGE_ATOM])
 		norm_libc_pkgs = {}
 		virt_libc_pkgs = {}
@@ -434,7 +435,8 @@ class Scheduler(PollScheduler):
 				continue
 			if pkg.installed:
 				continue
-			if pkg.operation == 'merge':
+			if pkg.root in implicit_libc_roots and \
+				pkg.operation == 'merge':
 				if libc_set.findAtomForPackage(pkg):
 					if pkg.category == 'virtual':
 						d = virt_libc_pkgs
@@ -458,7 +460,8 @@ class Scheduler(PollScheduler):
 				continue
 			if pkg.installed:
 				continue
-			if pkg.operation == 'merge':
+			if pkg.root in implicit_libc_roots and \
+				pkg.operation == 'merge':
 				if pkg in libc_pkgs:
 					earlier_libc_pkgs.add(pkg)
 				else:

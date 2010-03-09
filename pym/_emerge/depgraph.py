@@ -3363,7 +3363,7 @@ class depgraph(object):
 
 		# Merge libc asap, in order to account for implicit
 		# dependencies. See bug #303567.
-		for root in self._dynamic_config.mydbapi:
+		for root in (running_root,):
 			libc_pkg = self._dynamic_config.mydbapi[root].match_pkgs(
 				portage.const.LIBC_PACKAGE_ATOM)
 			if libc_pkg:
