@@ -18,6 +18,7 @@ from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.cache.mappings import slot_dict_class
+from portage.const import LIBC_PACKAGE_ATOM
 from portage.elog.messages import eerror
 from portage.output import colorize, create_color_func, darkgreen, red
 bad = create_color_func("BAD")
@@ -351,6 +352,7 @@ class Scheduler(PollScheduler):
 		self._find_system_deps()
 		self._prune_digraph()
 		self._prevent_builddir_collisions()
+		self._implicit_libc_deps()
 
 	def _find_system_deps(self):
 		"""
@@ -411,6 +413,32 @@ class Scheduler(PollScheduler):
 				self._digraph.add(earlier_pkg, pkg,
 					priority=DepPriority(buildtime=True))
 			cpv_map[pkg.cpv].append(pkg)
+
+	def _implicit_libc_deps(self):
+		"""
+		Create implicit dependencies on libc, in order to ensure that libc
+		is installed as early as possible (see bug #303567).
+		"""
+		libc_set = InternalPackageSet([LIBC_PACKAGE_ATOM])
+		libc_pkgs = {}
+		for pkg in self._mergelist:
+			if not isinstance(pkg, Package):
+				# a satisfied blocker
+				continue
+			if pkg.installed:
+				continue
+			if pkg.operation == 'merge':
+				if libc_set.findAtomForPackage(pkg):
+					if pkg.root in libc_pkgs:
+						raise AssertionError(
+							"found 2 libc matches: %s and %s" % \
+							(libc_pkgs[pkg.root]), pkg)
+					libc_pkgs[pkg.root] = pkg
+				else:
+					earlier_libc = libc_pkgs.get(pkg.root)
+					if earlier_libc is not None:
+						self._digraph.add(earlier_libc, pkg,
+							priority=DepPriority(buildtime=True))
 
 	class _pkg_failure(portage.exception.PortageException):
 		"""
