@@ -451,6 +451,16 @@ class Scheduler(PollScheduler):
 		# Prefer new-style virtuals over old-style PROVIDE virtuals.
 		libc_pkg_map = norm_libc_pkgs.copy()
 		libc_pkg_map.update(virt_libc_pkgs)
+
+		# Only add a dep when the version changes.
+		for libc_pkg in list(libc_pkg_map.values()):
+			if libc_pkg.root_config.trees['vartree'].dbapi.cpv_exists(
+				libc_pkg.cpv):
+				del libc_pkg_map[pkg.root]
+
+		if not libc_pkg_map:
+			return
+
 		libc_pkgs = set(libc_pkg_map.values())
 		earlier_libc_pkgs = set()
 
