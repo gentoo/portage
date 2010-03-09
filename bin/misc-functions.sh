@@ -623,7 +623,10 @@ install_qa_check_prefix() {
 		local line=${f##*:}
 		# shebang always appears on the first line ;)
 		[[ ${pos} != 1 ]] && continue
+		local oldIFS=${IFS}
+		IFS=$'\r'$'\n'$'\t'" "
 		line=( ${line#"#!"} )
+		IFS=${oldIFS}
 		[[ ${WHITELIST} == *" ${line[0]} "* ]] && continue
 		# does the shebang start with ${EPREFIX}?
 		[[ ${line[0]} == ${EPREFIX}* ]] && continue
