@@ -142,6 +142,13 @@ for p in params[:]:
 glsalist.extend([g for g in params if g not in glsalist])
 
 def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr, encoding="utf-8"):
+	# Get to the raw streams in py3k before wrapping them with an encoded writer
+	# to avoid writing bytes to a text stream (stdout/stderr are text streams
+	# by default in py3k)
+	if hasattr(fd1, "buffer"):
+		fd1 = fd1.buffer
+	if hasattr(fd2, "buffer"):
+		fd2 = fd2.buffer
 	fd1 = codecs.getwriter(encoding)(fd1)
 	fd2 = codecs.getwriter(encoding)(fd2)
 	fd2.write(white("[A]")+" means this GLSA was marked as applied (injected),\n")

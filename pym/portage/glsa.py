@@ -14,6 +14,7 @@ import re
 import operator
 import xml.dom.minidom
 from io import StringIO
+from functools import reduce
 
 import portage
 from portage import os
@@ -526,17 +527,17 @@ class Glsa:
 		self.synopsis = getText(myroot.getElementsByTagName("synopsis")[0], format="strip")
 		self.announced = format_date(getText(myroot.getElementsByTagName("announced")[0], format="strip"))
 
-		count = 1
 		# Support both formats of revised:
 		# <revised>December 30, 2007: 02</revised>
 		# <revised count="2">2007-12-30</revised>
 		revisedEl = myroot.getElementsByTagName("revised")[0]
 		self.revised = getText(revisedEl, format="strip")
-		if ((sys.hexversion >= 0x3000000 and "count" in revisedEl.attributes) or
-			(sys.hexversion < 0x3000000 and revisedEl.attributes.has_key("count"))):
-			count = revisedEl.getAttribute("count")
-		elif (self.revised.find(":") >= 0):
-			(self.revised, count) = self.revised.split(":")
+		count = revisedEl.attributes.get("count")
+		if count is None:
+			if self.revised.find(":") >= 0:
+				(self.revised, count) = self.revised.split(":")
+			else:
+				count = 1
 
 		self.revised = format_date(self.revised)
 
