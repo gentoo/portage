@@ -53,6 +53,7 @@ from _emerge.Scheduler import Scheduler
 from _emerge.search import search
 from _emerge.SetArg import SetArg
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
+from _emerge.sync.old_tree_timestamp import old_tree_timestamp_warn
 from _emerge.unmerge import unmerge
 from _emerge.UnmergeDepPriority import UnmergeDepPriority
 from _emerge.UseFlagDisplay import UseFlagDisplay
@@ -63,6 +64,8 @@ if sys.hexversion >= 0x3000000:
 
 def action_build(settings, trees, mtimedb,
 	myopts, myaction, myfiles, spinner):
+
+	old_tree_timestamp_warn(settings['PORTDIR'], settings)
 
 	# validate the state of the resume data
 	# so that we can make assumptions later.
