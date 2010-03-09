@@ -752,23 +752,22 @@ package has been masked and WHO is doing the masking.
 .TP
 .BR profiles.desc
 List all the current stable and development profiles.  If a profile is listed 
-here, then it will be checked by repoman.  At the moment, only 1 profile is 
-allowed per stable/dev/KEYWORD; the last one found is the last one used.
-
+here, then it will be checked by repoman.
 .I Format:
 .nf
 \- comments begin with # (no inline comments)
 \- one profile list per line in format: arch dir status
 \- arch must be listed in arch.list
 \- dir is relative to profiles.desc
-\- status must be 'stable' or 'dev'
+\- status must be 'stable', 'dev', or 'exp'
 .fi
 
 .I Example:
 .nf
-alpha default-linux/alpha/2004.3 stable
-m68k  default-linux/m68k         dev
-x86   default-linux/x86/2004.3   stable
+alpha        default/linux/alpha/10.0    stable
+m68k         default/linux/m68k/10.0     dev
+x86          default/linux/x86/10.0      stable
+x86-linux    prefix/linux/x86            exp
 .fi
 .TP
 .BR repo_name
