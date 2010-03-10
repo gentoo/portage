@@ -3341,7 +3341,9 @@ class depgraph(object):
 		if replacement_portage == running_portage:
 			replacement_portage = None
 
-		if replacement_portage is not None:
+		if replacement_portage is not None and \
+			(running_portage is None or \
+			(running_portage.cpv != replacement_portage.cpv)):
 			# update from running_portage to replacement_portage asap
 			asap_nodes.append(replacement_portage)
 
