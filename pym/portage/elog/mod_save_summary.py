@@ -12,13 +12,13 @@ from portage import _unicode_encode
 from portage.data import portage_uid, portage_gid
 from portage.localization import _
 from portage.util import ensure_dirs, apply_permissions
-from portage.const import EPREFIX
+from portage.const import EPREFIX_LSTRIP
 
 def process(mysettings, key, logentries, fulltext):
 	if mysettings["PORT_LOGDIR"] != "":
 		elogdir = os.path.join(mysettings["PORT_LOGDIR"], "elog")
 	else:
-		elogdir = os.path.join(EPREFIX, "var", "log", "portage", "elog")
+		elogdir = os.path.join("/", EPREFIX_LSTRIP, "var", "log", "portage", "elog")
 	ensure_dirs(elogdir, uid=portage_uid, gid=portage_gid, mode=0o2770)
 
 	# TODO: Locking
