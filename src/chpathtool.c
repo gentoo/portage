@@ -147,7 +147,9 @@ static int chpath(const char *fi, const char *fo) {
 				/* this is a very stupid assumption, but I don't know
 				 * anything better: if we find a byte that's out of
 				 * ASCII character scope, we assume this is binary */
-				if (buf[pos] < ' ' || buf[pos] > '~') {
+				if ((buf[pos] < ' ' || buf[pos] > '~') &&
+						strchr("\t\r\n", buf[pos]) == NULL)
+				{
 					/* Make sure we don't mess up code, GCC for instance
 					 * hardcodes the result of strlen("string") in
 					 * object code.  This means we can nicely replace
