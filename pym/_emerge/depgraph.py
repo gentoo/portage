@@ -3341,7 +3341,9 @@ class depgraph(object):
 		if replacement_portage == running_portage:
 			replacement_portage = None
 
-		if replacement_portage is not None:
+		if replacement_portage is not None and \
+			(running_portage is None or \
+			(running_portage.cpv != replacement_portage.cpv)):
 			# update from running_portage to replacement_portage asap
 			asap_nodes.append(replacement_portage)
 
@@ -3363,12 +3365,16 @@ class depgraph(object):
 
 		# Merge libc asap, in order to account for implicit
 		# dependencies. See bug #303567.
-		libc_pkg = self._dynamic_config.mydbapi[running_root].match_pkgs(
-			portage.const.LIBC_PACKAGE_ATOM)
-		if libc_pkg:
-			libc_pkg = libc_pkg[0]
-			if libc_pkg.operation == 'merge':
-				asap_nodes.append(libc_pkg)
+		for root in (running_root,):
+			libc_pkg = self._dynamic_config.mydbapi[root].match_pkgs(
+				portage.const.LIBC_PACKAGE_ATOM)
+			if libc_pkg:
+				libc_pkg = libc_pkg[0]
+				if libc_pkg.operation == 'merge':
+					# Only add a dep when the version changes.
+					if not libc_pkg.root_config.trees[
+						'vartree'].dbapi.cpv_exists(libc_pkg.cpv):
+						asap_nodes.append(libc_pkg)
 
 		def gather_deps(ignore_priority, mergeable_nodes,
 			selected_nodes, node):
