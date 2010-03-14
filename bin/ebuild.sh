@@ -356,7 +356,8 @@ unpack() {
 
 		_unpack_tar() {
 			if [ "${y}" == "tar" ]; then
-				$1 -dc "$srcdir$x" | tar xof - || die "$myfail"
+				$1 -dc "$srcdir$x" | tar xof -
+				assert "$myfail"
 			else
 				$1 -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
 			fi
@@ -371,7 +372,8 @@ unpack() {
 				tar xozf "$srcdir$x" || die "$myfail"
 				;;
 			tbz|tbz2)
-				bzip2 -dc "$srcdir$x" | tar xof - || die "$myfail"
+				bzip2 -dc "$srcdir$x" | tar xof -
+				assert "$myfail"
 				;;
 			ZIP|zip|jar)
 				unzip -qo "${srcdir}${x}" || die "$myfail"
