@@ -2314,7 +2314,9 @@ else:
 	from portage.util import write_atomic
 	cvs_header = re.compile(r'^#\s*\$Header.*\$$')
 	for x in myheaders:
-		f = open(x)
+		f = codecs.open(_unicode_encode(x,
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['repo.content'], errors='strict')
 		mylines = f.readlines()
 		f.close()
 		modified = False
@@ -2323,7 +2325,8 @@ else:
 				mylines[i] = line.replace("/Attic/", "/")
 				modified = True
 		if modified:
-			write_atomic(x, "".join(mylines))
+			write_atomic(x, "".join(mylines),
+				encoding=_encodings['repo.content'], errors='strict')
 
 	manifest_commit_required = True
 	if vcs in ('cvs', 'svn') and (myupdates or myremoved):
