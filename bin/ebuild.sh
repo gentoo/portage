@@ -141,6 +141,7 @@ useq() {
 		#if [[ -n $EAPI ]] && ! hasq "$EAPI" 0 1 2 3 ; then
 		#	die "use() called during invalid phase: $EBUILD_PHASE"
 		#fi
+		true
 
 	# Make sure we have this USE flag in IUSE
 	elif [[ -n $PORTAGE_IUSE && -n $EBUILD_PHASE ]] ; then
