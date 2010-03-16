@@ -372,10 +372,12 @@ def help(myopts, havecolor=1):
 		print("              dependencies that are not strictly required.")
 		print() 
 		print("       "+green("--emptytree")+" ("+green("-e")+" short option)")
-		print("              Virtually tweaks the tree of installed packages to contain")
-		print("              nothing. This is great to use together with --pretend. This makes")
-		print("              it possible for developers to get a complete overview of the")
-		print("              complete dependency tree of a certain package.")
+		desc = "Reinstalls target atoms and their entire deep " + \
+			"dependency tree, as though no packages are currently " + \
+			"installed. You should run this with --pretend " + \
+			"first to make sure the result is what you expect."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
 		print()
 		print("       "+green("--fail-clean[=n]"))
 		desc = "Clean up temporary files after a build failure. This is " + \
