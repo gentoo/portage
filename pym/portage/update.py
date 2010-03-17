@@ -194,7 +194,7 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 	update_files = {}
 	file_contents = {}
 	myxfiles = ["package.mask", "package.unmask", \
-		"package.keywords", "package.use"]
+		"package.keywords", "package.license", "package.use"]
 	myxfiles += [os.path.join("profile", x) for x in myxfiles]
 	abs_user_config = os.path.join(config_root, USER_CONFIG_PATH)
 	recursivefiles = []
