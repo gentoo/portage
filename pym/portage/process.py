@@ -343,6 +343,9 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	myargs = [opt_name]
 	myargs.extend(mycommand[1:])
 
+	# Quiet killing of subprocesses by SIGPIPE (see bug #309001).
+	signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
 	# Set up the command's pipes.
 	my_fds = {}
 	# To protect from cases where direct assignment could

@@ -1419,9 +1419,7 @@ for x in scanlist:
 			if prov_cp != myprovide:
 				stats["virtual.versioned"]+=1
 				fails["virtual.versioned"].append(x+"/"+y+".ebuild: "+myprovide)
-			prov_pkg = portage.cpv_getkey(
-				portage.best(portdb.xmatch("match-all", prov_cp)))
-			if prov_cp == prov_pkg:
+			if portdb.cp_list(prov_cp):
 				stats["virtual.exists"]+=1
 				fails["virtual.exists"].append(x+"/"+y+".ebuild: "+prov_cp)
 

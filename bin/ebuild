@@ -17,6 +17,8 @@ try:
 
 	signal.signal(signal.SIGINT, exithandler)
 	signal.signal(signal.SIGTERM, exithandler)
+	# Quiet killing of subprocesses by SIGPIPE (see bug #309001).
+	signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 except KeyboardInterrupt:
 	sys.exit(1)
