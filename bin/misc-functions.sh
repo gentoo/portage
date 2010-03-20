@@ -628,10 +628,14 @@ install_qa_check_prefix() {
 		line=( ${line#"#!"} )
 		IFS=${oldIFS}
 		[[ ${WHITELIST} == *" ${line[0]} "* ]] && continue
-		# does the shebang start with ${EPREFIX}?
-		[[ ${line[0]} == ${EPREFIX}* ]] && continue
-		# can we just fix it(tm)?
-		if [[ -e ${EPREFIX}${line[0]} || -e ${ED}${line[0]} ]] ; then
+		if [[ ${line[0]} == ${EPREFIX}/* ]] ; then
+			# does the shebang start with ${EPREFIX}, and does it exist?
+			if [[ -e ${ROOT}${line[0]} || -e ${D}${line[0]} ]] ; then
+				continue
+			fi
+		elif [[ -e ${EROOT}${line[0]} || -e ${ED}${line[0]} ]] ; then
+			# is it unprefixed, but we can just fix it because a
+			# prefixed variant exists
 			eqawarn "prefixing shebang of ${fn#${D}}"
 			sed -i -e '1s:^#! \?:#!'"${EPREFIX}"':' "${fn}"
 			continue
@@ -649,8 +653,8 @@ install_qa_check_prefix() {
 	if [[ -e "${T}"/non-prefix-shebangs-errs ]] ; then
 		eqawarn "QA Notice: the following files use invalid (possible non-prefixed) shebangs:"
 		eqawarn "$(<"${T}"/non-prefix-shebangs-errs)"
-		die "Aborting due to QA concerns: invalid shebangs found"
 		rm -f "${T}"/non-prefix-shebangs-errs
+		die "Aborting due to QA concerns: invalid shebangs found"
 	fi
 }
 
