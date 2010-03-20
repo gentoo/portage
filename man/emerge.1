@@ -354,10 +354,10 @@ behavior with respect to build time dependencies that are not strictly
 required.
 .TP
 .BR "\-\-emptytree " (\fB\-e\fR)
-Reinstalls all world packages and their dependencies to the current USE 
-specifications while differing from the installed set of packages as 
-little as possible.  You should run with \fB\-\-pretend\fR first to make 
-sure the result is what you expect.
+Reinstalls target atoms and their entire deep
+dependency tree, as though no packages are currently
+installed. You should run this with \fB\-\-pretend\fR
+first to make sure the result is what you expect.
 .TP
 .BR "\-\-fail\-clean[=n]"
 Clean up temporary files after a build failure. This is

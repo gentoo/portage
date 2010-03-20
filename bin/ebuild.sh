@@ -140,12 +140,14 @@ useq() {
 	fi
 
 	if [[ $EBUILD_PHASE = depend ]] ; then
-		# Skip this for older EAPIs since lots of ebuilds/eclasses
-		# have stuff in global scope that really belongs somewhere
-		# like pkg_setup or src_configure.
-		if [[ -n $EAPI ]] && ! hasq "$EAPI" 0 1 2 3 3_pre2 ; then
-			die "use() called during invalid phase: $EBUILD_PHASE"
-		fi
+		# TODO: Add a registration interface for eclasses to register
+		# any number of phase hooks, so that global scope eclass
+		# initialization can by migrated to phase hooks in new EAPIs.
+		# Example: add_phase_hook before pkg_setup $ECLASS_pre_pkg_setup
+		#if [[ -n $EAPI ]] && ! hasq "$EAPI" 0 1 2 3 ; then
+		#	die "use() called during invalid phase: $EBUILD_PHASE"
+		#fi
+		true
 
 	# Make sure we have this USE flag in IUSE
 	elif [[ -n $PORTAGE_IUSE && -n $EBUILD_PHASE ]] ; then
@@ -362,7 +364,8 @@ unpack() {
 
 		_unpack_tar() {
 			if [ "${y}" == "tar" ]; then
-				$1 -dc "$srcdir$x" | tar xof - || die "$myfail"
+				$1 -dc "$srcdir$x" | tar xof -
+				assert "$myfail"
 			else
 				$1 -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
 			fi
@@ -377,7 +380,8 @@ unpack() {
 				tar xozf "$srcdir$x" || die "$myfail"
 				;;
 			tbz|tbz2)
-				bzip2 -dc "$srcdir$x" | tar xof - || die "$myfail"
+				bzip2 -dc "$srcdir$x" | tar xof -
+				assert "$myfail"
 				;;
 			ZIP|zip|jar)
 				unzip -qo "${srcdir}${x}" || die "$myfail"

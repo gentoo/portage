@@ -20,7 +20,13 @@ class BinpkgExtractorAsync(SpawnProcess):
 
 	def _start(self):
 		self.args = [self._shell_binary, "-c",
-			("bzip2 -dqc -- %s | tar -xp -C %s -f -") % \
+			("bzip2 -dqc -- %s | tar -xp -C %s -f - ; " + \
+			"p=(${PIPESTATUS[@]}) ; " + \
+			"if [ ${p[0]} != 0 ] ; then " + \
+			"echo bzip2 failed with status ${p[0]} ; exit ${p[0]} ; fi ; " + \
+			"if [ ${p[1]} != 0 ] ; then " + \
+			"echo tar failed with status ${p[1]} ; exit ${p[1]} ; fi ; " + \
+			"exit 0 ;") % \
 			(portage._shell_quote(self.pkg_path),
 			portage._shell_quote(self.image_dir))]
 

@@ -497,6 +497,12 @@ elif os.path.isdir(os.path.join(portdir_overlay, ".bzr")):
 elif os.path.isdir(os.path.join(portdir_overlay, ".hg")):
 	vcs = "hg"
 
+# Note: We don't use ChangeLogs in distributed SCMs.
+# It will be generated on server side from scm log,
+# before package moves to the rsync server.
+# This is needed because we try to avoid merge collisions.
+check_changelog = vcs in ('CVS', 'SVN')
+
 vcs_local_opts = repoman_settings.get("REPOMAN_VCS_LOCAL_OPTS", "").split()
 vcs_global_opts = repoman_settings.get("REPOMAN_VCS_GLOBAL_OPTS")
 if vcs_global_opts is None:
@@ -1275,11 +1281,8 @@ for x in scanlist:
 							relative_path + ': %s' % error_match.group(1))
 
 	del mydigests
-	# Note: We don't use ChangeLogs in distributed SCMs.
-	# It will be generated on server side from scm log,
-	# before package moves to the rsync server.
-	# This is needed because we try to avoid merge collisions.
-	if vcs not in ("git", "hg") and "ChangeLog" not in checkdirlist:
+
+	if check_changelog and "ChangeLog" not in checkdirlist:
 		stats["changelog.missing"]+=1
 		fails["changelog.missing"].append(x+"/ChangeLog")
 	
@@ -1337,7 +1340,8 @@ for x in scanlist:
 		if repolevel < 2:
 			ebuild_path = os.path.join(catdir, ebuild_path)
 		ebuild_path = os.path.join(".", ebuild_path)
-		if not changelog_modified and ebuild_path in new_ebuilds:
+		if check_changelog and not changelog_modified \
+			and ebuild_path in new_ebuilds:
 			stats['changelog.ebuildadded'] += 1
 			fails['changelog.ebuildadded'].append(relative_path)
 
@@ -2318,7 +2322,9 @@ else:
 	from portage.util import write_atomic
 	cvs_header = re.compile(r'^#\s*\$Header.*\$$')
 	for x in myheaders:
-		f = open(x)
+		f = codecs.open(_unicode_encode(x,
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['repo.content'], errors='strict')
 		mylines = f.readlines()
 		f.close()
 		modified = False
@@ -2327,7 +2333,8 @@ else:
 				mylines[i] = line.replace("/Attic/", "/")
 				modified = True
 		if modified:
-			write_atomic(x, "".join(mylines))
+			write_atomic(x, "".join(mylines),
+				encoding=_encodings['repo.content'], errors='strict')
 
 	manifest_commit_required = True
 	if vcs in ('cvs', 'svn') and (myupdates or myremoved):
