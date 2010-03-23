@@ -2180,6 +2180,8 @@ class depgraph(object):
 						missing_use.append(pkg)
 						if not mreasons:
 							continue
+					if pkg.built and not mreasons:
+						mreasons = ["use flag configuration mismatch"]
 				masked_packages.append(
 					(root_config, pkgsettings, cpv, metadata, mreasons))
 

@@ -328,10 +328,10 @@ _eend() {
 	fi
 
 	if [[ ${RC_ENDCOL} == "yes" ]] ; then
-		echo -e "${ENDCOL}  ${msg}"
+		echo -e "${ENDCOL} ${msg}"
 	else
 		[[ ${LAST_E_CMD} == ebegin ]] || LAST_E_LEN=0
-		printf "%$(( COLS - LAST_E_LEN - 6 ))s%b\n" '' "${msg}"
+		printf "%$(( COLS - LAST_E_LEN - 7 ))s%b\n" '' "${msg}"
 	fi
 
 	return ${retval}
@@ -399,7 +399,7 @@ get_KV() {
 }
 
 unset_colors() {
-	COLS="25 80"
+	COLS=80
 	ENDCOL=
 
 	GOOD=
@@ -414,13 +414,10 @@ set_colors() {
 	COLS=${COLUMNS:-0}      # bash's internal COLUMNS variable
 	(( COLS == 0 )) && COLS=$(set -- $(stty size 2>/dev/null) ; echo $2)
 	(( COLS > 0 )) || (( COLS = 80 ))
-	COLS=$((${COLS} - 8))	# width of [ ok ] == 7
-	# Adjust COLS so that eend works properly on a standard BSD console.
-	[[ $TERM = cons25 || $TERM = dumb ]] && ((COLS--))
 
 	# Now, ${ENDCOL} will move us to the end of the
 	# column;  irregardless of character width
-	ENDCOL=$'\e[A\e['${COLS}'C'
+	ENDCOL=$'\e[A\e['$(( COLS - 8 ))'C'
 	if [ -n "${PORTAGE_COLORMAP}" ] ; then
 		eval ${PORTAGE_COLORMAP}
 	else
