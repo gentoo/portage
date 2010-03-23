@@ -331,6 +331,15 @@ install_qa_check() {
 		unset INSTALLTOD
 	fi
 
+	# Sanity check syntax errors in init.d scripts
+	for d in /etc/conf.d /etc/init.d ; do
+		[[ -d ${D}/${d} ]] || continue
+		for i in "${D}"/${d}/* ; do
+			[[ -L ${i} ]] && continue
+			bash -n "${i}" || die "The init.d file has syntax errors: ${i}"
+		done
+	done
+
 	# this should help to ensure that all (most?) shared libraries are executable
 	# and that all libtool scripts / static libraries are not executable
 	for i in "${D}"opt/*/lib{,32,64} \
