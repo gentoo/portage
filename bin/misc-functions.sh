@@ -369,6 +369,15 @@ install_qa_check_misc() {
 		die "Aborting due to QA concerns: files installed in ${D}/${D}"
 	fi
 
+	# Sanity check syntax errors in init.d scripts
+	for d in /etc/conf.d /etc/init.d ; do
+		[[ -d ${ED}/${d} ]] || continue
+		for i in "${ED}"/${d}/* ; do
+			[[ -L ${i} ]] && continue
+			bash -n "${i}" || die "The init.d file has syntax errors: ${i}"
+		done
+	done
+
 	# this should help to ensure that all (most?) shared libraries are executable
 	# and that all libtool scripts / static libraries are not executable
 	for i in "${ED}"opt/*/lib{,32,64} \
