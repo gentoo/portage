@@ -570,7 +570,7 @@ list_preserved_libs.uses_root = True
 
 def usage(argv):
 	print(">>> Portage information query tool")
-	print(">>> $Id$")
+	print(">>> %s" % portage.VERSION)
 	print(">>> Usage: portageq <command> [<option> ...]")
 	print("")
 	print("Available commands:")
