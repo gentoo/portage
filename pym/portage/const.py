@@ -66,6 +66,9 @@ BASH_BINARY              = "/bin/bash"
 MOVE_BINARY              = "/bin/mv"
 PRELINK_BINARY           = "/usr/sbin/prelink"
 
+PORTAGE_GROUPNAME        = os.environ.get("PORTAGE_GROUPNAME", 'portage')
+PORTAGE_USERNAME         = os.environ.get("PORTAGE_USERNAME", 'portage')
+
 INVALID_ENV_FILE         = "/etc/spork/is/not/valid/profile.env"
 REPO_NAME_FILE           = "repo_name"
 REPO_NAME_LOC            = "profiles" + "/" + REPO_NAME_FILE
