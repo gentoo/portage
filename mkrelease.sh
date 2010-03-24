@@ -2,20 +2,18 @@
 
 RELEASE_BUILDDIR=${RELEASE_BUILDDIR:-/var/tmp/portage-release}
 SOURCE_DIR=${RELEASE_BUILDDIR}/checkout
-BRANCH=${BRANCH:-trunk}
-REPOSITORY=svn+ssh://cvs.gentoo.org/var/svnroot/portage/main
-SVN_LOCATION=${REPOSITORY}/${BRANCH}
-CREATE_TAG=
+BRANCH=${BRANCH:-master}
+USE_TAG=false
 CHANGELOG_REVISION=
 UPLOAD_LOCATION=
 
 die() {
 	echo $@
-	echo "Usage: ${0##*/} [--anon] [-t|--tag] [-u|--upload <location>] <version>"
+	echo "Usage: ${0##*/} [--changelog-rev <tree-ish>] [-t|--tag] [-u|--upload <location>] <version>"
 	exit 1
 }
 
-ARGS=$(getopt -o tu: --long anon,changelog-rev:,tag,upload: \
+ARGS=$(getopt -o tu: --long changelog-rev:,tag,upload: \
 	-n ${0##*/} -- "$@")
 [ $? != 0 ] && die "initialization error"
 
@@ -23,17 +21,12 @@ eval set -- "${ARGS}"
 
 while true; do
 	case "$1" in
-		--anon)
-			REPOSITORY=svn://anonsvn.gentoo.org/portage/main
-			SVN_LOCATION=${REPOSITORY}/${BRANCH}
-			shift
-			;;
 		--changelog-rev)
 			CHANGELOG_REVISION=$2
 			shift 2
 			;;
 		-t|--tag)
-			CREATE_TAG=true
+			USE_TAG=true
 			shift
 			;;
 		-u|--upload)
@@ -57,24 +50,38 @@ VERSION=${1}
 RELEASE=portage-${VERSION}
 RELEASE_DIR=${RELEASE_BUILDDIR}/${RELEASE}
 RELEASE_TARBALL="${RELEASE_BUILDDIR}/${RELEASE}.tar.bz2"
+TREE_ISH=$BRANCH
+if [[ $USE_TAG = true ]] ; then
+	TREE_ISH=v$VERSION
+fi
 
 echo ">>> Cleaning working directories ${RELEASE_DIR} ${SOURCE_DIR}"
 rm -rf "${RELEASE_DIR}" "${SOURCE_DIR}" || die "directory cleanup failed"
 mkdir -p "${RELEASE_DIR}" || die "directory creation failed"
+mkdir -p "$SOURCE_DIR" || die "mkdir failed"
 
-echo ">>> Starting Subversion export"
-svn export "${SVN_LOCATION}" "${SOURCE_DIR}" > /dev/null || die "svn export failed"
-
-echo ">>> Creating Changelog"
-svn2cl_opts="-i --reparagraph"
-[ -n "$CHANGELOG_REVISION" ] && svn2cl_opts+=" -r HEAD:$CHANGELOG_REVISION"
-svn2cl $svn2cl_opts -o "${SOURCE_DIR}/ChangeLog" "${SVN_LOCATION}" \
-	|| die "ChangeLog creation failed"
+echo ">>> Starting GIT archive"
+git archive --format=tar $TREE_ISH | \
+	tar -xf - -C "$SOURCE_DIR" || die "git archive failed"
 
 echo ">>> Building release tree"
 cp -a "${SOURCE_DIR}/"{bin,cnf,doc,man,pym,src} "${RELEASE_DIR}/" || die "directory copy failed"
-cp "${SOURCE_DIR}/"{ChangeLog,DEVELOPING,NEWS,RELEASE-NOTES,TEST-NOTES} \
+cp "${SOURCE_DIR}/"{DEVELOPING,NEWS,RELEASE-NOTES,TEST-NOTES} \
 	"${RELEASE_DIR}/" || die "file copy failed"
+
+echo ">>> Creating Changelog"
+git_log_opts=""
+[ -n "$CHANGELOG_REVISION" ] && git_log_opts+=" $CHANGELOG_REVISION^.."
+skip_next=false
+git log $git_log_opts | fmt -w 80 -p "    " | while read ; do
+	if [[ $skip_next = true ]] ; then
+		skip_next=false
+	elif [[ $REPLY = "    svn path="* ]] ; then
+		skip_next=true
+	else
+		echo "$REPLY"
+	fi
+done > "$RELEASE_DIR/ChangeLog" || die "ChangeLog creation failed"
 
 cd "${RELEASE_BUILDDIR}"
 
@@ -95,8 +102,4 @@ else
 	echo "${RELEASE_TARBALL} created"
 fi
 
-if [ -n "${CREATE_TAG}" ]; then
-	echo ">>> Tagging ${VERSION} in repository"
-	svn cp ${SVN_LOCATION} ${REPOSITORY}/tags/${VERSION} || die "tagging failed"
-fi
-
+exit 0
