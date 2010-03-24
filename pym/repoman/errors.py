@@ -1,7 +1,6 @@
 # repoman: Error Messages
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 COPYRIGHT_ERROR = 'Invalid Gentoo Copyright on line: %d'
 LICENSE_ERROR = 'Invalid Gentoo/GPL License on line: %d'

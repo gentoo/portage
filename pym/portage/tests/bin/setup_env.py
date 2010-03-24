@@ -1,7 +1,6 @@
 # setup_env.py -- Make sure bin subdir has sane env for testing
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 import tempfile
 

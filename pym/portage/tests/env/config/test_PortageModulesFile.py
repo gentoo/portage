@@ -1,6 +1,5 @@
 # Copyright 2006-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 from portage import os
 from portage.tests import TestCase

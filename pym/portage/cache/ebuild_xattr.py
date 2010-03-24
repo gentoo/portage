@@ -1,7 +1,6 @@
 # Copyright: 2009 Gentoo Foundation
 # Author(s): Petteri R&#228;ty (betelgeuse@gentoo.org)
 # License: GPL2
-# $Id$
 
 __all__ = ['database']
 

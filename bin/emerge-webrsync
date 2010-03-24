@@ -1,7 +1,6 @@
 #!/bin/bash
 # Copyright 1999-2008 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 # Author: Karl Trygve Kalleberg <karltk@gentoo.org>
 # Rewritten from the old, Perl-based emerge-webrsync script
 # Author: Alon Bar-Lev <alon.barlev@gmail.com>

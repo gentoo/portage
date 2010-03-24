@@ -1,7 +1,6 @@
 # xpak/test_decodeint.py
 # Copright Gentoo Foundation 2006
 # Portage Unit Testing Functionality
-# $Id$
 
 from portage.tests import TestCase
 from portage.xpak import decodeint, encodeint

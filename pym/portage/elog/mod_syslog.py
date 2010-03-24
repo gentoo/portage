@@ -1,7 +1,6 @@
 # elog/mod_syslog.py - elog dispatch module
 # Copyright 2006-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 import sys
 import syslog

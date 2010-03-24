@@ -1,6 +1,5 @@
 # Copyright 1999-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 # We need this next line for "die" and "assert". It expands
 # It _must_ preceed all the calls to die and assert.

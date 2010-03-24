@@ -1,7 +1,6 @@
 # Copyright: 2005-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
-# $Id$
 
 __all__ = ["Mapping", "MutableMapping", "UserDict", "ProtectedDict",
 	"LazyLoad", "slot_dict_class"]

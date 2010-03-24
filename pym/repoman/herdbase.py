@@ -2,7 +2,6 @@
 # repoman: Herd database analysis
 # Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: $
 
 import xml.etree.ElementTree as ET
 from xml.parsers.expat import ExpatError

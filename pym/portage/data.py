@@ -1,7 +1,6 @@
 # data.py -- Calculated/Discovered Data Values
 # Copyright 1998-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 import os, sys, pwd, grp, platform
 from portage.const import PORTAGE_GROUPNAME, PORTAGE_USERNAME

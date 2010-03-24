@@ -1,7 +1,6 @@
 # portage_compat_namespace.py -- provide compability layer with new namespace
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 """ 
 Special edition of portage_compat_namespace.py as for this module we can't translate

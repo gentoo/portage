@@ -1,6 +1,5 @@
 # Copyright 2004-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 __all__ = ['apply_permissions', 'apply_recursive_permissions',
 	'apply_secpass_permissions', 'apply_stat_permissions', 'atomic_ofstream',

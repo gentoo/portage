@@ -1,6 +1,5 @@
 # Copyright 1999-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 # Don't use the unicode-wrapped os and shutil modules here since
 # the whole _selinux module itself will be wrapped.

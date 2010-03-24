@@ -1,7 +1,6 @@
 #!/bin/bash
 # Copyright 2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 # TODO: Eliminate race condition in signal delivery by using pipe or socket
 # IPC to guarantee that the ebuild process and all of its children (including

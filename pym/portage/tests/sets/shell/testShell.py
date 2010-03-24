@@ -1,7 +1,6 @@
 # testCommandOututSet.py -- Portage Unit Testing Functionality
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 from portage.process import find_binary
 from portage.tests import TestCase, test_cps

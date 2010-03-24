@@ -1,7 +1,6 @@
 # deps.py -- Portage dependency resolution functions
 # Copyright 2003-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 __all__ = [
 	'Atom', 'best_match_to_list', 'cpvequal',
