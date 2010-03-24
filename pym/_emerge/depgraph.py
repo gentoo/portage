@@ -2078,7 +2078,7 @@ class depgraph(object):
 						masked_pkg_instances.add(pkg)
 					if atom.unevaluated_atom.use:
 						if not pkg.iuse.is_valid_flag(atom.unevaluated_atom.use.required) \
-							or atom.violated_conditionals(self._pkg_use_enabled(pkg)).use:
+							or atom.violated_conditionals(self._pkg_use_enabled(pkg), pkg.iuse.all).use:
 							missing_use.append(pkg)
 							if not mreasons:
 								continue
@@ -2097,14 +2097,22 @@ class depgraph(object):
 		missing_iuse_reasons = []
 		for pkg in missing_use:
 			use = self._pkg_use_enabled(pkg)
-			missing_iuse = pkg.iuse.get_missing_iuse(atom.use.required)
+			missing_iuse = []
+			for x in pkg.iuse.get_missing_iuse(atom.use.required):
+				#FIXME: If a use flag occures more then it might be possible that
+				#one has a default one doesn't.
+				if x not in atom.use.missing_enabled and \
+					x not in atom.use.missing_disabled:
+					missing_iuse.append(x)
+
 			mreasons = []
 			if missing_iuse:
 				mreasons.append("Missing IUSE: %s" % " ".join(missing_iuse))
 				missing_iuse_reasons.append((pkg, mreasons))
 			else:
-				need_enable = sorted(atom.use.enabled.difference(use))
-				need_disable = sorted(atom.use.disabled.intersection(use))
+				need_enable = sorted(atom.use.enabled.difference(use).intersection(pkg.iuse.all))
+				need_disable = sorted(atom.use.disabled.intersection(use).intersection(pkg.iuse.all))
+
 				if need_enable or need_disable:
 					changes = []
 					changes.extend(colorize("red", "+" + x) \
@@ -2118,7 +2126,7 @@ class depgraph(object):
 				# Lets see if the violated use deps are conditional.
 				# If so, suggest to change them on the parent.
 				mreasons = []
-				violated_atom = atom.unevaluated_atom.violated_conditionals(self._pkg_use_enabled(pkg), myparent.use.enabled)
+				violated_atom = atom.unevaluated_atom.violated_conditionals(self._pkg_use_enabled(pkg), pkg.iuse.all, myparent.use.enabled)
 				if not (violated_atom.use.enabled or violated_atom.use.disabled):
 					#all violated use deps are conditional
 					changes = []
@@ -2625,7 +2633,13 @@ class depgraph(object):
 						found_available_arg = True
 
 					if atom.use:
-						missing_iuse = pkg.iuse.get_missing_iuse(atom.use.required)
+						missing_iuse = []
+						for x in pkg.iuse.get_missing_iuse(atom.use.required):
+							#FIXME: If a use flag occures more then it might be possible that
+							#one has a default one doesn't.
+							if x not in atom.use.missing_enabled and \
+								x not in atom.use.missing_disabled:
+								missing_iuse.append(x)
 						if missing_iuse:
 							# Don't add this to packages_with_invalid_use_config
 							# since IUSE cannot be adjusted by the user.
@@ -2641,11 +2655,13 @@ class depgraph(object):
 						else:
 							use = self._pkg_use_enabled(pkg)
 
-						if atom.use.enabled.difference(use):
+						if atom.use.enabled.difference(use) and \
+							atom.use.enabled.difference(use).difference(atom.use.missing_enabled.difference(pkg.iuse.all)):
 							if not pkg.built:
 								packages_with_invalid_use_config.append(pkg)
 							continue
-						if atom.use.disabled.intersection(use):
+						if atom.use.disabled.intersection(use) or \
+							atom.use.disabled.difference(pkg.iuse.all).difference(atom.use.missing_disabled):
 							if not pkg.built:
 								packages_with_invalid_use_config.append(pkg)
 							continue

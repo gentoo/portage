@@ -48,7 +48,7 @@ class Package(Task):
 			# Avoid an InvalidAtom exception when creating slot_atom.
 			# This package instance will be masked due to empty SLOT.
 			slot = '0'
-		if (self.iuse.enabled or self.iuse.enabled) and \
+		if (self.iuse.enabled or self.iuse.disabled) and \
 			not eapi_has_iuse_defaults(self.metadata["EAPI"]):
 			self._invalid_metadata('IUSE.invalid',
 				"IUSE contains defaults, but EAPI doesn't allow them")

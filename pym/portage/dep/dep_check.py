@@ -8,7 +8,8 @@ import logging
 import portage
 from portage.dep import Atom, dep_opconvert, match_from_list, \
 	remove_slot, use_reduce
-from portage.eapi import eapi_has_strong_blocks, eapi_has_use_deps, eapi_has_slot_deps
+from portage.eapi import eapi_has_strong_blocks, eapi_has_use_deps, eapi_has_slot_deps, \
+	eapi_has_use_dep_defaults
 from portage.exception import InvalidAtom, InvalidDependString, ParseError
 from portage.localization import _
 from portage.util import writemsg, writemsg_level
@@ -73,6 +74,10 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					raise ParseError(
 						_("invalid atom: '%s'") % (x,))
 				if x.slot and not eapi_has_slot_deps(eapi):
+					raise ParseError(
+						_("invalid atom: '%s'") % (x,))
+				if x.use and (x.use.missing_enabled or x.use.missing_disabled) \
+					and not eapi_has_use_dep_defaults(eapi):
 					raise ParseError(
 						_("invalid atom: '%s'") % (x,))
 

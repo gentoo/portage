@@ -1619,6 +1619,8 @@ for x in scanlist:
 					myteststr = mydepstr[len(token):]
 				else:
 					myteststr = mydepstr
+				myteststr = myteststr.replace("(+)", "")
+				myteststr = myteststr.replace("(-)", "")
 				if myteststr.endswith(" "+token):
 					myteststr = myteststr[:-len(token)]
 				while myteststr.find(" "+token+" ") != -1:

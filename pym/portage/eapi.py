@@ -42,3 +42,6 @@ def eapi_has_dosed_dohard(eapi):
 
 def eapi_has_required_use(eapi):
 	return eapi not in ("0", "1", "2", "3")
+
+def eapi_has_use_dep_defaults(eapi):
+	return eapi not in ("0", "1", "2", "3")
