@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
-from portage import _unicode_encode
+from portage import _unicode_encode, _unicode_decode
 from portage.localization import _
 
 if sys.hexversion >= 0x3000000:
@@ -21,6 +21,10 @@ class PortageException(Exception):
 			return self.value
 		else:
 			return repr(self.value)
+
+	if sys.hexversion < 0x3000000:
+		def __unicode__(self):
+			return _unicode_decode(self.__str__())
 
 class CorruptionError(PortageException):
 	"""Corruption indication"""
