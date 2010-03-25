@@ -300,20 +300,6 @@ export LIBOPTIONS="-m0644"
 export DIROPTIONS="-m0755"
 export MOPREFIX=${PN}
 
-check_KV() {
-	if [ -z "${KV}" ]; then
-		eerror ""
-		eerror "Could not determine your kernel version."
-		eerror "Make sure that you have a /usr/src/linux symlink,"
-		eerror "and that the indicated kernel has been configured."
-		eerror "You can also simply run the following command"
-		eerror "in the directory referenced by /usr/src/linux:"
-		eerror " make include/linux/version.h"
-		eerror ""
-		die
-	fi
-}
-
 # adds ".keep" files so that dirs aren't auto-cleaned
 keepdir() {
 	dodir "$@"
