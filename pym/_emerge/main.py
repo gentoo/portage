@@ -1211,6 +1211,16 @@ def emerge_main():
 	adjust_configs(myopts, trees)
 	apply_priorities(settings)
 
+	if myaction == 'version':
+		writemsg_stdout(getportageversion(
+			settings["PORTDIR"], settings["ROOT"],
+			settings.profile_path, settings["CHOST"],
+			trees[settings["ROOT"]]["vartree"].dbapi) + '\n', noiselevel=-1)
+		return 0
+	elif myaction == 'help':
+		_emerge.help.help(myopts, portage.output.havecolor)
+		return 0
+
 	spinner = stdout_spinner()
 	if "candy" in settings.features:
 		spinner.update = spinner.update_scroll
@@ -1346,15 +1356,6 @@ def emerge_main():
 			settings.get('TERM') == 'dumb' or \
 			not sys.stdout.isatty():
 			spinner.update = spinner.update_basic
-
-	if myaction == 'version':
-		print(getportageversion(settings["PORTDIR"], settings["ROOT"],
-			settings.profile_path, settings["CHOST"],
-			trees[settings["ROOT"]]["vartree"].dbapi))
-		return 0
-	elif myaction == "help":
-		_emerge.help.help(myopts, portage.output.havecolor)
-		return 0
 
 	if "--debug" in myopts:
 		print("myaction", myaction)
