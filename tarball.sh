@@ -14,9 +14,9 @@ export V="$1"
 export DEST="${TMP}/${PKG}-${V}"
 
 ./tabcheck.py $(
-	find ./ -name .svn -prune -o -type f ! -name '*.py' -print \
+	find ./ -name .git -prune -name .hg -prune -o -type f ! -name '*.py' -print \
 		| xargs grep -l "#\!@PORTAGE_PYTHON@"
-	find ./ -name .svn -prune -o -type f -name '*.py' -print
+	find ./ -name .git -prune -name .hg -prune -o -type f -name '*.py' -print
 )
 
 if [[ -e ${DEST} ]]; then
@@ -25,7 +25,7 @@ if [[ -e ${DEST} ]]; then
 fi
 
 install -d -m0755 ${DEST}
-rsync -a --exclude='.svn' . ${DEST}
+rsync -a --exclude='.git' --exclude='.hg' . ${DEST}
 sed -i -e '/^VERSION=/s/^.*$/VERSION="'${V}-prefix'"/' ${DEST}/pym/portage/__init__.py
 sed -i -e "s/##VERSION##/${V}-prefix/g" ${DEST}/man/emerge.1
 sed -i -e "s/@version@/${V}/" ${DEST}/configure.in
@@ -38,7 +38,7 @@ cd $TMP
 rm -f ${PKG}-${V}/bin/emerge.py ${PKG}-${V}/bin/{pmake,sandbox} ${PKG}-${V}/{bin,pym}/'.#'* ${PKG}-${V}/{bin,pym}/*.{orig,diff} ${PKG}-${V}/{bin,pym}/*.py[oc]
 cd $TMP/${PKG}-${V}
 chmod a+x autogen.sh && ./autogen.sh || { echo "autogen failed!"; exit -1; };
-rm -f autogen.sh tabcheck.py tarball.sh commit svnlogmsg.awk
+rm -f autogen.sh tabcheck.py tarball.sh commit
 cd $TMP
 tar -jcf ${TMP}/${PKG}-${V}.tar.bz2 ${PKG}-${V}
 rm -R ${TMP}/${PKG}-${V}
