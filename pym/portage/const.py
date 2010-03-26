@@ -78,8 +78,8 @@ BASH_BINARY              = PORTAGE_BASH
 MOVE_BINARY              = PORTAGE_MV
 PRELINK_BINARY           = EPREFIX + "/usr/sbin/prelink"
 
-PORTAGE_GROUPNAME        = os.environ.get("PORTAGE_GROUPNAME", 'portage')
-PORTAGE_USERNAME         = os.environ.get("PORTAGE_USERNAME", 'portage')
+PORTAGE_GROUPNAME        = os.environ.get("PORTAGE_GROUPNAME", portagegroup)
+PORTAGE_USERNAME         = os.environ.get("PORTAGE_USERNAME", portageuser)
 
 INVALID_ENV_FILE         = "/etc/spork/is/not/valid/profile.env"
 REPO_NAME_FILE           = "repo_name"
