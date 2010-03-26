@@ -106,7 +106,7 @@ else:
 			from subprocess import getstatusoutput
 		except ImportError:
 			from commands import getstatusoutput
-		mystatus, myoutput = getstatusoutput("id -G portage")
+		mystatus, myoutput = getstatusoutput("id -G %s" % PORTAGE_USERNAME)
 		if mystatus == os.EX_OK:
 			for x in myoutput.split():
 				try:
