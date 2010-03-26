@@ -1,6 +1,5 @@
 # Copyright 1999-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 # We need this next line for "die" and "assert". It expands
 # It _must_ preceed all the calls to die and assert.
@@ -536,7 +535,7 @@ save_ebuild_env() {
 			hasg hasgq hasv hasq qa_source qa_call \
 			addread addwrite adddeny addpredict _sb_append_var \
 			lchown lchgrp esyslog use usev useq has_version portageq \
-			best_version use_with use_enable register_die_hook check_KV \
+			best_version use_with use_enable register_die_hook \
 			keepdir unpack strip_duplicate_slashes econf einstall \
 			dyn_setup dyn_unpack dyn_clean into insinto exeinto docinto \
 			insopts diropts exeopts libopts \
@@ -544,8 +543,7 @@ save_ebuild_env() {
 			abort_test abort_install dyn_prepare dyn_configure \
 			dyn_compile dyn_test dyn_install \
 			dyn_preinst dyn_help debug-print debug-print-function \
-			debug-print-section inherit EXPORT_FUNCTIONS newdepend newrdepend \
-			newpdepend do_newdepend remove_path_entry \
+			debug-print-section inherit EXPORT_FUNCTIONS remove_path_entry \
 			save_ebuild_env filter_readonly_variables preprocess_ebuild_env \
 			source_all_bashrcs ebuild_main \
 			ebuild_phase ebuild_phase_with_hooks \

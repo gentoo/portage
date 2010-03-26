@@ -1,7 +1,6 @@
 #!@PORTAGE_PYTHON@ -O
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 from __future__ import print_function
 
@@ -574,7 +573,7 @@ list_preserved_libs.uses_root = True
 
 def usage(argv):
 	print(">>> Portage information query tool")
-	print(">>> $Id$")
+	print(">>> %s" % portage.VERSION)
 	print(">>> Usage: portageq <command> [<option> ...]")
 	print("")
 	print("Available commands:")

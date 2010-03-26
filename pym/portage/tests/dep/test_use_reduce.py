@@ -1,6 +1,5 @@
 # Copyright 2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 from portage.tests import TestCase
 from portage.exception import InvalidDependString

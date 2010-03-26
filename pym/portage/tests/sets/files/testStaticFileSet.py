@@ -1,7 +1,6 @@
 # testStaticFileSet.py -- Portage Unit Testing Functionality
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 import tempfile
 

@@ -1,7 +1,6 @@
 # repoman: Checks
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 """This module contains functions used in Repoman to ascertain the quality
 and correctness of an ebuild."""

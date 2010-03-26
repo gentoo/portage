@@ -1,7 +1,6 @@
 # Copyright: 2005 Gentoo Foundation
 # Author(s): Nicholas Carpaski (carpaski@gentoo.org), Brian Harring (ferringb@gentoo.org)
 # License: GPL2
-# $Id$
 
 __all__ = ["cache"]
 

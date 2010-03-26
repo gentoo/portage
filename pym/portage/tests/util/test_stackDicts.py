@@ -1,7 +1,6 @@
 # test_stackDicts.py -- Portage Unit Testing Functionality
 # Copyright 2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 from portage.tests import TestCase
 from portage.util import stack_dicts

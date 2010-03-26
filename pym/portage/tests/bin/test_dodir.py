@@ -1,7 +1,6 @@
 # test_dodir.py -- Portage Unit Testing Functionality
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 from portage.tests.bin.setup_env import BinTestCase, dodir, exists_in_D
 

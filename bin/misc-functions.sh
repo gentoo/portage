@@ -1,7 +1,6 @@
 #!@PORTAGE_BASH@
 # Copyright 1999-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 #
 # Miscellaneous shell functions that make use of the ebuild env but don't need
 # to be included directly in ebuild.sh.

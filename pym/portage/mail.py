@@ -1,7 +1,6 @@
 # portage.py -- core Portage functionality
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 # Since python ebuilds remove the 'email' module when USE=build
 # is enabled, use a local import so that

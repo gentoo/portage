@@ -1,7 +1,6 @@
 #!@PORTAGE_PYTHON@ -O
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 # Next to do: dep syntax checking in mask files
 # Then, check to make sure deps are satisfiable (to avoid "can't find match for" problems)
@@ -981,6 +980,11 @@ check_ebuild_notadded = not \
 # Build a regex from thirdpartymirrors for the SRC_URI.mirror check.
 thirdpartymirrors = portage.flatten(list(repoman_settings.thirdpartymirrors().values()))
 
+try:
+	herd_base = make_herd_base(os.path.join(repoman_settings["PORTDIR"], "metadata/herds.xml"))
+except (EnvironmentError, ParseError) as e:
+	err(str(e))
+
 for x in scanlist:
 	#ebuilds and digests added to cvs respectively.
 	logging.info("checking package %s" % x)
@@ -1296,16 +1300,34 @@ for x in scanlist:
 	else:
 		metadata_bad = False
 
-		# load USE flags from metadata.xml
+		# read metadata.xml into memory
 		try:
 			f = open(os.path.join(checkdir, "metadata.xml"))
-			utilities.parse_metadata_use(f, muselist)
+			_metadata_xml = f.read()
 			f.close()
-		except (EnvironmentError, ParseError) as e:
+		except (EnvironmentError, ) as e:
 			metadata_bad = True
 			stats["metadata.bad"] += 1
 			fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
 			del e
+		else:
+			# load USE flags from metadata.xml
+			try:
+				utilities.parse_metadata_use(_metadata_xml, muselist)
+			except (EnvironmentError, ParseError) as e:
+				metadata_bad = True
+				stats["metadata.bad"] += 1
+				fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
+				del e
+
+			# Run other metadata.xml checkers
+			try:
+				utilities.check_metadata(_metadata_xml, herd_base)
+			except (EnvironmentError, ParseError, utilities.UnknownHerdsError) as e:
+				metadata_bad = True
+				stats["metadata.bad"] += 1
+				fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
+				del e
 
 		#Only carry out if in package directory or check forced
 		if xmllint_capable and not metadata_bad:
@@ -1776,10 +1798,6 @@ for x in scanlist:
 					if options.without_mask:
 						dep_settings.pmaskdict.clear()
 					arch_caches[prof.sub_path] = dep_settings
-					# Protect ACCEPT_KEYWORDS from config.regenerate()
-					# (just in case)
-					dep_settings.incrementals = tuple(v for v in \
-						dep_settings.incrementals if v != 'ACCEPT_KEYWORDS')
 
 				xmatch_cache_key = (prof.sub_path, tuple(groups))
 				xcache = arch_xmatch_caches.get(xmatch_cache_key)

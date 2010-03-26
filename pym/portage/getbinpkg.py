@@ -1,7 +1,6 @@
 # getbinpkg.py -- Portage binary-package helper functions
 # Copyright 2003-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 from portage.output import colorize
 from portage.cache.mappings import slot_dict_class
