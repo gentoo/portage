@@ -1,5 +1,4 @@
 #!@PORTAGE_BASH@
-# $Id$
 
 ###################################################################
 # This script does the following: for implemented platforms,      #

@@ -1,6 +1,5 @@
 /* Copyright Gentoo Foundation 2006-2010
  * Author: Fabian Groffen <grobian@gentoo.org>
- * $Id$
  *
  * chpathtool replaces a given string (magic) into another (value),
  * thereby paying attention to the original size of magic in order not

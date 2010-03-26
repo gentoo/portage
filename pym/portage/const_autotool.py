@@ -1,6 +1,5 @@
 # Copyright: 2005-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 # all vars that are to wind up in portage_const must have their name listed in __all__
 
