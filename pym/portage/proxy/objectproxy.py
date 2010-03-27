@@ -84,5 +84,8 @@ class ObjectProxy(object):
 	if sys.hexversion < 0x3000000:
 		__nonzero__ = __bool__
 
+		def __unicode__(self):
+			return unicode(object.__getattribute__(self, '_get_target')())
+
 	def __int__(self):
 		return int(object.__getattribute__(self, '_get_target')())
