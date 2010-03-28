@@ -17,7 +17,7 @@ except ImportError:
 	import portage
 
 from portage import os
-from portage import catsplit, flatten, isvalidatom, xpak
+from portage import catsplit, flatten, xpak
 from portage.dbapi.dep_expand import dep_expand
 from portage.dep import use_reduce, paren_reduce
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString, PackageSetNotFound
@@ -25,18 +25,18 @@ from portage.util import ConfigProtect, ensure_dirs
 from portage.dbapi.vartree import dblink, tar_contents
 from portage.checksum import perform_md5
 from portage.sets import load_default_config, SETPREFIX
-	
+
 def quickpkg_atom(options, infos, arg, eout):
 	root = portage.settings["ROOT"]
 	trees = portage.db[root]
 	vartree = trees["vartree"]
 	vardb = vartree.dbapi
 	bintree = trees["bintree"]
-	
+
 	include_config = options.include_config == "y"
 	include_unmodified_config = options.include_unmodified_config == "y"
 	fix_metadata_keys = ["PF", "CATEGORY"]
-	
+
 	try:
 		atom = dep_expand(arg, mydb=vardb, settings=vartree.settings)
 	except ValueError as e:
@@ -155,18 +155,18 @@ def quickpkg_set(options, infos, arg, eout):
 	root = portage.settings["ROOT"]
 	trees = portage.db[root]
 	vartree = trees["vartree"]
-	
+
 	settings = vartree.settings
 	settings._init_dirs()
 	setconfig = load_default_config(settings, trees)
 	sets = setconfig.getSets()
-	
+
 	set = arg[1:]
 	if not set in sets:
 		eout.eerror("Package set not found: '%s'; skipping" % (arg,))
 		infos["missing"].append(arg)
 		return
-	
+
 	try:
 		atoms = setconfig.getSetAtoms(set)
 	except PackageSetNotFound as e:
@@ -174,17 +174,15 @@ def quickpkg_set(options, infos, arg, eout):
 			"it contains the non-existent package set '%s'; skipping" % e)
 		infos["missing"].append(arg)
 		return
-		
+
 	for atom in atoms:
 		quickpkg_atom(options, infos, atom, eout)
 
 def quickpkg_main(options, args, eout):
 	root = portage.settings["ROOT"]
 	trees = portage.db[root]
-	vartree = trees["vartree"]
-	vardb = vartree.dbapi
 	bintree = trees["bintree"]
-	
+
 	try:
 		ensure_dirs(bintree.pkgdir)
 	except portage.exception.PortageException:
@@ -192,7 +190,7 @@ def quickpkg_main(options, args, eout):
 	if not os.access(bintree.pkgdir, os.W_OK):
 		eout.eerror("No write access to '%s'" % bintree.pkgdir)
 		return errno.EACCES
-	
+
 	infos = {}
 	infos["successes"] = []
 	infos["missing"] = []
@@ -202,7 +200,7 @@ def quickpkg_main(options, args, eout):
 			quickpkg_set(options, infos, arg, eout)
 		else:
 			quickpkg_atom(options, infos, arg, eout)
-	
+
 	if not infos["successes"]:
 		eout.eerror("No packages found")
 		return 1
