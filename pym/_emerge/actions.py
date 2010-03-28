@@ -2525,7 +2525,8 @@ def getportageversion(portdir, target_root, profile, chost, vardb):
 	gccver = getgccversion(chost)
 	unameout=platform.release()+" "+platform.machine()
 
-	return "Portage " + portage.VERSION +" ("+profilever+", "+gccver+", "+libcver+", "+unameout+")"
+	return "Portage %s (%s, %s, %s, %s)" % \
+		(portage.VERSION, profilever, gccver, libcver, unameout)
 
 def git_sync_timestamps(settings, portdir):
 	"""

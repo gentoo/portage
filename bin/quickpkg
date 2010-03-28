@@ -5,8 +5,11 @@
 from __future__ import print_function
 
 import errno
+import math
+import optparse
 import signal
 import sys
+import tarfile
 
 from os import environ as ose
 from os import path as osp
@@ -17,22 +20,172 @@ else:
 import portage
 
 from portage import os
+from portage import xpak
+from portage.dbapi.dep_expand import dep_expand
+from portage.dep import flatten, paren_reduce, use_reduce
+from portage.exception import InvalidAtom, InvalidData, InvalidDependString, PackageSetNotFound
+from portage.util import ConfigProtect, ensure_dirs
+from portage.dbapi.vartree import dblink, tar_contents
+from portage.checksum import perform_md5
+from portage.sets import load_default_config, SETPREFIX
 
-def quickpkg_main(options, args, eout):
-	from portage import catsplit, flatten, isvalidatom, xpak
-	from portage.dbapi.dep_expand import dep_expand
-	from portage.dep import use_reduce, paren_reduce
-	from portage.util import ConfigProtect, ensure_dirs
-	from portage.exception import InvalidAtom, InvalidData, InvalidDependString
-	from portage.dbapi.vartree import dblink, tar_contents
-	from portage.checksum import perform_md5
-	import tarfile
-	import portage
+def quickpkg_atom(options, infos, arg, eout):
 	root = portage.settings["ROOT"]
 	trees = portage.db[root]
 	vartree = trees["vartree"]
 	vardb = vartree.dbapi
 	bintree = trees["bintree"]
+
+	include_config = options.include_config == "y"
+	include_unmodified_config = options.include_unmodified_config == "y"
+	fix_metadata_keys = ["PF", "CATEGORY"]
+
+	try:
+		atom = dep_expand(arg, mydb=vardb, settings=vartree.settings)
+	except ValueError as e:
+		# Multiple matches thrown from cpv_expand
+		eout.eerror("Please use a more specific atom: %s" % \
+			" ".join(e.args[0]))
+		del e
+		infos["missing"].append(arg)
+		return
+	except (InvalidAtom, InvalidData):
+		eout.eerror("Invalid atom: %s" % (arg,))
+		infos["missing"].append(arg)
+		return
+	if atom[:1] == '=' and arg[:1] != '=':
+		# dep_expand() allows missing '=' but it's really invalid
+		eout.eerror("Invalid atom: %s" % (arg,))
+		infos["missing"].append(arg)
+		return
+
+	matches = vardb.match(atom)
+	pkgs_for_arg = 0
+	for cpv in matches:
+		excluded_config_files = []
+		bintree.prevent_collision(cpv)
+		cat, pkg = portage.catsplit(cpv)
+		dblnk = dblink(cat, pkg, root,
+			vartree.settings, treetype="vartree",
+			vartree=vartree)
+		dblnk.lockdb()
+		try:
+			if not dblnk.exists():
+				# unmerged by a concurrent process
+				continue
+			iuse, use, restrict = vardb.aux_get(cpv,
+				["IUSE","USE","RESTRICT"])
+			iuse = [ x.lstrip("+-") for x in iuse.split() ]
+			use = use.split()
+			try:
+				restrict = flatten(use_reduce(
+					paren_reduce(restrict), uselist=use))
+			except InvalidDependString as e:
+				eout.eerror("Invalid RESTRICT metadata " + \
+					"for '%s': %s; skipping" % (cpv, str(e)))
+				del e
+				continue
+			if "bindist" in iuse and "bindist" not in use:
+				eout.ewarn("%s: package was emerged with USE=-bindist!" % cpv)
+				eout.ewarn("%s: it may not be legal to redistribute this." % cpv)
+			elif "bindist" in restrict:
+				eout.ewarn("%s: package has RESTRICT=bindist!" % cpv)
+				eout.ewarn("%s: it may not be legal to redistribute this." % cpv)
+			eout.ebegin("Building package for %s" % cpv)
+			pkgs_for_arg += 1
+			contents = dblnk.getcontents()
+			protect = None
+			if not include_config:
+				confprot = ConfigProtect(root,
+					portage.settings.get("CONFIG_PROTECT","").split(),
+					portage.settings.get("CONFIG_PROTECT_MASK","").split())
+				def protect(filename):
+					if not confprot.isprotected(filename):
+						return False
+					if include_unmodified_config:
+						file_data = contents[filename]
+						if file_data[0] == "obj":
+							orig_md5 = file_data[2].lower()
+							cur_md5 = perform_md5(filename, calc_prelink=1)
+							if orig_md5 == cur_md5:
+								return False
+					excluded_config_files.append(filename)
+					return True
+			existing_metadata = dict(zip(fix_metadata_keys,
+				vardb.aux_get(cpv, fix_metadata_keys)))
+			category, pf = portage.catsplit(cpv)
+			required_metadata = {}
+			required_metadata["CATEGORY"] = category
+			required_metadata["PF"] = pf
+			update_metadata = {}
+			for k, v in required_metadata.items():
+				if v != existing_metadata[k]:
+					update_metadata[k] = v
+			if update_metadata:
+				vardb.aux_update(cpv, update_metadata)
+			xpdata = xpak.xpak(dblnk.dbdir)
+			binpkg_tmpfile = os.path.join(bintree.pkgdir,
+				cpv + ".tbz2." + str(os.getpid()))
+			ensure_dirs(os.path.dirname(binpkg_tmpfile))
+			tar = tarfile.open(binpkg_tmpfile, "w:bz2")
+			tar_contents(contents, root, tar, protect=protect)
+			tar.close()
+			xpak.tbz2(binpkg_tmpfile).recompose_mem(xpdata)
+		finally:
+			dblnk.unlockdb()
+		bintree.inject(cpv, filename=binpkg_tmpfile)
+		binpkg_path = bintree.getname(cpv)
+		try:
+			s = os.stat(binpkg_path)
+		except OSError as e:
+			# Sanity check, shouldn't happen normally.
+			eout.eend(1)
+			eout.eerror(str(e))
+			del e
+			eout.eerror("Failed to create package: '%s'" % binpkg_path)
+		else:
+			eout.eend(0)
+			infos["successes"].append((cpv, s.st_size))
+			infos["config_files_excluded"] += len(excluded_config_files)
+			for filename in excluded_config_files:
+				eout.ewarn("Excluded config: '%s'" % filename)
+	if not pkgs_for_arg:
+		eout.eerror("Could not find anything " + \
+			"to match '%s'; skipping" % arg)
+		infos["missing"].append(arg)
+
+def quickpkg_set(options, infos, arg, eout):
+	root = portage.settings["ROOT"]
+	trees = portage.db[root]
+	vartree = trees["vartree"]
+
+	settings = vartree.settings
+	settings._init_dirs()
+	setconfig = load_default_config(settings, trees)
+	sets = setconfig.getSets()
+
+	set = arg[1:]
+	if not set in sets:
+		eout.eerror("Package set not found: '%s'; skipping" % (arg,))
+		infos["missing"].append(arg)
+		return
+
+	try:
+		atoms = setconfig.getSetAtoms(set)
+	except PackageSetNotFound as e:
+		eout.eerror("Failed to process package set '%s' because " % set +
+			"it contains the non-existent package set '%s'; skipping" % e)
+		infos["missing"].append(arg)
+		return
+
+	for atom in atoms:
+		quickpkg_atom(options, infos, atom, eout)
+
+def quickpkg_main(options, args, eout):
+	root = portage.settings["ROOT"]
+	trees = portage.db[root]
+	bintree = trees["bintree"]
+
 	try:
 		ensure_dirs(bintree.pkgdir)
 	except portage.exception.PortageException:
@@ -40,135 +193,25 @@ def quickpkg_main(options, args, eout):
 	if not os.access(bintree.pkgdir, os.W_OK):
 		eout.eerror("No write access to '%s'" % bintree.pkgdir)
 		return errno.EACCES
-	successes = []
-	missing = []
-	config_files_excluded = 0
-	include_config = options.include_config == "y"
-	include_unmodified_config = options.include_unmodified_config == "y"
-	fix_metadata_keys = ["PF", "CATEGORY"]
-	for arg in args:
-		try:
-			atom = dep_expand(arg, mydb=vardb, settings=vartree.settings)
-		except ValueError as e:
-			# Multiple matches thrown from cpv_expand
-			eout.eerror("Please use a more specific atom: %s" % \
-				" ".join(e.args[0]))
-			del e
-			missing.append(arg)
-			continue
-		except (InvalidAtom, InvalidData):
-			eout.eerror("Invalid atom: %s" % (arg,))
-			missing.append(arg)
-			continue
-		if atom[:1] == '=' and arg[:1] != '=':
-			# dep_expand() allows missing '=' but it's really invalid
-			eout.eerror("Invalid atom: %s" % (arg,))
-			missing.append(arg)
-			continue
 
-		matches = vardb.match(atom)
-		pkgs_for_arg = 0
-		for cpv in matches:
-			excluded_config_files = []
-			bintree.prevent_collision(cpv)
-			cat, pkg = catsplit(cpv)
-			dblnk = dblink(cat, pkg, root,
-				vartree.settings, treetype="vartree",
-				vartree=vartree)
-			dblnk.lockdb()
-			try:
-				if not dblnk.exists():
-					# unmerged by a concurrent process
-					continue
-				iuse, use, restrict = vardb.aux_get(cpv,
-					["IUSE","USE","RESTRICT"])
-				iuse = [ x.lstrip("+-") for x in iuse.split() ]
-				use = use.split()
-				try:
-					restrict = flatten(use_reduce(
-						paren_reduce(restrict), uselist=use))
-				except InvalidDependString as e:
-					eout.eerror("Invalid RESTRICT metadata " + \
-						"for '%s': %s; skipping" % (cpv, str(e)))
-					del e
-					continue
-				if "bindist" in iuse and "bindist" not in use:
-					eout.ewarn("%s: package was emerged with USE=-bindist!" % cpv)
-					eout.ewarn("%s: it may not be legal to redistribute this." % cpv)
-				elif "bindist" in restrict:
-					eout.ewarn("%s: package has RESTRICT=bindist!" % cpv)
-					eout.ewarn("%s: it may not be legal to redistribute this." % cpv)
-				eout.ebegin("Building package for %s" % cpv)
-				pkgs_for_arg += 1
-				contents = dblnk.getcontents()
-				protect = None
-				if not include_config:
-					confprot = ConfigProtect(root,
-						portage.settings.get("CONFIG_PROTECT","").split(),
-						portage.settings.get("CONFIG_PROTECT_MASK","").split())
-					def protect(filename):
-						if not confprot.isprotected(filename):
-							return False
-						if include_unmodified_config:
-							file_data = contents[filename]
-							if file_data[0] == "obj":
-								orig_md5 = file_data[2].lower()
-								cur_md5 = perform_md5(filename, calc_prelink=1)
-								if orig_md5 == cur_md5:
-									return False
-						excluded_config_files.append(filename)
-						return True
-				existing_metadata = dict(zip(fix_metadata_keys,
-					vardb.aux_get(cpv, fix_metadata_keys)))
-				category, pf = portage.catsplit(cpv)
-				required_metadata = {}
-				required_metadata["CATEGORY"] = category
-				required_metadata["PF"] = pf
-				update_metadata = {}
-				for k, v in required_metadata.items():
-					if v != existing_metadata[k]:
-						update_metadata[k] = v
-				if update_metadata:
-					vardb.aux_update(cpv, update_metadata)
-				xpdata = xpak.xpak(dblnk.dbdir)
-				binpkg_tmpfile = os.path.join(bintree.pkgdir,
-					cpv + ".tbz2." + str(os.getpid()))
-				ensure_dirs(os.path.dirname(binpkg_tmpfile))
-				tar = tarfile.open(binpkg_tmpfile, "w:bz2")
-				tar_contents(contents, root, tar, protect=protect)
-				tar.close()
-				xpak.tbz2(binpkg_tmpfile).recompose_mem(xpdata)
-			finally:
-				dblnk.unlockdb()
-			bintree.inject(cpv, filename=binpkg_tmpfile)
-			binpkg_path = bintree.getname(cpv)
-			try:
-				s = os.stat(binpkg_path)
-			except OSError as e:
-				# Sanity check, shouldn't happen normally.
-				eout.eend(1)
-				eout.eerror(str(e))
-				del e
-				eout.eerror("Failed to create package: '%s'" % binpkg_path)
-			else:
-				eout.eend(0)
-				successes.append((cpv, s.st_size))
-				config_files_excluded += len(excluded_config_files)
-				for filename in excluded_config_files:
-					eout.ewarn("Excluded config: '%s'" % filename)
-		if not pkgs_for_arg:
-			eout.eerror("Could not find anything " + \
-				"to match '%s'; skipping" % arg)
-			missing.append(arg)
-	if not successes:
+	infos = {}
+	infos["successes"] = []
+	infos["missing"] = []
+	infos["config_files_excluded"] = 0
+	for arg in args:
+		if arg[0] == SETPREFIX:
+			quickpkg_set(options, infos, arg, eout)
+		else:
+			quickpkg_atom(options, infos, arg, eout)
+
+	if not infos["successes"]:
 		eout.eerror("No packages found")
 		return 1
 	print()
 	eout.einfo("Packages now in '%s':" % bintree.pkgdir)
-	import math
 	units = {10:'K', 20:'M', 30:'G', 40:'T',
 		50:'P', 60:'E', 70:'Z', 80:'Y'}
-	for cpv, size in successes:
+	for cpv, size in infos["successes"]:
 		if not size:
 			# avoid OverflowError in math.log()
 			size_str = "0"
@@ -186,21 +229,20 @@ def quickpkg_main(options, args, eout):
 			else:
 				size_str = str(size)
 		eout.einfo("%s: %s" % (cpv, size_str))
-	if config_files_excluded:
+	if infos["config_files_excluded"]:
 		print()
-		eout.ewarn("Excluded config files: %d" % config_files_excluded)
+		eout.ewarn("Excluded config files: %d" % infos["config_files_excluded"])
 		eout.ewarn("See --help if you would like to include config files.")
-	if missing:
+	if infos["missing"]:
 		print()
 		eout.ewarn("The following packages could not be found:")
-		eout.ewarn(" ".join(missing))
+		eout.ewarn(" ".join(infos["missing"]))
 		return 2
 	return os.EX_OK
 
 if __name__ == "__main__":
-	usage = "quickpkg [options] <list of package atoms>"
-	from optparse import OptionParser
-	parser = OptionParser(usage=usage)
+	usage = "quickpkg [options] <list of package atoms or package sets>"
+	parser = optparse.OptionParser(usage=usage)
 	parser.add_option("--umask",
 		default="0077",
 		help="umask used during package creation (default is 0077)")
@@ -221,8 +263,7 @@ if __name__ == "__main__":
 		help="include files protected by CONFIG_PROTECT that have not been modified since installation (as a security precaution, default is 'n')")
 	options, args = parser.parse_args(sys.argv[1:])
 	if not options.ignore_default_opts:
-		from portage import settings
-		default_opts = settings.get("QUICKPKG_DEFAULT_OPTS","").split()
+		default_opts = portage.settings.get("QUICKPKG_DEFAULT_OPTS","").split()
 		options, args = parser.parse_args(default_opts + sys.argv[1:])
 	if not args:
 		parser.error("no packages atoms given")
@@ -232,10 +273,9 @@ if __name__ == "__main__":
 		parser.error("invalid umask: %s" % options.umask)
 	# We need to ensure a sane umask for the packages that will be created.
 	old_umask = os.umask(umask)
-	from portage.output import get_term_size, EOutput
-	eout = EOutput()
+	eout = portage.output.EOutput()
 	def sigwinch_handler(signum, frame):
-		lines, eout.term_columns = get_term_size()
+		lines, eout.term_columns =  portage.output.get_term_size()
 	signal.signal(signal.SIGWINCH, sigwinch_handler)
 	try:
 		retval = quickpkg_main(options, args, eout)

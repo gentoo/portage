@@ -2,7 +2,7 @@
 .SH NAME
 quickpkg \- creates portage packages
 .SH SYNOPSIS
-.B quickpkg <list of pkgs>
+.B quickpkg <list of packages or package\-sets>
 .SH DESCRIPTION
 .I quickpkg
 can be utilized to quickly create a package for portage by
@@ -20,13 +20,14 @@ This variable is defined in \fBmake.conf\fR(5) and defaults to
 /usr/portage/packages.
 .SH OPTIONS
 .TP
-.B <list of packages>
+.B <list of packages or package\-sets>
 Each package in the list can be of two forms.  First you can
 give it the full path to the installed entry in the virtual
-database.  That is, /var/db/pkg/<CATEGORY>/<PKG-VERSION>/.  
-The second form is a portage depend atom.  This atom is of
-the same form that you would give \fBemerge\fR if you wanted 
-to emerge something.  See \fBebuild\fR(5) for full definition.
+database.  That is, /var/db/pkg/<CATEGORY>/<PKG-VERSION>/.
+The second form is a portage depend atom or a portage package
+set.  The atom or set is of the same form that you would give
+\fBemerge\fR if you wanted to emerge something.
+See \fBebuild\fR(5) for full definition.
 .SH "EXAMPLES"
 .B quickpkg
 /var/db/pkg/dev-python/pyogg-1.1
@@ -39,6 +40,9 @@ planeshift
 .br
 .B quickpkg
 =net-www/apache-2*
+.br
+.B quickpkg
+@system
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
 .SH AUTHORS

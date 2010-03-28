@@ -5,7 +5,8 @@ __all__ = ['MtimeDB']
 
 import copy
 
-from portage import pickle, VERSION, _unicode_encode
+import portage
+from portage import pickle, _unicode_encode
 from portage.data import portage_gid, uid
 from portage.localization import _
 from portage.util import apply_secpass_permissions, atomic_ofstream, writemsg
@@ -63,7 +64,7 @@ class MtimeDB(dict):
 		d.update(self)
 		# Only commit if the internal state has changed.
 		if d != self._clean_data:
-			d["version"] = VERSION
+			d["version"] = str(portage.VERSION)
 			try:
 				f = atomic_ofstream(self.filename, mode='wb')
 			except EnvironmentError:
