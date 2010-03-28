@@ -5,6 +5,8 @@
 from __future__ import print_function
 
 import errno
+import math
+import optparse
 import signal
 import sys
 import tarfile
@@ -17,9 +19,9 @@ except ImportError:
 	import portage
 
 from portage import os
-from portage import catsplit, flatten, xpak
+from portage import xpak
 from portage.dbapi.dep_expand import dep_expand
-from portage.dep import use_reduce, paren_reduce
+from portage.dep import flatten, paren_reduce, use_reduce
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString, PackageSetNotFound
 from portage.util import ConfigProtect, ensure_dirs
 from portage.dbapi.vartree import dblink, tar_contents
@@ -61,7 +63,7 @@ def quickpkg_atom(options, infos, arg, eout):
 	for cpv in matches:
 		excluded_config_files = []
 		bintree.prevent_collision(cpv)
-		cat, pkg = catsplit(cpv)
+		cat, pkg = portage.catsplit(cpv)
 		dblnk = dblink(cat, pkg, root,
 			vartree.settings, treetype="vartree",
 			vartree=vartree)
@@ -206,7 +208,6 @@ def quickpkg_main(options, args, eout):
 		return 1
 	print()
 	eout.einfo("Packages now in '%s':" % bintree.pkgdir)
-	import math
 	units = {10:'K', 20:'M', 30:'G', 40:'T',
 		50:'P', 60:'E', 70:'Z', 80:'Y'}
 	for cpv, size in infos["successes"]:
@@ -240,8 +241,7 @@ def quickpkg_main(options, args, eout):
 
 if __name__ == "__main__":
 	usage = "quickpkg [options] <list of package atoms or package sets>"
-	from optparse import OptionParser
-	parser = OptionParser(usage=usage)
+	parser = optparse.OptionParser(usage=usage)
 	parser.add_option("--umask",
 		default="0077",
 		help="umask used during package creation (default is 0077)")
@@ -262,8 +262,7 @@ if __name__ == "__main__":
 		help="include files protected by CONFIG_PROTECT that have not been modified since installation (as a security precaution, default is 'n')")
 	options, args = parser.parse_args(sys.argv[1:])
 	if not options.ignore_default_opts:
-		from portage import settings
-		default_opts = settings.get("QUICKPKG_DEFAULT_OPTS","").split()
+		default_opts = portage.settings.get("QUICKPKG_DEFAULT_OPTS","").split()
 		options, args = parser.parse_args(default_opts + sys.argv[1:])
 	if not args:
 		parser.error("no packages atoms given")
@@ -273,10 +272,9 @@ if __name__ == "__main__":
 		parser.error("invalid umask: %s" % options.umask)
 	# We need to ensure a sane umask for the packages that will be created.
 	old_umask = os.umask(umask)
-	from portage.output import get_term_size, EOutput
-	eout = EOutput()
+	eout = portage.output.EOutput()
 	def sigwinch_handler(signum, frame):
-		lines, eout.term_columns = get_term_size()
+		lines, eout.term_columns =  portage.output.get_term_size()
 	signal.signal(signal.SIGWINCH, sigwinch_handler)
 	try:
 		retval = quickpkg_main(options, args, eout)
