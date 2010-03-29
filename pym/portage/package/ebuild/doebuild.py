@@ -301,7 +301,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	fetchonly=0, cleanup=0, dbkey=None, use_cache=1, fetchall=0, tree=None,
 	mydbapi=None, vartree=None, prev_mtimes=None,
 	fd_pipes=None, returnpid=False):
-
 	"""
 	Wrapper function that invokes specific ebuild phases through the spawning
 	of ebuild.sh
@@ -523,7 +522,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# we can temporarily override PORTAGE_TMPDIR with a random temp dir
 		# so that there's no need for locking and it can be used even if the
 		# user isn't in the portage group.
-		if mydo in ("info",):
+		if mydo in ("info", "pretend"):
 			tmpdir = tempfile.mkdtemp()
 			tmpdir_orig = mysettings["PORTAGE_TMPDIR"]
 			mysettings["PORTAGE_TMPDIR"] = tmpdir
@@ -785,7 +784,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					writemsg(_("!!! post postinst failed; exiting.\n"),
 						noiselevel=-1)
 			return phase_retval
-		elif mydo in ("prerm", "postrm", "config", "info"):
+		elif mydo in ("prerm", "postrm", "config", "info", "pretend"):
 			retval =  spawn(
 				_shell_quote(ebuild_sh_binary) + " " + mydo,
 				mysettings, debug=debug, free=1, logfile=logfile,

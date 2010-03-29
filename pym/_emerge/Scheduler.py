@@ -5,7 +5,9 @@ from __future__ import print_function
 
 import codecs
 import logging
+import shutil
 import sys
+import tempfile
 import textwrap
 import time
 import weakref
@@ -27,6 +29,7 @@ from portage.util import writemsg, writemsg_level
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
 
+from _emerge.BinpkgFetcher import BinpkgFetcher
 from _emerge.BinpkgPrefetcher import BinpkgPrefetcher
 from _emerge.Blocker import Blocker
 from _emerge.BlockerDB import BlockerDB
@@ -852,8 +855,83 @@ class Scheduler(PollScheduler):
 		os.environ["PORTAGE_NICENESS"] = "0"
 		os.execv(mynewargv[0], mynewargv)
 
-	def merge(self):
+	def _run_pkg_pretend(self):
+		shown_verifying_msg = False
+		quiet_settings = {}
+		for myroot, pkgsettings in self.pkgsettings.items():
+			quiet_config = portage.config(clone=pkgsettings)
+			quiet_config["PORTAGE_QUIET"] = "1"
+			quiet_config.backup_changes("PORTAGE_QUIET")
+			quiet_settings[myroot] = quiet_config
+			del quiet_config
 
+		failures = 0
+
+		for x in self._mergelist:
+			if not isinstance(x, Package):
+				continue
+
+			if x.operation == "uninstall":
+				continue
+
+			if x.metadata["EAPI"] in ("0", "1", "2", "3"):
+				continue
+
+			if "pretend" not in x.metadata.defined_phases:
+				continue
+
+			if not shown_verifying_msg:
+				shown_verifying_msg = True
+				self._status_msg("Running pkg_pretend")
+
+			root_config = x.root_config
+			quiet_config = quiet_settings[root_config.root]
+			settings = self.pkgsettings[root_config.root]
+			
+			if x.built:
+				bintree = root_config.trees["bintree"].dbapi.bintree
+				if bintree.isremote(x.cpv):
+					fetcher = BinpkgFetcher(background=False,
+						logfile=self.settings.get("PORTAGE_LOG_FILE"), pkg=x, scheduler=self._sched_iface)
+					fetcher.start()
+					fetcher.wait()
+					bintree.inject(x.cpv)
+					
+				tbz2_file = bintree.getname(x.cpv)
+				ebuild_file_name = x.cpv.split("/")[1] + ".ebuild"
+				ebuild_file_contents = portage.xpak.tbz2(tbz2_file).getfile(ebuild_file_name)
+				tmpdir = tempfile.mkdtemp()
+				os.makedirs(os.path.join(tmpdir, x.category, x.pf))
+				ebuild_path = os.path.join(tmpdir, x.category, x.pf, ebuild_file_name)
+				file = open(ebuild_path, 'w')
+				file.write(ebuild_file_contents)
+				file.close()
+				quiet_config["O"] = os.path.dirname(ebuild_path)
+
+				ret = portage.package.ebuild.doebuild.doebuild(ebuild_path, "pretend", \
+					root_config.root, settings, debug=(settings.get("PORTAGE_DEBUG", "") == 1),
+					mydbapi=self.trees[settings["ROOT"]]["bintree"].dbapi, tree="bintree")
+				ret = os.EX_OK
+				
+				shutil.rmtree(tmpdir)
+			else:
+				portdb = root_config.trees["porttree"].dbapi
+				ebuild_path = portdb.findname(x.cpv)
+				if ebuild_path is None:
+					raise AssertionError("ebuild not found for '%s'" % x.cpv)
+				quiet_config["O"] = os.path.dirname(ebuild_path)
+			
+				ret = portage.package.ebuild.doebuild.doebuild(ebuild_path, "pretend", \
+					root_config.root, settings, debug=(settings.get("PORTAGE_DEBUG", "") == 1),
+					mydbapi=self.trees[settings["ROOT"]]["porttree"].dbapi, tree="porttree")
+
+			if ret != os.EX_OK:
+				failures += 1
+		if failures:
+			return 1
+		return os.EX_OK
+
+	def merge(self):
 		if "--resume" in self.myopts:
 			# We're resuming.
 			portage.writemsg_stdout(
@@ -909,6 +987,10 @@ class Scheduler(PollScheduler):
 		if rval != os.EX_OK and not keep_going:
 			return rval
 
+		rval = self._run_pkg_pretend()
+		if rval != os.EX_OK:
+			return rval
+			
 		while True:
 			rval = self._merge()
 			if rval == os.EX_OK or fetchonly or not keep_going:
