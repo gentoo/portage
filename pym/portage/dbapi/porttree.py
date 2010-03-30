@@ -402,7 +402,7 @@ class portdbapi(dbapi):
 		self._aux_cache_keys = set(
 			["DEPEND", "EAPI", "INHERITED", "IUSE", "KEYWORDS", "LICENSE",
 			"PDEPEND", "PROPERTIES", "PROVIDE", "RDEPEND", "repository",
-			"RESTRICT", "SLOT"])
+			"RESTRICT", "SLOT", "DEFINED_PHASES"])
 
 		self._aux_cache = {}
 		self._broken_ebuilds = set()

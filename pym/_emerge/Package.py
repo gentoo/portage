@@ -29,7 +29,8 @@ class Package(Task):
 		"BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "EAPI",
 		"INHERITED", "IUSE", "KEYWORDS",
 		"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
-		"repository", "PROPERTIES", "RESTRICT", "SLOT", "USE", "_mtime_"]
+		"repository", "PROPERTIES", "RESTRICT", "SLOT", "USE",
+		"_mtime_", "DEFINED_PHASES"]
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
@@ -333,3 +334,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 	@property
 	def restrict(self):
 		return self['RESTRICT'].split()
+
+	@property
+	def defined_phases(self):
+		return self['DEFINED_PHASES'].split()
