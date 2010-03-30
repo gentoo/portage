@@ -1829,7 +1829,7 @@ class vardbapi(dbapi):
 			["BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "DESCRIPTION",
 			"EAPI", "HOMEPAGE", "IUSE", "KEYWORDS",
 			"LICENSE", "PDEPEND", "PROPERTIES", "PROVIDE", "RDEPEND",
-			"repository", "RESTRICT" , "SLOT", "USE"])
+			"repository", "RESTRICT" , "SLOT", "USE", "DEFINED_PHASES"])
 		self._aux_cache_obj = None
 		self._aux_cache_filename = os.path.join(self.root,
 			CACHE_PATH, "vdb_metadata.pickle")
