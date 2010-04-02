@@ -3,9 +3,10 @@
 # Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import errno
 import xml.etree.ElementTree as ET
 from xml.parsers.expat import ExpatError
-from portage.exception import ParseError
+from portage.exception import FileNotFound, ParseError, PermissionDenied
 
 __all__ = [
 	"make_herd_base"
@@ -44,7 +45,14 @@ def make_herd_base(filename):
 		xml_tree = ET.parse(filename)
 	except ExpatError as e:
 		raise ParseError("metadata.xml: " + str(e))
-	
+	except EnvironmentError as e:
+		func_call = "open('%s')" % filename
+		if e.errno == errno.EACCES:
+			raise PermissionDenied(func_call)
+		elif e.errno == errno.ENOENT:
+			raise FileNotFound(filename)
+		raise
+
 	herds = xml_tree.findall('herd')
 	for h in herds:
 		_herd_name = h.find('name')
