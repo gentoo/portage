@@ -1,4 +1,5 @@
-# Copyright 1999-2009 Gentoo Foundation
+#!/bin/bash
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # We need this next line for "die" and "assert". It expands

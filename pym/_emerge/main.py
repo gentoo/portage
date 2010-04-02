@@ -1499,12 +1499,21 @@ def emerge_main():
 
 		# Ensure atoms are valid before calling unmerge().
 		vardb = trees[settings["ROOT"]]["vartree"].dbapi
+		portdb = trees[settings["ROOT"]]["porttree"].dbapi
+		bindb = trees[settings["ROOT"]]["bintree"].dbapi
 		valid_atoms = []
 		for x in myfiles:
 			if is_valid_package_atom(x):
 				try:
-					valid_atoms.append(
-						dep_expand(x, mydb=vardb, settings=settings))
+					#look at the installed files first, if there is no match
+					#look at the ebuilds, since EAPI 4 allows running pkg_info
+					#on non-installed packages
+					valid_atom = dep_expand(x, mydb=vardb, settings=settings)
+					if valid_atom.cp.split("/")[0] == "null":
+						valid_atom = dep_expand(x, mydb=portdb, settings=settings)
+					if valid_atom.cp.split("/")[0] == "null" and "--usepkg" in myopts:
+						valid_atom = dep_expand(x, mydb=bindb, settings=settings)
+					valid_atoms.append(valid_atom)
 				except portage.exception.AmbiguousPackageName as e:
 					msg = "The short ebuild name \"" + x + \
 						"\" is ambiguous.  Please specify " + \

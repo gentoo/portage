@@ -1,4 +1,4 @@
-# Copyright 2007 Gentoo Foundation
+# Copyright 2007-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import time
@@ -328,7 +328,7 @@ class RebuiltBinaries(EverythingSet):
 			bin_build_time, = self._bindb.aux_get(cpv, self._aux_keys)
 		except KeyError:
 			return False
-		return inst_build_time != bin_build_time
+		return bool(bin_build_time and (inst_build_time != bin_build_time))
 
 	def singleBuilder(cls, options, settings, trees):
 		return RebuiltBinaries(trees["vartree"].dbapi,

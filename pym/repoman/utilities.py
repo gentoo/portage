@@ -176,7 +176,8 @@ def check_metadata(metadata_xml_content, herd_base):
 	except (ExpatError, ) as e:
 		raise exception.ParseError("metadata.xml: " + str(e))
 
-	check_metadata_herds(xml_tree, herd_base)
+	if herd_base is not None:
+		check_metadata_herds(xml_tree, herd_base)
 
 
 def FindPackagesToScan(settings, startdir, reposplit):

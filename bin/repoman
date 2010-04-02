@@ -64,10 +64,9 @@ import portage.checksum
 import portage.const
 import portage.dep
 portage.dep._dep_check_strict = True
-import portage.exception
 from portage import cvstree, normalize_path
 from portage import util
-from portage.exception import ParseError
+from portage.exception import FileNotFound, ParseError, PermissionDenied
 from portage.manifest import Manifest
 from portage.process import find_binary, spawn
 from portage.output import bold, create_color_func, darkgreen, \
@@ -982,8 +981,12 @@ thirdpartymirrors = portage.flatten(list(repoman_settings.thirdpartymirrors().va
 
 try:
 	herd_base = make_herd_base(os.path.join(repoman_settings["PORTDIR"], "metadata/herds.xml"))
-except (EnvironmentError, ParseError) as e:
+except (EnvironmentError, ParseError, PermissionDenied) as e:
 	err(str(e))
+except FileNotFound:
+	# TODO: Download as we do for metadata.dtd, but add a way to
+	# disable for non-gentoo repoman users who may not have herds.
+	herd_base = None
 
 for x in scanlist:
 	#ebuilds and digests added to cvs respectively.
