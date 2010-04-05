@@ -40,6 +40,6 @@ cd $TMP/${PKG}-${V}
 chmod a+x autogen.sh && ./autogen.sh || { echo "autogen failed!"; exit -1; };
 rm -f autogen.sh tabcheck.py tarball.sh commit
 cd $TMP
-tar -jcf ${TMP}/${PKG}-${V}.tar.bz2 ${PKG}-${V}
+tar --numeric-owner -jcf ${TMP}/${PKG}-${V}.tar.bz2 ${PKG}-${V}
 rm -R ${TMP}/${PKG}-${V}
 ls -la ${TMP}/${PKG}-${V}.tar.bz2
