@@ -138,6 +138,9 @@ class EbuildQuote(LineCheck):
 		r'|(^\s*(' + "|".join(_ignored_commands) + r')\s+)')
 	var_names = ["D", "DISTDIR", "FILESDIR", "S", "T", "ROOT", "WORKDIR"]
 
+	# EAPI=3/Prefix vars
+	var_names += ["ED", "EPREFIX", "EROOT"]
+
 	# variables for games.eclass
 	var_names += ["Ddir", "GAMES_PREFIX_OPT", "GAMES_DATADIR",
 		"GAMES_DATADIR_BASE", "GAMES_SYSCONFDIR", "GAMES_STATEDIR",
