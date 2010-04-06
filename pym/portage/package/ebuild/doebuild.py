@@ -522,7 +522,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# we can temporarily override PORTAGE_TMPDIR with a random temp dir
 		# so that there's no need for locking and it can be used even if the
 		# user isn't in the portage group.
-		if mydo in ("info", "pretend"):
+		if mydo in ("info",):
 			tmpdir = tempfile.mkdtemp()
 			tmpdir_orig = mysettings["PORTAGE_TMPDIR"]
 			mysettings["PORTAGE_TMPDIR"] = tmpdir
