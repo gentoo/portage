@@ -3,7 +3,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os, sys, pwd, grp, platform
-from portage.const import PORTAGE_GROUPNAME, PORTAGE_USERNAME
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -77,8 +76,8 @@ except KeyError:
 
 #Discover the uid and gid of the portage user/group
 try:
-	portage_uid = pwd.getpwnam(PORTAGE_USERNAME)[2]
-	portage_gid = grp.getgrnam(PORTAGE_GROUPNAME)[2]
+	portage_uid = pwd.getpwnam('portage')[2]
+	portage_gid = grp.getgrnam('portage')[2]
 	if secpass < 1 and portage_gid in os.getgroups():
 		secpass=1
 except KeyError:
@@ -106,7 +105,7 @@ else:
 			from subprocess import getstatusoutput
 		except ImportError:
 			from commands import getstatusoutput
-		mystatus, myoutput = getstatusoutput("id -G %s" % PORTAGE_USERNAME)
+		mystatus, myoutput = getstatusoutput("id -G %s" % 'portage')
 		if mystatus == os.EX_OK:
 			for x in myoutput.split():
 				try:
