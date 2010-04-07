@@ -897,13 +897,10 @@ class Scheduler(PollScheduler):
 					fetcher.wait()
 
 				tbz2_file = bintree.getname(x.cpv)
-				ebuild_file_name = x.cpv.split("/")[1] + ".ebuild"
-				ebuild_file_contents = portage.xpak.tbz2(tbz2_file).getfile(ebuild_file_name)
-				os.makedirs(os.path.join(tmpdir, x.category, x.pf))
-				ebuild_path = os.path.join(tmpdir, x.category, x.pf, ebuild_file_name)
-				file = open(ebuild_path, 'wb')
-				file.write(ebuild_file_contents)
-				file.close()
+				infloc = os.path.join(tmpdir, x.category, x.pf, "build-info")
+				os.makedirs(infloc)
+				portage.xpak.tbz2(tbz2_file).unpackinfo(infloc)
+				ebuild_path = os.path.join(infloc, x.pf + ".ebuild")
 
 			else:
 				tree = "porttree"
