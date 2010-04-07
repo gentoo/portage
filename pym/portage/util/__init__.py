@@ -1046,14 +1046,19 @@ def ensure_dirs(dir_path, *args, **kwargs):
 		func_call = "makedirs('%s')" % dir_path
 		if oe.errno in (errno.EEXIST, errno.EISDIR):
 			pass
-		elif oe.errno == errno.EPERM:
-			raise OperationNotPermitted(func_call)
-		elif oe.errno == errno.EACCES:
-			raise PermissionDenied(func_call)
-		elif oe.errno == errno.EROFS:
-			raise ReadOnlyFileSystem(func_call)
 		else:
-			raise
+			if os.path.isdir(dir_path):
+				# NOTE: DragonFly raises EPERM for makedir('/')
+				# and that is supposed to be ignored here.
+				pass
+			elif oe.errno == errno.EPERM:
+				raise OperationNotPermitted(func_call)
+			elif oe.errno == errno.EACCES:
+				raise PermissionDenied(func_call)
+			elif oe.errno == errno.EROFS:
+				raise ReadOnlyFileSystem(func_call)
+			else:
+				raise
 	perms_modified = apply_permissions(dir_path, *args, **kwargs)
 	return created_dir or perms_modified
 
