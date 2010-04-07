@@ -901,7 +901,7 @@ class Scheduler(PollScheduler):
 				ebuild_file_contents = portage.xpak.tbz2(tbz2_file).getfile(ebuild_file_name)
 				os.makedirs(os.path.join(tmpdir, x.category, x.pf))
 				ebuild_path = os.path.join(tmpdir, x.category, x.pf, ebuild_file_name)
-				file = open(ebuild_path, 'w')
+				file = open(ebuild_path, 'wb')
 				file.write(ebuild_file_contents)
 				file.close()
 
