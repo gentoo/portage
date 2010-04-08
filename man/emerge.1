@@ -504,6 +504,13 @@ automatically when using binary packages
 (\fB\-\-usepkgonly\fR or \fB\-\-getbinpkgonly\fR) together with
 \fB\-\-update\fR and \fB\-\-deep\fR.
 .TP
+.BR "\-\-rebuilt\-binaries\-timestamp[=TIMESTAMP]"
+This option modifies emerge's behaviour only if
+\fB\-\-rebuilt\-binaries\fR is given. Only binaries that
+have a BUILD_TIME that is larger than the given TIMESTAMP
+and that is larger than that of the installed package will
+be considered by the rebuilt\-binaries logic.
+.TP
 .BR "\-\-reinstall changed\-use"
 Tells emerge to include installed packages where USE flags have
 changed since installation.  Unlike \fB\-\-newuse\fR, this option does

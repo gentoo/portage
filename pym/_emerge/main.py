@@ -637,6 +637,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"type"     : "choice",
 			"choices"  : ("True", "n")
 		},
+		
+		"--rebuilt-binaries-timestamp": {
+			"help"   : "use only binaries that are newer than this " + \
+			           "timestamp for --rebuilt-binaries",
+			"action" : "store"
+		},
 
 		"--root": {
 		 "help"   : "specify the target root filesystem for merging packages",
@@ -855,6 +861,20 @@ def parse_opts(tmpcmdline, silent=False):
 					(myoptions.load_average,), noiselevel=-1)
 
 		myoptions.load_average = load_average
+	
+	if myoptions.rebuilt_binaries_timestamp:
+		try:
+			rebuilt_binaries_timestamp = int(myoptions.rebuilt_binaries_timestamp)
+		except ValueError:
+			rebuilt_binaries_timestamp = -1
+
+		if rebuilt_binaries_timestamp < 0:
+			rebuilt_binaries_timestamp = 0
+			if not silent:
+				writemsg("!!! Invalid --rebuilt-binaries-timestamp parameter: '%s'\n" % \
+					(myoptions.rebuilt_binaries_timestamp,), noiselevel=-1)
+
+		myoptions.rebuilt_binaries_timestamp = rebuilt_binaries_timestamp
 
 	if myoptions.use_ebuild_visibility in ("True",):
 		myoptions.use_ebuild_visibility = True
