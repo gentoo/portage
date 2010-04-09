@@ -774,7 +774,7 @@ class binarytree(object):
 					f = atomic_ofstream(pkgindex_file)
 					pkgindex.write(f)
 					f.close()
-				except PortageException:
+				except (IOError, PortageException):
 					if os.access(os.path.dirname(pkgindex_file), os.W_OK):
 						raise
 					# The current user doesn't have permission to cache the
