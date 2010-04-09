@@ -335,6 +335,11 @@ def cpv_getkey(mycpv):
 	else:
 		return mysplit[0]
 
+def cpv_getversion(mycpv):
+	"""Returns the v (including revision) from an cpv."""
+	cp = cpv_getkey(mycpv)
+	return mycpv[len(cp+"-"):]
+
 def catsplit(mydep):
         return mydep.split("/", 1)
 

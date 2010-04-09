@@ -187,6 +187,7 @@ class config(object):
 		"PORTAGE_TMPDIR", "PORTAGE_UPDATE_ENV",
 		"PORTAGE_VERBOSE", "PORTAGE_WORKDIR_MODE",
 		"PORTDIR", "PORTDIR_OVERLAY", "PREROOTPATH", "PROFILE_PATHS",
+		"REPLACING_VERSIONS", "REPLACED_BY_VERSION",
 		"ROOT", "ROOTPATH", "T", "TMP", "TMPDIR",
 		"USE_EXPAND", "USE_ORDER", "WORKDIR",
 		"XARGS",
@@ -2575,6 +2576,14 @@ class config(object):
 
 		if phase == 'depend':
 			mydict.pop('FILESDIR', None)
+
+		if phase not in ("pretend", "setup", "preinst", "postinst") or \
+			eapi in ("0", "1", "2", "3"):
+			mydict.pop("REPLACING_VERSIONS", None)
+
+		if phase not in ("prerm", "postrm") or \
+			eapi in ("0", "1", "2", "3"):
+			mydict.pop("REPLACED_BY_VERSION", None)
 
 		return mydict
 
