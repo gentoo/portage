@@ -775,8 +775,7 @@ class binarytree(object):
 					pkgindex.write(f)
 					f.close()
 				except PortageException:
-					if os.access(os.path.join(
-						self.settings["ROOT"], CACHE_PATH), os.W_OK):
+					if os.access(os.path.dirname(pkgindex_file), os.W_OK):
 						raise
 					# The current user doesn't have permission to cache the
 					# file, but that's alright.
