@@ -23,8 +23,6 @@ import codecs
 import errno
 import logging
 import sys
-from xml.parsers.expat import ExpatError
-import xml.etree.ElementTree as ET
 from portage import os
 from portage import subprocess_getstatusoutput
 from portage import _encodings
@@ -108,17 +106,12 @@ def have_profile_dir(path, maxdepth=3, filename="profiles.desc"):
 		path = normalize_path(path + "/..")
 		maxdepth -= 1
 
-def parse_metadata_use(metadata_xml_content, uselist=None):
+def parse_metadata_use(xml_tree, uselist=None):
 	"""
 	Records are wrapped in XML as per GLEP 56
 	returns a dict of the form a list of flags"""
 	if uselist is None:
 		uselist = []
-
-	try:
-		xml_tree = ET.fromstring(metadata_xml_content)
-	except (ExpatError, ) as e:
-		raise exception.ParseError("metadata.xml: " + str(e))
 
 	usetag = xml_tree.findall("use")
 	if not usetag:
@@ -154,16 +147,9 @@ def check_metadata_herds(xml_tree, herd_base):
 	if unknown_herds:
 		raise UnknownHerdsError(unknown_herds)
 
-
-def check_metadata(metadata_xml_content, herd_base):
-	try:
-		xml_tree = ET.fromstring(metadata_xml_content)
-	except (ExpatError, ) as e:
-		raise exception.ParseError("metadata.xml: " + str(e))
-
+def check_metadata(xml_tree, herd_base):
 	if herd_base is not None:
 		check_metadata_herds(xml_tree, herd_base)
-
 
 def FindPackagesToScan(settings, startdir, reposplit):
 	""" Try to find packages that need to be scanned

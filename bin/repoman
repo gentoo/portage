@@ -10,10 +10,6 @@ from __future__ import print_function
 
 import calendar
 import codecs
-try:
-	from subprocess import getstatusoutput as subprocess_getstatusoutput
-except ImportError:
-	from commands import getstatusoutput as subprocess_getstatusoutput
 import errno
 import formatter
 import logging
@@ -25,6 +21,8 @@ import sys
 import tempfile
 import time
 import platform
+import xml.etree.ElementTree
+from xml.parsers.expat import ExpatError
 
 try:
 	from urllib.request import urlopen as urllib_request_urlopen
@@ -45,6 +43,7 @@ except ImportError:
 	import portage
 portage._disable_legacy_globals()
 from portage import os
+from portage import subprocess_getstatusoutput
 from portage import _encodings
 from portage import _unicode_encode
 from portage import StringIO
@@ -981,6 +980,14 @@ check_ebuild_notadded = not \
 # Build a regex from thirdpartymirrors for the SRC_URI.mirror check.
 thirdpartymirrors = portage.flatten(list(repoman_settings.thirdpartymirrors().values()))
 
+class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
+	"""
+	Implements doctype() as required to avoid deprecation warnings with
+	>=python-2.7.
+	"""
+	def doctype(self, name, pubid, system):
+		pass
+
 try:
 	herd_base = make_herd_base(os.path.join(repoman_settings["PORTDIR"], "metadata/herds.xml"))
 except (EnvironmentError, ParseError, PermissionDenied) as e:
@@ -1307,28 +1314,23 @@ for x in scanlist:
 
 		# read metadata.xml into memory
 		try:
-			f = open(os.path.join(checkdir, "metadata.xml"))
-			_metadata_xml = f.read()
-			f.close()
-		except (EnvironmentError, ) as e:
+			_metadata_xml = xml.etree.ElementTree.parse(
+				os.path.join(checkdir, "metadata.xml"),
+				parser=xml.etree.ElementTree.XMLParser(
+					target=_MetadataTreeBuilder()))
+		except (ExpatError, EnvironmentError) as e:
 			metadata_bad = True
 			stats["metadata.bad"] += 1
 			fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
 			del e
 		else:
 			# load USE flags from metadata.xml
-			try:
-				utilities.parse_metadata_use(_metadata_xml, muselist)
-			except (EnvironmentError, ParseError) as e:
-				metadata_bad = True
-				stats["metadata.bad"] += 1
-				fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
-				del e
+			utilities.parse_metadata_use(_metadata_xml, muselist)
 
 			# Run other metadata.xml checkers
 			try:
 				utilities.check_metadata(_metadata_xml, herd_base)
-			except (EnvironmentError, ParseError, utilities.UnknownHerdsError) as e:
+			except (utilities.UnknownHerdsError, ) as e:
 				metadata_bad = True
 				stats["metadata.bad"] += 1
 				fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
