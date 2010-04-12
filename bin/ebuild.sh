@@ -1086,7 +1086,7 @@ dyn_install() {
 	set -f
 	local f x
 	IFS=$' \t\n\r'
-	for f in CATEGORY DEFINED_PHASES FEATURES INHERITED IUSE  \
+	for f in CATEGORY DEFINED_PHASES FEATURES INHERITED IUSE REQUIRED_USE \
 		PF PKGUSE SLOT KEYWORDS HOMEPAGE DESCRIPTION ; do
 		x=$(echo -n ${!f})
 		[[ -n $x ]] && echo "$x" > $f
@@ -1260,6 +1260,7 @@ inherit() {
 	local prev_export_funcs_var=$__export_funcs_var
 
 	local B_IUSE
+	local B_REQUIRED_USE
 	local B_DEPEND
 	local B_RDEPEND
 	local B_PDEPEND
@@ -1308,12 +1309,13 @@ inherit() {
 		set -f
 
 		# Retain the old data and restore it later.
-		unset B_IUSE B_DEPEND B_RDEPEND B_PDEPEND
+		unset B_IUSE B_REQUIRED_USE B_DEPEND B_RDEPEND B_PDEPEND
 		[ "${IUSE+set}"       = set ] && B_IUSE="${IUSE}"
+		[ "${REQUIRED_USE+set}" = set ] && B_REQUIRED_USE="${REQUIRED_USE}"
 		[ "${DEPEND+set}"     = set ] && B_DEPEND="${DEPEND}"
 		[ "${RDEPEND+set}"    = set ] && B_RDEPEND="${RDEPEND}"
 		[ "${PDEPEND+set}"    = set ] && B_PDEPEND="${PDEPEND}"
-		unset IUSE DEPEND RDEPEND PDEPEND
+		unset IUSE REQUIRED_USE DEPEND RDEPEND PDEPEND
 		#turn on glob expansion
 		set +f
 
@@ -1325,12 +1327,16 @@ inherit() {
 		# If each var has a value, append it to the global variable E_* to
 		# be applied after everything is finished. New incremental behavior.
 		[ "${IUSE+set}"       = set ] && export E_IUSE="${E_IUSE} ${IUSE}"
+		[ "${REQUIRED_USE+set}"       = set ] && export E_REQUIRED_USE="${E_REQUIRED_USE} ${REQUIRED_USE}"
 		[ "${DEPEND+set}"     = set ] && export E_DEPEND="${E_DEPEND} ${DEPEND}"
 		[ "${RDEPEND+set}"    = set ] && export E_RDEPEND="${E_RDEPEND} ${RDEPEND}"
 		[ "${PDEPEND+set}"    = set ] && export E_PDEPEND="${E_PDEPEND} ${PDEPEND}"
 
 		[ "${B_IUSE+set}"     = set ] && IUSE="${B_IUSE}"
 		[ "${B_IUSE+set}"     = set ] || unset IUSE
+		
+		[ "${B_REQUIRED_USE+set}"     = set ] && REQUIRED_USE="${B_REQUIRED_USE}"
+		[ "${B_REQUIRED_USE+set}"     = set ] || unset REQUIRED_USE
 
 		[ "${B_DEPEND+set}"   = set ] && DEPEND="${B_DEPEND}"
 		[ "${B_DEPEND+set}"   = set ] || unset DEPEND
@@ -1600,7 +1606,7 @@ source_all_bashrcs() {
 # when portage is upgrading itself.
 
 READONLY_EBUILD_METADATA="DEFINED_PHASES DEPEND DESCRIPTION
-	EAPI HOMEPAGE INHERITED IUSE KEYWORDS LICENSE
+	EAPI HOMEPAGE INHERITED IUSE REQUIRED_USE KEYWORDS LICENSE
 	PDEPEND PROVIDE RDEPEND RESTRICT SLOT SRC_URI"
 
 READONLY_PORTAGE_VARS="D EBUILD EBUILD_PHASE \
@@ -1774,7 +1780,7 @@ preprocess_ebuild_env() {
 export SANDBOX_ON="1"
 export S=${WORKDIR}/${P}
 
-unset E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
+unset E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND
 
 # Turn of extended glob matching so that g++ doesn't get incorrectly matched.
 shopt -u extglob
@@ -1878,7 +1884,7 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
 		# In order to ensure correct interaction between ebuilds and
 		# eclasses, they need to be unset before this process of
 		# interaction begins.
-		unset DEPEND RDEPEND PDEPEND IUSE
+		unset DEPEND RDEPEND PDEPEND IUSE REQUIRED_USE
 
 		if [[ $PORTAGE_DEBUG != 1 || ${-/x/} != $- ]] ; then
 			source "$EBUILD" || die "error sourcing ebuild"
@@ -1906,8 +1912,9 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
 		DEPEND="${DEPEND} ${E_DEPEND}"
 		RDEPEND="${RDEPEND} ${E_RDEPEND}"
 		PDEPEND="${PDEPEND} ${E_PDEPEND}"
-
-		unset ECLASS E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
+		REQUIRED_USE="${REQUIRED_USE} ${E_REQUIRED_USE}"
+		
+		unset ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND 
 
 		# alphabetically ordered by $EBUILD_PHASE value
 		case "$EAPI" in
@@ -2151,7 +2158,7 @@ ebuild_main() {
 		fi
 
 		auxdbkeys="DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE
-			DESCRIPTION KEYWORDS INHERITED IUSE UNUSED_00 PDEPEND PROVIDE EAPI
+			DESCRIPTION KEYWORDS INHERITED IUSE REQUIRED_USE PDEPEND PROVIDE EAPI
 			PROPERTIES DEFINED_PHASES UNUSED_05 UNUSED_04
 			UNUSED_03 UNUSED_02 UNUSED_01"
 

@@ -140,7 +140,7 @@ class config(object):
 	"""
 
 	_setcpv_aux_keys = ('DEFINED_PHASES', 'DEPEND', 'EAPI',
-		'INHERITED', 'IUSE', 'KEYWORDS', 'LICENSE', 'PDEPEND',
+		'INHERITED', 'IUSE', 'REQUIRED_USE', 'KEYWORDS', 'LICENSE', 'PDEPEND',
 		'PROPERTIES', 'PROVIDE', 'RDEPEND', 'SLOT',
 		'repository', 'RESTRICT', 'LICENSE',)
 

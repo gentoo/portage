@@ -30,7 +30,7 @@ class Package(Task):
 		"INHERITED", "IUSE", "KEYWORDS",
 		"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
 		"repository", "PROPERTIES", "RESTRICT", "SLOT", "USE",
-		"_mtime_", "DEFINED_PHASES"]
+		"_mtime_", "DEFINED_PHASES", "REQUIRED_USE"]
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)

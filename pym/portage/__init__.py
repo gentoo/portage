@@ -480,7 +480,7 @@ def _movefile(src, dest, **kwargs):
 auxdbkeys = (
   'DEPEND',    'RDEPEND',   'SLOT',      'SRC_URI',
 	'RESTRICT',  'HOMEPAGE',  'LICENSE',   'DESCRIPTION',
-	'KEYWORDS',  'INHERITED', 'IUSE', 'UNUSED_00',
+	'KEYWORDS',  'INHERITED', 'IUSE', 'REQUIRED_USE',
 	'PDEPEND',   'PROVIDE', 'EAPI',
 	'PROPERTIES', 'DEFINED_PHASES', 'UNUSED_05', 'UNUSED_04',
 	'UNUSED_03', 'UNUSED_02', 'UNUSED_01',

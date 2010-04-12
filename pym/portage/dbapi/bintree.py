@@ -54,7 +54,8 @@ class bindbapi(fakedbapi):
 		self._aux_cache_keys = set(
 			["BUILD_TIME", "CHOST", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
 			"LICENSE", "PDEPEND", "PROPERTIES", "PROVIDE",
-			"RDEPEND", "repository", "RESTRICT", "SLOT", "USE", "DEFINED_PHASES"])
+			"RDEPEND", "repository", "RESTRICT", "SLOT", "USE", "DEFINED_PHASES",
+			"REQUIRED_USE"])
 		self._aux_cache_slot_dict = slot_dict_class(self._aux_cache_keys)
 		self._aux_cache = {}
 
@@ -224,7 +225,8 @@ class binarytree(object):
 			self._pkgindex_aux_keys = \
 				["BUILD_TIME", "CHOST", "DEPEND", "DESCRIPTION", "EAPI",
 				"IUSE", "KEYWORDS", "LICENSE", "PDEPEND", "PROPERTIES",
-				"PROVIDE", "RDEPEND", "repository", "SLOT", "USE", "DEFINED_PHASES"]
+				"PROVIDE", "RDEPEND", "repository", "SLOT", "USE", "DEFINED_PHASES",
+				"REQUIRED_USE"]
 			self._pkgindex_aux_keys = list(self._pkgindex_aux_keys)
 			self._pkgindex_use_evaluated_keys = \
 				("LICENSE", "RDEPEND", "DEPEND",
@@ -249,7 +251,8 @@ class binarytree(object):
 				"RESTRICT": "",
 				"SLOT"    : "0",
 				"USE"     : "",
-				"DEFINED_PHASES" : ""
+				"DEFINED_PHASES" : "",
+				"REQUIRED_USE" : ""
 			}
 			self._pkgindex_inherited_keys = ["CHOST", "repository"]
 			self._pkgindex_default_header_data = {
