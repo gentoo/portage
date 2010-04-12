@@ -721,6 +721,63 @@ class Scheduler(PollScheduler):
 			return 1
 		return os.EX_OK
 
+	def _check_required_use(self):
+		# Make sure all constraints expressed in REQUIRED_USE are satisfied
+
+		failures = 0
+		shown_verifying_msg = False
+		for x in self._mergelist:
+			if not isinstance(x, Package):
+				continue
+
+			if x.operation == "uninstall":
+				continue
+
+			if x.metadata["EAPI"] in ("0", "1", "2", "3"):
+				continue
+
+			if not x.metadata["REQUIRED_USE"]:
+				continue
+
+			if not shown_verifying_msg:
+				shown_verifying_msg = True
+				self._status_msg("Verifying use flag constraints")
+
+			required_use = x.metadata["REQUIRED_USE"]
+			use = x.metadata["USE"].split()
+			iuse = x.metadata["IUSE"].split()
+
+			try:
+				sat, unsat = portage.dep.check_required_use(required_use, use, iuse)
+			except portage.exception.InvalidRequiredUseString as e:
+				failures += 1
+				portage.writemsg("!!! Invalid REQUIRED_USE specified by " + \
+					"'%s': %s\n" % (x.cpv, str(e)), noiselevel=-1)
+				del e
+				continue
+
+			if unsat:
+				failures += 1
+				if sat:
+					#not all constraints are violated, display the them all to not annoy
+					#the user with another violated constraint after he fixed the first one
+					portage.writemsg(
+						"!!! Use flag constraints for '%s' not met.\n" % x.cpv + \
+						"!!! violated constraint(s): '%s'\n" % unsat + \
+						"!!! all constraint(s):      '%s'\n" % required_use, noiselevel=-1)
+				else:
+					portage.writemsg(
+						"!!! Use flag constraints for '%s' not met.\n" % x.cpv + \
+						"!!! constraint(s): '%s'\n" % required_use, noiselevel=-1)
+		if failures:
+			portage.writemsg("\n")
+			portage.writemsg("Explanation: || ( a b c ): at least one of 'a', 'b' or 'c' must be enabled\n")
+			portage.writemsg("Explanation: ^^ ( a b c ): exactly one of 'a', 'b' or 'c' must be enabled\n")
+			portage.writemsg("Explanation: a? ( b ): b needs to be enabled if a is enabled\n")
+			portage.writemsg("Explanation: '!'-prefix reverses the required state\n")
+			return 1
+		return os.EX_OK
+
 	def _add_prefetchers(self):
 
 		if not self._parallel_fetch:
@@ -988,6 +1045,10 @@ class Scheduler(PollScheduler):
 		#       is enabled and corrupt manifests are detected.
 		rval = self._check_manifests()
 		if rval != os.EX_OK and not keep_going:
+			return rval
+
+		rval = self._check_required_use()
+		if rval != os.EX_OK:
 			return rval
 
 		rval = self._run_pkg_pretend()
