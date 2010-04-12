@@ -169,13 +169,13 @@ class paren_normalize(list):
 		i = iter(src)
 		for x in i:
 			if isinstance(x, basestring):
-				if x == '||':
-					x = self._zap_parens(next(i), [], disjunction=True)
-					if len(x) == 1:
-						dest.append(x[0])
+				if x in ('||', '^^'):
+					y = self._zap_parens(next(i), [], disjunction=True)
+					if len(y) == 1:
+						dest.append(y[0])
 					else:
-						dest.append("||")
 						dest.append(x)
+						dest.append(y)
 				elif x.endswith("?"):
 					dest.append(x)
 					dest.append(self._zap_parens(next(i), []))
@@ -1411,3 +1411,115 @@ def match_from_list(mydep, candidate_list):
 			mylist.append(x)
 
 	return mylist
+
+def _check_required_use(constraints, use, iuse):
+	"""
+	Checks if the use flags listed in 'use' satisfy all
+	constraints specified in 'constraints'. Returns a tuple
+	containing the satisfied and unsatisfied and constraints
+	that were ignored because of the use flag configuration.
+
+	@param constraints: List of constraints as definied by REQUIRED_USE processed by paren_normalize
+	@type constraints: List
+	@param use: Enabled use flags
+	@param use: List
+	@param iuse: Referenceable use flags
+	@param iuse: List
+	@rtype: Tuple of three lists
+	@return: 1. all satisifed constraints, all unsatisfied constraints,
+				all constraints not in effect due to use flag configuration
+	"""
+	sat = []
+	unsat = []
+	ignore = []
+	skip_next = False
+	for id, constraint in enumerate(constraints):
+		#constraint is one of:
+		#a) an operator (||, ^^)
+		#b) a use flag (use, !use)
+		#c) a use conditional (use?, !use?)
+
+		if skip_next:
+			#We skip all lists of constraints here, because they are handled together
+			#with theier operator / use conditional
+			skip_next = False
+			continue
+
+		if not isinstance(constraint, basestring):
+			raise portage.exception.InvalidRequiredUseString(
+				("check_required_use(): '%s' constraint list without " + \
+				"use conditional or operator") % (constraints,))
+
+		if constraint[-1] == "?":
+			#a use conditional
+			skip_next = True
+			if constraint[0] == "!":
+				not_use_cons = True
+				flag = constraint[1:-1]
+			else:
+				not_use_cons = False
+				flag = constraint[:-1]
+
+			if not flag in iuse:
+				raise portage.exception.InvalidRequiredUseString(
+					("check_required_use(): '%s' contains the use flag '%s', which" + \
+					" is not in IUSE") % (constraints, flag))
+
+			if (not_use_cons and flag in use) or \
+				(not not_use_cons and not flag in use):
+				#we are at a use conditional and the use flag is in such a state,
+				#that we don't need to look at it. We add it to ignore here, because
+				#both sat and unsat would cause problems. I.e. A? ( B C? ( D ) )
+				#If B is enabled and C is not and we'd put C? ( D ) in unsat, we would claim
+				#A? ( B C? ( D ) ) not be satisfied, which is wrong.
+				#I.e. A? ( !B C? ( D ) )
+				#If B is enabled and C is not and we would put C? ( D ) in sat, we would claim that
+				#A? ( !B C? ( D ) ) is satisfied, which is wrong.
+				ignore.append([constraint, constraints[id+1]])
+			else:
+				sub_sat, sub_unsat, sub_ignore = _check_required_use(constraints[id+1], use, iuse)
+				if sub_unsat or not sub_sat:
+					#We need all sub constraints satisifed. Be aware of cases like A? ( B? ( C ) ),
+					#when B is disabled.
+					unsat.append([constraint, constraints[id+1]])
+				else:
+					sat.append([constraint, constraints[id+1]])
+		elif constraint in ("||", "^^"):
+			skip_next = True
+			sub_sat, sub_unsat, sub_ignore = _check_required_use(constraints[id+1], use, iuse)
+			if (constraint=="||" and sub_sat) or (constraint=="^^" and len(sub_sat)==1):
+				sat.append([constraint, constraints[id+1]])
+			else:
+				unsat.append([constraint, constraints[id+1]])
+		else:
+			#a simple use flag i.e. A or !A
+			if (constraint[0] == "!" and constraint[1:] not in use) or \
+				(constraint[0] != "!" and constraint in use):
+				sat.append([constraint])
+			else:
+				unsat.append([constraint])
+
+	return sat, unsat, ignore
+
+def check_required_use(required_use, use, iuse):
+	"""
+	Checks if the use flags listed in 'use' satisfy all
+	constraints specified in 'required_use'. Returns a tuple
+	containing strings representing satisfied and unsatisfied
+	constraints.
+
+	@param required_use: REQUIRED_USE as defined by the ebuild
+	@type required_use: String
+	@param use: Enabled use flags
+	@param use: List
+	@param iuse: Referenceable use flags
+	@param iuse: List
+	@rtype: Tuple of two strings
+	@return: all satisifed constraints, all unsatisfied constraints,
+	"""
+	try:
+		sat, unsat, ignore = _check_required_use(paren_normalize(paren_reduce(required_use)), use, iuse)
+	except portage.exception.InvalidDependString as e:
+		raise portage.exception.InvalidRequiredUseString(str(e))
+
+	return paren_enclose(sat + ignore), paren_enclose(unsat)
