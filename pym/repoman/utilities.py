@@ -23,16 +23,8 @@ import codecs
 import errno
 import logging
 import sys
-try:
-	from subprocess import getstatusoutput as subprocess_getstatusoutput
-except ImportError:
-	from commands import getstatusoutput as subprocess_getstatusoutput
-
-from xml.dom import minidom
-from xml.dom import NotFoundErr
-from xml.parsers.expat import ExpatError
-import xml.etree.ElementTree as ET
 from portage import os
+from portage import subprocess_getstatusoutput
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
@@ -114,43 +106,29 @@ def have_profile_dir(path, maxdepth=3, filename="profiles.desc"):
 		path = normalize_path(path + "/..")
 		maxdepth -= 1
 
-def parse_metadata_use(metadata_xml_content, uselist=None):
+def parse_metadata_use(xml_tree, uselist=None):
 	"""
 	Records are wrapped in XML as per GLEP 56
 	returns a dict of the form a list of flags"""
 	if uselist is None:
 		uselist = []
-	try:
-		metadatadom = minidom.parseString(metadata_xml_content)
-	except ExpatError as e:
-		raise exception.ParseError("metadata.xml: %s" % (e,))
 
-	try:
-
-		try:
-			usetag = metadatadom.getElementsByTagName("use")
-			if not usetag:
-				return uselist
-		except NotFoundErr:
-			return uselist
-
-		try:
-			flags = usetag[0].getElementsByTagName("flag")
-		except NotFoundErr:
-			raise exception.ParseError("metadata.xml: " + \
-				"Malformed input: missing 'flag' tag(s)")
-
-		for flag in flags:
-			pkg_flag = flag.getAttribute("name")
-			if not pkg_flag:
-				raise exception.ParseError("metadata.xml: " + \
-					"Malformed input: missing 'name' attribute for 'flag' tag")
-			uselist.append(pkg_flag)
+	usetag = xml_tree.findall("use")
+	if not usetag:
 		return uselist
 
-	finally:
-		metadatadom.unlink()
+	flags = usetag[0].findall("flag")
+	if not flags:
+		raise exception.ParseError("metadata.xml: " + \
+			"Malformed input: missing 'flag' tag(s)")
 
+	for flag in flags:
+		pkg_flag = flag.get("name")
+		if pkg_flag is None:
+			raise exception.ParseError("metadata.xml: " + \
+				"Malformed input: missing 'name' attribute for 'flag' tag")
+		uselist.append(pkg_flag)
+	return uselist
 
 class UnknownHerdsError(ValueError):
 	def __init__(self, herd_names):
@@ -169,16 +147,9 @@ def check_metadata_herds(xml_tree, herd_base):
 	if unknown_herds:
 		raise UnknownHerdsError(unknown_herds)
 
-
-def check_metadata(metadata_xml_content, herd_base):
-	try:
-		xml_tree = ET.fromstring(metadata_xml_content)
-	except (ExpatError, ) as e:
-		raise exception.ParseError("metadata.xml: " + str(e))
-
+def check_metadata(xml_tree, herd_base):
 	if herd_base is not None:
 		check_metadata_herds(xml_tree, herd_base)
-
 
 def FindPackagesToScan(settings, startdir, reposplit):
 	""" Try to find packages that need to be scanned

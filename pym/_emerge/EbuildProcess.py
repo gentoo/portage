@@ -23,6 +23,7 @@ class EbuildProcess(AbstractEbuildProcess):
 		root_config = self.pkg.root_config
 		tree = self.tree
 		mydbapi = root_config.trees[tree].dbapi
+		vartree = root_config.trees["vartree"]
 		settings = self.settings
 		ebuild_path = settings["EBUILD"]
 		debug = settings.get("PORTAGE_DEBUG") == "1"
@@ -30,7 +31,7 @@ class EbuildProcess(AbstractEbuildProcess):
 
 		rval = doebuild(ebuild_path, self.phase,
 			root_config.root, settings, debug,
-			mydbapi=mydbapi, tree=tree, **kwargs)
+			mydbapi=mydbapi, tree=tree, vartree=vartree, **kwargs)
 
 		return rval
 

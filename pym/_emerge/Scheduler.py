@@ -28,8 +28,8 @@ from portage.sets.base import InternalPackageSet
 from portage.util import writemsg, writemsg_level
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
+from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
 
-from _emerge.BinpkgFetcher import BinpkgFetcher
 from _emerge.BinpkgPrefetcher import BinpkgPrefetcher
 from _emerge.Blocker import Blocker
 from _emerge.BlockerDB import BlockerDB
@@ -857,13 +857,6 @@ class Scheduler(PollScheduler):
 
 	def _run_pkg_pretend(self):
 		shown_verifying_msg = False
-		quiet_settings = {}
-		for myroot, pkgsettings in self.pkgsettings.items():
-			quiet_config = portage.config(clone=pkgsettings)
-			quiet_config["PORTAGE_QUIET"] = "1"
-			quiet_config.backup_changes("PORTAGE_QUIET")
-			quiet_settings[myroot] = quiet_config
-			del quiet_config
 
 		failures = 0
 
@@ -880,50 +873,59 @@ class Scheduler(PollScheduler):
 			if "pretend" not in x.metadata.defined_phases:
 				continue
 
-			if not shown_verifying_msg:
+			if not shown_verifying_msg and self._background:
 				shown_verifying_msg = True
-				self._status_msg("Running pkg_pretend")
+				self._status_msg("Running pre-merge checks")
+
+			if not self._background:
+				out_str =">>> Running pre-merge checks for " + colorize("INFORM", x.cpv) + "\n"
+				portage.util.writemsg_stdout(out_str, noiselevel=-1)
 
 			root_config = x.root_config
-			quiet_config = quiet_settings[root_config.root]
 			settings = self.pkgsettings[root_config.root]
-			
+			tmpdir = tempfile.mkdtemp()
+			tmpdir_orig = settings["PORTAGE_TMPDIR"]
+			settings["PORTAGE_TMPDIR"] = tmpdir
+
 			if x.built:
+				tree = "bintree"
 				bintree = root_config.trees["bintree"].dbapi.bintree
 				if bintree.isremote(x.cpv):
-					fetcher = BinpkgFetcher(background=False,
+					fetcher = BinpkgPrefetcher(background=self._background,
 						logfile=self.settings.get("PORTAGE_LOG_FILE"), pkg=x, scheduler=self._sched_iface)
 					fetcher.start()
 					fetcher.wait()
-					bintree.inject(x.cpv)
-					
-				tbz2_file = bintree.getname(x.cpv)
-				ebuild_file_name = x.cpv.split("/")[1] + ".ebuild"
-				ebuild_file_contents = portage.xpak.tbz2(tbz2_file).getfile(ebuild_file_name)
-				tmpdir = tempfile.mkdtemp()
-				os.makedirs(os.path.join(tmpdir, x.category, x.pf))
-				ebuild_path = os.path.join(tmpdir, x.category, x.pf, ebuild_file_name)
-				file = open(ebuild_path, 'w')
-				file.write(ebuild_file_contents)
-				file.close()
-				quiet_config["O"] = os.path.dirname(ebuild_path)
 
-				ret = portage.package.ebuild.doebuild.doebuild(ebuild_path, "pretend", \
-					root_config.root, settings, debug=(settings.get("PORTAGE_DEBUG", "") == 1),
-					mydbapi=self.trees[settings["ROOT"]]["bintree"].dbapi, tree="bintree")
-				ret = os.EX_OK
-				
-				shutil.rmtree(tmpdir)
+				tbz2_file = bintree.getname(x.cpv)
+				infloc = os.path.join(tmpdir, x.category, x.pf, "build-info")
+				os.makedirs(infloc)
+				portage.xpak.tbz2(tbz2_file).unpackinfo(infloc)
+				ebuild_path = os.path.join(infloc, x.pf + ".ebuild")
+
 			else:
+				tree = "porttree"
 				portdb = root_config.trees["porttree"].dbapi
 				ebuild_path = portdb.findname(x.cpv)
 				if ebuild_path is None:
 					raise AssertionError("ebuild not found for '%s'" % x.cpv)
-				quiet_config["O"] = os.path.dirname(ebuild_path)
-			
-				ret = portage.package.ebuild.doebuild.doebuild(ebuild_path, "pretend", \
-					root_config.root, settings, debug=(settings.get("PORTAGE_DEBUG", "") == 1),
-					mydbapi=self.trees[settings["ROOT"]]["porttree"].dbapi, tree="porttree")
+
+			portage.package.ebuild.doebuild.doebuild_environment(ebuild_path,
+				"pretend", root_config.root, settings,
+				debug=(settings.get("PORTAGE_DEBUG", "") == 1),
+				mydbapi=self.trees[settings["ROOT"]][tree].dbapi, use_cache=1)
+			prepare_build_dirs(root_config.root, settings, cleanup=0)
+			pretend_phase = EbuildPhase(background=self._background, pkg=x,
+				phase="pretend", scheduler=self._sched_iface,
+				settings=settings, tree=tree)
+
+			pretend_phase.start()
+			ret = pretend_phase.wait()
+
+			portage.elog.elog_process(x.cpv, settings)
+
+			if ret == os.EX_OK:
+				shutil.rmtree(tmpdir)
+			settings["PORTAGE_TMPDIR"] = tmpdir_orig
 
 			if ret != os.EX_OK:
 				failures += 1

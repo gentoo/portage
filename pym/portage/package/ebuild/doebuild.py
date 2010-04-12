@@ -515,6 +515,21 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	tmpdir_orig = None
 
 	try:
+		if mydo in ("pretend", "setup"):
+			if not vartree:
+				writemsg("Warning: vartree not given to doebuild. " + \
+					"Cannot set REPLACING_VERSIONS in pkg_{pretend,setup}\n")
+			else:
+				vardb = vartree.dbapi
+				cpv = mysettings.mycpv
+				cp = portage.versions.cpv_getkey(cpv)
+				slot = mysettings.get("SLOT")
+				cpv_slot = cp + ":" + slot
+				mysettings["REPLACING_VERSIONS"] = " ".join(
+					set(portage.versions.cpv_getversion(match) \
+						for match in vardb.match(cpv_slot) + vardb.match(cpv)))
+				mysettings.backup_changes("REPLACING_VERSIONS")
+
 		if mydo in ("digest", "manifest", "help"):
 			# Temporarily exempt the depend phase from manifest checks, in case
 			# aux_get calls trigger cache generation.
@@ -524,7 +539,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# we can temporarily override PORTAGE_TMPDIR with a random temp dir
 		# so that there's no need for locking and it can be used even if the
 		# user isn't in the portage group.
-		if mydo in ("info", "pretend"):
+		if mydo in ("info",):
 			tmpdir = tempfile.mkdtemp()
 			tmpdir_orig = mysettings["PORTAGE_TMPDIR"]
 			mysettings["PORTAGE_TMPDIR"] = tmpdir

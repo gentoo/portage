@@ -44,7 +44,9 @@ class EbuildFetcher(SpawnProcess):
 			self._build_dir = EbuildBuildDir(pkg=self.pkg, settings=settings)
 			self._build_dir.lock()
 			self._build_dir.clean_log()
-			portage.prepare_build_dirs(self.pkg.root, self._build_dir.settings, 0)
+			cleanup=1
+			# This initializes PORTAGE_LOG_FILE.
+			portage.prepare_build_dirs(self.pkg.root, self._build_dir.settings, cleanup)
 			if self.logfile is None:
 				self.logfile = settings.get("PORTAGE_LOG_FILE")
 

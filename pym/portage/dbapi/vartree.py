@@ -4475,6 +4475,10 @@ class dblink(object):
 		if retval:
 			return retval
 
+		self.settings["REPLACING_VERSIONS"] = " ".join( 
+			[portage.versions.cpv_getversion(other.mycpv) for other in others_in_slot] )
+		self.settings.backup_changes("REPLACING_VERSIONS")
+
 		if slot_matches:
 			# Used by self.isprotected().
 			max_dblnk = None
@@ -4892,6 +4896,8 @@ class dblink(object):
 			emerge_log(_(" === Unmerging... (%s)") % (dblnk.mycpv,))
 			others_in_slot.remove(dblnk) # dblnk will unmerge itself now
 			dblnk._linkmap_broken = self._linkmap_broken
+			dblnk.settings["REPLACED_BY_VERSION"] = portage.versions.cpv_getversion(self.mycpv)
+			dblnk.settings.backup_changes("REPLACED_BY_VERSION")
 			unmerge_rval = dblnk.unmerge(trimworld=0,
 				ldpath_mtimes=prev_mtimes, others_in_slot=others_in_slot)
 

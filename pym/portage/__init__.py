@@ -544,7 +544,7 @@ def create_trees(config_root=None, target_root=None, trees=None):
 
 	for myroot, mysettings in myroots:
 		trees[myroot] = portage.util.LazyItemsDict(trees.get(myroot, {}))
-		trees[myroot].addLazySingleton("virtuals", mysettings.getvirtuals, myroot)
+		trees[myroot].addLazySingleton("virtuals", mysettings.getvirtuals)
 		trees[myroot].addLazySingleton(
 			"vartree", vartree, myroot, categories=mysettings.categories,
 				settings=mysettings)

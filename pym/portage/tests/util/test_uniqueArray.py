@@ -20,5 +20,5 @@ class UniqueArrayTestCase(TestCase):
 			result = unique_array( test[0] )
 			for item in test[1]:
 				number = result.count(item)
-				self.failIf( number is not 1, msg="%s contains %s of %s, \
+				self.assertFalse( number is not 1, msg="%s contains %s of %s, \
 					should be only 1" % (result, number, item) )

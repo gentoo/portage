@@ -4,7 +4,7 @@
 
 __all__ = [
 	'best', 'catpkgsplit', 'catsplit',
-	'cpv_getkey', 'pkgcmp',  'pkgsplit',
+	'cpv_getkey', 'cpv_getversion', 'pkgcmp',  'pkgsplit',
 	'ververify', 'vercmp'
 ]
 
@@ -359,6 +359,13 @@ def cpv_getkey(mycpv):
 		return myslash[0] + "/" + mysplit[0]
 	else:
 		return mysplit[0]
+
+def cpv_getversion(mycpv):
+	"""Returns the v (including revision) from an cpv."""
+	cp = cpv_getkey(mycpv)
+	if cp is None:
+		return None
+	return mycpv[len(cp+"-"):]
 
 def catsplit(mydep):
         return mydep.split("/", 1)

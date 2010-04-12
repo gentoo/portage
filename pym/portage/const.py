@@ -53,7 +53,7 @@ PROFILE_PATH             = "etc/make.profile"
 MAKE_DEFAULTS_FILE       = PROFILE_PATH + "/make.defaults"  # FIXME: not used
 DEPRECATED_PROFILE_FILE  = PROFILE_PATH + "/deprecated"
 
-# variables used with target_root (these need to be absolute, but not
+# variables used with targetroot (these need to be absolute, but not
 # have a leading '/' since they are used directly with os.path.join)
 VDB_PATH                 = EPREFIX_LSTRIP + "/" + "var/db/pkg"
 CACHE_PATH               = EPREFIX_LSTRIP + "/" + "var/cache/edb"
@@ -76,10 +76,10 @@ SANDBOX_BINARY           = BPREFIX + "/usr/bin/sandbox"
 FAKEROOT_BINARY          = BPREFIX + "/usr/bin/fakeroot"
 BASH_BINARY              = PORTAGE_BASH
 MOVE_BINARY              = PORTAGE_MV
-PRELINK_BINARY           = EPREFIX + "/usr/sbin/prelink"
+PRELINK_BINARY           = "/usr/sbin/prelink"
 
-PORTAGE_GROUPNAME        = os.environ.get("PORTAGE_GROUPNAME", portagegroup)
-PORTAGE_USERNAME         = os.environ.get("PORTAGE_USERNAME", portageuser)
+PORTAGE_GROUPNAME        = portagegroup
+PORTAGE_USERNAME         = portageuser
 
 INVALID_ENV_FILE         = "/etc/spork/is/not/valid/profile.env"
 REPO_NAME_FILE           = "repo_name"

@@ -40,9 +40,8 @@ class EbuildExecuter(CompositeTask):
 		pkg = self.pkg
 		scheduler = self.scheduler
 		settings = self.settings
-		cleanup = 1
+		cleanup = 0
 
-		# This initializes PORTAGE_LOG_FILE.
 		portage.prepare_build_dirs(pkg.root, settings, cleanup)
 
 		setup_phase = EbuildPhase(background=self.background,
