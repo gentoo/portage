@@ -4,7 +4,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree
 from xml.parsers.expat import ExpatError
 from portage.exception import FileNotFound, ParseError, PermissionDenied
 
@@ -36,13 +36,22 @@ class HerdBase(object):
 	def maintainer_in_herd(self, nick_name, herd_name):
 		return _make_email(nick_name) in self.herd_to_emails[herd_name]
 
+class _HerdsTreeBuilder(xml.etree.ElementTree.TreeBuilder):
+	"""
+	Implements doctype() as required to avoid deprecation warnings with
+	>=python-2.7.
+	"""
+	def doctype(self, name, pubid, system):
+		pass
 
 def make_herd_base(filename):
 	herd_to_emails = dict()
 	all_emails = set()
 
 	try:
-		xml_tree = ET.parse(filename)
+		xml_tree = xml.etree.ElementTree.parse(filename,
+			parser=xml.etree.ElementTree.XMLParser(
+				target=_HerdsTreeBuilder()))
 	except ExpatError as e:
 		raise ParseError("metadata.xml: " + str(e))
 	except EnvironmentError as e:
