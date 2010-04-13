@@ -2835,6 +2835,24 @@ class depgraph(object):
 								packages_with_invalid_use_config.append(pkg)
 							continue
 
+					#check REQUIRED_USE constraints
+					if not pkg.built and pkg.metadata["REQUIRED_USE"] and \
+						pkg.metadata["EAPI"] not in ("0", "1", "2", "3"):
+						required_use = pkg.metadata["REQUIRED_USE"]
+						use = pkg.use.enabled
+						iuse = self._frozen_config.settings._get_implicit_iuse()
+						iuse.update(pkg.iuse.all)
+						try:
+							sat, unsat = portage.dep.check_required_use(
+								pkg.metadata["REQUIRED_USE"], use, iuse)
+						except portage.exception.InvalidRequiredUseString as e:
+							portage.writemsg("!!! Invalid REQUIRED_USE specified by " + \
+								"'%s': %s\n" % (pkg.cpv, str(e)), noiselevel=-1)
+							del e
+							continue
+						if unsat:
+							continue
+
 					if pkg.cp == atom_cp:
 						if highest_version is None:
 							highest_version = pkg
@@ -6179,6 +6197,24 @@ def _get_masking_status(pkg, pkgsettings, root_config):
 				for msg in msgs:
 					mreasons.append(
 						_MaskReason("invalid", "invalid: %s" % (msg,)))
+
+		if pkg.metadata["REQUIRED_USE"] and \
+			pkg.metadata["EAPI"] not in ("0", "1", "2", "3"):
+			required_use = pkg.metadata["REQUIRED_USE"]
+			use = pkg.use.enabled
+			iuse = pkgsettings._get_implicit_iuse()
+			iuse.update(pkg.iuse.all)
+			try:
+				sat, unsat = portage.dep.check_required_use(
+					required_use, use, iuse)
+			except portage.exception.InvalidRequiredUseString:
+				mreasons.append("invalid: REQUIRED_USE")
+			else:
+				if unsat:
+					msg = "violated use flag constraints: '%s'" % unsat
+					if sat:
+						msg += ", other constraints: '%s'" % sat
+					mreasons.append(msg)
 
 	if not pkg.metadata["SLOT"]:
 		mreasons.append(
