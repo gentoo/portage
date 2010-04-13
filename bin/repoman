@@ -322,6 +322,7 @@ qahelp={
 	"PROVIDE.syntax":"Syntax error in PROVIDE (usually an extra/missing space/parenthesis)",
 	"PROPERTIES.syntax":"Syntax error in PROPERTIES (usually an extra/missing space/parenthesis)",
 	"RESTRICT.syntax":"Syntax error in RESTRICT (usually an extra/missing space/parenthesis)",
+	"REQUIRED_USE.syntax":"Syntax error in REQUIRED_USE (usually an extra/missing space/parenthesis)",
 	"SRC_URI.syntax":"Syntax error in SRC_URI (usually an extra/missing space/parenthesis)",
 	"SRC_URI.mirror":"A uri listed in profiles/thirdpartymirrors is found in SRC_URI",
 	"ebuild.syntax":"Error generating cache entry for ebuild; typically caused by ebuild syntax error or digest verification failure",
@@ -1785,6 +1786,22 @@ for x in scanlist:
 				stats["RESTRICT.invalid"] += len(mybadrestrict)
 				for mybad in mybadrestrict:
 					fails["RESTRICT.invalid"].append(x+"/"+y+".ebuild: %s" % mybad)
+		#REQUIRED_USE check
+		required_use = myaux["REQUIRED_USE"]
+		if required_use:
+			if eapi in ("0", "1", "2", "3"):
+				stats['EAPI.incompatible'] += 1
+				fails['EAPI.incompatible'].append(
+					relative_path + ": REQUIRED_USE" + \
+					" not supported with EAPI='%s'" % (eapi,))
+			try:
+				portage.dep.check_required_use(required_use, "", myaux["IUSE"].split())
+			except portage.exception.InvalidRequiredUseString as e:
+				stats["REQUIRED_USE.syntax"] = stats["REQUIRED_USE.syntax"] + 1
+				fails["REQUIRED_USE.syntax"].append(
+					"%s: REQUIRED_USE: %s" % (relative_path, e))
+				del e
+
 		# Syntax Checks
 		relative_path = os.path.join(x, y + ".ebuild")
 		full_path = os.path.join(repodir, relative_path)

@@ -1450,6 +1450,10 @@ def _check_required_use(constraints, use, iuse):
 				("check_required_use(): '%s' constraint list without " + \
 				"use conditional or operator") % (constraints,))
 
+		if not constraint:
+			raise portage.exception.InvalidRequiredUseString(
+				("check_required_use(): '%s' syntax error") % (constraints,) )
+
 		if constraint[-1] == "?":
 			#a use conditional
 			skip_next = True
