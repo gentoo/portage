@@ -1493,8 +1493,20 @@ def _check_required_use(constraints, use, iuse):
 				unsat.append([constraint, constraints[id+1]])
 		else:
 			#a simple use flag i.e. A or !A
-			if (constraint[0] == "!" and constraint[1:] not in use) or \
-				(constraint[0] != "!" and constraint in use):
+			if constraint[0] == "!":
+				flag = constraint[1:]
+				not_operator = True
+			else:
+				flag = constraint
+				not_operator = False
+
+			if not flag in iuse:
+				raise portage.exception.InvalidRequiredUseString(
+					("check_required_use(): '%s' contains the use flag '%s', which" + \
+					" is not in IUSE") % (constraints, flag))
+					
+			if (not_operator and flag not in use) or \
+				(not not_operator and constraint in use):
 				sat.append([constraint])
 			else:
 				unsat.append([constraint])
