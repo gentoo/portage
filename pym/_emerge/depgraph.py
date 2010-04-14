@@ -2414,6 +2414,7 @@ class depgraph(object):
 		reinstall = False
 		noreplace = "--noreplace" in self._frozen_config.myopts
 		avoid_update = "--update" not in self._frozen_config.myopts
+		dont_miss_updates = "--update" in self._frozen_config.myopts
 		use_ebuild_visibility = self._frozen_config.myopts.get(
 			'--use-ebuild-visibility', 'n') != 'n'
 		# Behavior of the "selective" parameter depends on
@@ -2428,6 +2429,7 @@ class depgraph(object):
 		# available packages match argument atoms, which is
 		# represented by the found_available_arg flag.
 		found_available_arg = False
+		packages_with_invalid_use_config = []
 		for find_existing_node in True, False:
 			if existing_node:
 				break
@@ -2445,6 +2447,18 @@ class depgraph(object):
 					if pkg in self._dynamic_config._runtime_pkg_mask:
 						# The package has been masked by the backtracking logic
 						continue
+
+					if dont_miss_updates:
+						higher_version_rejected = False
+						for rejected in packages_with_invalid_use_config:
+							if rejected.cp != pkg.cp:
+								continue
+							if rejected > pkg:
+								higher_version_rejected = True
+								break
+						if higher_version_rejected:
+							continue
+
 					cpv = pkg.cpv
 					# Make --noreplace take precedence over --newuse.
 					if not pkg.installed and noreplace and \
@@ -2521,8 +2535,10 @@ class depgraph(object):
 					if atom.use and not pkg.built:
 						use = pkg.use.enabled
 						if atom.use.enabled.difference(use):
+							packages_with_invalid_use_config.append(pkg)
 							continue
 						if atom.use.disabled.intersection(use):
+							packages_with_invalid_use_config.append(pkg)
 							continue
 					if pkg.cp == atom_cp:
 						if highest_version is None:
