@@ -317,7 +317,7 @@ install_qa_check_elf() {
 		# Check for shared libraries lacking NEEDED entries
 		qa_var="QA_DT_NEEDED_${ARCH/-/_}"
 		eval "[[ -n \${!qa_var} ]] && QA_DT_NEEDED=(\"\${${qa_var}[@]}\")"
-		f=$(scanelf -ByF '%n %p' "${ED}"{,usr/}lib*.so* | gawk '$2 == "" { print }' | sed -e "s:^[[:space:]]${D}:/:")
+		f=$(scanelf -ByF '%n %p' "${ED}"{,usr/}lib*/lib*.so* | gawk '$2 == "" { print }' | sed -e "s:^[[:space:]]${D}:/:")
 		if [[ -n ${f} ]] ; then
 			echo "${f}" > "${T}"/scanelf-missing-NEEDED.log
 			if [[ "${QA_STRICT_DT_NEEDED-unset}" == unset ]] ; then
