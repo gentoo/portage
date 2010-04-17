@@ -123,7 +123,7 @@ die() {
 		    # erase the line and set the hold buffer to it (thus
 		    # erasing the hold buffer in the process)
 		    /[^\]$/{s:^.*$::;h}' \
-		${BASH_SOURCE[1]} \
+		"${BASH_SOURCE[1]}" \
 		| sed -e '1d' -e 's:^:RETAIN-LEADING-SPACE:' \
 		| while read -r n ; do eerror "  ${n#RETAIN-LEADING-SPACE}" ; done
 	eerror
