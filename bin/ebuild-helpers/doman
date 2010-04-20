@@ -30,13 +30,15 @@ for x in "$@" ; do
 		suffix=${realname##*.}
 	fi
 
-	if ! hasq "${EAPI:-0}" 0 1 && \
-		[[ $x =~ (.*)\.([a-z][a-z](_[A-Z][A-Z])?)\.(.*) ]] ; then
+	if hasq "${EAPI:-0}" 2 3 || [[ -z ${i18n} ]] \
+		&& ! hasq "${EAPI:-0}" 0 1 \
+		&& [[ $x =~ (.*)\.([a-z][a-z](_[A-Z][A-Z])?)\.(.*) ]]
+	then
 		name=${BASH_REMATCH[1]##*/}.${BASH_REMATCH[4]}
 		mandir=${BASH_REMATCH[2]}/man${suffix:0:1}
 	else
 		name=${x##*/}
-		mandir=${i18n}man${suffix:0:1}
+		mandir=${i18n#/}man${suffix:0:1}
 	fi
 
 
