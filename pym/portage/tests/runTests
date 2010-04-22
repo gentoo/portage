@@ -11,6 +11,13 @@ import os.path as osp
 sys.path.insert(0, osp.dirname(osp.dirname(osp.dirname(osp.abspath(__file__)))))
 
 import portage.tests as tests
+from portage.const import PORTAGE_BIN_PATH
+path = os.environ.get("PATH", "").split(":")
+path = [x for x in path if x]
+if not path or not os.path.samefile(path[0], PORTAGE_BIN_PATH):
+	path.insert(0, PORTAGE_BIN_PATH)
+	os.environ["PATH"] = ":".join(path)
+del path
 
 if __name__ == "__main__":
 	result = tests.main()
