@@ -59,6 +59,9 @@ package.use
 repos.conf
 .fi
 .TP
+.BR /etc/portage/env/
+package-specific bashrc files
+.TP
 .BR /etc/portage/profile/
 site-specific overrides of \fB/etc/make.profile/\fR
 .TP
@@ -407,6 +410,8 @@ it were a single file.
 If needed, this file can be used to set up a special environment for ebuilds,
 different from the standard root environment.  The syntax is the same as for
 any other bash script.
+
+Additional package-specific bashrc files can be created in /etc/portage/env.
 .TP
 .BR categories
 A simple list of valid categories that may be used in /usr/portage, 
@@ -614,6 +619,22 @@ aliases = foo bar
 # override the metadata/layout.conf masters setting from the kde-testing repo
 masters = gentoo kde
 .fi
+.RE
+.TP
+.BR /etc/portage/env/
+.RS
+In this directory additional package-specific bashrc files can be created.
+Portage will source all of them after \fB/etc/portage/bashrc\fR in the following
+order:
+.nr step 1 1
+.IP \n[step]. 3
+/etc/portage/env/${CATEGORY}/${PN}
+.IP \n+[step].
+/etc/portage/env/${CATEGORY}/${PN}:${SLOT}
+.IP \n+[step].
+/etc/portage/env/${CATEGORY}/${P}
+.IP \n+[step].
+/etc/portage/env/${CATEGORY}/${PF}
 .RE
 .TP
 .BR /usr/portage/metadata/

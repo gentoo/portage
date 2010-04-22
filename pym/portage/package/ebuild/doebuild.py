@@ -32,8 +32,8 @@ from portage import auxdbkeys, bsd_chflags, dep_check, \
 	eapi_is_supported, merge, os, selinux, StringIO, \
 	unmerge, _encodings, _parse_eapi_ebuild_head, _os_merge, \
 	_shell_quote, _split_ebuild_name_glep55, _unicode_decode, _unicode_encode
-from portage.const import EBUILD_SH_ENV_FILE, EBUILD_SH_BINARY, \
-	INVALID_ENV_FILE, MISC_SH_BINARY
+from portage.const import EBUILD_SH_ENV_FILE, EBUILD_SH_ENV_DIR, \
+	EBUILD_SH_BINARY, INVALID_ENV_FILE, MISC_SH_BINARY
 from portage.data import portage_gid, portage_uid, secpass, \
 	uid, userpriv_groups
 from portage.dbapi.virtual import fakedbapi
@@ -211,6 +211,8 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 
 	mysettings["PORTAGE_BASHRC"] = os.path.join(
 		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_FILE)
+	mysettings["PM_EBUILD_HOOK_DIR"] = os.path.join(
+		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_DIR)
 	mysettings["EBUILD_EXIT_STATUS_FILE"] = os.path.join(
 		mysettings["PORTAGE_BUILDDIR"], ".exit_status")
 
