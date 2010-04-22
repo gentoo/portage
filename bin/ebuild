@@ -267,7 +267,8 @@ for arg in pargs:
 		if arg in ("digest", "manifest") and force:
 			discard_digests(ebuild, tmpsettings, portage.portdb)
 		a = portage.doebuild(ebuild, arg, portage.root, tmpsettings,
-			debug=debug, tree=mytree)
+			debug=debug, tree=mytree,
+			vartree=portage.db[portage.root]['vartree'])
 	except KeyboardInterrupt:
 		print("Interrupted.")
 		a = 1
