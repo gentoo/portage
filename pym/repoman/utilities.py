@@ -119,14 +119,12 @@ def parse_metadata_use(xml_tree, uselist=None):
 
 	flags = usetag[0].findall("flag")
 	if not flags:
-		raise exception.ParseError("metadata.xml: " + \
-			"Malformed input: missing 'flag' tag(s)")
+		raise exception.ParseError("missing 'flag' tag(s)")
 
 	for flag in flags:
 		pkg_flag = flag.get("name")
 		if pkg_flag is None:
-			raise exception.ParseError("metadata.xml: " + \
-				"Malformed input: missing 'name' attribute for 'flag' tag")
+			raise exception.ParseError("missing 'name' attribute for 'flag' tag")
 		uselist.append(pkg_flag)
 	return uselist
 
