@@ -636,31 +636,42 @@ install_qa_check_prefix() {
 		line=( ${line#"#!"} )
 		IFS=${oldIFS}
 		[[ ${WHITELIST} == *" ${line[0]} "* ]] && continue
+		# does the shebang start with ${EPREFIX}, and does it exist?
 		if [[ ${line[0]} == ${EPREFIX}/* ]] ; then
-			# does the shebang start with ${EPREFIX}, and does it exist?
-			if [[ -e ${ROOT}${line[0]} || -e ${D}${line[0]} ]] ; then
-				continue
+			if [[ ! -e ${ROOT}${line[0]} && ! -e ${D}${line[0]} ]] ; then
+				# hmm, refers explicitly to $EPREFIX, but doesn't exist,
+				# that's wrong in any case
+				echo "${fn#${D}}:${line[0]} (explicit EPREFIX but target not found)" \
+					>> "${T}"/non-prefix-shebangs-errs
 			fi
-		elif [[ -e ${EROOT}${line[0]} || -e ${ED}${line[0]} ]] ; then
-			# is it unprefixed, but we can just fix it because a
-			# prefixed variant exists
-			eqawarn "prefixing shebang of ${fn#${D}}"
-			sed -i -e '1s:^#! \?:#!'"${EPREFIX}"':' "${fn}"
 			continue
 		fi
-		# all else is an error if the found script is in $PATH
+		# unprefixed shebang, is the script directly in $PATH?
 		local fp=${fn#${D}} ; fp=/${fp%/*}
-		if [[ ":${PATH}:" == *":${fp}:"* ]] || hasq stricter ${FEATURES} ;
-		then
-			echo "${fn#${D}}:${line[0]}" \
-				>> "${T}"/non-prefix-shebangs-errs
+		if [[ ":${PATH}:" == *":${fp}:"* ]] ; then
+			if [[ -e ${EROOT}${line[0]} || -e ${ED}${line[0]} ]] ; then
+				# is it unprefixed, but we can just fix it because a
+				# prefixed variant exists
+				eqawarn "prefixing shebang of ${fn#${D}}"
+				sed -i -e '1s:^#! \?:#!'"${EPREFIX}"':' "${fn}"
+				continue
+			else
+				# this is definitely wrong: script in $PATH and invalid shebang
+				echo "${fn#${D}}:${line[0]} (in PATH but target not found)" \
+					>> "${T}"/non-prefix-shebangs-errs
+			fi
 		else
-			eqawarn "invalid shebang in ${fn#${D}}: ${line[0]}"
+			# unprefixed/invalid shebang, but outside $PATH, this may be
+			# intended (e.g. config.guess) so remain silent by default
+			hasq stricter ${FEATURES} && \
+				eqawarn "invalid shebang in ${fn#${D}}: ${line[0]}"
 		fi
 	done
 	if [[ -e "${T}"/non-prefix-shebangs-errs ]] ; then
 		eqawarn "QA Notice: the following files use invalid (possible non-prefixed) shebangs:"
-		eqawarn "$(<"${T}"/non-prefix-shebangs-errs)"
+		while read line ; do
+			eqawarn "  ${line}"
+		done < "${T}"/non-prefix-shebangs-errs
 		rm -f "${T}"/non-prefix-shebangs-errs
 		die "Aborting due to QA concerns: invalid shebangs found"
 	fi
