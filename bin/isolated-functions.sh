@@ -43,7 +43,7 @@ dump_trace() {
 	eerror "Call stack:"
 	while (( n > ${strip} )) ; do
 		funcname=${FUNCNAME[${n} - 1]}
-		sourcefile=$(basename ${BASH_SOURCE[${n}]})
+		sourcefile=$(basename "${BASH_SOURCE[${n}]}")
 		lineno=${BASH_LINENO[${n} - 1]}
 		# Display function arguments
 		args=
