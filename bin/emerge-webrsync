@@ -34,7 +34,7 @@ fi
 eval $(portageq envvar -v FEATURES FETCHCOMMAND GENTOO_MIRRORS \
 	PORTAGE_BIN_PATH PORTAGE_GPG_DIR \
 	PORTAGE_NICENESS PORTAGE_RSYNC_EXTRA_OPTS PORTAGE_TMPDIR PORTDIR \
-	http_proxy ftp_proxy)
+	SYNC http_proxy ftp_proxy)
 DISTDIR="${PORTAGE_TMPDIR}/emerge-webrsync"
 export http_proxy ftp_proxy
 
@@ -434,6 +434,20 @@ main() {
 			*)            usage "Invalid option '${arg}'" ;;
 		esac
 	done
+
+	# This is a sanity check to help prevent people like funtoo users
+	# from accidentally wiping out their git tree.
+	if [[ -n $SYNC && ${SYNC#rsync:} = $SYNC ]] ; then
+		echo "The current SYNC variable setting does not refer to an rsync URI:" >&2
+		echo >&2
+		echo "  SYNC=$SYNC" >&2
+		echo >&2
+		echo "If you intend to use emerge-webrsync then please" >&2
+		echo "adjust SYNC to refer to an rsync URI." >&2
+		echo "emerge-webrsync exiting due to abnormal SYNC setting." >&2
+		exit 1
+	fi
+
 	[[ ${do_debug} -eq 1 ]] && set -x
 
 	if [[ -n ${revert_date} ]] ; then
