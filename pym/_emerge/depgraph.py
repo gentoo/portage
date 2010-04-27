@@ -2462,17 +2462,6 @@ class depgraph(object):
 						if higher_version_rejected:
 							continue
 
-					if atom.use:
-						for x in atom.use.required:
-							if x not in pkg.iuse.all and \
-								pkg.root_config.settings._iuse_implicit_re.match(x) is None:
-								missing_iuse = True
-								break
-						if missing_iuse:
-							if not pkg.installed:
-								packages_with_invalid_use_config.append(pkg)
-							continue
-
 					cpv = pkg.cpv
 					# Make --noreplace take precedence over --newuse.
 					if not pkg.installed and noreplace and \
@@ -2546,14 +2535,26 @@ class depgraph(object):
 					if not installed and myarg:
 						found_available_arg = True
 
-					if atom.use and not pkg.built:
-						use = pkg.use.enabled
-						if atom.use.enabled.difference(use):
-							packages_with_invalid_use_config.append(pkg)
+					if atom.use:
+						for x in atom.use.required:
+							if x not in pkg.iuse.all and \
+								pkg.root_config.settings._iuse_implicit_re.match(x) is None:
+								missing_iuse = True
+								break
+						if missing_iuse:
+							if not pkg.installed:
+								packages_with_invalid_use_config.append(pkg)
 							continue
-						if atom.use.disabled.intersection(use):
-							packages_with_invalid_use_config.append(pkg)
+
+						if atom.use.enabled.difference(pkg.use.enabled):
+							if not pkg.installed:
+								packages_with_invalid_use_config.append(pkg)
 							continue
+						if atom.use.disabled.intersection(pkg.use.enabled):
+							if not pkg.installed:
+								packages_with_invalid_use_config.append(pkg)
+							continue
+
 					if pkg.cp == atom_cp:
 						if highest_version is None:
 							highest_version = pkg
