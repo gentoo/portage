@@ -2442,6 +2442,9 @@ class depgraph(object):
 					if want_reinstall and matched_packages:
 						continue
 
+				# Ignore USE deps for the initial match since we want to
+				# ensure that updates aren't missed solely due to the user's
+				# USE configuration.
 				for pkg in self._iter_match_pkgs(root_config, pkg_type, atom.without_use, 
 					onlydeps=onlydeps):
 					if pkg in self._dynamic_config._runtime_pkg_mask:
