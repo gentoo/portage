@@ -2462,7 +2462,7 @@ class depgraph(object):
 					if atom.use:
 						for x in atom.use.required:
 							if x not in pkg.iuse.all and \
-								pkg.root_config.settings.iuse_implicit_re.match(x) is None:
+								pkg.root_config.settings._iuse_implicit_re.match(x) is None:
 								missing_iuse = True
 								break
 						if missing_iuse:

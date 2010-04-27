@@ -146,7 +146,7 @@ class dbapi(object):
 		2) Check enabled/disabled flag states.
 		"""
 
-		iuse_implicit_re = self.settings.iuse_implicit_re
+		iuse_implicit_re = self.settings._iuse_implicit_re
 		for cpv in cpv_iter:
 			try:
 				iuse, slot, use = self.aux_get(cpv, ["IUSE", "SLOT", "USE"])

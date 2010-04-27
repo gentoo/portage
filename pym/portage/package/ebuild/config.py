@@ -371,6 +371,7 @@ class config(object):
 			self.packages = clone.packages
 			self.useforce_list = clone.useforce_list
 			self.usemask_list = clone.usemask_list
+			self._iuse_implicit_re = clone._iuse_implicit_re
 
 			self.user_profile_dir = copy.deepcopy(clone.user_profile_dir)
 			self.local_config = copy.deepcopy(clone.local_config)
@@ -427,7 +428,6 @@ class config(object):
 			self._accept_properties = copy.deepcopy(clone._accept_properties)
 			self._ppropertiesdict = copy.deepcopy(clone._ppropertiesdict)
 
-			self.iuse_implicit_re = clone.iuse_implicit_re
 		else:
 
 			def check_var_directory(varname, var):
@@ -1013,7 +1013,7 @@ class config(object):
 				_validate_cache_for_unsupported_eapis = False
 				_glep_55_enabled = True
 
-			self.iuse_implicit_re = re.compile("^(%s)$" % \
+			self._iuse_implicit_re = re.compile("^(%s)$" % \
 				"|".join(self._get_implicit_iuse()))
 
 		for k in self._case_insensitive_vars:
