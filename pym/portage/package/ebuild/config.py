@@ -426,6 +426,8 @@ class config(object):
 			self._license_groups = copy.deepcopy(clone._license_groups)
 			self._accept_properties = copy.deepcopy(clone._accept_properties)
 			self._ppropertiesdict = copy.deepcopy(clone._ppropertiesdict)
+
+			self.iuse_implicit_re = clone.iuse_implicit_re
 		else:
 
 			def check_var_directory(varname, var):
@@ -1010,6 +1012,9 @@ class config(object):
 			if 'parse-eapi-glep-55' in self.features:
 				_validate_cache_for_unsupported_eapis = False
 				_glep_55_enabled = True
+
+			self.iuse_implicit_re = re.compile("^(%s)$" % \
+				"|".join(self._get_implicit_iuse()))
 
 		for k in self._case_insensitive_vars:
 			if k in self:

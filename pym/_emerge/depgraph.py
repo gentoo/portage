@@ -2442,7 +2442,7 @@ class depgraph(object):
 					if want_reinstall and matched_packages:
 						continue
 
-				for pkg in self._iter_match_pkgs(root_config, pkg_type, atom, 
+				for pkg in self._iter_match_pkgs(root_config, pkg_type, atom.without_use, 
 					onlydeps=onlydeps):
 					if pkg in self._dynamic_config._runtime_pkg_mask:
 						# The package has been masked by the backtracking logic
@@ -2457,6 +2457,17 @@ class depgraph(object):
 								higher_version_rejected = True
 								break
 						if higher_version_rejected:
+							continue
+
+					if atom.use:
+						for x in atom.use.required:
+							if x not in pkg.iuse.all and \
+								pkg.root_config.settings.iuse_implicit_re.match(x) is None:
+								missing_iuse = True
+								break
+						if missing_iuse:
+							if not pkg.installed:
+								packages_with_invalid_use_config.append(pkg)
 							continue
 
 					cpv = pkg.cpv
