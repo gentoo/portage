@@ -76,8 +76,8 @@ except KeyError:
 
 #Discover the uid and gid of the portage user/group
 try:
-	portage_uid = pwd.getpwnam('portage')[2]
-	portage_gid = grp.getgrnam('portage')[2]
+	portage_uid=pwd.getpwnam("portage")[2]
+	portage_gid=grp.getgrnam("portage")[2]
 	if secpass < 1 and portage_gid in os.getgroups():
 		secpass=1
 except KeyError:
