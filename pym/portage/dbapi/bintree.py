@@ -943,6 +943,12 @@ class binarytree(object):
 			if not self._pkgindex_version_supported(pkgindex):
 				pkgindex = self._new_pkgindex()
 
+			# Discard remote metadata to ensure that _pkgindex_entry
+			# gets the local metadata. This also updates state for future
+			# isremote calls.
+			if self._remotepkgs is not None:
+				self._remotepkgs.pop(cpv, None)
+
 			try:
 				d = self._pkgindex_entry(cpv)
 			except portage.exception.InvalidDependString:
@@ -980,11 +986,6 @@ class binarytree(object):
 		finally:
 			if pkgindex_lock:
 				unlockfile(pkgindex_lock)
-
-		if self._remotepkgs is not None:
-			# When a remote package is downloaded and injected,
-			# update state so self.isremote() returns False.
-			self._remotepkgs.pop(cpv, None)
 
 	def _pkgindex_entry(self, cpv):
 		"""
