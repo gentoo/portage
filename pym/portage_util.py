@@ -1,1 +1,0 @@
-portage_compat_namespace.py
