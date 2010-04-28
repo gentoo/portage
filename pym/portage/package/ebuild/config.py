@@ -40,7 +40,7 @@ from portage.output import colorize
 from portage.process import fakeroot_capable, sandbox_capable
 from portage.util import ensure_dirs, getconfig, grabdict, \
 	grabdict_package, grabfile, grabfile_package, LazyItemsDict, \
-	normalize_path, stack_dictlist, stack_dicts, stack_lists, \
+	normalize_path, shlex_split, stack_dictlist, stack_dicts, stack_lists, \
 	writemsg, writemsg_level
 from portage.versions import catpkgsplit, catsplit, cpv_getkey
 
@@ -784,8 +784,22 @@ class config(object):
 
 			""" repoman controls PORTDIR_OVERLAY via the environment, so no
 			special cases are needed here."""
+
+			overlays = shlex_split(self.get('PORTDIR_OVERLAY', ''))
+			if overlays:
+				new_ov = []
+				for ov in overlays:
+					ov = normalize_path(ov)
+					if os.path.isdir(ov):
+						new_ov.append(ov)
+					else:
+						writemsg(_("!!! Invalid PORTDIR_OVERLAY"
+							" (not a dir): '%s'\n") % ov, noiselevel=-1)
+				self["PORTDIR_OVERLAY"] = " ".join(new_ov)
+				self.backup_changes("PORTDIR_OVERLAY")
+
 			overlay_profiles = []
-			for ov in self["PORTDIR_OVERLAY"].split():
+			for ov in shlex_split(self.get('PORTDIR_OVERLAY', '')):
 				ov = normalize_path(ov)
 				profiles_dir = os.path.join(ov, "profiles")
 				if os.path.isdir(profiles_dir):
@@ -965,19 +979,6 @@ class config(object):
 				self.depcachedir = self["PORTAGE_DEPCACHEDIR"]
 			self["PORTAGE_DEPCACHEDIR"] = self.depcachedir
 			self.backup_changes("PORTAGE_DEPCACHEDIR")
-
-			overlays = self.get("PORTDIR_OVERLAY","").split()
-			if overlays:
-				new_ov = []
-				for ov in overlays:
-					ov = normalize_path(ov)
-					if os.path.isdir(ov):
-						new_ov.append(ov)
-					else:
-						writemsg(_("!!! Invalid PORTDIR_OVERLAY"
-							" (not a dir): '%s'\n") % ov, noiselevel=-1)
-				self["PORTDIR_OVERLAY"] = " ".join(new_ov)
-				self.backup_changes("PORTDIR_OVERLAY")
 
 			if "CBUILD" not in self and "CHOST" in self:
 				self["CBUILD"] = self["CHOST"]
