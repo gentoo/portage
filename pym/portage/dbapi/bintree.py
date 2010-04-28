@@ -949,6 +949,10 @@ class binarytree(object):
 			if self._remotepkgs is not None:
 				self._remotepkgs.pop(cpv, None)
 
+			# Discard cached metadata to ensure that _pkgindex_entry
+			# doesn't return stale metadata.
+			self._aux_cache.pop(cpv, None)
+
 			try:
 				d = self._pkgindex_entry(cpv)
 			except portage.exception.InvalidDependString:
