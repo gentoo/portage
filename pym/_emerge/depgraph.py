@@ -2536,6 +2536,7 @@ class depgraph(object):
 						found_available_arg = True
 
 					if atom.use:
+						missing_iuse = False
 						for x in atom.use.required:
 							if x not in pkg.iuse.all and \
 								pkg.root_config.settings._iuse_implicit_re.match(x) is None:
