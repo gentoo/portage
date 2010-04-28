@@ -153,12 +153,11 @@ class Package(Task):
 	class _iuse(object):
 
 		__slots__ = ("__weakref__", "all", "enabled", "disabled",
-			"iuse_implicit", "tokens") + \
-			('_regex',)
+			"tokens") + ("_iuse_implicit_regex",)
 
-		def __init__(self, tokens, iuse_implicit):
+		def __init__(self, tokens, iuse_implicit_regex):
 			self.tokens = tuple(tokens)
-			self.iuse_implicit = iuse_implicit
+			self._iuse_implicit_regex = iuse_implicit_regex
 			enabled = []
 			disabled = []
 			other = []
@@ -174,23 +173,13 @@ class Package(Task):
 			self.disabled = frozenset(disabled)
 			self.all = frozenset(chain(enabled, disabled, other))
 
-		@property
-		def regex(self):
+		def is_valid_flag(self, flag):
 			"""
-			@returns: A regular expression that matches valid USE values which
-				may be specified in USE dependencies.
+			@returns: True if flag is a valid USE value which may
+				be specified in USE dependencies, False otherwise.
 			"""
-			try:
-				return self._regex
-			except AttributeError:
-				# Escape anything except ".*" which is supposed
-				# to pass through from _get_implicit_iuse()
-				regex = (re.escape(x) for x in \
-					chain(self.all, self.iuse_implicit))
-				regex = "^(%s)$" % "|".join(regex)
-				regex = re.compile(regex.replace("\\.\\*", ".*"))
-				self._regex = regex
-				return regex
+			return flag in self.all or \
+				self._iuse_implicit_regex.match(flag) is not None
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
@@ -306,7 +295,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 
 	def _set_iuse(self, k, v):
 		self._pkg.iuse = self._pkg._iuse(
-			v.split(), self._pkg.root_config.iuse_implicit)
+			v.split(), self._pkg.root_config.settings._iuse_implicit_re)
 
 	def _set_slot(self, k, v):
 		self._pkg.slot = v
