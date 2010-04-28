@@ -951,7 +951,7 @@ class binarytree(object):
 
 			# Discard cached metadata to ensure that _pkgindex_entry
 			# doesn't return stale metadata.
-			self._aux_cache.pop(cpv, None)
+			self.dbapi._aux_cache.pop(cpv, None)
 
 			try:
 				d = self._pkgindex_entry(cpv)
