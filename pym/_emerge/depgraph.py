@@ -2476,6 +2476,10 @@ class depgraph(object):
 						continue
 
 					if dont_miss_updates:
+						# Check if a higher version was rejected due to user
+						# USE configuration. The packages_with_invalid_use_config
+						# list only contains unbuilt ebuilds since USE can't
+						# be changed for built packages.
 						higher_version_rejected = False
 						for rejected in packages_with_invalid_use_config:
 							if rejected.cp != pkg.cp:
@@ -2566,16 +2570,16 @@ class depgraph(object):
 								missing_iuse = True
 								break
 						if missing_iuse:
-							if not pkg.installed:
-								packages_with_invalid_use_config.append(pkg)
+							# Don't add this to packages_with_invalid_use_config
+							# since IUSE cannot be adjusted by the user.
 							continue
 
 						if atom.use.enabled.difference(pkg.use.enabled):
-							if not pkg.installed:
+							if not pkg.built:
 								packages_with_invalid_use_config.append(pkg)
 							continue
 						if atom.use.disabled.intersection(pkg.use.enabled):
-							if not pkg.installed:
+							if not pkg.built:
 								packages_with_invalid_use_config.append(pkg)
 							continue
 
