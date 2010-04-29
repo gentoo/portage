@@ -108,7 +108,7 @@ def help(myopts, havecolor=1):
 		print("       " + green("--deselect") + "[=%s]" % turquoise("n"))
 
 		paragraph = \
-			"Remove atoms from the world file. This action is implied " + \
+			"Remove atoms and/or sets from the world file. This action is implied " + \
 			"by uninstall actions, including --depclean, " + \
 			"--prune and --unmerge. Use --deselect=n " + \
 			"in order to prevent uninstall actions from removing " + \

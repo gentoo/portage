@@ -555,7 +555,7 @@ def parse_opts(tmpcmdline, silent=False):
 		},
 
 		"--deselect": {
-			"help"    : "remove atoms from the world file",
+			"help"    : "remove atoms/sets from the world file",
 			"type"    : "choice",
 			"choices" : ("True", "n")
 		},
