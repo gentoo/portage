@@ -560,6 +560,14 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices" : ("True", "n")
 		},
 
+		"--exclude": {
+			"help"   :"A comma separated list of package names or slot atoms. " + \
+				"Emerge won't  install any ebuild or binary package that " + \
+				"matches any of the given package atoms.",
+
+			"action" : "store"
+		},
+
 		"--fail-clean": {
 			"help"    : "clean temp files after build failure",
 			"type"    : "choice",
@@ -723,6 +731,33 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.complete_graph = True
 	else:
 		myoptions.complete_graph = None
+
+	if myoptions.exclude:
+		exclude = []
+		bad_atoms = []
+		for x in myoptions.exclude.split(","):
+			bad_atom = False
+			try:
+				atom = portage.dep.Atom(x)
+			except portage.exception.InvalidAtom:
+				try:
+					atom = portage.dep.Atom("null/"+x)
+				except portage.exception.InvalidAtom:
+					bad_atom = True
+			
+			if bad_atom:
+				bad_atoms.append(x)
+			else:
+				if atom.operator or atom.blocker or atom.use:
+					bad_atoms.append(x)
+				else:
+					exclude.append(atom)
+
+		if bad_atoms and not silent:
+			writemsg("!!! Invalid Atom(s) in --exclude parameter: '%s' (only package names and slot atoms allowed)\n" % \
+				(",".join(bad_atoms),), noiselevel=-1)
+
+		myoptions.exclude = exclude
 
 	if myoptions.fail_clean == "True":
 		myoptions.fail_clean = True

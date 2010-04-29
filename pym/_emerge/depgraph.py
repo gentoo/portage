@@ -93,6 +93,24 @@ class _frozen_depgraph_config(object):
 
 		self._required_set_names = set(["world"])
 
+		self.excluded_pkgs = InternalPackageSet()
+		for x in myopts.get("--exclude", []):
+			cat = x.cp.split("/")[0]
+			if cat == "null":
+				pkgname = x.cp.split("/")[1]
+				for myroot in trees:
+					for tree in ("porttree", "bintree"):
+						if tree == "bintree" and not "--usepkg" in myopts:
+							continue
+						db = self.trees[myroot][tree].dbapi
+						for cat in db.categories:
+							if db.cp_list(cat + "/" + pkgname):
+								atom = portage.dep.Atom(str(x).replace("null", cat))
+								self.excluded_pkgs.add(atom)
+			else:
+				self.excluded_pkgs.add(x)
+
+
 class _dynamic_depgraph_config(object):
 
 	def __init__(self, depgraph, myparams, allow_backtracking,
@@ -2173,6 +2191,8 @@ class depgraph(object):
 						mreasons.append('backtracking: %s' % \
 							', '.join(sorted(backtrack_reasons)))
 						backtrack_mask = True
+					if not mreasons and self._frozen_config.excluded_pkgs.findAtomForPackage(pkg):
+						mreasons = ["exclude option"]
 					if mreasons:
 						masked_pkg_instances.add(pkg)
 					if atom.use:
@@ -2449,6 +2469,10 @@ class depgraph(object):
 					onlydeps=onlydeps):
 					if pkg in self._dynamic_config._runtime_pkg_mask:
 						# The package has been masked by the backtracking logic
+						continue
+
+					if not pkg.installed and \
+						self._frozen_config.excluded_pkgs.findAtomForPackage(pkg):
 						continue
 
 					if dont_miss_updates:
