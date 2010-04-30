@@ -377,17 +377,10 @@ def unmerge(root_config, myopts, unmerge_action,
 							parents.append(s)
 							break
 			if parents:
-				#print colorize("WARN", "Package %s is going to be unmerged," % cpv)
-				#print colorize("WARN", "but still listed in the following package sets:")
-				#print "    %s\n" % ", ".join(parents)
-				print(colorize("WARN", "Not unmerging package %s as it is" % cpv))
-				print(colorize("WARN", "still referenced by the following package sets:"))
+				print(colorize("WARN", "Package %s is going to be unmerged," % cpv))
+				print(colorize("WARN", "but still listed in the following package sets:"))
 				print("    %s\n" % ", ".join(parents))
-				# adjust pkgmap so the display output is correct
-				pkgmap[cp]["selected"].remove(cpv)
-				all_selected.remove(cpv)
-				pkgmap[cp]["protected"].add(cpv)
-	
+
 	del installed_sets
 
 	numselected = len(all_selected)
