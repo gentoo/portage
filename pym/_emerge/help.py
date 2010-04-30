@@ -378,6 +378,13 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
+		print("       " + green("--exclude") + " " + turquoise("ATOMS"))
+		desc = "A comma separated list of package names or slot atoms. " + \
+			"Emerge won't  install any ebuild or binary package that " + \
+			"matches any of the given package atoms."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
 		print("       "+green("--fail-clean[=n]"))
 		desc = "Clean up temporary files after a build failure. This is " + \
 			"particularly useful if you have PORTAGE_TMPDIR on " + \

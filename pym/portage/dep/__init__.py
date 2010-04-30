@@ -1185,10 +1185,10 @@ def match_from_list(mydep, candidate_list):
 		for x in candidate_list:
 			use = getattr(x, "use", None)
 			if use is not None:
-				regex = x.iuse.regex
+				is_valid_flag = x.iuse.is_valid_flag
 				missing_iuse = False
 				for y in mydep.use.required:
-					if regex.match(y) is None:
+					if not is_valid_flag(y):
 						missing_iuse = True
 						break
 				if missing_iuse:

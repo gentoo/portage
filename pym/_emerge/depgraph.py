@@ -93,6 +93,24 @@ class _frozen_depgraph_config(object):
 
 		self._required_set_names = set(["world"])
 
+		self.excluded_pkgs = InternalPackageSet()
+		for x in myopts.get("--exclude", []):
+			cat = x.cp.split("/")[0]
+			if cat == "null":
+				pkgname = x.cp.split("/")[1]
+				for myroot in trees:
+					for tree in ("porttree", "bintree"):
+						if tree == "bintree" and not "--usepkg" in myopts:
+							continue
+						db = self.trees[myroot][tree].dbapi
+						for cat in db.categories:
+							if db.cp_list(cat + "/" + pkgname):
+								atom = portage.dep.Atom(str(x).replace("null", cat))
+								self.excluded_pkgs.add(atom)
+			else:
+				self.excluded_pkgs.add(x)
+
+
 class _dynamic_depgraph_config(object):
 
 	def __init__(self, depgraph, myparams, allow_backtracking,
@@ -2173,6 +2191,8 @@ class depgraph(object):
 						mreasons.append('backtracking: %s' % \
 							', '.join(sorted(backtrack_reasons)))
 						backtrack_mask = True
+					if not mreasons and self._frozen_config.excluded_pkgs.findAtomForPackage(pkg):
+						mreasons = ["exclude option"]
 					if mreasons:
 						masked_pkg_instances.add(pkg)
 					if atom.use:
@@ -2414,6 +2434,7 @@ class depgraph(object):
 		reinstall = False
 		noreplace = "--noreplace" in self._frozen_config.myopts
 		avoid_update = "--update" not in self._frozen_config.myopts
+		dont_miss_updates = "--update" in self._frozen_config.myopts
 		use_ebuild_visibility = self._frozen_config.myopts.get(
 			'--use-ebuild-visibility', 'n') != 'n'
 		# Behavior of the "selective" parameter depends on
@@ -2428,6 +2449,7 @@ class depgraph(object):
 		# available packages match argument atoms, which is
 		# represented by the found_available_arg flag.
 		found_available_arg = False
+		packages_with_invalid_use_config = []
 		for find_existing_node in True, False:
 			if existing_node:
 				break
@@ -2440,11 +2462,34 @@ class depgraph(object):
 					if want_reinstall and matched_packages:
 						continue
 
-				for pkg in self._iter_match_pkgs(root_config, pkg_type, atom, 
+				# Ignore USE deps for the initial match since we want to
+				# ensure that updates aren't missed solely due to the user's
+				# USE configuration.
+				for pkg in self._iter_match_pkgs(root_config, pkg_type, atom.without_use, 
 					onlydeps=onlydeps):
 					if pkg in self._dynamic_config._runtime_pkg_mask:
 						# The package has been masked by the backtracking logic
 						continue
+
+					if not pkg.installed and \
+						self._frozen_config.excluded_pkgs.findAtomForPackage(pkg):
+						continue
+
+					if dont_miss_updates:
+						# Check if a higher version was rejected due to user
+						# USE configuration. The packages_with_invalid_use_config
+						# list only contains unbuilt ebuilds since USE can't
+						# be changed for built packages.
+						higher_version_rejected = False
+						for rejected in packages_with_invalid_use_config:
+							if rejected.cp != pkg.cp:
+								continue
+							if rejected > pkg:
+								higher_version_rejected = True
+								break
+						if higher_version_rejected:
+							continue
+
 					cpv = pkg.cpv
 					# Make --noreplace take precedence over --newuse.
 					if not pkg.installed and noreplace and \
@@ -2518,12 +2563,26 @@ class depgraph(object):
 					if not installed and myarg:
 						found_available_arg = True
 
-					if atom.use and not pkg.built:
-						use = pkg.use.enabled
-						if atom.use.enabled.difference(use):
+					if atom.use:
+						missing_iuse = False
+						for x in atom.use.required:
+							if not pkg.iuse.is_valid_flag(x):
+								missing_iuse = True
+								break
+						if missing_iuse:
+							# Don't add this to packages_with_invalid_use_config
+							# since IUSE cannot be adjusted by the user.
 							continue
-						if atom.use.disabled.intersection(use):
+
+						if atom.use.enabled.difference(pkg.use.enabled):
+							if not pkg.built:
+								packages_with_invalid_use_config.append(pkg)
 							continue
+						if atom.use.disabled.intersection(pkg.use.enabled):
+							if not pkg.built:
+								packages_with_invalid_use_config.append(pkg)
+							continue
+
 					if pkg.cp == atom_cp:
 						if highest_version is None:
 							highest_version = pkg

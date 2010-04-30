@@ -12,7 +12,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dep:dep_getkey,flatten,match_from_list,paren_reduce,use_reduce',
 	'portage.env.loaders:KeyValuePairFileLoader',
 	'portage.package.ebuild.doebuild:doebuild',
-	'portage.util:ensure_dirs,writemsg,writemsg_level',
+	'portage.util:ensure_dirs,shlex_split,writemsg,writemsg_level',
 	'portage.util.listdir:listdir',
 	'portage.versions:best,catpkgsplit,_pkgsplit@pkgsplit,ver_regexp',
 )
@@ -194,7 +194,7 @@ class portdbapi(dbapi):
 
 		porttrees = [os.path.realpath(porttree_root)]
 		porttrees.extend(os.path.realpath(x) for x in \
-			self.settings.get('PORTDIR_OVERLAY', '').split())
+			shlex_split(self.settings.get('PORTDIR_OVERLAY', '')))
 		treemap = {}
 		repository_map = {}
 		self.treemap = treemap

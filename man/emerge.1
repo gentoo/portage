@@ -359,6 +359,11 @@ dependency tree, as though no packages are currently
 installed. You should run this with \fB\-\-pretend\fR
 first to make sure the result is what you expect.
 .TP
+.BR "\-\-exclude " ATOMS
+A comma separated list of package names or slot atoms.
+Emerge won't  install any ebuild or binary package that
+matches any of the given package atoms.
+.TP
 .BR "\-\-fail\-clean[=n]"
 Clean up temporary files after a build failure. This is
 particularly useful if you have \fBPORTAGE_TMPDIR\fR on

@@ -72,6 +72,10 @@ else:
 import portage
 
 from portage import os
+from portage import _encodings
+from portage import _shell_quote
+from portage import _unicode_decode
+from portage import _unicode_encode
 
 if not opts.ignore_default_opts:
 	default_opts = portage.settings.get("EBUILD_DEFAULT_OPTS", "").split()
@@ -118,9 +122,13 @@ if not os.path.isabs(ebuild):
 	# Try to get the non-canonical path from the PWD evironment variable, since
 	# the canonical path returned from os.getcwd() may may be unusable in
 	# cases where the directory stucture is built from symlinks.
-	if "PWD" in os.environ and os.environ["PWD"] != mycwd and \
-		os.path.realpath(os.environ["PWD"]) == mycwd:
-		mycwd = portage.normalize_path(os.environ["PWD"])
+	pwd = os.environ.get('PWD', '')
+	if sys.hexversion < 0x3000000:
+		pwd = _unicode_decode(pwd, encoding=_encodings['content'],
+			errors='strict')
+	if pwd and pwd != mycwd and \
+		os.path.realpath(pwd) == mycwd:
+		mycwd = portage.normalize_path(pwd)
 	ebuild = os.path.join(mycwd, ebuild)
 ebuild = portage.normalize_path(ebuild)
 # portdbapi uses the canonical path for the base of the portage tree, but
@@ -131,8 +139,16 @@ ebuild = os.path.join(ebuild_portdir, *ebuild.split(os.path.sep)[-3:])
 
 # Make sure that portdb.findname() returns the correct ebuild.
 if ebuild_portdir not in portage.portdb.porttrees:
-	os.environ["PORTDIR_OVERLAY"] = \
-		os.environ.get("PORTDIR_OVERLAY","") + " " + ebuild_portdir
+	if sys.hexversion >= 0x3000000:
+		os.environ["PORTDIR_OVERLAY"] = \
+			os.environ.get("PORTDIR_OVERLAY","") + \
+			" " + _shell_quote(ebuild_portdir)
+	else:
+		os.environ["PORTDIR_OVERLAY"] = \
+			os.environ.get("PORTDIR_OVERLAY","") + \
+			" " + _unicode_encode(_shell_quote(ebuild_portdir),
+			encoding=_encodings['content'], errors='strict')
+
 	print("Appending %s to PORTDIR_OVERLAY..." % ebuild_portdir)
 	portage.close_portdbapi_caches()
 	imp.reload(portage)

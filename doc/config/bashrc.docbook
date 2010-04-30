@@ -3,9 +3,17 @@
 	<sect1 id='config-bashrc-locations'>
 		<title>bashrc locations</title>
 		<para>
-		If a bashrc file is located at <filename>/etc/portage/bashrc</filename>
-		then it will be sourced before an ebuild is executed.
+		If one or more bashrc files exist in the following locations, they will
+		be sourced before the ebuild is executed in the following order:
 		</para>
+		
+		<orderedlist>
+			<listitem><para><filename>/etc/portage/bashrc</filename></para></listitem>
+			<listitem><para><filename>/etc/portage/env/${CATEGORY}/${PN}</filename></para></listitem>
+			<listitem><para><filename>/etc/portage/env/${CATEGORY}/${PN}:${SLOT}</filename></para></listitem>
+			<listitem><para><filename>/etc/portage/env/${CATEGORY}/${P}</filename></para></listitem>
+			<listitem><para><filename>/etc/portage/env/${CATEGORY}/${PF}</filename></para></listitem>
+		</orderedlist>
 	</sect1>
 	<sect1 id='config-bashrc-ebuild-phase-hooks'>
 		<title>Ebuild Phase Hooks</title>
