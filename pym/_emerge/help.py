@@ -117,6 +117,14 @@ def help(myopts, havecolor=1):
 		for line in wrap(paragraph, desc_width):
 			print(desc_indent + line)
 		print()
+		print("       " + green("--ignore-default-opts"))
+
+		paragraph = \
+			"Causes EMERGE_DEFAULT_OPTS (see make.conf(5)) to be ignored."
+
+		for line in wrap(paragraph, desc_width):
+			print(desc_indent + line)
+		print()
 		print("       "+green("--info"))
 		print("              Displays important portage variables that will be exported to")
 		print("              ebuild.sh when performing merges. This information is useful")
