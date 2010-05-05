@@ -562,7 +562,7 @@ def parse_opts(tmpcmdline, silent=False):
 		},
 
 		"--exclude": {
-			"help"   :"A comma separated list of package names or slot atoms. " + \
+			"help"   :"A space separated list of package names or slot atoms. " + \
 				"Emerge won't  install any ebuild or binary package that " + \
 				"matches any of the given package atoms.",
 
@@ -736,7 +736,7 @@ def parse_opts(tmpcmdline, silent=False):
 	if myoptions.exclude:
 		exclude = []
 		bad_atoms = []
-		for x in myoptions.exclude.split(","):
+		for x in myoptions.exclude.split():
 			bad_atom = False
 			try:
 				atom = portage.dep.Atom(x)
@@ -757,8 +757,6 @@ def parse_opts(tmpcmdline, silent=False):
 		if bad_atoms and not silent:
 			parser.error("Invalid Atom(s) in --exclude parameter: '%s' (only package names and slot atoms allowed)\n" % \
 				(",".join(bad_atoms),))
-
-		myoptions.exclude = exclude
 
 	if myoptions.fail_clean == "True":
 		myoptions.fail_clean = True

@@ -2435,6 +2435,9 @@ class vardbapi(dbapi):
 		if incrementing:
 			#increment counter
 			counter += 1
+			# use same permissions as config._init_dirs()
+			ensure_dirs(os.path.dirname(self._counter_path),
+				gid=portage_gid, mode=0o2750, mask=0o2)
 			# update new global counter file
 			write_atomic(self._counter_path, str(counter))
 		return counter

@@ -94,7 +94,11 @@ class _frozen_depgraph_config(object):
 		self._required_set_names = set(["world"])
 
 		self.excluded_pkgs = InternalPackageSet()
-		for x in myopts.get("--exclude", []):
+		for x in myopts.get("--exclude", "").split():
+			try:
+				x = Atom(x)
+			except portage.exception.InvalidAtom:
+				x = Atom("null/" + x)
 			cat = x.cp.split("/")[0]
 			if cat == "null":
 				pkgname = x.cp.split("/")[1]

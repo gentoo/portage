@@ -1095,7 +1095,7 @@ class Scheduler(PollScheduler):
 				msg()
 
 		if len(self._failed_pkgs_all) > 1 or \
-			(self._failed_pkgs_all and "--keep-going" in self.myopts):
+			(self._failed_pkgs_all and keep_going):
 			if len(self._failed_pkgs_all) > 1:
 				msg = "The following %d packages have " % \
 					len(self._failed_pkgs_all) + \
