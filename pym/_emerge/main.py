@@ -757,8 +757,6 @@ def parse_opts(tmpcmdline, silent=False):
 			parser.error("Invalid Atom(s) in --exclude parameter: '%s' (only package names and slot atoms allowed)\n" % \
 				(",".join(bad_atoms),))
 
-		myoptions.exclude = exclude
-
 	if myoptions.fail_clean == "True":
 		myoptions.fail_clean = True
 
