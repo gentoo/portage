@@ -822,6 +822,8 @@ class vardbapi(dbapi):
 		"""
 		self.root = _unicode_decode(root,
 			encoding=_encodings['content'], errors='strict')
+		if self.root[-1] != '/':
+			self.root += '/'
 
 		# Used by emerge to check whether any packages
 		# have been added or removed.
@@ -880,7 +882,7 @@ class vardbapi(dbapi):
 		This is called before an after any modifications, so that consumers
 		can use directory mtimes to validate caches. See bug #290428.
 		"""
-		base = self.root + _os.sep + VDB_PATH
+		base = self.root + VDB_PATH
 		cat = catsplit(cpv)[0]
 		catdir = base + _os.sep + cat
 		t = time.time()
