@@ -870,7 +870,7 @@ class vardbapi(dbapi):
 	def getpath(self, mykey, filename=None):
 		# This is an optimized hotspot, so don't use unicode-wrapped
 		# os module and don't use os.path.join().
-		rValue = self.root + _os.sep + VDB_PATH + _os.sep + mykey
+		rValue = self.root + VDB_PATH + _os.sep + mykey
 		if filename is not None:
 			# If filename is always relative, we can do just
 			# rValue += _os.sep + filename
