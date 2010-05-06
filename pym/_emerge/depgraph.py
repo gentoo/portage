@@ -4703,7 +4703,7 @@ class depgraph(object):
 			writemsg_stdout("%s\n" % (x,), noiselevel=-1)
 
 		if verbosity == 3:
-			writemsg_stdout('\n%s' % (counters,), noiselevel=-1)
+			writemsg_stdout('\n%s\n' % (counters,), noiselevel=-1)
 			if show_repos:
 				# In python-2.x, str() can trigger a UnicodeEncodeError here,
 				# so call __str__() directly.
