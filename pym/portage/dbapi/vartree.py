@@ -1803,6 +1803,8 @@ class vardbapi(dbapi):
 		"""
 		self.root = _unicode_decode(root,
 			encoding=_encodings['content'], errors='strict')
+		if self.root[-1] != '/':
+			self.root += '/'
 
 		# Used by emerge to check whether any packages
 		# have been added or removed.
@@ -1859,7 +1861,7 @@ class vardbapi(dbapi):
 	def getpath(self, mykey, filename=None):
 		# This is an optimized hotspot, so don't use unicode-wrapped
 		# os module and don't use os.path.join().
-		rValue = self.root + _os.sep + VDB_PATH + _os.sep + mykey
+		rValue = self.root + VDB_PATH + _os.sep + mykey
 		if filename is not None:
 			# If filename is always relative, we can do just
 			# rValue += _os.sep + filename
@@ -1871,7 +1873,7 @@ class vardbapi(dbapi):
 		This is called before an after any modifications, so that consumers
 		can use directory mtimes to validate caches. See bug #290428.
 		"""
-		base = self.root + _os.sep + VDB_PATH
+		base = self.root + VDB_PATH
 		cat = catsplit(cpv)[0]
 		catdir = base + _os.sep + cat
 		t = time.time()

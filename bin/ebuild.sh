@@ -486,7 +486,7 @@ econf() {
 			done
 		fi
 
-		# EAPI=3 adds --disable-dependency-tracking to econf
+		# EAPI=4 adds --disable-dependency-tracking to econf
 		if ! hasq "$EAPI" 0 1 2 3 3_pre2 ; then
 			set -- --disable-dependency-tracking "$@"
 		fi

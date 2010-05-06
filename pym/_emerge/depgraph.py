@@ -4682,12 +4682,11 @@ class depgraph(object):
 							p.append(colorize("WARN", "*** Portage will stop merging at this point and reload itself,"))
 							p.append(colorize("WARN", "    then resume the merge."))
 
-		out = sys.stdout
 		show_repos = repoadd_set and repoadd_set != set(["0"])
 
 		for x in p:
 			if isinstance(x, basestring):
-				out.write("%s\n" % (x,))
+				writemsg_stdout("%s\n" % (x,), noiselevel=-1)
 				continue
 
 			myprint, verboseadd, repoadd = x
@@ -4698,14 +4697,13 @@ class depgraph(object):
 			if show_repos and repoadd:
 				myprint += " " + teal("[%s]" % repoadd)
 
-			out.write("%s\n" % (myprint,))
+			writemsg_stdout("%s\n" % (myprint,), noiselevel=-1)
 
 		for x in blockers:
-			print(x)
+			writemsg_stdout("%s\n" % (x,), noiselevel=-1)
 
 		if verbosity == 3:
-			print()
-			print(counters)
+			writemsg_stdout('\n%s\n' % (counters,), noiselevel=-1)
 			if show_repos:
 				# In python-2.x, str() can trigger a UnicodeEncodeError here,
 				# so call __str__() directly.
@@ -4717,7 +4715,6 @@ class depgraph(object):
 				writemsg_stdout(bold('*'+revision) + '\n' + text,
 					noiselevel=-1)
 
-		sys.stdout.flush()
 		return os.EX_OK
 
 	def _tree_display(self, mylist):
