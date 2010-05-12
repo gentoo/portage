@@ -76,6 +76,7 @@ util.initialize_logger()
 max_desc_len = 100
 allowed_filename_chars="a-zA-Z0-9._-+:"
 disallowed_filename_chars_re = re.compile(r'[^a-zA-Z0-9._\-+:]')
+pv_toolong_re = re.compile(r'[0-9]{19,}')
 bad = create_color_func("BAD")
 
 # A sane umask is needed for files that portage creates.
@@ -1377,7 +1378,9 @@ for x in scanlist:
 			stats["ebuild.notadded"]=stats["ebuild.notadded"]+1
 			fails["ebuild.notadded"].append(x+"/"+y+".ebuild")
 		myesplit=portage.pkgsplit(y)
-		if myesplit is None or myesplit[0] != x.split("/")[-1]:
+		if myesplit is None or myesplit[0] != x.split("/")[-1] \
+			    or pv_toolong_re.search(myesplit[1]) \
+			    or pv_toolong_re.search(myesplit[2]):
 			stats["ebuild.invalidname"]=stats["ebuild.invalidname"]+1
 			fails["ebuild.invalidname"].append(x+"/"+y+".ebuild")
 			continue
