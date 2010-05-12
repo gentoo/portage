@@ -2339,22 +2339,28 @@ else:
 	# When files are removed and re-added, the cvs server will put /Attic/
 	# inside the $Header path. This code detects the problem and corrects it
 	# so that the Manifest will generate correctly. See bug #169500.
-	from portage.util import write_atomic
-	cvs_header = re.compile(r'^#\s*\$Header.*\$$')
+	cvs_header = r'^#\s*\$Header.*\$$'
+	attic_str = "/Attic/"
+	attic_replace = "/"
+	cvs_header = _unicode_encode(cvs_header)
+	attic_str = _unicode_encode(attic_str)
+	attic_replace = _unicode_encode(attic_replace)
+	cvs_header_re = re.compile(cvs_header)
 	for x in myheaders:
-		f = codecs.open(_unicode_encode(x,
+		f = open(_unicode_encode(x,
 			encoding=_encodings['fs'], errors='strict'),
-			mode='r', encoding=_encodings['repo.content'], errors='strict')
+			mode='rb')
 		mylines = f.readlines()
 		f.close()
 		modified = False
 		for i, line in enumerate(mylines):
-			if cvs_header.match(line) and "/Attic/" in line:
-				mylines[i] = line.replace("/Attic/", "/")
+			if cvs_header_re.match(line) is not None and \
+				attic_str in line:
+				mylines[i] = line.replace(attic_str, attic_replace)
 				modified = True
 		if modified:
-			write_atomic(x, "".join(mylines),
-				encoding=_encodings['repo.content'], errors='strict')
+			portage.util.write_atomic(x, _unicode_encode("").join(mylines),
+				mode='wb')
 
 	manifest_commit_required = True
 	if vcs in ('cvs', 'svn') and (myupdates or myremoved):
