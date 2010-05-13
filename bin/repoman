@@ -2342,13 +2342,10 @@ else:
 	# When files are removed and re-added, the cvs server will put /Attic/
 	# inside the $Header path. This code detects the problem and corrects it
 	# so that the Manifest will generate correctly. See bug #169500.
-	cvs_header = r'^#\s*\$Header.*\$$'
-	attic_str = "/Attic/"
-	attic_replace = "/"
-	cvs_header = _unicode_encode(cvs_header)
-	attic_str = _unicode_encode(attic_str)
-	attic_replace = _unicode_encode(attic_replace)
-	cvs_header_re = re.compile(cvs_header)
+	# Use binary mode in order to avoid potential character encoding issues.
+	cvs_header_re = re.compile(br'^#\s*\$Header.*\$$')
+	attic_str = b'/Attic/'
+	attic_replace = b'/'
 	for x in myheaders:
 		f = open(_unicode_encode(x,
 			encoding=_encodings['fs'], errors='strict'),
@@ -2362,7 +2359,7 @@ else:
 				mylines[i] = line.replace(attic_str, attic_replace)
 				modified = True
 		if modified:
-			portage.util.write_atomic(x, _unicode_encode("").join(mylines),
+			portage.util.write_atomic(x, b''.join(mylines),
 				mode='wb')
 
 	manifest_commit_required = True
