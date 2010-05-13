@@ -25,6 +25,7 @@ import errno
 import shutil
 import sys
 
+import portage
 from portage import os
 from portage import normalize_path
 from portage import _encodings
@@ -295,17 +296,39 @@ class tbz2(object):
 	def compose(self,datadir,cleanup=0):
 		"""Alias for recompose()."""
 		return self.recompose(datadir,cleanup)
-	def recompose(self,datadir,cleanup=0):
+
+	def recompose(self, datadir, cleanup=0, break_hardlinks=True):
 		"""Creates an xpak segment from the datadir provided, truncates the tbz2
 		to the end of regular data if an xpak segment already exists, and adds
 		the new segment to the file with terminating info."""
 		xpdata = xpak(datadir)
-		self.recompose_mem(xpdata)
+		self.recompose_mem(xpdata, break_hardlinks=break_hardlinks)
 		if cleanup:
 			self.cleanup(datadir)
 
-	def recompose_mem(self, xpdata):
+	def recompose_mem(self, xpdata, break_hardlinks=True):
+		"""
+		Update the xpak segment.
+		@param xpdata: A new xpak segment to be written, like that returned
+			from the xpak_mem() function.
+		@param break_hardlinks: If hardlinks exist, create a copy in order
+			to break them. This makes it safe to use hardlinks to create
+			cheap snapshots of the repository, which is useful for solving
+			race conditions on binhosts as described here:
+			http://code.google.com/p/chromium-os/issues/detail?id=3225.
+			Default is True.
+		"""
 		self.scan() # Don't care about condition... We'll rewrite the data anyway.
+
+		if break_hardlinks and self.filestat.st_nlink > 1:
+			tmp_fname = "%s.%d" % (self.file, os.getpid())
+			shutil.copyfile(self.file, tmp_fname)
+			try:
+				portage.util.apply_stat_permissions(self.file, self.filestat)
+			except portage.exception.OperationNotPermitted:
+				pass
+			os.rename(tmp_fname, self.file)
+
 		myfile = open(_unicode_encode(self.file,
 			encoding=_encodings['fs'], errors='strict'), 'ab+')
 		if not myfile:
