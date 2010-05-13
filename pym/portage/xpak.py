@@ -113,9 +113,9 @@ def xpak_mem(mydata):
 	mydata = mydata_encoded
 	del mydata_encoded
 
-	indexglob = _unicode_encode('')
+	indexglob = b''
 	indexpos=0
-	dataglob = _unicode_encode('')
+	dataglob = b''
 	datapos=0
 	for x, newglob in mydata.items():
 		mydatasize=len(newglob)
@@ -123,12 +123,12 @@ def xpak_mem(mydata):
 		indexpos=indexpos+4+len(x)+4+4
 		dataglob=dataglob+newglob
 		datapos=datapos+mydatasize
-	return _unicode_encode('XPAKPACK') \
+	return b'XPAKPACK' \
 	+ encodeint(len(indexglob)) \
 	+ encodeint(len(dataglob)) \
 	+ indexglob \
 	+ dataglob \
-	+ _unicode_encode('XPAKSTOP')
+	+ b'XPAKSTOP'
 
 def xsplit(infile):
 	"""(infile) -- Splits the infile into two files.
@@ -156,9 +156,9 @@ def xsplit(infile):
 	return True
 
 def xsplit_mem(mydat):
-	if mydat[0:8] != _unicode_encode('XPAKPACK'):
+	if mydat[0:8] != b'XPAKPACK':
 		return None
-	if mydat[-8:] != _unicode_encode('XPAKSTOP'):
+	if mydat[-8:] != b'XPAKSTOP':
 		return None
 	indexsize=decodeint(mydat[8:12])
 	return (mydat[16:indexsize+16], mydat[indexsize+16:-8])
@@ -168,7 +168,7 @@ def getindex(infile):
 	myfile = open(_unicode_encode(infile,
 		encoding=_encodings['fs'], errors='strict'), 'rb')
 	myheader=myfile.read(16)
-	if myheader[0:8] != _unicode_encode('XPAKPACK'):
+	if myheader[0:8] != b'XPAKPACK':
 		myfile.close()
 		return
 	indexsize=decodeint(myheader[8:12])
@@ -182,7 +182,7 @@ def getboth(infile):
 	myfile = open(_unicode_encode(infile,
 		encoding=_encodings['fs'], errors='strict'), 'rb')
 	myheader=myfile.read(16)
-	if myheader[0:8] != _unicode_encode('XPAKPACK'):
+	if myheader[0:8] != b'XPAKPACK':
 		myfile.close()
 		return
 	indexsize=decodeint(myheader[8:12])
@@ -267,7 +267,7 @@ class tbz2(object):
 	def __init__(self,myfile):
 		self.file=myfile
 		self.filestat=None
-		self.index = _unicode_encode('')
+		self.index = b''
 		self.infosize=0
 		self.xpaksize=0
 		self.indexsize=None
@@ -307,7 +307,7 @@ class tbz2(object):
 			raise IOError
 		myfile.seek(-self.xpaksize,2) # 0,2 or -0,2 just mean EOF.
 		myfile.truncate()
-		myfile.write(xpdata+encodeint(len(xpdata)) + _unicode_encode('STOP'))
+		myfile.write(xpdata+encodeint(len(xpdata)) + b'STOP')
 		myfile.flush()
 		myfile.close()
 		return 1
@@ -345,17 +345,17 @@ class tbz2(object):
 			trailer=a.read()
 			self.infosize=0
 			self.xpaksize=0
-			if trailer[-4:] != _unicode_encode('STOP'):
+			if trailer[-4:] != b'STOP':
 				a.close()
 				return 0
-			if trailer[0:8] != _unicode_encode('XPAKSTOP'):
+			if trailer[0:8] != b'XPAKSTOP':
 				a.close()
 				return 0
 			self.infosize=decodeint(trailer[8:12])
 			self.xpaksize=self.infosize+8
 			a.seek(-(self.xpaksize),2)
 			header=a.read(16)
-			if header[0:8] != _unicode_encode('XPAKPACK'):
+			if header[0:8] != b'XPAKPACK':
 				a.close()
 				return 0
 			self.indexsize=decodeint(header[8:12])
