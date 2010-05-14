@@ -1,0 +1,142 @@
+#!/usr/bin/python
+# Copyright 2010 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+
+import codecs
+import optparse
+import os
+import sys
+import textwrap
+
+try:
+	from urllib.parse import urlparse
+except ImportError:
+	from urlparse import urlparse
+
+try:
+	import portage
+except ImportError:
+	from os import path as osp
+	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(
+		osp.realpath(__file__))), "pym"))
+	import portage
+
+def parse_args(argv):
+	prog_name = os.path.basename(argv[0])
+	usage = prog_name + ' [options] ' + \
+		'<src_pkg_dir> <snapshot_dir> <snapshot_uri> <binhost_dir>'
+
+	prog_desc = "This program will copy src_pkg_dir to snapshot_dir " + \
+		"and inside binhost_dir it will create a Packages index file " + \
+		"which refers to snapshot_uri. This is intended to solve race " + \
+		"conditions on binhosts as described at http://crosbug.com/3225."
+
+	usage += "\n\n"
+	for line in textwrap.wrap(prog_desc, 70):
+		usage += line + "\n" 
+
+	usage += "\n"
+	usage += "Required Arguments:\n\n"
+	usage += "  src_pkg_dir  - the source $PKGDIR\n"
+	usage += "  snapshot_dir - destination snapshot " + \
+		"directory (must not exist)\n"
+	usage += "  snapshot_uri - URI which refers to " + \
+		"snapshot_dir from the\n" + \
+		"                 client side\n"
+	usage += "  binhost_dir  - directory in which to " + \
+		"write Packages index with\n" + \
+		"                 snapshot_uri"
+
+	parser = optparse.OptionParser(usage=usage)
+	parser.add_option('--hardlinks', help='create hardlinks (y or n, default is y)',
+		choices=('y', 'n'))
+	parser.set_defaults(hardlinks='y')
+	options, args = parser.parse_args(argv[1:])
+
+	if len(args) != 4:
+		parser.error("Required 4 arguments, got %d" % (len(args),))
+
+	return parser, options, args
+
+def main(argv):
+	parser, options, args = parse_args(argv)
+
+	src_pkg_dir, snapshot_dir, snapshot_uri, binhost_dir = args
+	src_pkgs_index = os.path.join(src_pkg_dir, 'Packages')
+
+	if not os.path.isdir(src_pkg_dir):
+		parser.error("src_pkg_dir is not a directory: '%s'" % (src_pkg_dir,))
+
+	if not os.path.isfile(src_pkgs_index):
+		parser.error("src_pkg_dir does not contain a " + \
+			"'Packages' index: '%s'" % (src_pkg_dir,))
+
+	parse_result = urlparse(snapshot_uri)
+	if not (parse_result.scheme and parse_result.netloc and parse_result.path):
+		parser.error("snapshot_uri is not a valid URI: '%s'" % (snapshot_uri,))
+
+	if os.path.isdir(snapshot_dir):
+		parser.error("snapshot_dir already exists: '%s'" % snapshot_dir)
+
+	try:
+		os.makedirs(os.path.dirname(snapshot_dir))
+	except OSError:
+		pass
+	if not os.path.isdir(os.path.dirname(snapshot_dir)):
+		parser.error("snapshot_dir parent could not be created: '%s'" % \
+			os.path.dirname(snapshot_dir))
+
+	try:
+		os.makedirs(binhost_dir)
+	except OSError:
+		pass
+	if not os.path.isdir(binhost_dir):
+		parser.error("binhost_dir could not be created: '%s'" % binhost_dir)
+
+	cp_opts = 'RP'
+	if options.hardlinks == 'n':
+		cp_opts += 'p'
+	else:
+		cp_opts += 'l'
+
+	cp_cmd = 'cp -%s %s %s' % (
+		cp_opts,
+		portage._shell_quote(src_pkg_dir),
+		portage._shell_quote(snapshot_dir)
+	)
+
+	ret = os.system(cp_cmd)
+	if not (os.WIFEXITED(ret) and os.WEXITSTATUS(ret) == os.EX_OK):
+		return 1
+
+	infile = codecs.open(portage._unicode_encode(src_pkgs_index,
+		encoding=portage._encodings['fs'], errors='strict'),
+		mode='r', encoding=portage._encodings['repo.content'],
+		errors='strict')
+
+	outfile = portage.util.atomic_ofstream(
+		os.path.join(binhost_dir, "Packages"),
+		encoding=portage._encodings['repo.content'],
+		errors='strict')
+
+	for line in infile:
+		if line[:4] == 'URI:':
+			# skip existing URI line
+			pass
+		else:
+			if not line.strip():
+				# end of header
+				outfile.write("URI: %s\n\n" % snapshot_uri)
+				break
+			outfile.write(line)
+
+	for line in infile:
+		outfile.write(line)
+
+	infile.close()
+	outfile.close()
+
+	return os.EX_OK
+
+if __name__ == "__main__":
+	sys.exit(main(sys.argv))
