@@ -10,7 +10,8 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.output:EOutput,colorize',
 	'portage.package.ebuild.doebuild:_vdb_use_conditional_atoms',
 	'portage.update:update_dbentries',
-	'portage.util:ensure_dirs,normalize_path,writemsg,writemsg_stdout',
+	'portage.util:atomic_ofstream,ensure_dirs,normalize_path,' + \
+		'writemsg,writemsg_stdout',
 	'portage.util.listdir:listdir',
 	'portage.versions:best,catpkgsplit,catsplit',
 )
@@ -696,12 +697,9 @@ class binarytree(object):
 				del pkgindex.packages[:]
 				pkgindex.packages.extend(iter(metadata.values()))
 				self._update_pkgindex_header(pkgindex.header)
-				from portage.util import atomic_ofstream
 				f = atomic_ofstream(self._pkgindex_file)
-				try:
-					pkgindex.write(f)
-				finally:
-					f.close()
+				pkgindex.write(f)
+				f.close()
 
 		if getbinpkgs and not self.settings["PORTAGE_BINHOST"]:
 			writemsg(_("!!! PORTAGE_BINHOST unset, but use is requested.\n"),
@@ -768,7 +766,6 @@ class binarytree(object):
 				pkgindex = None
 			if pkgindex is rmt_idx:
 				pkgindex.modified = False # don't update the header
-				from portage.util import atomic_ofstream, ensure_dirs
 				try:
 					ensure_dirs(os.path.dirname(pkgindex_file))
 					f = atomic_ofstream(pkgindex_file)
@@ -981,12 +978,9 @@ class binarytree(object):
 			pkgindex.packages.append(d)
 
 			self._update_pkgindex_header(pkgindex.header)
-			from portage.util import atomic_ofstream
 			f = atomic_ofstream(os.path.join(self.pkgdir, "Packages"))
-			try:
-				pkgindex.write(f)
-			finally:
-				f.close()
+			pkgindex.write(f)
+			f.close()
 		finally:
 			if pkgindex_lock:
 				unlockfile(pkgindex_lock)
