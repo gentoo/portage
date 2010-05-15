@@ -349,17 +349,7 @@ install_qa_check() {
 
 		for j in "${i}"/*.so.* "${i}"/*.so ; do
 			[[ ! -e ${j} ]] && continue
-			if [[ -L ${j} ]] ; then
-				linkdest=$(readlink "${j}")
-				if [[ ${linkdest} == /* ]] ; then
-					vecho -ne '\a\n'
-					eqawarn "QA Notice: Found an absolute symlink in a library directory:"
-					eqawarn "           ${j#${D}} -> ${linkdest}"
-					eqawarn "           It should be a relative symlink if in the same directory"
-					eqawarn "           or a linker script if it crosses the /usr boundary."
-				fi
-				continue
-			fi
+			[[ -L ${j} ]] && continue
 			[[ -x ${j} ]] && continue
 			vecho "making executable: ${j#${D}}"
 			chmod +x "${j}"
@@ -371,6 +361,19 @@ install_qa_check() {
 			[[ ! -x ${j} ]] && continue
 			vecho "removing executable bit: ${j#${D}}"
 			chmod -x "${j}"
+		done
+
+		for j in "${i}"/*.{a,dll,dylib,sl,so}.* "${i}"/*.{a,dll,dylib,sl,so} ; do
+			[[ ! -e ${j} ]] && continue
+			[[ ! -L ${j} ]] && continue
+			linkdest=$(readlink "${j}")
+			if [[ ${linkdest} == /* ]] ; then
+				vecho -ne '\a\n'
+				eqawarn "QA Notice: Found an absolute symlink in a library directory:"
+				eqawarn "           ${j#${D}} -> ${linkdest}"
+				eqawarn "           It should be a relative symlink if in the same directory"
+				eqawarn "           or a linker script if it crosses the /usr boundary."
+			fi
 		done
 	done
 
