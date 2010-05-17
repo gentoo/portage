@@ -150,6 +150,7 @@ def ParseArgs(args, qahelp):
 		'full' : 'Scan directory tree and print all issues (not a summary)',
 		'help' : 'Show this screen',
 		'manifest' : 'Generate a Manifest (fetches files if necessary)',
+		'manifest-check' : 'Check Manifests for missing or incorrect digests',
 		'scan' : 'Scan directory tree for QA issues' 
 	}
 
@@ -331,6 +332,7 @@ qahelp={
 	"ebuild.majorsyn":"This ebuild has a major syntax error that may cause the ebuild to fail partially or fully",
 	"ebuild.minorsyn":"This ebuild has a minor syntax error that contravenes gentoo coding style",
 	"ebuild.badheader":"This ebuild has a malformed header",
+	"manifest.bad":"Manifest has missing or incorrect digests",
 	"metadata.missing":"Missing metadata.xml files",
 	"metadata.bad":"Bad metadata.xml files",
 	"metadata.warning":"Warnings in metadata.xml files",
@@ -999,6 +1001,14 @@ for x in scanlist:
 	if repolevel < 2:
 		checkdir_relative = os.path.join(catdir, checkdir_relative)
 	checkdir_relative = os.path.join(".", checkdir_relative)
+
+	if options.mode == 'manifest-check':
+		repoman_settings['O'] = checkdir
+		repoman_settings['PORTAGE_QUIET'] = '1'
+		if not portage.digestcheck([], repoman_settings, strict=1):
+			stats["manifest.bad"] += 1
+			fails["manifest.bad"].append(os.path.join(x, 'Manifest'))
+		continue
 
 	if options.mode == "manifest" or \
 	  options.mode in ('commit', 'fix') and not options.pretend:
