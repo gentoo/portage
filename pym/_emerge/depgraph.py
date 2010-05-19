@@ -527,7 +527,7 @@ class depgraph(object):
 						else:
 							# Display the specific atom from SetArg or
 							# Package types.
-							msg.append("%s required by %s" % (atom, parent))
+							msg.append("%s required by %s" % (atom.unevaluated_atom, parent))
 						msg.append("\n")
 					if omitted_parents:
 						msg.append(2*indent)
