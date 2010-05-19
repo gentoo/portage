@@ -94,7 +94,7 @@ class _frozen_depgraph_config(object):
 		self._required_set_names = set(["world"])
 
 		self.excluded_pkgs = InternalPackageSet()
-		for x in myopts.get("--exclude", "").split():
+		for x in ' '.join(myopts.get("--exclude", [])).split():
 			try:
 				x = Atom(x)
 			except portage.exception.InvalidAtom:
