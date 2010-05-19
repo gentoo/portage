@@ -5133,6 +5133,10 @@ class depgraph(object):
 					continue
 				raise
 
+			if "merge" == pkg.operation and \
+				self._frozen_config.excluded_pkgs.findAtomForPackage(pkg):
+				continue
+
 			if "merge" == pkg.operation and not pkg.visible:
 				if skip_masked:
 					masked_tasks.append(Dependency(root=pkg.root, parent=pkg))

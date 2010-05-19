@@ -79,6 +79,9 @@ Fix simple QA issues (stray digests, missing digests)
 Generate a Manifest (fetches distfiles if necessary). See the \fB\-\-force\fR
 option if you would like to replace existing distfiles digests.
 .TP
+.B manifest-check
+Check Manifests for missing or incorrect digests
+.TP
 .B commit
 Scan directory tree for QA issues; if OK, commit via cvs
 .SH QA KEYWORDS
@@ -297,6 +300,9 @@ Ebuild inherits autotools but does not call eautomake, eautoconf or eautoreconf
 .B java.eclassesnotused
 With virtual/jdk in DEPEND you must inherit a java eclass. Refer to
 \fIhttp://www.gentoo.org/proj/en/java/java\-devel.xml\fR for more information.
+.TP
+.B manifest.bad
+Manifest has missing or incorrect digests
 .TP
 .B metadata.bad
 Bad metadata.xml files

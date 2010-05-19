@@ -80,6 +80,7 @@ util.initialize_logger()
 max_desc_len = 100
 allowed_filename_chars="a-zA-Z0-9._-+:"
 disallowed_filename_chars_re = re.compile(r'[^a-zA-Z0-9._\-+:]')
+pv_toolong_re = re.compile(r'[0-9]{19,}')
 bad = create_color_func("BAD")
 
 # A sane umask is needed for files that portage creates.
@@ -153,6 +154,7 @@ def ParseArgs(args, qahelp):
 		'full' : 'Scan directory tree and print all issues (not a summary)',
 		'help' : 'Show this screen',
 		'manifest' : 'Generate a Manifest (fetches files if necessary)',
+		'manifest-check' : 'Check Manifests for missing or incorrect digests',
 		'scan' : 'Scan directory tree for QA issues' 
 	}
 
@@ -334,6 +336,7 @@ qahelp={
 	"ebuild.majorsyn":"This ebuild has a major syntax error that may cause the ebuild to fail partially or fully",
 	"ebuild.minorsyn":"This ebuild has a minor syntax error that contravenes gentoo coding style",
 	"ebuild.badheader":"This ebuild has a malformed header",
+	"manifest.bad":"Manifest has missing or incorrect digests",
 	"metadata.missing":"Missing metadata.xml files",
 	"metadata.bad":"Bad metadata.xml files",
 	"metadata.warning":"Warnings in metadata.xml files",
@@ -1005,6 +1008,14 @@ for x in scanlist:
 		checkdir_relative = os.path.join(catdir, checkdir_relative)
 	checkdir_relative = os.path.join(".", checkdir_relative)
 
+	if options.mode == 'manifest-check':
+		repoman_settings['O'] = checkdir
+		repoman_settings['PORTAGE_QUIET'] = '1'
+		if not portage.digestcheck([], repoman_settings, strict=1):
+			stats["manifest.bad"] += 1
+			fails["manifest.bad"].append(os.path.join(x, 'Manifest'))
+		continue
+
 	if options.mode == "manifest" or \
 	  options.mode in ('commit', 'fix') and not options.pretend:
 		auto_assumed = set()
@@ -1383,7 +1394,9 @@ for x in scanlist:
 			stats["ebuild.notadded"]=stats["ebuild.notadded"]+1
 			fails["ebuild.notadded"].append(x+"/"+y+".ebuild")
 		myesplit=portage.pkgsplit(y)
-		if myesplit is None or myesplit[0] != x.split("/")[-1]:
+		if myesplit is None or myesplit[0] != x.split("/")[-1] \
+			    or pv_toolong_re.search(myesplit[1]) \
+			    or pv_toolong_re.search(myesplit[2]):
 			stats["ebuild.invalidname"]=stats["ebuild.invalidname"]+1
 			fails["ebuild.invalidname"].append(x+"/"+y+".ebuild")
 			continue
@@ -2345,22 +2358,25 @@ else:
 	# When files are removed and re-added, the cvs server will put /Attic/
 	# inside the $Header path. This code detects the problem and corrects it
 	# so that the Manifest will generate correctly. See bug #169500.
-	from portage.util import write_atomic
-	cvs_header = re.compile(r'^#\s*\$Header.*\$$')
+	# Use binary mode in order to avoid potential character encoding issues.
+	cvs_header_re = re.compile(br'^#\s*\$Header.*\$$')
+	attic_str = b'/Attic/'
+	attic_replace = b'/'
 	for x in myheaders:
-		f = codecs.open(_unicode_encode(x,
+		f = open(_unicode_encode(x,
 			encoding=_encodings['fs'], errors='strict'),
-			mode='r', encoding=_encodings['repo.content'], errors='strict')
+			mode='rb')
 		mylines = f.readlines()
 		f.close()
 		modified = False
 		for i, line in enumerate(mylines):
-			if cvs_header.match(line) and "/Attic/" in line:
-				mylines[i] = line.replace("/Attic/", "/")
+			if cvs_header_re.match(line) is not None and \
+				attic_str in line:
+				mylines[i] = line.replace(attic_str, attic_replace)
 				modified = True
 		if modified:
-			write_atomic(x, "".join(mylines),
-				encoding=_encodings['repo.content'], errors='strict')
+			portage.util.write_atomic(x, b''.join(mylines),
+				mode='wb')
 
 	manifest_commit_required = True
 	if vcs in ('cvs', 'svn') and (myupdates or myremoved):

@@ -1,4 +1,4 @@
-# Copyright 2001-2004 Gentoo Foundation
+# Copyright 2001-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -15,11 +15,17 @@
 # (integer) == encodeint(integer)  ===> 4 characters (big-endian copy)
 # '+' means concatenate the fields ===> All chunks are strings
 
+__all__ = ['addtolist', 'decodeint', 'encodeint', 'getboth',
+	'getindex', 'getindex_mem', 'getitem', 'listindex',
+	'searchindex', 'tbz2', 'xpak_mem', 'xpak', 'xpand',
+	'xsplit', 'xsplit_mem']
+
 import array
 import errno
 import shutil
 import sys
 
+import portage
 from portage import os
 from portage import normalize_path
 from portage import _encodings
@@ -113,9 +119,9 @@ def xpak_mem(mydata):
 	mydata = mydata_encoded
 	del mydata_encoded
 
-	indexglob = _unicode_encode('')
+	indexglob = b''
 	indexpos=0
-	dataglob = _unicode_encode('')
+	dataglob = b''
 	datapos=0
 	for x, newglob in mydata.items():
 		mydatasize=len(newglob)
@@ -123,12 +129,12 @@ def xpak_mem(mydata):
 		indexpos=indexpos+4+len(x)+4+4
 		dataglob=dataglob+newglob
 		datapos=datapos+mydatasize
-	return _unicode_encode('XPAKPACK') \
+	return b'XPAKPACK' \
 	+ encodeint(len(indexglob)) \
 	+ encodeint(len(dataglob)) \
 	+ indexglob \
 	+ dataglob \
-	+ _unicode_encode('XPAKSTOP')
+	+ b'XPAKSTOP'
 
 def xsplit(infile):
 	"""(infile) -- Splits the infile into two files.
@@ -156,9 +162,9 @@ def xsplit(infile):
 	return True
 
 def xsplit_mem(mydat):
-	if mydat[0:8] != _unicode_encode('XPAKPACK'):
+	if mydat[0:8] != b'XPAKPACK':
 		return None
-	if mydat[-8:] != _unicode_encode('XPAKSTOP'):
+	if mydat[-8:] != b'XPAKSTOP':
 		return None
 	indexsize=decodeint(mydat[8:12])
 	return (mydat[16:indexsize+16], mydat[indexsize+16:-8])
@@ -168,7 +174,7 @@ def getindex(infile):
 	myfile = open(_unicode_encode(infile,
 		encoding=_encodings['fs'], errors='strict'), 'rb')
 	myheader=myfile.read(16)
-	if myheader[0:8] != _unicode_encode('XPAKPACK'):
+	if myheader[0:8] != b'XPAKPACK':
 		myfile.close()
 		return
 	indexsize=decodeint(myheader[8:12])
@@ -182,7 +188,7 @@ def getboth(infile):
 	myfile = open(_unicode_encode(infile,
 		encoding=_encodings['fs'], errors='strict'), 'rb')
 	myheader=myfile.read(16)
-	if myheader[0:8] != _unicode_encode('XPAKPACK'):
+	if myheader[0:8] != b'XPAKPACK':
 		myfile.close()
 		return
 	indexsize=decodeint(myheader[8:12])
@@ -267,7 +273,7 @@ class tbz2(object):
 	def __init__(self,myfile):
 		self.file=myfile
 		self.filestat=None
-		self.index = _unicode_encode('')
+		self.index = b''
 		self.infosize=0
 		self.xpaksize=0
 		self.indexsize=None
@@ -290,24 +296,46 @@ class tbz2(object):
 	def compose(self,datadir,cleanup=0):
 		"""Alias for recompose()."""
 		return self.recompose(datadir,cleanup)
-	def recompose(self,datadir,cleanup=0):
+
+	def recompose(self, datadir, cleanup=0, break_hardlinks=True):
 		"""Creates an xpak segment from the datadir provided, truncates the tbz2
 		to the end of regular data if an xpak segment already exists, and adds
 		the new segment to the file with terminating info."""
 		xpdata = xpak(datadir)
-		self.recompose_mem(xpdata)
+		self.recompose_mem(xpdata, break_hardlinks=break_hardlinks)
 		if cleanup:
 			self.cleanup(datadir)
 
-	def recompose_mem(self, xpdata):
+	def recompose_mem(self, xpdata, break_hardlinks=True):
+		"""
+		Update the xpak segment.
+		@param xpdata: A new xpak segment to be written, like that returned
+			from the xpak_mem() function.
+		@param break_hardlinks: If hardlinks exist, create a copy in order
+			to break them. This makes it safe to use hardlinks to create
+			cheap snapshots of the repository, which is useful for solving
+			race conditions on binhosts as described here:
+			http://code.google.com/p/chromium-os/issues/detail?id=3225.
+			Default is True.
+		"""
 		self.scan() # Don't care about condition... We'll rewrite the data anyway.
+
+		if break_hardlinks and self.filestat.st_nlink > 1:
+			tmp_fname = "%s.%d" % (self.file, os.getpid())
+			shutil.copyfile(self.file, tmp_fname)
+			try:
+				portage.util.apply_stat_permissions(self.file, self.filestat)
+			except portage.exception.OperationNotPermitted:
+				pass
+			os.rename(tmp_fname, self.file)
+
 		myfile = open(_unicode_encode(self.file,
 			encoding=_encodings['fs'], errors='strict'), 'ab+')
 		if not myfile:
 			raise IOError
 		myfile.seek(-self.xpaksize,2) # 0,2 or -0,2 just mean EOF.
 		myfile.truncate()
-		myfile.write(xpdata+encodeint(len(xpdata)) + _unicode_encode('STOP'))
+		myfile.write(xpdata+encodeint(len(xpdata)) + b'STOP')
 		myfile.flush()
 		myfile.close()
 		return 1
@@ -345,17 +373,17 @@ class tbz2(object):
 			trailer=a.read()
 			self.infosize=0
 			self.xpaksize=0
-			if trailer[-4:] != _unicode_encode('STOP'):
+			if trailer[-4:] != b'STOP':
 				a.close()
 				return 0
-			if trailer[0:8] != _unicode_encode('XPAKSTOP'):
+			if trailer[0:8] != b'XPAKSTOP':
 				a.close()
 				return 0
 			self.infosize=decodeint(trailer[8:12])
 			self.xpaksize=self.infosize+8
 			a.seek(-(self.xpaksize),2)
 			header=a.read(16)
-			if header[0:8] != _unicode_encode('XPAKPACK'):
+			if header[0:8] != b'XPAKPACK':
 				a.close()
 				return 0
 			self.indexsize=decodeint(header[8:12])

@@ -40,6 +40,9 @@ PORTAGE_TMPDIR="@PORTAGE_EPREFIX@/var/tmp"
 FETCHCOMMAND="@PORTAGE_WGET@ -t 5 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
 RESUMECOMMAND="@PORTAGE_WGET@ -c -t 5 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
 
+FETCHCOMMAND_RSYNC="rsync -avP \"\${URI}\" \"\${DISTDIR}/\${FILE}\""
+RESUMECOMMAND_RSYNC="rsync -avP \"\${URI}\" \"\${DISTDIR}/\${FILE}\""
+
 # Default user options
 FEATURES="assume-digests distlocks fixpackages news parallel-fetch protect-owned
           sandbox sfperms strict unmerge-logs unmerge-orphans userfetch"

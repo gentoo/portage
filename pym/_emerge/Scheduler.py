@@ -259,7 +259,7 @@ class Scheduler(PollScheduler):
 					"thus parallel-fetching is being disabled"+"\n",
 					noiselevel=-1)
 				portage.writemsg(red("!!!")+"\n", noiselevel=-1)
-			elif len(mergelist) > 1:
+			elif merge_count > 1:
 				self._parallel_fetch = True
 
 		if self._parallel_fetch:
