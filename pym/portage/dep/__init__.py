@@ -549,7 +549,10 @@ class Atom(_atom_base):
 		def __init__(self, forbid_overlap=False):
 			self.overlap = self._overlap(forbid=forbid_overlap)
 
-	def __init__(self, s):
+	def __new__(cls, s, unevaluated_atom=None):
+		return _atom_base.__new__(cls, s)
+
+	def __init__(self, s, unevaluated_atom=None):
 		if isinstance(s, Atom):
 			# This is an efficiency assertion, to ensure that the Atom
 			# constructor is not called redundantly.
@@ -608,6 +611,11 @@ class Atom(_atom_base):
 		self.__dict__['use'] = use
 		self.__dict__['without_use'] = without_use
 
+		if unevaluated_atom:
+			self.__dict__['unevaluated_atom'] = unevaluated_atom
+		else:
+			self.__dict__['unevaluated_atom'] = self
+
 	def __setattr__(self, name, value):
 		raise AttributeError("Atom instances are immutable",
 			self.__class__, name, value)
@@ -657,7 +665,7 @@ class Atom(_atom_base):
 		if self.slot:
 			atom += ":%s" % self.slot
 		atom += str(self.use.evaluate_conditionals(use))
-		return Atom(atom)
+		return Atom(atom, self)
 
 	def __copy__(self):
 		"""Immutable, so returns self."""
