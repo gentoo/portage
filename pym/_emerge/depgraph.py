@@ -2715,7 +2715,7 @@ class depgraph(object):
 
 			if avoid_update:
 				for pkg in matched_packages:
-					if pkg.installed:
+					if pkg.installed and pkg.visible:
 						return pkg, existing_node
 
 			bestmatch = portage.best(
