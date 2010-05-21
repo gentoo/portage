@@ -639,18 +639,22 @@ install_qa_check_prefix() {
 		line=( ${line#"#!"} )
 		IFS=${oldIFS}
 		[[ ${WHITELIST} == *" ${line[0]} "* ]] && continue
+		local fp=${fn#${D}} ; fp=/${fp%/*}
 		# does the shebang start with ${EPREFIX}, and does it exist?
 		if [[ ${line[0]} == ${EPREFIX}/* ]] ; then
 			if [[ ! -e ${ROOT}${line[0]} && ! -e ${D}${line[0]} ]] ; then
 				# hmm, refers explicitly to $EPREFIX, but doesn't exist,
-				# that's wrong in any case
-				echo "${fn#${D}}:${line[0]} (explicit EPREFIX but target not found)" \
-					>> "${T}"/non-prefix-shebangs-errs
+				# if it's in PATH that's wrong in any case
+				if [[ ":${PATH}:" == *":${fp}:"* ]] ; then
+					echo "${fn#${D}}:${line[0]} (explicit EPREFIX but target not found)" \
+						>> "${T}"/non-prefix-shebangs-errs
+				else
+					eqawarn "${fn#${D}} has explicit EPREFIX in shebang but target not found (${line[0]})"
+				fi
 			fi
 			continue
 		fi
 		# unprefixed shebang, is the script directly in $PATH?
-		local fp=${fn#${D}} ; fp=/${fp%/*}
 		if [[ ":${PATH}:" == *":${fp}:"* ]] ; then
 			if [[ -e ${EROOT}${line[0]} || -e ${ED}${line[0]} ]] ; then
 				# is it unprefixed, but we can just fix it because a
