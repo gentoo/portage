@@ -94,7 +94,7 @@ class _frozen_depgraph_config(object):
 		self._required_set_names = set(["world"])
 
 		self.excluded_pkgs = InternalPackageSet()
-		for x in myopts.get("--exclude", "").split():
+		for x in ' '.join(myopts.get("--exclude", [])).split():
 			try:
 				x = Atom(x)
 			except portage.exception.InvalidAtom:
@@ -527,7 +527,7 @@ class depgraph(object):
 						else:
 							# Display the specific atom from SetArg or
 							# Package types.
-							msg.append("%s required by %s" % (atom, parent))
+							msg.append("%s required by %s" % (atom.unevaluated_atom, parent))
 						msg.append("\n")
 					if omitted_parents:
 						msg.append(2*indent)
@@ -834,6 +834,7 @@ class depgraph(object):
 		# discarded dependencies reduce the amount of information
 		# available for optimization of merge order.
 		if dep.priority.satisfied and \
+			dep.priority.satisfied.visible and \
 			not dep_pkg.installed and \
 			not (existing_node or recurse):
 			myarg = None
@@ -1286,8 +1287,17 @@ class depgraph(object):
 				continue
 
 			mypriority = dep_priority.copy()
-			if not atom.blocker and vardb.match(atom):
-				mypriority.satisfied = True
+			if not atom.blocker:
+				inst_pkgs = vardb.match_pkgs(atom)
+				if inst_pkgs:
+					for inst_pkg in inst_pkgs:
+						if inst_pkg.visible:
+							# highest visible
+							mypriority.satisfied = inst_pkg
+							break
+					if not mypriority.satisfied:
+						# none visible, so use highest
+						mypriority.satisfied = inst_pkgs[0]
 
 			if not self._add_dep(Dependency(atom=atom,
 				blocker=atom.blocker, child=child, depth=depth, parent=pkg,
@@ -1323,8 +1333,17 @@ class depgraph(object):
 				pkg, self._priority(runtime=True), root_config, atoms):
 				# This is a GLEP 37 virtual, so its deps are all runtime.
 				mypriority = self._priority(runtime=True)
-				if not atom.blocker and vardb.match(atom):
-					mypriority.satisfied = True
+				if not atom.blocker:
+					inst_pkgs = vardb.match_pkgs(atom)
+					if inst_pkgs:
+						for inst_pkg in inst_pkgs:
+							if inst_pkg.visible:
+								# highest visible
+								mypriority.satisfied = inst_pkg
+								break
+						if not mypriority.satisfied:
+							# none visible, so use highest
+							mypriority.satisfied = inst_pkgs[0]
 
 				if not self._add_dep(Dependency(atom=atom,
 					blocker=atom.blocker, child=child, depth=virt_pkg.depth,
@@ -2715,11 +2734,15 @@ class depgraph(object):
 
 			if avoid_update:
 				for pkg in matched_packages:
-					if pkg.installed:
+					if pkg.installed and pkg.visible:
 						return pkg, existing_node
 
 			bestmatch = portage.best(
-				[pkg.cpv for pkg in matched_packages])
+				[pkg.cpv for pkg in matched_packages if pkg.visible])
+			if not bestmatch:
+				# all are masked, so ignore visibility
+				bestmatch = portage.best(
+					[pkg.cpv for pkg in matched_packages])
 			matched_packages = [pkg for pkg in matched_packages \
 				if portage.dep.cpvequal(pkg.cpv, bestmatch)]
 
@@ -3280,6 +3303,16 @@ class depgraph(object):
 		if self._dynamic_config._scheduler_graph is None:
 			self.altlist()
 		self.break_refs(self._dynamic_config._scheduler_graph.order)
+
+		# Break DepPriority.satisfied attributes which reference
+		# installed Package instances.
+		for parents, children, node in \
+			self._dynamic_config._scheduler_graph.nodes.values():
+			for priorities in chain(parents.values(), children.values()):
+				for priority in priorities:
+					if priority.satisfied:
+						priority.satisfied = True
+
 		return self._dynamic_config._scheduler_graph
 
 	def break_refs(self, nodes):

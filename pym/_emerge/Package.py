@@ -150,6 +150,34 @@ class Package(Task):
 			self.invalid[msg_type] = msgs
 		msgs.append(msg)
 
+	def __str__(self):
+		if self.operation is None:
+			self.operation = "merge"
+			if self.onlydeps or self.installed:
+				self.operation = "nomerge"
+
+		if self.operation == "merge":
+			if self.type_name == "binary":
+				cpv_color = "PKG_BINARY_MERGE"
+			else:
+				cpv_color = "PKG_MERGE"
+		else:
+			cpv_color = "PKG_NOMERGE"
+
+		s = "(%s, %s" \
+			% (portage.output.colorize(cpv_color, self.cpv) , self.type_name)
+
+		if self.type_name == "installed":
+			if self.root != "/":
+				s += " in '%s'" % self.root
+		else:
+			if self.operation == "merge":
+				s += " scheduled for merge"
+				if self.root != "/":
+					s += " to '%s'" % self.root
+		s += ")"
+		return s
+
 	class _use_class(object):
 
 		__slots__ = ("__weakref__", "enabled")
