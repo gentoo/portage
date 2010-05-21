@@ -2167,7 +2167,7 @@ class depgraph(object):
 		"""
 		backtrack_mask = False
 		atom_set = InternalPackageSet(initial_atoms=(atom,))
-		xinfo = '"%s"' % atom
+		xinfo = '"%s"' % atom.unevaluated_atom
 		if arg:
 			xinfo='"%s"' % arg
 		# Discard null/ from failed cpv_expand category expansion.
@@ -2259,6 +2259,27 @@ class depgraph(object):
 					mreasons.append("Change USE: %s" % " ".join(changes))
 					missing_use_reasons.append((pkg, mreasons))
 
+			if not missing_iuse and myparent and atom.unevaluated_atom.use.conditional:
+				# Lets see if the violated use deps are conditional.
+				# If so, suggest to change them on the parent.
+				mreasons = []
+				violated_atom = atom.unevaluated_atom.violated_conditionals(myparent.use.enabled, pkg.use.enabled)
+				if not (violated_atom.use.enabled or violated_atom.use.disabled):
+					#all violated use deps are conditional
+					changes = []
+					conditional = violated_atom.use.conditional
+					involved_flags = set()
+					involved_flags.update(conditional.equal, conditional.not_equal, \
+						conditional.enabled, conditional.disabled)
+					for x in involved_flags:
+						if x in myparent.use.enabled:
+							changes.append(colorize("blue", "-" + x))
+						else:
+							changes.append(colorize("red", "+" + x))
+					mreasons.append("Change USE: %s" % " ".join(changes))
+					if (myparent, mreasons) not in missing_use_reasons:
+						missing_use_reasons.append((myparent, mreasons))
+
 		unmasked_use_reasons = [(pkg, mreasons) for (pkg, mreasons) \
 			in missing_use_reasons if pkg not in masked_pkg_instances]
 
@@ -2269,6 +2290,13 @@ class depgraph(object):
 		if unmasked_use_reasons:
 			# Only show the latest version.
 			show_missing_use = unmasked_use_reasons[:1]
+			for pkg, mreasons in unmasked_use_reasons:
+				if myparent and pkg == myparent:
+					#This happens if a use change on the parent
+					#leads to a satisfied conditional use dep.
+					show_missing_use.append((pkg, mreasons))
+					break
+				
 		elif unmasked_iuse_reasons:
 			if missing_use_reasons:
 				# All packages with required IUSE are masked,
