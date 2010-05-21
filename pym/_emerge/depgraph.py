@@ -3303,6 +3303,16 @@ class depgraph(object):
 		if self._dynamic_config._scheduler_graph is None:
 			self.altlist()
 		self.break_refs(self._dynamic_config._scheduler_graph.order)
+
+		# Break DepPriority.satisfied attributes which reference
+		# installed Package instances.
+		for parents, children, node in \
+			self._dynamic_config._scheduler_graph.nodes.values():
+			for priorities in chain(parents.values(), children.values()):
+				for priority in priorities:
+					if priority.satisfied:
+						priority.satisfied = True
+
 		return self._dynamic_config._scheduler_graph
 
 	def break_refs(self, nodes):
