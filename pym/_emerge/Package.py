@@ -148,6 +148,8 @@ class Package(Task):
 				cpv_color = "PKG_BINARY_MERGE"
 			else:
 				cpv_color = "PKG_MERGE"
+		elif self.operation == "uninstall":
+			cpv_color = "PKG_UNINSTALL"
 		else:
 			cpv_color = "PKG_NOMERGE"
 
@@ -162,6 +164,10 @@ class Package(Task):
 				s += " scheduled for merge"
 				if self.root != "/":
 					s += " to '%s'" % self.root
+			elif self.operation == "uninstall":
+				s += " scheduled for uninstall"
+				if self.root != "/":
+					s += " from '%s'" % self.root
 		s += ")"
 		return s
 
