@@ -2719,7 +2719,11 @@ class depgraph(object):
 						return pkg, existing_node
 
 			bestmatch = portage.best(
-				[pkg.cpv for pkg in matched_packages])
+				[pkg.cpv for pkg in matched_packages if pkg.visible])
+			if not bestmatch:
+				# all are masked, so ignore visibility
+				bestmatch = portage.best(
+					[pkg.cpv for pkg in matched_packages])
 			matched_packages = [pkg for pkg in matched_packages \
 				if portage.dep.cpvequal(pkg.cpv, bestmatch)]
 
