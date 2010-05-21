@@ -499,6 +499,26 @@ class _use_dep(object):
 		tokens.extend(x for x in conditional.not_equal if x not in use)
 
 		return _use_dep(tokens)
+		
+	def violated_conditionals(self, use, other_use):
+		"""
+		Create a new instance with satisfied  conditionals removed.
+		"""
+		tokens = []
+	
+		conditional = self.conditional
+		tokens.extend(x for x in self.enabled if x not in other_use)
+		tokens.extend("-" + x for x in self.disabled if x in other_use)
+		if conditional:
+			tokens.extend(x + "?" for x in conditional.enabled if x in use and not x in other_use)
+			tokens.extend("!" + x + "?" for x in conditional.disabled if x not in use and x in other_use)
+			tokens.extend(x + "=" for x in conditional.equal if x in use and x not in other_use)
+			tokens.extend(x + "=" for x in conditional.equal if x not in use and x in other_use)
+			tokens.extend("!" + x + "=" for x in conditional.not_equal if x in use and x in other_use)
+			tokens.extend("!" + x + "=" for x in conditional.not_equal if x not in use and x not in other_use)
+	
+		return _use_dep(tokens)
+
 
 	def _eval_qa_conditionals(self, use_mask, use_force):
 		"""
@@ -665,6 +685,25 @@ class Atom(_atom_base):
 		if self.slot:
 			atom += ":%s" % self.slot
 		atom += str(self.use.evaluate_conditionals(use))
+		return Atom(atom, self)
+
+	def violated_conditionals(self, use, other_use):
+		"""
+		Create an atom instance with any USE conditional removed, that is
+		satisfied by other_use.
+		@param use: The set of enabled USE flags
+		@type use: set
+		@param use: The set of enabled USE flags to check against
+		@type use: set
+		@rtype: Atom
+		@return: an atom instance with any satisfied USE conditionals removed
+		"""
+		if not self.use:
+			return self
+		atom = remove_slot(self)
+		if self.slot:
+			atom += ":%s" % self.slot
+		atom += str(self.use.violated_conditionals(use, other_use))
 		return Atom(atom, self)
 
 	def __copy__(self):
