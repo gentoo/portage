@@ -268,7 +268,7 @@ default_xterm_title = None
 def xtermTitleReset():
 	global default_xterm_title
 	if default_xterm_title is None:
-		prompt_command = os.getenv('PROMPT_COMMAND')
+		prompt_command = os.environ.get('PROMPT_COMMAND', '')
 		if prompt_command == "":
 			default_xterm_title = ""
 		elif prompt_command is not None:
@@ -288,12 +288,13 @@ def xtermTitleReset():
 					os.system(prompt_command)
 			return
 		else:
-			pwd = os.getenv('PWD','')
-			home = os.getenv('HOME', '')
+			pwd = os.environ.get('PWD','')
+			home = os.environ.get('HOME', '')
 			if home != '' and pwd.startswith(home):
 				pwd = '~' + pwd[len(home):]
 			default_xterm_title = '\x1b]0;%s@%s:%s\x07' % (
-				os.getenv('LOGNAME', ''), os.getenv('HOSTNAME', '').split('.', 1)[0], pwd)
+				os.environ.get('LOGNAME', ''),
+				os.environ.get('HOSTNAME', '').split('.', 1)[0], pwd)
 	xtermTitle(default_xterm_title, raw=True)
 
 def notitles():
