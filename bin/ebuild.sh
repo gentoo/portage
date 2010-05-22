@@ -980,16 +980,19 @@ dyn_compile() {
 }
 
 dyn_test() {
+
+	if [[ -e $PORTAGE_BUILDDIR/.tested ]] ; then
+		vecho ">>> It appears that ${PN} has already been tested; skipping."
+		vecho ">>> Remove '${PORTAGE_BUILDDIR}/.tested' to force test."
+		return
+	fi
+
 	if [ "${EBUILD_FORCE_TEST}" == "1" ] ; then
-		rm -f "${PORTAGE_BUILDDIR}/.tested"
 		# If USE came from ${T}/environment then it might not have USE=test
 		# like it's supposed to here.
 		! hasq test ${USE} && export USE="${USE} test"
 	fi
-	if [[ -e $PORTAGE_BUILDDIR/.tested ]] ; then
-		vecho ">>> It appears that ${PN} has already been tested; skipping."
-		return
-	fi
+
 	trap "abort_test" SIGINT SIGQUIT
 	if [ -d "${S}" ]; then
 		cd "${S}"
