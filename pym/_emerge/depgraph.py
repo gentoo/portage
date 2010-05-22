@@ -481,12 +481,18 @@ class depgraph(object):
 				parent_atoms = self._dynamic_config._parent_atoms.get(node)
 				if parent_atoms:
 					pruned_list = set()
-					# Prefer conflict atoms over others.
-					for parent_atom in parent_atoms:
-						if len(pruned_list) >= max_parents:
-							break
-						if parent_atom in self._dynamic_config._slot_conflict_parent_atoms:
-							pruned_list.add(parent_atom)
+					for pkg, atom in parent_atoms:
+						num_matched_slot_atoms = 0
+						atom_set = InternalPackageSet(initial_atoms=(atom,))
+						for other_node in slot_nodes:
+							if other_node == node:
+								continue
+							if atom_set.findAtomForPackage(other_node):
+								num_matched_slot_atoms += 1
+						if num_matched_slot_atoms < len(slot_nodes) - 1:
+							pruned_list.add((pkg, atom))
+							if len(pruned_list) >= max_parents:
+								break
 
 					# If this package was pulled in by conflict atoms then
 					# show those alone since those are the most interesting.
