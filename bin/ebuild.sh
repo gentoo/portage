@@ -1689,7 +1689,7 @@ filter_readonly_variables() {
 		"
 	fi
 
-	EPYTHON= "${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars}"
+	EPYTHON= "${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars}" || die "filter-bash-environment.py failed"
 }
 
 # @FUNCTION: preprocess_ebuild_env
