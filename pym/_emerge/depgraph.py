@@ -2270,7 +2270,8 @@ class depgraph(object):
 				# If so, suggest to change them on the parent.
 				mreasons = []
 				violated_atom = atom.unevaluated_atom.violated_conditionals(myparent.use.enabled, pkg.use.enabled)
-				if not (violated_atom.use.enabled or violated_atom.use.disabled):
+				if violated_atom.use and not \
+					(violated_atom.use.enabled or violated_atom.use.disabled):
 					#all violated use deps are conditional
 					changes = []
 					conditional = violated_atom.use.conditional
