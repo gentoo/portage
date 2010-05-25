@@ -207,13 +207,18 @@ class Package(Task):
 			self.disabled = frozenset(disabled)
 			self.all = frozenset(chain(enabled, disabled, other))
 
-		def is_valid_flag(self, flag):
+		def is_valid_flag(self, flags):
 			"""
-			@returns: True if flag is a valid USE value which may
+			@returns: True if all flags are valid USE values which may
 				be specified in USE dependencies, False otherwise.
 			"""
-			return flag in self.all or \
-				self._iuse_implicit_regex.match(flag) is not None
+			if isinstance(flags, basestring):
+				flags = [flags]
+			for flag in flags:
+				if not flag in self.all and \
+					self._iuse_implicit_regex.match(flag) is None:
+					return False
+			return True
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)
