@@ -2245,7 +2245,7 @@ class depgraph(object):
 		missing_iuse_reasons = []
 		for pkg in missing_use:
 			use = pkg.use.enabled
-			missing_iuse = pkg.iuse.is_valid_flag(atom.use.required)
+			missing_iuse = pkg.iuse.get_missing_iuse(atom.use.required)
 			mreasons = []
 			if missing_iuse:
 				mreasons.append("Missing IUSE: %s" % " ".join(missing_iuse))
@@ -2618,7 +2618,7 @@ class depgraph(object):
 						found_available_arg = True
 
 					if atom.use:
-						missing_iuse = pkg.iuse.is_valid_flag(atom.use.required)
+						missing_iuse = pkg.iuse.get_missing_iuse(atom.use.required)
 						if missing_iuse:
 							# Don't add this to packages_with_invalid_use_config
 							# since IUSE cannot be adjusted by the user.

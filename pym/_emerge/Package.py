@@ -218,6 +218,19 @@ class Package(Task):
 			for flag in flags:
 				if not flag in self.all and \
 					self._iuse_implicit_regex.match(flag) is None:
+					return False
+			return True
+		
+		def get_missing_iuse(self, flags):
+			"""
+			@returns: A list of flags missing from IUSE.
+			"""
+			if isinstance(flags, basestring):
+				flags = [flags]
+			missing_iuse = []
+			for flag in flags:
+				if not flag in self.all and \
+					self._iuse_implicit_regex.match(flag) is None:
 					missing_iuse.append(flag)
 			return missing_iuse
 
