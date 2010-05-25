@@ -2621,11 +2621,7 @@ class depgraph(object):
 						found_available_arg = True
 
 					if atom.use:
-						missing_iuse = False
-						for x in atom.use.required:
-							if not pkg.iuse.is_valid_flag(x):
-								missing_iuse = True
-								break
+						missing_iuse = pkg.iuse.is_valid_flag(atom.use.required)
 						if missing_iuse:
 							# Don't add this to packages_with_invalid_use_config
 							# since IUSE cannot be adjusted by the user.
