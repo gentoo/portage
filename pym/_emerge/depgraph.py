@@ -2269,9 +2269,8 @@ class depgraph(object):
 				# Lets see if the violated use deps are conditional.
 				# If so, suggest to change them on the parent.
 				mreasons = []
-				violated_atom = atom.unevaluated_atom.violated_conditionals(myparent.use.enabled, pkg.use.enabled)
-				if violated_atom.use and not \
-					(violated_atom.use.enabled or violated_atom.use.disabled):
+				violated_atom = atom.unevaluated_atom.violated_conditionals(pkg.use.enabled, myparent.use.enabled)
+				if not (violated_atom.use.enabled or violated_atom.use.disabled):
 					#all violated use deps are conditional
 					changes = []
 					conditional = violated_atom.use.conditional

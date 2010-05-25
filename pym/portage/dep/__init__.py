@@ -499,26 +499,28 @@ class _use_dep(object):
 		tokens.extend(x for x in conditional.not_equal if x not in use)
 
 		return _use_dep(tokens)
-		
-	def violated_conditionals(self, use, other_use):
+
+	def violated_conditionals(self, other_use, parent_use=None):
 		"""
-		Create a new instance with satisfied  conditionals removed.
+		Create a new instance with satisfied use deps removed.
 		"""
 		tokens = []
-	
+
 		conditional = self.conditional
 		tokens.extend(x for x in self.enabled if x not in other_use)
 		tokens.extend("-" + x for x in self.disabled if x in other_use)
 		if conditional:
-			tokens.extend(x + "?" for x in conditional.enabled if x in use and not x in other_use)
-			tokens.extend("!" + x + "?" for x in conditional.disabled if x not in use and x in other_use)
-			tokens.extend(x + "=" for x in conditional.equal if x in use and x not in other_use)
-			tokens.extend(x + "=" for x in conditional.equal if x not in use and x in other_use)
-			tokens.extend("!" + x + "=" for x in conditional.not_equal if x in use and x in other_use)
-			tokens.extend("!" + x + "=" for x in conditional.not_equal if x not in use and x not in other_use)
-	
-		return _use_dep(tokens)
+			if not parent_use:
+				raise InvalidAtom("violated_conditionals needs 'parent_use'" + \
+					" parameter for conditional flags: '%s'" % (token,))
+			tokens.extend(x + "?" for x in conditional.enabled if x in parent_use and not x in other_use)
+			tokens.extend("!" + x + "?" for x in conditional.disabled if x not in parent_use and x in other_use)
+			tokens.extend(x + "=" for x in conditional.equal if x in parent_use and x not in other_use)
+			tokens.extend(x + "=" for x in conditional.equal if x not in parent_use and x in other_use)
+			tokens.extend("!" + x + "=" for x in conditional.not_equal if x in parent_use and x in other_use)
+			tokens.extend("!" + x + "=" for x in conditional.not_equal if x not in parent_use and x not in other_use)
 
+		return _use_dep(tokens)
 
 	def _eval_qa_conditionals(self, use_mask, use_force):
 		"""
@@ -687,7 +689,7 @@ class Atom(_atom_base):
 		atom += str(self.use.evaluate_conditionals(use))
 		return Atom(atom, self)
 
-	def violated_conditionals(self, use, other_use):
+	def violated_conditionals(self, other_use, parent_use=None):
 		"""
 		Create an atom instance with any USE conditional removed, that is
 		satisfied by other_use.
@@ -703,7 +705,7 @@ class Atom(_atom_base):
 		atom = remove_slot(self)
 		if self.slot:
 			atom += ":%s" % self.slot
-		atom += str(self.use.violated_conditionals(use, other_use))
+		atom += str(self.use.violated_conditionals(other_use, parent_use))
 		return Atom(atom, self)
 
 	def __copy__(self):
