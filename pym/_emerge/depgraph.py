@@ -2224,10 +2224,12 @@ class depgraph(object):
 						mreasons = ["exclude option"]
 					if mreasons:
 						masked_pkg_instances.add(pkg)
-					if atom.violated_conditionals(pkg.use.enabled).use:
-						missing_use.append(pkg)
-						if not mreasons:
-							continue
+					if atom.unevaluated_atom.use:
+						if not pkg.iuse.is_valid_flag(atom.unevaluated_atom.use.required) \
+							or atom.violated_conditionals(pkg.use.enabled).use:
+							missing_use.append(pkg)
+							if not mreasons:
+								continue
 					if pkg.built and not mreasons:
 						mreasons = ["use flag configuration mismatch"]
 				masked_packages.append(
@@ -2243,12 +2245,7 @@ class depgraph(object):
 		missing_iuse_reasons = []
 		for pkg in missing_use:
 			use = pkg.use.enabled
-			iuse = implicit_iuse.union(re.escape(x) for x in pkg.iuse.all)
-			iuse_re = re.compile("^(%s)$" % "|".join(iuse))
-			missing_iuse = []
-			for x in atom.use.required:
-				if iuse_re.match(x) is None:
-					missing_iuse.append(x)
+			missing_iuse = pkg.iuse.is_valid_flag(atom.use.required)
 			mreasons = []
 			if missing_iuse:
 				mreasons.append("Missing IUSE: %s" % " ".join(missing_iuse))
