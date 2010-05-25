@@ -2224,7 +2224,7 @@ class depgraph(object):
 						mreasons = ["exclude option"]
 					if mreasons:
 						masked_pkg_instances.add(pkg)
-					if atom.use:
+					if atom.violated_conditionals(pkg.use.enabled).use:
 						missing_use.append(pkg)
 						if not mreasons:
 							continue
