@@ -1093,6 +1093,7 @@ dyn_install() {
 
 	save_ebuild_env --exclude-init-phases | filter_readonly_variables \
 		--filter-path --filter-sandbox --allow-extra-vars > environment
+	assert "save_ebuild_env failed"
 
 	bzip2 -f9 environment
 
@@ -2033,6 +2034,7 @@ ebuild_main() {
 				filter_readonly_variables --filter-path \
 				--filter-sandbox --allow-extra-vars \
 				| bzip2 -c -f9 > "$PORTAGE_UPDATE_ENV"
+			assert "save_ebuild_env failed"
 		fi
 		;;
 	unpack|prepare|configure|compile|test|clean|install)
@@ -2183,6 +2185,7 @@ elif [[ -n $EBUILD_SH_ARGS ]] ; then
 		if ! hasq "$EBUILD_SH_ARGS" clean help info nofetch ; then
 			umask 002
 			save_ebuild_env | filter_readonly_variables > "$T/environment"
+			assert "save_ebuild_env failed"
 			chown portage:portage "$T/environment" &>/dev/null
 			chmod g+w "$T/environment" &>/dev/null
 		fi
