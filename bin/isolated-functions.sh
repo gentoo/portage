@@ -70,6 +70,17 @@ nonfatal() {
 	PORTAGE_NONFATAL=1 "$@"
 }
 
+helpers_die() {
+	case "${EAPI:-0}" in
+		0|1|2|3)
+			echo -e "$@" >&2
+			;;
+		*)
+			die "$@"
+			;;
+	esac
+}
+
 die() {
 	if [[ $PORTAGE_NONFATAL -eq 1 ]]; then
 		echo -e " $WARN*$NORMAL ${FUNCNAME[1]}: WARNING: $@" >&2

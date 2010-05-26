@@ -21,4 +21,7 @@ if [[ $PORTAGE_QUIET != 1 ]] ; then
 	) >&2
 fi
 
-exec ${MAKE:-make} ${MAKEOPTS} ${EXTRA_EMAKE} "$@"
+${MAKE:-make} ${MAKEOPTS} ${EXTRA_EMAKE} "$@"
+ret=$?
+[[ $ret -ne 0 ]] && helpers_die "$0 failed"
+exit $ret
