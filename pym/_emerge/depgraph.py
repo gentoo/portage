@@ -2783,7 +2783,8 @@ class depgraph(object):
 
 					if "--rebuilt-binaries-timestamp" in self._frozen_config.myopts:
 						minimal_timestamp = self._frozen_config.myopts["--rebuilt-binaries-timestamp"]
-						if built_timestamp > installed_timestamp and \
+						if built_timestamp and \
+							built_timestamp > installed_timestamp and \
 							built_timestamp >= minimal_timestamp:
 							return built_pkg, built_pkg
 					else:
@@ -2791,7 +2792,8 @@ class depgraph(object):
 						#package. This is for closely tracking a binhost.
 						#Use --rebuilt-binaries-timestamp 0 if you want only newer binaries
 						#pulled in here.
-						if built_timestamp != installed_timestamp:
+						if built_timestamp and \
+							built_timestamp != installed_timestamp:
 							return built_pkg, built_pkg
 
 			if avoid_update:
