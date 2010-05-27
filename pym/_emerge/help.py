@@ -546,6 +546,15 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
+		print("       "+green("--rebuilt-binaries-timestamp") + "=%s" % turquoise("TIMESTAMP"))
+		desc = "This option modifies emerge's behaviour only if " + \
+			"--rebuilt-binaries is given. Only binaries that " + \
+			"have a BUILD_TIME that is larger than the given TIMESTAMP " + \
+			"and that is larger than that of the installed package will " + \
+			"be considered by the rebuilt-binaries logic."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
 		print("       "+green("--reinstall ") + turquoise("changed-use"))
 		print("              Tells emerge to include installed packages where USE flags have")
 		print("              changed since installation.  Unlike --newuse, this option does")
