@@ -230,7 +230,7 @@ use_with() {
 		return 1
 	fi
 
-	local UW_SUFFIX=${3:+=$3}
+	local UW_SUFFIX=${3+=$3}
 	local UWORD=${2:-$1}
 
 	if useq $1; then
@@ -248,7 +248,7 @@ use_enable() {
 		return 1
 	fi
 
-	local UE_SUFFIX=${3:+=$3}
+	local UE_SUFFIX=${3+=$3}
 	local UWORD=${2:-$1}
 
 	if useq $1; then
