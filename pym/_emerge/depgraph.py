@@ -1705,8 +1705,18 @@ class depgraph(object):
 
 				if len(expanded_atoms) > 1 and len(installed_cp_set) == 1:
 					installed_cp = next(iter(installed_cp_set))
-					expanded_atoms = [atom for atom in expanded_atoms \
-						if atom.cp == installed_cp]
+					for atom in expanded_atoms:
+						if atom.cp == installed_cp:
+							available = False
+							for pkg in self._iter_match_pkgs_any(
+								root_config, atom.without_use,
+								onlydeps=onlydeps):
+								if not pkg.installed:
+									available = True
+									break
+							if available:
+								expanded_atoms = [atom]
+								break
 
 				# If a non-virtual package and one or more virtual packages
 				# are in expanded_atoms, use the non-virtual package.
@@ -2371,6 +2381,13 @@ class depgraph(object):
 		if mask_docs:
 			show_mask_docs()
 			print()
+
+	def _iter_match_pkgs_any(self, root_config, atom, onlydeps=False):
+		for db, pkg_type, built, installed, db_keys in \
+			self._dynamic_config._filtered_trees[root_config.root]["dbs"]:
+			for pkg in self._iter_match_pkgs(root_config,
+				pkg_type, atom, onlydeps=onlydeps):
+				yield pkg
 
 	def _iter_match_pkgs(self, root_config, pkg_type, atom, onlydeps=False):
 		"""
