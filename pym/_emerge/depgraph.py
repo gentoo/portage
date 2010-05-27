@@ -2786,7 +2786,7 @@ class depgraph(object):
 						if built_timestamp and \
 							built_timestamp > installed_timestamp and \
 							built_timestamp >= minimal_timestamp:
-							return built_pkg, built_pkg
+							return built_pkg, existing_node
 					else:
 						#Don't care if the binary has an older BUILD_TIME than the installed
 						#package. This is for closely tracking a binhost.
@@ -2794,7 +2794,7 @@ class depgraph(object):
 						#pulled in here.
 						if built_timestamp and \
 							built_timestamp != installed_timestamp:
-							return built_pkg, built_pkg
+							return built_pkg, existing_node
 
 			if avoid_update:
 				for pkg in matched_packages:
