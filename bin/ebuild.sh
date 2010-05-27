@@ -236,7 +236,7 @@ use_with() {
 		return 1
 	fi
 
-	local UW_SUFFIX=${3:+=$3}
+	local UW_SUFFIX=${3+=$3}
 	local UWORD=${2:-$1}
 
 	if useq $1; then
@@ -254,7 +254,7 @@ use_enable() {
 		return 1
 	fi
 
-	local UE_SUFFIX=${3:+=$3}
+	local UE_SUFFIX=${3+=$3}
 	local UWORD=${2:-$1}
 
 	if useq $1; then
@@ -986,16 +986,19 @@ dyn_compile() {
 }
 
 dyn_test() {
+
+	if [[ -e $PORTAGE_BUILDDIR/.tested ]] ; then
+		vecho ">>> It appears that ${PN} has already been tested; skipping."
+		vecho ">>> Remove '${PORTAGE_BUILDDIR}/.tested' to force test."
+		return
+	fi
+
 	if [ "${EBUILD_FORCE_TEST}" == "1" ] ; then
-		rm -f "${PORTAGE_BUILDDIR}/.tested"
 		# If USE came from ${T}/environment then it might not have USE=test
 		# like it's supposed to here.
 		! hasq test ${USE} && export USE="${USE} test"
 	fi
-	if [[ -e $PORTAGE_BUILDDIR/.tested ]] ; then
-		vecho ">>> It appears that ${PN} has already been tested; skipping."
-		return
-	fi
+
 	trap "abort_test" SIGINT SIGQUIT
 	if [ -d "${S}" ]; then
 		cd "${S}"
@@ -1099,6 +1102,7 @@ dyn_install() {
 
 	save_ebuild_env --exclude-init-phases | filter_readonly_variables \
 		--filter-path --filter-sandbox --allow-extra-vars > environment
+	assert "save_ebuild_env failed"
 
 	bzip2 -f9 environment
 
@@ -1684,7 +1688,7 @@ filter_readonly_variables() {
 		"
 	fi
 
-	EPYTHON= "${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars}"
+	EPYTHON= "${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars}" || die "filter-bash-environment.py failed"
 }
 
 # @FUNCTION: preprocess_ebuild_env
@@ -2023,6 +2027,7 @@ ebuild_main() {
 				filter_readonly_variables --filter-path \
 				--filter-sandbox --allow-extra-vars \
 				| bzip2 -c -f9 > "$PORTAGE_UPDATE_ENV"
+			assert "save_ebuild_env failed"
 		fi
 		;;
 	unpack|prepare|configure|compile|test|clean|install)
@@ -2173,6 +2178,7 @@ elif [[ -n $EBUILD_SH_ARGS ]] ; then
 		if ! hasq "$EBUILD_SH_ARGS" clean help info nofetch ; then
 			umask 002
 			save_ebuild_env | filter_readonly_variables > "$T/environment"
+			assert "save_ebuild_env failed"
 			chown ${PORTAGE_USER:-portage}:${PORTAGE_GROUP:-portage} "$T/environment" &>/dev/null
 			chmod g+w "$T/environment" &>/dev/null
 		fi

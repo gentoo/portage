@@ -134,7 +134,7 @@ unmerge matched packages that have no reverse dependencies. Use
 dependencies.
 .TP
 .BR "\-\-deselect[=n]"
-Remove atoms from the world file. This action is implied
+Remove atoms and/or sets from the world file. This action is implied
 by uninstall actions, including \fB-\-depclean\fR,
 \fB-\-prune\fR and \fB-\-unmerge\fR. Use \fB-\-deselect=n\fR
 in order to prevent uninstall actions from removing
@@ -503,6 +503,13 @@ BUILD_TIME package metadata. This option is enabled
 automatically when using binary packages
 (\fB\-\-usepkgonly\fR or \fB\-\-getbinpkgonly\fR) together with
 \fB\-\-update\fR and \fB\-\-deep\fR.
+.TP
+.BR "\-\-rebuilt\-binaries\-timestamp=TIMESTAMP"
+This option modifies emerge's behaviour only if
+\fB\-\-rebuilt\-binaries\fR is given. Only binaries that
+have a BUILD_TIME that is larger than the given TIMESTAMP
+and that is larger than that of the installed package will
+be considered by the rebuilt\-binaries logic.
 .TP
 .BR "\-\-reinstall changed\-use"
 Tells emerge to include installed packages where USE flags have

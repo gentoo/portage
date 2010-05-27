@@ -481,12 +481,18 @@ class depgraph(object):
 				parent_atoms = self._dynamic_config._parent_atoms.get(node)
 				if parent_atoms:
 					pruned_list = set()
-					# Prefer conflict atoms over others.
-					for parent_atom in parent_atoms:
-						if len(pruned_list) >= max_parents:
-							break
-						if parent_atom in self._dynamic_config._slot_conflict_parent_atoms:
-							pruned_list.add(parent_atom)
+					for pkg, atom in parent_atoms:
+						num_matched_slot_atoms = 0
+						atom_set = InternalPackageSet(initial_atoms=(atom,))
+						for other_node in slot_nodes:
+							if other_node == node:
+								continue
+							if atom_set.findAtomForPackage(other_node):
+								num_matched_slot_atoms += 1
+						if num_matched_slot_atoms < len(slot_nodes) - 1:
+							pruned_list.add((pkg, atom))
+							if len(pruned_list) >= max_parents:
+								break
 
 					# If this package was pulled in by conflict atoms then
 					# show those alone since those are the most interesting.
@@ -1699,8 +1705,18 @@ class depgraph(object):
 
 				if len(expanded_atoms) > 1 and len(installed_cp_set) == 1:
 					installed_cp = next(iter(installed_cp_set))
-					expanded_atoms = [atom for atom in expanded_atoms \
-						if atom.cp == installed_cp]
+					for atom in expanded_atoms:
+						if atom.cp == installed_cp:
+							available = False
+							for pkg in self._iter_match_pkgs_any(
+								root_config, atom.without_use,
+								onlydeps=onlydeps):
+								if not pkg.installed:
+									available = True
+									break
+							if available:
+								expanded_atoms = [atom]
+								break
 
 				# If a non-virtual package and one or more virtual packages
 				# are in expanded_atoms, use the non-virtual package.
@@ -2167,7 +2183,7 @@ class depgraph(object):
 		"""
 		backtrack_mask = False
 		atom_set = InternalPackageSet(initial_atoms=(atom,))
-		xinfo = '"%s"' % atom
+		xinfo = '"%s"' % atom.unevaluated_atom
 		if arg:
 			xinfo='"%s"' % arg
 		# Discard null/ from failed cpv_expand category expansion.
@@ -2218,10 +2234,12 @@ class depgraph(object):
 						mreasons = ["exclude option"]
 					if mreasons:
 						masked_pkg_instances.add(pkg)
-					if atom.use:
-						missing_use.append(pkg)
-						if not mreasons:
-							continue
+					if atom.unevaluated_atom.use:
+						if not pkg.iuse.is_valid_flag(atom.unevaluated_atom.use.required) \
+							or atom.violated_conditionals(pkg.use.enabled).use:
+							missing_use.append(pkg)
+							if not mreasons:
+								continue
 					if pkg.built and not mreasons:
 						mreasons = ["use flag configuration mismatch"]
 				masked_packages.append(
@@ -2237,12 +2255,7 @@ class depgraph(object):
 		missing_iuse_reasons = []
 		for pkg in missing_use:
 			use = pkg.use.enabled
-			iuse = implicit_iuse.union(re.escape(x) for x in pkg.iuse.all)
-			iuse_re = re.compile("^(%s)$" % "|".join(iuse))
-			missing_iuse = []
-			for x in atom.use.required:
-				if iuse_re.match(x) is None:
-					missing_iuse.append(x)
+			missing_iuse = pkg.iuse.get_missing_iuse(atom.use.required)
 			mreasons = []
 			if missing_iuse:
 				mreasons.append("Missing IUSE: %s" % " ".join(missing_iuse))
@@ -2259,6 +2272,27 @@ class depgraph(object):
 					mreasons.append("Change USE: %s" % " ".join(changes))
 					missing_use_reasons.append((pkg, mreasons))
 
+			if not missing_iuse and myparent and atom.unevaluated_atom.use.conditional:
+				# Lets see if the violated use deps are conditional.
+				# If so, suggest to change them on the parent.
+				mreasons = []
+				violated_atom = atom.unevaluated_atom.violated_conditionals(pkg.use.enabled, myparent.use.enabled)
+				if not (violated_atom.use.enabled or violated_atom.use.disabled):
+					#all violated use deps are conditional
+					changes = []
+					conditional = violated_atom.use.conditional
+					involved_flags = set()
+					involved_flags.update(conditional.equal, conditional.not_equal, \
+						conditional.enabled, conditional.disabled)
+					for x in involved_flags:
+						if x in myparent.use.enabled:
+							changes.append(colorize("blue", "-" + x))
+						else:
+							changes.append(colorize("red", "+" + x))
+					mreasons.append("Change USE: %s" % " ".join(changes))
+					if (myparent, mreasons) not in missing_use_reasons:
+						missing_use_reasons.append((myparent, mreasons))
+
 		unmasked_use_reasons = [(pkg, mreasons) for (pkg, mreasons) \
 			in missing_use_reasons if pkg not in masked_pkg_instances]
 
@@ -2269,6 +2303,13 @@ class depgraph(object):
 		if unmasked_use_reasons:
 			# Only show the latest version.
 			show_missing_use = unmasked_use_reasons[:1]
+			for pkg, mreasons in unmasked_use_reasons:
+				if myparent and pkg == myparent:
+					#This happens if a use change on the parent
+					#leads to a satisfied conditional use dep.
+					show_missing_use.append((pkg, mreasons))
+					break
+				
 		elif unmasked_iuse_reasons:
 			if missing_use_reasons:
 				# All packages with required IUSE are masked,
@@ -2340,6 +2381,13 @@ class depgraph(object):
 		if mask_docs:
 			show_mask_docs()
 			print()
+
+	def _iter_match_pkgs_any(self, root_config, atom, onlydeps=False):
+		for db, pkg_type, built, installed, db_keys in \
+			self._dynamic_config._filtered_trees[root_config.root]["dbs"]:
+			for pkg in self._iter_match_pkgs(root_config,
+				pkg_type, atom, onlydeps=onlydeps):
+				yield pkg
 
 	def _iter_match_pkgs(self, root_config, pkg_type, atom, onlydeps=False):
 		"""
@@ -2587,11 +2635,7 @@ class depgraph(object):
 						found_available_arg = True
 
 					if atom.use:
-						missing_iuse = False
-						for x in atom.use.required:
-							if not pkg.iuse.is_valid_flag(x):
-								missing_iuse = True
-								break
+						missing_iuse = pkg.iuse.get_missing_iuse(atom.use.required)
 						if missing_iuse:
 							# Don't add this to packages_with_invalid_use_config
 							# since IUSE cannot be adjusted by the user.
@@ -2727,10 +2771,30 @@ class depgraph(object):
 					# non-empty, in order to avoid cases like to
 					# bug #306659 where BUILD_TIME fields are missing
 					# in local and/or remote Packages file.
-					if built_pkg.metadata['BUILD_TIME'] and \
-						(built_pkg.metadata['BUILD_TIME'] != \
-						inst_pkg.metadata['BUILD_TIME']):
-						return built_pkg, built_pkg
+					try:
+						built_timestamp = int(built_pkg.metadata['BUILD_TIME'])
+					except (KeyError, ValueError):
+						built_timestamp = 0
+
+					try:
+						installed_timestamp = int(inst_pkg.metadata['BUILD_TIME'])
+					except (KeyError, ValueError):
+						installed_timestamp = 0
+
+					if "--rebuilt-binaries-timestamp" in self._frozen_config.myopts:
+						minimal_timestamp = self._frozen_config.myopts["--rebuilt-binaries-timestamp"]
+						if built_timestamp and \
+							built_timestamp > installed_timestamp and \
+							built_timestamp >= minimal_timestamp:
+							return built_pkg, existing_node
+					else:
+						#Don't care if the binary has an older BUILD_TIME than the installed
+						#package. This is for closely tracking a binhost.
+						#Use --rebuilt-binaries-timestamp 0 if you want only newer binaries
+						#pulled in here.
+						if built_timestamp and \
+							built_timestamp != installed_timestamp:
+							return built_pkg, existing_node
 
 			if avoid_update:
 				for pkg in matched_packages:

@@ -161,6 +161,8 @@ class Package(Task):
 				cpv_color = "PKG_BINARY_MERGE"
 			else:
 				cpv_color = "PKG_MERGE"
+		elif self.operation == "uninstall":
+			cpv_color = "PKG_UNINSTALL"
 		else:
 			cpv_color = "PKG_NOMERGE"
 
@@ -175,6 +177,10 @@ class Package(Task):
 				s += " scheduled for merge"
 				if self.root != "/":
 					s += " to '%s'" % self.root
+			elif self.operation == "uninstall":
+				s += " scheduled for uninstall"
+				if self.root != "/":
+					s += " from '%s'" % self.root
 		s += ")"
 		return s
 
@@ -214,13 +220,32 @@ class Package(Task):
 			self.disabled = frozenset(disabled)
 			self.all = frozenset(chain(enabled, disabled, other))
 
-		def is_valid_flag(self, flag):
+		def is_valid_flag(self, flags):
 			"""
-			@returns: True if flag is a valid USE value which may
+			@returns: True if all flags are valid USE values which may
 				be specified in USE dependencies, False otherwise.
 			"""
-			return flag in self.all or \
-				self._iuse_implicit_regex.match(flag) is not None
+			if isinstance(flags, basestring):
+				flags = [flags]
+			missing_iuse = []
+			for flag in flags:
+				if not flag in self.all and \
+					self._iuse_implicit_regex.match(flag) is None:
+					return False
+			return True
+		
+		def get_missing_iuse(self, flags):
+			"""
+			@returns: A list of flags missing from IUSE.
+			"""
+			if isinstance(flags, basestring):
+				flags = [flags]
+			missing_iuse = []
+			for flag in flags:
+				if not flag in self.all and \
+					self._iuse_implicit_regex.match(flag) is None:
+					missing_iuse.append(flag)
+			return missing_iuse
 
 	def _get_hash_key(self):
 		hash_key = getattr(self, "_hash_key", None)

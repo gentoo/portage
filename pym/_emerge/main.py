@@ -556,7 +556,7 @@ def parse_opts(tmpcmdline, silent=False):
 		},
 
 		"--deselect": {
-			"help"    : "remove atoms from the world file",
+			"help"    : "remove atoms/sets from the world file",
 			"type"    : "choice",
 			"choices" : ("True", "n")
 		},
@@ -637,6 +637,12 @@ def parse_opts(tmpcmdline, silent=False):
 			             "packages that have been rebuilt",
 			"type"     : "choice",
 			"choices"  : ("True", "n")
+		},
+		
+		"--rebuilt-binaries-timestamp": {
+			"help"   : "use only binaries that are newer than this " + \
+			           "timestamp for --rebuilt-binaries",
+			"action" : "store"
 		},
 
 		"--root": {
@@ -801,8 +807,8 @@ def parse_opts(tmpcmdline, silent=False):
 		if backtrack < 0:
 			backtrack = None
 			if not silent:
-				writemsg("!!! Invalid --backtrack parameter: '%s'\n" % \
-					(myoptions.backtrack,), noiselevel=-1)
+				parser.error("Invalid --backtrack parameter: '%s'\n" % \
+					(myoptions.backtrack,))
 
 		myoptions.backtrack = backtrack
 
@@ -819,8 +825,8 @@ def parse_opts(tmpcmdline, silent=False):
 		if deep is not True and deep < 0:
 			deep = None
 			if not silent:
-				writemsg("!!! Invalid --deep parameter: '%s'\n" % \
-					(myoptions.deep,), noiselevel=-1)
+				parser.error("Invalid --deep parameter: '%s'\n" % \
+					(myoptions.deep,))
 
 		myoptions.deep = deep
 
@@ -838,8 +844,8 @@ def parse_opts(tmpcmdline, silent=False):
 			jobs < 1:
 			jobs = None
 			if not silent:
-				writemsg("!!! Invalid --jobs parameter: '%s'\n" % \
-					(myoptions.jobs,), noiselevel=-1)
+				parser.error("Invalid --jobs parameter: '%s'\n" % \
+					(myoptions.jobs,))
 
 		myoptions.jobs = jobs
 
@@ -852,10 +858,24 @@ def parse_opts(tmpcmdline, silent=False):
 		if load_average <= 0.0:
 			load_average = None
 			if not silent:
-				writemsg("!!! Invalid --load-average parameter: '%s'\n" % \
-					(myoptions.load_average,), noiselevel=-1)
+				parser.error("Invalid --load-average parameter: '%s'\n" % \
+					(myoptions.load_average,))
 
 		myoptions.load_average = load_average
+	
+	if myoptions.rebuilt_binaries_timestamp:
+		try:
+			rebuilt_binaries_timestamp = int(myoptions.rebuilt_binaries_timestamp)
+		except ValueError:
+			rebuilt_binaries_timestamp = -1
+
+		if rebuilt_binaries_timestamp < 0:
+			rebuilt_binaries_timestamp = 0
+			if not silent:
+				parser.error("Invalid --rebuilt-binaries-timestamp parameter: '%s'\n" % \
+					(myoptions.rebuilt_binaries_timestamp,))
+
+		myoptions.rebuilt_binaries_timestamp = rebuilt_binaries_timestamp
 
 	if myoptions.use_ebuild_visibility in ("True",):
 		myoptions.use_ebuild_visibility = True

@@ -1164,11 +1164,12 @@ def action_deselect(settings, trees, opts, atoms):
 	expanded_atoms = set(atoms)
 	from portage.dep import Atom
 	for atom in atoms:
-		for cpv in vardb.match(atom):
-			slot, = vardb.aux_get(cpv, ['SLOT'])
-			if not slot:
-				slot = '0'
-			expanded_atoms.add(Atom('%s:%s' % (portage.cpv_getkey(cpv), slot)))
+		if not atom.startswith(SETPREFIX):
+			for cpv in vardb.match(atom):
+				slot, = vardb.aux_get(cpv, ['SLOT'])
+				if not slot:
+					slot = '0'
+				expanded_atoms.add(Atom('%s:%s' % (portage.cpv_getkey(cpv), slot)))
 
 	pretend = '--pretend' in opts
 	locked = False
@@ -1179,14 +1180,16 @@ def action_deselect(settings, trees, opts, atoms):
 		discard_atoms = set()
 		world_set.load()
 		for atom in world_set:
-			if not isinstance(atom, Atom):
-				# nested set
-				continue
 			for arg_atom in expanded_atoms:
-				if arg_atom.intersects(atom) and \
-					not (arg_atom.slot and not atom.slot):
-					discard_atoms.add(atom)
-					break
+				if arg_atom.startswith(SETPREFIX):
+					if arg_atom == atom:
+						discard_atoms.add(atom)
+						break
+				else:
+					if arg_atom.intersects(atom) and \
+						not (arg_atom.slot and not atom.slot):
+						discard_atoms.add(atom)
+						break
 		if discard_atoms:
 			for atom in sorted(discard_atoms):
 				print(">>> Removing %s from \"world\" favorites file..." % \
@@ -2357,6 +2360,9 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 			# Queue these up since it's most efficient to handle
 			# multiple files in a single iter_owners() call.
 			lookup_owners.append(x)
+
+		elif x.startswith(SETPREFIX) and action == "deselect":
+			valid_atoms.append(x)
 
 		else:
 			msg = []
