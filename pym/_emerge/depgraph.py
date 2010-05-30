@@ -13,6 +13,7 @@ from itertools import chain
 import portage
 from portage import os
 from portage import digraph
+from portage.const import PORTAGE_PACKAGE_ATOM
 from portage.dbapi import dbapi
 from portage.dbapi.dep_expand import dep_expand
 from portage.dep import Atom
@@ -575,20 +576,17 @@ class depgraph(object):
 			msg.append("in order to see if that will solve this conflict ")
 			msg.append("automatically.")
 
-		from formatter import AbstractFormatter, DumbWriter
-		f = AbstractFormatter(DumbWriter(sys.stderr, maxcol=72))
-		for x in msg:
-			f.add_flowing_data(x)
-		f.end_paragraph(1)
+		for line in textwrap.wrap(''.join(msg), 70):
+			writemsg(line + '\n', noiselevel=-1)
+		writemsg('\n', noiselevel=-1)
 
 		msg = []
 		msg.append("For more information, see MASKED PACKAGES ")
 		msg.append("section in the emerge man page or refer ")
 		msg.append("to the Gentoo Handbook.")
-		for x in msg:
-			f.add_flowing_data(x)
-		f.end_paragraph(1)
-		f.writer.flush()
+		for line in textwrap.wrap(''.join(msg), 70):
+			writemsg(line + '\n', noiselevel=-1)
+		writemsg('\n', noiselevel=-1)
 
 	def _slot_conflict_explanation(self, slot_nodes):
 		"""
@@ -2339,8 +2337,7 @@ class depgraph(object):
 					"EAPI '%s'. You must upgrade to a newer version" + \
 					" of portage before EAPI masked packages can" + \
 					" be installed.") % portage.const.EAPI
-				from textwrap import wrap
-				for line in wrap(msg, 75):
+				for line in textwrap.wrap(msg, 75):
 					print(line)
 			print()
 			mask_docs = True
@@ -3481,7 +3478,6 @@ class depgraph(object):
 
 		# sys-apps/portage needs special treatment if ROOT="/"
 		running_root = self._frozen_config._running_root.root
-		from portage.const import PORTAGE_PACKAGE_ATOM
 		runtime_deps = InternalPackageSet(
 			initial_atoms=[PORTAGE_PACKAGE_ATOM])
 		running_portage = self._frozen_config.trees[running_root]["vartree"].dbapi.match_pkgs(
@@ -4104,9 +4100,8 @@ class depgraph(object):
 			"packages which cannot be installed " + \
 			"at the same time on the same system."
 		prefix = colorize("BAD", " * ")
-		from textwrap import wrap
 		portage.writemsg("\n", noiselevel=-1)
-		for line in wrap(msg, 70):
+		for line in textwrap.wrap(msg, 70):
 			portage.writemsg(prefix + line + "\n", noiselevel=-1)
 
 		# Display the conflicting packages along with the packages
