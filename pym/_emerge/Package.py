@@ -159,15 +159,13 @@ class Package(Task):
 		if self.type_name == "installed":
 			if self.root != "/":
 				s += " in '%s'" % self.root
+			if self.operation == "uninstall":
+				s += " scheduled for uninstall"
 		else:
 			if self.operation == "merge":
 				s += " scheduled for merge"
 				if self.root != "/":
 					s += " to '%s'" % self.root
-			elif self.operation == "uninstall":
-				s += " scheduled for uninstall"
-				if self.root != "/":
-					s += " from '%s'" % self.root
 		s += ")"
 		return s
 

@@ -4014,6 +4014,18 @@ class depgraph(object):
 			not complete and \
 			not unsolvable_blockers:
 			self._dynamic_config.myparams["complete"] = True
+			if '--debug' in self._frozen_config.myopts:
+				msg = []
+				msg.append("enabling 'complete' depgraph mode " + \
+					"due to uninstall task(s):")
+				msg.append("")
+				for node in retlist:
+					if isinstance(node, Package) and \
+						node.operation == 'uninstall':
+						msg.append("\t%s" % (node,))
+				writemsg_level("\n%s\n" % \
+					"".join("%s\n" % line for line in msg),
+					level=logging.DEBUG, noiselevel=-1)
 			raise self._serialize_tasks_retry("")
 
 		# Set satisfied state on blockers, but not before the
