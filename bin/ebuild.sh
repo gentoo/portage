@@ -230,7 +230,11 @@ use_with() {
 		return 1
 	fi
 
-	local UW_SUFFIX=${3+=$3}
+	if ! has "${EAPI:-0}" 0 1 2 3 ; then
+		local UW_SUFFIX=${3+=$3}
+	else
+		local UW_SUFFIX=${3:+=$3}
+	fi
 	local UWORD=${2:-$1}
 
 	if useq $1; then
@@ -248,7 +252,11 @@ use_enable() {
 		return 1
 	fi
 
-	local UE_SUFFIX=${3+=$3}
+	if ! has "${EAPI:-0}" 0 1 2 3 ; then
+		local UE_SUFFIX=${3+=$3}
+	else
+		local UE_SUFFIX=${3:+=$3}
+	fi
 	local UWORD=${2:-$1}
 
 	if useq $1; then
