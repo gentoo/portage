@@ -55,6 +55,8 @@ from _emerge.SetArg import SetArg
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 from _emerge.UnmergeDepPriority import UnmergeDepPriority
 
+from _emerge.resolver.slot_collision import slot_conflict_handler
+
 if sys.hexversion >= 0x3000000:
 	basestring = str
 	long = int
@@ -468,103 +470,12 @@ class depgraph(object):
 
 		self._show_merge_list()
 
-		msg = []
-		msg.append("\n!!! Multiple package instances within a single " + \
-			"package slot have been pulled\n")
-		msg.append("!!! into the dependency graph, resulting" + \
-			" in a slot conflict:\n\n")
-		indent = "  "
-		# Max number of parents shown, to avoid flooding the display.
-		max_parents = 3
-		explanation_columns = 70
-		explanations = 0
-		for (slot_atom, root), slot_nodes \
-			in self._dynamic_config._slot_collision_info.items():
-			msg.append(str(slot_atom))
-			if root != '/':
-				msg.append(" for %s" % (root,))
-			msg.append("\n\n")
+		handler = slot_conflict_handler(self._dynamic_config._slot_collision_info, \
+			self._dynamic_config._parent_atoms, self._frozen_config.myopts)
+		handler.print_conflict()
+		has_explanation = handler.print_explanation()
 
-			for node in slot_nodes:
-				msg.append(indent)
-				msg.append(str(node))
-				parent_atoms = self._dynamic_config._parent_atoms.get(node)
-				if parent_atoms:
-					pruned_list = set()
-					for pkg, atom in parent_atoms:
-						num_matched_slot_atoms = 0
-						atom_set = InternalPackageSet(initial_atoms=(atom,))
-						for other_node in slot_nodes:
-							if other_node == node:
-								continue
-							if atom_set.findAtomForPackage(other_node):
-								num_matched_slot_atoms += 1
-						if num_matched_slot_atoms < len(slot_nodes) - 1:
-							pruned_list.add((pkg, atom))
-							if len(pruned_list) >= max_parents:
-								break
-
-					# If this package was pulled in by conflict atoms then
-					# show those alone since those are the most interesting.
-					if not pruned_list:
-						# When generating the pruned list, prefer instances
-						# of DependencyArg over instances of Package.
-						for parent_atom in parent_atoms:
-							if len(pruned_list) >= max_parents:
-								break
-							parent, atom = parent_atom
-							if isinstance(parent, DependencyArg):
-								pruned_list.add(parent_atom)
-						# Prefer Packages instances that themselves have been
-						# pulled into collision slots.
-						for parent_atom in parent_atoms:
-							if len(pruned_list) >= max_parents:
-								break
-							parent, atom = parent_atom
-							if isinstance(parent, Package) and \
-								(parent.slot_atom, parent.root) \
-								in self._dynamic_config._slot_collision_info:
-								pruned_list.add(parent_atom)
-						for parent_atom in parent_atoms:
-							if len(pruned_list) >= max_parents:
-								break
-							pruned_list.add(parent_atom)
-					omitted_parents = len(parent_atoms) - len(pruned_list)
-					parent_atoms = pruned_list
-					msg.append(" pulled in by\n")
-					for parent_atom in parent_atoms:
-						parent, atom = parent_atom
-						msg.append(2*indent)
-						if isinstance(parent,
-							(PackageArg, AtomArg)):
-							# For PackageArg and AtomArg types, it's
-							# redundant to display the atom attribute.
-							msg.append(str(parent))
-						else:
-							# Display the specific atom from SetArg or
-							# Package types.
-							msg.append("%s required by %s" % (atom.unevaluated_atom, parent))
-						msg.append("\n")
-					if omitted_parents:
-						msg.append(2*indent)
-						msg.append("(and %d more)\n" % omitted_parents)
-				else:
-					msg.append(" (no parents)\n")
-				msg.append("\n")
-			explanation = self._slot_conflict_explanation(slot_nodes)
-			if explanation:
-				explanations += 1
-				msg.append(indent + "Explanation:\n\n")
-				for line in textwrap.wrap(explanation, explanation_columns):
-					msg.append(2*indent + line + "\n")
-				msg.append("\n")
-		msg.append("\n")
-		sys.stderr.write("".join(msg))
-		sys.stderr.flush()
-
-		explanations_for_all = explanations == len(self._dynamic_config._slot_collision_info)
-
-		if explanations_for_all or "--quiet" in self._frozen_config.myopts:
+		if has_explanation or "--quiet" in self._frozen_config.myopts:
 			return
 
 		msg = []
@@ -596,96 +507,6 @@ class depgraph(object):
 		for line in textwrap.wrap(''.join(msg), 70):
 			writemsg(line + '\n', noiselevel=-1)
 		writemsg('\n', noiselevel=-1)
-
-	def _slot_conflict_explanation(self, slot_nodes):
-		"""
-		When a slot conflict occurs due to USE deps, there are a few
-		different cases to consider:
-
-		1) New USE are correctly set but --newuse wasn't requested so an
-		   installed package with incorrect USE happened to get pulled
-		   into graph before the new one.
-
-		2) New USE are incorrectly set but an installed package has correct
-		   USE so it got pulled into the graph, and a new instance also got
-		   pulled in due to --newuse or an upgrade.
-
-		3) Multiple USE deps exist that can't be satisfied simultaneously,
-		   and multiple package instances got pulled into the same slot to
-		   satisfy the conflicting deps.
-
-		Currently, explanations and suggested courses of action are generated
-		for cases 1 and 2. Case 3 is too complex to give a useful suggestion.
-		"""
-
-		if len(slot_nodes) != 2:
-			# Suggestions are only implemented for
-			# conflicts between two packages.
-			return None
-
-		all_conflict_atoms = self._dynamic_config._slot_conflict_parent_atoms
-		matched_node = None
-		matched_atoms = None
-		unmatched_node = None
-		for node in slot_nodes:
-			parent_atoms = self._dynamic_config._parent_atoms.get(node)
-			if not parent_atoms:
-				# Normally, there are always parent atoms. If there are
-				# none then something unexpected is happening and there's
-				# currently no suggestion for this case.
-				return None
-			conflict_atoms = all_conflict_atoms.intersection(parent_atoms)
-			for parent_atom in conflict_atoms:
-				parent, atom = parent_atom
-				if not atom.use:
-					# Suggestions are currently only implemented for cases
-					# in which all conflict atoms have USE deps.
-					return None
-			if conflict_atoms:
-				if matched_node is not None:
-					# If conflict atoms match multiple nodes
-					# then there's no suggestion.
-					return None
-				matched_node = node
-				matched_atoms = conflict_atoms
-			else:
-				if unmatched_node is not None:
-					# Neither node is matched by conflict atoms, and
-					# there is no suggestion for this case.
-					return None
-				unmatched_node = node
-
-		if matched_node is None or unmatched_node is None:
-			# This shouldn't happen.
-			return None
-
-		if unmatched_node.installed and not matched_node.installed and \
-			unmatched_node.cpv == matched_node.cpv:
-			# If the conflicting packages are the same version then
-			# --newuse should be all that's needed. If they are different
-			# versions then there's some other problem.
-			return "New USE are correctly set, but --newuse wasn't" + \
-				" requested, so an installed package with incorrect USE " + \
-				"happened to get pulled into the dependency graph. " + \
-				"In order to solve " + \
-				"this, either specify the --newuse option or explicitly " + \
-				" reinstall '%s'." % matched_node.slot_atom
-
-		if matched_node.installed and not unmatched_node.installed:
-			atoms = sorted(set(atom for parent, atom in matched_atoms))
-			explanation = ("New USE for '%s' are incorrectly set. " + \
-				"In order to solve this, adjust USE to satisfy '%s'") % \
-				(matched_node.slot_atom, atoms[0])
-			if len(atoms) > 1:
-				for atom in atoms[1:-1]:
-					explanation += ", '%s'" % (atom,)
-				if len(atoms) > 2:
-					explanation += ","
-				explanation += " and '%s'" % (atoms[-1],)
-			explanation += "."
-			return explanation
-
-		return None
 
 	def _process_slot_conflicts(self):
 		"""
