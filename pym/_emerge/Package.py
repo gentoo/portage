@@ -292,7 +292,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 
 	__slots__ = ("_pkg",)
 	_wrapped_keys = frozenset(
-		["COUNTER", "INHERITED", "IUSE", "SLOT", "_mtime_"])
+		["COUNTER", "INHERITED", "IUSE", "SLOT", "USE", "_mtime_"])
 	_use_conditional_keys = frozenset(
 		['LICENSE', 'PROPERTIES', 'PROVIDE', 'RESTRICT',])
 
@@ -301,7 +301,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 		self._pkg = pkg
 		if not pkg.built:
 			# USE is lazy, but we want it to show up in self.keys().
-			self['USE'] = ''
+			_PackageMetadataWrapperBase.__setitem__(self, 'USE', '')
 
 		self.update(metadata)
 
@@ -326,7 +326,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 					'porttree'].dbapi.doebuild_settings
 				pkgsettings.setcpv(self._pkg)
 				v = pkgsettings["PORTAGE_USE"]
-				self['USE'] = v
+				_PackageMetadataWrapperBase.__setitem__(self, 'USE', v)
 
 		return v
 
@@ -365,6 +365,18 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 			except ValueError:
 				v = 0
 		self._pkg.counter = v
+
+	def _set_use(self, k, v):
+		# Force regeneration of _use attribute
+		self._pkg._use = None
+		# Use raw metadata to restore USE conditional values
+		# to unevaluated state
+		raw_metadata = self._pkg._raw_metadata
+		for x in self._use_conditional_keys:
+			try:
+				self[x] = raw_metadata[x]
+			except KeyError:
+				pass
 
 	def _set__mtime_(self, k, v):
 		if isinstance(v, basestring):
