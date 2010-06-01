@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -8,6 +8,7 @@ from portage import os
 from _emerge.Package import Package
 from _emerge.PackageVirtualDbapi import PackageVirtualDbapi
 from portage.dbapi.vartree import vartree
+from portage.update import grab_updates, parse_updates, update_dbentries
 
 if sys.hexversion >= 0x3000000:
 	long = int
@@ -179,7 +180,6 @@ class FakeVartree(vartree):
 		return pkg
 
 def grab_global_updates(portdir):
-	from portage.update import grab_updates, parse_updates
 	updpath = os.path.join(portdir, "profiles", "updates")
 	try:
 		rawupdates = grab_updates(updpath)
@@ -192,7 +192,6 @@ def grab_global_updates(portdir):
 	return upd_commands
 
 def perform_global_updates(mycpv, mydb, mycommands):
-	from portage.update import update_dbentries
 	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 	aux_dict = dict(zip(aux_keys, mydb.aux_get(mycpv, aux_keys)))
 	updates = update_dbentries(mycommands, aux_dict)
