@@ -23,7 +23,7 @@ class Package(Task):
 		"category", "counter", "cp", "cpv_split",
 		"inherited", "invalid", "iuse", "masks", "mtime",
 		"pf", "pv_split", "root", "slot", "slot_atom", "visible",) + \
-	("_use",)
+	("_raw_metadata", "_use",)
 
 	metadata_keys = [
 		"BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "EAPI",
@@ -35,7 +35,8 @@ class Package(Task):
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
 		self.root = self.root_config.root
-		self.metadata = _PackageMetadataWrapper(self, self.metadata)
+		self._raw_metadata = _PackageMetadataWrapperBase(self.metadata)
+		self.metadata = _PackageMetadataWrapper(self, self._raw_metadata)
 		if not self.built:
 			self.metadata['CHOST'] = self.root_config.settings.get('CHOST', '')
 		self.cp = portage.cpv_getkey(self.cpv)
@@ -52,6 +53,12 @@ class Package(Task):
 		self.pv_split = self.cpv_split[1:]
 		self.masks = self._masks()
 		self.visible = self._visible(self.masks)
+
+	def copy(self):
+		return Package(built=self.built, cpv=self.cpv, depth=self.depth,
+			installed=self.installed, metadata=self._raw_metadata,
+			onlydeps=self.onlydeps, operation=self.operation,
+			root_config=self.root_config, type_name=self.type_name)
 
 	def _masks(self):
 		masks = {}
