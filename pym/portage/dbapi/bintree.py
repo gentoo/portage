@@ -791,16 +791,16 @@ class binarytree(object):
 						btime = int(btime)
 					except ValueError:
 						btime = None
-					if btime:
-						other_d = remotepkgs.get(cpv)
-						if other_d is not None:
-							other_btime = other_d.get('BUILD_TIME', '')
-							try:
-								other_btime = int(other_btime)
-							except ValueError:
-								other_btime = None
-							if other_btime and other_btime > btime:
-								continue
+
+					other_d = remotepkgs.get(cpv)
+					if other_d is not None:
+						other_btime = other_d.get('BUILD_TIME', '')
+						try:
+							other_btime = int(other_btime)
+						except ValueError:
+							other_btime = None
+						if other_btime and (not btime or other_btime > btime):
+							continue
 
 					remotepkgs[cpv] = d
 
