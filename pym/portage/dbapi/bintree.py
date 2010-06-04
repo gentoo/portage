@@ -778,8 +778,32 @@ class binarytree(object):
 					# file, but that's alright.
 			if pkgindex:
 				self._remotepkgs = {}
+
+				# Organize remote package list as a cpv -> metadata map.
+				# If multiple packages have identical CPV values, prefer
+				# the package with latest BUILD_TIME value.
+				remotepkgs = self._remotepkgs
 				for d in pkgindex.packages:
-					self._remotepkgs[d["CPV"]] = d
+					cpv = d["CPV"]
+
+					btime = d.get('BUILD_TIME', '')
+					try:
+						btime = int(btime)
+					except ValueError:
+						btime = None
+					if btime:
+						other_d = remotepkgs.get(cpv)
+						if other_d is not None:
+							other_btime = other_d.get('BUILD_TIME', '')
+							try:
+								other_btime = int(other_btime)
+							except ValueError:
+								other_btime = None
+							if other_btime and other_btime > btime:
+								continue
+
+					remotepkgs[cpv] = d
+
 				self._remote_has_index = True
 				self._remote_base_uri = pkgindex.header.get("URI", base_url)
 				self.__remotepkgs = {}
