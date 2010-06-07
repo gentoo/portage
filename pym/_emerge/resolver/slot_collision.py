@@ -3,13 +3,11 @@ from __future__ import print_function
 import sys
 
 from _emerge.AtomArg import AtomArg
-from _emerge.DependencyArg import DependencyArg
-from _emerge.Package import Package
 from _emerge.PackageArg import PackageArg
-from _emerge.SetArg import SetArg
 from portage.output import colorize
 from portage.sets.base import InternalPackageSet
 from portage.util import writemsg
+from portage.versions import cpv_getversion, vercmp
 
 class slot_conflict_handler(object):
 	"""This class keeps track of all slot conflicts and provides
@@ -114,58 +112,134 @@ class slot_conflict_handler(object):
 				msg.append(" for %s" % (root,))
 			msg.append("\n\n")
 
-			for node in pkgs:
+			for pkg in pkgs:
 				msg.append(indent)
-				msg.append(str(node))
-				parent_atoms = self.all_parents.get(node)
+				msg.append(str(pkg))
+				parent_atoms = self.all_parents.get(pkg)
 				if parent_atoms:
-					pruned_list = set()
-					for pkg, atom in parent_atoms:
-						num_matched_slot_atoms = 0
-						atom_set = InternalPackageSet(initial_atoms=(atom,))
-						for other_node in pkgs:
-							if other_node == node:
-								continue
-							if atom_set.findAtomForPackage(other_node):
-								num_matched_slot_atoms += 1
-						if num_matched_slot_atoms < len(pkgs) - 1:
-							pruned_list.add((pkg, atom))
-							if len(pruned_list) >= max_parents:
-								break
+					#Create a list of collision reasons and map them to sets
+					#of atoms.
+					#Possible reasons:
+					#	("version", "ge") for operator >=, >
+					#	("version", "eq") for operator =, ~
+					#	("version", "le") for operator <=, <
+					#	("use", "<some use flag>") for unmet use conditionals
+					collision_reasons = {}
+					num_all_specific_atoms = 0
 
-					# If this package was pulled in by conflict atoms then
-					# show those alone since those are the most interesting.
-					if not pruned_list:
-						#If we prunned all atoms, the user most likely forgot
-						#to enable --newuse and/or --update
-						self.conflict_is_unspecific = True
-						
-						# When generating the pruned list, prefer instances
-						# of DependencyArg over instances of Package.
-						for parent_atom in parent_atoms:
-							if len(pruned_list) >= max_parents:
-								break
-							parent, atom = parent_atom
-							if isinstance(parent, DependencyArg):
-								pruned_list.add(parent_atom)
-						# Prefer Packages instances that themselves have been
-						# pulled into collision slots.
-						for parent_atom in parent_atoms:
-							if len(pruned_list) >= max_parents:
-								break
-							parent, atom = parent_atom
-							if isinstance(parent, Package) and \
-								(parent.slot_atom, parent.root) \
-								in self.slot_collision_info:
-								pruned_list.add(parent_atom)
-						for parent_atom in parent_atoms:
-							if len(pruned_list) >= max_parents:
-								break
-							pruned_list.add(parent_atom)
-					omitted_parents = len(parent_atoms) - len(pruned_list)
-					parent_atoms = pruned_list
+					for ppkg, atom in parent_atoms:
+						atom_set = InternalPackageSet(initial_atoms=(atom,))
+						atom_without_use_set = InternalPackageSet(initial_atoms=(atom.without_use,))
+
+						for other_pkg in pkgs:
+							if other_pkg == pkg:
+								continue
+
+							if not atom_without_use_set.findAtomForPackage(other_pkg):
+								#The version range does not match.
+								sub_type = None
+								if atom.operator in (">=", ">"):
+									sub_type = "ge"
+								elif atom.operator in ("=", "~"):
+									sub_type = "eq"
+								elif atom.operator in ("<=", "<"):
+									sub_type = "le"
+
+								atoms = collision_reasons.get(("version", sub_type), set())
+								atoms.add((ppkg, atom, other_pkg))
+								num_all_specific_atoms += 1
+								collision_reasons[("version", sub_type)] = atoms
+							elif not atom_set.findAtomForPackage(other_pkg):
+								#Use conditionals not met.
+								violated_atom = atom.violated_conditionals(other_pkg.use.enabled, ppkg.use.enabled)
+								for flag in violated_atom.use.enabled.union(violated_atom.use.disabled):
+									atoms = collision_reasons.get(("use", flag), set())
+									atoms.add((ppkg, atom, other_pkg))
+									collision_reasons[("use", flag)] = atoms
+								num_all_specific_atoms += 1
+
 					msg.append(" pulled in by\n")
-					for parent_atom in parent_atoms:
+
+					selected_for_dispaly = set()
+
+					for (type, sub_type), parents in collision_reasons.items():
+						#From each (type, sub_type) pair select at least one atom.
+						#Try to select as few atoms as possible
+
+						if type == "version":
+							#Find the atom with version that is as far away as possible.
+							best_matches = {}
+							for ppkg, atom, other_pkg in parents:
+								if atom.cp in best_matches:
+									cmp = portage.versions.vercmp( \
+										portage.versions.cpv_getversion(atom.cpv), \
+										portage.versions.cpv_getversion(best_matches[atom.cp][1].cpv))
+
+									if (sub_type == "ge" and  cmp > 0) \
+										or (sub_type == "le" and cmp < 0) \
+										or (sub_type == "eq" and cmp > 0):
+										best_matches[atom.cp] = (ppkg, atom)
+								else:
+									best_matches[atom.cp] = (ppkg, atom)
+							selected_for_dispaly.update(best_matches.values())
+						elif type == "use":
+							#Prefer atoms with unconditional use deps over, because it's
+							#not possible to change them on the parent, which means there
+							#are fewer possible solutions.
+							use = sub_type
+							hard_matches = set()
+							conditional_matches = set()
+							for ppkg, atom, other_pkg in parents:
+								violated_atom = atom.unevaluated_atom.violated_conditionals( \
+									other_pkg.use.enabled, ppkg.use.enabled)
+								if use in violated_atom.use.enabled.union(violated_atom.use.disabled):
+									hard_matches.add((ppkg, atom))
+								else:
+									conditional_matches.add((ppkg, atom))
+
+							if hard_matches:
+								matches = hard_matches
+							else:
+								matches = conditional_matches
+							
+							if not selected_for_dispaly.intersection(matches):
+								selected_for_dispaly.add(matches.pop())
+
+					def highlight_violations(atom, version, use=[]):
+						"""Colorize parts of an atom"""
+						atom_str = str(atom)
+						if version:
+							op = atom.operator
+							ver = cpv_getversion(atom.cpv)
+							slot = atom.slot
+							atom_str = atom_str.replace(op, colorize("BAD", op), 1)
+							
+							start = atom_str.rfind(ver)
+							end = start + len(ver)
+							atom_str = atom_str[:start] + \
+								colorize("BAD", ver) + \
+								atom_str[end+1:]
+							if slot:
+								atom_str = atom_str.replace(":" + slot, colorize("BAD", ":" + slot))
+						
+						if use and atom.use.tokens:
+							use_part_start = atom_str.find("[")
+							use_part_end = atom_str.find("]")
+							
+							new_tokens = []
+							for token in atom.use.tokens:
+								if token.lstrip("-!").rstrip("=?") in use:
+									new_tokens.append(colorize("BAD", token))
+								else:
+									new_tokens.append(token)
+
+							atom_str = atom_str[:use_part_start] \
+								+ "[%s]" % (",".join(new_tokens),) + \
+								atom_str[use_part_end+1:]
+						
+						return atom_str
+
+					for parent_atom in selected_for_dispaly:
 						parent, atom = parent_atom
 						msg.append(2*indent)
 						if isinstance(parent,
@@ -176,11 +250,33 @@ class slot_conflict_handler(object):
 						else:
 							# Display the specific atom from SetArg or
 							# Package types.
-							msg.append("%s required by %s" % (atom.unevaluated_atom, parent))
+							version_violated = False
+							use = []
+							for type, sub_type in collision_reasons:
+								if type == "version":
+									for x in collision_reasons[(type, sub_type)]:
+										if ppkg == x[0] and atom == x[1]:
+											version_violated = True
+								elif type == "use":
+									use.append(sub_type)
+
+							atom_str = highlight_violations(atom.unevaluated_atom, version_violated, use)
+							
+							msg.append("%s required by %s" % (atom_str, parent))
 						msg.append("\n")
+					
+					if not selected_for_dispaly:
+						msg.append(2*indent)
+						msg.append("(no parents that aren't satisfied by other packages in this slot)\n")
+						self.conflict_is_unspecific = True
+					
+					omitted_parents = num_all_specific_atoms - len(selected_for_dispaly)
 					if omitted_parents:
 						msg.append(2*indent)
-						msg.append("(and %d more)\n" % omitted_parents)
+						if len(selected_for_dispaly) > 1:
+							msg.append("(and %d more with the same problems)\n" % omitted_parents)
+						else:
+							msg.append("(and %d more with the same problem)\n" % omitted_parents)
 				else:
 					msg.append(" (no parents)\n")
 				msg.append("\n")
@@ -511,7 +607,8 @@ class slot_conflict_handler(object):
 				new_pkg = pkg
 
 			for ppkg, atom in all_conflict_atoms_by_slotatom[id]:
-				if isinstance(ppkg, SetArg):
+				if not hasattr(ppkg, "use"):
+					#It's a SetArg or something like that.
 					continue
 				new_use = set(ppkg.use.enabled)
 				if ppkg in required_changes:
