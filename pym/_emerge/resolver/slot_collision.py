@@ -92,9 +92,8 @@ class slot_conflict_handler(object):
 					break
 			first_config = False
 
-	def print_conflict(self):
-		sys.stderr.write("".join(self.conflict_msg))
-		sys.stderr.flush()
+	def get_conflict(self):
+		return "".join(self.conflict_msg)
 		
 	def _prepare_conflict_msg_and_check_for_specificity(self):
 		"""
@@ -289,34 +288,37 @@ class slot_conflict_handler(object):
 				msg.append("\n")
 		msg.append("\n")
 
-	def print_explanation(self):
+	def get_explanation(self):
+		msg = ""
+
 		if self.is_a_version_conflict:
-			return False
+			return None
 
 		if self.conflict_is_unspecific and \
 			not ("--newuse" in self.myopts and "--update" in self.myopts):
-			writemsg("!!!Enabling --newuse and --update might solve this conflict.\n")
-			writemsg("!!!If not, it might at least allow emerge to give a suggestions.\n\n")
-			return True
+			msg += "!!!Enabling --newuse and --update might solve this conflict.\n"
+			msg += "!!!If not, it might at least allow emerge to give a suggestions.\n\n"
+			return msg
 
 		solutions = self.solutions
 		if not solutions:
-			return False
+			return None
 
 		if len(solutions)==1:
 			if len(self.slot_collision_info)==1:
-				writemsg("It might be possible to solve this slot collision\n")
+				msg += "It might be possible to solve this slot collision\n"
 			else:
-				writemsg("It might be possible to solve these slot collisions\n")
-			writemsg("by applying all of the following changes:\n")
+				msg += "It might be possible to solve these slot collisions\n"
+			msg += "by applying all of the following changes:\n"
 		else:
 			if len(self.slot_collision_info)==1:
-				writemsg("It might be possible to solve this slot collision\n")
+				msg += "It might be possible to solve this slot collision\n"
 			else:
-				writemsg("It might be possible to solve these slot collisions\n")
-			writemsg("by applying one of the following solutions:\n")
+				msg += "It might be possible to solve these slot collisions\n"
+			msg += "by applying one of the following solutions:\n"
 
 		def print_solution(solution, indent=""):
+			mymsg = ""
 			for pkg in solution:
 				changes = []
 				for flag, state in solution[pkg].items():
@@ -325,17 +327,18 @@ class slot_conflict_handler(object):
 					elif state == "disabled" and flag in pkg.use.enabled:
 						changes.append(colorize("blue", "-" + flag))
 				if changes:
-					writemsg(indent + "- " + pkg.cpv + " (Change USE: %s" % " ".join(changes) + ")\n")
-			writemsg("\n")
+					mymsg += indent + "- " + pkg.cpv + " (Change USE: %s" % " ".join(changes) + ")\n"
+			mymsg += "\n"
+			return mymsg
 
 		if len(solutions) == 1:
-			print_solution(solutions[0], "   ")
+			msg += print_solution(solutions[0], "   ")
 		else:
 			for solution in solutions:
-				writemsg("  Solution: Apply all of:\n")
-				print_solution(solution, "     ")
+				msg += "  Solution: Apply all of:\n"
+				msg += print_solution(solution, "     ")
 
-		return True
+		return msg
 
 	def _check_configuration(self, config, all_conflict_atoms_by_slotatom, conflict_nodes):
 		"""

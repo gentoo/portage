@@ -472,10 +472,16 @@ class depgraph(object):
 
 		handler = slot_conflict_handler(self._dynamic_config._slot_collision_info, \
 			self._dynamic_config._parent_atoms, self._frozen_config.myopts)
-		handler.print_conflict()
-		has_explanation = handler.print_explanation()
 
-		if has_explanation or "--quiet" in self._frozen_config.myopts:
+		conflict = handler.get_conflict()
+		writemsg(conflict, noiselevel=-1)
+		
+		explanation = handler.get_explanation()
+		if explanation:
+			writemsg(explanation, noiselevel=-1)
+			return
+
+		if "--quiet" in self._frozen_config.myopts:
 			return
 
 		msg = []
