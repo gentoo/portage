@@ -53,6 +53,10 @@ class slot_conflict_handler(object):
 		#If any conflict package was pulled in only by unspecific atoms, then
 		#the user forgot to enable --newuse and/or --update.
 		self.conflict_is_unspecific = False
+		
+		#Indicate if the conflict is caused by incompatible version requirements
+		#cat/pkg-2 pulled in, but a parent requires <cat/pkg-2
+		self.is_a_version_conflict = False
 
 		self._prepare_conflict_msg_and_check_for_specificity()
 
@@ -261,7 +265,10 @@ class slot_conflict_handler(object):
 									use.append(sub_type)
 
 							atom_str = highlight_violations(atom.unevaluated_atom, version_violated, use)
-							
+
+							if version_violated:
+								self.is_a_version_conflict = True
+
 							msg.append("%s required by %s" % (atom_str, parent))
 						msg.append("\n")
 					
@@ -283,6 +290,9 @@ class slot_conflict_handler(object):
 		msg.append("\n")
 
 	def print_explanation(self):
+		if self.is_a_version_conflict:
+			return False
+
 		if self.conflict_is_unspecific and \
 			not ("--newuse" in self.myopts and "--update" in self.myopts):
 			writemsg("!!!Enabling --newuse and --update might solve this conflict.\n")
