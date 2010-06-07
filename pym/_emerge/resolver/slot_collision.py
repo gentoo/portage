@@ -15,7 +15,7 @@ class slot_conflict_handler(object):
 		self.myopts = myopts
 		self.debug = "--debug" in myopts
 		if self.debug:
-			writemsg("Starting slot conflict handler\n")
+			writemsg("Starting slot conflict handler\n", noiselevel=-1)
 		#slot_collision_info is a dict mapping (slot atom, root) to set
 		#of packages. The packages in the set all belong to the same
 		#slot.
@@ -73,10 +73,10 @@ class slot_conflict_handler(object):
 				break
 
 			if self.debug:
-				writemsg("\nNew configuration:\n")
+				writemsg("\nNew configuration:\n", noiselevel=-1)
 				for pkg in config:
-					writemsg("   " + str(pkg) + "\n")
-				writemsg("\n")
+					writemsg("   " + str(pkg) + "\n", noiselevel=-1)
+				writemsg("\n", noiselevel=-1)
 
 			new_solutions = self._check_configuration(config, all_conflict_atoms_by_slotatom, conflict_nodes)
 
@@ -86,7 +86,7 @@ class slot_conflict_handler(object):
 					#If the "all ebuild"-config gives a solution, use it.
 					#Otherwise enumerate all other soultions.
 					if self.debug:
-						writemsg("All-ebuild configuration has a solution. Aborting search.\n")
+						writemsg("All-ebuild configuration has a solution. Aborting search.\n", noiselevel=-1)
 					break
 			first_config = False
 
@@ -360,7 +360,7 @@ class slot_conflict_handler(object):
 					if pkg.iuse.all.symmetric_difference(other_pkg.iuse.all) \
 						or pkg.use.enabled.symmetric_difference(other_pkg.use.enabled):
 						if self.debug:
-							writemsg(str(pkg) + " has pending USE changes. Rejecting configuration.\n")
+							writemsg(str(pkg) + " has pending USE changes. Rejecting configuration.\n", noiselevel=-1)
 						return False
 
 		#A list of dicts. Keeps one dict per slot conflict. [ { flag1: "enabled" }, { flag2: "disabled" } ]
@@ -383,13 +383,15 @@ class slot_conflict_handler(object):
 				if not i.findAtomForPackage(pkg):
 					#Version range does not match.
 					if self.debug:
-						writemsg(str(pkg) + " does not satify all version requirements. Rejecting configuration.\n")
+						writemsg(str(pkg) + " does not satify all version requirements." + \
+							" Rejecting configuration.\n", noiselevel=-1)
 					return False
 
 				if not pkg.iuse.is_valid_flag(atom.unevaluated_atom.use.required):
 					#Missing IUSE.
 					if self.debug:
-						writemsg(str(pkg) + " misses need flags from IUSE. Rejecting configuration.\n")
+						writemsg(str(pkg) + " misses need flags from IUSE." + \
+							" Rejecting configuration.\n", noiselevel=-1)
 					return False
 
 				if ppkg.installed:
@@ -403,7 +405,8 @@ class slot_conflict_handler(object):
 					#We can't change USE of an installed package (only of an ebuild, but that is already
 					#part of the conflict, isn't it?
 					if self.debug:
-						writemsg(str(pkg) + ": installed package would need USE changes. Rejecting configuration.\n")
+						writemsg(str(pkg) + ": installed package would need USE changes." + \
+							" Rejecting configuration.\n", noiselevel=-1)
 					return False
 
 				#Compute the required USE changes. A flag can be forced to "enabled" or "disabled",
@@ -448,17 +451,18 @@ class slot_conflict_handler(object):
 			for flag, state in involved_flags.items():
 				if state == "contradiction":
 					if self.debug:
-						writemsg("Contradicting requirements found for flag " + flag + ". Rejecting configuration.\n")
+						writemsg("Contradicting requirements found for flag " + \
+							flag + ". Rejecting configuration.\n", noiselevel=-1)
 					return False
 
 			all_involved_flags.append(involved_flags)
 
 		if self.debug:
-			writemsg("All involved flags:\n")
+			writemsg("All involved flags:\n", noiselevel=-1)
 			for id, involved_flags in enumerate(all_involved_flags):
-				writemsg("   " + str(config[id]) + "\n")
+				writemsg("   " + str(config[id]) + "\n", noiselevel=-1)
 				for flag, state in involved_flags.items():
-					writemsg("     " + flag + ": " + state + "\n")
+					writemsg("     " + flag + ": " + state + "\n", noiselevel=-1)
 
 		solutions = []
 		sol_gen = _solution_candidate_generator(all_involved_flags)
@@ -472,7 +476,7 @@ class slot_conflict_handler(object):
 		
 		if self.debug:
 			if not solutions:
-				writemsg("No viable solutions. Rejecting configuration.\n")
+				writemsg("No viable solutions. Rejecting configuration.\n", noiselevel=-1)
 		return solutions
 		
 	
@@ -528,7 +532,7 @@ class slot_conflict_handler(object):
 					msg += flag + ": " + str(state)
 				msg += "}"
 			msg += "]\n"
-			writemsg(msg)
+			writemsg(msg, noiselevel=-1)
 		
 		required_changes = {}
 		for id, pkg in enumerate(config):
@@ -636,7 +640,7 @@ class slot_conflict_handler(object):
 					is_valid_solution = False
 					if self.debug:
 						writemsg("new conflict introduced: " + str(new_pkg) + \
-							" does not match " + new_atom + " from " + str(ppkg) + "\n")
+							" does not match " + new_atom + " from " + str(ppkg) + "\n", noiselevel=-1)
 					break
 
 			if not is_valid_solution:
