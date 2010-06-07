@@ -1,7 +1,5 @@
 from __future__ import print_function
 
-import sys
-
 from _emerge.AtomArg import AtomArg
 from _emerge.PackageArg import PackageArg
 from portage.output import colorize
