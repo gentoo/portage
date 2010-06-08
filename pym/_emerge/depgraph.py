@@ -4144,18 +4144,42 @@ class depgraph(object):
 			noiselevel=-1)
 		portage.writemsg("\n", noiselevel=-1)
 
+		suggestions = []
 		if shortest_cycle:
 			indent = ""
 			for id, pkg in enumerate(shortest_cycle):
-				parent = None
 				if id > 0:
 					parent = shortest_cycle[id-1]
+				else:
+					parent = shortest_cycle[-1]
 
-				if parent:
-					priorities = mygraph.nodes[parent][0][pkg]
+				priorities = mygraph.nodes[parent][0][pkg]
+				if id > 0:
 					writemsg(indent + "%s (%s)\n" % (pkg, priorities[-1],), noiselevel=-1)
 				else:
 					writemsg(indent + str(pkg) + " depends on\n", noiselevel=-1)
+
+				if priorities[-1].buildtime:
+					dep = parent.metadata["DEPEND"]
+				elif priorities[-1].runtime:
+					dep = parent.metadata["RDEPEND"]
+				parent_atoms = self._dynamic_config._parent_atoms.get(pkg)
+				for ppkg, atom in parent_atoms:
+					if ppkg == parent:
+						parent_atom = atom.unevaluated_atom
+						break
+				use_enabled, use_disabled = portage.dep.extract_use_cond(dep, parent_atom)
+				if use_enabled:
+					for flag in use_enabled:
+						if flag in parent.use.enabled:
+							suggestions.append("- %s (Change USE: %s)\n" \
+								% (parent.cpv, colorize("blue", "-" + flag)))
+				if use_disabled:
+					for flag in use_enabled:
+						if flag not in parent.use.enabled:
+							suggestions.append("- %s (Change USE: %s)\n" \
+								% (parent.cpv, colorize("red", "+" + flag)))
+
 				indent += " "
 
 			pkg = shortest_cycle[0]
@@ -4165,11 +4189,23 @@ class depgraph(object):
 		else:
 			mygraph.debug_print()
 
-		portage.writemsg("\n", noiselevel=-1)
-		portage.writemsg(prefix + "Note that circular dependencies " + \
-			"can often be avoided by temporarily\n", noiselevel=-1)
-		portage.writemsg(prefix + "disabling USE flags that trigger " + \
-			"optional dependencies.\n", noiselevel=-1)
+		if suggestions:
+			writemsg("\n\nIt might be possible to break this cycle\n", noiselevel=-1)
+			if len(suggestions) == 1:
+				writemsg("by applying the following change:\n", noiselevel=-1)
+			else:
+				writemsg("by applying " + colorize("bold", "any of") + \
+					" the following changes:\n", noiselevel=-1)
+			writemsg("".join(suggestions), noiselevel=-1)
+			writemsg("\nNote that this change can be reverted, once the package has" + \
+				" been installed.\n\n", noiselevel=-1)
+		else:
+			writemsg("\n", noiselevel=-1)
+			writemsg(prefix + "Note that circular dependencies " + \
+				"can often be avoided by temporarily\n", noiselevel=-1)
+			writemsg(prefix + "disabling USE flags that trigger " + \
+				"optional dependencies.\n", noiselevel=-1)
+
 
 	def _show_merge_list(self):
 		if self._dynamic_config._serialized_tasks_cache is not None and \
