@@ -172,9 +172,9 @@ class slot_conflict_handler(object):
 							best_matches = {}
 							for ppkg, atom, other_pkg in parents:
 								if atom.cp in best_matches:
-									cmp = portage.versions.vercmp( \
-										portage.versions.cpv_getversion(atom.cpv), \
-										portage.versions.cpv_getversion(best_matches[atom.cp][1].cpv))
+									cmp = vercmp( \
+										cpv_getversion(atom.cpv), \
+										cpv_getversion(best_matches[atom.cp][1].cpv))
 
 									if (sub_type == "ge" and  cmp > 0) \
 										or (sub_type == "le" and cmp < 0) \
