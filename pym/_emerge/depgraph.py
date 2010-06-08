@@ -4110,6 +4110,15 @@ class depgraph(object):
 			if not root_nodes:
 				break
 			mygraph.difference_update(root_nodes)
+		
+		shortest_cycle = None
+		for cycle in mygraph.get_cycles(ignore_priority=DepPrioritySatisfiedRange.ignore_medium_soft):
+			if not shortest_cycle or len(shortest_cycle) > len(cycle):
+				shortest_cycle = cycle
+
+		if shortest_cycle:
+			mygraph.difference_update(set(mygraph.order) - set(shortest_cycle))
+			
 		# Display the USE flags that are enabled on nodes that are part
 		# of dependency cycles in case that helps the user decide to
 		# disable some of them.
@@ -4134,7 +4143,28 @@ class depgraph(object):
 		portage.writemsg(prefix + "Error: circular dependencies:\n",
 			noiselevel=-1)
 		portage.writemsg("\n", noiselevel=-1)
-		mygraph.debug_print()
+
+		if shortest_cycle:
+			indent = ""
+			for id, pkg in enumerate(shortest_cycle):
+				parent = None
+				if id > 0:
+					parent = shortest_cycle[id-1]
+
+				if parent:
+					priorities = mygraph.nodes[parent][0][pkg]
+					writemsg(indent + "%s (%s)\n" % (pkg, priorities[-1],), noiselevel=-1)
+				else:
+					writemsg(indent + str(pkg) + " depends on\n", noiselevel=-1)
+				indent += " "
+
+			pkg = shortest_cycle[0]
+			parent = shortest_cycle[-1]
+			priorities = mygraph.nodes[parent][0][pkg]
+			writemsg(indent + "%s (%s)\n" % (pkg, priorities[-1],), noiselevel=-1)
+		else:
+			mygraph.debug_print()
+
 		portage.writemsg("\n", noiselevel=-1)
 		portage.writemsg(prefix + "Note that circular dependencies " + \
 			"can often be avoided by temporarily\n", noiselevel=-1)
