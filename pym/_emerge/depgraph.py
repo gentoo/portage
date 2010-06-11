@@ -4168,17 +4168,72 @@ class depgraph(object):
 					if ppkg == parent:
 						parent_atom = atom.unevaluated_atom
 						break
-				use_enabled, use_disabled = portage.dep.extract_use_cond(dep, parent_atom)
-				if use_enabled:
-					for flag in use_enabled:
-						if flag in parent.use.enabled:
-							suggestions.append("- %s (Change USE: %s)\n" \
-								% (parent.cpv, colorize("blue", "-" + flag)))
-				if use_disabled:
-					for flag in use_enabled:
-						if flag not in parent.use.enabled:
-							suggestions.append("- %s (Change USE: %s)\n" \
-								% (parent.cpv, colorize("red", "+" + flag)))
+				affecting_use = list(portage.dep.extract_affecting_use(dep, parent_atom))
+				
+				if affecting_use:
+					#We iterate over all possible settings of these use flags and gather
+					#a set of possible changes
+					use_state = []
+					for flag in affecting_use:
+						use_state.append("disabled") 
+					
+					def _next_use_state(state, id=None):
+						if id is None:
+							id = len(state)-1
+							
+						if id == 0 and state[0] == "enabled":
+							return False
+
+						if state[id] == "disabled":
+							state[id] = "enabled"
+							for i in range(id+1,len(state)):
+								state[i] = "disabled"
+							return True
+						else:
+							return _next_use_state(state, id-1)
+
+					solutions = set()
+					while(True):
+						current_use = []
+						for flag, state in zip(affecting_use, use_state):
+							if state == "enabled":
+								current_use.append(flag)
+						reduced_dep = portage.dep.flatten( \
+							portage.dep.use_reduce(portage.dep.paren_reduce(dep), current_use))
+
+						if parent_atom not in reduced_dep:
+							#we found a valid solution
+							solution = []
+							for flag, state in zip(affecting_use, use_state):
+								if state == "enabled" and \
+									flag not in parent.use.enabled:
+									solution.append("+" + flag)
+								elif state == "disabled" and \
+									flag in parent.use.enabled:
+									solution.append("-" + flag)
+							solutions.add(frozenset(solution))
+						if not _next_use_state(use_state):
+							break
+
+					for solution in solutions:
+						ignore_solution = False
+						for other_solution in solutions:
+							if solution is other_solution:
+								continue
+							if solution.issuperset(other_solution):
+								ignore_solution = True
+						if ignore_solution:
+							continue
+
+						changes = []
+						for flag in solution:
+							if flag.startswith("+"):
+								changes.append(colorize("red", flag))
+							else:
+								changes.append(colorize("blue", flag))
+
+						suggestions.append("- %s (Change USE: %s)\n" \
+							% (parent.cpv, " ".join(changes)))
 
 				indent += " "
 
