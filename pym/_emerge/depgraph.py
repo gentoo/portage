@@ -4100,25 +4100,11 @@ class depgraph(object):
 		return retlist, scheduler_graph
 
 	def _show_circular_deps(self, mygraph):
-		# No leaf nodes are available, so we have a circular
-		# dependency panic situation.  Reduce the noise level to a
-		# minimum via repeated elimination of root nodes since they
-		# have no parents and thus can not be part of a cycle.
-		while True:
-			root_nodes = mygraph.root_nodes(
-				ignore_priority=DepPrioritySatisfiedRange.ignore_medium_soft)
-			if not root_nodes:
-				break
-			mygraph.difference_update(root_nodes)
-		
 		shortest_cycle = None
 		for cycle in mygraph.get_cycles(ignore_priority=DepPrioritySatisfiedRange.ignore_medium_soft):
 			if not shortest_cycle or len(shortest_cycle) > len(cycle):
 				shortest_cycle = cycle
 
-		if shortest_cycle:
-			mygraph.difference_update(set(mygraph.order) - set(shortest_cycle))
-			
 		# Display the USE flags that are enabled on nodes that are part
 		# of dependency cycles in case that helps the user decide to
 		# disable some of them.
