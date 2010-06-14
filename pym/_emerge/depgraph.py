@@ -4101,8 +4101,9 @@ class depgraph(object):
 
 	def _show_circular_deps(self, mygraph):
 		shortest_cycle = None
-		for cycle in mygraph.get_cycles(ignore_priority=DepPrioritySatisfiedRange.ignore_medium_soft):
-			if not shortest_cycle or len(shortest_cycle) > len(cycle):
+		cycles = mygraph.get_cycles(ignore_priority=DepPrioritySatisfiedRange.ignore_medium_soft)
+		for cycle in cycles:
+			if not shortest_cycle or len(shortest_cycle) < len(cycle):
 				shortest_cycle = cycle
 
 		# Display the USE flags that are enabled on nodes that are part
@@ -4152,6 +4153,7 @@ class depgraph(object):
 				parent_atoms = self._dynamic_config._parent_atoms.get(pkg)
 				for ppkg, atom in parent_atoms:
 					if ppkg == parent:
+						changed_parent = ppkg
 						parent_atom = atom.unevaluated_atom
 						break
 				affecting_use = portage.dep.extract_affecting_use(dep, parent_atom)
@@ -4201,7 +4203,6 @@ class depgraph(object):
 							solutions.add(frozenset(solution))
 						if not _next_use_state(use_state):
 							break
-
 					for solution in solutions:
 						ignore_solution = False
 						for other_solution in solutions:
@@ -4212,6 +4213,31 @@ class depgraph(object):
 						if ignore_solution:
 							continue
 
+						#Check if a USE change conflicts with use requirements of the parents.
+						#If a requiremnet is hard, ignore the suggestion.
+						#If the requirment is conditional, warn the user that other changes might be needed.
+						followup_change = False
+						parent_parent_atoms = self._dynamic_config._parent_atoms.get(changed_parent)
+						for ppkg, atom in parent_parent_atoms:
+							atom = atom.unevaluated_atom
+							if not atom.use:
+								continue
+
+							for flag in solution:
+								flag = flag[1:] #flag has a +/- prefix
+								if flag in atom.use.enabled \
+									or flag in atom.use.disabled:
+									ignore_solution = True
+									break
+								elif atom.use.conditional and flag in atom.use.conditional:
+									followup_change = True
+
+							if ignore_solution:
+								break
+
+						if ignore_solution:
+							continue
+
 						changes = []
 						for flag in solution:
 							if flag.startswith("+"):
@@ -4219,8 +4245,11 @@ class depgraph(object):
 							else:
 								changes.append(colorize("blue", flag))
 
-						suggestions.append("- %s (Change USE: %s)\n" \
-							% (parent.cpv, " ".join(changes)))
+						msg = "- %s (Change USE: %s)\n" \
+							% (parent.cpv, " ".join(changes))
+						if followup_change:
+							msg += " (This change might require USE changes on parent packages.)"
+						suggestions.append(msg)
 
 				indent += " "
 
@@ -4240,7 +4269,11 @@ class depgraph(object):
 					" the following changes:\n", noiselevel=-1)
 			writemsg("".join(suggestions), noiselevel=-1)
 			writemsg("\nNote that this change can be reverted, once the package has" + \
-				" been installed.\n\n", noiselevel=-1)
+				" been installed.\n", noiselevel=-1)
+			if len(cycles) > 3:
+				writemsg("\nNote that the dependency graph contains a lot of cycles.\n" + \
+					"Several changes might be required to resolve all cycles.\n" + \
+					"Temporarily changing some use flag for all packages might be the better option.\n", noiselevel=-1)
 		else:
 			writemsg("\n", noiselevel=-1)
 			writemsg(prefix + "Note that circular dependencies " + \
