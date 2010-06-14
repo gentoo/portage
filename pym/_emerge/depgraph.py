@@ -4168,9 +4168,10 @@ class depgraph(object):
 					if ppkg == parent:
 						parent_atom = atom.unevaluated_atom
 						break
-				affecting_use = list(portage.dep.extract_affecting_use(dep, parent_atom))
+				affecting_use = portage.dep.extract_affecting_use(dep, parent_atom)
 				
 				if affecting_use:
+					affecting_use = list(affecting_use)
 					#We iterate over all possible settings of these use flags and gather
 					#a set of possible changes
 					use_state = []
