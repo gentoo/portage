@@ -67,14 +67,17 @@ class EbuildHeader(LineCheck):
 
 	repoman_check_name = 'ebuild.badheader'
 
-	gentoo_copyright = r'^# Copyright ((1999|200\d)-)?%s Gentoo Foundation$'
+	gentoo_copyright = r'^# Copyright ((1999|2\d\d\d)-)?%s Gentoo Foundation$'
 	# Why a regex here, use a string match
 	# gentoo_license = re.compile(r'^# Distributed under the terms of the GNU General Public License v2$')
 	gentoo_license = r'# Distributed under the terms of the GNU General Public License v2'
 	cvs_header = re.compile(r'^#\s*\$Header.*\$$')
 
 	def new(self, pkg):
-		self.modification_year = str(time.gmtime(pkg.mtime)[0])
+		if pkg.mtime is None:
+			self.modification_year = r'2\d\d\d'
+		else:
+			self.modification_year = str(time.gmtime(pkg.mtime)[0])
 		self.gentoo_copyright_re = re.compile(
 			self.gentoo_copyright % self.modification_year)
 

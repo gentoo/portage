@@ -494,6 +494,9 @@ elif os.path.isdir(os.path.join(portdir_overlay, ".hg")):
 # This is needed because we try to avoid merge collisions.
 check_changelog = vcs in ('CVS', 'SVN')
 
+# Disable copyright/mtime check if vcs does not preserve mtime (bug #324075).
+check_copyright_mtime = vcs not in ('git',)
+
 vcs_local_opts = repoman_settings.get("REPOMAN_VCS_LOCAL_OPTS", "").split()
 vcs_global_opts = repoman_settings.get("REPOMAN_VCS_GLOBAL_OPTS")
 if vcs_global_opts is None:
@@ -1769,6 +1772,8 @@ for x in scanlist:
 		# Syntax Checks
 		relative_path = os.path.join(x, y + ".ebuild")
 		full_path = os.path.join(repodir, relative_path)
+		if not check_copyright_mtime:
+			pkg.mtime = None
 		try:
 			# All ebuilds should have utf_8 encoding.
 			f = codecs.open(_unicode_encode(full_path,
