@@ -492,7 +492,7 @@ elif os.path.isdir(os.path.join(portdir_overlay, ".hg")):
 # It will be generated on server side from scm log,
 # before package moves to the rsync server.
 # This is needed because we try to avoid merge collisions.
-check_changelog = vcs in ('CVS', 'SVN')
+check_changelog = vcs in ('cvs', 'svn')
 
 # Disable copyright/mtime check if vcs does not preserve mtime (bug #324075).
 check_copyright_mtime = vcs not in ('git',)
