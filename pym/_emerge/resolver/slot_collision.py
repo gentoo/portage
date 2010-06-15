@@ -10,7 +10,66 @@ from portage.versions import cpv_getversion, vercmp
 class slot_conflict_handler(object):
 	"""This class keeps track of all slot conflicts and provides
 	an interface to get possible solutions.
+
+	How it works:
+	If two packages have been pulled into a slot, one needs to
+	go away. This class focuses on cases where this can be achieved
+	with a change in USE settings.
+
+	1) Find out if what causes a given slot conflict. There are
+	three possibilities:
+
+		a) One parent needs foo-1:0 and another one needs foo-2:0,
+		nothing we can do about this. This is called a 'version
+		based conflict'.
+
+		b) All parents of one of the conflict packages could use
+		another conflict package. This is called an 'unspecific
+		conflict'. This should be caught by the backtracking logic.
+		Ask the user to enable -uN (if not already enabled). If -uN is
+		enabled, this case is treated in the same way as c).
+
+		c) Neither a 'version based conflict' nor an 'unspecific
+		conflict'. Ignoring use deps would result result in an
+		'unspecific conflict'. This is called a 'specific conflict'.
+		This is the only conflict we try to find suggestions for.
+
+	2) Computing suggestions.
+
+	Def.: "configuration": A list of packages, containing exactly one
+			package from each slot conflict.
+
+	We try to find USE changes such that all parents of conflict packages
+	can work with a package in the configuration we're looking at. This
+	is done for all possible configurations, except if the 'all-ebuild'
+	configuration has a suggestion. In this case we immediately abort the
+	search.
+	For the current configuration, all use flags that are part of violated
+	use deps are computed. This is done for every slot conflict on its own.
+
+	Def.: "solution (candidate)": An assignment of "enabled" / "disabled"
+			values for the use flags that are part of violated use deps.
+
+	Now all involved use flags for the current configuration are known. For
+	now they have an undetermined value. Fix their value in the
+	following cases:
+		* The use dep in the parent atom is unconditional.
+		* The parent package is 'installed'.
+		* The conflict package is 'installed'.
+
+	USE of 'installed' packages can't be changed. This always requires an
+	non-installed package.
+
+	During this procedure, contradictions may occur. In this case the
+	configuration has no solution.
+
+	Now generate all possible solution candidates with fixed values. Check
+	if they don't introduce new conflicts.
+
+	We have found a valid assignment for all involved use flags. Compute
+	the needed USE changes and prepare the message for the user.
 	"""
+
 	def __init__(self, slot_collision_info, all_parents, myopts):
 		self.myopts = myopts
 		self.debug = "--debug" in myopts
