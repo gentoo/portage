@@ -1004,14 +1004,7 @@ for x in scanlist:
 	if repolevel < 2:
 		checkdir_relative = os.path.join(catdir, checkdir_relative)
 	checkdir_relative = os.path.join(".", checkdir_relative)
-
-	if options.mode == 'manifest-check':
-		repoman_settings['O'] = checkdir
-		repoman_settings['PORTAGE_QUIET'] = '1'
-		if not portage.digestcheck([], repoman_settings, strict=1):
-			stats["manifest.bad"] += 1
-			fails["manifest.bad"].append(os.path.join(x, 'Manifest'))
-		continue
+	generated_manifest = False
 
 	if options.mode == "manifest" or \
 	  options.mode in ('commit', 'fix') and not options.pretend:
@@ -1037,9 +1030,13 @@ for x in scanlist:
 				portage._doebuild_manifest_exempt_depend -= 1
 
 		repoman_settings["O"] = checkdir
-		if not digestgen(mysettings=repoman_settings, myportdb=portdb):
+		generated_manifest = digestgen(
+			mysettings=repoman_settings, myportdb=portdb)
+
+		if not generated_manifest:
 			print("Unable to generate manifest.")
 			dofail = 1
+
 		if options.mode == "manifest":
 			if not dofail and options.force and auto_assumed and \
 				'assume-digests' in repoman_settings.features:
@@ -1062,6 +1059,17 @@ for x in scanlist:
 			continue
 		elif dofail:
 			sys.exit(1)
+
+	if not generated_manifest:
+		repoman_settings['O'] = checkdir
+		repoman_settings['PORTAGE_QUIET'] = '1'
+		if not portage.digestcheck([], repoman_settings, strict=1):
+			stats["manifest.bad"] += 1
+			fails["manifest.bad"].append(os.path.join(x, 'Manifest'))
+		repoman_settings.pop('PORTAGE_QUIET', None)
+
+	if options.mode == 'manifest-check':
+		continue
 
 	checkdirlist=os.listdir(checkdir)
 	ebuildlist=[]
