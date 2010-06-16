@@ -1889,7 +1889,8 @@ for x in scanlist:
 							if atoms:
 								#we have some unsolvable deps
 								#remove ! deps, which always show up as unsatisfiable
-								atoms = [str(atom) for atom in atoms if not atom.blocker]
+								atoms = [str(atom.unevaluated_atom) \
+									for atom in atoms if not atom.blocker]
 								#if we emptied out our list, continue:
 								if not atoms:
 									continue
