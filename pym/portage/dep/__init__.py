@@ -687,7 +687,7 @@ class Atom(_atom_base):
 		if self.slot:
 			atom += ":%s" % self.slot
 		atom += str(self.use.evaluate_conditionals(use))
-		return Atom(atom, self)
+		return Atom(atom, unevaluated_atom=self)
 
 	def violated_conditionals(self, other_use, parent_use=None):
 		"""
@@ -706,7 +706,16 @@ class Atom(_atom_base):
 		if self.slot:
 			atom += ":%s" % self.slot
 		atom += str(self.use.violated_conditionals(other_use, parent_use))
-		return Atom(atom, self)
+		return Atom(atom, unevaluated_atom=self)
+
+	def _eval_qa_conditionals(self, use_mask, use_force):
+		if not (self.use and self.use.conditional):
+			return self
+		atom = remove_slot(self)
+		if self.slot:
+			atom += ":%s" % self.slot
+		atom += str(self.use._eval_qa_conditionals(use_mask, use_force))
+		return Atom(atom, unevaluated_atom=self)
 
 	def __copy__(self):
 		"""Immutable, so returns self."""

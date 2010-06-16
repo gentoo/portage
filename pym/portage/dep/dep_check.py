@@ -76,13 +76,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					raise ParseError(
 						_("invalid atom: '%s'") % (x,))
 
-		if repoman and x.use and x.use.conditional:
-			evaluated_atom = remove_slot(x)
-			if x.slot:
-				evaluated_atom += ":%s" % x.slot
-			evaluated_atom += str(x.use._eval_qa_conditionals(
-				use_mask, use_force))
-			x = Atom(evaluated_atom)
+		if repoman:
+			x = x._eval_qa_conditionals(use_mask, use_force)
 
 		if not repoman and \
 			myuse is not None and isinstance(x, Atom) and x.use:
