@@ -2181,7 +2181,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	elif syncuri[:6]=="cvs://":
 		if not os.path.exists("/usr/bin/cvs"):
 			print("!!! /usr/bin/cvs does not exist, so CVS support is disabled.")
-			print("!!! Type \"emerge dev-util/cvs\" to enable CVS support.")
+			print("!!! Type \"emerge dev-vcs/cvs\" to enable CVS support.")
 			sys.exit(1)
 		cvsroot=syncuri[6:]
 		cvsdir=os.path.dirname(myportdir)
