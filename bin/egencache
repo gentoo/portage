@@ -62,6 +62,9 @@ def parse_args(args):
 		action="store",
 		help="max load allowed when spawning multiple jobs",
 		dest="load_average")
+	parser.add_option("--portdir",
+		help="override the portage tree location",
+		dest="portdir")
 	parser.add_option("--rsync",
 		action="store_true",
 		help="enable rsync stat collision workaround " + \
@@ -291,6 +294,9 @@ def egencache_main(args):
 
 	if options.cache_dir is not None:
 		env['PORTAGE_DEPCACHEDIR'] = options.cache_dir
+
+	if options.portdir is not None:
+		env['PORTDIR'] = options.portdir
 
 	settings = portage.config(config_root=config_root,
 		target_root='/', local_config=False, env=env)
