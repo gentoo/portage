@@ -1296,7 +1296,10 @@ def action_info(settings, trees, myopts, myfiles):
 	for x in myvars:
 		if x in settings:
 			if x != "USE":
-				print('%s="%s"' % (x, settings[x]))
+				try:
+					print('%s="%s"' % (x, settings[x]))
+				except UnicodeEncodeError:
+					print('%s=<unprintable value with representation: %s>' % (x, repr(settings[x])))
 			else:
 				use = set(settings["USE"].split())
 				for varname in use_expand:
