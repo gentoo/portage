@@ -1182,11 +1182,13 @@ def action_deselect(settings, trees, opts, atoms):
 		for atom in world_set:
 			for arg_atom in expanded_atoms:
 				if arg_atom.startswith(SETPREFIX):
-					if arg_atom == atom:
+					if atom.startswith(SETPREFIX) and \
+						arg_atom == atom:
 						discard_atoms.add(atom)
 						break
 				else:
-					if arg_atom.intersects(atom) and \
+					if not atom.startswith(SETPREFIX) and \
+						arg_atom.intersects(atom) and \
 						not (arg_atom.slot and not atom.slot):
 						discard_atoms.add(atom)
 						break
