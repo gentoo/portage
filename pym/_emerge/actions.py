@@ -1194,8 +1194,12 @@ def action_deselect(settings, trees, opts, atoms):
 						break
 		if discard_atoms:
 			for atom in sorted(discard_atoms):
-				print(">>> Removing %s from \"world\" favorites file..." % \
-					colorize("INFORM", str(atom)))
+				if pretend:
+					print(">>> Would remove %s from \"world\" favorites file..." % \
+						colorize("INFORM", str(atom)))
+				else:
+					print(">>> Removing %s from \"world\" favorites file..." % \
+						colorize("INFORM", str(atom)))
 
 			if '--ask' in opts:
 				prompt = "Would you like to remove these " + \
