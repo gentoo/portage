@@ -161,6 +161,41 @@ class bindbapi(fakedbapi):
 			self.bintree.populate()
 		return fakedbapi.cpv_all(self)
 
+def _pkgindex_cpv_map_latest_build(pkgindex):
+	"""
+	Given a PackageIndex instance, create a dict of cpv -> metadata map.
+	If multiple packages have identical CPV values, prefer the package
+	with latest BUILD_TIME value.
+	@param pkgindex: A PackageIndex instance.
+	@type pkgindex: PackageIndex
+	@rtype: dict
+	@returns: a dict containing entry for the give cpv.
+	"""
+	cpv_map = {}
+
+	for d in pkgindex.packages:
+		cpv = d["CPV"]
+
+		btime = d.get('BUILD_TIME', '')
+		try:
+			btime = int(btime)
+		except ValueError:
+			btime = None
+
+		other_d = cpv_map.get(cpv)
+		if other_d is not None:
+			other_btime = other_d.get('BUILD_TIME', '')
+			try:
+				other_btime = int(other_btime)
+			except ValueError:
+				other_btime = None
+			if other_btime and (not btime or other_btime > btime):
+				continue
+
+		cpv_map[cpv] = d
+
+	return cpv_map
+
 class binarytree(object):
 	"this tree scans for a list of all packages available in PKGDIR"
 	def __init__(self, root, pkgdir, virtual=None, settings=None):
@@ -780,9 +815,8 @@ class binarytree(object):
 					# The current user doesn't have permission to cache the
 					# file, but that's alright.
 			if pkgindex:
-				self._remotepkgs = {}
-				for d in pkgindex.packages:
-					self._remotepkgs[d["CPV"]] = d
+				# Organize remote package list as a cpv -> metadata map.
+				self._remotepkgs = _pkgindex_cpv_map_latest_build(pkgindex)
 				self._remote_has_index = True
 				self._remote_base_uri = pkgindex.header.get("URI", base_url)
 				self.__remotepkgs = {}

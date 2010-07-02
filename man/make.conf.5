@@ -91,7 +91,9 @@ This controls the space use limitations for ccache.  The default is 2 gigabytes
 .TP
 .B CFLAGS CXXFLAGS
 Use these variables to set the desired optimization/CPU instruction settings
-for applications that you compile.  Nearly all ebuild files will take advantage
+for applications that you compile.  These two variables are passed to the C
+and C++ compilers, respectively. (CXX is used to refer to the C++ compiler
+within many buildsystems.) Nearly all ebuild files will take advantage
 of your custom settings, resulting in a Gentoo Linux that is fully customized
 to your specifications.  Please use sane settings as some packages will fail to
 compile/run if the optimizations are too extreme.
@@ -487,6 +489,18 @@ TODO.gz. The \fBINSTALL_MASK\fR is processed just before a package is merged.
 Also supported is a \fBPKG_INSTALL_MASK\fR variable that behaves exactly like
 \fBINSTALL_MASK\fR except that it is processed just before creation of a binary
 package.
+.TP
+.B LDFLAGS
+A list of flags to pass to the compiler when the linker will be called. See
+\fBld\fR(1) for linker flags, but don't forget that these flags will be passed
+directly to the compiler. Thus, you must use '-Wl' to escape the flags
+which only the linker understands (see \fBgcc\fR(1)).
+
+\fB***warning***\fR
+.br
+Setting this and other *FLAGS variables arbitrarily may cause compile or
+runtime failures. Bug reports submitted when nonstandard values are
+enabled for these flags may be closed as INVALID.
 .TP
 .B MAKEOPTS
 Use this variable if you want to use parallel make.  For example, if you

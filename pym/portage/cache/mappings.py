@@ -497,6 +497,9 @@ def slot_dict_class(keys, prefix="_val_"):
 			def __str__(self):
 				return str(dict(self.iteritems()))
 
+			def __repr__(self):
+				return repr(dict(self.iteritems()))
+
 			if sys.hexversion >= 0x3000000:
 				items = iteritems
 				keys = __iter__

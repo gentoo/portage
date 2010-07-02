@@ -2557,7 +2557,7 @@ class config(object):
 				# Do not allow anything to leak into the ebuild
 				# environment unless it is explicitly whitelisted.
 				# This ensures that variables unset by the ebuild
-				# remain unset.
+				# remain unset (bug #189417).
 				continue
 			mydict[x] = myvalue
 		if "HOME" not in mydict and "BUILD_PREFIX" in mydict:

@@ -498,7 +498,10 @@ elif os.path.isdir(os.path.join(portdir_overlay, ".hg")):
 # It will be generated on server side from scm log,
 # before package moves to the rsync server.
 # This is needed because we try to avoid merge collisions.
-check_changelog = vcs in ('CVS', 'SVN')
+check_changelog = vcs in ('cvs', 'svn')
+
+# Disable copyright/mtime check if vcs does not preserve mtime (bug #324075).
+check_copyright_mtime = vcs not in ('git',)
 
 vcs_local_opts = repoman_settings.get("REPOMAN_VCS_LOCAL_OPTS", "").split()
 vcs_global_opts = repoman_settings.get("REPOMAN_VCS_GLOBAL_OPTS")
@@ -1007,14 +1010,7 @@ for x in scanlist:
 	if repolevel < 2:
 		checkdir_relative = os.path.join(catdir, checkdir_relative)
 	checkdir_relative = os.path.join(".", checkdir_relative)
-
-	if options.mode == 'manifest-check':
-		repoman_settings['O'] = checkdir
-		repoman_settings['PORTAGE_QUIET'] = '1'
-		if not portage.digestcheck([], repoman_settings, strict=1):
-			stats["manifest.bad"] += 1
-			fails["manifest.bad"].append(os.path.join(x, 'Manifest'))
-		continue
+	generated_manifest = False
 
 	if options.mode == "manifest" or \
 	  options.mode in ('commit', 'fix') and not options.pretend:
@@ -1040,9 +1036,13 @@ for x in scanlist:
 				portage._doebuild_manifest_exempt_depend -= 1
 
 		repoman_settings["O"] = checkdir
-		if not digestgen(mysettings=repoman_settings, myportdb=portdb):
+		generated_manifest = digestgen(
+			mysettings=repoman_settings, myportdb=portdb)
+
+		if not generated_manifest:
 			print("Unable to generate manifest.")
 			dofail = 1
+
 		if options.mode == "manifest":
 			if not dofail and options.force and auto_assumed and \
 				'assume-digests' in repoman_settings.features:
@@ -1065,6 +1065,17 @@ for x in scanlist:
 			continue
 		elif dofail:
 			sys.exit(1)
+
+	if not generated_manifest:
+		repoman_settings['O'] = checkdir
+		repoman_settings['PORTAGE_QUIET'] = '1'
+		if not portage.digestcheck([], repoman_settings, strict=1):
+			stats["manifest.bad"] += 1
+			fails["manifest.bad"].append(os.path.join(x, 'Manifest'))
+		repoman_settings.pop('PORTAGE_QUIET', None)
+
+	if options.mode == 'manifest-check':
+		continue
 
 	checkdirlist=os.listdir(checkdir)
 	ebuildlist=[]
@@ -1775,6 +1786,8 @@ for x in scanlist:
 		# Syntax Checks
 		relative_path = os.path.join(x, y + ".ebuild")
 		full_path = os.path.join(repodir, relative_path)
+		if not check_copyright_mtime:
+			pkg.mtime = None
 		try:
 			# All ebuilds should have utf_8 encoding.
 			f = codecs.open(_unicode_encode(full_path,
@@ -1882,7 +1895,8 @@ for x in scanlist:
 							if atoms:
 								#we have some unsolvable deps
 								#remove ! deps, which always show up as unsatisfiable
-								atoms = [str(atom) for atom in atoms if not atom.blocker]
+								atoms = [str(atom.unevaluated_atom) \
+									for atom in atoms if not atom.blocker]
 								#if we emptied out our list, continue:
 								if not atoms:
 									continue

@@ -1182,18 +1182,24 @@ def action_deselect(settings, trees, opts, atoms):
 		for atom in world_set:
 			for arg_atom in expanded_atoms:
 				if arg_atom.startswith(SETPREFIX):
-					if arg_atom == atom:
+					if atom.startswith(SETPREFIX) and \
+						arg_atom == atom:
 						discard_atoms.add(atom)
 						break
 				else:
-					if arg_atom.intersects(atom) and \
+					if not atom.startswith(SETPREFIX) and \
+						arg_atom.intersects(atom) and \
 						not (arg_atom.slot and not atom.slot):
 						discard_atoms.add(atom)
 						break
 		if discard_atoms:
 			for atom in sorted(discard_atoms):
-				print(">>> Removing %s from \"world\" favorites file..." % \
-					colorize("INFORM", str(atom)))
+				if pretend:
+					print(">>> Would remove %s from \"world\" favorites file..." % \
+						colorize("INFORM", str(atom)))
+				else:
+					print(">>> Removing %s from \"world\" favorites file..." % \
+						colorize("INFORM", str(atom)))
 
 			if '--ask' in opts:
 				prompt = "Would you like to remove these " + \
@@ -1296,7 +1302,10 @@ def action_info(settings, trees, myopts, myfiles):
 	for x in myvars:
 		if x in settings:
 			if x != "USE":
-				print('%s="%s"' % (x, settings[x]))
+				try:
+					print('%s="%s"' % (x, settings[x]))
+				except UnicodeEncodeError:
+					print('%s=<unprintable value with representation: %s>' % (x, repr(settings[x])))
 			else:
 				use = set(settings["USE"].split())
 				for varname in use_expand:
@@ -2181,7 +2190,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	elif syncuri[:6]=="cvs://":
 		if not os.path.exists(EPREFIX + "/usr/bin/cvs"):
 			print("!!! " + EPREFIX + "/usr/bin/cvs does not exist, so CVS support is disabled.")
-			print("!!! Type \"emerge dev-util/cvs\" to enable CVS support.")
+			print("!!! Type \"emerge dev-vcs/cvs\" to enable CVS support.")
 			sys.exit(1)
 		cvsroot=syncuri[6:]
 		cvsdir=os.path.dirname(myportdir)

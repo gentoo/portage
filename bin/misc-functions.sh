@@ -373,6 +373,8 @@ install_qa_check_misc() {
 		[[ -d ${ED}/${d} ]] || continue
 		for i in "${ED}"/${d}/* ; do
 			[[ -L ${i} ]] && continue
+			# if empty conf.d/init.d dir exists (baselayout), then i will be "/etc/conf.d/*" and not exist
+			[[ ! -e ${i} ]] && continue
 			bash -n "${i}" || die "The init.d file has syntax errors: ${i}"
 		done
 	done

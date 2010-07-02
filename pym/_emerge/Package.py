@@ -24,7 +24,7 @@ class Package(Task):
 		"category", "counter", "cp", "cpv_split",
 		"inherited", "invalid", "iuse", "masks", "mtime",
 		"pf", "pv_split", "root", "slot", "slot_atom", "visible",) + \
-	("_use",)
+	("_raw_metadata", "_use",)
 
 	metadata_keys = [
 		"BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "EAPI",
@@ -36,7 +36,8 @@ class Package(Task):
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
 		self.root = self.root_config.root
-		self.metadata = _PackageMetadataWrapper(self, self.metadata)
+		self._raw_metadata = _PackageMetadataWrapperBase(self.metadata)
+		self.metadata = _PackageMetadataWrapper(self, self._raw_metadata)
 		if not self.built:
 			self.metadata['CHOST'] = self.root_config.settings.get('CHOST', '')
 		self.cp = portage.cpv_getkey(self.cpv)
@@ -53,6 +54,12 @@ class Package(Task):
 		self.pv_split = self.cpv_split[1:]
 		self.masks = self._masks()
 		self.visible = self._visible(self.masks)
+
+	def copy(self):
+		return Package(built=self.built, cpv=self.cpv, depth=self.depth,
+			installed=self.installed, metadata=self._raw_metadata,
+			onlydeps=self.onlydeps, operation=self.operation,
+			root_config=self.root_config, type_name=self.type_name)
 
 	def _masks(self):
 		masks = {}
@@ -172,15 +179,13 @@ class Package(Task):
 		if self.type_name == "installed":
 			if self.root != "/":
 				s += " in '%s'" % self.root
+			if self.operation == "uninstall":
+				s += " scheduled for uninstall"
 		else:
 			if self.operation == "merge":
 				s += " scheduled for merge"
 				if self.root != "/":
 					s += " to '%s'" % self.root
-			elif self.operation == "uninstall":
-				s += " scheduled for uninstall"
-				if self.root != "/":
-					s += " from '%s'" % self.root
 		s += ")"
 		return s
 
@@ -300,7 +305,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 
 	__slots__ = ("_pkg",)
 	_wrapped_keys = frozenset(
-		["COUNTER", "INHERITED", "IUSE", "SLOT", "_mtime_"])
+		["COUNTER", "INHERITED", "IUSE", "SLOT", "USE", "_mtime_"])
 	_use_conditional_keys = frozenset(
 		['LICENSE', 'PROPERTIES', 'PROVIDE', 'RESTRICT',])
 
@@ -309,7 +314,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 		self._pkg = pkg
 		if not pkg.built:
 			# USE is lazy, but we want it to show up in self.keys().
-			self['USE'] = ''
+			_PackageMetadataWrapperBase.__setitem__(self, 'USE', '')
 
 		self.update(metadata)
 
@@ -334,7 +339,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 					'porttree'].dbapi.doebuild_settings
 				pkgsettings.setcpv(self._pkg)
 				v = pkgsettings["PORTAGE_USE"]
-				self['USE'] = v
+				_PackageMetadataWrapperBase.__setitem__(self, 'USE', v)
 
 		return v
 
@@ -373,6 +378,18 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 			except ValueError:
 				v = 0
 		self._pkg.counter = v
+
+	def _set_use(self, k, v):
+		# Force regeneration of _use attribute
+		self._pkg._use = None
+		# Use raw metadata to restore USE conditional values
+		# to unevaluated state
+		raw_metadata = self._pkg._raw_metadata
+		for x in self._use_conditional_keys:
+			try:
+				self[x] = raw_metadata[x]
+			except KeyError:
+				pass
 
 	def _set__mtime_(self, k, v):
 		if isinstance(v, basestring):
