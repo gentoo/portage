@@ -381,6 +381,12 @@ class NoAsNeeded(LineCheck):
 	re = re.compile(r'.*\$\(no-as-needed\)')
 	error = errors.NO_AS_NEEDED
 
+class PreserveOldLib(LineCheck):
+        """Check for calls to the preserve_old_lib function."""
+        repoman_check_name = 'upstream.workaround'
+        re = re.compile(r'.*preserve_old_lib')
+        error = errors.PRESERVE_OLD_LIB
+
 class DeprecatedBindnowFlags(LineCheck):
 	"""Check for calls to the deprecated bindnow-flags function."""
 	repoman_check_name = 'ebuild.minorsyn'
@@ -501,7 +507,8 @@ _constant_checks = tuple((c() for c in (
 	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS, NoAsNeeded,
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
 	SrcCompileEconf, Eapi3DeprecatedFuncs,
-	Eapi4IncompatibleFuncs, Eapi4GoneVars, BuiltWithUse)))
+	Eapi4IncompatibleFuncs, Eapi4GoneVars, BuiltWithUse,
+	PreserveOldLib)))
 
 _here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
 
