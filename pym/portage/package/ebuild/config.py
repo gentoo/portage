@@ -24,7 +24,8 @@ from portage import bsd_chflags, eapi_is_supported, \
 from portage.const import CACHE_PATH, CUSTOM_PROFILE_PATH, \
 	DEPCACHE_PATH, GLOBAL_CONFIG_PATH, INCREMENTALS, MAKE_CONF_FILE, \
 	MODULES_FILE_PATH, PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, \
-	PRIVATE_PATH, PROFILE_PATH, USER_CONFIG_PATH, USER_VIRTUALS_FILE
+	PRIVATE_PATH, PROFILE_PATH, SUPPORTED_FEATURES, USER_CONFIG_PATH, \
+	USER_VIRTUALS_FILE
 from portage.data import portage_gid
 from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
@@ -2182,10 +2183,22 @@ class config(object):
 						myflags = []
 						continue
 
+					if mykey == "FEATURES":
+						if x[:1] in ("+", "-"):
+							val = x[1:]
+						else:
+							val = x
+
+						if val not in SUPPORTED_FEATURES:
+							writemsg(colorize("BAD",
+								_("FEATURES variable contains an unknown value: %s") % x) \
+								+ "\n", noiselevel=-1)
+							continue
+
 					if x[0]=="+":
 						# Not legal. People assume too much. Complain.
 						writemsg(colorize("BAD",
-							_("USE flags should not start with a '+': %s") % x) \
+							_("%s values should not start with a '+': %s") % (mykey,x)) \
 							+ "\n", noiselevel=-1)
 						x=x[1:]
 						if not x:

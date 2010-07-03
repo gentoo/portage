@@ -82,6 +82,20 @@ EBUILD_PHASES            = ("pretend", "setup", "unpack", "prepare", "configure"
                            "compile", "test", "install",
                            "package", "preinst", "postinst","prerm", "postrm",
                            "nofetch", "config", "info", "other")
+SUPPORTED_FEATURES       = frozenset([
+                           "assume-digests", "buildpkg", "buildsyspkg", "ccache",
+                           "collision-protect", "digest", "distcc", "distlocks",
+                           "fakeroot", "fail-clean", "fixpackages", "getbinpkg",
+                           "installsources", "keeptemp", "keepwork", "lmirror",
+                           "metadata-transfer", "mirror", "multilib-strict", "news",
+                           "noauto", "noclean", "nodoc", "noinfo", "noman", "nostrip"
+                           "notitles", "parallel-fetch", "parse-eapi-ebuild-head",
+                           "parse-eapi-glep-55", "preserve-libs", "protect-owned",
+                           "python-trace", "sandbox", "sesandbox", "severe", "sfperms",
+                           "sign", "skiprocheck", "split-elog", "split-log", "splitdebug",
+                           "strict", "stricter", "suidctl", "test", "test-fail-continue",
+                           "unmerge-logs", "unmerge-orphans", "userfetch", "userpriv",
+                           "usersandbox", "usersync", "webrsync-gpg"])
 
 EAPI                     = 3
 
