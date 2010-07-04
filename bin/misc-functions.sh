@@ -627,7 +627,7 @@ install_qa_check_prefix() {
 	rm -f "${T}"/non-prefix-shebangs-errs
 	local WHITELIST=" /usr/bin/env "
 	# this is hell expensive, but how else?
-	find "${ED}" -type f -executable -print0 \
+	find "${ED}" -executable \! -type d -print0 \
 			| xargs -0 grep -H -n -m1 "^#!" \
 			| while read f ;
 	do
@@ -642,6 +642,13 @@ install_qa_check_prefix() {
 		IFS=${oldIFS}
 		[[ ${WHITELIST} == *" ${line[0]} "* ]] && continue
 		local fp=${fn#${D}} ; fp=/${fp%/*}
+		local rf=${fn}
+		# in case we deal with a symlink, make sure we don't replace it
+		# with a real file (sed -i does that)
+		if [[ -L ${fn} ]] ; then
+			rf=$(readlink ${fn})
+			[[ ${rf} != /* ]] && rf=${fn%/*}/${rf}
+		fi
 		# does the shebang start with ${EPREFIX}, and does it exist?
 		if [[ ${line[0]} == ${EPREFIX}/* ]] ; then
 			if [[ ! -e ${ROOT}${line[0]} && ! -e ${D}${line[0]} ]] ; then
@@ -662,7 +669,12 @@ install_qa_check_prefix() {
 				# is it unprefixed, but we can just fix it because a
 				# prefixed variant exists
 				eqawarn "prefixing shebang of ${fn#${D}}"
-				sed -i -e '1s:^#! \?:#!'"${EPREFIX}"':' "${fn}"
+				# statement is made idempotent on purpose, because
+				# symlinks may point to the same target, and hence the
+				# same real file may be sedded multiple times since we
+				# read the shebangs in one go upfront for performance
+				# reasons
+				sed -i -e '1s:^#! \?'"${line[0]}"':#!'"${EPREFIX}"${line[0]}':' "${rf}"
 				continue
 			else
 				# this is definitely wrong: script in $PATH and invalid shebang
