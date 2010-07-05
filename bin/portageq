@@ -99,6 +99,10 @@ def has_version(argv):
 			sys.exit(1)
 	except KeyError:
 		sys.exit(1)
+	except portage.exception.InvalidAtom:
+		portage.writemsg("ERROR: Invalid atom: '%s'\n" % argv[1],
+			noiselevel=-1)
+		return 2
 has_version.uses_root = True
 
 
