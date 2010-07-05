@@ -230,10 +230,11 @@ class dbapi(object):
 			if onProgress:
 				onProgress(maxval, i+1)
 
-	def move_slot_ent(self, mylist):
+	def move_slot_ent(self, mylist, repo_name = None):
 		"""This function takes a sequence:
 		Args:
 			mylist: a sequence of (package, originalslot, newslot)
+			repo_name: repository from which update is originated
 		Returns:
 			The number of slotmoves this function did
 		"""
@@ -247,6 +248,8 @@ class dbapi(object):
 		for mycpv in origmatches:
 			slot = self.aux_get(mycpv, ["SLOT"])[0]
 			if slot != origslot:
+				continue
+			if repo_name and self.aux_get(mycpv, ['repository'])[0] != repo_name:
 				continue
 			moves += 1
 			mydata = {"SLOT": newslot+"\n"}
