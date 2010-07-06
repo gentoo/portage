@@ -1260,20 +1260,30 @@ def action_info(settings, trees, myopts, myfiles):
 	myvars  = portage.util.unique_array(myvars)
 	myvars.sort()
 
+	portdb = trees["/"]["porttree"].dbapi
+	vardb = trees["/"]["vartree"].dbapi
+	main_repo = portdb.getRepositoryName(portdb.porttree_root)
+
 	for x in myvars:
 		if portage.isvalidatom(x):
-			pkg_matches = trees["/"]["vartree"].dbapi.match(x)
-			pkg_matches = [portage.catpkgsplit(cpv)[1:] for cpv in pkg_matches]
-			pkg_matches.sort(key=cmp_sort_key(portage.pkgcmp))
-			pkgs = []
-			for pn, ver, rev in pkg_matches:
-				if rev != "r0":
-					pkgs.append(ver + "-" + rev)
+			pkg_matches = vardb.match(x)
+
+			versions = []
+			for cpv in pkg_matches:
+				ver = portage.versions.cpv_getversion(cpv)
+				repo = vardb.aux_get(cpv, ["repository"])[0]
+				if not repo:
+					repo = "<unknown repository>"
+				if repo != main_repo:
+					versions.append(ver + "::" + repo)
 				else:
-					pkgs.append(ver)
-			if pkgs:
-				pkgs = ", ".join(pkgs)
-				print("%-20s %s" % (x+":", pkgs))
+					versions.append(ver)
+
+			versions.sort(cmp=lambda a,b: portage.versions.vercmp(a.split("::")[0], b.split("::")[0]))
+
+			if versions:
+				versions = ", ".join(versions)
+				print("%-20s %s" % (x+":", versions))
 		else:
 			print("%-20s %s" % (x+":", "[NOT VALID]"))
 
