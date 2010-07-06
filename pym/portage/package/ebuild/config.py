@@ -1007,12 +1007,8 @@ class config(object):
 
 			self["FEATURES"] = " ".join(sorted(self.features))
 			self.backup_changes("FEATURES")
-			global _glep_55_enabled, _validate_cache_for_unsupported_eapis
 			if 'parse-eapi-ebuild-head' in self.features:
 				_validate_cache_for_unsupported_eapis = False
-			if 'parse-eapi-glep-55' in self.features:
-				_validate_cache_for_unsupported_eapis = False
-				_glep_55_enabled = True
 
 			self._iuse_implicit_re = re.compile("^(%s)$" % \
 				"|".join(self._get_implicit_iuse()))

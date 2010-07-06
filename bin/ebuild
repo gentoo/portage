@@ -104,10 +104,7 @@ if not opts.color == 'y' and \
 ebuild = pargs.pop(0)
 
 pf = None
-if 'parse-eapi-glep-55' in portage.settings.features:
-	pf, eapi = portage._split_ebuild_name_glep55(
-		os.path.basename(ebuild))
-elif ebuild.endswith(".ebuild"):
+if ebuild.endswith(".ebuild"):
 	pf = os.path.basename(ebuild)[:-7]
 
 if pf is None:

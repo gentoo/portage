@@ -31,7 +31,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 from portage import auxdbkeys, bsd_chflags, dep_check, \
 	eapi_is_supported, merge, os, selinux, StringIO, \
 	unmerge, _encodings, _parse_eapi_ebuild_head, _os_merge, \
-	_shell_quote, _split_ebuild_name_glep55, _unicode_decode, _unicode_encode
+	_shell_quote, _unicode_decode, _unicode_encode
 from portage.const import EBUILD_SH_ENV_FILE, EBUILD_SH_ENV_DIR, \
 	EBUILD_SH_BINARY, INVALID_ENV_FILE, MISC_SH_BINARY
 from portage.data import portage_gid, portage_uid, secpass, \
@@ -66,11 +66,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 		cat = os.path.basename(normalize_path(os.path.join(pkg_dir, "..")))
 
 	eapi = None
-	if 'parse-eapi-glep-55' in mysettings.features:
-		mypv, eapi = _split_ebuild_name_glep55(
-			os.path.basename(myebuild))
-	else:
-		mypv = os.path.basename(ebuild_path)[:-7]
+	mypv = os.path.basename(ebuild_path)[:-7]
 
 	mycpv = cat+"/"+mypv
 	mysplit = _pkgsplit(mypv)
@@ -473,12 +469,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 			# Make sure that all of the ebuilds are
 			# actually listed in the Manifest.
-			glep55 = 'parse-eapi-glep-55' in mysettings.features
 			for f in os.listdir(pkgdir):
 				pf = None
-				if glep55:
-					pf, eapi = _split_ebuild_name_glep55(f)
-				elif f[-7:] == '.ebuild':
+				if f[-7:] == '.ebuild':
 					pf = f[:-7]
 				if pf is not None and not mf.hasFile("EBUILD", f):
 					f = os.path.join(pkgdir, f)
