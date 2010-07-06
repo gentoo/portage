@@ -324,7 +324,7 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0):
 def grablines(myfilename,recursive=0):
 	mylines=[]
 	if recursive and os.path.isdir(myfilename):
-		if myfilename in ["RCS", "CVS", "SCCS"]:
+		if os.path.basename(myfilename) in ["RCS", "CVS", "SCCS"]:
 			return mylines
 		dirlist = os.listdir(myfilename)
 		dirlist.sort()
