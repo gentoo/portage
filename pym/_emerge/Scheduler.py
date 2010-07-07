@@ -1338,7 +1338,8 @@ class Scheduler(PollScheduler):
 				return None
 			return self._pkg_queue.pop(0)
 
-		if not (self._jobs or self._task_queues.merge):
+		if not (self._jobs or \
+			self._task_queues.merge or self._merge_wait_queue):
 			return self._pkg_queue.pop(0)
 
 		self._prune_digraph()
