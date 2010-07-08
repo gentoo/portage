@@ -1331,15 +1331,14 @@ class Scheduler(PollScheduler):
 			return None
 
 		if self._digraph is None:
-			if (self._jobs or self._task_queues.merge) and \
+			if self._is_work_scheduled() and \
 				not ("--nodeps" in self.myopts and \
 				(self._max_jobs is True or self._max_jobs > 1)):
 				self._choose_pkg_return_early = True
 				return None
 			return self._pkg_queue.pop(0)
 
-		if not (self._jobs or \
-			self._task_queues.merge or self._merge_wait_queue):
+		if not self._is_work_scheduled():
 			return self._pkg_queue.pop(0)
 
 		self._prune_digraph()
@@ -1439,15 +1438,13 @@ class Scheduler(PollScheduler):
 			self._opts_no_background.intersection(self.myopts):
 			self._set_max_jobs(1)
 
-		merge_queue = self._task_queues.merge
-
 		while self._schedule():
 			if self._poll_event_handlers:
 				self._poll_loop()
 
 		while True:
 			self._schedule()
-			if not (self._jobs or merge_queue):
+			if not self._is_work_scheduled():
 				break
 			if self._poll_event_handlers:
 				self._poll_loop()
@@ -1455,6 +1452,10 @@ class Scheduler(PollScheduler):
 	def _keep_scheduling(self):
 		return bool(self._pkg_queue and \
 			not (self._failed_pkgs and not self._build_opts.fetchonly))
+
+	def _is_work_scheduled(self):
+		return bool(self._jobs or \
+			self._task_queues.merge or self._merge_wait_queue)
 
 	def _schedule_tasks(self):
 
@@ -1478,7 +1479,7 @@ class Scheduler(PollScheduler):
 		# Cancel prefetchers if they're the only reason
 		# the main poll loop is still running.
 		if self._failed_pkgs and not self._build_opts.fetchonly and \
-			not (self._jobs or self._task_queues.merge) and \
+			not self._is_work_scheduled() and \
 			self._task_queues.fetch:
 			self._task_queues.fetch.clear()
 			state_change += 1
