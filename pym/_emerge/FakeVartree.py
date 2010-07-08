@@ -185,6 +185,9 @@ def grab_global_updates(portdb):
 	for repo_name in portdb.getRepositories():
 		repo = portdb.getRepositoryPath(repo_name)
 		updpath = os.path.join(repo, "profiles", "updates")
+		if not os.path.isdir(updpath):
+			# as a backwards-compatibility measure, fallback to PORTDIR
+			updpath = os.path.join(portdb.porttree_root, "profiles", "updates")
 		try:
 			rawupdates = grab_updates(updpath)
 		except portage.exception.DirectoryNotFound:
