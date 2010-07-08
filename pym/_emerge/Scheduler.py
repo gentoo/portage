@@ -1459,34 +1459,36 @@ class Scheduler(PollScheduler):
 
 	def _schedule_tasks(self):
 
-		# When the number of jobs drops to zero, process all waiting merges.
-		if not self._jobs and self._merge_wait_queue:
-			for task in self._merge_wait_queue:
-				task.addExitListener(self._merge_wait_exit_handler)
-				self._task_queues.merge.add(task)
-			self._status_display.merges = len(self._task_queues.merge)
-			self._merge_wait_scheduled.extend(self._merge_wait_queue)
-			del self._merge_wait_queue[:]
+		while True:
 
-		self._schedule_tasks_imp()
-		self._status_display.display()
+			# When the number of jobs drops to zero, process all waiting merges.
+			if not self._jobs and self._merge_wait_queue:
+				for task in self._merge_wait_queue:
+					task.addExitListener(self._merge_wait_exit_handler)
+					self._task_queues.merge.add(task)
+				self._status_display.merges = len(self._task_queues.merge)
+				self._merge_wait_scheduled.extend(self._merge_wait_queue)
+				del self._merge_wait_queue[:]
 
-		state_change = 0
-		for q in self._task_queues.values():
-			if q.schedule():
-				state_change += 1
-
-		# Cancel prefetchers if they're the only reason
-		# the main poll loop is still running.
-		if self._failed_pkgs and not self._build_opts.fetchonly and \
-			not self._is_work_scheduled() and \
-			self._task_queues.fetch:
-			self._task_queues.fetch.clear()
-			state_change += 1
-
-		if state_change:
 			self._schedule_tasks_imp()
 			self._status_display.display()
+
+			state_change = 0
+			for q in self._task_queues.values():
+				if q.schedule():
+					state_change += 1
+
+			# Cancel prefetchers if they're the only reason
+			# the main poll loop is still running.
+			if self._failed_pkgs and not self._build_opts.fetchonly and \
+				not self._is_work_scheduled() and \
+				self._task_queues.fetch:
+				self._task_queues.fetch.clear()
+				state_change += 1
+
+			if not (state_change or \
+				(not self._jobs and self._merge_wait_queue)):
+				break
 
 		return self._keep_scheduling()
 
