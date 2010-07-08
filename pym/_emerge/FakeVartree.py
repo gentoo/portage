@@ -79,7 +79,7 @@ class FakeVartree(vartree):
 		except (KeyError, portage.exception.PortageException):
 			if self._global_updates is None:
 				self._global_updates = \
-					grab_global_updates(self._portdb.porttree_root)
+					grab_global_updates(self._portdb)
 			perform_global_updates(
 				pkg, self.dbapi, self._global_updates)
 		return self._aux_get(pkg, wants)
@@ -179,19 +179,30 @@ class FakeVartree(vartree):
 
 		return pkg
 
-def grab_global_updates(portdir):
-	updpath = os.path.join(portdir, "profiles", "updates")
-	try:
-		rawupdates = grab_updates(updpath)
-	except portage.exception.DirectoryNotFound:
-		rawupdates = []
-	upd_commands = []
-	for mykey, mystat, mycontent in rawupdates:
-		commands, errors = parse_updates(mycontent)
-		upd_commands.extend(commands)
-	return upd_commands
+def grab_global_updates(portdb):
+	retupdates = {}
 
-def perform_global_updates(mycpv, mydb, mycommands):
+	for repo_name in portdb.getRepositories():
+		repo = portdb.getRepositoryPath(repo_name)
+		updpath = os.path.join(repo, "profiles", "updates")
+		try:
+			rawupdates = grab_updates(updpath)
+		except portage.exception.DirectoryNotFound:
+			rawupdates = []
+		upd_commands = []
+		for mykey, mystat, mycontent in rawupdates:
+			commands, errors = parse_updates(mycontent)
+			upd_commands.extend(commands)
+		retupdates[repo_name] = upd_commands
+
+	return retupdates
+
+def perform_global_updates(mycpv, mydb, myupdates):
+	try:
+		mycommands = myupdates[mydb.aux_get(mycpv, ['repository'])[0]]
+	except KeyError:
+		return
+
 	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 	aux_dict = dict(zip(aux_keys, mydb.aux_get(mycpv, aux_keys)))
 	updates = update_dbentries(mycommands, aux_dict)
