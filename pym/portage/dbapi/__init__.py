@@ -197,7 +197,7 @@ class dbapi(object):
 		else:
 			writemsg("!!! Invalid db entry: %s\n" % mypath, noiselevel=-1)
 
-	def update_ents(self, updates, onProgress=None, onUpdate=None):
+	def update_ents(self, updates, onProgress=None, onUpdate=None, repo=None):
 		"""
 		Update metadata of all packages for package moves.
 		@param updates: A list of move commands
@@ -208,6 +208,8 @@ class dbapi(object):
 			for packages that are modified by updates.
 		@type onUpdate: a callable that takes 2 integer arguments:
 			maxval and curval
+		@param repo: Name of the repository which packages should be updated
+		@type repo: string
 		"""
 		cpv_all = self.cpv_all()
 		cpv_all.sort()
@@ -221,6 +223,8 @@ class dbapi(object):
 		if onProgress:
 			onProgress(maxval, 0)
 		for i, cpv in enumerate(cpv_all):
+			if repo and aux_get(cpv, ['repository'])[0] != repo:
+				continue
 			metadata = dict(zip(update_keys, aux_get(cpv, update_keys)))
 			metadata_updates = update_dbentries(updates, metadata)
 			if metadata_updates:
