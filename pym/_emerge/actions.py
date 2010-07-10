@@ -1802,6 +1802,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		os.makedirs(myportdir,0o755)
 		st = os.stat(myportdir)
 
+	usersync_uid = None
 	spawn_kwargs = {}
 	spawn_kwargs["env"] = settings.environ()
 	if 'usersync' in settings.features and \
@@ -1815,6 +1816,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		else:
 			# Drop privileges when syncing, in order to match
 			# existing uid/gid settings.
+			usersync_uid = st.st_uid
 			spawn_kwargs["uid"]    = st.st_uid
 			spawn_kwargs["gid"]    = st.st_gid
 			spawn_kwargs["groups"] = [st.st_gid]
@@ -2064,6 +2066,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				from tempfile import mkstemp
 				fd, tmpservertimestampfile = mkstemp()
 				os.close(fd)
+				if usersync_uid is not None:
+					portage.util.apply_permissions(tmpservertimestampfile,
+						uid=usersync_uid)
 				mycommand = rsynccommand[:]
 				mycommand.append(dosyncuri.rstrip("/") + \
 					"/metadata/timestamp.chk")
@@ -2081,8 +2086,11 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 						signal.alarm(rsync_initial_timeout)
 					try:
 						mypids.extend(portage.process.spawn(
-							mycommand, env=settings.environ(), returnpid=True))
+							mycommand, returnpid=True, **spawn_kwargs))
 						exitcode = os.waitpid(mypids[0], 0)[1]
+						if usersync_uid is not None:
+							portage.util.apply_permissions(tmpservertimestampfile,
+								uid=os.getuid())
 						content = portage.grabfile(tmpservertimestampfile)
 					finally:
 						if rsync_initial_timeout:
