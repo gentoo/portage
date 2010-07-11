@@ -476,17 +476,14 @@ if portdir is None:
 myreporoot = os.path.basename(portdir_overlay)
 myreporoot += mydir[len(portdir_overlay):]
 
-vcs = None
-if os.path.isdir("CVS"):
-	vcs = "cvs"
-if os.path.isdir(".svn"):
-	vcs = "svn"
-elif os.path.isdir(os.path.join(portdir_overlay, ".git")):
-	vcs = "git"
-elif os.path.isdir(os.path.join(portdir_overlay, ".bzr")):
-	vcs = "bzr"
-elif os.path.isdir(os.path.join(portdir_overlay, ".hg")):
-	vcs = "hg"
+vcses = utilities.FindVCS()
+if len(vcses) > 1:
+	print(red('*** Ambiguous workdir -- more than one VCS found at the same depth: %s.' % ', '.join(vcses)))
+	sys.exit(1)
+elif vcses:
+	vcs = vcses[0]
+else:
+	vcs = None
 
 # Note: We don't use ChangeLogs in distributed SCMs.
 # It will be generated on server side from scm log,

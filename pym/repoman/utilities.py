@@ -433,3 +433,47 @@ def FindPortdir(settings):
 		portdir += '/'
 
 	return [normalize_path(x) for x in (portdir, portdir_overlay, location)]
+
+def FindVCS():
+	""" Try to figure out in what VCS' working tree we are. """
+
+	outvcs = []
+
+	def seek(depth = None):
+		""" Seek for distributed VCSes. """
+		retvcs = []
+		pathprep = ''
+
+		while depth is None or depth > 0:
+			if os.path.isdir(os.path.join(pathprep, '.git')):
+				retvcs.append('git')
+			if os.path.isdir(os.path.join(pathprep, '.bzr')):
+				retvcs.append('bzr')
+			if os.path.isdir(os.path.join(pathprep, '.hg')):
+				retvcs.append('hg')
+
+			if retvcs:
+				break
+			pathprep = os.path.join(pathprep, '..')
+			if os.path.realpath(pathprep).strip('/') == '':
+				break
+			if depth is not None:
+				depth = depth - 1
+
+		return retvcs
+
+	# Level zero VCS-es.
+	if os.path.isdir('CVS'):
+		outvcs.append('cvs')
+	if os.path.isdir('.svn'):
+		outvcs.append('svn')
+
+	# If we already found one of 'level zeros', just take a quick look
+	# at the current directory. Otherwise, seek parents till we get
+	# something or reach root.
+	if outvcs:
+		outvcs.extend(seek(1))
+	else:
+		outvcs = seek()
+
+	return outvcs
