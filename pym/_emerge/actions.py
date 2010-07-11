@@ -35,7 +35,8 @@ good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 from portage.sets import load_default_config, SETPREFIX
 from portage.sets.base import InternalPackageSet
-from portage.util import cmp_sort_key, writemsg, writemsg_level
+from portage.util import cmp_sort_key, writemsg, \
+	writemsg_level, writemsg_stdout
 from portage._global_updates import _global_updates
 
 from _emerge.clear_caches import clear_caches
@@ -1309,9 +1310,11 @@ def action_info(settings, trees, myopts, myfiles):
 
 			if versions:
 				versions = ", ".join(ver.toString() for ver in versions)
-				print("%-20s %s" % (x+":", versions))
+				writemsg_stdout("%-20s %s\n" % (x+":", versions),
+					noiselevel=-1)
 		else:
-			print("%-20s %s" % (x+":", "[NOT VALID]"))
+			writemsg_stdout("%-20s %s\n" % (x+":", "[NOT VALID]"),
+				noiselevel=-1)
 
 	libtool_vers = ",".join(trees["/"]["vartree"].dbapi.match("sys-devel/libtool"))
 
@@ -1338,10 +1341,7 @@ def action_info(settings, trees, myopts, myfiles):
 	for x in myvars:
 		if x in settings:
 			if x != "USE":
-				try:
-					print('%s="%s"' % (x, settings[x]))
-				except UnicodeEncodeError:
-					print('%s=<unprintable value with representation: %s>' % (x, repr(settings[x])))
+				writemsg_stdout('%s="%s"\n' % (x, settings[x]), noiselevel=-1)
 			else:
 				use = set(settings["USE"].split())
 				for varname in use_expand:
