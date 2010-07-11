@@ -2270,7 +2270,7 @@ else:
 		unameout += platform.processor()
 	else:
 		unameout += platform.machine()
-	commitmessage += "\n(Portage version: %s/%s/%s" % \
+	commitmessage += "\n\n(Portage version: %s/%s/%s" % \
 		(portage_version, vcs, unameout)
 	if options.force:
 		commitmessage += ", RepoMan options: --force"
@@ -2525,11 +2525,12 @@ else:
 
 		fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
 		mymsg = os.fdopen(fd, "w")
-		mymsg.write(commitmessage)
+		# strip the closing parenthesis
+		mymsg.write(commitmessage[:-1])
 		if signed:
-			mymsg.write("\n (Signed Manifest commit)")
+			mymsg.write(", signed Manifest commit)")
 		else:
-			mymsg.write("\n (Unsigned Manifest commit)")
+			mymsg.write(", unsigned Manifest commit)")
 		mymsg.close()
 
 		commit_cmd = []
