@@ -25,7 +25,7 @@ from itertools import chain
 import portage
 from portage import os
 from portage import digraph
-from portage import _unicode_decode
+from portage import _unicode_decode, _unicode_encode
 from portage.cache.cache_errors import CacheError
 from portage.const import NEWS_LIB_PATH
 from portage.dbapi.dep_expand import dep_expand
@@ -1218,6 +1218,23 @@ def action_deselect(settings, trees, opts, atoms):
 			world_set.unlock()
 	return os.EX_OK
 
+class _info_pkgs_ver(object):
+	def __init__(self, ver, repo_suffix, provide_suffix):
+		self.ver = ver
+		self.repo_suffix = repo_suffix
+		self.provide_suffix = provide_suffix
+
+	def __lt__(self, other):
+		return portage.versions.vercmp(self.ver, other.ver) < 0
+
+	def toString(self):
+		"""
+		This may return unicode if repo_name contains unicode.
+		Don't use __str__ and str() since unicode triggers compatibility
+		issues between python 2.x and 3.x.
+		"""
+		return self.ver + self.repo_suffix + self.provide_suffix
+
 def action_info(settings, trees, myopts, myfiles):
 	print(getportageversion(settings["PORTDIR"], settings["ROOT"],
 		settings.profile_path, settings["CHOST"],
@@ -1285,13 +1302,13 @@ def action_info(settings, trees, myopts, myfiles):
 				else:
 					provide_suffix = " (%s)" % matched_cp
 
-				versions.append(ver + repo_suffix + provide_suffix)
+				versions.append(
+					_info_pkgs_ver(ver, repo_suffix, provide_suffix))
 
-			versions.sort(key=cmp_sort_key(lambda a,b: portage.versions.vercmp(
-				a.split()[0].split("::")[0], b.split()[0].split("::")[0])))
+			versions.sort()
 
 			if versions:
-				versions = ", ".join(versions)
+				versions = ", ".join(ver.toString() for ver in versions)
 				print("%-20s %s" % (x+":", versions))
 		else:
 			print("%-20s %s" % (x+":", "[NOT VALID]"))
