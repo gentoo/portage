@@ -52,6 +52,7 @@ from repoman import utilities
 from repoman.herdbase import make_herd_base
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
+from _emerge.userquery import userquery
 import portage.checksum
 import portage.const
 import portage.dep
@@ -162,6 +163,9 @@ def ParseArgs(args, qahelp):
 	parser.description += "\nCopyright 1999-2007 Gentoo Foundation"
 	parser.description += "\nDistributed under the terms of the GNU General Public License v2"
 	parser.description += "\nmodes: " + " | ".join(map(green,mode_keys))
+
+	parser.add_option('-a', '--ask', dest='ask',
+		help='Request a confirmation before commiting')
 
 	parser.add_option('-m', '--commitmsg', dest='commitmsg',
 		help='specify a commit message on the command line')
@@ -2275,6 +2279,10 @@ else:
 	if options.force:
 		commitmessage += ", RepoMan options: --force"
 	commitmessage += ")"
+
+	if options.ask and userquery('Commit changes?', True) != 'Yes':
+		print("* aborting commit.")
+		sys.exit(1)
 
 	if vcs in ('cvs', 'svn') and (myupdates or myremoved):
 		myfiles = myupdates + myremoved
