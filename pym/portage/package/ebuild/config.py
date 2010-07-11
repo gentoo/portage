@@ -1152,16 +1152,17 @@ class config(object):
 			writemsg(_("!!! FEATURES=fakeroot is enabled, but the "
 				"fakeroot binary is not installed.\n"), noiselevel=-1)
 
-		unsupported_features = []
-		for x in self.features:
-			if x not in SUPPORTED_FEATURES:
-				unsupported_features.append(x)
+		if 'unknown-features-warn' in self.features:
+			unknown_features = []
+			for x in self.features:
+				if x not in SUPPORTED_FEATURES:
+					unknown_features.append(x)
 
-		if unsupported_features:
-			writemsg(colorize("BAD",
-				_("FEATURES variable contains an unknown value(s): %s") % \
-				", ".join(unsupported_features)) \
-				+ "\n", noiselevel=-1)
+			if unknown_features:
+				writemsg(colorize("BAD",
+					_("FEATURES variable contains an unknown value(s): %s") % \
+					", ".join(unknown_features)) \
+					+ "\n", noiselevel=-1)
 
 	def loadVirtuals(self,root):
 		"""Not currently used by portage."""
