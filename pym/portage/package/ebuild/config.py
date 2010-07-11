@@ -1152,6 +1152,17 @@ class config(object):
 			writemsg(_("!!! FEATURES=fakeroot is enabled, but the "
 				"fakeroot binary is not installed.\n"), noiselevel=-1)
 
+		unsupported_features = []
+		for x in self.features:
+			if x not in SUPPORTED_FEATURES:
+				unsupported_features.append(x)
+
+		if unsupported_features:
+			writemsg(colorize("BAD",
+				_("FEATURES variable contains an unknown value(s): %s") % \
+				", ".join(unsupported_features)) \
+				+ "\n", noiselevel=-1)
+
 	def loadVirtuals(self,root):
 		"""Not currently used by portage."""
 		writemsg("DEPRECATED: portage.config.loadVirtuals\n")
@@ -2182,18 +2193,6 @@ class config(object):
 						# so USE="-* gnome" will have *just* gnome enabled.
 						myflags = []
 						continue
-
-					if mykey == "FEATURES":
-						if x[:1] in ("+", "-"):
-							val = x[1:]
-						else:
-							val = x
-
-						if val not in SUPPORTED_FEATURES:
-							writemsg(colorize("BAD",
-								_("FEATURES variable contains an unknown value: %s") % x) \
-								+ "\n", noiselevel=-1)
-							continue
 
 					if x[0]=="+":
 						# Not legal. People assume too much. Complain.
