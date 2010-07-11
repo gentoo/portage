@@ -1287,8 +1287,8 @@ def action_info(settings, trees, myopts, myfiles):
 
 				versions.append(ver + repo_suffix + provide_suffix)
 
-			versions.sort(cmp=lambda a,b: portage.versions.vercmp( \
-				a.split()[0].split("::")[0], b.split()[0].split("::")[0]))
+			versions.sort(key=cmp_sort_key(lambda a,b: portage.versions.vercmp(
+				a.split()[0].split("::")[0], b.split()[0].split("::")[0])))
 
 			if versions:
 				versions = ", ".join(versions)
