@@ -1272,14 +1272,23 @@ def action_info(settings, trees, myopts, myfiles):
 			for cpv in pkg_matches:
 				ver = portage.versions.cpv_getversion(cpv)
 				repo = vardb.aux_get(cpv, ["repository"])[0]
-				if not repo:
-					repo = "<unknown repository>"
-				if repo != main_repo:
-					versions.append(ver + "::" + repo)
+				if repo == main_repo:
+					repo_suffix = ""
+				elif not repo:
+					repo_suffix = "::<unknown repository>"
 				else:
-					versions.append(ver)
+					repo_suffix = "::" + repo
+				
+				matched_cp = portage.versions.cpv_getkey(cpv)
+				if matched_cp == x:
+					provide_suffix = ""
+				else:
+					provide_suffix = " (%s)" % matched_cp
 
-			versions.sort(cmp=lambda a,b: portage.versions.vercmp(a.split("::")[0], b.split("::")[0]))
+				versions.append(ver + repo_suffix + provide_suffix)
+
+			versions.sort(cmp=lambda a,b: portage.versions.vercmp( \
+				a.split()[0].split("::")[0], b.split()[0].split("::")[0]))
 
 			if versions:
 				versions = ", ".join(versions)
