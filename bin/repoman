@@ -178,6 +178,9 @@ def ParseArgs(args, qahelp):
 	parser.add_option('-f', '--force', dest='force', default=False, action='store_true',
 		help='Commit with QA violations')
 
+	parser.add_option('--vcs', dest='vcs',
+		help='Force using specific VCS instead of autodetection')
+
 	parser.add_option('-v', '--verbose', dest="verbosity", action='count',
 		help='be very verbose in output', default=0)
 
@@ -476,14 +479,21 @@ if portdir is None:
 myreporoot = os.path.basename(portdir_overlay)
 myreporoot += mydir[len(portdir_overlay):]
 
-vcses = utilities.FindVCS()
-if len(vcses) > 1:
-	print(red('*** Ambiguous workdir -- more than one VCS found at the same depth: %s.' % ', '.join(vcses)))
-	sys.exit(1)
-elif vcses:
-	vcs = vcses[0]
+if options.vcs:
+	if options.vcs in ('cvs', 'svn', 'git', 'bzr', 'hg'):
+		vcs = options.vcs
+	else:
+		vcs = None
 else:
-	vcs = None
+	vcses = utilities.FindVCS()
+	if len(vcses) > 1:
+		print(red('*** Ambiguous workdir -- more than one VCS found at the same depth: %s.' % ', '.join(vcses)))
+		print(red('*** Please either clean up your workdir or specify --vcs option.'))
+		sys.exit(1)
+	elif vcses:
+		vcs = vcses[0]
+	else:
+		vcs = None
 
 # Note: We don't use ChangeLogs in distributed SCMs.
 # It will be generated on server side from scm log,
