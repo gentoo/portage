@@ -1567,6 +1567,7 @@ def _post_src_install_uid_fix(mysettings, out=None):
 		size = 0
 		counted_inodes = set()
 		lafilefixing_announced = False
+		lafilefixing = "lafilefixing" in mysettings.features
 
 		for parent, dirs, files in os.walk(destdir):
 			try:
@@ -1606,11 +1607,11 @@ def _post_src_install_uid_fix(mysettings, out=None):
 				else:
 					fpath = os.path.join(parent, fname)
 
-				if "lafilefixing" in mysettings["FEATURES"] and \
+				if lafilefixing and \
 					fname.endswith(".la") and os.path.isfile(fpath):
-					f = codecs.open(_unicode_encode(os.path.realpath(fpath),
+					f = open(_unicode_encode(fpath,
 						encoding=_encodings['fs'], errors='strict'),
-						mode='r', encoding=_encodings['content'], errors='replace')
+						mode='rb')
 					contents = f.read()
 					f.close()
 					try:
@@ -1619,7 +1620,7 @@ def _post_src_install_uid_fix(mysettings, out=None):
 						needs_update = False
 						if not lafilefixing_announced:
 							lafilefixing_announced = True
-							writemsg("Fixing .la files\n")
+							writemsg("Fixing .la files\n", fd=out)
 						msg = "   %s is not a valid libtool archive, skipping\n" % fpath[len(destdir):]
 						qa_msg = "QA Notice: invalid .la file found: %s, %s" % (fpath[len(destdir):], e)
 						writemsg(msg)
@@ -1627,11 +1628,11 @@ def _post_src_install_uid_fix(mysettings, out=None):
 					if needs_update:
 						if not lafilefixing_announced:
 							lafilefixing_announced = True
-							writemsg("Fixing .la files\n")
-						writemsg("   %s\n" % fpath[len(destdir):])
-						f = codecs.open(_unicode_encode(fpath,
+							writemsg("Fixing .la files\n", fd=out)
+						writemsg("   %s\n" % fpath[len(destdir):], fd=out)
+						f = open(_unicode_encode(fpath,
 							encoding=_encodings['fs'], errors='strict'),
-							mode='w', encoding=_encodings['content'], errors='replace')
+							mode='wb')
 						f.write(new_contents)
 						f.close()
 

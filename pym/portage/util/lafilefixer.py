@@ -1,9 +1,10 @@
 # Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import os as _os
 import re
 
-from portage import os
+from portage import _unicode_decode
 from portage.exception import InvalidData
 
 #########################################################
@@ -32,18 +33,18 @@ from portage.exception import InvalidData
 #########################################################
 
 #These regexes are used to parse the interesting entries in the la file
-dep_libs_re = re.compile("dependency_libs='(?P<value>[^']*)'$")
-inh_link_flags_re = re.compile("inherited_linker_flags='(?P<value>[^']*)'$")
+dep_libs_re = re.compile(b"dependency_libs='(?P<value>[^']*)'$")
+inh_link_flags_re = re.compile(b"inherited_linker_flags='(?P<value>[^']*)'$")
 
 #regexes for replacing stuff in -L entries. 
 #replace 'X11R6/lib' and 'local/lib' with 'lib', no idea what's this about.
-X11_local_sub = re.compile("X11R6/lib|local/lib")
+X11_local_sub = re.compile(b"X11R6/lib|local/lib")
 #get rid of the '..'
-pkgconfig_sub1 = re.compile("usr/lib[^/]*/pkgconfig/\.\./\.\.")
-pkgconfig_sub2 = re.compile("(?P<usrlib>usr/lib[^/]*)/pkgconfig/\.\.")
+pkgconfig_sub1 = re.compile(b"usr/lib[^/]*/pkgconfig/\.\./\.\.")
+pkgconfig_sub2 = re.compile(b"(?P<usrlib>usr/lib[^/]*)/pkgconfig/\.\.")
 
 #detect flags that should go into inherited_linker_flags instead of dependency_libs
-flag_re = re.compile("-mt|-mthreads|-kthread|-Kthread|-pthread|-pthreads|--thread-safe|-threads")
+flag_re = re.compile(b"-mt|-mthreads|-kthread|-Kthread|-pthread|-pthreads|--thread-safe|-threads")
 
 def _parse_lafile_contents(contents):
 	"""
@@ -53,7 +54,7 @@ def _parse_lafile_contents(contents):
 	dep_libs = None
 	inh_link_flags = None
 
-	for line in contents.split("\n"):
+	for line in contents.split(b"\n"):
 		m = dep_libs_re.match(line)
 		if m:
 			if dep_libs is not None:
@@ -95,44 +96,44 @@ def rewrite_lafile(contents):
 
 	#Check entries in 'dependency_libs'.
 	for dep_libs_entry in dep_libs.split():
-		if dep_libs_entry.startswith("-l"):
+		if dep_libs_entry.startswith(b"-l"):
 			#-lfoo, keep it
 			if dep_libs_entry not in new_dep_libs:
 				new_dep_libs.append(dep_libs_entry)
 
-		elif dep_libs_entry.endswith(".la"):
+		elif dep_libs_entry.endswith(b".la"):
 			#Two cases:
 			#1) /usr/lib64/libfoo.la, turn it into -lfoo and append -L/usr/lib64 to libladir
 			#2) libfoo.la, keep it
-			dir, file = os.path.split(dep_libs_entry)
+			dir, file = _os.path.split(dep_libs_entry)
 
-			if not dir or not file.startswith("lib"):
+			if not dir or not file.startswith(b"lib"):
 				if dep_libs_entry not in new_dep_libs:
 					new_dep_libs.append(dep_libs_entry)
 			else:
 				#/usr/lib64/libfoo.la -> -lfoo
-				lib = "-l" + file[3:-3]
+				lib = b"-l" + file[3:-3]
 				if lib not in new_dep_libs:
 					new_dep_libs.append(lib)
 				#/usr/lib64/libfoo.la -> -L/usr/lib64
-				ladir = "-L" + dir
+				ladir = b"-L" + dir
 				if ladir not in libladir:
 					libladir.append(ladir)
 
-		elif dep_libs_entry.startswith("-L"):
+		elif dep_libs_entry.startswith(b"-L"):
 			#Do some replacement magic and store them in 'libladir'.
 			#This allows us to place all -L entries at the beginning
 			#of 'dependency_libs'.
 			ladir = dep_libs_entry
 			
-			ladir = X11_local_sub.sub("lib", ladir)
-			ladir = pkgconfig_sub1.sub("usr", ladir)
-			ladir = pkgconfig_sub2.sub("\g<usrlib>", ladir)
+			ladir = X11_local_sub.sub(b"lib", ladir)
+			ladir = pkgconfig_sub1.sub(b"usr", ladir)
+			ladir = pkgconfig_sub2.sub(b"\g<usrlib>", ladir)
 			
 			if ladir not in libladir:
 				libladir.append(ladir)
 
-		elif dep_libs_entry.startswith("-R"):
+		elif dep_libs_entry.startswith(b"-R"):
 			if dep_libs_entry not in librpath:
 				librpath.append(dep_libs_entry)
 
@@ -148,17 +149,17 @@ def rewrite_lafile(contents):
 
 		else:
 			raise InvalidData("Error: Unexpected entry '%s' in 'dependency_libs'" \
-				% dep_libs_entry)
+				% _unicode_decode(dep_libs_entry))
 
 	#What should 'dependency_libs' and 'inherited_linker_flags' look like?
-	expected_dep_libs = ""
+	expected_dep_libs = b""
 	for x in (librpath, libladir, new_dep_libs):
 		if x:
-			expected_dep_libs += " " + " ".join(x)
+			expected_dep_libs += b" " + b" ".join(x)
 
-	expected_inh_link_flags = ""
+	expected_inh_link_flags = b""
 	if new_inh_link_flags:
-		expected_inh_link_flags += " " + " ".join(new_inh_link_flags)
+		expected_inh_link_flags += b" " + b" ".join(new_inh_link_flags)
 
 	#Don't touch the file if we don't need to, otherwise put the expected values into
 	#'contents' and write it into the la file.
@@ -166,11 +167,11 @@ def rewrite_lafile(contents):
 		(inh_link_flags is None or expected_inh_link_flags == inh_link_flags):
 		return False, None
 
-	contents = re.sub("dependency_libs='" + dep_libs + "'", \
-		"dependency_libs='" + expected_dep_libs + "'" , contents)
+	contents = re.sub(b"dependency_libs='" + dep_libs + b"'", \
+		b"dependency_libs='" + expected_dep_libs + b"'" , contents)
 
 	if inh_link_flags is not None:
-		contents = re.sub("inherited_linker_flags='" + inh_link_flags + "'", \
-			"inherited_linker_flags='" + expected_inh_link_flags + "'" , contents)
+		contents = re.sub(b"inherited_linker_flags='" + inh_link_flags + b"'", \
+			b"inherited_linker_flags='" + expected_inh_link_flags + b"'" , contents)
 
 	return True, contents
