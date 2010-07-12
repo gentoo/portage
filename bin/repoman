@@ -164,7 +164,7 @@ def ParseArgs(args, qahelp):
 	parser.description += "\nDistributed under the terms of the GNU General Public License v2"
 	parser.description += "\nmodes: " + " | ".join(map(green,mode_keys))
 
-	parser.add_option('-a', '--ask', dest='ask',
+	parser.add_option('-a', '--ask', dest='ask', action='store_true', default=False,
 		help='Request a confirmation before commiting')
 
 	parser.add_option('-m', '--commitmsg', dest='commitmsg',
