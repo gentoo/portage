@@ -1392,13 +1392,27 @@ def _post_phase_userpriv_perms(mysettings):
 			filemode=0o60, filemask=0)
 
 def _post_src_install_checks(mysettings):
-	_post_src_install_uid_fix(mysettings)
+	out = portage.StringIO()
+	_post_src_install_uid_fix(mysettings, out)
 	global _post_phase_cmds
 	retval = _spawn_misc_sh(mysettings, _post_phase_cmds["install"],
 		phase='internal_post_src_install')
 	if retval != os.EX_OK:
 		writemsg(_("!!! install_qa_check failed; exiting.\n"),
-			noiselevel=-1)
+			fd=out, noiselevel=-1)
+
+	msg = _unicode_decode(out.getvalue(),
+		encoding=_encodings['content'], errors='replace')
+	if msg:
+		writemsg_stdout(msg, noiselevel=-1)
+		log_path = mysettings.get("PORTAGE_LOG_FILE")
+		if log_path is not None:
+			log_file = codecs.open(_unicode_encode(log_path,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='a', encoding=_encodings['content'], errors='replace')
+			log_file.write(msg)
+			log_file.close()
+
 	return retval
 
 def _check_build_log(mysettings, out=None):
@@ -1532,7 +1546,7 @@ _vdb_use_conditional_keys = ('DEPEND', 'LICENSE', 'PDEPEND',
 	'PROPERTIES', 'PROVIDE', 'RDEPEND', 'RESTRICT',)
 _vdb_use_conditional_atoms = frozenset(['DEPEND', 'PDEPEND', 'RDEPEND'])
 
-def _post_src_install_uid_fix(mysettings, out=None):
+def _post_src_install_uid_fix(mysettings, out):
 	"""
 	Files in $D with user and group bits that match the "portage"
 	user or group are automatically mapped to PORTAGE_INST_UID and
@@ -1557,8 +1571,6 @@ def _post_src_install_uid_fix(mysettings, out=None):
 			(_shell_quote(mysettings["D"]),))
 
 	destdir = mysettings["D"]
-	logfile = mysettings.get("PORTAGE_LOG_FILE")
-	qa_out = StringIO()
 	unicode_errors = []
 
 	while True:
@@ -1623,8 +1635,8 @@ def _post_src_install_uid_fix(mysettings, out=None):
 							writemsg("Fixing .la files\n", fd=out)
 						msg = "   %s is not a valid libtool archive, skipping\n" % fpath[len(destdir):]
 						qa_msg = "QA Notice: invalid .la file found: %s, %s" % (fpath[len(destdir):], e)
-						writemsg(msg)
-						eqawarn(qa_msg, key=mysettings.mycpv, out=qa_out)
+						writemsg(msg, fd=out)
+						eqawarn(qa_msg, key=mysettings.mycpv, out=out)
 					if needs_update:
 						if not lafilefixing_announced:
 							lafilefixing_announced = True
@@ -1665,20 +1677,6 @@ def _post_src_install_uid_fix(mysettings, out=None):
 	if unicode_errors:
 		for l in _merge_unicode_error(unicode_errors):
 			eerror(l, phase='install', key=mysettings.mycpv, out=out)
-
-	msg = _unicode_decode(qa_out.getvalue(),
-		encoding=_encodings['content'], errors='replace')
-	if msg and logfile:
-		try:
-			f = codecs.open(_unicode_encode(logfile,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='a', encoding=_encodings['content'],
-				errors='replace')
-		except EnvironmentError:
-			pass
-		else:
-			f.write(msg)
-			f.close()
 
 	build_info_dir = os.path.join(mysettings['PORTAGE_BUILDDIR'],
 		'build-info')
