@@ -58,7 +58,7 @@ def writemsg(mystr,noiselevel=0,fd=None):
 		# avoid potential UnicodeEncodeError
 		mystr = _unicode_encode(mystr,
 			encoding=_encodings['stdio'], errors='backslashreplace')
-		if sys.hexversion >= 0x3000000:
+		if sys.hexversion >= 0x3000000 and fd in (sys.stdout, sys.stderr):
 			fd = fd.buffer
 		fd.write(mystr)
 		fd.flush()
