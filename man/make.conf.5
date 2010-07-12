@@ -185,7 +185,7 @@ If it is set to any value pauses are ignored.
 Contains additional options that \fBeconf\fR will append to configure
 script arguments (see \fBebuild\fR(5)).
 .TP
-\fBFEATURES\fR = \fI"sandbox ccache"\fR
+\fBFEATURES\fR = \fI"sandbox"\fR
 Defines actions portage takes by default. This is an incremental variable.
 Most of these settings are for developer use, but some are available to
 non-developers as well. The \fBsandbox\fR feature is very important and
@@ -215,6 +215,9 @@ Build binary packages for just packages in the system set.
 Enable portage support for the ccache package.  If the ccache dir is not 
 present in the user's environment, then portage will default to 
 ${PORTAGE_TMPDIR}/ccache.
+
+\fBWarning\fR: This feature is known to cause compilation
+failure and is not recommended for general use.
 .TP
 .B collision\-protect
 A QA\-feature to ensure that a package doesn't overwrite files it doesn't own.
