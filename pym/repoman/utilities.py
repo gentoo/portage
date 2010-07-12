@@ -73,6 +73,9 @@ def detect_vcs_conflicts(options, vcs):
 			if not line:
 				continue
 			if line[0] not in "UPMARD": # Updates,Patches,Modified,Added,Removed/Replaced(svn),Deleted(svn)
+				# Stray Manifest is fine, we will readd it anyway.
+				if line[0] == '?' and line[1:].lstrip() == 'Manifest':
+					continue
 				logging.error(red("!!! Please fix the following issues reported " + \
 					"from cvs: ")+green("(U,P,M,A,R,D are ok)"))
 				logging.error(red("!!! Note: This is a pretend/no-modify pass..."))
