@@ -52,6 +52,7 @@ from portage.util import apply_recursive_permissions, \
 	apply_secpass_permissions, noiselimit, normalize_path, \
 	writemsg, writemsg_stdout, write_atomic
 from portage.util._pty import _create_pty_or_pipe
+from portage.util.lafilefixer import rewrite_lafile	
 from portage.versions import _pkgsplit
 
 def doebuild_environment(myebuild, mydo, myroot, mysettings,
@@ -1556,6 +1557,8 @@ def _post_src_install_uid_fix(mysettings, out=None):
 			(_shell_quote(mysettings["D"]),))
 
 	destdir = mysettings["D"]
+	logfile = mysettings.get("PORTAGE_LOG_FILE")
+	qa_out = StringIO()
 	unicode_errors = []
 
 	while True:
@@ -1563,6 +1566,7 @@ def _post_src_install_uid_fix(mysettings, out=None):
 		unicode_error = False
 		size = 0
 		counted_inodes = set()
+		lafilefixing_announced = False
 
 		for parent, dirs, files in os.walk(destdir):
 			try:
@@ -1602,6 +1606,35 @@ def _post_src_install_uid_fix(mysettings, out=None):
 				else:
 					fpath = os.path.join(parent, fname)
 
+				if "lafilefixing" in mysettings["FEATURES"] and \
+					fname.endswith(".la") and os.path.isfile(fpath):
+					f = codecs.open(_unicode_encode(os.path.realpath(fpath),
+						encoding=_encodings['fs'], errors='strict'),
+						mode='r', encoding=_encodings['content'], errors='replace')
+					contents = f.read()
+					f.close()
+					try:
+						needs_update, new_contents = rewrite_lafile(contents)
+					except portage.exception.InvalidData as e:
+						needs_update = False
+						if not lafilefixing_announced:
+							lafilefixing_announced = True
+							writemsg("Fixing .la files\n")
+						msg = "   %s is not a valid libtool archive, skipping\n" % fpath[len(destdir):]
+						qa_msg = "QA Notice: invalid .la file found: %s, %s" % (fpath[len(destdir):], e)
+						writemsg(msg)
+						eqawarn(qa_msg, key=mysettings.mycpv, out=qa_out)
+					if needs_update:
+						if not lafilefixing_announced:
+							lafilefixing_announced = True
+							writemsg("Fixing .la files\n")
+						writemsg("   %s\n" % fpath[len(destdir):])
+						f = codecs.open(_unicode_encode(fpath,
+							encoding=_encodings['fs'], errors='strict'),
+							mode='w', encoding=_encodings['content'], errors='replace')
+						f.write(new_contents)
+						f.close()
+
 				mystat = os.lstat(fpath)
 				if stat.S_ISREG(mystat.st_mode) and \
 					mystat.st_ino not in counted_inodes:
@@ -1631,6 +1664,20 @@ def _post_src_install_uid_fix(mysettings, out=None):
 	if unicode_errors:
 		for l in _merge_unicode_error(unicode_errors):
 			eerror(l, phase='install', key=mysettings.mycpv, out=out)
+
+	msg = _unicode_decode(qa_out.getvalue(),
+		encoding=_encodings['content'], errors='replace')
+	if msg and logfile:
+		try:
+			f = codecs.open(_unicode_encode(logfile,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='a', encoding=_encodings['content'],
+				errors='replace')
+		except EnvironmentError:
+			pass
+		else:
+			f.write(msg)
+			f.close()
 
 	build_info_dir = os.path.join(mysettings['PORTAGE_BUILDDIR'],
 		'build-info')

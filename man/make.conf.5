@@ -272,6 +272,10 @@ prior to each build. Due to lack of proper cleanup, this feature can
 interfere with normal emerge operation and therefore it should not be left
 enabled for more than a short period of time.
 .TP
+.B lafilefixing
+Prevents modifiying .la files to not include other .la files and some other
+fixes (order of flags, duplicated entries, ...)
+.TP
 .B lmirror
 When \fImirror\fR is enabled in \fBFEATURES\fR, fetch files even
 when \fImirror\fR is also in the \fBebuild\fR(5) \fBRESTRICT\fR variable.
