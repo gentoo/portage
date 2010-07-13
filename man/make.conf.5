@@ -216,8 +216,12 @@ Enable portage support for the ccache package.  If the ccache dir is not
 present in the user's environment, then portage will default to 
 ${PORTAGE_TMPDIR}/ccache.
 
-\fBWarning\fR: This feature is known to cause compilation
-failure and is not recommended for general use.
+\fBWarning\fR: This feature is known to cause numerous compilation failures.
+Sometimes ccache will retain stale code objects or corrupted files, which can
+lead to packages that cannot be emerged. If this happens (if you receive errors
+like "File not recognized: File truncated"), try recompiling the application
+with ccache disabled before reporting a bug. Unless you are doing development
+work, do not enable ccache.
 .TP
 .B collision\-protect
 A QA\-feature to ensure that a package doesn't overwrite files it doesn't own.
