@@ -14,9 +14,9 @@ export V="$1"
 export DEST="${TMP}/${PKG}-${V}"
 
 ./tabcheck.py $(
-	find ./ -name .git -prune -name .hg -prune -o -type f ! -name '*.py' -print \
+	find ./ -name .git -o -name .hg -prune -o -type f ! -name '*.py' -print \
 		| xargs grep -l "#\!@PORTAGE_PYTHON@"
-	find ./ -name .git -prune -name .hg -prune -o -type f -name '*.py' -print
+	find ./ -name .git -o -name .hg -prune -o -type f -name '*.py' -print
 )
 
 if [[ -e ${DEST} ]]; then
