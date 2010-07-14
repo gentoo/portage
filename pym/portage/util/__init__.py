@@ -57,10 +57,14 @@ def writemsg(mystr,noiselevel=0,fd=None):
 		fd = sys.stderr
 	if noiselevel <= noiselimit:
 		# avoid potential UnicodeEncodeError
-		mystr = _unicode_encode(mystr,
-			encoding=_encodings['stdio'], errors='backslashreplace')
-		if sys.hexversion >= 0x3000000:
-			fd = fd.buffer
+		if isinstance(fd, StringIO):
+			mystr = _unicode_decode(mystr,
+				encoding=_encodings['content'], errors='replace')
+		else:
+			mystr = _unicode_encode(mystr,
+				encoding=_encodings['stdio'], errors='backslashreplace')
+			if sys.hexversion >= 0x3000000 and fd in (sys.stdout, sys.stderr):
+				fd = fd.buffer
 		fd.write(mystr)
 		fd.flush()
 
@@ -325,7 +329,7 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0):
 def grablines(myfilename,recursive=0):
 	mylines=[]
 	if recursive and os.path.isdir(myfilename):
-		if myfilename in ["RCS", "CVS", "SCCS"]:
+		if os.path.basename(myfilename) in ["RCS", "CVS", "SCCS"]:
 			return mylines
 		dirlist = os.listdir(myfilename)
 		dirlist.sort()

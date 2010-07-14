@@ -78,10 +78,14 @@ try:
 except KeyError:
 	pass
 
+# Allow the overriding of the user used for 'userpriv' and 'userfetch'
+_portage_uname = os.environ.get('PORTAGE_USERNAME', PORTAGE_USERNAME)
+_portage_grpname = os.environ.get('PORTAGE_GRPNAME', PORTAGE_GROUPNAME)
+
 #Discover the uid and gid of the portage user/group
 try:
-	portage_uid=pwd.getpwnam(PORTAGE_USERNAME)[2]
-	portage_gid=grp.getgrnam(PORTAGE_GROUPNAME)[2]
+	portage_uid = pwd.getpwnam(_portage_uname)[2]
+	portage_gid = grp.getgrnam(_portage_grpname)[2]
 	if secpass < 1 and portage_gid in os.getgroups():
 		secpass=1
 except KeyError:
@@ -120,7 +124,7 @@ else:
 				# grp.getgrall() since it is known to trigger spurious
 				# SIGPIPE problems with nss_ldap.
 				mystatus, myoutput = \
-					portage.subprocess_getstatusoutput("id -G %s" % PORTAGE_USERNAME)
+					portage.subprocess_getstatusoutput("id -G %s" % _portage_uname)
 				if mystatus == os.EX_OK:
 					for x in myoutput.split():
 						try:

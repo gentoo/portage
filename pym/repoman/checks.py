@@ -70,8 +70,8 @@ class EbuildHeader(LineCheck):
 	gentoo_copyright = r'^# Copyright ((1999|2\d\d\d)-)?%s Gentoo Foundation$'
 	# Why a regex here, use a string match
 	# gentoo_license = re.compile(r'^# Distributed under the terms of the GNU General Public License v2$')
-	gentoo_license = r'# Distributed under the terms of the GNU General Public License v2'
-	cvs_header = re.compile(r'^#\s*\$Header.*\$$')
+	gentoo_license = '# Distributed under the terms of the GNU General Public License v2'
+	cvs_header = re.compile(r'^# \$Header: .*\$$')
 
 	def new(self, pkg):
 		if pkg.mtime is None:
@@ -87,7 +87,7 @@ class EbuildHeader(LineCheck):
 		elif num == 0:
 			if not self.gentoo_copyright_re.match(line):
 				return errors.COPYRIGHT_ERROR
-		elif num == 1 and line.strip() != self.gentoo_license:
+		elif num == 1 and line.rstrip('\n') != self.gentoo_license:
 			return errors.LICENSE_ERROR
 		elif num == 2:
 			if not self.cvs_header.match(line):
@@ -224,6 +224,13 @@ class EbuildAssignment(LineCheck):
 		self.previous_line = line
 		return e
 
+class Eapi3EbuildAssignment(EbuildAssignment):
+	"""Ensure ebuilds don't assign to readonly EAPI 3-introduced variables."""
+
+	readonly_assignment = re.compile(r'\s*(export\s+)?(ED|EPREFIX|EROOT)=')
+
+	def check_eapi(self, eapi):
+		return eapi not in ('0', '1', '2')
 
 class EbuildNestedDie(LineCheck):
 	"""Check ebuild for nested die statements (die statements in subshells"""
@@ -240,7 +247,7 @@ class EbuildUselessDodoc(LineCheck):
 	"""Check ebuild for useless files in dodoc arguments."""
 	repoman_check_name = 'ebuild.minorsyn'
 	uselessdodoc_re = re.compile(
-		r'^\s*dodoc(\s+|\s+.*\s+)(ABOUT-NLS|COPYING|LICENSE)($|\s)')
+		r'^\s*dodoc(\s+|\s+.*\s+)(ABOUT-NLS|COPYING|LICENCE|LICENSE)($|\s)')
 
 	def check(self, num, line):
 		match = self.uselessdodoc_re.match(line)
@@ -381,6 +388,12 @@ class NoAsNeeded(LineCheck):
 	re = re.compile(r'.*\$\(no-as-needed\)')
 	error = errors.NO_AS_NEEDED
 
+class PreserveOldLib(LineCheck):
+	"""Check for calls to the preserve_old_lib function."""
+	repoman_check_name = 'upstream.workaround'
+	re = re.compile(r'.*preserve_old_lib')
+	error = errors.PRESERVE_OLD_LIB
+
 class DeprecatedBindnowFlags(LineCheck):
 	"""Check for calls to the deprecated bindnow-flags function."""
 	repoman_check_name = 'ebuild.minorsyn'
@@ -416,13 +429,6 @@ class SrcUnpackPatches(PhaseCheck):
 	repoman_check_name = 'ebuild.minorsyn'
 	src_prepare_tools_re = re.compile(r'\s(e?patch|sed)\s')
 
-	def new(self, pkg):
-		if pkg.metadata['EAPI'] not in ('0', '1'):
-			self.eapi = pkg.metadata['EAPI']
-		else:
-			self.eapi = None
-		self.in_src_unpack = None
-
 	def check_eapi(self, eapi):
 		return eapi not in ('0', '1')
 
@@ -445,11 +451,8 @@ class Eapi3DeprecatedFuncs(LineCheck):
 	ignore_line = re.compile(r'(^\s*#)')
 	deprecated_commands_re = re.compile(r'^\s*(check_license)\b')
 
-	def new(self, pkg):
-		self.eapi = pkg.metadata['EAPI']
-
 	def check_eapi(self, eapi):
-		return self.eapi not in ('0', '1', '2')
+		return eapi not in ('0', '1', '2')
 
 	def check(self, num, line):
 		m = self.deprecated_commands_re.match(line)
@@ -463,11 +466,8 @@ class Eapi4IncompatibleFuncs(LineCheck):
 	ignore_line = re.compile(r'(^\s*#)')
 	banned_commands_re = re.compile(r'^\s*(dosed|dohard)')
 
-	def new(self, pkg):
-		self.eapi = pkg.metadata['EAPI']
-
 	def check_eapi(self, eapi):
-		return self.eapi not in ('0', '1', '2', '3', '3_pre2')
+		return eapi not in ('0', '1', '2', '3', '3_pre2')
 
 	def check(self, num, line):
 		m = self.banned_commands_re.match(line)
@@ -480,11 +480,8 @@ class Eapi4GoneVars(LineCheck):
 	ignore_line = re.compile(r'(^\s*#)')
 	undefined_vars_re = re.compile(r'.*\$(\{(AA|KV)\}|(AA|KV))')
 
-	def new(self, pkg):
-		self.eapi = pkg.metadata['EAPI']
-
 	def check_eapi(self, eapi):
-		return self.eapi not in ('0', '1', '2', '3', '3_pre2')
+		return eapi not in ('0', '1', '2', '3', '3_pre2')
 
 	def check(self, num, line):
 		m = self.undefined_vars_re.match(line)
@@ -494,14 +491,15 @@ class Eapi4GoneVars(LineCheck):
 
 _constant_checks = tuple((c() for c in (
 	EbuildHeader, EbuildWhitespace, EbuildBlankLine, EbuildQuote,
-	EbuildAssignment, EbuildUselessDodoc,
+	EbuildAssignment, Eapi3EbuildAssignment, EbuildUselessDodoc,
 	EbuildUselessCdS, EbuildNestedDie,
 	EbuildPatches, EbuildQuotedA, EapiDefinition,
 	IUseUndefined, InheritAutotools,
 	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS, NoAsNeeded,
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
 	SrcCompileEconf, Eapi3DeprecatedFuncs,
-	Eapi4IncompatibleFuncs, Eapi4GoneVars, BuiltWithUse)))
+	Eapi4IncompatibleFuncs, Eapi4GoneVars, BuiltWithUse,
+	PreserveOldLib)))
 
 _here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
 

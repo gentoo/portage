@@ -3,7 +3,7 @@
 
 __all__ = ['digestcheck']
 
-from portage import os, _encodings, _split_ebuild_name_glep55, _unicode_decode
+from portage import os, _encodings, _unicode_decode
 from portage.exception import DigestException, FileNotFound
 from portage.localization import _
 from portage.manifest import Manifest
@@ -78,12 +78,9 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 		writemsg(_("!!! Expected: %s\n") % e.value[3], noiselevel=-1)
 		return 0
 	# Make sure that all of the ebuilds are actually listed in the Manifest.
-	glep55 = 'parse-eapi-glep-55' in mysettings.features
 	for f in os.listdir(pkgdir):
 		pf = None
-		if glep55:
-			pf, eapi = _split_ebuild_name_glep55(f)
-		elif f[-7:] == '.ebuild':
+		if f[-7:] == '.ebuild':
 			pf = f[:-7]
 		if pf is not None and not mf.hasFile("EBUILD", f):
 			writemsg(_("!!! A file is not listed in the Manifest: '%s'\n") % \

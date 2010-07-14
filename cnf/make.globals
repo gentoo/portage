@@ -44,8 +44,9 @@ FETCHCOMMAND_RSYNC="rsync -avP \"\${URI}\" \"\${DISTDIR}/\${FILE}\""
 RESUMECOMMAND_RSYNC="rsync -avP \"\${URI}\" \"\${DISTDIR}/\${FILE}\""
 
 # Default user options
-FEATURES="assume-digests distlocks fixpackages news parallel-fetch protect-owned
-          sandbox sfperms strict unmerge-logs unmerge-orphans userfetch"
+FEATURES="assume-digests distlocks fixpackages lafilefixing news parallel-fetch protect-owned
+          sandbox sfperms strict unknown-features-warn unmerge-logs
+          unmerge-orphans userfetch"
 
 # Ignore file collisions in /lib/modules since files inside this directory
 # are never unmerged, and therefore collisions must be ignored in order for

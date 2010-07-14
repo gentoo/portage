@@ -701,9 +701,11 @@ dyn_unpack() {
 	if [ "${newstuff}" == "yes" ]; then
 		# We don't necessarily have privileges to do a full dyn_clean here.
 		rm -rf "${PORTAGE_BUILDDIR}"/{.unpacked,.prepared,.configured,.compiled,.tested,.installed,.packaged,build-info}
-		rm -rf "${WORKDIR}"
+		if ! hasq keepwork $FEATURES ; then
+			rm -rf "${WORKDIR}"
+		fi
 		if [ -d "${T}" ] && \
-			! hasq keeptemp $FEATURES && ! hasq keepwork $FEATURES ; then
+			! hasq keeptemp $FEATURES ; then
 			rm -rf "${T}" && mkdir "${T}"
 		fi
 	fi

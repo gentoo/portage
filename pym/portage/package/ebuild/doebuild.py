@@ -31,7 +31,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 from portage import auxdbkeys, bsd_chflags, dep_check, \
 	eapi_is_supported, merge, os, selinux, StringIO, \
 	unmerge, _encodings, _parse_eapi_ebuild_head, _os_merge, \
-	_shell_quote, _split_ebuild_name_glep55, _unicode_decode, _unicode_encode
+	_shell_quote, _unicode_decode, _unicode_encode
 from portage.const import EBUILD_SH_ENV_FILE, EBUILD_SH_ENV_DIR, \
 	EBUILD_SH_BINARY, INVALID_ENV_FILE, MISC_SH_BINARY, \
 	EPREFIX, EPREFIX_LSTRIP
@@ -53,6 +53,7 @@ from portage.util import apply_recursive_permissions, \
 	apply_secpass_permissions, noiselimit, normalize_path, \
 	writemsg, writemsg_stdout, write_atomic
 from portage.util._pty import _create_pty_or_pipe
+from portage.util.lafilefixer import rewrite_lafile	
 from portage.versions import _pkgsplit
 
 def doebuild_environment(myebuild, mydo, myroot, mysettings,
@@ -67,11 +68,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 		cat = os.path.basename(normalize_path(os.path.join(pkg_dir, "..")))
 
 	eapi = None
-	if 'parse-eapi-glep-55' in mysettings.features:
-		mypv, eapi = _split_ebuild_name_glep55(
-			os.path.basename(myebuild))
-	else:
-		mypv = os.path.basename(ebuild_path)[:-7]
+	mypv = os.path.basename(ebuild_path)[:-7]
 
 	mycpv = cat+"/"+mypv
 	mysplit = _pkgsplit(mypv)
@@ -476,12 +473,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 			# Make sure that all of the ebuilds are
 			# actually listed in the Manifest.
-			glep55 = 'parse-eapi-glep-55' in mysettings.features
 			for f in os.listdir(pkgdir):
 				pf = None
-				if glep55:
-					pf, eapi = _split_ebuild_name_glep55(f)
-				elif f[-7:] == '.ebuild':
+				if f[-7:] == '.ebuild':
 					pf = f[:-7]
 				if pf is not None and not mf.hasFile("EBUILD", f):
 					f = os.path.join(pkgdir, f)
@@ -1403,13 +1397,27 @@ def _post_phase_userpriv_perms(mysettings):
 			filemode=0o60, filemask=0)
 
 def _post_src_install_checks(mysettings):
-	_post_src_install_uid_fix(mysettings)
+	out = portage.StringIO()
+	_post_src_install_uid_fix(mysettings, out)
 	global _post_phase_cmds
 	retval = _spawn_misc_sh(mysettings, _post_phase_cmds["install"],
 		phase='internal_post_src_install')
 	if retval != os.EX_OK:
 		writemsg(_("!!! install_qa_check failed; exiting.\n"),
-			noiselevel=-1)
+			fd=out, noiselevel=-1)
+
+	msg = _unicode_decode(out.getvalue(),
+		encoding=_encodings['content'], errors='replace')
+	if msg:
+		writemsg_stdout(msg, noiselevel=-1)
+		log_path = mysettings.get("PORTAGE_LOG_FILE")
+		if log_path is not None:
+			log_file = codecs.open(_unicode_encode(log_path,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='a', encoding=_encodings['content'], errors='replace')
+			log_file.write(msg)
+			log_file.close()
+
 	return retval
 
 def _check_build_log(mysettings, out=None):
@@ -1543,7 +1551,7 @@ _vdb_use_conditional_keys = ('DEPEND', 'LICENSE', 'PDEPEND',
 	'PROPERTIES', 'PROVIDE', 'RDEPEND', 'RESTRICT',)
 _vdb_use_conditional_atoms = frozenset(['DEPEND', 'PDEPEND', 'RDEPEND'])
 
-def _post_src_install_uid_fix(mysettings, out=None):
+def _post_src_install_uid_fix(mysettings, out):
 	"""
 	Files in $D with user and group bits that match the "portage"
 	user or group are automatically mapped to PORTAGE_INST_UID and
@@ -1575,6 +1583,8 @@ def _post_src_install_uid_fix(mysettings, out=None):
 		unicode_error = False
 		size = 0
 		counted_inodes = set()
+		lafilefixing_announced = False
+		lafilefixing = "lafilefixing" in mysettings.features
 
 		for parent, dirs, files in os.walk(destdir):
 			try:
@@ -1613,6 +1623,35 @@ def _post_src_install_uid_fix(mysettings, out=None):
 					fpath = new_fpath
 				else:
 					fpath = os.path.join(parent, fname)
+
+				if lafilefixing and \
+					fname.endswith(".la") and os.path.isfile(fpath):
+					f = open(_unicode_encode(fpath,
+						encoding=_encodings['merge'], errors='strict'),
+						mode='rb')
+					contents = f.read()
+					f.close()
+					try:
+						needs_update, new_contents = rewrite_lafile(contents)
+					except portage.exception.InvalidData as e:
+						needs_update = False
+						if not lafilefixing_announced:
+							lafilefixing_announced = True
+							writemsg("Fixing .la files\n", fd=out)
+						msg = "   %s is not a valid libtool archive, skipping\n" % fpath[len(destdir):]
+						qa_msg = "QA Notice: invalid .la file found: %s, %s" % (fpath[len(destdir):], e)
+						writemsg(msg, fd=out)
+						eqawarn(qa_msg, key=mysettings.mycpv, out=out)
+					if needs_update:
+						if not lafilefixing_announced:
+							lafilefixing_announced = True
+							writemsg("Fixing .la files\n", fd=out)
+						writemsg("   %s\n" % fpath[len(destdir):], fd=out)
+						f = open(_unicode_encode(fpath,
+							encoding=_encodings['merge'], errors='strict'),
+							mode='wb')
+						f.write(new_contents)
+						f.close()
 
 				mystat = os.lstat(fpath)
 				if stat.S_ISREG(mystat.st_mode) and \

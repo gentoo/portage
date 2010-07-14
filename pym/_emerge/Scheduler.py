@@ -1331,14 +1331,14 @@ class Scheduler(PollScheduler):
 			return None
 
 		if self._digraph is None:
-			if (self._jobs or self._task_queues.merge) and \
+			if self._is_work_scheduled() and \
 				not ("--nodeps" in self.myopts and \
 				(self._max_jobs is True or self._max_jobs > 1)):
 				self._choose_pkg_return_early = True
 				return None
 			return self._pkg_queue.pop(0)
 
-		if not (self._jobs or self._task_queues.merge):
+		if not self._is_work_scheduled():
 			return self._pkg_queue.pop(0)
 
 		self._prune_digraph()
@@ -1438,15 +1438,13 @@ class Scheduler(PollScheduler):
 			self._opts_no_background.intersection(self.myopts):
 			self._set_max_jobs(1)
 
-		merge_queue = self._task_queues.merge
-
 		while self._schedule():
 			if self._poll_event_handlers:
 				self._poll_loop()
 
 		while True:
 			self._schedule()
-			if not (self._jobs or merge_queue):
+			if not self._is_work_scheduled():
 				break
 			if self._poll_event_handlers:
 				self._poll_loop()
@@ -1455,36 +1453,42 @@ class Scheduler(PollScheduler):
 		return bool(self._pkg_queue and \
 			not (self._failed_pkgs and not self._build_opts.fetchonly))
 
+	def _is_work_scheduled(self):
+		return bool(self._jobs or \
+			self._task_queues.merge or self._merge_wait_queue)
+
 	def _schedule_tasks(self):
 
-		# When the number of jobs drops to zero, process all waiting merges.
-		if not self._jobs and self._merge_wait_queue:
-			for task in self._merge_wait_queue:
-				task.addExitListener(self._merge_wait_exit_handler)
-				self._task_queues.merge.add(task)
-			self._status_display.merges = len(self._task_queues.merge)
-			self._merge_wait_scheduled.extend(self._merge_wait_queue)
-			del self._merge_wait_queue[:]
+		while True:
 
-		self._schedule_tasks_imp()
-		self._status_display.display()
+			# When the number of jobs drops to zero, process all waiting merges.
+			if not self._jobs and self._merge_wait_queue:
+				for task in self._merge_wait_queue:
+					task.addExitListener(self._merge_wait_exit_handler)
+					self._task_queues.merge.add(task)
+				self._status_display.merges = len(self._task_queues.merge)
+				self._merge_wait_scheduled.extend(self._merge_wait_queue)
+				del self._merge_wait_queue[:]
 
-		state_change = 0
-		for q in self._task_queues.values():
-			if q.schedule():
-				state_change += 1
-
-		# Cancel prefetchers if they're the only reason
-		# the main poll loop is still running.
-		if self._failed_pkgs and not self._build_opts.fetchonly and \
-			not (self._jobs or self._task_queues.merge) and \
-			self._task_queues.fetch:
-			self._task_queues.fetch.clear()
-			state_change += 1
-
-		if state_change:
 			self._schedule_tasks_imp()
 			self._status_display.display()
+
+			state_change = 0
+			for q in self._task_queues.values():
+				if q.schedule():
+					state_change += 1
+
+			# Cancel prefetchers if they're the only reason
+			# the main poll loop is still running.
+			if self._failed_pkgs and not self._build_opts.fetchonly and \
+				not self._is_work_scheduled() and \
+				self._task_queues.fetch:
+				self._task_queues.fetch.clear()
+				state_change += 1
+
+			if not (state_change or \
+				(not self._jobs and self._merge_wait_queue)):
+				break
 
 		return self._keep_scheduling()
 

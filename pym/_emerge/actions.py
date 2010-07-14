@@ -25,7 +25,7 @@ from itertools import chain
 import portage
 from portage import os
 from portage import digraph
-from portage import _unicode_decode
+from portage import _unicode_decode, _unicode_encode
 from portage.cache.cache_errors import CacheError
 from portage.const import NEWS_LIB_PATH, EPREFIX
 from portage.dbapi.dep_expand import dep_expand
@@ -35,7 +35,8 @@ good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 from portage.sets import load_default_config, SETPREFIX
 from portage.sets.base import InternalPackageSet
-from portage.util import cmp_sort_key, writemsg, writemsg_level
+from portage.util import cmp_sort_key, writemsg, \
+	writemsg_level, writemsg_stdout
 from portage._global_updates import _global_updates
 
 from _emerge.clear_caches import clear_caches
@@ -1218,6 +1219,23 @@ def action_deselect(settings, trees, opts, atoms):
 			world_set.unlock()
 	return os.EX_OK
 
+class _info_pkgs_ver(object):
+	def __init__(self, ver, repo_suffix, provide_suffix):
+		self.ver = ver
+		self.repo_suffix = repo_suffix
+		self.provide_suffix = provide_suffix
+
+	def __lt__(self, other):
+		return portage.versions.vercmp(self.ver, other.ver) < 0
+
+	def toString(self):
+		"""
+		This may return unicode if repo_name contains unicode.
+		Don't use __str__ and str() since unicode triggers compatibility
+		issues between python 2.x and 3.x.
+		"""
+		return self.ver + self.repo_suffix + self.provide_suffix
+
 def action_info(settings, trees, myopts, myfiles):
 	print(getportageversion(settings["PORTDIR"], settings["ROOT"],
 		settings.profile_path, settings["CHOST"],
@@ -1260,22 +1278,43 @@ def action_info(settings, trees, myopts, myfiles):
 	myvars  = portage.util.unique_array(myvars)
 	myvars.sort()
 
+	portdb = trees["/"]["porttree"].dbapi
+	vardb = trees["/"]["vartree"].dbapi
+	main_repo = portdb.getRepositoryName(portdb.porttree_root)
+
 	for x in myvars:
 		if portage.isvalidatom(x):
-			pkg_matches = trees["/"]["vartree"].dbapi.match(x)
-			pkg_matches = [portage.catpkgsplit(cpv)[1:] for cpv in pkg_matches]
-			pkg_matches.sort(key=cmp_sort_key(portage.pkgcmp))
-			pkgs = []
-			for pn, ver, rev in pkg_matches:
-				if rev != "r0":
-					pkgs.append(ver + "-" + rev)
+			pkg_matches = vardb.match(x)
+
+			versions = []
+			for cpv in pkg_matches:
+				ver = portage.versions.cpv_getversion(cpv)
+				repo = vardb.aux_get(cpv, ["repository"])[0]
+				if repo == main_repo:
+					repo_suffix = ""
+				elif not repo:
+					repo_suffix = "::<unknown repository>"
 				else:
-					pkgs.append(ver)
-			if pkgs:
-				pkgs = ", ".join(pkgs)
-				print("%-20s %s" % (x+":", pkgs))
+					repo_suffix = "::" + repo
+				
+				matched_cp = portage.versions.cpv_getkey(cpv)
+				if matched_cp == x:
+					provide_suffix = ""
+				else:
+					provide_suffix = " (%s)" % matched_cp
+
+				versions.append(
+					_info_pkgs_ver(ver, repo_suffix, provide_suffix))
+
+			versions.sort()
+
+			if versions:
+				versions = ", ".join(ver.toString() for ver in versions)
+				writemsg_stdout("%-20s %s\n" % (x+":", versions),
+					noiselevel=-1)
 		else:
-			print("%-20s %s" % (x+":", "[NOT VALID]"))
+			writemsg_stdout("%-20s %s\n" % (x+":", "[NOT VALID]"),
+				noiselevel=-1)
 
 	libtool_vers = ",".join(trees["/"]["vartree"].dbapi.match("sys-devel/libtool"))
 
@@ -1302,10 +1341,7 @@ def action_info(settings, trees, myopts, myfiles):
 	for x in myvars:
 		if x in settings:
 			if x != "USE":
-				try:
-					print('%s="%s"' % (x, settings[x]))
-				except UnicodeEncodeError:
-					print('%s=<unprintable value with representation: %s>' % (x, repr(settings[x])))
+				writemsg_stdout('%s="%s"\n' % (x, settings[x]), noiselevel=-1)
 			else:
 				use = set(settings["USE"].split())
 				for varname in use_expand:
@@ -1792,6 +1828,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		os.makedirs(myportdir,0o755)
 		st = os.stat(myportdir)
 
+	usersync_uid = None
 	spawn_kwargs = {}
 	spawn_kwargs["env"] = settings.environ()
 	if 'usersync' in settings.features and \
@@ -1805,6 +1842,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		else:
 			# Drop privileges when syncing, in order to match
 			# existing uid/gid settings.
+			usersync_uid = st.st_uid
 			spawn_kwargs["uid"]    = st.st_uid
 			spawn_kwargs["gid"]    = st.st_gid
 			spawn_kwargs["groups"] = [st.st_gid]
@@ -2054,6 +2092,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				from tempfile import mkstemp
 				fd, tmpservertimestampfile = mkstemp()
 				os.close(fd)
+				if usersync_uid is not None:
+					portage.util.apply_permissions(tmpservertimestampfile,
+						uid=usersync_uid)
 				mycommand = rsynccommand[:]
 				mycommand.append(dosyncuri.rstrip("/") + \
 					"/metadata/timestamp.chk")
@@ -2071,8 +2112,11 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 						signal.alarm(rsync_initial_timeout)
 					try:
 						mypids.extend(portage.process.spawn(
-							mycommand, env=settings.environ(), returnpid=True))
+							mycommand, returnpid=True, **spawn_kwargs))
 						exitcode = os.waitpid(mypids[0], 0)[1]
+						if usersync_uid is not None:
+							portage.util.apply_permissions(tmpservertimestampfile,
+								uid=os.getuid())
 						content = portage.grabfile(tmpservertimestampfile)
 					finally:
 						if rsync_initial_timeout:

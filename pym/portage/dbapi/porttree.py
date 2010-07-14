@@ -504,33 +504,11 @@ class portdbapi(dbapi):
 		relative_path = mysplit[0] + _os.sep + psplit[0] + _os.sep + \
 			mysplit[1] + ".ebuild"
 
-		if 'parse-eapi-glep-55' in self.doebuild_settings.features:
-			glep55_startswith = '%s.ebuild-' % mysplit[1]
-			for x in mytrees:
-				filename = x + _os.sep + relative_path
-				if _os.access(_unicode_encode(filename,
-					encoding=encoding, errors=errors), _os.R_OK):
-					return (filename, x)
-
-				pkgdir = _os.path.join(x, mysplit[0], psplit[0])
-				try:
-					files = _os.listdir(_unicode_encode(pkgdir,
-						encoding=encoding, errors=errors))
-				except OSError:
-					continue
-				for y in files:
-					try:
-						y = _unicode_decode(y, encoding=encoding, errors=errors)
-					except UnicodeDecodeError:
-						continue
-					if y.startswith(glep55_startswith):
-						return (_os.path.join(pkgdir, y), x)
-		else:
-			for x in mytrees:
-				filename = x + _os.sep + relative_path
-				if _os.access(_unicode_encode(filename,
-					encoding=encoding, errors=errors), _os.R_OK):
-					return (filename, x)
+		for x in mytrees:
+			filename = x + _os.sep + relative_path
+			if _os.access(_unicode_encode(filename,
+				encoding=encoding, errors=errors), _os.R_OK):
+				return (filename, x)
 		return (None, 0)
 
 	def _metadata_process(self, cpv, ebuild_path, repo_path):
@@ -672,9 +650,6 @@ class portdbapi(dbapi):
 			mydata = {}
 			eapi = None
 
-			if 'parse-eapi-glep-55' in self.doebuild_settings.features:
-				pf, eapi = portage._split_ebuild_name_glep55(
-					os.path.basename(myebuild))
 			if eapi is None and \
 				'parse-eapi-ebuild-head' in self.doebuild_settings.features:
 				eapi = portage._parse_eapi_ebuild_head(codecs.open(
@@ -918,7 +893,6 @@ class portdbapi(dbapi):
 				return cachelist[:]
 		mysplit = mycp.split("/")
 		invalid_category = mysplit[0] not in self._categories
-		glep55 = 'parse-eapi-glep-55' in self.doebuild_settings.features
 		d={}
 		if mytree:
 			mytrees = [mytree]
@@ -931,9 +905,7 @@ class portdbapi(dbapi):
 				continue
 			for x in file_list:
 				pf = None
-				if glep55:
-					pf, eapi = portage._split_ebuild_name_glep55(x)
-				elif x[-7:] == '.ebuild':
+				if x[-7:] == '.ebuild':
 					pf = x[:-7]
 
 				if pf is not None:

@@ -10,6 +10,7 @@ __all__ = [
 	"editor_is_executable",
 	"FindPackagesToScan",
 	"FindPortdir",
+	"FindVCS",
 	"format_qa_output",
 	"get_commit_message_with_editor",
 	"get_commit_message_with_stdin",
@@ -73,6 +74,9 @@ def detect_vcs_conflicts(options, vcs):
 			if not line:
 				continue
 			if line[0] not in "UPMARD": # Updates,Patches,Modified,Added,Removed/Replaced(svn),Deleted(svn)
+				# Stray Manifest is fine, we will readd it anyway.
+				if line[0] == '?' and line[1:].lstrip() == 'Manifest':
+					continue
 				logging.error(red("!!! Please fix the following issues reported " + \
 					"from cvs: ")+green("(U,P,M,A,R,D are ok)"))
 				logging.error(red("!!! Note: This is a pretend/no-modify pass..."))
@@ -433,3 +437,47 @@ def FindPortdir(settings):
 		portdir += '/'
 
 	return [normalize_path(x) for x in (portdir, portdir_overlay, location)]
+
+def FindVCS():
+	""" Try to figure out in what VCS' working tree we are. """
+
+	outvcs = []
+
+	def seek(depth = None):
+		""" Seek for distributed VCSes. """
+		retvcs = []
+		pathprep = ''
+
+		while depth is None or depth > 0:
+			if os.path.isdir(os.path.join(pathprep, '.git')):
+				retvcs.append('git')
+			if os.path.isdir(os.path.join(pathprep, '.bzr')):
+				retvcs.append('bzr')
+			if os.path.isdir(os.path.join(pathprep, '.hg')):
+				retvcs.append('hg')
+
+			if retvcs:
+				break
+			pathprep = os.path.join(pathprep, '..')
+			if os.path.realpath(pathprep).strip('/') == '':
+				break
+			if depth is not None:
+				depth = depth - 1
+
+		return retvcs
+
+	# Level zero VCS-es.
+	if os.path.isdir('CVS'):
+		outvcs.append('cvs')
+	if os.path.isdir('.svn'):
+		outvcs.append('svn')
+
+	# If we already found one of 'level zeros', just take a quick look
+	# at the current directory. Otherwise, seek parents till we get
+	# something or reach root.
+	if outvcs:
+		outvcs.extend(seek(1))
+	else:
+		outvcs = seek()
+
+	return outvcs

@@ -17,4 +17,5 @@ EMAKE_PARALLEL_DISABLED_VIA_MAKEOPTS = 'Upstream parallel compilation bug (MAKEO
 DEPRECATED_BINDNOW_FLAGS = 'Deprecated bindnow-flags call on line: %d'
 EAPI_DEFINED_AFTER_INHERIT = 'EAPI defined after inherit on line: %d'
 NO_AS_NEEDED = 'Upstream asneeded linking bug (no-as-needed on line: %d)'
+PRESERVE_OLD_LIB = 'Upstream ABI change workaround on line: %d'
 BUILT_WITH_USE = 'built_with_use on line: %d'

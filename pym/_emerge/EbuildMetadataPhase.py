@@ -34,9 +34,6 @@ class EbuildMetadataPhase(SubProcess):
 		ebuild_path = self.ebuild_path
 
 		eapi = None
-		if 'parse-eapi-glep-55' in settings.features:
-			pf, eapi = portage._split_ebuild_name_glep55(
-				os.path.basename(ebuild_path))
 		if eapi is None and \
 			'parse-eapi-ebuild-head' in settings.features:
 			eapi = portage._parse_eapi_ebuild_head(

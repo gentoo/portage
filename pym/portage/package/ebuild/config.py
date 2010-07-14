@@ -24,7 +24,8 @@ from portage import bsd_chflags, eapi_is_supported, \
 from portage.const import CACHE_PATH, CUSTOM_PROFILE_PATH, \
 	DEPCACHE_PATH, GLOBAL_CONFIG_PATH, INCREMENTALS, MAKE_CONF_FILE, \
 	MODULES_FILE_PATH, PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, \
-	PRIVATE_PATH, PROFILE_PATH, USER_CONFIG_PATH, USER_VIRTUALS_FILE, \
+	PRIVATE_PATH, PROFILE_PATH, SUPPORTED_FEATURES, USER_CONFIG_PATH, \
+	USER_VIRTUALS_FILE, \
 	EPREFIX, EPREFIX_LSTRIP, BPREFIX
 from portage.data import portage_gid
 from portage.dbapi import dbapi
@@ -179,13 +180,13 @@ class config(object):
 		"PORTAGE_BIN_PATH",
 		"PORTAGE_BUILDDIR", "PORTAGE_COLORMAP",
 		"PORTAGE_CONFIGROOT", "PORTAGE_DEBUG", "PORTAGE_DEPCACHEDIR",
-		"PORTAGE_GID",
+		"PORTAGE_GID", "PORTAGE_GRPNAME",
 		"PORTAGE_INST_GID", "PORTAGE_INST_UID",
 		"PORTAGE_IUSE",
 		"PORTAGE_LOG_FILE", "PORTAGE_MASTER_PID",
 		"PORTAGE_PYM_PATH", "PORTAGE_QUIET",
 		"PORTAGE_REPO_NAME", "PORTAGE_RESTRICT",
-		"PORTAGE_TMPDIR", "PORTAGE_UPDATE_ENV",
+		"PORTAGE_TMPDIR", "PORTAGE_UPDATE_ENV", "PORTAGE_USERNAME",
 		"PORTAGE_VERBOSE", "PORTAGE_WORKDIR_MODE",
 		"PORTDIR", "PORTDIR_OVERLAY", "PREROOTPATH", "PROFILE_PATHS",
 		"REPLACING_VERSIONS", "REPLACED_BY_VERSION",
@@ -1014,12 +1015,8 @@ class config(object):
 
 			self["FEATURES"] = " ".join(sorted(self.features))
 			self.backup_changes("FEATURES")
-			global _glep_55_enabled, _validate_cache_for_unsupported_eapis
 			if 'parse-eapi-ebuild-head' in self.features:
 				_validate_cache_for_unsupported_eapis = False
-			if 'parse-eapi-glep-55' in self.features:
-				_validate_cache_for_unsupported_eapis = False
-				_glep_55_enabled = True
 
 			self._iuse_implicit_re = re.compile("^(%s)$" % \
 				"|".join(self._get_implicit_iuse()))
@@ -1161,6 +1158,18 @@ class config(object):
 			not fakeroot_capable:
 			writemsg(_("!!! FEATURES=fakeroot is enabled, but the "
 				"fakeroot binary is not installed.\n"), noiselevel=-1)
+
+		if 'unknown-features-warn' in self.features:
+			unknown_features = []
+			for x in self.features:
+				if x not in SUPPORTED_FEATURES:
+					unknown_features.append(x)
+
+			if unknown_features:
+				writemsg(colorize("BAD",
+					_("FEATURES variable contains an unknown value(s): %s") % \
+					", ".join(unknown_features)) \
+					+ "\n", noiselevel=-1)
 
 	def loadVirtuals(self,root):
 		"""Not currently used by portage."""
@@ -2196,7 +2205,7 @@ class config(object):
 					if x[0]=="+":
 						# Not legal. People assume too much. Complain.
 						writemsg(colorize("BAD",
-							_("USE flags should not start with a '+': %s") % x) \
+							_("%s values should not start with a '+': %s") % (mykey,x)) \
 							+ "\n", noiselevel=-1)
 						x=x[1:]
 						if not x:

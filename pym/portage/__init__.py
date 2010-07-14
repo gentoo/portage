@@ -227,7 +227,9 @@ class _unicode_func_wrapper(object):
 
 		rval = self._func(*wrapped_args, **wrapped_kwargs)
 
-		if isinstance(rval, (list, tuple)):
+		# Don't use isinstance() since we don't want to convert subclasses
+		# of tuple such as posix.stat_result in python-3.2.
+		if rval.__class__ in (list, tuple):
 			decoded_rval = []
 			for x in rval:
 				try:
@@ -469,20 +471,6 @@ def _parse_eapi_ebuild_head(f):
 		if count >= _parse_eapi_ebuild_head_max_lines:
 			break
 	return '0'
-
-# True when FEATURES=parse-eapi-glep-55 is enabled.
-_glep_55_enabled = False
-
-_split_ebuild_name_glep55_re = re.compile(r'^(.*)\.ebuild(-([^.]+))?$')
-
-def _split_ebuild_name_glep55(name):
-	"""
-	@returns: (pkg-ver-rev, eapi)
-	"""
-	m = _split_ebuild_name_glep55_re.match(name)
-	if m is None:
-		return (None, None)
-	return (m.group(1), m.group(3))
 
 def _movefile(src, dest, **kwargs):
 	"""Calls movefile and raises a PortageException if an error occurs."""

@@ -56,6 +56,7 @@ from repoman import utilities
 from repoman.herdbase import make_herd_base
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
+from _emerge.userquery import userquery
 import portage.checksum
 import portage.const
 import portage.dep
@@ -167,6 +168,9 @@ def ParseArgs(args, qahelp):
 	parser.description += "\nDistributed under the terms of the GNU General Public License v2"
 	parser.description += "\nmodes: " + " | ".join(map(green,mode_keys))
 
+	parser.add_option('-a', '--ask', dest='ask', action='store_true', default=False,
+		help='Request a confirmation before commiting')
+
 	parser.add_option('-m', '--commitmsg', dest='commitmsg',
 		help='specify a commit message on the command line')
 
@@ -181,6 +185,9 @@ def ParseArgs(args, qahelp):
 
 	parser.add_option('-f', '--force', dest='force', default=False, action='store_true',
 		help='Commit with QA violations')
+
+	parser.add_option('--vcs', dest='vcs',
+		help='Force using specific VCS instead of autodetection')
 
 	parser.add_option('-v', '--verbose', dest="verbosity", action='count',
 		help='be very verbose in output', default=0)
@@ -482,17 +489,21 @@ if portdir is None:
 myreporoot = os.path.basename(portdir_overlay)
 myreporoot += mydir[len(portdir_overlay):]
 
-vcs = None
-if os.path.isdir("CVS"):
-	vcs = "cvs"
-if os.path.isdir(".svn"):
-	vcs = "svn"
-elif os.path.isdir(os.path.join(portdir_overlay, ".git")):
-	vcs = "git"
-elif os.path.isdir(os.path.join(portdir_overlay, ".bzr")):
-	vcs = "bzr"
-elif os.path.isdir(os.path.join(portdir_overlay, ".hg")):
-	vcs = "hg"
+if options.vcs:
+	if options.vcs in ('cvs', 'svn', 'git', 'bzr', 'hg'):
+		vcs = options.vcs
+	else:
+		vcs = None
+else:
+	vcses = utilities.FindVCS()
+	if len(vcses) > 1:
+		print(red('*** Ambiguous workdir -- more than one VCS found at the same depth: %s.' % ', '.join(vcses)))
+		print(red('*** Please either clean up your workdir or specify --vcs option.'))
+		sys.exit(1)
+	elif vcses:
+		vcs = vcses[0]
+	else:
+		vcs = None
 
 # Note: We don't use ChangeLogs in distributed SCMs.
 # It will be generated on server side from scm log,
@@ -937,18 +948,10 @@ if vcs == "svn":
 	mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and elem[:1] in "MR" ]
 	mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A") ]
 elif vcs == "git":
-	strip_levels = repolevel - 1
-
-	mychanged = os.popen("git diff-index --name-only --diff-filter=M HEAD").readlines()
-	if strip_levels:
-		mychanged = [elem[repo_subdir_len:] for elem in mychanged \
-			if elem[:repo_subdir_len] == repo_subdir]
+	mychanged = os.popen("git diff-index --name-only --relative --diff-filter=M HEAD").readlines()
 	mychanged = ["./" + elem[:-1] for elem in mychanged]
 
-	mynew = os.popen("git diff-index --name-only --diff-filter=A HEAD").readlines()
-	if strip_levels:
-		mynew = [elem[repo_subdir_len:] for elem in mynew \
-			if elem[:repo_subdir_len] == repo_subdir]
+	mynew = os.popen("git diff-index --name-only --relative --diff-filter=A HEAD").readlines()
 	mynew = ["./" + elem[:-1] for elem in mynew]
 elif vcs == "bzr":
 	bzrstatus = os.popen("bzr status -S .").readlines()
@@ -2160,24 +2163,13 @@ else:
 			for prop in props if " - " in prop)
 
 	elif vcs == "git":
-		strip_levels = repolevel - 1
-
-		mychanged = os.popen("git diff-index --name-only --diff-filter=M HEAD").readlines()
-		if strip_levels:
-			mychanged = [elem[repo_subdir_len:] for elem in mychanged \
-				if elem[:repo_subdir_len] == repo_subdir]
+		mychanged = os.popen("git diff-index --name-only --relative --diff-filter=M HEAD").readlines()
 		mychanged = ["./" + elem[:-1] for elem in mychanged]
 
-		mynew = os.popen("git diff-index --name-only --diff-filter=A HEAD").readlines()
-		if strip_levels:
-			mynew = [elem[repo_subdir_len:] for elem in mynew \
-				if elem[:repo_subdir_len] == repo_subdir]
+		mynew = os.popen("git diff-index --name-only --relative --diff-filter=A HEAD").readlines()
 		mynew = ["./" + elem[:-1] for elem in mynew]
 
-		myremoved = os.popen("git diff-index --name-only --diff-filter=D HEAD").readlines()
-		if strip_levels:
-			myremoved = [elem[repo_subdir_len:] for elem in myremoved \
-				if elem[:repo_subdir_len] == repo_subdir]
+		myremoved = os.popen("git diff-index --name-only --relative --diff-filter=D HEAD").readlines()
 		myremoved = ["./" + elem[:-1] for elem in myremoved]
 
 	if vcs == "bzr":
@@ -2288,11 +2280,15 @@ else:
 		unameout += platform.processor()
 	else:
 		unameout += platform.machine()
-	commitmessage += "\n(Portage version: %s/%s/%s" % \
+	commitmessage += "\n\n(Portage version: %s/%s/%s" % \
 		(portage_version, vcs, unameout)
 	if options.force:
 		commitmessage += ", RepoMan options: --force"
 	commitmessage += ")"
+
+	if options.ask and userquery('Commit changes?', True) != 'Yes':
+		print("* aborting commit.")
+		sys.exit(1)
 
 	if vcs in ('cvs', 'svn') and (myupdates or myremoved):
 		myfiles = myupdates + myremoved
@@ -2543,11 +2539,12 @@ else:
 
 		fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
 		mymsg = os.fdopen(fd, "w")
-		mymsg.write(commitmessage)
+		# strip the closing parenthesis
+		mymsg.write(commitmessage[:-1])
 		if signed:
-			mymsg.write("\n (Signed Manifest commit)")
+			mymsg.write(", signed Manifest commit)")
 		else:
-			mymsg.write("\n (Unsigned Manifest commit)")
+			mymsg.write(", unsigned Manifest commit)")
 		mymsg.close()
 
 		commit_cmd = []
