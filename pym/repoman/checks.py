@@ -247,7 +247,7 @@ class EbuildUselessDodoc(LineCheck):
 	"""Check ebuild for useless files in dodoc arguments."""
 	repoman_check_name = 'ebuild.minorsyn'
 	uselessdodoc_re = re.compile(
-		r'^\s*dodoc(\s+|\s+.*\s+)(ABOUT-NLS|COPYING|LICENSE)($|\s)')
+		r'^\s*dodoc(\s+|\s+.*\s+)(ABOUT-NLS|COPYING|LICENCE|LICENSE)($|\s)')
 
 	def check(self, num, line):
 		match = self.uselessdodoc_re.match(line)
