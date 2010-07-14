@@ -74,10 +74,14 @@ def _parse_lafile_contents(contents):
 def rewrite_lafile(contents):
 	"""
 	Given the contents of an .la file, parse and fix it.
-	Returns a bool, string tuple. 
-	The bool indicates if the file needs fixing.
-	The string contains the fixed contents if the file needs fixing.
+	This operates with strings of raw bytes (assumed to contain some ascii
+	characters), in order to avoid any potential character encoding issues.
 	Raises 'InvalidData' if the .la file is invalid.
+	@param contents: the contents of a libtool archive file
+	@type contents: bytes
+	@rtype: tuple
+	@returns: (True, fixed_contents) if something needed to be
+		fixed, (False, None) otherwise.
 	"""
 	#Parse the 'dependency_libs' and 'inherited_linker_flags' lines.
 	dep_libs, inh_link_flags = \
