@@ -3613,21 +3613,32 @@ class dblink(object):
 						showMessage(_("bak %s %s.backup\n") % (mydest, mydest),
 							level=logging.ERROR, noiselevel=-1)
 						#now create our directory
-						if self.settings.selinux_enabled():
-							_selinux_merge.mkdir(mydest, mysrc)
-						else:
-							os.mkdir(mydest)
+						try:
+							if self.settings.selinux_enabled():
+								_selinux_merge.mkdir(mydest, mysrc)
+							else:
+								os.mkdir(mydest)
+						except OSError as e:
+							if e.errno != errno.EEXIST:
+								raise
+							del e
+
 						if bsd_chflags:
 							bsd_chflags.lchflags(mydest, dflags)
 						os.chmod(mydest, mystat[0])
 						os.chown(mydest, mystat[4], mystat[5])
 						showMessage(">>> %s/\n" % mydest)
 				else:
-					#destination doesn't exist
-					if self.settings.selinux_enabled():
-						_selinux_merge.mkdir(mydest, mysrc)
-					else:
-						os.mkdir(mydest)
+					try:
+						#destination doesn't exist
+						if self.settings.selinux_enabled():
+							_selinux_merge.mkdir(mydest, mysrc)
+						else:
+							os.mkdir(mydest)
+					except OSError as e:
+						if e.errno != errno.EEXIST:
+							raise
+						del e
 					os.chmod(mydest, mystat[0])
 					os.chown(mydest, mystat[4], mystat[5])
 					showMessage(">>> %s/\n" % mydest)
