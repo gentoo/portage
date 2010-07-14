@@ -70,8 +70,8 @@ class EbuildHeader(LineCheck):
 	gentoo_copyright = r'^# Copyright ((1999|2\d\d\d)-)?%s Gentoo Foundation$'
 	# Why a regex here, use a string match
 	# gentoo_license = re.compile(r'^# Distributed under the terms of the GNU General Public License v2$')
-	gentoo_license = r'# Distributed under the terms of the GNU General Public License v2'
-	cvs_header = re.compile(r'^#\s*\$Header.*\$$')
+	gentoo_license = '# Distributed under the terms of the GNU General Public License v2'
+	cvs_header = re.compile(r'^# \$Header: .*\$$')
 
 	def new(self, pkg):
 		if pkg.mtime is None:
@@ -87,7 +87,7 @@ class EbuildHeader(LineCheck):
 		elif num == 0:
 			if not self.gentoo_copyright_re.match(line):
 				return errors.COPYRIGHT_ERROR
-		elif num == 1 and line.strip() != self.gentoo_license:
+		elif num == 1 and line.rstrip('\n') != self.gentoo_license:
 			return errors.LICENSE_ERROR
 		elif num == 2:
 			if not self.cvs_header.match(line):
