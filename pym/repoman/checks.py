@@ -389,10 +389,10 @@ class NoAsNeeded(LineCheck):
 	error = errors.NO_AS_NEEDED
 
 class PreserveOldLib(LineCheck):
-        """Check for calls to the preserve_old_lib function."""
-        repoman_check_name = 'upstream.workaround'
-        re = re.compile(r'.*preserve_old_lib')
-        error = errors.PRESERVE_OLD_LIB
+	"""Check for calls to the preserve_old_lib function."""
+	repoman_check_name = 'upstream.workaround'
+	re = re.compile(r'.*preserve_old_lib')
+	error = errors.PRESERVE_OLD_LIB
 
 class DeprecatedBindnowFlags(LineCheck):
 	"""Check for calls to the deprecated bindnow-flags function."""
