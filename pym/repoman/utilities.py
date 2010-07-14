@@ -10,6 +10,7 @@ __all__ = [
 	"editor_is_executable",
 	"FindPackagesToScan",
 	"FindPortdir",
+	"FindVCS",
 	"format_qa_output",
 	"get_commit_message_with_editor",
 	"get_commit_message_with_stdin",
