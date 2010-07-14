@@ -224,6 +224,13 @@ class EbuildAssignment(LineCheck):
 		self.previous_line = line
 		return e
 
+class Eapi3EbuildAssignment(EbuildAssignment):
+	"""Ensure ebuilds don't assign to readonly EAPI 3-introduced variables."""
+
+	readonly_assignment = re.compile(r'\s*(export\s+)?(ED|EPREFIX|EROOT)=')
+
+	def check_eapi(self, eapi):
+		return eapi not in ('0', '1', '2')
 
 class EbuildNestedDie(LineCheck):
 	"""Check ebuild for nested die statements (die statements in subshells"""
@@ -500,7 +507,7 @@ class Eapi4GoneVars(LineCheck):
 
 _constant_checks = tuple((c() for c in (
 	EbuildHeader, EbuildWhitespace, EbuildBlankLine, EbuildQuote,
-	EbuildAssignment, EbuildUselessDodoc,
+	EbuildAssignment, Eapi3EbuildAssignment, EbuildUselessDodoc,
 	EbuildUselessCdS, EbuildNestedDie,
 	EbuildPatches, EbuildQuotedA, EapiDefinition,
 	IUseUndefined, InheritAutotools,
