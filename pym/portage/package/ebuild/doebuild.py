@@ -1622,7 +1622,7 @@ def _post_src_install_uid_fix(mysettings, out):
 				if lafilefixing and \
 					fname.endswith(".la") and os.path.isfile(fpath):
 					f = open(_unicode_encode(fpath,
-						encoding=_encodings['fs'], errors='strict'),
+						encoding=_encodings['merge'], errors='strict'),
 						mode='rb')
 					contents = f.read()
 					f.close()
@@ -1643,7 +1643,7 @@ def _post_src_install_uid_fix(mysettings, out):
 							writemsg("Fixing .la files\n", fd=out)
 						writemsg("   %s\n" % fpath[len(destdir):], fd=out)
 						f = open(_unicode_encode(fpath,
-							encoding=_encodings['fs'], errors='strict'),
+							encoding=_encodings['merge'], errors='strict'),
 							mode='wb')
 						f.write(new_contents)
 						f.close()
