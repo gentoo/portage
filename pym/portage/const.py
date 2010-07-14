@@ -104,7 +104,7 @@ SUPPORTED_FEATURES       = frozenset([
                            "fakeroot", "fail-clean", "fixpackages", "getbinpkg",
                            "installsources", "keeptemp", "keepwork", "lafilefixing", "lmirror",
                            "metadata-transfer", "mirror", "multilib-strict", "news",
-                           "noauto", "noclean", "nodoc", "noinfo", "noman", "nostrip"
+                           "noauto", "noclean", "nodoc", "noinfo", "noman", "nostrip",
                            "notitles", "parallel-fetch", "parse-eapi-ebuild-head",
                            "parse-eapi-glep-55", "preserve-libs", "protect-owned",
                            "python-trace", "sandbox", "sesandbox", "severe", "sfperms",
