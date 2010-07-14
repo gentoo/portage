@@ -429,13 +429,6 @@ class SrcUnpackPatches(PhaseCheck):
 	repoman_check_name = 'ebuild.minorsyn'
 	src_prepare_tools_re = re.compile(r'\s(e?patch|sed)\s')
 
-	def new(self, pkg):
-		if pkg.metadata['EAPI'] not in ('0', '1'):
-			self.eapi = pkg.metadata['EAPI']
-		else:
-			self.eapi = None
-		self.in_src_unpack = None
-
 	def check_eapi(self, eapi):
 		return eapi not in ('0', '1')
 
@@ -458,11 +451,8 @@ class Eapi3DeprecatedFuncs(LineCheck):
 	ignore_line = re.compile(r'(^\s*#)')
 	deprecated_commands_re = re.compile(r'^\s*(check_license)\b')
 
-	def new(self, pkg):
-		self.eapi = pkg.metadata['EAPI']
-
 	def check_eapi(self, eapi):
-		return self.eapi not in ('0', '1', '2')
+		return eapi not in ('0', '1', '2')
 
 	def check(self, num, line):
 		m = self.deprecated_commands_re.match(line)
@@ -476,11 +466,8 @@ class Eapi4IncompatibleFuncs(LineCheck):
 	ignore_line = re.compile(r'(^\s*#)')
 	banned_commands_re = re.compile(r'^\s*(dosed|dohard)')
 
-	def new(self, pkg):
-		self.eapi = pkg.metadata['EAPI']
-
 	def check_eapi(self, eapi):
-		return self.eapi not in ('0', '1', '2', '3', '3_pre2')
+		return eapi not in ('0', '1', '2', '3', '3_pre2')
 
 	def check(self, num, line):
 		m = self.banned_commands_re.match(line)
@@ -493,11 +480,8 @@ class Eapi4GoneVars(LineCheck):
 	ignore_line = re.compile(r'(^\s*#)')
 	undefined_vars_re = re.compile(r'.*\$(\{(AA|KV)\}|(AA|KV))')
 
-	def new(self, pkg):
-		self.eapi = pkg.metadata['EAPI']
-
 	def check_eapi(self, eapi):
-		return self.eapi not in ('0', '1', '2', '3', '3_pre2')
+		return eapi not in ('0', '1', '2', '3', '3_pre2')
 
 	def check(self, num, line):
 		m = self.undefined_vars_re.match(line)
