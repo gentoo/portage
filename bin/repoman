@@ -270,7 +270,6 @@ qahelp={
 	"ebuild.notadded":"Ebuilds that exist but have not been added to cvs",
 	"ebuild.patches":"PATCHES variable should be a bash array to ensure white space safety",
 	"changelog.notadded":"ChangeLogs that exist but have not been added to cvs",
-	"filedir.missing":"Package lacks a files directory",
 	"file.executable":"Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do note need the executable bit",
 	"file.size":"Files in the files directory must be under 20 KiB",
 	"file.size.fatal":"Files in the files directory must be under 60 KiB",
