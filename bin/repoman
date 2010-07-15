@@ -2431,7 +2431,7 @@ else:
 			fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
 			mymsg = os.fdopen(fd, "wb")
 			mymsg.write(_unicode_encode(commitmessage))
-			mymsg.write("\n (Unsigned Manifest commit)")
+			mymsg.write(b"\n (Unsigned Manifest commit)")
 			mymsg.close()
 
 			commit_cmd = [vcs]
@@ -2536,9 +2536,9 @@ else:
 		# strip the closing parenthesis
 		mymsg.write(_unicode_encode(commitmessage[:-1]))
 		if signed:
-			mymsg.write(_unicode_encode(", signed Manifest commit)"))
+			mymsg.write(b", signed Manifest commit)")
 		else:
-			mymsg.write(_unicode_encode(", unsigned Manifest commit)"))
+			mymsg.write(b", unsigned Manifest commit)")
 		mymsg.close()
 
 		commit_cmd = []
