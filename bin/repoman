@@ -135,14 +135,17 @@ class RepomanOptionParser(optparse.OptionParser):
 		return result
 
 
-def ParseArgs(args, qahelp):
+def ParseArgs(argv, qahelp):
 	"""This function uses a customized optionParser to parse command line arguments for repoman
 	Args:
-	  args - a sequence of command line arguments
+	  argv - a sequence of command line arguments
 		qahelp - a dict of qa warning to help message
 	Returns:
 	  (opts, args), just like a call to parser.parse_args()
 	"""
+
+	if argv and sys.hexversion < 0x3000000 and not isinstance(argv[0], unicode):
+		argv = [portage._unicode_decode(x) for x in argv]
 
 	modes = {
 		'commit' : 'Run a scan then commit changes',
@@ -159,7 +162,7 @@ def ParseArgs(args, qahelp):
 	mode_keys.sort()
 
 	parser = RepomanOptionParser(formatter=RepomanHelpFormatter(), usage="%prog [options] [mode]")
-	parser.description = green(" ".join((os.path.basename(args[0]), "1.2")))
+	parser.description = green(" ".join((os.path.basename(argv[0]), "1.2")))
 	parser.description += "\nCopyright 1999-2007 Gentoo Foundation"
 	parser.description += "\nDistributed under the terms of the GNU General Public License v2"
 	parser.description += "\nmodes: " + " | ".join(map(green,mode_keys))
@@ -221,14 +224,12 @@ def ParseArgs(args, qahelp):
 	for k in sorted_qa:
 		parser.on_tail(" %s %s\n" % (k.ljust(20), qahelp[k]))
 
-	if not args:
-		args = sys.argv
-	opts, args = parser.parse_args(args)
+	opts, args = parser.parse_args(argv[1:])
 
 	if opts.mode == 'help':
 		parser.print_help(short=False)
 
-	for arg in args[1:]:
+	for arg in args:
 		if arg in modes:
 			if not opts.mode:
 				opts.mode = arg
@@ -2236,7 +2237,9 @@ else:
 	commitmessage = options.commitmsg
 	if options.commitmsgfile:
 		try:
-			f = open(options.commitmsgfile)
+			f = codecs.open(_unicode_encode(options.commitmsgfile,
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['content'], errors='replace')
 			commitmessage = f.read()
 			f.close()
 			del f
@@ -2286,8 +2289,8 @@ else:
 		if not myheaders and "sign" not in repoman_settings.features:
 			myfiles += mymanifests
 		fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
-		mymsg = os.fdopen(fd, "w")
-		mymsg.write(commitmessage)
+		mymsg = os.fdopen(fd, "wb")
+		mymsg.write(_unicode_encode(commitmessage))
 		mymsg.close()
 
 		print()
@@ -2426,8 +2429,8 @@ else:
 		if repolevel < 3 and "sign" in repoman_settings.features:
 
 			fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
-			mymsg = os.fdopen(fd, "w")
-			mymsg.write(commitmessage)
+			mymsg = os.fdopen(fd, "wb")
+			mymsg.write(_unicode_encode(commitmessage))
 			mymsg.write("\n (Unsigned Manifest commit)")
 			mymsg.close()
 
@@ -2529,13 +2532,13 @@ else:
 		myfiles.sort()
 
 		fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
-		mymsg = os.fdopen(fd, "w")
+		mymsg = os.fdopen(fd, "wb")
 		# strip the closing parenthesis
-		mymsg.write(commitmessage[:-1])
+		mymsg.write(_unicode_encode(commitmessage[:-1]))
 		if signed:
-			mymsg.write(", signed Manifest commit)")
+			mymsg.write(_unicode_encode(", signed Manifest commit)"))
 		else:
-			mymsg.write(", unsigned Manifest commit)")
+			mymsg.write(_unicode_encode(", unsigned Manifest commit)"))
 		mymsg.close()
 
 		commit_cmd = []
