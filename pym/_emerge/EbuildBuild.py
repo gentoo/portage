@@ -83,32 +83,54 @@ class EbuildBuild(CompositeTask):
 				self.wait()
 				return
 
+		self._build_dir = EbuildBuildDir(pkg=pkg, settings=settings)
+		self._build_dir.lock()
+
+		# Cleaning needs to happen before fetch, since the build dir
+		# is used for log handling.
+		msg = " === (%s of %s) Cleaning (%s::%s)" % \
+			(self.pkg_count.curval, self.pkg_count.maxval,
+			self.pkg.cpv, self._ebuild_path)
+		short_msg = "emerge: (%s of %s) %s Clean" % \
+			(self.pkg_count.curval, self.pkg_count.maxval, self.pkg.cpv)
+		self.logger.log(msg, short_msg=short_msg)
+
+		pre_clean_phase = EbuildPhase(background=self.background,
+			pkg=self.pkg, phase='clean',
+			scheduler=self.scheduler, settings=self.settings,
+			tree=self._tree)
+		self._start_task(pre_clean_phase, self._pre_clean_exit)
+
+	def _pre_clean_exit(self, pre_clean_phase):
+		if self._final_exit(pre_clean_phase) != os.EX_OK:
+			self._unlock_builddir()
+			self.wait()
+			return
+
+		# for log handling
+		portage.prepare_build_dirs(self.pkg.root, self.settings, 1)
+
 		fetcher = EbuildFetcher(config_pool=self.config_pool,
-			fetchall=opts.fetch_all_uri,
-			fetchonly=opts.fetchonly,
+			fetchall=self.opts.fetch_all_uri,
+			fetchonly=self.opts.fetchonly,
 			background=self.background,
-			pkg=pkg, scheduler=self.scheduler)
+			logfile=self.settings.get('PORTAGE_LOG_FILE'),
+			pkg=self.pkg, scheduler=self.scheduler)
 
 		self._start_task(fetcher, self._fetch_exit)
 
 	def _fetch_exit(self, fetcher):
-		opts = self.opts
-		pkg = self.pkg
 
-		fetch_failed = False
-		if opts.fetchonly:
-			fetch_failed = self._final_exit(fetcher) != os.EX_OK
-		else:
-			fetch_failed = self._default_exit(fetcher) != os.EX_OK
+		portage.elog.elog_process(self.pkg.cpv, self.settings)
 
-		if fetch_failed and fetcher.logfile is not None and \
-			os.path.exists(fetcher.logfile):
-			self.settings["PORTAGE_LOG_FILE"] = fetcher.logfile
-
-		if fetch_failed or opts.fetchonly:
+		if self._default_exit(fetcher) != os.EX_OK:
+			self._unlock_builddir()
 			self.wait()
 			return
 
+		# discard successful fetch log
+		self._build_dir.clean_log()
+		pkg = self.pkg
 		logger = self.logger
 		opts = self.opts
 		pkg_count = self.pkg_count
@@ -117,17 +139,6 @@ class EbuildBuild(CompositeTask):
 		features = settings.features
 		ebuild_path = self._ebuild_path
 		system_set = pkg.root_config.sets["system"]
-
-		self._build_dir = EbuildBuildDir(pkg=pkg, settings=settings)
-		self._build_dir.lock()
-
-		# Cleaning is triggered before the setup
-		# phase, in portage.doebuild().
-		msg = " === (%s of %s) Cleaning (%s::%s)" % \
-			(pkg_count.curval, pkg_count.maxval, pkg.cpv, ebuild_path)
-		short_msg = "emerge: (%s of %s) %s Clean" % \
-			(pkg_count.curval, pkg_count.maxval, pkg.cpv)
-		logger.log(msg, short_msg=short_msg)
 
 		#buildsyspkg: Check if we need to _force_ binary package creation
 		self._issyspkg = "buildsyspkg" in features and \

@@ -26,18 +26,6 @@ class EbuildExecuter(CompositeTask):
 	def _start(self):
 		self._tree = "porttree"
 		pkg = self.pkg
-		phase = "clean"
-		clean_phase = EbuildPhase(background=self.background, pkg=pkg, phase=phase,
-			scheduler=self.scheduler, settings=self.settings, tree=self._tree)
-		self._start_task(clean_phase, self._clean_phase_exit)
-
-	def _clean_phase_exit(self, clean_phase):
-
-		if self._default_exit(clean_phase) != os.EX_OK:
-			self.wait()
-			return
-
-		pkg = self.pkg
 		scheduler = self.scheduler
 		settings = self.settings
 		cleanup = 0
