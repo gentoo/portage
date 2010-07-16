@@ -24,7 +24,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 
 	# We enable cleanup when we want to make sure old cruft (such as the old
 	# environment) doesn't interfere with the current phase.
-	if cleanup:
+	if cleanup and 'keeptemp' not in mysettings.features:
 		clean_dirs.append(mysettings["T"])
 
 	for clean_dir in clean_dirs:
