@@ -29,7 +29,6 @@ class EbuildFetcher(SpawnProcess):
 		settings.setcpv(self.pkg)
 		if self.prefetch and \
 			self._prefetch_size_ok(portdb, settings, ebuild_path):
-			self._settings = None
 			self.config_pool.deallocate(settings)
 			self.returncode = os.EX_OK
 			self.wait()
