@@ -60,8 +60,12 @@ class EbuildBuildDir(SlotObject):
 				portage.locks.unlockdir(catdir_lock)
 
 	def clean_log(self):
-		"""Discard existing log."""
+		"""Discard existing log. The log will not be be discarded
+		in cases when it would not make sense, like when FEATURES=keepwork
+		is enabled."""
 		settings = self.settings
+		if 'keepwork' in settings.features:
+			return
 		log_file = settings.get('PORTAGE_LOG_FILE')
 		if log_file is not None and os.path.isfile(log_file):
 			try:
