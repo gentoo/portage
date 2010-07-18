@@ -167,15 +167,19 @@ def rewrite_lafile(contents):
 
 	#Don't touch the file if we don't need to, otherwise put the expected values into
 	#'contents' and write it into the la file.
-	if dep_libs == expected_dep_libs and \
-		(inh_link_flags is None or expected_inh_link_flags == inh_link_flags):
+
+	changed = False
+	if dep_libs != expected_dep_libs:
+		contents = contents.replace(b"dependency_libs='" + dep_libs + b"'", \
+			b"dependency_libs='" + expected_dep_libs + b"'")
+		changed = True
+
+	if inh_link_flags is not None and expected_inh_link_flags != inh_link_flags:
+		contents = contents.replace(b"inherited_linker_flags='" + inh_link_flags + b"'", \
+			b"inherited_linker_flags='" + expected_inh_link_flags + b"'")
+		changed = True
+
+	if changed:
+		return True, contents
+	else:
 		return False, None
-
-	contents = re.sub(b"dependency_libs='" + dep_libs + b"'", \
-		b"dependency_libs='" + expected_dep_libs + b"'" , contents)
-
-	if inh_link_flags is not None:
-		contents = re.sub(b"inherited_linker_flags='" + inh_link_flags + b"'", \
-			b"inherited_linker_flags='" + expected_inh_link_flags + b"'" , contents)
-
-	return True, contents
