@@ -436,6 +436,35 @@ install_qa_check() {
 			": warning: is used uninitialized in this function$" # we'll ignore "may" and "might"
 			": warning: comparisons like X<=Y<=Z do not have their mathematical meaning$"
 			": warning: null argument where non-null required "
+			": warning: array subscript is below array bounds$"
+			": warning: array subscript is above array bounds$"
+			": warning: attempt to free a non-heap object"
+			": warning: .* called with .*bigger.* than .* destination buffer$"
+			": warning: call to .* will always overflow destination buffer$"
+			": warning: assuming pointer wraparound does not occur when comparing "
+			": warning: hex escape sequence out of range$"
+			": warning: [^ ]*-hand operand of comma .*has no effect$"
+			": warning: converting to non-pointer type .* from NULL"
+			": warning: NULL used in arithmetic$"
+			": warning: passing NULL to non-pointer argument"
+			": warning: the address of [^ ]* will always evaluate as"
+			": warning: the address of [^ ]* will never be NULL"
+			": warning: too few arguments for format"
+			": warning: reference to local variable .* returned"
+			": warning: returning reference to temporary"
+			": warning: function returns address of local variable"
+			# this may be valid code :/
+			#": warning: multi-character character constant$"
+			# need to check these two ...
+			#": warning: assuming signed overflow does not occur when "
+			#": warning: comparison with string literal results in unspecified behav"
+			# yacc/lex likes to trigger this one
+			#": warning: extra tokens at end of .* directive"
+			# only gcc itself triggers this ?
+			#": warning: .*noreturn.* function does return"
+			# these throw false positives when 0 is used instead of NULL
+			#": warning: missing sentinel in function call"
+			#": warning: not enough variable arguments to fit a sentinel"
 		)
 		abort="no"
 		i=0
