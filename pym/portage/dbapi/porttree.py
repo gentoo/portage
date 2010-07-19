@@ -786,8 +786,7 @@ class portdbapi(dbapi):
 		filesdict={}
 		myfiles = self.getFetchMap(mypkg, useflags=useflags)
 		ro_distdirs = [x for x in \
-			shlex_split(self.settings.get("PORTAGE_RO_DISTDIRS", "")) \
-			if os.path.isdir(x)]
+			shlex_split(self.settings.get("PORTAGE_RO_DISTDIRS", ""))]
 		#XXX: maybe this should be improved: take partial downloads
 		# into account? check checksums?
 		for myfile in myfiles:
