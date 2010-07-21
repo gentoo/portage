@@ -80,10 +80,18 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 					target=target[len(mysettings["D"]):]
 			if destexists and not stat.S_ISDIR(dstat[stat.ST_MODE]):
 				os.unlink(dest)
-			if selinux_enabled:
-				selinux.symlink(target, dest, src)
-			else:
-				os.symlink(target,dest)
+			try:
+				if selinux_enabled:
+					selinux.symlink(target, dest, src)
+				else:
+					os.symlink(target, dest)
+			except OSError as e:
+				# Some programs will create symlinks automatically, so we have
+				# to tolerate these links being recreated during the merge
+				# process. In any case, if the link is pointing at the right
+				# place, we're in good shape.
+				if e.errno != errno.ENOENT or target != os.readlink(dest):
+					raise
 			lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
 			# utime() only works on the target of a symlink, so it's not
 			# possible to perserve mtime on symlinks.
