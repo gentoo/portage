@@ -809,18 +809,32 @@ class config(object):
 			
 			pmask_locations.extend(overlay_profiles)
 
+			# package.mask and package.unmask
+			pkgmasklines = []
+			pkgunmasklines = []
+			for x in pmask_locations:
+				pkgmasklines.append(grabfile_package(
+					os.path.join(x, "package.mask"), recursive=1))
+				pkgunmasklines.append(grabfile_package(
+					os.path.join(x, "package.unmask"), recursive=1))
+
 			if local_config:
 				locations.append(abs_user_config)
-				pmask_locations.append(abs_user_config)
+				
+				pkgmasklines.append(grabfile_package(
+					os.path.join(abs_user_config, "package.mask"), recursive=1, allow_wildcard=True))
+				pkgunmasklines.append(grabfile_package(
+					os.path.join(abs_user_config, "package.unmask"), recursive=1, allow_wildcard=True))
+
 				pusedict = grabdict_package(
-					os.path.join(abs_user_config, "package.use"), recursive=1)
+					os.path.join(abs_user_config, "package.use"), recursive=1, allow_wildcard=True)
 				for k, v in pusedict.items():
 					self.pusedict.setdefault(k.cp, {})[k] = v
 
 				#package.keywords
 				pkgdict = grabdict_package(
 					os.path.join(abs_user_config, "package.keywords"),
-					recursive=1)
+					recursive=1, allow_wildcard=True)
 				for k, v in pkgdict.items():
 					# default to ~arch if no specific keyword is given
 					if not v:
@@ -838,7 +852,7 @@ class config(object):
 
 				#package.license
 				licdict = grabdict_package(os.path.join(
-					abs_user_config, "package.license"), recursive=1)
+					abs_user_config, "package.license"), recursive=1, allow_wildcard=True)
 				for k, v in licdict.items():
 					cp = k.cp
 					cp_dict = self._plicensedict.get(cp)
@@ -849,7 +863,7 @@ class config(object):
 
 				#package.properties
 				propdict = grabdict_package(os.path.join(
-					abs_user_config, "package.properties"), recursive=1)
+					abs_user_config, "package.properties"), recursive=1, allow_wildcard=True)
 				for k, v in propdict.items():
 					cp = k.cp
 					cp_dict = self._ppropertiesdict.get(cp)
@@ -905,14 +919,6 @@ class config(object):
 			archlist = stack_lists(archlist, incremental=1)
 			self.configdict["conf"]["PORTAGE_ARCHLIST"] = " ".join(archlist)
 
-			# package.mask and package.unmask
-			pkgmasklines = []
-			pkgunmasklines = []
-			for x in pmask_locations:
-				pkgmasklines.append(grabfile_package(
-					os.path.join(x, "package.mask"), recursive=1))
-				pkgunmasklines.append(grabfile_package(
-					os.path.join(x, "package.unmask"), recursive=1))
 			pkgmasklines = stack_lists(pkgmasklines, incremental=1)
 			pkgunmasklines = stack_lists(pkgunmasklines, incremental=1)
 
