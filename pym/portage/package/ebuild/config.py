@@ -1497,7 +1497,11 @@ class config(object):
 			has_changed = True
 		oldpuse = self.puse
 		self.puse = ""
-		cpdict = self.pusedict.get(cp)
+		cpdict = {}
+		cpdict.update(self.pusedict.get("*/*", {}))
+		cpdict.update(self.pusedict.get(cat+"/*", {}))
+		cpdict.update(self.pusedict.get("*/"+cp.split("/")[1], {}))
+		cpdict.update(self.pusedict.get(cp, {}))
 		if cpdict:
 			keys = list(cpdict)
 			while keys:
