@@ -4,7 +4,7 @@
 import sys
 from portage.dep import Atom, best_match_to_list, match_from_list
 from portage.exception import InvalidAtom
-from portage.versions import cpv_getkey
+from portage.versions import catsplit, cpv_getkey
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -76,7 +76,7 @@ class PackageSet(object):
 				if not a:
 					continue
 				try:
-					a = Atom(a)
+					a = Atom(a, allow_wildcard=True)
 				except InvalidAtom:
 					self._nonatoms.add(a)
 					continue
@@ -126,7 +126,7 @@ class PackageSet(object):
 			if atom.cp == pkg.cp:
 				rev_transform[atom] = atom
 			else:
-				rev_transform[Atom(atom.replace(atom.cp, pkg.cp, 1))] = atom
+				rev_transform[Atom(atom.replace(atom.cp, pkg.cp, 1), allow_wildcard=True)] = atom
 		best_match = best_match_to_list(pkg, iter(rev_transform))
 		if best_match:
 			return rev_transform[best_match]
@@ -140,8 +140,15 @@ class PackageSet(object):
 		"""
 		cpv_slot_list = [pkg]
 		cp = cpv_getkey(pkg.cpv)
+		c, p = catsplit(cp)
 		self._load() # make sure the atoms are loaded
-		atoms = self._atommap.get(cp)
+
+		atoms = set()
+		atoms.update(self._atommap.get("*/*", set()))
+		atoms.update(self._atommap.get(c+"/*", set()))
+		atoms.update(self._atommap.get("*/"+p, set()))
+		atoms.update(self._atommap.get(cp, set()))
+
 		if atoms:
 			for atom in atoms:
 				if match_from_list(atom, cpv_slot_list):
@@ -171,7 +178,7 @@ class EditablePackageSet(PackageSet):
 		for a in atoms:
 			if not isinstance(a, Atom):
 				try:
-					a = Atom(a)
+					a = Atom(a, allow_wildcard=True)
 				except InvalidAtom:
 					modified = True
 					self._nonatoms.add(a)
