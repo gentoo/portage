@@ -1714,10 +1714,19 @@ class config(object):
 		"""
 
 		cp = cpv_getkey(cpv)
-		mask_atoms = self.pmaskdict.get(cp)
+		c, p = catsplit(cp)
+		mask_atoms = []
+		mask_atoms.extend(self.pmaskdict.get("*/*", []))
+		mask_atoms.extend(self.pmaskdict.get(c+"/*", []))
+		mask_atoms.extend(self.pmaskdict.get("*/"+p, []))
+		mask_atoms.extend(self.pmaskdict.get(cp, []))
 		if mask_atoms:
 			pkg_list = ["%s:%s" % (cpv, metadata["SLOT"])]
-			unmask_atoms = self.punmaskdict.get(cp)
+			unmask_atoms = []
+			unmask_atoms.extend(self.punmaskdict.get("*/*", []))
+			unmask_atoms.extend(self.punmaskdict.get(c+"/*", []))
+			unmask_atoms.extend(self.punmaskdict.get("*/"+p, []))
+			unmask_atoms.extend(self.punmaskdict.get(cp, []))
 			for x in mask_atoms:
 				if not match_from_list(x, pkg_list):
 					continue
