@@ -32,14 +32,14 @@ class TestAtom(TestCase):
 		
 		tests_xfail = [
 			( "cat/pkg[a!]", False ),
-			#( "cat/pkg[a-]", False ),
+			( "cat/pkg[a-]", False ),
 			( "cat/pkg[!a]", False ),
 			( "cat/pkg[!a!]", False ),
 			( "cat/pkg[!a-]", False ),
 			( "cat/pkg[-a=]", False ),
 			( "cat/pkg[-a?]", False ),
 			( "cat/pkg[-a!]", False ),
-			#( "cat/pkg[-a-]", False ),
+			( "cat/pkg[-a-]", False ),
 			( "cat/pkg[=a]", False ),
 			( "cat/pkg[=a=]", False ),
 			( "cat/pkg[=a?]", False ),
