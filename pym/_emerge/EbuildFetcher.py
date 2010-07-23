@@ -10,14 +10,15 @@ import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+from portage import _unicode_decode
 import codecs
 from portage.elog.messages import eerror
+from portage.util import writemsg_stdout
 from portage.util._pty import _create_pty_or_pipe
 
 class EbuildFetcher(SpawnProcess):
 
-	__slots__ = ("config_pool", "fetchonly", "fetchall", "pkg", "prefetch") + \
-		("_build_dir",)
+	__slots__ = ("config_pool", "fetchonly", "fetchall", "pkg", "prefetch")
 
 	def _start(self):
 
@@ -34,21 +35,6 @@ class EbuildFetcher(SpawnProcess):
 			self.returncode = os.EX_OK
 			self.wait()
 			return
-
-		# In prefetch mode, logging goes to emerge-fetch.log and the builddir
-		# should not be touched since otherwise it could interfere with
-		# another instance of the same cpv concurrently being built for a
-		# different $ROOT (currently, builds only cooperate with prefetchers
-		# that are spawned for the same $ROOT).
-		if not self.prefetch:
-			self._build_dir = EbuildBuildDir(pkg=self.pkg, settings=settings)
-			self._build_dir.lock()
-			self._build_dir.clean_log()
-			cleanup=1
-			# This initializes PORTAGE_LOG_FILE.
-			portage.prepare_build_dirs(self.pkg.root, self._build_dir.settings, cleanup)
-			if self.logfile is None:
-				self.logfile = settings.get("PORTAGE_LOG_FILE")
 
 		phase = "fetch"
 		if self.fetchall:
@@ -77,6 +63,10 @@ class EbuildFetcher(SpawnProcess):
 		if debug:
 			fetch_args.append("--debug")
 
+		# Free settings now since we only have a local reference.
+		self.config_pool.deallocate(settings)
+		settings = None
+
 		if not self.background and nocolor not in ('yes', 'true'):
 			# Force consistent color output, in case we are capturing fetch
 			# output through a normal pipe due to unavailability of ptys.
@@ -84,9 +74,6 @@ class EbuildFetcher(SpawnProcess):
 
 		self.args = fetch_args
 		self.env = fetch_env
-		if self._build_dir is None:
-			# Free settings now since we only have a local reference.
-			self.config_pool.deallocate(settings)
 		SpawnProcess._start(self)
 
 	def _prefetch_size_ok(self, portdb, settings, ebuild_path):
@@ -153,30 +140,25 @@ class EbuildFetcher(SpawnProcess):
 		SpawnProcess._set_returncode(self, wait_retval)
 		# Collect elog messages that might have been
 		# created by the pkg_nofetch phase.
-		if self._build_dir is not None:
-			# Skip elog messages for prefetch, in order to avoid duplicates.
-			if not self.prefetch and self.returncode != os.EX_OK:
-				elog_out = None
-				if self.logfile is not None:
-					if self.background:
-						elog_out = codecs.open(_unicode_encode(self.logfile,
-							encoding=_encodings['fs'], errors='strict'),
-							mode='a', encoding=_encodings['content'], errors='replace')
-				msg = "Fetch failed for '%s'" % (self.pkg.cpv,)
-				if self.logfile is not None:
-					msg += ", Log file:"
-				eerror(msg, phase="unpack", key=self.pkg.cpv, out=elog_out)
-				if self.logfile is not None:
-					eerror(" '%s'" % (self.logfile,),
-						phase="unpack", key=self.pkg.cpv, out=elog_out)
-				if elog_out is not None:
-					elog_out.close()
-			if not self.prefetch:
-				portage.elog.elog_process(self.pkg.cpv, self._build_dir.settings)
-			features = self._build_dir.settings.features
-			if self.returncode == os.EX_OK:
-				self._build_dir.clean_log()
-			self._build_dir.unlock()
-			self.config_pool.deallocate(self._build_dir.settings)
-			self._build_dir = None
-
+		# Skip elog messages for prefetch, in order to avoid duplicates.
+		if not self.prefetch and self.returncode != os.EX_OK:
+			out = portage.StringIO()
+			msg = "Fetch failed for '%s'" % (self.pkg.cpv,)
+			if self.logfile is not None:
+				msg += ", Log file:"
+			eerror(msg, phase="unpack", key=self.pkg.cpv, out=out)
+			if self.logfile is not None:
+				eerror(" '%s'" % (self.logfile,),
+					phase="unpack", key=self.pkg.cpv, out=out)
+			msg = _unicode_decode(out.getvalue(),
+				encoding=_encodings['content'], errors='replace')
+			if msg:
+				if not self.background:
+					writemsg_stdout(msg, noiselevel=-1)
+				if  self.logfile is not None:
+					log_file = codecs.open(_unicode_encode(self.logfile,
+						encoding=_encodings['fs'], errors='strict'),
+						mode='a', encoding=_encodings['content'],
+						errors='backslashreplace')
+					log_file.write(msg)
+					log_file.close()

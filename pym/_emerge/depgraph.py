@@ -3531,6 +3531,19 @@ class depgraph(object):
 					# Only add a dep when the version changes.
 					if not libc_pkg.root_config.trees[
 						'vartree'].dbapi.cpv_exists(libc_pkg.cpv):
+
+						# If there's also an os-headers upgrade, we need to
+						# pull that in first. See bug #328317.
+						os_headers_pkg = self._dynamic_config.mydbapi[root].match_pkgs(
+							portage.const.OS_HEADERS_PACKAGE_ATOM)
+						if os_headers_pkg:
+							os_headers_pkg = os_headers_pkg[0]
+							if os_headers_pkg.operation == 'merge':
+								# Only add a dep when the version changes.
+								if not os_headers_pkg.root_config.trees[
+									'vartree'].dbapi.cpv_exists(os_headers_pkg.cpv):
+									asap_nodes.append(os_headers_pkg)
+
 						asap_nodes.append(libc_pkg)
 
 		def gather_deps(ignore_priority, mergeable_nodes,

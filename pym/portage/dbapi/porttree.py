@@ -788,7 +788,9 @@ class portdbapi(dbapi):
 		#XXX: maybe this should be improved: take partial downloads
 		# into account? check checksums?
 		for myfile in myfiles:
-			if myfile not in checksums:
+			try:
+				fetch_size = int(checksums[myfile]["size"])
+			except (KeyError, ValueError):
 				if debug:
 					writemsg(_("[bad digest]: missing %(file)s for %(pkg)s\n") % {"file":myfile, "pkg":mypkg})
 				continue
@@ -800,9 +802,20 @@ class portdbapi(dbapi):
 				pass
 			if mystat is None:
 				existing_size = 0
+				ro_distdirs = self.settings.get("PORTAGE_RO_DISTDIRS")
+				if ro_distdirs is not None:
+					for x in shlex_split(ro_distdirs):
+						try:
+							mystat = os.stat(os.path.join(x, myfile))
+						except OSError:
+							pass
+						else:
+							if mystat.st_size == fetch_size:
+								existing_size = fetch_size
+								break
 			else:
 				existing_size = mystat.st_size
-			remaining_size = int(checksums[myfile]["size"]) - existing_size
+			remaining_size = fetch_size - existing_size
 			if remaining_size > 0:
 				# Assume the download is resumable.
 				filesdict[myfile] = remaining_size

@@ -85,6 +85,17 @@ class test_lafilefixer(TestCase):
 			b"dependency_libs=' -L/usr/lib'\n"
 		yield b"dependency_libs=' -L/usr/lib/pkgconfig/../.. -L/usr/lib/pkgconfig/..'\n", \
 			b"dependency_libs=' -L/usr -L/usr/lib'\n"
+		#we once got a backtrace on this one
+		yield b"dependency_libs=' /usr/lib64/libMagickCore.la -L/usr/lib64 -llcms2 /usr/lib64/libtiff.la " + \
+			b"-ljbig -lc /usr/lib64/libfreetype.la /usr/lib64/libjpeg.la /usr/lib64/libXext.la " + \
+			b"/usr/lib64/libXt.la /usr/lib64/libSM.la -lICE -luuid /usr/lib64/libICE.la /usr/lib64/libX11.la " + \
+			b"/usr/lib64/libxcb.la /usr/lib64/libXau.la /usr/lib64/libXdmcp.la -lbz2 -lz -lm " + \
+			b"/usr/lib/gcc/x86_64-pc-linux-gnu/4.4.4/libgomp.la -lrt -lpthread /usr/lib64/libltdl.la -ldl " + \
+			b"/usr/lib64/libfpx.la -lstdc++'", \
+			b"dependency_libs=' -L/usr/lib64 -L/usr/lib/gcc/x86_64-pc-linux-gnu/4.4.4 -lMagickCore -llcms2 " + \
+			b"-ltiff -ljbig -lc -lfreetype -ljpeg -lXext -lXt -lSM -lICE -luuid -lX11 -lxcb -lXau -lXdmcp " + \
+			b"-lbz2 -lz -lm -lgomp -lrt -lpthread -lltdl -ldl -lfpx -lstdc++'"
+
 
 	def get_test_cases_broken(self):
 		yield b""
