@@ -1958,7 +1958,13 @@ class config(object):
 		@return: A list of properties that have not been accepted.
 		"""
 		accept_properties = self._accept_properties
-		cpdict = self._ppropertiesdict.get(cpv_getkey(cpv), None)
+		cp = cpv_getkey(cpv)
+		c, p = catsplit(cp)
+		cpdict = {}
+		cpdict.update(self._ppropertiesdict.get("*/*", {}))
+		cpdict.update(self._ppropertiesdict.get(c+"/*", {}))
+		cpdict.update(self._ppropertiesdict.get("*/"+p, {}))
+		cpdict.update(self._ppropertiesdict.get(cp, {}))
 		if cpdict:
 			accept_properties = list(self._accept_properties)
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
