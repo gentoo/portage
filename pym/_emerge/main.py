@@ -744,10 +744,10 @@ def parse_opts(tmpcmdline, silent=False):
 		for x in ' '.join(myoptions.exclude).split():
 			bad_atom = False
 			try:
-				atom = portage.dep.Atom(x)
+				atom = portage.dep.Atom(x, allow_wildcard=True)
 			except portage.exception.InvalidAtom:
 				try:
-					atom = portage.dep.Atom("null/"+x)
+					atom = portage.dep.Atom("*/"+x, allow_wildcard=True)
 				except portage.exception.InvalidAtom:
 					bad_atom = True
 			
@@ -760,7 +760,7 @@ def parse_opts(tmpcmdline, silent=False):
 					exclude.append(atom)
 
 		if bad_atoms and not silent:
-			parser.error("Invalid Atom(s) in --exclude parameter: '%s' (only package names and slot atoms allowed)\n" % \
+			parser.error("Invalid Atom(s) in --exclude parameter: '%s' (only package names and slot atoms (with widlcards) allowed)\n" % \
 				(",".join(bad_atoms),))
 
 	if myoptions.fail_clean == "True":
