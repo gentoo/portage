@@ -936,7 +936,7 @@ _atom_re = re.compile('^(?P<without_use>(?:' +
 	'(?P<op>' + _op + _cpv + ')|' +
 	'(?P<star>=' + _cpv + r'\*)|' +
 	'(?P<simple>' + _cp + '))(:' + _slot + ')?)(' + _use + ')?$', re.VERBOSE)
-_atom_wildcard_re = re.compile('(?P<simple>((' + _cat + '|\*)/(' + _pkg + '|\*)))')
+_atom_wildcard_re = re.compile('(?P<simple>((' + _cat + '|\*)/(' + _pkg + '|\*)))$')
 
 def isvalidatom(atom, allow_blockers=False):
 	"""
@@ -1094,10 +1094,13 @@ def best_match_to_list(mypkg, mylist):
 		- >=cpv     2
 		- <=cpv     2
 		- cp        1
+		- */p		0
+		- c/*		0
+		- */*		-1
 	"""
 	operator_values = {'=':6, '~':5, '=*':4,
 		'>':2, '<':2, '>=':2, '<=':2, None:1}
-	maxvalue = 0
+	maxvalue = -2
 	bestm  = None
 	for x in match_to_list(mypkg, mylist):
 		if dep_getslot(x) is not None:
@@ -1105,6 +1108,16 @@ def best_match_to_list(mypkg, mylist):
 				maxvalue = 3
 				bestm = x
 		op_val = operator_values[x.operator]
+		if x.operator is None:
+			c, p = catsplit(x)
+			if c == "*":
+				if p == "*":
+					op_val = -1
+				else:
+					op_val = 0
+			elif p == "*":
+				op_val = 0
+				
 		if op_val > maxvalue:
 			maxvalue = op_val
 			bestm  = x
@@ -1129,7 +1142,7 @@ def match_from_list(mydep, candidate_list):
 	if "!" == mydep[:1]:
 		mydep = mydep[1:]
 	if not isinstance(mydep, Atom):
-		mydep = Atom(mydep)
+		mydep = Atom(mydep, allow_wildcard=True)
 
 	mycpv     = mydep.cpv
 	mycpv_cps = catpkgsplit(mycpv) # Can be None if not specific
@@ -1161,10 +1174,18 @@ def match_from_list(mydep, candidate_list):
 			if cp is None:
 				mysplit = catpkgsplit(remove_slot(x))
 				if mysplit is not None:
-					cp = mysplit[0] + '/' + mysplit[1]
-			if cp != mycpv:
-				continue
-			mylist.append(x)
+					c = mysplit[0]
+					p = mysplit[1]
+				else:
+					continue
+			else:
+				mysplit = catsplit(cp)
+				c = mysplit[0]
+				p = mysplit[1]
+
+			if cat in (c, "*") and pkg in (p, "*"):
+				mylist.append(x)
+			
 
 	elif operator == "=": # Exact match
 		for x in candidate_list:
