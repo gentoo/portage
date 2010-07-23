@@ -282,7 +282,7 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 			newdict[k] = " ".join(v)
 	return newdict
 
-def grabdict_package(myfilename, juststrings=0, recursive=0):
+def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=False):
 	""" Does the same thing as grabdict except it validates keys
 	    with isvalidatom()"""
 	pkgs=grabdict(myfilename, juststrings, empty=1, recursive=recursive)
@@ -292,7 +292,7 @@ def grabdict_package(myfilename, juststrings=0, recursive=0):
 	atoms = {}
 	for k, v in pkgs.items():
 		try:
-			k = Atom(k, allow_wildcard=True)
+			k = Atom(k, allow_wildcard=allow_wildcard)
 		except InvalidAtom:
 			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, k),
 				noiselevel=-1)
@@ -300,7 +300,7 @@ def grabdict_package(myfilename, juststrings=0, recursive=0):
 			atoms[k] = v
 	return atoms
 
-def grabfile_package(myfilename, compatlevel=0, recursive=0):
+def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=False):
 	pkgs=grabfile(myfilename, compatlevel, recursive=recursive)
 	mybasename = os.path.basename(myfilename)
 	atoms = []
@@ -312,7 +312,7 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0):
 		if pkg[:1] == '*' and mybasename == 'packages':
 			pkg = pkg[1:]
 		try:
-			pkg = Atom(pkg)
+			pkg = Atom(pkg, allow_wildcard=allow_wildcard)
 		except InvalidAtom:
 			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, pkg),
 				noiselevel=-1)
