@@ -938,7 +938,7 @@ _atom_re = re.compile('^(?P<without_use>(?:' +
 	'(?P<simple>' + _cp + '))(:' + _slot + ')?)(' + _use + ')?$', re.VERBOSE)
 _atom_wildcard_re = re.compile('(?P<simple>((' + _cat + '|\*)/(' + _pkg + '|\*)))$')
 
-def isvalidatom(atom, allow_blockers=False):
+def isvalidatom(atom, allow_blockers=False, allow_wildcard=False):
 	"""
 	Check to see if a depend atom is valid
 
@@ -957,7 +957,7 @@ def isvalidatom(atom, allow_blockers=False):
 	"""
 	try:
 		if not isinstance(atom, Atom):
-			atom = Atom(atom)
+			atom = Atom(atom, allow_wildcard=allow_wildcard)
 		if not allow_blockers and atom.blocker:
 			return False
 		return True
