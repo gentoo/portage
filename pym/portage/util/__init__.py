@@ -292,7 +292,7 @@ def grabdict_package(myfilename, juststrings=0, recursive=0):
 	atoms = {}
 	for k, v in pkgs.items():
 		try:
-			k = Atom(k)
+			k = Atom(k, allow_wildcard=True)
 		except InvalidAtom:
 			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, k),
 				noiselevel=-1)

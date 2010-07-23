@@ -33,7 +33,7 @@ import portage.exception
 from portage.exception import InvalidData, InvalidAtom
 from portage.localization import _
 from portage.versions import catpkgsplit, catsplit, \
-	pkgcmp, pkgsplit, ververify, _cp, _cpv
+	pkgcmp, pkgsplit, ververify, _cat, _pkg, _cp, _cpv
 import portage.cache.mappings
 
 if sys.hexversion >= 0x3000000:
@@ -571,10 +571,10 @@ class Atom(_atom_base):
 		def __init__(self, forbid_overlap=False):
 			self.overlap = self._overlap(forbid=forbid_overlap)
 
-	def __new__(cls, s, unevaluated_atom=None):
+	def __new__(cls, s, unevaluated_atom=None, allow_wildcard=False):
 		return _atom_base.__new__(cls, s)
 
-	def __init__(self, s, unevaluated_atom=None):
+	def __init__(self, s, unevaluated_atom=None, allow_wildcard=False):
 		if isinstance(s, Atom):
 			# This is an efficiency assertion, to ensure that the Atom
 			# constructor is not called redundantly.
@@ -594,13 +594,23 @@ class Atom(_atom_base):
 		self.__dict__['blocker'] = blocker
 		m = _atom_re.match(s)
 		if m is None:
-			raise InvalidAtom(self)
-
-		if m.group('op') is not None:
+			if allow_wildcard:
+				m = _atom_wildcard_re.match(s)
+				if m is None:
+					raise InvalidAtom(self)
+				op = None
+				cpv = cp = m.groupdict()['simple']
+				slot = None
+				use_str = None
+			else:
+				raise InvalidAtom(self)
+		elif m.group('op') is not None:
 			base = _atom_re.groupindex['op']
 			op = m.group(base + 1)
 			cpv = m.group(base + 2)
 			cp = m.group(base + 3)
+			slot = m.group(_atom_re.groups - 1)
+			use_str = m.group(_atom_re.groups)
 			if m.group(base + 4) is not None:
 				raise InvalidAtom(self)
 		elif m.group('star') is not None:
@@ -608,21 +618,24 @@ class Atom(_atom_base):
 			op = '=*'
 			cpv = m.group(base + 1)
 			cp = m.group(base + 2)
+			slot = m.group(_atom_re.groups - 1)
+			use_str = m.group(_atom_re.groups)
 			if m.group(base + 3) is not None:
 				raise InvalidAtom(self)
 		elif m.group('simple') is not None:
 			op = None
 			cpv = cp = m.group(_atom_re.groupindex['simple'] + 1)
+			slot = m.group(_atom_re.groups - 1)
+			use_str = m.group(_atom_re.groups)
 			if m.group(_atom_re.groupindex['simple'] + 2) is not None:
 				raise InvalidAtom(self)
 		else:
 			raise AssertionError(_("required group not found in atom: '%s'") % self)
 		self.__dict__['cp'] = cp
 		self.__dict__['cpv'] = cpv
-		self.__dict__['slot'] = m.group(_atom_re.groups - 1)
+		self.__dict__['slot'] = slot
 		self.__dict__['operator'] = op
 
-		use_str = m.group(_atom_re.groups)
 		if use_str is not None:
 			use = _use_dep(dep_getusedeps(s))
 			without_use = Atom(m.group('without_use'))
@@ -923,6 +936,7 @@ _atom_re = re.compile('^(?P<without_use>(?:' +
 	'(?P<op>' + _op + _cpv + ')|' +
 	'(?P<star>=' + _cpv + r'\*)|' +
 	'(?P<simple>' + _cp + '))(:' + _slot + ')?)(' + _use + ')?$', re.VERBOSE)
+_atom_wildcard_re = re.compile('(?P<simple>((' + _cat + '|\*)/(' + _pkg + '|\*)))')
 
 def isvalidatom(atom, allow_blockers=False):
 	"""
