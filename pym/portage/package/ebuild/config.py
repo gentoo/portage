@@ -1873,7 +1873,13 @@ class config(object):
 		@return: A list of licenses that have not been accepted.
 		"""
 		accept_license = self._accept_license
-		cpdict = self._plicensedict.get(cpv_getkey(cpv), None)
+		cp = cpv_getkey(cpv)
+		c, p = catsplit(cp)
+		cpdict = {}
+		cpdict.update(self._plicensedict.get("*/*", {}))
+		cpdict.update(self._plicensedict.get(c+"/*", {}))
+		cpdict.update(self._plicensedict.get("*/"+p, {}))
+		cpdict.update(self._plicensedict.get(cp, {}))
 		if cpdict:
 			accept_license = list(self._accept_license)
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
