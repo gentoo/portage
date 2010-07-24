@@ -771,11 +771,11 @@ class config(object):
 			self["EROOT"] = target_root
 			self.backup_changes("EROOT")
 
-			self.pusedict = {}
-			self.pkeywordsdict = {}
-			self._plicensedict = {}
-			self._ppropertiesdict = {}
-			self.punmaskdict = {}
+			self.pusedict = portage.dep.ExtendedAtomDict(dict)
+			self.pkeywordsdict = portage.dep.ExtendedAtomDict(dict)
+			self._plicensedict = portage.dep.ExtendedAtomDict(dict)
+			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
+			self.punmaskdict = portage.dep.ExtendedAtomDict(list)
 			abs_user_config = os.path.join(config_root, USER_CONFIG_PATH)
 
 			# locations for "categories" and "arch.list" files
@@ -922,7 +922,7 @@ class config(object):
 			pkgmasklines = stack_lists(pkgmasklines, incremental=1)
 			pkgunmasklines = stack_lists(pkgunmasklines, incremental=1)
 
-			self.pmaskdict = {}
+			self.pmaskdict = portage.dep.ExtendedAtomDict(list)
 			for x in pkgmasklines:
 				self.pmaskdict.setdefault(x.cp, []).append(x)
 
@@ -1497,11 +1497,7 @@ class config(object):
 			has_changed = True
 		oldpuse = self.puse
 		self.puse = ""
-		cpdict = {}
-		cpdict.update(self.pusedict.get("*/*", {}))
-		cpdict.update(self.pusedict.get(cat+"/*", {}))
-		cpdict.update(self.pusedict.get("*/"+cp.split("/")[1], {}))
-		cpdict.update(self.pusedict.get(cp, {}))
+		cpdict = self.pusedict.get(cp)
 		if cpdict:
 			keys = list(cpdict)
 			while keys:
@@ -1714,19 +1710,10 @@ class config(object):
 		"""
 
 		cp = cpv_getkey(cpv)
-		c, p = catsplit(cp)
-		mask_atoms = []
-		mask_atoms.extend(self.pmaskdict.get("*/*", []))
-		mask_atoms.extend(self.pmaskdict.get(c+"/*", []))
-		mask_atoms.extend(self.pmaskdict.get("*/"+p, []))
-		mask_atoms.extend(self.pmaskdict.get(cp, []))
+		mask_atoms = self.pmaskdict.get(cp)
 		if mask_atoms:
 			pkg_list = ["%s:%s" % (cpv, metadata["SLOT"])]
-			unmask_atoms = []
-			unmask_atoms.extend(self.punmaskdict.get("*/*", []))
-			unmask_atoms.extend(self.punmaskdict.get(c+"/*", []))
-			unmask_atoms.extend(self.punmaskdict.get("*/"+p, []))
-			unmask_atoms.extend(self.punmaskdict.get(cp, []))
+			unmask_atoms = self.punmaskdict.get(cp)
 			for x in mask_atoms:
 				if not match_from_list(x, pkg_list):
 					continue
@@ -1874,12 +1861,7 @@ class config(object):
 		"""
 		accept_license = self._accept_license
 		cp = cpv_getkey(cpv)
-		c, p = catsplit(cp)
-		cpdict = {}
-		cpdict.update(self._plicensedict.get("*/*", {}))
-		cpdict.update(self._plicensedict.get(c+"/*", {}))
-		cpdict.update(self._plicensedict.get("*/"+p, {}))
-		cpdict.update(self._plicensedict.get(cp, {}))
+		cpdict = self._plicensedict.get(cp)
 		if cpdict:
 			accept_license = list(self._accept_license)
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
@@ -1959,12 +1941,7 @@ class config(object):
 		"""
 		accept_properties = self._accept_properties
 		cp = cpv_getkey(cpv)
-		c, p = catsplit(cp)
-		cpdict = {}
-		cpdict.update(self._ppropertiesdict.get("*/*", {}))
-		cpdict.update(self._ppropertiesdict.get(c+"/*", {}))
-		cpdict.update(self._ppropertiesdict.get("*/"+p, {}))
-		cpdict.update(self._ppropertiesdict.get(cp, {}))
+		cpdict = self._ppropertiesdict.get(cp)
 		if cpdict:
 			accept_properties = list(self._accept_properties)
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])

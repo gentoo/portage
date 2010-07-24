@@ -33,7 +33,7 @@ import portage.exception
 from portage.exception import InvalidData, InvalidAtom
 from portage.localization import _
 from portage.versions import catpkgsplit, catsplit, \
-	pkgcmp, pkgsplit, ververify, _cat, _pkg, _cp, _cpv
+	pkgcmp, pkgsplit, ververify, _cp, _cpv
 import portage.cache.mappings
 
 if sys.hexversion >= 0x3000000:
@@ -602,15 +602,20 @@ class Atom(_atom_base):
 			blocker = False
 		self.__dict__['blocker'] = blocker
 		m = _atom_re.match(s)
+		extended_syntax = False
 		if m is None:
 			if allow_wildcard:
 				m = _atom_wildcard_re.match(s)
 				if m is None:
 					raise InvalidAtom(self)
 				op = None
-				cpv = cp = m.groupdict()['simple']
-				slot = None
+				gdict = m.groupdict()
+				cpv = cp = gdict['simple']
+				if cpv.find("**") != -1:
+					raise InvalidAtom(self)
+				slot = gdict['slot']
 				use_str = None
+				extended_syntax = True
 			else:
 				raise InvalidAtom(self)
 		elif m.group('op') is not None:
@@ -644,6 +649,7 @@ class Atom(_atom_base):
 		self.__dict__['cpv'] = cpv
 		self.__dict__['slot'] = slot
 		self.__dict__['operator'] = op
+		self.__dict__['extended_syntax'] = extended_syntax
 
 		if use_str is not None:
 			use = _use_dep(dep_getusedeps(s))
@@ -747,6 +753,107 @@ class Atom(_atom_base):
 		"""Immutable, so returns self."""
 		memo[id(self)] = self
 		return self
+
+def extended_cp_match(extended_atom, other):
+	"""
+	Checks if an extended syntax atom matches the other, non extended atom
+	"""
+	my_slot = dep_getslot(extended_atom)
+	if my_slot is not None:
+		extended_atom = extended_atom[:-(len(my_slot)+1)]
+	mysplit = catsplit(extended_atom)
+	my_cat = mysplit[0]
+	my_pkg = mysplit[1]
+
+	other_slot = dep_getslot(other)
+	if other_slot is not None:
+		other = other[:-(len(other_slot)+1)]
+	othersplit = catsplit(other)
+	other_cat = othersplit[0]
+	other_pkg = othersplit[1]
+
+	if my_slot is not None and other_slot is not None and \
+		my_slot != other_slot:
+		return False
+
+	for my_val, other_val in ((my_cat, other_cat), (my_pkg, other_pkg)):
+		if my_val == "*":
+			continue
+
+		start = 0
+		parts = my_val.split("*")
+		for id, part in enumerate(parts):
+			if not part:
+				if id == len(parts)-1:
+					start = len(other_val)
+				continue
+			start = other_val.find(part, start)
+			if start == -1:
+				return False
+
+			start += len(part)
+
+		if start != len(other_val):
+			return False
+
+	return True
+
+class ExtendedAtomDict(object):
+	"""
+	dict() wrapper that supports extended atoms as keys and allows lookup
+	of a normal cp against other normal cp and extended cp.
+	The value type has to be given to __init__ and is assumed to be the same
+	for all values.
+	"""
+	def __init__(self, value_class):
+		self._extended = {}
+		self._normal = {}
+		self._value_class = value_class
+
+	def setdefault(self, cp, default=None):
+		if "*" in cp:
+			return self._extended.setdefault(cp, default)
+		else:
+			return self._normal.setdefault(cp, default)
+
+	def get(self, cp):
+		ret = self._value_class()
+		normal_match = self._normal.get(cp)
+		if normal_match is not None:
+			if hasattr(ret, "update"):
+				ret.update(normal_match)
+			elif hasattr(ret, "extend"):
+				ret.extend(normal_match)
+			else:
+				raise NotImplementedError()
+
+		for extended_cp in self._extended:
+			if extended_cp_match(extended_cp, cp):
+				if hasattr(ret, "update"):
+					ret.update(self._extended[extended_cp])
+				elif hasattr(ret, "extend"):
+					ret.extend(self._extended[extended_cp])
+				else:
+					raise NotImplementedError()
+
+		return ret
+
+	def __setitem__(self, cp, val):
+		if "*" in cp:
+			self._extended[cp] = val
+		else:
+			self._normal[cp] = val
+
+	def __getitem__(self, cp):
+		if "*" in cp:
+			return self._extended[cp]
+		else:
+			return self._normal[cp]
+
+	def clear(self):
+		self._extended.clear()
+		self._normal.clear()
+
 
 def get_operator(mydep):
 	"""
@@ -945,7 +1052,11 @@ _atom_re = re.compile('^(?P<without_use>(?:' +
 	'(?P<op>' + _op + _cpv + ')|' +
 	'(?P<star>=' + _cpv + r'\*)|' +
 	'(?P<simple>' + _cp + '))(:' + _slot + ')?)(' + _use + ')?$', re.VERBOSE)
-_atom_wildcard_re = re.compile('(?P<simple>((' + _cat + '|\*)/(' + _pkg + '|\*)))$')
+	
+_extended_cat = r'[\w+*][\w+.*-]*'
+_extended_pkg = r'[\w+*][\w+*-]*?'
+
+_atom_wildcard_re = re.compile('(?P<simple>(' + _extended_cat + ')/(' + _extended_pkg + '))(:(?P<slot>' + _slot + '))?$')
 
 def isvalidatom(atom, allow_blockers=False, allow_wildcard=False):
 	"""
@@ -1103,30 +1214,29 @@ def best_match_to_list(mypkg, mylist):
 		- >=cpv     2
 		- <=cpv     2
 		- cp        1
-		- */p		0
-		- c/*		0
-		- */*		-1
+		- cp:slot with extended syntax	0
+		- cp with extended syntax	-1
 	"""
 	operator_values = {'=':6, '~':5, '=*':4,
 		'>':2, '<':2, '>=':2, '<=':2, None:1}
 	maxvalue = -2
 	bestm  = None
 	for x in match_to_list(mypkg, mylist):
+		if x.extended_syntax:
+			if dep_getslot(x) is not None:
+				if maxvalue < 0:
+					maxvalue = 0
+					bestm = x
+			else:
+				if maxvalue < -1:
+					maxvalue = -1
+					bestm = x
+			continue
 		if dep_getslot(x) is not None:
 			if maxvalue < 3:
 				maxvalue = 3
 				bestm = x
 		op_val = operator_values[x.operator]
-		if x.operator is None:
-			c, p = catsplit(x)
-			if c == "*":
-				if p == "*":
-					op_val = -1
-				else:
-					op_val = 0
-			elif p == "*":
-				op_val = 0
-				
 		if op_val > maxvalue:
 			maxvalue = op_val
 			bestm  = x
@@ -1183,18 +1293,14 @@ def match_from_list(mydep, candidate_list):
 			if cp is None:
 				mysplit = catpkgsplit(remove_slot(x))
 				if mysplit is not None:
-					c = mysplit[0]
-					p = mysplit[1]
-				else:
-					continue
-			else:
-				mysplit = catsplit(cp)
-				c = mysplit[0]
-				p = mysplit[1]
+					cp = mysplit[0] + '/' + mysplit[1]
 
-			if cat in (c, "*") and pkg in (p, "*"):
+			if cp is None:
+				continue
+
+			if cp == mycpv or (mydep.extended_syntax and \
+				extended_cp_match(mycpv, cp)):
 				mylist.append(x)
-			
 
 	elif operator == "=": # Exact match
 		for x in candidate_list:
@@ -1270,7 +1376,7 @@ def match_from_list(mydep, candidate_list):
 	else:
 		raise KeyError(_("Unknown operator: %s") % mydep)
 
-	if slot is not None:
+	if slot is not None and not mydep.extended_syntax:
 		candidate_list = mylist
 		mylist = []
 		for x in candidate_list:

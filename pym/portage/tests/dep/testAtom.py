@@ -27,7 +27,11 @@ class TestAtom(TestCase):
 			  ( "sys-apps/*",
 				(None,  'sys-apps/*', None, None, None), True ),
 			  ( "*/portage",
-				(None,  '*/portage', None, None, None), True )
+				(None,  '*/portage', None, None, None), True ),
+			  ( "s*s-*/portage:1",
+				(None,  's*s-*/portage', None, '1', None), True ),
+			  ( "*/po*ge:2",
+				(None,  '*/po*ge', None, '2', None), True ),
 		]
 		
 		tests_xfail = [

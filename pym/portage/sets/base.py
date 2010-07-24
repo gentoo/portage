@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
-from portage.dep import Atom, best_match_to_list, match_from_list
+from portage.dep import Atom, ExtendedAtomDict, best_match_to_list, match_from_list
 from portage.exception import InvalidAtom
 from portage.versions import catsplit, cpv_getkey
 
@@ -21,7 +21,7 @@ class PackageSet(object):
 	
 	def __init__(self):
 		self._atoms = set()
-		self._atommap = {}
+		self._atommap = ExtendedAtomDict(set)
 		self._loaded = False
 		self._loading = False
 		self.errors = []
@@ -140,15 +140,9 @@ class PackageSet(object):
 		"""
 		cpv_slot_list = [pkg]
 		cp = cpv_getkey(pkg.cpv)
-		c, p = catsplit(cp)
 		self._load() # make sure the atoms are loaded
 
-		atoms = set()
-		atoms.update(self._atommap.get("*/*", set()))
-		atoms.update(self._atommap.get(c+"/*", set()))
-		atoms.update(self._atommap.get("*/"+p, set()))
-		atoms.update(self._atommap.get(cp, set()))
-
+		atoms = self._atommap.get(cp)
 		if atoms:
 			for atom in atoms:
 				if match_from_list(atom, cpv_slot_list):
