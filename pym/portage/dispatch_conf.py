@@ -10,9 +10,9 @@ from __future__ import print_function
 
 import os, sys, shutil
 try:
-	from subprocess import getoutput as subprocess_getoutput
+    from subprocess import getstatusoutput as subprocess_getstatusoutput
 except ImportError:
-	from commands import getoutput as subprocess_getoutput
+    from commands import getstatusoutput as subprocess_getstatusoutput
 
 import portage
 from portage.localization import _
@@ -24,6 +24,21 @@ RCS_GET = 'co'
 RCS_MERGE = "rcsmerge -p -r" + RCS_BRANCH + " '%s' > '%s'"
 
 DIFF3_MERGE = "diff3 -mE '%s' '%s' '%s' > '%s'"
+
+def diffstatusoutput_len(cmd):
+    """
+    Execute the string cmd in a shell with getstatusoutput() and return a
+    2-tuple (status, output_length). If getstatusoutput() raises
+    UnicodeDecodeError (known to happen with python3.1), return a
+    2-tuple (1, 1). This provides a simple way to check for non-zero
+    output length of diff commands, while providing simple handling of
+    UnicodeDecodeError when necessary.
+    """
+    try:
+        status, output = subprocess_getstatusoutput(cmd)
+        return (status, len(output))
+    except UnicodeDecodeError:
+        return (1, 1)
 
 def read_config(mandatory_opts):
     loader = portage.env.loaders.KeyValuePairFileLoader(
@@ -115,7 +130,7 @@ def file_archive(archive, curconf, newconf, mrgconf):
 
     # Archive the current config file if it isn't already saved
     if os.path.exists(archive) \
-     and len(subprocess_getoutput("diff -aq '%s' '%s'" % (curconf,archive))) != 0:
+     and diffstatusoutput_len("diff -aq '%s' '%s'" % (curconf,archive))[1] != 0:
         suf = 1
         while suf < 9 and os.path.exists(archive + '.' + str(suf)):
             suf += 1
