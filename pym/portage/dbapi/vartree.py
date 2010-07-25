@@ -1642,6 +1642,16 @@ class vardbapi(dbapi):
 			call.
 			"""
 
+			if not isinstance(path_iter, list):
+				path_iter = list(path_iter)
+
+			if len(path_iter) > 10:
+				for x in self._iter_owners_low_mem(path_iter):
+					yield x
+				return
+
+			switch_to_low_mem = False
+
 			owners_cache = self._populate()
 
 			vardb = self._vardb
@@ -1656,16 +1666,19 @@ class vardbapi(dbapi):
 			def dblink(cpv):
 				x = dblink_cache.get(cpv)
 				if x is None:
-					if len(dblink_fifo) >= 100:
+					if len(dblink_fifo) >= 20:
 						# Ensure that we don't run out of memory.
 						del dblink_cache[dblink_fifo.popleft().mycpv]
 						gc.collect()
+						switch_to_low_mem = True
 					x = self._vardb._dblink(cpv)
 					dblink_cache[cpv] = x
 					dblink_fifo.append(x)
 				return x
 
-			for path in path_iter:
+			while path_iter:
+
+				path = path_iter.pop()
 				is_basename = os.sep != path[:1]
 				if is_basename:
 					name = path
@@ -1700,6 +1713,46 @@ class vardbapi(dbapi):
 						else:
 							if dblink(cpv).isowner(path, root):
 								yield dblink(cpv), path
+
+				if switch_to_low_mem:
+					dblink_cache.clear()
+					gc.collect()
+					for x in self._iter_owners_low_mem(path_iter):
+						yield x
+					return
+
+		def _iter_owners_low_mem(self, path_list):
+			"""
+			This implemention will make a short-lived dblink instance (and
+			parse CONTENTS) for every single installed package. This is
+			slower and but uses less memory than the method which uses the
+			basename cache.
+			"""
+
+			if not path_list:
+				return
+
+			path_info_list = []
+			for path in path_list:
+				is_basename = os.sep != path[:1]
+				if is_basename:
+					name = path
+				else:
+					name = os.path.basename(path.rstrip(os.path.sep))
+				path_info_list.append((path, name, is_basename))
+
+			root = self._vardb.root
+			for cpv in self._vardb.cpv_all():
+				dblnk =  self._vardb._dblink(cpv)
+
+				for path, name, is_basename in path_info_list:
+					if is_basename:
+						for p in dblnk.getcontents():
+							if os.path.basename(p) == name:
+								yield dblnk, p[len(root):]
+					else:
+						if dblnk.isowner(path, root):
+							yield dblnk, path
 
 class vartree(object):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
