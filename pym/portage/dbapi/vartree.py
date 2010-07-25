@@ -3737,31 +3737,33 @@ class dblink(object):
 
 			eerror(msg)
 
-			msg = []
-			msg.append("")
-			msg.append(_("Searching all installed"
-				" packages for file collisions..."))
-			msg.append("")
-			msg.append(_("Press Ctrl-C to Stop"))
-			msg.append("")
-			eerror(msg)
-
-			owners = self.vartree.dbapi._owners.get_owners(collisions)
-			self.vartree.dbapi.flush_cache()
-
-			for pkg, owned_files in owners.items():
-				cpv = pkg.mycpv
+			owners = None
+			if collision_protect or protect_owned:
 				msg = []
-				msg.append("%s" % cpv)
-				for f in sorted(owned_files):
-					msg.append("\t%s" % os.path.join(destroot,
-						f.lstrip(os.path.sep)))
+				msg.append("")
+				msg.append(_("Searching all installed"
+					" packages for file collisions..."))
+				msg.append("")
+				msg.append(_("Press Ctrl-C to Stop"))
 				msg.append("")
 				eerror(msg)
 
-			if not owners:
-				eerror([_("None of the installed"
-					" packages claim the file(s)."), ""])
+				owners = self.vartree.dbapi._owners.get_owners(collisions)
+				self.vartree.dbapi.flush_cache()
+
+				for pkg, owned_files in owners.items():
+					cpv = pkg.mycpv
+					msg = []
+					msg.append("%s" % cpv)
+					for f in sorted(owned_files):
+						msg.append("\t%s" % os.path.join(destroot,
+							f.lstrip(os.path.sep)))
+					msg.append("")
+					eerror(msg)
+
+				if not owners:
+					eerror([_("None of the installed"
+						" packages claim the file(s)."), ""])
 
 			# The explanation about the collision and how to solve
 			# it may not be visible via a scrollback buffer, especially
