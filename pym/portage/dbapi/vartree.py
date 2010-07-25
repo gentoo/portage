@@ -52,6 +52,7 @@ from portage.cache.mappings import slot_dict_class
 
 import codecs
 from collections import deque
+import gc
 import re, shutil, stat, errno, copy, subprocess
 import logging
 import os as _os
@@ -1658,6 +1659,7 @@ class vardbapi(dbapi):
 					if len(dblink_fifo) >= 100:
 						# Ensure that we don't run out of memory.
 						del dblink_cache[dblink_fifo.popleft().mycpv]
+						gc.collect()
 					x = self._vardb._dblink(cpv)
 					dblink_cache[cpv] = x
 					dblink_fifo.append(x)
