@@ -754,49 +754,15 @@ class Atom(_atom_base):
 		memo[id(self)] = self
 		return self
 
-def extended_cp_match(extended_atom, other):
+def extended_cp_match(extended_cp, other_cp):
 	"""
-	Checks if an extended syntax atom matches the other, non extended atom
+	Checks if an extended syntax cp matches a non extended cp
 	"""
-	my_slot = dep_getslot(extended_atom)
-	if my_slot is not None:
-		extended_atom = extended_atom[:-(len(my_slot)+1)]
-	mysplit = catsplit(extended_atom)
-	my_cat = mysplit[0]
-	my_pkg = mysplit[1]
-
-	other_slot = dep_getslot(other)
-	if other_slot is not None:
-		other = other[:-(len(other_slot)+1)]
-	othersplit = catsplit(other)
-	other_cat = othersplit[0]
-	other_pkg = othersplit[1]
-
-	if my_slot is not None and other_slot is not None and \
-		my_slot != other_slot:
-		return False
-
-	for my_val, other_val in ((my_cat, other_cat), (my_pkg, other_pkg)):
-		if my_val == "*":
-			continue
-
-		start = 0
-		parts = my_val.split("*")
-		for id, part in enumerate(parts):
-			if not part:
-				if id == len(parts)-1:
-					start = len(other_val)
-				continue
-			start = other_val.find(part, start)
-			if start == -1:
-				return False
-
-			start += len(part)
-
-		if start != len(other_val):
-			return False
-
-	return True
+	# Escape special '+' and '.' characters which are allowed in atoms,
+	# and convert '*' to regex equivalent.
+	extended_cp_re = re.compile("^" + extended_cp.replace("+", r"\+").replace(
+		".", r"\.").replace('*', '[^/]*') + "$")
+	return extended_cp_re.match(other_cp) is not None
 
 class ExtendedAtomDict(object):
 	"""
@@ -1299,7 +1265,7 @@ def match_from_list(mydep, candidate_list):
 				continue
 
 			if cp == mycpv or (mydep.extended_syntax and \
-				extended_cp_match(mycpv, cp)):
+				extended_cp_match(mydep.cp, cp)):
 				mylist.append(x)
 
 	elif operator == "=": # Exact match
