@@ -754,14 +754,20 @@ class Atom(_atom_base):
 		memo[id(self)] = self
 		return self
 
+_extended_cp_re_cache = {}
+
 def extended_cp_match(extended_cp, other_cp):
 	"""
 	Checks if an extended syntax cp matches a non extended cp
 	"""
 	# Escape special '+' and '.' characters which are allowed in atoms,
 	# and convert '*' to regex equivalent.
-	extended_cp_re = re.compile("^" + extended_cp.replace("+", r"\+").replace(
-		".", r"\.").replace('*', '[^/]*') + "$")
+	global _extended_cp_re_cache
+	extended_cp_re = _extended_cp_re_cache.get(extended_cp)
+	if extended_cp_re is None:
+		extended_cp_re = re.compile("^" + extended_cp.replace(
+			"+", r"\+").replace(".", r"\.").replace('*', '[^/]*') + "$")
+		_extended_cp_re_cache[extended_cp] = extended_cp_re
 	return extended_cp_re.match(other_cp) is not None
 
 class ExtendedAtomDict(object):
