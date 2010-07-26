@@ -390,6 +390,7 @@ def insert_optional_args(args):
 	default_arg_opts = {
 		'--complete-graph' : ('n',),
 		'--deep'       : valid_integers,
+		'--depclean-lib-check'   : ('n',),
 		'--deselect'   : ('n',),
 		'--binpkg-respect-use'   : ('n', 'y',),
 		'--fail-clean'           : ('n',),
@@ -552,6 +553,12 @@ def parse_opts(tmpcmdline, silent=False):
 				"dependencies of installed packages.",
 
 			"action" : "store"
+		},
+
+		"--depclean-lib-check": {
+			"help"    : "check for consumers of libraries before removing them",
+			"type"    : "choice",
+			"choices" : ("True", "n")
 		},
 
 		"--deselect": {
@@ -737,6 +744,9 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.complete_graph = True
 	else:
 		myoptions.complete_graph = None
+
+	if myoptions.depclean_lib_check in ("True",):
+		myoptions.depclean_lib_check = True
 
 	if myoptions.exclude:
 		exclude = []

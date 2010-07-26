@@ -871,9 +871,9 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		return pkgs_to_remove
 
 	cleanlist = create_cleanlist()
+	clean_set = set(cleanlist)
 
-	if len(cleanlist):
-		clean_set = set(cleanlist)
+	if cleanlist and myopts.get('--depclean-lib-check') != 'n':
 
 		# Check if any of these package are the sole providers of libraries
 		# with consumers that have not been selected for removal. If so, these
@@ -1058,6 +1058,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				return 0, [], False, required_pkgs_total
 			clean_set = set(cleanlist)
 
+	if True:
 		# Use a topological sort to create an unmerge order such that
 		# each package is unmerged before it's dependencies. This is
 		# necessary to avoid breaking things that may need to run
