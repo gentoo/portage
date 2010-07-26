@@ -52,7 +52,7 @@ from portage import _unicode_encode
 from portage.cache.mappings import slot_dict_class
 
 import codecs
-from collections import deque
+import gc
 import re, shutil, stat, errno, copy, subprocess
 import logging
 import os as _os
@@ -2632,6 +2632,14 @@ class vardbapi(dbapi):
 			call.
 			"""
 
+			if not isinstance(path_iter, list):
+				path_iter = list(path_iter)
+
+			if len(path_iter) > 10:
+				for x in self._iter_owners_low_mem(path_iter):
+					yield x
+				return
+
 			owners_cache = self._populate()
 
 			vardb = self._vardb
@@ -2641,20 +2649,20 @@ class vardbapi(dbapi):
 			base_names = self._vardb._aux_cache["owners"]["base_names"]
 
 			dblink_cache = {}
-			dblink_fifo = deque()
 
 			def dblink(cpv):
 				x = dblink_cache.get(cpv)
 				if x is None:
-					if len(dblink_fifo) >= 100:
+					if len(dblink_cache) > 20:
 						# Ensure that we don't run out of memory.
-						del dblink_cache[dblink_fifo.popleft().mycpv]
+						raise StopIteration()
 					x = self._vardb._dblink(cpv)
 					dblink_cache[cpv] = x
-					dblink_fifo.append(x)
 				return x
 
-			for path in path_iter:
+			while path_iter:
+
+				path = path_iter.pop()
 				is_basename = os.sep != path[:1]
 				if is_basename:
 					name = path
@@ -2666,29 +2674,75 @@ class vardbapi(dbapi):
 
 				name_hash = hash_str(name)
 				pkgs = base_names.get(name_hash)
+				owners = []
 				if pkgs is not None:
-					for hash_value in pkgs:
-						if not isinstance(hash_value, tuple) or \
-							len(hash_value) != 3:
-							continue
-						cpv, counter, mtime = hash_value
-						if not isinstance(cpv, basestring):
-							continue
-						try:
-							current_hash = hash_pkg(cpv)
-						except KeyError:
-							continue
+					try:
+						for hash_value in pkgs:
+							if not isinstance(hash_value, tuple) or \
+								len(hash_value) != 3:
+								continue
+							cpv, counter, mtime = hash_value
+							if not isinstance(cpv, basestring):
+								continue
+							try:
+								current_hash = hash_pkg(cpv)
+							except KeyError:
+								continue
 
-						if current_hash != hash_value:
-							continue
+							if current_hash != hash_value:
+								continue
 
-						if is_basename:
-							for p in dblink(cpv).getcontents():
-								if os.path.basename(p) == name:
-									yield dblink(cpv), p[len(root):]
-						else:
-							if dblink(cpv).isowner(path, root):
-								yield dblink(cpv), path
+							if is_basename:
+								for p in dblink(cpv).getcontents():
+									if os.path.basename(p) == name:
+										owners.append((cpv, p[len(root):]))
+							else:
+								if dblink(cpv).isowner(path, root):
+									owners.append((cpv, path))
+					except StopIteration:
+						path_iter.append(path)
+						del owners[:]
+						dblink_cache.clear()
+						gc.collect()
+						for x in self._iter_owners_low_mem(path_iter):
+							yield x
+						return
+					else:
+						for cpv, p in owners:
+							yield (dblink(cpv), p)
+
+		def _iter_owners_low_mem(self, path_list):
+			"""
+			This implemention will make a short-lived dblink instance (and
+			parse CONTENTS) for every single installed package. This is
+			slower and but uses less memory than the method which uses the
+			basename cache.
+			"""
+
+			if not path_list:
+				return
+
+			path_info_list = []
+			for path in path_list:
+				is_basename = os.sep != path[:1]
+				if is_basename:
+					name = path
+				else:
+					name = os.path.basename(path.rstrip(os.path.sep))
+				path_info_list.append((path, name, is_basename))
+
+			root = self._vardb.root
+			for cpv in self._vardb.cpv_all():
+				dblnk =  self._vardb._dblink(cpv)
+
+				for path, name, is_basename in path_info_list:
+					if is_basename:
+						for p in dblnk.getcontents():
+							if os.path.basename(p) == name:
+								yield dblnk, p[len(root):]
+					else:
+						if dblnk.isowner(path, root):
+							yield dblnk, path
 
 class vartree(object):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
@@ -4684,31 +4738,37 @@ class dblink(object):
 
 			eerror(msg)
 
-			msg = []
-			msg.append("")
-			msg.append(_("Searching all installed"
-				" packages for file collisions..."))
-			msg.append("")
-			msg.append(_("Press Ctrl-C to Stop"))
-			msg.append("")
-			eerror(msg)
-
-			owners = self.vartree.dbapi._owners.get_owners(collisions)
-			self.vartree.dbapi.flush_cache()
-
-			for pkg, owned_files in owners.items():
-				cpv = pkg.mycpv
+			owners = None
+			if collision_protect or protect_owned:
 				msg = []
-				msg.append("%s" % cpv)
-				for f in sorted(owned_files):
-					msg.append("\t%s" % os.path.join(destroot,
-						f.lstrip(os.path.sep)))
+				msg.append("")
+				msg.append(_("Searching all installed"
+					" packages for file collisions..."))
+				msg.append("")
+				msg.append(_("Press Ctrl-C to Stop"))
 				msg.append("")
 				eerror(msg)
 
-			if not owners:
-				eerror([_("None of the installed"
-					" packages claim the file(s)."), ""])
+				if len(collisions) > 20:
+					# get_owners is slow for large numbers of files, so
+					# don't look them all up.
+					collisions = collisions[:20]
+				owners = self.vartree.dbapi._owners.get_owners(collisions)
+				self.vartree.dbapi.flush_cache()
+
+				for pkg, owned_files in owners.items():
+					cpv = pkg.mycpv
+					msg = []
+					msg.append("%s" % cpv)
+					for f in sorted(owned_files):
+						msg.append("\t%s" % os.path.join(destroot,
+							f.lstrip(os.path.sep)))
+					msg.append("")
+					eerror(msg)
+
+				if not owners:
+					eerror([_("None of the installed"
+						" packages claim the file(s)."), ""])
 
 			# The explanation about the collision and how to solve
 			# it may not be visible via a scrollback buffer, especially

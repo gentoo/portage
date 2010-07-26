@@ -97,23 +97,10 @@ class _frozen_depgraph_config(object):
 		self.excluded_pkgs = InternalPackageSet()
 		for x in ' '.join(myopts.get("--exclude", [])).split():
 			try:
-				x = Atom(x)
+				x = Atom(x, allow_wildcard=True)
 			except portage.exception.InvalidAtom:
-				x = Atom("null/" + x)
-			cat = x.cp.split("/")[0]
-			if cat == "null":
-				pkgname = x.cp.split("/")[1]
-				for myroot in trees:
-					for tree in ("porttree", "bintree"):
-						if tree == "bintree" and not "--usepkg" in myopts:
-							continue
-						db = self.trees[myroot][tree].dbapi
-						for cat in db.categories:
-							if db.cp_list(cat + "/" + pkgname):
-								atom = portage.dep.Atom(str(x).replace("null", cat))
-								self.excluded_pkgs.add(atom)
-			else:
-				self.excluded_pkgs.add(x)
+				x = Atom("*/" + x, allow_wildcard=True)
+			self.excluded_pkgs.add(x)
 
 
 class _dynamic_depgraph_config(object):

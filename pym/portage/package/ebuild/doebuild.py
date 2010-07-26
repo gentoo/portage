@@ -1583,8 +1583,8 @@ def _post_src_install_uid_fix(mysettings, out):
 		unicode_error = False
 		size = 0
 		counted_inodes = set()
-		lafilefixing_announced = False
-		lafilefixing = "lafilefixing" in mysettings.features
+		fixlafiles_announced = False
+		fixlafiles = "fixlafiles" in mysettings.features
 
 		for parent, dirs, files in os.walk(destdir):
 			try:
@@ -1624,7 +1624,7 @@ def _post_src_install_uid_fix(mysettings, out):
 				else:
 					fpath = os.path.join(parent, fname)
 
-				if lafilefixing and \
+				if fixlafiles and \
 					fname.endswith(".la") and os.path.isfile(fpath):
 					f = open(_unicode_encode(fpath,
 						encoding=_encodings['merge'], errors='strict'),
@@ -1635,16 +1635,16 @@ def _post_src_install_uid_fix(mysettings, out):
 						needs_update, new_contents = rewrite_lafile(contents)
 					except portage.exception.InvalidData as e:
 						needs_update = False
-						if not lafilefixing_announced:
-							lafilefixing_announced = True
+						if not fixlafiles_announced:
+							fixlafiles_announced = True
 							writemsg("Fixing .la files\n", fd=out)
 						msg = "   %s is not a valid libtool archive, skipping\n" % fpath[len(destdir):]
 						qa_msg = "QA Notice: invalid .la file found: %s, %s" % (fpath[len(destdir):], e)
 						writemsg(msg, fd=out)
 						eqawarn(qa_msg, key=mysettings.mycpv, out=out)
 					if needs_update:
-						if not lafilefixing_announced:
-							lafilefixing_announced = True
+						if not fixlafiles_announced:
+							fixlafiles_announced = True
 							writemsg("Fixing .la files\n", fd=out)
 						writemsg("   %s\n" % fpath[len(destdir):], fd=out)
 						f = open(_unicode_encode(fpath,

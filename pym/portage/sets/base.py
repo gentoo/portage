@@ -2,9 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
-from portage.dep import Atom, best_match_to_list, match_from_list
+from portage.dep import Atom, ExtendedAtomDict, best_match_to_list, match_from_list
 from portage.exception import InvalidAtom
-from portage.versions import cpv_getkey
+from portage.versions import catsplit, cpv_getkey
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -21,7 +21,7 @@ class PackageSet(object):
 	
 	def __init__(self):
 		self._atoms = set()
-		self._atommap = {}
+		self._atommap = ExtendedAtomDict(set)
 		self._loaded = False
 		self._loading = False
 		self.errors = []
@@ -76,7 +76,7 @@ class PackageSet(object):
 				if not a:
 					continue
 				try:
-					a = Atom(a)
+					a = Atom(a, allow_wildcard=True)
 				except InvalidAtom:
 					self._nonatoms.add(a)
 					continue
@@ -126,7 +126,7 @@ class PackageSet(object):
 			if atom.cp == pkg.cp:
 				rev_transform[atom] = atom
 			else:
-				rev_transform[Atom(atom.replace(atom.cp, pkg.cp, 1))] = atom
+				rev_transform[Atom(atom.replace(atom.cp, pkg.cp, 1), allow_wildcard=True)] = atom
 		best_match = best_match_to_list(pkg, iter(rev_transform))
 		if best_match:
 			return rev_transform[best_match]
@@ -141,6 +141,7 @@ class PackageSet(object):
 		cpv_slot_list = [pkg]
 		cp = cpv_getkey(pkg.cpv)
 		self._load() # make sure the atoms are loaded
+
 		atoms = self._atommap.get(cp)
 		if atoms:
 			for atom in atoms:
@@ -171,7 +172,7 @@ class EditablePackageSet(PackageSet):
 		for a in atoms:
 			if not isinstance(a, Atom):
 				try:
-					a = Atom(a)
+					a = Atom(a, allow_wildcard=True)
 				except InvalidAtom:
 					modified = True
 					self._nonatoms.add(a)

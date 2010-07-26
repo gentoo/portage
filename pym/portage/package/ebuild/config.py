@@ -778,11 +778,11 @@ class config(object):
 			self["EROOT"] = target_root + EPREFIX_LSTRIP + os.path.sep
 			self.backup_changes("EROOT")
 
-			self.pusedict = {}
-			self.pkeywordsdict = {}
-			self._plicensedict = {}
-			self._ppropertiesdict = {}
-			self.punmaskdict = {}
+			self.pusedict = portage.dep.ExtendedAtomDict(dict)
+			self.pkeywordsdict = portage.dep.ExtendedAtomDict(dict)
+			self._plicensedict = portage.dep.ExtendedAtomDict(dict)
+			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
+			self.punmaskdict = portage.dep.ExtendedAtomDict(list)
 			abs_user_config = os.path.join(config_root, USER_CONFIG_PATH)
 
 			# locations for "categories" and "arch.list" files
@@ -816,18 +816,32 @@ class config(object):
 			
 			pmask_locations.extend(overlay_profiles)
 
+			# package.mask and package.unmask
+			pkgmasklines = []
+			pkgunmasklines = []
+			for x in pmask_locations:
+				pkgmasklines.append(grabfile_package(
+					os.path.join(x, "package.mask"), recursive=1))
+				pkgunmasklines.append(grabfile_package(
+					os.path.join(x, "package.unmask"), recursive=1))
+
 			if local_config:
 				locations.append(abs_user_config)
-				pmask_locations.append(abs_user_config)
+				
+				pkgmasklines.append(grabfile_package(
+					os.path.join(abs_user_config, "package.mask"), recursive=1, allow_wildcard=True))
+				pkgunmasklines.append(grabfile_package(
+					os.path.join(abs_user_config, "package.unmask"), recursive=1, allow_wildcard=True))
+
 				pusedict = grabdict_package(
-					os.path.join(abs_user_config, "package.use"), recursive=1)
+					os.path.join(abs_user_config, "package.use"), recursive=1, allow_wildcard=True)
 				for k, v in pusedict.items():
 					self.pusedict.setdefault(k.cp, {})[k] = v
 
 				#package.keywords
 				pkgdict = grabdict_package(
 					os.path.join(abs_user_config, "package.keywords"),
-					recursive=1)
+					recursive=1, allow_wildcard=True)
 				for k, v in pkgdict.items():
 					# default to ~arch if no specific keyword is given
 					if not v:
@@ -845,7 +859,7 @@ class config(object):
 
 				#package.license
 				licdict = grabdict_package(os.path.join(
-					abs_user_config, "package.license"), recursive=1)
+					abs_user_config, "package.license"), recursive=1, allow_wildcard=True)
 				for k, v in licdict.items():
 					cp = k.cp
 					cp_dict = self._plicensedict.get(cp)
@@ -856,7 +870,7 @@ class config(object):
 
 				#package.properties
 				propdict = grabdict_package(os.path.join(
-					abs_user_config, "package.properties"), recursive=1)
+					abs_user_config, "package.properties"), recursive=1, allow_wildcard=True)
 				for k, v in propdict.items():
 					cp = k.cp
 					cp_dict = self._ppropertiesdict.get(cp)
@@ -912,18 +926,10 @@ class config(object):
 			archlist = stack_lists(archlist, incremental=1)
 			self.configdict["conf"]["PORTAGE_ARCHLIST"] = " ".join(archlist)
 
-			# package.mask and package.unmask
-			pkgmasklines = []
-			pkgunmasklines = []
-			for x in pmask_locations:
-				pkgmasklines.append(grabfile_package(
-					os.path.join(x, "package.mask"), recursive=1))
-				pkgunmasklines.append(grabfile_package(
-					os.path.join(x, "package.unmask"), recursive=1))
 			pkgmasklines = stack_lists(pkgmasklines, incremental=1)
 			pkgunmasklines = stack_lists(pkgunmasklines, incremental=1)
 
-			self.pmaskdict = {}
+			self.pmaskdict = portage.dep.ExtendedAtomDict(list)
 			for x in pkgmasklines:
 				self.pmaskdict.setdefault(x.cp, []).append(x)
 
@@ -1861,7 +1867,8 @@ class config(object):
 		@return: A list of licenses that have not been accepted.
 		"""
 		accept_license = self._accept_license
-		cpdict = self._plicensedict.get(cpv_getkey(cpv), None)
+		cp = cpv_getkey(cpv)
+		cpdict = self._plicensedict.get(cp)
 		if cpdict:
 			accept_license = list(self._accept_license)
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
@@ -1940,7 +1947,8 @@ class config(object):
 		@return: A list of properties that have not been accepted.
 		"""
 		accept_properties = self._accept_properties
-		cpdict = self._ppropertiesdict.get(cpv_getkey(cpv), None)
+		cp = cpv_getkey(cpv)
+		cpdict = self._ppropertiesdict.get(cp)
 		if cpdict:
 			accept_properties = list(self._accept_properties)
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])

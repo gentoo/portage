@@ -399,6 +399,8 @@ class _use_dep(object):
 				if "!" == first_char:
 					conditional.disabled.append(
 						self._validate_flag(x, x[1:-1]))
+				elif first_char in ("-", "=", "?"):
+					raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
 				else:
 					conditional.enabled.append(
 						self._validate_flag(x, x[:-1]))
@@ -407,13 +409,20 @@ class _use_dep(object):
 				if "!" == first_char:
 					conditional.not_equal.append(
 						self._validate_flag(x, x[1:-1]))
+				elif first_char in ("-", "=", "?"):
+					raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
 				else:
 					conditional.equal.append(
 						self._validate_flag(x, x[:-1]))
 
+			elif last_char in ("!", "-"):
+				raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
+
 			else:
 				if "-" == first_char:
 					disabled_flags.append(self._validate_flag(x, x[1:]))
+				elif first_char in ("!", "=", "?"):
+					raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
 				else:
 					enabled_flags.append(self._validate_flag(x, x))
 
@@ -571,10 +580,10 @@ class Atom(_atom_base):
 		def __init__(self, forbid_overlap=False):
 			self.overlap = self._overlap(forbid=forbid_overlap)
 
-	def __new__(cls, s, unevaluated_atom=None):
+	def __new__(cls, s, unevaluated_atom=None, allow_wildcard=False):
 		return _atom_base.__new__(cls, s)
 
-	def __init__(self, s, unevaluated_atom=None):
+	def __init__(self, s, unevaluated_atom=None, allow_wildcard=False):
 		if isinstance(s, Atom):
 			# This is an efficiency assertion, to ensure that the Atom
 			# constructor is not called redundantly.
@@ -593,14 +602,29 @@ class Atom(_atom_base):
 			blocker = False
 		self.__dict__['blocker'] = blocker
 		m = _atom_re.match(s)
+		extended_syntax = False
 		if m is None:
-			raise InvalidAtom(self)
-
-		if m.group('op') is not None:
+			if allow_wildcard:
+				m = _atom_wildcard_re.match(s)
+				if m is None:
+					raise InvalidAtom(self)
+				op = None
+				gdict = m.groupdict()
+				cpv = cp = gdict['simple']
+				if cpv.find("**") != -1:
+					raise InvalidAtom(self)
+				slot = gdict['slot']
+				use_str = None
+				extended_syntax = True
+			else:
+				raise InvalidAtom(self)
+		elif m.group('op') is not None:
 			base = _atom_re.groupindex['op']
 			op = m.group(base + 1)
 			cpv = m.group(base + 2)
 			cp = m.group(base + 3)
+			slot = m.group(_atom_re.groups - 1)
+			use_str = m.group(_atom_re.groups)
 			if m.group(base + 4) is not None:
 				raise InvalidAtom(self)
 		elif m.group('star') is not None:
@@ -608,21 +632,25 @@ class Atom(_atom_base):
 			op = '=*'
 			cpv = m.group(base + 1)
 			cp = m.group(base + 2)
+			slot = m.group(_atom_re.groups - 1)
+			use_str = m.group(_atom_re.groups)
 			if m.group(base + 3) is not None:
 				raise InvalidAtom(self)
 		elif m.group('simple') is not None:
 			op = None
 			cpv = cp = m.group(_atom_re.groupindex['simple'] + 1)
+			slot = m.group(_atom_re.groups - 1)
+			use_str = m.group(_atom_re.groups)
 			if m.group(_atom_re.groupindex['simple'] + 2) is not None:
 				raise InvalidAtom(self)
 		else:
 			raise AssertionError(_("required group not found in atom: '%s'") % self)
 		self.__dict__['cp'] = cp
 		self.__dict__['cpv'] = cpv
-		self.__dict__['slot'] = m.group(_atom_re.groups - 1)
+		self.__dict__['slot'] = slot
 		self.__dict__['operator'] = op
+		self.__dict__['extended_syntax'] = extended_syntax
 
-		use_str = m.group(_atom_re.groups)
 		if use_str is not None:
 			use = _use_dep(dep_getusedeps(s))
 			without_use = Atom(m.group('without_use'))
@@ -725,6 +753,79 @@ class Atom(_atom_base):
 		"""Immutable, so returns self."""
 		memo[id(self)] = self
 		return self
+
+_extended_cp_re_cache = {}
+
+def extended_cp_match(extended_cp, other_cp):
+	"""
+	Checks if an extended syntax cp matches a non extended cp
+	"""
+	# Escape special '+' and '.' characters which are allowed in atoms,
+	# and convert '*' to regex equivalent.
+	global _extended_cp_re_cache
+	extended_cp_re = _extended_cp_re_cache.get(extended_cp)
+	if extended_cp_re is None:
+		extended_cp_re = re.compile("^" + re.escape(extended_cp).replace(
+			r'\*', '[^/]*') + "$")
+		_extended_cp_re_cache[extended_cp] = extended_cp_re
+	return extended_cp_re.match(other_cp) is not None
+
+class ExtendedAtomDict(object):
+	"""
+	dict() wrapper that supports extended atoms as keys and allows lookup
+	of a normal cp against other normal cp and extended cp.
+	The value type has to be given to __init__ and is assumed to be the same
+	for all values.
+	"""
+	def __init__(self, value_class):
+		self._extended = {}
+		self._normal = {}
+		self._value_class = value_class
+
+	def setdefault(self, cp, default=None):
+		if "*" in cp:
+			return self._extended.setdefault(cp, default)
+		else:
+			return self._normal.setdefault(cp, default)
+
+	def get(self, cp):
+		ret = self._value_class()
+		normal_match = self._normal.get(cp)
+		if normal_match is not None:
+			if hasattr(ret, "update"):
+				ret.update(normal_match)
+			elif hasattr(ret, "extend"):
+				ret.extend(normal_match)
+			else:
+				raise NotImplementedError()
+
+		for extended_cp in self._extended:
+			if extended_cp_match(extended_cp, cp):
+				if hasattr(ret, "update"):
+					ret.update(self._extended[extended_cp])
+				elif hasattr(ret, "extend"):
+					ret.extend(self._extended[extended_cp])
+				else:
+					raise NotImplementedError()
+
+		return ret
+
+	def __setitem__(self, cp, val):
+		if "*" in cp:
+			self._extended[cp] = val
+		else:
+			self._normal[cp] = val
+
+	def __getitem__(self, cp):
+		if "*" in cp:
+			return self._extended[cp]
+		else:
+			return self._normal[cp]
+
+	def clear(self):
+		self._extended.clear()
+		self._normal.clear()
+
 
 def get_operator(mydep):
 	"""
@@ -923,8 +1024,13 @@ _atom_re = re.compile('^(?P<without_use>(?:' +
 	'(?P<op>' + _op + _cpv + ')|' +
 	'(?P<star>=' + _cpv + r'\*)|' +
 	'(?P<simple>' + _cp + '))(:' + _slot + ')?)(' + _use + ')?$', re.VERBOSE)
+	
+_extended_cat = r'[\w+*][\w+.*-]*'
+_extended_pkg = r'[\w+*][\w+*-]*?'
 
-def isvalidatom(atom, allow_blockers=False):
+_atom_wildcard_re = re.compile('(?P<simple>(' + _extended_cat + ')/(' + _extended_pkg + '))(:(?P<slot>' + _slot + '))?$')
+
+def isvalidatom(atom, allow_blockers=False, allow_wildcard=False):
 	"""
 	Check to see if a depend atom is valid
 
@@ -943,7 +1049,7 @@ def isvalidatom(atom, allow_blockers=False):
 	"""
 	try:
 		if not isinstance(atom, Atom):
-			atom = Atom(atom)
+			atom = Atom(atom, allow_wildcard=allow_wildcard)
 		if not allow_blockers and atom.blocker:
 			return False
 		return True
@@ -1080,12 +1186,24 @@ def best_match_to_list(mypkg, mylist):
 		- >=cpv     2
 		- <=cpv     2
 		- cp        1
+		- cp:slot with extended syntax	0
+		- cp with extended syntax	-1
 	"""
 	operator_values = {'=':6, '~':5, '=*':4,
 		'>':2, '<':2, '>=':2, '<=':2, None:1}
-	maxvalue = 0
+	maxvalue = -2
 	bestm  = None
 	for x in match_to_list(mypkg, mylist):
+		if x.extended_syntax:
+			if dep_getslot(x) is not None:
+				if maxvalue < 0:
+					maxvalue = 0
+					bestm = x
+			else:
+				if maxvalue < -1:
+					maxvalue = -1
+					bestm = x
+			continue
 		if dep_getslot(x) is not None:
 			if maxvalue < 3:
 				maxvalue = 3
@@ -1115,7 +1233,7 @@ def match_from_list(mydep, candidate_list):
 	if "!" == mydep[:1]:
 		mydep = mydep[1:]
 	if not isinstance(mydep, Atom):
-		mydep = Atom(mydep)
+		mydep = Atom(mydep, allow_wildcard=True)
 
 	mycpv     = mydep.cpv
 	mycpv_cps = catpkgsplit(mycpv) # Can be None if not specific
@@ -1148,9 +1266,13 @@ def match_from_list(mydep, candidate_list):
 				mysplit = catpkgsplit(remove_slot(x))
 				if mysplit is not None:
 					cp = mysplit[0] + '/' + mysplit[1]
-			if cp != mycpv:
+
+			if cp is None:
 				continue
-			mylist.append(x)
+
+			if cp == mycpv or (mydep.extended_syntax and \
+				extended_cp_match(mydep.cp, cp)):
+				mylist.append(x)
 
 	elif operator == "=": # Exact match
 		for x in candidate_list:
@@ -1226,7 +1348,7 @@ def match_from_list(mydep, candidate_list):
 	else:
 		raise KeyError(_("Unknown operator: %s") % mydep)
 
-	if slot is not None:
+	if slot is not None and not mydep.extended_syntax:
 		candidate_list = mylist
 		mylist = []
 		for x in candidate_list:

@@ -391,6 +391,7 @@ def insert_optional_args(args):
 	default_arg_opts = {
 		'--complete-graph' : ('n',),
 		'--deep'       : valid_integers,
+		'--depclean-lib-check'   : ('n',),
 		'--deselect'   : ('n',),
 		'--binpkg-respect-use'   : ('n', 'y',),
 		'--fail-clean'           : ('n',),
@@ -553,6 +554,12 @@ def parse_opts(tmpcmdline, silent=False):
 				"dependencies of installed packages.",
 
 			"action" : "store"
+		},
+
+		"--depclean-lib-check": {
+			"help"    : "check for consumers of libraries before removing them",
+			"type"    : "choice",
+			"choices" : ("True", "n")
 		},
 
 		"--deselect": {
@@ -739,16 +746,19 @@ def parse_opts(tmpcmdline, silent=False):
 	else:
 		myoptions.complete_graph = None
 
+	if myoptions.depclean_lib_check in ("True",):
+		myoptions.depclean_lib_check = True
+
 	if myoptions.exclude:
 		exclude = []
 		bad_atoms = []
 		for x in ' '.join(myoptions.exclude).split():
 			bad_atom = False
 			try:
-				atom = portage.dep.Atom(x)
+				atom = portage.dep.Atom(x, allow_wildcard=True)
 			except portage.exception.InvalidAtom:
 				try:
-					atom = portage.dep.Atom("null/"+x)
+					atom = portage.dep.Atom("*/"+x, allow_wildcard=True)
 				except portage.exception.InvalidAtom:
 					bad_atom = True
 			
@@ -761,7 +771,7 @@ def parse_opts(tmpcmdline, silent=False):
 					exclude.append(atom)
 
 		if bad_atoms and not silent:
-			parser.error("Invalid Atom(s) in --exclude parameter: '%s' (only package names and slot atoms allowed)\n" % \
+			parser.error("Invalid Atom(s) in --exclude parameter: '%s' (only package names and slot atoms (with widlcards) allowed)\n" % \
 				(",".join(bad_atoms),))
 
 	if myoptions.fail_clean == "True":
