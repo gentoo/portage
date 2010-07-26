@@ -3747,6 +3747,10 @@ class dblink(object):
 				msg.append("")
 				eerror(msg)
 
+				if len(collisions) > 20:
+					# get_owners is slow for large numbers of files, so
+					# don't look them all up.
+					collisions = collisions[:20]
 				owners = self.vartree.dbapi._owners.get_owners(collisions)
 				self.vartree.dbapi.flush_cache()
 
