@@ -306,6 +306,24 @@ class EbuildQuotedA(LineCheck):
 		if match:
 			return "Quoted \"${A}\" on line: %d"
 
+class EprefixifyDefined(LineCheck):
+	""" Check that prefix.eclass is inherited if needed"""
+
+	repoman_check_name = 'eprefixify.defined'
+
+	_eprefixify_re = re.compile(r'\beprefixify\b')
+	_inherit_prefix_re = re.compile(r'^\s*inherit\s(.*\s)?prefix\b')
+
+	def new(self, pkg):
+		self._prefix_inherited = False
+
+	def check(self, num, line):
+		if self._eprefixify_re.search(line) is not None:
+			if not self._prefix_inherited:
+				return errors.EPREFIXIFY_MISSING_INHERIT
+		elif self._inherit_prefix_re.search(line) is not None:
+			self._prefix_inherited = True
+
 class InheritAutotools(LineCheck):
 	"""
 	Make sure appropriate functions are called in
@@ -493,7 +511,7 @@ _constant_checks = tuple((c() for c in (
 	EbuildHeader, EbuildWhitespace, EbuildBlankLine, EbuildQuote,
 	EbuildAssignment, Eapi3EbuildAssignment, EbuildUselessDodoc,
 	EbuildUselessCdS, EbuildNestedDie,
-	EbuildPatches, EbuildQuotedA, EapiDefinition,
+	EbuildPatches, EbuildQuotedA, EapiDefinition, EprefixifyDefined,
 	IUseUndefined, InheritAutotools,
 	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS, NoAsNeeded,
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,

@@ -19,3 +19,4 @@ EAPI_DEFINED_AFTER_INHERIT = 'EAPI defined after inherit on line: %d'
 NO_AS_NEEDED = 'Upstream asneeded linking bug (no-as-needed on line: %d)'
 PRESERVE_OLD_LIB = 'Upstream ABI change workaround on line: %d'
 BUILT_WITH_USE = 'built_with_use on line: %d'
+EPREFIXIFY_MISSING_INHERIT = "prefix.eclass is not inherited, but eprefixify is used on line: %d"
