@@ -51,7 +51,6 @@ from portage import _unicode_encode
 from portage.cache.mappings import slot_dict_class
 
 import codecs
-from collections import deque
 import gc
 import re, shutil, stat, errno, copy, subprocess
 import logging
@@ -1650,8 +1649,6 @@ class vardbapi(dbapi):
 					yield x
 				return
 
-			switch_to_low_mem = False
-
 			owners_cache = self._populate()
 
 			vardb = self._vardb
@@ -1661,19 +1658,15 @@ class vardbapi(dbapi):
 			base_names = self._vardb._aux_cache["owners"]["base_names"]
 
 			dblink_cache = {}
-			dblink_fifo = deque()
 
 			def dblink(cpv):
 				x = dblink_cache.get(cpv)
 				if x is None:
-					if len(dblink_fifo) >= 20:
+					if len(dblink_cache) > 20:
 						# Ensure that we don't run out of memory.
-						del dblink_cache[dblink_fifo.popleft().mycpv]
-						gc.collect()
-						switch_to_low_mem = True
+						raise StopIteration()
 					x = self._vardb._dblink(cpv)
 					dblink_cache[cpv] = x
-					dblink_fifo.append(x)
 				return x
 
 			while path_iter:
@@ -1690,36 +1683,42 @@ class vardbapi(dbapi):
 
 				name_hash = hash_str(name)
 				pkgs = base_names.get(name_hash)
+				owners = []
 				if pkgs is not None:
-					for hash_value in pkgs:
-						if not isinstance(hash_value, tuple) or \
-							len(hash_value) != 3:
-							continue
-						cpv, counter, mtime = hash_value
-						if not isinstance(cpv, basestring):
-							continue
-						try:
-							current_hash = hash_pkg(cpv)
-						except KeyError:
-							continue
+					try:
+						for hash_value in pkgs:
+							if not isinstance(hash_value, tuple) or \
+								len(hash_value) != 3:
+								continue
+							cpv, counter, mtime = hash_value
+							if not isinstance(cpv, basestring):
+								continue
+							try:
+								current_hash = hash_pkg(cpv)
+							except KeyError:
+								continue
 
-						if current_hash != hash_value:
-							continue
+							if current_hash != hash_value:
+								continue
 
-						if is_basename:
-							for p in dblink(cpv).getcontents():
-								if os.path.basename(p) == name:
-									yield dblink(cpv), p[len(root):]
-						else:
-							if dblink(cpv).isowner(path, root):
-								yield dblink(cpv), path
-
-				if switch_to_low_mem:
-					dblink_cache.clear()
-					gc.collect()
-					for x in self._iter_owners_low_mem(path_iter):
-						yield x
-					return
+							if is_basename:
+								for p in dblink(cpv).getcontents():
+									if os.path.basename(p) == name:
+										owners.append((cpv, p[len(root):]))
+							else:
+								if dblink(cpv).isowner(path, root):
+									owners.append((cpv, path))
+					except StopIteration:
+						path_iter.append(path)
+						del owners[:]
+						dblink_cache.clear()
+						gc.collect()
+						for x in self._iter_owners_low_mem(path_iter):
+							yield x
+						return
+					else:
+						for cpv, p in owners:
+							yield (dblink(cpv), p)
 
 		def _iter_owners_low_mem(self, path_list):
 			"""
