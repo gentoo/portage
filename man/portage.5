@@ -104,8 +104,13 @@ more detailed explanations.
 .RS
 .TP
 .B DEPEND atom
-A string which matches a package.  It is of the form category/package.  
-It may also contain optional logical operators and versions.
+An atom is either of the form category/package or consists of an operator
+followed by category/package followed by a hyphen and a version specification.
+An atom might be prefixed by a slot specification.
+The extended atom syntax allows atoms of the form category/package, where an
+arbitrary number of characters has been replaced by a '*'. An extended atom may contain
+more than one '*', but not two next to each other. The extend atom syntax is only
+available in user configuration files and for some command line options.
 .br
 More reading: 
 .BR ebuild (5)
