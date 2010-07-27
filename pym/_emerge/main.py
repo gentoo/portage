@@ -1010,7 +1010,7 @@ def missing_sets_warning(root_config, missing_sets):
 	if root_config.sets:
 		msg.append("        sets defined: %s" % ", ".join(root_config.sets))
 	msg.append("        This usually means that '%s'" % \
-		(os.path.join(portage.const.GLOBAL_CONFIG_PATH, "sets.conf"),))
+		(os.path.join(portage.const.GLOBAL_CONFIG_PATH, "sets/portage.conf"),))
 	msg.append("        is missing or corrupt.")
 	msg.append("        Falling back to default world and system set configuration!!!")
 	for line in msg:

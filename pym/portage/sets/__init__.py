@@ -176,9 +176,17 @@ class SetConfig(object):
 		return myatoms
 
 def load_default_config(settings, trees):
-	setconfigpaths = [os.path.join(GLOBAL_CONFIG_PATH, "sets.conf")]
-	setconfigpaths.append(os.path.join(settings["PORTDIR"], "sets.conf"))
-	setconfigpaths += [os.path.join(x, "sets.conf") for x in settings["PORTDIR_OVERLAY"].split()]
-	setconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
-		USER_CONFIG_PATH, "sets.conf"))
-	return SetConfig(setconfigpaths, settings, trees)
+	def _getfiles():
+		for path, dirs, files in os.walk(os.path.join(GLOBAL_CONFIG_PATH, "sets")):
+			for f in files:
+				yield os.path.join(path, f)
+
+		dbapi = trees["porttree"].dbapi
+		for repo in dbapi.getRepositories():
+			path = dbapi.getRepositoryPath(repo)
+			yield os.path.join(path, "sets.conf")
+
+		yield os.path.join(settings["PORTAGE_CONFIGROOT"],
+			USER_CONFIG_PATH, "sets.conf")
+
+	return SetConfig(_getfiles(), settings, trees)
