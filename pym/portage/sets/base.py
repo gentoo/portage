@@ -26,7 +26,7 @@ class PackageSet(object):
 		self._loading = False
 		self.errors = []
 		self._nonatoms = set()
-		self.world_candidate = True
+		self.world_candidate = False
 
 	def __contains__(self, atom):
 		self._load()

@@ -70,13 +70,11 @@
 			# The classic world set
 			[world]
 			class = portage.sets.base.DummyPackageSet
-			world-candidate = False
 			packages = @selected @system
 
 			# The selected set
 			[selected]
 			class = portage.sets.files.WorldSelectedSet
-			world-candidate = False
 
 			# The classic system set
 			[system]
