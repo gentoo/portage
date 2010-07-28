@@ -54,6 +54,8 @@ def _global_updates(trees, prev_mtimes):
 	world_list = grabfile(world_file)
 	world_modified = False
 	world_warnings = set()
+	updpath_map = {}
+	repo_map = {}
 
 	for repo_name in portdb.getRepositories():
 		repo = portdb.getRepositoryPath(repo_name)
@@ -62,6 +64,10 @@ def _global_updates(trees, prev_mtimes):
 			# as a backwards-compatibility measure, fallback to PORTDIR
 			updpath = os.path.join(portdb.porttree_root, "profiles", "updates")
 
+		if updpath in updpath_map:
+			repo_map[repo_name] = updpath_map[updpath]
+			continue
+
 		try:
 			if mysettings.get("PORTAGE_CALLER") == "fixpackages":
 				update_data = grab_updates(updpath)
@@ -69,10 +75,11 @@ def _global_updates(trees, prev_mtimes):
 				update_data = grab_updates(updpath, prev_mtimes)
 		except DirectoryNotFound:
 			continue
-		myupd = None
+		myupd = []
+		updpath_map[updpath] = myupd
+		repo_map[repo_name] = myupd
 		if len(update_data) > 0:
 			do_upgrade_packagesmessage = 0
-			myupd = []
 			timestamps = {}
 			for mykey, mystat, mycontent in update_data:
 				writemsg_stdout("\n\n")
@@ -96,6 +103,7 @@ def _global_updates(trees, prev_mtimes):
 						writemsg("%s\n" % msg, noiselevel=-1)
 			retupd.extend(myupd)
 
+	for repo_name, myupd in repo_map.items():
 			def _world_repo_match(atoma, atomb):
 				"""
 				Check whether to perform a world change from atoma to atomb.
@@ -151,18 +159,19 @@ def _global_updates(trees, prev_mtimes):
 				for mykey, mtime in timestamps.items():
 					prev_mtimes[mykey] = mtime
 
+	if repo_map:
 			# We gotta do the brute force updates for these now.
 			if mysettings.get("PORTAGE_CALLER") == "fixpackages" or \
 			"fixpackages" in mysettings.features:
 				def onUpdate(maxval, curval):
 					if curval > 0:
 						writemsg_stdout("#")
-				vardb.update_ents(myupd, onUpdate=onUpdate, repo=repo_name)
+				vardb.update_ents(repo_map, onUpdate=onUpdate)
 				if bindb:
 					def onUpdate(maxval, curval):
 						if curval > 0:
 							writemsg_stdout("*")
-					bindb.update_ents(myupd, onUpdate=onUpdate, repo=repo_name)
+					bindb.update_ents(repo_map, onUpdate=onUpdate)
 			else:
 				do_upgrade_packagesmessage = 1
 

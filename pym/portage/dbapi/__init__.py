@@ -197,36 +197,43 @@ class dbapi(object):
 		else:
 			writemsg("!!! Invalid db entry: %s\n" % mypath, noiselevel=-1)
 
-	def update_ents(self, updates, onProgress=None, onUpdate=None, repo=None):
+	def update_ents(self, updates, onProgress=None, onUpdate=None):
 		"""
 		Update metadata of all packages for package moves.
-		@param updates: A list of move commands
-		@type updates: List
+		@param updates: A list of move commands, or dict of {repo_name: list}
+		@type updates: list or dict
 		@param onProgress: A progress callback function
 		@type onProgress: a callable that takes 2 integer arguments: maxval and curval
 		@param onUpdate: A progress callback function called only
 			for packages that are modified by updates.
 		@type onUpdate: a callable that takes 2 integer arguments:
 			maxval and curval
-		@param repo: Name of the repository which packages should be updated
-		@type repo: string
 		"""
 		cpv_all = self.cpv_all()
 		cpv_all.sort()
 		maxval = len(cpv_all)
 		aux_get = self.aux_get
 		aux_update = self.aux_update
-		update_keys = ["DEPEND", "RDEPEND", "PDEPEND", "PROVIDE"]
+		meta_keys = ["DEPEND", "RDEPEND", "PDEPEND", "PROVIDE", 'repository']
+		repo_dict = None
+		if isinstance(updates, dict):
+			repo_dict = updates
 		from portage.update import update_dbentries
 		if onUpdate:
 			onUpdate(maxval, 0)
 		if onProgress:
 			onProgress(maxval, 0)
 		for i, cpv in enumerate(cpv_all):
-			if repo and aux_get(cpv, ['repository'])[0] != repo:
-				continue
-			metadata = dict(zip(update_keys, aux_get(cpv, update_keys)))
-			metadata_updates = update_dbentries(updates, metadata)
+			metadata = dict(zip(meta_keys, aux_get(cpv, meta_keys)))
+			repo = metadata.pop('repository')
+			if repo_dict is None:
+				updates_list = updates
+			else:
+				updates_list = repo_dict.get(repo)
+				if updates_list is None:
+					continue
+
+			metadata_updates = update_dbentries(updates_list, metadata)
 			if metadata_updates:
 				aux_update(cpv, metadata_updates)
 				if onUpdate:

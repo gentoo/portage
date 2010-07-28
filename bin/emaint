@@ -323,8 +323,7 @@ class MoveHandler(object):
 
 		# Searching for updates in all the metadata is relatively slow, so this
 		# is where the progress bar comes out of indeterminate mode.
-		for repo, updates in allupdates.items():
-			self._tree.dbapi.update_ents(updates, onProgress=onProgress, repo=repo)
+		self._tree.dbapi.update_ents(allupdates, onProgress=onProgress)
 		return errors
 
 class MoveInstalled(MoveHandler):
