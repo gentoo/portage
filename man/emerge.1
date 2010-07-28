@@ -353,6 +353,12 @@ listed in the dependencies of a package.  Also see \fB\-\-with\-bdeps\fR for
 behavior with respect to build time dependencies that are not strictly
 required.
 .TP
+.BR "\-\-depclean\-lib\-check[=n]"
+Account for library link-level dependencies during
+\fB-\-depclean\fR and \fB-\-prune\fR actions. This
+option is enabled by default. In some cases this can
+be somewhat time\-consuming.
+.TP
 .BR "\-\-emptytree " (\fB\-e\fR)
 Reinstalls target atoms and their entire deep
 dependency tree, as though no packages are currently
