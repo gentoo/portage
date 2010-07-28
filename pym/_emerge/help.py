@@ -515,6 +515,12 @@ def help(myopts, havecolor=1):
 		print("              Only merge (or pretend to merge) the dependencies of the")
 		print("              specified packages, not the packages themselves.")
 		print()
+		print("       " + green("--package-moves") + "[=%s]" % turquoise("n"))
+		desc = "Perform package moves when necessary. This option " + \
+			"is enabled by default."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
 		print("       "+green("--pretend")+" ("+green("-p")+" short option)")
 		print("              Instead of actually performing the merge, simply display what")
 		print("              ebuilds and tbz2s *would* have been installed if --pretend")

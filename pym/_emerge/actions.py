@@ -2289,7 +2289,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		# the only one that's been synced here.
 		action_metadata(settings, portdb, myopts, porttrees=[myportdir])
 
-	if _global_updates(trees, mtimedb["updates"]):
+	if myopts.get('--package-moves') != 'n' and \
+		_global_updates(trees, mtimedb["updates"]):
 		mtimedb.commit()
 		# Reload the whole config from scratch.
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
