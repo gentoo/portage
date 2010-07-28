@@ -80,7 +80,6 @@ def _global_updates(trees, prev_mtimes):
 		updpath_map[updpath] = myupd
 		repo_map[repo_name] = myupd
 		if len(update_data) > 0:
-			do_upgrade_packagesmessage = 0
 			for mykey, mystat, mycontent in update_data:
 				writemsg_stdout("\n\n")
 				writemsg_stdout(colorize("GOOD",
@@ -160,6 +159,7 @@ def _global_updates(trees, prev_mtimes):
 					prev_mtimes[mykey] = mtime
 
 	if repo_map:
+			do_upgrade_packagesmessage = False
 			# We gotta do the brute force updates for these now.
 			if mysettings.get("PORTAGE_CALLER") == "fixpackages" or \
 			"fixpackages" in mysettings.features:
