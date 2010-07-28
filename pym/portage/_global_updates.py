@@ -56,6 +56,7 @@ def _global_updates(trees, prev_mtimes):
 	world_warnings = set()
 	updpath_map = {}
 	repo_map = {}
+	timestamps = {}
 
 	for repo_name in portdb.getRepositories():
 		repo = portdb.getRepositoryPath(repo_name)
@@ -80,7 +81,6 @@ def _global_updates(trees, prev_mtimes):
 		repo_map[repo_name] = myupd
 		if len(update_data) > 0:
 			do_upgrade_packagesmessage = 0
-			timestamps = {}
 			for mykey, mystat, mycontent in update_data:
 				writemsg_stdout("\n\n")
 				writemsg_stdout(colorize("GOOD",
