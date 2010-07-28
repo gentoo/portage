@@ -1058,7 +1058,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				return 0, [], False, required_pkgs_total
 			clean_set = set(cleanlist)
 
-	if True:
+	if clean_set:
 		# Use a topological sort to create an unmerge order such that
 		# each package is unmerged before it's dependencies. This is
 		# necessary to avoid breaking things that may need to run
