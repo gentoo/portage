@@ -230,6 +230,8 @@ class MoveHandler(object):
 		self._tree = tree
 		self._portdb = porttree.dbapi
 		self._update_keys = ["DEPEND", "RDEPEND", "PDEPEND", "PROVIDE"]
+		self._master_repo = \
+			self._portdb.getRepositoryName(self._portdb.porttree_root)
 
 	def _grab_global_updates(self):
 		from portage.update import grab_updates, parse_updates
@@ -240,8 +242,8 @@ class MoveHandler(object):
 			repo = self._portdb.getRepositoryPath(repo_name)
 			updpath = os.path.join(repo, "profiles", "updates")
 			if not os.path.isdir(updpath):
-				# as a backwards-compatibility measure, fallback to PORTDIR
-				updpath = os.path.join(self._portdb.porttree_root, "profiles", "updates")
+				continue
+
 			try:
 				rawupdates = grab_updates(updpath)
 			except portage.exception.DirectoryNotFound:
@@ -252,6 +254,9 @@ class MoveHandler(object):
 				upd_commands.extend(commands)
 				errors.extend(errors)
 			retupdates[repo_name] = upd_commands
+
+		if self._master_repo in retupdates:
+			retupdates['DEFAULT'] = retupdates[self._master_repo]
 
 		return retupdates, errors
 
@@ -264,17 +269,27 @@ class MoveHandler(object):
 		if onProgress:
 			onProgress(0, 0)
 		for repo, updates in allupdates.items():
+			if repo == 'DEFAULT':
+				continue
+			if not updates:
+				continue
+
+			def repo_match(repository):
+				return repository == repo or \
+					(repo == self._master_repo and \
+					repository not in allupdates)
+
 			for i, update_cmd in enumerate(updates):
 				if update_cmd[0] == "move":
 					origcp, newcp = update_cmd[1:]
 					for cpv in match(origcp):
-						if aux_get(cpv, ["repository"])[0] == repo:
+						if repo_match(aux_get(cpv, ["repository"])[0]):
 							errors.append("'%s' moved to '%s'" % (cpv, newcp))
 				elif update_cmd[0] == "slotmove":
 					pkg, origslot, newslot = update_cmd[1:]
 					for cpv in match(pkg):
 						slot, prepo = aux_get(cpv, ["SLOT", "repository"])
-						if slot == origslot and prepo == repo:
+						if slot == origslot and repo_match(prepo):
 							errors.append("'%s' slot moved from '%s' to '%s'" % \
 								(cpv, origslot, newslot))
 				if onProgress:
@@ -286,17 +301,22 @@ class MoveHandler(object):
 		cpv_all.sort()
 		maxval = len(cpv_all)
 		aux_update = self._tree.dbapi.aux_update
-		update_keys = self._update_keys
+		meta_keys = self._update_keys + ['repository']
 		from portage.update import update_dbentries
 		if onProgress:
 			onProgress(maxval, 0)
 		for i, cpv in enumerate(cpv_all):
+			metadata = dict(zip(meta_keys, aux_get(cpv, meta_keys)))
+			repository = metadata.pop('repository')
 			try:
-				updates = allupdates[aux_get(cpv, ['repository'])[0]]
+				updates = allupdates[repository]
 			except KeyError:
+				try:
+					updates = allupdates['DEFAULT']
+				except KeyError:
+					continue
+			if not updates:
 				continue
-
-			metadata = dict(zip(update_keys, aux_get(cpv, update_keys)))
 			metadata_updates = update_dbentries(updates, metadata)
 			if metadata_updates:
 				errors.append("'%s' has outdated metadata" % cpv)
@@ -313,11 +333,21 @@ class MoveHandler(object):
 		if onProgress:
 			onProgress(0, 0)
 		for repo, updates in allupdates.items():
+			if repo == 'DEFAULT':
+				continue
+			if not updates:
+				continue
+
+			def repo_match(repository):
+				return repository == repo or \
+					(repo == self._master_repo and \
+					repository not in allupdates)
+
 			for i, update_cmd in enumerate(updates):
 				if update_cmd[0] == "move":
-					move(update_cmd, repo_name=repo)
+					move(update_cmd, repo_match=repo_match)
 				elif update_cmd[0] == "slotmove":
-					slotmove(update_cmd, repo_name=repo)
+					slotmove(update_cmd, repo_match=repo_match)
 				if onProgress:
 					onProgress(0, 0)
 

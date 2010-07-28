@@ -186,8 +186,8 @@ def grab_global_updates(portdb):
 		repo = portdb.getRepositoryPath(repo_name)
 		updpath = os.path.join(repo, "profiles", "updates")
 		if not os.path.isdir(updpath):
-			# as a backwards-compatibility measure, fallback to PORTDIR
-			updpath = os.path.join(portdb.porttree_root, "profiles", "updates")
+			continue
+
 		try:
 			rawupdates = grab_updates(updpath)
 		except portage.exception.DirectoryNotFound:
@@ -198,16 +198,27 @@ def grab_global_updates(portdb):
 			upd_commands.extend(commands)
 		retupdates[repo_name] = upd_commands
 
+	master_repo = portdb.getRepositoryName(portdb.porttree_root)
+	if master_repo in retupdates:
+		retupdates['DEFAULT'] = retupdates[master_repo]
+
 	return retupdates
 
 def perform_global_updates(mycpv, mydb, myupdates):
+	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND", 'repository']
+	aux_dict = dict(zip(aux_keys, mydb.aux_get(mycpv, aux_keys)))
+	repository = aux_dict.pop('repository')
 	try:
-		mycommands = myupdates[mydb.aux_get(mycpv, ['repository'])[0]]
+		mycommands = myupdates[repository]
 	except KeyError:
+		try:
+			mycommands = myupdates['DEFAULT']
+		except KeyError:
+			return
+
+	if not mycommands:
 		return
 
-	aux_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
-	aux_dict = dict(zip(aux_keys, mydb.aux_get(mycpv, aux_keys)))
 	updates = update_dbentries(mycommands, aux_dict)
 	if updates:
 		mydb.aux_update(mycpv, updates)

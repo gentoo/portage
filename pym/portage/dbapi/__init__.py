@@ -229,9 +229,16 @@ class dbapi(object):
 			if repo_dict is None:
 				updates_list = updates
 			else:
-				updates_list = repo_dict.get(repo)
-				if updates_list is None:
-					continue
+				try:
+					updates_list = repo_dict[repo]
+				except KeyError:
+					try:
+						updates_list = repo_dict['DEFAULT']
+					except KeyError:
+						continue
+
+			if not updates_list:
+				continue
 
 			metadata_updates = update_dbentries(updates_list, metadata)
 			if metadata_updates:
@@ -241,11 +248,12 @@ class dbapi(object):
 			if onProgress:
 				onProgress(maxval, i+1)
 
-	def move_slot_ent(self, mylist, repo_name = None):
+	def move_slot_ent(self, mylist, repo_match=None):
 		"""This function takes a sequence:
 		Args:
 			mylist: a sequence of (package, originalslot, newslot)
-			repo_name: repository from which update is originated
+			repo_match: callable that takes single repo_name argument
+				and returns True if the update should be applied
 		Returns:
 			The number of slotmoves this function did
 		"""
@@ -260,7 +268,8 @@ class dbapi(object):
 			slot = self.aux_get(mycpv, ["SLOT"])[0]
 			if slot != origslot:
 				continue
-			if repo_name and self.aux_get(mycpv, ['repository'])[0] != repo_name:
+			if repo_match is not None \
+				and not repo_match(self.aux_get(mycpv, ['repository'])[0]):
 				continue
 			moves += 1
 			mydata = {"SLOT": newslot+"\n"}

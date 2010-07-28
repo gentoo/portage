@@ -288,7 +288,7 @@ class binarytree(object):
 	remotepkgs = property(_get_remotepkgs, _set_remotepkgs, _del_remotepkgs,
 		"Deprecated self.remotepkgs, only for backward compatibility")
 
-	def move_ent(self, mylist, repo_name = None):
+	def move_ent(self, mylist, repo_match=None):
 		if not self.populated:
 			self.populate()
 		origcp = mylist[1]
@@ -307,7 +307,8 @@ class binarytree(object):
 			if mycpv_cp != origcp:
 				# Ignore PROVIDE virtual match.
 				continue
-			if repo_name and self.aux_get(mycpv, ['repository'])[0] != repo_name:
+			if repo_match is not None \
+				and not repo_match(self.aux_get(mycpv, ['repository'])[0]):
 				continue
 			mynewcpv = mycpv.replace(mycpv_cp, str(newcp), 1)
 			myoldpkg = catsplit(mycpv)[1]

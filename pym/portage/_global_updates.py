@@ -55,6 +55,10 @@ def _global_updates(trees, prev_mtimes):
 	world_modified = False
 	world_warnings = set()
 	updpath_map = {}
+	# Maps repo_name to list of updates. If a given repo has no updates
+	# directory, it will be omitted. If a repo has an updates directory
+	# but none need to be applied (according to timestamp logic), the
+	# value in the dict will be an empty list.
 	repo_map = {}
 	timestamps = {}
 
@@ -62,8 +66,7 @@ def _global_updates(trees, prev_mtimes):
 		repo = portdb.getRepositoryPath(repo_name)
 		updpath = os.path.join(repo, "profiles", "updates")
 		if not os.path.isdir(updpath):
-			# as a backwards-compatibility measure, fallback to PORTDIR
-			updpath = os.path.join(portdb.porttree_root, "profiles", "updates")
+			continue
 
 		if updpath in updpath_map:
 			repo_map[repo_name] = updpath_map[updpath]
@@ -102,7 +105,20 @@ def _global_updates(trees, prev_mtimes):
 						writemsg("%s\n" % msg, noiselevel=-1)
 			retupd.extend(myupd)
 
+	master_repo = portdb.getRepositoryName(portdb.porttree_root)
+	if master_repo in repo_map:
+		repo_map['DEFAULT'] = repo_map[master_repo]
+
 	for repo_name, myupd in repo_map.items():
+			if repo_name == 'DEFAULT':
+				continue
+			if not myupd:
+				continue
+
+			def repo_match(repository):
+				return repository == repo_name or \
+					(repo_name == master_repo and repository not in repo_map)
+
 			def _world_repo_match(atoma, atomb):
 				"""
 				Check whether to perform a world change from atoma to atomb.
@@ -111,7 +127,8 @@ def _global_updates(trees, prev_mtimes):
 				can find a match for old atom name, warn about that.
 				"""
 				matches = vardb.match(atoma)
-				if matches and vardb.aux_get(best(matches), ['repository'])[0] == repo_name:
+				if matches and \
+					repo_match(vardb.aux_get(best(matches), ['repository'])[0]):
 					if portdb.match(atoma):
 						world_warnings.add((atoma, atomb))
 					return True
@@ -132,19 +149,19 @@ def _global_updates(trees, prev_mtimes):
 
 			for update_cmd in myupd:
 				if update_cmd[0] == "move":
-					moves = vardb.move_ent(update_cmd, repo_name=repo_name)
+					moves = vardb.move_ent(update_cmd, repo_match=repo_match)
 					if moves:
 						writemsg_stdout(moves * "@")
 					if bindb:
-						moves = bindb.move_ent(update_cmd, repo_name=repo_name)
+						moves = bindb.move_ent(update_cmd, repo_match=repo_match)
 						if moves:
 							writemsg_stdout(moves * "%")
 				elif update_cmd[0] == "slotmove":
-					moves = vardb.move_slot_ent(update_cmd, repo_name=repo_name)
+					moves = vardb.move_slot_ent(update_cmd, repo_match=repo_match)
 					if moves:
 						writemsg_stdout(moves * "s")
 					if bindb:
-						moves = bindb.move_slot_ent(update_cmd, repo_name=repo_name)
+						moves = bindb.move_slot_ent(update_cmd, repo_match=repo_match)
 						if moves:
 							writemsg_stdout(moves * "S")
 
@@ -158,7 +175,7 @@ def _global_updates(trees, prev_mtimes):
 				for mykey, mtime in timestamps.items():
 					prev_mtimes[mykey] = mtime
 
-	if repo_map:
+	if retupd:
 			do_upgrade_packagesmessage = False
 			# We gotta do the brute force updates for these now.
 			if mysettings.get("PORTAGE_CALLER") == "fixpackages" or \
