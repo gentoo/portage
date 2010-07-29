@@ -398,6 +398,7 @@ def insert_optional_args(args):
 		'--getbinpkgonly'        : ('n',),
 		'--jobs'       : valid_integers,
 		'--keep-going'           : ('n',),
+		'--package-moves'        : ('n',),
 		'--rebuilt-binaries'     : ('n',),
 		'--root-deps'  : ('rdeps',),
 		'--select'               : ('n',),
@@ -638,6 +639,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices"  : ("True", "n")
 		},
 
+		"--package-moves": {
+			"help"     : "perform package moves when necessary",
+			"type"     : "choice",
+			"choices"  : ("True", "n")
+		},
+
 		"--rebuilt-binaries": {
 			"help"     : "replace installed packages with binary " + \
 			             "packages that have been rebuilt",
@@ -790,6 +797,9 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.keep_going = True
 	else:
 		myoptions.keep_going = None
+
+	if myoptions.package_moves in ("True",):
+		myoptions.package_moves = True
 
 	if myoptions.rebuilt_binaries in ("True",):
 		myoptions.rebuilt_binaries = True
@@ -1010,7 +1020,7 @@ def missing_sets_warning(root_config, missing_sets):
 	if root_config.sets:
 		msg.append("        sets defined: %s" % ", ".join(root_config.sets))
 	msg.append("        This usually means that '%s'" % \
-		(os.path.join(portage.const.GLOBAL_CONFIG_PATH, "sets.conf"),))
+		(os.path.join(portage.const.GLOBAL_CONFIG_PATH, "sets/portage.conf"),))
 	msg.append("        is missing or corrupt.")
 	msg.append("        Falling back to default world and system set configuration!!!")
 	for line in msg:
@@ -1247,7 +1257,14 @@ def emerge_main():
 	if rval != os.EX_OK:
 		return rval
 
+	tmpcmdline = []
+	if "--ignore-default-opts" not in myopts:
+		tmpcmdline.extend(settings["EMERGE_DEFAULT_OPTS"].split())
+	tmpcmdline.extend(sys.argv[1:])
+	myaction, myopts, myfiles = parse_opts(tmpcmdline)
+
 	if myaction not in ('help', 'info', 'version') and \
+		myopts.get('--package-moves') != 'n' and \
 		_global_updates(trees, mtimedb["updates"]):
 		mtimedb.commit()
 		# Reload the whole config from scratch.
@@ -1257,12 +1274,6 @@ def emerge_main():
 	xterm_titles = "notitles" not in settings.features
 	if xterm_titles:
 		xtermTitle("emerge")
-
-	tmpcmdline = []
-	if "--ignore-default-opts" not in myopts:
-		tmpcmdline.extend(settings["EMERGE_DEFAULT_OPTS"].split())
-	tmpcmdline.extend(sys.argv[1:])
-	myaction, myopts, myfiles = parse_opts(tmpcmdline)
 
 	if "--digest" in myopts:
 		os.environ["FEATURES"] = os.environ.get("FEATURES","") + " digest"

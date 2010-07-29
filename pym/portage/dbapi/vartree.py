@@ -923,7 +923,7 @@ class vardbapi(dbapi):
 				return True
 		return False
 
-	def move_ent(self, mylist):
+	def move_ent(self, mylist, repo_match=None):
 		origcp = mylist[1]
 		newcp = mylist[2]
 
@@ -939,6 +939,9 @@ class vardbapi(dbapi):
 			mycpv_cp = cpv_getkey(mycpv)
 			if mycpv_cp != origcp:
 				# Ignore PROVIDE virtual match.
+				continue
+			if repo_match is not None \
+				and not repo_match(self.aux_get(mycpv, ['repository'])[0]):
 				continue
 			mynewcpv = mycpv.replace(mycpv_cp, str(newcp), 1)
 			mynewcat = catsplit(newcp)[0]

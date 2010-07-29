@@ -9,8 +9,9 @@
 		ignored.
 		</para>
 		<para>
-		At first it looks for the default configuration in 
-		<filename>/usr/share/portage/config</filename>.
+		At first it reads the default configuration from all of the files
+		located in <filename>/usr/share/portage/config/sets</filename>
+		directory.
 		The default config includes sets that are expected on all systems and 
 		often critical for normal operation, like <varname>world</varname>, 
 		<varname>system</varname> or <varname>security</varname>.
@@ -69,13 +70,11 @@
 			# The classic world set
 			[world]
 			class = portage.sets.base.DummyPackageSet
-			world-candidate = False
 			packages = @selected @system
 
 			# The selected set
 			[selected]
 			class = portage.sets.files.WorldSelectedSet
-			world-candidate = False
 
 			# The classic system set
 			[system]

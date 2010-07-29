@@ -182,12 +182,14 @@ def parse_updates(mycontent):
 		myupd.append(mysplit)
 	return myupd, errors
 
-def update_config_files(config_root, protect, protect_mask, update_iter):
+def update_config_files(config_root, protect, protect_mask, update_iter, match_callback = None):
 	"""Perform global updates on /etc/portage/package.*.
 	config_root - location of files to update
 	protect - list of paths from CONFIG_PROTECT
 	protect_mask - list of paths from CONFIG_PROTECT_MASK
-	update_iter - list of update commands as returned from parse_updates()"""
+	update_iter - list of update commands as returned from parse_updates()
+	match_callback - a callback which will be called with old and new atoms
+	and should return boolean value determining whether to perform the update"""
 
 	config_root = normalize_path(config_root)
 	update_files = {}
@@ -253,10 +255,11 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 					continue
 				new_atom = update_dbentry(update_cmd, atom)
 				if atom != new_atom:
-					contents[pos] = line.replace(atom, new_atom)
-					update_files[x] = 1
-					sys.stdout.write("p")
-					sys.stdout.flush()
+					if match_callback(atom, new_atom):
+						contents[pos] = line.replace(atom, new_atom)
+						update_files[x] = 1
+						sys.stdout.write("p")
+						sys.stdout.flush()
 
 	protect_obj = ConfigProtect(
 		config_root, protect, protect_mask)

@@ -1058,7 +1058,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				return 0, [], False, required_pkgs_total
 			clean_set = set(cleanlist)
 
-	if True:
+	if clean_set:
 		# Use a topological sort to create an unmerge order such that
 		# each package is unmerged before it's dependencies. This is
 		# necessary to avoid breaking things that may need to run
@@ -2289,7 +2289,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		# the only one that's been synced here.
 		action_metadata(settings, portdb, myopts, porttrees=[myportdir])
 
-	if _global_updates(trees, mtimedb["updates"]):
+	if myopts.get('--package-moves') != 'n' and \
+		_global_updates(trees, mtimedb["updates"]):
 		mtimedb.commit()
 		# Reload the whole config from scratch.
 		settings, trees, mtimedb = load_emerge_config(trees=trees)

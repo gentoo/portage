@@ -26,7 +26,7 @@ class PackageSet(object):
 		self._loading = False
 		self.errors = []
 		self._nonatoms = set()
-		self.world_candidate = True
+		self.world_candidate = False
 
 	def __contains__(self, atom):
 		self._load()
@@ -66,7 +66,7 @@ class PackageSet(object):
 		self._load()
 		return self._nonatoms.copy()
 
-	def _setAtoms(self, atoms):
+	def _setAtoms(self, atoms, allow_wildcard=False):
 		self._atoms.clear()
 		self._nonatoms.clear()
 		for a in atoms:
@@ -80,6 +80,8 @@ class PackageSet(object):
 				except InvalidAtom:
 					self._nonatoms.add(a)
 					continue
+			if not allow_wildcard and a.extended_syntax:
+				raise InvalidAtom("extended atom syntax not allowed here")
 			self._atoms.add(a)
 
 		self._updateAtomMap()
@@ -109,8 +111,7 @@ class PackageSet(object):
 			self._atommap.clear()
 			atoms = self._atoms
 		for a in atoms:
-			self._atommap.setdefault(a.cp, set())
-			self._atommap[a.cp].add(a)
+			self._atommap.setdefault(a.cp, set()).add(a)
 	
 	# Not sure if this one should really be in PackageSet
 	def findAtomForPackage(self, pkg):
@@ -165,6 +166,10 @@ class PackageSet(object):
 
 class EditablePackageSet(PackageSet):
 
+	def __init__(self, allow_wildcard=False):
+		super(EditablePackageSet, self).__init__()
+		self._allow_wildcard = allow_wildcard
+		
 	def update(self, atoms):
 		self._load()
 		modified = False
@@ -177,6 +182,8 @@ class EditablePackageSet(PackageSet):
 					modified = True
 					self._nonatoms.add(a)
 					continue
+			if not self._allow_wildcard and a.extended_syntax:
+				raise InvalidAtom("extended atom syntax not allowed here")
 			normal_atoms.append(a)
 
 		if normal_atoms:
@@ -190,7 +197,7 @@ class EditablePackageSet(PackageSet):
 		self.update([atom])
 
 	def replace(self, atoms):
-		self._setAtoms(atoms)
+		self._setAtoms(atoms, allow_wildcard=self._allow_wildcard)
 		self.write()
 
 	def remove(self, atom):
@@ -212,8 +219,8 @@ class EditablePackageSet(PackageSet):
 		raise NotImplementedError()
 
 class InternalPackageSet(EditablePackageSet):
-	def __init__(self, initial_atoms=None):
-		super(InternalPackageSet, self).__init__()
+	def __init__(self, initial_atoms=None, allow_wildcard=False):
+		super(InternalPackageSet, self).__init__(allow_wildcard=allow_wildcard)
 		if initial_atoms != None:
 			self.update(initial_atoms)
 
