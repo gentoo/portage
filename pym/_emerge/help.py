@@ -517,7 +517,10 @@ def help(myopts, havecolor=1):
 		print()
 		print("       " + green("--package-moves") + "[=%s]" % turquoise("n"))
 		desc = "Perform package moves when necessary. This option " + \
-			"is enabled by default."
+			"is enabled by default. WARNING: This option " + \
+			"should remain enabled under normal circumstances. " + \
+			"Do not disable it unless you know what you are " + \
+			"doing."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
