@@ -15,6 +15,8 @@ from portage import manifest
 from portage.api.flag import get_flags
 from portage.api.properties import Properties
 
+# debug printing
+# use portage.util.writemsg_level(), with level=logging.DEBUG
 
 def xmatch(*args, **kwargs):
 	"""Pass arguments on to portage's caching match function.
@@ -137,6 +139,16 @@ def get_dep_ebuild(dep):
 		keyworded_ebuild = best(keyworded)
 	#debug.dprint("DATA_CONNECT: get_dep_ebuild(); ebuilds = " + str([best_ebuild, keyworded_ebuild, masked_ebuild]))
 	return best_ebuild, keyworded_ebuild, masked_ebuild
+
+
+def get_virtual_dep(atom):
+	"""Returns the first (prefered) resolved virtual dependency
+	if there is more than 1 possible resolution
+	
+	@param atom: dependency string
+	@rtpye: string 'cat/pkg-ver'
+	"""
+	return settings.settings.getvirtuals()[atom][0]
 
 
 def get_masking_status(cpv):
