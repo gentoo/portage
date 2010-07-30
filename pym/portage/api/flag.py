@@ -145,7 +145,7 @@ def get_all_cpv_use(cpv):
 
 
 def get_flags(cpv, final_setting=False):
-	"""Retrieves all information needed to filter out hidded, masked, etc.
+	"""Retrieves all information needed to filter out hidden, masked, etc.
 	USE flags for a given package.
 
 	@type cpv: string
