@@ -83,12 +83,12 @@ class PortageSettings:
 		return self._world[:]
 
 
-	def get_archlist():
+	def get_archlist(self):
 		"""Returns a list of the architectures accepted by portage as valid keywords"""
 		return self.settings["PORTAGE_ARCHLIST"].split()
 
 
-	def get_virtuals():
+	def get_virtuals(self):
 		"""returns the virtual pkgs"""
 		return self.settings.virtuals
 
