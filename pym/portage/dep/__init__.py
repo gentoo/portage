@@ -770,13 +770,16 @@ def extended_cp_match(extended_cp, other_cp):
 		_extended_cp_re_cache[extended_cp] = extended_cp_re
 	return extended_cp_re.match(other_cp) is not None
 
-class ExtendedAtomDict(object):
+class ExtendedAtomDict(portage.cache.mappings.MutableMapping):
 	"""
 	dict() wrapper that supports extended atoms as keys and allows lookup
 	of a normal cp against other normal cp and extended cp.
 	The value type has to be given to __init__ and is assumed to be the same
 	for all values.
 	"""
+
+	__slots__ = ('_extended', '_normal', '_value_class')
+
 	def __init__(self, value_class):
 		self._extended = {}
 		self._normal = {}
@@ -788,10 +791,17 @@ class ExtendedAtomDict(object):
 		else:
 			return self._normal.setdefault(cp, default)
 
-	def get(self, cp):
+	def __getitem__(self, cp):
+
+		if not isinstance(cp, basestring):
+			raise KeyError(cp)
+
 		ret = self._value_class()
 		normal_match = self._normal.get(cp)
+		match = False
+
 		if normal_match is not None:
+			match = True
 			if hasattr(ret, "update"):
 				ret.update(normal_match)
 			elif hasattr(ret, "extend"):
@@ -799,14 +809,29 @@ class ExtendedAtomDict(object):
 			else:
 				raise NotImplementedError()
 
-		for extended_cp in self._extended:
-			if extended_cp_match(extended_cp, cp):
+		if '*' in cp:
+			v = self._extended.get(cp)
+			if v is not None:
+				match = True
 				if hasattr(ret, "update"):
-					ret.update(self._extended[extended_cp])
+					ret.update(v)
 				elif hasattr(ret, "extend"):
-					ret.extend(self._extended[extended_cp])
+					ret.extend(v)
 				else:
 					raise NotImplementedError()
+		else:
+			for extended_cp in self._extended:
+				if extended_cp_match(extended_cp, cp):
+					match = True
+					if hasattr(ret, "update"):
+						ret.update(self._extended[extended_cp])
+					elif hasattr(ret, "extend"):
+						ret.extend(self._extended[extended_cp])
+					else:
+						raise NotImplementedError()
+
+		if not match:
+			raise KeyError(cp)
 
 		return ret
 
@@ -815,12 +840,6 @@ class ExtendedAtomDict(object):
 			self._extended[cp] = val
 		else:
 			self._normal[cp] = val
-
-	def __getitem__(self, cp):
-		if "*" in cp:
-			return self._extended[cp]
-		else:
-			return self._normal[cp]
 
 	def clear(self):
 		self._extended.clear()

@@ -5,8 +5,8 @@ from __future__ import print_function
 
 import stat
 
-from portage import os
-from portage.const import WORLD_FILE, EPREFIX_LSTRIP
+from portage import best, os
+from portage.const import WORLD_FILE
 from portage.data import secpass
 from portage.exception import DirectoryNotFound
 from portage.localization import _
@@ -16,7 +16,8 @@ from portage.util import grabfile, writemsg, writemsg_stdout, write_atomic
 
 def _global_updates(trees, prev_mtimes):
 	"""
-	Perform new global updates if they exist in $PORTDIR/profiles/updates/.
+	Perform new global updates if they exist in 'profiles/updates/'
+	subdirectories of all active repositories (PORTDIR + PORTDIR_OVERLAY).
 	This simply returns if ROOT != "/" (when len(trees) != 1). If ROOT != "/"
 	then the user should instead use emaint --fix movebin and/or moveinst.
 
@@ -37,123 +38,180 @@ def _global_updates(trees, prev_mtimes):
 		return 0
 	root = "/"
 	mysettings = trees["/"]["vartree"].settings
-	updpath = os.path.join(mysettings["PORTDIR"], "profiles", "updates")
+	retupd = []
 
-	try:
-		if mysettings["PORTAGE_CALLER"] == "fixpackages":
-			update_data = grab_updates(updpath)
-		else:
-			update_data = grab_updates(updpath, prev_mtimes)
-	except DirectoryNotFound:
-		writemsg(_("--- 'profiles/updates' is empty or "
-			"not available. Empty portage tree?\n"), noiselevel=1)
-		return 0
-	myupd = None
-	if len(update_data) > 0:
-		do_upgrade_packagesmessage = 0
-		myupd = []
-		timestamps = {}
-		for mykey, mystat, mycontent in update_data:
-			writemsg_stdout("\n\n")
-			writemsg_stdout(colorize("GOOD",
-				_("Performing Global Updates: "))+bold(mykey)+"\n")
-			writemsg_stdout(_("(Could take a couple of minutes if you have a lot of binary packages.)\n"))
-			writemsg_stdout(_("  %s='update pass'  %s='binary update'  "
-				"%s='/var/db update'  %s='/var/db move'\n"
-				"  %s='/var/db SLOT move'  %s='binary move'  "
-				"%s='binary SLOT move'\n  %s='update /etc/portage/package.*'\n") % \
-				(bold("."), bold("*"), bold("#"), bold("@"), bold("s"), bold("%"), bold("S"), bold("p")))
-			valid_updates, errors = parse_updates(mycontent)
-			myupd.extend(valid_updates)
-			writemsg_stdout(len(valid_updates) * "." + "\n")
-			if len(errors) == 0:
-				# Update our internal mtime since we
-				# processed all of our directives.
-				timestamps[mykey] = mystat[stat.ST_MTIME]
+	portdb = trees[root]["porttree"].dbapi
+	vardb = trees[root]["vartree"].dbapi
+	bindb = trees[root]["bintree"].dbapi
+	if not os.access(bindb.bintree.pkgdir, os.W_OK):
+		bindb = None
+	else:
+		# Call binarytree.populate(), since we want to make sure it's
+		# only populated with local packages here (getbinpkgs=0).
+		bindb.bintree.populate()
+
+	world_file = os.path.join(root, WORLD_FILE)
+	world_list = grabfile(world_file)
+	world_modified = False
+	world_warnings = set()
+	updpath_map = {}
+	# Maps repo_name to list of updates. If a given repo has no updates
+	# directory, it will be omitted. If a repo has an updates directory
+	# but none need to be applied (according to timestamp logic), the
+	# value in the dict will be an empty list.
+	repo_map = {}
+	timestamps = {}
+
+	for repo_name in portdb.getRepositories():
+		repo = portdb.getRepositoryPath(repo_name)
+		updpath = os.path.join(repo, "profiles", "updates")
+		if not os.path.isdir(updpath):
+			continue
+
+		if updpath in updpath_map:
+			repo_map[repo_name] = updpath_map[updpath]
+			continue
+
+		try:
+			if mysettings.get("PORTAGE_CALLER") == "fixpackages":
+				update_data = grab_updates(updpath)
 			else:
-				for msg in errors:
-					writemsg("%s\n" % msg, noiselevel=-1)
+				update_data = grab_updates(updpath, prev_mtimes)
+		except DirectoryNotFound:
+			continue
+		myupd = []
+		updpath_map[updpath] = myupd
+		repo_map[repo_name] = myupd
+		if len(update_data) > 0:
+			for mykey, mystat, mycontent in update_data:
+				writemsg_stdout("\n\n")
+				writemsg_stdout(colorize("GOOD",
+					_("Performing Global Updates: "))+bold(mykey)+"\n")
+				writemsg_stdout(_("(Could take a couple of minutes if you have a lot of binary packages.)\n"))
+				writemsg_stdout(_("  %s='update pass'  %s='binary update'  "
+					"%s='/var/db update'  %s='/var/db move'\n"
+					"  %s='/var/db SLOT move'  %s='binary move'  "
+					"%s='binary SLOT move'\n  %s='update /etc/portage/package.*'\n") % \
+					(bold("."), bold("*"), bold("#"), bold("@"), bold("s"), bold("%"), bold("S"), bold("p")))
+				valid_updates, errors = parse_updates(mycontent)
+				myupd.extend(valid_updates)
+				writemsg_stdout(len(valid_updates) * "." + "\n")
+				if len(errors) == 0:
+					# Update our internal mtime since we
+					# processed all of our directives.
+					timestamps[mykey] = mystat[stat.ST_MTIME]
+				else:
+					for msg in errors:
+						writemsg("%s\n" % msg, noiselevel=-1)
+			retupd.extend(myupd)
 
-		world_file = os.path.join(root, EPREFIX_LSTRIP, WORLD_FILE)
-		world_list = grabfile(world_file)
-		world_modified = False
-		for update_cmd in myupd:
-			for pos, atom in enumerate(world_list):
-				new_atom = update_dbentry(update_cmd, atom)
-				if atom != new_atom:
-					world_list[pos] = new_atom
-					world_modified = True
-		if world_modified:
-			world_list.sort()
-			write_atomic(world_file,
-				"".join("%s\n" % (x,) for x in world_list))
+	master_repo = portdb.getRepositoryName(portdb.porttree_root)
+	if master_repo in repo_map:
+		repo_map['DEFAULT'] = repo_map[master_repo]
 
-		update_config_files("/",
-			mysettings.get("CONFIG_PROTECT","").split(),
-			mysettings.get("CONFIG_PROTECT_MASK","").split(),
-			myupd)
+	for repo_name, myupd in repo_map.items():
+			if repo_name == 'DEFAULT':
+				continue
+			if not myupd:
+				continue
 
-		vardb = trees["/"]["vartree"].dbapi
-		bindb = trees["/"]["bintree"].dbapi
-		if not os.access(bindb.bintree.pkgdir, os.W_OK):
-			bindb = None
-		else:
-			# Call binarytree.populate(), since we want to make sure it's
-			# only populated with local packages here (getbinpkgs=0).
-			bindb.bintree.populate()
-		for update_cmd in myupd:
-			if update_cmd[0] == "move":
-				moves = vardb.move_ent(update_cmd)
-				if moves:
-					writemsg_stdout(moves * "@")
-				if bindb:
-					moves = bindb.move_ent(update_cmd)
+			def repo_match(repository):
+				return repository == repo_name or \
+					(repo_name == master_repo and repository not in repo_map)
+
+			def _world_repo_match(atoma, atomb):
+				"""
+				Check whether to perform a world change from atoma to atomb.
+				If best vardb match for atoma comes from the same repository
+				as the update file, allow that. Additionally, if portdb still
+				can find a match for old atom name, warn about that.
+				"""
+				matches = vardb.match(atoma)
+				if matches and \
+					repo_match(vardb.aux_get(best(matches), ['repository'])[0]):
+					if portdb.match(atoma):
+						world_warnings.add((atoma, atomb))
+					return True
+				else:
+					return False
+
+			for update_cmd in myupd:
+				for pos, atom in enumerate(world_list):
+					new_atom = update_dbentry(update_cmd, atom)
+					if atom != new_atom:
+						if _world_repo_match(atom, new_atom):
+							world_list[pos] = new_atom
+							world_modified = True
+			update_config_files(root,
+				mysettings.get("CONFIG_PROTECT","").split(),
+				mysettings.get("CONFIG_PROTECT_MASK","").split(),
+				myupd, match_callback=_world_repo_match)
+
+			for update_cmd in myupd:
+				if update_cmd[0] == "move":
+					moves = vardb.move_ent(update_cmd, repo_match=repo_match)
 					if moves:
-						writemsg_stdout(moves * "%")
-			elif update_cmd[0] == "slotmove":
-				moves = vardb.move_slot_ent(update_cmd)
-				if moves:
-					writemsg_stdout(moves * "s")
-				if bindb:
-					moves = bindb.move_slot_ent(update_cmd)
+						writemsg_stdout(moves * "@")
+					if bindb:
+						moves = bindb.move_ent(update_cmd, repo_match=repo_match)
+						if moves:
+							writemsg_stdout(moves * "%")
+				elif update_cmd[0] == "slotmove":
+					moves = vardb.move_slot_ent(update_cmd, repo_match=repo_match)
 					if moves:
-						writemsg_stdout(moves * "S")
+						writemsg_stdout(moves * "s")
+					if bindb:
+						moves = bindb.move_slot_ent(update_cmd, repo_match=repo_match)
+						if moves:
+							writemsg_stdout(moves * "S")
 
-		# The above global updates proceed quickly, so they
-		# are considered a single mtimedb transaction.
-		if len(timestamps) > 0:
-			# We do not update the mtime in the mtimedb
-			# until after _all_ of the above updates have
-			# been processed because the mtimedb will
-			# automatically commit when killed by ctrl C.
-			for mykey, mtime in timestamps.items():
-				prev_mtimes[mykey] = mtime
+			# The above global updates proceed quickly, so they
+			# are considered a single mtimedb transaction.
+			if len(timestamps) > 0:
+				# We do not update the mtime in the mtimedb
+				# until after _all_ of the above updates have
+				# been processed because the mtimedb will
+				# automatically commit when killed by ctrl C.
+				for mykey, mtime in timestamps.items():
+					prev_mtimes[mykey] = mtime
 
-		# We gotta do the brute force updates for these now.
-		if mysettings["PORTAGE_CALLER"] == "fixpackages" or \
-		"fixpackages" in mysettings.features:
-			def onUpdate(maxval, curval):
-				if curval > 0:
-					writemsg_stdout("#")
-			vardb.update_ents(myupd, onUpdate=onUpdate)
-			if bindb:
+	if retupd:
+			do_upgrade_packagesmessage = False
+			# We gotta do the brute force updates for these now.
+			if mysettings.get("PORTAGE_CALLER") == "fixpackages" or \
+			"fixpackages" in mysettings.features:
 				def onUpdate(maxval, curval):
 					if curval > 0:
-						writemsg_stdout("*")
-				bindb.update_ents(myupd, onUpdate=onUpdate)
-		else:
-			do_upgrade_packagesmessage = 1
+						writemsg_stdout("#")
+				vardb.update_ents(repo_map, onUpdate=onUpdate)
+				if bindb:
+					def onUpdate(maxval, curval):
+						if curval > 0:
+							writemsg_stdout("*")
+					bindb.update_ents(repo_map, onUpdate=onUpdate)
+			else:
+				do_upgrade_packagesmessage = 1
 
-		# Update progress above is indicated by characters written to stdout so
-		# we print a couple new lines here to separate the progress output from
-		# what follows.
-		print()
-		print()
+			# Update progress above is indicated by characters written to stdout so
+			# we print a couple new lines here to separate the progress output from
+			# what follows.
+			print()
+			print()
 
-		if do_upgrade_packagesmessage and bindb and \
-			bindb.cpv_all():
-			writemsg_stdout(_(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the tbz2's in the packages directory.\n"))
-			writemsg_stdout(bold(_("Note: This can take a very long time.")))
-			writemsg_stdout("\n")
-	if myupd:
-		return myupd
+			if do_upgrade_packagesmessage and bindb and \
+				bindb.cpv_all():
+				writemsg_stdout(_(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the tbz2's in the packages directory.\n"))
+				writemsg_stdout(bold(_("Note: This can take a very long time.")))
+				writemsg_stdout("\n")
+
+	if world_modified:
+		world_list.sort()
+		write_atomic(world_file,
+			"".join("%s\n" % (x,) for x in world_list))
+		if world_warnings:
+			# XXX: print warning that we've updated world entries
+			# and the old name still matches something (from an overlay)?
+			pass
+
+	if retupd:
+		return retupd

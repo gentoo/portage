@@ -15,4 +15,4 @@ class TestExtendedAtomDict(TestCase):
 		self.assertEqual(d.get("dev-libs/A"), { "test1": "x", "test2": "y" })
 		self.assertEqual(d.get("sys-apps/portage"), { "test1": "x", "test3": "z" })
 		self.assertEqual(d["dev-libs/*"], { "test2": "y" })
-		self.assertEqual(d["sys-apps/portage"], { "test3": "z" })
+		self.assertEqual(d["sys-apps/portage"], {'test1': 'x', 'test3': 'z'})

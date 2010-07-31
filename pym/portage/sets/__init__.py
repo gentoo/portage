@@ -113,8 +113,8 @@ class SetConfig(object):
 							self.errors.append(_("Redefinition of set '%s' (sections: '%s', '%s')") % (x, self.psets[x].creator, sname))
 						newsets[x].creator = sname
 						if parser.has_option(sname, "world-candidate") and \
-							not parser.getboolean(sname, "world-candidate"):
-							newsets[x].world_candidate = False
+							parser.getboolean(sname, "world-candidate"):
+							newsets[x].world_candidate = True
 					self.psets.update(newsets)
 				else:
 					self.errors.append(_("Section '%(section)s' is configured as multiset, but '%(class)s' "
@@ -132,8 +132,8 @@ class SetConfig(object):
 						self.psets[setname] = setclass.singleBuilder(optdict, self.settings, self.trees)
 						self.psets[setname].creator = sname
 						if parser.has_option(sname, "world-candidate") and \
-							not parser.getboolean(sname, "world-candidate"):
-							self.psets[setname].world_candidate = False
+							parser.getboolean(sname, "world-candidate"):
+							self.psets[setname].world_candidate = True
 					except SetConfigError as e:
 						self.errors.append(_("Configuration error in section '%s': %s") % (sname, str(e)))
 						continue
@@ -176,9 +176,17 @@ class SetConfig(object):
 		return myatoms
 
 def load_default_config(settings, trees):
-	setconfigpaths = [os.path.join(GLOBAL_CONFIG_PATH, "sets.conf")]
-	setconfigpaths.append(os.path.join(settings["PORTDIR"], "sets.conf"))
-	setconfigpaths += [os.path.join(x, "sets.conf") for x in settings["PORTDIR_OVERLAY"].split()]
-	setconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
-		USER_CONFIG_PATH, "sets.conf"))
-	return SetConfig(setconfigpaths, settings, trees)
+	def _getfiles():
+		for path, dirs, files in os.walk(os.path.join(GLOBAL_CONFIG_PATH, "sets")):
+			for f in files:
+				yield os.path.join(path, f)
+
+		dbapi = trees["porttree"].dbapi
+		for repo in dbapi.getRepositories():
+			path = dbapi.getRepositoryPath(repo)
+			yield os.path.join(path, "sets.conf")
+
+		yield os.path.join(settings["PORTAGE_CONFIGROOT"],
+			USER_CONFIG_PATH, "sets.conf")
+
+	return SetConfig(_getfiles(), settings, trees)

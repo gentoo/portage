@@ -200,8 +200,8 @@ class dbapi(object):
 	def update_ents(self, updates, onProgress=None, onUpdate=None):
 		"""
 		Update metadata of all packages for package moves.
-		@param updates: A list of move commands
-		@type updates: List
+		@param updates: A list of move commands, or dict of {repo_name: list}
+		@type updates: list or dict
 		@param onProgress: A progress callback function
 		@type onProgress: a callable that takes 2 integer arguments: maxval and curval
 		@param onUpdate: A progress callback function called only
@@ -214,15 +214,33 @@ class dbapi(object):
 		maxval = len(cpv_all)
 		aux_get = self.aux_get
 		aux_update = self.aux_update
-		update_keys = ["DEPEND", "RDEPEND", "PDEPEND", "PROVIDE"]
+		meta_keys = ["DEPEND", "RDEPEND", "PDEPEND", "PROVIDE", 'repository']
+		repo_dict = None
+		if isinstance(updates, dict):
+			repo_dict = updates
 		from portage.update import update_dbentries
 		if onUpdate:
 			onUpdate(maxval, 0)
 		if onProgress:
 			onProgress(maxval, 0)
 		for i, cpv in enumerate(cpv_all):
-			metadata = dict(zip(update_keys, aux_get(cpv, update_keys)))
-			metadata_updates = update_dbentries(updates, metadata)
+			metadata = dict(zip(meta_keys, aux_get(cpv, meta_keys)))
+			repo = metadata.pop('repository')
+			if repo_dict is None:
+				updates_list = updates
+			else:
+				try:
+					updates_list = repo_dict[repo]
+				except KeyError:
+					try:
+						updates_list = repo_dict['DEFAULT']
+					except KeyError:
+						continue
+
+			if not updates_list:
+				continue
+
+			metadata_updates = update_dbentries(updates_list, metadata)
 			if metadata_updates:
 				aux_update(cpv, metadata_updates)
 				if onUpdate:
@@ -230,10 +248,12 @@ class dbapi(object):
 			if onProgress:
 				onProgress(maxval, i+1)
 
-	def move_slot_ent(self, mylist):
+	def move_slot_ent(self, mylist, repo_match=None):
 		"""This function takes a sequence:
 		Args:
 			mylist: a sequence of (package, originalslot, newslot)
+			repo_match: callable that takes single repo_name argument
+				and returns True if the update should be applied
 		Returns:
 			The number of slotmoves this function did
 		"""
@@ -247,6 +267,9 @@ class dbapi(object):
 		for mycpv in origmatches:
 			slot = self.aux_get(mycpv, ["SLOT"])[0]
 			if slot != origslot:
+				continue
+			if repo_match is not None \
+				and not repo_match(self.aux_get(mycpv, ['repository'])[0]):
 				continue
 			moves += 1
 			mydata = {"SLOT": newslot+"\n"}
