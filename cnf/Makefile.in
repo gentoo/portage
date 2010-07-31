@@ -22,8 +22,12 @@ install:
 	$(INSTALL_subst) \
 		-o "$(portageuser)" -g "$(portagegroup)" \
 		-t "$(DESTDIR)$(PORTAGE_CONF)" \
-		"$(srcdir)"/make.globals \
-		"$(srcdir)"/sets.conf
+		"$(srcdir)"/make.globals
+	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(PORTAGE_CONF)/sets
+	$(INSTALL_subst) \
+		-o "$(portageuser)" -g "$(portagegroup)" \
+		-t "$(DESTDIR)$(PORTAGE_CONF)/sets" \
+		"$(srcdir)"/sets/portage.conf
 	$(INSTALL_subst) \
 		-o "$(portageuser)" -g "$(portagegroup)" \
 		"$(srcdir)"/make.conf "$(DESTDIR)$(PORTAGE_CONF)"/make.conf.example
