@@ -127,6 +127,8 @@ def _global_updates(trees, prev_mtimes):
 				can find a match for old atom name, warn about that.
 				"""
 				matches = vardb.match(atoma)
+				if not matches:
+					matches = vardb.match(atomb)
 				if matches and \
 					repo_match(vardb.aux_get(best(matches), ['repository'])[0]):
 					if portdb.match(atoma):
@@ -160,6 +162,15 @@ def _global_updates(trees, prev_mtimes):
 						moves = bindb.move_slot_ent(update_cmd, repo_match=repo_match)
 						if moves:
 							writemsg_stdout(moves * "S")
+
+	if world_modified:
+		world_list.sort()
+		write_atomic(world_file,
+			"".join("%s\n" % (x,) for x in world_list))
+		if world_warnings:
+			# XXX: print warning that we've updated world entries
+			# and the old name still matches something (from an overlay)?
+			pass
 
 	if retupd:
 
@@ -221,14 +232,5 @@ def _global_updates(trees, prev_mtimes):
 				writemsg_stdout(_(" ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the tbz2's in the packages directory.\n"))
 				writemsg_stdout(bold(_("Note: This can take a very long time.")))
 				writemsg_stdout("\n")
-
-	if world_modified:
-		world_list.sort()
-		write_atomic(world_file,
-			"".join("%s\n" % (x,) for x in world_list))
-		if world_warnings:
-			# XXX: print warning that we've updated world entries
-			# and the old name still matches something (from an overlay)?
-			pass
 
 	return retupd
