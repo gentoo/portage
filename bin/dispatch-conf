@@ -113,7 +113,7 @@ class dispatch:
         # config file freezing support
         frozen_files = set(self.options.get("frozen-files", "").split())
         auto_zapped = []
-        protect_obj = ConfigProtect(
+        protect_obj = portage.util.ConfigProtect(
             config_root, config_paths,
             portage.util.shlex_split(
             portage.settings.get('CONFIG_PROTECT_MASK', '')))
