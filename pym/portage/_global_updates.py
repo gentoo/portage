@@ -27,20 +27,18 @@ def _global_updates(trees, prev_mtimes):
 	@param prev_mtimes: A dictionary containing mtimes of files located in
 		$PORTDIR/profiles/updates/.
 	@type prev_mtimes: dict
-	@rtype: None or List
-	@return: None if no were no updates, otherwise a list of update commands
-		that have been performed.
+	@rtype: bool
+	@return: True if update commands have been performed, otherwise False
 	"""
 	# only do this if we're root and not running repoman/ebuild digest
 
+	retupd = False
 	if secpass < 2 or \
 		"SANDBOX_ACTIVE" in os.environ or \
 		len(trees) != 1:
-		return 0
+		return retupd
 	root = "/"
-	mysettings = trees["/"]["vartree"].settings
-	retupd = []
-
+	mysettings = trees[root]["vartree"].settings
 	portdb = trees[root]["porttree"].dbapi
 	vardb = trees[root]["vartree"].dbapi
 	bindb = trees[root]["bintree"].dbapi
@@ -104,7 +102,8 @@ def _global_updates(trees, prev_mtimes):
 				else:
 					for msg in errors:
 						writemsg("%s\n" % msg, noiselevel=-1)
-			retupd.extend(myupd)
+			if myupd:
+				retupd = True
 
 	master_repo = portdb.getRepositoryName(portdb.porttree_root)
 	if master_repo in repo_map:
@@ -215,5 +214,4 @@ def _global_updates(trees, prev_mtimes):
 			# and the old name still matches something (from an overlay)?
 			pass
 
-	if retupd:
-		return retupd
+	return retupd
