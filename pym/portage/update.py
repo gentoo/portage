@@ -187,10 +187,18 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 	config_root - location of files to update
 	protect - list of paths from CONFIG_PROTECT
 	protect_mask - list of paths from CONFIG_PROTECT_MASK
-	update_iter - list of update commands as returned from parse_updates()
-	match_callback - a callback which will be called with old and new atoms
+	update_iter - list of update commands as returned from parse_updates(),
+		or dict of {repo_name: list}
+	match_callback - a callback which will be called with three arguments:
+		match_callback(repo_name, old_atom, new_atom)
 	and should return boolean value determining whether to perform the update"""
 
+	repo_dict = None
+	if isinstance(update_iter, dict):
+		repo_dict = update_iter
+	if match_callback is None:
+		def match_callback(repo_name, atoma, atomb):
+			return True
 	config_root = normalize_path(config_root)
 	update_files = {}
 	file_contents = {}
@@ -242,24 +250,29 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 
 	# update /etc/portage/packages.*
 	ignore_line_re = re.compile(r'^#|^\s*$')
-	for update_cmd in update_iter:
-		for x, contents in file_contents.items():
-			for pos, line in enumerate(contents):
-				if ignore_line_re.match(line):
-					continue
-				atom = line.split()[0]
-				if atom.startswith("-"):
-					# package.mask supports incrementals
-					atom = atom[1:]
-				if not isvalidatom(atom):
-					continue
-				new_atom = update_dbentry(update_cmd, atom)
-				if atom != new_atom:
-					if match_callback(atom, new_atom):
-						contents[pos] = line.replace(atom, new_atom)
-						update_files[x] = 1
-						sys.stdout.write("p")
-						sys.stdout.flush()
+	if repo_dict is None:
+		update_items = [(None, update_iter)]
+	else:
+		update_items = [x for x in repo_dict.items() if x[0] != 'DEFAULT']
+	for repo_name, update_iter in update_items:
+		for update_cmd in update_iter:
+			for x, contents in file_contents.items():
+				for pos, line in enumerate(contents):
+					if ignore_line_re.match(line):
+						continue
+					atom = line.split()[0]
+					if atom[:1] == "-":
+						# package.mask supports incrementals
+						atom = atom[1:]
+					if not isvalidatom(atom):
+						continue
+					new_atom = update_dbentry(update_cmd, atom)
+					if atom != new_atom:
+						if match_callback(repo_name, atom, new_atom):
+							contents[pos] = line.replace(atom, new_atom, 1)
+							update_files[x] = 1
+							sys.stdout.write("p")
+							sys.stdout.flush()
 
 	protect_obj = ConfigProtect(
 		config_root, protect, protect_mask)

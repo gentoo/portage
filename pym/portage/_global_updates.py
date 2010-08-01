@@ -142,10 +142,6 @@ def _global_updates(trees, prev_mtimes):
 						if _world_repo_match(atom, new_atom):
 							world_list[pos] = new_atom
 							world_modified = True
-			update_config_files(root,
-				shlex_split(mysettings.get("CONFIG_PROTECT", "")),
-				shlex_split(mysettings.get("CONFIG_PROTECT_MASK", "")),
-				myupd, match_callback=_world_repo_match)
 
 			for update_cmd in myupd:
 				if update_cmd[0] == "move":
@@ -166,6 +162,27 @@ def _global_updates(trees, prev_mtimes):
 							writemsg_stdout(moves * "S")
 
 	if retupd:
+
+			def _config_repo_match(repo_name, atoma, atomb):
+				"""
+				Check whether to perform a world change from atoma to atomb.
+				If best vardb match for atoma comes from the same repository
+				as the update file, allow that. Additionally, if portdb still
+				can find a match for old atom name, warn about that.
+				"""
+				matches = vardb.match(atoma)
+				if not matches:
+					matches = vardb.match(atomb)
+					if not matches:
+						return False
+				repository = vardb.aux_get(best(matches), ['repository'])[0]
+				return repository == repo_name or \
+					(repo_name == master_repo and repository not in repo_map)
+
+			update_config_files(root,
+				shlex_split(mysettings.get("CONFIG_PROTECT", "")),
+				shlex_split(mysettings.get("CONFIG_PROTECT_MASK", "")),
+				repo_map, match_callback=_config_repo_match)
 
 			# The above global updates proceed quickly, so they
 			# are considered a single mtimedb transaction.
