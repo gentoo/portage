@@ -166,9 +166,11 @@ def _global_updates(trees, prev_mtimes):
 						if moves:
 							writemsg_stdout(moves * "S")
 
+	if retupd:
+
 			# The above global updates proceed quickly, so they
 			# are considered a single mtimedb transaction.
-			if len(timestamps) > 0:
+			if timestamps:
 				# We do not update the mtime in the mtimedb
 				# until after _all_ of the above updates have
 				# been processed because the mtimedb will
@@ -176,7 +178,6 @@ def _global_updates(trees, prev_mtimes):
 				for mykey, mtime in timestamps.items():
 					prev_mtimes[mykey] = mtime
 
-	if retupd:
 			do_upgrade_packagesmessage = False
 			# We gotta do the brute force updates for these now.
 			if mysettings.get("PORTAGE_CALLER") == "fixpackages" or \
