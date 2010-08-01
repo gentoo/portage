@@ -13,11 +13,8 @@
 
 from __future__ import print_function
 
-if not hasattr(__builtins__, "set"):
-    from sets import Set as set
-
-from stat import *
-from random import *
+from stat import ST_GID, ST_MODE, ST_UID
+from random import random
 import atexit, re, shutil, stat, sys
 
 try:
@@ -74,7 +71,7 @@ class dispatch:
         confs = []
         count = 0
 
-
+        config_root = '/'
         self.options = portage.dispatch_conf.read_config(MANDATORY_OPTS)
 
         if "log-file" in self.options:
@@ -91,7 +88,7 @@ class dispatch:
         # Build list of extant configs
         #
 
-        for path in config_paths.split ():
+        for path in config_paths:
             path = portage.normalize_path(path)
             try:
                 mymode = os.stat(path).st_mode
@@ -116,6 +113,10 @@ class dispatch:
         # config file freezing support
         frozen_files = set(self.options.get("frozen-files", "").split())
         auto_zapped = []
+        protect_obj = ConfigProtect(
+            config_root, config_paths,
+            portage.util.shlex_split(
+            portage.settings.get('CONFIG_PROTECT_MASK', '')))
 
         #
         # Remove new configs identical to current
@@ -190,7 +191,8 @@ class dispatch:
                 except OSError:
                     pass
                 return False
-            elif unmodified or same_cvs or same_wsc or conf ['dir'] in portage.settings ['CONFIG_PROTECT_MASK'].split ():
+            elif unmodified or same_cvs or same_wsc or \
+                not protect_obj.isprotected(conf['current']):
                 self.replace(newconf, conf['current'])
                 self.post_process(conf['current'])
                 if newconf == mrgconf:
@@ -426,6 +428,7 @@ d = dispatch ()
 
 if len(sys.argv) > 1:
     # for testing
-    d.grind (" ".join(sys.argv[1:]))
+    d.grind(sys.argv[1:])
 else:
-    d.grind (portage.settings ['CONFIG_PROTECT'])
+    d.grind(portage.util.shlex_split(
+        portage.settings.get('CONFIG_PROTECT', '')))

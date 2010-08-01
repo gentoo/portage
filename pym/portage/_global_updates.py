@@ -12,7 +12,8 @@ from portage.exception import DirectoryNotFound
 from portage.localization import _
 from portage.output import bold, colorize
 from portage.update import grab_updates, parse_updates, update_config_files, update_dbentry
-from portage.util import grabfile, writemsg, writemsg_stdout, write_atomic
+from portage.util import grabfile, shlex_split, \
+	writemsg, writemsg_stdout, write_atomic
 
 def _global_updates(trees, prev_mtimes):
 	"""
@@ -143,8 +144,8 @@ def _global_updates(trees, prev_mtimes):
 							world_list[pos] = new_atom
 							world_modified = True
 			update_config_files(root,
-				mysettings.get("CONFIG_PROTECT","").split(),
-				mysettings.get("CONFIG_PROTECT_MASK","").split(),
+				shlex_split(mysettings.get("CONFIG_PROTECT", "")),
+				shlex_split(mysettings.get("CONFIG_PROTECT_MASK", "")),
 				myupd, match_callback=_world_repo_match)
 
 			for update_cmd in myupd:

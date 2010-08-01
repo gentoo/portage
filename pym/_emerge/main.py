@@ -33,7 +33,7 @@ import portage.exception
 from portage.data import secpass
 from portage.dbapi.dep_expand import dep_expand
 from portage.util import normalize_path as normpath
-from portage.util import writemsg, writemsg_level, writemsg_stdout
+from portage.util import shlex_split, writemsg_level, writemsg_stdout
 from portage.sets import SETPREFIX
 from portage._global_updates import _global_updates
 
@@ -320,7 +320,7 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 	settings.regenerate()
 	settings.lock()
 
-	config_protect = settings.get("CONFIG_PROTECT","").split()
+	config_protect = shlex_split(settings.get("CONFIG_PROTECT", ""))
 	infodirs = settings.get("INFOPATH","").split(":") + \
 		settings.get("INFODIR","").split(":")
 

@@ -2304,7 +2304,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		trees[settings["ROOT"]]["vartree"].dbapi.match(
 		portage.const.PORTAGE_PACKAGE_ATOM))
 
-	chk_updated_cfg_files("/", settings.get("CONFIG_PROTECT","").split())
+	chk_updated_cfg_files("/",
+		portage.util.shlex_split(settings.get("CONFIG_PROTECT", "")))
 
 	if myaction != "metadata":
 		postsync = os.path.join(settings["PORTAGE_CONFIGROOT"],
