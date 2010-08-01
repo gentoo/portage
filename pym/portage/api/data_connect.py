@@ -14,6 +14,8 @@ from portage.dep import Atom
 from portage import manifest
 from portage.api.flag import get_flags
 from portage.api.properties import Properties
+from portage.util import writemsg_level
+
 
 # debug printing
 # use portage.util.writemsg_level(), with level=logging.DEBUG
@@ -29,9 +31,7 @@ def xmatch(*args, **kwargs):
 	   control-center                       ebuilds for gnome-base/control-center
 	   >=gnome-base/control-center-2.8.2    only ebuilds with version >= 2.8.2
 	"""
-	#print >>stderr, "DATA_CONNECT: xmatch(); thread ident ", thread.get_ident()
 	results  =  settings.portdb.xmatch(*args, **kwargs)
-	#print >>stderr, type(results), str(results)
 	return results
 
 
@@ -45,7 +45,9 @@ def get_versions(cp, include_masked=True):
 	# Note: this is slow, especially when include_masked is false
 	criterion = include_masked and 'match-all' or 'match-visible'
 	results = xmatch(criterion, str(cp))
-	#debug.dprint("DATA_CONNECT: get_versions(); criterion = %s, package = %s, results = %s" %(str(criterion),cp,str(results)))
+	#writemsg_level(
+	#	"DATA_CONNECT: get_versions(); criterion = %s, package = %s, results = %s" %(str(criterion),cp,str(results)),
+	#  level=logging.DEBUG)
 	return  results
 
 
@@ -123,11 +125,11 @@ def get_dep_ebuild(dep):
 	@rtype set
 	@return  best_ebuild, keyworded_ebuild, masked_ebuild
 	"""
-	#debug.dprint("DATA_CONNECT: get_dep_ebuild(); dep = " + dep)
+	#writemsg_level("DATA_CONNECT: get_dep_ebuild(); dep = " + dep, level=logging.DEBUG)
 	best_ebuild = keyworded_ebuild = masked_ebuild = ''
 	best_ebuild = xmatch("bestmatch-visible", dep)
 	if best_ebuild == '':
-		#debug.dprint("DATA_CONNECT: get_dep_ebuild(); checking masked packages")
+		#writemsg_level("DATA_CONNECT: get_dep_ebuild(); checking masked packages", level=logging.DEBUG)
 		atomized_dep = Atom(dep)
 		hardmasked_nocheck, hardmasked = get_hard_masked(atomized_dep.cpv)
 		matches = xmatch("match-all", dep)[:]
@@ -137,7 +139,9 @@ def get_dep_ebuild(dep):
 			if m not in hardmasked:
 				keyworded.append(m)
 		keyworded_ebuild = best(keyworded)
-	#debug.dprint("DATA_CONNECT: get_dep_ebuild(); ebuilds = " + str([best_ebuild, keyworded_ebuild, masked_ebuild]))
+	#writemsg_level(
+		#"DATA_CONNECT: get_dep_ebuild(); ebuilds = " + str([best_ebuild, keyworded_ebuild, masked_ebuild]),
+		#level=logging.DEBUG)
 	return best_ebuild, keyworded_ebuild, masked_ebuild
 
 
@@ -194,21 +198,22 @@ def get_size(cpv, formatted_string=True):
 	@rtype str, or int
 	"""
 	#This code to calculate size of downloaded files was taken from /usr/bin/emerge - BB
-	#debug.dprint( "DATA_CONNECT: get_size; cpv = " + cpv)
+	#writemsg_level( "DATA_CONNECT: get_size; cpv = " + cpv, level=logging.DEBUG)
 	total = [0,'']
 	ebuild = settings.portdb.findname(cpv)
 	pkgdir = os.path.dirname(ebuild)
 	mf = manifest.Manifest(pkgdir, settings.settings["DISTDIR"])
 	iuse, final_use = get_flags(cpv, final_setting=True)
-	#debug.dprint( "DATA_CONNECT: get_size; Attempting to get fetchlist final use= " + str(final_use))
+	#writemsg_level( "DATA_CONNECT: get_size; Attempting to get fetchlist final use= " + str(final_use),
+		#level=logging.DEBUG)
 	try:
 		fetchlist = settings.portdb.getFetchMap(cpv, set(final_use))
-		#debug.dprint( "DATA_CONNECT: get_size; fetchlist= " +str(fetchlist))
-		#debug.dprint( "DATA_CONNECT: get_size; mf.getDistfilesSize()")
+		#writemsg_level( "DATA_CONNECT: get_size; fetchlist= " +str(fetchlist), level=logging.DEBUG)
+		#writemsg_level( "DATA_CONNECT: get_size; mf.getDistfilesSize()", level=logging.DEBUG)
 		total[0] = mf.getDistfilesSize(fetchlist)
 		if formatted_string:
 			total_str = str(total[0]/1024)
-			#debug.dprint( "DATA_CONNECT: get_size; total_str = " + total_str)
+			#writemsg_level( "DATA_CONNECT: get_size; total_str = " + total_str, level=logging.DEBUG)
 			count=len(total_str)
 			while (count > 3):
 				count-=3
@@ -217,36 +222,41 @@ def get_size(cpv, formatted_string=True):
 	except KeyError, e:
 		total[1] = "Unknown (missing digest)"
 		total[0] = 0
-		#debug.dprint( "DATA_CONNECT: get_size; Exception: " + str(e)  )
-		#debug.dprint( "DATA_CONNECT: get_size; cpv: " + str(cpv))
-		#debug.dprint( "DATA_CONNECT: get_size; fetchlist = " + str(fetchlist))
-	#debug.dprint( "DATA_CONNECT: get_size; returning total[1] = " + total[1])
+		#writemsg_level( "DATA_CONNECT: get_size; Exception: " + str(e),  level=logging.DEBUG)
+		#writemsg_level( "DATA_CONNECT: get_size; cpv: " + str(cpv), level=logging.DEBUG)
+		#writemsg_level( "DATA_CONNECT: get_size; fetchlist = " + str(fetchlist), level=logging.DEBUG)
+	#writemsg_level( "DATA_CONNECT: get_size; returning total[1] = " + total[1], level=logging.DEBUG)
 	if formatted_string:
 		return total[1]
 	return total[0]
 
 
-def get_properties(cpv):
+def get_properties(cpv, want_dict=False):
 	"""Get all ebuild variables in one chunk.
 	
 	@param cpv:  cat/pkg-ver string
 	@rtype
 	@return all properties of cpv
 	"""
+	prop_dict = None
 	if settings.portdb.cpv_exists(cpv): # if in portage tree
 		try:
-			return Properties(dict(zip(settings.keys, settings.portdb.aux_get(cpv, portage.auxdbkeys))))
+			#writemsg_level(" * DATA_CONNECT: get_properties()", level=logging.DEBUG)
+			prop_dict = dict(zip(settings.keys, settings.portdb.aux_get(cpv, portage.auxdbkeys)))
 		except IOError, e: # Sync being performed may delete files
-			#debug.dprint(" * DATA_CONNECT: get_properties(): IOError: %s" % str(e))
-			return Properties()
+			#writemsg_level(" * DATA_CONNECT: get_properties(): IOError: %s" % str(e), level=logging.DEBUG)
+			pass
 		except Exception, e:
-			#debug.dprint(" * DATA_CONNECT: get_properties(): Exception: %s" %str( e))
-			return Properties()
+			#writemsg_level(" * DATA_CONNECT: get_properties(): Exception: %s" %str( e), level=logging.DEBUG)
+			pass
 	else:
 		vartree = settings.trees[settings.settings["ROOT"]]["vartree"]
 		if vartree.dbapi.cpv_exists(cpv): # elif in installed pkg tree
-			return Properties(dict(zip(settings.keys, vartree.dbapi.aux_get(cpv, portage.auxdbkeys))))
-		else: return Properties()
+			prop_dict = dict(zip(settings.keys, vartree.dbapi.aux_get(cpv, portage.auxdbkeys)))
+	if want_dict:
+		# return an empty dict instead of None 
+		return prop_dict or {}
+	return Properties(prop_dict)
 
 
 def is_overlay(cpv): # lifted from gentoolkit
