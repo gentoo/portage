@@ -17,13 +17,22 @@ from portage.api.properties import Properties
 from portage.util import writemsg_level, grabfile
 
 
-def get_path(cpv, file, vardb=True, root=settings.settings["ROOT"]):
+def get_path(cpv, file=None, vardb=True, root=None):
 	"""Returns a path to the specified category/package-version in 
 	either the vardb or portdb
 	
-	@param cpv: optional cat/pkg-ver string
-	@param installed: bool, defaults to  True
+	@type cpv: string
+	@param cpv: 'cat/pkg-ver'
+	@type file: string
+	@param file:
+	@param vardb: bool, defaults to  True
+	@type root: string
+	@param root: tree root to use
+	@rtype string
+	@return '/path/to/file'
 	"""
+	if root is None:
+		root = settings.settings["ROOT"]
 	if vardb:
 		return settings.vardb[root].getpath(cpv, file)
 	else:
@@ -46,18 +55,30 @@ def xmatch(root, *args, **kwargs):
 	   gnome-base/control-center            ebuilds for gnome-base/control-center
 	   control-center                       ebuilds for gnome-base/control-center
 	   >=gnome-base/control-center-2.8.2    only ebuilds with version >= 2.8.2
+	
+	@type root: string
+	@param root: tree root to use
+	@param args:  The arument to pass to the dbapi.xmatch()
+	@param kwargs: the extra arguments to pass to dbapi.xmatch()
+	@rtype list
+	@return: list of matches
 	"""
 	results  =  settings.portdb[root].xmatch(*args, **kwargs)
 	return results
 
 
-def get_versions(cp, include_masked=True, root=settings.settings["ROOT"]):
+def get_versions(cp, include_masked=True, root=None):
 	"""Returns all available ebuilds for the package
 	
-	@param cp:  cat/pkg string
+	@type cp: string
+	@param cp:  'cat/pkg'
+	@type root: string
+	@param root: tree root to use
 	@rtype
 	@return
 	"""
+	if root is None:
+		root = settings.settings["ROOT"]
 	# Note: this is slow, especially when include_masked is false
 	criterion = include_masked and 'match-all' or 'match-visible'
 	results = xmatch(root, criterion, str(cp))
@@ -67,13 +88,18 @@ def get_versions(cp, include_masked=True, root=settings.settings["ROOT"]):
 	return  results
 
 
-def get_hard_masked(cp, root=settings.settings["ROOT"]):
+def get_hard_masked(cp, root=None):
 	"""
 	
-	@param cp:  cat/pkg string
+	@type cp: string
+	@param cp:  'cat/pkg'
+	@type root: string
+	@param root: tree root to use
 	@rtype tuple
 	@return (hard_masked_nocheck, hardmasked)
 	"""
+	if root is None:
+		root = settings.settings["ROOT"]
 	cp = str(cp)
 	hardmasked = []
 	try: # newer portage
@@ -97,13 +123,18 @@ def get_hard_masked(cp, root=settings.settings["ROOT"]):
 	return hard_masked_nocheck, hardmasked
 
 
-def get_installed_files(cpv, root=settings.settings["ROOT"]):
+def get_installed_files(cpv, root=None):
 	"""Get a list of installed files for an ebuild, assuming it has
 	been installed.
 
-	@param cpv:  cat/pkg-ver string
+	@type cpv: string
+	@param cpv: 'cat/pkg-ver'
+	@type root: string
+	@param root: tree root to use
 	@rtype list of strings
 	"""
+	if root is None:
+		root = settings.settings["ROOT"]
 	filepath = get_path(cpv,"CONTENTS", vardb=True, root=root)
 	files = []
 	lines = grabfile(filepath, recursive=0)
@@ -115,29 +146,40 @@ def get_installed_files(cpv, root=settings.settings["ROOT"]):
 def best(versions):
 	"""returns the best version in the list of supplied versions
 	
+	@type versions: list of strings
 	@param versions: a list of cpv's
 	@rtype str
 	"""
 	return portage.best(versions)
 
 
-def get_best_ebuild(cp, root=settings.settings["ROOT"]):
+def get_best_ebuild(cp, root=None):
 	"""returns the best available cpv
 	
-	@param cp:  cat/pkg string
+	@type cp: string
+	@param cp: 'cat/pkg'
+	@type root: string
+	@param root: tree root to use
 	@rtype str
 	"""
+	if root is None:
+		root = settings.settings["ROOT"]
 	return xmatch(root, "bestmatch-visible", cp)
 
 
-def get_dep_ebuild(dep, root=settings.settings["ROOT"]):
+def get_dep_ebuild(dep, root=None):
 	"""Progresively checks for available ebuilds that match the dependency.
 	returns what it finds as up to three options.
 	
-	@param dep: a valid dependency string
+	@type dep: string
+	@param dep: a valid dependency
+	@type root: string
+	@param root: tree root to use
 	@rtype set
 	@return  best_ebuild, keyworded_ebuild, masked_ebuild
 	"""
+	if root is None:
+		root = settings.settings["ROOT"]
 	#writemsg_level("DATA_CONNECT: get_dep_ebuild(); dep = " + dep, level=logging.DEBUG)
 	best_ebuild = keyworded_ebuild = masked_ebuild = ''
 	best_ebuild = xmatch(root, "bestmatch-visible", dep)
@@ -163,7 +205,8 @@ def get_virtual_dep(atom):
 	if there is more than 1 possible resolution
 	
 	@param atom: dependency string
-	@rtpye: string 'cat/pkg-ver'
+	@rtpye: string
+	@return 'cat/pkg-ver'
 	"""
 	return settings.settings.getvirtuals()[atom][0]
 
@@ -171,7 +214,8 @@ def get_virtual_dep(atom):
 def get_masking_status(cpv):
 	"""Gets the current masking status
 	
-	@param cpv:  cat/pkg-ver string
+	@type cpv: string
+	@param cpv: 'cat/pkg-ver'
 	@rtype str
 	"""
 	try:
@@ -181,12 +225,17 @@ def get_masking_status(cpv):
 	return status
 
 
-def get_masking_reason(cpv, root=settings.settings["ROOT"]):
+def get_masking_reason(cpv, root=None):
 	"""Strips trailing \n from, and returns the masking reason given by portage
 	
-	@param cpv:  cat/pkg-ver string
+	@type cpv: string
+	@param cpv: 'cat/pkg-ver'
+	@type root: string
+	@param root: tree root to use
 	@rtype str
 	"""
+	if root is None:
+		root = settings.settings["ROOT"]
 	reason, location = portage.getmaskingreason(
 		cpv, settings=settings.settings, portdb=settings.portdb[root],
 		return_location=True)
@@ -205,13 +254,18 @@ def get_masking_reason(cpv, root=settings.settings["ROOT"]):
 	return reason
 
 
-def get_size(cpv, formatted_string=True, root=settings.settings["ROOT"]):
+def get_size(cpv, formatted_string=True, root=None):
 	""" Returns size of package to fetch.
 	
-	@param cpv:  cat/pkg-ver string
+	@type cpv: string
+	@param cpv: 'cat/pkg-ver'
 	@param formatted_string: defaults to True
+	@type root: string
+	@param root: tree root to use
 	@rtype str, or int
 	"""
+	if root is None:
+		root = settings.settings["ROOT"]
 	#This code to calculate size of downloaded files was taken from /usr/bin/emerge - BB
 	#writemsg_level( "DATA_CONNECT: get_size; cpv = " + cpv, level=logging.DEBUG)
 	total = [0,'']
@@ -246,13 +300,18 @@ def get_size(cpv, formatted_string=True, root=settings.settings["ROOT"]):
 	return total[0]
 
 
-def get_properties(cpv, want_dict=False, root=settings.settings["ROOT"]):
+def get_properties(cpv, want_dict=False, root=None):
 	"""Get all ebuild variables in one chunk.
 	
-	@param cpv:  cat/pkg-ver string
+	@type cpv: string
+	@param cpv: 'cat/pkg-ver'
+	@type root: string
+	@param root: tree root to use
 	@rtype
 	@return all properties of cpv
 	"""
+	if root is None:
+		root = settings.settings["ROOT"]
 	prop_dict = None
 	if settings.portdb[root].cpv_exists(cpv): # if in portage tree
 		try:
@@ -273,12 +332,17 @@ def get_properties(cpv, want_dict=False, root=settings.settings["ROOT"]):
 	return Properties(prop_dict)
 
 
-def is_overlay(cpv, root=settings.settings["ROOT"]): # lifted from gentoolkit
+def is_overlay(cpv, root=None): # lifted from gentoolkit
 	"""Returns true if the package is in an overlay.
 	
-	@param cpv:  cat/pkg-ver string
+	@type cpv: string
+	@param cpv: 'cat/pkg-ver'
+	@type root: string
+	@param root: tree root to use
 	@rtype bool
 	"""
+	if root is None:
+		root = settings.settings["ROOT"]
 	try:
 		dir,ovl = settings.portdb[root].findname2(cpv)
 	except:
@@ -286,13 +350,18 @@ def is_overlay(cpv, root=settings.settings["ROOT"]): # lifted from gentoolkit
 	return ovl != settings.portdir
 
 
-def get_overlay(cpv, root=settings.settings["ROOT"]):
+def get_overlay(cpv, root=None):
 	"""Returns a portage overlay id
 	
-	@param cpv:  cat/pkg-ver string
+	@type cpv: string
+	@param cpv: 'cat/pkg-ver'
+	@type root: string
+	@param root: tree root to use
 	@rtype str
 	@return portage overlay id. or 'Deprecated?
 	'"""
+	if root is None:
+		root = settings.settings["ROOT"]
 	if '/' not in cpv:
 		return ''
 	try:
@@ -302,13 +371,17 @@ def get_overlay(cpv, root=settings.settings["ROOT"]):
 	return ovl
 
 
-def get_overlay_name(ovl_path=None, cpv=None, root=settings.settings["ROOT"]):
+def get_overlay_name(ovl_path=None, cpv=None, root=None):
 	"""Returns the overlay name for either the overlay path or the cpv of a pkg
 	
 	@param ovl_path: optional portage overlay path
 	@param cpv: optional cat/pkg-ver string
+	@type root: string
+	@param root: tree root to use
 	@rtype str
 	"""
+	if root is None:
+		root = settings.settings["ROOT"]
 	if not ovl_path and cpv:
 		ovl_path= get_overlay(cpv, root)
 	name = None
@@ -316,9 +389,17 @@ def get_overlay_name(ovl_path=None, cpv=None, root=settings.settings["ROOT"]):
 	return name or "????"
 
 
-def get_system_pkgs(root=settings.settings["ROOT"]): # lifted from gentoolkit
+def get_system_pkgs(root=None): # lifted from gentoolkit
 	"""Returns a tuple of lists, first list is resolved system packages,
-	second is a list of unresolved packages."""
+	second is a list of unresolved packages.
+	
+	@type root: string
+	@param root: tree root to use
+	@rtype: tuple 
+	@return (resolved, unresolved) pkg lists
+	"""
+	if root is None:
+		root = settings.settings["ROOT"]
 	pkglist = settings.settings.packages
 	resolved = []
 	unresolved = []
@@ -335,22 +416,30 @@ def get_system_pkgs(root=settings.settings["ROOT"]): # lifted from gentoolkit
 	return (resolved, unresolved)
 
 
-def get_allnodes(root=settings.settings["ROOT"]):
+def get_allnodes(root=None):
 	"""Returns a list of all availabe cat/pkg's available from the tree
 	and configured overlays.
 	
+	@type root: string
+	@param root: tree root to use
 	@rtpye: list
 	@return: ['cat/pkg1', 'cat/pkg2',...]
 	"""
+	if root is None:
+		root = settings.settings["ROOT"]
 	return settings.trees[root]['porttree'].getallnodes()[:] # copy
 
 
-def get_installed_list(root=settings.settings["ROOT"]):
+def get_installed_list(root=None):
 	"""Returns a list of all installed cat/pkg-ver available from the tree
 	and configured overlays.
 	
+	@type root: string
+	@param root: tree root to use
 	@rtpye: list
 	@return: ['cat/pkg1-ver', 'cat/pkg2-ver',...]
 	"""
+	if root is None:
+		root = settings.settings["ROOT"]
 	return settings.trees[root]["vartree"].getallnodes()[:] # try copying...
 

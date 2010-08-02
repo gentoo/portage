@@ -26,22 +26,26 @@ from portage.api.settings import settings
 import portage
 
 
-def get_iuse(cpv, root=settings.settings["ROOT"]):
+def get_iuse(cpv, root=None):
 	"""Gets the current IUSE flags from the tree
 
 	To be used when a gentoolkit package object is not needed
-	@type: cpv: string
+	@type: cpv: string 
 	@param cpv: cat/pkg-ver
+	@type root: string
+	@param root: tree root to use
 	@rtype list
 	@returns [] or the list of IUSE flags
 	"""
+	if root is None:
+		root = settings.settings["ROOT"]
 	try:
 		return settings.portdb[root].aux_get(cpv, ["IUSE"])[0].split()
 	except:
 		return []
 
 
-def get_installed_use(cpv, use="USE", root=settings.settings["ROOT"]):
+def get_installed_use(cpv, use="USE", root=None):
 	"""Gets the installed USE flags from the VARDB
 
 	To be used when a gentoolkit package object is not needed
@@ -49,9 +53,13 @@ def get_installed_use(cpv, use="USE", root=settings.settings["ROOT"]):
 	@param cpv: cat/pkg-ver
 	@type use: string
 	@param use: 1 of ["USE", "PKGUSE"]
+	@type root: string
+	@param root: tree root to use
 	@rtype list
 	@returns [] or the list of IUSE flags
 	"""
+	if root is None:
+		root = settings.settings["ROOT"]
 	return settings.vardb[root].aux_get(cpv,[use])[0].split()
 
 
@@ -118,14 +126,18 @@ def filter_flags(use, use_expand_hidden, usemasked, useforced):
 	return use
 
 
-def get_all_cpv_use(cpv, root=settings.settings["ROOT"]):
+def get_all_cpv_use(cpv, root=None):
 	"""Uses portage to determine final USE flags and settings for an emerge
 
 	@type cpv: string
 	@param cpv: eg cat/pkg-ver
+	@type root: string
+	@param root: tree root to use
 	@rtype: lists
 	@return  use, use_expand_hidden, usemask, useforce
 	"""
+	if root is None:
+		root = settings.settings["ROOT"]
 	use = None
 	settings.portdb[root].settings.unlock()
 	try:
@@ -144,7 +156,7 @@ def get_all_cpv_use(cpv, root=settings.settings["ROOT"]):
 	return use, use_expand_hidden, usemask, useforce
 
 
-def get_flags(cpv, final_setting=False, root=settings.settings["ROOT"]):
+def get_flags(cpv, final_setting=False, root=None):
 	"""Retrieves all information needed to filter out hidden, masked, etc.
 	USE flags for a given package.
 
@@ -153,6 +165,9 @@ def get_flags(cpv, final_setting=False, root=settings.settings["ROOT"]):
 	@type final_setting: boolean
 	@param final_setting: used to also determine the final
 		enviroment USE flag settings and return them as well.
+	@type root: string
+	@param root: pass through variable needed, tree root to use
+		for other function calls.
 	@rtype: list or list, list
 	@return IUSE or IUSE, final_flags
 	"""
