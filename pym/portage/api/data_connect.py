@@ -17,10 +17,26 @@ from portage.api.properties import Properties
 from portage.util import writemsg_level
 
 
-# debug printing
-# use portage.util.writemsg_level(), with level=logging.DEBUG
+def get_path(cpv, file, vardb=True, root=settings.settings["ROOT"]):
+	"""Returns a path to the specified category/package-version in 
+	either the vardb or portdb
+	
+	@param cpv: optional cat/pkg-ver string
+	@param installed: bool, defaults to  True
+	"""
+	if vardb:
+		return settings.vardb[root].getpath(cpv, file)
+	else:
+		if '/' not in cpv:
+			return ''
+		try:
+			dir,ovl = settings.portdb[root].findname2(cpv)
+		except:
+			dir = ''
+		return dir
 
-def xmatch(*args, **kwargs):
+
+def xmatch(root, *args, **kwargs):
 	"""Pass arguments on to portage's caching match function.
 	xmatch('match-all',package-name) returns all ebuilds of <package-name> in a list,
 	xmatch('match-visible',package-name) returns non-masked ebuilds,
@@ -31,11 +47,11 @@ def xmatch(*args, **kwargs):
 	   control-center                       ebuilds for gnome-base/control-center
 	   >=gnome-base/control-center-2.8.2    only ebuilds with version >= 2.8.2
 	"""
-	results  =  settings.portdb.xmatch(*args, **kwargs)
+	results  =  settings.portdb[root].xmatch(*args, **kwargs)
 	return results
 
 
-def get_versions(cp, include_masked=True):
+def get_versions(cp, include_masked=True, root=settings.settings["ROOT"]):
 	"""Returns all available ebuilds for the package
 	
 	@param cp:  cat/pkg string
@@ -44,14 +60,14 @@ def get_versions(cp, include_masked=True):
 	"""
 	# Note: this is slow, especially when include_masked is false
 	criterion = include_masked and 'match-all' or 'match-visible'
-	results = xmatch(criterion, str(cp))
+	results = xmatch(root, criterion, str(cp))
 	#writemsg_level(
 	#	"DATA_CONNECT: get_versions(); criterion = %s, package = %s, results = %s" %(str(criterion),cp,str(results)),
 	#  level=logging.DEBUG)
 	return  results
 
 
-def get_hard_masked(cp):
+def get_hard_masked(cp, root=settings.settings["ROOT"]):
 	"""
 	
 	@param cp:  cat/pkg string
@@ -61,7 +77,7 @@ def get_hard_masked(cp):
 	cp = str(cp)
 	hardmasked = []
 	try: # newer portage
-		pmaskdict = settings.portdb.settings.pmaskdict[cp]
+		pmaskdict = settings.portdb[root].settings.pmaskdict[cp]
 	except KeyError:
 		pmaskdict = {}
 	for x in pmaskdict:
@@ -71,24 +87,25 @@ def get_hard_masked(cp):
 				hardmasked.append(n)
 	hard_masked_nocheck = hardmasked[:]
 	try: # newer portage
-		punmaskdict = settings.portdb.settings.punmaskdict[cp]
+		punmaskdict = settings.portdb[root].settings.punmaskdict[cp]
 	except KeyError:
 		punmaskdict = {}
 	for x in punmaskdict:
-		m = xmatch("match-all",x)
+		m = xmatch(root, "match-all",x)
 		for n in m:
 			while n in hardmasked: hardmasked.remove(n)
 	return hard_masked_nocheck, hardmasked
 
 
-def get_installed_files(cpv):
+def get_installed_files(cpv, root=settings.settings["ROOT"]):
 	"""Get a list of installed files for an ebuild, assuming it has
 	been installed.
 
 	@param cpv:  cat/pkg-ver string
 	@rtype list of strings
 	"""
-	path = "/var/db/pkg/" + cpv + "/CONTENTS"
+	path = get_path(cpv,"CONTENTS", vardb=True, root=root)
+	print "path =", path
 	files = []
 	try:
 		# hoping some clown won't use spaces in filenames ...
@@ -108,16 +125,16 @@ def best(versions):
 	return portage.best(versions)
 
 
-def get_best_ebuild(cp):
+def get_best_ebuild(cp, root=settings.settings["ROOT"]):
 	"""returns the best available cpv
 	
 	@param cp:  cat/pkg string
 	@rtype str
 	"""
-	return xmatch("bestmatch-visible", cp)
+	return xmatch(root, "bestmatch-visible", cp)
 
 
-def get_dep_ebuild(dep):
+def get_dep_ebuild(dep, root=settings.settings["ROOT"]):
 	"""Progresively checks for available ebuilds that match the dependency.
 	returns what it finds as up to three options.
 	
@@ -127,12 +144,12 @@ def get_dep_ebuild(dep):
 	"""
 	#writemsg_level("DATA_CONNECT: get_dep_ebuild(); dep = " + dep, level=logging.DEBUG)
 	best_ebuild = keyworded_ebuild = masked_ebuild = ''
-	best_ebuild = xmatch("bestmatch-visible", dep)
+	best_ebuild = xmatch(root, "bestmatch-visible", dep)
 	if best_ebuild == '':
 		#writemsg_level("DATA_CONNECT: get_dep_ebuild(); checking masked packages", level=logging.DEBUG)
 		atomized_dep = Atom(dep)
 		hardmasked_nocheck, hardmasked = get_hard_masked(atomized_dep.cpv)
-		matches = xmatch("match-all", dep)[:]
+		matches = xmatch(root, "match-all", dep)[:]
 		masked_ebuild = best(matches)
 		keyworded = []
 		for m in matches:
@@ -168,13 +185,15 @@ def get_masking_status(cpv):
 	return status
 
 
-def get_masking_reason(cpv):
+def get_masking_reason(cpv, root=settings.settings["ROOT"]):
 	"""Strips trailing \n from, and returns the masking reason given by portage
 	
 	@param cpv:  cat/pkg-ver string
 	@rtype str
 	"""
-	reason, location = portage.getmaskingreason(cpv, settings=settings.settings, portdb=settings.portdb,  return_location=True)
+	reason, location = portage.getmaskingreason(
+		cpv, settings=settings.settings, portdb=settings.portdb[root],
+		return_location=True)
 	if not reason:
 		reason = 'No masking reason given.'
 		status =  get_masking_status(cpv)
@@ -190,7 +209,7 @@ def get_masking_reason(cpv):
 	return reason
 
 
-def get_size(cpv, formatted_string=True):
+def get_size(cpv, formatted_string=True, root=settings.settings["ROOT"]):
 	""" Returns size of package to fetch.
 	
 	@param cpv:  cat/pkg-ver string
@@ -200,14 +219,14 @@ def get_size(cpv, formatted_string=True):
 	#This code to calculate size of downloaded files was taken from /usr/bin/emerge - BB
 	#writemsg_level( "DATA_CONNECT: get_size; cpv = " + cpv, level=logging.DEBUG)
 	total = [0,'']
-	ebuild = settings.portdb.findname(cpv)
+	ebuild = settings.portdb[root].findname(cpv)
 	pkgdir = os.path.dirname(ebuild)
 	mf = manifest.Manifest(pkgdir, settings.settings["DISTDIR"])
-	iuse, final_use = get_flags(cpv, final_setting=True)
+	iuse, final_use = get_flags(cpv, final_setting=True, root=root)
 	#writemsg_level( "DATA_CONNECT: get_size; Attempting to get fetchlist final use= " + str(final_use),
 		#level=logging.DEBUG)
 	try:
-		fetchlist = settings.portdb.getFetchMap(cpv, set(final_use))
+		fetchlist = settings.portdb[root].getFetchMap(cpv, set(final_use))
 		#writemsg_level( "DATA_CONNECT: get_size; fetchlist= " +str(fetchlist), level=logging.DEBUG)
 		#writemsg_level( "DATA_CONNECT: get_size; mf.getDistfilesSize()", level=logging.DEBUG)
 		total[0] = mf.getDistfilesSize(fetchlist)
@@ -231,7 +250,7 @@ def get_size(cpv, formatted_string=True):
 	return total[0]
 
 
-def get_properties(cpv, want_dict=False):
+def get_properties(cpv, want_dict=False, root=settings.settings["ROOT"]):
 	"""Get all ebuild variables in one chunk.
 	
 	@param cpv:  cat/pkg-ver string
@@ -239,10 +258,10 @@ def get_properties(cpv, want_dict=False):
 	@return all properties of cpv
 	"""
 	prop_dict = None
-	if settings.portdb.cpv_exists(cpv): # if in portage tree
+	if settings.portdb[root].cpv_exists(cpv): # if in portage tree
 		try:
 			#writemsg_level(" * DATA_CONNECT: get_properties()", level=logging.DEBUG)
-			prop_dict = dict(zip(settings.keys, settings.portdb.aux_get(cpv, portage.auxdbkeys)))
+			prop_dict = dict(zip(settings.keys, settings.portdb[root].aux_get(cpv, portage.auxdbkeys)))
 		except IOError, e: # Sync being performed may delete files
 			#writemsg_level(" * DATA_CONNECT: get_properties(): IOError: %s" % str(e), level=logging.DEBUG)
 			pass
@@ -250,29 +269,28 @@ def get_properties(cpv, want_dict=False):
 			#writemsg_level(" * DATA_CONNECT: get_properties(): Exception: %s" %str( e), level=logging.DEBUG)
 			pass
 	else:
-		vartree = settings.trees[settings.settings["ROOT"]]["vartree"]
-		if vartree.dbapi.cpv_exists(cpv): # elif in installed pkg tree
-			prop_dict = dict(zip(settings.keys, vartree.dbapi.aux_get(cpv, portage.auxdbkeys)))
+		if settings.vardb[root].cpv_exists(cpv): # elif in installed pkg tree
+			prop_dict = dict(zip(settings.keys, settings.vardb[root].aux_get(cpv, portage.auxdbkeys)))
 	if want_dict:
 		# return an empty dict instead of None 
 		return prop_dict or {}
 	return Properties(prop_dict)
 
 
-def is_overlay(cpv): # lifted from gentoolkit
+def is_overlay(cpv, root=settings.settings["ROOT"]): # lifted from gentoolkit
 	"""Returns true if the package is in an overlay.
 	
 	@param cpv:  cat/pkg-ver string
 	@rtype bool
 	"""
 	try:
-		dir,ovl = settings.portdb.findname2(cpv)
+		dir,ovl = settings.portdb[root].findname2(cpv)
 	except:
 		return False
 	return ovl != settings.portdir
 
 
-def get_overlay(cpv):
+def get_overlay(cpv, root=settings.settings["ROOT"]):
 	"""Returns a portage overlay id
 	
 	@param cpv:  cat/pkg-ver string
@@ -282,13 +300,13 @@ def get_overlay(cpv):
 	if '/' not in cpv:
 		return ''
 	try:
-		dir,ovl = settings.portdb.findname2(cpv)
+		dir,ovl = settings.portdb[root].findname2(cpv)
 	except:
 		ovl = 'Deprecated?'
 	return ovl
 
 
-def get_overlay_name(ovl_path=None, cpv=None):
+def get_overlay_name(ovl_path=None, cpv=None, root=settings.settings["ROOT"]):
 	"""Returns the overlay name for either the overlay path or the cpv of a pkg
 	
 	@param ovl_path: optional portage overlay path
@@ -296,32 +314,13 @@ def get_overlay_name(ovl_path=None, cpv=None):
 	@rtype str
 	"""
 	if not ovl_path and cpv:
-		ovl_path= get_overlay(cpv)
+		ovl_path= get_overlay(cpv, root)
 	name = None
-	name = settings.portdb.getRepositoryName(ovl_path)
+	name = settings.portdb[root].getRepositoryName(ovl_path)
 	return name or "????"
 
 
-def get_path(cpv, vardb=True):
-	"""Returns a path to the specified category/package-version in 
-	either the vardb or portdb
-	
-	@param cpv: optional cat/pkg-ver string
-	@param installed: bool, defaults to  True
-	"""
-	if vardb:
-		return settings.trees[settings.settings["ROOT"]]["vartree"].getebuildpath(cpv)
-	else:
-		if '/' not in cpv:
-			return ''
-		try:
-			dir,ovl = settings.portdb.findname2(cpv)
-		except:
-			dir = ''
-		return dir
-
-
-def get_system_pkgs(): # lifted from gentoolkit
+def get_system_pkgs(root=settings.settings["ROOT"]): # lifted from gentoolkit
 	"""Returns a tuple of lists, first list is resolved system packages,
 	second is a list of unresolved packages."""
 	pkglist = settings.settings.packages
@@ -329,7 +328,7 @@ def get_system_pkgs(): # lifted from gentoolkit
 	unresolved = []
 	for x in pkglist:
 		cpv = x.strip()
-		pkg = get_best_ebuild(cpv)
+		pkg = get_best_ebuild(cpv, root)
 		if pkg:
 			try:
 				resolved.append(Atom(pkg).cp)
@@ -340,22 +339,22 @@ def get_system_pkgs(): # lifted from gentoolkit
 	return (resolved, unresolved)
 
 
-def get_allnodes():
+def get_allnodes(root=settings.settings["ROOT"]):
 	"""Returns a list of all availabe cat/pkg's available from the tree
 	and configured overlays.
 	
 	@rtpye: list
 	@return: ['cat/pkg1', 'cat/pkg2',...]
 	"""
-	return settings.trees[settings.settings["ROOT"]]['porttree'].getallnodes()[:] # copy
+	return settings.trees[root]['porttree'].getallnodes()[:] # copy
 
 
-def get_installed_list():
+def get_installed_list(root=settings.settings["ROOT"]):
 	"""Returns a list of all installed cat/pkg-ver available from the tree
 	and configured overlays.
 	
 	@rtpye: list
 	@return: ['cat/pkg1-ver', 'cat/pkg2-ver',...]
 	"""
-	return settings.trees[settings.settings["ROOT"]]["vartree"].getallnodes()[:] # copy
+	return settings.trees[root]["vartree"].getallnodes()[:] # try copying...
 

@@ -26,7 +26,7 @@ from portage.api.settings import settings
 import portage
 
 
-def get_iuse(cpv):
+def get_iuse(cpv, root=settings.settings["ROOT"]):
 	"""Gets the current IUSE flags from the tree
 
 	To be used when a gentoolkit package object is not needed
@@ -36,12 +36,12 @@ def get_iuse(cpv):
 	@returns [] or the list of IUSE flags
 	"""
 	try:
-		return settings.portdb.aux_get(cpv, ["IUSE"])[0].split()
+		return settings.portdb[root].aux_get(cpv, ["IUSE"])[0].split()
 	except:
 		return []
 
 
-def get_installed_use(cpv, use="USE"):
+def get_installed_use(cpv, use="USE", root=settings.settings["ROOT"]):
 	"""Gets the installed USE flags from the VARDB
 
 	To be used when a gentoolkit package object is not needed
@@ -52,7 +52,7 @@ def get_installed_use(cpv, use="USE"):
 	@rtype list
 	@returns [] or the list of IUSE flags
 	"""
-	return settings.vardb.aux_get(cpv,[use])[0].split()
+	return settings.vardb[root].aux_get(cpv,[use])[0].split()
 
 
 def reduce_flag(flag):
@@ -118,7 +118,7 @@ def filter_flags(use, use_expand_hidden, usemasked, useforced):
 	return use
 
 
-def get_all_cpv_use(cpv):
+def get_all_cpv_use(cpv, root=settings.settings["ROOT"]):
 	"""Uses portage to determine final USE flags and settings for an emerge
 
 	@type cpv: string
@@ -127,24 +127,24 @@ def get_all_cpv_use(cpv):
 	@return  use, use_expand_hidden, usemask, useforce
 	"""
 	use = None
-	settings.portdb.settings.unlock()
+	settings.portdb[root].settings.unlock()
 	try:
-		settings.portdb.settings.setcpv(cpv, use_cache=True, mydb=settings.portdb)
+		settings.portdb[root].settings.setcpv(cpv, use_cache=True, mydb=settings.portdb[root])
 		use = settings.settings['PORTAGE_USE'].split()
 		use_expand_hidden = settings.settings["USE_EXPAND_HIDDEN"].split()
-		usemask = list(settings.portdb.settings.usemask)
-		useforce =  list(settings.portdb.settings.useforce)
+		usemask = list(settings.portdb[root].settings.usemask)
+		useforce =  list(settings.portdb[root].settings.useforce)
 	except KeyError:
-		settings.portdb.settings.reset()
-		settings.portdb.settings.lock()
+		settings.portdb[root].settings.reset()
+		settings.portdb[root].settings.lock()
 		return [], [], [], []
 	# reset cpv filter
-	settings.portdb.settings.reset()
-	settings.portdb.settings.lock()
+	settings.portdb[root].settings.reset()
+	settings.portdb[root].settings.lock()
 	return use, use_expand_hidden, usemask, useforce
 
 
-def get_flags(cpv, final_setting=False):
+def get_flags(cpv, final_setting=False, root=settings.settings["ROOT"]):
 	"""Retrieves all information needed to filter out hidden, masked, etc.
 	USE flags for a given package.
 
@@ -156,7 +156,7 @@ def get_flags(cpv, final_setting=False):
 	@rtype: list or list, list
 	@return IUSE or IUSE, final_flags
 	"""
-	final_use, use_expand_hidden, usemasked, useforced = get_all_cpv_use(cpv)
+	final_use, use_expand_hidden, usemasked, useforced = get_all_cpv_use(cpv, root)
 	iuse_flags = filter_flags(get_iuse(cpv), use_expand_hidden, usemasked, useforced)
 	#flags = filter_flags(use_flags, use_expand_hidden, usemasked, useforced)
 	if final_setting:
