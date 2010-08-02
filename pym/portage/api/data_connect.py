@@ -14,7 +14,7 @@ from portage.dep import Atom
 from portage import manifest
 from portage.api.flag import get_flags
 from portage.api.properties import Properties
-from portage.util import writemsg_level
+from portage.util import writemsg_level, grabfile
 
 
 def get_path(cpv, file, vardb=True, root=settings.settings["ROOT"]):
@@ -104,14 +104,10 @@ def get_installed_files(cpv, root=settings.settings["ROOT"]):
 	@param cpv:  cat/pkg-ver string
 	@rtype list of strings
 	"""
-	path = get_path(cpv,"CONTENTS", vardb=True, root=root)
-	print "path =", path
+	filepath = get_path(cpv,"CONTENTS", vardb=True, root=root)
 	files = []
-	try:
-		# hoping some clown won't use spaces in filenames ...
-		files = [line.split()[1].decode('ascii')
-				 for line in open(path, "r").readlines()]
-	except: pass
+	lines = grabfile(filepath, recursive=0)
+	files = [line.split()[1] for line in lines]
 	files.sort()
 	return files
 
