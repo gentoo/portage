@@ -41,14 +41,7 @@ class PortageSettings:
 		"""Reset remaining run once variables after a sync or other mods"""
 		#debug.dprint("SETTINGS: reset_globals();")
 		self.settings, self.trees, self.mtimedb = load_emerge_config()
-
-		self.portdb, self.vardb, self.bindb = {}, {}, {}
-		self.configured_roots = sorted(self.trees)
-		for root in self.configured_roots:
-			self.portdb[root] = self.trees[root]["porttree"].dbapi
-			self.vardb[root] = self.trees[root]["vartree"].dbapi
-			self.bindb[root] = self.trees[root]["bintree"].dbapi
-
+		self._load_dbapis()
 		self.portdir = self.settings.environ()['PORTDIR']
 		self.config_root = self.settings['PORTAGE_CONFIGROOT']
 		# is PORTDIR_OVERLAY always defined?
@@ -64,10 +57,19 @@ class PortageSettings:
 		return
 
 
+	def _load_dbapis(self):
+		self.portdb, self.vardb, self.bindb = {}, {}, {}
+		self.configured_roots = sorted(self.trees)
+		for root in self.configured_roots:
+			self.portdb[root] = self.trees[root]["porttree"].dbapi
+			self.vardb[root] = self.trees[root]["vartree"].dbapi
+			self.bindb[root] = self.trees[root]["bintree"].dbapi
+
+
 	def reload_config(self):
 		"""Reload the whole config from scratch"""
 		self.settings, self.trees, self.mtimedb = load_emerge_config(self.trees)
-		self.portdb = self.trees[self.settings["ROOT"]]["porttree"].dbapi
+		self._load_dbapis()
 
 	def reload_world(self):
 		"""Reloads the world file into memory for quick access"""
