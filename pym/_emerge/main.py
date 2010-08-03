@@ -1336,7 +1336,8 @@ def emerge_main():
 		# Freeze the portdbapi for performance (memoize all xmatch results).
 		mydb.freeze()
 
-		if "--usepkg" in myopts:
+		if myaction in ('search', None) and \
+			"--usepkg" in myopts:
 			# Populate the bintree with current --getbinpkg setting.
 			# This needs to happen before expand_set_arguments(), in case
 			# any sets use the bintree.
