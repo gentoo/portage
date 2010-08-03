@@ -828,14 +828,14 @@ class config(object):
 
 				pusedict = grabdict_package(
 					os.path.join(abs_user_config, "package.use"), recursive=1, allow_wildcard=True)
-				for k, v in pusedict.items():
-					if k == "*/*":
-						if "USE" in self.configdict["conf"]:
-							self.configdict["conf"]["USE"] += " " + " ".join(v)
-						else:
-							self.configdict["conf"]["USE"] = " ".join(v)
+				v = pusedict.pop("*/*", None)
+				if v is not None:
+					if "USE" in self.configdict["conf"]:
+						self.configdict["conf"]["USE"] += " " + " ".join(v)
 					else:
-						self.pusedict.setdefault(k.cp, {})[k] = v
+						self.configdict["conf"]["USE"] = " ".join(v)
+				for k, v in pusedict.items():
+					self.pusedict.setdefault(k.cp, {})[k] = v
 
 				#package.keywords
 				pkgdict = grabdict_package(
@@ -859,13 +859,13 @@ class config(object):
 				#package.license
 				licdict = grabdict_package(os.path.join(
 					abs_user_config, "package.license"), recursive=1, allow_wildcard=True)
+				v = licdict.pop("*/*", None)
+				if v is not None:
+					if "ACCEPT_LICENSE" in self.configdict["conf"]:
+						self.configdict["conf"]["ACCEPT_LICENSE"] += " " + " ".join(v)
+					else:
+						self.configdict["conf"]["ACCEPT_LICENSE"] = " ".join(v)
 				for k, v in licdict.items():
-					if k == "*/*":
-						if "ACCEPT_LICENSE" in self.configdict["conf"]:
-							self.configdict["conf"]["ACCEPT_LICENSE"] += " " + " ".join(v)
-						else:
-							self.configdict["conf"]["ACCEPT_LICENSE"] = " ".join(v)
-						continue
 					cp = k.cp
 					cp_dict = self._plicensedict.get(cp)
 					if not cp_dict:
@@ -876,13 +876,13 @@ class config(object):
 				#package.properties
 				propdict = grabdict_package(os.path.join(
 					abs_user_config, "package.properties"), recursive=1, allow_wildcard=True)
+				v = propdict.pop("*/*", None)
+				if v is not None:
+					if "ACCEPT_PROPERTIES" in self.configdict["conf"]:
+						self.configdict["conf"]["ACCEPT_PROPERTIES"] += " " + " ".join(v)
+					else:
+						self.configdict["conf"]["ACCEPT_PROPERTIES"] = " ".join(v)
 				for k, v in propdict.items():
-					if k == "*/*":
-						if "ACCEPT_PROPERTIES" in self.configdict["conf"]:
-							self.configdict["conf"]["ACCEPT_PROPERTIES"] += " " + " ".join(v)
-						else:
-							self.configdict["conf"]["ACCEPT_PROPERTIES"] = " ".join(v)
-						continue
 					cp = k.cp
 					cp_dict = self._ppropertiesdict.get(cp)
 					if not cp_dict:
