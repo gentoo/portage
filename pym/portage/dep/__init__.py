@@ -796,6 +796,9 @@ class ExtendedAtomDict(portage.cache.mappings.MutableMapping):
 		if not isinstance(cp, basestring):
 			raise KeyError(cp)
 
+		if '*' in cp:
+			return self._extended[cp]
+
 		ret = self._value_class()
 		normal_match = self._normal.get(cp)
 		match = False
@@ -809,26 +812,15 @@ class ExtendedAtomDict(portage.cache.mappings.MutableMapping):
 			else:
 				raise NotImplementedError()
 
-		if '*' in cp:
-			v = self._extended.get(cp)
-			if v is not None:
+		for extended_cp in self._extended:
+			if extended_cp_match(extended_cp, cp):
 				match = True
 				if hasattr(ret, "update"):
-					ret.update(v)
+					ret.update(self._extended[extended_cp])
 				elif hasattr(ret, "extend"):
-					ret.extend(v)
+					ret.extend(self._extended[extended_cp])
 				else:
 					raise NotImplementedError()
-		else:
-			for extended_cp in self._extended:
-				if extended_cp_match(extended_cp, cp):
-					match = True
-					if hasattr(ret, "update"):
-						ret.update(self._extended[extended_cp])
-					elif hasattr(ret, "extend"):
-						ret.extend(self._extended[extended_cp])
-					else:
-						raise NotImplementedError()
 
 		if not match:
 			raise KeyError(cp)
