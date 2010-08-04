@@ -19,6 +19,9 @@ except ImportError:
 	from ConfigParser import SafeConfigParser, ParsingError
 
 import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.data:portage_gid',
+)
 from portage import bsd_chflags, eapi_is_supported, \
 	load_mod, os, selinux, _encodings, _unicode_encode, _unicode_decode
 from portage.const import CACHE_PATH, CUSTOM_PROFILE_PATH, \
@@ -26,7 +29,6 @@ from portage.const import CACHE_PATH, CUSTOM_PROFILE_PATH, \
 	MODULES_FILE_PATH, PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, \
 	PRIVATE_PATH, PROFILE_PATH, SUPPORTED_FEATURES, USER_CONFIG_PATH, \
 	USER_VIRTUALS_FILE
-from portage.data import portage_gid
 from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
 from portage.dbapi.vartree import vartree

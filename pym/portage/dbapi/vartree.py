@@ -8,6 +8,7 @@ __all__ = ["PreservedLibsRegistry", "LinkageMap",
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum:_perform_md5_merge@perform_md5',
+	'portage.data:portage_gid,portage_uid,secpass',
 	'portage.dbapi.dep_expand:dep_expand',
 	'portage.dep:dep_getkey,isjustname,flatten,match_from_list,' + \
 	 	'use_reduce,paren_reduce,_slot_re',
@@ -30,7 +31,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, \
 	PORTAGE_PACKAGE_ATOM, PRIVATE_PATH, VDB_PATH
-from portage.data import portage_gid, portage_uid, secpass
 from portage.dbapi import dbapi
 from portage.exception import CommandNotFound, \
 	InvalidData, InvalidPackageName, \
