@@ -53,7 +53,7 @@ def _unregister_module_proxy(name):
 	Destroy all proxies that reference the give module name. Also, check
 	for other proxies referenced by modules that have been imported and
 	destroy those proxies too. This way, destruction of a single proxy
-	can trigger destruction of all the rest. If the a target module appears
+	can trigger destruction of all the rest. If a target module appears
 	to be partially imported (indicated when an AttributeError is caught),
 	this function will leave in place proxies that reference it.
 	"""
