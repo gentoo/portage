@@ -168,6 +168,7 @@ class _dynamic_depgraph_config(object):
 		self._missing_args = []
 		self._masked_installed = set()
 		self._masked_license_updates = set()
+		self._needed_user_config_changes = {}
 		self._unsatisfied_deps_for_display = []
 		self._unsatisfied_blockers_for_display = None
 		self._circular_deps_for_display = None
@@ -1971,6 +1972,11 @@ class depgraph(object):
 		except self._unknown_internal_error:
 			return False, myfavorites
 
+		if set(self._dynamic_config.digraph.nodes.keys()).intersection( \
+			set(self._dynamic_config._needed_user_config_changes.keys())):
+			#We failed if the user needs to change the configuration
+			return False, myfavorites
+
 		# We're true here unless we are missing binaries.
 		return (not missing,myfavorites)
 
@@ -2471,6 +2477,31 @@ class depgraph(object):
 		return ret
 
 	def _select_pkg_highest_available_imp(self, root, atom, onlydeps=False):
+		pkg, existing = self._wrapped_select_pkg_highest_available_imp(root, atom, onlydeps=onlydeps)
+
+		if pkg is None:
+			pkg, existing = self._wrapped_select_pkg_highest_available_imp(root, atom, \
+				onlydeps=onlydeps, allow_missing_keywords=True)
+			
+			if pkg is not None and not pkg.visible:
+				self._dynamic_config._needed_user_config_changes.setdefault(pkg, set()).add("unstable keyword")
+
+		return pkg, existing
+
+	def _pkg_visibility_check(self, pkg, root, allow_missing_keywords=False):
+		pkgsettings = self._frozen_config.pkgsettings[root]
+		root_config = self._frozen_config.roots[root]
+		if pkg.visible:
+			return True
+		if not allow_missing_keywords:
+			return False
+		mreasons = get_masking_status(pkg, pkgsettings, root_config)
+		if len(mreasons) == 1 and mreasons[0].startswith("~") and mreasons[0].endswith("keyword"):
+			return True
+		else:
+			return False
+
+	def _wrapped_select_pkg_highest_available_imp(self, root, atom, onlydeps=False, allow_missing_keywords=False):
 		root_config = self._frozen_config.roots[root]
 		pkgsettings = self._frozen_config.pkgsettings[root]
 		dbs = self._dynamic_config._filtered_trees[root]["dbs"]
@@ -2567,7 +2598,7 @@ class depgraph(object):
 						# were installed can be automatically downgraded
 						# to an unmasked version.
 
-						if not pkg.visible:
+						if not self._pkg_visibility_check(pkg, root, allow_missing_keywords):
 							continue
 
 						# Enable upgrade or downgrade to a version
@@ -2601,7 +2632,7 @@ class depgraph(object):
 									except portage.exception.PackageNotFound:
 										continue
 									else:
-										if not pkg_eb.visible:
+										if not self._pkg_visibility_check(pkg_eb, root, allow_missing_keywords):
 											continue
 
 					# Calculation of USE for unbuilt ebuilds is relatively
@@ -2785,11 +2816,11 @@ class depgraph(object):
 
 			if avoid_update:
 				for pkg in matched_packages:
-					if pkg.installed and pkg.visible:
+					if pkg.installed and self._pkg_visibility_check(pkg, root, allow_missing_keywords):
 						return pkg, existing_node
 
 			bestmatch = portage.best(
-				[pkg.cpv for pkg in matched_packages if pkg.visible])
+				[pkg.cpv for pkg in matched_packages if self._pkg_visibility_check(pkg, root, allow_missing_keywords)])
 			if not bestmatch:
 				# all are masked, so ignore visibility
 				bestmatch = portage.best(
@@ -5045,6 +5076,60 @@ class depgraph(object):
 			self._show_slot_collision_notice()
 		else:
 			self._show_missed_update()
+
+		def get_dep_chain(pkg):
+			traversed_nodes = set()
+			msg = "#"
+			node = pkg
+			first = True
+			while node is not None:
+				traversed_nodes.add(node)
+				if node is not pkg:
+					if first:
+						first = False
+					else:
+						msg += ", "
+					msg += 'required by =%s' % node.cpv
+	
+				if node not in self._dynamic_config.digraph:
+					# The parent is not in the graph due to backtracking.
+					break
+	
+				# When traversing to parents, prefer arguments over packages
+				# since arguments are root nodes. Never traverse the same
+				# package twice, in order to prevent an infinite loop.
+				selected_parent = None
+				for parent in self._dynamic_config.digraph.parent_nodes(node):
+					if isinstance(parent, DependencyArg):
+						if first:
+							first = False
+						else:
+							msg += ", "
+						msg += 'required by %s (argument)' % str(parent)
+						selected_parent = None
+						break
+					if parent not in traversed_nodes:
+						selected_parent = parent
+				node = selected_parent
+			msg += "\n"
+			return msg
+
+		unstable_keyword_msg = []
+		for pkg, changes in self._dynamic_config._needed_user_config_changes.items():
+			self._show_merge_list()
+			if pkg in self._dynamic_config.digraph.nodes.keys():
+				for change in changes:
+					if change == "unstable keyword":
+						pkgsettings = self._frozen_config.pkgsettings[pkg.root]
+						unstable_keyword_msg.append(get_dep_chain(pkg))
+						unstable_keyword_msg.append("=%s ~%s\n" % (pkg.cpv, pkgsettings["ACCEPT_KEYWORDS"]))
+					else:
+						raise NotImplementedError()
+
+		if unstable_keyword_msg:
+			writemsg_stdout("\nThe following " + colorize("BAD", "keyword changes") + \
+				" are necessary to proceed:\n", noiselevel=-1)
+			writemsg_stdout("".join(unstable_keyword_msg), noiselevel=-1)
 
 		# TODO: Add generic support for "set problem" handlers so that
 		# the below warnings aren't special cases for world only.
