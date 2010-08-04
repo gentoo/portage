@@ -53,19 +53,13 @@ def _unregister_module_proxy(name):
 	Destroy all proxies that reference the give module name. Also, check
 	for other proxies referenced by modules that have been imported and
 	destroy those proxies too. This way, destruction of a single proxy
-	can trigger destruction of all the rest.
+	can trigger destruction of all the rest. If the a target module appears
+	to be partially imported (indicated when an AttributeError is caught),
+	this function will leave in place proxies that reference it.
 	"""
 	_module_proxies_lock.acquire()
 	try:
-		proxy_list = _module_proxies.get(name)
-		if proxy_list is not None:
-			# First delete this name from the dict so that
-			# if this same thread reenters below, it won't
-			# enter this path again.
-			del _module_proxies[name]
-			for proxy in proxy_list:
-				object.__getattribute__(proxy, '_get_target')()
-
+		if name in _module_proxies:
 			modules = sys.modules
 			for name, proxy_list in list(_module_proxies.items()):
 				if name not in modules:
@@ -74,8 +68,16 @@ def _unregister_module_proxy(name):
 				# if this same thread reenters below, it won't
 				# enter this path again.
 				del _module_proxies[name]
-				for proxy in proxy_list:
-					object.__getattribute__(proxy, '_get_target')()
+				try:
+					while proxy_list:
+						proxy = proxy_list.pop()
+						object.__getattribute__(proxy, '_get_target')()
+				except AttributeError:
+					# Apparently the target module is only partially
+					# imported, so proxies that reference it cannot
+					# be destroyed yet.
+					proxy_list.append(proxy)
+					_module_proxies[name] = proxy_list
 	finally:
 		_module_proxies_lock.release()
 
@@ -120,6 +122,9 @@ class _LazyImportFrom(_LazyImport):
 		name = object.__getattribute__(self, '_name')
 		attr_name = object.__getattribute__(self, '_attr_name')
 		__import__(name)
+		# If called by _unregister_module_proxy() and the target module is
+		# partially imported, then the following getattr call may raise an
+		# AttributeError for _unregister_module_proxy() to handle.
 		target = getattr(sys.modules[name], attr_name)
 		object.__setattr__(self, '_target', target)
 		object.__getattribute__(self, '_scope')[
