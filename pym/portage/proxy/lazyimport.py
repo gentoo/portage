@@ -33,6 +33,7 @@ def _preload_portage_submodules():
 		for name in list(_module_proxies):
 			if name.startswith('portage.'):
 				remaining = True
+				__import__(name)
 				_unregister_module_proxy(name)
 		if not remaining:
 			break
