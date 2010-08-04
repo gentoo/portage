@@ -28,10 +28,14 @@ def _preload_portage_submodules():
 	so some portage submodules may still remain unimported
 	after this function is called.
 	"""
+	imported = set()
 	while True:
 		remaining = False
 		for name in list(_module_proxies):
 			if name.startswith('portage.'):
+				if name in imported:
+					continue
+				imported.add(name)
 				remaining = True
 				__import__(name)
 				_unregister_module_proxy(name)
