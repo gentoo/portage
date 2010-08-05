@@ -2296,11 +2296,14 @@ class depgraph(object):
 					break
 				
 		elif unmasked_iuse_reasons:
-			if masked_packages:
-				# All packages with required IUSE are masked,
-				# so display a normal masking message.
-				pass
-			else:
+			masked_with_iuse = False
+			for pkg in masked_pkg_instances:
+				if not pkg.iuse.get_missing_iuse(atom.use.required):
+					# Package(s) with required IUSE are masked,
+					# so display a normal masking message.
+					masked_with_iuse = True
+					break
+			if not masked_with_iuse:
 				show_missing_use = unmasked_iuse_reasons
 
 		mask_docs = False
