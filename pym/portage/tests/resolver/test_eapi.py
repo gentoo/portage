@@ -92,7 +92,11 @@ class SimpleResolverTestCase(TestCase):
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds)
-
-		for atoms, options, action, expected_result, expected_mergelist in requests:
-			success, mergelist = playground.run(atoms, options, action)
-			self.assertEqual((success, mergelist), (expected_result, expected_mergelist))
+		try:
+			for atoms, options, action, \
+				expected_result, expected_mergelist in requests:
+				success, mergelist = playground.run(atoms, options, action)
+				self.assertEqual((success, mergelist),
+					(expected_result, expected_mergelist))
+		finally:
+			playground.cleanup()

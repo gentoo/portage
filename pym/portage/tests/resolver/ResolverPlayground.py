@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from itertools import chain
+import shutil
 import tempfile
 import portage
 from portage import os
@@ -192,3 +193,6 @@ class ResolverPlayground(object):
 		else:
 			#TODO: Use mydepgraph.display_problems() to return a useful error message
 			return False, None
+
+	def cleanup(self):
+		shutil.rmtree(self.root)
