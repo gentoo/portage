@@ -2483,15 +2483,40 @@ class depgraph(object):
 				self._dynamic_config._visible_pkgs[pkg.root].cpv_inject(pkg)
 		return ret
 
+	def _want_installed_pkg(self, pkg):
+		"""
+		Given an installed package returned from select_pkg, return
+		True if the user has not explicitly requested for this package
+		to be replaced (typically via an atom on the command line).
+		"""
+		if "selective" not in self._dynamic_config.myparams and \
+			pkg.root == self._frozen_config.target_root:
+			try:
+				next(self._iter_atoms_for_pkg(pkg))
+			except StopIteration:
+				pass
+			except portage.exception.InvalidDependString:
+				pass
+			else:
+				return False
+		return True
+
 	def _select_pkg_highest_available_imp(self, root, atom, onlydeps=False):
 		pkg, existing = self._wrapped_select_pkg_highest_available_imp(root, atom, onlydeps=onlydeps)
 
-		if pkg is None:
-			pkg, existing = self._wrapped_select_pkg_highest_available_imp(root, atom, \
-				onlydeps=onlydeps, allow_missing_keywords=True)
-			
-			if pkg is not None and not pkg.visible:
-				self._dynamic_config._needed_user_config_changes.setdefault(pkg, set()).add("unstable keyword")
+		if self._frozen_config.myopts.get('--autounmask', 'n') is True:
+			if pkg is not None and \
+				pkg.installed and \
+				not self._want_installed_pkg(pkg):
+				pkg = None
+			if pkg is None:
+				pkg, existing = \
+					self._wrapped_select_pkg_highest_available_imp(
+						root, atom, onlydeps=onlydeps,
+						allow_missing_keywords=True)
+
+				if pkg is not None and not pkg.visible:
+					self._dynamic_config._needed_user_config_changes.setdefault(pkg, set()).add("unstable keyword")
 
 		return pkg, existing
 

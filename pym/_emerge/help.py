@@ -291,6 +291,17 @@ def help(myopts, havecolor=1):
 			"EMERGE_DEFAULT_OPTS variable."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
+		print() 
+		print("       " + green("--autounmask") + "[=%s]" % turquoise("n"))
+		desc = "Automatically unmask packages. If any configuration " + \
+			"changes are required, then they will be displayed " + \
+			"after the merge list and emerge will immediately " + \
+			"abort. If the displayed configuration changes are " + \
+			"satisfactory, you should copy and paste them into " + \
+			"the specified configuration file(s). Currently, " + \
+			"this only works for unstable KEYWORDS masks."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
 		print()
 		print("       " + green("--backtrack") + " " + turquoise("COUNT"))
 		desc = "Specifies an integer number of times to backtrack if " + \

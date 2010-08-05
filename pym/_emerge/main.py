@@ -388,6 +388,7 @@ def insert_optional_args(args):
 	new_args = []
 
 	default_arg_opts = {
+		'--autounmask'           : ('n',),
 		'--complete-graph' : ('n',),
 		'--deep'       : valid_integers,
 		'--depclean-lib-check'   : ('n',),
@@ -515,6 +516,13 @@ def parse_opts(tmpcmdline, silent=False):
 
 	longopt_aliases = {"--cols":"--columns", "--skip-first":"--skipfirst"}
 	argument_options = {
+
+		"--autounmask": {
+			"help"    : "automatically unmask packages",
+			"type"    : "choice",
+			"choices" : ("True", "n")
+		},
+
 		"--accept-properties": {
 			"help":"temporarily override ACCEPT_PROPERTIES",
 			"action":"store"
@@ -734,6 +742,9 @@ def parse_opts(tmpcmdline, silent=False):
 	tmpcmdline = insert_optional_args(tmpcmdline)
 
 	myoptions, myargs = parser.parse_args(args=tmpcmdline)
+
+	if myoptions.autounmask in ("True",):
+		myoptions.autounmask = True
 
 	if myoptions.changed_use is not False:
 		myoptions.reinstall = "changed-use"
