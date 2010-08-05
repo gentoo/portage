@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -2296,7 +2296,7 @@ class depgraph(object):
 					break
 				
 		elif unmasked_iuse_reasons:
-			if missing_use_reasons:
+			if masked_packages:
 				# All packages with required IUSE are masked,
 				# so display a normal masking message.
 				pass
