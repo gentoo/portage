@@ -479,6 +479,11 @@ econf() {
 
 	: ${ECONF_SOURCE:=.}
 	if [ -x "${ECONF_SOURCE}/configure" ]; then
+		if [[ -n $CONFIG_SHELL && \
+			"$(head -n1 "$ECONF_SOURCE/configure")" =~ ^'#!'[[:space:]]*/bin/sh[[:space:]]*$ ]] ; then
+			sed -e "1s:.*:#!$CONFIG_SHELL" -i "$ECONF_SOURCE/configure" || \
+				die "Substition of shebang in '$ECONF_SOURCE/configure' failed"
+		fi
 		if [ -e /usr/share/gnuconfig/ ]; then
 			find "${WORKDIR}" -type f '(' \
 			-name config.guess -o -name config.sub ')' -print0 | \
