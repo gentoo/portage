@@ -532,13 +532,12 @@ install_qa_check() {
 		fi
 	fi
 
-	# Compiled python objects do not belong in /usr/share (FHS violation)
-	# and can be a pain when upgrading python
-	f=$([ -d "${D}"/usr/share ] && \
-		find "${D}"usr/share -name '*.py[co]' | sed "s:${D}:/:")
+	f=$(find "${D}" -name '*.py[co]' | sed "s:${D}:/:")
 	if [[ -n ${f} ]] ; then
 		vecho -ne '\a\n'
-		eqawarn "QA Notice: Precompiled python object files do not belong in /usr/share"
+		eqawarn "QA Notice: Byte-compiled Python modules have been found. python_mod_optimize()"
+		eqawarn "           and python_mod_cleanup() functions python.eclass should be used to"
+		eqawarn "           handle byte-compiled Python modules."
 		eqawarn "${f}"
 		vecho -ne '\a\n'
 	fi
