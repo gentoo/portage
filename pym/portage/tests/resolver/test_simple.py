@@ -27,6 +27,4 @@ class SimpleResolverTestCase(TestCase):
 
 		for atoms, options, action, expected_result, expected_mergelist in requests:
 			success, mergelist = playground.run(atoms, options, action)
-			self.assertEqual(success, expected_result)
-			if success:
-				self.assertEqual(mergelist, expected_mergelist)
+			self.assertEqual((success, mergelist), (expected_result, expected_mergelist))

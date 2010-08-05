@@ -178,9 +178,13 @@ class ResolverPlayground(object):
 		myopts["--quiet"] = True
 		myopts["--root"] = self.root
 		myopts["--config-root"] = self.root
+		myopts["--root-deps"] = "rdeps"
+		
+		portage.util.noiselimit = -2
 		myparams = create_depgraph_params(myopts, myaction)
 		success, mydepgraph, favorites = backtrack_depgraph(
 			self.settings, self.trees, myopts, myparams, myaction, myfiles, None)
+		portage.util.noiselimit = 0
 
 		if success:
 			mergelist = [x.cpv for x in mydepgraph._dynamic_config._serialized_tasks_cache]
