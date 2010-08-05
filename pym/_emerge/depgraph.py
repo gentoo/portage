@@ -5538,9 +5538,13 @@ class depgraph(object):
 	def need_restart(self):
 		return self._dynamic_config._need_restart
 
-	def get_backtrack_parameter(self):
-		return self._dynamic_config._needed_user_config_changes.copy(), \
-			self._dynamic_config._runtime_pkg_mask.copy()
+	def get_backtrack_parameters(self):
+		return {
+			"needed_user_config_changes":
+				self._dynamic_config._needed_user_config_changes.copy(), \
+			"runtime_pkg_mask":
+				self._dynamic_config._runtime_pkg_mask.copy()
+			}
 			
 
 class _dep_check_composite_db(dbapi):
@@ -5787,8 +5791,9 @@ def _backtrack_depgraph(settings, trees, myopts, myparams,
 		success, favorites = mydepgraph.select_files(myfiles)
 		if not success:
 			if mydepgraph.need_restart() and backtracked < backtrack_max:
-				needed_user_config_changes, runtime_pkg_mask = \
-					mydepgraph.get_backtrack_parameter()
+				backtrack_parameters = mydepgraph.get_backtrack_parameter()
+				needed_user_config_changes = backtrack_parameters["needed_user_config_changes"]
+				runtime_pkg_mask = backtrack_parameters["runtime_pkg_mask"]
 				backtracked += 1
 			elif backtracked and allow_backtracking:
 				if "--debug" in myopts:
