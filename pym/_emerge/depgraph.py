@@ -66,10 +66,10 @@ class _frozen_depgraph_config(object):
 		if settings.get("PORTAGE_DEBUG", "") == "1":
 			self.edebug = 1
 		self.spinner = spinner
-		if "/" in trees:
-			self._running_root = trees["/"]["root_config"]
-		else:
+		if "_test_" in myopts and "/" not in trees:
 			self._running_root = trees[self.target_root]["root_config"]
+		else:
+			self._running_root = trees["/"]["root_config"]
 		self._opts_no_restart = frozenset(["--buildpkgonly",
 			"--fetchonly", "--fetch-all-uri", "--pretend"])
 		self.pkgsettings = {}

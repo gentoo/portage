@@ -180,6 +180,9 @@ class ResolverPlayground(object):
 		myopts["--root"] = self.root
 		myopts["--config-root"] = self.root
 		myopts["--root-deps"] = "rdeps"
+		# Add a fake _test_ option that can be used for
+		# conditional test code.
+		myopts["_test_"] = True
 		
 		portage.util.noiselimit = -2
 		myparams = create_depgraph_params(myopts, myaction)
