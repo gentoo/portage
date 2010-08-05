@@ -1607,7 +1607,7 @@ def emerge_main():
 					for line in textwrap.wrap(msg, 70):
 						writemsg_level("!!! %s\n" % (line,),
 							level=logging.ERROR, noiselevel=-1)
-					for i in e[0]:
+					for i in e.args[0]:
 						writemsg_level("    %s\n" % colorize("INFORM", i),
 							level=logging.ERROR, noiselevel=-1)
 					writemsg_level("\n", level=logging.ERROR, noiselevel=-1)
