@@ -71,7 +71,8 @@ class PipeReader(AbstractPollTask):
 			buf = array.array('B')
 			try:
 				buf.fromfile(f, self._bufsize)
-			except EOFError:
+			# EOFError was raised in Python <2.6.6 and <2.7.1.
+			except (EOFError, IOError):
 				pass
 
 			if buf:
