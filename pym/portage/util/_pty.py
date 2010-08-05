@@ -95,7 +95,6 @@ def _test_pty_eof():
 		buf = array.array('B')
 		try:
 			buf.fromfile(master_file, 1024)
-		# EOFError was raised in Python <2.6.6 and <2.7.1.
 		except (EOFError, IOError):
 			eof = True
 

@@ -1268,7 +1268,6 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 				buf = array.array('B')
 				try:
 					buf.fromfile(f, buffsize)
-				# EOFError was raised in Python <2.6.6 and <2.7.1.
 				except (EOFError, IOError):
 					pass
 				if not buf:

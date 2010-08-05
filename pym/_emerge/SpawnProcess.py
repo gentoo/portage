@@ -148,7 +148,6 @@ class SpawnProcess(SubProcess):
 			buf = array.array('B')
 			try:
 				buf.fromfile(files.process, self._bufsize)
-			# EOFError was raised in Python <2.6.6 and <2.7.1.
 			except (EOFError, IOError):
 				pass
 
@@ -210,7 +209,6 @@ class SpawnProcess(SubProcess):
 			buf = array.array('B')
 			try:
 				buf.fromfile(self._files.process, self._bufsize)
-			# EOFError was raised in Python <2.6.6 and <2.7.1.
 			except (EOFError, IOError):
 				pass
 
