@@ -2292,6 +2292,12 @@ class config(object):
 						continue
 
 				if x[0] == "-":
+					if x[-2:] == '_*':
+						prefix = x[1:-1]
+						prefix_len = len(prefix)
+						myflags.difference_update(
+							[y for y in myflags if \
+							y[:prefix_len] == prefix])
 					myflags.discard(x[1:])
 					continue
 
