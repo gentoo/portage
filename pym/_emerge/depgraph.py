@@ -106,7 +106,7 @@ class _frozen_depgraph_config(object):
 class _dynamic_depgraph_config(object):
 
 	def __init__(self, depgraph, myparams, allow_backtracking,
-		runtime_pkg_mask):
+		runtime_pkg_mask, needed_user_config_changes):
 		self.myparams = myparams.copy()
 		self._vdb_loaded = False
 		self._allow_backtracking = allow_backtracking
@@ -168,7 +168,6 @@ class _dynamic_depgraph_config(object):
 		self._missing_args = []
 		self._masked_installed = set()
 		self._masked_license_updates = set()
-		self._needed_user_config_changes = {}
 		self._unsatisfied_deps_for_display = []
 		self._unsatisfied_blockers_for_display = None
 		self._circular_deps_for_display = None
@@ -183,6 +182,14 @@ class _dynamic_depgraph_config(object):
 		else:
 			runtime_pkg_mask = dict((k, v.copy()) for (k, v) in \
 				runtime_pkg_mask.items())
+
+		if needed_user_config_changes is None:
+			self._needed_user_config_changes = {}
+		else:
+			self._needed_user_config_changes = \
+				dict((k.copy(), v.copy()) for (k, v) in \
+					needed_user_config_changes.items())
+
 		self._runtime_pkg_mask = runtime_pkg_mask
 		self._need_restart = False
 
@@ -253,13 +260,13 @@ class depgraph(object):
 	_dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 	
 	def __init__(self, settings, trees, myopts, myparams, spinner,
-		frozen_config=None, runtime_pkg_mask=None, allow_backtracking=False):
+		frozen_config=None, runtime_pkg_mask=None, needed_user_config_changes=None, allow_backtracking=False):
 		if frozen_config is None:
 			frozen_config = _frozen_depgraph_config(settings, trees,
 			myopts, spinner)
 		self._frozen_config = frozen_config
 		self._dynamic_config = _dynamic_depgraph_config(self, myparams,
-			allow_backtracking, runtime_pkg_mask)
+			allow_backtracking, runtime_pkg_mask, needed_user_config_changes)
 
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
@@ -5531,8 +5538,10 @@ class depgraph(object):
 	def need_restart(self):
 		return self._dynamic_config._need_restart
 
-	def get_runtime_pkg_mask(self):
-		return self._dynamic_config._runtime_pkg_mask.copy()
+	def get_backtrack_parameter(self):
+		return self._dynamic_config._needed_user_config_changes.copy(), \
+			self._dynamic_config._runtime_pkg_mask.copy()
+			
 
 class _dep_check_composite_db(dbapi):
 	"""
@@ -5764,6 +5773,7 @@ def _backtrack_depgraph(settings, trees, myopts, myparams,
 
 	backtrack_max = myopts.get('--backtrack', 5)
 	runtime_pkg_mask = None
+	needed_user_config_changes = None
 	allow_backtracking = backtrack_max > 0
 	backtracked = 0
 	frozen_config = _frozen_depgraph_config(settings, trees,
@@ -5772,11 +5782,13 @@ def _backtrack_depgraph(settings, trees, myopts, myparams,
 		mydepgraph = depgraph(settings, trees, myopts, myparams, spinner,
 			frozen_config=frozen_config,
 			allow_backtracking=allow_backtracking,
+			needed_user_config_changes=needed_user_config_changes,
 			runtime_pkg_mask=runtime_pkg_mask)
 		success, favorites = mydepgraph.select_files(myfiles)
 		if not success:
 			if mydepgraph.need_restart() and backtracked < backtrack_max:
-				runtime_pkg_mask = mydepgraph.get_runtime_pkg_mask()
+				needed_user_config_changes, runtime_pkg_mask = \
+					mydepgraph.get_backtrack_parameter()
 				backtracked += 1
 			elif backtracked and allow_backtracking:
 				if "--debug" in myopts:
@@ -5786,6 +5798,9 @@ def _backtrack_depgraph(settings, trees, myopts, myparams,
 				# Backtracking failed, so disable it and do
 				# a plain dep calculation + error message.
 				allow_backtracking = False
+				#Don't reset needed_user_config_changes here, since we don't want to
+				#send the user through a "one step at a time" unmasking session for
+				#no good reason.
 				runtime_pkg_mask = None
 			else:
 				break
