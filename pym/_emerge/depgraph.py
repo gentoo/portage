@@ -5801,7 +5801,7 @@ def _backtrack_depgraph(settings, trees, myopts, myparams,
 	myaction, myfiles, spinner):
 
 	backtrack_max = myopts.get('--backtrack', 5)
-	runtime_pkg_mask = None
+	backtrack_parameters = {}
 	needed_user_config_changes = None
 	allow_backtracking = backtrack_max > 0
 	backtracked = 0
@@ -5811,14 +5811,11 @@ def _backtrack_depgraph(settings, trees, myopts, myparams,
 		mydepgraph = depgraph(settings, trees, myopts, myparams, spinner,
 			frozen_config=frozen_config,
 			allow_backtracking=allow_backtracking,
-			needed_user_config_changes=needed_user_config_changes,
-			runtime_pkg_mask=runtime_pkg_mask)
+			**backtrack_parameters)
 		success, favorites = mydepgraph.select_files(myfiles)
 		if not success:
 			if mydepgraph.need_restart() and backtracked < backtrack_max:
-				backtrack_parameters = mydepgraph.get_backtrack_parameter()
-				needed_user_config_changes = backtrack_parameters["needed_user_config_changes"]
-				runtime_pkg_mask = backtrack_parameters["runtime_pkg_mask"]
+				backtrack_parameters = mydepgraph.get_backtrack_parameters()
 				backtracked += 1
 			elif backtracked and allow_backtracking:
 				if "--debug" in myopts:
@@ -5831,7 +5828,7 @@ def _backtrack_depgraph(settings, trees, myopts, myparams,
 				#Don't reset needed_user_config_changes here, since we don't want to
 				#send the user through a "one step at a time" unmasking session for
 				#no good reason.
-				runtime_pkg_mask = None
+				backtrack_parameters.pop('runtime_pkg_mask', None)
 			else:
 				break
 		else:
