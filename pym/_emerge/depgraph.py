@@ -1283,7 +1283,7 @@ class depgraph(object):
 				inst_pkgs = vardb.match_pkgs(atom)
 				if inst_pkgs:
 					for inst_pkg in inst_pkgs:
-						if inst_pkg.visible:
+						if self._pkg_visibility_check(inst_pkg):
 							# highest visible
 							mypriority.satisfied = inst_pkg
 							break
@@ -1329,7 +1329,7 @@ class depgraph(object):
 					inst_pkgs = vardb.match_pkgs(atom)
 					if inst_pkgs:
 						for inst_pkg in inst_pkgs:
-							if inst_pkg.visible:
+							if self._pkg_visibility_check(inst_pkg):
 								# highest visible
 								mypriority.satisfied = inst_pkg
 								break
@@ -2471,7 +2471,7 @@ class depgraph(object):
 		pkg, existing = ret
 		if pkg is not None:
 			settings = pkg.root_config.settings
-			if pkg.visible and not (pkg.installed and \
+			if self._pkg_visibility_check(pkg) and not (pkg.installed and \
 				settings._getMissingKeywords(pkg.cpv, pkg.metadata)):
 				self._dynamic_config._visible_pkgs[pkg.root].cpv_inject(pkg)
 		return ret
@@ -2488,11 +2488,17 @@ class depgraph(object):
 
 		return pkg, existing
 
-	def _pkg_visibility_check(self, pkg, root, allow_missing_keywords=False):
-		pkgsettings = self._frozen_config.pkgsettings[root]
-		root_config = self._frozen_config.roots[root]
+	def _pkg_visibility_check(self, pkg, allow_missing_keywords=False):
+		pkgsettings = self._frozen_config.pkgsettings[pkg.root]
+		root_config = self._frozen_config.roots[pkg.root]
 		if pkg.visible:
 			return True
+
+		pending_keyword_change = self._dynamic_config._needed_user_config_changes.get(pkg)
+		if pending_keyword_change is not None and \
+			"unstable keyword" in pending_keyword_change:
+			return True
+
 		if not allow_missing_keywords:
 			return False
 		mreasons = get_masking_status(pkg, pkgsettings, root_config)
@@ -2598,7 +2604,7 @@ class depgraph(object):
 						# were installed can be automatically downgraded
 						# to an unmasked version.
 
-						if not self._pkg_visibility_check(pkg, root, allow_missing_keywords):
+						if not self._pkg_visibility_check(pkg, allow_missing_keywords=allow_missing_keywords):
 							continue
 
 						# Enable upgrade or downgrade to a version
@@ -2632,7 +2638,8 @@ class depgraph(object):
 									except portage.exception.PackageNotFound:
 										continue
 									else:
-										if not self._pkg_visibility_check(pkg_eb, root, allow_missing_keywords):
+										if not self._pkg_visibility_check(pkg_eb, \
+											allow_missing_keywords=allow_missing_keywords):
 											continue
 
 					# Calculation of USE for unbuilt ebuilds is relatively
@@ -2816,11 +2823,13 @@ class depgraph(object):
 
 			if avoid_update:
 				for pkg in matched_packages:
-					if pkg.installed and self._pkg_visibility_check(pkg, root, allow_missing_keywords):
+					if pkg.installed and self._pkg_visibility_check(pkg, \
+						allow_missing_keywords=allow_missing_keywords):
 						return pkg, existing_node
 
 			bestmatch = portage.best(
-				[pkg.cpv for pkg in matched_packages if self._pkg_visibility_check(pkg, root, allow_missing_keywords)])
+				[pkg.cpv for pkg in matched_packages \
+					if self._pkg_visibility_check(pkg, allow_missing_keywords=allow_missing_keywords)])
 			if not bestmatch:
 				# all are masked, so ignore visibility
 				bestmatch = portage.best(
@@ -2986,7 +2995,7 @@ class depgraph(object):
 				root_config=root_config, type_name=type_name)
 			self._frozen_config._pkg_cache[pkg] = pkg
 
-			if not pkg.visible and \
+			if not self._pkg_visibility_check(pkg) and \
 				'LICENSE' in pkg.masks and len(pkg.masks) == 1:
 				slot_key = (pkg.root, pkg.slot_atom)
 				other_pkg = self._frozen_config._highest_license_masked.get(slot_key)
@@ -3042,7 +3051,7 @@ class depgraph(object):
 					# packages masked by license, since the user likely wants
 					# to adjust ACCEPT_LICENSE.
 					if pkg in final_db:
-						if not pkg.visible and \
+						if not self._pkg_visibility_check(pkg) and \
 							(pkg_in_graph or 'LICENSE' in pkg.masks):
 							self._dynamic_config._masked_installed.add(pkg)
 						else:
@@ -5329,7 +5338,7 @@ class depgraph(object):
 				self._frozen_config.excluded_pkgs.findAtomForPackage(pkg):
 				continue
 
-			if "merge" == pkg.operation and not pkg.visible:
+			if "merge" == pkg.operation and not self._pkg_visibility_check(pkg):
 				if skip_masked:
 					masked_tasks.append(Dependency(root=pkg.root, parent=pkg))
 				else:
