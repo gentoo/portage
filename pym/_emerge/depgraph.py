@@ -2554,8 +2554,7 @@ class depgraph(object):
 		return pkg, existing
 
 	def _pkg_visibility_check(self, pkg, allow_missing_keywords=False):
-		pkgsettings = self._frozen_config.pkgsettings[pkg.root]
-		root_config = self._frozen_config.roots[pkg.root]
+
 		if pkg.visible:
 			return True
 
@@ -2566,6 +2565,9 @@ class depgraph(object):
 
 		if not allow_missing_keywords:
 			return False
+
+		pkgsettings = self._frozen_config.pkgsettings[pkg.root]
+		root_config = self._frozen_config.roots[pkg.root]
 		mreasons = _get_masking_status(pkg, pkgsettings, root_config)
 		if len(mreasons) == 1 and \
 			mreasons[0].hint == 'unstable keyword':
