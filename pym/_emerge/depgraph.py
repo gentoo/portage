@@ -2540,8 +2540,7 @@ class depgraph(object):
 			return False
 		mreasons = _get_masking_status(pkg, pkgsettings, root_config)
 		if len(mreasons) == 1 and \
-			mreasons[0].category == 'KEYWORDS' and \
-			mreasons[0].message.startswith("~"):
+			mreasons[0].hint == 'unstable keyword':
 			return True
 		else:
 			return False

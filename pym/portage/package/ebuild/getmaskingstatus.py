@@ -17,11 +17,12 @@ if sys.hexversion >= 0x3000000:
 
 class _MaskReason(object):
 
-	__slots__ = ('category', 'message')
+	__slots__ = ('category', 'message', 'hint')
 
-	def __init__(self, category, message):
+	def __init__(self, category, message, hint=None):
 		self.category = category
 		self.message = message
+		self.hint = hint
 
 def getmaskingstatus(mycpv, settings=None, portdb=None):
 	if settings is None:
@@ -114,6 +115,7 @@ def _getmaskingstatus(mycpv, settings, portdb):
 		del inc_pgroups
 
 	kmask = "missing"
+	kmask_hint = None
 
 	if '**' in pgroups:
 		kmask = None
@@ -133,6 +135,7 @@ def _getmaskingstatus(mycpv, settings, portdb):
 				break
 			elif gp=="~"+myarch and myarch in pgroups:
 				kmask="~"+myarch
+				kmask_hint = "unstable keyword"
 				break
 
 	try:
@@ -166,6 +169,7 @@ def _getmaskingstatus(mycpv, settings, portdb):
 	# Only show KEYWORDS masks for installed packages
 	# if they're not masked for any other reason.
 	if kmask and (not installed or not rValue):
-		rValue.append(_MaskReason("KEYWORDS", kmask + " keyword"))
+		rValue.append(_MaskReason("KEYWORDS",
+			kmask + " keyword", hint=kmask_hint))
 
 	return rValue
