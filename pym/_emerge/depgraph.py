@@ -2545,6 +2545,11 @@ class depgraph(object):
 						root, atom, onlydeps=onlydeps,
 						allow_use_changes=True, allow_unstable_keywords=allow_unstable_keywords)
 
+				if pkg is not None and \
+					pkg.installed and \
+					not self._want_installed_pkg(pkg):
+					pkg = None
+
 				if pkg is not None and not pkg.visible:
 					self._dynamic_config._needed_user_config_changes.setdefault(pkg, set()).add("unstable keyword")
 			
