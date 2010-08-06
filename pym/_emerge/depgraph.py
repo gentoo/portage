@@ -111,7 +111,7 @@ class _frozen_depgraph_config(object):
 class _dynamic_depgraph_config(object):
 
 	def __init__(self, depgraph, myparams, allow_backtracking,
-		runtime_pkg_mask, needed_user_config_changes):
+		runtime_pkg_mask, needed_user_config_changes, needed_use_config_changes):
 		self.myparams = myparams.copy()
 		self._vdb_loaded = False
 		self._allow_backtracking = allow_backtracking
@@ -195,6 +195,15 @@ class _dynamic_depgraph_config(object):
 				dict((k.copy(), v.copy()) for (k, v) in \
 					needed_user_config_changes.items())
 
+		if needed_use_config_changes is None:
+			self._needed_use_config_changes = {}
+		else:
+			self._needed_use_config_changes = \
+				dict((k.copy(), (v[0].copy(), v[1].copy())) for (k, v) in \
+					needed_use_config_changes.items())
+
+		self._autounmask = depgraph._frozen_config.myopts.get('--autounmask', 'n') == True
+
 		self._runtime_pkg_mask = runtime_pkg_mask
 		self._need_restart = False
 
@@ -265,13 +274,14 @@ class depgraph(object):
 	_dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 	
 	def __init__(self, settings, trees, myopts, myparams, spinner,
-		frozen_config=None, runtime_pkg_mask=None, needed_user_config_changes=None, allow_backtracking=False):
+		frozen_config=None, runtime_pkg_mask=None, needed_user_config_changes=None, \
+			needed_use_config_changes=None, allow_backtracking=False):
 		if frozen_config is None:
 			frozen_config = _frozen_depgraph_config(settings, trees,
 			myopts, spinner)
 		self._frozen_config = frozen_config
 		self._dynamic_config = _dynamic_depgraph_config(self, myparams,
-			allow_backtracking, runtime_pkg_mask, needed_user_config_changes)
+			allow_backtracking, runtime_pkg_mask, needed_user_config_changes, needed_use_config_changes)
 
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
@@ -1122,7 +1132,7 @@ class depgraph(object):
 		myroot = pkg.root
 		mykey = pkg.cpv
 		metadata = pkg.metadata
-		myuse = pkg.use.enabled
+		myuse = self._pkg_use_enabled(pkg)
 		jbigkey = pkg
 		depth = pkg.depth + 1
 		removal_action = "remove" in self._dynamic_config.myparams
@@ -1203,7 +1213,7 @@ class depgraph(object):
 					dep_string = portage.dep.paren_normalize(
 						portage.dep.use_reduce(
 						portage.dep.paren_reduce(dep_string),
-						uselist=pkg.use.enabled))
+						uselist=self._pkg_use_enabled(pkg)))
 
 					dep_string = list(self._queue_disjunctive_deps(
 						pkg, dep_root, dep_priority, dep_string))
@@ -1265,7 +1275,7 @@ class depgraph(object):
 
 		try:
 			selected_atoms = self._select_atoms(dep_root,
-				dep_string, myuse=pkg.use.enabled, parent=pkg,
+				dep_string, myuse=self._pkg_use_enabled(pkg), parent=pkg,
 				strict=strict, priority=dep_priority)
 		except portage.exception.InvalidDependString as e:
 			show_invalid_depstring_notice(pkg, dep_string, str(e))
@@ -1985,7 +1995,9 @@ class depgraph(object):
 			return False, myfavorites
 
 		if set(self._dynamic_config.digraph.nodes.keys()).intersection( \
-			set(self._dynamic_config._needed_user_config_changes.keys())):
+			set(self._dynamic_config._needed_user_config_changes.keys())) or \
+			set(self._dynamic_config.digraph.nodes.keys()).intersection( \
+			set(self._dynamic_config._needed_use_config_changes.keys())) :
 			#We failed if the user needs to change the configuration
 			return False, myfavorites
 
@@ -2070,7 +2082,7 @@ class depgraph(object):
 			dep_str = " ".join(pkg.metadata[k] for k in blocker_dep_keys)
 			try:
 				selected_atoms = self._select_atoms(
-					pkg.root, dep_str, pkg.use.enabled,
+					pkg.root, dep_str, self._pkg_use_enabled(pkg),
 					parent=pkg, strict=True)
 			except portage.exception.InvalidDependString:
 				continue
@@ -2125,6 +2137,9 @@ class depgraph(object):
 		myuse=None, parent=None, strict=True, trees=None, priority=None):
 		"""This will raise InvalidDependString if necessary. If trees is
 		None then self._dynamic_config._filtered_trees is used."""
+
+		_autounmask_backup = self._dynamic_config._autounmask
+		self._dynamic_config._autounmask = False
 		pkgsettings = self._frozen_config.pkgsettings[root]
 		if trees is None:
 			trees = self._dynamic_config._filtered_trees
@@ -2175,6 +2190,7 @@ class depgraph(object):
 				selected_atoms[pkg] = [atom for atom in \
 					atom_graph.child_nodes(node) if atom in chosen_atoms]
 
+		self._dynamic_config._autounmask = _autounmask_backup
 		return selected_atoms
 
 	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None,
@@ -2239,7 +2255,7 @@ class depgraph(object):
 						masked_pkg_instances.add(pkg)
 					if atom.unevaluated_atom.use:
 						if not pkg.iuse.is_valid_flag(atom.unevaluated_atom.use.required) \
-							or atom.violated_conditionals(pkg.use.enabled).use:
+							or atom.violated_conditionals(self._pkg_use_enabled(pkg)).use:
 							missing_use.append(pkg)
 							if not mreasons:
 								continue
@@ -2257,7 +2273,7 @@ class depgraph(object):
 		missing_use_reasons = []
 		missing_iuse_reasons = []
 		for pkg in missing_use:
-			use = pkg.use.enabled
+			use = self._pkg_use_enabled(pkg)
 			missing_iuse = pkg.iuse.get_missing_iuse(atom.use.required)
 			mreasons = []
 			if missing_iuse:
@@ -2279,7 +2295,7 @@ class depgraph(object):
 				# Lets see if the violated use deps are conditional.
 				# If so, suggest to change them on the parent.
 				mreasons = []
-				violated_atom = atom.unevaluated_atom.violated_conditionals(pkg.use.enabled, myparent.use.enabled)
+				violated_atom = atom.unevaluated_atom.violated_conditionals(self._pkg_use_enabled(pkg), myparent.use.enabled)
 				if not (violated_atom.use.enabled or violated_atom.use.disabled):
 					#all violated use deps are conditional
 					changes = []
@@ -2509,19 +2525,26 @@ class depgraph(object):
 	def _select_pkg_highest_available_imp(self, root, atom, onlydeps=False):
 		pkg, existing = self._wrapped_select_pkg_highest_available_imp(root, atom, onlydeps=onlydeps)
 
-		if self._frozen_config.myopts.get('--autounmask', 'n') is True:
+		if self._dynamic_config._autounmask is True:
 			if pkg is not None and \
 				pkg.installed and \
 				not self._want_installed_pkg(pkg):
 				pkg = None
-			if pkg is None:
+
+			for allow_missing_keywords in False, True:
+				if pkg is not None:
+					break
+
 				pkg, existing = \
 					self._wrapped_select_pkg_highest_available_imp(
 						root, atom, onlydeps=onlydeps,
-						allow_missing_keywords=True)
+						allow_use_changes=True, allow_missing_keywords=allow_missing_keywords)
 
 				if pkg is not None and not pkg.visible:
 					self._dynamic_config._needed_user_config_changes.setdefault(pkg, set()).add("unstable keyword")
+			
+			if self._dynamic_config._need_restart:
+				return None, None
 
 		return pkg, existing
 
@@ -2545,7 +2568,64 @@ class depgraph(object):
 		else:
 			return False
 
-	def _wrapped_select_pkg_highest_available_imp(self, root, atom, onlydeps=False, allow_missing_keywords=False):
+	def _pkg_use_enabled(self, pkg, target_use=None):
+		"""
+		If target_use is None, returns pkg.use.enabled + changes in _needed_use_config_changes.
+		If target_use is given, the need changes are computed to make the package useable.
+		Example: target_use = { "foo": True, "bar": False }
+		The flags target_use must be in the pkg's IUSE.
+		"""
+		needed_use_config_change = self._dynamic_config._needed_use_config_changes.get(pkg)
+
+		if target_use is None:
+			if needed_use_config_change is None:
+				return pkg.use.enabled
+			else:
+				return needed_use_config_change[0]
+
+		if needed_use_config_change is not None:
+			old_use = needed_use_config_change[0]
+			new_use = set()
+			old_changes = needed_use_config_change[1]
+			new_changes = old_changes.copy()
+		else:
+			old_use = pkg.use.enabled
+			new_use = set()
+			old_changes = {}
+			new_changes = {}
+
+		for flag, state in target_use.items():
+			if state:
+				if flag not in old_use:
+					if new_changes.get(flag) == False:
+						return old_use
+					new_changes[flag] = True
+				new_use.add(flag)
+			else:
+				if flag in old_use:
+					if new_changes.get(flag) == True:
+						return old_use
+					new_changes[flag] = False
+		new_use.update(old_use.difference(target_use.keys()))
+
+		def want_restart_for_use_change(pkg):
+			if pkg not in self._dynamic_config.digraph.nodes:
+				return False
+			#TODO: We can be more clever here. No need to restart if 
+			#	1) we don't have a parent that can't work with our 
+			#		new use config
+			#	and
+			#	2) none of pkg's *DEPEND vars changed
+			return True
+
+		if new_changes != old_changes:
+			self._dynamic_config._needed_use_config_changes[pkg] = (new_use, new_changes)
+			if want_restart_for_use_change(pkg):
+				self._dynamic_config._need_restart = True
+		return new_use
+
+	def _wrapped_select_pkg_highest_available_imp(self, root, atom, onlydeps=False, \
+		allow_use_changes=False, allow_missing_keywords=False):
 		root_config = self._frozen_config.roots[root]
 		pkgsettings = self._frozen_config.pkgsettings[root]
 		dbs = self._dynamic_config._filtered_trees[root]["dbs"]
@@ -2704,11 +2784,21 @@ class depgraph(object):
 							# since IUSE cannot be adjusted by the user.
 							continue
 
-						if atom.use.enabled.difference(pkg.use.enabled):
+						if allow_use_changes:
+							target_use = {}
+							for flag in atom.use.enabled:
+								target_use[flag] = True
+							for flag in atom.use.disabled:
+								target_use[flag] = False
+							use = self._pkg_use_enabled(pkg, target_use)
+						else:
+							use = self._pkg_use_enabled(pkg)
+
+						if atom.use.enabled.difference(use):
 							if not pkg.built:
 								packages_with_invalid_use_config.append(pkg)
 							continue
-						if atom.use.disabled.intersection(pkg.use.enabled):
+						if atom.use.disabled.intersection(use):
 							if not pkg.built:
 								packages_with_invalid_use_config.append(pkg)
 							continue
@@ -2749,7 +2839,7 @@ class depgraph(object):
 						"--reinstall" in self._frozen_config.myopts or \
 						"--binpkg-respect-use" in self._frozen_config.myopts):
 						iuses = pkg.iuse.all
-						old_use = pkg.use.enabled
+						old_use = self._pkg_use_enabled(pkg)
 						if myeb:
 							pkgsettings.setcpv(myeb)
 						else:
@@ -2778,7 +2868,7 @@ class depgraph(object):
 						old_use = vardb.aux_get(cpv, ["USE"])[0].split()
 						old_iuse = set(filter_iuse_defaults(
 							vardb.aux_get(cpv, ["IUSE"])[0].split()))
-						cur_use = pkg.use.enabled
+						cur_use = self._pkg_use_enabled(pkg)
 						cur_iuse = pkg.iuse.all
 						reinstall_for_flags = \
 							self._reinstall_for_flags(
@@ -3158,7 +3248,7 @@ class depgraph(object):
 							portage.dep._dep_check_strict = False
 							try:
 								success, atoms = portage.dep_check(depstr,
-									final_db, pkgsettings, myuse=pkg.use.enabled,
+									final_db, pkgsettings, myuse=self._pkg_use_enabled(pkg),
 									trees=self._dynamic_config._graph_trees, myroot=myroot)
 							except Exception as e:
 								if isinstance(e, SystemExit):
@@ -4469,7 +4559,7 @@ class depgraph(object):
 						os.path.dirname(ebuild_path)))
 				else:
 					repo_path_real = portdb.getRepositoryPath(repo_name)
-				pkg_use = list(pkg.use.enabled)
+				pkg_use = list(self._pkg_use_enabled(pkg))
 				if not pkg.built and pkg.operation == 'merge' and \
 					'fetch' in pkg.metadata.restrict:
 					fetch = red("F")
@@ -4560,7 +4650,7 @@ class depgraph(object):
 					forced_flags.update(pkgsettings.useforce)
 					forced_flags.update(pkgsettings.usemask)
 
-					cur_use = [flag for flag in pkg.use.enabled \
+					cur_use = [flag for flag in self._pkg_use_enabled(pkg) \
 						if flag in pkg.iuse.all]
 					cur_iuse = sorted(pkg.iuse.all)
 
@@ -5173,10 +5263,28 @@ class depgraph(object):
 					else:
 						raise NotImplementedError()
 
+		use_changes_msg = []
+		for pkg, needed_use_config_change in self._dynamic_config._needed_use_config_changes.items():
+			self._show_merge_list()
+			if pkg in self._dynamic_config.digraph.nodes.keys():
+				changes = needed_use_config_change[1]
+				adjustments = []
+				for flag, state in changes.items():
+					if state:
+						adjustments.append(flag)
+					else:
+						adjustments.append("-" + flag)
+				use_changes_msg.append("=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
+
 		if unstable_keyword_msg:
 			writemsg_stdout("\nThe following " + colorize("BAD", "keyword changes") + \
 				" are necessary to proceed:\n", noiselevel=-1)
 			writemsg_stdout("".join(unstable_keyword_msg), noiselevel=-1)
+
+		if use_changes_msg:
+			writemsg_stdout("\nThe following " + colorize("BAD", "USE changes") + \
+				" are necessary to proceed:\n", noiselevel=-1)
+			writemsg_stdout("".join(use_changes_msg), noiselevel=-1)
 
 		# TODO: Add generic support for "set problem" handlers so that
 		# the below warnings aren't special cases for world only.
@@ -5574,7 +5682,9 @@ class depgraph(object):
 			"needed_user_config_changes":
 				self._dynamic_config._needed_user_config_changes.copy(), \
 			"runtime_pkg_mask":
-				self._dynamic_config._runtime_pkg_mask.copy()
+				self._dynamic_config._runtime_pkg_mask.copy(),
+			"needed_use_config_changes":
+				self._dynamic_config._needed_use_config_changes.copy()
 			}
 			
 

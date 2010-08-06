@@ -4,7 +4,7 @@
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 
-class SimpleResolverTestCase(TestCase):
+class EAPITestCase(TestCase):
 
 	def testEAPI(self):
 		ebuilds = {
@@ -95,8 +95,8 @@ class SimpleResolverTestCase(TestCase):
 		try:
 			for atoms, options, action, \
 				expected_result, expected_mergelist in requests:
-				success, mergelist = playground.run(atoms, options, action)
-				self.assertEqual((success, mergelist),
+				result = playground.run(atoms, options, action)
+				self.assertEqual((result.success, result.mergelist),
 					(expected_result, expected_mergelist))
 		finally:
 			playground.cleanup()

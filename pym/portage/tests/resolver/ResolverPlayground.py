@@ -14,6 +14,7 @@ from portage.package.ebuild.config import config
 from portage.sets import load_default_config
 from portage.versions import catsplit
 
+from _emerge.Blocker import Blocker
 from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.depgraph import backtrack_depgraph
 from _emerge.RootConfig import RootConfig
@@ -183,19 +184,30 @@ class ResolverPlayground(object):
 		# Add a fake _test_ option that can be used for
 		# conditional test code.
 		myopts["_test_"] = True
-		
+
 		portage.util.noiselimit = -2
 		myparams = create_depgraph_params(myopts, myaction)
 		success, mydepgraph, favorites = backtrack_depgraph(
 			self.settings, self.trees, myopts, myparams, myaction, myfiles, None)
+		result = ResolverPlaygroundResult(success, mydepgraph, favorites)
 		portage.util.noiselimit = 0
 
-		if success:
-			mergelist = [x.cpv for x in mydepgraph._dynamic_config._serialized_tasks_cache]
-			return True, mergelist
-		else:
-			#TODO: Use mydepgraph.display_problems() to return a useful error message
-			return False, None
+		return result
 
 	def cleanup(self):
 		shutil.rmtree(self.root)
+
+class ResolverPlaygroundResult(object):
+	def __init__(self, success, mydepgraph, favorites):
+		self.success = success
+		self.depgraph = mydepgraph
+		self.favorites = favorites
+		self.mergelist = None
+
+		if self.depgraph._dynamic_config._serialized_tasks_cache is not None:
+			self.mergelist = []
+			for x in self.depgraph._dynamic_config._serialized_tasks_cache:
+				if isinstance(x, Blocker):
+					self.mergelist.append(x.atom)
+				else:
+					self.mergelist.append(x.cpv)
