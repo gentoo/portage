@@ -2138,13 +2138,15 @@ class depgraph(object):
 		"""This will raise InvalidDependString if necessary. If trees is
 		None then self._dynamic_config._filtered_trees is used."""
 
-		_autounmask_backup = self._dynamic_config._autounmask
-		self._dynamic_config._autounmask = False
 		pkgsettings = self._frozen_config.pkgsettings[root]
 		if trees is None:
 			trees = self._dynamic_config._filtered_trees
 		atom_graph = digraph()
 		if True:
+			# Temporarily disable autounmask so that || preferences
+			# account for masking and USE settings.
+			_autounmask_backup = self._dynamic_config._autounmask
+			self._dynamic_config._autounmask = False
 			try:
 				if parent is not None:
 					trees[root]["parent"] = parent
@@ -2157,6 +2159,7 @@ class depgraph(object):
 					pkgsettings, myuse=myuse,
 					myroot=root, trees=trees)
 			finally:
+				self._dynamic_config._autounmask = _autounmask_backup
 				if parent is not None:
 					trees[root].pop("parent")
 					trees[root].pop("atom_graph")
@@ -2190,7 +2193,6 @@ class depgraph(object):
 				selected_atoms[pkg] = [atom for atom in \
 					atom_graph.child_nodes(node) if atom in chosen_atoms]
 
-		self._dynamic_config._autounmask = _autounmask_backup
 		return selected_atoms
 
 	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None,
