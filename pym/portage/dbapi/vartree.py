@@ -1878,14 +1878,14 @@ class dblink(object):
 	"""
 
 	import re
-	_normalize_needed = re.compile(r'.*//.*|^[^/]|.+/$|(^|.*/)\.\.?(/.*|$)')
-	_contents_split_counts = {
-		"dev": 2,
-		"dir": 2,
-		"fif": 2,
-		"obj": 4,
-		"sym": 5
-	}
+	_normalize_needed = re.compile(r'//|^[^/]|./$|(^|/)\.\.?(/|$)')
+
+	_contents_re = re.compile(r'^(' + \
+		r'(?P<dir>(dev|dir|fif) (.+))|' + \
+		r'(?P<obj>(obj) (.+) (\S+) (\d+))|' + \
+		r'(?P<sym>(sym) (.+) -> (.+) (\d+))' + \
+		r')$'
+	)
 
 	# When looping over files for merge/unmerge, temporarily yield to the
 	# scheduler each time this many files are processed.
@@ -2033,7 +2033,10 @@ class dblink(object):
 		myc.close()
 		null_byte = "\0"
 		normalize_needed = self._normalize_needed
-		contents_split_counts = self._contents_split_counts
+		contents_re = self._contents_re
+		obj_index = contents_re.groupindex['obj']
+		dir_index = contents_re.groupindex['dir']
+		sym_index = contents_re.groupindex['sym']
 		myroot = self.myroot
 		if myroot == os.path.sep:
 			myroot = None
@@ -2045,63 +2048,40 @@ class dblink(object):
 				errors.append((pos + 1, _("Null byte found in CONTENTS entry")))
 				continue
 			line = line.rstrip("\n")
-			# Split on " " so that even file paths that
-			# end with spaces can be handled.
-			mydat = line.split(" ")
-			entry_type = mydat[0] # empty string if line is empty
-			correct_split_count = contents_split_counts.get(entry_type)
-			if correct_split_count and len(mydat) > correct_split_count:
-				# Apparently file paths contain spaces, so reassemble
-				# the split have the correct_split_count.
-				newsplit = [entry_type]
-				spaces_total = len(mydat) - correct_split_count
-				if entry_type == "sym":
-					try:
-						splitter = mydat.index("->", 2, len(mydat) - 2)
-					except ValueError:
-						errors.append((pos + 1, _("Unrecognized CONTENTS entry")))
-						continue
-					spaces_in_path = splitter - 2
-					spaces_in_target = spaces_total - spaces_in_path
-					newsplit.append(" ".join(mydat[1:splitter]))
-					newsplit.append("->")
-					target_end = splitter + spaces_in_target + 2
-					newsplit.append(" ".join(mydat[splitter + 1:target_end]))
-					newsplit.extend(mydat[target_end:])
-				else:
-					path_end = spaces_total + 2
-					newsplit.append(" ".join(mydat[1:path_end]))
-					newsplit.extend(mydat[path_end:])
-				mydat = newsplit
-
-			# we do this so we can remove from non-root filesystems
-			# (use the ROOT var to allow maintenance on other partitions)
-			try:
-				if normalize_needed.match(mydat[1]):
-					mydat[1] = normalize_path(mydat[1])
-					if not mydat[1].startswith(os.path.sep):
-						mydat[1] = os.path.sep + mydat[1]
-				if myroot:
-					mydat[1] = os.path.join(myroot, mydat[1].lstrip(os.path.sep))
-				if mydat[0] == "obj":
-					#format: type, mtime, md5sum
-					pkgfiles[mydat[1]] = [mydat[0], mydat[3], mydat[2]]
-				elif mydat[0] == "dir":
-					#format: type
-					pkgfiles[mydat[1]] = [mydat[0]]
-				elif mydat[0] == "sym":
-					#format: type, mtime, dest
-					pkgfiles[mydat[1]] = [mydat[0], mydat[4], mydat[3]]
-				elif mydat[0] == "dev":
-					#format: type
-					pkgfiles[mydat[1]] = [mydat[0]]
-				elif mydat[0]=="fif":
-					#format: type
-					pkgfiles[mydat[1]] = [mydat[0]]
-				else:
-					errors.append((pos + 1, _("Unrecognized CONTENTS entry")))
-			except (KeyError, IndexError):
+			m = contents_re.match(line)
+			if m is None:
 				errors.append((pos + 1, _("Unrecognized CONTENTS entry")))
+				continue
+
+			if m.group(obj_index) is not None:
+				base = obj_index
+				#format: type, mtime, md5sum
+				data = (m.group(base+1), m.group(base+4), m.group(base+3))
+			elif m.group(dir_index) is not None:
+				base = dir_index
+				#format: type
+				data = (m.group(base+1),)
+			elif m.group(sym_index) is not None:
+				base = sym_index
+				#format: type, mtime, dest
+				data = (m.group(base+1), m.group(base+4), m.group(base+3))
+			else:
+				# This won't happen as long the regular expression
+				# is written to only match valid entries.
+				raise AssertionError(_("required group not found " + \
+					"in CONTENTS entry: '%s'") % line)
+
+			path = m.group(base+2)
+			if normalize_needed.search(path) is not None:
+				path = normalize_path(path)
+				if not path.startswith(os.path.sep):
+					path = os.path.sep + path
+
+			if myroot is not None:
+				path = os.path.join(myroot, path.lstrip(os.path.sep))
+
+			pkgfiles[path] = data
+
 		if errors:
 			writemsg(_("!!! Parse error in '%s'\n") % contents_file, noiselevel=-1)
 			for pos, e in errors:
