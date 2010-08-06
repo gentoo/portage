@@ -15,11 +15,24 @@ from portage.versions import catpkgsplit, cpv_getkey
 if sys.hexversion >= 0x3000000:
 	basestring = str
 
+class _MaskReason(object):
+
+	__slots__ = ('category', 'message')
+
+	def __init__(self, category, message):
+		self.category = category
+		self.message = message
+
 def getmaskingstatus(mycpv, settings=None, portdb=None):
 	if settings is None:
 		settings = config(clone=portage.settings)
 	if portdb is None:
 		portdb = portage.portdb
+
+	return [mreason.message for \
+		mreason in _getmaskingstatus(mycpv, settings, portdb)]
+
+def _getmaskingstatus(mycpv, settings, portdb):
 
 	metadata = None
 	installed = False
@@ -40,7 +53,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 		except KeyError:
 			if not portdb.cpv_exists(mycpv):
 				raise
-			return ["corruption"]
+			return [_MaskReason("corruption", "corruption")]
 		if "?" in metadata["LICENSE"]:
 			settings.setcpv(mycpv, mydb=metadata)
 			metadata["USE"] = settings["PORTAGE_USE"]
@@ -51,11 +64,11 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 
 	# profile checking
 	if settings._getProfileMaskAtom(mycpv, metadata):
-		rValue.append("profile")
+		rValue.append(_MaskReason("profile", "profile"))
 
 	# package.mask checking
 	if settings._getMaskAtom(mycpv, metadata):
-		rValue.append("package.mask")
+		rValue.append(_MaskReason("package.mask", "package.mask"))
 
 	# keywords checking
 	eapi = metadata["EAPI"]
@@ -65,9 +78,9 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 	if eapi.startswith("-"):
 		eapi = eapi[1:]
 	if not eapi_is_supported(eapi):
-		return ["EAPI %s" % eapi]
+		return [_MaskReason("EAPI", "EAPI %s" % eapi)]
 	elif _eapi_is_deprecated(eapi) and not installed:
-		return ["EAPI %s" % eapi]
+		return [_MaskReason("EAPI", "EAPI %s" % eapi)]
 	egroups = settings.configdict["backupenv"].get(
 		"ACCEPT_KEYWORDS", "").split()
 	pgroups = settings["ACCEPT_KEYWORDS"].split()
@@ -132,9 +145,9 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 				if x in allowed_tokens]
 			msg = license_split[:]
 			msg.append("license(s)")
-			rValue.append(" ".join(msg))
+			rValue.append(_MaskReason("LICENSE", " ".join(msg)))
 	except portage.exception.InvalidDependString as e:
-		rValue.append("LICENSE: "+str(e))
+		rValue.append(_MaskReason("LICENSE", "LICENSE: "+str(e)))
 
 	try:
 		missing_properties = settings._getMissingProperties(mycpv, metadata)
@@ -146,13 +159,13 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 					if x in allowed_tokens]
 			msg = properties_split[:]
 			msg.append("properties")
-			rValue.append(" ".join(msg))
+			rValue.append(_MaskReason("PROPERTIES", " ".join(msg)))
 	except portage.exception.InvalidDependString as e:
-		rValue.append("PROPERTIES: "+str(e))
+		rValue.append(_MaskReason("PROPERTIES", "PROPERTIES: "+str(e)))
 
 	# Only show KEYWORDS masks for installed packages
 	# if they're not masked for any other reason.
 	if kmask and (not installed or not rValue):
-		rValue.append(kmask+" keyword")
+		rValue.append(_MaskReason("KEYWORDS", kmask + " keyword"))
 
 	return rValue
