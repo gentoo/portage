@@ -2273,6 +2273,9 @@ class config(object):
 
 		# For optimal performance, use slice
 		# comparison instead of startswith().
+		iuse = self.configdict["pkg"].get("IUSE")
+		if iuse is not None:
+			iuse = [x.lstrip("+-") for x in iuse.split()]
 		myflags = set()
 		for curdb in self.uvlist:
 			cur_use_expand = [x for x in use_expand if x in curdb]
@@ -2301,7 +2304,24 @@ class config(object):
 					myflags.discard(x[1:])
 					continue
 
-				myflags.add(x)
+				if iuse is not None and x[-2:] == '_*':
+					# Expand wildcards here, so that cases like
+					# USE="linguas_* -linguas_en_US" work correctly.
+					prefix = x[:-1]
+					prefix_len = len(prefix)
+					has_iuse = False
+					for y in iuse:
+						if y[:prefix_len] == prefix:
+							has_iuse = True
+							myflags.add(y)
+					if not has_iuse:
+						# There are no matching IUSE, so allow the
+						# wildcard to pass through. This allows
+						# linguas_* to trigger unset LINGUAS in
+						# cases when no linguas_ flags are in IUSE.
+						myflags.add(x)
+				else:
+					myflags.add(x)
 
 			for var in cur_use_expand:
 				var_lower = var.lower()
