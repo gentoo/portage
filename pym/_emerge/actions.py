@@ -2431,7 +2431,7 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 	if action == 'deselect':
 		return action_deselect(settings, trees, opts, valid_atoms)
 
-	# Create a Schuduler for calls to unmerge(), in order to cause
+	# Create a Scheduler for calls to unmerge(), in order to cause
 	# redirection of ebuild phase output to logs as required for
 	# options such as --quiet.
 	sched = Scheduler(settings, trees, None, opts,
