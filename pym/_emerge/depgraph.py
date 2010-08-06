@@ -2141,12 +2141,14 @@ class depgraph(object):
 		pkgsettings = self._frozen_config.pkgsettings[root]
 		if trees is None:
 			trees = self._dynamic_config._filtered_trees
+		mytrees = trees[root]
 		atom_graph = digraph()
 		if True:
 			# Temporarily disable autounmask so that || preferences
 			# account for masking and USE settings.
 			_autounmask_backup = self._dynamic_config._autounmask
 			self._dynamic_config._autounmask = False
+			mytrees["pkg_use_enabled"] = self._pkg_use_enabled
 			try:
 				if parent is not None:
 					trees[root]["parent"] = parent
@@ -2160,6 +2162,7 @@ class depgraph(object):
 					myroot=root, trees=trees)
 			finally:
 				self._dynamic_config._autounmask = _autounmask_backup
+				del mytrees["pkg_use_enabled"]
 				if parent is not None:
 					trees[root].pop("parent")
 					trees[root].pop("atom_graph")
