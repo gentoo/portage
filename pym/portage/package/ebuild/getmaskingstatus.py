@@ -147,7 +147,7 @@ def _getmaskingstatus(mycpv, settings, portdb):
 			msg.append("license(s)")
 			rValue.append(_MaskReason("LICENSE", " ".join(msg)))
 	except portage.exception.InvalidDependString as e:
-		rValue.append(_MaskReason("LICENSE", "LICENSE: "+str(e)))
+		rValue.append(_MaskReason("invalid", "LICENSE: "+str(e)))
 
 	try:
 		missing_properties = settings._getMissingProperties(mycpv, metadata)
@@ -161,7 +161,7 @@ def _getmaskingstatus(mycpv, settings, portdb):
 			msg.append("properties")
 			rValue.append(_MaskReason("PROPERTIES", " ".join(msg)))
 	except portage.exception.InvalidDependString as e:
-		rValue.append(_MaskReason("PROPERTIES", "PROPERTIES: "+str(e)))
+		rValue.append(_MaskReason("invalid", "PROPERTIES: "+str(e)))
 
 	# Only show KEYWORDS masks for installed packages
 	# if they're not masked for any other reason.

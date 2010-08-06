@@ -20,6 +20,8 @@ from portage.dep import Atom
 from portage.output import bold, blue, colorize, create_color_func, darkblue, \
 	darkgreen, green, nc_len, red, teal, turquoise, yellow
 bad = create_color_func("BAD")
+from portage.package.ebuild.getmaskingstatus import \
+	_getmaskingstatus, _MaskReason
 from portage.sets import SETPREFIX
 from portage.sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, writemsg_stdout
@@ -6020,21 +6022,27 @@ def show_blocker_docs_link():
 	print()
 
 def get_masking_status(pkg, pkgsettings, root_config):
+	return [mreason.message for \
+		mreason in _get_masking_status(pkg, pkgsettings, root_config)]
 
-	mreasons = portage.getmaskingstatus(
+def _get_masking_status(pkg, pkgsettings, root_config):
+
+	mreasons = _getmaskingstatus(
 		pkg, settings=pkgsettings,
 		portdb=root_config.trees["porttree"].dbapi)
 
 	if not pkg.installed:
 		if not pkgsettings._accept_chost(pkg.cpv, pkg.metadata):
-			mreasons.append("CHOST: %s" % \
-				pkg.metadata["CHOST"])
+			mreasons.append(_MaskReason("CHOST", "CHOST: %s" % \
+				pkg.metadata["CHOST"]))
 		if pkg.invalid:
 			for msg_type, msgs in pkg.invalid.items():
 				for msg in msgs:
-					mreasons.append("invalid: %s" % (msg,))
+					mreasons.append(
+						_MaskReason("invalid", "invalid: %s" % (msg,)))
 
 	if not pkg.metadata["SLOT"]:
-		mreasons.append("invalid: SLOT is undefined")
+		mreasons.append(
+			_MaskReason("invalid", "SLOT: undefined"))
 
 	return mreasons
