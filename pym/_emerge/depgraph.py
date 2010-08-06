@@ -2536,14 +2536,14 @@ class depgraph(object):
 				not self._want_installed_pkg(pkg):
 				pkg = None
 
-			for allow_missing_keywords in False, True:
+			for allow_unstable_keywords in False, True:
 				if pkg is not None:
 					break
 
 				pkg, existing = \
 					self._wrapped_select_pkg_highest_available_imp(
 						root, atom, onlydeps=onlydeps,
-						allow_use_changes=True, allow_missing_keywords=allow_missing_keywords)
+						allow_use_changes=True, allow_unstable_keywords=allow_unstable_keywords)
 
 				if pkg is not None and not pkg.visible:
 					self._dynamic_config._needed_user_config_changes.setdefault(pkg, set()).add("unstable keyword")
@@ -2553,7 +2553,7 @@ class depgraph(object):
 
 		return pkg, existing
 
-	def _pkg_visibility_check(self, pkg, allow_missing_keywords=False):
+	def _pkg_visibility_check(self, pkg, allow_unstable_keywords=False):
 
 		if pkg.visible:
 			return True
@@ -2563,7 +2563,7 @@ class depgraph(object):
 			"unstable keyword" in pending_keyword_change:
 			return True
 
-		if not allow_missing_keywords:
+		if not allow_unstable_keywords:
 			return False
 
 		pkgsettings = self._frozen_config.pkgsettings[pkg.root]
@@ -2632,7 +2632,7 @@ class depgraph(object):
 		return new_use
 
 	def _wrapped_select_pkg_highest_available_imp(self, root, atom, onlydeps=False, \
-		allow_use_changes=False, allow_missing_keywords=False):
+		allow_use_changes=False, allow_unstable_keywords=False):
 		root_config = self._frozen_config.roots[root]
 		pkgsettings = self._frozen_config.pkgsettings[root]
 		dbs = self._dynamic_config._filtered_trees[root]["dbs"]
@@ -2729,7 +2729,7 @@ class depgraph(object):
 						# were installed can be automatically downgraded
 						# to an unmasked version.
 
-						if not self._pkg_visibility_check(pkg, allow_missing_keywords=allow_missing_keywords):
+						if not self._pkg_visibility_check(pkg, allow_unstable_keywords=allow_unstable_keywords):
 							continue
 
 						# Enable upgrade or downgrade to a version
@@ -2764,7 +2764,7 @@ class depgraph(object):
 										continue
 									else:
 										if not self._pkg_visibility_check(pkg_eb, \
-											allow_missing_keywords=allow_missing_keywords):
+											allow_unstable_keywords=allow_unstable_keywords):
 											continue
 
 					# Calculation of USE for unbuilt ebuilds is relatively
@@ -2959,12 +2959,12 @@ class depgraph(object):
 			if avoid_update:
 				for pkg in matched_packages:
 					if pkg.installed and self._pkg_visibility_check(pkg, \
-						allow_missing_keywords=allow_missing_keywords):
+						allow_unstable_keywords=allow_unstable_keywords):
 						return pkg, existing_node
 
 			bestmatch = portage.best(
 				[pkg.cpv for pkg in matched_packages \
-					if self._pkg_visibility_check(pkg, allow_missing_keywords=allow_missing_keywords)])
+					if self._pkg_visibility_check(pkg, allow_unstable_keywords=allow_unstable_keywords)])
 			if not bestmatch:
 				# all are masked, so ignore visibility
 				bestmatch = portage.best(
