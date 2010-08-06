@@ -2538,8 +2538,10 @@ class depgraph(object):
 
 		if not allow_missing_keywords:
 			return False
-		mreasons = get_masking_status(pkg, pkgsettings, root_config)
-		if len(mreasons) == 1 and mreasons[0].startswith("~") and mreasons[0].endswith("keyword"):
+		mreasons = _get_masking_status(pkg, pkgsettings, root_config)
+		if len(mreasons) == 1 and \
+			mreasons[0].category == 'KEYWORDS' and \
+			mreasons[0].message.startswith("~"):
 			return True
 		else:
 			return False
