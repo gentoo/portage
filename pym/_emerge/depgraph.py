@@ -2530,6 +2530,8 @@ class depgraph(object):
 	def _select_pkg_highest_available_imp(self, root, atom, onlydeps=False):
 		pkg, existing = self._wrapped_select_pkg_highest_available_imp(root, atom, onlydeps=onlydeps)
 
+		default_selection = (pkg, existing)
+
 		if self._dynamic_config._autounmask is True:
 			if pkg is not None and \
 				pkg.installed and \
@@ -2555,6 +2557,11 @@ class depgraph(object):
 			
 			if self._dynamic_config._need_restart:
 				return None, None
+
+		if pkg is None:
+			# This ensures that we can fall back to an installed package
+			# that may have been rejected in the autounmask path above.
+			return default_selection
 
 		return pkg, existing
 
