@@ -868,12 +868,8 @@ class config(object):
 					else:
 						self.configdict["conf"]["ACCEPT_LICENSE"] = " ".join(v)
 				for k, v in licdict.items():
-					cp = k.cp
-					cp_dict = self._plicensedict.get(cp)
-					if not cp_dict:
-						cp_dict = {}
-						self._plicensedict[cp] = cp_dict
-					cp_dict[k] = self.expandLicenseTokens(v)
+					self._plicensedict.setdefault(k.cp, {})[k] = \
+						self.expandLicenseTokens(v)
 
 				#package.properties
 				propdict = grabdict_package(os.path.join(
@@ -885,12 +881,7 @@ class config(object):
 					else:
 						self.configdict["conf"]["ACCEPT_PROPERTIES"] = " ".join(v)
 				for k, v in propdict.items():
-					cp = k.cp
-					cp_dict = self._ppropertiesdict.get(cp)
-					if not cp_dict:
-						cp_dict = {}
-						self._ppropertiesdict[cp] = cp_dict
-					cp_dict[k] = v
+					self._ppropertiesdict.setdefault(k.cp, {})[k] = v
 
 				self._local_repo_configs = {}
 				self._local_repo_conf_path = \
