@@ -785,6 +785,15 @@ class ExtendedAtomDict(portage.cache.mappings.MutableMapping):
 		self._normal = {}
 		self._value_class = value_class
 
+	def __iter__(self):
+		for k in self._normal:
+			yield k
+		for k in self._extended:
+			yield k
+
+	if sys.hexversion >= 0x3000000:
+		keys = __iter__
+
 	def setdefault(self, cp, default=None):
 		if "*" in cp:
 			return self._extended.setdefault(cp, default)
