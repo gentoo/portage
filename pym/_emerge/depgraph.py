@@ -111,7 +111,7 @@ class _frozen_depgraph_config(object):
 class _dynamic_depgraph_config(object):
 
 	def __init__(self, depgraph, myparams, allow_backtracking,
-		runtime_pkg_mask, needed_user_config_changes, needed_use_config_changes):
+		runtime_pkg_mask, needed_unstable_keywords, needed_use_config_changes):
 		self.myparams = myparams.copy()
 		self._vdb_loaded = False
 		self._allow_backtracking = allow_backtracking
@@ -188,12 +188,10 @@ class _dynamic_depgraph_config(object):
 			runtime_pkg_mask = dict((k, v.copy()) for (k, v) in \
 				runtime_pkg_mask.items())
 
-		if needed_user_config_changes is None:
-			self._needed_user_config_changes = {}
+		if needed_unstable_keywords is None:
+			self._needed_unstable_keywords = set()
 		else:
-			self._needed_user_config_changes = \
-				dict((k.copy(), v.copy()) for (k, v) in \
-					needed_user_config_changes.items())
+			self._needed_unstable_keywords = needed_unstable_keywords.copy()
 
 		if needed_use_config_changes is None:
 			self._needed_use_config_changes = {}
@@ -274,14 +272,14 @@ class depgraph(object):
 	_dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 	
 	def __init__(self, settings, trees, myopts, myparams, spinner,
-		frozen_config=None, runtime_pkg_mask=None, needed_user_config_changes=None, \
+		frozen_config=None, runtime_pkg_mask=None, needed_unstable_keywords=None, \
 			needed_use_config_changes=None, allow_backtracking=False):
 		if frozen_config is None:
 			frozen_config = _frozen_depgraph_config(settings, trees,
 			myopts, spinner)
 		self._frozen_config = frozen_config
 		self._dynamic_config = _dynamic_depgraph_config(self, myparams,
-			allow_backtracking, runtime_pkg_mask, needed_user_config_changes, needed_use_config_changes)
+			allow_backtracking, runtime_pkg_mask, needed_unstable_keywords, needed_use_config_changes)
 
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
@@ -1995,7 +1993,7 @@ class depgraph(object):
 			return False, myfavorites
 
 		if set(self._dynamic_config.digraph.nodes.keys()).intersection( \
-			set(self._dynamic_config._needed_user_config_changes.keys())) or \
+			set(self._dynamic_config._needed_unstable_keywords)) or \
 			set(self._dynamic_config.digraph.nodes.keys()).intersection( \
 			set(self._dynamic_config._needed_use_config_changes.keys())) :
 			#We failed if the user needs to change the configuration
@@ -2553,7 +2551,7 @@ class depgraph(object):
 					pkg = None
 
 				if pkg is not None and not pkg.visible:
-					self._dynamic_config._needed_user_config_changes.setdefault(pkg, set()).add("unstable keyword")
+					self._dynamic_config._needed_unstable_keywords.add(pkg)
 			
 			if self._dynamic_config._need_restart:
 				return None, None
@@ -2566,13 +2564,10 @@ class depgraph(object):
 		return pkg, existing
 
 	def _pkg_visibility_check(self, pkg, allow_unstable_keywords=False):
-
 		if pkg.visible:
 			return True
 
-		pending_keyword_change = self._dynamic_config._needed_user_config_changes.get(pkg)
-		if pending_keyword_change is not None and \
-			"unstable keyword" in pending_keyword_change:
+		if pkg in self._dynamic_config._needed_unstable_keywords:
 			return True
 
 		if not allow_unstable_keywords:
@@ -5289,16 +5284,12 @@ class depgraph(object):
 			return msg
 
 		unstable_keyword_msg = []
-		for pkg, changes in self._dynamic_config._needed_user_config_changes.items():
+		for pkg in self._dynamic_config._needed_unstable_keywords:
 			self._show_merge_list()
 			if pkg in self._dynamic_config.digraph.nodes.keys():
-				for change in changes:
-					if change == "unstable keyword":
-						pkgsettings = self._frozen_config.pkgsettings[pkg.root]
-						unstable_keyword_msg.append(get_dep_chain(pkg))
-						unstable_keyword_msg.append("=%s ~%s\n" % (pkg.cpv, pkgsettings["ACCEPT_KEYWORDS"]))
-					else:
-						raise NotImplementedError()
+				pkgsettings = self._frozen_config.pkgsettings[pkg.root]
+				unstable_keyword_msg.append(get_dep_chain(pkg))
+				unstable_keyword_msg.append("=%s ~%s\n" % (pkg.cpv, pkgsettings["ACCEPT_KEYWORDS"]))
 
 		use_changes_msg = []
 		for pkg, needed_use_config_change in self._dynamic_config._needed_use_config_changes.items():
@@ -5716,8 +5707,8 @@ class depgraph(object):
 
 	def get_backtrack_parameters(self):
 		return {
-			"needed_user_config_changes":
-				self._dynamic_config._needed_user_config_changes.copy(), \
+			"needed_unstable_keywords":
+				self._dynamic_config._needed_unstable_keywords.copy(), \
 			"runtime_pkg_mask":
 				self._dynamic_config._runtime_pkg_mask.copy(),
 			"needed_use_config_changes":
@@ -5955,7 +5946,7 @@ def _backtrack_depgraph(settings, trees, myopts, myparams,
 
 	backtrack_max = myopts.get('--backtrack', 5)
 	backtrack_parameters = {}
-	needed_user_config_changes = None
+	needed_unstable_keywords = None
 	allow_backtracking = backtrack_max > 0
 	backtracked = 0
 	frozen_config = _frozen_depgraph_config(settings, trees,
@@ -5978,7 +5969,7 @@ def _backtrack_depgraph(settings, trees, myopts, myparams,
 				# Backtracking failed, so disable it and do
 				# a plain dep calculation + error message.
 				allow_backtracking = False
-				#Don't reset needed_user_config_changes here, since we don't want to
+				#Don't reset needed_unstable_keywords here, since we don't want to
 				#send the user through a "one step at a time" unmasking session for
 				#no good reason.
 				backtrack_parameters.pop('runtime_pkg_mask', None)
