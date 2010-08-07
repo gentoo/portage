@@ -306,6 +306,57 @@ class EbuildQuotedA(LineCheck):
 		if match:
 			return "Quoted \"${A}\" on line: %d"
 
+class EprefixifyDefined(LineCheck):
+	""" Check that prefix.eclass is inherited if needed"""
+
+	repoman_check_name = 'eprefixify.defined'
+
+	_eprefixify_re = re.compile(r'\beprefixify\b')
+	_inherit_prefix_re = re.compile(r'^\s*inherit\s(.*\s)?prefix\b')
+
+	def new(self, pkg):
+		self._prefix_inherited = False
+
+	def check(self, num, line):
+		if self._eprefixify_re.search(line) is not None:
+			if not self._prefix_inherited:
+				return errors.EPREFIXIFY_MISSING_INHERIT
+		elif self._inherit_prefix_re.search(line) is not None:
+			self._prefix_inherited = True
+
+class ImplicitRuntimeDeps(LineCheck):
+	"""
+	Detect the case where DEPEND is set and RDEPEND is unset in the ebuild,
+	since this triggers implicit RDEPEND=$DEPEND assignment (prior to EAPI 4).
+	"""
+
+	repoman_check_name = 'RDEPEND.implicit'
+	_assignment_re = re.compile(r'^\s*(R?DEPEND)=')
+
+	def new(self, pkg):
+		self._rdepend = False
+		self._depend = False
+
+	def check_eapi(self, eapi):
+		# Beginning with EAPI 4, there is no
+		# implicit RDEPEND=$DEPEND assignment
+		# to be concerned with.
+		return eapi in ('0', '1', '2', '3')
+
+	def check(self, num, line):
+		if not self._rdepend:
+			m = self._assignment_re.match(line)
+			if m is None:
+				pass
+			elif m.group(1) == "RDEPEND":
+				self._rdepend = True
+			elif m.group(1) == "DEPEND":
+				self._depend = True
+
+	def end(self):
+		if self._depend and not self._rdepend:
+			yield 'RDEPEND is not explicitly assigned'
+
 class InheritAutotools(LineCheck):
 	"""
 	Make sure appropriate functions are called in
@@ -493,8 +544,8 @@ _constant_checks = tuple((c() for c in (
 	EbuildHeader, EbuildWhitespace, EbuildBlankLine, EbuildQuote,
 	EbuildAssignment, Eapi3EbuildAssignment, EbuildUselessDodoc,
 	EbuildUselessCdS, EbuildNestedDie,
-	EbuildPatches, EbuildQuotedA, EapiDefinition,
-	IUseUndefined, InheritAutotools,
+	EbuildPatches, EbuildQuotedA, EapiDefinition, EprefixifyDefined,
+	ImplicitRuntimeDeps, InheritAutotools, IUseUndefined,
 	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS, NoAsNeeded,
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
 	SrcCompileEconf, Eapi3DeprecatedFuncs,

@@ -71,7 +71,7 @@ class PipeReader(AbstractPollTask):
 			buf = array.array('B')
 			try:
 				buf.fromfile(f, self._bufsize)
-			except EOFError:
+			except (EOFError, IOError):
 				pass
 
 			if buf:

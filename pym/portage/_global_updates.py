@@ -12,7 +12,8 @@ from portage.exception import DirectoryNotFound
 from portage.localization import _
 from portage.output import bold, colorize
 from portage.update import grab_updates, parse_updates, update_config_files, update_dbentry
-from portage.util import grabfile, writemsg, writemsg_stdout, write_atomic
+from portage.util import grabfile, shlex_split, \
+	writemsg, writemsg_stdout, write_atomic
 
 def _global_updates(trees, prev_mtimes):
 	"""
@@ -26,20 +27,18 @@ def _global_updates(trees, prev_mtimes):
 	@param prev_mtimes: A dictionary containing mtimes of files located in
 		$PORTDIR/profiles/updates/.
 	@type prev_mtimes: dict
-	@rtype: None or List
-	@return: None if no were no updates, otherwise a list of update commands
-		that have been performed.
+	@rtype: bool
+	@return: True if update commands have been performed, otherwise False
 	"""
 	# only do this if we're root and not running repoman/ebuild digest
 
+	retupd = False
 	if secpass < 2 or \
 		"SANDBOX_ACTIVE" in os.environ or \
 		len(trees) != 1:
-		return 0
+		return retupd
 	root = "/"
-	mysettings = trees["/"]["vartree"].settings
-	retupd = []
-
+	mysettings = trees[root]["vartree"].settings
 	portdb = trees[root]["porttree"].dbapi
 	vardb = trees[root]["vartree"].dbapi
 	bindb = trees[root]["bintree"].dbapi
@@ -103,7 +102,8 @@ def _global_updates(trees, prev_mtimes):
 				else:
 					for msg in errors:
 						writemsg("%s\n" % msg, noiselevel=-1)
-			retupd.extend(myupd)
+			if myupd:
+				retupd = True
 
 	master_repo = portdb.getRepositoryName(portdb.porttree_root)
 	if master_repo in repo_map:
@@ -127,6 +127,8 @@ def _global_updates(trees, prev_mtimes):
 				can find a match for old atom name, warn about that.
 				"""
 				matches = vardb.match(atoma)
+				if not matches:
+					matches = vardb.match(atomb)
 				if matches and \
 					repo_match(vardb.aux_get(best(matches), ['repository'])[0]):
 					if portdb.match(atoma):
@@ -142,10 +144,6 @@ def _global_updates(trees, prev_mtimes):
 						if _world_repo_match(atom, new_atom):
 							world_list[pos] = new_atom
 							world_modified = True
-			update_config_files(root,
-				mysettings.get("CONFIG_PROTECT","").split(),
-				mysettings.get("CONFIG_PROTECT_MASK","").split(),
-				myupd, match_callback=_world_repo_match)
 
 			for update_cmd in myupd:
 				if update_cmd[0] == "move":
@@ -165,9 +163,41 @@ def _global_updates(trees, prev_mtimes):
 						if moves:
 							writemsg_stdout(moves * "S")
 
+	if world_modified:
+		world_list.sort()
+		write_atomic(world_file,
+			"".join("%s\n" % (x,) for x in world_list))
+		if world_warnings:
+			# XXX: print warning that we've updated world entries
+			# and the old name still matches something (from an overlay)?
+			pass
+
+	if retupd:
+
+			def _config_repo_match(repo_name, atoma, atomb):
+				"""
+				Check whether to perform a world change from atoma to atomb.
+				If best vardb match for atoma comes from the same repository
+				as the update file, allow that. Additionally, if portdb still
+				can find a match for old atom name, warn about that.
+				"""
+				matches = vardb.match(atoma)
+				if not matches:
+					matches = vardb.match(atomb)
+					if not matches:
+						return False
+				repository = vardb.aux_get(best(matches), ['repository'])[0]
+				return repository == repo_name or \
+					(repo_name == master_repo and repository not in repo_map)
+
+			update_config_files(root,
+				shlex_split(mysettings.get("CONFIG_PROTECT", "")),
+				shlex_split(mysettings.get("CONFIG_PROTECT_MASK", "")),
+				repo_map, match_callback=_config_repo_match)
+
 			# The above global updates proceed quickly, so they
 			# are considered a single mtimedb transaction.
-			if len(timestamps) > 0:
+			if timestamps:
 				# We do not update the mtime in the mtimedb
 				# until after _all_ of the above updates have
 				# been processed because the mtimedb will
@@ -175,7 +205,6 @@ def _global_updates(trees, prev_mtimes):
 				for mykey, mtime in timestamps.items():
 					prev_mtimes[mykey] = mtime
 
-	if retupd:
 			do_upgrade_packagesmessage = False
 			# We gotta do the brute force updates for these now.
 			if mysettings.get("PORTAGE_CALLER") == "fixpackages" or \
@@ -204,14 +233,4 @@ def _global_updates(trees, prev_mtimes):
 				writemsg_stdout(bold(_("Note: This can take a very long time.")))
 				writemsg_stdout("\n")
 
-	if world_modified:
-		world_list.sort()
-		write_atomic(world_file,
-			"".join("%s\n" % (x,) for x in world_list))
-		if world_warnings:
-			# XXX: print warning that we've updated world entries
-			# and the old name still matches something (from an overlay)?
-			pass
-
-	if retupd:
-		return retupd
+	return retupd

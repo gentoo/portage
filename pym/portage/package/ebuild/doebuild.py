@@ -1271,7 +1271,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 				buf = array.array('B')
 				try:
 					buf.fromfile(f, buffsize)
-				except EOFError:
+				except (EOFError, IOError):
 					pass
 				if not buf:
 					eof = True

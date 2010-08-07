@@ -28,6 +28,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	newsplit = []
 	mytrees = trees[myroot]
 	portdb = mytrees["porttree"].dbapi
+	pkg_use_enabled = mytrees.get("pkg_use_enabled")
 	atom_graph = mytrees.get("atom_graph")
 	parent = mytrees.get("parent")
 	virt_parent = mytrees.get("virt_parent")
@@ -100,7 +101,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				atom_graph.add(x, graph_parent)
 			continue
 
-		if repoman or not hasattr(portdb, 'match_pkgs'):
+		if repoman or not hasattr(portdb, 'match_pkgs') or \
+			pkg_use_enabled is None:
 			if portdb.cp_list(x.cp):
 				newsplit.append(x)
 			else:
@@ -149,7 +151,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			# should enforce this.
 			depstring = pkg.metadata['RDEPEND']
 			pkg_kwargs = kwargs.copy()
-			pkg_kwargs["myuse"] = pkg.use.enabled
+			pkg_kwargs["myuse"] = pkg_use_enabled(pkg)
 			if edebug:
 				writemsg_level(_("Virtual Parent:      %s\n") \
 					% (pkg,), noiselevel=-1, level=logging.DEBUG)

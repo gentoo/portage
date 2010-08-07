@@ -148,7 +148,7 @@ class SpawnProcess(SubProcess):
 			buf = array.array('B')
 			try:
 				buf.fromfile(files.process, self._bufsize)
-			except EOFError:
+			except (EOFError, IOError):
 				pass
 
 			if buf:
@@ -209,7 +209,7 @@ class SpawnProcess(SubProcess):
 			buf = array.array('B')
 			try:
 				buf.fromfile(self._files.process, self._bufsize)
-			except EOFError:
+			except (EOFError, IOError):
 				pass
 
 			if buf:

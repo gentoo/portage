@@ -284,6 +284,15 @@ acceptance of the first choice. This option is
 intended to be set in the \fBmake.conf\fR(5)
 \fBEMERGE_DEFAULT_OPTS\fR variable.
 .TP
+.BR "\-\-autounmask[=n]"
+Automatically unmask packages. If any configuration
+changes are required, then they will be displayed
+after the merge list and emerge will immediately
+abort. If the displayed configuration changes are
+satisfactory, you should copy and paste them into
+the specified configuration file(s). Currently,
+this only works for unstable KEYWORDS masks.
+.TP
 .BR \-\-backtrack=COUNT
 Specifies an integer number of times to backtrack if
 dependency calculation fails due to a conflict or an

@@ -457,8 +457,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			# when inside fakeroot.
 			dir_gid = rootgid
 		distdir_dirs = [""]
-		if "distlocks" in features:
-			distdir_dirs.append(".locks")
 		try:
 			
 			for x in distdir_dirs:
@@ -504,14 +502,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		writemsg(_("!!! No write access to '%s'\n") % mysettings["DISTDIR"],
 			noiselevel=-1)
 		can_fetch = False
-
-	if can_fetch and use_locks and locks_in_subdir:
-			distlocks_subdir = os.path.join(mysettings["DISTDIR"], locks_in_subdir)
-			if not os.access(distlocks_subdir, os.W_OK):
-				writemsg(_("!!! No write access to write to %s.  Aborting.\n") % distlocks_subdir,
-					noiselevel=-1)
-				return 0
-			del distlocks_subdir
 
 	distdir_writable = can_fetch and not fetch_to_ro
 	failed_files = set()

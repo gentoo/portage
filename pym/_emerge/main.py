@@ -34,7 +34,7 @@ from portage.const import EPREFIX, BPREFIX, EPREFIX_LSTRIP
 from portage.data import secpass
 from portage.dbapi.dep_expand import dep_expand
 from portage.util import normalize_path as normpath
-from portage.util import writemsg, writemsg_level, writemsg_stdout
+from portage.util import shlex_split, writemsg_level, writemsg_stdout
 from portage.sets import SETPREFIX
 from portage._global_updates import _global_updates
 
@@ -321,7 +321,7 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 	settings.regenerate()
 	settings.lock()
 
-	config_protect = settings.get("CONFIG_PROTECT","").split()
+	config_protect = shlex_split(settings.get("CONFIG_PROTECT", ""))
 	infodirs = settings.get("INFOPATH","").split(":") + \
 		settings.get("INFODIR","").split(":")
 
@@ -389,6 +389,7 @@ def insert_optional_args(args):
 	new_args = []
 
 	default_arg_opts = {
+		'--autounmask'           : ('n',),
 		'--complete-graph' : ('n',),
 		'--deep'       : valid_integers,
 		'--depclean-lib-check'   : ('n',),
@@ -516,6 +517,13 @@ def parse_opts(tmpcmdline, silent=False):
 
 	longopt_aliases = {"--cols":"--columns", "--skip-first":"--skipfirst"}
 	argument_options = {
+
+		"--autounmask": {
+			"help"    : "automatically unmask packages",
+			"type"    : "choice",
+			"choices" : ("True", "n")
+		},
+
 		"--accept-properties": {
 			"help":"temporarily override ACCEPT_PROPERTIES",
 			"action":"store"
@@ -735,6 +743,9 @@ def parse_opts(tmpcmdline, silent=False):
 	tmpcmdline = insert_optional_args(tmpcmdline)
 
 	myoptions, myargs = parser.parse_args(args=tmpcmdline)
+
+	if myoptions.autounmask in ("True",):
+		myoptions.autounmask = True
 
 	if myoptions.changed_use is not False:
 		myoptions.reinstall = "changed-use"
@@ -1337,7 +1348,8 @@ def emerge_main():
 		# Freeze the portdbapi for performance (memoize all xmatch results).
 		mydb.freeze()
 
-		if "--usepkg" in myopts:
+		if myaction in ('search', None) and \
+			"--usepkg" in myopts:
 			# Populate the bintree with current --getbinpkg setting.
 			# This needs to happen before expand_set_arguments(), in case
 			# any sets use the bintree.
@@ -1596,7 +1608,7 @@ def emerge_main():
 					for line in textwrap.wrap(msg, 70):
 						writemsg_level("!!! %s\n" % (line,),
 							level=logging.ERROR, noiselevel=-1)
-					for i in e[0]:
+					for i in e.args[0]:
 						writemsg_level("    %s\n" % colorize("INFORM", i),
 							level=logging.ERROR, noiselevel=-1)
 					writemsg_level("\n", level=logging.ERROR, noiselevel=-1)

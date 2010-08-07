@@ -95,10 +95,7 @@ def _test_pty_eof():
 		buf = array.array('B')
 		try:
 			buf.fromfile(master_file, 1024)
-		except EOFError:
-			eof = True
-		except IOError:
-			# This is where data loss occurs.
+		except (EOFError, IOError):
 			eof = True
 
 		if not buf:

@@ -19,15 +19,16 @@ except ImportError:
 	from ConfigParser import SafeConfigParser, ParsingError
 
 import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.data:portage_gid',
+)
 from portage import bsd_chflags, eapi_is_supported, \
 	load_mod, os, selinux, _encodings, _unicode_encode, _unicode_decode
 from portage.const import CACHE_PATH, CUSTOM_PROFILE_PATH, \
 	DEPCACHE_PATH, GLOBAL_CONFIG_PATH, INCREMENTALS, MAKE_CONF_FILE, \
 	MODULES_FILE_PATH, PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, \
 	PRIVATE_PATH, PROFILE_PATH, SUPPORTED_FEATURES, USER_CONFIG_PATH, \
-	USER_VIRTUALS_FILE, \
-	EPREFIX, EPREFIX_LSTRIP, BPREFIX
-from portage.data import portage_gid
+	USER_VIRTUALS_FILE, EPREFIX, EPREFIX_LSTRIP, BPREFIX
 from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
 from portage.dbapi.vartree import vartree
@@ -835,6 +836,12 @@ class config(object):
 
 				pusedict = grabdict_package(
 					os.path.join(abs_user_config, "package.use"), recursive=1, allow_wildcard=True)
+				v = pusedict.pop("*/*", None)
+				if v is not None:
+					if "USE" in self.configdict["conf"]:
+						self.configdict["conf"]["USE"] += " " + " ".join(v)
+					else:
+						self.configdict["conf"]["USE"] = " ".join(v)
 				for k, v in pusedict.items():
 					self.pusedict.setdefault(k.cp, {})[k] = v
 
@@ -860,24 +867,27 @@ class config(object):
 				#package.license
 				licdict = grabdict_package(os.path.join(
 					abs_user_config, "package.license"), recursive=1, allow_wildcard=True)
+				v = licdict.pop("*/*", None)
+				if v is not None:
+					if "ACCEPT_LICENSE" in self.configdict["conf"]:
+						self.configdict["conf"]["ACCEPT_LICENSE"] += " " + " ".join(v)
+					else:
+						self.configdict["conf"]["ACCEPT_LICENSE"] = " ".join(v)
 				for k, v in licdict.items():
-					cp = k.cp
-					cp_dict = self._plicensedict.get(cp)
-					if not cp_dict:
-						cp_dict = {}
-						self._plicensedict[cp] = cp_dict
-					cp_dict[k] = self.expandLicenseTokens(v)
+					self._plicensedict.setdefault(k.cp, {})[k] = \
+						self.expandLicenseTokens(v)
 
 				#package.properties
 				propdict = grabdict_package(os.path.join(
 					abs_user_config, "package.properties"), recursive=1, allow_wildcard=True)
+				v = propdict.pop("*/*", None)
+				if v is not None:
+					if "ACCEPT_PROPERTIES" in self.configdict["conf"]:
+						self.configdict["conf"]["ACCEPT_PROPERTIES"] += " " + " ".join(v)
+					else:
+						self.configdict["conf"]["ACCEPT_PROPERTIES"] = " ".join(v)
 				for k, v in propdict.items():
-					cp = k.cp
-					cp_dict = self._ppropertiesdict.get(cp)
-					if not cp_dict:
-						cp_dict = {}
-						self._ppropertiesdict[cp] = cp_dict
-					cp_dict[k] = v
+					self._ppropertiesdict.setdefault(k.cp, {})[k] = v
 
 				self._local_repo_configs = {}
 				self._local_repo_conf_path = \
@@ -1870,10 +1880,22 @@ class config(object):
 		cp = cpv_getkey(cpv)
 		cpdict = self._plicensedict.get(cp)
 		if cpdict:
-			accept_license = list(self._accept_license)
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			for atom in match_to_list(cpv_slot, list(cpdict)):
-				accept_license.extend(cpdict[atom])
+			keys = list(cpdict)
+			plicence_list = []
+			while keys:
+				bestmatch = best_match_to_list(cpv_slot, keys)
+				if bestmatch:
+					keys.remove(bestmatch)
+					plicence_list.append(cpdict[bestmatch])
+				else:
+					break
+			if plicence_list:
+				# reverse, so the most specific atoms come last
+				plicence_list.reverse()
+				accept_license = list(self._accept_license)
+				for x in plicence_list:
+					accept_license.extend(x)
 
 		licenses = set(flatten(use_reduce(paren_reduce(
 			metadata["LICENSE"]), matchall=1)))
@@ -1950,10 +1972,22 @@ class config(object):
 		cp = cpv_getkey(cpv)
 		cpdict = self._ppropertiesdict.get(cp)
 		if cpdict:
-			accept_properties = list(self._accept_properties)
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			for atom in match_to_list(cpv_slot, list(cpdict)):
-				accept_properties.extend(cpdict[atom])
+			keys = list(cpdict)
+			pproperties_list = []
+			while keys:
+				bestmatch = best_match_to_list(cpv_slot, keys)
+				if bestmatch:
+					keys.remove(bestmatch)
+					pproperties_list.append(cpdict[bestmatch])
+				else:
+					break
+			if pproperties_list:
+				# reverse, so the most specific atoms come last
+				pproperties_list.reverse()
+				accept_properties = list(self._accept_properties)
+				for x in pproperties_list:
+					accept_properties.extend(x)
 
 		properties = set(flatten(use_reduce(paren_reduce(
 			metadata["PROPERTIES"]), matchall=1)))
@@ -2260,6 +2294,9 @@ class config(object):
 
 		# For optimal performance, use slice
 		# comparison instead of startswith().
+		iuse = self.configdict["pkg"].get("IUSE")
+		if iuse is not None:
+			iuse = [x.lstrip("+-") for x in iuse.split()]
 		myflags = set()
 		for curdb in self.uvlist:
 			cur_use_expand = [x for x in use_expand if x in curdb]
@@ -2279,10 +2316,33 @@ class config(object):
 						continue
 
 				if x[0] == "-":
+					if x[-2:] == '_*':
+						prefix = x[1:-1]
+						prefix_len = len(prefix)
+						myflags.difference_update(
+							[y for y in myflags if \
+							y[:prefix_len] == prefix])
 					myflags.discard(x[1:])
 					continue
 
-				myflags.add(x)
+				if iuse is not None and x[-2:] == '_*':
+					# Expand wildcards here, so that cases like
+					# USE="linguas_* -linguas_en_US" work correctly.
+					prefix = x[:-1]
+					prefix_len = len(prefix)
+					has_iuse = False
+					for y in iuse:
+						if y[:prefix_len] == prefix:
+							has_iuse = True
+							myflags.add(y)
+					if not has_iuse:
+						# There are no matching IUSE, so allow the
+						# wildcard to pass through. This allows
+						# linguas_* to trigger unset LINGUAS in
+						# cases when no linguas_ flags are in IUSE.
+						myflags.add(x)
+				else:
+					myflags.add(x)
 
 			for var in cur_use_expand:
 				var_lower = var.lower()

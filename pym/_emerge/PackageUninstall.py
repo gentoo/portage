@@ -27,8 +27,8 @@ class PackageUninstall(AsynchronousTask):
 		else:
 			self.returncode = os.EX_OK
 
-		if retval == 1:
-			self.world_atom(self.pkg)
+			if retval == 1:
+				self.world_atom(self.pkg)
 
 		self.wait()
 

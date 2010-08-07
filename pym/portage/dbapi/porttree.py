@@ -8,6 +8,7 @@ __all__ = [
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum',
+	'portage.data:portage_gid,secpass',
 	'portage.dbapi.dep_expand:dep_expand',
 	'portage.dep:dep_getkey,flatten,match_from_list,paren_reduce,use_reduce',
 	'portage.env.loaders:KeyValuePairFileLoader',
@@ -20,7 +21,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 from portage.cache.cache_errors import CacheError
 from portage.cache.mappings import Mapping
 from portage.const import REPO_NAME_LOC
-from portage.data import portage_gid, secpass
 from portage.dbapi import dbapi
 from portage.exception import PortageException, \
 	FileNotFound, InvalidDependString, InvalidPackageName
