@@ -135,12 +135,14 @@ def get_installed_files(cpv, root=None):
 	"""
 	if root is None:
 		root = settings.settings["ROOT"]
-	filepath = get_path(cpv,"CONTENTS", vardb=True, root=root)
-	files = []
-	lines = grabfile(filepath, recursive=0)
-	files = [line.split()[1] for line in lines]
-	files.sort()
-	return files
+	cat, pv = portage.versions.catsplit(cpv)
+	db = portage.dblink(cat, pv, root,
+			settings.settings, treetype="vartree",
+			vartree=settings.vardb[root])
+	contents = db.getcontents()
+	if not contents:
+		return ["None"]
+	return sorted(contents)
 
 
 def best(versions):
