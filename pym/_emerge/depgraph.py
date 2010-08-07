@@ -2627,19 +2627,37 @@ class depgraph(object):
 					new_changes[flag] = False
 		new_use.update(old_use.difference(target_use.keys()))
 
-		def want_restart_for_use_change(pkg):
+		def want_restart_for_use_change(pkg, new_use):
 			if pkg not in self._dynamic_config.digraph.nodes:
 				return False
-			#TODO: We can be more clever here. No need to restart if 
-			#	1) we don't have a parent that can't work with our 
-			#		new use config
-			#	and
-			#	2) none of pkg's *DEPEND vars changed
-			return True
+
+			for key in "DEPEND", "RDEPEND", "PDEPEND", "LICENSE":
+				dep = pkg.metadata[key]
+				old_val = set(portage.dep.paren_normalize( \
+					portage.dep.use_reduce(portage.dep.paren_reduce(dep), pkg.use.enabled)))
+				new_val = set(portage.dep.paren_normalize( \
+					portage.dep.use_reduce(portage.dep.paren_reduce(dep), new_use)))
+
+				if old_val != new_val:
+					return True
+
+			parent_atoms = self._dynamic_config._parent_atoms.get(pkg)
+			if not parent_atoms:
+				return False
+
+			new_use, changes = self._dynamic_config._needed_use_config_changes.get(pkg)
+			for ppkg, atom in parent_atoms:
+				if not atom.use or \
+					not atom.use.required.intersection(changes.keys()):
+					continue
+				else:
+					return True
+
+			return False
 
 		if new_changes != old_changes:
 			self._dynamic_config._needed_use_config_changes[pkg] = (new_use, new_changes)
-			if want_restart_for_use_change(pkg):
+			if want_restart_for_use_change(pkg, new_use):
 				self._dynamic_config._need_restart = True
 		return new_use
 
