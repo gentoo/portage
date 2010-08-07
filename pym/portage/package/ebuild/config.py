@@ -1874,10 +1874,22 @@ class config(object):
 		cp = cpv_getkey(cpv)
 		cpdict = self._plicensedict.get(cp)
 		if cpdict:
-			accept_license = list(self._accept_license)
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			for atom in match_to_list(cpv_slot, list(cpdict)):
-				accept_license.extend(cpdict[atom])
+			keys = list(cpdict)
+			plicence_list = []
+			while keys:
+				bestmatch = best_match_to_list(cpv_slot, keys)
+				if bestmatch:
+					keys.remove(bestmatch)
+					plicence_list.append(cpdict[bestmatch])
+				else:
+					break
+			if plicence_list:
+				# reverse, so the most specific atoms come last
+				plicence_list.reverse()
+				accept_license = list(self._accept_license)
+				for x in plicence_list:
+					accept_license.extend(x)
 
 		licenses = set(flatten(use_reduce(paren_reduce(
 			metadata["LICENSE"]), matchall=1)))
