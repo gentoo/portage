@@ -4,16 +4,19 @@
 import codecs
 import errno
 import sys
+from tempfile import mkstemp
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+from portage import spawn
 from portage.tests import TestCase
+from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 
 class SpawnTestCase(TestCase):
 
 	def testLogfile(self):
-		from portage import settings, spawn
-		from tempfile import mkstemp
+		playground = ResolverPlayground()
+		settings = playground.settings
 		logfile = None
 		try:
 			fd, logfile = mkstemp()
@@ -42,6 +45,7 @@ class SpawnTestCase(TestCase):
 			# may occur.
 			self.assertEqual(test_string, log_content)
 		finally:
+			playground.cleanup()
 			if logfile:
 				try:
 					os.unlink(logfile)

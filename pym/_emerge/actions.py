@@ -515,7 +515,7 @@ def action_config(settings, trees, myopts, myfiles):
 	print()
 
 def action_depclean(settings, trees, ldpath_mtimes,
-	myopts, action, myfiles, spinner):
+	myopts, action, myfiles, spinner, scheduler=None):
 	# Kill packages that aren't explicitly merged or are required as a
 	# dependency of another package. World file is explicit.
 
@@ -576,7 +576,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	if cleanlist:
 		unmerge(root_config, myopts, "unmerge",
-			cleanlist, ldpath_mtimes, ordered=ordered)
+			cleanlist, ldpath_mtimes, ordered=ordered,
+			scheduler=scheduler)
 
 	if action == "prune":
 		return
@@ -2354,7 +2355,7 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 				for line in textwrap.wrap(msg, 70):
 					writemsg_level("!!! %s\n" % (line,),
 						level=logging.ERROR, noiselevel=-1)
-				for i in e[0]:
+				for i in e.args[0]:
 					writemsg_level("    %s\n" % colorize("INFORM", i),
 						level=logging.ERROR, noiselevel=-1)
 				writemsg_level("\n", level=logging.ERROR, noiselevel=-1)
@@ -2427,18 +2428,28 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 		for line in textwrap.wrap(msg, 72):
 			out.ewarn(line)
 
+	if action == 'deselect':
+		return action_deselect(settings, trees, opts, valid_atoms)
+
+	# Create a Scheduler for calls to unmerge(), in order to cause
+	# redirection of ebuild phase output to logs as required for
+	# options such as --quiet.
+	sched = Scheduler(settings, trees, None, opts,
+		spinner, [], [], None)
+	sched._background = sched._background_mode()
+	sched._status_display.quiet = True
+
 	if action in ('clean', 'unmerge') or \
 		(action == 'prune' and "--nodeps" in opts):
 		# When given a list of atoms, unmerge them in the order given.
 		ordered = action == 'unmerge'
 		unmerge(trees[settings["ROOT"]]['root_config'], opts, action,
-			valid_atoms, ldpath_mtimes, ordered=ordered)
+			valid_atoms, ldpath_mtimes, ordered=ordered,
+			scheduler=sched._sched_iface)
 		rval = os.EX_OK
-	elif action == 'deselect':
-		rval = action_deselect(settings, trees, opts, valid_atoms)
 	else:
 		rval = action_depclean(settings, trees, ldpath_mtimes,
-			opts, action, valid_atoms, spinner)
+			opts, action, valid_atoms, spinner, scheduler=sched._sched_iface)
 
 	return rval
 

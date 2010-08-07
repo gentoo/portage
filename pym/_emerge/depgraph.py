@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -20,6 +20,8 @@ from portage.dep import Atom
 from portage.output import bold, blue, colorize, create_color_func, darkblue, \
 	darkgreen, green, nc_len, red, teal, turquoise, yellow
 bad = create_color_func("BAD")
+from portage.package.ebuild.getmaskingstatus import \
+	_getmaskingstatus, _MaskReason
 from portage.sets import SETPREFIX
 from portage.sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, writemsg_stdout
@@ -66,7 +68,10 @@ class _frozen_depgraph_config(object):
 		if settings.get("PORTAGE_DEBUG", "") == "1":
 			self.edebug = 1
 		self.spinner = spinner
-		self._running_root = trees["/"]["root_config"]
+		if "_test_" in myopts and "/" not in trees:
+			self._running_root = trees[self.target_root]["root_config"]
+		else:
+			self._running_root = trees["/"]["root_config"]
 		self._opts_no_restart = frozenset(["--buildpkgonly",
 			"--fetchonly", "--fetch-all-uri", "--pretend"])
 		self.pkgsettings = {}
@@ -106,7 +111,7 @@ class _frozen_depgraph_config(object):
 class _dynamic_depgraph_config(object):
 
 	def __init__(self, depgraph, myparams, allow_backtracking,
-		runtime_pkg_mask):
+		runtime_pkg_mask, needed_user_config_changes, needed_use_config_changes):
 		self.myparams = myparams.copy()
 		self._vdb_loaded = False
 		self._allow_backtracking = allow_backtracking
@@ -182,6 +187,23 @@ class _dynamic_depgraph_config(object):
 		else:
 			runtime_pkg_mask = dict((k, v.copy()) for (k, v) in \
 				runtime_pkg_mask.items())
+
+		if needed_user_config_changes is None:
+			self._needed_user_config_changes = {}
+		else:
+			self._needed_user_config_changes = \
+				dict((k.copy(), v.copy()) for (k, v) in \
+					needed_user_config_changes.items())
+
+		if needed_use_config_changes is None:
+			self._needed_use_config_changes = {}
+		else:
+			self._needed_use_config_changes = \
+				dict((k.copy(), (v[0].copy(), v[1].copy())) for (k, v) in \
+					needed_use_config_changes.items())
+
+		self._autounmask = depgraph._frozen_config.myopts.get('--autounmask', 'n') == True
+
 		self._runtime_pkg_mask = runtime_pkg_mask
 		self._need_restart = False
 
@@ -252,13 +274,14 @@ class depgraph(object):
 	_dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 	
 	def __init__(self, settings, trees, myopts, myparams, spinner,
-		frozen_config=None, runtime_pkg_mask=None, allow_backtracking=False):
+		frozen_config=None, runtime_pkg_mask=None, needed_user_config_changes=None, \
+			needed_use_config_changes=None, allow_backtracking=False):
 		if frozen_config is None:
 			frozen_config = _frozen_depgraph_config(settings, trees,
 			myopts, spinner)
 		self._frozen_config = frozen_config
 		self._dynamic_config = _dynamic_depgraph_config(self, myparams,
-			allow_backtracking, runtime_pkg_mask)
+			allow_backtracking, runtime_pkg_mask, needed_user_config_changes, needed_use_config_changes)
 
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
@@ -1109,7 +1132,7 @@ class depgraph(object):
 		myroot = pkg.root
 		mykey = pkg.cpv
 		metadata = pkg.metadata
-		myuse = pkg.use.enabled
+		myuse = self._pkg_use_enabled(pkg)
 		jbigkey = pkg
 		depth = pkg.depth + 1
 		removal_action = "remove" in self._dynamic_config.myparams
@@ -1190,7 +1213,7 @@ class depgraph(object):
 					dep_string = portage.dep.paren_normalize(
 						portage.dep.use_reduce(
 						portage.dep.paren_reduce(dep_string),
-						uselist=pkg.use.enabled))
+						uselist=self._pkg_use_enabled(pkg)))
 
 					dep_string = list(self._queue_disjunctive_deps(
 						pkg, dep_root, dep_priority, dep_string))
@@ -1252,7 +1275,7 @@ class depgraph(object):
 
 		try:
 			selected_atoms = self._select_atoms(dep_root,
-				dep_string, myuse=pkg.use.enabled, parent=pkg,
+				dep_string, myuse=self._pkg_use_enabled(pkg), parent=pkg,
 				strict=strict, priority=dep_priority)
 		except portage.exception.InvalidDependString as e:
 			show_invalid_depstring_notice(pkg, dep_string, str(e))
@@ -1282,7 +1305,7 @@ class depgraph(object):
 				inst_pkgs = vardb.match_pkgs(atom)
 				if inst_pkgs:
 					for inst_pkg in inst_pkgs:
-						if inst_pkg.visible:
+						if self._pkg_visibility_check(inst_pkg):
 							# highest visible
 							mypriority.satisfied = inst_pkg
 							break
@@ -1328,7 +1351,7 @@ class depgraph(object):
 					inst_pkgs = vardb.match_pkgs(atom)
 					if inst_pkgs:
 						for inst_pkg in inst_pkgs:
-							if inst_pkg.visible:
+							if self._pkg_visibility_check(inst_pkg):
 								# highest visible
 								mypriority.satisfied = inst_pkg
 								break
@@ -1971,6 +1994,13 @@ class depgraph(object):
 		except self._unknown_internal_error:
 			return False, myfavorites
 
+		if set(self._dynamic_config.digraph.nodes.keys()).intersection( \
+			set(self._dynamic_config._needed_user_config_changes.keys())) or \
+			set(self._dynamic_config.digraph.nodes.keys()).intersection( \
+			set(self._dynamic_config._needed_use_config_changes.keys())) :
+			#We failed if the user needs to change the configuration
+			return False, myfavorites
+
 		# We're true here unless we are missing binaries.
 		return (not missing,myfavorites)
 
@@ -2052,7 +2082,7 @@ class depgraph(object):
 			dep_str = " ".join(pkg.metadata[k] for k in blocker_dep_keys)
 			try:
 				selected_atoms = self._select_atoms(
-					pkg.root, dep_str, pkg.use.enabled,
+					pkg.root, dep_str, self._pkg_use_enabled(pkg),
 					parent=pkg, strict=True)
 			except portage.exception.InvalidDependString:
 				continue
@@ -2107,11 +2137,18 @@ class depgraph(object):
 		myuse=None, parent=None, strict=True, trees=None, priority=None):
 		"""This will raise InvalidDependString if necessary. If trees is
 		None then self._dynamic_config._filtered_trees is used."""
+
 		pkgsettings = self._frozen_config.pkgsettings[root]
 		if trees is None:
 			trees = self._dynamic_config._filtered_trees
+		mytrees = trees[root]
 		atom_graph = digraph()
 		if True:
+			# Temporarily disable autounmask so that || preferences
+			# account for masking and USE settings.
+			_autounmask_backup = self._dynamic_config._autounmask
+			self._dynamic_config._autounmask = False
+			mytrees["pkg_use_enabled"] = self._pkg_use_enabled
 			try:
 				if parent is not None:
 					trees[root]["parent"] = parent
@@ -2124,6 +2161,8 @@ class depgraph(object):
 					pkgsettings, myuse=myuse,
 					myroot=root, trees=trees)
 			finally:
+				self._dynamic_config._autounmask = _autounmask_backup
+				del mytrees["pkg_use_enabled"]
 				if parent is not None:
 					trees[root].pop("parent")
 					trees[root].pop("atom_graph")
@@ -2221,7 +2260,7 @@ class depgraph(object):
 						masked_pkg_instances.add(pkg)
 					if atom.unevaluated_atom.use:
 						if not pkg.iuse.is_valid_flag(atom.unevaluated_atom.use.required) \
-							or atom.violated_conditionals(pkg.use.enabled).use:
+							or atom.violated_conditionals(self._pkg_use_enabled(pkg)).use:
 							missing_use.append(pkg)
 							if not mreasons:
 								continue
@@ -2239,7 +2278,7 @@ class depgraph(object):
 		missing_use_reasons = []
 		missing_iuse_reasons = []
 		for pkg in missing_use:
-			use = pkg.use.enabled
+			use = self._pkg_use_enabled(pkg)
 			missing_iuse = pkg.iuse.get_missing_iuse(atom.use.required)
 			mreasons = []
 			if missing_iuse:
@@ -2261,7 +2300,7 @@ class depgraph(object):
 				# Lets see if the violated use deps are conditional.
 				# If so, suggest to change them on the parent.
 				mreasons = []
-				violated_atom = atom.unevaluated_atom.violated_conditionals(pkg.use.enabled, myparent.use.enabled)
+				violated_atom = atom.unevaluated_atom.violated_conditionals(self._pkg_use_enabled(pkg), myparent.use.enabled)
 				if not (violated_atom.use.enabled or violated_atom.use.disabled):
 					#all violated use deps are conditional
 					changes = []
@@ -2296,11 +2335,14 @@ class depgraph(object):
 					break
 				
 		elif unmasked_iuse_reasons:
-			if missing_use_reasons:
-				# All packages with required IUSE are masked,
-				# so display a normal masking message.
-				pass
-			else:
+			masked_with_iuse = False
+			for pkg in masked_pkg_instances:
+				if not pkg.iuse.get_missing_iuse(atom.use.required):
+					# Package(s) with required IUSE are masked,
+					# so display a normal masking message.
+					masked_with_iuse = True
+					break
+			if not masked_with_iuse:
 				show_missing_use = unmasked_iuse_reasons
 
 		mask_docs = False
@@ -2462,12 +2504,140 @@ class depgraph(object):
 		pkg, existing = ret
 		if pkg is not None:
 			settings = pkg.root_config.settings
-			if pkg.visible and not (pkg.installed and \
+			if self._pkg_visibility_check(pkg) and not (pkg.installed and \
 				settings._getMissingKeywords(pkg.cpv, pkg.metadata)):
 				self._dynamic_config._visible_pkgs[pkg.root].cpv_inject(pkg)
 		return ret
 
+	def _want_installed_pkg(self, pkg):
+		"""
+		Given an installed package returned from select_pkg, return
+		True if the user has not explicitly requested for this package
+		to be replaced (typically via an atom on the command line).
+		"""
+		if "selective" not in self._dynamic_config.myparams and \
+			pkg.root == self._frozen_config.target_root:
+			try:
+				next(self._iter_atoms_for_pkg(pkg))
+			except StopIteration:
+				pass
+			except portage.exception.InvalidDependString:
+				pass
+			else:
+				return False
+		return True
+
 	def _select_pkg_highest_available_imp(self, root, atom, onlydeps=False):
+		pkg, existing = self._wrapped_select_pkg_highest_available_imp(root, atom, onlydeps=onlydeps)
+
+		if self._dynamic_config._autounmask is True:
+			if pkg is not None and \
+				pkg.installed and \
+				not self._want_installed_pkg(pkg):
+				pkg = None
+
+			for allow_unstable_keywords in False, True:
+				if pkg is not None:
+					break
+
+				pkg, existing = \
+					self._wrapped_select_pkg_highest_available_imp(
+						root, atom, onlydeps=onlydeps,
+						allow_use_changes=True, allow_unstable_keywords=allow_unstable_keywords)
+
+				if pkg is not None and \
+					pkg.installed and \
+					not self._want_installed_pkg(pkg):
+					pkg = None
+
+				if pkg is not None and not pkg.visible:
+					self._dynamic_config._needed_user_config_changes.setdefault(pkg, set()).add("unstable keyword")
+			
+			if self._dynamic_config._need_restart:
+				return None, None
+
+		return pkg, existing
+
+	def _pkg_visibility_check(self, pkg, allow_unstable_keywords=False):
+
+		if pkg.visible:
+			return True
+
+		pending_keyword_change = self._dynamic_config._needed_user_config_changes.get(pkg)
+		if pending_keyword_change is not None and \
+			"unstable keyword" in pending_keyword_change:
+			return True
+
+		if not allow_unstable_keywords:
+			return False
+
+		pkgsettings = self._frozen_config.pkgsettings[pkg.root]
+		root_config = self._frozen_config.roots[pkg.root]
+		mreasons = _get_masking_status(pkg, pkgsettings, root_config)
+		if len(mreasons) == 1 and \
+			mreasons[0].hint == 'unstable keyword':
+			return True
+		else:
+			return False
+
+	def _pkg_use_enabled(self, pkg, target_use=None):
+		"""
+		If target_use is None, returns pkg.use.enabled + changes in _needed_use_config_changes.
+		If target_use is given, the need changes are computed to make the package useable.
+		Example: target_use = { "foo": True, "bar": False }
+		The flags target_use must be in the pkg's IUSE.
+		"""
+		needed_use_config_change = self._dynamic_config._needed_use_config_changes.get(pkg)
+
+		if target_use is None:
+			if needed_use_config_change is None:
+				return pkg.use.enabled
+			else:
+				return needed_use_config_change[0]
+
+		if needed_use_config_change is not None:
+			old_use = needed_use_config_change[0]
+			new_use = set()
+			old_changes = needed_use_config_change[1]
+			new_changes = old_changes.copy()
+		else:
+			old_use = pkg.use.enabled
+			new_use = set()
+			old_changes = {}
+			new_changes = {}
+
+		for flag, state in target_use.items():
+			if state:
+				if flag not in old_use:
+					if new_changes.get(flag) == False:
+						return old_use
+					new_changes[flag] = True
+				new_use.add(flag)
+			else:
+				if flag in old_use:
+					if new_changes.get(flag) == True:
+						return old_use
+					new_changes[flag] = False
+		new_use.update(old_use.difference(target_use.keys()))
+
+		def want_restart_for_use_change(pkg):
+			if pkg not in self._dynamic_config.digraph.nodes:
+				return False
+			#TODO: We can be more clever here. No need to restart if 
+			#	1) we don't have a parent that can't work with our 
+			#		new use config
+			#	and
+			#	2) none of pkg's *DEPEND vars changed
+			return True
+
+		if new_changes != old_changes:
+			self._dynamic_config._needed_use_config_changes[pkg] = (new_use, new_changes)
+			if want_restart_for_use_change(pkg):
+				self._dynamic_config._need_restart = True
+		return new_use
+
+	def _wrapped_select_pkg_highest_available_imp(self, root, atom, onlydeps=False, \
+		allow_use_changes=False, allow_unstable_keywords=False):
 		root_config = self._frozen_config.roots[root]
 		pkgsettings = self._frozen_config.pkgsettings[root]
 		dbs = self._dynamic_config._filtered_trees[root]["dbs"]
@@ -2564,7 +2734,7 @@ class depgraph(object):
 						# were installed can be automatically downgraded
 						# to an unmasked version.
 
-						if not pkg.visible:
+						if not self._pkg_visibility_check(pkg, allow_unstable_keywords=allow_unstable_keywords):
 							continue
 
 						# Enable upgrade or downgrade to a version
@@ -2598,7 +2768,8 @@ class depgraph(object):
 									except portage.exception.PackageNotFound:
 										continue
 									else:
-										if not pkg_eb.visible:
+										if not self._pkg_visibility_check(pkg_eb, \
+											allow_unstable_keywords=allow_unstable_keywords):
 											continue
 
 					# Calculation of USE for unbuilt ebuilds is relatively
@@ -2625,11 +2796,21 @@ class depgraph(object):
 							# since IUSE cannot be adjusted by the user.
 							continue
 
-						if atom.use.enabled.difference(pkg.use.enabled):
+						if allow_use_changes:
+							target_use = {}
+							for flag in atom.use.enabled:
+								target_use[flag] = True
+							for flag in atom.use.disabled:
+								target_use[flag] = False
+							use = self._pkg_use_enabled(pkg, target_use)
+						else:
+							use = self._pkg_use_enabled(pkg)
+
+						if atom.use.enabled.difference(use):
 							if not pkg.built:
 								packages_with_invalid_use_config.append(pkg)
 							continue
-						if atom.use.disabled.intersection(pkg.use.enabled):
+						if atom.use.disabled.intersection(use):
 							if not pkg.built:
 								packages_with_invalid_use_config.append(pkg)
 							continue
@@ -2670,7 +2851,7 @@ class depgraph(object):
 						"--reinstall" in self._frozen_config.myopts or \
 						"--binpkg-respect-use" in self._frozen_config.myopts):
 						iuses = pkg.iuse.all
-						old_use = pkg.use.enabled
+						old_use = self._pkg_use_enabled(pkg)
 						if myeb:
 							pkgsettings.setcpv(myeb)
 						else:
@@ -2699,7 +2880,7 @@ class depgraph(object):
 						old_use = vardb.aux_get(cpv, ["USE"])[0].split()
 						old_iuse = set(filter_iuse_defaults(
 							vardb.aux_get(cpv, ["IUSE"])[0].split()))
-						cur_use = pkg.use.enabled
+						cur_use = self._pkg_use_enabled(pkg)
 						cur_iuse = pkg.iuse.all
 						reinstall_for_flags = \
 							self._reinstall_for_flags(
@@ -2782,11 +2963,13 @@ class depgraph(object):
 
 			if avoid_update:
 				for pkg in matched_packages:
-					if pkg.installed and pkg.visible:
+					if pkg.installed and self._pkg_visibility_check(pkg, \
+						allow_unstable_keywords=allow_unstable_keywords):
 						return pkg, existing_node
 
 			bestmatch = portage.best(
-				[pkg.cpv for pkg in matched_packages if pkg.visible])
+				[pkg.cpv for pkg in matched_packages \
+					if self._pkg_visibility_check(pkg, allow_unstable_keywords=allow_unstable_keywords)])
 			if not bestmatch:
 				# all are masked, so ignore visibility
 				bestmatch = portage.best(
@@ -2952,7 +3135,7 @@ class depgraph(object):
 				root_config=root_config, type_name=type_name)
 			self._frozen_config._pkg_cache[pkg] = pkg
 
-			if not pkg.visible and \
+			if not self._pkg_visibility_check(pkg) and \
 				'LICENSE' in pkg.masks and len(pkg.masks) == 1:
 				slot_key = (pkg.root, pkg.slot_atom)
 				other_pkg = self._frozen_config._highest_license_masked.get(slot_key)
@@ -3008,7 +3191,7 @@ class depgraph(object):
 					# packages masked by license, since the user likely wants
 					# to adjust ACCEPT_LICENSE.
 					if pkg in final_db:
-						if not pkg.visible and \
+						if not self._pkg_visibility_check(pkg) and \
 							(pkg_in_graph or 'LICENSE' in pkg.masks):
 							self._dynamic_config._masked_installed.add(pkg)
 						else:
@@ -3077,7 +3260,7 @@ class depgraph(object):
 							portage.dep._dep_check_strict = False
 							try:
 								success, atoms = portage.dep_check(depstr,
-									final_db, pkgsettings, myuse=pkg.use.enabled,
+									final_db, pkgsettings, myuse=self._pkg_use_enabled(pkg),
 									trees=self._dynamic_config._graph_trees, myroot=myroot)
 							except Exception as e:
 								if isinstance(e, SystemExit):
@@ -4388,7 +4571,7 @@ class depgraph(object):
 						os.path.dirname(ebuild_path)))
 				else:
 					repo_path_real = portdb.getRepositoryPath(repo_name)
-				pkg_use = list(pkg.use.enabled)
+				pkg_use = list(self._pkg_use_enabled(pkg))
 				if not pkg.built and pkg.operation == 'merge' and \
 					'fetch' in pkg.metadata.restrict:
 					fetch = red("F")
@@ -4479,7 +4662,7 @@ class depgraph(object):
 					forced_flags.update(pkgsettings.useforce)
 					forced_flags.update(pkgsettings.usemask)
 
-					cur_use = [flag for flag in pkg.use.enabled \
+					cur_use = [flag for flag in self._pkg_use_enabled(pkg) \
 						if flag in pkg.iuse.all]
 					cur_iuse = sorted(pkg.iuse.all)
 
@@ -5043,6 +5226,78 @@ class depgraph(object):
 		else:
 			self._show_missed_update()
 
+		def get_dep_chain(pkg):
+			traversed_nodes = set()
+			msg = "#"
+			node = pkg
+			first = True
+			while node is not None:
+				traversed_nodes.add(node)
+				if node is not pkg:
+					if first:
+						first = False
+					else:
+						msg += ", "
+					msg += 'required by =%s' % node.cpv
+	
+				if node not in self._dynamic_config.digraph:
+					# The parent is not in the graph due to backtracking.
+					break
+	
+				# When traversing to parents, prefer arguments over packages
+				# since arguments are root nodes. Never traverse the same
+				# package twice, in order to prevent an infinite loop.
+				selected_parent = None
+				for parent in self._dynamic_config.digraph.parent_nodes(node):
+					if isinstance(parent, DependencyArg):
+						if first:
+							first = False
+						else:
+							msg += ", "
+						msg += 'required by %s (argument)' % str(parent)
+						selected_parent = None
+						break
+					if parent not in traversed_nodes:
+						selected_parent = parent
+				node = selected_parent
+			msg += "\n"
+			return msg
+
+		unstable_keyword_msg = []
+		for pkg, changes in self._dynamic_config._needed_user_config_changes.items():
+			self._show_merge_list()
+			if pkg in self._dynamic_config.digraph.nodes.keys():
+				for change in changes:
+					if change == "unstable keyword":
+						pkgsettings = self._frozen_config.pkgsettings[pkg.root]
+						unstable_keyword_msg.append(get_dep_chain(pkg))
+						unstable_keyword_msg.append("=%s ~%s\n" % (pkg.cpv, pkgsettings["ACCEPT_KEYWORDS"]))
+					else:
+						raise NotImplementedError()
+
+		use_changes_msg = []
+		for pkg, needed_use_config_change in self._dynamic_config._needed_use_config_changes.items():
+			self._show_merge_list()
+			if pkg in self._dynamic_config.digraph.nodes.keys():
+				changes = needed_use_config_change[1]
+				adjustments = []
+				for flag, state in changes.items():
+					if state:
+						adjustments.append(flag)
+					else:
+						adjustments.append("-" + flag)
+				use_changes_msg.append("=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
+
+		if unstable_keyword_msg:
+			writemsg_stdout("\nThe following " + colorize("BAD", "keyword changes") + \
+				" are necessary to proceed:\n", noiselevel=-1)
+			writemsg_stdout("".join(unstable_keyword_msg), noiselevel=-1)
+
+		if use_changes_msg:
+			writemsg_stdout("\nThe following " + colorize("BAD", "USE changes") + \
+				" are necessary to proceed:\n", noiselevel=-1)
+			writemsg_stdout("".join(use_changes_msg), noiselevel=-1)
+
 		# TODO: Add generic support for "set problem" handlers so that
 		# the below warnings aren't special cases for world only.
 
@@ -5241,7 +5496,7 @@ class depgraph(object):
 				self._frozen_config.excluded_pkgs.findAtomForPackage(pkg):
 				continue
 
-			if "merge" == pkg.operation and not pkg.visible:
+			if "merge" == pkg.operation and not self._pkg_visibility_check(pkg):
 				if skip_masked:
 					masked_tasks.append(Dependency(root=pkg.root, parent=pkg))
 				else:
@@ -5434,8 +5689,16 @@ class depgraph(object):
 	def need_restart(self):
 		return self._dynamic_config._need_restart
 
-	def get_runtime_pkg_mask(self):
-		return self._dynamic_config._runtime_pkg_mask.copy()
+	def get_backtrack_parameters(self):
+		return {
+			"needed_user_config_changes":
+				self._dynamic_config._needed_user_config_changes.copy(), \
+			"runtime_pkg_mask":
+				self._dynamic_config._runtime_pkg_mask.copy(),
+			"needed_use_config_changes":
+				self._dynamic_config._needed_use_config_changes.copy()
+			}
+			
 
 class _dep_check_composite_db(dbapi):
 	"""
@@ -5666,7 +5929,8 @@ def _backtrack_depgraph(settings, trees, myopts, myparams,
 	myaction, myfiles, spinner):
 
 	backtrack_max = myopts.get('--backtrack', 5)
-	runtime_pkg_mask = None
+	backtrack_parameters = {}
+	needed_user_config_changes = None
 	allow_backtracking = backtrack_max > 0
 	backtracked = 0
 	frozen_config = _frozen_depgraph_config(settings, trees,
@@ -5675,11 +5939,11 @@ def _backtrack_depgraph(settings, trees, myopts, myparams,
 		mydepgraph = depgraph(settings, trees, myopts, myparams, spinner,
 			frozen_config=frozen_config,
 			allow_backtracking=allow_backtracking,
-			runtime_pkg_mask=runtime_pkg_mask)
+			**backtrack_parameters)
 		success, favorites = mydepgraph.select_files(myfiles)
 		if not success:
 			if mydepgraph.need_restart() and backtracked < backtrack_max:
-				runtime_pkg_mask = mydepgraph.get_runtime_pkg_mask()
+				backtrack_parameters = mydepgraph.get_backtrack_parameters()
 				backtracked += 1
 			elif backtracked and allow_backtracking:
 				if "--debug" in myopts:
@@ -5689,7 +5953,10 @@ def _backtrack_depgraph(settings, trees, myopts, myparams,
 				# Backtracking failed, so disable it and do
 				# a plain dep calculation + error message.
 				allow_backtracking = False
-				runtime_pkg_mask = None
+				#Don't reset needed_user_config_changes here, since we don't want to
+				#send the user through a "one step at a time" unmasking session for
+				#no good reason.
+				backtrack_parameters.pop('runtime_pkg_mask', None)
 			else:
 				break
 		else:
@@ -5878,21 +6145,27 @@ def show_blocker_docs_link():
 	print()
 
 def get_masking_status(pkg, pkgsettings, root_config):
+	return [mreason.message for \
+		mreason in _get_masking_status(pkg, pkgsettings, root_config)]
 
-	mreasons = portage.getmaskingstatus(
+def _get_masking_status(pkg, pkgsettings, root_config):
+
+	mreasons = _getmaskingstatus(
 		pkg, settings=pkgsettings,
 		portdb=root_config.trees["porttree"].dbapi)
 
 	if not pkg.installed:
 		if not pkgsettings._accept_chost(pkg.cpv, pkg.metadata):
-			mreasons.append("CHOST: %s" % \
-				pkg.metadata["CHOST"])
+			mreasons.append(_MaskReason("CHOST", "CHOST: %s" % \
+				pkg.metadata["CHOST"]))
 		if pkg.invalid:
 			for msg_type, msgs in pkg.invalid.items():
 				for msg in msgs:
-					mreasons.append("invalid: %s" % (msg,))
+					mreasons.append(
+						_MaskReason("invalid", "invalid: %s" % (msg,)))
 
 	if not pkg.metadata["SLOT"]:
-		mreasons.append("invalid: SLOT is undefined")
+		mreasons.append(
+			_MaskReason("invalid", "SLOT: undefined"))
 
 	return mreasons

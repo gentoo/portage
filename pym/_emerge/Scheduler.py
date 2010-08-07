@@ -345,6 +345,7 @@ class Scheduler(PollScheduler):
 
 	def _set_digraph(self, digraph):
 		if "--nodeps" in self.myopts or \
+			digraph is None or \
 			(self._max_jobs is not True and self._max_jobs < 2):
 			# save some memory
 			self._digraph = None

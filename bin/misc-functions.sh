@@ -41,6 +41,8 @@ install_symlink_html_docs() {
 }
 
 install_qa_check() {
+	local f
+
 	cd "${D}" || die "cd failed"
 
 	export STRIP_MASK
@@ -49,6 +51,7 @@ install_qa_check() {
 	ecompress --dequeue
 
 	# Now we look for all world writable files.
+	local i
 	for i in $(find "${D}/" -type f -perm -2); do
 		vecho -ne '\a'
 		vecho "QA Security Notice:"
@@ -60,7 +63,7 @@ install_qa_check() {
 
 	if type -P scanelf > /dev/null && ! hasq binchecks ${RESTRICT}; then
 		local qa_var insecure_rpath=0 tmp_quiet=${PORTAGE_QUIET}
-		local f x
+		local x
 
 		# display warnings when using stricter because we die afterwards
 		if has stricter ${FEATURES} ; then
@@ -331,6 +334,7 @@ install_qa_check() {
 	fi
 
 	# Sanity check syntax errors in init.d scripts
+	local d
 	for d in /etc/conf.d /etc/init.d ; do
 		[[ -d ${D}/${d} ]] || continue
 		for i in "${D}"/${d}/* ; do
@@ -343,6 +347,7 @@ install_qa_check() {
 
 	# this should help to ensure that all (most?) shared libraries are executable
 	# and that all libtool scripts / static libraries are not executable
+	local j
 	for i in "${D}"opt/*/lib{,32,64} \
 	         "${D}"lib{,32,64}       \
 	         "${D}"usr/lib{,32,64}   \
@@ -384,6 +389,7 @@ install_qa_check() {
 	# the static library, or gcc will utilize the static lib when linking :(.
 	# http://bugs.gentoo.org/4411
 	abort="no"
+	local a s
 	for a in "${D}"usr/lib*/*.a ; do
 		s=${a%.a}.so
 		if [[ ! -e ${s} ]] ; then
@@ -532,13 +538,12 @@ install_qa_check() {
 		fi
 	fi
 
-	# Compiled python objects do not belong in /usr/share (FHS violation)
-	# and can be a pain when upgrading python
-	f=$([ -d "${D}"/usr/share ] && \
-		find "${D}"usr/share -name '*.py[co]' | sed "s:${D}:/:")
+	f=$(find "${D}" -name '*.py[co]' | sed "s:${D}:/:")
 	if [[ -n ${f} ]] ; then
 		vecho -ne '\a\n'
-		eqawarn "QA Notice: Precompiled python object files do not belong in /usr/share"
+		eqawarn "QA Notice: Byte-compiled Python modules have been found. python_mod_optimize()"
+		eqawarn "           and python_mod_cleanup() functions python.eclass should be used to"
+		eqawarn "           handle byte-compiled Python modules."
 		eqawarn "${f}"
 		vecho -ne '\a\n'
 	fi
@@ -550,7 +555,7 @@ install_qa_check() {
 	   [[ -x /usr/bin/file && -x /usr/bin/find ]] && \
 	   [[ -n ${MULTILIB_STRICT_DIRS} && -n ${MULTILIB_STRICT_DENY} ]]
 	then
-		local abort=no firstrun=yes
+		local abort=no dir file firstrun=yes
 		MULTILIB_STRICT_EXEMPT=$(echo ${MULTILIB_STRICT_EXEMPT} | sed -e 's:\([(|)]\):\\\1:g')
 		for dir in ${MULTILIB_STRICT_DIRS} ; do
 			[[ -d ${D}/${dir} ]] || continue
@@ -578,6 +583,7 @@ install_mask() {
 	# we don't want globbing for initial expansion, but afterwards, we do
 	local shopts=$-
 	set -o noglob
+	local no_inst
 	for no_inst in ${install_mask}; do
 		set +o noglob
 		quiet_mode || einfo "Removing ${no_inst}"
@@ -620,6 +626,7 @@ preinst_mask() {
 	cd "${T}"
 
 	# remove man pages, info pages, docs if requested
+	local f
 	for f in man info doc; do
 		if hasq no${f} $FEATURES; then
 			INSTALL_MASK="${INSTALL_MASK} /usr/share/${f}"
@@ -676,7 +683,7 @@ preinst_suid_scan() {
 	fi
 	# total suid control.
 	if hasq suidctl $FEATURES; then
-		local sfconf
+		local i sfconf x
 		sfconf=${PORTAGE_CONFIGROOT}etc/portage/suidctl.conf
 		# sandbox prevents us from writing directly
 		# to files outside of the sandbox, but this
@@ -845,6 +852,7 @@ if [ -n "${MISC_FUNCTIONS_ARGS}" ]; then
 	for x in ${MISC_FUNCTIONS_ARGS}; do
 		${x}
 	done
+	unset x
 fi
 
 [ -n "${EBUILD_EXIT_STATUS_FILE}" ] && \

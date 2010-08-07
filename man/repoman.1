@@ -210,6 +210,10 @@ Masked ebuilds with RDEPEND settings (matched against *all* ebuilds) in developi
 .B RDEPEND.badtilde
 RDEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)
 .TP
+.B RDEPEND.implicit
+RDEPEND is unset in the ebuild which triggers implicit RDEPEND=$DEPEND
+assignment (prior to EAPI 4)
+.TP
 .B RDEPEND.suspect
 RDEPEND contains a package that usually only belongs in DEPEND
 .TP
@@ -281,6 +285,9 @@ PATCHES variable should be a bash array to ensure white space safety
 .B ebuild.syntax
 Error generating cache entry for ebuild; typically caused by ebuild syntax error
 or digest verification failure.
+.TP
+.B eprefixify.defined
+The ebuild uses eprefixify, but does not inherit the prefix eclass
 .TP
 .B file.UTF8
 File is not UTF8 compliant
