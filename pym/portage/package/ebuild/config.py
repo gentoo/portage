@@ -1966,10 +1966,22 @@ class config(object):
 		cp = cpv_getkey(cpv)
 		cpdict = self._ppropertiesdict.get(cp)
 		if cpdict:
-			accept_properties = list(self._accept_properties)
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			for atom in match_to_list(cpv_slot, list(cpdict)):
-				accept_properties.extend(cpdict[atom])
+			keys = list(cpdict)
+			pproperties_list = []
+			while keys:
+				bestmatch = best_match_to_list(cpv_slot, keys)
+				if bestmatch:
+					keys.remove(bestmatch)
+					pproperties_list.append(cpdict[bestmatch])
+				else:
+					break
+			if pproperties_list:
+				# reverse, so the most specific atoms come last
+				pproperties_list.reverse()
+				accept_properties = list(self._accept_properties)
+				for x in pproperties_list:
+					accept_properties.extend(x)
 
 		properties = set(flatten(use_reduce(paren_reduce(
 			metadata["PROPERTIES"]), matchall=1)))
