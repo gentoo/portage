@@ -203,6 +203,7 @@ class ResolverPlaygroundResult(object):
 		self.depgraph = mydepgraph
 		self.favorites = favorites
 		self.mergelist = None
+		self.use_changes = self.depgraph._dynamic_config._needed_use_config_changes
 
 		if self.depgraph._dynamic_config._serialized_tasks_cache is not None:
 			self.mergelist = []

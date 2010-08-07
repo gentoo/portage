@@ -35,14 +35,6 @@ class AutounmaskTestCase(TestCase):
 			"sci-libs/L-1": { "IUSE": "bar" },
 			"sci-libs/M-1": { "KEYWORDS": "~x86" },
 			"sci-libs/P-1": { },
-
-			#ebuilds to conflicting use changes
-			"net-www/G-1": { "DEPEND": "net-www/I[foo]", "EAPI": 2 },
-			"net-www/H-1": { "DEPEND": "net-www/I[-foo]", "EAPI": 2 },
-			"net-www/I-1": { "IUSE": "foo" },
-			"net-www/J-1": { "DEPEND": "|| ( net-www/G net-www/H )" },
-			"net-www/J-2": { "DEPEND": "|| ( net-www/H net-www/G )" },
-			"net-www/K-1": { "DEPEND": "!!net-www/G", "EAPI": 2 },
 			}
 
 		requests = (
@@ -104,20 +96,6 @@ class AutounmaskTestCase(TestCase):
 					["sci-libs/L-1", "sci-libs/K-7"]),
 				(["=sci-libs/K-8"], {"--autounmask": True}, None, False, \
 					["sci-libs/L-1", "sci-libs/K-8"]),
-				
-				#Testing conflict bahviour
-				(["=net-www/G-1", "=net-www/H-1"], {"--autounmask": True}, None, False, None),
-				#Some of the following tests don't work because we are not able to take back
-				#changes that later on turn out to be not necessary, because the package
-				#that induced the change gets masked.
-				#~ (["=net-www/J-1", "=net-www/K-1"], {"--autounmask": True}, None, True, \
-					#~ ["net-www/I-1", "net-www/H-1", "net-www/J-1", "net-www/K-1"] ),
-				(["=net-www/J-2", "=net-www/K-1"], {"--autounmask": True}, None, True, \
-					["net-www/I-1", "net-www/K-1", "net-www/H-1", "net-www/J-2", ] ),
-				#~ (["=net-www/K-1", "=net-www/J-1"], {"--autounmask": True}, None, True, \
-					#~ ["net-www/I-1", "net-www/H-1", "net-www/J-1", "net-www/K-1"] ),
-				(["=net-www/K-1", "=net-www/J-2"], {"--autounmask": True}, None, True, \
-					["net-www/I-1", "net-www/K-1", "net-www/H-1", "net-www/J-2", ] ),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds)
