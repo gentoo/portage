@@ -3,7 +3,7 @@
 # Copyright 1998-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-"""Portage API settings class for consumer apps.  """
+"""Portage API settings class for consumer apps."""
 
 
 from _emerge.actions import load_emerge_config
@@ -31,14 +31,17 @@ class PortageSettings:
 
 
 	def reset_use_flags(self):
-		"""resets the SystemUseFlags to any new setting"""
+		"""Resets the SystemUseFlags to any new
+		changes to their setting.
+		"""
 		#debug.dprint("SETTINGS: Settings.reset_use_flags();")
 		self.SystemUseFlags = self.settings["USE"].split()
 		#debug.dprint("SETTINGS: Settings.reset_use_flags(); SystemUseFlags = " + str(SystemUseFlags))
 
 
 	def reset(self):
-		"""Reset remaining run once variables after a sync or other mods"""
+		"""Reset remaining run once variables after a sync or other mods
+		"""
 		#debug.dprint("SETTINGS: reset_globals();")
 		self.settings, self.trees, self.mtimedb = load_emerge_config()
 		self._load_dbapis()
@@ -58,6 +61,7 @@ class PortageSettings:
 
 
 	def _load_dbapis(self):
+		"""handles loading all the trees dbapi's"""
 		self.portdb, self.vardb, self.bindb = {}, {}, {}
 		self.configured_roots = sorted(self.trees)
 		for root in self.configured_roots:
@@ -72,7 +76,9 @@ class PortageSettings:
 		self._load_dbapis()
 
 	def reload_world(self):
-		"""Reloads the world file into memory for quick access"""
+		"""Reloads the world file into memory for quick access
+		@return boolean
+		"""
 		#debug.dprint("SETTINGS: reset_world();")
 		world = []
 		try:
@@ -80,23 +86,31 @@ class PortageSettings:
 			world = file.read().split()
 			file.close()
 		except:
-			pass
 			#debug.dprint("SETTINGS: get_world(); Failure to locate file: '%s'" %portage.WORLD_FILE)
+			return False
 		self._world = world
+		return True
 
 
 	def get_world(self):
-		"""Returns a copy of world's pkg list"""
+		"""Returns a copy of world's pkg list
+		@return list of world pkg strings
+		"""
 		return self._world[:]
 
 
 	def get_archlist(self):
-		"""Returns a list of the architectures accepted by portage as valid keywords"""
+		"""Returns a list of the architectures accepted by portage as valid keywords.
+		@return: list of arch strings
+		"""
 		return self.settings["PORTAGE_ARCHLIST"].split()
 
 
 	def get_virtuals(self):
-		"""returns the virtual pkgs"""
+		"""returns the virtual pkgs
+		@rtype dict
+		@return virtual pkgs dictionary
+		"""
 		return self.settings.virtuals
 
 
