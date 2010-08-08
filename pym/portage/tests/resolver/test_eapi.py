@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
-from portage.tests.resolver.ResolverPlayground import ResolverPlayground
+from portage.tests.resolver.ResolverPlayground import ResolverPlayground, ResolverPlaygroundTestCase
 
 class EAPITestCase(TestCase):
 
@@ -53,50 +53,48 @@ class EAPITestCase(TestCase):
 			"dev-libs/B-1": {"EAPI": 1, "IUSE": "+foo"}, 
 			}
 
-		requests = (
-				(["=dev-libs/A-1.0"], {}, None, False, None),
-				(["=dev-libs/A-1.1"], {}, None, True, ["dev-libs/A-1.1"]),
-				(["=dev-libs/A-1.2"], {}, None, True, ["dev-libs/A-1.2"]),
-				(["=dev-libs/A-1.3"], {}, None, True, ["dev-libs/A-1.3"]),
-				#~ (["=dev-libs/A-1.4"], {}, None, True, ["dev-libs/A-1.4"]),
+		test_cases = (
+			ResolverPlaygroundTestCase(["=dev-libs/A-1.0"], success = False),
+			ResolverPlaygroundTestCase(["=dev-libs/A-1.1"], success = True, mergelist = ["dev-libs/A-1.1"]),
+			ResolverPlaygroundTestCase(["=dev-libs/A-1.2"], success = True, mergelist = ["dev-libs/A-1.2"]),
+			ResolverPlaygroundTestCase(["=dev-libs/A-1.3"], success = True, mergelist = ["dev-libs/A-1.3"]),
+			#~ ResolverPlaygroundTestCase(["=dev-libs/A-1.4"], success = True, mergelist = ["dev-libs/A-1.4"]),
 
-				(["=dev-libs/A-2.0"], {}, None, False, None),
-				(["=dev-libs/A-2.1"], {}, None, True, ["dev-libs/B-1", "dev-libs/A-2.1"]),
-				(["=dev-libs/A-2.2"], {}, None, True, ["dev-libs/B-1", "dev-libs/A-2.2"]),
-				(["=dev-libs/A-2.3"], {}, None, True, ["dev-libs/B-1", "dev-libs/A-2.3"]),
-				#~ (["=dev-libs/A-2.4"], {}, None, True, ["dev-libs/B-1", "dev-libs/A-2.4"]),
+			ResolverPlaygroundTestCase(["=dev-libs/A-2.0"], success = False),
+			ResolverPlaygroundTestCase(["=dev-libs/A-2.1"], success = True, mergelist = ["dev-libs/B-1", "dev-libs/A-2.1"]),
+			ResolverPlaygroundTestCase(["=dev-libs/A-2.2"], success = True, mergelist = ["dev-libs/B-1", "dev-libs/A-2.2"]),
+			ResolverPlaygroundTestCase(["=dev-libs/A-2.3"], success = True, mergelist = ["dev-libs/B-1", "dev-libs/A-2.3"]),
+			#~ ResolverPlaygroundTestCase(["=dev-libs/A-2.4"], success = True, mergelist = ["dev-libs/B-1", "dev-libs/A-2.4"]),
 
-				(["=dev-libs/A-3.0"], {}, None, False, None),
-				(["=dev-libs/A-3.1"], {}, None, False, None),
-				(["=dev-libs/A-3.2"], {}, None, True, ["dev-libs/B-1", "dev-libs/A-3.2"]),
-				(["=dev-libs/A-3.3"], {}, None, True, ["dev-libs/B-1", "dev-libs/A-3.3"]),
-				#~ (["=dev-libs/A-3.4"], {}, None, True, ["dev-libs/B-1", "dev-libs/A-3.4"]),
+			ResolverPlaygroundTestCase(["=dev-libs/A-3.0"], success = False),
+			ResolverPlaygroundTestCase(["=dev-libs/A-3.1"], success = False),
+			ResolverPlaygroundTestCase(["=dev-libs/A-3.2"], success = True, mergelist = ["dev-libs/B-1", "dev-libs/A-3.2"]),
+			ResolverPlaygroundTestCase(["=dev-libs/A-3.3"], success = True, mergelist = ["dev-libs/B-1", "dev-libs/A-3.3"]),
+			#~ ResolverPlaygroundTestCase(["=dev-libs/A-3.4"], success = True, mergelist = ["dev-libs/B-1", "dev-libs/A-3.4"]),
 
-				(["=dev-libs/A-4.0"], {}, None, False, None),
-				(["=dev-libs/A-4.1"], {}, None, False, None),
-				(["=dev-libs/A-4.2"], {}, None, True, ["dev-libs/A-4.2"]),
-				(["=dev-libs/A-4.3"], {}, None, True, ["dev-libs/A-4.3"]),
-				#~ (["=dev-libs/A-4.4"], {}, None, True, ["dev-libs/A-4.4"]),
+			ResolverPlaygroundTestCase(["=dev-libs/A-4.0"], success = False),
+			ResolverPlaygroundTestCase(["=dev-libs/A-4.1"], success = False),
+			ResolverPlaygroundTestCase(["=dev-libs/A-4.2"], success = True, mergelist = ["dev-libs/A-4.2"]),
+			ResolverPlaygroundTestCase(["=dev-libs/A-4.3"], success = True, mergelist = ["dev-libs/A-4.3"]),
+			#~ ResolverPlaygroundTestCase(["=dev-libs/A-4.4"], success = True, mergelist = ["dev-libs/A-4.4"]),
 
-				#~ (["=dev-libs/A-5.0"], {}, None, False, None),
-				#~ (["=dev-libs/A-5.1"], {}, None, False, None),
-				#~ (["=dev-libs/A-5.2"], {}, None, False, None),
-				#~ (["=dev-libs/A-5.3"], {}, None, False, None),
-				#~ (["=dev-libs/A-5.4"], {}, None, True, ["dev-libs/B-1", "dev-libs/A-5.4"]),
+			#~ ResolverPlaygroundTestCase(["=dev-libs/A-5.0"], success = False),
+			#~ ResolverPlaygroundTestCase(["=dev-libs/A-5.1"], success = False),
+			#~ ResolverPlaygroundTestCase(["=dev-libs/A-5.2"], success = False),
+			#~ ResolverPlaygroundTestCase(["=dev-libs/A-5.3"], success = False),
+			#~ ResolverPlaygroundTestCase(["=dev-libs/A-5.4"], success = True, mergelist = ["dev-libs/B-1", "dev-libs/A-5.4"]),
 
-				#~ (["=dev-libs/A-6.0"], {}, None, False, None),
-				#~ (["=dev-libs/A-6.1"], {}, None, False, None),
-				#~ (["=dev-libs/A-6.2"], {}, None, False, None),
-				#~ (["=dev-libs/A-6.3"], {}, None, False, None),
-				#~ (["=dev-libs/A-6.4"], {}, None, True, ["dev-libs/B-1", "dev-libs/A-6.4"]),
-			)
+			#~ ResolverPlaygroundTestCase(["=dev-libs/A-6.0"], success = False),
+			#~ ResolverPlaygroundTestCase(["=dev-libs/A-6.1"], success = False),
+			#~ ResolverPlaygroundTestCase(["=dev-libs/A-6.2"], success = False),
+			#~ ResolverPlaygroundTestCase(["=dev-libs/A-6.3"], success = False),
+			#~ ResolverPlaygroundTestCase(["=dev-libs/A-6.4"], success = True, mergelist = ["dev-libs/B-1", "dev-libs/A-6.4"]),
+		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds)
 		try:
-			for atoms, options, action, \
-				expected_result, expected_mergelist in requests:
-				result = playground.run(atoms, options, action)
-				self.assertEqual((result.success, result.mergelist),
-					(expected_result, expected_mergelist))
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
 		finally:
 			playground.cleanup()

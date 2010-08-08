@@ -1,7 +1,7 @@
 # Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from itertools import chain
+from itertools import chain, permutations
 import shutil
 import tempfile
 import portage
@@ -183,30 +183,88 @@ class ResolverPlayground(object):
 		
 		return settings, trees
 
-	def run(self, myfiles, myopts={}, myaction=None):
-		myopts["--pretend"] = True
-		myopts["--quiet"] = True
-		myopts["--root"] = self.root
-		myopts["--config-root"] = self.root
-		myopts["--root-deps"] = "rdeps"
+	def run(self, atoms, options={}, action=None):
+		options = options.copy()
+		options["--pretend"] = True
+		options["--quiet"] = True
+		options["--root"] = self.root
+		options["--config-root"] = self.root
+		options["--root-deps"] = "rdeps"
 		# Add a fake _test_ option that can be used for
 		# conditional test code.
-		myopts["_test_"] = True
+		options["_test_"] = True
 
 		portage.util.noiselimit = -2
-		myparams = create_depgraph_params(myopts, myaction)
-		success, mydepgraph, favorites = backtrack_depgraph(
-			self.settings, self.trees, myopts, myparams, myaction, myfiles, None)
-		result = ResolverPlaygroundResult(success, mydepgraph, favorites)
+		params = create_depgraph_params(options, action)
+		success, depgraph, favorites = backtrack_depgraph(
+			self.settings, self.trees, options, params, action, atoms, None)
+		result = ResolverPlaygroundResult(atoms, success, depgraph, favorites)
 		portage.util.noiselimit = 0
 
 		return result
 
+	def run_TestCase(self, test_case):
+		if not isinstance(test_case, ResolverPlaygroundTestCase):
+			raise TypeError("ResolverPlayground needs a ResolverPlaygroundTestCase")
+		for atoms in test_case.requests:
+			result = self.run(atoms, test_case.options, test_case.action)
+			if not test_case.compare_with_result(result):
+				return
+
 	def cleanup(self):
 		shutil.rmtree(self.root)
 
+class ResolverPlaygroundTestCase(object):
+
+	def __init__(self, request, **kwargs):
+		self.checks = {
+			"success": None,
+			"mergelist": None,
+			"use_changes": None,
+			"unstable_keywords": None
+			}
+		
+		self.all_permutations = kwargs.pop("all_permutations", False)
+		self.ignore_mergelist_order = kwargs.pop("ignore_mergelist_order", False)
+
+		if self.all_permutations:
+			self.requests = list(permutations(request))
+		else:
+			self.requests = [request]
+
+		self.options = kwargs.pop("options", {})
+		self.action = kwargs.pop("action", None)
+		self.test_success = True
+		self.fail_msg = None
+		
+		for key, value in kwargs.items():
+			if not key in self.checks:
+				raise KeyError("Not an avaiable check: '%s'" % key)
+			self.checks[key] = value
+	
+	def compare_with_result(self, result):
+		fail_msgs = []
+		for key, value in self.checks.items():
+			got = getattr(result, key)
+			expected = value
+			if key == "mergelist" and self.ignore_mergelist_order and value is not None :
+				got = set(got)
+				expected = set(expected)
+			elif key == "unstable_keywords" and expected is not None:
+				expected = set(expected)
+
+			if got != expected:
+				fail_msgs.append("atoms: (" + ", ".join(result.atoms) + "), key: " + \
+					key + ", expected: " + str(expected) + ", got: " + str(got))
+		if fail_msgs:
+			self.test_success = False
+			self.fail_msg = "\n".join(fail_msgs)
+			return False
+		return True
+
 class ResolverPlaygroundResult(object):
-	def __init__(self, success, mydepgraph, favorites):
+	def __init__(self, atoms, success, mydepgraph, favorites):
+		self.atoms = atoms
 		self.success = success
 		self.depgraph = mydepgraph
 		self.favorites = favorites
