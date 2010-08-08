@@ -519,9 +519,9 @@ class _use_dep(object):
 		tokens.extend(x for x in self.enabled if x not in other_use)
 		tokens.extend("-" + x for x in self.disabled if x in other_use)
 		if conditional:
-			if not parent_use:
+			if parent_use is None:
 				raise InvalidAtom("violated_conditionals needs 'parent_use'" + \
-					" parameter for conditional flags: '%s'" % (token,))
+					" parameter for conditional flags.")
 			tokens.extend(x + "?" for x in conditional.enabled if x in parent_use and not x in other_use)
 			tokens.extend("!" + x + "?" for x in conditional.disabled if x not in parent_use and x in other_use)
 			tokens.extend(x + "=" for x in conditional.equal if x in parent_use and x not in other_use)
