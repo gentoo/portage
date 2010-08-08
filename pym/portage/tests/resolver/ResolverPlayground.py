@@ -162,7 +162,7 @@ class ResolverPlayground(object):
 			'PORTAGE_TMPDIR' : os.path.join(self.root, 'var/tmp')
 		}
 
-		settings = config(config_root=self.root, target_root=self.root, local_config=False, env=env)
+		settings = config(config_root=self.root, target_root=self.root, env=env)
 		settings.lock()
 
 		trees = {
