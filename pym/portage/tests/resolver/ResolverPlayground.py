@@ -152,13 +152,36 @@ class ResolverPlayground(object):
 			f.write(cat + "\n")
 		f.close()
 		
-		#Create $PORTDIR/eclass (we fail to digest the ebuilds if it's not there)
+		#Create $profile_dir/eclass (we fail to digest the ebuilds if it's not there)
 		os.makedirs(os.path.join(self.portdir, "eclass"))
+
+		sub_profile_dir = os.path.join(profile_dir, "default", "linux", "x86", "test_profile")
+		os.makedirs(sub_profile_dir)
 		
+		eapi_file = os.path.join(sub_profile_dir, "eapi")
+		f = open(eapi_file, "w")
+		f.write("0\n")
+		f.close()
+		
+		make_defaults_file = os.path.join(sub_profile_dir, "make.defaults")
+		f = open(make_defaults_file, "w")
+		f.write("ARCH=\"x86\"\n")
+		f.write("ACCEPT_KEYWORDS=\"x86\"\n")
+		f.close()
+		
+		use_force_file = os.path.join(sub_profile_dir, "use.force")
+		f = open(use_force_file, "w")
+		f.write("x86\n")
+		f.close()
+
 		if profile:
 			#This is meant to allow the consumer to set up his own profile,
 			#with package.mask and what not.
 			raise NotImplentedError()
+		
+		#Create profile symlink
+		os.makedirs(os.path.join(self.root, "etc"))
+		os.symlink(sub_profile_dir, os.path.join(self.root, "etc", "make.profile"))
 
 	def _load_config(self):
 		env = {
