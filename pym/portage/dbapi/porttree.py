@@ -908,7 +908,10 @@ class portdbapi(dbapi):
 		invalid_category = mysplit[0] not in self._categories
 		d={}
 		if mytree:
-			mytrees = [mytree]
+			if isinstance(mytree, str):
+				mytrees = [mytree]
+			elif not isinstance(mytree, list):
+				raise  AssertionError("Invalid input type: %s" %str(type(mytree)))
 		else:
 			mytrees = self.porttrees
 		for oroot in mytrees:
