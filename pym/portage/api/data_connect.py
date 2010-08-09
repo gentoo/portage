@@ -391,6 +391,14 @@ def get_overlay_name(ovl_path=None, cpv=None, root=None):
 	return name or "????"
 
 
+def get_repositories(root=None):
+	"""Returns a list of all repositories for root
+	"""
+	if root is None:
+		root = settings.settings["ROOT"]
+	return self.portdb[root].getRepositories()
+
+
 def get_system_pkgs(root=None): # lifted from gentoolkit
 	"""Returns a tuple of lists, first list is resolved system packages,
 	second is a list of unresolved packages.
@@ -420,7 +428,7 @@ def get_system_pkgs(root=None): # lifted from gentoolkit
 
 def get_allnodes(root=None):
 	"""Returns a list of all availabe cat/pkg's available from the tree
-	and configured overlays.
+	and configured overlays. Subject to masking.
 	
 	@type root: string
 	@param root: tree root to use
@@ -429,12 +437,12 @@ def get_allnodes(root=None):
 	"""
 	if root is None:
 		root = settings.settings["ROOT"]
-	return settings.trees[root]['porttree'].getallnodes()[:] # copy
+	return settings.portdb[root].cp_all()
 
 
 def get_installed_list(root=None):
 	"""Returns a list of all installed cat/pkg-ver available from the tree
-	and configured overlays.
+	and configured overlays. Subject to masking.
 	
 	@type root: string
 	@param root: tree root to use
@@ -443,5 +451,76 @@ def get_installed_list(root=None):
 	"""
 	if root is None:
 		root = settings.settings["ROOT"]
-	return settings.trees[root]["vartree"].getallnodes()[:] # try copying...
+	return settings.vardb[root].cpv_all()
 
+
+def get_cp_all(root=None, vardb=False, categories=None, trees=None):
+	"""
+	This returns a list of all keys in our tree or trees
+	@param categories: optional list of categories to search or 
+		defaults to settings.portdb.settings.categories
+	@param trees: optional list of trees to search the categories in or
+		defaults to settings.portdb.porttrees
+	@rtype list of [cat/pkg,...]
+	"""
+	if root is None:
+		root = settings.settings["ROOT"]
+	if vardb:
+		cp_all = settings.vardb[root].cp_all()
+		if categories:
+			d= {}
+			for cp in cp_all:
+				cp_split = catpkgsplit(cp)
+			return sorted(d)
+		return cp_all
+	return settings.portdb[root].cp_all(categories, trees)
+
+
+def get_cp_list(root=None, cp=None, trees=None):
+	if root is None:
+		root = settings.settings["ROOT"]
+	return settings.portdb[root].cp_list(cp, trees)
+
+
+def findLicensePath(license_name, root=None):
+	if root is None:
+		root = settings.settings["ROOT"]
+	return settings.portdb[root].findLicensePath(license_name)
+
+
+def getFetchMap(pkg, useflags=None, tree=None):
+	"""
+	Get the SRC_URI metadata as a dict which maps each file name to a
+	set of alternative URIs.
+
+	@param mypkg: cpv for an ebuild
+	@type pkg: String
+	@param useflags: a collection of enabled USE flags, for evaluation of
+		conditionals
+	@type useflags: set, or None to enable all conditionals
+	@param tree: The canonical path of the tree in which the ebuild
+		is located, or None for automatic lookup
+	@type pkg: String
+	@returns: A dict which maps each file name to a set of alternative
+		URIs.
+	@rtype: dict
+	"""
+	if root is None:
+		root = settings.settings["ROOT"]
+	return settings.portdb[root].getfetchsizes(pkg, useflags, tree)
+
+
+def getfetchsizes(pkg, useflags=None, root=None):
+	"""Returns a filename:size dictionnary of remaining downloads
+	"""
+	if root is None:
+		root = settings.settings["ROOT"]
+	return settings.portdb[root].getfetchsizes(pkg, useflags)
+
+
+def cpv_exists(cpv, root=None):
+	"""Tells us whether an actual ebuild exists on disk (no masking)
+	"""
+	if root is None:
+		root = settings.settings["ROOT"]
+	return settings.portdb[root].cpv_exists(cpv)
