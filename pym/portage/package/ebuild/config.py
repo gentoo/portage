@@ -1476,22 +1476,24 @@ class config(object):
 			has_changed = True
 
 		defaults = []
-		pos = 0
 		for i, pkgprofileuse_dict in enumerate(self.pkgprofileuse):
+			if self.make_defaults_use[i]:
+				defaults.append(self.make_defaults_use[i])
 			cpdict = pkgprofileuse_dict.get(cp)
 			if cpdict:
+				pkg_defaults = []
 				keys = list(cpdict)
 				while keys:
 					bestmatch = best_match_to_list(cpv_slot, keys)
 					if bestmatch:
 						keys.remove(bestmatch)
-						defaults.insert(pos, cpdict[bestmatch])
+						pkg_defaults.append(cpdict[bestmatch])
 					else:
 						break
-				del keys
-			if self.make_defaults_use[i]:
-				defaults.insert(pos, self.make_defaults_use[i])
-			pos = len(defaults)
+				if pkg_defaults:
+					# reverse, so the most specific atoms come last
+					pkg_defaults.reverse()
+					defaults.extend(pkg_defaults)
 		defaults = " ".join(defaults)
 		if defaults != self.configdict["defaults"].get("USE",""):
 			self.configdict["defaults"]["USE"] = defaults
@@ -1665,22 +1667,24 @@ class config(object):
 		if cp is None:
 			cp = cpv_getkey(remove_slot(pkg))
 		usemask = []
-		pos = 0
 		for i, pusemask_dict in enumerate(self.pusemask_list):
+			if self.usemask_list[i]:
+				usemask.append(self.usemask_list[i])
 			cpdict = pusemask_dict.get(cp)
 			if cpdict:
+				pkg_usemask = []
 				keys = list(cpdict)
 				while keys:
 					best_match = best_match_to_list(pkg, keys)
 					if best_match:
 						keys.remove(best_match)
-						usemask.insert(pos, cpdict[best_match])
+						pkg_usemask.append(cpdict[best_match])
 					else:
 						break
-				del keys
-			if self.usemask_list[i]:
-				usemask.insert(pos, self.usemask_list[i])
-			pos = len(usemask)
+				if pkg_usemask:
+					# reverse, so the most specific atoms come last
+					pkg_usemask.reverse()
+					usemask.extend(pkg_usemask)
 		return set(stack_lists(usemask, incremental=True))
 
 	def _getUseForce(self, pkg):
@@ -1688,22 +1692,24 @@ class config(object):
 		if cp is None:
 			cp = cpv_getkey(remove_slot(pkg))
 		useforce = []
-		pos = 0
 		for i, puseforce_dict in enumerate(self.puseforce_list):
+			if self.useforce_list[i]:
+				useforce.append(self.useforce_list[i])
 			cpdict = puseforce_dict.get(cp)
 			if cpdict:
+				pkg_useforce = []
 				keys = list(cpdict)
 				while keys:
 					best_match = best_match_to_list(pkg, keys)
 					if best_match:
 						keys.remove(best_match)
-						useforce.insert(pos, cpdict[best_match])
+						pkg_useforce.append(cpdict[best_match])
 					else:
 						break
-				del keys
-			if self.useforce_list[i]:
-				useforce.insert(pos, self.useforce_list[i])
-			pos = len(useforce)
+				if pkg_useforce:
+					# reverse, so the most specific atoms come last
+					pkg_useforce.reverse()
+					useforce.extend(pkg_useforce)
 		return set(stack_lists(useforce, incremental=True))
 
 	def _getMaskAtom(self, cpv, metadata):
@@ -1764,19 +1770,22 @@ class config(object):
 		cp = cpv_getkey(cpv)
 		pkg = "%s:%s" % (cpv, metadata["SLOT"])
 		keywords = [[x for x in metadata["KEYWORDS"].split() if x != "-*"]]
-		pos = len(keywords)
 		for pkeywords_dict in self._pkeywords_list:
 			cpdict = pkeywords_dict.get(cp)
 			if cpdict:
+				pkg_keywords = []
 				keys = list(cpdict)
 				while keys:
 					best_match = best_match_to_list(pkg, keys)
 					if best_match:
 						keys.remove(best_match)
-						keywords.insert(pos, cpdict[best_match])
+						pkg_keywords.append(cpdict[best_match])
 					else:
 						break
-			pos = len(keywords)
+				if pkg_keywords:
+					# reverse, so the most specific atoms come last
+					pkg_keywords.reverse()
+					keywords.extend(pkg_keywords)
 		return stack_lists(keywords, incremental=True)
 
 	def _getMissingKeywords(self, cpv, metadata):
