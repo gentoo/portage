@@ -255,7 +255,7 @@ class ResolverPlaygroundTestCase(object):
 		for key, value in self.checks.items():
 			got = getattr(result, key)
 			expected = value
-			if key == "mergelist" and self.ignore_mergelist_order and value is not None :
+			if key == "mergelist" and self.ignore_mergelist_order and got is not None :
 				got = set(got)
 				expected = set(expected)
 			elif key == "unstable_keywords" and expected is not None:
