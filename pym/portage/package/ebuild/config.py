@@ -1817,11 +1817,23 @@ class config(object):
 		pkgdict = self.pkeywordsdict.get(cp)
 		matches = False
 		if pkgdict:
-			cpv_slot_list = ["%s:%s" % (cpv, metadata["SLOT"])]
-			for atom, pkgkeywords in pkgdict.items():
-				if match_from_list(atom, cpv_slot_list):
-					matches = True
-					pgroups.extend(pkgkeywords)
+			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
+			pkg_accept_keywords = []
+			keys = list(pkgdict)
+			while keys:
+				best_match = best_match_to_list(cpv_slot, keys)
+				if best_match:
+					keys.remove(best_match)
+					pkg_accept_keywords.append(pkgdict[best_match])
+				else:
+					break
+			if pkg_accept_keywords:
+				# reverse, so the most specific atoms come last
+				pkg_accept_keywords.reverse()
+				for x in pkg_accept_keywords:
+					pgroups.extend(x)
+				matches = True
+
 		if matches or egroups:
 			pgroups.extend(egroups)
 			inc_pgroups = set()
