@@ -169,6 +169,7 @@ class _dynamic_depgraph_config(object):
 		self._slot_collision_nodes = set()
 		self._parent_atoms = {}
 		self._slot_conflict_parent_atoms = set()
+		self._slot_conflict_handler = None
 		self._serialized_tasks_cache = None
 		self._scheduler_graph = None
 		self._displayed_list = None
@@ -470,8 +471,10 @@ class depgraph(object):
 
 		self._show_merge_list()
 
-		handler = slot_conflict_handler(self._dynamic_config._slot_collision_info, \
-			self._dynamic_config._parent_atoms, self._frozen_config.myopts)
+		self._dynamic_config._slot_conflict_handler = \
+			slot_conflict_handler(self._dynamic_config._slot_collision_info, \
+				self._dynamic_config._parent_atoms, self._frozen_config.myopts)
+		handler = self._dynamic_config._slot_conflict_handler
 
 		conflict = handler.get_conflict()
 		writemsg(conflict, noiselevel=-1)

@@ -204,6 +204,7 @@ class ResolverPlayground(object):
 		params = create_depgraph_params(options, action)
 		success, depgraph, favorites = backtrack_depgraph(
 			self.settings, self.trees, options, params, action, atoms, None)
+		depgraph.display_problems()
 		result = ResolverPlaygroundResult(atoms, success, depgraph, favorites)
 		portage.util.noiselimit = 0
 
@@ -227,7 +228,8 @@ class ResolverPlaygroundTestCase(object):
 			"success": None,
 			"mergelist": None,
 			"use_changes": None,
-			"unstable_keywords": None
+			"unstable_keywords": None,
+			"slot_collision_solutions": None,
 			}
 		
 		self.all_permutations = kwargs.pop("all_permutations", False)
@@ -277,6 +279,7 @@ class ResolverPlaygroundResult(object):
 		self.mergelist = None
 		self.use_changes = None
 		self.unstable_keywords = None
+		self.slot_collision_solutions = None
 
 		if self.depgraph._dynamic_config._serialized_tasks_cache is not None:
 			self.mergelist = []
@@ -297,3 +300,19 @@ class ResolverPlaygroundResult(object):
 			self.unstable_keywords = set()
 			for pkg in self.depgraph._dynamic_config._needed_unstable_keywords:
 				self.unstable_keywords.add(pkg.cpv)
+
+		if self.depgraph._dynamic_config._slot_conflict_handler is not None:
+			self.slot_collision_solutions  = []
+			handler = self.depgraph._dynamic_config._slot_conflict_handler
+
+			for solution in handler.solutions:
+				s = {}
+				for pkg in solution:
+					changes = {}
+					for flag, state in solution[pkg].items():
+						if state == "enabled":
+							changes[flag] = True
+						else:
+							changes[flag] = False
+					s[pkg.cpv] = changes
+				self.slot_collision_solutions.append(s)
