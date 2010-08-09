@@ -1428,14 +1428,14 @@ class depgraph(object):
 						os.path.join(pkgsettings["PKGDIR"], x)):
 						x = os.path.join(pkgsettings["PKGDIR"], x)
 					else:
-						print("\n\n!!! Binary package '"+str(x)+"' does not exist.")
-						print("!!! Please ensure the tbz2 exists as specified.\n")
+						writemsg("\n\n!!! Binary package '"+str(x)+"' does not exist.\n", noiselevel=-1)
+						writemsg("!!! Please ensure the tbz2 exists as specified.\n\n", noiselevel=-1)
 						return 0, myfavorites
 				mytbz2=portage.xpak.tbz2(x)
 				mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.splitext(os.path.basename(x))[0]
 				if os.path.realpath(x) != \
 					os.path.realpath(self._frozen_config.trees[myroot]["bintree"].getname(mykey)):
-					print(colorize("BAD", "\n*** You need to adjust PKGDIR to emerge this package.\n"))
+					writemsg(colorize("BAD", "\n*** You need to adjust PKGDIR to emerge this package.\n\n"), noiselevel=-1)
 					return 0, myfavorites
 
 				pkg = self._pkg(mykey, "binary", root_config,
@@ -1460,13 +1460,13 @@ class depgraph(object):
 				if ebuild_path:
 					if ebuild_path != os.path.join(os.path.realpath(tree_root),
 						cp, os.path.basename(ebuild_path)):
-						print(colorize("BAD", "\n*** You need to adjust PORTDIR or PORTDIR_OVERLAY to emerge this package.\n"))
+						writemsg(colorize("BAD", "\n*** You need to adjust PORTDIR or PORTDIR_OVERLAY to emerge this package.\n\n"), noiselevel=-1)
 						return 0, myfavorites
 					if mykey not in portdb.xmatch(
 						"match-visible", portage.cpv_getkey(mykey)):
-						print(colorize("BAD", "\n*** You are emerging a masked package. It is MUCH better to use"))
-						print(colorize("BAD", "*** /etc/portage/package.* to accomplish this. See portage(5) man"))
-						print(colorize("BAD", "*** page for details."))
+						writemsg(colorize("BAD", "\n*** You are emerging a masked package. It is MUCH better to use\n"), noiselevel=-1)
+						writemsg(colorize("BAD", "*** /etc/portage/package.* to accomplish this. See portage(5) man\n"), noiselevel=-1)
+						writemsg(colorize("BAD", "*** page for details.\n"), noiselevel=-1)
 						countdown(int(self._frozen_config.settings["EMERGE_WARNING_DELAY"]),
 							"Continuing...")
 				else:
@@ -1561,8 +1561,7 @@ class depgraph(object):
 						expanded_atoms = [ candidate ]
 
 				if len(expanded_atoms) > 1:
-					print()
-					print()
+					writemsg("\n\n", noiselevel=-1)
 					ambiguous_package_name(x, expanded_atoms, root_config,
 						self._frozen_config.spinner, self._frozen_config.myopts)
 					return False, myfavorites
@@ -1791,8 +1790,8 @@ class depgraph(object):
 				except SystemExit as e:
 					raise # Needed else can't exit
 				except Exception as e:
-					print("\n\n!!! Problem in '%s' dependencies." % atom, file=sys.stderr)
-					print("!!!", str(e), getattr(e, "__module__", None), file=sys.stderr)
+					writemsg("\n\n!!! Problem in '%s' dependencies.\n" % atom, file=sys.stderr)
+					writemsg("!!! %s %s\n" % (str(e), str(getattr(e, "__module__", None))))
 					raise
 
 		# Now that the root packages have been added to the graph,
@@ -1807,9 +1806,9 @@ class depgraph(object):
 					continue
 				if len(xs) >= 4 and xs[0] != "binary" and xs[3] == "merge":
 					if missing == 0:
-						print()
+						writemsg("\n", noiselevel=-1)
 					missing += 1
-					print("Missing binary for:",xs[2])
+					writemsg("Missing binary for: %s\n" % xs[2], noiselevel=-1)
 
 		try:
 			self.altlist()
@@ -2167,30 +2166,29 @@ class depgraph(object):
 		mask_docs = False
 
 		if show_missing_use:
-			print("\nemerge: there are no ebuilds built with USE flags to satisfy "+green(xinfo)+".")
-			print("!!! One of the following packages is required to complete your request:")
+			writemsg("\nemerge: there are no ebuilds built with USE flags to satisfy "+green(xinfo)+".\n", noiselevel=-1)
+			writemsg("!!! One of the following packages is required to complete your request:\n", noiselevel=-1)
 			for pkg, mreasons in show_missing_use:
-				print("- "+pkg.cpv+" ("+", ".join(mreasons)+")")
+				writemsg("- "+pkg.cpv+" ("+", ".join(mreasons)+")\n", noiselevel=-1)
 
 		elif masked_packages:
-			print("\n!!! " + \
+			writemsg("\n!!! " + \
 				colorize("BAD", "All ebuilds that could satisfy ") + \
 				colorize("INFORM", xinfo) + \
-				colorize("BAD", " have been masked."))
-			print("!!! One of the following masked packages is required to complete your request:")
+				colorize("BAD", " have been masked.") + "\n", noiselevel=-1)
+			writemsg("!!! One of the following masked packages is required to complete your request:\n", noiselevel=-1)
 			have_eapi_mask = show_masked_packages(masked_packages)
 			if have_eapi_mask:
-				print()
+				writemsg("\n", noiselevel=-1)
 				msg = ("The current version of portage supports " + \
 					"EAPI '%s'. You must upgrade to a newer version" + \
 					" of portage before EAPI masked packages can" + \
 					" be installed.") % portage.const.EAPI
-				for line in textwrap.wrap(msg, 75):
-					print(line)
-			print()
+				writemsg("\n".join(textwrap.wrap(msg, 75)), noiselevel=-1)
+			writemsg("\n", noiselevel=-1)
 			mask_docs = True
 		else:
-			print("\nemerge: there are no ebuilds to satisfy "+green(xinfo)+".")
+			writemsg("\nemerge: there are no ebuilds to satisfy "+green(xinfo)+".\n", noiselevel=-1)
 
 		# Show parent nodes and the argument that pulled them in.
 		traversed_nodes = set()
@@ -2218,14 +2216,12 @@ class depgraph(object):
 				if parent not in traversed_nodes:
 					selected_parent = parent
 			node = selected_parent
-		for line in msg:
-			print(line)
-
-		print()
+		writemsg("\n".join(msg), noiselevel=-1)
+		writemsg("\n", noiselevel=-1)
 
 		if mask_docs:
 			show_mask_docs()
-			print()
+			writemsg("\n", noiselevel=-1)
 
 	def _iter_match_pkgs_any(self, root_config, atom, onlydeps=False):
 		for db, pkg_type, built, installed, db_keys in \
@@ -5296,8 +5292,8 @@ class depgraph(object):
 		all_added.extend(added_favorites)
 		all_added.sort()
 		for a in all_added:
-			print(">>> Recording %s in \"world\" favorites file..." % \
-				colorize("INFORM", str(a)))
+			writemsg(">>> Recording %s in \"world\" favorites file...\n" % \
+				colorize("INFORM", str(a)), noiselevel=-1)
 		if all_added:
 			world_set.update(all_added)
 
@@ -5694,10 +5690,10 @@ class _dep_check_composite_db(dbapi):
 def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
 
 	if "--quiet" in myopts:
-		print("!!! The short ebuild name \"%s\" is ambiguous. Please specify" % arg)
-		print("!!! one of the following fully-qualified ebuild names instead:\n")
+		writemsg("!!! The short ebuild name \"%s\" is ambiguous. Please specify\n" % arg, noiselevel=-1)
+		writemsg("!!! one of the following fully-qualified ebuild names instead:\n\n", noiselevel=-1)
 		for cp in sorted(set(portage.dep_getkey(atom) for atom in atoms)):
-			print("    " + colorize("INFORM", cp))
+			writemsg("    " + colorize("INFORM", cp) + "\n", noiselevel=-1)
 		return
 
 	s = search(root_config, spinner, "--searchdesc" in myopts,
@@ -5710,8 +5706,8 @@ def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
 	for cp in sorted(set(portage.dep_getkey(atom) for atom in atoms)):
 		s.addCP(cp)
 	s.output()
-	print("!!! The short ebuild name \"%s\" is ambiguous. Please specify" % arg)
-	print("!!! one of the above fully-qualified ebuild names instead.\n")
+	writemsg("!!! The short ebuild name \"%s\" is ambiguous. Please specify\n" % arg, noiselevel=-1)
+	writemsg("!!! one of the above fully-qualified ebuild names instead.\n\n", noiselevel=-1)
 
 def insert_category_into_atom(atom, category):
 	alphanum = re.search(r'\w', atom)
@@ -5957,7 +5953,7 @@ def show_masked_packages(masked_packages):
 				# above via mreasons.
 				pass
 
-		print("- "+cpv+" (masked by: "+", ".join(mreasons)+")")
+		writemsg("- "+cpv+" (masked by: "+", ".join(mreasons)+")\n", noiselevel=-1)
 
 		if comment and comment not in shown_comments:
 			writemsg_stdout(filename + ":\n" + comment + "\n",
@@ -5969,15 +5965,14 @@ def show_masked_packages(masked_packages):
 			if l in shown_licenses:
 				continue
 			msg = ("A copy of the '%s' license" + \
-			" is located at '%s'.") % (l, l_path)
-			print(msg)
-			print()
+			" is located at '%s'.\n\n") % (l, l_path)
+			writemsg(msg, noiselevel=-1)
 			shown_licenses.add(l)
 	return have_eapi_mask
 
 def show_mask_docs():
-	print("For more information, see the MASKED PACKAGES section in the emerge")
-	print("man page or refer to the Gentoo Handbook.")
+	writemsg("For more information, see the MASKED PACKAGES section in the emerge\n", noiselevel=-1)
+	writemsg("man page or refer to the Gentoo Handbook.\n", noiselevel=-1)
 
 def filter_iuse_defaults(iuse):
 	for flag in iuse:
@@ -5987,12 +5982,9 @@ def filter_iuse_defaults(iuse):
 			yield flag
 
 def show_blocker_docs_link():
-	print()
-	print("For more information about " + bad("Blocked Packages") + ", please refer to the following")
-	print("section of the Gentoo Linux x86 Handbook (architecture is irrelevant):")
-	print()
-	print("http://www.gentoo.org/doc/en/handbook/handbook-x86.xml?full=1#blocked")
-	print()
+	writemsg("\nFor more information about " + bad("Blocked Packages") + ", please refer to the following\n", noiselevel=-1)
+	writemsg("section of the Gentoo Linux x86 Handbook (architecture is irrelevant):\n\n", noiselevel=-1)
+	writemsg("http://www.gentoo.org/doc/en/handbook/handbook-x86.xml?full=1#blocked\n\n", noiselevel=-1)
 
 def get_masking_status(pkg, pkgsettings, root_config):
 	return [mreason.message for \
