@@ -84,11 +84,11 @@ def strip_empty(myarr):
 def paren_reduce(mystr):
 	"""
 	Take a string and convert all paren enclosed entities into sublists and
-	split the list elements by spaces.
+	split the list elements by spaces. All redundant brackets are removed.
 
 	Example usage:
-		>>> paren_reduce('foobar foo ( bar baz )')
-		['foobar', 'foo', ['bar', 'baz']]
+		>>> paren_reduce('foobar foo? ( bar baz )')
+		['foobar', 'foo?', ['bar', 'baz']]
 
 	@param mystr: The string to reduce
 	@type mystr: String
@@ -111,7 +111,26 @@ def paren_reduce(mystr):
 					_("malformed syntax: '%s'") % mystr)
 			if level > 0:
 				level -= 1
-				stack[level].append(stack.pop())
+				l = stack.pop()
+				if l:
+					if not stack[level] or (stack[level][-1] != "||" and not stack[level][-1][-1] == "?"):
+						#Optimize: ( ( ... ) ) -> ( ... )
+						stack[level].extend(l)
+					elif len(l) == 1 and stack[level][-1] == "||":
+						#Optimize: || ( A ) -> A
+						stack[level].pop()
+						stack[level].extend(l)
+					elif len(l) == 2 and (l[0] == "||" or l[0][-1] == "?") and stack[level][-1] in (l[0], "||"):
+						#Optimize: 	|| ( || ( ... ) ) -> || ( ... )
+						#			foo? ( foo? ( ... ) ) -> foo? ( ... )
+						#			|| ( foo? ( ... ) ) -> foo? ( ... )
+						stack[level].pop()
+						stack[level].extend(l)
+					else:
+						stack[level].append(l)
+				else:
+					if stack[level] and (stack[level][-1] == "||" or stack[level][-1][-1] == "?"):
+						stack[level].pop()
 			else:
 				raise portage.exception.InvalidDependString(
 					_("malformed syntax: '%s'") % mystr)
