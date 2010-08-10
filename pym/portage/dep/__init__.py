@@ -81,72 +81,61 @@ def strip_empty(myarr):
 	"""
 	return [x for x in myarr if x]
 
-_paren_whitespace_re = re.compile(r'\S(\(|\))|(\(|\))\S')
-
-def paren_reduce(mystr,tokenize=1):
+def paren_reduce(mystr):
 	"""
-	Take a string and convert all paren enclosed entities into sublists, optionally
-	futher splitting the list elements by spaces.
+	Take a string and convert all paren enclosed entities into sublists and
+	split the list elements by spaces.
 
 	Example usage:
-		>>> paren_reduce('foobar foo ( bar baz )',1)
+		>>> paren_reduce('foobar foo ( bar baz )')
 		['foobar', 'foo', ['bar', 'baz']]
-		>>> paren_reduce('foobar foo ( bar baz )',0)
-		['foobar foo ', [' bar baz ']]
 
 	@param mystr: The string to reduce
 	@type mystr: String
-	@param tokenize: Split on spaces to produces further list breakdown
-	@type tokenize: Integer
 	@rtype: Array
 	@return: The reduced string in an array
 	"""
-	global _dep_check_strict, _paren_whitespace_re
-	if _dep_check_strict:
-		m = _paren_whitespace_re.search(mystr)
-		if m is not None:
-			raise portage.exception.InvalidDependString(
-				_("missing space by parenthesis: '%s'") % m.group(0))
-	mylist = []
-	while mystr:
-		left_paren = mystr.find("(")
-		has_left_paren = left_paren != -1
-		right_paren = mystr.find(")")
-		has_right_paren = right_paren != -1
-		if not has_left_paren and not has_right_paren:
-			freesec = mystr
-			subsec = None
-			tail = ""
-		elif mystr[0] == ")":
-			return [mylist,mystr[1:]]
-		elif has_left_paren and not has_right_paren:
-			raise portage.exception.InvalidDependString(
-				_("missing right parenthesis: '%s'") % mystr)
-		elif has_left_paren and left_paren < right_paren:
-			freesec,subsec = mystr.split("(",1)
-			sublist = paren_reduce(subsec, tokenize=tokenize)
-			if len(sublist) != 2:
+	mysplit = mystr.split()
+	level = 0
+	stack = [[]]
+	need_bracket = False
+	
+	for token in mysplit:
+		if token == "(":
+			need_bracket = False
+			stack.append([])
+			level += 1
+		elif token == ")":
+			if need_bracket:
 				raise portage.exception.InvalidDependString(
 					_("malformed syntax: '%s'") % mystr)
-			subsec, tail = sublist
-		else:
-			subsec,tail = mystr.split(")",1)
-			if tokenize:
-				subsec = strip_empty(subsec.split(" "))
-				return [mylist+subsec,tail]
-			return mylist+[subsec],tail
-		if not isinstance(tail, basestring):
-			raise portage.exception.InvalidDependString(
-				_("malformed syntax: '%s'") % mystr)
-		mystr = tail
-		if freesec:
-			if tokenize:
-				mylist = mylist + strip_empty(freesec.split(" "))
+			if level > 0:
+				level -= 1
+				stack[level].append(stack.pop())
 			else:
-				mylist = mylist + [freesec]
-		if subsec is not None:
-			mylist = mylist + [subsec]
-	return mylist
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % mystr)
+		elif token == "||":
+			if need_bracket:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % mystr)
+			need_bracket = True
+			stack[level].append(token)
+		else:
+			if need_bracket or "(" in token or ")" in token or "|" in token:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % mystr)
+
+			if token[-1] == "?":
+				need_bracket = True
+			
+			stack[level].append(token)
+
+	if level != 0 or need_bracket:
+		raise portage.exception.InvalidDependString(
+			_("malformed syntax: '%s'") % mystr)
+	
+	return stack[0]
 
 class paren_normalize(list):
 	"""Take a dependency structure as returned by paren_reduce or use_reduce
