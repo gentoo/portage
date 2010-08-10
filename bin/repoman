@@ -1445,7 +1445,9 @@ for x in scanlist:
 
 		if not src_uri_error:
 			# Check that URIs don't reference a server from thirdpartymirrors.
-			for uri in portage.flatten(portage.dep.use_reduce(myaux["SRC_URI"], matchall=True)):
+			for uri in portage.flatten(portage.dep.use_reduce( \
+				myaux["SRC_URI"], matchall=True, is_src_uri=True, \
+				allow_src_uri_file_renames=(eapi not in ("0", "1")))):
 				contains_mirror = False
 				for mirror in thirdpartymirrors:
 					if uri.startswith(mirror):

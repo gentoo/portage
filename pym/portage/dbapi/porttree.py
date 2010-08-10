@@ -10,7 +10,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum',
 	'portage.data:portage_gid,secpass',
 	'portage.dbapi.dep_expand:dep_expand',
-	'portage.dep:dep_getkey,flatten,match_from_list,paren_reduce,use_reduce',
+	'portage.dep:dep_getkey,flatten,match_from_list,use_reduce',
 	'portage.env.loaders:KeyValuePairFileLoader',
 	'portage.package.ebuild.doebuild:doebuild',
 	'portage.util:ensure_dirs,shlex_split,writemsg,writemsg_level',
@@ -48,73 +48,6 @@ import warnings
 if sys.hexversion >= 0x3000000:
 	basestring = str
 	long = int
-
-def _src_uri_validate(cpv, eapi, src_uri):
-	"""
-	Take a SRC_URI structure as returned by paren_reduce or use_reduce
-	and validate it. Raises InvalidDependString if a problem is detected,
-	such as missing operand for a -> operator.
-	"""
-	uri = None
-	operator = None
-	for x in src_uri:
-		if isinstance(x, list):
-			if operator is not None:
-				raise portage.exception.InvalidDependString(
-					("getFetchMap(): '%s' SRC_URI arrow missing " + \
-					"right operand") % (cpv,))
-			uri = None
-			_src_uri_validate(cpv, eapi, x)
-			continue
-		if x == '||':
-			raise portage.exception.InvalidDependString(
-				("getFetchMap(): '%s' SRC_URI contains invalid " + \
-				"|| operator") % (cpv,))
-
-		if x[-1:] == "?":
-			if operator is not None:
-				raise portage.exception.InvalidDependString(
-					("getFetchMap(): '%s' SRC_URI arrow missing " + \
-					"right operand") % (cpv,))
-			uri = None
-			continue
-		if uri is None:
-			if x == "->":
-				raise portage.exception.InvalidDependString(
-					("getFetchMap(): '%s' SRC_URI arrow missing " + \
-					"left operand") % (cpv,))
-			uri = x
-			continue
-		if x == "->":
-			if eapi in ("0", "1"):
-				raise portage.exception.InvalidDependString(
-					("getFetchMap(): '%s' SRC_URI arrows are not " + \
-					"supported with EAPI='%s'") % (cpv, eapi))
-			operator = x
-			continue
-		if operator is None:
-			uri = x
-			continue
-
-		# This should be the right operand of an arrow operator.
-		if "/" in x:
-			raise portage.exception.InvalidDependString(
-				("getFetchMap(): '%s' SRC_URI '/' character in " + \
-				"file name: '%s'") % (cpv, x))
-
-		if x[-1:] == "?":
-			raise portage.exception.InvalidDependString(
-				("getFetchMap(): '%s' SRC_URI arrow missing " + \
-				"right operand") % (cpv,))
-
-		# Found the right operand, so reset state.
-		uri = None
-		operator = None
-
-	if operator is not None:
-		raise portage.exception.InvalidDependString(
-			"getFetchMap(): '%s' SRC_URI arrow missing right operand" % \
-			(cpv,))
 
 class _repo_info(object):
 	__slots__ = ('name', 'path', 'eclass_db', 'portdir', 'portdir_overlay')
@@ -742,9 +675,8 @@ class portdbapi(dbapi):
 				"getFetchMap(): '%s' has unsupported EAPI: '%s'" % \
 				(mypkg, eapi.lstrip("-")))
 
-		_src_uri_validate(mypkg, eapi, paren_reduce(myuris))
-		myuris = use_reduce(myuris, uselist=useflags,
-			matchall=(useflags is None))
+		myuris = use_reduce(myuris, uselist=useflags, matchall=(useflags is None), \
+			is_src_uri=True, allow_src_uri_file_renames=(eapi not in ("0", "1")))
 		myuris = flatten(myuris)
 
 		uri_map = OrderedDict()

@@ -1050,7 +1050,7 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 		set(["clean", "cleanrm", "help", "prerm", "postrm"])
 	dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 	misc_keys = ["LICENSE", "PROPERTIES", "PROVIDE", "RESTRICT", "SRC_URI"]
-	other_keys = ["SLOT"]
+	other_keys = ["SLOT", "EAPI"]
 	all_keys = dep_keys + misc_keys + other_keys
 	metadata = dict(zip(all_keys,
 		mydbapi.aux_get(mysettings.mycpv, all_keys)))
@@ -1070,9 +1070,11 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 			msgs.append("  %s: %s\n    %s\n" % (
 				dep_type, metadata[dep_type], mycheck[1]))
 
+	eapi = metadata["EAPI"]
 	for k in misc_keys:
 		try:
-			use_reduce(metadata[k], matchall=True)
+			use_reduce(metadata[k], matchall=True, is_src_uri=(k=="SRC_URI"), \
+				allow_src_uri_file_renames=(eapi not in ("0", "1")))
 		except InvalidDependString as e:
 			msgs.append("  %s: %s\n    %s\n" % (
 				k, metadata[k], str(e)))
