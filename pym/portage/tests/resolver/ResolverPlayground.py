@@ -155,7 +155,13 @@ class ResolverPlayground(object):
 			raise NotImplentedError()
 
 	def _load_config(self):
-		env = { "PORTDIR": self.portdir, "ROOT": self.root, "ACCEPT_KEYWORDS": "x86"}
+		env = {
+			"ACCEPT_KEYWORDS": "x86",
+			"PORTDIR": self.portdir,
+			"ROOT": self.root,
+			'PORTAGE_TMPDIR' : os.path.join(self.root, 'var/tmp')
+		}
+
 		settings = config(config_root=self.root, target_root=self.root, local_config=False, env=env)
 		settings.lock()
 
