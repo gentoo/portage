@@ -360,7 +360,7 @@ def dep_opconvert(deplist):
 	while x != len(deplist):
 		if isinstance(deplist[x], list):
 			retlist.append(dep_opconvert(deplist[x]))
-		elif deplist[x] == "||" or deplist[x] == "&&":
+		elif deplist[x] == "||":
 			retlist.append([deplist[x]] + dep_opconvert(deplist[x+1]))
 			x += 1
 		else:
