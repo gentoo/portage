@@ -87,3 +87,53 @@ class TestAtom(TestCase):
 
 		for atom, allow_wildcard in tests_xfail:
 			self.assertRaisesMsg(atom, portage.exception.InvalidAtom, Atom, atom)
+
+	def test_violated_conditionals(self):
+		test_cases = (
+			("dev-libs/A", ["foo"], None, "dev-libs/A"),
+			("dev-libs/A[foo]", [], None, "dev-libs/A[foo]"),
+			("dev-libs/A[foo]", ["foo"], None, "dev-libs/A"),
+			("dev-libs/A[foo]", [], [], "dev-libs/A[foo]"),
+			("dev-libs/A[foo]", ["foo"], [], "dev-libs/A"),
+
+			("dev-libs/A:0[foo]", ["foo"], [], "dev-libs/A:0"),
+
+			("dev-libs/A[foo,-bar]", [], None, "dev-libs/A[foo]"),
+			("dev-libs/A[-foo,bar]", [], None, "dev-libs/A[bar]"),
+
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", [], [], "dev-libs/A[a,!c=]"),
+			
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["a"], [], "dev-libs/A[!c=]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["b"], [], "dev-libs/A[a,b=,!c=]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["c"], [], "dev-libs/A[a]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["d"], [], "dev-libs/A[a,!c=]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["e"], [], "dev-libs/A[a,!e?,!c=]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["f"], [], "dev-libs/A[a,-f,!c=]"),
+			
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["a"], ["a"], "dev-libs/A[!c=]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["b"], ["b"], "dev-libs/A[a,!c=]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["c"], ["c"], "dev-libs/A[a,!c=]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["d"], ["d"], "dev-libs/A[a,!c=]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["e"], ["e"], "dev-libs/A[a,!c=]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["f"], ["f"], "dev-libs/A[a,-f,!c=]"),
+		)
+		
+		test_cases_xfail = (
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", [], None),
+		)
+		
+		for atom, other_use, parent_use, expected_violated_atom in test_cases:
+			a = Atom(atom)
+			violated_atom = a.violated_conditionals(other_use, parent_use)
+			if parent_use is None:
+				fail_msg = "Atom: %s, other_use: %s, parent_use: %s, got: %s, expected: %s" % \
+					(atom, " ".join(other_use), "None", str(violated_atom), expected_violated_atom)
+			else:
+				fail_msg = "Atom: %s, other_use: %s, parent_use: %s, got: %s, expected: %s" % \
+					(atom, " ".join(other_use), " ".join(parent_use), str(violated_atom), expected_violated_atom)
+			self.assertEqual(str(violated_atom), expected_violated_atom, fail_msg)
+
+		for atom, other_use, parent_use in test_cases_xfail:
+			a = Atom(atom)
+			self.assertRaisesMsg(atom, portage.exception.InvalidAtom, \
+				a.violated_conditionals, other_use, parent_use)

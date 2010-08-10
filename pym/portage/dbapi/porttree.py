@@ -35,6 +35,8 @@ from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage import OrderedDict
+from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
+from _emerge.TaskScheduler import TaskScheduler
 
 import os as _os
 import codecs
@@ -44,6 +46,7 @@ import sys
 import warnings
 
 if sys.hexversion >= 0x3000000:
+	basestring = str
 	long = int
 
 def _src_uri_validate(cpv, eapi, src_uri):
@@ -523,8 +526,7 @@ class portdbapi(dbapi):
 		if metadata is not None:
 			return None
 
-		import _emerge
-		process = _emerge.EbuildMetadataPhase(cpv=cpv, ebuild_path=ebuild_path,
+		process = EbuildMetadataPhase(cpv=cpv, ebuild_path=ebuild_path,
 			ebuild_mtime=emtime, metadata_callback=self._metadata_callback,
 			portdb=self, repo_path=repo_path, settings=self.doebuild_settings)
 		return process
@@ -663,16 +665,24 @@ class portdbapi(dbapi):
 
 			if eapi is not None and not portage.eapi_is_supported(eapi):
 				mydata['EAPI'] = eapi
+				self._metadata_callback(
+					mycpv, myebuild, mylocation, mydata, emtime)
 			else:
-				myret = doebuild(myebuild, "depend",
-					self.doebuild_settings["ROOT"], self.doebuild_settings,
-					dbkey=mydata, tree="porttree", mydbapi=self)
-				if myret != os.EX_OK:
+				sched = TaskScheduler()
+				proc = EbuildMetadataPhase(cpv=mycpv, ebuild_path=myebuild,
+					ebuild_mtime=emtime,
+					metadata_callback=self._metadata_callback, portdb=self,
+					repo_path=mylocation, scheduler=sched.sched_iface,
+					settings=self.doebuild_settings)
+
+				sched.add(proc)
+				sched.run()
+
+				if proc.returncode != os.EX_OK:
 					self._broken_ebuilds.add(myebuild)
 					raise KeyError(mycpv)
 
-			self._metadata_callback(
-				mycpv, myebuild, mylocation, mydata, emtime)
+				mydata.update(proc.metadata)
 
 			if mydata.get("INHERITED", False):
 				mydata["_eclasses_"] = self._repo_info[mylocation
@@ -907,11 +917,12 @@ class portdbapi(dbapi):
 		mysplit = mycp.split("/")
 		invalid_category = mysplit[0] not in self._categories
 		d={}
-		if mytree:
-			if isinstance(mytree, str):
+		if mytree is not None:
+			if isinstance(mytree, basestring):
 				mytrees = [mytree]
-			elif not isinstance(mytree, list):
-				raise  AssertionError("Invalid input type: %s" %str(type(mytree)))
+			else:
+				# assume it's iterable
+				mytrees = mytree
 		else:
 			mytrees = self.porttrees
 		for oroot in mytrees:

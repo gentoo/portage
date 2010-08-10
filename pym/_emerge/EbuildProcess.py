@@ -8,7 +8,7 @@ from portage.package.ebuild.doebuild import doebuild, \
 
 class EbuildProcess(AbstractEbuildProcess):
 
-	__slots__ = ('tree',)
+	__slots__ = ('phase', 'pkg', 'tree',)
 
 	def _start(self):
 		# Don't open the log file during the clean phase since the

@@ -8,7 +8,7 @@ from portage.util._pty import _create_pty_or_pipe
 
 class AbstractEbuildProcess(SpawnProcess):
 
-	__slots__ = ('phase', 'pkg', 'settings',)
+	__slots__ = ('settings',)
 
 	def _pipe(self, fd_pipes):
 		stdout_pipe = fd_pipes.get(1)

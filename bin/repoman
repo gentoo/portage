@@ -21,8 +21,6 @@ import sys
 import tempfile
 import time
 import platform
-import xml.etree.ElementTree
-from xml.parsers.expat import ExpatError
 
 try:
 	from urllib.request import urlopen as urllib_request_urlopen
@@ -32,9 +30,6 @@ except ImportError:
 from itertools import chain
 from stat import S_ISDIR
 
-if not hasattr(__builtins__, "set"):
-	from sets import Set as set
-
 try:
 	import portage
 except ImportError:
@@ -42,6 +37,18 @@ except ImportError:
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
 portage._disable_legacy_globals()
+
+try:
+	import xml.etree.ElementTree
+	from xml.parsers.expat import ExpatError
+except ImportError:
+	msg = ["Please enable python's \"xml\" USE flag in order to use repoman."]
+	from portage.output import EOutput
+	out = EOutput()
+	for line in msg:
+		out.eerror(line)
+	sys.exit(1)
+
 from portage import os
 from portage import subprocess_getstatusoutput
 from portage import _encodings

@@ -203,6 +203,8 @@ class ResolverPlaygroundResult(object):
 		self.depgraph = mydepgraph
 		self.favorites = favorites
 		self.mergelist = None
+		self.use_changes = None
+		self.unstable_keywords = None
 
 		if self.depgraph._dynamic_config._serialized_tasks_cache is not None:
 			self.mergelist = []
@@ -211,3 +213,15 @@ class ResolverPlaygroundResult(object):
 					self.mergelist.append(x.atom)
 				else:
 					self.mergelist.append(x.cpv)
+
+		if self.depgraph._dynamic_config._needed_use_config_changes:
+			self.use_changes = {}
+			for pkg, needed_use_config_changes in \
+				self.depgraph._dynamic_config._needed_use_config_changes.items():
+				new_use, changes = needed_use_config_changes
+				self.use_changes[pkg.cpv] = changes
+
+		if self.depgraph._dynamic_config._needed_unstable_keywords:
+			self.unstable_keywords = set()
+			for pkg in self.depgraph._dynamic_config._needed_unstable_keywords:
+				self.unstable_keywords.add(pkg.cpv)
