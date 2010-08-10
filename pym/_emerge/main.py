@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -25,8 +25,6 @@ good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 
 import portage.elog
-import portage.dep
-portage.dep._dep_check_strict = True
 import portage.util
 import portage.locks
 import portage.exception

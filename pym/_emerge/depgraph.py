@@ -1192,9 +1192,6 @@ class depgraph(object):
 		debug = "--debug" in self._frozen_config.myopts
 		strict = mytype != "installed"
 		try:
-			if not strict:
-				portage.dep._dep_check_strict = False
-
 			for dep_root, dep_string, dep_priority, ignore_blockers in deps:
 				if not dep_string:
 					continue
@@ -1250,8 +1247,6 @@ class depgraph(object):
 			portage.writemsg("!!! Please notify the package maintainer " + \
 				"that atoms must be fully-qualified.\n", noiselevel=-1)
 			return 0
-		finally:
-			portage.dep._dep_check_strict = True
 		self._dynamic_config._traversed_pkg_deps.add(pkg)
 		return 1
 
@@ -2151,8 +2146,6 @@ class depgraph(object):
 					trees[root]["atom_graph"] = atom_graph
 				if priority is not None:
 					trees[root]["priority"] = priority
-				if not strict:
-					portage.dep._dep_check_strict = False
 				mycheck = portage.dep_check(depstring, None,
 					pkgsettings, myuse=myuse,
 					myroot=root, trees=trees)
@@ -2164,7 +2157,6 @@ class depgraph(object):
 					trees[root].pop("atom_graph")
 				if priority is not None:
 					trees[root].pop("priority")
-				portage.dep._dep_check_strict = True
 			if not mycheck[0]:
 				raise portage.exception.InvalidDependString(mycheck[1])
 		if parent is None:
@@ -3291,24 +3283,20 @@ class depgraph(object):
 						# optimize dep_check calls by eliminating atoms via
 						# dep_wordreduce and dep_eval calls.
 						try:
-							portage.dep._dep_check_strict = False
-							try:
-								success, atoms = portage.dep_check(depstr,
-									final_db, pkgsettings, myuse=self._pkg_use_enabled(pkg),
-									trees=self._dynamic_config._graph_trees, myroot=myroot)
-							except Exception as e:
-								if isinstance(e, SystemExit):
-									raise
-								# This is helpful, for example, if a ValueError
-								# is thrown from cpv_expand due to multiple
-								# matches (this can happen if an atom lacks a
-								# category).
-								show_invalid_depstring_notice(
-									pkg, depstr, str(e))
-								del e
+							success, atoms = portage.dep_check(depstr,
+								final_db, pkgsettings, myuse=self._pkg_use_enabled(pkg),
+								trees=self._dynamic_config._graph_trees, myroot=myroot)
+						except Exception as e:
+							if isinstance(e, SystemExit):
 								raise
-						finally:
-							portage.dep._dep_check_strict = True
+							# This is helpful, for example, if a ValueError
+							# is thrown from cpv_expand due to multiple
+							# matches (this can happen if an atom lacks a
+							# category).
+							show_invalid_depstring_notice(
+								pkg, depstr, str(e))
+							del e
+							raise
 						if not success:
 							replacement_pkg = final_db.match_pkgs(pkg.slot_atom)
 							if replacement_pkg and \

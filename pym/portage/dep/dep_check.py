@@ -61,19 +61,14 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			try:
 				x = Atom(x)
 			except InvalidAtom:
-				if portage.dep._dep_check_strict:
-					raise ParseError(
-						_("invalid atom: '%s'") % x)
-				else:
-					# Only real Atom instances are allowed past this point.
-					continue
+				raise ParseError(
+					_("invalid atom: '%s'") % x)
 			else:
 				if x.blocker and x.blocker.overlap.forbid and \
-					eapi in ("0", "1") and portage.dep._dep_check_strict:
+					eapi in ("0", "1"):
 					raise ParseError(
 						_("invalid atom: '%s'") % (x,))
-				if x.use and eapi in ("0", "1") and \
-					portage.dep._dep_check_strict:
+				if x.use and eapi in ("0", "1"):
 					raise ParseError(
 						_("invalid atom: '%s'") % (x,))
 
@@ -569,15 +564,8 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	writemsg("mysplit:  %s\n" % (mysplit), 1)
 	writemsg("mysplit2: %s\n" % (mysplit2), 1)
 
-	try:
-		selected_atoms = dep_zapdeps(mysplit, mysplit2, myroot,
-			use_binaries=use_binaries, trees=trees)
-	except InvalidAtom as e:
-		if portage.dep._dep_check_strict:
-			raise # This shouldn't happen.
-		# dbapi.match() failed due to an invalid atom in
-		# the dependencies of an installed package.
-		return [0, _("Invalid atom: '%s'") % (e,)]
+	selected_atoms = dep_zapdeps(mysplit, mysplit2, myroot,
+		use_binaries=use_binaries, trees=trees)
 
 	return [1, selected_atoms]
 

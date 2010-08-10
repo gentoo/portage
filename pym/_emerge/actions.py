@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -1088,14 +1088,10 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				depstr = node.metadata[dep_type]
 				if not depstr:
 					continue
-				try:
-					portage.dep._dep_check_strict = False
-					success, atoms = portage.dep_check(depstr, None, settings,
-						myuse=node_use,
-						trees=resolver._dynamic_config._graph_trees,
-						myroot=myroot)
-				finally:
-					portage.dep._dep_check_strict = True
+				success, atoms = portage.dep_check(depstr, None, settings,
+					myuse=node_use,
+					trees=resolver._dynamic_config._graph_trees,
+					myroot=myroot)
 				if not success:
 					# Ignore invalid deps of packages that will
 					# be uninstalled anyway.

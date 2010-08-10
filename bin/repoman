@@ -62,8 +62,6 @@ from _emerge.RootConfig import RootConfig
 from _emerge.userquery import userquery
 import portage.checksum
 import portage.const
-import portage.dep
-portage.dep._dep_check_strict = True
 from portage import cvstree, normalize_path
 from portage import util
 from portage.exception import FileNotFound, ParseError, PermissionDenied

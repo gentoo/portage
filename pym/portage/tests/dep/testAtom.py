@@ -4,8 +4,7 @@
 
 from portage.tests import TestCase
 from portage.dep import Atom
-import portage.dep
-portage.dep._dep_check_strict = True
+from portage.exception import InvalidAtom
 
 class TestAtom(TestCase):
 	""" A simple testcase for isvalidatom
@@ -86,7 +85,7 @@ class TestAtom(TestCase):
 				msg="Atom('%s').use == '%s'" % ( atom, a.use ) )
 
 		for atom, allow_wildcard in tests_xfail:
-			self.assertRaisesMsg(atom, portage.exception.InvalidAtom, Atom, atom)
+			self.assertRaisesMsg(atom, InvalidAtom, Atom, atom)
 
 	def test_violated_conditionals(self):
 		test_cases = (
@@ -135,5 +134,5 @@ class TestAtom(TestCase):
 
 		for atom, other_use, parent_use in test_cases_xfail:
 			a = Atom(atom)
-			self.assertRaisesMsg(atom, portage.exception.InvalidAtom, \
+			self.assertRaisesMsg(atom, InvalidAtom, \
 				a.violated_conditionals, other_use, parent_use)
