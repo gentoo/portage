@@ -31,9 +31,14 @@ class TestAtom(TestCase):
 				(None,  's*s-*/portage', None, '1', None), True ),
 			  ( "*/po*ge:2",
 				(None,  '*/po*ge', None, '2', None), True ),
+			  ( "!dev-libs/A",
+				(None,  'dev-libs/A', None, None, None), True ),
+			   ( "!!dev-libs/A",
+				(None,  'dev-libs/A', None, None, None), True ),
 		]
 		
 		tests_xfail = [
+			( Atom("sys-apps/portage"), False ),
 			( "cat/pkg[a!]", False ),
 			( "cat/pkg[a-]", False ),
 			( "cat/pkg[!a]", False ),
@@ -85,7 +90,7 @@ class TestAtom(TestCase):
 				msg="Atom('%s').use == '%s'" % ( atom, a.use ) )
 
 		for atom, allow_wildcard in tests_xfail:
-			self.assertRaisesMsg(atom, InvalidAtom, Atom, atom)
+			self.assertRaisesMsg(atom, (InvalidAtom, TypeError), Atom, atom)
 
 	def test_violated_conditionals(self):
 		test_cases = (
@@ -136,3 +141,26 @@ class TestAtom(TestCase):
 			a = Atom(atom)
 			self.assertRaisesMsg(atom, InvalidAtom, \
 				a.violated_conditionals, other_use, parent_use)
+
+	def test_evaluate_conditionals(self):
+		test_cases = (
+			("dev-libs/A[foo]", [], "dev-libs/A[foo]"),
+			("dev-libs/A[foo]", ["foo"], "dev-libs/A[foo]"),
+
+			("dev-libs/A:0[foo]", ["foo"], "dev-libs/A:0[foo]"),
+
+			("dev-libs/A[foo,-bar]", [], "dev-libs/A[foo,-bar]"),
+			("dev-libs/A[-foo,bar]", [], "dev-libs/A[-foo,bar]"),
+
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", [], "dev-libs/A[a,-f,-e,-b,c]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["a"], "dev-libs/A[a,-f,-e,-b,c]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["b"], "dev-libs/A[a,-f,-e,b,c]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["c"], "dev-libs/A[a,-f,-e,-b,-c]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["d"], "dev-libs/A[a,-f,d,-e,-b,c]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["e"], "dev-libs/A[a,-f,-b,c]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["f"], "dev-libs/A[a,-f,-e,-b,c]"),
+		)
+		
+		
+		for atom, use, expected_atom in test_cases:
+			self.assertEqual(str(Atom(atom).evaluate_conditionals(use)), expected_atom)
