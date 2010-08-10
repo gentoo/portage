@@ -11,13 +11,14 @@ from portage.dbapi.porttree import portagetree
 from portage.dbapi.bintree import binarytree
 from portage.dep import Atom
 from portage.package.ebuild.config import config
-from portage.sets import load_default_config
+from portage.sets import SetConfig
 from portage.versions import catsplit
 
 from _emerge.Blocker import Blocker
 from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.depgraph import backtrack_depgraph
 from _emerge.RootConfig import RootConfig
+from _emerge.main import setconfig_fallback
 
 class ResolverPlayground(object):
 	"""
@@ -170,8 +171,9 @@ class ResolverPlayground(object):
 		for root, root_trees in trees.items():
 			settings = root_trees["vartree"].settings
 			settings._init_dirs()
-			setconfig = load_default_config(settings, root_trees)
+			setconfig = SetConfig([], settings, root_trees)
 			root_trees["root_config"] = RootConfig(settings, root_trees, setconfig)
+			setconfig_fallback(root_trees["root_config"])
 		
 		return settings, trees
 
