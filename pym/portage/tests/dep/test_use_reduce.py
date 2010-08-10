@@ -7,17 +7,20 @@ from portage.dep import use_reduce
 
 class UseReduceTestCase(object):
 	def __init__(self, deparray, uselist=[], masklist=[], \
-		matchall=0, excludeall=[], expected_result=None):
+		matchall=0, excludeall=[], is_src_uri=False, \
+		allow_src_uri_file_renames=False, expected_result=None):
 		self.deparray = deparray
 		self.uselist = uselist
 		self.masklist = masklist
 		self.matchall = matchall
 		self.excludeall = excludeall
+		self.is_src_uri = is_src_uri
+		self.allow_src_uri_file_renames = allow_src_uri_file_renames
 		self.expected_result = expected_result
 
 	def run(self):
 		return use_reduce(self.deparray, self.uselist, self.masklist, \
-			self.matchall, self.excludeall)
+			self.matchall, self.excludeall, self.is_src_uri, self.allow_src_uri_file_renames)
 				
 class UseReduce(TestCase):
 
@@ -202,6 +205,43 @@ class UseReduce(TestCase):
 				"foo? ( A ) foo? ( B )",
 				uselist = ["foo"],
 				expected_result = ["A", "B"]),
+			
+			#SRC_URI stuff
+			UseReduceTestCase(
+				"http://foo/bar -> blah.tbz2",
+				is_src_uri = True,
+				allow_src_uri_file_renames = True,
+				expected_result = ["http://foo/bar", "->", "blah.tbz2"]),
+			UseReduceTestCase(
+				"foo? ( http://foo/bar -> blah.tbz2 )",
+				uselist = [],
+				is_src_uri = True,
+				allow_src_uri_file_renames = True,
+				expected_result = []),
+			UseReduceTestCase(
+				"foo? ( http://foo/bar -> blah.tbz2 )",
+				uselist = ["foo"],
+				is_src_uri = True,
+				allow_src_uri_file_renames = True,
+				expected_result = ["http://foo/bar", "->", "blah.tbz2"]),
+			UseReduceTestCase(
+				"http://foo/bar -> bar.tbz2 foo? ( ftp://foo/a )",
+				uselist = [],
+				is_src_uri = True,
+				allow_src_uri_file_renames = True,
+				expected_result = ["http://foo/bar", "->", "bar.tbz2"]),
+			UseReduceTestCase(
+				"http://foo/bar -> bar.tbz2 foo? ( ftp://foo/a )",
+				uselist = ["foo"],
+				is_src_uri = True,
+				allow_src_uri_file_renames = True,
+				expected_result = ["http://foo/bar", "->", "bar.tbz2", "ftp://foo/a"]),
+			UseReduceTestCase(
+				"http://foo.com/foo http://foo/bar -> blah.tbz2",
+				uselist = ["foo"],
+				is_src_uri = True,
+				allow_src_uri_file_renames = True,
+				expected_result = ["http://foo.com/foo", "http://foo/bar", "->", "blah.tbz2"]),
 		)
 		
 		test_cases_xfail = (
@@ -221,6 +261,17 @@ class UseReduce(TestCase):
 			UseReduceTestCase("a? A"),
 			UseReduceTestCase("( || ( || || ( A ) foo? ( B ) ) )"),
 			UseReduceTestCase("( || ( || bar? ( A ) foo? ( B ) ) )"),
+			
+			#SRC_URI stuff
+			UseReduceTestCase("http://foo/bar -> blah.tbz2", is_src_uri = True, allow_src_uri_file_renames = False),
+			UseReduceTestCase("|| ( http://foo/bar -> blah.tbz2 )", is_src_uri = True, allow_src_uri_file_renames = True),
+			UseReduceTestCase("http://foo/bar -> foo? ( ftp://foo/a )", is_src_uri = True, allow_src_uri_file_renames = True),
+			UseReduceTestCase("http://foo/bar blah.tbz2 ->", is_src_uri = True, allow_src_uri_file_renames = True),
+			UseReduceTestCase("-> http://foo/bar blah.tbz2 )", is_src_uri = True, allow_src_uri_file_renames = True),
+			UseReduceTestCase("http://foo/bar ->", is_src_uri = True, allow_src_uri_file_renames = True),
+			UseReduceTestCase("http://foo/bar -> foo? ( http://foo.com/foo )", is_src_uri = True, allow_src_uri_file_renames = True),
+			UseReduceTestCase("foo? ( http://foo/bar -> ) blah.tbz2", is_src_uri = True, allow_src_uri_file_renames = True),
+			UseReduceTestCase("http://foo/bar -> foo/blah.tbz2", is_src_uri = True, allow_src_uri_file_renames = True),
 		)
 
 		for test_case in test_cases:

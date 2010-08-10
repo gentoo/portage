@@ -214,7 +214,8 @@ def paren_enclose(mylist):
 			mystrparts.append(x)
 	return " ".join(mystrparts)
 
-def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[]):
+def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], is_src_uri=False, \
+	allow_src_uri_file_renames=False):
 	"""
 	Takes a dep string and reduces the use? conditionals out, leaving an array
 	with subarrays. All redundant brackets are removed.
@@ -261,14 +262,18 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[]):
 	level = 0
 	stack = [[]]
 	need_bracket = False
+	need_simple_token = False
 
 	for token in mysplit:
 		if token == "(":
+			if need_simple_token:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % depstr)
 			need_bracket = False
 			stack.append([])
 			level += 1
 		elif token == ")":
-			if need_bracket:
+			if need_bracket or need_simple_token:
 				raise portage.exception.InvalidDependString(
 					_("malformed syntax: '%s'") % depstr)
 			if level > 0:
@@ -302,22 +307,31 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[]):
 				raise portage.exception.InvalidDependString(
 					_("malformed syntax: '%s'") % depstr)
 		elif token == "||":
-			if need_bracket:
+			if need_bracket or is_src_uri:
 				raise portage.exception.InvalidDependString(
 					_("malformed syntax: '%s'") % depstr)
 			need_bracket = True
 			stack[level].append(token)
+		elif token == "->":
+			if not allow_src_uri_file_renames or not is_src_uri or need_simple_token:
+				raise portage.exception.InvalidDependString(
+					_("SRC_URI arrow not allowed: '%s'") % depstr)
+			need_simple_token = True
+			stack[level].append(token)	
 		else:
-			if need_bracket or "(" in token or ")" in token or "|" in token:
+			if need_bracket or "(" in token or ")" in token or "|" in token or \
+				(need_simple_token and "/" in token):
 				raise portage.exception.InvalidDependString(
 					_("malformed syntax: '%s'") % depstr)
 
 			if token[-1] == "?":
 				need_bracket = True
+			else:
+				need_simple_token = False
 
 			stack[level].append(token)
 
-	if level != 0 or need_bracket:
+	if level != 0 or need_bracket or need_simple_token:
 		raise portage.exception.InvalidDependString(
 			_("malformed syntax: '%s'") % depstr)
 
