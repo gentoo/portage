@@ -54,6 +54,8 @@ from portage.util import apply_recursive_permissions, \
 from portage.util._pty import _create_pty_or_pipe
 from portage.util.lafilefixer import rewrite_lafile	
 from portage.versions import _pkgsplit
+from _emerge.EbuildSpawnProcess import EbuildSpawnProcess
+from _emerge.TaskScheduler import TaskScheduler
 
 def doebuild_environment(myebuild, mydo, myroot, mysettings,
 	debug, use_cache, mydbapi):
@@ -1159,54 +1161,6 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 			sys.stderr.flush()
 			break
 
-	# The default policy for the sesandbox domain only allows entry (via exec)
-	# from shells and from binaries that belong to portage (the number of entry
-	# points is minimized).  The "tee" binary is not among the allowed entry
-	# points, so it is spawned outside of the sesandbox domain and reads from a
-	# pseudo-terminal that connects two domains.
-	logfile = keywords.get("logfile")
-	mypids = []
-	master_fd = None
-	slave_fd = None
-	fd_pipes_orig = None
-	got_pty = False
-	if logfile:
-		del keywords["logfile"]
-		if 1 not in fd_pipes or 2 not in fd_pipes:
-			raise ValueError(fd_pipes)
-
-		got_pty, master_fd, slave_fd = \
-			_create_pty_or_pipe(copy_term_size=fd_pipes[1])
-
-		if not got_pty and 'sesandbox' in mysettings.features \
-			and mysettings.selinux_enabled():
-			# With sesandbox, logging works through a pty but not through a
-			# normal pipe. So, disable logging if ptys are broken.
-			# See Bug #162404.
-			logfile = None
-			os.close(master_fd)
-			master_fd = None
-			os.close(slave_fd)
-			slave_fd = None
-
-	if logfile:
-
-		fd_pipes.setdefault(0, sys.stdin.fileno())
-		fd_pipes_orig = fd_pipes.copy()
-
-		# We must set non-blocking mode before we close the slave_fd
-		# since otherwise the fcntl call can fail on FreeBSD (the child
-		# process might have already exited and closed slave_fd so we
-		# have to keep it open in order to avoid FreeBSD potentially
-		# generating an EAGAIN exception).
-		fcntl.fcntl(master_fd, fcntl.F_SETFL,
-			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
-
-		fd_pipes[0] = fd_pipes_orig[0]
-		fd_pipes[1] = slave_fd
-		fd_pipes[2] = slave_fd
-		keywords["fd_pipes"] = fd_pipes
-
 	features = mysettings.features
 	# TODO: Enable fakeroot to be used together with droppriv.  The
 	# fake ownership/permissions will have to be converted to real
@@ -1238,58 +1192,20 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		spawn_func = selinux.spawn_wrapper(spawn_func,
 			mysettings["PORTAGE_SANDBOX_T"])
 
-	returnpid = keywords.get("returnpid")
-	keywords["returnpid"] = True
-	try:
-		mypids.extend(spawn_func(mystring, env=env, **keywords))
-	finally:
-		if logfile:
-			os.close(slave_fd)
+	if keywords.get("returnpid"):
+		return spawn_func(mystring, env=env, **keywords)
 
-	if returnpid:
-		return mypids
+	sched = TaskScheduler()
+	proc = EbuildSpawnProcess(
+		background=False,
+		args=mystring, env=env,
+		scheduler=sched.sched_iface, spawn_func=spawn_func,
+		settings=mysettings, **keywords)
 
-	if logfile:
-		log_file = open(_unicode_encode(logfile), mode='ab')
-		apply_secpass_permissions(logfile,
-			uid=portage_uid, gid=portage_gid, mode=0o664)
-		stdout_file = os.fdopen(os.dup(fd_pipes_orig[1]), 'wb')
-		master_file = os.fdopen(master_fd, 'rb')
-		iwtd = [master_file]
-		owtd = []
-		ewtd = []
-		buffsize = 65536
-		eof = False
-		while not eof:
-			events = select.select(iwtd, owtd, ewtd)
-			for f in events[0]:
-				# Use non-blocking mode to prevent read
-				# calls from blocking indefinitely.
-				buf = array.array('B')
-				try:
-					buf.fromfile(f, buffsize)
-				except (EOFError, IOError):
-					pass
-				if not buf:
-					eof = True
-					break
-				if f is master_file:
-					buf.tofile(stdout_file)
-					stdout_file.flush()
-					buf.tofile(log_file)
-					log_file.flush()
-		log_file.close()
-		stdout_file.close()
-		master_file.close()
-	pid = mypids[-1]
-	retval = os.waitpid(pid, 0)[1]
-	portage.process.spawned_pids.remove(pid)
-	if retval != os.EX_OK:
-		if retval & 0xff:
-			return (retval & 0xff) << 8
-		return retval >> 8
-	return retval
+	sched.add(proc)
+	sched.run()
 
+	return proc.returncode
 
 # parse actionmap to spawn ebuild with the appropriate args
 def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
