@@ -742,8 +742,7 @@ class portdbapi(dbapi):
 				"getFetchMap(): '%s' has unsupported EAPI: '%s'" % \
 				(mypkg, eapi.lstrip("-")))
 
-		myuris = paren_reduce(myuris)
-		_src_uri_validate(mypkg, eapi, myuris)
+		_src_uri_validate(mypkg, eapi, paren_reduce(myuris))
 		myuris = use_reduce(myuris, uselist=useflags,
 			matchall=(useflags is None))
 		myuris = flatten(myuris)

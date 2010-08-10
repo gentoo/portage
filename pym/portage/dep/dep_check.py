@@ -6,7 +6,7 @@ __all__ = ['dep_check', 'dep_eval', 'dep_wordreduce', 'dep_zapdeps']
 import logging
 
 import portage
-from portage.dep import Atom, dep_opconvert, match_from_list, paren_reduce, \
+from portage.dep import Atom, dep_opconvert, match_from_list, \
 	remove_slot, use_reduce
 from portage.exception import InvalidAtom, InvalidDependString, ParseError
 from portage.localization import _
@@ -521,12 +521,6 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		# WE ALSO CANNOT USE SETTINGS
 		myusesplit=[]
 
-	#convert parenthesis to sublists
-	try:
-		mysplit = paren_reduce(depstring)
-	except InvalidDependString as e:
-		return [0, str(e)]
-
 	mymasks = set()
 	useforce = set()
 	useforce.add(mysettings["ARCH"])
@@ -544,7 +538,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		useforce.update(mysettings.useforce)
 		useforce.difference_update(mymasks)
 	try:
-		mysplit = use_reduce(mysplit, uselist=myusesplit,
+		mysplit = use_reduce(depstring, uselist=myusesplit,
 			masklist=mymasks, matchall=(use=="all"), excludeall=useforce)
 	except InvalidDependString as e:
 		return [0, str(e)]

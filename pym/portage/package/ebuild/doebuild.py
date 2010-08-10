@@ -37,8 +37,7 @@ from portage.const import EBUILD_SH_ENV_FILE, EBUILD_SH_ENV_DIR, \
 from portage.data import portage_gid, portage_uid, secpass, \
 	uid, userpriv_groups
 from portage.dbapi.virtual import fakedbapi
-from portage.dep import Atom, paren_enclose, paren_normalize, \
-	paren_reduce, use_reduce
+from portage.dep import Atom, paren_enclose, use_reduce
 from portage.elog import elog_process
 from portage.elog.messages import eerror, eqawarn
 from portage.exception import DigestException, FileNotFound, \
@@ -1073,8 +1072,7 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 
 	for k in misc_keys:
 		try:
-			use_reduce(
-				paren_reduce(metadata[k]), matchall=True)
+			use_reduce(metadata[k], matchall=True)
 		except InvalidDependString as e:
 			msgs.append("  %s: %s\n    %s\n" % (
 				k, metadata[k], str(e)))
@@ -1612,9 +1610,7 @@ def _post_src_install_uid_fix(mysettings, out):
 		v = mysettings.configdict['pkg'].get(k)
 		if v is None:
 			continue
-		v = paren_reduce(v)
 		v = use_reduce(v, uselist=use)
-		v = paren_normalize(v)
 		v = paren_enclose(v)
 		if not v:
 			continue

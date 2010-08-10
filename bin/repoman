@@ -1,5 +1,5 @@
 #!/usr/bin/python -O
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # Next to do: dep syntax checking in mask files
@@ -1447,8 +1447,7 @@ for x in scanlist:
 
 		if not src_uri_error:
 			# Check that URIs don't reference a server from thirdpartymirrors.
-			for uri in portage.flatten(portage.dep.use_reduce(
-				portage.dep.paren_reduce(myaux["SRC_URI"]), matchall=True)):
+			for uri in portage.flatten(portage.dep.use_reduce(myaux["SRC_URI"], matchall=True)):
 				contains_mirror = False
 				for mirror in thirdpartymirrors:
 					if uri.startswith(mirror):
@@ -1462,8 +1461,7 @@ for x in scanlist:
 					"%s: '%s' found in thirdpartymirrors" % \
 					(relative_path, mirror))
 
-		provide = portage.flatten(portage.dep.use_reduce(
-			portage.dep.paren_reduce(pkg.metadata['PROVIDE']), matchall=1))
+		provide = portage.flatten(portage.dep.use_reduce(pkg.metadata['PROVIDE'], matchall=1))
 		provide_cps = []
 
 		# The Package class automatically evaluates USE conditionals.
@@ -1609,21 +1607,7 @@ for x in scanlist:
 				badsyntax.append("'?' preceded by space")
 
 			try:
-				# Missing closing parenthesis will result in a ValueError
-				mydeplist = portage.dep.paren_reduce(mydepstr)
-				# Missing opening parenthesis will result in a final "" element
-				if "" in mydeplist or "(" in mydeplist:
-					raise ValueError
-			except ValueError:
-				badsyntax.append("parenthesis mismatch")
-				mydeplist = []
-			except portage.exception.InvalidDependString as e:
-				badsyntax.append(str(e))
-				del e
-				mydeplist = []
-
-			try:
-				portage.dep.use_reduce(mydeplist, matchall=1)
+				portage.dep.use_reduce(mydepstr, matchall=1)
 			except portage.exception.InvalidDependString as e:
 				badsyntax.append(str(e))
 
@@ -1742,7 +1726,7 @@ for x in scanlist:
 			myuse = myaux["LICENSE"]
 			# Parse the LICENSE variable, remove USE conditions and
 			# flatten it.
-			myuse=portage.dep.use_reduce(portage.dep.paren_reduce(myuse), matchall=1)
+			myuse=portage.dep.use_reduce(myuse, matchall=1)
 			myuse=portage.flatten(myuse)
 			# Check each entry to ensure that it exists in PORTDIR's
 			# license directory.
@@ -1772,8 +1756,7 @@ for x in scanlist:
 		#restrict checks
 		myrestrict = None
 		try:
-			myrestrict = portage.dep.use_reduce(
-				portage.dep.paren_reduce(myaux["RESTRICT"]), matchall=1)
+			myrestrict = portage.dep.use_reduce(myaux["RESTRICT"], matchall=1)
 		except portage.exception.InvalidDependString as e:
 			stats["RESTRICT.syntax"] = stats["RESTRICT.syntax"] + 1
 			fails["RESTRICT.syntax"].append(

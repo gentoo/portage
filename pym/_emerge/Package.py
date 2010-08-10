@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import re
@@ -6,8 +6,8 @@ import sys
 from itertools import chain
 import portage
 from portage.cache.mappings import slot_dict_class
-from portage.dep import isvalidatom, paren_reduce, use_reduce, \
-	paren_normalize, paren_enclose, _slot_re
+from portage.dep import isvalidatom, use_reduce, \
+	paren_enclose, _slot_re
 from _emerge.Task import Task
 
 if sys.hexversion >= 0x3000000:
@@ -310,8 +310,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 		if k in self._use_conditional_keys:
 			if self._pkg.root_config.settings.local_config and '?' in v:
 				try:
-					v = paren_enclose(paren_normalize(use_reduce(
-						paren_reduce(v), uselist=self._pkg.use.enabled)))
+					v = paren_enclose(use_reduce(v, uselist=self._pkg.use.enabled))
 				except portage.exception.InvalidDependString:
 					# This error should already have been registered via
 					# self._pkg._invalid_metadata().
@@ -336,7 +335,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 			getattr(self, "_set_" + k.lower())(k, v)
 		elif k in self._use_conditional_keys:
 			try:
-				reduced = use_reduce(paren_reduce(v), matchall=1)
+				reduced = use_reduce(v, matchall=1)
 			except portage.exception.InvalidDependString as e:
 				self._pkg._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
 			else:

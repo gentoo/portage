@@ -11,7 +11,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.data:portage_gid,portage_uid,secpass',
 	'portage.dbapi.dep_expand:dep_expand',
 	'portage.dep:dep_getkey,isjustname,flatten,match_from_list,' + \
-	 	'use_reduce,paren_reduce,_slot_re',
+	 	'use_reduce,_slot_re',
 	'portage.elog:elog_process',
 	'portage.locks:lockdir,unlockdir',
 	'portage.output:bold,colorize',
@@ -1796,7 +1796,7 @@ class vartree(object):
 			mylines, myuse = self.dbapi.aux_get(mycpv, ["PROVIDE", "USE"])
 			if mylines:
 				myuse = myuse.split()
-				mylines = flatten(use_reduce(paren_reduce(mylines), uselist=myuse))
+				mylines = flatten(use_reduce(mylines, uselist=myuse))
 				for myprovide in mylines:
 					mys = catpkgsplit(myprovide)
 					if not mys:

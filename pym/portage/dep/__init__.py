@@ -1,5 +1,5 @@
 # deps.py -- Portage dependency resolution functions
-# Copyright 2003-2004 Gentoo Foundation
+# Copyright 2003-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -214,120 +214,114 @@ def paren_enclose(mylist):
 			mystrparts.append(x)
 	return " ".join(mystrparts)
 
-# This is just for use by emerge so that it can enable a backward compatibility
-# mode in order to gracefully deal with installed packages that have invalid
-# atoms or dep syntax.  For backward compatibility with api consumers, strict
-# behavior will be explicitly enabled as necessary.
-_dep_check_strict = False
-
-def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
+def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[]):
 	"""
-	Takes a paren_reduce'd array and reduces the use? conditionals out
-	leaving an array with subarrays
+	Takes a dep string and reduces the use? conditionals out, leaving an array
+	with subarrays. All redundant brackets are removed.
 
-	@param deparray: paren_reduce'd list of deps
-	@type deparray: List
-	@param uselist: List of use flags
+	@param deparray: depstring
+	@type deparray: String
+	@param uselist: List of use enabled flags
 	@type uselist: List
-	@param masklist: List of masked flags
+	@param masklist: List of masked flags (always treated as disabled)
 	@type masklist: List
-	@param matchall: Resolve all conditional deps unconditionally.  Used by repoman
-	@type matchall: Integer
+	@param matchall: Treat all conditionals as active. Used by repoman. 
+	@type matchall: Bool
+	@param matchall: List of flags for which negated conditionals are always treated as inactive.
+	@type matchall: List
 	@rtype: List
 	@return: The use reduced depend array
 	"""
-	# Quick validity checks
-	for x, y in enumerate(deparray):
-		if y == '||':
-			if len(deparray) - 1 == x or not isinstance(deparray[x+1], list):
-				raise portage.exception.InvalidDependString(_('%(dep)s missing atom list in "%(deparray)s"') % {"dep": deparray[x], "deparray": paren_enclose(deparray)})
-	if deparray and deparray[-1] and deparray[-1][-1] == "?":
-		raise portage.exception.InvalidDependString(_('Conditional without target in "%s"') % paren_enclose(deparray))
 
-	global _dep_check_strict
-
-	mydeparray = deparray[:]
-	rlist = []
-	while mydeparray:
-		head = mydeparray.pop(0)
-
-		if not isinstance(head, basestring):
-			additions = use_reduce(head, uselist, masklist, matchall, excludeall)
-			if additions:
-				rlist.append(additions)
-			elif rlist and rlist[-1] == "||":
-			#XXX: Currently some DEPEND strings have || lists without default atoms.
-			#	raise portage.exception.InvalidDependString("No default atom(s) in \""+paren_enclose(deparray)+"\"")
-				rlist.append([])
-
+	def is_active(conditional):
+		if conditional.startswith("!"):
+			flag = conditional[1:-1]
+			is_negated = True
 		else:
-			if head[-1:] == "?": # Use reduce next group on fail.
-				# Pull any other use conditions and the following atom or list into a separate array
-				newdeparray = [head]
-				while isinstance(newdeparray[-1], basestring) and \
-					newdeparray[-1][-1:] == "?":
-					if mydeparray:
-						newdeparray.append(mydeparray.pop(0))
+			flag = conditional[:-1]
+			is_negated = False
+
+		if not flag:
+			raise portage.exception.InvalidDependString(
+				_("malformed syntax: '%s'") % depstr)
+
+		if is_negated and flag in excludeall:
+			return False
+
+		if flag in masklist:
+			return is_negated
+
+		if matchall:
+			return True
+
+		return (flag in uselist and not is_negated) or \
+			(flag not in uselist and is_negated)
+
+	mysplit = depstr.split()
+	level = 0
+	stack = [[]]
+	need_bracket = False
+
+	for token in mysplit:
+		if token == "(":
+			need_bracket = False
+			stack.append([])
+			level += 1
+		elif token == ")":
+			if need_bracket:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % depstr)
+			if level > 0:
+				level -= 1
+				l = stack.pop()
+				ignore = False
+
+				if stack[level]:
+					if stack[level][-1] == "||" and not l:
+						stack[level].pop()
+					elif stack[level][-1][-1] == "?":
+						if not is_active(stack[level][-1]):
+							ignore = True
+						stack[level].pop()
+
+				if l and not ignore:
+					if not stack[level] or stack[level][-1] != "||":
+						#Optimize: ( ( ... ) ) -> ( ... )
+						stack[level].extend(l)
+					elif len(l) == 1 and stack[level][-1] == "||":
+						#Optimize: || ( A ) -> A
+						stack[level].pop()
+						stack[level].extend(l)
+					elif len(l) == 2 and l[0] == "||" and stack[level][-1] == "||":
+						#Optimize: 	|| ( || ( ... ) ) -> || ( ... )
+						stack[level].pop()
+						stack[level].extend(l)
 					else:
-						raise ValueError(_("Conditional with no target."))
-
-				# Deprecation checks
-				warned = 0
-				if len(newdeparray[-1]) == 0:
-					sys.stderr.write(_("Note: Empty target in string. (Deprecated)\n"))
-					warned = 1
-				if len(newdeparray) != 2:
-					sys.stderr.write(_("Note: Nested use flags without parenthesis (Deprecated)\n"))
-					warned = 1
-				if warned:
-					sys.stderr.write("  --> "+" ".join(map(str,[head]+newdeparray))+"\n")
-
-				# Check that each flag matches
-				ismatch = True
-				missing_flag = False
-				for head in newdeparray[:-1]:
-					head = head[:-1]
-					if not head:
-						missing_flag = True
-						break
-					if head.startswith("!"):
-						head_key = head[1:]
-						if not head_key:
-							missing_flag = True
-							break
-						if not matchall and head_key in uselist or \
-							head_key in excludeall:
-							ismatch = False
-							break
-					elif head not in masklist:
-						if not matchall and head not in uselist:
-							ismatch = False
-							break
-					else:
-						ismatch = False
-				if missing_flag:
-					raise portage.exception.InvalidDependString(
-						_('Conditional without flag: "') + \
-						paren_enclose([head+"?", newdeparray[-1]])+"\"")
-
-				# If they all match, process the target
-				if ismatch:
-					target = newdeparray[-1]
-					if isinstance(target, list):
-						additions = use_reduce(target, uselist, masklist, matchall, excludeall)
-						if additions:
-							rlist.append(additions)
-					elif not _dep_check_strict:
-						# The old deprecated behavior.
-						rlist.append(target)
-					else:
-						raise portage.exception.InvalidDependString(
-							_("Conditional without parenthesis: '%s?'") % head)
-
+						stack[level].append(l)
 			else:
-				rlist += [head]
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % depstr)
+		elif token == "||":
+			if need_bracket:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % depstr)
+			need_bracket = True
+			stack[level].append(token)
+		else:
+			if need_bracket or "(" in token or ")" in token or "|" in token:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % depstr)
 
-	return rlist
+			if token[-1] == "?":
+				need_bracket = True
+
+			stack[level].append(token)
+
+	if level != 0 or need_bracket:
+		raise portage.exception.InvalidDependString(
+			_("malformed syntax: '%s'") % depstr)
+
+	return stack[0]
 
 def dep_opconvert(deplist):
 	"""

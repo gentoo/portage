@@ -34,7 +34,7 @@ from portage.dbapi.porttree import portdbapi
 from portage.dbapi.vartree import vartree
 from portage.dep import Atom, best_match_to_list, dep_opconvert, \
 	flatten, isvalidatom, match_from_list, match_to_list, \
-	paren_reduce, remove_slot, use_reduce
+	remove_slot, use_reduce
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.exception import DirectoryNotFound, InvalidAtom, \
 	InvalidDependString, ParseError, PortageException
@@ -1278,10 +1278,7 @@ class config(object):
 			E2BIG errors as in bug #262647.
 			"""
 			try:
-				licenses = set(flatten(
-					use_reduce(paren_reduce(
-					settings['LICENSE']),
-					uselist=use)))
+				licenses = set(flatten(use_reduce(settings['LICENSE'],uselist=use)))
 			except InvalidDependString:
 				licenses = set()
 			licenses.discard('||')
@@ -1302,10 +1299,7 @@ class config(object):
 
 		def _restrict(self, use, settings):
 			try:
-				restrict = set(flatten(
-					use_reduce(paren_reduce(
-					settings['RESTRICT']),
-					uselist=use)))
+				restrict = set(flatten(use_reduce(settings['RESTRICT'],uselist=use)))
 			except InvalidDependString:
 				restrict = set()
 			return ' '.join(sorted(restrict))
@@ -1912,8 +1906,7 @@ class config(object):
 				for x in plicence_list:
 					accept_license.extend(x)
 
-		licenses = set(flatten(use_reduce(paren_reduce(
-			metadata["LICENSE"]), matchall=1)))
+		licenses = set(flatten(use_reduce(metadata["LICENSE"], matchall=1)))
 		licenses.discard('||')
 
 		acceptable_licenses = set()
@@ -1933,8 +1926,7 @@ class config(object):
 		else:
 			use = []
 
-		license_struct = use_reduce(
-			paren_reduce(license_str), uselist=use)
+		license_struct = use_reduce(license_str, uselist=use)
 		license_struct = dep_opconvert(license_struct)
 		return self._getMaskedLicenses(license_struct, acceptable_licenses)
 
@@ -2004,8 +1996,7 @@ class config(object):
 				for x in pproperties_list:
 					accept_properties.extend(x)
 
-		properties = set(flatten(use_reduce(paren_reduce(
-			metadata["PROPERTIES"]), matchall=1)))
+		properties = set(flatten(use_reduce(metadata["PROPERTIES"], matchall=1)))
 		properties.discard('||')
 
 		acceptable_properties = set()
@@ -2025,8 +2016,7 @@ class config(object):
 		else:
 			use = []
 
-		properties_struct = use_reduce(
-			paren_reduce(properties_str), uselist=use)
+		properties_struct = use_reduce(properties_str, uselist=use)
 		properties_struct = dep_opconvert(properties_struct)
 		return self._getMaskedProperties(properties_struct, acceptable_properties)
 
@@ -2118,7 +2108,7 @@ class config(object):
 			myuse = mydbapi["USE"]
 		else:
 			myuse = mydbapi.aux_get(mycpv, ["USE"])[0]
-		virts = flatten(use_reduce(paren_reduce(provides), uselist=myuse.split()))
+		virts = flatten(use_reduce(provides, uselist=myuse.split()))
 
 		modified = False
 		cp = Atom(cpv_getkey(mycpv))

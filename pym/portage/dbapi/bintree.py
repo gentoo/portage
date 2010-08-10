@@ -18,6 +18,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 
 from portage.cache.mappings import slot_dict_class
 from portage.dbapi.virtual import fakedbapi
+from portage.dep import use_reduce, paren_enclose
 from portage.exception import InvalidPackageName, \
 	PermissionDenied, PortageException
 from portage.localization import _
@@ -1102,13 +1103,10 @@ class binarytree(object):
 		use = [f for f in use if f in iuse]
 		use.sort()
 		metadata["USE"] = " ".join(use)
-		from portage.dep import paren_reduce, use_reduce, \
-			paren_normalize, paren_enclose
 		for k in self._pkgindex_use_evaluated_keys:
 			try:
-				deps = paren_reduce(metadata[k])
+				deps = metadata[k]
 				deps = use_reduce(deps, uselist=raw_use)
-				deps = paren_normalize(deps)
 				deps = paren_enclose(deps)
 			except portage.exception.InvalidDependString as e:
 				writemsg("%s: %s\n" % (k, str(e)),

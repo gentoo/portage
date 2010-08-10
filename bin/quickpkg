@@ -21,7 +21,7 @@ except ImportError:
 from portage import os
 from portage import xpak
 from portage.dbapi.dep_expand import dep_expand
-from portage.dep import flatten, paren_reduce, use_reduce
+from portage.dep import flatten, use_reduce
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString, PackageSetNotFound
 from portage.util import ConfigProtect, ensure_dirs, shlex_split
 from portage.dbapi.vartree import dblink, tar_contents
@@ -78,8 +78,7 @@ def quickpkg_atom(options, infos, arg, eout):
 			iuse = [ x.lstrip("+-") for x in iuse.split() ]
 			use = use.split()
 			try:
-				restrict = flatten(use_reduce(
-					paren_reduce(restrict), uselist=use))
+				restrict = flatten(use_reduce(restrict, uselist=use))
 			except InvalidDependString as e:
 				eout.eerror("Invalid RESTRICT metadata " + \
 					"for '%s': %s; skipping" % (cpv, str(e)))

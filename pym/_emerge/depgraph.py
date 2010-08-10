@@ -1208,10 +1208,8 @@ class depgraph(object):
 
 				try:
 
-					dep_string = portage.dep.paren_normalize(
-						portage.dep.use_reduce(
-						portage.dep.paren_reduce(dep_string),
-						uselist=self._pkg_use_enabled(pkg)))
+					dep_string = portage.dep.use_reduce(dep_string,
+						uselist=self._pkg_use_enabled(pkg))
 
 					dep_string = list(self._queue_disjunctive_deps(
 						pkg, dep_root, dep_priority, dep_string))
@@ -2628,10 +2626,8 @@ class depgraph(object):
 
 			for key in "DEPEND", "RDEPEND", "PDEPEND", "LICENSE":
 				dep = pkg.metadata[key]
-				old_val = set(portage.dep.paren_normalize( \
-					portage.dep.use_reduce(portage.dep.paren_reduce(dep), pkg.use.enabled)))
-				new_val = set(portage.dep.paren_normalize( \
-					portage.dep.use_reduce(portage.dep.paren_reduce(dep), new_use)))
+				old_val = set(portage.dep.use_reduce(dep, pkg.use.enabled))
+				new_val = set(portage.dep.use_reduce(dep, new_use))
 
 				if old_val != new_val:
 					return True
