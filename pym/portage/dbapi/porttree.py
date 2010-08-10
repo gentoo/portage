@@ -44,6 +44,7 @@ import sys
 import warnings
 
 if sys.hexversion >= 0x3000000:
+	basestring = str
 	long = int
 
 def _src_uri_validate(cpv, eapi, src_uri):
@@ -907,11 +908,12 @@ class portdbapi(dbapi):
 		mysplit = mycp.split("/")
 		invalid_category = mysplit[0] not in self._categories
 		d={}
-		if mytree:
-			if isinstance(mytree, str):
+		if mytree is not None:
+			if isinstance(mytree, basestring):
 				mytrees = [mytree]
-			elif not isinstance(mytree, list):
-				raise  AssertionError("Invalid input type: %s" %str(type(mytree)))
+			else:
+				# assume it's iterable
+				mytrees = mytree
 		else:
 			mytrees = self.porttrees
 		for oroot in mytrees:
