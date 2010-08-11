@@ -649,7 +649,6 @@ class portdbapi(dbapi):
 				raise KeyError(mycpv)
 
 			self.doebuild_settings.setcpv(mycpv)
-			mydata = {}
 			eapi = None
 
 			if eapi is None and \
@@ -664,9 +663,8 @@ class portdbapi(dbapi):
 				self.doebuild_settings.configdict['pkg']['EAPI'] = eapi
 
 			if eapi is not None and not portage.eapi_is_supported(eapi):
-				mydata['EAPI'] = eapi
-				self._metadata_callback(
-					mycpv, myebuild, mylocation, mydata, emtime)
+				mydata = self._metadata_callback(
+					mycpv, myebuild, mylocation, {'EAPI':eapi}, emtime)
 			else:
 				sched = TaskScheduler()
 				proc = EbuildMetadataPhase(cpv=mycpv, ebuild_path=myebuild,
@@ -682,13 +680,7 @@ class portdbapi(dbapi):
 					self._broken_ebuilds.add(myebuild)
 					raise KeyError(mycpv)
 
-				mydata.update(proc.metadata)
-
-			if mydata.get("INHERITED", False):
-				mydata["_eclasses_"] = self._repo_info[mylocation
-					].eclass_db.get_eclass_data(mydata["INHERITED"].split())
-			else:
-				mydata["_eclasses_"] = {}
+				mydata = proc.metadata
 
 		# do we have a origin repository name for the current package
 		mydata["repository"] = self._repository_map.get(mylocation, "")
