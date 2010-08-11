@@ -63,21 +63,6 @@ class portdbapi(dbapi):
 	portdbapi_instances = []
 	_use_mutable = True
 
-	def _get_settings(self):
-		warnings.warn("Use portdbapi.settings instead of portdbapi.mysettings",
-			DeprecationWarning)
-		return self.settings
-
-	def _set_settings(self, settings):
-		warnings.warn("Use portdbapi.settings instead of portdbapi.mysettings",
-			DeprecationWarning)
-		self.settings = settings
-
-	def _del_settings (self):
-		warnings.warn("Use portdbapi.settings instead of portdbapi.mysettings",
-			DeprecationWarning)
-		del self.settings
-
 	mysettings = property(_get_settings, _set_settings, _del_settings,
 		"Deprecated self.mysettings, only for backward compatibility")
 
@@ -103,9 +88,7 @@ class portdbapi(dbapi):
 
 		porttree_root = self.settings['PORTDIR']
 
-		# always show this warning after this parameter
-		# is unused in stable portage
-		if _unused_param is not None and _unused_param != porttree_root:
+		if _unused_param is not None:
 			warnings.warn("The first parameter of the " + \
 				"portage.dbapi.porttree.portdbapi" + \
 				" constructor is now unused. Use " + \
