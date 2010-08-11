@@ -15,26 +15,6 @@ from portage.localization import _
 from portage.manifest import Manifest
 from portage.util import writemsg, writemsg_stdout
 
-def digestParseFile(myfilename, mysettings=None):
-	"""(filename) -- Parses a given file for entries matching:
-	<checksumkey> <checksum_hex_string> <filename> <filesize>
-	Ignores lines that don't start with a valid checksum identifier
-	and returns a dict with the filenames as keys and {checksumkey:checksum}
-	as the values.
-	DEPRECATED: this function is now only a compability wrapper for
-	            portage.manifest.Manifest()."""
-
-	warnings.warn("portage.digestParseFile() is deprecated",
-		DeprecationWarning, stacklevel=2)
-
-	mysplit = myfilename.split(os.sep)
-	if mysplit[-2] == "files" and mysplit[-1].startswith("digest-"):
-		pkgdir = os.sep + os.sep.join(mysplit[:-2]).strip(os.sep)
-	elif mysplit[-1] == "Manifest":
-		pkgdir = os.sep + os.sep.join(mysplit[:-1]).strip(os.sep)
-
-	return Manifest(pkgdir, None).getDigests()
-
 def dep_virtual(mysplit, mysettings):
 	"Does virtual dependency conversion"
 	warnings.warn("portage.dep_virtual() is deprecated",

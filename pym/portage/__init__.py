@@ -132,7 +132,7 @@ try:
 			'suffix_value@endversion,pkgcmp,pkgsplit,vercmp,ververify',
 		'portage.xpak',
 		'portage._deprecated:dep_virtual,' + \
-			'digestParseFile,getvirtuals,pkgmerge',
+			'getvirtuals,pkgmerge',
 	)
 
 	import portage.const
