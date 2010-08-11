@@ -1553,7 +1553,7 @@ def check_required_use(required_use, use, iuse):
 	@return: all satisifed constraints, all unsatisfied constraints,
 	"""
 	try:
-		sat, unsat, ignore = _check_required_use(paren_normalize(paren_reduce(required_use)), use, iuse)
+		sat, unsat, ignore = _check_required_use(paren_reduce(required_use), use, iuse)
 	except portage.exception.InvalidDependString as e:
 		raise portage.exception.InvalidRequiredUseString(str(e))
 
