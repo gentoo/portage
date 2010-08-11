@@ -59,7 +59,6 @@ import stat
 import sys
 import tempfile
 import time
-import warnings
 
 try:
 	import cPickle as pickle
