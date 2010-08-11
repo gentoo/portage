@@ -571,6 +571,11 @@ list_preserved_libs.uses_root = True
 # DO NOT CHANGE CODE BEYOND THIS POINT - IT'S NOT NEEDED!
 #
 
+non_commands = frozenset(['eval_atom_use', 'exithandler', 'main',
+	'usage', 'writemsg', 'writemsg_stdout'])
+commands = sorted(k for k, v in globals().items() \
+	if type(v) is types.FunctionType and k not in non_commands)
+
 def usage(argv):
 	print(">>> Portage information query tool")
 	print(">>> %s" % portage.VERSION)
@@ -582,10 +587,6 @@ def usage(argv):
 	# Show our commands -- we do this by scanning the functions in this
 	# file, and formatting each functions documentation.
 	#
-	non_commands = frozenset(['eval_atom_use', 'exithandler', 'main',
-		'usage', 'writemsg', 'writemsg_stdout'])
-	commands = sorted(k for k, v in globals().items() \
-		if type(v) is types.FunctionType and k not in non_commands)
 
 	for name in commands:
 		# Drop non-functions
@@ -620,7 +621,7 @@ def main():
 
 	cmd = sys.argv[1]
 	function = globals().get(cmd)
-	if function is None:
+	if function is None or cmd not in commands:
 		usage(sys.argv)
 		sys.exit(os.EX_USAGE)
 	function = globals()[cmd]
