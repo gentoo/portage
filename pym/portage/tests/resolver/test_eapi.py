@@ -60,7 +60,7 @@ class EAPITestCase(TestCase):
 				(["=dev-libs/A-1.3"], {}, None, True, ["dev-libs/A-1.3"]),
 				#~ (["=dev-libs/A-1.4"], {}, None, True, ["dev-libs/A-1.4"]),
 
-				#~ (["=dev-libs/A-2.0"], {}, None, False, None),
+				(["=dev-libs/A-2.0"], {}, None, False, None),
 				(["=dev-libs/A-2.1"], {}, None, True, ["dev-libs/B-1", "dev-libs/A-2.1"]),
 				(["=dev-libs/A-2.2"], {}, None, True, ["dev-libs/B-1", "dev-libs/A-2.2"]),
 				(["=dev-libs/A-2.3"], {}, None, True, ["dev-libs/B-1", "dev-libs/A-2.3"]),
