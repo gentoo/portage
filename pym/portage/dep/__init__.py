@@ -80,7 +80,7 @@ def strip_empty(myarr):
 	@return: The array with empty elements removed
 	"""
 	warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
-		('portage.dep.strip_empty',), DeprecationWarning)
+		('portage.dep.strip_empty',), DeprecationWarning, stacklevel=2)
 	return [x for x in myarr if x]
 
 def paren_reduce(mystr):
@@ -98,7 +98,7 @@ def paren_reduce(mystr):
 	@return: The reduced string in an array
 	"""
 	warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
-		('portage.dep.paren_reduce',), DeprecationWarning)
+		('portage.dep.paren_reduce',), DeprecationWarning, stacklevel=2)
 	mysplit = mystr.split()
 	level = 0
 	stack = [[]]
@@ -165,7 +165,7 @@ class paren_normalize(list):
 	and generate an equivalent structure that has no redundant lists."""
 	def __init__(self, src):
 		warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
-			('portage.dep.paren_normalize',), DeprecationWarning)
+			('portage.dep.paren_normalize',), DeprecationWarning, stacklevel=2)
 		list.__init__(self)
 		self._zap_parens(src, self)
 
@@ -242,7 +242,7 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 	if isinstance(depstr, list):
 		warnings.warn(_("Passing paren_reduced dep arrays to %s is deprecated. " + \
 			"Pass the original dep string instead.") % \
-			('portage.dep.use_reduce',), DeprecationWarning)
+			('portage.dep.use_reduce',), DeprecationWarning, stacklevel=2)
 		depstr = paren_enclose(depstr)
 	
 	def is_active(conditional):
@@ -902,7 +902,7 @@ def get_operator(mydep):
 	# Fall back to legacy code for backward compatibility.
 	warnings.warn(_("%s is deprecated, use %s instead") % \
 		('portage.dep.get_operator()', 'portage.dep.Atom.operator'),
-		DeprecationWarning)
+		DeprecationWarning, stacklevel=2)
 	operator = None
 	if mydep:
 		mydep = remove_slot(mydep)
