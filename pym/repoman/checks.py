@@ -8,7 +8,9 @@ and correctness of an ebuild."""
 import re
 import time
 import repoman.errors as errors
-from portage.eapi import *
+from portage.eapi import eapi_supports_prefix, eapi_has_implicit_rdepend, \
+	eapi_has_src_prepare_and_src_configure, eapi_has_dosed_dohard, \
+	eapi_exports_AA, eapi_exports_KV
 
 class LineCheck(object):
 	"""Run a check on a line of an ebuild."""
