@@ -39,3 +39,6 @@ def eapi_has_implicit_rdepend(eapi):
 
 def eapi_has_dosed_dohard(eapi):
 	return eapi in ("0", "1", "2", "3")
+
+def eapi_has_required_use(eapi):
+	return eapi not in ("0", "1", "2", "3")
