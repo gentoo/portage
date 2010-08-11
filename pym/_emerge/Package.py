@@ -8,7 +8,7 @@ import portage
 from portage.cache.mappings import slot_dict_class
 from portage.dep import isvalidatom, use_reduce, \
 	paren_enclose, _slot_re
-from portage.eapi import eapi_has_iuse_defaults
+from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 from _emerge.Task import Task
 
 if sys.hexversion >= 0x3000000:
@@ -52,6 +52,10 @@ class Package(Task):
 			not eapi_has_iuse_defaults(self.metadata["EAPI"]):
 			self._invalid_metadata('IUSE.invalid',
 				"IUSE contains defaults, but EAPI doesn't allow them")
+		if self.metadata["REQUIRED_USE"] and \
+			not eapi_has_required_use(self.metadata["EAPI"]):
+			self._invalid_metadata('REQUIRED_USE.invalid',
+				"REQUIRED_USE set, but EAPI doesn't allow it")
 		self.slot_atom = portage.dep.Atom("%s:%s" % (self.cp, slot))
 		self.category, self.pf = portage.catsplit(self.cpv)
 		self.cpv_split = portage.catpkgsplit(self.cpv)

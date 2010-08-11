@@ -66,6 +66,7 @@ class ResolverPlayground(object):
 			depend = metadata.get("DEPEND", "")
 			rdepend = metadata.get("RDEPEND", None)
 			pdepend = metadata.get("PDEPEND", None)
+			required_use = metadata.get("REQUIRED_USE", None)
 
 			f = open(ebuild_path, "w")
 			f.write('EAPI="' + str(eapi) + '"\n')
@@ -77,6 +78,8 @@ class ResolverPlayground(object):
 				f.write('RDEPEND="' + str(rdepend) + '"\n')
 			if rdepend is not None:
 				f.write('PDEPEND="' + str(pdepend) + '"\n')
+			if required_use is not None:
+				f.write('REQUIRED_USE="' + str(required_use) + '"\n')
 			f.close()
 
 	def _create_ebuild_manifests(self, ebuilds):
@@ -110,6 +113,7 @@ class ResolverPlayground(object):
 			depend = metadata.get("DEPEND", "")
 			rdepend = metadata.get("RDEPEND", None)
 			pdepend = metadata.get("PDEPEND", None)
+			required_use = metadata.get("REQUIRED_USE", None)
 			
 			def write_key(key, value):
 				f = open(os.path.join(vdb_pkg_dir, key), "w")
@@ -126,6 +130,8 @@ class ResolverPlayground(object):
 				write_key("RDEPEND", rdepend)
 			if rdepend is not None:
 				write_key("PDEPEND", pdepend)
+			if required_use is not None:
+				write_key("REQUIRED_USE", required_use)
 
 	def _create_profile(self, ebuilds, installed, profile):
 		#Create $PORTDIR/profiles/categories

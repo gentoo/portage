@@ -2164,11 +2164,6 @@ ebuild_main() {
 
 		#the extra $(echo) commands remove newlines
 		[ -n "${EAPI}" ] || EAPI=0
-		case "$EAPI" in
-			0|1|2|3)
-				unset REQUIRED_USE
-				;;
-		esac
 
 		if [ -n "${dbkey}" ] ; then
 			> "${dbkey}"
