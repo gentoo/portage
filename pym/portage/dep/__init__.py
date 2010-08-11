@@ -892,38 +892,10 @@ def get_operator(mydep):
 	@return: The operator. One of:
 		'~', '=', '>', '<', '=*', '>=', or '<='
 	"""
-	if isinstance(mydep, Atom):
-		return mydep.operator
-	try:
-		return Atom(mydep).operator
-	except InvalidAtom:
-		pass
+	if not isinstance(mydep, Atom):
+		mydep = Atom(mydep)
 
-	# Fall back to legacy code for backward compatibility.
-	warnings.warn(_("%s is deprecated, use %s instead") % \
-		('portage.dep.get_operator()', 'portage.dep.Atom.operator'),
-		DeprecationWarning, stacklevel=2)
-	operator = None
-	if mydep:
-		mydep = remove_slot(mydep)
-	if not mydep:
-		return None
-	if mydep[0] == "~":
-		operator = "~"
-	elif mydep[0] == "=":
-		if mydep[-1] == "*":
-			operator = "=*"
-		else:
-			operator = "="
-	elif mydep[0] in "><":
-		if len(mydep) > 1 and mydep[1] == "=":
-			operator = mydep[0:2]
-		else:
-			operator = mydep[0]
-	else:
-		operator = None
-
-	return operator
+	return mydep.operator
 
 def dep_getcpv(mydep):
 	"""
@@ -938,34 +910,10 @@ def dep_getcpv(mydep):
 	@rtype: String
 	@return: The depstring with the operator removed
 	"""
-	if isinstance(mydep, Atom):
-		return mydep.cpv
-	try:
-		return Atom(mydep).cpv
-	except InvalidAtom:
-		pass
+	if not isinstance(mydep, Atom):
+		mydep = Atom(mydep)
 
-	# Fall back to legacy code for backward compatibility.
-	warnings.warn(_("%s is deprecated, use %s instead") % \
-		('portage.dep.dep_getcpv()', 'portage.dep.Atom.cpv'),
-		DeprecationWarning, stacklevel=2)
-	mydep_orig = mydep
-	if mydep:
-		mydep = remove_slot(mydep)
-	if mydep and mydep[0] == "*":
-		mydep = mydep[1:]
-	if mydep and mydep[-1] == "*":
-		mydep = mydep[:-1]
-	if mydep and mydep[0] == "!":
-		if mydep[1:2] == "!":
-			mydep = mydep[2:]
-		else:
-			mydep = mydep[1:]
-	if mydep[:2] in [">=", "<="]:
-		mydep = mydep[2:]
-	elif mydep[:1] in "=<>~":
-		mydep = mydep[1:]
-	return mydep
+	return mydep.cpv
 
 def dep_getslot(mydep):
 	"""
@@ -1176,33 +1124,10 @@ def dep_getkey(mydep):
 	@rtype: String
 	@return: The package category/package-name
 	"""
-	if isinstance(mydep, Atom):
-		return mydep.cp
-	try:
-		return Atom(mydep).cp
-	except InvalidAtom:
-		try:
-			atom = Atom('=' + mydep)
-		except InvalidAtom:
-			pass
-		else:
-			warnings.warn(_("invalid input to %s: '%s', use %s instead") % \
-				('portage.dep.dep_getkey()', mydep, 'portage.cpv_getkey()'),
-				DeprecationWarning, stacklevel=2)
-			return atom.cp
+	if not isinstance(mydep, Atom):
+		mydep = Atom(mydep)
 
-	# Fall back to legacy code for backward compatibility.
-	warnings.warn(_("%s is deprecated, use %s instead") % \
-		('portage.dep.dep_getkey()', 'portage.dep.Atom.cp'),
-		DeprecationWarning, stacklevel=2)
-	mydep = dep_getcpv(mydep)
-	if mydep and isspecific(mydep):
-		mysplit = catpkgsplit(mydep)
-		if not mysplit:
-			return mydep
-		return mysplit[0] + "/" + mysplit[1]
-	else:
-		return mydep
+	return mydep.cp
 
 def match_to_list(mypkg, mylist):
 	"""
