@@ -22,6 +22,7 @@ from portage.cache.cache_errors import CacheError
 from portage.cache.mappings import Mapping
 from portage.const import REPO_NAME_LOC
 from portage.dbapi import dbapi
+from portage.eapi import eapi_has_src_uri_arrows
 from portage.exception import PortageException, \
 	FileNotFound, InvalidDependString, InvalidPackageName
 from portage.localization import _
@@ -656,7 +657,7 @@ class portdbapi(dbapi):
 				(mypkg, eapi.lstrip("-")))
 
 		myuris = use_reduce(myuris, uselist=useflags, matchall=(useflags is None), \
-			is_src_uri=True, allow_src_uri_file_renames=(eapi not in ("0", "1")))
+			is_src_uri=True, allow_src_uri_file_renames=eapi_has_src_uri_arrows(eapi))
 		myuris = flatten(myuris)
 
 		uri_map = OrderedDict()

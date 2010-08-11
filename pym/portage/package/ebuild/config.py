@@ -34,6 +34,7 @@ from portage.dbapi.vartree import vartree
 from portage.dep import Atom, best_match_to_list, dep_opconvert, \
 	flatten, isvalidatom, match_from_list, match_to_list, \
 	remove_slot, use_reduce
+from portage.eapi import eapi_exports_AA, eapi_supports_prefix, eapi_exports_replace_vars
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.exception import DirectoryNotFound, InvalidAtom, \
 	InvalidDependString, ParseError, PortageException
@@ -2639,11 +2640,11 @@ class config(object):
 		mydict["USE"] = self.get("PORTAGE_USE", "")
 
 		# Don't export AA to the ebuild environment in EAPIs that forbid it
-		if eapi not in ("0", "1", "2", "3", "3_pre2"):
+		if not eapi_exports_AA(eapi):
 			mydict.pop("AA", None)
 
 		# Prefix variables are supported starting with EAPI 3.
-		if phase == 'depend' or eapi in (None, "0", "1", "2"):
+		if phase == 'depend' or eapi is None or eapi_supports_prefix(eapi):
 			mydict.pop("ED", None)
 			mydict.pop("EPREFIX", None)
 			mydict.pop("EROOT", None)
@@ -2652,11 +2653,11 @@ class config(object):
 			mydict.pop('FILESDIR', None)
 
 		if phase not in ("pretend", "setup", "preinst", "postinst") or \
-			eapi in ("0", "1", "2", "3"):
+			not eapi_exports_replace_vars(eapi):
 			mydict.pop("REPLACING_VERSIONS", None)
 
 		if phase not in ("prerm", "postrm") or \
-			eapi in ("0", "1", "2", "3"):
+			not eapi_exports_replace_vars(eapi):
 			mydict.pop("REPLACED_BY_VERSION", None)
 
 		return mydict

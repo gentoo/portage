@@ -72,6 +72,7 @@ from portage.output import bold, create_color_func, \
 from portage.output import ConsoleStyleFile, StyleWriter
 from portage.util import cmp_sort_key, writemsg_level
 from portage.package.ebuild.digestgen import digestgen
+from portage.eapi import *
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -1447,7 +1448,7 @@ for x in scanlist:
 			# Check that URIs don't reference a server from thirdpartymirrors.
 			for uri in portage.flatten(portage.dep.use_reduce( \
 				myaux["SRC_URI"], matchall=True, is_src_uri=True, \
-				allow_src_uri_file_renames=(eapi not in ("0", "1")))):
+				allow_src_uri_file_renames=eapi_has_src_uri_arrows(eapi))):
 				contains_mirror = False
 				for mirror in thirdpartymirrors:
 					if uri.startswith(mirror):
@@ -1652,21 +1653,21 @@ for x in scanlist:
 								stats[mytype + '.suspect'] += 1
 								fails[mytype + '.suspect'].append(
 									relative_path + ": '%s'" % atom)
-						if eapi == "0":
+						if not eapi_has_slot_deps(eapi):
 							if portage.dep.dep_getslot(atom):
 								stats['EAPI.incompatible'] += 1
 								fails['EAPI.incompatible'].append(
 									(relative_path + ": %s slot dependency" + \
 									" not supported with EAPI='%s':" + \
 									" '%s'") % (mytype, eapi, atom))
-						if atom.use and eapi in ("0", "1"):
+						if atom.use and not eapi_has_use_deps(eapi):
 							stats['EAPI.incompatible'] += 1
 							fails['EAPI.incompatible'].append(
 								(relative_path + ": %s use dependency" + \
 								" not supported with EAPI='%s':" + \
 								" '%s'") % (mytype, eapi, atom))
 						if atom.blocker and atom.blocker.overlap.forbid \
-							and eapi in ("0", "1"):
+							and not eapi_has_strong_blocks(eapi):
 							stats['EAPI.incompatible'] += 1
 							fails['EAPI.incompatible'].append(
 								(relative_path + ": %s new blocker syntax" + \
@@ -1709,7 +1710,7 @@ for x in scanlist:
 			if myuse[mypos] and (myuse[mypos] in muselist):
 				del myuse[mypos]
 
-		if default_use and eapi == "0":
+		if default_use and not eapi_has_iuse_defaults(eapi):
 			for myflag in default_use:
 				stats['EAPI.incompatible'] += 1
 				fails['EAPI.incompatible'].append(

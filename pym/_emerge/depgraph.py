@@ -17,6 +17,7 @@ from portage.const import PORTAGE_PACKAGE_ATOM
 from portage.dbapi import dbapi
 from portage.dbapi.dep_expand import dep_expand
 from portage.dep import Atom
+from portage.eapi import eapi_has_strong_blocks
 from portage.output import bold, blue, colorize, create_color_func, darkblue, \
 	darkgreen, green, nc_len, red, teal, turquoise, yellow
 bad = create_color_func("BAD")
@@ -3954,7 +3955,7 @@ class depgraph(object):
 					forbid_overlap = False
 					heuristic_overlap = False
 					for blocker in myblocker_uninstalls.parent_nodes(task):
-						if blocker.eapi in ("0", "1"):
+						if not eapi_has_strong_blocks(blocker.eapi):
 							heuristic_overlap = True
 						elif blocker.atom.blocker.overlap.forbid:
 							forbid_overlap = True

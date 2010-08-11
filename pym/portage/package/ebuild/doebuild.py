@@ -38,6 +38,8 @@ from portage.data import portage_gid, portage_uid, secpass, \
 	uid, userpriv_groups
 from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, paren_enclose, use_reduce
+from portage.eapi import eapi_exports_KV, eapi_has_src_uri_arrows, \
+	eapi_has_src_prepare_and_src_configure, eapi_has_pkg_pretend
 from portage.elog import elog_process
 from portage.elog.messages import eerror, eqawarn
 from portage.exception import DigestException, FileNotFound, \
@@ -215,7 +217,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 		mysettings["PORTAGE_BUILDDIR"], ".exit_status")
 
 	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistent.
-	if eapi not in ('0', '1', '2', '3', '3_pre2'):
+	if not eapi_exports_KV(eapi):
 		# Discard KV for EAPIs that don't support it. Cache KV is restored
 		# from the backupenv whenever config.reset() is called.
 		mysettings.pop('KV', None)
@@ -1074,7 +1076,7 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 	for k in misc_keys:
 		try:
 			use_reduce(metadata[k], matchall=True, is_src_uri=(k=="SRC_URI"), \
-				allow_src_uri_file_renames=(eapi not in ("0", "1")))
+				allow_src_uri_file_renames=eapi_has_src_uri_arrows(eapi))
 		except InvalidDependString as e:
 			msgs.append("  %s: %s\n    %s\n" % (
 				k, metadata[k], str(e)))
@@ -1222,13 +1224,10 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 
 	eapi = mysettings["EAPI"]
 
-	if mydo == "configure" and eapi in ("0", "1"):
+	if mydo in ("configure", "prepare") and not eapi_has_src_prepare_and_src_configure(eapi):
 		return os.EX_OK
 
-	if mydo == "prepare" and eapi in ("0", "1"):
-		return os.EX_OK
-
-	if mydo == "pretend" and eapi in ("0", "1", "2", "3", "3_pre2"):
+	if mydo == "pretend" and not eapi_has_pkg_pretend(eapi):
 		return os.EX_OK
 
 	kwargs = actionmap[mydo]["args"]
