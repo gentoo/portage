@@ -1,0 +1,18 @@
+<section id='package-ebuild-eapi-4_pre1'>
+<title>EAPI 4_pre1</title>
+<section id='package-ebuild-eapi-4_pre1-helpers'>
+<title>Helpers</title>
+<section id='package-ebuild-eapi-4_pre1-helpers-removed-dohard-dosed'>
+<title>Removed dohard and dosed</title>
+<para>
+The dohard and dosed helpers from previous EAPIs are no longer available.
+</para>
+</section>
+<section id='package-ebuild-eapi-4_pre1-helpers-dodoc-r'>
+<title>dodoc -r</title>
+<para>
+The dodoc helper now has a -r option which enables recursion.
+</para>
+</section>
+</section>
+</section>
