@@ -6,7 +6,6 @@ __all__ = ["Mapping", "MutableMapping", "UserDict", "ProtectedDict",
 	"LazyLoad", "slot_dict_class"]
 
 import sys
-import warnings
 import weakref
 
 class Mapping(object):
@@ -28,11 +27,6 @@ class Mapping(object):
 
 	def keys(self):
 		return list(self.__iter__())
-
-	def has_key(self, key):
-		warnings.warn("portage.cache.mappings.Mapping.has_key() " + \
-			"is deprecated, use the in operator instead", DeprecationWarning)
-		return key in self
 
 	def __contains__(self, key):
 		try:
@@ -268,12 +262,6 @@ class ProtectedDict(MutableMapping):
 	def __contains__(self, key):
 		return key in self.new or (key not in self.blacklist and key in self.orig)
 
-	def has_key(self, key):
-		warnings.warn("portage.cache.mapping.ProtectedDict.has_key() is"
-			" deprecated, use the in operator instead",
-			DeprecationWarning)
-		return key in self
-
 	if sys.hexversion >= 0x3000000:
 		keys = __iter__
 
@@ -302,13 +290,6 @@ class LazyLoad(Mapping):
 			self.d.update(self.pull())
 			self.pull = None
 		return iter(self.d)
-
-	def has_key(self, key):
-		warnings.warn("portage.cache.mappings.LazyLoad.has_key() is "
-			"deprecated, use the in operator instead",
-			DeprecationWarning)
-		return key in self
-
 
 	def __contains__(self, key):
 		if key in self.d:
@@ -453,12 +434,6 @@ def slot_dict_class(keys, prefix="_val_"):
 
 			def __contains__(self, k):
 				return hasattr(self, self._prefix + k)
-
-			def has_key(self, k):
-				warnings.warn("portage.cache.mappings.SlotDict.has_key()" + \
-					" is deprecated, use the in operator instead",
-					DeprecationWarning)
-				return k in self
 
 			def pop(self, key, *args):
 				if len(args) > 1:
