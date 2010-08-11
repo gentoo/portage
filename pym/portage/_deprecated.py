@@ -15,15 +15,6 @@ from portage.localization import _
 from portage.manifest import Manifest
 from portage.util import writemsg, writemsg_stdout
 
-def getvirtuals(myroot):
-	"""
-	Calls portage.settings.getvirtuals().
-	@deprecated: Use portage.settings.getvirtuals().
-	"""
-	warnings.warn("portage.getvirtuals() is deprecated",
-		DeprecationWarning, stacklevel=2)
-	return portage.settings.getvirtuals()
-
 def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 	vartree=None, prev_mtimes=None, blockers=None):
 	"""will merge a .tbz2 file, returning a list of runtime dependencies
