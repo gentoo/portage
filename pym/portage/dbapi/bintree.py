@@ -273,9 +273,6 @@ class binarytree(object):
 				chain(*self._pkgindex_translated_keys)
 			))
 
-	remotepkgs = property(_get_remotepkgs, _set_remotepkgs, _del_remotepkgs,
-		"Deprecated self.remotepkgs, only for backward compatibility")
-
 	def move_ent(self, mylist, repo_match=None):
 		if not self.populated:
 			self.populate()

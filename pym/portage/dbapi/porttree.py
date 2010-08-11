@@ -63,9 +63,6 @@ class portdbapi(dbapi):
 	portdbapi_instances = []
 	_use_mutable = True
 
-	mysettings = property(_get_settings, _set_settings, _del_settings,
-		"Deprecated self.mysettings, only for backward compatibility")
-
 	@property
 	def _categories(self):
 		return self.settings.categories
