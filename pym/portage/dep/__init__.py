@@ -79,6 +79,8 @@ def strip_empty(myarr):
 	@rtype: Array
 	@return: The array with empty elements removed
 	"""
+	warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
+		('portage.dep.strip_empty',), DeprecationWarning)
 	return [x for x in myarr if x]
 
 def paren_reduce(mystr):
@@ -95,6 +97,8 @@ def paren_reduce(mystr):
 	@rtype: Array
 	@return: The reduced string in an array
 	"""
+	warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
+		('portage.dep.paren_reduce',), DeprecationWarning)
 	mysplit = mystr.split()
 	level = 0
 	stack = [[]]
@@ -160,6 +164,8 @@ class paren_normalize(list):
 	"""Take a dependency structure as returned by paren_reduce or use_reduce
 	and generate an equivalent structure that has no redundant lists."""
 	def __init__(self, src):
+		warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
+			('portage.dep.paren_normalize',), DeprecationWarning)
 		list.__init__(self)
 		self._zap_parens(src, self)
 
@@ -233,7 +239,12 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 	@rtype: List
 	@return: The use reduced depend array
 	"""
-
+	if isinstance(depstr, list):
+		warnings.warn(_("Passing paren_reduced dep arrays to %s is deprecated. " + \
+			"Pass the original dep string instead.") % \
+			('portage.dep.use_reduce',), DeprecationWarning)
+		depstr = paren_enclose(depstr)
+	
 	def is_active(conditional):
 		if conditional.startswith("!"):
 			flag = conditional[1:-1]
