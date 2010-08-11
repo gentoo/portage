@@ -17,7 +17,9 @@ class SlotCollisionTestCase(TestCase):
 			"app-misc/Z-1": { },
 			"app-misc/Z-2": { },
 			"app-misc/Y-1": { "DEPEND": "=app-misc/Z-1" },
+			"app-misc/Y-2": { "DEPEND": ">app-misc/Z-1" },
 			"app-misc/X-1": { "DEPEND": "=app-misc/Z-2" },
+			"app-misc/X-2": { "DEPEND": "<app-misc/Z-2" },
 
 			"sci-libs/K-1": { "IUSE": "+foo", "EAPI": 1 },
 			"sci-libs/L-1": { "DEPEND": "sci-libs/K[-foo]", "EAPI": 2 },
@@ -42,11 +44,18 @@ class SlotCollisionTestCase(TestCase):
 				ignore_mergelist_order = True,
 				slot_collision_solutions = [ {"dev-libs/A-1": {"foo": True}, "dev-libs/D-1": {"foo": True}} ]),
 
-			#A version based conflict, nothing we can do.
+			#A version based conflicts, nothing we can do.
 			ResolverPlaygroundTestCase(
-				["app-misc/X", "app-misc/Y"],
+				["=app-misc/X-1", "=app-misc/Y-1"],
 				success = False,
 				mergelist = ["app-misc/Z-1", "app-misc/Z-2", "app-misc/X-1", "app-misc/Y-1"],
+				ignore_mergelist_order = True,
+				slot_collision_solutions = []
+				),
+			ResolverPlaygroundTestCase(
+				["=app-misc/X-2", "=app-misc/Y-2"],
+				success = False,
+				mergelist = ["app-misc/Z-1", "app-misc/Z-2", "app-misc/X-2", "app-misc/Y-2"],
 				ignore_mergelist_order = True,
 				slot_collision_solutions = []
 				),
