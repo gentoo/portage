@@ -2832,14 +2832,14 @@ class depgraph(object):
 						iuse = self._frozen_config.settings._get_implicit_iuse()
 						iuse.update(pkg.iuse.all)
 						try:
-							sat, unsat = portage.dep.check_required_use(
+							required_use_is_sat = portage.dep.check_required_use(
 								pkg.metadata["REQUIRED_USE"], use, iuse)
-						except portage.exception.InvalidRequiredUseString as e:
+						except portage.exception.InvalidDependString as e:
 							portage.writemsg("!!! Invalid REQUIRED_USE specified by " + \
 								"'%s': %s\n" % (pkg.cpv, str(e)), noiselevel=-1)
 							del e
 							continue
-						if unsat:
+						if not required_use_is_sat:
 							continue
 
 					if pkg.cp == atom_cp:
@@ -6190,15 +6190,13 @@ def _get_masking_status(pkg, pkgsettings, root_config):
 			iuse = pkgsettings._get_implicit_iuse()
 			iuse.update(pkg.iuse.all)
 			try:
-				sat, unsat = portage.dep.check_required_use(
+				required_use_is_sat = portage.dep.check_required_use(
 					required_use, use, iuse)
-			except portage.exception.InvalidRequiredUseString:
+			except portage.exception.InvalidDependString:
 				mreasons.append("invalid: REQUIRED_USE")
 			else:
-				if unsat:
-					msg = "violated use flag constraints: '%s'" % unsat
-					if sat:
-						msg += ", other constraints: '%s'" % sat
+				if not required_use_is_sat:
+					msg = "violated use flag constraints: '%s'" % required_use
 					mreasons.append(msg)
 
 	if not pkg.metadata["SLOT"]:

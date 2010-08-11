@@ -1356,130 +1356,105 @@ def match_from_list(mydep, candidate_list):
 
 	return mylist
 
-def _check_required_use(constraints, use, iuse):
-	"""
-	Checks if the use flags listed in 'use' satisfy all
-	constraints specified in 'constraints'. Returns a tuple
-	containing the satisfied and unsatisfied and constraints
-	that were ignored because of the use flag configuration.
-
-	@param constraints: List of constraints as definied by REQUIRED_USE processed by paren_normalize
-	@type constraints: List
-	@param use: Enabled use flags
-	@param use: List
-	@param iuse: Referenceable use flags
-	@param iuse: List
-	@rtype: Tuple of three lists
-	@return: 1. all satisifed constraints, all unsatisfied constraints,
-				all constraints not in effect due to use flag configuration
-	"""
-	sat = []
-	unsat = []
-	ignore = []
-	skip_next = False
-	for id, constraint in enumerate(constraints):
-		#constraint is one of:
-		#a) an operator (||, ^^)
-		#b) a use flag (use, !use)
-		#c) a use conditional (use?, !use?)
-
-		if skip_next:
-			#We skip all lists of constraints here, because they are handled together
-			#with theier operator / use conditional
-			skip_next = False
-			continue
-
-		if not isinstance(constraint, basestring):
-			raise portage.exception.InvalidRequiredUseString(
-				("check_required_use(): '%s' constraint list without " + \
-				"use conditional or operator") % (constraints,))
-
-		if not constraint:
-			raise portage.exception.InvalidRequiredUseString(
-				("check_required_use(): '%s' syntax error") % (constraints,) )
-
-		if constraint[-1] == "?":
-			#a use conditional
-			skip_next = True
-			if constraint[0] == "!":
-				not_use_cons = True
-				flag = constraint[1:-1]
-			else:
-				not_use_cons = False
-				flag = constraint[:-1]
-
-			if not flag in iuse:
-				raise portage.exception.InvalidRequiredUseString(
-					("check_required_use(): '%s' contains the use flag '%s', which" + \
-					" is not in IUSE") % (constraints, flag))
-
-			if (not_use_cons and flag in use) or \
-				(not not_use_cons and not flag in use):
-				#we are at a use conditional and the use flag is in such a state,
-				#that we don't need to look at it. We add it to ignore here, because
-				#both sat and unsat would cause problems. I.e. A? ( B C? ( D ) )
-				#If B is enabled and C is not and we'd put C? ( D ) in unsat, we would claim
-				#A? ( B C? ( D ) ) not be satisfied, which is wrong.
-				#I.e. A? ( !B C? ( D ) )
-				#If B is enabled and C is not and we would put C? ( D ) in sat, we would claim that
-				#A? ( !B C? ( D ) ) is satisfied, which is wrong.
-				ignore.append([constraint, constraints[id+1]])
-			else:
-				sub_sat, sub_unsat, sub_ignore = _check_required_use(constraints[id+1], use, iuse)
-				if sub_unsat or not sub_sat:
-					#We need all sub constraints satisifed. Be aware of cases like A? ( B? ( C ) ),
-					#when B is disabled.
-					unsat.append([constraint, constraints[id+1]])
-				else:
-					sat.append([constraint, constraints[id+1]])
-		elif constraint in ("||", "^^"):
-			skip_next = True
-			sub_sat, sub_unsat, sub_ignore = _check_required_use(constraints[id+1], use, iuse)
-			if (constraint=="||" and sub_sat) or (constraint=="^^" and len(sub_sat)==1):
-				sat.append([constraint, constraints[id+1]])
-			else:
-				unsat.append([constraint, constraints[id+1]])
-		else:
-			#a simple use flag i.e. A or !A
-			if constraint[0] == "!":
-				flag = constraint[1:]
-				not_operator = True
-			else:
-				flag = constraint
-				not_operator = False
-
-			if not flag in iuse:
-				raise portage.exception.InvalidRequiredUseString(
-					("check_required_use(): '%s' contains the use flag '%s', which" + \
-					" is not in IUSE") % (constraints, flag))
-					
-			if (not_operator and flag not in use) or \
-				(not not_operator and constraint in use):
-				sat.append([constraint])
-			else:
-				unsat.append([constraint])
-
-	return sat, unsat, ignore
-
 def check_required_use(required_use, use, iuse):
 	"""
 	Checks if the use flags listed in 'use' satisfy all
-	constraints specified in 'required_use'. Returns a tuple
-	containing strings representing satisfied and unsatisfied
-	constraints.
+	constraints specified in 'constraints'.
 
-	@param required_use: REQUIRED_USE as defined by the ebuild
-	@type required_use: String
+	@param constraints: REQUIRED_USE string
+	@type constraints: String
 	@param use: Enabled use flags
 	@param use: List
 	@param iuse: Referenceable use flags
 	@param iuse: List
-	@rtype: Tuple of two strings
-	@return: all satisifed constraints, all unsatisfied constraints,
+	@rtype: Bool
+	@return: Indicates if REQUIRED_USE constraints are satisfied
 	"""
-	try:
-		sat, unsat, ignore = _check_required_use(paren_reduce(required_use), use, iuse)
-	except portage.exception.InvalidDependString as e:
-		raise portage.exception.InvalidRequiredUseString(str(e))
 
-	return paren_enclose(sat + ignore), paren_enclose(unsat)
+	def is_active(token):
+		if token.startswith("!"):
+			flag = token[1:]
+			is_negated = True
+		else:
+			flag = token
+			is_negated = False
+
+		if not flag or not flag in iuse:
+			raise portage.exception.InvalidDependString(
+				_("malformed syntax: '%s'") % required_use)
+
+		return (flag in use and not is_negated) or \
+			(flag not in use and is_negated)
+	
+	def is_satisfied(operator, argument):
+		if not argument:
+			#|| ( ) -> True
+			return True
+
+		if operator == "||":
+			return (True in argument)
+		elif operator == "^^":
+			return (argument.count(True) == 1)
+		elif operator[-1] == "?":
+			return (False not in argument)
+
+	mysplit = required_use.split()
+	level = 0
+	stack = [[]]
+	need_bracket = False
+
+	for token in mysplit:
+		if token == "(":
+			need_bracket = False
+			stack.append([])
+			level += 1
+		elif token == ")":
+			if need_bracket:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % required_use)
+			if level > 0:
+				level -= 1
+				l = stack.pop()
+				ignore = False
+				if stack[level]:
+					if stack[level][-1] in ("||", "^^"):
+						ignore = True
+						op = stack[level].pop()
+						stack[level].append(is_satisfied(op, l))
+					elif not isinstance(stack[level][-1], bool) and \
+						stack[level][-1][-1] == "?":
+						if is_active(stack[level][-1][:-1]):
+							op = stack[level].pop()
+							stack[level].append(is_satisfied(op, l))
+						else:
+							stack[level].pop()
+						ignore = True
+
+				if l and not ignore:
+					stack[level].extend(l)
+			else:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % required_use)
+		elif token in ("||", "^^"):
+			if need_bracket:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % required_use)
+			need_bracket = True
+			stack[level].append(token)
+		else:
+			if need_bracket or "(" in token or ")" in token or \
+				"|" in token or "^" in token:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % required_use)
+
+			if token[-1] == "?":
+				need_bracket = True
+				stack[level].append(token)
+			else:
+				stack[level].append(is_active(token))
+
+	if level != 0 or need_bracket:
+		raise portage.exception.InvalidDependString(
+			_("malformed syntax: '%s'") % required_use)
+
+	return (False not in stack[0])

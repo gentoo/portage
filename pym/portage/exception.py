@@ -32,9 +32,6 @@ class CorruptionError(PortageException):
 class InvalidDependString(PortageException):
 	"""An invalid depend string has been encountered"""
 
-class InvalidRequiredUseString(PortageException):
-	"""An invalid depend string has been encountered"""
-
 class InvalidVersionString(PortageException):
 	"""An invalid version string has been encountered"""
 
