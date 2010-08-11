@@ -15,34 +15,6 @@ from portage.localization import _
 from portage.manifest import Manifest
 from portage.util import writemsg, writemsg_stdout
 
-def dep_virtual(mysplit, mysettings):
-	"Does virtual dependency conversion"
-	warnings.warn("portage.dep_virtual() is deprecated",
-		DeprecationWarning, stacklevel=2)
-	newsplit=[]
-	myvirtuals = mysettings.getvirtuals()
-	for x in mysplit:
-		if isinstance(x, list):
-			newsplit.append(dep_virtual(x, mysettings))
-		else:
-			mykey=dep_getkey(x)
-			mychoices = myvirtuals.get(mykey, None)
-			if mychoices:
-				if len(mychoices) == 1:
-					a = x.replace(mykey, dep_getkey(mychoices[0]), 1)
-				else:
-					if x[0]=="!":
-						# blocker needs "and" not "or(||)".
-						a=[]
-					else:
-						a=['||']
-					for y in mychoices:
-						a.append(x.replace(mykey, dep_getkey(y), 1))
-				newsplit.append(a)
-			else:
-				newsplit.append(x)
-	return newsplit
-
 def getvirtuals(myroot):
 	"""
 	Calls portage.settings.getvirtuals().

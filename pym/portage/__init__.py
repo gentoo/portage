@@ -131,7 +131,7 @@ try:
 			'cpv_getkey@getCPFromCPV,endversion_keys,' + \
 			'suffix_value@endversion,pkgcmp,pkgsplit,vercmp,ververify',
 		'portage.xpak',
-		'portage._deprecated:dep_virtual,' + \
+		'portage._deprecated:' + \
 			'getvirtuals,pkgmerge',
 	)
 
