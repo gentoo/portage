@@ -131,8 +131,6 @@ try:
 			'cpv_getkey@getCPFromCPV,endversion_keys,' + \
 			'suffix_value@endversion,pkgcmp,pkgsplit,vercmp,ververify',
 		'portage.xpak',
-		'portage._deprecated:' + \
-			'pkgmerge',
 	)
 
 	import portage.const
