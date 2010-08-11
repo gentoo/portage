@@ -23,7 +23,7 @@ class TestCheckRequiredUse(TestCase):
 			( "^^ ( || ( a b ) c )", ["a"], ["a", "b", "c"], True),
 
 			( "^^ ( || ( ( a b ) ) ( c ) )", [], ["a", "b", "c"], False),
-			#~ ( "( ^^ ( ( || ( ( a ) ( b ) ) ) ( ( c ) ) ) )", ["a"], ["a", "b", "c"], True),
+			( "( ^^ ( ( || ( ( a ) ( b ) ) ) ( ( c ) ) ) )", ["a"], ["a", "b", "c"], True),
 
 			( "a || ( b c )", ["a"], ["a", "b", "c"], False),
 			( "|| ( b c ) a", ["a"], ["a", "b", "c"], False),
