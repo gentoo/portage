@@ -35,7 +35,6 @@ import errno
 import re
 import stat
 import sys
-import warnings
 from itertools import chain
 
 if sys.hexversion >= 0x3000000:
@@ -274,21 +273,6 @@ class binarytree(object):
 				chain(*self._pkgindex_translated_keys)
 			))
 
-	def _get_remotepkgs(self):
-		warnings.warn("Use binarytree._remotepkgs insead of binarytree.remotepkgs",
-			DeprecationWarning)
-		return self.__remotepkgs
-
-	def _set_remotepkgs(self, remotepkgs):
-		warnings.warn("Use binarytree._remotepkgs insead of binarytree.remotepkgs",
-			DeprecationWarning)
-		self.__remotepkgs = remotepkgs
-
-	def _del_remotepkgs(self):
-		warnings.warn("Use binarytree._remotepkgs insead of binarytree.remotepkgs",
-			DeprecationWarning)
-		del self.__remotepkgs
-
 	remotepkgs = property(_get_remotepkgs, _set_remotepkgs, _del_remotepkgs,
 		"Deprecated self.remotepkgs, only for backward compatibility")
 
@@ -504,14 +488,8 @@ class binarytree(object):
 		_movefile(src_path, dest_path, mysettings=self.settings)
 		self._pkg_paths[cpv] = mypath
 
-	def populate(self, getbinpkgs=0, getbinpkgsonly=None):
+	def populate(self, getbinpkgs=0):
 		"populates the binarytree"
-
-		if getbinpkgsonly is not None:
-			warnings.warn(
-				"portage.dbapi.bintree.binarytree.populate(): " + \
-				"getbinpkgsonly parameter is deprecated",
-				DeprecationWarning, stacklevel=2)
 
 		if self._populating:
 			return
