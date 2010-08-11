@@ -19,7 +19,7 @@ class SlotCollisionTestCase(TestCase):
 			"app-misc/Y-1": { "DEPEND": "=app-misc/Z-1" },
 			"app-misc/X-1": { "DEPEND": "=app-misc/Z-2" },
 
-			"sci-libs/K-1": { "IUSE": "+foo" },
+			"sci-libs/K-1": { "IUSE": "+foo", "EAPI": 1 },
 			"sci-libs/L-1": { "DEPEND": "sci-libs/K[-foo]", "EAPI": 2 },
 			"sci-libs/M-1": { "DEPEND": "sci-libs/K[foo=]", "IUSE": "+foo", "EAPI": 2 },
 			}
