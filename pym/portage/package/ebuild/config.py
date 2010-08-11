@@ -11,7 +11,6 @@ import errno
 import logging
 import re
 import sys
-import warnings
 
 try:
 	from configparser import SafeConfigParser, ParsingError
@@ -2397,13 +2396,7 @@ class config(object):
 
 		self.already_in_regenerate = 0
 
-	def get_virts_p(self, myroot=None):
-
-		if myroot is not None:
-			warnings.warn("The 'myroot' parameter for " + \
-				"portage.config.get_virts_p() is deprecated",
-				DeprecationWarning, stacklevel=2)
-
+	def get_virts_p(self):
 		if self.virts_p:
 			return self.virts_p
 		virts = self.getvirtuals()
@@ -2414,15 +2407,7 @@ class config(object):
 					self.virts_p[vkeysplit[1]] = virts[x]
 		return self.virts_p
 
-	def getvirtuals(self, myroot=None):
-		"""myroot is now ignored because, due to caching, it has always been
-		broken for all but the first call."""
-
-		if myroot is not None:
-			warnings.warn("The 'myroot' parameter for " + \
-				"portage.config.getvirtuals() is deprecated",
-				DeprecationWarning, stacklevel=2)
-
+	def getvirtuals(self):
 		myroot = self["ROOT"]
 		if self.virtuals:
 			return self.virtuals
@@ -2556,12 +2541,6 @@ class config(object):
 				return args[0]
 			raise KeyError(key)
 		return v
-
-	def has_key(self,mykey):
-		warnings.warn("portage.config.has_key() is deprecated, "
-			"use the in operator instead",
-			DeprecationWarning, stacklevel=2)
-		return mykey in self
 
 	def __contains__(self, mykey):
 		"""Called to implement membership test operators (in and not in)."""
