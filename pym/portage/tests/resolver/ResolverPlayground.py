@@ -27,7 +27,7 @@ class ResolverPlayground(object):
 	it's work.
 	"""
 	
-	def __init__(self, ebuilds={}, installed={}, profile={}):
+	def __init__(self, ebuilds={}, installed={}, profile={}, world=[]):
 		"""
 		ebuilds: cpv -> metadata mapping simulating avaiable ebuilds. 
 		installed: cpv -> metadata mapping simulating installed packages.
@@ -43,6 +43,7 @@ class ResolverPlayground(object):
 		self._create_ebuilds(ebuilds)
 		self._create_installed(installed)
 		self._create_profile(ebuilds, installed, profile)
+		self._create_world(world)
 		
 		self.settings, self.trees = self._load_config()
 		
@@ -182,6 +183,18 @@ class ResolverPlayground(object):
 		#Create profile symlink
 		os.makedirs(os.path.join(self.root, "etc"))
 		os.symlink(sub_profile_dir, os.path.join(self.root, "etc", "make.profile"))
+
+	def _create_world(self, world):
+		#Create /var/lib/portage/world
+		var_lib_portage = os.path.join(self.root, "var", "lib", "portage")
+		os.makedirs(var_lib_portage)
+
+		world_file = os.path.join(var_lib_portage, "world")
+
+		f = open(world_file, "w")
+		for atom in world:
+			f.write("%s\n" % atom)
+		f.close()
 
 	def _load_config(self):
 		env = {
