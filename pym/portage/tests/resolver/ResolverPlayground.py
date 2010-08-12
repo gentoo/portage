@@ -233,6 +233,8 @@ class ResolverPlayground(object):
 		options["--root"] = self.root
 		options["--config-root"] = self.root
 		options["--root-deps"] = "rdeps"
+		if self.debug:
+			options["--debug"] = True
 		# Add a fake _test_ option that can be used for
 		# conditional test code.
 		options["_test_"] = True
@@ -257,7 +259,10 @@ class ResolverPlayground(object):
 				return
 
 	def cleanup(self):
-		shutil.rmtree(self.root)
+		if self.debug:
+			print("\nROOT=%s" % self.root)
+		else:
+			shutil.rmtree(self.root)
 
 class ResolverPlaygroundTestCase(object):
 
