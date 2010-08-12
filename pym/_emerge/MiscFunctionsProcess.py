@@ -5,7 +5,7 @@ from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
 import portage
 from portage import os
 from portage.package.ebuild.doebuild import spawn, \
-	_doebuild_exit_status_check_and_log, _doebuild_exit_status_unlink
+	_doebuild_exit_status_check_and_log
 
 class MiscFunctionsProcess(AbstractEbuildProcess):
 	"""
@@ -23,9 +23,6 @@ class MiscFunctionsProcess(AbstractEbuildProcess):
 
 		self.args = [portage._shell_quote(misc_sh_binary)] + self.commands
 		self.logfile = settings.get("PORTAGE_LOG_FILE")
-
-		_doebuild_exit_status_unlink(
-			settings.get("EBUILD_EXIT_STATUS_FILE"))
 
 		AbstractEbuildProcess._start(self)
 

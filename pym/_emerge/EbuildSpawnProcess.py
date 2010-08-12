@@ -4,6 +4,9 @@
 from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
 import portage
 from portage import os
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.package.ebuild.doebuild:_doebuild_exit_status_check_and_log'
+)
 
 class EbuildSpawnProcess(AbstractEbuildProcess):
 	"""
@@ -20,3 +23,11 @@ class EbuildSpawnProcess(AbstractEbuildProcess):
 
 	def _spawn(self, args, **kwargs):
 		return self.spawn_func(args, **kwargs)
+
+	def _set_returncode(self, wait_retval):
+		AbstractEbuildProcess._set_returncode(self, wait_retval)
+		phase = self.settings.get("EBUILD_PHASE")
+		if not phase:
+			phase = 'other'
+		self.returncode = _doebuild_exit_status_check_and_log(
+			self.settings, phase, self.returncode)

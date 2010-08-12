@@ -489,15 +489,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			# Only cache it if the above stray files test succeeds.
 			_doebuild_manifest_cache = mf
 
-	def exit_status_check(retval):
-		msg = _doebuild_exit_status_check(mydo, mysettings)
-		if msg:
-			if retval == os.EX_OK:
-				retval = 1
-			for l in wrap(msg, 72):
-				eerror(l, phase=mydo, key=mysettings.mycpv)
-		return retval
-
 	# Note: PORTAGE_BIN_PATH may differ from the global
 	# constant when portage is reinstalling itself.
 	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
@@ -730,8 +721,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					elog_process(mysettings.mycpv, mysettings)
 					return 1
 			del env_file, env_stat, saved_env
-			_doebuild_exit_status_unlink(
-				mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 		else:
 			mysettings.pop("EBUILD_EXIT_STATUS_FILE", None)
 
@@ -747,7 +736,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				returnpid=returnpid)
 			if returnpid:
 				return retval
-			retval = exit_status_check(retval)
 			if secpass >= 2:
 				""" Privileged phases may have left files that need to be made
 				writable to a less privileged user."""
@@ -764,15 +752,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if returnpid:
 				return phase_retval
 
-			phase_retval = exit_status_check(phase_retval)
 			if phase_retval == os.EX_OK:
-				_doebuild_exit_status_unlink(
-					mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 				mysettings.pop("EBUILD_PHASE", None)
 				phase_retval = spawn(
 					" ".join(_post_pkg_preinst_cmd(mysettings)),
 					mysettings, debug=debug, free=1, logfile=logfile)
-				phase_retval = exit_status_check(phase_retval)
 				if phase_retval != os.EX_OK:
 					writemsg(_("!!! post preinst failed; exiting.\n"),
 						noiselevel=-1)
@@ -786,14 +770,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if returnpid:
 				return phase_retval
 
-			phase_retval = exit_status_check(phase_retval)
 			if phase_retval == os.EX_OK:
-				_doebuild_exit_status_unlink(
-					mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 				mysettings.pop("EBUILD_PHASE", None)
 				phase_retval = spawn(" ".join(_post_pkg_postinst_cmd(mysettings)),
 					mysettings, debug=debug, free=1, logfile=logfile)
-				phase_retval = exit_status_check(phase_retval)
 				if phase_retval != os.EX_OK:
 					writemsg(_("!!! post postinst failed; exiting.\n"),
 						noiselevel=-1)
@@ -807,7 +787,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if returnpid:
 				return retval
 
-			retval = exit_status_check(retval)
 			return retval
 
 		mycpv = "/".join((mysettings["CATEGORY"], mysettings["PF"]))
@@ -1003,7 +982,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			retval = spawnebuild("install", actionmap, mysettings, debug,
 				alwaysdep=1, logfile=logfile, fd_pipes=fd_pipes,
 				returnpid=returnpid)
-			retval = exit_status_check(retval)
 			if retval != os.EX_OK:
 				# The merge phase handles this already.  Callers don't know how
 				# far this function got, so we have to call elog_process() here
@@ -1194,6 +1172,14 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		spawn_func = selinux.spawn_wrapper(spawn_func,
 			mysettings["PORTAGE_SANDBOX_T"])
 
+	phase = env.get('EBUILD_PHASE')
+	if phase not in ('clean', 'cleanrm', 'depend', 'help',):
+		# Don't try to unlink for phases that don't require
+		# PORTAGE_BUILDDIR, since the directory may not
+		# even belong to this process in that case.
+		_doebuild_exit_status_unlink(
+			env.get("EBUILD_EXIT_STATUS_FILE"))
+
 	if keywords.get("returnpid"):
 		return spawn_func(mystring, env=env, **keywords)
 
@@ -1232,8 +1218,6 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 
 	kwargs = actionmap[mydo]["args"]
 	mysettings["EBUILD_PHASE"] = mydo
-	_doebuild_exit_status_unlink(
-		mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 
 	try:
 		phase_retval = spawn(actionmap[mydo]["cmd"] % mydo,
@@ -1244,13 +1228,6 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 
 	if returnpid:
 		return phase_retval
-
-	msg = _doebuild_exit_status_check(mydo, mysettings)
-	if msg:
-		if phase_retval == os.EX_OK:
-			phase_retval = 1
-		for l in wrap(msg, 72):
-			eerror(l, phase=mydo, key=mysettings.mycpv)
 
 	_post_phase_userpriv_perms(mysettings)
 	if mydo == "install":
@@ -1713,8 +1690,6 @@ def _spawn_misc_sh(mysettings, commands, phase=None, **kwargs):
 	misc_sh_binary = os.path.join(portage_bin_path,
 		os.path.basename(MISC_SH_BINARY))
 	mycommand = " ".join([_shell_quote(misc_sh_binary)] + commands)
-	_doebuild_exit_status_unlink(
-		mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 	debug = mysettings.get("PORTAGE_DEBUG") == "1"
 	logfile = mysettings.get("PORTAGE_LOG_FILE")
 	mysettings.pop("EBUILD_PHASE", None)
@@ -1723,12 +1698,5 @@ def _spawn_misc_sh(mysettings, commands, phase=None, **kwargs):
 			logfile=logfile, **kwargs)
 	finally:
 		pass
-
-	msg = _doebuild_exit_status_check(phase, mysettings)
-	if msg:
-		if rval == os.EX_OK:
-			rval = 1
-		for l in wrap(msg, 72):
-			eerror(l, phase=phase, key=mysettings.mycpv)
 
 	return rval
