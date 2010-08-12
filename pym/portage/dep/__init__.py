@@ -1458,3 +1458,106 @@ def check_required_use(required_use, use, iuse):
 			_("malformed syntax: '%s'") % required_use)
 
 	return (False not in stack[0])
+
+def extract_affecting_use(mystr, atom):
+	"""
+	Take a dep string and an atom and return the use flags
+	that decide if the given atom is in effect.
+
+	Example usage:
+		>>> extract_use_cond('sasl? ( dev-libs/cyrus-sasl ) \
+			!minimal? ( cxx? ( dev-libs/cyrus-sasl ) )', 'dev-libs/cyrus-sasl')
+		(['sasl', 'minimal', 'cxx'])
+
+	@param dep: The dependency string
+	@type mystr: String
+	@param atom: The atom to get into effect
+	@type atom: String
+	@rtype: Tuple of two lists of strings
+	@return: List of use flags that need to be enabled, List of use flag that need to be disabled
+	"""
+	mysplit = mystr.split()
+	level = 0
+	stack = [[]]
+	need_bracket = False
+	affecting_use = set()
+	atom_seen = False
+
+	def flag(conditional):
+		if conditional[0] == "!":
+			flag = conditional[1:-1]
+		else:
+			flag = conditional[:-1]
+
+		if not flag:
+			raise portage.exception.InvalidDependString(
+				_("malformed syntax: '%s'") % mystr)
+
+		return flag
+
+	for token in mysplit:
+		if token == "(":
+			need_bracket = False
+			stack.append([])
+			level += 1
+		elif token == ")":
+			if need_bracket:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % mystr)
+			if level > 0:
+				level -= 1
+				l = stack.pop()
+
+				if l:
+					if not stack[level] or (stack[level][-1] != "||" and not stack[level][-1][-1] == "?"):
+						#Optimize: ( ( ... ) ) -> ( ... )
+						stack[level].extend(l)
+					elif len(l) == 1 and stack[level][-1] == "||":
+						#Optimize: || ( A ) -> A
+						stack[level].pop()
+						stack[level].extend(l)
+					elif len(l) == 2 and (l[0] == "||" or l[0][-1] == "?") and stack[level][-1] in (l[0], "||"):
+						#Optimize: 	|| ( || ( ... ) ) -> || ( ... )
+						#			foo? ( foo? ( ... ) ) -> foo? ( ... )
+						#			|| ( foo? ( ... ) ) -> foo? ( ... )
+						stack[level].pop()
+						stack[level].extend(l)
+						if l[0][-1] == "?":
+							affecting_use.add(flag(l[0]))
+					else:
+						if stack[level] and stack[level][-1][-1] == "?":
+							affecting_use.add(flag(stack[level][-1]))
+						stack[level].append(l)
+				else:
+					if stack[level] and (stack[level][-1] == "||" or stack[level][-1][-1] == "?"):
+						stack[level].pop()
+			else:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % mystr)
+		elif token == "||":
+			if need_bracket:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % mystr)
+			need_bracket = True
+			stack[level].append(token)
+		else:
+			if need_bracket or "(" in token or ")" in token or "|" in token:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % mystr)
+
+			if token[-1] == "?":
+				need_bracket = True
+				stack[level].append(token)
+			elif token == atom:
+				atom_seen = True
+				stack[level].append(token)
+
+	if level != 0 or need_bracket:
+		raise portage.exception.InvalidDependString(
+			_("malformed syntax: '%s'") % mystr)
+
+	if not atom_seen:
+		raise portage.exception.IncorrectParameter(
+			_("extract_affecting_use: atom '%s' not in dep string: '%s'") % (atom, mystr))
+
+	return affecting_use
