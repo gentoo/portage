@@ -76,7 +76,7 @@ class ResolverPlayground(object):
 			f.write('DEPEND="' + str(depend) + '"\n')
 			if rdepend is not None:
 				f.write('RDEPEND="' + str(rdepend) + '"\n')
-			if rdepend is not None:
+			if pdepend is not None:
 				f.write('PDEPEND="' + str(pdepend) + '"\n')
 			if required_use is not None:
 				f.write('REQUIRED_USE="' + str(required_use) + '"\n')
@@ -128,7 +128,7 @@ class ResolverPlayground(object):
 			write_key("DEPEND", depend)
 			if rdepend is not None:
 				write_key("RDEPEND", rdepend)
-			if rdepend is not None:
+			if pdepend is not None:
 				write_key("PDEPEND", pdepend)
 			if required_use is not None:
 				write_key("REQUIRED_USE", required_use)
