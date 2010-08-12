@@ -5305,6 +5305,7 @@ class depgraph(object):
 						adjustments.append(flag)
 					else:
 						adjustments.append("-" + flag)
+				use_changes_msg.append(get_dep_chain(pkg))
 				use_changes_msg.append("=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
 
 		if unstable_keyword_msg:
