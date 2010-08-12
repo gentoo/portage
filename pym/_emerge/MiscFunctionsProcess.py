@@ -4,8 +4,7 @@
 from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
 import portage
 from portage import os
-from portage.package.ebuild.doebuild import spawn, \
-	_doebuild_exit_status_check_and_log
+from portage.package.ebuild.doebuild import spawn
 
 class MiscFunctionsProcess(AbstractEbuildProcess):
 	"""
@@ -31,9 +30,3 @@ class MiscFunctionsProcess(AbstractEbuildProcess):
 		debug = settings.get("PORTAGE_DEBUG") == "1"
 		return spawn(" ".join(args), settings,
 			debug=debug, **kwargs)
-
-	def _set_returncode(self, wait_retval):
-		AbstractEbuildProcess._set_returncode(self, wait_retval)
-		self.returncode = _doebuild_exit_status_check_and_log(
-			self.settings, self.phase, self.returncode)
-

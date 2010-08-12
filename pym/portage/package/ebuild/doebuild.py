@@ -1173,7 +1173,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 			mysettings["PORTAGE_SANDBOX_T"])
 
 	phase = env.get('EBUILD_PHASE')
-	if phase not in ('clean', 'cleanrm', 'depend', 'help',):
+	if phase not in EbuildSpawnProcess._phases_without_builddir:
 		# Don't try to unlink for phases that don't require
 		# PORTAGE_BUILDDIR, since the directory may not
 		# even belong to this process in that case.
