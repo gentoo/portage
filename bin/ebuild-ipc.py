@@ -31,6 +31,9 @@ class EbuildIpc(object):
 		self.ipc_lock_file = os.path.join(self.fifo_dir, '.ipc_lock')
 
 	def communicate(self, args):
+		# Make locks quiet since unintended locking messages displayed on
+		# stdout could corrupt the intended output of this program.
+		portage.locks._quiet = True
 		lock_obj = portage.locks.lockfile(self.ipc_lock_file, unlinkfile=True)
 		try:
 			return self._communicate(args)
