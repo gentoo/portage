@@ -35,6 +35,11 @@ class AutounmaskTestCase(TestCase):
 			"sci-libs/L-1": { "IUSE": "bar" },
 			"sci-libs/M-1": { "KEYWORDS": "~x86" },
 			"sci-libs/P-1": { },
+
+			#ebuilds to test these nice "required by cat/pkg[foo]" messages
+			"dev-util/Q-1": { "DEPEND": "foo? ( dev-util/R[bar] )", "IUSE": "+foo", "EAPI": 2 },
+			"dev-util/Q-2": { "RDEPEND": "!foo? ( dev-util/R[bar] )", "IUSE": "foo", "EAPI": 2 },
+			"dev-util/R-1": { "IUSE": "bar" },
 			}
 
 		test_cases = (
@@ -141,6 +146,20 @@ class AutounmaskTestCase(TestCase):
 					success = False,
 					mergelist = ["sci-libs/L-1", "sci-libs/K-8"],
 					use_changes = { "sci-libs/L-1": { "bar": True } }),
+
+				#Test these nice "required by cat/pkg[foo]" messages.
+				ResolverPlaygroundTestCase(
+					["=dev-util/Q-1"],
+					options = {"--autounmask": True},
+					success = False,
+					mergelist = ["dev-util/R-1", "dev-util/Q-1"],
+					use_changes = { "dev-util/R-1": { "bar": True } }),
+				ResolverPlaygroundTestCase(
+					["=dev-util/Q-2"],
+					options = {"--autounmask": True},
+					success = False,
+					mergelist = ["dev-util/R-1", "dev-util/Q-2"],
+					use_changes = { "dev-util/R-1": { "bar": True } }),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds)
