@@ -779,9 +779,10 @@ into() {
 	else
 		export DESTTREE=$1
 		if [ ! -d "${D}${DESTTREE}" ]; then
-			if ! install -d "${D}${DESTTREE}"; then
-				ret=$?
-				[[ $ret -ne 0 ]] && helpers_die "$0 failed"
+			install -d "${D}${DESTTREE}"
+			local ret=$?
+			if [[ $ret -ne 0 ]] ; then
+				helpers_die "$0 failed"
 				return $ret
 			fi
 		fi
@@ -794,9 +795,10 @@ insinto() {
 	else
 		export INSDESTTREE=$1
 		if [ ! -d "${D}${INSDESTTREE}" ]; then
-			if ! install -d "${D}${INSDESTTREE}"; then
-				ret=$?
-				[[ $ret -ne 0 ]] && helpers_die "$0 failed"
+			install -d "${D}${INSDESTTREE}"
+			local ret=$?
+			if [[ $ret -ne 0 ]] ; then
+				helpers_die "$0 failed"
 				return $ret
 			fi
 		fi
@@ -809,9 +811,10 @@ exeinto() {
 	else
 		export _E_EXEDESTTREE_="$1"
 		if [ ! -d "${D}${_E_EXEDESTTREE_}" ]; then
-			if ! install -d "${D}${_E_EXEDESTTREE_}"; then
-				ret=$?
-				[[ $ret -ne 0 ]] && helpers_die "$0 failed"
+			install -d "${D}${_E_EXEDESTTREE_}"
+			local ret=$?
+			if [[ $ret -ne 0 ]] ; then
+				helpers_die "$0 failed"
 				return $ret
 			fi
 		fi
@@ -824,9 +827,10 @@ docinto() {
 	else
 		export _E_DOCDESTTREE_="$1"
 		if [ ! -d "${D}usr/share/doc/${PF}/${_E_DOCDESTTREE_}" ]; then
-			if ! install -d "${D}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"; then
-				ret=$?
-				[[ $ret -ne 0 ]] && helpers_die "$0 failed"
+			install -d "${D}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
+			local ret=$?
+			if [[ $ret -ne 0 ]] ; then
+				helpers_die "$0 failed"
 				return $ret
 			fi
 		fi
