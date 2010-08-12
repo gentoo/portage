@@ -16,7 +16,7 @@ from portage import digraph
 from portage.const import PORTAGE_PACKAGE_ATOM
 from portage.dbapi import dbapi
 from portage.dbapi.dep_expand import dep_expand
-from portage.dep import Atom
+from portage.dep import Atom, extract_affecting_use
 from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use
 from portage.output import bold, blue, colorize, create_color_func, darkblue, \
 	darkgreen, green, nc_len, red, teal, turquoise, yellow
@@ -5080,14 +5080,44 @@ class depgraph(object):
 			msg = "#"
 			node = pkg
 			first = True
+			child = None
+			all_parents = self._dynamic_config._parent_atoms
 			while node is not None:
 				traversed_nodes.add(node)
 				if node is not pkg:
+					for ppkg, patom in all_parents[child]:
+						if ppkg == node:
+							atom = patom.unevaluated_atom
+							break
+
+					dep_strings = set()
+					for priority in self._dynamic_config.digraph.nodes[node][0][child]:
+						if priority.buildtime:
+							dep_strings.add(node.metadata["DEPEND"])
+						if priority.runtime:
+							dep_strings.add(node.metadata["RDEPEND"])
+						if priority.runtime_post:
+							dep_strings.add(node.metadata["PDEPEND"])
+					
+					affecting_use = set()
+					for dep_str in dep_strings:
+						affecting_use.update(extract_affecting_use(dep_str, atom))
+					
+					pkg_name = node.cpv
+					if affecting_use:
+						usedep = []
+						for flag in affecting_use:
+							if flag in node.use.enabled:
+								usedep.append(flag)
+							else:
+								usedep.append("-"+flag)
+						pkg_name += "[%s]" % ",".join(usedep)
+
 					if first:
 						first = False
 					else:
 						msg += ", "
-					msg += 'required by =%s' % node.cpv
+					msg += 'required by =%s' % pkg_name
 	
 				if node not in self._dynamic_config.digraph:
 					# The parent is not in the graph due to backtracking.
@@ -5108,6 +5138,7 @@ class depgraph(object):
 						break
 					if parent not in traversed_nodes:
 						selected_parent = parent
+						child = node
 				node = selected_parent
 			msg += "\n"
 			return msg
