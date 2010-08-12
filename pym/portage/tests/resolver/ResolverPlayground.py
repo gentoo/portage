@@ -27,13 +27,14 @@ class ResolverPlayground(object):
 	it's work.
 	"""
 	
-	def __init__(self, ebuilds={}, installed={}, profile={}, world=[]):
+	def __init__(self, ebuilds={}, installed={}, profile={}, world=[], debug=False):
 		"""
 		ebuilds: cpv -> metadata mapping simulating avaiable ebuilds. 
 		installed: cpv -> metadata mapping simulating installed packages.
 			If a metadata key is missing, it gets a default value.
 		profile: settings defined by the profile.
 		"""
+		self.debug = debug
 		self.root = tempfile.mkdtemp() + os.path.sep
 		self.portdir = os.path.join(self.root, "usr/portage")
 		self.vdbdir = os.path.join(self.root, "var/db/pkg")
@@ -236,7 +237,8 @@ class ResolverPlayground(object):
 		# conditional test code.
 		options["_test_"] = True
 
-		portage.util.noiselimit = -2
+		if not self.debug:
+			portage.util.noiselimit = -2
 		params = create_depgraph_params(options, action)
 		success, depgraph, favorites = backtrack_depgraph(
 			self.settings, self.trees, options, params, action, atoms, None)
