@@ -3,7 +3,7 @@
 
 from portage.tests import TestCase
 from portage.dep import extract_affecting_use
-from portage.exception import InvalidDependString, IncorrectParameter
+from portage.exception import InvalidDependString
 
 class TestExtractAffectingUSE(TestCase):
 
@@ -32,6 +32,8 @@ class TestExtractAffectingUSE(TestCase):
 			("( ab? ( || ( ( A ) || ( b? ( ( ( || ( B ( C ) ) ) ) ) ) ) ) )", "A", ("ab",)),
 			("( ab? ( || ( ( A ) || ( b? ( ( ( || ( B ( C ) ) ) ) ) ) ) ) )", "B", ("ab", "b")),
 			("( ab? ( || ( ( A ) || ( b? ( ( ( || ( B ( C ) ) ) ) ) ) ) ) )", "C", ("ab", "b")),
+
+			("a? ( A )", "B", []),
 		)
 
 		test_cases_xfail = (
@@ -52,8 +54,6 @@ class TestExtractAffectingUSE(TestCase):
 			("a? A", "A"),
 			("( || ( || || ( A ) foo? ( B ) ) )", "A"),
 			("( || ( || bar? ( A ) foo? ( B ) ) )", "A"),
-
-			("a? ( A )", "B"),
 		)
 
 		for dep, atom, expected in test_cases:
@@ -67,4 +67,4 @@ class TestExtractAffectingUSE(TestCase):
 			fail_msg = "dep: " + dep + ", atom: " + atom + ", got: " + \
 				" ".join(sorted(result)) + ", expected: " + " ".join(sorted(expected))
 			self.assertRaisesMsg(fail_msg, \
-				(InvalidDependString, IncorrectParameter), extract_affecting_use, dep, atom)
+				InvalidDependString, extract_affecting_use, dep, atom)

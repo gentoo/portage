@@ -1481,7 +1481,6 @@ def extract_affecting_use(mystr, atom):
 	stack = [[]]
 	need_bracket = False
 	affecting_use = set()
-	atom_seen = False
 
 	def flag(conditional):
 		if conditional[0] == "!":
@@ -1549,15 +1548,10 @@ def extract_affecting_use(mystr, atom):
 				need_bracket = True
 				stack[level].append(token)
 			elif token == atom:
-				atom_seen = True
 				stack[level].append(token)
 
 	if level != 0 or need_bracket:
 		raise portage.exception.InvalidDependString(
 			_("malformed syntax: '%s'") % mystr)
-
-	if not atom_seen:
-		raise portage.exception.IncorrectParameter(
-			_("extract_affecting_use: atom '%s' not in dep string: '%s'") % (atom, mystr))
 
 	return affecting_use
