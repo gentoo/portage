@@ -558,6 +558,15 @@ install_qa_check() {
 		vecho -ne '\a\n'
 	fi
 
+	f=$(find "${D}"usr/lib*/python*/site-packages -name '*.la' 2>/dev/null | sed "s:${D}:/:")
+	if [[ -n ${f} ]] ; then
+		vecho -ne '\a\n'
+		eqawarn "QA Notice: Libtool libraries have been found in Python site-packages"
+		eqawarn "           directories. These files should not be installed."
+		eqawarn "${f}"
+		vecho -ne '\a\n'
+	fi
+
 	# Portage regenerates this on the installed system.
 	rm -f "${D}"/usr/share/info/dir{,.gz,.bz2}
 
