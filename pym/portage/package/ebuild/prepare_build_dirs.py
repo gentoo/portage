@@ -102,7 +102,7 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 				os.mkfifo(p)
 		apply_secpass_permissions(p,
 			uid=portage_uid, gid=portage_gid,
-			mode=0o770, mask=0o2, stat_cached=st)
+			mode=0o770, stat_cached=st)
 
 	# Reset state for things like noauto and keepwork in FEATURES.
 	for x in ('.die_hooks',):
