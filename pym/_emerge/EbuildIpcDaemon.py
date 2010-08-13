@@ -1,7 +1,6 @@
 # Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import array
 import errno
 import pickle
 from portage import os
@@ -31,14 +30,12 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 
 		if event & PollConstants.POLLIN:
 
-			buf = array.array('B')
 			try:
-				buf.fromfile(self._files.pipe_in, self._bufsize)
-			except (EOFError, IOError):
+				obj = pickle.load(self._files.pipe_in)
+			except (EnvironmentError, EOFError, ValueError,
+				pickle.UnpicklingError):
 				pass
-
-			if buf:
-				obj = pickle.loads(buf.tostring())
+			else:
 				cmd_key = obj[0]
 				cmd_handler = self.commands[cmd_key]
 				reply = cmd_handler(obj)
