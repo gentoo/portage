@@ -66,12 +66,12 @@ class AbstractEbuildProcess(SpawnProcess):
 				# being killed by a signal.
 				self.cancel()
 
-	def _zombie(self):
+	def _orphan_process_warn(self):
 		phase = self._get_phase()
 
-		msg = _("The ebuild phase '%s' appears "
-		"to have left a zombie process with "
-		"pid %d.") % (phase, self.pid)
+		msg = _("The ebuild phase '%s' with pid %s appears "
+		"to have left an orphan process running in the "
+		"background.") % (phase, self.pid)
 
 		self._eerror(textwrap.wrap(msg, 72))
 

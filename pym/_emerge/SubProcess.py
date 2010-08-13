@@ -73,7 +73,7 @@ class SubProcess(AbstractPollTask):
 						del e
 					self.scheduler.schedule(self._reg_id, timeout=timeout)
 					if self._registered:
-						self._zombie()
+						self._orphan_process_warn()
 			else:
 				self.scheduler.schedule(self._reg_id)
 			self._unregister()
@@ -92,7 +92,7 @@ class SubProcess(AbstractPollTask):
 
 		return self.returncode
 
-	def _zombie(self):
+	def _orphan_process_warn(self):
 		pass
 
 	def _unregister(self):
