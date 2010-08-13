@@ -54,10 +54,6 @@ qa_call() {
 	return $retval
 }
 
-# Subshell/helper die support (must export for the die helper).
-export EBUILD_MASTER_PID=$$
-trap 'exit 1' SIGTERM
-
 EBUILD_SH_ARGS="$*"
 
 shift $#
@@ -2034,6 +2030,11 @@ if [ "${EBUILD_PHASE}" != "depend" ] ; then
 fi
 
 ebuild_main() {
+
+	# Subshell/helper die support (must export for the die helper).
+	export EBUILD_MASTER_PID=$BASHPID
+	trap 'exit 1' SIGTERM
+
 	local f x
 
 	if [[ $EBUILD_PHASE != depend ]] ; then
