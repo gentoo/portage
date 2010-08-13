@@ -8,29 +8,10 @@ from portage.tests import TestCase
 from portage.const import PORTAGE_BIN_PATH
 from portage.const import PORTAGE_PYM_PATH
 from portage.const import BASH_BINARY
+from portage.package.ebuild._ipc.ExitCommand import ExitCommand
 from _emerge.SpawnProcess import SpawnProcess
 from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
 from _emerge.TaskScheduler import TaskScheduler
-
-class ExitCommand(object):
-
-	def __init__(self):
-		self.reply_hook = None
-		self.exitcode = None
-
-	def __call__(self, argv):
-
-		if self.exitcode is not None:
-			# Ignore all but the first call, since if die is called
-			# then we certainly want to honor that exitcode, even
-			# the ebuild process manages to send a second exit
-			# command.
-			self.reply_hook = None
-		else:
-			self.exitcode = int(argv[1])
-
-		# (stdout, stderr, returncode)
-		return ('', '', 0)
 
 class IpcDaemonTestCase(TestCase):
 
@@ -58,8 +39,8 @@ class IpcDaemonTestCase(TestCase):
 					'"$PORTAGE_BIN_PATH"/ebuild-ipc exit %d' % exitcode],
 					env=env, scheduler=task_scheduler.sched_iface)
 				def exit_command_callback():
-					daemon.cancel()
 					proc.cancel()
+					daemon.cancel()
 				exit_command.reply_hook = exit_command_callback
 				task_scheduler.add(daemon)
 				task_scheduler.add(proc)

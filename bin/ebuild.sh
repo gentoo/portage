@@ -289,10 +289,6 @@ register_success_hook() {
 if ! hasq "$EBUILD_PHASE" clean cleanrm depend help ; then
 	cd "$PORTAGE_BUILDDIR" || \
 		die "PORTAGE_BUILDDIR does not exist: '$PORTAGE_BUILDDIR'"
-else
-	# Don't try to create this when it's parent
-	# directory doesn't necessarily exist.
-	unset EBUILD_EXIT_STATUS_FILE
 fi
 
 #if no perms are specified, dirs/files will have decent defaults
@@ -749,9 +745,10 @@ dyn_clean() {
 	fi
 
 	if [[ $EMERGE_FROM = binary ]] || ! hasq keepwork $FEATURES; then
-		rm -f "$PORTAGE_BUILDDIR"/.{ebuild_changed,exit_status,logid,unpacked,prepared} \
+		rm -f "$PORTAGE_BUILDDIR"/.{ebuild_changed,logid,unpacked,prepared} \
 			"$PORTAGE_BUILDDIR"/.{configured,compiled,tested,packaged} \
-			"$PORTAGE_BUILDDIR"/.die_hooks
+			"$PORTAGE_BUILDDIR"/.die_hooks \
+			"$PORTAGE_BUILDDIR"/.ipc_{in,out,lock}
 
 		rm -rf "${PORTAGE_BUILDDIR}/build-info"
 		rm -rf "${WORKDIR}"
@@ -2206,10 +2203,6 @@ ebuild_main() {
 		exit 1
 		;;
 	esac
-	if [ -n "$EBUILD_EXIT_STATUS_FILE" ] ; then
-		> "$EBUILD_EXIT_STATUS_FILE" || \
-			die "failed to create '$EBUILD_EXIT_STATUS_FILE'"
-	fi
 }
 
 if [[ $EBUILD_PHASE = depend ]] ; then
@@ -2230,6 +2223,7 @@ elif [[ -n $EBUILD_SH_ARGS ]] ; then
 			chown portage:portage "$T/environment" &>/dev/null
 			chmod g+w "$T/environment" &>/dev/null
 		fi
+		[[ -n $PORTAGE_IPC_DAEMON ]] && "$PORTAGE_BIN_PATH"/ebuild-ipc exit 0
 		exit 0
 	)
 	exit $?

@@ -213,8 +213,6 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_FILE)
 	mysettings["PM_EBUILD_HOOK_DIR"] = os.path.join(
 		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_DIR)
-	mysettings["EBUILD_EXIT_STATUS_FILE"] = os.path.join(
-		mysettings["PORTAGE_BUILDDIR"], ".exit_status")
 
 	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistent.
 	if not eapi_exports_KV(eapi):
@@ -239,61 +237,6 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 		mycolors.append("%s=$'%s'" % \
 			(c, style_to_ansi_code(c)))
 	mysettings["PORTAGE_COLORMAP"] = "\n".join(mycolors)
-
-def _doebuild_exit_status_check(mydo, settings):
-	"""
-	Returns an error string if the shell appeared
-	to exit unsuccessfully, None otherwise.
-	"""
-	exit_status_file = settings.get("EBUILD_EXIT_STATUS_FILE")
-	if not exit_status_file or \
-		os.path.exists(exit_status_file):
-		return None
-	msg = _("The ebuild phase '%s' has exited "
-	"unexpectedly. This type of behavior "
-	"is known to be triggered "
-	"by things such as failed variable "
-	"assignments (bug #190128) or bad substitution "
-	"errors (bug #200313). Normally, before exiting, bash should "
-	"have displayed an error message above. If bash did not "
-	"produce an error message above, it's possible "
-	"that the ebuild has called `exit` when it "
-	"should have called `die` instead. This behavior may also "
-	"be triggered by a corrupt bash binary or a hardware "
-	"problem such as memory or cpu malfunction. If the problem is not "
-	"reproducible or it appears to occur randomly, then it is likely "
-	"to be triggered by a hardware problem. "
-	"If you suspect a hardware problem then you should "
-	"try some basic hardware diagnostics such as memtest. "
-	"Please do not report this as a bug unless it is consistently "
-	"reproducible and you are sure that your bash binary and hardware "
-	"are functioning properly.") % mydo
-	return msg
-
-def _doebuild_exit_status_check_and_log(settings, mydo, retval):
-	msg = _doebuild_exit_status_check(mydo, settings)
-	if msg:
-		if retval == os.EX_OK:
-			retval = 1
-		for l in wrap(msg, 72):
-			eerror(l, phase=mydo, key=settings.mycpv)
-	return retval
-
-def _doebuild_exit_status_unlink(exit_status_file):
-	"""
-	Double check to make sure it really doesn't exist
-	and raise an OSError if it still does (it shouldn't).
-	OSError if necessary.
-	"""
-	if not exit_status_file:
-		return
-	try:
-		os.unlink(exit_status_file)
-	except OSError:
-		pass
-	if os.path.exists(exit_status_file):
-		os.unlink(exit_status_file)
-
 
 _doebuild_manifest_cache = None
 _doebuild_broken_ebuilds = set()
@@ -721,8 +664,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					elog_process(mysettings.mycpv, mysettings)
 					return 1
 			del env_file, env_stat, saved_env
-		else:
-			mysettings.pop("EBUILD_EXIT_STATUS_FILE", None)
 
 		# if any of these are being called, handle them -- running them out of
 		# the sandbox -- and stop now.
@@ -1171,14 +1112,6 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	if sesandbox:
 		spawn_func = selinux.spawn_wrapper(spawn_func,
 			mysettings["PORTAGE_SANDBOX_T"])
-
-	phase = env.get('EBUILD_PHASE')
-	if phase not in EbuildSpawnProcess._phases_without_builddir:
-		# Don't try to unlink for phases that don't require
-		# PORTAGE_BUILDDIR, since the directory may not
-		# even belong to this process in that case.
-		_doebuild_exit_status_unlink(
-			env.get("EBUILD_EXIT_STATUS_FILE"))
 
 	if keywords.get("returnpid"):
 		return spawn_func(mystring, env=env, **keywords)
