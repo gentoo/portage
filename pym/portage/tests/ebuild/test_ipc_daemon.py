@@ -9,7 +9,7 @@ from portage.const import PORTAGE_BIN_PATH
 from portage.const import PORTAGE_PYM_PATH
 from portage.const import BASH_BINARY
 from _emerge.SpawnProcess import SpawnProcess
-from _emerge.FifoIpcDaemon import FifoIpcDaemon
+from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
 from _emerge.TaskScheduler import TaskScheduler
 
 class IpcDaemonTestCase(TestCase):
@@ -26,7 +26,7 @@ class IpcDaemonTestCase(TestCase):
 			os.mkfifo(input_fifo)
 			os.mkfifo(output_fifo)
 			task_scheduler = TaskScheduler(max_jobs=2)
-			daemon = FifoIpcDaemon(input_fifo=input_fifo,
+			daemon = EbuildIpcDaemon(input_fifo=input_fifo,
 				output_fifo=output_fifo,
 				scheduler=task_scheduler.sched_iface)
 			proc = SpawnProcess(
