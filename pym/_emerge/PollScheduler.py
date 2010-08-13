@@ -3,6 +3,7 @@
 
 import logging
 import select
+import time
 
 from portage.util import writemsg_level
 
@@ -112,6 +113,8 @@ class PollScheduler(object):
 		"""
 		if not self._poll_event_queue:
 			self._poll(timeout)
+			if not self._poll_event_queue:
+				raise StopIteration()
 		return self._poll_event_queue.pop()
 
 	def _poll_loop(self):
@@ -187,7 +190,7 @@ class PollScheduler(object):
 		del self._poll_event_handlers[f]
 		del self._poll_event_handler_ids[reg_id]
 
-	def _schedule_wait(self, wait_ids):
+	def _schedule_wait(self, wait_ids, timeout=None):
 		"""
 		Schedule until wait_id is not longer registered
 		for poll() events.
@@ -201,12 +204,18 @@ class PollScheduler(object):
 		if isinstance(wait_ids, int):
 			wait_ids = frozenset([wait_ids])
 
+		start_time = None
+		if timeout is not None:
+			start_time = 1000 * time.time()
 		try:
 			while wait_ids.intersection(handler_ids):
-				f, event = self._next_poll_event()
+				f, event = self._next_poll_event(timeout=timeout)
 				handler, reg_id = event_handlers[f]
 				handler(f, event)
 				event_handled = True
+				if timeout is not None:
+					if 1000 * time.time() - start_time >= timeout:
+						break
 		except StopIteration:
 			event_handled = True
 
