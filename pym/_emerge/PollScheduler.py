@@ -161,9 +161,13 @@ class PollScheduler(object):
 		try:
 			while event_handlers and self._poll_event_queue:
 				f, event = self._next_poll_event()
-				handler, reg_id = event_handlers[f]
-				handler(f, event)
-				events_handled += 1
+				try:
+					handler, reg_id = event_handlers[f]
+				except KeyError:
+					pass
+				else:
+					handler(f, event)
+					events_handled += 1
 		except StopIteration:
 			events_handled += 1
 
@@ -210,9 +214,13 @@ class PollScheduler(object):
 		try:
 			while wait_ids.intersection(handler_ids):
 				f, event = self._next_poll_event(timeout=timeout)
-				handler, reg_id = event_handlers[f]
-				handler(f, event)
-				event_handled = True
+				try:
+					handler, reg_id = event_handlers[f]
+				except KeyError:
+					pass
+				else:
+					handler(f, event)
+					event_handled = True
 				if timeout is not None:
 					if 1000 * time.time() - start_time >= timeout:
 						break
