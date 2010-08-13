@@ -47,3 +47,4 @@ class CompileModulesTestCase(TestCase):
 				if do_compile:
 					cfile += (__debug__ and 'c' or 'o')
 					py_compile.compile(x, cfile=cfile, doraise=True)
+					os.unlink(cfile)
