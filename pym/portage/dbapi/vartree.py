@@ -179,7 +179,7 @@ class vardbapi(dbapi):
 			for x in (catdir, base):
 				os.utime(x, t)
 		except OSError:
-			os.makedirs(catdir)
+			ensure_dirs(catdir)
 
 	def cpv_exists(self, mykey):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
@@ -198,7 +198,7 @@ class vardbapi(dbapi):
 
 	def cpv_inject(self, mycpv):
 		"injects a real package into our on-disk database; assumes mycpv is valid and doesn't already exist"
-		os.makedirs(self.getpath(mycpv))
+		ensure_dirs(self.getpath(mycpv))
 		counter = self.counter_tick(mycpv=mycpv)
 		# write local package counter so that emerge clean does the right thing
 		write_atomic(self.getpath(mycpv, filename="COUNTER"), str(counter))
@@ -239,7 +239,7 @@ class vardbapi(dbapi):
 			moves += 1
 			if not os.path.exists(self.getpath(mynewcat)):
 				#create the directory
-				os.makedirs(self.getpath(mynewcat))
+				ensure_dirs(self.getpath(mynewcat))
 			newpath = self.getpath(mynewcpv)
 			if os.path.exists(newpath):
 				#dest already exists; keep this puppy where it is.
@@ -2846,7 +2846,7 @@ class dblink(object):
 			self._eerror("preinst", lines)
 
 		if not os.path.exists(self.dbcatdir):
-			os.makedirs(self.dbcatdir)
+			ensure_dirs(self.dbcatdir)
 
 		otherversions = []
 		for v in self.vartree.dbapi.cp_list(self.mysplit[0]):
