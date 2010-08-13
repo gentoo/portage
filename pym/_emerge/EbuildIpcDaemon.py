@@ -24,7 +24,7 @@ class EbuildIpcDaemon(FifoIpcDaemon):
        left orphan processes running in the backgraound (as in bug 278895).
 	"""
 
-	__slots__ = ()
+	__slots__ = ('commands',)
 
 	def _input_handler(self, fd, event):
 
@@ -38,15 +38,15 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 
 			if buf:
 				obj = pickle.loads(buf.tostring())
-				if isinstance(obj, list) and \
-					obj and \
-					obj[0] == 'exit':
-					output_fd = os.open(self.output_fifo, os.O_WRONLY|os.O_NONBLOCK)
-					output_file = os.fdopen(output_fd, 'wb')
-					pickle.dump('OK', output_file)
-					output_file.close()
-					self._unregister()
-					self.wait()
+				cmd_key = obj[0]
+				cmd_handler = self.commands[cmd_key]
+				cmd_handler(obj, self._send_reply)
 
 		self._unregister_if_appropriate(event)
 		return self._registered
+
+	def _send_reply(self, reply):
+		output_fd = os.open(self.output_fifo, os.O_WRONLY|os.O_NONBLOCK)
+		output_file = os.fdopen(output_fd, 'wb')
+		pickle.dump(reply, output_file)
+		output_file.close()

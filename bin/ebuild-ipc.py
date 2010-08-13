@@ -51,18 +51,17 @@ class EbuildIpc(object):
 		output_file.flush()
 
 		events = select.select([input_file], [], [])
-		if input_file in events[0]:
-			reply = pickle.load(input_file)
-		else:
-			reply = None
-
+		reply = pickle.load(input_file)
 		output_file.close()
 		input_file.close()
 
-		if reply == 'OK':
-			rval = os.EX_OK
-		else:
-			rval = 1
+		(out, err, rval) = reply
+
+		if out:
+			portage.util.writemsg_stdout(out, noiselevel=-1)
+
+		if err:
+			portage.util.writemsg(out, noiselevel=-1)
 
 		return rval
 
