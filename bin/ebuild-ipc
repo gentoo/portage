@@ -4,7 +4,7 @@
 
 PORTAGE_BIN_PATH=${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}
 PORTAGE_PYM_PATH=${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}
-# Set EPYTHON variable as empty so that dohtml doesn't try
+# Set EPYTHON variable as empty so that ebuild-ipc.py doesn't try
 # to use potentially unsupported version of Python.
 EPYTHON= PYTHONPATH=$PORTAGE_PYM_PATH${PYTHONPATH:+:}$PYTHONPATH \
 	exec "$PORTAGE_BIN_PATH/ebuild-ipc.py" "$@"

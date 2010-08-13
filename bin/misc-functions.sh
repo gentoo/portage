@@ -542,8 +542,27 @@ install_qa_check() {
 	if [[ -n ${f} ]] ; then
 		vecho -ne '\a\n'
 		eqawarn "QA Notice: Byte-compiled Python modules have been found. python_mod_optimize()"
-		eqawarn "           and python_mod_cleanup() functions python.eclass should be used to"
-		eqawarn "           handle byte-compiled Python modules."
+		eqawarn "           and python_mod_cleanup() functions from python.eclass should be used"
+		eqawarn "           to handle byte-compiled Python modules."
+		eqawarn "${f}"
+		vecho -ne '\a\n'
+	fi
+
+	f=$(find "${D}"usr/lib*/python*/site-packages -name '*.a' 2>/dev/null | sed "s:${D}:/:")
+	if [[ -n ${f} ]] ; then
+		vecho -ne '\a\n'
+		eqawarn "QA Notice: Static libraries have been found in Python site-packages"
+		eqawarn "           directories. Build system should be modified to not generate"
+		eqawarn "           these files and object files generated only for these files."
+		eqawarn "${f}"
+		vecho -ne '\a\n'
+	fi
+
+	f=$(find "${D}"usr/lib*/python*/site-packages -name '*.la' 2>/dev/null | sed "s:${D}:/:")
+	if [[ -n ${f} ]] ; then
+		vecho -ne '\a\n'
+		eqawarn "QA Notice: Libtool libraries have been found in Python site-packages"
+		eqawarn "           directories. These files should not be installed."
 		eqawarn "${f}"
 		vecho -ne '\a\n'
 	fi
