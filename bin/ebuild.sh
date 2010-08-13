@@ -2240,5 +2240,9 @@ elif [[ -n $EBUILD_SH_ARGS ]] ; then
 	exit $?
 fi
 
+# Subshell/helper die support (must export for the die helper).
+export EBUILD_MASTER_PID=$BASHPID
+trap 'exit 1' SIGTERM
+
 # Do not exit when ebuild.sh is sourced by other scripts.
 true
