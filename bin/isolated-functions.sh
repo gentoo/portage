@@ -113,6 +113,8 @@ die() {
 	eerror "ERROR: $CATEGORY/$PF failed:"
 	eerror "  ${*:-(no error message)}"
 	eerror
+	# This part is useless when called by the die helper.
+	if [[ ${BASH_SOURCE[1]##*/} != die ]] ; then
 	dump_trace 2 ${filespacing} ${linespacing}
 	eerror "  $(printf "%${filespacing}s" "${BASH_SOURCE[1]##*/}"), line $(printf "%${linespacing}s" "${BASH_LINENO[0]}"):  Called die"
 	eerror "The specific snippet of code:"
@@ -138,6 +140,7 @@ die() {
 		| sed -e '1d' -e 's:^:RETAIN-LEADING-SPACE:' \
 		| while read -r n ; do eerror "  ${n#RETAIN-LEADING-SPACE}" ; done
 	eerror
+	fi
 	eerror "If you need support, post the output of 'emerge --info =$CATEGORY/$PF',"
 	eerror "the complete build log and the output of 'emerge -pqv =$CATEGORY/$PF'."
 	if [[ -n ${EBUILD_OVERLAY_ECLASSES} ]] ; then
