@@ -1,6 +1,7 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import codecs
 import textwrap
 from _emerge.SpawnProcess import SpawnProcess
 from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
@@ -8,7 +9,12 @@ from portage.elog.messages import eerror
 from portage.localization import _
 from portage.package.ebuild._ipc.ExitCommand import ExitCommand
 from portage import os
+from portage import StringIO
+from portage import _encodings
+from portage import _unicode_decode
+from portage import _unicode_encode
 from portage.util._pty import _create_pty_or_pipe
+from portage.util import writemsg_stdout
 
 class AbstractEbuildProcess(SpawnProcess):
 
@@ -67,8 +73,7 @@ class AbstractEbuildProcess(SpawnProcess):
 		"to have left a zombie process with "
 		"pid %d.") % (phase, self.pid)
 
-		for l in textwrap.wrap(msg, 72):
-			eerror(l, phase=phase, key=self.settings.mycpv)
+		self._eerror(textwrap.wrap(msg, 72))
 
 	def _pipe(self, fd_pipes):
 		stdout_pipe = fd_pipes.get(1)
@@ -107,8 +112,28 @@ class AbstractEbuildProcess(SpawnProcess):
 		"reproducible and you are sure that your bash binary and hardware "
 		"are functioning properly.") % phase
 
-		for l in textwrap.wrap(msg, 72):
-			eerror(l, phase=phase, key=self.settings.mycpv)
+		self._eerror(textwrap.wrap(msg, 72))
+
+	def _eerror(self, lines):
+		out = StringIO()
+		phase = self._get_phase()
+		for line in lines:
+			eerror(line, phase=phase, key=self.settings.mycpv, out=out)
+		logfile = self.logfile
+		if logfile is None:
+			logfile = self.settings.get("PORTAGE_LOG_FILE")
+		msg = _unicode_decode(out.getvalue(),
+			encoding=_encodings['content'], errors='replace')
+		if msg:
+			if not self.background:
+				writemsg_stdout(msg, noiselevel=-1)
+			if logfile is not None:
+				log_file = codecs.open(_unicode_encode(logfile,
+					encoding=_encodings['fs'], errors='strict'),
+					mode='a', encoding=_encodings['content'],
+					errors='backslashreplace')
+				log_file.write(msg)
+				log_file.close()
 
 	def _set_returncode(self, wait_retval):
 		SpawnProcess._set_returncode(self, wait_retval)
