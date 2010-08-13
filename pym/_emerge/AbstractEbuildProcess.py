@@ -8,6 +8,7 @@ from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
 from portage.elog.messages import eerror
 from portage.localization import _
 from portage.package.ebuild._ipc.ExitCommand import ExitCommand
+from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage import os
 from portage import StringIO
 from portage import _encodings
@@ -44,7 +45,12 @@ class AbstractEbuildProcess(SpawnProcess):
 				self.settings['PORTAGE_BUILDDIR'], '.ipc_in')
 			output_fifo = os.path.join(
 				self.settings['PORTAGE_BUILDDIR'], '.ipc_out')
-			commands = {'exit' : self._exit_command}
+			query_command = QueryCommand()
+			commands = {
+				'best_version' : query_command,
+				'exit'         : self._exit_command,
+				'has_version'  : query_command,
+			}
 			self._ipc_daemon = EbuildIpcDaemon(commands=commands,
 				input_fifo=input_fifo,
 				output_fifo=output_fifo,

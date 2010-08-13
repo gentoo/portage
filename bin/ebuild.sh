@@ -159,6 +159,11 @@ has_version() {
 		die "portageq calls (has_version calls portageq) are not allowed in the global scope"
 	fi
 
+	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
+		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "$ROOT" "$1" "$USE"
+		return $?
+	fi
+
 	# Set EPYTHON variable as empty so that portageq doesn't try
 	# to use potentially unsupported version of Python.
 	EPYTHON= PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
@@ -199,6 +204,11 @@ portageq() {
 best_version() {
 	if [ "${EBUILD_PHASE}" == "depend" ]; then
 		die "portageq calls (best_version calls portageq) are not allowed in the global scope"
+	fi
+
+	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
+		"$PORTAGE_BIN_PATH"/ebuild-ipc best_version "$ROOT" "$1" "$USE"
+		return $?
 	fi
 
 	# Set EPYTHON variable as empty so that portageq doesn't try

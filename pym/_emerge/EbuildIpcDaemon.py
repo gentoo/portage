@@ -59,7 +59,6 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 				if reply_hook is not None:
 					reply_hook()
 
-		self._unregister_if_appropriate(event)
 		return self._registered
 
 	def _send_reply(self, reply):

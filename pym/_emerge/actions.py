@@ -33,6 +33,7 @@ from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 	red, yellow
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
+from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage.sets import load_default_config, SETPREFIX
 from portage.sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, \
@@ -2774,6 +2775,7 @@ def load_emerge_config(trees=None):
 	mtimedbfile = os.path.join(os.path.sep, settings['ROOT'], portage.CACHE_PATH, "mtimedb")
 	mtimedb = portage.MtimeDB(mtimedbfile)
 	portage.output._init(config_root=settings['PORTAGE_CONFIGROOT'])
+	QueryCommand._db = trees
 	return settings, trees, mtimedb
 
 def chk_updated_cfg_files(target_root, config_protect):
