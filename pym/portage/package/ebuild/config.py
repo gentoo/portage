@@ -2644,7 +2644,7 @@ class config(object):
 			mydict.pop("AA", None)
 
 		# Prefix variables are supported starting with EAPI 3.
-		if phase == 'depend' or eapi is None or eapi_supports_prefix(eapi):
+		if phase == 'depend' or eapi is None or not eapi_supports_prefix(eapi):
 			mydict.pop("ED", None)
 			mydict.pop("EPREFIX", None)
 			mydict.pop("EROOT", None)
