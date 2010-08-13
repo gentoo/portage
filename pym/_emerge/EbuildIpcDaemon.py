@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import array
+import errno
 import pickle
 from portage import os
 from _emerge.FifoIpcDaemon import FifoIpcDaemon
@@ -40,7 +41,26 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 				obj = pickle.loads(buf.tostring())
 				cmd_key = obj[0]
 				cmd_handler = self.commands[cmd_key]
-				cmd_handler(obj, self._send_reply)
+				reply = cmd_handler(obj)
+				try:
+					self._send_reply(reply)
+				except OSError as e:
+					if e.errno == errno.ENXIO:
+						# This happens if the client side has been killed.
+						pass
+					else:
+						raise
+
+				# Allow the command to execute hooks after its reply
+				# has been sent. This hook is used by the 'exit'
+				# command to kill the ebuild process. For some
+				# reason, the ebuild-ipc helper hangs up the
+				# ebuild process if it is waiting for a reply
+				# when we try to kill the ebuild process.
+				reply_hook = getattr(cmd_handler,
+					'reply_hook', None)
+				if reply_hook is not None:
+					reply_hook()
 
 		self._unregister_if_appropriate(event)
 		return self._registered

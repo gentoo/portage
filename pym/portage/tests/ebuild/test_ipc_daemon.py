@@ -15,24 +15,22 @@ from _emerge.TaskScheduler import TaskScheduler
 class ExitCommand(object):
 
 	def __init__(self):
-		self.callback = None
+		self.reply_hook = None
 		self.exitcode = None
 
-	def __call__(self, argv, send_reply):
-		duplicate = False
+	def __call__(self, argv):
+
 		if self.exitcode is not None:
 			# Ignore all but the first call, since if die is called
 			# then we certainly want to honor that exitcode, even
 			# the ebuild process manages to send a second exit
 			# command.
-			duplicate = True
+			self.reply_hook = None
 		else:
 			self.exitcode = int(argv[1])
 
 		# (stdout, stderr, returncode)
-		send_reply(('', '', 0))
-		if not duplicate and self.callback is not None:
-			self.callback()
+		return ('', '', 0)
 
 class IpcDaemonTestCase(TestCase):
 
@@ -62,7 +60,7 @@ class IpcDaemonTestCase(TestCase):
 				def exit_command_callback():
 					daemon.cancel()
 					proc.cancel()
-				exit_command.callback = exit_command_callback
+				exit_command.reply_hook = exit_command_callback
 				task_scheduler.add(daemon)
 				task_scheduler.add(proc)
 				task_scheduler.run()
