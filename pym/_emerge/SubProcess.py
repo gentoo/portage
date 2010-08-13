@@ -61,7 +61,21 @@ class SubProcess(AbstractPollTask):
 			return self.returncode
 
 		if self._registered:
-			self.scheduler.schedule(self._reg_id)
+			if self.cancelled:
+				timeout = 1000
+				self.scheduler.schedule(self._reg_id, timeout=timeout)
+				if self._registered:
+					try:
+						os.kill(self.pid, signal.SIGKILL)
+					except OSError as e:
+						if e.errno != errno.ESRCH:
+							raise
+						del e
+					self.scheduler.schedule(self._reg_id, timeout=timeout)
+					if self._registered:
+						self._zombie()
+			else:
+				self.scheduler.schedule(self._reg_id)
 			self._unregister()
 			if self.returncode is not None:
 				return self.returncode
@@ -77,6 +91,9 @@ class SubProcess(AbstractPollTask):
 			self._set_returncode(wait_retval)
 
 		return self.returncode
+
+	def _zombie(self):
+		pass
 
 	def _unregister(self):
 		"""

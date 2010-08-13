@@ -60,6 +60,16 @@ class AbstractEbuildProcess(SpawnProcess):
 				# being killed by a signal.
 				self.cancel()
 
+	def _zombie(self):
+		phase = self._get_phase()
+
+		msg = _("The ebuild phase '%s' appears "
+		"to have left a zombie process with "
+		"pid %d.") % (phase, self.pid)
+
+		for l in textwrap.wrap(msg, 72):
+			eerror(l, phase=phase, key=self.settings.mycpv)
+
 	def _pipe(self, fd_pipes):
 		stdout_pipe = fd_pipes.get(1)
 		got_pty, master_fd, slave_fd = \
