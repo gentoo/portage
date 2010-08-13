@@ -41,12 +41,9 @@ class EbuildIpc(object):
 			portage.locks.unlockfile(lock_obj)
 
 	def _communicate(self, args):
-		fifo_dir = os.environ['PORTAGE_BUILDDIR']
-		ipc_in_fifo = os.path.join(fifo_dir, '.ipc_in')
-		ipc_out_fifo = os.path.join(fifo_dir, '.ipc_out')
-		input_fd = os.open(ipc_out_fifo, os.O_RDONLY|os.O_NONBLOCK)
+		input_fd = os.open(self.ipc_out_fifo, os.O_RDONLY|os.O_NONBLOCK)
 		input_file = os.fdopen(input_fd, 'rb')
-		output_file = open(ipc_in_fifo, 'wb')
+		output_file = open(self.ipc_in_fifo, 'wb')
 		pickle.dump(args, output_file)
 		output_file.flush()
 
@@ -61,7 +58,7 @@ class EbuildIpc(object):
 			portage.util.writemsg_stdout(out, noiselevel=-1)
 
 		if err:
-			portage.util.writemsg(out, noiselevel=-1)
+			portage.util.writemsg(err, noiselevel=-1)
 
 		return rval
 
