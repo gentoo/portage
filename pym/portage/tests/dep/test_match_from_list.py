@@ -1,9 +1,13 @@
 # Copyright 2006, 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import sys
 from portage.tests import TestCase
 from portage.dep import Atom, match_from_list
 from portage.versions import catpkgsplit
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 class Package(object):
 	"""
