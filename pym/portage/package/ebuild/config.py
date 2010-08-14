@@ -1282,9 +1282,13 @@ class config(object):
 			except InvalidDependString:
 				licenses = set()
 			licenses.discard('||')
-			if settings._accept_license:
+
+			accept_license = settings._getPkgAcceptLicense(
+				settings.mycpv, {'SLOT' : settings['SLOT']})
+
+			if accept_license:
 				acceptable_licenses = set()
-				for x in settings._accept_license:
+				for x in accept_license:
 					if x == '*':
 						acceptable_licenses.update(licenses)
 					elif x == '-*':
@@ -1871,19 +1875,9 @@ class config(object):
 			missing = mygroups
 		return missing
 
-	def _getMissingLicenses(self, cpv, metadata):
+	def _getPkgAcceptLicense(self, cpv, metadata):
 		"""
-		Take a LICENSE string and return a list any licenses that the user may
-		may need to accept for the given package.  The returned list will not
-		contain any licenses that have already been accepted.  This method
-		can throw an InvalidDependString exception.
-
-		@param cpv: The package name (for package.license support)
-		@type cpv: String
-		@param metadata: A dictionary of raw package metadata
-		@type metadata: dict
-		@rtype: List
-		@return: A list of licenses that have not been accepted.
+		Get an ACCEPT_LICENSE list, accounting for package.license.
 		"""
 		accept_license = self._accept_license
 		cp = cpv_getkey(cpv)
@@ -1905,12 +1899,29 @@ class config(object):
 				accept_license = list(self._accept_license)
 				for x in plicence_list:
 					accept_license.extend(x)
+		return accept_license
+
+	def _getMissingLicenses(self, cpv, metadata):
+		"""
+		Take a LICENSE string and return a list any licenses that the user may
+		may need to accept for the given package.  The returned list will not
+		contain any licenses that have already been accepted.  This method
+		can throw an InvalidDependString exception.
+
+		@param cpv: The package name (for package.license support)
+		@type cpv: String
+		@param metadata: A dictionary of raw package metadata
+		@type metadata: dict
+		@rtype: List
+		@return: A list of licenses that have not been accepted.
+		"""
+
 
 		licenses = set(flatten(use_reduce(metadata["LICENSE"], matchall=1)))
 		licenses.discard('||')
 
 		acceptable_licenses = set()
-		for x in accept_license:
+		for x in self._getPkgAcceptLicense(cpv, metadata):
 			if x == '*':
 				acceptable_licenses.update(licenses)
 			elif x == '-*':
