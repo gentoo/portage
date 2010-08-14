@@ -254,7 +254,7 @@ class PollScheduler(object):
 					wait_retval = os.waitpid(pid, os.WNOHANG)
 					if wait_retval != (0, 0):
 						return wait_retval
-				self.schedule()
+				self._schedule()
 		except StopIteration:
 			pass
 
