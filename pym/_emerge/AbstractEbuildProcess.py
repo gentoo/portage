@@ -41,7 +41,7 @@ class AbstractEbuildProcess(SpawnProcess):
 				self.settings['PORTAGE_BUILDDIR'], '.ipc_in')
 			output_fifo = os.path.join(
 				self.settings['PORTAGE_BUILDDIR'], '.ipc_out')
-			query_command = QueryCommand()
+			query_command = QueryCommand(self.settings)
 			commands = {
 				'best_version' : query_command,
 				'exit'         : self._exit_command,

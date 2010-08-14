@@ -11,25 +11,26 @@ from portage.versions import best
 
 class QueryCommand(IpcCommand):
 
-	__slots__ = ()
+	__slots__ = ('settings',)
 
 	_db = None
 
-	def __init__(self):
+	def __init__(self, settings):
 		IpcCommand.__init__(self)
+		self.settings = settings
 
 	def __call__(self, argv):
 		"""
 		@returns: tuple of (stdout, stderr, returncode)
 		"""
-		cmd, root, atom, use = argv
+		cmd, root, atom = argv
 
 		try:
 			atom = Atom(atom)
 		except InvalidAtom:
 			return ('', 'invalid atom: %s\n' % atom, 2)
 
-		use = frozenset(use.split())
+		use = frozenset(self.settings['PORTAGE_USE'].split())
 		atom = atom.evaluate_conditionals(use)
 
 		db = self._db
