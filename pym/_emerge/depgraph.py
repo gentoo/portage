@@ -2078,7 +2078,7 @@ class depgraph(object):
 						masked_pkg_instances.add(pkg)
 					if atom.unevaluated_atom.use:
 						if not pkg.iuse.is_valid_flag(atom.unevaluated_atom.use.required) \
-							or atom.violated_conditionals(self._pkg_use_enabled(pkg), pkg.iuse.all).use:
+							or atom.violated_conditionals(self._pkg_use_enabled(pkg), pkg.iuse.is_valid_flag).use:
 							missing_use.append(pkg)
 							if not mreasons:
 								continue
@@ -2126,7 +2126,8 @@ class depgraph(object):
 				# Lets see if the violated use deps are conditional.
 				# If so, suggest to change them on the parent.
 				mreasons = []
-				violated_atom = atom.unevaluated_atom.violated_conditionals(self._pkg_use_enabled(pkg), pkg.iuse.all, myparent.use.enabled)
+				violated_atom = atom.unevaluated_atom.violated_conditionals(self._pkg_use_enabled(pkg), \
+					pkg.iuse.is_valid_flag, myparent.use.enabled)
 				if not (violated_atom.use.enabled or violated_atom.use.disabled):
 					#all violated use deps are conditional
 					changes = []

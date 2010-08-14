@@ -212,7 +212,7 @@ class slot_conflict_handler(object):
 							elif not atom_set.findAtomForPackage(other_pkg):
 								#Use conditionals not met.
 								violated_atom = atom.violated_conditionals(other_pkg.use.enabled, \
-									other_pkg.iuse.all, ppkg.use.enabled)
+									other_pkg.iuse.is_valid_flag, ppkg.use.enabled)
 								for flag in violated_atom.use.enabled.union(violated_atom.use.disabled):
 									atoms = collision_reasons.get(("use", flag), set())
 									atoms.add((ppkg, atom, other_pkg))
@@ -252,7 +252,7 @@ class slot_conflict_handler(object):
 							conditional_matches = set()
 							for ppkg, atom, other_pkg in parents:
 								violated_atom = atom.unevaluated_atom.violated_conditionals( \
-									other_pkg.use.enabled, other_pkg.iuse.all, ppkg.use.enabled)
+									other_pkg.use.enabled, other_pkg.iuse.is_valid_flag, ppkg.use.enabled)
 								if use in violated_atom.use.enabled.union(violated_atom.use.disabled):
 									hard_matches.add((ppkg, atom))
 								else:
@@ -457,10 +457,11 @@ class slot_conflict_handler(object):
 				if ppkg.installed:
 					#We cannot assume that it's possible to reinstall the package. Do not
 					#check if some of its atom has use.conditional
-					violated_atom = atom.violated_conditionals(pkg.use.enabled, pkg.iuse.all, ppkg.use.enabled)
+					violated_atom = atom.violated_conditionals(pkg.use.enabled, \
+						pkg.iuse.is_valid_flag, ppkg.use.enabled)
 				else:
 					violated_atom = atom.unevaluated_atom.violated_conditionals(pkg.use.enabled, \
-						pkg.iuse.all, ppkg.use.enabled)
+						pkg.iuse.is_valid_flag, ppkg.use.enabled)
 
 				if pkg.installed and (violated_atom.use.enabled or violated_atom.use.disabled):
 					#We can't change USE of an installed package (only of an ebuild, but that is already

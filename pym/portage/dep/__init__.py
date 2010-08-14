@@ -589,7 +589,7 @@ class _use_dep(object):
 
 		return _use_dep(tokens)
 
-	def violated_conditionals(self, other_use, iuse, parent_use=None):
+	def violated_conditionals(self, other_use, is_valid_flag, parent_use=None):
 		"""
 		Create a new instance with satisfied use deps removed.
 		"""
@@ -599,7 +599,7 @@ class _use_dep(object):
 
 		for x in self.enabled:
 			if x not in other_use:
-				if x in iuse:
+				if is_valid_flag(x):
 					tokens.append(self._append_use_default(x, x))
 				else:
 					if x in self.missing_disabled:
@@ -607,7 +607,7 @@ class _use_dep(object):
 
 		for x in self.disabled:
 			if x not in other_use:
-				if x not in iuse:
+				if not is_valid_flag(x):
 					if x in self.missing_enabled:
 						tokens.append(self._append_use_default("-" + x, x))
 			else:
@@ -625,7 +625,7 @@ class _use_dep(object):
 				continue
 
 			if x not in other_use:
-				if x in iuse:
+				if is_valid_flag(x):
 					tokens.append(self._append_use_default(x + "?", x))
 				else:
 					if x in self.missing_disabled:
@@ -636,7 +636,7 @@ class _use_dep(object):
 				continue
 
 			if x not in other_use:
-				if x not in iuse:
+				if not is_valid_flag(x):
 					if x in self.missing_enabled:
 						tokens.append(self._append_use_default("!" + x + "?", x))
 			else:
@@ -647,7 +647,7 @@ class _use_dep(object):
 				continue
 
 			if x not in other_use:
-				if x in iuse:
+				if is_valid_flag(x):
 					tokens.append(self._append_use_default(x + "=", x))
 				else:
 					if x in self.missing_disabled:
@@ -658,7 +658,7 @@ class _use_dep(object):
 				continue
 
 			if x not in other_use:
-				if x not in iuse:
+				if not is_valid_flag(x):
 					if x in self.missing_enabled:
 						tokens.append(self._append_use_default(x + "=", x))
 			else:
@@ -669,7 +669,7 @@ class _use_dep(object):
 				continue
 
 			if x not in other_use:
-				if x in iuse:
+				if is_valid_flag(x):
 					tokens.append(self._append_use_default("!" + x + "=", x))
 				else:
 					if x in self.missing_disabled:
@@ -680,7 +680,7 @@ class _use_dep(object):
 				continue
 
 			if x not in other_use:
-				if x not in iuse:
+				if not is_valid_flag(x):
 					if x in self.missing_enabled:
 						tokens.append(self._append_use_default("!" + x + "=", x))
 			else:
@@ -874,14 +874,16 @@ class Atom(_atom_base):
 		atom += str(self.use.evaluate_conditionals(use))
 		return Atom(atom, unevaluated_atom=self)
 
-	def violated_conditionals(self, other_use, iuse, parent_use=None):
+	def violated_conditionals(self, other_use, is_valid_flag, parent_use=None):
 		"""
 		Create an atom instance with any USE conditional removed, that is
 		satisfied by other_use.
-		@param use: The set of enabled USE flags
-		@type use: set
-		@param use: The set of enabled USE flags to check against
-		@type use: set
+		@param other_use: The set of enabled USE flags
+		@type other_use: set
+		@param is_valid_flag: Function that decides if a use flag is referenceable in use deps
+		@type is_valid_flag: function
+		@param parent_use: Set of enabled use flags of the package requiring this atom
+		@type parent_use: set
 		@rtype: Atom
 		@return: an atom instance with any satisfied USE conditionals removed
 		"""
@@ -890,7 +892,7 @@ class Atom(_atom_base):
 		atom = remove_slot(self)
 		if self.slot:
 			atom += ":%s" % self.slot
-		atom += str(self.use.violated_conditionals(other_use, iuse, parent_use))
+		atom += str(self.use.violated_conditionals(other_use, is_valid_flag, parent_use))
 		return Atom(atom, unevaluated_atom=self)
 
 	def _eval_qa_conditionals(self, use_mask, use_force):

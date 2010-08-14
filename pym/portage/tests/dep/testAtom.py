@@ -197,10 +197,18 @@ class TestAtom(TestCase):
 		test_cases_xfail = (
 			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", [], ["a", "b", "c", "d", "e", "f"], None),
 		)
-		
+
+		class use_flag_validator(object):
+			def __init__(self, iuse):
+				self.iuse = iuse
+
+			def is_valid_flag(self, flag):
+				return flag in iuse
+
 		for atom, other_use, iuse, parent_use, expected_violated_atom in test_cases:
 			a = Atom(atom)
-			violated_atom = a.violated_conditionals(other_use, iuse, parent_use)
+			validator = use_flag_validator(iuse)
+			violated_atom = a.violated_conditionals(other_use, validator.is_valid_flag, parent_use)
 			if parent_use is None:
 				fail_msg = "Atom: %s, other_use: %s, iuse: %s, parent_use: %s, got: %s, expected: %s" % \
 					(atom, " ".join(other_use), " ".join(iuse), "None", str(violated_atom), expected_violated_atom)
@@ -211,8 +219,9 @@ class TestAtom(TestCase):
 
 		for atom, other_use, iuse, parent_use in test_cases_xfail:
 			a = Atom(atom)
+			validator = use_flag_validator(iuse)
 			self.assertRaisesMsg(atom, InvalidAtom, \
-				a.violated_conditionals, other_use, iuse, parent_use)
+				a.violated_conditionals, other_use, validator.is_valid_flag, parent_use)
 
 	def test_evaluate_conditionals(self):
 		test_cases = (
