@@ -1053,17 +1053,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	1. The return code of the spawned process.
 	"""
 
-	if isinstance(mysettings, dict):
-		env=mysettings
-		keywords["opt_name"]="[ %s ]" % "portage"
-	else:
-		check_config_instance(mysettings)
-		env=mysettings.environ()
-		if mysettings.mycpv is not None:
-			keywords["opt_name"] = "[%s]" % mysettings.mycpv
-		else:
-			keywords["opt_name"] = "[%s/%s]" % \
-				(mysettings.get("CATEGORY",""), mysettings.get("PF",""))
+	check_config_instance(mysettings)
 
 	fd_pipes = keywords.get("fd_pipes")
 	if fd_pipes is None:
@@ -1098,6 +1088,12 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	if not free and not (fakeroot or portage.process.sandbox_capable):
 		free = True
 
+	if mysettings.mycpv is not None:
+		keywords["opt_name"] = "[%s]" % mysettings.mycpv
+	else:
+		keywords["opt_name"] = "[%s/%s]" % \
+			(mysettings.get("CATEGORY",""), mysettings.get("PF",""))
+
 	if free or "SANDBOX_ACTIVE" in os.environ:
 		keywords["opt_name"] += " bash"
 		spawn_func = portage.process.spawn_bash
@@ -1114,12 +1110,11 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 			mysettings["PORTAGE_SANDBOX_T"])
 
 	if keywords.get("returnpid"):
-		return spawn_func(mystring, env=env, **keywords)
+		return spawn_func(mystring, env=mysettings.environ(), **keywords)
 
 	sched = TaskScheduler()
 	proc = EbuildSpawnProcess(
-		background=False,
-		args=mystring, env=env,
+		background=False, args=mystring,
 		scheduler=sched.sched_iface, spawn_func=spawn_func,
 		settings=mysettings, **keywords)
 

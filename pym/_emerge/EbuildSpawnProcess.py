@@ -15,4 +15,4 @@ class EbuildSpawnProcess(AbstractEbuildProcess):
 	__slots__ = ('fakeroot_state', 'spawn_func')
 
 	def _spawn(self, args, **kwargs):
-		return self.spawn_func(args, **kwargs)
+		return self.spawn_func(args, env=self.settings.environ(), **kwargs)

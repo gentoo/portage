@@ -33,12 +33,8 @@ class AbstractEbuildProcess(SpawnProcess):
 
 	def _start(self):
 
-		envs = [self.settings]
-		if self.env is not None:
-			envs.append(self.env)
 		if self._get_phase() not in self._phases_without_builddir:
-			for env in envs:
-				env['PORTAGE_IPC_DAEMON'] = "1"
+			self.settings['PORTAGE_IPC_DAEMON'] = "1"
 			self._exit_command = ExitCommand()
 			self._exit_command.reply_hook = self._exit_command_callback
 			input_fifo = os.path.join(
@@ -57,8 +53,7 @@ class AbstractEbuildProcess(SpawnProcess):
 				scheduler=self.scheduler)
 			self._ipc_daemon.start()
 		else:
-			for env in envs:
-				env.pop('PORTAGE_IPC_DAEMON', None)
+			self.settings.pop('PORTAGE_IPC_DAEMON', None)
 
 		SpawnProcess._start(self)
 
