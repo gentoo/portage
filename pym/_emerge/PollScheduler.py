@@ -5,6 +5,7 @@ import logging
 import select
 import time
 
+from portage import os
 from portage.util import writemsg_level
 
 from _emerge.SlotObject import SlotObject
@@ -15,7 +16,7 @@ from _emerge.PollSelectAdapter import PollSelectAdapter
 class PollScheduler(object):
 
 	class _sched_iface_class(SlotObject):
-		__slots__ = ("register", "schedule", "unregister")
+		__slots__ = ("register", "schedule", "schedule_waitpid", "unregister")
 
 	def __init__(self):
 		self._max_jobs = 1
@@ -229,6 +230,36 @@ class PollScheduler(object):
 
 		return event_handled
 
+	def _schedule_waitpid(self, pid):
+		"""
+		Schedule until waitpid returns process status
+		for the given pid, and return the result from waitpid.
+		This is meant to be called as a last resort, since
+		it won't return until the process exits. This can raise
+		OSError from the waitpid call (typically errno.ECHILD).
+		@type pid: int
+		@param pid: the pid of the child process to wait for
+		"""
+		event_handlers = self._poll_event_handlers
+
+		try:
+			while event_handlers:
+				f, event = self._next_poll_event()
+				try:
+					handler, reg_id = event_handlers[f]
+				except KeyError:
+					pass
+				else:
+					handler(f, event)
+					wait_retval = os.waitpid(pid, os.WNOHANG)
+					if wait_retval != (0, 0):
+						return wait_retval
+				self.schedule()
+		except StopIteration:
+			pass
+
+		# Once scheduling is exhaused, do a blocking waitpid.
+		return os.waitpid(pid, 0)
 
 _can_poll_device = None
 
