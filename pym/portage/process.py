@@ -355,7 +355,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	# Then assign them to what they should be.
 	for fd in my_fds:
 		os.dup2(my_fds[fd], fd)
-	# Then close _all_ fds that haven't been explictly
+	# Then close _all_ fds that haven't been explicitly
 	# requested to be kept open.
 	for fd in get_open_fds():
 		if fd not in my_fds:
@@ -375,6 +375,9 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 		os.umask(umask)
 	if pre_exec:
 		pre_exec()
+	
+	# Set requested Python interpreter for Portage helpers.
+	env['PORTAGE_PYTHON'] = sys.executable
 
 	# And switch to the new process.
 	os.execve(binary, myargs, env)

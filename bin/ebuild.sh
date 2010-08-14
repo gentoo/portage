@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 PORTAGE_BIN_PATH="${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"
@@ -164,10 +164,8 @@ has_version() {
 		return $?
 	fi
 
-	# Set EPYTHON variable as empty so that portageq doesn't try
-	# to use potentially unsupported version of Python.
-	EPYTHON= PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-	"${PORTAGE_BIN_PATH}"/portageq has_version "${ROOT}" "$1"
+	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
+	"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" has_version "${ROOT}" "$1"
 	local retval=$?
 	case "${retval}" in
 		0)
@@ -187,10 +185,8 @@ portageq() {
 		die "portageq calls are not allowed in the global scope"
 	fi
 
-	# Set EPYTHON variable as empty so that portageq doesn't try
-	# to use potentially unsupported version of Python.
-	EPYTHON= PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-	"${PORTAGE_BIN_PATH}/portageq" "$@"
+	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
+	"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" "$@"
 }
 
 
@@ -211,10 +207,8 @@ best_version() {
 		return $?
 	fi
 
-	# Set EPYTHON variable as empty so that portageq doesn't try
-	# to use potentially unsupported version of Python.
-	EPYTHON= PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-	"${PORTAGE_BIN_PATH}/portageq" 'best_version' "${ROOT}" "$1"
+	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
+	"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" 'best_version' "${ROOT}" "$1"
 	local retval=$?
 	case "${retval}" in
 		0)
@@ -1734,7 +1728,7 @@ filter_readonly_variables() {
 		"
 	fi
 
-	EPYTHON= "${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars}" || die "filter-bash-environment.py failed"
+	"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars}" || die "filter-bash-environment.py failed"
 }
 
 # @FUNCTION: preprocess_ebuild_env
