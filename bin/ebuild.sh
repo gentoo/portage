@@ -2056,7 +2056,6 @@ ebuild_main() {
 	case ${EBUILD_SH_ARGS} in
 	nofetch)
 		ebuild_phase_with_hooks pkg_nofetch
-		exit 1
 		;;
 	prerm|postrm|postinst|config|info)
 		if hasq "$EBUILD_SH_ARGS" config info && \
