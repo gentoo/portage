@@ -6,7 +6,7 @@ __all__ = ['dep_check', 'dep_eval', 'dep_wordreduce', 'dep_zapdeps']
 import logging
 
 import portage
-from portage.dep import Atom, dep_opconvert, match_from_list, \
+from portage.dep import Atom, match_from_list, \
 	remove_slot, use_reduce
 from portage.eapi import eapi_has_strong_blocks, eapi_has_use_deps, eapi_has_slot_deps, \
 	eapi_has_use_dep_defaults
@@ -543,12 +543,9 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		useforce.difference_update(mymasks)
 	try:
 		mysplit = use_reduce(depstring, uselist=myusesplit,
-			masklist=mymasks, matchall=(use=="all"), excludeall=useforce)
+			masklist=mymasks, matchall=(use=="all"), excludeall=useforce, opconvert=True)
 	except InvalidDependString as e:
 		return [0, str(e)]
-
-	# Do the || conversions
-	mysplit = dep_opconvert(mysplit)
 
 	if mysplit == []:
 		#dependencies were reduced to nothing

@@ -8,7 +8,7 @@ from portage.dep import use_reduce
 class UseReduceTestCase(object):
 	def __init__(self, deparray, uselist=[], masklist=[], \
 		matchall=0, excludeall=[], is_src_uri=False, \
-		allow_src_uri_file_renames=False, expected_result=None):
+		allow_src_uri_file_renames=False, opconvert=False, expected_result=None):
 		self.deparray = deparray
 		self.uselist = uselist
 		self.masklist = masklist
@@ -16,11 +16,12 @@ class UseReduceTestCase(object):
 		self.excludeall = excludeall
 		self.is_src_uri = is_src_uri
 		self.allow_src_uri_file_renames = allow_src_uri_file_renames
+		self.opconvert = opconvert
 		self.expected_result = expected_result
 
 	def run(self):
 		return use_reduce(self.deparray, self.uselist, self.masklist, \
-			self.matchall, self.excludeall, self.is_src_uri, self.allow_src_uri_file_renames)
+			self.matchall, self.excludeall, self.is_src_uri, self.allow_src_uri_file_renames, self.opconvert)
 				
 class UseReduce(TestCase):
 
@@ -242,6 +243,81 @@ class UseReduce(TestCase):
 				is_src_uri = True,
 				allow_src_uri_file_renames = True,
 				expected_result = ["http://foo.com/foo", "http://foo/bar", "->", "blah.tbz2"]),
+
+			#opconvert tests
+			UseReduceTestCase(
+				"A",
+				opconvert = True,
+				expected_result = ["A"]),
+			UseReduceTestCase(
+				"( A )",
+				opconvert = True,
+				expected_result = ["A"]),
+			UseReduceTestCase(
+				"|| ( A B )",
+				opconvert = True,
+				expected_result = [ ["||", "A", "B"] ]),
+			UseReduceTestCase(
+				"|| ( A || ( B C ) )",
+				opconvert = True,
+				expected_result = [ ["||", "A", ["||", "B", "C"]] ]),
+			UseReduceTestCase(
+				"|| ( A || ( B C D ) )",
+				opconvert = True,
+				expected_result = [ ["||", "A", ["||", "B", "C", "D"]] ]),
+			UseReduceTestCase(
+				"|| ( A || ( B || ( C D ) E ) )",
+				expected_result = [ "||", ["A", "||", ["B", "||", ["C", "D"], "E"]] ]),
+			UseReduceTestCase(
+				"( || ( ( ( A ) B ) ) )",
+				opconvert = True,
+				expected_result = [ ["||", "A", "B"] ] ),
+			UseReduceTestCase(
+				"( || ( || ( ( A ) B ) ) )",
+				opconvert = True,
+				expected_result = [ ["||", "A", "B"] ]),
+			UseReduceTestCase(
+				"( || ( || ( ( A ) B ) ) )",
+				opconvert = True,
+				expected_result = [ ["||", "A", "B"] ]),
+			UseReduceTestCase(
+				"|| ( A )",
+				opconvert = True,
+				expected_result = ["A"]),
+			UseReduceTestCase(
+				"( || ( || ( || ( A ) foo? ( B ) ) ) )",
+				expected_result = ["A"]),
+			UseReduceTestCase(
+				"( || ( || ( || ( A ) foo? ( B ) ) ) )",
+				uselist = ["foo"],
+				opconvert = True,
+				expected_result = [ ["||", "A", "B"] ]),
+			UseReduceTestCase(
+				"( || ( || ( bar? ( A ) || ( foo? ( B ) ) ) ) )",
+				opconvert = True,
+				expected_result = []),
+			UseReduceTestCase(
+				"( || ( || ( bar? ( A ) || ( foo? ( B ) ) ) ) )",
+				uselist = ["foo", "bar"],
+				opconvert = True,
+				expected_result = [ ["||", "A", "B"] ]),
+			UseReduceTestCase(
+				"A || ( ) foo? ( ) B",
+				opconvert = True,
+				expected_result = ["A", "B"]),
+			UseReduceTestCase(
+				"|| ( A ) || ( B )",
+				opconvert = True,
+				expected_result = ["A", "B"]),
+			UseReduceTestCase(
+				"foo? ( A ) foo? ( B )",
+				opconvert = True,
+				expected_result = []),
+			UseReduceTestCase(
+				"foo? ( A ) foo? ( B )",
+				uselist = ["foo"],
+				opconvert = True,
+				expected_result = ["A", "B"]),
 		)
 		
 		test_cases_xfail = (

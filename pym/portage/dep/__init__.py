@@ -221,7 +221,7 @@ def paren_enclose(mylist):
 	return " ".join(mystrparts)
 
 def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], is_src_uri=False, \
-	allow_src_uri_file_renames=False):
+	allow_src_uri_file_renames=False, opconvert=False):
 	"""
 	Takes a dep string and reduces the use? conditionals out, leaving an array
 	with subarrays. All redundant brackets are removed.
@@ -313,7 +313,11 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 						stack[level].pop()
 						stack[level].extend(l)
 					else:
-						stack[level].append(l)
+						if opconvert and stack[level] and stack[level][-1] == "||":
+							stack[level].pop()
+							stack[level].append(["||"] + l)
+						else:
+							stack[level].append(l)
 			else:
 				raise portage.exception.InvalidDependString(
 					_("malformed syntax: '%s'") % depstr)
@@ -372,6 +376,8 @@ def dep_opconvert(deplist):
 	@return:
 		The new list with the new ordering
 	"""
+	warnings.warn(_("%s is deprecated. Use %s with the opconvert parameter set to True instead.") % \
+		('portage.dep.dep_opconvert', 'portage.dep.use_reduce'), DeprecationWarning, stacklevel=2)
 
 	retlist = []
 	x = 0

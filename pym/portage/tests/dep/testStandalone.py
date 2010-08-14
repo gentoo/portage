@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
-from portage.dep import cpvequal, dep_opconvert, flatten
+from portage.dep import cpvequal, flatten
 from portage.exception import PortageException
 
 class TestStandalone(TestCase):
@@ -48,15 +48,3 @@ class TestStandalone(TestCase):
 
 		for not_flat, flat in test_cases:
 			self.assertEqual(flatten(not_flat), flat)
-
-	def testDep_opconvert(self):
-
-		test_cases = (
-			( [], [] ),
-			( ["blah", "||", ["foo", "bar", "baz"]], ["blah", ["||", "foo", "bar", "baz"]] ),
-			( [["a", "b"], "||", ["c", "d", "e"]], [["a", "b"], ["||", "c", "d", "e"]] ),
-			( ["||", ["a", "b"], "||", ["c", "d", "e"]], [["||", "a", "b"], ["||", "c", "d", "e"]] ),
-		)
-
-		for orig, expected in test_cases:
-			self.assertEqual(dep_opconvert(orig), expected)

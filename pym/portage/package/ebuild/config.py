@@ -31,7 +31,7 @@ from portage.const import CACHE_PATH, CUSTOM_PROFILE_PATH, \
 from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
 from portage.dbapi.vartree import vartree
-from portage.dep import Atom, best_match_to_list, dep_opconvert, \
+from portage.dep import Atom, best_match_to_list, \
 	flatten, isvalidatom, match_from_list, match_to_list, \
 	remove_slot, use_reduce
 from portage.eapi import eapi_exports_AA, eapi_supports_prefix, eapi_exports_replace_vars
@@ -1926,8 +1926,7 @@ class config(object):
 		else:
 			use = []
 
-		license_struct = use_reduce(license_str, uselist=use)
-		license_struct = dep_opconvert(license_struct)
+		license_struct = use_reduce(license_str, uselist=use, opconvert=True)
 		return self._getMaskedLicenses(license_struct, acceptable_licenses)
 
 	def _getMaskedLicenses(self, license_struct, acceptable_licenses):
@@ -2016,8 +2015,7 @@ class config(object):
 		else:
 			use = []
 
-		properties_struct = use_reduce(properties_str, uselist=use)
-		properties_struct = dep_opconvert(properties_struct)
+		properties_struct = use_reduce(properties_str, uselist=use, opconvert=True)
 		return self._getMaskedProperties(properties_struct, acceptable_properties)
 
 	def _getMaskedProperties(self, properties_struct, acceptable_properties):
