@@ -11,7 +11,7 @@ class MiscFunctionsProcess(AbstractEbuildProcess):
 	Spawns misc-functions.sh with an existing ebuild environment.
 	"""
 
-	__slots__ = ('commands', 'phase', 'pkg',)
+	__slots__ = ('commands', 'pkg',)
 
 	def _start(self):
 		settings = self.settings

@@ -19,21 +19,21 @@ from portage.util import writemsg_stdout
 
 class AbstractEbuildProcess(SpawnProcess):
 
-	__slots__ = ('settings',) + \
+	__slots__ = ('phase', 'settings',) + \
 		('_ipc_daemon', '_exit_command',)
 	_phases_without_builddir = ('clean', 'cleanrm', 'depend', 'help',)
 
-	def _get_phase(self):
-		phase = getattr(self, 'phase', None)
-		if not phase:
+	def __init__(self, **kwargs):
+		SpawnProcess.__init__(self, **kwargs)
+		if self.phase is None:
 			phase = self.settings.get("EBUILD_PHASE")
 			if not phase:
 				phase = 'other'
-		return phase
+			self.phase = phase
 
 	def _start(self):
 
-		if self._get_phase() not in self._phases_without_builddir:
+		if self.phase not in self._phases_without_builddir:
 			self.settings['PORTAGE_IPC_DAEMON'] = "1"
 			self._exit_command = ExitCommand()
 			self._exit_command.reply_hook = self._exit_command_callback
@@ -71,7 +71,7 @@ class AbstractEbuildProcess(SpawnProcess):
 				self.cancel()
 
 	def _orphan_process_warn(self):
-		phase = self._get_phase()
+		phase = self.phase
 
 		msg = _("The ebuild phase '%s' with pid %s appears "
 		"to have left an orphan process running in the "
@@ -94,7 +94,7 @@ class AbstractEbuildProcess(SpawnProcess):
 
 	def _unexpected_exit(self):
 
-		phase = self._get_phase()
+		phase = self.phase
 
 		msg = _("The ebuild phase '%s' has exited "
 		"unexpectedly. This type of behavior "
@@ -120,7 +120,7 @@ class AbstractEbuildProcess(SpawnProcess):
 
 	def _eerror(self, lines):
 		out = StringIO()
-		phase = self._get_phase()
+		phase = self.phase
 		for line in lines:
 			eerror(line, phase=phase, key=self.settings.mycpv, out=out)
 		logfile = self.logfile
