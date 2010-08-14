@@ -7,6 +7,12 @@ import os, sys
 import os.path as osp
 import grp
 import pwd
+import signal
+
+def debug_signal(signum, frame):
+	import pdb
+	pdb.set_trace()
+signal.signal(signal.SIGUSR1, debug_signal)
 
 # Pretend that the current user's uid/gid are the 'portage' uid/gid,
 # so things go smoothly regardless of the current user and global
