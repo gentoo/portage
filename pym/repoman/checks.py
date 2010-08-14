@@ -360,6 +360,35 @@ class ImplicitRuntimeDeps(LineCheck):
 		if self._depend and not self._rdepend:
 			yield 'RDEPEND is not explicitly assigned'
 
+class InheritDeprecated(LineCheck):
+	"""Check if ebuild inherits a deprecated eclass"""
+
+	repoman_check_name = 'inherit.deprecated'
+
+	# deprecated eclass : new eclass (0 if no new eclass)
+	deprecated_classes = {
+		"gems": "ruby-fakegem",
+		"php-pear": "php-pear-r1",
+		"qt3": 0,
+		"qt4": "qt4-r2",
+		"ruby": "ruby-ng",
+		"ruby-gnome2": "ruby-ng-gnome2"
+		}
+
+	def new(self, pkg):
+		self.matched_eclasses = frozenset(self.deprecated_classes.keys()).intersection(pkg.inherited)
+
+	def check(self, num, line):
+		pass
+
+	def end(self):
+		for i in self.matched_eclasses:
+			if self.deprecated_classes[i] == 0:
+				yield i + ": deprecated eclass"
+			else:
+				yield "uses deprecated eclass '"+ i +"'. please migrate to '"+ \
+					self.deprecated_classes[i] +"'"
+
 class InheritAutotools(LineCheck):
 	"""
 	Make sure appropriate functions are called in
@@ -554,7 +583,7 @@ _constant_checks = tuple((c() for c in (
 	EbuildAssignment, Eapi3EbuildAssignment, EbuildUselessDodoc,
 	EbuildUselessCdS, EbuildNestedDie,
 	EbuildPatches, EbuildQuotedA, EapiDefinition, EprefixifyDefined,
-	ImplicitRuntimeDeps, InheritAutotools, IUseUndefined,
+	ImplicitRuntimeDeps, InheritAutotools, InheritDeprecated, IUseUndefined,
 	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS, NoAsNeeded,
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
 	SrcCompileEconf, Eapi3DeprecatedFuncs,
