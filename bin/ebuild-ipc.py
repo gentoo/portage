@@ -8,7 +8,13 @@
 import os
 import pickle
 import select
+import signal
 import sys
+
+def debug_signal(signum, frame):
+	import pdb
+	pdb.set_trace()
+signal.signal(signal.SIGUSR1, debug_signal)
 
 # Avoid sandbox violations after python upgrade.
 pym_path = os.path.join(os.path.dirname(
