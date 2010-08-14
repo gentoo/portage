@@ -1,6 +1,7 @@
-# Copyright 2009 Gentoo Foundation
+# Copyright 2009-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import imp
 import itertools
 import stat
 
@@ -45,6 +46,18 @@ class CompileModulesTestCase(TestCase):
 						do_compile = True
 						cfile += '.py'
 				if do_compile:
-					cfile += (__debug__ and 'c' or 'o')
+					try:
+						# Python >=3.2
+						cfile = imp.cache_from_source(cfile)
+					except AttributeError:
+						cfile += (__debug__ and 'c' or 'o')
 					py_compile.compile(x, cfile=cfile, doraise=True)
 					os.unlink(cfile)
+					cfile_parent_dir = os.path.dirname(cfile)
+					if os.path.basename(cfile_parent_dir) == '__pycache__':
+						# Python >=3.2
+						try:
+							os.rmdir(cfile_parent_dir)
+						except OSError:
+							# __pycache__ directory is non-empty.
+							pass
