@@ -160,7 +160,7 @@ has_version() {
 	fi
 
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
-		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "$ROOT" "$1"
+		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "$ROOT" "$1" "$USE"
 		return $?
 	fi
 
@@ -203,7 +203,7 @@ best_version() {
 	fi
 
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
-		"$PORTAGE_BIN_PATH"/ebuild-ipc best_version "$ROOT" "$1"
+		"$PORTAGE_BIN_PATH"/ebuild-ipc best_version "$ROOT" "$1" "$USE"
 		return $?
 	fi
 

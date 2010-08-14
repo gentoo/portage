@@ -23,14 +23,20 @@ class QueryCommand(IpcCommand):
 		"""
 		@returns: tuple of (stdout, stderr, returncode)
 		"""
-		cmd, root, atom = argv
+
+		# Note that $USE is passed via IPC in order to ensure that
+		# we have the correct value for built/installed packages,
+		# since the config class doesn't currently provide a way
+		# to access built/installed $USE that would work in all
+		# possible scenarios.
+		cmd, root, atom, use = argv
 
 		try:
 			atom = Atom(atom)
 		except InvalidAtom:
 			return ('', 'invalid atom: %s\n' % atom, 2)
 
-		use = frozenset(self.settings['PORTAGE_USE'].split())
+		use = frozenset(use.split())
 		atom = atom.evaluate_conditionals(use)
 
 		db = self._db
