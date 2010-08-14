@@ -10,7 +10,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum',
 	'portage.data:portage_gid,secpass',
 	'portage.dbapi.dep_expand:dep_expand',
-	'portage.dep:dep_getkey,flatten,match_from_list,use_reduce',
+	'portage.dep:dep_getkey,match_from_list,use_reduce',
 	'portage.env.loaders:KeyValuePairFileLoader',
 	'portage.package.ebuild.doebuild:doebuild',
 	'portage.util:ensure_dirs,shlex_split,writemsg,writemsg_level',
@@ -658,7 +658,6 @@ class portdbapi(dbapi):
 
 		myuris = use_reduce(myuris, uselist=useflags, matchall=(useflags is None), \
 			is_src_uri=True, allow_src_uri_file_renames=eapi_has_src_uri_arrows(eapi))
-		myuris = flatten(myuris)
 
 		uri_map = OrderedDict()
 

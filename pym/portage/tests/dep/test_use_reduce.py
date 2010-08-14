@@ -8,7 +8,7 @@ from portage.dep import use_reduce
 class UseReduceTestCase(object):
 	def __init__(self, deparray, uselist=[], masklist=[], \
 		matchall=0, excludeall=[], is_src_uri=False, \
-		allow_src_uri_file_renames=False, opconvert=False, expected_result=None):
+		allow_src_uri_file_renames=False, opconvert=False, flat=False, expected_result=None):
 		self.deparray = deparray
 		self.uselist = uselist
 		self.masklist = masklist
@@ -17,11 +17,13 @@ class UseReduceTestCase(object):
 		self.is_src_uri = is_src_uri
 		self.allow_src_uri_file_renames = allow_src_uri_file_renames
 		self.opconvert = opconvert
+		self.flat = flat
 		self.expected_result = expected_result
 
 	def run(self):
 		return use_reduce(self.deparray, self.uselist, self.masklist, \
-			self.matchall, self.excludeall, self.is_src_uri, self.allow_src_uri_file_renames, self.opconvert)
+			self.matchall, self.excludeall, self.is_src_uri, self.allow_src_uri_file_renames, \
+				self.opconvert, self.flat)
 				
 class UseReduce(TestCase):
 
@@ -318,6 +320,83 @@ class UseReduce(TestCase):
 				uselist = ["foo"],
 				opconvert = True,
 				expected_result = ["A", "B"]),
+			
+			#flat test
+			UseReduceTestCase(
+				"A",
+				flat = True,
+				expected_result = ["A"]),
+			UseReduceTestCase(
+				"( A )",
+				flat = True,
+				expected_result = ["A"]),
+			UseReduceTestCase(
+				"|| ( A B )",
+				flat = True,
+				expected_result = [ "||", "A", "B" ] ),
+			UseReduceTestCase(
+				"|| ( A || ( B C ) )",
+				flat = True,
+				expected_result = [ "||", "A", "||", "B", "C" ]),
+			UseReduceTestCase(
+				"|| ( A || ( B C D ) )",
+				flat = True,
+				expected_result = [ "||", "A", "||", "B", "C", "D" ]),
+			UseReduceTestCase(
+				"|| ( A || ( B || ( C D ) E ) )",
+				flat = True,
+				expected_result = [ "||", "A", "||", "B", "||", "C", "D", "E" ]),
+			UseReduceTestCase(
+				"( || ( ( ( A ) B ) ) )",
+				flat = True,
+				expected_result = [ "||", "A", "B"] ),
+			UseReduceTestCase(
+				"( || ( || ( ( A ) B ) ) )",
+				flat = True,
+				expected_result = [ "||", "||", "A", "B" ]),
+			UseReduceTestCase(
+				"( || ( || ( ( A ) B ) ) )",
+				flat = True,
+				expected_result = [ "||", "||", "A", "B" ]),
+			UseReduceTestCase(
+				"|| ( A )",
+				flat = True,
+				expected_result = ["||", "A"]),
+			UseReduceTestCase(
+				"( || ( || ( || ( A ) foo? ( B ) ) ) )",
+				expected_result = ["A"]),
+			UseReduceTestCase(
+				"( || ( || ( || ( A ) foo? ( B ) ) ) )",
+				uselist = ["foo"],
+				flat = True,
+				expected_result = [ "||", "||","||", "A", "B" ]),
+			UseReduceTestCase(
+				"( || ( || ( bar? ( A ) || ( foo? ( B ) ) ) ) )",
+				flat = True,
+				expected_result = ["||", "||","||"]),
+			UseReduceTestCase(
+				"( || ( || ( bar? ( A ) || ( foo? ( B ) ) ) ) )",
+				uselist = ["foo", "bar"],
+				flat = True,
+				expected_result = [ "||", "||", "A", "||", "B" ]),
+			UseReduceTestCase(
+				"A || ( ) foo? ( ) B",
+				flat = True,
+				expected_result = ["A", "||", "B"]),
+			UseReduceTestCase(
+				"|| ( A ) || ( B )",
+				flat = True,
+				expected_result = ["||", "A", "||", "B"]),
+			UseReduceTestCase(
+				"foo? ( A ) foo? ( B )",
+				flat = True,
+				expected_result = []),
+			UseReduceTestCase(
+				"foo? ( A ) foo? ( B )",
+				uselist = ["foo"],
+				flat = True,
+				expected_result = ["A", "B"]),
+			
 		)
 		
 		test_cases_xfail = (
@@ -348,10 +427,15 @@ class UseReduce(TestCase):
 			UseReduceTestCase("http://foo/bar -> foo? ( http://foo.com/foo )", is_src_uri = True, allow_src_uri_file_renames = True),
 			UseReduceTestCase("foo? ( http://foo/bar -> ) blah.tbz2", is_src_uri = True, allow_src_uri_file_renames = True),
 			UseReduceTestCase("http://foo/bar -> foo/blah.tbz2", is_src_uri = True, allow_src_uri_file_renames = True),
+
+			UseReduceTestCase(
+				"A",
+				opconvert = True,
+				flat = True),
 		)
 
 		for test_case in test_cases:
 			self.assertEqual(test_case.run(), test_case.expected_result)
 
 		for test_case in test_cases_xfail:
-			self.assertRaisesMsg(test_case.deparray, InvalidDependString, test_case.run)
+			self.assertRaisesMsg(test_case.deparray, (InvalidDependString, ValueError), test_case.run)

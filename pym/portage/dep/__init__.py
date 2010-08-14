@@ -221,7 +221,7 @@ def paren_enclose(mylist):
 	return " ".join(mystrparts)
 
 def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], is_src_uri=False, \
-	allow_src_uri_file_renames=False, opconvert=False):
+	allow_src_uri_file_renames=False, opconvert=False, flat=False):
 	"""
 	Takes a dep string and reduces the use? conditionals out, leaving an array
 	with subarrays. All redundant brackets are removed.
@@ -234,8 +234,16 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 	@type masklist: List
 	@param matchall: Treat all conditionals as active. Used by repoman. 
 	@type matchall: Bool
-	@param matchall: List of flags for which negated conditionals are always treated as inactive.
-	@type matchall: List
+	@param excludeall: List of flags for which negated conditionals are always treated as inactive.
+	@type excludeall: List
+	@param is_src_uri: Indicates if depstr represents a SRC_URI
+	@type is_src_uri: Bool
+	@param allow_src_uri_file_renames: Indicates if EAPI-2 SRC_URI arrows are allowed when parsing a SRC_URI
+	@type allow_src_uri_file_renames: Bool
+	@param opconvert: Put every operator as first element into it's argument list
+	@type opconvert: Bool
+	@param flat: Create a flat list of all tokens
+	@type flat: Bool
 	@rtype: List
 	@return: The use reduced depend array
 	"""
@@ -244,7 +252,10 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 			"Pass the original dep string instead.") % \
 			('portage.dep.use_reduce',), DeprecationWarning, stacklevel=2)
 		depstr = paren_enclose(depstr)
-	
+
+	if opconvert and flat:
+		raise ValueError("portage.dep.use_reduce: 'opconvert' and 'flat' are mutually exclusive")
+
 	def is_active(conditional):
 		if conditional.startswith("!"):
 			flag = conditional[1:-1]
@@ -291,6 +302,17 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 				level -= 1
 				l = stack.pop()
 				ignore = False
+
+				if flat:
+					if stack[level] and stack[level][-1][-1] == "?":
+						if is_active(stack[level][-1]):
+							stack[level].pop()
+							stack[level].extend(l)
+						else:
+							stack[level].pop()
+					else:
+						stack[level].extend(l)
+					continue
 
 				if stack[level]:
 					if stack[level][-1] == "||" and not l:
@@ -406,6 +428,9 @@ def flatten(mylist):
 	@rtype: List
 	@return: A single list containing only non-list elements.
 	"""
+	warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
+		('portage.dep.flatten',), DeprecationWarning, stacklevel=2)
+
 	newlist = []
 	for x in mylist:
 		if isinstance(x, list):

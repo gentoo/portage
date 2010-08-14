@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
-from portage.dep import cpvequal, flatten
+from portage.dep import cpvequal
 from portage.exception import PortageException
 
 class TestStandalone(TestCase):
@@ -34,17 +34,3 @@ class TestStandalone(TestCase):
 		for cpv1, cpv2 in test_cases_xfail:
 			self.assertRaisesMsg("cpvequal("+cpv1+", "+cpv2+")", \
 				PortageException, cpvequal, cpv1, cpv2)
-
-
-	def testFlattenl(self):
-
-		test_cases = (
-			( [], [] ),
-			( [[]], [] ),
-			( [[], 1], [1] ),
-			( [1, [2, 3, [4]]], [1, 2, 3, 4] ),
-			( [1, [2], 3, [4]], [1, 2, 3, 4] ),
-		)
-
-		for not_flat, flat in test_cases:
-			self.assertEqual(flatten(not_flat), flat)

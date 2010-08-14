@@ -344,12 +344,12 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 			getattr(self, "_set_" + k.lower())(k, v)
 		elif k in self._use_conditional_keys:
 			try:
-				reduced = use_reduce(v, matchall=1)
+				reduced = use_reduce(v, matchall=1, flat=True)
 			except portage.exception.InvalidDependString as e:
 				self._pkg._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
 			else:
 				if reduced and k == 'PROVIDE':
-					for x in portage.flatten(reduced):
+					for x in reduced:
 						if not isvalidatom(x):
 							self._pkg._invalid_metadata(k + ".syntax",
 								"%s: %s" % (k, x))

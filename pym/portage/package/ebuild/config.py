@@ -32,7 +32,7 @@ from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
 from portage.dbapi.vartree import vartree
 from portage.dep import Atom, best_match_to_list, \
-	flatten, isvalidatom, match_from_list, match_to_list, \
+	isvalidatom, match_from_list, match_to_list, \
 	remove_slot, use_reduce
 from portage.eapi import eapi_exports_AA, eapi_supports_prefix, eapi_exports_replace_vars
 from portage.env.loaders import KeyValuePairFileLoader
@@ -1278,7 +1278,7 @@ class config(object):
 			E2BIG errors as in bug #262647.
 			"""
 			try:
-				licenses = set(flatten(use_reduce(settings['LICENSE'],uselist=use)))
+				licenses = set(use_reduce(settings['LICENSE'], uselist=use, flat=True))
 			except InvalidDependString:
 				licenses = set()
 			licenses.discard('||')
@@ -1303,7 +1303,7 @@ class config(object):
 
 		def _restrict(self, use, settings):
 			try:
-				restrict = set(flatten(use_reduce(settings['RESTRICT'],uselist=use)))
+				restrict = set(use_reduce(settings['RESTRICT'], uselist=use, flat=True))
 			except InvalidDependString:
 				restrict = set()
 			return ' '.join(sorted(restrict))
@@ -1917,7 +1917,7 @@ class config(object):
 		"""
 
 
-		licenses = set(flatten(use_reduce(metadata["LICENSE"], matchall=1)))
+		licenses = set(use_reduce(metadata["LICENSE"], matchall=1, flat=True))
 		licenses.discard('||')
 
 		acceptable_licenses = set()
@@ -1948,17 +1948,17 @@ class config(object):
 			for element in license_struct[1:]:
 				if isinstance(element, list):
 					if element:
-						ret.append(self._getMaskedLicenses(
-							element, acceptable_licenses))
-						if not ret[-1]:
+						tmp = self._getMaskedLicenses(element, acceptable_licenses)
+						if not tmp:
 							return []
+						ret.extend(tmp)
 				else:
 					if element in acceptable_licenses:
 						return []
 					ret.append(element)
 			# Return all masked licenses, since we don't know which combination
 			# (if any) the user will decide to unmask.
-			return flatten(ret)
+			return ret
 
 		ret = []
 		for element in license_struct:
@@ -2006,7 +2006,7 @@ class config(object):
 				for x in pproperties_list:
 					accept_properties.extend(x)
 
-		properties = set(flatten(use_reduce(metadata["PROPERTIES"], matchall=1)))
+		properties = set(use_reduce(metadata["PROPERTIES"], matchall=1, flat=True))
 		properties.discard('||')
 
 		acceptable_properties = set()
@@ -2037,17 +2037,18 @@ class config(object):
 			for element in properties_struct[1:]:
 				if isinstance(element, list):
 					if element:
-						ret.append(self._getMaskedProperties(
-							element, acceptable_properties))
-						if not ret[-1]:
+						tmp = self._getMaskedProperties(
+							element, acceptable_properties)
+						if not tmp:
 							return []
+						ret.extend(tmp)
 				else:
 					if element in acceptable_properties:
 						return[]
 					ret.append(element)
 			# Return all masked properties, since we don't know which combination
 			# (if any) the user will decide to unmask
-			return flatten(ret)
+			return ret
 
 		ret = []
 		for element in properties_struct:
@@ -2117,7 +2118,7 @@ class config(object):
 			myuse = mydbapi["USE"]
 		else:
 			myuse = mydbapi.aux_get(mycpv, ["USE"])[0]
-		virts = flatten(use_reduce(provides, uselist=myuse.split()))
+		virts = use_reduce(provides, uselist=myuse.split(), flat=True)
 
 		modified = False
 		cp = Atom(cpv_getkey(mycpv))
@@ -2681,8 +2682,11 @@ class config(object):
 		return self._thirdpartymirrors
 
 	def archlist(self):
-		return flatten([[myarch, "~" + myarch] \
-			for myarch in self["PORTAGE_ARCHLIST"].split()])
+		_archlist = []
+		for myarch in self["PORTAGE_ARCHLIST"].split():
+			_archlist.append(myarch)
+			_archlist.append("~" + myarch)
+		return _archlist
 
 	def selinux_enabled(self):
 		if getattr(self, "_selinux_enabled", None) is None:

@@ -986,7 +986,9 @@ check_ebuild_notadded = not \
 	(vcs == "svn" and repolevel < 3 and options.mode != "commit")
 
 # Build a regex from thirdpartymirrors for the SRC_URI.mirror check.
-thirdpartymirrors = portage.flatten(list(repoman_settings.thirdpartymirrors().values()))
+thirdpartymirrors = []
+for v in repoman_settings.thirdpartymirrors().values():
+	thirdpartymirrors.extend(v)
 
 class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
 	"""
@@ -1448,9 +1450,9 @@ for x in scanlist:
 
 		if not src_uri_error:
 			# Check that URIs don't reference a server from thirdpartymirrors.
-			for uri in portage.flatten(portage.dep.use_reduce( \
+			for uri in portage.dep.use_reduce( \
 				myaux["SRC_URI"], matchall=True, is_src_uri=True, \
-				allow_src_uri_file_renames=eapi_has_src_uri_arrows(eapi))):
+				allow_src_uri_file_renames=eapi_has_src_uri_arrows(eapi), flat=True):
 				contains_mirror = False
 				for mirror in thirdpartymirrors:
 					if uri.startswith(mirror):
@@ -1464,7 +1466,7 @@ for x in scanlist:
 					"%s: '%s' found in thirdpartymirrors" % \
 					(relative_path, mirror))
 
-		provide = portage.flatten(portage.dep.use_reduce(pkg.metadata['PROVIDE'], matchall=1))
+		provide = portage.dep.use_reduce(pkg.metadata['PROVIDE'], matchall=1, flat=True)
 		provide_cps = []
 
 		# The Package class automatically evaluates USE conditionals.
@@ -1731,8 +1733,7 @@ for x in scanlist:
 			myuse = myaux["LICENSE"]
 			# Parse the LICENSE variable, remove USE conditions and
 			# flatten it.
-			myuse=portage.dep.use_reduce(myuse, matchall=1)
-			myuse=portage.flatten(myuse)
+			myuse=portage.dep.use_reduce(myuse, matchall=1, flat=True)
 			# Check each entry to ensure that it exists in PORTDIR's
 			# license directory.
 			for mypos in range(0,len(myuse)):
@@ -1761,14 +1762,14 @@ for x in scanlist:
 		#restrict checks
 		myrestrict = None
 		try:
-			myrestrict = portage.dep.use_reduce(myaux["RESTRICT"], matchall=1)
+			myrestrict = portage.dep.use_reduce(myaux["RESTRICT"], matchall=1, flat=True)
 		except portage.exception.InvalidDependString as e:
 			stats["RESTRICT.syntax"] = stats["RESTRICT.syntax"] + 1
 			fails["RESTRICT.syntax"].append(
 				"%s: RESTRICT: %s" % (relative_path, e))
 			del e
 		if myrestrict:
-			myrestrict = set(portage.flatten(myrestrict))
+			myrestrict = set(myrestrict)
 			mybadrestrict = myrestrict.difference(valid_restrict)
 			if mybadrestrict:
 				stats["RESTRICT.invalid"] += len(mybadrestrict)
