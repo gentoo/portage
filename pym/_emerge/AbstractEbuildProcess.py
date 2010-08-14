@@ -33,6 +33,11 @@ class AbstractEbuildProcess(SpawnProcess):
 
 	def _start(self):
 
+		if self.background:
+			# Automatically prevent color codes from showing up in logs,
+			# since we're not displaying to a terminal anyway.
+			self.settings['NOCOLOR'] = 'true'
+
 		if self.phase not in self._phases_without_builddir:
 			self.settings['PORTAGE_IPC_DAEMON'] = "1"
 			self._exit_command = ExitCommand()
