@@ -10,7 +10,7 @@ class AbstractPollTask(AsynchronousTask):
 
 	_bufsize = 4096
 	_exceptional_events = PollConstants.POLLERR | PollConstants.POLLNVAL
-	_registered_events = PollConstants.POLLIN | \
+	_registered_events = PollConstants.POLLIN | PollConstants.POLLHUP | \
 		_exceptional_events
 
 	def _unregister(self):
@@ -21,3 +21,7 @@ class AbstractPollTask(AsynchronousTask):
 			if event & self._exceptional_events:
 				self._unregister()
 				self.cancel()
+			elif event & PollConstants.POLLHUP:
+				self._unregister()
+				self.wait()
+
