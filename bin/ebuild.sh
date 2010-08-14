@@ -165,7 +165,7 @@ has_version() {
 	fi
 
 	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-	"$PORTAGE_PYTHON" "${PORTAGE_BIN_PATH}/portageq" has_version "${ROOT}" "$1"
+	"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" has_version "${ROOT}" "$1"
 	local retval=$?
 	case "${retval}" in
 		0)
@@ -186,7 +186,7 @@ portageq() {
 	fi
 
 	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-	"$PORTAGE_PYTHON" "${PORTAGE_BIN_PATH}/portageq" "$@"
+	"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" "$@"
 }
 
 
@@ -208,7 +208,7 @@ best_version() {
 	fi
 
 	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-	"$PORTAGE_PYTHON" "${PORTAGE_BIN_PATH}/portageq" 'best_version' "${ROOT}" "$1"
+	"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" 'best_version' "${ROOT}" "$1"
 	local retval=$?
 	case "${retval}" in
 		0)
@@ -1728,7 +1728,7 @@ filter_readonly_variables() {
 		"
 	fi
 
-	"$PORTAGE_PYTHON" "${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars}" || die "filter-bash-environment.py failed"
+	"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars}" || die "filter-bash-environment.py failed"
 }
 
 # @FUNCTION: preprocess_ebuild_env

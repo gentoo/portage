@@ -489,7 +489,7 @@ install_qa_check() {
 		done
 		[[ $reset_debug = 1 ]] && set -x
 		f=$(cat "${PORTAGE_LOG_FILE}" | \
-			"$PORTAGE_PYTHON" "$PORTAGE_BIN_PATH"/check-implicit-pointer-usage.py || die "check-implicit-pointer-usage.py failed")
+			"${PORTAGE_PYTHON:-/usr/bin/python}" "$PORTAGE_BIN_PATH"/check-implicit-pointer-usage.py || die "check-implicit-pointer-usage.py failed")
 		if [[ -n ${f} ]] ; then
 
 			# In the future this will be a forced "die". In preparation,
@@ -779,7 +779,7 @@ dyn_package() {
 		bzip2 -cf > "$PORTAGE_BINPKG_TMPFILE"
 	assert "failed to pack binary package: '$PORTAGE_BINPKG_TMPFILE'"
 	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-		"$PORTAGE_PYTHON" "$PORTAGE_BIN_PATH"/xpak-helper.py recompose \
+		"${PORTAGE_PYTHON:-/usr/bin/python}" "$PORTAGE_BIN_PATH"/xpak-helper.py recompose \
 		"$PORTAGE_BINPKG_TMPFILE" "$PORTAGE_BUILDDIR/build-info"
 	if [ $? -ne 0 ]; then
 		rm -f "${PORTAGE_BINPKG_TMPFILE}"
