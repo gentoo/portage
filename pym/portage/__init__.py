@@ -325,8 +325,6 @@ except (ImportError, OSError) as e:
 # END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END
 # ===========================================================================
 
-os.environ['PORTAGE_PYTHON'] = sys.executable
-
 def _ensure_default_encoding():
 
 	default_encoding = sys.getdefaultencoding().lower().replace('-', '_')

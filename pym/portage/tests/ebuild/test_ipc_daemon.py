@@ -1,6 +1,7 @@
 # Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import sys
 import shutil
 import tempfile
 from portage import os
@@ -19,7 +20,7 @@ class IpcDaemonTestCase(TestCase):
 		tmpdir = tempfile.mkdtemp()
 		try:
 			env = {}
-			env['PORTAGE_PYTHON'] = os.environ['PORTAGE_PYTHON']
+			env['PORTAGE_PYTHON'] = sys.executable
 			env['PORTAGE_BIN_PATH'] = PORTAGE_BIN_PATH
 			env['PORTAGE_PYM_PATH'] = PORTAGE_PYM_PATH
 			env['PORTAGE_BUILDDIR'] = tmpdir

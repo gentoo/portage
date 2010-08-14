@@ -375,9 +375,6 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 		os.umask(umask)
 	if pre_exec:
 		pre_exec()
-	
-	# Set requested Python interpreter for Portage helpers.
-	env['PORTAGE_PYTHON'] = sys.executable
 
 	# And switch to the new process.
 	os.execve(binary, myargs, env)
