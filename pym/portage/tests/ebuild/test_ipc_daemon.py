@@ -20,10 +20,19 @@ class IpcDaemonTestCase(TestCase):
 		tmpdir = tempfile.mkdtemp()
 		try:
 			env = {}
+
+			# Pass along PORTAGE_USERNAME and PORTAGE_GRPNAME since they
+			# need to be inherited by ebuild subprocesses.
+			if 'PORTAGE_USERNAME' in os.environ:
+				env['PORTAGE_USERNAME'] = os.environ['PORTAGE_USERNAME']
+			if 'PORTAGE_GRPNAME' in os.environ:
+				env['PORTAGE_GRPNAME'] = os.environ['PORTAGE_GRPNAME']
+
 			env['PORTAGE_PYTHON'] = sys.executable
 			env['PORTAGE_BIN_PATH'] = PORTAGE_BIN_PATH
 			env['PORTAGE_PYM_PATH'] = PORTAGE_PYM_PATH
 			env['PORTAGE_BUILDDIR'] = tmpdir
+
 			input_fifo = os.path.join(tmpdir, '.ipc_in')
 			output_fifo = os.path.join(tmpdir, '.ipc_out')
 			os.mkfifo(input_fifo)
