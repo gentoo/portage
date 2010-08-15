@@ -1,6 +1,7 @@
 # Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import sys
 from portage import os
 from portage import _shell_quote
 from portage.const import EBUILD_SH_BINARY
@@ -24,6 +25,7 @@ class DoebuildSpawnTestCase(TestCase):
 			cpv = 'sys-apps/portage-2.1'
 			metadata = {}
 			settings.setcpv(cpv, mydb=metadata)
+			settings['PORTAGE_PYTHON'] = sys.executable
 			settings['PORTAGE_BUILDDIR'] = os.path.join(
 				settings['PORTAGE_TMPDIR'], cpv)
 			settings['T'] = os.path.join(
