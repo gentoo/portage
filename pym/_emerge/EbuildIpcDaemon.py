@@ -21,7 +21,9 @@ class EbuildIpcDaemon(FifoIpcDaemon):
        performance and userpriv permission issues.
 
     3) Reliable ebuild termination in cases when the ebuild has accidentally
-       left orphan processes running in the backgraound (as in bug 278895).
+       left orphan processes running in the background (as in bug #278895).
+
+    4) Detect cases in which bash has exited unexpectedly (as in bug #190128).
 	"""
 
 	__slots__ = ('commands',)
