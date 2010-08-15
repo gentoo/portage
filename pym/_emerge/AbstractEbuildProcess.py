@@ -77,9 +77,7 @@ class AbstractEbuildProcess(SpawnProcess):
 		output_fifo = os.path.join(
 			self.settings['PORTAGE_BUILDDIR'], '.ipc_out')
 
-		for x in (input_fifo, output_fifo):
-
-			p = os.path.join(self.settings['PORTAGE_BUILDDIR'], x)
+		for p in (input_fifo, output_fifo):
 
 			st = None
 			try:
