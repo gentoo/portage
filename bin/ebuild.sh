@@ -748,7 +748,8 @@ dyn_clean() {
 		rm -f "$PORTAGE_BUILDDIR"/.{ebuild_changed,logid,unpacked,prepared} \
 			"$PORTAGE_BUILDDIR"/.{configured,compiled,tested,packaged} \
 			"$PORTAGE_BUILDDIR"/.die_hooks \
-			"$PORTAGE_BUILDDIR"/.ipc_{in,out,lock}
+			"$PORTAGE_BUILDDIR"/.ipc_{in,out,lock} \
+			"$PORTAGE_BUILDDIR"/.exit_status
 
 		rm -rf "${PORTAGE_BUILDDIR}/build-info"
 		rm -rf "${WORKDIR}"
@@ -2227,6 +2228,7 @@ elif [[ -n $EBUILD_SH_ARGS ]] ; then
 			chown portage:portage "$T/environment" &>/dev/null
 			chmod g+w "$T/environment" &>/dev/null
 		fi
+		[[ -n $PORTAGE_EBUILD_EXIT_FILE ]] && > "$PORTAGE_EBUILD_EXIT_FILE"
 		[[ -n $PORTAGE_IPC_DAEMON ]] && "$PORTAGE_BIN_PATH"/ebuild-ipc exit 0
 		exit 0
 	)

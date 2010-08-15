@@ -2,9 +2,11 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import codecs
+import stat
 import textwrap
 from _emerge.SpawnProcess import SpawnProcess
 from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
+import portage
 from portage.elog.messages import eerror
 from portage.localization import _
 from portage.package.ebuild._ipc.ExitCommand import ExitCommand
@@ -15,7 +17,7 @@ from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.util._pty import _create_pty_or_pipe
-from portage.util import writemsg_stdout
+from portage.util import apply_secpass_permissions, writemsg_stdout
 
 class AbstractEbuildProcess(SpawnProcess):
 
@@ -38,29 +40,83 @@ class AbstractEbuildProcess(SpawnProcess):
 			# since we're not displaying to a terminal anyway.
 			self.settings['NOCOLOR'] = 'true'
 
-		if self.phase not in self._phases_without_builddir:
-			self.settings['PORTAGE_IPC_DAEMON'] = "1"
-			self._exit_command = ExitCommand()
-			self._exit_command.reply_hook = self._exit_command_callback
-			input_fifo = os.path.join(
-				self.settings['PORTAGE_BUILDDIR'], '.ipc_in')
-			output_fifo = os.path.join(
-				self.settings['PORTAGE_BUILDDIR'], '.ipc_out')
-			query_command = QueryCommand(self.settings)
-			commands = {
-				'best_version' : query_command,
-				'exit'         : self._exit_command,
-				'has_version'  : query_command,
-			}
-			self._ipc_daemon = EbuildIpcDaemon(commands=commands,
-				input_fifo=input_fifo,
-				output_fifo=output_fifo,
-				scheduler=self.scheduler)
-			self._ipc_daemon.start()
+		enable_ipc_daemon = \
+			self.settings.get('PORTAGE_IPC_DAEMON_ENABLE') == '1'
+
+		if enable_ipc_daemon:
+			self.settings.pop('PORTAGE_EBUILD_EXIT_FILE', None)
+			if self.phase not in self._phases_without_builddir:
+				self.settings['PORTAGE_IPC_DAEMON'] = "1"
+				self._start_ipc_daemon()
+			else:
+				self.settings.pop('PORTAGE_IPC_DAEMON', None)
 		else:
+			# Since the IPC daemon is disabled, use a simple tempfile based
+			# approach to detect unexpected exit like in bug #190128.
 			self.settings.pop('PORTAGE_IPC_DAEMON', None)
+			if self.phase not in self._phases_without_builddir:
+				exit_file = os.path.join(
+					self.settings['PORTAGE_BUILDDIR'],
+					'.exit_status')
+				self.settings['PORTAGE_EBUILD_EXIT_FILE'] = exit_file
+				try:
+					os.unlink(exit_file)
+				except OSError:
+					if os.path.exists(exit_file):
+						# make sure it doesn't exist
+						raise
+			else:
+				self.settings.pop('PORTAGE_EBUILD_EXIT_FILE', None)
 
 		SpawnProcess._start(self)
+
+	def _init_ipc_fifos(self):
+
+		input_fifo = os.path.join(
+			self.settings['PORTAGE_BUILDDIR'], '.ipc_in')
+		output_fifo = os.path.join(
+			self.settings['PORTAGE_BUILDDIR'], '.ipc_out')
+
+		for x in (input_fifo, output_fifo):
+
+			p = os.path.join(self.settings['PORTAGE_BUILDDIR'], x)
+
+			st = None
+			try:
+				st = os.lstat(p)
+			except OSError:
+				os.mkfifo(p)
+			else:
+				if not stat.S_ISFIFO(st.st_mode):
+					st = None
+					try:
+						os.unlink(p)
+					except OSError:
+						pass
+					os.mkfifo(p)
+
+			apply_secpass_permissions(p,
+				uid=os.getuid(),
+				gid=portage.data.portage_gid,
+				mode=0o770, stat_cached=st)
+
+		return (input_fifo, output_fifo)
+
+	def _start_ipc_daemon(self):
+		self._exit_command = ExitCommand()
+		self._exit_command.reply_hook = self._exit_command_callback
+		query_command = QueryCommand(self.settings)
+		commands = {
+			'best_version' : query_command,
+			'exit'         : self._exit_command,
+			'has_version'  : query_command,
+		}
+		input_fifo, output_fifo = self._init_ipc_fifos()
+		self._ipc_daemon = EbuildIpcDaemon(commands=commands,
+			input_fifo=input_fifo,
+			output_fifo=output_fifo,
+			scheduler=self.scheduler)
+		self._ipc_daemon.start()
 
 	def _exit_command_callback(self):
 		if self._registered:
@@ -152,5 +208,10 @@ class AbstractEbuildProcess(SpawnProcess):
 			if self._exit_command.exitcode is not None:
 				self.returncode = self._exit_command.exitcode
 			else:
+				self.returncode = 1
+				self._unexpected_exit()
+		else:
+			exit_file = self.settings.get('PORTAGE_EBUILD_EXIT_FILE')
+			if exit_file and not os.path.exists(exit_file):
 				self.returncode = 1
 				self._unexpected_exit()

@@ -872,6 +872,7 @@ if [ -n "${MISC_FUNCTIONS_ARGS}" ]; then
 		${x}
 	done
 	unset x
+	[[ -n $PORTAGE_EBUILD_EXIT_FILE ]] && > "$PORTAGE_EBUILD_EXIT_FILE"
 	[[ -n $PORTAGE_IPC_DAEMON ]] && "$PORTAGE_BIN_PATH"/ebuild-ipc exit 0
 fi
 

@@ -85,25 +85,6 @@ def prepare_build_dirs(myroot, mysettings, cleanup):
 		writemsg(_("File Not Found: '%s'\n") % str(e), noiselevel=-1)
 		return 1
 
-	for x in ('.ipc_in', '.ipc_out'):
-		p = os.path.join(mysettings['PORTAGE_BUILDDIR'], x)
-		st = None
-		try:
-			st = os.lstat(p)
-		except OSError:
-			os.mkfifo(p)
-		else:
-			if not stat.S_ISFIFO(st.st_mode):
-				st = None
-				try:
-					os.unlink(p)
-				except OSError:
-					pass
-				os.mkfifo(p)
-		apply_secpass_permissions(p,
-			uid=portage_uid, gid=portage_gid,
-			mode=0o770, stat_cached=st)
-
 	# Reset state for things like noauto and keepwork in FEATURES.
 	for x in ('.die_hooks',):
 		try:
