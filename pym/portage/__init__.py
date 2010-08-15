@@ -520,7 +520,7 @@ def create_trees(config_root=None, target_root=None, trees=None):
 		# environment to apply to the config that's associated
 		# with ROOT != "/", so pass a nearly empty dict for the env parameter.
 		clean_env = {}
-		for k in ('PATH', 'TERM'):
+		for k in ('PATH', 'PORTAGE_GRPNAME', 'PORTAGE_USERNAME', 'TERM'):
 			v = settings.get(k)
 			if v is not None:
 				clean_env[k] = v
