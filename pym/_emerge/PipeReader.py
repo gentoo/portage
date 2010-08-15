@@ -78,7 +78,6 @@ class PipeReader(AbstractPollTask):
 				self.wait()
 
 		self._unregister_if_appropriate(event)
-		return self._registered
 
 	def _unregister(self):
 		"""

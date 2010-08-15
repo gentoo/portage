@@ -61,8 +61,6 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 				if reply_hook is not None:
 					reply_hook()
 
-		return self._registered
-
 	def _send_reply(self, reply):
 		output_fd = os.open(self.output_fifo, os.O_WRONLY|os.O_NONBLOCK)
 		output_file = os.fdopen(output_fd, 'wb')

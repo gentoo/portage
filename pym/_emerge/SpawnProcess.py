@@ -195,7 +195,6 @@ class SpawnProcess(SubProcess):
 				self.wait()
 
 		self._unregister_if_appropriate(event)
-		return self._registered
 
 	def _dummy_handler(self, fd, event):
 		"""
@@ -219,5 +218,4 @@ class SpawnProcess(SubProcess):
 				self.wait()
 
 		self._unregister_if_appropriate(event)
-		return self._registered
 

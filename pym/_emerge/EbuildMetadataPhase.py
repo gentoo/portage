@@ -114,7 +114,6 @@ class EbuildMetadataPhase(SubProcess):
 				self.wait()
 
 		self._unregister_if_appropriate(event)
-		return self._registered
 
 	def _set_returncode(self, wait_retval):
 		SubProcess._set_returncode(self, wait_retval)
