@@ -1033,6 +1033,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		finally:
 			if use_locks and file_lock:
 				unlockfile(file_lock)
+				file_lock = None
 
 		if listonly:
 			writemsg_stdout("\n", noiselevel=-1)
