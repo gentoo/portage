@@ -1,5 +1,5 @@
 # repoman: Checks
-# Copyright 2007 Gentoo Foundation
+# Copyright 2007, 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """This module contains functions used in Repoman to ascertain the quality
@@ -8,6 +8,9 @@ and correctness of an ebuild."""
 import re
 import time
 import repoman.errors as errors
+from portage.eapi import eapi_supports_prefix, eapi_has_implicit_rdepend, \
+	eapi_has_src_prepare_and_src_configure, eapi_has_dosed_dohard, \
+	eapi_exports_AA, eapi_exports_KV
 
 class LineCheck(object):
 	"""Run a check on a line of an ebuild."""
@@ -230,7 +233,7 @@ class Eapi3EbuildAssignment(EbuildAssignment):
 	readonly_assignment = re.compile(r'\s*(export\s+)?(ED|EPREFIX|EROOT)=')
 
 	def check_eapi(self, eapi):
-		return eapi not in ('0', '1', '2')
+		return eapi_supports_prefix(eapi)
 
 class EbuildNestedDie(LineCheck):
 	"""Check ebuild for nested die statements (die statements in subshells"""
@@ -341,7 +344,7 @@ class ImplicitRuntimeDeps(LineCheck):
 		# Beginning with EAPI 4, there is no
 		# implicit RDEPEND=$DEPEND assignment
 		# to be concerned with.
-		return eapi in ('0', '1', '2', '3')
+		return eapi_has_implicit_rdepend(eapi)
 
 	def check(self, num, line):
 		if not self._rdepend:
@@ -467,7 +470,7 @@ class SrcCompileEconf(PhaseCheck):
 	configure_re = re.compile(r'\s(econf|./configure)')
 
 	def check_eapi(self, eapi):
-		return eapi not in ('0', '1')
+		return eapi_has_src_prepare_and_src_configure(eapi)
 
 	def phase_check(self, num, line):
 		if self.in_phase == 'src_compile':
@@ -481,7 +484,7 @@ class SrcUnpackPatches(PhaseCheck):
 	src_prepare_tools_re = re.compile(r'\s(e?patch|sed)\s')
 
 	def check_eapi(self, eapi):
-		return eapi not in ('0', '1')
+		return eapi_has_src_prepare_and_src_configure(eapi)
 
 	def phase_check(self, num, line):
 		if self.in_phase == 'src_unpack':
@@ -518,7 +521,7 @@ class Eapi4IncompatibleFuncs(LineCheck):
 	banned_commands_re = re.compile(r'^\s*(dosed|dohard)')
 
 	def check_eapi(self, eapi):
-		return eapi not in ('0', '1', '2', '3', '3_pre2')
+		return not eapi_has_dosed_dohard(eapi)
 
 	def check(self, num, line):
 		m = self.banned_commands_re.match(line)
@@ -532,7 +535,7 @@ class Eapi4GoneVars(LineCheck):
 	undefined_vars_re = re.compile(r'.*\$(\{(AA|KV)\}|(AA|KV))')
 
 	def check_eapi(self, eapi):
-		return eapi not in ('0', '1', '2', '3', '3_pre2')
+		return not eapi_exports_AA(eapi) or not eapi_exports_KV(eapi)
 
 	def check(self, num, line):
 		m = self.undefined_vars_re.match(line)

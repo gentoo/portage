@@ -3,7 +3,9 @@
 
 import logging
 import select
+import time
 
+from portage import os
 from portage.util import writemsg_level
 
 from _emerge.SlotObject import SlotObject
@@ -14,7 +16,7 @@ from _emerge.PollSelectAdapter import PollSelectAdapter
 class PollScheduler(object):
 
 	class _sched_iface_class(SlotObject):
-		__slots__ = ("register", "schedule", "unregister")
+		__slots__ = ("register", "schedule", "schedule_waitpid", "unregister")
 
 	def __init__(self):
 		self._max_jobs = 1
@@ -112,6 +114,8 @@ class PollScheduler(object):
 		"""
 		if not self._poll_event_queue:
 			self._poll(timeout)
+			if not self._poll_event_queue:
+				raise StopIteration()
 		return self._poll_event_queue.pop()
 
 	def _poll_loop(self):
@@ -158,9 +162,13 @@ class PollScheduler(object):
 		try:
 			while event_handlers and self._poll_event_queue:
 				f, event = self._next_poll_event()
-				handler, reg_id = event_handlers[f]
-				handler(f, event)
-				events_handled += 1
+				try:
+					handler, reg_id = event_handlers[f]
+				except KeyError:
+					pass
+				else:
+					handler(f, event)
+					events_handled += 1
 		except StopIteration:
 			events_handled += 1
 
@@ -187,7 +195,7 @@ class PollScheduler(object):
 		del self._poll_event_handlers[f]
 		del self._poll_event_handler_ids[reg_id]
 
-	def _schedule_wait(self, wait_ids):
+	def _schedule_wait(self, wait_ids, timeout=None):
 		"""
 		Schedule until wait_id is not longer registered
 		for poll() events.
@@ -201,17 +209,57 @@ class PollScheduler(object):
 		if isinstance(wait_ids, int):
 			wait_ids = frozenset([wait_ids])
 
+		start_time = None
+		if timeout is not None:
+			start_time = 1000 * time.time()
 		try:
 			while wait_ids.intersection(handler_ids):
-				f, event = self._next_poll_event()
-				handler, reg_id = event_handlers[f]
-				handler(f, event)
-				event_handled = True
+				f, event = self._next_poll_event(timeout=timeout)
+				try:
+					handler, reg_id = event_handlers[f]
+				except KeyError:
+					pass
+				else:
+					handler(f, event)
+					event_handled = True
+				if timeout is not None:
+					if 1000 * time.time() - start_time >= timeout:
+						break
 		except StopIteration:
 			event_handled = True
 
 		return event_handled
 
+	def _schedule_waitpid(self, pid):
+		"""
+		Schedule until waitpid returns process status
+		for the given pid, and return the result from waitpid.
+		This is meant to be called as a last resort, since
+		it won't return until the process exits. This can raise
+		OSError from the waitpid call (typically errno.ECHILD).
+		@type pid: int
+		@param pid: the pid of the child process to wait for
+		"""
+		event_handlers = self._poll_event_handlers
+
+		try:
+			while event_handlers:
+				f, event = self._next_poll_event()
+				try:
+					handler, reg_id = event_handlers[f]
+				except KeyError:
+					pass
+				else:
+					handler(f, event)
+					wait_retval = os.waitpid(pid, os.WNOHANG)
+					if wait_retval != (0, 0):
+						return wait_retval
+				self._schedule()
+		except StopIteration:
+			pass
+
+		# Once scheduling is exhaused, do a blocking waitpid.
+		return os.waitpid(pid, 0)
 
 _can_poll_device = None
 

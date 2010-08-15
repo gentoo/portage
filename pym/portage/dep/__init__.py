@@ -1,5 +1,5 @@
 # deps.py -- Portage dependency resolution functions
-# Copyright 2003-2004 Gentoo Foundation
+# Copyright 2003-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -79,79 +79,93 @@ def strip_empty(myarr):
 	@rtype: Array
 	@return: The array with empty elements removed
 	"""
+	warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
+		('portage.dep.strip_empty',), DeprecationWarning, stacklevel=2)
 	return [x for x in myarr if x]
 
-_paren_whitespace_re = re.compile(r'\S(\(|\))|(\(|\))\S')
-
-def paren_reduce(mystr,tokenize=1):
+def paren_reduce(mystr):
 	"""
-	Take a string and convert all paren enclosed entities into sublists, optionally
-	futher splitting the list elements by spaces.
+	Take a string and convert all paren enclosed entities into sublists and
+	split the list elements by spaces. All redundant brackets are removed.
 
 	Example usage:
-		>>> paren_reduce('foobar foo ( bar baz )',1)
-		['foobar', 'foo', ['bar', 'baz']]
-		>>> paren_reduce('foobar foo ( bar baz )',0)
-		['foobar foo ', [' bar baz ']]
+		>>> paren_reduce('foobar foo? ( bar baz )')
+		['foobar', 'foo?', ['bar', 'baz']]
 
 	@param mystr: The string to reduce
 	@type mystr: String
-	@param tokenize: Split on spaces to produces further list breakdown
-	@type tokenize: Integer
 	@rtype: Array
 	@return: The reduced string in an array
 	"""
-	global _dep_check_strict, _paren_whitespace_re
-	if _dep_check_strict:
-		m = _paren_whitespace_re.search(mystr)
-		if m is not None:
-			raise portage.exception.InvalidDependString(
-				_("missing space by parenthesis: '%s'") % m.group(0))
-	mylist = []
-	while mystr:
-		left_paren = mystr.find("(")
-		has_left_paren = left_paren != -1
-		right_paren = mystr.find(")")
-		has_right_paren = right_paren != -1
-		if not has_left_paren and not has_right_paren:
-			freesec = mystr
-			subsec = None
-			tail = ""
-		elif mystr[0] == ")":
-			return [mylist,mystr[1:]]
-		elif has_left_paren and not has_right_paren:
-			raise portage.exception.InvalidDependString(
-				_("missing right parenthesis: '%s'") % mystr)
-		elif has_left_paren and left_paren < right_paren:
-			freesec,subsec = mystr.split("(",1)
-			sublist = paren_reduce(subsec, tokenize=tokenize)
-			if len(sublist) != 2:
+	warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
+		('portage.dep.paren_reduce',), DeprecationWarning, stacklevel=2)
+	mysplit = mystr.split()
+	level = 0
+	stack = [[]]
+	need_bracket = False
+	
+	for token in mysplit:
+		if token == "(":
+			need_bracket = False
+			stack.append([])
+			level += 1
+		elif token == ")":
+			if need_bracket:
 				raise portage.exception.InvalidDependString(
 					_("malformed syntax: '%s'") % mystr)
-			subsec, tail = sublist
-		else:
-			subsec,tail = mystr.split(")",1)
-			if tokenize:
-				subsec = strip_empty(subsec.split(" "))
-				return [mylist+subsec,tail]
-			return mylist+[subsec],tail
-		if not isinstance(tail, basestring):
-			raise portage.exception.InvalidDependString(
-				_("malformed syntax: '%s'") % mystr)
-		mystr = tail
-		if freesec:
-			if tokenize:
-				mylist = mylist + strip_empty(freesec.split(" "))
+			if level > 0:
+				level -= 1
+				l = stack.pop()
+				if l:
+					if not stack[level] or (stack[level][-1] != "||" and not stack[level][-1][-1] == "?"):
+						#Optimize: ( ( ... ) ) -> ( ... )
+						stack[level].extend(l)
+					elif len(l) == 1 and stack[level][-1] == "||":
+						#Optimize: || ( A ) -> A
+						stack[level].pop()
+						stack[level].extend(l)
+					elif len(l) == 2 and (l[0] == "||" or l[0][-1] == "?") and stack[level][-1] in (l[0], "||"):
+						#Optimize: 	|| ( || ( ... ) ) -> || ( ... )
+						#			foo? ( foo? ( ... ) ) -> foo? ( ... )
+						#			|| ( foo? ( ... ) ) -> foo? ( ... )
+						stack[level].pop()
+						stack[level].extend(l)
+					else:
+						stack[level].append(l)
+				else:
+					if stack[level] and (stack[level][-1] == "||" or stack[level][-1][-1] == "?"):
+						stack[level].pop()
 			else:
-				mylist = mylist + [freesec]
-		if subsec is not None:
-			mylist = mylist + [subsec]
-	return mylist
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % mystr)
+		elif token == "||":
+			if need_bracket:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % mystr)
+			need_bracket = True
+			stack[level].append(token)
+		else:
+			if need_bracket or "(" in token or ")" in token or "|" in token:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % mystr)
+
+			if token[-1] == "?":
+				need_bracket = True
+			
+			stack[level].append(token)
+
+	if level != 0 or need_bracket:
+		raise portage.exception.InvalidDependString(
+			_("malformed syntax: '%s'") % mystr)
+	
+	return stack[0]
 
 class paren_normalize(list):
 	"""Take a dependency structure as returned by paren_reduce or use_reduce
 	and generate an equivalent structure that has no redundant lists."""
 	def __init__(self, src):
+		warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
+			('portage.dep.paren_normalize',), DeprecationWarning, stacklevel=2)
 		list.__init__(self)
 		self._zap_parens(src, self)
 
@@ -161,13 +175,13 @@ class paren_normalize(list):
 		i = iter(src)
 		for x in i:
 			if isinstance(x, basestring):
-				if x == '||':
-					x = self._zap_parens(next(i), [], disjunction=True)
-					if len(x) == 1:
-						dest.append(x[0])
+				if x in ('||', '^^'):
+					y = self._zap_parens(next(i), [], disjunction=True)
+					if len(y) == 1:
+						dest.append(y[0])
 					else:
-						dest.append("||")
 						dest.append(x)
+						dest.append(y)
 				elif x.endswith("?"):
 					dest.append(x)
 					dest.append(self._zap_parens(next(i), []))
@@ -206,120 +220,166 @@ def paren_enclose(mylist):
 			mystrparts.append(x)
 	return " ".join(mystrparts)
 
-# This is just for use by emerge so that it can enable a backward compatibility
-# mode in order to gracefully deal with installed packages that have invalid
-# atoms or dep syntax.  For backward compatibility with api consumers, strict
-# behavior will be explicitly enabled as necessary.
-_dep_check_strict = False
-
-def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
+def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], is_src_uri=False, \
+	allow_src_uri_file_renames=False, opconvert=False, flat=False):
 	"""
-	Takes a paren_reduce'd array and reduces the use? conditionals out
-	leaving an array with subarrays
+	Takes a dep string and reduces the use? conditionals out, leaving an array
+	with subarrays. All redundant brackets are removed.
 
-	@param deparray: paren_reduce'd list of deps
-	@type deparray: List
-	@param uselist: List of use flags
+	@param deparray: depstring
+	@type deparray: String
+	@param uselist: List of use enabled flags
 	@type uselist: List
-	@param masklist: List of masked flags
+	@param masklist: List of masked flags (always treated as disabled)
 	@type masklist: List
-	@param matchall: Resolve all conditional deps unconditionally.  Used by repoman
-	@type matchall: Integer
+	@param matchall: Treat all conditionals as active. Used by repoman. 
+	@type matchall: Bool
+	@param excludeall: List of flags for which negated conditionals are always treated as inactive.
+	@type excludeall: List
+	@param is_src_uri: Indicates if depstr represents a SRC_URI
+	@type is_src_uri: Bool
+	@param allow_src_uri_file_renames: Indicates if EAPI-2 SRC_URI arrows are allowed when parsing a SRC_URI
+	@type allow_src_uri_file_renames: Bool
+	@param opconvert: Put every operator as first element into it's argument list
+	@type opconvert: Bool
+	@param flat: Create a flat list of all tokens
+	@type flat: Bool
 	@rtype: List
 	@return: The use reduced depend array
 	"""
-	# Quick validity checks
-	for x, y in enumerate(deparray):
-		if y == '||':
-			if len(deparray) - 1 == x or not isinstance(deparray[x+1], list):
-				raise portage.exception.InvalidDependString(_('%(dep)s missing atom list in "%(deparray)s"') % {"dep": deparray[x], "deparray": paren_enclose(deparray)})
-	if deparray and deparray[-1] and deparray[-1][-1] == "?":
-		raise portage.exception.InvalidDependString(_('Conditional without target in "%s"') % paren_enclose(deparray))
+	if isinstance(depstr, list):
+		warnings.warn(_("Passing paren_reduced dep arrays to %s is deprecated. " + \
+			"Pass the original dep string instead.") % \
+			('portage.dep.use_reduce',), DeprecationWarning, stacklevel=2)
+		depstr = paren_enclose(depstr)
 
-	global _dep_check_strict
+	if opconvert and flat:
+		raise ValueError("portage.dep.use_reduce: 'opconvert' and 'flat' are mutually exclusive")
 
-	mydeparray = deparray[:]
-	rlist = []
-	while mydeparray:
-		head = mydeparray.pop(0)
-
-		if not isinstance(head, basestring):
-			additions = use_reduce(head, uselist, masklist, matchall, excludeall)
-			if additions:
-				rlist.append(additions)
-			elif rlist and rlist[-1] == "||":
-			#XXX: Currently some DEPEND strings have || lists without default atoms.
-			#	raise portage.exception.InvalidDependString("No default atom(s) in \""+paren_enclose(deparray)+"\"")
-				rlist.append([])
-
+	def is_active(conditional):
+		if conditional.startswith("!"):
+			flag = conditional[1:-1]
+			is_negated = True
 		else:
-			if head[-1:] == "?": # Use reduce next group on fail.
-				# Pull any other use conditions and the following atom or list into a separate array
-				newdeparray = [head]
-				while isinstance(newdeparray[-1], basestring) and \
-					newdeparray[-1][-1:] == "?":
-					if mydeparray:
-						newdeparray.append(mydeparray.pop(0))
+			flag = conditional[:-1]
+			is_negated = False
+
+		if not flag:
+			raise portage.exception.InvalidDependString(
+				_("malformed syntax: '%s'") % depstr)
+
+		if is_negated and flag in excludeall:
+			return False
+
+		if flag in masklist:
+			return is_negated
+
+		if matchall:
+			return True
+
+		return (flag in uselist and not is_negated) or \
+			(flag not in uselist and is_negated)
+
+	mysplit = depstr.split()
+	level = 0
+	stack = [[]]
+	need_bracket = False
+	need_simple_token = False
+
+	for token in mysplit:
+		if token == "(":
+			if need_simple_token:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % depstr)
+			need_bracket = False
+			stack.append([])
+			level += 1
+		elif token == ")":
+			if need_bracket or need_simple_token:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % depstr)
+			if level > 0:
+				level -= 1
+				l = stack.pop()
+				ignore = False
+
+				if flat:
+					if stack[level] and stack[level][-1][-1] == "?":
+						if is_active(stack[level][-1]):
+							stack[level].pop()
+							stack[level].extend(l)
+						else:
+							stack[level].pop()
 					else:
-						raise ValueError(_("Conditional with no target."))
+						stack[level].extend(l)
+					continue
 
-				# Deprecation checks
-				warned = 0
-				if len(newdeparray[-1]) == 0:
-					sys.stderr.write(_("Note: Empty target in string. (Deprecated)\n"))
-					warned = 1
-				if len(newdeparray) != 2:
-					sys.stderr.write(_("Note: Nested use flags without parenthesis (Deprecated)\n"))
-					warned = 1
-				if warned:
-					sys.stderr.write("  --> "+" ".join(map(str,[head]+newdeparray))+"\n")
+				if stack[level]:
+					if stack[level][-1] == "||" and not l:
+						stack[level].pop()
+					elif stack[level][-1][-1] == "?":
+						if not is_active(stack[level][-1]):
+							ignore = True
+						stack[level].pop()
 
-				# Check that each flag matches
-				ismatch = True
-				missing_flag = False
-				for head in newdeparray[:-1]:
-					head = head[:-1]
-					if not head:
-						missing_flag = True
-						break
-					if head.startswith("!"):
-						head_key = head[1:]
-						if not head_key:
-							missing_flag = True
-							break
-						if not matchall and head_key in uselist or \
-							head_key in excludeall:
-							ismatch = False
-							break
-					elif head not in masklist:
-						if not matchall and head not in uselist:
-							ismatch = False
-							break
+				if l and not ignore:
+					if not stack[level] or stack[level][-1] != "||":
+						#Optimize: ( ( ... ) ) -> ( ... )
+						stack[level].extend(l)
+					elif len(l) == 1 and stack[level][-1] == "||":
+						#Optimize: || ( A ) -> A
+						stack[level].pop()
+						stack[level].extend(l)
+					elif len(l) == 2 and l[0] == "||" and stack[level][-1] == "||":
+						#Optimize: 	|| ( || ( ... ) ) -> || ( ... )
+						stack[level].pop()
+						stack[level].extend(l)
 					else:
-						ismatch = False
-				if missing_flag:
-					raise portage.exception.InvalidDependString(
-						_('Conditional without flag: "') + \
-						paren_enclose([head+"?", newdeparray[-1]])+"\"")
-
-				# If they all match, process the target
-				if ismatch:
-					target = newdeparray[-1]
-					if isinstance(target, list):
-						additions = use_reduce(target, uselist, masklist, matchall, excludeall)
-						if additions:
-							rlist.append(additions)
-					elif not _dep_check_strict:
-						# The old deprecated behavior.
-						rlist.append(target)
-					else:
-						raise portage.exception.InvalidDependString(
-							_("Conditional without parenthesis: '%s?'") % head)
-
+						if opconvert and stack[level] and stack[level][-1] == "||":
+							stack[level].pop()
+							stack[level].append(["||"] + l)
+						else:
+							stack[level].append(l)
 			else:
-				rlist += [head]
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % depstr)
+		elif token == "||":
+			if need_bracket or is_src_uri:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % depstr)
+			need_bracket = True
+			stack[level].append(token)
+		elif token == "->":
+			if not allow_src_uri_file_renames or not is_src_uri or need_simple_token:
+				raise portage.exception.InvalidDependString(
+					_("SRC_URI arrow not allowed: '%s'") % depstr)
+			need_simple_token = True
+			stack[level].append(token)	
+		else:
+			if need_bracket or "(" in token or ")" in token or "|" in token or \
+				(need_simple_token and "/" in token):
+				if not (need_bracket or "|" in token or (need_simple_token and "/" in token)):
+					#We have '(' and/or ')' in token. Make sure it's not a use dep default
+					tmp = token.replace("(+)", "").replace("(-)", "")
+					if "(" in tmp or ")" in tmp:
+						raise portage.exception.InvalidDependString(
+							_("malformed syntax: '%s'") % depstr)
+				else:
+					raise portage.exception.InvalidDependString(
+						_("malformed syntax: '%s'") % depstr)
 
-	return rlist
+			if token[-1] == "?":
+				need_bracket = True
+			else:
+				need_simple_token = False
+
+			stack[level].append(token)
+
+	if level != 0 or need_bracket or need_simple_token:
+		raise portage.exception.InvalidDependString(
+			_("malformed syntax: '%s'") % depstr)
+
+	return stack[0]
 
 def dep_opconvert(deplist):
 	"""
@@ -338,13 +398,15 @@ def dep_opconvert(deplist):
 	@return:
 		The new list with the new ordering
 	"""
+	warnings.warn(_("%s is deprecated. Use %s with the opconvert parameter set to True instead.") % \
+		('portage.dep.dep_opconvert', 'portage.dep.use_reduce'), DeprecationWarning, stacklevel=2)
 
 	retlist = []
 	x = 0
 	while x != len(deplist):
 		if isinstance(deplist[x], list):
 			retlist.append(dep_opconvert(deplist[x]))
-		elif deplist[x] == "||" or deplist[x] == "&&":
+		elif deplist[x] == "||":
 			retlist.append([deplist[x]] + dep_opconvert(deplist[x+1]))
 			x += 1
 		else:
@@ -366,6 +428,9 @@ def flatten(mylist):
 	@rtype: List
 	@return: A single list containing only non-list elements.
 	"""
+	warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
+		('portage.dep.flatten',), DeprecationWarning, stacklevel=2)
+
 	newlist = []
 	for x in mylist:
 		if isinstance(x, list):
@@ -376,17 +441,21 @@ def flatten(mylist):
 
 class _use_dep(object):
 
-	__slots__ = ("__weakref__", "conditional",
+	__slots__ = ("__weakref__", "conditional", "missing_enabled", "missing_disabled",
 		"disabled", "enabled", "tokens", "required")
 
 	_conditionals_class = portage.cache.mappings.slot_dict_class(
 		("disabled", "enabled", "equal", "not_equal"), prefix="")
 
-	_valid_use_re = re.compile(r'^[^-?!=][^?!=]*$')
+	_valid_use_re = re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@-]*$')
 
 	def __init__(self, use):
 		enabled_flags = []
 		disabled_flags = []
+		missing_enabled = []
+		missing_disabled = []
+		no_default = []
+
 		conditional = self._conditionals_class()
 		for k in conditional.allowed_keys:
 			conditional[k] = []
@@ -394,37 +463,61 @@ class _use_dep(object):
 		for x in use:
 			last_char = x[-1:]
 			first_char = x[:1]
+			flag = x
+			default = ""
+			if last_char in ("?", "="):
+				flag = flag[:-1]
+			if first_char in ("-", "!"):
+				flag = flag[1:]
+
+			if flag[-3:] in ("(+)", "(-)"):
+				default = flag[-3:]
+				flag = flag[:-3]
 
 			if "?" == last_char:
 				if "!" == first_char:
 					conditional.disabled.append(
-						self._validate_flag(x, x[1:-1]))
+						self._validate_flag(x, flag))
 				elif first_char in ("-", "=", "?"):
 					raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
 				else:
 					conditional.enabled.append(
-						self._validate_flag(x, x[:-1]))
+						self._validate_flag(x, flag))
 
 			elif "=" == last_char:
 				if "!" == first_char:
 					conditional.not_equal.append(
-						self._validate_flag(x, x[1:-1]))
+						self._validate_flag(x, flag))
 				elif first_char in ("-", "=", "?"):
 					raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
 				else:
 					conditional.equal.append(
-						self._validate_flag(x, x[:-1]))
+						self._validate_flag(x, flag))
 
 			elif last_char in ("!", "-"):
 				raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
 
 			else:
 				if "-" == first_char:
-					disabled_flags.append(self._validate_flag(x, x[1:]))
+					disabled_flags.append(self._validate_flag(x, flag))
 				elif first_char in ("!", "=", "?"):
 					raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
 				else:
-					enabled_flags.append(self._validate_flag(x, x))
+					enabled_flags.append(self._validate_flag(x, flag))
+
+			if default:
+				if default == "(+)":
+					if flag in missing_disabled or flag in no_default:
+						raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
+					missing_enabled.append(flag)
+				else:
+					if flag in missing_enabled or flag in no_default:
+						raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
+					missing_disabled.append(flag)
+			else:
+				if flag in missing_enabled or flag in missing_disabled:
+					raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
+				no_default.append(flag)
 
 		self.tokens = use
 		if not isinstance(self.tokens, tuple):
@@ -438,6 +531,8 @@ class _use_dep(object):
 
 		self.enabled = frozenset(enabled_flags)
 		self.disabled = frozenset(disabled_flags)
+		self.missing_enabled = frozenset(missing_enabled)
+		self.missing_disabled = frozenset(missing_disabled)
 		self.conditional = None
 
 		for v in conditional.values():
@@ -465,6 +560,22 @@ class _use_dep(object):
 
 	def __repr__(self):
 		return "portage.dep._use_dep(%s)" % repr(self.tokens)
+
+	
+	def _append_use_default(self, output, flag):
+		default = None
+		if flag in self.missing_enabled:
+			default = "(+)"
+		elif flag in self.missing_disabled:
+			default = "(-)"
+
+		if not default:
+			return output
+
+		if output[-1] in ("=", "?"):
+			return output[:-1] + default + output[-1]
+		else:
+			return output + default
 
 	def evaluate_conditionals(self, use):
 		"""
@@ -497,37 +608,114 @@ class _use_dep(object):
 		tokens = []
 
 		conditional = self.conditional
-		tokens.extend(self.enabled)
-		tokens.extend("-" + x for x in self.disabled)
-		tokens.extend(x for x in conditional.enabled if x in use)
-		tokens.extend("-" + x for x in conditional.disabled if x not in use)
+		tokens.extend(self._append_use_default(x, x) for x in self.enabled)
+		tokens.extend(self._append_use_default("-" + x, x) for x in self.disabled)
+		tokens.extend(self._append_use_default(x, x) for x in conditional.enabled if x in use)
+		tokens.extend(self._append_use_default("-" + x, x) for x in conditional.disabled if x not in use)
 
-		tokens.extend(x for x in conditional.equal if x in use)
-		tokens.extend("-" + x for x in conditional.equal if x not in use)
-		tokens.extend("-" + x for x in conditional.not_equal if x in use)
-		tokens.extend(x for x in conditional.not_equal if x not in use)
+		tokens.extend(self._append_use_default(x, x) for x in conditional.equal if x in use)
+		tokens.extend(self._append_use_default("-" + x, x) for x in conditional.equal if x not in use)
+		tokens.extend(self._append_use_default("-" + x, x) for x in conditional.not_equal if x in use)
+		tokens.extend(self._append_use_default(x, x) for x in conditional.not_equal if x not in use)
 
 		return _use_dep(tokens)
 
-	def violated_conditionals(self, other_use, parent_use=None):
+	def violated_conditionals(self, other_use, is_valid_flag, parent_use=None):
 		"""
 		Create a new instance with satisfied use deps removed.
 		"""
 		tokens = []
 
 		conditional = self.conditional
-		tokens.extend(x for x in self.enabled if x not in other_use)
-		tokens.extend("-" + x for x in self.disabled if x in other_use)
-		if conditional:
-			if not parent_use:
-				raise InvalidAtom("violated_conditionals needs 'parent_use'" + \
-					" parameter for conditional flags: '%s'" % (token,))
-			tokens.extend(x + "?" for x in conditional.enabled if x in parent_use and not x in other_use)
-			tokens.extend("!" + x + "?" for x in conditional.disabled if x not in parent_use and x in other_use)
-			tokens.extend(x + "=" for x in conditional.equal if x in parent_use and x not in other_use)
-			tokens.extend(x + "=" for x in conditional.equal if x not in parent_use and x in other_use)
-			tokens.extend("!" + x + "=" for x in conditional.not_equal if x in parent_use and x in other_use)
-			tokens.extend("!" + x + "=" for x in conditional.not_equal if x not in parent_use and x not in other_use)
+
+		for x in self.enabled:
+			if x not in other_use:
+				if is_valid_flag(x):
+					tokens.append(self._append_use_default(x, x))
+				else:
+					if x in self.missing_disabled:
+						tokens.append(self._append_use_default(x, x))
+
+		for x in self.disabled:
+			if x not in other_use:
+				if not is_valid_flag(x):
+					if x in self.missing_enabled:
+						tokens.append(self._append_use_default("-" + x, x))
+			else:
+				tokens.append(self._append_use_default("-" + x, x))
+
+		if not conditional:
+			return _use_dep(tokens)
+
+		if parent_use is None:
+			raise InvalidAtom("violated_conditionals needs 'parent_use'" + \
+				" parameter for conditional flags.")
+
+		for x in conditional.enabled:
+			if x not in parent_use:
+				continue
+
+			if x not in other_use:
+				if is_valid_flag(x):
+					tokens.append(self._append_use_default(x + "?", x))
+				else:
+					if x in self.missing_disabled:
+						tokens.append(self._append_use_default(x + "?", x))
+
+		for x in conditional.disabled:
+			if x in parent_use:
+				continue
+
+			if x not in other_use:
+				if not is_valid_flag(x):
+					if x in self.missing_enabled:
+						tokens.append(self._append_use_default("!" + x + "?", x))
+			else:
+				tokens.append(self._append_use_default("!" + x + "?", x))
+
+		for x in conditional.equal:
+			if x not in parent_use:
+				continue
+
+			if x not in other_use:
+				if is_valid_flag(x):
+					tokens.append(self._append_use_default(x + "=", x))
+				else:
+					if x in self.missing_disabled:
+						tokens.append(self._append_use_default(x + "=", x))
+
+		for x in conditional.equal:
+			if x in parent_use:
+				continue
+
+			if x not in other_use:
+				if not is_valid_flag(x):
+					if x in self.missing_enabled:
+						tokens.append(self._append_use_default(x + "=", x))
+			else:
+				tokens.append(self._append_use_default(x + "=", x))
+
+		for x in conditional.not_equal:
+			if x in parent_use:
+				continue
+
+			if x not in other_use:
+				if is_valid_flag(x):
+					tokens.append(self._append_use_default("!" + x + "=", x))
+				else:
+					if x in self.missing_disabled:
+						tokens.append(self._append_use_default("!" + x + "=", x))
+
+		for x in conditional.not_equal:
+			if x not in parent_use:
+				continue
+
+			if x not in other_use:
+				if not is_valid_flag(x):
+					if x in self.missing_enabled:
+						tokens.append(self._append_use_default("!" + x + "=", x))
+			else:
+				tokens.append(self._append_use_default("!" + x + "=", x))
 
 		return _use_dep(tokens)
 
@@ -544,15 +732,15 @@ class _use_dep(object):
 		tokens = []
 
 		conditional = self.conditional
-		tokens.extend(self.enabled)
-		tokens.extend("-" + x for x in self.disabled)
-		tokens.extend(x for x in conditional.enabled if x not in use_mask)
-		tokens.extend("-" + x for x in conditional.disabled if x not in use_force)
+		tokens.extend(self._append_use_default(x, x) for x in self.enabled)
+		tokens.extend(self._append_use_default("-" + x, x) for x in self.disabled)
+		tokens.extend(self._append_use_default(x, x) for x in conditional.enabled if x not in use_mask)
+		tokens.extend(self._append_use_default("-" + x, x) for x in conditional.disabled if x not in use_force)
 
-		tokens.extend(x for x in conditional.equal if x not in use_mask)
-		tokens.extend("-" + x for x in conditional.equal if x not in use_force)
-		tokens.extend("-" + x for x in conditional.not_equal if x not in use_mask)
-		tokens.extend(x for x in conditional.not_equal if x not in use_force)
+		tokens.extend(self._append_use_default(x, x) for x in conditional.equal if x not in use_mask)
+		tokens.extend(self._append_use_default("-" + x, x) for x in conditional.equal if x not in use_force)
+		tokens.extend(self._append_use_default("-" + x, x) for x in conditional.not_equal if x not in use_mask)
+		tokens.extend(self._append_use_default(x, x) for x in conditional.not_equal if x not in use_force)
 
 		return _use_dep(tokens)
 
@@ -717,14 +905,16 @@ class Atom(_atom_base):
 		atom += str(self.use.evaluate_conditionals(use))
 		return Atom(atom, unevaluated_atom=self)
 
-	def violated_conditionals(self, other_use, parent_use=None):
+	def violated_conditionals(self, other_use, is_valid_flag, parent_use=None):
 		"""
 		Create an atom instance with any USE conditional removed, that is
 		satisfied by other_use.
-		@param use: The set of enabled USE flags
-		@type use: set
-		@param use: The set of enabled USE flags to check against
-		@type use: set
+		@param other_use: The set of enabled USE flags
+		@type other_use: set
+		@param is_valid_flag: Function that decides if a use flag is referenceable in use deps
+		@type is_valid_flag: function
+		@param parent_use: Set of enabled use flags of the package requiring this atom
+		@type parent_use: set
 		@rtype: Atom
 		@return: an atom instance with any satisfied USE conditionals removed
 		"""
@@ -733,7 +923,7 @@ class Atom(_atom_base):
 		atom = remove_slot(self)
 		if self.slot:
 			atom += ":%s" % self.slot
-		atom += str(self.use.violated_conditionals(other_use, parent_use))
+		atom += str(self.use.violated_conditionals(other_use, is_valid_flag, parent_use))
 		return Atom(atom, unevaluated_atom=self)
 
 	def _eval_qa_conditionals(self, use_mask, use_force):
@@ -865,38 +1055,10 @@ def get_operator(mydep):
 	@return: The operator. One of:
 		'~', '=', '>', '<', '=*', '>=', or '<='
 	"""
-	if isinstance(mydep, Atom):
-		return mydep.operator
-	try:
-		return Atom(mydep).operator
-	except InvalidAtom:
-		pass
+	if not isinstance(mydep, Atom):
+		mydep = Atom(mydep)
 
-	# Fall back to legacy code for backward compatibility.
-	warnings.warn(_("%s is deprecated, use %s instead") % \
-		('portage.dep.get_operator()', 'portage.dep.Atom.operator'),
-		DeprecationWarning)
-	operator = None
-	if mydep:
-		mydep = remove_slot(mydep)
-	if not mydep:
-		return None
-	if mydep[0] == "~":
-		operator = "~"
-	elif mydep[0] == "=":
-		if mydep[-1] == "*":
-			operator = "=*"
-		else:
-			operator = "="
-	elif mydep[0] in "><":
-		if len(mydep) > 1 and mydep[1] == "=":
-			operator = mydep[0:2]
-		else:
-			operator = mydep[0]
-	else:
-		operator = None
-
-	return operator
+	return mydep.operator
 
 def dep_getcpv(mydep):
 	"""
@@ -911,34 +1073,10 @@ def dep_getcpv(mydep):
 	@rtype: String
 	@return: The depstring with the operator removed
 	"""
-	if isinstance(mydep, Atom):
-		return mydep.cpv
-	try:
-		return Atom(mydep).cpv
-	except InvalidAtom:
-		pass
+	if not isinstance(mydep, Atom):
+		mydep = Atom(mydep)
 
-	# Fall back to legacy code for backward compatibility.
-	warnings.warn(_("%s is deprecated, use %s instead") % \
-		('portage.dep.dep_getcpv()', 'portage.dep.Atom.cpv'),
-		DeprecationWarning, stacklevel=2)
-	mydep_orig = mydep
-	if mydep:
-		mydep = remove_slot(mydep)
-	if mydep and mydep[0] == "*":
-		mydep = mydep[1:]
-	if mydep and mydep[-1] == "*":
-		mydep = mydep[:-1]
-	if mydep and mydep[0] == "!":
-		if mydep[1:2] == "!":
-			mydep = mydep[2:]
-		else:
-			mydep = mydep[1:]
-	if mydep[:2] in [">=", "<="]:
-		mydep = mydep[2:]
-	elif mydep[:1] in "=<>~":
-		mydep = mydep[1:]
-	return mydep
+	return mydep.cpv
 
 def dep_getslot(mydep):
 	"""
@@ -1149,33 +1287,10 @@ def dep_getkey(mydep):
 	@rtype: String
 	@return: The package category/package-name
 	"""
-	if isinstance(mydep, Atom):
-		return mydep.cp
-	try:
-		return Atom(mydep).cp
-	except InvalidAtom:
-		try:
-			atom = Atom('=' + mydep)
-		except InvalidAtom:
-			pass
-		else:
-			warnings.warn(_("invalid input to %s: '%s', use %s instead") % \
-				('portage.dep.dep_getkey()', mydep, 'portage.cpv_getkey()'),
-				DeprecationWarning, stacklevel=2)
-			return atom.cp
+	if not isinstance(mydep, Atom):
+		mydep = Atom(mydep)
 
-	# Fall back to legacy code for backward compatibility.
-	warnings.warn(_("%s is deprecated, use %s instead") % \
-		('portage.dep.dep_getkey()', 'portage.dep.Atom.cp'),
-		DeprecationWarning, stacklevel=2)
-	mydep = dep_getcpv(mydep)
-	if mydep and isspecific(mydep):
-		mysplit = catpkgsplit(mydep)
-		if not mysplit:
-			return mydep
-		return mysplit[0] + "/" + mysplit[1]
-	else:
-		return mydep
+	return mydep.cp
 
 def match_to_list(mypkg, mylist):
 	"""
@@ -1389,17 +1504,233 @@ def match_from_list(mydep, candidate_list):
 			use = getattr(x, "use", None)
 			if use is not None:
 				is_valid_flag = x.iuse.is_valid_flag
-				missing_iuse = False
-				for y in mydep.use.required:
-					if not is_valid_flag(y):
-						missing_iuse = True
-						break
-				if missing_iuse:
-					continue
-				if mydep.use.enabled.difference(use.enabled):
-					continue
-				if mydep.use.disabled.intersection(use.enabled):
-					continue
-			mylist.append(x)
+				use_config_mismatch = False
 
+				for y in mydep.use.enabled:
+					if is_valid_flag(y):
+						if y not in use.enabled:
+							use_config_mismatch = True
+							break	
+					else:
+						if y not in mydep.use.missing_enabled:
+							use_config_mismatch = True
+							break
+
+				if use_config_mismatch:
+					continue
+
+				for y in mydep.use.disabled:
+					if is_valid_flag(y):
+						if y in use.enabled:
+							use_config_mismatch = True
+							break
+					else:
+						if y not in mydep.use.missing_disabled:
+							use_config_mismatch = True
+							break
+
+				if use_config_mismatch:
+					continue
+
+			mylist.append(x)
 	return mylist
+
+def check_required_use(required_use, use, iuse):
+	"""
+	Checks if the use flags listed in 'use' satisfy all
+	constraints specified in 'constraints'.
+
+	@param constraints: REQUIRED_USE string
+	@type constraints: String
+	@param use: Enabled use flags
+	@param use: List
+	@param iuse: Referenceable use flags
+	@param iuse: List
+	@rtype: Bool
+	@return: Indicates if REQUIRED_USE constraints are satisfied
+	"""
+
+	def is_active(token):
+		if token.startswith("!"):
+			flag = token[1:]
+			is_negated = True
+		else:
+			flag = token
+			is_negated = False
+
+		if not flag or not flag in iuse:
+			raise portage.exception.InvalidDependString(
+				_("malformed syntax: '%s'") % required_use)
+
+		return (flag in use and not is_negated) or \
+			(flag not in use and is_negated)
+	
+	def is_satisfied(operator, argument):
+		if not argument:
+			#|| ( ) -> True
+			return True
+
+		if operator == "||":
+			return (True in argument)
+		elif operator == "^^":
+			return (argument.count(True) == 1)
+		elif operator[-1] == "?":
+			return (False not in argument)
+
+	mysplit = required_use.split()
+	level = 0
+	stack = [[]]
+	need_bracket = False
+
+	for token in mysplit:
+		if token == "(":
+			need_bracket = False
+			stack.append([])
+			level += 1
+		elif token == ")":
+			if need_bracket:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % required_use)
+			if level > 0:
+				level -= 1
+				l = stack.pop()
+				ignore = False
+				if stack[level]:
+					if stack[level][-1] in ("||", "^^"):
+						ignore = True
+						op = stack[level].pop()
+						stack[level].append(is_satisfied(op, l))
+					elif not isinstance(stack[level][-1], bool) and \
+						stack[level][-1][-1] == "?":
+						if is_active(stack[level][-1][:-1]):
+							op = stack[level].pop()
+							stack[level].append(is_satisfied(op, l))
+						else:
+							stack[level].pop()
+						ignore = True
+
+				if l and not ignore:
+					stack[level].extend(l)
+			else:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % required_use)
+		elif token in ("||", "^^"):
+			if need_bracket:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % required_use)
+			need_bracket = True
+			stack[level].append(token)
+		else:
+			if need_bracket or "(" in token or ")" in token or \
+				"|" in token or "^" in token:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % required_use)
+
+			if token[-1] == "?":
+				need_bracket = True
+				stack[level].append(token)
+			else:
+				stack[level].append(is_active(token))
+
+	if level != 0 or need_bracket:
+		raise portage.exception.InvalidDependString(
+			_("malformed syntax: '%s'") % required_use)
+
+	return (False not in stack[0])
+
+def extract_affecting_use(mystr, atom):
+	"""
+	Take a dep string and an atom and return the use flags
+	that decide if the given atom is in effect.
+
+	Example usage:
+		>>> extract_use_cond('sasl? ( dev-libs/cyrus-sasl ) \
+			!minimal? ( cxx? ( dev-libs/cyrus-sasl ) )', 'dev-libs/cyrus-sasl')
+		(['sasl', 'minimal', 'cxx'])
+
+	@param dep: The dependency string
+	@type mystr: String
+	@param atom: The atom to get into effect
+	@type atom: String
+	@rtype: Tuple of two lists of strings
+	@return: List of use flags that need to be enabled, List of use flag that need to be disabled
+	"""
+	mysplit = mystr.split()
+	level = 0
+	stack = [[]]
+	need_bracket = False
+	affecting_use = set()
+
+	def flag(conditional):
+		if conditional[0] == "!":
+			flag = conditional[1:-1]
+		else:
+			flag = conditional[:-1]
+
+		if not flag:
+			raise portage.exception.InvalidDependString(
+				_("malformed syntax: '%s'") % mystr)
+
+		return flag
+
+	for token in mysplit:
+		if token == "(":
+			need_bracket = False
+			stack.append([])
+			level += 1
+		elif token == ")":
+			if need_bracket:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % mystr)
+			if level > 0:
+				level -= 1
+				l = stack.pop()
+
+				if l:
+					if not stack[level] or (stack[level][-1] != "||" and not stack[level][-1][-1] == "?"):
+						#Optimize: ( ( ... ) ) -> ( ... )
+						stack[level].extend(l)
+					elif len(l) == 1 and stack[level][-1] == "||":
+						#Optimize: || ( A ) -> A
+						stack[level].pop()
+						stack[level].extend(l)
+					elif len(l) == 2 and (l[0] == "||" or l[0][-1] == "?") and stack[level][-1] in (l[0], "||"):
+						#Optimize: 	|| ( || ( ... ) ) -> || ( ... )
+						#			foo? ( foo? ( ... ) ) -> foo? ( ... )
+						#			|| ( foo? ( ... ) ) -> foo? ( ... )
+						stack[level].pop()
+						stack[level].extend(l)
+						if l[0][-1] == "?":
+							affecting_use.add(flag(l[0]))
+					else:
+						if stack[level] and stack[level][-1][-1] == "?":
+							affecting_use.add(flag(stack[level][-1]))
+						stack[level].append(l)
+				else:
+					if stack[level] and (stack[level][-1] == "||" or stack[level][-1][-1] == "?"):
+						stack[level].pop()
+			else:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % mystr)
+		elif token == "||":
+			if need_bracket:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % mystr)
+			need_bracket = True
+			stack[level].append(token)
+		else:
+			if need_bracket or "(" in token or ")" in token or "|" in token:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % mystr)
+
+			if token[-1] == "?":
+				need_bracket = True
+				stack[level].append(token)
+			elif token == atom:
+				stack[level].append(token)
+
+	if level != 0 or need_bracket:
+		raise portage.exception.InvalidDependString(
+			_("malformed syntax: '%s'") % mystr)
+
+	return affecting_use

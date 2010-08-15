@@ -4,7 +4,6 @@
 __all__ = ['digestgen']
 
 import errno
-import warnings
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -24,8 +23,7 @@ from portage.package.ebuild.fetch import fetch
 from portage.util import writemsg, writemsg_stdout
 from portage.versions import catsplit
 
-def digestgen(myarchives=None, mysettings=None,
-	overwrite=None, manifestonly=None, myportdb=None):
+def digestgen(myarchives=None, mysettings=None, myportdb=None):
 	"""
 	Generates a digest file if missing. Fetches files if necessary.
 	NOTE: myarchives and mysettings used to be positional arguments,
@@ -38,21 +36,8 @@ def digestgen(myarchives=None, mysettings=None,
 	@rtype: int
 	@returns: 1 on success and 0 on failure
 	"""
-	if mysettings is None:
-		raise TypeError("portage.digestgen(): missing" + \
-			" required 'mysettings' parameter")
-	if myportdb is None:
-		warnings.warn("portage.digestgen() called without 'myportdb' parameter",
-			DeprecationWarning, stacklevel=2)
-		myportdb = portage.portdb
-	if overwrite is not None:
-		warnings.warn("portage.digestgen() called with " + \
-			"deprecated 'overwrite' parameter",
-			DeprecationWarning, stacklevel=2)
-	if manifestonly is not None:
-		warnings.warn("portage.digestgen() called with " + \
-			"deprecated 'manifestonly' parameter",
-			DeprecationWarning, stacklevel=2)
+	if mysettings is None or myportdb is None:
+		raise TypeError("portage.digestgen(): 'mysettings' and 'myportdb' parameter are required.")
 
 	try:
 		portage._doebuild_manifest_exempt_depend += 1

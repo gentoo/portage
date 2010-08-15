@@ -156,15 +156,17 @@ class dbapi(object):
 			iuse = frozenset(x.lstrip('+-') for x in iuse.split())
 			missing_iuse = False
 			for x in atom.use.required:
-				if x not in iuse and iuse_implicit_re.match(x) is None:
+				if x not in iuse and x not in atom.use.missing_enabled \
+					and x not in atom.use.missing_disabled and iuse_implicit_re.match(x) is None:
 					missing_iuse = True
 					break
 			if missing_iuse:
 				continue
 			if not self._use_mutable:
-				if atom.use.enabled.difference(use):
+				if atom.use.enabled.difference(use).difference(atom.use.missing_enabled):
 					continue
-				if atom.use.disabled.intersection(use):
+				if atom.use.disabled.intersection(use) or \
+					atom.use.disabled.difference(iuse).difference(atom.use.missing_disabled):
 					continue
 			else:
 				# Check masked and forced flags for repoman.

@@ -1,7 +1,7 @@
 # Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from itertools import chain
+from itertools import chain, permutations
 import shutil
 import tempfile
 import portage
@@ -11,13 +11,14 @@ from portage.dbapi.porttree import portagetree
 from portage.dbapi.bintree import binarytree
 from portage.dep import Atom
 from portage.package.ebuild.config import config
-from portage.sets import load_default_config
+from portage.sets import SetConfig
 from portage.versions import catsplit
 
 from _emerge.Blocker import Blocker
 from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.depgraph import backtrack_depgraph
 from _emerge.RootConfig import RootConfig
+from _emerge.main import setconfig_fallback
 
 class ResolverPlayground(object):
 	"""
@@ -26,13 +27,14 @@ class ResolverPlayground(object):
 	it's work.
 	"""
 	
-	def __init__(self, ebuilds={}, installed={}, profile={}):
+	def __init__(self, ebuilds={}, installed={}, profile={}, world=[], debug=False):
 		"""
 		ebuilds: cpv -> metadata mapping simulating avaiable ebuilds. 
 		installed: cpv -> metadata mapping simulating installed packages.
 			If a metadata key is missing, it gets a default value.
 		profile: settings defined by the profile.
 		"""
+		self.debug = debug
 		self.root = tempfile.mkdtemp() + os.path.sep
 		self.portdir = os.path.join(self.root, "usr/portage")
 		self.vdbdir = os.path.join(self.root, "var/db/pkg")
@@ -42,6 +44,7 @@ class ResolverPlayground(object):
 		self._create_ebuilds(ebuilds)
 		self._create_installed(installed)
 		self._create_profile(ebuilds, installed, profile)
+		self._create_world(world)
 		
 		self.settings, self.trees = self._load_config()
 		
@@ -65,6 +68,7 @@ class ResolverPlayground(object):
 			depend = metadata.get("DEPEND", "")
 			rdepend = metadata.get("RDEPEND", None)
 			pdepend = metadata.get("PDEPEND", None)
+			required_use = metadata.get("REQUIRED_USE", None)
 
 			f = open(ebuild_path, "w")
 			f.write('EAPI="' + str(eapi) + '"\n')
@@ -74,8 +78,10 @@ class ResolverPlayground(object):
 			f.write('DEPEND="' + str(depend) + '"\n')
 			if rdepend is not None:
 				f.write('RDEPEND="' + str(rdepend) + '"\n')
-			if rdepend is not None:
+			if pdepend is not None:
 				f.write('PDEPEND="' + str(pdepend) + '"\n')
+			if required_use is not None:
+				f.write('REQUIRED_USE="' + str(required_use) + '"\n')
 			f.close()
 
 	def _create_ebuild_manifests(self, ebuilds):
@@ -109,6 +115,7 @@ class ResolverPlayground(object):
 			depend = metadata.get("DEPEND", "")
 			rdepend = metadata.get("RDEPEND", None)
 			pdepend = metadata.get("PDEPEND", None)
+			required_use = metadata.get("REQUIRED_USE", None)
 			
 			def write_key(key, value):
 				f = open(os.path.join(vdb_pkg_dir, key), "w")
@@ -123,8 +130,10 @@ class ResolverPlayground(object):
 			write_key("DEPEND", depend)
 			if rdepend is not None:
 				write_key("RDEPEND", rdepend)
-			if rdepend is not None:
+			if pdepend is not None:
 				write_key("PDEPEND", pdepend)
+			if required_use is not None:
+				write_key("REQUIRED_USE", required_use)
 
 	def _create_profile(self, ebuilds, installed, profile):
 		#Create $PORTDIR/profiles/categories
@@ -145,17 +154,65 @@ class ResolverPlayground(object):
 			f.write(cat + "\n")
 		f.close()
 		
-		#Create $PORTDIR/eclass (we fail to digest the ebuilds if it's not there)
+		#Create $profile_dir/eclass (we fail to digest the ebuilds if it's not there)
 		os.makedirs(os.path.join(self.portdir, "eclass"))
+
+		sub_profile_dir = os.path.join(profile_dir, "default", "linux", "x86", "test_profile")
+		os.makedirs(sub_profile_dir)
 		
+		eapi_file = os.path.join(sub_profile_dir, "eapi")
+		f = open(eapi_file, "w")
+		f.write("0\n")
+		f.close()
+		
+		make_defaults_file = os.path.join(sub_profile_dir, "make.defaults")
+		f = open(make_defaults_file, "w")
+		f.write("ARCH=\"x86\"\n")
+		f.write("ACCEPT_KEYWORDS=\"x86\"\n")
+		f.close()
+		
+		use_force_file = os.path.join(sub_profile_dir, "use.force")
+		f = open(use_force_file, "w")
+		f.write("x86\n")
+		f.close()
+
 		if profile:
 			#This is meant to allow the consumer to set up his own profile,
 			#with package.mask and what not.
 			raise NotImplentedError()
+		
+		#Create profile symlink
+		os.makedirs(os.path.join(self.root, "etc"))
+		os.symlink(sub_profile_dir, os.path.join(self.root, "etc", "make.profile"))
+
+	def _create_world(self, world):
+		#Create /var/lib/portage/world
+		var_lib_portage = os.path.join(self.root, "var", "lib", "portage")
+		os.makedirs(var_lib_portage)
+
+		world_file = os.path.join(var_lib_portage, "world")
+
+		f = open(world_file, "w")
+		for atom in world:
+			f.write("%s\n" % atom)
+		f.close()
 
 	def _load_config(self):
-		env = { "PORTDIR": self.portdir, "ROOT": self.root, "ACCEPT_KEYWORDS": "x86"}
-		settings = config(config_root=self.root, target_root=self.root, local_config=False, env=env)
+		env = {
+			"ACCEPT_KEYWORDS": "x86",
+			"PORTDIR": self.portdir,
+			"ROOT": self.root,
+			'PORTAGE_TMPDIR'       : os.path.join(self.root, 'var/tmp'),
+		}
+
+		# Pass along PORTAGE_USERNAME and PORTAGE_GRPNAME since they
+		# need to be inherited by ebuild subprocesses.
+		if 'PORTAGE_USERNAME' in os.environ:
+			env['PORTAGE_USERNAME'] = os.environ['PORTAGE_USERNAME']
+		if 'PORTAGE_GRPNAME' in os.environ:
+			env['PORTAGE_GRPNAME'] = os.environ['PORTAGE_GRPNAME']
+
+		settings = config(config_root=self.root, target_root=self.root, env=env)
 		settings.lock()
 
 		trees = {
@@ -170,39 +227,109 @@ class ResolverPlayground(object):
 		for root, root_trees in trees.items():
 			settings = root_trees["vartree"].settings
 			settings._init_dirs()
-			setconfig = load_default_config(settings, root_trees)
+			setconfig = SetConfig([], settings, root_trees)
 			root_trees["root_config"] = RootConfig(settings, root_trees, setconfig)
+			setconfig_fallback(root_trees["root_config"])
 		
 		return settings, trees
 
-	def run(self, myfiles, myopts={}, myaction=None):
-		myopts["--pretend"] = True
-		myopts["--quiet"] = True
-		myopts["--root"] = self.root
-		myopts["--config-root"] = self.root
-		myopts["--root-deps"] = "rdeps"
+	def run(self, atoms, options={}, action=None):
+		options = options.copy()
+		options["--pretend"] = True
+		options["--quiet"] = True
+		options["--root"] = self.root
+		options["--config-root"] = self.root
+		options["--root-deps"] = "rdeps"
+		if self.debug:
+			options["--debug"] = True
 		# Add a fake _test_ option that can be used for
 		# conditional test code.
-		myopts["_test_"] = True
+		options["_test_"] = True
 
-		portage.util.noiselimit = -2
-		myparams = create_depgraph_params(myopts, myaction)
-		success, mydepgraph, favorites = backtrack_depgraph(
-			self.settings, self.trees, myopts, myparams, myaction, myfiles, None)
-		result = ResolverPlaygroundResult(success, mydepgraph, favorites)
+		if not self.debug:
+			portage.util.noiselimit = -2
+		params = create_depgraph_params(options, action)
+		success, depgraph, favorites = backtrack_depgraph(
+			self.settings, self.trees, options, params, action, atoms, None)
+		depgraph.display_problems()
+		result = ResolverPlaygroundResult(atoms, success, depgraph, favorites)
 		portage.util.noiselimit = 0
 
 		return result
 
+	def run_TestCase(self, test_case):
+		if not isinstance(test_case, ResolverPlaygroundTestCase):
+			raise TypeError("ResolverPlayground needs a ResolverPlaygroundTestCase")
+		for atoms in test_case.requests:
+			result = self.run(atoms, test_case.options, test_case.action)
+			if not test_case.compare_with_result(result):
+				return
+
 	def cleanup(self):
-		shutil.rmtree(self.root)
+		if self.debug:
+			print("\nROOT=%s" % self.root)
+		else:
+			shutil.rmtree(self.root)
+
+class ResolverPlaygroundTestCase(object):
+
+	def __init__(self, request, **kwargs):
+		self.checks = {
+			"success": None,
+			"mergelist": None,
+			"use_changes": None,
+			"unstable_keywords": None,
+			"slot_collision_solutions": None,
+			}
+		
+		self.all_permutations = kwargs.pop("all_permutations", False)
+		self.ignore_mergelist_order = kwargs.pop("ignore_mergelist_order", False)
+
+		if self.all_permutations:
+			self.requests = list(permutations(request))
+		else:
+			self.requests = [request]
+
+		self.options = kwargs.pop("options", {})
+		self.action = kwargs.pop("action", None)
+		self.test_success = True
+		self.fail_msg = None
+		
+		for key, value in kwargs.items():
+			if not key in self.checks:
+				raise KeyError("Not an avaiable check: '%s'" % key)
+			self.checks[key] = value
+	
+	def compare_with_result(self, result):
+		fail_msgs = []
+		for key, value in self.checks.items():
+			got = getattr(result, key)
+			expected = value
+			if key == "mergelist" and self.ignore_mergelist_order and got is not None :
+				got = set(got)
+				expected = set(expected)
+			elif key == "unstable_keywords" and expected is not None:
+				expected = set(expected)
+
+			if got != expected:
+				fail_msgs.append("atoms: (" + ", ".join(result.atoms) + "), key: " + \
+					key + ", expected: " + str(expected) + ", got: " + str(got))
+		if fail_msgs:
+			self.test_success = False
+			self.fail_msg = "\n".join(fail_msgs)
+			return False
+		return True
 
 class ResolverPlaygroundResult(object):
-	def __init__(self, success, mydepgraph, favorites):
+	def __init__(self, atoms, success, mydepgraph, favorites):
+		self.atoms = atoms
 		self.success = success
 		self.depgraph = mydepgraph
 		self.favorites = favorites
 		self.mergelist = None
+		self.use_changes = None
+		self.unstable_keywords = None
+		self.slot_collision_solutions = None
 
 		if self.depgraph._dynamic_config._serialized_tasks_cache is not None:
 			self.mergelist = []
@@ -211,3 +338,31 @@ class ResolverPlaygroundResult(object):
 					self.mergelist.append(x.atom)
 				else:
 					self.mergelist.append(x.cpv)
+
+		if self.depgraph._dynamic_config._needed_use_config_changes:
+			self.use_changes = {}
+			for pkg, needed_use_config_changes in \
+				self.depgraph._dynamic_config._needed_use_config_changes.items():
+				new_use, changes = needed_use_config_changes
+				self.use_changes[pkg.cpv] = changes
+
+		if self.depgraph._dynamic_config._needed_unstable_keywords:
+			self.unstable_keywords = set()
+			for pkg in self.depgraph._dynamic_config._needed_unstable_keywords:
+				self.unstable_keywords.add(pkg.cpv)
+
+		if self.depgraph._dynamic_config._slot_conflict_handler is not None:
+			self.slot_collision_solutions  = []
+			handler = self.depgraph._dynamic_config._slot_conflict_handler
+
+			for solution in handler.solutions:
+				s = {}
+				for pkg in solution:
+					changes = {}
+					for flag, state in solution[pkg].items():
+						if state == "enabled":
+							changes[flag] = True
+						else:
+							changes[flag] = False
+					s[pkg.cpv] = changes
+				self.slot_collision_solutions.append(s)

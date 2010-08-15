@@ -1,5 +1,5 @@
 #!@PORTAGE_PYTHON@ -O
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # Next to do: dep syntax checking in mask files
@@ -21,8 +21,6 @@ import sys
 import tempfile
 import time
 import platform
-import xml.etree.ElementTree
-from xml.parsers.expat import ExpatError
 
 try:
 	from urllib.request import urlopen as urllib_request_urlopen
@@ -32,10 +30,6 @@ except ImportError:
 from itertools import chain
 from stat import S_ISDIR
 
-if not hasattr(__builtins__, "set"):
-	from sets import Set as set
-
-
 # for an explanation on this logic, see pym/_emerge/__init__.py
 import os
 import sys
@@ -44,8 +38,19 @@ if os.environ.__contains__("PORTAGE_PYTHONPATH"):
 else:
 	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
 import portage
-
 portage._disable_legacy_globals()
+
+try:
+	import xml.etree.ElementTree
+	from xml.parsers.expat import ExpatError
+except ImportError:
+	msg = ["Please enable python's \"xml\" USE flag in order to use repoman."]
+	from portage.output import EOutput
+	out = EOutput()
+	for line in msg:
+		out.eerror(line)
+	sys.exit(1)
+
 from portage import os
 from portage import subprocess_getstatusoutput
 from portage import _encodings
@@ -59,8 +64,6 @@ from _emerge.RootConfig import RootConfig
 from _emerge.userquery import userquery
 import portage.checksum
 import portage.const
-import portage.dep
-portage.dep._dep_check_strict = True
 from portage import cvstree, normalize_path
 from portage import util
 from portage.exception import FileNotFound, ParseError, PermissionDenied
@@ -71,6 +74,9 @@ from portage.output import bold, create_color_func, \
 from portage.output import ConsoleStyleFile, StyleWriter
 from portage.util import cmp_sort_key, writemsg_level
 from portage.package.ebuild.digestgen import digestgen
+from portage.eapi import eapi_has_src_uri_arrows, eapi_has_slot_deps, \
+	eapi_has_use_deps, eapi_has_strong_blocks, eapi_has_iuse_defaults, \
+	eapi_has_required_use
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -319,6 +325,7 @@ qahelp={
 	"PROVIDE.syntax":"Syntax error in PROVIDE (usually an extra/missing space/parenthesis)",
 	"PROPERTIES.syntax":"Syntax error in PROPERTIES (usually an extra/missing space/parenthesis)",
 	"RESTRICT.syntax":"Syntax error in RESTRICT (usually an extra/missing space/parenthesis)",
+	"REQUIRED_USE.syntax":"Syntax error in REQUIRED_USE (usually an extra/missing space/parenthesis)",
 	"SRC_URI.syntax":"Syntax error in SRC_URI (usually an extra/missing space/parenthesis)",
 	"SRC_URI.mirror":"A uri listed in profiles/thirdpartymirrors is found in SRC_URI",
 	"ebuild.syntax":"Error generating cache entry for ebuild; typically caused by ebuild syntax error or digest verification failure",
@@ -983,7 +990,9 @@ check_ebuild_notadded = not \
 	(vcs == "svn" and repolevel < 3 and options.mode != "commit")
 
 # Build a regex from thirdpartymirrors for the SRC_URI.mirror check.
-thirdpartymirrors = portage.flatten(list(repoman_settings.thirdpartymirrors().values()))
+thirdpartymirrors = []
+for v in repoman_settings.thirdpartymirrors().values():
+	thirdpartymirrors.extend(v)
 
 class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
 	"""
@@ -1445,8 +1454,9 @@ for x in scanlist:
 
 		if not src_uri_error:
 			# Check that URIs don't reference a server from thirdpartymirrors.
-			for uri in portage.flatten(portage.dep.use_reduce(
-				portage.dep.paren_reduce(myaux["SRC_URI"]), matchall=True)):
+			for uri in portage.dep.use_reduce( \
+				myaux["SRC_URI"], matchall=True, is_src_uri=True, \
+				allow_src_uri_file_renames=eapi_has_src_uri_arrows(eapi), flat=True):
 				contains_mirror = False
 				for mirror in thirdpartymirrors:
 					if uri.startswith(mirror):
@@ -1460,8 +1470,7 @@ for x in scanlist:
 					"%s: '%s' found in thirdpartymirrors" % \
 					(relative_path, mirror))
 
-		provide = portage.flatten(portage.dep.use_reduce(
-			portage.dep.paren_reduce(pkg.metadata['PROVIDE']), matchall=1))
+		provide = portage.dep.use_reduce(pkg.metadata['PROVIDE'], matchall=1, flat=True)
 		provide_cps = []
 
 		# The Package class automatically evaluates USE conditionals.
@@ -1607,21 +1616,7 @@ for x in scanlist:
 				badsyntax.append("'?' preceded by space")
 
 			try:
-				# Missing closing parenthesis will result in a ValueError
-				mydeplist = portage.dep.paren_reduce(mydepstr)
-				# Missing opening parenthesis will result in a final "" element
-				if "" in mydeplist or "(" in mydeplist:
-					raise ValueError
-			except ValueError:
-				badsyntax.append("parenthesis mismatch")
-				mydeplist = []
-			except portage.exception.InvalidDependString as e:
-				badsyntax.append(str(e))
-				del e
-				mydeplist = []
-
-			try:
-				portage.dep.use_reduce(mydeplist, matchall=1)
+				portage.dep.use_reduce(mydepstr, matchall=1)
 			except portage.exception.InvalidDependString as e:
 				badsyntax.append(str(e))
 
@@ -1630,6 +1625,8 @@ for x in scanlist:
 					myteststr = mydepstr[len(token):]
 				else:
 					myteststr = mydepstr
+				myteststr = myteststr.replace("(+)", "")
+				myteststr = myteststr.replace("(-)", "")
 				if myteststr.endswith(" "+token):
 					myteststr = myteststr[:-len(token)]
 				while myteststr.find(" "+token+" ") != -1:
@@ -1666,21 +1663,21 @@ for x in scanlist:
 								stats[mytype + '.suspect'] += 1
 								fails[mytype + '.suspect'].append(
 									relative_path + ": '%s'" % atom)
-						if eapi == "0":
+						if not eapi_has_slot_deps(eapi):
 							if portage.dep.dep_getslot(atom):
 								stats['EAPI.incompatible'] += 1
 								fails['EAPI.incompatible'].append(
 									(relative_path + ": %s slot dependency" + \
 									" not supported with EAPI='%s':" + \
 									" '%s'") % (mytype, eapi, atom))
-						if atom.use and eapi in ("0", "1"):
+						if atom.use and not eapi_has_use_deps(eapi):
 							stats['EAPI.incompatible'] += 1
 							fails['EAPI.incompatible'].append(
 								(relative_path + ": %s use dependency" + \
 								" not supported with EAPI='%s':" + \
 								" '%s'") % (mytype, eapi, atom))
 						if atom.blocker and atom.blocker.overlap.forbid \
-							and eapi in ("0", "1"):
+							and not eapi_has_strong_blocks(eapi):
 							stats['EAPI.incompatible'] += 1
 							fails['EAPI.incompatible'].append(
 								(relative_path + ": %s new blocker syntax" + \
@@ -1723,7 +1720,7 @@ for x in scanlist:
 			if myuse[mypos] and (myuse[mypos] in muselist):
 				del myuse[mypos]
 
-		if default_use and eapi == "0":
+		if default_use and not eapi_has_iuse_defaults(eapi):
 			for myflag in default_use:
 				stats['EAPI.incompatible'] += 1
 				fails['EAPI.incompatible'].append(
@@ -1740,8 +1737,7 @@ for x in scanlist:
 			myuse = myaux["LICENSE"]
 			# Parse the LICENSE variable, remove USE conditions and
 			# flatten it.
-			myuse=portage.dep.use_reduce(portage.dep.paren_reduce(myuse), matchall=1)
-			myuse=portage.flatten(myuse)
+			myuse=portage.dep.use_reduce(myuse, matchall=1, flat=True)
 			# Check each entry to ensure that it exists in PORTDIR's
 			# license directory.
 			for mypos in range(0,len(myuse)):
@@ -1770,20 +1766,37 @@ for x in scanlist:
 		#restrict checks
 		myrestrict = None
 		try:
-			myrestrict = portage.dep.use_reduce(
-				portage.dep.paren_reduce(myaux["RESTRICT"]), matchall=1)
+			myrestrict = portage.dep.use_reduce(myaux["RESTRICT"], matchall=1, flat=True)
 		except portage.exception.InvalidDependString as e:
 			stats["RESTRICT.syntax"] = stats["RESTRICT.syntax"] + 1
 			fails["RESTRICT.syntax"].append(
 				"%s: RESTRICT: %s" % (relative_path, e))
 			del e
 		if myrestrict:
-			myrestrict = set(portage.flatten(myrestrict))
+			myrestrict = set(myrestrict)
 			mybadrestrict = myrestrict.difference(valid_restrict)
 			if mybadrestrict:
 				stats["RESTRICT.invalid"] += len(mybadrestrict)
 				for mybad in mybadrestrict:
 					fails["RESTRICT.invalid"].append(x+"/"+y+".ebuild: %s" % mybad)
+		#REQUIRED_USE check
+		required_use = myaux["REQUIRED_USE"]
+		if required_use:
+			if not eapi_has_required_use(eapi):
+				stats['EAPI.incompatible'] += 1
+				fails['EAPI.incompatible'].append(
+					relative_path + ": REQUIRED_USE" + \
+					" not supported with EAPI='%s'" % (eapi,))
+			try:
+				iuse = repoman_settings._get_implicit_iuse()
+				iuse.update(myaux["IUSE"].split())
+				portage.dep.check_required_use(required_use, "", iuse)
+			except portage.exception.InvalidDependString as e:
+				stats["REQUIRED_USE.syntax"] = stats["REQUIRED_USE.syntax"] + 1
+				fails["REQUIRED_USE.syntax"].append(
+					"%s: REQUIRED_USE: %s" % (relative_path, e))
+				del e
+
 		# Syntax Checks
 		relative_path = os.path.join(x, y + ".ebuild")
 		full_path = os.path.join(repodir, relative_path)

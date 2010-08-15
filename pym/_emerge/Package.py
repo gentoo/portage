@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import re
@@ -6,8 +6,9 @@ import sys
 from itertools import chain
 import portage
 from portage.cache.mappings import slot_dict_class
-from portage.dep import isvalidatom, paren_reduce, use_reduce, \
-	paren_normalize, paren_enclose, _slot_re
+from portage.dep import isvalidatom, use_reduce, \
+	paren_enclose, _slot_re
+from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 from portage.const import EPREFIX
 from _emerge.Task import Task
 
@@ -31,7 +32,7 @@ class Package(Task):
 		"INHERITED", "IUSE", "KEYWORDS",
 		"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
 		"repository", "PROPERTIES", "RESTRICT", "SLOT", "USE",
-		"_mtime_", "DEFINED_PHASES", "EPREFIX"]
+		"_mtime_", "DEFINED_PHASES", "REQUIRED_USE", "EPREFIX"]
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
@@ -48,6 +49,14 @@ class Package(Task):
 			# Avoid an InvalidAtom exception when creating slot_atom.
 			# This package instance will be masked due to empty SLOT.
 			slot = '0'
+		if (self.iuse.enabled or self.iuse.disabled) and \
+			not eapi_has_iuse_defaults(self.metadata["EAPI"]):
+			self._invalid_metadata('IUSE.invalid',
+				"IUSE contains defaults, but EAPI doesn't allow them")
+		if self.metadata["REQUIRED_USE"] and \
+			not eapi_has_required_use(self.metadata["EAPI"]):
+			self._invalid_metadata('REQUIRED_USE.invalid',
+				"REQUIRED_USE set, but EAPI doesn't allow it")
 		self.slot_atom = portage.dep.Atom("%s:%s" % (self.cp, slot))
 		self.category, self.pf = portage.catsplit(self.cpv)
 		self.cpv_split = portage.catpkgsplit(self.cpv)
@@ -323,8 +332,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 		if k in self._use_conditional_keys:
 			if self._pkg.root_config.settings.local_config and '?' in v:
 				try:
-					v = paren_enclose(paren_normalize(use_reduce(
-						paren_reduce(v), uselist=self._pkg.use.enabled)))
+					v = paren_enclose(use_reduce(v, uselist=self._pkg.use.enabled))
 				except portage.exception.InvalidDependString:
 					# This error should already have been registered via
 					# self._pkg._invalid_metadata().
@@ -349,12 +357,12 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 			getattr(self, "_set_" + k.lower())(k, v)
 		elif k in self._use_conditional_keys:
 			try:
-				reduced = use_reduce(paren_reduce(v), matchall=1)
+				reduced = use_reduce(v, matchall=1, flat=True)
 			except portage.exception.InvalidDependString as e:
 				self._pkg._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
 			else:
 				if reduced and k == 'PROVIDE':
-					for x in portage.flatten(reduced):
+					for x in reduced:
 						if not isvalidatom(x):
 							self._pkg._invalid_metadata(k + ".syntax",
 								"%s: %s" % (k, x))

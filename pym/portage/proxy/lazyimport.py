@@ -199,7 +199,11 @@ def lazyimport(scope, *args):
 					try:
 						scope[alias] = getattr(already_imported, attr_name)
 					except AttributeError:
-						raise ImportError('cannot import name %s' % attr_name)
+						# Apparently the target module is only partially
+						# imported, so create a proxy.
+						already_imported = None
+						scope[alias] = \
+							_LazyImportFrom(scope, name, attr_name, alias)
 				else:
 					scope[alias] = \
 						_LazyImportFrom(scope, name, attr_name, alias)

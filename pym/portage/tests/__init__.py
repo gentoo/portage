@@ -26,6 +26,10 @@ def main():
 	basedir = os.path.dirname(os.path.realpath(__file__))
 	testDirs = []
 
+	if len(sys.argv) > 1:
+		suite.addTests(getTestFromCommandLine(sys.argv[1:], basedir))
+		return TextTestRunner(verbosity=2).run(suite)
+
   # the os.walk help mentions relative paths as being quirky
 	# I was tired of adding dirs to the list, so now we add __test__
 	# to each dir we want tested.
@@ -51,6 +55,29 @@ def my_import(name):
 	for comp in components[1:]:
 		mod = getattr(mod, comp)
 	return mod
+
+def getTestFromCommandLine(args, base_path):
+	ret = []
+	for arg in args:
+		realpath = os.path.realpath(arg)
+		path = os.path.dirname(realpath)
+		f = realpath[len(path)+1:]
+
+		if not f.startswith("test") or not f.endswith(".py"):
+			raise Exception("Invalid argument: '%s'" % arg)
+
+		mymodule = f[:-3]
+
+		parent_path = path[len(base_path)+1:]
+		parent_module = ".".join(("portage", "tests", parent_path))
+		parent_module = parent_module.replace('/', '.')
+		result = []
+
+		# Make the trailing / a . for module importing
+		modname = ".".join((parent_module, mymodule))
+		mod = my_import(modname)
+		ret.append(unittest.TestLoader().loadTestsFromModule(mod))
+	return ret
 
 def getTests(path, base_path):
 	"""

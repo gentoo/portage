@@ -38,8 +38,9 @@ from portage.const import EBUILD_SH_ENV_FILE, EBUILD_SH_ENV_DIR, \
 from portage.data import portage_gid, portage_uid, secpass, \
 	uid, userpriv_groups
 from portage.dbapi.virtual import fakedbapi
-from portage.dep import Atom, paren_enclose, paren_normalize, \
-	paren_reduce, use_reduce
+from portage.dep import Atom, paren_enclose, use_reduce
+from portage.eapi import eapi_exports_KV, eapi_has_src_uri_arrows, \
+	eapi_has_src_prepare_and_src_configure, eapi_has_pkg_pretend
 from portage.elog import elog_process
 from portage.elog.messages import eerror, eqawarn
 from portage.exception import DigestException, FileNotFound, \
@@ -55,6 +56,8 @@ from portage.util import apply_recursive_permissions, \
 from portage.util._pty import _create_pty_or_pipe
 from portage.util.lafilefixer import rewrite_lafile	
 from portage.versions import _pkgsplit
+from _emerge.EbuildSpawnProcess import EbuildSpawnProcess
+from _emerge.TaskScheduler import TaskScheduler
 
 def doebuild_environment(myebuild, mydo, myroot, mysettings,
 	debug, use_cache, mydbapi):
@@ -105,6 +108,9 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 	mysettings["EBUILD_PHASE"] = mydo
 
 	mysettings["PORTAGE_MASTER_PID"] = str(os.getpid())
+
+	# Set requested Python interpreter for Portage helpers.
+	mysettings['PORTAGE_PYTHON'] = sys.executable
 
 	# We are disabling user-specific bashrc files.
 	mysettings["BASH_ENV"] = INVALID_ENV_FILE
@@ -213,11 +219,9 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_FILE)
 	mysettings["PM_EBUILD_HOOK_DIR"] = os.path.join(
 		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_DIR)
-	mysettings["EBUILD_EXIT_STATUS_FILE"] = os.path.join(
-		mysettings["PORTAGE_BUILDDIR"], ".exit_status")
 
 	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistent.
-	if eapi not in ('0', '1', '2', '3', '3_pre2'):
+	if not eapi_exports_KV(eapi):
 		# Discard KV for EAPIs that don't support it. Cache KV is restored
 		# from the backupenv whenever config.reset() is called.
 		mysettings.pop('KV', None)
@@ -239,61 +243,6 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 		mycolors.append("%s=$'%s'" % \
 			(c, style_to_ansi_code(c)))
 	mysettings["PORTAGE_COLORMAP"] = "\n".join(mycolors)
-
-def _doebuild_exit_status_check(mydo, settings):
-	"""
-	Returns an error string if the shell appeared
-	to exit unsuccessfully, None otherwise.
-	"""
-	exit_status_file = settings.get("EBUILD_EXIT_STATUS_FILE")
-	if not exit_status_file or \
-		os.path.exists(exit_status_file):
-		return None
-	msg = _("The ebuild phase '%s' has exited "
-	"unexpectedly. This type of behavior "
-	"is known to be triggered "
-	"by things such as failed variable "
-	"assignments (bug #190128) or bad substitution "
-	"errors (bug #200313). Normally, before exiting, bash should "
-	"have displayed an error message above. If bash did not "
-	"produce an error message above, it's possible "
-	"that the ebuild has called `exit` when it "
-	"should have called `die` instead. This behavior may also "
-	"be triggered by a corrupt bash binary or a hardware "
-	"problem such as memory or cpu malfunction. If the problem is not "
-	"reproducible or it appears to occur randomly, then it is likely "
-	"to be triggered by a hardware problem. "
-	"If you suspect a hardware problem then you should "
-	"try some basic hardware diagnostics such as memtest. "
-	"Please do not report this as a bug unless it is consistently "
-	"reproducible and you are sure that your bash binary and hardware "
-	"are functioning properly.") % mydo
-	return msg
-
-def _doebuild_exit_status_check_and_log(settings, mydo, retval):
-	msg = _doebuild_exit_status_check(mydo, settings)
-	if msg:
-		if retval == os.EX_OK:
-			retval = 1
-		for l in wrap(msg, 72):
-			eerror(l, phase=mydo, key=settings.mycpv)
-	return retval
-
-def _doebuild_exit_status_unlink(exit_status_file):
-	"""
-	Double check to make sure it really doesn't exist
-	and raise an OSError if it still does (it shouldn't).
-	OSError if necessary.
-	"""
-	if not exit_status_file:
-		return
-	try:
-		os.unlink(exit_status_file)
-	except OSError:
-		pass
-	if os.path.exists(exit_status_file):
-		os.unlink(exit_status_file)
-
 
 _doebuild_manifest_cache = None
 _doebuild_broken_ebuilds = set()
@@ -488,15 +437,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 			# Only cache it if the above stray files test succeeds.
 			_doebuild_manifest_cache = mf
-
-	def exit_status_check(retval):
-		msg = _doebuild_exit_status_check(mydo, mysettings)
-		if msg:
-			if retval == os.EX_OK:
-				retval = 1
-			for l in wrap(msg, 72):
-				eerror(l, phase=mydo, key=mysettings.mycpv)
-		return retval
 
 	# Note: PORTAGE_BIN_PATH may differ from the global
 	# constant when portage is reinstalling itself.
@@ -730,10 +670,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					elog_process(mysettings.mycpv, mysettings)
 					return 1
 			del env_file, env_stat, saved_env
-			_doebuild_exit_status_unlink(
-				mysettings.get("EBUILD_EXIT_STATUS_FILE"))
-		else:
-			mysettings.pop("EBUILD_EXIT_STATUS_FILE", None)
 
 		# if any of these are being called, handle them -- running them out of
 		# the sandbox -- and stop now.
@@ -747,7 +683,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				returnpid=returnpid)
 			if returnpid:
 				return retval
-			retval = exit_status_check(retval)
 			if secpass >= 2:
 				""" Privileged phases may have left files that need to be made
 				writable to a less privileged user."""
@@ -764,15 +699,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if returnpid:
 				return phase_retval
 
-			phase_retval = exit_status_check(phase_retval)
 			if phase_retval == os.EX_OK:
-				_doebuild_exit_status_unlink(
-					mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 				mysettings.pop("EBUILD_PHASE", None)
 				phase_retval = spawn(
 					" ".join(_post_pkg_preinst_cmd(mysettings)),
 					mysettings, debug=debug, free=1, logfile=logfile)
-				phase_retval = exit_status_check(phase_retval)
 				if phase_retval != os.EX_OK:
 					writemsg(_("!!! post preinst failed; exiting.\n"),
 						noiselevel=-1)
@@ -786,14 +717,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if returnpid:
 				return phase_retval
 
-			phase_retval = exit_status_check(phase_retval)
 			if phase_retval == os.EX_OK:
-				_doebuild_exit_status_unlink(
-					mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 				mysettings.pop("EBUILD_PHASE", None)
 				phase_retval = spawn(" ".join(_post_pkg_postinst_cmd(mysettings)),
 					mysettings, debug=debug, free=1, logfile=logfile)
-				phase_retval = exit_status_check(phase_retval)
 				if phase_retval != os.EX_OK:
 					writemsg(_("!!! post postinst failed; exiting.\n"),
 						noiselevel=-1)
@@ -807,7 +734,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if returnpid:
 				return retval
 
-			retval = exit_status_check(retval)
 			return retval
 
 		mycpv = "/".join((mysettings["CATEGORY"], mysettings["PF"]))
@@ -1003,7 +929,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			retval = spawnebuild("install", actionmap, mysettings, debug,
 				alwaysdep=1, logfile=logfile, fd_pipes=fd_pipes,
 				returnpid=returnpid)
-			retval = exit_status_check(retval)
 			if retval != os.EX_OK:
 				# The merge phase handles this already.  Callers don't know how
 				# far this function got, so we have to call elog_process() here
@@ -1052,7 +977,7 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 		set(["clean", "cleanrm", "help", "prerm", "postrm"])
 	dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 	misc_keys = ["LICENSE", "PROPERTIES", "PROVIDE", "RESTRICT", "SRC_URI"]
-	other_keys = ["SLOT"]
+	other_keys = ["SLOT", "EAPI"]
 	all_keys = dep_keys + misc_keys + other_keys
 	metadata = dict(zip(all_keys,
 		mydbapi.aux_get(mysettings.mycpv, all_keys)))
@@ -1072,10 +997,11 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 			msgs.append("  %s: %s\n    %s\n" % (
 				dep_type, metadata[dep_type], mycheck[1]))
 
+	eapi = metadata["EAPI"]
 	for k in misc_keys:
 		try:
-			use_reduce(
-				paren_reduce(metadata[k]), matchall=True)
+			use_reduce(metadata[k], matchall=True, is_src_uri=(k=="SRC_URI"), \
+				allow_src_uri_file_renames=eapi_has_src_uri_arrows(eapi))
 		except InvalidDependString as e:
 			msgs.append("  %s: %s\n    %s\n" % (
 				k, metadata[k], str(e)))
@@ -1133,17 +1059,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	1. The return code of the spawned process.
 	"""
 
-	if isinstance(mysettings, dict):
-		env=mysettings
-		keywords["opt_name"]="[ %s ]" % "portage"
-	else:
-		check_config_instance(mysettings)
-		env=mysettings.environ()
-		if mysettings.mycpv is not None:
-			keywords["opt_name"] = "[%s]" % mysettings.mycpv
-		else:
-			keywords["opt_name"] = "[%s/%s]" % \
-				(mysettings.get("CATEGORY",""), mysettings.get("PF",""))
+	check_config_instance(mysettings)
 
 	fd_pipes = keywords.get("fd_pipes")
 	if fd_pipes is None:
@@ -1162,54 +1078,6 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 			sys.stderr.flush()
 			break
 
-	# The default policy for the sesandbox domain only allows entry (via exec)
-	# from shells and from binaries that belong to portage (the number of entry
-	# points is minimized).  The "tee" binary is not among the allowed entry
-	# points, so it is spawned outside of the sesandbox domain and reads from a
-	# pseudo-terminal that connects two domains.
-	logfile = keywords.get("logfile")
-	mypids = []
-	master_fd = None
-	slave_fd = None
-	fd_pipes_orig = None
-	got_pty = False
-	if logfile:
-		del keywords["logfile"]
-		if 1 not in fd_pipes or 2 not in fd_pipes:
-			raise ValueError(fd_pipes)
-
-		got_pty, master_fd, slave_fd = \
-			_create_pty_or_pipe(copy_term_size=fd_pipes[1])
-
-		if not got_pty and 'sesandbox' in mysettings.features \
-			and mysettings.selinux_enabled():
-			# With sesandbox, logging works through a pty but not through a
-			# normal pipe. So, disable logging if ptys are broken.
-			# See Bug #162404.
-			logfile = None
-			os.close(master_fd)
-			master_fd = None
-			os.close(slave_fd)
-			slave_fd = None
-
-	if logfile:
-
-		fd_pipes.setdefault(0, sys.stdin.fileno())
-		fd_pipes_orig = fd_pipes.copy()
-
-		# We must set non-blocking mode before we close the slave_fd
-		# since otherwise the fcntl call can fail on FreeBSD (the child
-		# process might have already exited and closed slave_fd so we
-		# have to keep it open in order to avoid FreeBSD potentially
-		# generating an EAGAIN exception).
-		fcntl.fcntl(master_fd, fcntl.F_SETFL,
-			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
-
-		fd_pipes[0] = fd_pipes_orig[0]
-		fd_pipes[1] = slave_fd
-		fd_pipes[2] = slave_fd
-		keywords["fd_pipes"] = fd_pipes
-
 	features = mysettings.features
 	# TODO: Enable fakeroot to be used together with droppriv.  The
 	# fake ownership/permissions will have to be converted to real
@@ -1226,6 +1094,12 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	if not free and not (fakeroot or portage.process.sandbox_capable):
 		free = True
 
+	if mysettings.mycpv is not None:
+		keywords["opt_name"] = "[%s]" % mysettings.mycpv
+	else:
+		keywords["opt_name"] = "[%s/%s]" % \
+			(mysettings.get("CATEGORY",""), mysettings.get("PF",""))
+
 	if free or "SANDBOX_ACTIVE" in os.environ:
 		keywords["opt_name"] += " bash"
 		spawn_func = portage.process.spawn_bash
@@ -1241,58 +1115,19 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		spawn_func = selinux.spawn_wrapper(spawn_func,
 			mysettings["PORTAGE_SANDBOX_T"])
 
-	returnpid = keywords.get("returnpid")
-	keywords["returnpid"] = True
-	try:
-		mypids.extend(spawn_func(mystring, env=env, **keywords))
-	finally:
-		if logfile:
-			os.close(slave_fd)
+	if keywords.get("returnpid"):
+		return spawn_func(mystring, env=mysettings.environ(), **keywords)
 
-	if returnpid:
-		return mypids
+	sched = TaskScheduler()
+	proc = EbuildSpawnProcess(
+		background=False, args=mystring,
+		scheduler=sched.sched_iface, spawn_func=spawn_func,
+		settings=mysettings, **keywords)
 
-	if logfile:
-		log_file = open(_unicode_encode(logfile), mode='ab')
-		apply_secpass_permissions(logfile,
-			uid=portage_uid, gid=portage_gid, mode=0o664)
-		stdout_file = os.fdopen(os.dup(fd_pipes_orig[1]), 'wb')
-		master_file = os.fdopen(master_fd, 'rb')
-		iwtd = [master_file]
-		owtd = []
-		ewtd = []
-		buffsize = 65536
-		eof = False
-		while not eof:
-			events = select.select(iwtd, owtd, ewtd)
-			for f in events[0]:
-				# Use non-blocking mode to prevent read
-				# calls from blocking indefinitely.
-				buf = array.array('B')
-				try:
-					buf.fromfile(f, buffsize)
-				except (EOFError, IOError):
-					pass
-				if not buf:
-					eof = True
-					break
-				if f is master_file:
-					buf.tofile(stdout_file)
-					stdout_file.flush()
-					buf.tofile(log_file)
-					log_file.flush()
-		log_file.close()
-		stdout_file.close()
-		master_file.close()
-	pid = mypids[-1]
-	retval = os.waitpid(pid, 0)[1]
-	portage.process.spawned_pids.remove(pid)
-	if retval != os.EX_OK:
-		if retval & 0xff:
-			return (retval & 0xff) << 8
-		return retval >> 8
-	return retval
+	sched.add(proc)
+	sched.run()
 
+	return proc.returncode
 
 # parse actionmap to spawn ebuild with the appropriate args
 def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
@@ -1309,19 +1144,14 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 
 	eapi = mysettings["EAPI"]
 
-	if mydo == "configure" and eapi in ("0", "1"):
+	if mydo in ("configure", "prepare") and not eapi_has_src_prepare_and_src_configure(eapi):
 		return os.EX_OK
 
-	if mydo == "prepare" and eapi in ("0", "1"):
-		return os.EX_OK
-
-	if mydo == "pretend" and eapi in ("0", "1", "2", "3", "3_pre2"):
+	if mydo == "pretend" and not eapi_has_pkg_pretend(eapi):
 		return os.EX_OK
 
 	kwargs = actionmap[mydo]["args"]
 	mysettings["EBUILD_PHASE"] = mydo
-	_doebuild_exit_status_unlink(
-		mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 
 	try:
 		phase_retval = spawn(actionmap[mydo]["cmd"] % mydo,
@@ -1332,13 +1162,6 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 
 	if returnpid:
 		return phase_retval
-
-	msg = _doebuild_exit_status_check(mydo, mysettings)
-	if msg:
-		if phase_retval == os.EX_OK:
-			phase_retval = 1
-		for l in wrap(msg, 72):
-			eerror(l, phase=mydo, key=mysettings.mycpv)
 
 	_post_phase_userpriv_perms(mysettings)
 	if mydo == "install":
@@ -1701,9 +1524,7 @@ def _post_src_install_uid_fix(mysettings, out):
 		v = mysettings.configdict['pkg'].get(k)
 		if v is None:
 			continue
-		v = paren_reduce(v)
 		v = use_reduce(v, uselist=use)
-		v = paren_normalize(v)
 		v = paren_enclose(v)
 		if not v:
 			continue
@@ -1805,8 +1626,6 @@ def _spawn_misc_sh(mysettings, commands, phase=None, **kwargs):
 	misc_sh_binary = os.path.join(portage_bin_path,
 		os.path.basename(MISC_SH_BINARY))
 	mycommand = " ".join([_shell_quote(misc_sh_binary)] + commands)
-	_doebuild_exit_status_unlink(
-		mysettings.get("EBUILD_EXIT_STATUS_FILE"))
 	debug = mysettings.get("PORTAGE_DEBUG") == "1"
 	logfile = mysettings.get("PORTAGE_LOG_FILE")
 	mysettings.pop("EBUILD_PHASE", None)
@@ -1815,12 +1634,5 @@ def _spawn_misc_sh(mysettings, commands, phase=None, **kwargs):
 			logfile=logfile, **kwargs)
 	finally:
 		pass
-
-	msg = _doebuild_exit_status_check(phase, mysettings)
-	if msg:
-		if rval == os.EX_OK:
-			rval = 1
-		for l in wrap(msg, 72):
-			eerror(l, phase=phase, key=mysettings.mycpv)
 
 	return rval

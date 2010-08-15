@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #
 # Miscellaneous shell functions that make use of the ebuild env but don't need
@@ -444,7 +444,7 @@ install_qa_check_misc() {
 	[[ ${abort} == "yes" ]] && die "add those ldscripts"
 
 	# Make sure people don't store libtool files or static libs in /lib
-	# on AIX, "dynamic libs" have extention .a, so don't get false
+	# on AIX, "dynamic libs" have extension .a, so don't get false
 	# positives
 	[[ ${CHOST} == *-aix* ]] \
 		&& f=$(ls "${ED}"lib*/*.la 2>/dev/null || true) \
@@ -533,7 +533,7 @@ install_qa_check_misc() {
 		done
 		[[ $reset_debug = 1 ]] && set -x
 		f=$(cat "${PORTAGE_LOG_FILE}" | \
-			EPYTHON= "$PORTAGE_BIN_PATH"/check-implicit-pointer-usage.py || die "check-implicit-pointer-usage.py failed")
+			"${PORTAGE_PYTHON:-@PORTAGE_PYTHON@}" "$PORTAGE_BIN_PATH"/check-implicit-pointer-usage.py || die "check-implicit-pointer-usage.py failed")
 		if [[ -n ${f} ]] ; then
 
 			# In the future this will be a forced "die". In preparation,
@@ -586,8 +586,27 @@ install_qa_check_misc() {
 	if [[ -n ${f} ]] ; then
 		vecho -ne '\a\n'
 		eqawarn "QA Notice: Byte-compiled Python modules have been found. python_mod_optimize()"
-		eqawarn "           and python_mod_cleanup() functions python.eclass should be used to"
-		eqawarn "           handle byte-compiled Python modules."
+		eqawarn "           and python_mod_cleanup() functions from python.eclass should be used"
+		eqawarn "           to handle byte-compiled Python modules."
+		eqawarn "${f}"
+		vecho -ne '\a\n'
+	fi
+
+	f=$(find "${D}"usr/lib*/python*/site-packages -name '*.a' 2>/dev/null | sed "s:${D}:/:")
+	if [[ -n ${f} ]] ; then
+		vecho -ne '\a\n'
+		eqawarn "QA Notice: Static libraries have been found in Python site-packages"
+		eqawarn "           directories. Build system should be modified to not generate"
+		eqawarn "           these files and object files generated only for these files."
+		eqawarn "${f}"
+		vecho -ne '\a\n'
+	fi
+
+	f=$(find "${D}"usr/lib*/python*/site-packages -name '*.la' 2>/dev/null | sed "s:${D}:/:")
+	if [[ -n ${f} ]] ; then
+		vecho -ne '\a\n'
+		eqawarn "QA Notice: Libtool libraries have been found in Python site-packages"
+		eqawarn "           directories. These files should not be installed."
 		eqawarn "${f}"
 		vecho -ne '\a\n'
 	fi
@@ -1469,8 +1488,8 @@ dyn_package() {
 	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${D}" . | \
 		bzip2 -cf > "$PORTAGE_BINPKG_TMPFILE"
 	assert "failed to pack binary package: '$PORTAGE_BINPKG_TMPFILE'"
-	EPYTHON= PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-		"$PORTAGE_BIN_PATH"/xpak-helper.py recompose \
+	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
+		"${PORTAGE_PYTHON:-@PORTAGE_PYTHON@}" "$PORTAGE_BIN_PATH"/xpak-helper.py recompose \
 		"$PORTAGE_BINPKG_TMPFILE" "$PORTAGE_BUILDDIR/build-info"
 	if [ $? -ne 0 ]; then
 		rm -f "${PORTAGE_BINPKG_TMPFILE}"
@@ -1563,9 +1582,8 @@ if [ -n "${MISC_FUNCTIONS_ARGS}" ]; then
 		${x}
 	done
 	unset x
+	[[ -n $PORTAGE_EBUILD_EXIT_FILE ]] && > "$PORTAGE_EBUILD_EXIT_FILE"
+	[[ -n $PORTAGE_IPC_DAEMON ]] && "$PORTAGE_BIN_PATH"/ebuild-ipc exit 0
 fi
-
-[ -n "${EBUILD_EXIT_STATUS_FILE}" ] && \
-	touch "${EBUILD_EXIT_STATUS_FILE}" &>/dev/null
 
 :

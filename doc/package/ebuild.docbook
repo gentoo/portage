@@ -8,5 +8,6 @@
 &package_ebuild_eapi_1;
 &package_ebuild_eapi_2;
 &package_ebuild_eapi_3;
+&package_ebuild_eapi_4;
 </section>
 </chapter>

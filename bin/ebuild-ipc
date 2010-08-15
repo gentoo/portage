@@ -1,0 +1,8 @@
+#!@PORTAGE_BASH@
+# Copyright 2010 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+
+PORTAGE_BIN_PATH=${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}
+PORTAGE_PYM_PATH=${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}
+PYTHONPATH=$PORTAGE_PYM_PATH${PYTHONPATH:+:}$PYTHONPATH \
+	exec "${PORTAGE_PYTHON:-@PORTAGE_PYTHON@}" "$PORTAGE_BIN_PATH/ebuild-ipc.py" "$@"

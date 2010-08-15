@@ -1,10 +1,14 @@
 #!@PORTAGE_BASH@
-# Copyright 2009 Gentoo Foundation
+# Copyright 2009-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 
 PORTAGE_BIN_PATH=${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}
 PORTAGE_PYM_PATH=${PORTAGE_PYM_PATH:-@PORTAGE_BASE@/pym}
-# Set EPYTHON variable as empty so that dohtml doesn't try
-# to use potentially unsupported version of Python.
-EPYTHON= PYTHONPATH=$PORTAGE_PYM_PATH${PYTHONPATH:+:}$PYTHONPATH \
-	exec "$PORTAGE_BIN_PATH/dohtml.py" "$@"
+PYTHONPATH=$PORTAGE_PYM_PATH${PYTHONPATH:+:}$PYTHONPATH \
+	"${PORTAGE_PYTHON:-@PORTAGE_PYTHON@}" "$PORTAGE_BIN_PATH/dohtml.py" "$@"
+
+ret=$?
+[[ $ret -ne 0 ]] && helpers_die "$0 failed"
+exit $ret

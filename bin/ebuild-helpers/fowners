@@ -2,7 +2,12 @@
 # Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
+
 # we can't prefix all arguments because
 # chown takes random options
 slash="/"
-exec chown "${@/#${slash}/${ED}${slash}}"
+chown "${@/#${slash}/${ED}${slash}}"
+ret=$?
+[[ $ret -ne 0 ]] && helpers_die "$0 failed"
+exit $ret

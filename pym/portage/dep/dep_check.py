@@ -6,8 +6,10 @@ __all__ = ['dep_check', 'dep_eval', 'dep_wordreduce', 'dep_zapdeps']
 import logging
 
 import portage
-from portage.dep import Atom, dep_opconvert, match_from_list, paren_reduce, \
+from portage.dep import Atom, match_from_list, \
 	remove_slot, use_reduce
+from portage.eapi import eapi_has_strong_blocks, eapi_has_use_deps, eapi_has_slot_deps, \
+	eapi_has_use_dep_defaults
 from portage.exception import InvalidAtom, InvalidDependString, ParseError
 from portage.localization import _
 from portage.util import writemsg, writemsg_level
@@ -61,19 +63,21 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			try:
 				x = Atom(x)
 			except InvalidAtom:
-				if portage.dep._dep_check_strict:
-					raise ParseError(
-						_("invalid atom: '%s'") % x)
-				else:
-					# Only real Atom instances are allowed past this point.
-					continue
+				raise ParseError(
+					_("invalid atom: '%s'") % x)
 			else:
 				if x.blocker and x.blocker.overlap.forbid and \
-					eapi in ("0", "1") and portage.dep._dep_check_strict:
+					not eapi_has_strong_blocks(eapi):
 					raise ParseError(
 						_("invalid atom: '%s'") % (x,))
-				if x.use and eapi in ("0", "1") and \
-					portage.dep._dep_check_strict:
+				if x.use and not eapi_has_use_deps(eapi):
+					raise ParseError(
+						_("invalid atom: '%s'") % (x,))
+				if x.slot and not eapi_has_slot_deps(eapi):
+					raise ParseError(
+						_("invalid atom: '%s'") % (x,))
+				if x.use and (x.use.missing_enabled or x.use.missing_disabled) \
+					and not eapi_has_use_dep_defaults(eapi):
 					raise ParseError(
 						_("invalid atom: '%s'") % (x,))
 
@@ -521,12 +525,6 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		# WE ALSO CANNOT USE SETTINGS
 		myusesplit=[]
 
-	#convert parenthesis to sublists
-	try:
-		mysplit = paren_reduce(depstring)
-	except InvalidDependString as e:
-		return [0, str(e)]
-
 	mymasks = set()
 	useforce = set()
 	useforce.add(mysettings["ARCH"])
@@ -544,13 +542,10 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		useforce.update(mysettings.useforce)
 		useforce.difference_update(mymasks)
 	try:
-		mysplit = use_reduce(mysplit, uselist=myusesplit,
-			masklist=mymasks, matchall=(use=="all"), excludeall=useforce)
+		mysplit = use_reduce(depstring, uselist=myusesplit,
+			masklist=mymasks, matchall=(use=="all"), excludeall=useforce, opconvert=True)
 	except InvalidDependString as e:
 		return [0, str(e)]
-
-	# Do the || conversions
-	mysplit = dep_opconvert(mysplit)
 
 	if mysplit == []:
 		#dependencies were reduced to nothing
@@ -575,15 +570,8 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	writemsg("mysplit:  %s\n" % (mysplit), 1)
 	writemsg("mysplit2: %s\n" % (mysplit2), 1)
 
-	try:
-		selected_atoms = dep_zapdeps(mysplit, mysplit2, myroot,
-			use_binaries=use_binaries, trees=trees)
-	except InvalidAtom as e:
-		if portage.dep._dep_check_strict:
-			raise # This shouldn't happen.
-		# dbapi.match() failed due to an invalid atom in
-		# the dependencies of an installed package.
-		return [0, _("Invalid atom: '%s'") % (e,)]
+	selected_atoms = dep_zapdeps(mysplit, mysplit2, myroot,
+		use_binaries=use_binaries, trees=trees)
 
 	return [1, selected_atoms]
 

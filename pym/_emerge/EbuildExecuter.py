@@ -6,6 +6,7 @@ from _emerge.TaskSequence import TaskSequence
 from _emerge.CompositeTask import CompositeTask
 import portage
 from portage import os
+from portage.eapi import eapi_has_src_prepare_and_src_configure
 
 class EbuildExecuter(CompositeTask):
 
@@ -72,7 +73,7 @@ class EbuildExecuter(CompositeTask):
 		pkg = self.pkg
 		phases = self._phases
 		eapi = pkg.metadata["EAPI"]
-		if eapi in ("0", "1"):
+		if not eapi_has_src_prepare_and_src_configure(eapi):
 			# skip src_prepare and src_configure
 			phases = phases[2:]
 

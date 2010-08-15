@@ -11,7 +11,6 @@ import errno
 import logging
 import re
 import sys
-import warnings
 
 try:
 	from configparser import SafeConfigParser, ParsingError
@@ -32,9 +31,10 @@ from portage.const import CACHE_PATH, CUSTOM_PROFILE_PATH, \
 from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
 from portage.dbapi.vartree import vartree
-from portage.dep import Atom, best_match_to_list, dep_opconvert, \
-	flatten, isvalidatom, match_from_list, match_to_list, \
-	paren_reduce, remove_slot, use_reduce
+from portage.dep import Atom, best_match_to_list, \
+	isvalidatom, match_from_list, match_to_list, \
+	remove_slot, use_reduce
+from portage.eapi import eapi_exports_AA, eapi_supports_prefix, eapi_exports_replace_vars
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.exception import DirectoryNotFound, InvalidAtom, \
 	InvalidDependString, ParseError, PortageException
@@ -140,7 +140,7 @@ class config(object):
 	"""
 
 	_setcpv_aux_keys = ('DEFINED_PHASES', 'DEPEND', 'EAPI',
-		'INHERITED', 'IUSE', 'KEYWORDS', 'LICENSE', 'PDEPEND',
+		'INHERITED', 'IUSE', 'REQUIRED_USE', 'KEYWORDS', 'LICENSE', 'PDEPEND',
 		'PROPERTIES', 'PROVIDE', 'RDEPEND', 'SLOT',
 		'repository', 'RESTRICT', 'LICENSE',)
 
@@ -168,7 +168,7 @@ class config(object):
 	_environ_whitelist += [
 		"ACCEPT_LICENSE", "BASH_ENV", "BUILD_PREFIX", "D",
 		"DISTDIR", "DOC_SYMLINKS_DIR", "EAPI", "EBUILD",
-		"EBUILD_EXIT_STATUS_FILE", "EBUILD_FORCE_TEST",
+		"EBUILD_FORCE_TEST",
 		"EBUILD_PHASE", "ECLASSDIR", "ECLASS_DEPTH", "ED",
 		"EMERGE_FROM", "EPREFIX", "EROOT",
 		"FEATURES", "FILESDIR", "HOME", "NOCOLOR", "PATH",
@@ -181,11 +181,11 @@ class config(object):
 		"PORTAGE_BIN_PATH",
 		"PORTAGE_BUILDDIR", "PORTAGE_COLORMAP",
 		"PORTAGE_CONFIGROOT", "PORTAGE_DEBUG", "PORTAGE_DEPCACHEDIR",
-		"PORTAGE_GID", "PORTAGE_GRPNAME",
+		"PORTAGE_EBUILD_EXIT_FILE", "PORTAGE_GID", "PORTAGE_GRPNAME",
 		"PORTAGE_INST_GID", "PORTAGE_INST_UID",
-		"PORTAGE_IUSE",
+		"PORTAGE_IPC_DAEMON", "PORTAGE_IUSE",
 		"PORTAGE_LOG_FILE", "PORTAGE_MASTER_PID",
-		"PORTAGE_PYM_PATH", "PORTAGE_QUIET",
+		"PORTAGE_PYM_PATH", "PORTAGE_PYTHON", "PORTAGE_QUIET",
 		"PORTAGE_REPO_NAME", "PORTAGE_RESTRICT",
 		"PORTAGE_TMPDIR", "PORTAGE_UPDATE_ENV", "PORTAGE_USERNAME",
 		"PORTAGE_VERBOSE", "PORTAGE_WORKDIR_MODE",
@@ -1284,16 +1284,17 @@ class config(object):
 			E2BIG errors as in bug #262647.
 			"""
 			try:
-				licenses = set(flatten(
-					use_reduce(paren_reduce(
-					settings['LICENSE']),
-					uselist=use)))
+				licenses = set(use_reduce(settings['LICENSE'], uselist=use, flat=True))
 			except InvalidDependString:
 				licenses = set()
 			licenses.discard('||')
-			if settings._accept_license:
+
+			accept_license = settings._getPkgAcceptLicense(
+				settings.mycpv, {'SLOT' : settings['SLOT']})
+
+			if accept_license:
 				acceptable_licenses = set()
-				for x in settings._accept_license:
+				for x in accept_license:
 					if x == '*':
 						acceptable_licenses.update(licenses)
 					elif x == '-*':
@@ -1308,10 +1309,7 @@ class config(object):
 
 		def _restrict(self, use, settings):
 			try:
-				restrict = set(flatten(
-					use_reduce(paren_reduce(
-					settings['RESTRICT']),
-					uselist=use)))
+				restrict = set(use_reduce(settings['RESTRICT'], uselist=use, flat=True))
 			except InvalidDependString:
 				restrict = set()
 			return ' '.join(sorted(restrict))
@@ -1482,22 +1480,24 @@ class config(object):
 			has_changed = True
 
 		defaults = []
-		pos = 0
 		for i, pkgprofileuse_dict in enumerate(self.pkgprofileuse):
+			if self.make_defaults_use[i]:
+				defaults.append(self.make_defaults_use[i])
 			cpdict = pkgprofileuse_dict.get(cp)
 			if cpdict:
+				pkg_defaults = []
 				keys = list(cpdict)
 				while keys:
 					bestmatch = best_match_to_list(cpv_slot, keys)
 					if bestmatch:
 						keys.remove(bestmatch)
-						defaults.insert(pos, cpdict[bestmatch])
+						pkg_defaults.append(cpdict[bestmatch])
 					else:
 						break
-				del keys
-			if self.make_defaults_use[i]:
-				defaults.insert(pos, self.make_defaults_use[i])
-			pos = len(defaults)
+				if pkg_defaults:
+					# reverse, so the most specific atoms come last
+					pkg_defaults.reverse()
+					defaults.extend(pkg_defaults)
 		defaults = " ".join(defaults)
 		if defaults != self.configdict["defaults"].get("USE",""):
 			self.configdict["defaults"]["USE"] = defaults
@@ -1671,22 +1671,24 @@ class config(object):
 		if cp is None:
 			cp = cpv_getkey(remove_slot(pkg))
 		usemask = []
-		pos = 0
 		for i, pusemask_dict in enumerate(self.pusemask_list):
+			if self.usemask_list[i]:
+				usemask.append(self.usemask_list[i])
 			cpdict = pusemask_dict.get(cp)
 			if cpdict:
+				pkg_usemask = []
 				keys = list(cpdict)
 				while keys:
 					best_match = best_match_to_list(pkg, keys)
 					if best_match:
 						keys.remove(best_match)
-						usemask.insert(pos, cpdict[best_match])
+						pkg_usemask.append(cpdict[best_match])
 					else:
 						break
-				del keys
-			if self.usemask_list[i]:
-				usemask.insert(pos, self.usemask_list[i])
-			pos = len(usemask)
+				if pkg_usemask:
+					# reverse, so the most specific atoms come last
+					pkg_usemask.reverse()
+					usemask.extend(pkg_usemask)
 		return set(stack_lists(usemask, incremental=True))
 
 	def _getUseForce(self, pkg):
@@ -1694,22 +1696,24 @@ class config(object):
 		if cp is None:
 			cp = cpv_getkey(remove_slot(pkg))
 		useforce = []
-		pos = 0
 		for i, puseforce_dict in enumerate(self.puseforce_list):
+			if self.useforce_list[i]:
+				useforce.append(self.useforce_list[i])
 			cpdict = puseforce_dict.get(cp)
 			if cpdict:
+				pkg_useforce = []
 				keys = list(cpdict)
 				while keys:
 					best_match = best_match_to_list(pkg, keys)
 					if best_match:
 						keys.remove(best_match)
-						useforce.insert(pos, cpdict[best_match])
+						pkg_useforce.append(cpdict[best_match])
 					else:
 						break
-				del keys
-			if self.useforce_list[i]:
-				useforce.insert(pos, self.useforce_list[i])
-			pos = len(useforce)
+				if pkg_useforce:
+					# reverse, so the most specific atoms come last
+					pkg_useforce.reverse()
+					useforce.extend(pkg_useforce)
 		return set(stack_lists(useforce, incremental=True))
 
 	def _getMaskAtom(self, cpv, metadata):
@@ -1770,19 +1774,22 @@ class config(object):
 		cp = cpv_getkey(cpv)
 		pkg = "%s:%s" % (cpv, metadata["SLOT"])
 		keywords = [[x for x in metadata["KEYWORDS"].split() if x != "-*"]]
-		pos = len(keywords)
 		for pkeywords_dict in self._pkeywords_list:
 			cpdict = pkeywords_dict.get(cp)
 			if cpdict:
+				pkg_keywords = []
 				keys = list(cpdict)
 				while keys:
 					best_match = best_match_to_list(pkg, keys)
 					if best_match:
 						keys.remove(best_match)
-						keywords.insert(pos, cpdict[best_match])
+						pkg_keywords.append(cpdict[best_match])
 					else:
 						break
-			pos = len(keywords)
+				if pkg_keywords:
+					# reverse, so the most specific atoms come last
+					pkg_keywords.reverse()
+					keywords.extend(pkg_keywords)
 		return stack_lists(keywords, incremental=True)
 
 	def _getMissingKeywords(self, cpv, metadata):
@@ -1814,11 +1821,23 @@ class config(object):
 		pkgdict = self.pkeywordsdict.get(cp)
 		matches = False
 		if pkgdict:
-			cpv_slot_list = ["%s:%s" % (cpv, metadata["SLOT"])]
-			for atom, pkgkeywords in pkgdict.items():
-				if match_from_list(atom, cpv_slot_list):
-					matches = True
-					pgroups.extend(pkgkeywords)
+			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
+			pkg_accept_keywords = []
+			keys = list(pkgdict)
+			while keys:
+				best_match = best_match_to_list(cpv_slot, keys)
+				if best_match:
+					keys.remove(best_match)
+					pkg_accept_keywords.append(pkgdict[best_match])
+				else:
+					break
+			if pkg_accept_keywords:
+				# reverse, so the most specific atoms come last
+				pkg_accept_keywords.reverse()
+				for x in pkg_accept_keywords:
+					pgroups.extend(x)
+				matches = True
+
 		if matches or egroups:
 			pgroups.extend(egroups)
 			inc_pgroups = set()
@@ -1862,19 +1881,9 @@ class config(object):
 			missing = mygroups
 		return missing
 
-	def _getMissingLicenses(self, cpv, metadata):
+	def _getPkgAcceptLicense(self, cpv, metadata):
 		"""
-		Take a LICENSE string and return a list any licenses that the user may
-		may need to accept for the given package.  The returned list will not
-		contain any licenses that have already been accepted.  This method
-		can throw an InvalidDependString exception.
-
-		@param cpv: The package name (for package.license support)
-		@type cpv: String
-		@param metadata: A dictionary of raw package metadata
-		@type metadata: dict
-		@rtype: List
-		@return: A list of licenses that have not been accepted.
+		Get an ACCEPT_LICENSE list, accounting for package.license.
 		"""
 		accept_license = self._accept_license
 		cp = cpv_getkey(cpv)
@@ -1896,13 +1905,29 @@ class config(object):
 				accept_license = list(self._accept_license)
 				for x in plicence_list:
 					accept_license.extend(x)
+		return accept_license
 
-		licenses = set(flatten(use_reduce(paren_reduce(
-			metadata["LICENSE"]), matchall=1)))
+	def _getMissingLicenses(self, cpv, metadata):
+		"""
+		Take a LICENSE string and return a list any licenses that the user may
+		may need to accept for the given package.  The returned list will not
+		contain any licenses that have already been accepted.  This method
+		can throw an InvalidDependString exception.
+
+		@param cpv: The package name (for package.license support)
+		@type cpv: String
+		@param metadata: A dictionary of raw package metadata
+		@type metadata: dict
+		@rtype: List
+		@return: A list of licenses that have not been accepted.
+		"""
+
+
+		licenses = set(use_reduce(metadata["LICENSE"], matchall=1, flat=True))
 		licenses.discard('||')
 
 		acceptable_licenses = set()
-		for x in accept_license:
+		for x in self._getPkgAcceptLicense(cpv, metadata):
 			if x == '*':
 				acceptable_licenses.update(licenses)
 			elif x == '-*':
@@ -1918,9 +1943,7 @@ class config(object):
 		else:
 			use = []
 
-		license_struct = use_reduce(
-			paren_reduce(license_str), uselist=use)
-		license_struct = dep_opconvert(license_struct)
+		license_struct = use_reduce(license_str, uselist=use, opconvert=True)
 		return self._getMaskedLicenses(license_struct, acceptable_licenses)
 
 	def _getMaskedLicenses(self, license_struct, acceptable_licenses):
@@ -1931,17 +1954,17 @@ class config(object):
 			for element in license_struct[1:]:
 				if isinstance(element, list):
 					if element:
-						ret.append(self._getMaskedLicenses(
-							element, acceptable_licenses))
-						if not ret[-1]:
+						tmp = self._getMaskedLicenses(element, acceptable_licenses)
+						if not tmp:
 							return []
+						ret.extend(tmp)
 				else:
 					if element in acceptable_licenses:
 						return []
 					ret.append(element)
 			# Return all masked licenses, since we don't know which combination
 			# (if any) the user will decide to unmask.
-			return flatten(ret)
+			return ret
 
 		ret = []
 		for element in license_struct:
@@ -1989,8 +2012,7 @@ class config(object):
 				for x in pproperties_list:
 					accept_properties.extend(x)
 
-		properties = set(flatten(use_reduce(paren_reduce(
-			metadata["PROPERTIES"]), matchall=1)))
+		properties = set(use_reduce(metadata["PROPERTIES"], matchall=1, flat=True))
 		properties.discard('||')
 
 		acceptable_properties = set()
@@ -2010,9 +2032,7 @@ class config(object):
 		else:
 			use = []
 
-		properties_struct = use_reduce(
-			paren_reduce(properties_str), uselist=use)
-		properties_struct = dep_opconvert(properties_struct)
+		properties_struct = use_reduce(properties_str, uselist=use, opconvert=True)
 		return self._getMaskedProperties(properties_struct, acceptable_properties)
 
 	def _getMaskedProperties(self, properties_struct, acceptable_properties):
@@ -2023,17 +2043,18 @@ class config(object):
 			for element in properties_struct[1:]:
 				if isinstance(element, list):
 					if element:
-						ret.append(self._getMaskedProperties(
-							element, acceptable_properties))
-						if not ret[-1]:
+						tmp = self._getMaskedProperties(
+							element, acceptable_properties)
+						if not tmp:
 							return []
+						ret.extend(tmp)
 				else:
 					if element in acceptable_properties:
 						return[]
 					ret.append(element)
 			# Return all masked properties, since we don't know which combination
 			# (if any) the user will decide to unmask
-			return flatten(ret)
+			return ret
 
 		ret = []
 		for element in properties_struct:
@@ -2103,7 +2124,7 @@ class config(object):
 			myuse = mydbapi["USE"]
 		else:
 			myuse = mydbapi.aux_get(mycpv, ["USE"])[0]
-		virts = flatten(use_reduce(paren_reduce(provides), uselist=myuse.split()))
+		virts = use_reduce(provides, uselist=myuse.split(), flat=True)
 
 		modified = False
 		cp = Atom(cpv_getkey(mycpv))
@@ -2392,13 +2413,7 @@ class config(object):
 
 		self.already_in_regenerate = 0
 
-	def get_virts_p(self, myroot=None):
-
-		if myroot is not None:
-			warnings.warn("The 'myroot' parameter for " + \
-				"portage.config.get_virts_p() is deprecated",
-				DeprecationWarning, stacklevel=2)
-
+	def get_virts_p(self):
 		if self.virts_p:
 			return self.virts_p
 		virts = self.getvirtuals()
@@ -2409,15 +2424,7 @@ class config(object):
 					self.virts_p[vkeysplit[1]] = virts[x]
 		return self.virts_p
 
-	def getvirtuals(self, myroot=None):
-		"""myroot is now ignored because, due to caching, it has always been
-		broken for all but the first call."""
-
-		if myroot is not None:
-			warnings.warn("The 'myroot' parameter for " + \
-				"portage.config.getvirtuals() is deprecated",
-				DeprecationWarning, stacklevel=2)
-
+	def getvirtuals(self):
 		myroot = self["ROOT"]
 		if self.virtuals:
 			return self.virtuals
@@ -2552,12 +2559,6 @@ class config(object):
 			raise KeyError(key)
 		return v
 
-	def has_key(self,mykey):
-		warnings.warn("portage.config.has_key() is deprecated, "
-			"use the in operator instead",
-			DeprecationWarning, stacklevel=2)
-		return mykey in self
-
 	def __contains__(self, mykey):
 		"""Called to implement membership test operators (in and not in)."""
 		for d in self.lookuplist:
@@ -2655,25 +2656,25 @@ class config(object):
 		mydict["USE"] = self.get("PORTAGE_USE", "")
 
 		# Don't export AA to the ebuild environment in EAPIs that forbid it
-		if eapi not in ("0", "1", "2", "3", "3_pre2"):
+		if not eapi_exports_AA(eapi):
 			mydict.pop("AA", None)
 
 		# Prefix variables are supported starting with EAPI 3.
 		# but during transition, we just support them anywhere
-		#if phase == 'depend' or eapi in (None, "0", "1", "2"):
-		#	mydict.pop("ED", None)
-		#	mydict.pop("EPREFIX", None)
-		#	mydict.pop("EROOT", None)
+#		if phase == 'depend' or eapi is None or not eapi_supports_prefix(eapi):
+#			mydict.pop("ED", None)
+#			mydict.pop("EPREFIX", None)
+#			mydict.pop("EROOT", None)
 
 		if phase == 'depend':
 			mydict.pop('FILESDIR', None)
 
 		if phase not in ("pretend", "setup", "preinst", "postinst") or \
-			eapi in ("0", "1", "2", "3"):
+			not eapi_exports_replace_vars(eapi):
 			mydict.pop("REPLACING_VERSIONS", None)
 
 		if phase not in ("prerm", "postrm") or \
-			eapi in ("0", "1", "2", "3"):
+			not eapi_exports_replace_vars(eapi):
 			mydict.pop("REPLACED_BY_VERSION", None)
 
 		return mydict
@@ -2688,8 +2689,11 @@ class config(object):
 		return self._thirdpartymirrors
 
 	def archlist(self):
-		return flatten([[myarch, "~" + myarch] \
-			for myarch in self["PORTAGE_ARCHLIST"].split()])
+		_archlist = []
+		for myarch in self["PORTAGE_ARCHLIST"].split():
+			_archlist.append(myarch)
+			_archlist.append("~" + myarch)
+		return _archlist
 
 	def selinux_enabled(self):
 		if getattr(self, "_selinux_enabled", None) is None:

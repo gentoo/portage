@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -33,6 +33,7 @@ from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 	red, yellow
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
+from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage.sets import load_default_config, SETPREFIX
 from portage.sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, \
@@ -1088,14 +1089,10 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				depstr = node.metadata[dep_type]
 				if not depstr:
 					continue
-				try:
-					portage.dep._dep_check_strict = False
-					success, atoms = portage.dep_check(depstr, None, settings,
-						myuse=node_use,
-						trees=resolver._dynamic_config._graph_trees,
-						myroot=myroot)
-				finally:
-					portage.dep._dep_check_strict = True
+				success, atoms = portage.dep_check(depstr, None, settings,
+					myuse=node_use,
+					trees=resolver._dynamic_config._graph_trees,
+					myroot=myroot)
 				if not success:
 					# Ignore invalid deps of packages that will
 					# be uninstalled anyway.
@@ -2826,6 +2823,7 @@ def load_emerge_config(trees=None):
 	mtimedbfile = os.path.join(os.path.sep, settings['ROOT'], portage.CACHE_PATH, "mtimedb")
 	mtimedb = portage.MtimeDB(mtimedbfile)
 	portage.output._init(config_root=settings['PORTAGE_CONFIGROOT'])
+	QueryCommand._db = trees
 	return settings, trees, mtimedb
 
 def chk_updated_cfg_files(target_root, config_protect):

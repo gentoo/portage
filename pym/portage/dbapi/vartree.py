@@ -11,8 +11,8 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum:_perform_md5_merge@perform_md5',
 	'portage.data:portage_gid,portage_uid,secpass',
 	'portage.dbapi.dep_expand:dep_expand',
-	'portage.dep:dep_getkey,isjustname,flatten,match_from_list,' + \
-	 	'use_reduce,paren_reduce,_slot_re',
+	'portage.dep:dep_getkey,isjustname,match_from_list,' + \
+	 	'use_reduce,_slot_re',
 	'portage.elog:elog_process',
 	'portage.locks:lockdir,unlockdir',
 	'portage.output:bold,colorize',
@@ -60,7 +60,6 @@ import stat
 import sys
 import tempfile
 import time
-import warnings
 
 try:
 	import cPickle as pickle
@@ -1831,7 +1830,8 @@ class vardbapi(dbapi):
 			["BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "DESCRIPTION",
 			"EAPI", "HOMEPAGE", "IUSE", "KEYWORDS",
 			"LICENSE", "PDEPEND", "PROPERTIES", "PROVIDE", "RDEPEND",
-			"repository", "RESTRICT" , "SLOT", "USE", "DEFINED_PHASES"])
+			"repository", "RESTRICT" , "SLOT", "USE", "DEFINED_PHASES",
+			"REQUIRED_USE"])
 		self._aux_cache_obj = None
 		self._aux_cache_filename = os.path.join(self.root,
 			CACHE_PATH, "vdb_metadata.pickle")
@@ -2786,7 +2786,7 @@ class vartree(object):
 			mylines, myuse = self.dbapi.aux_get(mycpv, ["PROVIDE", "USE"])
 			if mylines:
 				myuse = myuse.split()
-				mylines = flatten(use_reduce(paren_reduce(mylines), uselist=myuse))
+				mylines = use_reduce(mylines, uselist=myuse, flat=True)
 				for myprovide in mylines:
 					mys = catpkgsplit(myprovide)
 					if not mys:

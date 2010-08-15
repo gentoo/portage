@@ -59,13 +59,9 @@ class BlockerDB(object):
 				# Use aux_get() to trigger FakeVartree global
 				# updates on *DEPEND when appropriate.
 				depstr = " ".join(vardb.aux_get(inst_pkg.cpv, dep_keys))
-				try:
-					portage.dep._dep_check_strict = False
-					success, atoms = portage.dep_check(depstr,
-						vardb, settings, myuse=inst_pkg.use.enabled,
-						trees=dep_check_trees, myroot=inst_pkg.root)
-				finally:
-					portage.dep._dep_check_strict = True
+				success, atoms = portage.dep_check(depstr,
+					vardb, settings, myuse=inst_pkg.use.enabled,
+					trees=dep_check_trees, myroot=inst_pkg.root)
 				if not success:
 					pkg_location = os.path.join(inst_pkg.root,
 						portage.VDB_PATH, inst_pkg.category, inst_pkg.pf)
@@ -98,13 +94,9 @@ class BlockerDB(object):
 
 		# Check for blockers in the other direction.
 		depstr = " ".join(new_pkg.metadata[k] for k in dep_keys)
-		try:
-			portage.dep._dep_check_strict = False
-			success, atoms = portage.dep_check(depstr,
-				vardb, settings, myuse=new_pkg.use.enabled,
-				trees=dep_check_trees, myroot=new_pkg.root)
-		finally:
-			portage.dep._dep_check_strict = True
+		success, atoms = portage.dep_check(depstr,
+			vardb, settings, myuse=new_pkg.use.enabled,
+			trees=dep_check_trees, myroot=new_pkg.root)
 		if not success:
 			# We should never get this far with invalid deps.
 			show_invalid_depstring_notice(new_pkg, depstr, atoms)

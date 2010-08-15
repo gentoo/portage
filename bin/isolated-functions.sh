@@ -70,6 +70,17 @@ nonfatal() {
 	PORTAGE_NONFATAL=1 "$@"
 }
 
+helpers_die() {
+	case "${EAPI:-0}" in
+		0|1|2|3)
+			echo -e "$@" >&2
+			;;
+		*)
+			die "$@"
+			;;
+	esac
+}
+
 die() {
 	if [[ $PORTAGE_NONFATAL -eq 1 ]]; then
 		echo -e " $WARN*$NORMAL ${FUNCNAME[1]}: WARNING: $@" >&2
@@ -102,6 +113,8 @@ die() {
 	eerror "ERROR: $CATEGORY/$PF failed:"
 	eerror "  ${*:-(no error message)}"
 	eerror
+	# This part is useless when called by the die helper.
+	if [[ ${BASH_SOURCE[1]##*/} != die ]] ; then
 	dump_trace 2 ${filespacing} ${linespacing}
 	eerror "  $(printf "%${filespacing}s" "${BASH_SOURCE[1]##*/}"), line $(printf "%${linespacing}s" "${BASH_LINENO[0]}"):  Called die"
 	eerror "The specific snippet of code:"
@@ -127,6 +140,7 @@ die() {
 		| sed -e '1d' -e 's:^:RETAIN-LEADING-SPACE:' \
 		| while read -r n ; do eerror "  ${n#RETAIN-LEADING-SPACE}" ; done
 	eerror
+	fi
 	eerror "If you need support, post the output of 'emerge --info =$CATEGORY/$PF',"
 	eerror "the complete build log and the output of 'emerge -pqv =$CATEGORY/$PF'."
 	if [[ -n ${EBUILD_OVERLAY_ECLASSES} ]] ; then
@@ -178,7 +192,8 @@ die() {
 	fi
 	eerror "S: '${S}'"
 
-	[ -n "$EBUILD_EXIT_STATUS_FILE" ] && > "$EBUILD_EXIT_STATUS_FILE"
+	[[ -n $PORTAGE_EBUILD_EXIT_FILE ]] && > "$PORTAGE_EBUILD_EXIT_FILE"
+	[[ -n $PORTAGE_IPC_DAEMON ]] && "$PORTAGE_BIN_PATH"/ebuild-ipc exit 1
 
 	# subshell die support
 	[[ $BASHPID = $EBUILD_MASTER_PID ]] || kill -s SIGTERM $EBUILD_MASTER_PID
@@ -555,7 +570,7 @@ save_ebuild_env() {
 		# portage config variables and variables set directly by portage
 		unset ACCEPT_LICENSE BAD BRACKET BUILD_PREFIX COLS \
 			DISTCC_DIR DISTDIR DOC_SYMLINKS_DIR \
-			EBUILD_EXIT_STATUS_FILE EBUILD_FORCE_TEST EBUILD_MASTER_PID \
+			EBUILD_FORCE_TEST EBUILD_MASTER_PID \
 			ECLASSDIR ECLASS_DEPTH ENDCOL FAKEROOTKEY \
 			GOOD HILITE HOME \
 			LAST_E_CMD LAST_E_LEN LD_PRELOAD MISC_FUNCTIONS_ARGS MOPREFIX \
@@ -564,10 +579,11 @@ save_ebuild_env() {
 			PORTAGE_BASHRC PM_EBUILD_HOOK_DIR PORTAGE_BASHRCS_SOURCED \
 			PORTAGE_BINPKG_TAR_OPTS PORTAGE_BINPKG_TMPFILE PORTAGE_BUILDDIR \
 			PORTAGE_COLORMAP PORTAGE_CONFIGROOT PORTAGE_DEBUG \
-			PORTAGE_DEPCACHEDIR PORTAGE_GID \
+			PORTAGE_DEPCACHEDIR PORTAGE_EBUILD_EXIT_FILE PORTAGE_GID \
 			PORTAGE_GRPNAME PORTAGE_INST_GID \
-			PORTAGE_INST_UID PORTAGE_LOG_FILE PORTAGE_MASTER_PID \
-			PORTAGE_NONFATAL PORTAGE_QUIET \
+			PORTAGE_INST_UID PORTAGE_IPC_DAEMON \
+			PORTAGE_LOG_FILE PORTAGE_MASTER_PID \
+			PORTAGE_NONFATAL PORTAGE_QUIET PORTAGE_PYTHON \
 			PORTAGE_REPO_NAME PORTAGE_RESTRICT PORTAGE_UPDATE_ENV \
 			PORTAGE_USERNAME PORTAGE_VERBOSE PORTAGE_WORKDIR_MODE PORTDIR \
 			PORTDIR_OVERLAY ${!PORTAGE_SANDBOX_*} PREROOTPATH \
