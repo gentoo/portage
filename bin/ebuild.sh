@@ -2200,6 +2200,8 @@ ebuild_main() {
 		fi
 		set +f
 		;;
+	_internal_test)
+		;;
 	*)
 		export SANDBOX_ON="1"
 		echo "Unrecognized EBUILD_SH_ARGS: '${EBUILD_SH_ARGS}'"
