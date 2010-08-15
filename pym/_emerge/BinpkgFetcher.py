@@ -63,7 +63,7 @@ class BinpkgFetcher(SpawnProcess):
 
 		if pretend:
 			portage.writemsg_stdout("\n%s\n" % uri, noiselevel=-1)
-			self.returncode = os.EX_OK
+			self._set_returncode((self.pid, os.EX_OK))
 			self.wait()
 			return
 
@@ -102,7 +102,7 @@ class BinpkgFetcher(SpawnProcess):
 
 	def _set_returncode(self, wait_retval):
 		SpawnProcess._set_returncode(self, wait_retval)
-		if self.returncode == os.EX_OK:
+		if not self.pretend and self.returncode == os.EX_OK:
 			# If possible, update the mtime to match the remote package if
 			# the fetcher didn't already do it automatically.
 			bintree = self.pkg.root_config.trees["bintree"]

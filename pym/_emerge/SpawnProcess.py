@@ -120,7 +120,7 @@ class SpawnProcess(SubProcess):
 		if isinstance(retval, int):
 			# spawn failed
 			self._unregister()
-			self.returncode = retval
+			self._set_returncode((self.pid, retval))
 			self.wait()
 			return
 
