@@ -23,7 +23,15 @@ class DoebuildSpawnTestCase(TestCase):
 		try:
 			settings = config(clone=playground.settings)
 			cpv = 'sys-apps/portage-2.1'
-			metadata = {}
+			metadata = {
+				'EAPI'      : '2',
+				'INHERITED' : 'python eutils',
+				'IUSE'      : 'build doc epydoc python3 selinux',
+				'LICENSE'   : 'GPL-2',
+				'PROVIDE'   : 'virtual/portage',
+				'RDEPEND'   : '>=app-shells/bash-3.2_p17 >=dev-lang/python-2.6',
+				'SLOT'      : '0',
+			}
 			settings.setcpv(cpv, mydb=metadata)
 			settings['PORTAGE_PYTHON'] = sys.executable
 			settings['PORTAGE_BUILDDIR'] = os.path.join(
