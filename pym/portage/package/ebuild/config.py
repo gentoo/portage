@@ -1767,7 +1767,8 @@ class config(object):
 	def _getKeywords(self, cpv, metadata):
 		cp = cpv_getkey(cpv)
 		pkg = "%s:%s" % (cpv, metadata["SLOT"])
-		keywords = [[x for x in metadata["KEYWORDS"].split() if x != "-*"]]
+		keywords = [[x for x in metadata.get("KEYWORDS", "").split() \
+			if x != "-*"]]
 		for pkeywords_dict in self._pkeywords_list:
 			cpdict = pkeywords_dict.get(cp)
 			if cpdict:
@@ -2006,7 +2007,8 @@ class config(object):
 				for x in pproperties_list:
 					accept_properties.extend(x)
 
-		properties = set(use_reduce(metadata["PROPERTIES"], matchall=1, flat=True))
+		properties_str = metadata.get("PROPERTIES", "")
+		properties = set(use_reduce(properties_str, matchall=1, flat=True))
 		properties.discard('||')
 
 		acceptable_properties = set()
@@ -2020,7 +2022,6 @@ class config(object):
 			else:
 				acceptable_properties.add(x)
 
-		properties_str = metadata["PROPERTIES"]
 		if "?" in properties_str:
 			use = metadata["USE"].split()
 		else:

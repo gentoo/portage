@@ -52,7 +52,7 @@ class Package(Task):
 			not eapi_has_iuse_defaults(self.metadata["EAPI"]):
 			self._invalid_metadata('IUSE.invalid',
 				"IUSE contains defaults, but EAPI doesn't allow them")
-		if self.metadata["REQUIRED_USE"] and \
+		if self.metadata.get("REQUIRED_USE") and \
 			not eapi_has_required_use(self.metadata["EAPI"]):
 			self._invalid_metadata('REQUIRED_USE.invalid',
 				"REQUIRED_USE set, but EAPI doesn't allow it")

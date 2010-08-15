@@ -9,6 +9,7 @@ from portage.package.ebuild.config import config
 from portage.package.ebuild.doebuild import spawn as doebuild_spawn
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
+from _emerge.Package import Package
 
 class DoebuildSpawnTestCase(TestCase):
 	"""
@@ -32,7 +33,11 @@ class DoebuildSpawnTestCase(TestCase):
 				'RDEPEND'   : '>=app-shells/bash-3.2_p17 >=dev-lang/python-2.6',
 				'SLOT'      : '0',
 			}
-			settings.setcpv(cpv, mydb=metadata)
+			root_config = playground.trees[playground.root]['root_config']
+			pkg = Package(built=False, cpv=cpv, installed=False,
+				metadata=metadata, root_config=root_config,
+				type_name='ebuild')
+			settings.setcpv(pkg)
 			settings['PORTAGE_PYTHON'] = sys.executable
 			settings['PORTAGE_BUILDDIR'] = os.path.join(
 				settings['PORTAGE_TMPDIR'], cpv)
