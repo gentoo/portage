@@ -9,7 +9,6 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dbapi.dep_expand:dep_expand@_dep_expand',
 	'portage.dep:match_from_list',
-	'portage.locks:unlockfile',
 	'portage.output:colorize',
 	'portage.util:cmp_sort_key,writemsg',
 	'portage.versions:catsplit,catpkgsplit,vercmp',
@@ -185,14 +184,7 @@ class dbapi(object):
 			yield cpv
 
 	def invalidentry(self, mypath):
-		if mypath.endswith('portage_lockfile'):
-			if "PORTAGE_MASTER_PID" not in os.environ:
-				writemsg(_("Lockfile removed: %s\n") % mypath, 1)
-				unlockfile((mypath, None, None))
-			else:
-				# Nothing we can do about it. We're probably sandboxed.
-				pass
-		elif '/-MERGING-' in mypath:
+		if '/-MERGING-' in mypath:
 			if os.path.exists(mypath):
 				writemsg(colorize("BAD", _("INCOMPLETE MERGE:"))+" %s\n" % mypath,
 					noiselevel=-1)
