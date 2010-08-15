@@ -198,11 +198,15 @@ class ResolverPlayground(object):
 		f.close()
 
 	def _load_config(self):
+		# Pass along PORTAGE_USERNAME and PORTAGE_GRPNAME since they
+		# need to be inherited by ebuild subprocesses.
 		env = {
 			"ACCEPT_KEYWORDS": "x86",
 			"PORTDIR": self.portdir,
 			"ROOT": self.root,
-			'PORTAGE_TMPDIR' : os.path.join(self.root, 'var/tmp')
+			'PORTAGE_TMPDIR'       : os.path.join(self.root, 'var/tmp'),
+			'PORTAGE_USERNAME'     : os.environ["PORTAGE_USERNAME"],
+			'PORTAGE_GRPNAME'      : os.environ["PORTAGE_GRPNAME"],
 		}
 
 		settings = config(config_root=self.root, target_root=self.root, env=env)
