@@ -192,6 +192,19 @@ class PollScheduler(object):
 	def _unregister(self, reg_id):
 		f = self._poll_event_handler_ids[reg_id]
 		self._poll_obj.unregister(f)
+		if self._poll_event_queue:
+			# Discard any unhandled events that belong to this file,
+			# in order to prevent these events from being erroneously
+			# delivered to a future handler that is using a reallocated
+			# file descriptor of the same numeric value (causing
+			# extremely confusing bugs).
+			remove = set()
+			for event in self._poll_event_queue:
+				if event[0] == f:
+					remove.add(event)
+			if remove:
+				self._poll_event_queue[:] = [event for event in \
+					self._poll_event_queue if event not in remove]
 		del self._poll_event_handlers[f]
 		del self._poll_event_handler_ids[reg_id]
 
