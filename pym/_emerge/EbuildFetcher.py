@@ -1,8 +1,7 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.SpawnProcess import SpawnProcess
-from _emerge.EbuildBuildDir import EbuildBuildDir
 import sys
 import portage
 from portage import os
@@ -25,10 +24,30 @@ class EbuildFetcher(SpawnProcess):
 		ebuild_path = portdb.findname(self.pkg.cpv)
 		if ebuild_path is None:
 			raise AssertionError("ebuild not found for '%s'" % self.pkg.cpv)
+
+		try:
+			uri_map = self._get_uri_map(portdb, ebuild_path)
+		except portage.exception.InvalidDependString as e:
+			msg_lines = []
+			msg = "Fetch failed for '%s' due to invalid SRC_URI: %s" % \
+				(self.pkg.cpv, e)
+			msg_lines.append(msg)
+			self._eerror(msg_lines)
+			self.returncode = 1
+			self.wait()
+			return
+
+		if not uri_map:
+			# Nothing to fetch.
+			self.returncode = os.EX_OK
+			self.wait()
+			return
+
 		settings = self.config_pool.allocate()
 		settings.setcpv(self.pkg)
+
 		if self.prefetch and \
-			self._prefetch_size_ok(portdb, settings, ebuild_path):
+			self._prefetch_size_ok(uri_map, settings, ebuild_path):
 			self.config_pool.deallocate(settings)
 			self.returncode = os.EX_OK
 			self.wait()
@@ -74,19 +93,20 @@ class EbuildFetcher(SpawnProcess):
 		self.env = fetch_env
 		SpawnProcess._start(self)
 
-	def _prefetch_size_ok(self, portdb, settings, ebuild_path):
+	def _get_uri_map(self, portdb, ebuild_path):
+		"""
+		This can raise InvalidDependString from portdbapi.getFetchMap().
+		"""
 		pkgdir = os.path.dirname(ebuild_path)
 		mytree = os.path.dirname(os.path.dirname(pkgdir))
-		distdir = settings["DISTDIR"]
 		use = None
 		if not self.fetchall:
 			use = self.pkg.use.enabled
+		return portdb.getFetchMap(self.pkg.cpv, useflags=use, mytree=mytree)
 
-		try:
-			uri_map = portdb.getFetchMap(self.pkg.cpv,
-				useflags=use, mytree=mytree)
-		except portage.exception.InvalidDependString as e:
-			return False
+	def _prefetch_size_ok(self, uri_map, settings, ebuild_path):
+		pkgdir = os.path.dirname(ebuild_path)
+		distdir = settings["DISTDIR"]
 
 		sizes = {}
 		for filename in uri_map:
@@ -134,29 +154,35 @@ class EbuildFetcher(SpawnProcess):
 			_create_pty_or_pipe(copy_term_size=stdout_pipe)
 		return (master_fd, slave_fd)
 
+	def _eerror(self, lines):
+		out = portage.StringIO()
+		for line in lines:
+			eerror(line, phase="unpack", key=self.pkg.cpv, out=out)
+		logfile = self.logfile
+		msg = _unicode_decode(out.getvalue(),
+			encoding=_encodings['content'], errors='replace')
+		if msg:
+			if not self.background:
+				writemsg_stdout(msg, noiselevel=-1)
+			if logfile is not None:
+				log_file = codecs.open(_unicode_encode(logfile,
+					encoding=_encodings['fs'], errors='strict'),
+					mode='a', encoding=_encodings['content'],
+					errors='backslashreplace')
+				log_file.write(msg)
+				log_file.close()
+
 	def _set_returncode(self, wait_retval):
 		SpawnProcess._set_returncode(self, wait_retval)
 		# Collect elog messages that might have been
 		# created by the pkg_nofetch phase.
 		# Skip elog messages for prefetch, in order to avoid duplicates.
 		if not self.prefetch and self.returncode != os.EX_OK:
-			out = portage.StringIO()
+			msg_lines = []
 			msg = "Fetch failed for '%s'" % (self.pkg.cpv,)
 			if self.logfile is not None:
 				msg += ", Log file:"
-			eerror(msg, phase="unpack", key=self.pkg.cpv, out=out)
+			msg_lines.append(msg)
 			if self.logfile is not None:
-				eerror(" '%s'" % (self.logfile,),
-					phase="unpack", key=self.pkg.cpv, out=out)
-			msg = _unicode_decode(out.getvalue(),
-				encoding=_encodings['content'], errors='replace')
-			if msg:
-				if not self.background:
-					writemsg_stdout(msg, noiselevel=-1)
-				if  self.logfile is not None:
-					log_file = codecs.open(_unicode_encode(self.logfile,
-						encoding=_encodings['fs'], errors='strict'),
-						mode='a', encoding=_encodings['content'],
-						errors='backslashreplace')
-					log_file.write(msg)
-					log_file.close()
+				msg_lines.append(" '%s'" % (self.logfile,))
+			self._eerror(msg_lines)
