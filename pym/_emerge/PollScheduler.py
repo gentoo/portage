@@ -126,14 +126,7 @@ class PollScheduler(object):
 		try:
 			while event_handlers:
 				f, event = self._next_poll_event()
-				try:
-					handler, reg_id = event_handlers[f]
-				except KeyError:
-					# This means unregister was called for a file descriptor
-					# that still had a pending event in _poll_event_queue.
-					# Since unregister has been called, we should assume that
-					# the event can be safely ignored.
-					continue
+				handler, reg_id = event_handlers[f]
 				handler(f, event)
 				event_handled = True
 		except StopIteration:
@@ -162,13 +155,9 @@ class PollScheduler(object):
 		try:
 			while event_handlers and self._poll_event_queue:
 				f, event = self._next_poll_event()
-				try:
-					handler, reg_id = event_handlers[f]
-				except KeyError:
-					pass
-				else:
-					handler(f, event)
-					events_handled += 1
+				handler, reg_id = event_handlers[f]
+				handler(f, event)
+				events_handled += 1
 		except StopIteration:
 			events_handled += 1
 
@@ -228,13 +217,9 @@ class PollScheduler(object):
 		try:
 			while wait_ids.intersection(handler_ids):
 				f, event = self._next_poll_event(timeout=timeout)
-				try:
-					handler, reg_id = event_handlers[f]
-				except KeyError:
-					pass
-				else:
-					handler(f, event)
-					event_handled = True
+				handler, reg_id = event_handlers[f]
+				handler(f, event)
+				event_handled = True
 				if timeout is not None:
 					if 1000 * time.time() - start_time >= timeout:
 						break
@@ -258,15 +243,11 @@ class PollScheduler(object):
 		try:
 			while event_handlers:
 				f, event = self._next_poll_event()
-				try:
-					handler, reg_id = event_handlers[f]
-				except KeyError:
-					pass
-				else:
-					handler(f, event)
-					wait_retval = os.waitpid(pid, os.WNOHANG)
-					if wait_retval != (0, 0):
-						return wait_retval
+				handler, reg_id = event_handlers[f]
+				handler(f, event)
+				wait_retval = os.waitpid(pid, os.WNOHANG)
+				if wait_retval != (0, 0):
+					return wait_retval
 				self._schedule()
 		except StopIteration:
 			pass
