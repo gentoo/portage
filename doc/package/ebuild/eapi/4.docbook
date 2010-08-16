@@ -29,6 +29,13 @@ The doins and newins helpers now preserve symlinks. In earlier EAPIs
 symlinks are dereferenced rather than preserved.
 </para>
 </section>
+<section id='package-ebuild-eapi-4_pre1-helpers-doman-i18n-precedence'>
+<title>doman -i18n option takes precedence over filename language suffix</title>
+<para>
+When the doman helper is called with the -i18n option, this takes precedence
+over the filename language suffix.
+</para>
+</section>
 <section id='package-ebuild-eapi-4_pre1-helpers-econf-disable-dependency-tracking'>
 <title>econf adds --disable-dependency-tracking</title>
 <para>
