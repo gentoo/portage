@@ -78,7 +78,6 @@ class Scheduler(PollScheduler):
 	class _iface_class(SlotObject):
 		__slots__ = ("dblinkEbuildPhase", "dblinkDisplayMerge",
 			"dblinkElog", "dblinkEmergeLog", "fetch", "register", "schedule",
-			"schedule_waitpid",
 			"scheduleSetup", "scheduleUnpack", "scheduleYield",
 			"unregister")
 
@@ -211,7 +210,6 @@ class Scheduler(PollScheduler):
 			dblinkEmergeLog=self._dblink_emerge_log,
 			fetch=fetch_iface, register=self._register,
 			schedule=self._schedule_wait,
-			schedule_waitpid=self._schedule_waitpid,
 			scheduleSetup=self._schedule_setup,
 			scheduleUnpack=self._schedule_unpack,
 			scheduleYield=self._schedule_yield,

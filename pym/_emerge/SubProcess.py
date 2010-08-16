@@ -92,7 +92,7 @@ class SubProcess(AbstractPollTask):
 				self._set_returncode(wait_retval)
 			else:
 				try:
-					wait_retval = self.scheduler.schedule_waitpid(self.pid)
+					wait_retval = os.waitpid(self.pid, 0)
 				except OSError as e:
 					if e.errno != errno.ECHILD:
 						raise

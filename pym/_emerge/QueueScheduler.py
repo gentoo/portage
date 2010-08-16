@@ -21,8 +21,7 @@ class QueueScheduler(PollScheduler):
 		self.sched_iface = self._sched_iface_class(
 			register=self._register,
 			schedule=self._schedule_wait,
-			unregister=self._unregister,
-			schedule_waitpid=self._schedule_waitpid)
+			unregister=self._unregister)
 
 		self._queues = []
 		self._schedule_listeners = []
