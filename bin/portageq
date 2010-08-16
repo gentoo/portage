@@ -176,7 +176,8 @@ metadata.__doc__ = """
 <root> <pkgtype> <category/package> [<key>]+
 Returns metadata values for the specified package.
 Available keys: %s
-"""  % ','.join(portage.auxdbkeys)
+"""  % ','.join(sorted(x for x in portage.auxdbkeys \
+if not x.startswith('UNUSED_')))
 
 metadata.uses_root = True
 
