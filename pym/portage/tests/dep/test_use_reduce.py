@@ -3,12 +3,13 @@
 
 from portage.tests import TestCase
 from portage.exception import InvalidDependString
-from portage.dep import use_reduce
+from portage.dep import Atom, use_reduce
 
 class UseReduceTestCase(object):
 	def __init__(self, deparray, uselist=[], masklist=[], \
 		matchall=0, excludeall=[], is_src_uri=False, \
-		allow_src_uri_file_renames=False, opconvert=False, flat=False, expected_result=None, is_valid_flag=None):
+		allow_src_uri_file_renames=False, opconvert=False, flat=False, expected_result=None, \
+			is_valid_flag=None, token_class=None):
 		self.deparray = deparray
 		self.uselist = uselist
 		self.masklist = masklist
@@ -19,12 +20,13 @@ class UseReduceTestCase(object):
 		self.opconvert = opconvert
 		self.flat = flat
 		self.is_valid_flag = is_valid_flag
+		self.token_class = token_class
 		self.expected_result = expected_result
 
 	def run(self):
 		return use_reduce(self.deparray, self.uselist, self.masklist, \
 			self.matchall, self.excludeall, self.is_src_uri, self.allow_src_uri_file_renames, \
-				self.opconvert, self.flat, self.is_valid_flag)
+				self.opconvert, self.flat, self.is_valid_flag, self.token_class)
 				
 class UseReduce(TestCase):
 
@@ -414,6 +416,17 @@ class UseReduce(TestCase):
 				"foo? ( A )",
 				is_valid_flag = self.always_true,
 				expected_result = []),
+
+			#token_class
+			UseReduceTestCase(
+				"foo? ( dev-libs/A )",
+				uselist = ["foo"],
+				token_class=Atom,
+				expected_result = ["dev-libs/A"]),
+			UseReduceTestCase(
+				"foo? ( dev-libs/A )",
+				token_class=Atom,
+				expected_result = []),
 		)
 		
 		test_cases_xfail = (
@@ -433,7 +446,6 @@ class UseReduce(TestCase):
 			UseReduceTestCase("a? A"),
 			UseReduceTestCase("( || ( || || ( A ) foo? ( B ) ) )"),
 			UseReduceTestCase("( || ( || bar? ( A ) foo? ( B ) ) )"),
-			UseReduceTestCase("A(B"),
 			UseReduceTestCase("foo?"),
 			
 			#SRC_URI stuff
@@ -469,6 +481,15 @@ class UseReduce(TestCase):
 				uselist = ["foo"],
 				is_valid_flag = self.always_false,
 				),
+
+			#token_class
+			UseReduceTestCase(
+				"foo? ( A )",
+				uselist = ["foo"],
+				token_class=Atom),
+			UseReduceTestCase(
+				"A(B",
+				token_class=Atom),
 		)
 
 		for test_case in test_cases:

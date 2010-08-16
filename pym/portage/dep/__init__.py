@@ -221,7 +221,7 @@ def paren_enclose(mylist):
 	return " ".join(mystrparts)
 
 def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], is_src_uri=False, \
-	allow_src_uri_file_renames=False, opconvert=False, flat=False, is_valid_flag=None):
+	allow_src_uri_file_renames=False, opconvert=False, flat=False, is_valid_flag=None, token_class=None):
 	"""
 	Takes a dep string and reduces the use? conditionals out, leaving an array
 	with subarrays. All redundant brackets are removed.
@@ -246,6 +246,8 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 	@type flat: Bool
 	@param is_valid_flag: Function that decides if a given use flag might be used in use conditionals
 	@type is_valid_flag: Function
+	@param token_class: Convert all non operator tokens into this class
+	@type token_class: Class
 	@rtype: List
 	@return: The use reduced depend array
 	"""
@@ -290,7 +292,7 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 		return (flag in uselist and not is_negated) or \
 			(flag not in uselist and is_negated)
 
-	def invalid_token_check(token, pos):
+	def missing_white_space_check(token, pos):
 		"""
 		Used to generate good error messages for invalid tokens.
 		"""
@@ -298,9 +300,6 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 			if token.startswith(x) or token.endswith(x):
 				raise portage.exception.InvalidDependString(
 					_("missing whitespace around '%s' at '%s' in '%s', token %s") % (x, token, depstr, pos+1))
-
-		raise portage.exception.InvalidDependString(
-			_("invalid token '%s' in '%s', token %s") % (token, depstr, pos+1))
 
 	mysplit = depstr.split()
 	#Count the bracket level.
@@ -409,8 +408,7 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 			need_simple_token = True
 			stack[level].append(token)	
 		else:
-			if "(" in token or ")" in token or "|" in token:
-				invalid_token_check(token, pos)
+			missing_white_space_check(token, pos)
 
 			if need_bracket:
 				raise portage.exception.InvalidDependString(
@@ -425,6 +423,13 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 				need_bracket = True
 			else:
 				need_simple_token = False
+				if token_class and not is_src_uri:
+					#Add a hack for SRC_URI here, to avoid conditional code at the consumer level
+					try:
+						token = token_class(token)
+					except Exception as e:
+						raise portage.exception.InvalidDependString(
+							_("Invalid token '%s' in '%s', token %s") % (token, depstr, pos+1))
 
 			stack[level].append(token)
 
