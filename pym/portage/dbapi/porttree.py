@@ -656,33 +656,8 @@ class portdbapi(dbapi):
 				"getFetchMap(): '%s' has unsupported EAPI: '%s'" % \
 				(mypkg, eapi.lstrip("-")))
 
-		myuris = use_reduce(myuris, uselist=useflags, matchall=(useflags is None), \
-			is_src_uri=True, allow_src_uri_file_renames=eapi_has_src_uri_arrows(eapi))
-
-		uri_map = OrderedDict()
-
-		myuris.reverse()
-		while myuris:
-			uri = myuris.pop()
-			if myuris and myuris[-1] == "->":
-				operator = myuris.pop()
-				distfile = myuris.pop()
-			else:
-				distfile = os.path.basename(uri)
-				if not distfile:
-					raise portage.exception.InvalidDependString(
-						("getFetchMap(): '%s' SRC_URI has no file " + \
-						"name: '%s'") % (mypkg, uri))
-
-			uri_set = uri_map.get(distfile)
-			if uri_set is None:
-				uri_set = set()
-				uri_map[distfile] = uri_set
-			uri_set.add(uri)
-			uri = None
-			operator = None
-
-		return uri_map
+		return _parse_uri_map(mypkg, {'EAPI':eapi,'SRC_URI':myuris},
+			use=useflags)
 
 	def getfetchsizes(self, mypkg, useflags=None, debug=0):
 		# returns a filename:size dictionnary of remaining downloads
@@ -1186,3 +1161,36 @@ class FetchlistDict(Mapping):
 
 	if sys.hexversion >= 0x3000000:
 		keys = __iter__
+
+def _parse_uri_map(cpv, metadata, use=None):
+
+	myuris = use_reduce(metadata.get('SRC_URI', ''),
+		uselist=use, matchall=(use is None),
+		is_src_uri=True,
+		allow_src_uri_file_renames = \
+		eapi_has_src_uri_arrows(metadata['EAPI']))
+
+	uri_map = OrderedDict()
+
+	myuris.reverse()
+	while myuris:
+		uri = myuris.pop()
+		if myuris and myuris[-1] == "->":
+			operator = myuris.pop()
+			distfile = myuris.pop()
+		else:
+			distfile = os.path.basename(uri)
+			if not distfile:
+				raise portage.exception.InvalidDependString(
+					("getFetchMap(): '%s' SRC_URI has no file " + \
+					"name: '%s'") % (cpv, uri))
+
+		uri_set = uri_map.get(distfile)
+		if uri_set is None:
+			uri_set = set()
+			uri_map[distfile] = uri_set
+		uri_set.add(uri)
+		uri = None
+		operator = None
+
+	return uri_map
