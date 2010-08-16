@@ -624,12 +624,12 @@ class config(object):
 
 			make_conf = getconfig(
 				os.path.join(config_root, MAKE_CONF_FILE),
-				tolerant=tolerant, allow_sourcing=True)
+				tolerant=tolerant, allow_sourcing=True) or {}
 
 			make_conf.update(getconfig(
 				os.path.join(abs_user_config, 'make.conf'),
 				tolerant=tolerant, allow_sourcing=True,
-				expand=make_conf))
+				expand=make_conf) or {})
 
 			# Allow ROOT setting to come from make.conf if it's not overridden
 			# by the constructor argument (from the calling environment).
@@ -731,11 +731,13 @@ class config(object):
 
 			self.mygcfg = getconfig(
 				os.path.join(config_root, MAKE_CONF_FILE),
-				tolerant=tolerant, allow_sourcing=True, expand=expand_map)
+				tolerant=tolerant, allow_sourcing=True,
+				expand=expand_map) or {}
 
 			self.mygcfg.update(getconfig(
 				os.path.join(abs_user_config, 'make.conf'),
-				tolerant=tolerant, allow_sourcing=True, expand=expand_map))
+				tolerant=tolerant, allow_sourcing=True,
+				expand=expand_map) or {})
 
 			# Don't allow the user to override certain variables in make.conf
 			profile_only_variables = self.configdict["defaults"].get(
