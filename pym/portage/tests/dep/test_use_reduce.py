@@ -434,6 +434,7 @@ class UseReduce(TestCase):
 			UseReduceTestCase("( || ( || || ( A ) foo? ( B ) ) )"),
 			UseReduceTestCase("( || ( || bar? ( A ) foo? ( B ) ) )"),
 			UseReduceTestCase("A(B"),
+			UseReduceTestCase("foo?"),
 			
 			#SRC_URI stuff
 			UseReduceTestCase("http://foo/bar -> blah.tbz2", is_src_uri = True, allow_src_uri_file_renames = False),

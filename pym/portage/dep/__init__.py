@@ -244,6 +244,8 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 	@type opconvert: Bool
 	@param flat: Create a flat list of all tokens
 	@type flat: Bool
+	@param is_valid_flag: Function that decides if a given use flag might be used in use conditionals
+	@type is_valid_flag: Function
 	@rtype: List
 	@return: The use reduced depend array
 	"""
@@ -257,6 +259,9 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 		raise ValueError("portage.dep.use_reduce: 'opconvert' and 'flat' are mutually exclusive")
 
 	def is_active(conditional):
+		"""
+		Decides if a given use conditional is active.
+		"""
 		if conditional.startswith("!"):
 			flag = conditional[1:-1]
 			is_negated = True
@@ -286,6 +291,9 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 			(flag not in uselist and is_negated)
 
 	def invalid_token_check(token, pos):
+		"""
+		Used to generate good error messages for invalid tokens.
+		"""
 		for x in (")", "(", "||"):
 			if token.startswith(x) or token.endswith(x):
 				raise portage.exception.InvalidDependString(
@@ -295,9 +303,16 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 			_("invalid token '%s' in '%s', token %s") % (token, depstr, pos+1))
 
 	mysplit = depstr.split()
+	#Count the bracket level.
 	level = 0
+	#We parse into a stack. Every time we hit a "(", a new empty list is appended to the stack.
+	#When we hit a ')', the last list in the stack is mergeed with list on level up.
 	stack = [[]]
+	#Set need_bracket to True after use conditionals or ||. Other tokens need to ensure
+	#that need_bracket is not True.
 	need_bracket = False
+	#Set need_simple_token to True after a SRC_URI arrow. Other tokens need to ensure
+	#that need_simple_token is not True.
 	need_simple_token = False
 
 	for pos, token in enumerate(mysplit):
@@ -321,7 +336,11 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 				ignore = False
 
 				if flat:
+					#In 'flat' mode, we simply merge all lists into a single large one.
 					if stack[level] and stack[level][-1][-1] == "?":
+						#The last token before the '(' that matches the current ')'
+						#was a use conditional. The conditionl is removed in any case.
+						#Merge the current list if needed.
 						if is_active(stack[level][-1]):
 							stack[level].pop()
 							stack[level].extend(l)
@@ -333,13 +352,19 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 
 				if stack[level]:
 					if stack[level][-1] == "||" and not l:
+						#Optimize: || ( ) -> .
 						stack[level].pop()
 					elif stack[level][-1][-1] == "?":
+						#The last token before the '(' that matches the current ')'
+						#was a use conditional, remove it and decide if we
+						#have to keep the current list.
 						if not is_active(stack[level][-1]):
 							ignore = True
 						stack[level].pop()
 
 				if l and not ignore:
+					#The current list is not empty and we don't want to ignore it because
+					#of an inactive use conditional.
 					if not stack[level] or stack[level][-1] != "||":
 						#Optimize: ( ( ... ) ) -> ( ... )
 						stack[level].extend(l)
@@ -353,6 +378,8 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 						stack[level].extend(l)
 					else:
 						if opconvert and stack[level] and stack[level][-1] == "||":
+							#In opconvert mode, we have to move the operator from the level
+							#above into the current list.
 							stack[level].pop()
 							stack[level].append(["||"] + l)
 						else:
@@ -382,18 +409,15 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 			need_simple_token = True
 			stack[level].append(token)	
 		else:
-			if need_bracket:
-				if token.startswith("("):
-					raise portage.exception.InvalidDependString(
-						_("missing whitespace around '%s' at '%s' in '%s', token %s") % ("(", token, depstr, pos+1))
-				else:
-					raise portage.exception.InvalidDependString(
-						_("expected: '(', got: '%s' in '%s', token %s") % (token, depstr, pos+1))
-
 			if "(" in token or ")" in token or "|" in token:
 				invalid_token_check(token, pos)
 
+			if need_bracket:
+				raise portage.exception.InvalidDependString(
+					_("expected: '(', got: '%s' in '%s', token %s") % (token, depstr, pos+1))
+
 			if need_simple_token and "/" in token:
+				#The last token was a SRC_URI arrow, make sure we have a simple file name.
 				raise portage.exception.InvalidDependString(
 					_("expected: file name, got: '%s' in '%s', token %s") % (token, depstr, pos+1))
 
@@ -404,9 +428,17 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 
 			stack[level].append(token)
 
-	if level != 0 or need_bracket or need_simple_token:
+	if level != 0:
 		raise portage.exception.InvalidDependString(
-			_("malformed syntax: '%s'") % depstr)
+			_("Missing '%s' at end of string: '%s'") % (")", depstr))
+	
+	if need_bracket:
+		raise portage.exception.InvalidDependString(
+			_("Missing '%s' at end of string: '%s'") % ("(", depstr))
+			
+	if need_simple_token:
+		raise portage.exception.InvalidDependString(
+			_("Missing file name at end of string: '%s'") % (depstr,))
 
 	return stack[0]
 
