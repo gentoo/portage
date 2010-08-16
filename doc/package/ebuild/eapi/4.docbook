@@ -193,6 +193,19 @@ src_install() {
 }
 			</programlisting>
 		</section>
+		<section id='package-ebuild-eapi-4_pre1-phases-s-workdir-fallback'>
+			<title>S to WORKDIR fallback restricted</title>
+			<para>
+			For any of the src_* phases that executes after src_unpack,
+			it is invalid for the S variable to refer to a non-existent
+			directory. However, these src_* phases are exempt from this
+			requirement if none of the prior src_* phases are defined by the
+			ebuild. When a src_* phase is exempt from this requirement, if the
+			S variable does not refer to an existing directory, the
+			WORKDIR directory will be used instead of S as the initial working
+			directory.
+			</para>
+		</section>
 	</section>
 	<section id='package-ebuild-eapi-4_pre1-variables'>
 		<title>Variables</title>
