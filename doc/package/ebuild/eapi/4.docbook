@@ -109,4 +109,26 @@ Finally, please note that this new metadata key can be set by eclasses, and the 
 </section>
 </section>
 </section>
+	<section id='package-ebuild-eapi-4_pre1-phases'>
+		<title>Phases</title>
+		<section id='package-ebuild-eapi-4_pre1-phases-pkg-pretend'>
+			<title>New pkg_pretend Phase Function</title>
+			<para>
+			The pkg_pretend function may be used to carry out sanity checks early on in the
+			install process. For example, if an ebuild requires a particular kernel
+			configuration, it may perform that check in pkg_pretend and call eerror and
+			then die with appropriate messages if the requirement is not met.
+			</para>
+			<para>
+			pkg_pretend is run separately from the main phase function sequence, and does
+			not participate in any kind of environment saving. There is no guarantee that
+			any of an ebuild's dependencies will be met at this stage, and no guarantee
+			that the system state will not have changed substantially before the next phase
+			is executed.
+			</para>
+			<para>
+			pkg_pretend must not write to the filesystem.
+			</para>
+		</section>
+	</section>
 </section>
