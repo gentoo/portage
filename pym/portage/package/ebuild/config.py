@@ -457,7 +457,12 @@ class config(object):
 				if os.path.isdir(config_profile_path):
 					self.profile_path = config_profile_path
 				else:
-					self.profile_path = None
+					config_profile_path = \
+						os.path.join(abs_user_config, 'make.profile')
+					if os.path.isdir(config_profile_path):
+						self.profile_path = config_profile_path
+					else:
+						self.profile_path = None
 			else:
 				self.profile_path = config_profile_path
 
