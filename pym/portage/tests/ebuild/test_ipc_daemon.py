@@ -28,7 +28,7 @@ class IpcDaemonTestCase(TestCase):
 			if 'PORTAGE_GRPNAME' in os.environ:
 				env['PORTAGE_GRPNAME'] = os.environ['PORTAGE_GRPNAME']
 
-			env['PORTAGE_PYTHON'] = sys.executable
+			env['PORTAGE_PYTHON'] = os.path.realpath(sys.executable)
 			env['PORTAGE_BIN_PATH'] = PORTAGE_BIN_PATH
 			env['PORTAGE_PYM_PATH'] = PORTAGE_PYM_PATH
 			env['PORTAGE_BUILDDIR'] = tmpdir

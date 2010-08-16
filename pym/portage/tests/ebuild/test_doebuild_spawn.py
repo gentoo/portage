@@ -38,7 +38,7 @@ class DoebuildSpawnTestCase(TestCase):
 				metadata=metadata, root_config=root_config,
 				type_name='ebuild')
 			settings.setcpv(pkg)
-			settings['PORTAGE_PYTHON'] = sys.executable
+			settings['PORTAGE_PYTHON'] = os.path.realpath(sys.executable)
 			settings['PORTAGE_BUILDDIR'] = os.path.join(
 				settings['PORTAGE_TMPDIR'], cpv)
 			settings['T'] = os.path.join(
