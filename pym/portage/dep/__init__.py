@@ -305,8 +305,8 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 	mysplit = depstr.split()
 	#Count the bracket level.
 	level = 0
-	#We parse into a stack. Every time we hit a "(", a new empty list is appended to the stack.
-	#When we hit a ')', the last list in the stack is mergeed with list on level up.
+	#We parse into a stack. Every time we hit a '(', a new empty list is appended to the stack.
+	#When we hit a ')', the last list in the stack is merged with list one level up.
 	stack = [[]]
 	#Set need_bracket to True after use conditionals or ||. Other tokens need to ensure
 	#that need_bracket is not True.
@@ -339,7 +339,7 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 					#In 'flat' mode, we simply merge all lists into a single large one.
 					if stack[level] and stack[level][-1][-1] == "?":
 						#The last token before the '(' that matches the current ')'
-						#was a use conditional. The conditionl is removed in any case.
+						#was a use conditional. The conditional is removed in any case.
 						#Merge the current list if needed.
 						if is_active(stack[level][-1]):
 							stack[level].pop()
