@@ -17,6 +17,33 @@ The dodoc helper now has a -r option which enables recursion.
 </section>
 <section id='package-ebuild-eapi-4_pre1-metadata'>
 <title>Metadata</title>
+	<section id='package-ebuild-eapi-4_pre1-metadata-dependencies'>
+	<title>Dependencies</title>
+		<section id='package-ebuild-eapi-4_pre1-metadata-dependencies-use-defaults'>
+		<title>USE Dependency Defaults</title>
+		<para>
+		In a 3-style use dependency, the flag name may immediately be followed by a
+		default specified by either (+) or (-). The former indicates that, when
+		applying the use dependency to a package that does not have the flag in
+		question in IUSE_REFERENCEABLE, the package manager shall behave as if the flag
+		were present and enabled; the latter, present and disabled.
+		</para>
+		<para>
+		Unless a 3-style default is specified, it is an error for a use dependency to
+		be applied to an ebuild which does not have the flag in question in
+		IUSE_REFERENCEABLE.
+		</para>
+		<para>
+		Note: By extension of the above, a default that could reference an ebuild using
+		an EAPI not supporting profile IUSE injections cannot rely upon any particular
+		behaviour for flags that would not have to be part of IUSE.
+		</para>
+		<para>
+		It is an error for an ebuild to use a conditional use dependency when that
+		ebuild does not have the flag in IUSE_EFFECTIVE.
+		</para>
+		</section>
+	</section>
 <section id='package-ebuild-eapi-4_pre1-metadata-required-use'>
 <title>REQUIRED_USE</title>
 <para>
