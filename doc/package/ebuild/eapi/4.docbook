@@ -14,6 +14,13 @@ The dohard and dosed helpers from previous EAPIs are no longer available.
 The dodoc helper now has a -r option which enables recursion.
 </para>
 </section>
+<section id='package-ebuild-eapi-4_pre1-helpers-doins-newins-symlinks'>
+<title>doins and newins preserve symlinks</title>
+<para>
+The doins and newins helpers now preserve symlinks. In earlier EAPIs
+symlinks are dereferenced rather than preserved.
+</para>
+</section>
 </section>
 <section id='package-ebuild-eapi-4_pre1-metadata'>
 <title>Metadata</title>
