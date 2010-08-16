@@ -9,7 +9,9 @@ from portage.package.ebuild.config import config
 from portage.package.ebuild.doebuild import spawn as doebuild_spawn
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
+from _emerge.EbuildPhase import EbuildPhase
 from _emerge.Package import Package
+from _emerge.TaskScheduler import TaskScheduler
 
 class DoebuildSpawnTestCase(TestCase):
 	"""
@@ -53,5 +55,13 @@ class DoebuildSpawnTestCase(TestCase):
 					"%s %s" % (_shell_quote(EBUILD_SH_BINARY), phase),
 					settings, free=1)
 				self.assertEqual(rval, os.EX_OK)
+
+				task_scheduler = TaskScheduler()
+				ebuild_phase = EbuildPhase(background=True,
+					phase=phase, scheduler=task_scheduler.sched_iface,
+					settings=settings)
+				task_scheduler.add(ebuild_phase)
+				task_scheduler.run()
+				self.assertEqual(ebuild_phase.returncode, os.EX_OK)
 		finally:
 			playground.cleanup()
