@@ -21,9 +21,11 @@ from portage.util import apply_secpass_permissions, writemsg_stdout
 
 class AbstractEbuildProcess(SpawnProcess):
 
-	__slots__ = ('phase', 'settings',) + \
+	__slots__ = ('fakeroot_state', 'phase', 'settings',) + \
 		('_ipc_daemon', '_exit_command',)
 	_phases_without_builddir = ('clean', 'cleanrm', 'depend', 'help',)
+	_spawn_kwarg_names = SpawnProcess._spawn_kwarg_names + \
+		('fakeroot_state',)
 
 	# The EbuildIpcDaemon support is well tested, but this variable
 	# is left so we can temporarily disable it if any issues arise.
