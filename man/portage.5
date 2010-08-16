@@ -48,6 +48,7 @@ virtuals
 bashrc
 categories
 color.map
+make.conf
 mirrors
 modules
 package.keywords
@@ -436,6 +437,10 @@ media\-other
 .TP
 .BR color.map
 Contains variables customizing colors. See \fBcolor.map\fR(5).
+.TP
+.BR make.conf
+The global custom settings for Portage. See \fBmake.conf\fR(5).
+If present, this file will override settings from /etc/make.conf.
 .TP
 .BR mirrors
 Whenever portage encounters a mirror:// style URI it will look up the actual 

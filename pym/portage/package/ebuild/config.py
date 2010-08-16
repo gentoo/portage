@@ -447,6 +447,7 @@ class config(object):
 				config_root)).rstrip(os.path.sep) + os.path.sep
 
 			check_var_directory("PORTAGE_CONFIGROOT", config_root)
+			abs_user_config = os.path.join(config_root, USER_CONFIG_PATH)
 
 			self.depcachedir = DEPCACHE_PATH
 
@@ -619,8 +620,11 @@ class config(object):
 			make_conf = getconfig(
 				os.path.join(config_root, MAKE_CONF_FILE),
 				tolerant=tolerant, allow_sourcing=True)
-			if make_conf is None:
-				make_conf = {}
+
+			make_conf.update(getconfig(
+				os.path.join(abs_user_config, 'make.conf'),
+				tolerant=tolerant, allow_sourcing=True,
+				expand=make_conf))
 
 			# Allow ROOT setting to come from make.conf if it's not overridden
 			# by the constructor argument (from the calling environment).
@@ -723,8 +727,10 @@ class config(object):
 			self.mygcfg = getconfig(
 				os.path.join(config_root, MAKE_CONF_FILE),
 				tolerant=tolerant, allow_sourcing=True, expand=expand_map)
-			if self.mygcfg is None:
-				self.mygcfg = {}
+
+			self.mygcfg.update(getconfig(
+				os.path.join(abs_user_config, 'make.conf'),
+				tolerant=tolerant, allow_sourcing=True, expand=expand_map))
 
 			# Don't allow the user to override certain variables in make.conf
 			profile_only_variables = self.configdict["defaults"].get(
@@ -778,7 +784,6 @@ class config(object):
 			self._plicensedict = portage.dep.ExtendedAtomDict(dict)
 			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
 			self.punmaskdict = portage.dep.ExtendedAtomDict(list)
-			abs_user_config = os.path.join(config_root, USER_CONFIG_PATH)
 
 			# locations for "categories" and "arch.list" files
 			locations = [os.path.join(self["PORTDIR"], "profiles")]
