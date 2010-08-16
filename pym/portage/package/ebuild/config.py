@@ -851,10 +851,16 @@ class config(object):
 				for k, v in pusedict.items():
 					self.pusedict.setdefault(k.cp, {})[k] = v
 
-				#package.keywords
+				# package.accept_keywords and package.keywords
 				pkgdict = grabdict_package(
 					os.path.join(abs_user_config, "package.keywords"),
 					recursive=1, allow_wildcard=True)
+
+				for k, v in grabdict_package(
+					os.path.join(abs_user_config, "package.accept_keywords"),
+					recursive=1, allow_wildcard=True).items():
+					pkgdict.setdefault(k, []).extend(v)
+
 				for k, v in pkgdict.items():
 					# default to ~arch if no specific keyword is given
 					if not v:
