@@ -3,15 +3,12 @@
 
 __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
 
-import array
 import codecs
 import errno
-import fcntl
 from itertools import chain
 import logging
 import os as _os
 import re
-import select
 import shutil
 import stat
 import sys
@@ -52,7 +49,6 @@ from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
 from portage.util import apply_recursive_permissions, \
 	apply_secpass_permissions, noiselimit, normalize_path, \
 	writemsg, writemsg_stdout, write_atomic
-from portage.util._pty import _create_pty_or_pipe
 from portage.util.lafilefixer import rewrite_lafile	
 from portage.versions import _pkgsplit
 from _emerge.EbuildSpawnProcess import EbuildSpawnProcess
@@ -440,8 +436,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
 	ebuild_sh_binary = os.path.join(portage_bin_path,
 		os.path.basename(EBUILD_SH_BINARY))
-	misc_sh_binary = os.path.join(portage_bin_path,
-		os.path.basename(MISC_SH_BINARY))
 
 	logfile=None
 	builddir_lock = None
@@ -844,46 +838,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 						os.symlink(target, symlink_path)
 
 		#initial dep checks complete; time to process main commands
-
-		restrict = mysettings["PORTAGE_RESTRICT"].split()
-		nosandbox = (("userpriv" in features) and \
-			("usersandbox" not in features) and \
-			"userpriv" not in restrict and \
-			"nouserpriv" not in restrict)
-		if nosandbox and ("userpriv" not in features or \
-			"userpriv" in restrict or \
-			"nouserpriv" in restrict):
-			nosandbox = ("sandbox" not in features and \
-				"usersandbox" not in features)
-
-		if not portage.process.sandbox_capable:
-			nosandbox = True
-
-		sesandbox = mysettings.selinux_enabled() and \
-			"sesandbox" in mysettings.features
-
-		droppriv = "userpriv" in mysettings.features and \
-			"userpriv" not in restrict and \
-			secpass >= 2
-
-		fakeroot = "fakeroot" in mysettings.features
-
-		ebuild_sh = _shell_quote(ebuild_sh_binary) + " %s"
-		misc_sh = _shell_quote(misc_sh_binary) + " dyn_%s"
-
-		# args are for the to spawn function
-		actionmap = {
-"pretend":  {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":1,         "sesandbox":0,         "fakeroot":0}},
-"setup":    {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":1,         "sesandbox":0,         "fakeroot":0}},
-"unpack":   {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox, "fakeroot":0}},
-"prepare":  {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox, "fakeroot":0}},
-"configure":{"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
-"compile":  {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
-"test":     {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
-"install":  {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":0,         "sesandbox":sesandbox, "fakeroot":fakeroot}},
-"rpm":      {"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0,         "fakeroot":fakeroot}},
-"package":  {"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0,         "fakeroot":fakeroot}},
-		}
+		actionmap = _spawn_actionmap(mysettings)
 
 		# merge the deps in so we have again a 'full' actionmap
 		# be glad when this can die.
@@ -967,6 +922,55 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			# If necessary, depend phase has been triggered by aux_get calls
 			# and the exemption is no longer needed.
 			portage._doebuild_manifest_exempt_depend -= 1
+
+def _spawn_actionmap(settings):
+	features = settings.features
+	restrict = settings["PORTAGE_RESTRICT"].split()
+	nosandbox = (("userpriv" in features) and \
+		("usersandbox" not in features) and \
+		"userpriv" not in restrict and \
+		"nouserpriv" not in restrict)
+	if nosandbox and ("userpriv" not in features or \
+		"userpriv" in restrict or \
+		"nouserpriv" in restrict):
+		nosandbox = ("sandbox" not in features and \
+			"usersandbox" not in features)
+
+	if not portage.process.sandbox_capable:
+		nosandbox = True
+
+	sesandbox = settings.selinux_enabled() and \
+		"sesandbox" in features
+
+	droppriv = "userpriv" in features and \
+		"userpriv" not in restrict and \
+		secpass >= 2
+
+	fakeroot = "fakeroot" in features
+
+	portage_bin_path = settings["PORTAGE_BIN_PATH"]
+	ebuild_sh_binary = os.path.join(portage_bin_path,
+		os.path.basename(EBUILD_SH_BINARY))
+	misc_sh_binary = os.path.join(portage_bin_path,
+		os.path.basename(MISC_SH_BINARY))
+	ebuild_sh = _shell_quote(ebuild_sh_binary) + " %s"
+	misc_sh = _shell_quote(misc_sh_binary) + " dyn_%s"
+
+	# args are for the to spawn function
+	actionmap = {
+"pretend":  {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":1,         "sesandbox":0,         "fakeroot":0}},
+"setup":    {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":1,         "sesandbox":0,         "fakeroot":0}},
+"unpack":   {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox, "fakeroot":0}},
+"prepare":  {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox, "fakeroot":0}},
+"configure":{"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
+"compile":  {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
+"test":     {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
+"install":  {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":0,         "sesandbox":sesandbox, "fakeroot":fakeroot}},
+"rpm":      {"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0,         "fakeroot":fakeroot}},
+"package":  {"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0,         "fakeroot":fakeroot}},
+		}
+
+	return actionmap
 
 def _validate_deps(mysettings, myroot, mydo, mydbapi):
 
