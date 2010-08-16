@@ -404,12 +404,12 @@ class UseReduce(TestCase):
 				flat = True,
 				expected_result = ["A", "B"]),
 
+			#use flag validation
 			UseReduceTestCase(
 				"foo? ( A )",
 				uselist = ["foo"],
 				is_valid_flag = self.always_true,
 				expected_result = ["A"]),
-
 			UseReduceTestCase(
 				"foo? ( A )",
 				is_valid_flag = self.always_true,
@@ -433,6 +433,7 @@ class UseReduce(TestCase):
 			UseReduceTestCase("a? A"),
 			UseReduceTestCase("( || ( || || ( A ) foo? ( B ) ) )"),
 			UseReduceTestCase("( || ( || bar? ( A ) foo? ( B ) ) )"),
+			UseReduceTestCase("A(B"),
 			
 			#SRC_URI stuff
 			UseReduceTestCase("http://foo/bar -> blah.tbz2", is_src_uri = True, allow_src_uri_file_renames = False),
@@ -444,12 +445,16 @@ class UseReduce(TestCase):
 			UseReduceTestCase("http://foo/bar -> foo? ( http://foo.com/foo )", is_src_uri = True, allow_src_uri_file_renames = True),
 			UseReduceTestCase("foo? ( http://foo/bar -> ) blah.tbz2", is_src_uri = True, allow_src_uri_file_renames = True),
 			UseReduceTestCase("http://foo/bar -> foo/blah.tbz2", is_src_uri = True, allow_src_uri_file_renames = True),
+			UseReduceTestCase("http://foo/bar -> -> bar.tbz2 foo? ( ftp://foo/a )", is_src_uri = True, allow_src_uri_file_renames = True),
+			
+			UseReduceTestCase("http://foo/bar -> bar.tbz2 foo? ( ftp://foo/a )", is_src_uri = False, allow_src_uri_file_renames = True),
 
 			UseReduceTestCase(
 				"A",
 				opconvert = True,
 				flat = True),
 
+			#use flag validation
 			UseReduceTestCase("1.0? ( A )"),
 			UseReduceTestCase("!1.0? ( A )"),
 			UseReduceTestCase("!? ( A )"),

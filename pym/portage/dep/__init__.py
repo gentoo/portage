@@ -267,11 +267,11 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 		if is_valid_flag:
 			if not is_valid_flag(flag):
 				raise portage.exception.InvalidDependString(
-					_("malformed syntax: '%s'") % depstr)
+					_("use flag '%s' is not referencable in conditional '%s' in '%s'") % (flag, conditional, depstr))
 		else:
 			if _valid_use_re.match(flag) is None:
 				raise portage.exception.InvalidDependString(
-					_("malformed syntax: '%s'") % depstr)
+					_("invalid use flag '%s' in conditional '%s' in '%s'") % (flag, conditional, depstr))
 
 		if is_negated and flag in excludeall:
 			return False
@@ -285,24 +285,36 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 		return (flag in uselist and not is_negated) or \
 			(flag not in uselist and is_negated)
 
+	def invalid_token_check(token, pos):
+		for x in (")", "(", "||"):
+			if token.startswith(x) or token.endswith(x):
+				raise portage.exception.InvalidDependString(
+					_("missing whitespace around '%s' at '%s' in '%s', token %s") % (x, token, depstr, pos+1))
+
+		raise portage.exception.InvalidDependString(
+			_("invalid token '%s' in '%s', token %s") % (token, depstr, pos+1))
+
 	mysplit = depstr.split()
 	level = 0
 	stack = [[]]
 	need_bracket = False
 	need_simple_token = False
 
-	for token in mysplit:
+	for pos, token in enumerate(mysplit):
 		if token == "(":
 			if need_simple_token:
 				raise portage.exception.InvalidDependString(
-					_("malformed syntax: '%s'") % depstr)
+					_("expected: file name, got: '%s' in '%s', token %s") % (token, depstr, pos+1))
 			need_bracket = False
 			stack.append([])
 			level += 1
 		elif token == ")":
-			if need_bracket or need_simple_token:
+			if need_bracket:
 				raise portage.exception.InvalidDependString(
-					_("malformed syntax: '%s'") % depstr)
+					_("expected: '(', got: '%s' in '%s', token %s") % (token, depstr, pos+1))
+			if need_simple_token:
+				raise portage.exception.InvalidDependString(
+					_("expected: file name, got: '%s' in '%s', token %s") % (token, depstr, pos+1))
 			if level > 0:
 				level -= 1
 				l = stack.pop()
@@ -347,31 +359,43 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 							stack[level].append(l)
 			else:
 				raise portage.exception.InvalidDependString(
-					_("malformed syntax: '%s'") % depstr)
+					_("no matching '%s' for '%s' in '%s', token %s") % ("(", ")", depstr, pos+1))
 		elif token == "||":
-			if need_bracket or is_src_uri:
+			if is_src_uri:
 				raise portage.exception.InvalidDependString(
-					_("malformed syntax: '%s'") % depstr)
+					_("any-of dependencies are not allowed in SRC_URI: '%s', token %s") % (depstr, pos+1))
+			if need_bracket:
+				raise portage.exception.InvalidDependString(
+					_("expected: '(', got: '%s' in '%s', token %s") % (token, depstr, pos+1))
 			need_bracket = True
 			stack[level].append(token)
 		elif token == "->":
-			if not allow_src_uri_file_renames or not is_src_uri or need_simple_token:
+			if need_simple_token:
 				raise portage.exception.InvalidDependString(
-					_("SRC_URI arrow not allowed: '%s'") % depstr)
+					_("expected: file name, got: '%s' in '%s', token %s") % (token, depstr, pos+1))
+			if not is_src_uri:
+				raise portage.exception.InvalidDependString(
+					_("SRC_URI arrow are only allowed in SRC_URI: '%s', token %s") % (depstr, pos+1))
+			if not allow_src_uri_file_renames:
+				raise portage.exception.InvalidDependString(
+					_("SRC_URI arrow not allowed in this EAPI: '%s', token %s") % (depstr, pos+1))
 			need_simple_token = True
 			stack[level].append(token)	
 		else:
-			if need_bracket or "(" in token or ")" in token or "|" in token or \
-				(need_simple_token and "/" in token):
-				if not (need_bracket or "|" in token or (need_simple_token and "/" in token)):
-					#We have '(' and/or ')' in token. Make sure it's not a use dep default
-					tmp = token.replace("(+)", "").replace("(-)", "")
-					if "(" in tmp or ")" in tmp:
-						raise portage.exception.InvalidDependString(
-							_("malformed syntax: '%s'") % depstr)
+			if need_bracket:
+				if token.startswith("("):
+					raise portage.exception.InvalidDependString(
+						_("missing whitespace around '%s' at '%s' in '%s', token %s") % ("(", token, depstr, pos+1))
 				else:
 					raise portage.exception.InvalidDependString(
-						_("malformed syntax: '%s'") % depstr)
+						_("expected: '(', got: '%s' in '%s', token %s") % (token, depstr, pos+1))
+
+			if "(" in token or ")" in token or "|" in token:
+				invalid_token_check(token, pos)
+
+			if need_simple_token and "/" in token:
+				raise portage.exception.InvalidDependString(
+					_("expected: file name, got: '%s' in '%s', token %s") % (token, depstr, pos+1))
 
 			if token[-1] == "?":
 				need_bracket = True
