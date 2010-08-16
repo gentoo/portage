@@ -21,6 +21,13 @@ The doins and newins helpers now preserve symlinks. In earlier EAPIs
 symlinks are dereferenced rather than preserved.
 </para>
 </section>
+<section id='package-ebuild-eapi-4_pre1-helpers-econf-disable-dependency-tracking'>
+<title>econf adds --disable-dependency-tracking</title>
+<para>
+The econf helper now adds --disable-dependency-tracking to the
+configure arguments.
+</para>
+</section>
 </section>
 <section id='package-ebuild-eapi-4_pre1-metadata'>
 <title>Metadata</title>
