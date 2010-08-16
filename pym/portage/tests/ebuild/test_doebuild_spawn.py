@@ -48,15 +48,10 @@ class DoebuildSpawnTestCase(TestCase):
 			# Create a fake environment, to pretend as if the ebuild
 			# has been sourced already.
 			open(os.path.join(settings['T'], 'environment'), 'wb')
-			for enable_ipc in (False, True):
-				if enable_ipc:
-					settings['PORTAGE_IPC_DAEMON_ENABLE'] = '1'
-				else:
-					settings.pop('PORTAGE_IPC_DAEMON_ENABLE', None)
-				for phase in ('_internal_test',):
-					rval = doebuild_spawn(
-						"%s %s" % (_shell_quote(EBUILD_SH_BINARY), phase),
-						settings, free=1)
-					self.assertEqual(rval, os.EX_OK)
+			for phase in ('_internal_test',):
+				rval = doebuild_spawn(
+					"%s %s" % (_shell_quote(EBUILD_SH_BINARY), phase),
+					settings, free=1)
+				self.assertEqual(rval, os.EX_OK)
 		finally:
 			playground.cleanup()
