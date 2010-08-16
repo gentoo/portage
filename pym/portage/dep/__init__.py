@@ -981,8 +981,15 @@ class ExtendedAtomDict(portage.cache.mappings.MutableMapping):
 		for k in self._extended:
 			yield k
 
+	def iteritems(self):
+		for item in self._normal.items():
+			yield item
+		for item in self._extended.items():
+			yield item
+
 	if sys.hexversion >= 0x3000000:
 		keys = __iter__
+		items = iteritems
 
 	def __len__(self):
 		return len(self._normal) + len(self._extended)
