@@ -74,7 +74,7 @@ from portage.util import cmp_sort_key, writemsg_level
 from portage.package.ebuild.digestgen import digestgen
 from portage.eapi import eapi_has_src_uri_arrows, eapi_has_slot_deps, \
 	eapi_has_use_deps, eapi_has_strong_blocks, eapi_has_iuse_defaults, \
-	eapi_has_required_use
+	eapi_has_required_use, eapi_has_use_dep_defaults
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -1466,14 +1466,18 @@ for x in scanlist:
 					"%s: '%s' found in thirdpartymirrors" % \
 					(relative_path, mirror))
 
-		provide = portage.dep.use_reduce(pkg.metadata['PROVIDE'], matchall=1, flat=True)
+		try:
+			provide = portage.dep.use_reduce(pkg.metadata['PROVIDE'], matchall=1, flat=True)
+		except portage.exception.InvalidDependString:
+			stats["PROVIDE.syntax"] = stats["PROVIDE.syntax"] + 1
+			fails["PROVIDE.syntax"].append("%s: %s" % \
+				(relative_path, myprovide))
+			provide = []
 		provide_cps = []
 
 		# The Package class automatically evaluates USE conditionals.
 		for myprovide in provide:
-			try:
-				myprovide = portage.dep.Atom(myprovide)
-			except portage.exception.InvalidAtom:
+			if not isinstance(myprovide, portage.dep.Atom):
 				stats["PROVIDE.syntax"] = stats["PROVIDE.syntax"] + 1
 				fails["PROVIDE.syntax"].append("%s: %s" % \
 					(relative_path, myprovide))
@@ -1607,86 +1611,77 @@ for x in scanlist:
 		for mytype in ("DEPEND", "RDEPEND", "PDEPEND",
 			"LICENSE", "PROPERTIES", "PROVIDE"):
 			mydepstr = myaux[mytype]
-			
-			if mydepstr.find(" ?") != -1:
-				badsyntax.append("'?' preceded by space")
+
+			token_class = None
+			if mytype in ("DEPEND", "RDEPEND", "PDEPEND"):
+				token_class=portage.dep.Atom
 
 			try:
-				portage.dep.use_reduce(mydepstr, matchall=1)
+				atoms = portage.dep.use_reduce(mydepstr, matchall=1, flat=True, token_class=token_class)
 			except portage.exception.InvalidDependString as e:
+				atoms = None
 				badsyntax.append(str(e))
 
-			for token in operator_tokens:
-				if mydepstr.startswith(token+" "):
-					myteststr = mydepstr[len(token):]
-				else:
-					myteststr = mydepstr
-				myteststr = myteststr.replace("(+)", "")
-				myteststr = myteststr.replace("(-)", "")
-				if myteststr.endswith(" "+token):
-					myteststr = myteststr[:-len(token)]
-				while myteststr.find(" "+token+" ") != -1:
-					myteststr = " ".join(myteststr.split(" "+token+" ", 1))
-				if myteststr.find(token) != -1:
-					badsyntax.append("'%s' not separated by space" % (token))
+			if atoms and mytype in ("DEPEND", "RDEPEND", "PDEPEND"):
+				if mytype in ("RDEPEND", "PDEPEND") and \
+					"test?" in mydepstr.split():
+					stats[mytype + '.suspect'] += 1
+					fails[mytype + '.suspect'].append(relative_path + \
+						": 'test?' USE conditional in %s" % mytype)
 
-			if mytype in ("DEPEND", "RDEPEND", "PDEPEND"):
-				for token in mydepstr.split():
-					if token in operator_tokens or \
-						token[-1:] == "?":
-						if token == "test?" and \
-							mytype in ("RDEPEND", "PDEPEND"):
-							stats[mytype + '.suspect'] += 1
-							fails[mytype + '.suspect'].append(relative_path + \
-								": 'test?' USE conditional in %s" % mytype)
+				for atom in atoms:
+					if atom == "||":
 						continue
-					try:
-						atom = portage.dep.Atom(token)
-					except portage.exception.InvalidAtom:
-						badsyntax.append("'%s' not a valid atom" % token)
-					else:
-						is_blocker = atom.blocker
 
-						if mytype == "DEPEND" and \
-							not is_blocker and \
-							not inherited_java_eclass and \
-							atom.cp == "virtual/jdk":
-							stats['java.eclassesnotused'] += 1
-							fails['java.eclassesnotused'].append(relative_path)
-						elif mytype in ("PDEPEND", "RDEPEND"):
-							if not is_blocker and \
-								atom.cp in suspect_rdepend:
-								stats[mytype + '.suspect'] += 1
-								fails[mytype + '.suspect'].append(
-									relative_path + ": '%s'" % atom)
-						if not eapi_has_slot_deps(eapi):
-							if portage.dep.dep_getslot(atom):
-								stats['EAPI.incompatible'] += 1
-								fails['EAPI.incompatible'].append(
-									(relative_path + ": %s slot dependency" + \
-									" not supported with EAPI='%s':" + \
-									" '%s'") % (mytype, eapi, atom))
-						if atom.use and not eapi_has_use_deps(eapi):
+					is_blocker = atom.blocker
+
+					if mytype == "DEPEND" and \
+						not is_blocker and \
+						not inherited_java_eclass and \
+						atom.cp == "virtual/jdk":
+						stats['java.eclassesnotused'] += 1
+						fails['java.eclassesnotused'].append(relative_path)
+					elif mytype in ("PDEPEND", "RDEPEND"):
+						if not is_blocker and \
+							atom.cp in suspect_rdepend:
+							stats[mytype + '.suspect'] += 1
+							fails[mytype + '.suspect'].append(
+								relative_path + ": '%s'" % atom)
+					if not eapi_has_slot_deps(eapi):
+						if portage.dep.dep_getslot(atom):
 							stats['EAPI.incompatible'] += 1
 							fails['EAPI.incompatible'].append(
-								(relative_path + ": %s use dependency" + \
+								(relative_path + ": %s slot dependency" + \
 								" not supported with EAPI='%s':" + \
 								" '%s'") % (mytype, eapi, atom))
-						if atom.blocker and atom.blocker.overlap.forbid \
-							and not eapi_has_strong_blocks(eapi):
-							stats['EAPI.incompatible'] += 1
-							fails['EAPI.incompatible'].append(
-								(relative_path + ": %s new blocker syntax" + \
-								" not supported with EAPI='%s':" + \
-								" '%s'") % (mytype, eapi, atom))
+					if atom.use and not eapi_has_use_deps(eapi):
+						stats['EAPI.incompatible'] += 1
+						fails['EAPI.incompatible'].append(
+							(relative_path + ": %s use dependency" + \
+							" not supported with EAPI='%s':" + \
+							" '%s'") % (mytype, eapi, atom))
+					if atom.use and (atom.use.missing_enabled or atom.use.missing_disabled) and \
+						not eapi_has_use_dep_defaults(eapi):
+						stats['EAPI.incompatible'] += 1
+						fails['EAPI.incompatible'].append(
+							(relative_path + ": %s use dependency" + \
+							" not supported with EAPI='%s':" + \
+							" '%s'") % (mytype, eapi, atom))
+					if atom.blocker and atom.blocker.overlap.forbid \
+						and not eapi_has_strong_blocks(eapi):
+						stats['EAPI.incompatible'] += 1
+						fails['EAPI.incompatible'].append(
+							(relative_path + ": %s new blocker syntax" + \
+							" not supported with EAPI='%s':" + \
+							" '%s'") % (mytype, eapi, atom))
 
-						if atom.operator == "~" and \
-							portage.versions.catpkgsplit(atom.cpv)[3] != "r0":
-							stats[mytype + '.badtilde'] += 1
-							fails[mytype + '.badtilde'].append(
-								(relative_path + ": %s uses the ~ operator"
-								 " with a non-zero revision:" + \
-								 " '%s'") % (mytype, atom))
+					if atom.operator == "~" and \
+						portage.versions.catpkgsplit(atom.cpv)[3] != "r0":
+						stats[mytype + '.badtilde'] += 1
+						fails[mytype + '.badtilde'].append(
+							(relative_path + ": %s uses the ~ operator"
+							 " with a non-zero revision:" + \
+							 " '%s'") % (mytype, atom))
 
 			type_list.extend([mytype] * (len(badsyntax) - len(type_list)))
 
@@ -1730,18 +1725,17 @@ for x in scanlist:
 
 		# license checks
 		if not badlicsyntax:
-			myuse = myaux["LICENSE"]
 			# Parse the LICENSE variable, remove USE conditions and
 			# flatten it.
-			myuse=portage.dep.use_reduce(myuse, matchall=1, flat=True)
+			licenses = portage.dep.use_reduce(myaux["LICENSE"], matchall=1, flat=True)
 			# Check each entry to ensure that it exists in PORTDIR's
 			# license directory.
-			for mypos in range(0,len(myuse)):
+			for lic in licenses:
 				# Need to check for "||" manually as no portage
 				# function will remove it without removing values.
-				if myuse[mypos] not in liclist and myuse[mypos] != "||":
+				if lic not in liclist and lic != "||":
 					stats["LICENSE.invalid"]=stats["LICENSE.invalid"]+1
-					fails["LICENSE.invalid"].append(x+"/"+y+".ebuild: %s" % myuse[mypos])
+					fails["LICENSE.invalid"].append(x+"/"+y+".ebuild: %s" % lic)
 
 		#keyword checks
 		myuse = myaux["KEYWORDS"].split()
