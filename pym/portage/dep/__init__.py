@@ -221,7 +221,7 @@ def paren_enclose(mylist):
 	return " ".join(mystrparts)
 
 def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], is_src_uri=False, \
-	allow_src_uri_file_renames=False, opconvert=False, flat=False):
+	allow_src_uri_file_renames=False, opconvert=False, flat=False, is_valid_flag=None):
 	"""
 	Takes a dep string and reduces the use? conditionals out, leaving an array
 	with subarrays. All redundant brackets are removed.
@@ -263,10 +263,15 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 		else:
 			flag = conditional[:-1]
 			is_negated = False
-
-		if not flag:
-			raise portage.exception.InvalidDependString(
-				_("malformed syntax: '%s'") % depstr)
+		
+		if is_valid_flag:
+			if not is_valid_flag(flag):
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % depstr)
+		else:
+			if _valid_use_re.match(flag) is None:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % depstr)
 
 		if is_negated and flag in excludeall:
 			return False
@@ -447,8 +452,6 @@ class _use_dep(object):
 	_conditionals_class = portage.cache.mappings.slot_dict_class(
 		("disabled", "enabled", "equal", "not_equal"), prefix="")
 
-	_valid_use_re = re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@-]*$')
-
 	def __init__(self, use):
 		enabled_flags = []
 		disabled_flags = []
@@ -543,7 +546,7 @@ class _use_dep(object):
 				break
 
 	def _validate_flag(self, token, flag):
-		if self._valid_use_re.match(flag) is None:
+		if _valid_use_re.match(flag) is None:
 			raise InvalidAtom(_("Invalid use dep: '%s'") % (token,))
 		return flag
 
@@ -1197,6 +1200,8 @@ _extended_cat = r'[\w+*][\w+.*-]*'
 _extended_pkg = r'[\w+*][\w+*-]*?'
 
 _atom_wildcard_re = re.compile('(?P<simple>(' + _extended_cat + ')/(' + _extended_pkg + '))(:(?P<slot>' + _slot + '))?$')
+
+_valid_use_re = re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@-]*$')
 
 def isvalidatom(atom, allow_blockers=False, allow_wildcard=False):
 	"""

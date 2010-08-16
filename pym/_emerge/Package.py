@@ -228,7 +228,7 @@ class Package(Task):
 			"""
 			if isinstance(flags, basestring):
 				flags = [flags]
-			missing_iuse = []
+
 			for flag in flags:
 				if not flag in self.all and \
 					self._iuse_implicit_regex.match(flag) is None:
