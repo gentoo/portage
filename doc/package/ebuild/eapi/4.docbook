@@ -33,6 +33,14 @@ configure arguments.
 <title>Metadata</title>
 	<section id='package-ebuild-eapi-4_pre1-metadata-dependencies'>
 	<title>Dependencies</title>
+		<section id='package-ebuild-eapi-4_pre1-metadata-dependencies-rdepend-implicit-removed'>
+		<title>unset RDEPEND no longer triggers implicit setting</title>
+		<para>
+		When the RDEPEND variable is unset within an ebuild, it will remain
+		empty. In prior EAPIs, if RDEPEND was left unset then it was
+		implicitly set to the value of DEPEND.
+		</para>
+		</section>
 		<section id='package-ebuild-eapi-4_pre1-metadata-dependencies-use-defaults'>
 		<title>USE Dependency Defaults</title>
 		<para>
