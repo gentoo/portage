@@ -202,5 +202,23 @@ src_install() {
 			The AA and KV variables are no longer exported to the ebuild environment.
 			</para>
 		</section>
+		<section id='package-ebuild-eapi-4_pre1-variables-replaced-versions'>
+			<title>REPLACING_VERSIONS and REPLACED_BY_VERSION</title>
+			<para>
+			The REPLACING_VERSIONS variable
+			shall be defined in pkg_preinst and pkg_postinst. In addition, it may be
+			defined in pkg_pretend and pkg_setup, although ebuild authors should take care
+			to handle binary package creation and installation correctly when using it in
+			these phases.
+			</para>
+			<para>
+			REPLACING_VERSIONS is a list, not a single optional value, to handle
+			pathological cases such as installing foo-2:2 to replace foo-2:1 and foo-3:2.
+			</para>
+			<para>
+			The REPLACED_BY variable shall
+			be defined in pkg_prerm and pkg_postrm. It shall contain at most one value. 
+			</para>
+		</section>
 	</section>
 </section>
