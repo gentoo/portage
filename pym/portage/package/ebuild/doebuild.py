@@ -105,7 +105,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 	mysettings["PORTAGE_MASTER_PID"] = str(os.getpid())
 
 	# Set requested Python interpreter for Portage helpers.
-	mysettings['PORTAGE_PYTHON'] = os.path.realpath(sys.executable)
+	mysettings['PORTAGE_PYTHON'] = portage._python_interpreter
 
 	# We are disabling user-specific bashrc files.
 	mysettings["BASH_ENV"] = INVALID_ENV_FILE

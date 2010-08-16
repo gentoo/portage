@@ -3,6 +3,7 @@
 
 import sys
 from portage import os
+from portage import _python_interpreter
 from portage import _shell_quote
 from portage.const import EBUILD_SH_BINARY
 from portage.package.ebuild.config import config
@@ -40,7 +41,7 @@ class DoebuildSpawnTestCase(TestCase):
 				metadata=metadata, root_config=root_config,
 				type_name='ebuild')
 			settings.setcpv(pkg)
-			settings['PORTAGE_PYTHON'] = os.path.realpath(sys.executable)
+			settings['PORTAGE_PYTHON'] = _python_interpreter
 			settings['PORTAGE_BUILDDIR'] = os.path.join(
 				settings['PORTAGE_TMPDIR'], cpv)
 			settings['T'] = os.path.join(
