@@ -319,7 +319,8 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 		if k in self._use_conditional_keys:
 			if self._pkg.root_config.settings.local_config and '?' in v:
 				try:
-					v = paren_enclose(use_reduce(v, uselist=self._pkg.use.enabled))
+					v = paren_enclose(use_reduce(v, uselist=self._pkg.use.enabled, \
+						is_valid_flag=self._pkg.iuse.is_valid_flag))
 				except portage.exception.InvalidDependString:
 					# This error should already have been registered via
 					# self._pkg._invalid_metadata().
