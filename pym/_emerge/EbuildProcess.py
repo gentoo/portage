@@ -11,7 +11,7 @@ from portage.package.ebuild.doebuild import _spawn_actionmap
 
 class EbuildProcess(AbstractEbuildProcess):
 
-	__slots__ = ('pkg', 'tree',)
+	__slots__ = ()
 
 	def _start(self):
 		# Don't open the log file during the clean phase since the

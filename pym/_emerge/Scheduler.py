@@ -21,7 +21,7 @@ from portage import _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.const import LIBC_PACKAGE_ATOM
 from portage.elog.messages import eerror
-from portage.output import colorize, create_color_func, darkgreen, red
+from portage.output import colorize, create_color_func, red
 bad = create_color_func("BAD")
 from portage.sets import SETPREFIX
 from portage.sets.base import InternalPackageSet
@@ -623,12 +623,12 @@ class Scheduler(PollScheduler):
 
 		if phase in ('die_hooks', 'success_hooks'):
 			ebuild_phase = MiscFunctionsProcess(background=background,
-				commands=[phase], phase=phase, pkg=pkg,
+				commands=[phase], phase=phase,
 				scheduler=scheduler, settings=settings)
 		else:
 			ebuild_phase = EbuildPhase(background=background,
-				pkg=pkg, phase=phase, scheduler=scheduler,
-				settings=settings, tree=pkg_dblink.treetype)
+				phase=phase, scheduler=scheduler,
+				settings=settings)
 		ebuild_phase.start()
 		ebuild_phase.wait()
 
@@ -915,9 +915,9 @@ class Scheduler(PollScheduler):
 				debug=(settings.get("PORTAGE_DEBUG", "") == 1),
 				mydbapi=self.trees[settings["ROOT"]][tree].dbapi, use_cache=1)
 			prepare_build_dirs(root_config.root, settings, cleanup=0)
-			pretend_phase = EbuildPhase(background=self._background, pkg=x,
+			pretend_phase = EbuildPhase(background=self._background,
 				phase="pretend", scheduler=self._sched_iface,
-				settings=settings, tree=tree)
+				settings=settings)
 
 			pretend_phase.start()
 			ret = pretend_phase.wait()

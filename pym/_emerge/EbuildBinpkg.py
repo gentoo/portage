@@ -12,7 +12,7 @@ class EbuildBinpkg(MiscFunctionsProcess):
 	"""
 	This assumes that src_install() has successfully completed.
 	"""
-	__slots__ = ("_binpkg_tmpfile",)
+	__slots__ = ("_binpkg_tmpfile", "pkg")
 
 	def __init__(self, **kwargs):
 		MiscFunctionsProcess.__init__(self, phase="package", **kwargs)

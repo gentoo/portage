@@ -17,14 +17,14 @@ import codecs
 
 class EbuildPhase(CompositeTask):
 
-	__slots__ = ("background", "pkg", "phase",
-		"scheduler", "settings", "tree")
+	__slots__ = ("background", "phase",
+		"scheduler", "settings")
 
 	def _start(self):
 
 		ebuild_process = EbuildProcess(background=self.background,
-			pkg=self.pkg, phase=self.phase, scheduler=self.scheduler,
-			settings=self.settings, tree=self.tree)
+			phase=self.phase, scheduler=self.scheduler,
+			settings=self.settings)
 
 		self._start_task(ebuild_process, self._ebuild_exit)
 
@@ -77,7 +77,7 @@ class EbuildPhase(CompositeTask):
 		post_phase_cmds = _post_phase_cmds.get(self.phase)
 		if post_phase_cmds is not None:
 			post_phase = MiscFunctionsProcess(background=self.background,
-				commands=post_phase_cmds, phase=self.phase, pkg=self.pkg,
+				commands=post_phase_cmds, phase=self.phase,
 				scheduler=self.scheduler, settings=settings)
 			self._start_task(post_phase, self._post_phase_exit)
 			return
@@ -100,7 +100,7 @@ class EbuildPhase(CompositeTask):
 		self.returncode = None
 		phase = 'die_hooks'
 		die_hooks = MiscFunctionsProcess(background=self.background,
-			commands=[phase], phase=phase, pkg=self.pkg,
+			commands=[phase], phase=phase,
 			scheduler=self.scheduler, settings=self.settings)
 		self._start_task(die_hooks, self._die_hooks_exit)
 
@@ -117,12 +117,10 @@ class EbuildPhase(CompositeTask):
 
 	def _fail_clean(self):
 		self.returncode = None
-		portage.elog.elog_process(self.pkg.cpv, self.settings)
+		portage.elog.elog_process(self.settings.mycpv, self.settings)
 		phase = "clean"
 		clean_phase = EbuildPhase(background=self.background,
-			pkg=self.pkg, phase=phase,
-			scheduler=self.scheduler, settings=self.settings,
-			tree=self.tree)
+			phase=phase, scheduler=self.scheduler, settings=self.settings)
 		self._start_task(clean_phase, self._fail_clean_exit)
 		return
 

@@ -103,9 +103,7 @@ class EbuildBuild(CompositeTask):
 		self.logger.log(msg, short_msg=short_msg)
 
 		pre_clean_phase = EbuildPhase(background=self.background,
-			pkg=self.pkg, phase='clean',
-			scheduler=self.scheduler, settings=self.settings,
-			tree=self._tree)
+			phase='clean', scheduler=self.scheduler, settings=self.settings)
 		self._start_task(pre_clean_phase, self._pre_clean_exit)
 
 	def _pre_clean_exit(self, pre_clean_phase):
@@ -228,7 +226,7 @@ class EbuildBuild(CompositeTask):
 			phase = 'success_hooks'
 			success_hooks = MiscFunctionsProcess(
 				background=self.background,
-				commands=[phase], phase=phase, pkg=self.pkg,
+				commands=[phase], phase=phase,
 				scheduler=self.scheduler, settings=self.settings)
 			self._start_task(success_hooks,
 				self._buildpkgonly_success_hook_exit)
@@ -247,9 +245,7 @@ class EbuildBuild(CompositeTask):
 		portage.elog.elog_process(self.pkg.cpv, self.settings)
 		phase = 'clean'
 		clean_phase = EbuildPhase(background=self.background,
-			pkg=self.pkg, phase=phase,
-			scheduler=self.scheduler, settings=self.settings,
-			tree=self._tree)
+			phase=phase, scheduler=self.scheduler, settings=self.settings)
 		self._start_task(clean_phase, self._clean_exit)
 
 	def _clean_exit(self, clean_phase):

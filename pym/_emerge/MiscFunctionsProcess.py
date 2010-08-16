@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
@@ -11,7 +11,7 @@ class MiscFunctionsProcess(AbstractEbuildProcess):
 	Spawns misc-functions.sh with an existing ebuild environment.
 	"""
 
-	__slots__ = ('commands', 'pkg',)
+	__slots__ = ('commands',)
 
 	def _start(self):
 		settings = self.settings

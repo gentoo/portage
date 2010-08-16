@@ -12,7 +12,7 @@ from portage.package.ebuild.doebuild import _prepare_env_file, \
 
 class EbuildExecuter(CompositeTask):
 
-	__slots__ = ("pkg", "scheduler", "settings") + ("_tree",)
+	__slots__ = ("pkg", "scheduler", "settings")
 
 	_phases = ("prepare", "configure", "compile", "test", "install")
 
@@ -27,7 +27,6 @@ class EbuildExecuter(CompositeTask):
 	])
 
 	def _start(self):
-		self._tree = "porttree"
 		pkg = self.pkg
 		scheduler = self.scheduler
 		settings = self.settings
@@ -52,8 +51,8 @@ class EbuildExecuter(CompositeTask):
 		_prepare_fake_distdir(settings, alist)
 
 		setup_phase = EbuildPhase(background=self.background,
-			pkg=pkg, phase="setup", scheduler=scheduler,
-			settings=settings, tree=self._tree)
+			phase="setup", scheduler=scheduler,
+			settings=settings)
 
 		setup_phase.addExitListener(self._setup_exit)
 		self._current_task = setup_phase
@@ -66,8 +65,8 @@ class EbuildExecuter(CompositeTask):
 			return
 
 		unpack_phase = EbuildPhase(background=self.background,
-			pkg=self.pkg, phase="unpack", scheduler=self.scheduler,
-			settings=self.settings, tree=self._tree)
+			phase="unpack", scheduler=self.scheduler,
+			settings=self.settings)
 
 		if self._live_eclasses.intersection(self.pkg.inherited):
 			# Serialize $DISTDIR access for live ebuilds since
@@ -97,8 +96,8 @@ class EbuildExecuter(CompositeTask):
 
 		for phase in phases:
 			ebuild_phases.add(EbuildPhase(background=self.background,
-				pkg=self.pkg, phase=phase, scheduler=self.scheduler,
-				settings=self.settings, tree=self._tree))
+				phase=phase, scheduler=self.scheduler,
+				settings=self.settings))
 
 		self._start_task(ebuild_phases, self._default_final_exit)
 
