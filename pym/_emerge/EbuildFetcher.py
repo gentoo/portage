@@ -10,6 +10,7 @@ from portage import _unicode_encode
 from portage import _unicode_decode
 import codecs
 from portage.elog.messages import eerror
+from portage.dbapi.porttree import _parse_uri_map
 from portage.util import writemsg_stdout
 from portage.util._pty import _create_pty_or_pipe
 
@@ -26,7 +27,7 @@ class EbuildFetcher(SpawnProcess):
 			raise AssertionError("ebuild not found for '%s'" % self.pkg.cpv)
 
 		try:
-			uri_map = self._get_uri_map(portdb, ebuild_path)
+			uri_map = self._get_uri_map()
 		except portage.exception.InvalidDependString as e:
 			msg_lines = []
 			msg = "Fetch failed for '%s' due to invalid SRC_URI: %s" % \
@@ -93,16 +94,14 @@ class EbuildFetcher(SpawnProcess):
 		self.env = fetch_env
 		SpawnProcess._start(self)
 
-	def _get_uri_map(self, portdb, ebuild_path):
+	def _get_uri_map(self):
 		"""
-		This can raise InvalidDependString from portdbapi.getFetchMap().
+		This can raise InvalidDependString from _parse_uri_map().
 		"""
-		pkgdir = os.path.dirname(ebuild_path)
-		mytree = os.path.dirname(os.path.dirname(pkgdir))
 		use = None
 		if not self.fetchall:
 			use = self.pkg.use.enabled
-		return portdb.getFetchMap(self.pkg.cpv, useflags=use, mytree=mytree)
+		return _parse_uri_map(self.pkg.cpv, self.pkg.metadata, use=use)
 
 	def _prefetch_size_ok(self, uri_map, settings, ebuild_path):
 		pkgdir = os.path.dirname(ebuild_path)
