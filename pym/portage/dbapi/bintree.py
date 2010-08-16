@@ -945,8 +945,9 @@ class binarytree(object):
 				wantnewlockfile=1)
 			if filename is not None:
 				new_filename = self.getname(cpv)
-				self._ensure_dir(os.path.dirname(new_filename))
-				_movefile(filename, new_filename, mysettings=self.settings)
+				if not os.path.samefile(filename, new_filename):
+					self._ensure_dir(os.path.dirname(new_filename))
+					_movefile(filename, new_filename, mysettings=self.settings)
 			if self._all_directory and \
 				self.getname(cpv).split(os.path.sep)[-2] == "All":
 				self._create_symlink(cpv)
