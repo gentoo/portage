@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.EbuildExecuter import EbuildExecuter
@@ -17,6 +17,8 @@ from portage import _encodings
 from portage import _unicode_encode
 import codecs
 from portage.output import colorize
+from portage.package.ebuild.doebuild import _check_temp_dir
+
 class EbuildBuild(CompositeTask):
 
 	__slots__ = ("args_set", "config_pool", "find_blockers",
@@ -26,11 +28,16 @@ class EbuildBuild(CompositeTask):
 
 	def _start(self):
 
-		logger = self.logger
-		opts = self.opts
 		pkg = self.pkg
 		settings = self.settings
-		world_atom = self.world_atom
+
+		rval = _check_temp_dir(settings)
+		if rval != os.EX_OK:
+			self.returncode = rval
+			self._current_task = None
+			self.wait()
+			return
+
 		root_config = pkg.root_config
 		tree = "porttree"
 		self._tree = tree
@@ -176,7 +183,6 @@ class EbuildBuild(CompositeTask):
 			self.wait()
 			return
 
-		opts = self.opts
 		buildpkg = self._buildpkg
 
 		if not buildpkg:
@@ -259,7 +265,6 @@ class EbuildBuild(CompositeTask):
 		and neither fetchonly nor buildpkgonly mode are enabled.
 		"""
 
-		find_blockers = self.find_blockers
 		ldpath_mtimes = self.ldpath_mtimes
 		logger = self.logger
 		pkg = self.pkg

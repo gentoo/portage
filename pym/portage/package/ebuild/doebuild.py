@@ -542,40 +542,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if rval != os.EX_OK:
 				return rval
 
-		if "PORTAGE_TMPDIR" not in mysettings or \
-			not os.path.isdir(mysettings["PORTAGE_TMPDIR"]):
-			writemsg(_("The directory specified in your "
-				"PORTAGE_TMPDIR variable, '%s',\n"
-				"does not exist.  Please create this directory or "
-				"correct your PORTAGE_TMPDIR setting.\n") % mysettings.get("PORTAGE_TMPDIR", ""), noiselevel=-1)
-			return 1
-		
-		# as some people use a separate PORTAGE_TMPDIR mount
-		# we prefer that as the checks below would otherwise be pointless
-		# for those people.
-		if os.path.exists(os.path.join(mysettings["PORTAGE_TMPDIR"], "portage")):
-			checkdir = os.path.join(mysettings["PORTAGE_TMPDIR"], "portage")
-		else:
-			checkdir = mysettings["PORTAGE_TMPDIR"]
-
-		if not os.access(checkdir, os.W_OK):
-			writemsg(_("%s is not writable.\n"
-				"Likely cause is that you've mounted it as readonly.\n") % checkdir,
-				noiselevel=-1)
-			return 1
-		else:
-			fd = tempfile.NamedTemporaryFile(prefix="exectest-", dir=checkdir)
-			os.chmod(fd.name, 0o755)
-			if not os.access(fd.name, os.X_OK):
-				writemsg(_("Can not execute files in %s\n"
-					"Likely cause is that you've mounted it with one of the\n"
-					"following mount options: 'noexec', 'user', 'users'\n\n"
-					"Please make sure that portage can execute files in this directory.\n") % checkdir,
-					noiselevel=-1)
-				fd.close()
-				return 1
-			fd.close()
-		del checkdir
+		rval = _check_temp_dir(mysettings)
+		if rval != os.EX_OK:
+			return rval
 
 		if mydo == "unmerge":
 			return unmerge(mysettings["CATEGORY"],
@@ -601,66 +570,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				logfile = mysettings.get("PORTAGE_LOG_FILE")
 
 		if have_build_dirs:
-			env_file = os.path.join(mysettings["T"], "environment")
-			env_stat = None
-			saved_env = None
-			try:
-				env_stat = os.stat(env_file)
-			except OSError as e:
-				if e.errno != errno.ENOENT:
-					raise
-				del e
-			if not env_stat:
-				saved_env = os.path.join(
-					os.path.dirname(myebuild), "environment.bz2")
-				if not os.path.isfile(saved_env):
-					saved_env = None
-			if saved_env:
-				retval = os.system(
-					"bzip2 -dc %s > %s" % \
-					(_shell_quote(saved_env),
-					_shell_quote(env_file)))
-				try:
-					env_stat = os.stat(env_file)
-				except OSError as e:
-					if e.errno != errno.ENOENT:
-						raise
-					del e
-				if os.WIFEXITED(retval) and \
-					os.WEXITSTATUS(retval) == os.EX_OK and \
-					env_stat and env_stat.st_size > 0:
-					# This is a signal to ebuild.sh, so that it knows to filter
-					# out things like SANDBOX_{DENY,PREDICT,READ,WRITE} that
-					# would be preserved between normal phases.
-					open(_unicode_encode(env_file + '.raw'), 'w')
-				else:
-					writemsg(_("!!! Error extracting saved "
-						"environment: '%s'\n") % \
-						saved_env, noiselevel=-1)
-					try:
-						os.unlink(env_file)
-					except OSError as e:
-						if e.errno != errno.ENOENT:
-							raise
-						del e
-					env_stat = None
-			if env_stat:
-				pass
-			else:
-				for var in ("ARCH", ):
-					value = mysettings.get(var)
-					if value and value.strip():
-						continue
-					msg = _("%(var)s is not set... "
-						"Are you missing the '%(configroot)setc/make.profile' symlink? "
-						"Is the symlink correct? "
-						"Is your portage tree complete?") % \
-						{"var": var, "configroot": mysettings["PORTAGE_CONFIGROOT"]}
-					for line in wrap(msg, 70):
-						eerror(line, phase="setup", key=mysettings.mycpv)
-					elog_process(mysettings.mycpv, mysettings)
-					return 1
-			del env_file, env_stat, saved_env
+			rval = _prepare_env_file(mysettings)
+			if rval != os.EX_OK:
+				return rval
 
 		# if any of these are being called, handle them -- running them out of
 		# the sandbox -- and stop now.
@@ -807,35 +719,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		# remove PORTAGE_ACTUAL_DISTDIR once cvs/svn is supported via SRC_URI
 		if (mydo != "setup" and "noauto" not in features) or mydo == "unpack":
-			orig_distdir = mysettings["DISTDIR"]
-			mysettings["PORTAGE_ACTUAL_DISTDIR"] = orig_distdir
-			edpath = mysettings["DISTDIR"] = \
-				os.path.join(mysettings["PORTAGE_BUILDDIR"], "distdir")
-			portage.util.ensure_dirs(edpath, gid=portage_gid, mode=0o755)
-
-			# Remove any unexpected files or directories.
-			for x in os.listdir(edpath):
-				symlink_path = os.path.join(edpath, x)
-				st = os.lstat(symlink_path)
-				if x in alist and stat.S_ISLNK(st.st_mode):
-					continue
-				if stat.S_ISDIR(st.st_mode):
-					shutil.rmtree(symlink_path)
-				else:
-					os.unlink(symlink_path)
-
-			# Check for existing symlinks and recreate if necessary.
-			for x in alist:
-				symlink_path = os.path.join(edpath, x)
-				target = os.path.join(orig_distdir, x)
-				try:
-					link_target = os.readlink(symlink_path)
-				except OSError:
-					os.symlink(target, symlink_path)
-				else:
-					if link_target != target:
-						os.unlink(symlink_path)
-						os.symlink(target, symlink_path)
+			_prepare_fake_distdir(mysettings, alist)
 
 		#initial dep checks complete; time to process main commands
 		actionmap = _spawn_actionmap(mysettings)
@@ -922,6 +806,134 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			# If necessary, depend phase has been triggered by aux_get calls
 			# and the exemption is no longer needed.
 			portage._doebuild_manifest_exempt_depend -= 1
+
+def _check_temp_dir(settings):
+	if "PORTAGE_TMPDIR" not in settings or \
+		not os.path.isdir(settings["PORTAGE_TMPDIR"]):
+		writemsg(_("The directory specified in your "
+			"PORTAGE_TMPDIR variable, '%s',\n"
+			"does not exist.  Please create this directory or "
+			"correct your PORTAGE_TMPDIR setting.\n") % \
+			settings.get("PORTAGE_TMPDIR", ""), noiselevel=-1)
+		return 1
+
+	# as some people use a separate PORTAGE_TMPDIR mount
+	# we prefer that as the checks below would otherwise be pointless
+	# for those people.
+	if os.path.exists(os.path.join(settings["PORTAGE_TMPDIR"], "portage")):
+		checkdir = os.path.join(settings["PORTAGE_TMPDIR"], "portage")
+	else:
+		checkdir = settings["PORTAGE_TMPDIR"]
+
+	if not os.access(checkdir, os.W_OK):
+		writemsg(_("%s is not writable.\n"
+			"Likely cause is that you've mounted it as readonly.\n") % checkdir,
+			noiselevel=-1)
+		return 1
+
+	else:
+		fd = tempfile.NamedTemporaryFile(prefix="exectest-", dir=checkdir)
+		os.chmod(fd.name, 0o755)
+		if not os.access(fd.name, os.X_OK):
+			writemsg(_("Can not execute files in %s\n"
+				"Likely cause is that you've mounted it with one of the\n"
+				"following mount options: 'noexec', 'user', 'users'\n\n"
+				"Please make sure that portage can execute files in this directory.\n") % checkdir,
+				noiselevel=-1)
+			return 1
+
+	return os.EX_OK
+
+def _prepare_env_file(settings):
+	env_file = os.path.join(settings["T"], "environment")
+	env_stat = None
+	saved_env = None
+	try:
+		env_stat = os.stat(env_file)
+	except OSError as e:
+		if e.errno != errno.ENOENT:
+			raise
+	if not env_stat:
+		saved_env = os.path.join(
+			os.path.dirname(settings['EBUILD']), "environment.bz2")
+		if not os.path.isfile(saved_env):
+			saved_env = None
+	if saved_env:
+		retval = os.system(
+			"bzip2 -dc %s > %s" % \
+			(_shell_quote(saved_env),
+			_shell_quote(env_file)))
+		try:
+			env_stat = os.stat(env_file)
+		except OSError as e:
+			if e.errno != errno.ENOENT:
+				raise
+		if os.WIFEXITED(retval) and \
+			os.WEXITSTATUS(retval) == os.EX_OK and \
+			env_stat and env_stat.st_size > 0:
+			# This is a signal to ebuild.sh, so that it knows to filter
+			# out things like SANDBOX_{DENY,PREDICT,READ,WRITE} that
+			# would be preserved between normal phases.
+			open(_unicode_encode(env_file + '.raw'), 'w')
+		else:
+			writemsg(_("!!! Error extracting saved "
+				"environment: '%s'\n") % \
+				saved_env, noiselevel=-1)
+			try:
+				os.unlink(env_file)
+			except OSError as e:
+				if e.errno != errno.ENOENT:
+					raise
+			env_stat = None
+	if env_stat is not None:
+		pass
+	else:
+		for var in ("ARCH", ):
+			value = settings.get(var)
+			if value and value.strip():
+				continue
+			msg = _("%(var)s is not set... "
+				"Are you missing the '%(configroot)setc/make.profile' symlink? "
+				"Is the symlink correct? "
+				"Is your portage tree complete?") % \
+				{"var": var, "configroot": settings["PORTAGE_CONFIGROOT"]}
+			for line in wrap(msg, 70):
+				eerror(line, phase="setup", key=settings.mycpv)
+			elog_process(settings.mycpv, settings)
+			return 1
+
+	return os.EX_OK
+
+def _prepare_fake_distdir(settings, alist):
+	orig_distdir = settings["DISTDIR"]
+	settings["PORTAGE_ACTUAL_DISTDIR"] = orig_distdir
+	edpath = settings["DISTDIR"] = \
+		os.path.join(settings["PORTAGE_BUILDDIR"], "distdir")
+	portage.util.ensure_dirs(edpath, gid=portage_gid, mode=0o755)
+
+	# Remove any unexpected files or directories.
+	for x in os.listdir(edpath):
+		symlink_path = os.path.join(edpath, x)
+		st = os.lstat(symlink_path)
+		if x in alist and stat.S_ISLNK(st.st_mode):
+			continue
+		if stat.S_ISDIR(st.st_mode):
+			shutil.rmtree(symlink_path)
+		else:
+			os.unlink(symlink_path)
+
+	# Check for existing symlinks and recreate if necessary.
+	for x in alist:
+		symlink_path = os.path.join(edpath, x)
+		target = os.path.join(orig_distdir, x)
+		try:
+			link_target = os.readlink(symlink_path)
+		except OSError:
+			os.symlink(target, symlink_path)
+		else:
+			if link_target != target:
+				os.unlink(symlink_path)
+				os.symlink(target, symlink_path)
 
 def _spawn_actionmap(settings):
 	features = settings.features

@@ -1,10 +1,13 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
+from portage import _shell_quote
 from portage import os
-from portage.package.ebuild.doebuild import doebuild, \
-	_post_phase_userpriv_perms
+from portage.const import EBUILD_SH_BINARY
+from portage.package.ebuild.doebuild import  _post_phase_userpriv_perms
+from portage.package.ebuild.doebuild import spawn as doebuild_spawn
+from portage.package.ebuild.doebuild import _spawn_actionmap
 
 class EbuildProcess(AbstractEbuildProcess):
 
@@ -19,21 +22,19 @@ class EbuildProcess(AbstractEbuildProcess):
 		AbstractEbuildProcess._start(self)
 
 	def _spawn(self, args, **kwargs):
-
-		root_config = self.pkg.root_config
-		tree = self.tree
-		mydbapi = root_config.trees[tree].dbapi
-		vartree = root_config.trees["vartree"]
-		settings = self.settings
-		ebuild_path = settings["EBUILD"]
-		debug = settings.get("PORTAGE_DEBUG") == "1"
-		
-
-		rval = doebuild(ebuild_path, self.phase,
-			root_config.root, settings, debug,
-			mydbapi=mydbapi, tree=tree, vartree=vartree, **kwargs)
-
-		return rval
+		self.settings["EBUILD_PHASE"] = self.phase
+		actionmap = _spawn_actionmap(self.settings)
+		if self.phase in actionmap:
+			kwargs.update(actionmap[self.phase]["args"])
+			cmd = actionmap[self.phase]["cmd"] % self.phase
+		else:
+			cmd = "%s %s" % (_shell_quote(os.path.join(
+				self.settings["PORTAGE_BIN_PATH"],
+				os.path.basename(EBUILD_SH_BINARY))), self.phase)
+		try:
+			return doebuild_spawn(cmd, self.settings, **kwargs)
+		finally:
+			self.settings.pop("EBUILD_PHASE", None)
 
 	def _set_returncode(self, wait_retval):
 		AbstractEbuildProcess._set_returncode(self, wait_retval)
