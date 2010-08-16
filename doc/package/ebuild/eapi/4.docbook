@@ -194,4 +194,13 @@ src_install() {
 			</programlisting>
 		</section>
 	</section>
+	<section id='package-ebuild-eapi-4_pre1-variables'>
+		<title>Variables</title>
+		<section id='package-ebuild-eapi-4_pre1-variables-aa-removed'>
+			<title>AA variable is no longer exported</title>
+			<para>
+			The AA variable is no longer exported to the ebuild environment.
+			</para>
+		</section>
+	</section>
 </section>
