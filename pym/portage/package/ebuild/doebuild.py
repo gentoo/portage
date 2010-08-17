@@ -577,24 +577,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		# if any of these are being called, handle them -- running them out of
 		# the sandbox -- and stop now.
-		if mydo == "help":
-			return spawn(_shell_quote(ebuild_sh_binary) + " " + mydo,
-				mysettings, debug=debug, free=1, logfile=logfile)
-		elif mydo == "setup":
-			retval = spawn(
-				_shell_quote(ebuild_sh_binary) + " " + mydo, mysettings,
-				debug=debug, free=1, logfile=logfile, fd_pipes=fd_pipes,
-				returnpid=returnpid)
-			if returnpid:
-				return retval
-			if secpass >= 2:
-				""" Privileged phases may have left files that need to be made
-				writable to a less privileged user."""
-				apply_recursive_permissions(mysettings["T"],
-					uid=portage_uid, gid=portage_gid, dirmode=0o70, dirmask=0,
-					filemode=0o60, filemask=0)
-			return retval
-		elif mydo in ("preinst", "postinst"):
+		if mydo in ("config", "help", "info", "postinst",
+			"preinst", "pretend", "postrm", "prerm", "setup"):
 			if returnpid:
 				return spawn(
 				_shell_quote(ebuild_sh_binary) + " " + mydo,
@@ -608,16 +592,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			task_scheduler.add(ebuild_phase)
 			task_scheduler.run()
 			return ebuild_phase.returncode
-		elif mydo in ("prerm", "postrm", "config", "info", "pretend"):
-			retval =  spawn(
-				_shell_quote(ebuild_sh_binary) + " " + mydo,
-				mysettings, debug=debug, free=1, logfile=logfile,
-				fd_pipes=fd_pipes, returnpid=returnpid)
-
-			if returnpid:
-				return retval
-
-			return retval
 
 		mycpv = "/".join((mysettings["CATEGORY"], mysettings["PF"]))
 
