@@ -1,7 +1,6 @@
 # Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import sys
 from portage import os
 from portage import _python_interpreter
 from portage import _shell_quote
@@ -11,6 +10,7 @@ from portage.package.ebuild.doebuild import spawn as doebuild_spawn
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from _emerge.EbuildPhase import EbuildPhase
+from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.Package import Package
 from _emerge.TaskScheduler import TaskScheduler
 
@@ -58,11 +58,19 @@ class DoebuildSpawnTestCase(TestCase):
 				self.assertEqual(rval, os.EX_OK)
 
 				task_scheduler = TaskScheduler()
-				ebuild_phase = EbuildPhase(background=True,
+				ebuild_phase = EbuildPhase(background=False,
 					phase=phase, scheduler=task_scheduler.sched_iface,
 					settings=settings)
 				task_scheduler.add(ebuild_phase)
 				task_scheduler.run()
 				self.assertEqual(ebuild_phase.returncode, os.EX_OK)
+
+			task_scheduler = TaskScheduler()
+			ebuild_phase = MiscFunctionsProcess(background=False,
+				commands=['success_hooks'],
+				scheduler=task_scheduler.sched_iface, settings=settings)
+			task_scheduler.add(ebuild_phase)
+			task_scheduler.run()
+			self.assertEqual(ebuild_phase.returncode, os.EX_OK)
 		finally:
 			playground.cleanup()
