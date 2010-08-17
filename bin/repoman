@@ -1467,7 +1467,8 @@ for x in scanlist:
 					(relative_path, mirror))
 
 		try:
-			provide = portage.dep.use_reduce(pkg.metadata['PROVIDE'], matchall=1, flat=True)
+			provide = portage.dep.use_reduce(pkg.metadata['PROVIDE'],
+				token_class=portage.dep.Atom, matchall=1, flat=True)
 		except portage.exception.InvalidDependString:
 			stats["PROVIDE.syntax"] = stats["PROVIDE.syntax"] + 1
 			fails["PROVIDE.syntax"].append("%s: %s" % \
