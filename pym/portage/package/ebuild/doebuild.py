@@ -26,7 +26,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage import auxdbkeys, bsd_chflags, dep_check, \
-	eapi_is_supported, merge, os, selinux, StringIO, \
+	eapi_is_supported, merge, os, selinux, \
 	unmerge, _encodings, _parse_eapi_ebuild_head, _os_merge, \
 	_shell_quote, _unicode_decode, _unicode_encode
 from portage.const import EBUILD_SH_ENV_FILE, EBUILD_SH_ENV_DIR, \
@@ -51,6 +51,7 @@ from portage.util import apply_recursive_permissions, \
 	writemsg, writemsg_stdout, write_atomic
 from portage.util.lafilefixer import rewrite_lafile	
 from portage.versions import _pkgsplit
+from _emerge.EbuildPhase import EbuildPhase
 from _emerge.EbuildSpawnProcess import EbuildSpawnProcess
 from _emerge.TaskScheduler import TaskScheduler
 
@@ -1163,47 +1164,23 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 	if mydo == "pretend" and not eapi_has_pkg_pretend(eapi):
 		return os.EX_OK
 
-	kwargs = actionmap[mydo]["args"]
-	mysettings["EBUILD_PHASE"] = mydo
-
-	try:
-		phase_retval = spawn(actionmap[mydo]["cmd"] % mydo,
-			mysettings, debug=debug, logfile=logfile,
-			fd_pipes=fd_pipes, returnpid=returnpid, **kwargs)
-	finally:
-		mysettings["EBUILD_PHASE"] = ""
-
 	if returnpid:
-		return phase_retval
+		kwargs = actionmap[mydo]["args"]
+		mysettings["EBUILD_PHASE"] = mydo
+		try:
+			return spawn(actionmap[mydo]["cmd"] % mydo,
+				mysettings, debug=debug, logfile=logfile,
+				fd_pipes=fd_pipes, returnpid=returnpid, **kwargs)
+		finally:
+			mysettings["EBUILD_PHASE"] = ""
 
-	_post_phase_userpriv_perms(mysettings)
-	if mydo == "install":
-		out = StringIO()
-		_check_build_log(mysettings, out=out)
-		msg = _unicode_decode(out.getvalue(),
-			encoding=_encodings['content'], errors='replace')
-		if msg:
-			writemsg_stdout(msg, noiselevel=-1)
-			if logfile is not None:
-				try:
-					f = codecs.open(_unicode_encode(logfile,
-						encoding=_encodings['fs'], errors='strict'),
-						mode='a', encoding=_encodings['content'],
-						errors='replace')
-				except EnvironmentError:
-					pass
-				else:
-					f.write(msg)
-					f.close()
-		if phase_retval == os.EX_OK:
-			_post_src_install_chost_fix(mysettings)
-			phase_retval = _post_src_install_checks(mysettings)
-
-	if mydo == "test" and phase_retval != os.EX_OK and \
-		"test-fail-continue" in mysettings.features:
-		phase_retval = os.EX_OK
-
-	return phase_retval
+	task_scheduler = TaskScheduler()
+	ebuild_phase = EbuildPhase(actionmap=actionmap, background=False,
+		phase=mydo, scheduler=task_scheduler.sched_iface,
+		settings=mysettings)
+	task_scheduler.add(ebuild_phase)
+	task_scheduler.run()
+	return ebuild_phase.returncode
 
 _post_phase_cmds = {
 
@@ -1229,30 +1206,6 @@ def _post_phase_userpriv_perms(mysettings):
 		apply_recursive_permissions(mysettings["T"],
 			uid=portage_uid, gid=portage_gid, dirmode=0o70, dirmask=0,
 			filemode=0o60, filemask=0)
-
-def _post_src_install_checks(mysettings):
-	out = portage.StringIO()
-	_post_src_install_uid_fix(mysettings, out)
-	global _post_phase_cmds
-	retval = _spawn_misc_sh(mysettings, _post_phase_cmds["install"],
-		phase='internal_post_src_install')
-	if retval != os.EX_OK:
-		writemsg(_("!!! install_qa_check failed; exiting.\n"),
-			fd=out, noiselevel=-1)
-
-	msg = _unicode_decode(out.getvalue(),
-		encoding=_encodings['content'], errors='replace')
-	if msg:
-		writemsg_stdout(msg, noiselevel=-1)
-		log_path = mysettings.get("PORTAGE_LOG_FILE")
-		if log_path is not None:
-			log_file = codecs.open(_unicode_encode(log_path,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='a', encoding=_encodings['content'], errors='replace')
-			log_file.write(msg)
-			log_file.close()
-
-	return retval
 
 def _check_build_log(mysettings, out=None):
 	"""

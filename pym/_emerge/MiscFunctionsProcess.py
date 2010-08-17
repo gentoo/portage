@@ -3,8 +3,10 @@
 
 from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
 import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.package.ebuild.doebuild:spawn'
+)
 from portage import os
-from portage.package.ebuild.doebuild import spawn
 
 class MiscFunctionsProcess(AbstractEbuildProcess):
 	"""

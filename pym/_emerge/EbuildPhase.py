@@ -4,11 +4,13 @@
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.EbuildProcess import EbuildProcess
 from _emerge.CompositeTask import CompositeTask
-from portage.package.ebuild.doebuild import _check_build_log, \
-	_post_phase_cmds, _post_src_install_chost_fix, \
-	_post_src_install_uid_fix
 from portage.util import writemsg, writemsg_stdout
 import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.package.ebuild.doebuild:_check_build_log,' + \
+		'_post_phase_cmds,_post_src_install_chost_fix,' + \
+		'_post_src_install_uid_fix'
+)
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
@@ -17,12 +19,13 @@ import codecs
 
 class EbuildPhase(CompositeTask):
 
-	__slots__ = ("background", "phase",
+	__slots__ = ("actionmap", "background", "phase",
 		"scheduler", "settings")
 
 	def _start(self):
 
-		ebuild_process = EbuildProcess(background=self.background,
+		ebuild_process = EbuildProcess(actionmap=self.actionmap,
+			background=self.background,
 			phase=self.phase, scheduler=self.scheduler,
 			settings=self.settings)
 

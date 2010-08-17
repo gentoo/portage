@@ -2,16 +2,18 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
+import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.package.ebuild.doebuild:_post_phase_userpriv_perms,' + \
+		'_spawn_actionmap,spawn@doebuild_spawn'
+)
 from portage import _shell_quote
 from portage import os
 from portage.const import EBUILD_SH_BINARY
-from portage.package.ebuild.doebuild import  _post_phase_userpriv_perms
-from portage.package.ebuild.doebuild import spawn as doebuild_spawn
-from portage.package.ebuild.doebuild import _spawn_actionmap
 
 class EbuildProcess(AbstractEbuildProcess):
 
-	__slots__ = ()
+	__slots__ = ('actionmap',)
 
 	def _start(self):
 		# Don't open the log file during the clean phase since the
@@ -23,7 +25,9 @@ class EbuildProcess(AbstractEbuildProcess):
 
 	def _spawn(self, args, **kwargs):
 		self.settings["EBUILD_PHASE"] = self.phase
-		actionmap = _spawn_actionmap(self.settings)
+		actionmap = self.actionmap
+		if actionmap is None:
+			actionmap = _spawn_actionmap(self.settings)
 		if self.phase in actionmap:
 			kwargs.update(actionmap[self.phase]["args"])
 			cmd = actionmap[self.phase]["cmd"] % self.phase
