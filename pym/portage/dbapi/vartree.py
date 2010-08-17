@@ -3947,6 +3947,7 @@ class dblink(object):
 			dblnk.settings.backup_changes("REPLACED_BY_VERSION")
 			unmerge_rval = dblnk.unmerge(trimworld=0,
 				ldpath_mtimes=prev_mtimes, others_in_slot=others_in_slot)
+			dblnk.settings.pop("REPLACED_BY_VERSION", None)
 
 			if unmerge_rval == os.EX_OK:
 				emerge_log(_(" >>> unmerge success: %s") % (dblnk.mycpv,))
@@ -4479,6 +4480,7 @@ class dblink(object):
 							self, mydbapi, myebuild, "clean")
 
 		finally:
+			self.settings.pop('REPLACING_VERSIONS', None)
 			self.vartree.dbapi.linkmap._clear_cache()
 			self.unlockdb()
 			self.vartree.dbapi._bump_mtime(self.mycpv)

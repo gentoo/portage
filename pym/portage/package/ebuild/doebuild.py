@@ -771,6 +771,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if builddir_lock:
 			portage.locks.unlockdir(builddir_lock)
 
+		mysettings.pop("REPLACING_VERSIONS", None)
+
 		# Make sure that DISTDIR is restored to it's normal value before we return!
 		if "PORTAGE_ACTUAL_DISTDIR" in mysettings:
 			mysettings["DISTDIR"] = mysettings["PORTAGE_ACTUAL_DISTDIR"]
