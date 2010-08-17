@@ -915,6 +915,12 @@ class Scheduler(PollScheduler):
 				debug=(settings.get("PORTAGE_DEBUG", "") == 1),
 				mydbapi=self.trees[settings["ROOT"]][tree].dbapi, use_cache=1)
 			prepare_build_dirs(root_config.root, settings, cleanup=0)
+
+			vardb = root_config.trees['vartree'].dbapi
+			settings["REPLACING_VERSIONS"] = " ".join(
+				set(portage.versions.cpv_getversion(match) \
+					for match in vardb.match(x.slot_atom) + \
+					vardb.match('='+x.cpv)))
 			pretend_phase = EbuildPhase(background=self._background,
 				phase="pretend", scheduler=self._sched_iface,
 				settings=settings)
