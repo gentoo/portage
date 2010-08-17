@@ -39,6 +39,11 @@ import portage.cache.mappings
 if sys.hexversion >= 0x3000000:
 	basestring = str
 
+# Api consumers included in portage should set this to True.
+# Once the relevant api changes are in a portage release with
+# stable keywords, make these warnings unconditional.
+_internal_warnings = False
+
 def cpvequal(cpv1, cpv2):
 	"""
 	
@@ -97,8 +102,9 @@ def paren_reduce(mystr):
 	@rtype: Array
 	@return: The reduced string in an array
 	"""
-	warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
-		('portage.dep.paren_reduce',), DeprecationWarning, stacklevel=2)
+	if _internal_warnings:
+		warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
+			('portage.dep.paren_reduce',), DeprecationWarning, stacklevel=2)
 	mysplit = mystr.split()
 	level = 0
 	stack = [[]]
@@ -164,8 +170,9 @@ class paren_normalize(list):
 	"""Take a dependency structure as returned by paren_reduce or use_reduce
 	and generate an equivalent structure that has no redundant lists."""
 	def __init__(self, src):
-		warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
-			('portage.dep.paren_normalize',), DeprecationWarning, stacklevel=2)
+		if _internal_warnings:
+			warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
+				('portage.dep.paren_normalize',), DeprecationWarning, stacklevel=2)
 		list.__init__(self)
 		self._zap_parens(src, self)
 
@@ -252,9 +259,10 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 	@return: The use reduced depend array
 	"""
 	if isinstance(depstr, list):
-		warnings.warn(_("Passing paren_reduced dep arrays to %s is deprecated. " + \
-			"Pass the original dep string instead.") % \
-			('portage.dep.use_reduce',), DeprecationWarning, stacklevel=2)
+		if _internal_warnings:
+			warnings.warn(_("Passing paren_reduced dep arrays to %s is deprecated. " + \
+				"Pass the original dep string instead.") % \
+				('portage.dep.use_reduce',), DeprecationWarning, stacklevel=2)
 		depstr = paren_enclose(depstr)
 
 	if opconvert and flat:
@@ -464,8 +472,9 @@ def dep_opconvert(deplist):
 	@return:
 		The new list with the new ordering
 	"""
-	warnings.warn(_("%s is deprecated. Use %s with the opconvert parameter set to True instead.") % \
-		('portage.dep.dep_opconvert', 'portage.dep.use_reduce'), DeprecationWarning, stacklevel=2)
+	if _internal_warnings:
+		warnings.warn(_("%s is deprecated. Use %s with the opconvert parameter set to True instead.") % \
+			('portage.dep.dep_opconvert', 'portage.dep.use_reduce'), DeprecationWarning, stacklevel=2)
 
 	retlist = []
 	x = 0
@@ -494,8 +503,9 @@ def flatten(mylist):
 	@rtype: List
 	@return: A single list containing only non-list elements.
 	"""
-	warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
-		('portage.dep.flatten',), DeprecationWarning, stacklevel=2)
+	if _internal_warnings:
+		warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
+			('portage.dep.flatten',), DeprecationWarning, stacklevel=2)
 
 	newlist = []
 	for x in mylist:

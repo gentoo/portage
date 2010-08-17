@@ -37,6 +37,7 @@ except ImportError:
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
 portage._disable_legacy_globals()
+portage.dep._internal_warnings = True
 
 try:
 	import xml.etree.ElementTree
