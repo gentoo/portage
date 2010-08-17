@@ -62,6 +62,50 @@ _unsandboxed_phases = frozenset([
 	"prerm", "setup"
 ])
 
+def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
+	"""
+	All proper ebuild phases which execute ebuild.sh are spawned
+	via this function. No exceptions.
+	"""
+
+	if phase in _unsandboxed_phases:
+		kwargs['free'] = True
+
+	if phase == 'depend':
+		kwargs['droppriv'] = 'userpriv' in settings.features
+
+	if actionmap is not None and phase in actionmap:
+		kwargs.update(actionmap[phase]["args"])
+		cmd = actionmap[phase]["cmd"] % phase
+	else:
+		if phase == 'cleanrm':
+			ebuild_sh_arg = 'clean'
+		else:
+			ebuild_sh_arg = phase
+
+		cmd = "%s %s" % (_shell_quote(
+			os.path.join(settings["PORTAGE_BIN_PATH"],
+			os.path.basename(EBUILD_SH_BINARY))),
+			ebuild_sh_arg)
+
+	settings['EBUILD_PHASE'] = phase
+	try:
+		return spawn(cmd, settings, **kwargs)
+	finally:
+		settings.pop('EBUILD_PHASE', None)
+
+def _spawn_phase(phase, settings, actionmap=None, **kwargs):
+	if kwargs.get('returnpid'):
+		return _doebuild_spawn(phase, settings, actionmap=actionmap, **kwargs)
+
+	task_scheduler = TaskScheduler()
+	ebuild_phase = EbuildPhase(background=False,
+		phase=phase, scheduler=task_scheduler.sched_iface,
+		settings=settings)
+	task_scheduler.add(ebuild_phase)
+	task_scheduler.run()
+	return ebuild_phase.returncode
+
 def doebuild_environment(myebuild, mydo, myroot, mysettings,
 	debug, use_cache, mydbapi):
 
@@ -574,7 +618,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if mydo in ("config", "help", "info", "postinst",
 			"preinst", "pretend", "postrm", "prerm", "setup"):
 			return _spawn_phase(mydo, mysettings,
-				fd_pipes=fd_pipes, returnpid=returnpid)
+				fd_pipes=fd_pipes, logfile=logfile, returnpid=returnpid)
 
 		mycpv = "/".join((mysettings["CATEGORY"], mysettings["PF"]))
 
@@ -1079,30 +1123,6 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 
 	return proc.returncode
 
-def _spawn_phase(phase, settings, **kwargs):
-	if kwargs.get('returnpid'):
-		if phase in _unsandboxed_phases:
-			kwargs['free'] = True
-		portage_bin_path = settings["PORTAGE_BIN_PATH"]
-		ebuild_sh_binary = os.path.join(portage_bin_path,
-			os.path.basename(EBUILD_SH_BINARY))
-		if phase == 'cleanrm':
-			ebuild_sh_arg = 'clean'
-		else:
-			ebuild_sh_arg = phase
-		if phase == 'depend':
-			kwargs['droppriv'] = 'userpriv' in settings.features
-		return spawn("%s %s" % (_shell_quote(ebuild_sh_binary), ebuild_sh_arg),
-			settings, **kwargs)
-
-	task_scheduler = TaskScheduler()
-	ebuild_phase = EbuildPhase(background=False,
-		phase=phase, scheduler=task_scheduler.sched_iface,
-		settings=settings)
-	task_scheduler.add(ebuild_phase)
-	task_scheduler.run()
-	return ebuild_phase.returncode
-
 # parse actionmap to spawn ebuild with the appropriate args
 def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 	logfile=None, fd_pipes=None, returnpid=False):
@@ -1124,23 +1144,9 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 	if mydo == "pretend" and not eapi_has_pkg_pretend(eapi):
 		return os.EX_OK
 
-	if returnpid:
-		kwargs = actionmap[mydo]["args"]
-		mysettings["EBUILD_PHASE"] = mydo
-		try:
-			return spawn(actionmap[mydo]["cmd"] % mydo,
-				mysettings, debug=debug, logfile=logfile,
-				fd_pipes=fd_pipes, returnpid=returnpid, **kwargs)
-		finally:
-			mysettings["EBUILD_PHASE"] = ""
-
-	task_scheduler = TaskScheduler()
-	ebuild_phase = EbuildPhase(actionmap=actionmap, background=False,
-		phase=mydo, scheduler=task_scheduler.sched_iface,
-		settings=mysettings)
-	task_scheduler.add(ebuild_phase)
-	task_scheduler.run()
-	return ebuild_phase.returncode
+	return _spawn_phase(mydo, mysettings,
+		actionmap=actionmap, logfile=logfile,
+		fd_pipes=fd_pipes, returnpid=returnpid)
 
 _post_phase_cmds = {
 

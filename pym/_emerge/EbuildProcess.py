@@ -5,11 +5,9 @@ from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.doebuild:_post_phase_userpriv_perms,' + \
-		'_spawn_actionmap,_unsandboxed_phases,spawn@doebuild_spawn'
+		'_spawn_actionmap,_doebuild_spawn'
 )
-from portage import _shell_quote
 from portage import os
-from portage.const import EBUILD_SH_BINARY
 
 class EbuildProcess(AbstractEbuildProcess):
 
@@ -24,30 +22,13 @@ class EbuildProcess(AbstractEbuildProcess):
 		AbstractEbuildProcess._start(self)
 
 	def _spawn(self, args, **kwargs):
-		self.settings["EBUILD_PHASE"] = self.phase
-		if self.phase in _unsandboxed_phases:
-			kwargs['free'] = True
-		if self.phase == 'depend':
-			kwargs['droppriv'] = 'userpriv' in self.settings.features
+
 		actionmap = self.actionmap
 		if actionmap is None:
 			actionmap = _spawn_actionmap(self.settings)
-		if self.phase in actionmap:
-			kwargs.update(actionmap[self.phase]["args"])
-			cmd = actionmap[self.phase]["cmd"] % self.phase
-		else:
-			if self.phase == 'cleanrm':
-				ebuild_sh_arg = 'clean'
-			else:
-				ebuild_sh_arg = self.phase
 
-			cmd = "%s %s" % (_shell_quote(os.path.join(
-				self.settings["PORTAGE_BIN_PATH"],
-				os.path.basename(EBUILD_SH_BINARY))), ebuild_sh_arg)
-		try:
-			return doebuild_spawn(cmd, self.settings, **kwargs)
-		finally:
-			self.settings.pop("EBUILD_PHASE", None)
+		return _doebuild_spawn(self.phase, self.settings,
+				actionmap, **kwargs)
 
 	def _set_returncode(self, wait_retval):
 		AbstractEbuildProcess._set_returncode(self, wait_retval)
