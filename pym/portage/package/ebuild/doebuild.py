@@ -749,7 +749,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			mysettings["DISTDIR"] = mysettings["PORTAGE_ACTUAL_DISTDIR"]
 			del mysettings["PORTAGE_ACTUAL_DISTDIR"]
 
-		if logfile:
+		if logfile and not returnpid:
 			try:
 				if os.stat(logfile).st_size == 0:
 					os.unlink(logfile)
