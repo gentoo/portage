@@ -51,13 +51,14 @@ class DoebuildSpawnTestCase(TestCase):
 			# Create a fake environment, to pretend as if the ebuild
 			# has been sourced already.
 			open(os.path.join(settings['T'], 'environment'), 'wb')
+
+			task_scheduler = TaskScheduler()
 			for phase in ('_internal_test',):
 				rval = doebuild_spawn(
 					"%s %s" % (_shell_quote(EBUILD_SH_BINARY), phase),
 					settings, free=1)
 				self.assertEqual(rval, os.EX_OK)
 
-				task_scheduler = TaskScheduler()
 				ebuild_phase = EbuildPhase(background=False,
 					phase=phase, scheduler=task_scheduler.sched_iface,
 					settings=settings)
@@ -65,7 +66,6 @@ class DoebuildSpawnTestCase(TestCase):
 				task_scheduler.run()
 				self.assertEqual(ebuild_phase.returncode, os.EX_OK)
 
-			task_scheduler = TaskScheduler()
 			ebuild_phase = MiscFunctionsProcess(background=False,
 				commands=['success_hooks'],
 				scheduler=task_scheduler.sched_iface, settings=settings)
