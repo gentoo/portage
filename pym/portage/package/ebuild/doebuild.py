@@ -432,12 +432,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			# Only cache it if the above stray files test succeeds.
 			_doebuild_manifest_cache = mf
 
-	# Note: PORTAGE_BIN_PATH may differ from the global
-	# constant when portage is reinstalling itself.
-	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
-	ebuild_sh_binary = os.path.join(portage_bin_path,
-		os.path.basename(EBUILD_SH_BINARY))
-
 	logfile=None
 	builddir_lock = None
 	tmpdir = None
@@ -477,21 +471,16 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			use_cache, mydbapi)
 
 		if mydo in clean_phases:
-			retval = spawn(_shell_quote(ebuild_sh_binary) + " clean",
-				mysettings, debug=debug, fd_pipes=fd_pipes, free=1,
-				logfile=None, returnpid=returnpid)
-			return retval
+			return _spawn_phase(mydo, mysettings,
+				fd_pipes=fd_pipes, returnpid=returnpid)
 
 		restrict = set(mysettings.get('PORTAGE_RESTRICT', '').split())
 		# get possible slot information from the deps file
 		if mydo == "depend":
 			writemsg("!!! DEBUG: dbkey: %s\n" % str(dbkey), 2)
-			droppriv = "userpriv" in mysettings.features
 			if returnpid:
-				mypids = spawn(_shell_quote(ebuild_sh_binary) + " depend",
-					mysettings, fd_pipes=fd_pipes, returnpid=True,
-					droppriv=droppriv)
-				return mypids
+				return _spawn_phase(mydo, mysettings,
+					fd_pipes=fd_pipes, returnpid=returnpid)
 			elif isinstance(dbkey, dict):
 				mysettings["dbkey"] = ""
 				pr, pw = os.pipe()
@@ -500,9 +489,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					1:sys.stdout.fileno(),
 					2:sys.stderr.fileno(),
 					9:pw}
-				mypids = spawn(_shell_quote(ebuild_sh_binary) + " depend",
-					mysettings,
-					fd_pipes=fd_pipes, returnpid=True, droppriv=droppriv)
+				mypids = _spawn_phase(mydo, mysettings, returnpid=True,
+					fd_pipes=fd_pipes)
 				os.close(pw) # belongs exclusively to the child process now
 				f = os.fdopen(pr, 'rb')
 				for k, v in zip(auxdbkeys,
@@ -530,9 +518,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mysettings["dbkey"] = \
 					os.path.join(mysettings.depcachedir, "aux_db_key_temp")
 
-			return spawn(_shell_quote(ebuild_sh_binary) + " depend",
-				mysettings,
-				droppriv=droppriv)
+			return _spawn_phase(mydo, mysettings,
+				fd_pipes=fd_pipes, returnpid=returnpid)
 
 		# Validate dependency metadata here to ensure that ebuilds with invalid
 		# data are never installed via the ebuild command. Don't bother when
@@ -579,19 +566,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# the sandbox -- and stop now.
 		if mydo in ("config", "help", "info", "postinst",
 			"preinst", "pretend", "postrm", "prerm", "setup"):
-			if returnpid:
-				return spawn(
-				_shell_quote(ebuild_sh_binary) + " " + mydo,
-				mysettings, debug=debug, free=1, logfile=logfile,
+			return _spawn_phase(mydo, mysettings,
 				fd_pipes=fd_pipes, returnpid=returnpid)
-
-			task_scheduler = TaskScheduler()
-			ebuild_phase = EbuildPhase(background=False,
-				phase=mydo, scheduler=task_scheduler.sched_iface,
-				settings=mysettings)
-			task_scheduler.add(ebuild_phase)
-			task_scheduler.run()
-			return ebuild_phase.returncode
 
 		mycpv = "/".join((mysettings["CATEGORY"], mysettings["PF"]))
 
@@ -1095,6 +1071,28 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	sched.run()
 
 	return proc.returncode
+
+def _spawn_phase(phase, settings, **kwargs):
+	if kwargs.get('returnpid'):
+		portage_bin_path = settings["PORTAGE_BIN_PATH"]
+		ebuild_sh_binary = os.path.join(portage_bin_path,
+			os.path.basename(EBUILD_SH_BINARY))
+		if phase == 'cleanrm':
+			ebuild_sh_arg = 'clean'
+		else:
+			ebuild_sh_arg = phase
+		if phase == 'depend':
+			kwargs['droppriv'] = 'userpriv' in settings.features
+		return spawn("%s %s" % (_shell_quote(ebuild_sh_binary), ebuild_sh_arg),
+			settings, **kwargs)
+
+	task_scheduler = TaskScheduler()
+	ebuild_phase = EbuildPhase(background=False,
+		phase=phase, scheduler=task_scheduler.sched_iface,
+		settings=settings)
+	task_scheduler.add(ebuild_phase)
+	task_scheduler.run()
+	return ebuild_phase.returncode
 
 # parse actionmap to spawn ebuild with the appropriate args
 def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,

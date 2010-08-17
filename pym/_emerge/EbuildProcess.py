@@ -15,6 +15,12 @@ class EbuildProcess(AbstractEbuildProcess):
 
 	__slots__ = ('actionmap',)
 
+	_unsandboxed_phases = frozenset([
+		"clean", "cleanrm", "config",
+		"help", "info", "postinst",
+		"preinst", "pretend", "postrm",
+		"prerm", "setup"])
+
 	def _start(self):
 		# Don't open the log file during the clean phase since the
 		# open file can result in an nfs lock on $T/build.log which
@@ -25,6 +31,10 @@ class EbuildProcess(AbstractEbuildProcess):
 
 	def _spawn(self, args, **kwargs):
 		self.settings["EBUILD_PHASE"] = self.phase
+		if self.phase in self._unsandboxed_phases:
+			kwargs['free'] = True
+		if self.phase == 'depend':
+			kwargs['droppriv'] = 'userpriv' in self.settings.features
 		actionmap = self.actionmap
 		if actionmap is None:
 			actionmap = _spawn_actionmap(self.settings)
