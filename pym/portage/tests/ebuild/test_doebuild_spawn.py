@@ -19,7 +19,7 @@ class DoebuildSpawnTestCase(TestCase):
 	Invoke portage.package.ebuild.doebuild.spawn() with a
 	minimal environment. This gives coverage to some of
 	the ebuild execution internals, like ebuild.sh,
-	EbuildSpawnProcess, and EbuildIpcDaemon.
+	AbstractEbuildProcess, and EbuildIpcDaemon.
 	"""
 
 	def testDoebuildSpawn(self):
@@ -54,8 +54,14 @@ class DoebuildSpawnTestCase(TestCase):
 
 			task_scheduler = TaskScheduler()
 			for phase in ('_internal_test',):
-				rval = doebuild_spawn(
-					"%s %s" % (_shell_quote(EBUILD_SH_BINARY), phase),
+
+				# Test EbuildSpawnProcess by calling doebuild.spawn() with
+				# returnpid=False. This case is no longer used by portage
+				# internals since EbuildPhase is used instead and that passes
+				# returnpid=True to doebuild.spawn().
+				rval = doebuild_spawn("%s %s" % (_shell_quote(
+					os.path.join(settings["PORTAGE_BIN_PATH"],
+					os.path.basename(EBUILD_SH_BINARY))), phase),
 					settings, free=1)
 				self.assertEqual(rval, os.EX_OK)
 
