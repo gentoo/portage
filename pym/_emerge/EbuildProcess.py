@@ -28,9 +28,14 @@ class EbuildProcess(AbstractEbuildProcess):
 			kwargs.update(actionmap[self.phase]["args"])
 			cmd = actionmap[self.phase]["cmd"] % self.phase
 		else:
+			if self.phase == 'cleanrm':
+				ebuild_sh_arg = 'clean'
+			else:
+				ebuild_sh_arg = self.phase
+
 			cmd = "%s %s" % (_shell_quote(os.path.join(
 				self.settings["PORTAGE_BIN_PATH"],
-				os.path.basename(EBUILD_SH_BINARY))), self.phase)
+				os.path.basename(EBUILD_SH_BINARY))), ebuild_sh_arg)
 		try:
 			return doebuild_spawn(cmd, self.settings, **kwargs)
 		finally:
