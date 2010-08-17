@@ -99,7 +99,7 @@ def _spawn_phase(phase, settings, actionmap=None, **kwargs):
 		return _doebuild_spawn(phase, settings, actionmap=actionmap, **kwargs)
 
 	task_scheduler = TaskScheduler()
-	ebuild_phase = EbuildPhase(background=False,
+	ebuild_phase = EbuildPhase(actionmap=actionmap, background=False,
 		phase=phase, scheduler=task_scheduler.sched_iface,
 		settings=settings)
 	task_scheduler.add(ebuild_phase)
