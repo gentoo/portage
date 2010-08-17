@@ -25,6 +25,10 @@ class AbstractEbuildProcess(SpawnProcess):
 		('_ipc_daemon', '_exit_command',)
 	_phases_without_builddir = ('clean', 'cleanrm', 'depend', 'help',)
 
+	# The EbuildIpcDaemon support is well tested, but this variable
+	# is left so we can temporarily disable it if any issues arise.
+	_enable_ipc_daemon = True
+
 	def __init__(self, **kwargs):
 		SpawnProcess.__init__(self, **kwargs)
 		if self.phase is None:
@@ -40,10 +44,7 @@ class AbstractEbuildProcess(SpawnProcess):
 			# since we're not displaying to a terminal anyway.
 			self.settings['NOCOLOR'] = 'true'
 
-		enable_ipc_daemon = \
-			self.settings.get('PORTAGE_IPC_DAEMON_ENABLE') == '1'
-
-		if enable_ipc_daemon:
+		if self._enable_ipc_daemon:
 			self.settings.pop('PORTAGE_EBUILD_EXIT_FILE', None)
 			if self.phase not in self._phases_without_builddir:
 				self.settings['PORTAGE_IPC_DAEMON'] = "1"
@@ -77,9 +78,7 @@ class AbstractEbuildProcess(SpawnProcess):
 		output_fifo = os.path.join(
 			self.settings['PORTAGE_BUILDDIR'], '.ipc_out')
 
-		for x in (input_fifo, output_fifo):
-
-			p = os.path.join(self.settings['PORTAGE_BUILDDIR'], x)
+		for p in (input_fifo, output_fifo):
 
 			st = None
 			try:

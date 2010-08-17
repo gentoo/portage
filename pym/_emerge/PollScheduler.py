@@ -16,7 +16,7 @@ from _emerge.PollSelectAdapter import PollSelectAdapter
 class PollScheduler(object):
 
 	class _sched_iface_class(SlotObject):
-		__slots__ = ("register", "schedule", "schedule_waitpid", "unregister")
+		__slots__ = ("register", "schedule", "unregister")
 
 	def __init__(self):
 		self._max_jobs = 1
@@ -126,14 +126,7 @@ class PollScheduler(object):
 		try:
 			while event_handlers:
 				f, event = self._next_poll_event()
-				try:
-					handler, reg_id = event_handlers[f]
-				except KeyError:
-					# This means unregister was called for a file descriptor
-					# that still had a pending event in _poll_event_queue.
-					# Since unregister has been called, we should assume that
-					# the event can be safely ignored.
-					continue
+				handler, reg_id = event_handlers[f]
 				handler(f, event)
 				event_handled = True
 		except StopIteration:
@@ -162,13 +155,9 @@ class PollScheduler(object):
 		try:
 			while event_handlers and self._poll_event_queue:
 				f, event = self._next_poll_event()
-				try:
-					handler, reg_id = event_handlers[f]
-				except KeyError:
-					pass
-				else:
-					handler(f, event)
-					events_handled += 1
+				handler, reg_id = event_handlers[f]
+				handler(f, event)
+				events_handled += 1
 		except StopIteration:
 			events_handled += 1
 
@@ -192,6 +181,19 @@ class PollScheduler(object):
 	def _unregister(self, reg_id):
 		f = self._poll_event_handler_ids[reg_id]
 		self._poll_obj.unregister(f)
+		if self._poll_event_queue:
+			# Discard any unhandled events that belong to this file,
+			# in order to prevent these events from being erroneously
+			# delivered to a future handler that is using a reallocated
+			# file descriptor of the same numeric value (causing
+			# extremely confusing bugs).
+			remove = set()
+			for event in self._poll_event_queue:
+				if event[0] == f:
+					remove.add(event)
+			if remove:
+				self._poll_event_queue[:] = [event for event in \
+					self._poll_event_queue if event not in remove]
 		del self._poll_event_handlers[f]
 		del self._poll_event_handler_ids[reg_id]
 
@@ -215,13 +217,9 @@ class PollScheduler(object):
 		try:
 			while wait_ids.intersection(handler_ids):
 				f, event = self._next_poll_event(timeout=timeout)
-				try:
-					handler, reg_id = event_handlers[f]
-				except KeyError:
-					pass
-				else:
-					handler(f, event)
-					event_handled = True
+				handler, reg_id = event_handlers[f]
+				handler(f, event)
+				event_handled = True
 				if timeout is not None:
 					if 1000 * time.time() - start_time >= timeout:
 						break
@@ -229,37 +227,6 @@ class PollScheduler(object):
 			event_handled = True
 
 		return event_handled
-
-	def _schedule_waitpid(self, pid):
-		"""
-		Schedule until waitpid returns process status
-		for the given pid, and return the result from waitpid.
-		This is meant to be called as a last resort, since
-		it won't return until the process exits. This can raise
-		OSError from the waitpid call (typically errno.ECHILD).
-		@type pid: int
-		@param pid: the pid of the child process to wait for
-		"""
-		event_handlers = self._poll_event_handlers
-
-		try:
-			while event_handlers:
-				f, event = self._next_poll_event()
-				try:
-					handler, reg_id = event_handlers[f]
-				except KeyError:
-					pass
-				else:
-					handler(f, event)
-					wait_retval = os.waitpid(pid, os.WNOHANG)
-					if wait_retval != (0, 0):
-						return wait_retval
-				self._schedule()
-		except StopIteration:
-			pass
-
-		# Once scheduling is exhaused, do a blocking waitpid.
-		return os.waitpid(pid, 0)
 
 _can_poll_device = None
 

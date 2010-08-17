@@ -1,46 +1,52 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from _emerge.CompositeTask import CompositeTask
 from _emerge.EbuildProcess import EbuildProcess
 from portage import os
+from portage.exception import PermissionDenied
+from portage.util import ensure_dirs
 
-class EbuildBinpkg(EbuildProcess):
+class EbuildBinpkg(CompositeTask):
 	"""
 	This assumes that src_install() has successfully completed.
 	"""
-	__slots__ = ("_binpkg_tmpfile",)
+	__slots__ = ('pkg', 'settings') + \
+		('_binpkg_tmpfile',)
 
 	def _start(self):
-		self.phase = "package"
-		self.tree = "porttree"
 		pkg = self.pkg
 		root_config = pkg.root_config
-		portdb = root_config.trees["porttree"].dbapi
 		bintree = root_config.trees["bintree"]
-		ebuild_path = portdb.findname(pkg.cpv)
-		if ebuild_path is None:
-			raise AssertionError("ebuild not found for '%s'" % pkg.cpv)
-		settings = self.settings
-		debug = settings.get("PORTAGE_DEBUG") == "1"
-
 		bintree.prevent_collision(pkg.cpv)
 		binpkg_tmpfile = os.path.join(bintree.pkgdir,
 			pkg.cpv + ".tbz2." + str(os.getpid()))
+		parent_dir = os.path.dirname(binpkg_tmpfile)
+		ensure_dirs(parent_dir)
+		if not os.access(parent_dir, os.W_OK):
+			raise PermissionDenied(
+				"access('%s', os.W_OK)" % parent_dir)
+
 		self._binpkg_tmpfile = binpkg_tmpfile
-		settings["PORTAGE_BINPKG_TMPFILE"] = binpkg_tmpfile
-		settings.backup_changes("PORTAGE_BINPKG_TMPFILE")
+		self.settings["PORTAGE_BINPKG_TMPFILE"] = self._binpkg_tmpfile
 
-		try:
-			EbuildProcess._start(self)
-		finally:
-			settings.pop("PORTAGE_BINPKG_TMPFILE", None)
+		package_phase = EbuildProcess(background=self.background,
+			phase='package', scheduler=self.scheduler,
+			settings=self.settings)
 
-	def _set_returncode(self, wait_retval):
-		EbuildProcess._set_returncode(self, wait_retval)
+		self._start_task(package_phase, self._package_phase_exit)
+
+	def _package_phase_exit(self, package_phase):
+
+		self.settings.pop("PORTAGE_BINPKG_TMPFILE", None)
+		if self._default_exit(package_phase) != os.EX_OK:
+			self.wait()
+			return
 
 		pkg = self.pkg
 		bintree = pkg.root_config.trees["bintree"]
-		binpkg_tmpfile = self._binpkg_tmpfile
-		if self.returncode == os.EX_OK:
-			bintree.inject(pkg.cpv, filename=binpkg_tmpfile)
+		bintree.inject(pkg.cpv, filename=self._binpkg_tmpfile)
 
+		self._current_task = None
+		self.returncode = os.EX_OK
+		self.wait()

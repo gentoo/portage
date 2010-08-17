@@ -16,8 +16,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.elog:elog_process',
 	'portage.locks:lockdir,unlockdir',
 	'portage.output:bold,colorize',
-	'portage.package.ebuild.doebuild:doebuild,doebuild_environment,' + \
-	 	'_spawn_misc_sh',
+	'portage.package.ebuild.doebuild:doebuild,doebuild_environment',
 	'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
 	'portage.update:fixdbentries',
 	'portage.util:apply_secpass_permissions,ConfigProtect,ensure_dirs,' + \
@@ -50,6 +49,8 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 
 from portage.cache.mappings import slot_dict_class
+from _emerge.TaskScheduler import TaskScheduler
+from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 
 import codecs
 import gc
@@ -5451,8 +5452,14 @@ class dblink(object):
 					phase = 'die_hooks'
 
 				if self._scheduler is None:
-					_spawn_misc_sh(self.settings, [phase],
-						phase=phase)
+					task_scheduler = TaskScheduler()
+					ebuild_phase = MiscFunctionsProcess(
+						background=False,
+						commands=[phase],
+						scheduler=task_scheduler.sched_iface,
+						settings=self.settings)
+					task_scheduler.add(ebuild_phase)
+					task_scheduler.run()
 				else:
 					self._scheduler.dblinkEbuildPhase(
 						self, mydbapi, myebuild, phase)

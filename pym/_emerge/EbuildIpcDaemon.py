@@ -21,7 +21,9 @@ class EbuildIpcDaemon(FifoIpcDaemon):
        performance and userpriv permission issues.
 
     3) Reliable ebuild termination in cases when the ebuild has accidentally
-       left orphan processes running in the backgraound (as in bug 278895).
+       left orphan processes running in the background (as in bug #278895).
+
+    4) Detect cases in which bash has exited unexpectedly (as in bug #190128).
 	"""
 
 	__slots__ = ('commands',)
@@ -58,8 +60,6 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 					'reply_hook', None)
 				if reply_hook is not None:
 					reply_hook()
-
-		return self._registered
 
 	def _send_reply(self, reply):
 		output_fd = os.open(self.output_fifo, os.O_WRONLY|os.O_NONBLOCK)

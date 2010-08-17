@@ -326,6 +326,8 @@ except (ImportError, OSError) as e:
 # END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END
 # ===========================================================================
 
+_python_interpreter = os.path.realpath(sys.executable)
+
 def _ensure_default_encoding():
 
 	default_encoding = sys.getdefaultencoding().lower().replace('-', '_')

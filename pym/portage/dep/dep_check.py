@@ -60,32 +60,29 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			continue
 
 		if not isinstance(x, Atom):
-			try:
-				x = Atom(x)
-			except InvalidAtom:
-				raise ParseError(
-					_("invalid atom: '%s'") % x)
-			else:
-				if x.blocker and x.blocker.overlap.forbid and \
-					not eapi_has_strong_blocks(eapi):
-					raise ParseError(
-						_("invalid atom: '%s'") % (x,))
-				if x.use and not eapi_has_use_deps(eapi):
-					raise ParseError(
-						_("invalid atom: '%s'") % (x,))
-				if x.slot and not eapi_has_slot_deps(eapi):
-					raise ParseError(
-						_("invalid atom: '%s'") % (x,))
-				if x.use and (x.use.missing_enabled or x.use.missing_disabled) \
-					and not eapi_has_use_dep_defaults(eapi):
-					raise ParseError(
-						_("invalid atom: '%s'") % (x,))
+			raise ParseError(
+				_("invalid token: '%s'") % x)
+
+		if x.blocker and x.blocker.overlap.forbid and \
+			not eapi_has_strong_blocks(eapi):
+			raise ParseError(
+				_("strong blocks are not allowed in EAPI %s: '%s'") % (eapi, x))
+		if x.use and not eapi_has_use_deps(eapi):
+			raise ParseError(
+				_("use deps are not allowed in EAPI %s: '%s'") % (eapi, x))
+		if x.slot and not eapi_has_slot_deps(eapi):
+			raise ParseError(
+				_("slot deps are not allowed in EAPI %s: '%s'") % (eapi, x))
+		if x.use and (x.use.missing_enabled or x.use.missing_disabled) \
+			and not eapi_has_use_dep_defaults(eapi):
+			raise ParseError(
+				_("use dep defaults are not allowed in EAPI %s: '%s'") % (eapi, x))
 
 		if repoman:
 			x = x._eval_qa_conditionals(use_mask, use_force)
 
 		if not repoman and \
-			myuse is not None and isinstance(x, Atom) and x.use:
+			myuse is not None and x.use:
 			if x.use.conditional:
 				x = x.evaluate_conditionals(myuse)
 
@@ -542,8 +539,8 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		useforce.update(mysettings.useforce)
 		useforce.difference_update(mymasks)
 	try:
-		mysplit = use_reduce(depstring, uselist=myusesplit,
-			masklist=mymasks, matchall=(use=="all"), excludeall=useforce, opconvert=True)
+		mysplit = use_reduce(depstring, uselist=myusesplit, masklist=mymasks, \
+			matchall=(use=="all"), excludeall=useforce, opconvert=True, token_class=Atom)
 	except InvalidDependString as e:
 		return [0, str(e)]
 

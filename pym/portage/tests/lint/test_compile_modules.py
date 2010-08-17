@@ -1,7 +1,6 @@
 # Copyright 2009-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import imp
 import itertools
 import stat
 
@@ -31,7 +30,6 @@ class CompileModulesTestCase(TestCase):
 				if not stat.S_ISREG(st.st_mode):
 					continue
 				do_compile = False
-				cfile = x
 				if x[-3:] == '.py':
 					do_compile = True
 				else:
@@ -44,20 +42,5 @@ class CompileModulesTestCase(TestCase):
 					if line[:2] == '#!' and \
 						'python' in line:
 						do_compile = True
-						cfile += '.py'
 				if do_compile:
-					try:
-						# Python >=3.2
-						cfile = imp.cache_from_source(cfile)
-					except AttributeError:
-						cfile += (__debug__ and 'c' or 'o')
-					py_compile.compile(x, cfile=cfile, doraise=True)
-					os.unlink(cfile)
-					cfile_parent_dir = os.path.dirname(cfile)
-					if os.path.basename(cfile_parent_dir) == '__pycache__':
-						# Python >=3.2
-						try:
-							os.rmdir(cfile_parent_dir)
-						except OSError:
-							# __pycache__ directory is non-empty.
-							pass
+					py_compile.compile(x, cfile='/dev/null', doraise=True)

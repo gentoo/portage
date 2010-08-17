@@ -454,6 +454,7 @@ class config(object):
 				config_root)).rstrip(os.path.sep) + os.path.sep
 
 			check_var_directory("PORTAGE_CONFIGROOT", config_root)
+			abs_user_config = os.path.join(config_root, USER_CONFIG_PATH)
 
 			self.depcachedir = DEPCACHE_PATH
 
@@ -463,7 +464,12 @@ class config(object):
 				if os.path.isdir(config_profile_path):
 					self.profile_path = config_profile_path
 				else:
-					self.profile_path = None
+					config_profile_path = \
+						os.path.join(abs_user_config, 'make.profile')
+					if os.path.isdir(config_profile_path):
+						self.profile_path = config_profile_path
+					else:
+						self.profile_path = None
 			else:
 				self.profile_path = config_profile_path
 
@@ -625,9 +631,12 @@ class config(object):
 
 			make_conf = getconfig(
 				os.path.join(config_root, MAKE_CONF_FILE),
-				tolerant=tolerant, allow_sourcing=True)
-			if make_conf is None:
-				make_conf = {}
+				tolerant=tolerant, allow_sourcing=True) or {}
+
+			make_conf.update(getconfig(
+				os.path.join(abs_user_config, 'make.conf'),
+				tolerant=tolerant, allow_sourcing=True,
+				expand=make_conf) or {})
 
 			# Allow ROOT setting to come from make.conf if it's not overridden
 			# by the constructor argument (from the calling environment).
@@ -729,9 +738,13 @@ class config(object):
 
 			self.mygcfg = getconfig(
 				os.path.join(config_root, MAKE_CONF_FILE),
-				tolerant=tolerant, allow_sourcing=True, expand=expand_map)
-			if self.mygcfg is None:
-				self.mygcfg = {}
+				tolerant=tolerant, allow_sourcing=True,
+				expand=expand_map) or {}
+
+			self.mygcfg.update(getconfig(
+				os.path.join(abs_user_config, 'make.conf'),
+				tolerant=tolerant, allow_sourcing=True,
+				expand=expand_map) or {})
 
 			# Don't allow the user to override certain variables in make.conf
 			profile_only_variables = self.configdict["defaults"].get(
@@ -784,7 +797,6 @@ class config(object):
 			self._plicensedict = portage.dep.ExtendedAtomDict(dict)
 			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
 			self.punmaskdict = portage.dep.ExtendedAtomDict(list)
-			abs_user_config = os.path.join(config_root, USER_CONFIG_PATH)
 
 			# locations for "categories" and "arch.list" files
 			locations = [os.path.join(self["PORTDIR"], "profiles")]
@@ -845,10 +857,16 @@ class config(object):
 				for k, v in pusedict.items():
 					self.pusedict.setdefault(k.cp, {})[k] = v
 
-				#package.keywords
+				# package.accept_keywords and package.keywords
 				pkgdict = grabdict_package(
 					os.path.join(abs_user_config, "package.keywords"),
 					recursive=1, allow_wildcard=True)
+
+				for k, v in grabdict_package(
+					os.path.join(abs_user_config, "package.accept_keywords"),
+					recursive=1, allow_wildcard=True).items():
+					pkgdict.setdefault(k, []).extend(v)
+
 				for k, v in pkgdict.items():
 					# default to ~arch if no specific keyword is given
 					if not v:
@@ -1773,7 +1791,8 @@ class config(object):
 	def _getKeywords(self, cpv, metadata):
 		cp = cpv_getkey(cpv)
 		pkg = "%s:%s" % (cpv, metadata["SLOT"])
-		keywords = [[x for x in metadata["KEYWORDS"].split() if x != "-*"]]
+		keywords = [[x for x in metadata.get("KEYWORDS", "").split() \
+			if x != "-*"]]
 		for pkeywords_dict in self._pkeywords_list:
 			cpdict = pkeywords_dict.get(cp)
 			if cpdict:
@@ -2012,7 +2031,8 @@ class config(object):
 				for x in pproperties_list:
 					accept_properties.extend(x)
 
-		properties = set(use_reduce(metadata["PROPERTIES"], matchall=1, flat=True))
+		properties_str = metadata.get("PROPERTIES", "")
+		properties = set(use_reduce(properties_str, matchall=1, flat=True))
 		properties.discard('||')
 
 		acceptable_properties = set()
@@ -2026,7 +2046,6 @@ class config(object):
 			else:
 				acceptable_properties.add(x)
 
-		properties_str = metadata["PROPERTIES"]
 		if "?" in properties_str:
 			use = metadata["USE"].split()
 		else:

@@ -53,7 +53,7 @@ class Package(Task):
 			not eapi_has_iuse_defaults(self.metadata["EAPI"]):
 			self._invalid_metadata('IUSE.invalid',
 				"IUSE contains defaults, but EAPI doesn't allow them")
-		if self.metadata["REQUIRED_USE"] and \
+		if self.metadata.get("REQUIRED_USE") and \
 			not eapi_has_required_use(self.metadata["EAPI"]):
 			self._invalid_metadata('REQUIRED_USE.invalid',
 				"REQUIRED_USE set, but EAPI doesn't allow it")
@@ -241,7 +241,7 @@ class Package(Task):
 			"""
 			if isinstance(flags, basestring):
 				flags = [flags]
-			missing_iuse = []
+
 			for flag in flags:
 				if not flag in self.all and \
 					self._iuse_implicit_regex.match(flag) is None:
@@ -332,7 +332,8 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 		if k in self._use_conditional_keys:
 			if self._pkg.root_config.settings.local_config and '?' in v:
 				try:
-					v = paren_enclose(use_reduce(v, uselist=self._pkg.use.enabled))
+					v = paren_enclose(use_reduce(v, uselist=self._pkg.use.enabled, \
+						is_valid_flag=self._pkg.iuse.is_valid_flag))
 				except portage.exception.InvalidDependString:
 					# This error should already have been registered via
 					# self._pkg._invalid_metadata().

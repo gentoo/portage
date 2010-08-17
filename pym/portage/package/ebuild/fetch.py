@@ -20,7 +20,7 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.config:check_config_instance,config',
 	'portage.package.ebuild.doebuild:doebuild_environment,' + \
-		'spawn@doebuild_spawn',
+		'_doebuild_spawn',
 	'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
 )
 
@@ -1034,6 +1034,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		finally:
 			if use_locks and file_lock:
 				unlockfile(file_lock)
+				file_lock = None
 
 		if listonly:
 			writemsg_stdout("\n", noiselevel=-1)
@@ -1091,18 +1092,12 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						2 : sys.stderr.fileno(),
 					}
 
-					ebuild_phase = mysettings.get("EBUILD_PHASE")
 					try:
-						mysettings["EBUILD_PHASE"] = "nofetch"
-						doebuild_spawn(_shell_quote(EBUILD_SH_BINARY) + \
-							" nofetch", mysettings, fd_pipes=fd_pipes)
+						_doebuild_spawn("nofetch", mysettings, fd_pipes=fd_pipes)
 					finally:
-						if ebuild_phase is None:
-							mysettings.pop("EBUILD_PHASE", None)
-						else:
-							mysettings["EBUILD_PHASE"] = ebuild_phase
 						if private_tmpdir is not None:
 							shutil.rmtree(private_tmpdir)
+							private_tmpdir = None
 
 			elif restrict_fetch:
 				pass

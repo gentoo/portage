@@ -221,7 +221,7 @@ def paren_enclose(mylist):
 	return " ".join(mystrparts)
 
 def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], is_src_uri=False, \
-	allow_src_uri_file_renames=False, opconvert=False, flat=False):
+	allow_src_uri_file_renames=False, opconvert=False, flat=False, is_valid_flag=None, token_class=None):
 	"""
 	Takes a dep string and reduces the use? conditionals out, leaving an array
 	with subarrays. All redundant brackets are removed.
@@ -244,6 +244,10 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 	@type opconvert: Bool
 	@param flat: Create a flat list of all tokens
 	@type flat: Bool
+	@param is_valid_flag: Function that decides if a given use flag might be used in use conditionals
+	@type is_valid_flag: Function
+	@param token_class: Convert all non operator tokens into this class
+	@type token_class: Class
 	@rtype: List
 	@return: The use reduced depend array
 	"""
@@ -257,16 +261,24 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 		raise ValueError("portage.dep.use_reduce: 'opconvert' and 'flat' are mutually exclusive")
 
 	def is_active(conditional):
+		"""
+		Decides if a given use conditional is active.
+		"""
 		if conditional.startswith("!"):
 			flag = conditional[1:-1]
 			is_negated = True
 		else:
 			flag = conditional[:-1]
 			is_negated = False
-
-		if not flag:
-			raise portage.exception.InvalidDependString(
-				_("malformed syntax: '%s'") % depstr)
+		
+		if is_valid_flag:
+			if not is_valid_flag(flag):
+				raise portage.exception.InvalidDependString(
+					_("use flag '%s' is not referencable in conditional '%s' in '%s'") % (flag, conditional, depstr))
+		else:
+			if _valid_use_re.match(flag) is None:
+				raise portage.exception.InvalidDependString(
+					_("invalid use flag '%s' in conditional '%s' in '%s'") % (flag, conditional, depstr))
 
 		if is_negated and flag in excludeall:
 			return False
@@ -280,31 +292,54 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 		return (flag in uselist and not is_negated) or \
 			(flag not in uselist and is_negated)
 
+	def missing_white_space_check(token, pos):
+		"""
+		Used to generate good error messages for invalid tokens.
+		"""
+		for x in (")", "(", "||"):
+			if token.startswith(x) or token.endswith(x):
+				raise portage.exception.InvalidDependString(
+					_("missing whitespace around '%s' at '%s' in '%s', token %s") % (x, token, depstr, pos+1))
+
 	mysplit = depstr.split()
+	#Count the bracket level.
 	level = 0
+	#We parse into a stack. Every time we hit a '(', a new empty list is appended to the stack.
+	#When we hit a ')', the last list in the stack is merged with list one level up.
 	stack = [[]]
+	#Set need_bracket to True after use conditionals or ||. Other tokens need to ensure
+	#that need_bracket is not True.
 	need_bracket = False
+	#Set need_simple_token to True after a SRC_URI arrow. Other tokens need to ensure
+	#that need_simple_token is not True.
 	need_simple_token = False
 
-	for token in mysplit:
+	for pos, token in enumerate(mysplit):
 		if token == "(":
 			if need_simple_token:
 				raise portage.exception.InvalidDependString(
-					_("malformed syntax: '%s'") % depstr)
+					_("expected: file name, got: '%s' in '%s', token %s") % (token, depstr, pos+1))
 			need_bracket = False
 			stack.append([])
 			level += 1
 		elif token == ")":
-			if need_bracket or need_simple_token:
+			if need_bracket:
 				raise portage.exception.InvalidDependString(
-					_("malformed syntax: '%s'") % depstr)
+					_("expected: '(', got: '%s' in '%s', token %s") % (token, depstr, pos+1))
+			if need_simple_token:
+				raise portage.exception.InvalidDependString(
+					_("expected: file name, got: '%s' in '%s', token %s") % (token, depstr, pos+1))
 			if level > 0:
 				level -= 1
 				l = stack.pop()
 				ignore = False
 
 				if flat:
+					#In 'flat' mode, we simply merge all lists into a single large one.
 					if stack[level] and stack[level][-1][-1] == "?":
+						#The last token before the '(' that matches the current ')'
+						#was a use conditional. The conditional is removed in any case.
+						#Merge the current list if needed.
 						if is_active(stack[level][-1]):
 							stack[level].pop()
 							stack[level].extend(l)
@@ -316,13 +351,19 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 
 				if stack[level]:
 					if stack[level][-1] == "||" and not l:
+						#Optimize: || ( ) -> .
 						stack[level].pop()
 					elif stack[level][-1][-1] == "?":
+						#The last token before the '(' that matches the current ')'
+						#was a use conditional, remove it and decide if we
+						#have to keep the current list.
 						if not is_active(stack[level][-1]):
 							ignore = True
 						stack[level].pop()
 
 				if l and not ignore:
+					#The current list is not empty and we don't want to ignore it because
+					#of an inactive use conditional.
 					if not stack[level] or stack[level][-1] != "||":
 						#Optimize: ( ( ... ) ) -> ( ... )
 						stack[level].extend(l)
@@ -336,48 +377,73 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 						stack[level].extend(l)
 					else:
 						if opconvert and stack[level] and stack[level][-1] == "||":
+							#In opconvert mode, we have to move the operator from the level
+							#above into the current list.
 							stack[level].pop()
 							stack[level].append(["||"] + l)
 						else:
 							stack[level].append(l)
 			else:
 				raise portage.exception.InvalidDependString(
-					_("malformed syntax: '%s'") % depstr)
+					_("no matching '%s' for '%s' in '%s', token %s") % ("(", ")", depstr, pos+1))
 		elif token == "||":
-			if need_bracket or is_src_uri:
+			if is_src_uri:
 				raise portage.exception.InvalidDependString(
-					_("malformed syntax: '%s'") % depstr)
+					_("any-of dependencies are not allowed in SRC_URI: '%s', token %s") % (depstr, pos+1))
+			if need_bracket:
+				raise portage.exception.InvalidDependString(
+					_("expected: '(', got: '%s' in '%s', token %s") % (token, depstr, pos+1))
 			need_bracket = True
 			stack[level].append(token)
 		elif token == "->":
-			if not allow_src_uri_file_renames or not is_src_uri or need_simple_token:
+			if need_simple_token:
 				raise portage.exception.InvalidDependString(
-					_("SRC_URI arrow not allowed: '%s'") % depstr)
+					_("expected: file name, got: '%s' in '%s', token %s") % (token, depstr, pos+1))
+			if not is_src_uri:
+				raise portage.exception.InvalidDependString(
+					_("SRC_URI arrow are only allowed in SRC_URI: '%s', token %s") % (depstr, pos+1))
+			if not allow_src_uri_file_renames:
+				raise portage.exception.InvalidDependString(
+					_("SRC_URI arrow not allowed in this EAPI: '%s', token %s") % (depstr, pos+1))
 			need_simple_token = True
 			stack[level].append(token)	
 		else:
-			if need_bracket or "(" in token or ")" in token or "|" in token or \
-				(need_simple_token and "/" in token):
-				if not (need_bracket or "|" in token or (need_simple_token and "/" in token)):
-					#We have '(' and/or ')' in token. Make sure it's not a use dep default
-					tmp = token.replace("(+)", "").replace("(-)", "")
-					if "(" in tmp or ")" in tmp:
-						raise portage.exception.InvalidDependString(
-							_("malformed syntax: '%s'") % depstr)
-				else:
-					raise portage.exception.InvalidDependString(
-						_("malformed syntax: '%s'") % depstr)
+			missing_white_space_check(token, pos)
+
+			if need_bracket:
+				raise portage.exception.InvalidDependString(
+					_("expected: '(', got: '%s' in '%s', token %s") % (token, depstr, pos+1))
+
+			if need_simple_token and "/" in token:
+				#The last token was a SRC_URI arrow, make sure we have a simple file name.
+				raise portage.exception.InvalidDependString(
+					_("expected: file name, got: '%s' in '%s', token %s") % (token, depstr, pos+1))
 
 			if token[-1] == "?":
 				need_bracket = True
 			else:
 				need_simple_token = False
+				if token_class and not is_src_uri:
+					#Add a hack for SRC_URI here, to avoid conditional code at the consumer level
+					try:
+						token = token_class(token)
+					except Exception as e:
+						raise portage.exception.InvalidDependString(
+							_("Invalid token '%s' in '%s', token %s") % (token, depstr, pos+1))
 
 			stack[level].append(token)
 
-	if level != 0 or need_bracket or need_simple_token:
+	if level != 0:
 		raise portage.exception.InvalidDependString(
-			_("malformed syntax: '%s'") % depstr)
+			_("Missing '%s' at end of string: '%s'") % (")", depstr))
+	
+	if need_bracket:
+		raise portage.exception.InvalidDependString(
+			_("Missing '%s' at end of string: '%s'") % ("(", depstr))
+			
+	if need_simple_token:
+		raise portage.exception.InvalidDependString(
+			_("Missing file name at end of string: '%s'") % (depstr,))
 
 	return stack[0]
 
@@ -446,8 +512,6 @@ class _use_dep(object):
 
 	_conditionals_class = portage.cache.mappings.slot_dict_class(
 		("disabled", "enabled", "equal", "not_equal"), prefix="")
-
-	_valid_use_re = re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@-]*$')
 
 	def __init__(self, use):
 		enabled_flags = []
@@ -543,7 +607,7 @@ class _use_dep(object):
 				break
 
 	def _validate_flag(self, token, flag):
-		if self._valid_use_re.match(flag) is None:
+		if _valid_use_re.match(flag) is None:
 			raise InvalidAtom(_("Invalid use dep: '%s'") % (token,))
 		return flag
 
@@ -981,8 +1045,15 @@ class ExtendedAtomDict(portage.cache.mappings.MutableMapping):
 		for k in self._extended:
 			yield k
 
+	def iteritems(self):
+		for item in self._normal.items():
+			yield item
+		for item in self._extended.items():
+			yield item
+
 	if sys.hexversion >= 0x3000000:
 		keys = __iter__
+		items = iteritems
 
 	def __len__(self):
 		return len(self._normal) + len(self._extended)
@@ -1190,6 +1261,8 @@ _extended_cat = r'[\w+*][\w+.*-]*'
 _extended_pkg = r'[\w+*][\w+*-]*?'
 
 _atom_wildcard_re = re.compile('(?P<simple>(' + _extended_cat + ')/(' + _extended_pkg + '))(:(?P<slot>' + _slot + '))?$')
+
+_valid_use_re = re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@-]*$')
 
 def isvalidatom(atom, allow_blockers=False, allow_wildcard=False):
 	"""

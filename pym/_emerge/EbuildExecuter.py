@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.EbuildPhase import EbuildPhase
@@ -7,10 +7,12 @@ from _emerge.CompositeTask import CompositeTask
 import portage
 from portage import os
 from portage.eapi import eapi_has_src_prepare_and_src_configure
+from portage.package.ebuild.doebuild import _prepare_env_file, \
+	_prepare_fake_distdir
 
 class EbuildExecuter(CompositeTask):
 
-	__slots__ = ("pkg", "scheduler", "settings") + ("_tree",)
+	__slots__ = ("pkg", "scheduler", "settings")
 
 	_phases = ("prepare", "configure", "compile", "test", "install")
 
@@ -25,17 +27,32 @@ class EbuildExecuter(CompositeTask):
 	])
 
 	def _start(self):
-		self._tree = "porttree"
 		pkg = self.pkg
 		scheduler = self.scheduler
 		settings = self.settings
 		cleanup = 0
-
 		portage.prepare_build_dirs(pkg.root, settings, cleanup)
+		rval = _prepare_env_file(settings)
+		if rval != os.EX_OK:
+			self.returncode = rval
+			self._current_task = None
+			self.wait()
+			return
+
+		portdb = pkg.root_config.trees['porttree'].dbapi
+		ebuild_path = settings['EBUILD']
+		mytree = os.path.dirname(os.path.dirname(
+			os.path.dirname(ebuild_path)))
+		alist = portdb.getFetchMap(pkg.cpv,
+			useflags=pkg.use.enabled, mytree=mytree)
+		aalist = portdb.getFetchMap(pkg.cpv, mytree=mytree)
+		settings.configdict["pkg"]["A"] = " ".join(alist)
+		settings.configdict["pkg"]["AA"] = " ".join(aalist)
+		_prepare_fake_distdir(settings, alist)
 
 		setup_phase = EbuildPhase(background=self.background,
-			pkg=pkg, phase="setup", scheduler=scheduler,
-			settings=settings, tree=self._tree)
+			phase="setup", scheduler=scheduler,
+			settings=settings)
 
 		setup_phase.addExitListener(self._setup_exit)
 		self._current_task = setup_phase
@@ -48,8 +65,8 @@ class EbuildExecuter(CompositeTask):
 			return
 
 		unpack_phase = EbuildPhase(background=self.background,
-			pkg=self.pkg, phase="unpack", scheduler=self.scheduler,
-			settings=self.settings, tree=self._tree)
+			phase="unpack", scheduler=self.scheduler,
+			settings=self.settings)
 
 		if self._live_eclasses.intersection(self.pkg.inherited):
 			# Serialize $DISTDIR access for live ebuilds since
@@ -79,8 +96,8 @@ class EbuildExecuter(CompositeTask):
 
 		for phase in phases:
 			ebuild_phases.add(EbuildPhase(background=self.background,
-				pkg=self.pkg, phase=phase, scheduler=self.scheduler,
-				settings=self.settings, tree=self._tree))
+				phase=phase, scheduler=self.scheduler,
+				settings=self.settings))
 
 		self._start_task(ebuild_phases, self._default_final_exit)
 

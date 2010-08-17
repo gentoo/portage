@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #
 # emake: Supplies some default parameters to GNU make. At the moment the
@@ -9,6 +9,8 @@
 #        is set in /etc/make.globals.  We don't source
 #        /etc/make.globals here because emake is only called from an
 #        ebuild.
+
+source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 
 if [[ $PORTAGE_QUIET != 1 ]] ; then
 	(

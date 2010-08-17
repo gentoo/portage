@@ -1,21 +1,22 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
 import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.package.ebuild.doebuild:spawn'
+)
 from portage import os
-from portage.package.ebuild.doebuild import spawn
 
 class MiscFunctionsProcess(AbstractEbuildProcess):
 	"""
 	Spawns misc-functions.sh with an existing ebuild environment.
 	"""
 
-	__slots__ = ('commands', 'pkg',)
+	__slots__ = ('commands',)
 
 	def _start(self):
 		settings = self.settings
-		settings.pop("EBUILD_PHASE", None)
 		portage_bin_path = settings["PORTAGE_BIN_PATH"]
 		misc_sh_binary = os.path.join(portage_bin_path,
 			os.path.basename(portage.const.MISC_SH_BINARY))
@@ -26,7 +27,5 @@ class MiscFunctionsProcess(AbstractEbuildProcess):
 		AbstractEbuildProcess._start(self)
 
 	def _spawn(self, args, **kwargs):
-		settings = self.settings
-		debug = settings.get("PORTAGE_DEBUG") == "1"
-		return spawn(" ".join(args), settings,
-			debug=debug, **kwargs)
+		self.settings.pop("EBUILD_PHASE", None)
+		return spawn(" ".join(args), self.settings, **kwargs)

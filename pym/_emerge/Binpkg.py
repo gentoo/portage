@@ -202,8 +202,8 @@ class Binpkg(CompositeTask):
 		phase = "clean"
 		settings = self.settings
 		ebuild_phase = EbuildPhase(background=self.background,
-			pkg=pkg, phase=phase, scheduler=self.scheduler,
-			settings=settings, tree=self._tree)
+			phase=phase, scheduler=self.scheduler,
+			settings=settings)
 
 		self._start_task(ebuild_phase, self._clean_exit)
 
@@ -289,8 +289,8 @@ class Binpkg(CompositeTask):
 
 		phase = "setup"
 		setup_phase = EbuildPhase(background=self.background,
-			pkg=self.pkg, phase=phase, scheduler=self.scheduler,
-			settings=settings, tree=self._tree)
+			phase=phase, scheduler=self.scheduler,
+			settings=settings)
 
 		setup_phase.addExitListener(self._setup_exit)
 		self._current_task = setup_phase
