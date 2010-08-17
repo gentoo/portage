@@ -1472,7 +1472,7 @@ for x in scanlist:
 		except portage.exception.InvalidDependString:
 			stats["PROVIDE.syntax"] = stats["PROVIDE.syntax"] + 1
 			fails["PROVIDE.syntax"].append("%s: %s" % \
-				(relative_path, myprovide))
+				(relative_path, pkg.metadata['PROVIDE']))
 			provide = []
 		provide_cps = []
 
