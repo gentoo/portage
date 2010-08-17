@@ -5,7 +5,7 @@ from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.doebuild:_post_phase_userpriv_perms,' + \
-		'_spawn_actionmap,spawn@doebuild_spawn'
+		'_spawn_actionmap,_unsandboxed_phases,spawn@doebuild_spawn'
 )
 from portage import _shell_quote
 from portage import os
@@ -14,12 +14,6 @@ from portage.const import EBUILD_SH_BINARY
 class EbuildProcess(AbstractEbuildProcess):
 
 	__slots__ = ('actionmap',)
-
-	_unsandboxed_phases = frozenset([
-		"clean", "cleanrm", "config",
-		"help", "info", "postinst",
-		"preinst", "pretend", "postrm",
-		"prerm", "setup"])
 
 	def _start(self):
 		# Don't open the log file during the clean phase since the
@@ -31,7 +25,7 @@ class EbuildProcess(AbstractEbuildProcess):
 
 	def _spawn(self, args, **kwargs):
 		self.settings["EBUILD_PHASE"] = self.phase
-		if self.phase in self._unsandboxed_phases:
+		if self.phase in _unsandboxed_phases:
 			kwargs['free'] = True
 		if self.phase == 'depend':
 			kwargs['droppriv'] = 'userpriv' in self.settings.features

@@ -55,6 +55,13 @@ from _emerge.EbuildPhase import EbuildPhase
 from _emerge.EbuildSpawnProcess import EbuildSpawnProcess
 from _emerge.TaskScheduler import TaskScheduler
 
+_unsandboxed_phases = frozenset([
+	"clean", "cleanrm", "config",
+	"help", "info", "postinst",
+	"preinst", "pretend", "postrm",
+	"prerm", "setup"
+])
+
 def doebuild_environment(myebuild, mydo, myroot, mysettings,
 	debug, use_cache, mydbapi):
 
@@ -1074,6 +1081,8 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 
 def _spawn_phase(phase, settings, **kwargs):
 	if kwargs.get('returnpid'):
+		if phase in _unsandboxed_phases:
+			kwargs['free'] = True
 		portage_bin_path = settings["PORTAGE_BIN_PATH"]
 		ebuild_sh_binary = os.path.join(portage_bin_path,
 			os.path.basename(EBUILD_SH_BINARY))
