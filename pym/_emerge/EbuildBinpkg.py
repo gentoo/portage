@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.CompositeTask import CompositeTask
-from _emerge.EbuildProcess import EbuildProcess
+from _emerge.EbuildPhase import EbuildPhase
 from portage import os
 from portage.exception import PermissionDenied
 from portage.util import ensure_dirs
@@ -30,7 +30,7 @@ class EbuildBinpkg(CompositeTask):
 		self._binpkg_tmpfile = binpkg_tmpfile
 		self.settings["PORTAGE_BINPKG_TMPFILE"] = self._binpkg_tmpfile
 
-		package_phase = EbuildProcess(background=self.background,
+		package_phase = EbuildPhase(background=self.background,
 			phase='package', scheduler=self.scheduler,
 			settings=self.settings)
 
