@@ -359,7 +359,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	# chunked out deps for each phase, so that ebuild binary can use it 
 	# to collapse targets down.
 	actionmap_deps={
-	"setup":  [],
+	"pretend"  : [],
+	"setup":  ["pretend"],
 	"unpack": ["setup"],
 	"prepare": ["unpack"],
 	"configure": ["prepare"],
