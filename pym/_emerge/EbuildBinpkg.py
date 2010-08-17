@@ -1,19 +1,18 @@
 # Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from _emerge.CompositeTask import CompositeTask
 from _emerge.EbuildProcess import EbuildProcess
 from portage import os
 from portage.exception import PermissionDenied
 from portage.util import ensure_dirs
 
-class EbuildBinpkg(EbuildProcess):
+class EbuildBinpkg(CompositeTask):
 	"""
 	This assumes that src_install() has successfully completed.
 	"""
-	__slots__ = ("_binpkg_tmpfile", "pkg")
-
-	def __init__(self, **kwargs):
-		EbuildProcess.__init__(self, phase="package", **kwargs)
+	__slots__ = ('pkg', 'settings') + \
+		('_binpkg_tmpfile',)
 
 	def _start(self):
 		pkg = self.pkg
@@ -30,12 +29,24 @@ class EbuildBinpkg(EbuildProcess):
 
 		self._binpkg_tmpfile = binpkg_tmpfile
 		self.settings["PORTAGE_BINPKG_TMPFILE"] = self._binpkg_tmpfile
-		EbuildProcess._start(self)
 
-	def _set_returncode(self, wait_retval):
-		EbuildProcess._set_returncode(self, wait_retval)
+		package_phase = EbuildProcess(background=self.background,
+			phase='package', scheduler=self.scheduler,
+			settings=self.settings)
+
+		self._start_task(package_phase, self._package_phase_exit)
+
+	def _package_phase_exit(self, package_phase):
+
 		self.settings.pop("PORTAGE_BINPKG_TMPFILE", None)
-		if self.returncode == os.EX_OK:
-			pkg = self.pkg
-			bintree = pkg.root_config.trees["bintree"]
-			bintree.inject(pkg.cpv, filename=self._binpkg_tmpfile)
+		if self._default_exit(package_phase) != os.EX_OK:
+			self.wait()
+			return
+
+		pkg = self.pkg
+		bintree = pkg.root_config.trees["bintree"]
+		bintree.inject(pkg.cpv, filename=self._binpkg_tmpfile)
+
+		self._current_task = None
+		self.returncode = os.EX_OK
+		self.wait()
