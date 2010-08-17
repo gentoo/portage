@@ -1573,30 +1573,3 @@ def _post_pkg_postinst_cmd(mysettings):
 	myargs = [_shell_quote(misc_sh_binary)] + _post_phase_cmds["postinst"]
 
 	return myargs
-
-def _spawn_misc_sh(mysettings, commands, phase=None, **kwargs):
-	"""
-	@param mysettings: the ebuild config
-	@type mysettings: config
-	@param commands: a list of function names to call in misc-functions.sh
-	@type commands: list
-	@rtype: int
-	@returns: the return value from the spawn() call
-	"""
-
-	# Note: PORTAGE_BIN_PATH may differ from the global
-	# constant when portage is reinstalling itself.
-	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
-	misc_sh_binary = os.path.join(portage_bin_path,
-		os.path.basename(MISC_SH_BINARY))
-	mycommand = " ".join([_shell_quote(misc_sh_binary)] + commands)
-	debug = mysettings.get("PORTAGE_DEBUG") == "1"
-	logfile = mysettings.get("PORTAGE_LOG_FILE")
-	mysettings.pop("EBUILD_PHASE", None)
-	try:
-		rval = spawn(mycommand, mysettings, debug=debug,
-			logfile=logfile, **kwargs)
-	finally:
-		pass
-
-	return rval
