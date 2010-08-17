@@ -722,12 +722,17 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				# Make sure the package directory exists before executing
 				# this phase. This can raise PermissionDenied if
 				# the current user doesn't have write access to $PKGDIR.
-				parent_dir = os.path.join(mysettings["PKGDIR"],
-					mysettings["CATEGORY"])
-				portage.util.ensure_dirs(parent_dir)
-				if not os.access(parent_dir, os.W_OK):
-					raise PermissionDenied(
-						"access('%s', os.W_OK)" % parent_dir)
+				if hasattr(portage, 'db'):
+					bintree = portage.db[mysettings["ROOT"]]["bintree"]
+					bintree._ensure_dir(os.path.join(
+						bintree.pkgdir, mysettings["CATEGORY"]))
+				else:
+					parent_dir = os.path.join(mysettings["PKGDIR"],
+						mysettings["CATEGORY"])
+					portage.util.ensure_dirs(parent_dir)
+					if not os.access(parent_dir, os.W_OK):
+						raise PermissionDenied(
+							"access('%s', os.W_OK)" % parent_dir)
 			retval = spawnebuild(mydo,
 				actionmap, mysettings, debug, logfile=logfile,
 				fd_pipes=fd_pipes, returnpid=returnpid)
