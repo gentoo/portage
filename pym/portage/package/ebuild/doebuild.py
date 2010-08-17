@@ -35,7 +35,8 @@ from portage.data import portage_gid, portage_uid, secpass, \
 	uid, userpriv_groups
 from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, paren_enclose, use_reduce
-from portage.eapi import eapi_exports_KV, eapi_has_src_uri_arrows, \
+from portage.eapi import eapi_exports_KV, eapi_exports_replace_vars, \
+	eapi_has_src_uri_arrows, \
 	eapi_has_src_prepare_and_src_configure, eapi_has_pkg_pretend
 from portage.elog import elog_process
 from portage.elog.messages import eerror, eqawarn
@@ -489,21 +490,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	tmpdir_orig = None
 
 	try:
-		if mydo in ("pretend", "setup"):
-			if not vartree:
-				writemsg("Warning: vartree not given to doebuild. " + \
-					"Cannot set REPLACING_VERSIONS in pkg_{pretend,setup}\n")
-			else:
-				vardb = vartree.dbapi
-				cpv = mysettings.mycpv
-				cp = portage.versions.cpv_getkey(cpv)
-				slot = mysettings.get("SLOT")
-				cpv_slot = cp + ":" + slot
-				mysettings["REPLACING_VERSIONS"] = " ".join(
-					set(portage.versions.cpv_getversion(match) \
-						for match in vardb.match(cpv_slot) + vardb.match(cpv)))
-				mysettings.backup_changes("REPLACING_VERSIONS")
-
 		if mydo in ("digest", "manifest", "help"):
 			# Temporarily exempt the depend phase from manifest checks, in case
 			# aux_get calls trigger cache generation.
@@ -612,6 +598,25 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			rval = _prepare_env_file(mysettings)
 			if rval != os.EX_OK:
 				return rval
+
+		if eapi_exports_replace_vars(mysettings["EAPI"]) and \
+			(mydo in ("pretend", "setup") or \
+			("noauto" not in features and not returnpid and \
+			(mydo in actionmap_deps or mydo in ("merge", "package", "qmerge")))):
+			if not vartree:
+				writemsg("Warning: vartree not given to doebuild. " + \
+					"Cannot set REPLACING_VERSIONS in pkg_{pretend,setup}\n")
+			else:
+				vardb = vartree.dbapi
+				cpv = mysettings.mycpv
+				cp = portage.versions.cpv_getkey(cpv)
+				slot = mysettings["SLOT"]
+				cpv_slot = cp + ":" + slot
+				mysettings["REPLACING_VERSIONS"] = " ".join(
+					set(portage.versions.cpv_getversion(match) \
+						for match in vardb.match(cpv_slot) + \
+						vardb.match('='+cpv)))
+				mysettings.backup_changes("REPLACING_VERSIONS")
 
 		# if any of these are being called, handle them -- running them out of
 		# the sandbox -- and stop now.
