@@ -594,41 +594,20 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					uid=portage_uid, gid=portage_gid, dirmode=0o70, dirmask=0,
 					filemode=0o60, filemask=0)
 			return retval
-		elif mydo == "preinst":
-			phase_retval = spawn(
+		elif mydo in ("preinst", "postinst"):
+			if returnpid:
+				return spawn(
 				_shell_quote(ebuild_sh_binary) + " " + mydo,
 				mysettings, debug=debug, free=1, logfile=logfile,
 				fd_pipes=fd_pipes, returnpid=returnpid)
 
-			if returnpid:
-				return phase_retval
-
-			if phase_retval == os.EX_OK:
-				mysettings.pop("EBUILD_PHASE", None)
-				phase_retval = spawn(
-					" ".join(_post_pkg_preinst_cmd(mysettings)),
-					mysettings, debug=debug, free=1, logfile=logfile)
-				if phase_retval != os.EX_OK:
-					writemsg(_("!!! post preinst failed; exiting.\n"),
-						noiselevel=-1)
-			return phase_retval
-		elif mydo == "postinst":
-			phase_retval = spawn(
-				_shell_quote(ebuild_sh_binary) + " " + mydo,
-				mysettings, debug=debug, free=1, logfile=logfile,
-				fd_pipes=fd_pipes, returnpid=returnpid)
-
-			if returnpid:
-				return phase_retval
-
-			if phase_retval == os.EX_OK:
-				mysettings.pop("EBUILD_PHASE", None)
-				phase_retval = spawn(" ".join(_post_pkg_postinst_cmd(mysettings)),
-					mysettings, debug=debug, free=1, logfile=logfile)
-				if phase_retval != os.EX_OK:
-					writemsg(_("!!! post postinst failed; exiting.\n"),
-						noiselevel=-1)
-			return phase_retval
+			task_scheduler = TaskScheduler()
+			ebuild_phase = EbuildPhase(background=False,
+				phase=mydo, scheduler=task_scheduler.sched_iface,
+				settings=mysettings)
+			task_scheduler.add(ebuild_phase)
+			task_scheduler.run()
+			return ebuild_phase.returncode
 		elif mydo in ("prerm", "postrm", "config", "info", "pretend"):
 			retval =  spawn(
 				_shell_quote(ebuild_sh_binary) + " " + mydo,
@@ -1538,38 +1517,3 @@ def _merge_unicode_error(errors):
 		lines.append("")
 
 	return lines
-
-def _post_pkg_preinst_cmd(mysettings):
-	"""
-	Post phase logic and tasks that have been factored out of
-	ebuild.sh. Call preinst_mask last so that INSTALL_MASK can
-	can be used to wipe out any gmon.out files created during
-	previous functions (in case any tools were built with -pg
-	in CFLAGS).
-	"""
-
-	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
-	misc_sh_binary = os.path.join(portage_bin_path,
-		os.path.basename(MISC_SH_BINARY))
-
-	mysettings["EBUILD_PHASE"] = ""
-	global _post_phase_cmds
-	myargs = [_shell_quote(misc_sh_binary)] + _post_phase_cmds["preinst"]
-
-	return myargs
-
-def _post_pkg_postinst_cmd(mysettings):
-	"""
-	Post phase logic and tasks that have been factored out of
-	build.sh.
-	"""
-
-	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
-	misc_sh_binary = os.path.join(portage_bin_path,
-		os.path.basename(MISC_SH_BINARY))
-
-	mysettings["EBUILD_PHASE"] = ""
-	global _post_phase_cmds
-	myargs = [_shell_quote(misc_sh_binary)] + _post_phase_cmds["postinst"]
-
-	return myargs
