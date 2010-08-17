@@ -4,8 +4,6 @@
 from _emerge.CompositeTask import CompositeTask
 from _emerge.EbuildPhase import EbuildPhase
 from portage import os
-from portage.exception import PermissionDenied
-from portage.util import ensure_dirs
 
 class EbuildBinpkg(CompositeTask):
 	"""
@@ -21,11 +19,7 @@ class EbuildBinpkg(CompositeTask):
 		bintree.prevent_collision(pkg.cpv)
 		binpkg_tmpfile = os.path.join(bintree.pkgdir,
 			pkg.cpv + ".tbz2." + str(os.getpid()))
-		parent_dir = os.path.dirname(binpkg_tmpfile)
-		ensure_dirs(parent_dir)
-		if not os.access(parent_dir, os.W_OK):
-			raise PermissionDenied(
-				"access('%s', os.W_OK)" % parent_dir)
+		bintree._ensure_dir(os.path.dirname(binpkg_tmpfile))
 
 		self._binpkg_tmpfile = binpkg_tmpfile
 		self.settings["PORTAGE_BINPKG_TMPFILE"] = self._binpkg_tmpfile
