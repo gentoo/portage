@@ -28,7 +28,7 @@ class EbuildProcess(AbstractEbuildProcess):
 			actionmap = _spawn_actionmap(self.settings)
 
 		return _doebuild_spawn(self.phase, self.settings,
-				actionmap, **kwargs)
+				actionmap=actionmap, **kwargs)
 
 	def _set_returncode(self, wait_retval):
 		AbstractEbuildProcess._set_returncode(self, wait_retval)
