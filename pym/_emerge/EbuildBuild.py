@@ -17,6 +17,7 @@ from portage import _encodings
 from portage import _unicode_encode
 import codecs
 from portage.output import colorize
+from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.doebuild import _check_temp_dir
 
 class EbuildBuild(CompositeTask):
@@ -49,6 +50,14 @@ class EbuildBuild(CompositeTask):
 			raise AssertionError("ebuild not found for '%s'" % pkg.cpv)
 		self._ebuild_path = ebuild_path
 
+		# Check the manifest here since with --keep-going mode it's
+		# currently possible to get this far with a broken manifest.
+		if not self._check_manifest():
+			self.returncode = 1
+			self._current_task = None
+			self.wait()
+			return
+
 		prefetcher = self.prefetcher
 		if prefetcher is None:
 			pass
@@ -73,6 +82,24 @@ class EbuildBuild(CompositeTask):
 			return
 
 		self._prefetch_exit(prefetcher)
+
+	def _check_manifest(self):
+		success = True
+
+		settings = self.settings
+		if 'strict' in settings.features:
+			settings['O'] = os.path.dirname(self._ebuild_path)
+			quiet_setting = settings.get('PORTAGE_QUIET')
+			settings['PORTAGE_QUIET'] = '1'
+			try:
+				success = digestcheck([], settings, strict=True)
+			finally:
+				if quiet_setting:
+					settings['PORTAGE_QUIET'] = quiet_setting
+				else:
+					del settings['PORTAGE_QUIET']
+
+		return success
 
 	def _prefetch_exit(self, prefetcher):
 
