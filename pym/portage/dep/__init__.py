@@ -1635,7 +1635,7 @@ def match_from_list(mydep, candidate_list):
 			mylist.append(x)
 	return mylist
 
-def check_required_use(required_use, use, iuse):
+def check_required_use(required_use, use, iuse_match):
 	"""
 	Checks if the use flags listed in 'use' satisfy all
 	constraints specified in 'constraints'.
@@ -1644,8 +1644,9 @@ def check_required_use(required_use, use, iuse):
 	@type constraints: String
 	@param use: Enabled use flags
 	@param use: List
-	@param iuse: Referenceable use flags
-	@param iuse: List
+	@param iuse_match: Callable that takes a single flag argument and returns
+		True if the flag is matched, false otherwise,
+	@param iuse_match: Callable
 	@rtype: Bool
 	@return: Indicates if REQUIRED_USE constraints are satisfied
 	"""
@@ -1658,7 +1659,7 @@ def check_required_use(required_use, use, iuse):
 			flag = token
 			is_negated = False
 
-		if not flag or not flag in iuse:
+		if not flag or not iuse_match(flag):
 			raise portage.exception.InvalidDependString(
 				_("malformed syntax: '%s'") % required_use)
 

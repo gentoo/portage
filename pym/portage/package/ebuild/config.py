@@ -110,15 +110,19 @@ def _lazy_iuse_regex(iuse_implicit):
 
 class _iuse_implicit_match_cache(object):
 
-	def __init__(self, iuse_implicit_re):
-		self._iuse_implicit_re = iuse_implicit_re
+	def __init__(self, settings):
+		self._iuse_implicit_re = re.compile("^(%s)$" % \
+			"|".join(settings._get_implicit_iuse()))
 		self._cache = {}
 
-	def match(self, flag):
+	def __call__(self, flag):
+		"""
+		Returns True if the flag is matched, False otherwise.
+		"""
 		try:
 			return self._cache[flag]
 		except KeyError:
-			m = self._iuse_implicit_re.match(flag)
+			m = self._iuse_implicit_re.match(flag) is not None
 			self._cache[flag] = m
 			return m
 
@@ -388,7 +392,7 @@ class config(object):
 			self.packages = clone.packages
 			self.useforce_list = clone.useforce_list
 			self.usemask_list = clone.usemask_list
-			self._iuse_implicit_re = clone._iuse_implicit_re
+			self._iuse_implicit_match = clone._iuse_implicit_match
 
 			self.user_profile_dir = copy.deepcopy(clone.user_profile_dir)
 			self.local_config = copy.deepcopy(clone.local_config)
@@ -1060,9 +1064,7 @@ class config(object):
 			if 'parse-eapi-ebuild-head' in self.features:
 				_validate_cache_for_unsupported_eapis = False
 
-			self._iuse_implicit_re = _iuse_implicit_match_cache(
-				re.compile("^(%s)$" % \
-				"|".join(self._get_implicit_iuse())))
+			self._iuse_implicit_match = _iuse_implicit_match_cache(self)
 
 		for k in self._case_insensitive_vars:
 			if k in self:
@@ -1587,7 +1589,7 @@ class config(object):
 		use = set(self["USE"].split())
 		if explicit_iuse is None:
 			explicit_iuse = frozenset(x.lstrip("+-") for x in iuse.split())
-		implicit_iuse_re = self._iuse_implicit_re
+		iuse_implicit_match = self._iuse_implicit_match
 		portage_iuse = self._get_implicit_iuse()
 		portage_iuse.update(explicit_iuse)
 
@@ -1616,7 +1618,7 @@ class config(object):
 		# Allow _* flags from USE_EXPAND wildcards to pass through here.
 		use.difference_update([x for x in use \
 			if (x not in explicit_iuse and \
-			implicit_iuse_re.match(x) is None) and x[-2:] != '_*'])
+			not iuse_implicit_match(x)) and x[-2:] != '_*'])
 
 		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
 		# that they are consistent. For optimal performance, use slice

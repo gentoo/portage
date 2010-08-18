@@ -2036,7 +2036,6 @@ class depgraph(object):
 		missing_licenses = []
 		have_eapi_mask = False
 		pkgsettings = self._frozen_config.pkgsettings[root]
-		implicit_iuse = pkgsettings._get_implicit_iuse()
 		root_config = self._frozen_config.roots[root]
 		portdb = self._frozen_config.roots[root].trees["porttree"].dbapi
 		dbs = self._dynamic_config._filtered_trees[root]["dbs"]
@@ -2672,11 +2671,9 @@ class depgraph(object):
 						eapi_has_required_use(pkg.metadata["EAPI"]):
 						required_use = pkg.metadata["REQUIRED_USE"]
 						use = pkg.use.enabled
-						iuse = self._frozen_config.settings._get_implicit_iuse()
-						iuse.update(pkg.iuse.all)
 						try:
 							required_use_is_sat = portage.dep.check_required_use(
-								pkg.metadata["REQUIRED_USE"], use, iuse)
+								pkg.metadata["REQUIRED_USE"], use, pkg.iuse.is_valid_flag)
 						except portage.exception.InvalidDependString as e:
 							portage.writemsg("!!! Invalid REQUIRED_USE specified by " + \
 								"'%s': %s\n" % (pkg.cpv, str(e)), noiselevel=-1)
@@ -6058,11 +6055,9 @@ def _get_masking_status(pkg, pkgsettings, root_config):
 			eapi_has_required_use(pkg.metadata["EAPI"]):
 			required_use = pkg.metadata["REQUIRED_USE"]
 			use = pkg.use.enabled
-			iuse = pkgsettings._get_implicit_iuse()
-			iuse.update(pkg.iuse.all)
 			try:
 				required_use_is_sat = portage.dep.check_required_use(
-					required_use, use, iuse)
+					required_use, use, pkg.iuse.is_valid_flag)
 			except portage.exception.InvalidDependString:
 				mreasons.append("invalid: REQUIRED_USE")
 			else:

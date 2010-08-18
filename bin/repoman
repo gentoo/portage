@@ -1780,9 +1780,8 @@ for x in scanlist:
 					relative_path + ": REQUIRED_USE" + \
 					" not supported with EAPI='%s'" % (eapi,))
 			try:
-				iuse = repoman_settings._get_implicit_iuse()
-				iuse.update(myaux["IUSE"].split())
-				portage.dep.check_required_use(required_use, "", iuse)
+				portage.dep.check_required_use(required_use, (),
+					pkg.iuse.is_valid_flag)
 			except portage.exception.InvalidDependString as e:
 				stats["REQUIRED_USE.syntax"] = stats["REQUIRED_USE.syntax"] + 1
 				fails["REQUIRED_USE.syntax"].append(
