@@ -8,8 +8,7 @@ import portage
 from portage import os
 from portage.eapi import eapi_has_src_prepare_and_src_configure, \
 	eapi_exports_replace_vars
-from portage.package.ebuild.doebuild import _prepare_env_file, \
-	_prepare_fake_distdir
+from portage.package.ebuild.doebuild import _prepare_fake_distdir
 
 class EbuildExecuter(CompositeTask):
 
@@ -33,12 +32,6 @@ class EbuildExecuter(CompositeTask):
 		settings = self.settings
 		cleanup = 0
 		portage.prepare_build_dirs(pkg.root, settings, cleanup)
-		rval = _prepare_env_file(settings)
-		if rval != os.EX_OK:
-			self.returncode = rval
-			self._current_task = None
-			self.wait()
-			return
 
 		portdb = pkg.root_config.trees['porttree'].dbapi
 		ebuild_path = settings['EBUILD']
