@@ -4186,8 +4186,8 @@ class depgraph(object):
 						for flag, state in zip(affecting_use, use_state):
 							if state == "enabled":
 								current_use.append(flag)
-						reduced_dep = portage.dep.flatten( \
-							portage.dep.use_reduce(portage.dep.paren_reduce(dep), current_use))
+						reduced_dep = portage.dep.use_reduce(dep,
+							uselist=current_use, flat=True)
 
 						if parent_atom not in reduced_dep:
 							#we found a valid solution
