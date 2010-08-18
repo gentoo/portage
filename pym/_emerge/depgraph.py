@@ -4103,9 +4103,8 @@ class depgraph(object):
 		shortest_cycle = None
 		cycles = mygraph.get_cycles(ignore_priority=DepPrioritySatisfiedRange.ignore_medium_soft)
 		for cycle in cycles:
-			if not shortest_cycle or len(shortest_cycle) < len(cycle):
+			if not shortest_cycle or len(cycle) < len(shortest_cycle):
 				shortest_cycle = cycle
-
 		# Display the USE flags that are enabled on nodes that are part
 		# of dependency cycles in case that helps the user decide to
 		# disable some of them.
