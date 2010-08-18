@@ -169,6 +169,9 @@ class UseReduce(TestCase):
 			UseReduceTestCase(
 				"|| ( A B )",
 				expected_result = [ "||", ["A", "B"] ]),
+			#UseReduceTestCase(
+			#	"|| ( ( A B ) C )",
+			#	expected_result = [ "||", [ ["A", "B"], "C"] ]),
 			UseReduceTestCase(
 				"|| ( A || ( B C ) )",
 				expected_result = [ "||", ["A", "||", ["B", "C"]]]),
