@@ -4237,6 +4237,22 @@ class depgraph(object):
 						if ignore_solution:
 							continue
 
+						# Check for conflicts with use.mask and use.force.
+						pkgsettings = self._frozen_config.pkgsettings[parent.root]
+						pkgsettings.setcpv(parent)
+						for flag in solution:
+							if flag.startswith("+"):
+								if flag[1:] in pkgsettings.usemask:
+									ignore_solution = True
+									break
+							else:
+								if flag[1:] in pkgsettings.useforce:
+									ignore_solution = True
+									break
+
+						if ignore_solution:
+							continue
+
 						changes = []
 						for flag in solution:
 							if flag.startswith("+"):
