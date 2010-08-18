@@ -276,21 +276,29 @@ class digraph(object):
 				output("  %s (%s)\n" % (child, priorities[-1],))
 
 	def bfs(self, start, ignore_priority=None):
-	    queue, enqueued = deque([(None, start)]), set([start])
-	    while queue:
-	        parent, n = queue.popleft()
-	        yield parent, n
-	        new = set(self.child_nodes(n, ignore_priority)) - enqueued
-	        enqueued |= new
-	        queue.extend([(n, child) for child in new])
+		if start not in self:
+			raise KeyError(start)
+
+		queue, enqueued = deque([(None, start)]), set([start])
+		while queue:
+			parent, n = queue.popleft()
+			yield parent, n
+			new = set(self.child_nodes(n, ignore_priority)) - enqueued
+			enqueued |= new
+			queue.extend([(n, child) for child in new])
 
 	def shortest_path(self, start, end, ignore_priority=None):
-	    paths = {None: []}
-	    for parent, child in self.bfs(start, ignore_priority):
-	        paths[child] = paths[parent] + [child]
-	        if child == end:
-	            return paths[child]
-	    return []
+		if start not in self:
+			raise KeyError(start)
+		elif end not in self:
+			raise KeyError(end)
+
+		paths = {None: []}
+		for parent, child in self.bfs(start, ignore_priority):
+			paths[child] = paths[parent] + [child]
+			if child == end:
+				return paths[child]
+		return None
 
 	def get_cycles(self, ignore_priority=None, max_length=None):
 		"""
