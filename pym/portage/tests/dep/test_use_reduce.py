@@ -272,6 +272,10 @@ class UseReduce(TestCase):
 				opconvert = True,
 				expected_result = [ ["||", "A", "B"] ]),
 			UseReduceTestCase(
+				"|| ( ( A B ) C )",
+				opconvert = True,
+				expected_result = [ [ "||", ["A", "B"], "C" ] ]),
+			UseReduceTestCase(
 				"|| ( A || ( B C ) )",
 				opconvert = True,
 				expected_result = [ ["||", "A", ["||", "B", "C"]] ]),
