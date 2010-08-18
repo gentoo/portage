@@ -517,7 +517,7 @@ else:
 check_changelog = vcs in ('cvs', 'svn')
 
 # Disable copyright/mtime check if vcs does not preserve mtime (bug #324075).
-check_copyright_mtime = vcs not in ('git',)
+vcs_preserves_mtime = vcs not in ('git',)
 
 vcs_local_opts = repoman_settings.get("REPOMAN_VCS_LOCAL_OPTS", "").split()
 vcs_global_opts = repoman_settings.get("REPOMAN_VCS_GLOBAL_OPTS")
@@ -939,6 +939,7 @@ else:
 	print(green("\nRepoMan scours the neighborhood..."))
 
 new_ebuilds = set()
+modified_ebuilds = set()
 modified_changelogs = set()
 mychanged = []
 mynew = []
@@ -970,6 +971,7 @@ elif vcs == "hg":
 
 if vcs:
 	new_ebuilds.update(x for x in mynew if x.endswith(".ebuild"))
+	modified_ebuilds.update(x for x in mychanged if x.endswith(".ebuild"))
 	modified_changelogs.update(x for x in chain(mychanged, mynew) \
 		if os.path.basename(x) == "ChangeLog")
 
@@ -1791,8 +1793,10 @@ for x in scanlist:
 		# Syntax Checks
 		relative_path = os.path.join(x, y + ".ebuild")
 		full_path = os.path.join(repodir, relative_path)
-		if not check_copyright_mtime:
-			pkg.mtime = None
+		if not vcs_preserves_mtime:
+			if ebuild_path not in new_ebuilds and \
+				ebuild_path not in modified_ebuilds:
+				pkg.mtime = None
 		try:
 			# All ebuilds should have utf_8 encoding.
 			f = codecs.open(_unicode_encode(full_path,
