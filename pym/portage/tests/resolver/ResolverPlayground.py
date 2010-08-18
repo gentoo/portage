@@ -239,7 +239,7 @@ class ResolverPlayground(object):
 		options["--quiet"] = True
 		options["--root"] = self.root
 		options["--config-root"] = self.root
-		options["--root-deps"] = "rdeps"
+		options["--root-deps"] = True
 		if self.debug:
 			options["--debug"] = True
 		# Add a fake _test_ option that can be used for
