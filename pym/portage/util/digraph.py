@@ -310,6 +310,8 @@ class digraph(object):
 			shortest_path = None
 			for child in self.child_nodes(node, ignore_priority):
 				path = self.shortest_path(child, node, ignore_priority)
+				if path is None:
+					continue
 				if not shortest_path or len(shortest_path) > len(path):
 					shortest_path = path
 			if shortest_path:
