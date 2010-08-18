@@ -150,7 +150,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 
 	# config.reset() might have reverted a change made by the caller,
 	# so restore it to it's original value.
-	mysettings["PORTAGE_TMPDIR"] = tmpdir
+	mysettings["PORTAGE_TMPDIR"] = os.path.realpath(tmpdir)
 
 	mysettings.pop("EBUILD_PHASE", None) # remove from backupenv
 	mysettings["EBUILD_PHASE"] = mydo
