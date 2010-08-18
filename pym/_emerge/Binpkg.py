@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.EbuildPhase import EbuildPhase
@@ -16,6 +16,7 @@ from portage import _unicode_encode
 import codecs
 import logging
 from portage.output import colorize
+from portage.package.ebuild.doebuild import _prepare_env_file
 
 class Binpkg(CompositeTask):
 
@@ -253,6 +254,14 @@ class Binpkg(CompositeTask):
 			f.write(str(portage.checksum.perform_md5(pkg_path)) + "\n")
 		finally:
 			f.close()
+
+		rval = _prepare_env_file(self.settings)
+		if rval != os.EX_OK:
+			self._current_phase = None
+			self.returncode = rval
+			self._unlock_builddir()
+			self.wait()
+			return
 
 		# This gives bashrc users an opportunity to do various things
 		# such as remove binary packages after they're installed.
