@@ -1735,7 +1735,7 @@ def check_required_use(required_use, use, iuse_match):
 						ignore = True
 
 				if l and not ignore:
-					stack[level].extend(l)
+					stack[level].append(all(x for x in l))
 			else:
 				raise portage.exception.InvalidDependString(
 					_("malformed syntax: '%s'") % required_use)

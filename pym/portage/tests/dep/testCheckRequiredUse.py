@@ -73,6 +73,24 @@ class TestCheckRequiredUse(TestCase):
 			( "^^ ( || ( a b ) ^^ ( b c ) )", ["a", "c"], ["a", "b", "c"], False),
 			( "^^ ( || ( a b ) ^^ ( b c ) )", ["b", "c"], ["a", "b", "c"], True),
 			( "^^ ( || ( a b ) ^^ ( b c ) )", ["a", "b", "c"], ["a", "b", "c"], True),
+
+			( "|| ( ( a b ) c )", ["a", "b", "c"], ["a", "b", "c"], True),
+			( "|| ( ( a b ) c )", ["b", "c"], ["a", "b", "c"], True),
+			( "|| ( ( a b ) c )", ["a", "c"], ["a", "b", "c"], True),
+			( "|| ( ( a b ) c )", ["a", "b"], ["a", "b", "c"], True),
+			( "|| ( ( a b ) c )", ["a"], ["a", "b", "c"], False),
+			( "|| ( ( a b ) c )", ["b"], ["a", "b", "c"], False),
+			( "|| ( ( a b ) c )", ["c"], ["a", "b", "c"], True),
+			( "|| ( ( a b ) c )", [], ["a", "b", "c"], False),
+
+			( "^^ ( ( a b ) c )", ["a", "b", "c"], ["a", "b", "c"], False),
+			( "^^ ( ( a b ) c )", ["b", "c"], ["a", "b", "c"], True),
+			( "^^ ( ( a b ) c )", ["a", "c"], ["a", "b", "c"], True),
+			( "^^ ( ( a b ) c )", ["a", "b"], ["a", "b", "c"], True),
+			( "^^ ( ( a b ) c )", ["a"], ["a", "b", "c"], False),
+			( "^^ ( ( a b ) c )", ["b"], ["a", "b", "c"], False),
+			( "^^ ( ( a b ) c )", ["c"], ["a", "b", "c"], True),
+			( "^^ ( ( a b ) c )", [], ["a", "b", "c"], False),
 		)
 
 		test_cases_xfail = (
