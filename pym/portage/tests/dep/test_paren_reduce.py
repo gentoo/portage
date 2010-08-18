@@ -18,8 +18,7 @@ class TestParenReduce(TestCase):
 			( "|| ( A || ( B || ( C D ) E ) )", [ "||", ["A", "||", ["B", "||", ["C", "D"], "E"]] ]),
 			( "a? ( A )", ["a?", ["A"]]),
 			
-			( "( || ( ( ( A ) B ) ) )", [ "||", ["A", "B"] ]),
-			( "( || ( || ( ( A ) B ) ) )", [ "||", ["A", "B"] ]),
+			( "( || ( ( ( A ) B ) ) )", ["A", "B"]),
 			( "( || ( || ( ( A ) B ) ) )", [ "||", ["A", "B"] ]),
 			( "|| ( A )", ["A"]),
 			( "( || ( || ( || ( A ) foo? ( B ) ) ) )", [ "||", ["A", "foo?", ["B"] ]]),
@@ -28,6 +27,9 @@ class TestParenReduce(TestCase):
 
 			( "|| ( A ) || ( B )", ["A", "B"]),
 			( "foo? ( A ) foo? ( B )", ["foo?", ["A"], "foo?", ["B"]]),
+
+			( "|| ( ( A B ) C )", [ "||", [ ["A", "B"], "C"] ]),
+			( "|| ( ( A B ) ( C ) )", [ "||", [ ["A", "B"], "C"] ]),
 		)
 		
 		test_cases_xfail = (
@@ -53,7 +55,9 @@ class TestParenReduce(TestCase):
 		)
 
 		for dep_str, expected_result in test_cases:
-			self.assertEqual(paren_reduce(dep_str), expected_result)
+			self.assertEqual(paren_reduce(dep_str), expected_result,
+				"input: '%s' result: %s != %s" % (dep_str,
+				paren_reduce(dep_str), expected_result))
 
 		for dep_str in test_cases_xfail:
 			self.assertRaisesMsg(dep_str,
