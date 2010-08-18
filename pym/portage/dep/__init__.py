@@ -1810,27 +1810,50 @@ def extract_affecting_use(mystr, atom):
 			if level > 0:
 				level -= 1
 				l = stack.pop()
+				is_single = (len(l) == 1 or (len(l)==2 and (l[0] == "||" or l[0][-1] == "?")))
+
+				def ends_in_any_of_dep(k):
+					return k>=0 and stack[k] and stack[k][-1] == "||"
+
+				def ends_in_operator(k):
+					return k>=0 and stack[k] and (stack[k][-1] == "||" or stack[k][-1][-1] == "?")
+
+				def special_append():
+					"""
+					Use extend instead of append if possible. This kills all redundant brackets.
+					"""
+					if is_single and (not stack[level] or not stack[level][-1][-1] == "?"):
+						if len(l) == 1 and isinstance(l[0], list):
+							# l = [[...]]
+							stack[level].extend(l[0])
+						else:
+							stack[level].extend(l)
+					else:	
+						stack[level].append(l)
 
 				if l:
-					if not stack[level] or (stack[level][-1] != "||" and not stack[level][-1][-1] == "?"):
-						#Optimize: ( ( ... ) ) -> ( ... )
+					if not ends_in_any_of_dep(level-1) and not ends_in_operator(level):
+						#Optimize: ( ( ... ) ) -> ( ... ). Make sure there is no '||' hanging around.
 						stack[level].extend(l)
-					elif len(l) == 1 and stack[level][-1] == "||":
+					elif not stack[level]:
+						#An '||' in the level above forces us to keep to brackets.
+						special_append()
+					elif len(l) == 1 and ends_in_any_of_dep(level):
 						#Optimize: || ( A ) -> A
 						stack[level].pop()
-						stack[level].extend(l)
+						special_append()
 					elif len(l) == 2 and (l[0] == "||" or l[0][-1] == "?") and stack[level][-1] in (l[0], "||"):
 						#Optimize: 	|| ( || ( ... ) ) -> || ( ... )
 						#			foo? ( foo? ( ... ) ) -> foo? ( ... )
 						#			|| ( foo? ( ... ) ) -> foo? ( ... )
 						stack[level].pop()
-						stack[level].extend(l)
+						special_append()
 						if l[0][-1] == "?":
 							affecting_use.add(flag(l[0]))
 					else:
 						if stack[level] and stack[level][-1][-1] == "?":
 							affecting_use.add(flag(stack[level][-1]))
-						stack[level].append(l)
+						special_append()
 				else:
 					if stack[level] and (stack[level][-1] == "||" or stack[level][-1][-1] == "?"):
 						stack[level].pop()
