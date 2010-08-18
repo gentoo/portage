@@ -879,22 +879,6 @@ def _prepare_env_file(settings):
 				if e.errno != errno.ENOENT:
 					raise
 			env_stat = None
-	if env_stat is not None:
-		pass
-	else:
-		for var in ("ARCH", ):
-			value = settings.get(var)
-			if value and value.strip():
-				continue
-			msg = _("%(var)s is not set... "
-				"Are you missing the '%(configroot)setc/make.profile' symlink? "
-				"Is the symlink correct? "
-				"Is your portage tree complete?") % \
-				{"var": var, "configroot": settings["PORTAGE_CONFIGROOT"]}
-			for line in wrap(msg, 70):
-				eerror(line, phase="setup", key=settings.mycpv)
-			elog_process(settings.mycpv, settings)
-			return 1
 
 	return os.EX_OK
 

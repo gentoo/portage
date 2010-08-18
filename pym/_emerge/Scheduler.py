@@ -21,6 +21,7 @@ from portage import _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.const import LIBC_PACKAGE_ATOM
 from portage.elog.messages import eerror
+from portage.localization import _
 from portage.output import colorize, create_color_func, red
 bad = create_color_func("BAD")
 from portage.sets import SETPREFIX
@@ -676,6 +677,37 @@ class Scheduler(PollScheduler):
 
 		return os.EX_OK
 
+	def _env_sanity_check(self):
+		"""
+		Verify a sane environment before trying to build anything from source.
+		"""
+		have_src_pkg = False
+		for x in self._mergelist:
+			if isinstance(x, Package) and not x.built:
+				have_src_pkg = True
+				break
+
+		if not have_src_pkg:
+			return os.EX_OK
+
+		for settings in self.pkgsettings.values():
+			for var in ("ARCH", ):
+				value = settings.get(var)
+				if value and value.strip():
+					continue
+				msg = _("%(var)s is not set... "
+					"Are you missing the '%(configroot)setc/make.profile' symlink? "
+					"Is the symlink correct? "
+					"Is your portage tree complete?") % \
+					{"var": var, "configroot": settings["PORTAGE_CONFIGROOT"]}
+
+				out = portage.output.EOutput()
+				for line in textwrap.wrap(msg, 70):
+					out.eerror(line)
+				return 1
+
+		return os.EX_OK
+
 	def _check_manifests(self):
 		# Verify all the manifests now so that the user is notified of failure
 		# as soon as possible.
@@ -987,6 +1019,10 @@ class Scheduler(PollScheduler):
 		failed_pkgs = self._failed_pkgs
 
 		rval = self._generate_digests()
+		if rval != os.EX_OK:
+			return rval
+
+		rval = self._env_sanity_check()
 		if rval != os.EX_OK:
 			return rval
 
