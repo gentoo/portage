@@ -340,6 +340,7 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 			if level > 0:
 				level -= 1
 				l = stack.pop()
+				is_single = (len(l) == 1 or (len(l)==2 and l[0] == "||"))
 				ignore = False
 
 				if flat:
@@ -369,42 +370,43 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 							ignore = True
 						stack[level].pop()
 
+				def ends_in_any_of_dep(k):
+					return k>=0 and stack[k] and stack[k][-1] == "||"
+
+				def special_append():
+					"""
+					Use extend instead of append if possible. This kills all redundant brackets.
+					"""
+					if is_single:
+						if len(l) == 1 and isinstance(l[0], list):
+							# l = [[...]]
+							stack[level].extend(l[0])
+						else:
+							stack[level].extend(l)
+					else:	
+						stack[level].append(l)
+
 				if l and not ignore:
 					#The current list is not empty and we don't want to ignore it because
 					#of an inactive use conditional.
-					if not (level>0 and stack[level-1] and stack[level-1][-1] == "||") \
-						and (not stack[level] or stack[level][-1] != "||"):
-						#Optimize: ( ( ... ) ) -> ( ... )
+					if not ends_in_any_of_dep(level-1) and not ends_in_any_of_dep(level):
+						#Optimize: ( ( ... ) ) -> ( ... ). Make sure there is no '||' hanging around.
 						stack[level].extend(l)
 					elif not stack[level]:
-						stack[level].append(l)
-					elif len(l) == 1 and stack[level][-1] == "||":
-						#Optimize: || ( A ) -> A
+						#An '||' in the level above forces us to keep to brackets.
+						special_append()
+					elif is_single and ends_in_any_of_dep(level):
+						#Optimize: || ( A ) -> A,  || ( || ( ... ) ) -> || ( ... )
 						stack[level].pop()
-						stack[level].extend(l)
-					elif len(l) == 2 and l[0] == "||" and stack[level][-1] == "||":
-						#Optimize: 	|| ( || ( ... ) ) -> || ( ... )
-						stack[level].pop()
-						stack[level].extend(l)
+						special_append()
 					else:
-						if opconvert and stack[level] and stack[level][-1] == "||":
+						if opconvert and ends_in_any_of_dep(level):
 							#In opconvert mode, we have to move the operator from the level
 							#above into the current list.
 							stack[level].pop()
 							stack[level].append(["||"] + l)
 						else:
-							stack[level].append(l)
-
-				if level > 0 and stack[level-1] and stack[level-1][-1] == "||":
-					all_singles = True
-					for x in stack[level]:
-						if isinstance(x, list) and len(x) > 1:
-							all_singles =  False
-							break
-					if all_singles:
-						for i, x in enumerate(stack[level]):
-							if isinstance(x, list):
-								stack[level][i] = x[0]
+							special_append()
 
 			else:
 				raise portage.exception.InvalidDependString(
@@ -467,12 +469,6 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 	if need_simple_token:
 		raise portage.exception.InvalidDependString(
 			_("Missing file name at end of string: '%s'") % (depstr,))
-
-	if len(stack[0]) == 1 and isinstance(stack[0][0], list):
-		if opconvert and stack[0][0] and stack[0][0][0] == "||":
-			pass
-		else:
-			stack[0] = stack[0][0]
 
 	return stack[0]
 

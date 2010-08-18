@@ -173,6 +173,9 @@ class UseReduce(TestCase):
 				"|| ( ( A B ) C )",
 				expected_result = [ "||", [ ["A", "B"], "C"] ]),
 			UseReduceTestCase(
+				"|| ( ( A B ) ( C ) )",
+				expected_result = [ "||", [ ["A", "B"], "C"] ]),
+			UseReduceTestCase(
 				"|| ( A || ( B C ) )",
 				expected_result = [ "||", ["A", "||", ["B", "C"]]]),
 			UseReduceTestCase(
@@ -293,11 +296,11 @@ class UseReduce(TestCase):
 			UseReduceTestCase(
 				"( || ( || ( ( A ) B ) ) )",
 				opconvert = True,
-				expected_result = [ ["||", "A", "B"] ]),
+				expected_result = ["||", "A", "B"]),
 			UseReduceTestCase(
 				"( || ( || ( ( A ) B ) ) )",
 				opconvert = True,
-				expected_result = [ ["||", "A", "B"] ]),
+				expected_result = ["||", "A", "B"]),
 			UseReduceTestCase(
 				"|| ( A )",
 				opconvert = True,
@@ -309,7 +312,7 @@ class UseReduce(TestCase):
 				"( || ( || ( || ( A ) foo? ( B ) ) ) )",
 				uselist = ["foo"],
 				opconvert = True,
-				expected_result = [ ["||", "A", "B"] ]),
+				expected_result = ["||", "A", "B"]),
 			UseReduceTestCase(
 				"( || ( || ( bar? ( A ) || ( foo? ( B ) ) ) ) )",
 				opconvert = True,
@@ -318,7 +321,7 @@ class UseReduce(TestCase):
 				"( || ( || ( bar? ( A ) || ( foo? ( B ) ) ) ) )",
 				uselist = ["foo", "bar"],
 				opconvert = True,
-				expected_result = [ ["||", "A", "B"] ]),
+				expected_result = ["||", "A", "B"]),
 			UseReduceTestCase(
 				"A || ( ) foo? ( ) B",
 				opconvert = True,
