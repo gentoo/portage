@@ -169,9 +169,9 @@ class UseReduce(TestCase):
 			UseReduceTestCase(
 				"|| ( A B )",
 				expected_result = [ "||", ["A", "B"] ]),
-			#UseReduceTestCase(
-			#	"|| ( ( A B ) C )",
-			#	expected_result = [ "||", [ ["A", "B"], "C"] ]),
+			UseReduceTestCase(
+				"|| ( ( A B ) C )",
+				expected_result = [ "||", [ ["A", "B"], "C"] ]),
 			UseReduceTestCase(
 				"|| ( A || ( B C ) )",
 				expected_result = [ "||", ["A", "||", ["B", "C"]]]),
@@ -183,7 +183,7 @@ class UseReduce(TestCase):
 				expected_result = [ "||", ["A", "||", ["B", "||", ["C", "D"], "E"]] ]),
 			UseReduceTestCase(
 				"( || ( ( ( A ) B ) ) )",
-				expected_result = [ "||", ["A", "B"] ] ),
+				expected_result = ["A", "B"] ),
 			UseReduceTestCase(
 				"( || ( || ( ( A ) B ) ) )",
 				expected_result = [ "||", ["A", "B"] ]),
@@ -285,7 +285,7 @@ class UseReduce(TestCase):
 			UseReduceTestCase(
 				"( || ( ( ( A ) B ) ) )",
 				opconvert = True,
-				expected_result = [ ["||", "A", "B"] ] ),
+				expected_result = [ "A", "B" ] ),
 			UseReduceTestCase(
 				"( || ( || ( ( A ) B ) ) )",
 				opconvert = True,
@@ -496,7 +496,12 @@ class UseReduce(TestCase):
 		)
 
 		for test_case in test_cases:
-			self.assertEqual(test_case.run(), test_case.expected_result)
+			# If it fails then show the input, since lots of our
+			# test cases have the same output but different input,
+			# making it difficult deduce which test has failed.
+			self.assertEqual(test_case.run(), test_case.expected_result,
+				"input: '%s' result: %s != %s" % (test_case.deparray,
+				test_case.run(), test_case.expected_result))
 
 		for test_case in test_cases_xfail:
 			self.assertRaisesMsg(test_case.deparray, (InvalidDependString, ValueError), test_case.run)

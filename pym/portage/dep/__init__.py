@@ -372,9 +372,12 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 				if l and not ignore:
 					#The current list is not empty and we don't want to ignore it because
 					#of an inactive use conditional.
-					if not stack[level] or stack[level][-1] != "||":
+					if not (level>0 and stack[level-1] and stack[level-1][-1] == "||") \
+						and (not stack[level] or stack[level][-1] != "||"):
 						#Optimize: ( ( ... ) ) -> ( ... )
 						stack[level].extend(l)
+					elif not stack[level]:
+						stack[level].append(l)
 					elif len(l) == 1 and stack[level][-1] == "||":
 						#Optimize: || ( A ) -> A
 						stack[level].pop()
@@ -391,6 +394,18 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 							stack[level].append(["||"] + l)
 						else:
 							stack[level].append(l)
+
+				if level > 0 and stack[level-1] and stack[level-1][-1] == "||":
+					all_singles = True
+					for x in stack[level]:
+						if isinstance(x, list) and len(x) > 1:
+							all_singles =  False
+							break
+					if all_singles:
+						for i, x in enumerate(stack[level]):
+							if isinstance(x, list):
+								stack[level][i] = x[0]
+
 			else:
 				raise portage.exception.InvalidDependString(
 					_("no matching '%s' for '%s' in '%s', token %s") % ("(", ")", depstr, pos+1))
@@ -452,6 +467,12 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 	if need_simple_token:
 		raise portage.exception.InvalidDependString(
 			_("Missing file name at end of string: '%s'") % (depstr,))
+
+	if len(stack[0]) == 1 and isinstance(stack[0][0], list):
+		if opconvert and stack[0][0] and stack[0][0][0] == "||":
+			pass
+		else:
+			stack[0] = stack[0][0]
 
 	return stack[0]
 
