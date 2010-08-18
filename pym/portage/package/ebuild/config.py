@@ -108,6 +108,20 @@ def _lazy_iuse_regex(iuse_implicit):
 	regex = regex.replace("\\.\\*", ".*")
 	return regex
 
+class _iuse_implicit_match_cache(object):
+
+	def __init__(self, iuse_implicit_re):
+		self._iuse_implicit_re = iuse_implicit_re
+		self._cache = {}
+
+	def match(self, flag):
+		try:
+			return self._cache[flag]
+		except KeyError:
+			m = self._iuse_implicit_re.match(flag)
+			self._cache[flag] = m
+			return m
+
 class _local_repo_config(object):
 	__slots__ = ('aliases', 'eclass_overrides', 'masters', 'name',)
 	def __init__(self, name, repo_opts):
@@ -1046,8 +1060,9 @@ class config(object):
 			if 'parse-eapi-ebuild-head' in self.features:
 				_validate_cache_for_unsupported_eapis = False
 
-			self._iuse_implicit_re = re.compile("^(%s)$" % \
-				"|".join(self._get_implicit_iuse()))
+			self._iuse_implicit_re = _iuse_implicit_match_cache(
+				re.compile("^(%s)$" % \
+				"|".join(self._get_implicit_iuse())))
 
 		for k in self._case_insensitive_vars:
 			if k in self:
@@ -1425,10 +1440,12 @@ class config(object):
 
 		pkg = None
 		built_use = None
+		explicit_iuse = None
 		if not isinstance(mycpv, basestring):
 			pkg = mycpv
 			mycpv = pkg.cpv
 			mydb = pkg.metadata
+			explicit_iuse = pkg.iuse.all
 			args_hash = (mycpv, id(pkg))
 			if pkg.built:
 				built_use = pkg.use.enabled
@@ -1568,12 +1585,15 @@ class config(object):
 		# be done for every setcpv() call since practically every
 		# package has different IUSE.
 		use = set(self["USE"].split())
-		iuse_implicit = self._get_implicit_iuse()
-		iuse_implicit.update(x.lstrip("+-") for x in iuse.split())
+		if explicit_iuse is None:
+			explicit_iuse = frozenset(x.lstrip("+-") for x in iuse.split())
+		implicit_iuse_re = self._iuse_implicit_re
+		portage_iuse = self._get_implicit_iuse()
+		portage_iuse.update(explicit_iuse)
 
 		# PORTAGE_IUSE is not always needed so it's lazily evaluated.
 		self.configdict["pkg"].addLazySingleton(
-			"PORTAGE_IUSE", _lazy_iuse_regex, iuse_implicit)
+			"PORTAGE_IUSE", _lazy_iuse_regex, portage_iuse)
 
 		ebuild_force_test = self.get("EBUILD_FORCE_TEST") == "1"
 		if ebuild_force_test and \
@@ -1595,7 +1615,8 @@ class config(object):
 
 		# Allow _* flags from USE_EXPAND wildcards to pass through here.
 		use.difference_update([x for x in use \
-			if x not in iuse_implicit and x[-2:] != '_*'])
+			if (x not in explicit_iuse and \
+			implicit_iuse_re.match(x) is None) and x[-2:] != '_*'])
 
 		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
 		# that they are consistent. For optimal performance, use slice
@@ -1603,10 +1624,10 @@ class config(object):
 		use_expand_split = set(x.lower() for \
 			x in self.get('USE_EXPAND', '').split())
 		lazy_use_expand = self._lazy_use_expand(use, self.usemask,
-			iuse_implicit, use_expand_split, self._use_expand_dict)
+			portage_iuse, use_expand_split, self._use_expand_dict)
 
 		use_expand_iuses = {}
-		for x in iuse_implicit:
+		for x in portage_iuse:
 			x_split = x.split('_')
 			if len(x_split) == 1:
 				continue
