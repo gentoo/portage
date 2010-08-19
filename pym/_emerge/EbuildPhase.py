@@ -9,7 +9,8 @@ from portage.util import writemsg, writemsg_stdout
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.doebuild:_check_build_log,' + \
-		'_post_phase_cmds,_post_src_install_chost_fix,' + \
+		'_post_phase_cmds,_post_phase_userpriv_perms,' + \
+		'_post_src_install_chost_fix,' + \
 		'_post_src_install_uid_fix'
 )
 from portage import os
@@ -45,14 +46,32 @@ class EbuildPhase(CompositeTask):
 
 	def _start_ebuild(self):
 
+		# Don't open the log file during the clean phase since the
+		# open file can result in an nfs lock on $T/build.log which
+		# prevents the clean phase from removing $T.
+		logfile = self.settings.get("PORTAGE_LOG_FILE")
+		if self.phase in ("clean", "cleanrm"):
+			logfile = None
+
 		ebuild_process = EbuildProcess(actionmap=self.actionmap,
-			background=self.background,
+			background=self.background, logfile=logfile,
 			phase=self.phase, scheduler=self.scheduler,
 			settings=self.settings)
 
 		self._start_task(ebuild_process, self._ebuild_exit)
 
 	def _ebuild_exit(self, ebuild_process):
+
+		fail = False
+		if self._default_exit(ebuild_process) != os.EX_OK:
+			if self.phase == "test" and \
+				"test-fail-continue" in self.settings.features:
+				pass
+			else:
+				fail = True
+
+		if not fail:
+			self.returncode = None
 
 		if self.phase == "install":
 			out = portage.StringIO()
@@ -75,11 +94,12 @@ class EbuildPhase(CompositeTask):
 				if log_file is not None:
 					log_file.close()
 
-		if self._default_exit(ebuild_process) != os.EX_OK:
+		if fail:
 			self._die_hooks()
 			return
 
 		settings = self.settings
+		_post_phase_userpriv_perms(settings)
 
 		if self.phase == "install":
 			out = portage.StringIO()
