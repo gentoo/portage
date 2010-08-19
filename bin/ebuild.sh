@@ -780,7 +780,7 @@ into() {
 			install -d "${D}${DESTTREE}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
-				helpers_die "$0 failed"
+				helpers_die "${FUNCNAME[0]} failed"
 				return $ret
 			fi
 		fi
@@ -796,7 +796,7 @@ insinto() {
 			install -d "${D}${INSDESTTREE}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
-				helpers_die "$0 failed"
+				helpers_die "${FUNCNAME[0]} failed"
 				return $ret
 			fi
 		fi
@@ -812,7 +812,7 @@ exeinto() {
 			install -d "${D}${_E_EXEDESTTREE_}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
-				helpers_die "$0 failed"
+				helpers_die "${FUNCNAME[0]} failed"
 				return $ret
 			fi
 		fi
@@ -828,7 +828,7 @@ docinto() {
 			install -d "${D}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
-				helpers_die "$0 failed"
+				helpers_die "${FUNCNAME[0]} failed"
 				return $ret
 			fi
 		fi

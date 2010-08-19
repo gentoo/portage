@@ -25,5 +25,5 @@ fi
 
 ${MAKE:-make} ${MAKEOPTS} ${EXTRA_EMAKE} "$@"
 ret=$?
-[[ $ret -ne 0 ]] && helpers_die "$0 failed"
+[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
 exit $ret
