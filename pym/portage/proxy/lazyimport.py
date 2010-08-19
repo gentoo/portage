@@ -189,6 +189,9 @@ def lazyimport(scope, *args):
 			already_imported = modules.get(name)
 			fromlist = fromlist.split(',')
 			for s in fromlist:
+				if not s:
+					# This happens if there's an extra comma in fromlist.
+					raise ValueError('Empty module attribute name')
 				alias = s.split('@', 1)
 				if len(alias) == 1:
 					alias = alias[0]
