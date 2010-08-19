@@ -20,8 +20,7 @@ import codecs
 
 class EbuildPhase(CompositeTask):
 
-	__slots__ = ("actionmap", "background", "phase",
-		"scheduler", "settings")
+	__slots__ = ("actionmap", "phase", "settings")
 
 	def _start(self):
 
