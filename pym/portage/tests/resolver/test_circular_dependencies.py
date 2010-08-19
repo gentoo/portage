@@ -6,34 +6,57 @@ from portage.tests.resolver.ResolverPlayground import ResolverPlayground, Resolv
 
 class CircularDependencyTestCase(TestCase):
 
+	#TODO:
+	#	use config change by autounmask
+	#	conflict on parent's parent
+	#	difference in RDEPEND and DEPEND
+	#	is there anything else than priority buildtime and runtime?
+	#	play with use.{mask,force}
+	#	play with REQUIRED_USE
+	
+
 	def testCircularDependency(self):
 		ebuilds = {
-			"dev-libs/A-1": { "DEPEND": "foo? ( =dev-libs/B-1 )", "IUSE": "+foo", "EAPI": 1 }, 
-			"dev-libs/A-2": { "DEPEND": "=dev-libs/B-1" }, 
-			"dev-libs/A-3": { "DEPEND": "foo? ( =dev-libs/B-2 )", "IUSE": "+foo", "EAPI": 1 }, 
-			"dev-libs/B-1": { "DEPEND": "dev-libs/C dev-libs/D" }, 
-			"dev-libs/B-2": { "DEPEND": "bar? ( dev-libs/C dev-libs/D )", "IUSE": "+bar", "EAPI": 1 }, 
-			"dev-libs/C-1": { "DEPEND": "dev-libs/A" }, 
-			"dev-libs/D-1": { "DEPEND": "dev-libs/E " }, 
-			"dev-libs/E-1": { "DEPEND": "dev-libs/F" }, 
-			"dev-libs/F-1": { "DEPEND": "dev-libs/B" }, 
-			
-			"dev-libs/Z-1": { "DEPEND": "!baz? ( dev-libs/Y )", "IUSE": "baz" }, 
+			"dev-libs/Z-1": { "DEPEND": "foo? ( !bar? ( dev-libs/Y ) )", "IUSE": "+foo bar", "EAPI": 1 }, 
+			"dev-libs/Z-2": { "DEPEND": "foo? ( dev-libs/Y ) !bar? ( dev-libs/Y )", "IUSE": "+foo bar", "EAPI": 1 }, 
+			"dev-libs/Z-3": { "DEPEND": "foo? ( !bar? ( dev-libs/Y ) ) foo? ( dev-libs/Y ) !bar? ( dev-libs/Y )", "IUSE": "+foo bar", "EAPI": 1 }, 
 			"dev-libs/Y-1": { "DEPEND": "dev-libs/Z" },
+			"dev-libs/W-1": { "DEPEND": "dev-libs/Z[foo] dev-libs/Y", "EAPI": 2 },
+			"dev-libs/W-2": { "DEPEND": "dev-libs/Z[foo=] dev-libs/Y", "IUSE": "+foo", "EAPI": 2 },
+			"dev-libs/W-3": { "DEPEND": "dev-libs/Z[bar] dev-libs/Y", "EAPI": 2 },
 			}
 
 		test_cases = (
+			#Simple tests
 			ResolverPlaygroundTestCase(
-				["=dev-libs/A-1"],
+				["=dev-libs/Z-1"],
+				circular_dependency_solutions = { "dev-libs/Y-1": frozenset([frozenset([("foo", False)]), frozenset([("bar", True)])])},
 				success = False),
 			ResolverPlaygroundTestCase(
-				["=dev-libs/A-2"],
+				["=dev-libs/Z-2"],
+				circular_dependency_solutions = { "dev-libs/Y-1": frozenset([frozenset([("foo", False), ("bar", True)])])},
 				success = False),
 			ResolverPlaygroundTestCase(
-				["=dev-libs/A-3"],
+				["=dev-libs/Z-3"],
+				circular_dependency_solutions = { "dev-libs/Y-1": frozenset([frozenset([("foo", False), ("bar", True)])])},
+				success = False),
+
+			#Conflict on parent
+			ResolverPlaygroundTestCase(
+				["=dev-libs/W-1"],
+				circular_dependency_solutions = {},
 				success = False),
 			ResolverPlaygroundTestCase(
-				["dev-libs/Z"],
+				["=dev-libs/W-2"],
+				circular_dependency_solutions = { "dev-libs/Y-1": frozenset([frozenset([("foo", False), ("bar", True)])])},
+				success = False),
+
+			#Conflict with autounmask
+			ResolverPlaygroundTestCase(
+				["=dev-libs/W-3"],
+				options = { "--autounmask": True },
+				circular_dependency_solutions = { "dev-libs/Y-1": frozenset([frozenset([("foo", False)])])},
+				use_changes = { "dev-libs/Z-3": {"bar": True}},
 				success = False),
 		)
 
