@@ -4157,6 +4157,11 @@ class depgraph(object):
 						break
 				affecting_use = portage.dep.extract_affecting_use(dep, parent_atom)
 				
+				# Make sure we don't want to change a flag that is in use.mask or use.force.
+				pkgsettings = self._frozen_config.pkgsettings[parent.root]
+				pkgsettings.setcpv(parent)
+				affecting_use.difference_update(pkgsettings.usemask, pkgsettings.useforce)
+				
 				if affecting_use:
 					affecting_use = list(affecting_use)
 					#We iterate over all possible settings of these use flags and gather
@@ -4233,22 +4238,6 @@ class depgraph(object):
 
 							if ignore_solution:
 								break
-
-						if ignore_solution:
-							continue
-
-						# Check for conflicts with use.mask and use.force.
-						pkgsettings = self._frozen_config.pkgsettings[parent.root]
-						pkgsettings.setcpv(parent)
-						for flag in solution:
-							if flag.startswith("+"):
-								if flag[1:] in pkgsettings.usemask:
-									ignore_solution = True
-									break
-							else:
-								if flag[1:] in pkgsettings.useforce:
-									ignore_solution = True
-									break
 
 						if ignore_solution:
 							continue
