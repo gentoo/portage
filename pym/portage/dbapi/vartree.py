@@ -15,7 +15,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.elog:elog_process',
 	'portage.locks:lockdir,unlockdir',
 	'portage.output:bold,colorize',
-	'portage.package.ebuild.doebuild:doebuild,doebuild_environment,' + \
+	'portage.package.ebuild.doebuild:doebuild_environment,' + \
 		'_spawn_phase',
 	'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
 	'portage.update:fixdbentries',
@@ -2178,7 +2178,7 @@ class dblink(object):
 		builddir_lock = None
 		catdir_lock = None
 		scheduler = self._scheduler
-		retval = -1
+		retval = os.EX_OK
 		failures = 0
 		try:
 			if myebuildpath:
@@ -2300,20 +2300,25 @@ class dblink(object):
 
 						# process logs created during pre/postrm
 						elog_process(self.mycpv, self.settings)
-						if retval == os.EX_OK:
-							if scheduler is None:
-								doebuild(myebuildpath, "cleanrm", self.myroot,
-									self.settings, tree="vartree",
-									mydbapi=self.vartree.dbapi,
-									vartree=self.vartree)
-							else:
-								scheduler.dblinkEbuildPhase(
-									self, self.vartree.dbapi,
-									myebuildpath, "cleanrm")
+
+					if retval == os.EX_OK:
+						# myebuildpath might be None, so ensure
+						# it has a sane value for the clean phase,
+						# even though it won't really be sourced.
+						myebuildpath = os.path.join(self.dbdir,
+							self.pkg + ".ebuild")
+						doebuild_environment(myebuildpath, "cleanrm", self.myroot,
+							self.settings, 0, 0, self.vartree.dbapi)
+						if scheduler is None:
+							_spawn_phase("cleanrm", self.settings)
+						else:
+							scheduler.dblinkEbuildPhase(
+								self, self.vartree.dbapi,
+								myebuildpath, "cleanrm")
 				finally:
 					unlockdir(builddir_lock)
 			try:
-				if myebuildpath and not catdir_lock:
+				if not catdir_lock:
 					# Lock catdir for removal if empty.
 					catdir_lock = lockdir(catdir)
 			finally:
@@ -4463,10 +4468,10 @@ class dblink(object):
 					if myebuild is None:
 						myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
 
+					doebuild_environment(myebuild, "clean", self.myroot,
+						self.settings, 0, 0, mydbapi)
 					if self._scheduler is None:
-						doebuild(myebuild, "clean", myroot,
-							self.settings, tree=self.treetype,
-							mydbapi=mydbapi, vartree=self.vartree)
+						_spawn_phase("clean", self.settings)
 					else:
 						self._scheduler.dblinkEbuildPhase(
 							self, mydbapi, myebuild, "clean")
