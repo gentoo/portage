@@ -2218,9 +2218,7 @@ class dblink(object):
 			if myebuildpath:
 				ebuild_phase = "postrm"
 				if scheduler is None:
-					retval = doebuild(myebuildpath, ebuild_phase, self.myroot,
-						self.settings, use_cache=0, tree=self.treetype,
-						mydbapi=self.vartree.dbapi, vartree=self.vartree)
+					retval = _spawn_phase(ebuild_phase, self.settings)
 				else:
 					retval = scheduler.dblinkEbuildPhase(
 						self, self.vartree.dbapi, myebuildpath, ebuild_phase)
@@ -3787,9 +3785,7 @@ class dblink(object):
 		# run preinst script
 		if scheduler is None:
 			showMessage(_(">>> Merging %(cpv)s to %(destroot)s\n") % {"cpv":self.mycpv, "destroot":destroot})
-			a = doebuild(myebuild, "preinst", destroot, self.settings,
-				use_cache=0, tree=self.treetype, mydbapi=mydbapi,
-				vartree=self.vartree)
+			a = _spawn_phase("preinst", self.settings)
 		else:
 			a = scheduler.dblinkEbuildPhase(
 				self, mydbapi, myebuild, "preinst")
@@ -4009,9 +4005,7 @@ class dblink(object):
 		self.settings.backup_changes("PORTAGE_UPDATE_ENV")
 		try:
 			if scheduler is None:
-				a = doebuild(myebuild, "postinst", destroot, self.settings,
-					use_cache=0, tree=self.treetype, mydbapi=mydbapi,
-					vartree=self.vartree)
+				a = _spawn_phase("postinst", self.settings)
 				if a == os.EX_OK:
 					showMessage(_(">>> %s merged.\n") % self.mycpv)
 			else:
