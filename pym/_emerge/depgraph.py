@@ -56,6 +56,7 @@ from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 from _emerge.UnmergeDepPriority import UnmergeDepPriority
 
 from _emerge.resolver.slot_collision import slot_conflict_handler
+from _emerge.resolver.circular_dependency import circular_dependency_handler
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -170,6 +171,7 @@ class _dynamic_depgraph_config(object):
 		self._parent_atoms = {}
 		self._slot_conflict_parent_atoms = set()
 		self._slot_conflict_handler = None
+		self._circular_dependency_handler = None
 		self._serialized_tasks_cache = None
 		self._scheduler_graph = None
 		self._displayed_list = None
@@ -4100,170 +4102,27 @@ class depgraph(object):
 		return retlist, scheduler_graph
 
 	def _show_circular_deps(self, mygraph):
-		shortest_cycle = None
-		cycles = mygraph.get_cycles(ignore_priority=DepPrioritySatisfiedRange.ignore_medium_soft)
-		for cycle in cycles:
-			if not shortest_cycle or len(cycle) < len(shortest_cycle):
-				shortest_cycle = cycle
-		# Display the USE flags that are enabled on nodes that are part
-		# of dependency cycles in case that helps the user decide to
-		# disable some of them.
-		display_order = []
-		tempgraph = mygraph.copy()
-		while not tempgraph.empty():
-			nodes = tempgraph.leaf_nodes()
-			if not nodes:
-				node = tempgraph.order[0]
-			else:
-				node = nodes[0]
-			display_order.append(node)
-			tempgraph.remove(node)
-		display_order.reverse()
+		self._dynamic_config._circular_dependency_handler = \
+			circular_dependency_handler(self, mygraph)
+		handler = self._dynamic_config._circular_dependency_handler
+
 		self._frozen_config.myopts.pop("--quiet", None)
 		self._frozen_config.myopts["--verbose"] = True
 		self._frozen_config.myopts["--tree"] = True
 		portage.writemsg("\n\n", noiselevel=-1)
-		self.display(display_order)
+		self.display(handler.merge_list)
 		prefix = colorize("BAD", " * ")
 		portage.writemsg("\n", noiselevel=-1)
 		portage.writemsg(prefix + "Error: circular dependencies:\n",
 			noiselevel=-1)
 		portage.writemsg("\n", noiselevel=-1)
 
-		suggestions = []
-		if shortest_cycle:
-			indent = ""
-			for id, pkg in enumerate(shortest_cycle):
-				if id > 0:
-					parent = shortest_cycle[id-1]
-				else:
-					parent = shortest_cycle[-1]
-
-				priorities = mygraph.nodes[parent][0][pkg]
-				if id > 0:
-					writemsg(indent + "%s (%s)\n" % (pkg, priorities[-1],), noiselevel=-1)
-				else:
-					writemsg(indent + str(pkg) + " depends on\n", noiselevel=-1)
-
-				if priorities[-1].buildtime:
-					dep = parent.metadata["DEPEND"]
-				elif priorities[-1].runtime:
-					dep = parent.metadata["RDEPEND"]
-				parent_atoms = self._dynamic_config._parent_atoms.get(pkg)
-				for ppkg, atom in parent_atoms:
-					if ppkg == parent:
-						changed_parent = ppkg
-						parent_atom = atom.unevaluated_atom
-						break
-				affecting_use = portage.dep.extract_affecting_use(dep, parent_atom)
-				
-				# Make sure we don't want to change a flag that is in use.mask or use.force.
-				pkgsettings = self._frozen_config.pkgsettings[parent.root]
-				pkgsettings.setcpv(parent)
-				affecting_use.difference_update(pkgsettings.usemask, pkgsettings.useforce)
-				
-				if affecting_use:
-					affecting_use = list(affecting_use)
-					#We iterate over all possible settings of these use flags and gather
-					#a set of possible changes
-					use_state = []
-					for flag in affecting_use:
-						use_state.append("disabled") 
-					
-					def _next_use_state(state, id=None):
-						if id is None:
-							id = len(state)-1
-							
-						if id == 0 and state[0] == "enabled":
-							return False
-
-						if state[id] == "disabled":
-							state[id] = "enabled"
-							for i in range(id+1,len(state)):
-								state[i] = "disabled"
-							return True
-						else:
-							return _next_use_state(state, id-1)
-
-					solutions = set()
-					while(True):
-						current_use = []
-						for flag, state in zip(affecting_use, use_state):
-							if state == "enabled":
-								current_use.append(flag)
-						reduced_dep = portage.dep.use_reduce(dep,
-							uselist=current_use, flat=True)
-
-						if parent_atom not in reduced_dep:
-							#we found a valid solution
-							solution = []
-							for flag, state in zip(affecting_use, use_state):
-								if state == "enabled" and \
-									flag not in parent.use.enabled:
-									solution.append("+" + flag)
-								elif state == "disabled" and \
-									flag in parent.use.enabled:
-									solution.append("-" + flag)
-							solutions.add(frozenset(solution))
-						if not _next_use_state(use_state):
-							break
-					for solution in solutions:
-						ignore_solution = False
-						for other_solution in solutions:
-							if solution is other_solution:
-								continue
-							if solution.issuperset(other_solution):
-								ignore_solution = True
-						if ignore_solution:
-							continue
-
-						#Check if a USE change conflicts with use requirements of the parents.
-						#If a requiremnet is hard, ignore the suggestion.
-						#If the requirment is conditional, warn the user that other changes might be needed.
-						followup_change = False
-						parent_parent_atoms = self._dynamic_config._parent_atoms.get(changed_parent)
-						for ppkg, atom in parent_parent_atoms:
-							atom = atom.unevaluated_atom
-							if not atom.use:
-								continue
-
-							for flag in solution:
-								flag = flag[1:] #flag has a +/- prefix
-								if flag in atom.use.enabled \
-									or flag in atom.use.disabled:
-									ignore_solution = True
-									break
-								elif atom.use.conditional and flag in atom.use.conditional:
-									followup_change = True
-
-							if ignore_solution:
-								break
-
-						if ignore_solution:
-							continue
-
-						changes = []
-						for flag in solution:
-							if flag.startswith("+"):
-								changes.append(colorize("red", flag))
-							else:
-								changes.append(colorize("blue", flag))
-
-						msg = "- %s (Change USE: %s)\n" \
-							% (parent.cpv, " ".join(changes))
-						if followup_change:
-							msg += " (This change might require USE changes on parent packages.)"
-						suggestions.append(msg)
-
-				indent += " "
-
-			pkg = shortest_cycle[0]
-			parent = shortest_cycle[-1]
-			priorities = mygraph.nodes[parent][0][pkg]
-			writemsg(indent + "%s (%s)\n" % (pkg, priorities[-1],), noiselevel=-1)
-		else:
+		if handler.circular_dep_message is None:
 			mygraph.debug_print()
+		else:
+			portage.writemsg(handler.circular_dep_message, noiselevel=-1)
 
+		suggestions = handler.suggestions
 		if suggestions:
 			writemsg("\n\nIt might be possible to break this cycle\n", noiselevel=-1)
 			if len(suggestions) == 1:
@@ -4274,17 +4133,16 @@ class depgraph(object):
 			writemsg("".join(suggestions), noiselevel=-1)
 			writemsg("\nNote that this change can be reverted, once the package has" + \
 				" been installed.\n", noiselevel=-1)
-			if len(cycles) > 3:
+			if handler.large_cycle_count:
 				writemsg("\nNote that the dependency graph contains a lot of cycles.\n" + \
 					"Several changes might be required to resolve all cycles.\n" + \
 					"Temporarily changing some use flag for all packages might be the better option.\n", noiselevel=-1)
 		else:
-			writemsg("\n", noiselevel=-1)
+			writemsg("\n\n", noiselevel=-1)
 			writemsg(prefix + "Note that circular dependencies " + \
 				"can often be avoided by temporarily\n", noiselevel=-1)
 			writemsg(prefix + "disabling USE flags that trigger " + \
 				"optional dependencies.\n", noiselevel=-1)
-
 
 	def _show_merge_list(self):
 		if self._dynamic_config._serialized_tasks_cache is not None and \
