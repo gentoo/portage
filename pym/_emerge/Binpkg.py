@@ -3,6 +3,7 @@
 
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.BinpkgFetcher import BinpkgFetcher
+from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
 from _emerge.BinpkgExtractorAsync import BinpkgExtractorAsync
 from _emerge.CompositeTask import CompositeTask
 from _emerge.BinpkgVerifier import BinpkgVerifier
@@ -16,7 +17,6 @@ from portage import _unicode_encode
 import codecs
 import logging
 from portage.output import colorize
-from portage.package.ebuild.doebuild import _prepare_env_file
 
 class Binpkg(CompositeTask):
 
@@ -255,10 +255,13 @@ class Binpkg(CompositeTask):
 		finally:
 			f.close()
 
-		rval = _prepare_env_file(self.settings)
-		if rval != os.EX_OK:
-			self._current_phase = None
-			self.returncode = rval
+		env_extractor = BinpkgEnvExtractor(background=self.background,
+			scheduler=self.scheduler, settings=self.settings)
+
+		self._start_task(env_extractor, self._env_extractor_exit)
+
+	def _env_extractor_exit(self, env_extractor):
+		if self._default_exit(env_extractor) != os.EX_OK:
 			self._unlock_builddir()
 			self.wait()
 			return
@@ -267,12 +270,11 @@ class Binpkg(CompositeTask):
 		# such as remove binary packages after they're installed.
 		settings = self.settings
 		settings.setcpv(self.pkg)
-		settings["PORTAGE_BINPKG_FILE"] = pkg_path
+		settings["PORTAGE_BINPKG_FILE"] = self._pkg_path
 		settings.backup_changes("PORTAGE_BINPKG_FILE")
 
-		phase = "setup"
 		setup_phase = EbuildPhase(background=self.background,
-			phase=phase, scheduler=self.scheduler,
+			phase="setup", scheduler=self.scheduler,
 			settings=settings)
 
 		setup_phase.addExitListener(self._setup_exit)

@@ -52,6 +52,7 @@ from portage.util import apply_recursive_permissions, \
 	writemsg, writemsg_stdout, write_atomic
 from portage.util.lafilefixer import rewrite_lafile	
 from portage.versions import _pkgsplit
+from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.EbuildSpawnProcess import EbuildSpawnProcess
 from _emerge.TaskScheduler import TaskScheduler
@@ -839,48 +840,31 @@ def _check_temp_dir(settings):
 	return os.EX_OK
 
 def _prepare_env_file(settings):
-	env_file = os.path.join(settings["T"], "environment")
-	env_stat = None
-	saved_env = None
-	try:
-		env_stat = os.stat(env_file)
-	except OSError as e:
-		if e.errno != errno.ENOENT:
-			raise
-	if not env_stat:
-		saved_env = os.path.join(
-			os.path.dirname(settings['EBUILD']), "environment.bz2")
-		if not os.path.isfile(saved_env):
-			saved_env = None
-	if saved_env:
-		retval = os.system(
-			"bzip2 -dc %s > %s" % \
-			(_shell_quote(saved_env),
-			_shell_quote(env_file)))
-		try:
-			env_stat = os.stat(env_file)
-		except OSError as e:
-			if e.errno != errno.ENOENT:
-				raise
-		if os.WIFEXITED(retval) and \
-			os.WEXITSTATUS(retval) == os.EX_OK and \
-			env_stat and env_stat.st_size > 0:
-			# This is a signal to ebuild.sh, so that it knows to filter
-			# out things like SANDBOX_{DENY,PREDICT,READ,WRITE} that
-			# would be preserved between normal phases.
-			open(_unicode_encode(env_file + '.raw'), 'w')
-		else:
-			writemsg(_("!!! Error extracting saved "
-				"environment: '%s'\n") % \
-				saved_env, noiselevel=-1)
-			try:
-				os.unlink(env_file)
-			except OSError as e:
-				if e.errno != errno.ENOENT:
-					raise
-			env_stat = None
+	"""
+	Extract environment.bz2 if it exists, but only if the destination
+	environment file doesn't already exist. There are lots of possible
+	states when doebuild() calls this function, and we want to avoid
+	clobbering an existing environment file.
+	"""
 
-	return os.EX_OK
+	task_scheduler = TaskScheduler()
+	env_extractor = BinpkgEnvExtractor(background=False,
+		scheduler=task_scheduler.sched_iface, settings=settings)
+
+	if env_extractor.dest_env_exists():
+		# There are lots of possible states when doebuild()
+		# calls this function, and we want to avoid
+		# clobbering an existing environment file.
+		return os.EX_OK
+
+	if not env_extractor.saved_env_exists():
+		# If the environment.bz2 doesn't exist, then ebuild.sh will
+		# source the ebuild as a fallback.
+		return os.EX_OK
+
+	task_scheduler.add(env_extractor)
+	task_scheduler.run()
+	return env_extractor.returncode
 
 def _prepare_fake_distdir(settings, alist):
 	orig_distdir = settings["DISTDIR"]

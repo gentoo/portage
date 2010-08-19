@@ -16,7 +16,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.locks:lockdir,unlockdir',
 	'portage.output:bold,colorize',
 	'portage.package.ebuild.doebuild:doebuild,doebuild_environment,' + \
-		'_prepare_env_file',
+		'_spawn_phase',
 	'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
 	'portage.update:fixdbentries',
 	'portage.util:apply_secpass_permissions,ConfigProtect,ensure_dirs,' + \
@@ -2194,14 +2194,10 @@ class dblink(object):
 					catdir_lock = None
 
 				prepare_build_dirs(self.myroot, self.settings, 1)
-				_prepare_env_file(self.settings)
 				log_path = self.settings.get("PORTAGE_LOG_FILE")
 
 				if scheduler is None:
-					retval = doebuild(myebuildpath, ebuild_phase, self.myroot,
-						self.settings, cleanup=cleanup, use_cache=0,
-						mydbapi=self.vartree.dbapi, tree=self.treetype,
-						vartree=self.vartree)
+					retval = _spawn_phase('prerm', self.settings)
 				else:
 					retval = scheduler.dblinkEbuildPhase(
 						self, self.vartree.dbapi, myebuildpath, ebuild_phase)

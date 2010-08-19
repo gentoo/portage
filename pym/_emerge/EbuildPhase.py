@@ -1,6 +1,7 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.EbuildProcess import EbuildProcess
 from _emerge.CompositeTask import CompositeTask
@@ -23,6 +24,27 @@ class EbuildPhase(CompositeTask):
 		"scheduler", "settings")
 
 	def _start(self):
+
+		if self.phase == 'prerm':
+			env_extractor = BinpkgEnvExtractor(background=self.background,
+				scheduler=self.scheduler, settings=self.settings)
+			if env_extractor.saved_env_exists():
+				self._start_task(env_extractor, self._env_extractor_exit)
+				return
+			# If the environment.bz2 doesn't exist, then ebuild.sh will
+			# source the ebuild as a fallback.
+
+		self._start_ebuild()
+
+	def _env_extractor_exit(self, env_extractor):
+		if self._default_exit(env_extractor) != os.EX_OK:
+			self._unlock_builddir()
+			self.wait()
+			return
+
+		self._start_ebuild()
+
+	def _start_ebuild(self):
 
 		ebuild_process = EbuildProcess(actionmap=self.actionmap,
 			background=self.background,
