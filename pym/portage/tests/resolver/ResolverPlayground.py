@@ -280,6 +280,7 @@ class ResolverPlaygroundTestCase(object):
 			"use_changes": None,
 			"unstable_keywords": None,
 			"slot_collision_solutions": None,
+			"circular_dependency_solutions": None,
 			}
 		
 		self.all_permutations = kwargs.pop("all_permutations", False)
@@ -330,6 +331,7 @@ class ResolverPlaygroundResult(object):
 		self.use_changes = None
 		self.unstable_keywords = None
 		self.slot_collision_solutions = None
+		self.circular_dependency_solutions = None
 
 		if self.depgraph._dynamic_config._serialized_tasks_cache is not None:
 			self.mergelist = []
@@ -366,3 +368,9 @@ class ResolverPlaygroundResult(object):
 							changes[flag] = False
 					s[pkg.cpv] = changes
 				self.slot_collision_solutions.append(s)
+
+		if self.depgraph._dynamic_config._circular_dependency_handler is not None:
+			handler = self.depgraph._dynamic_config._circular_dependency_handler
+			sol = handler.solutions
+			self.circular_dependency_solutions = dict( zip([x.cpv for x in sol.keys()], sol.values()) )
+			
