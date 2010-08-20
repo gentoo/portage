@@ -919,7 +919,7 @@ class vardbapi(dbapi):
 	def cpv_inject(self, mycpv):
 		"injects a real package into our on-disk database; assumes mycpv is valid and doesn't already exist"
 		os.makedirs(self.getpath(mycpv))
-		counter = self.counter_tick(self.root, mycpv=mycpv)
+		counter = self.counter_tick(mycpv=mycpv)
 		# write local package counter so that emerge clean does the right thing
 		write_atomic(self.getpath(mycpv, filename="COUNTER"), str(counter))
 
@@ -1374,10 +1374,10 @@ class vardbapi(dbapi):
 					pass
 		self._bump_mtime(cpv)
 
-	def counter_tick(self, myroot, mycpv=None):
-		return self.counter_tick_core(myroot, incrementing=1, mycpv=mycpv)
+	def counter_tick(self, myroot=None, mycpv=None):
+		return self.counter_tick_core(incrementing=1, mycpv=mycpv)
 
-	def get_counter_tick_core(self, myroot, mycpv=None):
+	def get_counter_tick_core(self, myroot=None, mycpv=None):
 		"""
 		Use this method to retrieve the counter instead
 		of having to trust the value of a global counter
@@ -1451,9 +1451,9 @@ class vardbapi(dbapi):
 
 		return max_counter + 1
 
-	def counter_tick_core(self, myroot, incrementing=1, mycpv=None):
+	def counter_tick_core(self, myroot=None, incrementing=1, mycpv=None):
 		"This method will grab the next COUNTER value and record it back to the global file.  Returns new counter value."
-		counter = self.get_counter_tick_core(myroot, mycpv=mycpv) - 1
+		counter = self.get_counter_tick_core(mycpv=mycpv) - 1
 		if incrementing:
 			#increment counter
 			counter += 1
@@ -3826,7 +3826,7 @@ class dblink(object):
 			self.copyfile(inforoot+"/"+x)
 
 		# write local package counter for recording
-		counter = self.vartree.dbapi.counter_tick(self.myroot, mycpv=self.mycpv)
+		counter = self.vartree.dbapi.counter_tick(mycpv=self.mycpv)
 		codecs.open(_unicode_encode(os.path.join(self.dbtmpdir, 'COUNTER'),
 			encoding=_encodings['fs'], errors='strict'),
 			'w', encoding=_encodings['repo.content'], errors='backslashreplace'
