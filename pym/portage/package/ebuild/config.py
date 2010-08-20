@@ -723,8 +723,30 @@ class config(object):
 			self.configdict["env"] = LazyItemsDict(self.backupenv)
 
 			# make.globals should not be relative to config_root
-			# because it only contains constants.
-			for x in (GLOBAL_CONFIG_PATH,):
+			# because it only contains constants. However, if EPREFIX
+			# is set then there are two possible scenarios:
+			# 1) If $ROOT == "/" then make.globals should be
+			#    relative to EPREFIX.
+			# 2) If $ROOT != "/" then the correct location of
+			#    make.globals needs to be specified in the constructor
+			#    parameters, since it's a property of the host system
+			#    (and the current config represents the target system).
+			global_config_path = GLOBAL_CONFIG_PATH
+			if eprefix:
+				if target_root == "/":
+					# case (1) above
+					global_config_path = os.path.join(eprefix,
+						GLOBAL_CONFIG_PATH.lstrip(os.sep))
+				else:
+					# case (2) above
+					# For now, just assume make.globals is relative
+					# to EPREFIX.
+					# TODO: Pass in more info to the constructor,
+					# so we know the host system configuration.
+					global_config_path = os.path.join(eprefix,
+						GLOBAL_CONFIG_PATH.lstrip(os.sep))
+
+			for x in (global_config_path,):
 				self.mygcfg = getconfig(os.path.join(x, "make.globals"),
 					expand=expand_map)
 				if self.mygcfg:
