@@ -1357,12 +1357,10 @@ class vardbapi(dbapi):
 		return results
 
 	def aux_update(self, cpv, values):
-		self._bump_mtime(cpv)
-		cat, pkg = catsplit(cpv)
-		mylink = dblink(cat, pkg, self.root, self.settings,
-		treetype="vartree", vartree=self.vartree)
+		mylink = self._dblink(cpv)
 		if not mylink.exists():
 			raise KeyError(cpv)
+		self._bump_mtime(cpv)
 		self._clear_pkg_cache(mylink)
 		for k, v in values.items():
 			if v:
@@ -1478,8 +1476,8 @@ class vardbapi(dbapi):
 
 	def _dblink(self, cpv):
 		category, pf = catsplit(cpv)
-		return dblink(category, pf, self.root,
-			self.settings, vartree=self.vartree, treetype="vartree")
+		return dblink(category, pf, settings=self.settings,
+			vartree=self.vartree, treetype="vartree")
 
 	def removeFromContents(self, pkg, paths, relative_paths=True):
 		"""
@@ -1908,7 +1906,7 @@ class dblink(object):
 	# scheduler each time this many files are processed.
 	_file_merge_yield_interval = 20
 
-	def __init__(self, cat, pkg, myroot, mysettings, treetype=None,
+	def __init__(self, cat, pkg, myroot=None, settings=None, treetype=None,
 		vartree=None, blockers=None, scheduler=None):
 		"""
 		Creates a DBlink object for a given CPV.
@@ -1918,16 +1916,21 @@ class dblink(object):
 		@type cat: String
 		@param pkg: Package (PV)
 		@type pkg: String
-		@param myroot: Typically ${ROOT}
+		@param myroot: ignored, settings['ROOT'] is used instead
 		@type myroot: String (Path)
-		@param mysettings: Typically portage.config
-		@type mysettings: An instance of portage.config
+		@param settings: Typically portage.settings
+		@type settings: portage.config
 		@param treetype: one of ['porttree','bintree','vartree']
 		@type treetype: String
 		@param vartree: an instance of vartree corresponding to myroot.
 		@type vartree: vartree
 		"""
-		
+
+		if settings is None:
+			raise TypeError("settings argument is required")
+
+		mysettings = settings
+		myroot = settings['ROOT']
 		self.cat = cat
 		self.pkg = pkg
 		self.mycpv = self.cat + "/" + self.pkg
@@ -1935,8 +1938,7 @@ class dblink(object):
 		self.mysplit[0] = "%s/%s" % (self.cat, self.mysplit[0])
 		self.treetype = treetype
 		if vartree is None:
-			from portage import db
-			vartree = db[myroot]["vartree"]
+			vartree = portage.db[myroot]["vartree"]
 		self.vartree = vartree
 		self._blockers = blockers
 		self._scheduler = scheduler
@@ -2109,7 +2111,7 @@ class dblink(object):
 		self.contentscache = pkgfiles
 		return pkgfiles
 
-	def unmerge(self, pkgfiles=None, trimworld=1, cleanup=1,
+	def unmerge(self, pkgfiles=None, trimworld=None, cleanup=True,
 		ldpath_mtimes=None, others_in_slot=None):
 		"""
 		Calls prerm
@@ -2120,7 +2122,7 @@ class dblink(object):
 		
 		@param pkgfiles: files to unmerge (generally self.getcontents() )
 		@type pkgfiles: Dictionary
-		@param trimworld: Remove CPV from world file if True, not if False
+		@param trimworld: Unused
 		@type trimworld: Boolean
 		@param cleanup: cleanup to pass to doebuild (see doebuild)
 		@type cleanup: Boolean
@@ -2137,6 +2139,13 @@ class dblink(object):
 		The caller must ensure that lockdb() and unlockdb() are called
 		before and after this method.
 		"""
+
+		if trimworld is not None:
+			warnings.warn("The trimworld parameter of the " + \
+				"portage.dbapi.vartree.dblink.unmerge()" + \
+				" method is now unused.",
+				DeprecationWarning, stacklevel=2)
+
 		self.vartree.dbapi._bump_mtime(self.mycpv)
 		showMessage = self._display_merge
 		if self.vartree.dbapi._categories is not None:
@@ -2153,7 +2162,7 @@ class dblink(object):
 				if cur_cpv == self.mycpv:
 					continue
 				others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
-					self.vartree.root, self.settings, vartree=self.vartree,
+					settings=self.settings, vartree=self.vartree,
 					treetype="vartree"))
 
 			retval = self._security_check([self] + others_in_slot)
@@ -2424,7 +2433,7 @@ class dblink(object):
 				if cur_cpv == self.mycpv:
 					continue
 				others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
-					self.vartree.root, self.settings,
+					settings=self.settings,
 					vartree=self.vartree, treetype="vartree"))
 
 		dest_root = self._eroot
@@ -3537,7 +3546,7 @@ class dblink(object):
 			# Clone the config in case one of these has to be unmerged since
 			# we need it to have private ${T} etc... for things like elog.
 			others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
-				self.vartree.root, config(clone=self.settings),
+				settings=config(clone=self.settings),
 				vartree=self.vartree, treetype="vartree",
 				scheduler=self._scheduler))
 
@@ -3972,8 +3981,8 @@ class dblink(object):
 			dblnk._linkmap_broken = self._linkmap_broken
 			dblnk.settings["REPLACED_BY_VERSION"] = portage.versions.cpv_getversion(self.mycpv)
 			dblnk.settings.backup_changes("REPLACED_BY_VERSION")
-			unmerge_rval = dblnk.unmerge(trimworld=0,
-				ldpath_mtimes=prev_mtimes, others_in_slot=others_in_slot)
+			unmerge_rval = dblnk.unmerge(ldpath_mtimes=prev_mtimes,
+				others_in_slot=others_in_slot)
 			dblnk.settings.pop("REPLACED_BY_VERSION", None)
 
 			if unmerge_rval == os.EX_OK:
@@ -4577,21 +4586,36 @@ class dblink(object):
 		"Is this a regular package (does it have a CATEGORY file?  A dblink can be virtual *and* regular)"
 		return os.path.exists(os.path.join(self.dbdir, "CATEGORY"))
 
-def merge(mycat, mypkg, pkgloc, infloc, myroot, mysettings, myebuild=None,
+def merge(mycat, mypkg, pkgloc, infloc,
+	myroot=None, settings=None, myebuild=None,
 	mytree=None, mydbapi=None, vartree=None, prev_mtimes=None, blockers=None,
 	scheduler=None):
-	if not os.access(myroot, os.W_OK):
-		writemsg(_("Permission denied: access('%s', W_OK)\n") % myroot,
+	"""
+	@param myroot: ignored, settings['EROOT'] is used instead
+	"""
+	myroot = None
+	if settings is None:
+		raise TypeError("settings argument is required")
+	if not os.access(settings['EROOT'], os.W_OK):
+		writemsg(_("Permission denied: access('%s', W_OK)\n") % settings['EROOT'],
 			noiselevel=-1)
 		return errno.EACCES
-	mylink = dblink(mycat, mypkg, myroot, mysettings, treetype=mytree,
+	mylink = dblink(mycat, mypkg, settings=settings, treetype=mytree,
 		vartree=vartree, blockers=blockers, scheduler=scheduler)
-	return mylink.merge(pkgloc, infloc, myroot, myebuild,
+	return mylink.merge(pkgloc, infloc, myebuild=myebuild,
 		mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 
-def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None,
+def unmerge(cat, pkg, myroot=None, settings=None,
+	mytrimworld=None, vartree=None,
 	ldpath_mtimes=None, scheduler=None):
-	mylink = dblink(cat, pkg, myroot, mysettings, treetype="vartree",
+	"""
+	@param myroot: ignored, settings['EROOT'] is used instead
+	@param mytrimworld: ignored
+	"""
+	myroot = None
+	if settings is None:
+		raise TypeError("settings argument is required")
+	mylink = dblink(cat, pkg, settings=settings, treetype="vartree",
 		vartree=vartree, scheduler=scheduler)
 	vartree = mylink.vartree
 	try:
@@ -4599,8 +4623,7 @@ def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None,
 		if mylink.exists():
 			vartree.dbapi.plib_registry.load()
 			vartree.dbapi.plib_registry.pruneNonExisting()
-			retval = mylink.unmerge(trimworld=mytrimworld, cleanup=1,
-				ldpath_mtimes=ldpath_mtimes)
+			retval = mylink.unmerge(ldpath_mtimes=ldpath_mtimes)
 			if retval == os.EX_OK:
 				mylink.delete()
 			return retval
