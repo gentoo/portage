@@ -1766,7 +1766,7 @@ class vardbapi(dbapi):
 
 class vartree(object):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
-	def __init__(self, root=None, virtual=None, clone=None, categories=None,
+	def __init__(self, root=None, virtual=None, categories=None,
 		settings=None):
 
 		if settings is None:
