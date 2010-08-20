@@ -132,11 +132,11 @@ class circular_dependency_handler(object):
 			use_state = []
 			for flag in affecting_use:
 				use_state.append("disabled")
-			
+
 			def _next_use_state(state, id=None):
 				if id is None:
 					id = len(state)-1
-					
+
 				if id == 0 and state[0] == "enabled":
 					return False
 
@@ -171,6 +171,7 @@ class circular_dependency_handler(object):
 							flag in use:
 							solution.add((flag, False))
 					solutions.add(frozenset(solution))
+
 				if not _next_use_state(use_state):
 					break
 
@@ -190,7 +191,7 @@ class circular_dependency_handler(object):
 				followup_change = False
 				parent_parent_atoms = self.depgraph._dynamic_config._parent_atoms.get(changed_parent)
 				for ppkg, atom in parent_parent_atoms:
-					
+
 					atom = atom.unevaluated_atom
 					if not atom.use:
 						continue
@@ -222,6 +223,6 @@ class circular_dependency_handler(object):
 				if followup_change:
 					msg += " (This change might require USE changes on parent packages.)"
 				suggestions.append(msg)
-				final_solutions.setdefault(pkg, set()).add(frozenset(solution))
-		
+				final_solutions.setdefault(pkg, set()).add(solution)
+
 		return final_solutions, suggestions
