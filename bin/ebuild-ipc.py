@@ -2,7 +2,7 @@
 # Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #
-# This is a helper which which ebuild processes can use
+# This is a helper which ebuild processes can use
 # to communicate with portage's main python process.
 
 import os
