@@ -108,9 +108,22 @@ def _spawn_phase(phase, settings, actionmap=None, **kwargs):
 	task_scheduler.run()
 	return ebuild_phase.returncode
 
-def doebuild_environment(myebuild, mydo, myroot, mysettings,
-	debug, use_cache, mydbapi):
+def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
+	debug=False, use_cache=None, db=None):
+	"""
+	The myroot and use_cache parameters are unused.
+	"""
+	myroot = None
+	use_cache = None
 
+	if settings is None:
+		raise TypeError("settings argument is required")
+
+	if db is None:
+		raise TypeError("db argument is required")
+
+	mysettings = settings
+	mydbapi = db
 	ebuild_path = os.path.abspath(myebuild)
 	pkg_dir     = os.path.dirname(ebuild_path)
 
@@ -276,7 +289,8 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 		mydo in ('compile', 'config', 'configure', 'info',
 		'install', 'nofetch', 'postinst', 'postrm', 'preinst',
 		'prepare', 'prerm', 'setup', 'test', 'unpack'):
-		mykv,err1=ExtractKernelVersion(os.path.join(myroot, "usr/src/linux"))
+		mykv, err1 = ExtractKernelVersion(
+			os.path.join(mysettings['EROOT'], "usr/src/linux"))
 		if mykv:
 			# Regular source tree
 			mysettings["KV"]=mykv
