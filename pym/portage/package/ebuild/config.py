@@ -475,8 +475,6 @@ class config(object):
 			check_var_directory("PORTAGE_CONFIGROOT", config_root)
 			abs_user_config = os.path.join(config_root, USER_CONFIG_PATH)
 
-			self.depcachedir = DEPCACHE_PATH
-
 			if not config_profile_path:
 				config_profile_path = \
 					os.path.join(config_root, PROFILE_PATH)
@@ -1059,6 +1057,23 @@ class config(object):
 
 			self["PORTAGE_GID"] = str(portage_gid)
 			self.backup_changes("PORTAGE_GID")
+
+			self.depcachedir = DEPCACHE_PATH
+			if eprefix:
+				# See comments about make.globals and EPREFIX
+				# above. DEPCACHE_PATH is similar.
+				if target_root == "/":
+					# case (1) above
+					self.depcachedir = os.path.join(eprefix,
+						DEPCACHE_PATH.lstrip(os.sep))
+				else:
+					# case (2) above
+					# For now, just assume DEPCACHE_PATH is relative
+					# to EPREFIX.
+					# TODO: Pass in more info to the constructor,
+					# so we know the host system configuration.
+					self.depcachedir = os.path.join(eprefix,
+						DEPCACHE_PATH.lstrip(os.sep))
 
 			if self.get("PORTAGE_DEPCACHEDIR", None):
 				self.depcachedir = self["PORTAGE_DEPCACHEDIR"]
