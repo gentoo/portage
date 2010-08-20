@@ -498,7 +498,9 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	
 #cache expansions of constant strings
 cexpand={}
-def varexpand(mystring, mydict={}):
+def varexpand(mystring, mydict=None):
+	if mydict is None:
+		mydict = {}
 	newstring = cexpand.get(" "+mystring, None)
 	if newstring is not None:
 		return newstring
