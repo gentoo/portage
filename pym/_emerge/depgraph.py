@@ -998,18 +998,18 @@ class depgraph(object):
 			edepend["DEPEND"] = ""
 
 		if removal_action:
-			bdeps_root = myroot
+			depend_root = myroot
 		else:
-			bdeps_root = "/"
+			depend_root = "/"
 			root_deps = self._frozen_config.myopts.get("--root-deps")
 			if root_deps is not None:
 				if root_deps is True:
-					bdeps_root = myroot
+					depend_root = myroot
 				elif root_deps == "rdeps":
 					edepend["DEPEND"] = ""
 
 		deps = (
-			(bdeps_root, edepend["DEPEND"],
+			(depend_root, edepend["DEPEND"],
 				self._priority(buildtime=(not pkg.built),
 				optional=pkg.built),
 				pkg.built),
