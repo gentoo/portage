@@ -2,6 +2,7 @@ from __future__ import print_function
 
 from _emerge.AtomArg import AtomArg
 from _emerge.PackageArg import PackageArg
+from portage.dep import check_required_use
 from portage.output import colorize
 from portage.sets.base import InternalPackageSet
 from portage.util import writemsg
@@ -714,6 +715,23 @@ class slot_conflict_handler(object):
 					break
 
 			if not is_valid_solution:
+				break
+
+		#Make sure the changes don't violate REQUIRED_USE
+		for pkg in required_changes:
+			required_use = pkg.metadata["REQUIRED_USE"]
+			if not required_use:
+				continue
+
+			use = set(_pkg_use_enabled(pkg))
+			for flag, state in required_changes[pkg].items():
+				if state == "enabled":
+					use.add(flag)
+				else:
+					use.discard(flag)
+
+			if not check_required_use(required_use, use, pkg.iuse.is_valid_flag):
+				is_valid_solution = False
 				break
 
 		if is_valid_solution and required_changes:
