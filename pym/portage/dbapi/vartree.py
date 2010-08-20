@@ -2870,7 +2870,14 @@ class dblink(object):
 		return False
 
 	def _linkmap_rebuild(self, **kwargs):
-		if self._linkmap_broken:
+		"""
+		Rebuild the self.linkmap if it's not broken due to missing
+		scanelf binary. Also, return early if preserve-libs is disabled
+		and the preserve-libs registry is empty.
+		"""
+		if self._linkmap_broken or \
+			("preserve-libs" not in self.settings.features and \
+			not self.vartree.dbapi.plib_registry.hasEntries()):
 			return
 		try:
 			self.vartree.dbapi.linkmap.rebuild(**kwargs)
@@ -3048,7 +3055,8 @@ class dblink(object):
 		Find preserved libraries that don't have any consumers left.
 		"""
 
-		if self._linkmap_broken:
+		if self._linkmap_broken or \
+			not self.vartree.dbapi.plib_registry.hasEntries():
 			return {}
 
 		# Since preserved libraries can be consumers of other preserved
