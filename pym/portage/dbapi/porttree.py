@@ -1060,7 +1060,7 @@ class portagetree(object):
 		"""
 		Constructor for a PortageTree
 		
-		@param root: ${ROOT}, defaults to '/', see make.conf(5)
+		@param root: deprectated, defaults to settings['ROOT']
 		@type root: String/Path
 		@param virtual: UNUSED
 		@type virtual: No Idea
@@ -1072,8 +1072,7 @@ class portagetree(object):
 			settings = portage.settings
 		self.settings = settings
 
-		self.root = settings['ROOT']
-		if root is not None and root != self.root:
+		if root is not None and root != settings['ROOT']:
 			warnings.warn("The root parameter of the " + \
 				"portage.dbapi.porttree.portagetree" + \
 				" constructor is now unused. Use " + \
@@ -1083,6 +1082,15 @@ class portagetree(object):
 		self.portroot = settings["PORTDIR"]
 		self.virtual = virtual
 		self.dbapi = portdbapi(mysettings=settings)
+
+	@property
+	def root(self):
+		warnings.warn("The root attribute of " + \
+			"portage.dbapi.porttree.portagetree" + \
+			" is deprecated. Use " + \
+			"settings['ROOT'] instead.",
+			DeprecationWarning, stacklevel=2)
+		return self.settings['ROOT']
 
 	def dep_bestmatch(self,mydep):
 		"compatibility method"
