@@ -16,7 +16,7 @@ from portage import digraph
 from portage.const import PORTAGE_PACKAGE_ATOM
 from portage.dbapi import dbapi
 from portage.dbapi.dep_expand import dep_expand
-from portage.dep import Atom, extract_affecting_use
+from portage.dep import Atom, extract_affecting_use, check_required_use
 from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use
 from portage.output import bold, blue, colorize, create_color_func, darkblue, \
 	darkgreen, green, nc_len, red, teal, turquoise, yellow
@@ -2046,8 +2046,9 @@ class depgraph(object):
 			# descending order
 			cpv_list.reverse()
 			for cpv in cpv_list:
-				metadata, mreasons  = get_mask_info(root_config, cpv,
-					pkgsettings, db, pkg_type, built, installed, db_keys)
+				metadata, mreasons  = get_mask_info(root_config, cpv, pkgsettings, db, \
+					pkg_type, built, installed, db_keys, _pkg_use_enabled=self._pkg_use_enabled)
+
 				if metadata is not None:
 					pkg = self._pkg(cpv, pkg_type, root_config,
 						installed=installed)
@@ -2396,7 +2397,7 @@ class depgraph(object):
 
 		pkgsettings = self._frozen_config.pkgsettings[pkg.root]
 		root_config = self._frozen_config.roots[pkg.root]
-		mreasons = _get_masking_status(pkg, pkgsettings, root_config)
+		mreasons = _get_masking_status(pkg, pkgsettings, root_config, use=self._pkg_use_enabled(pkg))
 		if len(mreasons) == 1 and \
 			mreasons[0].hint == 'unstable keyword':
 			return True
@@ -2470,6 +2471,12 @@ class depgraph(object):
 			return False
 
 		if new_changes != old_changes:
+			#Don't do the change if it violates REQUIRED_USE.
+			required_use = pkg.metadata["REQUIRED_USE"]
+			if required_use and check_required_use(required_use, old_use, pkg.iuse.is_valid_flag) and \
+				not check_required_use(required_use, new_use, pkg.iuse.is_valid_flag):
+				return old_use
+			
 			self._dynamic_config._needed_use_config_changes[pkg] = (new_use, new_changes)
 			if want_restart_for_use_change(pkg, new_use):
 				self._dynamic_config._need_restart = True
@@ -2666,9 +2673,9 @@ class depgraph(object):
 					if not pkg.built and pkg.metadata["REQUIRED_USE"] and \
 						eapi_has_required_use(pkg.metadata["EAPI"]):
 						required_use = pkg.metadata["REQUIRED_USE"]
-						use = pkg.use.enabled
+						use = self._pkg_use_enabled(pkg)
 						try:
-							required_use_is_sat = portage.dep.check_required_use(
+							required_use_is_sat = check_required_use(
 								pkg.metadata["REQUIRED_USE"], use, pkg.iuse.is_valid_flag)
 						except portage.exception.InvalidDependString as e:
 							portage.writemsg("!!! Invalid REQUIRED_USE specified by " + \
@@ -3537,7 +3544,7 @@ class depgraph(object):
 			try:
 				portage_rdepend = self._select_atoms_highest_available(
 					running_root, running_portage.metadata["RDEPEND"],
-					myuse=running_portage.use.enabled,
+					myuse=self._pkg_use_enabled(running_portage),
 					parent=running_portage, strict=False)
 			except portage.exception.InvalidDependString as e:
 				portage.writemsg("!!! Invalid RDEPEND in " + \
@@ -5118,7 +5125,7 @@ class depgraph(object):
 					if affecting_use:
 						usedep = []
 						for flag in affecting_use:
-							if flag in node.use.enabled:
+							if flag in self._pkg_use_enabled(node):
 								usedep.append(flag)
 							else:
 								usedep.append("-"+flag)
@@ -5258,7 +5265,7 @@ class depgraph(object):
 		for pkg in self._dynamic_config._masked_license_updates:
 			root_config = pkg.root_config
 			pkgsettings = self._frozen_config.pkgsettings[pkg.root]
-			mreasons = get_masking_status(pkg, pkgsettings, root_config)
+			mreasons = get_masking_status(pkg, pkgsettings, root_config, use=self._pkg_use_enabled(pkg))
 			masked_packages.append((root_config, pkgsettings,
 				pkg.cpv, pkg.metadata, mreasons))
 		if masked_packages:
@@ -5273,7 +5280,7 @@ class depgraph(object):
 		for pkg in self._dynamic_config._masked_installed:
 			root_config = pkg.root_config
 			pkgsettings = self._frozen_config.pkgsettings[pkg.root]
-			mreasons = get_masking_status(pkg, pkgsettings, root_config)
+			mreasons = get_masking_status(pkg, pkgsettings, root_config, use=self._pkg_use_enabled)
 			masked_packages.append((root_config, pkgsettings,
 				pkg.cpv, pkg.metadata, mreasons))
 		if masked_packages:
@@ -5940,7 +5947,7 @@ def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 	return (success, mydepgraph, dropped_tasks)
 
 def get_mask_info(root_config, cpv, pkgsettings,
-	db, pkg_type, built, installed, db_keys):
+	db, pkg_type, built, installed, db_keys, _pkg_use_enabled=None):
 	eapi_masked = False
 	try:
 		metadata = dict(zip(db_keys,
@@ -5959,7 +5966,12 @@ def get_mask_info(root_config, cpv, pkgsettings,
 		else:
 			pkg = Package(type_name=pkg_type, root_config=root_config,
 				cpv=cpv, built=built, installed=installed, metadata=metadata)
-			mreasons = get_masking_status(pkg, pkgsettings, root_config)
+
+			modified_use = None
+			if _pkg_use_enabled is not None:
+				modified_use = _pkg_use_enabled(pkg)
+
+			mreasons = get_masking_status(pkg, pkgsettings, root_config, use=modified_use)
 	return metadata, mreasons
 
 def show_masked_packages(masked_packages):
@@ -6028,11 +6040,11 @@ def show_blocker_docs_link():
 	writemsg("section of the Gentoo Linux x86 Handbook (architecture is irrelevant):\n\n", noiselevel=-1)
 	writemsg("http://www.gentoo.org/doc/en/handbook/handbook-x86.xml?full=1#blocked\n\n", noiselevel=-1)
 
-def get_masking_status(pkg, pkgsettings, root_config):
+def get_masking_status(pkg, pkgsettings, root_config, use=None):
 	return [mreason.message for \
-		mreason in _get_masking_status(pkg, pkgsettings, root_config)]
+		mreason in _get_masking_status(pkg, pkgsettings, root_config, use=use)]
 
-def _get_masking_status(pkg, pkgsettings, root_config):
+def _get_masking_status(pkg, pkgsettings, root_config, use=None):
 
 	mreasons = _getmaskingstatus(
 		pkg, settings=pkgsettings,
@@ -6051,16 +6063,17 @@ def _get_masking_status(pkg, pkgsettings, root_config):
 		if pkg.metadata["REQUIRED_USE"] and \
 			eapi_has_required_use(pkg.metadata["EAPI"]):
 			required_use = pkg.metadata["REQUIRED_USE"]
-			use = pkg.use.enabled
+			if use is None:
+				use = pkg.use.enabled
 			try:
-				required_use_is_sat = portage.dep.check_required_use(
+				required_use_is_sat = check_required_use(
 					required_use, use, pkg.iuse.is_valid_flag)
 			except portage.exception.InvalidDependString:
-				mreasons.append("invalid: REQUIRED_USE")
+				mreasons.append(_MaskReason("invalid", "invalid: REQUIRED_USE"))
 			else:
 				if not required_use_is_sat:
 					msg = "violated use flag constraints: '%s'" % required_use
-					mreasons.append(msg)
+					mreasons.append(_MaskReason("REQUIRED_USE", "REQUIRED_USE violated"))
 
 	if not pkg.metadata["SLOT"]:
 		mreasons.append(
