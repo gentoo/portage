@@ -16,7 +16,7 @@ from portage import digraph
 from portage.const import PORTAGE_PACKAGE_ATOM
 from portage.dbapi import dbapi
 from portage.dbapi.dep_expand import dep_expand
-from portage.dep import Atom, extract_affecting_use, check_required_use
+from portage.dep import Atom, extract_affecting_use, check_required_use, human_readable_required_use
 from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use
 from portage.output import bold, blue, colorize, create_color_func, darkblue, \
 	darkgreen, green, nc_len, red, teal, turquoise, yellow
@@ -2109,13 +2109,27 @@ class depgraph(object):
 				need_enable = sorted(atom.use.enabled.difference(use).intersection(pkg.iuse.all))
 				need_disable = sorted(atom.use.disabled.intersection(use).intersection(pkg.iuse.all))
 
+				required_use = pkg.metadata["REQUIRED_USE"]
+				required_use_warning = ""
+				if required_use:
+					old_use = self._pkg_use_enabled(pkg)
+					new_use = set(self._pkg_use_enabled(pkg))
+					for flag in need_enable:
+						new_use.add(flag)
+					for flag in need_disable:
+						new_use.discard(flag)
+					if check_required_use(required_use, old_use, pkg.iuse.is_valid_flag) and \
+						not check_required_use(required_use, new_use, pkg.iuse.is_valid_flag):
+							required_use_warning = ", this change violates use flag constraints " + \
+								"defined by %s: '%s'" % (pkg.cpv, human_readable_required_use(required_use))
+
 				if need_enable or need_disable:
 					changes = []
 					changes.extend(colorize("red", "+" + x) \
 						for x in need_enable)
 					changes.extend(colorize("blue", "-" + x) \
 						for x in need_disable)
-					mreasons.append("Change USE: %s" % " ".join(changes))
+					mreasons.append("Change USE: %s" % " ".join(changes) + required_use_warning)
 					missing_use_reasons.append((pkg, mreasons))
 
 			if not missing_iuse and myparent and atom.unevaluated_atom.use.conditional:
@@ -2123,20 +2137,36 @@ class depgraph(object):
 				# If so, suggest to change them on the parent.
 				mreasons = []
 				violated_atom = atom.unevaluated_atom.violated_conditionals(self._pkg_use_enabled(pkg), \
-					pkg.iuse.is_valid_flag, myparent.use.enabled)
+					pkg.iuse.is_valid_flag, self._pkg_use_enabled(myparent))
 				if not (violated_atom.use.enabled or violated_atom.use.disabled):
 					#all violated use deps are conditional
 					changes = []
 					conditional = violated_atom.use.conditional
-					involved_flags = set()
-					involved_flags.update(conditional.equal, conditional.not_equal, \
-						conditional.enabled, conditional.disabled)
-					for x in involved_flags:
-						if x in myparent.use.enabled:
-							changes.append(colorize("blue", "-" + x))
+					involved_flags = set(chain(conditional.equal, conditional.not_equal, \
+						conditional.enabled, conditional.disabled))
+
+					required_use = myparent.metadata["REQUIRED_USE"]
+					required_use_warning = ""
+					if required_use:
+						old_use = self._pkg_use_enabled(myparent)
+						new_use = set(self._pkg_use_enabled(myparent))
+						for flag in involved_flags:
+							if flag in old_use:
+								new_use.discard(flag)
+							else:
+								new_use.add(flag)
+						if check_required_use(required_use, old_use, myparent.iuse.is_valid_flag) and \
+							not check_required_use(required_use, new_use, myparent.iuse.is_valid_flag):
+								required_use_warning = ", this change violates use flag constraints " + \
+									"defined by %s: '%s'" % (myparent.cpv, \
+									human_readable_required_use(required_use))
+
+					for flag in involved_flags:
+						if flag in self._pkg_use_enabled(myparent):
+							changes.append(colorize("blue", "-" + flag))
 						else:
-							changes.append(colorize("red", "+" + x))
-					mreasons.append("Change USE: %s" % " ".join(changes))
+							changes.append(colorize("red", "+" + flag))
+					mreasons.append("Change USE: %s" % " ".join(changes) + required_use_warning)
 					if (myparent, mreasons) not in missing_use_reasons:
 						missing_use_reasons.append((myparent, mreasons))
 

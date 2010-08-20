@@ -40,6 +40,12 @@ class AutounmaskTestCase(TestCase):
 			"dev-util/Q-1": { "DEPEND": "foo? ( dev-util/R[bar] )", "IUSE": "+foo", "EAPI": 2 },
 			"dev-util/Q-2": { "RDEPEND": "!foo? ( dev-util/R[bar] )", "IUSE": "foo", "EAPI": 2 },
 			"dev-util/R-1": { "IUSE": "bar" },
+
+			#ebuilds to test interaction with REQUIRED_USE
+			#~ "app-portage/A-1": { "DEPEND": "app-portage/B[foo]", "EAPI": 2 }, 
+			#~ "app-portage/A-2": { "DEPEND": "app-portage/B[foo=]", "IUSE": "+foo", "REQUIRED_USE": "foo", "EAPI": 4 }, 
+#~ 
+			#~ "app-portage/B-1": { "IUSE": "foo +bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": 4 }, 
 			}
 
 		test_cases = (
@@ -160,6 +166,18 @@ class AutounmaskTestCase(TestCase):
 					success = False,
 					mergelist = ["dev-util/R-1", "dev-util/Q-2"],
 					use_changes = { "dev-util/R-1": { "bar": True } }),
+
+				#Test interaction with REQUIRED_USE.
+				#~ ResolverPlaygroundTestCase(
+					#~ ["=app-portage/A-1"],
+					#~ options = { "--autounmask": True },
+					#~ use_changes = None,
+					#~ success = False),
+				#~ ResolverPlaygroundTestCase(
+					#~ ["=app-portage/A-2"],
+					#~ options = { "--autounmask": True },
+					#~ use_changes = None,
+					#~ success = False),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds)
