@@ -1,5 +1,5 @@
 # setup_env.py -- Make sure bin subdir has sane env for testing
-# Copyright 2007 Gentoo Foundation
+# Copyright 2007-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
@@ -40,16 +40,12 @@ def binTestsInit():
 	os.mkdir(env["D"])
 	os.mkdir(env["T"])
 	os.mkdir(env["S"])
-	os.chdir(env["S"])
 
 class BinTestCase(TestCase):
-	def __init__(self, methodName):
-		TestCase.__init__(self, methodName)
+	def init(self):
 		binTestsInit()
-	def __del__(self):
+	def cleanup(self):
 		binTestsCleanup()
-		if hasattr(TestCase, "__del__"):
-			TestCase.__del__(self)
 
 def _exists_in_D(path):
 	# Note: do not use os.path.join() here, we assume D to end in /
@@ -67,7 +63,10 @@ def portage_func(func, args, exit_status=0):
 	global env
 	f = open('/dev/null', 'wb')
 	fd_pipes = {0:0,1:f.fileno(),2:f.fileno()}
-	spawn([func] + args.split(), env=env, fd_pipes=fd_pipes)
+	def pre_exec():
+		os.chdir(env["S"])
+	spawn([func] + args.split(), env=env,
+		fd_pipes=fd_pipes, pre_exec=pre_exec)
 	f.close()
 
 def create_portage_wrapper(bin):
