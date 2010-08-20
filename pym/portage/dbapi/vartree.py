@@ -198,7 +198,7 @@ class LinkageMap(object):
 
 	def __init__(self, vardbapi):
 		self._dbapi = vardbapi
-		self._root = self._dbapi.root
+		self._root = self._dbapi._eroot
 		self._libs = {}
 		self._obj_properties = {}
 		self._obj_key_cache = {}
