@@ -3,8 +3,10 @@
 
 from __future__ import print_function
 
+from itertools import chain
+
 from portage.util import writemsg
-from portage.dep import use_reduce, extract_affecting_use
+from portage.dep import use_reduce, extract_affecting_use, check_required_use, get_required_use_flags
 from portage.output import colorize
 from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
 
@@ -118,9 +120,21 @@ class circular_dependency_handler(object):
 			# Make sure we don't want to change a flag that is 
 			#	a) in use.mask or use.force
 			#	b) changed by autounmask
+			
 			usemask, useforce = self._get_use_mask_and_force(parent)
 			autounmask_changes = self._get_autounmask_changes(parent)
-			affecting_use.difference_update(usemask, useforce, autounmask_changes)
+			untouchable_flags = frozenset(chain(usemask, useforce, autounmask_changes))
+
+			affecting_use.difference_update(untouchable_flags)
+
+			#If any of the flags we're going to touch is in REQUIRED_USE, add all
+			#other flags in REQUIRED_USE to affecting_use, to not lose any solution.
+			required_use_flags = get_required_use_flags(parent.metadata["REQUIRED_USE"])
+
+			if affecting_use.intersection(required_use_flags):
+				affecting_use.update(required_use_flags)
+				affecting_use.difference_update(untouchable_flags)
+
 			affecting_use = tuple(affecting_use)
 
 			if not affecting_use:
@@ -160,17 +174,21 @@ class circular_dependency_handler(object):
 					uselist=current_use, flat=True)
 
 				if parent_atom not in reduced_dep:
-					#we found a valid solution
-					solution = set()
-					use = self.depgraph._pkg_use_enabled(parent)
-					for flag, state in zip(affecting_use, use_state):
-						if state == "enabled" and \
-							flag not in use:
-							solution.add((flag, True))
-						elif state == "disabled" and \
-							flag in use:
-							solution.add((flag, False))
-					solutions.add(frozenset(solution))
+					#We found an assignment that removes the atom from 'dep'.
+					#Make sure it doesn't conflict with REQUIRED_USE.
+					required_use = parent.metadata["REQUIRED_USE"]
+
+					if check_required_use(required_use, current_use, parent.iuse.is_valid_flag):
+						use = self.depgraph._pkg_use_enabled(parent)
+						solution = set()
+						for flag, state in zip(affecting_use, use_state):
+							if state == "enabled" and \
+								flag not in use:
+								solution.add((flag, True))
+							elif state == "disabled" and \
+								flag in use:
+								solution.add((flag, False))
+						solutions.add(frozenset(solution))
 
 				if not _next_use_state(use_state):
 					break

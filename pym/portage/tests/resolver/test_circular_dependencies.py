@@ -24,6 +24,11 @@ class CircularDependencyTestCase(TestCase):
 			"dev-libs/W-1": { "DEPEND": "dev-libs/Z[foo] dev-libs/Y", "EAPI": 2 },
 			"dev-libs/W-2": { "DEPEND": "dev-libs/Z[foo=] dev-libs/Y", "IUSE": "+foo", "EAPI": 2 },
 			"dev-libs/W-3": { "DEPEND": "dev-libs/Z[bar] dev-libs/Y", "EAPI": 2 },
+
+			#~ "app-misc/A-1": { "DEPEND": "foo? ( =app-misc/B-1 )", "IUSE": "+foo bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": 4 },
+			#~ "app-misc/A-2": { "DEPEND": "foo? ( =app-misc/B-2 ) bar? ( =app-misc/B-2 )", "IUSE": "+foo bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": 4 },
+			#~ "app-misc/B-1": { "DEPEND": "=app-misc/A-1" },
+			#~ "app-misc/B-2": { "DEPEND": "=app-misc/A-2" },
 			}
 
 		test_cases = (
@@ -58,6 +63,16 @@ class CircularDependencyTestCase(TestCase):
 				circular_dependency_solutions = { "dev-libs/Y-1": frozenset([frozenset([("foo", False)])])},
 				use_changes = { "dev-libs/Z-3": {"bar": True}},
 				success = False),
+
+			#Conflict with REQUIRED_USE
+			#~ ResolverPlaygroundTestCase(
+				#~ ["=app-misc/B-1"],
+				#~ circular_dependency_solutions = { "app-misc/B-1": frozenset([frozenset([("foo", False), ("bar", True)])])},
+				#~ success = False),
+			#~ ResolverPlaygroundTestCase(
+				#~ ["=app-misc/B-2"],
+				#~ circular_dependency_solutions = {},
+				#~ success = False),
 		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds)
