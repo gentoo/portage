@@ -317,7 +317,7 @@ class config(object):
 
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
-		local_config=True, env=None):
+		_eprefix=None, local_config=True, env=None):
 		"""
 		@param clone: If provided, init will use deepcopy to copy by value the instance.
 		@type clone: Instance of config class.
@@ -333,6 +333,8 @@ class config(object):
 		@type config_root: String
 		@param target_root: __init__ override of $ROOT env variable.
 		@type target_root: String
+		@param _eprefix: set the EPREFIX variable (private, used by internal tests)
+		@type _eprefix: String
 		@param local_config: Enables loading of local config (/etc/portage); used most by repoman to
 		ignore local config (keywording and unmasking)
 		@type local_config: Boolean
@@ -340,6 +342,10 @@ class config(object):
 			Defaults to os.environ if unspecified.
 		@type env: dict
 		"""
+
+		# rename local _eprefix variable for convenience
+		eprefix = _eprefix
+		del _eprefix
 
 		# When initializing the global portage.settings instance, avoid
 		# raising exceptions whenever possible since exceptions thrown
@@ -458,8 +464,10 @@ class config(object):
 						noiselevel=-1)
 					raise DirectoryNotFound(var)
 
+			if eprefix is None:
+				eprefix = ""
 			if config_root is None:
-				config_root = "/"
+				config_root = eprefix + os.sep
 
 			config_root = normalize_path(os.path.abspath(
 				config_root)).rstrip(os.path.sep) + os.path.sep
@@ -664,6 +672,8 @@ class config(object):
 			ensure_dirs(target_root)
 			check_var_directory("ROOT", target_root)
 
+			eroot = target_root.rstrip(os.sep) + eprefix + os.sep
+
 			# The expand_map is used for variable substitution
 			# in getconfig() calls, and the getconfig() calls
 			# update expand_map with the value of each variable
@@ -681,7 +691,7 @@ class config(object):
 			# lead to unexpected results.
 			expand_map = {}
 
-			env_d = getconfig(os.path.join(target_root, "etc", "profile.env"),
+			env_d = getconfig(os.path.join(eroot, "etc", "profile.env"),
 				expand=expand_map)
 			# env_d will be None if profile.env doesn't exist.
 			if env_d:
@@ -798,10 +808,9 @@ class config(object):
 			self["ROOT"] = target_root
 			self.backup_changes("ROOT")
 
-			# Prefix forward compatability, set EPREFIX to the empty string
-			self["EPREFIX"] = ''
+			self["EPREFIX"] = eprefix
 			self.backup_changes("EPREFIX")
-			self["EROOT"] = target_root
+			self["EROOT"] = eroot
 			self.backup_changes("EROOT")
 
 			self.pusedict = portage.dep.ExtendedAtomDict(dict)
@@ -1078,7 +1087,7 @@ class config(object):
 		"""
 		Create a few directories that are critical to portage operation
 		"""
-		if not os.access(self["ROOT"], os.W_OK):
+		if not os.access(self["EROOT"], os.W_OK):
 			return
 
 		#                                gid, mode, mask, preserve_perms
@@ -1091,7 +1100,7 @@ class config(object):
 
 		for mypath, (gid, mode, modemask, preserve_perms) \
 			in dir_mode_map.items():
-			mydir = os.path.join(self["ROOT"], mypath)
+			mydir = os.path.join(self["EROOT"], mypath)
 			if preserve_perms and os.path.isdir(mydir):
 				# Only adjust permissions on some directories if
 				# they don't exist yet. This gives freedom to the
@@ -2185,7 +2194,7 @@ class config(object):
 
 	def reload(self):
 		"""Reload things like /etc/profile.env that can change during runtime."""
-		env_d_filename = os.path.join(self["ROOT"], "etc", "profile.env")
+		env_d_filename = os.path.join(self["EROOT"], "etc", "profile.env")
 		self.configdict["env.d"].clear()
 		env_d = getconfig(env_d_filename, expand=False)
 		if env_d:

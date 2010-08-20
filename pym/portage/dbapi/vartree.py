@@ -61,6 +61,7 @@ import stat
 import sys
 import tempfile
 import time
+import warnings
 
 try:
 	import cPickle as pickle
@@ -815,16 +816,12 @@ class vardbapi(dbapi):
 	_aux_cache_keys_re = re.compile(r'^NEEDED\..*$')
 	_aux_multi_line_re = re.compile(r'^(CONTENTS|NEEDED\..*)$')
 
-	def __init__(self, root, categories=None, settings=None, vartree=None):
+	def __init__(self, _unused_param=None, categories=None, settings=None, vartree=None):
 		"""
 		The categories parameter is unused since the dbapi class
 		now has a categories property that is generated from the
 		available packages.
 		"""
-		self.root = _unicode_decode(root,
-			encoding=_encodings['content'], errors='strict')
-		if self.root[-1] != '/':
-			self.root += '/'
 
 		# Used by emerge to check whether any packages
 		# have been added or removed.
@@ -841,11 +838,20 @@ class vardbapi(dbapi):
 
 		self.blockers = None
 		if settings is None:
-			from portage import settings
+			settings = portage.settings
 		self.settings = settings
+		self.root = settings['ROOT']
+
+		if _unused_param is not None and _unused_param != self.root:
+			warnings.warn("The first parameter of the " + \
+				"portage.dbapi.vartree.vardbapi" + \
+				" constructor is now unused. Use " + \
+				"settings['ROOT'] instead.",
+				DeprecationWarning, stacklevel=2)
+
+		self._eroot = settings['EROOT']
 		if vartree is None:
-			from portage import db
-			vartree = db[root]["vartree"]
+			vartree = portage.db[self.root]["vartree"]
 		self.vartree = vartree
 		self._aux_cache_keys = set(
 			["BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "DESCRIPTION",
@@ -854,14 +860,14 @@ class vardbapi(dbapi):
 			"repository", "RESTRICT" , "SLOT", "USE", "DEFINED_PHASES",
 			"REQUIRED_USE"])
 		self._aux_cache_obj = None
-		self._aux_cache_filename = os.path.join(self.root,
+		self._aux_cache_filename = os.path.join(self._eroot,
 			CACHE_PATH, "vdb_metadata.pickle")
-		self._counter_path = os.path.join(root,
+		self._counter_path = os.path.join(self._eroot,
 			CACHE_PATH, "counter")
 
 		try:
-			self.plib_registry = PreservedLibsRegistry(self.root,
-				os.path.join(self.root, PRIVATE_PATH, "preserved_libs_registry"))
+			self.plib_registry = PreservedLibsRegistry(self._eroot,
+				os.path.join(self._eroot, PRIVATE_PATH, "preserved_libs_registry"))
 		except PermissionDenied:
 			# apparently this user isn't allowed to access PRIVATE_PATH
 			self.plib_registry = None
@@ -872,7 +878,7 @@ class vardbapi(dbapi):
 	def getpath(self, mykey, filename=None):
 		# This is an optimized hotspot, so don't use unicode-wrapped
 		# os module and don't use os.path.join().
-		rValue = self.root + VDB_PATH + _os.sep + mykey
+		rValue = self._eroot + VDB_PATH + _os.sep + mykey
 		if filename is not None:
 			# If filename is always relative, we can do just
 			# rValue += _os.sep + filename
@@ -884,7 +890,7 @@ class vardbapi(dbapi):
 		This is called before an after any modifications, so that consumers
 		can use directory mtimes to validate caches. See bug #290428.
 		"""
-		base = self.root + VDB_PATH
+		base = self._eroot + VDB_PATH
 		cat = catsplit(cpv)[0]
 		catdir = base + _os.sep + cat
 		t = time.time()
@@ -1025,7 +1031,7 @@ class vardbapi(dbapi):
 		involve merge or unmerge of packages).
 		"""
 		returnme = []
-		basepath = os.path.join(self.root, VDB_PATH) + os.path.sep
+		basepath = os.path.join(self._eroot, VDB_PATH) + os.path.sep
 
 		if use_cache:
 			from portage import listdir
@@ -1117,7 +1123,7 @@ class vardbapi(dbapi):
 			return list(self._iter_match(mydep,
 				self.cp_list(mydep.cp, use_cache=use_cache)))
 		try:
-			curmtime = os.stat(os.path.join(self.root, VDB_PATH, mycat)).st_mtime
+			curmtime = os.stat(os.path.join(self._eroot, VDB_PATH, mycat)).st_mtime
 		except (IOError, OSError):
 			curmtime=0
 
@@ -1760,26 +1766,23 @@ class vardbapi(dbapi):
 
 class vartree(object):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
-	def __init__(self, root="/", virtual=None, clone=None, categories=None,
+	def __init__(self, root=None, virtual=None, clone=None, categories=None,
 		settings=None):
-		if clone:
-			writemsg("vartree.__init__(): deprecated " + \
-				"use of clone parameter\n", noiselevel=-1)
-			self.root = clone.root[:]
-			self.dbapi = copy.deepcopy(clone.dbapi)
-			self.populated = 1
-			from portage import config
-			self.settings = config(clone=clone.settings)
-		else:
-			self.root = root[:]
-			if settings is None:
-				from portage import settings
-			self.settings = settings
-			if categories is None:
-				categories = settings.categories
-			self.dbapi = vardbapi(self.root, categories=categories,
-				settings=settings, vartree=self)
-			self.populated = 1
+
+		if settings is None:
+			settings = portage.settings
+		self.root = settings['ROOT']
+
+		if root is not None and root != self.root:
+			warnings.warn("The 'root' parameter of the " + \
+				"portage.dbapi.vartree.vartree" + \
+				" constructor is now unused. Use " + \
+				"settings['ROOT'] instead.",
+				DeprecationWarning, stacklevel=2)
+
+		self.settings = settings
+		self.dbapi = vardbapi(settings=settings, vartree=self)
+		self.populated = 1
 
 	def getpath(self, mykey, filename=None):
 		return self.dbapi.getpath(mykey, filename=filename)
@@ -1807,7 +1810,7 @@ class vartree(object):
 		except SystemExit as e:
 			raise
 		except Exception as e:
-			mydir = os.path.join(self.root, VDB_PATH, mycpv)
+			mydir = os.path.join(self._eroot, VDB_PATH, mycpv)
 			writemsg(_("\nParse Error reading PROVIDE and USE in '%s'\n") % mydir,
 				noiselevel=-1)
 			if mylines:
@@ -1926,7 +1929,10 @@ class dblink(object):
 		self._blockers = blockers
 		self._scheduler = scheduler
 
-		self.dbroot = normalize_path(os.path.join(myroot, VDB_PATH))
+		# WARNING: EROOT support is experimental and may be incomplete
+		# for cases in which EPREFIX is non-empty.
+		self._eroot = mysettings['EROOT']
+		self.dbroot = normalize_path(os.path.join(self._eroot, VDB_PATH))
 		self.dbcatdir = self.dbroot+"/"+cat
 		self.dbpkgdir = self.dbcatdir+"/"+pkg
 		self.dbtmpdir = self.dbcatdir+"/-MERGING-"+pkg
@@ -2039,7 +2045,7 @@ class dblink(object):
 		obj_index = contents_re.groupindex['obj']
 		dir_index = contents_re.groupindex['dir']
 		sym_index = contents_re.groupindex['sym']
-		myroot = self.myroot
+		myroot = self._eroot
 		if myroot == os.path.sep:
 			myroot = None
 		pos = 0
@@ -2666,7 +2672,7 @@ class dblink(object):
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
 		self.vartree.zap(self.mycpv)
 
-	def isowner(self, filename, destroot):
+	def isowner(self, filename, destroot=None):
 		""" 
 		Check if a file belongs to this package. This may
 		result in a stat call for the parent directory of
@@ -2685,9 +2691,17 @@ class dblink(object):
 		1. True if this package owns the file.
 		2. False if this package does not own the file.
 		"""
-		return bool(self._match_contents(filename, destroot))
 
-	def _match_contents(self, filename, destroot):
+		if destroot is not None and destroot != self._eroot:
+			warnings.warn("The second parameter of the " + \
+				"portage.dbapi.vartree.dblink.isowner()" + \
+				" is now unused. Instead " + \
+				"self.settings['EROOT'] will be used.",
+				DeprecationWarning, stacklevel=2)
+
+		return bool(self._match_contents(filename))
+
+	def _match_contents(self, filename, destroot=None):
 		"""
 		The matching contents entry is returned, which is useful
 		since the path may differ from the one given by the caller,
@@ -2701,8 +2715,14 @@ class dblink(object):
 		filename = _unicode_decode(filename,
 			encoding=_encodings['content'], errors='strict')
 
-		destroot = _unicode_decode(destroot,
-			encoding=_encodings['content'], errors='strict')
+		if destroot is not None and destroot != self._eroot:
+			warnings.warn("The second parameter of the " + \
+				"portage.dbapi.vartree.dblink._match_contents()" + \
+				" is now unused. Instead " + \
+				"self.settings['EROOT'] will be used.",
+				DeprecationWarning, stacklevel=2)
+
+		destroot = self._eroot
 
 		# The given filename argument might have a different encoding than the
 		# the filenames contained in the contents, so use separate wrapped os

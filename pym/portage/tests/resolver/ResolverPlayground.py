@@ -35,9 +35,11 @@ class ResolverPlayground(object):
 		profile: settings defined by the profile.
 		"""
 		self.debug = debug
-		self.root = tempfile.mkdtemp() + os.path.sep
-		self.portdir = os.path.join(self.root, "usr/portage")
-		self.vdbdir = os.path.join(self.root, "var/db/pkg")
+		self.root = "/"
+		self.eprefix = tempfile.mkdtemp()
+		self.eroot = self.root + self.eprefix.lstrip(os.sep) + os.sep
+		self.portdir = os.path.join(self.eroot, "usr/portage")
+		self.vdbdir = os.path.join(self.eroot, "var/db/pkg")
 		os.makedirs(self.portdir)
 		os.makedirs(self.vdbdir)
 		
@@ -182,12 +184,12 @@ class ResolverPlayground(object):
 			raise NotImplentedError()
 		
 		#Create profile symlink
-		os.makedirs(os.path.join(self.root, "etc"))
-		os.symlink(sub_profile_dir, os.path.join(self.root, "etc", "make.profile"))
+		os.makedirs(os.path.join(self.eroot, "etc"))
+		os.symlink(sub_profile_dir, os.path.join(self.eroot, "etc", "make.profile"))
 
 	def _create_world(self, world):
 		#Create /var/lib/portage/world
-		var_lib_portage = os.path.join(self.root, "var", "lib", "portage")
+		var_lib_portage = os.path.join(self.eroot, "var", "lib", "portage")
 		os.makedirs(var_lib_portage)
 
 		world_file = os.path.join(var_lib_portage, "world")
@@ -201,8 +203,7 @@ class ResolverPlayground(object):
 		env = {
 			"ACCEPT_KEYWORDS": "x86",
 			"PORTDIR": self.portdir,
-			"ROOT": self.root,
-			'PORTAGE_TMPDIR'       : os.path.join(self.root, 'var/tmp'),
+			'PORTAGE_TMPDIR'       : os.path.join(self.eroot, 'var/tmp'),
 		}
 
 		# Pass along PORTAGE_USERNAME and PORTAGE_GRPNAME since they
@@ -212,15 +213,16 @@ class ResolverPlayground(object):
 		if 'PORTAGE_GRPNAME' in os.environ:
 			env['PORTAGE_GRPNAME'] = os.environ['PORTAGE_GRPNAME']
 
-		settings = config(config_root=self.root, target_root=self.root, env=env)
+		settings = config(_eprefix=self.eprefix, env=env)
 		settings.lock()
 
 		trees = {
 			self.root: {
-					"virtuals": settings.getvirtuals(),
-					"vartree": vartree(self.root, categories=settings.categories, settings=settings),
+					"vartree": vartree(settings=settings),
 					"porttree": portagetree(self.root, settings=settings),
-					"bintree": binarytree(self.root, os.path.join(self.root, "usr/portage/packages"), settings=settings)
+					"bintree": binarytree(self.root,
+						os.path.join(self.eroot, "usr/portage/packages"),
+						settings=settings)
 				}
 			}
 
@@ -237,14 +239,8 @@ class ResolverPlayground(object):
 		options = options.copy()
 		options["--pretend"] = True
 		options["--quiet"] = True
-		options["--root"] = self.root
-		options["--config-root"] = self.root
-		options["--root-deps"] = True
 		if self.debug:
 			options["--debug"] = True
-		# Add a fake _test_ option that can be used for
-		# conditional test code.
-		options["_test_"] = True
 
 		if not self.debug:
 			portage.util.noiselimit = -2
@@ -267,9 +263,9 @@ class ResolverPlayground(object):
 
 	def cleanup(self):
 		if self.debug:
-			print("\nROOT=%s" % self.root)
+			print("\nEROOT=%s" % self.eroot)
 		else:
-			shutil.rmtree(self.root)
+			shutil.rmtree(self.eroot)
 
 class ResolverPlaygroundTestCase(object):
 

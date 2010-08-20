@@ -1056,7 +1056,7 @@ def close_portdbapi_caches():
 		i.close_caches()
 
 class portagetree(object):
-	def __init__(self, root="/", virtual=None, settings=None):
+	def __init__(self, root=None, virtual=None, settings=None):
 		"""
 		Constructor for a PortageTree
 		
@@ -1068,14 +1068,21 @@ class portagetree(object):
 		@type settings: Instance of portage.config
 		"""
 
-		if True:
-			self.root = root
-			if settings is None:
-				from portage import settings
-			self.settings = settings
-			self.portroot = settings["PORTDIR"]
-			self.virtual = virtual
-			self.dbapi = portdbapi(mysettings=settings)
+		if settings is None:
+			settings = portage.settings
+		self.settings = settings
+
+		self.root = settings['ROOT']
+		if root is not None and root != self.root:
+			warnings.warn("The root parameter of the " + \
+				"portage.dbapi.porttree.portagetree" + \
+				" constructor is now unused. Use " + \
+				"settings['ROOT'] instead.",
+				DeprecationWarning, stacklevel=2)
+
+		self.portroot = settings["PORTDIR"]
+		self.virtual = virtual
+		self.dbapi = portdbapi(mysettings=settings)
 
 	def dep_bestmatch(self,mydep):
 		"compatibility method"
