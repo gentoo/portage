@@ -70,19 +70,20 @@ class slot_conflict_handler(object):
 	the needed USE changes and prepare the message for the user.
 	"""
 
-	def __init__(self, slot_collision_info, all_parents, myopts):
-		self.myopts = myopts
-		self.debug = "--debug" in myopts
+	def __init__(self, depgraph):
+		self.depgraph = depgraph
+		self.myopts = depgraph._frozen_config.myopts
+		self.debug = "--debug" in self.myopts
 		if self.debug:
 			writemsg("Starting slot conflict handler\n", noiselevel=-1)
 		#slot_collision_info is a dict mapping (slot atom, root) to set
 		#of packages. The packages in the set all belong to the same
 		#slot.
-		self.slot_collision_info = slot_collision_info
+		self.slot_collision_info = depgraph._dynamic_config._slot_collision_info
 		
 		#A dict mapping packages to pairs of parent package
 		#and parent atom
-		self.all_parents = all_parents
+		self.all_parents = depgraph._dynamic_config._parent_atoms
 		
 		#set containing all nodes that are part of a slot conflict
 		conflict_nodes = set()
@@ -96,13 +97,13 @@ class slot_conflict_handler(object):
 		
 		#fill conflict_pkgs, all_conflict_atoms_by_slotatom
 		for (atom, root), pkgs \
-			in slot_collision_info.items():
+			in self.slot_collision_info.items():
 			conflict_pkgs.append(list(pkgs))
 			all_conflict_atoms_by_slotatom.append(set())
 			
 			for pkg in pkgs:
 				conflict_nodes.add(pkg)
-				for ppkg, atom in all_parents.get(pkg):
+				for ppkg, atom in self.all_parents.get(pkg):
 					all_conflict_atoms_by_slotatom[-1].add((ppkg, atom))
 
 		#Variable that holds the non-explanation part of the message.
@@ -156,6 +157,7 @@ class slot_conflict_handler(object):
 		"""
 		Print all slot conflicts in a human readable way.
 		"""
+		_pkg_use_enabled = self.depgraph._pkg_use_enabled
 		msg = self.conflict_msg
 		indent = "  "
 		# Max number of parents shown, to avoid flooding the display.
@@ -211,8 +213,8 @@ class slot_conflict_handler(object):
 								collision_reasons[("version", sub_type)] = atoms
 							elif not atom_set.findAtomForPackage(other_pkg):
 								#Use conditionals not met.
-								violated_atom = atom.violated_conditionals(other_pkg.use.enabled, \
-									other_pkg.iuse.is_valid_flag, ppkg.use.enabled)
+								violated_atom = atom.violated_conditionals(_pkg_use_enabled(other_pkg), \
+									other_pkg.iuse.is_valid_flag, _pkg_use_enabled(ppkg))
 								for flag in violated_atom.use.enabled.union(violated_atom.use.disabled):
 									atoms = collision_reasons.get(("use", flag), set())
 									atoms.add((ppkg, atom, other_pkg))
@@ -252,7 +254,8 @@ class slot_conflict_handler(object):
 							conditional_matches = set()
 							for ppkg, atom, other_pkg in parents:
 								violated_atom = atom.unevaluated_atom.violated_conditionals( \
-									other_pkg.use.enabled, other_pkg.iuse.is_valid_flag, ppkg.use.enabled)
+									_pkg_use_enabled(other_pkg), other_pkg.iuse.is_valid_flag, \
+									_pkg_use_enabled(ppkg))
 								if use in violated_atom.use.enabled.union(violated_atom.use.disabled):
 									hard_matches.add((ppkg, atom))
 								else:
@@ -348,6 +351,7 @@ class slot_conflict_handler(object):
 
 	def get_explanation(self):
 		msg = ""
+		_pkg_use_enabled = self.depgraph._pkg_use_enabled
 
 		if self.is_a_version_conflict:
 			return None
@@ -380,9 +384,9 @@ class slot_conflict_handler(object):
 			for pkg in solution:
 				changes = []
 				for flag, state in solution[pkg].items():
-					if state == "enabled" and flag not in pkg.use.enabled:
+					if state == "enabled" and flag not in _pkg_use_enabled(pkg):
 						changes.append(colorize("red", "+" + flag))
-					elif state == "disabled" and flag in pkg.use.enabled:
+					elif state == "disabled" and flag in _pkg_use_enabled(pkg):
 						changes.append(colorize("blue", "-" + flag))
 				if changes:
 					mymsg += indent + "- " + pkg.cpv + " (Change USE: %s" % " ".join(changes) + ")\n"
@@ -403,7 +407,7 @@ class slot_conflict_handler(object):
 		Given a configuartion, required use changes are computed and checked to
 		make sure that no new conflict is introduced. Returns a solution or None.
 		"""
-
+		_pkg_use_enabled = self.depgraph._pkg_use_enabled
 		#An installed package can only be part of a valid configuration if it has no
 		#pending use changed. Otherwise the ebuild will be pulled in again.
 		for pkg in config:
@@ -418,7 +422,7 @@ class slot_conflict_handler(object):
 					if other_pkg == pkg:
 						continue
 					if pkg.iuse.all.symmetric_difference(other_pkg.iuse.all) \
-						or pkg.use.enabled.symmetric_difference(other_pkg.use.enabled):
+						or _pkg_use_enabled(pkg).symmetric_difference(_pkg_use_enabled(other_pkg)):
 						if self.debug:
 							writemsg(str(pkg) + " has pending USE changes. Rejecting configuration.\n", noiselevel=-1)
 						return False
@@ -457,11 +461,11 @@ class slot_conflict_handler(object):
 				if ppkg.installed:
 					#We cannot assume that it's possible to reinstall the package. Do not
 					#check if some of its atom has use.conditional
-					violated_atom = atom.violated_conditionals(pkg.use.enabled, \
-						pkg.iuse.is_valid_flag, ppkg.use.enabled)
+					violated_atom = atom.violated_conditionals(_pkg_use_enabled(pkg), \
+						pkg.iuse.is_valid_flag, _pkg_use_enabled(ppkg))
 				else:
-					violated_atom = atom.unevaluated_atom.violated_conditionals(pkg.use.enabled, \
-						pkg.iuse.is_valid_flag, ppkg.use.enabled)
+					violated_atom = atom.unevaluated_atom.violated_conditionals(_pkg_use_enabled(pkg), \
+						pkg.iuse.is_valid_flag, _pkg_use_enabled(ppkg))
 
 				if pkg.installed and (violated_atom.use.enabled or violated_atom.use.disabled):
 					#We can't change USE of an installed package (only of an ebuild, but that is already
@@ -499,13 +503,13 @@ class slot_conflict_handler(object):
 				#to the same value as the installed package has it.
 				for flag in involved_flags:
 					if involved_flags[flag] == "enabled":
-						if not flag in pkg.use.enabled:
+						if not flag in _pkg_use_enabled(pkg):
 							involved_flags[flag] = "contradiction"
 					elif involved_flags[flag] == "disabled":
-						if flag in pkg.use.enabled:
+						if flag in _pkg_use_enabled(pkg):
 							involved_flags[flag] = "contradiction"
 					elif involved_flags[flag] == "cond":
-						if flag in pkg.use.enabled:
+						if flag in _pkg_use_enabled(pkg):
 							involved_flags[flag] = "enabled"
 						else:
 							involved_flags[flag] = "disabled"
@@ -547,12 +551,14 @@ class slot_conflict_handler(object):
 		Adds an USE change to required_changes. Sets the target state to
 		"contradiction" if a flag is forced to conflicting values.
 		"""
+		_pkg_use_enabled = self.depgraph._pkg_use_enabled
+
 		if state == "disabled":
 			changes = required_changes.get(pkg, {})
 			flag_change = changes.get(flag, "")
 			if flag_change == "enabled":
 				flag_change = "contradiction"
-			elif flag in pkg.use.enabled:
+			elif flag in _pkg_use_enabled(pkg):
 				flag_change = "disabled"
 			
 			changes[flag] = flag_change
@@ -573,6 +579,8 @@ class slot_conflict_handler(object):
 		Given a configuartion and all involved flags, all possible settings for the involved
 		flags are checked if they solve the slot conflict.
 		"""
+		_pkg_use_enabled = self.depgraph._pkg_use_enabled
+
 		if self.debug:
 			#The code is a bit verbose, because the states might not
 			#be a string, but a _value_helper.
@@ -606,7 +614,7 @@ class slot_conflict_handler(object):
 					state = all_involved_flags[id][flag]
 					self._force_flag_for_package(required_changes, pkg, flag, state)
 
-			#Go through all (parebt, atom) pairs for the current slot conflict.
+			#Go through all (parent, atom) pairs for the current slot conflict.
 			for ppkg, atom in all_conflict_atoms_by_slotatom[id]:
 				use = atom.unevaluated_atom.use
 				if not use:
@@ -665,8 +673,8 @@ class slot_conflict_handler(object):
 		#Check if all atoms are satisfied after the changes are applied.
 		for id, pkg in enumerate(config):
 			if pkg in required_changes:
-				old_use = set(pkg.use.enabled)
-				new_use = set(pkg.use.enabled)
+				old_use = set(_pkg_use_enabled(pkg))
+				new_use = set(_pkg_use_enabled(pkg))
 				use_has_changed = False
 				for flag, state in required_changes[pkg].items():
 					if state == "enabled" and flag not in new_use:
@@ -687,7 +695,7 @@ class slot_conflict_handler(object):
 				if not hasattr(ppkg, "use"):
 					#It's a SetArg or something like that.
 					continue
-				new_use = set(ppkg.use.enabled)
+				new_use = set(_pkg_use_enabled(ppkg))
 				if ppkg in required_changes:
 					for flag, state in required_changes[ppkg].items():
 						if state == "enabled" and flag not in new_use:

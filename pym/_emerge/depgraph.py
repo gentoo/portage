@@ -470,9 +470,7 @@ class depgraph(object):
 
 		self._show_merge_list()
 
-		self._dynamic_config._slot_conflict_handler = \
-			slot_conflict_handler(self._dynamic_config._slot_collision_info, \
-				self._dynamic_config._parent_atoms, self._frozen_config.myopts)
+		self._dynamic_config._slot_conflict_handler = slot_conflict_handler(self)
 		handler = self._dynamic_config._slot_conflict_handler
 
 		conflict = handler.get_conflict()
