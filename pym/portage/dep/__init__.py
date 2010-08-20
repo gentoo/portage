@@ -1659,13 +1659,90 @@ def match_from_list(mydep, candidate_list):
 			mylist.append(x)
 	return mylist
 
+
+def get_required_use_flags(required_use):
+	"""
+	Returns a set of use flags that are used in the given REQUIRED_USE string
+
+	@param required_use: REQUIRED_USE string
+	@type required_use: String
+	@rtype: Set
+	@return: Set of use flags that are used in the given REQUIRED_USE string
+	"""
+
+	mysplit = required_use.split()
+	level = 0
+	stack = [[]]
+	need_bracket = False
+
+	used_flags = set()
+
+	def register_token(token):
+		if token.endswith("?"):
+			token = token[:-1]
+		if token.startswith("!"):
+			token = token[1:]
+		used_flags.add(token)
+
+	for token in mysplit:
+		if token == "(":
+			need_bracket = False
+			stack.append([])
+			level += 1
+		elif token == ")":
+			if need_bracket:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % required_use)
+			if level > 0:
+				level -= 1
+				l = stack.pop()
+				ignore = False
+				if stack[level]:
+					if stack[level][-1] in ("||", "^^") or \
+						(not isinstance(stack[level][-1], bool) and \
+						stack[level][-1][-1] == "?"):
+						ignore = True
+						stack[level].pop()
+						stack[level].append(True)
+
+				if l and not ignore:
+					stack[level].append(all(x for x in l))
+			else:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % required_use)
+		elif token in ("||", "^^"):
+			if need_bracket:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % required_use)
+			need_bracket = True
+			stack[level].append(token)
+		else:
+			if need_bracket or "(" in token or ")" in token or \
+				"|" in token or "^" in token:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % required_use)
+
+			if token[-1] == "?":
+				need_bracket = True
+				stack[level].append(token)
+			else:
+				stack[level].append(True)
+			
+			register_token(token)
+
+	if level != 0 or need_bracket:
+		raise portage.exception.InvalidDependString(
+			_("malformed syntax: '%s'") % required_use)
+
+	return frozenset(used_flags)
+
 def check_required_use(required_use, use, iuse_match):
 	"""
 	Checks if the use flags listed in 'use' satisfy all
 	constraints specified in 'constraints'.
 
-	@param constraints: REQUIRED_USE string
-	@type constraints: String
+	@param required_use: REQUIRED_USE string
+	@type required_use: String
 	@param use: Enabled use flags
 	@param use: List
 	@param iuse_match: Callable that takes a single flag argument and returns
