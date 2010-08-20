@@ -979,7 +979,6 @@ class depgraph(object):
 			"empty" not in self._dynamic_config.myparams:
 			edepend["RDEPEND"] = ""
 			edepend["PDEPEND"] = ""
-		bdeps_optional = False
 
 		if pkg.built and not removal_action:
 			if self._frozen_config.myopts.get("--with-bdeps", "n") == "y":
@@ -990,7 +989,7 @@ class depgraph(object):
 				# could make --with-bdeps=y less effective if it is used to
 				# adjust merge order to prevent built_with_use() calls from
 				# failing.
-				bdeps_optional = True
+				pass
 			else:
 				# built packages do not have build time dependencies.
 				edepend["DEPEND"] = ""
@@ -1011,8 +1010,8 @@ class depgraph(object):
 
 		deps = (
 			(bdeps_root, edepend["DEPEND"],
-				self._priority(buildtime=(not bdeps_optional),
-				optional=bdeps_optional),
+				self._priority(buildtime=(not pkg.built),
+				optional=pkg.built),
 				pkg.built),
 			(myroot, edepend["RDEPEND"],
 				self._priority(runtime=True),
