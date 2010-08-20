@@ -714,7 +714,7 @@ class config(object):
 
 			# make.globals should not be relative to config_root
 			# because it only contains constants.
-			for x in (GLOBAL_CONFIG_PATH, "/etc"):
+			for x in (GLOBAL_CONFIG_PATH,):
 				self.mygcfg = getconfig(os.path.join(x, "make.globals"),
 					expand=expand_map)
 				if self.mygcfg:
