@@ -8,7 +8,7 @@ This file contains various variables that are used by Portage.
 Portage will check the currently\-defined environment variables
 first for any settings.  If no environment settings are found,
 Portage then checks /etc/make.conf.  If no setting is found
-in /etc/make.conf, Portage checks /etc/make.globals. If no
+in make.conf, Portage checks make.globals. If no
 setting is found there, the profile's default setting is grabbed
 from /etc/make.profile/make.defaults. Please note that all user
 settings should be made in the environment or in /etc/make.conf,
@@ -812,7 +812,7 @@ Saleem Abdulrasool <compnerd@gentoo.org>
 \fB/etc/make.conf\fR and \fB/etc/portage/make.conf\fR
 Contains variables for the build\-process and overwrites those in make.defaults.
 .TP
-.B /etc/make.globals
+.B /usr/share/portage/config/make.globals
 Contains the default variables for the build\-process, you should edit \fI/etc/make.conf\fR instead.
 .TP
 .B /etc/portage/color.map

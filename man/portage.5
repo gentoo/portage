@@ -17,7 +17,6 @@ If you are looking for information on how to emerge something, please see
 .TP
 .BR /etc/
 .nf
-make.globals
 .BR make.conf (5)
 .fi
 .TP
@@ -87,6 +86,11 @@ use.desc
 use.local.desc
 .fi
 .TP
+.BR /usr/share/portage/config/
+.nf
+make.globals
+.fi
+.TP
 .BR /var/cache/edb/
 misc internal cache files
 .TP
@@ -135,11 +139,6 @@ More reading:
 .TP
 .BR /etc/
 .RS
-.TP
-.BR make.globals
-The global default settings for Portage.  This comes from the portage package 
-itself.  Settings in \fBmake.conf\fR override values here.  The format 
-is described extensivly in \fBmake.conf\fR(5).
 .TP
 .BR make.conf
 The global custom settings for Portage.  See \fBmake.conf\fR(5).
@@ -867,6 +866,15 @@ app\-editors/nano:justify \- Toggles the justify option
 dev\-libs/DirectFB:fusion \- Adds Multi Application support
 games\-emulation/xmess:net \- Adds network support
 .fi
+.RE
+.TP
+.BR /usr/share/portage/config/
+.RS
+.TP
+.BR make.globals
+The global default settings for Portage.  This comes from the portage package 
+itself.  Settings in \fBmake.conf\fR override values here.  The format 
+is described extensivly in \fBmake.conf\fR(5).
 .RE
 .TP
 .BR /var/cache/edb/

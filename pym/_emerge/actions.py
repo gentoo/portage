@@ -27,7 +27,7 @@ from portage import os
 from portage import digraph
 from portage import _unicode_decode, _unicode_encode
 from portage.cache.cache_errors import CacheError
-from portage.const import NEWS_LIB_PATH
+from portage.const import GLOBAL_CONFIG_PATH, NEWS_LIB_PATH
 from portage.dbapi.dep_expand import dep_expand
 from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 	red, yellow
@@ -1814,7 +1814,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	myportdir = portdb.porttree_root
 	out = portage.output.EOutput()
 	if not myportdir:
-		sys.stderr.write("!!! PORTDIR is undefined.  Is /etc/make.globals missing?\n")
+		sys.stderr.write("!!! PORTDIR is undefined.  " + \
+			"Is %s/make.globals missing?\n" % GLOBAL_CONFIG_PATH)
 		sys.exit(1)
 	if myportdir[-1]=="/":
 		myportdir=myportdir[:-1]
@@ -1853,7 +1854,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 	syncuri = settings.get("SYNC", "").strip()
 	if not syncuri:
-		writemsg_level("!!! SYNC is undefined. Is /etc/make.globals missing?\n",
+		writemsg_level("!!! SYNC is undefined. " + \
+			"Is %s/make.globals missing?\n" % GLOBAL_CONFIG_PATH,
 			noiselevel=-1, level=logging.ERROR)
 		return 1
 
