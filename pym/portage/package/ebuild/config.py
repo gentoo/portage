@@ -95,6 +95,40 @@ def best_from_dict(key, top_dict, key_order, EmptyOnError=1, FullCopy=1, AllowEm
 	else:
 		raise KeyError("Key not found in list; '%s'" % key)
 
+def _ordered_by_atom_specificity(cpdict, pkg):
+	"""
+	Return a list of matched values from the given cpdict,
+	in ascending order by atom specificity. The rationale
+	for this order is that package.* config files are
+	typically written in ChangeLog like fashion, so it's
+	most friendly if the order that the atoms are written
+	does not matter. Therefore, settings from more specific
+	atoms override those of less specific atoms. Without
+	this behavior, settings from relatively unspecific atoms
+	would (somewhat confusingly) override the settings of
+	more specific atoms, requiring people to make adjustments
+	to the order that atoms are listed in the config file in
+	order to achieve desired results (and thus corrupting
+	the ChangeLog like ordering of the file).
+	"""
+
+	results = []
+	keys = list(cpdict)
+
+	while keys:
+		bestmatch = best_match_to_list(pkg, keys)
+		if bestmatch:
+			keys.remove(bestmatch)
+			results.append(cpdict[bestmatch])
+		else:
+			break
+
+	if results:
+		# reverse, so the most specific atoms come last
+		results.reverse()
+
+	return results
+
 def _lazy_iuse_regex(iuse_implicit):
 	"""
 	The PORTAGE_IUSE value is lazily evaluated since re.escape() is slow
@@ -1562,18 +1596,8 @@ class config(object):
 				defaults.append(self.make_defaults_use[i])
 			cpdict = pkgprofileuse_dict.get(cp)
 			if cpdict:
-				pkg_defaults = []
-				keys = list(cpdict)
-				while keys:
-					bestmatch = best_match_to_list(cpv_slot, keys)
-					if bestmatch:
-						keys.remove(bestmatch)
-						pkg_defaults.append(cpdict[bestmatch])
-					else:
-						break
+				pkg_defaults = _ordered_by_atom_specificity(cpdict, cpv_slot)
 				if pkg_defaults:
-					# reverse, so the most specific atoms come last
-					pkg_defaults.reverse()
 					defaults.extend(pkg_defaults)
 		defaults = " ".join(defaults)
 		if defaults != self.configdict["defaults"].get("USE",""):
@@ -1593,15 +1617,12 @@ class config(object):
 		self.puse = ""
 		cpdict = self.pusedict.get(cp)
 		if cpdict:
-			keys = list(cpdict)
-			while keys:
-				self.pusekey = best_match_to_list(cpv_slot, keys)
-				if self.pusekey:
-					keys.remove(self.pusekey)
-					self.puse = (" ".join(cpdict[self.pusekey])) + " " + self.puse
-				else:
-					break
-			del keys
+			puse_matches = _ordered_by_atom_specificity(cpdict, cpv_slot)
+			if puse_matches:
+				puse_list = []
+				for x in puse_matches:
+					puse_list.extend(x)
+				self.puse = " ".join(puse_list)
 		if oldpuse != self.puse:
 			has_changed = True
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
@@ -1757,18 +1778,8 @@ class config(object):
 				usemask.append(self.usemask_list[i])
 			cpdict = pusemask_dict.get(cp)
 			if cpdict:
-				pkg_usemask = []
-				keys = list(cpdict)
-				while keys:
-					best_match = best_match_to_list(pkg, keys)
-					if best_match:
-						keys.remove(best_match)
-						pkg_usemask.append(cpdict[best_match])
-					else:
-						break
+				pkg_usemask = _ordered_by_atom_specificity(cpdict, pkg)
 				if pkg_usemask:
-					# reverse, so the most specific atoms come last
-					pkg_usemask.reverse()
 					usemask.extend(pkg_usemask)
 		return set(stack_lists(usemask, incremental=True))
 
@@ -1782,18 +1793,8 @@ class config(object):
 				useforce.append(self.useforce_list[i])
 			cpdict = puseforce_dict.get(cp)
 			if cpdict:
-				pkg_useforce = []
-				keys = list(cpdict)
-				while keys:
-					best_match = best_match_to_list(pkg, keys)
-					if best_match:
-						keys.remove(best_match)
-						pkg_useforce.append(cpdict[best_match])
-					else:
-						break
+				pkg_useforce = _ordered_by_atom_specificity(cpdict, pkg)
 				if pkg_useforce:
-					# reverse, so the most specific atoms come last
-					pkg_useforce.reverse()
 					useforce.extend(pkg_useforce)
 		return set(stack_lists(useforce, incremental=True))
 
@@ -1859,18 +1860,8 @@ class config(object):
 		for pkeywords_dict in self._pkeywords_list:
 			cpdict = pkeywords_dict.get(cp)
 			if cpdict:
-				pkg_keywords = []
-				keys = list(cpdict)
-				while keys:
-					best_match = best_match_to_list(pkg, keys)
-					if best_match:
-						keys.remove(best_match)
-						pkg_keywords.append(cpdict[best_match])
-					else:
-						break
+				pkg_keywords = _ordered_by_atom_specificity(cpdict, pkg)
 				if pkg_keywords:
-					# reverse, so the most specific atoms come last
-					pkg_keywords.reverse()
 					keywords.extend(pkg_keywords)
 		return stack_lists(keywords, incremental=True)
 
@@ -1904,18 +1895,9 @@ class config(object):
 		matches = False
 		if pkgdict:
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			pkg_accept_keywords = []
-			keys = list(pkgdict)
-			while keys:
-				best_match = best_match_to_list(cpv_slot, keys)
-				if best_match:
-					keys.remove(best_match)
-					pkg_accept_keywords.append(pkgdict[best_match])
-				else:
-					break
+			pkg_accept_keywords = \
+				_ordered_by_atom_specificity(pkgdict, cpv_slot)
 			if pkg_accept_keywords:
-				# reverse, so the most specific atoms come last
-				pkg_accept_keywords.reverse()
 				for x in pkg_accept_keywords:
 					pgroups.extend(x)
 				matches = True
@@ -1972,18 +1954,8 @@ class config(object):
 		cpdict = self._plicensedict.get(cp)
 		if cpdict:
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			keys = list(cpdict)
-			plicence_list = []
-			while keys:
-				bestmatch = best_match_to_list(cpv_slot, keys)
-				if bestmatch:
-					keys.remove(bestmatch)
-					plicence_list.append(cpdict[bestmatch])
-				else:
-					break
+			plicence_list = _ordered_by_atom_specificity(cpdict, cpv_slot)
 			if plicence_list:
-				# reverse, so the most specific atoms come last
-				plicence_list.reverse()
 				accept_license = list(self._accept_license)
 				for x in plicence_list:
 					accept_license.extend(x)
@@ -2078,18 +2050,8 @@ class config(object):
 		cpdict = self._ppropertiesdict.get(cp)
 		if cpdict:
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			keys = list(cpdict)
-			pproperties_list = []
-			while keys:
-				bestmatch = best_match_to_list(cpv_slot, keys)
-				if bestmatch:
-					keys.remove(bestmatch)
-					pproperties_list.append(cpdict[bestmatch])
-				else:
-					break
+			pproperties_list = _ordered_by_atom_specificity(cpdict, cpv_slot)
 			if pproperties_list:
-				# reverse, so the most specific atoms come last
-				pproperties_list.reverse()
 				accept_properties = list(self._accept_properties)
 				for x in pproperties_list:
 					accept_properties.extend(x)
