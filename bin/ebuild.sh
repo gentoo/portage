@@ -2006,7 +2006,7 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
 			# fnmatch patterns to regular expressions
 			for x in QA_DT_HASH QA_DT_NEEDED QA_PRESTRIPPED QA_SONAME ; do
 				if [[ $(declare -p $x 2>/dev/null) = declare\ -a* ]] ; then
-					eval "$x=(\${$x[@]} ${QA_PREBUILT//\*/.*})"
+					eval "$x=(\"\${$x[@]}\" ${QA_PREBUILT//\*/.*})"
 				else
 					eval "$x+=\" ${QA_PREBUILT//\*/.*}\""
 				fi
