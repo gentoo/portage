@@ -163,7 +163,8 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			mysettings.setcpv(mycpv, mydb=mydbapi)
 
 	# config.reset() might have reverted a change made by the caller,
-	# so restore it to it's original value.
+	# so restore it to it's original value. Sandbox needs cannonical
+	# paths, so realpath it.
 	mysettings["PORTAGE_TMPDIR"] = os.path.realpath(tmpdir)
 
 	mysettings.pop("EBUILD_PHASE", None) # remove from backupenv
@@ -250,9 +251,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	if portage_bin_path not in mysplit:
 		mysettings["PATH"] = portage_bin_path + ":" + mysettings["PATH"]
 
-	# Sandbox needs cannonical paths.
-	mysettings["PORTAGE_TMPDIR"] = os.path.realpath(
-		mysettings["PORTAGE_TMPDIR"])
 	mysettings["BUILD_PREFIX"] = mysettings["PORTAGE_TMPDIR"]+"/portage"
 	mysettings["PKG_TMPDIR"]   = mysettings["PORTAGE_TMPDIR"]+"/binpkgs"
 	
