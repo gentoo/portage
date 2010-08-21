@@ -1786,7 +1786,7 @@ class depgraph(object):
 				except SystemExit as e:
 					raise # Needed else can't exit
 				except Exception as e:
-					writemsg("\n\n!!! Problem in '%s' dependencies.\n" % atom, file=sys.stderr)
+					writemsg("\n\n!!! Problem in '%s' dependencies.\n" % atom, noiselevel=-1)
 					writemsg("!!! %s %s\n" % (str(e), str(getattr(e, "__module__", None))))
 					raise
 
