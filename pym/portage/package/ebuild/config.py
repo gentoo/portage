@@ -392,7 +392,8 @@ class config(object):
 		self.locked   = 0
 		self.mycpv    = None
 		self._setcpv_args_hash = None
-		self.puse     = []
+		self.puse     = ""
+		self._penv    = []
 		self.modifiedkeys = []
 		self.uvlist = []
 		self._accept_chost_re = None
@@ -433,6 +434,7 @@ class config(object):
 			self.useforce_list = clone.useforce_list
 			self.usemask_list = clone.usemask_list
 			self._iuse_implicit_match = clone._iuse_implicit_match
+			self._non_user_variables = clone._non_user_variables
 
 			self.user_profile_dir = copy.deepcopy(clone.user_profile_dir)
 			self.local_config = copy.deepcopy(clone.local_config)
@@ -454,6 +456,7 @@ class config(object):
 			self.useforce      = copy.deepcopy(clone.useforce)
 			self.puseforce_list = copy.deepcopy(clone.puseforce_list)
 			self.puse     = copy.deepcopy(clone.puse)
+			self._penv = copy.deepcopy(clone._penv)
 			self.make_defaults_use = copy.deepcopy(clone.make_defaults_use)
 			self.pkgprofileuse = copy.deepcopy(clone.pkgprofileuse)
 			self.mycpv    = copy.deepcopy(clone.mycpv)
@@ -474,6 +477,7 @@ class config(object):
 			self.lookuplist.reverse()
 			self._use_expand_dict = copy.deepcopy(clone._use_expand_dict)
 			self.backupenv  = self.configdict["backupenv"]
+			self._backupenv  = copy.deepcopy(clone._backupenv)
 			self.pusedict   = copy.deepcopy(clone.pusedict)
 			self.pkeywordsdict = copy.deepcopy(clone.pkeywordsdict)
 			self._pkeywords_list = copy.deepcopy(clone._pkeywords_list)
@@ -488,6 +492,8 @@ class config(object):
 			self._license_groups = copy.deepcopy(clone._license_groups)
 			self._accept_properties = copy.deepcopy(clone._accept_properties)
 			self._ppropertiesdict = copy.deepcopy(clone._ppropertiesdict)
+			self._penvdict = copy.deepcopy(clone._penvdict)
+			self._expand_map = copy.deepcopy(clone._expand_map)
 
 		else:
 
@@ -528,8 +534,8 @@ class config(object):
 				self.incrementals = INCREMENTALS
 			else:
 				self.incrementals = config_incrementals
-			if not isinstance(self.incrementals, tuple):
-				self.incrementals = tuple(self.incrementals)
+			if not isinstance(self.incrementals, frozenset):
+				self.incrementals = frozenset(self.incrementals)
 
 			self.module_priority    = ("user", "default")
 			self.modules            = {}
@@ -722,6 +728,7 @@ class config(object):
 			# interaction with the calling environment that might
 			# lead to unexpected results.
 			expand_map = {}
+			self._expand_map = expand_map
 
 			env_d = getconfig(os.path.join(eroot, "etc", "profile.env"),
 				expand=expand_map)
@@ -805,7 +812,7 @@ class config(object):
 					else:
 						self.make_defaults_use.append("")
 				self.mygcfg = stack_dicts(mygcfg_dlists,
-					incrementals=INCREMENTALS)
+					incrementals=self.incrementals)
 				if self.mygcfg is None:
 					self.mygcfg = {}
 			self.configlist.append(self.mygcfg)
@@ -825,6 +832,12 @@ class config(object):
 			profile_only_variables = self.configdict["defaults"].get(
 				"PROFILE_ONLY_VARIABLES", "").split()
 			profile_only_variables = stack_lists([profile_only_variables])
+			non_user_variables = set()
+			non_user_variables.update(profile_only_variables)
+			non_user_variables.update(self._env_blacklist)
+			non_user_variables = frozenset(non_user_variables)
+			self._non_user_variables = non_user_variables
+
 			for k in profile_only_variables:
 				self.mygcfg.pop(k, None)
 
@@ -871,6 +884,7 @@ class config(object):
 			self.pkeywordsdict = portage.dep.ExtendedAtomDict(dict)
 			self._plicensedict = portage.dep.ExtendedAtomDict(dict)
 			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
+			self._penvdict = portage.dep.ExtendedAtomDict(dict)
 			self.punmaskdict = portage.dep.ExtendedAtomDict(list)
 
 			# locations for "categories" and "arch.list" files
@@ -981,6 +995,29 @@ class config(object):
 						self.configdict["conf"]["ACCEPT_PROPERTIES"] = " ".join(v)
 				for k, v in propdict.items():
 					self._ppropertiesdict.setdefault(k.cp, {})[k] = v
+
+				#package.env
+				penvdict = grabdict_package(os.path.join(
+					abs_user_config, "package.env"), recursive=1, allow_wildcard=True)
+				v = penvdict.pop("*/*", None)
+				if v is not None:
+					global_wildcard_conf = {}
+					self._grab_pkg_env(v, global_wildcard_conf)
+					incrementals = self.incrementals
+					conf_configdict = self.configdict["conf"]
+					for k, v in global_wildcard_conf.items():
+						if k in incrementals:
+							if k in conf_configdict:
+								conf_configdict[k] = \
+									conf_configdict[k] + " " + v
+							else:
+								conf_configdict[k] = v
+						else:
+							conf_configdict[k] = v
+						expand_map[k] = v
+
+				for k, v in penvdict.items():
+					self._penvdict.setdefault(k.cp, {})[k] = v
 
 				self._local_repo_configs = {}
 				self._local_repo_conf_path = \
@@ -1140,6 +1177,12 @@ class config(object):
 				self.features.add('chflags')
 
 			self["FEATURES"] = " ".join(sorted(self.features))
+			# We make a backup of backupenv, before the original
+			# FEATURES setting is overwritten. This backup provides
+			# access to negative FEATURES incrementals from the
+			# environment, useful for overriding FEATURES
+			# settings from package.env.
+			self._backupenv = self.backupenv.copy()
 			self.backup_changes("FEATURES")
 			if 'parse-eapi-ebuild-head' in self.features:
 				_validate_cache_for_unsupported_eapis = False
@@ -1351,6 +1394,7 @@ class config(object):
 		if not keeping_pkg:
 			self.mycpv = None
 			self.puse = ""
+			del self._penv[:]
 			self.configdict["pkg"].clear()
 			self.configdict["pkginternal"].clear()
 			self.configdict["defaults"]["USE"] = \
@@ -1550,11 +1594,9 @@ class config(object):
 
 		aux_keys = self._setcpv_aux_keys
 
-		# Discard any existing metadata from the previous package, but
-		# preserve things like USE_EXPAND values and PORTAGE_USE which
-		# might be reused.
-		for k in aux_keys:
-			pkg_configdict.pop(k, None)
+		# Discard any existing metadata and package.env settings from
+		# the previous package instance.
+		pkg_configdict.clear()
 
 		pkg_configdict["CATEGORY"] = cat
 		pkg_configdict["PF"] = pf
@@ -1628,16 +1670,74 @@ class config(object):
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
 
+		oldpenv = self._penv
+		self._penv = []
+		cpdict = self._penvdict.get(cp)
+		if cpdict:
+			penv_matches = _ordered_by_atom_specificity(cpdict, cpv_slot)
+			if penv_matches:
+				for x in penv_matches:
+					self._penv.extend(x)
+
+		protected_pkg_keys = set(pkg_configdict)
+		protected_pkg_keys.discard('USE')
+
+		# If there are _any_ package.env settings for this package
+		# then it automatically triggers config.reset(), in order
+		# to account for possible incremental interaction between
+		# package.use, package.env, and overrides from the calling
+		# environment (configdict['env']).
+		if oldpenv != self._penv or self._penv:
+			has_changed = True
+			# USE is special because package.use settings override
+			# it. Discard any package.use settings here and they'll
+			# be added back later.
+			pkg_configdict.pop('USE', None)
+			self._grab_pkg_env(self._penv, pkg_configdict,
+				protected_keys=protected_pkg_keys)
+
+			# Now add package.use settings, which override USE from
+			# package.env
+			if self.puse:
+				if 'USE' in pkg_configdict:
+					pkg_configdict['USE'] = \
+						pkg_configdict['USE'] + " " + self.puse
+				else:
+					pkg_configdict['USE'] = self.puse
+
 		if has_changed:
 			self.reset(keeping_pkg=1,use_cache=use_cache)
+
+		env_configdict = self.configdict['env']
+		if 'FEATURES' not in pkg_configdict:
+			env_configdict['FEATURES'] = self.backupenv['FEATURES']
+		else:
+			# Now stack FEATURES manually, since self.regenerate()
+			# avoid restacking it, in case features have been
+			# internally disabled by portage.
+			features_stack = []
+			features_stack.append(self.features)
+			pkg_features = pkg_configdict.get('FEATURES')
+			if pkg_features:
+				features_stack.append(pkg_features.split())
+			# Note that this is a special _backupenv that provides
+			# access to negative FEATURES incrementals from the
+			# environment, useful for overriding FEATURES
+			# settings from package.env.
+			env_features = self._backupenv.get('FEATURES')
+			if env_features:
+				features_stack.append(env_features.split())
+
+			env_configdict['FEATURES'] = \
+				" ".join(sorted(stack_lists(features_stack)))
+			# TODO: Update self.features, so package.env can
+			# effect features on the python side.
 
 		# Ensure that "pkg" values are always preferred over "env" values.
 		# This must occur _after_ the above reset() call, since reset()
 		# copies values from self.backupenv.
-		env_configdict = self.configdict['env']
-		for k in pkg_configdict:
-			if k != 'USE':
-				env_configdict.pop(k, None)
+		for k in protected_pkg_keys:
+			env_configdict.pop(k, None)
 
 		lazy_vars = self._lazy_vars(built_use, self)
 		env_configdict.addLazySingleton('ACCEPT_LICENSE',
@@ -1661,7 +1761,7 @@ class config(object):
 		portage_iuse.update(explicit_iuse)
 
 		# PORTAGE_IUSE is not always needed so it's lazily evaluated.
-		self.configdict["pkg"].addLazySingleton(
+		self.configdict["env"].addLazySingleton(
 			"PORTAGE_IUSE", _lazy_iuse_regex, portage_iuse)
 
 		ebuild_force_test = self.get("EBUILD_FORCE_TEST") == "1"
@@ -1726,8 +1826,40 @@ class config(object):
 		# attribute since we still want to be able to see global USE
 		# settings for things like emerge --info.
 
-		self.configdict["pkg"]["PORTAGE_USE"] = \
+		self.configdict["env"]["PORTAGE_USE"] = \
 			" ".join(sorted(x for x in use if x[-2:] != '_*'))
+
+	def _grab_pkg_env(self, penv, container, protected_keys=None):
+		if protected_keys is None:
+			protected_keys = ()
+		abs_user_config = os.path.join(
+			self['PORTAGE_CONFIGROOT'], USER_CONFIG_PATH)
+		non_user_variables = self._non_user_variables
+		# Make a copy since we don't want per-package settings
+		# to pollute the global expand_map.
+		expand_map = self._expand_map.copy()
+		incrementals = self.incrementals
+		for envname in penv:
+			penvfile = os.path.join(abs_user_config, "env", envname)
+			penvconfig = getconfig(penvfile, expand=expand_map)
+			if penvconfig is None:
+				writemsg("!!! %s references non-existent file: %s\n" % \
+					(os.path.join(abs_user_config, 'package.env'), penvfile),
+					noiselevel=-1)
+			else:
+				for k, v in penvconfig.items():
+					if k in protected_keys or \
+						k in non_user_variables:
+						writemsg("!!! Illegal variable " + \
+							"'%s' assigned in '%s'\n" % \
+							(k, penvfile), noiselevel=-1)
+					elif k in incrementals:
+						if k in container:
+							container[k] = container[k] + " " + v
+						else:
+							container[k] = v
+					else:
+						container[k] = v
 
 	def _get_implicit_iuse(self):
 		"""

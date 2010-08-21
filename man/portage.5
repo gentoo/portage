@@ -51,6 +51,7 @@ make.conf
 mirrors
 modules
 package.accept_keywords
+package.env
 package.keywords
 package.license
 package.mask
@@ -539,6 +540,24 @@ package.accept_keywords like this:
 games-fps/quake3-demo x86
 
 .TP
+.BR package.env
+Per\-package environment variable settings. Entries refer to
+environment files that are placed in the \fB/etc/portage/env/\fR
+directory and have the same format as \fBmake.conf\fR(5).
+
+.I Format:
+.nf
+\- comment lines begin with # (no inline comments)
+\- one DEPEND atom per line followed by name(s) of environment file(s)
+.fi
+
+.I Example:
+.nf
+# use environment variables from /etc/portage/env/glibc.conf for the glibc package
+sys\-libs/glibc glibc.conf
+.fi
+
+.TP
 .BR package.license
 This will allow ACCEPT_LICENSE to be augmented for a single package.
 
@@ -873,7 +892,8 @@ games\-emulation/xmess:net \- Adds network support
 .TP
 .BR make.globals
 The global default settings for Portage.  This comes from the portage package 
-itself.  Settings in \fBmake.conf\fR override values here.  The format 
+itself.  Settings in \fBmake.conf\fR or \fBpackage.env\fR
+override values here. The format 
 is described extensivly in \fBmake.conf\fR(5).
 .RE
 .TP
