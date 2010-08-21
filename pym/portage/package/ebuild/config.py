@@ -1242,7 +1242,7 @@ class config(object):
 				self.features.add('chflags')
 
 			if 'parse-eapi-ebuild-head' in self.features:
-				_validate_cache_for_unsupported_eapis = False
+				portage._validate_cache_for_unsupported_eapis = False
 
 			self._iuse_implicit_match = _iuse_implicit_match_cache(self)
 
