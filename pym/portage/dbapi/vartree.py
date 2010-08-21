@@ -2388,7 +2388,7 @@ class dblink(object):
 		else:
 			self.settings.pop("PORTAGE_LOG_FILE", None)
 
-		env_update(target_root=self.myroot, prev_mtimes=ldpath_mtimes,
+		env_update(target_root=self._eroot, prev_mtimes=ldpath_mtimes,
 			contents=contents, env=self.settings.environ(),
 			writemsg_level=self._display_merge)
 		return os.EX_OK
@@ -4077,7 +4077,7 @@ class dblink(object):
 
 		#update environment settings, library paths. DO NOT change symlinks.
 		env_update(makelinks=(not downgrade),
-			target_root=self.settings["ROOT"], prev_mtimes=prev_mtimes,
+			target_root=self._eroot, prev_mtimes=prev_mtimes,
 			contents=contents, env=self.settings.environ(),
 			writemsg_level=self._display_merge)
 
