@@ -220,15 +220,9 @@ if "test" in pargs:
 	# of problems such as masked "test" USE flag.
 	tmpsettings["EBUILD_FORCE_TEST"] = "1"
 	tmpsettings.backup_changes("EBUILD_FORCE_TEST")
-	if "test" not in tmpsettings.features:
-		tmpsettings.features.add("test")
-		tmpsettings["FEATURES"] = " ".join(sorted(tmpsettings.features))
-		tmpsettings.backup_changes("FEATURES")
+	tmpsettings.features.add("test")
 
-if 'fail-clean' in tmpsettings.features:
-	tmpsettings.features.remove('fail-clean')
-	tmpsettings["FEATURES"] = " ".join(sorted(tmpsettings.features))
-	tmpsettings.backup_changes("FEATURES")
+tmpsettings.features.discard('fail-clean')
 
 if opts.skip_manifest:
 	tmpsettings["EBUILD_SKIP_MANIFEST"] = "1"

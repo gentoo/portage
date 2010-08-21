@@ -32,7 +32,7 @@ from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
 from portage.dbapi.vartree import vartree
 from portage.dep import Atom, best_match_to_list, \
-	isvalidatom, match_from_list, match_to_list, \
+	isvalidatom, match_from_list, \
 	remove_slot, use_reduce
 from portage.eapi import eapi_exports_AA, eapi_supports_prefix, eapi_exports_replace_vars
 from portage.env.loaders import KeyValuePairFileLoader
@@ -128,6 +128,68 @@ def _ordered_by_atom_specificity(cpdict, pkg):
 		results.reverse()
 
 	return results
+
+class _features_set(object):
+	"""
+	Provides relevant set operations needed for access and modification of
+	config.features. The FEATURES variable is automatically synchronized
+	upon modification.
+
+	Modifications result in a permanent override that will cause the change
+	to propagate to the incremental stacking mechanism in config.regenerate().
+	This eliminates the need to call config.backup_changes() when FEATURES
+	is modified, since any overrides are guaranteed to persist despite calls
+	to config.reset().
+	"""
+
+	def __init__(self, settings):
+		self._settings = settings
+		self._features = set()
+
+	def __contains__(self, k):
+		return k in self._features
+
+	def __iter__(self):
+		return iter(self._features)
+
+	def _sync_env_var(self):
+		self._settings['FEATURES'] = ' '.join(sorted(self._features))
+
+	def add(self, k):
+		self._settings.modifying()
+		self._settings._features_overrides.append(k)
+		if k not in self._features:
+			self._features.add(k)
+			self._sync_env_var()
+
+	def update(self, values):
+		self._settings.modifying()
+		values = list(values)
+		self._settings._features_overrides.extend(values)
+		need_sync = False
+		for k in values:
+			if k in self._features:
+				continue
+			self._features.add(k)
+			need_sync = True
+		if need_sync:
+			self._sync_env_var()
+
+	def remove(self, k):
+		"""
+		This never raises KeyError, since it records a permanent override
+		that will prevent the given flag from ever being added again by
+		incremental stacking in config.regenerate().
+		"""
+		self.discard(k)
+
+	def discard(self, k):
+		self._settings.modifying()
+		self._settings._features_overrides.append('-' + k)
+		if k in self._features:
+			self._features.remove(k)
+			self._sync_env_var()
+
 
 def _lazy_iuse_regex(iuse_implicit):
 	"""
@@ -402,6 +464,7 @@ class config(object):
 		self._accept_license_str = None
 		self._license_groups = {}
 		self._accept_properties = None
+		self._features_overrides = []
 
 		self.virtuals = {}
 		self.virts_p = {}
@@ -478,7 +541,6 @@ class config(object):
 			self.lookuplist.reverse()
 			self._use_expand_dict = copy.deepcopy(clone._use_expand_dict)
 			self.backupenv  = self.configdict["backupenv"]
-			self._backupenv  = copy.deepcopy(clone._backupenv)
 			self.pusedict   = copy.deepcopy(clone.pusedict)
 			self.pkeywordsdict = copy.deepcopy(clone.pkeywordsdict)
 			self._pkeywords_list = copy.deepcopy(clone._pkeywords_list)
@@ -486,7 +548,9 @@ class config(object):
 			self.punmaskdict = copy.deepcopy(clone.punmaskdict)
 			self.prevmaskdict = copy.deepcopy(clone.prevmaskdict)
 			self.pprovideddict = copy.deepcopy(clone.pprovideddict)
-			self.features = copy.deepcopy(clone.features)
+			self.features = _features_set(self)
+			self.features._features = copy.deepcopy(clone.features._features)
+			self._features_overrides = copy.deepcopy(clone._features_overrides)
 
 			self._accept_license = copy.deepcopy(clone._accept_license)
 			self._plicensedict = copy.deepcopy(clone._plicensedict)
@@ -1177,14 +1241,6 @@ class config(object):
 			if bsd_chflags:
 				self.features.add('chflags')
 
-			self["FEATURES"] = " ".join(sorted(self.features))
-			# We make a backup of backupenv, before the original
-			# FEATURES setting is overwritten. This backup provides
-			# access to negative FEATURES incrementals from the
-			# environment, useful for overriding FEATURES
-			# settings from package.env.
-			self._backupenv = self.backupenv.copy()
-			self.backup_changes("FEATURES")
 			if 'parse-eapi-ebuild-head' in self.features:
 				_validate_cache_for_unsupported_eapis = False
 
@@ -1671,7 +1727,6 @@ class config(object):
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
 
-		oldpenv = self._penv
 		self._penv = []
 		cpdict = self._penvdict.get(cp)
 		if cpdict:
@@ -1710,29 +1765,6 @@ class config(object):
 			self.reset(keeping_pkg=1,use_cache=use_cache)
 
 		env_configdict = self.configdict['env']
-		if 'FEATURES' not in pkg_configdict:
-			env_configdict['FEATURES'] = self.backupenv['FEATURES']
-		else:
-			# Now stack FEATURES manually, since self.regenerate()
-			# avoid restacking it, in case features have been
-			# internally disabled by portage.
-			features_stack = []
-			features_stack.append(self.features)
-			pkg_features = pkg_configdict.get('FEATURES')
-			if pkg_features:
-				features_stack.append(pkg_features.split())
-			# Note that this is a special _backupenv that provides
-			# access to negative FEATURES incrementals from the
-			# environment, useful for overriding FEATURES
-			# settings from package.env.
-			env_features = self._backupenv.get('FEATURES')
-			if env_features:
-				features_stack.append(env_features.split())
-
-			env_configdict['FEATURES'] = \
-				" ".join(sorted(stack_lists(features_stack)))
-			# TODO: Update self.features, so package.env can
-			# effect features on the python side.
 
 		# Ensure that "pkg" values are always preferred over "env" values.
 		# This must occur _after_ the above reset() call, since reset()
@@ -2382,16 +2414,10 @@ class config(object):
 		else:
 			myincrementals = self.incrementals
 		myincrementals = set(myincrementals)
-		# If self.features exists, it has already been stacked and may have
-		# been mutated, so don't stack it again or else any mutations will be
-		# reverted.
-		if "FEATURES" in myincrementals and hasattr(self, "features"):
-			myincrementals.remove("FEATURES")
 
-		if "USE" in myincrementals:
-			# Process USE last because it depends on USE_EXPAND which is also
-			# an incremental!
-			myincrementals.remove("USE")
+		# Process USE last because it depends on USE_EXPAND which is also
+		# an incremental!
+		myincrementals.discard("USE")
 
 		mydbs = self.configlist[:-1]
 		mydbs.append(self.backupenv)
@@ -2426,15 +2452,23 @@ class config(object):
 			# repoman will accept any property
 			self._accept_properties = ('*',)
 
+		increment_lists = {}
+		for k in myincrementals:
+			incremental_list = []
+			increment_lists[k] = incremental_list
+			for curdb in mydbs:
+				v = curdb.get(k)
+				if v is not None:
+					incremental_list.append(v.split())
+
+		if 'FEATURES' in increment_lists:
+			increment_lists['FEATURES'].append(self._features_overrides)
+
 		myflags = set()
-		for mykey in myincrementals:
+		for mykey, incremental_list in increment_lists.items():
 
 			myflags.clear()
-			for curdb in mydbs:
-				if mykey not in curdb:
-					continue
-				#variables are already expanded
-				mysplit = curdb[mykey].split()
+			for mysplit in incremental_list:
 
 				for x in mysplit:
 					if x=="-*":
@@ -2570,11 +2604,11 @@ class config(object):
 					myflags.add(var_lower + "_" + x)
 
 		if hasattr(self, "features"):
-			self.features.clear()
+			self.features._features.clear()
 		else:
-			self.features = set()
-		self.features.update(self.configlist[-1].get('FEATURES', '').split())
-		self['FEATURES'] = ' '.join(sorted(self.features))
+			self.features = _features_set(self)
+		self.features._features.update(self.get('FEATURES', '').split())
+		self.features._sync_env_var()
 
 		myflags.update(self.useforce)
 		arch = self.configdict["defaults"].get("ARCH")

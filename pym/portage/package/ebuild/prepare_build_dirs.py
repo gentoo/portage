@@ -235,7 +235,6 @@ def _prepare_features_dirs(mysettings):
 
 			if failure:
 				mysettings.features.remove(myfeature)
-				mysettings['FEATURES'] = ' '.join(sorted(mysettings.features))
 				time.sleep(5)
 
 def _prepare_workdir(mysettings):

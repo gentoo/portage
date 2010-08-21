@@ -2473,13 +2473,9 @@ def adjust_config(myopts, settings):
 		if fail_clean is True and \
 			'fail-clean' not in settings.features:
 			settings.features.add('fail-clean')
-			settings['FEATURES'] = ' '.join(sorted(settings.features))
-			settings.backup_changes('FEATURES')
 		elif fail_clean == 'n' and \
 			'fail-clean' in settings.features:
 			settings.features.remove('fail-clean')
-			settings['FEATURES'] = ' '.join(sorted(settings.features))
-			settings.backup_changes('FEATURES')
 
 	CLEAN_DELAY = 5
 	try:
