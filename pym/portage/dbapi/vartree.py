@@ -2175,6 +2175,7 @@ class dblink(object):
 		myebuildpath = None
 		ebuild_phase = "prerm"
 		log_path = None
+		catdir = None
 		mystuff = os.listdir(self.dbdir)
 		for x in mystuff:
 			if x.endswith(".ebuild"):
@@ -2345,7 +2346,7 @@ class dblink(object):
 				finally:
 					unlockdir(builddir_lock)
 			try:
-				if not catdir_lock:
+				if catdir and not catdir_lock:
 					# Lock catdir for removal if empty.
 					catdir_lock = lockdir(catdir)
 			finally:
