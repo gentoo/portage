@@ -231,6 +231,12 @@ A QA\-feature to ensure that a package doesn't overwrite files it doesn't own.
 The \fICOLLISION_IGNORE\fR variable can be used to selectively disable this
 feature. Also see the related \fIprotect\-owned\fR feature.
 .TP
+.B compress\-build\-logs
+The causes all build logs to be compressed while they are being written.
+Log file names have an extension that is appropriate for the compression
+type. Currently, only \fBgzip\fR(1) compression is supported, so build
+logs will have a '.gz' extension when this feature is enabled.
+.TP
 .B digest
 Autogenerate digests for packages when running the \fBemerge\fR(1) command.  If
 the \fIassume\-digests\fR feature is also enabled then existing SRC_URI digests

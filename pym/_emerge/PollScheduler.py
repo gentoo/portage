@@ -1,10 +1,13 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import gzip
 import logging
 import select
 import time
 
+from portage import _encodings
+from portage import _unicode_encode
 from portage import os
 from portage.util import writemsg_level
 
@@ -16,7 +19,7 @@ from _emerge.PollSelectAdapter import PollSelectAdapter
 class PollScheduler(object):
 
 	class _sched_iface_class(SlotObject):
-		__slots__ = ("register", "schedule", "unregister")
+		__slots__ = ("output", "register", "schedule", "unregister")
 
 	def __init__(self):
 		self._max_jobs = 1
@@ -29,6 +32,12 @@ class PollScheduler(object):
 		self._event_handler_id = 0
 		self._poll_obj = create_poll_instance()
 		self._scheduling = False
+		self._background = False
+		self.sched_iface = self._sched_iface_class(
+			output=self._task_output,
+			register=self._register,
+			schedule=self._schedule_wait,
+			unregister=self._unregister)
 
 	def _schedule(self):
 		"""
@@ -227,6 +236,31 @@ class PollScheduler(object):
 			event_handled = True
 
 		return event_handled
+
+	def _task_output(self, msg, log_path=None, level=0, noiselevel=-1):
+		"""
+		Output msg to stdout if not self._background. If log_path
+		is not None then append msg to the log (appends with
+		compression if the filename extension of log_path
+		corresponds to a supported compression type).
+		"""
+
+		if not self._background:
+			writemsg_level(msg, level=level, noiselevel=noiselevel)
+
+		if log_path is not None:
+			f = open(_unicode_encode(log_path,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='ab')
+
+			if log_path.endswith('.gz'):
+				# NOTE: The empty filename argument prevents us from triggering
+				# a bug in python3 which causes GzipFile to raise AttributeError
+				# if fileobj.name is bytes instead of unicode.
+				f =  gzip.GzipFile(filename='', mode='ab', fileobj=f)
+
+			f.write(_unicode_encode(msg))
+			f.close()
 
 _can_poll_device = None
 

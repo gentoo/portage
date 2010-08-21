@@ -85,7 +85,8 @@ EBUILD_PHASES            = ("pretend", "setup", "unpack", "prepare", "configure"
                            "nofetch", "config", "info", "other")
 SUPPORTED_FEATURES       = frozenset([
                            "assume-digests", "buildpkg", "buildsyspkg", "ccache",
-                           "collision-protect", "digest", "distcc", "distlocks",
+                           "collision-protect", "compress-build-logs",
+                           "digest", "distcc", "distlocks",
                            "fakeroot", "fail-clean", "fixpackages", "getbinpkg",
                            "installsources", "keeptemp", "keepwork", "fixlafiles", "lmirror",
                            "metadata-transfer", "mirror", "multilib-strict", "news",

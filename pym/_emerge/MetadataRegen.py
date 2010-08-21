@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -26,10 +26,6 @@ class MetadataRegen(PollScheduler):
 
 		self._max_jobs = max_jobs
 		self._max_load = max_load
-		self._sched_iface = self._sched_iface_class(
-			register=self._register,
-			schedule=self._schedule_wait,
-			unregister=self._unregister)
 
 		self._valid_pkgs = set()
 		self._cp_set = set()

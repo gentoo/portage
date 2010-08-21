@@ -42,15 +42,4 @@ class PackageUninstall(AsynchronousTask):
 				portage.util.writemsg_level(msg,
 					level=level, noiselevel=noiselevel)
 		else:
-			if not background:
-				portage.util.writemsg_level(msg,
-					level=level, noiselevel=noiselevel)
-
-			f = codecs.open(_unicode_encode(log_path,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='a', encoding=_encodings['content'], errors='replace')
-			try:
-				f.write(msg)
-			finally:
-				f.close()
-
+			self.scheduler.output(msg, level=level, noiselevel=noiselevel)

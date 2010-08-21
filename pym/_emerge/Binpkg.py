@@ -27,20 +27,8 @@ class Binpkg(CompositeTask):
 		"_image_dir", "_infloc", "_pkg_path", "_tree", "_verify")
 
 	def _writemsg_level(self, msg, level=0, noiselevel=0):
-
-		if not self.background:
-			portage.util.writemsg_level(msg,
-				level=level, noiselevel=noiselevel)
-
-		log_path = self.settings.get("PORTAGE_LOG_FILE")
-		if  log_path is not None:
-			f = codecs.open(_unicode_encode(log_path,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='a', encoding=_encodings['content'], errors='replace')
-			try:
-				f.write(msg)
-			finally:
-				f.close()
+		self.scheduler.output(msg, level=level, noiselevel=noiselevel,
+			log_path=self.settings.get("PORTAGE_LOG_FILE"))
 
 	def _start(self):
 
@@ -146,9 +134,7 @@ class Binpkg(CompositeTask):
 
 		verifier = None
 		if self._verify:
-			logfile = None
-			if self.background:
-				logfile = self.settings.get("PORTAGE_LOG_FILE")
+			logfile = self.settings.get("PORTAGE_LOG_FILE")
 			verifier = BinpkgVerifier(background=self.background,
 				logfile=logfile, pkg=self.pkg)
 			self._start_task(verifier, self._verifier_exit)

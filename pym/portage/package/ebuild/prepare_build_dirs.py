@@ -3,8 +3,8 @@
 
 __all__ = ['prepare_build_dirs']
 
-import codecs
 import errno
+import gzip
 import shutil
 import stat
 import time
@@ -117,15 +117,17 @@ def _adjust_perms_msg(settings, msg):
 
 	if background and log_path is not None:
 		try:
-			log_file = codecs.open(_unicode_encode(log_path,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='a', encoding=_encodings['content'], errors='replace')
+			log_file = open(_unicode_encode(log_path,
+				encoding=_encodings['fs'], errors='strict'), mode='ab')
 		except IOError:
 			def write(msg):
 				pass
 		else:
+			if log_path.endswith('.gz'):
+				log_file =  gzip.GzipFile(filename='',
+					mode='ab', fileobj=log_file)
 			def write(msg):
-				log_file.write(_unicode_decode(msg))
+				log_file.write(_unicode_encode(msg))
 				log_file.flush()
 
 	try:
@@ -281,6 +283,11 @@ def _prepare_workdir(mysettings):
 			writemsg(_("!!! Disabling logging.\n"), noiselevel=-1)
 			while "PORT_LOGDIR" in mysettings:
 				del mysettings["PORT_LOGDIR"]
+
+	compress_log_ext = ''
+	if 'compress-build-logs' in mysettings.features:
+		compress_log_ext = '.gz'
+
 	if "PORT_LOGDIR" in mysettings and \
 		os.access(mysettings["PORT_LOGDIR"], os.W_OK):
 		logid_path = os.path.join(mysettings["PORTAGE_BUILDDIR"], ".logid")
@@ -292,12 +299,14 @@ def _prepare_workdir(mysettings):
 
 		if "split-log" in mysettings.features:
 			mysettings["PORTAGE_LOG_FILE"] = os.path.join(
-				mysettings["PORT_LOGDIR"], "build", "%s/%s:%s.log" % \
-				(mysettings["CATEGORY"], mysettings["PF"], logid_time))
+				mysettings["PORT_LOGDIR"], "build", "%s/%s:%s.log%s" % \
+				(mysettings["CATEGORY"], mysettings["PF"], logid_time,
+				compress_log_ext))
 		else:
 			mysettings["PORTAGE_LOG_FILE"] = os.path.join(
-				mysettings["PORT_LOGDIR"], "%s:%s:%s.log" % \
-				(mysettings["CATEGORY"], mysettings["PF"], logid_time))
+				mysettings["PORT_LOGDIR"], "%s:%s:%s.log%s" % \
+				(mysettings["CATEGORY"], mysettings["PF"], logid_time,
+				compress_log_ext))
 
 		ensure_dirs(os.path.dirname(mysettings["PORTAGE_LOG_FILE"]))
 
@@ -307,4 +316,4 @@ def _prepare_workdir(mysettings):
 		# current policy will allow it to work when a pty is available, but
 		# not through a normal pipe. See bug #162404.
 		mysettings["PORTAGE_LOG_FILE"] = os.path.join(
-			mysettings["T"], "build.log")
+			mysettings["T"], "build.log%s" % compress_log_ext)

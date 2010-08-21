@@ -218,19 +218,8 @@ class EbuildBuild(CompositeTask):
 		if self._issyspkg:
 			msg = ">>> This is a system package, " + \
 				"let's pack a rescue tarball.\n"
-
-			log_path = self.settings.get("PORTAGE_LOG_FILE")
-			if log_path is not None:
-				log_file = codecs.open(_unicode_encode(log_path,
-					encoding=_encodings['fs'], errors='strict'),
-					mode='a', encoding=_encodings['content'], errors='replace')
-				try:
-					log_file.write(msg)
-				finally:
-					log_file.close()
-
-			if not self.background:
-				portage.writemsg_stdout(msg, noiselevel=-1)
+			self.scheduler.output(msg,
+				log_path=self.settings.get("PORTAGE_LOG_FILE"))
 
 		packager = EbuildBinpkg(background=self.background, pkg=self.pkg,
 			scheduler=self.scheduler, settings=self.settings)

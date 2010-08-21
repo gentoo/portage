@@ -4,6 +4,7 @@
 from __future__ import print_function
 
 import codecs
+import gzip
 import logging
 import shutil
 import sys
@@ -78,7 +79,8 @@ class Scheduler(PollScheduler):
 
 	class _iface_class(SlotObject):
 		__slots__ = ("dblinkEbuildPhase", "dblinkDisplayMerge",
-			"dblinkElog", "dblinkEmergeLog", "fetch", "register", "schedule",
+			"dblinkElog", "dblinkEmergeLog", "fetch",
+			"output", "register", "schedule",
 			"scheduleSetup", "scheduleUnpack", "scheduleYield",
 			"unregister")
 
@@ -209,7 +211,8 @@ class Scheduler(PollScheduler):
 			dblinkDisplayMerge=self._dblink_display_merge,
 			dblinkElog=self._dblink_elog,
 			dblinkEmergeLog=self._dblink_emerge_log,
-			fetch=fetch_iface, register=self._register,
+			fetch=fetch_iface, output=self._task_output,
+			register=self._register,
 			schedule=self._schedule_wait,
 			scheduleSetup=self._schedule_setup,
 			scheduleUnpack=self._schedule_unpack,
@@ -562,22 +565,9 @@ class Scheduler(PollScheduler):
 		installed = type_name == "installed"
 		return self._pkg(cpv, type_name, root_config, installed=installed)
 
-	def _append_to_log_path(self, log_path, msg):
-
-		f = codecs.open(_unicode_encode(log_path,
-			encoding=_encodings['fs'], errors='strict'),
-			mode='a', encoding=_encodings['content'],
-			errors='backslashreplace')
-		try:
-			f.write(_unicode_decode(msg,
-				encoding=_encodings['content'], errors='replace'))
-		finally:
-			f.close()
-
 	def _dblink_elog(self, pkg_dblink, phase, func, msgs):
 
 		log_path = pkg_dblink.settings.get("PORTAGE_LOG_FILE")
-		background = self._background
 		out = StringIO()
 
 		for msg in msgs:
@@ -585,11 +575,7 @@ class Scheduler(PollScheduler):
 
 		out_str = out.getvalue()
 
-		if not background:
-			portage.util.writemsg_stdout(out_str, noiselevel=-1)
-
-		if log_path is not None:
-			self._append_to_log_path(log_path, out_str)
+		self._task_output(out_str, log_path=log_path)
 
 	def _dblink_emerge_log(self, msg):
 		self._logger.log(msg)
@@ -603,10 +589,7 @@ class Scheduler(PollScheduler):
 				portage.util.writemsg_level(msg,
 					level=level, noiselevel=noiselevel)
 		else:
-			if not background:
-				portage.util.writemsg_level(msg,
-					level=level, noiselevel=noiselevel)
-			self._append_to_log_path(log_path, msg)
+			self._task_output(msg, log_path=log_path)
 
 	def _dblink_ebuild_phase(self,
 		pkg_dblink, pkg_dbapi, ebuild_path, phase):
@@ -1100,11 +1083,14 @@ class Scheduler(PollScheduler):
 			log_path = self._locate_failure_log(failed_pkg)
 			if log_path is not None:
 				try:
-					log_file = codecs.open(_unicode_encode(log_path,
-					encoding=_encodings['fs'], errors='strict'),
-					mode='r', encoding=_encodings['content'], errors='replace')
+					log_file = open(_unicode_encode(log_path,
+						encoding=_encodings['fs'], errors='strict'), mode='rb')
 				except IOError:
 					pass
+				else:
+					if log_path.endswith('.gz'):
+						log_file =  gzip.GzipFile(filename='',
+							mode='rb', fileobj=log_file)
 
 			if log_file is not None:
 				try:

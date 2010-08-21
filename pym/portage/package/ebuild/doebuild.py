@@ -5,6 +5,7 @@ __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
 
 import codecs
 import errno
+import gzip
 from itertools import chain
 import logging
 import os as _os
@@ -1179,11 +1180,13 @@ def _check_build_log(mysettings, out=None):
 	if logfile is None:
 		return
 	try:
-		f = codecs.open(_unicode_encode(logfile,
-			encoding=_encodings['fs'], errors='strict'),
-			mode='r', encoding=_encodings['content'], errors='replace')
+		f = open(_unicode_encode(logfile, encoding=_encodings['fs'],
+			errors='strict'), mode='rb')
 	except EnvironmentError:
 		return
+
+	if logfile.endswith('.gz'):
+		f =  gzip.GzipFile(filename='', mode='rb', fileobj=f)
 
 	am_maintainer_mode = []
 	bash_command_not_found = []
@@ -1212,6 +1215,7 @@ def _check_build_log(mysettings, out=None):
 
 	try:
 		for line in f:
+			line = _unicode_decode(line)
 			if am_maintainer_mode_re.search(line) is not None and \
 				am_maintainer_mode_exclude_re.search(line) is None:
 				am_maintainer_mode.append(line.rstrip("\n"))
