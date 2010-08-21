@@ -233,7 +233,8 @@ class config(object):
 		"PORTAGE_BIN_PATH",
 		"PORTAGE_BUILDDIR", "PORTAGE_COLORMAP",
 		"PORTAGE_CONFIGROOT", "PORTAGE_DEBUG", "PORTAGE_DEPCACHEDIR",
-		"PORTAGE_EBUILD_EXIT_FILE", "PORTAGE_GID", "PORTAGE_GRPNAME",
+		"PORTAGE_EBUILD_EXIT_FILE", "PORTAGE_FEATURES",
+		"PORTAGE_GID", "PORTAGE_GRPNAME",
 		"PORTAGE_INST_GID", "PORTAGE_INST_UID",
 		"PORTAGE_IPC_DAEMON", "PORTAGE_IUSE",
 		"PORTAGE_LOG_FILE", "PORTAGE_MASTER_PID",
@@ -2827,6 +2828,13 @@ class config(object):
 					v = self.get(k)
 					if v is not None:
 						mydict[k] = v
+
+		# At some point we may want to stop exporting FEATURES to the ebuild
+		# environment, in order to prevent ebuilds from abusing it. In
+		# preparation for that, export it as PORTAGE_FEATURES so that bashrc
+		# users will be able to migrate any FEATURES conditional code to
+		# use this alternative variable.
+		mydict["PORTAGE_FEATURES"] = self["FEATURES"]
 
 		# Filtered by IUSE and implicit IUSE.
 		mydict["USE"] = self.get("PORTAGE_USE", "")
