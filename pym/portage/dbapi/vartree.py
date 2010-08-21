@@ -1,4 +1,4 @@
-# Copyright 1998-2009 Gentoo Foundation
+# Copyright 1998-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["PreservedLibsRegistry", "LinkageMap",
@@ -2446,6 +2446,7 @@ class dblink(object):
 		stale_confmem = []
 
 		unmerge_orphans = "unmerge-orphans" in self.settings.features
+		calc_prelink = "prelink-checksums" in self.settings.features
 
 		if pkgfiles:
 			self.updateprotect()
@@ -2630,7 +2631,7 @@ class dblink(object):
 						continue
 					mymd5 = None
 					try:
-						mymd5 = perf_md5(obj, calc_prelink=1)
+						mymd5 = perf_md5(obj, calc_prelink=calc_prelink)
 					except FileNotFound as e:
 						# the file has disappeared between now and our stat call
 						show_unmerge("---", unmerge_desc["!obj"], file_type, obj)
@@ -4153,7 +4154,8 @@ class dblink(object):
 		join = os.path.join
 		srcroot = normalize_path(srcroot).rstrip(sep) + sep
 		destroot = normalize_path(destroot).rstrip(sep) + sep
-		
+		calc_prelink = "prelink-checksums" in self.settings.features
+
 		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
 		if isinstance(stufftomerge, basestring):
 			#A directory is specified.  Figure out protection paths, listdir() it and process it.
@@ -4314,7 +4316,7 @@ class dblink(object):
 					return 1
 			elif stat.S_ISREG(mymode):
 				# we are merging a regular file
-				mymd5 = perform_md5(mysrc, calc_prelink=1)
+				mymd5 = perform_md5(mysrc, calc_prelink=calc_prelink)
 				# calculate config file protection stuff
 				mydestdir = os.path.dirname(mydest)
 				moveme = 1
@@ -4345,7 +4347,7 @@ class dblink(object):
 						if protected:
 							# we have a protection path; enable config file management.
 							cfgprot = 0
-							destmd5 = perform_md5(mydest, calc_prelink=1)
+							destmd5 = perform_md5(mydest, calc_prelink=calc_prelink)
 							if mymd5 == destmd5:
 								#file already in place; simply update mtimes of destination
 								moveme = 1

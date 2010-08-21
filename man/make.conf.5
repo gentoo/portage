@@ -358,6 +358,13 @@ Parse \fBEAPI\fR from the head of the ebuild (first 30 lines). This feature
 is only intended for experimental purposes and should not be enabled under
 normal circumstances.
 .TP
+.B prelink\-checksums
+If \fBprelink\fR(8) is installed then use it to undo any prelinks on files
+before computing checksums for merge and unmerge. This feature is
+useful only if \fBprelink\fR(8) is installed and accurate checksums (despite
+prelinking) are needed for some reason such as for checking the integrity of
+installed files or because the \fIunmerge\-orphans\fR feature is disabled.
+.TP
 .B preserve\-libs
 Preserve libraries when the sonames change during upgrade or downgrade.
 Libraries are preserved only if consumers of those libraries are detected.
