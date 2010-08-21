@@ -648,6 +648,10 @@ class Scheduler(PollScheduler):
 		digest = '--digest' in self.myopts
 		if not digest:
 			for pkgsettings in self.pkgsettings.values():
+				if pkgsettings.mycpv is not None:
+					# ensure that we are using global features
+					# settings rather than those from package.env
+					pkgsettings.reset()
 				if 'digest' in pkgsettings.features:
 					digest = True
 					break
@@ -661,6 +665,10 @@ class Scheduler(PollScheduler):
 				x.operation != 'merge':
 				continue
 			pkgsettings = self.pkgsettings[x.root]
+			if pkgsettings.mycpv is not None:
+				# ensure that we are using global features
+				# settings rather than those from package.env
+				pkgsettings.reset()
 			if '--digest' not in self.myopts and \
 				'digest' not in pkgsettings.features:
 				continue
