@@ -1160,6 +1160,9 @@ class FetchlistDict(Mapping):
 
 	def has_key(self, pkg_key):
 		"""Returns true if the given package exists within pkgdir."""
+		warnings.warn("portage.dbapi.porttree.FetchlistDict.has_key() is "
+			"deprecated, use the 'in' operator instead",
+			DeprecationWarning, stacklevel=2)
 		return pkg_key in self
 
 	def __iter__(self):
