@@ -1021,19 +1021,14 @@ class config(object):
 					recursive=1, allow_wildcard=True).items():
 					pkgdict.setdefault(k, []).extend(v)
 
+				accept_keywords_defaults = \
+					self.configdict["defaults"].get("ACCEPT_KEYWORDS", "").split()
+				accept_keywords_defaults = tuple('~' + keyword for keyword in \
+					accept_keywords_defaults if keyword[:1] not in "~-")
 				for k, v in pkgdict.items():
 					# default to ~arch if no specific keyword is given
 					if not v:
-						mykeywordlist = []
-						if self.configdict["defaults"] and \
-							"ACCEPT_KEYWORDS" in self.configdict["defaults"]:
-							groups = self.configdict["defaults"]["ACCEPT_KEYWORDS"].split()
-						else:
-							groups = []
-						for keyword in groups:
-							if not keyword[0] in "~-":
-								mykeywordlist.append("~"+keyword)
-						v = mykeywordlist
+						v = accept_keywords_defaults
 					self.pkeywordsdict.setdefault(k.cp, {})[k] = v
 
 				#package.license
