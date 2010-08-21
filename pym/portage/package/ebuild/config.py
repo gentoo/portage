@@ -1688,7 +1688,7 @@ class config(object):
 		# to account for possible incremental interaction between
 		# package.use, package.env, and overrides from the calling
 		# environment (configdict['env']).
-		if oldpenv != self._penv or self._penv:
+		if self._penv:
 			has_changed = True
 			# USE is special because package.use settings override
 			# it. Discard any package.use settings here and they'll
