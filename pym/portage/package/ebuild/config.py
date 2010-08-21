@@ -699,6 +699,13 @@ class config(object):
 				os.path.join(x, "package.keywords"), recursive=1) \
 				for x in self.profiles]
 			for pkeyworddict in rawpkeywords:
+				if not pkeyworddict:
+					# Omit non-existent files from the stack. This isn't
+					# feasible for package.use (among other package.*
+					# files such as package.use.mask) since it is stacked
+					# in layers with make.defaults USE, and the layer
+					# indices need to align.
+					continue
 				cpdict = {}
 				for k, v in pkeyworddict.items():
 					cpdict.setdefault(k.cp, {})[k] = v
