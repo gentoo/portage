@@ -2426,9 +2426,10 @@ class config(object):
 			# repoman will accept any property
 			self._accept_properties = ('*',)
 
+		myflags = set()
 		for mykey in myincrementals:
 
-			myflags=[]
+			myflags.clear()
 			for curdb in mydbs:
 				if mykey not in curdb:
 					continue
@@ -2439,7 +2440,7 @@ class config(object):
 					if x=="-*":
 						# "-*" is a special "minus" var that means "unset all settings".
 						# so USE="-* gnome" will have *just* gnome enabled.
-						myflags = []
+						myflags.clear()
 						continue
 
 					if x[0]=="+":
@@ -2452,20 +2453,15 @@ class config(object):
 							continue
 
 					if (x[0]=="-"):
-						if (x[1:] in myflags):
-							# Unset/Remove it.
-							del myflags[myflags.index(x[1:])]
+						myflags.discard(x[1:])
 						continue
 
 					# We got here, so add it now.
-					if x not in myflags:
-						myflags.append(x)
+					myflags.add(x)
 
-			myflags.sort()
 			#store setting in last element of configlist, the original environment:
 			if myflags or mykey in self:
-				self.configlist[-1][mykey] = " ".join(myflags)
-			del myflags
+				self.configlist[-1][mykey] = " ".join(sorted(myflags))
 
 		# Do the USE calculation last because it depends on USE_EXPAND.
 		if "auto" in self["USE_ORDER"].split(":"):
