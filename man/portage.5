@@ -28,6 +28,7 @@ eapi
 make.defaults
 packages
 packages.build
+package.accept_keywords
 package.keywords
 package.mask
 package.provided
@@ -764,6 +765,12 @@ FSF-APPROVED @GPL-COMPATIBLE Apache-1.1 BSD-4 MPL-1.0 MPL-1.1
 # The GPL-COMPATIBLE group includes all licenses compatible with the GNU GPL.
 GPL-COMPATIBLE Apache-2.0 BSD BSD-2 GPL-2 GPL-3 LGPL-2.1 LGPL-3 X11 ZLIB
 .fi
+.TP
+.BR package.accept_keywords
+Per\-package ACCEPT_KEYWORDS for profiles. This has the same format and
+behavior as /etc/portage/package.accept_keywords, including the ability
+to list atoms without any keywords in order to accept unstable variants
+of all stable keywords listed in ACCEPT_KEYWORDS.
 .TP
 .BR package.keywords
 Per\-profile KEYWORDS. Useful for cases in which the effective KEYWORDS of a

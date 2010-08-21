@@ -544,6 +544,7 @@ class config(object):
 			self.pusedict   = copy.deepcopy(clone.pusedict)
 			self.pkeywordsdict = copy.deepcopy(clone.pkeywordsdict)
 			self._pkeywords_list = copy.deepcopy(clone._pkeywords_list)
+			self._p_accept_keywords = copy.deepcopy(clone._p_accept_keywords)
 			self.pmaskdict = copy.deepcopy(clone.pmaskdict)
 			self.punmaskdict = copy.deepcopy(clone.punmaskdict)
 			self.prevmaskdict = copy.deepcopy(clone.prevmaskdict)
@@ -710,6 +711,19 @@ class config(object):
 				for k, v in pkeyworddict.items():
 					cpdict.setdefault(k.cp, {})[k] = v
 				self._pkeywords_list.append(cpdict)
+
+			self._p_accept_keywords = []
+			raw_p_accept_keywords = [grabdict_package(
+				os.path.join(x, "package.accept_keywords"), recursive=1) \
+				for x in self.profiles]
+			for d in raw_p_accept_keywords:
+				if not d:
+					# Omit non-existent files from the stack.
+					continue
+				cpdict = {}
+				for k, v in d.items():
+					cpdict.setdefault(k.cp, {})[k] = tuple(v)
+				self._p_accept_keywords.append(cpdict)
 
 			# get profile-masked use flags -- INCREMENTAL Child over parent
 			self.usemask_list = tuple(
@@ -2056,10 +2070,26 @@ class config(object):
 		mygroups = self._getKeywords(cpv, metadata)
 		# Repoman may modify this attribute as necessary.
 		pgroups = self["ACCEPT_KEYWORDS"].split()
-		match=0
-		cp = cpv_getkey(cpv)
-		pkgdict = self.pkeywordsdict.get(cp)
 		matches = False
+		cp = cpv_getkey(cpv)
+
+		if self._p_accept_keywords:
+			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
+			accept_keywords_defaults = tuple('~' + keyword for keyword in \
+				pgroups if keyword[:1] not in "~-")
+			for d in self._p_accept_keywords:
+				cpdict = d.get(cp)
+				if cpdict:
+					pkg_accept_keywords = \
+						_ordered_by_atom_specificity(cpdict, cpv_slot)
+					if pkg_accept_keywords:
+						for x in pkg_accept_keywords:
+							if not x:
+								x = accept_keywords_defaults
+							pgroups.extend(x)
+						matches = True
+
+		pkgdict = self.pkeywordsdict.get(cp)
 		if pkgdict:
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
 			pkg_accept_keywords = \
@@ -2082,6 +2112,8 @@ class config(object):
 					inc_pgroups.add(x)
 			pgroups = inc_pgroups
 			del inc_pgroups
+
+		match = False
 		hasstable = False
 		hastesting = False
 		for gp in mygroups:
