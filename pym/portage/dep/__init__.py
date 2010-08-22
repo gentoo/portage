@@ -556,83 +556,63 @@ def flatten(mylist):
 			newlist.append(x)
 	return newlist
 
+
+_useflag_re = re.compile("^(?P<prefix>[!-]?)(?P<flag>[A-Za-z0-9][A-Za-z0-9+_@-]*)(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$")
+
 class _use_dep(object):
 
 	__slots__ = ("__weakref__", "conditional", "missing_enabled", "missing_disabled",
 		"disabled", "enabled", "tokens", "required")
 
-	_conditionals_class = portage.cache.mappings.slot_dict_class(
-		("disabled", "enabled", "equal", "not_equal"), prefix="")
+	class _conditionals_class(object):
+		__slots__ = ("enabled", "disabled", "equal", "not_equal")
 
 	def __init__(self, use):
-		enabled_flags = []
-		disabled_flags = []
-		missing_enabled = []
-		missing_disabled = []
-		no_default = []
+		enabled_flags = set()
+		disabled_flags = set()
+		missing_enabled = set()
+		missing_disabled = set()
+		no_default = set()
 
-		conditional = self._conditionals_class()
-		for k in conditional.allowed_keys:
-			conditional[k] = []
+		conditional = {}
 
 		for x in use:
-			last_char = x[-1:]
-			first_char = x[:1]
-			flag = x
-			default = ""
-			if last_char in ("?", "="):
-				flag = flag[:-1]
-			if first_char in ("-", "!"):
-				flag = flag[1:]
-
-			if flag[-3:] in ("(+)", "(-)"):
-				default = flag[-3:]
-				flag = flag[:-3]
-
-			if "?" == last_char:
-				if "!" == first_char:
-					conditional.disabled.append(
-						self._validate_flag(x, flag))
-				elif first_char in ("-", "=", "?"):
-					raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
-				else:
-					conditional.enabled.append(
-						self._validate_flag(x, flag))
-
-			elif "=" == last_char:
-				if "!" == first_char:
-					conditional.not_equal.append(
-						self._validate_flag(x, flag))
-				elif first_char in ("-", "=", "?"):
-					raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
-				else:
-					conditional.equal.append(
-						self._validate_flag(x, flag))
-
-			elif last_char in ("!", "-"):
+			m = _useflag_re.match(x)
+			if m is None:
 				raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
 
+			operator = m.group("prefix") + m.group("suffix")
+			flag = m.group("flag")
+			default = m.group("default")
+
+			if not operator:
+				enabled_flags.add(flag)
+			elif operator == "-":
+				disabled_flags.add(flag)
+			elif operator == "?":
+				conditional.setdefault("enabled", set()).add(flag)
+			elif operator == "=":
+				conditional.setdefault("equal", set()).add(flag)
+			elif operator == "!=":
+				conditional.setdefault("not_equal", set()).add(flag)
+			elif operator == "!?":
+				conditional.setdefault("disabled", set()).add(flag)
 			else:
-				if "-" == first_char:
-					disabled_flags.append(self._validate_flag(x, flag))
-				elif first_char in ("!", "=", "?"):
-					raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
-				else:
-					enabled_flags.append(self._validate_flag(x, flag))
+				raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
 
 			if default:
 				if default == "(+)":
 					if flag in missing_disabled or flag in no_default:
 						raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
-					missing_enabled.append(flag)
+					missing_enabled.add(flag)
 				else:
 					if flag in missing_enabled or flag in no_default:
 						raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
-					missing_disabled.append(flag)
+					missing_disabled.add(flag)
 			else:
 				if flag in missing_enabled or flag in missing_disabled:
 					raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
-				no_default.append(flag)
+				no_default.add(flag)
 
 		self.tokens = use
 		if not isinstance(self.tokens, tuple):
@@ -650,17 +630,10 @@ class _use_dep(object):
 		self.missing_disabled = frozenset(missing_disabled)
 		self.conditional = None
 
-		for v in conditional.values():
-			if v:
-				for k, v in conditional.items():
-					conditional[k] = frozenset(v)
-				self.conditional = conditional
-				break
-
-	def _validate_flag(self, token, flag):
-		if _valid_use_re.match(flag) is None:
-			raise InvalidAtom(_("Invalid use dep: '%s'") % (token,))
-		return flag
+		if conditional:
+			self.conditional = self._conditionals_class()
+			for k in "enabled", "disabled", "equal", "not_equal":
+				setattr(self.conditional, k, frozenset(conditional.get(k, [])))
 
 	def __bool__(self):
 		return bool(self.tokens)
@@ -955,7 +928,9 @@ class Atom(_atom_base):
 		self.__dict__['extended_syntax'] = extended_syntax
 
 		if use_str is not None:
-			use = _use_dep(dep_getusedeps(s))
+			#~ print("use_str =", use_str)
+			#~ print("-> =", use_str[1:-1].split(","))
+			use = _use_dep(use_str[1:-1].split(","))
 			without_use = Atom(m.group('without_use'))
 		else:
 			use = None
