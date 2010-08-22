@@ -1,11 +1,14 @@
 # Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import gzip
+import tempfile
+
 from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.EbuildProcess import EbuildProcess
 from _emerge.CompositeTask import CompositeTask
-from portage.util import writemsg, writemsg_stdout
+from portage.util import writemsg
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.doebuild:_check_build_log,' + \
@@ -17,7 +20,6 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
-import codecs
 
 class EbuildPhase(CompositeTask):
 
@@ -100,8 +102,16 @@ class EbuildPhase(CompositeTask):
 
 		post_phase_cmds = _post_phase_cmds.get(self.phase)
 		if post_phase_cmds is not None:
+			logfile = settings.get("PORTAGE_LOG_FILE")
+			if logfile is not None and self.phase in ("install",):
+				# Log to a temporary file, since the code we are running
+				# reads PORTAGE_LOG_FILE for QA checks, and we want to
+				# avoid annoying "gzip: unexpected end of file" messages
+				# when FEATURES=compress-build-logs is enabled.
+				fd, logfile = tempfile.mkstemp()
+				os.close(fd)
 			post_phase = MiscFunctionsProcess(background=self.background,
-				commands=post_phase_cmds, phase=self.phase,
+				commands=post_phase_cmds, logfile=logfile, phase=self.phase,
 				scheduler=self.scheduler, settings=settings)
 			self._start_task(post_phase, self._post_phase_exit)
 			return
@@ -111,6 +121,16 @@ class EbuildPhase(CompositeTask):
 		self.wait()
 
 	def _post_phase_exit(self, post_phase):
+
+		self._assert_current(post_phase)
+
+		log_path = self.settings.get("PORTAGE_LOG_FILE")
+		if post_phase.logfile is not None and \
+			post_phase.logfile != log_path:
+			# We were logging to a temp file (see above), so append
+			# temp file to main log and remove temp file.
+			self._append_temp_log(post_phase.logfile, log_path)
+
 		if self._final_exit(post_phase) != os.EX_OK:
 			writemsg("!!! post %s failed; exiting.\n" % self.phase,
 				noiselevel=-1)
@@ -119,6 +139,31 @@ class EbuildPhase(CompositeTask):
 		self._current_task = None
 		self.wait()
 		return
+
+	def _append_temp_log(self, temp_log, log_path):
+
+		temp_file = open(_unicode_encode(temp_log,
+			encoding=_encodings['fs'], errors='strict'), 'rb')
+
+		log_file = self._open_log(log_path)
+
+		for line in temp_file:
+			log_file.write(line)
+
+		temp_file.close()
+		log_file.close()
+		os.unlink(temp_log)
+
+	def _open_log(self, log_path):
+
+		f = open(_unicode_encode(log_path,
+			encoding=_encodings['fs'], errors='strict'),
+			mode='ab')
+
+		if log_path.endswith('.gz'):
+			f =  gzip.GzipFile(filename='', mode='ab', fileobj=f)
+
+		return f
 
 	def _die_hooks(self):
 		self.returncode = None
