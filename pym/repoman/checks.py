@@ -361,33 +361,53 @@ class ImplicitRuntimeDeps(LineCheck):
 			yield 'RDEPEND is not explicitly assigned'
 
 class InheritDeprecated(LineCheck):
-	"""Check if ebuild inherits a deprecated eclass"""
+	"""Check if ebuild directly inherits a deprecated eclass"""
 
 	repoman_check_name = 'inherit.deprecated'
 
-	# deprecated eclass : new eclass (0 if no new eclass)
+	# deprecated eclass : new eclass (False if no new eclass)
 	deprecated_classes = {
 		"gems": "ruby-fakegem",
 		"php-pear": "php-pear-r1",
-		"qt3": 0,
+		"qt3": False,
 		"qt4": "qt4-r2",
 		"ruby": "ruby-ng",
 		"ruby-gnome2": "ruby-ng-gnome2"
 		}
 
+	_inherit_re = re.compile(r'^\s*inherit\s(.*)$')
+
 	def new(self, pkg):
-		self.matched_eclasses = frozenset(self.deprecated_classes.keys()).intersection(pkg.inherited)
+		self._errors = []
 
 	def check(self, num, line):
-		pass
+
+		direct_inherits = None
+		m = self._inherit_re.match(line)
+		if m is not None:
+			direct_inherits = m.group(1)
+			if direct_inherits:
+				direct_inherits = direct_inherits.split()
+
+		if not direct_inherits:
+			return
+
+		for eclass in direct_inherits:
+			replacement = self.deprecated_classes.get(eclass)
+			if replacement is None:
+				pass
+			elif replacement is False:
+				self._errors.append("please migrate from " + \
+					"'%s' (no replacement) on line: %d" % (eclass, num + 1))
+			else:
+				self._errors.append("please migrate from " + \
+					"'%s' to '%s' on line: %d" % \
+					(eclass, replacement, num + 1))
 
 	def end(self):
-		for i in self.matched_eclasses:
-			if self.deprecated_classes[i] == 0:
-				yield i + ": deprecated eclass"
-			else:
-				yield "uses deprecated eclass '"+ i +"'. please migrate to '"+ \
-					self.deprecated_classes[i] +"'"
+		for error in self._errors:
+			yield error
+		del self._errors
 
 class InheritAutotools(LineCheck):
 	"""
