@@ -566,6 +566,11 @@ class _use_dep(object):
 
 	class _conditionals_class(object):
 		__slots__ = ("enabled", "disabled", "equal", "not_equal")
+		def values(self):
+			for k in self.__slots__:
+				v = getattr(self, k, None)
+				if v:
+					yield v
 
 	def __init__(self, use):
 		enabled_flags = set()
