@@ -293,7 +293,8 @@ class binarytree(object):
 				# Ignore PROVIDE virtual match.
 				continue
 			if repo_match is not None \
-				and not repo_match(self.aux_get(mycpv, ['repository'])[0]):
+				and not repo_match(self.dbapi.aux_get(mycpv,
+					['repository'])[0]):
 				continue
 			mynewcpv = mycpv.replace(mycpv_cp, str(newcp), 1)
 			myoldpkg = catsplit(mycpv)[1]
