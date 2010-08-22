@@ -14,7 +14,7 @@ from portage.package.ebuild.fetch import _checksum_failure_temp_file
 import codecs
 
 class BinpkgVerifier(AsynchronousTask):
-	__slots__ = ("logfile", "pkg",)
+	__slots__ = ("logfile", "pkg", "scheduler")
 
 	def _start(self):
 		"""

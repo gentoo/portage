@@ -136,7 +136,7 @@ class Binpkg(CompositeTask):
 		if self._verify:
 			logfile = self.settings.get("PORTAGE_LOG_FILE")
 			verifier = BinpkgVerifier(background=self.background,
-				logfile=logfile, pkg=self.pkg)
+				logfile=logfile, pkg=self.pkg, scheduler=self.scheduler)
 			self._start_task(verifier, self._verifier_exit)
 			return
 

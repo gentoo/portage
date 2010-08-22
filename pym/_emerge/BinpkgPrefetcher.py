@@ -26,7 +26,8 @@ class BinpkgPrefetcher(CompositeTask):
 			return
 
 		verifier = BinpkgVerifier(background=self.background,
-			logfile=self.scheduler.fetch.log_file, pkg=self.pkg)
+			logfile=self.scheduler.fetch.log_file, pkg=self.pkg,
+			scheduler=self.scheduler)
 		self._start_task(verifier, self._verifier_exit)
 
 	def _verifier_exit(self, verifier):
