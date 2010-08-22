@@ -910,7 +910,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 			for lib, lib_consumers in list(consumers.items()):
 				for consumer_file in list(lib_consumers):
-					if pkg_dblink.isowner(consumer_file, myroot):
+					if pkg_dblink.isowner(consumer_file):
 						lib_consumers.remove(consumer_file)
 				if not lib_consumers:
 					del consumers[lib]
