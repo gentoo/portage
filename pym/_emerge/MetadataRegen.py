@@ -137,7 +137,7 @@ class MetadataRegen(PollScheduler):
 				return False
 
 			self._jobs += 1
-			metadata_process.scheduler = self._sched_iface
+			metadata_process.scheduler = self.sched_iface
 			metadata_process.addExitListener(self._metadata_exit)
 			metadata_process.start()
 		return True
