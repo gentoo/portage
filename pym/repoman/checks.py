@@ -361,7 +361,7 @@ class ImplicitRuntimeDeps(LineCheck):
 			yield 'RDEPEND is not explicitly assigned'
 
 class InheritDeprecated(LineCheck):
-	"""Check if ebuild directly inherits a deprecated eclass"""
+	"""Check if ebuild directly or indirectly inherits a deprecated eclass."""
 
 	repoman_check_name = 'inherit.deprecated'
 
@@ -379,6 +379,8 @@ class InheritDeprecated(LineCheck):
 
 	def new(self, pkg):
 		self._errors = []
+		self._indirect_deprecated = set(eclass for eclass in \
+			self.deprecated_classes if eclass in pkg.inherited)
 
 	def check(self, num, line):
 
@@ -393,13 +395,13 @@ class InheritDeprecated(LineCheck):
 			return
 
 		for eclass in direct_inherits:
-			replacement = self.deprecated_classes.get(eclass)
-			if replacement is None:
-				pass
-			elif replacement is False:
+			replacement = self.deprecated_classes[eclass]
+			if replacement is False:
+				self._indirect_deprecated.discard(eclass)
 				self._errors.append("please migrate from " + \
 					"'%s' (no replacement) on line: %d" % (eclass, num + 1))
 			else:
+				self._indirect_deprecated.discard(eclass)
 				self._errors.append("please migrate from " + \
 					"'%s' to '%s' on line: %d" % \
 					(eclass, replacement, num + 1))
@@ -408,6 +410,19 @@ class InheritDeprecated(LineCheck):
 		for error in self._errors:
 			yield error
 		del self._errors
+
+		for eclass in self._indirect_deprecated:
+			replacement = self.deprecated_classes.get(eclass)
+			if replacement is None:
+				pass
+			elif replacement is False:
+				yield "please migrate from indirect " + \
+					"inherit of '%s' (no replacement)" % (eclass,)
+			else:
+				yield "please migrate from indirect " + \
+					"inherit of '%s' to '%s'" % \
+					(eclass, replacement)
+		del self._indirect_deprecated
 
 class InheritAutotools(LineCheck):
 	"""
