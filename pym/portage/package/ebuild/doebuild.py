@@ -16,6 +16,7 @@ import sys
 import tempfile
 from textwrap import wrap
 import time
+import zlib
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -1213,6 +1214,10 @@ def _check_build_log(mysettings, out=None):
 		re.compile(r'g?make\[\d+\]: warning: jobserver unavailable:')
 	make_jobserver = []
 
+	def _eerror(lines):
+		for line in lines:
+			eerror(line, phase="install", key=mysettings.mycpv, out=out)
+
 	try:
 		for line in f:
 			line = _unicode_decode(line)
@@ -1233,6 +1238,9 @@ def _check_build_log(mysettings, out=None):
 			if make_jobserver_re.match(line) is not None:
 				make_jobserver.append(line.rstrip("\n"))
 
+	except zlib.error as e:
+		_eerror(["portage encounted a zlib error: '%s'" % (e,),
+			"while reading the log file: '%s'" % logfile])
 	finally:
 		f.close()
 
