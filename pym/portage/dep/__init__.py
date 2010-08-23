@@ -306,7 +306,8 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 		if is_valid_flag:
 			if not is_valid_flag(flag):
 				raise portage.exception.InvalidDependString(
-					_("use flag '%s' is not referencable in conditional '%s' in '%s'") % (flag, conditional, depstr))
+					_("use flag '%s' is not referencable in conditional '%s' in '%s' (flag missing from IUSE?)") \
+						% (flag, conditional, depstr))
 		else:
 			if _valid_use_re.match(flag) is None:
 				raise portage.exception.InvalidDependString(
