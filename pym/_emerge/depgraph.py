@@ -1811,10 +1811,10 @@ class depgraph(object):
 		except self._unknown_internal_error:
 			return False, myfavorites
 
-		if set(self._dynamic_config.digraph.nodes.keys()).intersection( \
-			set(self._dynamic_config._needed_unstable_keywords)) or \
-			set(self._dynamic_config.digraph.nodes.keys()).intersection( \
-			set(self._dynamic_config._needed_use_config_changes.keys())) :
+		if set(self._dynamic_config.digraph).intersection( \
+			self._dynamic_config._needed_unstable_keywords) or \
+			set(self._dynamic_config.digraph).intersection( \
+			self._dynamic_config._needed_use_config_changes) :
 			#We failed if the user needs to change the configuration
 			return False, myfavorites
 
@@ -2474,7 +2474,7 @@ class depgraph(object):
 					if new_changes.get(flag) == True:
 						return old_use
 					new_changes[flag] = False
-		new_use.update(old_use.difference(target_use.keys()))
+		new_use.update(old_use.difference(target_use))
 
 		def want_restart_for_use_change(pkg, new_use):
 			if pkg not in self._dynamic_config.digraph.nodes:
@@ -2495,7 +2495,7 @@ class depgraph(object):
 			new_use, changes = self._dynamic_config._needed_use_config_changes.get(pkg)
 			for ppkg, atom in parent_atoms:
 				if not atom.use or \
-					not atom.use.required.intersection(changes.keys()):
+					not atom.use.required.intersection(changes):
 					continue
 				else:
 					return True
@@ -5196,7 +5196,7 @@ class depgraph(object):
 		unstable_keyword_msg = []
 		for pkg in self._dynamic_config._needed_unstable_keywords:
 			self._show_merge_list()
-			if pkg in self._dynamic_config.digraph.nodes.keys():
+			if pkg in self._dynamic_config.digraph:
 				pkgsettings = self._frozen_config.pkgsettings[pkg.root]
 				mreasons = _get_masking_status(pkg, pkgsettings, pkg.root_config,
 					use=self._pkg_use_enabled(pkg))
@@ -5212,7 +5212,7 @@ class depgraph(object):
 		use_changes_msg = []
 		for pkg, needed_use_config_change in self._dynamic_config._needed_use_config_changes.items():
 			self._show_merge_list()
-			if pkg in self._dynamic_config.digraph.nodes.keys():
+			if pkg in self._dynamic_config.digraph:
 				changes = needed_use_config_change[1]
 				adjustments = []
 				for flag, state in changes.items():
