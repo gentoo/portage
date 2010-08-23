@@ -1,4 +1,4 @@
-# Copyright 2004-2009 Gentoo Foundation
+# Copyright 2004-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['apply_permissions', 'apply_recursive_permissions',
@@ -23,6 +23,9 @@ import sys
 import traceback
 
 import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.util.listdir:_ignorecvs_dirs'
+)
 from portage import StringIO
 from portage import os
 from portage import pickle
@@ -328,7 +331,7 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=Fals
 def grablines(myfilename,recursive=0):
 	mylines=[]
 	if recursive and os.path.isdir(myfilename):
-		if os.path.basename(myfilename) in ["RCS", "CVS", "SCCS"]:
+		if os.path.basename(myfilename) in _ignorecvs_dirs:
 			return mylines
 		dirlist = os.listdir(myfilename)
 		dirlist.sort()
