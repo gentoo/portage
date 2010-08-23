@@ -25,6 +25,13 @@ class AbstractEbuildProcess(SpawnProcess):
 		('_ipc_daemon', '_exit_command',)
 	_phases_without_builddir = ('clean', 'cleanrm', 'depend', 'help',)
 
+	# Number of milliseconds to allow natural exit of the ebuild
+	# process after it has called the exit command via IPC. It
+	# doesn't hurt to be generous here since the scheduler
+	# continues to process events during this period, and it can
+	# return long before the timeout expires.
+	_exit_timeout = 10000 # 10 seconds
+
 	# The EbuildIpcDaemon support is well tested, but this variable
 	# is left so we can temporarily disable it if any issues arise.
 	_enable_ipc_daemon = True
@@ -119,10 +126,8 @@ class AbstractEbuildProcess(SpawnProcess):
 
 	def _exit_command_callback(self):
 		if self._registered:
-			# Let the process exit naturally, if possible. This
-			# doesn't really do any harm since it can return
-			# long before the timeout expires.
-			self.scheduler.schedule(self._reg_id, timeout=1000)
+			# Let the process exit naturally, if possible.
+			self.scheduler.schedule(self._reg_id, timeout=self._exit_timeout)
 			if self._registered:
 				# If it doesn't exit naturally in a reasonable amount
 				# of time, kill it (solves bug #278895). We try to avoid
