@@ -1239,7 +1239,7 @@ def _check_build_log(mysettings, out=None):
 				make_jobserver.append(line.rstrip("\n"))
 
 	except zlib.error as e:
-		_eerror(["portage encounted a zlib error: '%s'" % (e,),
+		_eerror(["portage encountered a zlib error: '%s'" % (e,),
 			"while reading the log file: '%s'" % logfile])
 	finally:
 		f.close()
