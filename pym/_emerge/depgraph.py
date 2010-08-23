@@ -2402,7 +2402,8 @@ class depgraph(object):
 					not self._want_installed_pkg(pkg):
 					pkg = None
 
-				if pkg is not None and not pkg.visible:
+				if pkg is not None and \
+					not pkg.visible and allow_unstable_keywords:
 					self._dynamic_config._needed_unstable_keywords.add(pkg)
 			
 			if self._dynamic_config._need_restart:
