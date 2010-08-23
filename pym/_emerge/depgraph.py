@@ -2429,7 +2429,8 @@ class depgraph(object):
 		root_config = self._frozen_config.roots[pkg.root]
 		mreasons = _get_masking_status(pkg, pkgsettings, root_config, use=self._pkg_use_enabled(pkg))
 		if len(mreasons) == 1 and \
-			mreasons[0].hint == 'unstable keyword':
+			mreasons[0].unmask_hint and \
+			mreasons[0].unmask_hint.key == 'unstable keyword':
 			return True
 		else:
 			return False
@@ -5196,8 +5197,16 @@ class depgraph(object):
 			self._show_merge_list()
 			if pkg in self._dynamic_config.digraph.nodes.keys():
 				pkgsettings = self._frozen_config.pkgsettings[pkg.root]
+				mreasons = _get_masking_status(pkg, pkgsettings, pkg.root_config,
+					use=self._pkg_use_enabled(pkg))
+				if len(mreasons) == 1 and \
+					mreasons[0].unmask_hint and \
+					mreasons[0].unmask_hint.key == 'unstable keyword':
+					keyword = mreasons[0].unmask_hint.value
+				else:
+					keyword = '~' + pkgsettings.get('ARCH', '*')
 				unstable_keyword_msg.append(get_dep_chain(pkg))
-				unstable_keyword_msg.append("=%s ~%s\n" % (pkg.cpv, pkgsettings["ACCEPT_KEYWORDS"]))
+				unstable_keyword_msg.append("=%s %s\n" % (pkg.cpv, keyword))
 
 		use_changes_msg = []
 		for pkg, needed_use_config_change in self._dynamic_config._needed_use_config_changes.items():

@@ -15,14 +15,22 @@ from portage.versions import catpkgsplit, cpv_getkey
 if sys.hexversion >= 0x3000000:
 	basestring = str
 
+class _UnmaskHint(object):
+
+	__slots__ = ('key', 'value')
+
+	def __init__(self, key, value):
+		self.key = key
+		self.value = value
+
 class _MaskReason(object):
 
-	__slots__ = ('category', 'message', 'hint')
+	__slots__ = ('category', 'message', 'unmask_hint')
 
-	def __init__(self, category, message, hint=None):
+	def __init__(self, category, message, unmask_hint=None):
 		self.category = category
 		self.message = message
-		self.hint = hint
+		self.unmask_hint = unmask_hint
 
 def getmaskingstatus(mycpv, settings=None, portdb=None):
 	if settings is None:
@@ -135,7 +143,7 @@ def _getmaskingstatus(mycpv, settings, portdb):
 				break
 			elif gp=="~"+myarch and myarch in pgroups:
 				kmask="~"+myarch
-				kmask_hint = "unstable keyword"
+				kmask_hint = _UnmaskHint("unstable keyword", kmask)
 				break
 
 	try:
@@ -170,6 +178,6 @@ def _getmaskingstatus(mycpv, settings, portdb):
 	# if they're not masked for any other reason.
 	if kmask and (not installed or not rValue):
 		rValue.append(_MaskReason("KEYWORDS",
-			kmask + " keyword", hint=kmask_hint))
+			kmask + " keyword", unmask_hint=kmask_hint))
 
 	return rValue
