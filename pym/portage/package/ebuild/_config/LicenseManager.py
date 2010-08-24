@@ -9,6 +9,8 @@ import copy
 
 from portage import os
 from portage.dep import ExtendedAtomDict, use_reduce
+from portage.exception import InvalidDependString
+from portage.localization import _
 from portage.util import grabdict, grabdict_package, writemsg
 from portage.versions import cpv_getkey
 

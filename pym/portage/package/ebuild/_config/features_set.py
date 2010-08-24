@@ -5,8 +5,6 @@ __all__ = (
 	'features_set',
 )
 
-from portage.dep import best_match_to_list
-
 class features_set(object):
 	"""
 	Provides relevant set operations needed for access and modification of
