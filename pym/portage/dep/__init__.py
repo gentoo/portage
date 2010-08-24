@@ -1235,6 +1235,11 @@ class ExtendedAtomDict(portage.cache.mappings.MutableMapping):
 		else:
 			self._normal[cp] = val
 
+	def __eq__(self, other):
+		return self._value_class == other._value_class and \
+			self._extended == other._extended and \
+			self._normal == other._normal
+
 	def clear(self):
 		self._extended.clear()
 		self._normal.clear()
