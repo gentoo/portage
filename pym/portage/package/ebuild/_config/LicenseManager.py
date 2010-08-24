@@ -5,8 +5,6 @@ __all__ = (
 	'LicenseManager',
 )
 
-from copy import deepcopy
-
 from portage import os
 from portage.dep import ExtendedAtomDict, use_reduce
 from portage.exception import InvalidDependString
@@ -25,18 +23,6 @@ class LicenseManager(object):
 		self._license_groups = {}
 		self._plicensedict = ExtendedAtomDict(dict)
 		self._undef_lic_groups = set()
-
-	def __deepcopy__(self, memo=None):
-		if memo is None:
-			memo = {}
-		result = self.__class__()
-		memo[id(self)] = result
-		result._accept_license_str = deepcopy(self._accept_license_str, memo)
-		result._accept_license = deepcopy(self._accept_license, memo)
-		result._plicensedict = deepcopy(self._plicensedict, memo)
-		result._license_groups = deepcopy(self._license_groups, memo)
-		result._undef_lic_groups = deepcopy(self._undef_lic_groups, memo)
-		return result
 
 	def read_config_files(self, abs_user_config):
 		licdict = grabdict_package(os.path.join(
