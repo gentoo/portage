@@ -1623,7 +1623,8 @@ for x in scanlist:
 				token_class=portage.dep.Atom
 
 			try:
-				atoms = portage.dep.use_reduce(mydepstr, matchall=1, flat=True, token_class=token_class)
+				atoms = portage.dep.use_reduce(mydepstr, matchall=1, flat=True, \
+					is_valid_flag=lambda x: x in myiuse, token_class=token_class)
 			except portage.exception.InvalidDependString as e:
 				atoms = None
 				badsyntax.append(str(e))
