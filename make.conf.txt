@@ -17,7 +17,8 @@ first for any settings.  If no environment settings are found,
 Portage then checks /etc/make.conf.  If no setting is found
 in /etc/make.conf, Portage checks the profile's default setting
 from /etc/make.profile/make.defaults. If no setting is found there, 
-it finally checks /etc/make.globals. Please note that all user
+it finally checks make.globals.
+Please note that all user
 settings should be made in the environment or in /etc/make.conf,
 which is intended to be customized by the user.
 
@@ -692,7 +693,7 @@ FILES
 /etc/make.conf
 	Contains user-supplied variables and overwrites those in make.defaults.
 
-/etc/make.globals
+/usr/share/portage/config/make.globals
 	Contains portage defaults for many variables listed here. Don't change this,
 	edit /etc/make.conf instead.
 

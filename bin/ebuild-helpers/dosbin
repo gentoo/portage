@@ -1,16 +1,16 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 
 if [[ $# -lt 1 ]] ; then
-	helpers_die "$0: at least one argument needed"
+	helpers_die "${0##*/}: at least one argument needed"
 	exit 1
 fi
 
 if [[ ! -d ${ED}${DESTTREE}/sbin ]] ; then
-	install -d "${ED}${DESTTREE}/sbin" || { helpers_die "$0: failed to install ${ED}${DESTTREE}/sbin"; exit 2; }
+	install -d "${ED}${DESTTREE}/sbin" || { helpers_die "${0##*/}: failed to install ${ED}${DESTTREE}/sbin"; exit 2; }
 fi
 
 ret=0
@@ -25,5 +25,5 @@ for x in "$@" ; do
 	((ret|=$?))
 done
 
-[[ $ret -ne 0 ]] && helpers_die "$0 failed"
+[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
 exit ${ret}

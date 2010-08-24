@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2007 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
@@ -23,7 +23,7 @@ case $1 in
 		set -- "${@/#/${ED}}"
 		touch "$@"
 		ret=$?
-		[[ $ret -ne 0 ]] && helpers_die "$0 failed"
+		[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
 		exit $?
 		;;
 	--dequeue)
@@ -135,5 +135,5 @@ for dir in "$@" ; do
 	restore_skip_dirs
 done
 
-[[ $ret -ne 0 ]] && helpers_die "$0 failed"
+[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
 exit ${ret}

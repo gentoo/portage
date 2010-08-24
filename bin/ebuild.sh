@@ -790,7 +790,7 @@ into() {
 			install -d "${D}${DESTTREE}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
-				helpers_die "$0 failed"
+				helpers_die "${FUNCNAME[0]} failed"
 				return $ret
 			fi
 >>>>>>> overlays-gentoo-org/master
@@ -807,7 +807,7 @@ insinto() {
 			install -d "${ED}${INSDESTTREE}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
-				helpers_die "$0 failed"
+				helpers_die "${FUNCNAME[0]} failed"
 				return $ret
 			fi
 		fi
@@ -823,7 +823,7 @@ exeinto() {
 			install -d "${ED}${_E_EXEDESTTREE_}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
-				helpers_die "$0 failed"
+				helpers_die "${FUNCNAME[0]} failed"
 				return $ret
 			fi
 		fi
@@ -839,7 +839,7 @@ docinto() {
 			install -d "${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
-				helpers_die "$0 failed"
+				helpers_die "${FUNCNAME[0]} failed"
 				return $ret
 			fi
 		fi
@@ -1714,7 +1714,7 @@ filter_readonly_variables() {
 		filtered_vars="${filtered_vars} ${filtered_sandbox_vars}"
 	fi
 	if hasq --filter-features $* ; then
-		filtered_vars="${filtered_vars} FEATURES"
+		filtered_vars="${filtered_vars} FEATURES PORTAGE_FEATURES"
 	fi
 	if hasq --filter-path $* ; then
 		filtered_vars+=" PATH"
@@ -1998,6 +1998,26 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
 
 				[[ -n $CCACHE_SIZE ]] && ccache -M $CCACHE_SIZE &> /dev/null
 			fi
+		fi
+
+		if [[ -n $QA_PREBUILT ]] ; then
+
+			# these ones support fnmatch patterns
+			QA_EXECSTAC+=" $QA_PREBUILT"
+			QA_TEXTRELS+=" $QA_PREBUILT"
+			QA_WX_LOAD+=" $QA_PREBUILT"
+
+			# these ones support regular expressions, so translate
+			# fnmatch patterns to regular expressions
+			for x in QA_DT_HASH QA_DT_NEEDED QA_PRESTRIPPED QA_SONAME ; do
+				if [[ $(declare -p $x 2>/dev/null) = declare\ -a* ]] ; then
+					eval "$x=(\"\${$x[@]}\" ${QA_PREBUILT//\*/.*})"
+				else
+					eval "$x+=\" ${QA_PREBUILT//\*/.*}\""
+				fi
+			done
+
+			unset x
 		fi
 
 		# This needs to be exported since prepstrip is a separate shell script.

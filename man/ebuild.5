@@ -496,6 +496,16 @@ binary objects that cannot be altered.
 .br
 Note that objects that violate these rules may fail on some architectures.
 .TP
+\fBQA_PREBUILT\fR
+This should contain a list of file paths, relative to the image
+directory, of files that are pre\-built binaries. Paths
+listed here will be appended to each of the QA_* variables
+listed below. The paths may contain fnmatch\-like patterns
+which will be internally translated to regular expressions for
+the QA_* variables that support regular expressions instead
+of fnmatch patterns. The translation mechanism simply replaces
+'*' with '.*'.
+.TP
 \fBQA_TEXTRELS\fR
 This variable can be set to a list of file paths, relative to the image
 directory, of files that contain text relocations that cannot be eliminated.
@@ -811,7 +821,7 @@ variable which is disregarded for prior \fBEAPI\fR values.
 .TP
 \fBemake\fR \fI[make options]\fR
 This is used as a replacement for make.  Performs 'make ${MAKEOPTS}
-\fImake options\fR' (as set in /etc/make.globals), default is MAKEOPTS="\-j2".
+\fImake options\fR' (as set in make.globals), default is MAKEOPTS="\-j2".
 
 \fB***warning***\fR
 .br
@@ -1101,7 +1111,7 @@ The helper apps in \fI/usr/lib/portage/bin\fR.
 .B /etc/make.conf
 Contains variables for the build\-process and overwrites those in make.defaults.
 .TP
-.B /etc/make.globals
+.B /usr/share/portage/config/make.globals
 Contains the default variables for the build\-process, you should edit
 \fI/etc/make.conf\fR instead.
 .TP

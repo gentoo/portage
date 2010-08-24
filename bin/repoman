@@ -39,6 +39,7 @@ else:
 	sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym"))
 import portage
 portage._disable_legacy_globals()
+portage.dep._internal_warnings = True
 
 try:
 	import xml.etree.ElementTree
@@ -520,7 +521,7 @@ else:
 check_changelog = vcs in ('cvs', 'svn')
 
 # Disable copyright/mtime check if vcs does not preserve mtime (bug #324075).
-check_copyright_mtime = vcs not in ('git',)
+vcs_preserves_mtime = vcs not in ('git',)
 
 vcs_local_opts = repoman_settings.get("REPOMAN_VCS_LOCAL_OPTS", "").split()
 vcs_global_opts = repoman_settings.get("REPOMAN_VCS_GLOBAL_OPTS")
@@ -942,6 +943,7 @@ else:
 	print(green("\nRepoMan scours the neighborhood..."))
 
 new_ebuilds = set()
+modified_ebuilds = set()
 modified_changelogs = set()
 mychanged = []
 mynew = []
@@ -973,6 +975,7 @@ elif vcs == "hg":
 
 if vcs:
 	new_ebuilds.update(x for x in mynew if x.endswith(".ebuild"))
+	modified_ebuilds.update(x for x in mychanged if x.endswith(".ebuild"))
 	modified_changelogs.update(x for x in chain(mychanged, mynew) \
 		if os.path.basename(x) == "ChangeLog")
 
@@ -1783,9 +1786,8 @@ for x in scanlist:
 					relative_path + ": REQUIRED_USE" + \
 					" not supported with EAPI='%s'" % (eapi,))
 			try:
-				iuse = repoman_settings._get_implicit_iuse()
-				iuse.update(myaux["IUSE"].split())
-				portage.dep.check_required_use(required_use, "", iuse)
+				portage.dep.check_required_use(required_use, (),
+					pkg.iuse.is_valid_flag)
 			except portage.exception.InvalidDependString as e:
 				stats["REQUIRED_USE.syntax"] = stats["REQUIRED_USE.syntax"] + 1
 				fails["REQUIRED_USE.syntax"].append(
@@ -1795,8 +1797,10 @@ for x in scanlist:
 		# Syntax Checks
 		relative_path = os.path.join(x, y + ".ebuild")
 		full_path = os.path.join(repodir, relative_path)
-		if not check_copyright_mtime:
-			pkg.mtime = None
+		if not vcs_preserves_mtime:
+			if ebuild_path not in new_ebuilds and \
+				ebuild_path not in modified_ebuilds:
+				pkg.mtime = None
 		try:
 			# All ebuilds should have utf_8 encoding.
 			f = codecs.open(_unicode_encode(full_path,

@@ -39,6 +39,11 @@ import portage.cache.mappings
 if sys.hexversion >= 0x3000000:
 	basestring = str
 
+# Api consumers included in portage should set this to True.
+# Once the relevant api changes are in a portage release with
+# stable keywords, make these warnings unconditional.
+_internal_warnings = False
+
 def cpvequal(cpv1, cpv2):
 	"""
 	
@@ -97,13 +102,14 @@ def paren_reduce(mystr):
 	@rtype: Array
 	@return: The reduced string in an array
 	"""
-	warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
-		('portage.dep.paren_reduce',), DeprecationWarning, stacklevel=2)
+	if _internal_warnings:
+		warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
+			('portage.dep.paren_reduce',), DeprecationWarning, stacklevel=2)
 	mysplit = mystr.split()
 	level = 0
 	stack = [[]]
 	need_bracket = False
-	
+
 	for token in mysplit:
 		if token == "(":
 			need_bracket = False
@@ -116,22 +122,46 @@ def paren_reduce(mystr):
 			if level > 0:
 				level -= 1
 				l = stack.pop()
+				is_single = (len(l) == 1 or (len(l)==2 and (l[0] == "||" or l[0][-1] == "?")))
+
+				def ends_in_any_of_dep(k):
+					return k>=0 and stack[k] and stack[k][-1] == "||"
+
+				def ends_in_operator(k):
+					return k>=0 and stack[k] and (stack[k][-1] == "||" or stack[k][-1][-1] == "?")
+
+				def special_append():
+					"""
+					Use extend instead of append if possible. This kills all redundant brackets.
+					"""
+					if is_single and (not stack[level] or not stack[level][-1][-1] == "?"):
+						if len(l) == 1 and isinstance(l[0], list):
+							# l = [[...]]
+							stack[level].extend(l[0])
+						else:
+							stack[level].extend(l)
+					else:	
+						stack[level].append(l)
+
 				if l:
-					if not stack[level] or (stack[level][-1] != "||" and not stack[level][-1][-1] == "?"):
-						#Optimize: ( ( ... ) ) -> ( ... )
+					if not ends_in_any_of_dep(level-1) and not ends_in_operator(level):
+						#Optimize: ( ( ... ) ) -> ( ... ). Make sure there is no '||' hanging around.
 						stack[level].extend(l)
-					elif len(l) == 1 and stack[level][-1] == "||":
+					elif not stack[level]:
+						#An '||' in the level above forces us to keep to brackets.
+						special_append()
+					elif len(l) == 1 and ends_in_any_of_dep(level):
 						#Optimize: || ( A ) -> A
 						stack[level].pop()
-						stack[level].extend(l)
+						special_append()
 					elif len(l) == 2 and (l[0] == "||" or l[0][-1] == "?") and stack[level][-1] in (l[0], "||"):
 						#Optimize: 	|| ( || ( ... ) ) -> || ( ... )
 						#			foo? ( foo? ( ... ) ) -> foo? ( ... )
 						#			|| ( foo? ( ... ) ) -> foo? ( ... )
 						stack[level].pop()
-						stack[level].extend(l)
+						special_append()
 					else:
-						stack[level].append(l)
+						special_append()
 				else:
 					if stack[level] and (stack[level][-1] == "||" or stack[level][-1][-1] == "?"):
 						stack[level].pop()
@@ -164,8 +194,9 @@ class paren_normalize(list):
 	"""Take a dependency structure as returned by paren_reduce or use_reduce
 	and generate an equivalent structure that has no redundant lists."""
 	def __init__(self, src):
-		warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
-			('portage.dep.paren_normalize',), DeprecationWarning, stacklevel=2)
+		if _internal_warnings:
+			warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
+				('portage.dep.paren_normalize',), DeprecationWarning, stacklevel=2)
 		list.__init__(self)
 		self._zap_parens(src, self)
 
@@ -252,9 +283,10 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 	@return: The use reduced depend array
 	"""
 	if isinstance(depstr, list):
-		warnings.warn(_("Passing paren_reduced dep arrays to %s is deprecated. " + \
-			"Pass the original dep string instead.") % \
-			('portage.dep.use_reduce',), DeprecationWarning, stacklevel=2)
+		if _internal_warnings:
+			warnings.warn(_("Passing paren_reduced dep arrays to %s is deprecated. " + \
+				"Pass the original dep string instead.") % \
+				('portage.dep.use_reduce',), DeprecationWarning, stacklevel=2)
 		depstr = paren_enclose(depstr)
 
 	if opconvert and flat:
@@ -332,6 +364,7 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 			if level > 0:
 				level -= 1
 				l = stack.pop()
+				is_single = (len(l) == 1 or (len(l)==2 and l[0] == "||"))
 				ignore = False
 
 				if flat:
@@ -361,28 +394,44 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 							ignore = True
 						stack[level].pop()
 
+				def ends_in_any_of_dep(k):
+					return k>=0 and stack[k] and stack[k][-1] == "||"
+
+				def special_append():
+					"""
+					Use extend instead of append if possible. This kills all redundant brackets.
+					"""
+					if is_single:
+						if len(l) == 1 and isinstance(l[0], list):
+							# l = [[...]]
+							stack[level].extend(l[0])
+						else:
+							stack[level].extend(l)
+					else:	
+						stack[level].append(l)
+
 				if l and not ignore:
 					#The current list is not empty and we don't want to ignore it because
 					#of an inactive use conditional.
-					if not stack[level] or stack[level][-1] != "||":
-						#Optimize: ( ( ... ) ) -> ( ... )
+					if not ends_in_any_of_dep(level-1) and not ends_in_any_of_dep(level):
+						#Optimize: ( ( ... ) ) -> ( ... ). Make sure there is no '||' hanging around.
 						stack[level].extend(l)
-					elif len(l) == 1 and stack[level][-1] == "||":
-						#Optimize: || ( A ) -> A
+					elif not stack[level]:
+						#An '||' in the level above forces us to keep to brackets.
+						special_append()
+					elif is_single and ends_in_any_of_dep(level):
+						#Optimize: || ( A ) -> A,  || ( || ( ... ) ) -> || ( ... )
 						stack[level].pop()
-						stack[level].extend(l)
-					elif len(l) == 2 and l[0] == "||" and stack[level][-1] == "||":
-						#Optimize: 	|| ( || ( ... ) ) -> || ( ... )
-						stack[level].pop()
-						stack[level].extend(l)
+						special_append()
 					else:
-						if opconvert and stack[level] and stack[level][-1] == "||":
+						if opconvert and ends_in_any_of_dep(level):
 							#In opconvert mode, we have to move the operator from the level
 							#above into the current list.
 							stack[level].pop()
 							stack[level].append(["||"] + l)
 						else:
-							stack[level].append(l)
+							special_append()
+
 			else:
 				raise portage.exception.InvalidDependString(
 					_("no matching '%s' for '%s' in '%s', token %s") % ("(", ")", depstr, pos+1))
@@ -464,8 +513,9 @@ def dep_opconvert(deplist):
 	@return:
 		The new list with the new ordering
 	"""
-	warnings.warn(_("%s is deprecated. Use %s with the opconvert parameter set to True instead.") % \
-		('portage.dep.dep_opconvert', 'portage.dep.use_reduce'), DeprecationWarning, stacklevel=2)
+	if _internal_warnings:
+		warnings.warn(_("%s is deprecated. Use %s with the opconvert parameter set to True instead.") % \
+			('portage.dep.dep_opconvert', 'portage.dep.use_reduce'), DeprecationWarning, stacklevel=2)
 
 	retlist = []
 	x = 0
@@ -494,8 +544,9 @@ def flatten(mylist):
 	@rtype: List
 	@return: A single list containing only non-list elements.
 	"""
-	warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
-		('portage.dep.flatten',), DeprecationWarning, stacklevel=2)
+	if _internal_warnings:
+		warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
+			('portage.dep.flatten',), DeprecationWarning, stacklevel=2)
 
 	newlist = []
 	for x in mylist:
@@ -1608,17 +1659,97 @@ def match_from_list(mydep, candidate_list):
 			mylist.append(x)
 	return mylist
 
-def check_required_use(required_use, use, iuse):
+def human_readable_required_use(required_use):
+	return required_use.replace("^^", "only-one-of").replace("||", "any-of")
+
+def get_required_use_flags(required_use):
+	"""
+	Returns a set of use flags that are used in the given REQUIRED_USE string
+
+	@param required_use: REQUIRED_USE string
+	@type required_use: String
+	@rtype: Set
+	@return: Set of use flags that are used in the given REQUIRED_USE string
+	"""
+
+	mysplit = required_use.split()
+	level = 0
+	stack = [[]]
+	need_bracket = False
+
+	used_flags = set()
+
+	def register_token(token):
+		if token.endswith("?"):
+			token = token[:-1]
+		if token.startswith("!"):
+			token = token[1:]
+		used_flags.add(token)
+
+	for token in mysplit:
+		if token == "(":
+			need_bracket = False
+			stack.append([])
+			level += 1
+		elif token == ")":
+			if need_bracket:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % required_use)
+			if level > 0:
+				level -= 1
+				l = stack.pop()
+				ignore = False
+				if stack[level]:
+					if stack[level][-1] in ("||", "^^") or \
+						(not isinstance(stack[level][-1], bool) and \
+						stack[level][-1][-1] == "?"):
+						ignore = True
+						stack[level].pop()
+						stack[level].append(True)
+
+				if l and not ignore:
+					stack[level].append(all(x for x in l))
+			else:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % required_use)
+		elif token in ("||", "^^"):
+			if need_bracket:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % required_use)
+			need_bracket = True
+			stack[level].append(token)
+		else:
+			if need_bracket or "(" in token or ")" in token or \
+				"|" in token or "^" in token:
+				raise portage.exception.InvalidDependString(
+					_("malformed syntax: '%s'") % required_use)
+
+			if token[-1] == "?":
+				need_bracket = True
+				stack[level].append(token)
+			else:
+				stack[level].append(True)
+			
+			register_token(token)
+
+	if level != 0 or need_bracket:
+		raise portage.exception.InvalidDependString(
+			_("malformed syntax: '%s'") % required_use)
+
+	return frozenset(used_flags)
+
+def check_required_use(required_use, use, iuse_match):
 	"""
 	Checks if the use flags listed in 'use' satisfy all
 	constraints specified in 'constraints'.
 
-	@param constraints: REQUIRED_USE string
-	@type constraints: String
+	@param required_use: REQUIRED_USE string
+	@type required_use: String
 	@param use: Enabled use flags
 	@param use: List
-	@param iuse: Referenceable use flags
-	@param iuse: List
+	@param iuse_match: Callable that takes a single flag argument and returns
+		True if the flag is matched, false otherwise,
+	@param iuse_match: Callable
 	@rtype: Bool
 	@return: Indicates if REQUIRED_USE constraints are satisfied
 	"""
@@ -1631,7 +1762,7 @@ def check_required_use(required_use, use, iuse):
 			flag = token
 			is_negated = False
 
-		if not flag or not flag in iuse:
+		if not flag or not iuse_match(flag):
 			raise portage.exception.InvalidDependString(
 				_("malformed syntax: '%s'") % required_use)
 
@@ -1683,7 +1814,7 @@ def check_required_use(required_use, use, iuse):
 						ignore = True
 
 				if l and not ignore:
-					stack[level].extend(l)
+					stack[level].append(all(x for x in l))
 			else:
 				raise portage.exception.InvalidDependString(
 					_("malformed syntax: '%s'") % required_use)
@@ -1758,27 +1889,50 @@ def extract_affecting_use(mystr, atom):
 			if level > 0:
 				level -= 1
 				l = stack.pop()
+				is_single = (len(l) == 1 or (len(l)==2 and (l[0] == "||" or l[0][-1] == "?")))
+
+				def ends_in_any_of_dep(k):
+					return k>=0 and stack[k] and stack[k][-1] == "||"
+
+				def ends_in_operator(k):
+					return k>=0 and stack[k] and (stack[k][-1] == "||" or stack[k][-1][-1] == "?")
+
+				def special_append():
+					"""
+					Use extend instead of append if possible. This kills all redundant brackets.
+					"""
+					if is_single and (not stack[level] or not stack[level][-1][-1] == "?"):
+						if len(l) == 1 and isinstance(l[0], list):
+							# l = [[...]]
+							stack[level].extend(l[0])
+						else:
+							stack[level].extend(l)
+					else:	
+						stack[level].append(l)
 
 				if l:
-					if not stack[level] or (stack[level][-1] != "||" and not stack[level][-1][-1] == "?"):
-						#Optimize: ( ( ... ) ) -> ( ... )
+					if not ends_in_any_of_dep(level-1) and not ends_in_operator(level):
+						#Optimize: ( ( ... ) ) -> ( ... ). Make sure there is no '||' hanging around.
 						stack[level].extend(l)
-					elif len(l) == 1 and stack[level][-1] == "||":
+					elif not stack[level]:
+						#An '||' in the level above forces us to keep to brackets.
+						special_append()
+					elif len(l) == 1 and ends_in_any_of_dep(level):
 						#Optimize: || ( A ) -> A
 						stack[level].pop()
-						stack[level].extend(l)
+						special_append()
 					elif len(l) == 2 and (l[0] == "||" or l[0][-1] == "?") and stack[level][-1] in (l[0], "||"):
 						#Optimize: 	|| ( || ( ... ) ) -> || ( ... )
 						#			foo? ( foo? ( ... ) ) -> foo? ( ... )
 						#			|| ( foo? ( ... ) ) -> foo? ( ... )
 						stack[level].pop()
-						stack[level].extend(l)
+						special_append()
 						if l[0][-1] == "?":
 							affecting_use.add(flag(l[0]))
 					else:
 						if stack[level] and stack[level][-1][-1] == "?":
 							affecting_use.add(flag(stack[level][-1]))
-						stack[level].append(l)
+						special_append()
 				else:
 					if stack[level] and (stack[level][-1] == "||" or stack[level][-1][-1] == "?"):
 						stack[level].pop()

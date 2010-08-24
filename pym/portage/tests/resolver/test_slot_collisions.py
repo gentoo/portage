@@ -24,6 +24,10 @@ class SlotCollisionTestCase(TestCase):
 			"sci-libs/K-1": { "IUSE": "+foo", "EAPI": 1 },
 			"sci-libs/L-1": { "DEPEND": "sci-libs/K[-foo]", "EAPI": 2 },
 			"sci-libs/M-1": { "DEPEND": "sci-libs/K[foo=]", "IUSE": "+foo", "EAPI": 2 },
+
+			#~ "app-misc/A-1": { "IUSE": "foo +bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": 4 },
+			#~ "app-misc/B-1": { "DEPEND": "=app-misc/A-1[foo=]", "IUSE": "foo", "EAPI": 2 },
+			#~ "app-misc/C-1": { "DEPEND": "=app-misc/A-1[foo]", "EAPI": 2 },
 			}
 		installed = {
 			"dev-libs/A-1": { "PDEPEND": "foo? ( dev-libs/B )", "IUSE": "foo", "USE": "foo" }, 
@@ -33,6 +37,8 @@ class SlotCollisionTestCase(TestCase):
 			
 			"sci-libs/K-1": { "IUSE": "foo", "USE": "" },
 			"sci-libs/L-1": { "DEPEND": "sci-libs/K[-foo]" },
+
+			#~ "app-misc/A-1": { "IUSE": "+foo bar", "USE": "foo", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": 4 },
 			}
 
 		test_cases = (
@@ -68,6 +74,15 @@ class SlotCollisionTestCase(TestCase):
 				ignore_mergelist_order = True,
 				slot_collision_solutions = [{"sci-libs/K-1": {"foo": False}, "sci-libs/M-1": {"foo": False}}]
 				),
+
+			#Conflict with REQUIRED_USE
+			#~ ResolverPlaygroundTestCase(
+				#~ ["=app-misc/C-1", "=app-misc/B-1"],
+				#~ all_permutations = True,
+				#~ slot_collision_solutions = [],
+				#~ mergelist = ["app-misc/A-1", "app-misc/C-1", "app-misc/B-1"],
+				#~ ignore_mergelist_order = True,
+				#~ success = False),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)

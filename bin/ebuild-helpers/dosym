@@ -1,11 +1,11 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 
 if [[ $# -ne 2 ]] ; then
-	helpers_die "$0: two arguments needed"
+	helpers_die "${0##*/}: two arguments needed"
 	exit 1
 fi
 
@@ -17,5 +17,5 @@ destdir=${linkname%/*}
 
 ln -snf "${target}" "${ED}/${linkname}"
 ret=$?
-[[ $ret -ne 0 ]] && helpers_die "$0 failed"
+[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
 exit $ret

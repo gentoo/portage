@@ -183,21 +183,11 @@ class AbstractEbuildProcess(SpawnProcess):
 		phase = self.phase
 		for line in lines:
 			eerror(line, phase=phase, key=self.settings.mycpv, out=out)
-		logfile = self.logfile
-		if logfile is None:
-			logfile = self.settings.get("PORTAGE_LOG_FILE")
 		msg = _unicode_decode(out.getvalue(),
 			encoding=_encodings['content'], errors='replace')
 		if msg:
-			if not self.background:
-				writemsg_stdout(msg, noiselevel=-1)
-			if logfile is not None:
-				log_file = codecs.open(_unicode_encode(logfile,
-					encoding=_encodings['fs'], errors='strict'),
-					mode='a', encoding=_encodings['content'],
-					errors='backslashreplace')
-				log_file.write(msg)
-				log_file.close()
+			self.scheduler.output(msg,
+				log_path=self.settings.get("PORTAGE_LOG_FILE"))
 
 	def _set_returncode(self, wait_retval):
 		SpawnProcess._set_returncode(self, wait_retval)

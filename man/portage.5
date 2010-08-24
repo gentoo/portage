@@ -17,7 +17,6 @@ If you are looking for information on how to emerge something, please see
 .TP
 .BR /etc/
 .nf
-make.globals
 .BR make.conf (5)
 .fi
 .TP
@@ -29,6 +28,7 @@ eapi
 make.defaults
 packages
 packages.build
+package.accept_keywords
 package.keywords
 package.mask
 package.provided
@@ -52,6 +52,7 @@ make.conf
 mirrors
 modules
 package.accept_keywords
+package.env
 package.keywords
 package.license
 package.mask
@@ -85,6 +86,11 @@ repo_name
 thirdpartymirrors
 use.desc
 use.local.desc
+.fi
+.TP
+.BR /usr/share/portage/config/
+.nf
+make.globals
 .fi
 .TP
 .BR /var/cache/edb/
@@ -135,11 +141,6 @@ More reading:
 .TP
 .BR /etc/
 .RS
-.TP
-.BR make.globals
-The global default settings for Portage.  This comes from the portage package 
-itself.  Settings in \fBmake.conf\fR override values here.  The format 
-is described extensivly in \fBmake.conf\fR(5).
 .TP
 .BR make.conf
 The global custom settings for Portage.  See \fBmake.conf\fR(5).
@@ -540,6 +541,24 @@ package.accept_keywords like this:
 games-fps/quake3-demo x86
 
 .TP
+.BR package.env
+Per\-package environment variable settings. Entries refer to
+environment files that are placed in the \fB/etc/portage/env/\fR
+directory and have the same format as \fBmake.conf\fR(5).
+
+.I Format:
+.nf
+\- comment lines begin with # (no inline comments)
+\- one DEPEND atom per line followed by name(s) of environment file(s)
+.fi
+
+.I Example:
+.nf
+# use environment variables from /etc/portage/env/glibc.conf for the glibc package
+sys\-libs/glibc glibc.conf
+.fi
+
+.TP
 .BR package.license
 This will allow ACCEPT_LICENSE to be augmented for a single package.
 
@@ -747,6 +766,12 @@ FSF-APPROVED @GPL-COMPATIBLE Apache-1.1 BSD-4 MPL-1.0 MPL-1.1
 GPL-COMPATIBLE Apache-2.0 BSD BSD-2 GPL-2 GPL-3 LGPL-2.1 LGPL-3 X11 ZLIB
 .fi
 .TP
+.BR package.accept_keywords
+Per\-package ACCEPT_KEYWORDS for profiles. This has the same format and
+behavior as /etc/portage/package.accept_keywords, including the ability
+to list atoms without any keywords in order to accept unstable variants
+of all stable keywords listed in ACCEPT_KEYWORDS.
+.TP
 .BR package.keywords
 Per\-profile KEYWORDS. Useful for cases in which the effective KEYWORDS of a
 given package should vary depending on which profile the user has selected.
@@ -867,6 +892,16 @@ app\-editors/nano:justify \- Toggles the justify option
 dev\-libs/DirectFB:fusion \- Adds Multi Application support
 games\-emulation/xmess:net \- Adds network support
 .fi
+.RE
+.TP
+.BR /usr/share/portage/config/
+.RS
+.TP
+.BR make.globals
+The global default settings for Portage.  This comes from the portage package 
+itself.  Settings in \fBmake.conf\fR or \fBpackage.env\fR
+override values here. The format 
+is described extensivly in \fBmake.conf\fR(5).
 .RE
 .TP
 .BR /var/cache/edb/

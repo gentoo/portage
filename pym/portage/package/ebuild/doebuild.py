@@ -5,6 +5,7 @@ __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
 
 import codecs
 import errno
+import gzip
 from itertools import chain
 import logging
 import os as _os
@@ -36,7 +37,8 @@ from portage.data import portage_gid, portage_uid, secpass, \
 	uid, userpriv_groups
 from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, paren_enclose, use_reduce
-from portage.eapi import eapi_exports_KV, eapi_has_src_uri_arrows, \
+from portage.eapi import eapi_exports_KV, eapi_exports_replace_vars, \
+	eapi_has_src_uri_arrows, \
 	eapi_has_src_prepare_and_src_configure, eapi_has_pkg_pretend
 from portage.elog import elog_process
 from portage.elog.messages import eerror, eqawarn
@@ -52,6 +54,7 @@ from portage.util import apply_recursive_permissions, \
 	writemsg, writemsg_stdout, write_atomic
 from portage.util.lafilefixer import rewrite_lafile	
 from portage.versions import _pkgsplit
+from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.EbuildSpawnProcess import EbuildSpawnProcess
 from _emerge.TaskScheduler import TaskScheduler
@@ -107,9 +110,22 @@ def _spawn_phase(phase, settings, actionmap=None, **kwargs):
 	task_scheduler.run()
 	return ebuild_phase.returncode
 
-def doebuild_environment(myebuild, mydo, myroot, mysettings,
-	debug, use_cache, mydbapi):
+def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
+	debug=False, use_cache=None, db=None):
+	"""
+	The myroot and use_cache parameters are unused.
+	"""
+	myroot = None
+	use_cache = None
 
+	if settings is None:
+		raise TypeError("settings argument is required")
+
+	if db is None:
+		raise TypeError("db argument is required")
+
+	mysettings = settings
+	mydbapi = db
 	ebuild_path = os.path.abspath(myebuild)
 	pkg_dir     = os.path.dirname(ebuild_path)
 
@@ -149,8 +165,9 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 			mysettings.setcpv(mycpv, mydb=mydbapi)
 
 	# config.reset() might have reverted a change made by the caller,
-	# so restore it to it's original value.
-	mysettings["PORTAGE_TMPDIR"] = tmpdir
+	# so restore it to it's original value. Sandbox needs cannonical
+	# paths, so realpath it.
+	mysettings["PORTAGE_TMPDIR"] = os.path.realpath(tmpdir)
 
 	mysettings.pop("EBUILD_PHASE", None) # remove from backupenv
 	mysettings["EBUILD_PHASE"] = mydo
@@ -237,9 +254,6 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 	if portage_bin_path not in mysplit:
 		mysettings["PATH"] = portage_bin_path + ":" + mysettings["PATH"]
 
-	# Sandbox needs cannonical paths.
-	mysettings["PORTAGE_TMPDIR"] = os.path.realpath(
-		mysettings["PORTAGE_TMPDIR"])
 	mysettings["BUILD_PREFIX"] = mysettings["PORTAGE_TMPDIR"]+"/portage"
 	mysettings["PKG_TMPDIR"]   = mysettings["PORTAGE_TMPDIR"]+"/binpkgs"
 	
@@ -277,7 +291,8 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 		mydo in ('compile', 'config', 'configure', 'info',
 		'install', 'nofetch', 'postinst', 'postrm', 'preinst',
 		'prepare', 'prerm', 'setup', 'test', 'unpack'):
-		mykv,err1=ExtractKernelVersion(os.path.join(myroot, EPREFIX_LSTRIP, "usr/src/linux"))
+		mykv, err1 = ExtractKernelVersion(
+			os.path.join(mysettings['EROOT'], "usr/src/linux"))
 		if mykv:
 			# Regular source tree
 			mysettings["KV"]=mykv
@@ -361,7 +376,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	# chunked out deps for each phase, so that ebuild binary can use it 
 	# to collapse targets down.
 	actionmap_deps={
-	"setup":  [],
+	"pretend"  : [],
+	"setup":  ["pretend"],
 	"unpack": ["setup"],
 	"prepare": ["unpack"],
 	"configure": ["prepare"],
@@ -492,21 +508,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	tmpdir_orig = None
 
 	try:
-		if mydo in ("pretend", "setup"):
-			if not vartree:
-				writemsg("Warning: vartree not given to doebuild. " + \
-					"Cannot set REPLACING_VERSIONS in pkg_{pretend,setup}\n")
-			else:
-				vardb = vartree.dbapi
-				cpv = mysettings.mycpv
-				cp = portage.versions.cpv_getkey(cpv)
-				slot = mysettings.get("SLOT")
-				cpv_slot = cp + ":" + slot
-				mysettings["REPLACING_VERSIONS"] = " ".join(
-					set(portage.versions.cpv_getversion(match) \
-						for match in vardb.match(cpv_slot) + vardb.match(cpv)))
-				mysettings.backup_changes("REPLACING_VERSIONS")
-
 		if mydo in ("digest", "manifest", "help"):
 			# Temporarily exempt the depend phase from manifest checks, in case
 			# aux_get calls trigger cache generation.
@@ -616,6 +617,25 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if rval != os.EX_OK:
 				return rval
 
+		if eapi_exports_replace_vars(mysettings["EAPI"]) and \
+			(mydo in ("pretend", "setup") or \
+			("noauto" not in features and not returnpid and \
+			(mydo in actionmap_deps or mydo in ("merge", "package", "qmerge")))):
+			if not vartree:
+				writemsg("Warning: vartree not given to doebuild. " + \
+					"Cannot set REPLACING_VERSIONS in pkg_{pretend,setup}\n")
+			else:
+				vardb = vartree.dbapi
+				cpv = mysettings.mycpv
+				cp = portage.versions.cpv_getkey(cpv)
+				slot = mysettings["SLOT"]
+				cpv_slot = cp + ":" + slot
+				mysettings["REPLACING_VERSIONS"] = " ".join(
+					set(portage.versions.cpv_getversion(match) \
+						for match in vardb.match(cpv_slot) + \
+						vardb.match('='+cpv)))
+				mysettings.backup_changes("REPLACING_VERSIONS")
+
 		# if any of these are being called, handle them -- running them out of
 		# the sandbox -- and stop now.
 		if mydo in ("config", "help", "info", "postinst",
@@ -719,12 +739,17 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				# Make sure the package directory exists before executing
 				# this phase. This can raise PermissionDenied if
 				# the current user doesn't have write access to $PKGDIR.
-				parent_dir = os.path.join(mysettings["PKGDIR"],
-					mysettings["CATEGORY"])
-				portage.util.ensure_dirs(parent_dir)
-				if not os.access(parent_dir, os.W_OK):
-					raise PermissionDenied(
-						"access('%s', os.W_OK)" % parent_dir)
+				if hasattr(portage, 'db'):
+					bintree = portage.db[mysettings["ROOT"]]["bintree"]
+					bintree._ensure_dir(os.path.join(
+						bintree.pkgdir, mysettings["CATEGORY"]))
+				else:
+					parent_dir = os.path.join(mysettings["PKGDIR"],
+						mysettings["CATEGORY"])
+					portage.util.ensure_dirs(parent_dir)
+					if not os.access(parent_dir, os.W_OK):
+						raise PermissionDenied(
+							"access('%s', os.W_OK)" % parent_dir)
 			retval = spawnebuild(mydo,
 				actionmap, mysettings, debug, logfile=logfile,
 				fd_pipes=fd_pipes, returnpid=returnpid)
@@ -773,6 +798,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			shutil.rmtree(tmpdir)
 		if builddir_lock:
 			portage.locks.unlockdir(builddir_lock)
+
+		mysettings.pop("REPLACING_VERSIONS", None)
 
 		# Make sure that DISTDIR is restored to it's normal value before we return!
 		if "PORTAGE_ACTUAL_DISTDIR" in mysettings:
@@ -829,64 +856,31 @@ def _check_temp_dir(settings):
 	return os.EX_OK
 
 def _prepare_env_file(settings):
-	env_file = os.path.join(settings["T"], "environment")
-	env_stat = None
-	saved_env = None
-	try:
-		env_stat = os.stat(env_file)
-	except OSError as e:
-		if e.errno != errno.ENOENT:
-			raise
-	if not env_stat:
-		saved_env = os.path.join(
-			os.path.dirname(settings['EBUILD']), "environment.bz2")
-		if not os.path.isfile(saved_env):
-			saved_env = None
-	if saved_env:
-		retval = os.system(
-			"bzip2 -dc %s > %s" % \
-			(_shell_quote(saved_env),
-			_shell_quote(env_file)))
-		try:
-			env_stat = os.stat(env_file)
-		except OSError as e:
-			if e.errno != errno.ENOENT:
-				raise
-		if os.WIFEXITED(retval) and \
-			os.WEXITSTATUS(retval) == os.EX_OK and \
-			env_stat and env_stat.st_size > 0:
-			# This is a signal to ebuild.sh, so that it knows to filter
-			# out things like SANDBOX_{DENY,PREDICT,READ,WRITE} that
-			# would be preserved between normal phases.
-			open(_unicode_encode(env_file + '.raw'), 'w')
-		else:
-			writemsg(_("!!! Error extracting saved "
-				"environment: '%s'\n") % \
-				saved_env, noiselevel=-1)
-			try:
-				os.unlink(env_file)
-			except OSError as e:
-				if e.errno != errno.ENOENT:
-					raise
-			env_stat = None
-	if env_stat is not None:
-		pass
-	else:
-		for var in ("ARCH", ):
-			value = settings.get(var)
-			if value and value.strip():
-				continue
-			msg = _("%(var)s is not set... "
-				"Are you missing the '%(configroot)setc/make.profile' symlink? "
-				"Is the symlink correct? "
-				"Is your portage tree complete?") % \
-				{"var": var, "configroot": settings["PORTAGE_CONFIGROOT"]}
-			for line in wrap(msg, 70):
-				eerror(line, phase="setup", key=settings.mycpv)
-			elog_process(settings.mycpv, settings)
-			return 1
+	"""
+	Extract environment.bz2 if it exists, but only if the destination
+	environment file doesn't already exist. There are lots of possible
+	states when doebuild() calls this function, and we want to avoid
+	clobbering an existing environment file.
+	"""
 
-	return os.EX_OK
+	task_scheduler = TaskScheduler()
+	env_extractor = BinpkgEnvExtractor(background=False,
+		scheduler=task_scheduler.sched_iface, settings=settings)
+
+	if env_extractor.dest_env_exists():
+		# There are lots of possible states when doebuild()
+		# calls this function, and we want to avoid
+		# clobbering an existing environment file.
+		return os.EX_OK
+
+	if not env_extractor.saved_env_exists():
+		# If the environment.bz2 doesn't exist, then ebuild.sh will
+		# source the ebuild as a fallback.
+		return os.EX_OK
+
+	task_scheduler.add(env_extractor)
+	task_scheduler.run()
+	return env_extractor.returncode
 
 def _prepare_fake_distdir(settings, alist):
 	orig_distdir = settings["DISTDIR"]
@@ -1191,11 +1185,13 @@ def _check_build_log(mysettings, out=None):
 	if logfile is None:
 		return
 	try:
-		f = codecs.open(_unicode_encode(logfile,
-			encoding=_encodings['fs'], errors='strict'),
-			mode='r', encoding=_encodings['content'], errors='replace')
+		f = open(_unicode_encode(logfile, encoding=_encodings['fs'],
+			errors='strict'), mode='rb')
 	except EnvironmentError:
 		return
+
+	if logfile.endswith('.gz'):
+		f =  gzip.GzipFile(filename='', mode='rb', fileobj=f)
 
 	am_maintainer_mode = []
 	bash_command_not_found = []
@@ -1224,6 +1220,7 @@ def _check_build_log(mysettings, out=None):
 
 	try:
 		for line in f:
+			line = _unicode_decode(line)
 			if am_maintainer_mode_re.search(line) is not None and \
 				am_maintainer_mode_exclude_re.search(line) is None:
 				am_maintainer_mode.append(line.rstrip("\n"))

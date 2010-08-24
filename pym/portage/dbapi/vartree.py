@@ -1,4 +1,4 @@
-# Copyright 1998-2009 Gentoo Foundation
+# Copyright 1998-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["PreservedLibsRegistry", "LinkageMap",
@@ -16,7 +16,8 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.elog:elog_process',
 	'portage.locks:lockdir,unlockdir',
 	'portage.output:bold,colorize',
-	'portage.package.ebuild.doebuild:doebuild,doebuild_environment',
+	'portage.package.ebuild.doebuild:doebuild_environment,' + \
+		'_spawn_phase',
 	'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
 	'portage.update:fixdbentries',
 	'portage.util:apply_secpass_permissions,ConfigProtect,ensure_dirs,' + \
@@ -61,6 +62,7 @@ import stat
 import sys
 import tempfile
 import time
+import warnings
 
 try:
 	import cPickle as pickle
@@ -197,7 +199,7 @@ class LinkageMap(object):
 
 	def __init__(self, vardbapi):
 		self._dbapi = vardbapi
-		self._root = self._dbapi.root
+		self._root = self._dbapi._eroot
 		self._libs = {}
 		self._obj_properties = {}
 		self._obj_key_cache = {}
@@ -1795,16 +1797,12 @@ class vardbapi(dbapi):
 	_aux_cache_keys_re = re.compile(r'^NEEDED\..*$')
 	_aux_multi_line_re = re.compile(r'^(CONTENTS|NEEDED\..*)$')
 
-	def __init__(self, root, categories=None, settings=None, vartree=None):
+	def __init__(self, _unused_param=None, categories=None, settings=None, vartree=None):
 		"""
 		The categories parameter is unused since the dbapi class
 		now has a categories property that is generated from the
 		available packages.
 		"""
-		self.root = _unicode_decode(root,
-			encoding=_encodings['content'], errors='strict')
-		if self.root[-1] != '/':
-			self.root += '/'
 
 		# Used by emerge to check whether any packages
 		# have been added or removed.
@@ -1821,11 +1819,20 @@ class vardbapi(dbapi):
 
 		self.blockers = None
 		if settings is None:
-			from portage import settings
+			settings = portage.settings
 		self.settings = settings
+		self.root = settings['ROOT']
+
+		if _unused_param is not None and _unused_param != self.root:
+			warnings.warn("The first parameter of the " + \
+				"portage.dbapi.vartree.vardbapi" + \
+				" constructor is now unused. Use " + \
+				"settings['ROOT'] instead.",
+				DeprecationWarning, stacklevel=2)
+
+		self._eroot = settings['EROOT']
 		if vartree is None:
-			from portage import db
-			vartree = db[root]["vartree"]
+			vartree = portage.db[self.root]["vartree"]
 		self.vartree = vartree
 		self._aux_cache_keys = set(
 			["BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "DESCRIPTION",
@@ -1834,14 +1841,14 @@ class vardbapi(dbapi):
 			"repository", "RESTRICT" , "SLOT", "USE", "DEFINED_PHASES",
 			"REQUIRED_USE"])
 		self._aux_cache_obj = None
-		self._aux_cache_filename = os.path.join(self.root,
+		self._aux_cache_filename = os.path.join(self._eroot,
 			CACHE_PATH, "vdb_metadata.pickle")
-		self._counter_path = os.path.join(root,
+		self._counter_path = os.path.join(self._eroot,
 			CACHE_PATH, "counter")
 
 		try:
-			self.plib_registry = PreservedLibsRegistry(self.root,
-				os.path.join(self.root, PRIVATE_PATH, "preserved_libs_registry"))
+			self.plib_registry = PreservedLibsRegistry(self._eroot,
+				os.path.join(self._eroot, PRIVATE_PATH, "preserved_libs_registry"))
 		except PermissionDenied:
 			# apparently this user isn't allowed to access PRIVATE_PATH
 			self.plib_registry = None
@@ -1862,7 +1869,7 @@ class vardbapi(dbapi):
 	def getpath(self, mykey, filename=None):
 		# This is an optimized hotspot, so don't use unicode-wrapped
 		# os module and don't use os.path.join().
-		rValue = self.root + VDB_PATH + _os.sep + mykey
+		rValue = self._eroot + VDB_PATH + _os.sep + mykey
 		if filename is not None:
 			# If filename is always relative, we can do just
 			# rValue += _os.sep + filename
@@ -1874,7 +1881,7 @@ class vardbapi(dbapi):
 		This is called before an after any modifications, so that consumers
 		can use directory mtimes to validate caches. See bug #290428.
 		"""
-		base = self.root + VDB_PATH
+		base = self._eroot + VDB_PATH
 		cat = catsplit(cpv)[0]
 		catdir = base + _os.sep + cat
 		t = time.time()
@@ -1903,7 +1910,7 @@ class vardbapi(dbapi):
 	def cpv_inject(self, mycpv):
 		"injects a real package into our on-disk database; assumes mycpv is valid and doesn't already exist"
 		os.makedirs(self.getpath(mycpv))
-		counter = self.counter_tick(self.root, mycpv=mycpv)
+		counter = self.counter_tick(mycpv=mycpv)
 		# write local package counter so that emerge clean does the right thing
 		write_atomic(self.getpath(mycpv, filename="COUNTER"), str(counter))
 
@@ -2015,7 +2022,7 @@ class vardbapi(dbapi):
 		involve merge or unmerge of packages).
 		"""
 		returnme = []
-		basepath = os.path.join(self.root, VDB_PATH) + os.path.sep
+		basepath = os.path.join(self._eroot, VDB_PATH) + os.path.sep
 
 		if use_cache:
 			from portage import listdir
@@ -2107,7 +2114,7 @@ class vardbapi(dbapi):
 			return list(self._iter_match(mydep,
 				self.cp_list(mydep.cp, use_cache=use_cache)))
 		try:
-			curmtime = os.stat(os.path.join(self.root, VDB_PATH, mycat)).st_mtime
+			curmtime = os.stat(os.path.join(self._eroot, VDB_PATH, mycat)).st_mtime
 		except (IOError, OSError):
 			curmtime=0
 
@@ -2341,12 +2348,10 @@ class vardbapi(dbapi):
 		return results
 
 	def aux_update(self, cpv, values):
-		self._bump_mtime(cpv)
-		cat, pkg = catsplit(cpv)
-		mylink = dblink(cat, pkg, self.root, self.settings,
-		treetype="vartree", vartree=self.vartree)
+		mylink = self._dblink(cpv)
 		if not mylink.exists():
 			raise KeyError(cpv)
+		self._bump_mtime(cpv)
 		self._clear_pkg_cache(mylink)
 		for k, v in values.items():
 			if v:
@@ -2358,10 +2363,13 @@ class vardbapi(dbapi):
 					pass
 		self._bump_mtime(cpv)
 
-	def counter_tick(self, myroot, mycpv=None):
-		return self.counter_tick_core(myroot, incrementing=1, mycpv=mycpv)
+	def counter_tick(self, myroot=None, mycpv=None):
+		"""
+		@param myroot: ignored, self._eroot is used instead
+		"""
+		return self.counter_tick_core(incrementing=1, mycpv=mycpv)
 
-	def get_counter_tick_core(self, myroot, mycpv=None):
+	def get_counter_tick_core(self, myroot=None, mycpv=None):
 		"""
 		Use this method to retrieve the counter instead
 		of having to trust the value of a global counter
@@ -2379,7 +2387,10 @@ class vardbapi(dbapi):
 		it also corresponds to the total number of
 		installation actions that have occurred in
 		the history of this package database.
+
+		@param myroot: ignored, self._eroot is used instead
 		"""
+		myroot = None
 		cp_list = self.cp_list
 		max_counter = 0
 		for cp in self.cp_all():
@@ -2435,9 +2446,15 @@ class vardbapi(dbapi):
 
 		return max_counter + 1
 
-	def counter_tick_core(self, myroot, incrementing=1, mycpv=None):
-		"This method will grab the next COUNTER value and record it back to the global file.  Returns new counter value."
-		counter = self.get_counter_tick_core(myroot, mycpv=mycpv) - 1
+	def counter_tick_core(self, myroot=None, incrementing=1, mycpv=None):
+		"""
+		This method will grab the next COUNTER value and record it back
+		to the global file.  Returns new counter value.
+
+		@param myroot: ignored, self._eroot is used instead
+		"""
+		myroot = None
+		counter = self.get_counter_tick_core(mycpv=mycpv) - 1
 		if incrementing:
 			#increment counter
 			counter += 1
@@ -2450,8 +2467,8 @@ class vardbapi(dbapi):
 
 	def _dblink(self, cpv):
 		category, pf = catsplit(cpv)
-		return dblink(category, pf, self.root,
-			self.settings, vartree=self.vartree, treetype="vartree")
+		return dblink(category, pf, settings=self.settings,
+			vartree=self.vartree, treetype="vartree")
 
 	def removeFromContents(self, pkg, paths, relative_paths=True):
 		"""
@@ -2462,7 +2479,7 @@ class vardbapi(dbapi):
 		"""
 		if not hasattr(pkg, "getcontents"):
 			pkg = self._dblink(pkg)
-		root = self.root
+		root = self._eroot
 		root_len = len(root) - 1
 		new_contents = pkg.getcontents().copy()
 		removed = 0
@@ -2475,7 +2492,7 @@ class vardbapi(dbapi):
 				relative_filename = filename
 			else:
 				relative_filename = filename[root_len:]
-			contents_key = pkg._match_contents(relative_filename, root)
+			contents_key = pkg._match_contents(relative_filename)
 			if contents_key:
 				del new_contents[contents_key]
 				removed += 1
@@ -2507,7 +2524,7 @@ class vardbapi(dbapi):
 			self._vardb = vardb
 
 		def add(self, cpv):
-			root_len = len(self._vardb.root)
+			root_len = len(self._vardb._eroot)
 			contents = self._vardb._dblink(cpv).getcontents()
 			pkg_hash = self._hash_pkg(cpv)
 			if not contents:
@@ -2647,7 +2664,7 @@ class vardbapi(dbapi):
 			owners_cache = self._populate()
 
 			vardb = self._vardb
-			root = vardb.root
+			root = vardb._eroot
 			hash_pkg = owners_cache._hash_pkg
 			hash_str = owners_cache._hash_str
 			base_names = self._vardb._aux_cache["owners"]["base_names"]
@@ -2701,7 +2718,7 @@ class vardbapi(dbapi):
 									if os.path.basename(p) == name:
 										owners.append((cpv, p[len(root):]))
 							else:
-								if dblink(cpv).isowner(path, root):
+								if dblink(cpv).isowner(path):
 									owners.append((cpv, path))
 					except StopIteration:
 						path_iter.append(path)
@@ -2735,7 +2752,7 @@ class vardbapi(dbapi):
 					name = os.path.basename(path.rstrip(os.path.sep))
 				path_info_list.append((path, name, is_basename))
 
-			root = self._vardb.root
+			root = self._vardb._eroot
 			for cpv in self._vardb.cpv_all():
 				dblnk =  self._vardb._dblink(cpv)
 
@@ -2745,31 +2762,28 @@ class vardbapi(dbapi):
 							if os.path.basename(p) == name:
 								yield dblnk, p[len(root):]
 					else:
-						if dblnk.isowner(path, root):
+						if dblnk.isowner(path):
 							yield dblnk, path
 
 class vartree(object):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
-	def __init__(self, root="/", virtual=None, clone=None, categories=None,
+	def __init__(self, root=None, virtual=None, categories=None,
 		settings=None):
-		if clone:
-			writemsg("vartree.__init__(): deprecated " + \
-				"use of clone parameter\n", noiselevel=-1)
-			self.root = clone.root[:]
-			self.dbapi = copy.deepcopy(clone.dbapi)
-			self.populated = 1
-			from portage import config
-			self.settings = config(clone=clone.settings)
-		else:
-			self.root = root[:]
-			if settings is None:
-				from portage import settings
-			self.settings = settings
-			if categories is None:
-				categories = settings.categories
-			self.dbapi = vardbapi(self.root, categories=categories,
-				settings=settings, vartree=self)
-			self.populated = 1
+
+		if settings is None:
+			settings = portage.settings
+		self.root = settings['ROOT']
+
+		if root is not None and root != self.root:
+			warnings.warn("The 'root' parameter of the " + \
+				"portage.dbapi.vartree.vartree" + \
+				" constructor is now unused. Use " + \
+				"settings['ROOT'] instead.",
+				DeprecationWarning, stacklevel=2)
+
+		self.settings = settings
+		self.dbapi = vardbapi(settings=settings, vartree=self)
+		self.populated = 1
 
 	def getpath(self, mykey, filename=None):
 		return self.dbapi.getpath(mykey, filename=filename)
@@ -2797,7 +2811,7 @@ class vartree(object):
 		except SystemExit as e:
 			raise
 		except Exception as e:
-			mydir = os.path.join(self.root, VDB_PATH, mycpv)
+			mydir = os.path.join(self._eroot, VDB_PATH, mycpv)
 			writemsg(_("\nParse Error reading PROVIDE and USE in '%s'\n") % mydir,
 				noiselevel=-1)
 			if mylines:
@@ -2883,7 +2897,7 @@ class dblink(object):
 	# scheduler each time this many files are processed.
 	_file_merge_yield_interval = 20
 
-	def __init__(self, cat, pkg, myroot, mysettings, treetype=None,
+	def __init__(self, cat, pkg, myroot=None, settings=None, treetype=None,
 		vartree=None, blockers=None, scheduler=None):
 		"""
 		Creates a DBlink object for a given CPV.
@@ -2893,16 +2907,21 @@ class dblink(object):
 		@type cat: String
 		@param pkg: Package (PV)
 		@type pkg: String
-		@param myroot: Typically ${ROOT}
+		@param myroot: ignored, settings['ROOT'] is used instead
 		@type myroot: String (Path)
-		@param mysettings: Typically portage.config
-		@type mysettings: An instance of portage.config
+		@param settings: Typically portage.settings
+		@type settings: portage.config
 		@param treetype: one of ['porttree','bintree','vartree']
 		@type treetype: String
 		@param vartree: an instance of vartree corresponding to myroot.
 		@type vartree: vartree
 		"""
-		
+
+		if settings is None:
+			raise TypeError("settings argument is required")
+
+		mysettings = settings
+		myroot = settings['ROOT']
 		self.cat = cat
 		self.pkg = pkg
 		self.mycpv = self.cat + "/" + self.pkg
@@ -2910,13 +2929,15 @@ class dblink(object):
 		self.mysplit[0] = "%s/%s" % (self.cat, self.mysplit[0])
 		self.treetype = treetype
 		if vartree is None:
-			from portage import db
-			vartree = db[myroot]["vartree"]
+			vartree = portage.db[myroot]["vartree"]
 		self.vartree = vartree
 		self._blockers = blockers
 		self._scheduler = scheduler
 
-		self.dbroot = normalize_path(os.path.join(myroot, VDB_PATH))
+		# WARNING: EROOT support is experimental and may be incomplete
+		# for cases in which EPREFIX is non-empty.
+		self._eroot = mysettings['EROOT']
+		self.dbroot = normalize_path(os.path.join(self._eroot, VDB_PATH))
 		self.dbcatdir = self.dbroot+"/"+cat
 		self.dbpkgdir = self.dbcatdir+"/"+pkg
 		self.dbtmpdir = self.dbcatdir+"/-MERGING-"+pkg
@@ -3029,7 +3050,7 @@ class dblink(object):
 		obj_index = contents_re.groupindex['obj']
 		dir_index = contents_re.groupindex['dir']
 		sym_index = contents_re.groupindex['sym']
-		myroot = self.myroot
+		myroot = self._eroot
 		if myroot == os.path.sep:
 			myroot = None
 		pos = 0
@@ -3081,7 +3102,7 @@ class dblink(object):
 		self.contentscache = pkgfiles
 		return pkgfiles
 
-	def unmerge(self, pkgfiles=None, trimworld=1, cleanup=1,
+	def unmerge(self, pkgfiles=None, trimworld=None, cleanup=True,
 		ldpath_mtimes=None, others_in_slot=None):
 		"""
 		Calls prerm
@@ -3092,7 +3113,7 @@ class dblink(object):
 		
 		@param pkgfiles: files to unmerge (generally self.getcontents() )
 		@type pkgfiles: Dictionary
-		@param trimworld: Remove CPV from world file if True, not if False
+		@param trimworld: Unused
 		@type trimworld: Boolean
 		@param cleanup: cleanup to pass to doebuild (see doebuild)
 		@type cleanup: Boolean
@@ -3109,6 +3130,13 @@ class dblink(object):
 		The caller must ensure that lockdb() and unlockdb() are called
 		before and after this method.
 		"""
+
+		if trimworld is not None:
+			warnings.warn("The trimworld parameter of the " + \
+				"portage.dbapi.vartree.dblink.unmerge()" + \
+				" method is now unused.",
+				DeprecationWarning, stacklevel=2)
+
 		self.vartree.dbapi._bump_mtime(self.mycpv)
 		showMessage = self._display_merge
 		if self.vartree.dbapi._categories is not None:
@@ -3125,7 +3153,7 @@ class dblink(object):
 				if cur_cpv == self.mycpv:
 					continue
 				others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
-					self.vartree.root, self.settings, vartree=self.vartree,
+					settings=self.settings, vartree=self.vartree,
 					treetype="vartree"))
 
 			retval = self._security_check([self] + others_in_slot)
@@ -3138,6 +3166,7 @@ class dblink(object):
 		myebuildpath = None
 		ebuild_phase = "prerm"
 		log_path = None
+		catdir = None
 		mystuff = os.listdir(self.dbdir)
 		for x in mystuff:
 			if x.endswith(".ebuild"):
@@ -3152,8 +3181,8 @@ class dblink(object):
 		self.settings.setcpv(self.mycpv, mydb=self.vartree.dbapi)
 		if myebuildpath:
 			try:
-				doebuild_environment(myebuildpath, "prerm", self.myroot,
-					self.settings, 0, 0, self.vartree.dbapi)
+				doebuild_environment(myebuildpath, "prerm",
+					settings=self.settings, db=self.vartree.dbapi)
 			except UnsupportedAPIException as e:
 				# Sometimes this happens due to corruption of the EAPI file.
 				writemsg(_("!!! FAILED prerm: %s\n") % \
@@ -3168,7 +3197,7 @@ class dblink(object):
 		builddir_lock = None
 		catdir_lock = None
 		scheduler = self._scheduler
-		retval = -1
+		retval = os.EX_OK
 		failures = 0
 		try:
 			if myebuildpath:
@@ -3183,14 +3212,11 @@ class dblink(object):
 				finally:
 					catdir_lock = None
 
-				prepare_build_dirs(self.myroot, self.settings, 1)
+				prepare_build_dirs(settings=self.settings, cleanup=True)
 				log_path = self.settings.get("PORTAGE_LOG_FILE")
 
 				if scheduler is None:
-					retval = doebuild(myebuildpath, ebuild_phase, self.myroot,
-						self.settings, cleanup=cleanup, use_cache=0,
-						mydbapi=self.vartree.dbapi, tree=self.treetype,
-						vartree=self.vartree)
+					retval = _spawn_phase('prerm', self.settings)
 				else:
 					retval = scheduler.dblinkEbuildPhase(
 						self, self.vartree.dbapi, myebuildpath, ebuild_phase)
@@ -3211,9 +3237,7 @@ class dblink(object):
 			if myebuildpath:
 				ebuild_phase = "postrm"
 				if scheduler is None:
-					retval = doebuild(myebuildpath, ebuild_phase, self.myroot,
-						self.settings, use_cache=0, tree=self.treetype,
-						mydbapi=self.vartree.dbapi, vartree=self.vartree)
+					retval = _spawn_phase(ebuild_phase, self.settings)
 				else:
 					retval = scheduler.dblinkEbuildPhase(
 						self, self.vartree.dbapi, myebuildpath, ebuild_phase)
@@ -3295,20 +3319,25 @@ class dblink(object):
 
 						# process logs created during pre/postrm
 						elog_process(self.mycpv, self.settings)
-						if retval == os.EX_OK:
-							if scheduler is None:
-								doebuild(myebuildpath, "cleanrm", self.myroot,
-									self.settings, tree="vartree",
-									mydbapi=self.vartree.dbapi,
-									vartree=self.vartree)
-							else:
-								scheduler.dblinkEbuildPhase(
-									self, self.vartree.dbapi,
-									myebuildpath, "cleanrm")
+
+					if retval == os.EX_OK:
+						# myebuildpath might be None, so ensure
+						# it has a sane value for the clean phase,
+						# even though it won't really be sourced.
+						myebuildpath = os.path.join(self.dbdir,
+							self.pkg + ".ebuild")
+						doebuild_environment(myebuildpath, "cleanrm",
+							settings=self.settings, db=self.vartree.dbapi)
+						if scheduler is None:
+							_spawn_phase("cleanrm", self.settings)
+						else:
+							scheduler.dblinkEbuildPhase(
+								self, self.vartree.dbapi,
+								myebuildpath, "cleanrm")
 				finally:
 					unlockdir(builddir_lock)
 			try:
-				if myebuildpath and not catdir_lock:
+				if catdir and not catdir_lock:
 					# Lock catdir for removal if empty.
 					catdir_lock = lockdir(catdir)
 			finally:
@@ -3351,7 +3380,8 @@ class dblink(object):
 		else:
 			self.settings.pop("PORTAGE_LOG_FILE", None)
 
-		env_update(target_root=self.myroot, prev_mtimes=ldpath_mtimes,
+		env_update(target_root=self.settings['ROOT'],
+			prev_mtimes=ldpath_mtimes,
 			contents=contents, env=self.settings.environ(),
 			writemsg_level=self._display_merge)
 		return os.EX_OK
@@ -3396,11 +3426,10 @@ class dblink(object):
 				if cur_cpv == self.mycpv:
 					continue
 				others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
-					self.vartree.root, self.settings,
+					settings=self.settings,
 					vartree=self.vartree, treetype="vartree"))
 
-		dest_root = normalize_path(self.vartree.root).rstrip(os.path.sep) + \
-			os.path.sep
+		dest_root = self._eroot
 		dest_root_len = len(dest_root) - 1
 
 		conf_mem_file = os.path.join(dest_root, CONFIG_MEMORY_FILE)
@@ -3408,6 +3437,7 @@ class dblink(object):
 		stale_confmem = []
 
 		unmerge_orphans = "unmerge-orphans" in self.settings.features
+		calc_prelink = "prelink-checksums" in self.settings.features
 
 		if pkgfiles:
 			self.updateprotect()
@@ -3424,7 +3454,7 @@ class dblink(object):
 				errno.EEXIST, errno.ENOTEMPTY,
 				errno.EBUSY, errno.ENOENT,
 				errno.ENOTDIR, errno.EISDIR)
-			modprotect = os.path.join(self.vartree.root, "lib/modules/")
+			modprotect = os.path.join(self._eroot, "lib/modules/")
 
 			def unlink(file_name, lstatobj):
 				if bsd_chflags:
@@ -3519,7 +3549,7 @@ class dblink(object):
 					relative_path = obj[dest_root_len:]
 					is_owned = False
 					for dblnk in others_in_slot:
-						if dblnk.isowner(relative_path, dest_root):
+						if dblnk.isowner(relative_path):
 							is_owned = True
 							break
 					if is_owned:
@@ -3592,7 +3622,7 @@ class dblink(object):
 						continue
 					mymd5 = None
 					try:
-						mymd5 = perf_md5(obj, calc_prelink=1)
+						mymd5 = perf_md5(obj, calc_prelink=calc_prelink)
 					except FileNotFound as e:
 						# the file has disappeared between now and our stat call
 						show_unmerge("---", unmerge_desc["!obj"], file_type, obj)
@@ -3659,7 +3689,7 @@ class dblink(object):
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
 		self.vartree.zap(self.mycpv)
 
-	def isowner(self, filename, destroot):
+	def isowner(self, filename, destroot=None):
 		""" 
 		Check if a file belongs to this package. This may
 		result in a stat call for the parent directory of
@@ -3678,9 +3708,17 @@ class dblink(object):
 		1. True if this package owns the file.
 		2. False if this package does not own the file.
 		"""
-		return bool(self._match_contents(filename, destroot))
 
-	def _match_contents(self, filename, destroot):
+		if destroot is not None and destroot != self._eroot:
+			warnings.warn("The second parameter of the " + \
+				"portage.dbapi.vartree.dblink.isowner()" + \
+				" is now unused. Instead " + \
+				"self.settings['EROOT'] will be used.",
+				DeprecationWarning, stacklevel=2)
+
+		return bool(self._match_contents(filename))
+
+	def _match_contents(self, filename, destroot=None):
 		"""
 		The matching contents entry is returned, which is useful
 		since the path may differ from the one given by the caller,
@@ -3694,8 +3732,14 @@ class dblink(object):
 		filename = _unicode_decode(filename,
 			encoding=_encodings['content'], errors='strict')
 
-		destroot = _unicode_decode(destroot,
-			encoding=_encodings['content'], errors='strict')
+		if destroot is not None and destroot != self._eroot:
+			warnings.warn("The second parameter of the " + \
+				"portage.dbapi.vartree.dblink._match_contents()" + \
+				" is now unused. Instead " + \
+				"self.settings['EROOT'] will be used.",
+				DeprecationWarning, stacklevel=2)
+
+		destroot = self._eroot
 
 		# The given filename argument might have a different encoding than the
 		# the filenames contained in the contents, so use separate wrapped os
@@ -3823,7 +3867,14 @@ class dblink(object):
 		return False
 
 	def _linkmap_rebuild(self, **kwargs):
-		if self._linkmap_broken:
+		"""
+		Rebuild the self.linkmap if it's not broken due to missing
+		scanelf binary. Also, return early if preserve-libs is disabled
+		and the preserve-libs registry is empty.
+		"""
+		if self._linkmap_broken or \
+			("preserve-libs" not in self.settings.features and \
+			not self.vartree.dbapi.plib_registry.hasEntries()):
 			return
 		try:
 			self.vartree.dbapi.linkmap.rebuild(**kwargs)
@@ -3847,7 +3898,7 @@ class dblink(object):
 		linkmap = self.vartree.dbapi.linkmap
 		installed_instance = self._installed_instance
 		old_contents = installed_instance.getcontents()
-		root = self.myroot
+		root = self._eroot
 		root_len = len(root) - 1
 		lib_graph = digraph()
 		path_node_map = {}
@@ -3885,7 +3936,7 @@ class dblink(object):
 						os = portage.os
 
 			f = f_abs[root_len:]
-			if self.isowner(f, root):
+			if self.isowner(f):
 				continue
 			try:
 				consumers = linkmap.findConsumers(f)
@@ -3902,10 +3953,10 @@ class dblink(object):
 		# Note that consumers can also be providers.
 		for provider_node, consumers in consumer_map.items():
 			for c in consumers:
-				if self.isowner(c, root):
+				if self.isowner(c):
 					continue
 				consumer_node = path_to_node(c)
-				if installed_instance.isowner(c, root) and \
+				if installed_instance.isowner(c) and \
 					consumer_node not in provider_nodes:
 					# This is not a provider, so it will be uninstalled.
 					continue
@@ -3958,7 +4009,7 @@ class dblink(object):
 
 		os = _os_merge
 		showMessage = self._display_merge
-		root = self.myroot
+		root = self._eroot
 
 		# Copy contents entries from the old package to the new one.
 		new_contents = self.getcontents().copy()
@@ -4001,7 +4052,8 @@ class dblink(object):
 		Find preserved libraries that don't have any consumers left.
 		"""
 
-		if self._linkmap_broken:
+		if self._linkmap_broken or \
+			not self.vartree.dbapi.plib_registry.hasEntries():
 			return {}
 
 		# Since preserved libraries can be consumers of other preserved
@@ -4012,7 +4064,7 @@ class dblink(object):
 		preserved_paths = set()
 		path_cpv_map = {}
 		path_node_map = {}
-		root = self.myroot
+		root = self._eroot
 
 		def path_to_node(path):
 			node = path_node_map.get(path)
@@ -4119,7 +4171,7 @@ class dblink(object):
 			files_to_remove.update(files)
 		files_to_remove = sorted(files_to_remove)
 		showMessage = self._display_merge
-		root = self.myroot
+		root = self._eroot
 
 		parent_dirs = set()
 		for obj in files_to_remove:
@@ -4178,8 +4230,7 @@ class dblink(object):
 			scheduler = self._scheduler
 			stopmerge = False
 			collisions = []
-			destroot = normalize_path(destroot).rstrip(os.path.sep) + \
-				os.path.sep
+			destroot = self._eroot
 			showMessage(_(" %s checking %d files for package collisions\n") % \
 				(colorize("GOOD", "*"), len(mycontents)))
 			for i, f in enumerate(mycontents):
@@ -4243,7 +4294,7 @@ class dblink(object):
 				isowned = False
 				full_path = os.path.join(destroot, f.lstrip(os.path.sep))
 				for ver in mypkglist:
-					if ver.isowner(f, destroot):
+					if ver.isowner(f):
 						isowned = True
 						break
 				if not isowned and self.isprotected(full_path):
@@ -4272,7 +4323,7 @@ class dblink(object):
 
 		os = _os_merge
 
-		root = self.myroot
+		root = self._eroot
 		inode_map = {}
 		for f in path_iter:
 			path = os.path.join(root, f.lstrip(os.sep))
@@ -4404,7 +4455,7 @@ class dblink(object):
 		
 		@param srcroot: Typically this is ${D}
 		@type srcroot: String (Path)
-		@param destroot: Path to merge to (usually ${ROOT})
+		@param destroot: ignored, self._eroot is used instead
 		@type destroot: String (Path)
 		@param inforoot: root of the vardb entry ?
 		@type inforoot: String (Path)
@@ -4427,8 +4478,7 @@ class dblink(object):
 
 		srcroot = _unicode_decode(srcroot,
 			encoding=_encodings['content'], errors='strict')
-		destroot = _unicode_decode(destroot,
-			encoding=_encodings['content'], errors='strict')
+		destroot = self._eroot
 		inforoot = _unicode_decode(inforoot,
 			encoding=_encodings['content'], errors='strict')
 		myebuild = _unicode_decode(myebuild,
@@ -4438,7 +4488,6 @@ class dblink(object):
 		scheduler = self._scheduler
 
 		srcroot = normalize_path(srcroot).rstrip(os.path.sep) + os.path.sep
-		destroot = normalize_path(destroot).rstrip(os.path.sep) + os.path.sep
 
 		if not os.path.isdir(srcroot):
 			showMessage(_("!!! Directory Not Found: D='%s'\n") % srcroot,
@@ -4510,7 +4559,7 @@ class dblink(object):
 			# Clone the config in case one of these has to be unmerged since
 			# we need it to have private ${T} etc... for things like elog.
 			others_in_slot.append(dblink(self.cat, catsplit(cur_cpv)[1],
-				self.vartree.root, config(clone=self.settings),
+				settings=config(clone=self.settings),
 				vartree=self.vartree, treetype="vartree",
 				scheduler=self._scheduler))
 
@@ -4673,9 +4722,9 @@ class dblink(object):
 		# exists for logging of collision-protect eerror messages.
 		if myebuild is None:
 			myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
-		doebuild_environment(myebuild, "preinst", destroot,
-			self.settings, 0, 0, mydbapi)
-		prepare_build_dirs(destroot, self.settings, cleanup)
+		doebuild_environment(myebuild, "preinst",
+			settings=self.settings, db=mydbapi)
+		prepare_build_dirs(settings=self.settings, cleanup=cleanup)
 
 		if collisions:
 			collision_protect = "collision-protect" in self.settings.features
@@ -4791,9 +4840,7 @@ class dblink(object):
 		# run preinst script
 		if scheduler is None:
 			showMessage(_(">>> Merging %(cpv)s to %(destroot)s\n") % {"cpv":self.mycpv, "destroot":destroot})
-			a = doebuild(myebuild, "preinst", destroot, self.settings,
-				use_cache=0, tree=self.treetype, mydbapi=mydbapi,
-				vartree=self.vartree)
+			a = _spawn_phase("preinst", self.settings)
 		else:
 			a = scheduler.dblinkEbuildPhase(
 				self, mydbapi, myebuild, "preinst")
@@ -4809,7 +4856,7 @@ class dblink(object):
 			self.copyfile(inforoot+"/"+x)
 
 		# write local package counter for recording
-		counter = self.vartree.dbapi.counter_tick(self.myroot, mycpv=self.mycpv)
+		counter = self.vartree.dbapi.counter_tick(mycpv=self.mycpv)
 		codecs.open(_unicode_encode(os.path.join(self.dbtmpdir, 'COUNTER'),
 			encoding=_encodings['fs'], errors='strict'),
 			'w', encoding=_encodings['repo.content'], errors='backslashreplace'
@@ -4947,8 +4994,9 @@ class dblink(object):
 			dblnk._linkmap_broken = self._linkmap_broken
 			dblnk.settings["REPLACED_BY_VERSION"] = portage.versions.cpv_getversion(self.mycpv)
 			dblnk.settings.backup_changes("REPLACED_BY_VERSION")
-			unmerge_rval = dblnk.unmerge(trimworld=0,
-				ldpath_mtimes=prev_mtimes, others_in_slot=others_in_slot)
+			unmerge_rval = dblnk.unmerge(ldpath_mtimes=prev_mtimes,
+				others_in_slot=others_in_slot)
+			dblnk.settings.pop("REPLACED_BY_VERSION", None)
 
 			if unmerge_rval == os.EX_OK:
 				emerge_log(_(" >>> unmerge success: %s") % (dblnk.mycpv,))
@@ -5012,9 +5060,7 @@ class dblink(object):
 		self.settings.backup_changes("PORTAGE_UPDATE_ENV")
 		try:
 			if scheduler is None:
-				a = doebuild(myebuild, "postinst", destroot, self.settings,
-					use_cache=0, tree=self.treetype, mydbapi=mydbapi,
-					vartree=self.vartree)
+				a = _spawn_phase("postinst", self.settings)
 				if a == os.EX_OK:
 					showMessage(_(">>> %s merged.\n") % self.mycpv)
 			else:
@@ -5036,7 +5082,7 @@ class dblink(object):
 
 		#update environment settings, library paths. DO NOT change symlinks.
 		env_update(makelinks=(not downgrade),
-			target_root=self.settings["ROOT"], prev_mtimes=prev_mtimes,
+			target_root=self.settings['ROOT'], prev_mtimes=prev_mtimes,
 			contents=contents, env=self.settings.environ(),
 			writemsg_level=self._display_merge)
 
@@ -5110,7 +5156,8 @@ class dblink(object):
 		join = os.path.join
 		srcroot = normalize_path(srcroot).rstrip(sep) + sep
 		destroot = normalize_path(destroot).rstrip(sep) + sep
-		
+		calc_prelink = "prelink-checksums" in self.settings.features
+
 		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
 		if isinstance(stufftomerge, basestring):
 			#A directory is specified.  Figure out protection paths, listdir() it and process it.
@@ -5271,7 +5318,7 @@ class dblink(object):
 					return 1
 			elif stat.S_ISREG(mymode):
 				# we are merging a regular file
-				mymd5 = perform_md5(mysrc, calc_prelink=1)
+				mymd5 = perform_md5(mysrc, calc_prelink=calc_prelink)
 				# calculate config file protection stuff
 				mydestdir = os.path.dirname(mydest)
 				moveme = 1
@@ -5302,7 +5349,7 @@ class dblink(object):
 						if protected:
 							# we have a protection path; enable config file management.
 							cfgprot = 0
-							destmd5 = perform_md5(mydest, calc_prelink=1)
+							destmd5 = perform_md5(mydest, calc_prelink=calc_prelink)
 							if mymd5 == destmd5:
 								#file already in place; simply update mtimes of destination
 								moveme = 1
@@ -5383,7 +5430,7 @@ class dblink(object):
 					outfile.write("dev %s\n" % myrealdest)
 				showMessage(zing + " " + mydest + "\n")
 
-	def merge(self, mergeroot, inforoot, myroot, myebuild=None, cleanup=0,
+	def merge(self, mergeroot, inforoot, myroot=None, myebuild=None, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
 		"""
 		If portage is reinstalling itself, create temporary
@@ -5393,7 +5440,10 @@ class dblink(object):
 		temporary directories. Pre-load elog modules here since
 		we won't be able to later if they get unmerged (happens
 		when namespace changes).
+
+		@param myroot: ignored, self._eroot is used instead
 		"""
+		myroot = None
 		if self.vartree.dbapi._categories is not None:
 			self.vartree.dbapi._categories = None
 		if self.myroot == "/" and \
@@ -5426,11 +5476,15 @@ class dblink(object):
 			elog_process(self.mycpv, self.settings)
 
 		return self._merge(mergeroot, inforoot,
-				myroot, myebuild=myebuild, cleanup=cleanup,
+				myebuild=myebuild, cleanup=cleanup,
 				mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 
-	def _merge(self, mergeroot, inforoot, myroot, myebuild=None, cleanup=0,
+	def _merge(self, mergeroot, inforoot, myroot=None, myebuild=None, cleanup=0,
 		mydbapi=None, prev_mtimes=None):
+		"""
+		@param myroot: ignored, self._eroot is used instead
+		"""
+		myroot = None
 		retval = -1
 		self.lockdb()
 		self.vartree.dbapi._bump_mtime(self.mycpv)
@@ -5472,15 +5526,16 @@ class dblink(object):
 					if myebuild is None:
 						myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
 
+					doebuild_environment(myebuild, "clean",
+						settings=self.settings, db=mydbapi)
 					if self._scheduler is None:
-						doebuild(myebuild, "clean", myroot,
-							self.settings, tree=self.treetype,
-							mydbapi=mydbapi, vartree=self.vartree)
+						_spawn_phase("clean", self.settings)
 					else:
 						self._scheduler.dblinkEbuildPhase(
 							self, mydbapi, myebuild, "clean")
 
 		finally:
+			self.settings.pop('REPLACING_VERSIONS', None)
 			self.vartree.dbapi.linkmap._clear_cache()
 			self.unlockdb()
 			self.vartree.dbapi._bump_mtime(self.mycpv)
@@ -5545,21 +5600,36 @@ class dblink(object):
 		"Is this a regular package (does it have a CATEGORY file?  A dblink can be virtual *and* regular)"
 		return os.path.exists(os.path.join(self.dbdir, "CATEGORY"))
 
-def merge(mycat, mypkg, pkgloc, infloc, myroot, mysettings, myebuild=None,
+def merge(mycat, mypkg, pkgloc, infloc,
+	myroot=None, settings=None, myebuild=None,
 	mytree=None, mydbapi=None, vartree=None, prev_mtimes=None, blockers=None,
 	scheduler=None):
-	if not os.access(myroot + EPREFIX_LSTRIP, os.W_OK):
-		writemsg(_("Permission denied: access('%s', W_OK)\n") % myroot + EPREFIX_LSTRIP,
+	"""
+	@param myroot: ignored, settings['EROOT'] is used instead
+	"""
+	myroot = None
+	if settings is None:
+		raise TypeError("settings argument is required")
+	if not os.access(settings['EROOT'], os.W_OK):
+		writemsg(_("Permission denied: access('%s', W_OK)\n") % settings['EROOT'],
 			noiselevel=-1)
 		return errno.EACCES
-	mylink = dblink(mycat, mypkg, myroot, mysettings, treetype=mytree,
+	mylink = dblink(mycat, mypkg, settings=settings, treetype=mytree,
 		vartree=vartree, blockers=blockers, scheduler=scheduler)
-	return mylink.merge(pkgloc, infloc, myroot, myebuild,
+	return mylink.merge(pkgloc, infloc, myebuild=myebuild,
 		mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 
-def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None,
+def unmerge(cat, pkg, myroot=None, settings=None,
+	mytrimworld=None, vartree=None,
 	ldpath_mtimes=None, scheduler=None):
-	mylink = dblink(cat, pkg, myroot, mysettings, treetype="vartree",
+	"""
+	@param myroot: ignored, settings['EROOT'] is used instead
+	@param mytrimworld: ignored
+	"""
+	myroot = None
+	if settings is None:
+		raise TypeError("settings argument is required")
+	mylink = dblink(cat, pkg, settings=settings, treetype="vartree",
 		vartree=vartree, scheduler=scheduler)
 	vartree = mylink.vartree
 	try:
@@ -5567,8 +5637,7 @@ def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None,
 		if mylink.exists():
 			vartree.dbapi.plib_registry.load()
 			vartree.dbapi.plib_registry.pruneNonExisting()
-			retval = mylink.unmerge(trimworld=mytrimworld, cleanup=1,
-				ldpath_mtimes=ldpath_mtimes)
+			retval = mylink.unmerge(ldpath_mtimes=ldpath_mtimes)
 			if retval == os.EX_OK:
 				mylink.delete()
 			return retval

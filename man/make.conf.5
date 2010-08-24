@@ -8,7 +8,7 @@ This file contains various variables that are used by Portage.
 Portage will check the currently\-defined environment variables
 first for any settings.  If no environment settings are found,
 Portage then checks /etc/make.conf.  If no setting is found
-in /etc/make.conf, Portage checks /etc/make.globals. If no
+in make.conf, Portage checks make.globals. If no
 setting is found there, the profile's default setting is grabbed
 from /etc/make.profile/make.defaults. Please note that all user
 settings should be made in the environment or in /etc/make.conf,
@@ -19,6 +19,9 @@ and ACCEPT_KEYWORDS.  Incremental variables are propagated down from
 make.defaults to make.globals to make.conf to the environment
 settings.  Clearing these variables requires a clear\-all as in:
 export USE="\-*"
+.br
+In order to create per\-package environment settings, refer to
+\fBpackage.env\fR in \fBportage\fR(5).
 .SH "VARIABLES"
 .TP
 \fBACCEPT_CHOSTS\fR = \fI[space delimited list of CHOST values]\fR
@@ -228,6 +231,12 @@ A QA\-feature to ensure that a package doesn't overwrite files it doesn't own.
 The \fICOLLISION_IGNORE\fR variable can be used to selectively disable this
 feature. Also see the related \fIprotect\-owned\fR feature.
 .TP
+.B compress\-build\-logs
+The causes all build logs to be compressed while they are being written.
+Log file names have an extension that is appropriate for the compression
+type. Currently, only \fBgzip\fR(1) compression is supported, so build
+logs will have a '.gz' extension when this feature is enabled.
+.TP
 .B digest
 Autogenerate digests for packages when running the \fBemerge\fR(1) command.  If
 the \fIassume\-digests\fR feature is also enabled then existing SRC_URI digests
@@ -348,6 +357,13 @@ terminal to view parallel-fetch progress.
 Parse \fBEAPI\fR from the head of the ebuild (first 30 lines). This feature
 is only intended for experimental purposes and should not be enabled under
 normal circumstances.
+.TP
+.B prelink\-checksums
+If \fBprelink\fR(8) is installed then use it to undo any prelinks on files
+before computing checksums for merge and unmerge. This feature is
+useful only if \fBprelink\fR(8) is installed and accurate checksums (despite
+prelinking) are needed for some reason such as for checking the integrity of
+installed files or because the \fIunmerge\-orphans\fR feature is disabled.
 .TP
 .B preserve\-libs
 Preserve libraries when the sonames change during upgrade or downgrade.
@@ -812,7 +828,7 @@ Saleem Abdulrasool <compnerd@gentoo.org>
 \fB/etc/make.conf\fR and \fB/etc/portage/make.conf\fR
 Contains variables for the build\-process and overwrites those in make.defaults.
 .TP
-.B /etc/make.globals
+.B /usr/share/portage/config/make.globals
 Contains the default variables for the build\-process, you should edit \fI/etc/make.conf\fR instead.
 .TP
 .B /etc/portage/color.map

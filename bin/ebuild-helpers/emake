@@ -6,9 +6,8 @@
 #        only parameter supplied is -jN, where N is a number of
 #        parallel processes that should be ideal for the running host
 #        (e.g. on a single-CPU machine, N=2).  The MAKEOPTS variable
-#        is set in /etc/make.globals.  We don't source
-#        /etc/make.globals here because emake is only called from an
-#        ebuild.
+#        is set in make.globals. We don't source make.globals
+#        here because emake is only called from an ebuild.
 
 source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
 
@@ -25,5 +24,5 @@ fi
 
 ${MAKE:-make} SHELL="${BASH:-/bin/bash}" ${MAKEOPTS} ${EXTRA_EMAKE} "$@"
 ret=$?
-[[ $ret -ne 0 ]] && helpers_die "$0 failed"
+[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
 exit $ret

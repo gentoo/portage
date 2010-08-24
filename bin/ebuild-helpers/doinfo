@@ -10,7 +10,7 @@ if [[ -z $1 ]] ; then
 fi
 
 if [[ ! -d ${ED}usr/share/info ]] ; then
-	install -d "${ED}usr/share/info" || { helpers_die "$0: failed to install ${ED}usr/share/info"; exit 1; }
+	install -d "${ED}usr/share/info" || { helpers_die "${0##*/}: failed to install ${ED}usr/share/info"; exit 1; }
 fi
 
 install -m0644 "$@" "${ED}usr/share/info"
@@ -19,6 +19,6 @@ if [ $rval -ne 0 ] ; then
 	for x in "$@" ; do
 		[ -e "$x" ] || echo "!!! ${0##*/}: $x does not exist" 1>&2
 	done
-	helpers_die "$0 failed"
+	helpers_die "${0##*/} failed"
 fi
 exit $rval

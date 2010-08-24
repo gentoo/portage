@@ -1,6 +1,7 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.EbuildProcess import EbuildProcess
 from _emerge.CompositeTask import CompositeTask
@@ -8,7 +9,8 @@ from portage.util import writemsg, writemsg_stdout
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.doebuild:_check_build_log,' + \
-		'_post_phase_cmds,_post_src_install_chost_fix,' + \
+		'_post_phase_cmds,_post_phase_userpriv_perms,' + \
+		'_post_src_install_chost_fix,' + \
 		'_post_src_install_uid_fix'
 )
 from portage import os
@@ -19,13 +21,40 @@ import codecs
 
 class EbuildPhase(CompositeTask):
 
-	__slots__ = ("actionmap", "background", "phase",
-		"scheduler", "settings")
+	__slots__ = ("actionmap", "phase", "settings")
 
 	def _start(self):
 
+		if self.phase == 'prerm':
+			env_extractor = BinpkgEnvExtractor(background=self.background,
+				scheduler=self.scheduler, settings=self.settings)
+			if env_extractor.saved_env_exists():
+				self._start_task(env_extractor, self._env_extractor_exit)
+				return
+			# If the environment.bz2 doesn't exist, then ebuild.sh will
+			# source the ebuild as a fallback.
+
+		self._start_ebuild()
+
+	def _env_extractor_exit(self, env_extractor):
+		if self._default_exit(env_extractor) != os.EX_OK:
+			self._unlock_builddir()
+			self.wait()
+			return
+
+		self._start_ebuild()
+
+	def _start_ebuild(self):
+
+		# Don't open the log file during the clean phase since the
+		# open file can result in an nfs lock on $T/build.log which
+		# prevents the clean phase from removing $T.
+		logfile = self.settings.get("PORTAGE_LOG_FILE")
+		if self.phase in ("clean", "cleanrm"):
+			logfile = None
+
 		ebuild_process = EbuildProcess(actionmap=self.actionmap,
-			background=self.background,
+			background=self.background, logfile=logfile,
 			phase=self.phase, scheduler=self.scheduler,
 			settings=self.settings)
 
@@ -33,32 +62,31 @@ class EbuildPhase(CompositeTask):
 
 	def _ebuild_exit(self, ebuild_process):
 
+		fail = False
+		if self._default_exit(ebuild_process) != os.EX_OK:
+			if self.phase == "test" and \
+				"test-fail-continue" in self.settings.features:
+				pass
+			else:
+				fail = True
+
+		if not fail:
+			self.returncode = None
+
 		if self.phase == "install":
 			out = portage.StringIO()
-			log_path = self.settings.get("PORTAGE_LOG_FILE")
-			log_file = None
-			if log_path is not None:
-				log_file = codecs.open(_unicode_encode(log_path,
-					encoding=_encodings['fs'], errors='strict'),
-					mode='a', encoding=_encodings['content'], errors='replace')
-			try:
-				_check_build_log(self.settings, out=out)
-				msg = _unicode_decode(out.getvalue(),
-					encoding=_encodings['content'], errors='replace')
-				if msg:
-					if not self.background:
-						writemsg_stdout(msg, noiselevel=-1)
-					if log_file is not None:
-						log_file.write(msg)
-			finally:
-				if log_file is not None:
-					log_file.close()
+			_check_build_log(self.settings, out=out)
+			msg = _unicode_decode(out.getvalue(),
+				encoding=_encodings['content'], errors='replace')
+			self.scheduler.output(msg,
+				log_path=self.settings.get("PORTAGE_LOG_FILE"))
 
-		if self._default_exit(ebuild_process) != os.EX_OK:
+		if fail:
 			self._die_hooks()
 			return
 
 		settings = self.settings
+		_post_phase_userpriv_perms(settings)
 
 		if self.phase == "install":
 			out = portage.StringIO()
@@ -67,15 +95,8 @@ class EbuildPhase(CompositeTask):
 			msg = _unicode_decode(out.getvalue(),
 				encoding=_encodings['content'], errors='replace')
 			if msg:
-				if not self.background:
-					writemsg_stdout(msg, noiselevel=-1)
-				log_path = self.settings.get("PORTAGE_LOG_FILE")
-				if log_path is not None:
-					log_file = codecs.open(_unicode_encode(log_path,
-						encoding=_encodings['fs'], errors='strict'),
-						mode='a', encoding=_encodings['content'], errors='replace')
-					log_file.write(msg)
-					log_file.close()
+				self.scheduler.output(msg,
+					log_path=self.settings.get("PORTAGE_LOG_FILE"))
 
 		post_phase_cmds = _post_phase_cmds.get(self.phase)
 		if post_phase_cmds is not None:

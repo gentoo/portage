@@ -214,11 +214,11 @@ class Package(Task):
 	class _iuse(object):
 
 		__slots__ = ("__weakref__", "all", "enabled", "disabled",
-			"tokens") + ("_iuse_implicit_regex",)
+			"tokens") + ("_iuse_implicit_match",)
 
-		def __init__(self, tokens, iuse_implicit_regex):
+		def __init__(self, tokens, iuse_implicit_match):
 			self.tokens = tuple(tokens)
-			self._iuse_implicit_regex = iuse_implicit_regex
+			self._iuse_implicit_match = iuse_implicit_match
 			enabled = []
 			disabled = []
 			other = []
@@ -244,7 +244,7 @@ class Package(Task):
 
 			for flag in flags:
 				if not flag in self.all and \
-					self._iuse_implicit_regex.match(flag) is None:
+					not self._iuse_implicit_match(flag):
 					return False
 			return True
 		
@@ -257,7 +257,7 @@ class Package(Task):
 			missing_iuse = []
 			for flag in flags:
 				if not flag in self.all and \
-					self._iuse_implicit_regex.match(flag) is None:
+					not self._iuse_implicit_match(flag):
 					missing_iuse.append(flag)
 			return missing_iuse
 
@@ -375,7 +375,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 
 	def _set_iuse(self, k, v):
 		self._pkg.iuse = self._pkg._iuse(
-			v.split(), self._pkg.root_config.settings._iuse_implicit_re)
+			v.split(), self._pkg.root_config.settings._iuse_implicit_match)
 
 	def _set_slot(self, k, v):
 		self._pkg.slot = v

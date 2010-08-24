@@ -11,6 +11,11 @@ class SimpleResolverTestCase(TestCase):
 			"dev-libs/A-1": {}, 
 			"dev-libs/A-2": { "KEYWORDS": "~x86" },
 			"dev-libs/B-1.2": {},
+
+			"app-misc/Z-1": { "DEPEND": "|| ( app-misc/Y ( app-misc/X app-misc/W ) )", "RDEPEND": "" },
+			"app-misc/Y-1": { "KEYWORDS": "~x86" },
+			"app-misc/X-1": {},
+			"app-misc/W-1": {},
 			}
 		installed = {
 			"dev-libs/B-1.1": {},
@@ -29,6 +34,11 @@ class SimpleResolverTestCase(TestCase):
 				options = {"--update": True},
 				success = True,
 				mergelist = ["dev-libs/B-1.2"]),
+
+			ResolverPlaygroundTestCase(
+				["app-misc/Z"],
+				success = True,
+				mergelist = ["app-misc/W-1", "app-misc/X-1", "app-misc/Z-1"]),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)

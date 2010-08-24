@@ -145,7 +145,7 @@ class dbapi(object):
 		2) Check enabled/disabled flag states.
 		"""
 
-		iuse_implicit_re = self.settings._iuse_implicit_re
+		iuse_implicit_match = self.settings._iuse_implicit_match
 		for cpv in cpv_iter:
 			try:
 				iuse, slot, use = self.aux_get(cpv, ["IUSE", "SLOT", "USE"])
@@ -156,7 +156,7 @@ class dbapi(object):
 			missing_iuse = False
 			for x in atom.use.required:
 				if x not in iuse and x not in atom.use.missing_enabled \
-					and x not in atom.use.missing_disabled and iuse_implicit_re.match(x) is None:
+					and x not in atom.use.missing_disabled and not iuse_implicit_match(x):
 					missing_iuse = True
 					break
 			if missing_iuse:

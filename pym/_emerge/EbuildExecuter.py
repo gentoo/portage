@@ -6,9 +6,9 @@ from _emerge.TaskSequence import TaskSequence
 from _emerge.CompositeTask import CompositeTask
 import portage
 from portage import os
-from portage.eapi import eapi_has_src_prepare_and_src_configure
-from portage.package.ebuild.doebuild import _prepare_env_file, \
-	_prepare_fake_distdir
+from portage.eapi import eapi_has_src_prepare_and_src_configure, \
+	eapi_exports_replace_vars
+from portage.package.ebuild.doebuild import _prepare_fake_distdir
 
 class EbuildExecuter(CompositeTask):
 
@@ -32,12 +32,6 @@ class EbuildExecuter(CompositeTask):
 		settings = self.settings
 		cleanup = 0
 		portage.prepare_build_dirs(pkg.root, settings, cleanup)
-		rval = _prepare_env_file(settings)
-		if rval != os.EX_OK:
-			self.returncode = rval
-			self._current_task = None
-			self.wait()
-			return
 
 		portdb = pkg.root_config.trees['porttree'].dbapi
 		ebuild_path = settings['EBUILD']
@@ -49,6 +43,13 @@ class EbuildExecuter(CompositeTask):
 		settings.configdict["pkg"]["A"] = " ".join(alist)
 		settings.configdict["pkg"]["AA"] = " ".join(aalist)
 		_prepare_fake_distdir(settings, alist)
+
+		if eapi_exports_replace_vars(settings['EAPI']):
+			vardb = pkg.root_config.trees['vartree'].dbapi
+			settings["REPLACING_VERSIONS"] = " ".join(
+				set(portage.versions.cpv_getversion(match) \
+					for match in vardb.match(pkg.slot_atom) + \
+					vardb.match('='+pkg.cpv)))
 
 		setup_phase = EbuildPhase(background=self.background,
 			phase="setup", scheduler=scheduler,

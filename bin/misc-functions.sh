@@ -14,7 +14,7 @@
 MISC_FUNCTIONS_ARGS="$@"
 shift $#
 
-source @PORTAGE_BASE@/bin/ebuild.sh
+source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}/ebuild.sh"
 
 install_symlink_html_docs() {
 	cd "${D}" || die "cd failed"
@@ -518,10 +518,12 @@ install_qa_check_misc() {
 		)
 		abort="no"
 		i=0
+		local grep_cmd=grep
+		[[ $PORTAGE_LOG_FILE = *.gz ]] && grep_cmd=zgrep
 		while [[ -n ${msgs[${i}]} ]] ; do
 			m=${msgs[$((i++))]}
 			# force C locale to work around slow unicode locales #160234
-			f=$(LC_ALL=C grep "${m}" "${PORTAGE_LOG_FILE}")
+			f=$(LC_ALL=C $grep_cmd "${m}" "${PORTAGE_LOG_FILE}")
 			if [[ -n ${f} ]] ; then
 				vecho -ne '\a\n'
 				eqawarn "QA Notice: Package has poor programming practices which may compile"
@@ -531,8 +533,10 @@ install_qa_check_misc() {
 				abort="yes"
 			fi
 		done
+		local cat_cmd=cat
+		[[ $PORTAGE_LOG_FILE = *.gz ]] && cat_cmd=zcat
 		[[ $reset_debug = 1 ]] && set -x
-		f=$(cat "${PORTAGE_LOG_FILE}" | \
+		f=$($cat_cmd "${PORTAGE_LOG_FILE}" | \
 			"${PORTAGE_PYTHON:-@PORTAGE_PYTHON@}" "$PORTAGE_BIN_PATH"/check-implicit-pointer-usage.py || die "check-implicit-pointer-usage.py failed")
 		if [[ -n ${f} ]] ; then
 

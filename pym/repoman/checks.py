@@ -448,6 +448,12 @@ class PreserveOldLib(LineCheck):
 	re = re.compile(r'.*preserve_old_lib')
 	error = errors.PRESERVE_OLD_LIB
 
+class SandboxAddpredict(LineCheck):
+	"""Check for calls to the addpredict function."""
+	repoman_check_name = 'upstream.workaround'
+	re = re.compile(r'(^|\s)addpredict\b')
+	error = errors.SANDBOX_ADDPREDICT
+
 class DeprecatedBindnowFlags(LineCheck):
 	"""Check for calls to the deprecated bindnow-flags function."""
 	repoman_check_name = 'ebuild.minorsyn'
@@ -553,7 +559,7 @@ _constant_checks = tuple((c() for c in (
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
 	SrcCompileEconf, Eapi3DeprecatedFuncs,
 	Eapi4IncompatibleFuncs, Eapi4GoneVars, BuiltWithUse,
-	PreserveOldLib)))
+	PreserveOldLib, SandboxAddpredict)))
 
 _here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
 

@@ -1056,11 +1056,11 @@ def close_portdbapi_caches():
 		i.close_caches()
 
 class portagetree(object):
-	def __init__(self, root="/", virtual=None, settings=None):
+	def __init__(self, root=None, virtual=None, settings=None):
 		"""
 		Constructor for a PortageTree
 		
-		@param root: ${ROOT}, defaults to '/', see make.conf(5)
+		@param root: deprectated, defaults to settings['ROOT']
 		@type root: String/Path
 		@param virtual: UNUSED
 		@type virtual: No Idea
@@ -1068,14 +1068,29 @@ class portagetree(object):
 		@type settings: Instance of portage.config
 		"""
 
-		if True:
-			self.root = root
-			if settings is None:
-				from portage import settings
-			self.settings = settings
-			self.portroot = settings["PORTDIR"]
-			self.virtual = virtual
-			self.dbapi = portdbapi(mysettings=settings)
+		if settings is None:
+			settings = portage.settings
+		self.settings = settings
+
+		if root is not None and root != settings['ROOT']:
+			warnings.warn("The root parameter of the " + \
+				"portage.dbapi.porttree.portagetree" + \
+				" constructor is now unused. Use " + \
+				"settings['ROOT'] instead.",
+				DeprecationWarning, stacklevel=2)
+
+		self.portroot = settings["PORTDIR"]
+		self.virtual = virtual
+		self.dbapi = portdbapi(mysettings=settings)
+
+	@property
+	def root(self):
+		warnings.warn("The root attribute of " + \
+			"portage.dbapi.porttree.portagetree" + \
+			" is deprecated. Use " + \
+			"settings['ROOT'] instead.",
+			DeprecationWarning, stacklevel=2)
+		return self.settings['ROOT']
 
 	def dep_bestmatch(self,mydep):
 		"compatibility method"
@@ -1145,6 +1160,9 @@ class FetchlistDict(Mapping):
 
 	def has_key(self, pkg_key):
 		"""Returns true if the given package exists within pkgdir."""
+		warnings.warn("portage.dbapi.porttree.FetchlistDict.has_key() is "
+			"deprecated, use the 'in' operator instead",
+			DeprecationWarning, stacklevel=2)
 		return pkg_key in self
 
 	def __iter__(self):

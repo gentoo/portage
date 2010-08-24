@@ -34,6 +34,8 @@ class TestExtractAffectingUSE(TestCase):
 			("( ab? ( || ( ( A ) || ( b? ( ( ( || ( B ( C ) ) ) ) ) ) ) ) )", "C", ("ab", "b")),
 
 			("a? ( A )", "B", []),
+
+			("a? ( || ( A B ) )", "B", ["a"]),
 		)
 
 		test_cases_xfail = (

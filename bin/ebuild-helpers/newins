@@ -1,11 +1,11 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 if [[ -z ${T} ]] || [[ -z ${2} ]] ; then
-	helpers_die "$0: Need two arguments, old file and new file"
+	helpers_die "${0##*/}: Need two arguments, old file and new file"
 	exit 1
 fi
 
@@ -22,12 +22,12 @@ case "$EAPI" in
 	*)
 		cp -P "$1" "$T/$2"
 		ret=$?
-		[[ $ret -ne 0 ]] && helpers_die "$0 failed"
+		[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
 		exit $ret
 		;;
 esac
 doins "${T}/${2}"
 ret=$?
 rm -rf "${T}/${2}"
-[[ $ret -ne 0 ]] && helpers_die "$0 failed"
+[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
 exit $ret

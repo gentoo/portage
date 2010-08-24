@@ -4,6 +4,7 @@
 from __future__ import print_function
 
 import codecs
+import gzip
 import logging
 import shutil
 import sys
@@ -21,6 +22,7 @@ from portage import _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.const import LIBC_PACKAGE_ATOM
 from portage.elog.messages import eerror
+from portage.localization import _
 from portage.output import colorize, create_color_func, red
 bad = create_color_func("BAD")
 from portage.sets import SETPREFIX
@@ -77,7 +79,8 @@ class Scheduler(PollScheduler):
 
 	class _iface_class(SlotObject):
 		__slots__ = ("dblinkEbuildPhase", "dblinkDisplayMerge",
-			"dblinkElog", "dblinkEmergeLog", "fetch", "register", "schedule",
+			"dblinkElog", "dblinkEmergeLog", "fetch",
+			"output", "register", "schedule",
 			"scheduleSetup", "scheduleUnpack", "scheduleYield",
 			"unregister")
 
@@ -208,7 +211,8 @@ class Scheduler(PollScheduler):
 			dblinkDisplayMerge=self._dblink_display_merge,
 			dblinkElog=self._dblink_elog,
 			dblinkEmergeLog=self._dblink_emerge_log,
-			fetch=fetch_iface, register=self._register,
+			fetch=fetch_iface, output=self._task_output,
+			register=self._register,
 			schedule=self._schedule_wait,
 			scheduleSetup=self._schedule_setup,
 			scheduleUnpack=self._schedule_unpack,
@@ -561,22 +565,9 @@ class Scheduler(PollScheduler):
 		installed = type_name == "installed"
 		return self._pkg(cpv, type_name, root_config, installed=installed)
 
-	def _append_to_log_path(self, log_path, msg):
-
-		f = codecs.open(_unicode_encode(log_path,
-			encoding=_encodings['fs'], errors='strict'),
-			mode='a', encoding=_encodings['content'],
-			errors='backslashreplace')
-		try:
-			f.write(_unicode_decode(msg,
-				encoding=_encodings['content'], errors='replace'))
-		finally:
-			f.close()
-
 	def _dblink_elog(self, pkg_dblink, phase, func, msgs):
 
 		log_path = pkg_dblink.settings.get("PORTAGE_LOG_FILE")
-		background = self._background
 		out = StringIO()
 
 		for msg in msgs:
@@ -584,11 +575,7 @@ class Scheduler(PollScheduler):
 
 		out_str = out.getvalue()
 
-		if not background:
-			portage.util.writemsg_stdout(out_str, noiselevel=-1)
-
-		if log_path is not None:
-			self._append_to_log_path(log_path, out_str)
+		self._task_output(out_str, log_path=log_path)
 
 	def _dblink_emerge_log(self, msg):
 		self._logger.log(msg)
@@ -602,10 +589,7 @@ class Scheduler(PollScheduler):
 				portage.util.writemsg_level(msg,
 					level=level, noiselevel=noiselevel)
 		else:
-			if not background:
-				portage.util.writemsg_level(msg,
-					level=level, noiselevel=noiselevel)
-			self._append_to_log_path(log_path, msg)
+			self._task_output(msg, log_path=log_path)
 
 	def _dblink_ebuild_phase(self,
 		pkg_dblink, pkg_dbapi, ebuild_path, phase):
@@ -647,6 +631,10 @@ class Scheduler(PollScheduler):
 		digest = '--digest' in self.myopts
 		if not digest:
 			for pkgsettings in self.pkgsettings.values():
+				if pkgsettings.mycpv is not None:
+					# ensure that we are using global features
+					# settings rather than those from package.env
+					pkgsettings.reset()
 				if 'digest' in pkgsettings.features:
 					digest = True
 					break
@@ -660,6 +648,10 @@ class Scheduler(PollScheduler):
 				x.operation != 'merge':
 				continue
 			pkgsettings = self.pkgsettings[x.root]
+			if pkgsettings.mycpv is not None:
+				# ensure that we are using global features
+				# settings rather than those from package.env
+				pkgsettings.reset()
 			if '--digest' not in self.myopts and \
 				'digest' not in pkgsettings.features:
 				continue
@@ -672,6 +664,37 @@ class Scheduler(PollScheduler):
 				writemsg_level(
 					"!!! Unable to generate manifest for '%s'.\n" \
 					% x.cpv, level=logging.ERROR, noiselevel=-1)
+				return 1
+
+		return os.EX_OK
+
+	def _env_sanity_check(self):
+		"""
+		Verify a sane environment before trying to build anything from source.
+		"""
+		have_src_pkg = False
+		for x in self._mergelist:
+			if isinstance(x, Package) and not x.built:
+				have_src_pkg = True
+				break
+
+		if not have_src_pkg:
+			return os.EX_OK
+
+		for settings in self.pkgsettings.values():
+			for var in ("ARCH", ):
+				value = settings.get(var)
+				if value and value.strip():
+					continue
+				msg = _("%(var)s is not set... "
+					"Are you missing the '%(configroot)setc/make.profile' symlink? "
+					"Is the symlink correct? "
+					"Is your portage tree complete?") % \
+					{"var": var, "configroot": settings["PORTAGE_CONFIGROOT"]}
+
+				out = portage.output.EOutput()
+				for line in textwrap.wrap(msg, 70):
+					out.eerror(line)
 				return 1
 
 		return os.EX_OK
@@ -915,6 +938,12 @@ class Scheduler(PollScheduler):
 				debug=(settings.get("PORTAGE_DEBUG", "") == 1),
 				mydbapi=self.trees[settings["ROOT"]][tree].dbapi, use_cache=1)
 			prepare_build_dirs(root_config.root, settings, cleanup=0)
+
+			vardb = root_config.trees['vartree'].dbapi
+			settings["REPLACING_VERSIONS"] = " ".join(
+				set(portage.versions.cpv_getversion(match) \
+					for match in vardb.match(x.slot_atom) + \
+					vardb.match('='+x.cpv)))
 			pretend_phase = EbuildPhase(background=self._background,
 				phase="pretend", scheduler=self._sched_iface,
 				settings=settings)
@@ -984,6 +1013,10 @@ class Scheduler(PollScheduler):
 		if rval != os.EX_OK:
 			return rval
 
+		rval = self._env_sanity_check()
+		if rval != os.EX_OK:
+			return rval
+
 		# TODO: Immediately recalculate deps here if --keep-going
 		#       is enabled and corrupt manifests are detected.
 		rval = self._check_manifests()
@@ -1050,11 +1083,14 @@ class Scheduler(PollScheduler):
 			log_path = self._locate_failure_log(failed_pkg)
 			if log_path is not None:
 				try:
-					log_file = codecs.open(_unicode_encode(log_path,
-					encoding=_encodings['fs'], errors='strict'),
-					mode='r', encoding=_encodings['content'], errors='replace')
+					log_file = open(_unicode_encode(log_path,
+						encoding=_encodings['fs'], errors='strict'), mode='rb')
 				except IOError:
 					pass
+				else:
+					if log_path.endswith('.gz'):
+						log_file =  gzip.GzipFile(filename='',
+							mode='rb', fileobj=log_file)
 
 			if log_file is not None:
 				try:
