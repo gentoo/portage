@@ -223,7 +223,7 @@ class ResolverPlayground(object):
 				raise ValueError("Unknown config file: '%s'" % config_file)
 
 			file_name = os.path.join(user_config_dir, config_file)
-			f = file(file_name, "w")
+			f = open(file_name, "w")
 			for line in lines:
 				f.write("%s\n" % line)
 			f.close()
@@ -248,7 +248,7 @@ class ResolverPlayground(object):
 
 		for sets_file, lines in sets.items():
 			file_name = os.path.join(set_config_dir, sets_file)
-			f = file(file_name, "w")
+			f = open(file_name, "w")
 			for line in lines:
 				f.write("%s\n" % line)
 			f.close()
