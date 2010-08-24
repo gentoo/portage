@@ -543,7 +543,7 @@ class depgraph(object):
 					parent, atom = parent_atom
 					atom_set = InternalPackageSet(
 						initial_atoms=(atom,))
-					if atom_set.findAtomForPackage(pkg):
+					if atom_set.findAtomForPackage(pkg, modified_use=self._pkg_use_enabled(pkg)):
 						parent_atoms.add(parent_atom)
 					else:
 						self._dynamic_config._slot_conflict_parent_atoms.add(parent_atom)
@@ -766,7 +766,8 @@ class depgraph(object):
 					# Use package set for matching since it will match via
 					# PROVIDE when necessary, while match_from_list does not.
 					atom_set = InternalPackageSet(initial_atoms=[dep.atom])
-					if not atom_set.findAtomForPackage(existing_node):
+					if not atom_set.findAtomForPackage(existing_node, \
+						modified_use=self._pkg_use_enabled(existing_node)):
 						existing_node_matches = False
 				if existing_node_matches:
 					# The existing node can be reused.
@@ -1240,7 +1241,7 @@ class depgraph(object):
 					for pkg2 in pkgs:
 						if pkg2 is pkg1:
 							continue
-						if atom_set.findAtomForPackage(pkg2):
+						if atom_set.findAtomForPackage(pkg2, modified_use=self._pkg_use_enabled(pkg2)):
 							atom_pkg_graph.add(pkg2, atom)
 
 			for pkg in pkgs:
@@ -1916,8 +1917,8 @@ class depgraph(object):
 
 		# filter packages that conflict with highest_pkg
 		greedy_pkgs = [pkg for pkg in greedy_pkgs if not \
-			(blockers[highest_pkg].findAtomForPackage(pkg) or \
-			blockers[pkg].findAtomForPackage(highest_pkg))]
+			(blockers[highest_pkg].findAtomForPackage(pkg, modified_use=self._pkg_use_enabled(pkg)) or \
+			blockers[pkg].findAtomForPackage(highest_pkg, modified_use=self._pkg_use_enabled(highest_pkg)))]
 
 		if not greedy_pkgs:
 			return []
@@ -1933,8 +1934,8 @@ class depgraph(object):
 				pkg2 = greedy_pkgs[j]
 				if pkg2 in discard_pkgs:
 					continue
-				if blockers[pkg1].findAtomForPackage(pkg2) or \
-					blockers[pkg2].findAtomForPackage(pkg1):
+				if blockers[pkg1].findAtomForPackage(pkg2, modified_use=self._pkg_use_enabled(pkg2)) or \
+					blockers[pkg2].findAtomForPackage(pkg1, modified_use=self._pkg_use_enabled(pkg1)):
 					# pkg1 > pkg2
 					discard_pkgs.add(pkg2)
 
@@ -2060,7 +2061,7 @@ class depgraph(object):
 						# old-style virtual match even in cases when the
 						# package does not actually PROVIDE the virtual.
 						# Filter out any such false matches here.
-						if not atom_set.findAtomForPackage(pkg):
+						if not atom_set.findAtomForPackage(pkg, modified_use=self._pkg_use_enabled(pkg)):
 							continue
 					if pkg in self._dynamic_config._runtime_pkg_mask:
 						backtrack_reasons = \
@@ -2068,7 +2069,8 @@ class depgraph(object):
 						mreasons.append('backtracking: %s' % \
 							', '.join(sorted(backtrack_reasons)))
 						backtrack_mask = True
-					if not mreasons and self._frozen_config.excluded_pkgs.findAtomForPackage(pkg):
+					if not mreasons and self._frozen_config.excluded_pkgs.findAtomForPackage(pkg, \
+						modified_use=self._pkg_use_enabled(pkg)):
 						mreasons = ["exclude option"]
 					if mreasons:
 						masked_pkg_instances.add(pkg)
@@ -2332,7 +2334,7 @@ class depgraph(object):
 						# package does not actually PROVIDE the virtual.
 						# Filter out any such false matches here.
 						if not InternalPackageSet(initial_atoms=(atom,)
-							).findAtomForPackage(pkg):
+							).findAtomForPackage(pkg, modified_use=self._pkg_use_enabled(pkg)):
 							continue
 					yield pkg
 
@@ -2575,7 +2577,8 @@ class depgraph(object):
 						continue
 
 					if not pkg.installed and \
-						self._frozen_config.excluded_pkgs.findAtomForPackage(pkg):
+						self._frozen_config.excluded_pkgs.findAtomForPackage(pkg, \
+							modified_use=self._pkg_use_enabled(pkg)):
 						continue
 
 					if dont_miss_updates:
@@ -2733,7 +2736,7 @@ class depgraph(object):
 							break
 						# Use PackageSet.findAtomForPackage()
 						# for PROVIDE support.
-						if atom_set.findAtomForPackage(e_pkg):
+						if atom_set.findAtomForPackage(e_pkg, modified_use=self._pkg_use_enabled(e_pkg)):
 							if highest_version and \
 								e_pkg.cp == atom_cp and \
 								e_pkg < highest_version and \
@@ -3245,13 +3248,13 @@ class depgraph(object):
 			blocked_initial = set()
 			for atom in atoms:
 				for pkg in initial_db.match_pkgs(atom):
-					if atom_set.findAtomForPackage(pkg):
+					if atom_set.findAtomForPackage(pkg, modified_use=self._pkg_use_enabled(pkg)):
 						blocked_initial.add(pkg)
 
 			blocked_final = set()
 			for atom in atoms:
 				for pkg in final_db.match_pkgs(atom):
-					if atom_set.findAtomForPackage(pkg):
+					if atom_set.findAtomForPackage(pkg, modified_use=self._pkg_use_enabled(pkg)):
 						blocked_final.add(pkg)
 
 			if not blocked_initial and not blocked_final:
@@ -4742,11 +4745,11 @@ class depgraph(object):
 				pkg_system = False
 				pkg_world = False
 				try:
-					pkg_system = system_set.findAtomForPackage(pkg)
-					pkg_world  = world_set.findAtomForPackage(pkg)
+					pkg_system = system_set.findAtomForPackage(pkg, modified_use=self._pkg_use_enabled(pkg))
+					pkg_world  = world_set.findAtomForPackage(pkg, modified_use=self._pkg_use_enabled(pkg))
 					if not (oneshot or pkg_world) and \
 						myroot == self._frozen_config.target_root and \
-						favorites_set.findAtomForPackage(pkg):
+						favorites_set.findAtomForPackage(pkg, modified_use=self._pkg_use_enabled(pkg)):
 						# Maybe it will be added to world now.
 						if create_world_atom(pkg, favorites_set, root_config):
 							pkg_world = True
@@ -5428,7 +5431,8 @@ class depgraph(object):
 				raise
 
 			if "merge" == pkg.operation and \
-				self._frozen_config.excluded_pkgs.findAtomForPackage(pkg):
+				self._frozen_config.excluded_pkgs.findAtomForPackage(pkg, \
+					modified_use=self._pkg_use_enabled(pkg)):
 				continue
 
 			if "merge" == pkg.operation and not self._pkg_visibility_check(pkg):
