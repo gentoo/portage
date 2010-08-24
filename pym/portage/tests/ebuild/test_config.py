@@ -1,6 +1,8 @@
 # Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import copy
+
 import portage
 from portage import os
 from portage.dep import ExtendedAtomDict
@@ -62,7 +64,7 @@ class ConfigTestCase(TestCase):
 
 			lic_man.parse_license_groups(license_group_locations)
 			lic_man.read_config_files(pkg_license)
-			lic_man_backup = LicenseManager(clone=lic_man)
+			lic_man_backup = copy.deepcopy(lic_man)
 
 			self.assertEqual(lic_man._accept_license_str, None)
 			self.assertEqual(lic_man._accept_license_str, lic_man_backup._accept_license_str)
