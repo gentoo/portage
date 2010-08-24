@@ -116,7 +116,11 @@ class EbuildPhase(CompositeTask):
 			self._start_task(post_phase, self._post_phase_exit)
 			return
 
-		self.returncode = ebuild_process.returncode
+		# this point is not reachable if there was a failure and
+		# we returned for die_hooks above, so returncode must
+		# indicate success (especially if ebuild_process.returncode
+		# is unsuccessful and test-fail-continue came into play)
+		self.returncode = os.EX_OK
 		self._current_task = None
 		self.wait()
 
