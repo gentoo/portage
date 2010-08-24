@@ -1664,6 +1664,7 @@ class config(object):
 		iuse = ""
 		pkg_configdict = self.configdict["pkg"]
 		previous_iuse = pkg_configdict.get("IUSE")
+		previous_features = pkg_configdict.get("FEATURES")
 
 		aux_keys = self._setcpv_aux_keys
 
@@ -1742,6 +1743,13 @@ class config(object):
 			has_changed = True
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
+
+		if previous_features:
+			# The package from the previous setcpv call had package.env
+			# settings which modified FEATURES. Therefore, trigger a
+			# regenerate() call in order ensure that self.features
+			# is accurate.
+			has_changed = True
 
 		self._penv = []
 		cpdict = self._penvdict.get(cp)
