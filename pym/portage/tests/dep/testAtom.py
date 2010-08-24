@@ -190,6 +190,14 @@ class TestAtom(TestCase):
 			("dev-libs/D[!x=]", [], ["x"], ["x"], "dev-libs/D"),
 			("dev-libs/D[!x(+)=]", [], [], ["x"], "dev-libs/D[!x(+)=]"),
 			("dev-libs/D[!x(-)=]", [], [], ["x"], "dev-libs/D"),
+
+			#Missing IUSE test cases
+			("dev-libs/B[x]", [], [], [], "dev-libs/B[x]"),
+			("dev-libs/B[-x]", [], [], [], "dev-libs/B[-x]"),
+			("dev-libs/B[x?]", [], [], [], "dev-libs/B[x?]"),
+			("dev-libs/B[x=]", [], [], [], "dev-libs/B[x=]"),
+			("dev-libs/B[!x=]", [], [], ["x"], "dev-libs/B[!x=]"),
+			("dev-libs/B[!x?]", [], [], ["x"], "dev-libs/B[!x?]"),
 		)
 		
 		test_cases_xfail = (

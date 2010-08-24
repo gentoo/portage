@@ -763,11 +763,34 @@ class _use_dep(object):
 		conditional = {}
 		tokens = []
 
+		all_defaults = frozenset(chain(self.missing_enabled, self.missing_disabled))
+		
+		def validate_flag(flag):
+			return is_valid_flag(flag) or flag in all_defaults
+
+
 		for x in self.tokens:
 			m = _useflag_re.match(x)
 
 			operator = m.group("prefix") + m.group("suffix")
 			flag = m.group("flag")
+
+			if not validate_flag(flag):
+				tokens.append(x)
+				if not operator:
+					enabled_flags.add(flag)
+				elif operator == "-":
+					disabled_flags.add(flag)
+				elif operator == "?":
+					conditional.setdefault("enabled", set()).add(flag)
+				elif operator == "=":
+					conditional.setdefault("equal", set()).add(flag)
+				elif operator == "!=":
+					conditional.setdefault("not_equal", set()).add(flag)
+				elif operator == "!?":
+					conditional.setdefault("disabled", set()).add(flag)
+
+				continue
 
 			if not operator:
 				if flag not in other_use:
