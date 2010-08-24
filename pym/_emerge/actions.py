@@ -2465,8 +2465,6 @@ def adjust_config(myopts, settings):
 	# Kill noauto as it will break merges otherwise.
 	if "noauto" in settings.features:
 		settings.features.remove('noauto')
-		settings['FEATURES'] = ' '.join(sorted(settings.features))
-		settings.backup_changes("FEATURES")
 
 	fail_clean = myopts.get('--fail-clean')
 	if fail_clean is not None:
