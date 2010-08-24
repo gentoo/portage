@@ -15,6 +15,32 @@ assert() {
 	done
 }
 
+assert_sigpipe_ok() {
+	# When extracting a tar file like this:
+	#
+	#     bzip2 -dc foo.tar.bz2 | tar xof -
+	#
+	# For some tar files (see bug #309001), tar will
+	# close its stdin pipe when the decompressor still has
+	# remaining data to be written to its stdout pipe. This
+	# causes the decompressor to be killed by SIGPIPE. In
+	# this case, we want to ignore pipe writers killed by
+	# SIGPIPE, and trust the exit status of tar. We refer
+	# to the bash manual section "3.7.5 Exit Status"
+	# which says, "When a command terminates on a fatal
+	# signal whose number is N, Bash uses the value 128+N
+	# as the exit status."
+
+	local x pipestatus=${PIPESTATUS[*]}
+	for x in $pipestatus ; do
+		# Allow SIGPIPE through (128 + 13)
+		[[ $x -ne 0 && $x -ne 141 ]] && die "$@"
+	done
+
+	# Require normal success for the last process (tar).
+	[[ $x -eq 0 ]] || die "$@"
+}
+
 shopt -s extdebug
 
 # dump_trace([number of funcs on stack to skip],
