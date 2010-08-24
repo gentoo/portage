@@ -49,7 +49,7 @@ from portage.versions import catpkgsplit, catsplit, cpv_getkey
 
 from portage.package.ebuild._config.features_set import features_set
 from portage.package.ebuild._config.LicenseManager import LicenseManager
-from portage.package.ebuild._config.helper import ordered_by_atom_specificity
+from portage.package.ebuild._config.helper import ordered_by_atom_specificity, prune_incremental
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -2158,25 +2158,6 @@ class config(object):
 			# env_d will be None if profile.env doesn't exist.
 			self.configdict["env.d"].update(env_d)
 
-	def _prune_incremental(self, split):
-		"""
-		Prune off any parts of an incremental variable that are
-		made irrelevant by the latest occuring * or -*. This
-		could be more aggressive but that might be confusing
-		and the point is just to reduce noise a bit.
-		"""
-		for i, x in enumerate(reversed(split)):
-			if x == '*':
-				split = split[-i-1:]
-				break
-			elif x == '-*':
-				if i == 0:
-					split = []
-				else:
-					split = split[-i:]
-				break
-		return split
-
 	def regenerate(self,useonly=0,use_cache=1):
 		"""
 		Regenerate settings
@@ -2222,7 +2203,7 @@ class config(object):
 			mysplit = []
 			for curdb in mydbs:
 				mysplit.extend(curdb.get('ACCEPT_LICENSE', '').split())
-			mysplit = self._prune_incremental(mysplit)
+			mysplit = prune_incremental(mysplit)
 			accept_license_str = ' '.join(mysplit)
 			self.configlist[-1]['ACCEPT_LICENSE'] = accept_license_str
 			self._license_manager.set_accept_license_str(accept_license_str)
@@ -2235,7 +2216,7 @@ class config(object):
 			mysplit = []
 			for curdb in mydbs:
 				mysplit.extend(curdb.get('ACCEPT_PROPERTIES', '').split())
-			mysplit = self._prune_incremental(mysplit)
+			mysplit = prune_incremental(mysplit)
 			self.configlist[-1]['ACCEPT_PROPERTIES'] = ' '.join(mysplit)
 			if tuple(mysplit) != self._accept_properties:
 				self._accept_properties = tuple(mysplit)

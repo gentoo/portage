@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
-	'ordered_by_atom_specificity',
+	'ordered_by_atom_specificity', 'prune_incremental',
 )
 
 from portage.dep import best_match_to_list
@@ -40,3 +40,22 @@ def ordered_by_atom_specificity(cpdict, pkg):
 		results.reverse()
 
 	return results
+
+def prune_incremental(split):
+	"""
+	Prune off any parts of an incremental variable that are
+	made irrelevant by the latest occuring * or -*. This
+	could be more aggressive but that might be confusing
+	and the point is just to reduce noise a bit.
+	"""
+	for i, x in enumerate(reversed(split)):
+		if x == '*':
+			split = split[-i-1:]
+			break
+		elif x == '-*':
+			if i == 0:
+				split = []
+			else:
+				split = split[-i:]
+			break
+	return split
