@@ -11,6 +11,7 @@ from portage import os
 from portage.exception import DirectoryNotFound, PermissionDenied, PortageException
 from portage.util import normalize_path, writemsg
 
+_ignorecvs_dirs = ('CVS', 'RCS', 'SCCS', '.svn', '.git')
 dircache = {}
 cacheHit = 0
 cacheMiss = 0
@@ -84,8 +85,6 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 
 	writemsg("cacheddirStats: H:%d/M:%d/S:%d\n" % (cacheHit, cacheMiss, cacheStale),10)
 	return ret_list, ret_ftype
-
-_ignorecvs_dirs = ('CVS', 'SCCS', '.svn', '.git')
 
 def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelist=[], followSymlinks=True,
 	EmptyOnError=False, dirsonly=False):

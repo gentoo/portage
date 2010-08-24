@@ -198,7 +198,8 @@ class slot_conflict_handler(object):
 							if other_pkg == pkg:
 								continue
 
-							if not atom_without_use_set.findAtomForPackage(other_pkg):
+							if not atom_without_use_set.findAtomForPackage(other_pkg, \
+								modified_use=_pkg_use_enabled(other_pkg)):
 								#The version range does not match.
 								sub_type = None
 								if atom.operator in (">=", ">"):
@@ -212,7 +213,8 @@ class slot_conflict_handler(object):
 								atoms.add((ppkg, atom, other_pkg))
 								num_all_specific_atoms += 1
 								collision_reasons[("version", sub_type)] = atoms
-							elif not atom_set.findAtomForPackage(other_pkg):
+							elif not atom_set.findAtomForPackage(other_pkg, \
+								modified_use=_pkg_use_enabled(other_pkg)):
 								#Use conditionals not met.
 								violated_atom = atom.violated_conditionals(_pkg_use_enabled(other_pkg), \
 									other_pkg.iuse.is_valid_flag, _pkg_use_enabled(ppkg))
@@ -441,11 +443,11 @@ class slot_conflict_handler(object):
 					continue
 
 				i = InternalPackageSet(initial_atoms=(atom,))
-				if i.findAtomForPackage(pkg):
+				if i.findAtomForPackage(pkg, modified_use=_pkg_use_enabled(pkg)):
 					continue
 
 				i = InternalPackageSet(initial_atoms=(atom.without_use,))
-				if not i.findAtomForPackage(pkg):
+				if not i.findAtomForPackage(pkg, modified_use=_pkg_use_enabled(pkg)):
 					#Version range does not match.
 					if self.debug:
 						writemsg(str(pkg) + " does not satify all version requirements." + \
@@ -673,44 +675,38 @@ class slot_conflict_handler(object):
 
 		#Check if all atoms are satisfied after the changes are applied.
 		for id, pkg in enumerate(config):
+			new_use = _pkg_use_enabled(pkg)
 			if pkg in required_changes:
-				old_use = set(_pkg_use_enabled(pkg))
-				new_use = set(_pkg_use_enabled(pkg))
-				use_has_changed = False
+				old_use = pkg.use.enabled
+				new_use = set(new_use)
 				for flag, state in required_changes[pkg].items():
-					if state == "enabled" and flag not in new_use:
+					if state == "enabled":
 						new_use.add(flag)
-						use_has_changed = True
-					elif state == "disabled" and flag in new_use:
-						use_has_changed = True
-						new_use.remove(flag)
-				if use_has_changed:
-					new_pkg = pkg.copy()
-					new_pkg.metadata["USE"] = " ".join(new_use)
-				else:
-					new_pkg = pkg
-			else:
-				new_pkg = pkg
+					elif state == "disabled":
+						new_use.discard(flag)
+				if not new_use.symmetric_difference(old_use):
+					#avoid copying the package in findAtomForPackage if possible
+					new_use = old_use
 
 			for ppkg, atom in all_conflict_atoms_by_slotatom[id]:
 				if not hasattr(ppkg, "use"):
 					#It's a SetArg or something like that.
 					continue
-				new_use = set(_pkg_use_enabled(ppkg))
+				ppkg_new_use = set(_pkg_use_enabled(ppkg))
 				if ppkg in required_changes:
 					for flag, state in required_changes[ppkg].items():
-						if state == "enabled" and flag not in new_use:
-							new_use.add(flag)
-						elif state == "disabled" and flag in new_use:
-							new_use.remove(flag)
+						if state == "enabled":
+							ppkg_new_use.add(flag)
+						elif state == "disabled":
+							ppkg_new_use.discard(flag)
 
-				new_atom = atom.unevaluated_atom.evaluate_conditionals(new_use)
+				new_atom = atom.unevaluated_atom.evaluate_conditionals(ppkg_new_use)
 				i = InternalPackageSet(initial_atoms=(new_atom,))
-				if not i.findAtomForPackage(new_pkg):
+				if not i.findAtomForPackage(pkg, new_use):
 					#We managed to create a new problem with our changes.
 					is_valid_solution = False
 					if self.debug:
-						writemsg("new conflict introduced: " + str(new_pkg) + \
+						writemsg("new conflict introduced: " + str(pkg) + \
 							" does not match " + new_atom + " from " + str(ppkg) + "\n", noiselevel=-1)
 					break
 

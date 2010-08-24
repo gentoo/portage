@@ -2949,12 +2949,6 @@ class dblink(object):
 		self._verbose = self.settings.get("PORTAGE_VERBOSE") == "1"
 
 		self.myroot=myroot
-		protect_obj = ConfigProtect(myroot,
-			portage.util.shlex_split(mysettings.get("CONFIG_PROTECT", "")),
-			portage.util.shlex_split(
-			mysettings.get("CONFIG_PROTECT_MASK", "")))
-		self.updateprotect = protect_obj.updateprotect
-		self.isprotected = protect_obj.isprotected
 		self._installed_instance = None
 		self.contentscache = None
 		self._contents_inodes = None
@@ -2962,6 +2956,7 @@ class dblink(object):
 		self._linkmap_broken = False
 		self._md5_merge_map = {}
 		self._hash_key = (self.myroot, self.mycpv)
+		self._protect_obj = None
 
 	def __hash__(self):
 		return hash(self._hash_key)
@@ -2969,6 +2964,23 @@ class dblink(object):
 	def __eq__(self, other):
 		return isinstance(other, dblink) and \
 			self._hash_key == other._hash_key
+
+	def _get_protect_obj(self):
+
+		if self._protect_obj is None:
+			self._protect_obj = ConfigProtect(self._eroot,
+			portage.util.shlex_split(
+				self.settings.get("CONFIG_PROTECT", "")),
+			portage.util.shlex_split(
+				self.settings.get("CONFIG_PROTECT_MASK", "")))
+
+		return self._protect_obj
+
+	def isprotected(self, obj):
+		return self._get_protect_obj().isprotected(obj)
+
+	def updateprotect(self):
+		self._get_protect_obj().updateprotect()
 
 	def lockdb(self):
 		if self._lock_vdb:

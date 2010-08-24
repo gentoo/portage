@@ -360,6 +360,70 @@ class ImplicitRuntimeDeps(LineCheck):
 		if self._depend and not self._rdepend:
 			yield 'RDEPEND is not explicitly assigned'
 
+class InheritDeprecated(LineCheck):
+	"""Check if ebuild directly or indirectly inherits a deprecated eclass."""
+
+	repoman_check_name = 'inherit.deprecated'
+
+	# deprecated eclass : new eclass (False if no new eclass)
+	deprecated_classes = {
+		"gems": "ruby-fakegem",
+		"php-pear": "php-pear-r1",
+		"qt3": False,
+		"qt4": "qt4-r2",
+		"ruby": "ruby-ng",
+		"ruby-gnome2": "ruby-ng-gnome2"
+		}
+
+	_inherit_re = re.compile(r'^\s*inherit\s(.*)$')
+
+	def new(self, pkg):
+		self._errors = []
+		self._indirect_deprecated = set(eclass for eclass in \
+			self.deprecated_classes if eclass in pkg.inherited)
+
+	def check(self, num, line):
+
+		direct_inherits = None
+		m = self._inherit_re.match(line)
+		if m is not None:
+			direct_inherits = m.group(1)
+			if direct_inherits:
+				direct_inherits = direct_inherits.split()
+
+		if not direct_inherits:
+			return
+
+		for eclass in direct_inherits:
+			replacement = self.deprecated_classes.get(eclass)
+			if replacement is None:
+				pass
+			elif replacement is False:
+				self._indirect_deprecated.discard(eclass)
+				self._errors.append("please migrate from " + \
+					"'%s' (no replacement) on line: %d" % (eclass, num + 1))
+			else:
+				self._indirect_deprecated.discard(eclass)
+				self._errors.append("please migrate from " + \
+					"'%s' to '%s' on line: %d" % \
+					(eclass, replacement, num + 1))
+
+	def end(self):
+		for error in self._errors:
+			yield error
+		del self._errors
+
+		for eclass in self._indirect_deprecated:
+			replacement = self.deprecated_classes[eclass]
+			if replacement is False:
+				yield "please migrate from indirect " + \
+					"inherit of '%s' (no replacement)" % (eclass,)
+			else:
+				yield "please migrate from indirect " + \
+					"inherit of '%s' to '%s'" % \
+					(eclass, replacement)
+		del self._indirect_deprecated
+
 class InheritAutotools(LineCheck):
 	"""
 	Make sure appropriate functions are called in
@@ -554,7 +618,7 @@ _constant_checks = tuple((c() for c in (
 	EbuildAssignment, Eapi3EbuildAssignment, EbuildUselessDodoc,
 	EbuildUselessCdS, EbuildNestedDie,
 	EbuildPatches, EbuildQuotedA, EapiDefinition, EprefixifyDefined,
-	ImplicitRuntimeDeps, InheritAutotools, IUseUndefined,
+	ImplicitRuntimeDeps, InheritAutotools, InheritDeprecated, IUseUndefined,
 	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS, NoAsNeeded,
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
 	SrcCompileEconf, Eapi3DeprecatedFuncs,

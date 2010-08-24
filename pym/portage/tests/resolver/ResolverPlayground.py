@@ -11,7 +11,7 @@ from portage.dbapi.porttree import portagetree
 from portage.dbapi.bintree import binarytree
 from portage.dep import Atom
 from portage.package.ebuild.config import config
-from portage.sets import SetConfig
+from portage.sets import load_default_config
 from portage.versions import catsplit
 
 from _emerge.Blocker import Blocker
@@ -26,8 +26,11 @@ class ResolverPlayground(object):
 	the needed settings instances, etc. for the resolver to do
 	it's work.
 	"""
-	
-	def __init__(self, ebuilds={}, installed={}, profile={}, world=[], debug=False):
+
+	config_files = frozenset(("package.use", "package.mask", "package.keywords", \
+		"package.unmask", "package.properties", "package.license"))
+
+	def __init__(self, ebuilds={}, installed={}, profile={}, user_config={}, sets={}, world=[], debug=False):
 		"""
 		ebuilds: cpv -> metadata mapping simulating avaiable ebuilds. 
 		installed: cpv -> metadata mapping simulating installed packages.
@@ -42,14 +45,14 @@ class ResolverPlayground(object):
 		self.vdbdir = os.path.join(self.eroot, "var/db/pkg")
 		os.makedirs(self.portdir)
 		os.makedirs(self.vdbdir)
-		
+
 		self._create_ebuilds(ebuilds)
 		self._create_installed(installed)
-		self._create_profile(ebuilds, installed, profile)
+		self._create_profile(ebuilds, installed, profile, user_config, sets)
 		self._create_world(world)
-		
+
 		self.settings, self.trees = self._load_config()
-		
+
 		self._create_ebuild_manifests(ebuilds)
 
 	def _create_ebuilds(self, ebuilds):
@@ -62,18 +65,25 @@ class ResolverPlayground(object):
 			except os.error:
 				pass
 			
-			metadata = ebuilds[cpv]
-			eapi = metadata.get("EAPI", 0)
-			slot = metadata.get("SLOT", 0)
-			keywords = metadata.get("KEYWORDS", "x86")
-			iuse = metadata.get("IUSE", "")
-			depend = metadata.get("DEPEND", "")
-			rdepend = metadata.get("RDEPEND", None)
-			pdepend = metadata.get("PDEPEND", None)
-			required_use = metadata.get("REQUIRED_USE", None)
+			metadata = ebuilds[cpv].copy()
+			eapi = metadata.pop("EAPI", 0)
+			lic = metadata.pop("LICENSE", 0)
+			properties = metadata.pop("PROPERTIES", "")
+			slot = metadata.pop("SLOT", 0)
+			keywords = metadata.pop("KEYWORDS", "x86")
+			iuse = metadata.pop("IUSE", "")
+			depend = metadata.pop("DEPEND", "")
+			rdepend = metadata.pop("RDEPEND", None)
+			pdepend = metadata.pop("PDEPEND", None)
+			required_use = metadata.pop("REQUIRED_USE", None)
+
+			if metadata:
+				raise ValueError("metadata of ebuild '%s' contains unknown keys: %s" % (cpv, metadata.keys()))
 
 			f = open(ebuild_path, "w")
 			f.write('EAPI="' + str(eapi) + '"\n')
+			f.write('LICENSE="' + str(lic) + '"\n')
+			f.write('PROPERTIES="' + str(properties) + '"\n')
 			f.write('SLOT="' + str(slot) + '"\n')
 			f.write('KEYWORDS="' + str(keywords) + '"\n')
 			f.write('IUSE="' + str(iuse) + '"\n')
@@ -91,14 +101,14 @@ class ResolverPlayground(object):
 			a = Atom("=" + cpv)
 			ebuild_dir = os.path.join(self.portdir, a.cp)
 			ebuild_path = os.path.join(ebuild_dir, a.cpv.split("/")[1] + ".ebuild")
-			
+
 			portage.util.noiselimit = -1
 			tmpsettings = config(clone=self.settings)
 			portdb = self.trees[self.root]["porttree"].dbapi
 			portage.doebuild(ebuild_path, "digest", self.root, tmpsettings,
 				tree="porttree", mydbapi=portdb)
 			portage.util.noiselimit = 0
-		
+
 	def _create_installed(self, installed):
 		for cpv in installed:
 			a = Atom("=" + cpv)
@@ -108,23 +118,30 @@ class ResolverPlayground(object):
 			except os.error:
 				pass
 
-			metadata = installed[cpv]
-			eapi = metadata.get("EAPI", 0)
-			slot = metadata.get("SLOT", 0)
-			keywords = metadata.get("KEYWORDS", "~x86")
-			iuse = metadata.get("IUSE", "")
-			use = metadata.get("USE", "")
-			depend = metadata.get("DEPEND", "")
-			rdepend = metadata.get("RDEPEND", None)
-			pdepend = metadata.get("PDEPEND", None)
-			required_use = metadata.get("REQUIRED_USE", None)
-			
+			metadata = installed[cpv].copy()
+			eapi = metadata.pop("EAPI", 0)
+			lic = metadata.pop("LICENSE", "")
+			properties = metadata.pop("PROPERTIES", "")
+			slot = metadata.pop("SLOT", 0)
+			keywords = metadata.pop("KEYWORDS", "~x86")
+			iuse = metadata.pop("IUSE", "")
+			use = metadata.pop("USE", "")
+			depend = metadata.pop("DEPEND", "")
+			rdepend = metadata.pop("RDEPEND", None)
+			pdepend = metadata.pop("PDEPEND", None)
+			required_use = metadata.pop("REQUIRED_USE", None)
+
+			if metadata:
+				raise ValueError("metadata of installed '%s' contains unknown keys: %s" % (cpv, metadata.keys()))
+
 			def write_key(key, value):
 				f = open(os.path.join(vdb_pkg_dir, key), "w")
 				f.write(str(value) + "\n")
 				f.close()
 			
 			write_key("EAPI", eapi)
+			write_key("LICENSE", lic)
+			write_key("PROPERTIES", properties)
 			write_key("SLOT", slot)
 			write_key("KEYWORDS", keywords)
 			write_key("IUSE", iuse)
@@ -137,7 +154,7 @@ class ResolverPlayground(object):
 			if required_use is not None:
 				write_key("REQUIRED_USE", required_use)
 
-	def _create_profile(self, ebuilds, installed, profile):
+	def _create_profile(self, ebuilds, installed, profile, user_config, sets):
 		#Create $PORTDIR/profiles/categories
 		categories = set()
 		for cpv in chain(ebuilds.keys(), installed.keys()):
@@ -156,6 +173,13 @@ class ResolverPlayground(object):
 			f.write(cat + "\n")
 		f.close()
 		
+		
+		#Create $REPO/profiles/license_groups
+		license_file = os.path.join(profile_dir, "license_groups")
+		f = open(license_file, "w")
+		f.write("EULA TEST\n")
+		f.close()
+
 		#Create $profile_dir/eclass (we fail to digest the ebuilds if it's not there)
 		os.makedirs(os.path.join(self.portdir, "eclass"))
 
@@ -182,10 +206,52 @@ class ResolverPlayground(object):
 			#This is meant to allow the consumer to set up his own profile,
 			#with package.mask and what not.
 			raise NotImplentedError()
-		
+
 		#Create profile symlink
 		os.makedirs(os.path.join(self.eroot, "etc"))
 		os.symlink(sub_profile_dir, os.path.join(self.eroot, "etc", "make.profile"))
+
+		user_config_dir = os.path.join(self.eroot, "etc", "portage")
+
+		try:
+			os.makedirs(user_config_dir)
+		except os.error:
+			pass
+
+		for config_file, lines in user_config.items():
+			if config_file not in self.config_files:
+				raise ValueError("Unknown config file: '%s'" % config_file)
+
+			file_name = os.path.join(user_config_dir, config_file)
+			f = open(file_name, "w")
+			for line in lines:
+				f.write("%s\n" % line)
+			f.close()
+
+		#Create /usr/share/portage/config/sets/portage.conf
+		default_sets_conf_dir = os.path.join(self.eroot, "usr/share/portage/config/sets")
+
+		try:
+			os.makedirs(default_sets_conf_dir)
+		except os.error:
+			pass
+
+		provided_sets_portage_conf = os.path.realpath("../../../cnf/sets/portage.conf")
+		os.symlink(provided_sets_portage_conf, os.path.join(default_sets_conf_dir, "portage.conf"))
+
+		set_config_dir = os.path.join(user_config_dir, "sets")
+
+		try:
+			os.makedirs(set_config_dir)
+		except os.error:
+			pass
+
+		for sets_file, lines in sets.items():
+			file_name = os.path.join(set_config_dir, sets_file)
+			f = open(file_name, "w")
+			for line in lines:
+				f.write("%s\n" % line)
+			f.close()
 
 	def _create_world(self, world):
 		#Create /var/lib/portage/world
@@ -229,7 +295,7 @@ class ResolverPlayground(object):
 		for root, root_trees in trees.items():
 			settings = root_trees["vartree"].settings
 			settings._init_dirs()
-			setconfig = SetConfig([], settings, root_trees)
+			setconfig = load_default_config(settings, root_trees)
 			root_trees["root_config"] = RootConfig(settings, root_trees, setconfig)
 			setconfig_fallback(root_trees["root_config"])
 		

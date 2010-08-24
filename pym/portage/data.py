@@ -29,15 +29,11 @@ if not lchown:
 		def lchown(*pos_args, **key_args):
 			pass
 	else:
-		try:
-			import missingos
-			lchown = missingos.lchown
-		except ImportError:
-			def lchown(*pos_args, **key_args):
-				writemsg(colorize("BAD", "!!!") + _(
-					" It seems that os.lchown does not"
-					" exist.  Please rebuild python.\n"), noiselevel=-1)
-			lchown()
+		def lchown(*pargs, **kwargs):
+			writemsg(colorize("BAD", "!!!") + _(
+				" It seems that os.lchown does not"
+				" exist.  Please rebuild python.\n"), noiselevel=-1)
+		lchown()
 
 lchown = portage._unicode_func_wrapper(lchown)
 

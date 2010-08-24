@@ -22,7 +22,8 @@ class MiscFunctionsProcess(AbstractEbuildProcess):
 			os.path.basename(portage.const.MISC_SH_BINARY))
 
 		self.args = [portage._shell_quote(misc_sh_binary)] + self.commands
-		self.logfile = settings.get("PORTAGE_LOG_FILE")
+		if self.logfile is None:
+			self.logfile = settings.get("PORTAGE_LOG_FILE")
 
 		AbstractEbuildProcess._start(self)
 

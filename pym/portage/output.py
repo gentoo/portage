@@ -493,12 +493,7 @@ class EOutput(object):
 
 	def _write(self, f, s):
 		# avoid potential UnicodeEncodeError
-		s = _unicode_encode(s,
-			encoding=_encodings['stdio'], errors='backslashreplace')
-		if sys.hexversion >= 0x3000000:
-			f = f.buffer
-		f.write(s)
-		f.flush()
+		writemsg(s, noiselevel=-1, fd=f)
 
 	def __eend(self, caller, errno, msg):
 		if errno == 0:

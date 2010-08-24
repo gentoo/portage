@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import codecs
@@ -17,6 +17,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'remove_slot',
 	'portage.util:ConfigProtect,grabfile,new_protect_filename,' + \
 		'normalize_path,write_atomic,writemsg',
+	'portage.util.listdir:_ignorecvs_dirs',
 	'portage.versions:ververify'
 )
 
@@ -202,8 +203,12 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 	config_root = normalize_path(config_root)
 	update_files = {}
 	file_contents = {}
-	myxfiles = ["package.mask", "package.unmask", \
-		"package.keywords", "package.license", "package.use"]
+	myxfiles = [
+		"package.accept_keywords", "package.env",
+		"package.keywords", "package.license",
+		"package.mask", "package.properties",
+		"package.unmask", "package.use"
+	]
 	myxfiles += [os.path.join("profile", x) for x in myxfiles]
 	abs_user_config = os.path.join(config_root, USER_CONFIG_PATH)
 	recursivefiles = []
@@ -223,7 +228,7 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 					except UnicodeDecodeError:
 						dirs.remove(y_enc)
 						continue
-					if y.startswith("."):
+					if y.startswith(".") or y in _ignorecvs_dirs:
 						dirs.remove(y_enc)
 				for y in files:
 					try:

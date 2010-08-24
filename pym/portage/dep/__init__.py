@@ -306,7 +306,8 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 		if is_valid_flag:
 			if not is_valid_flag(flag):
 				raise portage.exception.InvalidDependString(
-					_("use flag '%s' is not referencable in conditional '%s' in '%s'") % (flag, conditional, depstr))
+					_("use flag '%s' is not referencable in conditional '%s' in '%s' (flag missing from IUSE?)") \
+						% (flag, conditional, depstr))
 		else:
 			if _valid_use_re.match(flag) is None:
 				raise portage.exception.InvalidDependString(
@@ -556,83 +557,90 @@ def flatten(mylist):
 			newlist.append(x)
 	return newlist
 
+
+_useflag_re = re.compile("^(?P<prefix>[!-]?)(?P<flag>[A-Za-z0-9][A-Za-z0-9+_@-]*)(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$")
+
 class _use_dep(object):
 
 	__slots__ = ("__weakref__", "conditional", "missing_enabled", "missing_disabled",
 		"disabled", "enabled", "tokens", "required")
 
-	_conditionals_class = portage.cache.mappings.slot_dict_class(
-		("disabled", "enabled", "equal", "not_equal"), prefix="")
+	class _conditionals_class(object):
+		__slots__ = ("enabled", "disabled", "equal", "not_equal")
+		def values(self):
+			for k in self.__slots__:
+				v = getattr(self, k, None)
+				if v:
+					yield v
 
-	def __init__(self, use):
-		enabled_flags = []
-		disabled_flags = []
-		missing_enabled = []
-		missing_disabled = []
-		no_default = []
+	def __init__(self, use, enabled_flags=None, disabled_flags=None, missing_enabled=None, \
+		missing_disabled=None, conditional=None, required=None):
 
-		conditional = self._conditionals_class()
-		for k in conditional.allowed_keys:
-			conditional[k] = []
+		if enabled_flags is not None:
+			#A shortcut for the classe's own methods.
+			self.tokens = use
+			if not isinstance(self.tokens, tuple):
+				self.tokens = tuple(self.tokens)
+
+			self.required = frozenset(required)
+			self.enabled = frozenset(enabled_flags)
+			self.disabled = frozenset(disabled_flags)
+			self.missing_enabled = frozenset(missing_enabled)
+			self.missing_disabled = frozenset(missing_disabled)
+			self.conditional = None
+
+			if conditional:
+				self.conditional = self._conditionals_class()
+				for k in "enabled", "disabled", "equal", "not_equal":
+					setattr(self.conditional, k, frozenset(conditional.get(k, [])))
+
+			return
+
+		enabled_flags = set()
+		disabled_flags = set()
+		missing_enabled = set()
+		missing_disabled = set()
+		no_default = set()
+
+		conditional = {}
 
 		for x in use:
-			last_char = x[-1:]
-			first_char = x[:1]
-			flag = x
-			default = ""
-			if last_char in ("?", "="):
-				flag = flag[:-1]
-			if first_char in ("-", "!"):
-				flag = flag[1:]
-
-			if flag[-3:] in ("(+)", "(-)"):
-				default = flag[-3:]
-				flag = flag[:-3]
-
-			if "?" == last_char:
-				if "!" == first_char:
-					conditional.disabled.append(
-						self._validate_flag(x, flag))
-				elif first_char in ("-", "=", "?"):
-					raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
-				else:
-					conditional.enabled.append(
-						self._validate_flag(x, flag))
-
-			elif "=" == last_char:
-				if "!" == first_char:
-					conditional.not_equal.append(
-						self._validate_flag(x, flag))
-				elif first_char in ("-", "=", "?"):
-					raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
-				else:
-					conditional.equal.append(
-						self._validate_flag(x, flag))
-
-			elif last_char in ("!", "-"):
+			m = _useflag_re.match(x)
+			if m is None:
 				raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
 
+			operator = m.group("prefix") + m.group("suffix")
+			flag = m.group("flag")
+			default = m.group("default")
+
+			if not operator:
+				enabled_flags.add(flag)
+			elif operator == "-":
+				disabled_flags.add(flag)
+			elif operator == "?":
+				conditional.setdefault("enabled", set()).add(flag)
+			elif operator == "=":
+				conditional.setdefault("equal", set()).add(flag)
+			elif operator == "!=":
+				conditional.setdefault("not_equal", set()).add(flag)
+			elif operator == "!?":
+				conditional.setdefault("disabled", set()).add(flag)
 			else:
-				if "-" == first_char:
-					disabled_flags.append(self._validate_flag(x, flag))
-				elif first_char in ("!", "=", "?"):
-					raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
-				else:
-					enabled_flags.append(self._validate_flag(x, flag))
+				raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
 
 			if default:
 				if default == "(+)":
 					if flag in missing_disabled or flag in no_default:
 						raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
-					missing_enabled.append(flag)
+					missing_enabled.add(flag)
 				else:
 					if flag in missing_enabled or flag in no_default:
 						raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
-					missing_disabled.append(flag)
+					missing_disabled.add(flag)
 			else:
 				if flag in missing_enabled or flag in missing_disabled:
 					raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
-				no_default.append(flag)
+				no_default.add(flag)
 
 		self.tokens = use
 		if not isinstance(self.tokens, tuple):
@@ -650,17 +658,10 @@ class _use_dep(object):
 		self.missing_disabled = frozenset(missing_disabled)
 		self.conditional = None
 
-		for v in conditional.values():
-			if v:
-				for k, v in conditional.items():
-					conditional[k] = frozenset(v)
-				self.conditional = conditional
-				break
-
-	def _validate_flag(self, token, flag):
-		if _valid_use_re.match(flag) is None:
-			raise InvalidAtom(_("Invalid use dep: '%s'") % (token,))
-		return flag
+		if conditional:
+			self.conditional = self._conditionals_class()
+			for k in "enabled", "disabled", "equal", "not_equal":
+				setattr(self.conditional, k, frozenset(conditional.get(k, [])))
 
 	def __bool__(self):
 		return bool(self.tokens)
@@ -675,22 +676,6 @@ class _use_dep(object):
 
 	def __repr__(self):
 		return "portage.dep._use_dep(%s)" % repr(self.tokens)
-
-	
-	def _append_use_default(self, output, flag):
-		default = None
-		if flag in self.missing_enabled:
-			default = "(+)"
-		elif flag in self.missing_disabled:
-			default = "(-)"
-
-		if not default:
-			return output
-
-		if output[-1] in ("=", "?"):
-			return output[:-1] + default + output[-1]
-		else:
-			return output + default
 
 	def evaluate_conditionals(self, use):
 		"""
@@ -720,119 +705,169 @@ class _use_dep(object):
 			foo[!bar=]          bar? ( foo[-bar] ) !bar? ( foo[bar]  )
 
 		"""
+		enabled_flags = set(self.enabled)
+		disabled_flags = set(self.disabled)
+
 		tokens = []
 
-		conditional = self.conditional
-		tokens.extend(self._append_use_default(x, x) for x in self.enabled)
-		tokens.extend(self._append_use_default("-" + x, x) for x in self.disabled)
-		tokens.extend(self._append_use_default(x, x) for x in conditional.enabled if x in use)
-		tokens.extend(self._append_use_default("-" + x, x) for x in conditional.disabled if x not in use)
+		for x in self.tokens:
+			m = _useflag_re.match(x)
 
-		tokens.extend(self._append_use_default(x, x) for x in conditional.equal if x in use)
-		tokens.extend(self._append_use_default("-" + x, x) for x in conditional.equal if x not in use)
-		tokens.extend(self._append_use_default("-" + x, x) for x in conditional.not_equal if x in use)
-		tokens.extend(self._append_use_default(x, x) for x in conditional.not_equal if x not in use)
+			operator = m.group("prefix") + m.group("suffix")
+			flag = m.group("flag")
+			default = m.group("default")
+			if default is None:
+				default = ""
 
-		return _use_dep(tokens)
+			if operator == "?":
+				if flag in use:
+					enabled_flags.add(flag)
+					tokens.append(flag+default)
+			elif operator == "=":
+				if flag in use:
+					enabled_flags.add(flag)
+					tokens.append(flag+default)
+				else:
+					disabled_flags.add(flag)
+					tokens.append("-"+flag+default)
+			elif operator == "!=":
+				if flag in use:
+					disabled_flags.add(flag)
+					tokens.append("-"+flag+default)
+				else:
+					enabled_flags.add(flag)
+					tokens.append(flag+default)
+			elif operator == "!?":
+				if flag not in use:
+					disabled_flags.add(flag)
+					tokens.append("-"+flag+default)
+			else:
+				tokens.append(x)
+
+		required = chain(enabled_flags, disabled_flags)
+
+		return _use_dep(tokens, enabled_flags=enabled_flags, disabled_flags=disabled_flags, \
+			missing_enabled=self.missing_enabled, missing_disabled=self.missing_disabled, required=required)
 
 	def violated_conditionals(self, other_use, is_valid_flag, parent_use=None):
 		"""
 		Create a new instance with satisfied use deps removed.
 		"""
-		tokens = []
-
-		conditional = self.conditional
-
-		for x in self.enabled:
-			if x not in other_use:
-				if is_valid_flag(x):
-					tokens.append(self._append_use_default(x, x))
-				else:
-					if x in self.missing_disabled:
-						tokens.append(self._append_use_default(x, x))
-
-		for x in self.disabled:
-			if x not in other_use:
-				if not is_valid_flag(x):
-					if x in self.missing_enabled:
-						tokens.append(self._append_use_default("-" + x, x))
-			else:
-				tokens.append(self._append_use_default("-" + x, x))
-
-		if not conditional:
-			return _use_dep(tokens)
-
-		if parent_use is None:
+		if parent_use is None and self.conditional:
 			raise InvalidAtom("violated_conditionals needs 'parent_use'" + \
 				" parameter for conditional flags.")
 
-		for x in conditional.enabled:
-			if x not in parent_use:
+		enabled_flags = set()
+		disabled_flags = set()
+
+		conditional = {}
+		tokens = []
+
+		all_defaults = frozenset(chain(self.missing_enabled, self.missing_disabled))
+		
+		def validate_flag(flag):
+			return is_valid_flag(flag) or flag in all_defaults
+
+
+		for x in self.tokens:
+			m = _useflag_re.match(x)
+
+			operator = m.group("prefix") + m.group("suffix")
+			flag = m.group("flag")
+
+			if not validate_flag(flag):
+				tokens.append(x)
+				if not operator:
+					enabled_flags.add(flag)
+				elif operator == "-":
+					disabled_flags.add(flag)
+				elif operator == "?":
+					conditional.setdefault("enabled", set()).add(flag)
+				elif operator == "=":
+					conditional.setdefault("equal", set()).add(flag)
+				elif operator == "!=":
+					conditional.setdefault("not_equal", set()).add(flag)
+				elif operator == "!?":
+					conditional.setdefault("disabled", set()).add(flag)
+
 				continue
 
-			if x not in other_use:
-				if is_valid_flag(x):
-					tokens.append(self._append_use_default(x + "?", x))
+			if not operator:
+				if flag not in other_use:
+					if is_valid_flag(flag) or flag in self.missing_disabled:
+						tokens.append(x)
+						enabled_flags.add(flag)
+			elif operator == "-":
+				if flag not in other_use:
+					if not is_valid_flag(flag):
+						if flag in self.missing_enabled:
+							tokens.append(x)
+							disabled_flags.add(flag)
 				else:
-					if x in self.missing_disabled:
-						tokens.append(self._append_use_default(x + "?", x))
+					tokens.append(x)
+					disabled_flags.add(flag)
+			elif operator == "?":
+				if flag not in parent_use or flag in other_use:
+					continue
 
-		for x in conditional.disabled:
-			if x in parent_use:
-				continue
+				if is_valid_flag(flag) or flag in self.missing_disabled:
+					tokens.append(x)
+					conditional.setdefault("enabled", set()).add(flag)
+			elif operator == "=":
+				if flag in parent_use and flag not in other_use:
+					if is_valid_flag(flag):
+						tokens.append(x)
+						conditional.setdefault("equal", set()).add(flag)
+					else:
+						if flag in self.missing_disabled:
+							tokens.append(x)
+							conditional.setdefault("equal", set()).add(flag)
+				elif flag not in parent_use:
+					if flag not in other_use:
+						if not is_valid_flag(flag):
+							if flag in self.missing_enabled:
+								tokens.append(x)
+								conditional.setdefault("equal", set()).add(flag)
+					else:
+						tokens.append(x)
+						conditional.setdefault("equal", set()).add(flag)
+			elif operator == "!=":
+				if flag not in parent_use and flag not in other_use:
+					if is_valid_flag(flag):
+						tokens.append(x)
+						conditional.setdefault("not_equal", set()).add(flag)
+					else:
+						if flag in self.missing_disabled:
+							tokens.append(x)
+							conditional.setdefault("not_equal", set()).add(flag)
+				elif flag in parent_use:
+					if flag not in other_use:
+						if not is_valid_flag(flag):
+							if flag in self.missing_enabled:
+								tokens.append(x)
+								conditional.setdefault("not_equal", set()).add(flag)
+					else:
+						tokens.append(x)
+						conditional.setdefault("not_equal", set()).add(flag)
+			elif operator == "!?":
+				if flag not in parent_use:
+					if flag not in other_use:
+						if not is_valid_flag(flag) and flag in self.missing_enabled:
+							tokens.append(x)
+							conditional.setdefault("disabled", set()).add(flag)
+					else:
+						tokens.append(x)
+						conditional.setdefault("disabled", set()).add(flag)
 
-			if x not in other_use:
-				if not is_valid_flag(x):
-					if x in self.missing_enabled:
-						tokens.append(self._append_use_default("!" + x + "?", x))
-			else:
-				tokens.append(self._append_use_default("!" + x + "?", x))
+		required = frozenset(chain(
+			enabled_flags,
+			disabled_flags,
+			*conditional.values()
+		))
 
-		for x in conditional.equal:
-			if x not in parent_use:
-				continue
-
-			if x not in other_use:
-				if is_valid_flag(x):
-					tokens.append(self._append_use_default(x + "=", x))
-				else:
-					if x in self.missing_disabled:
-						tokens.append(self._append_use_default(x + "=", x))
-
-		for x in conditional.equal:
-			if x in parent_use:
-				continue
-
-			if x not in other_use:
-				if not is_valid_flag(x):
-					if x in self.missing_enabled:
-						tokens.append(self._append_use_default(x + "=", x))
-			else:
-				tokens.append(self._append_use_default(x + "=", x))
-
-		for x in conditional.not_equal:
-			if x in parent_use:
-				continue
-
-			if x not in other_use:
-				if is_valid_flag(x):
-					tokens.append(self._append_use_default("!" + x + "=", x))
-				else:
-					if x in self.missing_disabled:
-						tokens.append(self._append_use_default("!" + x + "=", x))
-
-		for x in conditional.not_equal:
-			if x not in parent_use:
-				continue
-
-			if x not in other_use:
-				if not is_valid_flag(x):
-					if x in self.missing_enabled:
-						tokens.append(self._append_use_default("!" + x + "=", x))
-			else:
-				tokens.append(self._append_use_default("!" + x + "=", x))
-
-		return _use_dep(tokens)
+		return _use_dep(tokens, enabled_flags=enabled_flags, disabled_flags=disabled_flags, \
+			missing_enabled=self.missing_enabled, missing_disabled=self.missing_disabled, \
+			conditional=conditional, required=required)
 
 	def _eval_qa_conditionals(self, use_mask, use_force):
 		"""
@@ -844,20 +879,51 @@ class _use_dep(object):
 		already ensured that there is no intersection between the given
 		use_mask and use_force sets when necessary.
 		"""
+		enabled_flags = set(self.enabled)
+		disabled_flags = set(self.disabled)
+		missing_enabled = self.missing_enabled
+		missing_disabled = self.missing_disabled
+
 		tokens = []
 
-		conditional = self.conditional
-		tokens.extend(self._append_use_default(x, x) for x in self.enabled)
-		tokens.extend(self._append_use_default("-" + x, x) for x in self.disabled)
-		tokens.extend(self._append_use_default(x, x) for x in conditional.enabled if x not in use_mask)
-		tokens.extend(self._append_use_default("-" + x, x) for x in conditional.disabled if x not in use_force)
+		for x in self.tokens:
+			m = _useflag_re.match(x)
 
-		tokens.extend(self._append_use_default(x, x) for x in conditional.equal if x not in use_mask)
-		tokens.extend(self._append_use_default("-" + x, x) for x in conditional.equal if x not in use_force)
-		tokens.extend(self._append_use_default("-" + x, x) for x in conditional.not_equal if x not in use_mask)
-		tokens.extend(self._append_use_default(x, x) for x in conditional.not_equal if x not in use_force)
+			operator = m.group("prefix") + m.group("suffix")
+			flag = m.group("flag")
+			default = m.group("default")
+			if default is None:
+				default = ""
 
-		return _use_dep(tokens)
+			if operator == "?":
+				if flag not in use_mask:
+					enabled_flags.add(flag)
+					tokens.append(flag+default)
+			elif operator == "=":
+				if flag not in use_mask:
+					enabled_flags.add(flag)
+					tokens.append(flag+default)
+				if flag not in use_force:
+					disabled_flags.add(flag)
+					tokens.append("-"+flag+default)
+			elif operator == "!=":
+				if flag not in use_force:
+					enabled_flags.add(flag)
+					tokens.append(flag+default)
+				if flag not in use_mask:
+					disabled_flags.add(flag)
+					tokens.append("-"+flag+default)
+			elif operator == "!?":
+				if flag not in use_force:
+					disabled_flags.add(flag)
+					tokens.append("-"+flag+default)
+			else:
+				tokens.append(x)
+
+		required = chain(enabled_flags, disabled_flags)
+
+		return _use_dep(tokens, enabled_flags=enabled_flags, disabled_flags=disabled_flags, \
+			missing_enabled=missing_enabled, missing_disabled=missing_disabled, required=required)
 
 if sys.hexversion < 0x3000000:
 	_atom_base = unicode
@@ -883,10 +949,10 @@ class Atom(_atom_base):
 		def __init__(self, forbid_overlap=False):
 			self.overlap = self._overlap(forbid=forbid_overlap)
 
-	def __new__(cls, s, unevaluated_atom=None, allow_wildcard=False):
+	def __new__(cls, s, unevaluated_atom=None, allow_wildcard=False, _use=None):
 		return _atom_base.__new__(cls, s)
 
-	def __init__(self, s, unevaluated_atom=None, allow_wildcard=False):
+	def __init__(self, s, unevaluated_atom=None, allow_wildcard=False, _use=None):
 		if isinstance(s, Atom):
 			# This is an efficiency assertion, to ensure that the Atom
 			# constructor is not called redundantly.
@@ -955,7 +1021,10 @@ class Atom(_atom_base):
 		self.__dict__['extended_syntax'] = extended_syntax
 
 		if use_str is not None:
-			use = _use_dep(dep_getusedeps(s))
+			if _use is not None:
+				use = _use
+			else:
+				use = _use_dep(use_str[1:-1].split(","))
 			without_use = Atom(m.group('without_use'))
 		else:
 			use = None
@@ -1017,8 +1086,9 @@ class Atom(_atom_base):
 		atom = remove_slot(self)
 		if self.slot:
 			atom += ":%s" % self.slot
-		atom += str(self.use.evaluate_conditionals(use))
-		return Atom(atom, unevaluated_atom=self)
+		use_dep = self.use.evaluate_conditionals(use)
+		atom += str(use_dep)
+		return Atom(atom, unevaluated_atom=self, _use=use_dep)
 
 	def violated_conditionals(self, other_use, is_valid_flag, parent_use=None):
 		"""
@@ -1038,8 +1108,9 @@ class Atom(_atom_base):
 		atom = remove_slot(self)
 		if self.slot:
 			atom += ":%s" % self.slot
-		atom += str(self.use.violated_conditionals(other_use, is_valid_flag, parent_use))
-		return Atom(atom, unevaluated_atom=self)
+		use_dep = self.use.violated_conditionals(other_use, is_valid_flag, parent_use)
+		atom += str(use_dep)
+		return Atom(atom, unevaluated_atom=self, _use=use_dep)
 
 	def _eval_qa_conditionals(self, use_mask, use_force):
 		if not (self.use and self.use.conditional):
@@ -1047,8 +1118,9 @@ class Atom(_atom_base):
 		atom = remove_slot(self)
 		if self.slot:
 			atom += ":%s" % self.slot
-		atom += str(self.use._eval_qa_conditionals(use_mask, use_force))
-		return Atom(atom, unevaluated_atom=self)
+		use_dep = self.use._eval_qa_conditionals(use_mask, use_force)
+		atom += str(use_dep)
+		return Atom(atom, unevaluated_atom=self, _use=use_dep)
 
 	def __copy__(self):
 		"""Immutable, so returns self."""
@@ -1101,6 +1173,12 @@ class ExtendedAtomDict(portage.cache.mappings.MutableMapping):
 			yield item
 		for item in self._extended.items():
 			yield item
+
+	def __delitem__(self, cp):
+		if "*" in cp:
+			return self._extended.__delitem__(cp)
+		else:
+			return self._normal.__delitem__(cp)
 
 	if sys.hexversion >= 0x3000000:
 		keys = __iter__
@@ -1156,6 +1234,11 @@ class ExtendedAtomDict(portage.cache.mappings.MutableMapping):
 			self._extended[cp] = val
 		else:
 			self._normal[cp] = val
+
+	def __eq__(self, other):
+		return self._value_class == other._value_class and \
+			self._extended == other._extended and \
+			self._normal == other._normal
 
 	def clear(self):
 		self._extended.clear()

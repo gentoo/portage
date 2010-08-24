@@ -31,7 +31,7 @@ from portage.const import CACHE_PATH, CUSTOM_PROFILE_PATH, \
 from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
 from portage.dbapi.vartree import vartree
-from portage.dep import Atom, best_match_to_list, \
+from portage.dep import Atom, \
 	isvalidatom, match_from_list, \
 	remove_slot, use_reduce
 from portage.eapi import eapi_exports_AA, eapi_supports_prefix, eapi_exports_replace_vars
@@ -46,6 +46,10 @@ from portage.util import ensure_dirs, getconfig, grabdict, \
 	normalize_path, shlex_split, stack_dictlist, stack_dicts, stack_lists, \
 	writemsg, writemsg_level
 from portage.versions import catpkgsplit, catsplit, cpv_getkey
+
+from portage.package.ebuild._config.features_set import features_set
+from portage.package.ebuild._config.LicenseManager import LicenseManager
+from portage.package.ebuild._config.helper import ordered_by_atom_specificity, prune_incremental
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -94,102 +98,6 @@ def best_from_dict(key, top_dict, key_order, EmptyOnError=1, FullCopy=1, AllowEm
 		return ""
 	else:
 		raise KeyError("Key not found in list; '%s'" % key)
-
-def _ordered_by_atom_specificity(cpdict, pkg):
-	"""
-	Return a list of matched values from the given cpdict,
-	in ascending order by atom specificity. The rationale
-	for this order is that package.* config files are
-	typically written in ChangeLog like fashion, so it's
-	most friendly if the order that the atoms are written
-	does not matter. Therefore, settings from more specific
-	atoms override those of less specific atoms. Without
-	this behavior, settings from relatively unspecific atoms
-	would (somewhat confusingly) override the settings of
-	more specific atoms, requiring people to make adjustments
-	to the order that atoms are listed in the config file in
-	order to achieve desired results (and thus corrupting
-	the ChangeLog like ordering of the file).
-	"""
-
-	results = []
-	keys = list(cpdict)
-
-	while keys:
-		bestmatch = best_match_to_list(pkg, keys)
-		if bestmatch:
-			keys.remove(bestmatch)
-			results.append(cpdict[bestmatch])
-		else:
-			break
-
-	if results:
-		# reverse, so the most specific atoms come last
-		results.reverse()
-
-	return results
-
-class _features_set(object):
-	"""
-	Provides relevant set operations needed for access and modification of
-	config.features. The FEATURES variable is automatically synchronized
-	upon modification.
-
-	Modifications result in a permanent override that will cause the change
-	to propagate to the incremental stacking mechanism in config.regenerate().
-	This eliminates the need to call config.backup_changes() when FEATURES
-	is modified, since any overrides are guaranteed to persist despite calls
-	to config.reset().
-	"""
-
-	def __init__(self, settings):
-		self._settings = settings
-		self._features = set()
-
-	def __contains__(self, k):
-		return k in self._features
-
-	def __iter__(self):
-		return iter(self._features)
-
-	def _sync_env_var(self):
-		self._settings['FEATURES'] = ' '.join(sorted(self._features))
-
-	def add(self, k):
-		self._settings.modifying()
-		self._settings._features_overrides.append(k)
-		if k not in self._features:
-			self._features.add(k)
-			self._sync_env_var()
-
-	def update(self, values):
-		self._settings.modifying()
-		values = list(values)
-		self._settings._features_overrides.extend(values)
-		need_sync = False
-		for k in values:
-			if k in self._features:
-				continue
-			self._features.add(k)
-			need_sync = True
-		if need_sync:
-			self._sync_env_var()
-
-	def remove(self, k):
-		"""
-		This never raises KeyError, since it records a permanent override
-		that will prevent the given flag from ever being added again by
-		incremental stacking in config.regenerate().
-		"""
-		self.discard(k)
-
-	def discard(self, k):
-		self._settings.modifying()
-		self._settings._features_overrides.append('-' + k)
-		if k in self._features:
-			self._features.remove(k)
-			self._sync_env_var()
-
 
 def _lazy_iuse_regex(iuse_implicit):
 	"""
@@ -409,7 +317,6 @@ class config(object):
 
 	_environ_filter = frozenset(_environ_filter)
 
-	_undef_lic_groups = set()
 	_default_globals = (
 		('ACCEPT_LICENSE',           '* -@EULA'),
 		('ACCEPT_PROPERTIES',        '*'),
@@ -467,9 +374,7 @@ class config(object):
 		self.modifiedkeys = []
 		self.uvlist = []
 		self._accept_chost_re = None
-		self._accept_license = None
-		self._accept_license_str = None
-		self._license_groups = {}
+		self._license_manager = LicenseManager()
 		self._accept_properties = None
 		self._features_overrides = []
 
@@ -556,13 +461,11 @@ class config(object):
 			self.punmaskdict = copy.deepcopy(clone.punmaskdict)
 			self.prevmaskdict = copy.deepcopy(clone.prevmaskdict)
 			self.pprovideddict = copy.deepcopy(clone.pprovideddict)
-			self.features = _features_set(self)
+			self.features = features_set(self)
 			self.features._features = copy.deepcopy(clone.features._features)
 			self._features_overrides = copy.deepcopy(clone._features_overrides)
 
-			self._accept_license = copy.deepcopy(clone._accept_license)
-			self._plicensedict = copy.deepcopy(clone._plicensedict)
-			self._license_groups = copy.deepcopy(clone._license_groups)
+			self._license_manager = copy.deepcopy(clone._license_manager)
 			self._accept_properties = copy.deepcopy(clone._accept_properties)
 			self._ppropertiesdict = copy.deepcopy(clone._ppropertiesdict)
 			self._penvdict = copy.deepcopy(clone._penvdict)
@@ -975,7 +878,6 @@ class config(object):
 
 			self.pusedict = portage.dep.ExtendedAtomDict(dict)
 			self.pkeywordsdict = portage.dep.ExtendedAtomDict(dict)
-			self._plicensedict = portage.dep.ExtendedAtomDict(dict)
 			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
 			self._penvdict = portage.dep.ExtendedAtomDict(dict)
 			self.punmaskdict = portage.dep.ExtendedAtomDict(list)
@@ -1060,17 +962,10 @@ class config(object):
 					self.pkeywordsdict.setdefault(k.cp, {})[k] = v
 
 				#package.license
-				licdict = grabdict_package(os.path.join(
-					abs_user_config, "package.license"), recursive=1, allow_wildcard=True)
-				v = licdict.pop("*/*", None)
-				if v is not None:
-					if "ACCEPT_LICENSE" in self.configdict["conf"]:
-						self.configdict["conf"]["ACCEPT_LICENSE"] += " " + " ".join(v)
-					else:
-						self.configdict["conf"]["ACCEPT_LICENSE"] = " ".join(v)
-				for k, v in licdict.items():
-					self._plicensedict.setdefault(k.cp, {})[k] = \
-						self.expandLicenseTokens(v)
+				self._license_manager.read_config_files(abs_user_config)
+				self.configdict["conf"]["ACCEPT_LICENSE"] = \
+					self._license_manager.extract_global_changes(\
+						self.configdict["conf"].get("ACCEPT_LICENSE", ""))
 
 				#package.properties
 				propdict = grabdict_package(os.path.join(
@@ -1203,11 +1098,7 @@ class config(object):
 					self.pprovideddict[mycatpkg]=[x]
 
 			# parse licensegroups
-			license_groups = self._license_groups
-			for x in locations:
-				for k, v in grabdict(
-					os.path.join(x, "license_groups")).items():
-					license_groups.setdefault(k, []).extend(v)
+			self._license_manager.parse_license_groups(locations)
 
 			# reasonable defaults; this is important as without USE_ORDER,
 			# USE will always be "" (nothing set)!
@@ -1312,49 +1203,7 @@ class config(object):
 		""" Take a token from ACCEPT_LICENSE or package.license and expand it
 		if it's a group token (indicated by @) or just return it if it's not a
 		group.  If a group is negated then negate all group elements."""
-		expanded_tokens = []
-		for x in tokens:
-			expanded_tokens.extend(self._expandLicenseToken(x, None))
-		return expanded_tokens
-
-	def _expandLicenseToken(self, token, traversed_groups):
-		negate = False
-		rValue = []
-		if token.startswith("-"):
-			negate = True
-			license_name = token[1:]
-		else:
-			license_name = token
-		if not license_name.startswith("@"):
-			rValue.append(token)
-			return rValue
-		group_name = license_name[1:]
-		if traversed_groups is None:
-			traversed_groups = set()
-		license_group = self._license_groups.get(group_name)
-		if group_name in traversed_groups:
-			writemsg(_("Circular license group reference"
-				" detected in '%s'\n") % group_name, noiselevel=-1)
-			rValue.append("@"+group_name)
-		elif license_group:
-			traversed_groups.add(group_name)
-			for l in license_group:
-				if l.startswith("-"):
-					writemsg(_("Skipping invalid element %s"
-						" in license group '%s'\n") % (l, group_name),
-						noiselevel=-1)
-				else:
-					rValue.extend(self._expandLicenseToken(l, traversed_groups))
-		else:
-			if self._license_groups and \
-				group_name not in self._undef_lic_groups:
-				self._undef_lic_groups.add(group_name)
-				writemsg(_("Undefined license group '%s'\n") % group_name,
-					noiselevel=-1)
-			rValue.append("@"+group_name)
-		if negate:
-			rValue = ["-" + token for token in rValue]
-		return rValue
+		return self._license_manager.expandLicenseTokens(tokens)
 
 	def validate(self):
 		"""Validate miscellaneous settings and display warnings if necessary.
@@ -1505,40 +1354,11 @@ class config(object):
 			use = self.built_use
 			if use is None:
 				use = frozenset(settings['PORTAGE_USE'].split())
-			values['ACCEPT_LICENSE'] = self._accept_license(use, settings)
+
+			values['ACCEPT_LICENSE'] = settings._license_manager.get_prunned_accept_license( \
+				settings.mycpv, use, settings['LICENSE'], settings['SLOT'])
 			values['PORTAGE_RESTRICT'] = self._restrict(use, settings)
 			return values
-
-		def _accept_license(self, use, settings):
-			"""
-			Generate a pruned version of ACCEPT_LICENSE, by intersection with
-			LICENSE. This is required since otherwise ACCEPT_LICENSE might be
-			too big (bigger than ARG_MAX), causing execve() calls to fail with
-			E2BIG errors as in bug #262647.
-			"""
-			try:
-				licenses = set(use_reduce(settings['LICENSE'], uselist=use, flat=True))
-			except InvalidDependString:
-				licenses = set()
-			licenses.discard('||')
-
-			accept_license = settings._getPkgAcceptLicense(
-				settings.mycpv, {'SLOT' : settings['SLOT']})
-
-			if accept_license:
-				acceptable_licenses = set()
-				for x in accept_license:
-					if x == '*':
-						acceptable_licenses.update(licenses)
-					elif x == '-*':
-						acceptable_licenses.clear()
-					elif x[:1] == '-':
-						acceptable_licenses.discard(x[1:])
-					elif x in licenses:
-						acceptable_licenses.add(x)
-
-				licenses = acceptable_licenses
-			return ' '.join(sorted(licenses))
 
 		def _restrict(self, use, settings):
 			try:
@@ -1671,6 +1491,7 @@ class config(object):
 		iuse = ""
 		pkg_configdict = self.configdict["pkg"]
 		previous_iuse = pkg_configdict.get("IUSE")
+		previous_features = pkg_configdict.get("FEATURES")
 
 		aux_keys = self._setcpv_aux_keys
 
@@ -1718,7 +1539,7 @@ class config(object):
 				defaults.append(self.make_defaults_use[i])
 			cpdict = pkgprofileuse_dict.get(cp)
 			if cpdict:
-				pkg_defaults = _ordered_by_atom_specificity(cpdict, cpv_slot)
+				pkg_defaults = ordered_by_atom_specificity(cpdict, cpv_slot)
 				if pkg_defaults:
 					defaults.extend(pkg_defaults)
 		defaults = " ".join(defaults)
@@ -1739,7 +1560,7 @@ class config(object):
 		self.puse = ""
 		cpdict = self.pusedict.get(cp)
 		if cpdict:
-			puse_matches = _ordered_by_atom_specificity(cpdict, cpv_slot)
+			puse_matches = ordered_by_atom_specificity(cpdict, cpv_slot)
 			if puse_matches:
 				puse_list = []
 				for x in puse_matches:
@@ -1750,10 +1571,17 @@ class config(object):
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
 
+		if previous_features:
+			# The package from the previous setcpv call had package.env
+			# settings which modified FEATURES. Therefore, trigger a
+			# regenerate() call in order ensure that self.features
+			# is accurate.
+			has_changed = True
+
 		self._penv = []
 		cpdict = self._penvdict.get(cp)
 		if cpdict:
-			penv_matches = _ordered_by_atom_specificity(cpdict, cpv_slot)
+			penv_matches = ordered_by_atom_specificity(cpdict, cpv_slot)
 			if penv_matches:
 				for x in penv_matches:
 					self._penv.extend(x)
@@ -1966,7 +1794,7 @@ class config(object):
 				usemask.append(self.usemask_list[i])
 			cpdict = pusemask_dict.get(cp)
 			if cpdict:
-				pkg_usemask = _ordered_by_atom_specificity(cpdict, pkg)
+				pkg_usemask = ordered_by_atom_specificity(cpdict, pkg)
 				if pkg_usemask:
 					usemask.extend(pkg_usemask)
 		return set(stack_lists(usemask, incremental=True))
@@ -1981,7 +1809,7 @@ class config(object):
 				useforce.append(self.useforce_list[i])
 			cpdict = puseforce_dict.get(cp)
 			if cpdict:
-				pkg_useforce = _ordered_by_atom_specificity(cpdict, pkg)
+				pkg_useforce = ordered_by_atom_specificity(cpdict, pkg)
 				if pkg_useforce:
 					useforce.extend(pkg_useforce)
 		return set(stack_lists(useforce, incremental=True))
@@ -2048,7 +1876,7 @@ class config(object):
 		for pkeywords_dict in self._pkeywords_list:
 			cpdict = pkeywords_dict.get(cp)
 			if cpdict:
-				pkg_keywords = _ordered_by_atom_specificity(cpdict, pkg)
+				pkg_keywords = ordered_by_atom_specificity(cpdict, pkg)
 				if pkg_keywords:
 					keywords.extend(pkg_keywords)
 		return stack_lists(keywords, incremental=True)
@@ -2088,7 +1916,7 @@ class config(object):
 				cpdict = d.get(cp)
 				if cpdict:
 					pkg_accept_keywords = \
-						_ordered_by_atom_specificity(cpdict, cpv_slot)
+						ordered_by_atom_specificity(cpdict, cpv_slot)
 					if pkg_accept_keywords:
 						for x in pkg_accept_keywords:
 							if not x:
@@ -2100,7 +1928,7 @@ class config(object):
 		if pkgdict:
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
 			pkg_accept_keywords = \
-				_ordered_by_atom_specificity(pkgdict, cpv_slot)
+				ordered_by_atom_specificity(pkgdict, cpv_slot)
 			if pkg_accept_keywords:
 				for x in pkg_accept_keywords:
 					pgroups.extend(x)
@@ -2151,22 +1979,6 @@ class config(object):
 			missing = mygroups
 		return missing
 
-	def _getPkgAcceptLicense(self, cpv, metadata):
-		"""
-		Get an ACCEPT_LICENSE list, accounting for package.license.
-		"""
-		accept_license = self._accept_license
-		cp = cpv_getkey(cpv)
-		cpdict = self._plicensedict.get(cp)
-		if cpdict:
-			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			plicence_list = _ordered_by_atom_specificity(cpdict, cpv_slot)
-			if plicence_list:
-				accept_license = list(self._accept_license)
-				for x in plicence_list:
-					accept_license.extend(x)
-		return accept_license
-
 	def _getMissingLicenses(self, cpv, metadata):
 		"""
 		Take a LICENSE string and return a list any licenses that the user may
@@ -2181,61 +1993,8 @@ class config(object):
 		@rtype: List
 		@return: A list of licenses that have not been accepted.
 		"""
-
-
-		licenses = set(use_reduce(metadata["LICENSE"], matchall=1, flat=True))
-		licenses.discard('||')
-
-		acceptable_licenses = set()
-		for x in self._getPkgAcceptLicense(cpv, metadata):
-			if x == '*':
-				acceptable_licenses.update(licenses)
-			elif x == '-*':
-				acceptable_licenses.clear()
-			elif x[:1] == '-':
-				acceptable_licenses.discard(x[1:])
-			else:
-				acceptable_licenses.add(x)
-
-		license_str = metadata["LICENSE"]
-		if "?" in license_str:
-			use = metadata["USE"].split()
-		else:
-			use = []
-
-		license_struct = use_reduce(license_str, uselist=use, opconvert=True)
-		return self._getMaskedLicenses(license_struct, acceptable_licenses)
-
-	def _getMaskedLicenses(self, license_struct, acceptable_licenses):
-		if not license_struct:
-			return []
-		if license_struct[0] == "||":
-			ret = []
-			for element in license_struct[1:]:
-				if isinstance(element, list):
-					if element:
-						tmp = self._getMaskedLicenses(element, acceptable_licenses)
-						if not tmp:
-							return []
-						ret.extend(tmp)
-				else:
-					if element in acceptable_licenses:
-						return []
-					ret.append(element)
-			# Return all masked licenses, since we don't know which combination
-			# (if any) the user will decide to unmask.
-			return ret
-
-		ret = []
-		for element in license_struct:
-			if isinstance(element, list):
-				if element:
-					ret.extend(self._getMaskedLicenses(element,
-						acceptable_licenses))
-			else:
-				if element not in acceptable_licenses:
-					ret.append(element)
-		return ret
+		return self._license_manager.getMissingLicenses( \
+			cpv, metadata["USE"], metadata["LICENSE"], metadata["SLOT"])
 
 	def _getMissingProperties(self, cpv, metadata):
 		"""
@@ -2256,7 +2015,7 @@ class config(object):
 		cpdict = self._ppropertiesdict.get(cp)
 		if cpdict:
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			pproperties_list = _ordered_by_atom_specificity(cpdict, cpv_slot)
+			pproperties_list = ordered_by_atom_specificity(cpdict, cpv_slot)
 			if pproperties_list:
 				accept_properties = list(self._accept_properties)
 				for x in pproperties_list:
@@ -2406,25 +2165,6 @@ class config(object):
 			# env_d will be None if profile.env doesn't exist.
 			self.configdict["env.d"].update(env_d)
 
-	def _prune_incremental(self, split):
-		"""
-		Prune off any parts of an incremental variable that are
-		made irrelevant by the latest occuring * or -*. This
-		could be more aggressive but that might be confusing
-		and the point is just to reduce noise a bit.
-		"""
-		for i, x in enumerate(reversed(split)):
-			if x == '*':
-				split = split[-i-1:]
-				break
-			elif x == '-*':
-				if i == 0:
-					split = []
-				else:
-					split = split[-i:]
-				break
-		return split
-
 	def regenerate(self,useonly=0,use_cache=1):
 		"""
 		Regenerate settings
@@ -2470,22 +2210,20 @@ class config(object):
 			mysplit = []
 			for curdb in mydbs:
 				mysplit.extend(curdb.get('ACCEPT_LICENSE', '').split())
-			mysplit = self._prune_incremental(mysplit)
+			mysplit = prune_incremental(mysplit)
 			accept_license_str = ' '.join(mysplit)
 			self.configlist[-1]['ACCEPT_LICENSE'] = accept_license_str
-			if accept_license_str != self._accept_license_str:
-				self._accept_license_str = accept_license_str
-				self._accept_license = tuple(self.expandLicenseTokens(mysplit))
+			self._license_manager.set_accept_license_str(accept_license_str)
 		else:
 			# repoman will accept any license
-			self._accept_license = ('*',)
+			self._license_manager.set_accept_license_str("*")
 
 		# ACCEPT_PROPERTIES works like ACCEPT_LICENSE, without groups
 		if self.local_config:
 			mysplit = []
 			for curdb in mydbs:
 				mysplit.extend(curdb.get('ACCEPT_PROPERTIES', '').split())
-			mysplit = self._prune_incremental(mysplit)
+			mysplit = prune_incremental(mysplit)
 			self.configlist[-1]['ACCEPT_PROPERTIES'] = ' '.join(mysplit)
 			if tuple(mysplit) != self._accept_properties:
 				self._accept_properties = tuple(mysplit)
@@ -2647,7 +2385,7 @@ class config(object):
 		if hasattr(self, "features"):
 			self.features._features.clear()
 		else:
-			self.features = _features_set(self)
+			self.features = features_set(self)
 		self.features._features.update(self.get('FEATURES', '').split())
 		self.features._sync_env_var()
 

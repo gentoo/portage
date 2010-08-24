@@ -101,11 +101,11 @@ class Binpkg(CompositeTask):
 		pkg_count = self.pkg_count
 		if not (self.opts.pretend or self.opts.fetchonly):
 			self._build_dir.lock()
+			# Initialze PORTAGE_LOG_FILE (clean_log won't work without it).
+			portage.prepare_build_dirs(self.settings["ROOT"], self.settings, 1)
 			# If necessary, discard old log so that we don't
 			# append to it.
 			self._build_dir.clean_log()
-			# Initialze PORTAGE_LOG_FILE.
-			portage.prepare_build_dirs(self.settings["ROOT"], self.settings, 1)
 		fetcher = BinpkgFetcher(background=self.background,
 			logfile=self.settings.get("PORTAGE_LOG_FILE"), pkg=self.pkg,
 			pretend=self.opts.pretend, scheduler=self.scheduler)
@@ -145,7 +145,7 @@ class Binpkg(CompositeTask):
 		if self._verify:
 			logfile = self.settings.get("PORTAGE_LOG_FILE")
 			verifier = BinpkgVerifier(background=self.background,
-				logfile=logfile, pkg=self.pkg)
+				logfile=logfile, pkg=self.pkg, scheduler=self.scheduler)
 			self._start_task(verifier, self._verifier_exit)
 			return
 

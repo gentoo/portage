@@ -12,6 +12,7 @@ import tempfile
 import textwrap
 import time
 import weakref
+import zlib
 
 import portage
 from portage import StringIO
@@ -1096,6 +1097,9 @@ class Scheduler(PollScheduler):
 				try:
 					for line in log_file:
 						writemsg_level(line, noiselevel=-1)
+				except zlib.error as e:
+					writemsg_level("%s\n" % (e,), level=logging.ERROR,
+						noiselevel=-1)
 				finally:
 					log_file.close()
 				failure_log_shown = True

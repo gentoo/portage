@@ -45,14 +45,12 @@ class TestAtom(TestCase):
 		tests_xfail = (
 			( Atom("sys-apps/portage"), False ),
 			( "cat/pkg[a!]", False ),
-			( "cat/pkg[a-]", False ),
 			( "cat/pkg[!a]", False ),
 			( "cat/pkg[!a!]", False ),
 			( "cat/pkg[!a-]", False ),
 			( "cat/pkg[-a=]", False ),
 			( "cat/pkg[-a?]", False ),
 			( "cat/pkg[-a!]", False ),
-			( "cat/pkg[-a-]", False ),
 			( "cat/pkg[=a]", False ),
 			( "cat/pkg[=a=]", False ),
 			( "cat/pkg[=a?]", False ),
@@ -156,29 +154,29 @@ class TestAtom(TestCase):
 			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["b"], ["a", "b", "c", "d", "e", "f"], [], "dev-libs/A[a,b=,!c=]"),
 			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["c"], ["a", "b", "c", "d", "e", "f"], [], "dev-libs/A[a]"),
 			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["d"], ["a", "b", "c", "d", "e", "f"], [], "dev-libs/A[a,!c=]"),
-			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["e"], ["a", "b", "c", "d", "e", "f"], [], "dev-libs/A[a,!e?,!c=]"),
-			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["f"], ["a", "b", "c", "d", "e", "f"], [], "dev-libs/A[a,-f,!c=]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["e"], ["a", "b", "c", "d", "e", "f"], [], "dev-libs/A[a,!c=,!e?]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["f"], ["a", "b", "c", "d", "e", "f"], [], "dev-libs/A[a,!c=,-f]"),
 
 			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["a"], ["a", "b", "c", "d", "e", "f"], ["a"], "dev-libs/A[!c=]"),
 			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["b"], ["a", "b", "c", "d", "e", "f"], ["b"], "dev-libs/A[a,!c=]"),
 			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["c"], ["a", "b", "c", "d", "e", "f"], ["c"], "dev-libs/A[a,!c=]"),
 			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["d"], ["a", "b", "c", "d", "e", "f"], ["d"], "dev-libs/A[a,!c=]"),
 			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["e"], ["a", "b", "c", "d", "e", "f"], ["e"], "dev-libs/A[a,!c=]"),
-			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["f"], ["a", "b", "c", "d", "e", "f"], ["f"], "dev-libs/A[a,-f,!c=]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["f"], ["a", "b", "c", "d", "e", "f"], ["f"], "dev-libs/A[a,!c=,-f]"),
 
 			("dev-libs/A[a(+),b(-)=,!c(+)=,d(-)?,!e(+)?,-f(-)]", ["a"], ["a", "b", "c", "d", "e", "f"], ["a"], "dev-libs/A[!c(+)=]"),
 			("dev-libs/A[a(-),b(+)=,!c(-)=,d(+)?,!e(-)?,-f(+)]", ["b"], ["a", "b", "c", "d", "e", "f"], ["b"], "dev-libs/A[a(-),!c(-)=]"),
 			("dev-libs/A[a(+),b(-)=,!c(+)=,d(-)?,!e(+)?,-f(-)]", ["c"], ["a", "b", "c", "d", "e", "f"], ["c"], "dev-libs/A[a(+),!c(+)=]"),
 			("dev-libs/A[a(-),b(+)=,!c(-)=,d(+)?,!e(-)?,-f(+)]", ["d"], ["a", "b", "c", "d", "e", "f"], ["d"], "dev-libs/A[a(-),!c(-)=]"),
 			("dev-libs/A[a(+),b(-)=,!c(+)=,d(-)?,!e(+)?,-f(-)]", ["e"], ["a", "b", "c", "d", "e", "f"], ["e"], "dev-libs/A[a(+),!c(+)=]"),
-			("dev-libs/A[a(-),b(+)=,!c(-)=,d(+)?,!e(-)?,-f(+)]", ["f"], ["a", "b", "c", "d", "e", "f"], ["f"], "dev-libs/A[a(-),-f(+),!c(-)=]"),
+			("dev-libs/A[a(-),b(+)=,!c(-)=,d(+)?,!e(-)?,-f(+)]", ["f"], ["a", "b", "c", "d", "e", "f"], ["f"], "dev-libs/A[a(-),!c(-)=,-f(+)]"),
 
-			("dev-libs/A[a(+),b(+)=,!c(+)=,d(-)?,!e(+)?,-f(-)]", ["a"], ["a"], ["a"], "dev-libs/A[!e(+)?,b(+)=]"),
-			("dev-libs/A[a(-),b(+)=,!c(-)=,d(+)?,!e(-)?,-f(+)]", ["b"], ["b"], ["b"], "dev-libs/A[a(-),-f(+),!c(-)=]"),
-			("dev-libs/A[a(+),b(-)=,!c(+)=,d(-)?,!e(+)?,-f(-)]", ["c"], ["c"], ["c"], "dev-libs/A[!e(+)?,!c(+)=]"),
-			("dev-libs/A[a(-),b(+)=,!c(-)=,d(+)?,!e(-)?,-f(+)]", ["d"], ["d"], ["d"], "dev-libs/A[a(-),-f(+),b(+)=,!c(-)=]"),
+			("dev-libs/A[a(+),b(+)=,!c(+)=,d(-)?,!e(+)?,-f(-)]", ["a"], ["a"], ["a"], "dev-libs/A[b(+)=,!e(+)?]"),
+			("dev-libs/A[a(-),b(+)=,!c(-)=,d(+)?,!e(-)?,-f(+)]", ["b"], ["b"], ["b"], "dev-libs/A[a(-),!c(-)=,-f(+)]"),
+			("dev-libs/A[a(+),b(-)=,!c(+)=,d(-)?,!e(+)?,-f(-)]", ["c"], ["c"], ["c"], "dev-libs/A[!c(+)=,!e(+)?]"),
+			("dev-libs/A[a(-),b(+)=,!c(-)=,d(+)?,!e(-)?,-f(+)]", ["d"], ["d"], ["d"], "dev-libs/A[a(-),b(+)=,!c(-)=,-f(+)]"),
 			("dev-libs/A[a(+),b(-)=,!c(+)=,d(-)?,!e(+)?,-f(-)]", ["e"], ["e"], ["e"], "dev-libs/A"),
-			("dev-libs/A[a(-),b(+)=,!c(-)=,d(+)?,!e(-)?,-f(+)]", ["f"], ["f"], ["f"], "dev-libs/A[a(-),-f(+),b(+)=,!c(-)=]"),
+			("dev-libs/A[a(-),b(+)=,!c(-)=,d(+)?,!e(-)?,-f(+)]", ["f"], ["f"], ["f"], "dev-libs/A[a(-),b(+)=,!c(-)=,-f(+)]"),
 
 			#Some more test cases to trigger all remaining code paths
 			("dev-libs/B[x?]", [], ["x"], ["x"], "dev-libs/B[x?]"),
@@ -192,6 +190,14 @@ class TestAtom(TestCase):
 			("dev-libs/D[!x=]", [], ["x"], ["x"], "dev-libs/D"),
 			("dev-libs/D[!x(+)=]", [], [], ["x"], "dev-libs/D[!x(+)=]"),
 			("dev-libs/D[!x(-)=]", [], [], ["x"], "dev-libs/D"),
+
+			#Missing IUSE test cases
+			("dev-libs/B[x]", [], [], [], "dev-libs/B[x]"),
+			("dev-libs/B[-x]", [], [], [], "dev-libs/B[-x]"),
+			("dev-libs/B[x?]", [], [], [], "dev-libs/B[x?]"),
+			("dev-libs/B[x=]", [], [], [], "dev-libs/B[x=]"),
+			("dev-libs/B[!x=]", [], [], ["x"], "dev-libs/B[!x=]"),
+			("dev-libs/B[!x?]", [], [], ["x"], "dev-libs/B[!x?]"),
 		)
 		
 		test_cases_xfail = (
@@ -233,15 +239,15 @@ class TestAtom(TestCase):
 			("dev-libs/A[foo,-bar]", [], "dev-libs/A[foo,-bar]"),
 			("dev-libs/A[-foo,bar]", [], "dev-libs/A[-foo,bar]"),
 
-			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", [], "dev-libs/A[a,-f,-e,-b,c]"),
-			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["a"], "dev-libs/A[a,-f,-e,-b,c]"),
-			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["b"], "dev-libs/A[a,-f,-e,b,c]"),
-			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["c"], "dev-libs/A[a,-f,-e,-b,-c]"),
-			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["d"], "dev-libs/A[a,-f,d,-e,-b,c]"),
-			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["e"], "dev-libs/A[a,-f,-b,c]"),
-			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["f"], "dev-libs/A[a,-f,-e,-b,c]"),
-			("dev-libs/A[a(-),b(+)=,!c(-)=,d(+)?,!e(-)?,-f(+)]", ["d"], "dev-libs/A[a(-),-f(+),d(+),-e(-),-b(+),c(-)]"),
-			("dev-libs/A[a(+),b(-)=,!c(+)=,d(-)?,!e(+)?,-f(-)]", ["f"], "dev-libs/A[a(+),-f(-),-e(+),-b(-),c(+)]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", [], "dev-libs/A[a,-b,c,-e,-f]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["a"], "dev-libs/A[a,-b,c,-e,-f]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["b"], "dev-libs/A[a,b,c,-e,-f]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["c"], "dev-libs/A[a,-b,-c,-e,-f]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["d"], "dev-libs/A[a,-b,c,d,-e,-f]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["e"], "dev-libs/A[a,-b,c,-f]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["f"], "dev-libs/A[a,-b,c,-e,-f]"),
+			("dev-libs/A[a(-),b(+)=,!c(-)=,d(+)?,!e(-)?,-f(+)]", ["d"], "dev-libs/A[a(-),-b(+),c(-),d(+),-e(-),-f(+)]"),
+			("dev-libs/A[a(+),b(-)=,!c(+)=,d(-)?,!e(+)?,-f(-)]", ["f"], "dev-libs/A[a(+),-b(-),c(+),-e(+),-f(-)]"),
 		)
 
 		for atom, use, expected_atom in test_cases:
@@ -264,15 +270,15 @@ class TestAtom(TestCase):
 			("dev-libs/A[foo,-bar]", ["foo"], ["bar"], "dev-libs/A[foo,-bar]"),
 			("dev-libs/A[-foo,bar]", ["foo", "bar"], [], "dev-libs/A[-foo,bar]"),
 
-			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["a", "b", "c"], [], "dev-libs/A[a,-f,d,-e,-b,c]"),
-			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", [], ["a", "b", "c"], "dev-libs/A[a,-f,d,-e,b,-c]"),
-			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["d", "e", "f"], [], "dev-libs/A[a,-f,-e,b,-b,-c,c]"),
-			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", [], ["d", "e", "f"], "dev-libs/A[a,-f,d,b,-b,-c,c]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["a", "b", "c"], [], "dev-libs/A[a,-b,c,d,-e,-f]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", [], ["a", "b", "c"], "dev-libs/A[a,b,-c,d,-e,-f]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["d", "e", "f"], [], "dev-libs/A[a,b,-b,c,-c,-e,-f]"),
+			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", [], ["d", "e", "f"], "dev-libs/A[a,b,-b,c,-c,d,-f]"),
 			
 			("dev-libs/A[a(-),b(+)=,!c(-)=,d(+)?,!e(-)?,-f(+)]", \
-				["a", "b", "c", "d", "e", "f"], [], "dev-libs/A[a(-),-f(+),-e(-),-b(+),c(-)]"),
+				["a", "b", "c", "d", "e", "f"], [], "dev-libs/A[a(-),-b(+),c(-),-e(-),-f(+)]"),
 			("dev-libs/A[a(+),b(-)=,!c(+)=,d(-)?,!e(+)?,-f(-)]", \
-				[], ["a", "b", "c", "d", "e", "f"], "dev-libs/A[a(+),-f(-),d(-),b(-),-c(+)]"),
+				[], ["a", "b", "c", "d", "e", "f"], "dev-libs/A[a(+),b(-),-c(+),d(-),-f(-)]"),
 		)
 
 		for atom, use_mask, use_force, expected_atom in test_cases:
