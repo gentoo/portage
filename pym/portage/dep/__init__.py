@@ -1151,6 +1151,12 @@ class ExtendedAtomDict(portage.cache.mappings.MutableMapping):
 		for item in self._extended.items():
 			yield item
 
+	def __delitem__(self, cp):
+		if "*" in cp:
+			return self._extended.__delitem__(cp)
+		else:
+			return self._normal.__delitem__(cp)
+
 	if sys.hexversion >= 0x3000000:
 		keys = __iter__
 		items = iteritems
