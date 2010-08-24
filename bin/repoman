@@ -1624,7 +1624,7 @@ for x in scanlist:
 
 			try:
 				atoms = portage.dep.use_reduce(mydepstr, matchall=1, flat=True, \
-					is_valid_flag=lambda x: x in myiuse, token_class=token_class)
+					is_valid_flag=pkg.iuse.is_valid_flag, token_class=token_class)
 			except portage.exception.InvalidDependString as e:
 				atoms = None
 				badsyntax.append(str(e))
