@@ -143,7 +143,7 @@ class UnknownHerdsError(ValueError):
 def check_metadata_herds(xml_tree, herd_base):
 	herd_nodes = xml_tree.findall('herd')
 	unknown_herds = [name for name in
-			(e.text.strip() for e in herd_nodes)
+			(e.text.strip() for e in herd_nodes if e.text is not None)
 			if not herd_base.known_herd(name)]
 
 	if unknown_herds:
