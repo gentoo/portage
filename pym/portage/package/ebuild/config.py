@@ -458,7 +458,7 @@ class config(object):
 			self.features._features = copy.deepcopy(clone.features._features)
 			self._features_overrides = copy.deepcopy(clone._features_overrides)
 
-			self._license_manager = LicenseManager(clone._license_manager)
+			self._license_manager = copy.deepcopy(clone._license_manager)
 			self._accept_properties = copy.deepcopy(clone._accept_properties)
 			self._ppropertiesdict = copy.deepcopy(clone._ppropertiesdict)
 			self._penvdict = copy.deepcopy(clone._penvdict)
