@@ -356,6 +356,7 @@ class config(object):
 		# from 'import portage' or 'import portage.exceptions' statements
 		# can practically render the api unusable for api consumers.
 		tolerant = hasattr(portage, '_initializing_globals')
+		self._tolerant = tolerant
 
 		self.already_in_regenerate = 0
 
@@ -393,6 +394,7 @@ class config(object):
 		if clone:
 			# For immutable attributes, use shallow copy for
 			# speed and memory conservation.
+			self._tolerant = clone._tolerant
 			self.categories = clone.categories
 			self.depcachedir = clone.depcachedir
 			self.incrementals = clone.incrementals
@@ -1718,7 +1720,8 @@ class config(object):
 		incrementals = self.incrementals
 		for envname in penv:
 			penvfile = os.path.join(abs_user_config, "env", envname)
-			penvconfig = getconfig(penvfile, expand=expand_map)
+			penvconfig = getconfig(penvfile, tolerant=self._tolerant,
+				allow_sourcing=True, expand=expand_map)
 			if penvconfig is None:
 				writemsg("!!! %s references non-existent file: %s\n" % \
 					(os.path.join(abs_user_config, 'package.env'), penvfile),
