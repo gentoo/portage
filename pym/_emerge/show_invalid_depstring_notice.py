@@ -10,7 +10,7 @@ from portage.util import writemsg_level
 def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 
 	msg1 = "\n\n!!! Invalid or corrupt dependency specification: " + \
-		"\n\n%s\n\n%s\n\n%s\n\n" % (error_msg, parent_node, depstring)
+		"\n\n%s\n\n%s\n\n" % (error_msg, parent_node)
 	p_type, p_root, p_key, p_status = parent_node
 	msg = []
 	if p_status == "nomerge":
