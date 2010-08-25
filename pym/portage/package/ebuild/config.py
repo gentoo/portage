@@ -31,9 +31,7 @@ from portage.const import CACHE_PATH, CUSTOM_PROFILE_PATH, \
 from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
 from portage.dbapi.vartree import vartree
-from portage.dep import Atom, \
-	isvalidatom, match_from_list, \
-	remove_slot, use_reduce
+from portage.dep import Atom, isvalidatom, match_from_list, use_reduce
 from portage.eapi import eapi_exports_AA, eapi_supports_prefix, eapi_exports_replace_vars
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.exception import DirectoryNotFound, InvalidAtom, \
@@ -49,6 +47,7 @@ from portage.versions import catpkgsplit, catsplit, cpv_getkey
 
 from portage.package.ebuild._config.features_set import features_set
 from portage.package.ebuild._config.LicenseManager import LicenseManager
+from portage.package.ebuild._config.UseManager import UseManager
 from portage.package.ebuild._config.helper import ordered_by_atom_specificity, prune_incremental
 
 if sys.hexversion >= 0x3000000:
@@ -402,8 +401,6 @@ class config(object):
 			self.profile_path = clone.profile_path
 			self.profiles = clone.profiles
 			self.packages = clone.packages
-			self.useforce_list = clone.useforce_list
-			self.usemask_list = clone.usemask_list
 			self._iuse_implicit_match = clone._iuse_implicit_match
 			self._non_user_variables = clone._non_user_variables
 
@@ -421,15 +418,11 @@ class config(object):
 			self.negVirtuals  = copy.deepcopy(clone.negVirtuals)
 			self._depgraphVirtuals = copy.deepcopy(clone._depgraphVirtuals)
 
-			self.use_defs = copy.deepcopy(clone.use_defs)
-			self.usemask  = copy.deepcopy(clone.usemask)
-			self.pusemask_list = copy.deepcopy(clone.pusemask_list)
-			self.useforce      = copy.deepcopy(clone.useforce)
-			self.puseforce_list = copy.deepcopy(clone.puseforce_list)
-			self.puse     = copy.deepcopy(clone.puse)
+			self.usemask = copy.deepcopy(clone.usemask)
+			self.useforce = copy.deepcopy(clone.useforce)
+			self.puse = copy.deepcopy(clone.puse)
 			self._penv = copy.deepcopy(clone._penv)
 			self.make_defaults_use = copy.deepcopy(clone.make_defaults_use)
-			self.pkgprofileuse = copy.deepcopy(clone.pkgprofileuse)
 			self.mycpv    = copy.deepcopy(clone.mycpv)
 			self._setcpv_args_hash = copy.deepcopy(clone._setcpv_args_hash)
 
@@ -448,7 +441,6 @@ class config(object):
 			self.lookuplist.reverse()
 			self._use_expand_dict = copy.deepcopy(clone._use_expand_dict)
 			self.backupenv  = self.configdict["backupenv"]
-			self.pusedict   = copy.deepcopy(clone.pusedict)
 			self.pkeywordsdict = copy.deepcopy(clone.pkeywordsdict)
 			self._pkeywords_list = copy.deepcopy(clone._pkeywords_list)
 			self._p_accept_keywords = copy.deepcopy(clone._p_accept_keywords)
@@ -465,6 +457,9 @@ class config(object):
 			self._ppropertiesdict = copy.deepcopy(clone._ppropertiesdict)
 			self._penvdict = copy.deepcopy(clone._penvdict)
 			self._expand_map = copy.deepcopy(clone._expand_map)
+
+			#No need to copy the managers, they contain only static information.
+			self._use_manager = clone._use_manager
 
 		else:
 
@@ -521,7 +516,6 @@ class config(object):
 				"portdbapi.auxdbmodule":  "portage.cache.flat_hash.database",
 			}
 
-			self.usemask=[]
 			self.configlist=[]
 
 			# back up our incremental variables:
@@ -629,53 +623,6 @@ class config(object):
 				for k, v in d.items():
 					cpdict.setdefault(k.cp, {})[k] = tuple(v)
 				self._p_accept_keywords.append(cpdict)
-
-			# get profile-masked use flags -- INCREMENTAL Child over parent
-			self.usemask_list = tuple(
-				tuple(grabfile(os.path.join(x, "use.mask"), recursive=1))
-				for x in self.profiles)
-			self.usemask  = set(stack_lists(
-				self.usemask_list, incremental=True))
-			use_defs_lists = [grabdict(os.path.join(x, "use.defaults")) for x in self.profiles]
-			self.use_defs  = stack_dictlist(use_defs_lists, incremental=True)
-			del use_defs_lists
-
-			self.pusemask_list = []
-			rawpusemask = [grabdict_package(os.path.join(x, "package.use.mask"),
-				recursive=1) for x in self.profiles]
-			for pusemaskdict in rawpusemask:
-				cpdict = {}
-				for k, v in pusemaskdict.items():
-					cpdict.setdefault(k.cp, {})[k] = v
-				self.pusemask_list.append(cpdict)
-			del rawpusemask
-
-			self.pkgprofileuse = []
-			rawprofileuse = [grabdict_package(os.path.join(x, "package.use"),
-				juststrings=True, recursive=1) for x in self.profiles]
-			for rawpusedict in rawprofileuse:
-				cpdict = {}
-				for k, v in rawpusedict.items():
-					cpdict.setdefault(k.cp, {})[k] = v
-				self.pkgprofileuse.append(cpdict)
-			del rawprofileuse
-
-			self.useforce_list = tuple(
-				tuple(grabfile(os.path.join(x, "use.force"), recursive=1))
-				for x in self.profiles)
-			self.useforce  = set(stack_lists(
-				self.useforce_list, incremental=True))
-
-			self.puseforce_list = []
-			rawpuseforce = [grabdict_package(
-				os.path.join(x, "package.use.force"), recursive=1) \
-				for x in self.profiles]
-			for rawpusefdict in rawpuseforce:
-				cpdict = {}
-				for k, v in rawpusefdict.items():
-					cpdict.setdefault(k.cp, {})[k] = v
-				self.puseforce_list.append(cpdict)
-			del rawpuseforce
 
 			make_conf = getconfig(
 				os.path.join(config_root, MAKE_CONF_FILE),
@@ -871,7 +818,6 @@ class config(object):
 			self["EROOT"] = eroot
 			self.backup_changes("EROOT")
 
-			self.pusedict = portage.dep.ExtendedAtomDict(dict)
 			self.pkeywordsdict = portage.dep.ExtendedAtomDict(dict)
 			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
 			self._penvdict = portage.dep.ExtendedAtomDict(dict)
@@ -917,24 +863,22 @@ class config(object):
 				pkgunmasklines.append(grabfile_package(
 					os.path.join(x, "package.unmask"), recursive=1))
 
+			#Read all USE related files from profiles and optionally from user config.
+			self._use_manager = UseManager(self.profiles, abs_user_config, user_config=local_config)
+			#Initialize all USE related variables we track ourselves.
+			self.usemask = self._use_manager.getUseMask()
+			self.useforce = self._use_manager.getUseForce()
+			self.configdict["conf"]["USE"] = \
+				self._use_manager.extract_global_USE_changes( \
+					self.configdict["conf"].get("USE", ""))
+
 			if local_config:
 				locations.append(abs_user_config)
-				
+
 				pkgmasklines.append(grabfile_package(
 					os.path.join(abs_user_config, "package.mask"), recursive=1, allow_wildcard=True))
 				pkgunmasklines.append(grabfile_package(
 					os.path.join(abs_user_config, "package.unmask"), recursive=1, allow_wildcard=True))
-
-				pusedict = grabdict_package(
-					os.path.join(abs_user_config, "package.use"), recursive=1, allow_wildcard=True)
-				v = pusedict.pop("*/*", None)
-				if v is not None:
-					if "USE" in self.configdict["conf"]:
-						self.configdict["conf"]["USE"] += " " + " ".join(v)
-					else:
-						self.configdict["conf"]["USE"] = " ".join(v)
-				for k, v in pusedict.items():
-					self.pusedict.setdefault(k.cp, {})[k] = v
 
 				# package.accept_keywords and package.keywords
 				pkgdict = grabdict_package(
@@ -1323,10 +1267,8 @@ class config(object):
 			self.configdict["pkginternal"].clear()
 			self.configdict["defaults"]["USE"] = \
 				" ".join(self.make_defaults_use)
-			self.usemask  = set(stack_lists(
-				self.usemask_list, incremental=True))
-			self.useforce  = set(stack_lists(
-				self.useforce_list, incremental=True))
+			self.usemask = self._use_manager.getUseMask()
+			self.useforce = self._use_manager.getUseForce()
 		self.regenerate(use_cache=use_cache)
 
 	class _lazy_vars(object):
@@ -1529,7 +1471,7 @@ class config(object):
 			has_changed = True
 
 		defaults = []
-		for i, pkgprofileuse_dict in enumerate(self.pkgprofileuse):
+		for i, pkgprofileuse_dict in enumerate(self._use_manager._pkgprofileuse):
 			if self.make_defaults_use[i]:
 				defaults.append(self.make_defaults_use[i])
 			cpdict = pkgprofileuse_dict.get(cp)
@@ -1542,25 +1484,18 @@ class config(object):
 			self.configdict["defaults"]["USE"] = defaults
 			has_changed = True
 
-		useforce = self._getUseForce(cpv_slot)
+		useforce = self._use_manager.getUseForce(cpv_slot)
 		if useforce != self.useforce:
 			self.useforce = useforce
 			has_changed = True
 
-		usemask = self._getUseMask(cpv_slot)
+		usemask = self._use_manager.getUseMask(cpv_slot)
 		if usemask != self.usemask:
 			self.usemask = usemask
 			has_changed = True
+
 		oldpuse = self.puse
-		self.puse = ""
-		cpdict = self.pusedict.get(cp)
-		if cpdict:
-			puse_matches = ordered_by_atom_specificity(cpdict, cpv_slot)
-			if puse_matches:
-				puse_list = []
-				for x in puse_matches:
-					puse_list.extend(x)
-				self.puse = " ".join(puse_list)
+		self.puse = self._use_manager.getPUSE(cpv_slot)
 		if oldpuse != self.puse:
 			has_changed = True
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
@@ -1781,34 +1716,10 @@ class config(object):
 		return iuse_implicit
 
 	def _getUseMask(self, pkg):
-		cp = getattr(pkg, "cp", None)
-		if cp is None:
-			cp = cpv_getkey(remove_slot(pkg))
-		usemask = []
-		for i, pusemask_dict in enumerate(self.pusemask_list):
-			if self.usemask_list[i]:
-				usemask.append(self.usemask_list[i])
-			cpdict = pusemask_dict.get(cp)
-			if cpdict:
-				pkg_usemask = ordered_by_atom_specificity(cpdict, pkg)
-				if pkg_usemask:
-					usemask.extend(pkg_usemask)
-		return set(stack_lists(usemask, incremental=True))
+		return self._use_manager.getUseMask(pkg)
 
 	def _getUseForce(self, pkg):
-		cp = getattr(pkg, "cp", None)
-		if cp is None:
-			cp = cpv_getkey(remove_slot(pkg))
-		useforce = []
-		for i, puseforce_dict in enumerate(self.puseforce_list):
-			if self.useforce_list[i]:
-				useforce.append(self.useforce_list[i])
-			cpdict = puseforce_dict.get(cp)
-			if cpdict:
-				pkg_useforce = ordered_by_atom_specificity(cpdict, pkg)
-				if pkg_useforce:
-					useforce.extend(pkg_useforce)
-		return set(stack_lists(useforce, incremental=True))
+		return self._use_manager.getUseForce(pkg)
 
 	def _getMaskAtom(self, cpv, metadata):
 		"""
