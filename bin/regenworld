@@ -1,8 +1,6 @@
 #!/usr/bin/python
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-
-# NOTE: this file does not respect ROOT
 
 from __future__ import print_function
 
@@ -49,7 +47,9 @@ def isunwanted(pkgline):
 		__uniqlist__.append(pkgline)
 		return True
 
-world_file = os.path.join("/", portage.WORLD_FILE)
+root = portage.settings['ROOT']
+eroot = portage.settings['EROOT']
+world_file = os.path.join(eroot, portage.WORLD_FILE)
 
 # show a little description if we have arguments
 if len(sys.argv) >= 2 and sys.argv[1] in ["-h", "--help"]:
@@ -59,10 +59,10 @@ if len(sys.argv) >= 2 and sys.argv[1] in ["-h", "--help"]:
 	print("your existing world file (%s) before using this tool." % world_file)
 	sys.exit(0)
 
-worldlist = portage.grabfile(os.path.join("/", portage.WORLD_FILE))
+worldlist = portage.grabfile(world_file)
 syslist = [x for x in portage.settings.packages if issyspkg(x)]
 
-logfile = portage.grabfile("/var/log/emerge.log")
+logfile = portage.grabfile(os.path.join(eroot, "var/log/emerge.log"))
 biglist = [getpkginfo(x) for x in logfile if iscandidate(x)]
 tmplist = []
 for l in biglist:
@@ -78,7 +78,7 @@ for mykey in syslist:
 	# drop the asterix
 	mykey = mykey[1:]
 	#print("candidate:",mykey)
-	mylist=portage.db["/"]["vartree"].dbapi.match(mykey)
+	mylist = portage.db[root]["vartree"].dbapi.match(mykey)
 	if mylist:
 		mykey=portage.cpv_getkey(mylist[0])
 		if mykey not in realsyslist:
@@ -87,7 +87,7 @@ for mykey in syslist:
 for mykey in biglist:
 	#print("checking:",mykey)
 	try:
-		mylist=portage.db["/"]["vartree"].dbapi.match(mykey)
+		mylist = portage.db[root]["vartree"].dbapi.match(mykey)
 	except (portage.exception.InvalidAtom, KeyError):
 		if "--debug" in sys.argv:
 			print("* ignoring broken log entry for %s (likely injected)" % mykey)
@@ -104,7 +104,7 @@ for mykey in biglist:
 if not worldlist:
 	pass
 else:
-	existing_set = WorldSelectedSet('/')
+	existing_set = WorldSelectedSet(eroot)
 	existing_set.load()
 
 	if not existing_set:
