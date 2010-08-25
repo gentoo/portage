@@ -575,7 +575,7 @@ class _LegacyGlobalProxy(proxy.objectproxy.ObjectProxy):
 _legacy_global_var_names = ("archlist", "db", "features",
 	"groups", "mtimedb", "mtimedbfile", "pkglines",
 	"portdb", "profiledir", "root", "selinux_enabled",
-	"settings", "thirdpartymirrors", "usedefaults")
+	"settings", "thirdpartymirrors")
 
 for k in _legacy_global_var_names:
 	globals()[k] = _LegacyGlobalProxy(k)
