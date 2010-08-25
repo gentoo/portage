@@ -35,6 +35,8 @@ class SetConfig(object):
 	def __init__(self, paths, settings, trees):
 		self._parser = SafeConfigParser(
 			defaults={
+				"EPREFIX" : settings["EPREFIX"],
+				"EROOT" : settings["EROOT"],
 				"PORTAGE_CONFIGROOT" : settings["PORTAGE_CONFIGROOT"],
 				"ROOT" : settings["ROOT"],
 			})
