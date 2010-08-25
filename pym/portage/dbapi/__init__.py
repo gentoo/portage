@@ -9,7 +9,6 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dbapi.dep_expand:dep_expand@_dep_expand',
 	'portage.dep:match_from_list',
-	'portage.locks:unlockfile',
 	'portage.output:colorize',
 	'portage.util:cmp_sort_key,writemsg',
 	'portage.versions:catsplit,catpkgsplit,vercmp',
@@ -146,7 +145,7 @@ class dbapi(object):
 		2) Check enabled/disabled flag states.
 		"""
 
-		iuse_implicit_re = self.settings._iuse_implicit_re
+		iuse_implicit_match = self.settings._iuse_implicit_match
 		for cpv in cpv_iter:
 			try:
 				iuse, slot, use = self.aux_get(cpv, ["IUSE", "SLOT", "USE"])
@@ -156,15 +155,17 @@ class dbapi(object):
 			iuse = frozenset(x.lstrip('+-') for x in iuse.split())
 			missing_iuse = False
 			for x in atom.use.required:
-				if x not in iuse and iuse_implicit_re.match(x) is None:
+				if x not in iuse and x not in atom.use.missing_enabled \
+					and x not in atom.use.missing_disabled and not iuse_implicit_match(x):
 					missing_iuse = True
 					break
 			if missing_iuse:
 				continue
 			if not self._use_mutable:
-				if atom.use.enabled.difference(use):
+				if atom.use.enabled.difference(use).difference(atom.use.missing_enabled):
 					continue
-				if atom.use.disabled.intersection(use):
+				if atom.use.disabled.intersection(use) or \
+					atom.use.disabled.difference(iuse).difference(atom.use.missing_disabled):
 					continue
 			else:
 				# Check masked and forced flags for repoman.
@@ -183,14 +184,7 @@ class dbapi(object):
 			yield cpv
 
 	def invalidentry(self, mypath):
-		if mypath.endswith('portage_lockfile'):
-			if "PORTAGE_MASTER_PID" not in os.environ:
-				writemsg(_("Lockfile removed: %s\n") % mypath, 1)
-				unlockfile((mypath, None, None))
-			else:
-				# Nothing we can do about it. We're probably sandboxed.
-				pass
-		elif '/-MERGING-' in mypath:
+		if '/-MERGING-' in mypath:
 			if os.path.exists(mypath):
 				writemsg(colorize("BAD", _("INCOMPLETE MERGE:"))+" %s\n" % mypath,
 					noiselevel=-1)

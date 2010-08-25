@@ -1,8 +1,9 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.BinpkgFetcher import BinpkgFetcher
+from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
 from _emerge.BinpkgExtractorAsync import BinpkgExtractorAsync
 from _emerge.CompositeTask import CompositeTask
 from _emerge.BinpkgVerifier import BinpkgVerifier
@@ -26,20 +27,8 @@ class Binpkg(CompositeTask):
 		"_image_dir", "_infloc", "_pkg_path", "_tree", "_verify")
 
 	def _writemsg_level(self, msg, level=0, noiselevel=0):
-
-		if not self.background:
-			portage.util.writemsg_level(msg,
-				level=level, noiselevel=noiselevel)
-
-		log_path = self.settings.get("PORTAGE_LOG_FILE")
-		if  log_path is not None:
-			f = codecs.open(_unicode_encode(log_path,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='a', encoding=_encodings['content'], errors='replace')
-			try:
-				f.write(msg)
-			finally:
-				f.close()
+		self.scheduler.output(msg, level=level, noiselevel=noiselevel,
+			log_path=self.settings.get("PORTAGE_LOG_FILE"))
 
 	def _start(self):
 
@@ -103,11 +92,11 @@ class Binpkg(CompositeTask):
 		pkg_count = self.pkg_count
 		if not (self.opts.pretend or self.opts.fetchonly):
 			self._build_dir.lock()
+			# Initialze PORTAGE_LOG_FILE (clean_log won't work without it).
+			portage.prepare_build_dirs(self.settings["ROOT"], self.settings, 1)
 			# If necessary, discard old log so that we don't
 			# append to it.
 			self._build_dir.clean_log()
-			# Initialze PORTAGE_LOG_FILE.
-			portage.prepare_build_dirs(self.settings["ROOT"], self.settings, 1)
 		fetcher = BinpkgFetcher(background=self.background,
 			logfile=self.settings.get("PORTAGE_LOG_FILE"), pkg=self.pkg,
 			pretend=self.opts.pretend, scheduler=self.scheduler)
@@ -145,11 +134,9 @@ class Binpkg(CompositeTask):
 
 		verifier = None
 		if self._verify:
-			logfile = None
-			if self.background:
-				logfile = self.settings.get("PORTAGE_LOG_FILE")
+			logfile = self.settings.get("PORTAGE_LOG_FILE")
 			verifier = BinpkgVerifier(background=self.background,
-				logfile=logfile, pkg=self.pkg)
+				logfile=logfile, pkg=self.pkg, scheduler=self.scheduler)
 			self._start_task(verifier, self._verifier_exit)
 			return
 
@@ -193,8 +180,8 @@ class Binpkg(CompositeTask):
 		phase = "clean"
 		settings = self.settings
 		ebuild_phase = EbuildPhase(background=self.background,
-			pkg=pkg, phase=phase, scheduler=self.scheduler,
-			settings=settings, tree=self._tree)
+			phase=phase, scheduler=self.scheduler,
+			settings=settings)
 
 		self._start_task(ebuild_phase, self._clean_exit)
 
@@ -254,17 +241,27 @@ class Binpkg(CompositeTask):
 		finally:
 			f.close()
 
+		env_extractor = BinpkgEnvExtractor(background=self.background,
+			scheduler=self.scheduler, settings=self.settings)
+
+		self._start_task(env_extractor, self._env_extractor_exit)
+
+	def _env_extractor_exit(self, env_extractor):
+		if self._default_exit(env_extractor) != os.EX_OK:
+			self._unlock_builddir()
+			self.wait()
+			return
+
 		# This gives bashrc users an opportunity to do various things
 		# such as remove binary packages after they're installed.
 		settings = self.settings
 		settings.setcpv(self.pkg)
-		settings["PORTAGE_BINPKG_FILE"] = pkg_path
+		settings["PORTAGE_BINPKG_FILE"] = self._pkg_path
 		settings.backup_changes("PORTAGE_BINPKG_FILE")
 
-		phase = "setup"
 		setup_phase = EbuildPhase(background=self.background,
-			pkg=self.pkg, phase=phase, scheduler=self.scheduler,
-			settings=settings, tree=self._tree)
+			phase="setup", scheduler=self.scheduler,
+			settings=settings)
 
 		setup_phase.addExitListener(self._setup_exit)
 		self._current_task = setup_phase

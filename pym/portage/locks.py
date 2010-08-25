@@ -88,9 +88,13 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 							unlinkfile=unlinkfile, waiting_msg=waiting_msg,
 							flags=flags)
 					else:
+						writemsg("%s: chown('%s', -1, %d)\n" % \
+							(e, lockfilename, portage_gid), noiselevel=-1)
 						writemsg(_("Cannot chown a lockfile: '%s'\n") % \
 							lockfilename, noiselevel=-1)
-
+						writemsg(_("Group IDs of current user: %s\n") % \
+							" ".join(str(n) for n in os.getgroups()),
+							noiselevel=-1)
 		finally:
 			os.umask(old_mask)
 

@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import re
@@ -6,8 +6,9 @@ import sys
 from itertools import chain
 import portage
 from portage.cache.mappings import slot_dict_class
-from portage.dep import isvalidatom, paren_reduce, use_reduce, \
-	paren_normalize, paren_enclose, _slot_re
+from portage.dep import isvalidatom, use_reduce, \
+	paren_enclose, _slot_re
+from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 from _emerge.Task import Task
 
 if sys.hexversion >= 0x3000000:
@@ -30,7 +31,7 @@ class Package(Task):
 		"INHERITED", "IUSE", "KEYWORDS",
 		"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
 		"repository", "PROPERTIES", "RESTRICT", "SLOT", "USE",
-		"_mtime_", "DEFINED_PHASES"]
+		"_mtime_", "DEFINED_PHASES", "REQUIRED_USE"]
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
@@ -47,6 +48,14 @@ class Package(Task):
 			# Avoid an InvalidAtom exception when creating slot_atom.
 			# This package instance will be masked due to empty SLOT.
 			slot = '0'
+		if (self.iuse.enabled or self.iuse.disabled) and \
+			not eapi_has_iuse_defaults(self.metadata["EAPI"]):
+			self._invalid_metadata('IUSE.invalid',
+				"IUSE contains defaults, but EAPI doesn't allow them")
+		if self.metadata.get("REQUIRED_USE") and \
+			not eapi_has_required_use(self.metadata["EAPI"]):
+			self._invalid_metadata('REQUIRED_USE.invalid',
+				"REQUIRED_USE set, but EAPI doesn't allow it")
 		self.slot_atom = portage.dep.Atom("%s:%s" % (self.cp, slot))
 		self.category, self.pf = portage.catsplit(self.cpv)
 		self.cpv_split = portage.catpkgsplit(self.cpv)
@@ -192,11 +201,11 @@ class Package(Task):
 	class _iuse(object):
 
 		__slots__ = ("__weakref__", "all", "enabled", "disabled",
-			"tokens") + ("_iuse_implicit_regex",)
+			"tokens") + ("_iuse_implicit_match",)
 
-		def __init__(self, tokens, iuse_implicit_regex):
+		def __init__(self, tokens, iuse_implicit_match):
 			self.tokens = tuple(tokens)
-			self._iuse_implicit_regex = iuse_implicit_regex
+			self._iuse_implicit_match = iuse_implicit_match
 			enabled = []
 			disabled = []
 			other = []
@@ -219,10 +228,10 @@ class Package(Task):
 			"""
 			if isinstance(flags, basestring):
 				flags = [flags]
-			missing_iuse = []
+
 			for flag in flags:
 				if not flag in self.all and \
-					self._iuse_implicit_regex.match(flag) is None:
+					not self._iuse_implicit_match(flag):
 					return False
 			return True
 		
@@ -235,7 +244,7 @@ class Package(Task):
 			missing_iuse = []
 			for flag in flags:
 				if not flag in self.all and \
-					self._iuse_implicit_regex.match(flag) is None:
+					not self._iuse_implicit_match(flag):
 					missing_iuse.append(flag)
 			return missing_iuse
 
@@ -310,8 +319,8 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 		if k in self._use_conditional_keys:
 			if self._pkg.root_config.settings.local_config and '?' in v:
 				try:
-					v = paren_enclose(paren_normalize(use_reduce(
-						paren_reduce(v), uselist=self._pkg.use.enabled)))
+					v = paren_enclose(use_reduce(v, uselist=self._pkg.use.enabled, \
+						is_valid_flag=self._pkg.iuse.is_valid_flag))
 				except portage.exception.InvalidDependString:
 					# This error should already have been registered via
 					# self._pkg._invalid_metadata().
@@ -336,12 +345,12 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 			getattr(self, "_set_" + k.lower())(k, v)
 		elif k in self._use_conditional_keys:
 			try:
-				reduced = use_reduce(paren_reduce(v), matchall=1)
+				reduced = use_reduce(v, matchall=1, flat=True)
 			except portage.exception.InvalidDependString as e:
 				self._pkg._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
 			else:
 				if reduced and k == 'PROVIDE':
-					for x in portage.flatten(reduced):
+					for x in reduced:
 						if not isvalidatom(x):
 							self._pkg._invalid_metadata(k + ".syntax",
 								"%s: %s" % (k, x))
@@ -353,7 +362,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 
 	def _set_iuse(self, k, v):
 		self._pkg.iuse = self._pkg._iuse(
-			v.split(), self._pkg.root_config.settings._iuse_implicit_re)
+			v.split(), self._pkg.root_config.settings._iuse_implicit_match)
 
 	def _set_slot(self, k, v):
 		self._pkg.slot = v

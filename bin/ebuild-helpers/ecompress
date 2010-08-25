@@ -1,11 +1,11 @@
 #!/bin/bash
-# Copyright 1999-2007 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 if [[ -z $1 ]] ; then
-	vecho "${0##*/}: at least one argument needed" 1>&2
+	helpers_die "${0##*/}: at least one argument needed"
 	exit 1
 fi
 
@@ -95,7 +95,10 @@ case $1 in
 		;;
 	--queue)
 		shift
-		exec touch "${@/%/.ecompress.file}"
+		touch "${@/%/.ecompress.file}"
+		ret=$?
+		[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
+		exit $ret
 		;;
 	--dequeue)
 		[[ -n $2 ]] && vecho "${0##*/}: --dequeue takes no additional arguments" 1>&2
@@ -105,7 +108,7 @@ case $1 in
 		find "${D}" -name '*.ecompress.file' -print0 | ${XARGS} -0 rm -f
 		;;
 	--*)
-		vecho "${0##*/}: unknown arguments '$*'" 1>&2
+		helpers_die "${0##*/}: unknown arguments '$*'"
 		exit 1
 		;;
 	*)
@@ -142,6 +145,9 @@ case $1 in
 		[[ -n ${suffix} ]] && echo -n "${@/%/${suffix}$'\001'}" | \
 			tr '\001' '\000' | ${XARGS} -0 rm -f
 		# Finally, let's actually do some real work
-		exec "${PORTAGE_COMPRESS}" ${PORTAGE_COMPRESS_FLAGS} "$@"
+		"${PORTAGE_COMPRESS}" ${PORTAGE_COMPRESS_FLAGS} "$@"
+		ret=$?
+		[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
+		exit $ret
 		;;
 esac

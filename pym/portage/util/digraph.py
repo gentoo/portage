@@ -3,6 +3,7 @@
 
 __all__ = ['digraph']
 
+from collections import deque
 from portage.util import writemsg
 
 class digraph(object):
@@ -273,6 +274,50 @@ class digraph(object):
 				output("(no children)\n")
 			for child, priorities in self.nodes[node][0].items():
 				output("  %s (%s)\n" % (child, priorities[-1],))
+
+	def bfs(self, start, ignore_priority=None):
+		if start not in self:
+			raise KeyError(start)
+
+		queue, enqueued = deque([(None, start)]), set([start])
+		while queue:
+			parent, n = queue.popleft()
+			yield parent, n
+			new = set(self.child_nodes(n, ignore_priority)) - enqueued
+			enqueued |= new
+			queue.extend([(n, child) for child in new])
+
+	def shortest_path(self, start, end, ignore_priority=None):
+		if start not in self:
+			raise KeyError(start)
+		elif end not in self:
+			raise KeyError(end)
+
+		paths = {None: []}
+		for parent, child in self.bfs(start, ignore_priority):
+			paths[child] = paths[parent] + [child]
+			if child == end:
+				return paths[child]
+		return None
+
+	def get_cycles(self, ignore_priority=None, max_length=None):
+		"""
+		Returns all cycles that have at most length 'max_length'.
+		If 'max_length' is 'None', all cycles are returned.
+		"""
+		all_cycles = []
+		for node in self.nodes:
+			shortest_path = None
+			for child in self.child_nodes(node, ignore_priority):
+				path = self.shortest_path(child, node, ignore_priority)
+				if path is None:
+					continue
+				if not shortest_path or len(shortest_path) > len(path):
+					shortest_path = path
+			if shortest_path:
+				if not max_length or len(shortest_path) <= max_length:
+					all_cycles.append(shortest_path)
+		return all_cycles
 
 	# Backward compatibility
 	addnode = add

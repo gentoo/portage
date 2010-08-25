@@ -1,11 +1,11 @@
 #!/bin/bash
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 if [ $# -lt 1 ] ; then
-	echo "${0##*/}: at least one argument needed" 1>&2
+	helpers_die "${0##*/}: at least one argument needed"
 	exit 1
 fi
 
@@ -21,6 +21,7 @@ if [[ ${INSDESTTREE#${D}} != "${INSDESTTREE}" ]]; then
 	vecho "You should not use \${D} with helpers." 1>&2
 	vecho "  --> ${INSDESTTREE}" 1>&2
 	vecho "-------------------------------------------------------" 1>&2
+	helpers_die "${0##*/} used with \${D}"
 	exit 1
 fi
 
@@ -126,4 +127,4 @@ for x in "$@" ; do
 	fi
 done
 rm -rf "$TMP"
-[[ $failed -ne 0 || $success -eq 0 ]] && exit 1 || exit 0
+[[ $failed -ne 0 || $success -eq 0 ]] && { helpers_die "${0##*/} failed"; exit 1; } || exit 0

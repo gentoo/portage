@@ -1,5 +1,10 @@
 #!/bin/bash
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-exec install -d ${DIROPTIONS} "${@/#/${D}/}"
+source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+
+install -d ${DIROPTIONS} "${@/#/${D}/}"
+ret=$?
+[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
+exit $ret

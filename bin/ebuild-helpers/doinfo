@@ -5,12 +5,12 @@
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 if [[ -z $1 ]] ; then
-	vecho "${0##*/}: at least one argument needed"
+	helpers_die "${0##*/}: at least one argument needed"
 	exit 1 	
 fi
 
 if [[ ! -d ${D}usr/share/info ]] ; then
-	install -d "${D}usr/share/info" || exit 1
+	install -d "${D}usr/share/info" || { helpers_die "${0##*/}: failed to install ${D}usr/share/info"; exit 1; }
 fi
 
 install -m0644 "$@" "${D}usr/share/info"
@@ -19,5 +19,6 @@ if [ $rval -ne 0 ] ; then
 	for x in "$@" ; do
 		[ -e "$x" ] || echo "!!! ${0##*/}: $x does not exist" 1>&2
 	done
+	helpers_die "${0##*/} failed"
 fi
 exit $rval

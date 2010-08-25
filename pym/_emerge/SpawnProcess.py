@@ -6,10 +6,13 @@ from _emerge.PollConstants import PollConstants
 import sys
 from portage.cache.mappings import slot_dict_class
 import portage
+from portage import _encodings
+from portage import _unicode_encode
 from portage import os
 import fcntl
 import errno
 import array
+import gzip
 
 class SpawnProcess(SubProcess):
 
@@ -77,7 +80,12 @@ class SpawnProcess(SubProcess):
 			fd_pipes[1] = slave_fd
 			fd_pipes[2] = slave_fd
 
-			files.log = open(logfile, mode='ab')
+			files.log = open(_unicode_encode(logfile,
+				encoding=_encodings['fs'], errors='strict'), mode='ab')
+			if logfile.endswith('.gz'):
+				files.log = gzip.GzipFile(filename='', mode='ab',
+					fileobj=files.log)
+
 			portage.util.apply_secpass_permissions(logfile,
 				uid=portage.portage_uid, gid=portage.portage_gid,
 				mode=0o660)
@@ -120,7 +128,7 @@ class SpawnProcess(SubProcess):
 		if isinstance(retval, int):
 			# spawn failed
 			self._unregister()
-			self.returncode = retval
+			self._set_returncode((self.pid, retval))
 			self.wait()
 			return
 
@@ -188,14 +196,17 @@ class SpawnProcess(SubProcess):
 								fcntl.fcntl(files.stdout.fileno(),
 								fcntl.F_GETFL) ^ os.O_NONBLOCK)
 
-				buf.tofile(files.log)
+				try:
+					buf.tofile(files.log)
+				except TypeError:
+					# array.tofile() doesn't work with GzipFile
+					files.log.write(buf.tostring())
 				files.log.flush()
 			else:
 				self._unregister()
 				self.wait()
 
 		self._unregister_if_appropriate(event)
-		return self._registered
 
 	def _dummy_handler(self, fd, event):
 		"""
@@ -219,5 +230,4 @@ class SpawnProcess(SubProcess):
 				self.wait()
 
 		self._unregister_if_appropriate(event)
-		return self._registered
 

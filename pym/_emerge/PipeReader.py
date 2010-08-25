@@ -1,10 +1,9 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
 from _emerge.AbstractPollTask import AbstractPollTask
 from _emerge.PollConstants import PollConstants
-import sys
 import fcntl
 import array
 
@@ -52,9 +51,7 @@ class PipeReader(AbstractPollTask):
 
 	def getvalue(self):
 		"""Retrieve the entire contents"""
-		if sys.hexversion >= 0x3000000:
-			return bytes().join(self._read_data)
-		return "".join(self._read_data)
+		return b''.join(self._read_data)
 
 	def close(self):
 		"""Free the memory buffer."""
@@ -81,7 +78,6 @@ class PipeReader(AbstractPollTask):
 				self.wait()
 
 		self._unregister_if_appropriate(event)
-		return self._registered
 
 	def _unregister(self):
 		"""

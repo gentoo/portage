@@ -1,9 +1,14 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import gzip
 import logging
 import select
+import time
 
+from portage import _encodings
+from portage import _unicode_encode
+from portage import os
 from portage.util import writemsg_level
 
 from _emerge.SlotObject import SlotObject
@@ -14,7 +19,7 @@ from _emerge.PollSelectAdapter import PollSelectAdapter
 class PollScheduler(object):
 
 	class _sched_iface_class(SlotObject):
-		__slots__ = ("register", "schedule", "unregister")
+		__slots__ = ("output", "register", "schedule", "unregister")
 
 	def __init__(self):
 		self._max_jobs = 1
@@ -27,6 +32,12 @@ class PollScheduler(object):
 		self._event_handler_id = 0
 		self._poll_obj = create_poll_instance()
 		self._scheduling = False
+		self._background = False
+		self.sched_iface = self._sched_iface_class(
+			output=self._task_output,
+			register=self._register,
+			schedule=self._schedule_wait,
+			unregister=self._unregister)
 
 	def _schedule(self):
 		"""
@@ -112,6 +123,8 @@ class PollScheduler(object):
 		"""
 		if not self._poll_event_queue:
 			self._poll(timeout)
+			if not self._poll_event_queue:
+				raise StopIteration()
 		return self._poll_event_queue.pop()
 
 	def _poll_loop(self):
@@ -122,14 +135,7 @@ class PollScheduler(object):
 		try:
 			while event_handlers:
 				f, event = self._next_poll_event()
-				try:
-					handler, reg_id = event_handlers[f]
-				except KeyError:
-					# This means unregister was called for a file descriptor
-					# that still had a pending event in _poll_event_queue.
-					# Since unregister has been called, we should assume that
-					# the event can be safely ignored.
-					continue
+				handler, reg_id = event_handlers[f]
 				handler(f, event)
 				event_handled = True
 		except StopIteration:
@@ -184,10 +190,23 @@ class PollScheduler(object):
 	def _unregister(self, reg_id):
 		f = self._poll_event_handler_ids[reg_id]
 		self._poll_obj.unregister(f)
+		if self._poll_event_queue:
+			# Discard any unhandled events that belong to this file,
+			# in order to prevent these events from being erroneously
+			# delivered to a future handler that is using a reallocated
+			# file descriptor of the same numeric value (causing
+			# extremely confusing bugs).
+			remove = set()
+			for event in self._poll_event_queue:
+				if event[0] == f:
+					remove.add(event)
+			if remove:
+				self._poll_event_queue[:] = [event for event in \
+					self._poll_event_queue if event not in remove]
 		del self._poll_event_handlers[f]
 		del self._poll_event_handler_ids[reg_id]
 
-	def _schedule_wait(self, wait_ids):
+	def _schedule_wait(self, wait_ids, timeout=None):
 		"""
 		Schedule until wait_id is not longer registered
 		for poll() events.
@@ -201,17 +220,47 @@ class PollScheduler(object):
 		if isinstance(wait_ids, int):
 			wait_ids = frozenset([wait_ids])
 
+		start_time = None
+		if timeout is not None:
+			start_time = 1000 * time.time()
 		try:
 			while wait_ids.intersection(handler_ids):
-				f, event = self._next_poll_event()
+				f, event = self._next_poll_event(timeout=timeout)
 				handler, reg_id = event_handlers[f]
 				handler(f, event)
 				event_handled = True
+				if timeout is not None:
+					if 1000 * time.time() - start_time >= timeout:
+						break
 		except StopIteration:
 			event_handled = True
 
 		return event_handled
 
+	def _task_output(self, msg, log_path=None, level=0, noiselevel=-1):
+		"""
+		Output msg to stdout if not self._background. If log_path
+		is not None then append msg to the log (appends with
+		compression if the filename extension of log_path
+		corresponds to a supported compression type).
+		"""
+
+		if not self._background:
+			writemsg_level(msg, level=level, noiselevel=noiselevel)
+
+		if log_path is not None:
+			f = open(_unicode_encode(log_path,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='ab')
+
+			if log_path.endswith('.gz'):
+				# NOTE: The empty filename argument prevents us from triggering
+				# a bug in python3 which causes GzipFile to raise AttributeError
+				# if fileobj.name is bytes instead of unicode.
+				f =  gzip.GzipFile(filename='', mode='ab', fileobj=f)
+
+			f.write(_unicode_encode(msg))
+			f.close()
 
 _can_poll_device = None
 

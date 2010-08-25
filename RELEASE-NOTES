@@ -21,6 +21,16 @@ portage-2.2
 * "world" now includes separate "selected" and "system" sets, where the
   "selected" set includes packages listed in /var/lib/portage/world and nested
   sets that may be listed /var/lib/portage/world_sets.
+* Configuration files now support atoms with wildcards inside the category and
+  package name parts of the atoms.
+* The functionality of the autounmask program is emulated by the new emerge
+  --autounmask option, which outputs required configuration changes for
+  package.keywords and package.use.
+* Per-package environment variables can be set with the new package.env
+  configuration file in /etc/portage/. See the portage(5) man page for details.
+* The package.keywords configuration file in /etc/portage/ is now deprecated.
+  Instead use the package.accept_keywords file which has the same format and
+  behavior. See the portage(5) man page for details.
 
 portage-2.1.8
 ==================================

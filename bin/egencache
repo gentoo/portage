@@ -327,8 +327,6 @@ def egencache_main(args):
 			"automatically enabling FEATURES=metadata-transfer\n",
 			level=logging.WARNING, noiselevel=-1)
 		settings.features.add('metadata-transfer')
-		settings['FEATURES'] = ' '.join(sorted(settings.features))
-		settings.backup_changes('FEATURES')
 
 	settings.lock()
 

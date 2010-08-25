@@ -189,6 +189,9 @@ def lazyimport(scope, *args):
 			already_imported = modules.get(name)
 			fromlist = fromlist.split(',')
 			for s in fromlist:
+				if not s:
+					# This happens if there's an extra comma in fromlist.
+					raise ValueError('Empty module attribute name')
 				alias = s.split('@', 1)
 				if len(alias) == 1:
 					alias = alias[0]
@@ -199,7 +202,11 @@ def lazyimport(scope, *args):
 					try:
 						scope[alias] = getattr(already_imported, attr_name)
 					except AttributeError:
-						raise ImportError('cannot import name %s' % attr_name)
+						# Apparently the target module is only partially
+						# imported, so create a proxy.
+						already_imported = None
+						scope[alias] = \
+							_LazyImportFrom(scope, name, attr_name, alias)
 				else:
 					scope[alias] = \
 						_LazyImportFrom(scope, name, attr_name, alias)

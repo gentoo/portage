@@ -69,11 +69,13 @@ except ImportError:
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
 
+portage.dep._internal_warnings = True
 from portage import os
 from portage import _encodings
 from portage import _shell_quote
 from portage import _unicode_decode
 from portage import _unicode_encode
+from portage.const import VDB_PATH
 
 if not opts.ignore_default_opts:
 	default_opts = portage.settings.get("EBUILD_DEFAULT_OPTS", "").split()
@@ -83,8 +85,6 @@ debug = opts.debug
 force = opts.force
 
 import portage.util, portage.const
-import portage.dep
-portage.dep._dep_check_strict = True
 
 # do this _after_ 'import portage' to prevent unnecessary tracing
 if debug and "python-trace" in portage.features:
@@ -131,9 +131,11 @@ ebuild = portage.normalize_path(ebuild)
 ebuild_portdir = os.path.realpath(
 	os.path.dirname(os.path.dirname(os.path.dirname(ebuild))))
 ebuild = os.path.join(ebuild_portdir, *ebuild.split(os.path.sep)[-3:])
+vdb_path = os.path.join(portage.settings['ROOT'], VDB_PATH)
 
 # Make sure that portdb.findname() returns the correct ebuild.
-if ebuild_portdir not in portage.portdb.porttrees:
+if ebuild_portdir != vdb_path and \
+	ebuild_portdir not in portage.portdb.porttrees:
 	if sys.hexversion >= 0x3000000:
 		os.environ["PORTDIR_OVERLAY"] = \
 			os.environ.get("PORTDIR_OVERLAY","") + \
@@ -218,15 +220,9 @@ if "test" in pargs:
 	# of problems such as masked "test" USE flag.
 	tmpsettings["EBUILD_FORCE_TEST"] = "1"
 	tmpsettings.backup_changes("EBUILD_FORCE_TEST")
-	if "test" not in tmpsettings.features:
-		tmpsettings.features.add("test")
-		tmpsettings["FEATURES"] = " ".join(sorted(tmpsettings.features))
-		tmpsettings.backup_changes("FEATURES")
+	tmpsettings.features.add("test")
 
-if 'fail-clean' in tmpsettings.features:
-	tmpsettings.features.remove('fail-clean')
-	tmpsettings["FEATURES"] = " ".join(sorted(tmpsettings.features))
-	tmpsettings.backup_changes("FEATURES")
+tmpsettings.features.discard('fail-clean')
 
 if opts.skip_manifest:
 	tmpsettings["EBUILD_SKIP_MANIFEST"] = "1"

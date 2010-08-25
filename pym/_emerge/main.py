@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -25,8 +25,6 @@ good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 
 import portage.elog
-import portage.dep
-portage.dep._dep_check_strict = True
 import portage.util
 import portage.locks
 import portage.exception
@@ -1003,7 +1001,7 @@ def setconfig_fallback(root_config):
 	from portage.sets.profiles import PackagesSystemSet
 	setconfig = root_config.setconfig
 	setconfig.psets['world'] = DummyPackageSet(atoms=['@selected', '@system'])
-	setconfig.psets['selected'] = WorldSelectedSet(root_config.root)
+	setconfig.psets['selected'] = WorldSelectedSet(root_config.settings['EROOT'])
 	setconfig.psets['system'] = \
 		PackagesSystemSet(root_config.settings.profiles)
 	root_config.sets = setconfig.getSets()
@@ -1243,6 +1241,7 @@ def check_procfs():
 def emerge_main():
 	global portage	# NFC why this is necessary now - genone
 	portage._disable_legacy_globals()
+	portage.dep._internal_warnings = True
 	# Disable color until we're sure that it should be enabled (after
 	# EMERGE_DEFAULT_OPTS has been parsed).
 	portage.output.havecolor = 0

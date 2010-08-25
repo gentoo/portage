@@ -5,6 +5,20 @@
 
 import os, sys
 import os.path as osp
+import grp
+import pwd
+import signal
+
+def debug_signal(signum, frame):
+	import pdb
+	pdb.set_trace()
+signal.signal(signal.SIGUSR1, debug_signal)
+
+# Pretend that the current user's uid/gid are the 'portage' uid/gid,
+# so things go smoothly regardless of the current user and global
+# user/group configuration.
+os.environ["PORTAGE_USERNAME"] = pwd.getpwuid(os.getuid()).pw_name
+os.environ["PORTAGE_GRPNAME"] = grp.getgrgid(os.getgid()).gr_name
 
 # Insert our parent dir so we can do shiny import "tests"
 # This line courtesy of Marienz and Pkgcore ;)

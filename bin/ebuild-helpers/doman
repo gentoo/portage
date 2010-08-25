@@ -1,11 +1,11 @@
 #!/bin/bash
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 if [[ $# -lt 1 ]] ; then
-	echo "$0: at least one argument needed" 1>&2
+	helpers_die "${0##*/}: at least one argument needed"
 	exit 1
 fi
 
@@ -60,4 +60,5 @@ for x in "$@" ; do
 	fi
 done
 
+[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
 exit ${ret}

@@ -1,4 +1,4 @@
-# Copyright: 2005 Gentoo Foundation
+# Copyright: 2005,2010 Gentoo Foundation
 # Author(s): Nicholas Carpaski (carpaski@gentoo.org), Brian Harring (ferringb@gentoo.org)
 # License: GPL2
 
@@ -6,7 +6,6 @@ __all__ = ["cache"]
 
 import stat
 import sys
-import warnings
 from portage.util import normalize_path
 import errno
 from portage.exception import PermissionDenied
@@ -129,14 +128,9 @@ class cache(object):
 
 		return True
 
-	def get_eclass_data(self, inherits, from_master_only=False):
+	def get_eclass_data(self, inherits):
 		ec_dict = {}
 		for x in inherits:
 			ec_dict[x] = self.eclasses[x]
-
-		if from_master_only is not False:
-			warnings.warn("portage.eclass_cache.cache.get_eclass_data(): " + \
-				"ignoring deprecated 'from_master_only' parameter",
-				DeprecationWarning)
 
 		return ec_dict

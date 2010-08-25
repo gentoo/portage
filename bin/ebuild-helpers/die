@@ -1,11 +1,7 @@
 #!/bin/bash
-# Copyright 2009 Gentoo Foundation
+# Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-# TODO: Eliminate race condition in signal delivery by using pipe or socket
-# IPC to guarantee that the ebuild process and all of its children (including
-# this helper) are killed immediately, ensuring that "false success" is
-# impossible.
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 die "$@"
 exit 1

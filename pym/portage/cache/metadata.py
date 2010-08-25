@@ -26,7 +26,7 @@ class database(flat_hash.database):
 	complete_eclass_entries = False
 	auxdbkey_order=('DEPEND', 'RDEPEND', 'SLOT', 'SRC_URI',
 		'RESTRICT',  'HOMEPAGE',  'LICENSE', 'DESCRIPTION',
-		'KEYWORDS',  'INHERITED', 'IUSE', 'UNUSED_00',
+		'KEYWORDS',  'INHERITED', 'IUSE', 'REQUIRED_USE',
 		'PDEPEND',   'PROVIDE', 'EAPI', 'PROPERTIES', 'DEFINED_PHASES')
 
 	autocommits = True

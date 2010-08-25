@@ -1,14 +1,15 @@
 #!/bin/bash
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #
 # emake: Supplies some default parameters to GNU make. At the moment the
 #        only parameter supplied is -jN, where N is a number of
 #        parallel processes that should be ideal for the running host
 #        (e.g. on a single-CPU machine, N=2).  The MAKEOPTS variable
-#        is set in /etc/make.globals.  We don't source
-#        /etc/make.globals here because emake is only called from an
-#        ebuild.
+#        is set in make.globals. We don't source make.globals
+#        here because emake is only called from an ebuild.
+
+source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 if [[ $PORTAGE_QUIET != 1 ]] ; then
 	(
@@ -21,4 +22,7 @@ if [[ $PORTAGE_QUIET != 1 ]] ; then
 	) >&2
 fi
 
-exec ${MAKE:-make} ${MAKEOPTS} ${EXTRA_EMAKE} "$@"
+${MAKE:-make} ${MAKEOPTS} ${EXTRA_EMAKE} "$@"
+ret=$?
+[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
+exit $ret

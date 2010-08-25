@@ -4,8 +4,6 @@
 
 from portage.tests import TestCase
 from portage.dep import isvalidatom
-import portage.dep
-portage.dep._dep_check_strict = True
 
 class IsValidAtom(TestCase):
 	""" A simple testcase for isvalidatom

@@ -1,8 +1,6 @@
 #!/usr/bin/python
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-
-# NOTE: this file does not respect ROOT
 
 from __future__ import print_function
 
@@ -15,8 +13,11 @@ except ImportError:
 	import portage
 
 from portage import os
+from portage.sets.files import StaticFileSet, WorldSelectedSet
+
 import re
-import portage.exception
+import tempfile
+import textwrap
 
 __candidatematcher__ = re.compile("^[0-9]+: \\*\\*\\* emerge ")
 __noncandidatematcher__ = re.compile(" sync( |$)| clean( |$)| search( |$)|--oneshot|--fetchonly| unmerge( |$)")
@@ -46,7 +47,9 @@ def isunwanted(pkgline):
 		__uniqlist__.append(pkgline)
 		return True
 
-world_file = os.path.join("/", portage.WORLD_FILE)
+root = portage.settings['ROOT']
+eroot = portage.settings['EROOT']
+world_file = os.path.join(eroot, portage.WORLD_FILE)
 
 # show a little description if we have arguments
 if len(sys.argv) >= 2 and sys.argv[1] in ["-h", "--help"]:
@@ -56,10 +59,10 @@ if len(sys.argv) >= 2 and sys.argv[1] in ["-h", "--help"]:
 	print("your existing world file (%s) before using this tool." % world_file)
 	sys.exit(0)
 
-worldlist = portage.grabfile(os.path.join("/", portage.WORLD_FILE))
+worldlist = portage.grabfile(world_file)
 syslist = [x for x in portage.settings.packages if issyspkg(x)]
 
-logfile = portage.grabfile("/var/log/emerge.log")
+logfile = portage.grabfile(os.path.join(eroot, "var/log/emerge.log"))
 biglist = [getpkginfo(x) for x in logfile if iscandidate(x)]
 tmplist = []
 for l in biglist:
@@ -75,7 +78,7 @@ for mykey in syslist:
 	# drop the asterix
 	mykey = mykey[1:]
 	#print("candidate:",mykey)
-	mylist=portage.db["/"]["vartree"].dbapi.match(mykey)
+	mylist = portage.db[root]["vartree"].dbapi.match(mykey)
 	if mylist:
 		mykey=portage.cpv_getkey(mylist[0])
 		if mykey not in realsyslist:
@@ -84,7 +87,7 @@ for mykey in syslist:
 for mykey in biglist:
 	#print("checking:",mykey)
 	try:
-		mylist=portage.db["/"]["vartree"].dbapi.match(mykey)
+		mylist = portage.db[root]["vartree"].dbapi.match(mykey)
 	except (portage.exception.InvalidAtom, KeyError):
 		if "--debug" in sys.argv:
 			print("* ignoring broken log entry for %s (likely injected)" % mykey)
@@ -98,5 +101,40 @@ for mykey in biglist:
 			print("add to world:",myfavkey)
 			worldlist.append(myfavkey)
 
-portage.write_atomic(os.path.join("/", portage.WORLD_FILE),
-	"\n".join(sorted(worldlist)) + "\n")
+if not worldlist:
+	pass
+else:
+	existing_set = WorldSelectedSet(eroot)
+	existing_set.load()
+
+	if not existing_set:
+		existing_set.replace(worldlist)
+	else:
+		old_world = existing_set._filename
+		fd, tmp_filename = tempfile.mkstemp(suffix=".tmp",
+			prefix=os.path.basename(old_world) + ".",
+			dir=os.path.dirname(old_world))
+		os.close(fd)
+
+		new_set = StaticFileSet(tmp_filename)
+		new_set.update(worldlist)
+
+		if existing_set.getAtoms() == new_set.getAtoms():
+			os.unlink(tmp_filename)
+		else:
+			new_set.write()
+
+			msg = "Please review differences between old and new files, " + \
+				"and replace the old file if desired."
+
+			portage.util.writemsg_stdout("\n",
+				noiselevel=-1)
+			for line in textwrap.wrap(msg, 65):
+				portage.util.writemsg_stdout("%s\n" % line,
+					noiselevel=-1)
+			portage.util.writemsg_stdout("\n",
+				noiselevel=-1)
+			portage.util.writemsg_stdout("  old: %s\n\n" % old_world,
+				noiselevel=-1)
+			portage.util.writemsg_stdout("  new: %s\n\n" % tmp_filename,
+				noiselevel=-1)

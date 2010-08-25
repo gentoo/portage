@@ -1,6 +1,8 @@
 #!/bin/bash
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 # Setup ABI cruft
 LIBDIR_VAR="LIBDIR_${ABI}"
@@ -14,11 +16,11 @@ libdir="${D}${DESTTREE}/${CONF_LIBDIR}"
 
 
 if [[ $# -lt 1 ]] ; then
-	echo "$0: at least one argument needed" 1>&2
+	helpers_die "${0##*/}: at least one argument needed"
 	exit 1
 fi
 if [[ ! -d ${libdir} ]] ; then
-	install -d "${libdir}" || exit 1
+	install -d "${libdir}" || { helpers_die "${0##*/}: failed to install ${libdir}"; exit 1; }
 fi
 
 ret=0
@@ -37,4 +39,5 @@ for x in "$@" ; do
 	((ret|=$?))
 done
 
+[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
 exit ${ret}

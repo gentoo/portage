@@ -35,6 +35,8 @@ class SetConfig(object):
 	def __init__(self, paths, settings, trees):
 		self._parser = SafeConfigParser(
 			defaults={
+				"EPREFIX" : settings["EPREFIX"],
+				"EROOT" : settings["EROOT"],
 				"PORTAGE_CONFIGROOT" : settings["PORTAGE_CONFIGROOT"],
 				"ROOT" : settings["ROOT"],
 			})
@@ -176,8 +178,12 @@ class SetConfig(object):
 		return myatoms
 
 def load_default_config(settings, trees):
+	global_config_path = GLOBAL_CONFIG_PATH
+	if settings['EPREFIX']:
+		global_config_path = os.path.join(settings['EPREFIX'],
+			GLOBAL_CONFIG_PATH.lstrip(os.sep))
 	def _getfiles():
-		for path, dirs, files in os.walk(os.path.join(GLOBAL_CONFIG_PATH, "sets")):
+		for path, dirs, files in os.walk(os.path.join(global_config_path, "sets")):
 			for f in files:
 				yield os.path.join(path, f)
 

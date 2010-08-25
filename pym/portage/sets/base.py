@@ -114,11 +114,15 @@ class PackageSet(object):
 			self._atommap.setdefault(a.cp, set()).add(a)
 	
 	# Not sure if this one should really be in PackageSet
-	def findAtomForPackage(self, pkg):
+	def findAtomForPackage(self, pkg, modified_use=None):
 		"""Return the best match for a given package from the arguments, or
 		None if there are no matches.  This matches virtual arguments against
 		the PROVIDE metadata.  This can raise an InvalidDependString exception
 		if an error occurs while parsing PROVIDE."""
+
+		if modified_use is not None and modified_use is not pkg.use.enabled:
+			pkg = pkg.copy()
+			pkg.metadata["USE"] = " ".join(modified_use)
 
 		# Atoms matched via PROVIDE must be temporarily transformed since
 		# match_from_list() only works correctly when atom.cp == pkg.cp.

@@ -7,16 +7,12 @@ from portage import os
 
 class EbuildSpawnProcess(AbstractEbuildProcess):
 	"""
-	Spawns misc-functions.sh with an existing ebuild environment.
+	Used by doebuild.spawn() to manage the spawned process.
 	"""
 	_spawn_kwarg_names = AbstractEbuildProcess._spawn_kwarg_names + \
 		('fakeroot_state',)
 
 	__slots__ = ('fakeroot_state', 'spawn_func')
 
-	def _start(self):
-
-		AbstractEbuildProcess._start(self)
-
 	def _spawn(self, args, **kwargs):
-		return self.spawn_func(args, **kwargs)
+		return self.spawn_func(args, env=self.settings.environ(), **kwargs)

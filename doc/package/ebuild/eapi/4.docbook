@@ -1,0 +1,260 @@
+<section id='package-ebuild-eapi-4_pre1'>
+<title>EAPI 4_pre1</title>
+<section id='package-ebuild-eapi-4_pre1-helpers'>
+<title>Helpers</title>
+<section id='package-ebuild-eapi-4_pre1-helpers-removed-dohard-dosed'>
+<title>Removed dohard and dosed</title>
+<para>
+The dohard and dosed helpers from previous EAPIs are no longer available.
+</para>
+</section>
+<section id='package-ebuild-eapi-4_pre1-helpers-die-nonfatal'>
+<title>All helpers die on failure</title>
+<para>
+All helpers now die automatically whenever some sort of error occurs.
+Helper calls may be prefixed with the 'nonfatal' helper in order
+to prevent errors from being fatal.
+</para>
+</section>
+<section id='package-ebuild-eapi-4_pre1-helpers-dodoc-r'>
+<title>dodoc -r</title>
+<para>
+The dodoc helper now has a -r option which enables recursion.
+</para>
+</section>
+<section id='package-ebuild-eapi-4_pre1-helpers-doins-newins-symlinks'>
+<title>doins and newins preserve symlinks</title>
+<para>
+The doins and newins helpers now preserve symlinks. In earlier EAPIs
+symlinks are dereferenced rather than preserved.
+</para>
+</section>
+<section id='package-ebuild-eapi-4_pre1-helpers-doman-i18n-precedence'>
+<title>doman -i18n option takes precedence over filename language suffix</title>
+<para>
+When the doman helper is called with the -i18n option, this takes precedence
+over the filename language suffix.
+</para>
+</section>
+<section id='package-ebuild-eapi-4_pre1-helpers-econf-disable-dependency-tracking'>
+<title>econf adds --disable-dependency-tracking</title>
+<para>
+The econf helper now adds --disable-dependency-tracking to the
+configure arguments.
+</para>
+</section>
+</section>
+<section id='package-ebuild-eapi-4_pre1-metadata'>
+<title>Metadata</title>
+	<section id='package-ebuild-eapi-4_pre1-metadata-dependencies'>
+	<title>Dependencies</title>
+		<section id='package-ebuild-eapi-4_pre1-metadata-dependencies-rdepend-implicit-removed'>
+		<title>unset RDEPEND no longer triggers implicit setting</title>
+		<para>
+		When the RDEPEND variable is unset within an ebuild, it will remain
+		empty. In prior EAPIs, if RDEPEND was left unset then it was
+		implicitly set to the value of DEPEND.
+		</para>
+		</section>
+		<section id='package-ebuild-eapi-4_pre1-metadata-dependencies-use-defaults'>
+		<title>USE Dependency Defaults</title>
+		<para>
+		In a 3-style use dependency, the flag name may immediately be followed by a
+		default specified by either (+) or (-). The former indicates that, when
+		applying the use dependency to a package that does not have the flag in
+		question in IUSE_REFERENCEABLE, the package manager shall behave as if the flag
+		were present and enabled; the latter, present and disabled.
+		</para>
+		<para>
+		Unless a 3-style default is specified, it is an error for a use dependency to
+		be applied to an ebuild which does not have the flag in question in
+		IUSE_REFERENCEABLE.
+		</para>
+		<para>
+		Note: By extension of the above, a default that could reference an ebuild using
+		an EAPI not supporting profile IUSE injections cannot rely upon any particular
+		behaviour for flags that would not have to be part of IUSE.
+		</para>
+		<para>
+		It is an error for an ebuild to use a conditional use dependency when that
+		ebuild does not have the flag in IUSE_EFFECTIVE.
+		</para>
+		</section>
+	</section>
+<section id='package-ebuild-eapi-4_pre1-metadata-required-use'>
+<title>REQUIRED_USE</title>
+<para>
+This new REQUIRED_USE metadata key is used to specify what USE flag combinations are disallowed for a specific pkg.
+</para>
+<section id='package-ebuild-eapi-4_pre1-metadata-required-use-motivation'>
+<title>Motivation</title>
+<para>
+It's a semi common occurence that an ebuild may need to state that they disallow USE flags in specific combinations- either mysql or sqlite for example, but not both.
+</para>
+<para>
+Existing solutions rely on checking the the USE configuration in pkg_setup which is non-optimal due to pkg_setup being ran potentially hours after the initial emerge -p invocation.
+</para>
+<para>
+Current versions of EAPI4 support a phase hook pkg_pretend that is intended to move pre-build checks to just after resolution. It has been proposed that pkg_pretend should continue the tradition of adhoc shell code validating the USE state- this too is non optimal for the following reasons-
+</para>
+<orderedlist>
+<listitem>
+<para>
+The only way to find out if the USE state is disallowed is to run the code
+</para>
+</listitem>
+<listitem>
+<para>
+The common implementation of this can result in an iterative process where the user hits a USE constraint, fixs it, reruns the emerge invocation only to find that there is another constraint still violated for the ebuild, thus requiring them to fix it, rerun emerge, etc.
+</para>
+</listitem>
+<listitem>
+<para>
+For a package manager to classify the error, the only option it has is to try and parse adhoc output written by an ebuild dev. This effectively disallows package manager options for providing a more informative error message. A simple example would be if the package manager wanted to integrate in the flag descriptions from use.desc/use.local.desc; this would be effectively impossible.
+</para>
+</listitem>
+<listitem>
+<para>
+Fundamentally these constraints are data, yet they're being encoded as executable code- this effectively blocks the possibility of doing a wide variety of QA/tree scans. For example it blocks the possibility of sanely scanning for USE flag induced hard dependency cycles, because the tools in question cannot get that info out of adhoc shell code.
+More importantly if the manager cannot know what the allowed USE states are for the ebuild in question, this eliminates the possibility of ever sanely breaking dependency cycles caused by USE flags.
+</para>
+</listitem>
+</orderedlist>
+<para>
+Just as .sh scripts are considered a poor archival form due to their opaqueness, pkg_setup and pkg_pretend aren't a proper solution for this. pkg_pretend in particular makes the situation slightly worse due to ebuild devs being expected to convert their ebuilds to the pkg_pretend form when using EAPI4. In doing so they'll have to do work w/out the gains REQUIRED_USE provides and have to repeat the same conversion work when REQUIRED_USE lands in a later EAPI.
+</para>
+</section>
+<section id='package-ebuild-eapi-4_pre1-metadata-required-use-specification'>
+<title>Specification</title>
+<para>
+Essentially REQUIRED_USE is proposed to be an analog of DEPENDS style syntax- a list of assertions that must be met for this USE configuration to be valid for this ebuild. For example, to state "if build is set, python must be unset":
+</para>
+<para>
+REQUIRED_USE="build? ( !python )"
+</para>
+<para>
+To state "either mysql or sqlite must be set, but not both":
+</para>
+<para>
+REQUIRED_USE="mysql? ( !sqlite ) !mysql? ( sqlite )"
+</para>
+<para>
+Note that the mysql/sqlite relationship is that of an Exclusive OR (XOR). While an XOR can be formed from existing syntax, it's suggested that a specific operator be added for this case using ^^. Reformatting the "mysql or sqlite, but not both" with XOR results in:
+</para>
+<para>
+REQUIRED_USE="^^ ( mysql sqlite )"
+</para>
+<para>
+Like any block operator, this can be combined with other constraints. For example if the user has flipped on the client flag, one gui must be choosen:
+</para>
+<para>
+REQUIRED_USE="client? ( ^^ ( gtk qt motif ) )"
+</para>
+<para>
+If the pkg is implemented sanely and requires at least one gui, but can support multiple it would be:
+</para>
+<para>
+REQUIRED_USE="client? ( || ( gtk qt motif ) )"
+</para>
+<para>
+Because ARCH is integrated into the USE space, this also allows for specifying corner cases like "at least one gui must be specified, but on mips only one gui can be specified":
+</para>
+<para>
+REQUIRED_USE="client? ( !mips? ( || (  gtk qt motif ) ) mips? ( ^^ ( gtk qt motif ) ) )"
+</para>
+<para>
+Please note that the AND operator is of course supported- if to enable client you must choose at least one gui and enable the python bindings the syntax would be:
+</para>
+<para>
+REQUIRED_USE="client? ( python || ( gtk qt motif x11 ) )"</para>
+<para>
+Finally, please note that this new metadata key can be set by eclasses, and the inherit implementation should protect the eclass set value just the same as how eclass defined DEPEND is protected.
+</para>
+</section>
+</section>
+</section>
+	<section id='package-ebuild-eapi-4_pre1-phases'>
+		<title>Phases</title>
+		<section id='package-ebuild-eapi-4_pre1-phases-pkg-pretend'>
+			<title>New pkg_pretend Phase Function</title>
+			<para>
+			The pkg_pretend function may be used to carry out sanity checks early on in the
+			install process. For example, if an ebuild requires a particular kernel
+			configuration, it may perform that check in pkg_pretend and call eerror and
+			then die with appropriate messages if the requirement is not met.
+			</para>
+			<para>
+			pkg_pretend is run separately from the main phase function sequence, and does
+			not participate in any kind of environment saving. There is no guarantee that
+			any of an ebuild's dependencies will be met at this stage, and no guarantee
+			that the system state will not have changed substantially before the next phase
+			is executed.
+			</para>
+			<para>
+			pkg_pretend must not write to the filesystem.
+			</para>
+		</section>
+		<section id='package-ebuild-eapi-4_pre1-phases-src-install'>
+			<title>Default src_install no longer a no-op</title>
+			<programlisting>
+src_install() {
+	if [[ -f Makefile || -f GNUmakefile || -f makefile ]] ; then
+		emake DESTDIR="${D}" install
+	fi
+
+	if [[ -z $DOCS ]] ; then
+		local d
+		for d in README* ChangeLog AUTHORS NEWS TODO CHANGES \
+				THANKS BUGS FAQ CREDITS CHANGELOG ; do
+			[[ -s "${d}" ]] &amp;&amp; dodoc "${d}"
+		done
+	elif [[ $(declare -p DOCS) == "declare -a "* ]] ; then
+		dodoc "${DOCS[@]}"
+	else
+		dodoc ${DOCS}
+	fi
+}
+			</programlisting>
+		</section>
+		<section id='package-ebuild-eapi-4_pre1-phases-s-workdir-fallback'>
+			<title>S to WORKDIR fallback restricted</title>
+			<para>
+			For any of the src_* phases that executes after src_unpack,
+			it is invalid for the S variable to refer to a non-existent
+			directory. However, these src_* phases are exempt from this
+			requirement if none of the prior src_* phases are defined by the
+			ebuild. When a src_* phase is exempt from this requirement, if the
+			S variable does not refer to an existing directory, the
+			WORKDIR directory will be used instead of S as the initial working
+			directory.
+			</para>
+		</section>
+	</section>
+	<section id='package-ebuild-eapi-4_pre1-variables'>
+		<title>Variables</title>
+		<section id='package-ebuild-eapi-4_pre1-variables-aa-kv-removed'>
+			<title>AA and KV variables are no longer exported</title>
+			<para>
+			The AA and KV variables are no longer exported to the ebuild environment.
+			</para>
+		</section>
+		<section id='package-ebuild-eapi-4_pre1-variables-replaced-versions'>
+			<title>REPLACING_VERSIONS and REPLACED_BY_VERSION</title>
+			<para>
+			The REPLACING_VERSIONS variable
+			shall be defined in pkg_preinst and pkg_postinst. In addition, it may be
+			defined in pkg_pretend and pkg_setup, although ebuild authors should take care
+			to handle binary package creation and installation correctly when using it in
+			these phases.
+			</para>
+			<para>
+			REPLACING_VERSIONS is a list, not a single optional value, to handle
+			pathological cases such as installing foo-2:2 to replace foo-2:1 and foo-3:2.
+			</para>
+			<para>
+			The REPLACED_BY variable shall
+			be defined in pkg_prerm and pkg_postrm. It shall contain at most one value. 
+			</para>
+		</section>
+	</section>
+</section>

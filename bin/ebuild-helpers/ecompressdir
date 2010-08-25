@@ -1,11 +1,11 @@
 #!/bin/bash
-# Copyright 1999-2007 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 if [[ -z $1 ]] ; then
-	vecho "${0##*/}: at least one argument needed" 1>&2
+	helpers_die "${0##*/}: at least one argument needed"
 	exit 1
 fi
 
@@ -21,7 +21,10 @@ case $1 in
 		shift
 		set -- "${@/%/.ecompress.dir}"
 		set -- "${@/#/${D}}"
-		exec touch "$@"
+		touch "$@"
+		ret=$?
+		[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
+		exit $?
 		;;
 	--dequeue)
 		[[ -n $2 ]] && vecho "${0##*/}: --dequeue takes no additional arguments" 1>&2
@@ -32,7 +35,7 @@ case $1 in
 		exit 0
 		;;
 	--*)
-		vecho "${0##*/}: unknown arguments '$*'"
+		helpers_die "${0##*/}: unknown arguments '$*'"
 		exit 1
 		;;
 esac
@@ -132,4 +135,5 @@ for dir in "$@" ; do
 	restore_skip_dirs
 done
 
+[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
 exit ${ret}

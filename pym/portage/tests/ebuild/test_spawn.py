@@ -4,35 +4,33 @@
 import codecs
 import errno
 import sys
-from tempfile import mkstemp
+import tempfile
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
-from portage import spawn
+from portage.const import BASH_BINARY
 from portage.tests import TestCase
-from portage.tests.resolver.ResolverPlayground import ResolverPlayground
+from _emerge.SpawnProcess import SpawnProcess
+from _emerge.TaskScheduler import TaskScheduler
 
 class SpawnTestCase(TestCase):
 
 	def testLogfile(self):
-		playground = ResolverPlayground()
-		settings = playground.settings
 		logfile = None
 		try:
-			fd, logfile = mkstemp()
+			fd, logfile = tempfile.mkstemp()
 			os.close(fd)
 			null_fd = os.open('/dev/null', os.O_RDWR)
 			test_string = 2 * "blah blah blah\n"
-			# Test cases are unique because they run inside src_test() which
-			# may or may not already be running within a sandbox. Interaction
-			# with SANDBOX_* variables may trigger unwanted sandbox violations
-			# that are only reproducible with certain combinations of sandbox,
-			# usersandbox, and userpriv FEATURES. Attempts to filter SANDBOX_*
-			# variables can interfere with a currently running sandbox
-			# instance. Therefore, use free=1 here to avoid potential
-			# interactions (see bug #190268).
-			spawn("echo -n '%s'" % test_string, settings, logfile=logfile,
-				free=1, fd_pipes={0:sys.stdin.fileno(), 1:null_fd, 2:null_fd})
+			task_scheduler = TaskScheduler()
+			proc = SpawnProcess(
+				args=[BASH_BINARY, "-c",
+				"echo -n '%s'" % test_string],
+				env={}, fd_pipes={0:sys.stdin.fileno(), 1:null_fd, 2:null_fd},
+				scheduler=task_scheduler.sched_iface,
+				logfile=logfile)
+			task_scheduler.add(proc)
+			task_scheduler.run()
 			os.close(null_fd)
 			f = codecs.open(_unicode_encode(logfile,
 				encoding=_encodings['fs'], errors='strict'),
@@ -45,7 +43,6 @@ class SpawnTestCase(TestCase):
 			# may occur.
 			self.assertEqual(test_string, log_content)
 		finally:
-			playground.cleanup()
 			if logfile:
 				try:
 					os.unlink(logfile)

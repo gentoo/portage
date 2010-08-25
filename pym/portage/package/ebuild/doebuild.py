@@ -3,21 +3,20 @@
 
 __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
 
-import array
 import codecs
 import errno
-import fcntl
+import gzip
 from itertools import chain
 import logging
 import os as _os
 import re
-import select
 import shutil
 import stat
 import sys
 import tempfile
 from textwrap import wrap
 import time
+import zlib
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -29,7 +28,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage import auxdbkeys, bsd_chflags, dep_check, \
-	eapi_is_supported, merge, os, selinux, StringIO, \
+	eapi_is_supported, merge, os, selinux, \
 	unmerge, _encodings, _parse_eapi_ebuild_head, _os_merge, \
 	_shell_quote, _unicode_decode, _unicode_encode
 from portage.const import EBUILD_SH_ENV_FILE, EBUILD_SH_ENV_DIR, \
@@ -37,8 +36,10 @@ from portage.const import EBUILD_SH_ENV_FILE, EBUILD_SH_ENV_DIR, \
 from portage.data import portage_gid, portage_uid, secpass, \
 	uid, userpriv_groups
 from portage.dbapi.virtual import fakedbapi
-from portage.dep import Atom, paren_enclose, paren_normalize, \
-	paren_reduce, use_reduce
+from portage.dep import Atom, paren_enclose, use_reduce
+from portage.eapi import eapi_exports_KV, eapi_exports_replace_vars, \
+	eapi_has_src_uri_arrows, \
+	eapi_has_src_prepare_and_src_configure, eapi_has_pkg_pretend
 from portage.elog import elog_process
 from portage.elog.messages import eerror, eqawarn
 from portage.exception import DigestException, FileNotFound, \
@@ -51,15 +52,80 @@ from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
 from portage.util import apply_recursive_permissions, \
 	apply_secpass_permissions, noiselimit, normalize_path, \
 	writemsg, writemsg_stdout, write_atomic
-from portage.util._pty import _create_pty_or_pipe
 from portage.util.lafilefixer import rewrite_lafile	
 from portage.versions import _pkgsplit
+from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
+from _emerge.EbuildPhase import EbuildPhase
 from _emerge.EbuildSpawnProcess import EbuildSpawnProcess
 from _emerge.TaskScheduler import TaskScheduler
 
-def doebuild_environment(myebuild, mydo, myroot, mysettings,
-	debug, use_cache, mydbapi):
+_unsandboxed_phases = frozenset([
+	"clean", "cleanrm", "config",
+	"help", "info", "postinst",
+	"preinst", "pretend", "postrm",
+	"prerm", "setup"
+])
 
+def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
+	"""
+	All proper ebuild phases which execute ebuild.sh are spawned
+	via this function. No exceptions.
+	"""
+
+	if phase in _unsandboxed_phases:
+		kwargs['free'] = True
+
+	if phase == 'depend':
+		kwargs['droppriv'] = 'userpriv' in settings.features
+
+	if actionmap is not None and phase in actionmap:
+		kwargs.update(actionmap[phase]["args"])
+		cmd = actionmap[phase]["cmd"] % phase
+	else:
+		if phase == 'cleanrm':
+			ebuild_sh_arg = 'clean'
+		else:
+			ebuild_sh_arg = phase
+
+		cmd = "%s %s" % (_shell_quote(
+			os.path.join(settings["PORTAGE_BIN_PATH"],
+			os.path.basename(EBUILD_SH_BINARY))),
+			ebuild_sh_arg)
+
+	settings['EBUILD_PHASE'] = phase
+	try:
+		return spawn(cmd, settings, **kwargs)
+	finally:
+		settings.pop('EBUILD_PHASE', None)
+
+def _spawn_phase(phase, settings, actionmap=None, **kwargs):
+	if kwargs.get('returnpid'):
+		return _doebuild_spawn(phase, settings, actionmap=actionmap, **kwargs)
+
+	task_scheduler = TaskScheduler()
+	ebuild_phase = EbuildPhase(actionmap=actionmap, background=False,
+		phase=phase, scheduler=task_scheduler.sched_iface,
+		settings=settings)
+	task_scheduler.add(ebuild_phase)
+	task_scheduler.run()
+	return ebuild_phase.returncode
+
+def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
+	debug=False, use_cache=None, db=None):
+	"""
+	The myroot and use_cache parameters are unused.
+	"""
+	myroot = None
+	use_cache = None
+
+	if settings is None:
+		raise TypeError("settings argument is required")
+
+	if db is None:
+		raise TypeError("db argument is required")
+
+	mysettings = settings
+	mydbapi = db
 	ebuild_path = os.path.abspath(myebuild)
 	pkg_dir     = os.path.dirname(ebuild_path)
 
@@ -99,13 +165,17 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 			mysettings.setcpv(mycpv, mydb=mydbapi)
 
 	# config.reset() might have reverted a change made by the caller,
-	# so restore it to it's original value.
-	mysettings["PORTAGE_TMPDIR"] = tmpdir
+	# so restore it to it's original value. Sandbox needs cannonical
+	# paths, so realpath it.
+	mysettings["PORTAGE_TMPDIR"] = os.path.realpath(tmpdir)
 
 	mysettings.pop("EBUILD_PHASE", None) # remove from backupenv
 	mysettings["EBUILD_PHASE"] = mydo
 
 	mysettings["PORTAGE_MASTER_PID"] = str(os.getpid())
+
+	# Set requested Python interpreter for Portage helpers.
+	mysettings['PORTAGE_PYTHON'] = portage._python_interpreter
 
 	# We are disabling user-specific bashrc files.
 	mysettings["BASH_ENV"] = INVALID_ENV_FILE
@@ -183,9 +253,6 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 	if portage_bin_path not in mysplit:
 		mysettings["PATH"] = portage_bin_path + ":" + mysettings["PATH"]
 
-	# Sandbox needs cannonical paths.
-	mysettings["PORTAGE_TMPDIR"] = os.path.realpath(
-		mysettings["PORTAGE_TMPDIR"])
 	mysettings["BUILD_PREFIX"] = mysettings["PORTAGE_TMPDIR"]+"/portage"
 	mysettings["PKG_TMPDIR"]   = mysettings["PORTAGE_TMPDIR"]+"/binpkgs"
 	
@@ -212,11 +279,9 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_FILE)
 	mysettings["PM_EBUILD_HOOK_DIR"] = os.path.join(
 		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_DIR)
-	mysettings["EBUILD_EXIT_STATUS_FILE"] = os.path.join(
-		mysettings["PORTAGE_BUILDDIR"], ".exit_status")
 
 	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistent.
-	if eapi not in ('0', '1', '2', '3', '3_pre2'):
+	if not eapi_exports_KV(eapi):
 		# Discard KV for EAPIs that don't support it. Cache KV is restored
 		# from the backupenv whenever config.reset() is called.
 		mysettings.pop('KV', None)
@@ -224,7 +289,8 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 		mydo in ('compile', 'config', 'configure', 'info',
 		'install', 'nofetch', 'postinst', 'postrm', 'preinst',
 		'prepare', 'prerm', 'setup', 'test', 'unpack'):
-		mykv,err1=ExtractKernelVersion(os.path.join(myroot, "usr/src/linux"))
+		mykv, err1 = ExtractKernelVersion(
+			os.path.join(mysettings['EROOT'], "usr/src/linux"))
 		if mykv:
 			# Regular source tree
 			mysettings["KV"]=mykv
@@ -238,61 +304,6 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings,
 		mycolors.append("%s=$'%s'" % \
 			(c, style_to_ansi_code(c)))
 	mysettings["PORTAGE_COLORMAP"] = "\n".join(mycolors)
-
-def _doebuild_exit_status_check(mydo, settings):
-	"""
-	Returns an error string if the shell appeared
-	to exit unsuccessfully, None otherwise.
-	"""
-	exit_status_file = settings.get("EBUILD_EXIT_STATUS_FILE")
-	if not exit_status_file or \
-		os.path.exists(exit_status_file):
-		return None
-	msg = _("The ebuild phase '%s' has exited "
-	"unexpectedly. This type of behavior "
-	"is known to be triggered "
-	"by things such as failed variable "
-	"assignments (bug #190128) or bad substitution "
-	"errors (bug #200313). Normally, before exiting, bash should "
-	"have displayed an error message above. If bash did not "
-	"produce an error message above, it's possible "
-	"that the ebuild has called `exit` when it "
-	"should have called `die` instead. This behavior may also "
-	"be triggered by a corrupt bash binary or a hardware "
-	"problem such as memory or cpu malfunction. If the problem is not "
-	"reproducible or it appears to occur randomly, then it is likely "
-	"to be triggered by a hardware problem. "
-	"If you suspect a hardware problem then you should "
-	"try some basic hardware diagnostics such as memtest. "
-	"Please do not report this as a bug unless it is consistently "
-	"reproducible and you are sure that your bash binary and hardware "
-	"are functioning properly.") % mydo
-	return msg
-
-def _doebuild_exit_status_check_and_log(settings, mydo, retval):
-	msg = _doebuild_exit_status_check(mydo, settings)
-	if msg:
-		if retval == os.EX_OK:
-			retval = 1
-		for l in wrap(msg, 72):
-			eerror(l, phase=mydo, key=settings.mycpv)
-	return retval
-
-def _doebuild_exit_status_unlink(exit_status_file):
-	"""
-	Double check to make sure it really doesn't exist
-	and raise an OSError if it still does (it shouldn't).
-	OSError if necessary.
-	"""
-	if not exit_status_file:
-		return
-	try:
-		os.unlink(exit_status_file)
-	except OSError:
-		pass
-	if os.path.exists(exit_status_file):
-		os.unlink(exit_status_file)
-
 
 _doebuild_manifest_cache = None
 _doebuild_broken_ebuilds = set()
@@ -363,7 +374,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	# chunked out deps for each phase, so that ebuild binary can use it 
 	# to collapse targets down.
 	actionmap_deps={
-	"setup":  [],
+	"pretend"  : [],
+	"setup":  ["pretend"],
 	"unpack": ["setup"],
 	"prepare": ["unpack"],
 	"configure": ["prepare"],
@@ -488,44 +500,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			# Only cache it if the above stray files test succeeds.
 			_doebuild_manifest_cache = mf
 
-	def exit_status_check(retval):
-		msg = _doebuild_exit_status_check(mydo, mysettings)
-		if msg:
-			if retval == os.EX_OK:
-				retval = 1
-			for l in wrap(msg, 72):
-				eerror(l, phase=mydo, key=mysettings.mycpv)
-		return retval
-
-	# Note: PORTAGE_BIN_PATH may differ from the global
-	# constant when portage is reinstalling itself.
-	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
-	ebuild_sh_binary = os.path.join(portage_bin_path,
-		os.path.basename(EBUILD_SH_BINARY))
-	misc_sh_binary = os.path.join(portage_bin_path,
-		os.path.basename(MISC_SH_BINARY))
-
 	logfile=None
 	builddir_lock = None
 	tmpdir = None
 	tmpdir_orig = None
 
 	try:
-		if mydo in ("pretend", "setup"):
-			if not vartree:
-				writemsg("Warning: vartree not given to doebuild. " + \
-					"Cannot set REPLACING_VERSIONS in pkg_{pretend,setup}\n")
-			else:
-				vardb = vartree.dbapi
-				cpv = mysettings.mycpv
-				cp = portage.versions.cpv_getkey(cpv)
-				slot = mysettings.get("SLOT")
-				cpv_slot = cp + ":" + slot
-				mysettings["REPLACING_VERSIONS"] = " ".join(
-					set(portage.versions.cpv_getversion(match) \
-						for match in vardb.match(cpv_slot) + vardb.match(cpv)))
-				mysettings.backup_changes("REPLACING_VERSIONS")
-
 		if mydo in ("digest", "manifest", "help"):
 			# Temporarily exempt the depend phase from manifest checks, in case
 			# aux_get calls trigger cache generation.
@@ -544,21 +524,16 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			use_cache, mydbapi)
 
 		if mydo in clean_phases:
-			retval = spawn(_shell_quote(ebuild_sh_binary) + " clean",
-				mysettings, debug=debug, fd_pipes=fd_pipes, free=1,
-				logfile=None, returnpid=returnpid)
-			return retval
+			return _spawn_phase(mydo, mysettings,
+				fd_pipes=fd_pipes, returnpid=returnpid)
 
 		restrict = set(mysettings.get('PORTAGE_RESTRICT', '').split())
 		# get possible slot information from the deps file
 		if mydo == "depend":
 			writemsg("!!! DEBUG: dbkey: %s\n" % str(dbkey), 2)
-			droppriv = "userpriv" in mysettings.features
 			if returnpid:
-				mypids = spawn(_shell_quote(ebuild_sh_binary) + " depend",
-					mysettings, fd_pipes=fd_pipes, returnpid=True,
-					droppriv=droppriv)
-				return mypids
+				return _spawn_phase(mydo, mysettings,
+					fd_pipes=fd_pipes, returnpid=returnpid)
 			elif isinstance(dbkey, dict):
 				mysettings["dbkey"] = ""
 				pr, pw = os.pipe()
@@ -567,9 +542,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					1:sys.stdout.fileno(),
 					2:sys.stderr.fileno(),
 					9:pw}
-				mypids = spawn(_shell_quote(ebuild_sh_binary) + " depend",
-					mysettings,
-					fd_pipes=fd_pipes, returnpid=True, droppriv=droppriv)
+				mypids = _spawn_phase(mydo, mysettings, returnpid=True,
+					fd_pipes=fd_pipes)
 				os.close(pw) # belongs exclusively to the child process now
 				f = os.fdopen(pr, 'rb')
 				for k, v in zip(auxdbkeys,
@@ -597,9 +571,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				mysettings["dbkey"] = \
 					os.path.join(mysettings.depcachedir, "aux_db_key_temp")
 
-			return spawn(_shell_quote(ebuild_sh_binary) + " depend",
-				mysettings,
-				droppriv=droppriv)
+			return _spawn_phase(mydo, mysettings,
+				fd_pipes=fd_pipes, returnpid=returnpid)
 
 		# Validate dependency metadata here to ensure that ebuilds with invalid
 		# data are never installed via the ebuild command. Don't bother when
@@ -610,40 +583,9 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if rval != os.EX_OK:
 				return rval
 
-		if "PORTAGE_TMPDIR" not in mysettings or \
-			not os.path.isdir(mysettings["PORTAGE_TMPDIR"]):
-			writemsg(_("The directory specified in your "
-				"PORTAGE_TMPDIR variable, '%s',\n"
-				"does not exist.  Please create this directory or "
-				"correct your PORTAGE_TMPDIR setting.\n") % mysettings.get("PORTAGE_TMPDIR", ""), noiselevel=-1)
-			return 1
-		
-		# as some people use a separate PORTAGE_TMPDIR mount
-		# we prefer that as the checks below would otherwise be pointless
-		# for those people.
-		if os.path.exists(os.path.join(mysettings["PORTAGE_TMPDIR"], "portage")):
-			checkdir = os.path.join(mysettings["PORTAGE_TMPDIR"], "portage")
-		else:
-			checkdir = mysettings["PORTAGE_TMPDIR"]
-
-		if not os.access(checkdir, os.W_OK):
-			writemsg(_("%s is not writable.\n"
-				"Likely cause is that you've mounted it as readonly.\n") % checkdir,
-				noiselevel=-1)
-			return 1
-		else:
-			fd = tempfile.NamedTemporaryFile(prefix="exectest-", dir=checkdir)
-			os.chmod(fd.name, 0o755)
-			if not os.access(fd.name, os.X_OK):
-				writemsg(_("Can not execute files in %s\n"
-					"Likely cause is that you've mounted it with one of the\n"
-					"following mount options: 'noexec', 'user', 'users'\n\n"
-					"Please make sure that portage can execute files in this directory.\n") % checkdir,
-					noiselevel=-1)
-				fd.close()
-				return 1
-			fd.close()
-		del checkdir
+		rval = _check_temp_dir(mysettings)
+		if rval != os.EX_OK:
+			return rval
 
 		if mydo == "unmerge":
 			return unmerge(mysettings["CATEGORY"],
@@ -669,145 +611,35 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				logfile = mysettings.get("PORTAGE_LOG_FILE")
 
 		if have_build_dirs:
-			env_file = os.path.join(mysettings["T"], "environment")
-			env_stat = None
-			saved_env = None
-			try:
-				env_stat = os.stat(env_file)
-			except OSError as e:
-				if e.errno != errno.ENOENT:
-					raise
-				del e
-			if not env_stat:
-				saved_env = os.path.join(
-					os.path.dirname(myebuild), "environment.bz2")
-				if not os.path.isfile(saved_env):
-					saved_env = None
-			if saved_env:
-				retval = os.system(
-					"bzip2 -dc %s > %s" % \
-					(_shell_quote(saved_env),
-					_shell_quote(env_file)))
-				try:
-					env_stat = os.stat(env_file)
-				except OSError as e:
-					if e.errno != errno.ENOENT:
-						raise
-					del e
-				if os.WIFEXITED(retval) and \
-					os.WEXITSTATUS(retval) == os.EX_OK and \
-					env_stat and env_stat.st_size > 0:
-					# This is a signal to ebuild.sh, so that it knows to filter
-					# out things like SANDBOX_{DENY,PREDICT,READ,WRITE} that
-					# would be preserved between normal phases.
-					open(_unicode_encode(env_file + '.raw'), 'w')
-				else:
-					writemsg(_("!!! Error extracting saved "
-						"environment: '%s'\n") % \
-						saved_env, noiselevel=-1)
-					try:
-						os.unlink(env_file)
-					except OSError as e:
-						if e.errno != errno.ENOENT:
-							raise
-						del e
-					env_stat = None
-			if env_stat:
-				pass
+			rval = _prepare_env_file(mysettings)
+			if rval != os.EX_OK:
+				return rval
+
+		if eapi_exports_replace_vars(mysettings["EAPI"]) and \
+			(mydo in ("pretend", "setup") or \
+			("noauto" not in features and not returnpid and \
+			(mydo in actionmap_deps or mydo in ("merge", "package", "qmerge")))):
+			if not vartree:
+				writemsg("Warning: vartree not given to doebuild. " + \
+					"Cannot set REPLACING_VERSIONS in pkg_{pretend,setup}\n")
 			else:
-				for var in ("ARCH", ):
-					value = mysettings.get(var)
-					if value and value.strip():
-						continue
-					msg = _("%(var)s is not set... "
-						"Are you missing the '%(configroot)setc/make.profile' symlink? "
-						"Is the symlink correct? "
-						"Is your portage tree complete?") % \
-						{"var": var, "configroot": mysettings["PORTAGE_CONFIGROOT"]}
-					for line in wrap(msg, 70):
-						eerror(line, phase="setup", key=mysettings.mycpv)
-					elog_process(mysettings.mycpv, mysettings)
-					return 1
-			del env_file, env_stat, saved_env
-			_doebuild_exit_status_unlink(
-				mysettings.get("EBUILD_EXIT_STATUS_FILE"))
-		else:
-			mysettings.pop("EBUILD_EXIT_STATUS_FILE", None)
+				vardb = vartree.dbapi
+				cpv = mysettings.mycpv
+				cp = portage.versions.cpv_getkey(cpv)
+				slot = mysettings["SLOT"]
+				cpv_slot = cp + ":" + slot
+				mysettings["REPLACING_VERSIONS"] = " ".join(
+					set(portage.versions.cpv_getversion(match) \
+						for match in vardb.match(cpv_slot) + \
+						vardb.match('='+cpv)))
+				mysettings.backup_changes("REPLACING_VERSIONS")
 
 		# if any of these are being called, handle them -- running them out of
 		# the sandbox -- and stop now.
-		if mydo == "help":
-			return spawn(_shell_quote(ebuild_sh_binary) + " " + mydo,
-				mysettings, debug=debug, free=1, logfile=logfile)
-		elif mydo == "setup":
-			retval = spawn(
-				_shell_quote(ebuild_sh_binary) + " " + mydo, mysettings,
-				debug=debug, free=1, logfile=logfile, fd_pipes=fd_pipes,
-				returnpid=returnpid)
-			if returnpid:
-				return retval
-			retval = exit_status_check(retval)
-			if secpass >= 2:
-				""" Privileged phases may have left files that need to be made
-				writable to a less privileged user."""
-				apply_recursive_permissions(mysettings["T"],
-					uid=portage_uid, gid=portage_gid, dirmode=0o70, dirmask=0,
-					filemode=0o60, filemask=0)
-			return retval
-		elif mydo == "preinst":
-			phase_retval = spawn(
-				_shell_quote(ebuild_sh_binary) + " " + mydo,
-				mysettings, debug=debug, free=1, logfile=logfile,
-				fd_pipes=fd_pipes, returnpid=returnpid)
-
-			if returnpid:
-				return phase_retval
-
-			phase_retval = exit_status_check(phase_retval)
-			if phase_retval == os.EX_OK:
-				_doebuild_exit_status_unlink(
-					mysettings.get("EBUILD_EXIT_STATUS_FILE"))
-				mysettings.pop("EBUILD_PHASE", None)
-				phase_retval = spawn(
-					" ".join(_post_pkg_preinst_cmd(mysettings)),
-					mysettings, debug=debug, free=1, logfile=logfile)
-				phase_retval = exit_status_check(phase_retval)
-				if phase_retval != os.EX_OK:
-					writemsg(_("!!! post preinst failed; exiting.\n"),
-						noiselevel=-1)
-			return phase_retval
-		elif mydo == "postinst":
-			phase_retval = spawn(
-				_shell_quote(ebuild_sh_binary) + " " + mydo,
-				mysettings, debug=debug, free=1, logfile=logfile,
-				fd_pipes=fd_pipes, returnpid=returnpid)
-
-			if returnpid:
-				return phase_retval
-
-			phase_retval = exit_status_check(phase_retval)
-			if phase_retval == os.EX_OK:
-				_doebuild_exit_status_unlink(
-					mysettings.get("EBUILD_EXIT_STATUS_FILE"))
-				mysettings.pop("EBUILD_PHASE", None)
-				phase_retval = spawn(" ".join(_post_pkg_postinst_cmd(mysettings)),
-					mysettings, debug=debug, free=1, logfile=logfile)
-				phase_retval = exit_status_check(phase_retval)
-				if phase_retval != os.EX_OK:
-					writemsg(_("!!! post postinst failed; exiting.\n"),
-						noiselevel=-1)
-			return phase_retval
-		elif mydo in ("prerm", "postrm", "config", "info", "pretend"):
-			retval =  spawn(
-				_shell_quote(ebuild_sh_binary) + " " + mydo,
-				mysettings, debug=debug, free=1, logfile=logfile,
-				fd_pipes=fd_pipes, returnpid=returnpid)
-
-			if returnpid:
-				return retval
-
-			retval = exit_status_check(retval)
-			return retval
+		if mydo in ("config", "help", "info", "postinst",
+			"preinst", "pretend", "postrm", "prerm", "setup"):
+			return _spawn_phase(mydo, mysettings,
+				fd_pipes=fd_pipes, logfile=logfile, returnpid=returnpid)
 
 		mycpv = "/".join((mysettings["CATEGORY"], mysettings["PF"]))
 
@@ -889,77 +721,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		# remove PORTAGE_ACTUAL_DISTDIR once cvs/svn is supported via SRC_URI
 		if (mydo != "setup" and "noauto" not in features) or mydo == "unpack":
-			orig_distdir = mysettings["DISTDIR"]
-			mysettings["PORTAGE_ACTUAL_DISTDIR"] = orig_distdir
-			edpath = mysettings["DISTDIR"] = \
-				os.path.join(mysettings["PORTAGE_BUILDDIR"], "distdir")
-			portage.util.ensure_dirs(edpath, gid=portage_gid, mode=0o755)
-
-			# Remove any unexpected files or directories.
-			for x in os.listdir(edpath):
-				symlink_path = os.path.join(edpath, x)
-				st = os.lstat(symlink_path)
-				if x in alist and stat.S_ISLNK(st.st_mode):
-					continue
-				if stat.S_ISDIR(st.st_mode):
-					shutil.rmtree(symlink_path)
-				else:
-					os.unlink(symlink_path)
-
-			# Check for existing symlinks and recreate if necessary.
-			for x in alist:
-				symlink_path = os.path.join(edpath, x)
-				target = os.path.join(orig_distdir, x)
-				try:
-					link_target = os.readlink(symlink_path)
-				except OSError:
-					os.symlink(target, symlink_path)
-				else:
-					if link_target != target:
-						os.unlink(symlink_path)
-						os.symlink(target, symlink_path)
+			_prepare_fake_distdir(mysettings, alist)
 
 		#initial dep checks complete; time to process main commands
-
-		restrict = mysettings["PORTAGE_RESTRICT"].split()
-		nosandbox = (("userpriv" in features) and \
-			("usersandbox" not in features) and \
-			"userpriv" not in restrict and \
-			"nouserpriv" not in restrict)
-		if nosandbox and ("userpriv" not in features or \
-			"userpriv" in restrict or \
-			"nouserpriv" in restrict):
-			nosandbox = ("sandbox" not in features and \
-				"usersandbox" not in features)
-
-		if not portage.process.sandbox_capable:
-			nosandbox = True
-
-		sesandbox = mysettings.selinux_enabled() and \
-			"sesandbox" in mysettings.features
-
-		droppriv = "userpriv" in mysettings.features and \
-			"userpriv" not in restrict and \
-			secpass >= 2
-
-		fakeroot = "fakeroot" in mysettings.features
-
-		ebuild_sh = _shell_quote(ebuild_sh_binary) + " %s"
-		misc_sh = _shell_quote(misc_sh_binary) + " dyn_%s"
-
-		# args are for the to spawn function
-		actionmap = {
-"pretend":  {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":1,         "sesandbox":0,         "fakeroot":0}},
-"setup":    {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":1,         "sesandbox":0,         "fakeroot":0}},
-"unpack":   {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox, "fakeroot":0}},
-"prepare":  {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox, "fakeroot":0}},
-"configure":{"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
-"compile":  {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
-"test":     {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
-"install":  {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":0,         "sesandbox":sesandbox, "fakeroot":fakeroot}},
-"rpm":      {"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0,         "fakeroot":fakeroot}},
-"package":  {"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0,         "fakeroot":fakeroot}},
-		}
+		actionmap = _spawn_actionmap(mysettings)
 
 		# merge the deps in so we have again a 'full' actionmap
 		# be glad when this can die.
@@ -972,12 +737,17 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 				# Make sure the package directory exists before executing
 				# this phase. This can raise PermissionDenied if
 				# the current user doesn't have write access to $PKGDIR.
-				parent_dir = os.path.join(mysettings["PKGDIR"],
-					mysettings["CATEGORY"])
-				portage.util.ensure_dirs(parent_dir)
-				if not os.access(parent_dir, os.W_OK):
-					raise PermissionDenied(
-						"access('%s', os.W_OK)" % parent_dir)
+				if hasattr(portage, 'db'):
+					bintree = portage.db[mysettings["ROOT"]]["bintree"]
+					bintree._ensure_dir(os.path.join(
+						bintree.pkgdir, mysettings["CATEGORY"]))
+				else:
+					parent_dir = os.path.join(mysettings["PKGDIR"],
+						mysettings["CATEGORY"])
+					portage.util.ensure_dirs(parent_dir)
+					if not os.access(parent_dir, os.W_OK):
+						raise PermissionDenied(
+							"access('%s', os.W_OK)" % parent_dir)
 			retval = spawnebuild(mydo,
 				actionmap, mysettings, debug, logfile=logfile,
 				fd_pipes=fd_pipes, returnpid=returnpid)
@@ -1002,7 +772,6 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			retval = spawnebuild("install", actionmap, mysettings, debug,
 				alwaysdep=1, logfile=logfile, fd_pipes=fd_pipes,
 				returnpid=returnpid)
-			retval = exit_status_check(retval)
 			if retval != os.EX_OK:
 				# The merge phase handles this already.  Callers don't know how
 				# far this function got, so we have to call elog_process() here
@@ -1028,12 +797,14 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		if builddir_lock:
 			portage.locks.unlockdir(builddir_lock)
 
+		mysettings.pop("REPLACING_VERSIONS", None)
+
 		# Make sure that DISTDIR is restored to it's normal value before we return!
 		if "PORTAGE_ACTUAL_DISTDIR" in mysettings:
 			mysettings["DISTDIR"] = mysettings["PORTAGE_ACTUAL_DISTDIR"]
 			del mysettings["PORTAGE_ACTUAL_DISTDIR"]
 
-		if logfile:
+		if logfile and not returnpid:
 			try:
 				if os.stat(logfile).st_size == 0:
 					os.unlink(logfile)
@@ -1045,13 +816,157 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			# and the exemption is no longer needed.
 			portage._doebuild_manifest_exempt_depend -= 1
 
+def _check_temp_dir(settings):
+	if "PORTAGE_TMPDIR" not in settings or \
+		not os.path.isdir(settings["PORTAGE_TMPDIR"]):
+		writemsg(_("The directory specified in your "
+			"PORTAGE_TMPDIR variable, '%s',\n"
+			"does not exist.  Please create this directory or "
+			"correct your PORTAGE_TMPDIR setting.\n") % \
+			settings.get("PORTAGE_TMPDIR", ""), noiselevel=-1)
+		return 1
+
+	# as some people use a separate PORTAGE_TMPDIR mount
+	# we prefer that as the checks below would otherwise be pointless
+	# for those people.
+	if os.path.exists(os.path.join(settings["PORTAGE_TMPDIR"], "portage")):
+		checkdir = os.path.join(settings["PORTAGE_TMPDIR"], "portage")
+	else:
+		checkdir = settings["PORTAGE_TMPDIR"]
+
+	if not os.access(checkdir, os.W_OK):
+		writemsg(_("%s is not writable.\n"
+			"Likely cause is that you've mounted it as readonly.\n") % checkdir,
+			noiselevel=-1)
+		return 1
+
+	else:
+		fd = tempfile.NamedTemporaryFile(prefix="exectest-", dir=checkdir)
+		os.chmod(fd.name, 0o755)
+		if not os.access(fd.name, os.X_OK):
+			writemsg(_("Can not execute files in %s\n"
+				"Likely cause is that you've mounted it with one of the\n"
+				"following mount options: 'noexec', 'user', 'users'\n\n"
+				"Please make sure that portage can execute files in this directory.\n") % checkdir,
+				noiselevel=-1)
+			return 1
+
+	return os.EX_OK
+
+def _prepare_env_file(settings):
+	"""
+	Extract environment.bz2 if it exists, but only if the destination
+	environment file doesn't already exist. There are lots of possible
+	states when doebuild() calls this function, and we want to avoid
+	clobbering an existing environment file.
+	"""
+
+	task_scheduler = TaskScheduler()
+	env_extractor = BinpkgEnvExtractor(background=False,
+		scheduler=task_scheduler.sched_iface, settings=settings)
+
+	if env_extractor.dest_env_exists():
+		# There are lots of possible states when doebuild()
+		# calls this function, and we want to avoid
+		# clobbering an existing environment file.
+		return os.EX_OK
+
+	if not env_extractor.saved_env_exists():
+		# If the environment.bz2 doesn't exist, then ebuild.sh will
+		# source the ebuild as a fallback.
+		return os.EX_OK
+
+	task_scheduler.add(env_extractor)
+	task_scheduler.run()
+	return env_extractor.returncode
+
+def _prepare_fake_distdir(settings, alist):
+	orig_distdir = settings["DISTDIR"]
+	settings["PORTAGE_ACTUAL_DISTDIR"] = orig_distdir
+	edpath = settings["DISTDIR"] = \
+		os.path.join(settings["PORTAGE_BUILDDIR"], "distdir")
+	portage.util.ensure_dirs(edpath, gid=portage_gid, mode=0o755)
+
+	# Remove any unexpected files or directories.
+	for x in os.listdir(edpath):
+		symlink_path = os.path.join(edpath, x)
+		st = os.lstat(symlink_path)
+		if x in alist and stat.S_ISLNK(st.st_mode):
+			continue
+		if stat.S_ISDIR(st.st_mode):
+			shutil.rmtree(symlink_path)
+		else:
+			os.unlink(symlink_path)
+
+	# Check for existing symlinks and recreate if necessary.
+	for x in alist:
+		symlink_path = os.path.join(edpath, x)
+		target = os.path.join(orig_distdir, x)
+		try:
+			link_target = os.readlink(symlink_path)
+		except OSError:
+			os.symlink(target, symlink_path)
+		else:
+			if link_target != target:
+				os.unlink(symlink_path)
+				os.symlink(target, symlink_path)
+
+def _spawn_actionmap(settings):
+	features = settings.features
+	restrict = settings["PORTAGE_RESTRICT"].split()
+	nosandbox = (("userpriv" in features) and \
+		("usersandbox" not in features) and \
+		"userpriv" not in restrict and \
+		"nouserpriv" not in restrict)
+	if nosandbox and ("userpriv" not in features or \
+		"userpriv" in restrict or \
+		"nouserpriv" in restrict):
+		nosandbox = ("sandbox" not in features and \
+			"usersandbox" not in features)
+
+	if not portage.process.sandbox_capable:
+		nosandbox = True
+
+	sesandbox = settings.selinux_enabled() and \
+		"sesandbox" in features
+
+	droppriv = "userpriv" in features and \
+		"userpriv" not in restrict and \
+		secpass >= 2
+
+	fakeroot = "fakeroot" in features
+
+	portage_bin_path = settings["PORTAGE_BIN_PATH"]
+	ebuild_sh_binary = os.path.join(portage_bin_path,
+		os.path.basename(EBUILD_SH_BINARY))
+	misc_sh_binary = os.path.join(portage_bin_path,
+		os.path.basename(MISC_SH_BINARY))
+	ebuild_sh = _shell_quote(ebuild_sh_binary) + " %s"
+	misc_sh = _shell_quote(misc_sh_binary) + " dyn_%s"
+
+	# args are for the to spawn function
+	actionmap = {
+"pretend":  {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":1,         "sesandbox":0,         "fakeroot":0}},
+"setup":    {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":1,         "sesandbox":0,         "fakeroot":0}},
+"unpack":   {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox, "fakeroot":0}},
+"prepare":  {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox, "fakeroot":0}},
+"configure":{"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
+"compile":  {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
+"test":     {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
+"install":  {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":0,         "sesandbox":sesandbox, "fakeroot":fakeroot}},
+"rpm":      {"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0,         "fakeroot":fakeroot}},
+"package":  {"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0,         "fakeroot":fakeroot}},
+		}
+
+	return actionmap
+
 def _validate_deps(mysettings, myroot, mydo, mydbapi):
 
 	invalid_dep_exempt_phases = \
 		set(["clean", "cleanrm", "help", "prerm", "postrm"])
 	dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 	misc_keys = ["LICENSE", "PROPERTIES", "PROVIDE", "RESTRICT", "SRC_URI"]
-	other_keys = ["SLOT"]
+	other_keys = ["SLOT", "EAPI"]
 	all_keys = dep_keys + misc_keys + other_keys
 	metadata = dict(zip(all_keys,
 		mydbapi.aux_get(mysettings.mycpv, all_keys)))
@@ -1071,10 +986,11 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 			msgs.append("  %s: %s\n    %s\n" % (
 				dep_type, metadata[dep_type], mycheck[1]))
 
+	eapi = metadata["EAPI"]
 	for k in misc_keys:
 		try:
-			use_reduce(
-				paren_reduce(metadata[k]), matchall=True)
+			use_reduce(metadata[k], matchall=True, is_src_uri=(k=="SRC_URI"), \
+				allow_src_uri_file_renames=eapi_has_src_uri_arrows(eapi))
 		except InvalidDependString as e:
 			msgs.append("  %s: %s\n    %s\n" % (
 				k, metadata[k], str(e)))
@@ -1132,17 +1048,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	1. The return code of the spawned process.
 	"""
 
-	if isinstance(mysettings, dict):
-		env=mysettings
-		keywords["opt_name"]="[ %s ]" % "portage"
-	else:
-		check_config_instance(mysettings)
-		env=mysettings.environ()
-		if mysettings.mycpv is not None:
-			keywords["opt_name"] = "[%s]" % mysettings.mycpv
-		else:
-			keywords["opt_name"] = "[%s/%s]" % \
-				(mysettings.get("CATEGORY",""), mysettings.get("PF",""))
+	check_config_instance(mysettings)
 
 	fd_pipes = keywords.get("fd_pipes")
 	if fd_pipes is None:
@@ -1177,6 +1083,12 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	if not free and not (fakeroot or portage.process.sandbox_capable):
 		free = True
 
+	if mysettings.mycpv is not None:
+		keywords["opt_name"] = "[%s]" % mysettings.mycpv
+	else:
+		keywords["opt_name"] = "[%s/%s]" % \
+			(mysettings.get("CATEGORY",""), mysettings.get("PF",""))
+
 	if free or "SANDBOX_ACTIVE" in os.environ:
 		keywords["opt_name"] += " bash"
 		spawn_func = portage.process.spawn_bash
@@ -1193,12 +1105,11 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 			mysettings["PORTAGE_SANDBOX_T"])
 
 	if keywords.get("returnpid"):
-		return spawn_func(mystring, env=env, **keywords)
+		return spawn_func(mystring, env=mysettings.environ(), **keywords)
 
 	sched = TaskScheduler()
 	proc = EbuildSpawnProcess(
-		background=False,
-		args=mystring, env=env,
+		background=False, args=mystring,
 		scheduler=sched.sched_iface, spawn_func=spawn_func,
 		settings=mysettings, **keywords)
 
@@ -1222,65 +1133,15 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 
 	eapi = mysettings["EAPI"]
 
-	if mydo == "configure" and eapi in ("0", "1"):
+	if mydo in ("configure", "prepare") and not eapi_has_src_prepare_and_src_configure(eapi):
 		return os.EX_OK
 
-	if mydo == "prepare" and eapi in ("0", "1"):
+	if mydo == "pretend" and not eapi_has_pkg_pretend(eapi):
 		return os.EX_OK
 
-	if mydo == "pretend" and eapi in ("0", "1", "2", "3", "3_pre2"):
-		return os.EX_OK
-
-	kwargs = actionmap[mydo]["args"]
-	mysettings["EBUILD_PHASE"] = mydo
-	_doebuild_exit_status_unlink(
-		mysettings.get("EBUILD_EXIT_STATUS_FILE"))
-
-	try:
-		phase_retval = spawn(actionmap[mydo]["cmd"] % mydo,
-			mysettings, debug=debug, logfile=logfile,
-			fd_pipes=fd_pipes, returnpid=returnpid, **kwargs)
-	finally:
-		mysettings["EBUILD_PHASE"] = ""
-
-	if returnpid:
-		return phase_retval
-
-	msg = _doebuild_exit_status_check(mydo, mysettings)
-	if msg:
-		if phase_retval == os.EX_OK:
-			phase_retval = 1
-		for l in wrap(msg, 72):
-			eerror(l, phase=mydo, key=mysettings.mycpv)
-
-	_post_phase_userpriv_perms(mysettings)
-	if mydo == "install":
-		out = StringIO()
-		_check_build_log(mysettings, out=out)
-		msg = _unicode_decode(out.getvalue(),
-			encoding=_encodings['content'], errors='replace')
-		if msg:
-			writemsg_stdout(msg, noiselevel=-1)
-			if logfile is not None:
-				try:
-					f = codecs.open(_unicode_encode(logfile,
-						encoding=_encodings['fs'], errors='strict'),
-						mode='a', encoding=_encodings['content'],
-						errors='replace')
-				except EnvironmentError:
-					pass
-				else:
-					f.write(msg)
-					f.close()
-		if phase_retval == os.EX_OK:
-			_post_src_install_chost_fix(mysettings)
-			phase_retval = _post_src_install_checks(mysettings)
-
-	if mydo == "test" and phase_retval != os.EX_OK and \
-		"test-fail-continue" in mysettings.features:
-		phase_retval = os.EX_OK
-
-	return phase_retval
+	return _spawn_phase(mydo, mysettings,
+		actionmap=actionmap, logfile=logfile,
+		fd_pipes=fd_pipes, returnpid=returnpid)
 
 _post_phase_cmds = {
 
@@ -1307,30 +1168,6 @@ def _post_phase_userpriv_perms(mysettings):
 			uid=portage_uid, gid=portage_gid, dirmode=0o70, dirmask=0,
 			filemode=0o60, filemask=0)
 
-def _post_src_install_checks(mysettings):
-	out = portage.StringIO()
-	_post_src_install_uid_fix(mysettings, out)
-	global _post_phase_cmds
-	retval = _spawn_misc_sh(mysettings, _post_phase_cmds["install"],
-		phase='internal_post_src_install')
-	if retval != os.EX_OK:
-		writemsg(_("!!! install_qa_check failed; exiting.\n"),
-			fd=out, noiselevel=-1)
-
-	msg = _unicode_decode(out.getvalue(),
-		encoding=_encodings['content'], errors='replace')
-	if msg:
-		writemsg_stdout(msg, noiselevel=-1)
-		log_path = mysettings.get("PORTAGE_LOG_FILE")
-		if log_path is not None:
-			log_file = codecs.open(_unicode_encode(log_path,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='a', encoding=_encodings['content'], errors='replace')
-			log_file.write(msg)
-			log_file.close()
-
-	return retval
-
 def _check_build_log(mysettings, out=None):
 	"""
 	Search the content of $PORTAGE_LOG_FILE if it exists
@@ -1344,11 +1181,13 @@ def _check_build_log(mysettings, out=None):
 	if logfile is None:
 		return
 	try:
-		f = codecs.open(_unicode_encode(logfile,
-			encoding=_encodings['fs'], errors='strict'),
-			mode='r', encoding=_encodings['content'], errors='replace')
+		f = open(_unicode_encode(logfile, encoding=_encodings['fs'],
+			errors='strict'), mode='rb')
 	except EnvironmentError:
 		return
+
+	if logfile.endswith('.gz'):
+		f =  gzip.GzipFile(filename='', mode='rb', fileobj=f)
 
 	am_maintainer_mode = []
 	bash_command_not_found = []
@@ -1375,8 +1214,13 @@ def _check_build_log(mysettings, out=None):
 		re.compile(r'g?make\[\d+\]: warning: jobserver unavailable:')
 	make_jobserver = []
 
+	def _eerror(lines):
+		for line in lines:
+			eerror(line, phase="install", key=mysettings.mycpv, out=out)
+
 	try:
 		for line in f:
+			line = _unicode_decode(line)
 			if am_maintainer_mode_re.search(line) is not None and \
 				am_maintainer_mode_exclude_re.search(line) is None:
 				am_maintainer_mode.append(line.rstrip("\n"))
@@ -1394,6 +1238,9 @@ def _check_build_log(mysettings, out=None):
 			if make_jobserver_re.match(line) is not None:
 				make_jobserver.append(line.rstrip("\n"))
 
+	except zlib.error as e:
+		_eerror(["portage encountered a zlib error: '%s'" % (e,),
+			"while reading the log file: '%s'" % logfile])
 	finally:
 		f.close()
 
@@ -1612,9 +1459,7 @@ def _post_src_install_uid_fix(mysettings, out):
 		v = mysettings.configdict['pkg'].get(k)
 		if v is None:
 			continue
-		v = paren_reduce(v)
 		v = use_reduce(v, uselist=use)
-		v = paren_normalize(v)
 		v = paren_enclose(v)
 		if not v:
 			continue
@@ -1664,74 +1509,3 @@ def _merge_unicode_error(errors):
 		lines.append("")
 
 	return lines
-
-def _post_pkg_preinst_cmd(mysettings):
-	"""
-	Post phase logic and tasks that have been factored out of
-	ebuild.sh. Call preinst_mask last so that INSTALL_MASK can
-	can be used to wipe out any gmon.out files created during
-	previous functions (in case any tools were built with -pg
-	in CFLAGS).
-	"""
-
-	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
-	misc_sh_binary = os.path.join(portage_bin_path,
-		os.path.basename(MISC_SH_BINARY))
-
-	mysettings["EBUILD_PHASE"] = ""
-	global _post_phase_cmds
-	myargs = [_shell_quote(misc_sh_binary)] + _post_phase_cmds["preinst"]
-
-	return myargs
-
-def _post_pkg_postinst_cmd(mysettings):
-	"""
-	Post phase logic and tasks that have been factored out of
-	build.sh.
-	"""
-
-	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
-	misc_sh_binary = os.path.join(portage_bin_path,
-		os.path.basename(MISC_SH_BINARY))
-
-	mysettings["EBUILD_PHASE"] = ""
-	global _post_phase_cmds
-	myargs = [_shell_quote(misc_sh_binary)] + _post_phase_cmds["postinst"]
-
-	return myargs
-
-def _spawn_misc_sh(mysettings, commands, phase=None, **kwargs):
-	"""
-	@param mysettings: the ebuild config
-	@type mysettings: config
-	@param commands: a list of function names to call in misc-functions.sh
-	@type commands: list
-	@rtype: int
-	@returns: the return value from the spawn() call
-	"""
-
-	# Note: PORTAGE_BIN_PATH may differ from the global
-	# constant when portage is reinstalling itself.
-	portage_bin_path = mysettings["PORTAGE_BIN_PATH"]
-	misc_sh_binary = os.path.join(portage_bin_path,
-		os.path.basename(MISC_SH_BINARY))
-	mycommand = " ".join([_shell_quote(misc_sh_binary)] + commands)
-	_doebuild_exit_status_unlink(
-		mysettings.get("EBUILD_EXIT_STATUS_FILE"))
-	debug = mysettings.get("PORTAGE_DEBUG") == "1"
-	logfile = mysettings.get("PORTAGE_LOG_FILE")
-	mysettings.pop("EBUILD_PHASE", None)
-	try:
-		rval = spawn(mycommand, mysettings, debug=debug,
-			logfile=logfile, **kwargs)
-	finally:
-		pass
-
-	msg = _doebuild_exit_status_check(phase, mysettings)
-	if msg:
-		if rval == os.EX_OK:
-			rval = 1
-		for l in wrap(msg, 72):
-			eerror(l, phase=phase, key=mysettings.mycpv)
-
-	return rval

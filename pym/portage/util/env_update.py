@@ -28,6 +28,9 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 	"""
 	Parse /etc/env.d and use it to generate /etc/profile.env, csh.env,
 	ld.so.conf, and prelink.conf. Finally, run ldconfig.
+	@param target_root: root that is passed to the ldconfig -r option,
+		defaults to portage.settings["ROOT"].
+	@type target_root: String (Path)
 	"""
 	if writemsg_level is None:
 		writemsg_level = portage.util.writemsg_level

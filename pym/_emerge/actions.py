@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -27,12 +27,13 @@ from portage import os
 from portage import digraph
 from portage import _unicode_decode, _unicode_encode
 from portage.cache.cache_errors import CacheError
-from portage.const import NEWS_LIB_PATH
+from portage.const import GLOBAL_CONFIG_PATH, NEWS_LIB_PATH
 from portage.dbapi.dep_expand import dep_expand
 from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 	red, yellow
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
+from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage.sets import load_default_config, SETPREFIX
 from portage.sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, \
@@ -909,7 +910,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 			for lib, lib_consumers in list(consumers.items()):
 				for consumer_file in list(lib_consumers):
-					if pkg_dblink.isowner(consumer_file, myroot):
+					if pkg_dblink.isowner(consumer_file):
 						lib_consumers.remove(consumer_file)
 				if not lib_consumers:
 					del consumers[lib]
@@ -1088,14 +1089,10 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				depstr = node.metadata[dep_type]
 				if not depstr:
 					continue
-				try:
-					portage.dep._dep_check_strict = False
-					success, atoms = portage.dep_check(depstr, None, settings,
-						myuse=node_use,
-						trees=resolver._dynamic_config._graph_trees,
-						myroot=myroot)
-				finally:
-					portage.dep._dep_check_strict = True
+				success, atoms = portage.dep_check(depstr, None, settings,
+					myuse=node_use,
+					trees=resolver._dynamic_config._graph_trees,
+					myroot=myroot)
 				if not success:
 					# Ignore invalid deps of packages that will
 					# be uninstalled anyway.
@@ -1817,7 +1814,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	myportdir = portdb.porttree_root
 	out = portage.output.EOutput()
 	if not myportdir:
-		sys.stderr.write("!!! PORTDIR is undefined.  Is /etc/make.globals missing?\n")
+		sys.stderr.write("!!! PORTDIR is undefined.  " + \
+			"Is %s/make.globals missing?\n" % GLOBAL_CONFIG_PATH)
 		sys.exit(1)
 	if myportdir[-1]=="/":
 		myportdir=myportdir[:-1]
@@ -1856,7 +1854,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 	syncuri = settings.get("SYNC", "").strip()
 	if not syncuri:
-		writemsg_level("!!! SYNC is undefined. Is /etc/make.globals missing?\n",
+		writemsg_level("!!! SYNC is undefined. " + \
+			"Is %s/make.globals missing?\n" % GLOBAL_CONFIG_PATH,
 			noiselevel=-1, level=logging.ERROR)
 		return 1
 
@@ -2466,21 +2465,15 @@ def adjust_config(myopts, settings):
 	# Kill noauto as it will break merges otherwise.
 	if "noauto" in settings.features:
 		settings.features.remove('noauto')
-		settings['FEATURES'] = ' '.join(sorted(settings.features))
-		settings.backup_changes("FEATURES")
 
 	fail_clean = myopts.get('--fail-clean')
 	if fail_clean is not None:
 		if fail_clean is True and \
 			'fail-clean' not in settings.features:
 			settings.features.add('fail-clean')
-			settings['FEATURES'] = ' '.join(sorted(settings.features))
-			settings.backup_changes('FEATURES')
 		elif fail_clean == 'n' and \
 			'fail-clean' in settings.features:
 			settings.features.remove('fail-clean')
-			settings['FEATURES'] = ' '.join(sorted(settings.features))
-			settings.backup_changes('FEATURES')
 
 	CLEAN_DELAY = 5
 	try:
@@ -2778,6 +2771,7 @@ def load_emerge_config(trees=None):
 	mtimedbfile = os.path.join(os.path.sep, settings['ROOT'], portage.CACHE_PATH, "mtimedb")
 	mtimedb = portage.MtimeDB(mtimedbfile)
 	portage.output._init(config_root=settings['PORTAGE_CONFIGROOT'])
+	QueryCommand._db = trees
 	return settings, trees, mtimedb
 
 def chk_updated_cfg_files(target_root, config_protect):

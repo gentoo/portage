@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #
 # Miscellaneous shell functions that make use of the ebuild env but don't need
@@ -474,10 +474,12 @@ install_qa_check() {
 		)
 		abort="no"
 		i=0
+		local grep_cmd=grep
+		[[ $PORTAGE_LOG_FILE = *.gz ]] && grep_cmd=zgrep
 		while [[ -n ${msgs[${i}]} ]] ; do
 			m=${msgs[$((i++))]}
 			# force C locale to work around slow unicode locales #160234
-			f=$(LC_ALL=C grep "${m}" "${PORTAGE_LOG_FILE}")
+			f=$(LC_ALL=C $grep_cmd "${m}" "${PORTAGE_LOG_FILE}")
 			if [[ -n ${f} ]] ; then
 				vecho -ne '\a\n'
 				eqawarn "QA Notice: Package has poor programming practices which may compile"
@@ -487,9 +489,11 @@ install_qa_check() {
 				abort="yes"
 			fi
 		done
+		local cat_cmd=cat
+		[[ $PORTAGE_LOG_FILE = *.gz ]] && cat_cmd=zcat
 		[[ $reset_debug = 1 ]] && set -x
-		f=$(cat "${PORTAGE_LOG_FILE}" | \
-			EPYTHON= "$PORTAGE_BIN_PATH"/check-implicit-pointer-usage.py || die "check-implicit-pointer-usage.py failed")
+		f=$($cat_cmd "${PORTAGE_LOG_FILE}" | \
+			"${PORTAGE_PYTHON:-/usr/bin/python}" "$PORTAGE_BIN_PATH"/check-implicit-pointer-usage.py || die "check-implicit-pointer-usage.py failed")
 		if [[ -n ${f} ]] ; then
 
 			# In the future this will be a forced "die". In preparation,
@@ -536,16 +540,6 @@ install_qa_check() {
 					"poor programming practices shown above"
 			fi
 		fi
-	fi
-
-	f=$(find "${D}" -name '*.py[co]' | sed "s:${D}:/:")
-	if [[ -n ${f} ]] ; then
-		vecho -ne '\a\n'
-		eqawarn "QA Notice: Byte-compiled Python modules have been found. python_mod_optimize()"
-		eqawarn "           and python_mod_cleanup() functions python.eclass should be used to"
-		eqawarn "           handle byte-compiled Python modules."
-		eqawarn "${f}"
-		vecho -ne '\a\n'
 	fi
 
 	# Portage regenerates this on the installed system.
@@ -759,8 +753,8 @@ dyn_package() {
 	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${D}" . | \
 		bzip2 -cf > "$PORTAGE_BINPKG_TMPFILE"
 	assert "failed to pack binary package: '$PORTAGE_BINPKG_TMPFILE'"
-	EPYTHON= PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-		"$PORTAGE_BIN_PATH"/xpak-helper.py recompose \
+	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
+		"${PORTAGE_PYTHON:-/usr/bin/python}" "$PORTAGE_BIN_PATH"/xpak-helper.py recompose \
 		"$PORTAGE_BINPKG_TMPFILE" "$PORTAGE_BUILDDIR/build-info"
 	if [ $? -ne 0 ]; then
 		rm -f "${PORTAGE_BINPKG_TMPFILE}"
@@ -853,9 +847,8 @@ if [ -n "${MISC_FUNCTIONS_ARGS}" ]; then
 		${x}
 	done
 	unset x
+	[[ -n $PORTAGE_EBUILD_EXIT_FILE ]] && > "$PORTAGE_EBUILD_EXIT_FILE"
+	[[ -n $PORTAGE_IPC_DAEMON ]] && "$PORTAGE_BIN_PATH"/ebuild-ipc exit 0
 fi
-
-[ -n "${EBUILD_EXIT_STATUS_FILE}" ] && \
-	touch "${EBUILD_EXIT_STATUS_FILE}" &>/dev/null
 
 :

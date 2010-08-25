@@ -1,4 +1,4 @@
-# Copyright 2009 Gentoo Foundation
+# Copyright 2009-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import itertools
@@ -30,7 +30,6 @@ class CompileModulesTestCase(TestCase):
 				if not stat.S_ISREG(st.st_mode):
 					continue
 				do_compile = False
-				cfile = x
 				if x[-3:] == '.py':
 					do_compile = True
 				else:
@@ -43,7 +42,5 @@ class CompileModulesTestCase(TestCase):
 					if line[:2] == '#!' and \
 						'python' in line:
 						do_compile = True
-						cfile += '.py'
 				if do_compile:
-					cfile += (__debug__ and 'c' or 'o')
-					py_compile.compile(x, cfile=cfile, doraise=True)
+					py_compile.compile(x, cfile='/dev/null', doraise=True)

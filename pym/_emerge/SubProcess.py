@@ -61,22 +61,50 @@ class SubProcess(AbstractPollTask):
 			return self.returncode
 
 		if self._registered:
-			self.scheduler.schedule(self._reg_id)
+			if self.cancelled:
+				timeout = 1000
+				self.scheduler.schedule(self._reg_id, timeout=timeout)
+				if self._registered:
+					try:
+						os.kill(self.pid, signal.SIGKILL)
+					except OSError as e:
+						if e.errno != errno.ESRCH:
+							raise
+						del e
+					self.scheduler.schedule(self._reg_id, timeout=timeout)
+					if self._registered:
+						self._orphan_process_warn()
+			else:
+				self.scheduler.schedule(self._reg_id)
 			self._unregister()
 			if self.returncode is not None:
 				return self.returncode
 
 		try:
-			wait_retval = os.waitpid(self.pid, 0)
+			wait_retval = os.waitpid(self.pid, os.WNOHANG)
 		except OSError as e:
 			if e.errno != errno.ECHILD:
 				raise
 			del e
 			self._set_returncode((self.pid, 1))
 		else:
-			self._set_returncode(wait_retval)
+			if wait_retval != (0, 0):
+				self._set_returncode(wait_retval)
+			else:
+				try:
+					wait_retval = os.waitpid(self.pid, 0)
+				except OSError as e:
+					if e.errno != errno.ECHILD:
+						raise
+					del e
+					self._set_returncode((self.pid, 1))
+				else:
+					self._set_returncode(wait_retval)
 
 		return self.returncode
+
+	def _orphan_process_warn(self):
+		pass
 
 	def _unregister(self):
 		"""

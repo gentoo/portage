@@ -20,7 +20,6 @@ class RootConfig(object):
 	def __init__(self, settings, trees, setconfig):
 		self.trees = trees
 		self.settings = settings
-		self.iuse_implicit = tuple(sorted(settings._get_implicit_iuse()))
 		self.root = self.settings["ROOT"]
 		self.setconfig = setconfig
 		if setconfig is None:
