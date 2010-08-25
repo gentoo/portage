@@ -15,8 +15,11 @@ except ImportError:
 	import portage
 
 from portage import os
+from portage.sets.files import StaticFileSet, WorldSelectedSet
+
 import re
-import portage.exception
+import tempfile
+import textwrap
 
 __candidatematcher__ = re.compile("^[0-9]+: \\*\\*\\* emerge ")
 __noncandidatematcher__ = re.compile(" sync( |$)| clean( |$)| search( |$)|--oneshot|--fetchonly| unmerge( |$)")
@@ -98,5 +101,40 @@ for mykey in biglist:
 			print("add to world:",myfavkey)
 			worldlist.append(myfavkey)
 
-portage.write_atomic(os.path.join("/", portage.WORLD_FILE),
-	"\n".join(sorted(worldlist)) + "\n")
+if not worldlist:
+	pass
+else:
+	existing_set = WorldSelectedSet('/')
+	existing_set.load()
+
+	if not existing_set:
+		existing_set.replace(worldlist)
+	else:
+		old_world = existing_set._filename
+		fd, tmp_filename = tempfile.mkstemp(suffix=".tmp",
+			prefix=os.path.basename(old_world) + ".",
+			dir=os.path.dirname(old_world))
+		os.close(fd)
+
+		new_set = StaticFileSet(tmp_filename)
+		new_set.update(worldlist)
+
+		if existing_set.getAtoms() == new_set.getAtoms():
+			os.unlink(tmp_filename)
+		else:
+			new_set.write()
+
+			msg = "Please review differences between old and new files, " + \
+				"and replace the old file if desired."
+
+			portage.util.writemsg_stdout("\n",
+				noiselevel=-1)
+			for line in textwrap.wrap(msg, 65):
+				portage.util.writemsg_stdout("%s\n" % line,
+					noiselevel=-1)
+			portage.util.writemsg_stdout("\n",
+				noiselevel=-1)
+			portage.util.writemsg_stdout("  old: %s\n\n" % old_world,
+				noiselevel=-1)
+			portage.util.writemsg_stdout("  new: %s\n\n" % tmp_filename,
+				noiselevel=-1)
