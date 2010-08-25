@@ -1001,7 +1001,7 @@ def setconfig_fallback(root_config):
 	from portage.sets.profiles import PackagesSystemSet
 	setconfig = root_config.setconfig
 	setconfig.psets['world'] = DummyPackageSet(atoms=['@selected', '@system'])
-	setconfig.psets['selected'] = WorldSelectedSet(root_config.root)
+	setconfig.psets['selected'] = WorldSelectedSet(root_config.settings['EROOT'])
 	setconfig.psets['system'] = \
 		PackagesSystemSet(root_config.settings.profiles)
 	root_config.sets = setconfig.getSets()
