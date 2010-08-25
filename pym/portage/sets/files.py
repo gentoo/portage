@@ -323,5 +323,5 @@ class WorldSelectedSet(EditablePackageSet):
 		self.replace(newworldlist)
 
 	def singleBuilder(self, options, settings, trees):
-		return WorldSelectedSet(settings["ROOT"])
+		return WorldSelectedSet(settings["EROOT"])
 	singleBuilder = classmethod(singleBuilder)
