@@ -133,9 +133,6 @@ def parse_metadata_use(xml_tree):
 		pkg_flag = flag.get("name")
 		if pkg_flag is None:
 			raise exception.ParseError("missing 'name' attribute for 'flag' tag")
-		if flag.text is None:
-			raise exception.ParseError("missing USE description with " + \
-				"the 'flag' tag (name=%s)" % pkg_flag)
 
 		# emulate the Element.itertext() method from python-2.7
 		inner_text = []
@@ -152,11 +149,7 @@ def parse_metadata_use(xml_tree):
 				stack.append(obj.tail)
 			stack.extend(reversed(obj))
 
-		pkg_flag_value = " ".join("".join(inner_text).split())
-		if not pkg_flag_value:
-			raise exception.ParseError("missing USE description with " + \
-				"the 'flag' tag (name=%s)" % pkg_flag)
-		uselist[pkg_flag] = pkg_flag_value
+		uselist[pkg_flag] = " ".join("".join(inner_text).split())
 	return uselist
 
 class UnknownHerdsError(ValueError):
