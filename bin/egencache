@@ -404,7 +404,7 @@ def egencache_main(args):
 			'and/or --update-use-local-desc)')
 		return 1
 
-	if 'metadata-transfer' not in settings.features:
+	if options.update and 'metadata-transfer' not in settings.features:
 		writemsg_level("ecachegen: warning: " + \
 			"automatically enabling FEATURES=metadata-transfer\n",
 			level=logging.WARNING, noiselevel=-1)
