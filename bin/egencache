@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright 2009 Gentoo Foundation
+# Copyright 2009-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -41,40 +41,50 @@ if sys.hexversion >= 0x3000000:
 	long = int
 
 def parse_args(args):
-	usage = "egencache [options] --update [atom] ..."
+	usage = "egencache [options] <action> ... [atom] ..."
 	parser = optparse.OptionParser(usage=usage)
-	parser.add_option("--update",
+
+	actions = optparse.OptionGroup(parser, 'Actions')
+	actions.add_option("--update",
 		action="store_true",
 		help="update metadata/cache/ (generate as necessary)")
-	parser.add_option("--repo",
+	parser.add_option_group(actions)
+
+	common = optparse.OptionGroup(parser, 'Common options')
+	common.add_option("--repo",
 		action="store",
 		help="name of repo to operate on (default repo is located at $PORTDIR)")
-	parser.add_option("--cache-dir",
-		help="location of the metadata cache",
-		dest="cache_dir")
-	parser.add_option("--config-root",
+	common.add_option("--config-root",
 		help="location of portage config files",
 		dest="portage_configroot")
-	parser.add_option("--jobs",
+	common.add_option("--portdir",
+		help="override the portage tree location",
+		dest="portdir")
+	common.add_option("--tolerant",
+		action="store_true",
+		help="exit successfully if only minor errors occurred")
+	common.add_option("--ignore-default-opts",
+		action="store_true",
+		help="do not use the EGENCACHE_DEFAULT_OPTS environment variable")
+	parser.add_option_group(common)
+
+	update = optparse.OptionGroup(parser, '--update options')
+	update.add_option("--cache-dir",
+		help="location of the metadata cache",
+		dest="cache_dir")
+	update.add_option("--jobs",
 		action="store",
 		help="max ebuild processes to spawn")
-	parser.add_option("--load-average",
+	update.add_option("--load-average",
 		action="store",
 		help="max load allowed when spawning multiple jobs",
 		dest="load_average")
-	parser.add_option("--portdir",
-		help="override the portage tree location",
-		dest="portdir")
-	parser.add_option("--rsync",
+	update.add_option("--rsync",
 		action="store_true",
 		help="enable rsync stat collision workaround " + \
 			"for bug 139134 (use with --update)")
-	parser.add_option("--tolerant",
-		action="store_true",
-		help="exit successfully if only minor errors occurred")
-	parser.add_option("--ignore-default-opts",
-		action="store_true",
-		help="do not use the EGENCACHE_DEFAULT_OPTS environment variable")
+	parser.add_option_group(update)
+
 	options, args = parser.parse_args(args)
 
 	if options.jobs:
@@ -341,18 +351,23 @@ def egencache_main(args):
 		# Limit ebuilds to the specified repo.
 		portdb.porttrees = [repo_path]
 
-	cp_iter = None
-	if atoms:
-		cp_iter = iter(atoms)
+	ret = [os.EX_OK]
 
-	gen_cache = GenCache(portdb, cp_iter=cp_iter,
-		max_jobs=options.jobs,
-		max_load=options.load_average,
-		rsync=options.rsync)
-	gen_cache.run()
+	if options.update:
+		cp_iter = None
+		if atoms:
+			cp_iter = iter(atoms)
+
+		gen_cache = GenCache(portdb, cp_iter=cp_iter,
+			max_jobs=options.jobs,
+			max_load=options.load_average,
+			rsync=options.rsync)
+		gen_cache.run()
+		ret.append(gen_cache.returncode)
+
 	if options.tolerant:
-		return os.EX_OK
-	return gen_cache.returncode
+		return ret[0]
+	return max(ret)
 
 if __name__ == "__main__":
 	portage._disable_legacy_globals()
