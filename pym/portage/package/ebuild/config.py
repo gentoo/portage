@@ -1203,7 +1203,7 @@ class config(object):
 
 			if unknown_features:
 				writemsg(colorize("BAD",
-					_("FEATURES variable contains an unknown value(s): %s") % \
+					_("FEATURES variable contains unknown value(s): %s") % \
 					", ".join(unknown_features)) \
 					+ "\n", noiselevel=-1)
 
