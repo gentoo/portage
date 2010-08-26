@@ -1027,7 +1027,8 @@ for x in scanlist:
 	generated_manifest = False
 
 	if options.mode == "manifest" or \
-	  'digest' in repoman_settings.features or \
+	  (options.mode != 'manifest-check' and \
+	  'digest' in repoman_settings.features) or \
 	  options.mode in ('commit', 'fix') and not options.pretend:
 		auto_assumed = set()
 		fetchlist_dict = portage.FetchlistDict(checkdir,
