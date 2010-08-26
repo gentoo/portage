@@ -37,6 +37,14 @@ from portage.util import writemsg_level
 from portage import cpv_getkey
 from portage.dep import isjustname
 
+try:
+	import xml.etree.ElementTree
+except ImportError:
+	pass
+else:
+	from repoman.utilities import parse_metadata_use
+	from xml.parsers.expat import ExpatError
+
 if sys.hexversion >= 0x3000000:
 	long = int
 
@@ -48,6 +56,9 @@ def parse_args(args):
 	actions.add_option("--update",
 		action="store_true",
 		help="update metadata/cache/ (generate as necessary)")
+	actions.add_option("--update-use-local-desc",
+		action="store_true",
+		help="update the use.local.desc file from metadata.xml")
 	parser.add_option_group(actions)
 
 	common = optparse.OptionGroup(parser, 'Common options')
@@ -136,6 +147,12 @@ def parse_args(args):
 
 		if not isjustname(atom):
 			parser.error('Atom is too specific: %s' % (atom,))
+
+	if options.update_use_local_desc:
+		try:
+			xml.etree.ElementTree
+		except NameError:
+			parser.error('--update-use-local-desc requires python with USE=xml!')
 
 	return parser, options, args
 
@@ -288,6 +305,54 @@ class GenCache(object):
 					"committing target: %s\n" % (ce,),
 					level=logging.ERROR, noiselevel=-1)
 
+class GenUseLocalDesc(object):
+	def __init__(self, portdb):
+		self.returncode = os.EX_OK
+		self._portdb = portdb
+	
+	def run(self):
+		repo_path = self._portdb.porttrees[0]
+		prof_path = os.path.join(repo_path, 'profiles')
+		desc_path = os.path.join(prof_path, 'use.local.desc')
+
+		try:
+			os.mkdir(prof_path)
+		except OSError:
+			pass
+		try:
+			output = open(desc_path, 'w')
+		except IOError as e:
+			writemsg_level(
+				"ERROR: failed to open output file: %s\n" % (e,),
+				level=logging.ERROR, noiselevel=-1)
+			self.returncode |= 2
+			return
+
+		output.write('''
+# This file is deprecated as per GLEP 56 in favor of metadata.xml. Please add
+# your descriptions to your package's metadata.xml ONLY.
+# * generated automatically using egencache *
+
+'''.lstrip())
+
+		for cp in self._portdb.cp_all():
+			metadata_path = os.path.join(repo_path, cp, 'metadata.xml')
+			try:
+				metadata = xml.etree.ElementTree.parse(metadata_path)
+			except IOError:
+				pass
+			except (ExpatError, EnvironmentError) as e:
+				writemsg_level(
+					"ERROR: failed parsing %s/metadata.xml: %s\n" % (cp, e),
+					level=logging.ERROR, noiselevel=-1)
+				self.returncode |= 1
+			else:
+				usedict = parse_metadata_use(metadata)
+				for flag in sorted(usedict.keys()):
+					output.write('%s:%s - %s\n' % (cp, flag, usedict[flag]))
+
+		output.close()
+
 def egencache_main(args):
 	parser, options, atoms = parse_args(args)
 
@@ -327,9 +392,9 @@ def egencache_main(args):
 		settings = portage.config(config_root=config_root,
 			target_root='/', local_config=False, env=env)
 
-	if not options.update:
+	if not options.update and not options.update_use_local_desc:
 		parser.error('No action specified (--update ' + \
-			'is the only available action)')
+			'and/or --update-use-local-desc)')
 		return 1
 
 	if 'metadata-transfer' not in settings.features:
@@ -364,6 +429,11 @@ def egencache_main(args):
 			rsync=options.rsync)
 		gen_cache.run()
 		ret.append(gen_cache.returncode)
+
+	if options.update_use_local_desc:
+		gen_desc = GenUseLocalDesc(portdb)
+		gen_desc.run()
+		ret.append(gen_desc.returncode)
 
 	if options.tolerant:
 		return ret[0]
