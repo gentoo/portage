@@ -1031,18 +1031,43 @@ class depgraph(object):
 					writemsg_level("Priority:  %s\n" % (dep_priority,),
 						noiselevel=-1, level=logging.DEBUG)
 
+				# TODO: For installed package, save any InvalidDependString
+				# info in dynamic_config and wait until display_problems()
+				# to show it. For packages that aren't installed, we should
+				# validate and mask them before they are selected.
 				try:
-
 					dep_string = portage.dep.use_reduce(dep_string,
 						uselist=self._pkg_use_enabled(pkg), is_valid_flag=pkg.iuse.is_valid_flag)
-
-					dep_string = list(self._queue_disjunctive_deps(
-						pkg, dep_root, dep_priority, dep_string))
-
 				except portage.exception.InvalidDependString as e:
-					if pkg.installed:
+					if not pkg.installed:
+						# TODO: validate and mask this before it's selected
+						show_invalid_depstring_notice(pkg, dep_string, str(e))
+						return 0
+					del e
+
+					# Try again, but omit the is_valid_flag argument, since
+					# invalid USE conditionals are a common problem and it's
+					# practical to ignore this issue for installed packages.
+					try:
+						dep_string = portage.dep.use_reduce(dep_string,
+							uselist=self._pkg_use_enabled(pkg))
+					except portage.exception.InvalidDependString as e:
+						# TODO: show in display_problems()
+						show_invalid_depstring_notice(pkg, dep_string, str(e))
 						del e
 						continue
+
+				try:
+					dep_string = list(self._queue_disjunctive_deps(
+						pkg, dep_root, dep_priority, dep_string))
+				except portage.exception.InvalidDependString as e:
+					if pkg.installed:
+						# TODO: show in display_problems()
+						show_invalid_depstring_notice(pkg, dep_string, str(e))
+						del e
+						continue
+
+					# TODO: validate and mask this before it's selected
 					show_invalid_depstring_notice(pkg, dep_string, str(e))
 					return 0
 
