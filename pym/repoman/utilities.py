@@ -23,6 +23,7 @@ __all__ = [
 import codecs
 import errno
 import logging
+import re
 import sys
 from portage import os
 from portage import subprocess_getstatusoutput
@@ -110,12 +111,15 @@ def have_profile_dir(path, maxdepth=3, filename="profiles.desc"):
 		path = normalize_path(path + "/..")
 		maxdepth -= 1
 
-def parse_metadata_use(xml_tree, uselist=None):
+whitespace_re = re.compile('\s+')
+
+def parse_metadata_use(xml_tree):
 	"""
 	Records are wrapped in XML as per GLEP 56
-	returns a dict of the form a list of flags"""
-	if uselist is None:
-		uselist = []
+	returns a dict with keys constisting of USE flag names and values
+	containing their respective descriptions
+	"""
+	uselist = {}
 
 	usetag = xml_tree.findall("use")
 	if not usetag:
@@ -127,9 +131,12 @@ def parse_metadata_use(xml_tree, uselist=None):
 
 	for flag in flags:
 		pkg_flag = flag.get("name")
+		pkg_flag_value = whitespace_re.sub(' ', flag.text).strip()
 		if pkg_flag is None:
 			raise exception.ParseError("missing 'name' attribute for 'flag' tag")
-		uselist.append(pkg_flag)
+		if not pkg_flag_value:
+			raise exception.ParseError("missing USE description with the 'flag' tag")
+		uselist[pkg_flag] = pkg_flag_value
 	return uselist
 
 class UnknownHerdsError(ValueError):

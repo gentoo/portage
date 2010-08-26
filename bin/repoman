@@ -1335,8 +1335,6 @@ for x in scanlist:
 		fails["changelog.missing"].append(x+"/ChangeLog")
 	
 	#metadata.xml file check
-	muselist = []
-
 	if "metadata.xml" not in checkdirlist:
 		stats["metadata.missing"]+=1
 		fails["metadata.missing"].append(x+"/metadata.xml")
@@ -1358,12 +1356,12 @@ for x in scanlist:
 		else:
 			# load USE flags from metadata.xml
 			try:
-				utilities.parse_metadata_use(_metadata_xml, muselist)
+				musedict = utilities.parse_metadata_use(_metadata_xml)
 			except portage.exception.ParseError as e:
 				metadata_bad = True
 				stats["metadata.bad"] += 1
 				fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
-				muselist = []
+				musedict = {}
 
 			# Run other metadata.xml checkers
 			try:
@@ -1389,7 +1387,7 @@ for x in scanlist:
 				fails["metadata.bad"].append(x+"/metadata.xml")
 
 		del metadata_bad
-	muselist = frozenset(muselist)
+	muselist = frozenset(musedict.keys())
 
 	changelog_path = os.path.join(checkdir_relative, "ChangeLog")
 	changelog_modified = changelog_path in modified_changelogs
