@@ -1,5 +1,5 @@
 #!/usr/bin/python -O
-# Copyright 1999-2006 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -263,6 +263,11 @@ def stale_env_warning():
 
 from portage.exception import PermissionDenied, \
 	PortagePackageException, UnsupportedAPIException
+
+if 'digest' in tmpsettings.features and \
+	not set(["digest", "manifest"]).intersection(pargs):
+	pargs = ['digest'] + pargs
+
 checked_for_stale_env = False
 
 for arg in pargs:
