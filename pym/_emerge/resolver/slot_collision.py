@@ -162,8 +162,6 @@ class slot_conflict_handler(object):
 		_pkg_use_enabled = self.depgraph._pkg_use_enabled
 		msg = self.conflict_msg
 		indent = "  "
-		# Max number of parents shown, to avoid flooding the display.
-		max_parents = 3
 		msg.append("\n!!! Multiple package instances within a single " + \
 			"package slot have been pulled\n")
 		msg.append("!!! into the dependency graph, resulting" + \
