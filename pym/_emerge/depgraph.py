@@ -737,9 +737,8 @@ class depgraph(object):
 				arg_atoms = list(self._iter_atoms_for_pkg(pkg))
 			except portage.exception.InvalidDependString as e:
 				if not pkg.installed:
-					show_invalid_depstring_notice(
-						pkg, pkg.metadata["PROVIDE"], str(e))
-					return 0
+					# should have been masked before it was selected
+					raise
 				del e
 
 		if not pkg.onlydeps:
@@ -880,10 +879,9 @@ class depgraph(object):
 					settings.setinst(pkg.cpv, pkg.metadata)
 					settings.lock()
 				except portage.exception.InvalidDependString as e:
-					show_invalid_depstring_notice(
-						pkg, pkg.metadata["PROVIDE"], str(e))
-					del e
-					return 0
+					if not pkg.installed:
+						# should have been masked before it was selected
+						raise
 
 		if arg_atoms:
 			self._dynamic_config._set_nodes.add(pkg)
@@ -4700,10 +4698,8 @@ class depgraph(object):
 							myfilesdict = portdb.getfetchsizes(pkg_key,
 								useflags=pkg_use, debug=self._frozen_config.edebug)
 						except portage.exception.InvalidDependString as e:
-							src_uri = portdb.aux_get(pkg_key, ["SRC_URI"])[0]
-							show_invalid_depstring_notice(x, src_uri, str(e))
-							del e
-							return 1
+							# should have been masked before it was selected
+							raise
 						if myfilesdict is None:
 							myfilesdict="[empty/missing/bad digest]"
 						else:
