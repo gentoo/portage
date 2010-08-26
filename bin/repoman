@@ -1604,11 +1604,6 @@ for x in scanlist:
 		badlicsyntax = False
 		badprovsyntax = False
 		catpkg = catdir+"/"+y
-		myiuse = set(repoman_settings.archlist())
-		for myflag in myaux["IUSE"].split():
-			if myflag.startswith("+"):
-				myflag = myflag[1:]
-			myiuse.add(myflag)
 
 		inherited_java_eclass = "java-pkg-2" in inherited or \
 			"java-pkg-opt-2" in inherited
