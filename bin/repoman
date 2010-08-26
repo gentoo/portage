@@ -1394,6 +1394,7 @@ for x in scanlist:
 	changelog_path = os.path.join(checkdir_relative, "ChangeLog")
 	changelog_modified = changelog_path in modified_changelogs
 
+	allvalid = True
 	allmasked = True
 	# detect unused local USE-descriptions
 	used_useflags = set()
@@ -1432,6 +1433,7 @@ for x in scanlist:
 		pkg = pkgs[y]
 
 		if pkg.invalid:
+			allvalid = False
 			for k, msgs in pkg.invalid.items():
 				for msg in msgs:
 					stats[k] = stats[k] + 1
@@ -1927,11 +1929,13 @@ for x in scanlist:
 		fails["ebuild.allmasked"].append(x)
 
 	# check if there are unused local USE-descriptions in metadata.xml
-	for myflag in muselist.difference(used_useflags):
-		stats["metadata.warning"] += 1
-		fails["metadata.warning"].append(
-			"%s/metadata.xml: unused local USE-description: '%s'" % \
-			(x, myflag))
+	# (unless there are any invalids, to avoid noise)
+	if allvalid:
+		for myflag in muselist.difference(used_useflags):
+			stats["metadata.warning"] += 1
+			fails["metadata.warning"].append(
+				"%s/metadata.xml: unused local USE-description: '%s'" % \
+				(x, myflag))
 
 if options.mode == "manifest":
 	sys.exit(dofail)
