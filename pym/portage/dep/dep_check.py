@@ -174,7 +174,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 
 			if not mycheck[0]:
 				raise ParseError(
-					"%s: %s '%s'" % (y[0], mycheck[1], depstring))
+					"%s: %s '%s'" % (pkg, mycheck[1], depstring))
 
 			# pull in the new-style virtual
 			mycheck[1].append(virt_atom)
