@@ -481,7 +481,10 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 						token = token_class(token, eapi=eapi)
 					except InvalidAtom as e:
 						raise portage.exception.InvalidDependString(
-							_("Invalid atom (%s) in '%s', token %s") % (e, depstr, pos+1))
+							_("Invalid atom (%s) in '%s', token %s") \
+							% (e, depstr, pos+1), errors=(e,))
+					except SystemExit:
+						raise
 					except Exception as e:
 						raise portage.exception.InvalidDependString(
 							_("Invalid token '%s' in '%s', token %s") % (token, depstr, pos+1))
@@ -1049,15 +1052,23 @@ class Atom(_atom_base):
 
 		if eapi is not None:
 			if self.slot and not eapi_has_slot_deps(eapi):
-				raise InvalidAtom("Slot deps are not allowed in EAPI %s: '%s'" % (eapi, self))
+				raise InvalidAtom(
+					_("Slot deps are not allowed in EAPI %s: '%s'") \
+					% (eapi, self), category='EAPI.incompatible')
 			if self.use:
 				if not eapi_has_use_deps(eapi):
-					raise InvalidAtom("Use deps are not allowed in EAPI %s: '%s'" % (eapi, self))
+					raise InvalidAtom(
+						_("Use deps are not allowed in EAPI %s: '%s'") \
+						% (eapi, self), category='EAPI.incompatible')
 				elif not eapi_has_use_dep_defaults(eapi) and \
 					(self.use.missing_enabled or self.use.missing_disabled):
-					raise InvalidAtom("Use dep defaults are not allowed in EAPI %s: '%s'" % (eapi, self))
+					raise InvalidAtom(
+						_("Use dep defaults are not allowed in EAPI %s: '%s'") \
+						% (eapi, self), category='EAPI.incompatible')
 			if self.blocker and self.blocker.overlap.forbid and not eapi_has_strong_blocks(eapi):
-				raise InvalidAtom("Strong blocks are not allowed in EAPI %s: '%s'" % (eapi, self))
+				raise InvalidAtom(
+					_("Strong blocks are not allowed in EAPI %s: '%s'") \
+						% (eapi, self), category='EAPI.incompatible')
 
 	def __setattr__(self, name, value):
 		raise AttributeError("Atom instances are immutable",

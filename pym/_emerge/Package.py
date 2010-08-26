@@ -76,7 +76,18 @@ class Package(Task):
 				use_reduce(v, eapi=eapi,
 					is_valid_flag=self.iuse.is_valid_flag, token_class=Atom)
 			except portage.exception.InvalidDependString as e:
-				self._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
+				categorized_error = False
+				if e.errors:
+					for error in e.errors:
+						if getattr(error, 'category', None) is None:
+							continue
+						categorized_error = True
+						self._invalid_metadata(error.category,
+							"%s: %s" % (k, error))
+
+				if not categorized_error:
+					self._invalid_metadata(k + ".syntax",
+						"%s: %s" % (k, e))
 
 		k = 'REQUIRED_USE'
 		v = self.metadata.get(k)

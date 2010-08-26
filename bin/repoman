@@ -1652,33 +1652,6 @@ for x in scanlist:
 							stats[mytype + '.suspect'] += 1
 							fails[mytype + '.suspect'].append(
 								relative_path + ": '%s'" % atom)
-					if not eapi_has_slot_deps(eapi):
-						if portage.dep.dep_getslot(atom):
-							stats['EAPI.incompatible'] += 1
-							fails['EAPI.incompatible'].append(
-								(relative_path + ": %s slot dependency" + \
-								" not supported with EAPI='%s':" + \
-								" '%s'") % (mytype, eapi, atom))
-					if atom.use and not eapi_has_use_deps(eapi):
-						stats['EAPI.incompatible'] += 1
-						fails['EAPI.incompatible'].append(
-							(relative_path + ": %s use dependency" + \
-							" not supported with EAPI='%s':" + \
-							" '%s'") % (mytype, eapi, atom))
-					if atom.use and (atom.use.missing_enabled or atom.use.missing_disabled) and \
-						not eapi_has_use_dep_defaults(eapi):
-						stats['EAPI.incompatible'] += 1
-						fails['EAPI.incompatible'].append(
-							(relative_path + ": %s use dependency" + \
-							" not supported with EAPI='%s':" + \
-							" '%s'") % (mytype, eapi, atom))
-					if atom.blocker and atom.blocker.overlap.forbid \
-						and not eapi_has_strong_blocks(eapi):
-						stats['EAPI.incompatible'] += 1
-						fails['EAPI.incompatible'].append(
-							(relative_path + ": %s new blocker syntax" + \
-							" not supported with EAPI='%s':" + \
-							" '%s'") % (mytype, eapi, atom))
 
 					if atom.operator == "~" and \
 						portage.versions.catpkgsplit(atom.cpv)[3] != "r0":
