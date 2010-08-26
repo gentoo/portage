@@ -114,7 +114,7 @@ class Package(Task):
 		v = self.metadata.get(k)
 		if v:
 			if not eapi_has_required_use(eapi):
-				self._invalid_metadata(k + '.invalid',
+				self._invalid_metadata('EAPI.incompatible',
 					"REQUIRED_USE set, but EAPI='%s' doesn't allow it" % eapi)
 			else:
 				try:
