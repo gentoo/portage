@@ -1029,9 +1029,6 @@ class depgraph(object):
 					writemsg_level("Priority:  %s\n" % (dep_priority,),
 						noiselevel=-1, level=logging.DEBUG)
 
-				# TODO: For installed package, save any InvalidDependString
-				# info in dynamic_config and wait until display_problems()
-				# to show it.
 				try:
 					dep_string = portage.dep.use_reduce(dep_string,
 						uselist=self._pkg_use_enabled(pkg), is_valid_flag=pkg.iuse.is_valid_flag)
