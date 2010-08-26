@@ -38,6 +38,8 @@ from portage import util
 normalize_path = util.normalize_path
 util.initialize_logger()
 
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 def detect_vcs_conflicts(options, vcs):
 	"""Determine if the checkout has problems like cvs conflicts.
@@ -111,8 +113,6 @@ def have_profile_dir(path, maxdepth=3, filename="profiles.desc"):
 		path = normalize_path(path + "/..")
 		maxdepth -= 1
 
-whitespace_re = re.compile('\s+')
-
 def parse_metadata_use(xml_tree):
 	"""
 	Records are wrapped in XML as per GLEP 56
@@ -136,7 +136,23 @@ def parse_metadata_use(xml_tree):
 		if flag.text is None:
 			raise exception.ParseError("missing USE description with " + \
 				"the 'flag' tag (name=%s)" % pkg_flag)
-		pkg_flag_value = whitespace_re.sub(' ', flag.text).strip()
+
+		# emulate the Element.itertext() method from python-2.7
+		inner_text = []
+		stack = []
+		stack.append(flag)
+		while stack:
+			obj = stack.pop()
+			if isinstance(obj, basestring):
+				inner_text.append(obj)
+				continue
+			if isinstance(obj.text, basestring):
+				inner_text.append(obj.text)
+			if isinstance(obj.tail, basestring):
+				stack.append(obj.tail)
+			stack.extend(reversed(obj))
+
+		pkg_flag_value = " ".join("".join(inner_text).split())
 		if not pkg_flag_value:
 			raise exception.ParseError("missing USE description with " + \
 				"the 'flag' tag (name=%s)" % pkg_flag)
