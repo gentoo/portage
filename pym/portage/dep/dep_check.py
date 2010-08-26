@@ -62,21 +62,6 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			raise ParseError(
 				_("invalid token: '%s'") % x)
 
-		if x.blocker and x.blocker.overlap.forbid and \
-			not eapi_has_strong_blocks(eapi):
-			raise ParseError(
-				_("strong blocks are not allowed in EAPI %s: '%s'") % (eapi, x))
-		if x.use and not eapi_has_use_deps(eapi):
-			raise ParseError(
-				_("use deps are not allowed in EAPI %s: '%s'") % (eapi, x))
-		if x.slot and not eapi_has_slot_deps(eapi):
-			raise ParseError(
-				_("slot deps are not allowed in EAPI %s: '%s'") % (eapi, x))
-		if x.use and (x.use.missing_enabled or x.use.missing_disabled) \
-			and not eapi_has_use_dep_defaults(eapi):
-			raise ParseError(
-				_("use dep defaults are not allowed in EAPI %s: '%s'") % (eapi, x))
-
 		if repoman:
 			x = x._eval_qa_conditionals(use_mask, use_force)
 
@@ -537,12 +522,22 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	mytrees = trees[myroot]
 	parent = mytrees.get("parent")
 	virt_parent = mytrees.get("virt_parent")
+	current_parent = None
 	eapi = None
 	if parent is not None:
 		if virt_parent is not None:
-			eapi = virt_parent[0].metadata['EAPI']
+			current_parent = virt_parent[0]
 		else:
-			eapi = parent.metadata["EAPI"]
+			current_parent = parent
+
+	if current_parent is not None:
+		# Don't pass the eapi argument to use_reduce() for installed packages
+		# since previous validation will have already marked them as invalid
+		# when necessary and now we're more interested in evaluating
+		# dependencies so that things like --depclean work as well as possible
+		# in spite of partial invalidity.
+		if not current_parent.installed:
+			eapi = current_parent.metadata['EAPI']
 
 	try:
 		mysplit = use_reduce(depstring, uselist=myusesplit, masklist=mymasks, \
