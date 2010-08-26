@@ -2624,10 +2624,21 @@ class depgraph(object):
 					# Make --noreplace take precedence over --newuse.
 					if not pkg.installed and noreplace and \
 						cpv in vardb.match(atom):
-						# If the installed version is masked, it may
-						# be necessary to look at lower versions,
-						# in case there is a visible downgrade.
-						continue
+						inst_pkg = self._pkg(pkg.cpv, "installed",
+							root_config, installed=True)
+						mreasons = None
+						if not inst_pkg.invalid:
+							mreasons = _get_masking_status(inst_pkg,
+								pkgsettings, root_config,
+								use=self._pkg_use_enabled(inst_pkg))
+							if mreasons and len(mreasons) == 1 and \
+								mreasons[0].category  == 'KEYWORDS':
+								mreasons = None
+						if not inst_pkg.invalid and not mreasons:
+							# If the installed version is masked, it may
+							# be necessary to look at lower versions,
+							# in case there is a visible downgrade.
+							continue
 					reinstall_for_flags = None
 
 					if not pkg.installed or \
@@ -2889,6 +2900,11 @@ class depgraph(object):
 						if built_timestamp and \
 							built_timestamp != installed_timestamp:
 							return built_pkg, existing_node
+
+			for pkg in matched_packages:
+				if pkg.installed and pkg.invalid:
+					matched_packages = [x for x in \
+						matched_packages if x is not pkg]
 
 			if avoid_update:
 				for pkg in matched_packages:
