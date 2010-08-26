@@ -1095,6 +1095,7 @@ for x in scanlist:
 	checkdirlist=os.listdir(checkdir)
 	ebuildlist=[]
 	pkgs = {}
+	allvalid = True
 	for y in checkdirlist:
 		if (y in no_exec or y.endswith(".ebuild")) and \
 			stat.S_IMODE(os.stat(os.path.join(checkdir, y)).st_mode) & 0o111:
@@ -1107,14 +1108,17 @@ for x in scanlist:
 			try:
 				myaux = dict(zip(allvars, portdb.aux_get(cpv, allvars)))
 			except KeyError:
+				allvalid = False
 				stats["ebuild.syntax"] += 1
 				fails["ebuild.syntax"].append(os.path.join(x, y))
 				continue
 			except IOError:
+				allvalid = False
 				stats["ebuild.output"] += 1
 				fails["ebuild.output"].append(os.path.join(x, y))
 				continue
 			if not portage.eapi_is_supported(myaux["EAPI"]):
+				allvalid = False
 				stats["EAPI.unsupported"] += 1
 				fails["EAPI.unsupported"].append(os.path.join(x, y))
 				continue
@@ -1392,7 +1396,6 @@ for x in scanlist:
 	changelog_path = os.path.join(checkdir_relative, "ChangeLog")
 	changelog_modified = changelog_path in modified_changelogs
 
-	allvalid = True
 	allmasked = True
 	# detect unused local USE-descriptions
 	used_useflags = set()
