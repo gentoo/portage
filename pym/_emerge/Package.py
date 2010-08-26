@@ -5,7 +5,7 @@ import sys
 from itertools import chain
 import portage
 from portage.cache.mappings import slot_dict_class
-from portage.dep import Atom, isvalidatom, use_reduce, \
+from portage.dep import Atom, check_required_use, isvalidatom, use_reduce, \
 	paren_enclose, _slot_re
 from portage.eapi import eapi_has_src_uri_arrows, eapi_has_slot_deps, \
 	eapi_has_use_deps, eapi_has_strong_blocks, eapi_has_iuse_defaults, \
@@ -55,10 +55,6 @@ class Package(Task):
 			not eapi_has_iuse_defaults(self.metadata["EAPI"]):
 			self._invalid_metadata('IUSE.invalid',
 				"IUSE contains defaults, but EAPI doesn't allow them")
-		if self.metadata.get("REQUIRED_USE") and \
-			not eapi_has_required_use(self.metadata["EAPI"]):
-			self._invalid_metadata('REQUIRED_USE.invalid',
-				"REQUIRED_USE set, but EAPI doesn't allow it")
 		self.slot_atom = portage.dep.Atom("%s:%s" % (self.cp, slot))
 		self.category, self.pf = portage.catsplit(self.cpv)
 		self.cpv_split = portage.catpkgsplit(self.cpv)
@@ -113,6 +109,20 @@ class Package(Task):
 							("%s new blocker syntax" + \
 							" not supported with EAPI='%s':" + \
 							" '%s'") % (k, eapi, atom))
+
+		k = 'REQUIRED_USE'
+		v = self.metadata.get(k)
+		if v:
+			if not eapi_has_required_use(eapi):
+				self._invalid_metadata(k + '.invalid',
+					"REQUIRED_USE set, but EAPI='%s' doesn't allow it" % eapi)
+			else:
+				try:
+					check_required_use(v, (),
+						self.iuse.is_valid_flag)
+				except portage.exception.InvalidDependString as e:
+					self._invalid_metadata(k + ".syntax",
+						"%s: %s" % (k, e))
 
 		k = 'SRC_URI'
 		v = self.metadata.get(k)
