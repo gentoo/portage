@@ -121,35 +121,45 @@ def parse_metadata_use(xml_tree):
 	"""
 	uselist = {}
 
-	usetag = xml_tree.findall("use")
-	if not usetag:
+	usetags = xml_tree.findall("use")
+	if not usetags:
 		return uselist
 
-	flags = usetag[0].findall("flag")
-	if not flags:
-		raise exception.ParseError("missing 'flag' tag(s)")
+	# It's possible to have multiple 'use' elements.
+	for usetag in usetags:
+		flags = usetag.findall("flag")
+		if not flags:
+			raise exception.ParseError("missing 'flag' tag(s)")
 
-	for flag in flags:
-		pkg_flag = flag.get("name")
-		if pkg_flag is None:
-			raise exception.ParseError("missing 'name' attribute for 'flag' tag")
+		for flag in flags:
+			pkg_flag = flag.get("name")
+			if pkg_flag is None:
+				raise exception.ParseError("missing 'name' attribute for 'flag' tag")
 
-		# emulate the Element.itertext() method from python-2.7
-		inner_text = []
-		stack = []
-		stack.append(flag)
-		while stack:
-			obj = stack.pop()
-			if isinstance(obj, basestring):
-				inner_text.append(obj)
+			if uselist.get(pkg_flag):
+				# It's possible to have multiple elements with the same
+				# flag name, but different 'restrict' attributes that
+				# specify version restrictions. We use only the first
+				# occurance.
 				continue
-			if isinstance(obj.text, basestring):
-				inner_text.append(obj.text)
-			if isinstance(obj.tail, basestring):
-				stack.append(obj.tail)
-			stack.extend(reversed(obj))
 
-		uselist[pkg_flag] = " ".join("".join(inner_text).split())
+			# emulate the Element.itertext() method from python-2.7
+			inner_text = []
+			stack = []
+			stack.append(flag)
+			while stack:
+				obj = stack.pop()
+				if isinstance(obj, basestring):
+					inner_text.append(obj)
+					continue
+				if isinstance(obj.text, basestring):
+					inner_text.append(obj.text)
+				if isinstance(obj.tail, basestring):
+					stack.append(obj.tail)
+				stack.extend(reversed(obj))
+
+			uselist[pkg_flag] = " ".join("".join(inner_text).split())
+
 	return uselist
 
 class UnknownHerdsError(ValueError):
