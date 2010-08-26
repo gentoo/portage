@@ -1,14 +1,15 @@
 # Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import re
 import sys
 from itertools import chain
 import portage
 from portage.cache.mappings import slot_dict_class
-from portage.dep import isvalidatom, use_reduce, \
+from portage.dep import Atom, isvalidatom, use_reduce, \
 	paren_enclose, _slot_re
-from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
+from portage.eapi import eapi_has_src_uri_arrows, eapi_has_slot_deps, \
+	eapi_has_use_deps, eapi_has_strong_blocks, eapi_has_iuse_defaults, \
+	eapi_has_required_use, eapi_has_use_dep_defaults
 from _emerge.Task import Task
 
 if sys.hexversion >= 0x3000000:
@@ -32,6 +33,8 @@ class Package(Task):
 		"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
 		"repository", "PROPERTIES", "RESTRICT", "SLOT", "USE",
 		"_mtime_", "DEFINED_PHASES", "REQUIRED_USE"]
+
+	_dep_keys = ('DEPEND', 'PDEPEND', 'RDEPEND',)
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
@@ -60,8 +63,65 @@ class Package(Task):
 		self.category, self.pf = portage.catsplit(self.cpv)
 		self.cpv_split = portage.catpkgsplit(self.cpv)
 		self.pv_split = self.cpv_split[1:]
+		self._validate_deps()
 		self.masks = self._masks()
 		self.visible = self._visible(self.masks)
+
+	def _validate_deps(self):
+		"""
+		Validate deps. This does not trigger USE calculation since that
+		is expensive for ebuilds and therefore we want to avoid doing
+		in unnecessarily (like for masked packages).
+		"""
+		eapi = self.metadata['EAPI']
+		for k in self._dep_keys:
+			v = self.metadata.get(k)
+			if not v:
+				continue
+			try:
+				atoms = portage.dep.use_reduce(v, matchall=True, flat=True,
+					is_valid_flag=self.iuse.is_valid_flag, token_class=Atom)
+			except portage.exception.InvalidDependString as e:
+				self._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
+			else:
+				for atom in atoms:
+					if not isinstance(atom, Atom):
+						continue
+
+					if atom.slot and not eapi_has_slot_deps(eapi):
+						self._invalid_metadata('EAPI.incompatible',
+							("%s slot dependency" + \
+							" not supported with EAPI='%s':" + \
+							" '%s'") % (k, eapi, atom))
+
+					if atom.use and not eapi_has_use_deps(eapi):
+						self._invalid_metadata('EAPI.incompatible',
+							("%s use dependency" + \
+							" not supported with EAPI='%s':" + \
+							" '%s'") % (k, eapi, atom))
+
+					if atom.use and (atom.use.missing_enabled or atom.use.missing_disabled) and \
+						not eapi_has_use_dep_defaults(eapi):
+						self._invalid_metadata('EAPI.incompatible',
+							("%s use dependency" + \
+							" not supported with EAPI='%s':" + \
+							" '%s'") % (k, eapi, atom))
+
+					if atom.blocker and atom.blocker.overlap.forbid \
+						and not eapi_has_strong_blocks(eapi):
+						self._invalid_metadata('EAPI.incompatible',
+							("%s new blocker syntax" + \
+							" not supported with EAPI='%s':" + \
+							" '%s'") % (k, eapi, atom))
+
+		k = 'SRC_URI'
+		v = self.metadata.get(k)
+		if v:
+			try:
+				use_reduce(v, matchall=True, flat=True, is_src_uri=True,
+					allow_src_uri_file_renames=eapi_has_src_uri_arrows(eapi))
+			except portage.exception.InvalidDependString as e:
+				self._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
 
 	def copy(self):
 		return Package(built=self.built, cpv=self.cpv, depth=self.depth,

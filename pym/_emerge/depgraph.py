@@ -1033,16 +1033,14 @@ class depgraph(object):
 
 				# TODO: For installed package, save any InvalidDependString
 				# info in dynamic_config and wait until display_problems()
-				# to show it. For packages that aren't installed, we should
-				# validate and mask them before they are selected.
+				# to show it.
 				try:
 					dep_string = portage.dep.use_reduce(dep_string,
 						uselist=self._pkg_use_enabled(pkg), is_valid_flag=pkg.iuse.is_valid_flag)
 				except portage.exception.InvalidDependString as e:
 					if not pkg.installed:
-						# TODO: validate and mask this before it's selected
-						show_invalid_depstring_notice(pkg, dep_string, str(e))
-						return 0
+						# should have been masked before it was selected
+						raise
 					del e
 
 					# Try again, but omit the is_valid_flag argument, since
@@ -1067,9 +1065,8 @@ class depgraph(object):
 						del e
 						continue
 
-					# TODO: validate and mask this before it's selected
-					show_invalid_depstring_notice(pkg, dep_string, str(e))
-					return 0
+					# should have been masked before it was selected
+					raise
 
 				if not dep_string:
 					continue
@@ -1122,11 +1119,13 @@ class depgraph(object):
 				dep_string, myuse=self._pkg_use_enabled(pkg), parent=pkg,
 				strict=strict, priority=dep_priority)
 		except portage.exception.InvalidDependString as e:
-			show_invalid_depstring_notice(pkg, dep_string, str(e))
-			del e
 			if pkg.installed:
+				# TODO: show in display_problems()
+				show_invalid_depstring_notice(pkg, dep_string, str(e))
 				return 1
-			return 0
+
+			# should have been masked before it was selected
+			raise
 
 		if debug:
 			writemsg_level("Candidates: %s\n" % \
