@@ -1050,8 +1050,7 @@ class depgraph(object):
 						dep_string = portage.dep.use_reduce(dep_string,
 							uselist=self._pkg_use_enabled(pkg))
 					except portage.exception.InvalidDependString as e:
-						# TODO: show in display_problems()
-						show_invalid_depstring_notice(pkg, dep_string, str(e))
+						self._dynamic_config._masked_installed.add(pkg)
 						del e
 						continue
 
@@ -1060,8 +1059,7 @@ class depgraph(object):
 						pkg, dep_root, dep_priority, dep_string))
 				except portage.exception.InvalidDependString as e:
 					if pkg.installed:
-						# TODO: show in display_problems()
-						show_invalid_depstring_notice(pkg, dep_string, str(e))
+						self._dynamic_config._masked_installed.add(pkg)
 						del e
 						continue
 
@@ -1120,8 +1118,7 @@ class depgraph(object):
 				strict=strict, priority=dep_priority)
 		except portage.exception.InvalidDependString as e:
 			if pkg.installed:
-				# TODO: show in display_problems()
-				show_invalid_depstring_notice(pkg, dep_string, str(e))
+				self._dynamic_config._masked_installed.add(pkg)
 				return 1
 
 			# should have been masked before it was selected
@@ -6138,11 +6135,6 @@ def _get_masking_status(pkg, pkgsettings, root_config, use=None):
 		if not pkgsettings._accept_chost(pkg.cpv, pkg.metadata):
 			mreasons.append(_MaskReason("CHOST", "CHOST: %s" % \
 				pkg.metadata["CHOST"]))
-		if pkg.invalid:
-			for msg_type, msgs in pkg.invalid.items():
-				for msg in msgs:
-					mreasons.append(
-						_MaskReason("invalid", "invalid: %s" % (msg,)))
 
 		if pkg.metadata["REQUIRED_USE"] and \
 			eapi_has_required_use(pkg.metadata["EAPI"]):
@@ -6158,6 +6150,12 @@ def _get_masking_status(pkg, pkgsettings, root_config, use=None):
 				if not required_use_is_sat:
 					msg = "violated use flag constraints: '%s'" % required_use
 					mreasons.append(_MaskReason("REQUIRED_USE", "REQUIRED_USE violated"))
+
+	if pkg.invalid:
+		for msg_type, msgs in pkg.invalid.items():
+			for msg in msgs:
+				mreasons.append(
+					_MaskReason("invalid", "invalid: %s" % (msg,)))
 
 	if not pkg.metadata["SLOT"]:
 		mreasons.append(
