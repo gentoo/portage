@@ -1463,7 +1463,13 @@ def _post_src_install_uid_fix(mysettings, out):
 		v = mysettings.configdict['pkg'].get(k)
 		if v is None:
 			continue
-		v = use_reduce(v, uselist=use, token_class=Atom)
+
+		if k.endswith('DEPEND'):
+			token_class = Atom
+		else:
+			token_class = None
+
+		v = use_reduce(v, uselist=use, token_class=token_class)
 		v = paren_enclose(v)
 		if not v:
 			continue

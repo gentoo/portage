@@ -1085,9 +1085,14 @@ class binarytree(object):
 		use.sort()
 		metadata["USE"] = " ".join(use)
 		for k in self._pkgindex_use_evaluated_keys:
+			if k.endswith('DEPEND'):
+				token_class = Atom
+			else:
+				token_class = None
+
 			try:
 				deps = metadata[k]
-				deps = use_reduce(deps, uselist=raw_use, token_class=Atom)
+				deps = use_reduce(deps, uselist=raw_use, token_class=token_class)
 				deps = paren_enclose(deps)
 			except portage.exception.InvalidDependString as e:
 				writemsg("%s: %s\n" % (k, str(e)),
