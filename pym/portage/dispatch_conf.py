@@ -79,7 +79,7 @@ def rcs_archive(archive, curconf, newconf, mrgconf):
 
     try:
         os.makedirs(os.path.dirname(archive))
-    except:
+    except OSError:
         pass
 
     try:
@@ -125,7 +125,7 @@ def file_archive(archive, curconf, newconf, mrgconf):
 
     try:
         os.makedirs(os.path.dirname(archive))
-    except:
+    except OSError:
         pass
 
     # Archive the current config file if it isn't already saved

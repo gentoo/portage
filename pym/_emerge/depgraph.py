@@ -3197,9 +3197,9 @@ class depgraph(object):
 							success, atoms = portage.dep_check(depstr,
 								final_db, pkgsettings, myuse=self._pkg_use_enabled(pkg),
 								trees=self._dynamic_config._graph_trees, myroot=myroot)
+						except SystemExit:
+							raise
 						except Exception as e:
-							if isinstance(e, SystemExit):
-								raise
 							# This is helpful, for example, if a ValueError
 							# is thrown from cpv_expand due to multiple
 							# matches (this can happen if an atom lacks a

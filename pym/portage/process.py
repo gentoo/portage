@@ -246,6 +246,8 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 		try:
 			_exec(binary, mycommand, opt_name, fd_pipes,
 			      env, gid, groups, uid, umask, pre_exec)
+		except SystemExit:
+			raise
 		except Exception as e:
 			# We need to catch _any_ exception so that it doesn't
 			# propogate out of this function and cause exiting

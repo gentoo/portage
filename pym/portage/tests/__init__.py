@@ -153,6 +153,8 @@ class TestCase(unittest.TestCase):
 		try:
 			try:
 				self.setUp()
+			except SystemExit:
+				raise
 			except KeyboardInterrupt:
 				raise
 			except:
@@ -173,6 +175,8 @@ class TestCase(unittest.TestCase):
 				result.addError(self, sys.exc_info())
 			try:
 				self.tearDown()
+			except SystemExit:
+				raise
 			except KeyboardInterrupt:
 				raise
 			except:
