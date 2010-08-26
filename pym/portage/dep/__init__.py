@@ -486,6 +486,10 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 						raise portage.exception.InvalidDependString(
 							_("Invalid token '%s' in '%s', token %s") % (token, depstr, pos+1))
 
+					if not matchall and \
+						hasattr(token, 'evaluate_conditionals'):
+						token = token.evaluate_conditionals(uselist)
+
 			stack[level].append(token)
 
 	if level != 0:

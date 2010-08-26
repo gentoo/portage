@@ -1463,20 +1463,10 @@ def _post_src_install_uid_fix(mysettings, out):
 		v = mysettings.configdict['pkg'].get(k)
 		if v is None:
 			continue
-		v = use_reduce(v, uselist=use)
+		v = use_reduce(v, uselist=use, token_class=Atom)
 		v = paren_enclose(v)
 		if not v:
 			continue
-		if v in _vdb_use_conditional_atoms:
-			v_split = []
-			for x in v.split():
-				try:
-					x = Atom(x)
-				except InvalidAtom:
-					v_split.append(x)
-				else:
-					v_split.append(str(x.evaluate_conditionals(use)))
-			v = ' '.join(v_split)
 		codecs.open(_unicode_encode(os.path.join(build_info_dir,
 			k), encoding=_encodings['fs'], errors='strict'),
 			mode='w', encoding=_encodings['repo.content'],

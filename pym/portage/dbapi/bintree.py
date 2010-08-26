@@ -18,7 +18,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 
 from portage.cache.mappings import slot_dict_class
 from portage.dbapi.virtual import fakedbapi
-from portage.dep import use_reduce, paren_enclose
+from portage.dep import Atom, use_reduce, paren_enclose
 from portage.exception import InvalidPackageName, \
 	PermissionDenied, PortageException
 from portage.localization import _
@@ -1087,22 +1087,12 @@ class binarytree(object):
 		for k in self._pkgindex_use_evaluated_keys:
 			try:
 				deps = metadata[k]
-				deps = use_reduce(deps, uselist=raw_use)
+				deps = use_reduce(deps, uselist=raw_use, token_class=Atom)
 				deps = paren_enclose(deps)
 			except portage.exception.InvalidDependString as e:
 				writemsg("%s: %s\n" % (k, str(e)),
 					noiselevel=-1)
 				raise
-			if k in _vdb_use_conditional_atoms:
-				v_split = []
-				for x in deps.split():
-					try:
-						x = portage.dep.Atom(x)
-					except portage.exception.InvalidAtom:
-						v_split.append(x)
-					else:
-						v_split.append(str(x.evaluate_conditionals(raw_use)))
-				deps = ' '.join(v_split)
 			metadata[k] = deps
 
 	def exists_specific(self, cpv):

@@ -80,11 +80,6 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 		if repoman:
 			x = x._eval_qa_conditionals(use_mask, use_force)
 
-		if not repoman and \
-			myuse is not None and x.use:
-			if x.use.conditional:
-				x = x.evaluate_conditionals(myuse)
-
 		mykey = x.cp
 		if not mykey.startswith("virtual/"):
 			newsplit.append(x)
