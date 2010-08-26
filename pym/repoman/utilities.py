@@ -131,11 +131,15 @@ def parse_metadata_use(xml_tree):
 
 	for flag in flags:
 		pkg_flag = flag.get("name")
-		pkg_flag_value = whitespace_re.sub(' ', flag.text).strip()
 		if pkg_flag is None:
 			raise exception.ParseError("missing 'name' attribute for 'flag' tag")
+		if flag.text is None:
+			raise exception.ParseError("missing USE description with " + \
+				"the 'flag' tag (name=%s)" % pkg_flag)
+		pkg_flag_value = whitespace_re.sub(' ', flag.text).strip()
 		if not pkg_flag_value:
-			raise exception.ParseError("missing USE description with the 'flag' tag")
+			raise exception.ParseError("missing USE description with " + \
+				"the 'flag' tag (name=%s)" % pkg_flag)
 		uselist[pkg_flag] = pkg_flag_value
 	return uselist
 

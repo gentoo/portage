@@ -347,9 +347,16 @@ class GenUseLocalDesc(object):
 					level=logging.ERROR, noiselevel=-1)
 				self.returncode |= 1
 			else:
-				usedict = parse_metadata_use(metadata)
-				for flag in sorted(usedict.keys()):
-					output.write('%s:%s - %s\n' % (cp, flag, usedict[flag]))
+				try:
+					usedict = parse_metadata_use(metadata)
+				except portage.exception.ParseError as e:
+					writemsg_level(
+						"ERROR: failed parsing %s/metadata.xml: %s\n" % (cp, e),
+						level=logging.ERROR, noiselevel=-1)
+					self.returncode |= 1
+				else:
+					for flag in sorted(usedict.keys()):
+						output.write('%s:%s - %s\n' % (cp, flag, usedict[flag]))
 
 		output.close()
 
