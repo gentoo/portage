@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 from _emerge.AtomArg import AtomArg
+from _emerge.Package import Package
 from _emerge.PackageArg import PackageArg
 from portage.dep import check_required_use
 from portage.output import colorize
@@ -216,8 +217,11 @@ class slot_conflict_handler(object):
 							elif not atom_set.findAtomForPackage(other_pkg, \
 								modified_use=_pkg_use_enabled(other_pkg)):
 								#Use conditionals not met.
+								parent_use = None
+								if isinstance(ppkg, Package):
+									parent_use = _pkg_use_enabled(ppkg)
 								violated_atom = atom.violated_conditionals(_pkg_use_enabled(other_pkg), \
-									other_pkg.iuse.is_valid_flag, _pkg_use_enabled(ppkg))
+									other_pkg.iuse.is_valid_flag, parent_use=parent_use)
 								for flag in violated_atom.use.enabled.union(violated_atom.use.disabled):
 									atoms = collision_reasons.get(("use", flag), set())
 									atoms.add((ppkg, atom, other_pkg))
