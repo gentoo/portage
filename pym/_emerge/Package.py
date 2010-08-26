@@ -119,7 +119,8 @@ class Package(Task):
 		if v:
 			try:
 				use_reduce(v, matchall=True, flat=True, is_src_uri=True,
-					allow_src_uri_file_renames=eapi_has_src_uri_arrows(eapi))
+					allow_src_uri_file_renames=eapi_has_src_uri_arrows(eapi),
+					is_valid_flag=self.iuse.is_valid_flag)
 			except portage.exception.InvalidDependString as e:
 				self._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
 
