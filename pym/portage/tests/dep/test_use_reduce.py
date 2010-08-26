@@ -8,7 +8,7 @@ from portage.dep import Atom, use_reduce
 class UseReduceTestCase(object):
 	def __init__(self, deparray, uselist=[], masklist=[], \
 		matchall=0, excludeall=[], is_src_uri=False, \
-		allow_src_uri_file_renames=False, opconvert=False, flat=False, expected_result=None, \
+		eapi=None, opconvert=False, flat=False, expected_result=None, \
 			is_valid_flag=None, token_class=None):
 		self.deparray = deparray
 		self.uselist = uselist
@@ -16,7 +16,7 @@ class UseReduceTestCase(object):
 		self.matchall = matchall
 		self.excludeall = excludeall
 		self.is_src_uri = is_src_uri
-		self.allow_src_uri_file_renames = allow_src_uri_file_renames
+		self.eapi = eapi
 		self.opconvert = opconvert
 		self.flat = flat
 		self.is_valid_flag = is_valid_flag
@@ -25,7 +25,7 @@ class UseReduceTestCase(object):
 
 	def run(self):
 		return use_reduce(self.deparray, self.uselist, self.masklist, \
-			self.matchall, self.excludeall, self.is_src_uri, self.allow_src_uri_file_renames, \
+			self.matchall, self.excludeall, self.is_src_uri, self.eapi, \
 				self.opconvert, self.flat, self.is_valid_flag, self.token_class)
 				
 class UseReduce(TestCase):
@@ -37,7 +37,10 @@ class UseReduce(TestCase):
 		return False
 
 	def testUseReduce(self):
-		
+
+		EAPI_WITH_SRC_URI_ARROWS = "2"
+		EAPI_WITHOUT_SRC_URI_ARROWS = "0"
+
 		test_cases = (
 			UseReduceTestCase(
 				"a? ( A ) b? ( B ) !c? ( C ) !d? ( D )",
@@ -228,37 +231,37 @@ class UseReduce(TestCase):
 			UseReduceTestCase(
 				"http://foo/bar -> blah.tbz2",
 				is_src_uri = True,
-				allow_src_uri_file_renames = True,
+				eapi = EAPI_WITH_SRC_URI_ARROWS,
 				expected_result = ["http://foo/bar", "->", "blah.tbz2"]),
 			UseReduceTestCase(
 				"foo? ( http://foo/bar -> blah.tbz2 )",
 				uselist = [],
 				is_src_uri = True,
-				allow_src_uri_file_renames = True,
+				eapi = EAPI_WITH_SRC_URI_ARROWS,
 				expected_result = []),
 			UseReduceTestCase(
 				"foo? ( http://foo/bar -> blah.tbz2 )",
 				uselist = ["foo"],
 				is_src_uri = True,
-				allow_src_uri_file_renames = True,
+				eapi = EAPI_WITH_SRC_URI_ARROWS,
 				expected_result = ["http://foo/bar", "->", "blah.tbz2"]),
 			UseReduceTestCase(
 				"http://foo/bar -> bar.tbz2 foo? ( ftp://foo/a )",
 				uselist = [],
 				is_src_uri = True,
-				allow_src_uri_file_renames = True,
+				eapi = EAPI_WITH_SRC_URI_ARROWS,
 				expected_result = ["http://foo/bar", "->", "bar.tbz2"]),
 			UseReduceTestCase(
 				"http://foo/bar -> bar.tbz2 foo? ( ftp://foo/a )",
 				uselist = ["foo"],
 				is_src_uri = True,
-				allow_src_uri_file_renames = True,
+				eapi = EAPI_WITH_SRC_URI_ARROWS,
 				expected_result = ["http://foo/bar", "->", "bar.tbz2", "ftp://foo/a"]),
 			UseReduceTestCase(
 				"http://foo.com/foo http://foo/bar -> blah.tbz2",
 				uselist = ["foo"],
 				is_src_uri = True,
-				allow_src_uri_file_renames = True,
+				eapi = EAPI_WITH_SRC_URI_ARROWS,
 				expected_result = ["http://foo.com/foo", "http://foo/bar", "->", "blah.tbz2"]),
 
 			#opconvert tests
@@ -459,18 +462,18 @@ class UseReduce(TestCase):
 			UseReduceTestCase("foo?"),
 			
 			#SRC_URI stuff
-			UseReduceTestCase("http://foo/bar -> blah.tbz2", is_src_uri = True, allow_src_uri_file_renames = False),
-			UseReduceTestCase("|| ( http://foo/bar -> blah.tbz2 )", is_src_uri = True, allow_src_uri_file_renames = True),
-			UseReduceTestCase("http://foo/bar -> foo? ( ftp://foo/a )", is_src_uri = True, allow_src_uri_file_renames = True),
-			UseReduceTestCase("http://foo/bar blah.tbz2 ->", is_src_uri = True, allow_src_uri_file_renames = True),
-			UseReduceTestCase("-> http://foo/bar blah.tbz2 )", is_src_uri = True, allow_src_uri_file_renames = True),
-			UseReduceTestCase("http://foo/bar ->", is_src_uri = True, allow_src_uri_file_renames = True),
-			UseReduceTestCase("http://foo/bar -> foo? ( http://foo.com/foo )", is_src_uri = True, allow_src_uri_file_renames = True),
-			UseReduceTestCase("foo? ( http://foo/bar -> ) blah.tbz2", is_src_uri = True, allow_src_uri_file_renames = True),
-			UseReduceTestCase("http://foo/bar -> foo/blah.tbz2", is_src_uri = True, allow_src_uri_file_renames = True),
-			UseReduceTestCase("http://foo/bar -> -> bar.tbz2 foo? ( ftp://foo/a )", is_src_uri = True, allow_src_uri_file_renames = True),
+			UseReduceTestCase("http://foo/bar -> blah.tbz2", is_src_uri = True, eapi = EAPI_WITHOUT_SRC_URI_ARROWS),
+			UseReduceTestCase("|| ( http://foo/bar -> blah.tbz2 )", is_src_uri = True, eapi = EAPI_WITH_SRC_URI_ARROWS),
+			UseReduceTestCase("http://foo/bar -> foo? ( ftp://foo/a )", is_src_uri = True, eapi = EAPI_WITH_SRC_URI_ARROWS),
+			UseReduceTestCase("http://foo/bar blah.tbz2 ->", is_src_uri = True, eapi = EAPI_WITH_SRC_URI_ARROWS),
+			UseReduceTestCase("-> http://foo/bar blah.tbz2 )", is_src_uri = True, eapi = EAPI_WITH_SRC_URI_ARROWS),
+			UseReduceTestCase("http://foo/bar ->", is_src_uri = True, eapi = EAPI_WITH_SRC_URI_ARROWS),
+			UseReduceTestCase("http://foo/bar -> foo? ( http://foo.com/foo )", is_src_uri = True, eapi = EAPI_WITH_SRC_URI_ARROWS),
+			UseReduceTestCase("foo? ( http://foo/bar -> ) blah.tbz2", is_src_uri = True, eapi = EAPI_WITH_SRC_URI_ARROWS),
+			UseReduceTestCase("http://foo/bar -> foo/blah.tbz2", is_src_uri = True, eapi = EAPI_WITH_SRC_URI_ARROWS),
+			UseReduceTestCase("http://foo/bar -> -> bar.tbz2 foo? ( ftp://foo/a )", is_src_uri = True, eapi = EAPI_WITH_SRC_URI_ARROWS),
 			
-			UseReduceTestCase("http://foo/bar -> bar.tbz2 foo? ( ftp://foo/a )", is_src_uri = False, allow_src_uri_file_renames = True),
+			UseReduceTestCase("http://foo/bar -> bar.tbz2 foo? ( ftp://foo/a )", is_src_uri = False, eapi = EAPI_WITH_SRC_URI_ARROWS),
 
 			UseReduceTestCase(
 				"A",

@@ -22,7 +22,6 @@ from portage.cache.cache_errors import CacheError
 from portage.cache.mappings import Mapping
 from portage.const import REPO_NAME_LOC
 from portage.dbapi import dbapi
-from portage.eapi import eapi_has_src_uri_arrows
 from portage.exception import PortageException, \
 	FileNotFound, InvalidDependString, InvalidPackageName
 from portage.localization import _
@@ -1185,8 +1184,7 @@ def _parse_uri_map(cpv, metadata, use=None):
 	myuris = use_reduce(metadata.get('SRC_URI', ''),
 		uselist=use, matchall=(use is None),
 		is_src_uri=True,
-		allow_src_uri_file_renames = \
-		eapi_has_src_uri_arrows(metadata['EAPI']))
+		eapi=metadata['EAPI'])
 
 	uri_map = OrderedDict()
 

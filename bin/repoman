@@ -73,7 +73,7 @@ from portage.output import bold, create_color_func, \
 from portage.output import ConsoleStyleFile, StyleWriter
 from portage.util import cmp_sort_key, writemsg_level
 from portage.package.ebuild.digestgen import digestgen
-from portage.eapi import eapi_has_src_uri_arrows, eapi_has_slot_deps, \
+from portage.eapi import eapi_has_slot_deps, \
 	eapi_has_use_deps, eapi_has_strong_blocks, eapi_has_iuse_defaults, \
 	eapi_has_required_use, eapi_has_use_dep_defaults
 
@@ -1457,8 +1457,7 @@ for x in scanlist:
 		if not src_uri_error:
 			# Check that URIs don't reference a server from thirdpartymirrors.
 			for uri in portage.dep.use_reduce( \
-				myaux["SRC_URI"], matchall=True, is_src_uri=True, \
-				allow_src_uri_file_renames=eapi_has_src_uri_arrows(eapi), flat=True):
+				myaux["SRC_URI"], matchall=True, is_src_uri=True, eapi=eapi, flat=True):
 				contains_mirror = False
 				for mirror in thirdpartymirrors:
 					if uri.startswith(mirror):

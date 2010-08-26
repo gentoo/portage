@@ -39,7 +39,6 @@ from portage.data import portage_gid, portage_uid, secpass, \
 from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, paren_enclose, use_reduce
 from portage.eapi import eapi_exports_KV, eapi_exports_replace_vars, \
-	eapi_has_src_uri_arrows, \
 	eapi_has_src_prepare_and_src_configure, eapi_has_pkg_pretend
 from portage.elog import elog_process
 from portage.elog.messages import eerror, eqawarn
@@ -995,8 +994,7 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 	eapi = metadata["EAPI"]
 	for k in misc_keys:
 		try:
-			use_reduce(metadata[k], matchall=True, is_src_uri=(k=="SRC_URI"), \
-				allow_src_uri_file_renames=eapi_has_src_uri_arrows(eapi))
+			use_reduce(metadata[k], is_src_uri=(k=="SRC_URI"), eapi=eapi)
 		except InvalidDependString as e:
 			msgs.append("  %s: %s\n    %s\n" % (
 				k, metadata[k], str(e)))

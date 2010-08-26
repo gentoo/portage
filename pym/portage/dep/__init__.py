@@ -30,10 +30,12 @@ import re, sys
 import warnings
 from itertools import chain
 import portage.exception
+from portage.eapi import eapi_has_slot_deps, eapi_has_src_uri_arrows, \
+	eapi_has_use_deps, eapi_has_strong_blocks, eapi_has_use_dep_defaults
 from portage.exception import InvalidData, InvalidAtom
 from portage.localization import _
 from portage.versions import catpkgsplit, catsplit, \
-	pkgcmp, pkgsplit, ververify, _cp, _cpv
+	pkgcmp, ververify, _cp, _cpv
 import portage.cache.mappings
 
 if sys.hexversion >= 0x3000000:
@@ -252,7 +254,7 @@ def paren_enclose(mylist):
 	return " ".join(mystrparts)
 
 def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], is_src_uri=False, \
-	allow_src_uri_file_renames=False, opconvert=False, flat=False, is_valid_flag=None, token_class=None):
+	eapi=None, opconvert=False, flat=False, is_valid_flag=None, token_class=None):
 	"""
 	Takes a dep string and reduces the use? conditionals out, leaving an array
 	with subarrays. All redundant brackets are removed.
@@ -269,8 +271,8 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 	@type excludeall: List
 	@param is_src_uri: Indicates if depstr represents a SRC_URI
 	@type is_src_uri: Bool
-	@param allow_src_uri_file_renames: Indicates if EAPI-2 SRC_URI arrows are allowed when parsing a SRC_URI
-	@type allow_src_uri_file_renames: Bool
+	@param eapi: Indicates the EAPI the dep string has to comply to
+	@type eapi: String
 	@param opconvert: Put every operator as first element into it's argument list
 	@type opconvert: Bool
 	@param flat: Create a flat list of all tokens
@@ -452,9 +454,9 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 			if not is_src_uri:
 				raise portage.exception.InvalidDependString(
 					_("SRC_URI arrow are only allowed in SRC_URI: '%s', token %s") % (depstr, pos+1))
-			if not allow_src_uri_file_renames:
+			if eapi is None or not eapi_has_src_uri_arrows(eapi):
 				raise portage.exception.InvalidDependString(
-					_("SRC_URI arrow not allowed in this EAPI: '%s', token %s") % (depstr, pos+1))
+					_("SRC_URI arrow not allowed in EAPI %s: '%s', token %s") % (eapi, depstr, pos+1))
 			need_simple_token = True
 			stack[level].append(token)	
 		else:
@@ -476,7 +478,10 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 				if token_class and not is_src_uri:
 					#Add a hack for SRC_URI here, to avoid conditional code at the consumer level
 					try:
-						token = token_class(token)
+						token = token_class(token, eapi=eapi)
+					except InvalidAtom as e:
+						raise portage.exception.InvalidDependString(
+							_("Invalid atom (%s) in '%s', token %s") % (e, depstr, pos+1))
 					except Exception as e:
 						raise portage.exception.InvalidDependString(
 							_("Invalid token '%s' in '%s', token %s") % (token, depstr, pos+1))
@@ -949,10 +954,10 @@ class Atom(_atom_base):
 		def __init__(self, forbid_overlap=False):
 			self.overlap = self._overlap(forbid=forbid_overlap)
 
-	def __new__(cls, s, unevaluated_atom=None, allow_wildcard=False, _use=None):
+	def __new__(cls, s, unevaluated_atom=None, allow_wildcard=False, _use=None, eapi=None):
 		return _atom_base.__new__(cls, s)
 
-	def __init__(self, s, unevaluated_atom=None, allow_wildcard=False, _use=None):
+	def __init__(self, s, unevaluated_atom=None, allow_wildcard=False, _use=None, eapi=None):
 		if isinstance(s, Atom):
 			# This is an efficiency assertion, to ensure that the Atom
 			# constructor is not called redundantly.
@@ -1037,6 +1042,18 @@ class Atom(_atom_base):
 			self.__dict__['unevaluated_atom'] = unevaluated_atom
 		else:
 			self.__dict__['unevaluated_atom'] = self
+
+		if eapi is not None:
+			if self.slot and not eapi_has_slot_deps(eapi):
+				raise InvalidAtom("Slot deps are not allowed in EAPI %s: '%s'" % (eapi, self))
+			if self.use:
+				if not eapi_has_use_deps(eapi):
+					raise InvalidAtom("Use deps are not allowed in EAPI %s: '%s'" % (eapi, self))
+				elif not eapi_has_use_dep_defaults(eapi) and \
+					(self.use.missing_enabled or self.use.missing_disabled):
+					raise InvalidAtom("Use dep defaults are not allowed in EAPI %s: '%s'" % (eapi, self))
+			if self.blocker and self.blocker.overlap.forbid and not eapi_has_strong_blocks(eapi):
+				raise InvalidAtom("Strong blocks are not allowed in EAPI %s: '%s'" % (eapi, self))
 
 	def __setattr__(self, name, value):
 		raise AttributeError("Atom instances are immutable",

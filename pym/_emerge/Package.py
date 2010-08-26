@@ -7,9 +7,7 @@ import portage
 from portage.cache.mappings import slot_dict_class
 from portage.dep import Atom, check_required_use, isvalidatom, use_reduce, \
 	paren_enclose, _slot_re
-from portage.eapi import eapi_has_src_uri_arrows, eapi_has_slot_deps, \
-	eapi_has_use_deps, eapi_has_strong_blocks, eapi_has_iuse_defaults, \
-	eapi_has_required_use, eapi_has_use_dep_defaults
+from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 from _emerge.Task import Task
 
 if sys.hexversion >= 0x3000000:
@@ -53,7 +51,7 @@ class Package(Task):
 			slot = '0'
 		if (self.iuse.enabled or self.iuse.disabled) and \
 			not eapi_has_iuse_defaults(self.metadata["EAPI"]):
-			self._invalid_metadata('IUSE.invalid',
+			self._invalid_metadata('EAPI.incompatible',
 				"IUSE contains defaults, but EAPI doesn't allow them")
 		self.slot_atom = portage.dep.Atom("%s:%s" % (self.cp, slot))
 		self.category, self.pf = portage.catsplit(self.cpv)
@@ -75,40 +73,10 @@ class Package(Task):
 			if not v:
 				continue
 			try:
-				atoms = portage.dep.use_reduce(v, matchall=True, flat=True,
+				use_reduce(v, eapi=eapi,
 					is_valid_flag=self.iuse.is_valid_flag, token_class=Atom)
 			except portage.exception.InvalidDependString as e:
 				self._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
-			else:
-				for atom in atoms:
-					if not isinstance(atom, Atom):
-						continue
-
-					if atom.slot and not eapi_has_slot_deps(eapi):
-						self._invalid_metadata('EAPI.incompatible',
-							("%s slot dependency" + \
-							" not supported with EAPI='%s':" + \
-							" '%s'") % (k, eapi, atom))
-
-					if atom.use and not eapi_has_use_deps(eapi):
-						self._invalid_metadata('EAPI.incompatible',
-							("%s use dependency" + \
-							" not supported with EAPI='%s':" + \
-							" '%s'") % (k, eapi, atom))
-
-					if atom.use and (atom.use.missing_enabled or atom.use.missing_disabled) and \
-						not eapi_has_use_dep_defaults(eapi):
-						self._invalid_metadata('EAPI.incompatible',
-							("%s use dependency" + \
-							" not supported with EAPI='%s':" + \
-							" '%s'") % (k, eapi, atom))
-
-					if atom.blocker and atom.blocker.overlap.forbid \
-						and not eapi_has_strong_blocks(eapi):
-						self._invalid_metadata('EAPI.incompatible',
-							("%s new blocker syntax" + \
-							" not supported with EAPI='%s':" + \
-							" '%s'") % (k, eapi, atom))
 
 		k = 'REQUIRED_USE'
 		v = self.metadata.get(k)
@@ -128,8 +96,7 @@ class Package(Task):
 		v = self.metadata.get(k)
 		if v:
 			try:
-				use_reduce(v, matchall=True, flat=True, is_src_uri=True,
-					allow_src_uri_file_renames=eapi_has_src_uri_arrows(eapi),
+				use_reduce(v, is_src_uri=True, eapi=eapi, \
 					is_valid_flag=self.iuse.is_valid_flag)
 			except portage.exception.InvalidDependString as e:
 				self._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
