@@ -6,11 +6,10 @@ __all__ = ['dep_check', 'dep_eval', 'dep_wordreduce', 'dep_zapdeps']
 import logging
 
 import portage
-from portage.dep import Atom, match_from_list, \
-	remove_slot, use_reduce
+from portage.dep import Atom, match_from_list, use_reduce
 from portage.eapi import eapi_has_strong_blocks, eapi_has_use_deps, eapi_has_slot_deps, \
 	eapi_has_use_dep_defaults
-from portage.exception import InvalidAtom, InvalidDependString, ParseError
+from portage.exception import InvalidDependString, ParseError
 from portage.localization import _
 from portage.util import writemsg, writemsg_level
 from portage.versions import catpkgsplit, cpv_getkey, pkgcmp
@@ -538,9 +537,22 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		mymasks.discard(mysettings["ARCH"])
 		useforce.update(mysettings.useforce)
 		useforce.difference_update(mymasks)
+
+	# eapi code borrowed from _expand_new_virtuals()
+	mytrees = trees[myroot]
+	parent = mytrees.get("parent")
+	virt_parent = mytrees.get("virt_parent")
+	eapi = None
+	if parent is not None:
+		if virt_parent is not None:
+			eapi = virt_parent[0].metadata['EAPI']
+		else:
+			eapi = parent.metadata["EAPI"]
+
 	try:
 		mysplit = use_reduce(depstring, uselist=myusesplit, masklist=mymasks, \
-			matchall=(use=="all"), excludeall=useforce, opconvert=True, token_class=Atom)
+			matchall=(use=="all"), excludeall=useforce, opconvert=True, \
+			token_class=Atom, eapi=eapi)
 	except InvalidDependString as e:
 		return [0, str(e)]
 
