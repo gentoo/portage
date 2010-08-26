@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 from _emerge.AtomArg import AtomArg
+from _emerge.Package import Package
 from _emerge.PackageArg import PackageArg
 from portage.dep import check_required_use
 from portage.output import colorize
@@ -256,8 +257,12 @@ class slot_conflict_handler(object):
 							hard_matches = set()
 							conditional_matches = set()
 							for ppkg, atom, other_pkg in parents:
+								parent_use = None
+								if isinstance(ppkg, Package):
+									parent_use = _pkg_use_enabled(ppkg)
 								violated_atom = atom.unevaluated_atom.violated_conditionals( \
-									_pkg_use_enabled(other_pkg), other_pkg.iuse.is_valid_flag)
+									_pkg_use_enabled(other_pkg), other_pkg.iuse.is_valid_flag,
+									parent_use=parent_use)
 								if use in violated_atom.use.enabled.union(violated_atom.use.disabled):
 									hard_matches.add((ppkg, atom))
 								else:
@@ -467,7 +472,7 @@ class slot_conflict_handler(object):
 						pkg.iuse.is_valid_flag)
 				else:
 					violated_atom = atom.unevaluated_atom.violated_conditionals(_pkg_use_enabled(pkg), \
-						pkg.iuse.is_valid_flag)
+						pkg.iuse.is_valid_flag, parent_use=_pkg_use_enabled(ppkg))
 
 				if pkg.installed and (violated_atom.use.enabled or violated_atom.use.disabled):
 					#We can't change USE of an installed package (only of an ebuild, but that is already
