@@ -24,7 +24,7 @@ case $1 in
 		touch "$@"
 		ret=$?
 		[[ $ret -ne 0 ]] && helpers_die "${0##*/} failed"
-		exit $?
+		exit $ret
 		;;
 	--dequeue)
 		[[ -n $2 ]] && vecho "${0##*/}: --dequeue takes no additional arguments" 1>&2
