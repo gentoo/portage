@@ -37,11 +37,16 @@ class LicenseManager(object):
 
 		# immutable attributes
 		result._accept_license_str = self._accept_license_str
+		memo[id(self._accept_license_str)] = self._accept_license_str
 		result._accept_license = self._accept_license
+		memo[id(self._accept_license)] = self._accept_license
+
+		# immutable attributes (internal policy ensures lack of mutation)
+		result._license_groups = self._license_groups
+		memo[id(self._license_groups)] = self._license_groups
 
 		# mutable attributes
 		result._plicensedict = deepcopy(self._plicensedict, memo)
-		result._license_groups = deepcopy(self._license_groups, memo)
 		result._undef_lic_groups = deepcopy(self._undef_lic_groups, memo)
 
 		return result
