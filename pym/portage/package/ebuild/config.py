@@ -191,8 +191,6 @@ class config(object):
 		tolerant = hasattr(portage, '_initializing_globals')
 		self._tolerant = tolerant
 
-		self.already_in_regenerate = 0
-
 		self.locked   = 0
 		self.mycpv    = None
 		self._setcpv_args_hash = None
@@ -247,7 +245,6 @@ class config(object):
 				self.configdict['defaults'],
 				self.configdict['conf'],
 				self.configdict['pkg'],
-				self.configdict['auto'],
 				self.configdict['env'],
 			]
 			self.lookuplist = self.configlist[:]
@@ -328,7 +325,7 @@ class config(object):
 			# back up our incremental variables:
 			self.configdict={}
 			self._use_expand_dict = {}
-			# configlist will contain: [ env.d, globals, defaults, conf, pkg, auto, backupenv, env ]
+			# configlist will contain: [ env.d, globals, defaults, conf, pkg, backupenv, env ]
 			self.configlist.append({})
 			self.configdict["env.d"] = self.configlist[-1]
 
@@ -491,10 +488,6 @@ class config(object):
 
 			self.configlist.append(LazyItemsDict())
 			self.configdict["pkg"]=self.configlist[-1]
-
-			#auto-use:
-			self.configlist.append({})
-			self.configdict["auto"]=self.configlist[-1]
 
 			self.configdict["backupenv"] = self.backupenv
 
@@ -911,15 +904,18 @@ class config(object):
 		else:
 			raise KeyError(_("No such key defined in environment: %s") % key)
 
-	def reset(self,keeping_pkg=0,use_cache=1):
+	def reset(self, keeping_pkg=0, use_cache=None):
 		"""
 		Restore environment from self.backupenv, call self.regenerate()
 		@param keeping_pkg: Should we keep the set_cpv() data or delete it.
 		@type keeping_pkg: Boolean
-		@param use_cache: Should self.regenerate use the cache or not
-		@type use_cache: Boolean
 		@rype: None
 		"""
+
+		if use_cache is not None:
+			warnings.warn("The use_cache parameter for config.reset() is deprecated and without effect.",
+				DeprecationWarning, stacklevel=2)
+
 		self.modifying()
 		self.configdict["env"].clear()
 		self.configdict["env"].update(self.backupenv)
@@ -935,7 +931,7 @@ class config(object):
 				" ".join(self.make_defaults_use)
 			self.usemask = self._use_manager.getUseMask()
 			self.useforce = self._use_manager.getUseForce()
-		self.regenerate(use_cache=use_cache)
+		self.regenerate()
 
 	class _lazy_vars(object):
 
@@ -1050,7 +1046,7 @@ class config(object):
 
 			return value
 
-	def setcpv(self, mycpv, use_cache=1, mydb=None):
+	def setcpv(self, mycpv, use_cache=None, mydb=None):
 		"""
 		Load a particular CPV into the config, this lets us see the
 		Default USE flags for a particular ebuild as well as the USE
@@ -1058,12 +1054,14 @@ class config(object):
 
 		@param mycpv: A cpv to load
 		@type mycpv: string
-		@param use_cache: Enables caching
-		@type use_cache: Boolean
 		@param mydb: a dbapi instance that supports aux_get with the IUSE key.
 		@type mydb: dbapi or derivative.
 		@rtype: None
 		"""
+
+		if use_cache is not None:
+			warnings.warn("The use_cache parameter for config.setcpv() is deprecated and without effect.",
+				DeprecationWarning, stacklevel=2)
 
 		self.modifying()
 
@@ -1209,7 +1207,7 @@ class config(object):
 					pkg_configdict['USE'] = self.puse
 
 		if has_changed:
-			self.reset(keeping_pkg=1,use_cache=use_cache)
+			self.reset(keeping_pkg=1)
 
 		env_configdict = self.configdict['env']
 
@@ -1704,7 +1702,7 @@ class config(object):
 			# env_d will be None if profile.env doesn't exist.
 			self.configdict["env.d"].update(env_d)
 
-	def regenerate(self,useonly=0,use_cache=1):
+	def regenerate(self, useonly=0, use_cache=None):
 		"""
 		Regenerate settings
 		This involves regenerating valid USE flags, re-expanding USE_EXPAND flags
@@ -1716,18 +1714,14 @@ class config(object):
 
 		@param useonly: Only regenerate USE flags (not any other incrementals)
 		@type useonly: Boolean
-		@param use_cache: Enable Caching (only for autouse)
-		@type use_cache: Boolean
 		@rtype: None
 		"""
 
+		if use_cache is not None:
+			warnings.warn("The use_cache parameter for config.regenerate() is deprecated and without effect.",
+				DeprecationWarning, stacklevel=2)
+
 		self.modifying()
-		if self.already_in_regenerate:
-			# XXX: THIS REALLY NEEDS TO GET FIXED. autouse() loops.
-			writemsg("!!! Looping in regenerate.\n",1)
-			return
-		else:
-			self.already_in_regenerate = 1
 
 		if useonly:
 			myincrementals=["USE"]
@@ -1816,8 +1810,6 @@ class config(object):
 				self.configlist[-1][mykey] = " ".join(sorted(myflags))
 
 		# Do the USE calculation last because it depends on USE_EXPAND.
-		self.configdict["auto"]["USE"] = ""
-
 		use_expand = self.get("USE_EXPAND", "").split()
 		use_expand_dict = self._use_expand_dict
 		use_expand_dict.clear()
@@ -1929,8 +1921,6 @@ class config(object):
 
 		myflags.difference_update(self.usemask)
 		self.configlist[-1]["USE"]= " ".join(sorted(myflags))
-
-		self.already_in_regenerate = 0
 
 	def get_virts_p(self):
 		return self._virtuals_manager.get_virts_p()
