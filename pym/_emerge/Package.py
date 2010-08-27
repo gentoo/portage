@@ -51,8 +51,9 @@ class Package(Task):
 			slot = '0'
 		if (self.iuse.enabled or self.iuse.disabled) and \
 			not eapi_has_iuse_defaults(self.metadata["EAPI"]):
-			self._invalid_metadata('EAPI.incompatible',
-				"IUSE contains defaults, but EAPI doesn't allow them")
+			if not self.installed:
+				self._invalid_metadata('EAPI.incompatible',
+					"IUSE contains defaults, but EAPI doesn't allow them")
 		self.slot_atom = portage.dep.Atom("%s:%s" % (self.cp, slot))
 		self.category, self.pf = portage.catsplit(self.cpv)
 		self.cpv_split = portage.catpkgsplit(self.cpv)
@@ -68,13 +69,23 @@ class Package(Task):
 		in unnecessarily (like for masked packages).
 		"""
 		eapi = self.metadata['EAPI']
+		dep_eapi = eapi
+		dep_valid_flag = self.iuse.is_valid_flag
+		if self.installed:
+			# Ignore EAPI.incompatible and conditionals missing
+			# from IUSE for installed packages since these issues
+			# aren't relevant now (re-evaluate when new EAPIs are
+			# deployed).
+			dep_eapi = None
+			dep_valid_flag = None
+
 		for k in self._dep_keys:
 			v = self.metadata.get(k)
 			if not v:
 				continue
 			try:
-				use_reduce(v, eapi=eapi,
-					is_valid_flag=self.iuse.is_valid_flag, token_class=Atom)
+				use_reduce(v, eapi=dep_eapi,
+					is_valid_flag=dep_valid_flag, token_class=Atom)
 			except portage.exception.InvalidDependString as e:
 				if not self.installed:
 					categorized_error = False
@@ -119,7 +130,8 @@ class Package(Task):
 				use_reduce(v, is_src_uri=True, eapi=eapi, \
 					is_valid_flag=self.iuse.is_valid_flag)
 			except portage.exception.InvalidDependString as e:
-				self._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
+				if not self.installed:
+					self._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
 
 	def copy(self):
 		return Package(built=self.built, cpv=self.cpv, depth=self.depth,
