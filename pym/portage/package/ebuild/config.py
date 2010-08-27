@@ -49,6 +49,7 @@ from portage.versions import catpkgsplit, catsplit, cpv_getkey
 from portage.package.ebuild._config.features_set import features_set
 from portage.package.ebuild._config.LicenseManager import LicenseManager
 from portage.package.ebuild._config.UseManager import UseManager
+from portage.package.ebuild._config.MaskManager import MaskManager
 from portage.package.ebuild._config.helper import ordered_by_atom_specificity, prune_incremental
 
 if sys.hexversion >= 0x3000000:
@@ -394,6 +395,7 @@ class config(object):
 			self._pkeywords_list = clone._pkeywords_list
 			self._p_accept_keywords = clone._p_accept_keywords
 			self._use_manager = clone._use_manager
+			self._mask_manager = clone._mask_manager
 
 			self.modules         = copy.deepcopy(clone.modules)
 			self.virtuals = copy.deepcopy(clone.virtuals)
@@ -420,8 +422,6 @@ class config(object):
 			self._use_expand_dict = copy.deepcopy(clone._use_expand_dict)
 			self.backupenv  = self.configdict["backupenv"]
 			self.pkeywordsdict = copy.deepcopy(clone.pkeywordsdict)
-			self.pmaskdict = copy.deepcopy(clone.pmaskdict)
-			self.punmaskdict = copy.deepcopy(clone.punmaskdict)
 			self.prevmaskdict = copy.deepcopy(clone.prevmaskdict)
 			self.pprovideddict = copy.deepcopy(clone.pprovideddict)
 			self.features = features_set(self)
@@ -804,7 +804,6 @@ class config(object):
 			self.pkeywordsdict = portage.dep.ExtendedAtomDict(dict)
 			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
 			self._penvdict = portage.dep.ExtendedAtomDict(dict)
-			self.punmaskdict = portage.dep.ExtendedAtomDict(list)
 
 			# locations for "categories" and "arch.list" files
 			locations = [os.path.join(self["PORTDIR"], "profiles")]
@@ -837,15 +836,6 @@ class config(object):
 			
 			pmask_locations.extend(overlay_profiles)
 
-			# package.mask and package.unmask
-			pkgmasklines = []
-			pkgunmasklines = []
-			for x in pmask_locations:
-				pkgmasklines.append(grabfile_package(
-					os.path.join(x, "package.mask"), recursive=1))
-				pkgunmasklines.append(grabfile_package(
-					os.path.join(x, "package.unmask"), recursive=1))
-
 			#Read all USE related files from profiles and optionally from user config.
 			self._use_manager = UseManager(self.profiles, abs_user_config, user_config=local_config)
 			#Initialize all USE related variables we track ourselves.
@@ -862,13 +852,11 @@ class config(object):
 				self._license_manager.extract_global_changes( \
 					self.configdict["conf"].get("ACCEPT_LICENSE", ""))
 
+			#Read package.mask and package.unmask from profiles and optionally from user config
+			self._mask_manager = MaskManager(pmask_locations, abs_user_config, user_config=local_config)
+
 			if local_config:
 				locations.append(abs_user_config)
-
-				pkgmasklines.append(grabfile_package(
-					os.path.join(abs_user_config, "package.mask"), recursive=1, allow_wildcard=True))
-				pkgunmasklines.append(grabfile_package(
-					os.path.join(abs_user_config, "package.unmask"), recursive=1, allow_wildcard=True))
 
 				# package.accept_keywords and package.keywords
 				pkgdict = grabdict_package(
@@ -971,16 +959,6 @@ class config(object):
 			archlist = [grabfile(os.path.join(x, "arch.list")) for x in locations]
 			archlist = stack_lists(archlist, incremental=1)
 			self.configdict["conf"]["PORTAGE_ARCHLIST"] = " ".join(archlist)
-
-			pkgmasklines = stack_lists(pkgmasklines, incremental=1)
-			pkgunmasklines = stack_lists(pkgunmasklines, incremental=1)
-
-			self.pmaskdict = portage.dep.ExtendedAtomDict(list)
-			for x in pkgmasklines:
-				self.pmaskdict.setdefault(x.cp, []).append(x)
-
-			for x in pkgunmasklines:
-				self.punmaskdict.setdefault(x.cp, []).append(x)
 
 			pkgprovidedlines = [grabfile(os.path.join(x, "package.provided"), recursive=1) for x in self.profiles]
 			pkgprovidedlines = stack_lists(pkgprovidedlines, incremental=1)
@@ -1715,21 +1693,7 @@ class config(object):
 		@rtype: String
 		@return: An matching atom string or None if one is not found.
 		"""
-
-		cp = cpv_getkey(cpv)
-		mask_atoms = self.pmaskdict.get(cp)
-		if mask_atoms:
-			pkg_list = ["%s:%s" % (cpv, metadata["SLOT"])]
-			unmask_atoms = self.punmaskdict.get(cp)
-			for x in mask_atoms:
-				if not match_from_list(x, pkg_list):
-					continue
-				if unmask_atoms:
-					for y in unmask_atoms:
-						if match_from_list(y, pkg_list):
-							return None
-				return x
-		return None
+		return self._mask_manager.getMaskAtom(cpv, metadata["SLOT"])
 
 	def _getProfileMaskAtom(self, cpv, metadata):
 		"""
