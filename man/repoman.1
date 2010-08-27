@@ -134,6 +134,9 @@ Virtuals that have a non-empty HOMEPAGE variable
 .B IUSE.invalid
 This ebuild has a variable in IUSE that is not in the use.desc or its metadata.xml file
 .TP
+.B IUSE.missing
+This ebuild has a USE conditional which references a flag that is not listed in IUSE
+.TP
 .B IUSE.undefined
 This ebuild does not define IUSE (style guideline says to define IUSE even when empty)
 .TP

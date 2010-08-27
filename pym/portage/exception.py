@@ -52,6 +52,9 @@ class ParseError(PortageException):
 
 class InvalidData(PortageException):
 	"""An incorrect formatting was passed instead of the expected one"""
+	def __init__(self, value, category=None):
+		PortageException.__init__(self, value)
+		self.category = category
 
 class InvalidDataType(PortageException):
 	"""An incorrect type was passed instead of the expected one"""

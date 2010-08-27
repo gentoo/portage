@@ -87,27 +87,7 @@ class Package(Task):
 				use_reduce(v, eapi=dep_eapi,
 					is_valid_flag=dep_valid_flag, token_class=Atom)
 			except portage.exception.InvalidDependString as e:
-				if not self.installed:
-					categorized_error = False
-					if e.errors:
-						for error in e.errors:
-							if getattr(error, 'category', None) is None:
-								continue
-							categorized_error = True
-							self._invalid_metadata(error.category,
-								"%s: %s" % (k, error))
-
-					if not categorized_error:
-						self._invalid_metadata(k + ".syntax",
-							"%s: %s" % (k, e))
-				else:
-					# For installed packages, show the path of the file
-					# containing the invalid metadata, since the user may
-					# want to fix the deps by hand.
-					vardb = self.root_config.trees['vartree'].dbapi
-					path = vardb.getpath(self.cpv, filename=k)
-					self._invalid_metadata(k + ".syntax",
-						"%s: %s in '%s'" % (k, e, path))
+				self._metadata_exception(k, e)
 
 		k = 'REQUIRED_USE'
 		v = self.metadata.get(k)
@@ -131,7 +111,7 @@ class Package(Task):
 					is_valid_flag=self.iuse.is_valid_flag)
 			except portage.exception.InvalidDependString as e:
 				if not self.installed:
-					self._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
+					self._metadata_exception(k, e)
 
 	def copy(self):
 		return Package(built=self.built, cpv=self.cpv, depth=self.depth,
@@ -215,6 +195,29 @@ class Package(Task):
 				return False
 
 		return True
+
+	def _metadata_exception(self, k, e):
+		if not self.installed:
+			categorized_error = False
+			if e.errors:
+				for error in e.errors:
+					if getattr(error, 'category', None) is None:
+						continue
+					categorized_error = True
+					self._invalid_metadata(error.category,
+						"%s: %s" % (k, error))
+
+			if not categorized_error:
+				self._invalid_metadata(k + ".syntax",
+					"%s: %s" % (k, e))
+		else:
+			# For installed packages, show the path of the file
+			# containing the invalid metadata, since the user may
+			# want to fix the deps by hand.
+			vardb = self.root_config.trees['vartree'].dbapi
+			path = vardb.getpath(self.cpv, filename=k)
+			self._invalid_metadata(k + ".syntax",
+				"%s: %s in '%s'" % (k, e, path))
 
 	def _invalid_metadata(self, msg_type, msg):
 		if self.invalid is None:
