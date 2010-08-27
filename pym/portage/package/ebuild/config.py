@@ -25,7 +25,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 from portage import bsd_chflags, \
 	load_mod, os, selinux, _encodings, _unicode_encode, _unicode_decode
 from portage.const import CACHE_PATH, \
-	DEPCACHE_PATH, GLOBAL_CONFIG_PATH, INCREMENTALS, MAKE_CONF_FILE, \
+	DEPCACHE_PATH, INCREMENTALS, MAKE_CONF_FILE, \
 	MODULES_FILE_PATH, PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, \
 	PRIVATE_PATH, PROFILE_PATH, SUPPORTED_FEATURES, USER_CONFIG_PATH, \
 	USER_VIRTUALS_FILE

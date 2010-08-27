@@ -7,12 +7,12 @@ __all__ = (
 
 import codecs
 from portage import os, eapi_is_supported, _encodings, _unicode_encode
-from portage.const import CUSTOM_PROFILE_PATH, GLOBAL_CONFIG_PATH, PROFILE_PATH, USER_CONFIG_PATH
-from portage.dep import Atom
-from portage.exception import DirectoryNotFound, InvalidAtom, ParseError
+from portage.const import CUSTOM_PROFILE_PATH, GLOBAL_CONFIG_PATH, \
+	PROFILE_PATH, USER_CONFIG_PATH
+from portage.exception import DirectoryNotFound, ParseError
 from portage.localization import _
-from portage.util import ensure_dirs, grabdict, grabfile, normalize_path, shlex_split, stack_dictlist, writemsg
-from portage.versions import cpv_getkey
+from portage.util import ensure_dirs, grabfile, \
+	normalize_path, shlex_split, writemsg
 
 
 class LocationsManager(object):
