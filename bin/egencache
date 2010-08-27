@@ -337,6 +337,13 @@ class GenUseLocalDesc(object):
 
 '''.lstrip())
 
+		# The cmp function no longer exists in python3, so we'll
+		# implement our own here under a slightly different name
+		# since we don't want any confusion given that we never
+		# want to rely on the builtin cmp function.
+		def cmp_func(a, b):
+			return (a > b) - (a < b)
+
 		for cp in self._portdb.cp_all():
 			metadata_path = os.path.join(repo_path, cp, 'metadata.xml')
 			try:
@@ -361,18 +368,17 @@ class GenUseLocalDesc(object):
 						def atomcmp(atoma, atomb):
 							# None is better than an atom, that's why we reverse the args
 							if atoma is None or atomb is None:
-								return -1 * ((atoma > atomb) - (atoma < atomb))
+								return cmp_func(atomb, atoma)
 							# Same for plain PNs (.operator is None then)
 							elif atoma.operator is None or atomb.operator is None:
-								return -1 * ((atoma.operator > atomb.operator) - \
-									(atoma.operator < atomb.operator))
+								return cmp_func(atomb.operator, atoma.operator)
 							# Version matching
 							elif atoma.cpv != atomb.cpv:
 								return pkgcmp(pkgsplit(atoma.cpv), pkgsplit(atomb.cpv))
 							# Versions match, let's fallback to operator matching
 							else:
-								return ((ops.get(atoma.operator, -1) > ops.get(atomb.operator, -1)) - \
-									(ops.get(atoma.operator, -1) < ops.get(atomb.operator, -1)))
+								return cmp_func(ops.get(atoma.operator, -1),
+									ops.get(atomb.operator, -1))
 
 						def _Atom(key):
 							if key is not None:
