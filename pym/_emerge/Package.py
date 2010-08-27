@@ -5,9 +5,10 @@ import sys
 from itertools import chain
 import portage
 from portage.cache.mappings import slot_dict_class
-from portage.dep import Atom, check_required_use, isvalidatom, use_reduce, \
+from portage.dep import Atom, check_required_use, use_reduce, \
 	paren_enclose, _slot_re
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
+from portage.exception import InvalidDependString
 from _emerge.Task import Task
 
 if sys.hexversion >= 0x3000000:
@@ -33,6 +34,7 @@ class Package(Task):
 		"_mtime_", "DEFINED_PHASES", "REQUIRED_USE"]
 
 	_dep_keys = ('DEPEND', 'PDEPEND', 'RDEPEND',)
+	_use_conditional_misc_keys = ('LICENSE', 'PROPERTIES', 'RESTRICT')
 
 	def __init__(self, **kwargs):
 		Task.__init__(self, **kwargs)
@@ -87,6 +89,25 @@ class Package(Task):
 				use_reduce(v, eapi=dep_eapi,
 					is_valid_flag=dep_valid_flag, token_class=Atom)
 			except portage.exception.InvalidDependString as e:
+				self._metadata_exception(k, e)
+
+		k = 'PROVIDE'
+		v = self.metadata.get(k)
+		if v:
+			try:
+				use_reduce(v, eapi=dep_eapi,
+					is_valid_flag=dep_valid_flag, token_class=Atom)
+			except InvalidDependString as e:
+				self._metadata_exception(k, e)
+
+		for k in self._use_conditional_misc_keys:
+			v = self.metadata.get(k)
+			if not v:
+				continue
+			try:
+				use_reduce(v, eapi=dep_eapi,
+					is_valid_flag=dep_valid_flag)
+			except InvalidDependString as e:
 				self._metadata_exception(k, e)
 
 		k = 'REQUIRED_USE'
@@ -418,17 +439,6 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 		_PackageMetadataWrapperBase.__setitem__(self, k, v)
 		if k in self._wrapped_keys:
 			getattr(self, "_set_" + k.lower())(k, v)
-		elif k in self._use_conditional_keys:
-			try:
-				reduced = use_reduce(v, matchall=1, flat=True)
-			except portage.exception.InvalidDependString as e:
-				self._pkg._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
-			else:
-				if reduced and k == 'PROVIDE':
-					for x in reduced:
-						if not isvalidatom(x):
-							self._pkg._invalid_metadata(k + ".syntax",
-								"%s: %s" % (k, x))
 
 	def _set_inherited(self, k, v):
 		if isinstance(v, basestring):
