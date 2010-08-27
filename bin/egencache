@@ -33,9 +33,10 @@ except ImportError:
 from portage import os
 from _emerge.MetadataRegen import MetadataRegen
 from portage.cache.cache_errors import CacheError, StatCollision
-from portage.util import writemsg_level
+from portage.util import cmp_sort_key, writemsg_level
 from portage import cpv_getkey
-from portage.dep import isjustname
+from portage.dep import Atom, isjustname
+from portage.versions import pkgcmp, pkgsplit
 
 try:
 	import xml.etree.ElementTree
@@ -44,8 +45,6 @@ except ImportError:
 else:
 	from repoman.utilities import parse_metadata_use
 	from xml.parsers.expat import ExpatError
-	from portage.dep import Atom
-	from portage.versions import pkgcmp, pkgsplit
 
 if sys.hexversion >= 0x3000000:
 	long = int
@@ -380,7 +379,7 @@ class GenUseLocalDesc(object):
 
 						resdict = usedict[flag]
 						reskeys = {_Atom(k): k for k in resdict.keys()}
-						resatoms = sorted(reskeys.keys(), atomcmp)
+						resatoms = sorted(reskeys.keys(), key=cmp_sort_key(atomcmp))
 						resdesc = resdict[reskeys[resatoms[-1]]]
 
 						output.write('%s:%s - %s\n' % (cp, flag, resdesc))
