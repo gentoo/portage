@@ -11,6 +11,7 @@ import errno
 import logging
 import re
 import sys
+import warnings
 
 try:
 	from configparser import SafeConfigParser, ParsingError
@@ -54,33 +55,9 @@ if sys.hexversion >= 0x3000000:
 	basestring = str
 
 def autouse(myvartree, use_cache=1, mysettings=None):
-	"""
-	autuse returns a list of USE variables auto-enabled to packages being installed
-
-	@param myvartree: Instance of the vartree class (from /var/db/pkg...)
-	@type myvartree: vartree
-	@param use_cache: read values from cache
-	@type use_cache: Boolean
-	@param mysettings: Instance of config
-	@type mysettings: config
-	@rtype: string
-	@returns: A string containing a list of USE variables that are enabled via use.defaults
-	"""
-	if mysettings is None:
-		mysettings = portage.settings
-	if mysettings.profile_path is None:
-		return ""
-	myusevars=""
-	usedefaults = mysettings.use_defs
-	for myuse in usedefaults:
-		dep_met = True
-		for mydep in usedefaults[myuse]:
-			if not myvartree.dep_match(mydep,use_cache=True):
-				dep_met = False
-				break
-		if dep_met:
-			myusevars += " "+myuse
-	return myusevars
+	warnings.warn("portage.autouse() is deprecated",
+		DeprecationWarning, stacklevel=2)
+	return ""
 
 def check_config_instance(test):
 	if not isinstance(test, config):
@@ -2183,13 +2160,7 @@ class config(object):
 				self.configlist[-1][mykey] = " ".join(sorted(myflags))
 
 		# Do the USE calculation last because it depends on USE_EXPAND.
-		if "auto" in self["USE_ORDER"].split(":"):
-			self.configdict["auto"]["USE"] = autouse(
-				vartree(root=self["ROOT"], categories=self.categories,
-					settings=self),
-				use_cache=use_cache, mysettings=self)
-		else:
-			self.configdict["auto"]["USE"] = ""
+		self.configdict["auto"]["USE"] = ""
 
 		use_expand = self.get("USE_EXPAND", "").split()
 		use_expand_dict = self._use_expand_dict
