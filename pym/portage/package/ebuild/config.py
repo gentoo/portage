@@ -274,8 +274,9 @@ class config(object):
 			self._expand_map = copy.deepcopy(clone._expand_map)
 
 		else:
-			locations_manager = LocationsManager(eprefix=eprefix, config_profile_path=config_profile_path, \
-				local_config=local_config)
+			locations_manager = LocationsManager(config_root=config_root,
+				config_profile_path=config_profile_path, eprefix=eprefix,
+				local_config=local_config, target_root=target_root)
 
 			eprefix = locations_manager.eprefix
 			config_root = locations_manager.config_root
