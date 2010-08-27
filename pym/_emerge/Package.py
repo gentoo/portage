@@ -86,7 +86,7 @@ class Package(Task):
 			if not v:
 				continue
 			try:
-				use_reduce(v, eapi=dep_eapi,
+				use_reduce(v, eapi=dep_eapi, matchall=True,
 					is_valid_flag=dep_valid_flag, token_class=Atom)
 			except InvalidDependString as e:
 				self._metadata_exception(k, e)
@@ -95,7 +95,7 @@ class Package(Task):
 		v = self.metadata.get(k)
 		if v:
 			try:
-				use_reduce(v, eapi=dep_eapi,
+				use_reduce(v, eapi=dep_eapi, matchall=True,
 					is_valid_flag=dep_valid_flag, token_class=Atom)
 			except InvalidDependString as e:
 				self._metadata_exception(k, e)
@@ -105,7 +105,7 @@ class Package(Task):
 			if not v:
 				continue
 			try:
-				use_reduce(v, eapi=dep_eapi,
+				use_reduce(v, eapi=dep_eapi, matchall=True,
 					is_valid_flag=dep_valid_flag)
 			except InvalidDependString as e:
 				self._metadata_exception(k, e)
@@ -128,7 +128,7 @@ class Package(Task):
 		v = self.metadata.get(k)
 		if v:
 			try:
-				use_reduce(v, is_src_uri=True, eapi=eapi, \
+				use_reduce(v, is_src_uri=True, eapi=eapi, matchall=True,
 					is_valid_flag=self.iuse.is_valid_flag)
 			except InvalidDependString as e:
 				if not self.installed:
