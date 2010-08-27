@@ -424,7 +424,8 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 			raise PermissionDenied(mycfg)
 		if e.errno != errno.ENOENT:
 			writemsg("open('%s', 'r'): %s\n" % (mycfg, e), noiselevel=-1)
-			raise
+			if e.errno not in (errno.EISDIR,):
+				raise
 		return None
 	try:
 		if tolerant:
