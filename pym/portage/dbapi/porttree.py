@@ -1059,7 +1059,7 @@ class portagetree(object):
 		"""
 		Constructor for a PortageTree
 		
-		@param root: deprectated, defaults to settings['ROOT']
+		@param root: deprecated, defaults to settings['ROOT']
 		@type root: String/Path
 		@param virtual: UNUSED
 		@type virtual: No Idea

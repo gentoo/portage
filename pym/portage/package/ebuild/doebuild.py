@@ -165,7 +165,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			mysettings.setcpv(mycpv, mydb=mydbapi)
 
 	# config.reset() might have reverted a change made by the caller,
-	# so restore it to it's original value. Sandbox needs cannonical
+	# so restore it to its original value. Sandbox needs canonical
 	# paths, so realpath it.
 	mysettings["PORTAGE_TMPDIR"] = os.path.realpath(tmpdir)
 
