@@ -22,9 +22,9 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.data:portage_gid',
 )
-from portage import bsd_chflags, eapi_is_supported, \
+from portage import bsd_chflags, \
 	load_mod, os, selinux, _encodings, _unicode_encode, _unicode_decode
-from portage.const import CACHE_PATH, CUSTOM_PROFILE_PATH, \
+from portage.const import CACHE_PATH, \
 	DEPCACHE_PATH, GLOBAL_CONFIG_PATH, INCREMENTALS, MAKE_CONF_FILE, \
 	MODULES_FILE_PATH, PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, \
 	PRIVATE_PATH, PROFILE_PATH, SUPPORTED_FEATURES, USER_CONFIG_PATH, \
@@ -35,8 +35,7 @@ from portage.dbapi.vartree import vartree
 from portage.dep import Atom, isvalidatom, match_from_list, use_reduce
 from portage.eapi import eapi_exports_AA, eapi_supports_prefix, eapi_exports_replace_vars
 from portage.env.loaders import KeyValuePairFileLoader
-from portage.exception import DirectoryNotFound, \
-	InvalidDependString, ParseError, PortageException
+from portage.exception import InvalidDependString, PortageException
 from portage.localization import _
 from portage.output import colorize
 from portage.process import fakeroot_capable, sandbox_capable
@@ -49,6 +48,7 @@ from portage.versions import catpkgsplit, catsplit, cpv_getkey
 from portage.package.ebuild._config.features_set import features_set
 from portage.package.ebuild._config.LicenseManager import LicenseManager
 from portage.package.ebuild._config.UseManager import UseManager
+from portage.package.ebuild._config.LocationsManager import LocationsManager
 from portage.package.ebuild._config.MaskManager import MaskManager
 from portage.package.ebuild._config.VirtualsManager import VirtualsManager
 from portage.package.ebuild._config.helper import ordered_by_atom_specificity, prune_incremental
@@ -349,11 +349,10 @@ class config(object):
 		self._accept_properties = None
 		self._features_overrides = []
 
-		self.user_profile_dir = None
 		self.local_config = local_config
-		self._local_repo_configs = None
-		self._local_repo_conf_path = None
 
+		self._local_repo_configs = None
+		
 		if clone:
 			# For immutable attributes, use shallow copy for
 			# speed and memory conservation.
@@ -377,8 +376,6 @@ class config(object):
 			self._setcpv_args_hash = clone._setcpv_args_hash
 
 			# immutable attributes (internal policy ensures lack of mutation)
-			self._local_repo_configs = clone._local_repo_configs
-			self._local_repo_conf_path = clone._local_repo_conf_path
 			self._pkeywords_list = clone._pkeywords_list
 			self._p_accept_keywords = clone._p_accept_keywords
 			self._use_manager = clone._use_manager
@@ -425,39 +422,31 @@ class config(object):
 			self._expand_map = copy.deepcopy(clone._expand_map)
 
 		else:
+			locations_manager = LocationsManager(eprefix=eprefix, config_profile_path=config_profile_path, \
+				local_config=local_config)
 
-			def check_var_directory(varname, var):
-				if not os.path.isdir(var):
-					writemsg(_("!!! Error: %s='%s' is not a directory. "
-						"Please correct this.\n") % (varname, var),
-						noiselevel=-1)
-					raise DirectoryNotFound(var)
+			eprefix = locations_manager.eprefix
+			config_root = locations_manager.config_root
+			self.profiles = locations_manager.profiles
+			self.profile_path = locations_manager.profile_path
+			self.user_profile_dir = locations_manager.user_profile_dir
+			abs_user_config = locations_manager.abs_user_config
+			
+			make_conf = getconfig(
+				os.path.join(config_root, MAKE_CONF_FILE),
+				tolerant=tolerant, allow_sourcing=True) or {}
 
-			if eprefix is None:
-				eprefix = ""
-			if config_root is None:
-				config_root = eprefix + os.sep
+			make_conf.update(getconfig(
+				os.path.join(abs_user_config, 'make.conf'),
+				tolerant=tolerant, allow_sourcing=True,
+				expand=make_conf) or {})
 
-			config_root = normalize_path(os.path.abspath(
-				config_root)).rstrip(os.path.sep) + os.path.sep
-
-			check_var_directory("PORTAGE_CONFIGROOT", config_root)
-			abs_user_config = os.path.join(config_root, USER_CONFIG_PATH)
-
-			if not config_profile_path:
-				config_profile_path = \
-					os.path.join(config_root, PROFILE_PATH)
-				if os.path.isdir(config_profile_path):
-					self.profile_path = config_profile_path
-				else:
-					config_profile_path = \
-						os.path.join(abs_user_config, 'make.profile')
-					if os.path.isdir(config_profile_path):
-						self.profile_path = config_profile_path
-					else:
-						self.profile_path = None
-			else:
-				self.profile_path = config_profile_path
+			# Allow ROOT setting to come from make.conf if it's not overridden
+			# by the constructor argument (from the calling environment).
+			locations_manager.set_root_override(make_conf.get("ROOT"))
+			target_root = locations_manager.target_root
+			eroot = locations_manager.eroot
+			global_config_path = locations_manager.global_config_path
 
 			if config_incrementals is None:
 				self.incrementals = INCREMENTALS
@@ -491,59 +480,6 @@ class config(object):
 			self.configlist.append({})
 			self.configdict["pkginternal"] = self.configlist[-1]
 
-			# The symlink might not exist or might not be a symlink.
-			if self.profile_path is None:
-				self.profiles = []
-			else:
-				self.profiles = []
-				def addProfile(currentPath):
-					parentsFile = os.path.join(currentPath, "parent")
-					eapi_file = os.path.join(currentPath, "eapi")
-					try:
-						eapi = codecs.open(_unicode_encode(eapi_file,
-							encoding=_encodings['fs'], errors='strict'),
-							mode='r', encoding=_encodings['content'], errors='replace'
-							).readline().strip()
-					except IOError:
-						pass
-					else:
-						if not eapi_is_supported(eapi):
-							raise ParseError(_(
-								"Profile contains unsupported "
-								"EAPI '%s': '%s'") % \
-								(eapi, os.path.realpath(eapi_file),))
-					if os.path.exists(parentsFile):
-						parents = grabfile(parentsFile)
-						if not parents:
-							raise ParseError(
-								_("Empty parent file: '%s'") % parentsFile)
-						for parentPath in parents:
-							parentPath = normalize_path(os.path.join(
-								currentPath, parentPath))
-							if os.path.exists(parentPath):
-								addProfile(parentPath)
-							else:
-								raise ParseError(
-									_("Parent '%s' not found: '%s'") %  \
-									(parentPath, parentsFile))
-					self.profiles.append(currentPath)
-				try:
-					addProfile(os.path.realpath(self.profile_path))
-				except ParseError as e:
-					writemsg(_("!!! Unable to parse profile: '%s'\n") % \
-						self.profile_path, noiselevel=-1)
-					writemsg("!!! ParseError: %s\n" % str(e), noiselevel=-1)
-					del e
-					self.profiles = []
-			if local_config and self.profiles:
-				custom_prof = os.path.join(
-					config_root, CUSTOM_PROFILE_PATH)
-				if os.path.exists(custom_prof):
-					self.user_profile_dir = custom_prof
-					self.profiles.append(custom_prof)
-				del custom_prof
-
-			self.profiles = tuple(self.profiles)
 			self.packages_list = [grabfile_package(os.path.join(x, "packages")) for x in self.profiles]
 			self.packages      = tuple(stack_lists(self.packages_list, incremental=1))
 			del self.packages_list
@@ -588,32 +524,6 @@ class config(object):
 					cpdict.setdefault(k.cp, {})[k] = tuple(v)
 				self._p_accept_keywords.append(cpdict)
 			self._p_accept_keywords = tuple(self._p_accept_keywords)
-
-			make_conf = getconfig(
-				os.path.join(config_root, MAKE_CONF_FILE),
-				tolerant=tolerant, allow_sourcing=True) or {}
-
-			make_conf.update(getconfig(
-				os.path.join(abs_user_config, 'make.conf'),
-				tolerant=tolerant, allow_sourcing=True,
-				expand=make_conf) or {})
-
-			# Allow ROOT setting to come from make.conf if it's not overridden
-			# by the constructor argument (from the calling environment).
-			if target_root is None and "ROOT" in make_conf:
-				target_root = make_conf["ROOT"]
-				if not target_root.strip():
-					target_root = None
-			if target_root is None:
-				target_root = "/"
-
-			target_root = normalize_path(os.path.abspath(
-				target_root)).rstrip(os.path.sep) + os.path.sep
-
-			ensure_dirs(target_root)
-			check_var_directory("ROOT", target_root)
-
-			eroot = target_root.rstrip(os.sep) + eprefix + os.sep
 
 			# The expand_map is used for variable substitution
 			# in getconfig() calls, and the getconfig() calls
@@ -663,30 +573,6 @@ class config(object):
 				del k, v
 
 			self.configdict["env"] = LazyItemsDict(self.backupenv)
-
-			# make.globals should not be relative to config_root
-			# because it only contains constants. However, if EPREFIX
-			# is set then there are two possible scenarios:
-			# 1) If $ROOT == "/" then make.globals should be
-			#    relative to EPREFIX.
-			# 2) If $ROOT != "/" then the correct location of
-			#    make.globals needs to be specified in the constructor
-			#    parameters, since it's a property of the host system
-			#    (and the current config represents the target system).
-			global_config_path = GLOBAL_CONFIG_PATH
-			if eprefix:
-				if target_root == "/":
-					# case (1) above
-					global_config_path = os.path.join(eprefix,
-						GLOBAL_CONFIG_PATH.lstrip(os.sep))
-				else:
-					# case (2) above
-					# For now, just assume make.globals is relative
-					# to EPREFIX.
-					# TODO: Pass in more info to the constructor,
-					# so we know the host system configuration.
-					global_config_path = os.path.join(eprefix,
-						GLOBAL_CONFIG_PATH.lstrip(os.sep))
 
 			for x in (global_config_path,):
 				self.mygcfg = getconfig(os.path.join(x, "make.globals"),
@@ -788,11 +674,6 @@ class config(object):
 			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
 			self._penvdict = portage.dep.ExtendedAtomDict(dict)
 
-			# locations for "categories" and "arch.list" files
-			locations = [os.path.join(self["PORTDIR"], "profiles")]
-			pmask_locations = [os.path.join(self["PORTDIR"], "profiles")]
-			pmask_locations.extend(self.profiles)
-
 			""" repoman controls PORTDIR_OVERLAY via the environment, so no
 			special cases are needed here."""
 
@@ -809,18 +690,10 @@ class config(object):
 				self["PORTDIR_OVERLAY"] = " ".join(new_ov)
 				self.backup_changes("PORTDIR_OVERLAY")
 
-			overlay_profiles = []
-			for ov in shlex_split(self.get('PORTDIR_OVERLAY', '')):
-				ov = normalize_path(ov)
-				profiles_dir = os.path.join(ov, "profiles")
-				if os.path.isdir(profiles_dir):
-					overlay_profiles.append(profiles_dir)
-			locations += overlay_profiles
-			
-			pmask_locations.extend(overlay_profiles)
+			locations_manager.set_port_dirs(self["PORTDIR"], self["PORTDIR_OVERLAY"])
 
 			#getting categories from an external file now
-			categories = [grabfile(os.path.join(x, "categories")) for x in locations]
+			categories = [grabfile(os.path.join(x, "categories")) for x in locations_manager.profile_locations]
 			category_re = dbapi._category_re
 			self.categories = tuple(sorted(
 				x for x in stack_lists(categories, incremental=1)
@@ -837,20 +710,19 @@ class config(object):
 					self.configdict["conf"].get("USE", ""))
 
 			#Read license_groups and optionally license_groups and package.license from user config
-			self._license_manager = LicenseManager(locations, abs_user_config, user_config=local_config)
+			self._license_manager = LicenseManager(locations_manager.profile_locations, \
+				abs_user_config, user_config=local_config)
 			#Extract '*/*' entries from package.license
 			self.configdict["conf"]["ACCEPT_LICENSE"] = \
 				self._license_manager.extract_global_changes( \
 					self.configdict["conf"].get("ACCEPT_LICENSE", ""))
 
 			#Read package.mask and package.unmask from profiles and optionally from user config
-			self._mask_manager = MaskManager(pmask_locations, abs_user_config, user_config=local_config)
+			self._mask_manager = MaskManager(locations_manager.pmask_locations, abs_user_config, user_config=local_config)
 
 			self._virtuals_manager = VirtualsManager(self.profiles)
 
 			if local_config:
-				locations.append(abs_user_config)
-
 				# package.accept_keywords and package.keywords
 				pkgdict = grabdict_package(
 					os.path.join(abs_user_config, "package.keywords"),
@@ -941,7 +813,7 @@ class config(object):
 						self._local_repo_configs[repo_name] = \
 							_local_repo_config(repo_name, repo_opts)
 
-			archlist = [grabfile(os.path.join(x, "arch.list")) for x in locations]
+			archlist = [grabfile(os.path.join(x, "arch.list")) for x in locations_manager.profile_locations]
 			archlist = stack_lists(archlist, incremental=1)
 			self.configdict["conf"]["PORTAGE_ARCHLIST"] = " ".join(archlist)
 
