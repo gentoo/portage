@@ -10,6 +10,7 @@ from __future__ import print_function
 
 import calendar
 import codecs
+import copy
 import errno
 import formatter
 import logging
@@ -1815,7 +1816,9 @@ for x in scanlist:
 						local_config=False,
 						env=env)
 					if options.without_mask:
-						dep_settings.pmaskdict.clear()
+						dep_settings._mask_manager = \
+							copy.deepcopy(dep_settings._mask_manager)
+						dep_settings._mask_manager._pmaskdict.clear()
 					arch_caches[prof.sub_path] = dep_settings
 
 				xmatch_cache_key = (prof.sub_path, tuple(groups))
