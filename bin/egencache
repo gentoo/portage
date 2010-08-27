@@ -315,6 +315,7 @@ class GenUseLocalDesc(object):
 		repo_path = self._portdb.porttrees[0]
 		prof_path = os.path.join(repo_path, 'profiles')
 		desc_path = os.path.join(prof_path, 'use.local.desc')
+		ops = {'<':0, '<=':1, '=':2, '>=':3, '>':4}
 
 		try:
 			os.mkdir(prof_path)
@@ -356,21 +357,22 @@ class GenUseLocalDesc(object):
 						level=logging.ERROR, noiselevel=-1)
 					self.returncode |= 1
 				else:
-					for flag in sorted(usedict.keys()):
+					for flag in sorted(usedict):
 						def atomcmp(atoma, atomb):
 							# None is better than an atom, that's why we reverse the args
 							if atoma is None or atomb is None:
-								return cmp(atomb, atoma)
+								return -1 * ((atoma > atomb) - (atoma < atomb))
 							# Same for plain PNs (.operator is None then)
 							elif atoma.operator is None or atomb.operator is None:
-								return cmp(atomb.operator, atoma.operator)
+								return -1 * ((atoma.operator > atomb.operator) - \
+									(atoma.operator < atomb.operator))
 							# Version matching
 							elif atoma.cpv != atomb.cpv:
 								return pkgcmp(pkgsplit(atoma.cpv), pkgsplit(atomb.cpv))
 							# Versions match, let's fallback to operator matching
 							else:
-								ops = ('<', '<=', '=', '>=', '>')
-								return cmp(ops.index(atoma.operator), ops.index(atomb.operator))
+								return ((ops.get(atoma.operator, -1) > ops.get(atomb.operator, -1)) - \
+									(ops.get(atoma.operator, -1) < ops.get(atomb.operator, -1)))
 
 						def _Atom(key):
 							if key is not None:
@@ -378,9 +380,20 @@ class GenUseLocalDesc(object):
 							return None
 
 						resdict = usedict[flag]
-						reskeys = {_Atom(k): k for k in resdict.keys()}
-						resatoms = sorted(reskeys.keys(), key=cmp_sort_key(atomcmp))
-						resdesc = resdict[reskeys[resatoms[-1]]]
+						if len(resdict) == 1:
+							resdesc = next(iter(resdict.items()))[1]
+						else:
+							try:
+								reskeys = dict((_Atom(k), k) for k in resdict)
+							except portage.exception.InvalidAtom as e:
+								writemsg_level(
+									"ERROR: failed parsing %s/metadata.xml: %s\n" % (cp, e),
+									level=logging.ERROR, noiselevel=-1)
+								self.returncode |= 1
+								resdesc = next(iter(resdict.items()))[1]
+							else:
+								resatoms = sorted(reskeys, key=cmp_sort_key(atomcmp))
+								resdesc = resdict[reskeys[resatoms[-1]]]
 
 						output.write('%s:%s - %s\n' % (cp, flag, resdesc))
 
