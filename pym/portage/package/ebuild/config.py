@@ -261,7 +261,7 @@ class config(object):
 			#Strictly speaking _license_manager is not immutable. Users need to ensure that
 			#extract_global_changes() is called right after __init__ (if at all).
 			#It also has the mutable member _undef_lic_groups. It is used to track
-			#undifiend license groups, to not display an error message for the same
+			#undefined license groups, to not display an error message for the same
 			#group again and again. Because of this, it's useful to share it between
 			#all LicenseManager instances.
 			self._license_manager = clone._license_manager
