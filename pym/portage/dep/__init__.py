@@ -32,7 +32,7 @@ from itertools import chain
 import portage.exception
 from portage.eapi import eapi_has_slot_deps, eapi_has_src_uri_arrows, \
 	eapi_has_use_deps, eapi_has_strong_blocks, eapi_has_use_dep_defaults
-from portage.exception import InvalidData, InvalidAtom
+from portage.exception import InvalidAtom, InvalidData, InvalidDependString
 from portage.localization import _
 from portage.versions import catpkgsplit, catsplit, \
 	pkgcmp, ververify, _cp, _cpv
@@ -119,7 +119,7 @@ def paren_reduce(mystr):
 			level += 1
 		elif token == ")":
 			if need_bracket:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("malformed syntax: '%s'") % mystr)
 			if level > 0:
 				level -= 1
@@ -168,17 +168,17 @@ def paren_reduce(mystr):
 					if stack[level] and (stack[level][-1] == "||" or stack[level][-1][-1] == "?"):
 						stack[level].pop()
 			else:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("malformed syntax: '%s'") % mystr)
 		elif token == "||":
 			if need_bracket:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("malformed syntax: '%s'") % mystr)
 			need_bracket = True
 			stack[level].append(token)
 		else:
 			if need_bracket or "(" in token or ")" in token or "|" in token:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("malformed syntax: '%s'") % mystr)
 
 			if token[-1] == "?":
@@ -187,7 +187,7 @@ def paren_reduce(mystr):
 			stack[level].append(token)
 
 	if level != 0 or need_bracket:
-		raise portage.exception.InvalidDependString(
+		raise InvalidDependString(
 			_("malformed syntax: '%s'") % mystr)
 	
 	return stack[0]
@@ -311,10 +311,10 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 					"conditional '%s' is not in IUSE") \
 					% (flag, conditional)
 				e = InvalidData(msg, category='IUSE.missing')
-				raise portage.exception.InvalidDependString(msg, errors=(e,))
+				raise InvalidDependString(msg, errors=(e,))
 		else:
 			if _valid_use_re.match(flag) is None:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("invalid use flag '%s' in conditional '%s'") % (flag, conditional))
 
 		if is_negated and flag in excludeall:
@@ -335,7 +335,7 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 		"""
 		for x in (")", "(", "||"):
 			if token.startswith(x) or token.endswith(x):
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("missing whitespace around '%s' at '%s', token %s") % (x, token, pos+1))
 
 	mysplit = depstr.split()
@@ -354,17 +354,17 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 	for pos, token in enumerate(mysplit):
 		if token == "(":
 			if need_simple_token:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("expected: file name, got: '%s', token %s") % (token, pos+1))
 			need_bracket = False
 			stack.append([])
 			level += 1
 		elif token == ")":
 			if need_bracket:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("expected: '(', got: '%s', token %s") % (token, pos+1))
 			if need_simple_token:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("expected: file name, got: '%s', token %s") % (token, pos+1))
 			if level > 0:
 				level -= 1
@@ -438,26 +438,26 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 							special_append()
 
 			else:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("no matching '%s' for '%s', token %s") % ("(", ")", pos+1))
 		elif token == "||":
 			if is_src_uri:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("any-of dependencies are not allowed in SRC_URI: token %s") % (pos+1,))
 			if need_bracket:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("expected: '(', got: '%s', token %s") % (token, pos+1))
 			need_bracket = True
 			stack[level].append(token)
 		elif token == "->":
 			if need_simple_token:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("expected: file name, got: '%s', token %s") % (token, pos+1))
 			if not is_src_uri:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("SRC_URI arrow are only allowed in SRC_URI: token %s") % (pos+1,))
 			if eapi is None or not eapi_has_src_uri_arrows(eapi):
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("SRC_URI arrow not allowed in EAPI %s: token %s") % (eapi, pos+1))
 			need_simple_token = True
 			stack[level].append(token)	
@@ -465,12 +465,12 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 			missing_white_space_check(token, pos)
 
 			if need_bracket:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("expected: '(', got: '%s', token %s") % (token, pos+1))
 
 			if need_simple_token and "/" in token:
 				#The last token was a SRC_URI arrow, make sure we have a simple file name.
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("expected: file name, got: '%s', token %s") % (token, pos+1))
 
 			if token[-1] == "?":
@@ -482,13 +482,13 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 					try:
 						token = token_class(token, eapi=eapi)
 					except InvalidAtom as e:
-						raise portage.exception.InvalidDependString(
+						raise InvalidDependString(
 							_("Invalid atom (%s), token %s") \
 							% (e, pos+1), errors=(e,))
 					except SystemExit:
 						raise
 					except Exception as e:
-						raise portage.exception.InvalidDependString(
+						raise InvalidDependString(
 							_("Invalid token '%s', token %s") % (token, pos+1))
 
 					if not matchall and \
@@ -498,15 +498,15 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 			stack[level].append(token)
 
 	if level != 0:
-		raise portage.exception.InvalidDependString(
+		raise InvalidDependString(
 			_("Missing '%s' at end of string") % (")",))
 	
 	if need_bracket:
-		raise portage.exception.InvalidDependString(
+		raise InvalidDependString(
 			_("Missing '%s' at end of string") % ("(",))
 			
 	if need_simple_token:
-		raise portage.exception.InvalidDependString(
+		raise InvalidDependString(
 			_("Missing file name at end of string"))
 
 	return stack[0]
@@ -1810,7 +1810,7 @@ def get_required_use_flags(required_use):
 			level += 1
 		elif token == ")":
 			if need_bracket:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("malformed syntax: '%s'") % required_use)
 			if level > 0:
 				level -= 1
@@ -1827,18 +1827,18 @@ def get_required_use_flags(required_use):
 				if l and not ignore:
 					stack[level].append(all(x for x in l))
 			else:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("malformed syntax: '%s'") % required_use)
 		elif token in ("||", "^^"):
 			if need_bracket:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("malformed syntax: '%s'") % required_use)
 			need_bracket = True
 			stack[level].append(token)
 		else:
 			if need_bracket or "(" in token or ")" in token or \
 				"|" in token or "^" in token:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("malformed syntax: '%s'") % required_use)
 
 			if token[-1] == "?":
@@ -1850,7 +1850,7 @@ def get_required_use_flags(required_use):
 			register_token(token)
 
 	if level != 0 or need_bracket:
-		raise portage.exception.InvalidDependString(
+		raise InvalidDependString(
 			_("malformed syntax: '%s'") % required_use)
 
 	return frozenset(used_flags)
@@ -1880,7 +1880,7 @@ def check_required_use(required_use, use, iuse_match):
 			is_negated = False
 
 		if not flag or not iuse_match(flag):
-			raise portage.exception.InvalidDependString(
+			raise InvalidDependString(
 				_("malformed syntax: '%s'") % required_use)
 
 		return (flag in use and not is_negated) or \
@@ -1910,7 +1910,7 @@ def check_required_use(required_use, use, iuse_match):
 			level += 1
 		elif token == ")":
 			if need_bracket:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("malformed syntax: '%s'") % required_use)
 			if level > 0:
 				level -= 1
@@ -1933,18 +1933,18 @@ def check_required_use(required_use, use, iuse_match):
 				if l and not ignore:
 					stack[level].append(all(x for x in l))
 			else:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("malformed syntax: '%s'") % required_use)
 		elif token in ("||", "^^"):
 			if need_bracket:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("malformed syntax: '%s'") % required_use)
 			need_bracket = True
 			stack[level].append(token)
 		else:
 			if need_bracket or "(" in token or ")" in token or \
 				"|" in token or "^" in token:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("malformed syntax: '%s'") % required_use)
 
 			if token[-1] == "?":
@@ -1954,7 +1954,7 @@ def check_required_use(required_use, use, iuse_match):
 				stack[level].append(is_active(token))
 
 	if level != 0 or need_bracket:
-		raise portage.exception.InvalidDependString(
+		raise InvalidDependString(
 			_("malformed syntax: '%s'") % required_use)
 
 	return (False not in stack[0])
@@ -1989,7 +1989,7 @@ def extract_affecting_use(mystr, atom):
 			flag = conditional[:-1]
 
 		if not flag:
-			raise portage.exception.InvalidDependString(
+			raise InvalidDependString(
 				_("malformed syntax: '%s'") % mystr)
 
 		return flag
@@ -2001,7 +2001,7 @@ def extract_affecting_use(mystr, atom):
 			level += 1
 		elif token == ")":
 			if need_bracket:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("malformed syntax: '%s'") % mystr)
 			if level > 0:
 				level -= 1
@@ -2054,17 +2054,17 @@ def extract_affecting_use(mystr, atom):
 					if stack[level] and (stack[level][-1] == "||" or stack[level][-1][-1] == "?"):
 						stack[level].pop()
 			else:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("malformed syntax: '%s'") % mystr)
 		elif token == "||":
 			if need_bracket:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("malformed syntax: '%s'") % mystr)
 			need_bracket = True
 			stack[level].append(token)
 		else:
 			if need_bracket or "(" in token or ")" in token or "|" in token:
-				raise portage.exception.InvalidDependString(
+				raise InvalidDependString(
 					_("malformed syntax: '%s'") % mystr)
 
 			if token[-1] == "?":
@@ -2074,7 +2074,7 @@ def extract_affecting_use(mystr, atom):
 				stack[level].append(token)
 
 	if level != 0 or need_bracket:
-		raise portage.exception.InvalidDependString(
+		raise InvalidDependString(
 			_("malformed syntax: '%s'") % mystr)
 
 	return affecting_use
