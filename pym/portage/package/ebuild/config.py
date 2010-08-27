@@ -541,14 +541,6 @@ class config(object):
 
 			locations_manager.set_port_dirs(self["PORTDIR"], self["PORTDIR_OVERLAY"])
 
-			#getting categories from an external file now
-			categories = [grabfile(os.path.join(x, "categories")) for x in locations_manager.profile_locations]
-			category_re = dbapi._category_re
-			self.categories = tuple(sorted(
-				x for x in stack_lists(categories, incremental=1)
-				if category_re.match(x) is not None))
-			del categories
-
 			#Read all USE related files from profiles and optionally from user config.
 			self._use_manager = UseManager(self.profiles, abs_user_config, user_config=local_config)
 			#Initialize all USE related variables we track ourselves.
@@ -571,7 +563,11 @@ class config(object):
 
 			self._virtuals_manager = VirtualsManager(self.profiles)
 
+			locations = list(locations_manager.profile_locations)
+
 			if local_config:
+				locations.append(abs_user_config)
+
 				# package.accept_keywords and package.keywords
 				pkgdict = grabdict_package(
 					os.path.join(abs_user_config, "package.keywords"),
@@ -662,7 +658,14 @@ class config(object):
 						self._local_repo_configs[repo_name] = \
 							_local_repo_config(repo_name, repo_opts)
 
-			archlist = [grabfile(os.path.join(x, "arch.list")) for x in locations_manager.profile_locations]
+			#getting categories from an external file now
+			self.categories = [grabfile(os.path.join(x, "categories")) for x in locations]
+			category_re = dbapi._category_re
+			self.categories = tuple(sorted(
+				x for x in stack_lists(self.categories, incremental=1)
+				if category_re.match(x) is not None))
+
+			archlist = [grabfile(os.path.join(x, "arch.list")) for x in locations]
 			archlist = stack_lists(archlist, incremental=1)
 			self.configdict["conf"]["PORTAGE_ARCHLIST"] = " ".join(archlist)
 
