@@ -308,12 +308,12 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 		if is_valid_flag:
 			if not is_valid_flag(flag):
 				raise portage.exception.InvalidDependString(
-					_("use flag '%s' is not referencable in conditional '%s' in '%s' (flag missing from IUSE?)") \
-						% (flag, conditional, depstr))
+					_("use flag '%s' is not referencable in conditional '%s' (flag missing from IUSE?)") \
+						% (flag, conditional))
 		else:
 			if _valid_use_re.match(flag) is None:
 				raise portage.exception.InvalidDependString(
-					_("invalid use flag '%s' in conditional '%s' in '%s'") % (flag, conditional, depstr))
+					_("invalid use flag '%s' in conditional '%s'") % (flag, conditional))
 
 		if is_negated and flag in excludeall:
 			return False
@@ -334,7 +334,7 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 		for x in (")", "(", "||"):
 			if token.startswith(x) or token.endswith(x):
 				raise portage.exception.InvalidDependString(
-					_("missing whitespace around '%s' at '%s' in '%s', token %s") % (x, token, depstr, pos+1))
+					_("missing whitespace around '%s' at '%s', token %s") % (x, token, pos+1))
 
 	mysplit = depstr.split()
 	#Count the bracket level.
@@ -353,17 +353,17 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 		if token == "(":
 			if need_simple_token:
 				raise portage.exception.InvalidDependString(
-					_("expected: file name, got: '%s' in '%s', token %s") % (token, depstr, pos+1))
+					_("expected: file name, got: '%s', token %s") % (token, pos+1))
 			need_bracket = False
 			stack.append([])
 			level += 1
 		elif token == ")":
 			if need_bracket:
 				raise portage.exception.InvalidDependString(
-					_("expected: '(', got: '%s' in '%s', token %s") % (token, depstr, pos+1))
+					_("expected: '(', got: '%s', token %s") % (token, pos+1))
 			if need_simple_token:
 				raise portage.exception.InvalidDependString(
-					_("expected: file name, got: '%s' in '%s', token %s") % (token, depstr, pos+1))
+					_("expected: file name, got: '%s', token %s") % (token, pos+1))
 			if level > 0:
 				level -= 1
 				l = stack.pop()
@@ -437,26 +437,26 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 
 			else:
 				raise portage.exception.InvalidDependString(
-					_("no matching '%s' for '%s' in '%s', token %s") % ("(", ")", depstr, pos+1))
+					_("no matching '%s' for '%s', token %s") % ("(", ")", pos+1))
 		elif token == "||":
 			if is_src_uri:
 				raise portage.exception.InvalidDependString(
-					_("any-of dependencies are not allowed in SRC_URI: '%s', token %s") % (depstr, pos+1))
+					_("any-of dependencies are not allowed in SRC_URI: token %s") % (pos+1,))
 			if need_bracket:
 				raise portage.exception.InvalidDependString(
-					_("expected: '(', got: '%s' in '%s', token %s") % (token, depstr, pos+1))
+					_("expected: '(', got: '%s', token %s") % (token, pos+1))
 			need_bracket = True
 			stack[level].append(token)
 		elif token == "->":
 			if need_simple_token:
 				raise portage.exception.InvalidDependString(
-					_("expected: file name, got: '%s' in '%s', token %s") % (token, depstr, pos+1))
+					_("expected: file name, got: '%s', token %s") % (token, pos+1))
 			if not is_src_uri:
 				raise portage.exception.InvalidDependString(
-					_("SRC_URI arrow are only allowed in SRC_URI: '%s', token %s") % (depstr, pos+1))
+					_("SRC_URI arrow are only allowed in SRC_URI: token %s") % (pos+1,))
 			if eapi is None or not eapi_has_src_uri_arrows(eapi):
 				raise portage.exception.InvalidDependString(
-					_("SRC_URI arrow not allowed in EAPI %s: '%s', token %s") % (eapi, depstr, pos+1))
+					_("SRC_URI arrow not allowed in EAPI %s: token %s") % (eapi, pos+1))
 			need_simple_token = True
 			stack[level].append(token)	
 		else:
@@ -464,12 +464,12 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 
 			if need_bracket:
 				raise portage.exception.InvalidDependString(
-					_("expected: '(', got: '%s' in '%s', token %s") % (token, depstr, pos+1))
+					_("expected: '(', got: '%s', token %s") % (token, pos+1))
 
 			if need_simple_token and "/" in token:
 				#The last token was a SRC_URI arrow, make sure we have a simple file name.
 				raise portage.exception.InvalidDependString(
-					_("expected: file name, got: '%s' in '%s', token %s") % (token, depstr, pos+1))
+					_("expected: file name, got: '%s', token %s") % (token, pos+1))
 
 			if token[-1] == "?":
 				need_bracket = True
@@ -481,13 +481,13 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 						token = token_class(token, eapi=eapi)
 					except InvalidAtom as e:
 						raise portage.exception.InvalidDependString(
-							_("Invalid atom (%s) in '%s', token %s") \
-							% (e, depstr, pos+1), errors=(e,))
+							_("Invalid atom (%s), token %s") \
+							% (e, pos+1), errors=(e,))
 					except SystemExit:
 						raise
 					except Exception as e:
 						raise portage.exception.InvalidDependString(
-							_("Invalid token '%s' in '%s', token %s") % (token, depstr, pos+1))
+							_("Invalid token '%s', token %s") % (token, pos+1))
 
 					if not matchall and \
 						hasattr(token, 'evaluate_conditionals'):
@@ -497,15 +497,15 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 
 	if level != 0:
 		raise portage.exception.InvalidDependString(
-			_("Missing '%s' at end of string: '%s'") % (")", depstr))
+			_("Missing '%s' at end of string") % (")",))
 	
 	if need_bracket:
 		raise portage.exception.InvalidDependString(
-			_("Missing '%s' at end of string: '%s'") % ("(", depstr))
+			_("Missing '%s' at end of string") % ("(",))
 			
 	if need_simple_token:
 		raise portage.exception.InvalidDependString(
-			_("Missing file name at end of string: '%s'") % (depstr,))
+			_("Missing file name at end of string"))
 
 	return stack[0]
 
