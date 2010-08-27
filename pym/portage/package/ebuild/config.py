@@ -35,7 +35,7 @@ from portage.dbapi.vartree import vartree
 from portage.dep import Atom, isvalidatom, match_from_list, use_reduce
 from portage.eapi import eapi_exports_AA, eapi_supports_prefix, eapi_exports_replace_vars
 from portage.env.loaders import KeyValuePairFileLoader
-from portage.exception import DirectoryNotFound, InvalidAtom, \
+from portage.exception import DirectoryNotFound, \
 	InvalidDependString, ParseError, PortageException
 from portage.localization import _
 from portage.output import colorize
@@ -50,6 +50,7 @@ from portage.package.ebuild._config.features_set import features_set
 from portage.package.ebuild._config.LicenseManager import LicenseManager
 from portage.package.ebuild._config.UseManager import UseManager
 from portage.package.ebuild._config.MaskManager import MaskManager
+from portage.package.ebuild._config.VirtualsManager import VirtualsManager
 from portage.package.ebuild._config.helper import ordered_by_atom_specificity, prune_incremental
 
 if sys.hexversion >= 0x3000000:
@@ -348,20 +349,6 @@ class config(object):
 		self._accept_properties = None
 		self._features_overrides = []
 
-		self.virtuals = {}
-		self.virts_p = {}
-		self.dirVirtuals = None
-		self.v_count  = 0
-
-		# Virtuals obtained from the vartree
-		self.treeVirtuals = {}
-		# Virtuals by user specification. Includes negatives.
-		self.userVirtuals = {}
-		# Virtual negatives from user specifications.
-		self.negVirtuals  = {}
-		# Virtuals added by the depgraph via self.setinst().
-		self._depgraphVirtuals = {}
-
 		self.user_profile_dir = None
 		self.local_config = local_config
 		self._local_repo_configs = None
@@ -398,12 +385,6 @@ class config(object):
 			self._mask_manager = clone._mask_manager
 
 			self.modules         = copy.deepcopy(clone.modules)
-			self.virtuals = copy.deepcopy(clone.virtuals)
-			self.dirVirtuals = copy.deepcopy(clone.dirVirtuals)
-			self.treeVirtuals = copy.deepcopy(clone.treeVirtuals)
-			self.userVirtuals = copy.deepcopy(clone.userVirtuals)
-			self.negVirtuals  = copy.deepcopy(clone.negVirtuals)
-			self._depgraphVirtuals = copy.deepcopy(clone._depgraphVirtuals)
 			self._penv = copy.deepcopy(clone._penv)
 
 			self.configdict = copy.deepcopy(clone.configdict)
@@ -435,6 +416,8 @@ class config(object):
 			#group again and again. Because of this, it's useful to share it between
 			#all LicenseManager instances.
 			self._license_manager = clone._license_manager
+
+			self._virtuals_manager = copy.deepcopy(clone._virtuals_manager)
 
 			self._accept_properties = copy.deepcopy(clone._accept_properties)
 			self._ppropertiesdict = copy.deepcopy(clone._ppropertiesdict)
@@ -836,6 +819,14 @@ class config(object):
 			
 			pmask_locations.extend(overlay_profiles)
 
+			#getting categories from an external file now
+			categories = [grabfile(os.path.join(x, "categories")) for x in locations]
+			category_re = dbapi._category_re
+			self.categories = tuple(sorted(
+				x for x in stack_lists(categories, incremental=1)
+				if category_re.match(x) is not None))
+			del categories
+
 			#Read all USE related files from profiles and optionally from user config.
 			self._use_manager = UseManager(self.profiles, abs_user_config, user_config=local_config)
 			#Initialize all USE related variables we track ourselves.
@@ -854,6 +845,8 @@ class config(object):
 
 			#Read package.mask and package.unmask from profiles and optionally from user config
 			self._mask_manager = MaskManager(pmask_locations, abs_user_config, user_config=local_config)
+
+			self._virtuals_manager = VirtualsManager(self.profiles)
 
 			if local_config:
 				locations.append(abs_user_config)
@@ -947,14 +940,6 @@ class config(object):
 								repo_conf_parser.get(repo_name, opt_name)
 						self._local_repo_configs[repo_name] = \
 							_local_repo_config(repo_name, repo_opts)
-
-			#getting categories from an external file now
-			categories = [grabfile(os.path.join(x, "categories")) for x in locations]
-			category_re = dbapi._category_re
-			self.categories = tuple(sorted(
-				x for x in stack_lists(categories, incremental=1)
-				if category_re.match(x) is not None))
-			del categories
 
 			archlist = [grabfile(os.path.join(x, "arch.list")) for x in locations]
 			archlist = stack_lists(archlist, incremental=1)
@@ -1165,11 +1150,6 @@ class config(object):
 					_("FEATURES variable contains unknown value(s): %s") % \
 					", ".join(unknown_features)) \
 					+ "\n", noiselevel=-1)
-
-	def loadVirtuals(self,root):
-		"""Not currently used by portage."""
-		writemsg("DEPRECATED: portage.config.loadVirtuals\n")
-		self.getvirtuals(root)
 
 	def load_best_module(self,property_string):
 		best_mod = best_from_dict(property_string,self.modules,self.module_priority)
@@ -1960,7 +1940,7 @@ class config(object):
 		return not pkg_chost or \
 			self._accept_chost_re.match(pkg_chost) is not None
 
-	def setinst(self,mycpv,mydbapi):
+	def setinst(self, mycpv, mydbapi):
 		"""This updates the preferences for old-style virtuals,
 		affecting the behavior of dep_expand() and dep_check()
 		calls. It can change dbapi.match() behavior since that
@@ -1969,8 +1949,7 @@ class config(object):
 		preferences are updated here. This can potentially
 		lead to some inconsistency (relevant to bug #1343)."""
 		self.modifying()
-		if len(self.virtuals) == 0:
-			self.getvirtuals()
+
 		# Grab the virtuals this package provides and add them into the tree virtuals.
 		if not hasattr(mydbapi, "aux_get"):
 			provides = mydbapi["PROVIDE"]
@@ -1987,26 +1966,7 @@ class config(object):
 			myuse = mydbapi.aux_get(mycpv, ["USE"])[0]
 		virts = use_reduce(provides, uselist=myuse.split(), flat=True)
 
-		modified = False
-		cp = Atom(cpv_getkey(mycpv))
-		for virt in virts:
-			try:
-				virt = Atom(virt).cp
-			except InvalidAtom:
-				continue
-			providers = self.virtuals.get(virt)
-			if providers and cp in providers:
-				continue
-			providers = self._depgraphVirtuals.get(virt)
-			if providers is None:
-				providers = []
-				self._depgraphVirtuals[virt] = providers
-			if cp not in providers:
-				providers.append(cp)
-				modified = True
-
-		if modified:
-			self.virtuals = self.__getvirtuals_compile()
+		self._virtuals_manager.add_depgraph_virtuals(mycpv, virts)
 
 	def reload(self):
 		"""Reload things like /etc/profile.env that can change during runtime."""
@@ -2246,117 +2206,25 @@ class config(object):
 		self.already_in_regenerate = 0
 
 	def get_virts_p(self):
-		if self.virts_p:
-			return self.virts_p
-		virts = self.getvirtuals()
-		if virts:
-			for x in virts:
-				vkeysplit = x.split("/")
-				if vkeysplit[1] not in self.virts_p:
-					self.virts_p[vkeysplit[1]] = virts[x]
-		return self.virts_p
+		return self._virtuals_manager.get_virts_p()
 
 	def getvirtuals(self):
-		myroot = self["ROOT"]
-		if self.virtuals:
-			return self.virtuals
+		if self._virtuals_manager._treeVirtuals is None:
+			#Hack around the fact that VirtualsManager needs a vartree
+			#and vartree needs a config instance.
+			#This code should be part of VirtualsManager.getvirtuals().
+			if self.local_config:
+				temp_vartree = vartree(self["ROOT"], None,
+					categories=self.categories, settings=self)
+				self._virtuals_manager._populate_treeVirtuals(temp_vartree)
+			else:
+				self._virtuals_manager._treeVirtuals = {}
 
-		virtuals_list = []
-		for x in self.profiles:
-			virtuals_file = os.path.join(x, "virtuals")
-			virtuals_dict = grabdict(virtuals_file)
-			atoms_dict = {}
-			for k, v in virtuals_dict.items():
-				try:
-					virt_atom = Atom(k)
-				except InvalidAtom:
-					virt_atom = None
-				else:
-					if virt_atom.blocker or \
-						str(virt_atom) != str(virt_atom.cp):
-						virt_atom = None
-				if virt_atom is None:
-					writemsg(_("--- Invalid virtuals atom in %s: %s\n") % \
-						(virtuals_file, k), noiselevel=-1)
-					continue
-				providers = []
-				for atom in v:
-					atom_orig = atom
-					if atom[:1] == '-':
-						# allow incrementals
-						atom = atom[1:]
-					try:
-						atom = Atom(atom)
-					except InvalidAtom:
-						atom = None
-					else:
-						if atom.blocker:
-							atom = None
-					if atom is None:
-						writemsg(_("--- Invalid atom in %s: %s\n") % \
-							(virtuals_file, atom_orig), noiselevel=-1)
-					else:
-						if atom_orig == str(atom):
-							# normal atom, so return as Atom instance
-							providers.append(atom)
-						else:
-							# atom has special prefix, so return as string
-							providers.append(atom_orig)
-				if providers:
-					atoms_dict[virt_atom] = providers
-			if atoms_dict:
-				virtuals_list.append(atoms_dict)
+		return self._virtuals_manager.getvirtuals()
 
-		self.dirVirtuals = stack_dictlist(virtuals_list, incremental=True)
-		del virtuals_list
-
-		for virt in self.dirVirtuals:
-			# Preference for virtuals decreases from left to right.
-			self.dirVirtuals[virt].reverse()
-
-		# Repoman does not use user or tree virtuals.
-		if self.local_config and not self.treeVirtuals:
-			temp_vartree = vartree(myroot, None,
-				categories=self.categories, settings=self)
-			self._populate_treeVirtuals(temp_vartree)
-
-		self.virtuals = self.__getvirtuals_compile()
-		return self.virtuals
-
-	def _populate_treeVirtuals(self, vartree):
+	def _populate_treeVirtuals_if_needed(self, vartree):
 		"""Reduce the provides into a list by CP."""
-		for provide, cpv_list in vartree.get_all_provides().items():
-			try:
-				provide = Atom(provide)
-			except InvalidAtom:
-				continue
-			self.treeVirtuals[provide.cp] = \
-				[Atom(cpv_getkey(cpv)) for cpv in cpv_list]
-
-	def __getvirtuals_compile(self):
-		"""Stack installed and profile virtuals.  Preference for virtuals
-		decreases from left to right.
-		Order of preference:
-		1. installed and in profile
-		2. installed only
-		3. profile only
-		"""
-
-		# Virtuals by profile+tree preferences.
-		ptVirtuals   = {}
-
-		for virt, installed_list in self.treeVirtuals.items():
-			profile_list = self.dirVirtuals.get(virt, None)
-			if not profile_list:
-				continue
-			for cp in installed_list:
-				if cp in profile_list:
-					ptVirtuals.setdefault(virt, [])
-					ptVirtuals[virt].append(cp)
-
-		virtuals = stack_dictlist([ptVirtuals, self.treeVirtuals,
-			self.dirVirtuals, self._depgraphVirtuals])
-		return virtuals
+		self._virtuals_manager.populate_treeVirtuals_if_needed(vartree)
 
 	def __delitem__(self,mykey):
 		self.modifying()

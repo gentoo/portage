@@ -114,14 +114,13 @@ class FakeVartree(vartree):
 				portage.locks.unlockdir(vdb_lock)
 
 		# Populate the old-style virtuals using the cached values.
-		if not self.settings.treeVirtuals:
-			# Skip the aux_get wrapper here, to avoid unwanted
-			# cache generation.
-			try:
-				self.dbapi.aux_get = self._aux_get
-				self.settings._populate_treeVirtuals(self)
-			finally:
-				self.dbapi.aux_get = self._aux_get_wrapper
+		# Skip the aux_get wrapper here, to avoid unwanted
+		# cache generation.
+		try:
+			self.dbapi.aux_get = self._aux_get
+			self.settings._populate_treeVirtuals_if_needed(self)
+		finally:
+			self.dbapi.aux_get = self._aux_get_wrapper
 
 	def _sync(self):
 
