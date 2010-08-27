@@ -2616,17 +2616,7 @@ class depgraph(object):
 					# Make --noreplace take precedence over --newuse.
 					if not pkg.installed and noreplace and \
 						cpv in vardb.match(atom):
-						inst_pkg = self._pkg(pkg.cpv, "installed",
-							root_config, installed=True)
-						mreasons = None
-						if not inst_pkg.invalid:
-							mreasons = _get_masking_status(inst_pkg,
-								pkgsettings, root_config,
-								use=self._pkg_use_enabled(inst_pkg))
-							if mreasons and len(mreasons) == 1 and \
-								mreasons[0].category  == 'KEYWORDS':
-								mreasons = None
-						if not inst_pkg.invalid and not mreasons:
+						if inst_pkg.visible:
 							# If the installed version is masked, it may
 							# be necessary to look at lower versions,
 							# in case there is a visible downgrade.
