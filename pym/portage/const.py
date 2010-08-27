@@ -85,7 +85,7 @@ EBUILD_PHASES            = ("pretend", "setup", "unpack", "prepare", "configure"
                            "nofetch", "config", "info", "other")
 SUPPORTED_FEATURES       = frozenset([
                            "assume-digests", "buildpkg", "buildsyspkg", "candy", "ccache",
-                           "collision-protect", "compress-build-logs",
+                           "chflags", "collision-protect", "compress-build-logs",
                            "digest", "distcc", "distlocks",
                            "fakeroot", "fail-clean", "fixpackages", "getbinpkg",
                            "installsources", "keeptemp", "keepwork", "fixlafiles", "lmirror",
@@ -94,7 +94,7 @@ SUPPORTED_FEATURES       = frozenset([
                            "notitles", "parallel-fetch", "parse-eapi-ebuild-head",
                            "parse-eapi-glep-55", "prelink-checksums", "preserve-libs",
                            "protect-owned", "python-trace", "sandbox",
-                           "sesandbox", "severe", "sfperms",
+                           "selinux", "sesandbox", "severe", "sfperms",
                            "sign", "skiprocheck", "split-elog", "split-log", "splitdebug",
                            "strict", "stricter", "suidctl", "test", "test-fail-continue",
                            "unknown-features-warn",
