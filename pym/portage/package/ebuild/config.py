@@ -403,6 +403,9 @@ class config(object):
 			self.packages = clone.packages
 			self._iuse_implicit_match = clone._iuse_implicit_match
 			self._non_user_variables = clone._non_user_variables
+			self.usemask = clone.usemask
+			self.useforce = clone.useforce
+			self.puse = clone.puse
 
 			self.user_profile_dir = copy.deepcopy(clone.user_profile_dir)
 			self.local_config = copy.deepcopy(clone.local_config)
@@ -417,10 +420,6 @@ class config(object):
 			self.userVirtuals = copy.deepcopy(clone.userVirtuals)
 			self.negVirtuals  = copy.deepcopy(clone.negVirtuals)
 			self._depgraphVirtuals = copy.deepcopy(clone._depgraphVirtuals)
-
-			self.usemask = copy.deepcopy(clone.usemask)
-			self.useforce = copy.deepcopy(clone.useforce)
-			self.puse = copy.deepcopy(clone.puse)
 			self._penv = copy.deepcopy(clone._penv)
 			self.make_defaults_use = copy.deepcopy(clone.make_defaults_use)
 			self.mycpv    = copy.deepcopy(clone.mycpv)
