@@ -46,6 +46,9 @@ class ResolverPlayground(object):
 		os.makedirs(self.portdir)
 		os.makedirs(self.vdbdir)
 
+		if not debug:
+			portage.util.noiselimit = -2
+
 		self._create_ebuilds(ebuilds)
 		self._create_installed(installed)
 		self._create_profile(ebuilds, installed, profile, user_config, sets)
@@ -54,6 +57,8 @@ class ResolverPlayground(object):
 		self.settings, self.trees = self._load_config()
 
 		self._create_ebuild_manifests(ebuilds)
+		
+		portage.util.noiselimit = 0
 
 	def _create_ebuilds(self, ebuilds):
 		for cpv in ebuilds:
@@ -205,7 +210,7 @@ class ResolverPlayground(object):
 		if profile:
 			#This is meant to allow the consumer to set up his own profile,
 			#with package.mask and what not.
-			raise NotImplentedError()
+			raise NotImplementedError()
 
 		#Create profile symlink
 		os.makedirs(os.path.join(self.eroot, "etc"))

@@ -5,8 +5,6 @@ __all__ = (
 	'LicenseManager',
 )
 
-from copy import deepcopy
-
 from portage import os
 from portage.dep import ExtendedAtomDict, use_reduce
 from portage.exception import InvalidDependString
@@ -19,46 +17,30 @@ from portage.package.ebuild._config.helper import ordered_by_atom_specificity
 
 class LicenseManager(object):
 
-	def __init__(self, _copy=False):
-		if _copy:
-			return
+	def __init__(self, license_group_locations, abs_user_config, user_config=True):
+
 		self._accept_license_str = None
 		self._accept_license = None
 		self._license_groups = {}
 		self._plicensedict = ExtendedAtomDict(dict)
 		self._undef_lic_groups = set()
 
-	def __deepcopy__(self, memo=None):
+		if user_config:
+			license_group_locations = list(license_group_locations) + [abs_user_config]
 
-		if memo is None:
-			memo = {}
-		result = LicenseManager(_copy=True)
-		memo[id(self)] = result
+		self._read_license_groups(license_group_locations)
 
-		# immutable attributes
-		result._accept_license_str = self._accept_license_str
-		memo[id(self._accept_license_str)] = self._accept_license_str
-		result._accept_license = self._accept_license
-		memo[id(self._accept_license)] = self._accept_license
+		if user_config:
+			self._read_user_config(abs_user_config)
 
-		# immutable attributes (internal policy ensures lack of mutation)
-		result._license_groups = self._license_groups
-		memo[id(self._license_groups)] = self._license_groups
-
-		# mutable attributes
-		result._plicensedict = deepcopy(self._plicensedict, memo)
-		result._undef_lic_groups = deepcopy(self._undef_lic_groups, memo)
-
-		return result
-
-	def read_config_files(self, abs_user_config):
+	def _read_user_config(self, abs_user_config):
 		licdict = grabdict_package(os.path.join(
 			abs_user_config, "package.license"), recursive=1, allow_wildcard=True)
 		for k, v in licdict.items():
 			self._plicensedict.setdefault(k.cp, {})[k] = \
 				self.expandLicenseTokens(v)
 
-	def parse_license_groups(self, locations):
+	def _read_license_groups(self, locations):
 		for loc in locations:
 			for k, v in grabdict(
 				os.path.join(loc, "license_groups")).items():

@@ -344,7 +344,6 @@ class config(object):
 		self.modifiedkeys = []
 		self.uvlist = []
 		self._accept_chost_re = None
-		self._license_manager = LicenseManager()
 		self._accept_properties = None
 		self._features_overrides = []
 
@@ -429,7 +428,14 @@ class config(object):
 			self.features._features = copy.deepcopy(clone.features._features)
 			self._features_overrides = copy.deepcopy(clone._features_overrides)
 
-			self._license_manager = copy.deepcopy(clone._license_manager)
+			#Strictly speaking _license_manager is not immutable. Users need to ensure that
+			#extract_global_changes() is called right after __init__ (if at all).
+			#It also has the mutable member _undef_lic_groups. It is used to track
+			#undifiend license groups, to not display an error message for the same
+			#group again and again. Because of this, it's useful to share it between
+			#all LicenseManager instances.
+			self._license_manager = clone._license_manager
+
 			self._accept_properties = copy.deepcopy(clone._accept_properties)
 			self._ppropertiesdict = copy.deepcopy(clone._ppropertiesdict)
 			self._penvdict = copy.deepcopy(clone._penvdict)
@@ -849,6 +855,13 @@ class config(object):
 				self._use_manager.extract_global_USE_changes( \
 					self.configdict["conf"].get("USE", ""))
 
+			#Read license_groups and optionally license_groups and package.license from user config
+			self._license_manager = LicenseManager(locations, abs_user_config, user_config=local_config)
+			#Extract '*/*' entries from package.license
+			self.configdict["conf"]["ACCEPT_LICENSE"] = \
+				self._license_manager.extract_global_changes( \
+					self.configdict["conf"].get("ACCEPT_LICENSE", ""))
+
 			if local_config:
 				locations.append(abs_user_config)
 
@@ -876,12 +889,6 @@ class config(object):
 					if not v:
 						v = accept_keywords_defaults
 					self.pkeywordsdict.setdefault(k.cp, {})[k] = v
-
-				#package.license
-				self._license_manager.read_config_files(abs_user_config)
-				self.configdict["conf"]["ACCEPT_LICENSE"] = \
-					self._license_manager.extract_global_changes(\
-						self.configdict["conf"].get("ACCEPT_LICENSE", ""))
 
 				#package.properties
 				propdict = grabdict_package(os.path.join(
@@ -1012,9 +1019,6 @@ class config(object):
 					self.pprovideddict[mycatpkg].append(x)
 				else:
 					self.pprovideddict[mycatpkg]=[x]
-
-			# parse licensegroups
-			self._license_manager.parse_license_groups(locations)
 
 			# reasonable defaults; this is important as without USE_ORDER,
 			# USE will always be "" (nothing set)!

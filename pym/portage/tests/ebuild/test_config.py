@@ -1,11 +1,8 @@
 # Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import copy
-
 import portage
 from portage import os
-from portage.dep import ExtendedAtomDict
 from portage.package.ebuild.config import config
 from portage.package.ebuild._config.LicenseManager import LicenseManager
 from portage.tests import TestCase
@@ -60,26 +57,15 @@ class ConfigTestCase(TestCase):
 			license_group_locations = (os.path.join(playground.portdir, "profiles"),)
 			pkg_license = os.path.join(playground.eroot, "etc", "portage")
 
-			lic_man = LicenseManager()
-
-			lic_man.parse_license_groups(license_group_locations)
-			lic_man.read_config_files(pkg_license)
-			lic_man_backup = copy.deepcopy(lic_man)
+			lic_man = LicenseManager(license_group_locations, pkg_license)
 
 			self.assertEqual(lic_man._accept_license_str, None)
-			self.assertEqual(lic_man._accept_license_str, lic_man_backup._accept_license_str)
 			self.assertEqual(lic_man._accept_license, None)
-			self.assertEqual(lic_man._accept_license, lic_man_backup._accept_license)
 			self.assertEqual(lic_man._license_groups, {"EULA": ["TEST"]})
-			self.assertEqual(lic_man._license_groups, lic_man_backup._license_groups)
-			self.assertEqual(lic_man._plicensedict, lic_man_backup._plicensedict)
 			self.assertEqual(lic_man._undef_lic_groups, set(["TEST"]))
-			self.assertEqual(lic_man._undef_lic_groups, lic_man_backup._undef_lic_groups)
 
 			self.assertEqual(lic_man.extract_global_changes(), "TEST TEST2")
 			self.assertEqual(lic_man.extract_global_changes(), "")
-			self.assertEqual(lic_man_backup.extract_global_changes("TEST3 TEST4"), "TEST3 TEST4 TEST TEST2")
-			self.assertEqual(lic_man_backup.extract_global_changes("TEST3 TEST4"), "TEST3 TEST4")
 
 			lic_man.set_accept_license_str("TEST TEST2")
 			self.assertEqual(lic_man._getPkgAcceptLicense("dev-libs/B-1", "0"), ["TEST", "TEST2", "TEST"])
