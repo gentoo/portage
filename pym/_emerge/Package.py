@@ -88,7 +88,7 @@ class Package(Task):
 			try:
 				use_reduce(v, eapi=dep_eapi,
 					is_valid_flag=dep_valid_flag, token_class=Atom)
-			except portage.exception.InvalidDependString as e:
+			except InvalidDependString as e:
 				self._metadata_exception(k, e)
 
 		k = 'PROVIDE'
@@ -120,7 +120,7 @@ class Package(Task):
 				try:
 					check_required_use(v, (),
 						self.iuse.is_valid_flag)
-				except portage.exception.InvalidDependString as e:
+				except InvalidDependString as e:
 					self._invalid_metadata(k + ".syntax",
 						"%s: %s" % (k, e))
 
@@ -130,7 +130,7 @@ class Package(Task):
 			try:
 				use_reduce(v, is_src_uri=True, eapi=eapi, \
 					is_valid_flag=self.iuse.is_valid_flag)
-			except portage.exception.InvalidDependString as e:
+			except InvalidDependString as e:
 				if not self.installed:
 					self._metadata_exception(k, e)
 
@@ -166,7 +166,7 @@ class Package(Task):
 				self.cpv, self.metadata)
 			if missing_properties:
 				masks['PROPERTIES'] = missing_properties
-		except portage.exception.InvalidDependString:
+		except InvalidDependString:
 			# already recorded as 'invalid'
 			pass
 
@@ -184,7 +184,7 @@ class Package(Task):
 				self.cpv, self.metadata)
 			if missing_licenses:
 				masks['LICENSE'] = missing_licenses
-		except portage.exception.InvalidDependString:
+		except InvalidDependString:
 			# already recorded as 'invalid'
 			pass
 
@@ -417,7 +417,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 				try:
 					v = paren_enclose(use_reduce(v, uselist=self._pkg.use.enabled, \
 						is_valid_flag=self._pkg.iuse.is_valid_flag))
-				except portage.exception.InvalidDependString:
+				except InvalidDependString:
 					# This error should already have been registered via
 					# self._pkg._invalid_metadata().
 					pass
