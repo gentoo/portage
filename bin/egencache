@@ -44,6 +44,8 @@ except ImportError:
 else:
 	from repoman.utilities import parse_metadata_use
 	from xml.parsers.expat import ExpatError
+	from portage.dep import Atom
+	from portage.versions import pkgcmp, pkgsplit
 
 if sys.hexversion >= 0x3000000:
 	long = int
@@ -356,7 +358,32 @@ class GenUseLocalDesc(object):
 					self.returncode |= 1
 				else:
 					for flag in sorted(usedict.keys()):
-						output.write('%s:%s - %s\n' % (cp, flag, usedict[flag]))
+						def atomcmp(atoma, atomb):
+							# None is better than an atom, that's why we reverse the args
+							if atoma is None or atomb is None:
+								return cmp(atomb, atoma)
+							# Same for plain PNs (.operator is None then)
+							elif atoma.operator is None or atomb.operator is None:
+								return cmp(atomb.operator, atoma.operator)
+							# Version matching
+							elif atoma.cpv != atomb.cpv:
+								return pkgcmp(pkgsplit(atoma.cpv), pkgsplit(atomb.cpv))
+							# Versions match, let's fallback to operator matching
+							else:
+								ops = ('<', '<=', '=', '>=', '>')
+								return cmp(ops.index(atoma.operator), ops.index(atomb.operator))
+
+						def _Atom(key):
+							if key is not None:
+								return Atom(key)
+							return None
+
+						resdict = usedict[flag]
+						reskeys = {_Atom(k): k for k in resdict.keys()}
+						resatoms = sorted(reskeys.keys(), atomcmp)
+						resdesc = resdict[reskeys[resatoms[-1]]]
+
+						output.write('%s:%s - %s\n' % (cp, flag, resdesc))
 
 		output.close()
 

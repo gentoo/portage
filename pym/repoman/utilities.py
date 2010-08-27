@@ -135,13 +135,7 @@ def parse_metadata_use(xml_tree):
 			pkg_flag = flag.get("name")
 			if pkg_flag is None:
 				raise exception.ParseError("missing 'name' attribute for 'flag' tag")
-
-			if uselist.get(pkg_flag):
-				# It's possible to have multiple elements with the same
-				# flag name, but different 'restrict' attributes that
-				# specify version restrictions. We use only the first
-				# occurance.
-				continue
+			flag_restrict = flag.get("restrict")
 
 			# emulate the Element.itertext() method from python-2.7
 			inner_text = []
@@ -158,7 +152,11 @@ def parse_metadata_use(xml_tree):
 					stack.append(obj.tail)
 				stack.extend(reversed(obj))
 
-			uselist[pkg_flag] = " ".join("".join(inner_text).split())
+			if pkg_flag not in uselist:
+				uselist[pkg_flag] = {}
+
+			# (flag_restrict can be None)
+			uselist[pkg_flag][flag_restrict] = " ".join("".join(inner_text).split())
 
 	return uselist
 
