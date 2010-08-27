@@ -1392,7 +1392,7 @@ for x in scanlist:
 				fails["metadata.bad"].append(x+"/metadata.xml")
 
 		del metadata_bad
-	muselist = frozenset(musedict.keys())
+	muselist = frozenset(musedict)
 
 	changelog_path = os.path.join(checkdir_relative, "ChangeLog")
 	changelog_modified = changelog_path in modified_changelogs
