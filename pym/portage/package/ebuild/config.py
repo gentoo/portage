@@ -383,13 +383,19 @@ class config(object):
 			self.usemask = clone.usemask
 			self.useforce = clone.useforce
 			self.puse = clone.puse
+			self.user_profile_dir = clone.user_profile_dir
+			self.local_config = clone.local_config
+			self.make_defaults_use = clone.make_defaults_use
+			self.mycpv = clone.mycpv
+			self._setcpv_args_hash = clone._setcpv_args_hash
 
-			self.user_profile_dir = copy.deepcopy(clone.user_profile_dir)
-			self.local_config = copy.deepcopy(clone.local_config)
-			self._local_repo_configs = \
-				copy.deepcopy(clone._local_repo_configs)
-			self._local_repo_conf_path = \
-				copy.deepcopy(clone._local_repo_conf_path)
+			# immutable attributes (internal policy ensures lack of mutation)
+			self._local_repo_configs = clone._local_repo_configs
+			self._local_repo_conf_path = clone._local_repo_conf_path
+			self._pkeywords_list = clone._pkeywords_list
+			self._p_accept_keywords = clone._p_accept_keywords
+			self._use_manager = clone._use_manager
+
 			self.modules         = copy.deepcopy(clone.modules)
 			self.virtuals = copy.deepcopy(clone.virtuals)
 			self.dirVirtuals = copy.deepcopy(clone.dirVirtuals)
@@ -398,9 +404,6 @@ class config(object):
 			self.negVirtuals  = copy.deepcopy(clone.negVirtuals)
 			self._depgraphVirtuals = copy.deepcopy(clone._depgraphVirtuals)
 			self._penv = copy.deepcopy(clone._penv)
-			self.make_defaults_use = copy.deepcopy(clone.make_defaults_use)
-			self.mycpv    = copy.deepcopy(clone.mycpv)
-			self._setcpv_args_hash = copy.deepcopy(clone._setcpv_args_hash)
 
 			self.configdict = copy.deepcopy(clone.configdict)
 			self.configlist = [
@@ -418,8 +421,6 @@ class config(object):
 			self._use_expand_dict = copy.deepcopy(clone._use_expand_dict)
 			self.backupenv  = self.configdict["backupenv"]
 			self.pkeywordsdict = copy.deepcopy(clone.pkeywordsdict)
-			self._pkeywords_list = copy.deepcopy(clone._pkeywords_list)
-			self._p_accept_keywords = copy.deepcopy(clone._p_accept_keywords)
 			self.pmaskdict = copy.deepcopy(clone.pmaskdict)
 			self.punmaskdict = copy.deepcopy(clone.punmaskdict)
 			self.prevmaskdict = copy.deepcopy(clone.prevmaskdict)
@@ -433,9 +434,6 @@ class config(object):
 			self._ppropertiesdict = copy.deepcopy(clone._ppropertiesdict)
 			self._penvdict = copy.deepcopy(clone._penvdict)
 			self._expand_map = copy.deepcopy(clone._expand_map)
-
-			#No need to copy the managers, they contain only static information.
-			self._use_manager = clone._use_manager
 
 		else:
 
@@ -586,6 +584,7 @@ class config(object):
 				for k, v in pkeyworddict.items():
 					cpdict.setdefault(k.cp, {})[k] = v
 				self._pkeywords_list.append(cpdict)
+			self._pkeywords_list = tuple(self._pkeywords_list)
 
 			self._p_accept_keywords = []
 			raw_p_accept_keywords = [grabdict_package(
@@ -599,6 +598,7 @@ class config(object):
 				for k, v in d.items():
 					cpdict.setdefault(k.cp, {})[k] = tuple(v)
 				self._p_accept_keywords.append(cpdict)
+			self._p_accept_keywords = tuple(self._p_accept_keywords)
 
 			make_conf = getconfig(
 				os.path.join(config_root, MAKE_CONF_FILE),
@@ -725,6 +725,7 @@ class config(object):
 						self.make_defaults_use.append(cfg.get("USE", ""))
 					else:
 						self.make_defaults_use.append("")
+				self.make_defaults_use = tuple(self.make_defaults_use)
 				self.mygcfg = stack_dicts(mygcfg_dlists,
 					incrementals=self.incrementals)
 				if self.mygcfg is None:
