@@ -458,12 +458,13 @@ class slot_conflict_handler(object):
 
 				if not pkg.iuse.is_valid_flag(atom.unevaluated_atom.use.required):
 					#Missing IUSE.
+					#FIXME: This needs to support use dep defaults.
 					if self.debug:
-						writemsg(str(pkg) + " misses need flags from IUSE." + \
+						writemsg(str(pkg) + " misses needed flags from IUSE." + \
 							" Rejecting configuration.\n", noiselevel=-1)
 					return False
 
-				if ppkg.installed:
+				if not isinstance(ppkg, Package) or ppkg.installed:
 					#We cannot assume that it's possible to reinstall the package. Do not
 					#check if some of its atom has use.conditional
 					violated_atom = atom.violated_conditionals(_pkg_use_enabled(pkg), \
