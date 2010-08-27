@@ -7,12 +7,15 @@ make.conf \- custom settings for Portage
 This file contains various variables that are used by Portage.
 Portage will check the currently\-defined environment variables
 first for any settings.  If no environment settings are found,
-Portage then checks /etc/make.conf.  If no setting is found
-in make.conf, Portage checks make.globals. If no
+Portage then checks the make.conf files. Both /etc/make.conf and
+/etc/portage/make.conf are checked (if present), and settings from
+/etc/portage/make.conf will override settings from /etc/make.conf.
+If no setting is found in the make.conf files, Portage checks
+make.globals. If no
 setting is found there, the profile's default setting is grabbed
 from /etc/make.profile/make.defaults. Please note that all user
-settings should be made in the environment or in /etc/make.conf,
-which is intended to be customized by the user.
+settings should be made in the environment or in the make.conf
+files, which are intended to be customized by the user.
 .br
 Exceptions are incremental variables such as USE, CONFIG_PROTECT*,
 and ACCEPT_KEYWORDS.  Incremental variables are propagated down from
