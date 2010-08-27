@@ -178,8 +178,10 @@ class Package(Task):
 			if 'EAPI.unsupported' in masks:
 				return False
 
+			if 'invalid' in masks:
+				return False
+
 			if not self.installed and ( \
-				'invalid' in masks or \
 				'CHOST' in masks or \
 				'EAPI.deprecated' in masks or \
 				'KEYWORDS' in masks or \
