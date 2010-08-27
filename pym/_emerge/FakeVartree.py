@@ -7,11 +7,19 @@ import portage
 from portage import os
 from _emerge.Package import Package
 from _emerge.PackageVirtualDbapi import PackageVirtualDbapi
+from portage.const import VDB_PATH
 from portage.dbapi.vartree import vartree
 from portage.update import grab_updates, parse_updates, update_dbentries
 
 if sys.hexversion >= 0x3000000:
 	long = int
+
+class FakeVardbapi(PackageVirtualDbapi):
+	def getpath(self, cpv, filename=None):
+		path = os.path.join(self.settings['EROOT'], VDB_PATH, cpv)
+		if filename is not None:
+			path =os.path.join(path, filename)
+		return path
 
 class FakeVartree(vartree):
 	"""This is implements an in-memory copy of a vartree instance that provides
@@ -37,7 +45,7 @@ class FakeVartree(vartree):
 			mykeys.append("_mtime_")
 		self._db_keys = mykeys
 		self._pkg_cache = pkg_cache
-		self.dbapi = PackageVirtualDbapi(real_vartree.settings)
+		self.dbapi = FakeVardbapi(real_vartree.settings)
 
 		# Intialize variables needed for lazy cache pulls of the live ebuild
 		# metadata.  This ensures that the vardb lock is released ASAP, without
