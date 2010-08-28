@@ -97,6 +97,12 @@ def parse_args(args):
 			"for bug 139134 (use with --update)")
 	parser.add_option_group(update)
 
+	uld = optparse.OptionGroup(parser, '--update-use-local-desc options')
+	uld.add_option("--use-local-desc-output",
+		help="output file for use.local.desc data (or '-' for stdout)",
+		dest="uld_output")
+	parser.add_option_group(uld)
+
 	options, args = parser.parse_args(args)
 
 	if options.jobs:
@@ -307,28 +313,36 @@ class GenCache(object):
 					level=logging.ERROR, noiselevel=-1)
 
 class GenUseLocalDesc(object):
-	def __init__(self, portdb):
+	def __init__(self, portdb, output=None):
 		self.returncode = os.EX_OK
 		self._portdb = portdb
+		self._output = output
 	
 	def run(self):
 		repo_path = self._portdb.porttrees[0]
-		prof_path = os.path.join(repo_path, 'profiles')
-		desc_path = os.path.join(prof_path, 'use.local.desc')
 		ops = {'<':0, '<=':1, '=':2, '>=':3, '>':4}
 
-		try:
-			os.mkdir(prof_path)
-		except OSError:
-			pass
-		try:
-			output = open(desc_path, 'w')
-		except IOError as e:
-			writemsg_level(
-				"ERROR: failed to open output file: %s\n" % (e,),
-				level=logging.ERROR, noiselevel=-1)
-			self.returncode |= 2
-			return
+		if self._output is None or self._output != '-':
+			if self._output is None:
+				prof_path = os.path.join(repo_path, 'profiles')
+				desc_path = os.path.join(prof_path, 'use.local.desc')
+				try:
+					os.mkdir(prof_path)
+				except OSError:
+					pass
+			else:
+				desc_path = self._output
+
+			try:
+				output = open(desc_path, 'w')
+			except IOError as e:
+				writemsg_level(
+					"ERROR: failed to open output file: %s\n" % (e,),
+					level=logging.ERROR, noiselevel=-1)
+				self.returncode |= 2
+				return
+		else:
+			output = sys.stdout
 
 		output.write('''
 # This file is deprecated as per GLEP 56 in favor of metadata.xml. Please add
@@ -483,7 +497,8 @@ def egencache_main(args):
 		ret.append(gen_cache.returncode)
 
 	if options.update_use_local_desc:
-		gen_desc = GenUseLocalDesc(portdb)
+		gen_desc = GenUseLocalDesc(portdb,
+			output=options.uld_output)
 		gen_desc.run()
 		ret.append(gen_desc.returncode)
 
