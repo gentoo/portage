@@ -45,8 +45,9 @@ def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_lo
 	locations.reverse()
 	pmasklists = [(x, grablines(os.path.join(x, "package.mask"), recursive=1)) for x in locations]
 
-	if mycp in settings.pmaskdict:
-		for x in settings.pmaskdict[mycp]:
+	pmaskdict = settings._mask_manager._pmaskdict
+	if mycp in pmaskdict:
+		for x in pmaskdict[mycp]:
 			if match_from_list(x, cpv_slot_list):
 				for pmask in pmasklists:
 					comment = ""
