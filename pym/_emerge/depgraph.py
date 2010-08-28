@@ -18,6 +18,7 @@ from portage.dbapi import dbapi
 from portage.dbapi.dep_expand import dep_expand
 from portage.dep import Atom, extract_affecting_use, check_required_use, human_readable_required_use
 from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use
+from portage.exception import InvalidAtom
 from portage.output import bold, blue, colorize, create_color_func, darkblue, \
 	darkgreen, green, nc_len, red, teal, turquoise, yellow
 bad = create_color_func("BAD")
@@ -2091,11 +2092,17 @@ class depgraph(object):
 					if mreasons:
 						masked_pkg_instances.add(pkg)
 					if atom.unevaluated_atom.use:
-						if not pkg.iuse.is_valid_flag(atom.unevaluated_atom.use.required) \
-							or atom.violated_conditionals(self._pkg_use_enabled(pkg), pkg.iuse.is_valid_flag).use:
-							missing_use.append(pkg)
-							if not mreasons:
-								continue
+						try:
+							if not pkg.iuse.is_valid_flag(atom.unevaluated_atom.use.required) \
+								or atom.violated_conditionals(self._pkg_use_enabled(pkg), pkg.iuse.is_valid_flag).use:
+								missing_use.append(pkg)
+								if not mreasons:
+									continue
+						except InvalidAtom:
+							writemsg("violated_conditionals raised " + \
+								"InvalidAtom: '%s' parent: %s" % \
+								(atom, myparent), noiselevel=-1)
+							raise
 					if pkg.built and not mreasons:
 						mreasons = ["use flag configuration mismatch"]
 				masked_packages.append(
