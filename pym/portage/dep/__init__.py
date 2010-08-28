@@ -480,7 +480,8 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 				if token_class and not is_src_uri:
 					#Add a hack for SRC_URI here, to avoid conditional code at the consumer level
 					try:
-						token = token_class(token, eapi=eapi)
+						token = token_class(token, eapi=eapi,
+							is_valid_flag=is_valid_flag)
 					except InvalidAtom as e:
 						raise InvalidDependString(
 							_("Invalid atom (%s), token %s") \
@@ -581,11 +582,26 @@ class _use_dep(object):
 
 	class _conditionals_class(object):
 		__slots__ = ("enabled", "disabled", "equal", "not_equal")
+
+		def items(self):
+			for k in self.__slots__:
+				v = getattr(self, k, None)
+				if v:
+					yield (k, v)
+
 		def values(self):
 			for k in self.__slots__:
 				v = getattr(self, k, None)
 				if v:
 					yield v
+
+	# used in InvalidAtom messages
+	_conditional_strings = {
+		'enabled' :     '%s?',
+		'disabled':    '!%s?',
+		'equal':        '%s=',
+		'not_equal':   '!%s=',
+	}
 
 	def __init__(self, use, enabled_flags=None, disabled_flags=None, missing_enabled=None, \
 		missing_disabled=None, conditional=None, required=None):
@@ -963,10 +979,12 @@ class Atom(_atom_base):
 		def __init__(self, forbid_overlap=False):
 			self.overlap = self._overlap(forbid=forbid_overlap)
 
-	def __new__(cls, s, unevaluated_atom=None, allow_wildcard=False, _use=None, eapi=None):
+	def __new__(cls, s, unevaluated_atom=None, allow_wildcard=False,
+		_use=None, eapi=None, is_valid_flag=None):
 		return _atom_base.__new__(cls, s)
 
-	def __init__(self, s, unevaluated_atom=None, allow_wildcard=False, _use=None, eapi=None):
+	def __init__(self, s, unevaluated_atom=None, allow_wildcard=False,
+		_use=None, eapi=None, is_valid_flag=None):
 		if isinstance(s, Atom):
 			# This is an efficiency assertion, to ensure that the Atom
 			# constructor is not called redundantly.
@@ -1067,6 +1085,20 @@ class Atom(_atom_base):
 					raise InvalidAtom(
 						_("Use dep defaults are not allowed in EAPI %s: '%s'") \
 						% (eapi, self), category='EAPI.incompatible')
+				if is_valid_flag is not None and self.use.conditional:
+					invalid_flag = None
+					for conditional_type, flags in self.use.conditional.items():
+						for flag in flags:
+							if not is_valid_flag(flag):
+								invalid_flag = (conditional_type, flag)
+								break
+					if invalid_flag is not None:
+						conditional_type, flag = invalid_flag
+						conditional_str = _use_dep._conditional_strings[conditional_type]
+						msg = _("USE flag '%s' referenced in " + \
+							"conditional '%s' in atom '%s' is not in IUSE") \
+							% (flag, conditional_str % flag, self)
+						raise InvalidAtom(msg, category='IUSE.missing')
 			if self.blocker and self.blocker.overlap.forbid and not eapi_has_strong_blocks(eapi):
 				raise InvalidAtom(
 					_("Strong blocks are not allowed in EAPI %s: '%s'") \
