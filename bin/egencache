@@ -20,6 +20,7 @@ try:
 except KeyboardInterrupt:
 	sys.exit(1)
 
+import codecs
 import logging
 import optparse
 
@@ -30,7 +31,7 @@ except ImportError:
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
 
-from portage import os
+from portage import os, _encodings, _unicode_encode
 from _emerge.MetadataRegen import MetadataRegen
 from portage.cache.cache_errors import CacheError, StatCollision
 from portage.util import cmp_sort_key, writemsg_level
@@ -341,15 +342,17 @@ class GenUseLocalDesc(object):
 			else:
 				desc_path = self._output
 
-			if self._preserve_comments:
-				# Probe in binary mode, in order to avoid
-				# potential character encoding issues.
-				output_mode = 'rb'
-			else:
-				output_mode = 'w'
-
 			try:
-				output = open(desc_path, output_mode)
+				if self._preserve_comments:
+					# Probe in binary mode, in order to avoid
+					# potential character encoding issues.
+					output = open(_unicode_encode(desc_path,
+						encoding=_encodings['fs'], errors='strict'), 'r+b')
+				else:
+					output = codecs.open(_unicode_encode(desc_path,
+						encoding=_encodings['fs'], errors='strict'),
+						mode='w', encoding=_encodings['repo.content'],
+						errors='replace')
 			except IOError as e:
 				writemsg_level(
 					"ERROR: failed to open output file %s: %s\n" % (output_mode,e,),
@@ -364,14 +367,18 @@ class GenUseLocalDesc(object):
 				pos = output.tell()
 				if not output.readline().startswith(b'#'):
 					break
+			output.seek(pos)
+			output.truncate()
 			output.close()
 
-			# Finished probing comments, now open for write.
-			output = open(desc_path, 'r+')
-			output.seek(pos)
+			# Finished probing comments in binary mode, now append
+			# in text mode.
+			output = codecs.open(_unicode_encode(desc_path,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='a', encoding=_encodings['repo.content'],
+				errors='replace')
 			output.write('\n')
-			output.truncate()
-		else:	
+		else:
 			output.write('''
 # This file is deprecated as per GLEP 56 in favor of metadata.xml. Please add
 # your descriptions to your package's metadata.xml ONLY.
