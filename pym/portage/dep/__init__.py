@@ -1087,11 +1087,15 @@ class Atom(_atom_base):
 						% (eapi, self), category='EAPI.incompatible')
 				if is_valid_flag is not None and self.use.conditional:
 					invalid_flag = None
-					for conditional_type, flags in self.use.conditional.items():
-						for flag in flags:
-							if not is_valid_flag(flag):
-								invalid_flag = (conditional_type, flag)
-								break
+					try:
+						for conditional_type, flags in \
+							self.use.conditional.items():
+							for flag in flags:
+								if not is_valid_flag(flag):
+									invalid_flag = (conditional_type, flag)
+									raise StopIteration()
+					except StopIteration:
+						pass
 					if invalid_flag is not None:
 						conditional_type, flag = invalid_flag
 						conditional_str = _use_dep._conditional_strings[conditional_type]
