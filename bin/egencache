@@ -342,7 +342,9 @@ class GenUseLocalDesc(object):
 				desc_path = self._output
 
 			if self._preserve_comments:
-				output_mode = 'r+'
+				# Probe in binary mode, in order to avoid
+				# potential character encoding issues.
+				output_mode = 'rb'
 			else:
 				output_mode = 'w'
 
@@ -359,15 +361,15 @@ class GenUseLocalDesc(object):
 
 		if self._preserve_comments:
 			while True:
-				l = output.readline()
-				# Seek through comments, until the first non-comment.
-				# If we hit empty line, then great.
-				# Otherwise, we need to seek back and add an empty line.
-				if not l.startswith('#'):
-					if l.rstrip() != '':
-						output.seek(-len(l), os.SEEK_CUR)
-						output.write('\n')
+				pos = output.tell()
+				if not output.readline().startswith(b'#'):
 					break
+			output.close()
+
+			# Finished probing comments, now open for write.
+			output = open(desc_path, 'r+')
+			output.seek(pos)
+			output.write('\n')
 			output.truncate()
 		else:	
 			output.write('''
