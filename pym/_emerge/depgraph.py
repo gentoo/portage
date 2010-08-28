@@ -4184,9 +4184,12 @@ class depgraph(object):
 			noiselevel=-1)
 		portage.writemsg("\n", noiselevel=-1)
 
-		if handler.circular_dep_message is None:
-			mygraph.debug_print()
-		else:
+		if handler.circular_dep_message is None or \
+			"--debug" in self._frozen_config.myopts:
+			handler.debug_print()
+			portage.writemsg("\n", noiselevel=-1)
+
+		if handler.circular_dep_message is not None:
 			portage.writemsg(handler.circular_dep_message, noiselevel=-1)
 
 		suggestions = handler.suggestions

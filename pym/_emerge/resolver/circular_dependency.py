@@ -244,3 +244,18 @@ class circular_dependency_handler(object):
 				final_solutions.setdefault(pkg, set()).add(solution)
 
 		return final_solutions, suggestions
+
+	def debug_print(self):
+		"""
+		Create a copy of the digraph, prune all root nodes,
+		and call the debug_print() method.
+		"""
+		graph = self.graph.copy()
+		while True:
+			root_nodes = graph.root_nodes(
+				ignore_priority=DepPrioritySatisfiedRange.ignore_medium_soft)
+			if not root_nodes:
+				break
+			graph.difference_update(root_nodes)
+
+		graph.debug_print()
