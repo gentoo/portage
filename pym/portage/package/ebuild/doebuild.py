@@ -1472,6 +1472,17 @@ def _post_src_install_uid_fix(mysettings, out):
 		v = use_reduce(v, uselist=use, token_class=token_class)
 		v = paren_enclose(v)
 		if not v:
+			filename = os.path.join(build_info_dir, k)
+			try:
+				st = os.stat(filename)
+			except OSError:
+				pass
+			else:
+				if st.st_size != 0:
+					try:
+						os.unlink(filename)
+					except OSError:
+						pass
 			continue
 		codecs.open(_unicode_encode(os.path.join(build_info_dir,
 			k), encoding=_encodings['fs'], errors='strict'),
