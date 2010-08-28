@@ -223,10 +223,11 @@ class VirtualsManager(object):
 		if self._virts_p is not None:
 			return self._virts_p
 
-		self._virts_p = {}
 		virts = self.getvirtuals()
+		virts_p = {}
 		for x in virts:
 			vkeysplit = x.split("/")
-			if vkeysplit[1] not in self._virts_p:
-				self._virts_p[vkeysplit[1]] = virts[x]
-		return self._virts_p
+			if vkeysplit[1] not in virts_p:
+				virts_p[vkeysplit[1]] = virts[x]
+		self._virts_p = virts_p
+		return virts_p
