@@ -13,7 +13,8 @@ case $1 in
 	--ignore)
 		shift
 		for skip in "$@" ; do
-			[[ -d ${D}${skip} ]] && touch "${D}${skip}.ecompress.skip"
+			[[ -d ${D}${skip} || -f ${D}${skip} ]] \
+				&& touch "${D}${skip}.ecompress.skip"
 		done
 		exit 0
 		;;
@@ -74,7 +75,7 @@ funk_up_dir() {
 }
 
 # _relocate_skip_dirs(srctree, dsttree)
-# Move all the directories we want to skip running compression
+# Move all files and directories we want to skip running compression
 # on from srctree to dsttree.
 _relocate_skip_dirs() {
 	local srctree="$1" dsttree="$2"

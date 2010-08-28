@@ -303,6 +303,8 @@ export EXEOPTIONS="-m0755"
 export LIBOPTIONS="-m0644"
 export DIROPTIONS="-m0755"
 export MOPREFIX=${PN}
+declare -a PORTAGE_DOCOMPRESS=( /usr/share/{doc,info,man} )
+declare -a PORTAGE_DOCOMPRESS_SKIP=( /usr/share/doc/${PF}/html )
 
 # adds ".keep" files so that dirs aren't auto-cleaned
 keepdir() {
@@ -858,6 +860,32 @@ libopts() {
 
 	# `install` should never be called with '-s' ...
 	hasq -s ${LIBOPTIONS} && die "Never call libopts() with -s"
+}
+
+docompress() {
+	hasq "${EAPI}" 0 1 2 3 && die "'docompress' not supported in this EAPI"
+
+	local f g
+	if [[ $1 = "-x" ]]; then
+		shift
+		for f; do
+			f=$(strip_duplicate_slashes "${f}"); f=${f%/}
+			[[ ${f:0:1} = / ]] || f="/${f}"
+			for g in "${PORTAGE_DOCOMPRESS_SKIP[@]}"; do
+				[[ ${f} = ${g} ]] && continue 2
+			done
+			PORTAGE_DOCOMPRESS_SKIP[${#PORTAGE_DOCOMPRESS_SKIP[@]}]=${f}
+		done
+	else
+		for f; do
+			f=$(strip_duplicate_slashes "${f}"); f=${f%/}
+			[[ ${f:0:1} = / ]] || f="/${f}"
+			for g in "${PORTAGE_DOCOMPRESS[@]}"; do
+				[[ ${f} = ${g} ]] && continue 2
+			done
+			PORTAGE_DOCOMPRESS[${#PORTAGE_DOCOMPRESS[@]}]=${f}
+		done
+	fi
 }
 
 abort_handler() {

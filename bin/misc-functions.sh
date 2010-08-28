@@ -40,6 +40,102 @@ install_symlink_html_docs() {
 	fi
 }
 
+# similar to readlink -f, but only expands symlinks up to the last
+# directory component of the path
+canonicalise_dir() {
+	local ret wd=$(pwd)
+	if [[ -d $1 ]]; then
+		cd -P "$1" 2>/dev/null && pwd -P
+		ret=$?
+	else
+		cd -P "${1%"${1##*/}"}" 2>/dev/null && echo "$(pwd -P)/${1##*/}"
+		ret=$?
+	fi
+	cd "${wd}"
+	return ${ret}
+}
+
+prepcompress() {
+	local -a include exclude incl_d incl_f
+	local f g i real_f real_d
+
+	# Canonicalise path names and check for their existence.
+	real_d=$(canonicalise_dir "${D}")
+	for (( i = 0; i < ${#PORTAGE_DOCOMPRESS[@]}; i++ )); do
+		real_f=$(canonicalise_dir "${D}${PORTAGE_DOCOMPRESS[i]}")
+		f=${real_f#"${real_d}"}
+		if [[ ${real_f} != "${f}" ]] && [[ -d ${real_f} || -f ${real_f} ]]
+		then
+			include[${#include[@]}]=${f:-/}
+		elif [[ ${i} -ge 3 ]]; then
+			ewarn "prepcompress:" \
+				"ignoring nonexistent path '${PORTAGE_DOCOMPRESS[i]}'"
+		fi
+	done
+	for (( i = 0; i < ${#PORTAGE_DOCOMPRESS_SKIP[@]}; i++ )); do
+		real_f=$(canonicalise_dir "${D}${PORTAGE_DOCOMPRESS_SKIP[i]}")
+		f=${real_f#"${real_d}"}
+		if [[ ${real_f} != "${f}" ]] && [[ -d ${real_f} || -f ${real_f} ]]
+		then
+			exclude[${#exclude[@]}]=${f:-/}
+		elif [[ ${i} -ge 1 ]]; then
+			ewarn "prepcompress:" \
+				"ignoring nonexistent path '${PORTAGE_DOCOMPRESS_SKIP[i]}'"
+		fi
+	done
+
+	# Remove redundant entries from lists.
+	# For the include list, remove any entries that are
+	# contained in a directory in the include or exclude lists.
+	for (( i = ${#include[@]} - 1; i >= 0; i-- )); do
+		f=${include[i]}
+		for g in "${include[@]}"; do
+			if [[ ${f} == "${g%/}"/* ]]; then
+				unset include[i]
+				continue 2
+			fi
+		done
+		for g in "${exclude[@]}"; do
+			if [[ ${f} = ${g} || ${f} == "${g%/}"/* ]]; then
+				unset include[i]
+				continue 2
+			fi
+		done
+	done
+	# For the exclude list, remove any entries that are:
+	# a) contained in a directory in the exclude list, or
+	# b) _not_ contained in a directory in the include list.
+	for (( i = ${#exclude[@]} - 1; i >= 0; i-- )); do
+		f=${exclude[i]}
+		for g in "${exclude[@]}"; do
+			if [[ ${f} == "${g%/}"/* ]]; then
+				unset exclude[i]
+				continue 2
+			fi
+		done
+		for g in "${include[@]}"; do
+			[[ ${f} == "${g%/}"/* ]] && continue 2
+		done
+		unset exclude[i]
+	done
+
+	# Split the include list into directories and files
+	for f in "${include[@]}"; do
+		if [[ -d ${D}${f} ]]; then
+			incl_d[${#incl_d[@]}]=${f}
+		else
+			incl_f[${#incl_f[@]}]=${f}
+		fi
+	done
+
+	# Queue up for compression.
+	# ecompress{,dir} doesn't like to be called with empty argument lists.
+	[[ ${#incl_d[@]} -gt 0 ]] && ecompressdir --queue "${incl_d[@]}"
+	[[ ${#incl_f[@]} -gt 0 ]] && ecompress --queue "${incl_f[@]/#/${D}}"
+	[[ ${#exclude[@]} -gt 0 ]] && ecompressdir --ignore "${exclude[@]}"
+	return 0
+}
+
 install_qa_check() {
 	local f
 
@@ -47,6 +143,7 @@ install_qa_check() {
 
 	export STRIP_MASK
 	prepall
+	hasq "${EAPI}" 0 1 2 3 || prepcompress
 	ecompressdir --dequeue
 	ecompress --dequeue
 

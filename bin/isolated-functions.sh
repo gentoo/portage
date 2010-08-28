@@ -572,7 +572,7 @@ save_ebuild_env() {
 			best_version use_with use_enable register_die_hook \
 			keepdir unpack strip_duplicate_slashes econf einstall \
 			dyn_setup dyn_unpack dyn_clean into insinto exeinto docinto \
-			insopts diropts exeopts libopts \
+			insopts diropts exeopts libopts docompress \
 			abort_handler abort_prepare abort_configure abort_compile \
 			abort_test abort_install dyn_prepare dyn_configure \
 			dyn_compile dyn_test dyn_install \
