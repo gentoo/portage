@@ -98,6 +98,9 @@ def parse_args(args):
 	parser.add_option_group(update)
 
 	uld = optparse.OptionGroup(parser, '--update-use-local-desc options')
+	uld.add_option("--preserve-comments",
+		action="store_true",
+		help="preserve the comments from the existing use.local.desc file")
 	uld.add_option("--use-local-desc-output",
 		help="output file for use.local.desc data (or '-' for stdout)",
 		dest="uld_output")
@@ -160,6 +163,9 @@ def parse_args(args):
 			xml.etree.ElementTree
 		except NameError:
 			parser.error('--update-use-local-desc requires python with USE=xml!')
+
+	if options.uld_output == '-' and options.preserve_comments:
+		parser.error('--preserve-comments can not be used when outputting to stdout')
 
 	return parser, options, args
 
@@ -313,10 +319,12 @@ class GenCache(object):
 					level=logging.ERROR, noiselevel=-1)
 
 class GenUseLocalDesc(object):
-	def __init__(self, portdb, output=None):
+	def __init__(self, portdb, output=None,
+			preserve_comments=False):
 		self.returncode = os.EX_OK
 		self._portdb = portdb
 		self._output = output
+		self._preserve_comments = preserve_comments
 	
 	def run(self):
 		repo_path = self._portdb.porttrees[0]
@@ -333,18 +341,36 @@ class GenUseLocalDesc(object):
 			else:
 				desc_path = self._output
 
+			if self._preserve_comments:
+				output_mode = 'r+'
+			else:
+				output_mode = 'w'
+
 			try:
-				output = open(desc_path, 'w')
+				output = open(desc_path, output_mode)
 			except IOError as e:
 				writemsg_level(
-					"ERROR: failed to open output file: %s\n" % (e,),
+					"ERROR: failed to open output file %s: %s\n" % (output_mode,e,),
 					level=logging.ERROR, noiselevel=-1)
 				self.returncode |= 2
 				return
 		else:
 			output = sys.stdout
 
-		output.write('''
+		if self._preserve_comments:
+			while True:
+				l = output.readline()
+				# Seek through comments, until the first non-comment.
+				# If we hit empty line, then great.
+				# Otherwise, we need to seek back and add an empty line.
+				if not l.startswith('#'):
+					if l.rstrip() != '':
+						output.seek(-len(l), os.SEEK_CUR)
+						output.write('\n')
+					break
+			output.truncate()
+		else:	
+			output.write('''
 # This file is deprecated as per GLEP 56 in favor of metadata.xml. Please add
 # your descriptions to your package's metadata.xml ONLY.
 # * generated automatically using egencache *
@@ -498,7 +524,8 @@ def egencache_main(args):
 
 	if options.update_use_local_desc:
 		gen_desc = GenUseLocalDesc(portdb,
-			output=options.uld_output)
+			output=options.uld_output,
+			preserve_comments=options.preserve_comments)
 		gen_desc.run()
 		ret.append(gen_desc.returncode)
 

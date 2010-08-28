@@ -41,14 +41,18 @@ Also see the related \fB\-\-load\-average\fR option.
 .BR \-\-load\-average=LOAD
 Specifies that maximum load allowed when spawning multiple jobs.
 .TP
+.BR "\-\-portdir=PORTDIR"
+Override the portage tree location.
+.TP
+.BR "\-\-preserve\-comments"
+Preserve the comments found in the output use.local.desc file. This requires
+the output file to exist before egencache is called.
+.TP
 .BR "\-\-repo=REPO"
 Name of the repo to operate on (default repo is located at \fBPORTDIR\fR).
 The name should correspond the value of a \fBrepo_name\fR entry (see
 \fBportage\fR(5)) from one of the repositories that is configured via the
 \fBPORTDIR\fR or \fBPORTDIR_OVERLAY\fR variables (see \fBmake.conf\fR(5)).
-.TP
-.BR "\-\-portdir=PORTDIR"
-Override the portage tree location.
 .TP
 .BR "\-\-rsync"
 When used together with the \fB\-\-update\fR action, this enables a workaround
