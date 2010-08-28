@@ -1461,7 +1461,12 @@ def _post_src_install_uid_fix(mysettings, out):
 	use = frozenset(mysettings['PORTAGE_USE'].split())
 	for k in _vdb_use_conditional_keys:
 		v = mysettings.configdict['pkg'].get(k)
+		filename = os.path.join(build_info_dir, k)
 		if v is None:
+			try:
+				os.unlink(filename)
+			except OSError:
+				pass
 			continue
 
 		if k.endswith('DEPEND'):
@@ -1472,17 +1477,10 @@ def _post_src_install_uid_fix(mysettings, out):
 		v = use_reduce(v, uselist=use, token_class=token_class)
 		v = paren_enclose(v)
 		if not v:
-			filename = os.path.join(build_info_dir, k)
 			try:
-				st = os.stat(filename)
+				os.unlink(filename)
 			except OSError:
 				pass
-			else:
-				if st.st_size != 0:
-					try:
-						os.unlink(filename)
-					except OSError:
-						pass
 			continue
 		codecs.open(_unicode_encode(os.path.join(build_info_dir,
 			k), encoding=_encodings['fs'], errors='strict'),
