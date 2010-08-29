@@ -1448,7 +1448,11 @@ class Scheduler(PollScheduler):
 				node in later):
 				dependent = True
 				break
-			node_stack.extend(graph.child_nodes(node))
+
+			# Don't traverse children of uninstall nodes since
+			# those aren't dependencies in the usual sense.
+			if node.operation != "uninstall":
+				node_stack.extend(graph.child_nodes(node))
 
 		return dependent
 
