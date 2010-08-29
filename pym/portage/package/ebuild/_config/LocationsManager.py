@@ -24,6 +24,7 @@ class LocationsManager(object):
 		self.eprefix = eprefix
 		self.config_root = config_root
 		self.target_root = target_root
+		self._user_config = local_config
 		
 		if self.eprefix is None:
 			self.eprefix = ""
@@ -64,7 +65,7 @@ class LocationsManager(object):
 				writemsg("!!! ParseError: %s\n" % str(e), noiselevel=-1)
 				self.profiles = []
 
-		if local_config and self.profiles:
+		if self._user_config and self.profiles:
 			custom_prof = os.path.join(
 				self.config_root, CUSTOM_PROFILE_PATH)
 			if os.path.exists(custom_prof):
@@ -169,7 +170,12 @@ class LocationsManager(object):
 				self.overlay_profiles.append(profiles_dir)
 
 		self.profile_locations = [os.path.join(portdir, "profiles")] + self.overlay_profiles
+		self.profile_and_user_locations = self.profile_locations[:]
+		if self._user_config:
+			self.profile_and_user_locations.append(self.abs_user_config)
+
 		self.profile_locations = tuple(self.profile_locations)
+		self.profile_and_user_locations = tuple(self.profile_and_user_locations)
 
 		self.pmask_locations = [os.path.join(portdir, "profiles")]
 		self.pmask_locations.extend(self.profiles)

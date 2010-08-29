@@ -284,7 +284,7 @@ class config(object):
 			self.profile_path = locations_manager.profile_path
 			self.user_profile_dir = locations_manager.user_profile_dir
 			abs_user_config = locations_manager.abs_user_config
-			
+
 			make_conf = getconfig(
 				os.path.join(config_root, MAKE_CONF_FILE),
 				tolerant=tolerant, allow_sourcing=True) or {}
@@ -563,11 +563,7 @@ class config(object):
 
 			self._virtuals_manager = VirtualsManager(self.profiles)
 
-			locations = list(locations_manager.profile_locations)
-
 			if local_config:
-				locations.append(abs_user_config)
-
 				# package.accept_keywords and package.keywords
 				pkgdict = grabdict_package(
 					os.path.join(abs_user_config, "package.keywords"),
@@ -659,13 +655,15 @@ class config(object):
 							_local_repo_config(repo_name, repo_opts)
 
 			#getting categories from an external file now
-			self.categories = [grabfile(os.path.join(x, "categories")) for x in locations]
+			self.categories = [grabfile(os.path.join(x, "categories")) \
+				for x in locations_manager.profile_and_user_locations]
 			category_re = dbapi._category_re
 			self.categories = tuple(sorted(
 				x for x in stack_lists(self.categories, incremental=1)
 				if category_re.match(x) is not None))
 
-			archlist = [grabfile(os.path.join(x, "arch.list")) for x in locations]
+			archlist = [grabfile(os.path.join(x, "arch.list")) \
+				for x in locations_manager.profile_and_user_locations]
 			archlist = stack_lists(archlist, incremental=1)
 			self.configdict["conf"]["PORTAGE_ARCHLIST"] = " ".join(archlist)
 
