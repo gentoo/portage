@@ -200,6 +200,11 @@ class Scheduler(PollScheduler):
 			self.edebug = 1
 		self.pkgsettings = {}
 		self._config_pool = {}
+
+		# TODO: Replace the BlockerDB with a depgraph of installed packages
+		# that's updated incrementally with each upgrade/uninstall operation
+		# This will be useful for making quick and safe decisions with respect
+		# to aggressive parallelization discussed in bug #279623.
 		self._blocker_db = {}
 		for root in trees:
 			self._config_pool[root] = []
