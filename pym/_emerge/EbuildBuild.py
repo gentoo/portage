@@ -13,9 +13,6 @@ from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from portage.util import writemsg
 import portage
 from portage import os
-from portage import _encodings
-from portage import _unicode_encode
-import codecs
 from portage.output import colorize
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.doebuild import _check_temp_dir

@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # Don't use the unicode-wrapped os and shutil modules here since
@@ -13,7 +13,6 @@ from portage import _unicode_encode
 from portage.localization import _
 
 import selinux
-from selinux import is_selinux_enabled
 
 def copyfile(src, dest):
 	src = _unicode_encode(src, encoding=_encodings['fs'], errors='strict')

@@ -4,7 +4,6 @@
 __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
 
 import codecs
-import errno
 import gzip
 from itertools import chain
 import logging
@@ -43,7 +42,7 @@ from portage.eapi import eapi_exports_KV, eapi_exports_replace_vars, \
 from portage.elog import elog_process
 from portage.elog.messages import eerror, eqawarn
 from portage.exception import DigestException, FileNotFound, \
-	IncorrectParameter, InvalidAtom, InvalidDependString, PermissionDenied, \
+	IncorrectParameter, InvalidDependString, PermissionDenied, \
 	UnsupportedAPIException
 from portage.localization import _
 from portage.manifest import Manifest

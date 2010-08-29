@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AsynchronousTask import AsynchronousTask
@@ -8,10 +8,7 @@ import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
-from portage import _unicode_encode
-from portage import StringIO
 from portage.package.ebuild.fetch import _checksum_failure_temp_file
-import codecs
 
 class BinpkgVerifier(AsynchronousTask):
 	__slots__ = ("logfile", "pkg", "scheduler")

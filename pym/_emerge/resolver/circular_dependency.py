@@ -5,7 +5,6 @@ from __future__ import print_function
 
 from itertools import chain
 
-from portage.util import writemsg
 from portage.dep import use_reduce, extract_affecting_use, check_required_use, get_required_use_flags
 from portage.output import colorize
 from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange

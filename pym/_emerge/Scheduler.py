@@ -3,7 +3,6 @@
 
 from __future__ import print_function
 
-import codecs
 import gzip
 import logging
 import shutil
@@ -18,7 +17,6 @@ import portage
 from portage import StringIO
 from portage import os
 from portage import _encodings
-from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.const import LIBC_PACKAGE_ATOM

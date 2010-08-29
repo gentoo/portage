@@ -7,8 +7,6 @@ import logging
 
 import portage
 from portage.dep import Atom, match_from_list, use_reduce
-from portage.eapi import eapi_has_strong_blocks, eapi_has_use_deps, eapi_has_slot_deps, \
-	eapi_has_use_dep_defaults
 from portage.exception import InvalidDependString, ParseError
 from portage.localization import _
 from portage.util import writemsg, writemsg_level

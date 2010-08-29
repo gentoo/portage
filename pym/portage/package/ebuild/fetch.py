@@ -28,7 +28,7 @@ from portage import OrderedDict, os, selinux, _encodings, \
 	_shell_quote, _unicode_encode
 from portage.checksum import perform_md5, verify_all
 from portage.const import BASH_BINARY, CUSTOM_MIRRORS_FILE, \
-	EBUILD_SH_BINARY, GLOBAL_CONFIG_PATH
+	GLOBAL_CONFIG_PATH
 from portage.data import portage_gid, portage_uid, secpass, userpriv_groups
 from portage.exception import FileNotFound, OperationNotPermitted, \
 	PermissionDenied, PortageException, TryAgain

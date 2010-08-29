@@ -1,7 +1,6 @@
-# Copyright 2009 Gentoo Foundation
+# Copyright 2009-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import portage
 from portage.tests import TestCase
 from portage.util._pty import _can_test_pty_eof, _test_pty_eof
 

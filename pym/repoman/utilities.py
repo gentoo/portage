@@ -23,7 +23,6 @@ __all__ = [
 import codecs
 import errno
 import logging
-import re
 import sys
 from portage import os
 from portage import subprocess_getstatusoutput

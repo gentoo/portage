@@ -2,8 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
-import portage
-from portage import os
 
 class EbuildSpawnProcess(AbstractEbuildProcess):
 	"""

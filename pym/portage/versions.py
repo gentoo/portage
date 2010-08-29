@@ -1,5 +1,5 @@
 # versions.py -- core Portage functionality
-# Copyright 1998-2006 Gentoo Foundation
+# Copyright 1998-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -11,6 +11,7 @@ __all__ = [
 import re
 import warnings
 
+from portage.localization import _
 
 # \w is [a-zA-Z0-9_]
 
@@ -35,9 +36,6 @@ ver_regexp = re.compile("^" + _vr + "$")
 suffix_regexp = re.compile("^(alpha|beta|rc|pre|p)(\\d*)$")
 suffix_value = {"pre": -2, "p": 0, "alpha": -4, "beta": -3, "rc": -1}
 endversion_keys = ["pre", "p", "alpha", "beta", "rc"]
-
-from portage.exception import InvalidData
-from portage.localization import _
 
 def ververify(myver, silent=1):
 	if ver_regexp.match(myver):

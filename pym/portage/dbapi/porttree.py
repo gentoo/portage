@@ -1,4 +1,4 @@
-# Copyright 1998-2009 Gentoo Foundation
+# Copyright 1998-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -32,7 +32,6 @@ from portage import eclass_cache, auxdbkeys, \
 	_eapi_is_deprecated
 from portage import os
 from portage import _encodings
-from portage import _unicode_decode
 from portage import _unicode_encode
 from portage import OrderedDict
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase

@@ -25,7 +25,7 @@ from itertools import chain
 import portage
 from portage import os
 from portage import digraph
-from portage import _unicode_decode, _unicode_encode
+from portage import _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import GLOBAL_CONFIG_PATH, NEWS_LIB_PATH
 from portage.dbapi.dep_expand import dep_expand

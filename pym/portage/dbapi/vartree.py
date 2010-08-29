@@ -54,7 +54,7 @@ from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 
 import codecs
 import gc
-import re, shutil, stat, errno, copy, subprocess
+import re, shutil, stat, errno, subprocess
 import logging
 import os as _os
 import stat

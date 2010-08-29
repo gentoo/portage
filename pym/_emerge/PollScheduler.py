@@ -8,7 +8,6 @@ import time
 
 from portage import _encodings
 from portage import _unicode_encode
-from portage import os
 from portage.util import writemsg_level
 
 from _emerge.SlotObject import SlotObject
