@@ -92,7 +92,7 @@ class Binpkg(CompositeTask):
 		pkg_count = self.pkg_count
 		if not (self.opts.pretend or self.opts.fetchonly):
 			self._build_dir.lock()
-			# Initialze PORTAGE_LOG_FILE (clean_log won't work without it).
+			# Initialize PORTAGE_LOG_FILE (clean_log won't work without it).
 			portage.prepare_build_dirs(self.settings["ROOT"], self.settings, 1)
 			# If necessary, discard old log so that we don't
 			# append to it.

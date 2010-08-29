@@ -2937,7 +2937,7 @@ class depgraph(object):
 		is consistent such that initially satisfied deep dependencies are not
 		broken in the new graph. Initially unsatisfied dependencies are
 		irrelevant since we only want to avoid breaking dependencies that are
-		intially satisfied.
+		initially satisfied.
 
 		Since this method can consume enough time to disturb users, it is
 		currently only enabled by the --complete-graph option.

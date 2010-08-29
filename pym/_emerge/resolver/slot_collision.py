@@ -225,7 +225,7 @@ class slot_conflict_handler(object):
 
 					msg.append(" pulled in by\n")
 
-					selected_for_dispaly = set()
+					selected_for_display = set()
 
 					for (type, sub_type), parents in collision_reasons.items():
 						#From each (type, sub_type) pair select at least one atom.
@@ -246,7 +246,7 @@ class slot_conflict_handler(object):
 										best_matches[atom.cp] = (ppkg, atom)
 								else:
 									best_matches[atom.cp] = (ppkg, atom)
-							selected_for_dispaly.update(best_matches.values())
+							selected_for_display.update(best_matches.values())
 						elif type == "use":
 							#Prefer atoms with unconditional use deps over, because it's
 							#not possible to change them on the parent, which means there
@@ -271,8 +271,8 @@ class slot_conflict_handler(object):
 							else:
 								matches = conditional_matches
 							
-							if not selected_for_dispaly.intersection(matches):
-								selected_for_dispaly.add(matches.pop())
+							if not selected_for_display.intersection(matches):
+								selected_for_display.add(matches.pop())
 
 					def highlight_violations(atom, version, use=[]):
 						"""Colorize parts of an atom"""
@@ -308,7 +308,7 @@ class slot_conflict_handler(object):
 						
 						return atom_str
 
-					for parent_atom in selected_for_dispaly:
+					for parent_atom in selected_for_display:
 						parent, atom = parent_atom
 						msg.append(2*indent)
 						if isinstance(parent,
@@ -337,15 +337,15 @@ class slot_conflict_handler(object):
 							msg.append("%s required by %s" % (atom_str, parent))
 						msg.append("\n")
 					
-					if not selected_for_dispaly:
+					if not selected_for_display:
 						msg.append(2*indent)
 						msg.append("(no parents that aren't satisfied by other packages in this slot)\n")
 						self.conflict_is_unspecific = True
 					
-					omitted_parents = num_all_specific_atoms - len(selected_for_dispaly)
+					omitted_parents = num_all_specific_atoms - len(selected_for_display)
 					if omitted_parents:
 						msg.append(2*indent)
-						if len(selected_for_dispaly) > 1:
+						if len(selected_for_display) > 1:
 							msg.append("(and %d more with the same problems)\n" % omitted_parents)
 						else:
 							msg.append("(and %d more with the same problem)\n" % omitted_parents)
