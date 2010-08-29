@@ -40,29 +40,35 @@ install_symlink_html_docs() {
 	fi
 }
 
-# similar to readlink -f, but only expands symlinks up to the last
-# directory component of the path
-canonicalise_dir() {
-	local ret wd=$(pwd)
-	if [[ -d $1 ]]; then
-		cd -P "$1" 2>/dev/null && pwd -P
-		ret=$?
-	else
-		cd -P "${1%"${1##*/}"}" 2>/dev/null && echo "$(pwd -P)/${1##*/}"
-		ret=$?
-	fi
+# replacement for "readlink -f" or "realpath"
+canonicalize() {
+	local f=$1 b n=10 wd=$(pwd)
+	while [[ ${f: -1} = / && ${#f} -gt 1 ]]; do
+		f=${f%/}
+	done
+	while (( n-- > 0 )); do
+		b=${f##*/}
+		cd "${f%"${b}"}" 2>/dev/null || break
+		if [[ ! -L ${b} ]]; then
+			f=$(pwd -P)
+			echo "${f%/}/${b}"
+			cd "${wd}"
+			return 0
+		fi
+		f=$(readlink "${b}")
+	done
 	cd "${wd}"
-	return ${ret}
+	return 1
 }
 
 prepcompress() {
 	local -a include exclude incl_d incl_f
 	local f g i real_f real_d
 
-	# Canonicalise path names and check for their existence.
-	real_d=$(canonicalise_dir "${D}")
+	# Canonicalize path names and check for their existence.
+	real_d=$(canonicalize "${D}")
 	for (( i = 0; i < ${#PORTAGE_DOCOMPRESS[@]}; i++ )); do
-		real_f=$(canonicalise_dir "${D}${PORTAGE_DOCOMPRESS[i]}")
+		real_f=$(canonicalize "${D}${PORTAGE_DOCOMPRESS[i]}")
 		f=${real_f#"${real_d}"}
 		if [[ ${real_f} != "${f}" ]] && [[ -d ${real_f} || -f ${real_f} ]]
 		then
@@ -73,7 +79,7 @@ prepcompress() {
 		fi
 	done
 	for (( i = 0; i < ${#PORTAGE_DOCOMPRESS_SKIP[@]}; i++ )); do
-		real_f=$(canonicalise_dir "${D}${PORTAGE_DOCOMPRESS_SKIP[i]}")
+		real_f=$(canonicalize "${D}${PORTAGE_DOCOMPRESS_SKIP[i]}")
 		f=${real_f#"${real_d}"}
 		if [[ ${real_f} != "${f}" ]] && [[ -d ${real_f} || -f ${real_f} ]]
 		then
