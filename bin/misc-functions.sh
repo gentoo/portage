@@ -85,8 +85,9 @@ prepcompress() {
 	done
 
 	# Remove redundant entries from lists.
-	# For the include list, remove any entries that are
-	# contained in a directory in the include or exclude lists.
+	# For the include list, remove any entries that are:
+	# a) contained in a directory in the include or exclude lists, or
+	# b) identical with an entry in the exclude list.
 	for (( i = ${#include[@]} - 1; i >= 0; i-- )); do
 		f=${include[i]}
 		for g in "${include[@]}"; do
