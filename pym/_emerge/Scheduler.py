@@ -222,6 +222,7 @@ class Scheduler(PollScheduler):
 
 		self._prefetchers = weakref.WeakValueDictionary()
 		self._pkg_queue = []
+		self._running_tasks = set()
 		self._completed_tasks = set()
 
 		self._failed_pkgs = []
@@ -1256,6 +1257,7 @@ class Scheduler(PollScheduler):
 
 	def _do_merge_exit(self, merge):
 		pkg = merge.merge.pkg
+		self._running_tasks.remove(pkg)
 		if merge.returncode != os.EX_OK:
 			settings = merge.merge.settings
 			build_dir = settings.get("PORTAGE_BUILDDIR")
@@ -1308,6 +1310,7 @@ class Scheduler(PollScheduler):
 				self._task_queues.merge.add(merge)
 				self._status_display.merges = len(self._task_queues.merge)
 		else:
+			self._running_tasks.remove(build.pkg)
 			settings = build.settings
 			build_dir = settings.get("PORTAGE_BUILDDIR")
 			build_log = settings.get("PORTAGE_LOG_FILE")
@@ -1499,8 +1502,7 @@ class Scheduler(PollScheduler):
 			not (self._failed_pkgs and not self._build_opts.fetchonly))
 
 	def _is_work_scheduled(self):
-		return bool(self._jobs or \
-			self._task_queues.merge or self._merge_wait_queue)
+		return bool(self._running_tasks)
 
 	def _schedule_tasks(self):
 
@@ -1585,6 +1587,7 @@ class Scheduler(PollScheduler):
 				self._pkg_count.curval += 1
 
 			task = self._task(pkg)
+			self._running_tasks.add(pkg)
 
 			if pkg.installed:
 				merge = PackageMerge(merge=task)
