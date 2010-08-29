@@ -1,4 +1,4 @@
-# Copyright: 2009 Gentoo Foundation
+# Copyright: 2009-2010 Gentoo Foundation
 # Author(s): Petteri R&#228;ty (betelgeuse@gentoo.org)
 # License: GPL2
 
@@ -8,7 +8,7 @@ from portage.cache import fs_template
 from portage.versions import catsplit
 from portage import cpv_getkey
 from portage import os
-from portage import _encoding
+from portage import _encodings
 from portage import _unicode_decode
 import xattr
 from errno import ENODATA,ENOSPC,E2BIG
