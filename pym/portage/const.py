@@ -114,3 +114,21 @@ MANIFEST2_IDENTIFIERS    = ("AUX", "MISC", "DIST", "EBUILD")
 # ===========================================================================
 # END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANT
 # ===========================================================================
+
+# Private constants for use in conditional code in order to minimize the diff
+# between branches.
+_ENABLE_DYN_LINK_MAP    = True
+_ENABLE_PRESERVE_LIBS   = True
+_ENABLE_SET_CONFIG      = True
+
+
+# The definitions above will differ between branches, so it's useful to have
+# common lines of diff context here in order to avoid merge conflicts.
+
+if not _ENABLE_PRESERVE_LIBS:
+	SUPPORTED_FEATURES = set(SUPPORTED_FEATURES)
+	SUPPORTED_FEATURES.remove("preserve-libs")
+	SUPPORTED_FEATURES = frozenset(SUPPORTED_FEATURES)
+
+if not _ENABLE_SET_CONFIG:
+	WORLD_SETS_FILE = '/dev/null'
