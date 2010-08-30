@@ -5,7 +5,7 @@ from _emerge.Package import Package
 from _emerge.PackageArg import PackageArg
 from portage.dep import check_required_use
 from portage.output import colorize
-from portage.sets.base import InternalPackageSet
+from portage._sets.base import InternalPackageSet
 from portage.util import writemsg
 from portage.versions import cpv_getversion, vercmp
 

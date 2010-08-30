@@ -34,8 +34,8 @@ from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
-from portage.sets import load_default_config, SETPREFIX
-from portage.sets.base import InternalPackageSet
+from portage._sets import load_default_config, SETPREFIX
+from portage._sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, \
 	writemsg_level, writemsg_stdout
 from portage._global_updates import _global_updates

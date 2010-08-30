@@ -5,8 +5,8 @@ import logging
 
 from portage import os
 from portage.util import grabfile_package, stack_lists
-from portage.sets.base import PackageSet
-from portage.sets import get_boolean
+from portage._sets.base import PackageSet
+from portage._sets import get_boolean
 from portage.util import writemsg_level
 
 __all__ = ["PackagesSystemSet"]

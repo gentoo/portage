@@ -24,8 +24,8 @@ from portage.elog.messages import eerror
 from portage.localization import _
 from portage.output import colorize, create_color_func, red
 bad = create_color_func("BAD")
-from portage.sets import SETPREFIX
-from portage.sets.base import InternalPackageSet
+from portage._sets import SETPREFIX
+from portage._sets.base import InternalPackageSet
 from portage.util import writemsg, writemsg_level
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen

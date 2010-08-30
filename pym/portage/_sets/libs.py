@@ -4,8 +4,8 @@
 from __future__ import print_function
 
 from portage.localization import _
-from portage.sets.base import PackageSet
-from portage.sets import get_boolean
+from portage._sets.base import PackageSet
+from portage._sets import get_boolean
 from portage.versions import catpkgsplit
 import portage
 

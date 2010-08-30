@@ -81,16 +81,21 @@ class SetConfig(object):
 		for sname in parser.sections():
 			# find classname for current section, default to file based sets
 			if not parser.has_option(sname, "class"):
-				classname = "portage.sets.files.StaticFileSet"
+				classname = "portage._sets.files.StaticFileSet"
 			else:
 				classname = parser.get(sname, "class")
-			
+
+			if classname.startswith('portage.sets.'):
+				# The module has been made private, but we still support
+				# the previous namespace for sets.conf entries.
+				classname = classname.replace('sets', '_sets', 1)
+
 			# try to import the specified class
 			try:
 				setclass = load_mod(classname)
 			except (ImportError, AttributeError):
 				try:
-					setclass = load_mod("portage.sets."+classname)
+					setclass = load_mod("portage._sets." + classname)
 				except (ImportError, AttributeError):
 					self.errors.append(_("Could not import '%(class)s' for section "
 						"'%(section)s'") % {"class": classname, "section": sname})

@@ -14,8 +14,8 @@ from portage.const import USER_CONFIG_PATH, WORLD_FILE, WORLD_SETS_FILE
 from portage.localization import _
 from portage.locks import lockfile, unlockfile
 from portage import portage_gid
-from portage.sets.base import PackageSet, EditablePackageSet
-from portage.sets import SetConfigError, SETPREFIX, get_boolean
+from portage._sets.base import PackageSet, EditablePackageSet
+from portage._sets import SetConfigError, SETPREFIX, get_boolean
 from portage.env.loaders import ItemFileLoader, KeyListFileLoader
 from portage.env.validators import ValidAtomValidator
 from portage import cpv_getkey

@@ -32,7 +32,7 @@ from portage.data import secpass
 from portage.dbapi.dep_expand import dep_expand
 from portage.util import normalize_path as normpath
 from portage.util import shlex_split, writemsg_level, writemsg_stdout
-from portage.sets import SETPREFIX
+from portage._sets import SETPREFIX
 from portage._global_updates import _global_updates
 
 from _emerge.actions import action_config, action_sync, action_metadata, \
@@ -1001,9 +1001,9 @@ def ionice(settings):
 		out.eerror("See the make.conf(5) man page for PORTAGE_IONICE_COMMAND usage instructions.")
 
 def setconfig_fallback(root_config):
-	from portage.sets.base import DummyPackageSet
-	from portage.sets.files import WorldSelectedSet
-	from portage.sets.profiles import PackagesSystemSet
+	from portage._sets.base import DummyPackageSet
+	from portage._sets.files import WorldSelectedSet
+	from portage._sets.profiles import PackagesSystemSet
 	setconfig = root_config.setconfig
 	setconfig.psets['world'] = DummyPackageSet(atoms=['@selected', '@system'])
 	setconfig.psets['selected'] = WorldSelectedSet(root_config.settings['EROOT'])
