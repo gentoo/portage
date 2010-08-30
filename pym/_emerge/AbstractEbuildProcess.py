@@ -152,6 +152,9 @@ class AbstractEbuildProcess(SpawnProcess):
 		# With sesandbox, logging works through a pty but not through a
 		# normal pipe. So, disable logging if ptys are broken.
 		# See Bug #162404.
+		# TODO: Add support for logging via named pipe (fifo) with
+		# sesandbox, since EbuildIpcDaemon uses a fifo and it's known
+		# to be compatible with sesandbox.
 		return not ('sesandbox' in self.settings.features \
 			and self.settings.selinux_enabled()) or os.isatty(slave_fd)
 
