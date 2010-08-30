@@ -664,6 +664,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	resolver = depgraph(settings, trees, myopts, resolver_params, spinner)
 	resolver._load_vdb()
 	vardb = resolver._frozen_config.trees[myroot]["vartree"].dbapi
+	real_vardb = trees[myroot]["vartree"].dbapi
 
 	if action == "depclean":
 
@@ -888,7 +889,6 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		# Check if any of these package are the sole providers of libraries
 		# with consumers that have not been selected for removal. If so, these
 		# packages and any dependencies need to be added to the graph.
-		real_vardb = trees[myroot]["vartree"].dbapi
 		linkmap = real_vardb._linkmap
 		consumer_cache = {}
 		provider_cache = {}
