@@ -33,6 +33,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, \
 	PORTAGE_PACKAGE_ATOM, PRIVATE_PATH, VDB_PATH
+from portage.const import _ENABLE_DYN_LINK_MAP, _ENABLE_PRESERVE_LIBS
 from portage.dbapi import dbapi
 from portage.exception import CommandNotFound, \
 	InvalidData, InvalidPackageName, \
@@ -139,14 +140,19 @@ class vardbapi(dbapi):
 		self._counter_path = os.path.join(self._eroot,
 			CACHE_PATH, "counter")
 
-		try:
-			self._plib_registry = PreservedLibsRegistry(self._eroot,
-				os.path.join(self._eroot, PRIVATE_PATH, "preserved_libs_registry"))
-		except PermissionDenied:
-			# apparently this user isn't allowed to access PRIVATE_PATH
-			self._plib_registry = None
+		self._plib_registry = None
+		if _ENABLE_PRESERVE_LIBS:
+			try:
+				self._plib_registry = PreservedLibsRegistry(self._eroot,
+					os.path.join(self._eroot, PRIVATE_PATH,
+					"preserved_libs_registry"))
+			except PermissionDenied:
+				# apparently this user isn't allowed to access PRIVATE_PATH
+				pass
 
-		self._linkmap = LinkageMap(self)
+		self._linkmap = None
+		if _ENABLE_DYN_LINK_MAP:
+			self._linkmap = LinkageMap(self)
 		self._owners = self._owners_db(self)
 
 	def getpath(self, mykey, filename=None):
