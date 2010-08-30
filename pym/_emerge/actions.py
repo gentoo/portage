@@ -882,11 +882,12 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	cleanlist = create_cleanlist()
 	clean_set = set(cleanlist)
 
+	real_vardb = trees[myroot]["vartree"].dbapi
 	if cleanlist and \
 		real_vardb._linkmap is not None and \
 		myopts.get('--depclean-lib-check') != 'n':
 
-		# Check if any of these package are the sole providers of libraries
+		# Check if any of these packages are the sole providers of libraries
 		# with consumers that have not been selected for removal. If so, these
 		# packages and any dependencies need to be added to the graph.
 		linkmap = real_vardb._linkmap
