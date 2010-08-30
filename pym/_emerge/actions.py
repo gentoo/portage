@@ -28,6 +28,7 @@ from portage import digraph
 from portage import _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import GLOBAL_CONFIG_PATH, NEWS_LIB_PATH
+from portage.const import _ENABLE_DYN_LINK_MAP
 from portage.dbapi.dep_expand import dep_expand
 from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 	red, yellow
@@ -534,6 +535,11 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	# specific packages.
 
 	msg = []
+	if not _ENABLE_DYN_LINK_MAP:
+		msg.append("Depclean may break link level dependencies. Thus, it is\n")
+		msg.append("recommended to use a tool such as " + good("`revdep-rebuild`") + " (from\n")
+		msg.append("app-portage/gentoolkit) in order to detect such breakage.\n")
+		msg.append("\n")
 	msg.append("Always study the list of packages to be cleaned for any obvious\n")
 	msg.append("mistakes. Packages that are part of the world set will always\n")
 	msg.append("be kept.  They can be manually added to this set with\n")
