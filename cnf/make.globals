@@ -53,7 +53,8 @@ FEATURES="assume-digests distlocks fixpackages fixlafiles news parallel-fetch pr
 # FEATURES=protect-owned to operate smoothly in all cases.
 COLLISION_IGNORE="/lib/modules"
 
-# Enable for global testing
+# Enable preserve-libs for testing with portage versions that support it.
+# This setting is commented out for portage versions that don't support it.
 FEATURES="${FEATURES} preserve-libs"
 
 # Default chunksize for binhost comms
