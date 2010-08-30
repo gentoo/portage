@@ -1995,11 +1995,11 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
 		if [[ $EBUILD_PHASE != depend ]] ; then
 
 			case "$EAPI" in
-				4|4_pre1)
-					_ebuild_helpers_path="$PORTAGE_BIN_PATH/ebuild-helpers/4:$PORTAGE_BIN_PATH/ebuild-helpers"
+				0|1|2|3)
+					_ebuild_helpers_path="$PORTAGE_BIN_PATH/ebuild-helpers"
 					;;
 				*)
-					_ebuild_helpers_path="$PORTAGE_BIN_PATH/ebuild-helpers"
+					_ebuild_helpers_path="$PORTAGE_BIN_PATH/ebuild-helpers/4:$PORTAGE_BIN_PATH/ebuild-helpers"
 					;;
 			esac
 
