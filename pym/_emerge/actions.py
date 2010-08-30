@@ -881,7 +881,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		# with consumers that have not been selected for removal. If so, these
 		# packages and any dependencies need to be added to the graph.
 		real_vardb = trees[myroot]["vartree"].dbapi
-		linkmap = real_vardb.linkmap
+		linkmap = real_vardb._linkmap
 		consumer_cache = {}
 		provider_cache = {}
 		consumer_map = {}

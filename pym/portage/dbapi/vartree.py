@@ -146,7 +146,7 @@ class vardbapi(dbapi):
 			# apparently this user isn't allowed to access PRIVATE_PATH
 			self._plib_registry = None
 
-		self.linkmap = LinkageMap(self)
+		self._linkmap = LinkageMap(self)
 		self._owners = self._owners_db(self)
 
 	def getpath(self, mykey, filename=None):
@@ -2160,7 +2160,7 @@ class dblink(object):
 
 	def _linkmap_rebuild(self, **kwargs):
 		"""
-		Rebuild the self.linkmap if it's not broken due to missing
+		Rebuild the self._linkmap if it's not broken due to missing
 		scanelf binary. Also, return early if preserve-libs is disabled
 		and the preserve-libs registry is empty.
 		"""
@@ -2169,7 +2169,7 @@ class dblink(object):
 			not self.vartree.dbapi._plib_registry.hasEntries()):
 			return
 		try:
-			self.vartree.dbapi.linkmap.rebuild(**kwargs)
+			self.vartree.dbapi._linkmap.rebuild(**kwargs)
 		except CommandNotFound as e:
 			self._linkmap_broken = True
 			self._display_merge(_("!!! Disabling preserve-libs " \
@@ -2187,7 +2187,7 @@ class dblink(object):
 			return None
 
 		os = _os_merge
-		linkmap = self.vartree.dbapi.linkmap
+		linkmap = self.vartree.dbapi._linkmap
 		installed_instance = self._installed_instance
 		old_contents = installed_instance.getcontents()
 		root = self._eroot
@@ -2369,7 +2369,7 @@ class dblink(object):
 				path_node_map[path] = node
 			return node
 
-		linkmap = self.vartree.dbapi.linkmap
+		linkmap = self.vartree.dbapi._linkmap
 		for cpv, plibs in plib_dict.items():
 			for f in plibs:
 				path_cpv_map[f] = cpv
@@ -2379,7 +2379,7 @@ class dblink(object):
 				lib_graph.add(preserved_node, None)
 				preserved_paths.add(f)
 				preserved_nodes.add(preserved_node)
-				for c in self.vartree.dbapi.linkmap.findConsumers(f):
+				for c in self.vartree.dbapi._linkmap.findConsumers(f):
 					consumer_node = path_to_node(c)
 					if not consumer_node.file_exists():
 						continue
@@ -3238,7 +3238,7 @@ class dblink(object):
 			dblnk._clear_contents_cache()
 		self._clear_contents_cache()
 
-		linkmap = self.vartree.dbapi.linkmap
+		linkmap = self.vartree.dbapi._linkmap
 		self._linkmap_rebuild(include_file=os.path.join(inforoot,
 			linkmap._needed_aux_key))
 
@@ -3820,7 +3820,7 @@ class dblink(object):
 
 		finally:
 			self.settings.pop('REPLACING_VERSIONS', None)
-			self.vartree.dbapi.linkmap._clear_cache()
+			self.vartree.dbapi._linkmap._clear_cache()
 			self.unlockdb()
 			self.vartree.dbapi._bump_mtime(self.mycpv)
 		return retval
@@ -3927,7 +3927,7 @@ def unmerge(cat, pkg, myroot=None, settings=None,
 			return retval
 		return os.EX_OK
 	finally:
-		vartree.dbapi.linkmap._clear_cache()
+		vartree.dbapi._linkmap._clear_cache()
 		mylink.unlockdb()
 
 def write_contents(contents, root, f):

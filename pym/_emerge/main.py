@@ -224,7 +224,7 @@ def display_preserved_libs(vardbapi, myopts):
 			print(colorize("WARN", "!!!") + " existing preserved libs:")
 
 		plibdata = vardbapi._plib_registry.getPreservedLibs()
-		linkmap = vardbapi.linkmap
+		linkmap = vardbapi._linkmap
 		consumer_map = {}
 		owners = {}
 		linkmap_broken = False

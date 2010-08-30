@@ -42,7 +42,7 @@ class LibraryFileConsumerSet(LibraryConsumerSet):
 	def load(self):
 		consumers = set()
 		for lib in self.files:
-			consumers.update(self.dbapi.linkmap.findConsumers(lib))
+			consumers.update(self.dbapi._linkmap.findConsumers(lib))
 
 		if not consumers:
 			return
@@ -67,10 +67,10 @@ class PreservedLibraryConsumerSet(LibraryConsumerSet):
 				for lib in libs:
 					if self.debug:
 						print(lib)
-						for x in sorted(self.dbapi.linkmap.findConsumers(lib)):
+						for x in sorted(self.dbapi._linkmap.findConsumers(lib)):
 							print("    ", x)
 						print("-"*40)
-					consumers.update(self.dbapi.linkmap.findConsumers(lib))
+					consumers.update(self.dbapi._linkmap.findConsumers(lib))
 			# Don't rebuild packages just because they contain preserved
 			# libs that happen to be consumers of other preserved libs.
 			for libs in plib_dict.values():
