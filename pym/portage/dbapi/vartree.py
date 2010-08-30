@@ -140,11 +140,11 @@ class vardbapi(dbapi):
 			CACHE_PATH, "counter")
 
 		try:
-			self.plib_registry = PreservedLibsRegistry(self._eroot,
+			self._plib_registry = PreservedLibsRegistry(self._eroot,
 				os.path.join(self._eroot, PRIVATE_PATH, "preserved_libs_registry"))
 		except PermissionDenied:
 			# apparently this user isn't allowed to access PRIVATE_PATH
-			self.plib_registry = None
+			self._plib_registry = None
 
 		self.linkmap = LinkageMap(self)
 		self._owners = self._owners_db(self)
@@ -1525,7 +1525,7 @@ class dblink(object):
 			self._clear_contents_cache()
 
 			# Remove the registration of preserved libs for this pkg instance
-			plib_registry = self.vartree.dbapi.plib_registry
+			plib_registry = self.vartree.dbapi._plib_registry
 			plib_registry.unregister(self.mycpv, self.settings["SLOT"],
 				self.vartree.dbapi.cpv_counter(self.mycpv))
 
@@ -1567,7 +1567,7 @@ class dblink(object):
 			else:
 				# Prune any preserved libs that may have
 				# been unmerged with this package.
-				self.vartree.dbapi.plib_registry.pruneNonExisting()
+				self.vartree.dbapi._plib_registry.pruneNonExisting()
 
 		finally:
 			self.vartree.dbapi._bump_mtime(self.mycpv)
@@ -2166,7 +2166,7 @@ class dblink(object):
 		"""
 		if self._linkmap_broken or \
 			("preserve-libs" not in self.settings.features and \
-			not self.vartree.dbapi.plib_registry.hasEntries()):
+			not self.vartree.dbapi._plib_registry.hasEntries()):
 			return
 		try:
 			self.vartree.dbapi.linkmap.rebuild(**kwargs)
@@ -2345,12 +2345,12 @@ class dblink(object):
 		"""
 
 		if self._linkmap_broken or \
-			not self.vartree.dbapi.plib_registry.hasEntries():
+			not self.vartree.dbapi._plib_registry.hasEntries():
 			return {}
 
 		# Since preserved libraries can be consumers of other preserved
 		# libraries, use a graph to track consumer relationships.
-		plib_dict = self.vartree.dbapi.plib_registry.getPreservedLibs()
+		plib_dict = self.vartree.dbapi._plib_registry.getPreservedLibs()
 		lib_graph = digraph()
 		preserved_nodes = set()
 		preserved_paths = set()
@@ -2488,7 +2488,7 @@ class dblink(object):
 				if x == prev:
 					break
 
-		self.vartree.dbapi.plib_registry.pruneNonExisting()
+		self.vartree.dbapi._plib_registry.pruneNonExisting()
 
 	def _collision_protect(self, srcroot, destroot, mypkglist, mycontents):
 
@@ -2500,7 +2500,7 @@ class dblink(object):
 
 			# For collisions with preserved libraries, the current package
 			# will assume ownership and the libraries will be unregistered.
-			plib_dict = self.vartree.dbapi.plib_registry.getPreservedLibs()
+			plib_dict = self.vartree.dbapi._plib_registry.getPreservedLibs()
 			plib_cpv_map = {}
 			plib_paths = set()
 			for cpv, paths in plib_dict.items():
@@ -3304,7 +3304,7 @@ class dblink(object):
 
 		# keep track of the libs we preserved
 		if preserve_paths:
-			self.vartree.dbapi.plib_registry.register(self.mycpv,
+			self.vartree.dbapi._plib_registry.register(self.mycpv,
 				slot, counter, sorted(preserve_paths))
 
 		# Check for file collisions with blocking packages
@@ -3319,7 +3319,7 @@ class dblink(object):
 
 		# Unregister any preserved libs that this package has overwritten
 		# and update the contents of the packages that owned them.
-		plib_registry = self.vartree.dbapi.plib_registry
+		plib_registry = self.vartree.dbapi._plib_registry
 		plib_dict = plib_registry.getPreservedLibs()
 		for cpv, paths in plib_collisions.items():
 			if cpv not in plib_dict:
@@ -3773,8 +3773,8 @@ class dblink(object):
 		self.lockdb()
 		self.vartree.dbapi._bump_mtime(self.mycpv)
 		try:
-			self.vartree.dbapi.plib_registry.load()
-			self.vartree.dbapi.plib_registry.pruneNonExisting()
+			self.vartree.dbapi._plib_registry.load()
+			self.vartree.dbapi._plib_registry.pruneNonExisting()
 			retval = self.treewalk(mergeroot, myroot, inforoot, myebuild,
 				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 
@@ -3919,8 +3919,8 @@ def unmerge(cat, pkg, myroot=None, settings=None,
 	try:
 		mylink.lockdb()
 		if mylink.exists():
-			vartree.dbapi.plib_registry.load()
-			vartree.dbapi.plib_registry.pruneNonExisting()
+			vartree.dbapi._plib_registry.load()
+			vartree.dbapi._plib_registry.pruneNonExisting()
 			retval = mylink.unmerge(ldpath_mtimes=ldpath_mtimes)
 			if retval == os.EX_OK:
 				mylink.delete()

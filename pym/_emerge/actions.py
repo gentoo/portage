@@ -447,7 +447,7 @@ def action_build(settings, trees, mtimedb,
 				portage.writemsg_stdout(colorize("WARN", "WARNING:")
 					+ " AUTOCLEAN is disabled.  This can cause serious"
 					+ " problems due to overlapping packages.\n")
-			trees[settings["ROOT"]]["vartree"].dbapi.plib_registry.pruneNonExisting()
+			trees[settings["ROOT"]]["vartree"].dbapi._plib_registry.pruneNonExisting()
 
 		return retval
 

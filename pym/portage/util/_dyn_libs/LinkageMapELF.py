@@ -174,9 +174,9 @@ class LinkageMapELF(object):
 		# have to call scanelf for preserved libs here as they aren't 
 		# registered in NEEDED.ELF.2 files
 		plibs = set()
-		if self._dbapi.plib_registry and self._dbapi.plib_registry.getPreservedLibs():
+		if self._dbapi._plib_registry and self._dbapi._plib_registry.getPreservedLibs():
 			args = ["/usr/bin/scanelf", "-qF", "%a;%F;%S;%r;%n"]
-			for items in self._dbapi.plib_registry.getPreservedLibs().values():
+			for items in self._dbapi._plib_registry.getPreservedLibs().values():
 				plibs.update(items)
 				args.extend(os.path.join(root, x.lstrip("." + os.sep)) \
 					for x in items)

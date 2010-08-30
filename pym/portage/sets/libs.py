@@ -59,7 +59,7 @@ class LibraryFileConsumerSet(LibraryConsumerSet):
 
 class PreservedLibraryConsumerSet(LibraryConsumerSet):
 	def load(self):
-		reg = self.dbapi.plib_registry
+		reg = self.dbapi._plib_registry
 		consumers = set()
 		if reg:
 			plib_dict = reg.getPreservedLibs()

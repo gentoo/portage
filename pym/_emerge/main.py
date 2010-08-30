@@ -212,9 +212,9 @@ def display_preserved_libs(vardbapi, myopts):
 	MAX_DISPLAY = 3
 
 	# Ensure the registry is consistent with existing files.
-	vardbapi.plib_registry.pruneNonExisting()
+	vardbapi._plib_registry.pruneNonExisting()
 
-	if vardbapi.plib_registry.hasEntries():
+	if vardbapi._plib_registry.hasEntries():
 		if "--quiet" in myopts:
 			print()
 			print(colorize("WARN", "!!!") + " existing preserved libs found")
@@ -223,7 +223,7 @@ def display_preserved_libs(vardbapi, myopts):
 			print()
 			print(colorize("WARN", "!!!") + " existing preserved libs:")
 
-		plibdata = vardbapi.plib_registry.getPreservedLibs()
+		plibdata = vardbapi._plib_registry.getPreservedLibs()
 		linkmap = vardbapi.linkmap
 		consumer_map = {}
 		owners = {}
