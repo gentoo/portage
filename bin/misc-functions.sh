@@ -43,10 +43,10 @@ install_symlink_html_docs() {
 # replacement for "readlink -f" or "realpath"
 canonicalize() {
 	local f=$1 b n=10 wd=$(pwd)
-	while [[ ${f: -1} = / && ${#f} -gt 1 ]]; do
-		f=${f%/}
-	done
 	while (( n-- > 0 )); do
+		while [[ ${f: -1} = / && ${#f} -gt 1 ]]; do
+			f=${f%/}
+		done
 		b=${f##*/}
 		cd "${f%"${b}"}" 2>/dev/null || break
 		if [[ ! -L ${b} ]]; then
