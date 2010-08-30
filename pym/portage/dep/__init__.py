@@ -1646,7 +1646,10 @@ def match_from_list(mydep, candidate_list):
 
 	from portage.util import writemsg
 	if "!" == mydep[:1]:
-		mydep = mydep[1:]
+		if "!" == mydep[1:2]:
+			mydep = mydep[2:]
+		else:
+			mydep = mydep[1:]
 	if not isinstance(mydep, Atom):
 		mydep = Atom(mydep, allow_wildcard=True)
 
