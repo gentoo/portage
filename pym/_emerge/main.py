@@ -211,6 +211,11 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 def display_preserved_libs(vardbapi, myopts):
 	MAX_DISPLAY = 3
 
+	if vardbapi._linkmap is None or \
+		vardbapi._plib_registry is None:
+		# preserve-libs is entirely disabled
+		return
+
 	# Ensure the registry is consistent with existing files.
 	vardbapi._plib_registry.pruneNonExisting()
 

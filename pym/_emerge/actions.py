@@ -447,7 +447,13 @@ def action_build(settings, trees, mtimedb,
 				portage.writemsg_stdout(colorize("WARN", "WARNING:")
 					+ " AUTOCLEAN is disabled.  This can cause serious"
 					+ " problems due to overlapping packages.\n")
-			trees[settings["ROOT"]]["vartree"].dbapi._plib_registry.pruneNonExisting()
+			plib_registry = \
+				trees[settings["ROOT"]]["vartree"].dbapi._plib_registry
+			if plib_registry is None:
+				# preserve-libs is entirely disabled
+				pass
+			else:
+				plib_registry.pruneNonExisting()
 
 		return retval
 
@@ -875,7 +881,9 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	cleanlist = create_cleanlist()
 	clean_set = set(cleanlist)
 
-	if cleanlist and myopts.get('--depclean-lib-check') != 'n':
+	if cleanlist and \
+		real_vardb._linkmap is not None and \
+		myopts.get('--depclean-lib-check') != 'n':
 
 		# Check if any of these package are the sole providers of libraries
 		# with consumers that have not been selected for removal. If so, these

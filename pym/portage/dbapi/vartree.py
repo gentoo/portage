@@ -1526,8 +1526,12 @@ class dblink(object):
 
 			# Remove the registration of preserved libs for this pkg instance
 			plib_registry = self.vartree.dbapi._plib_registry
-			plib_registry.unregister(self.mycpv, self.settings["SLOT"],
-				self.vartree.dbapi.cpv_counter(self.mycpv))
+			if plib_registry is None:
+				# preserve-libs is entirely disabled
+				pass
+			else:
+				plib_registry.unregister(self.mycpv, self.settings["SLOT"],
+					self.vartree.dbapi.cpv_counter(self.mycpv))
 
 			if myebuildpath:
 				ebuild_phase = "postrm"
@@ -1567,7 +1571,11 @@ class dblink(object):
 			else:
 				# Prune any preserved libs that may have
 				# been unmerged with this package.
-				self.vartree.dbapi._plib_registry.pruneNonExisting()
+				if plib_registry is None:
+					# preserve-libs is entirely disabled
+					pass
+				else:
+					plib_registry.pruneNonExisting()
 
 		finally:
 			self.vartree.dbapi._bump_mtime(self.mycpv)
@@ -2165,6 +2173,8 @@ class dblink(object):
 		and the preserve-libs registry is empty.
 		"""
 		if self._linkmap_broken or \
+			self.vartree.dbapi._linkmap is None or \
+			self.vartree.dbapi._plib_registry is None or \
 			("preserve-libs" not in self.settings.features and \
 			not self.vartree.dbapi._plib_registry.hasEntries()):
 			return
@@ -2181,9 +2191,11 @@ class dblink(object):
 		Get set of relative paths for libraries to be preserved. The file
 		paths are selected from self._installed_instance.getcontents().
 		"""
-		if self._linkmap_broken or not \
-			(self._installed_instance is not None and \
-			"preserve-libs" in self.settings.features):
+		if self._linkmap_broken or \
+			self.vartree.dbapi._linkmap is None or \
+			self.vartree.dbapi._plib_registry is None or \
+			self._installed_instance is None or \
+			"preserve-libs" not in self.settings.features:
 			return None
 
 		os = _os_merge
@@ -2345,6 +2357,8 @@ class dblink(object):
 		"""
 
 		if self._linkmap_broken or \
+			self.vartree.dbapi._linkmap is None or \
+			self.vartree.dbapi._plib_registry is None or \
 			not self.vartree.dbapi._plib_registry.hasEntries():
 			return {}
 
@@ -2500,14 +2514,21 @@ class dblink(object):
 
 			# For collisions with preserved libraries, the current package
 			# will assume ownership and the libraries will be unregistered.
-			plib_dict = self.vartree.dbapi._plib_registry.getPreservedLibs()
-			plib_cpv_map = {}
-			plib_paths = set()
-			for cpv, paths in plib_dict.items():
-				plib_paths.update(paths)
-				for f in paths:
-					plib_cpv_map[f] = cpv
-			plib_inodes = self._lstat_inode_map(plib_paths)
+			if self.vartree.dbapi._plib_registry is None:
+				# preserve-libs is entirely disabled
+				plib_cpv_map = None
+				plib_paths = None
+				plib_inodes = {}
+			else:
+				plib_dict = self.vartree.dbapi._plib_registry.getPreservedLibs()
+				plib_cpv_map = {}
+				plib_paths = set()
+				for cpv, paths in plib_dict.items():
+					plib_paths.update(paths)
+					for f in paths:
+						plib_cpv_map[f] = cpv
+				plib_inodes = self._lstat_inode_map(plib_paths)
+
 			plib_collisions = {}
 
 			showMessage = self._display_merge
@@ -3239,13 +3260,17 @@ class dblink(object):
 		self._clear_contents_cache()
 
 		linkmap = self.vartree.dbapi._linkmap
-		self._linkmap_rebuild(include_file=os.path.join(inforoot,
-			linkmap._needed_aux_key))
+		if linkmap is None:
+			# preserve-libs is entirely disabled
+			preserve_paths = None
+		else:
+			self._linkmap_rebuild(include_file=os.path.join(inforoot,
+				linkmap._needed_aux_key))
 
-		# Preserve old libs if they are still in use
-		preserve_paths = self._find_libs_to_preserve()
-		if preserve_paths:
-			self._add_preserve_libs_to_contents(preserve_paths)
+			# Preserve old libs if they are still in use
+			preserve_paths = self._find_libs_to_preserve()
+			if preserve_paths:
+				self._add_preserve_libs_to_contents(preserve_paths)
 
 		# If portage is reinstalling itself, remove the old
 		# version now since we want to use the temporary
@@ -3303,7 +3328,8 @@ class dblink(object):
 		_movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
 
 		# keep track of the libs we preserved
-		if preserve_paths:
+		if self.vartree.dbapi._plib_registry is not None and \
+			preserve_paths:
 			self.vartree.dbapi._plib_registry.register(self.mycpv,
 				slot, counter, sorted(preserve_paths))
 
@@ -3320,20 +3346,24 @@ class dblink(object):
 		# Unregister any preserved libs that this package has overwritten
 		# and update the contents of the packages that owned them.
 		plib_registry = self.vartree.dbapi._plib_registry
-		plib_dict = plib_registry.getPreservedLibs()
-		for cpv, paths in plib_collisions.items():
-			if cpv not in plib_dict:
-				continue
-			if cpv == self.mycpv:
-				continue
-			try:
-				slot, counter = self.vartree.dbapi.aux_get(
-					cpv, ["SLOT", "COUNTER"])
-			except KeyError:
-				continue
-			remaining = [f for f in plib_dict[cpv] if f not in paths]
-			plib_registry.register(cpv, slot, counter, remaining)
-			self.vartree.dbapi.removeFromContents(cpv, paths)
+		if plib_registry is None:
+			# preserve-libs is entirely disabled
+			pass
+		else:
+			plib_dict = plib_registry.getPreservedLibs()
+			for cpv, paths in plib_collisions.items():
+				if cpv not in plib_dict:
+					continue
+				if cpv == self.mycpv:
+					continue
+				try:
+					slot, counter = self.vartree.dbapi.aux_get(
+						cpv, ["SLOT", "COUNTER"])
+				except KeyError:
+					continue
+				remaining = [f for f in plib_dict[cpv] if f not in paths]
+				plib_registry.register(cpv, slot, counter, remaining)
+				self.vartree.dbapi.removeFromContents(cpv, paths)
 
 		self.vartree.dbapi._add(self)
 		contents = self.getcontents()
@@ -3773,8 +3803,14 @@ class dblink(object):
 		self.lockdb()
 		self.vartree.dbapi._bump_mtime(self.mycpv)
 		try:
-			self.vartree.dbapi._plib_registry.load()
-			self.vartree.dbapi._plib_registry.pruneNonExisting()
+			plib_registry = self.vartree.dbapi._plib_registry
+			if plib_registry is None:
+				# preserve-libs is entirely disabled
+				pass
+			else:
+				plib_registry.load()
+				plib_registry.pruneNonExisting()
+
 			retval = self.treewalk(mergeroot, myroot, inforoot, myebuild,
 				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes)
 
@@ -3820,7 +3856,11 @@ class dblink(object):
 
 		finally:
 			self.settings.pop('REPLACING_VERSIONS', None)
-			self.vartree.dbapi._linkmap._clear_cache()
+			if self.vartree.dbapi._linkmap is None:
+				# preserve-libs is entirely disabled
+				pass
+			else:
+				self.vartree.dbapi._linkmap._clear_cache()
 			self.unlockdb()
 			self.vartree.dbapi._bump_mtime(self.mycpv)
 		return retval
@@ -3919,15 +3959,24 @@ def unmerge(cat, pkg, myroot=None, settings=None,
 	try:
 		mylink.lockdb()
 		if mylink.exists():
-			vartree.dbapi._plib_registry.load()
-			vartree.dbapi._plib_registry.pruneNonExisting()
+			plib_registry = vartree.dbapi._plib_registry
+			if plib_registry is None:
+				# preserve-libs is entirely disabled
+				pass
+			else:
+				plib_registry.load()
+				plib_registry.pruneNonExisting()
 			retval = mylink.unmerge(ldpath_mtimes=ldpath_mtimes)
 			if retval == os.EX_OK:
 				mylink.delete()
 			return retval
 		return os.EX_OK
 	finally:
-		vartree.dbapi._linkmap._clear_cache()
+		if vartree.dbapi._linkmap is None:
+			# preserve-libs is entirely disabled
+			pass
+		else:
+			vartree.dbapi._linkmap._clear_cache()
 		mylink.unlockdb()
 
 def write_contents(contents, root, f):
