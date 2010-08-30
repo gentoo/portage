@@ -882,7 +882,6 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	cleanlist = create_cleanlist()
 	clean_set = set(cleanlist)
 
-	real_vardb = trees[myroot]["vartree"].dbapi
 	if cleanlist and \
 		real_vardb._linkmap is not None and \
 		myopts.get('--depclean-lib-check') != 'n':
