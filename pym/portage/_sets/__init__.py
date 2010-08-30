@@ -13,6 +13,7 @@ except ImportError:
 from portage import os
 from portage import load_mod
 from portage.const import USER_CONFIG_PATH, GLOBAL_CONFIG_PATH
+from portage.const import _ENABLE_SET_CONFIG
 from portage.exception import PackageSetNotFound
 from portage.localization import _
 
@@ -40,13 +41,49 @@ class SetConfig(object):
 				"PORTAGE_CONFIGROOT" : settings["PORTAGE_CONFIGROOT"],
 				"ROOT" : settings["ROOT"],
 			})
-		self._parser.read(paths)
+
+		if _ENABLE_SET_CONFIG:
+			self._parser.read(paths)
+		else:
+			self._create_default_config()
+
 		self.errors = []
 		self.psets = {}
 		self.trees = trees
 		self.settings = settings
 		self._parsed = False
 		self.active = []
+
+	def _create_default_config(self):
+		"""
+		Create a default hardcoded set configuration for a portage version
+		that does not support set configuration files. This is only used
+		in the current branch of portage if _ENABLE_SET_CONFIG is False.
+		Even if it's not used in this branch, keep it here in order to
+		minimize the diff between branches.
+
+			[world]
+			class = portage.sets.base.DummyPackageSet
+			packages = @selected @system
+
+			[selected]
+			class = portage.sets.files.WorldSelectedSet
+
+			[system]
+			class = portage.sets.profiles.PackagesSystemSet
+
+		"""
+		parser = self._parser
+
+		parser.add_section("world")
+		parser.set("world", "class", "portage.sets.base.DummyPackageSet")
+		parser.set("world", "packages", "@selected @system")
+
+		parser.add_section("selected")
+		parser.set("selected", "class", "portage.sets.files.WorldSelectedSet")
+
+		parser.add_section("system")
+		parser.set("system", "class", "portage.sets.profiles.PackagesSystemSet")
 
 	def update(self, setname, options):
 		parser = self._parser
@@ -183,6 +220,10 @@ class SetConfig(object):
 		return myatoms
 
 def load_default_config(settings, trees):
+
+	if not _ENABLE_SET_CONFIG:
+		return SetConfig(None, settings, trees)
+
 	global_config_path = GLOBAL_CONFIG_PATH
 	if settings['EPREFIX']:
 		global_config_path = os.path.join(settings['EPREFIX'],
