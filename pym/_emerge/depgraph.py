@@ -4897,8 +4897,10 @@ class depgraph(object):
 					pkg.root == self._frozen_config._running_root.root and \
 					portage.match_from_list(
 					portage.const.PORTAGE_PACKAGE_ATOM, [pkg]) and \
-					not vardb.cpv_exists(pkg.cpv) and \
 					"--quiet" not in self._frozen_config.myopts:
+					if not vardb.cpv_exists(pkg.cpv) or \
+						'9999' in pkg.cpv or \
+						'git' in pkg.inherited:
 						if mylist_index < len(mylist) - 1:
 							p.append(colorize("WARN", "*** Portage will stop merging at this point and reload itself,"))
 							p.append(colorize("WARN", "    then resume the merge."))

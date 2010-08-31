@@ -828,9 +828,12 @@ class Scheduler(PollScheduler):
 		if pkg.root == self._running_root.root and \
 			portage.match_from_list(
 			portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
-			if self._running_portage:
-				return pkg.cpv != self._running_portage.cpv
-			return True
+			if self._running_portage is None:
+				return True
+			elif pkg.cpv != self._running_portage.cpv or \
+				'9999' in pkg.cpv or \
+				'git' in pkg.inherited:
+				return True
 		return False
 
 	def _restart_if_necessary(self, pkg):

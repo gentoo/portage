@@ -3768,7 +3768,9 @@ class dblink(object):
 			self.vartree.dbapi._categories = None
 		if self.myroot == "/" and \
 			match_from_list(PORTAGE_PACKAGE_ATOM, [self.mycpv]) and \
-			not self.vartree.dbapi.cpv_exists(self.mycpv):
+			(not self.vartree.dbapi.cpv_exists(self.mycpv) or \
+			'9999' in self.mycpv or \
+			'git' in self.settings.get('INHERITED', '').split()):
 			# Load lazily referenced portage submodules into memory,
 			# so imports won't fail during portage upgrade/downgrade.
 			portage.proxy.lazyimport._preload_portage_submodules()
