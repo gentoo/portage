@@ -349,10 +349,10 @@ unpack() {
 
 		_unpack_tar() {
 			if [ "${y}" == "tar" ]; then
-				$1 -dc "$srcdir$x" | tar xof -
+				$1 -c -- "$srcdir$x" | tar xof -
 				assert_sigpipe_ok "$myfail"
 			else
-				$1 -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
+				$1 -c -- "${srcdir}${x}" > ${x%.*} || die "$myfail"
 			fi
 		}
 
@@ -365,17 +365,17 @@ unpack() {
 				tar xozf "$srcdir$x" || die "$myfail"
 				;;
 			tbz|tbz2)
-				bzip2 -dc "$srcdir$x" | tar xof -
+				${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -c -- "$srcdir$x" | tar xof -
 				assert_sigpipe_ok "$myfail"
 				;;
 			ZIP|zip|jar)
 				unzip -qo "${srcdir}${x}" || die "$myfail"
 				;;
 			gz|Z|z)
-				_unpack_tar gzip
+				_unpack_tar "gzip -d"
 				;;
 			bz2|bz)
-				_unpack_tar bzip2
+				_unpack_tar "${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d}"
 				;;
 			7Z|7z)
 				local my_output
@@ -422,13 +422,13 @@ unpack() {
 				fi
 				;;
 			lzma)
-				_unpack_tar lzma
+				_unpack_tar "lzma -d"
 				;;
 			xz)
 				if hasq $eapi 0 1 2 ; then
 					vecho "unpack ${x}: file format not recognized. Ignoring."
 				else
-					_unpack_tar xz
+					_unpack_tar "xz -d"
 				fi
 				;;
 			*)
@@ -1156,7 +1156,7 @@ dyn_install() {
 		--filter-path --filter-sandbox --allow-extra-vars > environment
 	assert "save_ebuild_env failed"
 
-	bzip2 -f9 environment
+	${PORTAGE_BZIP2_COMMAND} -f9 environment
 
 	cp "${EBUILD}" "${PF}.ebuild"
 	[ -n "${PORTAGE_REPO_NAME}" ]  && echo "${PORTAGE_REPO_NAME}" > repository
@@ -2125,7 +2125,7 @@ ebuild_main() {
 			save_ebuild_env --exclude-init-phases | \
 				filter_readonly_variables --filter-path \
 				--filter-sandbox --allow-extra-vars \
-				| bzip2 -c -f9 > "$PORTAGE_UPDATE_ENV"
+				| ${PORTAGE_BZIP2_COMMAND} -c -f9 > "$PORTAGE_UPDATE_ENV"
 			assert "save_ebuild_env failed"
 		fi
 		;;
