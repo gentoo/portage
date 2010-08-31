@@ -15,6 +15,10 @@ if sys.hexversion >= 0x3000000:
 	long = int
 
 class FakeVardbapi(PackageVirtualDbapi):
+	"""
+	Implements the vardbapi.getpath() method which is used in error handling
+	code for the Package class and vartree.get_provide().
+	"""
 	def getpath(self, cpv, filename=None):
 		path = os.path.join(self.settings['EROOT'], VDB_PATH, cpv)
 		if filename is not None:
