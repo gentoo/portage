@@ -1967,8 +1967,7 @@ class config(object):
 			#and vartree needs a config instance.
 			#This code should be part of VirtualsManager.getvirtuals().
 			if self.local_config:
-				temp_vartree = vartree(self["ROOT"], None,
-					categories=self.categories, settings=self)
+				temp_vartree = vartree(settings=self)
 				self._virtuals_manager._populate_treeVirtuals(temp_vartree)
 			else:
 				self._virtuals_manager._treeVirtuals = {}
