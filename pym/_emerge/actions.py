@@ -1336,11 +1336,17 @@ def action_info(settings, trees, myopts, myfiles):
 	else:
 		myvars = ['GENTOO_MIRRORS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
 		          'PORTDIR', 'DISTDIR', 'PKGDIR', 'PORTAGE_TMPDIR',
-		          'PORTDIR_OVERLAY', 'USE', 'CHOST', 'CFLAGS', 'CXXFLAGS',
+		          'PORTDIR_OVERLAY', 'PORTAGE_BUNZIP2_COMMAND',
+		          'PORTAGE_BZIP2_COMMAND',
+		          'USE', 'CHOST', 'CFLAGS', 'CXXFLAGS',
 		          'ACCEPT_KEYWORDS', 'ACCEPT_LICENSE', 'SYNC', 'FEATURES',
 		          'EMERGE_DEFAULT_OPTS']
 
 		myvars.extend(portage.util.grabfile(settings["PORTDIR"]+"/profiles/info_vars"))
+
+	myvars_ignore_defaults = {
+		'PORTAGE_BZIP2_COMMAND' : 'bzip2',
+	}
 
 	myvars = portage.util.unique_array(myvars)
 	use_expand = settings.get('USE_EXPAND', '').split()
@@ -1354,6 +1360,10 @@ def action_info(settings, trees, myopts, myfiles):
 	for x in myvars:
 		if x in settings:
 			if x != "USE":
+				default = myvars_ignore_defaults.get(x)
+				if default is not None and \
+					default == settings[x]:
+					continue
 				writemsg_stdout('%s="%s"\n' % (x, settings[x]), noiselevel=-1)
 			else:
 				use = set(settings["USE"].split())
