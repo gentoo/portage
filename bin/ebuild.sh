@@ -23,6 +23,12 @@ PREROOTPATH=${PREROOTPATH%%:}
 PATH=$PORTAGE_BIN_PATH/ebuild-helpers:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${ROOTPATH:+:}$ROOTPATH
 export PATH
 
+# This is just a temporary workaround for portage-9999 users since
+# earlier portage versions do not detect a version change in this case
+# (9999 to 9999) and therefore they try execute an incompatible version of
+# ebuild.sh during the upgrade.
+export PORTAGE_BZIP2_COMMAND=${PORTAGE_BZIP2_COMMAND:-bzip2} 
+
 # These two functions wrap sourcing and calling respectively.  At present they
 # perform a qa check to make sure eclasses and ebuilds and profiles don't mess
 # with shell opts (shopts).  Ebuilds/eclasses changing shopts should reset them 
