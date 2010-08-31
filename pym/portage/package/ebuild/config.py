@@ -27,7 +27,7 @@ from portage import bsd_chflags, \
 from portage.const import CACHE_PATH, \
 	DEPCACHE_PATH, INCREMENTALS, MAKE_CONF_FILE, \
 	MODULES_FILE_PATH, PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, \
-	PRIVATE_PATH, PROFILE_PATH, SUPPORTED_FEATURES, USER_CONFIG_PATH, \
+	PRIVATE_PATH, PROFILE_PATH, USER_CONFIG_PATH, \
 	USER_VIRTUALS_FILE
 from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
@@ -1911,19 +1911,7 @@ class config(object):
 			self.features = features_set(self)
 		self.features._features.update(self.get('FEATURES', '').split())
 		self.features._sync_env_var()
-
-		if 'unknown-features-warn' in self.features:
-			unknown_features = \
-				self.features._features.difference(SUPPORTED_FEATURES)
-			if unknown_features:
-				unknown_features = \
-					unknown_features.difference(self._unknown_features)
-				if unknown_features:
-					self._unknown_features.update(unknown_features)
-					writemsg_level(colorize("BAD",
-						_("FEATURES variable contains unknown value(s): %s") % \
-						", ".join(sorted(unknown_features))) \
-						+ "\n", noiselevel=-1)
+		self.features._validate()
 
 		myflags.update(self.useforce)
 		arch = self.configdict["defaults"].get("ARCH")

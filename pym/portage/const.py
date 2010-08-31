@@ -97,7 +97,7 @@ SUPPORTED_FEATURES       = frozenset([
                            "selinux", "sesandbox", "severe", "sfperms",
                            "sign", "skiprocheck", "split-elog", "split-log", "splitdebug",
                            "strict", "stricter", "suidctl", "test", "test-fail-continue",
-                           "unknown-features-warn",
+                           "unknown-features-filter", "unknown-features-warn",
                            "unmerge-logs", "unmerge-orphans", "userfetch", "userpriv",
                            "usersandbox", "usersync", "webrsync-gpg"])
 
