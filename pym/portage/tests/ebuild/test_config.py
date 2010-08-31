@@ -13,7 +13,8 @@ class ConfigTestCase(TestCase):
 	def testFeaturesMutation(self):
 		"""
 		Test whether mutation of config.features updates the FEATURES
-		variable and persists through config.regenerate() calls.
+		variable and persists through config.regenerate() calls. Also
+		verify that features_set._prune_overrides() works correctly.
 		"""
 		playground = ResolverPlayground()
 		try:
@@ -33,6 +34,12 @@ class ConfigTestCase(TestCase):
 			self.assertEqual('noclean' in settings['FEATURES'].split(), True)
 			settings.regenerate()
 			self.assertEqual('noclean' in settings['FEATURES'].split(),True)
+
+			# before: ['noclean', '-noclean', 'noclean']
+			settings.features._prune_overrides()
+			#  after: ['noclean']
+			self.assertEqual(settings._features_overrides.count('noclean'), 1)
+			self.assertEqual(settings._features_overrides.count('-noclean'), 0)
 		finally:
 			playground.cleanup()
 
