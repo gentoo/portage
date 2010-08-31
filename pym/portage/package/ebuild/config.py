@@ -202,6 +202,11 @@ class config(object):
 		self._accept_properties = None
 		self._features_overrides = []
 
+		# _unknown_features records unknown features that
+		# have triggered warning messages, and ensures that
+		# the same warning isn't shown twice.
+		self._unknown_features = set()
+
 		self.local_config = local_config
 
 		self._local_repo_configs = None
@@ -233,6 +238,9 @@ class config(object):
 			self._p_accept_keywords = clone._p_accept_keywords
 			self._use_manager = clone._use_manager
 			self._mask_manager = clone._mask_manager
+
+			# shared mutable attributes
+			self._unknown_features = clone._unknown_features
 
 			self.modules         = copy.deepcopy(clone.modules)
 			self._penv = copy.deepcopy(clone._penv)
@@ -860,18 +868,6 @@ class config(object):
 			not fakeroot_capable:
 			writemsg(_("!!! FEATURES=fakeroot is enabled, but the "
 				"fakeroot binary is not installed.\n"), noiselevel=-1)
-
-		if 'unknown-features-warn' in self.features:
-			unknown_features = []
-			for x in self.features:
-				if x not in SUPPORTED_FEATURES:
-					unknown_features.append(x)
-
-			if unknown_features:
-				writemsg(colorize("BAD",
-					_("FEATURES variable contains unknown value(s): %s") % \
-					", ".join(unknown_features)) \
-					+ "\n", noiselevel=-1)
 
 	def load_best_module(self,property_string):
 		best_mod = best_from_dict(property_string,self.modules,self.module_priority)
@@ -1915,6 +1911,19 @@ class config(object):
 			self.features = features_set(self)
 		self.features._features.update(self.get('FEATURES', '').split())
 		self.features._sync_env_var()
+
+		if 'unknown-features-warn' in self.features:
+			unknown_features = \
+				self.features._features.difference(SUPPORTED_FEATURES)
+			if unknown_features:
+				unknown_features = \
+					unknown_features.difference(self._unknown_features)
+				if unknown_features:
+					self._unknown_features.update(unknown_features)
+					writemsg_level(colorize("BAD",
+						_("FEATURES variable contains unknown value(s): %s") % \
+						", ".join(sorted(unknown_features))) \
+						+ "\n", noiselevel=-1)
 
 		myflags.update(self.useforce)
 		arch = self.configdict["defaults"].get("ARCH")
