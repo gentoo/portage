@@ -115,15 +115,14 @@ class features_set(object):
 		to persist for future config.regenerate() calls.
 		"""
 		overrides_set = set(self._settings._features_overrides)
-		if len(overrides_set) < len(self._settings._features_overrides):
-			positive = set()
-			negative = set()
-			for x in self._settings._features_overrides:
-				if x[:1] == '-':
-					positive.discard(x[:1])
-					negative.add(x[:1])
-				else:
-					positive.add(x)
-					negative.discard(x)
-			self._settings._features_overrides[:] = \
-				list(positive) + list(negative)
+		positive = set()
+		negative = set()
+		for x in self._settings._features_overrides:
+			if x[:1] == '-':
+				positive.discard(x[1:])
+				negative.add(x[1:])
+			else:
+				positive.add(x)
+				negative.discard(x)
+		self._settings._features_overrides[:] = \
+			list(positive) + list('-' + x for x in negative)

@@ -40,6 +40,14 @@ class ConfigTestCase(TestCase):
 			#  after: ['noclean']
 			self.assertEqual(settings._features_overrides.count('noclean'), 1)
 			self.assertEqual(settings._features_overrides.count('-noclean'), 0)
+
+			settings.features.remove('noclean')
+
+			# before: ['noclean', '-noclean']
+			settings.features._prune_overrides()
+			#  after: ['-noclean']
+			self.assertEqual(settings._features_overrides.count('noclean'), 0)
+			self.assertEqual(settings._features_overrides.count('-noclean'), 1)
 		finally:
 			playground.cleanup()
 
