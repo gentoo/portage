@@ -594,6 +594,16 @@ setting as the base URI.
 This variable contains options to be passed to the tar command for creation
 of binary packages.
 .TP
+\fBPORTAGE_BUNZIP2_COMMAND\fR = \fI[bunzip2 command string]\fR
+This variable should contain a command that is suitable for portage to call
+for bunzip2 extraction operations.
+.TP
+\fBPORTAGE_BZIP2_COMMAND\fR = \fI[bzip2 command string]\fR
+This variable should contain a command that is suitable for portage to call
+for bzip2 compression operations. \fBPORTAGE_BZIP2_COMMAND\fR will also be
+called for extraction operation, with -d appended, unless the
+\fBPORTAGE_BUNZIP2_COMMAND\fR variable is set.
+.TP
 \fBPORTAGE_COMPRESS\fR = \fI"bzip2"\fR
 This variable contains the command used to compress documentation during the
 install phase.

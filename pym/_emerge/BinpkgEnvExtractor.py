@@ -30,7 +30,7 @@ class BinpkgEnvExtractor(CompositeTask):
 	def _start(self):
 		saved_env_path = self._get_saved_env_path()
 		dest_env_path = self._get_dest_env_path()
-		shell_cmd = "bzip2 -dc %s > %s" % \
+		shell_cmd = "${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -c -- %s > %s" % \
 			(_shell_quote(saved_env_path),
 			_shell_quote(dest_env_path))
 		extractor_proc = SpawnProcess(

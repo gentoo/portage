@@ -46,6 +46,7 @@ from portage.util import ensure_dirs, getconfig, grabdict, \
 from portage.versions import catpkgsplit, catsplit, cpv_getkey
 
 from portage.package.ebuild._config import special_env_vars
+from portage.package.ebuild._config.env_var_validation import validate_cmd_var
 from portage.package.ebuild._config.features_set import features_set
 from portage.package.ebuild._config.LicenseManager import LicenseManager
 from portage.package.ebuild._config.UseManager import UseManager
@@ -444,7 +445,7 @@ class config(object):
 			if self.mygcfg is None:
 				self.mygcfg = {}
 
-			for k, v in self._default_globals:
+			for k, v in self._default_globals.items():
 				self.mygcfg.setdefault(k, v)
 
 			self.configlist.append(self.mygcfg)
@@ -773,6 +774,8 @@ class config(object):
 
 			self._iuse_implicit_match = _iuse_implicit_match_cache(self)
 
+			self._validate_commands()
+
 		for k in self._case_insensitive_vars:
 			if k in self:
 				self[k] = self[k].lower()
@@ -780,6 +783,40 @@ class config(object):
 
 		if mycpv:
 			self.setcpv(mycpv)
+
+	def _validate_commands(self):
+		for k in special_env_vars.validate_commands:
+			v = self.get(k)
+			if v is not None:
+				valid, v_split = validate_cmd_var(v)
+
+				if not valid:
+					if v_split:
+						writemsg_level(_("%s setting is invalid: '%s'\n") % \
+							(k, v), level=logging.ERROR, noiselevel=-1)
+
+					# before deleting the invalid setting, backup
+					# the default value if available
+					v = self.configdict['globals'].get(k)
+					if v is not None:
+						default_valid, v_split = validate_cmd_var(v)
+						if not default_valid:
+							if v_split:
+								writemsg_level(
+									_("%s setting from make.globals" + \
+									" is invalid: '%s'\n") % \
+									(k, v), level=logging.ERROR, noiselevel=-1)
+							# make.globals seems corrupt, so try for
+							# a hardcoded default instead
+							v = self._default_globals.get(k)
+
+					# delete all settings for this key,
+					# including the invalid one
+					del self[k]
+					self.backupenv.pop(k, None)
+					if v:
+						# restore validated default
+						self.configdict['globals'][k] = v
 
 	def _init_dirs(self):
 		"""

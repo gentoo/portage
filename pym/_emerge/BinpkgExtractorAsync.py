@@ -16,7 +16,7 @@ class BinpkgExtractorAsync(SpawnProcess):
 		# SIGPIPE handling (128 + SIGPIPE) should be compatible with
 		# assert_sigpipe_ok() that's used by the ebuild unpack() helper.
 		self.args = [self._shell_binary, "-c",
-			("bzip2 -dqc -- %s | tar -xp -C %s -f - ; " + \
+			("${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -c -- %s | tar -xp -C %s -f - ; " + \
 			"p=(${PIPESTATUS[@]}) ; " + \
 			"if [[ ${p[0]} != 0 && ${p[0]} != %d ]] ; then " % (128 + signal.SIGPIPE) + \
 			"echo bzip2 failed with status ${p[0]} ; exit ${p[0]} ; fi ; " + \
@@ -26,5 +26,4 @@ class BinpkgExtractorAsync(SpawnProcess):
 			(portage._shell_quote(self.pkg_path),
 			portage._shell_quote(self.image_dir))]
 
-		self.env = os.environ.copy()
 		SpawnProcess._start(self)

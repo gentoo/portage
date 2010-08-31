@@ -43,7 +43,8 @@ environ_whitelist += [
 	"PORTAGE_BINPKG_FILE", "PORTAGE_BINPKG_TAR_OPTS",
 	"PORTAGE_BINPKG_TMPFILE",
 	"PORTAGE_BIN_PATH",
-	"PORTAGE_BUILDDIR", "PORTAGE_COLORMAP",
+	"PORTAGE_BUILDDIR", "PORTAGE_BUNZIP2_COMMAND", "PORTAGE_BZIP2_COMMAND",
+	"PORTAGE_COLORMAP",
 	"PORTAGE_CONFIGROOT", "PORTAGE_DEBUG", "PORTAGE_DEPCACHEDIR",
 	"PORTAGE_EBUILD_EXIT_FILE", "PORTAGE_FEATURES",
 	"PORTAGE_GID", "PORTAGE_GRPNAME",
@@ -152,10 +153,13 @@ environ_filter += [
 
 environ_filter = frozenset(environ_filter)
 
-default_globals = (
-	('ACCEPT_LICENSE',           '* -@EULA'),
-	('ACCEPT_PROPERTIES',        '*'),
-)
+default_globals = {
+	'ACCEPT_LICENSE':           '* -@EULA',
+	'ACCEPT_PROPERTIES':        '*',
+	'PORTAGE_BZIP2_COMMAND':    'bzip2',
+}
+
+validate_commands = ('PORTAGE_BZIP2_COMMAND', 'PORTAGE_BUNZIP2_COMMAND',)
 
 # To enhance usability, make some vars case insensitive
 # by forcing them to lower case.

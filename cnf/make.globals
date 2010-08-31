@@ -70,6 +70,8 @@ EMERGE_WARNING_DELAY="10"
 # This option will be removed and forced to yes.
 AUTOCLEAN="yes"
 
+PORTAGE_BZIP2_COMMAND="bzip2"
+
 # Don't compress files with these suffixes.
 PORTAGE_COMPRESS_EXCLUDE_SUFFIXES="css gif htm[l]? jp[e]?g js pdf png"
 

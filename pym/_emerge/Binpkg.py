@@ -274,6 +274,7 @@ class Binpkg(CompositeTask):
 			return
 
 		extractor = BinpkgExtractorAsync(background=self.background,
+			env=self.settings.environ(),
 			image_dir=self._image_dir,
 			pkg=self.pkg, pkg_path=self._pkg_path,
 			logfile=self.settings.get("PORTAGE_LOG_FILE"),
