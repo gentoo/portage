@@ -1054,13 +1054,14 @@ def ensure_dirs(dir_path, **kwargs):
 		created_dir = True
 	except OSError as oe:
 		func_call = "makedirs('%s')" % dir_path
-		if oe.errno in (errno.EEXIST, errno.EISDIR):
-			# Bug 187518 - sometimes mkdir raises EISDIR on FreeBSD
+		if oe.errno in (errno.EEXIST,):
 			pass
 		else:
 			if os.path.isdir(dir_path):
 				# NOTE: DragonFly raises EPERM for makedir('/')
 				# and that is supposed to be ignored here.
+				# Also, sometimes mkdir raises EISDIR on FreeBSD
+				# and we want to ignore that too (bug #187518).
 				pass
 			elif oe.errno == errno.EPERM:
 				raise OperationNotPermitted(func_call)
