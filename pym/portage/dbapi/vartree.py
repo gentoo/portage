@@ -3619,8 +3619,14 @@ class dblink(object):
 							else:
 								os.mkdir(mydest)
 						except OSError as e:
-							if e.errno not in (errno.EEXIST, errno.EISDIR):
-								# Bug 187518 - sometimes mkdir raises EISDIR on FreeBSD
+							# Error handling should be equivalent to
+							# portage.util.ensure_dirs() for cases
+							# like bug #187518.
+							if e.errno in (errno.EEXIST,):
+								pass
+							elif os.path.isdir(mydest):
+								pass
+							else:
 								raise
 							del e
 
@@ -3637,8 +3643,14 @@ class dblink(object):
 						else:
 							os.mkdir(mydest)
 					except OSError as e:
-						if e.errno not in (errno.EEXIST, errno.EISDIR):
-							# Bug 187518 - sometimes mkdir raises EISDIR on FreeBSD
+						# Error handling should be equivalent to
+						# portage.util.ensure_dirs() for cases
+						# like bug #187518.
+						if e.errno in (errno.EEXIST,):
+							pass
+						elif os.path.isdir(mydest):
+							pass
+						else:
 							raise
 						del e
 					os.chmod(mydest, mystat[0])
