@@ -3619,7 +3619,8 @@ class dblink(object):
 							else:
 								os.mkdir(mydest)
 						except OSError as e:
-							if e.errno != errno.EEXIST:
+							if e.errno not in (errno.EEXIST, errno.EISDIR):
+								# Bug 187518 - sometimes mkdir raises EISDIR on FreeBSD
 								raise
 							del e
 
@@ -3636,7 +3637,8 @@ class dblink(object):
 						else:
 							os.mkdir(mydest)
 					except OSError as e:
-						if e.errno != errno.EEXIST:
+						if e.errno not in (errno.EEXIST, errno.EISDIR):
+							# Bug 187518 - sometimes mkdir raises EISDIR on FreeBSD
 							raise
 						del e
 					os.chmod(mydest, mystat[0])

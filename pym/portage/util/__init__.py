@@ -1055,6 +1055,7 @@ def ensure_dirs(dir_path, *args, **kwargs):
 	except OSError as oe:
 		func_call = "makedirs('%s')" % dir_path
 		if oe.errno in (errno.EEXIST, errno.EISDIR):
+			# Bug 187518 - sometimes mkdir raises EISDIR on FreeBSD
 			pass
 		else:
 			if os.path.isdir(dir_path):
