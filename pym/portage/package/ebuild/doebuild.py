@@ -312,6 +312,10 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 _doebuild_manifest_cache = None
 _doebuild_broken_ebuilds = set()
 _doebuild_broken_manifests = set()
+_doebuild_commands_without_builddir = (
+	'clean', 'cleanrm', 'depend', 'digest',
+	'fetch', 'fetchall', 'help', 'manifest'
+)
 
 def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	fetchonly=0, cleanup=0, dbkey=None, use_cache=1, fetchall=0, tree=None,
@@ -587,8 +591,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if rval != os.EX_OK:
 				return rval
 
-		if mydo not in ('digest', 'manifest') and \
-			mydo not in EbuildSpawnProcess._phases_without_builddir:
+		# The info phase is special because it uses mkdtemp so and
+		# user (not necessarily in the portage group) can run it.
+		if mydo not in ('info',) and \
+			mydo not in _doebuild_commands_without_builddir:
 			rval = _check_temp_dir(mysettings)
 			if rval != os.EX_OK:
 				return rval
