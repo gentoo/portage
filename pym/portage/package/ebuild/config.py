@@ -1147,8 +1147,20 @@ class config(object):
 						pkg_configdict.addLazySingleton(k,
 							mydb.__getitem__, k)
 			else:
+				# When calling dbapi.aux_get(), grab USE for built/installed
+				# packages since we want to save it PORTAGE_BUILT_USE for
+				# evaluating conditional USE deps in atoms passed via IPC to
+				# helpers like has_version and best_version.
+				aux_keys = list(aux_keys)
+				aux_keys.append('USE')
 				for k, v in zip(aux_keys, mydb.aux_get(self.mycpv, aux_keys)):
 					pkg_configdict[k] = v
+				built_use = frozenset(pkg_configdict.pop('USE').split())
+				if not built_use:
+					# Empty USE means this dbapi instance does not contain
+					# built packages.
+					built_use = None
+
 			repository = pkg_configdict.pop("repository", None)
 			if repository is not None:
 				pkg_configdict["PORTAGE_REPO_NAME"] = repository
@@ -1257,6 +1269,9 @@ class config(object):
 			lazy_vars.__getitem__, 'ACCEPT_LICENSE')
 		env_configdict.addLazySingleton('PORTAGE_RESTRICT',
 			lazy_vars.__getitem__, 'PORTAGE_RESTRICT')
+
+		if built_use is not None:
+			pkg_configdict['PORTAGE_BUILT_USE'] = ' '.join(built_use)
 
 		# If reset() has not been called, it's safe to return
 		# early if IUSE has not changed.
