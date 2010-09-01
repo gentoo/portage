@@ -291,7 +291,7 @@ class WorldSelectedSet(EditablePackageSet):
 			self._mtime2 = mtime
 			changed = True
 		else:
-			nonatoms = self._nonatoms
+			nonatoms = list(self._nonatoms)
 
 		return changed, nonatoms
 
