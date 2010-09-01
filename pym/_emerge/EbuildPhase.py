@@ -40,7 +40,6 @@ class EbuildPhase(CompositeTask):
 
 	def _env_extractor_exit(self, env_extractor):
 		if self._default_exit(env_extractor) != os.EX_OK:
-			self._unlock_builddir()
 			self.wait()
 			return
 
