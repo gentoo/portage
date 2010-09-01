@@ -1045,7 +1045,12 @@ def write_atomic(file_path, content, **kwargs):
 def ensure_dirs(dir_path, **kwargs):
 	"""Create a directory and call apply_permissions.
 	Returns True if a directory is created or the permissions needed to be
-	modified, and False otherwise."""
+	modified, and False otherwise.
+
+	This function's handling of EEXIST errors makes it useful for atomic
+	directory creation, in which multiple processes may be competing to
+	create the same directory.
+	"""
 
 	created_dir = False
 
