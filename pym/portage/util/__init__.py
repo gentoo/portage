@@ -1042,7 +1042,7 @@ def write_atomic(file_path, content, **kwargs):
 		else:
 			raise
 
-def ensure_dirs(dir_path, *args, **kwargs):
+def ensure_dirs(dir_path, **kwargs):
 	"""Create a directory and call apply_permissions.
 	Returns True if a directory is created or the permissions needed to be
 	modified, and False otherwise."""
@@ -1070,7 +1070,10 @@ def ensure_dirs(dir_path, *args, **kwargs):
 				raise ReadOnlyFileSystem(func_call)
 			else:
 				raise
-	perms_modified = apply_permissions(dir_path, *args, **kwargs)
+	if kwargs:
+		perms_modified = apply_permissions(dir_path, **kwargs)
+	else:
+		perms_modified = False
 	return created_dir or perms_modified
 
 class LazyItemsDict(UserDict):
