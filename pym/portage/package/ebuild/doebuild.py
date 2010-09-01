@@ -587,9 +587,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if rval != os.EX_OK:
 				return rval
 
-		rval = _check_temp_dir(mysettings)
-		if rval != os.EX_OK:
-			return rval
+		if mydo not in ('digest', 'manifest') and \
+			mydo not in EbuildSpawnProcess._phases_without_builddir:
+			rval = _check_temp_dir(mysettings)
+			if rval != os.EX_OK:
+				return rval
 
 		if mydo == "unmerge":
 			return unmerge(mysettings["CATEGORY"],
