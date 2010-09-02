@@ -231,7 +231,8 @@ def load_default_config(settings, trees):
 	def _getfiles():
 		for path, dirs, files in os.walk(os.path.join(global_config_path, "sets")):
 			for f in files:
-				yield os.path.join(path, f)
+				if not f.startswith('.'):
+					yield os.path.join(path, f)
 
 		dbapi = trees["porttree"].dbapi
 		for repo in dbapi.getRepositories():
