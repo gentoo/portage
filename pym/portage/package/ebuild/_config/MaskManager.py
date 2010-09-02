@@ -39,6 +39,10 @@ class MaskManager(object):
 		for x in pkgunmasklines:
 			self._punmaskdict.setdefault(x.cp, []).append(x)
 
+		for d in (self._pmaskdict, self._punmaskdict):
+			for k, v in d.items():
+				d[k] = tuple(v)
+
 	def getMaskAtom(self, cpv, slot):
 		"""
 		Take a package and return a matching package.mask atom, or None if no
