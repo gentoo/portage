@@ -952,7 +952,10 @@ if [ -n "${MISC_FUNCTIONS_ARGS}" ]; then
 	done
 	unset x
 	[[ -n $PORTAGE_EBUILD_EXIT_FILE ]] && > "$PORTAGE_EBUILD_EXIT_FILE"
-	[[ -n $PORTAGE_IPC_DAEMON ]] && "$PORTAGE_BIN_PATH"/ebuild-ipc exit 0
+	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
+		[[ ! -s $SANDBOX_LOG ]]
+		"$PORTAGE_BIN_PATH"/ebuild-ipc exit $?
+	fi
 fi
 
 :

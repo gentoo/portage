@@ -2266,6 +2266,25 @@ ebuild_main() {
 	esac
 }
 
+if [[ -s $SANDBOX_LOG ]] ; then
+	# We use SANDBOX_LOG to check for sandbox violations,
+	# so we ensure that there can't be a stale log to
+	# interfere with our logic.
+	x=
+	if [[ -n SANDBOX_ON ]] ; then
+		x=$SANDBOX_ON
+		export SANDBOX_ON=0
+	fi
+
+	rm -f "$SANDBOX_LOG" || \
+		die "failed to remove stale sandbox log: '$SANDBOX_LOG'"
+
+	if [[ -n $x ]] ; then
+		export SANDBOX_ON=$x
+	fi
+	unset x
+fi
+
 if [[ $EBUILD_PHASE = depend ]] ; then
 	ebuild_main
 elif [[ -n $EBUILD_SH_ARGS ]] ; then
@@ -2285,7 +2304,10 @@ elif [[ -n $EBUILD_SH_ARGS ]] ; then
 			chmod g+w "$T/environment" &>/dev/null
 		fi
 		[[ -n $PORTAGE_EBUILD_EXIT_FILE ]] && > "$PORTAGE_EBUILD_EXIT_FILE"
-		[[ -n $PORTAGE_IPC_DAEMON ]] && "$PORTAGE_BIN_PATH"/ebuild-ipc exit 0
+		if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
+			[[ ! -s $SANDBOX_LOG ]]
+			"$PORTAGE_BIN_PATH"/ebuild-ipc exit $?
+		fi
 		exit 0
 	)
 	exit $?
