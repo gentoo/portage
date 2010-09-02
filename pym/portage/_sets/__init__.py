@@ -231,7 +231,7 @@ def load_default_config(settings, trees):
 	def _getfiles():
 		for path, dirs, files in os.walk(os.path.join(global_config_path, "sets")):
 			for f in files:
-				if not f.startswith('.'):
+				if not f.startswith(b'.'):
 					yield os.path.join(path, f)
 
 		dbapi = trees["porttree"].dbapi
