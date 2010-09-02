@@ -853,6 +853,14 @@ class config(object):
 				writemsg("!!! %s\n" % str(e),
 					noiselevel=-1)
 
+	@property
+	def pmaskdict(self):
+		return self._mask_manager._pmaskdict.copy()
+
+	@property
+	def punmaskdict(self):
+		return self._mask_manager._punmaskdict.copy()
+
 	def expandLicenseTokens(self, tokens):
 		""" Take a token from ACCEPT_LICENSE or package.license and expand it
 		if it's a group token (indicated by @) or just return it if it's not a
