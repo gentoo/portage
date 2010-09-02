@@ -583,6 +583,10 @@ logging.info('Setting paths:')
 logging.info('PORTDIR = "' + portdir + '"')
 logging.info('PORTDIR_OVERLAY = "%s"' % env['PORTDIR_OVERLAY'])
 
+# It's confusing if these warnings are displayed without the user
+# being told which profile they come from, so disable them.
+env['FEATURES'] = env.get('FEATURES', '') + ' -unknown-features-warn'
+
 categories = []
 for path in set([portdir, portdir_overlay]):
 	categories.extend(portage.util.grabfile(
