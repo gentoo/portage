@@ -2104,8 +2104,6 @@ ebuild_main() {
 	export EBUILD_MASTER_PID=$BASHPID
 	trap 'exit 1' SIGTERM
 
-	local f x
-
 	if [[ $EBUILD_PHASE != depend ]] ; then
 		# Force configure scripts that automatically detect ccache to
 		# respect FEATURES="-ccache".
@@ -2155,10 +2153,12 @@ ebuild_main() {
 		case "$EBUILD_SH_ARGS" in
 		configure|compile)
 
+			local x
 			for x in ASFLAGS CCACHE_DIR CCACHE_SIZE \
 				CFLAGS CXXFLAGS LDFLAGS LIBCFLAGS LIBCXXFLAGS ; do
 				[[ ${!x+set} = set ]] && export $x
 			done
+			unset x
 
 			hasq distcc $FEATURES && [[ -n $DISTCC_DIR ]] && \
 				[[ ${SANDBOX_WRITE/$DISTCC_DIR} = $SANDBOX_WRITE ]] && \
