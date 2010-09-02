@@ -16,7 +16,10 @@ class FifoIpcDaemon(AbstractPollTask):
 	def _start(self):
 		self._files = self._files_dict()
 		input_fd = os.open(self.input_fifo, os.O_RDONLY|os.O_NONBLOCK)
-		self._files.pipe_in = os.fdopen(input_fd, 'rb')
+
+		# File streams are in unbuffered mode since we do atomic
+		# read and write of whole pickles.
+		self._files.pipe_in = os.fdopen(input_fd, 'rb', 0)
 
 		self._reg_id = self.scheduler.register(
 			self._files.pipe_in.fileno(),
