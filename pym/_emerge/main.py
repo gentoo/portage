@@ -1316,7 +1316,10 @@ def emerge_main():
 
 	if "--quiet" not in myopts:
 		portage.deprecated_profile_check(settings=settings)
-		repo_name_check(trees)
+		if portage.const._ENABLE_REPO_NAME_WARN:
+			# Bug #248603 - Disable warnings about missing
+			# repo_name entries for stable branch.
+			repo_name_check(trees)
 		repo_name_duplicate_check(trees)
 		config_protect_check(trees)
 	check_procfs()

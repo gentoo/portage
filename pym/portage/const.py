@@ -119,6 +119,7 @@ MANIFEST2_IDENTIFIERS    = ("AUX", "MISC", "DIST", "EBUILD")
 # between branches.
 _ENABLE_DYN_LINK_MAP    = True
 _ENABLE_PRESERVE_LIBS   = True
+_ENABLE_REPO_NAME_WARN  = True
 _ENABLE_SET_CONFIG      = True
 
 
