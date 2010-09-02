@@ -1977,6 +1977,20 @@ class config(object):
 		myflags.difference_update(self.usemask)
 		self.configlist[-1]["USE"]= " ".join(sorted(myflags))
 
+	@property
+	def virts_p(self):
+		warnings.warn("portage config.virts_p attribute " + \
+			"is deprecated, use config.get_virts_p()",
+			DeprecationWarning, stacklevel=2)
+		return self.get_virts_p()
+
+	@property
+	def virtuals(self):
+		warnings.warn("portage config.virtuals attribute " + \
+			"is deprecated, use config.getvirtuals()",
+			DeprecationWarning, stacklevel=2)
+		return self.getvirtuals()
+
 	def get_virts_p(self):
 		return self._virtuals_manager.get_virts_p()
 
