@@ -575,6 +575,9 @@ list_preserved_libs.uses_root = True
 # DO NOT CHANGE CODE BEYOND THIS POINT - IT'S NOT NEEDED!
 #
 
+if not portage.const._ENABLE_PRESERVE_LIBS:
+	del list_preserved_libs
+
 non_commands = frozenset(['eval_atom_use', 'exithandler', 'main',
 	'usage', 'writemsg', 'writemsg_stdout'])
 commands = sorted(k for k, v in globals().items() \
