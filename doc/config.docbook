@@ -1,5 +1,5 @@
 <part id='config'>
 <title>Configuration</title>
 &config_bashrc;
-&config_set;
+<!--&config_set;-->
 </part>
