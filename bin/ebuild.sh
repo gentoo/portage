@@ -1735,8 +1735,9 @@ filter_readonly_variables() {
 	local filtered_sandbox_vars="SANDBOX_ACTIVE SANDBOX_BASHRC
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
 		SANDBOX_LOG SANDBOX_ON"
+	local misc_garbage_vars="_portage_filter_opts"
 	filtered_vars="$readonly_bash_vars $bash_misc_vars
-		$READONLY_PORTAGE_VARS"
+		$READONLY_PORTAGE_VARS $misc_garbage_vars"
 
 	# Don't filter/interfere with prefix variables unless they are
 	# supported by the current EAPI.
@@ -1783,17 +1784,17 @@ filter_readonly_variables() {
 # interfering with the current environment. This is useful when an existing
 # environment needs to be loaded from a binary or installed package.
 preprocess_ebuild_env() {
-	local filter_opts=""
+	local _portage_filter_opts=""
 	if [ -f "${T}/environment.raw" ] ; then
 		# This is a signal from the python side, indicating that the
 		# environment may contain stale SANDBOX_{DENY,PREDICT,READ,WRITE}
 		# and FEATURES variables that should be filtered out. Between
 		# phases, these variables are normally preserved.
-		filter_opts+=" --filter-features --filter-locale --filter-path --filter-sandbox"
+		_portage_filter_opts+=" --filter-features --filter-locale --filter-path --filter-sandbox"
 	fi
-	filter_readonly_variables ${filter_opts} < "${T}"/environment \
+	filter_readonly_variables $_portage_filter_opts < "${T}"/environment \
 		> "${T}"/environment.filtered || return $?
-	unset filter_opts
+	unset _portage_filter_opts
 	mv "${T}"/environment.filtered "${T}"/environment || return $?
 	rm -f "${T}/environment.success" || return $?
 	# WARNING: Code inside this subshell should avoid making assumptions
