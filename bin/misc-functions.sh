@@ -679,7 +679,7 @@ install_qa_check_prefix() {
 		fi
 		# does the shebang start with ${EPREFIX}, and does it exist?
 		if [[ ${line[0]} == ${EPREFIX}/* ]] ; then
-			if [[ ! -e ${ROOT}${line[0]} && ! -e ${D}${line[0]} ]] ; then
+			if [[ ! -e ${ROOT%/}${line[0]} && ! -e ${D%/}${line[0]} ]] ; then
 				# hmm, refers explicitly to $EPREFIX, but doesn't exist,
 				# if it's in PATH that's wrong in any case
 				if [[ ":${PATH}:" == *":${fp}:"* ]] ; then
