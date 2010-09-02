@@ -121,6 +121,7 @@ _ENABLE_DYN_LINK_MAP    = True
 _ENABLE_PRESERVE_LIBS   = True
 _ENABLE_REPO_NAME_WARN  = True
 _ENABLE_SET_CONFIG      = True
+_SANDBOX_COMPAT_LEVEL   = "22"
 
 
 # The definitions above will differ between branches, so it's useful to have

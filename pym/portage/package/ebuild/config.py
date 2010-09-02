@@ -29,6 +29,7 @@ from portage.const import CACHE_PATH, \
 	MODULES_FILE_PATH, PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, \
 	PRIVATE_PATH, PROFILE_PATH, USER_CONFIG_PATH, \
 	USER_VIRTUALS_FILE
+from portage.const import _SANDBOX_COMPAT_LEVEL
 from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
 from portage.dbapi.vartree import vartree
@@ -527,6 +528,9 @@ class config(object):
 			self.backup_changes("EPREFIX")
 			self["EROOT"] = eroot
 			self.backup_changes("EROOT")
+
+			self["PORTAGE_SANDBOX_COMPAT_LEVEL"] = _SANDBOX_COMPAT_LEVEL
+			self.backup_changes("PORTAGE_SANDBOX_COMPAT_LEVEL")
 
 			self.pkeywordsdict = portage.dep.ExtendedAtomDict(dict)
 			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
