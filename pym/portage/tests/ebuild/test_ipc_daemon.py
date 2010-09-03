@@ -3,6 +3,8 @@
 
 import shutil
 import tempfile
+import time
+import portage
 from portage import os
 from portage import _python_interpreter
 from portage.tests import TestCase
@@ -15,6 +17,8 @@ from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
 from _emerge.TaskScheduler import TaskScheduler
 
 class IpcDaemonTestCase(TestCase):
+
+	_SCHEDULE_TIMEOUT = 40000 # 40 seconds
 
 	def testIpcDaemon(self):
 		tmpdir = tempfile.mkdtemp()
@@ -49,13 +53,23 @@ class IpcDaemonTestCase(TestCase):
 					args=[BASH_BINARY, "-c",
 					'"$PORTAGE_BIN_PATH"/ebuild-ipc exit %d' % exitcode],
 					env=env, scheduler=task_scheduler.sched_iface)
+
+				self.received_command = False
 				def exit_command_callback():
+					self.received_command = True
 					proc.cancel()
 					daemon.cancel()
+
 				exit_command.reply_hook = exit_command_callback
 				task_scheduler.add(daemon)
 				task_scheduler.add(proc)
-				task_scheduler.run()
+				start_time = time.time()
+				task_scheduler.run(timeout=self._SCHEDULE_TIMEOUT)
+				task_scheduler.clear()
+
+				self.assertEqual(self.received_command, True,
+					"command not received after %d seconds" % \
+					(time.time() - start_time,))
 				self.assertEqual(exit_command.exitcode, exitcode)
 		finally:
 			shutil.rmtree(tmpdir)

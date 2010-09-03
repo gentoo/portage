@@ -1,6 +1,8 @@
 # Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import time
+
 from _emerge.PollScheduler import PollScheduler
 
 class QueueScheduler(PollScheduler):
@@ -28,13 +30,36 @@ class QueueScheduler(PollScheduler):
 	def remove(self, q):
 		self._queues.remove(q)
 
-	def run(self):
+	def clear(self):
+		for q in self._queues:
+			q.clear()
+
+	def run(self, timeout=None):
+
+		start_time = None
+		timed_out = False
+		remaining_timeout = timeout
+		if timeout is not None:
+			start_time = time.time()
 
 		while self._schedule():
-			self._poll_loop()
+			self._schedule_wait(timeout=remaining_timeout)
+			if timeout is not None:
+				elapsed_time = time.time() - start_time
+				remaining_timeout = (timeout - 1000 * elapsed_time)
+				if remaining_timeout <= 0:
+					timed_out = True
+					break
 
-		while self._running_job_count():
-			self._poll_loop()
+		if timeout is None or not timed_out:
+			while self._running_job_count():
+				self._schedule_wait(timeout=remaining_timeout)
+				if timeout is not None:
+					elapsed_time = time.time() - start_time
+					remaining_timeout = (timeout - 1000 * elapsed_time)
+					if remaining_timeout <= 0:
+						timed_out = True
+						break
 
 	def _schedule_tasks(self):
 		"""
