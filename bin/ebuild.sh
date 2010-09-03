@@ -5,16 +5,19 @@
 PORTAGE_BIN_PATH="${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"
 PORTAGE_PYM_PATH="${PORTAGE_PYM_PATH:-@PORTAGE_BASE@/pym}"
 
+if [[ $PORTAGE_SANDBOX_COMPAT_LEVEL -lt 22 ]] ; then
+	# Ensure that /dev/std* streams have appropriate sandbox permission for
+	# bug #288863. This can be removed after sandbox is fixed and portage
+	# depends on the fixed version (sandbox-2.2 has the fix but it is
+	# currently unstable).
+	export SANDBOX_WRITE="${SANDBOX_WRITE:+${SANDBOX_WRITE}:}/dev/stdout:/dev/stderr"
+	export SANDBOX_READ="${SANDBOX_READ:+${SANDBOX_READ}:}/dev/stdin"
+fi
+
 # Don't use sandbox's BASH_ENV for new shells because it does
 # 'source /etc/profile' which can interfere with the build
 # environment by modifying our PATH.
 unset BASH_ENV
-
-# Avoid sandbox violations in temporary directories.
-for x in TEMP TMP TMPDIR ; do
-	[[ -n ${!x} ]] && export SANDBOX_WRITE="${SANDBOX_WRITE:+${SANDBOX_WRITE}:}${!x}"
-done
-unset x
 
 ROOTPATH=${ROOTPATH##:}
 ROOTPATH=${ROOTPATH%%:}
@@ -103,6 +106,18 @@ addpredict() { _sb_append_var PREDICT "$@" ; }
 addwrite "${PORTAGE_TMPDIR}"
 addread "/:${PORTAGE_TMPDIR}"
 [[ -n ${PORTAGE_GPG_DIR} ]] && addpredict "${PORTAGE_GPG_DIR}"
+
+# Avoid sandbox violations in temporary directories.
+if [[ -w $T ]] ; then
+	export TEMP=$T
+	export TMP=$T
+	export TMPDIR=$T
+else
+	for x in TEMP TMP TMPDIR ; do
+		[[ -n ${!x} ]] && addwrite "${!x}"
+	done
+	unset x
+fi
 
 lchown() {
 	chown -h "$@"
@@ -790,18 +805,13 @@ into() {
 		export DESTTREE=""
 	else
 		export DESTTREE=$1
-<<<<<<< HEAD
 		if [ ! -d "${ED}${DESTTREE}" ]; then
 			install -d "${ED}${DESTTREE}"
-=======
-		if [ ! -d "${D}${DESTTREE}" ]; then
-			install -d "${D}${DESTTREE}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				helpers_die "${FUNCNAME[0]} failed"
 				return $ret
 			fi
->>>>>>> overlays-gentoo-org/master
 		fi
 	fi
 }
@@ -1740,8 +1750,22 @@ filter_readonly_variables() {
 	local filtered_sandbox_vars="SANDBOX_ACTIVE SANDBOX_BASHRC
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
 		SANDBOX_LOG SANDBOX_ON"
+	local misc_garbage_vars="_portage_filter_opts"
 	filtered_vars="$readonly_bash_vars $bash_misc_vars
-		$READONLY_PORTAGE_VARS"
+		$READONLY_PORTAGE_VARS $misc_garbage_vars"
+
+	# Don't filter/interfere with prefix variables unless they are
+	# supported by the current EAPI.
+	case "${EAPI:-0}" in
+		0|1|2)
+			;;
+		*)
+			# PREFIX LOCAL MODIFICATION
+			#filtered_vars+=" ED EPREFIX EROOT"
+			# PREFIX LOCAL MODIFICATION
+			;;
+	esac
+
 	if hasq --filter-sandbox $* ; then
 		filtered_vars="${filtered_vars} SANDBOX_.*"
 	else
@@ -1777,17 +1801,17 @@ filter_readonly_variables() {
 # interfering with the current environment. This is useful when an existing
 # environment needs to be loaded from a binary or installed package.
 preprocess_ebuild_env() {
-	local filter_opts=""
+	local _portage_filter_opts=""
 	if [ -f "${T}/environment.raw" ] ; then
 		# This is a signal from the python side, indicating that the
 		# environment may contain stale SANDBOX_{DENY,PREDICT,READ,WRITE}
 		# and FEATURES variables that should be filtered out. Between
 		# phases, these variables are normally preserved.
-		filter_opts+=" --filter-features --filter-locale --filter-path --filter-sandbox"
+		_portage_filter_opts+=" --filter-features --filter-locale --filter-path --filter-sandbox"
 	fi
-	filter_readonly_variables ${filter_opts} < "${T}"/environment \
+	filter_readonly_variables $_portage_filter_opts < "${T}"/environment \
 		> "${T}"/environment.filtered || return $?
-	unset filter_opts
+	unset _portage_filter_opts
 	mv "${T}"/environment.filtered "${T}"/environment || return $?
 	rm -f "${T}/environment.success" || return $?
 	# WARNING: Code inside this subshell should avoid making assumptions
@@ -2074,12 +2098,6 @@ fi
 #a reasonable default for $S
 [[ -z ${S} ]] && export S=${WORKDIR}/${P}
 
-#some users have $TMP/$TMPDIR to a custom dir in their home ...
-#this will cause sandbox errors with some ./configure
-#scripts, so set it to $T.
-export TMP="${T}"
-export TMPDIR="${T}"
-
 # Note: readonly variables interfere with preprocess_ebuild_env(), so
 # declare them only after it has already run.
 if [ "${EBUILD_PHASE}" != "depend" ] ; then
@@ -2091,8 +2109,6 @@ ebuild_main() {
 	# Subshell/helper die support (must export for the die helper).
 	export EBUILD_MASTER_PID=$BASHPID
 	trap 'exit 1' SIGTERM
-
-	local f x
 
 	if [[ $EBUILD_PHASE != depend ]] ; then
 		# Force configure scripts that automatically detect ccache to
@@ -2143,10 +2159,12 @@ ebuild_main() {
 		case "$EBUILD_SH_ARGS" in
 		configure|compile)
 
+			local x
 			for x in ASFLAGS CCACHE_DIR CCACHE_SIZE \
 				CFLAGS CXXFLAGS LDFLAGS LIBCFLAGS LIBCXXFLAGS ; do
 				[[ ${!x+set} = set ]] && export $x
 			done
+			unset x
 
 			hasq distcc $FEATURES && [[ -n $DISTCC_DIR ]] && \
 				[[ ${SANDBOX_WRITE/$DISTCC_DIR} = $SANDBOX_WRITE ]] && \

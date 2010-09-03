@@ -29,6 +29,7 @@ from portage.const import CACHE_PATH, \
 	MODULES_FILE_PATH, PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, \
 	PRIVATE_PATH, PROFILE_PATH, USER_CONFIG_PATH, \
 	USER_VIRTUALS_FILE, EPREFIX, EPREFIX_LSTRIP, BPREFIX
+from portage.const import _SANDBOX_COMPAT_LEVEL
 from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
 from portage.dbapi.vartree import vartree
@@ -528,6 +529,9 @@ class config(object):
 			self["EROOT"] = eroot
 			self.backup_changes("EROOT")
 
+			self["PORTAGE_SANDBOX_COMPAT_LEVEL"] = _SANDBOX_COMPAT_LEVEL
+			self.backup_changes("PORTAGE_SANDBOX_COMPAT_LEVEL")
+
 			self.pkeywordsdict = portage.dep.ExtendedAtomDict(dict)
 			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
 			self._penvdict = portage.dep.ExtendedAtomDict(dict)
@@ -848,6 +852,14 @@ class config(object):
 					noiselevel=-1)
 				writemsg("!!! %s\n" % str(e),
 					noiselevel=-1)
+
+	@property
+	def pmaskdict(self):
+		return self._mask_manager._pmaskdict.copy()
+
+	@property
+	def punmaskdict(self):
+		return self._mask_manager._punmaskdict.copy()
 
 	def expandLicenseTokens(self, tokens):
 		""" Take a token from ACCEPT_LICENSE or package.license and expand it
@@ -1972,6 +1984,20 @@ class config(object):
 
 		myflags.difference_update(self.usemask)
 		self.configlist[-1]["USE"]= " ".join(sorted(myflags))
+
+	@property
+	def virts_p(self):
+		warnings.warn("portage config.virts_p attribute " + \
+			"is deprecated, use config.get_virts_p()",
+			DeprecationWarning, stacklevel=2)
+		return self.get_virts_p()
+
+	@property
+	def virtuals(self):
+		warnings.warn("portage config.virtuals attribute " + \
+			"is deprecated, use config.getvirtuals()",
+			DeprecationWarning, stacklevel=2)
+		return self.getvirtuals()
 
 	def get_virts_p(self):
 		return self._virtuals_manager.get_virts_p()
