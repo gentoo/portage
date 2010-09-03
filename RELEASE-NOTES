@@ -9,8 +9,6 @@ portage-2.2
   name is stored in profiles/repo_name in each repository.
 * Package set support: There are several important notes regarding package
   sets:
-  - setnames have to be prefixed with @ (exceptions: 'world' and 'system' can
-    be used without the prefix)
   - they may currently only include simple and versioned atoms or other sets,
     use conditionals or any-of constructs aren't possible yet
   - sets can be referenced either in other file-based sets or as argument to
@@ -18,19 +16,34 @@ portage-2.2
   - packages won't be unmerged if they are referenced by an installed package
     set (with the exception of the world set, and installed being determined
     by the world_sets file).
-* "world" now includes separate "selected" and "system" sets, where the
-  "selected" set includes packages listed in /var/lib/portage/world and nested
-  sets that may be listed /var/lib/portage/world_sets.
+* The "selected" package set, which includes packages listed in
+  /var/lib/portage/world, has been extended to include nested sets that may
+  be listed /var/lib/portage/world_sets.
+
+portage-2.1.9
+==================================
+* The emerge "world" set now includes separate "selected" and "system" sets,
+  where the "selected" set includes packages listed in /var/lib/portage/world.
+* Package set names in emerge arguments have to be prefixed with @ (exceptions:
+  'world' and 'system' can be used without the prefix).
 * Configuration files now support atoms with wildcards inside the category and
   package name parts of the atoms.
 * The functionality of the autounmask program is emulated by the new emerge
   --autounmask option, which outputs required configuration changes for
   package.keywords and package.use.
+* The new emerge --exclude option allows packages to be excluded from the
+  dependency resolution. Doing so might result in a fatal error. See the
+  emerge(1) man page for details.
 * Per-package environment variables can be set with the new package.env
   configuration file in /etc/portage/. See the portage(5) man page for details.
+* Support for per-package bashrc files in /etc/portage/env. See the portage(5)
+  man page for details.
 * The package.keywords configuration file in /etc/portage/ is now deprecated.
   Instead use the package.accept_keywords file which has the same format and
   behavior. See the portage(5) man page for details.
+* FEATURES="fixlafiles" (enabled by default): Rewrites newly installed .la
+  files in the same way dev-util/lafilefixer does. Note that this won't fix
+  your installed .la files.
 
 portage-2.1.8
 ==================================

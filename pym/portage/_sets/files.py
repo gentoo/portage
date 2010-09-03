@@ -10,11 +10,12 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.util import grabfile, write_atomic, ensure_dirs, normalize_path
 from portage.const import USER_CONFIG_PATH, WORLD_FILE, WORLD_SETS_FILE
+from portage.const import _ENABLE_SET_CONFIG
 from portage.localization import _
 from portage.locks import lockfile, unlockfile
 from portage import portage_gid
-from portage.sets.base import PackageSet, EditablePackageSet
-from portage.sets import SetConfigError, SETPREFIX, get_boolean
+from portage._sets.base import PackageSet, EditablePackageSet
+from portage._sets import SetConfigError, SETPREFIX, get_boolean
 from portage.env.loaders import ItemFileLoader, KeyListFileLoader
 from portage.env.validators import ValidAtomValidator
 from portage import cpv_getkey
@@ -228,8 +229,11 @@ class WorldSelectedSet(EditablePackageSet):
 	def write(self):
 		write_atomic(self._filename,
 			"".join(sorted("%s\n" % x for x in self._atoms)))
-		write_atomic(self._filename2, "\n".join(sorted(self._nonatoms))+"\n")
-	
+
+		if _ENABLE_SET_CONFIG:
+			write_atomic(self._filename2,
+				"".join(sorted("%s\n" % x for x in self._nonatoms)))
+
 	def load(self):
 		atoms = []
 		nonatoms = []
@@ -257,6 +261,16 @@ class WorldSelectedSet(EditablePackageSet):
 			atoms_changed = True
 		else:
 			atoms.extend(self._atoms)
+
+		if _ENABLE_SET_CONFIG:
+			changed2, nonatoms = self._load2()
+			atoms_changed |= changed2
+
+		if atoms_changed:
+			self._setAtoms(atoms+nonatoms)
+
+	def _load2(self):
+		changed = False
 		try:
 			mtime = os.stat(self._filename2).st_mtime
 		except (OSError, IOError):
@@ -274,12 +288,12 @@ class WorldSelectedSet(EditablePackageSet):
 				data = {}
 			nonatoms = list(data)
 			self._mtime2 = mtime
-			atoms_changed = True
+			changed = True
 		else:
-			nonatoms.extend(self._nonatoms)
-		if atoms_changed:
-			self._setAtoms(atoms+nonatoms)
-		
+			nonatoms = list(self._nonatoms)
+
+		return changed, nonatoms
+
 	def _ensure_dirs(self):
 		ensure_dirs(os.path.dirname(self._filename), gid=portage_gid, mode=0o2750, mask=0o2)
 
@@ -322,5 +336,5 @@ class WorldSelectedSet(EditablePackageSet):
 		self.replace(newworldlist)
 
 	def singleBuilder(self, options, settings, trees):
-		return WorldSelectedSet(settings["ROOT"])
+		return WorldSelectedSet(settings["EROOT"])
 	singleBuilder = classmethod(singleBuilder)

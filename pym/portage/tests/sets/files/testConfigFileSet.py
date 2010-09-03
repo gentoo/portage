@@ -6,7 +6,7 @@ import tempfile
 
 from portage import os
 from portage.tests import TestCase, test_cps
-from portage.sets.files import ConfigFileSet
+from portage._sets.files import ConfigFileSet
 
 class ConfigFileSetTestCase(TestCase):
 	"""Simple Test Case for ConfigFileSet"""

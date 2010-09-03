@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Aug 2008" "Portage 2.2" "Portage"
+.TH "MAKE.CONF" "5" "Aug 2010" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -7,12 +7,15 @@ make.conf \- custom settings for Portage
 This file contains various variables that are used by Portage.
 Portage will check the currently\-defined environment variables
 first for any settings.  If no environment settings are found,
-Portage then checks /etc/make.conf.  If no setting is found
-in make.conf, Portage checks make.globals. If no
+Portage then checks the make.conf files. Both /etc/make.conf and
+/etc/portage/make.conf are checked (if present), and settings from
+/etc/portage/make.conf will override settings from /etc/make.conf.
+If no setting is found in the make.conf files, Portage checks
+make.globals. If no
 setting is found there, the profile's default setting is grabbed
 from /etc/make.profile/make.defaults. Please note that all user
-settings should be made in the environment or in /etc/make.conf,
-which is intended to be customized by the user.
+settings should be made in the environment or in the make.conf
+files, which are intended to be customized by the user.
 .br
 Exceptions are incremental variables such as USE, CONFIG_PROTECT*,
 and ACCEPT_KEYWORDS.  Incremental variables are propagated down from
@@ -238,7 +241,8 @@ type. Currently, only \fBgzip\fR(1) compression is supported, so build
 logs will have a '.gz' extension when this feature is enabled.
 .TP
 .B digest
-Autogenerate digests for packages when running the \fBemerge\fR(1) command.  If
+Autogenerate digests for packages when running the
+\fBemerge\fR(1), \fBebuild\fR(1), or \fBrepoman\fR(1) commands. If
 the \fIassume\-digests\fR feature is also enabled then existing SRC_URI digests
 will be reused whenever they are available.
 .TP
@@ -465,6 +469,9 @@ If a file is not claimed by another package in the same slot and it is not
 protected by \fICONFIG_PROTECT\fR, unmerge it even if the modification time or
 checksum differs from the file that was originally installed.
 .TP
+.B unknown\-features\-filter
+Filter out any unknown values that the FEATURES variable contains.
+.TP
 .B unknown\-features\-warn
 Warn if FEATURES contains one or more unknown values.
 .TP
@@ -586,6 +593,16 @@ setting as the base URI.
 .B PORTAGE_BINPKG_TAR_OPTS
 This variable contains options to be passed to the tar command for creation
 of binary packages.
+.TP
+\fBPORTAGE_BUNZIP2_COMMAND\fR = \fI[bunzip2 command string]\fR
+This variable should contain a command that is suitable for portage to call
+for bunzip2 extraction operations.
+.TP
+\fBPORTAGE_BZIP2_COMMAND\fR = \fI[bzip2 command string]\fR
+This variable should contain a command that is suitable for portage to call
+for bzip2 compression operations. \fBPORTAGE_BZIP2_COMMAND\fR will also be
+called for extraction operation, with -d appended, unless the
+\fBPORTAGE_BUNZIP2_COMMAND\fR variable is set.
 .TP
 \fBPORTAGE_COMPRESS\fR = \fI"bzip2"\fR
 This variable contains the command used to compress documentation during the

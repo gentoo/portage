@@ -10,7 +10,6 @@ from portage import _unicode_encode
 from portage import _unicode_decode
 import codecs
 from portage.elog.messages import eerror
-from portage.util import writemsg_stdout
 from portage.util._pty import _create_pty_or_pipe
 
 class EbuildFetcher(SpawnProcess):

@@ -7,11 +7,23 @@ import portage
 from portage import os
 from _emerge.Package import Package
 from _emerge.PackageVirtualDbapi import PackageVirtualDbapi
+from portage.const import VDB_PATH
 from portage.dbapi.vartree import vartree
 from portage.update import grab_updates, parse_updates, update_dbentries
 
 if sys.hexversion >= 0x3000000:
 	long = int
+
+class FakeVardbapi(PackageVirtualDbapi):
+	"""
+	Implements the vardbapi.getpath() method which is used in error handling
+	code for the Package class and vartree.get_provide().
+	"""
+	def getpath(self, cpv, filename=None):
+		path = os.path.join(self.settings['EROOT'], VDB_PATH, cpv)
+		if filename is not None:
+			path =os.path.join(path, filename)
+		return path
 
 class FakeVartree(vartree):
 	"""This is implements an in-memory copy of a vartree instance that provides
@@ -37,9 +49,9 @@ class FakeVartree(vartree):
 			mykeys.append("_mtime_")
 		self._db_keys = mykeys
 		self._pkg_cache = pkg_cache
-		self.dbapi = PackageVirtualDbapi(real_vartree.settings)
+		self.dbapi = FakeVardbapi(real_vartree.settings)
 
-		# Intialize variables needed for lazy cache pulls of the live ebuild
+		# Initialize variables needed for lazy cache pulls of the live ebuild
 		# metadata.  This ensures that the vardb lock is released ASAP, without
 		# being delayed in case cache generation is triggered.
 		self._aux_get = self.dbapi.aux_get
@@ -106,14 +118,13 @@ class FakeVartree(vartree):
 				portage.locks.unlockdir(vdb_lock)
 
 		# Populate the old-style virtuals using the cached values.
-		if not self.settings.treeVirtuals:
-			# Skip the aux_get wrapper here, to avoid unwanted
-			# cache generation.
-			try:
-				self.dbapi.aux_get = self._aux_get
-				self.settings._populate_treeVirtuals(self)
-			finally:
-				self.dbapi.aux_get = self._aux_get_wrapper
+		# Skip the aux_get wrapper here, to avoid unwanted
+		# cache generation.
+		try:
+			self.dbapi.aux_get = self._aux_get
+			self.settings._populate_treeVirtuals_if_needed(self)
+		finally:
+			self.dbapi.aux_get = self._aux_get_wrapper
 
 	def _sync(self):
 

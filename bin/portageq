@@ -561,7 +561,7 @@ def list_preserved_libs(argv):
 	if len(argv) != 1:
 		print("ERROR: wrong number of arguments")
 		sys.exit(2)
-	mylibs = portage.db[argv[0]]["vartree"].dbapi.plib_registry.getPreservedLibs()
+	mylibs = portage.db[argv[0]]["vartree"].dbapi._plib_registry.getPreservedLibs()
 	rValue = 0
 	msg = []
 	for cpv in sorted(mylibs):
@@ -578,6 +578,9 @@ list_preserved_libs.uses_root = True
 #
 # DO NOT CHANGE CODE BEYOND THIS POINT - IT'S NOT NEEDED!
 #
+
+if not portage.const._ENABLE_PRESERVE_LIBS:
+	del list_preserved_libs
 
 non_commands = frozenset(['eval_atom_use', 'exithandler', 'main',
 	'usage', 'writemsg', 'writemsg_stdout'])

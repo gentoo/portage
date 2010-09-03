@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -6,7 +6,6 @@ from portage.cache import fs_template
 from portage.cache import cache_errors
 from portage import os
 from portage import _unicode_decode
-from portage.cache.template import reconstruct_eclasses
 from portage.util import writemsg
 from portage.localization import _
 try:

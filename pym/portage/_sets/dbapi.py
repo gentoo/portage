@@ -7,8 +7,8 @@ from portage import os
 from portage.versions import catpkgsplit, catsplit, pkgcmp, best
 from portage.dep import Atom
 from portage.localization import _
-from portage.sets.base import PackageSet
-from portage.sets import SetConfigError, get_boolean
+from portage._sets.base import PackageSet
+from portage._sets import SetConfigError, get_boolean
 import portage
 
 __all__ = ["CategorySet", "DowngradeSet",

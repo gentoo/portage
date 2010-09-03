@@ -25,17 +25,18 @@ from itertools import chain
 import portage
 from portage import os
 from portage import digraph
-from portage import _unicode_decode, _unicode_encode
+from portage import _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import GLOBAL_CONFIG_PATH, NEWS_LIB_PATH, EPREFIX
+from portage.const import _ENABLE_DYN_LINK_MAP
 from portage.dbapi.dep_expand import dep_expand
 from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 	red, yellow
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
-from portage.sets import load_default_config, SETPREFIX
-from portage.sets.base import InternalPackageSet
+from portage._sets import load_default_config, SETPREFIX
+from portage._sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, \
 	writemsg_level, writemsg_stdout
 from portage._global_updates import _global_updates
@@ -447,7 +448,13 @@ def action_build(settings, trees, mtimedb,
 				portage.writemsg_stdout(colorize("WARN", "WARNING:")
 					+ " AUTOCLEAN is disabled.  This can cause serious"
 					+ " problems due to overlapping packages.\n")
-			trees[settings["ROOT"]]["vartree"].dbapi.plib_registry.pruneNonExisting()
+			plib_registry = \
+				trees[settings["ROOT"]]["vartree"].dbapi._plib_registry
+			if plib_registry is None:
+				# preserve-libs is entirely disabled
+				pass
+			else:
+				plib_registry.pruneNonExisting()
 
 		return retval
 
@@ -528,6 +535,11 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	# specific packages.
 
 	msg = []
+	if not _ENABLE_DYN_LINK_MAP:
+		msg.append("Depclean may break link level dependencies. Thus, it is\n")
+		msg.append("recommended to use a tool such as " + good("`revdep-rebuild`") + " (from\n")
+		msg.append("app-portage/gentoolkit) in order to detect such breakage.\n")
+		msg.append("\n")
 	msg.append("Always study the list of packages to be cleaned for any obvious\n")
 	msg.append("mistakes. Packages that are part of the world set will always\n")
 	msg.append("be kept.  They can be manually added to this set with\n")
@@ -658,6 +670,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	resolver = depgraph(settings, trees, myopts, resolver_params, spinner)
 	resolver._load_vdb()
 	vardb = resolver._frozen_config.trees[myroot]["vartree"].dbapi
+	real_vardb = trees[myroot]["vartree"].dbapi
 
 	if action == "depclean":
 
@@ -875,13 +888,14 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	cleanlist = create_cleanlist()
 	clean_set = set(cleanlist)
 
-	if cleanlist and myopts.get('--depclean-lib-check') != 'n':
+	if cleanlist and \
+		real_vardb._linkmap is not None and \
+		myopts.get('--depclean-lib-check') != 'n':
 
-		# Check if any of these package are the sole providers of libraries
+		# Check if any of these packages are the sole providers of libraries
 		# with consumers that have not been selected for removal. If so, these
 		# packages and any dependencies need to be added to the graph.
-		real_vardb = trees[myroot]["vartree"].dbapi
-		linkmap = real_vardb.linkmap
+		linkmap = real_vardb._linkmap
 		consumer_cache = {}
 		provider_cache = {}
 		consumer_map = {}
@@ -1322,11 +1336,17 @@ def action_info(settings, trees, myopts, myfiles):
 	else:
 		myvars = ['GENTOO_MIRRORS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
 		          'PORTDIR', 'DISTDIR', 'PKGDIR', 'PORTAGE_TMPDIR',
-		          'PORTDIR_OVERLAY', 'USE', 'CHOST', 'CFLAGS', 'CXXFLAGS',
+		          'PORTDIR_OVERLAY', 'PORTAGE_BUNZIP2_COMMAND',
+		          'PORTAGE_BZIP2_COMMAND',
+		          'USE', 'CHOST', 'CFLAGS', 'CXXFLAGS',
 		          'ACCEPT_KEYWORDS', 'ACCEPT_LICENSE', 'SYNC', 'FEATURES',
 		          'EMERGE_DEFAULT_OPTS']
 
 		myvars.extend(portage.util.grabfile(settings["PORTDIR"]+"/profiles/info_vars"))
+
+	myvars_ignore_defaults = {
+		'PORTAGE_BZIP2_COMMAND' : 'bzip2',
+	}
 
 	myvars = portage.util.unique_array(myvars)
 	use_expand = settings.get('USE_EXPAND', '').split()
@@ -1340,6 +1360,10 @@ def action_info(settings, trees, myopts, myfiles):
 	for x in myvars:
 		if x in settings:
 			if x != "USE":
+				default = myvars_ignore_defaults.get(x)
+				if default is not None and \
+					default == settings[x]:
+					continue
 				writemsg_stdout('%s="%s"\n' % (x, settings[x]), noiselevel=-1)
 			else:
 				use = set(settings["USE"].split())
@@ -2851,10 +2875,9 @@ def display_news_notification(root_config, myopts):
 	if "news" not in settings.features:
 		return
 
-	if not settings.treeVirtuals:
-		# Populate these using our existing vartree, to avoid
-		# having a temporary one instantiated.
-		settings._populate_treeVirtuals(trees["vartree"])
+	# Populate these using our existing vartree, to avoid
+	# having a temporary one instantiated.
+	settings._populate_treeVirtuals_if_needed(trees["vartree"])
 
 	for repo in portdb.getRepositories():
 		unreadItems = checkUpdatedNewsItems(

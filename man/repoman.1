@@ -1,4 +1,4 @@
-.TH "REPOMAN" "1" "Aug 2008" "Portage 2.2" "Portage"
+.TH "REPOMAN" "1" "Aug 2008" "Portage VERSION" "Portage"
 .SH NAME
 repoman \- Gentoo's program to enforce a minimal level of quality assurance in packages added to the portage tree
 .SH SYNOPSIS
@@ -133,6 +133,9 @@ Virtuals that have a non-empty HOMEPAGE variable
 .TP
 .B IUSE.invalid
 This ebuild has a variable in IUSE that is not in the use.desc or its metadata.xml file
+.TP
+.B IUSE.missing
+This ebuild has a USE conditional which references a flag that is not listed in IUSE
 .TP
 .B IUSE.undefined
 This ebuild does not define IUSE (style guideline says to define IUSE even when empty)

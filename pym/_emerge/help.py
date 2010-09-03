@@ -3,6 +3,7 @@
 
 from __future__ import print_function
 
+from portage.const import _ENABLE_DYN_LINK_MAP
 from portage.output import bold, turquoise, green
 
 def shorthelp():
@@ -92,6 +93,12 @@ def help(myopts, havecolor=1):
 		"to be cleaned for any obvious mistakes. Note that packages " + \
 		"listed in package.provided (see portage(5)) may be removed by " + \
 		"depclean, even if they are part of the world set."
+
+		if not _ENABLE_DYN_LINK_MAP:
+			paragraph += " Also note that " + \
+				"depclean may break link level dependencies. Thus, it is " + \
+				"recommended to use a tool such as revdep-rebuild(1) " + \
+				"in order to detect such breakage."
 
 		for line in wrap(paragraph, desc_width):
 			print(desc_indent + line)

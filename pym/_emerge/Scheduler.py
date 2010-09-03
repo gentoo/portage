@@ -3,7 +3,6 @@
 
 from __future__ import print_function
 
-import codecs
 import gzip
 import logging
 import shutil
@@ -18,7 +17,6 @@ import portage
 from portage import StringIO
 from portage import os
 from portage import _encodings
-from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.const import LIBC_PACKAGE_ATOM
@@ -26,8 +24,8 @@ from portage.elog.messages import eerror
 from portage.localization import _
 from portage.output import colorize, create_color_func, red
 bad = create_color_func("BAD")
-from portage.sets import SETPREFIX
-from portage.sets.base import InternalPackageSet
+from portage._sets import SETPREFIX
+from portage._sets.base import InternalPackageSet
 from portage.util import writemsg, writemsg_level
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
@@ -200,6 +198,11 @@ class Scheduler(PollScheduler):
 			self.edebug = 1
 		self.pkgsettings = {}
 		self._config_pool = {}
+
+		# TODO: Replace the BlockerDB with a depgraph of installed packages
+		# that's updated incrementally with each upgrade/uninstall operation
+		# This will be useful for making quick and safe decisions with respect
+		# to aggressive parallelization discussed in bug #279623.
 		self._blocker_db = {}
 		for root in trees:
 			self._config_pool[root] = []
@@ -222,6 +225,7 @@ class Scheduler(PollScheduler):
 
 		self._prefetchers = weakref.WeakValueDictionary()
 		self._pkg_queue = []
+		self._running_tasks = set()
 		self._completed_tasks = set()
 
 		self._failed_pkgs = []
@@ -824,9 +828,12 @@ class Scheduler(PollScheduler):
 		if pkg.root == self._running_root.root and \
 			portage.match_from_list(
 			portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
-			if self._running_portage:
-				return pkg.cpv != self._running_portage.cpv
-			return True
+			if self._running_portage is None:
+				return True
+			elif pkg.cpv != self._running_portage.cpv or \
+				'9999' in pkg.cpv or \
+				'git' in pkg.inherited:
+				return True
 		return False
 
 	def _restart_if_necessary(self, pkg):
@@ -1256,6 +1263,7 @@ class Scheduler(PollScheduler):
 
 	def _do_merge_exit(self, merge):
 		pkg = merge.merge.pkg
+		self._running_tasks.remove(pkg)
 		if merge.returncode != os.EX_OK:
 			settings = merge.merge.settings
 			build_dir = settings.get("PORTAGE_BUILDDIR")
@@ -1308,6 +1316,7 @@ class Scheduler(PollScheduler):
 				self._task_queues.merge.add(merge)
 				self._status_display.merges = len(self._task_queues.merge)
 		else:
+			self._running_tasks.remove(build.pkg)
 			settings = build.settings
 			build_dir = settings.get("PORTAGE_BUILDDIR")
 			build_log = settings.get("PORTAGE_LOG_FILE")
@@ -1448,7 +1457,11 @@ class Scheduler(PollScheduler):
 				node in later):
 				dependent = True
 				break
-			node_stack.extend(graph.child_nodes(node))
+
+			# Don't traverse children of uninstall nodes since
+			# those aren't dependencies in the usual sense.
+			if node.operation != "uninstall":
+				node_stack.extend(graph.child_nodes(node))
 
 		return dependent
 
@@ -1495,8 +1508,7 @@ class Scheduler(PollScheduler):
 			not (self._failed_pkgs and not self._build_opts.fetchonly))
 
 	def _is_work_scheduled(self):
-		return bool(self._jobs or \
-			self._task_queues.merge or self._merge_wait_queue)
+		return bool(self._running_tasks)
 
 	def _schedule_tasks(self):
 
@@ -1581,6 +1593,7 @@ class Scheduler(PollScheduler):
 				self._pkg_count.curval += 1
 
 			task = self._task(pkg)
+			self._running_tasks.add(pkg)
 
 			if pkg.installed:
 				merge = PackageMerge(merge=task)

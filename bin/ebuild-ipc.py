@@ -48,13 +48,35 @@ class EbuildIpc(object):
 
 	def _communicate(self, args):
 		input_fd = os.open(self.ipc_out_fifo, os.O_RDONLY|os.O_NONBLOCK)
-		input_file = os.fdopen(input_fd, 'rb')
-		output_file = open(self.ipc_in_fifo, 'wb')
-		pickle.dump(args, output_file)
+
+		# File streams are in unbuffered mode since we do atomic
+		# read and write of whole pickles.
+		input_file = os.fdopen(input_fd, 'rb', 0)
+		output_file = open(self.ipc_in_fifo, 'wb', 0)
+
+		# Write the whole pickle in a single atomic write() call,
+		# since the reader is in non-blocking mode and we want
+		# it to get the whole pickle at once.
+		output_file.write(pickle.dumps(args))
 		output_file.flush()
 
 		events = select.select([input_file], [], [])
-		reply = pickle.load(input_file)
+
+		# Read the whole pickle in a single read() call since
+		# this stream is in non-blocking mode and pickle.load()
+		# has been known to raise the following exception when
+		# reading from a non-blocking stream:
+		#
+		#   File "/usr/lib64/python2.6/pickle.py", line 1370, in load
+		#     return Unpickler(file).load()
+		#   File "/usr/lib64/python2.6/pickle.py", line 858, in load
+		#     dispatch[key](self)
+		#   File "/usr/lib64/python2.6/pickle.py", line 1195, in load_setitem
+		#     value = stack.pop()
+		# IndexError: pop from empty list
+
+		pickle_str = input_file.read()
+		reply = pickle.loads(pickle_str)
 		output_file.close()
 		input_file.close()
 

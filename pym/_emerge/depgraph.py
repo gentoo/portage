@@ -18,13 +18,14 @@ from portage.dbapi import dbapi
 from portage.dbapi.dep_expand import dep_expand
 from portage.dep import Atom, extract_affecting_use, check_required_use, human_readable_required_use
 from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use
+from portage.exception import InvalidAtom
 from portage.output import bold, blue, colorize, create_color_func, darkblue, \
 	darkgreen, green, nc_len, red, teal, turquoise, yellow
 bad = create_color_func("BAD")
 from portage.package.ebuild.getmaskingstatus import \
 	_getmaskingstatus, _MaskReason
-from portage.sets import SETPREFIX
-from portage.sets.base import InternalPackageSet
+from portage._sets import SETPREFIX
+from portage._sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, writemsg_stdout
 from portage.util import writemsg_level
 
@@ -737,9 +738,8 @@ class depgraph(object):
 				arg_atoms = list(self._iter_atoms_for_pkg(pkg))
 			except portage.exception.InvalidDependString as e:
 				if not pkg.installed:
-					show_invalid_depstring_notice(
-						pkg, pkg.metadata["PROVIDE"], str(e))
-					return 0
+					# should have been masked before it was selected
+					raise
 				del e
 
 		if not pkg.onlydeps:
@@ -880,10 +880,9 @@ class depgraph(object):
 					settings.setinst(pkg.cpv, pkg.metadata)
 					settings.lock()
 				except portage.exception.InvalidDependString as e:
-					show_invalid_depstring_notice(
-						pkg, pkg.metadata["PROVIDE"], str(e))
-					del e
-					return 0
+					if not pkg.installed:
+						# should have been masked before it was selected
+						raise
 
 		if arg_atoms:
 			self._dynamic_config._set_nodes.add(pkg)
@@ -1032,19 +1031,36 @@ class depgraph(object):
 						noiselevel=-1, level=logging.DEBUG)
 
 				try:
-
 					dep_string = portage.dep.use_reduce(dep_string,
 						uselist=self._pkg_use_enabled(pkg), is_valid_flag=pkg.iuse.is_valid_flag)
-
-					dep_string = list(self._queue_disjunctive_deps(
-						pkg, dep_root, dep_priority, dep_string))
-
 				except portage.exception.InvalidDependString as e:
-					if pkg.installed:
+					if not pkg.installed:
+						# should have been masked before it was selected
+						raise
+					del e
+
+					# Try again, but omit the is_valid_flag argument, since
+					# invalid USE conditionals are a common problem and it's
+					# practical to ignore this issue for installed packages.
+					try:
+						dep_string = portage.dep.use_reduce(dep_string,
+							uselist=self._pkg_use_enabled(pkg))
+					except portage.exception.InvalidDependString as e:
+						self._dynamic_config._masked_installed.add(pkg)
 						del e
 						continue
-					show_invalid_depstring_notice(pkg, dep_string, str(e))
-					return 0
+
+				try:
+					dep_string = list(self._queue_disjunctive_deps(
+						pkg, dep_root, dep_priority, dep_string))
+				except portage.exception.InvalidDependString as e:
+					if pkg.installed:
+						self._dynamic_config._masked_installed.add(pkg)
+						del e
+						continue
+
+					# should have been masked before it was selected
+					raise
 
 				if not dep_string:
 					continue
@@ -1097,11 +1113,12 @@ class depgraph(object):
 				dep_string, myuse=self._pkg_use_enabled(pkg), parent=pkg,
 				strict=strict, priority=dep_priority)
 		except portage.exception.InvalidDependString as e:
-			show_invalid_depstring_notice(pkg, dep_string, str(e))
-			del e
 			if pkg.installed:
+				self._dynamic_config._masked_installed.add(pkg)
 				return 1
-			return 0
+
+			# should have been masked before it was selected
+			raise
 
 		if debug:
 			writemsg_level("Candidates: %s\n" % \
@@ -2075,11 +2092,17 @@ class depgraph(object):
 					if mreasons:
 						masked_pkg_instances.add(pkg)
 					if atom.unevaluated_atom.use:
-						if not pkg.iuse.is_valid_flag(atom.unevaluated_atom.use.required) \
-							or atom.violated_conditionals(self._pkg_use_enabled(pkg), pkg.iuse.is_valid_flag).use:
-							missing_use.append(pkg)
-							if not mreasons:
-								continue
+						try:
+							if not pkg.iuse.is_valid_flag(atom.unevaluated_atom.use.required) \
+								or atom.violated_conditionals(self._pkg_use_enabled(pkg), pkg.iuse.is_valid_flag).use:
+								missing_use.append(pkg)
+								if not mreasons:
+									continue
+						except InvalidAtom:
+							writemsg("violated_conditionals raised " + \
+								"InvalidAtom: '%s' parent: %s" % \
+								(atom, myparent), noiselevel=-1)
+							raise
 					if pkg.built and not mreasons:
 						mreasons = ["use flag configuration mismatch"]
 				masked_packages.append(
@@ -2203,29 +2226,29 @@ class depgraph(object):
 		mask_docs = False
 
 		if show_missing_use:
-			writemsg("\nemerge: there are no ebuilds built with USE flags to satisfy "+green(xinfo)+".\n", noiselevel=-1)
-			writemsg("!!! One of the following packages is required to complete your request:\n", noiselevel=-1)
+			writemsg_stdout("\nemerge: there are no ebuilds built with USE flags to satisfy "+green(xinfo)+".\n", noiselevel=-1)
+			writemsg_stdout("!!! One of the following packages is required to complete your request:\n", noiselevel=-1)
 			for pkg, mreasons in show_missing_use:
-				writemsg("- "+pkg.cpv+" ("+", ".join(mreasons)+")\n", noiselevel=-1)
+				writemsg_stdout("- "+pkg.cpv+" ("+", ".join(mreasons)+")\n", noiselevel=-1)
 
 		elif masked_packages:
-			writemsg("\n!!! " + \
+			writemsg_stdout("\n!!! " + \
 				colorize("BAD", "All ebuilds that could satisfy ") + \
 				colorize("INFORM", xinfo) + \
 				colorize("BAD", " have been masked.") + "\n", noiselevel=-1)
-			writemsg("!!! One of the following masked packages is required to complete your request:\n", noiselevel=-1)
+			writemsg_stdout("!!! One of the following masked packages is required to complete your request:\n", noiselevel=-1)
 			have_eapi_mask = show_masked_packages(masked_packages)
 			if have_eapi_mask:
-				writemsg("\n", noiselevel=-1)
+				writemsg_stdout("\n", noiselevel=-1)
 				msg = ("The current version of portage supports " + \
 					"EAPI '%s'. You must upgrade to a newer version" + \
 					" of portage before EAPI masked packages can" + \
 					" be installed.") % portage.const.EAPI
-				writemsg("\n".join(textwrap.wrap(msg, 75)), noiselevel=-1)
-			writemsg("\n", noiselevel=-1)
+				writemsg_stdout("\n".join(textwrap.wrap(msg, 75)), noiselevel=-1)
+			writemsg_stdout("\n", noiselevel=-1)
 			mask_docs = True
 		else:
-			writemsg("\nemerge: there are no ebuilds to satisfy "+green(xinfo)+".\n", noiselevel=-1)
+			writemsg_stdout("\nemerge: there are no ebuilds to satisfy "+green(xinfo)+".\n", noiselevel=-1)
 
 		# Show parent nodes and the argument that pulled them in.
 		traversed_nodes = set()
@@ -2253,12 +2276,12 @@ class depgraph(object):
 				if parent not in traversed_nodes:
 					selected_parent = parent
 			node = selected_parent
-		writemsg("\n".join(msg), noiselevel=-1)
-		writemsg("\n", noiselevel=-1)
+		writemsg_stdout("\n".join(msg), noiselevel=-1)
+		writemsg_stdout("\n", noiselevel=-1)
 
 		if mask_docs:
 			show_mask_docs()
-			writemsg("\n", noiselevel=-1)
+			writemsg_stdout("\n", noiselevel=-1)
 
 	def _iter_match_pkgs_any(self, root_config, atom, onlydeps=False):
 		for db, pkg_type, built, installed, db_keys in \
@@ -2600,10 +2623,13 @@ class depgraph(object):
 					# Make --noreplace take precedence over --newuse.
 					if not pkg.installed and noreplace and \
 						cpv in vardb.match(atom):
-						# If the installed version is masked, it may
-						# be necessary to look at lower versions,
-						# in case there is a visible downgrade.
-						continue
+						inst_pkg = self._pkg(pkg.cpv, "installed",
+							root_config, installed=True)
+						if inst_pkg.visible:
+							# If the installed version is masked, it may
+							# be necessary to look at lower versions,
+							# in case there is a visible downgrade.
+							continue
 					reinstall_for_flags = None
 
 					if not pkg.installed or \
@@ -2866,6 +2892,11 @@ class depgraph(object):
 							built_timestamp != installed_timestamp:
 							return built_pkg, existing_node
 
+			for pkg in matched_packages:
+				if pkg.installed and pkg.invalid:
+					matched_packages = [x for x in \
+						matched_packages if x is not pkg]
+
 			if avoid_update:
 				for pkg in matched_packages:
 					if pkg.installed and self._pkg_visibility_check(pkg, \
@@ -2906,7 +2937,7 @@ class depgraph(object):
 		is consistent such that initially satisfied deep dependencies are not
 		broken in the new graph. Initially unsatisfied dependencies are
 		irrelevant since we only want to avoid breaking dependencies that are
-		intially satisfied.
+		initially satisfied.
 
 		Since this method can consume enough time to disturb users, it is
 		currently only enabled by the --complete-graph option.
@@ -3165,9 +3196,9 @@ class depgraph(object):
 							success, atoms = portage.dep_check(depstr,
 								final_db, pkgsettings, myuse=self._pkg_use_enabled(pkg),
 								trees=self._dynamic_config._graph_trees, myroot=myroot)
+						except SystemExit:
+							raise
 						except Exception as e:
-							if isinstance(e, SystemExit):
-								raise
 							# This is helpful, for example, if a ValueError
 							# is thrown from cpv_expand due to multiple
 							# matches (this can happen if an atom lacks a
@@ -3571,7 +3602,9 @@ class depgraph(object):
 
 		if replacement_portage is not None and \
 			(running_portage is None or \
-			(running_portage.cpv != replacement_portage.cpv)):
+			running_portage.cpv != replacement_portage.cpv or \
+			'9999' in replacement_portage.cpv or \
+			'git' in replacement_portage.inherited):
 			# update from running_portage to replacement_portage asap
 			asap_nodes.append(replacement_portage)
 
@@ -4153,9 +4186,12 @@ class depgraph(object):
 			noiselevel=-1)
 		portage.writemsg("\n", noiselevel=-1)
 
-		if handler.circular_dep_message is None:
-			mygraph.debug_print()
-		else:
+		if handler.circular_dep_message is None or \
+			"--debug" in self._frozen_config.myopts:
+			handler.debug_print()
+			portage.writemsg("\n", noiselevel=-1)
+
+		if handler.circular_dep_message is not None:
 			portage.writemsg(handler.circular_dep_message, noiselevel=-1)
 
 		suggestions = handler.suggestions
@@ -4663,10 +4699,8 @@ class depgraph(object):
 							myfilesdict = portdb.getfetchsizes(pkg_key,
 								useflags=pkg_use, debug=self._frozen_config.edebug)
 						except portage.exception.InvalidDependString as e:
-							src_uri = portdb.aux_get(pkg_key, ["SRC_URI"])[0]
-							show_invalid_depstring_notice(x, src_uri, str(e))
-							del e
-							return 1
+							# should have been masked before it was selected
+							raise
 						if myfilesdict is None:
 							myfilesdict="[empty/missing/bad digest]"
 						else:
@@ -4865,8 +4899,10 @@ class depgraph(object):
 					pkg.root == self._frozen_config._running_root.root and \
 					portage.match_from_list(
 					portage.const.PORTAGE_PACKAGE_ATOM, [pkg]) and \
-					not vardb.cpv_exists(pkg.cpv) and \
 					"--quiet" not in self._frozen_config.myopts:
+					if not vardb.cpv_exists(pkg.cpv) or \
+						'9999' in pkg.cpv or \
+						'git' in pkg.inherited:
 						if mylist_index < len(mylist) - 1:
 							p.append(colorize("WARN", "*** Portage will stop merging at this point and reload itself,"))
 							p.append(colorize("WARN", "    then resume the merge."))
@@ -6051,7 +6087,7 @@ def show_masked_packages(masked_packages):
 				# above via mreasons.
 				pass
 
-		writemsg("- "+cpv+" (masked by: "+", ".join(mreasons)+")\n", noiselevel=-1)
+		writemsg_stdout("- "+cpv+" (masked by: "+", ".join(mreasons)+")\n", noiselevel=-1)
 
 		if comment and comment not in shown_comments:
 			writemsg_stdout(filename + ":\n" + comment + "\n",
@@ -6064,13 +6100,13 @@ def show_masked_packages(masked_packages):
 				continue
 			msg = ("A copy of the '%s' license" + \
 			" is located at '%s'.\n\n") % (l, l_path)
-			writemsg(msg, noiselevel=-1)
+			writemsg_stdout(msg, noiselevel=-1)
 			shown_licenses.add(l)
 	return have_eapi_mask
 
 def show_mask_docs():
-	writemsg("For more information, see the MASKED PACKAGES section in the emerge\n", noiselevel=-1)
-	writemsg("man page or refer to the Gentoo Handbook.\n", noiselevel=-1)
+	writemsg_stdout("For more information, see the MASKED PACKAGES section in the emerge\n", noiselevel=-1)
+	writemsg_stdout("man page or refer to the Gentoo Handbook.\n", noiselevel=-1)
 
 def filter_iuse_defaults(iuse):
 	for flag in iuse:
@@ -6098,11 +6134,6 @@ def _get_masking_status(pkg, pkgsettings, root_config, use=None):
 		if not pkgsettings._accept_chost(pkg.cpv, pkg.metadata):
 			mreasons.append(_MaskReason("CHOST", "CHOST: %s" % \
 				pkg.metadata["CHOST"]))
-		if pkg.invalid:
-			for msg_type, msgs in pkg.invalid.items():
-				for msg in msgs:
-					mreasons.append(
-						_MaskReason("invalid", "invalid: %s" % (msg,)))
 
 		if pkg.metadata["REQUIRED_USE"] and \
 			eapi_has_required_use(pkg.metadata["EAPI"]):
@@ -6124,6 +6155,12 @@ def _get_masking_status(pkg, pkgsettings, root_config, use=None):
 			mreasons.append("missing EPREFIX")
 		elif len(pkg.metadata["EPREFIX"].strip()) < len(pkgsettings["EPREFIX"]):
 			mreasons.append("EPREFIX: '%s' too small" % pkg.metadata["EPREFIX"])
+
+	if pkg.invalid:
+		for msg_type, msgs in pkg.invalid.items():
+			for msg in msgs:
+				mreasons.append(
+					_MaskReason("invalid", "invalid: %s" % (msg,)))
 
 	if not pkg.metadata["SLOT"]:
 		mreasons.append(

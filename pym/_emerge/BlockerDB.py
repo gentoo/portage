@@ -6,7 +6,7 @@ import sys
 import portage
 from portage import os
 from portage import digraph
-from portage.sets.base import InternalPackageSet
+from portage._sets.base import InternalPackageSet
 
 from _emerge.BlockerCache import BlockerCache
 from _emerge.FakeVartree import FakeVartree

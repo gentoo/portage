@@ -1,12 +1,9 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import codecs
 import logging
 import portage
 from portage import os
-from portage import _encodings
-from portage import _unicode_encode
 from _emerge.AsynchronousTask import AsynchronousTask
 from _emerge.unmerge import unmerge
 from _emerge.UninstallFailure import UninstallFailure

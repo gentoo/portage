@@ -1,7 +1,6 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import time
 from portage.cache import template
 from portage.cache.cache_errors import CacheCorruption
 from portage.cache.flat_hash import database as db_rw

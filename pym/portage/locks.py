@@ -236,6 +236,8 @@ def unlockfile(mytuple):
 				writemsg(_("lockfile does not exist '%s'\n") % lockfilename, 1)
 				os.close(myfd)
 				return False
+	except SystemExit:
+		raise
 	except Exception as e:
 		writemsg(_("Failed to get lock... someone took it.\n"), 1)
 		writemsg(str(e)+"\n",1)

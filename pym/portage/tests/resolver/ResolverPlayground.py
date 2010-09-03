@@ -6,19 +6,19 @@ import shutil
 import tempfile
 import portage
 from portage import os
+from portage.const import PORTAGE_BASE_PATH
 from portage.dbapi.vartree import vartree
 from portage.dbapi.porttree import portagetree
 from portage.dbapi.bintree import binarytree
 from portage.dep import Atom
 from portage.package.ebuild.config import config
-from portage.sets import load_default_config
+from portage._sets import load_default_config
 from portage.versions import catsplit
 
 from _emerge.Blocker import Blocker
 from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.depgraph import backtrack_depgraph
 from _emerge.RootConfig import RootConfig
-from _emerge.main import setconfig_fallback
 
 class ResolverPlayground(object):
 	"""
@@ -46,6 +46,9 @@ class ResolverPlayground(object):
 		os.makedirs(self.portdir)
 		os.makedirs(self.vdbdir)
 
+		if not debug:
+			portage.util.noiselimit = -2
+
 		self._create_ebuilds(ebuilds)
 		self._create_installed(installed)
 		self._create_profile(ebuilds, installed, profile, user_config, sets)
@@ -54,6 +57,8 @@ class ResolverPlayground(object):
 		self.settings, self.trees = self._load_config()
 
 		self._create_ebuild_manifests(ebuilds)
+		
+		portage.util.noiselimit = 0
 
 	def _create_ebuilds(self, ebuilds):
 		for cpv in ebuilds:
@@ -205,7 +210,7 @@ class ResolverPlayground(object):
 		if profile:
 			#This is meant to allow the consumer to set up his own profile,
 			#with package.mask and what not.
-			raise NotImplentedError()
+			raise NotImplementedError()
 
 		#Create profile symlink
 		os.makedirs(os.path.join(self.eroot, "etc"))
@@ -236,7 +241,8 @@ class ResolverPlayground(object):
 		except os.error:
 			pass
 
-		provided_sets_portage_conf = os.path.realpath("../../../cnf/sets/portage.conf")
+		provided_sets_portage_conf = \
+			os.path.join(PORTAGE_BASE_PATH, "cnf/sets/portage.conf")
 		os.symlink(provided_sets_portage_conf, os.path.join(default_sets_conf_dir, "portage.conf"))
 
 		set_config_dir = os.path.join(user_config_dir, "sets")
@@ -297,7 +303,6 @@ class ResolverPlayground(object):
 			settings._init_dirs()
 			setconfig = load_default_config(settings, root_trees)
 			root_trees["root_config"] = RootConfig(settings, root_trees, setconfig)
-			setconfig_fallback(root_trees["root_config"])
 		
 		return settings, trees
 
@@ -328,6 +333,9 @@ class ResolverPlayground(object):
 				return
 
 	def cleanup(self):
+		portdb = self.trees[self.root]["porttree"].dbapi
+		portdb.close_caches()
+		portage.dbapi.porttree.portdbapi.portdbapi_instances.remove(portdb)
 		if self.debug:
 			print("\nEROOT=%s" % self.eroot)
 		else:

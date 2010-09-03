@@ -5,8 +5,8 @@ import subprocess
 
 from portage import os
 from portage import _unicode_decode
-from portage.sets.base import PackageSet
-from portage.sets import SetConfigError
+from portage._sets.base import PackageSet
+from portage._sets import SetConfigError
 
 __all__ = ["CommandOutputSet"]
 

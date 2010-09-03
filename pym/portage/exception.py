@@ -31,6 +31,9 @@ class CorruptionError(PortageException):
 
 class InvalidDependString(PortageException):
 	"""An invalid depend string has been encountered"""
+	def __init__(self, value, errors=None):
+		PortageException.__init__(self, value)
+		self.errors = errors
 
 class InvalidVersionString(PortageException):
 	"""An invalid version string has been encountered"""
@@ -49,6 +52,9 @@ class ParseError(PortageException):
 
 class InvalidData(PortageException):
 	"""An incorrect formatting was passed instead of the expected one"""
+	def __init__(self, value, category=None):
+		PortageException.__init__(self, value)
+		self.category = category
 
 class InvalidDataType(PortageException):
 	"""An incorrect type was passed instead of the expected one"""
@@ -102,6 +108,9 @@ class InvalidPackageName(PortagePackageException):
 
 class InvalidAtom(PortagePackageException):
 	"""Malformed atom spec"""
+	def __init__(self, value, category=None):
+		PortagePackageException.__init__(self, value)
+		self.category = category
 
 class UnsupportedAPIException(PortagePackageException):
 	"""Unsupported API"""

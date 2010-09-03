@@ -4,13 +4,13 @@
 __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
 
 import codecs
-import errno
 import gzip
 from itertools import chain
 import logging
 import os as _os
 import re
 import shutil
+import signal
 import stat
 import sys
 import tempfile
@@ -39,12 +39,11 @@ from portage.data import portage_gid, portage_uid, secpass, \
 from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, paren_enclose, use_reduce
 from portage.eapi import eapi_exports_KV, eapi_exports_replace_vars, \
-	eapi_has_src_uri_arrows, \
 	eapi_has_src_prepare_and_src_configure, eapi_has_pkg_pretend
 from portage.elog import elog_process
 from portage.elog.messages import eerror, eqawarn
 from portage.exception import DigestException, FileNotFound, \
-	IncorrectParameter, InvalidAtom, InvalidDependString, PermissionDenied, \
+	IncorrectParameter, InvalidDependString, PermissionDenied, \
 	UnsupportedAPIException
 from portage.localization import _
 from portage.manifest import Manifest
@@ -166,7 +165,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			mysettings.setcpv(mycpv, mydb=mydbapi)
 
 	# config.reset() might have reverted a change made by the caller,
-	# so restore it to it's original value. Sandbox needs cannonical
+	# so restore it to its original value. Sandbox needs canonical
 	# paths, so realpath it.
 	mysettings["PORTAGE_TMPDIR"] = os.path.realpath(tmpdir)
 
@@ -177,6 +176,11 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 
 	# Set requested Python interpreter for Portage helpers.
 	mysettings['PORTAGE_PYTHON'] = portage._python_interpreter
+
+	# This is used by assert_sigpipe_ok() that's used by the ebuild
+	# unpack() helper. SIGPIPE is typically 13, but its better not
+	# to assume that.
+	mysettings['PORTAGE_SIGPIPE_STATUS'] = str(128 + signal.SIGPIPE)
 
 	# We are disabling user-specific bashrc files.
 	mysettings["BASH_ENV"] = INVALID_ENV_FILE
@@ -311,6 +315,10 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 _doebuild_manifest_cache = None
 _doebuild_broken_ebuilds = set()
 _doebuild_broken_manifests = set()
+_doebuild_commands_without_builddir = (
+	'clean', 'cleanrm', 'depend', 'digest',
+	'fetch', 'fetchall', 'help', 'manifest'
+)
 
 def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	fetchonly=0, cleanup=0, dbkey=None, use_cache=1, fetchall=0, tree=None,
@@ -586,9 +594,13 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			if rval != os.EX_OK:
 				return rval
 
-		rval = _check_temp_dir(mysettings)
-		if rval != os.EX_OK:
-			return rval
+		# The info phase is special because it uses mkdtemp so and
+		# user (not necessarily in the portage group) can run it.
+		if mydo not in ('info',) and \
+			mydo not in _doebuild_commands_without_builddir:
+			rval = _check_temp_dir(mysettings)
+			if rval != os.EX_OK:
+				return rval
 
 		if mydo == "unmerge":
 			return unmerge(mysettings["CATEGORY"],
@@ -992,8 +1004,7 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 	eapi = metadata["EAPI"]
 	for k in misc_keys:
 		try:
-			use_reduce(metadata[k], matchall=True, is_src_uri=(k=="SRC_URI"), \
-				allow_src_uri_file_renames=eapi_has_src_uri_arrows(eapi))
+			use_reduce(metadata[k], is_src_uri=(k=="SRC_URI"), eapi=eapi)
 		except InvalidDependString as e:
 			msgs.append("  %s: %s\n    %s\n" % (
 				k, metadata[k], str(e)))
@@ -1462,22 +1473,27 @@ def _post_src_install_uid_fix(mysettings, out):
 	use = frozenset(mysettings['PORTAGE_USE'].split())
 	for k in _vdb_use_conditional_keys:
 		v = mysettings.configdict['pkg'].get(k)
+		filename = os.path.join(build_info_dir, k)
 		if v is None:
+			try:
+				os.unlink(filename)
+			except OSError:
+				pass
 			continue
-		v = use_reduce(v, uselist=use)
+
+		if k.endswith('DEPEND'):
+			token_class = Atom
+		else:
+			token_class = None
+
+		v = use_reduce(v, uselist=use, token_class=token_class)
 		v = paren_enclose(v)
 		if not v:
+			try:
+				os.unlink(filename)
+			except OSError:
+				pass
 			continue
-		if v in _vdb_use_conditional_atoms:
-			v_split = []
-			for x in v.split():
-				try:
-					x = Atom(x)
-				except InvalidAtom:
-					v_split.append(x)
-				else:
-					v_split.append(str(x.evaluate_conditionals(use)))
-			v = ' '.join(v_split)
 		codecs.open(_unicode_encode(os.path.join(build_info_dir,
 			k), encoding=_encodings['fs'], errors='strict'),
 			mode='w', encoding=_encodings['repo.content'],

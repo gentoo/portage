@@ -3,7 +3,7 @@
 
 import portage
 from portage import os
-from portage.const import CACHE_PATH, PROFILE_PATH, EPREFIX
+from portage.const import CACHE_PATH, PROFILE_PATH
 
 def _get_legacy_global(name):
 	constructed = portage._legacy_globals_constructed
@@ -27,8 +27,8 @@ def _get_legacy_global(name):
 	os.umask(0o22)
 
 	kwargs = {}
-	kwargs["config_root"] = os.environ.get("PORTAGE_CONFIGROOT", EPREFIX + "/")
-	kwargs["target_root"] = os.environ.get("ROOT", "/")
+	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT")):
+		kwargs[k] = os.environ.get(envvar)
 
 	portage._initializing_globals = True
 	portage.db = portage.create_trees(**kwargs)
@@ -71,9 +71,6 @@ def _get_legacy_global(name):
 
 	portage.thirdpartymirrors = settings.thirdpartymirrors()
 	constructed.add('thirdpartymirrors')
-
-	portage.usedefaults = settings.use_defs
-	constructed.add('usedefaults')
 
 	profiledir = os.path.join(settings["PORTAGE_CONFIGROOT"], PROFILE_PATH)
 	if not os.path.isdir(profiledir):

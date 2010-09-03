@@ -24,7 +24,7 @@ except ImportError:
 
 try:
 	from urllib.parse import unquote as urllib_parse_unquote
-except:
+except ImportError:
 	from urllib2 import unquote as urllib_parse_unquote
 
 try:

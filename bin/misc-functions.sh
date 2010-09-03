@@ -42,6 +42,109 @@ install_symlink_html_docs() {
 	fi
 }
 
+# replacement for "readlink -f" or "realpath"
+canonicalize() {
+	local f=$1 b n=10 wd=$(pwd)
+	while (( n-- > 0 )); do
+		while [[ ${f: -1} = / && ${#f} -gt 1 ]]; do
+			f=${f%/}
+		done
+		b=${f##*/}
+		cd "${f%"${b}"}" 2>/dev/null || break
+		if [[ ! -L ${b} ]]; then
+			f=$(pwd -P)
+			echo "${f%/}/${b}"
+			cd "${wd}"
+			return 0
+		fi
+		f=$(readlink "${b}")
+	done
+	cd "${wd}"
+	return 1
+}
+
+prepcompress() {
+	local -a include exclude incl_d incl_f
+	local f g i real_f real_d
+
+	# Canonicalize path names and check for their existence.
+	real_d=$(canonicalize "${D}")
+	for (( i = 0; i < ${#PORTAGE_DOCOMPRESS[@]}; i++ )); do
+		real_f=$(canonicalize "${D}${PORTAGE_DOCOMPRESS[i]}")
+		f=${real_f#"${real_d}"}
+		if [[ ${real_f} != "${f}" ]] && [[ -d ${real_f} || -f ${real_f} ]]
+		then
+			include[${#include[@]}]=${f:-/}
+		elif [[ ${i} -ge 3 ]]; then
+			ewarn "prepcompress:" \
+				"ignoring nonexistent path '${PORTAGE_DOCOMPRESS[i]}'"
+		fi
+	done
+	for (( i = 0; i < ${#PORTAGE_DOCOMPRESS_SKIP[@]}; i++ )); do
+		real_f=$(canonicalize "${D}${PORTAGE_DOCOMPRESS_SKIP[i]}")
+		f=${real_f#"${real_d}"}
+		if [[ ${real_f} != "${f}" ]] && [[ -d ${real_f} || -f ${real_f} ]]
+		then
+			exclude[${#exclude[@]}]=${f:-/}
+		elif [[ ${i} -ge 1 ]]; then
+			ewarn "prepcompress:" \
+				"ignoring nonexistent path '${PORTAGE_DOCOMPRESS_SKIP[i]}'"
+		fi
+	done
+
+	# Remove redundant entries from lists.
+	# For the include list, remove any entries that are:
+	# a) contained in a directory in the include or exclude lists, or
+	# b) identical with an entry in the exclude list.
+	for (( i = ${#include[@]} - 1; i >= 0; i-- )); do
+		f=${include[i]}
+		for g in "${include[@]}"; do
+			if [[ ${f} == "${g%/}"/* ]]; then
+				unset include[i]
+				continue 2
+			fi
+		done
+		for g in "${exclude[@]}"; do
+			if [[ ${f} = ${g} || ${f} == "${g%/}"/* ]]; then
+				unset include[i]
+				continue 2
+			fi
+		done
+	done
+	# For the exclude list, remove any entries that are:
+	# a) contained in a directory in the exclude list, or
+	# b) _not_ contained in a directory in the include list.
+	for (( i = ${#exclude[@]} - 1; i >= 0; i-- )); do
+		f=${exclude[i]}
+		for g in "${exclude[@]}"; do
+			if [[ ${f} == "${g%/}"/* ]]; then
+				unset exclude[i]
+				continue 2
+			fi
+		done
+		for g in "${include[@]}"; do
+			[[ ${f} == "${g%/}"/* ]] && continue 2
+		done
+		unset exclude[i]
+	done
+
+	# Split the include list into directories and files
+	for f in "${include[@]}"; do
+		if [[ -d ${D}${f} ]]; then
+			incl_d[${#incl_d[@]}]=${f}
+		else
+			incl_f[${#incl_f[@]}]=${f}
+		fi
+	done
+
+	# Queue up for compression.
+	# ecompress{,dir} doesn't like to be called with empty argument lists.
+	[[ ${#incl_d[@]} -gt 0 ]] && ecompressdir --queue "${incl_d[@]}"
+	[[ ${#incl_f[@]} -gt 0 ]] && ecompress --queue "${incl_f[@]/#/${D}}"
+	[[ ${#exclude[@]} -gt 0 ]] && ecompressdir --ignore "${exclude[@]}"
+	return 0
+}
+
 install_qa_check() {
 	local f
 
@@ -49,6 +152,7 @@ install_qa_check() {
 
 	export STRIP_MASK
 	prepall
+	hasq "${EAPI}" 0 1 2 3 || prepcompress
 	ecompressdir --dequeue
 	ecompress --dequeue
 
@@ -1461,7 +1565,7 @@ dyn_package() {
 		PORTAGE_BINPKG_TMPFILE="${PKGDIR}/${CATEGORY}/${PF}.tbz2"
 	mkdir -p "${PORTAGE_BINPKG_TMPFILE%/*}" || die "mkdir failed"
 	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${D}" . | \
-		bzip2 -cf > "$PORTAGE_BINPKG_TMPFILE"
+		$PORTAGE_BZIP2_COMMAND -c > "$PORTAGE_BINPKG_TMPFILE"
 	assert "failed to pack binary package: '$PORTAGE_BINPKG_TMPFILE'"
 	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
 		"${PORTAGE_PYTHON:-@PORTAGE_PYTHON@}" "$PORTAGE_BIN_PATH"/xpak-helper.py recompose \
@@ -1558,7 +1662,10 @@ if [ -n "${MISC_FUNCTIONS_ARGS}" ]; then
 	done
 	unset x
 	[[ -n $PORTAGE_EBUILD_EXIT_FILE ]] && > "$PORTAGE_EBUILD_EXIT_FILE"
-	[[ -n $PORTAGE_IPC_DAEMON ]] && "$PORTAGE_BIN_PATH"/ebuild-ipc exit 0
+	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
+		[[ ! -s $SANDBOX_LOG ]]
+		"$PORTAGE_BIN_PATH"/ebuild-ipc exit $?
+	fi
 fi
 
 :

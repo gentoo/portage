@@ -34,7 +34,7 @@ assert_sigpipe_ok() {
 	local x pipestatus=${PIPESTATUS[*]}
 	for x in $pipestatus ; do
 		# Allow SIGPIPE through (128 + 13)
-		[[ $x -ne 0 && $x -ne 141 ]] && die "$@"
+		[[ $x -ne 0 && $x -ne ${PORTAGE_SIGPIPE_STATUS:-141} ]] && die "$@"
 	done
 
 	# Require normal success for the last process (tar).
@@ -569,7 +569,7 @@ save_ebuild_env() {
 		done
 		unset x
 
-		unset -f assert dump_trace die diefunc \
+		unset -f assert assert_sigpipe_ok dump_trace die diefunc \
 			quiet_mode vecho elog_base eqawarn elog \
 			esyslog einfo einfon ewarn eerror ebegin _eend eend KV_major \
 			KV_minor KV_micro KV_to_int get_KV unset_colors set_colors has \
@@ -580,7 +580,7 @@ save_ebuild_env() {
 			best_version use_with use_enable register_die_hook \
 			keepdir unpack strip_duplicate_slashes econf einstall \
 			dyn_setup dyn_unpack dyn_clean into insinto exeinto docinto \
-			insopts diropts exeopts libopts \
+			insopts diropts exeopts libopts docompress \
 			abort_handler abort_prepare abort_configure abort_compile \
 			abort_test abort_install dyn_prepare dyn_configure \
 			dyn_compile dyn_test dyn_install \
@@ -604,13 +604,15 @@ save_ebuild_env() {
 			PORTAGE_ACTUAL_DISTDIR PORTAGE_ARCHLIST \
 			PORTAGE_BASHRC PM_EBUILD_HOOK_DIR PORTAGE_BASHRCS_SOURCED \
 			PORTAGE_BINPKG_TAR_OPTS PORTAGE_BINPKG_TMPFILE PORTAGE_BUILDDIR \
+			PORTAGE_BUNZIP2_COMMAND PORTAGE_BZIP2_COMMAND \
 			PORTAGE_COLORMAP PORTAGE_CONFIGROOT PORTAGE_DEBUG \
 			PORTAGE_DEPCACHEDIR PORTAGE_EBUILD_EXIT_FILE PORTAGE_GID \
 			PORTAGE_GRPNAME PORTAGE_INST_GID \
 			PORTAGE_INST_UID PORTAGE_IPC_DAEMON \
 			PORTAGE_LOG_FILE PORTAGE_MASTER_PID \
 			PORTAGE_NONFATAL PORTAGE_QUIET PORTAGE_PYTHON \
-			PORTAGE_REPO_NAME PORTAGE_RESTRICT PORTAGE_UPDATE_ENV \
+			PORTAGE_REPO_NAME PORTAGE_RESTRICT PORTAGE_SIGPIPE_STATUS \
+			PORTAGE_UPDATE_ENV \
 			PORTAGE_USERNAME PORTAGE_VERBOSE PORTAGE_WORKDIR_MODE PORTDIR \
 			PORTDIR_OVERLAY ${!PORTAGE_SANDBOX_*} PREROOTPATH \
 			PROFILE_PATHS PWORKDIR QA_INTERCEPTORS \

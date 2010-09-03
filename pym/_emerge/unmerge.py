@@ -9,7 +9,7 @@ import textwrap
 import portage
 from portage import os
 from portage.output import bold, colorize, darkgreen, green
-from portage.sets import SETPREFIX
+from portage._sets import SETPREFIX
 from portage.util import cmp_sort_key
 
 from _emerge.emergelog import emergelog
@@ -281,7 +281,7 @@ def unmerge(root_config, myopts, unmerge_action,
 			vartree.dbapi.flush_cache()
 			portage.locks.unlockdir(vdb_lock)
 	
-	from portage.sets.base import EditablePackageSet
+	from portage._sets.base import EditablePackageSet
 	
 	# generate a list of package sets that are directly or indirectly listed in "selected",
 	# as there is no persistent list of "installed" sets

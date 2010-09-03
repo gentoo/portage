@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # repoman: Herd database analysis
 # Copyright 2010 Gentoo Foundation
-# Distributed under the terms of the GNU General Public License v2
+# Distributed under the terms of the GNU General Public License v2 or later
 
 import errno
 import xml.etree.ElementTree

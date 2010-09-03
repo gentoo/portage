@@ -1,10 +1,11 @@
 from __future__ import print_function
 
 from _emerge.AtomArg import AtomArg
+from _emerge.Package import Package
 from _emerge.PackageArg import PackageArg
 from portage.dep import check_required_use
 from portage.output import colorize
-from portage.sets.base import InternalPackageSet
+from portage._sets.base import InternalPackageSet
 from portage.util import writemsg
 from portage.versions import cpv_getversion, vercmp
 
@@ -161,8 +162,6 @@ class slot_conflict_handler(object):
 		_pkg_use_enabled = self.depgraph._pkg_use_enabled
 		msg = self.conflict_msg
 		indent = "  "
-		# Max number of parents shown, to avoid flooding the display.
-		max_parents = 3
 		msg.append("\n!!! Multiple package instances within a single " + \
 			"package slot have been pulled\n")
 		msg.append("!!! into the dependency graph, resulting" + \
@@ -217,7 +216,7 @@ class slot_conflict_handler(object):
 								modified_use=_pkg_use_enabled(other_pkg)):
 								#Use conditionals not met.
 								violated_atom = atom.violated_conditionals(_pkg_use_enabled(other_pkg), \
-									other_pkg.iuse.is_valid_flag, _pkg_use_enabled(ppkg))
+									other_pkg.iuse.is_valid_flag)
 								for flag in violated_atom.use.enabled.union(violated_atom.use.disabled):
 									atoms = collision_reasons.get(("use", flag), set())
 									atoms.add((ppkg, atom, other_pkg))
@@ -226,7 +225,7 @@ class slot_conflict_handler(object):
 
 					msg.append(" pulled in by\n")
 
-					selected_for_dispaly = set()
+					selected_for_display = set()
 
 					for (type, sub_type), parents in collision_reasons.items():
 						#From each (type, sub_type) pair select at least one atom.
@@ -247,7 +246,7 @@ class slot_conflict_handler(object):
 										best_matches[atom.cp] = (ppkg, atom)
 								else:
 									best_matches[atom.cp] = (ppkg, atom)
-							selected_for_dispaly.update(best_matches.values())
+							selected_for_display.update(best_matches.values())
 						elif type == "use":
 							#Prefer atoms with unconditional use deps over, because it's
 							#not possible to change them on the parent, which means there
@@ -256,9 +255,12 @@ class slot_conflict_handler(object):
 							hard_matches = set()
 							conditional_matches = set()
 							for ppkg, atom, other_pkg in parents:
+								parent_use = None
+								if isinstance(ppkg, Package):
+									parent_use = _pkg_use_enabled(ppkg)
 								violated_atom = atom.unevaluated_atom.violated_conditionals( \
-									_pkg_use_enabled(other_pkg), other_pkg.iuse.is_valid_flag, \
-									_pkg_use_enabled(ppkg))
+									_pkg_use_enabled(other_pkg), other_pkg.iuse.is_valid_flag,
+									parent_use=parent_use)
 								if use in violated_atom.use.enabled.union(violated_atom.use.disabled):
 									hard_matches.add((ppkg, atom))
 								else:
@@ -269,8 +271,8 @@ class slot_conflict_handler(object):
 							else:
 								matches = conditional_matches
 							
-							if not selected_for_dispaly.intersection(matches):
-								selected_for_dispaly.add(matches.pop())
+							if not selected_for_display.intersection(matches):
+								selected_for_display.add(matches.pop())
 
 					def highlight_violations(atom, version, use=[]):
 						"""Colorize parts of an atom"""
@@ -306,7 +308,7 @@ class slot_conflict_handler(object):
 						
 						return atom_str
 
-					for parent_atom in selected_for_dispaly:
+					for parent_atom in selected_for_display:
 						parent, atom = parent_atom
 						msg.append(2*indent)
 						if isinstance(parent,
@@ -335,15 +337,15 @@ class slot_conflict_handler(object):
 							msg.append("%s required by %s" % (atom_str, parent))
 						msg.append("\n")
 					
-					if not selected_for_dispaly:
+					if not selected_for_display:
 						msg.append(2*indent)
 						msg.append("(no parents that aren't satisfied by other packages in this slot)\n")
 						self.conflict_is_unspecific = True
 					
-					omitted_parents = num_all_specific_atoms - len(selected_for_dispaly)
+					omitted_parents = num_all_specific_atoms - len(selected_for_display)
 					if omitted_parents:
 						msg.append(2*indent)
-						if len(selected_for_dispaly) > 1:
+						if len(selected_for_display) > 1:
 							msg.append("(and %d more with the same problems)\n" % omitted_parents)
 						else:
 							msg.append("(and %d more with the same problem)\n" % omitted_parents)
@@ -456,19 +458,20 @@ class slot_conflict_handler(object):
 
 				if not pkg.iuse.is_valid_flag(atom.unevaluated_atom.use.required):
 					#Missing IUSE.
+					#FIXME: This needs to support use dep defaults.
 					if self.debug:
-						writemsg(str(pkg) + " misses need flags from IUSE." + \
+						writemsg(str(pkg) + " misses needed flags from IUSE." + \
 							" Rejecting configuration.\n", noiselevel=-1)
 					return False
 
-				if ppkg.installed:
+				if not isinstance(ppkg, Package) or ppkg.installed:
 					#We cannot assume that it's possible to reinstall the package. Do not
 					#check if some of its atom has use.conditional
 					violated_atom = atom.violated_conditionals(_pkg_use_enabled(pkg), \
-						pkg.iuse.is_valid_flag, _pkg_use_enabled(ppkg))
+						pkg.iuse.is_valid_flag)
 				else:
 					violated_atom = atom.unevaluated_atom.violated_conditionals(_pkg_use_enabled(pkg), \
-						pkg.iuse.is_valid_flag, _pkg_use_enabled(ppkg))
+						pkg.iuse.is_valid_flag, parent_use=_pkg_use_enabled(ppkg))
 
 				if pkg.installed and (violated_atom.use.enabled or violated_atom.use.disabled):
 					#We can't change USE of an installed package (only of an ebuild, but that is already

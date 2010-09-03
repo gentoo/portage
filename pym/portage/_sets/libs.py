@@ -4,8 +4,8 @@
 from __future__ import print_function
 
 from portage.localization import _
-from portage.sets.base import PackageSet
-from portage.sets import get_boolean
+from portage._sets.base import PackageSet
+from portage._sets import get_boolean
 from portage.versions import catpkgsplit
 import portage
 
@@ -42,7 +42,7 @@ class LibraryFileConsumerSet(LibraryConsumerSet):
 	def load(self):
 		consumers = set()
 		for lib in self.files:
-			consumers.update(self.dbapi.linkmap.findConsumers(lib))
+			consumers.update(self.dbapi._linkmap.findConsumers(lib))
 
 		if not consumers:
 			return
@@ -59,7 +59,10 @@ class LibraryFileConsumerSet(LibraryConsumerSet):
 
 class PreservedLibraryConsumerSet(LibraryConsumerSet):
 	def load(self):
-		reg = self.dbapi.plib_registry
+		reg = self.dbapi._plib_registry
+		if reg is None:
+			# preserve-libs is entirely disabled
+			return
 		consumers = set()
 		if reg:
 			plib_dict = reg.getPreservedLibs()
@@ -67,10 +70,10 @@ class PreservedLibraryConsumerSet(LibraryConsumerSet):
 				for lib in libs:
 					if self.debug:
 						print(lib)
-						for x in sorted(self.dbapi.linkmap.findConsumers(lib)):
+						for x in sorted(self.dbapi._linkmap.findConsumers(lib)):
 							print("    ", x)
 						print("-"*40)
-					consumers.update(self.dbapi.linkmap.findConsumers(lib))
+					consumers.update(self.dbapi._linkmap.findConsumers(lib))
 			# Don't rebuild packages just because they contain preserved
 			# libs that happen to be consumers of other preserved libs.
 			for libs in plib_dict.values():

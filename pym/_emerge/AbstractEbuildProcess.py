@@ -1,7 +1,6 @@
 # Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import codecs
 import stat
 import textwrap
 from _emerge.SpawnProcess import SpawnProcess
@@ -15,9 +14,8 @@ from portage import os
 from portage import StringIO
 from portage import _encodings
 from portage import _unicode_decode
-from portage import _unicode_encode
 from portage.util._pty import _create_pty_or_pipe
-from portage.util import apply_secpass_permissions, writemsg_stdout
+from portage.util import apply_secpass_permissions
 
 class AbstractEbuildProcess(SpawnProcess):
 
@@ -154,6 +152,9 @@ class AbstractEbuildProcess(SpawnProcess):
 		# With sesandbox, logging works through a pty but not through a
 		# normal pipe. So, disable logging if ptys are broken.
 		# See Bug #162404.
+		# TODO: Add support for logging via named pipe (fifo) with
+		# sesandbox, since EbuildIpcDaemon uses a fifo and it's known
+		# to be compatible with sesandbox.
 		return not ('sesandbox' in self.settings.features \
 			and self.settings.selinux_enabled()) or os.isatty(slave_fd)
 

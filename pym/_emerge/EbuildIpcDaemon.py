@@ -32,8 +32,23 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 
 		if event & PollConstants.POLLIN:
 
+			# Read the whole pickle in a single read() call since
+			# this stream is in non-blocking mode and pickle.load()
+			# has been known to raise the following exception when
+			# reading from a non-blocking stream:
+			#
+			#   File "/usr/lib64/python2.6/pickle.py", line 1370, in load
+			#     return Unpickler(file).load()
+			#   File "/usr/lib64/python2.6/pickle.py", line 858, in load
+			#     dispatch[key](self)
+			#   File "/usr/lib64/python2.6/pickle.py", line 1195, in load_setitem
+			#     value = stack.pop()
+			# IndexError: pop from empty list
+
+			pickle_str = self._files.pipe_in.read()
+
 			try:
-				obj = pickle.load(self._files.pipe_in)
+				obj = pickle.loads(pickle_str)
 			except (EnvironmentError, EOFError, ValueError,
 				pickle.UnpicklingError):
 				pass
@@ -63,6 +78,14 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 
 	def _send_reply(self, reply):
 		output_fd = os.open(self.output_fifo, os.O_WRONLY|os.O_NONBLOCK)
-		output_file = os.fdopen(output_fd, 'wb')
-		pickle.dump(reply, output_file)
+
+		# File streams are in unbuffered mode since we do atomic
+		# read and write of whole pickles.
+		output_file = os.fdopen(output_fd, 'wb', 0)
+
+		# Write the whole pickle in a single atomic write() call,
+		# since the reader is in non-blocking mode and we want
+		# it to get the whole pickle at once.
+		output_file.write(pickle.dumps(reply))
+		output_file.flush()
 		output_file.close()

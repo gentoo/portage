@@ -425,7 +425,8 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 			raise PermissionDenied(mycfg)
 		if e.errno != errno.ENOENT:
 			writemsg("open('%s', 'r'): %s\n" % (mycfg, e), noiselevel=-1)
-			raise
+			if e.errno not in (errno.EISDIR,):
+				raise
 		return None
 	try:
 		if tolerant:
@@ -1042,10 +1043,15 @@ def write_atomic(file_path, content, **kwargs):
 		else:
 			raise
 
-def ensure_dirs(dir_path, *args, **kwargs):
+def ensure_dirs(dir_path, **kwargs):
 	"""Create a directory and call apply_permissions.
 	Returns True if a directory is created or the permissions needed to be
-	modified, and False otherwise."""
+	modified, and False otherwise.
+
+	This function's handling of EEXIST errors makes it useful for atomic
+	directory creation, in which multiple processes may be competing to
+	create the same directory.
+	"""
 
 	created_dir = False
 
@@ -1054,12 +1060,14 @@ def ensure_dirs(dir_path, *args, **kwargs):
 		created_dir = True
 	except OSError as oe:
 		func_call = "makedirs('%s')" % dir_path
-		if oe.errno in (errno.EEXIST, errno.EISDIR):
+		if oe.errno in (errno.EEXIST,):
 			pass
 		else:
 			if os.path.isdir(dir_path):
 				# NOTE: DragonFly raises EPERM for makedir('/')
 				# and that is supposed to be ignored here.
+				# Also, sometimes mkdir raises EISDIR on FreeBSD
+				# and we want to ignore that too (bug #187518).
 				pass
 			elif oe.errno == errno.EPERM:
 				raise OperationNotPermitted(func_call)
@@ -1069,7 +1077,10 @@ def ensure_dirs(dir_path, *args, **kwargs):
 				raise ReadOnlyFileSystem(func_call)
 			else:
 				raise
-	perms_modified = apply_permissions(dir_path, *args, **kwargs)
+	if kwargs:
+		perms_modified = apply_permissions(dir_path, **kwargs)
+	else:
+		perms_modified = False
 	return created_dir or perms_modified
 
 class LazyItemsDict(UserDict):

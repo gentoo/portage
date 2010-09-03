@@ -29,6 +29,12 @@ PREROOTPATH=${PREROOTPATH%%:}
 PATH="$PORTAGE_BIN_PATH/ebuild-helpers:$PREROOTPATH${PREROOTPATH:+:}${DEFAULT_PATH}${ROOTPATH:+:}$ROOTPATH${EXTRA_PATH:+:}${EXTRA_PATH}"
 export PATH
 
+# This is just a temporary workaround for portage-9999 users since
+# earlier portage versions do not detect a version change in this case
+# (9999 to 9999) and therefore they try execute an incompatible version of
+# ebuild.sh during the upgrade.
+export PORTAGE_BZIP2_COMMAND=${PORTAGE_BZIP2_COMMAND:-bzip2} 
+
 # These two functions wrap sourcing and calling respectively.  At present they
 # perform a qa check to make sure eclasses and ebuilds and profiles don't mess
 # with shell opts (shopts).  Ebuilds/eclasses changing shopts should reset them 
@@ -166,7 +172,7 @@ has_version() {
 	fi
 
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
-		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "$ROOT" "$1" "$USE"
+		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "$ROOT" "$1"
 		return $?
 	fi
 
@@ -209,7 +215,7 @@ best_version() {
 	fi
 
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
-		"$PORTAGE_BIN_PATH"/ebuild-ipc best_version "$ROOT" "$1" "$USE"
+		"$PORTAGE_BIN_PATH"/ebuild-ipc best_version "$ROOT" "$1"
 		return $?
 	fi
 
@@ -309,6 +315,8 @@ export EXEOPTIONS="-m0755"
 export LIBOPTIONS="-m0644"
 export DIROPTIONS="-m0755"
 export MOPREFIX=${PN}
+declare -a PORTAGE_DOCOMPRESS=( /usr/share/{doc,info,man} )
+declare -a PORTAGE_DOCOMPRESS_SKIP=( /usr/share/doc/${PF}/html )
 
 # adds ".keep" files so that dirs aren't auto-cleaned
 keepdir() {
@@ -353,10 +361,10 @@ unpack() {
 
 		_unpack_tar() {
 			if [ "${y}" == "tar" ]; then
-				$1 -dc "$srcdir$x" | tar xof -
+				$1 -c -- "$srcdir$x" | tar xof -
 				assert_sigpipe_ok "$myfail"
 			else
-				$1 -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
+				$1 -c -- "${srcdir}${x}" > ${x%.*} || die "$myfail"
 			fi
 		}
 
@@ -369,17 +377,17 @@ unpack() {
 				tar xozf "$srcdir$x" || die "$myfail"
 				;;
 			tbz|tbz2)
-				bzip2 -dc "$srcdir$x" | tar xof -
+				${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -c -- "$srcdir$x" | tar xof -
 				assert_sigpipe_ok "$myfail"
 				;;
 			ZIP|zip|jar)
 				unzip -qo "${srcdir}${x}" || die "$myfail"
 				;;
 			gz|Z|z)
-				_unpack_tar gzip
+				_unpack_tar "gzip -d"
 				;;
 			bz2|bz)
-				_unpack_tar bzip2
+				_unpack_tar "${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d}"
 				;;
 			7Z|7z)
 				local my_output
@@ -426,13 +434,13 @@ unpack() {
 				fi
 				;;
 			lzma)
-				_unpack_tar lzma
+				_unpack_tar "lzma -d"
 				;;
 			xz)
 				if hasq $eapi 0 1 2 ; then
 					vecho "unpack ${x}: file format not recognized. Ignoring."
 				else
-					_unpack_tar xz
+					_unpack_tar "xz -d"
 				fi
 				;;
 			*)
@@ -871,6 +879,32 @@ libopts() {
 	hasq -s ${LIBOPTIONS} && die "Never call libopts() with -s"
 }
 
+docompress() {
+	hasq "${EAPI}" 0 1 2 3 && die "'docompress' not supported in this EAPI"
+
+	local f g
+	if [[ $1 = "-x" ]]; then
+		shift
+		for f; do
+			f=$(strip_duplicate_slashes "${f}"); f=${f%/}
+			[[ ${f:0:1} = / ]] || f="/${f}"
+			for g in "${PORTAGE_DOCOMPRESS_SKIP[@]}"; do
+				[[ ${f} = ${g} ]] && continue 2
+			done
+			PORTAGE_DOCOMPRESS_SKIP[${#PORTAGE_DOCOMPRESS_SKIP[@]}]=${f}
+		done
+	else
+		for f; do
+			f=$(strip_duplicate_slashes "${f}"); f=${f%/}
+			[[ ${f:0:1} = / ]] || f="/${f}"
+			for g in "${PORTAGE_DOCOMPRESS[@]}"; do
+				[[ ${f} = ${g} ]] && continue 2
+			done
+			PORTAGE_DOCOMPRESS[${#PORTAGE_DOCOMPRESS[@]}]=${f}
+		done
+	fi
+}
+
 abort_handler() {
 	local msg
 	if [ "$2" != "fail" ]; then
@@ -1142,7 +1176,7 @@ dyn_install() {
 		--filter-path --filter-sandbox --allow-extra-vars > environment
 	assert "save_ebuild_env failed"
 
-	bzip2 -f9 environment
+	${PORTAGE_BZIP2_COMMAND} -f9 environment
 
 	cp "${EBUILD}" "${PF}.ebuild"
 	[ -n "${PORTAGE_REPO_NAME}" ]  && echo "${PORTAGE_REPO_NAME}" > repository
@@ -1970,11 +2004,11 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
 		if [[ $EBUILD_PHASE != depend ]] ; then
 
 			case "$EAPI" in
-				4|4_pre1)
-					_ebuild_helpers_path="$PORTAGE_BIN_PATH/ebuild-helpers/4:$PORTAGE_BIN_PATH/ebuild-helpers"
+				0|1|2|3)
+					_ebuild_helpers_path="$PORTAGE_BIN_PATH/ebuild-helpers"
 					;;
 				*)
-					_ebuild_helpers_path="$PORTAGE_BIN_PATH/ebuild-helpers"
+					_ebuild_helpers_path="$PORTAGE_BIN_PATH/ebuild-helpers/4:$PORTAGE_BIN_PATH/ebuild-helpers"
 					;;
 			esac
 
@@ -2095,7 +2129,7 @@ ebuild_main() {
 			save_ebuild_env --exclude-init-phases | \
 				filter_readonly_variables --filter-path \
 				--filter-sandbox --allow-extra-vars \
-				| bzip2 -c -f9 > "$PORTAGE_UPDATE_ENV"
+				| ${PORTAGE_BZIP2_COMMAND} -c -f9 > "$PORTAGE_UPDATE_ENV"
 			assert "save_ebuild_env failed"
 		fi
 		;;
@@ -2230,6 +2264,25 @@ ebuild_main() {
 	esac
 }
 
+if [[ -s $SANDBOX_LOG ]] ; then
+	# We use SANDBOX_LOG to check for sandbox violations,
+	# so we ensure that there can't be a stale log to
+	# interfere with our logic.
+	x=
+	if [[ -n SANDBOX_ON ]] ; then
+		x=$SANDBOX_ON
+		export SANDBOX_ON=0
+	fi
+
+	rm -f "$SANDBOX_LOG" || \
+		die "failed to remove stale sandbox log: '$SANDBOX_LOG'"
+
+	if [[ -n $x ]] ; then
+		export SANDBOX_ON=$x
+	fi
+	unset x
+fi
+
 if [[ $EBUILD_PHASE = depend ]] ; then
 	ebuild_main
 elif [[ -n $EBUILD_SH_ARGS ]] ; then
@@ -2249,7 +2302,10 @@ elif [[ -n $EBUILD_SH_ARGS ]] ; then
 			chmod g+w "$T/environment" &>/dev/null
 		fi
 		[[ -n $PORTAGE_EBUILD_EXIT_FILE ]] && > "$PORTAGE_EBUILD_EXIT_FILE"
-		[[ -n $PORTAGE_IPC_DAEMON ]] && "$PORTAGE_BIN_PATH"/ebuild-ipc exit 0
+		if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
+			[[ ! -s $SANDBOX_LOG ]]
+			"$PORTAGE_BIN_PATH"/ebuild-ipc exit $?
+		fi
 		exit 0
 	)
 	exit $?

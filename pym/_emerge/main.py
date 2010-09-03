@@ -33,7 +33,7 @@ from portage.data import secpass
 from portage.dbapi.dep_expand import dep_expand
 from portage.util import normalize_path as normpath
 from portage.util import shlex_split, writemsg_level, writemsg_stdout
-from portage.sets import SETPREFIX
+from portage._sets import SETPREFIX
 from portage._global_updates import _global_updates
 
 from _emerge.actions import action_config, action_sync, action_metadata, \
@@ -212,10 +212,15 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 def display_preserved_libs(vardbapi, myopts):
 	MAX_DISPLAY = 3
 
-	# Ensure the registry is consistent with existing files.
-	vardbapi.plib_registry.pruneNonExisting()
+	if vardbapi._linkmap is None or \
+		vardbapi._plib_registry is None:
+		# preserve-libs is entirely disabled
+		return
 
-	if vardbapi.plib_registry.hasEntries():
+	# Ensure the registry is consistent with existing files.
+	vardbapi._plib_registry.pruneNonExisting()
+
+	if vardbapi._plib_registry.hasEntries():
 		if "--quiet" in myopts:
 			print()
 			print(colorize("WARN", "!!!") + " existing preserved libs found")
@@ -224,8 +229,8 @@ def display_preserved_libs(vardbapi, myopts):
 			print()
 			print(colorize("WARN", "!!!") + " existing preserved libs:")
 
-		plibdata = vardbapi.plib_registry.getPreservedLibs()
-		linkmap = vardbapi.linkmap
+		plibdata = vardbapi._plib_registry.getPreservedLibs()
+		linkmap = vardbapi._linkmap
 		consumer_map = {}
 		owners = {}
 		linkmap_broken = False
@@ -997,12 +1002,12 @@ def ionice(settings):
 		out.eerror("See the make.conf(5) man page for PORTAGE_IONICE_COMMAND usage instructions.")
 
 def setconfig_fallback(root_config):
-	from portage.sets.base import DummyPackageSet
-	from portage.sets.files import WorldSelectedSet
-	from portage.sets.profiles import PackagesSystemSet
+	from portage._sets.base import DummyPackageSet
+	from portage._sets.files import WorldSelectedSet
+	from portage._sets.profiles import PackagesSystemSet
 	setconfig = root_config.setconfig
 	setconfig.psets['world'] = DummyPackageSet(atoms=['@selected', '@system'])
-	setconfig.psets['selected'] = WorldSelectedSet(root_config.root)
+	setconfig.psets['selected'] = WorldSelectedSet(root_config.settings['EROOT'])
 	setconfig.psets['system'] = \
 		PackagesSystemSet(root_config.settings.profiles)
 	root_config.sets = setconfig.getSets()
@@ -1312,7 +1317,10 @@ def emerge_main():
 
 	if "--quiet" not in myopts:
 		portage.deprecated_profile_check(settings=settings)
-		repo_name_check(trees)
+		if portage.const._ENABLE_REPO_NAME_WARN:
+			# Bug #248603 - Disable warnings about missing
+			# repo_name entries for stable branch.
+			repo_name_check(trees)
 		repo_name_duplicate_check(trees)
 		config_protect_check(trees)
 	check_procfs()

@@ -10,6 +10,7 @@ from __future__ import print_function
 
 import calendar
 import codecs
+import copy
 import errno
 import formatter
 import logging
@@ -75,7 +76,7 @@ from portage.output import bold, create_color_func, \
 from portage.output import ConsoleStyleFile, StyleWriter
 from portage.util import cmp_sort_key, writemsg_level
 from portage.package.ebuild.digestgen import digestgen
-from portage.eapi import eapi_has_src_uri_arrows, eapi_has_slot_deps, \
+from portage.eapi import eapi_has_slot_deps, \
 	eapi_has_use_deps, eapi_has_strong_blocks, eapi_has_iuse_defaults, \
 	eapi_has_required_use, eapi_has_use_dep_defaults
 
@@ -338,6 +339,7 @@ qahelp={
 	"LIVEVCS.stable":"This ebuild is a live checkout from a VCS but has stable keywords.",
 	"LIVEVCS.unmasked":"This ebuild is a live checkout from a VCS but has keywords and is not masked in the global package.mask.",
 	"IUSE.invalid":"This ebuild has a variable in IUSE that is not in the use.desc or its metadata.xml file",
+	"IUSE.missing":"This ebuild has a USE conditional which references a flag that is not listed in IUSE",
 	"IUSE.undefined":"This ebuild does not define IUSE (style guideline says to define IUSE even when empty)",
 	"LICENSE.invalid":"This ebuild is listing a license that doesnt exist in portages license/ dir.",
 	"KEYWORDS.invalid":"This ebuild contains KEYWORDS that are not listed in profiles/arch.list or for which no valid profile was found",
@@ -584,6 +586,10 @@ env['PORTDIR_OVERLAY'] = ' '.join(portdb.porttrees[1:])
 logging.info('Setting paths:')
 logging.info('PORTDIR = "' + portdir + '"')
 logging.info('PORTDIR_OVERLAY = "%s"' % env['PORTDIR_OVERLAY'])
+
+# It's confusing if these warnings are displayed without the user
+# being told which profile they come from, so disable them.
+env['FEATURES'] = env.get('FEATURES', '') + ' -unknown-features-warn'
 
 categories = []
 for path in set([portdir, portdir_overlay]):
@@ -1031,6 +1037,8 @@ for x in scanlist:
 	generated_manifest = False
 
 	if options.mode == "manifest" or \
+	  (options.mode != 'manifest-check' and \
+	  'digest' in repoman_settings.features) or \
 	  options.mode in ('commit', 'fix') and not options.pretend:
 		auto_assumed = set()
 		fetchlist_dict = portage.FetchlistDict(checkdir,
@@ -1098,6 +1106,7 @@ for x in scanlist:
 	checkdirlist=os.listdir(checkdir)
 	ebuildlist=[]
 	pkgs = {}
+	allvalid = True
 	for y in checkdirlist:
 		if (y in no_exec or y.endswith(".ebuild")) and \
 			stat.S_IMODE(os.stat(os.path.join(checkdir, y)).st_mode) & 0o111:
@@ -1110,14 +1119,17 @@ for x in scanlist:
 			try:
 				myaux = dict(zip(allvars, portdb.aux_get(cpv, allvars)))
 			except KeyError:
+				allvalid = False
 				stats["ebuild.syntax"] += 1
 				fails["ebuild.syntax"].append(os.path.join(x, y))
 				continue
 			except IOError:
+				allvalid = False
 				stats["ebuild.output"] += 1
 				fails["ebuild.output"].append(os.path.join(x, y))
 				continue
 			if not portage.eapi_is_supported(myaux["EAPI"]):
+				allvalid = False
 				stats["EAPI.unsupported"] += 1
 				fails["EAPI.unsupported"].append(os.path.join(x, y))
 				continue
@@ -1337,9 +1349,8 @@ for x in scanlist:
 		stats["changelog.missing"]+=1
 		fails["changelog.missing"].append(x+"/ChangeLog")
 	
+	musedict = {}
 	#metadata.xml file check
-	muselist = []
-
 	if "metadata.xml" not in checkdirlist:
 		stats["metadata.missing"]+=1
 		fails["metadata.missing"].append(x+"/metadata.xml")
@@ -1361,12 +1372,11 @@ for x in scanlist:
 		else:
 			# load USE flags from metadata.xml
 			try:
-				utilities.parse_metadata_use(_metadata_xml, muselist)
+				musedict = utilities.parse_metadata_use(_metadata_xml)
 			except portage.exception.ParseError as e:
 				metadata_bad = True
 				stats["metadata.bad"] += 1
 				fails["metadata.bad"].append("%s/metadata.xml: %s" % (x, e))
-				muselist = []
 
 			# Run other metadata.xml checkers
 			try:
@@ -1392,7 +1402,7 @@ for x in scanlist:
 				fails["metadata.bad"].append(x+"/metadata.xml")
 
 		del metadata_bad
-	muselist = frozenset(muselist)
+	muselist = frozenset(musedict)
 
 	changelog_path = os.path.join(checkdir_relative, "ChangeLog")
 	changelog_modified = changelog_path in modified_changelogs
@@ -1435,6 +1445,7 @@ for x in scanlist:
 		pkg = pkgs[y]
 
 		if pkg.invalid:
+			allvalid = False
 			for k, msgs in pkg.invalid.items():
 				for msg in msgs:
 					stats[k] = stats[k] + 1
@@ -1460,8 +1471,7 @@ for x in scanlist:
 		if not src_uri_error:
 			# Check that URIs don't reference a server from thirdpartymirrors.
 			for uri in portage.dep.use_reduce( \
-				myaux["SRC_URI"], matchall=True, is_src_uri=True, \
-				allow_src_uri_file_renames=eapi_has_src_uri_arrows(eapi), flat=True):
+				myaux["SRC_URI"], matchall=True, is_src_uri=True, eapi=eapi, flat=True):
 				contains_mirror = False
 				for mirror in thirdpartymirrors:
 					if uri.startswith(mirror):
@@ -1608,11 +1618,6 @@ for x in scanlist:
 		badlicsyntax = False
 		badprovsyntax = False
 		catpkg = catdir+"/"+y
-		myiuse = set(repoman_settings.archlist())
-		for myflag in myaux["IUSE"].split():
-			if myflag.startswith("+"):
-				myflag = myflag[1:]
-			myiuse.add(myflag)
 
 		inherited_java_eclass = "java-pkg-2" in inherited or \
 			"java-pkg-opt-2" in inherited
@@ -1658,33 +1663,6 @@ for x in scanlist:
 							stats[mytype + '.suspect'] += 1
 							fails[mytype + '.suspect'].append(
 								relative_path + ": '%s'" % atom)
-					if not eapi_has_slot_deps(eapi):
-						if portage.dep.dep_getslot(atom):
-							stats['EAPI.incompatible'] += 1
-							fails['EAPI.incompatible'].append(
-								(relative_path + ": %s slot dependency" + \
-								" not supported with EAPI='%s':" + \
-								" '%s'") % (mytype, eapi, atom))
-					if atom.use and not eapi_has_use_deps(eapi):
-						stats['EAPI.incompatible'] += 1
-						fails['EAPI.incompatible'].append(
-							(relative_path + ": %s use dependency" + \
-							" not supported with EAPI='%s':" + \
-							" '%s'") % (mytype, eapi, atom))
-					if atom.use and (atom.use.missing_enabled or atom.use.missing_disabled) and \
-						not eapi_has_use_dep_defaults(eapi):
-						stats['EAPI.incompatible'] += 1
-						fails['EAPI.incompatible'].append(
-							(relative_path + ": %s use dependency" + \
-							" not supported with EAPI='%s':" + \
-							" '%s'") % (mytype, eapi, atom))
-					if atom.blocker and atom.blocker.overlap.forbid \
-						and not eapi_has_strong_blocks(eapi):
-						stats['EAPI.incompatible'] += 1
-						fails['EAPI.incompatible'].append(
-							(relative_path + ": %s new blocker syntax" + \
-							" not supported with EAPI='%s':" + \
-							" '%s'") % (mytype, eapi, atom))
 
 					if atom.operator == "~" and \
 						portage.versions.catpkgsplit(atom.cpv)[3] != "r0":
@@ -1846,7 +1824,9 @@ for x in scanlist:
 						local_config=False,
 						env=env)
 					if options.without_mask:
-						dep_settings.pmaskdict.clear()
+						dep_settings._mask_manager = \
+							copy.deepcopy(dep_settings._mask_manager)
+						dep_settings._mask_manager._pmaskdict.clear()
 					arch_caches[prof.sub_path] = dep_settings
 
 				xmatch_cache_key = (prof.sub_path, tuple(groups))
@@ -1936,11 +1916,13 @@ for x in scanlist:
 		fails["ebuild.allmasked"].append(x)
 
 	# check if there are unused local USE-descriptions in metadata.xml
-	for myflag in muselist.difference(used_useflags):
-		stats["metadata.warning"] += 1
-		fails["metadata.warning"].append(
-			"%s/metadata.xml: unused local USE-description: '%s'" % \
-			(x, myflag))
+	# (unless there are any invalids, to avoid noise)
+	if allvalid:
+		for myflag in muselist.difference(used_useflags):
+			stats["metadata.warning"] += 1
+			fails["metadata.warning"].append(
+				"%s/metadata.xml: unused local USE-description: '%s'" % \
+				(x, myflag))
 
 if options.mode == "manifest":
 	sys.exit(dofail)
