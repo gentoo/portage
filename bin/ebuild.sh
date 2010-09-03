@@ -19,12 +19,6 @@ fi
 # environment by modifying our PATH.
 unset BASH_ENV
 
-# Avoid sandbox violations in temporary directories.
-for x in TEMP TMP TMPDIR ; do
-	[[ -n ${!x} ]] && export SANDBOX_WRITE="${SANDBOX_WRITE:+${SANDBOX_WRITE}:}${!x}"
-done
-unset x
-
 ROOTPATH=${ROOTPATH##:}
 ROOTPATH=${ROOTPATH%%:}
 PREROOTPATH=${PREROOTPATH##:}
@@ -106,6 +100,18 @@ addpredict() { _sb_append_var PREDICT "$@" ; }
 addwrite "${PORTAGE_TMPDIR}"
 addread "/:${PORTAGE_TMPDIR}"
 [[ -n ${PORTAGE_GPG_DIR} ]] && addpredict "${PORTAGE_GPG_DIR}"
+
+# Avoid sandbox violations in temporary directories.
+if [[ -w $T ]] ; then
+	export TEMP=$T
+	export TMP=$T
+	export TMPDIR=$T
+else
+	for x in TEMP TMP TMPDIR ; do
+		[[ -n ${!x} ]] && addwrite "${!x}"
+	done
+	unset x
+fi
 
 lchown() {
 	chown -h "$@"
@@ -2078,12 +2084,6 @@ fi
 
 #a reasonable default for $S
 [[ -z ${S} ]] && export S=${WORKDIR}/${P}
-
-#some users have $TMP/$TMPDIR to a custom dir in their home ...
-#this will cause sandbox errors with some ./configure
-#scripts, so set it to $T.
-export TMP="${T}"
-export TMPDIR="${T}"
 
 # Note: readonly variables interfere with preprocess_ebuild_env(), so
 # declare them only after it has already run.
