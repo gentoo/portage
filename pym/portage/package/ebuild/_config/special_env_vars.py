@@ -60,6 +60,8 @@ environ_whitelist += [
 	"ROOT", "ROOTPATH", "T", "TMP", "TMPDIR",
 	"USE_EXPAND", "USE_ORDER", "WORKDIR",
 	"XARGS",
+	"BPREFIX", "DEFAULT_PATH", "EXTRA_PATH",
+	"PORTAGE_GROUP", "PORTAGE_USER",
 ]
 
 # user config variables
@@ -91,11 +93,13 @@ environ_whitelist += [
 ]
 
 # other variables inherited from the calling environment
+# UNIXMODE is necessary for MiNT
 environ_whitelist += [
 	"CVS_RSH", "ECHANGELOG_USER",
 	"GPG_AGENT_INFO",
 	"SSH_AGENT_PID", "SSH_AUTH_SOCK",
 	"STY", "WINDOW", "XAUTHORITY",
+	"UNIXMODE",
 ]
 
 environ_whitelist = frozenset(environ_whitelist)
@@ -116,6 +120,10 @@ environ_filter += [
 # misc variables inherited from the calling environment
 environ_filter += [
 	"INFOPATH", "MANPATH", "USER",
+	"HOST", "GROUP", "LOGNAME", "MAIL", "REMOTEHOST",
+	"SECURITYSESSIONID",
+	"TERMINFO", "TERM_PROGRAM", "TERM_PROGRAM_VERSION",
+	"VENDOR", "__CF_USER_TEXT_ENCODING",
 ]
 
 # variables that break bash

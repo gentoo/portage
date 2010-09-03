@@ -17,6 +17,7 @@ from portage.util import getlibpaths
 from portage.util import grabfile
 from portage.util import normalize_path
 from portage.util import writemsg_level
+from portage.const import EPREFIX
 
 class LinkageMapELF(object):
 
@@ -175,7 +176,7 @@ class LinkageMapELF(object):
 		# registered in NEEDED.ELF.2 files
 		plibs = set()
 		if self._dbapi._plib_registry and self._dbapi._plib_registry.getPreservedLibs():
-			args = ["/usr/bin/scanelf", "-qF", "%a;%F;%S;%r;%n"]
+			args = [EPREFIX + "/usr/bin/scanelf", "-qF", "%a;%F;%S;%r;%n"]
 			for items in self._dbapi._plib_registry.getPreservedLibs().values():
 				plibs.update(items)
 				args.extend(os.path.join(root, x.lstrip("." + os.sep)) \
