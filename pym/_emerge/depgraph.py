@@ -2204,14 +2204,24 @@ class depgraph(object):
 		show_missing_use = False
 		if unmasked_use_reasons:
 			# Only show the latest version.
-			show_missing_use = unmasked_use_reasons[:1]
+			show_missing_use = []
+			pkg_reason = None
+			parent_reason = None
 			for pkg, mreasons in unmasked_use_reasons:
-				if myparent and pkg == myparent:
-					#This happens if a use change on the parent
-					#leads to a satisfied conditional use dep.
-					show_missing_use.append((pkg, mreasons))
-					break
-				
+				if pkg is myparent:
+					if parent_reason is None:
+						#This happens if a use change on the parent
+						#leads to a satisfied conditional use dep.
+						parent_reason = (pkg, mreasons)
+				elif pkg_reason is None:
+					#Don't rely on the first pkg in unmasked_use_reasons,
+					#being the highest version of the dependency.
+					pkg_reason = (pkg, mreasons)
+			if pkg_reason:
+				show_missing_use.append(pkg_reason)
+			if parent_reason:
+				show_missing_use.append(parent_reason)
+
 		elif unmasked_iuse_reasons:
 			masked_with_iuse = False
 			for pkg in masked_pkg_instances:
