@@ -80,6 +80,20 @@ class TryAgain(PortageException):
 	from errno import EAGAIN as errno
 	"""Try again"""
 
+class TimeoutException(PortageException):
+	from errno import ETIME as errno
+
+class AlarmSignal(TimeoutException):
+	def __init__(self, value, signum=None, frame=None):
+		TimeoutException.__init__(self, value)
+		self.signum = signum
+		self.frame = frame
+
+	@classmethod
+	def signal_handler(cls, signum, frame):
+		raise AlarmSignal("alarm signal",
+			signum=signum, frame=frame)
+
 class ReadOnlyFileSystem(PortageException):
 	"""Read-only file system"""
 
