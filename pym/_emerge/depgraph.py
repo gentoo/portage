@@ -5202,6 +5202,10 @@ class depgraph(object):
 					for dep_str in dep_strings:
 						affecting_use.update(extract_affecting_use(dep_str, atom))
 					
+					#Don't show flags as 'affecting' if the user can't change them,
+					affecting_use.difference_update(node.root_config.settings.usemask, \
+						node.root_config.settings.useforce)
+
 					pkg_name = node.cpv
 					if affecting_use:
 						usedep = []
