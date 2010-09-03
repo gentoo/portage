@@ -958,10 +958,25 @@ def parse_opts(tmpcmdline, silent=False):
 
 	return myaction, myopts, myfiles
 
+# Warn about features that may confuse users and
+# lead them to report invalid bugs.
+_emerge_features_warn = frozenset(['keeptemp', 'keepwork'])
+
 def validate_ebuild_environment(trees):
+	features_warn = set()
 	for myroot in trees:
 		settings = trees[myroot]["vartree"].settings
 		settings.validate()
+		features_warn.update(
+			_emerge_features_warn.intersection(settings.features))
+
+	if features_warn:
+		msg = "WARNING: The FEATURES variable contains one " + \
+			"or more values that should be disabled under " + \
+			"normal circumstances: %s" % " ".join(features_warn)
+		out = portage.output.EOutput()
+		for line in textwrap.wrap(msg, 65):
+			out.ewarn(line)
 
 def apply_priorities(settings):
 	ionice(settings)
