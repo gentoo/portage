@@ -5203,8 +5203,10 @@ class depgraph(object):
 						affecting_use.update(extract_affecting_use(dep_str, atom))
 					
 					#Don't show flags as 'affecting' if the user can't change them,
-					affecting_use.difference_update(node.root_config.settings.usemask, \
-						node.root_config.settings.useforce)
+					pkgsettings = self._frozen_config.pkgsettings[node.root]
+					pkgsettings.setcpv(node)
+					affecting_use.difference_update(pkgsettings.usemask, \
+						pkgsettings.useforce)
 
 					pkg_name = node.cpv
 					if affecting_use:
