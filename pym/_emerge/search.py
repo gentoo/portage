@@ -289,7 +289,6 @@ class search(object):
 							"   " + \
 							self.sdict[match].getMetadata("DESCRIPTION") \
 							+ "\n\n")
-					writemsg_stdout(''.join(msg), noiselevel=-1)
 				if full_package:
 					try:
 						desc, homepage, license = self.portdb.aux_get(
