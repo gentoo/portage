@@ -38,7 +38,8 @@ from _emerge.clear_caches import clear_caches
 from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.create_world_atom import create_world_atom
 from _emerge.DepPriority import DepPriority
-from _emerge.depgraph import depgraph, resume_depgraph
+from _emerge.depgraph import depgraph, resume_depgraph, \
+	_frozen_depgraph_config
 from _emerge.EbuildFetcher import EbuildFetcher
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.emergelog import emergelog, _emerge_log_dir
@@ -196,17 +197,23 @@ class Scheduler(PollScheduler):
 		self.edebug = 0
 		if settings.get("PORTAGE_DEBUG", "") == "1":
 			self.edebug = 1
-		self.pkgsettings = {}
 		self._config_pool = {}
 
 		# TODO: Replace the BlockerDB with a depgraph of installed packages
 		# that's updated incrementally with each upgrade/uninstall operation
 		# This will be useful for making quick and safe decisions with respect
 		# to aggressive parallelization discussed in bug #279623.
+		frozen_config = None
+		if frozen_config is None:
+			frozen_config = _frozen_depgraph_config(settings, trees,
+				myopts, None)
+		self._frozen_config = frozen_config
+		self.pkgsettings = frozen_config.pkgsettings
 		self._blocker_db = {}
 		for root in trees:
 			self._config_pool[root] = []
-			self._blocker_db[root] = BlockerDB(trees[root]["root_config"])
+			self._blocker_db[root] = BlockerDB(
+				frozen_config.trees[root]["vartree"])
 
 		fetch_iface = self._fetch_iface_class(log_file=self._fetch_log,
 			schedule=self._schedule_fetch)

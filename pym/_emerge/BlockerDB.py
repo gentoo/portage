@@ -9,7 +9,6 @@ from portage import digraph
 from portage._sets.base import InternalPackageSet
 
 from _emerge.BlockerCache import BlockerCache
-from _emerge.FakeVartree import FakeVartree
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 
 if sys.hexversion >= 0x3000000:
@@ -17,23 +16,22 @@ if sys.hexversion >= 0x3000000:
 
 class BlockerDB(object):
 
-	def __init__(self, root_config):
+	def __init__(self, fake_vartree):
+		root_config = fake_vartree._root_config
 		self._root_config = root_config
 		self._vartree = root_config.trees["vartree"]
 		self._portdb = root_config.trees["porttree"].dbapi
 
 		self._dep_check_trees = None
-		self._fake_vartree = None
+		self._fake_vartree = fake_vartree
+		self._dep_check_trees = {
+			self._vartree.root : {
+				"porttree"    :  fake_vartree,
+				"vartree"     :  fake_vartree,
+		}}
 
 	def _get_fake_vartree(self, acquire_lock=0):
 		fake_vartree = self._fake_vartree
-		if fake_vartree is None:
-			fake_vartree = FakeVartree(self._root_config)
-			self._fake_vartree = fake_vartree
-			self._dep_check_trees = { self._vartree.root : {
-				"porttree"    :  fake_vartree,
-				"vartree"     :  fake_vartree,
-			}}
 		fake_vartree.sync(acquire_lock=acquire_lock)
 		return fake_vartree
 
