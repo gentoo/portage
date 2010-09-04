@@ -2142,8 +2142,6 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 								uid=os.getuid())
 						content = portage.grabfile(tmpservertimestampfile)
 					finally:
-						if rsync_initial_timeout:
-							portage.exception.AlarmSignal.unregister()
 						try:
 							os.unlink(tmpservertimestampfile)
 						except OSError:
@@ -2156,6 +2154,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 						os.waitpid(mypids[0], 0)
 					# This is the same code rsync uses for timeout.
 					exitcode = 30
+				finally:
+					if rsync_initial_timeout:
+						portage.exception.AlarmSignal.unregister()
 				else:
 					if exitcode != os.EX_OK:
 						if exitcode & 0xff:
