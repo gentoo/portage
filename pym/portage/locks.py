@@ -1,5 +1,5 @@
 # portage: Lock management code
-# Copyright 2004 Gentoo Foundation
+# Copyright 2004-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
@@ -7,10 +7,13 @@ __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
 	"unhardlink_lockfile", "hardlock_cleanup"]
 
 import errno
+import fcntl
 import stat
 import sys
 import time
+
 from portage import os
+from portage.const import PORTAGE_BIN_PATH
 from portage.exception import DirectoryNotFound, FileNotFound, \
 	InvalidData, TryAgain, OperationNotPermitted, PermissionDenied
 from portage.data import portage_gid
@@ -38,7 +41,6 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 	If wantnewlockfile is True then this creates a lockfile in the parent
 	directory as the file: '.' + basename + '.portage_lockfile'.
 	"""
-	import fcntl
 
 	if not mypath:
 		raise InvalidData(_("Empty path given"))
@@ -183,7 +185,6 @@ def _fstat_nlink(fd):
 		raise
 
 def unlockfile(mytuple):
-	import fcntl
 
 	#XXX: Compatability hack.
 	if len(mytuple) == 3:
@@ -300,7 +301,6 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 			writemsg(".", noiselevel=-1)
 		else:
 			reported_waiting = True
-			from portage.const import PORTAGE_BIN_PATH
 			msg = _("\nWaiting on (hardlink) lockfile: (one '.' per 3 seconds)\n"
 				"%(bin_path)s/clean_locks can fix stuck locks.\n"
 				"Lockfile: %(lockfilename)s\n") % \
