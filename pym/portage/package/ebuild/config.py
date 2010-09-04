@@ -831,8 +831,8 @@ class config(object):
 
 		#                                gid, mode, mask, preserve_perms
 		dir_mode_map = {
-			EPREFIX_LSTRIP+"/tmp"           : (         -1, 0o1777,  0,  True),
-			EPREFIX_LSTRIP+"/var/tmp"       : (         -1, 0o1777,  0,  True),
+			"tmp"             : (         -1, 0o1777,  0,  True),
+			"var/tmp"         : (         -1, 0o1777,  0,  True),
 			PRIVATE_PATH      : (portage_gid, 0o2750, 0o2, False),
 			CACHE_PATH        : (portage_gid,  0o755, 0o2, False)
 		}
