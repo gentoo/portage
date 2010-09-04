@@ -1,6 +1,7 @@
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import signal
 import sys
 from portage import _unicode_encode, _unicode_decode
 from portage.localization import _
@@ -90,7 +91,16 @@ class AlarmSignal(TimeoutException):
 		self.frame = frame
 
 	@classmethod
-	def signal_handler(cls, signum, frame):
+	def register(cls):
+		signal.signal(signal.SIGALRM, cls._signal_handler)
+
+	@classmethod
+	def unregister(cls):
+		signal.alarm(0)
+		signal.signal(signal.SIGALRM, signal.SIG_DFL)
+
+	@classmethod
+	def _signal_handler(cls, signum, frame):
 		raise AlarmSignal("alarm signal",
 			signum=signum, frame=frame)
 

@@ -49,10 +49,9 @@ class EbuildIpc(object):
 		start_time = time.time()
 
 		try:
-			signal.signal(signal.SIGALRM, portage.exception.AlarmSignal.signal_handler)
+			portage.exception.AlarmSignal.register()
 			signal.alarm(self._COMMUNICATE_TIMEOUT_SECONDS)
 			returncode = self._communicate(args)
-			signal.alarm(0)
 			return returncode
 		except portage.exception.AlarmSignal:
 			time_elapsed = time.time() - start_time
@@ -62,7 +61,7 @@ class EbuildIpc(object):
 				level=logging.ERROR, noiselevel=-1)
 			return 1
 		finally:
-			signal.alarm(0)
+			portage.exception.AlarmSignal.unregister()
 			portage.locks.unlockfile(lock_obj)
 
 	def _communicate(self, args):
