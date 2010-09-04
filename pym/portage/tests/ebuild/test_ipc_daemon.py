@@ -103,6 +103,7 @@ class IpcDaemonTestCase(TestCase):
 				self.assertEqual(self.received_command, False,
 					"command received after %d seconds" % \
 					(time.time() - start_time,))
+				self.assertEqual(proc.isAlive(), False)
 				self.assertEqual(proc.returncode == os.EX_OK, False)
 
 		finally:
