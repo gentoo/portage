@@ -29,6 +29,7 @@ if os.environ.get("SANDBOX_ON") == "1":
 			":".join(filter(None, sandbox_write))
 
 import portage
+portage._disable_legacy_globals()
 
 class EbuildIpc(object):
 
