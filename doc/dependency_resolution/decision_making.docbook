@@ -13,7 +13,7 @@
 		<title>Delayed Evaluation of Disjunctive Dependency Choices</title>
 		<para>
 		Disjunctive dependencies, of which virtuals are a special case,
-		can be satsified by multiple choices of dependency atoms. These
+		can be satisfied by multiple choices of dependency atoms. These
 		choices are delayed until as late as possible in the dependency
 		calculation, after packages have been selected to satisfy
 		as many non-disjunctive dependencies as possible. As a consequence
