@@ -49,7 +49,7 @@ def _global_updates(trees, prev_mtimes):
 		# only populated with local packages here (getbinpkgs=0).
 		bindb.bintree.populate()
 
-	world_file = os.path.join(root, WORLD_FILE)
+	world_file = os.path.join(mysettings['EROOT'], WORLD_FILE)
 	world_list = grabfile(world_file)
 	world_modified = False
 	world_warnings = set()

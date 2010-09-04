@@ -2838,7 +2838,7 @@ def load_emerge_config(trees=None):
 			settings = trees[myroot]["vartree"].settings
 			break
 
-	mtimedbfile = os.path.join(os.path.sep, settings['ROOT'], portage.CACHE_PATH, "mtimedb")
+	mtimedbfile = os.path.join(os.path.sep, settings['EROOT'], portage.CACHE_PATH, "mtimedb")
 	mtimedb = portage.MtimeDB(mtimedbfile)
 	portage.output._init(config_root=settings['PORTAGE_CONFIGROOT'])
 	QueryCommand._db = trees
@@ -2861,7 +2861,7 @@ def chk_updated_cfg_files(target_root, config_protect):
 		print(" "+yellow("*")+" man page to learn how to update config files.")
 
 def display_news_notification(root_config, myopts):
-	target_root = root_config.root
+	target_root = root_config.settings['EROOT']
 	trees = root_config.trees
 	settings = trees["vartree"].settings
 	portdb = trees["porttree"].dbapi

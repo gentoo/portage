@@ -732,7 +732,7 @@ class binarytree(object):
 			except ImportError:
 				from urlparse import urlparse
 			urldata = urlparse(base_url)
-			pkgindex_file = os.path.join(self.settings["ROOT"], CACHE_PATH, "binhost",
+			pkgindex_file = os.path.join(self.settings["EROOT"], CACHE_PATH, "binhost",
 				urldata[1] + urldata[2], "Packages")
 			pkgindex = self._new_pkgindex()
 			try:
