@@ -49,8 +49,8 @@ class EbuildIpc(object):
 		start_time = time.time()
 
 		try:
-			portage.exception.AlarmSignal.register()
-			signal.alarm(self._COMMUNICATE_TIMEOUT_SECONDS)
+			portage.exception.AlarmSignal.register(
+				self._COMMUNICATE_TIMEOUT_SECONDS)
 			returncode = self._communicate(args)
 			return returncode
 		except portage.exception.AlarmSignal:

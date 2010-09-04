@@ -91,8 +91,9 @@ class AlarmSignal(TimeoutException):
 		self.frame = frame
 
 	@classmethod
-	def register(cls):
+	def register(cls, time):
 		signal.signal(signal.SIGALRM, cls._signal_handler)
+		signal.alarm(time)
 
 	@classmethod
 	def unregister(cls):
