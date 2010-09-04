@@ -37,8 +37,9 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 			self.atoms = atoms
 
 	def __init__(self, myroot, vardb):
+		""" myroot is ignored in favour of EROOT """
 		self._vardb = vardb
-		self._cache_filename = os.path.join(myroot,
+		self._cache_filename = os.path.join(vardb.settings['EROOT'],
 			portage.CACHE_PATH, "vdb_blockers.pickle")
 		self._cache_version = "1"
 		self._cache_data = None
