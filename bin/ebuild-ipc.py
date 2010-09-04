@@ -49,10 +49,14 @@ class EbuildIpc(object):
 		start_time = time.time()
 
 		try:
-			portage.exception.AlarmSignal.register(
-				self._COMMUNICATE_TIMEOUT_SECONDS)
-			returncode = self._communicate(args)
-			return returncode
+			try:
+				portage.exception.AlarmSignal.register(
+					self._COMMUNICATE_TIMEOUT_SECONDS)
+				returncode = self._communicate(args)
+				return returncode
+			finally:
+				portage.exception.AlarmSignal.unregister()
+				portage.locks.unlockfile(lock_obj)
 		except portage.exception.AlarmSignal:
 			time_elapsed = time.time() - start_time
 			portage.util.writemsg_level(
@@ -60,9 +64,6 @@ class EbuildIpc(object):
 				(time_elapsed,),
 				level=logging.ERROR, noiselevel=-1)
 			return 1
-		finally:
-			portage.exception.AlarmSignal.unregister()
-			portage.locks.unlockfile(lock_obj)
 
 	def _communicate(self, args):
 		input_fd = os.open(self.ipc_out_fifo, os.O_RDONLY|os.O_NONBLOCK)
