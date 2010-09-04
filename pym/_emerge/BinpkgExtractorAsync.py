@@ -13,10 +13,12 @@ class BinpkgExtractorAsync(SpawnProcess):
 	_shell_binary = portage.const.BASH_BINARY
 
 	def _start(self):
+		# Add -q to bzip2 opts, in order to avoid "trailing garbage after
+		# EOF ignored" warning messages due to xpak trailer.
 		# SIGPIPE handling (128 + SIGPIPE) should be compatible with
 		# assert_sigpipe_ok() that's used by the ebuild unpack() helper.
 		self.args = [self._shell_binary, "-c",
-			("${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -c -- %s | tar -xp -C %s -f - ; " + \
+			("${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -cq -- %s | tar -xp -C %s -f - ; " + \
 			"p=(${PIPESTATUS[@]}) ; " + \
 			"if [[ ${p[0]} != 0 && ${p[0]} != %d ]] ; then " % (128 + signal.SIGPIPE) + \
 			"echo bzip2 failed with status ${p[0]} ; exit ${p[0]} ; fi ; " + \

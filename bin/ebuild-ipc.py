@@ -5,11 +5,13 @@
 # This is a helper which ebuild processes can use
 # to communicate with portage's main python process.
 
+import logging
 import os
 import pickle
 import select
 import signal
 import sys
+import time
 
 def debug_signal(signum, frame):
 	import pdb
@@ -27,8 +29,11 @@ if os.environ.get("SANDBOX_ON") == "1":
 			":".join(filter(None, sandbox_write))
 
 import portage
+portage._disable_legacy_globals()
 
 class EbuildIpc(object):
+
+	_COMMUNICATE_TIMEOUT_SECONDS = 40
 
 	def __init__(self):
 		self.fifo_dir = os.environ['PORTAGE_BUILDDIR']
@@ -37,14 +42,29 @@ class EbuildIpc(object):
 		self.ipc_lock_file = os.path.join(self.fifo_dir, '.ipc_lock')
 
 	def communicate(self, args):
+
 		# Make locks quiet since unintended locking messages displayed on
 		# stdout could corrupt the intended output of this program.
 		portage.locks._quiet = True
 		lock_obj = portage.locks.lockfile(self.ipc_lock_file, unlinkfile=True)
+		start_time = time.time()
+
 		try:
-			return self._communicate(args)
-		finally:
-			portage.locks.unlockfile(lock_obj)
+			try:
+				portage.exception.AlarmSignal.register(
+					self._COMMUNICATE_TIMEOUT_SECONDS)
+				returncode = self._communicate(args)
+				return returncode
+			finally:
+				portage.exception.AlarmSignal.unregister()
+				portage.locks.unlockfile(lock_obj)
+		except portage.exception.AlarmSignal:
+			time_elapsed = time.time() - start_time
+			portage.util.writemsg_level(
+				('ebuild-ipc timed out after %d seconds\n') % \
+				(time_elapsed,),
+				level=logging.ERROR, noiselevel=-1)
+			return 1
 
 	def _communicate(self, args):
 		input_fd = os.open(self.ipc_out_fifo, os.O_RDONLY|os.O_NONBLOCK)

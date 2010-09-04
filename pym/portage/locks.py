@@ -1,5 +1,5 @@
 # portage: Lock management code
-# Copyright 2004 Gentoo Foundation
+# Copyright 2004-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
@@ -7,14 +7,17 @@ __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
 	"unhardlink_lockfile", "hardlock_cleanup"]
 
 import errno
+import fcntl
 import stat
 import sys
 import time
+
+import portage
 from portage import os
+from portage.const import PORTAGE_BIN_PATH
 from portage.exception import DirectoryNotFound, FileNotFound, \
 	InvalidData, TryAgain, OperationNotPermitted, PermissionDenied
 from portage.data import portage_gid
-from portage.output import EOutput
 from portage.util import writemsg
 from portage.localization import _
 
@@ -38,7 +41,6 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 	If wantnewlockfile is True then this creates a lockfile in the parent
 	directory as the file: '.' + basename + '.portage_lockfile'.
 	"""
-	import fcntl
 
 	if not mypath:
 		raise InvalidData(_("Empty path given"))
@@ -119,21 +121,26 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 				raise TryAgain(mypath)
 
 			global _quiet
-			out = EOutput()
-			out.quiet = _quiet
+			if _quiet:
+				out = None
+			else:
+				out = portage.output.EOutput()
 			if waiting_msg is None:
 				if isinstance(mypath, int):
 					waiting_msg = _("waiting for lock on fd %i") % myfd
 				else:
 					waiting_msg = _("waiting for lock on %s\n") % lockfilename
-			out.ebegin(waiting_msg)
+			if out is not None:
+				out.ebegin(waiting_msg)
 			# try for the exclusive lock now.
 			try:
 				fcntl.lockf(myfd, fcntl.LOCK_EX)
 			except EnvironmentError as e:
-				out.eend(1, str(e))
+				if out is not None:
+					out.eend(1, str(e))
 				raise
-			out.eend(os.EX_OK)
+			if out is not None:
+				out.eend(os.EX_OK)
 		elif e.errno == errno.ENOLCK:
 			# We're not allowed to lock on this FS.
 			os.close(myfd)
@@ -183,7 +190,6 @@ def _fstat_nlink(fd):
 		raise
 
 def unlockfile(mytuple):
-	import fcntl
 
 	#XXX: Compatability hack.
 	if len(mytuple) == 3:
@@ -300,7 +306,6 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 			writemsg(".", noiselevel=-1)
 		else:
 			reported_waiting = True
-			from portage.const import PORTAGE_BIN_PATH
 			msg = _("\nWaiting on (hardlink) lockfile: (one '.' per 3 seconds)\n"
 				"%(bin_path)s/clean_locks can fix stuck locks.\n"
 				"Lockfile: %(lockfilename)s\n") % \

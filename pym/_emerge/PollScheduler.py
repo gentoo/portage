@@ -205,7 +205,7 @@ class PollScheduler(object):
 		del self._poll_event_handlers[f]
 		del self._poll_event_handler_ids[reg_id]
 
-	def _schedule_wait(self, wait_ids, timeout=None):
+	def _schedule_wait(self, wait_ids=None, timeout=None):
 		"""
 		Schedule until wait_id is not longer registered
 		for poll() events.
@@ -220,16 +220,22 @@ class PollScheduler(object):
 			wait_ids = frozenset([wait_ids])
 
 		start_time = None
+		remaining_timeout = timeout
+		timed_out = False
 		if timeout is not None:
-			start_time = 1000 * time.time()
+			start_time = time.time()
 		try:
-			while wait_ids.intersection(handler_ids):
-				f, event = self._next_poll_event(timeout=timeout)
+			while (wait_ids is None and event_handlers) or \
+				(wait_ids is not None and wait_ids.intersection(handler_ids)):
+				f, event = self._next_poll_event(timeout=remaining_timeout)
 				handler, reg_id = event_handlers[f]
 				handler(f, event)
 				event_handled = True
 				if timeout is not None:
-					if 1000 * time.time() - start_time >= timeout:
+					elapsed_time = time.time() - start_time
+					remaining_timeout = (timeout - 1000 * elapsed_time)
+					if remaining_timeout <= 0:
+						timed_out = True
 						break
 		except StopIteration:
 			event_handled = True

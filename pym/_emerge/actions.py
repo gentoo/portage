@@ -2127,15 +2127,14 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				content = None
 				mypids = []
 				try:
-					def timeout_handler(signum, frame):
-						raise portage.exception.PortageException("timed out")
-					signal.signal(signal.SIGALRM, timeout_handler)
 					# Timeout here in case the server is unresponsive.  The
 					# --timeout rsync option doesn't apply to the initial
 					# connection attempt.
-					if rsync_initial_timeout:
-						signal.alarm(rsync_initial_timeout)
 					try:
+						if rsync_initial_timeout:
+							portage.exception.AlarmSignal.register(
+								rsync_initial_timeout)
+
 						mypids.extend(portage.process.spawn(
 							mycommand, returnpid=True, **spawn_kwargs))
 						exitcode = os.waitpid(mypids[0], 0)[1]
@@ -2145,15 +2144,14 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 						content = portage.grabfile(tmpservertimestampfile)
 					finally:
 						if rsync_initial_timeout:
-							signal.alarm(0)
+							portage.exception.AlarmSignal.unregister()
 						try:
 							os.unlink(tmpservertimestampfile)
 						except OSError:
 							pass
-				except portage.exception.PortageException as e:
+				except portage.exception.AlarmSignal:
 					# timed out
-					print(e)
-					del e
+					print('timed out')
 					if mypids and os.waitpid(mypids[0], os.WNOHANG) == (0,0):
 						os.kill(mypids[0], signal.SIGTERM)
 						os.waitpid(mypids[0], 0)
