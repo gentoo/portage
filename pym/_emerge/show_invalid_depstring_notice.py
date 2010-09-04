@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -11,7 +11,9 @@ def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 
 	msg1 = "\n\n!!! Invalid or corrupt dependency specification: " + \
 		"\n\n%s\n\n%s\n\n" % (error_msg, parent_node)
-	p_type, _, p_key, p_status = parent_node
+	p_type = parent_node[0]
+	p_key = parent_node[2]
+	p_status = parent_node[3]
 	msg = []
 	if p_status == "nomerge":
 		category, pf = portage.catsplit(p_key)
