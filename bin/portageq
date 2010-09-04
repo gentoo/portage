@@ -456,7 +456,7 @@ def vdb_path(argv):
 	set environment/configuration options.
 	"""
 	out = sys.stdout
-	out.write(os.path.join(portage.settings["ROOT"], portage.VDB_PATH) + "\n")
+	out.write(os.path.join(portage.settings["EROOT"], portage.VDB_PATH) + "\n")
 	out.flush()
 	return os.EX_OK
 

@@ -47,7 +47,7 @@ def unmerge(root_config, myopts, unmerge_action,
 			pkg_cache[cpv] = pkg
 		return pkg
 
-	vdb_path = os.path.join(settings["ROOT"], portage.VDB_PATH)
+	vdb_path = os.path.join(settings["EROOT"], portage.VDB_PATH)
 	try:
 		# At least the parent needs to exist for the lock file.
 		portage.util.ensure_dirs(vdb_path)
@@ -118,7 +118,7 @@ def unmerge(root_config, myopts, unmerge_action,
 	
 					sp_absx_len = len(sp_absx)
 	
-					vdb_path = os.path.join(settings["ROOT"], portage.VDB_PATH)
+					vdb_path = os.path.join(settings["EROOT"], portage.VDB_PATH)
 					vdb_len  = len(vdb_path)
 	
 					sp_vdb     = vdb_path.split("/")

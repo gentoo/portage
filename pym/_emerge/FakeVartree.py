@@ -102,7 +102,7 @@ class FakeVartree(vartree):
 		after one or more packages may have been installed or
 		uninstalled.
 		"""
-		vdb_path = os.path.join(self.root, portage.VDB_PATH)
+		vdb_path = os.path.join(self.settings['EROOT'], portage.VDB_PATH)
 		try:
 			# At least the parent needs to exist for the lock file.
 			portage.util.ensure_dirs(vdb_path)
