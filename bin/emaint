@@ -40,7 +40,7 @@ class WorldHandler(object):
 	def _check_world(self, onProgress):
 		categories = set(portage.settings.categories)
 		myroot = portage.settings["ROOT"]
-		self.world_file = os.path.join(myroot, portage.const.WORLD_FILE)
+		self.world_file = os.path.join(portage.settings["EROOT"], portage.const.WORLD_FILE)
 		self.found = os.access(self.world_file, os.R_OK)
 		vardb = portage.db[myroot]["vartree"].dbapi
 

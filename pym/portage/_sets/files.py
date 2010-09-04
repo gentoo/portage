@@ -208,16 +208,16 @@ class ConfigFileSet(PackageSet):
 class WorldSelectedSet(EditablePackageSet):
 	description = "Set of packages that were directly installed by the user"
 	
-	def __init__(self, root):
+	def __init__(self, eroot):
 		super(WorldSelectedSet, self).__init__()
 		# most attributes exist twice as atoms and non-atoms are stored in 
 		# separate files
 		self._lock = None
-		self._filename = os.path.join(os.sep, root, WORLD_FILE)
+		self._filename = os.path.join(os.sep, eroot, WORLD_FILE)
 		self.loader = ItemFileLoader(self._filename, self._validate)
 		self._mtime = None
 		
-		self._filename2 = os.path.join(os.sep, root, WORLD_SETS_FILE)
+		self._filename2 = os.path.join(os.sep, eroot, WORLD_SETS_FILE)
 		self.loader2 = ItemFileLoader(self._filename2, self._validate2)
 		self._mtime2 = None
 		
