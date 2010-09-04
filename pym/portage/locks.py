@@ -12,6 +12,7 @@ import stat
 import sys
 import time
 
+import portage
 from portage import os
 from portage.const import PORTAGE_BIN_PATH
 from portage.exception import DirectoryNotFound, FileNotFound, \
