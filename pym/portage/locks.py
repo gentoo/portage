@@ -17,7 +17,6 @@ from portage.const import PORTAGE_BIN_PATH
 from portage.exception import DirectoryNotFound, FileNotFound, \
 	InvalidData, TryAgain, OperationNotPermitted, PermissionDenied
 from portage.data import portage_gid
-from portage.output import EOutput
 from portage.util import writemsg
 from portage.localization import _
 
@@ -121,21 +120,26 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 				raise TryAgain(mypath)
 
 			global _quiet
-			out = EOutput()
-			out.quiet = _quiet
+			if _quiet:
+				out = None
+			else:
+				out = portage.output.EOutput()
 			if waiting_msg is None:
 				if isinstance(mypath, int):
 					waiting_msg = _("waiting for lock on fd %i") % myfd
 				else:
 					waiting_msg = _("waiting for lock on %s\n") % lockfilename
-			out.ebegin(waiting_msg)
+			if out is not None:
+				out.ebegin(waiting_msg)
 			# try for the exclusive lock now.
 			try:
 				fcntl.lockf(myfd, fcntl.LOCK_EX)
 			except EnvironmentError as e:
-				out.eend(1, str(e))
+				if out is not None:
+					out.eend(1, str(e))
 				raise
-			out.eend(os.EX_OK)
+			if out is not None:
+				out.eend(os.EX_OK)
 		elif e.errno == errno.ENOLCK:
 			# We're not allowed to lock on this FS.
 			os.close(myfd)
