@@ -2813,7 +2813,7 @@ def chk_updated_cfg_files(target_root, config_protect):
 		print(" "+yellow("*")+" man page to learn how to update config files.")
 
 def display_news_notification(root_config, myopts):
-	target_root = root_config.root
+	target_root = root_config.settings['EROOT']
 	trees = root_config.trees
 	settings = trees["vartree"].settings
 	portdb = trees["porttree"].dbapi
