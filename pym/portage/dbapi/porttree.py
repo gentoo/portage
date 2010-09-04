@@ -1053,6 +1053,8 @@ def close_portdbapi_caches():
 	for i in portdbapi.portdbapi_instances:
 		i.close_caches()
 
+portage.process.atexit_register(portage.portageexit)
+
 class portagetree(object):
 	def __init__(self, root=None, virtual=None, settings=None):
 		"""

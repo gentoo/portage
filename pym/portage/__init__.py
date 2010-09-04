@@ -491,14 +491,6 @@ auxdbkeylen=len(auxdbkeys)
 def portageexit():
 	if data.secpass > 1 and os.environ.get("SANDBOX_ON") != "1":
 		close_portdbapi_caches()
-		try:
-			mtimedb
-		except NameError:
-			pass
-		else:
-			mtimedb.commit()
-
-atexit_register(portageexit)
 
 def create_trees(config_root=None, target_root=None, trees=None):
 	if trees is None:
