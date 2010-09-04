@@ -342,7 +342,7 @@ def unmerge(root_config, myopts, unmerge_action,
 					unknown_sets.add(s)
 					out = portage.output.EOutput()
 					out.eerror(("Unknown set '@%s' in %s%s") % \
-						(s, root_config.root, portage.const.WORLD_SETS_FILE))
+						(s, root_config.settings['EROOT'], portage.const.WORLD_SETS_FILE))
 					continue
 
 				# only check instances of EditablePackageSet as other classes are generally used for
