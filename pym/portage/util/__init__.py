@@ -24,6 +24,7 @@ import traceback
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.dep:Atom',
 	'portage.util.listdir:_ignorecvs_dirs'
 )
 from portage import StringIO
@@ -36,7 +37,6 @@ from portage import _unicode_encode
 from portage import _unicode_decode
 from portage.exception import InvalidAtom, PortageException, FileNotFound, \
        OperationNotPermitted, PermissionDenied, ReadOnlyFileSystem
-from portage.dep import Atom
 from portage.localization import _
 from portage.proxy.objectproxy import ObjectProxy
 from portage.cache.mappings import UserDict
