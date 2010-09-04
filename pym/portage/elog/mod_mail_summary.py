@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
-from portage.exception import PortageException
+from portage.exception import AlarmSignal
 from portage.localization import _
 from portage.util import writemsg
 from portage import os
@@ -57,19 +57,15 @@ def _finalize(mysettings, items):
 	mymessage = portage.mail.create_message(myfrom, myrecipient, mysubject,
 		mybody, attachments=list(items.values()))
 
-	def timeout_handler(signum, frame):
-		raise PortageException("Timeout in finalize() for elog system 'mail_summary'")
-	import signal
-	signal.signal(signal.SIGALRM, timeout_handler)
 	# Timeout after one minute in case send_mail() blocks indefinitely.
-	signal.alarm(60)
-
 	try:
 		try:
+			AlarmSignal.register(60)
 			portage.mail.send_mail(mysettings, mymessage)
 		finally:
-			signal.alarm(0)
-	except PortageException as e:
-		writemsg("%s\n" % str(e), noiselevel=-1)
+			AlarmSignal.unregister()
+	except AlarmSignal:
+		writemsg("Timeout in finalize() for elog system 'mail_summary'\n",
+			noiselevel=-1)
 
 	return
