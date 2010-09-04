@@ -102,6 +102,7 @@ class AlarmSignal(TimeoutException):
 
 	@classmethod
 	def _signal_handler(cls, signum, frame):
+		signal.signal(signal.SIGALRM, signal.SIG_DFL)
 		raise AlarmSignal("alarm signal",
 			signum=signum, frame=frame)
 
