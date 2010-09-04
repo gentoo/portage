@@ -1,9 +1,9 @@
 # elog/mod_mail_summary.py - elog dispatch module
-# Copyright 2006-2007 Gentoo Foundation
+# Copyright 2006-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
-from portage.exception import AlarmSignal
+from portage.exception import AlarmSignal, PortageException
 from portage.localization import _
 from portage.util import writemsg
 from portage import os
@@ -67,5 +67,7 @@ def _finalize(mysettings, items):
 	except AlarmSignal:
 		writemsg("Timeout in finalize() for elog system 'mail_summary'\n",
 			noiselevel=-1)
+	except PortageException as e:
+		writemsg("%s\n" % (e,), noiselevel=-1)
 
 	return
