@@ -342,7 +342,7 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 		# If vdb state has not changed then there's nothing else to do.
 		sys.exit(retval)
 
-	vdb_path = os.path.join(target_root, portage.VDB_PATH)
+	vdb_path = os.path.join(root_config.settings['EROOT'], portage.VDB_PATH)
 	portage.util.ensure_dirs(vdb_path)
 	vdb_lock = None
 	if os.access(vdb_path, os.W_OK) and not "--pretend" in myopts:
