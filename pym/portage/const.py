@@ -1,5 +1,5 @@
 # portage: Constants
-# Copyright 1998-2009 Gentoo Foundation
+# Copyright 1998-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import os
@@ -22,9 +22,8 @@ import os
 # would expect.
 # Second there is target_root (ROOT) which is used to install somewhere
 # completely else, in Prefix of limited use.  Because this is an offset
-# always given, the EPREFIX should always be applied in it.  Those
-# constants (like VDB_PATH) are always absolute and hence DO have
-# EPREFIX prepended in Prefix.
+# always given, the EPREFIX should always be applied in it, hence the
+# code always prefixes them with EROOT.
 # The variables in this file are grouped by config_root, target_root.
 
 # variables used with config_root (these need to be relative)
@@ -42,7 +41,7 @@ MAKE_DEFAULTS_FILE       = PROFILE_PATH + "/make.defaults"  # FIXME: not used
 DEPRECATED_PROFILE_FILE  = PROFILE_PATH + "/deprecated"
 
 # variables used with targetroot (these need to be absolute, but not
-# have a leading '/' since they are used directly with os.path.join)
+# have a leading '/' since they are used directly with os.path.join on EROOT)
 VDB_PATH                 = "var/db/pkg"
 CACHE_PATH               = "var/cache/edb"
 PRIVATE_PATH             = "var/lib/portage"
