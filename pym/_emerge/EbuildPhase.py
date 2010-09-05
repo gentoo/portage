@@ -11,12 +11,14 @@ from _emerge.CompositeTask import CompositeTask
 from portage.util import writemsg
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.elog:messages@elog_messages',
 	'portage.package.ebuild.doebuild:_check_build_log,' + \
 		'_post_phase_cmds,_post_phase_userpriv_perms,' + \
 		'_post_src_install_chost_fix,' + \
 		'_post_src_install_uid_fix'
 )
 from portage import os
+from portage import StringIO
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
@@ -26,6 +28,18 @@ class EbuildPhase(CompositeTask):
 	__slots__ = ("actionmap", "phase", "settings")
 
 	def _start(self):
+
+		if self.phase == 'setup':
+
+			use = self.settings.get('PORTAGE_BUILT_USE')
+			if use is None:
+				use = self.settings['PORTAGE_USE']
+
+			msg = []
+			msg.append("CPV:  %s" % self.settings.mycpv)
+			msg.append("REPO: %s" % self.settings['PORTAGE_REPO_NAME'])
+			msg.append("USE:  %s" % use)
+			self._elog('einfo', msg)
 
 		if self.phase == 'prerm':
 			env_extractor = BinpkgEnvExtractor(background=self.background,
@@ -200,3 +214,15 @@ class EbuildPhase(CompositeTask):
 		self._final_exit(clean_phase)
 		self.returncode = 1
 		self.wait()
+
+	def _elog(self, elog_funcname, lines):
+		out = StringIO()
+		phase = self.phase
+		elog_func = getattr(elog_messages, elog_funcname)
+		for line in lines:
+			elog_func(line, phase=phase, key=self.settings.mycpv, out=out)
+		msg = _unicode_decode(out.getvalue(),
+			encoding=_encodings['content'], errors='replace')
+		if msg:
+			self.scheduler.output(msg,
+				log_path=self.settings.get("PORTAGE_LOG_FILE"))
