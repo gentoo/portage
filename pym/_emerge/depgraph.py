@@ -2517,8 +2517,8 @@ class depgraph(object):
 
 			for key in "DEPEND", "RDEPEND", "PDEPEND", "LICENSE":
 				dep = pkg.metadata[key]
-				old_val = set(portage.dep.use_reduce(dep, pkg.use.enabled, is_valid_flag=pkg.iuse.is_valid_flag))
-				new_val = set(portage.dep.use_reduce(dep, new_use, is_valid_flag=pkg.iuse.is_valid_flag))
+				old_val = set(portage.dep.use_reduce(dep, pkg.use.enabled, is_valid_flag=pkg.iuse.is_valid_flag, flat=True))
+				new_val = set(portage.dep.use_reduce(dep, new_use, is_valid_flag=pkg.iuse.is_valid_flag, flat=True))
 
 				if old_val != new_val:
 					return True
