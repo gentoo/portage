@@ -56,7 +56,7 @@ from portage.versions import _pkgsplit
 from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.EbuildSpawnProcess import EbuildSpawnProcess
-from _emerge.TaskScheduler import TaskScheduler
+from _emerge.PollScheduler import PollScheduler
 
 _unsandboxed_phases = frozenset([
 	"clean", "cleanrm", "config",
@@ -101,12 +101,11 @@ def _spawn_phase(phase, settings, actionmap=None, **kwargs):
 	if kwargs.get('returnpid'):
 		return _doebuild_spawn(phase, settings, actionmap=actionmap, **kwargs)
 
-	task_scheduler = TaskScheduler()
 	ebuild_phase = EbuildPhase(actionmap=actionmap, background=False,
-		phase=phase, scheduler=task_scheduler.sched_iface,
+		phase=phase, scheduler=PollScheduler().sched_iface,
 		settings=settings)
-	task_scheduler.add(ebuild_phase)
-	task_scheduler.run()
+	ebuild_phase.start()
+	ebuild_phase.wait()
 	return ebuild_phase.returncode
 
 def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
@@ -873,9 +872,8 @@ def _prepare_env_file(settings):
 	clobbering an existing environment file.
 	"""
 
-	task_scheduler = TaskScheduler()
 	env_extractor = BinpkgEnvExtractor(background=False,
-		scheduler=task_scheduler.sched_iface, settings=settings)
+		scheduler=PollScheduler().sched_iface, settings=settings)
 
 	if env_extractor.dest_env_exists():
 		# There are lots of possible states when doebuild()
@@ -888,8 +886,8 @@ def _prepare_env_file(settings):
 		# source the ebuild as a fallback.
 		return os.EX_OK
 
-	task_scheduler.add(env_extractor)
-	task_scheduler.run()
+	env_extractor.start()
+	env_extractor.wait()
 	return env_extractor.returncode
 
 def _prepare_fake_distdir(settings, alist):
@@ -1118,14 +1116,13 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	if keywords.get("returnpid"):
 		return spawn_func(mystring, env=mysettings.environ(), **keywords)
 
-	sched = TaskScheduler()
 	proc = EbuildSpawnProcess(
 		background=False, args=mystring,
-		scheduler=sched.sched_iface, spawn_func=spawn_func,
+		scheduler=PollScheduler().sched_iface, spawn_func=spawn_func,
 		settings=mysettings, **keywords)
 
-	sched.add(proc)
-	sched.run()
+	proc.start()
+	proc.wait()
 
 	return proc.returncode
 
