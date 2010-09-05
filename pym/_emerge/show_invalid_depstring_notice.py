@@ -11,9 +11,9 @@ def show_invalid_depstring_notice(parent_node, depstring, error_msg):
 
 	msg1 = "\n\n!!! Invalid or corrupt dependency specification: " + \
 		"\n\n%s\n\n%s\n\n" % (error_msg, parent_node)
-	p_type = parent_node[0]
-	p_key = parent_node[2]
-	p_status = parent_node[3]
+	p_type = parent_node.type_name
+	p_key = parent_node.cpv
+	p_status = parent_node.operation
 	msg = []
 	if p_status == "nomerge":
 		category, pf = portage.catsplit(p_key)
