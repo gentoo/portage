@@ -65,7 +65,7 @@ NEWS_LIB_PATH            = "var/lib/gentoo"
 
 # these variables are not used with target_root or config_root
 DEPCACHE_PATH            = "/var/cache/edb/dep"
-GLOBAL_CONFIG_PATH       = DATADIR + "/portage/config"
+GLOBAL_CONFIG_PATH       = "/usr/share/portage/config"
 PORTAGE_BASE_PATH        = PORTAGE_BASE
 PORTAGE_BIN_PATH         = PORTAGE_BASE_PATH + "/bin"
 PORTAGE_PYM_PATH         = PORTAGE_BASE_PATH + "/pym"
