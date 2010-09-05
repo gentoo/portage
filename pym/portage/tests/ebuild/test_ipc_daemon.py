@@ -4,7 +4,6 @@
 import shutil
 import tempfile
 import time
-import portage
 from portage import os
 from portage import _python_interpreter
 from portage.tests import TestCase
@@ -70,6 +69,8 @@ class IpcDaemonTestCase(TestCase):
 				self.assertEqual(self.received_command, True,
 					"command not received after %d seconds" % \
 					(time.time() - start_time,))
+				self.assertEqual(proc.isAlive(), False)
+				self.assertEqual(daemon.isAlive(), False)
 				self.assertEqual(exit_command.exitcode, exitcode)
 
 			# Intentionally short timeout test for QueueScheduler.run()
@@ -104,6 +105,7 @@ class IpcDaemonTestCase(TestCase):
 					"command received after %d seconds" % \
 					(time.time() - start_time,))
 				self.assertEqual(proc.isAlive(), False)
+				self.assertEqual(daemon.isAlive(), False)
 				self.assertEqual(proc.returncode == os.EX_OK, False)
 
 		finally:
