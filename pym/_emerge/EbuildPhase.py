@@ -219,8 +219,14 @@ class EbuildPhase(CompositeTask):
 		out = StringIO()
 		phase = self.phase
 		elog_func = getattr(elog_messages, elog_funcname)
-		for line in lines:
-			elog_func(line, phase=phase, key=self.settings.mycpv, out=out)
+		global_havecolor = portage.output.havecolor
+		try:
+			portage.output.havecolor = \
+				self.settings.get('NOCOLOR', 'false').lower() in ('no', 'false')
+			for line in lines:
+				elog_func(line, phase=phase, key=self.settings.mycpv, out=out)
+		finally:
+			portage.output.havecolor = global_havecolor
 		msg = _unicode_decode(out.getvalue(),
 			encoding=_encodings['content'], errors='replace')
 		if msg:

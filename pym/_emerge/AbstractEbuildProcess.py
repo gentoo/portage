@@ -6,7 +6,7 @@ import textwrap
 from _emerge.SpawnProcess import SpawnProcess
 from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
 import portage
-from portage.elog.messages import eerror
+from portage.elog import messages as elog_messages
 from portage.localization import _
 from portage.package.ebuild._ipc.ExitCommand import ExitCommand
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
@@ -198,10 +198,20 @@ class AbstractEbuildProcess(SpawnProcess):
 		self._eerror(textwrap.wrap(msg, 72))
 
 	def _eerror(self, lines):
+		self._elog('eerror', lines)
+
+	def _elog(self, elog_funcname, lines):
 		out = StringIO()
 		phase = self.phase
-		for line in lines:
-			eerror(line, phase=phase, key=self.settings.mycpv, out=out)
+		elog_func = getattr(elog_messages, elog_funcname)
+		global_havecolor = portage.output.havecolor
+		try:
+			portage.output.havecolor = \
+				self.settings.get('NOCOLOR', 'false').lower() in ('no', 'false')
+			for line in lines:
+				elog_func(line, phase=phase, key=self.settings.mycpv, out=out)
+		finally:
+			portage.output.havecolor = global_havecolor
 		msg = _unicode_decode(out.getvalue(),
 			encoding=_encodings['content'], errors='replace')
 		if msg:
