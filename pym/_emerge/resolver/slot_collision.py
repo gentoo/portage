@@ -327,7 +327,12 @@ class slot_conflict_handler(object):
 										if ppkg == x[0] and atom == x[1]:
 											version_violated = True
 								elif type == "use":
-									use.append(sub_type)
+									for x in collision_reasons[(type, sub_type)]:
+										# TODO: Review this conditional for
+										# validity (see bug #336085).
+										if ppkg == x[0] and atom == x[1]:
+											use.append(sub_type)
+											break
 
 							atom_str = highlight_violations(atom.unevaluated_atom, version_violated, use)
 
