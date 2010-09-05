@@ -47,6 +47,9 @@ class LazyImportPortageBaselineTestCase(TestCase):
 
 		consumer.start()
 		consumer.wait()
+		self.assertEqual(producer.wait(), os.EX_OK)
+		self.assertEqual(consumer.wait(), os.EX_OK)
+
 		output = consumer.getvalue().decode('ascii', 'replace').split()
 
 		unexpected_modules = " ".join(sorted(x for x in output \
