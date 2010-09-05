@@ -50,9 +50,12 @@ WORLD_SETS_FILE          = PRIVATE_PATH + "/world_sets"
 CONFIG_MEMORY_FILE       = PRIVATE_PATH + "/config"
 NEWS_LIB_PATH            = "var/lib/gentoo"
 
-# these variables are not used with target_root or config_root
+# these variables get EPREFIX prepended automagically when they are
+# translated into their lowercase variants
 DEPCACHE_PATH            = "/var/cache/edb/dep"
 GLOBAL_CONFIG_PATH       = "/usr/share/portage/config"
+
+# these variables are not used with target_root or config_root
 PORTAGE_BASE_PATH        = os.path.join(os.sep, os.sep.join(__file__.split(os.sep)[:-3]))
 PORTAGE_BIN_PATH         = PORTAGE_BASE_PATH + "/bin"
 PORTAGE_PYM_PATH         = PORTAGE_BASE_PATH + "/pym"
