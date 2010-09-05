@@ -64,7 +64,7 @@ CONFIG_MEMORY_FILE       = PRIVATE_PATH + "/config"
 NEWS_LIB_PATH            = "var/lib/gentoo"
 
 # these variables are not used with target_root or config_root
-DEPCACHE_PATH            = EPREFIX + "/var/cache/edb/dep"
+DEPCACHE_PATH            = "/var/cache/edb/dep"
 GLOBAL_CONFIG_PATH       = DATADIR + "/portage/config"
 PORTAGE_BASE_PATH        = PORTAGE_BASE
 PORTAGE_BIN_PATH         = PORTAGE_BASE_PATH + "/bin"

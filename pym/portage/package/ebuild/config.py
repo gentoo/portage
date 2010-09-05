@@ -28,7 +28,7 @@ from portage.const import CACHE_PATH, \
 	DEPCACHE_PATH, INCREMENTALS, MAKE_CONF_FILE, \
 	MODULES_FILE_PATH, PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, \
 	PRIVATE_PATH, PROFILE_PATH, USER_CONFIG_PATH, \
-	USER_VIRTUALS_FILE, EPREFIX, EPREFIX_LSTRIP, BPREFIX
+	USER_VIRTUALS_FILE 
 from portage.const import _SANDBOX_COMPAT_LEVEL
 from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi

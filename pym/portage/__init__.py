@@ -506,7 +506,7 @@ def create_trees(config_root=None, target_root=None, trees=None):
 			del trees[myroot]["porttree"], myroot, portdb
 
 	settings = config(config_root=config_root, target_root=target_root,
-		config_incrementals=portage.const.INCREMENTALS)
+		config_incrementals=portage.const.INCREMENTALS, _eprefix=EPREFIX)
 	settings.lock()
 
 	myroots = [(settings["ROOT"], settings)]
