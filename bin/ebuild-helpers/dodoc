@@ -18,7 +18,7 @@ ret=0
 for x in "$@" ; do
 	if [ -s "${x}" ] ; then
 		install -m0644 "${x}" "${dir}"
-		hasq "${EAPI}" 0 1 2 3 && ecompress --queue "${dir}/${x##*/}"
+		ecompress --queue "${dir}/${x##*/}"
 	elif [ ! -e "${x}" ] ; then
 		echo "!!! ${0##*/}: $x does not exist" 1>&2
 		((ret|=1))

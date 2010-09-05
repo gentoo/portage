@@ -4,11 +4,6 @@
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
-if ! hasq "${EAPI}" 0 1 2 3; then
-	eqawarn "QA Notice: Deprecated call to 'prepalldocs'"
-	exit 0
-fi
-
 if [[ -n $1 ]] ; then
 	vecho "${0##*/}: invalid usage; takes no arguments" 1>&2
 fi
