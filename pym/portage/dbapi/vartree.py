@@ -51,7 +51,7 @@ from portage import _selinux_merge
 from portage import _unicode_decode
 from portage import _unicode_encode
 
-from _emerge.TaskScheduler import TaskScheduler
+from _emerge.PollScheduler import PollScheduler
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 
 import codecs
@@ -3859,14 +3859,13 @@ class dblink(object):
 					phase = 'die_hooks'
 
 				if self._scheduler is None:
-					task_scheduler = TaskScheduler()
 					ebuild_phase = MiscFunctionsProcess(
 						background=False,
 						commands=[phase],
-						scheduler=task_scheduler.sched_iface,
+						scheduler=PollScheduler().sched_iface,
 						settings=self.settings)
-					task_scheduler.add(ebuild_phase)
-					task_scheduler.run()
+					ebuild_phase.start()
+					ebuild_phase.wait()
 				else:
 					self._scheduler.dblinkEbuildPhase(
 						self, mydbapi, myebuild, phase)
