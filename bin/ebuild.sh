@@ -1259,6 +1259,7 @@ dyn_help() {
 		echo "production (stripped)"
 	fi
 	echo "  merge to    : ${ROOT}"
+	echo "  offset      : ${EPREFIX}"
 	echo
 	if [ -n "$USE" ]; then
 		echo "Additionally, support for the following optional features will be enabled:"
