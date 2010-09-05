@@ -12,7 +12,7 @@ from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.Package import Package
-from _emerge.TaskScheduler import TaskScheduler
+from _emerge.PollScheduler import PollScheduler
 
 class DoebuildSpawnTestCase(TestCase):
 	"""
@@ -52,7 +52,7 @@ class DoebuildSpawnTestCase(TestCase):
 			# has been sourced already.
 			open(os.path.join(settings['T'], 'environment'), 'wb')
 
-			task_scheduler = TaskScheduler()
+			scheduler = PollScheduler().sched_iface
 			for phase in ('_internal_test',):
 
 				# Test EbuildSpawnProcess by calling doebuild.spawn() with
@@ -66,17 +66,17 @@ class DoebuildSpawnTestCase(TestCase):
 				self.assertEqual(rval, os.EX_OK)
 
 				ebuild_phase = EbuildPhase(background=False,
-					phase=phase, scheduler=task_scheduler.sched_iface,
+					phase=phase, scheduler=scheduler,
 					settings=settings)
-				task_scheduler.add(ebuild_phase)
-				task_scheduler.run()
+				ebuild_phase.start()
+				ebuild_phase.wait()
 				self.assertEqual(ebuild_phase.returncode, os.EX_OK)
 
 			ebuild_phase = MiscFunctionsProcess(background=False,
 				commands=['success_hooks'],
-				scheduler=task_scheduler.sched_iface, settings=settings)
-			task_scheduler.add(ebuild_phase)
-			task_scheduler.run()
+				scheduler=scheduler, settings=settings)
+			ebuild_phase.start()
+			ebuild_phase.wait()
 			self.assertEqual(ebuild_phase.returncode, os.EX_OK)
 		finally:
 			playground.cleanup()
