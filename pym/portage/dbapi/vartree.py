@@ -2062,7 +2062,9 @@ class dblink(object):
 				"self.settings['EROOT'] will be used.",
 				DeprecationWarning, stacklevel=2)
 
-		destroot = self._eroot
+		# PREFIX LOCAL: don't use eroot here
+		destroot = self.settings['ROOT']
+		# PREFIX LOCAL
 
 		# The given filename argument might have a different encoding than the
 		# the filenames contained in the contents, so use separate wrapped os
@@ -2566,7 +2568,9 @@ class dblink(object):
 			scheduler = self._scheduler
 			stopmerge = False
 			collisions = []
-			destroot = self._eroot
+			# PREFIX LOCAL: don't use eroot here
+			destroot = self.settings['ROOT']
+			# PREFIX LOCAL
 			showMessage(_(" %s checking %d files for package collisions\n") % \
 				(colorize("GOOD", "*"), len(mycontents)))
 			for i, f in enumerate(mycontents):
@@ -2814,7 +2818,10 @@ class dblink(object):
 
 		srcroot = _unicode_decode(srcroot,
 			encoding=_encodings['content'], errors='strict')
-		destroot = self._eroot
+		# PREFIX LOCAL: no eroot here, image dir already has EPREFIX,
+		# will end up with double prefix in installation
+		destroot = self.settings['ROOT']
+		# PREFIX LOCAL
 		inforoot = _unicode_decode(inforoot,
 			encoding=_encodings['content'], errors='strict')
 		myebuild = _unicode_decode(myebuild,
