@@ -780,6 +780,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				# allow different fetchcommands per protocol
 				protocol = loc[0:loc.find("://")]
 
+				global_config_path = GLOBAL_CONFIG_PATH
+				if mysettings['EPREFIX']:
+					global_config_path = os.path.join(mysettings['EPREFIX'],
+							GLOBAL_CONFIG_PATH.lstrip(os.sep))
+
 				missing_file_param = False
 				fetchcommand_var = "FETCHCOMMAND_" + protocol.upper()
 				fetchcommand = mysettings.get(fetchcommand_var)
@@ -790,7 +795,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						writemsg_level(
 							_("!!! %s is unset. It should "
 							"have been defined in\n!!! %s/make.globals.\n") \
-							% (fetchcommand_var, GLOBAL_CONFIG_PATH),
+							% (fetchcommand_var, global_config_path),
 							level=logging.ERROR, noiselevel=-1)
 						return 0
 				if "${FILE}" not in fetchcommand:
@@ -809,7 +814,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						writemsg_level(
 							_("!!! %s is unset. It should "
 							"have been defined in\n!!! %s/make.globals.\n") \
-							% (resumecommand_var, GLOBAL_CONFIG_PATH),
+							% (resumecommand_var, global_config_path),
 							level=logging.ERROR, noiselevel=-1)
 						return 0
 				if "${FILE}" not in resumecommand:

@@ -2787,7 +2787,7 @@ class depgraph(object):
 						break
 					# Compare built package to current config and
 					# reject the built package if necessary.
-					if built and not installed and \
+					if built and (not installed or matched_packages) and \
 						("--newuse" in self._frozen_config.myopts or \
 						"--reinstall" in self._frozen_config.myopts or \
 						"--binpkg-respect-use" in self._frozen_config.myopts):

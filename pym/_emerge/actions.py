@@ -1837,9 +1837,13 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
 	myportdir = portdb.porttree_root
 	out = portage.output.EOutput()
+	global_config_path = GLOBAL_CONFIG_PATH
+	if settings['EPREFIX']:
+		global_config_path = os.path.join(settings['EPREFIX'],
+				GLOBAL_CONFIG_PATH.lstrip(os.sep))
 	if not myportdir:
 		sys.stderr.write("!!! PORTDIR is undefined.  " + \
-			"Is %s/make.globals missing?\n" % GLOBAL_CONFIG_PATH)
+			"Is %s/make.globals missing?\n" % global_config_path)
 		sys.exit(1)
 	if myportdir[-1]=="/":
 		myportdir=myportdir[:-1]
@@ -1879,7 +1883,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	syncuri = settings.get("SYNC", "").strip()
 	if not syncuri:
 		writemsg_level("!!! SYNC is undefined. " + \
-			"Is %s/make.globals missing?\n" % GLOBAL_CONFIG_PATH,
+			"Is %s/make.globals missing?\n" % global_config_path,
 			noiselevel=-1, level=logging.ERROR)
 		return 1
 

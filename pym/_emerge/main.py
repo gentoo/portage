@@ -108,11 +108,13 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 			if z=='':
 				continue
 			inforoot=normpath(root+z)
-			if os.path.isdir(inforoot):
-				infomtime = os.stat(inforoot)[stat.ST_MTIME]
-				if inforoot not in prev_mtimes or \
-					prev_mtimes[inforoot] != infomtime:
-						regen_infodirs.append(inforoot)
+			if os.path.isdir(inforoot) and \
+				not [x for x in os.listdir(inforoot) \
+				if x.startswith('.keepinfodir')]:
+					infomtime = os.stat(inforoot)[stat.ST_MTIME]
+					if inforoot not in prev_mtimes or \
+						prev_mtimes[inforoot] != infomtime:
+							regen_infodirs.append(inforoot)
 
 		if not regen_infodirs:
 			portage.writemsg_stdout("\n")
@@ -1049,8 +1051,12 @@ def missing_sets_warning(root_config, missing_sets):
 		"missing set(s): %s" % missing_sets_str]
 	if root_config.sets:
 		msg.append("        sets defined: %s" % ", ".join(root_config.sets))
+	global_config_path = portage.const.GLOBAL_CONFIG_PATH
+	if root_config.settings['EPREFIX']:
+		global_config_path = os.path.join(root_config.settings['EPREFIX'],
+				portage.const.GLOBAL_CONFIG_PATH.lstrip(os.sep))
 	msg.append("        This usually means that '%s'" % \
-		(os.path.join(portage.const.GLOBAL_CONFIG_PATH, "sets/portage.conf"),))
+		(os.path.join(global_config_path, "sets/portage.conf"),))
 	msg.append("        is missing or corrupt.")
 	msg.append("        Falling back to default world and system set configuration!!!")
 	for line in msg:
