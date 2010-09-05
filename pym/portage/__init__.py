@@ -57,15 +57,10 @@ except ImportError as e:
 
 try:
 
-	try:
-		from collections import OrderedDict
-	except ImportError:
-		from portage.cache.mappings import OrderedDict
-
-	from portage.cache.cache_errors import CacheError
 	import portage.proxy.lazyimport
 	import portage.proxy as proxy
 	proxy.lazyimport.lazyimport(globals(),
+		'portage.cache.cache_errors:CacheError',
 		'portage.checksum',
 		'portage.checksum:perform_checksum,perform_md5,prelink_capable',
 		'portage.cvstree',
@@ -132,6 +127,12 @@ try:
 			'suffix_value@endversion,pkgcmp,pkgsplit,vercmp,ververify',
 		'portage.xpak',
 	)
+
+	try:
+		from collections import OrderedDict
+	except ImportError:
+		proxy.lazyimport.lazyimport(globals(),
+			'portage.cache.mappings:OrderedDict')
 
 	import portage.const
 	from portage.const import VDB_PATH, PRIVATE_PATH, CACHE_PATH, DEPCACHE_PATH, \
