@@ -15,6 +15,7 @@ except ImportError:
     from commands import getstatusoutput as subprocess_getstatusoutput
 
 import portage
+from portage.env.loaders import KeyValuePairFileLoader
 from portage.localization import _
 
 RCS_BRANCH = '1.1.1'
@@ -41,7 +42,7 @@ def diffstatusoutput_len(cmd):
         return (1, 1)
 
 def read_config(mandatory_opts):
-    loader = portage.env.loaders.KeyValuePairFileLoader(
+    loader = KeyValuePairFileLoader(
         '/etc/dispatch-conf.conf', None)
     opts, errors = loader.load()
     if not opts:
