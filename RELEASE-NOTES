@@ -30,7 +30,7 @@ portage-2.1.9
   package name parts of the atoms.
 * The functionality of the autounmask program is emulated by the new emerge
   --autounmask option, which outputs required configuration changes for
-  package.keywords and package.use.
+  package.accept_keywords and package.use.
 * The new emerge --exclude option allows packages to be excluded from the
   dependency resolution. Doing so might result in a fatal error. See the
   emerge(1) man page for details.

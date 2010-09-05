@@ -3,6 +3,7 @@
 
 from __future__ import print_function
 
+import gc
 import gzip
 import logging
 import shutil
@@ -42,6 +43,7 @@ from _emerge.depgraph import depgraph, resume_depgraph
 from _emerge.EbuildFetcher import EbuildFetcher
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.emergelog import emergelog, _emerge_log_dir
+from _emerge.FakeVartree import FakeVartree
 from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
 from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
 from _emerge.JobStatusDisplay import JobStatusDisplay
@@ -198,15 +200,10 @@ class Scheduler(PollScheduler):
 			self.edebug = 1
 		self.pkgsettings = {}
 		self._config_pool = {}
-
-		# TODO: Replace the BlockerDB with a depgraph of installed packages
-		# that's updated incrementally with each upgrade/uninstall operation
-		# This will be useful for making quick and safe decisions with respect
-		# to aggressive parallelization discussed in bug #279623.
-		self._blocker_db = {}
-		for root in trees:
+		for root in self.trees:
 			self._config_pool[root] = []
-			self._blocker_db[root] = BlockerDB(trees[root]["root_config"])
+
+		self._init_installed_graph()
 
 		fetch_iface = self._fetch_iface_class(log_file=self._fetch_log,
 			schedule=self._schedule_fetch)
@@ -285,6 +282,30 @@ class Scheduler(PollScheduler):
 			cpv = portage_match.pop()
 			self._running_portage = self._pkg(cpv, "installed",
 				self._running_root, installed=True)
+
+	def _init_installed_graph(self):
+		"""
+		Initialization structures used for dependency calculations
+		involving currently installed packages.
+		"""
+		# TODO: Replace the BlockerDB with a depgraph of installed packages
+		# that's updated incrementally with each upgrade/uninstall operation
+		# This will be useful for making quick and safe decisions with respect
+		# to aggressive parallelization discussed in bug #279623.
+		self._blocker_db = {}
+		for root in self.trees:
+			self._blocker_db[root] = \
+				BlockerDB(FakeVartree(self.trees[root]["root_config"]))
+
+	def _destroy_installed_graph(self):
+		"""
+		Use this to free memory before calling _calc_resume_list().
+		After _calc_resume_list(), the _init_installed_graph() needs
+		to be called in order to re-generate the structures that this
+		method destroys.
+		"""
+		self._blocker_db = None
+		gc.collect()
 
 	def _poll(self, timeout=None):
 		self._schedule()
@@ -542,7 +563,6 @@ class Scheduler(PollScheduler):
 		# Call gc.collect() here to avoid heap overflow that
 		# triggers 'Cannot allocate memory' errors (reported
 		# with python-2.5).
-		import gc
 		gc.collect()
 
 		blocker_db = self._blocker_db[new_pkg.root]
@@ -1057,6 +1077,10 @@ class Scheduler(PollScheduler):
 			if not mergelist:
 				break
 
+			# free some memory before creating
+			# the resume depgraph
+			self._destroy_installed_graph()
+
 			if not self._calc_resume_list():
 				break
 
@@ -1064,6 +1088,10 @@ class Scheduler(PollScheduler):
 			if not self._mergelist:
 				break
 
+			# Initialize the installed graph again
+			# since it was destroyed above in order
+			# to free memory.
+			self._init_installed_graph()
 			self._save_resume_list()
 			self._pkg_count.curval = 0
 			self._pkg_count.maxval = len([x for x in self._mergelist \
