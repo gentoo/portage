@@ -1905,6 +1905,10 @@ if [[ -n ${QA_INTERCEPTORS} ]] ; then
 	unset BIN_PATH BIN BODY FUNC_SRC
 fi
 
+# Subshell/helper die support (must export for the die helper).
+export EBUILD_MASTER_PID=$BASHPID
+trap 'exit 1' SIGTERM
+
 if ! hasq "$EBUILD_PHASE" clean cleanrm depend && \
 	[ -f "${T}"/environment ] ; then
 	# The environment may have been extracted from environment.bz2 or
@@ -2104,6 +2108,10 @@ fi
 ebuild_main() {
 
 	# Subshell/helper die support (must export for the die helper).
+	# Since this function is typically executed in a subshell,
+	# setup EBUILD_MASTER_PID to refer to the current $BASHPID,
+	# which seems to give the best results when further
+	# nested subshells call die.
 	export EBUILD_MASTER_PID=$BASHPID
 	trap 'exit 1' SIGTERM
 
@@ -2319,10 +2327,6 @@ elif [[ -n $EBUILD_SH_ARGS ]] ; then
 	)
 	exit $?
 fi
-
-# Subshell/helper die support (must export for the die helper).
-export EBUILD_MASTER_PID=$BASHPID
-trap 'exit 1' SIGTERM
 
 # Do not exit when ebuild.sh is sourced by other scripts.
 true
