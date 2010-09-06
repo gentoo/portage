@@ -101,7 +101,8 @@ class _frozen_depgraph_config(object):
 				self.trees[myroot][tree] = trees[myroot][tree]
 			self.trees[myroot]["vartree"] = \
 				FakeVartree(trees[myroot]["root_config"],
-					pkg_cache=self._pkg_cache)
+					pkg_cache=self._pkg_cache,
+					pkg_root_config=self.roots[myroot])
 			self.pkgsettings[myroot] = portage.config(
 				clone=self.trees[myroot]["vartree"].settings)
 
@@ -3066,6 +3067,9 @@ class depgraph(object):
 		operation = "merge"
 		if installed or onlydeps:
 			operation = "nomerge"
+		# Ensure that we use the specially optimized RootConfig instance
+		# that refers to FakeVartree instead of the real vartree.
+		root_config = self._frozen_config.roots[root_config.root]
 		pkg = self._frozen_config._pkg_cache.get(
 			(type_name, root_config.root, cpv, operation))
 		if pkg is None and onlydeps and not installed:
