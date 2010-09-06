@@ -390,6 +390,9 @@ unpack() {
 				assert_sigpipe_ok "$myfail"
 				;;
 			ZIP|zip|jar)
+				# unzip will interactively prompt under some error conditions,
+				# as reported in bug #336285
+				( while true ; do echo n ; done ) | \
 				unzip -qo "${srcdir}${x}" || die "$myfail"
 				;;
 			gz|Z|z)
