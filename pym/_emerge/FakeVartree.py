@@ -184,7 +184,7 @@ class FakeVartree(vartree):
 		"""
 		The RootConfig instance that will become the Package.root_config
 		attribute can be overridden by the FakeVartree pkg_root_config
-		constructory argument, since we want to be consitent with the
+		constructory argument, since we want to be consistent with the
 		depgraph._pkg() method which uses a specially optimized
 		RootConfig that has a FakeVartree instead of a real vartree.
 		"""
