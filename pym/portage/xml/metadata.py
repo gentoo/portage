@@ -159,7 +159,7 @@ class _Upstream(object):
 class MetaDataXML(object):
 	"""Access metadata.xml"""
 
-	def __init__(self, metadata_xml_path, settings=None):
+	def __init__(self, metadata_xml_path, settings=None, herdstree=None):
 		"""Parse a valid metadata.xml file.
 
 		@type metadata_xml_path: str
@@ -180,7 +180,7 @@ class MetaDataXML(object):
 			pass
 
 		# Used for caching
-		self._herdstree = None
+		self._herdstree = herdstree
 		self._descriptions = None
 		self._maintainers = None
 		self._herds = None
