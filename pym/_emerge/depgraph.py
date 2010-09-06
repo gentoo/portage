@@ -63,6 +63,12 @@ if sys.hexversion >= 0x3000000:
 	basestring = str
 	long = int
 
+class _scheduler_graph_config(object):
+	def __init__(self, trees, pkg_cache, graph):
+		self.trees = trees
+		self.pkg_cache = pkg_cache
+		self.graph = graph
+
 class _frozen_depgraph_config(object):
 
 	def __init__(self, settings, trees, myopts, spinner):
@@ -3486,7 +3492,23 @@ class depgraph(object):
 					if priority.satisfied:
 						priority.satisfied = True
 
-		return self._dynamic_config._scheduler_graph
+		pkg_cache = self._frozen_config._pkg_cache
+		graph = self._dynamic_config._scheduler_graph
+		trees = self._frozen_config.trees
+		pruned_pkg_cache = {}
+		for pkg in pkg_cache:
+			if pkg in graph or \
+				(pkg.installed and pkg in trees[pkg.root]['vartree'].dbapi):
+				pruned_pkg_cache[pkg] = pkg
+
+		for root in trees:
+			trees[root]['vartree']._pkg_cache = pruned_pkg_cache
+
+		self.break_refs(pruned_pkg_cache)
+		sched_config = \
+			_scheduler_graph_config(trees, pruned_pkg_cache, graph)
+
+		return sched_config
 
 	def break_refs(self, nodes):
 		"""
