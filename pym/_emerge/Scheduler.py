@@ -388,6 +388,7 @@ class Scheduler(PollScheduler):
 			self._graph_config = None
 			self._digraph = None
 			self._mergelist = []
+			self._deep_system_deps.clear()
 			return
 
 		self._graph_config = graph_config
@@ -400,6 +401,7 @@ class Scheduler(PollScheduler):
 			self._digraph = None
 			graph_config.graph = None
 			graph_config.pkg_cache.clear()
+			self._deep_system_deps.clear()
 			return
 
 		self._find_system_deps()
