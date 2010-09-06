@@ -321,18 +321,14 @@ class slot_conflict_handler(object):
 							# Package types.
 							version_violated = False
 							use = []
-							for type, sub_type in collision_reasons:
-								if type == "version":
-									for x in collision_reasons[(type, sub_type)]:
-										if ppkg == x[0] and atom == x[1]:
+							for (type, sub_type), parents in collision_reasons.items():
+								for x in parents:
+									if parent == x[0] and atom == x[1]:
+										if type == "version":
 											version_violated = True
-								elif type == "use":
-									for x in collision_reasons[(type, sub_type)]:
-										# TODO: Review this conditional for
-										# validity (see bug #336085).
-										if ppkg == x[0] and atom == x[1]:
+										elif type == "use":
 											use.append(sub_type)
-											break
+										break
 
 							atom_str = highlight_violations(atom.unevaluated_atom, version_violated, use)
 

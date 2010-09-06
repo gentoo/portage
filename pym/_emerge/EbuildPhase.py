@@ -9,6 +9,7 @@ from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.EbuildProcess import EbuildProcess
 from _emerge.CompositeTask import CompositeTask
 from portage.util import writemsg
+from portage.xml.metadata import MetaDataXML
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.elog:messages@elog_messages',
@@ -35,9 +36,20 @@ class EbuildPhase(CompositeTask):
 			if use is None:
 				use = self.settings['PORTAGE_USE']
 
+			maint_str = ""
+			metadata_xml_path = os.path.join(os.path.dirname(self.settings['EBUILD']), "metadata.xml")
+			if os.path.isfile(metadata_xml_path):
+				try:
+					metadata_xml = MetaDataXML(metadata_xml_path, self.settings)
+					maint_str = metadata_xml.format_maintainer_string()
+				except SyntaxError:
+					maint_str = "<invalid metadata.xml>"
+
 			msg = []
 			msg.append("CPV:  %s" % self.settings.mycpv)
 			msg.append("REPO: %s" % self.settings['PORTAGE_REPO_NAME'])
+			if maint_str:
+				msg.append("Maintainer: %s" % maint_str)
 			msg.append("USE:  %s" % use)
 			self._elog('einfo', msg)
 

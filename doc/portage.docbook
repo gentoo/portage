@@ -37,6 +37,16 @@
    <surname>Frysinger</surname>
    <email>vapier@gentoo.org</email>
   </author>
+  <author>
+   <firstname>Marius</firstname>
+   <surname>Mauch</surname>
+   <email>genone@gentoo.org</email>
+  </author>
+  <author>
+   <firstname>Zac</firstname>
+   <surname>Medico</surname>
+   <email>zmedico@gentoo.org</email>
+  </author>
  </authorgroup>
 
  &version;

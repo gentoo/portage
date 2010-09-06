@@ -35,7 +35,7 @@ from portage import _encodings
 from portage import _unicode_encode
 from portage import OrderedDict
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
-from _emerge.TaskScheduler import TaskScheduler
+from _emerge.PollScheduler import PollScheduler
 
 import os as _os
 import codecs
@@ -578,15 +578,15 @@ class portdbapi(dbapi):
 				mydata = self._metadata_callback(
 					mycpv, myebuild, mylocation, {'EAPI':eapi}, emtime)
 			else:
-				sched = TaskScheduler()
 				proc = EbuildMetadataPhase(cpv=mycpv, ebuild_path=myebuild,
 					ebuild_mtime=emtime,
 					metadata_callback=self._metadata_callback, portdb=self,
-					repo_path=mylocation, scheduler=sched.sched_iface,
+					repo_path=mylocation,
+					scheduler=PollScheduler().sched_iface,
 					settings=self.doebuild_settings)
 
-				sched.add(proc)
-				sched.run()
+				proc.start()
+				proc.wait()
 
 				if proc.returncode != os.EX_OK:
 					self._broken_ebuilds.add(myebuild)

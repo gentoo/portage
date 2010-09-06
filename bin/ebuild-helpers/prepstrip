@@ -108,7 +108,7 @@ if ! hasq binchecks ${RESTRICT} && \
 	fi
 	sed -e "/^\$/d" -e "s#^#/#" -i "$log"
 	if [[ -s $log ]] ; then
-		vecho -e "\a\n"
+		vecho -e "\n"
 		eqawarn "QA Notice: Pre-stripped files found:"
 		eqawarn "$(<"$log")"
 	else

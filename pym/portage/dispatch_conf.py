@@ -14,8 +14,10 @@ try:
 except ImportError:
     from commands import getstatusoutput as subprocess_getstatusoutput
 
-import portage, portage.const
+import portage
+from portage.env.loaders import KeyValuePairFileLoader
 from portage.localization import _
+from portage.const import EPREFIX
 
 RCS_BRANCH = '1.1.1'
 RCS_LOCK = 'rcs -ko -M -l'
@@ -41,11 +43,11 @@ def diffstatusoutput_len(cmd):
         return (1, 1)
 
 def read_config(mandatory_opts):
-    loader = portage.env.loaders.KeyValuePairFileLoader(
-        portage.const.EPREFIX+'/etc/dispatch-conf.conf', None)
+    loader = KeyValuePairFileLoader(
+        EPREFIX + '/etc/dispatch-conf.conf', None)
     opts, errors = loader.load()
     if not opts:
-        print(_('dispatch-conf: Error reading %s/etc/dispatch-conf.conf; fatal') % (portage.const.EPREFIX,), file=sys.stderr)
+        print(_('dispatch-conf: Error reading %s/etc/dispatch-conf.conf; fatal') % (EPREFIX,), file=sys.stderr)
         sys.exit(1)
 
 	# Handle quote removal here, since KeyValuePairFileLoader doesn't do that.

@@ -159,7 +159,6 @@ install_qa_check() {
 	# Now we look for all world writable files.
 	local i
 	for i in $(find "${D}/" -type f -perm -2); do
-		vecho -ne '\a'
 		vecho "QA Security Notice:"
 		vecho "- ${i:${#D}:${#i}} will be a world writable file."
 		vecho "- This may or may not be a security problem, most of the time it is one."
@@ -221,12 +220,12 @@ install_qa_check_elf() {
 			xargs -0 scanelf -qyRF '%r %p' | grep '$ORIGIN'
 		)
 		if [[ -n ${f}${x} ]] ; then
-			vecho -ne '\a\n'
+			vecho -ne '\n'
 			eqawarn "QA Notice: The following files contain insecure RUNPATHs"
 			eqawarn " Please file a bug about this at http://bugs.gentoo.org/"
 			eqawarn " with the maintaining herd of the package."
 			eqawarn "${f}${f:+${x:+\n}}${x}"
-			vecho -ne '\a\n'
+			vecho -ne '\n'
 			if [[ -n ${x} ]] || has stricter ${FEATURES} ; then
 				insecure_rpath=1
 			else
@@ -247,7 +246,7 @@ install_qa_check_elf() {
 		f=$(scanelf -qyRF '%t %p' "${D}" | grep -v 'usr/lib/debug/')
 		if [[ -n ${f} ]] ; then
 			scanelf -qyRAF '%T %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-textrel.log
-			vecho -ne '\a\n'
+			vecho -ne '\n'
 			eqawarn "QA Notice: The following files contain runtime text relocations"
 			eqawarn " Text relocations force the dynamic linker to perform extra"
 			eqawarn " work at startup, waste system resources, and may pose a security"
@@ -256,7 +255,7 @@ install_qa_check_elf() {
 			eqawarn " For more information, see http://hardened.gentoo.org/pic-fix-guide.xml"
 			eqawarn " Please include the following list of files in your report:"
 			eqawarn "${f}"
-			vecho -ne '\a\n'
+			vecho -ne '\n'
 			die_msg="${die_msg} textrels,"
 			sleep 1
 		fi
@@ -292,7 +291,7 @@ install_qa_check_elf() {
 		if [[ -n ${f} ]] ; then
 			# One more pass to help devs track down the source
 			scanelf -qyRAF '%e %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-execstack.log
-			vecho -ne '\a\n'
+			vecho -ne '\n'
 			eqawarn "QA Notice: The following files contain writable and executable sections"
 			eqawarn " Files with such sections will not work properly (or at all!) on some"
 			eqawarn " architectures/operating systems.  A bug should be filed at"
@@ -302,7 +301,7 @@ install_qa_check_elf() {
 			eqawarn " Note: Bugs should be filed for the respective maintainers"
 			eqawarn " of the package in question and not hardened@g.o."
 			eqawarn "${f}"
-			vecho -ne '\a\n'
+			vecho -ne '\n'
 			die_msg="${die_msg} execstacks"
 			sleep 1
 		fi
@@ -337,11 +336,11 @@ install_qa_check_elf() {
 					-i "${T}"/scanelf-ignored-LDFLAGS.log
 				f=$(<"${T}"/scanelf-ignored-LDFLAGS.log)
 				if [[ -n ${f} ]] ; then
-					vecho -ne '\a\n'
+					vecho -ne '\n'
 					eqawarn "${BAD}QA Notice: Files built without respecting LDFLAGS have been detected${NORMAL}"
 					eqawarn " Please include the following list of files in your report:"
 					eqawarn "${f}"
-					vecho -ne '\a\n'
+					vecho -ne '\n'
 					sleep 1
 				else
 					rm -f "${T}"/scanelf-ignored-LDFLAGS.log
@@ -411,10 +410,10 @@ install_qa_check_elf() {
 			sed -e "/^\$/d" -i "${T}"/scanelf-missing-SONAME.log
 			f=$(<"${T}"/scanelf-missing-SONAME.log)
 			if [[ -n ${f} ]] ; then
-				vecho -ne '\a\n'
+				vecho -ne '\n'
 				eqawarn "QA Notice: The following shared libraries lack a SONAME"
 				eqawarn "${f}"
-				vecho -ne '\a\n'
+				vecho -ne '\n'
 				sleep 1
 			else
 				rm -f "${T}"/scanelf-missing-SONAME.log
@@ -445,10 +444,10 @@ install_qa_check_elf() {
 			sed -e "/^\$/d" -i "${T}"/scanelf-missing-NEEDED.log
 			f=$(<"${T}"/scanelf-missing-NEEDED.log)
 			if [[ -n ${f} ]] ; then
-				vecho -ne '\a\n'
+				vecho -ne '\n'
 				eqawarn "QA Notice: The following shared libraries lack NEEDED entries"
 				eqawarn "${f}"
-				vecho -ne '\a\n'
+				vecho -ne '\n'
 				sleep 1
 			else
 				rm -f "${T}"/scanelf-missing-NEEDED.log
@@ -517,7 +516,7 @@ install_qa_check_misc() {
 			[[ ! -L ${j} ]] && continue
 			linkdest=$(readlink "${j}")
 			if [[ ${linkdest} == /* ]] ; then
-				vecho -ne '\a\n'
+				vecho -ne '\n'
 				eqawarn "QA Notice: Found an absolute symlink in a library directory:"
 				eqawarn "           ${j#${D}} -> ${linkdest}"
 				eqawarn "           It should be a relative symlink if in the same directory"
@@ -539,7 +538,7 @@ install_qa_check_misc() {
 		if [[ ! -e ${s} ]] ; then
 			s=${s%usr/*}${s##*/usr/}
 			if [[ -e ${s} ]] ; then
-				vecho -ne '\a\n'
+				vecho -ne '\n'
 				eqawarn "QA Notice: Missing gen_usr_ldscript for ${s##*/}"
 	 			abort="yes"
 			fi
@@ -554,10 +553,10 @@ install_qa_check_misc() {
 		&& f=$(ls "${ED}"lib*/*.la 2>/dev/null || true) \
 		|| f=$(ls "${ED}"lib*/*.{a,la} 2>/dev/null)
 	if [[ -n ${f} ]] ; then
-		vecho -ne '\a\n'
+		vecho -ne '\n'
 		eqawarn "QA Notice: Excessive files found in the / partition"
 		eqawarn "${f}"
-		vecho -ne '\a\n'
+		vecho -ne '\n'
 		die "static archives (*.a) and libtool library files (*.la) do not belong in /"
 	fi
 
@@ -566,7 +565,7 @@ install_qa_check_misc() {
 	for a in "${ED}"usr/lib*/*.la ; do
 		s=${a##*/}
 		if grep -qs "${D}" "${a}" ; then
-			vecho -ne '\a\n'
+			vecho -ne '\n'
 			eqawarn "QA Notice: ${s} appears to contain PORTAGE_TMPDIR paths"
 			abort="yes"
 		fi
@@ -629,11 +628,11 @@ install_qa_check_misc() {
 			# force C locale to work around slow unicode locales #160234
 			f=$(LC_ALL=C $grep_cmd "${m}" "${PORTAGE_LOG_FILE}")
 			if [[ -n ${f} ]] ; then
-				vecho -ne '\a\n'
+				vecho -ne '\n'
 				eqawarn "QA Notice: Package has poor programming practices which may compile"
 				eqawarn "           fine but exhibit random runtime failures."
 				eqawarn "${f}"
-				vecho -ne '\a\n'
+				vecho -ne '\n'
 				abort="yes"
 			fi
 		done
@@ -666,11 +665,11 @@ install_qa_check_misc() {
 				eerror " with the maintaining herd of the package."
 				eerror
 			else
-				vecho -ne '\a\n'
+				vecho -ne '\n'
 				eqawarn "QA Notice: Package has poor programming practices which may compile"
 				eqawarn "           but will almost certainly crash on 64bit architectures."
 				eqawarn "${f}"
-				vecho -ne '\a\n'
+				vecho -ne '\n'
 			fi
 
 		fi
@@ -1505,8 +1504,7 @@ preinst_suid_scan() {
 					vecho "- ${install_path} is an approved suid file"
 				else
 					vecho ">>> Removing sbit on non registered ${install_path}"
-					for x in 5 4 3 2 1 0; do echo -ne "\a"; sleep 0.25 ; done
-					vecho -ne "\a"
+					for x in 5 4 3 2 1 0; do sleep 0.25 ; done
 					ls_ret=$(ls -ldh "${i}")
 					chmod ugo-s "${i}"
 					grep "^#${install_path}$" "${sfconf}" > /dev/null || {

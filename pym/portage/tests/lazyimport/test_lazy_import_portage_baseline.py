@@ -15,7 +15,7 @@ class LazyImportPortageBaselineTestCase(TestCase):
 	_module_re = re.compile(r'^(portage|repoman|_emerge)\.')
 
 	_baseline_imports = frozenset([
-		'portage.const', 'portage.env', 'portage.localization',
+		'portage.const', 'portage.localization',
 		'portage.proxy', 'portage.proxy.lazyimport',
 		'portage.proxy.objectproxy', 'portage._ensure_encodings',
 	])
@@ -47,6 +47,9 @@ class LazyImportPortageBaselineTestCase(TestCase):
 
 		consumer.start()
 		consumer.wait()
+		self.assertEqual(producer.wait(), os.EX_OK)
+		self.assertEqual(consumer.wait(), os.EX_OK)
+
 		output = consumer.getvalue().decode('ascii', 'replace').split()
 
 		unexpected_modules = " ".join(sorted(x for x in output \

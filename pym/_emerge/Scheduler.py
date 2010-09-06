@@ -137,7 +137,7 @@ class Scheduler(PollScheduler):
 			portage.exception.PortageException.__init__(self, value)
 
 	def __init__(self, settings, trees, mtimedb, myopts,
-		spinner, mergelist, favorites, digraph):
+		spinner, mergelist, favorites, graph_config):
 		PollScheduler.__init__(self)
 		self.settings = settings
 		self.target_root = settings["ROOT"]
@@ -203,8 +203,6 @@ class Scheduler(PollScheduler):
 		for root in self.trees:
 			self._config_pool[root] = []
 
-		self._init_installed_graph()
-
 		fetch_iface = self._fetch_iface_class(log_file=self._fetch_log,
 			schedule=self._schedule_fetch)
 		self._sched_iface = self._iface_class(
@@ -244,7 +242,7 @@ class Scheduler(PollScheduler):
 		self._job_delay_exp = 1.5
 		self._previous_job_start_time = None
 
-		self._set_digraph(digraph)
+		self._init_graph(graph_config)
 
 		# This is used to memoize the _choose_pkg() result when
 		# no packages can be chosen until one of the existing
@@ -283,7 +281,7 @@ class Scheduler(PollScheduler):
 			self._running_portage = self._pkg(cpv, "installed",
 				self._running_root, installed=True)
 
-	def _init_installed_graph(self):
+	def _init_graph(self, graph_config):
 		"""
 		Initialization structures used for dependency calculations
 		involving currently installed packages.
@@ -292,19 +290,24 @@ class Scheduler(PollScheduler):
 		# that's updated incrementally with each upgrade/uninstall operation
 		# This will be useful for making quick and safe decisions with respect
 		# to aggressive parallelization discussed in bug #279623.
+		self._set_graph_config(graph_config)
 		self._blocker_db = {}
 		for root in self.trees:
-			self._blocker_db[root] = \
-				BlockerDB(FakeVartree(self.trees[root]["root_config"]))
+			if graph_config is None:
+				fake_vartree = FakeVartree(self.trees[root]["root_config"])
+			else:
+				fake_vartree = graph_config.trees[root]['vartree']
+			self._blocker_db[root] = BlockerDB(fake_vartree)
 
-	def _destroy_installed_graph(self):
+	def _destroy_graph(self):
 		"""
-		Use this to free memory before calling _calc_resume_list().
-		After _calc_resume_list(), the _init_installed_graph() needs
-		to be called in order to re-generate the structures that this
-		method destroys.
+		Use this to free memory at the beginning of _calc_resume_list().
+		After _calc_resume_list(), the _init_graph() method
+		must to be called in order to re-generate the structures that
+		this method destroys. 
 		"""
 		self._blocker_db = None
+		self._set_graph_config(None)
 		gc.collect()
 
 	def _poll(self, timeout=None):
@@ -373,15 +376,17 @@ class Scheduler(PollScheduler):
 				interactive_tasks.append(task)
 		return interactive_tasks
 
-	def _set_digraph(self, digraph):
+	def _set_graph_config(self, graph_config):
 		if "--nodeps" in self.myopts or \
-			digraph is None or \
+			graph_config is None or \
 			(self._max_jobs is not True and self._max_jobs < 2):
 			# save some memory
+			self._graph_config = None
 			self._digraph = None
 			return
 
-		self._digraph = digraph
+		self._graph_config = graph_config
+		self._digraph = graph_config.graph
 		self._find_system_deps()
 		self._prune_digraph()
 		self._prevent_builddir_collisions()
@@ -1077,10 +1082,6 @@ class Scheduler(PollScheduler):
 			if not mergelist:
 				break
 
-			# free some memory before creating
-			# the resume depgraph
-			self._destroy_installed_graph()
-
 			if not self._calc_resume_list():
 				break
 
@@ -1088,10 +1089,6 @@ class Scheduler(PollScheduler):
 			if not self._mergelist:
 				break
 
-			# Initialize the installed graph again
-			# since it was destroyed above in order
-			# to free memory.
-			self._init_installed_graph()
 			self._save_resume_list()
 			self._pkg_count.curval = 0
 			self._pkg_count.maxval = len([x for x in self._mergelist \
@@ -1733,6 +1730,10 @@ class Scheduler(PollScheduler):
 		"""
 		print(colorize("GOOD", "*** Resuming merge..."))
 
+		# free some memory before creating
+		# the resume depgraph
+		self._destroy_graph()
+
 		myparams = create_depgraph_params(self.myopts, None)
 		success = False
 		e = None
@@ -1798,7 +1799,7 @@ class Scheduler(PollScheduler):
 		mydepgraph.break_refs(mylist)
 		mydepgraph.break_refs(dropped_tasks)
 		self._mergelist = mylist
-		self._set_digraph(mydepgraph.schedulerGraph())
+		self._init_graph(mydepgraph.schedulerGraph())
 
 		msg_width = 75
 		for task in dropped_tasks:

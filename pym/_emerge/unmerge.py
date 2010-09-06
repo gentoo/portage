@@ -427,10 +427,10 @@ def unmerge(root_config, myopts, unmerge_action,
 			#avoid cluttering the preview printout with stuff that isn't getting unmerged
 			continue
 		if not (pkgmap[x]["protected"] or pkgmap[x]["omitted"]) and cp in syslist:
-			writemsg_level(colorize("BAD","\a\n\n!!! " + \
+			writemsg_level(colorize("BAD","\n\n!!! " + \
 				"'%s' is part of your system profile.\n" % cp),
 				level=logging.WARNING, noiselevel=-1)
-			writemsg_level(colorize("WARN","\a!!! Unmerging it may " + \
+			writemsg_level(colorize("WARN","!!! Unmerging it may " + \
 				"be damaging to your system.\n\n"),
 				level=logging.WARNING, noiselevel=-1)
 			if clean_delay and "--pretend" not in myopts and "--ask" not in myopts:

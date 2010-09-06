@@ -131,12 +131,14 @@ class FakeVartree(vartree):
 		real_vardb = self._root_config.trees["vartree"].dbapi
 		current_cpv_set = frozenset(real_vardb.cpv_all())
 		pkg_vardb = self.dbapi
+		pkg_cache = self._pkg_cache
 		aux_get_history = self._aux_get_history
 
 		# Remove any packages that have been uninstalled.
 		for pkg in list(pkg_vardb):
 			if pkg.cpv not in current_cpv_set:
 				pkg_vardb.cpv_remove(pkg)
+				pkg_cache.pop(pkg, None)
 				aux_get_history.discard(pkg.cpv)
 
 		# Validate counters and timestamps.
@@ -157,6 +159,7 @@ class FakeVartree(vartree):
 				if counter != pkg.counter or \
 					mtime != pkg.mtime:
 					pkg_vardb.cpv_remove(pkg)
+					pkg_cache.pop(pkg, None)
 					aux_get_history.discard(pkg.cpv)
 					pkg = None
 
@@ -188,6 +191,7 @@ class FakeVartree(vartree):
 			mycounter = 0
 			pkg.metadata["COUNTER"] = str(mycounter)
 
+		self._pkg_cache[pkg] = pkg
 		return pkg
 
 def grab_global_updates(portdb):
