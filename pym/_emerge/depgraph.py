@@ -3503,6 +3503,7 @@ class depgraph(object):
 
 		for root in trees:
 			trees[root]['vartree']._pkg_cache = pruned_pkg_cache
+			self.break_refs(trees[root]['vartree'].dbapi)
 
 		self.break_refs(pruned_pkg_cache)
 		sched_config = \
