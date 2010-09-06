@@ -188,6 +188,7 @@ class FakeVartree(vartree):
 			mycounter = 0
 			pkg.metadata["COUNTER"] = str(mycounter)
 
+		self._pkg_cache[pkg] = pkg
 		return pkg
 
 def grab_global_updates(portdb):
