@@ -39,8 +39,10 @@ class EbuildPhase(CompositeTask):
 			maint_str = ""
 			metadata_xml_path = os.path.join(os.path.dirname(self.settings['EBUILD']), "metadata.xml")
 			if os.path.isfile(metadata_xml_path):
+				herds_path = os.path.join(self.settings['PORTDIR'],
+					'metadata/herds.xml')
 				try:
-					metadata_xml = MetaDataXML(metadata_xml_path, self.settings)
+					metadata_xml = MetaDataXML(metadata_xml_path, herds_path)
 					maint_str = metadata_xml.format_maintainer_string()
 				except SyntaxError:
 					maint_str = "<invalid metadata.xml>"

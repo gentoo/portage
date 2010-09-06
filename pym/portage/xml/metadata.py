@@ -159,28 +159,34 @@ class _Upstream(object):
 class MetaDataXML(object):
 	"""Access metadata.xml"""
 
-	def __init__(self, metadata_xml_path, settings=None, herdstree=None):
+	def __init__(self, metadata_xml_path, herds):
 		"""Parse a valid metadata.xml file.
 
 		@type metadata_xml_path: str
 		@param metadata_xml_path: path to a valid metadata.xml file
+		@type herds: str or ElementTree
+		@param herds: path to a herds.xml, or a pre-parsed ElementTree
 		@raise IOError: if C{metadata_xml_path} can not be read
 		"""
 
 		self.metadata_xml_path = metadata_xml_path
-		self.settings = settings
 		self._xml_tree = None
-
-		if self.settings is None:
-			self.settings = portage.settings
 
 		try:
 			self._xml_tree = etree.parse(metadata_xml_path)
 		except ImportError:
 			pass
 
+		if isinstance(herds, etree.ElementTree):
+			herds_etree = herds
+			herds_path = None
+		else:
+			herds_etree = None
+			herds_path = herds
+
 		# Used for caching
-		self._herdstree = herdstree
+		self._herdstree = herds_etree
+		self._herds_path = herds_path
 		self._descriptions = None
 		self._maintainers = None
 		self._herds = None
@@ -201,9 +207,8 @@ class MetaDataXML(object):
 		"""
 
 		if self._herdstree is None:
-			herds_path = os.path.join(self.settings['PORTDIR'], 'metadata/herds.xml')
 			try:
-				self._herdstree = etree.parse(herds_path)
+				self._herdstree = etree.parse(self._herds_path)
 			except (ImportError, IOError, SyntaxError):
 				return None
 
