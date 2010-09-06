@@ -2565,6 +2565,7 @@ class depgraph(object):
 		portdb = self._frozen_config.roots[root].trees["porttree"].dbapi
 		# List of acceptable packages, ordered by type preference.
 		matched_packages = []
+		matched_pkgs_ignore_use = []
 		highest_version = None
 		if not isinstance(atom, portage.dep.Atom):
 			atom = portage.dep.Atom(atom)
@@ -2726,6 +2727,7 @@ class depgraph(object):
 							# since IUSE cannot be adjusted by the user.
 							continue
 
+						matched_pkgs_ignore_use.append(pkg)
 						if allow_use_changes:
 							target_use = {}
 							for flag in atom.use.enabled:
@@ -2794,7 +2796,7 @@ class depgraph(object):
 						break
 					# Compare built package to current config and
 					# reject the built package if necessary.
-					if built and (not installed or matched_packages) and \
+					if built and (not installed or matched_pkgs_ignore_use) and \
 						("--newuse" in self._frozen_config.myopts or \
 						"--reinstall" in self._frozen_config.myopts or \
 						"--binpkg-respect-use" in self._frozen_config.myopts):
