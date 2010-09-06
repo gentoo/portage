@@ -1811,8 +1811,6 @@ class Scheduler(PollScheduler):
 			self._post_mod_echo_msgs.append(mydepgraph.display_problems)
 			return False
 		mydepgraph.display_problems()
-
-		mylist = mydepgraph.altlist()
 		self._init_graph(mydepgraph.schedulerGraph())
 
 		msg_width = 75
