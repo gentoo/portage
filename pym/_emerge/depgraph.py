@@ -64,10 +64,11 @@ if sys.hexversion >= 0x3000000:
 	long = int
 
 class _scheduler_graph_config(object):
-	def __init__(self, trees, pkg_cache, graph):
+	def __init__(self, trees, pkg_cache, graph, mergelist):
 		self.trees = trees
 		self.pkg_cache = pkg_cache
 		self.graph = graph
+		self.mergelist = mergelist
 
 class _frozen_depgraph_config(object):
 
@@ -3485,8 +3486,10 @@ class depgraph(object):
 		internal Package instances such that this depgraph instance should
 		not be used to perform any more calculations.
 		"""
-		if self._dynamic_config._scheduler_graph is None:
-			self.altlist()
+
+		# NOTE: altlist initializes self._dynamic_config._scheduler_graph
+		mergelist = self.altlist()
+		self.break_refs(mergelist)
 		self.break_refs(self._dynamic_config._scheduler_graph.order)
 
 		# Break DepPriority.satisfied attributes which reference
@@ -3513,7 +3516,7 @@ class depgraph(object):
 
 		self.break_refs(pruned_pkg_cache)
 		sched_config = \
-			_scheduler_graph_config(trees, pruned_pkg_cache, graph)
+			_scheduler_graph_config(trees, pruned_pkg_cache, graph, mergelist)
 
 		return sched_config
 

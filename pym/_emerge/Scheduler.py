@@ -1,4 +1,4 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -11,6 +11,7 @@ import sys
 import tempfile
 import textwrap
 import time
+import warnings
 import weakref
 import zlib
 
@@ -137,15 +138,21 @@ class Scheduler(PollScheduler):
 			portage.exception.PortageException.__init__(self, value)
 
 	def __init__(self, settings, trees, mtimedb, myopts,
-		spinner, mergelist, favorites, graph_config):
+		spinner, mergelist=None, favorites=None, graph_config=None):
 		PollScheduler.__init__(self)
+
+		if mergelist is not None:
+			warnings.warn("The mergelist parameter of the " + \
+				"_emerge.Scheduler constructor is now unused. Use " + \
+				"the graph_config parameter instead.",
+				DeprecationWarning, stacklevel=2)
+
 		self.settings = settings
 		self.target_root = settings["ROOT"]
 		self.trees = trees
 		self.myopts = myopts
 		self._spinner = spinner
 		self._mtimedb = mtimedb
-		self._mergelist = mergelist
 		self._favorites = favorites
 		self._args_set = InternalPackageSet(favorites)
 		self._build_opts = self._build_opts_class()
@@ -228,7 +235,8 @@ class Scheduler(PollScheduler):
 		self._failed_pkgs_die_msgs = []
 		self._post_mod_echo_msgs = []
 		self._parallel_fetch = False
-		merge_count = len([x for x in mergelist \
+		self._init_graph(graph_config)
+		merge_count = len([x for x in self._mergelist \
 			if isinstance(x, Package) and x.operation == "merge"])
 		self._pkg_count = self._pkg_count_class(
 			curval=0, maxval=merge_count)
@@ -241,8 +249,6 @@ class Scheduler(PollScheduler):
 		self._job_delay_factor = 1.0
 		self._job_delay_exp = 1.5
 		self._previous_job_start_time = None
-
-		self._init_graph(graph_config)
 
 		# This is used to memoize the _choose_pkg() result when
 		# no packages can be chosen until one of the existing
@@ -377,16 +383,25 @@ class Scheduler(PollScheduler):
 		return interactive_tasks
 
 	def _set_graph_config(self, graph_config):
-		if "--nodeps" in self.myopts or \
-			graph_config is None or \
-			(self._max_jobs is not True and self._max_jobs < 2):
-			# save some memory
+
+		if graph_config is None:
 			self._graph_config = None
 			self._digraph = None
+			self._mergelist = []
 			return
 
 		self._graph_config = graph_config
 		self._digraph = graph_config.graph
+		self._mergelist = graph_config.mergelist
+
+		if "--nodeps" in self.myopts or \
+			(self._max_jobs is not True and self._max_jobs < 2):
+			# save some memory
+			self._digraph = None
+			graph_config.graph = None
+			graph_config.pkg_cache.clear()
+			return
+
 		self._find_system_deps()
 		self._prune_digraph()
 		self._prevent_builddir_collisions()
@@ -1796,9 +1811,6 @@ class Scheduler(PollScheduler):
 		mydepgraph.display_problems()
 
 		mylist = mydepgraph.altlist()
-		mydepgraph.break_refs(mylist)
-		mydepgraph.break_refs(dropped_tasks)
-		self._mergelist = mylist
 		self._init_graph(mydepgraph.schedulerGraph())
 
 		msg_width = 75

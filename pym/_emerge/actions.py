@@ -410,11 +410,10 @@ def action_build(settings, trees, mtimedb,
 
 		if ("--resume" in myopts):
 			favorites=mtimedb["resume"]["favorites"]
-			mymergelist = mydepgraph.altlist()
-			mydepgraph.break_refs(mymergelist)
 			mergetask = Scheduler(settings, trees, mtimedb, myopts,
-				spinner, mymergelist, favorites, mydepgraph.schedulerGraph())
-			del mydepgraph, mymergelist
+				spinner, favorites=favorites,
+				graph_config=mydepgraph.schedulerGraph())
+			del mydepgraph
 			clear_caches(trees)
 
 			retval = mergetask.merge()
@@ -427,12 +426,11 @@ def action_build(settings, trees, mtimedb,
 				del mtimedb["resume"]
 				mtimedb.commit()
 
-			pkglist = mydepgraph.altlist()
 			mydepgraph.saveNomergeFavorites()
-			mydepgraph.break_refs(pkglist)
 			mergetask = Scheduler(settings, trees, mtimedb, myopts,
-				spinner, pkglist, favorites, mydepgraph.schedulerGraph())
-			del mydepgraph, pkglist
+				spinner, favorites=favorites,
+				graph_config=mydepgraph.schedulerGraph())
+			del mydepgraph
 			clear_caches(trees)
 
 			retval = mergetask.merge()
@@ -2460,7 +2458,7 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 	# redirection of ebuild phase output to logs as required for
 	# options such as --quiet.
 	sched = Scheduler(settings, trees, None, opts,
-		spinner, [], [], None)
+		spinner)
 	sched._background = sched._background_mode()
 	sched._status_display.quiet = True
 
