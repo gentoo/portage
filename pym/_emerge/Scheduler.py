@@ -300,11 +300,12 @@ class Scheduler(PollScheduler):
 	def _destroy_installed_graph(self):
 		"""
 		Use this to free memory before calling _calc_resume_list().
-		After _calc_resume_list(), the _init_installed_graph() needs
-		to be called in order to re-generate the structures that this
-		method destroys.
+		After _calc_resume_list(), the _init_installed_graph() and
+		_set_digraph() methods need to be called in order to
+		re-generate the structures that this method destroys. 
 		"""
 		self._blocker_db = None
+		self._set_digraph(None)
 		gc.collect()
 
 	def _poll(self, timeout=None):
