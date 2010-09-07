@@ -1,5 +1,7 @@
-# Copyright 2003-2007 Gentoo Foundation
+# Copyright 2003-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import absolute_import
 
 import codecs
 import sys
