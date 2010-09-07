@@ -209,6 +209,37 @@ class UnavailableSet(EverythingSet):
 
 	singleBuilder = classmethod(singleBuilder)
 
+class UnavailableBinaries(EverythingSet):
+
+	_operations = ('merge', 'unmerge',)
+
+	description = "Package set which contains all installed " + \
+		"packages for which corresponding binary packages " + \
+		"are not available."
+
+	def __init__(self, vardb, metadatadb=None):
+		super(UnavailableBinaries, self).__init__(vardb)
+		self._metadatadb = metadatadb
+
+	def _filter(self, atom):
+		inst_pkg = self._db.match(atom)
+		if not inst_pkg:
+			return False
+		inst_cpv = inst_pkg[0]
+		return not self._metadatadb.cpv_exists(inst_cpv)
+
+	def singleBuilder(cls, options, settings, trees):
+
+		metadatadb = options.get("metadata-source", "bintree")
+		if not metadatadb in trees:
+			raise SetConfigError(_("invalid value '%s' for option "
+				"metadata-source") % (metadatadb,))
+
+		return cls(trees["vartree"].dbapi,
+			metadatadb=trees[metadatadb].dbapi)
+
+	singleBuilder = classmethod(singleBuilder)
+
 class CategorySet(PackageSet):
 	_operations = ["merge", "unmerge"]
 	
