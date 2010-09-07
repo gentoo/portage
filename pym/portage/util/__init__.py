@@ -405,9 +405,6 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		expand_map = {}
 	mykeys = {}
 	try:
-		# Workaround for avoiding a silent error in shlex that
-		# is triggered by a source statement at the end of the file without a
-		# trailing newline after the source statement
 		# NOTE: shex doesn't seem to support unicode objects
 		# (produces spurious \0 characters with python-2.6.2)
 		if sys.hexversion < 0x3000000:
@@ -417,8 +414,6 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 			content = open(_unicode_encode(mycfg,
 				encoding=_encodings['fs'], errors='strict'), mode='r',
 				encoding=_encodings['content'], errors='replace').read()
-		if content and content[-1] != '\n':
-			content += '\n'
 	except IOError as e:
 		if e.errno == PermissionDenied.errno:
 			raise PermissionDenied(mycfg)
@@ -427,6 +422,19 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 			if e.errno not in (errno.EISDIR,):
 				raise
 		return None
+
+	# Workaround for avoiding a silent error in shlex that is
+	# triggered by a source statement at the end of the file
+	# without a trailing newline after the source statement.
+	if content and content[-1] != '\n':
+		content += '\n'
+
+	# Warn about dos-style line endings since that prevents
+	# people from being able to source them with bash.
+	if '\r' in content:
+		writemsg("!!! Please use dos2unix to convert line endings " + \
+			"in config file: '%s'\n" % mycfg, noiselevel=-1)
+
 	try:
 		if tolerant:
 			shlex_class = _tolerant_shlex
