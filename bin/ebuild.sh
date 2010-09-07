@@ -699,7 +699,7 @@ dyn_pretend() {
 dyn_setup() {
 	if [[ -e $PORTAGE_BUILDDIR/.setuped ]] ; then
 		vecho ">>> It appears that '$PF' is already setup; skipping."
-		vecho ">>> Remove '$PORTAGE_BUILDDIR/.setuped' to force prepare."
+		vecho ">>> Remove '$PORTAGE_BUILDDIR/.setuped' to force setup."
 		return 0
 	fi
 	ebuild_phase pre_pkg_setup
