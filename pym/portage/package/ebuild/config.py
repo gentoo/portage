@@ -1319,8 +1319,9 @@ class config(object):
 				use.discard("test")
 			else:
 				use.add("test")
-				if ebuild_force_test:
-					self.usemask.discard("test")
+				if ebuild_force_test and "test" in self.usemask:
+					self.usemask = \
+						frozenset(x for x in self.usemask if x != "test")
 
 		# Allow _* flags from USE_EXPAND wildcards to pass through here.
 		use.difference_update([x for x in use \
