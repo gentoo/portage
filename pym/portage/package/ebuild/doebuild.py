@@ -92,18 +92,6 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 			os.path.basename(EBUILD_SH_BINARY))),
 			ebuild_sh_arg)
 
-	if phase not in EbuildSpawnProcess._phases_without_builddir:
-		phase_completed_file = os.path.join(settings['PORTAGE_BUILDDIR'],
-			".%sed" % phase.rstrip('e'))
-		if not os.path.exists(phase_completed_file):
-			# If the phase is really going to run then we want
-			# to eliminate any stale elog messages that may
-			# exist from a previous run.
-			try:
-				os.unlink(os.path.join(settings['T'], 'logging', phase))
-			except OSError:
-				pass
-
 	settings['EBUILD_PHASE'] = phase
 	try:
 		return spawn(cmd, settings, **kwargs)

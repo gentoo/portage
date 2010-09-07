@@ -44,10 +44,12 @@ class AbstractEbuildProcess(SpawnProcess):
 
 	def _start(self):
 
+		need_builddir = self.phase not in self._phases_without_builddir
+
 		# This can happen if the pre-clean phase triggers
 		# die_hooks for some reason, and PORTAGE_BUILDDIR
 		# doesn't exist yet.
-		if self.phase not in self._phases_without_builddir and \
+		if need_builddir and \
 			not os.path.isdir(self.settings['PORTAGE_BUILDDIR']):
 			msg = _("The ebuild phase '%s' has been aborted "
 			"since PORTAGE_BUILDIR does not exist: '%s'") % \
@@ -56,6 +58,20 @@ class AbstractEbuildProcess(SpawnProcess):
 			self._set_returncode((self.pid, 1))
 			self.wait()
 			return
+
+		if need_builddir:
+			phase_completed_file = os.path.join(
+				self.settings['PORTAGE_BUILDDIR'],
+				".%sed" % self.phase.rstrip('e'))
+			if not os.path.exists(phase_completed_file):
+				# If the phase is really going to run then we want
+				# to eliminate any stale elog messages that may
+				# exist from a previous run.
+				try:
+					os.unlink(os.path.join(self.settings['T'],
+						'logging', self.phase))
+				except OSError:
+					pass
 
 		if self.background:
 			# Automatically prevent color codes from showing up in logs,
