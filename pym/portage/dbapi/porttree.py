@@ -87,8 +87,8 @@ class portdbapi(dbapi):
 		if _unused_param is not None:
 			warnings.warn("The first parameter of the " + \
 				"portage.dbapi.porttree.portdbapi" + \
-				" constructor is now unused. Use " + \
-				"mysettings['PORTDIR'] instead.",
+				" constructor is now unused. " + \
+				"mysettings['PORTDIR'] will be used instead.",
 				DeprecationWarning, stacklevel=2)
 
 		# This is strictly for use in aux_get() doebuild calls when metadata
