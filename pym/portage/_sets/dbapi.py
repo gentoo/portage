@@ -64,30 +64,50 @@ class OwnerSet(PackageSet):
 	description = "Package set which contains all packages " + \
 		"that own one or more files."
 
-	def __init__(self, vardb=None, files=None):
+	def __init__(self, vardb=None, exclude_files=None, files=None):
 		super(OwnerSet, self).__init__()
 		self._db = vardb
+		self._exclude_files = exclude_files
 		self._files = files
 
-	def mapPathsToAtoms(self, paths):
+	def mapPathsToAtoms(self, paths, exclude_paths=None):
 		rValue = set()
 		vardb = self._db
 		aux_get = vardb.aux_get
 		aux_keys = ["SLOT"]
-		for link, p in vardb._owners.iter_owners(paths):
-			cat, pn = catpkgsplit(link.mycpv)[:2]
-			slot, = aux_get(link.mycpv, aux_keys)
-			rValue.add("%s/%s:%s" % (cat, pn, slot))
+		if exclude_paths is None:
+			for link, p in vardb._owners.iter_owners(paths):
+				cat, pn = catpkgsplit(link.mycpv)[:2]
+				slot, = aux_get(link.mycpv, aux_keys)
+				rValue.add("%s/%s:%s" % (cat, pn, slot))
+		else:
+			all_paths = set()
+			all_paths.update(paths)
+			all_paths.update(exclude_paths)
+			exclude_atoms = set()
+			for link, p in vardb._owners.iter_owners(all_paths):
+				cat, pn = catpkgsplit(link.mycpv)[:2]
+				slot, = aux_get(link.mycpv, aux_keys)
+				atom = "%s/%s:%s" % (cat, pn, slot)
+				rValue.add(atom)
+				if p in exclude_paths:
+					exclude_atoms.add(atom)
+			rValue.difference_update(exclude_atoms)
+
 		return rValue
 
 	def load(self):
-		self._setAtoms(self.mapPathsToAtoms(self._files))
+		self._setAtoms(self.mapPathsToAtoms(self._files,
+			exclude_paths=self._exclude_files))
 
 	def singleBuilder(cls, options, settings, trees):
 		if not "files" in options:
 			raise SetConfigError(_("no files given"))
 
-		return cls(vardb=trees["vartree"].dbapi,
+		exclude_files = options.get("exclude-files")
+		if exclude_files is not None:
+			exclude_files = frozenset(portage.util.shlex_split(exclude_files))
+		return cls(vardb=trees["vartree"].dbapi, exclude_files=exclude_files,
 			files=frozenset(portage.util.shlex_split(options["files"])))
 
 	singleBuilder = classmethod(singleBuilder)
