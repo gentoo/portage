@@ -84,7 +84,7 @@ class portdbapi(dbapi):
 
 		porttree_root = self.settings['PORTDIR']
 
-		if _unused_param is not None:
+		if _unused_param is not None and _unused_param != porttree_root:
 			warnings.warn("The first parameter of the " + \
 				"portage.dbapi.porttree.portdbapi" + \
 				" constructor is now unused. " + \
