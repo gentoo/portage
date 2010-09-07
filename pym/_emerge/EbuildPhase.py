@@ -30,6 +30,22 @@ class EbuildPhase(CompositeTask):
 
 	def _start(self):
 
+		need_builddir = self.phase not in EbuildProcess._phases_without_builddir
+
+		if need_builddir:
+			phase_completed_file = os.path.join(
+				self.settings['PORTAGE_BUILDDIR'],
+				".%sed" % self.phase.rstrip('e'))
+			if not os.path.exists(phase_completed_file):
+				# If the phase is really going to run then we want
+				# to eliminate any stale elog messages that may
+				# exist from a previous run.
+				try:
+					os.unlink(os.path.join(self.settings['T'],
+						'logging', self.phase))
+				except OSError:
+					pass
+
 		if self.phase == 'setup':
 
 			use = self.settings.get('PORTAGE_BUILT_USE')
