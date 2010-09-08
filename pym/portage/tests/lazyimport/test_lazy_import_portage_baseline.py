@@ -21,10 +21,14 @@ class LazyImportPortageBaselineTestCase(TestCase):
 		'portage.proxy.objectproxy', 'portage._ensure_encodings',
 	])
 
-	_baseline_import_cmd = [portage._python_interpreter, '-c',
-		'import portage, sys ; ' + \
-		'sys.stdout.write(" ".join(k for k in sys.modules ' + \
-		'if sys.modules[k] is not None))']
+	_baseline_import_cmd = [portage._python_interpreter, '-c', '''
+import os
+import sys
+sys.path.insert(0, os.environ["PORTAGE_PYM_PATH"])
+import portage
+sys.stdout.write(" ".join(k for k in sys.modules
+	if sys.modules[k] is not None))
+''']
 
 	def testLazyImportPortageBaseline(self):
 		"""
@@ -41,6 +45,7 @@ class LazyImportPortageBaselineTestCase(TestCase):
 			pythonpath = ':' + pythonpath
 		pythonpath = PORTAGE_PYM_PATH + pythonpath
 		env[pythonpath] = pythonpath
+		env['PORTAGE_PYM_PATH'] = PORTAGE_PYM_PATH
 
 		scheduler = PollScheduler().sched_iface
 		master_fd, slave_fd = os.pipe()
