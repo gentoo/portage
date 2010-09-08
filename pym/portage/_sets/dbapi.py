@@ -71,6 +71,9 @@ class OwnerSet(PackageSet):
 		self._files = files
 
 	def mapPathsToAtoms(self, paths, exclude_paths=None):
+		"""
+		All paths must have $EROOT stripped from the left side.
+		"""
 		rValue = set()
 		vardb = self._db
 		aux_get = vardb.aux_get
