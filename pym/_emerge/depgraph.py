@@ -5799,7 +5799,7 @@ class _dep_check_composite_db(dbapi):
 				arg = None
 			if arg:
 				return False
-		if pkg.installed and not pkg.visible:
+		if pkg.installed and not self._pkg_visibility_check(pkg):
 			return False
 		in_graph = self._depgraph._dynamic_config._slot_pkg_map[
 			self._root].get(pkg.slot_atom)
