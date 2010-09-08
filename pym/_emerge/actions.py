@@ -1096,21 +1096,20 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		for node in clean_set:
 			graph.add(node, None)
 			mydeps = []
-			node_use = node.metadata["USE"].split()
 			for dep_type in dep_keys:
 				depstr = node.metadata[dep_type]
 				if not depstr:
 					continue
-				success, atoms = portage.dep_check(depstr, None, settings,
-					myuse=node_use,
-					trees=resolver._dynamic_config._graph_trees,
-					myroot=myroot)
-				if not success:
+				priority = priority_map[dep_type]
+				try:
+					atoms = resolver._select_atoms(myroot, depstr,
+						myuse=node.use.enabled, parent=node,
+						priority=priority)[node]
+				except portage.exception.InvalidDependString:
 					# Ignore invalid deps of packages that will
 					# be uninstalled anyway.
 					continue
 
-				priority = priority_map[dep_type]
 				for atom in atoms:
 					if not isinstance(atom, portage.dep.Atom):
 						# Ignore invalid atoms returned from dep_check().
