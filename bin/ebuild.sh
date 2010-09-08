@@ -1833,7 +1833,7 @@ preprocess_ebuild_env() {
 	) > "${T}/environment.filtered"
 	local retval
 	if [ -e "${T}/environment.success" ] ; then
-		filter_readonly_variables < \
+		filter_readonly_variables --filter-features < \
 			"${T}/environment.filtered" > "${T}/environment"
 		retval=$?
 	else
@@ -2314,7 +2314,8 @@ elif [[ -n $EBUILD_SH_ARGS ]] ; then
 		# Save the env only for relevant phases.
 		if ! hasq "$EBUILD_SH_ARGS" clean help info nofetch ; then
 			umask 002
-			save_ebuild_env | filter_readonly_variables > "$T/environment"
+			save_ebuild_env | filter_readonly_variables \
+				--filter-features > "$T/environment"
 			assert "save_ebuild_env failed"
 			chown portage:portage "$T/environment" &>/dev/null
 			chmod g+w "$T/environment" &>/dev/null
