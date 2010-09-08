@@ -395,15 +395,18 @@ def help(myopts, havecolor=1):
 		print("              that are not directly listed in the dependencies of a package.")
 		print("              Also see --with-bdeps for behavior with respect to build time")
 		print("              dependencies that are not strictly required.")
-		print() 
-		print("       " + green("--depclean-lib-check") + "[=%s]" % turquoise("n"))
-		desc = "Account for library link-level dependencies during " + \
-			"--depclean and --prune actions. This " + \
-			"option is enabled by default. In some cases this can " + \
-			"be somewhat time-consuming."
-		for line in wrap(desc, desc_width):
-			print(desc_indent + line)
 		print()
+
+		if _ENABLE_DYN_LINK_MAP:
+			print("       " + green("--depclean-lib-check") + "[=%s]" % turquoise("n"))
+			desc = "Account for library link-level dependencies during " + \
+				"--depclean and --prune actions. This " + \
+				"option is enabled by default. In some cases this can " + \
+				"be somewhat time-consuming."
+			for line in wrap(desc, desc_width):
+				print(desc_indent + line)
+			print()
+
 		print("       "+green("--emptytree")+" ("+green("-e")+" short option)")
 		desc = "Reinstalls target atoms and their entire deep " + \
 			"dependency tree, as though no packages are currently " + \

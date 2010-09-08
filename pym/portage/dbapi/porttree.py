@@ -84,11 +84,11 @@ class portdbapi(dbapi):
 
 		porttree_root = self.settings['PORTDIR']
 
-		if _unused_param is not None:
+		if _unused_param is not None and _unused_param != porttree_root:
 			warnings.warn("The first parameter of the " + \
 				"portage.dbapi.porttree.portdbapi" + \
-				" constructor is now unused. Use " + \
-				"mysettings['PORTDIR'] instead.",
+				" constructor is now unused. " + \
+				"mysettings['PORTDIR'] will be used instead.",
 				DeprecationWarning, stacklevel=2)
 
 		# This is strictly for use in aux_get() doebuild calls when metadata
@@ -661,13 +661,13 @@ class portdbapi(dbapi):
 		# returns a filename:size dictionnary of remaining downloads
 		myebuild = self.findname(mypkg)
 		if myebuild is None:
-			raise AssertionError("ebuild not found for '%s'" % mypkg)
+			raise AssertionError(_("ebuild not found for '%s'") % mypkg)
 		pkgdir = os.path.dirname(myebuild)
 		mf = Manifest(pkgdir, self.settings["DISTDIR"])
 		checksums = mf.getDigests()
 		if not checksums:
 			if debug: 
-				writemsg("[empty/missing/bad digest]: %s\n" % (mypkg,))
+				writemsg(_("[empty/missing/bad digest]: %s\n") % (mypkg,))
 			return {}
 		filesdict={}
 		myfiles = self.getFetchMap(mypkg, useflags=useflags)
@@ -719,7 +719,7 @@ class portdbapi(dbapi):
 		myfiles = self.getFetchMap(mypkg, useflags=useflags)
 		myebuild = self.findname(mypkg)
 		if myebuild is None:
-			raise AssertionError("ebuild not found for '%s'" % mypkg)
+			raise AssertionError(_("ebuild not found for '%s'") % mypkg)
 		pkgdir = os.path.dirname(myebuild)
 		mf = Manifest(pkgdir, self.settings["DISTDIR"])
 		mysums = mf.getDigests()

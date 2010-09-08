@@ -396,6 +396,9 @@ unpack() {
 				assert_sigpipe_ok "$myfail"
 				;;
 			ZIP|zip|jar)
+				# unzip will interactively prompt under some error conditions,
+				# as reported in bug #336285
+				( while true ; do echo n ; done ) | \
 				unzip -qo "${srcdir}${x}" || die "$myfail"
 				;;
 			gz|Z|z)
@@ -690,7 +693,6 @@ ebuild_phase() {
 
 ebuild_phase_with_hooks() {
 	local x phase_name=${1}
-	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
 	for x in {pre_,,post_}${phase_name} ; do
 		ebuild_phase ${x}
 	done
@@ -701,7 +703,15 @@ dyn_pretend() {
 }
 
 dyn_setup() {
-	ebuild_phase_with_hooks pkg_setup
+	if [[ -e $PORTAGE_BUILDDIR/.setuped ]] ; then
+		vecho ">>> It appears that '$PF' is already setup; skipping."
+		vecho ">>> Remove '$PORTAGE_BUILDDIR/.setuped' to force setup."
+		return 0
+	fi
+	ebuild_phase pre_pkg_setup
+	ebuild_phase pkg_setup
+	> "$PORTAGE_BUILDDIR"/.setuped
+	ebuild_phase post_pkg_setup
 }
 
 dyn_unpack() {
@@ -724,7 +734,7 @@ dyn_unpack() {
 	fi
 	if [ "${newstuff}" == "yes" ]; then
 		# We don't necessarily have privileges to do a full dyn_clean here.
-		rm -rf "${PORTAGE_BUILDDIR}"/{.unpacked,.prepared,.configured,.compiled,.tested,.installed,.packaged,build-info}
+		rm -rf "${PORTAGE_BUILDDIR}"/{.setuped,.unpacked,.prepared,.configured,.compiled,.tested,.installed,.packaged,build-info}
 		if ! hasq keepwork $FEATURES ; then
 			rm -rf "${WORKDIR}"
 		fi
@@ -743,7 +753,6 @@ dyn_unpack() {
 	if [ ! -d "${WORKDIR}" ]; then
 		install -m${PORTAGE_WORKDIR_MODE:-0700} -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
 	fi
-	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
 	cd "${WORKDIR}" || die "Directory change failed: \`cd '${WORKDIR}'\`"
 	ebuild_phase pre_src_unpack
 	vecho ">>> Unpacking source..."
@@ -774,7 +783,7 @@ dyn_clean() {
 	fi
 
 	if [[ $EMERGE_FROM = binary ]] || ! hasq keepwork $FEATURES; then
-		rm -f "$PORTAGE_BUILDDIR"/.{ebuild_changed,logid,unpacked,prepared} \
+		rm -f "$PORTAGE_BUILDDIR"/.{ebuild_changed,logid,setuped,unpacked,prepared} \
 			"$PORTAGE_BUILDDIR"/.{configured,compiled,tested,packaged} \
 			"$PORTAGE_BUILDDIR"/.die_hooks \
 			"$PORTAGE_BUILDDIR"/.ipc_{in,out,lock} \
@@ -990,7 +999,6 @@ dyn_prepare() {
 
 	trap abort_prepare SIGINT SIGQUIT
 
-	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
 	ebuild_phase pre_src_prepare
 	vecho ">>> Preparing source in $PWD ..."
 	ebuild_phase src_prepare
@@ -1021,7 +1029,6 @@ dyn_configure() {
 
 	trap abort_configure SIGINT SIGQUIT
 
-	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
 	ebuild_phase pre_src_configure
 
 	vecho ">>> Configuring source in $PWD ..."
@@ -1054,7 +1061,6 @@ dyn_compile() {
 
 	trap abort_compile SIGINT SIGQUIT
 
-	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
 	ebuild_phase pre_src_compile
 
 	vecho ">>> Compiling source in $PWD ..."
@@ -1096,7 +1102,6 @@ dyn_test() {
 	else
 		local save_sp=${SANDBOX_PREDICT}
 		addpredict /
-		[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
 		ebuild_phase pre_src_test
 		ebuild_phase src_test
 		touch "$PORTAGE_BUILDDIR/.tested" || \
@@ -1118,7 +1123,6 @@ dyn_install() {
 		return 0
 	fi
 	trap "abort_install" SIGINT SIGQUIT
-	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
 	ebuild_phase pre_src_install
 	rm -rf "${PORTAGE_BUILDDIR}/image"
 	mkdir "${PORTAGE_BUILDDIR}/image"
@@ -1841,7 +1845,7 @@ preprocess_ebuild_env() {
 	) > "${T}/environment.filtered"
 	local retval
 	if [ -e "${T}/environment.success" ] ; then
-		filter_readonly_variables < \
+		filter_readonly_variables --filter-features < \
 			"${T}/environment.filtered" > "${T}/environment"
 		retval=$?
 	else
@@ -1913,6 +1917,10 @@ if [[ -n ${QA_INTERCEPTORS} ]] ; then
 	done
 	unset BIN_PATH BIN BODY FUNC_SRC
 fi
+
+# Subshell/helper die support (must export for the die helper).
+export EBUILD_MASTER_PID=$BASHPID
+trap 'exit 1' SIGTERM
 
 if ! hasq "$EBUILD_PHASE" clean cleanrm depend && \
 	[ -f "${T}"/environment ] ; then
@@ -2117,6 +2125,10 @@ fi
 ebuild_main() {
 
 	# Subshell/helper die support (must export for the die helper).
+	# Since this function is typically executed in a subshell,
+	# setup EBUILD_MASTER_PID to refer to the current $BASHPID,
+	# which seems to give the best results when further
+	# nested subshells call die.
 	export EBUILD_MASTER_PID=$BASHPID
 	trap 'exit 1' SIGTERM
 
@@ -2318,7 +2330,8 @@ elif [[ -n $EBUILD_SH_ARGS ]] ; then
 		# Save the env only for relevant phases.
 		if ! hasq "$EBUILD_SH_ARGS" clean help info nofetch ; then
 			umask 002
-			save_ebuild_env | filter_readonly_variables > "$T/environment"
+			save_ebuild_env | filter_readonly_variables \
+				--filter-features > "$T/environment"
 			assert "save_ebuild_env failed"
 			chown ${PORTAGE_USER:-portage}:${PORTAGE_GROUP:-portage} "$T/environment" &>/dev/null
 			chmod g+w "$T/environment" &>/dev/null
@@ -2332,10 +2345,6 @@ elif [[ -n $EBUILD_SH_ARGS ]] ; then
 	)
 	exit $?
 fi
-
-# Subshell/helper die support (must export for the die helper).
-export EBUILD_MASTER_PID=$BASHPID
-trap 'exit 1' SIGTERM
 
 # Do not exit when ebuild.sh is sourced by other scripts.
 true

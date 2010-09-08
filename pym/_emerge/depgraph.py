@@ -64,10 +64,11 @@ if sys.hexversion >= 0x3000000:
 	long = int
 
 class _scheduler_graph_config(object):
-	def __init__(self, trees, pkg_cache, graph):
+	def __init__(self, trees, pkg_cache, graph, mergelist):
 		self.trees = trees
 		self.pkg_cache = pkg_cache
 		self.graph = graph
+		self.mergelist = mergelist
 
 class _frozen_depgraph_config(object):
 
@@ -101,7 +102,8 @@ class _frozen_depgraph_config(object):
 				self.trees[myroot][tree] = trees[myroot][tree]
 			self.trees[myroot]["vartree"] = \
 				FakeVartree(trees[myroot]["root_config"],
-					pkg_cache=self._pkg_cache)
+					pkg_cache=self._pkg_cache,
+					pkg_root_config=self.roots[myroot])
 			self.pkgsettings[myroot] = portage.config(
 				clone=self.trees[myroot]["vartree"].settings)
 
@@ -2564,6 +2566,7 @@ class depgraph(object):
 		portdb = self._frozen_config.roots[root].trees["porttree"].dbapi
 		# List of acceptable packages, ordered by type preference.
 		matched_packages = []
+		matched_pkgs_ignore_use = []
 		highest_version = None
 		if not isinstance(atom, portage.dep.Atom):
 			atom = portage.dep.Atom(atom)
@@ -2725,6 +2728,7 @@ class depgraph(object):
 							# since IUSE cannot be adjusted by the user.
 							continue
 
+						matched_pkgs_ignore_use.append(pkg)
 						if allow_use_changes:
 							target_use = {}
 							for flag in atom.use.enabled:
@@ -2793,7 +2797,7 @@ class depgraph(object):
 						break
 					# Compare built package to current config and
 					# reject the built package if necessary.
-					if built and (not installed or matched_packages) and \
+					if built and (not installed or matched_pkgs_ignore_use) and \
 						("--newuse" in self._frozen_config.myopts or \
 						"--reinstall" in self._frozen_config.myopts or \
 						"--binpkg-respect-use" in self._frozen_config.myopts):
@@ -3066,6 +3070,9 @@ class depgraph(object):
 		operation = "merge"
 		if installed or onlydeps:
 			operation = "nomerge"
+		# Ensure that we use the specially optimized RootConfig instance
+		# that refers to FakeVartree instead of the real vartree.
+		root_config = self._frozen_config.roots[root_config.root]
 		pkg = self._frozen_config._pkg_cache.get(
 			(type_name, root_config.root, cpv, operation))
 		if pkg is None and onlydeps and not installed:
@@ -3479,8 +3486,10 @@ class depgraph(object):
 		internal Package instances such that this depgraph instance should
 		not be used to perform any more calculations.
 		"""
-		if self._dynamic_config._scheduler_graph is None:
-			self.altlist()
+
+		# NOTE: altlist initializes self._dynamic_config._scheduler_graph
+		mergelist = self.altlist()
+		self.break_refs(mergelist)
 		self.break_refs(self._dynamic_config._scheduler_graph.order)
 
 		# Break DepPriority.satisfied attributes which reference
@@ -3507,7 +3516,7 @@ class depgraph(object):
 
 		self.break_refs(pruned_pkg_cache)
 		sched_config = \
-			_scheduler_graph_config(trees, pruned_pkg_cache, graph)
+			_scheduler_graph_config(trees, pruned_pkg_cache, graph, mergelist)
 
 		return sched_config
 
@@ -5790,7 +5799,7 @@ class _dep_check_composite_db(dbapi):
 				arg = None
 			if arg:
 				return False
-		if pkg.installed and not pkg.visible:
+		if pkg.installed and not self._depgraph._pkg_visibility_check(pkg):
 			return False
 		in_graph = self._depgraph._dynamic_config._slot_pkg_map[
 			self._root].get(pkg.slot_atom)

@@ -35,6 +35,9 @@ def getcontext():
 
 	return ctx
 
+def is_selinux_enabled():
+	return selinux.is_selinux_enabled()
+
 def mkdir(target, refdir):
 	target = _unicode_encode(target, encoding=_encodings['fs'], errors='strict')
 	refdir = _unicode_encode(refdir, encoding=_encodings['fs'], errors='strict')

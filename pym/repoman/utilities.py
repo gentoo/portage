@@ -128,7 +128,8 @@ def parse_metadata_use(xml_tree):
 	for usetag in usetags:
 		flags = usetag.findall("flag")
 		if not flags:
-			raise exception.ParseError("missing 'flag' tag(s)")
+			# DTD allows use elements containing no flag elements.
+			continue
 
 		for flag in flags:
 			pkg_flag = flag.get("name")

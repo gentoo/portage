@@ -36,11 +36,15 @@ class FakeVartree(vartree):
 	global updates are necessary (updates are performed when necessary if there
 	is not a matching ebuild in the tree). Instances of this class are not
 	populated until the sync() method is called."""
-	def __init__(self, root_config, pkg_cache=None):
+	def __init__(self, root_config, pkg_cache=None, pkg_root_config=None):
 		self._root_config = root_config
+		if pkg_root_config is None:
+			pkg_root_config = self._root_config
+		self._pkg_root_config = pkg_root_config
 		if pkg_cache is None:
 			pkg_cache = {}
 		real_vartree = root_config.trees["vartree"]
+		self._real_vardb = real_vartree.dbapi
 		portdb = root_config.trees["porttree"].dbapi
 		self.root = real_vartree.root
 		self.settings = real_vartree.settings
@@ -177,12 +181,17 @@ class FakeVartree(vartree):
 		real_vardb.flush_cache()
 
 	def _pkg(self, cpv):
-		root_config = self._root_config
-		real_vardb = root_config.trees["vartree"].dbapi
+		"""
+		The RootConfig instance that will become the Package.root_config
+		attribute can be overridden by the FakeVartree pkg_root_config
+		constructory argument, since we want to be consistent with the
+		depgraph._pkg() method which uses a specially optimized
+		RootConfig that has a FakeVartree instead of a real vartree.
+		"""
 		pkg = Package(cpv=cpv, built=True, installed=True,
 			metadata=zip(self._db_keys,
-			real_vardb.aux_get(cpv, self._db_keys)),
-			root_config=root_config,
+			self._real_vardb.aux_get(cpv, self._db_keys)),
+			root_config=self._pkg_root_config,
 			type_name="installed")
 
 		try:

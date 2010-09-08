@@ -44,10 +44,12 @@ class AbstractEbuildProcess(SpawnProcess):
 
 	def _start(self):
 
+		need_builddir = self.phase not in self._phases_without_builddir
+
 		# This can happen if the pre-clean phase triggers
 		# die_hooks for some reason, and PORTAGE_BUILDDIR
 		# doesn't exist yet.
-		if self.phase not in self._phases_without_builddir and \
+		if need_builddir and \
 			not os.path.isdir(self.settings['PORTAGE_BUILDDIR']):
 			msg = _("The ebuild phase '%s' has been aborted "
 			"since PORTAGE_BUILDIR does not exist: '%s'") % \
