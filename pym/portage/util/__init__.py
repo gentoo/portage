@@ -432,8 +432,8 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	# Warn about dos-style line endings since that prevents
 	# people from being able to source them with bash.
 	if '\r' in content:
-		writemsg("!!! Please use dos2unix to convert line endings " + \
-			"in config file: '%s'\n" % mycfg, noiselevel=-1)
+		writemsg(("!!! " + _("Please use dos2unix to convert line endings " + \
+			"in config file: '%s'") + "\n") % mycfg, noiselevel=-1)
 
 	try:
 		if tolerant:
