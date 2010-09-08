@@ -315,25 +315,29 @@ class ResolverPlayground(object):
 		if self.debug:
 			options["--debug"] = True
 
-		if not self.debug:
-			portage.util.noiselimit = -2
-		_emerge.emergelog._disable = True
+		global_noiselimit = portage.util.noiselimit
+		global_emergelog_disable = _emerge.emergelog._disable
+		try:
 
-		if options.get("--depclean"):
-			rval, cleanlist, ordered, req_pkg_count = \
-				calc_depclean(self.settings, self.trees, None,
-				options, "depclean", atoms, None)
-			result = ResolverPlaygroundDepcleanResult( \
-				atoms, rval, cleanlist, ordered, req_pkg_count)
-		else:
-			params = create_depgraph_params(options, action)
-			success, depgraph, favorites = backtrack_depgraph(
-				self.settings, self.trees, options, params, action, atoms, None)
-			depgraph.display_problems()
-			result = ResolverPlaygroundResult(atoms, success, depgraph, favorites)
+			if not self.debug:
+				portage.util.noiselimit = -2
+			_emerge.emergelog._disable = True
 
-		portage.util.noiselimit = 0
-		_emerge.emergelog._disable = False
+			if options.get("--depclean"):
+				rval, cleanlist, ordered, req_pkg_count = \
+					calc_depclean(self.settings, self.trees, None,
+					options, "depclean", atoms, None)
+				result = ResolverPlaygroundDepcleanResult( \
+					atoms, rval, cleanlist, ordered, req_pkg_count)
+			else:
+				params = create_depgraph_params(options, action)
+				success, depgraph, favorites = backtrack_depgraph(
+					self.settings, self.trees, options, params, action, atoms, None)
+				depgraph.display_problems()
+				result = ResolverPlaygroundResult(atoms, success, depgraph, favorites)
+		finally:
+			portage.util.noiselimit = global_noiselimit
+			_emerge.emergelog._disable = global_emergelog_disable
 
 		return result
 
