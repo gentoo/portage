@@ -772,8 +772,9 @@ def parse_opts(tmpcmdline, silent=False):
 	else:
 		myoptions.complete_graph = None
 
-	if myoptions.depclean_lib_check in ("True",):
-		myoptions.depclean_lib_check = True
+	if _ENABLE_DYN_LINK_MAP:
+		if myoptions.depclean_lib_check in ("True",):
+			myoptions.depclean_lib_check = True
 
 	if myoptions.exclude:
 		exclude = []
