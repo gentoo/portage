@@ -40,14 +40,14 @@ class DepcleanWithDepsTestCase(TestCase):
 
 	def testDepcleanWithDeps(self):
 		ebuilds = {
-			"dev-libs/A-1": { "DEPEND": "dev-libs/C" },
-			"dev-libs/B-1": { "DEPEND": "dev-libs/D" },
+			"dev-libs/A-1": { "RDEPEND": "dev-libs/C" },
+			"dev-libs/B-1": { "RDEPEND": "dev-libs/D" },
 			"dev-libs/C-1": {},
 			"dev-libs/D-1": {},
 			}
 		installed = {
-			"dev-libs/A-1": { "DEPEND": "dev-libs/C" },
-			"dev-libs/B-1": { "DEPEND": "dev-libs/D" },
+			"dev-libs/A-1": { "RDEPEND": "dev-libs/C" },
+			"dev-libs/B-1": { "RDEPEND": "dev-libs/D" },
 			"dev-libs/C-1": {},
 			"dev-libs/D-1": {},
 			}
@@ -82,12 +82,12 @@ class DepcleanWithInstalledMaskedTestCase(TestCase):
 		The next emerge -uDN world doesn't take B and installs C again.
 		"""
 		ebuilds = {
-			"dev-libs/A-1": { "DEPEND": "|| ( dev-libs/B dev-libs/C )" },
+			"dev-libs/A-1": { "RDEPEND": "|| ( dev-libs/B dev-libs/C )" },
 			"dev-libs/B-1": { "LICENSE": "TEST" },
 			"dev-libs/C-1": {},
 			}
 		installed = {
-			"dev-libs/A-1": { "DEPEND": "|| ( dev-libs/B dev-libs/C )" },
+			"dev-libs/A-1": { "RDEPEND": "|| ( dev-libs/B dev-libs/C )" },
 			"dev-libs/B-1": { "LICENSE": "TEST" },
 			"dev-libs/C-1": {},
 			}
