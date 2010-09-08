@@ -101,7 +101,8 @@ class DepcleanWithInstalledMaskedTestCase(TestCase):
 				[],
 				options = {"--depclean": True},
 				success = True,
-				cleanlist = ["dev-libs/C-1"]),
+				#cleanlist = ["dev-libs/C-1"]),
+				cleanlist = ["dev-libs/B-1"]),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed, world=world)
