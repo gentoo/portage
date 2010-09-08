@@ -265,7 +265,7 @@ class _dynamic_depgraph_config(object):
 			#               (db, pkg_type, built, installed, db_keys)
 			if "remove" in self.myparams:
 				# For removal operations, use _dep_check_composite_db
-				# for availability and visibilty checks. This provides
+				# for availability and visibility checks. This provides
 				# consistency with install operations, so we don't
 				# get install/uninstall cycles like in bug #332719.
 				self._graph_trees[myroot]["porttree"] = filtered_tree
