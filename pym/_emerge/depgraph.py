@@ -262,16 +262,25 @@ class _dynamic_depgraph_config(object):
 				depgraph._frozen_config.trees[myroot]["vartree"]
 
 			dbs = []
-			portdb = depgraph._frozen_config.trees[myroot]["porttree"].dbapi
-			bindb  = depgraph._frozen_config.trees[myroot]["bintree"].dbapi
-			vardb  = depgraph._frozen_config.trees[myroot]["vartree"].dbapi
 			#               (db, pkg_type, built, installed, db_keys)
-			if "--usepkgonly" not in depgraph._frozen_config.myopts:
-				db_keys = list(portdb._aux_cache_keys)
-				dbs.append((portdb, "ebuild", False, False, db_keys))
-			if "--usepkg" in depgraph._frozen_config.myopts:
-				db_keys = list(bindb._aux_cache_keys)
-				dbs.append((bindb,  "binary", True, False, db_keys))
+			if "remove" in self.myparams:
+				# For removal operations, use _dep_check_composite_db
+				# for availability and visibilty checks. This provides
+				# consistency with install operations, so we don't
+				# get install/uninstall cycles like in bug #332719.
+				self._graph_trees[myroot]["porttree"] = filtered_tree
+			else:
+				if "--usepkgonly" not in depgraph._frozen_config.myopts:
+					portdb = depgraph._frozen_config.trees[myroot]["porttree"].dbapi
+					db_keys = list(portdb._aux_cache_keys)
+					dbs.append((portdb, "ebuild", False, False, db_keys))
+
+				if "--usepkg" in depgraph._frozen_config.myopts:
+					bindb  = depgraph._frozen_config.trees[myroot]["bintree"].dbapi
+					db_keys = list(bindb._aux_cache_keys)
+					dbs.append((bindb,  "binary", True, False, db_keys))
+
+			vardb  = depgraph._frozen_config.trees[myroot]["vartree"].dbapi
 			db_keys = list(depgraph._frozen_config._trees_orig[myroot
 				]["vartree"].dbapi._aux_cache_keys)
 			dbs.append((vardb, "installed", True, True, db_keys))
@@ -2950,6 +2959,18 @@ class depgraph(object):
 		in_graph = self._dynamic_config._slot_pkg_map[root].get(pkg.slot_atom)
 		return pkg, in_graph
 
+	def _select_pkg_from_installed(self, root, atom, onlydeps=False):
+		"""
+		Select packages that are installed.
+		"""
+		vardb = self._dynamic_config._graph_trees[root]["vartree"].dbapi
+		matches = vardb.match_pkgs(atom)
+		if not matches:
+			return None, None
+		pkg = matches[-1] # highest match
+		in_graph = self._dynamic_config._slot_pkg_map[root].get(pkg.slot_atom)
+		return pkg, in_graph
+
 	def _complete_graph(self, required_sets=None):
 		"""
 		Add any deep dependencies of required sets (args, system, world) that
@@ -2983,10 +3004,18 @@ class depgraph(object):
 		# parameter so that all dependencies are traversed and
 		# accounted for.
 		self._select_atoms = self._select_atoms_from_graph
-		self._select_package = self._select_pkg_from_graph
+		if "remove" in self._dynamic_config.myparams:
+			self._select_package = self._select_pkg_from_installed
+		else:
+			self._select_package = self._select_pkg_from_graph
 		already_deep = self._dynamic_config.myparams.get("deep") is True
 		if not already_deep:
 			self._dynamic_config.myparams["deep"] = True
+
+		# Invalidate the package selection cache, since
+		# _select_package has just changed implementations.
+		for trees in self._dynamic_config._filtered_trees.values():
+			trees["porttree"].dbapi._clear_cache()
 
 		for root in self._frozen_config.roots:
 			if root != self._frozen_config.target_root and \
