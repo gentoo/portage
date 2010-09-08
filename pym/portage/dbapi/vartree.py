@@ -3600,9 +3600,9 @@ class dblink(object):
 						backup_dest = self._new_backup_path(mydest)
 						msg = []
 						msg.append("")
-						msg.append("Installation of a directory is blocked by a file:")
+						msg.append(_("Installation of a directory is blocked by a file:"))
 						msg.append("  '%s'" % mydest)
-						msg.append("This file will be renamed to a different name:")
+						msg.append(_("This file will be renamed to a different name:"))
 						msg.append("  '%s'" % backup_dest)
 						msg.append("")
 						self._eerror("preinst", msg)
@@ -3678,9 +3678,9 @@ class dblink(object):
 						newdest = self._new_backup_path(mydest)
 						msg = []
 						msg.append("")
-						msg.append("Installation of a regular file is blocked by a directory:")
+						msg.append(_("Installation of a regular file is blocked by a directory:"))
 						msg.append("  '%s'" % mydest)
-						msg.append("This file will be merged with a different name:")
+						msg.append(_("This file will be merged with a different name:"))
 						msg.append("  '%s'" % newdest)
 						msg.append("")
 						self._eerror("preinst", msg)

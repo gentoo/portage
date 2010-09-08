@@ -661,13 +661,13 @@ class portdbapi(dbapi):
 		# returns a filename:size dictionnary of remaining downloads
 		myebuild = self.findname(mypkg)
 		if myebuild is None:
-			raise AssertionError("ebuild not found for '%s'" % mypkg)
+			raise AssertionError(_("ebuild not found for '%s'") % mypkg)
 		pkgdir = os.path.dirname(myebuild)
 		mf = Manifest(pkgdir, self.settings["DISTDIR"])
 		checksums = mf.getDigests()
 		if not checksums:
 			if debug: 
-				writemsg("[empty/missing/bad digest]: %s\n" % (mypkg,))
+				writemsg(_("[empty/missing/bad digest]: %s\n") % (mypkg,))
 			return {}
 		filesdict={}
 		myfiles = self.getFetchMap(mypkg, useflags=useflags)
@@ -719,7 +719,7 @@ class portdbapi(dbapi):
 		myfiles = self.getFetchMap(mypkg, useflags=useflags)
 		myebuild = self.findname(mypkg)
 		if myebuild is None:
-			raise AssertionError("ebuild not found for '%s'" % mypkg)
+			raise AssertionError(_("ebuild not found for '%s'") % mypkg)
 		pkgdir = os.path.dirname(myebuild)
 		mf = Manifest(pkgdir, self.settings["DISTDIR"])
 		mysums = mf.getDigests()

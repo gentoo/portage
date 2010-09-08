@@ -1,5 +1,5 @@
 # portage: news management code
-# Copyright 2006 Gentoo Foundation
+# Copyright 2006-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["NewsManager", "NewsItem", "DisplayRestriction",
@@ -123,7 +123,7 @@ class NewsManager(object):
 					itemid = _unicode_decode(itemid,
 						encoding=_encodings['fs'], errors='replace')
 					writemsg_level(
-						"!!! Invalid encoding in news item name: '%s'\n" % \
+						_("!!! Invalid encoding in news item name: '%s'\n") % \
 						itemid, level=logging.ERROR, noiselevel=-1)
 					continue
 
