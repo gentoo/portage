@@ -1365,7 +1365,9 @@ class dblink(object):
 		obj_index = contents_re.groupindex['obj']
 		dir_index = contents_re.groupindex['dir']
 		sym_index = contents_re.groupindex['sym']
-		myroot = self._eroot
+		# PREFIX LOCAL: don't prepend EROOT!
+		myroot = self.root
+		# PREFIX LOCAL
 		if myroot == os.path.sep:
 			myroot = None
 		pos = 0
