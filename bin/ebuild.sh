@@ -2103,6 +2103,15 @@ fi
 # declare them only after it has already run.
 if [ "${EBUILD_PHASE}" != "depend" ] ; then
 	declare -r ${READONLY_EBUILD_METADATA} ${READONLY_PORTAGE_VARS}
+	case "$EAPI" in
+		0|1|2)
+			;;
+		*)
+			# PREFIX LOCAL: allow prefix vars in any EAPI
+			#declare -r ED EPREFIX EROOT
+			# PREFIX LOCAL
+			;;
+	esac
 fi
 
 ebuild_main() {
