@@ -24,6 +24,7 @@ from portage.output import create_color_func
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 
+from portage.const import _ENABLE_DYN_LINK_MAP
 import portage.elog
 import portage.util
 import portage.locks
@@ -396,7 +397,6 @@ def insert_optional_args(args):
 		'--autounmask'           : ('n',),
 		'--complete-graph' : ('n',),
 		'--deep'       : valid_integers,
-		'--depclean-lib-check'   : ('n',),
 		'--deselect'   : ('n',),
 		'--binpkg-respect-use'   : ('n', 'y',),
 		'--fail-clean'           : ('n',),
@@ -413,6 +413,9 @@ def insert_optional_args(args):
 		'--usepkg'               : ('n',),
 		'--usepkgonly'           : ('n',),
 	}
+
+	if _ENABLE_DYN_LINK_MAP:
+		default_arg_opts['--depclean-lib-check'] = ('n',)
 
 	short_arg_opts = {
 		'D' : valid_integers,
@@ -569,12 +572,6 @@ def parse_opts(tmpcmdline, silent=False):
 			"action" : "store"
 		},
 
-		"--depclean-lib-check": {
-			"help"    : "check for consumers of libraries before removing them",
-			"type"    : "choice",
-			"choices" : ("True", "n")
-		},
-
 		"--deselect": {
 			"help"    : "remove atoms/sets from the world file",
 			"type"    : "choice",
@@ -717,6 +714,13 @@ def parse_opts(tmpcmdline, silent=False):
 		},
 
 	}
+
+	if _ENABLE_DYN_LINK_MAP:
+		argument_options["--depclean-lib-check"] = {
+			"help"    : "check for consumers of libraries before removing them",
+			"type"    : "choice",
+			"choices" : ("True", "n")
+		}
 
 	from optparse import OptionParser
 	parser = OptionParser()
