@@ -4,6 +4,7 @@
 import re
 import portage
 from portage import os
+from portage.const import PORTAGE_PYM_PATH
 from portage.tests import TestCase
 
 from _emerge.PollScheduler import PollScheduler
@@ -30,13 +31,24 @@ class LazyImportPortageBaselineTestCase(TestCase):
 		Check what modules are imported by a baseline module import.
 		"""
 
+		env = os.environ.copy()
+		pythonpath = env.get('PYTHONPATH')
+		if pythonpath is not None and not pythonpath.strip():
+			pythonpath = None
+		if pythonpath is None:
+			pythonpath = ''
+		else:
+			pythonpath = ':' + pythonpath
+		pythonpath = PORTAGE_PYM_PATH + pythonpath
+		env[pythonpath] = pythonpath
+
 		scheduler = PollScheduler().sched_iface
 		master_fd, slave_fd = os.pipe()
 		master_file = os.fdopen(master_fd, 'rb')
 		slave_file = os.fdopen(slave_fd, 'wb')
 		producer = SpawnProcess(
 			args=self._baseline_import_cmd,
-			env=os.environ, fd_pipes={1:slave_fd},
+			env=env, fd_pipes={1:slave_fd},
 			scheduler=scheduler)
 		producer.start()
 		slave_file.close()
