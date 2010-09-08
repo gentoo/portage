@@ -15,6 +15,8 @@ from portage.package.ebuild.config import config
 from portage._sets import load_default_config
 from portage.versions import catsplit
 
+import _emerge
+from _emerge.actions import calc_depclean
 from _emerge.Blocker import Blocker
 from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.depgraph import backtrack_depgraph
@@ -315,12 +317,23 @@ class ResolverPlayground(object):
 
 		if not self.debug:
 			portage.util.noiselimit = -2
-		params = create_depgraph_params(options, action)
-		success, depgraph, favorites = backtrack_depgraph(
-			self.settings, self.trees, options, params, action, atoms, None)
-		depgraph.display_problems()
-		result = ResolverPlaygroundResult(atoms, success, depgraph, favorites)
+		_emerge.emergelog._disable = True
+
+		if options.get("--depclean"):
+			rval, cleanlist, ordered, req_pkg_count = \
+				calc_depclean(self.settings, self.trees, None,
+				options, "depclean", atoms, None)
+			result = ResolverPlaygroundDepcleanResult( \
+				atoms, rval, cleanlist, ordered, req_pkg_count)
+		else:
+			params = create_depgraph_params(options, action)
+			success, depgraph, favorites = backtrack_depgraph(
+				self.settings, self.trees, options, params, action, atoms, None)
+			depgraph.display_problems()
+			result = ResolverPlaygroundResult(atoms, success, depgraph, favorites)
+
 		portage.util.noiselimit = 0
+		_emerge.emergelog._disable = False
 
 		return result
 
@@ -344,15 +357,6 @@ class ResolverPlayground(object):
 class ResolverPlaygroundTestCase(object):
 
 	def __init__(self, request, **kwargs):
-		self.checks = {
-			"success": None,
-			"mergelist": None,
-			"use_changes": None,
-			"unstable_keywords": None,
-			"slot_collision_solutions": None,
-			"circular_dependency_solutions": None,
-			}
-		
 		self.all_permutations = kwargs.pop("all_permutations", False)
 		self.ignore_mergelist_order = kwargs.pop("ignore_mergelist_order", False)
 
@@ -365,17 +369,23 @@ class ResolverPlaygroundTestCase(object):
 		self.action = kwargs.pop("action", None)
 		self.test_success = True
 		self.fail_msg = None
-		
-		for key, value in kwargs.items():
-			if not key in self.checks:
-				raise KeyError("Not an avaiable check: '%s'" % key)
-			self.checks[key] = value
-	
+		self._checks = kwargs.copy()
+
 	def compare_with_result(self, result):
+		checks = dict.fromkeys(result.checks)
+		for key, value in self._checks.items():
+			if not key in checks:
+				raise KeyError("Not an avaiable check: '%s'" % key)
+			checks[key] = value
+
 		fail_msgs = []
-		for key, value in self.checks.items():
+		for key, value in checks.items():
 			got = getattr(result, key)
 			expected = value
+
+			if key in result.optional_checks and expected is None:
+				continue
+
 			if key == "mergelist" and self.ignore_mergelist_order and got is not None :
 				got = set(got)
 				expected = set(expected)
@@ -392,6 +402,14 @@ class ResolverPlaygroundTestCase(object):
 		return True
 
 class ResolverPlaygroundResult(object):
+
+	checks = (
+		"success", "mergelist", "use_changes", "unstable_keywords", "slot_collision_solutions",
+		"circular_dependency_solutions",
+		)
+	optional_checks = (
+		)
+
 	def __init__(self, atoms, success, mydepgraph, favorites):
 		self.atoms = atoms
 		self.success = success
@@ -443,4 +461,19 @@ class ResolverPlaygroundResult(object):
 			handler = self.depgraph._dynamic_config._circular_dependency_handler
 			sol = handler.solutions
 			self.circular_dependency_solutions = dict( zip([x.cpv for x in sol.keys()], sol.values()) )
-			
+
+class ResolverPlaygroundDepcleanResult(object):
+
+	checks = (
+		"success", "cleanlist", "ordered", "req_pkg_count",
+		)
+	optional_checks = (
+		"ordered", "req_pkg_count",
+		)
+
+	def __init__(self, atoms, rval, cleanlist, ordered, req_pkg_count):
+		self.atoms = atoms
+		self.success = rval == 0
+		self.cleanlist = cleanlist
+		self.ordered = ordered
+		self.req_pkg_count = req_pkg_count
