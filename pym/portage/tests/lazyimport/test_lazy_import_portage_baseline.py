@@ -45,6 +45,10 @@ sys.stdout.write(" ".join(k for k in sys.modules
 			pythonpath = ':' + pythonpath
 		pythonpath = PORTAGE_PYM_PATH + pythonpath
 		env[pythonpath] = pythonpath
+
+		# If python is patched to insert the path of the
+		# currently installed portage module into sys.path,
+		# then the above PYTHONPATH override doesn't help.
 		env['PORTAGE_PYM_PATH'] = PORTAGE_PYM_PATH
 
 		scheduler = PollScheduler().sched_iface
