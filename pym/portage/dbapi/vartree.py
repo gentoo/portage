@@ -1830,6 +1830,9 @@ class dblink(object):
 			unmerge_desc["!obj"] = _("!obj")
 			unmerge_desc["!sym"] = _("!sym")
 
+			real_root = self.settings['ROOT']
+			real_root_len = len(real_root) - 1
+
 			for i, objkey in enumerate(mykeys):
 
 				if scheduler is not None and \
@@ -1870,8 +1873,11 @@ class dblink(object):
 				if lstatobj is None:
 						show_unmerge("---", unmerge_desc["!found"], file_type, obj)
 						continue
-				if obj.startswith(dest_root):
-					relative_path = obj[dest_root_len:]
+				# PREFIX LOCAL: don't use EROOT or you will unmerge a
+				# just upgraded package!
+				if obj.startswith(real_root):
+					relative_path = obj[real_root_len:]
+					# PREFIX LOCAL
 					is_owned = False
 					for dblnk in others_in_slot:
 						if dblnk.isowner(relative_path):
