@@ -64,6 +64,12 @@ class EbuildFetcher(SpawnProcess):
 		fetch_env['PORTAGE_CONFIGROOT'] = settings['PORTAGE_CONFIGROOT']
 
 		nocolor = settings.get("NOCOLOR")
+
+		if self.prefetch:
+			# prefetch always outputs to a log, so
+			# always disable color
+			nocolor = "true"
+
 		if nocolor is not None:
 			fetch_env["NOCOLOR"] = nocolor
 
