@@ -131,7 +131,7 @@ class EbuildBuild(CompositeTask):
 		self._start_task(pre_clean_phase, self._pre_clean_exit)
 
 	def _pre_clean_exit(self, pre_clean_phase):
-		if self._final_exit(pre_clean_phase) != os.EX_OK:
+		if self._default_exit(pre_clean_phase) != os.EX_OK:
 			self._unlock_builddir()
 			self.wait()
 			return
