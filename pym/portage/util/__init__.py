@@ -14,7 +14,10 @@ __all__ = ['apply_permissions', 'apply_recursive_permissions',
 import codecs
 from copy import deepcopy
 import errno
-from itertools import ifilterfalse
+try:
+	from itertools import filterfalse
+except ImportError:
+	from itertools import ifilterfalse as filterfalse
 import logging
 import re
 import shlex
@@ -737,7 +740,7 @@ def unique_everseen(iterable, key=None):
     seen = set()
     seen_add = seen.add
     if key is None:
-        for element in ifilterfalse(seen.__contains__, iterable):
+        for element in filterfalse(seen.__contains__, iterable):
             seen_add(element)
             yield element
     else:
