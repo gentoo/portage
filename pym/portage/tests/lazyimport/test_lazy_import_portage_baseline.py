@@ -4,6 +4,7 @@
 import re
 import portage
 from portage import os
+from portage.const import PORTAGE_PYM_PATH
 from portage.tests import TestCase
 
 from _emerge.PollScheduler import PollScheduler
@@ -20,15 +21,35 @@ class LazyImportPortageBaselineTestCase(TestCase):
 		'portage.proxy.objectproxy', 'portage._ensure_encodings',
 	])
 
-	_baseline_import_cmd = [portage._python_interpreter, '-c',
-		'import portage, sys ; ' + \
-		'sys.stdout.write(" ".join(k for k in sys.modules ' + \
-		'if sys.modules[k] is not None))']
+	_baseline_import_cmd = [portage._python_interpreter, '-c', '''
+import os
+import sys
+sys.path.insert(0, os.environ["PORTAGE_PYM_PATH"])
+import portage
+sys.stdout.write(" ".join(k for k in sys.modules
+	if sys.modules[k] is not None))
+''']
 
 	def testLazyImportPortageBaseline(self):
 		"""
 		Check what modules are imported by a baseline module import.
 		"""
+
+		env = os.environ.copy()
+		pythonpath = env.get('PYTHONPATH')
+		if pythonpath is not None and not pythonpath.strip():
+			pythonpath = None
+		if pythonpath is None:
+			pythonpath = ''
+		else:
+			pythonpath = ':' + pythonpath
+		pythonpath = PORTAGE_PYM_PATH + pythonpath
+		env[pythonpath] = pythonpath
+
+		# If python is patched to insert the path of the
+		# currently installed portage module into sys.path,
+		# then the above PYTHONPATH override doesn't help.
+		env['PORTAGE_PYM_PATH'] = PORTAGE_PYM_PATH
 
 		scheduler = PollScheduler().sched_iface
 		master_fd, slave_fd = os.pipe()
@@ -36,7 +57,7 @@ class LazyImportPortageBaselineTestCase(TestCase):
 		slave_file = os.fdopen(slave_fd, 'wb')
 		producer = SpawnProcess(
 			args=self._baseline_import_cmd,
-			env=os.environ, fd_pipes={1:slave_fd},
+			env=env, fd_pipes={1:slave_fd},
 			scheduler=scheduler)
 		producer.start()
 		slave_file.close()

@@ -383,7 +383,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				if all_in_graph:
 					if parent is None or priority is None:
 						pass
-					elif priority.buildtime:
+					elif priority.buildtime and \
+						not (priority.satisfied or priority.optional):
 						# Check if the atom would result in a direct circular
 						# dependency and try to avoid that if it seems likely
 						# to be unresolvable. This is only relevant for

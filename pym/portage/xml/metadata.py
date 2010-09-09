@@ -38,6 +38,7 @@ except ImportError:
 import re
 import portage
 from portage import os
+from portage.util import unique_everseen
 
 class _Maintainer(object):
 	"""An object for representing one maintainer.
@@ -328,10 +329,14 @@ class MetaDataXML(object):
 				maintainers.append(maintainer.email)
 
 		for herd, email in self.herds(include_email=True):
+			if herd == "no-herd":
+				continue
 			if email is None:
 				maintainers.append(herd)
 			else:
 				maintainers.append(email)
+
+		maintainers = list(unique_everseen(maintainers))
 
 		maint_str = ""
 		if maintainers:

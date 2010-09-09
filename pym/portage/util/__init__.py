@@ -8,12 +8,16 @@ __all__ = ['apply_permissions', 'apply_recursive_permissions',
 	'grabdict_package', 'grabfile', 'grabfile_package', 'grablines',
 	'initialize_logger', 'LazyItemsDict', 'map_dictlist_vals',
 	'new_protect_filename', 'normalize_path', 'pickle_read', 'stack_dictlist',
-	'stack_dicts', 'stack_lists', 'unique_array', 'varexpand', 'write_atomic',
-	'writedict', 'writemsg', 'writemsg_level', 'writemsg_stdout']
+	'stack_dicts', 'stack_lists', 'unique_array', 'unique_everseen', 'varexpand',
+	'write_atomic', 'writedict', 'writemsg', 'writemsg_level', 'writemsg_stdout']
 
 import codecs
 from copy import deepcopy
 import errno
+try:
+	from itertools import filterfalse
+except ImportError:
+	from itertools import ifilterfalse as filterfalse
 import logging
 import re
 import shlex
@@ -726,6 +730,26 @@ def unique_array(s):
 		if x not in u:
 			u.append(x)
 	return u
+
+def unique_everseen(iterable, key=None):
+    """
+    List unique elements, preserving order. Remember all elements ever seen.
+    Taken from itertools documentation.
+    """
+    # unique_everseen('AAAABBBCCDAABBB') --> A B C D
+    # unique_everseen('ABBCcAD', str.lower) --> A B C D
+    seen = set()
+    seen_add = seen.add
+    if key is None:
+        for element in filterfalse(seen.__contains__, iterable):
+            seen_add(element)
+            yield element
+    else:
+        for element in iterable:
+            k = key(element)
+            if k not in seen:
+                seen_add(k)
+                yield element
 
 def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 	stat_cached=None, follow_links=True):

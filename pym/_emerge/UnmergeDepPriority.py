@@ -17,6 +17,11 @@ class UnmergeDepPriority(AbstractDepPriority):
 	SOFT   = -2
 	MIN    = -2
 
+	def __init__(self, **kwargs):
+		AbstractDepPriority.__init__(self, **kwargs)
+		if self.buildtime:
+			self.optional = True
+
 	def __int__(self):
 		if self.runtime:
 			return 0

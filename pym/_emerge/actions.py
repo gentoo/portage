@@ -35,6 +35,7 @@ from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
+from portage.package.ebuild.doebuild import _check_temp_dir
 from portage._sets import load_default_config, SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, \
@@ -1096,21 +1097,20 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		for node in clean_set:
 			graph.add(node, None)
 			mydeps = []
-			node_use = node.metadata["USE"].split()
 			for dep_type in dep_keys:
 				depstr = node.metadata[dep_type]
 				if not depstr:
 					continue
-				success, atoms = portage.dep_check(depstr, None, settings,
-					myuse=node_use,
-					trees=resolver._dynamic_config._graph_trees,
-					myroot=myroot)
-				if not success:
+				priority = priority_map[dep_type]
+				try:
+					atoms = resolver._select_atoms(myroot, depstr,
+						myuse=node.use.enabled, parent=node,
+						priority=priority)[node]
+				except portage.exception.InvalidDependString:
 					# Ignore invalid deps of packages that will
 					# be uninstalled anyway.
 					continue
 
-				priority = priority_map[dep_type]
 				for atom in atoms:
 					if not isinstance(atom, portage.dep.Atom):
 						# Ignore invalid atoms returned from dep_check().
@@ -1854,6 +1854,12 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		os.makedirs(myportdir,0o755)
 		st = os.stat(myportdir)
 
+	# PORTAGE_TMPDIR is used below, so validate it and
+	# bail out if necessary.
+	rval = _check_temp_dir(settings)
+	if rval != os.EX_OK:
+		return rval
+
 	usersync_uid = None
 	spawn_kwargs = {}
 	spawn_kwargs["env"] = settings.environ()
@@ -2116,8 +2122,13 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			# --timeout option does not prevent.
 			if True:
 				# Temporary file for remote server timestamp comparison.
-				from tempfile import mkstemp
-				fd, tmpservertimestampfile = mkstemp()
+				# NOTE: If FEATURES=usersync is enabled then the tempfile
+				# needs to be in a directory that's readable by the usersync
+				# user. We assume that PORTAGE_TMPDIR will satisfy this
+				# requirement, since that's not necessarily true for the
+				# default directory used by the tempfile module.
+				fd, tmpservertimestampfile = \
+					tempfile.mkstemp(dir=settings['PORTAGE_TMPDIR'])
 				os.close(fd)
 				if usersync_uid is not None:
 					portage.util.apply_permissions(tmpservertimestampfile,
