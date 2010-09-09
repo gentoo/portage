@@ -262,7 +262,11 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 	for repo_name, update_iter in update_items:
 		for update_cmd in update_iter:
 			for x, contents in file_contents.items():
+				skip_next = False
 				for pos, line in enumerate(contents):
+					if skip_next:
+						skip_next = False
+						continue
 					if ignore_line_re.match(line):
 						continue
 					atom = line.split()[0]
@@ -274,7 +278,16 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 					new_atom = update_dbentry(update_cmd, atom)
 					if atom != new_atom:
 						if match_callback(repo_name, atom, new_atom):
-							contents[pos] = line.replace(atom, new_atom, 1)
+							# add a comment with the update command, so
+							# the user can clearly see what happened
+							contents[pos] = "# %s\n" % \
+								" ".join("%s" % (x,) for x in update_cmd)
+							contents.insert(pos + 1,
+								line.replace("%s" % (atom,),
+								"%s" % (new_atom,), 1))
+							# we've inserted an additional line, so we need to
+							# skip it when it's reached in the next iteration
+							skip_next = True
 							update_files[x] = 1
 							sys.stdout.write("p")
 							sys.stdout.flush()
