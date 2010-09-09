@@ -2115,8 +2115,13 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			# --timeout option does not prevent.
 			if True:
 				# Temporary file for remote server timestamp comparison.
-				from tempfile import mkstemp
-				fd, tmpservertimestampfile = mkstemp()
+				# NOTE: If FEATURES=usersync is enabled then the tempfile
+				# needs to be in a directory that's readable by the usersync
+				# user. We assume that PORTAGE_TMPDIR will satisfy this
+				# requirement, since that's not necessarily true for the
+				# default directory used by the tempfile module.
+				fd, tmpservertimestampfile = \
+					tempfile.mkstemp(dir=settings['PORTAGE_TMPDIR'])
 				os.close(fd)
 				if usersync_uid is not None:
 					portage.util.apply_permissions(tmpservertimestampfile,
