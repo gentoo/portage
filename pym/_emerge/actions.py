@@ -35,6 +35,7 @@ from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
+from portage.package.ebuild.doebuild import _check_temp_dir
 from portage._sets import load_default_config, SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, \
@@ -1852,6 +1853,12 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		print(">>>",myportdir,"not found, creating it.")
 		os.makedirs(myportdir,0o755)
 		st = os.stat(myportdir)
+
+	# PORTAGE_TMPDIR is used below, so validate it and
+	# bail out if necessary.
+	rval = _check_temp_dir(settings)
+	if rval != os.EX_OK:
+		return rval
 
 	usersync_uid = None
 	spawn_kwargs = {}
