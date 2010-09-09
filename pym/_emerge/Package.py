@@ -5,6 +5,7 @@ import sys
 from itertools import chain
 import portage
 from portage.cache.mappings import slot_dict_class
+from portage.const import EBUILD_PHASES
 from portage.dep import Atom, check_required_use, use_reduce, \
 	paren_enclose, _slot_re
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
@@ -490,4 +491,13 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 
 	@property
 	def defined_phases(self):
-		return self['DEFINED_PHASES'].split()
+		"""
+		Returns tokens from DEFINED_PHASES metadata if it is defined,
+		otherwise returns a tuple containing all possible phases. This
+		makes it easy to do containment checks to see if it's safe to
+		skip execution of a given phase.
+		"""
+		s = self['DEFINED_PHASES']
+		if s:
+			return s.split()
+		return EBUILD_PHASES
