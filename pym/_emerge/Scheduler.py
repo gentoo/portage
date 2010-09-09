@@ -923,8 +923,12 @@ class Scheduler(PollScheduler):
 			if myopt not in bad_resume_opts:
 				if myarg is True:
 					mynewargv.append(myopt)
+				elif isinstance(myarg, list):
+					# arguments like --exclude that use 'append' action
+					for x in myarg:
+						mynewargv.append("%s=%s" % (myopt, x))
 				else:
-					mynewargv.append(myopt +"="+ str(myarg))
+					mynewargv.append("%s=%s" % (myopt, myarg))
 		# priority only needs to be adjusted on the first run
 		os.environ["PORTAGE_NICENESS"] = "0"
 		os.execv(mynewargv[0], mynewargv)
