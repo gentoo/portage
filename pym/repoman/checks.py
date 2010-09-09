@@ -372,7 +372,8 @@ class InheritDeprecated(LineCheck):
 		"qt3": False,
 		"qt4": "qt4-r2",
 		"ruby": "ruby-ng",
-		"ruby-gnome2": "ruby-ng-gnome2"
+		"ruby-gnome2": "ruby-ng-gnome2",
+		"x-modular": "xorg-2",
 		}
 
 	_inherit_re = re.compile(r'^\s*inherit\s(.*)$')
