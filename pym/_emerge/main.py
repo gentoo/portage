@@ -1306,7 +1306,7 @@ def emerge_main():
 
 	if myaction not in ('help', 'info', 'version') and \
 		myopts.get('--package-moves') != 'n' and \
-		_global_updates(trees, mtimedb["updates"]):
+		_global_updates(trees, mtimedb["updates"], quiet=("--quiet" in myopts)):
 		mtimedb.commit()
 		# Reload the whole config from scratch.
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
