@@ -154,7 +154,6 @@ class EbuildBuild(CompositeTask):
 			self._fetch_failed()
 			return
 
-		portage.elog.elog_process(self.pkg.cpv, self.settings)
 		# discard successful fetch log
 		self._build_dir.clean_log()
 		pkg = self.pkg
