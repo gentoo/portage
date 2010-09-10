@@ -591,7 +591,7 @@ install_qa_check() {
 				if [[ $always_overflow = yes ]] ; then
 					eerror
 					eerror "QA Notice: Package has poor programming practices which may compile"
-					eerror "           but will almost certainly crash on 64bit architectures."
+					eerror "           fine but exhibit random runtime failures."
 					eerror
 					eerror "${f}"
 					eerror
