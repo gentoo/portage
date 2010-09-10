@@ -2177,6 +2177,13 @@ class depgraph(object):
 			if not missing_iuse and myparent and atom.unevaluated_atom.use.conditional:
 				# Lets see if the violated use deps are conditional.
 				# If so, suggest to change them on the parent.
+
+				# If the child package is masked then a change to
+				# parent USE is not a valid solution (a normal mask
+				# message should be displayed instead).
+				if pkg in masked_pkg_instances:
+					continue
+
 				mreasons = []
 				violated_atom = atom.unevaluated_atom.violated_conditionals(self._pkg_use_enabled(pkg), \
 					pkg.iuse.is_valid_flag, self._pkg_use_enabled(myparent))
