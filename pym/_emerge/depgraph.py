@@ -2151,6 +2151,14 @@ class depgraph(object):
 				need_enable = sorted(atom.use.enabled.difference(use).intersection(pkg.iuse.all))
 				need_disable = sorted(atom.use.disabled.intersection(use).intersection(pkg.iuse.all))
 
+				pkgsettings = self._frozen_config.pkgsettings[pkg.root]
+				pkgsettings.setcpv(pkg)
+				untouchable_flags = \
+					frozenset(chain(pkgsettings.usemask, pkgsettings.useforce))
+				if untouchable_flags.intersection(
+					chain(need_enable, need_disable)):
+					continue
+
 				required_use = pkg.metadata["REQUIRED_USE"]
 				required_use_warning = ""
 				if required_use:
@@ -2193,6 +2201,13 @@ class depgraph(object):
 					conditional = violated_atom.use.conditional
 					involved_flags = set(chain(conditional.equal, conditional.not_equal, \
 						conditional.enabled, conditional.disabled))
+
+					pkgsettings = self._frozen_config.pkgsettings[myparent.root]
+					pkgsettings.setcpv(myparent)
+					untouchable_flags = \
+						frozenset(chain(pkgsettings.usemask, pkgsettings.useforce))
+					if untouchable_flags.intersection(involved_flags):
+						continue
 
 					required_use = myparent.metadata["REQUIRED_USE"]
 					required_use_warning = ""
