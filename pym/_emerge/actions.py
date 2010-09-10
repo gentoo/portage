@@ -2339,7 +2339,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		trees[settings["ROOT"]]["vartree"].dbapi.match(
 		portage.const.PORTAGE_PACKAGE_ATOM))
 
-	chk_updated_cfg_files("/",
+	chk_updated_cfg_files(settings["EROOT"],
 		portage.util.shlex_split(settings.get("CONFIG_PROTECT", "")))
 
 	if myaction != "metadata":
@@ -2809,7 +2809,8 @@ def load_emerge_config(trees=None):
 	QueryCommand._db = trees
 	return settings, trees, mtimedb
 
-def chk_updated_cfg_files(target_root, config_protect):
+def chk_updated_cfg_files(eroot, config_protect):
+	target_root = eroot
 	result = list(
 		portage.util.find_updated_config_files(target_root, config_protect))
 

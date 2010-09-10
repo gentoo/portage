@@ -361,7 +361,7 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 			if vdb_lock:
 				portage.locks.unlockdir(vdb_lock)
 
-	chk_updated_cfg_files(target_root, config_protect)
+	chk_updated_cfg_files(settings['EROOT'], config_protect)
 
 	display_news_notification(root_config, myopts)
 	if retval in (None, os.EX_OK) or (not "--pretend" in myopts):
