@@ -5,6 +5,7 @@
 # This is a helper which ebuild processes can use
 # to communicate with portage's main python process.
 
+import array
 import logging
 import os
 import pickle
@@ -34,6 +35,7 @@ portage._disable_legacy_globals()
 class EbuildIpc(object):
 
 	_COMMUNICATE_TIMEOUT_SECONDS = 40
+	_BUFSIZE = 4096
 
 	def __init__(self):
 		self.fifo_dir = os.environ['PORTAGE_BUILDDIR']
@@ -82,31 +84,33 @@ class EbuildIpc(object):
 
 		events = select.select([input_file], [], [])
 
-		# Read the whole pickle in a single read() call since
-		# this stream is in non-blocking mode and pickle.load()
-		# has been known to raise the following exception when
-		# reading from a non-blocking stream:
-		#
-		#   File "/usr/lib64/python2.6/pickle.py", line 1370, in load
-		#     return Unpickler(file).load()
-		#   File "/usr/lib64/python2.6/pickle.py", line 858, in load
-		#     dispatch[key](self)
-		#   File "/usr/lib64/python2.6/pickle.py", line 1195, in load_setitem
-		#     value = stack.pop()
-		# IndexError: pop from empty list
+		# Read the whole pickle in a single atomic read() call.
+		buf = array.array('B')
+		try:
+			buf.fromfile(input_file, self._BUFSIZE)
+		except EOFError as e:
+			#portage.util.writemsg("%s\n" % (e), noiselevel=-1)
+			pass
+		except IOError as e:
+			portage.util.writemsg("%s\n" % (e), noiselevel=-1)
 
-		pickle_str = input_file.read()
-		reply = pickle.loads(pickle_str)
-		output_file.close()
-		input_file.close()
+		if buf:
 
-		(out, err, rval) = reply
+			reply = pickle.loads(buf.tostring())
+			output_file.close()
+			input_file.close()
 
-		if out:
-			portage.util.writemsg_stdout(out, noiselevel=-1)
+			(out, err, rval) = reply
 
-		if err:
-			portage.util.writemsg(err, noiselevel=-1)
+			if out:
+				portage.util.writemsg_stdout(out, noiselevel=-1)
+
+			if err:
+				portage.util.writemsg(err, noiselevel=-1)
+
+		else:
+
+			rval = 2
 
 		return rval
 

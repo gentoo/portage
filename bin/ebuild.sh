@@ -180,13 +180,13 @@ has_version() {
 		die "portageq calls (has_version calls portageq) are not allowed in the global scope"
 	fi
 
+	local retval
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
 		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "$ROOT" "$1"
-		return $?
+	else
+		PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
+		"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" has_version "${ROOT}" "$1"
 	fi
-
-	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-	"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" has_version "${ROOT}" "$1"
 	local retval=$?
 	case "${retval}" in
 		0)
@@ -225,11 +225,10 @@ best_version() {
 
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
 		"$PORTAGE_BIN_PATH"/ebuild-ipc best_version "$ROOT" "$1"
-		return $?
+	else
+		PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
+		"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" 'best_version' "${ROOT}" "$1"
 	fi
-
-	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-	"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" 'best_version' "${ROOT}" "$1"
 	local retval=$?
 	case "${retval}" in
 		0)
