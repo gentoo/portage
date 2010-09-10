@@ -144,7 +144,7 @@ prepcompress() {
 }
 
 install_qa_check() {
-	local f
+	local f x
 
 	cd "${D}" || die "cd failed"
 
@@ -153,6 +153,17 @@ install_qa_check() {
 	hasq "${EAPI}" 0 1 2 3 || prepcompress
 	ecompressdir --dequeue
 	ecompress --dequeue
+
+	f=
+	for x in etc/app-defaults usr/man usr/info usr/X11R6 usr/doc usr/locale ; do
+		[[ -d $D/$x ]] && f+="  $x\n"
+	done
+
+	if [[ -n $f ]] ; then
+		eqawarn "QA Notice: This ebuild installs into the following deprecated directories:"
+		eqawarn
+		eqawarn "$f"
+	fi
 
 	# Now we look for all world writable files.
 	local i
