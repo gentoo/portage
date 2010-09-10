@@ -590,6 +590,9 @@ install_qa_check() {
 				eqawarn "${f}"
 				vecho -ne '\n'
 				abort="yes"
+				case "$m" in
+					": warning: call to .* will always overflow destination buffer$") gentoo_bug=yes ;;
+				esac
 			fi
 		done
 		local cat_cmd=cat
