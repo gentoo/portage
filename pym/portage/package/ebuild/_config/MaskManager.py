@@ -5,6 +5,7 @@ __all__ = (
 	'MaskManager',
 )
 
+from itertools import chain
 from portage import os
 from portage.dep import ExtendedAtomDict, match_from_list
 from portage.util import grabfile_package, stack_lists
@@ -16,27 +17,59 @@ class MaskManager(object):
 		self._punmaskdict = ExtendedAtomDict(list)
 		self._pmaskdict = ExtendedAtomDict(list)
 
-		pkgmasklines = []
-		pkgunmasklines = []
-		for x in pmask_locations:
-			pkgmasklines.append(grabfile_package(
-				os.path.join(x, "package.mask"), recursive=1))
-			pkgunmasklines.append(grabfile_package(
-				os.path.join(x, "package.unmask"), recursive=1))
+		repo_profiles, profiles = pmask_locations
 
+		#Read profile/package.mask form every repo. Stack them immediatly
+		#to make sure that -atoms don't effect other repos.
+		repo_pkgmasklines = []
+		repo_pkgunmasklines = []
+		for x in repo_profiles:
+			repo_pkgmasklines.append(stack_lists([grabfile_package(
+				os.path.join(x, "package.mask"), recursive=1, remember_source_file=True)], \
+					incremental=1, remember_source_file=True, warn_for_unmatched_removal=True))
+			repo_pkgunmasklines.append(stack_lists([grabfile_package(
+				os.path.join(x, "package.unmask"), recursive=1, remember_source_file=True)], \
+				incremental=1, remember_source_file=True, warn_for_unmatched_removal=True))
+		repo_pkgmasklines = list(chain.from_iterable(repo_pkgmasklines))
+		repo_pkgunmasklines = list(chain.from_iterable(repo_pkgunmasklines))
+
+		#Read package.mask form the user's profile. Stack them in the end
+		#to allow profiles to override masks from their parent profiles.
+		profile_pkgmasklines = []
+		profile_pkgunmasklines = []
+		for x in profiles:
+			profile_pkgmasklines.append(grabfile_package(
+				os.path.join(x, "package.mask"), recursive=1, remember_source_file=True))
+			profile_pkgunmasklines.append(grabfile_package(
+				os.path.join(x, "package.unmask"), recursive=1, remember_source_file=True))
+		profile_pkgmasklines = stack_lists(profile_pkgmasklines, incremental=1, \
+			remember_source_file=True, warn_for_unmatched_removal=True)
+		profile_pkgunmasklines = stack_lists(profile_pkgunmasklines, incremental=1, \
+			remember_source_file=True, warn_for_unmatched_removal=True)
+
+		#Read /etc/portage/package.mask. Don't stack it to allow the user to
+		#remove mask atoms from everywhere with -atoms.
+		user_pkgmasklines = []
+		user_pkgunmasklines = []
 		if user_config:
-			pkgmasklines.append(grabfile_package(
-				os.path.join(abs_user_config, "package.mask"), recursive=1, allow_wildcard=True))
-			pkgunmasklines.append(grabfile_package(
-				os.path.join(abs_user_config, "package.unmask"), recursive=1, allow_wildcard=True))
+			user_pkgmasklines = grabfile_package(
+				os.path.join(abs_user_config, "package.mask"), recursive=1, \
+				allow_wildcard=True, remember_source_file=True)
+			user_pkgunmasklines = grabfile_package(
+				os.path.join(abs_user_config, "package.unmask"), recursive=1, \
+				allow_wildcard=True, remember_source_file=True)
 
-		pkgmasklines = stack_lists(pkgmasklines, incremental=1)
-		pkgunmasklines = stack_lists(pkgunmasklines, incremental=1)
+		#Stack verything together. At this point, only user_pkgmasklines may contain -atoms.
+		#Don't warn for unmathed -atoms here, since we don't do it for any other user config file.
+		pkgmasklines = stack_lists([repo_pkgmasklines, profile_pkgmasklines, user_pkgmasklines], \
+			incremental=1, remember_source_file=True, warn_for_unmatched_removal=False)
+		pkgunmasklines = stack_lists([repo_pkgunmasklines, profile_pkgunmasklines, user_pkgunmasklines], \
+			incremental=1, remember_source_file=True, warn_for_unmatched_removal=False)
 
-		for x in pkgmasklines:
+		for x, source_file in pkgmasklines:
 			self._pmaskdict.setdefault(x.cp, []).append(x)
 
-		for x in pkgunmasklines:
+		for x, source_file in pkgunmasklines:
 			self._punmaskdict.setdefault(x.cp, []).append(x)
 
 		for d in (self._pmaskdict, self._punmaskdict):
