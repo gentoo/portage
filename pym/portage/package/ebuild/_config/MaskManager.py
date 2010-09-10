@@ -19,7 +19,7 @@ class MaskManager(object):
 
 		repo_profiles, profiles = pmask_locations
 
-		#Read profile/package.mask form every repo. Stack them immediatly
+		#Read profile/package.mask form every repo. Stack them immediately
 		#to make sure that -atoms don't effect other repos.
 		repo_pkgmasklines = []
 		repo_pkgunmasklines = []
@@ -59,7 +59,7 @@ class MaskManager(object):
 				os.path.join(abs_user_config, "package.unmask"), recursive=1, \
 				allow_wildcard=True, remember_source_file=True)
 
-		#Stack verything together. At this point, only user_pkgmasklines may contain -atoms.
+		#Stack everything together. At this point, only user_pkgmasklines may contain -atoms.
 		#Don't warn for unmathed -atoms here, since we don't do it for any other user config file.
 		pkgmasklines = stack_lists([repo_pkgmasklines, profile_pkgmasklines, user_pkgmasklines], \
 			incremental=1, remember_source_file=True, warn_for_unmatched_removal=False)
