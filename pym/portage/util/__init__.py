@@ -115,13 +115,14 @@ def normalize_path(mypath):
 	else:
 		return os.path.normpath(mypath)
 
-def grabfile(myfilename, compat_level=0, recursive=0):
+def grabfile(myfilename, compat_level=0, recursive=0, remember_source_file=False):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a list; if a line
 	begins with a #, it is ignored, as are empty lines"""
 
-	mylines=grablines(myfilename, recursive)
+	mylines=grablines(myfilename, recursive, remember_source_file=True)
 	newlines=[]
-	for x in mylines:
+
+	for x, source_file in mylines:
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
 		#into single spaces.
 		myline = _unicode_decode(' ').join(x.split())
@@ -141,7 +142,10 @@ def grabfile(myfilename, compat_level=0, recursive=0):
 				continue
 			else:
 				continue
-		newlines.append(myline)
+		if remember_source_file:
+			newlines.append((myline, source_file))
+		else:
+			newlines.append(myline)
 	return newlines
 
 def map_dictlist_vals(func,myDict):
@@ -227,25 +231,41 @@ def stack_dicts(dicts, incremental=0, incrementals=[], ignore_none=0):
 				final_dict[k]  = v
 	return final_dict
 
-def stack_lists(lists, incremental=1):
+def stack_lists(lists, incremental=1, remember_source_file=False, warn_for_unmatched_removal=False):
 	"""Stacks an array of list-types into one array. Optionally removing
 	distinct values using '-value' notation. Higher index is preferenced.
 
 	all elements must be hashable."""
-
 	new_list = {}
-	for x in lists:
-		for y in filter(None, x):
-			if incremental:
-				if y == "-*":
-					new_list.clear()
-				elif y[:1] == '-':
-					new_list.pop(y[1:], None)
-				else:
-					new_list[y] = True
+	for sub_list in lists:
+		for token in sub_list:
+			if remember_source_file:
+				token, source_file = token
 			else:
-				new_list[y] = True
-	return list(new_list)
+				source_file = False
+
+			if token is None:
+				continue
+
+			if incremental:
+				if token == "-*":
+					new_list.clear()
+				elif token[:1] == '-':
+					try:
+						new_list.pop(token[1:])
+					except KeyError:
+						if warn_for_unmatched_removal:
+							writemsg(_("--- Unmatch removal atom in %s: %s\n") % (source_file, token),
+								noiselevel=-1)
+				else:
+					new_list[token] = source_file
+			else:
+				new_list[token] = source_file
+
+	if remember_source_file:
+		return list(new_list.items())
+	else:
+		return list(new_list)
 
 def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 	"""
@@ -307,11 +327,11 @@ def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=Fals
 			atoms[k] = v
 	return atoms
 
-def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=False):
-	pkgs=grabfile(myfilename, compatlevel, recursive=recursive)
+def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=False, remember_source_file=False):
+	pkgs=grabfile(myfilename, compatlevel, recursive=recursive, remember_source_file=True)
 	mybasename = os.path.basename(myfilename)
 	atoms = []
-	for pkg in pkgs:
+	for pkg, source_file in pkgs:
 		pkg_orig = pkg
 		# for packages and package.mask files
 		if pkg[:1] == "-":
@@ -326,13 +346,19 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=Fals
 		else:
 			if pkg_orig == str(pkg):
 				# normal atom, so return as Atom instance
-				atoms.append(pkg)
+				if remember_source_file:
+					atoms.append((pkg, source_file))
+				else:
+					atoms.append(pkg)
 			else:
 				# atom has special prefix, so return as string
-				atoms.append(pkg_orig)
+				if remember_source_file:
+					atoms.append((pkg_orig, source_file))
+				else:
+					atoms.append(pkg_orig)
 	return atoms
 
-def grablines(myfilename,recursive=0):
+def grablines(myfilename, recursive=0, remember_source_file=False):
 	mylines=[]
 	if recursive and os.path.isdir(myfilename):
 		if os.path.basename(myfilename) in _ignorecvs_dirs:
@@ -342,13 +368,16 @@ def grablines(myfilename,recursive=0):
 		for f in dirlist:
 			if not f.startswith(".") and not f.endswith("~"):
 				mylines.extend(grablines(
-					os.path.join(myfilename, f), recursive))
+					os.path.join(myfilename, f), recursive, remember_source_file))
 	else:
 		try:
 			myfile = codecs.open(_unicode_encode(myfilename,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['content'], errors='replace')
-			mylines = myfile.readlines()
+			if remember_source_file:
+				mylines = [(line, myfilename) for line in myfile.readlines()]
+			else:
+				mylines = myfile.readlines()
 			myfile.close()
 		except IOError as e:
 			if e.errno == PermissionDenied.errno:
