@@ -94,23 +94,27 @@ class EbuildIpc(object):
 		except IOError as e:
 			portage.util.writemsg("%s\n" % (e,), noiselevel=-1)
 
+		rval = 2
+
 		if buf:
 
-			reply = pickle.loads(buf.tostring())
-			output_file.close()
-			input_file.close()
+			try:
+				reply = pickle.loads(buf.tostring())
+			except (EnvironmentError, EOFError, ValueError,
+				pickle.UnpicklingError) as e:
+				portage.util.writemsg("%s\n" % (e,), noiselevel=-1)
 
-			(out, err, rval) = reply
+			else:
+				output_file.close()
+				input_file.close()
 
-			if out:
-				portage.util.writemsg_stdout(out, noiselevel=-1)
+				(out, err, rval) = reply
 
-			if err:
-				portage.util.writemsg(err, noiselevel=-1)
+				if out:
+					portage.util.writemsg_stdout(out, noiselevel=-1)
 
-		else:
-
-			rval = 2
+				if err:
+					portage.util.writemsg(err, noiselevel=-1)
 
 		return rval
 
