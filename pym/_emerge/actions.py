@@ -73,6 +73,10 @@ def action_build(settings, trees, mtimedb,
 	if '--usepkgonly' not in myopts:
 		old_tree_timestamp_warn(settings['PORTDIR'], settings)
 
+	# It's best for config updates in /etc/portage to be processed
+	# before we get here, so warn if they're not (bug #267103).
+	chk_updated_cfg_files(settings['EROOT'], ['/etc/portage'])
+
 	# validate the state of the resume data
 	# so that we can make assumptions later.
 	for k in ("resume", "resume_backup"):
