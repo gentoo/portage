@@ -180,7 +180,6 @@ has_version() {
 		die "portageq calls (has_version calls portageq) are not allowed in the global scope"
 	fi
 
-	local retval
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
 		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "$ROOT" "$1"
 	else
