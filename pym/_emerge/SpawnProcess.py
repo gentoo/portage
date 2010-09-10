@@ -1,8 +1,7 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.SubProcess import SubProcess
-from _emerge.PollConstants import PollConstants
 import sys
 from portage.cache.mappings import slot_dict_class
 import portage
@@ -11,7 +10,6 @@ from portage import _unicode_encode
 from portage import os
 import fcntl
 import errno
-import array
 import gzip
 
 class SpawnProcess(SubProcess):
@@ -150,14 +148,10 @@ class SpawnProcess(SubProcess):
 
 	def _output_handler(self, fd, event):
 
-		if event & PollConstants.POLLIN:
+		files = self._files
+		buf = self._read_buf(files.process, event)
 
-			files = self._files
-			buf = array.array('B')
-			try:
-				buf.fromfile(files.process, self._bufsize)
-			except (EOFError, IOError):
-				pass
+		if buf is not None:
 
 			if buf:
 				if not self.background:
@@ -215,13 +209,9 @@ class SpawnProcess(SubProcess):
 		monitor the process from inside a poll() loop.
 		"""
 
-		if event & PollConstants.POLLIN:
+		buf = self._read_buf(self._files.process, event)
 
-			buf = array.array('B')
-			try:
-				buf.fromfile(self._files.process, self._bufsize)
-			except (EOFError, IOError):
-				pass
+		if buf is not None:
 
 			if buf:
 				pass
