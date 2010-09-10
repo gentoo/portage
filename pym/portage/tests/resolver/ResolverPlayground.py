@@ -32,7 +32,8 @@ class ResolverPlayground(object):
 	config_files = frozenset(("package.use", "package.mask", "package.keywords", \
 		"package.unmask", "package.properties", "package.license"))
 
-	def __init__(self, ebuilds={}, installed={}, profile={}, user_config={}, sets={}, world=[], debug=False):
+	def __init__(self, ebuilds={}, installed={}, profile={}, repo_config={}, \
+		user_config={}, sets={}, world=[], debug=False):
 		"""
 		ebuilds: cpv -> metadata mapping simulating avaiable ebuilds. 
 		installed: cpv -> metadata mapping simulating installed packages.
@@ -53,7 +54,7 @@ class ResolverPlayground(object):
 
 		self._create_ebuilds(ebuilds)
 		self._create_installed(installed)
-		self._create_profile(ebuilds, installed, profile, user_config, sets)
+		self._create_profile(ebuilds, installed, profile, repo_config, user_config, sets)
 		self._create_world(world)
 
 		self.settings, self.trees = self._load_config()
@@ -161,7 +162,7 @@ class ResolverPlayground(object):
 			if required_use is not None:
 				write_key("REQUIRED_USE", required_use)
 
-	def _create_profile(self, ebuilds, installed, profile, user_config, sets):
+	def _create_profile(self, ebuilds, installed, profile, repo_config, user_config, sets):
 		#Create $PORTDIR/profiles/categories
 		categories = set()
 		for cpv in chain(ebuilds.keys(), installed.keys()):
@@ -187,6 +188,17 @@ class ResolverPlayground(object):
 		f.write("EULA TEST\n")
 		f.close()
 
+		if repo_config:
+			for config_file, lines in repo_config.items():
+				if config_file not in self.config_files:
+					raise ValueError("Unknown config file: '%s'" % config_file)
+	
+				file_name = os.path.join(profile_dir, config_file)
+				f = open(file_name, "w")
+				for line in lines:
+					f.write("%s\n" % line)
+				f.close()
+
 		#Create $profile_dir/eclass (we fail to digest the ebuilds if it's not there)
 		os.makedirs(os.path.join(self.portdir, "eclass"))
 
@@ -210,9 +222,15 @@ class ResolverPlayground(object):
 		f.close()
 
 		if profile:
-			#This is meant to allow the consumer to set up his own profile,
-			#with package.mask and what not.
-			raise NotImplementedError()
+			for config_file, lines in profile.items():
+				if config_file not in self.config_files:
+					raise ValueError("Unknown config file: '%s'" % config_file)
+	
+				file_name = os.path.join(sub_profile_dir, config_file)
+				f = open(file_name, "w")
+				for line in lines:
+					f.write("%s\n" % line)
+				f.close()
 
 		#Create profile symlink
 		os.makedirs(os.path.join(self.eroot, "etc"))
