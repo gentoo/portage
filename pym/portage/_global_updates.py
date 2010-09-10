@@ -222,11 +222,15 @@ def _global_updates(trees, prev_mtimes, quiet=False):
 				def onUpdate(maxval, curval):
 					if curval > 0:
 						writemsg_stdout("#")
+				if quiet:
+					onUpdate = None
 				vardb.update_ents(repo_map, onUpdate=onUpdate)
 				if bindb:
 					def onUpdate(maxval, curval):
 						if curval > 0:
 							writemsg_stdout("*")
+					if quiet:
+						onUpdate = None
 					bindb.update_ents(repo_map, onUpdate=onUpdate)
 			else:
 				do_upgrade_packagesmessage = 1
