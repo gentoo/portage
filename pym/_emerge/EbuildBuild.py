@@ -150,12 +150,11 @@ class EbuildBuild(CompositeTask):
 
 	def _fetch_exit(self, fetcher):
 
-		portage.elog.elog_process(self.pkg.cpv, self.settings)
-
 		if self._default_exit(fetcher) != os.EX_OK:
 			self._fetch_failed()
 			return
 
+		portage.elog.elog_process(self.pkg.cpv, self.settings)
 		# discard successful fetch log
 		self._build_dir.clean_log()
 		pkg = self.pkg
