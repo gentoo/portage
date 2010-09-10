@@ -89,10 +89,10 @@ class EbuildIpc(object):
 		try:
 			buf.fromfile(input_file, self._BUFSIZE)
 		except EOFError as e:
-			#portage.util.writemsg("%s\n" % (e), noiselevel=-1)
+			#portage.util.writemsg("%s\n" % (e,), noiselevel=-1)
 			pass
 		except IOError as e:
-			portage.util.writemsg("%s\n" % (e), noiselevel=-1)
+			portage.util.writemsg("%s\n" % (e,), noiselevel=-1)
 
 		if buf:
 
