@@ -108,6 +108,9 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 					for cpv in distfiles_map[myfile]:
 						uris.update(myportdb.getFetchMap(
 							cpv, mytree=mytree)[myfile])
+						restrict_fetch = 'fetch' in \
+							myportdb.aux_get(cpv, ['RESTRICT'],
+							mytree=mytree)[0].split()
 
 					try:
 						st = os.stat(os.path.join(
@@ -115,7 +118,8 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 					except OSError:
 						st = None
 
-					if not fetch({myfile : uris}, mysettings):
+					if restrict_fetch or \
+						not fetch({myfile : uris}, mysettings):
 						myebuild = os.path.join(mysettings["O"],
 							catsplit(cpv)[1] + ".ebuild")
 						spawn_nofetch(myportdb, myebuild,
