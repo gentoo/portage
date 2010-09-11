@@ -60,7 +60,7 @@ class MaskManager(object):
 				allow_wildcard=True, remember_source_file=True)
 
 		#Stack everything together. At this point, only user_pkgmasklines may contain -atoms.
-		#Don't warn for unmathed -atoms here, since we don't do it for any other user config file.
+		#Don't warn for unmatched -atoms here, since we don't do it for any other user config file.
 		pkgmasklines = stack_lists([repo_pkgmasklines, profile_pkgmasklines, user_pkgmasklines], \
 			incremental=1, remember_source_file=True, warn_for_unmatched_removal=False)
 		pkgunmasklines = stack_lists([repo_pkgunmasklines, profile_pkgunmasklines, user_pkgunmasklines], \
