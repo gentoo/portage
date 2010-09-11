@@ -193,19 +193,18 @@ class EbuildBuild(CompositeTask):
 		self._start_task(build, self._build_exit)
 
 	def _fetch_failed(self):
-		# If RESTRICT=fetch is set, then the nofetch phase
-		# should have been executed already, so don't do
-		# it again.
-		if 'fetch' in self.pkg.metadata.restrict or \
-		'nofetch' not in self.pkg.metadata.defined_phases:
+		# We only call the pkg_nofetch phase if either RESTRICT=fetch
+		# is set or the package has explicitly overridden the default
+		# pkg_nofetch implementation. This allows specialized messages
+		# to be displayed for problematic packages even though they do
+		# not set RESTRICT=fetch (bug #336499).
+
+		if 'fetch' not in self.pkg.metadata.restrict and \
+			'nofetch' not in self.pkg.metadata.defined_phases:
 			self._unlock_builddir()
 			self.wait()
 			return
 
-		# The package has defined a pkg_nofetch phase, even
-		# though RESTRICT=fetch is not set, so go ahead and
-		# run it. This allows specialized messages to be
-		# displayed for problematic packages (bug #336499).
 		self.returncode = None
 		nofetch_phase = EbuildPhase(background=self.background,
 			phase='nofetch', scheduler=self.scheduler, settings=self.settings)

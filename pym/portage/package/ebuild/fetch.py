@@ -1054,55 +1054,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					(mysettings["CATEGORY"], mysettings["PF"])
 				writemsg_level(msg,
 					level=logging.ERROR, noiselevel=-1)
-				have_builddir = "PORTAGE_BUILDDIR" in mysettings and \
-					os.path.isdir(mysettings["PORTAGE_BUILDDIR"])
-
-				global_tmpdir = mysettings["PORTAGE_TMPDIR"]
-				private_tmpdir = None
-				if not parallel_fetchonly and not have_builddir:
-					# When called by digestgen(), it's normal that
-					# PORTAGE_BUILDDIR doesn't exist. It's helpful
-					# to show the pkg_nofetch output though, so go
-					# ahead and create a temporary PORTAGE_BUILDDIR.
-					# Use a temporary config instance to avoid altering
-					# the state of the one that's been passed in.
-					mysettings = config(clone=mysettings)
-					try:
-						private_tmpdir = tempfile.mkdtemp("", "._portage_fetch_.",
-							global_tmpdir)
-					except OSError as e:
-						if e.errno != PermissionDenied.errno:
-							raise
-						raise PermissionDenied(global_tmpdir)
-					mysettings["PORTAGE_TMPDIR"] = private_tmpdir
-					mysettings.backup_changes("PORTAGE_TMPDIR")
-					debug = mysettings.get("PORTAGE_DEBUG") == "1"
-					doebuild_environment(mysettings["EBUILD"], "fetch",
-						mysettings["ROOT"], mysettings, debug, 1, None)
-					prepare_build_dirs(mysettings["ROOT"], mysettings, 0)
-					have_builddir = True
-
-				if not parallel_fetchonly and have_builddir:
-					# To spawn pkg_nofetch requires PORTAGE_BUILDDIR for
-					# ensuring sane $PWD (bug #239560) and storing elog
-					# messages. Therefore, calling code needs to ensure that
-					# PORTAGE_BUILDDIR is already clean and locked here.
-
-					# All the pkg_nofetch goes to stderr since it's considered
-					# to be an error message.
-					fd_pipes = {
-						0 : sys.stdin.fileno(),
-						1 : sys.stderr.fileno(),
-						2 : sys.stderr.fileno(),
-					}
-
-					try:
-						_doebuild_spawn("nofetch", mysettings, fd_pipes=fd_pipes)
-					finally:
-						if private_tmpdir is not None:
-							shutil.rmtree(private_tmpdir)
-							private_tmpdir = None
-
 			elif restrict_fetch:
 				pass
 			elif listonly:
