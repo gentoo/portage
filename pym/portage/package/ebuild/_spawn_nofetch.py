@@ -21,7 +21,7 @@ def spawn_nofetch(portdb, ebuild_path, settings=None):
 	If settings is None then a suitable config instance will be
 	acquired from the given portdbapi instance.
 
-	A private PORTAGE_BUILDDIR is be created and cleaned up, in
+	A private PORTAGE_BUILDDIR will be created and cleaned up, in
 	order to avoid any interference with any other processes.
 	If PORTAGE_TMPDIR is writable, that will be used, otherwise
 	the default directory for the tempfile module will be used.
