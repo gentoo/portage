@@ -13,6 +13,8 @@ from portage import _unicode_decode
 import socket
 import time
 
+_config_keys = ('PORTAGE_ELOG_MAILURI', 'PORTAGE_ELOG_MAILFROM',
+	'PORTAGE_ELOG_MAILSUBJECT',)
 _items = {}
 def process(mysettings, key, logentries, fulltext):
 	global _items
@@ -22,7 +24,21 @@ def process(mysettings, key, logentries, fulltext):
 	header = _(">>> Messages generated for package %(pkg)s by process %(pid)d on %(time)s:\n\n") % \
 		{"pkg": key, "pid": os.getpid(), "time": time_str}
 	config_root = mysettings["PORTAGE_CONFIGROOT"]
-	mysettings, items = _items.setdefault(config_root, (mysettings, {}))
+
+	# Copy needed variables from the config instance,
+	# since we don't need to hold a reference for the
+	# whole thing. This also makes it possible to
+	# rely on per-package variable settings that may
+	# have come from /etc/portage/package.env, since
+	# we'll be isolated from any future mutations of
+	# mysettings.
+	config_dict = {}
+	for k in _config_keys:
+		v = mysettings.get(k)
+		if v is not None:
+			config_dict[k] = v
+
+	config_dict, items = _items.setdefault(config_root, (config_dict, {}))
 	items[key] = header + fulltext
 
 def finalize():
@@ -43,9 +59,9 @@ def _finalize(mysettings, items):
 	else:
 		myrecipient = "root@localhost"
 	
-	myfrom = mysettings["PORTAGE_ELOG_MAILFROM"]
+	myfrom = mysettings.get("PORTAGE_ELOG_MAILFROM", "")
 	myfrom = myfrom.replace("${HOST}", socket.getfqdn())
-	mysubject = mysettings["PORTAGE_ELOG_MAILSUBJECT"]
+	mysubject = mysettings.get("PORTAGE_ELOG_MAILSUBJECT", "")
 	mysubject = mysubject.replace("${PACKAGE}", count)
 	mysubject = mysubject.replace("${HOST}", socket.getfqdn())
 
