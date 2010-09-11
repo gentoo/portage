@@ -6,6 +6,7 @@ import tempfile
 
 from portage import os
 from portage.const import EBUILD_PHASES
+from portage.elog import elog_process
 from portage.package.ebuild.config import config
 from portage.package.ebuild.doebuild import doebuild_environment
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
@@ -71,5 +72,6 @@ def spawn_nofetch(portdb, ebuild_path, settings=None):
 			settings=settings)
 		ebuild_phase.start()
 		ebuild_phase.wait()
+		elog_process(settings.mycpv, settings)
 	finally:
 		shutil.rmtree(private_tmpdir)
