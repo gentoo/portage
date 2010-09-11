@@ -13,6 +13,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 from portage import os
 from portage.const import MANIFEST2_REQUIRED_HASH
 from portage.dbapi.porttree import FetchlistDict
+from portage.dep import use_reduce
 from portage.exception import InvalidDependString, FileNotFound, \
 	PermissionDenied, PortagePackageException
 from portage.localization import _
@@ -108,9 +109,15 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 					for cpv in distfiles_map[myfile]:
 						uris.update(myportdb.getFetchMap(
 							cpv, mytree=mytree)[myfile])
-						restrict_fetch = 'fetch' in \
-							myportdb.aux_get(cpv, ['RESTRICT'],
-							mytree=mytree)[0].split()
+						restrict = myportdb.aux_get(cpv, ['RESTRICT'],
+							mytree=mytree)[0]
+						# Here we ignore conditional parts of RESTRICT since
+						# they don't apply unconditionally. Assume such
+						# conditionals only apply on the client side where
+						# digestgen() does not need to be called.
+						restrict = use_reduce(restrict,
+							flat=True, matchnone=True)
+						restrict_fetch = 'fetch' in restrict
 
 					try:
 						st = os.stat(os.path.join(
