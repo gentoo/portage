@@ -254,7 +254,7 @@ def paren_enclose(mylist):
 	return " ".join(mystrparts)
 
 def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], is_src_uri=False, \
-	eapi=None, opconvert=False, flat=False, is_valid_flag=None, token_class=None):
+	eapi=None, opconvert=False, flat=False, is_valid_flag=None, token_class=None, matchnone=False):
 	"""
 	Takes a dep string and reduces the use? conditionals out, leaving an array
 	with subarrays. All redundant brackets are removed.
@@ -281,6 +281,8 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 	@type is_valid_flag: Function
 	@param token_class: Convert all non operator tokens into this class
 	@type token_class: Class
+	@param matchnone: Treat all conditionals as inactive. Used by digestgen(). 
+	@type matchnone: Bool
 	@rtype: List
 	@return: The use reduced depend array
 	"""
@@ -293,6 +295,9 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 
 	if opconvert and flat:
 		raise ValueError("portage.dep.use_reduce: 'opconvert' and 'flat' are mutually exclusive")
+
+	if matchall and matchnone:
+		raise ValueError("portage.dep.use_reduce: 'matchall' and 'matchnone' are mutually exclusive")
 
 	def is_active(conditional):
 		"""
@@ -325,6 +330,9 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 
 		if matchall:
 			return True
+
+		if matchnone:
+			return False
 
 		return (flag in uselist and not is_negated) or \
 			(flag not in uselist and is_negated)
