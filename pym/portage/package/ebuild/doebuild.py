@@ -614,8 +614,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# when pkg_nofetch is spawned.
 		have_build_dirs = False
 		if not parallel_fetchonly and \
-			mydo not in ('digest', 'help', 'manifest') and \
-			not (mydo == 'fetch' and 'fetch' not in restrict):
+			mydo not in ('digest', 'fetch', 'help', 'manifest'):
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 			if mystatus:
 				return mystatus
