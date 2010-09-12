@@ -82,7 +82,9 @@ class TryAgain(PortageException):
 	"""Try again"""
 
 class TimeoutException(PortageException):
-	from errno import ETIME as errno
+	"""Operation timed out"""
+	# NOTE: ETIME is undefined on FreeBSD (bug #336875)
+	#from errno import ETIME as errno
 
 class AlarmSignal(TimeoutException):
 	def __init__(self, value, signum=None, frame=None):
