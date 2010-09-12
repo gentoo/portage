@@ -3,6 +3,7 @@
 
 import shutil
 import tempfile
+import time
 from portage import os
 from portage import _python_interpreter
 from portage.tests import TestCase
@@ -15,6 +16,8 @@ from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
 from _emerge.TaskScheduler import TaskScheduler
 
 class IpcDaemonTestCase(TestCase):
+
+	_SCHEDULE_TIMEOUT = 40000 # 40 seconds
 
 	def testIpcDaemon(self):
 		tmpdir = tempfile.mkdtemp()
@@ -37,8 +40,8 @@ class IpcDaemonTestCase(TestCase):
 			output_fifo = os.path.join(tmpdir, '.ipc_out')
 			os.mkfifo(input_fifo)
 			os.mkfifo(output_fifo)
+			task_scheduler = TaskScheduler(max_jobs=2)
 			for exitcode in (0, 1, 2):
-				task_scheduler = TaskScheduler(max_jobs=2)
 				exit_command = ExitCommand()
 				commands = {'exit' : exit_command}
 				daemon = EbuildIpcDaemon(commands=commands,
@@ -49,13 +52,61 @@ class IpcDaemonTestCase(TestCase):
 					args=[BASH_BINARY, "-c",
 					'"$PORTAGE_BIN_PATH"/ebuild-ipc exit %d' % exitcode],
 					env=env, scheduler=task_scheduler.sched_iface)
+
+				self.received_command = False
 				def exit_command_callback():
+					self.received_command = True
 					proc.cancel()
 					daemon.cancel()
+
 				exit_command.reply_hook = exit_command_callback
 				task_scheduler.add(daemon)
 				task_scheduler.add(proc)
-				task_scheduler.run()
+				start_time = time.time()
+				task_scheduler.run(timeout=self._SCHEDULE_TIMEOUT)
+				task_scheduler.clear()
+
+				self.assertEqual(self.received_command, True,
+					"command not received after %d seconds" % \
+					(time.time() - start_time,))
+				self.assertEqual(proc.isAlive(), False)
+				self.assertEqual(daemon.isAlive(), False)
 				self.assertEqual(exit_command.exitcode, exitcode)
+
+			# Intentionally short timeout test for QueueScheduler.run()
+			sleep_time_s = 10      # 10.000 seconds
+			short_timeout_ms = 10  #  0.010 seconds
+
+			for i in range(3):
+				exit_command = ExitCommand()
+				commands = {'exit' : exit_command}
+				daemon = EbuildIpcDaemon(commands=commands,
+					input_fifo=input_fifo,
+					output_fifo=output_fifo,
+					scheduler=task_scheduler.sched_iface)
+				proc = SpawnProcess(
+					args=[BASH_BINARY, "-c", 'exec sleep %d' % sleep_time_s],
+					env=env, scheduler=task_scheduler.sched_iface)
+
+				self.received_command = False
+				def exit_command_callback():
+					self.received_command = True
+					proc.cancel()
+					daemon.cancel()
+
+				exit_command.reply_hook = exit_command_callback
+				task_scheduler.add(daemon)
+				task_scheduler.add(proc)
+				start_time = time.time()
+				task_scheduler.run(timeout=short_timeout_ms)
+				task_scheduler.clear()
+
+				self.assertEqual(self.received_command, False,
+					"command received after %d seconds" % \
+					(time.time() - start_time,))
+				self.assertEqual(proc.isAlive(), False)
+				self.assertEqual(daemon.isAlive(), False)
+				self.assertEqual(proc.returncode == os.EX_OK, False)
+
 		finally:
 			shutil.rmtree(tmpdir)

@@ -1,4 +1,4 @@
-.TH "EGENCACHE" "1" "March 2009" "Portage 2.2" "Portage"
+.TH "EGENCACHE" "1" "March 2009" "Portage VERSION" "Portage"
 .SH "NAME"
 egencache \- generate metadata cache for ebuild repositories
 .SH "SYNOPSIS"
@@ -14,6 +14,9 @@ for distribution.
 Update the \fImetadata/cache/\fR directory (generate metadata as necessary).
 If no package atoms are specified then all will be updated. See ebuild(5)
 for the details on package atom syntax.
+.TP
+.BR "\-\-update\-use\-local\-desc"
+Update the \fIprofiles/use.local.desc\fR file from metadata.xml.
 .SH OPTIONS
 .TP
 .BR "\-\-cache\-dir=CACHE_DIR"
@@ -38,14 +41,18 @@ Also see the related \fB\-\-load\-average\fR option.
 .BR \-\-load\-average=LOAD
 Specifies that maximum load allowed when spawning multiple jobs.
 .TP
+.BR "\-\-portdir=PORTDIR"
+Override the portage tree location.
+.TP
+.BR "\-\-preserve\-comments"
+Preserve the comments found in the output use.local.desc file. This requires
+the output file to exist before egencache is called.
+.TP
 .BR "\-\-repo=REPO"
 Name of the repo to operate on (default repo is located at \fBPORTDIR\fR).
 The name should correspond the value of a \fBrepo_name\fR entry (see
 \fBportage\fR(5)) from one of the repositories that is configured via the
 \fBPORTDIR\fR or \fBPORTDIR_OVERLAY\fR variables (see \fBmake.conf\fR(5)).
-.TP
-.BR "\-\-portdir=PORTDIR"
-Override the portage tree location.
 .TP
 .BR "\-\-rsync"
 When used together with the \fB\-\-update\fR action, this enables a workaround
@@ -62,6 +69,9 @@ more thorough mechanism which allows it to detect changed inode numbers
 Exit successfully if only minor errors occurred, such as skipped cache
 updates due to ebuilds that either fail to source or are not sourced
 due to invalid Manifest entries.
+.TP
+.BR "\-\-use\-local\-desc\-output=ULD_OUTPUT"
+output file for use.local.desc data (or '-' for stdout)
 .SH "ENVIRONMENT OPTIONS"
 .TP
 \fBEGENCACHE_DEFAULT_OPTS\fR

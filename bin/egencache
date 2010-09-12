@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright 2009 Gentoo Foundation
+# Copyright 2009-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -20,6 +20,7 @@ try:
 except KeyboardInterrupt:
 	sys.exit(1)
 
+import codecs
 import logging
 import optparse
 
@@ -30,51 +31,82 @@ except ImportError:
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
 
-from portage import os
+from portage import os, _encodings, _unicode_encode
 from _emerge.MetadataRegen import MetadataRegen
 from portage.cache.cache_errors import CacheError, StatCollision
-from portage.util import writemsg_level
+from portage.util import cmp_sort_key, writemsg_level
 from portage import cpv_getkey
-from portage.dep import isjustname
+from portage.dep import Atom, isjustname
+from portage.versions import pkgcmp, pkgsplit
+
+try:
+	import xml.etree.ElementTree
+except ImportError:
+	pass
+else:
+	from repoman.utilities import parse_metadata_use
+	from xml.parsers.expat import ExpatError
 
 if sys.hexversion >= 0x3000000:
 	long = int
 
 def parse_args(args):
-	usage = "egencache [options] --update [atom] ..."
+	usage = "egencache [options] <action> ... [atom] ..."
 	parser = optparse.OptionParser(usage=usage)
-	parser.add_option("--update",
+
+	actions = optparse.OptionGroup(parser, 'Actions')
+	actions.add_option("--update",
 		action="store_true",
 		help="update metadata/cache/ (generate as necessary)")
-	parser.add_option("--repo",
+	actions.add_option("--update-use-local-desc",
+		action="store_true",
+		help="update the use.local.desc file from metadata.xml")
+	parser.add_option_group(actions)
+
+	common = optparse.OptionGroup(parser, 'Common options')
+	common.add_option("--repo",
 		action="store",
 		help="name of repo to operate on (default repo is located at $PORTDIR)")
-	parser.add_option("--cache-dir",
-		help="location of the metadata cache",
-		dest="cache_dir")
-	parser.add_option("--config-root",
+	common.add_option("--config-root",
 		help="location of portage config files",
 		dest="portage_configroot")
-	parser.add_option("--jobs",
+	common.add_option("--portdir",
+		help="override the portage tree location",
+		dest="portdir")
+	common.add_option("--tolerant",
+		action="store_true",
+		help="exit successfully if only minor errors occurred")
+	common.add_option("--ignore-default-opts",
+		action="store_true",
+		help="do not use the EGENCACHE_DEFAULT_OPTS environment variable")
+	parser.add_option_group(common)
+
+	update = optparse.OptionGroup(parser, '--update options')
+	update.add_option("--cache-dir",
+		help="location of the metadata cache",
+		dest="cache_dir")
+	update.add_option("--jobs",
 		action="store",
 		help="max ebuild processes to spawn")
-	parser.add_option("--load-average",
+	update.add_option("--load-average",
 		action="store",
 		help="max load allowed when spawning multiple jobs",
 		dest="load_average")
-	parser.add_option("--portdir",
-		help="override the portage tree location",
-		dest="portdir")
-	parser.add_option("--rsync",
+	update.add_option("--rsync",
 		action="store_true",
 		help="enable rsync stat collision workaround " + \
 			"for bug 139134 (use with --update)")
-	parser.add_option("--tolerant",
+	parser.add_option_group(update)
+
+	uld = optparse.OptionGroup(parser, '--update-use-local-desc options')
+	uld.add_option("--preserve-comments",
 		action="store_true",
-		help="exit successfully if only minor errors occurred")
-	parser.add_option("--ignore-default-opts",
-		action="store_true",
-		help="do not use the EGENCACHE_DEFAULT_OPTS environment variable")
+		help="preserve the comments from the existing use.local.desc file")
+	uld.add_option("--use-local-desc-output",
+		help="output file for use.local.desc data (or '-' for stdout)",
+		dest="uld_output")
+	parser.add_option_group(uld)
+
 	options, args = parser.parse_args(args)
 
 	if options.jobs:
@@ -126,6 +158,15 @@ def parse_args(args):
 
 		if not isjustname(atom):
 			parser.error('Atom is too specific: %s' % (atom,))
+
+	if options.update_use_local_desc:
+		try:
+			xml.etree.ElementTree
+		except NameError:
+			parser.error('--update-use-local-desc requires python with USE=xml!')
+
+	if options.uld_output == '-' and options.preserve_comments:
+		parser.error('--preserve-comments can not be used when outputting to stdout')
 
 	return parser, options, args
 
@@ -278,6 +319,141 @@ class GenCache(object):
 					"committing target: %s\n" % (ce,),
 					level=logging.ERROR, noiselevel=-1)
 
+class GenUseLocalDesc(object):
+	def __init__(self, portdb, output=None,
+			preserve_comments=False):
+		self.returncode = os.EX_OK
+		self._portdb = portdb
+		self._output = output
+		self._preserve_comments = preserve_comments
+	
+	def run(self):
+		repo_path = self._portdb.porttrees[0]
+		ops = {'<':0, '<=':1, '=':2, '>=':3, '>':4}
+
+		if self._output is None or self._output != '-':
+			if self._output is None:
+				prof_path = os.path.join(repo_path, 'profiles')
+				desc_path = os.path.join(prof_path, 'use.local.desc')
+				try:
+					os.mkdir(prof_path)
+				except OSError:
+					pass
+			else:
+				desc_path = self._output
+
+			try:
+				if self._preserve_comments:
+					# Probe in binary mode, in order to avoid
+					# potential character encoding issues.
+					output = open(_unicode_encode(desc_path,
+						encoding=_encodings['fs'], errors='strict'), 'r+b')
+				else:
+					output = codecs.open(_unicode_encode(desc_path,
+						encoding=_encodings['fs'], errors='strict'),
+						mode='w', encoding=_encodings['repo.content'],
+						errors='replace')
+			except IOError as e:
+				writemsg_level(
+					"ERROR: failed to open output file %s: %s\n" % (output_mode,e,),
+					level=logging.ERROR, noiselevel=-1)
+				self.returncode |= 2
+				return
+		else:
+			output = sys.stdout
+
+		if self._preserve_comments:
+			while True:
+				pos = output.tell()
+				if not output.readline().startswith(b'#'):
+					break
+			output.seek(pos)
+			output.truncate()
+			output.close()
+
+			# Finished probing comments in binary mode, now append
+			# in text mode.
+			output = codecs.open(_unicode_encode(desc_path,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='a', encoding=_encodings['repo.content'],
+				errors='replace')
+			output.write('\n')
+		else:
+			output.write('''
+# This file is deprecated as per GLEP 56 in favor of metadata.xml. Please add
+# your descriptions to your package's metadata.xml ONLY.
+# * generated automatically using egencache *
+
+'''.lstrip())
+
+		# The cmp function no longer exists in python3, so we'll
+		# implement our own here under a slightly different name
+		# since we don't want any confusion given that we never
+		# want to rely on the builtin cmp function.
+		def cmp_func(a, b):
+			return (a > b) - (a < b)
+
+		for cp in self._portdb.cp_all():
+			metadata_path = os.path.join(repo_path, cp, 'metadata.xml')
+			try:
+				metadata = xml.etree.ElementTree.parse(metadata_path)
+			except IOError:
+				pass
+			except (ExpatError, EnvironmentError) as e:
+				writemsg_level(
+					"ERROR: failed parsing %s/metadata.xml: %s\n" % (cp, e),
+					level=logging.ERROR, noiselevel=-1)
+				self.returncode |= 1
+			else:
+				try:
+					usedict = parse_metadata_use(metadata)
+				except portage.exception.ParseError as e:
+					writemsg_level(
+						"ERROR: failed parsing %s/metadata.xml: %s\n" % (cp, e),
+						level=logging.ERROR, noiselevel=-1)
+					self.returncode |= 1
+				else:
+					for flag in sorted(usedict):
+						def atomcmp(atoma, atomb):
+							# None is better than an atom, that's why we reverse the args
+							if atoma is None or atomb is None:
+								return cmp_func(atomb, atoma)
+							# Same for plain PNs (.operator is None then)
+							elif atoma.operator is None or atomb.operator is None:
+								return cmp_func(atomb.operator, atoma.operator)
+							# Version matching
+							elif atoma.cpv != atomb.cpv:
+								return pkgcmp(pkgsplit(atoma.cpv), pkgsplit(atomb.cpv))
+							# Versions match, let's fallback to operator matching
+							else:
+								return cmp_func(ops.get(atoma.operator, -1),
+									ops.get(atomb.operator, -1))
+
+						def _Atom(key):
+							if key is not None:
+								return Atom(key)
+							return None
+
+						resdict = usedict[flag]
+						if len(resdict) == 1:
+							resdesc = next(iter(resdict.items()))[1]
+						else:
+							try:
+								reskeys = dict((_Atom(k), k) for k in resdict)
+							except portage.exception.InvalidAtom as e:
+								writemsg_level(
+									"ERROR: failed parsing %s/metadata.xml: %s\n" % (cp, e),
+									level=logging.ERROR, noiselevel=-1)
+								self.returncode |= 1
+								resdesc = next(iter(resdict.items()))[1]
+							else:
+								resatoms = sorted(reskeys, key=cmp_sort_key(atomcmp))
+								resdesc = resdict[reskeys[resatoms[-1]]]
+
+						output.write('%s:%s - %s\n' % (cp, flag, resdesc))
+
+		output.close()
+
 def egencache_main(args):
 	parser, options, atoms = parse_args(args)
 
@@ -317,12 +493,12 @@ def egencache_main(args):
 		settings = portage.config(config_root=config_root,
 			target_root='/', local_config=False, env=env)
 
-	if not options.update:
+	if not options.update and not options.update_use_local_desc:
 		parser.error('No action specified (--update ' + \
-			'is the only available action)')
+			'and/or --update-use-local-desc)')
 		return 1
 
-	if 'metadata-transfer' not in settings.features:
+	if options.update and 'metadata-transfer' not in settings.features:
 		writemsg_level("ecachegen: warning: " + \
 			"automatically enabling FEATURES=metadata-transfer\n",
 			level=logging.WARNING, noiselevel=-1)
@@ -341,18 +517,30 @@ def egencache_main(args):
 		# Limit ebuilds to the specified repo.
 		portdb.porttrees = [repo_path]
 
-	cp_iter = None
-	if atoms:
-		cp_iter = iter(atoms)
+	ret = [os.EX_OK]
 
-	gen_cache = GenCache(portdb, cp_iter=cp_iter,
-		max_jobs=options.jobs,
-		max_load=options.load_average,
-		rsync=options.rsync)
-	gen_cache.run()
+	if options.update:
+		cp_iter = None
+		if atoms:
+			cp_iter = iter(atoms)
+
+		gen_cache = GenCache(portdb, cp_iter=cp_iter,
+			max_jobs=options.jobs,
+			max_load=options.load_average,
+			rsync=options.rsync)
+		gen_cache.run()
+		ret.append(gen_cache.returncode)
+
+	if options.update_use_local_desc:
+		gen_desc = GenUseLocalDesc(portdb,
+			output=options.uld_output,
+			preserve_comments=options.preserve_comments)
+		gen_desc.run()
+		ret.append(gen_desc.returncode)
+
 	if options.tolerant:
-		return os.EX_OK
-	return gen_cache.returncode
+		return ret[0]
+	return max(ret)
 
 if __name__ == "__main__":
 	portage._disable_legacy_globals()

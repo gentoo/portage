@@ -76,7 +76,7 @@ class UseManager(object):
 
 	def getUseMask(self, pkg=None):
 		if pkg is None:
-			return set(stack_lists(
+			return frozenset(stack_lists(
 				self._usemask_list, incremental=True))
 
 		cp = getattr(pkg, "cp", None)
@@ -91,11 +91,11 @@ class UseManager(object):
 				pkg_usemask = ordered_by_atom_specificity(cpdict, pkg)
 				if pkg_usemask:
 					usemask.extend(pkg_usemask)
-		return set(stack_lists(usemask, incremental=True))
+		return frozenset(stack_lists(usemask, incremental=True))
 
 	def getUseForce(self, pkg=None):
 		if pkg is None:
-			return set(stack_lists(
+			return frozenset(stack_lists(
 				self._useforce_list, incremental=True))
 
 		cp = getattr(pkg, "cp", None)
@@ -110,7 +110,7 @@ class UseManager(object):
 				pkg_useforce = ordered_by_atom_specificity(cpdict, pkg)
 				if pkg_useforce:
 					useforce.extend(pkg_useforce)
-		return set(stack_lists(useforce, incremental=True))
+		return frozenset(stack_lists(useforce, incremental=True))
 
 	def getPUSE(self, pkg):
 		cp = getattr(pkg, "cp", None)

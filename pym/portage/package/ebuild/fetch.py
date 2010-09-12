@@ -28,7 +28,7 @@ from portage import OrderedDict, os, selinux, _encodings, \
 	_shell_quote, _unicode_encode
 from portage.checksum import perform_md5, verify_all
 from portage.const import BASH_BINARY, CUSTOM_MIRRORS_FILE, \
-	EBUILD_SH_BINARY, GLOBAL_CONFIG_PATH
+	GLOBAL_CONFIG_PATH
 from portage.data import portage_gid, portage_uid, secpass, userpriv_groups
 from portage.exception import FileNotFound, OperationNotPermitted, \
 	PermissionDenied, PortageException, TryAgain
@@ -779,6 +779,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				# allow different fetchcommands per protocol
 				protocol = loc[0:loc.find("://")]
 
+				global_config_path = GLOBAL_CONFIG_PATH
+				if mysettings['EPREFIX']:
+					global_config_path = os.path.join(mysettings['EPREFIX'],
+							GLOBAL_CONFIG_PATH.lstrip(os.sep))
+
 				missing_file_param = False
 				fetchcommand_var = "FETCHCOMMAND_" + protocol.upper()
 				fetchcommand = mysettings.get(fetchcommand_var)
@@ -789,7 +794,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						writemsg_level(
 							_("!!! %s is unset. It should "
 							"have been defined in\n!!! %s/make.globals.\n") \
-							% (fetchcommand_var, GLOBAL_CONFIG_PATH),
+							% (fetchcommand_var, global_config_path),
 							level=logging.ERROR, noiselevel=-1)
 						return 0
 				if "${FILE}" not in fetchcommand:
@@ -808,7 +813,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						writemsg_level(
 							_("!!! %s is unset. It should "
 							"have been defined in\n!!! %s/make.globals.\n") \
-							% (resumecommand_var, GLOBAL_CONFIG_PATH),
+							% (resumecommand_var, global_config_path),
 							level=logging.ERROR, noiselevel=-1)
 						return 0
 				if "${FILE}" not in resumecommand:
@@ -1049,55 +1054,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					(mysettings["CATEGORY"], mysettings["PF"])
 				writemsg_level(msg,
 					level=logging.ERROR, noiselevel=-1)
-				have_builddir = "PORTAGE_BUILDDIR" in mysettings and \
-					os.path.isdir(mysettings["PORTAGE_BUILDDIR"])
-
-				global_tmpdir = mysettings["PORTAGE_TMPDIR"]
-				private_tmpdir = None
-				if not parallel_fetchonly and not have_builddir:
-					# When called by digestgen(), it's normal that
-					# PORTAGE_BUILDDIR doesn't exist. It's helpful
-					# to show the pkg_nofetch output though, so go
-					# ahead and create a temporary PORTAGE_BUILDDIR.
-					# Use a temporary config instance to avoid altering
-					# the state of the one that's been passed in.
-					mysettings = config(clone=mysettings)
-					try:
-						private_tmpdir = tempfile.mkdtemp("", "._portage_fetch_.",
-							global_tmpdir)
-					except OSError as e:
-						if e.errno != PermissionDenied.errno:
-							raise
-						raise PermissionDenied(global_tmpdir)
-					mysettings["PORTAGE_TMPDIR"] = private_tmpdir
-					mysettings.backup_changes("PORTAGE_TMPDIR")
-					debug = mysettings.get("PORTAGE_DEBUG") == "1"
-					doebuild_environment(mysettings["EBUILD"], "fetch",
-						mysettings["ROOT"], mysettings, debug, 1, None)
-					prepare_build_dirs(mysettings["ROOT"], mysettings, 0)
-					have_builddir = True
-
-				if not parallel_fetchonly and have_builddir:
-					# To spawn pkg_nofetch requires PORTAGE_BUILDDIR for
-					# ensuring sane $PWD (bug #239560) and storing elog
-					# messages. Therefore, calling code needs to ensure that
-					# PORTAGE_BUILDDIR is already clean and locked here.
-
-					# All the pkg_nofetch goes to stderr since it's considered
-					# to be an error message.
-					fd_pipes = {
-						0 : sys.stdin.fileno(),
-						1 : sys.stderr.fileno(),
-						2 : sys.stderr.fileno(),
-					}
-
-					try:
-						_doebuild_spawn("nofetch", mysettings, fd_pipes=fd_pipes)
-					finally:
-						if private_tmpdir is not None:
-							shutil.rmtree(private_tmpdir)
-							private_tmpdir = None
-
 			elif restrict_fetch:
 				pass
 			elif listonly:

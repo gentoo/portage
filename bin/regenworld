@@ -13,7 +13,7 @@ except ImportError:
 	import portage
 
 from portage import os
-from portage.sets.files import StaticFileSet, WorldSelectedSet
+from portage._sets.files import StaticFileSet, WorldSelectedSet
 
 import re
 import tempfile

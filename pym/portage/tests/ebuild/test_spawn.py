@@ -11,7 +11,7 @@ from portage import _unicode_encode
 from portage.const import BASH_BINARY
 from portage.tests import TestCase
 from _emerge.SpawnProcess import SpawnProcess
-from _emerge.TaskScheduler import TaskScheduler
+from _emerge.PollScheduler import PollScheduler
 
 class SpawnTestCase(TestCase):
 
@@ -22,15 +22,15 @@ class SpawnTestCase(TestCase):
 			os.close(fd)
 			null_fd = os.open('/dev/null', os.O_RDWR)
 			test_string = 2 * "blah blah blah\n"
-			task_scheduler = TaskScheduler()
+			scheduler = PollScheduler().sched_iface
 			proc = SpawnProcess(
 				args=[BASH_BINARY, "-c",
 				"echo -n '%s'" % test_string],
 				env={}, fd_pipes={0:sys.stdin.fileno(), 1:null_fd, 2:null_fd},
-				scheduler=task_scheduler.sched_iface,
+				scheduler=scheduler,
 				logfile=logfile)
-			task_scheduler.add(proc)
-			task_scheduler.run()
+			proc.start()
+			proc.wait()
 			os.close(null_fd)
 			f = codecs.open(_unicode_encode(logfile,
 				encoding=_encodings['fs'], errors='strict'),

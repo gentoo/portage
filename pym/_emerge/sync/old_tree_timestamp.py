@@ -40,15 +40,15 @@ def whenago(seconds):
 		days = days % 365
 
 	if years:
-		out.append(str(years)+"y ")
+		out.append("%dy " % years)
 	if days:
-		out.append(str(days)+"d ")
+		out.append("%dd " % days)
 	if hrs:
-		out.append(str(hrs)+"h ")
+		out.append("%dh " % hrs)
 	if mins:
-		out.append(str(mins)+"m ")
+		out.append("%dm " % mins)
 	if sec:
-		out.append(str(sec)+"s ")
+		out.append("%ds " % sec)
 
 	return "".join(out).strip()
 

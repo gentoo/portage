@@ -5,6 +5,13 @@ __all__ = (
 	'features_set',
 )
 
+import logging
+
+from portage.const import SUPPORTED_FEATURES
+from portage.localization import _
+from portage.output import colorize
+from portage.util import writemsg_level
+
 class features_set(object):
 	"""
 	Provides relevant set operations needed for access and modification of
@@ -51,6 +58,15 @@ class features_set(object):
 		if need_sync:
 			self._sync_env_var()
 
+	def difference_update(self, values):
+		self._settings.modifying()
+		values = list(values)
+		self._settings._features_overrides.extend('-' + k for k in values)
+		remove_us = self._features.intersection(values)
+		if remove_us:
+			self._features.difference_update(values)
+			self._sync_env_var()
+
 	def remove(self, k):
 		"""
 		This never raises KeyError, since it records a permanent override
@@ -65,3 +81,48 @@ class features_set(object):
 		if k in self._features:
 			self._features.remove(k)
 			self._sync_env_var()
+
+	def _validate(self):
+		"""
+		Implements unknown-features-warn and unknown-features-filter.
+		"""
+		if 'unknown-features-warn' in self._features:
+			unknown_features = \
+				self._features.difference(SUPPORTED_FEATURES)
+			if unknown_features:
+				unknown_features = unknown_features.difference(
+					self._settings._unknown_features)
+				if unknown_features:
+					self._settings._unknown_features.update(unknown_features)
+					writemsg_level(colorize("BAD",
+						_("FEATURES variable contains unknown value(s): %s") % \
+						", ".join(sorted(unknown_features))) \
+						+ "\n", level=logging.WARNING, noiselevel=-1)
+
+		if 'unknown-features-filter' in self._features:
+			unknown_features = \
+				self._features.difference(SUPPORTED_FEATURES)
+			if unknown_features:
+				self.difference_update(unknown_features)
+				self._prune_overrides()
+
+	def _prune_overrides(self):
+		"""
+		If there are lots of invalid package.env FEATURES settings
+		then unknown-features-filter can make _features_overrides
+		grow larger and larger, so prune it. This performs incremental
+		stacking with preservation of negative values since they need
+		to persist for future config.regenerate() calls.
+		"""
+		overrides_set = set(self._settings._features_overrides)
+		positive = set()
+		negative = set()
+		for x in self._settings._features_overrides:
+			if x[:1] == '-':
+				positive.discard(x[1:])
+				negative.add(x[1:])
+			else:
+				positive.add(x)
+				negative.discard(x)
+		self._settings._features_overrides[:] = \
+			list(positive) + list('-' + x for x in negative)

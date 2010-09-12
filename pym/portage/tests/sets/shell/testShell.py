@@ -4,7 +4,7 @@
 
 from portage.process import find_binary
 from portage.tests import TestCase, test_cps
-from portage.sets.shell import CommandOutputSet
+from portage._sets.shell import CommandOutputSet
 
 class CommandOutputSetTestCase(TestCase):
 	"""Simple Test Case for CommandOutputSet"""

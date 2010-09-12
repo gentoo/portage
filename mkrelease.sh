@@ -69,6 +69,8 @@ cp -a "${SOURCE_DIR}/"{bin,cnf,doc,man,pym} "${RELEASE_DIR}/" || die "directory 
 cp "${SOURCE_DIR}/"{DEVELOPING,LICENSE,NEWS,RELEASE-NOTES,TEST-NOTES} \
 	"${RELEASE_DIR}/" || die "file copy failed"
 
+rm -rf "$SOURCE_DIR" || die "directory cleanup failed"
+
 echo ">>> Creating Changelog"
 git_log_opts=""
 [ -n "$CHANGELOG_REVISION" ] && git_log_opts+=" $CHANGELOG_REVISION^.."

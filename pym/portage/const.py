@@ -1,5 +1,5 @@
 # portage: Constants
-# Copyright 1998-2009 Gentoo Foundation
+# Copyright 1998-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import os
@@ -22,9 +22,8 @@ import os
 # would expect.
 # Second there is target_root (ROOT) which is used to install somewhere
 # completely else, in Prefix of limited use.  Because this is an offset
-# always given, the EPREFIX should always be applied in it.  Those
-# constants (like VDB_PATH) are always absolute and hence DO have
-# EPREFIX prepended in Prefix.
+# always given, the EPREFIX should always be applied in it, hence the
+# code always prefixes them with EROOT.
 # The variables in this file are grouped by config_root, target_root.
 
 # variables used with config_root (these need to be relative)
@@ -42,7 +41,7 @@ MAKE_DEFAULTS_FILE       = PROFILE_PATH + "/make.defaults"  # FIXME: not used
 DEPRECATED_PROFILE_FILE  = PROFILE_PATH + "/deprecated"
 
 # variables used with targetroot (these need to be absolute, but not
-# have a leading '/' since they are used directly with os.path.join)
+# have a leading '/' since they are used directly with os.path.join on EROOT)
 VDB_PATH                 = "var/db/pkg"
 CACHE_PATH               = "var/cache/edb"
 PRIVATE_PATH             = "var/lib/portage"
@@ -51,9 +50,12 @@ WORLD_SETS_FILE          = PRIVATE_PATH + "/world_sets"
 CONFIG_MEMORY_FILE       = PRIVATE_PATH + "/config"
 NEWS_LIB_PATH            = "var/lib/gentoo"
 
-# these variables are not used with target_root or config_root
+# these variables get EPREFIX prepended automagically when they are
+# translated into their lowercase variants
 DEPCACHE_PATH            = "/var/cache/edb/dep"
 GLOBAL_CONFIG_PATH       = "/usr/share/portage/config"
+
+# these variables are not used with target_root or config_root
 PORTAGE_BASE_PATH        = os.path.join(os.sep, os.sep.join(__file__.split(os.sep)[:-3]))
 PORTAGE_BIN_PATH         = PORTAGE_BASE_PATH + "/bin"
 PORTAGE_PYM_PATH         = PORTAGE_BASE_PATH + "/pym"
@@ -85,7 +87,7 @@ EBUILD_PHASES            = ("pretend", "setup", "unpack", "prepare", "configure"
                            "nofetch", "config", "info", "other")
 SUPPORTED_FEATURES       = frozenset([
                            "assume-digests", "buildpkg", "buildsyspkg", "candy", "ccache",
-                           "collision-protect", "compress-build-logs",
+                           "chflags", "collision-protect", "compress-build-logs",
                            "digest", "distcc", "distlocks",
                            "fakeroot", "fail-clean", "fixpackages", "getbinpkg",
                            "installsources", "keeptemp", "keepwork", "fixlafiles", "lmirror",
@@ -94,10 +96,10 @@ SUPPORTED_FEATURES       = frozenset([
                            "notitles", "parallel-fetch", "parse-eapi-ebuild-head",
                            "parse-eapi-glep-55", "prelink-checksums", "preserve-libs",
                            "protect-owned", "python-trace", "sandbox",
-                           "sesandbox", "severe", "sfperms",
+                           "selinux", "sesandbox", "severe", "sfperms",
                            "sign", "skiprocheck", "split-elog", "split-log", "splitdebug",
                            "strict", "stricter", "suidctl", "test", "test-fail-continue",
-                           "unknown-features-warn",
+                           "unknown-features-filter", "unknown-features-warn",
                            "unmerge-logs", "unmerge-orphans", "userfetch", "userpriv",
                            "usersandbox", "usersync", "webrsync-gpg"])
 
@@ -114,3 +116,23 @@ MANIFEST2_IDENTIFIERS    = ("AUX", "MISC", "DIST", "EBUILD")
 # ===========================================================================
 # END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANT
 # ===========================================================================
+
+# Private constants for use in conditional code in order to minimize the diff
+# between branches.
+_ENABLE_DYN_LINK_MAP    = True
+_ENABLE_PRESERVE_LIBS   = True
+_ENABLE_REPO_NAME_WARN  = True
+_ENABLE_SET_CONFIG      = True
+_SANDBOX_COMPAT_LEVEL   = "22"
+
+
+# The definitions above will differ between branches, so it's useful to have
+# common lines of diff context here in order to avoid merge conflicts.
+
+if not _ENABLE_PRESERVE_LIBS:
+	SUPPORTED_FEATURES = set(SUPPORTED_FEATURES)
+	SUPPORTED_FEATURES.remove("preserve-libs")
+	SUPPORTED_FEATURES = frozenset(SUPPORTED_FEATURES)
+
+if not _ENABLE_SET_CONFIG:
+	WORLD_SETS_FILE = '/dev/null'

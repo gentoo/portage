@@ -9,6 +9,19 @@
 	represents one possible alternative combination of dependency
 	atoms capable of satisfying the dependency expression.
 	</para>
+	<sect2 id='dependency-resolution-decision-making-dependency-expression-evaluation-delayed-disjunction'>
+		<title>Delayed Evaluation of Disjunctive Dependency Choices</title>
+		<para>
+		Disjunctive dependencies, of which virtuals are a special case,
+		can be satisfied by multiple choices of dependency atoms. These
+		choices are delayed until as late as possible in the dependency
+		calculation, after packages have been selected to satisfy
+		as many non-disjunctive dependencies as possible. As a consequence
+		of this delayed evaluation, there is maximal information available
+		which makes it possible to optimize choices such that the total
+		number of packages required to satisfy all dependencies is minimized.
+		</para>
+	</sect2>
 </sect1>
 <sect1 id='dependency-resolution-decision-making-look-ahead'>
 	<title>Look-Ahead</title>

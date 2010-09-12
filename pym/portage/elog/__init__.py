@@ -8,7 +8,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage.const import EBUILD_PHASES
-from portage.exception import PortageException
+from portage.exception import AlarmSignal, PortageException
 from portage.process import atexit_register
 from portage.elog.messages import collect_ebuild_messages, collect_messages
 from portage.elog.filtering import filter_loglevels
@@ -153,17 +153,13 @@ def elog_process(cpv, mysettings, phasefilter=None):
 			s = s.replace("-", "_")
 			try:
 				m = _load_mod("portage.elog.mod_" + s)
-				def timeout_handler(signum, frame):
-					raise PortageException("Timeout in elog_process for system '%s'" % s)
-				import signal
-				signal.signal(signal.SIGALRM, timeout_handler)
 				# Timeout after one minute (in case something like the mail
 				# module gets hung).
-				signal.alarm(60)
 				try:
+					AlarmSignal.register(60)
 					m.process(mysettings, str(key), mod_logentries, mod_fulllog)
 				finally:
-					signal.alarm(0)
+					AlarmSignal.unregister()
 				if hasattr(m, "finalize") and not m.finalize in _elog_atexit_handlers:
 					_elog_atexit_handlers.append(m.finalize)
 					atexit_register(m.finalize)
@@ -171,6 +167,9 @@ def elog_process(cpv, mysettings, phasefilter=None):
 				writemsg(_("!!! Error while importing logging modules "
 					"while loading \"mod_%s\":\n") % str(s))
 				writemsg("%s\n" % str(e), noiselevel=-1)
+			except AlarmSignal:
+				writemsg("Timeout in elog_process for system '%s'\n" % s,
+					noiselevel=-1)
 			except PortageException as e:
 				writemsg("%s\n" % str(e), noiselevel=-1)
 

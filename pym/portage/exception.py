@@ -1,6 +1,7 @@
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import signal
 import sys
 from portage import _unicode_encode, _unicode_decode
 from portage.localization import _
@@ -31,6 +32,9 @@ class CorruptionError(PortageException):
 
 class InvalidDependString(PortageException):
 	"""An invalid depend string has been encountered"""
+	def __init__(self, value, errors=None):
+		PortageException.__init__(self, value)
+		self.errors = errors
 
 class InvalidVersionString(PortageException):
 	"""An invalid version string has been encountered"""
@@ -49,6 +53,9 @@ class ParseError(PortageException):
 
 class InvalidData(PortageException):
 	"""An incorrect formatting was passed instead of the expected one"""
+	def __init__(self, value, category=None):
+		PortageException.__init__(self, value)
+		self.category = category
 
 class InvalidDataType(PortageException):
 	"""An incorrect type was passed instead of the expected one"""
@@ -73,6 +80,31 @@ class PermissionDenied(PortageException):
 class TryAgain(PortageException):
 	from errno import EAGAIN as errno
 	"""Try again"""
+
+class TimeoutException(PortageException):
+	from errno import ETIME as errno
+
+class AlarmSignal(TimeoutException):
+	def __init__(self, value, signum=None, frame=None):
+		TimeoutException.__init__(self, value)
+		self.signum = signum
+		self.frame = frame
+
+	@classmethod
+	def register(cls, time):
+		signal.signal(signal.SIGALRM, cls._signal_handler)
+		signal.alarm(time)
+
+	@classmethod
+	def unregister(cls):
+		signal.alarm(0)
+		signal.signal(signal.SIGALRM, signal.SIG_DFL)
+
+	@classmethod
+	def _signal_handler(cls, signum, frame):
+		signal.signal(signal.SIGALRM, signal.SIG_DFL)
+		raise AlarmSignal("alarm signal",
+			signum=signum, frame=frame)
 
 class ReadOnlyFileSystem(PortageException):
 	"""Read-only file system"""
@@ -102,6 +134,9 @@ class InvalidPackageName(PortagePackageException):
 
 class InvalidAtom(PortagePackageException):
 	"""Malformed atom spec"""
+	def __init__(self, value, category=None):
+		PortagePackageException.__init__(self, value)
+		self.category = category
 
 class UnsupportedAPIException(PortagePackageException):
 	"""Unsupported API"""

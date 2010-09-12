@@ -5,7 +5,7 @@
 from portage.dep import Atom
 from portage.exception import InvalidAtom
 from portage.tests import TestCase
-from portage.sets.base import InternalPackageSet
+from portage._sets.base import InternalPackageSet
 
 class InternalPackageSetTestCase(TestCase):
 	"""Simple Test Case for InternalPackageSet"""

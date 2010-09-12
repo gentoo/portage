@@ -6,11 +6,8 @@ __all__ = ['dep_check', 'dep_eval', 'dep_wordreduce', 'dep_zapdeps']
 import logging
 
 import portage
-from portage.dep import Atom, match_from_list, \
-	remove_slot, use_reduce
-from portage.eapi import eapi_has_strong_blocks, eapi_has_use_deps, eapi_has_slot_deps, \
-	eapi_has_use_dep_defaults
-from portage.exception import InvalidAtom, InvalidDependString, ParseError
+from portage.dep import Atom, match_from_list, use_reduce
+from portage.exception import InvalidDependString, ParseError
 from portage.localization import _
 from portage.util import writemsg, writemsg_level
 from portage.versions import catpkgsplit, cpv_getkey, pkgcmp
@@ -63,28 +60,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			raise ParseError(
 				_("invalid token: '%s'") % x)
 
-		if x.blocker and x.blocker.overlap.forbid and \
-			not eapi_has_strong_blocks(eapi):
-			raise ParseError(
-				_("strong blocks are not allowed in EAPI %s: '%s'") % (eapi, x))
-		if x.use and not eapi_has_use_deps(eapi):
-			raise ParseError(
-				_("use deps are not allowed in EAPI %s: '%s'") % (eapi, x))
-		if x.slot and not eapi_has_slot_deps(eapi):
-			raise ParseError(
-				_("slot deps are not allowed in EAPI %s: '%s'") % (eapi, x))
-		if x.use and (x.use.missing_enabled or x.use.missing_disabled) \
-			and not eapi_has_use_dep_defaults(eapi):
-			raise ParseError(
-				_("use dep defaults are not allowed in EAPI %s: '%s'") % (eapi, x))
-
 		if repoman:
 			x = x._eval_qa_conditionals(use_mask, use_force)
-
-		if not repoman and \
-			myuse is not None and x.use:
-			if x.use.conditional:
-				x = x.evaluate_conditionals(myuse)
 
 		mykey = x.cp
 		if not mykey.startswith("virtual/"):
@@ -174,7 +151,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 
 			if not mycheck[0]:
 				raise ParseError(
-					"%s: %s '%s'" % (y[0], mycheck[1], depstring))
+					"%s: %s '%s'" % (pkg, mycheck[1], depstring))
 
 			# pull in the new-style virtual
 			mycheck[1].append(virt_atom)
@@ -406,7 +383,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				if all_in_graph:
 					if parent is None or priority is None:
 						pass
-					elif priority.buildtime:
+					elif priority.buildtime and \
+						not (priority.satisfied or priority.optional):
 						# Check if the atom would result in a direct circular
 						# dependency and try to avoid that if it seems likely
 						# to be unresolvable. This is only relevant for
@@ -538,9 +516,32 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		mymasks.discard(mysettings["ARCH"])
 		useforce.update(mysettings.useforce)
 		useforce.difference_update(mymasks)
+
+	# eapi code borrowed from _expand_new_virtuals()
+	mytrees = trees[myroot]
+	parent = mytrees.get("parent")
+	virt_parent = mytrees.get("virt_parent")
+	current_parent = None
+	eapi = None
+	if parent is not None:
+		if virt_parent is not None:
+			current_parent = virt_parent[0]
+		else:
+			current_parent = parent
+
+	if current_parent is not None:
+		# Don't pass the eapi argument to use_reduce() for installed packages
+		# since previous validation will have already marked them as invalid
+		# when necessary and now we're more interested in evaluating
+		# dependencies so that things like --depclean work as well as possible
+		# in spite of partial invalidity.
+		if not current_parent.installed:
+			eapi = current_parent.metadata['EAPI']
+
 	try:
 		mysplit = use_reduce(depstring, uselist=myusesplit, masklist=mymasks, \
-			matchall=(use=="all"), excludeall=useforce, opconvert=True, token_class=Atom)
+			matchall=(use=="all"), excludeall=useforce, opconvert=True, \
+			token_class=Atom, eapi=eapi)
 	except InvalidDependString as e:
 		return [0, str(e)]
 

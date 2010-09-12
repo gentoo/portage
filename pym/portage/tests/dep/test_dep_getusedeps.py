@@ -1,11 +1,10 @@
 # test_dep_getusedeps.py -- Portage Unit Testing Functionality
-# Copyright 2007 Gentoo Foundation
+# Copyright 2007-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
 from portage.dep import dep_getusedeps
 
-import sys
 from portage.tests import test_cps, test_slots, test_versions, test_usedeps
 
 class DepGetUseDeps(TestCase):

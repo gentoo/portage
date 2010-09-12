@@ -1,5 +1,7 @@
-# Copyright 2003-2007 Gentoo Foundation
+# Copyright 2003-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+from __future__ import absolute_import
 
 import codecs
 import sys
@@ -36,7 +38,7 @@ def get_applied_glsas(settings):
 	@rtype:		list
 	@return:	list of glsa IDs
 	"""
-	return grabfile(os.path.join(os.sep, settings["ROOT"], CACHE_PATH, "glsa"))
+	return grabfile(os.path.join(settings["EROOT"], CACHE_PATH, "glsa"))
 
 
 # TODO: use the textwrap module instead
@@ -666,7 +668,7 @@ class Glsa:
 		"""
 		if not self.isApplied():
 			checkfile = codecs.open(
-				_unicode_encode(os.path.join(os.sep, self.config["ROOT"],
+				_unicode_encode(os.path.join(self.config["EROOT"],
 				CACHE_PATH, "glsa"),
 				encoding=_encodings['fs'], errors='strict'), 
 				mode='a+', encoding=_encodings['content'], errors='strict')

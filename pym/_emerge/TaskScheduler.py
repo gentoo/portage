@@ -17,6 +17,7 @@ class TaskScheduler(object):
 			max_jobs=max_jobs, max_load=max_load)
 		self.sched_iface = self._scheduler.sched_iface
 		self.run = self._scheduler.run
+		self.clear = self._scheduler.clear
 		self._scheduler.add(self._queue)
 
 	def add(self, task):

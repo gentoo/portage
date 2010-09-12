@@ -5,11 +5,14 @@
 # This is a helper which ebuild processes can use
 # to communicate with portage's main python process.
 
+import array
+import logging
 import os
 import pickle
 import select
 import signal
 import sys
+import time
 
 def debug_signal(signum, frame):
 	import pdb
@@ -27,8 +30,12 @@ if os.environ.get("SANDBOX_ON") == "1":
 			":".join(filter(None, sandbox_write))
 
 import portage
+portage._disable_legacy_globals()
 
 class EbuildIpc(object):
+
+	_COMMUNICATE_TIMEOUT_SECONDS = 40
+	_BUFSIZE = 4096
 
 	def __init__(self):
 		self.fifo_dir = os.environ['PORTAGE_BUILDDIR']
@@ -37,34 +44,75 @@ class EbuildIpc(object):
 		self.ipc_lock_file = os.path.join(self.fifo_dir, '.ipc_lock')
 
 	def communicate(self, args):
+
 		# Make locks quiet since unintended locking messages displayed on
 		# stdout could corrupt the intended output of this program.
 		portage.locks._quiet = True
 		lock_obj = portage.locks.lockfile(self.ipc_lock_file, unlinkfile=True)
+		start_time = time.time()
+
 		try:
-			return self._communicate(args)
-		finally:
-			portage.locks.unlockfile(lock_obj)
+			try:
+				portage.exception.AlarmSignal.register(
+					self._COMMUNICATE_TIMEOUT_SECONDS)
+				returncode = self._communicate(args)
+				return returncode
+			finally:
+				portage.exception.AlarmSignal.unregister()
+				portage.locks.unlockfile(lock_obj)
+		except portage.exception.AlarmSignal:
+			time_elapsed = time.time() - start_time
+			portage.util.writemsg_level(
+				('ebuild-ipc timed out after %d seconds\n') % \
+				(time_elapsed,),
+				level=logging.ERROR, noiselevel=-1)
+			return 1
 
 	def _communicate(self, args):
 		input_fd = os.open(self.ipc_out_fifo, os.O_RDONLY|os.O_NONBLOCK)
-		input_file = os.fdopen(input_fd, 'rb')
-		output_file = open(self.ipc_in_fifo, 'wb')
-		pickle.dump(args, output_file)
+
+		# File streams are in unbuffered mode since we do atomic
+		# read and write of whole pickles.
+		input_file = os.fdopen(input_fd, 'rb', 0)
+		output_file = open(self.ipc_in_fifo, 'wb', 0)
+
+		# Write the whole pickle in a single atomic write() call,
+		# since the reader is in non-blocking mode and we want
+		# it to get the whole pickle at once.
+		output_file.write(pickle.dumps(args))
 		output_file.flush()
 
 		events = select.select([input_file], [], [])
-		reply = pickle.load(input_file)
-		output_file.close()
-		input_file.close()
 
-		(out, err, rval) = reply
+		# Read the whole pickle in a single atomic read() call.
+		buf = array.array('B')
+		try:
+			buf.fromfile(input_file, self._BUFSIZE)
+		except (EOFError, IOError) as e:
+			if not buf:
+				portage.util.writemsg("%s\n" % (e,), noiselevel=-1)
 
-		if out:
-			portage.util.writemsg_stdout(out, noiselevel=-1)
+		rval = 2
 
-		if err:
-			portage.util.writemsg(err, noiselevel=-1)
+		if buf:
+
+			try:
+				reply = pickle.loads(buf.tostring())
+			except (EnvironmentError, EOFError, ValueError,
+				pickle.UnpicklingError) as e:
+				portage.util.writemsg("%s\n" % (e,), noiselevel=-1)
+
+			else:
+				output_file.close()
+				input_file.close()
+
+				(out, err, rval) = reply
+
+				if out:
+					portage.util.writemsg_stdout(out, noiselevel=-1)
+
+				if err:
+					portage.util.writemsg(err, noiselevel=-1)
 
 		return rval
 

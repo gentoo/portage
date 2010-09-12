@@ -16,6 +16,58 @@ Helper calls may be prefixed with the 'nonfatal' helper in order
 to prevent errors from being fatal.
 </para>
 </section>
+<section id='package-ebuild-eapi-4_pre1-helpers-docompress'>
+<title>Controllable Compression</title>
+<para>
+In EAPI 4, the package manager may optionally compress
+a subset of the files under the D
+directory. To control which directories may or may not be compressed, the
+package manager shall maintain two lists:
+<itemizedlist>
+<listitem><para>An inclusion list, which initially contains /usr/share/doc, /usr/share/info
+and /usr/share/man.</para></listitem>
+<listitem><para>An exclusion list, which initially contains /usr/share/doc/${PF}/html.</para></listitem>
+</itemizedlist>
+</para>
+<para>
+The optional compression shall be carried out after src_install has completed,
+and before the execution of any subsequent phase function. For each item in the
+inclusion list, pretend it has the value of the D variable prepended, then:
+<itemizedlist>
+<listitem><para>If it is a directory, act as if every file or directory immediately under
+this directory were in the inclusion list.</para></listitem>
+<listitem><para>If the item is a file, it may be compressed unless it has been excluded as
+described below.</para></listitem>
+<listitem><para>If the item does not exist, it is ignored.</para></listitem>
+</itemizedlist>
+</para>
+<para>
+Whether an item is to be excluded is determined as follows: For each item in
+the exclusion list, pretend it has the value of the D variable prepended, then:
+<itemizedlist>
+<listitem><para>If it is a directory, act as if every file or directory immediately under
+this directory were in the exclusion list.</para></listitem>
+<listitem><para>If the item is a file, it shall not be compressed.</para></listitem>
+<listitem><para>If the item does not exist, it is ignored.</para></listitem>
+</itemizedlist>
+</para>
+<para>
+The package manager shall take appropriate steps to ensure that its compression
+mechanisms behave sensibly even if an item is listed in the inclusion list
+multiple times, if an item is a symlink, or if a file is already compressed.
+</para>
+<para>
+The following commands may be used in src_install to alter these lists. It is
+an error to call any of these functions from any other phase.
+</para>
+<section id='package-ebuild-eapi-4_pre1-helpers-docompress-command'>
+<title>docompress helper</title>
+<para>
+If the first argument is -x, add each of its subsequent arguments to the
+exclusion list. Otherwise, add each argument to the inclusion list.
+</para>
+</section>
+</section>
 <section id='package-ebuild-eapi-4_pre1-helpers-dodoc-r'>
 <title>dodoc -r</title>
 <para>

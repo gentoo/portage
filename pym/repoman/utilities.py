@@ -37,6 +37,8 @@ from portage import util
 normalize_path = util.normalize_path
 util.initialize_logger()
 
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 def detect_vcs_conflicts(options, vcs):
 	"""Determine if the checkout has problems like cvs conflicts.
@@ -110,26 +112,52 @@ def have_profile_dir(path, maxdepth=3, filename="profiles.desc"):
 		path = normalize_path(path + "/..")
 		maxdepth -= 1
 
-def parse_metadata_use(xml_tree, uselist=None):
+def parse_metadata_use(xml_tree):
 	"""
 	Records are wrapped in XML as per GLEP 56
-	returns a dict of the form a list of flags"""
-	if uselist is None:
-		uselist = []
+	returns a dict with keys constisting of USE flag names and values
+	containing their respective descriptions
+	"""
+	uselist = {}
 
-	usetag = xml_tree.findall("use")
-	if not usetag:
+	usetags = xml_tree.findall("use")
+	if not usetags:
 		return uselist
 
-	flags = usetag[0].findall("flag")
-	if not flags:
-		raise exception.ParseError("missing 'flag' tag(s)")
+	# It's possible to have multiple 'use' elements.
+	for usetag in usetags:
+		flags = usetag.findall("flag")
+		if not flags:
+			# DTD allows use elements containing no flag elements.
+			continue
 
-	for flag in flags:
-		pkg_flag = flag.get("name")
-		if pkg_flag is None:
-			raise exception.ParseError("missing 'name' attribute for 'flag' tag")
-		uselist.append(pkg_flag)
+		for flag in flags:
+			pkg_flag = flag.get("name")
+			if pkg_flag is None:
+				raise exception.ParseError("missing 'name' attribute for 'flag' tag")
+			flag_restrict = flag.get("restrict")
+
+			# emulate the Element.itertext() method from python-2.7
+			inner_text = []
+			stack = []
+			stack.append(flag)
+			while stack:
+				obj = stack.pop()
+				if isinstance(obj, basestring):
+					inner_text.append(obj)
+					continue
+				if isinstance(obj.text, basestring):
+					inner_text.append(obj.text)
+				if isinstance(obj.tail, basestring):
+					stack.append(obj.tail)
+				stack.extend(reversed(obj))
+
+			if pkg_flag not in uselist:
+				uselist[pkg_flag] = {}
+
+			# (flag_restrict can be None)
+			uselist[pkg_flag][flag_restrict] = " ".join("".join(inner_text).split())
+
 	return uselist
 
 class UnknownHerdsError(ValueError):

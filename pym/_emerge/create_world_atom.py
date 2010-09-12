@@ -1,7 +1,5 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-
-import portage
 
 def create_world_atom(pkg, args_set, root_config):
 	"""Create a new atom for the world file if one does not exist.  If the

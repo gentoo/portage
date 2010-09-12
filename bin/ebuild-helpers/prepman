@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2007 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
@@ -14,6 +14,9 @@ if [[ ! -d ${mandir} ]] ; then
 	eqawarn "QA Notice: prepman called with non-existent dir '${mandir#${D}}'"
 	exit 0
 fi
+
+# replaced by controllable compression in EAPI 4
+hasq "${EAPI}" 0 1 2 3 || exit 0
 
 shopt -s nullglob
 

@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Aug 2008" "Portage 2.2" "Portage"
+.TH "EMERGE" "1" "Aug 2008" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -291,7 +291,8 @@ after the merge list and emerge will immediately
 abort. If the displayed configuration changes are
 satisfactory, you should copy and paste them into
 the specified configuration file(s). Currently,
-this only works for unstable KEYWORDS masks.
+this only works for unstable KEYWORDS masks and
+package.use settings.
 .TP
 .BR \-\-backtrack=COUNT
 Specifies an integer number of times to backtrack if
@@ -703,7 +704,7 @@ before they can emerge.
 Here we see that the make.conf variable \fBUSE\fR affects how this package is
 built.  In this example, ipv6 optional support is enabled and both gtk and qt
 support are disabled.  The asterisk following ipv6 indicates that ipv6 support
-was disabled the last time this packages was installed.  The percent sign
+was disabled the last time this package was installed.  The percent sign
 following qt indicates that the qt option has been added to the package since
 it was last installed.  For information about all \fBUSE\fR symbols, see the
 \fB\-\-verbose\fR option documentation above.
@@ -788,7 +789,8 @@ architecture name.  \fBemerge\fR examines the \fBACCEPT_KEYWORDS\fR environment
 variable to allow or disallow the emerging of a package masked by 
 \fBKEYWORDS\fR.  To inform \fBemerge\fR that it should build these 'testing' 
 versions of packages, you should update your 
-\fI/etc/portage/package.keywords\fR file to list the packages you want the 
+\fI/etc/portage/package.accept_keywords\fR
+file to list the packages you want the
 \'testing\' version.  See \fBportage\fR(5) for more information.
 .TP
 .BR LICENSE

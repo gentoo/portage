@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import gzip
+import sys
 import tempfile
 
 from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
@@ -9,14 +10,17 @@ from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.EbuildProcess import EbuildProcess
 from _emerge.CompositeTask import CompositeTask
 from portage.util import writemsg
+from portage.xml.metadata import MetaDataXML
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.elog:messages@elog_messages',
 	'portage.package.ebuild.doebuild:_check_build_log,' + \
 		'_post_phase_cmds,_post_phase_userpriv_perms,' + \
 		'_post_src_install_chost_fix,' + \
 		'_post_src_install_uid_fix'
 )
 from portage import os
+from portage import StringIO
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
@@ -26,6 +30,47 @@ class EbuildPhase(CompositeTask):
 	__slots__ = ("actionmap", "phase", "settings")
 
 	def _start(self):
+
+		need_builddir = self.phase not in EbuildProcess._phases_without_builddir
+
+		if need_builddir:
+			phase_completed_file = os.path.join(
+				self.settings['PORTAGE_BUILDDIR'],
+				".%sed" % self.phase.rstrip('e'))
+			if not os.path.exists(phase_completed_file):
+				# If the phase is really going to run then we want
+				# to eliminate any stale elog messages that may
+				# exist from a previous run.
+				try:
+					os.unlink(os.path.join(self.settings['T'],
+						'logging', self.phase))
+				except OSError:
+					pass
+
+		if self.phase == 'setup':
+
+			use = self.settings.get('PORTAGE_BUILT_USE')
+			if use is None:
+				use = self.settings['PORTAGE_USE']
+
+			maint_str = ""
+			metadata_xml_path = os.path.join(os.path.dirname(self.settings['EBUILD']), "metadata.xml")
+			if os.path.isfile(metadata_xml_path):
+				herds_path = os.path.join(self.settings['PORTDIR'],
+					'metadata/herds.xml')
+				try:
+					metadata_xml = MetaDataXML(metadata_xml_path, herds_path)
+					maint_str = metadata_xml.format_maintainer_string()
+				except SyntaxError:
+					maint_str = "<invalid metadata.xml>"
+
+			msg = []
+			msg.append("CPV:  %s" % self.settings.mycpv)
+			msg.append("REPO: %s" % self.settings['PORTAGE_REPO_NAME'])
+			if maint_str:
+				msg.append("Maintainer: %s" % maint_str)
+			msg.append("USE:  %s" % use)
+			self._elog('einfo', msg)
 
 		if self.phase == 'prerm':
 			env_extractor = BinpkgEnvExtractor(background=self.background,
@@ -40,7 +85,6 @@ class EbuildPhase(CompositeTask):
 
 	def _env_extractor_exit(self, env_extractor):
 		if self._default_exit(env_extractor) != os.EX_OK:
-			self._unlock_builddir()
 			self.wait()
 			return
 
@@ -55,8 +99,14 @@ class EbuildPhase(CompositeTask):
 		if self.phase in ("clean", "cleanrm"):
 			logfile = None
 
+		fd_pipes = None
+		if not self.background and self.phase == 'nofetch':
+			# All the pkg_nofetch output goes to stderr since
+			# it's considered to be an error message.
+			fd_pipes = {1 : sys.stderr.fileno()}
+
 		ebuild_process = EbuildProcess(actionmap=self.actionmap,
-			background=self.background, logfile=logfile,
+			background=self.background, fd_pipes=fd_pipes, logfile=logfile,
 			phase=self.phase, scheduler=self.scheduler,
 			settings=self.settings)
 
@@ -201,3 +251,21 @@ class EbuildPhase(CompositeTask):
 		self._final_exit(clean_phase)
 		self.returncode = 1
 		self.wait()
+
+	def _elog(self, elog_funcname, lines):
+		out = StringIO()
+		phase = self.phase
+		elog_func = getattr(elog_messages, elog_funcname)
+		global_havecolor = portage.output.havecolor
+		try:
+			portage.output.havecolor = \
+				self.settings.get('NOCOLOR', 'false').lower() in ('no', 'false')
+			for line in lines:
+				elog_func(line, phase=phase, key=self.settings.mycpv, out=out)
+		finally:
+			portage.output.havecolor = global_havecolor
+		msg = _unicode_decode(out.getvalue(),
+			encoding=_encodings['content'], errors='replace')
+		if msg:
+			self.scheduler.output(msg,
+				log_path=self.settings.get("PORTAGE_LOG_FILE"))

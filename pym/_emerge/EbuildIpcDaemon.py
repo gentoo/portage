@@ -29,11 +29,13 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 	__slots__ = ('commands',)
 
 	def _input_handler(self, fd, event):
+		# Read the whole pickle in a single atomic read() call.
+		buf = self._read_buf(self._files.pipe_in, event)
 
-		if event & PollConstants.POLLIN:
+		if buf:
 
 			try:
-				obj = pickle.load(self._files.pipe_in)
+				obj = pickle.loads(buf.tostring())
 			except (EnvironmentError, EOFError, ValueError,
 				pickle.UnpicklingError):
 				pass
@@ -63,6 +65,14 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 
 	def _send_reply(self, reply):
 		output_fd = os.open(self.output_fifo, os.O_WRONLY|os.O_NONBLOCK)
-		output_file = os.fdopen(output_fd, 'wb')
-		pickle.dump(reply, output_file)
+
+		# File streams are in unbuffered mode since we do atomic
+		# read and write of whole pickles.
+		output_file = os.fdopen(output_fd, 'wb', 0)
+
+		# Write the whole pickle in a single atomic write() call,
+		# since the reader is in non-blocking mode and we want
+		# it to get the whole pickle at once.
+		output_file.write(pickle.dumps(reply))
+		output_file.flush()
 		output_file.close()

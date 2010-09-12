@@ -13,9 +13,6 @@ from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from portage.util import writemsg
 import portage
 from portage import os
-from portage import _encodings
-from portage import _unicode_encode
-import codecs
 from portage.output import colorize
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.doebuild import _check_temp_dir
@@ -134,7 +131,7 @@ class EbuildBuild(CompositeTask):
 		self._start_task(pre_clean_phase, self._pre_clean_exit)
 
 	def _pre_clean_exit(self, pre_clean_phase):
-		if self._final_exit(pre_clean_phase) != os.EX_OK:
+		if self._default_exit(pre_clean_phase) != os.EX_OK:
 			self._unlock_builddir()
 			self.wait()
 			return
@@ -153,11 +150,8 @@ class EbuildBuild(CompositeTask):
 
 	def _fetch_exit(self, fetcher):
 
-		portage.elog.elog_process(self.pkg.cpv, self.settings)
-
 		if self._default_exit(fetcher) != os.EX_OK:
-			self._unlock_builddir()
-			self.wait()
+			self._fetch_failed()
 			return
 
 		# discard successful fetch log
@@ -197,6 +191,30 @@ class EbuildBuild(CompositeTask):
 		build = EbuildExecuter(background=self.background, pkg=pkg,
 			scheduler=scheduler, settings=settings)
 		self._start_task(build, self._build_exit)
+
+	def _fetch_failed(self):
+		# We only call the pkg_nofetch phase if either RESTRICT=fetch
+		# is set or the package has explicitly overridden the default
+		# pkg_nofetch implementation. This allows specialized messages
+		# to be displayed for problematic packages even though they do
+		# not set RESTRICT=fetch (bug #336499).
+
+		if 'fetch' not in self.pkg.metadata.restrict and \
+			'nofetch' not in self.pkg.metadata.defined_phases:
+			self._unlock_builddir()
+			self.wait()
+			return
+
+		self.returncode = None
+		nofetch_phase = EbuildPhase(background=self.background,
+			phase='nofetch', scheduler=self.scheduler, settings=self.settings)
+		self._start_task(nofetch_phase, self._nofetch_exit)
+
+	def _nofetch_exit(self, nofetch_phase):
+		self._final_exit(nofetch_phase)
+		self._unlock_builddir()
+		self.returncode = 1
+		self.wait()
 
 	def _unlock_builddir(self):
 		portage.elog.elog_process(self.pkg.cpv, self.settings)

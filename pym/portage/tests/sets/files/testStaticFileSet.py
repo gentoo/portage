@@ -6,7 +6,7 @@ import tempfile
 
 from portage import os
 from portage.tests import TestCase, test_cps
-from portage.sets.files import StaticFileSet
+from portage._sets.files import StaticFileSet
 
 class StaticFileSetTestCase(TestCase):
 	"""Simple Test Case for StaticFileSet"""

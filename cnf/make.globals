@@ -53,7 +53,8 @@ FEATURES="assume-digests distlocks fixpackages fixlafiles news parallel-fetch pr
 # FEATURES=protect-owned to operate smoothly in all cases.
 COLLISION_IGNORE="/lib/modules"
 
-# Enable for global testing
+# Enable preserve-libs for testing with portage versions that support it.
+# This setting is commented out for portage versions that don't support it.
 FEATURES="${FEATURES} preserve-libs"
 
 # Default chunksize for binhost comms
@@ -68,6 +69,8 @@ EMERGE_WARNING_DELAY="10"
 # Automatically clean installed packages after they are updated.
 # This option will be removed and forced to yes.
 AUTOCLEAN="yes"
+
+PORTAGE_BZIP2_COMMAND="bzip2"
 
 # Don't compress files with these suffixes.
 PORTAGE_COMPRESS_EXCLUDE_SUFFIXES="css gif htm[l]? jp[e]?g js pdf png"

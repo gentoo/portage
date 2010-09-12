@@ -16,7 +16,7 @@ def _get_legacy_global(name):
 		return getattr(portage, name)
 
 	elif name in ('mtimedb', 'mtimedbfile'):
-		portage.mtimedbfile = os.path.join(portage.root,
+		portage.mtimedbfile = os.path.join(portage.settings['EROOT'],
 			CACHE_PATH, "mtimedb")
 		constructed.add('mtimedbfile')
 		portage.mtimedb = portage.MtimeDB(portage.mtimedbfile)
@@ -28,7 +28,7 @@ def _get_legacy_global(name):
 
 	kwargs = {}
 	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT")):
-		kwargs[k] = os.environ.get(envvar, "/")
+		kwargs[k] = os.environ.get(envvar)
 
 	portage._initializing_globals = True
 	portage.db = portage.create_trees(**kwargs)

@@ -1,9 +1,9 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
 
-import codecs
+import gc
 import gzip
 import logging
 import shutil
@@ -11,6 +11,7 @@ import sys
 import tempfile
 import textwrap
 import time
+import warnings
 import weakref
 import zlib
 
@@ -18,7 +19,6 @@ import portage
 from portage import StringIO
 from portage import os
 from portage import _encodings
-from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.const import LIBC_PACKAGE_ATOM
@@ -26,8 +26,8 @@ from portage.elog.messages import eerror
 from portage.localization import _
 from portage.output import colorize, create_color_func, red
 bad = create_color_func("BAD")
-from portage.sets import SETPREFIX
-from portage.sets.base import InternalPackageSet
+from portage._sets import SETPREFIX
+from portage._sets.base import InternalPackageSet
 from portage.util import writemsg, writemsg_level
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
@@ -44,6 +44,7 @@ from _emerge.depgraph import depgraph, resume_depgraph
 from _emerge.EbuildFetcher import EbuildFetcher
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.emergelog import emergelog, _emerge_log_dir
+from _emerge.FakeVartree import FakeVartree
 from _emerge._find_deep_system_runtime_deps import _find_deep_system_runtime_deps
 from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
 from _emerge.JobStatusDisplay import JobStatusDisplay
@@ -137,15 +138,21 @@ class Scheduler(PollScheduler):
 			portage.exception.PortageException.__init__(self, value)
 
 	def __init__(self, settings, trees, mtimedb, myopts,
-		spinner, mergelist, favorites, digraph):
+		spinner, mergelist=None, favorites=None, graph_config=None):
 		PollScheduler.__init__(self)
+
+		if mergelist is not None:
+			warnings.warn("The mergelist parameter of the " + \
+				"_emerge.Scheduler constructor is now unused. Use " + \
+				"the graph_config parameter instead.",
+				DeprecationWarning, stacklevel=2)
+
 		self.settings = settings
 		self.target_root = settings["ROOT"]
 		self.trees = trees
 		self.myopts = myopts
 		self._spinner = spinner
 		self._mtimedb = mtimedb
-		self._mergelist = mergelist
 		self._favorites = favorites
 		self._args_set = InternalPackageSet(favorites)
 		self._build_opts = self._build_opts_class()
@@ -200,10 +207,8 @@ class Scheduler(PollScheduler):
 			self.edebug = 1
 		self.pkgsettings = {}
 		self._config_pool = {}
-		self._blocker_db = {}
-		for root in trees:
+		for root in self.trees:
 			self._config_pool[root] = []
-			self._blocker_db[root] = BlockerDB(trees[root]["root_config"])
 
 		fetch_iface = self._fetch_iface_class(log_file=self._fetch_log,
 			schedule=self._schedule_fetch)
@@ -222,6 +227,7 @@ class Scheduler(PollScheduler):
 
 		self._prefetchers = weakref.WeakValueDictionary()
 		self._pkg_queue = []
+		self._running_tasks = set()
 		self._completed_tasks = set()
 
 		self._failed_pkgs = []
@@ -229,7 +235,8 @@ class Scheduler(PollScheduler):
 		self._failed_pkgs_die_msgs = []
 		self._post_mod_echo_msgs = []
 		self._parallel_fetch = False
-		merge_count = len([x for x in mergelist \
+		self._init_graph(graph_config)
+		merge_count = len([x for x in self._mergelist \
 			if isinstance(x, Package) and x.operation == "merge"])
 		self._pkg_count = self._pkg_count_class(
 			curval=0, maxval=merge_count)
@@ -242,8 +249,6 @@ class Scheduler(PollScheduler):
 		self._job_delay_factor = 1.0
 		self._job_delay_exp = 1.5
 		self._previous_job_start_time = None
-
-		self._set_digraph(digraph)
 
 		# This is used to memoize the _choose_pkg() result when
 		# no packages can be chosen until one of the existing
@@ -281,6 +286,35 @@ class Scheduler(PollScheduler):
 			cpv = portage_match.pop()
 			self._running_portage = self._pkg(cpv, "installed",
 				self._running_root, installed=True)
+
+	def _init_graph(self, graph_config):
+		"""
+		Initialization structures used for dependency calculations
+		involving currently installed packages.
+		"""
+		# TODO: Replace the BlockerDB with a depgraph of installed packages
+		# that's updated incrementally with each upgrade/uninstall operation
+		# This will be useful for making quick and safe decisions with respect
+		# to aggressive parallelization discussed in bug #279623.
+		self._set_graph_config(graph_config)
+		self._blocker_db = {}
+		for root in self.trees:
+			if graph_config is None:
+				fake_vartree = FakeVartree(self.trees[root]["root_config"])
+			else:
+				fake_vartree = graph_config.trees[root]['vartree']
+			self._blocker_db[root] = BlockerDB(fake_vartree)
+
+	def _destroy_graph(self):
+		"""
+		Use this to free memory at the beginning of _calc_resume_list().
+		After _calc_resume_list(), the _init_graph() method
+		must to be called in order to re-generate the structures that
+		this method destroys. 
+		"""
+		self._blocker_db = None
+		self._set_graph_config(None)
+		gc.collect()
 
 	def _poll(self, timeout=None):
 		self._schedule()
@@ -348,15 +382,28 @@ class Scheduler(PollScheduler):
 				interactive_tasks.append(task)
 		return interactive_tasks
 
-	def _set_digraph(self, digraph):
+	def _set_graph_config(self, graph_config):
+
+		if graph_config is None:
+			self._graph_config = None
+			self._digraph = None
+			self._mergelist = []
+			self._deep_system_deps.clear()
+			return
+
+		self._graph_config = graph_config
+		self._digraph = graph_config.graph
+		self._mergelist = graph_config.mergelist
+
 		if "--nodeps" in self.myopts or \
-			digraph is None or \
 			(self._max_jobs is not True and self._max_jobs < 2):
 			# save some memory
 			self._digraph = None
+			graph_config.graph = None
+			graph_config.pkg_cache.clear()
+			self._deep_system_deps.clear()
 			return
 
-		self._digraph = digraph
 		self._find_system_deps()
 		self._prune_digraph()
 		self._prevent_builddir_collisions()
@@ -538,7 +585,6 @@ class Scheduler(PollScheduler):
 		# Call gc.collect() here to avoid heap overflow that
 		# triggers 'Cannot allocate memory' errors (reported
 		# with python-2.5).
-		import gc
 		gc.collect()
 
 		blocker_db = self._blocker_db[new_pkg.root]
@@ -824,9 +870,12 @@ class Scheduler(PollScheduler):
 		if pkg.root == self._running_root.root and \
 			portage.match_from_list(
 			portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
-			if self._running_portage:
-				return pkg.cpv != self._running_portage.cpv
-			return True
+			if self._running_portage is None:
+				return True
+			elif pkg.cpv != self._running_portage.cpv or \
+				'9999' in pkg.cpv or \
+				'git' in pkg.inherited:
+				return True
 		return False
 
 	def _restart_if_necessary(self, pkg):
@@ -874,8 +923,12 @@ class Scheduler(PollScheduler):
 			if myopt not in bad_resume_opts:
 				if myarg is True:
 					mynewargv.append(myopt)
+				elif isinstance(myarg, list):
+					# arguments like --exclude that use 'append' action
+					for x in myarg:
+						mynewargv.append("%s=%s" % (myopt, x))
 				else:
-					mynewargv.append(myopt +"="+ str(myarg))
+					mynewargv.append("%s=%s" % (myopt, myarg))
 		# priority only needs to be adjusted on the first run
 		os.environ["PORTAGE_NICENESS"] = "0"
 		os.execv(mynewargv[0], mynewargv)
@@ -1256,6 +1309,7 @@ class Scheduler(PollScheduler):
 
 	def _do_merge_exit(self, merge):
 		pkg = merge.merge.pkg
+		self._running_tasks.remove(pkg)
 		if merge.returncode != os.EX_OK:
 			settings = merge.merge.settings
 			build_dir = settings.get("PORTAGE_BUILDDIR")
@@ -1308,6 +1362,7 @@ class Scheduler(PollScheduler):
 				self._task_queues.merge.add(merge)
 				self._status_display.merges = len(self._task_queues.merge)
 		else:
+			self._running_tasks.remove(build.pkg)
 			settings = build.settings
 			build_dir = settings.get("PORTAGE_BUILDDIR")
 			build_log = settings.get("PORTAGE_LOG_FILE")
@@ -1448,7 +1503,11 @@ class Scheduler(PollScheduler):
 				node in later):
 				dependent = True
 				break
-			node_stack.extend(graph.child_nodes(node))
+
+			# Don't traverse children of uninstall nodes since
+			# those aren't dependencies in the usual sense.
+			if node.operation != "uninstall":
+				node_stack.extend(graph.child_nodes(node))
 
 		return dependent
 
@@ -1495,8 +1554,7 @@ class Scheduler(PollScheduler):
 			not (self._failed_pkgs and not self._build_opts.fetchonly))
 
 	def _is_work_scheduled(self):
-		return bool(self._jobs or \
-			self._task_queues.merge or self._merge_wait_queue)
+		return bool(self._running_tasks)
 
 	def _schedule_tasks(self):
 
@@ -1581,6 +1639,7 @@ class Scheduler(PollScheduler):
 				self._pkg_count.curval += 1
 
 			task = self._task(pkg)
+			self._running_tasks.add(pkg)
 
 			if pkg.installed:
 				merge = PackageMerge(merge=task)
@@ -1692,6 +1751,10 @@ class Scheduler(PollScheduler):
 		"""
 		print(colorize("GOOD", "*** Resuming merge..."))
 
+		# free some memory before creating
+		# the resume depgraph
+		self._destroy_graph()
+
 		myparams = create_depgraph_params(self.myopts, None)
 		success = False
 		e = None
@@ -1752,12 +1815,7 @@ class Scheduler(PollScheduler):
 			self._post_mod_echo_msgs.append(mydepgraph.display_problems)
 			return False
 		mydepgraph.display_problems()
-
-		mylist = mydepgraph.altlist()
-		mydepgraph.break_refs(mylist)
-		mydepgraph.break_refs(dropped_tasks)
-		self._mergelist = mylist
-		self._set_digraph(mydepgraph.schedulerGraph())
+		self._init_graph(mydepgraph.schedulerGraph())
 
 		msg_width = 75
 		for task in dropped_tasks:

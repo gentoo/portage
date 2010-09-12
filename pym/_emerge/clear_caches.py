@@ -1,8 +1,7 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import gc
-import portage
 from portage.util.listdir import dircache
 
 def clear_caches(trees):
@@ -11,6 +10,10 @@ def clear_caches(trees):
 		d["porttree"].dbapi._aux_cache.clear()
 		d["bintree"].dbapi._aux_cache.clear()
 		d["bintree"].dbapi._clear_cache()
-		d["vartree"].dbapi.linkmap._clear_cache()
+		if d["vartree"].dbapi._linkmap is None:
+			# preserve-libs is entirely disabled
+			pass
+		else:
+			d["vartree"].dbapi._linkmap._clear_cache()
 	dircache.clear()
 	gc.collect()

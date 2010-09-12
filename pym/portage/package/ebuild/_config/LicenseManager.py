@@ -17,21 +17,30 @@ from portage.package.ebuild._config.helper import ordered_by_atom_specificity
 
 class LicenseManager(object):
 
-	def __init__(self):
+	def __init__(self, license_group_locations, abs_user_config, user_config=True):
+
 		self._accept_license_str = None
 		self._accept_license = None
 		self._license_groups = {}
 		self._plicensedict = ExtendedAtomDict(dict)
 		self._undef_lic_groups = set()
 
-	def read_config_files(self, abs_user_config):
+		if user_config:
+			license_group_locations = list(license_group_locations) + [abs_user_config]
+
+		self._read_license_groups(license_group_locations)
+
+		if user_config:
+			self._read_user_config(abs_user_config)
+
+	def _read_user_config(self, abs_user_config):
 		licdict = grabdict_package(os.path.join(
 			abs_user_config, "package.license"), recursive=1, allow_wildcard=True)
 		for k, v in licdict.items():
 			self._plicensedict.setdefault(k.cp, {})[k] = \
 				self.expandLicenseTokens(v)
 
-	def parse_license_groups(self, locations):
+	def _read_license_groups(self, locations):
 		for loc in locations:
 			for k, v in grabdict(
 				os.path.join(loc, "license_groups")).items():

@@ -11,11 +11,12 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.util import grabfile, write_atomic, ensure_dirs, normalize_path
 from portage.const import USER_CONFIG_PATH, WORLD_FILE, WORLD_SETS_FILE
+from portage.const import _ENABLE_SET_CONFIG
 from portage.localization import _
 from portage.locks import lockfile, unlockfile
 from portage import portage_gid
-from portage.sets.base import PackageSet, EditablePackageSet
-from portage.sets import SetConfigError, SETPREFIX, get_boolean
+from portage._sets.base import PackageSet, EditablePackageSet
+from portage._sets import SetConfigError, SETPREFIX, get_boolean
 from portage.env.loaders import ItemFileLoader, KeyListFileLoader
 from portage.env.validators import ValidAtomValidator
 from portage import cpv_getkey
@@ -207,16 +208,16 @@ class ConfigFileSet(PackageSet):
 class WorldSelectedSet(EditablePackageSet):
 	description = "Set of packages that were directly installed by the user"
 	
-	def __init__(self, root):
+	def __init__(self, eroot):
 		super(WorldSelectedSet, self).__init__()
 		# most attributes exist twice as atoms and non-atoms are stored in 
 		# separate files
 		self._lock = None
-		self._filename = os.path.join(os.sep, root, WORLD_FILE)
+		self._filename = os.path.join(eroot, WORLD_FILE)
 		self.loader = ItemFileLoader(self._filename, self._validate)
 		self._mtime = None
 		
-		self._filename2 = os.path.join(os.sep, root, WORLD_SETS_FILE)
+		self._filename2 = os.path.join(eroot, WORLD_SETS_FILE)
 		self.loader2 = ItemFileLoader(self._filename2, self._validate2)
 		self._mtime2 = None
 		
@@ -229,8 +230,11 @@ class WorldSelectedSet(EditablePackageSet):
 	def write(self):
 		write_atomic(self._filename,
 			"".join(sorted("%s\n" % x for x in self._atoms)))
-		write_atomic(self._filename2, "\n".join(sorted(self._nonatoms))+"\n")
-	
+
+		if _ENABLE_SET_CONFIG:
+			write_atomic(self._filename2,
+				"".join(sorted("%s\n" % x for x in self._nonatoms)))
+
 	def load(self):
 		atoms = []
 		nonatoms = []
@@ -258,6 +262,16 @@ class WorldSelectedSet(EditablePackageSet):
 			atoms_changed = True
 		else:
 			atoms.extend(self._atoms)
+
+		if _ENABLE_SET_CONFIG:
+			changed2, nonatoms = self._load2()
+			atoms_changed |= changed2
+
+		if atoms_changed:
+			self._setAtoms(atoms+nonatoms)
+
+	def _load2(self):
+		changed = False
 		try:
 			mtime = os.stat(self._filename2).st_mtime
 		except (OSError, IOError):
@@ -275,12 +289,12 @@ class WorldSelectedSet(EditablePackageSet):
 				data = {}
 			nonatoms = list(data)
 			self._mtime2 = mtime
-			atoms_changed = True
+			changed = True
 		else:
-			nonatoms.extend(self._nonatoms)
-		if atoms_changed:
-			self._setAtoms(atoms+nonatoms)
-		
+			nonatoms = list(self._nonatoms)
+
+		return changed, nonatoms
+
 	def _ensure_dirs(self):
 		ensure_dirs(os.path.dirname(self._filename), gid=portage_gid, mode=0o2750, mask=0o2)
 

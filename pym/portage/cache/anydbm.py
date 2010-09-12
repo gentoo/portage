@@ -1,9 +1,11 @@
-# Copyright: 2005 Gentoo Foundation
+# Copyright 2005-2010 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
-# License: GPL2
+
+from __future__ import absolute_import
 
 try:
-	anydbm_module = __import__("anydbm")
+	import anydbm as anydbm_module
 except ImportError:
 	# python 3.x
 	import dbm as anydbm_module

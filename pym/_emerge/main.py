@@ -24,6 +24,7 @@ from portage.output import create_color_func
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 
+from portage.const import _ENABLE_DYN_LINK_MAP
 import portage.elog
 import portage.util
 import portage.locks
@@ -32,7 +33,7 @@ from portage.data import secpass
 from portage.dbapi.dep_expand import dep_expand
 from portage.util import normalize_path as normpath
 from portage.util import shlex_split, writemsg_level, writemsg_stdout
-from portage.sets import SETPREFIX
+from portage._sets import SETPREFIX
 from portage._global_updates import _global_updates
 
 from _emerge.actions import action_config, action_sync, action_metadata, \
@@ -107,11 +108,13 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 			if z=='':
 				continue
 			inforoot=normpath(root+z)
-			if os.path.isdir(inforoot):
-				infomtime = os.stat(inforoot)[stat.ST_MTIME]
-				if inforoot not in prev_mtimes or \
-					prev_mtimes[inforoot] != infomtime:
-						regen_infodirs.append(inforoot)
+			if os.path.isdir(inforoot) and \
+				not [x for x in os.listdir(inforoot) \
+				if x.startswith('.keepinfodir')]:
+					infomtime = os.stat(inforoot)[stat.ST_MTIME]
+					if inforoot not in prev_mtimes or \
+						prev_mtimes[inforoot] != infomtime:
+							regen_infodirs.append(inforoot)
 
 		if not regen_infodirs:
 			portage.writemsg_stdout("\n")
@@ -211,10 +214,15 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 def display_preserved_libs(vardbapi, myopts):
 	MAX_DISPLAY = 3
 
-	# Ensure the registry is consistent with existing files.
-	vardbapi.plib_registry.pruneNonExisting()
+	if vardbapi._linkmap is None or \
+		vardbapi._plib_registry is None:
+		# preserve-libs is entirely disabled
+		return
 
-	if vardbapi.plib_registry.hasEntries():
+	# Ensure the registry is consistent with existing files.
+	vardbapi._plib_registry.pruneNonExisting()
+
+	if vardbapi._plib_registry.hasEntries():
 		if "--quiet" in myopts:
 			print()
 			print(colorize("WARN", "!!!") + " existing preserved libs found")
@@ -223,8 +231,8 @@ def display_preserved_libs(vardbapi, myopts):
 			print()
 			print(colorize("WARN", "!!!") + " existing preserved libs:")
 
-		plibdata = vardbapi.plib_registry.getPreservedLibs()
-		linkmap = vardbapi.linkmap
+		plibdata = vardbapi._plib_registry.getPreservedLibs()
+		linkmap = vardbapi._linkmap
 		consumer_map = {}
 		owners = {}
 		linkmap_broken = False
@@ -337,7 +345,7 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 		# If vdb state has not changed then there's nothing else to do.
 		sys.exit(retval)
 
-	vdb_path = os.path.join(target_root, portage.VDB_PATH)
+	vdb_path = os.path.join(root_config.settings['EROOT'], portage.VDB_PATH)
 	portage.util.ensure_dirs(vdb_path)
 	vdb_lock = None
 	if os.access(vdb_path, os.W_OK) and not "--pretend" in myopts:
@@ -353,7 +361,7 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 			if vdb_lock:
 				portage.locks.unlockdir(vdb_lock)
 
-	chk_updated_cfg_files(target_root, config_protect)
+	chk_updated_cfg_files(settings['EROOT'], config_protect)
 
 	display_news_notification(root_config, myopts)
 	if retval in (None, os.EX_OK) or (not "--pretend" in myopts):
@@ -389,7 +397,6 @@ def insert_optional_args(args):
 		'--autounmask'           : ('n',),
 		'--complete-graph' : ('n',),
 		'--deep'       : valid_integers,
-		'--depclean-lib-check'   : ('n',),
 		'--deselect'   : ('n',),
 		'--binpkg-respect-use'   : ('n', 'y',),
 		'--fail-clean'           : ('n',),
@@ -406,6 +413,9 @@ def insert_optional_args(args):
 		'--usepkg'               : ('n',),
 		'--usepkgonly'           : ('n',),
 	}
+
+	if _ENABLE_DYN_LINK_MAP:
+		default_arg_opts['--depclean-lib-check'] = ('n',)
 
 	short_arg_opts = {
 		'D' : valid_integers,
@@ -562,12 +572,6 @@ def parse_opts(tmpcmdline, silent=False):
 			"action" : "store"
 		},
 
-		"--depclean-lib-check": {
-			"help"    : "check for consumers of libraries before removing them",
-			"type"    : "choice",
-			"choices" : ("True", "n")
-		},
-
 		"--deselect": {
 			"help"    : "remove atoms/sets from the world file",
 			"type"    : "choice",
@@ -711,6 +715,13 @@ def parse_opts(tmpcmdline, silent=False):
 
 	}
 
+	if _ENABLE_DYN_LINK_MAP:
+		argument_options["--depclean-lib-check"] = {
+			"help"    : "check for consumers of libraries before removing them",
+			"type"    : "choice",
+			"choices" : ("True", "n")
+		}
+
 	from optparse import OptionParser
 	parser = OptionParser()
 	if parser.has_option("--help"):
@@ -761,8 +772,9 @@ def parse_opts(tmpcmdline, silent=False):
 	else:
 		myoptions.complete_graph = None
 
-	if myoptions.depclean_lib_check in ("True",):
-		myoptions.depclean_lib_check = True
+	if _ENABLE_DYN_LINK_MAP:
+		if myoptions.depclean_lib_check in ("True",):
+			myoptions.depclean_lib_check = True
 
 	if myoptions.exclude:
 		exclude = []
@@ -953,10 +965,25 @@ def parse_opts(tmpcmdline, silent=False):
 
 	return myaction, myopts, myfiles
 
+# Warn about features that may confuse users and
+# lead them to report invalid bugs.
+_emerge_features_warn = frozenset(['keeptemp', 'keepwork'])
+
 def validate_ebuild_environment(trees):
+	features_warn = set()
 	for myroot in trees:
 		settings = trees[myroot]["vartree"].settings
 		settings.validate()
+		features_warn.update(
+			_emerge_features_warn.intersection(settings.features))
+
+	if features_warn:
+		msg = "WARNING: The FEATURES variable contains one " + \
+			"or more values that should be disabled under " + \
+			"normal circumstances: %s" % " ".join(features_warn)
+		out = portage.output.EOutput()
+		for line in textwrap.wrap(msg, 65):
+			out.ewarn(line)
 
 def apply_priorities(settings):
 	ionice(settings)
@@ -996,9 +1023,9 @@ def ionice(settings):
 		out.eerror("See the make.conf(5) man page for PORTAGE_IONICE_COMMAND usage instructions.")
 
 def setconfig_fallback(root_config):
-	from portage.sets.base import DummyPackageSet
-	from portage.sets.files import WorldSelectedSet
-	from portage.sets.profiles import PackagesSystemSet
+	from portage._sets.base import DummyPackageSet
+	from portage._sets.files import WorldSelectedSet
+	from portage._sets.profiles import PackagesSystemSet
 	setconfig = root_config.setconfig
 	setconfig.psets['world'] = DummyPackageSet(atoms=['@selected', '@system'])
 	setconfig.psets['selected'] = WorldSelectedSet(root_config.settings['EROOT'])
@@ -1028,8 +1055,12 @@ def missing_sets_warning(root_config, missing_sets):
 		"missing set(s): %s" % missing_sets_str]
 	if root_config.sets:
 		msg.append("        sets defined: %s" % ", ".join(root_config.sets))
+	global_config_path = portage.const.GLOBAL_CONFIG_PATH
+	if root_config.settings['EPREFIX']:
+		global_config_path = os.path.join(root_config.settings['EPREFIX'],
+				portage.const.GLOBAL_CONFIG_PATH.lstrip(os.sep))
 	msg.append("        This usually means that '%s'" % \
-		(os.path.join(portage.const.GLOBAL_CONFIG_PATH, "sets/portage.conf"),))
+		(os.path.join(global_config_path, "sets/portage.conf"),))
 	msg.append("        is missing or corrupt.")
 	msg.append("        Falling back to default world and system set configuration!!!")
 	for line in msg:
@@ -1275,7 +1306,7 @@ def emerge_main():
 
 	if myaction not in ('help', 'info', 'version') and \
 		myopts.get('--package-moves') != 'n' and \
-		_global_updates(trees, mtimedb["updates"]):
+		_global_updates(trees, mtimedb["updates"], quiet=("--quiet" in myopts)):
 		mtimedb.commit()
 		# Reload the whole config from scratch.
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
@@ -1311,7 +1342,10 @@ def emerge_main():
 
 	if "--quiet" not in myopts:
 		portage.deprecated_profile_check(settings=settings)
-		repo_name_check(trees)
+		if portage.const._ENABLE_REPO_NAME_WARN:
+			# Bug #248603 - Disable warnings about missing
+			# repo_name entries for stable branch.
+			repo_name_check(trees)
 		repo_name_duplicate_check(trees)
 		config_protect_check(trees)
 	check_procfs()

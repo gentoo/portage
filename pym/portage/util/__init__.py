@@ -8,12 +8,16 @@ __all__ = ['apply_permissions', 'apply_recursive_permissions',
 	'grabdict_package', 'grabfile', 'grabfile_package', 'grablines',
 	'initialize_logger', 'LazyItemsDict', 'map_dictlist_vals',
 	'new_protect_filename', 'normalize_path', 'pickle_read', 'stack_dictlist',
-	'stack_dicts', 'stack_lists', 'unique_array', 'varexpand', 'write_atomic',
-	'writedict', 'writemsg', 'writemsg_level', 'writemsg_stdout']
+	'stack_dicts', 'stack_lists', 'unique_array', 'unique_everseen', 'varexpand',
+	'write_atomic', 'writedict', 'writemsg', 'writemsg_level', 'writemsg_stdout']
 
 import codecs
 from copy import deepcopy
 import errno
+try:
+	from itertools import filterfalse
+except ImportError:
+	from itertools import ifilterfalse as filterfalse
 import logging
 import re
 import shlex
@@ -24,6 +28,7 @@ import traceback
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.dep:Atom',
 	'portage.util.listdir:_ignorecvs_dirs'
 )
 from portage import StringIO
@@ -36,7 +41,6 @@ from portage import _unicode_encode
 from portage import _unicode_decode
 from portage.exception import InvalidAtom, PortageException, FileNotFound, \
        OperationNotPermitted, PermissionDenied, ReadOnlyFileSystem
-from portage.dep import Atom
 from portage.localization import _
 from portage.proxy.objectproxy import ObjectProxy
 from portage.cache.mappings import UserDict
@@ -111,13 +115,14 @@ def normalize_path(mypath):
 	else:
 		return os.path.normpath(mypath)
 
-def grabfile(myfilename, compat_level=0, recursive=0):
+def grabfile(myfilename, compat_level=0, recursive=0, remember_source_file=False):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a list; if a line
 	begins with a #, it is ignored, as are empty lines"""
 
-	mylines=grablines(myfilename, recursive)
+	mylines=grablines(myfilename, recursive, remember_source_file=True)
 	newlines=[]
-	for x in mylines:
+
+	for x, source_file in mylines:
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
 		#into single spaces.
 		myline = _unicode_decode(' ').join(x.split())
@@ -137,7 +142,10 @@ def grabfile(myfilename, compat_level=0, recursive=0):
 				continue
 			else:
 				continue
-		newlines.append(myline)
+		if remember_source_file:
+			newlines.append((myline, source_file))
+		else:
+			newlines.append(myline)
 	return newlines
 
 def map_dictlist_vals(func,myDict):
@@ -223,25 +231,41 @@ def stack_dicts(dicts, incremental=0, incrementals=[], ignore_none=0):
 				final_dict[k]  = v
 	return final_dict
 
-def stack_lists(lists, incremental=1):
+def stack_lists(lists, incremental=1, remember_source_file=False, warn_for_unmatched_removal=False):
 	"""Stacks an array of list-types into one array. Optionally removing
 	distinct values using '-value' notation. Higher index is preferenced.
 
 	all elements must be hashable."""
-
 	new_list = {}
-	for x in lists:
-		for y in filter(None, x):
-			if incremental:
-				if y == "-*":
-					new_list.clear()
-				elif y[:1] == '-':
-					new_list.pop(y[1:], None)
-				else:
-					new_list[y] = True
+	for sub_list in lists:
+		for token in sub_list:
+			if remember_source_file:
+				token, source_file = token
 			else:
-				new_list[y] = True
-	return list(new_list)
+				source_file = False
+
+			if token is None:
+				continue
+
+			if incremental:
+				if token == "-*":
+					new_list.clear()
+				elif token[:1] == '-':
+					try:
+						new_list.pop(token[1:])
+					except KeyError:
+						if warn_for_unmatched_removal:
+							writemsg(_("--- Unmatch removal atom in %s: %s\n") % (source_file, token),
+								noiselevel=-1)
+				else:
+					new_list[token] = source_file
+			else:
+				new_list[token] = source_file
+
+	if remember_source_file:
+		return list(new_list.items())
+	else:
+		return list(new_list)
 
 def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 	"""
@@ -303,11 +327,11 @@ def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=Fals
 			atoms[k] = v
 	return atoms
 
-def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=False):
-	pkgs=grabfile(myfilename, compatlevel, recursive=recursive)
+def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=False, remember_source_file=False):
+	pkgs=grabfile(myfilename, compatlevel, recursive=recursive, remember_source_file=True)
 	mybasename = os.path.basename(myfilename)
 	atoms = []
-	for pkg in pkgs:
+	for pkg, source_file in pkgs:
 		pkg_orig = pkg
 		# for packages and package.mask files
 		if pkg[:1] == "-":
@@ -322,13 +346,19 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=Fals
 		else:
 			if pkg_orig == str(pkg):
 				# normal atom, so return as Atom instance
-				atoms.append(pkg)
+				if remember_source_file:
+					atoms.append((pkg, source_file))
+				else:
+					atoms.append(pkg)
 			else:
 				# atom has special prefix, so return as string
-				atoms.append(pkg_orig)
+				if remember_source_file:
+					atoms.append((pkg_orig, source_file))
+				else:
+					atoms.append(pkg_orig)
 	return atoms
 
-def grablines(myfilename,recursive=0):
+def grablines(myfilename, recursive=0, remember_source_file=False):
 	mylines=[]
 	if recursive and os.path.isdir(myfilename):
 		if os.path.basename(myfilename) in _ignorecvs_dirs:
@@ -338,13 +368,16 @@ def grablines(myfilename,recursive=0):
 		for f in dirlist:
 			if not f.startswith(".") and not f.endswith("~"):
 				mylines.extend(grablines(
-					os.path.join(myfilename, f), recursive))
+					os.path.join(myfilename, f), recursive, remember_source_file))
 	else:
 		try:
 			myfile = codecs.open(_unicode_encode(myfilename,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['content'], errors='replace')
-			mylines = myfile.readlines()
+			if remember_source_file:
+				mylines = [(line, myfilename) for line in myfile.readlines()]
+			else:
+				mylines = myfile.readlines()
 			myfile.close()
 		except IOError as e:
 			if e.errno == PermissionDenied.errno:
@@ -405,9 +438,6 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		expand_map = {}
 	mykeys = {}
 	try:
-		# Workaround for avoiding a silent error in shlex that
-		# is triggered by a source statement at the end of the file without a
-		# trailing newline after the source statement
 		# NOTE: shex doesn't seem to support unicode objects
 		# (produces spurious \0 characters with python-2.6.2)
 		if sys.hexversion < 0x3000000:
@@ -417,15 +447,27 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 			content = open(_unicode_encode(mycfg,
 				encoding=_encodings['fs'], errors='strict'), mode='r',
 				encoding=_encodings['content'], errors='replace').read()
-		if content and content[-1] != '\n':
-			content += '\n'
 	except IOError as e:
 		if e.errno == PermissionDenied.errno:
 			raise PermissionDenied(mycfg)
 		if e.errno != errno.ENOENT:
 			writemsg("open('%s', 'r'): %s\n" % (mycfg, e), noiselevel=-1)
-			raise
+			if e.errno not in (errno.EISDIR,):
+				raise
 		return None
+
+	# Workaround for avoiding a silent error in shlex that is
+	# triggered by a source statement at the end of the file
+	# without a trailing newline after the source statement.
+	if content and content[-1] != '\n':
+		content += '\n'
+
+	# Warn about dos-style line endings since that prevents
+	# people from being able to source them with bash.
+	if '\r' in content:
+		writemsg(("!!! " + _("Please use dos2unix to convert line endings " + \
+			"in config file: '%s'") + "\n") % mycfg, noiselevel=-1)
+
 	try:
 		if tolerant:
 			shlex_class = _tolerant_shlex
@@ -716,6 +758,26 @@ def unique_array(s):
 		if x not in u:
 			u.append(x)
 	return u
+
+def unique_everseen(iterable, key=None):
+    """
+    List unique elements, preserving order. Remember all elements ever seen.
+    Taken from itertools documentation.
+    """
+    # unique_everseen('AAAABBBCCDAABBB') --> A B C D
+    # unique_everseen('ABBCcAD', str.lower) --> A B C D
+    seen = set()
+    seen_add = seen.add
+    if key is None:
+        for element in filterfalse(seen.__contains__, iterable):
+            seen_add(element)
+            yield element
+    else:
+        for element in iterable:
+            k = key(element)
+            if k not in seen:
+                seen_add(k)
+                yield element
 
 def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 	stat_cached=None, follow_links=True):
@@ -1041,10 +1103,15 @@ def write_atomic(file_path, content, **kwargs):
 		else:
 			raise
 
-def ensure_dirs(dir_path, *args, **kwargs):
+def ensure_dirs(dir_path, **kwargs):
 	"""Create a directory and call apply_permissions.
 	Returns True if a directory is created or the permissions needed to be
-	modified, and False otherwise."""
+	modified, and False otherwise.
+
+	This function's handling of EEXIST errors makes it useful for atomic
+	directory creation, in which multiple processes may be competing to
+	create the same directory.
+	"""
 
 	created_dir = False
 
@@ -1053,12 +1120,14 @@ def ensure_dirs(dir_path, *args, **kwargs):
 		created_dir = True
 	except OSError as oe:
 		func_call = "makedirs('%s')" % dir_path
-		if oe.errno in (errno.EEXIST, errno.EISDIR):
+		if oe.errno in (errno.EEXIST,):
 			pass
 		else:
 			if os.path.isdir(dir_path):
 				# NOTE: DragonFly raises EPERM for makedir('/')
 				# and that is supposed to be ignored here.
+				# Also, sometimes mkdir raises EISDIR on FreeBSD
+				# and we want to ignore that too (bug #187518).
 				pass
 			elif oe.errno == errno.EPERM:
 				raise OperationNotPermitted(func_call)
@@ -1068,7 +1137,10 @@ def ensure_dirs(dir_path, *args, **kwargs):
 				raise ReadOnlyFileSystem(func_call)
 			else:
 				raise
-	perms_modified = apply_permissions(dir_path, *args, **kwargs)
+	if kwargs:
+		perms_modified = apply_permissions(dir_path, **kwargs)
+	else:
+		perms_modified = False
 	return created_dir or perms_modified
 
 class LazyItemsDict(UserDict):

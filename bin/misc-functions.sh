@@ -40,20 +40,134 @@ install_symlink_html_docs() {
 	fi
 }
 
+# replacement for "readlink -f" or "realpath"
+canonicalize() {
+	local f=$1 b n=10 wd=$(pwd)
+	while (( n-- > 0 )); do
+		while [[ ${f: -1} = / && ${#f} -gt 1 ]]; do
+			f=${f%/}
+		done
+		b=${f##*/}
+		cd "${f%"${b}"}" 2>/dev/null || break
+		if [[ ! -L ${b} ]]; then
+			f=$(pwd -P)
+			echo "${f%/}/${b}"
+			cd "${wd}"
+			return 0
+		fi
+		f=$(readlink "${b}")
+	done
+	cd "${wd}"
+	return 1
+}
+
+prepcompress() {
+	local -a include exclude incl_d incl_f
+	local f g i real_f real_d
+
+	# Canonicalize path names and check for their existence.
+	real_d=$(canonicalize "${D}")
+	for (( i = 0; i < ${#PORTAGE_DOCOMPRESS[@]}; i++ )); do
+		real_f=$(canonicalize "${D}${PORTAGE_DOCOMPRESS[i]}")
+		f=${real_f#"${real_d}"}
+		if [[ ${real_f} != "${f}" ]] && [[ -d ${real_f} || -f ${real_f} ]]
+		then
+			include[${#include[@]}]=${f:-/}
+		elif [[ ${i} -ge 3 ]]; then
+			ewarn "prepcompress:" \
+				"ignoring nonexistent path '${PORTAGE_DOCOMPRESS[i]}'"
+		fi
+	done
+	for (( i = 0; i < ${#PORTAGE_DOCOMPRESS_SKIP[@]}; i++ )); do
+		real_f=$(canonicalize "${D}${PORTAGE_DOCOMPRESS_SKIP[i]}")
+		f=${real_f#"${real_d}"}
+		if [[ ${real_f} != "${f}" ]] && [[ -d ${real_f} || -f ${real_f} ]]
+		then
+			exclude[${#exclude[@]}]=${f:-/}
+		elif [[ ${i} -ge 1 ]]; then
+			ewarn "prepcompress:" \
+				"ignoring nonexistent path '${PORTAGE_DOCOMPRESS_SKIP[i]}'"
+		fi
+	done
+
+	# Remove redundant entries from lists.
+	# For the include list, remove any entries that are:
+	# a) contained in a directory in the include or exclude lists, or
+	# b) identical with an entry in the exclude list.
+	for (( i = ${#include[@]} - 1; i >= 0; i-- )); do
+		f=${include[i]}
+		for g in "${include[@]}"; do
+			if [[ ${f} == "${g%/}"/* ]]; then
+				unset include[i]
+				continue 2
+			fi
+		done
+		for g in "${exclude[@]}"; do
+			if [[ ${f} = ${g} || ${f} == "${g%/}"/* ]]; then
+				unset include[i]
+				continue 2
+			fi
+		done
+	done
+	# For the exclude list, remove any entries that are:
+	# a) contained in a directory in the exclude list, or
+	# b) _not_ contained in a directory in the include list.
+	for (( i = ${#exclude[@]} - 1; i >= 0; i-- )); do
+		f=${exclude[i]}
+		for g in "${exclude[@]}"; do
+			if [[ ${f} == "${g%/}"/* ]]; then
+				unset exclude[i]
+				continue 2
+			fi
+		done
+		for g in "${include[@]}"; do
+			[[ ${f} == "${g%/}"/* ]] && continue 2
+		done
+		unset exclude[i]
+	done
+
+	# Split the include list into directories and files
+	for f in "${include[@]}"; do
+		if [[ -d ${D}${f} ]]; then
+			incl_d[${#incl_d[@]}]=${f}
+		else
+			incl_f[${#incl_f[@]}]=${f}
+		fi
+	done
+
+	# Queue up for compression.
+	# ecompress{,dir} doesn't like to be called with empty argument lists.
+	[[ ${#incl_d[@]} -gt 0 ]] && ecompressdir --queue "${incl_d[@]}"
+	[[ ${#incl_f[@]} -gt 0 ]] && ecompress --queue "${incl_f[@]/#/${D}}"
+	[[ ${#exclude[@]} -gt 0 ]] && ecompressdir --ignore "${exclude[@]}"
+	return 0
+}
+
 install_qa_check() {
-	local f
+	local f x
 
 	cd "${D}" || die "cd failed"
 
 	export STRIP_MASK
 	prepall
+	hasq "${EAPI}" 0 1 2 3 || prepcompress
 	ecompressdir --dequeue
 	ecompress --dequeue
+
+	f=
+	for x in etc/app-defaults usr/man usr/info usr/X11R6 usr/doc usr/locale ; do
+		[[ -d $D/$x ]] && f+="  $x\n"
+	done
+
+	if [[ -n $f ]] ; then
+		eqawarn "QA Notice: This ebuild installs into the following deprecated directories:"
+		eqawarn
+		eqawarn "$f"
+	fi
 
 	# Now we look for all world writable files.
 	local i
 	for i in $(find "${D}/" -type f -perm -2); do
-		vecho -ne '\a'
 		vecho "QA Security Notice:"
 		vecho "- ${i:${#D}:${#i}} will be a world writable file."
 		vecho "- This may or may not be a security problem, most of the time it is one."
@@ -81,12 +195,12 @@ install_qa_check() {
 			xargs -0 scanelf -qyRF '%r %p' | grep '$ORIGIN'
 		)
 		if [[ -n ${f}${x} ]] ; then
-			vecho -ne '\a\n'
+			vecho -ne '\n'
 			eqawarn "QA Notice: The following files contain insecure RUNPATHs"
 			eqawarn " Please file a bug about this at http://bugs.gentoo.org/"
 			eqawarn " with the maintaining herd of the package."
 			eqawarn "${f}${f:+${x:+\n}}${x}"
-			vecho -ne '\a\n'
+			vecho -ne '\n'
 			if [[ -n ${x} ]] || has stricter ${FEATURES} ; then
 				insecure_rpath=1
 			else
@@ -107,7 +221,7 @@ install_qa_check() {
 		f=$(scanelf -qyRF '%t %p' "${D}" | grep -v 'usr/lib/debug/')
 		if [[ -n ${f} ]] ; then
 			scanelf -qyRAF '%T %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-textrel.log
-			vecho -ne '\a\n'
+			vecho -ne '\n'
 			eqawarn "QA Notice: The following files contain runtime text relocations"
 			eqawarn " Text relocations force the dynamic linker to perform extra"
 			eqawarn " work at startup, waste system resources, and may pose a security"
@@ -116,7 +230,7 @@ install_qa_check() {
 			eqawarn " For more information, see http://hardened.gentoo.org/pic-fix-guide.xml"
 			eqawarn " Please include the following list of files in your report:"
 			eqawarn "${f}"
-			vecho -ne '\a\n'
+			vecho -ne '\n'
 			die_msg="${die_msg} textrels,"
 			sleep 1
 		fi
@@ -152,7 +266,7 @@ install_qa_check() {
 		if [[ -n ${f} ]] ; then
 			# One more pass to help devs track down the source
 			scanelf -qyRAF '%e %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-execstack.log
-			vecho -ne '\a\n'
+			vecho -ne '\n'
 			eqawarn "QA Notice: The following files contain writable and executable sections"
 			eqawarn " Files with such sections will not work properly (or at all!) on some"
 			eqawarn " architectures/operating systems.  A bug should be filed at"
@@ -162,7 +276,7 @@ install_qa_check() {
 			eqawarn " Note: Bugs should be filed for the respective maintainers"
 			eqawarn " of the package in question and not hardened@g.o."
 			eqawarn "${f}"
-			vecho -ne '\a\n'
+			vecho -ne '\n'
 			die_msg="${die_msg} execstacks"
 			sleep 1
 		fi
@@ -195,11 +309,11 @@ install_qa_check() {
 					-i "${T}"/scanelf-ignored-LDFLAGS.log
 				f=$(<"${T}"/scanelf-ignored-LDFLAGS.log)
 				if [[ -n ${f} ]] ; then
-					vecho -ne '\a\n'
+					vecho -ne '\n'
 					eqawarn "${BAD}QA Notice: Files built without respecting LDFLAGS have been detected${NORMAL}"
 					eqawarn " Please include the following list of files in your report:"
 					eqawarn "${f}"
-					vecho -ne '\a\n'
+					vecho -ne '\n'
 					sleep 1
 				else
 					rm -f "${T}"/scanelf-ignored-LDFLAGS.log
@@ -269,10 +383,10 @@ install_qa_check() {
 			sed -e "/^\$/d" -i "${T}"/scanelf-missing-SONAME.log
 			f=$(<"${T}"/scanelf-missing-SONAME.log)
 			if [[ -n ${f} ]] ; then
-				vecho -ne '\a\n'
+				vecho -ne '\n'
 				eqawarn "QA Notice: The following shared libraries lack a SONAME"
 				eqawarn "${f}"
-				vecho -ne '\a\n'
+				vecho -ne '\n'
 				sleep 1
 			else
 				rm -f "${T}"/scanelf-missing-SONAME.log
@@ -303,10 +417,10 @@ install_qa_check() {
 			sed -e "/^\$/d" -i "${T}"/scanelf-missing-NEEDED.log
 			f=$(<"${T}"/scanelf-missing-NEEDED.log)
 			if [[ -n ${f} ]] ; then
-				vecho -ne '\a\n'
+				vecho -ne '\n'
 				eqawarn "QA Notice: The following shared libraries lack NEEDED entries"
 				eqawarn "${f}"
-				vecho -ne '\a\n'
+				vecho -ne '\n'
 				sleep 1
 			else
 				rm -f "${T}"/scanelf-missing-NEEDED.log
@@ -375,7 +489,7 @@ install_qa_check() {
 			[[ ! -L ${j} ]] && continue
 			linkdest=$(readlink "${j}")
 			if [[ ${linkdest} == /* ]] ; then
-				vecho -ne '\a\n'
+				vecho -ne '\n'
 				eqawarn "QA Notice: Found an absolute symlink in a library directory:"
 				eqawarn "           ${j#${D}} -> ${linkdest}"
 				eqawarn "           It should be a relative symlink if in the same directory"
@@ -395,7 +509,7 @@ install_qa_check() {
 		if [[ ! -e ${s} ]] ; then
 			s=${s%usr/*}${s##*/usr/}
 			if [[ -e ${s} ]] ; then
-				vecho -ne '\a\n'
+				vecho -ne '\n'
 				eqawarn "QA Notice: Missing gen_usr_ldscript for ${s##*/}"
 	 			abort="yes"
 			fi
@@ -406,19 +520,19 @@ install_qa_check() {
 	# Make sure people don't store libtool files or static libs in /lib
 	f=$(ls "${D}"lib*/*.{a,la} 2>/dev/null)
 	if [[ -n ${f} ]] ; then
-		vecho -ne '\a\n'
+		vecho -ne '\n'
 		eqawarn "QA Notice: Excessive files found in the / partition"
 		eqawarn "${f}"
-		vecho -ne '\a\n'
+		vecho -ne '\n'
 		die "static archives (*.a) and libtool library files (*.la) do not belong in /"
 	fi
 
 	# Verify that the libtool files don't contain bogus $D entries.
-	local abort=no gentoo_bug=no
+	local abort=no gentoo_bug=no always_overflow=no
 	for a in "${D}"usr/lib*/*.la ; do
 		s=${a##*/}
 		if grep -qs "${D}" "${a}" ; then
-			vecho -ne '\a\n'
+			vecho -ne '\n'
 			eqawarn "QA Notice: ${s} appears to contain PORTAGE_TMPDIR paths"
 			abort="yes"
 		fi
@@ -481,12 +595,27 @@ install_qa_check() {
 			# force C locale to work around slow unicode locales #160234
 			f=$(LC_ALL=C $grep_cmd "${m}" "${PORTAGE_LOG_FILE}")
 			if [[ -n ${f} ]] ; then
-				vecho -ne '\a\n'
-				eqawarn "QA Notice: Package has poor programming practices which may compile"
-				eqawarn "           fine but exhibit random runtime failures."
-				eqawarn "${f}"
-				vecho -ne '\a\n'
 				abort="yes"
+				case "$m" in
+					": warning: call to .* will always overflow destination buffer$") always_overflow=yes ;;
+				esac
+				if [[ $always_overflow = yes ]] ; then
+					eerror
+					eerror "QA Notice: Package has poor programming practices which may compile"
+					eerror "           fine but exhibit random runtime failures."
+					eerror
+					eerror "${f}"
+					eerror
+					eerror " Please file a bug about this at http://bugs.gentoo.org/"
+					eerror " with the maintaining herd of the package."
+					eerror
+				else
+					vecho -ne '\n'
+					eqawarn "QA Notice: Package has poor programming practices which may compile"
+					eqawarn "           fine but exhibit random runtime failures."
+					eqawarn "${f}"
+					vecho -ne '\n'
+				fi
 			fi
 		done
 		local cat_cmd=cat
@@ -518,16 +647,16 @@ install_qa_check() {
 				eerror " with the maintaining herd of the package."
 				eerror
 			else
-				vecho -ne '\a\n'
+				vecho -ne '\n'
 				eqawarn "QA Notice: Package has poor programming practices which may compile"
 				eqawarn "           but will almost certainly crash on 64bit architectures."
 				eqawarn "${f}"
-				vecho -ne '\a\n'
+				vecho -ne '\n'
 			fi
 
 		fi
 		if [[ ${abort} == "yes" ]] ; then
-			if [[ ${gentoo_bug} == "yes" ]] ; then
+			if [[ $gentoo_bug = yes || $always_overflow = yes ]] ; then
 				die "install aborted due to" \
 					"poor programming practices shown above"
 			else
@@ -691,8 +820,7 @@ preinst_suid_scan() {
 					vecho "- ${install_path} is an approved suid file"
 				else
 					vecho ">>> Removing sbit on non registered ${install_path}"
-					for x in 5 4 3 2 1 0; do echo -ne "\a"; sleep 0.25 ; done
-					vecho -ne "\a"
+					for x in 5 4 3 2 1 0; do sleep 0.25 ; done
 					ls_ret=$(ls -ldh "${i}")
 					chmod ugo-s "${i}"
 					grep "^#${install_path}$" "${sfconf}" > /dev/null || {
@@ -751,7 +879,7 @@ dyn_package() {
 		PORTAGE_BINPKG_TMPFILE="${PKGDIR}/${CATEGORY}/${PF}.tbz2"
 	mkdir -p "${PORTAGE_BINPKG_TMPFILE%/*}" || die "mkdir failed"
 	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${D}" . | \
-		bzip2 -cf > "$PORTAGE_BINPKG_TMPFILE"
+		$PORTAGE_BZIP2_COMMAND -c > "$PORTAGE_BINPKG_TMPFILE"
 	assert "failed to pack binary package: '$PORTAGE_BINPKG_TMPFILE'"
 	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
 		"${PORTAGE_PYTHON:-/usr/bin/python}" "$PORTAGE_BIN_PATH"/xpak-helper.py recompose \
@@ -848,7 +976,10 @@ if [ -n "${MISC_FUNCTIONS_ARGS}" ]; then
 	done
 	unset x
 	[[ -n $PORTAGE_EBUILD_EXIT_FILE ]] && > "$PORTAGE_EBUILD_EXIT_FILE"
-	[[ -n $PORTAGE_IPC_DAEMON ]] && "$PORTAGE_BIN_PATH"/ebuild-ipc exit 0
+	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
+		[[ ! -s $SANDBOX_LOG ]]
+		"$PORTAGE_BIN_PATH"/ebuild-ipc exit $?
+	fi
 fi
 
 :

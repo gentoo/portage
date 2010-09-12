@@ -129,6 +129,8 @@ class SQLDatabase(template.database):
 				raise cache_errors.CacheCorruption(self, cpv, e)
 			if self.con.rowcount <= 0:
 				raise KeyError(cpv)
+		except SystemExit:
+			raise
 		except Exception:
 			if not self.autocommits:
 				self.db.rollback()
@@ -166,6 +168,8 @@ class SQLDatabase(template.database):
 			if self.autocommits:
 				self.commit()
 
+		except SystemExit:
+			raise
 		except Exception:
 			if not self.autocommits:
 				try:
