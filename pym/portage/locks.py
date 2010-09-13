@@ -30,8 +30,8 @@ HARDLINK_FD = -2
 # so that it doesn't interfere with the status display.
 _quiet = False
 
-def lockdir(mydir):
-	return lockfile(mydir,wantnewlockfile=1)
+def lockdir(mydir, flags=0):
+	return lockfile(mydir, wantnewlockfile=1, flags=flags)
 def unlockdir(mylock):
 	return unlockfile(mylock)
 
