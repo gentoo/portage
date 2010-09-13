@@ -282,7 +282,7 @@ install_qa_check() {
 		fi
 
 		# Check for files built without respecting LDFLAGS
-		if [[ "${LDFLAGS}" == *--hash-style=gnu* ]] && [[ "${PN}" != *-bin ]] ; then
+		if [[ "${LDFLAGS}" == *,--hash-style=gnu* ]] && [[ "${PN}" != *-bin ]] ; then
 			qa_var="QA_DT_HASH_${ARCH/-/_}"
 			eval "[[ -n \${!qa_var} ]] && QA_DT_HASH=(\"\${${qa_var}[@]}\")"
 			f=$(scanelf -qyRF '%k %p' -k .hash "${D}" | sed -e "s:\.hash ::")
