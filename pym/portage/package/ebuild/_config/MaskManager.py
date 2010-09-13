@@ -25,10 +25,10 @@ class MaskManager(object):
 		repo_pkgunmasklines = []
 		for x in repo_profiles:
 			repo_pkgmasklines.append(stack_lists([grabfile_package(
-				os.path.join(x, "package.mask"), recursive=1, remember_source_file=True)], \
+				os.path.join(x, "package.mask"), recursive=1, remember_source_file=True, verify_eapi=True)], \
 					incremental=1, remember_source_file=True, warn_for_unmatched_removal=True))
 			repo_pkgunmasklines.append(stack_lists([grabfile_package(
-				os.path.join(x, "package.unmask"), recursive=1, remember_source_file=True)], \
+				os.path.join(x, "package.unmask"), recursive=1, remember_source_file=True, verify_eapi=True)], \
 				incremental=1, remember_source_file=True, warn_for_unmatched_removal=True))
 		repo_pkgmasklines = list(chain.from_iterable(repo_pkgmasklines))
 		repo_pkgunmasklines = list(chain.from_iterable(repo_pkgunmasklines))
@@ -39,9 +39,9 @@ class MaskManager(object):
 		profile_pkgunmasklines = []
 		for x in profiles:
 			profile_pkgmasklines.append(grabfile_package(
-				os.path.join(x, "package.mask"), recursive=1, remember_source_file=True))
+				os.path.join(x, "package.mask"), recursive=1, remember_source_file=True, verify_eapi=True))
 			profile_pkgunmasklines.append(grabfile_package(
-				os.path.join(x, "package.unmask"), recursive=1, remember_source_file=True))
+				os.path.join(x, "package.unmask"), recursive=1, remember_source_file=True, verify_eapi=True))
 		profile_pkgmasklines = stack_lists(profile_pkgmasklines, incremental=1, \
 			remember_source_file=True, warn_for_unmatched_removal=True)
 		profile_pkgunmasklines = stack_lists(profile_pkgunmasklines, incremental=1, \
@@ -54,10 +54,10 @@ class MaskManager(object):
 		if user_config:
 			user_pkgmasklines = grabfile_package(
 				os.path.join(abs_user_config, "package.mask"), recursive=1, \
-				allow_wildcard=True, remember_source_file=True)
+				allow_wildcard=True, remember_source_file=True, verify_eapi=False)
 			user_pkgunmasklines = grabfile_package(
 				os.path.join(abs_user_config, "package.unmask"), recursive=1, \
-				allow_wildcard=True, remember_source_file=True)
+				allow_wildcard=True, remember_source_file=True, verify_eapi=False)
 
 		#Stack everything together. At this point, only user_pkgmasklines may contain -atoms.
 		#Don't warn for unmatched -atoms here, since we don't do it for any other user config file.

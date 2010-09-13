@@ -309,26 +309,57 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 			newdict[k] = " ".join(v)
 	return newdict
 
-def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=False):
+def read_corresponding_eapi_file(filename):
+	"""
+	Read the 'eapi' file from the directory 'filename' is in.
+	Returns "0" if the file is not present or invalid.
+	"""
+	default = "0"
+	eapi_file = os.path.join(os.path.dirname(filename), "eapi")
+	try:
+		f = open(eapi_file, "r")
+		lines = f.readlines()
+		if len(lines) == 1:
+			eapi = lines[0]
+		else:
+			writemsg(_("--- Invalid 'eapi' file (doesn't contain exactly one line): %s\n") % (eapi_file),
+				noiselevel=-1)
+			eapi = default
+		f.close()
+	except IOError:
+		eapi = default
+
+	return eapi
+
+def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=False, verify_eapi=False):
 	""" Does the same thing as grabdict except it validates keys
 	    with isvalidatom()"""
 	pkgs=grabdict(myfilename, juststrings, empty=1, recursive=recursive)
+	eapi = None
+	if verify_eapi:
+		eapi = read_corresponding_eapi_file(myfilename)
+
 	# We need to call keys() here in order to avoid the possibility of
 	# "RuntimeError: dictionary changed size during iteration"
 	# when an invalid atom is deleted.
 	atoms = {}
 	for k, v in pkgs.items():
 		try:
-			k = Atom(k, allow_wildcard=allow_wildcard)
-		except InvalidAtom:
-			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, k),
+			k = Atom(k, allow_wildcard=allow_wildcard, eapi=eapi)
+		except InvalidAtom as e:
+			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, e),
 				noiselevel=-1)
 		else:
 			atoms[k] = v
 	return atoms
 
-def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=False, remember_source_file=False):
+def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=False, \
+	remember_source_file=False, verify_eapi=False):
+
 	pkgs=grabfile(myfilename, compatlevel, recursive=recursive, remember_source_file=True)
+	eapi = None
+	if verify_eapi:
+		eapi = read_corresponding_eapi_file(myfilename)
 	mybasename = os.path.basename(myfilename)
 	atoms = []
 	for pkg, source_file in pkgs:
@@ -339,9 +370,9 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=Fals
 		if pkg[:1] == '*' and mybasename == 'packages':
 			pkg = pkg[1:]
 		try:
-			pkg = Atom(pkg, allow_wildcard=allow_wildcard)
-		except InvalidAtom:
-			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, pkg),
+			pkg = Atom(pkg, allow_wildcard=allow_wildcard, eapi=eapi)
+		except InvalidAtom as e:
+			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, e),
 				noiselevel=-1)
 		else:
 			if pkg_orig == str(pkg):

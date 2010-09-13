@@ -343,7 +343,7 @@ class config(object):
 			self.configlist.append({})
 			self.configdict["pkginternal"] = self.configlist[-1]
 
-			self.packages_list = [grabfile_package(os.path.join(x, "packages")) for x in self.profiles]
+			self.packages_list = [grabfile_package(os.path.join(x, "packages"), verify_eapi=True) for x in self.profiles]
 			self.packages      = tuple(stack_lists(self.packages_list, incremental=1))
 			del self.packages_list
 			#self.packages = grab_stacked("packages", self.profiles, grabfile, incremental_lines=1)
@@ -358,7 +358,7 @@ class config(object):
 
 			self._pkeywords_list = []
 			rawpkeywords = [grabdict_package(
-				os.path.join(x, "package.keywords"), recursive=1) \
+				os.path.join(x, "package.keywords"), recursive=1, verify_eapi=True) \
 				for x in self.profiles]
 			for pkeyworddict in rawpkeywords:
 				if not pkeyworddict:
@@ -376,7 +376,7 @@ class config(object):
 
 			self._p_accept_keywords = []
 			raw_p_accept_keywords = [grabdict_package(
-				os.path.join(x, "package.accept_keywords"), recursive=1) \
+				os.path.join(x, "package.accept_keywords"), recursive=1, verify_eapi=True) \
 				for x in self.profiles]
 			for d in raw_p_accept_keywords:
 				if not d:
@@ -580,11 +580,11 @@ class config(object):
 				# package.accept_keywords and package.keywords
 				pkgdict = grabdict_package(
 					os.path.join(abs_user_config, "package.keywords"),
-					recursive=1, allow_wildcard=True)
+					recursive=1, allow_wildcard=True, verify_eapi=False)
 
 				for k, v in grabdict_package(
 					os.path.join(abs_user_config, "package.accept_keywords"),
-					recursive=1, allow_wildcard=True).items():
+					recursive=1, allow_wildcard=True, verify_eapi=False).items():
 					pkgdict.setdefault(k, []).extend(v)
 
 				accept_keywords_defaults = \
@@ -599,7 +599,7 @@ class config(object):
 
 				#package.properties
 				propdict = grabdict_package(os.path.join(
-					abs_user_config, "package.properties"), recursive=1, allow_wildcard=True)
+					abs_user_config, "package.properties"), recursive=1, allow_wildcard=True, verify_eapi=False)
 				v = propdict.pop("*/*", None)
 				if v is not None:
 					if "ACCEPT_PROPERTIES" in self.configdict["conf"]:
@@ -611,7 +611,7 @@ class config(object):
 
 				#package.env
 				penvdict = grabdict_package(os.path.join(
-					abs_user_config, "package.env"), recursive=1, allow_wildcard=True)
+					abs_user_config, "package.env"), recursive=1, allow_wildcard=True, verify_eapi=False)
 				v = penvdict.pop("*/*", None)
 				if v is not None:
 					global_wildcard_conf = {}

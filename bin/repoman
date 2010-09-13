@@ -672,7 +672,7 @@ for path in portdb.porttrees:
 					uselist.add(use_prefix + x[0])
 
 	global_pmasklines.append(portage.util.grabfile_package(
-		os.path.join(path, 'profiles', 'package.mask'), recursive=1))
+		os.path.join(path, 'profiles', 'package.mask'), recursive=1, verify_eapi=True))
 
 	desc_path = os.path.join(path, 'profiles', 'profiles.desc')
 	try:

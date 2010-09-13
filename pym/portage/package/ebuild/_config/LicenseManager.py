@@ -35,7 +35,7 @@ class LicenseManager(object):
 
 	def _read_user_config(self, abs_user_config):
 		licdict = grabdict_package(os.path.join(
-			abs_user_config, "package.license"), recursive=1, allow_wildcard=True)
+			abs_user_config, "package.license"), recursive=1, allow_wildcard=True, verify_eapi=False)
 		for k, v in licdict.items():
 			self._plicensedict.setdefault(k.cp, {})[k] = \
 				self.expandLicenseTokens(v)
