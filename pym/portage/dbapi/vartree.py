@@ -874,7 +874,7 @@ class vardbapi(dbapi):
 		def populate(self):
 			self._populate()
 
-		def _populate(self):
+		def _populate(self, scheduler=None):
 			owners_cache = vardbapi._owners_cache(self._vardb)
 			cached_hashes = set()
 			base_names = self._vardb._aux_cache["owners"]["base_names"]
@@ -898,6 +898,10 @@ class vardbapi(dbapi):
 
 			# Cache any missing packages.
 			for cpv in uncached_pkgs:
+
+				if scheduler is not None:
+					scheduler.scheduleYield()
+
 				owners_cache.add(cpv)
 
 			# Delete any stale cache.
@@ -911,12 +915,12 @@ class vardbapi(dbapi):
 
 			return owners_cache
 
-		def get_owners(self, path_iter):
+		def get_owners(self, path_iter, scheduler=None):
 			"""
 			@return the owners as a dblink -> set(files) mapping.
 			"""
 			owners = {}
-			for owner, f in self.iter_owners(path_iter):
+			for owner, f in self.iter_owners(path_iter, scheduler=scheduler):
 				owned_files = owners.get(owner)
 				if owned_files is None:
 					owned_files = set()
@@ -936,7 +940,7 @@ class vardbapi(dbapi):
 					owner_set.add(pkg_dblink)
 			return file_owners
 
-		def iter_owners(self, path_iter):
+		def iter_owners(self, path_iter, scheduler=None):
 			"""
 			Iterate over tuples of (dblink, path). In order to avoid
 			consuming too many resources for too much time, resources
@@ -950,11 +954,12 @@ class vardbapi(dbapi):
 				path_iter = list(path_iter)
 
 			if len(path_iter) > 10:
-				for x in self._iter_owners_low_mem(path_iter):
+				for x in self._iter_owners_low_mem(path_iter,
+					scheduler=scheduler):
 					yield x
 				return
 
-			owners_cache = self._populate()
+			owners_cache = self._populate(scheduler=scheduler)
 
 			vardb = self._vardb
 			root = vardb._eroot
@@ -1013,19 +1018,24 @@ class vardbapi(dbapi):
 							else:
 								if dblink(cpv).isowner(path):
 									owners.append((cpv, path))
+
+							if scheduler is not None:
+								scheduler.scheduleYield()
+
 					except StopIteration:
 						path_iter.append(path)
 						del owners[:]
 						dblink_cache.clear()
 						gc.collect()
-						for x in self._iter_owners_low_mem(path_iter):
+						for x in self._iter_owners_low_mem(path_iter,
+							scheduler=scheduler):
 							yield x
 						return
 					else:
 						for cpv, p in owners:
 							yield (dblink(cpv), p)
 
-		def _iter_owners_low_mem(self, path_list):
+		def _iter_owners_low_mem(self, path_list, scheduler=None):
 			"""
 			This implemention will make a short-lived dblink instance (and
 			parse CONTENTS) for every single installed package. This is
@@ -1047,6 +1057,10 @@ class vardbapi(dbapi):
 
 			root = self._vardb._eroot
 			for cpv in self._vardb.cpv_all():
+
+				if scheduler is not None:
+					scheduler.scheduleYield()
+
 				dblnk =  self._vardb._dblink(cpv)
 
 				for path, name, is_basename in path_info_list:
@@ -3127,7 +3141,8 @@ class dblink(object):
 					# get_owners is slow for large numbers of files, so
 					# don't look them all up.
 					collisions = collisions[:20]
-				owners = self.vartree.dbapi._owners.get_owners(collisions)
+				owners = self.vartree.dbapi._owners.get_owners(collisions,
+					scheduler=self._scheduler)
 				self.vartree.dbapi.flush_cache()
 
 				for pkg, owned_files in owners.items():
