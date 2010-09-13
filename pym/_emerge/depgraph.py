@@ -328,6 +328,11 @@ class depgraph(object):
 				# backtracking depgraphs that share the same frozen_config.
 				fake_vartree.sync()
 
+				# FakeVartree.sync() populates virtuals, and we want
+				# self.pkgsettings to have them populated too.
+				self._frozen_config.pkgsettings[myroot] = \
+					portage.config(clone=fake_vartree.settings)
+
 			if preload_installed_pkgs:
 				vardb = fake_vartree.dbapi
 				fakedb = self._dynamic_config._graph_trees[
