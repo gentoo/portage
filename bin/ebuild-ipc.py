@@ -34,7 +34,9 @@ portage._disable_legacy_globals()
 
 class EbuildIpc(object):
 
-	_COMMUNICATE_TIMEOUT_SECONDS = 40
+	# If the system is heavily loaded then the parent process might
+	# be slow to respond, so give it plenty of time (bug #336142).
+	_COMMUNICATE_TIMEOUT_SECONDS = 900 # 15 minutes
 	_BUFSIZE = 4096
 
 	def __init__(self):
