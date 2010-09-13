@@ -596,9 +596,10 @@ install_qa_check() {
 			f=$(LC_ALL=C $grep_cmd "${m}" "${PORTAGE_LOG_FILE}")
 			if [[ -n ${f} ]] ; then
 				abort="yes"
-				case "$m" in
-					": warning: call to .* will always overflow destination buffer$") always_overflow=yes ;;
-				esac
+				# for now, don't make this fatal (see bug #337031)
+				#case "$m" in
+				#	": warning: call to .* will always overflow destination buffer$") always_overflow=yes ;;
+				#esac
 				if [[ $always_overflow = yes ]] ; then
 					eerror
 					eerror "QA Notice: Package has poor programming practices which may compile"
