@@ -2136,12 +2136,10 @@ class depgraph(object):
 		for pkg in missing_use:
 			use = self._pkg_use_enabled(pkg)
 			missing_iuse = []
-			for x in pkg.iuse.get_missing_iuse(atom.use.required):
-				#FIXME: If a use flag occures more then it might be possible that
-				#one has a default one doesn't.
-				if x not in atom.use.missing_enabled and \
-					x not in atom.use.missing_disabled:
-					missing_iuse.append(x)
+			#Use the unevaluated atom here, because some flags might have gone
+			#lost during evaluation.
+			required_flags = atom.unevaluated_atom.use.required
+			missing_iuse = pkg.iuse.get_missing_iuse(required_flags)
 
 			mreasons = []
 			if missing_iuse:
@@ -2264,7 +2262,9 @@ class depgraph(object):
 		elif unmasked_iuse_reasons:
 			masked_with_iuse = False
 			for pkg in masked_pkg_instances:
-				if not pkg.iuse.get_missing_iuse(atom.use.required):
+				#Use atom.unevaluated here, because some flags might have gone
+				#lost during evaluation.
+				if not pkg.iuse.get_missing_iuse(atom.unevaluated_atom.use.required):
 					# Package(s) with required IUSE are masked,
 					# so display a normal masking message.
 					masked_with_iuse = True
@@ -2747,14 +2747,7 @@ class depgraph(object):
 						found_available_arg = True
 
 					if atom.use:
-						missing_iuse = []
-						for x in pkg.iuse.get_missing_iuse(atom.use.required):
-							#FIXME: If a use flag occures more then it might be possible that
-							#one has a default one doesn't.
-							if x not in atom.use.missing_enabled and \
-								x not in atom.use.missing_disabled:
-								missing_iuse.append(x)
-						if missing_iuse:
+						if pkg.iuse.get_missing_iuse(atom.use.required):
 							# Don't add this to packages_with_invalid_use_config
 							# since IUSE cannot be adjusted by the user.
 							continue
@@ -2779,6 +2772,12 @@ class depgraph(object):
 							atom.use.disabled.difference(pkg.iuse.all).difference(atom.use.missing_disabled):
 							if not pkg.built:
 								packages_with_invalid_use_config.append(pkg)
+							continue
+					elif atom.unevaluated_atom.use:
+						#Make sure we don't miss a 'missing IUSE'.
+						if pkg.iuse.get_missing_iuse(atom.unevaluated_atom.use.required):
+							# Don't add this to packages_with_invalid_use_config
+							# since IUSE cannot be adjusted by the user.
 							continue
 
 					#check REQUIRED_USE constraints

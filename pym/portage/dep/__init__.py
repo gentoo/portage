@@ -684,11 +684,7 @@ class _use_dep(object):
 		if not isinstance(self.tokens, tuple):
 			self.tokens = tuple(self.tokens)
 
-		self.required = frozenset(chain(
-			enabled_flags,
-			disabled_flags,
-			*conditional.values()
-		))
+		self.required = frozenset(no_default)
 
 		self.enabled = frozenset(enabled_flags)
 		self.disabled = frozenset(disabled_flags)
@@ -782,10 +778,8 @@ class _use_dep(object):
 			else:
 				tokens.append(x)
 
-		required = chain(enabled_flags, disabled_flags)
-
 		return _use_dep(tokens, enabled_flags=enabled_flags, disabled_flags=disabled_flags, \
-			missing_enabled=self.missing_enabled, missing_disabled=self.missing_disabled, required=required)
+			missing_enabled=self.missing_enabled, missing_disabled=self.missing_disabled, required=self.required)
 
 	def violated_conditionals(self, other_use, is_valid_flag, parent_use=None):
 		"""
@@ -897,15 +891,9 @@ class _use_dep(object):
 						tokens.append(x)
 						conditional.setdefault("disabled", set()).add(flag)
 
-		required = frozenset(chain(
-			enabled_flags,
-			disabled_flags,
-			*conditional.values()
-		))
-
 		return _use_dep(tokens, enabled_flags=enabled_flags, disabled_flags=disabled_flags, \
 			missing_enabled=self.missing_enabled, missing_disabled=self.missing_disabled, \
-			conditional=conditional, required=required)
+			conditional=conditional, required=self.required)
 
 	def _eval_qa_conditionals(self, use_mask, use_force):
 		"""
@@ -958,10 +946,8 @@ class _use_dep(object):
 			else:
 				tokens.append(x)
 
-		required = chain(enabled_flags, disabled_flags)
-
 		return _use_dep(tokens, enabled_flags=enabled_flags, disabled_flags=disabled_flags, \
-			missing_enabled=missing_enabled, missing_disabled=missing_disabled, required=required)
+			missing_enabled=missing_enabled, missing_disabled=missing_disabled, required=self.required)
 
 if sys.hexversion < 0x3000000:
 	_atom_base = unicode
