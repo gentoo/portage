@@ -460,6 +460,7 @@ class UseReduce(TestCase):
 			UseReduceTestCase("( || ( || || ( A ) foo? ( B ) ) )"),
 			UseReduceTestCase("( || ( || bar? ( A ) foo? ( B ) ) )"),
 			UseReduceTestCase("foo?"),
+			UseReduceTestCase("foo? || ( A )"),
 			
 			#SRC_URI stuff
 			UseReduceTestCase("http://foo/bar -> blah.tbz2", is_src_uri = True, eapi = EAPI_WITHOUT_SRC_URI_ARROWS),
