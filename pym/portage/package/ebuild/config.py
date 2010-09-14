@@ -1754,6 +1754,9 @@ class config(object):
 			myuse = mydbapi.aux_get(mycpv, ["USE"])[0]
 		virts = use_reduce(provides, uselist=myuse.split(), flat=True)
 
+		# Ensure that we don't trigger the _treeVirtuals
+		# assertion in VirtualsManager._compile_virtuals().
+		self.getvirtuals()
 		self._virtuals_manager.add_depgraph_virtuals(mycpv, virts)
 
 	def reload(self):
@@ -2001,6 +2004,9 @@ class config(object):
 		return self.getvirtuals()
 
 	def get_virts_p(self):
+		# Ensure that we don't trigger the _treeVirtuals
+		# assertion in VirtualsManager._compile_virtuals().
+		self.getvirtuals()
 		return self._virtuals_manager.get_virts_p()
 
 	def getvirtuals(self):
