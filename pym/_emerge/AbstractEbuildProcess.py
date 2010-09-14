@@ -4,6 +4,7 @@
 import stat
 import textwrap
 from _emerge.SpawnProcess import SpawnProcess
+from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
 import portage
 from portage.elog import messages as elog_messages
@@ -20,7 +21,7 @@ from portage.util import apply_secpass_permissions
 class AbstractEbuildProcess(SpawnProcess):
 
 	__slots__ = ('phase', 'settings',) + \
-		('_ipc_daemon', '_exit_command',)
+		('_build_dir', '_ipc_daemon', '_exit_command',)
 	_phases_without_builddir = ('clean', 'cleanrm', 'depend', 'help',)
 
 	# Number of milliseconds to allow natural exit of the ebuild
@@ -67,6 +68,11 @@ class AbstractEbuildProcess(SpawnProcess):
 		if self._enable_ipc_daemon:
 			self.settings.pop('PORTAGE_EBUILD_EXIT_FILE', None)
 			if self.phase not in self._phases_without_builddir:
+				if 'PORTAGE_BUILDIR_LOCKED' not in self.settings:
+					self._build_dir = EbuildBuildDir(
+						dir_path=self.settings['PORTAGE_BUILDDIR'],
+						scheduler=self.scheduler, settings=self.settings)
+					self._build_dir.lock()
 				self.settings['PORTAGE_IPC_DAEMON'] = "1"
 				self._start_ipc_daemon()
 			else:
@@ -230,6 +236,9 @@ class AbstractEbuildProcess(SpawnProcess):
 			else:
 				self.returncode = 1
 				self._unexpected_exit()
+			if self._build_dir is not None:
+				self._build_dir.unlock()
+				self._build_dir = None
 		else:
 			exit_file = self.settings.get('PORTAGE_EBUILD_EXIT_FILE')
 			if exit_file and not os.path.exists(exit_file):

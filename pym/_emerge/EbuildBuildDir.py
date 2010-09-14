@@ -45,6 +45,7 @@ class EbuildBuildDir(SlotObject):
 			builddir_lock.start()
 			builddir_lock.wait()
 			self._lock_obj = builddir_lock.lock_obj
+			self.settings['PORTAGE_BUILDIR_LOCKED'] = '1'
 		finally:
 			self.locked = self._lock_obj is not None
 			catdir_lock.unlock()
@@ -70,6 +71,7 @@ class EbuildBuildDir(SlotObject):
 		portage.locks.unlockdir(self._lock_obj)
 		self._lock_obj = None
 		self.locked = False
+		self.settings.pop('PORTAGE_BUILDIR_LOCKED', None)
 
 		catdir = self._catdir
 		catdir_lock = None
