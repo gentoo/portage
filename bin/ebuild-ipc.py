@@ -94,6 +94,7 @@ class EbuildIpc(object):
 		input_fd = os.open(self.ipc_out_fifo,
 			os.O_RDONLY|os.O_NONBLOCK)
 		input_file = os.fdopen(input_fd, 'rb', 0)
+		output_file = None
 
 		while True:
 			try:
@@ -101,13 +102,17 @@ class EbuildIpc(object):
 					portage.exception.AlarmSignal.register(
 						self._COMMUNICATE_RETRY_TIMEOUT_SECONDS)
 
+					if output_file is not None:
+						output_file.close()
+						output_file = None
+
 					output_file = open(self.ipc_in_fifo, 'wb', 0)
 
 					# Write the whole pickle in a single atomic write() call,
 					# since the reader is in non-blocking mode and we want
 					# it to get the whole pickle at once.
 					output_file.write(pickle.dumps(args))
-					output_file.flush()
+					output_file.close()
 					break
 				finally:
 					portage.exception.AlarmSignal.unregister()
@@ -172,7 +177,6 @@ class EbuildIpc(object):
 					level=logging.ERROR, noiselevel=-1)
 
 			else:
-				output_file.close()
 				input_file.close()
 
 				(out, err, rval) = reply
