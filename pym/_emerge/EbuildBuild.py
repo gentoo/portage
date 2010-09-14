@@ -114,7 +114,8 @@ class EbuildBuild(CompositeTask):
 				self.wait()
 				return
 
-		self._build_dir = EbuildBuildDir(pkg=pkg, settings=settings)
+		self._build_dir = EbuildBuildDir(pkg=pkg,
+			scheduler=self.scheduler, settings=settings)
 		self._build_dir.lock()
 
 		# Cleaning needs to happen before fetch, since the build dir

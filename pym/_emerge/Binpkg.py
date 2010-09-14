@@ -42,7 +42,7 @@ class Binpkg(CompositeTask):
 		dir_path = os.path.join(settings["PORTAGE_TMPDIR"],
 			"portage", pkg.category, pkg.pf)
 		self._build_dir = EbuildBuildDir(dir_path=dir_path,
-			pkg=pkg, settings=settings)
+			pkg=pkg, scheduler=self.scheduler, settings=settings)
 		self._image_dir = os.path.join(dir_path, "image")
 		self._infloc = os.path.join(dir_path, "build-info")
 		self._ebuild_path = os.path.join(self._infloc, pkg.pf + ".ebuild")

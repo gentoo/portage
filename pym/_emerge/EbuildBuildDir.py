@@ -1,6 +1,7 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from _emerge.AsynchronousLock import AsynchronousLock
 from _emerge.SlotObject import SlotObject
 import portage
 from portage import os
@@ -8,7 +9,7 @@ import errno
 
 class EbuildBuildDir(SlotObject):
 
-	__slots__ = ("dir_path", "pkg", "settings",
+	__slots__ = ("dir_path", "pkg", "scheduler", "settings",
 		"locked", "_catdir", "_lock_obj")
 
 	def __init__(self, **kwargs):
@@ -47,17 +48,21 @@ class EbuildBuildDir(SlotObject):
 		portage.util.ensure_dirs(os.path.dirname(catdir),
 			gid=portage.portage_gid,
 			mode=0o70, mask=0)
-		catdir_lock = None
+		catdir_lock = AsynchronousLock(path=catdir, scheduler=self.scheduler)
+		catdir_lock.start()
+		catdir_lock.wait()
 		try:
-			catdir_lock = portage.locks.lockdir(catdir)
 			portage.util.ensure_dirs(catdir,
 				gid=portage.portage_gid,
 				mode=0o70, mask=0)
-			self._lock_obj = portage.locks.lockdir(dir_path)
+			builddir_lock = AsynchronousLock(path=dir_path,
+				scheduler=self.scheduler)
+			builddir_lock.start()
+			builddir_lock.wait()
+			self._lock_obj = builddir_lock.lock_obj
 		finally:
 			self.locked = self._lock_obj is not None
-			if catdir_lock is not None:
-				portage.locks.unlockdir(catdir_lock)
+			catdir_lock.unlock()
 
 	def clean_log(self):
 		"""Discard existing log. The log will not be be discarded
