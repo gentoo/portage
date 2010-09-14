@@ -74,21 +74,17 @@ class EbuildBuildDir(SlotObject):
 		self._lock_obj = None
 		self.locked = False
 		self.settings.pop('PORTAGE_BUILDIR_LOCKED', None)
-
-		catdir = self._catdir
-		catdir_lock = None
+		catdir_lock = AsynchronousLock(path=self._catdir, scheduler=self.scheduler)
+		catdir_lock.start()
+		catdir_lock.wait()
 		try:
-			catdir_lock = portage.locks.lockdir(catdir)
+			os.rmdir(self._catdir)
+		except OSError as e:
+			if e.errno not in (errno.ENOENT,
+				errno.ENOTEMPTY, errno.EEXIST):
+				raise
 		finally:
-			if catdir_lock:
-				try:
-					os.rmdir(catdir)
-				except OSError as e:
-					if e.errno not in (errno.ENOENT,
-						errno.ENOTEMPTY, errno.EEXIST):
-						raise
-					del e
-				portage.locks.unlockdir(catdir_lock)
+			catdir_lock.unlock()
 
 	class AlreadyLocked(portage.exception.PortageException):
 		pass
