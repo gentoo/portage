@@ -1520,7 +1520,6 @@ class dblink(object):
 		try:
 			if myebuildpath:
 				builddir_lock = EbuildBuildDir(
-					dir_path=self.settings['PORTAGE_BUILDDIR'],
 					scheduler=(scheduler or PollScheduler().sched_iface),
 					settings=self.settings)
 				builddir_lock.lock()

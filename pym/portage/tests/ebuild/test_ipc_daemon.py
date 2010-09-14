@@ -39,7 +39,7 @@ class IpcDaemonTestCase(TestCase):
 			env['PORTAGE_BUILDDIR'] = os.path.join(tmpdir, 'cat', 'pkg-1')
 
 			task_scheduler = TaskScheduler(max_jobs=2)
-			build_dir = EbuildBuildDir(dir_path=env['PORTAGE_BUILDDIR'],
+			build_dir = EbuildBuildDir(
 				scheduler=task_scheduler.sched_iface,
 				settings=env)
 			build_dir.lock()

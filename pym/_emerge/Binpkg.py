@@ -50,7 +50,7 @@ class Binpkg(CompositeTask):
 		if dir_path != self.settings['PORTAGE_BUILDDIR']:
 			raise AssertionError("'%s' != '%s'" % \
 				(dir_path, self.settings['PORTAGE_BUILDDIR']))
-		self._build_dir = EbuildBuildDir(dir_path=dir_path,
+		self._build_dir = EbuildBuildDir(
 			scheduler=self.scheduler, settings=settings)
 		settings.configdict["pkg"]["EMERGE_FROM"] = pkg.type_name
 
@@ -193,7 +193,7 @@ class Binpkg(CompositeTask):
 			self.wait()
 			return
 
-		dir_path = self._build_dir.dir_path
+		dir_path = self.settings['PORTAGE_BUILDDIR']
 
 		infloc = self._infloc
 		pkg = self.pkg

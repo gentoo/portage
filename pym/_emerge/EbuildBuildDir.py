@@ -9,7 +9,7 @@ import errno
 
 class EbuildBuildDir(SlotObject):
 
-	__slots__ = ("dir_path", "scheduler", "settings",
+	__slots__ = ("scheduler", "settings",
 		"locked", "_catdir", "_lock_obj")
 
 	def __init__(self, **kwargs):
@@ -26,7 +26,9 @@ class EbuildBuildDir(SlotObject):
 		if self._lock_obj is not None:
 			raise self.AlreadyLocked((self._lock_obj,))
 
-		dir_path = self.dir_path
+		dir_path = self.settings.get('PORTAGE_BUILDDIR')
+		if not dir_path:
+			raise AssertionError('PORTAGE_BUILDDIR is unset')
 		catdir = os.path.dirname(dir_path)
 		self._catdir = catdir
 

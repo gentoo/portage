@@ -117,7 +117,6 @@ class EbuildBuild(CompositeTask):
 				return
 
 		self._build_dir = EbuildBuildDir(
-			dir_path=self.settings['PORTAGE_BUILDDIR'],
 			scheduler=self.scheduler, settings=settings)
 		self._build_dir.lock()
 
