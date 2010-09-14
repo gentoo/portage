@@ -100,7 +100,7 @@ def _getmaskingstatus(mycpv, settings, portdb):
 		myarch = pgroups[0].lstrip("~")
 
 	cp = cpv_getkey(mycpv)
-	pkgdict = settings.pkeywordsdict.get(cp)
+	pkgdict = settings._keywords_manager.pkeywordsdict.get(cp)
 	matches = False
 	if pkgdict:
 		cpv_slot_list = ["%s:%s" % (mycpv, metadata["SLOT"])]
