@@ -9,7 +9,7 @@ import errno
 
 class EbuildBuildDir(SlotObject):
 
-	__slots__ = ("dir_path", "pkg", "scheduler", "settings",
+	__slots__ = ("dir_path", "scheduler", "settings",
 		"locked", "_catdir", "_lock_obj")
 
 	def __init__(self, **kwargs):
@@ -27,21 +27,6 @@ class EbuildBuildDir(SlotObject):
 			raise self.AlreadyLocked((self._lock_obj,))
 
 		dir_path = self.dir_path
-		if dir_path is None:
-			root_config = self.pkg.root_config
-			portdb = root_config.trees["porttree"].dbapi
-			ebuild_path = portdb.findname(self.pkg.cpv)
-			if ebuild_path is None:
-				raise AssertionError(
-					"ebuild not found for '%s'" % self.pkg.cpv)
-			settings = self.settings
-			settings.setcpv(self.pkg)
-			debug = settings.get("PORTAGE_DEBUG") == "1"
-			use_cache = 1 # always true
-			portage.doebuild_environment(ebuild_path, "setup", root_config.root,
-				self.settings, debug, use_cache, portdb)
-			dir_path = self.settings["PORTAGE_BUILDDIR"]
-
 		catdir = os.path.dirname(dir_path)
 		self._catdir = catdir
 

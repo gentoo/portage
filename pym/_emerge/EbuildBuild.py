@@ -46,6 +46,8 @@ class EbuildBuild(CompositeTask):
 		if ebuild_path is None:
 			raise AssertionError("ebuild not found for '%s'" % pkg.cpv)
 		self._ebuild_path = ebuild_path
+		portage.doebuild_environment(ebuild_path, 'setup',
+			settings=self.settings, db=portdb)
 
 		# Check the manifest here since with --keep-going mode it's
 		# currently possible to get this far with a broken manifest.
@@ -114,7 +116,8 @@ class EbuildBuild(CompositeTask):
 				self.wait()
 				return
 
-		self._build_dir = EbuildBuildDir(pkg=pkg,
+		self._build_dir = EbuildBuildDir(
+			dir_path=self.settings['PORTAGE_BUILDDIR'],
 			scheduler=self.scheduler, settings=settings)
 		self._build_dir.lock()
 
