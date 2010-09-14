@@ -804,6 +804,13 @@ class config(object):
 					noiselevel=-1)
 
 	@property
+	def pkeywordsdict(self):
+		result = self._keywords_manager.pkeywordsdict.copy()
+		for k, v in result.items():
+			result[k] = v.copy()
+		return result
+
+	@property
 	def pmaskdict(self):
 		return self._mask_manager._pmaskdict.copy()
 
