@@ -56,6 +56,7 @@ from portage.util import apply_recursive_permissions, \
 from portage.util.lafilefixer import rewrite_lafile	
 from portage.versions import _pkgsplit
 from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
+from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.EbuildSpawnProcess import EbuildSpawnProcess
 from _emerge.PollScheduler import PollScheduler
@@ -616,6 +617,10 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		have_build_dirs = False
 		if not parallel_fetchonly and \
 			mydo not in ('digest', 'fetch', 'help', 'manifest'):
+			builddir_lock = EbuildBuildDir(
+				dir_path=mysettings['PORTAGE_BUILDDIR'],
+				scheduler=PollScheduler().sched_iface, settings=mysettings)
+			builddir_lock.lock()
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 			if mystatus:
 				return mystatus
@@ -809,11 +814,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 	finally:
 
+		if builddir_lock is not None:
+			builddir_lock.unlock()
 		if tmpdir:
 			mysettings["PORTAGE_TMPDIR"] = tmpdir_orig
 			shutil.rmtree(tmpdir)
-		if builddir_lock:
-			portage.locks.unlockdir(builddir_lock)
 
 		mysettings.pop("REPLACING_VERSIONS", None)
 
