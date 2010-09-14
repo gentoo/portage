@@ -41,15 +41,17 @@ class Binpkg(CompositeTask):
 
 		dir_path = os.path.join(settings["PORTAGE_TMPDIR"],
 			"portage", pkg.category, pkg.pf)
-		self._build_dir = EbuildBuildDir(dir_path=dir_path,
-			scheduler=self.scheduler, settings=settings)
 		self._image_dir = os.path.join(dir_path, "image")
 		self._infloc = os.path.join(dir_path, "build-info")
 		self._ebuild_path = os.path.join(self._infloc, pkg.pf + ".ebuild")
 		settings["EBUILD"] = self._ebuild_path
-		debug = settings.get("PORTAGE_DEBUG") == "1"
-		portage.doebuild_environment(self._ebuild_path, "setup",
-			settings["ROOT"], settings, debug, 1, self._bintree.dbapi)
+		portage.doebuild_environment(self._ebuild_path, 'setup',
+			settings=self.settings, db=self._bintree.dbapi)
+		if dir_path != self.settings['PORTAGE_BUILDDIR']:
+			raise AssertionError("'%s' != '%s'" % \
+				(dir_path, self.settings['PORTAGE_BUILDDIR']))
+		self._build_dir = EbuildBuildDir(dir_path=dir_path,
+			scheduler=self.scheduler, settings=settings)
 		settings.configdict["pkg"]["EMERGE_FROM"] = pkg.type_name
 
 		# The prefetcher has already completed or it
