@@ -34,9 +34,9 @@ portage._disable_legacy_globals()
 
 class EbuildIpc(object):
 
-	# If the system is heavily loaded then the parent process might
-	# be slow to respond, so give it plenty of time (bug #336142).
-	_COMMUNICATE_TIMEOUT_SECONDS = 900 # 15 minutes
+	# Timeout for each individual communication attempt (we retry
+	# as long as the daemon process appears to be alive).
+	_COMMUNICATE_RETRY_TIMEOUT_SECONDS = 15
 	_BUFSIZE = 4096
 
 	def __init__(self):
@@ -45,54 +45,114 @@ class EbuildIpc(object):
 		self.ipc_out_fifo = os.path.join(self.fifo_dir, '.ipc_out')
 		self.ipc_lock_file = os.path.join(self.fifo_dir, '.ipc_lock')
 
+	def _daemon_is_alive(self):
+		try:
+			builddir_lock = portage.locks.lockfile(self.fifo_dir,
+				wantnewlockfile=True, flags=os.O_NONBLOCK)
+		except portage.exception.TryAgain:
+			return True
+		else:
+			portage.locks.unlockfile(builddir_lock)
+			return False
+
 	def communicate(self, args):
 
 		# Make locks quiet since unintended locking messages displayed on
 		# stdout could corrupt the intended output of this program.
 		portage.locks._quiet = True
 		lock_obj = portage.locks.lockfile(self.ipc_lock_file, unlinkfile=True)
-		start_time = time.time()
 
 		try:
-			try:
-				portage.exception.AlarmSignal.register(
-					self._COMMUNICATE_TIMEOUT_SECONDS)
-				returncode = self._communicate(args)
-				return returncode
-			finally:
-				portage.exception.AlarmSignal.unregister()
-				portage.locks.unlockfile(lock_obj)
-		except portage.exception.AlarmSignal:
-			time_elapsed = time.time() - start_time
-			portage.util.writemsg_level(
-				('ebuild-ipc timed out after %d seconds\n') % \
-				(time_elapsed,),
-				level=logging.ERROR, noiselevel=-1)
-			return 1
+			return self._communicate(args)
+		finally:
+			portage.locks.unlockfile(lock_obj)
+
+	def _timeout_retry_msg(self, start_time):
+		time_elapsed = time.time() - start_time
+		portage.util.writemsg_level(
+			portage.localization._(
+			'ebuild-ipc timed out after %d seconds,' + \
+			' retrying...\n') % (time_elapsed,),
+			level=logging.ERROR, noiselevel=-1)
+
+	def _no_daemon_msg(self):
+		portage.util.writemsg_level(
+			portage.localization._(
+			'ebuild-ipc: daemon process not detected\n'),
+			level=logging.ERROR, noiselevel=-1)
 
 	def _communicate(self, args):
-		input_fd = os.open(self.ipc_out_fifo, os.O_RDONLY|os.O_NONBLOCK)
+
+		if not self._daemon_is_alive():
+			self._no_daemon_msg()
+			return 2
+
+		start_time = time.time()
 
 		# File streams are in unbuffered mode since we do atomic
 		# read and write of whole pickles.
+		input_fd = os.open(self.ipc_out_fifo,
+			os.O_RDONLY|os.O_NONBLOCK)
 		input_file = os.fdopen(input_fd, 'rb', 0)
-		output_file = open(self.ipc_in_fifo, 'wb', 0)
 
-		# Write the whole pickle in a single atomic write() call,
-		# since the reader is in non-blocking mode and we want
-		# it to get the whole pickle at once.
-		output_file.write(pickle.dumps(args))
-		output_file.flush()
+		while True:
+			try:
+				try:
+					portage.exception.AlarmSignal.register(
+						self._COMMUNICATE_RETRY_TIMEOUT_SECONDS)
 
-		events = select.select([input_file], [], [])
+					output_file = open(self.ipc_in_fifo, 'wb', 0)
 
-		# Read the whole pickle in a single atomic read() call.
-		buf = array.array('B')
-		try:
-			buf.fromfile(input_file, self._BUFSIZE)
-		except (EOFError, IOError) as e:
-			if not buf:
-				portage.util.writemsg("%s\n" % (e,), noiselevel=-1)
+					# Write the whole pickle in a single atomic write() call,
+					# since the reader is in non-blocking mode and we want
+					# it to get the whole pickle at once.
+					output_file.write(pickle.dumps(args))
+					output_file.flush()
+					break
+				finally:
+					portage.exception.AlarmSignal.unregister()
+			except portage.exception.AlarmSignal:
+				if self._daemon_is_alive():
+					self._timeout_retry_msg(start_time)
+				else:
+					self._no_daemon_msg()
+					return 2
+
+		while True:
+			events = select.select([input_file], [], [],
+				self._COMMUNICATE_RETRY_TIMEOUT_SECONDS)
+			if events[0]:
+				break
+			else:
+				if self._daemon_is_alive():
+					self._timeout_retry_msg(start_time)
+				else:
+					self._no_daemon_msg()
+					return 2
+
+		while True:
+			try:
+				try:
+					portage.exception.AlarmSignal.register(
+						self._COMMUNICATE_RETRY_TIMEOUT_SECONDS)
+					# Read the whole pickle in a single atomic read() call.
+					buf = array.array('B')
+					try:
+						buf.fromfile(input_file, self._BUFSIZE)
+					except (EOFError, IOError) as e:
+						if not buf:
+							portage.util.writemsg_level(
+								"ebuild-ipc: %s\n" % (e,),
+								level=logging.ERROR, noiselevel=-1)
+					break
+				finally:
+					portage.exception.AlarmSignal.unregister()
+			except portage.exception.AlarmSignal:
+				if self._daemon_is_alive():
+					self._timeout_retry_msg(start_time)
+				else:
+					self._no_daemon_msg()
+					return 2
 
 		rval = 2
 
@@ -102,7 +162,9 @@ class EbuildIpc(object):
 				reply = pickle.loads(buf.tostring())
 			except (EnvironmentError, EOFError, ValueError,
 				pickle.UnpicklingError) as e:
-				portage.util.writemsg("%s\n" % (e,), noiselevel=-1)
+				portage.util.writemsg_level(
+					"ebuild-ipc: %s\n" % (e,),
+					level=logging.ERROR, noiselevel=-1)
 
 			else:
 				output_file.close()
