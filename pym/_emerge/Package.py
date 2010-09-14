@@ -61,6 +61,7 @@ class Package(Task):
 		self.category, self.pf = portage.catsplit(self.cpv)
 		self.cpv_split = portage.catpkgsplit(self.cpv)
 		self.pv_split = self.cpv_split[1:]
+		self.inherited = frozenset()
 		self._validate_deps()
 		self.masks = self._masks()
 		self.visible = self._visible(self.masks)
