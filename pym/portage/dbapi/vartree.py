@@ -52,6 +52,7 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 
 from _emerge.AsynchronousLock import AsynchronousLock
+from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.PollScheduler import PollScheduler
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 
@@ -1489,7 +1490,6 @@ class dblink(object):
 		myebuildpath = None
 		ebuild_phase = "prerm"
 		log_path = None
-		catdir = None
 		mystuff = os.listdir(self.dbdir)
 		for x in mystuff:
 			if x.endswith(".ebuild"):
@@ -1512,28 +1512,18 @@ class dblink(object):
 					os.path.join(self.dbdir, "EAPI"), noiselevel=-1)
 				writemsg("%s\n" % str(e), noiselevel=-1)
 				myebuildpath = None
-			else:
-				catdir = os.path.dirname(self.settings["PORTAGE_BUILDDIR"])
-				ensure_dirs(os.path.dirname(catdir), uid=portage_uid,
-					gid=portage_gid, mode=0o70, mask=0)
 
 		builddir_lock = None
-		catdir_lock = None
 		scheduler = self._scheduler
 		retval = os.EX_OK
 		failures = 0
 		try:
 			if myebuildpath:
-				catdir_lock = lockdir(catdir)
-				ensure_dirs(catdir,
-					uid=portage_uid, gid=portage_gid,
-					mode=0o70, mask=0)
-				builddir_lock = lockdir(
-					self.settings["PORTAGE_BUILDDIR"])
-				try:
-					unlockdir(catdir_lock)
-				finally:
-					catdir_lock = None
+				builddir_lock = EbuildBuildDir(
+					dir_path=self.settings['PORTAGE_BUILDDIR'],
+					scheduler=(scheduler or PollScheduler().sched_iface),
+					settings=self.settings)
+				builddir_lock.lock()
 
 				prepare_build_dirs(settings=self.settings, cleanup=True)
 				log_path = self.settings.get("PORTAGE_LOG_FILE")
@@ -1666,21 +1656,8 @@ class dblink(object):
 								self, self.vartree.dbapi,
 								myebuildpath, "cleanrm")
 				finally:
-					unlockdir(builddir_lock)
-			try:
-				if catdir and not catdir_lock:
-					# Lock catdir for removal if empty.
-					catdir_lock = lockdir(catdir)
-			finally:
-				if catdir_lock:
-					try:
-						os.rmdir(catdir)
-					except OSError as e:
-						if e.errno not in (errno.ENOENT,
-							errno.ENOTEMPTY, errno.EEXIST):
-							raise
-						del e
-					unlockdir(catdir_lock)
+					if builddir_lock is not None:
+						builddir_lock.unlock()
 
 		if log_path is not None:
 
