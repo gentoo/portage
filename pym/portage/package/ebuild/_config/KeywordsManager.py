@@ -66,6 +66,8 @@ class KeywordsManager(object):
 				# default to ~arch if no specific keyword is given
 				if not v:
 					v = accept_keywords_defaults
+				else:
+					v = tuple(v)
 				self.pkeywordsdict.setdefault(k.cp, {})[k] = v
 
 	def getKeywords(self, cpv, slot, keywords):
