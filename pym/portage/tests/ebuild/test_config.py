@@ -114,12 +114,14 @@ class ConfigTestCase(TestCase):
 			"dev-libs/E-1": { },
 		}
 
-		repo_config = {
-			"package.mask":
-				(
-					"dev-libs/A",
-					"dev-libs/C",
-				),
+		repo_configs = {
+			"test_repo": {
+				"package.mask":
+					(
+						"dev-libs/A",
+						"dev-libs/C",
+					),
+			}
 		}
 
 		profile = {
@@ -162,7 +164,7 @@ class ConfigTestCase(TestCase):
 					success = False),
 		)
 
-		playground = ResolverPlayground(ebuilds=ebuilds, repo_config=repo_config, \
+		playground = ResolverPlayground(ebuilds=ebuilds, repo_configs=repo_configs, \
 			profile=profile, user_config=user_config)
 		try:
 			for test_case in test_cases:

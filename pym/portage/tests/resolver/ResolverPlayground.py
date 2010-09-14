@@ -1,7 +1,7 @@
 # Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from itertools import chain, permutations
+from itertools import permutations
 import shutil
 import tempfile
 import portage
@@ -10,7 +10,7 @@ from portage.const import PORTAGE_BASE_PATH
 from portage.dbapi.vartree import vartree
 from portage.dbapi.porttree import portagetree
 from portage.dbapi.bintree import binarytree
-from portage.dep import Atom
+from portage.dep import Atom, _repo_separator
 from portage.package.ebuild.config import config
 from portage._sets import load_default_config
 from portage.versions import catsplit
@@ -32,7 +32,7 @@ class ResolverPlayground(object):
 	config_files = frozenset(("package.use", "package.mask", "package.keywords", \
 		"package.unmask", "package.properties", "package.license"))
 
-	def __init__(self, ebuilds={}, installed={}, profile={}, repo_config={}, \
+	def __init__(self, ebuilds={}, installed={}, profile={}, repo_configs={}, \
 		user_config={}, sets={}, world=[], debug=False):
 		"""
 		ebuilds: cpv -> metadata mapping simulating avaiable ebuilds. 
@@ -52,9 +52,13 @@ class ResolverPlayground(object):
 		if not debug:
 			portage.util.noiselimit = -2
 
+		self.repo_dirs = {}
+		#Make sure the main repo is alaways created
+		self._get_repo_dir("test_repo")
+
 		self._create_ebuilds(ebuilds)
 		self._create_installed(installed)
-		self._create_profile(ebuilds, installed, profile, repo_config, user_config, sets)
+		self._create_profile(ebuilds, installed, profile, repo_configs, user_config, sets)
 		self._create_world(world)
 
 		self.settings, self.trees = self._load_config()
@@ -63,19 +67,41 @@ class ResolverPlayground(object):
 		
 		portage.util.noiselimit = 0
 
-	def _create_ebuilds(self, ebuilds):
-		for cpv in ebuilds:
-			a = Atom("=" + cpv)
-			ebuild_dir = os.path.join(self.portdir, a.cp)
-			ebuild_path = os.path.join(ebuild_dir, a.cpv.split("/")[1] + ".ebuild")
+	def _get_repo_dir(self, repo):
+		"""
+		Create the repo directory if needed.
+		"""
+		if repo not in self.repo_dirs:
+			if repo == "test_repo":
+				repo_path = self.portdir
+			else:
+				repo_path = os.path.join(self.eroot, "usr", "local", repo)
+
+			self.repo_dirs[repo] = repo_path
+			profile_path = os.path.join(repo_path, "profiles")
+
 			try:
-				os.makedirs(ebuild_dir)
+				os.makedirs(profile_path)
 			except os.error:
 				pass
-			
+
+			repo_name_file = os.path.join(profile_path, "repo_name")
+			f = open(repo_name_file, "w")
+			f.write("%s\n" % repo)
+			f.close()
+
+		return self.repo_dirs[repo]
+
+	def _create_ebuilds(self, ebuilds):
+		for cpv in ebuilds:
+			a = Atom("=" + cpv, allow_repo=True)
+			repo = a.repo
+			if repo is None:
+				repo = "test_repo"
+
 			metadata = ebuilds[cpv].copy()
 			eapi = metadata.pop("EAPI", 0)
-			lic = metadata.pop("LICENSE", 0)
+			lic = metadata.pop("LICENSE", "")
 			properties = metadata.pop("PROPERTIES", "")
 			slot = metadata.pop("SLOT", 0)
 			keywords = metadata.pop("KEYWORDS", "x86")
@@ -87,6 +113,14 @@ class ResolverPlayground(object):
 
 			if metadata:
 				raise ValueError("metadata of ebuild '%s' contains unknown keys: %s" % (cpv, metadata.keys()))
+
+			repo_dir = self._get_repo_dir(repo)
+			ebuild_dir = os.path.join(repo_dir, a.cp)
+			ebuild_path = os.path.join(ebuild_dir, a.cpv.split("/")[1] + ".ebuild")
+			try:
+				os.makedirs(ebuild_dir)
+			except os.error:
+				pass
 
 			f = open(ebuild_path, "w")
 			f.write('EAPI="' + str(eapi) + '"\n')
@@ -106,8 +140,13 @@ class ResolverPlayground(object):
 
 	def _create_ebuild_manifests(self, ebuilds):
 		for cpv in ebuilds:
-			a = Atom("=" + cpv)
-			ebuild_dir = os.path.join(self.portdir, a.cp)
+			a = Atom("=" + cpv, allow_repo=True)
+			repo = a.repo
+			if repo is None:
+				repo = "test_repo"
+
+			repo_dir = self._get_repo_dir(repo)
+			ebuild_dir = os.path.join(repo_dir, a.cp)
 			ebuild_path = os.path.join(ebuild_dir, a.cpv.split("/")[1] + ".ebuild")
 
 			portage.util.noiselimit = -1
@@ -119,7 +158,11 @@ class ResolverPlayground(object):
 
 	def _create_installed(self, installed):
 		for cpv in installed:
-			a = Atom("=" + cpv)
+			a = Atom("=" + cpv, allow_repo=True)
+			repo = a.repo
+			if repo is None:
+				repo = "test_repo"
+
 			vdb_pkg_dir = os.path.join(self.vdbdir, a.cpv)
 			try:
 				os.makedirs(vdb_pkg_dir)
@@ -151,6 +194,9 @@ class ResolverPlayground(object):
 			write_key("LICENSE", lic)
 			write_key("PROPERTIES", properties)
 			write_key("SLOT", slot)
+			write_key("LICENSE", lic)
+			write_key("PROPERTIES", properties)
+			write_key("repository", repo)
 			write_key("KEYWORDS", keywords)
 			write_key("IUSE", iuse)
 			write_key("USE", use)
@@ -162,79 +208,83 @@ class ResolverPlayground(object):
 			if required_use is not None:
 				write_key("REQUIRED_USE", required_use)
 
-	def _create_profile(self, ebuilds, installed, profile, repo_config, user_config, sets):
-		#Create $PORTDIR/profiles/categories
-		categories = set()
-		for cpv in chain(ebuilds.keys(), installed.keys()):
-			categories.add(catsplit(cpv)[0])
-		
-		profile_dir = os.path.join(self.portdir, "profiles")
-		try:
-			os.makedirs(profile_dir)
-		except os.error:
-			pass
-		
-		categories_file = os.path.join(profile_dir, "categories")
-		
-		f = open(categories_file, "w")
-		for cat in categories:
-			f.write(cat + "\n")
-		f.close()
-		
-		
-		#Create $REPO/profiles/license_groups
-		license_file = os.path.join(profile_dir, "license_groups")
-		f = open(license_file, "w")
-		f.write("EULA TEST\n")
-		f.close()
+	def _create_profile(self, ebuilds, installed, profile, repo_configs, user_config, sets):
 
-		if repo_config:
-			for config_file, lines in repo_config.items():
-				if config_file not in self.config_files:
-					raise ValueError("Unknown config file: '%s'" % config_file)
-	
-				file_name = os.path.join(profile_dir, config_file)
-				f = open(file_name, "w")
-				for line in lines:
-					f.write("%s\n" % line)
+		for repo in self.repo_dirs:
+			repo_dir = self._get_repo_dir(repo)
+			profile_dir = os.path.join(self._get_repo_dir(repo), "profiles")
+
+			#Create $REPO/profiles/categories
+			categories = set()
+			for cpv in ebuilds:
+				ebuilds_repo = Atom("="+cpv, allow_repo=True).repo
+				if ebuilds_repo is None:
+					ebuilds_repo = "test_repo"
+				if ebuilds_repo == repo:
+					categories.add(catsplit(cpv)[0])
+
+			categories_file = os.path.join(profile_dir, "categories")
+			f = open(categories_file, "w")
+			for cat in categories:
+				f.write(cat + "\n")
+			f.close()
+			
+			#Create $REPO/profiles/license_groups
+			license_file = os.path.join(profile_dir, "license_groups")
+			f = open(license_file, "w")
+			f.write("EULA TEST\n")
+			f.close()
+
+			repo_config = repo_configs.get(repo) 
+			if repo_config:
+				for config_file, lines in repo_config.items():
+					if config_file not in self.config_files:
+						raise ValueError("Unknown config file: '%s'" % config_file)
+		
+					file_name = os.path.join(profile_dir, config_file)
+					f = open(file_name, "w")
+					for line in lines:
+						f.write("%s\n" % line)
+					f.close()
+
+			#Create $profile_dir/eclass (we fail to digest the ebuilds if it's not there)
+			os.makedirs(os.path.join(repo_dir, "eclass"))
+
+			if repo == "test_repo":
+				#Create a minimal profile in /usr/portage
+				sub_profile_dir = os.path.join(profile_dir, "default", "linux", "x86", "test_profile")
+				os.makedirs(sub_profile_dir)
+
+				eapi_file = os.path.join(sub_profile_dir, "eapi")
+				f = open(eapi_file, "w")
+				f.write("0\n")
 				f.close()
 
-		#Create $profile_dir/eclass (we fail to digest the ebuilds if it's not there)
-		os.makedirs(os.path.join(self.portdir, "eclass"))
-
-		sub_profile_dir = os.path.join(profile_dir, "default", "linux", "x86", "test_profile")
-		os.makedirs(sub_profile_dir)
-		
-		eapi_file = os.path.join(sub_profile_dir, "eapi")
-		f = open(eapi_file, "w")
-		f.write("0\n")
-		f.close()
-		
-		make_defaults_file = os.path.join(sub_profile_dir, "make.defaults")
-		f = open(make_defaults_file, "w")
-		f.write("ARCH=\"x86\"\n")
-		f.write("ACCEPT_KEYWORDS=\"x86\"\n")
-		f.close()
-		
-		use_force_file = os.path.join(sub_profile_dir, "use.force")
-		f = open(use_force_file, "w")
-		f.write("x86\n")
-		f.close()
-
-		if profile:
-			for config_file, lines in profile.items():
-				if config_file not in self.config_files:
-					raise ValueError("Unknown config file: '%s'" % config_file)
-	
-				file_name = os.path.join(sub_profile_dir, config_file)
-				f = open(file_name, "w")
-				for line in lines:
-					f.write("%s\n" % line)
+				make_defaults_file = os.path.join(sub_profile_dir, "make.defaults")
+				f = open(make_defaults_file, "w")
+				f.write("ARCH=\"x86\"\n")
+				f.write("ACCEPT_KEYWORDS=\"x86\"\n")
 				f.close()
 
-		#Create profile symlink
-		os.makedirs(os.path.join(self.eroot, "etc"))
-		os.symlink(sub_profile_dir, os.path.join(self.eroot, "etc", "make.profile"))
+				use_force_file = os.path.join(sub_profile_dir, "use.force")
+				f = open(use_force_file, "w")
+				f.write("x86\n")
+				f.close()
+
+				if profile:
+					for config_file, lines in profile.items():
+						if config_file not in self.config_files:
+							raise ValueError("Unknown config file: '%s'" % config_file)
+
+						file_name = os.path.join(sub_profile_dir, config_file)
+						f = open(file_name, "w")
+						for line in lines:
+							f.write("%s\n" % line)
+						f.close()
+
+				#Create profile symlink
+				os.makedirs(os.path.join(self.eroot, "etc"))
+				os.symlink(sub_profile_dir, os.path.join(self.eroot, "etc", "make.profile"))
 
 		user_config_dir = os.path.join(self.eroot, "etc", "portage")
 
@@ -242,6 +292,19 @@ class ResolverPlayground(object):
 			os.makedirs(user_config_dir)
 		except os.error:
 			pass
+
+		repos_conf_file = os.path.join(user_config_dir, "repos.conf")		
+		f = open(repos_conf_file, "w")
+		priority = 1
+		for repo in sorted(self.repo_dirs.keys()):
+			f.write("[%s]\n" % repo)
+			f.write("LOCATION=%s\n" % self.repo_dirs[repo])
+			if repo == "test_repo":
+				f.write("PRIORITY=%s\n" % 1000)
+			else:
+				f.write("PRIORITY=%s\n" % priority)
+				priority += 1
+		f.close()
 
 		for config_file, lines in user_config.items():
 			if config_file not in self.config_files:
@@ -255,7 +318,7 @@ class ResolverPlayground(object):
 
 		#Create /usr/share/portage/config/sets/portage.conf
 		default_sets_conf_dir = os.path.join(self.eroot, "usr/share/portage/config/sets")
-
+		
 		try:
 			os.makedirs(default_sets_conf_dir)
 		except os.error:
@@ -274,6 +337,23 @@ class ResolverPlayground(object):
 
 		for sets_file, lines in sets.items():
 			file_name = os.path.join(set_config_dir, sets_file)
+			f = open(file_name, "w")
+			for line in lines:
+				f.write("%s\n" % line)
+			f.close()
+
+		user_config_dir = os.path.join(self.eroot, "etc", "portage")
+
+		try:
+			os.makedirs(user_config_dir)
+		except os.error:
+			pass
+
+		for config_file, lines in user_config.items():
+			if config_file not in self.config_files:
+				raise ValueError("Unknown config file: '%s'" % config_file)
+
+			file_name = os.path.join(user_config_dir, config_file)
 			f = open(file_name, "w")
 			for line in lines:
 				f.write("%s\n" % line)
@@ -381,6 +461,7 @@ class ResolverPlaygroundTestCase(object):
 	def __init__(self, request, **kwargs):
 		self.all_permutations = kwargs.pop("all_permutations", False)
 		self.ignore_mergelist_order = kwargs.pop("ignore_mergelist_order", False)
+		self.check_repo_names = kwargs.pop("check_repo_names", False)
 
 		if self.all_permutations:
 			self.requests = list(permutations(request))
@@ -408,9 +489,24 @@ class ResolverPlaygroundTestCase(object):
 			if key in result.optional_checks and expected is None:
 				continue
 
-			if key == "mergelist" and self.ignore_mergelist_order and got is not None :
-				got = set(got)
-				expected = set(expected)
+			if key == "mergelist":
+				if not self.check_repo_names:
+					#Strip repo names if we don't check them
+					if got:
+						new_got = []
+						for cpv in got:
+							a = Atom("="+cpv, allow_repo=True)
+							new_got.append(a.cpv)
+						got = new_got
+					if expected:
+						new_expected = []
+						for cpv in expected:
+							a = Atom("="+cpv, allow_repo=True)
+							new_expected.append(a.cpv)
+						expected = new_expected
+				if self.ignore_mergelist_order and got is not None:
+					got = set(got)
+					expected = set(expected)
 			elif key == "unstable_keywords" and expected is not None:
 				expected = set(expected)
 
@@ -449,7 +545,10 @@ class ResolverPlaygroundResult(object):
 				if isinstance(x, Blocker):
 					self.mergelist.append(x.atom)
 				else:
-					self.mergelist.append(x.cpv)
+					repo_str = ""
+					if x.metadata["repository"] != "test_repo":
+						repo_str = _repo_separator + x.metadata["repository"]
+					self.mergelist.append(x.cpv + repo_str)
 
 		if self.depgraph._dynamic_config._needed_use_config_changes:
 			self.use_changes = {}
