@@ -1451,9 +1451,9 @@ class config(object):
 	def _getMissingKeywords(self, cpv, metadata):
 		"""
 		Take a package and return a list of any KEYWORDS that the user may
-		may need to accept for the given package. If the KEYWORDS are empty
+		need to accept for the given package. If the KEYWORDS are empty
 		and the the ** keyword has not been accepted, the returned list will
-		contain ** alone (in order to distiguish from the case of "none
+		contain ** alone (in order to distinguish from the case of "none
 		missing").
 
 		@param cpv: The package name (for package.keywords support)
@@ -1475,7 +1475,7 @@ class config(object):
 
 	def _getMissingLicenses(self, cpv, metadata):
 		"""
-		Take a LICENSE string and return a list any licenses that the user may
+		Take a LICENSE string and return a list of any licenses that the user
 		may need to accept for the given package.  The returned list will not
 		contain any licenses that have already been accepted.  This method
 		can throw an InvalidDependString exception.
@@ -1492,7 +1492,7 @@ class config(object):
 
 	def _getMissingProperties(self, cpv, metadata):
 		"""
-		Take a PROPERTIES string and return a list of any properties the user may
+		Take a PROPERTIES string and return a list of any properties the user
 		may need to accept for the given package.  The returned list will not
 		contain any properties that have already been accepted.  This method
 		can throw an InvalidDependString exception.

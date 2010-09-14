@@ -85,9 +85,9 @@ class KeywordsManager(object):
 	def getMissingKeywords(self, cpv, slot, keywords, global_accept_keywords, backuped_accept_keywords):
 		"""
 		Take a package and return a list of any KEYWORDS that the user may
-		may need to accept for the given package. If the KEYWORDS are empty
+		need to accept for the given package. If the KEYWORDS are empty
 		and the the ** keyword has not been accepted, the returned list will
-		contain ** alone (in order to distiguish from the case of "none
+		contain ** alone (in order to distinguish from the case of "none
 		missing").
 
 		@param cpv: The package name (for package.keywords support)
@@ -180,7 +180,7 @@ class KeywordsManager(object):
 		else:
 			if not mygroups:
 				# If KEYWORDS is empty then we still have to return something
-				# in order to distiguish from the case of "none missing".
+				# in order to distinguish from the case of "none missing".
 				mygroups.append("**")
 			missing = mygroups
 		return missing

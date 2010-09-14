@@ -156,7 +156,7 @@ class LicenseManager(object):
 
 	def getMissingLicenses(self, cpv, use, lic, slot):
 		"""
-		Take a LICENSE string and return a list any licenses that the user may
+		Take a LICENSE string and return a list of any licenses that the user
 		may need to accept for the given package.  The returned list will not
 		contain any licenses that have already been accepted.  This method
 		can throw an InvalidDependString exception.
