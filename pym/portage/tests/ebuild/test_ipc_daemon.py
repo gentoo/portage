@@ -23,6 +23,7 @@ class IpcDaemonTestCase(TestCase):
 
 	def testIpcDaemon(self):
 		tmpdir = tempfile.mkdtemp()
+		build_dir = None
 		try:
 			env = {}
 
@@ -117,6 +118,7 @@ class IpcDaemonTestCase(TestCase):
 				self.assertEqual(daemon.isAlive(), False)
 				self.assertEqual(proc.returncode == os.EX_OK, False)
 
-			build_dir.unlock()
 		finally:
+			if build_dir is not None:
+				build_dir.unlock()
 			shutil.rmtree(tmpdir)
