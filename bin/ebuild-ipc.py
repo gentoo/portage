@@ -67,12 +67,12 @@ class EbuildIpc(object):
 		finally:
 			portage.locks.unlockfile(lock_obj)
 
-	def _timeout_retry_msg(self, start_time):
+	def _timeout_retry_msg(self, start_time, when):
 		time_elapsed = time.time() - start_time
 		portage.util.writemsg_level(
 			portage.localization._(
-			'ebuild-ipc timed out after %d seconds,' + \
-			' retrying...\n') % (time_elapsed,),
+			'ebuild-ipc timed out %s after %d seconds,' + \
+			' retrying...\n') % (when, time_elapsed),
 			level=logging.ERROR, noiselevel=-1)
 
 	def _no_daemon_msg(self):
@@ -113,11 +113,13 @@ class EbuildIpc(object):
 					portage.exception.AlarmSignal.unregister()
 			except portage.exception.AlarmSignal:
 				if self._daemon_is_alive():
-					self._timeout_retry_msg(start_time)
+					self._timeout_retry_msg(start_time,
+						portage.localization._('during write'))
 				else:
 					self._no_daemon_msg()
 					return 2
 
+		start_time = time.time()
 		while True:
 			events = select.select([input_file], [], [],
 				self._COMMUNICATE_RETRY_TIMEOUT_SECONDS)
@@ -125,11 +127,13 @@ class EbuildIpc(object):
 				break
 			else:
 				if self._daemon_is_alive():
-					self._timeout_retry_msg(start_time)
+					self._timeout_retry_msg(start_time,
+						portage.localization._('during select'))
 				else:
 					self._no_daemon_msg()
 					return 2
 
+		start_time = time.time()
 		while True:
 			try:
 				try:
@@ -149,7 +153,8 @@ class EbuildIpc(object):
 					portage.exception.AlarmSignal.unregister()
 			except portage.exception.AlarmSignal:
 				if self._daemon_is_alive():
-					self._timeout_retry_msg(start_time)
+					self._timeout_retry_msg(start_time,
+						portage.localization._('during read'))
 				else:
 					self._no_daemon_msg()
 					return 2
