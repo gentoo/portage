@@ -37,7 +37,7 @@ from portage.const import _ENABLE_DYN_LINK_MAP, _ENABLE_PRESERVE_LIBS
 from portage.dbapi import dbapi
 from portage.exception import CommandNotFound, \
 	InvalidData, InvalidPackageName, \
-	FileNotFound, PermissionDenied, TryAgain, UnsupportedAPIException
+	FileNotFound, PermissionDenied, UnsupportedAPIException
 from portage.localization import _
 from portage.util.movefile import movefile
 
@@ -51,6 +51,7 @@ from portage import _selinux_merge
 from portage import _unicode_decode
 from portage import _unicode_encode
 
+from _emerge.AsynchronousLock import AsynchronousLock
 from _emerge.PollScheduler import PollScheduler
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 
@@ -62,10 +63,6 @@ import os as _os
 import stat
 import sys
 import tempfile
-try:
-	import threading
-except ImportError:
-	import dummy_threading as threading
 import time
 import warnings
 
@@ -1297,35 +1294,16 @@ class dblink(object):
 		if self._scheduler is None:
 			self._lock_vdb = lockdir(self.dbroot)
 		else:
-			try:
-				self._lock_vdb = lockdir(self.dbroot, flags=os.O_NONBLOCK)
-			except TryAgain:
-				self._lockdb_rlock = threading.RLock()
-				lockdb_thread = threading.Thread(
-					target=self._lockdb_thread)
-				lockdb_thread.start()
-				if not self._lockdb_have_lock():
-					self._scheduler.schedule(
-						condition=self._lockdb_have_lock)
-				lockdb_thread.join()
-				self._lockdb_rlock = None
+			async_lock = AsynchronousLock(path=self.dbroot,
+				scheduler=self._scheduler)
+			async_lock.start()
+			async_lock.wait()
+			self._lock_vdb = async_lock.lock_obj
 
 	def unlockdb(self):
 		if self._lock_vdb:
 			unlockdir(self._lock_vdb)
 			self._lock_vdb = None
-
-	def _lockdb_thread(self):
-		lock_vdb = lockdir(self.dbroot)
-		self._lockdb_rlock.acquire()
-		self._lock_vdb = lock_vdb
-		self._lockdb_rlock.release()
-
-	def _lockdb_have_lock(self):
-		self._lockdb_rlock.acquire()
-		rval = self._lock_vdb is not None
-		self._lockdb_rlock.release()
-		return rval
 
 	def getpath(self):
 		"return path to location of db information (for >>> informational display)"
