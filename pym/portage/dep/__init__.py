@@ -9,7 +9,8 @@ __all__ = [
 	'get_operator', 'isjustname', 'isspecific',
 	'isvalidatom', 'match_from_list', 'match_to_list',
 	'paren_enclose', 'paren_normalize', 'paren_reduce',
-	'remove_slot', 'strip_empty', 'use_reduce'
+	'remove_slot', 'strip_empty', 'use_reduce', 
+	'_repo_separator', '_slot_separator',
 ]
 
 # DEPEND SYNTAX:
@@ -973,11 +974,11 @@ class Atom(_atom_base):
 		def __init__(self, forbid_overlap=False):
 			self.overlap = self._overlap(forbid=forbid_overlap)
 
-	def __new__(cls, s, unevaluated_atom=None, allow_wildcard=False,
+	def __new__(cls, s, unevaluated_atom=None, allow_wildcard=False, allow_repo=False,
 		_use=None, eapi=None, is_valid_flag=None):
 		return _atom_base.__new__(cls, s)
 
-	def __init__(self, s, unevaluated_atom=None, allow_wildcard=False,
+	def __init__(self, s, unevaluated_atom=None, allow_wildcard=False, allow_repo=False,
 		_use=None, eapi=None, is_valid_flag=None):
 		if isinstance(s, Atom):
 			# This is an efficiency assertion, to ensure that the Atom
@@ -1009,6 +1010,7 @@ class Atom(_atom_base):
 				if cpv.find("**") != -1:
 					raise InvalidAtom(self)
 				slot = gdict['slot']
+				repo = None
 				use_str = None
 				extended_syntax = True
 			else:
@@ -1018,7 +1020,8 @@ class Atom(_atom_base):
 			op = m.group(base + 1)
 			cpv = m.group(base + 2)
 			cp = m.group(base + 3)
-			slot = m.group(_atom_re.groups - 1)
+			slot = m.group(_atom_re.groups - 2)
+			repo = m.group(_atom_re.groups - 1)
 			use_str = m.group(_atom_re.groups)
 			if m.group(base + 4) is not None:
 				raise InvalidAtom(self)
@@ -1027,31 +1030,38 @@ class Atom(_atom_base):
 			op = '=*'
 			cpv = m.group(base + 1)
 			cp = m.group(base + 2)
-			slot = m.group(_atom_re.groups - 1)
+			slot = m.group(_atom_re.groups - 2)
+			repo = m.group(_atom_re.groups - 1)
 			use_str = m.group(_atom_re.groups)
 			if m.group(base + 3) is not None:
 				raise InvalidAtom(self)
 		elif m.group('simple') is not None:
 			op = None
 			cpv = cp = m.group(_atom_re.groupindex['simple'] + 1)
-			slot = m.group(_atom_re.groups - 1)
+			slot = m.group(_atom_re.groups - 2)
+			repo = m.group(_atom_re.groups - 1)
 			use_str = m.group(_atom_re.groups)
 			if m.group(_atom_re.groupindex['simple'] + 2) is not None:
 				raise InvalidAtom(self)
+
 		else:
 			raise AssertionError(_("required group not found in atom: '%s'") % self)
 		self.__dict__['cp'] = cp
 		self.__dict__['cpv'] = cpv
+		self.__dict__['repo'] = repo
 		self.__dict__['slot'] = slot
 		self.__dict__['operator'] = op
 		self.__dict__['extended_syntax'] = extended_syntax
+
+		if not (repo is None or allow_repo):
+			raise InvalidAtom(self)
 
 		if use_str is not None:
 			if _use is not None:
 				use = _use
 			else:
 				use = _use_dep(use_str[1:-1].split(","))
-			without_use = Atom(m.group('without_use'))
+			without_use = Atom(m.group('without_use'), allow_repo=allow_repo)
 		else:
 			use = None
 			without_use = self
@@ -1152,7 +1162,7 @@ class Atom(_atom_base):
 			atom += ":%s" % self.slot
 		use_dep = self.use.evaluate_conditionals(use)
 		atom += str(use_dep)
-		return Atom(atom, unevaluated_atom=self, _use=use_dep)
+		return Atom(atom, unevaluated_atom=self, allow_repo=(self.repo is not None), _use=use_dep)
 
 	def violated_conditionals(self, other_use, is_valid_flag, parent_use=None):
 		"""
@@ -1174,7 +1184,7 @@ class Atom(_atom_base):
 			atom += ":%s" % self.slot
 		use_dep = self.use.violated_conditionals(other_use, is_valid_flag, parent_use)
 		atom += str(use_dep)
-		return Atom(atom, unevaluated_atom=self, _use=use_dep)
+		return Atom(atom, unevaluated_atom=self, allow_repo=(self.repo is not None), _use=use_dep)
 
 	def _eval_qa_conditionals(self, use_mask, use_force):
 		if not (self.use and self.use.conditional):
@@ -1184,7 +1194,7 @@ class Atom(_atom_base):
 			atom += ":%s" % self.slot
 		use_dep = self.use._eval_qa_conditionals(use_mask, use_force)
 		atom += str(use_dep)
-		return Atom(atom, unevaluated_atom=self, _use=use_dep)
+		return Atom(atom, unevaluated_atom=self, allow_repo=(self.repo is not None), _use=use_dep)
 
 	def __copy__(self):
 		"""Immutable, so returns self."""
@@ -1369,7 +1379,11 @@ def dep_getslot(mydep):
 	slot = getattr(mydep, "slot", False)
 	if slot is not False:
 		return slot
-	colon = mydep.find(":")
+
+	#remove repo_name if present
+	mydep = mydep.split(_repo_separator)[0]
+	
+	colon = mydep.find(_slot_separator)
 	if colon != -1:
 		bracket = mydep.find("[", colon)
 		if bracket == -1:
@@ -1378,14 +1392,46 @@ def dep_getslot(mydep):
 			return mydep[colon+1:bracket]
 	return None
 
+def dep_getrepo(mydep):
+	"""
+	Retrieve the repo on a depend.
+
+	Example usage:
+		>>> dep_getrepo('app-misc/test::repository')
+		'repository'
+
+	@param mydep: The depstring to retrieve the repository of
+	@type mydep: String
+	@rtype: String
+	@return: The repository name
+	"""
+	repo = getattr(mydep, "repo", False)
+	if repo is not False:
+		return repo
+
+	metadata = getattr(mydep, "metadata", False)
+	if metadata:
+		repo = metadata.get('repository', False)
+		if repo is not False:
+			return repo
+
+	colon = mydep.find(_repo_separator)
+	if colon != -1:
+		bracket = mydep.find("[", colon)
+		if bracket == -1:
+			return mydep[colon+2:]
+		else:
+			return mydep[colon+2:bracket]
+	return None
 def remove_slot(mydep):
 	"""
 	Removes dep components from the right side of an atom:
 		* slot
 		* use
 		* repo
+	And repo_name from the left side.
 	"""
-	colon = mydep.find(":")
+	colon = mydep.find(_slot_separator)
 	if colon != -1:
 		mydep = mydep[:colon]
 	else:
@@ -1450,16 +1496,21 @@ def dep_getusedeps( depend ):
 
 # 2.1.3 A slot name may contain any of the characters [A-Za-z0-9+_.-].
 # It must not begin with a hyphen or a dot.
+_slot_separator = ":"
 _slot = r'([\w+][\w+.-]*)'
 _slot_re = re.compile('^' + _slot + '$', re.VERBOSE)
 
 _use = r'\[.*\]'
 _op = r'([=~]|[><]=?)'
+_repo_separator = "::"
+_repo_name = r'[\w+][\w+.-]*'
+_repo = r'(?:' + _repo_separator + '(' + _repo_name + ')' + ')?'
 
 _atom_re = re.compile('^(?P<without_use>(?:' +
 	'(?P<op>' + _op + _cpv + ')|' +
 	'(?P<star>=' + _cpv + r'\*)|' +
-	'(?P<simple>' + _cp + '))(:' + _slot + ')?)(' + _use + ')?$', re.VERBOSE)
+	'(?P<simple>' + _cp + '))' + 
+	'(' + _slot_separator + _slot + ')?' + _repo + ')(' + _use + ')?$', re.VERBOSE)
 	
 _extended_cat = r'[\w+*][\w+.*-]*'
 _extended_pkg = r'[\w+*][\w+*-]*?'
@@ -1468,7 +1519,7 @@ _atom_wildcard_re = re.compile('(?P<simple>(' + _extended_cat + ')/(' + _extende
 
 _valid_use_re = re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@-]*$')
 
-def isvalidatom(atom, allow_blockers=False, allow_wildcard=False):
+def isvalidatom(atom, allow_blockers=False, allow_wildcard=False, allow_repo=False):
 	"""
 	Check to see if a depend atom is valid
 
@@ -1487,7 +1538,7 @@ def isvalidatom(atom, allow_blockers=False, allow_wildcard=False):
 	"""
 	try:
 		if not isinstance(atom, Atom):
-			atom = Atom(atom, allow_wildcard=allow_wildcard)
+			atom = Atom(atom, allow_wildcard=allow_wildcard, allow_repo=allow_repo)
 		if not allow_blockers and atom.blocker:
 			return False
 		return True
@@ -1565,7 +1616,7 @@ def dep_getkey(mydep):
 	@return: The package category/package-name
 	"""
 	if not isinstance(mydep, Atom):
-		mydep = Atom(mydep)
+		mydep = Atom(mydep, allow_wildcard=True, allow_repo=True)
 
 	return mydep.cp
 
@@ -1651,7 +1702,7 @@ def match_from_list(mydep, candidate_list):
 		else:
 			mydep = mydep[1:]
 	if not isinstance(mydep, Atom):
-		mydep = Atom(mydep, allow_wildcard=True)
+		mydep = Atom(mydep, allow_wildcard=True, allow_repo=True)
 
 	mycpv     = mydep.cpv
 	mycpv_cps = catpkgsplit(mycpv) # Can be None if not specific
@@ -1811,8 +1862,19 @@ def match_from_list(mydep, candidate_list):
 
 				if use_config_mismatch:
 					continue
-
 			mylist.append(x)
+
+	if mydep.repo:
+		candidate_list = mylist
+		mylist = []
+		for x in candidate_list:
+			repo = getattr(x, "repo", False)
+			if repo is False:
+				repo = dep_getrepo(x)
+			if repo is not None and repo != mydep.repo:
+				continue
+			mylist.append(x)
+
 	return mylist
 
 def human_readable_required_use(required_use):
