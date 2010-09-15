@@ -1,6 +1,7 @@
 # Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import platform
 import stat
 import textwrap
 from _emerge.SpawnProcess import SpawnProcess
@@ -34,6 +35,13 @@ class AbstractEbuildProcess(SpawnProcess):
 	# The EbuildIpcDaemon support is well tested, but this variable
 	# is left so we can temporarily disable it if any issues arise.
 	_enable_ipc_daemon = True
+
+	# EbuildIpcDaemon does not work on these platforms yet:
+	# | Bug #  | Platform
+	# |--------|------------
+	# | 337465 | FreeBSD
+	if platform.system() in ('FreeBSD',):
+		_enable_ipc_daemon = False
 
 	def __init__(self, **kwargs):
 		SpawnProcess.__init__(self, **kwargs)
