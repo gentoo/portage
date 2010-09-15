@@ -236,7 +236,7 @@ def stack_lists(lists, incremental=1, remember_source_file=False, warn_for_unmat
 	distinct values using '-value' notation. Higher index is preferenced.
 
 	all elements must be hashable."""
-	matched_removals = set()
+	unmatched_removals = {}
 	new_list = {}
 	for sub_list in lists:
 		for token in sub_list:
@@ -256,18 +256,21 @@ def stack_lists(lists, incremental=1, remember_source_file=False, warn_for_unmat
 					try:
 						new_list.pop(token[1:])
 					except KeyError:
-						if warn_for_unmatched_removal and \
-							not (source_file and token_key in matched_removals):
-							writemsg(_("--- Unmatch removal atom in %s: %s\n") % (source_file, token),
-								noiselevel=-1)
-					else:
-						# Remember this match, in case this profile is
-						# inherited multiple times in this stack.
-						matched_removals.add(token_key)
+						unmatched_removals.setdefault(source_file, set()).add(token)
 				else:
 					new_list[token] = source_file
 			else:
 				new_list[token] = source_file
+
+	if warn_for_unmatched_removal:
+		for source_file, tokens in unmatched_removals.items():
+			if len(tokens) > 3:
+				selected = [tokens.pop(), tokens.pop(), tokens.pop()]
+				writemsg(_("--- Unmatch removal atoms in %s: %s and %s more\n") % (source_file, ", ".join(selected), len(tokens)-3),
+					noiselevel=-1)
+			else:
+				writemsg(_("--- Unmatch removal atom(s) in %s: %s\n") % (source_file, ", ".join(tokens)),
+					noiselevel=-1)
 
 	if remember_source_file:
 		return list(new_list.items())
