@@ -13,7 +13,8 @@ from portage.versions import cpv_getkey
 
 class MaskManager(object):
 
-	def __init__(self, pmask_locations, abs_user_config, user_config=True):
+	def __init__(self, pmask_locations, abs_user_config,
+		user_config=True, strict_umatched_removal=False):
 		self._punmaskdict = ExtendedAtomDict(list)
 		self._pmaskdict = ExtendedAtomDict(list)
 
@@ -26,10 +27,14 @@ class MaskManager(object):
 		for x in repo_profiles:
 			repo_pkgmasklines.append(stack_lists([grabfile_package(
 				os.path.join(x, "package.mask"), recursive=1, remember_source_file=True, verify_eapi=True)], \
-					incremental=1, remember_source_file=True, warn_for_unmatched_removal=True))
+					incremental=1, remember_source_file=True,
+					warn_for_unmatched_removal=True,
+					strict_warn_for_unmatched_removal=strict_umatched_removal))
 			repo_pkgunmasklines.append(stack_lists([grabfile_package(
 				os.path.join(x, "package.unmask"), recursive=1, remember_source_file=True, verify_eapi=True)], \
-				incremental=1, remember_source_file=True, warn_for_unmatched_removal=True))
+				incremental=1, remember_source_file=True,
+				warn_for_unmatched_removal=True,
+				strict_warn_for_unmatched_removal=strict_umatched_removal))
 		repo_pkgmasklines = list(chain.from_iterable(repo_pkgmasklines))
 		repo_pkgunmasklines = list(chain.from_iterable(repo_pkgunmasklines))
 
@@ -43,9 +48,11 @@ class MaskManager(object):
 			profile_pkgunmasklines.append(grabfile_package(
 				os.path.join(x, "package.unmask"), recursive=1, remember_source_file=True, verify_eapi=True))
 		profile_pkgmasklines = stack_lists(profile_pkgmasklines, incremental=1, \
-			remember_source_file=True, warn_for_unmatched_removal=True)
+			remember_source_file=True, warn_for_unmatched_removal=True,
+			strict_warn_for_unmatched_removal=strict_umatched_removal)
 		profile_pkgunmasklines = stack_lists(profile_pkgunmasklines, incremental=1, \
-			remember_source_file=True, warn_for_unmatched_removal=True)
+			remember_source_file=True, warn_for_unmatched_removal=True,
+			strict_warn_for_unmatched_removal=strict_umatched_removal)
 
 		#Read /etc/portage/package.mask. Don't stack it to allow the user to
 		#remove mask atoms from everywhere with -atoms.

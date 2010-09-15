@@ -157,7 +157,7 @@ class config(object):
 
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
-		_eprefix=None, local_config=True, env=None):
+		_eprefix=None, local_config=True, env=None, _unmatched_removal=False):
 		"""
 		@param clone: If provided, init will use deepcopy to copy by value the instance.
 		@type clone: Instance of config class.
@@ -181,6 +181,9 @@ class config(object):
 		@param env: The calling environment which is used to override settings.
 			Defaults to os.environ if unspecified.
 		@type env: dict
+		@param _unmatched_removal: Enabled by repoman when the
+			--unmatched-removal option is given.
+		@type _unmatched_removal: Boolean
 		"""
 
 		# rename local _eprefix variable for convenience
@@ -542,7 +545,9 @@ class config(object):
 					self.configdict["conf"].get("ACCEPT_LICENSE", ""))
 
 			#Read package.mask and package.unmask from profiles and optionally from user config
-			self._mask_manager = MaskManager(locations_manager.pmask_locations, abs_user_config, user_config=local_config)
+			self._mask_manager = MaskManager(locations_manager.pmask_locations,
+				abs_user_config, user_config=local_config,
+				strict_umatched_removal=_unmatched_removal)
 
 			self._virtuals_manager = VirtualsManager(self.profiles)
 

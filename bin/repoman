@@ -216,6 +216,9 @@ def ParseArgs(argv, qahelp):
 	parser.add_option('-d', '--include-dev', dest='include_dev', action='store_true',
 		default=False, help='include dev profiles in dependency checks')
 
+	parser.add_option('--unmatched-removal', dest='unmatched_removal', action='store_true',
+		default=False, help='enable strict checking of package.mask and package.unmask files for unmatched removal atoms')
+
 	parser.add_option('--without-mask', dest='without_mask', action='store_true',
 		default=False, help='behave as if no package.mask entries exist (not allowed with commit mode)')
 
@@ -1818,6 +1821,7 @@ for x in scanlist:
 						config_profile_path=prof.abs_path,
 						config_incrementals=repoman_incrementals,
 						local_config=False,
+						_unmatched_removal=options.unmatched_removal,
 						env=env)
 					if options.without_mask:
 						dep_settings._mask_manager = \
