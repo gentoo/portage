@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import gzip
+import sys
 import tempfile
 
 from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
@@ -98,8 +99,14 @@ class EbuildPhase(CompositeTask):
 		if self.phase in ("clean", "cleanrm"):
 			logfile = None
 
+		fd_pipes = None
+		if not self.background and self.phase == 'nofetch':
+			# All the pkg_nofetch output goes to stderr since
+			# it's considered to be an error message.
+			fd_pipes = {1 : sys.stderr.fileno()}
+
 		ebuild_process = EbuildProcess(actionmap=self.actionmap,
-			background=self.background, logfile=logfile,
+			background=self.background, fd_pipes=fd_pipes, logfile=logfile,
 			phase=self.phase, scheduler=self.scheduler,
 			settings=self.settings)
 

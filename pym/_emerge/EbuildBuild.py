@@ -47,6 +47,8 @@ class EbuildBuild(CompositeTask):
 		if ebuild_path is None:
 			raise AssertionError("ebuild not found for '%s'" % pkg.cpv)
 		self._ebuild_path = ebuild_path
+		portage.doebuild_environment(ebuild_path, 'setup',
+			settings=self.settings, db=portdb)
 
 		# Check the manifest here since with --keep-going mode it's
 		# currently possible to get this far with a broken manifest.
@@ -115,7 +117,8 @@ class EbuildBuild(CompositeTask):
 				self.wait()
 				return
 
-		self._build_dir = EbuildBuildDir(pkg=pkg, settings=settings)
+		self._build_dir = EbuildBuildDir(
+			scheduler=self.scheduler, settings=settings)
 		self._build_dir.lock()
 
 		# Cleaning needs to happen before fetch, since the build dir
@@ -132,7 +135,7 @@ class EbuildBuild(CompositeTask):
 		self._start_task(pre_clean_phase, self._pre_clean_exit)
 
 	def _pre_clean_exit(self, pre_clean_phase):
-		if self._final_exit(pre_clean_phase) != os.EX_OK:
+		if self._default_exit(pre_clean_phase) != os.EX_OK:
 			self._unlock_builddir()
 			self.wait()
 			return
@@ -151,11 +154,8 @@ class EbuildBuild(CompositeTask):
 
 	def _fetch_exit(self, fetcher):
 
-		portage.elog.elog_process(self.pkg.cpv, self.settings)
-
 		if self._default_exit(fetcher) != os.EX_OK:
-			self._unlock_builddir()
-			self.wait()
+			self._fetch_failed()
 			return
 
 		# discard successful fetch log
@@ -195,6 +195,30 @@ class EbuildBuild(CompositeTask):
 		build = EbuildExecuter(background=self.background, pkg=pkg,
 			scheduler=scheduler, settings=settings)
 		self._start_task(build, self._build_exit)
+
+	def _fetch_failed(self):
+		# We only call the pkg_nofetch phase if either RESTRICT=fetch
+		# is set or the package has explicitly overridden the default
+		# pkg_nofetch implementation. This allows specialized messages
+		# to be displayed for problematic packages even though they do
+		# not set RESTRICT=fetch (bug #336499).
+
+		if 'fetch' not in self.pkg.metadata.restrict and \
+			'nofetch' not in self.pkg.metadata.defined_phases:
+			self._unlock_builddir()
+			self.wait()
+			return
+
+		self.returncode = None
+		nofetch_phase = EbuildPhase(background=self.background,
+			phase='nofetch', scheduler=self.scheduler, settings=self.settings)
+		self._start_task(nofetch_phase, self._nofetch_exit)
+
+	def _nofetch_exit(self, nofetch_phase):
+		self._final_exit(nofetch_phase)
+		self._unlock_builddir()
+		self.returncode = 1
+		self.wait()
 
 	def _unlock_builddir(self):
 		portage.elog.elog_process(self.pkg.cpv, self.settings)

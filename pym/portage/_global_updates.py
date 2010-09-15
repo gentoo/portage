@@ -15,7 +15,7 @@ from portage.update import grab_updates, parse_updates, update_config_files, upd
 from portage.util import grabfile, shlex_split, \
 	writemsg, writemsg_stdout, write_atomic
 
-def _global_updates(trees, prev_mtimes):
+def _global_updates(trees, prev_mtimes, quiet=False):
 	"""
 	Perform new global updates if they exist in 'profiles/updates/'
 	subdirectories of all active repositories (PORTDIR + PORTDIR_OVERLAY).
@@ -61,6 +61,7 @@ def _global_updates(trees, prev_mtimes):
 	repo_map = {}
 	timestamps = {}
 
+	update_notice_printed = False
 	for repo_name in portdb.getRepositories():
 		repo = portdb.getRepositoryPath(repo_name)
 		updpath = os.path.join(repo, "profiles", "updates")
@@ -83,18 +84,27 @@ def _global_updates(trees, prev_mtimes):
 		repo_map[repo_name] = myupd
 		if len(update_data) > 0:
 			for mykey, mystat, mycontent in update_data:
-				writemsg_stdout("\n\n")
-				writemsg_stdout(colorize("GOOD",
-					_("Performing Global Updates: "))+bold(mykey)+"\n")
-				writemsg_stdout(_("(Could take a couple of minutes if you have a lot of binary packages.)\n"))
-				writemsg_stdout(_("  %s='update pass'  %s='binary update'  "
-					"%s='/var/db update'  %s='/var/db move'\n"
-					"  %s='/var/db SLOT move'  %s='binary move'  "
-					"%s='binary SLOT move'\n  %s='update /etc/portage/package.*'\n") % \
-					(bold("."), bold("*"), bold("#"), bold("@"), bold("s"), bold("%"), bold("S"), bold("p")))
+				if not update_notice_printed:
+					update_notice_printed = True
+					writemsg_stdout("\n")
+					if quiet:
+						writemsg_stdout(colorize("GOOD",
+							_("Performing Global Updates\n")))
+						writemsg_stdout(_("(Could take a couple of minutes if you have a lot of binary packages.)\n"))
+					else:
+						writemsg_stdout(colorize("GOOD",
+							_("Performing Global Updates:\n")))
+						writemsg_stdout(_("(Could take a couple of minutes if you have a lot of binary packages.)\n"))
+						writemsg_stdout(_("  %s='update pass'  %s='binary update'  "
+							"%s='/var/db update'  %s='/var/db move'\n"
+							"  %s='/var/db SLOT move'  %s='binary move'  "
+							"%s='binary SLOT move'\n  %s='update /etc/portage/package.*'\n") % \
+							(bold("."), bold("*"), bold("#"), bold("@"), bold("s"), bold("%"), bold("S"), bold("p")))
 				valid_updates, errors = parse_updates(mycontent)
 				myupd.extend(valid_updates)
-				writemsg_stdout(len(valid_updates) * "." + "\n")
+				if not quiet:
+					writemsg_stdout(bold(mykey))
+					writemsg_stdout(len(valid_updates) * "." + "\n")
 				if len(errors) == 0:
 					# Update our internal mtime since we
 					# processed all of our directives.
@@ -212,11 +222,15 @@ def _global_updates(trees, prev_mtimes):
 				def onUpdate(maxval, curval):
 					if curval > 0:
 						writemsg_stdout("#")
+				if quiet:
+					onUpdate = None
 				vardb.update_ents(repo_map, onUpdate=onUpdate)
 				if bindb:
 					def onUpdate(maxval, curval):
 						if curval > 0:
 							writemsg_stdout("*")
+					if quiet:
+						onUpdate = None
 					bindb.update_ents(repo_map, onUpdate=onUpdate)
 			else:
 				do_upgrade_packagesmessage = 1

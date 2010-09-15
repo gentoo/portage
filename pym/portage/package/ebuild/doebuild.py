@@ -25,6 +25,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.digestcheck:digestcheck',
 	'portage.package.ebuild.digestgen:digestgen',
 	'portage.package.ebuild.fetch:fetch',
+	'portage.package.ebuild._spawn_nofetch:spawn_nofetch',
 	'portage.util.ExtractKernelVersion:ExtractKernelVersion'
 )
 
@@ -56,6 +57,7 @@ from portage.util import apply_recursive_permissions, \
 from portage.util.lafilefixer import rewrite_lafile	
 from portage.versions import _pkgsplit
 from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
+from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.EbuildSpawnProcess import EbuildSpawnProcess
 from _emerge.PollScheduler import PollScheduler
@@ -617,8 +619,13 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		# when pkg_nofetch is spawned.
 		have_build_dirs = False
 		if not parallel_fetchonly and \
-			mydo not in ('digest', 'help', 'manifest') and \
-			not (mydo == 'fetch' and 'fetch' not in restrict):
+			mydo not in ('digest', 'fetch', 'help', 'manifest'):
+			if not returnpid and \
+				'PORTAGE_BUILDIR_LOCKED' not in mysettings:
+				builddir_lock = EbuildBuildDir(
+					scheduler=PollScheduler().sched_iface,
+					settings=mysettings)
+				builddir_lock.lock()
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 			if mystatus:
 				return mystatus
@@ -699,6 +706,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					fetchme = alist
 				if not fetch(fetchme, mysettings, listonly=listonly,
 					fetchonly=fetchonly):
+					spawn_nofetch(mydbapi, myebuild, settings=mysettings)
 					return 1
 
 		else:
@@ -811,11 +819,11 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 	finally:
 
+		if builddir_lock is not None:
+			builddir_lock.unlock()
 		if tmpdir:
 			mysettings["PORTAGE_TMPDIR"] = tmpdir_orig
 			shutil.rmtree(tmpdir)
-		if builddir_lock:
-			portage.locks.unlockdir(builddir_lock)
 
 		mysettings.pop("REPLACING_VERSIONS", None)
 

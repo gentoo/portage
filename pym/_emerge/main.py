@@ -362,7 +362,7 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 			if vdb_lock:
 				portage.locks.unlockdir(vdb_lock)
 
-	chk_updated_cfg_files(target_root + EPREFIX, config_protect)
+	chk_updated_cfg_files(settings['EROOT'], config_protect)
 
 	display_news_notification(root_config, myopts)
 	if retval in (None, os.EX_OK) or (not "--pretend" in myopts):
@@ -1307,7 +1307,7 @@ def emerge_main():
 
 	if myaction not in ('help', 'info', 'version') and \
 		myopts.get('--package-moves') != 'n' and \
-		_global_updates(trees, mtimedb["updates"]):
+		_global_updates(trees, mtimedb["updates"], quiet=("--quiet" in myopts)):
 		mtimedb.commit()
 		# Reload the whole config from scratch.
 		settings, trees, mtimedb = load_emerge_config(trees=trees)

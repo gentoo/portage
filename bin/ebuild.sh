@@ -188,11 +188,10 @@ has_version() {
 
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
 		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "$ROOT" "$1"
-		return $?
+	else
+		PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
+		"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" has_version "${ROOT}" "$1"
 	fi
-
-	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-	"${PORTAGE_PYTHON:-@PORTAGE_PYTHON@}" "${PORTAGE_BIN_PATH}/portageq" has_version "${ROOT}" "$1"
 	local retval=$?
 	case "${retval}" in
 		0)
@@ -231,11 +230,10 @@ best_version() {
 
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
 		"$PORTAGE_BIN_PATH"/ebuild-ipc best_version "$ROOT" "$1"
-		return $?
+	else
+		PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
+		"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/portageq" 'best_version' "${ROOT}" "$1"
 	fi
-
-	PYTHONPATH=${PORTAGE_PYM_PATH}${PYTHONPATH:+:}${PYTHONPATH} \
-	"${PORTAGE_PYTHON:-@PORTAGE_PYTHON@}" "${PORTAGE_BIN_PATH}/portageq" 'best_version' "${ROOT}" "$1"
 	local retval=$?
 	case "${retval}" in
 		0)
@@ -902,7 +900,13 @@ docompress() {
 	hasq "${EAPI}" 0 1 2 3 && die "'docompress' not supported in this EAPI"
 
 	local f g
-	if [[ $1 = "-x" ]]; then
+	if [[ $1 = "-s" ]]; then
+		if [[ $# -ne 1 ]]; then
+			helpers_die "${FUNCNAME[0]}: -s takes no additional arguments"
+			return 1
+		fi
+		ecompress --suffix
+	elif [[ $1 = "-x" ]]; then
 		shift
 		for f; do
 			f=$(strip_duplicate_slashes "${f}"); f=${f%/}

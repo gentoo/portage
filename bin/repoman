@@ -219,6 +219,9 @@ def ParseArgs(argv, qahelp):
 	parser.add_option('-d', '--include-dev', dest='include_dev', action='store_true',
 		default=False, help='include dev profiles in dependency checks')
 
+	parser.add_option('--unmatched-removal', dest='unmatched_removal', action='store_true',
+		default=False, help='enable strict checking of package.mask and package.unmask files for unmatched removal atoms')
+
 	parser.add_option('--without-mask', dest='without_mask', action='store_true',
 		default=False, help='behave as if no package.mask entries exist (not allowed with commit mode)')
 
@@ -677,7 +680,7 @@ for path in portdb.porttrees:
 					uselist.add(use_prefix + x[0])
 
 	global_pmasklines.append(portage.util.grabfile_package(
-		os.path.join(path, 'profiles', 'package.mask'), recursive=1))
+		os.path.join(path, 'profiles', 'package.mask'), recursive=1, verify_eapi=True))
 
 	desc_path = os.path.join(path, 'profiles', 'profiles.desc')
 	try:
@@ -1823,6 +1826,7 @@ for x in scanlist:
 						config_profile_path=prof.abs_path,
 						config_incrementals=repoman_incrementals,
 						local_config=False,
+						_unmatched_removal=options.unmatched_removal,
 						env=env,
 						_eprefix=EPREFIX)
 					if options.without_mask:

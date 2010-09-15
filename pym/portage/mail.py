@@ -92,7 +92,7 @@ def send_mail(mysettings, message):
 	#       mailserver: smtp server that should be used to deliver the mail (defaults to localhost)
 	#					alternatively this can also be the absolute path to a sendmail binary if you don't want to use smtp
 	#       port:       port to use on the given smtp server (defaults to 25, values > 100000 indicate that starttls should be used on (port-100000))
-	if " " in mysettings["PORTAGE_ELOG_MAILURI"]:
+	if " " in mysettings.get("PORTAGE_ELOG_MAILURI", ""):
 		myrecipient, mymailuri = mysettings["PORTAGE_ELOG_MAILURI"].split()
 		if "@" in mymailuri:
 			myauthdata, myconndata = mymailuri.rsplit("@", 1)
@@ -107,7 +107,7 @@ def send_mail(mysettings, message):
 		else:
 			mymailhost = myconndata
 	else:
-		myrecipient = mysettings["PORTAGE_ELOG_MAILURI"]
+		myrecipient = mysettings.get("PORTAGE_ELOG_MAILURI", "")
 	
 	myfrom = message.get("From")
 

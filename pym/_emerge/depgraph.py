@@ -328,6 +328,11 @@ class depgraph(object):
 				# backtracking depgraphs that share the same frozen_config.
 				fake_vartree.sync()
 
+				# FakeVartree.sync() populates virtuals, and we want
+				# self.pkgsettings to have them populated too.
+				self._frozen_config.pkgsettings[myroot] = \
+					portage.config(clone=fake_vartree.settings)
+
 			if preload_installed_pkgs:
 				vardb = fake_vartree.dbapi
 				fakedb = self._dynamic_config._graph_trees[
@@ -2136,12 +2141,10 @@ class depgraph(object):
 		for pkg in missing_use:
 			use = self._pkg_use_enabled(pkg)
 			missing_iuse = []
-			for x in pkg.iuse.get_missing_iuse(atom.use.required):
-				#FIXME: If a use flag occures more then it might be possible that
-				#one has a default one doesn't.
-				if x not in atom.use.missing_enabled and \
-					x not in atom.use.missing_disabled:
-					missing_iuse.append(x)
+			#Use the unevaluated atom here, because some flags might have gone
+			#lost during evaluation.
+			required_flags = atom.unevaluated_atom.use.required
+			missing_iuse = pkg.iuse.get_missing_iuse(required_flags)
 
 			mreasons = []
 			if missing_iuse:
@@ -2150,6 +2153,14 @@ class depgraph(object):
 			else:
 				need_enable = sorted(atom.use.enabled.difference(use).intersection(pkg.iuse.all))
 				need_disable = sorted(atom.use.disabled.intersection(use).intersection(pkg.iuse.all))
+
+				pkgsettings = self._frozen_config.pkgsettings[pkg.root]
+				pkgsettings.setcpv(pkg)
+				untouchable_flags = \
+					frozenset(chain(pkgsettings.usemask, pkgsettings.useforce))
+				if untouchable_flags.intersection(
+					chain(need_enable, need_disable)):
+					continue
 
 				required_use = pkg.metadata["REQUIRED_USE"]
 				required_use_warning = ""
@@ -2177,6 +2188,13 @@ class depgraph(object):
 			if not missing_iuse and myparent and atom.unevaluated_atom.use.conditional:
 				# Lets see if the violated use deps are conditional.
 				# If so, suggest to change them on the parent.
+
+				# If the child package is masked then a change to
+				# parent USE is not a valid solution (a normal mask
+				# message should be displayed instead).
+				if pkg in masked_pkg_instances:
+					continue
+
 				mreasons = []
 				violated_atom = atom.unevaluated_atom.violated_conditionals(self._pkg_use_enabled(pkg), \
 					pkg.iuse.is_valid_flag, self._pkg_use_enabled(myparent))
@@ -2186,6 +2204,13 @@ class depgraph(object):
 					conditional = violated_atom.use.conditional
 					involved_flags = set(chain(conditional.equal, conditional.not_equal, \
 						conditional.enabled, conditional.disabled))
+
+					pkgsettings = self._frozen_config.pkgsettings[myparent.root]
+					pkgsettings.setcpv(myparent)
+					untouchable_flags = \
+						frozenset(chain(pkgsettings.usemask, pkgsettings.useforce))
+					if untouchable_flags.intersection(involved_flags):
+						continue
 
 					required_use = myparent.metadata["REQUIRED_USE"]
 					required_use_warning = ""
@@ -2242,7 +2267,9 @@ class depgraph(object):
 		elif unmasked_iuse_reasons:
 			masked_with_iuse = False
 			for pkg in masked_pkg_instances:
-				if not pkg.iuse.get_missing_iuse(atom.use.required):
+				#Use atom.unevaluated here, because some flags might have gone
+				#lost during evaluation.
+				if not pkg.iuse.get_missing_iuse(atom.unevaluated_atom.use.required):
 					# Package(s) with required IUSE are masked,
 					# so display a normal masking message.
 					masked_with_iuse = True
@@ -2725,14 +2752,7 @@ class depgraph(object):
 						found_available_arg = True
 
 					if atom.use:
-						missing_iuse = []
-						for x in pkg.iuse.get_missing_iuse(atom.use.required):
-							#FIXME: If a use flag occures more then it might be possible that
-							#one has a default one doesn't.
-							if x not in atom.use.missing_enabled and \
-								x not in atom.use.missing_disabled:
-								missing_iuse.append(x)
-						if missing_iuse:
+						if pkg.iuse.get_missing_iuse(atom.use.required):
 							# Don't add this to packages_with_invalid_use_config
 							# since IUSE cannot be adjusted by the user.
 							continue
@@ -2757,6 +2777,12 @@ class depgraph(object):
 							atom.use.disabled.difference(pkg.iuse.all).difference(atom.use.missing_disabled):
 							if not pkg.built:
 								packages_with_invalid_use_config.append(pkg)
+							continue
+					elif atom.unevaluated_atom.use:
+						#Make sure we don't miss a 'missing IUSE'.
+						if pkg.iuse.get_missing_iuse(atom.unevaluated_atom.use.required):
+							# Don't add this to packages_with_invalid_use_config
+							# since IUSE cannot be adjusted by the user.
 							continue
 
 					#check REQUIRED_USE constraints

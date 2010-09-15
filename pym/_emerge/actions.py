@@ -73,6 +73,10 @@ def action_build(settings, trees, mtimedb,
 	if '--usepkgonly' not in myopts:
 		old_tree_timestamp_warn(settings['PORTDIR'], settings)
 
+	# It's best for config updates in /etc/portage to be processed
+	# before we get here, so warn if they're not (bug #267103).
+	chk_updated_cfg_files(settings['EROOT'], ['/etc/portage'])
+
 	# validate the state of the resume data
 	# so that we can make assumptions later.
 	for k in ("resume", "resume_backup"):
@@ -2373,7 +2377,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		action_metadata(settings, portdb, myopts, porttrees=[myportdir])
 
 	if myopts.get('--package-moves') != 'n' and \
-		_global_updates(trees, mtimedb["updates"]):
+		_global_updates(trees, mtimedb["updates"], quiet=("--quiet" in myopts)):
 		mtimedb.commit()
 		# Reload the whole config from scratch.
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
@@ -2387,7 +2391,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		trees[settings["ROOT"]]["vartree"].dbapi.match(
 		portage.const.PORTAGE_PACKAGE_ATOM))
 
-	chk_updated_cfg_files("/",
+	chk_updated_cfg_files(settings["EROOT"],
 		portage.util.shlex_split(settings.get("CONFIG_PROTECT", "")))
 
 	if myaction != "metadata":
@@ -2857,7 +2861,8 @@ def load_emerge_config(trees=None):
 	QueryCommand._db = trees
 	return settings, trees, mtimedb
 
-def chk_updated_cfg_files(target_root, config_protect):
+def chk_updated_cfg_files(eroot, config_protect):
+	target_root = eroot
 	result = list(
 		portage.util.find_updated_config_files(target_root, config_protect))
 

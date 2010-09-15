@@ -4,7 +4,9 @@
 import sys
 from itertools import chain
 import portage
+from portage import _unicode_decode
 from portage.cache.mappings import slot_dict_class
+from portage.const import EBUILD_PHASES
 from portage.dep import Atom, check_required_use, use_reduce, \
 	paren_enclose, _slot_re
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
@@ -61,6 +63,8 @@ class Package(Task):
 		self.category, self.pf = portage.catsplit(self.cpv)
 		self.cpv_split = portage.catpkgsplit(self.cpv)
 		self.pv_split = self.cpv_split[1:]
+		if self.inherited is None:
+			self.inherited = frozenset()
 		self._validate_deps()
 		self.masks = self._masks()
 		self.visible = self._visible(self.masks)
@@ -122,8 +126,11 @@ class Package(Task):
 					check_required_use(v, (),
 						self.iuse.is_valid_flag)
 				except InvalidDependString as e:
+					# Force unicode format string for python-2.x safety,
+					# ensuring that PortageException.__unicode__() is used
+					# when necessary.
 					self._invalid_metadata(k + ".syntax",
-						"%s: %s" % (k, e))
+						_unicode_decode("%s: %s") % (k, e))
 
 		k = 'SRC_URI'
 		v = self.metadata.get(k)
@@ -229,6 +236,16 @@ class Package(Task):
 		return True
 
 	def _metadata_exception(self, k, e):
+
+		# For unicode safety with python-2.x we need to avoid
+		# using the string format operator with a non-unicode
+		# format string, since that will result in the
+		# PortageException.__str__() method being invoked,
+		# followed by unsafe decoding that may result in a
+		# UnicodeDecodeError. Therefore, use _unicode_decode()
+		# to ensure that format strings are unicode, so that
+		# PortageException.__unicode__() is used when necessary
+		# in python-2.x.
 		if not self.installed:
 			categorized_error = False
 			if e.errors:
@@ -237,11 +254,11 @@ class Package(Task):
 						continue
 					categorized_error = True
 					self._invalid_metadata(error.category,
-						"%s: %s" % (k, error))
+						_unicode_decode("%s: %s") % (k, error))
 
 			if not categorized_error:
 				self._invalid_metadata(k + ".syntax",
-					"%s: %s" % (k, e))
+					_unicode_decode("%s: %s") % (k, e))
 		else:
 			# For installed packages, show the path of the file
 			# containing the invalid metadata, since the user may
@@ -249,7 +266,7 @@ class Package(Task):
 			vardb = self.root_config.trees['vartree'].dbapi
 			path = vardb.getpath(self.cpv, filename=k)
 			self._invalid_metadata(k + ".syntax",
-				"%s: %s in '%s'" % (k, e, path))
+				_unicode_decode("%s: %s in '%s'") % (k, e, path))
 
 	def _invalid_metadata(self, msg_type, msg):
 		if self.invalid is None:
@@ -501,4 +518,13 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 
 	@property
 	def defined_phases(self):
-		return self['DEFINED_PHASES'].split()
+		"""
+		Returns tokens from DEFINED_PHASES metadata if it is defined,
+		otherwise returns a tuple containing all possible phases. This
+		makes it easy to do containment checks to see if it's safe to
+		skip execution of a given phase.
+		"""
+		s = self['DEFINED_PHASES']
+		if s:
+			return s.split()
+		return EBUILD_PHASES

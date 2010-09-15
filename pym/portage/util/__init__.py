@@ -116,13 +116,14 @@ def normalize_path(mypath):
 	else:
 		return os.path.normpath(mypath)
 
-def grabfile(myfilename, compat_level=0, recursive=0):
+def grabfile(myfilename, compat_level=0, recursive=0, remember_source_file=False):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a list; if a line
 	begins with a #, it is ignored, as are empty lines"""
 
-	mylines=grablines(myfilename, recursive)
+	mylines=grablines(myfilename, recursive, remember_source_file=True)
 	newlines=[]
-	for x in mylines:
+
+	for x, source_file in mylines:
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
 		#into single spaces.
 		myline = _unicode_decode(' ').join(x.split())
@@ -142,7 +143,10 @@ def grabfile(myfilename, compat_level=0, recursive=0):
 				continue
 			else:
 				continue
-		newlines.append(myline)
+		if remember_source_file:
+			newlines.append((myline, source_file))
+		else:
+			newlines.append(myline)
 	return newlines
 
 def map_dictlist_vals(func,myDict):
@@ -228,25 +232,58 @@ def stack_dicts(dicts, incremental=0, incrementals=[], ignore_none=0):
 				final_dict[k]  = v
 	return final_dict
 
-def stack_lists(lists, incremental=1):
+def stack_lists(lists, incremental=1, remember_source_file=False,
+	warn_for_unmatched_removal=False, strict_warn_for_unmatched_removal=False):
 	"""Stacks an array of list-types into one array. Optionally removing
 	distinct values using '-value' notation. Higher index is preferenced.
 
 	all elements must be hashable."""
-
+	matched_removals = set()
+	unmatched_removals = {}
 	new_list = {}
-	for x in lists:
-		for y in filter(None, x):
-			if incremental:
-				if y == "-*":
-					new_list.clear()
-				elif y[:1] == '-':
-					new_list.pop(y[1:], None)
-				else:
-					new_list[y] = True
+	for sub_list in lists:
+		for token in sub_list:
+			token_key = token
+			if remember_source_file:
+				token, source_file = token
 			else:
-				new_list[y] = True
-	return list(new_list)
+				source_file = False
+
+			if token is None:
+				continue
+
+			if incremental:
+				if token == "-*":
+					new_list.clear()
+				elif token[:1] == '-':
+					try:
+						new_list.pop(token[1:])
+					except KeyError:
+						if source_file and \
+							(strict_warn_for_unmatched_removal or \
+							token_key not in matched_removals):
+							unmatched_removals.setdefault(source_file, set()).add(token)
+					else:
+						matched_removals.add(token_key)
+				else:
+					new_list[token] = source_file
+			else:
+				new_list[token] = source_file
+
+	if warn_for_unmatched_removal:
+		for source_file, tokens in unmatched_removals.items():
+			if len(tokens) > 3:
+				selected = [tokens.pop(), tokens.pop(), tokens.pop()]
+				writemsg(_("--- Unmatch removal atoms in %s: %s and %s more\n") % (source_file, ", ".join(selected), len(tokens)-3),
+					noiselevel=-1)
+			else:
+				writemsg(_("--- Unmatch removal atom(s) in %s: %s\n") % (source_file, ", ".join(tokens)),
+					noiselevel=-1)
+
+	if remember_source_file:
+		return list(new_list.items())
+	else:
+		return list(new_list)
 
 def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 	"""
@@ -290,29 +327,60 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 			newdict[k] = " ".join(v)
 	return newdict
 
-def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=False):
+def read_corresponding_eapi_file(filename):
+	"""
+	Read the 'eapi' file from the directory 'filename' is in.
+	Returns "0" if the file is not present or invalid.
+	"""
+	default = "0"
+	eapi_file = os.path.join(os.path.dirname(filename), "eapi")
+	try:
+		f = open(eapi_file, "r")
+		lines = f.readlines()
+		if len(lines) == 1:
+			eapi = lines[0]
+		else:
+			writemsg(_("--- Invalid 'eapi' file (doesn't contain exactly one line): %s\n") % (eapi_file),
+				noiselevel=-1)
+			eapi = default
+		f.close()
+	except IOError:
+		eapi = default
+
+	return eapi
+
+def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=False, allow_repo=False, verify_eapi=False):
 	""" Does the same thing as grabdict except it validates keys
 	    with isvalidatom()"""
 	pkgs=grabdict(myfilename, juststrings, empty=1, recursive=recursive)
+	eapi = None
+	if verify_eapi:
+		eapi = read_corresponding_eapi_file(myfilename)
+
 	# We need to call keys() here in order to avoid the possibility of
 	# "RuntimeError: dictionary changed size during iteration"
 	# when an invalid atom is deleted.
 	atoms = {}
 	for k, v in pkgs.items():
 		try:
-			k = Atom(k, allow_wildcard=allow_wildcard)
-		except InvalidAtom:
-			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, k),
+			k = Atom(k, allow_wildcard=allow_wildcard, allow_repo=allow_repo, eapi=eapi)
+		except InvalidAtom as e:
+			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, e),
 				noiselevel=-1)
 		else:
 			atoms[k] = v
 	return atoms
 
-def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=False):
-	pkgs=grabfile(myfilename, compatlevel, recursive=recursive)
+def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=False, allow_repo=False, \
+	remember_source_file=False, verify_eapi=False):
+
+	pkgs=grabfile(myfilename, compatlevel, recursive=recursive, remember_source_file=True)
+	eapi = None
+	if verify_eapi:
+		eapi = read_corresponding_eapi_file(myfilename)
 	mybasename = os.path.basename(myfilename)
 	atoms = []
-	for pkg in pkgs:
+	for pkg, source_file in pkgs:
 		pkg_orig = pkg
 		# for packages and package.mask files
 		if pkg[:1] == "-":
@@ -320,20 +388,26 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=Fals
 		if pkg[:1] == '*' and mybasename == 'packages':
 			pkg = pkg[1:]
 		try:
-			pkg = Atom(pkg, allow_wildcard=allow_wildcard)
-		except InvalidAtom:
-			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, pkg),
+			pkg = Atom(pkg, allow_wildcard=allow_wildcard, allow_repo=allow_repo, eapi=eapi)
+		except InvalidAtom as e:
+			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, e),
 				noiselevel=-1)
 		else:
 			if pkg_orig == str(pkg):
 				# normal atom, so return as Atom instance
-				atoms.append(pkg)
+				if remember_source_file:
+					atoms.append((pkg, source_file))
+				else:
+					atoms.append(pkg)
 			else:
 				# atom has special prefix, so return as string
-				atoms.append(pkg_orig)
+				if remember_source_file:
+					atoms.append((pkg_orig, source_file))
+				else:
+					atoms.append(pkg_orig)
 	return atoms
 
-def grablines(myfilename,recursive=0):
+def grablines(myfilename, recursive=0, remember_source_file=False):
 	mylines=[]
 	if recursive and os.path.isdir(myfilename):
 		if os.path.basename(myfilename) in _ignorecvs_dirs:
@@ -343,13 +417,16 @@ def grablines(myfilename,recursive=0):
 		for f in dirlist:
 			if not f.startswith(".") and not f.endswith("~"):
 				mylines.extend(grablines(
-					os.path.join(myfilename, f), recursive))
+					os.path.join(myfilename, f), recursive, remember_source_file))
 	else:
 		try:
 			myfile = codecs.open(_unicode_encode(myfilename,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['content'], errors='replace')
-			mylines = myfile.readlines()
+			if remember_source_file:
+				mylines = [(line, myfilename) for line in myfile.readlines()]
+			else:
+				mylines = myfile.readlines()
 			myfile.close()
 		except IOError as e:
 			if e.errno == PermissionDenied.errno:

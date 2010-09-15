@@ -29,26 +29,13 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 	__slots__ = ('commands',)
 
 	def _input_handler(self, fd, event):
+		# Read the whole pickle in a single atomic read() call.
+		buf = self._read_buf(self._files.pipe_in, event)
 
-		if event & PollConstants.POLLIN:
-
-			# Read the whole pickle in a single read() call since
-			# this stream is in non-blocking mode and pickle.load()
-			# has been known to raise the following exception when
-			# reading from a non-blocking stream:
-			#
-			#   File "/usr/lib64/python2.6/pickle.py", line 1370, in load
-			#     return Unpickler(file).load()
-			#   File "/usr/lib64/python2.6/pickle.py", line 858, in load
-			#     dispatch[key](self)
-			#   File "/usr/lib64/python2.6/pickle.py", line 1195, in load_setitem
-			#     value = stack.pop()
-			# IndexError: pop from empty list
-
-			pickle_str = self._files.pipe_in.read()
+		if buf:
 
 			try:
-				obj = pickle.loads(pickle_str)
+				obj = pickle.loads(buf.tostring())
 			except (EnvironmentError, EOFError, ValueError,
 				pickle.UnpicklingError):
 				pass

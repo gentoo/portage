@@ -49,6 +49,7 @@ from portage.versions import catpkgsplit, catsplit, cpv_getkey
 from portage.package.ebuild._config import special_env_vars
 from portage.package.ebuild._config.env_var_validation import validate_cmd_var
 from portage.package.ebuild._config.features_set import features_set
+from portage.package.ebuild._config.KeywordsManager import KeywordsManager
 from portage.package.ebuild._config.LicenseManager import LicenseManager
 from portage.package.ebuild._config.UseManager import UseManager
 from portage.package.ebuild._config.LocationsManager import LocationsManager
@@ -156,7 +157,7 @@ class config(object):
 
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
-		_eprefix=None, local_config=True, env=None):
+		_eprefix=None, local_config=True, env=None, _unmatched_removal=False):
 		"""
 		@param clone: If provided, init will use deepcopy to copy by value the instance.
 		@type clone: Instance of config class.
@@ -180,6 +181,9 @@ class config(object):
 		@param env: The calling environment which is used to override settings.
 			Defaults to os.environ if unspecified.
 		@type env: dict
+		@param _unmatched_removal: Enabled by repoman when the
+			--unmatched-removal option is given.
+		@type _unmatched_removal: Boolean
 		"""
 
 		# rename local _eprefix variable for convenience
@@ -236,8 +240,7 @@ class config(object):
 			self._setcpv_args_hash = clone._setcpv_args_hash
 
 			# immutable attributes (internal policy ensures lack of mutation)
-			self._pkeywords_list = clone._pkeywords_list
-			self._p_accept_keywords = clone._p_accept_keywords
+			self._keywords_manager = clone._keywords_manager
 			self._use_manager = clone._use_manager
 			self._mask_manager = clone._mask_manager
 
@@ -261,7 +264,6 @@ class config(object):
 			self.lookuplist.reverse()
 			self._use_expand_dict = copy.deepcopy(clone._use_expand_dict)
 			self.backupenv  = self.configdict["backupenv"]
-			self.pkeywordsdict = copy.deepcopy(clone.pkeywordsdict)
 			self.prevmaskdict = copy.deepcopy(clone.prevmaskdict)
 			self.pprovideddict = copy.deepcopy(clone.pprovideddict)
 			self.features = features_set(self)
@@ -343,7 +345,7 @@ class config(object):
 			self.configlist.append({})
 			self.configdict["pkginternal"] = self.configlist[-1]
 
-			self.packages_list = [grabfile_package(os.path.join(x, "packages")) for x in self.profiles]
+			self.packages_list = [grabfile_package(os.path.join(x, "packages"), verify_eapi=True) for x in self.profiles]
 			self.packages      = tuple(stack_lists(self.packages_list, incremental=1))
 			del self.packages_list
 			#self.packages = grab_stacked("packages", self.profiles, grabfile, incremental_lines=1)
@@ -355,38 +357,6 @@ class config(object):
 				if not isinstance(x, Atom):
 					x = Atom(x.lstrip('*'))
 				self.prevmaskdict.setdefault(x.cp, []).append(x)
-
-			self._pkeywords_list = []
-			rawpkeywords = [grabdict_package(
-				os.path.join(x, "package.keywords"), recursive=1) \
-				for x in self.profiles]
-			for pkeyworddict in rawpkeywords:
-				if not pkeyworddict:
-					# Omit non-existent files from the stack. This isn't
-					# feasible for package.use (among other package.*
-					# files such as package.use.mask) since it is stacked
-					# in layers with make.defaults USE, and the layer
-					# indices need to align.
-					continue
-				cpdict = {}
-				for k, v in pkeyworddict.items():
-					cpdict.setdefault(k.cp, {})[k] = v
-				self._pkeywords_list.append(cpdict)
-			self._pkeywords_list = tuple(self._pkeywords_list)
-
-			self._p_accept_keywords = []
-			raw_p_accept_keywords = [grabdict_package(
-				os.path.join(x, "package.accept_keywords"), recursive=1) \
-				for x in self.profiles]
-			for d in raw_p_accept_keywords:
-				if not d:
-					# Omit non-existent files from the stack.
-					continue
-				cpdict = {}
-				for k, v in d.items():
-					cpdict.setdefault(k.cp, {})[k] = tuple(v)
-				self._p_accept_keywords.append(cpdict)
-			self._p_accept_keywords = tuple(self._p_accept_keywords)
 
 			# The expand_map is used for variable substitution
 			# in getconfig() calls, and the getconfig() calls
@@ -532,7 +502,6 @@ class config(object):
 			self["PORTAGE_SANDBOX_COMPAT_LEVEL"] = _SANDBOX_COMPAT_LEVEL
 			self.backup_changes("PORTAGE_SANDBOX_COMPAT_LEVEL")
 
-			self.pkeywordsdict = portage.dep.ExtendedAtomDict(dict)
 			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
 			self._penvdict = portage.dep.ExtendedAtomDict(dict)
 
@@ -554,6 +523,10 @@ class config(object):
 
 			locations_manager.set_port_dirs(self["PORTDIR"], self["PORTDIR_OVERLAY"])
 
+			#Read package.keywords and package.accept_keywords.
+			self._keywords_manager = KeywordsManager(self.profiles, abs_user_config, \
+				local_config, global_accept_keywords=self.configdict["defaults"].get("ACCEPT_KEYWORDS", ""))
+
 			#Read all USE related files from profiles and optionally from user config.
 			self._use_manager = UseManager(self.profiles, abs_user_config, user_config=local_config)
 			#Initialize all USE related variables we track ourselves.
@@ -572,34 +545,16 @@ class config(object):
 					self.configdict["conf"].get("ACCEPT_LICENSE", ""))
 
 			#Read package.mask and package.unmask from profiles and optionally from user config
-			self._mask_manager = MaskManager(locations_manager.pmask_locations, abs_user_config, user_config=local_config)
+			self._mask_manager = MaskManager(locations_manager.pmask_locations,
+				abs_user_config, user_config=local_config,
+				strict_umatched_removal=_unmatched_removal)
 
 			self._virtuals_manager = VirtualsManager(self.profiles)
 
 			if local_config:
-				# package.accept_keywords and package.keywords
-				pkgdict = grabdict_package(
-					os.path.join(abs_user_config, "package.keywords"),
-					recursive=1, allow_wildcard=True)
-
-				for k, v in grabdict_package(
-					os.path.join(abs_user_config, "package.accept_keywords"),
-					recursive=1, allow_wildcard=True).items():
-					pkgdict.setdefault(k, []).extend(v)
-
-				accept_keywords_defaults = \
-					self.configdict["defaults"].get("ACCEPT_KEYWORDS", "").split()
-				accept_keywords_defaults = tuple('~' + keyword for keyword in \
-					accept_keywords_defaults if keyword[:1] not in "~-")
-				for k, v in pkgdict.items():
-					# default to ~arch if no specific keyword is given
-					if not v:
-						v = accept_keywords_defaults
-					self.pkeywordsdict.setdefault(k.cp, {})[k] = v
-
 				#package.properties
 				propdict = grabdict_package(os.path.join(
-					abs_user_config, "package.properties"), recursive=1, allow_wildcard=True)
+					abs_user_config, "package.properties"), recursive=1, allow_wildcard=True, verify_eapi=False)
 				v = propdict.pop("*/*", None)
 				if v is not None:
 					if "ACCEPT_PROPERTIES" in self.configdict["conf"]:
@@ -611,7 +566,7 @@ class config(object):
 
 				#package.env
 				penvdict = grabdict_package(os.path.join(
-					abs_user_config, "package.env"), recursive=1, allow_wildcard=True)
+					abs_user_config, "package.env"), recursive=1, allow_wildcard=True, verify_eapi=False)
 				v = penvdict.pop("*/*", None)
 				if v is not None:
 					global_wildcard_conf = {}
@@ -852,6 +807,13 @@ class config(object):
 					noiselevel=-1)
 				writemsg("!!! %s\n" % str(e),
 					noiselevel=-1)
+
+	@property
+	def pkeywordsdict(self):
+		result = self._keywords_manager.pkeywordsdict.copy()
+		for k, v in result.items():
+			result[k] = v.copy()
+		return result
 
 	@property
 	def pmaskdict(self):
@@ -1489,24 +1451,14 @@ class config(object):
 		return None
 
 	def _getKeywords(self, cpv, metadata):
-		cp = cpv_getkey(cpv)
-		pkg = "%s:%s" % (cpv, metadata["SLOT"])
-		keywords = [[x for x in metadata.get("KEYWORDS", "").split() \
-			if x != "-*"]]
-		for pkeywords_dict in self._pkeywords_list:
-			cpdict = pkeywords_dict.get(cp)
-			if cpdict:
-				pkg_keywords = ordered_by_atom_specificity(cpdict, pkg)
-				if pkg_keywords:
-					keywords.extend(pkg_keywords)
-		return stack_lists(keywords, incremental=True)
+		return self._keywords_manager.getKeywords(cpv, metadata["SLOT"], metadata.get("KEYWORDS", ""))
 
 	def _getMissingKeywords(self, cpv, metadata):
 		"""
 		Take a package and return a list of any KEYWORDS that the user may
-		may need to accept for the given package. If the KEYWORDS are empty
+		need to accept for the given package. If the KEYWORDS are empty
 		and the the ** keyword has not been accepted, the returned list will
-		contain ** alone (in order to distiguish from the case of "none
+		contain ** alone (in order to distinguish from the case of "none
 		missing").
 
 		@param cpv: The package name (for package.keywords support)
@@ -1520,88 +1472,15 @@ class config(object):
 		# Hack: Need to check the env directly here as otherwise stacking 
 		# doesn't work properly as negative values are lost in the config
 		# object (bug #139600)
-		egroups = self.configdict["backupenv"].get(
-			"ACCEPT_KEYWORDS", "").split()
-		mygroups = self._getKeywords(cpv, metadata)
-		# Repoman may modify this attribute as necessary.
-		pgroups = self["ACCEPT_KEYWORDS"].split()
-		matches = False
-		cp = cpv_getkey(cpv)
+		backuped_accept_keywords = self.configdict["backupenv"].get("ACCEPT_KEYWORDS", "")
+		global_accept_keywords = self["ACCEPT_KEYWORDS"]
 
-		if self._p_accept_keywords:
-			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			accept_keywords_defaults = tuple('~' + keyword for keyword in \
-				pgroups if keyword[:1] not in "~-")
-			for d in self._p_accept_keywords:
-				cpdict = d.get(cp)
-				if cpdict:
-					pkg_accept_keywords = \
-						ordered_by_atom_specificity(cpdict, cpv_slot)
-					if pkg_accept_keywords:
-						for x in pkg_accept_keywords:
-							if not x:
-								x = accept_keywords_defaults
-							pgroups.extend(x)
-						matches = True
-
-		pkgdict = self.pkeywordsdict.get(cp)
-		if pkgdict:
-			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			pkg_accept_keywords = \
-				ordered_by_atom_specificity(pkgdict, cpv_slot)
-			if pkg_accept_keywords:
-				for x in pkg_accept_keywords:
-					pgroups.extend(x)
-				matches = True
-
-		if matches or egroups:
-			pgroups.extend(egroups)
-			inc_pgroups = set()
-			for x in pgroups:
-				if x.startswith("-"):
-					if x == "-*":
-						inc_pgroups.clear()
-					else:
-						inc_pgroups.discard(x[1:])
-				else:
-					inc_pgroups.add(x)
-			pgroups = inc_pgroups
-			del inc_pgroups
-
-		match = False
-		hasstable = False
-		hastesting = False
-		for gp in mygroups:
-			if gp == "*" or (gp == "-*" and len(mygroups) == 1):
-				writemsg(_("--- WARNING: Package '%(cpv)s' uses"
-					" '%(keyword)s' keyword.\n") % {"cpv": cpv, "keyword": gp}, noiselevel=-1)
-				if gp == "*":
-					match = 1
-					break
-			elif gp in pgroups:
-				match=1
-				break
-			elif gp.startswith("~"):
-				hastesting = True
-			elif not gp.startswith("-"):
-				hasstable = True
-		if not match and \
-			((hastesting and "~*" in pgroups) or \
-			(hasstable and "*" in pgroups) or "**" in pgroups):
-			match=1
-		if match:
-			missing = []
-		else:
-			if not mygroups:
-				# If KEYWORDS is empty then we still have to return something
-				# in order to distiguish from the case of "none missing".
-				mygroups.append("**")
-			missing = mygroups
-		return missing
+		return self._keywords_manager.getMissingKeywords(cpv, metadata["SLOT"], \
+			metadata.get("KEYWORDS", ""), global_accept_keywords, backuped_accept_keywords)
 
 	def _getMissingLicenses(self, cpv, metadata):
 		"""
-		Take a LICENSE string and return a list any licenses that the user may
+		Take a LICENSE string and return a list of any licenses that the user
 		may need to accept for the given package.  The returned list will not
 		contain any licenses that have already been accepted.  This method
 		can throw an InvalidDependString exception.
@@ -1618,7 +1497,7 @@ class config(object):
 
 	def _getMissingProperties(self, cpv, metadata):
 		"""
-		Take a PROPERTIES string and return a list of any properties the user may
+		Take a PROPERTIES string and return a list of any properties the user
 		may need to accept for the given package.  The returned list will not
 		contain any properties that have already been accepted.  This method
 		can throw an InvalidDependString exception.
@@ -1754,6 +1633,9 @@ class config(object):
 			myuse = mydbapi.aux_get(mycpv, ["USE"])[0]
 		virts = use_reduce(provides, uselist=myuse.split(), flat=True)
 
+		# Ensure that we don't trigger the _treeVirtuals
+		# assertion in VirtualsManager._compile_virtuals().
+		self.getvirtuals()
 		self._virtuals_manager.add_depgraph_virtuals(mycpv, virts)
 
 	def reload(self):
@@ -2001,6 +1883,9 @@ class config(object):
 		return self.getvirtuals()
 
 	def get_virts_p(self):
+		# Ensure that we don't trigger the _treeVirtuals
+		# assertion in VirtualsManager._compile_virtuals().
+		self.getvirtuals()
 		return self._virtuals_manager.get_virts_p()
 
 	def getvirtuals(self):

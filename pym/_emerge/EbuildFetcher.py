@@ -64,12 +64,17 @@ class EbuildFetcher(SpawnProcess):
 		fetch_env['PORTAGE_CONFIGROOT'] = settings['PORTAGE_CONFIGROOT']
 
 		nocolor = settings.get("NOCOLOR")
+
+		if self.prefetch:
+			fetch_env["PORTAGE_PARALLEL_FETCHONLY"] = "1"
+			# prefetch always outputs to a log, so
+			# always disable color
+			nocolor = "true"
+
 		if nocolor is not None:
 			fetch_env["NOCOLOR"] = nocolor
 
 		fetch_env["PORTAGE_NICENESS"] = "0"
-		if self.prefetch:
-			fetch_env["PORTAGE_PARALLEL_FETCHONLY"] = "1"
 
 		ebuild_binary = os.path.join(
 			settings["PORTAGE_BIN_PATH"], "ebuild")

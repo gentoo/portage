@@ -35,7 +35,7 @@ class LicenseManager(object):
 
 	def _read_user_config(self, abs_user_config):
 		licdict = grabdict_package(os.path.join(
-			abs_user_config, "package.license"), recursive=1, allow_wildcard=True)
+			abs_user_config, "package.license"), recursive=1, allow_wildcard=True, verify_eapi=False)
 		for k, v in licdict.items():
 			self._plicensedict.setdefault(k.cp, {})[k] = \
 				self.expandLicenseTokens(v)
@@ -156,7 +156,7 @@ class LicenseManager(object):
 
 	def getMissingLicenses(self, cpv, use, lic, slot):
 		"""
-		Take a LICENSE string and return a list any licenses that the user may
+		Take a LICENSE string and return a list of any licenses that the user
 		may need to accept for the given package.  The returned list will not
 		contain any licenses that have already been accepted.  This method
 		can throw an InvalidDependString exception.

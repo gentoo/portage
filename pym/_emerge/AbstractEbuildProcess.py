@@ -1,9 +1,11 @@
 # Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import platform
 import stat
 import textwrap
 from _emerge.SpawnProcess import SpawnProcess
+from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
 import portage
 from portage.elog import messages as elog_messages
@@ -20,7 +22,7 @@ from portage.util import apply_secpass_permissions
 class AbstractEbuildProcess(SpawnProcess):
 
 	__slots__ = ('phase', 'settings',) + \
-		('_ipc_daemon', '_exit_command',)
+		('_build_dir', '_ipc_daemon', '_exit_command',)
 	_phases_without_builddir = ('clean', 'cleanrm', 'depend', 'help',)
 
 	# Number of milliseconds to allow natural exit of the ebuild
@@ -33,6 +35,13 @@ class AbstractEbuildProcess(SpawnProcess):
 	# The EbuildIpcDaemon support is well tested, but this variable
 	# is left so we can temporarily disable it if any issues arise.
 	_enable_ipc_daemon = True
+
+	# EbuildIpcDaemon does not work on these platforms yet:
+	# | Bug #  | Platform
+	# |--------|------------
+	# | 337465 | FreeBSD
+	if platform.system() in ('FreeBSD',):
+		_enable_ipc_daemon = False
 
 	def __init__(self, **kwargs):
 		SpawnProcess.__init__(self, **kwargs)
@@ -67,6 +76,10 @@ class AbstractEbuildProcess(SpawnProcess):
 		if self._enable_ipc_daemon:
 			self.settings.pop('PORTAGE_EBUILD_EXIT_FILE', None)
 			if self.phase not in self._phases_without_builddir:
+				if 'PORTAGE_BUILDIR_LOCKED' not in self.settings:
+					self._build_dir = EbuildBuildDir(
+						scheduler=self.scheduler, settings=self.settings)
+					self._build_dir.lock()
 				self.settings['PORTAGE_IPC_DAEMON'] = "1"
 				self._start_ipc_daemon()
 			else:
@@ -230,6 +243,9 @@ class AbstractEbuildProcess(SpawnProcess):
 			else:
 				self.returncode = 1
 				self._unexpected_exit()
+			if self._build_dir is not None:
+				self._build_dir.unlock()
+				self._build_dir = None
 		else:
 			exit_file = self.settings.get('PORTAGE_EBUILD_EXIT_FILE')
 			if exit_file and not os.path.exists(exit_file):

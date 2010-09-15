@@ -7,18 +7,18 @@ import errno
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.package.ebuild.doebuild:doebuild_environment',
+	'portage.package.ebuild._spawn_nofetch:spawn_nofetch',
 )
 
 from portage import os
 from portage.const import MANIFEST2_REQUIRED_HASH
 from portage.dbapi.porttree import FetchlistDict
+from portage.dep import use_reduce
 from portage.exception import InvalidDependString, FileNotFound, \
 	PermissionDenied, PortagePackageException
 from portage.localization import _
 from portage.manifest import Manifest
 from portage.output import colorize
-from portage.package.ebuild.config import config
 from portage.package.ebuild.fetch import fetch
 from portage.util import writemsg, writemsg_stdout
 from portage.versions import catsplit
@@ -104,21 +104,20 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 		if missing_files:
 				mytree = os.path.realpath(os.path.dirname(
 					os.path.dirname(mysettings["O"])))
-				fetch_settings = config(clone=mysettings)
-				debug = mysettings.get("PORTAGE_DEBUG") == "1"
 				for myfile in missing_files:
 					uris = set()
 					for cpv in distfiles_map[myfile]:
-						myebuild = os.path.join(mysettings["O"],
-							catsplit(cpv)[1] + ".ebuild")
-						# for RESTRICT=fetch, mirror, etc...
-						doebuild_environment(myebuild, "fetch",
-							mysettings["ROOT"], fetch_settings,
-							debug, 1, myportdb)
 						uris.update(myportdb.getFetchMap(
 							cpv, mytree=mytree)[myfile])
-
-					fetch_settings["A"] = myfile # for use by pkg_nofetch()
+						restrict = myportdb.aux_get(cpv, ['RESTRICT'],
+							mytree=mytree)[0]
+						# Here we ignore conditional parts of RESTRICT since
+						# they don't apply unconditionally. Assume such
+						# conditionals only apply on the client side where
+						# digestgen() does not need to be called.
+						restrict = use_reduce(restrict,
+							flat=True, matchnone=True)
+						restrict_fetch = 'fetch' in restrict
 
 					try:
 						st = os.stat(os.path.join(
@@ -126,7 +125,12 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 					except OSError:
 						st = None
 
-					if not fetch({myfile : uris}, fetch_settings):
+					if restrict_fetch or \
+						not fetch({myfile : uris}, mysettings):
+						myebuild = os.path.join(mysettings["O"],
+							catsplit(cpv)[1] + ".ebuild")
+						spawn_nofetch(myportdb, myebuild,
+							settings=mysettings)
 						writemsg(_("!!! Fetch failed for %s, can't update "
 							"Manifest\n") % myfile, noiselevel=-1)
 						if myfile in dist_hashes and \
