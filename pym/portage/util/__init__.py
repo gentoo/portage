@@ -231,11 +231,13 @@ def stack_dicts(dicts, incremental=0, incrementals=[], ignore_none=0):
 				final_dict[k]  = v
 	return final_dict
 
-def stack_lists(lists, incremental=1, remember_source_file=False, warn_for_unmatched_removal=False):
+def stack_lists(lists, incremental=1, remember_source_file=False,
+	warn_for_unmatched_removal=False, strict_warn_for_unmatched_removal=False):
 	"""Stacks an array of list-types into one array. Optionally removing
 	distinct values using '-value' notation. Higher index is preferenced.
 
 	all elements must be hashable."""
+	matched_removals = set()
 	unmatched_removals = {}
 	new_list = {}
 	for sub_list in lists:
@@ -256,7 +258,11 @@ def stack_lists(lists, incremental=1, remember_source_file=False, warn_for_unmat
 					try:
 						new_list.pop(token[1:])
 					except KeyError:
-						unmatched_removals.setdefault(source_file, set()).add(token)
+						if strict_warn_for_unmatched_removal or \
+							not (source_file and token_key in matched_removals):
+							unmatched_removals.setdefault(source_file, set()).add(token)
+					else:
+						matched_removals.add(token_key)
 				else:
 					new_list[token] = source_file
 			else:
