@@ -53,7 +53,7 @@ class ResolverPlayground(object):
 			portage.util.noiselimit = -2
 
 		self.repo_dirs = {}
-		#Make sure the main repo is alaways created
+		#Make sure the main repo is always created
 		self._get_repo_dir("test_repo")
 
 		self._create_ebuilds(ebuilds)
