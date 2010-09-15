@@ -125,8 +125,11 @@ class Package(Task):
 					check_required_use(v, (),
 						self.iuse.is_valid_flag)
 				except InvalidDependString as e:
+					# Force unicode format string for python-2.x safety,
+					# ensuring that PortageException.__unicode__() is used
+					# when necessary.
 					self._invalid_metadata(k + ".syntax",
-						"%s: %s" % (k, e))
+						_unicode_decode("%s: %s") % (k, e))
 
 		k = 'SRC_URI'
 		v = self.metadata.get(k)
