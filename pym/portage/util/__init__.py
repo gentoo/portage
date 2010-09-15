@@ -258,8 +258,9 @@ def stack_lists(lists, incremental=1, remember_source_file=False,
 					try:
 						new_list.pop(token[1:])
 					except KeyError:
-						if strict_warn_for_unmatched_removal or \
-							not (source_file and token_key in matched_removals):
+						if source_file and \
+							(strict_warn_for_unmatched_removal or \
+							token_key not in matched_removals):
 							unmatched_removals.setdefault(source_file, set()).add(token)
 					else:
 						matched_removals.add(token_key)
