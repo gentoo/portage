@@ -617,9 +617,12 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 		have_build_dirs = False
 		if not parallel_fetchonly and \
 			mydo not in ('digest', 'fetch', 'help', 'manifest'):
-			builddir_lock = EbuildBuildDir(
-				scheduler=PollScheduler().sched_iface, settings=mysettings)
-			builddir_lock.lock()
+			if not returnpid and \
+				'PORTAGE_BUILDIR_LOCKED' not in mysettings:
+				builddir_lock = EbuildBuildDir(
+					scheduler=PollScheduler().sched_iface,
+					settings=mysettings)
+				builddir_lock.lock()
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 			if mystatus:
 				return mystatus
