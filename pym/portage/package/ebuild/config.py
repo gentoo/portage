@@ -886,14 +886,14 @@ class config(object):
 		try:
 			mod = load_mod(best_mod)
 		except ImportError:
-			if best_mod.startswith("cache."):
+			if not best_mod.startswith("cache."):
+				raise
+			else:
 				best_mod = "portage." + best_mod
 				try:
 					mod = load_mod(best_mod)
 				except ImportError:
-					pass
-		if mod is None:
-			raise
+					raise
 		return mod
 
 	def lock(self):
