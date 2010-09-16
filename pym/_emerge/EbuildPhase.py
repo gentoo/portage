@@ -65,8 +65,8 @@ class EbuildPhase(CompositeTask):
 					maint_str = "<invalid metadata.xml>"
 
 			msg = []
-			msg.append("CPV:  %s" % self.settings.mycpv)
-			msg.append("REPO: %s" % self.settings['PORTAGE_REPO_NAME'])
+			msg.append("Package:    %s" % self.settings.mycpv)
+			msg.append("Repository: %s" % self.settings['PORTAGE_REPO_NAME'])
 			if maint_str:
 				msg.append("Maintainer: %s" % maint_str)
 			msg.append("USE:  %s" % use)
