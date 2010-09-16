@@ -1,8 +1,11 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
+
+import sys
 
 from portage.output import teal
 from portage import os
+from portage import _encodings, _unicode_encode
 
 class RepoDisplay(object):
 	def __init__(self, roots):
@@ -67,3 +70,10 @@ class RepoDisplay(object):
 				" indicates that the source repository could not be determined\n")
 		return "".join(output)
 
+	if sys.hexversion < 0x3000000:
+
+		__unicode__ = __str__
+
+		def __str__(self):
+			return _unicode_encode(self.__unicode__(),
+				encoding=_encodings['content'])

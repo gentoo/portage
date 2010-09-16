@@ -12,7 +12,7 @@ from itertools import chain
 
 import portage
 from portage import os
-from portage import digraph
+from portage import _unicode_decode
 from portage.const import PORTAGE_PACKAGE_ATOM
 from portage.dbapi import dbapi
 from portage.dbapi.dep_expand import dep_expand
@@ -28,6 +28,7 @@ from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, writemsg_stdout
 from portage.util import writemsg_level
+from portage.util.digraph import digraph
 
 from _emerge.AtomArg import AtomArg
 from _emerge.Blocker import Blocker
@@ -5027,9 +5028,10 @@ class depgraph(object):
 		if verbosity == 3:
 			writemsg_stdout('\n%s\n' % (counters,), noiselevel=-1)
 			if show_repos:
-				# In python-2.x, str() can trigger a UnicodeEncodeError here,
-				# so call __str__() directly.
-				writemsg_stdout(repo_display.__str__(), noiselevel=-1)
+				# Use _unicode_decode() to force unicode format string so
+				# that RepoDisplay.__unicode__() is called in python2.
+				writemsg_stdout(_unicode_decode("%s") % (repo_display,),
+					noiselevel=-1)
 
 		if "--changelog" in self._frozen_config.myopts:
 			writemsg_stdout('\n', noiselevel=-1)
