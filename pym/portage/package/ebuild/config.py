@@ -848,9 +848,9 @@ class config(object):
 
 		abs_profile_path = os.path.join(self["PORTAGE_CONFIGROOT"],
 			PROFILE_PATH)
-		if not self.profile_path or (not os.path.islink(abs_profile_path) and \
-			not os.path.exists(os.path.join(abs_profile_path, "parent")) and \
-			os.path.exists(os.path.join(self["PORTDIR"], "profiles"))):
+		if (not self.profile_path or \
+			not os.path.exists(os.path.join(self.profile_path, "parent"))) and \
+			os.path.exists(os.path.join(self["PORTDIR"], "profiles")):
 			writemsg(_("\n\n!!! %s is not a symlink and will probably prevent most merges.\n") % abs_profile_path,
 				noiselevel=-1)
 			writemsg(_("!!! It should point into a profile within %s/profiles/\n") % self["PORTDIR"])
