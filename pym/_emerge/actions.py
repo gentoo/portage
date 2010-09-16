@@ -1507,6 +1507,7 @@ def action_info(settings, trees, myopts, myfiles):
 					f not in use_expand_flags:
 					use_disabled['USE'].append(f)
 
+			flag_displays = []
 			for varname in var_order:
 				if varname in use_expand_hidden:
 					continue
@@ -1519,8 +1520,11 @@ def action_info(settings, trees, myopts, myfiles):
 					flags.sort(key=UseFlagDisplay.sort_combined)
 				else:
 					flags.sort(key=UseFlagDisplay.sort_separated)
-				print('%s="%s"' % (varname, ' '.join(str(f) for f in flags)), end=' ')
-			print()
+				# Use _unicode_decode() to force unicode format string so
+				# that UseFlagDisplay.__unicode__() is called in python2.
+				flag_displays.append('%s="%s"' % (varname,
+					' '.join(_unicode_decode("%s") % (f,) for f in flags)))
+			writemsg_stdout('%s\n' % ' '.join(flag_displays))
 			if pkg_type == "installed":
 				for myvar in mydesiredvars:
 					if metadata[myvar].split() != settings.get(myvar, '').split():

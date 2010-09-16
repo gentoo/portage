@@ -7,6 +7,10 @@ from portage import _encodings, _unicode_decode
 from portage.exception import PortageException
 from portage.tests import TestCase
 from _emerge.DependencyArg import DependencyArg
+from _emerge.UseFlagDisplay import UseFlagDisplay
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 STR_IS_UNICODE = sys.hexversion >= 0x3000000
 
@@ -75,3 +79,30 @@ class StringFormatTestCase(TestCase):
 				# Test the __str__ method which returns encoded bytes in python2
 				formatted_bytes = "%s" % (e,)
 				self.assertEqual(formatted_bytes, arg_bytes)
+
+	def testUseFlagDisplay(self):
+
+		self.assertEqual(_encodings['content'], 'utf_8')
+
+		for enabled in (True, False):
+			for forced in (True, False):
+				for arg_bytes in self.unicode_strings:
+					arg_unicode = _unicode_decode(arg_bytes, encoding=_encodings['content'])
+					e = UseFlagDisplay(arg_unicode, enabled, forced)
+
+					# Force unicode format string so that __unicode__() is
+					# called in python2.
+					formatted_str = _unicode_decode("%s") % (e,)
+					self.assertEqual(isinstance(formatted_str, basestring), True)
+
+					if STR_IS_UNICODE:
+
+						# Test the __str__ method which returns unicode in python3
+						formatted_str = "%s" % (e,)
+						self.assertEqual(isinstance(formatted_str, str), True)
+
+					else:
+
+						# Test the __str__ method which returns encoded bytes in python2
+						formatted_bytes = "%s" % (e,)
+						self.assertEqual(isinstance(formatted_bytes, bytes), True)
