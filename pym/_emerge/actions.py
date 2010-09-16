@@ -1524,7 +1524,7 @@ def action_info(settings, trees, myopts, myfiles):
 				# that UseFlagDisplay.__unicode__() is called in python2.
 				flag_displays.append('%s="%s"' % (varname,
 					' '.join(_unicode_decode("%s") % (f,) for f in flags)))
-			writemsg_stdout('%s\n' % ' '.join(flag_displays))
+			writemsg_stdout('%s\n' % ' '.join(flag_displays), noiselevel=-1)
 			if pkg_type == "installed":
 				for myvar in mydesiredvars:
 					if metadata[myvar].split() != settings.get(myvar, '').split():
