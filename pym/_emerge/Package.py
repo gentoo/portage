@@ -4,7 +4,7 @@
 import sys
 from itertools import chain
 import portage
-from portage import _unicode_decode
+from portage import _encodings, _unicode_decode, _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.const import EBUILD_PHASES
 from portage.dep import Atom, check_required_use, use_reduce, \
@@ -297,6 +297,14 @@ class Package(Task):
 					s += " to '%s'" % self.root
 		s += ")"
 		return s
+
+	if sys.hexversion < 0x3000000:
+
+		__unicode__ = __str__
+
+		def __str__(self):
+			return _unicode_encode(self.__unicode__(),
+				encoding=_encodings['content'])
 
 	class _use_class(object):
 
