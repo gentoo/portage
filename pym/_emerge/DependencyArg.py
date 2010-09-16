@@ -10,7 +10,7 @@ class DependencyArg(object):
 		self.arg = arg
 		self.root_config = root_config
 
-	def __equals__(self, other):
+	def __eq__(self, other):
 		if self.__class__ is not other.__class__:
 			return False
 		return self.arg == other.arg and \
