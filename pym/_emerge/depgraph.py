@@ -3085,10 +3085,37 @@ class depgraph(object):
 				if root == self._frozen_config.target_root:
 					self._dynamic_config._sets[s] = expanded_set
 			vardb = root_config.trees["vartree"].dbapi
-			for arg in args:
-				for atom in arg.set:
+			while args:
+				arg = args.pop()
+				for atom in arg.set.getAtoms():
 					self._dynamic_config._dep_stack.append(
 						Dependency(atom=atom, root=root, parent=arg))
+
+				# Removal actions may override sets with temporary
+				# replacements that have had atoms removed in order
+				# to implement --deselect behavior.
+				if required_sets is None:
+					set_overrides = {}
+				else:
+					set_overrides = required_sets.get(root, {})
+
+				# Traverse nested sets and add them to the stack
+				# if they're not already in the graph. Also, graph
+				# edges between parent and nested sets.
+				for token in arg.set.getNonAtoms():
+					if not token.startswith(SETPREFIX):
+						continue
+					s = token[len(SETPREFIX):]
+					nested_set = set_overrides.get(s)
+					if nested_set is None:
+						nested_set = root_config.sets.get(s)
+					if nested_set is not None:
+						nested_arg = SetArg(arg=token, set=nested_set,
+							root_config=root_config)
+						if nested_arg not in self._dynamic_config.digraph:
+							args.append(nested_arg)
+						self._dynamic_config.digraph.add(nested_arg, arg)
+
 			if self._dynamic_config._ignored_deps:
 				self._dynamic_config._dep_stack.extend(self._dynamic_config._ignored_deps)
 				self._dynamic_config._ignored_deps = []
