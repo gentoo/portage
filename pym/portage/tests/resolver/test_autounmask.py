@@ -187,3 +187,42 @@ class AutounmaskTestCase(TestCase):
 				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
 		finally:
 			playground.cleanup()
+
+	def testAutounmaskForLicenses(self):
+
+		ebuilds = {
+			"dev-libs/A-1": { "LICENSE": "TEST" },
+			"dev-libs/B-1": { "LICENSE": "TEST", "IUSE": "foo", "KEYWORDS": "~x86"},
+			"dev-libs/C-1": { "DEPEND": "dev-libs/B[foo]", "EAPI": 2 },
+			}
+
+		test_cases = (
+				ResolverPlaygroundTestCase(
+					["=dev-libs/A-1"],
+					options = {"--autounmask": False},
+					success = False),
+				ResolverPlaygroundTestCase(
+					["=dev-libs/A-1"],
+					options = {"--autounmask": True},
+					success = False,
+					mergelist = ["dev-libs/A-1"],
+					license_changes = { "dev-libs/A-1": set(["TEST"]) }),
+
+				#Test license+keyword+use change at once.
+				ResolverPlaygroundTestCase(
+					["=dev-libs/C-1"],
+					options = {"--autounmask": True},
+					success = False,
+					mergelist = ["dev-libs/B-1", "dev-libs/C-1"],
+					license_changes = { "dev-libs/B-1": set(["TEST"]) },
+					unstable_keywords = ["dev-libs/B-1"],
+					use_changes = { "dev-libs/B-1": { "foo": True } }),
+			)
+
+		playground = ResolverPlayground(ebuilds=ebuilds)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()

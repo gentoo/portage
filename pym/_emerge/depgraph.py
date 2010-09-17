@@ -122,7 +122,7 @@ class _frozen_depgraph_config(object):
 class _dynamic_depgraph_config(object):
 
 	def __init__(self, depgraph, myparams, allow_backtracking,
-		runtime_pkg_mask, needed_unstable_keywords, needed_use_config_changes):
+		runtime_pkg_mask, needed_unstable_keywords, needed_use_config_changes, needed_license_changes):
 		self.myparams = myparams.copy()
 		self._vdb_loaded = False
 		self._allow_backtracking = allow_backtracking
@@ -205,6 +205,11 @@ class _dynamic_depgraph_config(object):
 			self._needed_unstable_keywords = set()
 		else:
 			self._needed_unstable_keywords = needed_unstable_keywords.copy()
+
+		if needed_license_changes is None:
+			self._needed_license_changes = {}
+		else:
+			self._needed_license_changes = needed_license_changes.copy()
 
 		if needed_use_config_changes is None:
 			self._needed_use_config_changes = {}
@@ -295,13 +300,14 @@ class depgraph(object):
 	
 	def __init__(self, settings, trees, myopts, myparams, spinner,
 		frozen_config=None, runtime_pkg_mask=None, needed_unstable_keywords=None, \
-			needed_use_config_changes=None, allow_backtracking=False):
+			needed_use_config_changes=None, needed_license_changes=None, allow_backtracking=False):
 		if frozen_config is None:
 			frozen_config = _frozen_depgraph_config(settings, trees,
 			myopts, spinner)
 		self._frozen_config = frozen_config
 		self._dynamic_config = _dynamic_depgraph_config(self, myparams,
-			allow_backtracking, runtime_pkg_mask, needed_unstable_keywords, needed_use_config_changes)
+			allow_backtracking, runtime_pkg_mask, needed_unstable_keywords, \
+			needed_use_config_changes, needed_license_changes)
 
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
@@ -1900,7 +1906,9 @@ class depgraph(object):
 		if set(self._dynamic_config.digraph).intersection( \
 			self._dynamic_config._needed_unstable_keywords) or \
 			set(self._dynamic_config.digraph).intersection( \
-			self._dynamic_config._needed_use_config_changes) :
+			self._dynamic_config._needed_use_config_changes) or \
+			set(self._dynamic_config.digraph).intersection( \
+			self._dynamic_config._needed_license_changes) :
 			#We failed if the user needs to change the configuration
 			return False, myfavorites
 
@@ -2519,23 +2527,21 @@ class depgraph(object):
 				not self._want_installed_pkg(pkg):
 				pkg = None
 
-			for allow_unstable_keywords in False, True:
+			for only_use_changes in True, False:
 				if pkg is not None:
 					break
 
 				pkg, existing = \
 					self._wrapped_select_pkg_highest_available_imp(
 						root, atom, onlydeps=onlydeps,
-						allow_use_changes=True, allow_unstable_keywords=allow_unstable_keywords)
+						allow_use_changes=True,
+						allow_unstable_keywords=(not only_use_changes),
+						allow_license_changes=(not only_use_changes))
 
 				if pkg is not None and \
 					pkg.installed and \
 					not self._want_installed_pkg(pkg):
 					pkg = None
-
-				if pkg is not None and \
-					not pkg.visible and allow_unstable_keywords:
-					self._dynamic_config._needed_unstable_keywords.add(pkg)
 			
 			if self._dynamic_config._need_restart:
 				return None, None
@@ -2547,25 +2553,58 @@ class depgraph(object):
 
 		return pkg, existing
 
-	def _pkg_visibility_check(self, pkg, allow_unstable_keywords=False):
+	def _pkg_visibility_check(self, pkg, allow_unstable_keywords=False, allow_license_changes=False):
+
 		if pkg.visible:
 			return True
-
-		if pkg in self._dynamic_config._needed_unstable_keywords:
-			return True
-
-		if not allow_unstable_keywords:
-			return False
 
 		pkgsettings = self._frozen_config.pkgsettings[pkg.root]
 		root_config = self._frozen_config.roots[pkg.root]
 		mreasons = _get_masking_status(pkg, pkgsettings, root_config, use=self._pkg_use_enabled(pkg))
-		if len(mreasons) == 1 and \
-			mreasons[0].unmask_hint and \
-			mreasons[0].unmask_hint.key == 'unstable keyword':
-			return True
-		else:
+
+		masked_by_unstable_keywords = False
+		missing_licenses = None
+		masked_by_something_else = False
+
+		for reason in mreasons:
+			hint = reason.unmask_hint
+
+			if hint is None:
+				masked_by_something_else = True
+			elif hint.key == "unstable keyword":
+				masked_by_unstable_keywords = True
+			elif hint.key == "license":
+				missing_licenses = hint.value
+			else:
+				masked_by_something_else = True
+
+		if masked_by_something_else:
 			return False
+
+		if pkg in self._dynamic_config._needed_unstable_keywords:
+			#If the package is already keyworded, remove the mask.
+			masked_by_unstable_keywords = False
+
+		if missing_licenses:
+			#If the needed licenses are already unmasked, remove the mask.
+			missing_licenses.difference_update(self._dynamic_config._needed_license_changes.get(pkg, set()))
+
+		if not (masked_by_unstable_keywords or missing_licenses):
+			#Package has already been unmasked.
+			return True
+
+		if (masked_by_unstable_keywords and not allow_unstable_keywords) or \
+			(missing_licenses and not allow_license_changes):
+			#We are not allowed to do the needed changes.
+			return False
+
+		if masked_by_unstable_keywords:
+			self._dynamic_config._needed_unstable_keywords.add(pkg)
+
+		if missing_licenses:
+			self._dynamic_config._needed_license_changes.setdefault(pkg, set()).update(missing_licenses)
+
+		return True
 
 	def _pkg_use_enabled(self, pkg, target_use=None):
 		"""
@@ -2646,7 +2685,7 @@ class depgraph(object):
 		return new_use
 
 	def _wrapped_select_pkg_highest_available_imp(self, root, atom, onlydeps=False, \
-		allow_use_changes=False, allow_unstable_keywords=False):
+		allow_use_changes=False, allow_unstable_keywords=False, allow_license_changes=False):
 		root_config = self._frozen_config.roots[root]
 		pkgsettings = self._frozen_config.pkgsettings[root]
 		dbs = self._dynamic_config._filtered_trees[root]["dbs"]
@@ -2748,7 +2787,9 @@ class depgraph(object):
 						# were installed can be automatically downgraded
 						# to an unmasked version.
 
-						if not self._pkg_visibility_check(pkg, allow_unstable_keywords=allow_unstable_keywords):
+						if not self._pkg_visibility_check(pkg, \
+							allow_unstable_keywords=allow_unstable_keywords,
+							allow_license_changes=allow_license_changes):
 							continue
 
 						# Enable upgrade or downgrade to a version
@@ -2783,7 +2824,8 @@ class depgraph(object):
 										continue
 									else:
 										if not self._pkg_visibility_check(pkg_eb, \
-											allow_unstable_keywords=allow_unstable_keywords):
+											allow_unstable_keywords=allow_unstable_keywords,
+											allow_license_changes=allow_license_changes):
 											continue
 
 					# Calculation of USE for unbuilt ebuilds is relatively
@@ -3007,12 +3049,14 @@ class depgraph(object):
 			if avoid_update:
 				for pkg in matched_packages:
 					if pkg.installed and self._pkg_visibility_check(pkg, \
-						allow_unstable_keywords=allow_unstable_keywords):
+						allow_unstable_keywords=allow_unstable_keywords,
+						allow_license_changes=allow_license_changes):
 						return pkg, existing_node
 
 			bestmatch = portage.best(
 				[pkg.cpv for pkg in matched_packages \
-					if self._pkg_visibility_check(pkg, allow_unstable_keywords=allow_unstable_keywords)])
+					if self._pkg_visibility_check(pkg, allow_unstable_keywords=allow_unstable_keywords,
+						allow_license_changes=allow_license_changes)])
 			if not bestmatch:
 				# all are masked, so ignore visibility
 				bestmatch = portage.best(
@@ -5422,14 +5466,13 @@ class depgraph(object):
 				pkgsettings = self._frozen_config.pkgsettings[pkg.root]
 				mreasons = _get_masking_status(pkg, pkgsettings, pkg.root_config,
 					use=self._pkg_use_enabled(pkg))
-				if len(mreasons) == 1 and \
-					mreasons[0].unmask_hint and \
-					mreasons[0].unmask_hint.key == 'unstable keyword':
-					keyword = mreasons[0].unmask_hint.value
-				else:
-					keyword = '~' + pkgsettings.get('ARCH', '*')
-				unstable_keyword_msg.append(get_dep_chain(pkg))
-				unstable_keyword_msg.append("=%s %s\n" % (pkg.cpv, keyword))
+				for reason in mreasons:
+					if reason.unmask_hint and \
+						reason.unmask_hint.key == 'unstable keyword':
+						keyword = reason.unmask_hint.value
+
+						unstable_keyword_msg.append(get_dep_chain(pkg))
+						unstable_keyword_msg.append("=%s %s\n" % (pkg.cpv, keyword))
 
 		use_changes_msg = []
 		for pkg, needed_use_config_change in self._dynamic_config._needed_use_config_changes.items():
@@ -5445,6 +5488,13 @@ class depgraph(object):
 				use_changes_msg.append(get_dep_chain(pkg))
 				use_changes_msg.append("=%s %s\n" % (pkg.cpv, " ".join(adjustments)))
 
+		license_msg = []
+		for pkg, missing_licenses in self._dynamic_config._needed_license_changes.items():
+			self._show_merge_list()
+			if pkg in self._dynamic_config.digraph:
+				license_msg.append(get_dep_chain(pkg))
+				license_msg.append("=%s %s\n" % (pkg.cpv, " ".join(sorted(missing_licenses))))
+
 		if unstable_keyword_msg:
 			writemsg_stdout("\nThe following " + colorize("BAD", "keyword changes") + \
 				" are necessary to proceed:\n", noiselevel=-1)
@@ -5454,6 +5504,11 @@ class depgraph(object):
 			writemsg_stdout("\nThe following " + colorize("BAD", "USE changes") + \
 				" are necessary to proceed:\n", noiselevel=-1)
 			writemsg_stdout("".join(use_changes_msg), noiselevel=-1)
+
+		if license_msg:
+			writemsg_stdout("\nThe following " + colorize("BAD", "license changes") + \
+				" are necessary to proceed:\n", noiselevel=-1)
+			writemsg_stdout("".join(license_msg), noiselevel=-1)
 
 		# TODO: Add generic support for "set problem" handlers so that
 		# the below warnings aren't special cases for world only.
@@ -5849,7 +5904,9 @@ class depgraph(object):
 			"runtime_pkg_mask":
 				self._dynamic_config._runtime_pkg_mask.copy(),
 			"needed_use_config_changes":
-				self._dynamic_config._needed_use_config_changes.copy()
+				self._dynamic_config._needed_use_config_changes.copy(),
+			"needed_license_changes":
+				self._dynamic_config._needed_license_changes.copy(),
 			}
 			
 

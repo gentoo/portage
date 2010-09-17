@@ -522,7 +522,7 @@ class ResolverPlaygroundTestCase(object):
 class ResolverPlaygroundResult(object):
 
 	checks = (
-		"success", "mergelist", "use_changes", "unstable_keywords", "slot_collision_solutions",
+		"success", "mergelist", "use_changes", "license_changes", "unstable_keywords", "slot_collision_solutions",
 		"circular_dependency_solutions",
 		)
 	optional_checks = (
@@ -535,6 +535,7 @@ class ResolverPlaygroundResult(object):
 		self.favorites = favorites
 		self.mergelist = None
 		self.use_changes = None
+		self.license_changes = None
 		self.unstable_keywords = None
 		self.slot_collision_solutions = None
 		self.circular_dependency_solutions = None
@@ -561,6 +562,11 @@ class ResolverPlaygroundResult(object):
 			self.unstable_keywords = set()
 			for pkg in self.depgraph._dynamic_config._needed_unstable_keywords:
 				self.unstable_keywords.add(pkg.cpv)
+
+		if self.depgraph._dynamic_config._needed_license_changes:
+			self.license_changes = {}
+			for pkg, missing_licenses in self.depgraph._dynamic_config._needed_license_changes.items():
+				self.license_changes[pkg.cpv] = missing_licenses
 
 		if self.depgraph._dynamic_config._slot_conflict_handler is not None:
 			self.slot_collision_solutions  = []
