@@ -306,8 +306,8 @@ def help(myopts, havecolor=1):
 			"abort. If the displayed configuration changes are " + \
 			"satisfactory, you should copy and paste them into " + \
 			"the specified configuration file(s). Currently, " + \
-			"this only works for unstable KEYWORDS masks and " + \
-			"package.use settings."
+			"this only works for unstable KEYWORDS masks, " + \
+			"LICENSE masks, and package.use settings."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
