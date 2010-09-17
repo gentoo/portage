@@ -3,7 +3,7 @@
 
 import signal
 import sys
-from portage import _unicode_encode, _unicode_decode
+from portage import _encodings, _unicode_encode, _unicode_decode
 from portage.localization import _
 
 if sys.hexversion >= 0x3000000:
@@ -13,19 +13,24 @@ class PortageException(Exception):
 	"""General superclass for portage exceptions"""
 	def __init__(self,value):
 		self.value = value[:]
-		if sys.hexversion < 0x3000000 and isinstance(self.value, unicode):
-			# Workaround for string formatting operator and unicode value
-			# attribute triggering empty output in formatted string.
-			self.value = _unicode_encode(self.value)
+		if isinstance(self.value, basestring):
+			self.value = _unicode_decode(self.value,
+				encoding=_encodings['content'], errors='replace')
+
 	def __str__(self):
 		if isinstance(self.value, basestring):
 			return self.value
 		else:
-			return repr(self.value)
+			return _unicode_decode(repr(self.value),
+				encoding=_encodings['content'], errors='replace')
 
 	if sys.hexversion < 0x3000000:
-		def __unicode__(self):
-			return _unicode_decode(self.__str__())
+
+		__unicode__ = __str__
+
+		def __str__(self):
+			return _unicode_encode(self.__unicode__(),
+				encoding=_encodings['content'], errors='backslashreplace')
 
 class CorruptionError(PortageException):
 	"""Corruption indication"""

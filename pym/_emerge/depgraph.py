@@ -12,7 +12,7 @@ from itertools import chain
 
 import portage
 from portage import os
-from portage import digraph
+from portage import _unicode_decode
 from portage.const import PORTAGE_PACKAGE_ATOM
 from portage.dbapi import dbapi
 from portage.dbapi.dep_expand import dep_expand
@@ -28,6 +28,7 @@ from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, writemsg_stdout
 from portage.util import writemsg_level
+from portage.util.digraph import digraph
 
 from _emerge.AtomArg import AtomArg
 from _emerge.Blocker import Blocker
@@ -608,6 +609,54 @@ class depgraph(object):
 				if not self._pop_disjunction(allow_unsatisfied):
 					return 0
 		return 1
+
+	def _expand_set_args(self, input_args, add_to_digraph=False):
+		"""
+		Iterate over a list of DependencyArg instances and yield all
+		instances given in the input together with additional SetArg
+		instances that are generated from nested sets.
+		@param input_args: An iterable of DependencyArg instances
+		@type input_args: Iterable
+		@param add_to_digraph: If True then add SetArg instances
+			to the digraph, in order to record parent -> child
+			relationships from nested sets
+		@type add_to_digraph: Boolean
+		@rtype: Iterable
+		@returns: All args given in the input together with additional
+			SetArg instances that are generated from nested sets
+		"""
+
+		traversed_set_args = set()
+
+		for arg in input_args:
+			if not isinstance(arg, SetArg):
+				yield arg
+				continue
+
+			root_config = arg.root_config
+			arg_stack = [arg]
+			while arg_stack:
+				arg = arg_stack.pop()
+				if arg in traversed_set_args:
+					continue
+				traversed_set_args.add(arg)
+				yield arg
+
+				# Traverse nested sets and add them to the stack
+				# if they're not already in the graph. Also, graph
+				# edges between parent and nested sets.
+				for token in arg.pset.getNonAtoms():
+					if not token.startswith(SETPREFIX):
+						continue
+					s = token[len(SETPREFIX):]
+					nested_set = root_config.sets.get(s)
+					if nested_set is not None:
+						nested_arg = SetArg(arg=token, pset=nested_set,
+							root_config=root_config)
+						arg_stack.append(nested_arg)
+						if add_to_digraph:
+							self._dynamic_config.digraph.add(nested_arg, arg,
+								priority=BlockerDepPriority.instance)
 
 	def _add_dep(self, dep, allow_unsatisfied=False):
 		debug = "--debug" in self._frozen_config.myopts
@@ -1441,7 +1490,6 @@ class depgraph(object):
 		debug = "--debug" in self._frozen_config.myopts
 		root_config = self._frozen_config.roots[self._frozen_config.target_root]
 		sets = root_config.sets
-		getSetAtoms = root_config.setconfig.getSetAtoms
 		myfavorites=[]
 		myroot = self._frozen_config.target_root
 		dbs = self._dynamic_config._filtered_trees[myroot]["dbs"]
@@ -1529,13 +1577,9 @@ class depgraph(object):
 						raise portage.exception.PackageSetNotFound(s)
 					if s in self._dynamic_config._sets:
 						continue
-					# Recursively expand sets so that containment tests in
-					# self._get_parent_sets() properly match atoms in nested
-					# sets (like if world contains system).
-					expanded_set = InternalPackageSet(
-						initial_atoms=getSetAtoms(s))
-					self._dynamic_config._sets[s] = expanded_set
-					args.append(SetArg(arg=x, set=expanded_set,
+					pset = sets[s]
+					self._dynamic_config._sets[s] = pset
+					args.append(SetArg(arg=x, pset=pset,
 						root_config=root_config))
 					continue
 				if not is_valid_package_atom(x):
@@ -1722,8 +1766,10 @@ class depgraph(object):
 		pkgsettings = self._frozen_config.pkgsettings[myroot]
 		pprovideddict = pkgsettings.pprovideddict
 		virtuals = pkgsettings.getvirtuals()
-		for arg in self._dynamic_config._initial_arg_list:
-			for atom in arg.set:
+		for arg in self._expand_set_args(
+			self._dynamic_config._initial_arg_list,
+			add_to_digraph=True):
+			for atom in arg.pset.getAtoms():
 				self._spinner_update()
 				dep = Dependency(atom=atom, onlydeps=onlydeps,
 					root=myroot, parent=arg)
@@ -1879,11 +1925,17 @@ class depgraph(object):
 			args_set.add(atom)
 
 		self._dynamic_config._set_atoms.clear()
-		self._dynamic_config._set_atoms.update(chain(*self._dynamic_config._sets.values()))
+		self._dynamic_config._set_atoms.update(chain.from_iterable(
+			pset.getAtoms() for pset in self._dynamic_config._sets.values()))
 		atom_arg_map = self._dynamic_config._atom_arg_map
 		atom_arg_map.clear()
-		for arg in args:
-			for atom in arg.set:
+
+		# We don't add set args to the digraph here since that
+		# happens at a later stage and we don't want to make
+		# any state changes here that aren't reversed by a
+		# another call to this method.
+		for arg in self._expand_set_args(args, add_to_digraph=False):
+			for atom in arg.pset.getAtoms():
 				atom_key = (atom, arg.root_config.root)
 				refs = atom_arg_map.get(atom_key)
 				if refs is None:
@@ -3074,20 +3126,47 @@ class depgraph(object):
 			# Create new SetArg instances only when necessary.
 			for s in required_set_names:
 				if required_sets is None or root not in required_sets:
-					expanded_set = InternalPackageSet(
-						initial_atoms=setconfig.getSetAtoms(s))
+					pset = root_config.sets[s]
 				else:
-					expanded_set = required_sets[root][s]
+					pset = required_sets[root][s]
 				atom = SETPREFIX + s
-				args.append(SetArg(arg=atom, set=expanded_set,
+				args.append(SetArg(arg=atom, pset=pset,
 					root_config=root_config))
 				if root == self._frozen_config.target_root:
-					self._dynamic_config._sets[s] = expanded_set
+					self._dynamic_config._sets[s] = pset
 			vardb = root_config.trees["vartree"].dbapi
-			for arg in args:
-				for atom in arg.set:
+			while args:
+				arg = args.pop()
+				for atom in arg.pset.getAtoms():
 					self._dynamic_config._dep_stack.append(
 						Dependency(atom=atom, root=root, parent=arg))
+
+				# Removal actions may override sets with temporary
+				# replacements that have had atoms removed in order
+				# to implement --deselect behavior.
+				if required_sets is None:
+					set_overrides = {}
+				else:
+					set_overrides = required_sets.get(root, {})
+
+				# Traverse nested sets and add them to the stack
+				# if they're not already in the graph. Also, graph
+				# edges between parent and nested sets.
+				for token in arg.pset.getNonAtoms():
+					if not token.startswith(SETPREFIX):
+						continue
+					s = token[len(SETPREFIX):]
+					nested_set = set_overrides.get(s)
+					if nested_set is None:
+						nested_set = root_config.sets.get(s)
+					if nested_set is not None:
+						nested_arg = SetArg(arg=token, pset=nested_set,
+							root_config=root_config)
+						if nested_arg not in self._dynamic_config.digraph:
+							args.append(nested_arg)
+						self._dynamic_config.digraph.add(nested_arg, arg,
+							priority=BlockerDepPriority.instance)
+
 			if self._dynamic_config._ignored_deps:
 				self._dynamic_config._dep_stack.extend(self._dynamic_config._ignored_deps)
 				self._dynamic_config._ignored_deps = []
@@ -5027,9 +5106,10 @@ class depgraph(object):
 		if verbosity == 3:
 			writemsg_stdout('\n%s\n' % (counters,), noiselevel=-1)
 			if show_repos:
-				# In python-2.x, str() can trigger a UnicodeEncodeError here,
-				# so call __str__() directly.
-				writemsg_stdout(repo_display.__str__(), noiselevel=-1)
+				# Use _unicode_decode() to force unicode format string so
+				# that RepoDisplay.__unicode__() is called in python2.
+				writemsg_stdout(_unicode_decode("%s") % (repo_display,),
+					noiselevel=-1)
 
 		if "--changelog" in self._frozen_config.myopts:
 			writemsg_stdout('\n', noiselevel=-1)
@@ -5624,8 +5704,8 @@ class depgraph(object):
 			# Packages for argument atoms need to be explicitly
 			# added via _add_pkg() so that they are included in the
 			# digraph (needed at least for --tree display).
-			for arg in args:
-				for atom in arg.set:
+			for arg in self._expand_set_args(args, add_to_digraph=True):
+				for atom in arg.pset.getAtoms():
 					pkg, existing_node = self._select_package(
 						arg.root_config.root, atom)
 					if existing_node is None and \
@@ -5694,7 +5774,6 @@ class depgraph(object):
 		DependencyArg instances during graph creation.
 		"""
 		root_config = self._frozen_config.roots[self._frozen_config.target_root]
-		getSetAtoms = root_config.setconfig.getSetAtoms
 		sets = root_config.sets
 		args = []
 		for x in favorites:
@@ -5708,13 +5787,9 @@ class depgraph(object):
 					continue
 				if s in self._dynamic_config._sets:
 					continue
-				# Recursively expand sets so that containment tests in
-				# self._get_parent_sets() properly match atoms in nested
-				# sets (like if world contains system).
-				expanded_set = InternalPackageSet(
-					initial_atoms=getSetAtoms(s))
-				self._dynamic_config._sets[s] = expanded_set
-				args.append(SetArg(arg=x, set=expanded_set,
+				pset = sets[s]
+				self._dynamic_config._sets[s] = pset
+				args.append(SetArg(arg=x, pset=pset,
 					root_config=root_config))
 			else:
 				try:

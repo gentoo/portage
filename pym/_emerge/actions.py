@@ -621,33 +621,18 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	root_config = trees[myroot]["root_config"]
 	psets = root_config.setconfig.psets
 	deselect = myopts.get('--deselect') != 'n'
-
-	required_set_stack = ["world"]
 	required_sets = {}
-	set_args = []
+	required_sets['world'] = psets['world']
 
-	# Recursively create InternalPackageSet instances for world
-	# and any sets nested within it.
-	while required_set_stack:
-		s = required_set_stack.pop()
-		if s in required_sets:
-			continue
-		pset = psets.get(s)
-		if pset is not None:
-			required_sets[s] = InternalPackageSet(
-				initial_atoms=pset.getAtoms())
-			for n in pset.getNonAtoms():
-				if n.startswith(SETPREFIX):
-					required_set_stack.append(n[len(SETPREFIX):])
-
-	# When removing packages, use a temporary version of world 'selected'
-	# set which excludes packages that are intended to be eligible for
-	# removal.
-	selected_set = required_sets["selected"]
+	# When removing packages, a temporary version of the world 'selected'
+	# set may be used which excludes packages that are intended to be
+	# eligible for removal.
+	selected_set = psets['selected']
+	required_sets['selected'] = selected_set
 	protected_set = InternalPackageSet()
 	protected_set_name = '____depclean_protected_set____'
 	required_sets[protected_set_name] = protected_set
-	system_set = required_sets.get("system")
+	system_set = psets["system"]
 
 	if not system_set or not selected_set:
 
@@ -680,7 +665,11 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		if args_set:
 
 			if deselect:
-				selected_set.clear()
+				# Start with an empty set.
+				selected_set = InternalPackageSet()
+				required_sets['selected'] = selected_set
+				# Pull in any sets nested within the selected set.
+				selected_set.update(psets['selected'].getNonAtoms())
 
 			# Pull in everything that's installed but not matched
 			# by an argument atom since we don't want to clean any
@@ -702,7 +691,11 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	elif action == "prune":
 
 		if deselect:
-			selected_set.clear()
+			# Start with an empty set.
+			selected_set = InternalPackageSet()
+			required_sets['selected'] = selected_set
+			# Pull in any sets nested within the selected set.
+			selected_set.update(psets['selected'].getNonAtoms())
 
 		# Pull in everything that's installed since we don't
 		# to prune a package if something depends on it.
@@ -832,6 +825,11 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			return -1
 
 	def create_cleanlist():
+
+		if "--debug" in myopts:
+			writemsg("\ndigraph:\n\n", noiselevel=-1)
+			graph.debug_print()
+			writemsg("\n", noiselevel=-1)
 
 		# Never display the special internal protected_set.
 		for node in graph:
@@ -1507,6 +1505,7 @@ def action_info(settings, trees, myopts, myfiles):
 					f not in use_expand_flags:
 					use_disabled['USE'].append(f)
 
+			flag_displays = []
 			for varname in var_order:
 				if varname in use_expand_hidden:
 					continue
@@ -1519,8 +1518,11 @@ def action_info(settings, trees, myopts, myfiles):
 					flags.sort(key=UseFlagDisplay.sort_combined)
 				else:
 					flags.sort(key=UseFlagDisplay.sort_separated)
-				print('%s="%s"' % (varname, ' '.join(str(f) for f in flags)), end=' ')
-			print()
+				# Use _unicode_decode() to force unicode format string so
+				# that UseFlagDisplay.__unicode__() is called in python2.
+				flag_displays.append('%s="%s"' % (varname,
+					' '.join(_unicode_decode("%s") % (f,) for f in flags)))
+			writemsg_stdout('%s\n' % ' '.join(flag_displays), noiselevel=-1)
 			if pkg_type == "installed":
 				for myvar in mydesiredvars:
 					if metadata[myvar].split() != settings.get(myvar, '').split():

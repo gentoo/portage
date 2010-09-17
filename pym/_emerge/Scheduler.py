@@ -19,7 +19,7 @@ import portage
 from portage import StringIO
 from portage import os
 from portage import _encodings
-from portage import _unicode_encode
+from portage import _unicode_decode, _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.const import LIBC_PACKAGE_ATOM
 from portage.elog.messages import eerror
@@ -1203,7 +1203,9 @@ class Scheduler(PollScheduler):
 				printer.eerror(line)
 			printer.eerror("")
 			for failed_pkg in self._failed_pkgs_all:
-				msg = " %s" % (colorize('INFORM', failed_pkg.pkg.__str__()),)
+				# Use _unicode_decode() to force unicode format string so
+				# that Package.__unicode__() is called in python2.
+				msg = _unicode_decode(" %s") % (failed_pkg.pkg,)
 				log_path = self._locate_failure_log(failed_pkg)
 				if log_path is not None:
 					msg += ", Log file:"
