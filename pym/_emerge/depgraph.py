@@ -2558,6 +2558,9 @@ class depgraph(object):
 		if pkg.visible:
 			return True
 
+		if self._frozen_config.myopts.get('--autounmask', 'n') is not True:
+			return False
+
 		pkgsettings = self._frozen_config.pkgsettings[pkg.root]
 		root_config = self._frozen_config.roots[pkg.root]
 		mreasons = _get_masking_status(pkg, pkgsettings, root_config, use=self._pkg_use_enabled(pkg))
