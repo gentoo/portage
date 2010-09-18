@@ -1818,7 +1818,7 @@ class depgraph(object):
 						if not (isinstance(arg, SetArg) and \
 							arg.name in ("selected", "system", "world")):
 							self._dynamic_config._unsatisfied_deps_for_display.append(
-								((myroot, atom), {}))
+								((myroot, atom), {"myparent" : arg}))
 							return 0, myfavorites
 						self._dynamic_config._missing_args.append((arg, atom))
 						continue
@@ -1835,7 +1835,7 @@ class depgraph(object):
 							continue
 					if pkg.installed and "selective" not in self._dynamic_config.myparams:
 						self._dynamic_config._unsatisfied_deps_for_display.append(
-							((myroot, atom), {}))
+							((myroot, atom), {"myparent" : arg}))
 						# Previous behavior was to bail out in this case, but
 						# since the dep is satisfied by the installed package,
 						# it's more friendly to continue building the graph
@@ -2370,8 +2370,13 @@ class depgraph(object):
 		msg = []
 		while node is not None:
 			traversed_nodes.add(node)
-			msg.append('(dependency required by "%s" [%s])' % \
-				(colorize('INFORM', str(node.cpv)), node.type_name))
+			if isinstance(node, DependencyArg):
+				msg.append('(dependency required by "%s")' % \
+					colorize('INFORM', _unicode_decode("%s") % (node,)))
+			else:
+				msg.append('(dependency required by "%s" [%s])' % \
+					(colorize('INFORM', _unicode_decode("%s") % \
+					(node.cpv,)), node.type_name))
 
 			if node not in self._dynamic_config.digraph:
 				# The parent is not in the graph due to backtracking.
@@ -2383,9 +2388,12 @@ class depgraph(object):
 			selected_parent = None
 			for parent in self._dynamic_config.digraph.parent_nodes(node):
 				if isinstance(parent, DependencyArg):
-					msg.append('(dependency required by "%s" [argument])' % \
-						(colorize('INFORM', str(parent))))
-					selected_parent = None
+					if self._dynamic_config.digraph.parent_nodes(parent):
+						selected_parent = parent
+					else:
+						msg.append('(dependency required by "%s" [argument])' % \
+							colorize('INFORM', _unicode_decode("%s") % (parent,)))
+						selected_parent = None
 					break
 				if parent not in traversed_nodes:
 					selected_parent = parent
