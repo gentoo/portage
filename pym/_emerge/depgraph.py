@@ -2387,6 +2387,8 @@ class depgraph(object):
 			# package twice, in order to prevent an infinite loop.
 			selected_parent = None
 			for parent in self._dynamic_config.digraph.parent_nodes(node):
+				if parent in traversed_nodes:
+					continue
 				if isinstance(parent, DependencyArg):
 					if self._dynamic_config.digraph.parent_nodes(parent):
 						selected_parent = parent
@@ -2395,7 +2397,7 @@ class depgraph(object):
 							colorize('INFORM', _unicode_decode("%s") % (parent,)))
 						selected_parent = None
 					break
-				if parent not in traversed_nodes:
+				else:
 					selected_parent = parent
 			node = selected_parent
 		writemsg_stdout("\n".join(msg), noiselevel=-1)
