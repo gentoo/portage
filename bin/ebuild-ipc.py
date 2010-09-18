@@ -120,7 +120,7 @@ class EbuildIpc(object):
 					self._no_daemon_msg()
 					return 2
 
-		input_file = open(self.ipc_out_fifo, 'rb', 0)
+		input_file = None
 
 		start_time = time.time()
 		while True:
@@ -128,6 +128,10 @@ class EbuildIpc(object):
 				try:
 					portage.exception.AlarmSignal.register(
 						self._COMMUNICATE_RETRY_TIMEOUT_SECONDS)
+
+					if input_file is None:
+						input_file = open(self.ipc_out_fifo, 'rb', 0)
+
 					# Read the whole pickle in a single atomic read() call.
 					buf = array.array('B')
 					try:
@@ -148,6 +152,9 @@ class EbuildIpc(object):
 					self._no_daemon_msg()
 					return 2
 
+		if input_file is not None:
+			input_file.close()
+
 		rval = 2
 
 		if buf:
@@ -161,7 +168,6 @@ class EbuildIpc(object):
 					level=logging.ERROR, noiselevel=-1)
 
 			else:
-				input_file.close()
 
 				(out, err, rval) = reply
 
