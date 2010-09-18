@@ -271,9 +271,10 @@ def stack_lists(lists, incremental=1, remember_source_file=False,
 
 	if warn_for_unmatched_removal:
 		for source_file, tokens in unmatched_removals.items():
-			if len(tokens) > 4:
+			if len(tokens) > 3:
 				selected = [tokens.pop(), tokens.pop(), tokens.pop()]
-				writemsg(_("--- Unmatch removal atoms in %s: %s and %s more\n") % (source_file, ", ".join(selected), len(tokens)-3),
+				writemsg(_("--- Unmatch removal atoms in %s: %s and %s more\n") % \
+					(source_file, ", ".join(selected), len(tokens)),
 					noiselevel=-1)
 			else:
 				writemsg(_("--- Unmatch removal atom(s) in %s: %s\n") % (source_file, ", ".join(tokens)),
