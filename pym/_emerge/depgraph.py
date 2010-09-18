@@ -1933,8 +1933,6 @@ class depgraph(object):
 			args_set.add(atom)
 
 		self._dynamic_config._set_atoms.clear()
-		self._dynamic_config._set_atoms.update(chain.from_iterable(
-			pset.getAtoms() for pset in self._dynamic_config._sets.values()))
 		atom_arg_map = self._dynamic_config._atom_arg_map
 		atom_arg_map.clear()
 
@@ -1942,8 +1940,11 @@ class depgraph(object):
 		# happens at a later stage and we don't want to make
 		# any state changes here that aren't reversed by a
 		# another call to this method.
+		set_atoms = []
 		for arg in self._expand_set_args(args, add_to_digraph=False):
 			for atom in arg.pset.getAtoms():
+				if arg.root_config.root == self._frozen_config.target_root:
+					set_atoms.append(atom)
 				atom_key = (atom, arg.root_config.root)
 				refs = atom_arg_map.get(atom_key)
 				if refs is None:
@@ -1951,6 +1952,8 @@ class depgraph(object):
 					atom_arg_map[atom_key] = refs
 					if arg not in refs:
 						refs.append(arg)
+
+		self._dynamic_config._set_atoms.update(set_atoms)
 
 		# Invalidate the package selection cache, since
 		# arguments influence package selections.
