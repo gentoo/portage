@@ -477,6 +477,7 @@ suspect_rdepend = frozenset([
 	"sys-devel/flex",
 	"sys-devel/m4",
 	"sys-devel/pmake",
+	"virtual/linux-sources",
 	"x11-misc/bdftopcf",
 	"x11-misc/imake",
 ])

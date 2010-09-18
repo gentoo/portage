@@ -156,7 +156,7 @@ def _getmaskingstatus(mycpv, settings, portdb):
 				if x in allowed_tokens]
 			msg = license_split[:]
 			msg.append("license(s)")
-			rValue.append(_MaskReason("LICENSE", " ".join(msg)))
+			rValue.append(_MaskReason("LICENSE", " ".join(msg), _UnmaskHint("license", set(missing_licenses))))
 	except portage.exception.InvalidDependString as e:
 		rValue.append(_MaskReason("invalid", "LICENSE: "+str(e)))
 
