@@ -1374,7 +1374,8 @@ class dblink(object):
 		obj_index = contents_re.groupindex['obj']
 		dir_index = contents_re.groupindex['dir']
 		sym_index = contents_re.groupindex['sym']
-		myroot = self._eroot
+		# CONTENTS files already contain EPREFIX
+		myroot = self.settings['ROOT']
 		if myroot == os.path.sep:
 			myroot = None
 		pos = 0
