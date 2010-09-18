@@ -1680,14 +1680,15 @@ source_all_bashrcs() {
 # of ebuild.sh will work for pkg_postinst, pkg_prerm, and pkg_postrm
 # when portage is upgrading itself.
 
-READONLY_EBUILD_METADATA="DEFINED_PHASES DEPEND DESCRIPTION
+PORTAGE_READONLY_METADATA="DEFINED_PHASES DEPEND DESCRIPTION
 	EAPI HOMEPAGE INHERITED IUSE REQUIRED_USE KEYWORDS LICENSE
 	PDEPEND PROVIDE RDEPEND RESTRICT SLOT SRC_URI"
 
-READONLY_PORTAGE_VARS="D EBUILD EBUILD_PHASE \
+PORTAGE_READONLY_VARS="D EBUILD EBUILD_PHASE \
 	EBUILD_SH_ARGS EMERGE_FROM FILESDIR \
 	PORTAGE_BINPKG_FILE PORTAGE_BIN_PATH PORTAGE_BUILDDIR PORTAGE_IUSE \
 	PORTAGE_PYM_PATH PORTAGE_MUTABLE_FILTERED_VARS \
+	PORTAGE_READONLY_METADATA PORTAGE_READONLY_VARS \
 	PORTAGE_SAVED_READONLY_VARS PORTAGE_TMPDIR T WORKDIR"
 
 PORTAGE_SAVED_READONLY_VARS="A CATEGORY P PF PN PR PV PVR"
@@ -1751,7 +1752,7 @@ filter_readonly_variables() {
 		SANDBOX_LOG SANDBOX_ON"
 	local misc_garbage_vars="_portage_filter_opts"
 	filtered_vars="$readonly_bash_vars $bash_misc_vars
-		$READONLY_PORTAGE_VARS $misc_garbage_vars"
+		$PORTAGE_READONLY_VARS $misc_garbage_vars"
 
 	# Don't filter/interfere with prefix variables unless they are
 	# supported by the current EAPI.
@@ -2100,7 +2101,7 @@ fi
 # Note: readonly variables interfere with preprocess_ebuild_env(), so
 # declare them only after it has already run.
 if [ "${EBUILD_PHASE}" != "depend" ] ; then
-	declare -r ${READONLY_EBUILD_METADATA} ${READONLY_PORTAGE_VARS}
+	declare -r $PORTAGE_READONLY_METADATA $PORTAGE_READONLY_VARS
 	case "$EAPI" in
 		0|1|2)
 			;;
