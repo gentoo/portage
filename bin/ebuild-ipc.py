@@ -9,7 +9,6 @@ import array
 import logging
 import os
 import pickle
-import select
 import signal
 import sys
 import time
@@ -91,9 +90,6 @@ class EbuildIpc(object):
 
 		# File streams are in unbuffered mode since we do atomic
 		# read and write of whole pickles.
-		input_fd = os.open(self.ipc_out_fifo,
-			os.O_RDONLY|os.O_NONBLOCK)
-		input_file = os.fdopen(input_fd, 'rb', 0)
 		output_file = None
 
 		while True:
@@ -124,19 +120,7 @@ class EbuildIpc(object):
 					self._no_daemon_msg()
 					return 2
 
-		start_time = time.time()
-		while True:
-			events = select.select([input_file], [], [],
-				self._COMMUNICATE_RETRY_TIMEOUT_SECONDS)
-			if events[0]:
-				break
-			else:
-				if self._daemon_is_alive():
-					self._timeout_retry_msg(start_time,
-						portage.localization._('during select'))
-				else:
-					self._no_daemon_msg()
-					return 2
+		input_file = open(self.ipc_out_fifo, 'rb', 0)
 
 		start_time = time.time()
 		while True:
