@@ -45,19 +45,9 @@ def spawn_nofetch(portdb, ebuild_path, settings=None):
 	if 'PORTAGE_PARALLEL_FETCHONLY' in settings:
 		return
 
-	doebuild_environment(ebuild_path, 'nofetch',
-		settings=settings, db=portdb)
-	restrict = settings['PORTAGE_RESTRICT'].split()
-	defined_phases = settings['DEFINED_PHASES'].split()
-	if not defined_phases:
-		# When DEFINED_PHASES is undefined, assume all
-		# phases are defined.
-		defined_phases = EBUILD_PHASES
-
-	if 'fetch' not in restrict and \
-		'nofetch' not in defined_phases:
-		return
-
+	# We must create our private PORTAGE_TMPDIR before calling
+	# doebuild_environment(), since lots of variables such
+	# as PORTAGE_BUILDDIR refer to paths inside PORTAGE_TMPDIR.
 	portage_tmpdir = settings.get('PORTAGE_TMPDIR')
 	if not portage_tmpdir or not os.access(portage_tmpdir, os.W_OK):
 		portage_tmpdir = None
@@ -66,6 +56,19 @@ def spawn_nofetch(portdb, ebuild_path, settings=None):
 	settings.backup_changes('PORTAGE_TMPDIR')
 
 	try:
+		doebuild_environment(ebuild_path, 'nofetch',
+			settings=settings, db=portdb)
+		restrict = settings['PORTAGE_RESTRICT'].split()
+		defined_phases = settings['DEFINED_PHASES'].split()
+		if not defined_phases:
+			# When DEFINED_PHASES is undefined, assume all
+			# phases are defined.
+			defined_phases = EBUILD_PHASES
+
+		if 'fetch' not in restrict and \
+			'nofetch' not in defined_phases:
+			return
+
 		prepare_build_dirs(settings=settings)
 		ebuild_phase = EbuildPhase(background=False,
 			phase='nofetch', scheduler=PollScheduler().sched_iface,
