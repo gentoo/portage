@@ -173,8 +173,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	mysettings.pop("EBUILD_PHASE", None) # remove from backupenv
 	mysettings["EBUILD_PHASE"] = mydo
 
-	mysettings["PORTAGE_MASTER_PID"] = str(os.getpid())
-
 	# Set requested Python interpreter for Portage helpers.
 	mysettings['PORTAGE_PYTHON'] = portage._python_interpreter
 
