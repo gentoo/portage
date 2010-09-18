@@ -36,8 +36,11 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 
 			try:
 				obj = pickle.loads(buf.tostring())
-			except (EnvironmentError, EOFError, ValueError,
-				pickle.UnpicklingError):
+			except SystemExit:
+				raise
+			except Exception:
+				# The pickle module can raise practically
+				# any exception when given corrupt data.
 				pass
 			else:
 				cmd_key = obj[0]
