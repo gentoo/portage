@@ -5407,7 +5407,13 @@ class depgraph(object):
 			all_parents = self._dynamic_config._parent_atoms
 			while node is not None:
 				traversed_nodes.add(node)
-				if node is not pkg:
+				if isinstance(node, DependencyArg):
+					if first:
+						first = False
+					else:
+						msg += ", "
+					msg += _unicode_decode('required by %s') % (node,)
+				elif node is not pkg:
 					for ppkg, patom in all_parents[child]:
 						if ppkg == node:
 							atom = patom.unevaluated_atom
@@ -5457,15 +5463,22 @@ class depgraph(object):
 				# package twice, in order to prevent an infinite loop.
 				selected_parent = None
 				for parent in self._dynamic_config.digraph.parent_nodes(node):
+					if parent in traversed_nodes:
+						continue
 					if isinstance(parent, DependencyArg):
-						if first:
-							first = False
+						if self._dynamic_config.digraph.parent_nodes(parent):
+							selected_parent = parent
+							child = node
 						else:
-							msg += ", "
-						msg += 'required by %s (argument)' % str(parent)
-						selected_parent = None
+							if first:
+								first = False
+							else:
+								msg += ", "
+							msg += _unicode_decode(
+								'required by %s (argument)') % (parent,)
+							selected_parent = None
 						break
-					if parent not in traversed_nodes:
+					else:
 						selected_parent = parent
 						child = node
 				node = selected_parent
