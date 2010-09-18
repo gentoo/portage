@@ -1855,11 +1855,9 @@ class dblink(object):
 				if lstatobj is None:
 						show_unmerge("---", unmerge_desc["!found"], file_type, obj)
 						continue
-				# PREFIX LOCAL: don't use EROOT or you will unmerge a
-				# just upgraded package!
+				# don't use EROOT, CONTENTS entries already contain EPREFIX
 				if obj.startswith(real_root):
 					relative_path = obj[real_root_len:]
-					# PREFIX LOCAL
 					is_owned = False
 					for dblnk in others_in_slot:
 						if dblnk.isowner(relative_path):
@@ -2049,9 +2047,8 @@ class dblink(object):
 				"self.settings['EROOT'] will be used.",
 				DeprecationWarning, stacklevel=2)
 
-		# PREFIX LOCAL: don't use eroot here
+		# don't use EROOT here, image already contains EPREFIX
 		destroot = self.settings['ROOT']
-		# PREFIX LOCAL
 
 		# The given filename argument might have a different encoding than the
 		# the filenames contained in the contents, so use separate wrapped os
@@ -2547,9 +2544,7 @@ class dblink(object):
 			scheduler = self._scheduler
 			stopmerge = False
 			collisions = []
-			# PREFIX LOCAL: don't use eroot here
 			destroot = self.settings['ROOT']
-			# PREFIX LOCAL
 			showMessage(_(" %s checking %d files for package collisions\n") % \
 				(colorize("GOOD", "*"), len(mycontents)))
 			for i, f in enumerate(mycontents):
@@ -2797,10 +2792,7 @@ class dblink(object):
 
 		srcroot = _unicode_decode(srcroot,
 			encoding=_encodings['content'], errors='strict')
-		# PREFIX LOCAL: no eroot here, image dir already has EPREFIX,
-		# will end up with double prefix in installation
 		destroot = self.settings['ROOT']
-		# PREFIX LOCAL
 		inforoot = _unicode_decode(inforoot,
 			encoding=_encodings['content'], errors='strict')
 		myebuild = _unicode_decode(myebuild,
