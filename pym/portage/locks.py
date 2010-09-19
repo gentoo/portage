@@ -118,6 +118,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 		if e.errno in (errno.EACCES, errno.EAGAIN):
 			# resource temp unavailable; eg, someone beat us to the lock.
 			if flags & os.O_NONBLOCK:
+				os.close(myfd)
 				raise TryAgain(mypath)
 
 			global _quiet

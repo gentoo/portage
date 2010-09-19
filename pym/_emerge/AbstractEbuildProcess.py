@@ -40,7 +40,8 @@ class AbstractEbuildProcess(SpawnProcess):
 	# | Bug #  | Platform
 	# |--------|------------
 	# | 337465 | FreeBSD
-	if platform.system() in ('FreeBSD',):
+	# |        | Darwin
+	if platform.system() in ('Darwin', 'FreeBSD',):
 		_enable_ipc_daemon = False
 
 	def __init__(self, **kwargs):

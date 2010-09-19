@@ -761,6 +761,12 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			return False
 
 		if unresolvable and not allow_missing_deps:
+
+			if "--debug" in myopts:
+				writemsg("\ndigraph:\n\n", noiselevel=-1)
+				resolver._dynamic_config.digraph.debug_print()
+				writemsg("\n", noiselevel=-1)
+
 			prefix = bad(" * ")
 			msg = []
 			msg.append("Dependencies could not be completely resolved due to")
