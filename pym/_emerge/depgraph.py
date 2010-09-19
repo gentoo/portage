@@ -3171,15 +3171,17 @@ class depgraph(object):
 		for trees in self._dynamic_config._filtered_trees.values():
 			trees["porttree"].dbapi._clear_cache()
 
-		args = []
+		args = self._dynamic_config._initial_arg_list[:]
 		for root in self._frozen_config.roots:
 			if root != self._frozen_config.target_root and \
 				"remove" in self._dynamic_config.myparams:
 				# Only pull in deps for the relevant root.
 				continue
 			depgraph_sets = self._dynamic_config.sets[root]
+			required_set_names = self._frozen_config._required_set_names.copy()
+			remaining_args = required_set_names.copy()
 			if required_sets is None or root not in required_sets:
-				required_set_names = self._frozen_config._required_set_names.copy()
+				pass
 			else:
 				# Removal actions may override sets with temporary
 				# replacements that have had atoms removed in order
@@ -3190,8 +3192,8 @@ class depgraph(object):
 			if "remove" not in self._dynamic_config.myparams and \
 				root == self._frozen_config.target_root and \
 				(already_deep or "empty" in self._dynamic_config.myparams):
-				required_set_names.difference_update(depgraph_sets.sets)
-			if not required_set_names and \
+				remaining_args.difference_update(depgraph_sets.sets)
+			if not remaining_args and \
 				not self._dynamic_config._ignored_deps and \
 				not self._dynamic_config._dep_stack:
 				continue
