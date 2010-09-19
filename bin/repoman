@@ -907,8 +907,15 @@ def fetch_metadata_dtd():
 				local_f.write(url_f.read())
 				local_f.close()
 				if last_modified is not None:
-					os.utime(metadata_dtd_tmp,
-						(int(last_modified), int(last_modified)))
+					try:
+						os.utime(metadata_dtd_tmp,
+							(int(last_modified), int(last_modified)))
+					except OSError:
+						# This fails on some odd non-unix-like filesystems.
+						# We don't really need the mtime to be preserved
+						# anyway here (currently we use ctime to trigger
+						# fetch), so just ignore it.
+						pass
 				os.rename(metadata_dtd_tmp, metadata_dtd)
 			finally:
 				try:
