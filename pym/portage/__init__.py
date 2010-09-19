@@ -125,6 +125,7 @@ try:
 			'cpv_getkey@getCPFromCPV,endversion_keys,' + \
 			'suffix_value@endversion,pkgcmp,pkgsplit,vercmp,ververify',
 		'portage.xpak',
+		'time',
 	)
 
 	try:
@@ -541,12 +542,39 @@ if VERSION == 'HEAD':
 			if VERSION is not self:
 				return VERSION
 			if os.path.isdir(os.path.join(PORTAGE_BASE_PATH, '.git')):
-				status, output = subprocess_getstatusoutput(
-					"cd %s ; git describe --tags" % \
-					_shell_quote(PORTAGE_BASE_PATH))
+				status, output = subprocess_getstatusoutput((
+					"cd %s ; git describe --tags || exit $? ; " + \
+					"if [ -n \"`git diff-index --name-only --diff-filter=M HEAD`\" ] ; " + \
+					"then echo modified ; git rev-list --pretty=raw -n 1 HEAD ; fi ; " + \
+					"exit 0") % _shell_quote(PORTAGE_BASE_PATH))
 				if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
-					VERSION = output
-					return VERSION
+					output_lines = output.splitlines()
+					if output_lines:
+						version_split = output_lines[0].split('-')
+						if version_split:
+							VERSION = version_split[0].lstrip('v')
+							patchlevel = False
+							if len(version_split) > 1:
+								patchlevel = True
+								VERSION = "%s_p%s" %(VERSION, version_split[1])
+							if len(output_lines) > 1 and output_lines[1] == 'modified':
+								head_timestamp = None
+								for line in output_lines[2:]:
+									if line.startswith('author '):
+										author_split = line.split()
+										if len(author_split) > 1:
+											try:
+												head_timestamp = long(author_split[-2])
+											except ValueError:
+												pass
+										break
+								timestamp = long(time.time())
+								if head_timestamp is not None and timestamp > head_timestamp:
+									timestamp = timestamp - head_timestamp
+								if not patchlevel:
+									VERSION = "%s_p0" % (VERSION,)
+								VERSION = "%s_p%d" % (VERSION, timestamp)
+							return VERSION
 			VERSION = 'HEAD'
 			return VERSION
 	VERSION = _LazyVersion()
