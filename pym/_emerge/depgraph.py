@@ -5852,7 +5852,7 @@ class depgraph(object):
 		"""
 		root_config = self._frozen_config.roots[self._frozen_config.target_root]
 		sets = root_config.sets
-		depgraph_sets = self._dynamic_config.sets[root_config.root].sets
+		depgraph_sets = self._dynamic_config.sets[root_config.root]
 		args = []
 		for x in favorites:
 			if not isinstance(x, basestring):
