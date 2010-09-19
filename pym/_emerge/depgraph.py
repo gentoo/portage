@@ -1949,10 +1949,11 @@ class depgraph(object):
 		for arg in self._expand_set_args(args, add_to_digraph=False):
 			atom_arg_map = self._dynamic_config.sets[
 				arg.root_config.root].atom_arg_map
-			if isinstance(arg, (AtomArg, PackageArg)):
-				atom_group = non_set_atoms[arg.root_config.root]
-			else:
+			if isinstance(arg, SetArg):
 				atom_group = set_atoms[arg.root_config.root]
+			else:
+				atom_group = non_set_atoms[arg.root_config.root]
+
 			for atom in arg.pset.getAtoms():
 				atom_group.append(atom)
 				atom_key = (atom, arg.root_config.root)
