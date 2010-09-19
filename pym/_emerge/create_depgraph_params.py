@@ -20,6 +20,7 @@ def create_depgraph_params(myopts, myaction):
 	if myaction == "remove":
 		myparams["remove"] = True
 		myparams["complete"] = True
+		myparams["selective"] = True
 		return myparams
 
 	if "--update" in myopts or \

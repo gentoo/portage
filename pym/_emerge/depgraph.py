@@ -118,6 +118,16 @@ class _frozen_depgraph_config(object):
 				x = Atom("*/" + x, allow_wildcard=True)
 			self.excluded_pkgs.add(x)
 
+class _depgraph_sets(object):
+	def __init__(self):
+		# contains all sets added to the graph
+		self.sets = {}
+		# contains non-set atoms given as arguments
+		self.sets['__non_set_args__'] = InternalPackageSet()
+		# contains all atoms from all sets added to the graph, including
+		# atoms given as arguments
+		self.atoms = InternalPackageSet()
+		self.atom_arg_map = {}
 
 class _dynamic_depgraph_config(object):
 
@@ -143,15 +153,9 @@ class _dynamic_depgraph_config(object):
 		#contains the args created by select_files
 		self._initial_arg_list = []
 		self.digraph = portage.digraph()
-		# contains all sets added to the graph
-		self._sets = {}
-		# contains atoms given as arguments
-		self._sets["args"] = InternalPackageSet()
-		# contains all atoms from all sets added to the graph, including
-		# atoms given as arguments
-		self._set_atoms = InternalPackageSet()
-		self._atom_arg_map = {}
-		# contains all nodes pulled in by self._set_atoms
+		# manages sets added to the graph
+		self.sets = {}
+		# contains all nodes pulled in by self.sets
 		self._set_nodes = set()
 		# Contains only Blocker -> Uninstall edges
 		self._blocker_uninstalls = digraph()
@@ -224,6 +228,7 @@ class _dynamic_depgraph_config(object):
 		self._need_restart = False
 
 		for myroot in depgraph._frozen_config.trees:
+			self.sets[myroot] = _depgraph_sets()
 			self._slot_pkg_map[myroot] = {}
 			vardb = depgraph._frozen_config.trees[myroot]["vartree"].dbapi
 			# This dbapi instance will model the state that the vdb will
@@ -640,6 +645,7 @@ class depgraph(object):
 				continue
 
 			root_config = arg.root_config
+			depgraph_sets = self._dynamic_config.sets[root_config.root]
 			arg_stack = [arg]
 			while arg_stack:
 				arg = arg_stack.pop()
@@ -655,7 +661,9 @@ class depgraph(object):
 					if not token.startswith(SETPREFIX):
 						continue
 					s = token[len(SETPREFIX):]
-					nested_set = root_config.sets.get(s)
+					nested_set = depgraph_sets.sets.get(s)
+					if nested_set is None:
+						nested_set = root_config.sets.get(s)
 					if nested_set is not None:
 						nested_arg = SetArg(arg=token, pset=nested_set,
 							root_config=root_config)
@@ -663,6 +671,7 @@ class depgraph(object):
 						if add_to_digraph:
 							self._dynamic_config.digraph.add(nested_arg, arg,
 								priority=BlockerDepPriority.instance)
+							depgraph_sets.sets[nested_arg.name] = nested_arg.pset
 
 	def _add_dep(self, dep, allow_unsatisfied=False):
 		debug = "--debug" in self._frozen_config.myopts
@@ -1457,12 +1466,10 @@ class depgraph(object):
 		return ret
 
 	def _iter_atoms_for_pkg(self, pkg):
-		# TODO: add multiple $ROOT support
-		if pkg.root != self._frozen_config.target_root:
-			return
-		atom_arg_map = self._dynamic_config._atom_arg_map
+		depgraph_sets = self._dynamic_config.sets[pkg.root]
+		atom_arg_map = depgraph_sets.atom_arg_map
 		root_config = self._frozen_config.roots[pkg.root]
-		for atom in self._dynamic_config._set_atoms.iterAtomsForPackage(pkg):
+		for atom in depgraph_sets.atoms.iterAtomsForPackage(pkg):
 			if atom.cp != pkg.cp and \
 				self._have_new_virt(pkg.root, atom.cp):
 				continue
@@ -1496,6 +1503,7 @@ class depgraph(object):
 		debug = "--debug" in self._frozen_config.myopts
 		root_config = self._frozen_config.roots[self._frozen_config.target_root]
 		sets = root_config.sets
+		depgraph_sets = self._dynamic_config.sets[root_config.root]
 		myfavorites=[]
 		myroot = self._frozen_config.target_root
 		dbs = self._dynamic_config._filtered_trees[myroot]["dbs"]
@@ -1581,10 +1589,10 @@ class depgraph(object):
 					s = x[len(SETPREFIX):]
 					if s not in sets:
 						raise portage.exception.PackageSetNotFound(s)
-					if s in self._dynamic_config._sets:
+					if s in depgraph_sets.sets:
 						continue
 					pset = sets[s]
-					self._dynamic_config._sets[s] = pset
+					depgraph_sets.sets[s] = pset
 					args.append(SetArg(arg=x, pset=pset,
 						root_config=root_config))
 					continue
@@ -1917,34 +1925,36 @@ class depgraph(object):
 
 	def _set_args(self, args):
 		"""
-		Create the "args" package set from atoms and packages given as
+		Create the "__non_set_args__" package set from atoms and packages given as
 		arguments. This method can be called multiple times if necessary.
 		The package selection cache is automatically invalidated, since
 		arguments influence package selections.
 		"""
-		args_set = self._dynamic_config._sets["args"]
-		args_set.clear()
-		for arg in args:
-			if not isinstance(arg, (AtomArg, PackageArg)):
-				continue
-			atom = arg.atom
-			if atom in args_set:
-				continue
-			args_set.add(atom)
 
-		self._dynamic_config._set_atoms.clear()
-		atom_arg_map = self._dynamic_config._atom_arg_map
-		atom_arg_map.clear()
+		set_atoms = {}
+		non_set_atoms = {}
+		for root in self._dynamic_config.sets:
+			depgraph_sets = self._dynamic_config.sets[root]
+			depgraph_sets.sets.setdefault('__non_set_args__',
+				InternalPackageSet()).clear()
+			depgraph_sets.atoms.clear()
+			depgraph_sets.atom_arg_map.clear()
+			set_atoms[root] = []
+			non_set_atoms[root] = []
 
 		# We don't add set args to the digraph here since that
 		# happens at a later stage and we don't want to make
 		# any state changes here that aren't reversed by a
 		# another call to this method.
-		set_atoms = []
 		for arg in self._expand_set_args(args, add_to_digraph=False):
+			atom_arg_map = self._dynamic_config.sets[
+				arg.root_config.root].atom_arg_map
+			if isinstance(arg, (AtomArg, PackageArg)):
+				atom_group = non_set_atoms[arg.root_config.root]
+			else:
+				atom_group = set_atoms[arg.root_config.root]
 			for atom in arg.pset.getAtoms():
-				if arg.root_config.root == self._frozen_config.target_root:
-					set_atoms.append(atom)
+				atom_group.append(atom)
 				atom_key = (atom, arg.root_config.root)
 				refs = atom_arg_map.get(atom_key)
 				if refs is None:
@@ -1953,7 +1963,12 @@ class depgraph(object):
 					if arg not in refs:
 						refs.append(arg)
 
-		self._dynamic_config._set_atoms.update(set_atoms)
+		for root in self._dynamic_config.sets:
+			depgraph_sets = self._dynamic_config.sets[root]
+			depgraph_sets.atoms.update(chain(set_atoms.get(root, []),
+				non_set_atoms.get(root, [])))
+			depgraph_sets.sets['__non_set_args__'].update(
+				non_set_atoms.get(root, []))
 
 		# Invalidate the package selection cache, since
 		# arguments influence package selections.
@@ -3155,78 +3170,47 @@ class depgraph(object):
 		for trees in self._dynamic_config._filtered_trees.values():
 			trees["porttree"].dbapi._clear_cache()
 
+		args = []
 		for root in self._frozen_config.roots:
 			if root != self._frozen_config.target_root and \
 				"remove" in self._dynamic_config.myparams:
 				# Only pull in deps for the relevant root.
 				continue
+			depgraph_sets = self._dynamic_config.sets[root]
 			if required_sets is None or root not in required_sets:
 				required_set_names = self._frozen_config._required_set_names.copy()
 			else:
+				# Removal actions may override sets with temporary
+				# replacements that have had atoms removed in order
+				# to implement --deselect behavior.
 				required_set_names = set(required_sets[root])
-			if root == self._frozen_config.target_root and \
+				depgraph_sets.sets.clear()
+				depgraph_sets.sets.update(required_sets[root])
+			if "remove" not in self._dynamic_config.myparams and \
+				root == self._frozen_config.target_root and \
 				(already_deep or "empty" in self._dynamic_config.myparams):
-				required_set_names.difference_update(self._dynamic_config._sets)
+				required_set_names.difference_update(depgraph_sets.sets)
 			if not required_set_names and \
 				not self._dynamic_config._ignored_deps and \
 				not self._dynamic_config._dep_stack:
 				continue
 			root_config = self._frozen_config.roots[root]
-			setconfig = root_config.setconfig
-			args = []
-			# Reuse existing SetArg instances when available.
-			for arg in self._dynamic_config.digraph.root_nodes():
-				if not isinstance(arg, SetArg):
-					continue
-				if arg.root_config != root_config:
-					continue
-				if arg.name in required_set_names:
-					args.append(arg)
-					required_set_names.remove(arg.name)
-			# Create new SetArg instances only when necessary.
 			for s in required_set_names:
-				if required_sets is None or root not in required_sets:
+				pset = depgraph_sets.sets.get(s)
+				if pset is None:
 					pset = root_config.sets[s]
-				else:
-					pset = required_sets[root][s]
 				atom = SETPREFIX + s
 				args.append(SetArg(arg=atom, pset=pset,
 					root_config=root_config))
-				if root == self._frozen_config.target_root:
-					self._dynamic_config._sets[s] = pset
-			vardb = root_config.trees["vartree"].dbapi
-			while args:
-				arg = args.pop()
-				for atom in arg.pset.getAtoms():
-					self._dynamic_config._dep_stack.append(
-						Dependency(atom=atom, root=root, parent=arg))
 
-				# Removal actions may override sets with temporary
-				# replacements that have had atoms removed in order
-				# to implement --deselect behavior.
-				if required_sets is None:
-					set_overrides = {}
-				else:
-					set_overrides = required_sets.get(root, {})
+		self._set_args(args)
+		for arg in self._expand_set_args(args, add_to_digraph=True):
+			for atom in arg.pset.getAtoms():
+				self._dynamic_config._dep_stack.append(
+					Dependency(atom=atom, root=arg.root_config.root,
+						parent=arg))
 
-				# Traverse nested sets and add them to the stack
-				# if they're not already in the graph. Also, graph
-				# edges between parent and nested sets.
-				for token in arg.pset.getNonAtoms():
-					if not token.startswith(SETPREFIX):
-						continue
-					s = token[len(SETPREFIX):]
-					nested_set = set_overrides.get(s)
-					if nested_set is None:
-						nested_set = root_config.sets.get(s)
-					if nested_set is not None:
-						nested_arg = SetArg(arg=token, pset=nested_set,
-							root_config=root_config)
-						if nested_arg not in self._dynamic_config.digraph:
-							args.append(nested_arg)
-						self._dynamic_config.digraph.add(nested_arg, arg,
-							priority=BlockerDepPriority.instance)
-
+		if True:
 			if self._dynamic_config._ignored_deps:
 				self._dynamic_config._dep_stack.extend(self._dynamic_config._ignored_deps)
 				self._dynamic_config._ignored_deps = []
@@ -3238,6 +3222,8 @@ class depgraph(object):
 			# that are initially satisfied.
 			while self._dynamic_config._unsatisfied_deps:
 				dep = self._dynamic_config._unsatisfied_deps.pop()
+				vardb = self._frozen_config.roots[
+					dep.root].trees["vartree"].dbapi
 				matches = vardb.match_pkgs(dep.atom)
 				if not matches:
 					self._dynamic_config._initially_unsatisfied_deps.append(dep)
@@ -5544,7 +5530,8 @@ class depgraph(object):
 
 		if self._dynamic_config._missing_args:
 			world_problems = False
-			if "world" in self._dynamic_config._sets:
+			if "world" in self._dynamic_config.sets[
+				self._frozen_config.target_root].sets:
 				# Filter out indirect members of world (from nested sets)
 				# since only direct members of world are desired here.
 				world_set = self._frozen_config.roots[self._frozen_config.target_root].sets["selected"]
@@ -5655,7 +5642,8 @@ class depgraph(object):
 		if hasattr(world_set, "load"):
 			world_set.load() # maybe it's changed on disk
 
-		args_set = self._dynamic_config._sets["args"]
+		args_set = self._dynamic_config.sets[
+			self._frozen_config.target_root].sets['__non_set_args__']
 		portdb = self._frozen_config.trees[self._frozen_config.target_root]["porttree"].dbapi
 		added_favorites = set()
 		for x in self._dynamic_config._set_nodes:
@@ -5676,8 +5664,11 @@ class depgraph(object):
 					root, portage.VDB_PATH, pkg_key, "PROVIDE"), noiselevel=-1)
 				del e
 		all_added = []
-		for k in self._dynamic_config._sets:
-			if k in ("args", "selected", "world") or \
+		for arg in self._dynamic_config._initial_arg_list:
+			if not isinstance(arg, SetArg):
+				continue
+			k = arg.name
+			if k in ("selected", "world") or \
 				not root_config.sets[k].world_candidate:
 				continue
 			s = SETPREFIX + k
@@ -5773,7 +5764,8 @@ class depgraph(object):
 			self._dynamic_config.myparams["deep"] = True
 
 			favorites = resume_data.get("favorites")
-			args_set = self._dynamic_config._sets["args"]
+			args_set = self._dynamic_config.sets[
+				self._frozen_config.target_root].sets['__non_set_args__']
 			if isinstance(favorites, list):
 				args = self._load_favorites(favorites)
 			else:
@@ -5859,6 +5851,7 @@ class depgraph(object):
 		"""
 		root_config = self._frozen_config.roots[self._frozen_config.target_root]
 		sets = root_config.sets
+		depgraph_sets = self._dynamic_config.sets[root_config.root].sets
 		args = []
 		for x in favorites:
 			if not isinstance(x, basestring):
@@ -5869,10 +5862,10 @@ class depgraph(object):
 				s = x[len(SETPREFIX):]
 				if s not in sets:
 					continue
-				if s in self._dynamic_config._sets:
+				if s in depgraph_sets.sets:
 					continue
 				pset = sets[s]
-				self._dynamic_config._sets[s] = pset
+				depgraph_sets.sets[s] = pset
 				args.append(SetArg(arg=x, pset=pset,
 					root_config=root_config))
 			else:
