@@ -1,3 +1,6 @@
+# Copyright 2010 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+
 from __future__ import print_function
 
 from _emerge.AtomArg import AtomArg
@@ -281,6 +284,11 @@ class slot_conflict_handler(object):
 							op = atom.operator
 							ver = cpv_getversion(atom.cpv)
 							slot = atom.slot
+
+							if op == "=*":
+								op = "="
+								ver += "*"
+
 							atom_str = atom_str.replace(op, colorize("BAD", op), 1)
 							
 							start = atom_str.rfind(ver)
