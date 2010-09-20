@@ -906,21 +906,27 @@ class depgraph(object):
 							conflict_atoms = self._dynamic_config._slot_conflict_parent_atoms.intersection(parent_atoms)
 							if conflict_atoms:
 								parent_atoms = conflict_atoms
-						if pkg >= existing_node:
+
+						if pkg > existing_node:
+							to_be_masked = pkg
+						else:
+							to_be_masked = existing_node
+
+						if pkg.cpv == existing_node.cpv:
 							# We only care about the parent atoms
 							# when they trigger a downgrade.
 							parent_atoms = set()
 
 						self._dynamic_config._runtime_pkg_mask.setdefault(
-							existing_node, {})["slot conflict"] = parent_atoms
+							to_be_masked, {})["slot conflict"] = parent_atoms
 						self._dynamic_config._need_restart = True
 						if "--debug" in self._frozen_config.myopts:
 							msg = []
 							msg.append("")
 							msg.append("")
 							msg.append("backtracking due to slot conflict:")
-							msg.append("   package: %s" % existing_node)
-							msg.append("      slot: %s" % existing_node.slot_atom)
+							msg.append("   package: %s" % to_be_masked)
+							msg.append("      slot: %s" % to_be_masked.slot_atom)
 							msg.append("   parents: %s" % \
 								[(str(parent), atom) \
 								for parent, atom in parent_atoms])
