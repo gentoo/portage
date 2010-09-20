@@ -25,6 +25,9 @@ class SubProcess(AbstractPollTask):
 			return self.returncode
 
 		try:
+			# With waitpid and WNOHANG, only check the
+			# first element of the tuple since the second
+			# element may vary (bug #337465).
 			retval = os.waitpid(self.pid, os.WNOHANG)
 		except OSError as e:
 			if e.errno != errno.ECHILD:
@@ -32,7 +35,7 @@ class SubProcess(AbstractPollTask):
 			del e
 			retval = (self.pid, 1)
 
-		if retval == (0, 0):
+		if retval[0] == 0:
 			return None
 		self._set_returncode(retval)
 		return self.returncode
@@ -81,6 +84,9 @@ class SubProcess(AbstractPollTask):
 				return self.returncode
 
 		try:
+			# With waitpid and WNOHANG, only check the
+			# first element of the tuple since the second
+			# element may vary (bug #337465).
 			wait_retval = os.waitpid(self.pid, os.WNOHANG)
 		except OSError as e:
 			if e.errno != errno.ECHILD:
@@ -88,7 +94,7 @@ class SubProcess(AbstractPollTask):
 			del e
 			self._set_returncode((self.pid, 1))
 		else:
-			if wait_retval != (0, 0):
+			if wait_retval[0] != 0:
 				self._set_returncode(wait_retval)
 			else:
 				try:
