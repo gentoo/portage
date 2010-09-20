@@ -63,10 +63,8 @@ an error to call any of these functions from any other phase.
 <section id='package-ebuild-eapi-4_pre1-helpers-docompress-command'>
 <title>docompress helper</title>
 <para>
-Add each of its arguments to the inclusion list. If the first argument is -x,
-add each subsequent argument to the exclusion list instead. If the first argument is -s, output
-the suffix used for compressed files (e.g. .bz2); no further arguments are allowed in this
-case.
+If the first argument is -x, add each of its subsequent arguments to the
+exclusion list. Otherwise, add each argument to the inclusion list.
 </para>
 </section>
 </section>
