@@ -2177,7 +2177,10 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				except portage.exception.AlarmSignal:
 					# timed out
 					print('timed out')
-					if mypids and os.waitpid(mypids[0], os.WNOHANG) == (0,0):
+					# With waitpid and WNOHANG, only check the
+					# first element of the tuple since the second
+					# element may vary (bug #337465).
+					if mypids and os.waitpid(mypids[0], os.WNOHANG)[0] == 0:
 						os.kill(mypids[0], signal.SIGTERM)
 						os.waitpid(mypids[0], 0)
 					# This is the same code rsync uses for timeout.

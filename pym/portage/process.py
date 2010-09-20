@@ -135,7 +135,10 @@ def cleanup():
 	while spawned_pids:
 		pid = spawned_pids.pop()
 		try:
-			if os.waitpid(pid, os.WNOHANG) == (0, 0):
+			# With waitpid and WNOHANG, only check the
+			# first element of the tuple since the second
+			# element may vary (bug #337465).
+			if os.waitpid(pid, os.WNOHANG)[0] == 0:
 				os.kill(pid, signal.SIGTERM)
 				os.waitpid(pid, 0)
 		except OSError:
@@ -289,7 +292,10 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 			# If it failed, kill off anything else that
 			# isn't dead yet.
 			for pid in mypids:
-				if os.waitpid(pid, os.WNOHANG) == (0,0):
+				# With waitpid and WNOHANG, only check the
+				# first element of the tuple since the second
+				# element may vary (bug #337465).
+				if os.waitpid(pid, os.WNOHANG)[0] == 0:
 					os.kill(pid, signal.SIGTERM)
 					os.waitpid(pid, 0)
 				spawned_pids.remove(pid)
