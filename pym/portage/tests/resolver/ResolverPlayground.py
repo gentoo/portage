@@ -12,6 +12,7 @@ from portage.dbapi.porttree import portagetree
 from portage.dbapi.bintree import binarytree
 from portage.dep import Atom, _repo_separator
 from portage.package.ebuild.config import config
+from portage.package.ebuild.digestgen import digestgen
 from portage._sets import load_default_config
 from portage.versions import catsplit
 
@@ -139,6 +140,8 @@ class ResolverPlayground(object):
 			f.close()
 
 	def _create_ebuild_manifests(self, ebuilds):
+		tmpsettings = config(clone=self.settings)
+		tmpsettings['PORTAGE_QUIET'] = '1'
 		for cpv in ebuilds:
 			a = Atom("=" + cpv, allow_repo=True)
 			repo = a.repo
@@ -149,12 +152,10 @@ class ResolverPlayground(object):
 			ebuild_dir = os.path.join(repo_dir, a.cp)
 			ebuild_path = os.path.join(ebuild_dir, a.cpv.split("/")[1] + ".ebuild")
 
-			portage.util.noiselimit = -1
-			tmpsettings = config(clone=self.settings)
 			portdb = self.trees[self.root]["porttree"].dbapi
-			portage.doebuild(ebuild_path, "digest", self.root, tmpsettings,
-				tree="porttree", mydbapi=portdb)
-			portage.util.noiselimit = 0
+			tmpsettings['O'] = ebuild_dir
+			if not digestgen(mysettings=tmpsettings, myportdb=portdb):
+				raise AssertionError('digest creation failed for %s' % ebuild_path)
 
 	def _create_installed(self, installed):
 		for cpv in installed:
