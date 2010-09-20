@@ -45,19 +45,24 @@ class MaskManager(object):
 		# PREFIX LOCAL: Prefix has unmasks for stuff in profiles/package.mask
 		# If we don't consider the repomasks here, those unmasks are
 		# lost, causing lots of issues (e.g. Portage being masked)
-		for x in profiles:
-			#profile_pkgmasklines.append(grabfile_package(
-			profile_pkgmasklines = grabfile_package(
-				os.path.join(x, "package.mask"), recursive=1, remember_source_file=True, verify_eapi=True)#)
-			#profile_pkgunmasklines.append(grabfile_package(
-			profile_pkgunmasklines = grabfile_package(
-				os.path.join(x, "package.unmask"), recursive=1, remember_source_file=True, verify_eapi=True)#)
-		#profile_pkgmasklines = stack_lists(profile_pkgmasklines, incremental=1, \
-		#	remember_source_file=True, warn_for_unmatched_removal=True,
-		#	strict_warn_for_unmatched_removal=strict_umatched_removal)
-		#profile_pkgunmasklines = stack_lists(profile_pkgunmasklines, incremental=1, \
-		#	remember_source_file=True, warn_for_unmatched_removal=True,
-		#	strict_warn_for_unmatched_removal=strict_umatched_removal)
+		# for minimal/concentrated code change, empty repo_pkgmasklines here
+		# such that they don't count double
+		repo_pkgmasklines = []
+		repo_pkgunmasklines = []
+		all_profiles = []
+		all_profiles.extend(repo_profiles)
+		all_profiles.extend(profiles)
+		for x in all_profiles:
+			profile_pkgmasklines.append(grabfile_package(
+				os.path.join(x, "package.mask"), recursive=1, remember_source_file=True, verify_eapi=True))
+			profile_pkgunmasklines.append(grabfile_package(
+				os.path.join(x, "package.unmask"), recursive=1, remember_source_file=True, verify_eapi=True))
+		profile_pkgmasklines = stack_lists(profile_pkgmasklines, incremental=1, \
+			remember_source_file=True, warn_for_unmatched_removal=True,
+			strict_warn_for_unmatched_removal=strict_umatched_removal)
+		profile_pkgunmasklines = stack_lists(profile_pkgunmasklines, incremental=1, \
+			remember_source_file=True, warn_for_unmatched_removal=True,
+			strict_warn_for_unmatched_removal=strict_umatched_removal)
 		# PREFIX LOCAL
 
 		#Read /etc/portage/package.mask. Don't stack it to allow the user to
