@@ -121,6 +121,7 @@ class EbuildIpc(object):
 					return 2
 
 		input_file = None
+		buf = array.array('B')
 
 		start_time = time.time()
 		while True:
@@ -133,7 +134,6 @@ class EbuildIpc(object):
 						input_file = open(self.ipc_out_fifo, 'rb', 0)
 
 					# Read the whole pickle in a single atomic read() call.
-					buf = array.array('B')
 					try:
 						buf.fromfile(input_file, self._BUFSIZE)
 					except (EOFError, IOError) as e:
@@ -145,7 +145,9 @@ class EbuildIpc(object):
 				finally:
 					portage.exception.AlarmSignal.unregister()
 			except portage.exception.AlarmSignal:
-				if self._daemon_is_alive():
+				if buf:
+					break
+				elif self._daemon_is_alive():
 					self._timeout_retry_msg(start_time,
 						portage.localization._('during read'))
 				else:
