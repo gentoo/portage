@@ -159,7 +159,14 @@ class EbuildIpc(object):
 
 		rval = 2
 
-		if buf:
+		if not buf:
+
+			portage.util.writemsg_level(
+				"ebuild-ipc: %s\n" % \
+				(portage.localization._('read failed'),),
+				level=logging.ERROR, noiselevel=-1)
+
+		else:
 
 			try:
 				reply = pickle.loads(buf.tostring())
