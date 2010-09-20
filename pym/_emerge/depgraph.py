@@ -411,7 +411,6 @@ class depgraph(object):
 		if not missed_updates:
 			return
 
-		write = sys.stderr.write
 		backtrack_masked = []
 
 		for pkg, parent_atoms in missed_updates:
@@ -425,31 +424,29 @@ class depgraph(object):
 				backtrack_masked.append((pkg, parent_atoms))
 				continue
 
-			write("\n!!! The following update has been skipped " + \
-				"due to unsatisfied dependencies:\n\n")
+			writemsg("\n!!! The following update has been skipped " + \
+				"due to unsatisfied dependencies:\n\n", noiselevel=-1)
 
-			write(str(pkg.slot_atom))
+			writemsg(str(pkg.slot_atom), noiselevel=-1)
 			if pkg.root != '/':
-				write(" for %s" % (pkg.root,))
-			write("\n")
+				writemsg(" for %s" % (pkg.root,), noiselevel=-1)
+			writemsg("\n", noiselevel=-1)
 
 			for parent, root, atom in parent_atoms:
 				self._show_unsatisfied_dep(root, atom, myparent=parent)
-				write("\n")
+				writemsg("\n", noiselevel=-1)
 
 		if backtrack_masked:
 			# These are shown in abbreviated form, in order to avoid terminal
 			# flooding from mask messages as reported in bug #285832.
-			write("\n!!! The following update(s) have been skipped " + \
+			writemsg("\n!!! The following update(s) have been skipped " + \
 				"due to unsatisfied dependencies\n" + \
-				"!!! triggered by backtracking:\n\n")
+				"!!! triggered by backtracking:\n\n", noiselevel=-1)
 			for pkg, parent_atoms in backtrack_masked:
-				write(str(pkg.slot_atom))
+				writemsg(str(pkg.slot_atom), noiselevel=-1)
 				if pkg.root != '/':
-					write(" for %s" % (pkg.root,))
-				write("\n")
-
-		sys.stderr.flush()
+					writemsg(" for %s" % (pkg.root,), noiselevel=-1)
+				writemsg("\n", noiselevel=-1)
 
 	def _show_missed_update_slot_conflicts(self, missed_updates):
 
@@ -485,8 +482,7 @@ class depgraph(object):
 				msg.append("\n")
 			msg.append("\n")
 
-		sys.stderr.write("".join(msg))
-		sys.stderr.flush()
+		writemsg("".join(msg), noiselevel=-1)
 
 	def _show_slot_collision_notice(self):
 		"""Show an informational message advising the user to mask one of the

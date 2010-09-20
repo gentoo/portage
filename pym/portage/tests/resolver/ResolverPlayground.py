@@ -410,7 +410,6 @@ class ResolverPlayground(object):
 	def run(self, atoms, options={}, action=None):
 		options = options.copy()
 		options["--pretend"] = True
-		options["--quiet"] = True
 		if self.debug:
 			options["--debug"] = True
 
@@ -432,6 +431,7 @@ class ResolverPlayground(object):
 				params = create_depgraph_params(options, action)
 				success, depgraph, favorites = backtrack_depgraph(
 					self.settings, self.trees, options, params, action, atoms, None)
+				depgraph._show_merge_list()
 				depgraph.display_problems()
 				result = ResolverPlaygroundResult(atoms, success, depgraph, favorites)
 		finally:
