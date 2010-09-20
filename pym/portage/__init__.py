@@ -545,7 +545,7 @@ if VERSION == 'HEAD':
 				status, output = subprocess_getstatusoutput((
 					"cd %s ; git describe --tags || exit $? ; " + \
 					"if [ -n \"`git diff-index --name-only --diff-filter=M HEAD`\" ] ; " + \
-					"then echo modified ; git rev-list --pretty=raw -n 1 HEAD ; fi ; " + \
+					"then echo modified ; git rev-list --format=%%ct -n 1 HEAD ; fi ; " + \
 					"exit 0") % _shell_quote(PORTAGE_BASE_PATH))
 				if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
 					output_lines = output.splitlines()
@@ -559,15 +559,11 @@ if VERSION == 'HEAD':
 								VERSION = "%s_p%s" %(VERSION, version_split[1])
 							if len(output_lines) > 1 and output_lines[1] == 'modified':
 								head_timestamp = None
-								for line in output_lines[2:]:
-									if line.startswith('author '):
-										author_split = line.split()
-										if len(author_split) > 1:
-											try:
-												head_timestamp = long(author_split[-2])
-											except ValueError:
-												pass
-										break
+								if len(output_lines) > 3:
+									try:
+										head_timestamp = long(output_lines[3])
+									except ValueError:
+										pass
 								timestamp = long(time.time())
 								if head_timestamp is not None and timestamp > head_timestamp:
 									timestamp = timestamp - head_timestamp
