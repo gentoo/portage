@@ -3250,6 +3250,11 @@ class depgraph(object):
 		failures for some reason (package does not exist or is
 		corrupt).
 		"""
+		if type_name == "ebuild" and myrepo is None:
+			raise ValueError("Need repository to create Package for ebuild.")
+		elif myrepo is None:
+			myrepo = type_name
+
 		operation = "merge"
 		if installed or onlydeps:
 			operation = "nomerge"
@@ -3275,7 +3280,16 @@ class depgraph(object):
 			pkg = Package(built=(type_name != "ebuild"), cpv=cpv,
 				installed=installed, metadata=metadata, onlydeps=onlydeps,
 				root_config=root_config, type_name=type_name)
-			self._frozen_config._pkg_cache[pkg] = pkg
+
+			if type_name == "ebuild":
+				self._frozen_config._pkg_cache[pkg] = pkg
+			else:
+				#For installed and binary packages we don't care for the repo when it comes to
+				#caching, because there can only be one cpv. So overwrite the repo key with type_name.
+				#Make sure that .operation is computed.
+				pkg._get_hash_key()
+				self._frozen_config._pkg_cache[
+					(pkg.type_name, pkg.root, pkg.cpv, pkg.operation, pkg.type_name)] = pkg
 
 			if not self._pkg_visibility_check(pkg) and \
 				'LICENSE' in pkg.masks and len(pkg.masks) == 1:
