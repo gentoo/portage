@@ -2478,16 +2478,16 @@ class depgraph(object):
 					except portage.exception.PackageNotFound:
 						pass
 					else:
-						if pkg.cp != atom.cp:
-							# A cpv can be returned from dbapi.match() as an
-							# old-style virtual match even in cases when the
-							# package does not actually PROVIDE the virtual.
-							# Filter out any such false matches here.
-							if not InternalPackageSet(initial_atoms=(atom,)
-								).findAtomForPackage(pkg, modified_use=self._pkg_use_enabled(pkg)):
-								continue
-						if not portage.match_from_list(atom, [pkg]):
-							#There is a matching cpv in the repo, but it violates parts of the atom.
+						# A cpv can be returned from dbapi.match() as an
+						# old-style virtual match even in cases when the
+						# package does not actually PROVIDE the virtual.
+						# Filter out any such false matches here.
+
+						# Make sure that cpv from the current repo satisfies the atom.
+						# This might not be the case if there are several repos with
+						# the same cpv, but different metadata keys, like SLOT.
+						if not InternalPackageSet(initial_atoms=(atom,)
+							).findAtomForPackage(pkg, modified_use=self._pkg_use_enabled(pkg)):
 							continue
 						yield pkg
 
