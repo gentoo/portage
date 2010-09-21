@@ -36,6 +36,14 @@ class AbstractEbuildProcess(SpawnProcess):
 	# is left so we can temporarily disable it if any issues arise.
 	_enable_ipc_daemon = True
 
+	# EbuildIpcDaemon does not work on these platforms yet:
+	# | Bug #  | Platform
+	# |--------|------------
+	# | 337465 | FreeBSD
+	# |        | Darwin
+	if platform.system() in ('Darwin', 'FreeBSD',):
+		_enable_ipc_daemon = False
+
 	def __init__(self, **kwargs):
 		SpawnProcess.__init__(self, **kwargs)
 		if self.phase is None:
