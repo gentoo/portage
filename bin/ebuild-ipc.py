@@ -112,6 +112,13 @@ class EbuildIpc(object):
 					self._timeout_retry_msg(start_time, msg)
 				else:
 					self._no_daemon_msg()
+					try:
+						os.kill(pid, signal.SIGKILL)
+						os.wait()
+					except OSError as e:
+						portage.util.writemsg_level(
+							"ebuild-ipc: %s\n" % (e,),
+							level=logging.ERROR, noiselevel=-1)
 					return 2
 
 		if not os.WIFEXITED(wait_retval[1]):
@@ -200,7 +207,7 @@ class EbuildIpc(object):
 			portage.util.writemsg_level(
 				"ebuild-ipc: %s: %s\n" % (msg,
 				portage.localization._('subprocess failure: %s') % \
-				wait_retval[1]), level=logging.ERROR, noiselevel=-1)
+				retval), level=logging.ERROR, noiselevel=-1)
 			return retval
 
 		if not self._daemon_is_alive():
