@@ -6,7 +6,7 @@ __all__ = (
 )
 
 from portage import os
-from portage.dep import ExtendedAtomDict
+from portage.dep import ExtendedAtomDict, _repo_separator, _slot_separator
 from portage.localization import _
 from portage.package.ebuild._config.helper import ordered_by_atom_specificity
 from portage.util import grabdict_package, stack_lists, writemsg
@@ -52,11 +52,11 @@ class KeywordsManager(object):
 		if user_config:
 			pkgdict = grabdict_package(
 				os.path.join(abs_user_config, "package.keywords"),
-				recursive=1, allow_wildcard=True, verify_eapi=False)
+				recursive=1, allow_wildcard=True, allow_repo=True, verify_eapi=False)
 
 			for k, v in grabdict_package(
 				os.path.join(abs_user_config, "package.accept_keywords"),
-				recursive=1, allow_wildcard=True, verify_eapi=False).items():
+				recursive=1, allow_wildcard=True, allow_repo=True, verify_eapi=False).items():
 				pkgdict.setdefault(k, []).extend(v)
 
 			accept_keywords_defaults = global_accept_keywords.split()
@@ -70,9 +70,11 @@ class KeywordsManager(object):
 					v = tuple(v)
 				self.pkeywordsdict.setdefault(k.cp, {})[k] = v
 
-	def getKeywords(self, cpv, slot, keywords):
+	def getKeywords(self, cpv, slot, keywords, repo):
 		cp = cpv_getkey(cpv)
-		pkg = "%s:%s" % (cpv, slot)
+		pkg = "".join((cpv, _slot_separator, slot))
+		if repo:
+			pkg = "".join((pkg, _repo_separator, repo))
 		keywords = [[x for x in keywords.split() if x != "-*"]]
 		for pkeywords_dict in self._pkeywords_list:
 			cpdict = pkeywords_dict.get(cp)
@@ -82,7 +84,7 @@ class KeywordsManager(object):
 					keywords.extend(pkg_keywords)
 		return stack_lists(keywords, incremental=True)
 
-	def getMissingKeywords(self, cpv, slot, keywords, global_accept_keywords, backuped_accept_keywords):
+	def getMissingKeywords(self, cpv, slot, keywords, repo, global_accept_keywords, backuped_accept_keywords):
 		"""
 		Take a package and return a list of any KEYWORDS that the user may
 		need to accept for the given package. If the KEYWORDS are empty
@@ -108,7 +110,7 @@ class KeywordsManager(object):
 		# doesn't work properly as negative values are lost in the config
 		# object (bug #139600)
 		egroups = backuped_accept_keywords.split()
-		mygroups = self.getKeywords(cpv, slot, keywords)
+		mygroups = self.getKeywords(cpv, slot, keywords, repo)
 		# Repoman may modify this attribute as necessary.
 		pgroups = global_accept_keywords.split()
 		matches = False
@@ -134,7 +136,7 @@ class KeywordsManager(object):
 		if pkgdict:
 			cpv_slot = "%s:%s" % (cpv, slot)
 			pkg_accept_keywords = \
-				ordered_by_atom_specificity(pkgdict, cpv_slot)
+				ordered_by_atom_specificity(pkgdict, cpv_slot, repo=repo)
 			if pkg_accept_keywords:
 				for x in pkg_accept_keywords:
 					pgroups.extend(x)

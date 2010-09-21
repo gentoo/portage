@@ -52,7 +52,7 @@ class UseManager(object):
 		ret = ExtendedAtomDict(dict)
 		if user_config:
 			pusedict = grabdict_package(
-				os.path.join(location, file_name), recursive=1, allow_wildcard=True, verify_eapi=False)
+				os.path.join(location, file_name), recursive=1, allow_wildcard=True, allow_repo=True, verify_eapi=False)
 			for k, v in pusedict.items():
 				ret.setdefault(k.cp, {})[k] = v
 
