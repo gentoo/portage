@@ -2486,6 +2486,9 @@ class depgraph(object):
 							if not InternalPackageSet(initial_atoms=(atom,)
 								).findAtomForPackage(pkg, modified_use=self._pkg_use_enabled(pkg)):
 								continue
+						if not portage.match_from_list(atom, [pkg]):
+							#There is a matching cpv in the repo, but it violates parts of the atom.
+							continue
 						yield pkg
 
 	def _select_pkg_highest_available(self, root, atom, onlydeps=False):

@@ -93,12 +93,11 @@ class MultirepoTestCase(TestCase):
 				success = True,
 				check_repo_names = True,
 				mergelist = ["dev-libs/E-1::repo2"]),
-			#FAIL
-			#~ ResolverPlaygroundTestCase(
-				#~ ["dev-libs/E:1"],
-				#~ success = True,
-				#~ check_repo_names = True,
-				#~ mergelist = ["dev-libs/E-1::repo2"]),
+			ResolverPlaygroundTestCase(
+				["dev-libs/E:1"],
+				success = True,
+				check_repo_names = True,
+				mergelist = ["dev-libs/E-1::repo2"]),
 			ResolverPlaygroundTestCase(
 				["dev-libs/F:1"],
 				success = True,
