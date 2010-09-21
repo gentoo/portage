@@ -114,8 +114,7 @@ class EbuildIpc(object):
 					self._no_daemon_msg()
 					return 2
 
-		if not (os.WIFEXITED(wait_retval[1]) and \
-			os.WEXITSTATUS(wait_retval[1]) == os.EX_OK):
+		if not os.WIFEXITED(wait_retval[1]):
 			portage.util.writemsg_level(
 				"ebuild-ipc: %s: %s\n" % (msg,
 				portage.localization._('subprocess failure: %s') % \
@@ -123,7 +122,7 @@ class EbuildIpc(object):
 				level=logging.ERROR, noiselevel=-1)
 			return 2
 
-		return os.EX_OK
+		return os.WEXITSTATUS(wait_retval[1])
 
 	def _receive_reply(self):
 
@@ -195,8 +194,13 @@ class EbuildIpc(object):
 			output_file.close()
 			os._exit(os.EX_OK)
 
-		retval = self._wait(pid, portage.localization._('during write'))
+		msg = portage.localization._('during write')
+		retval = self._wait(pid, msg)
 		if retval != os.EX_OK:
+			portage.util.writemsg_level(
+				"ebuild-ipc: %s: %s\n" % (msg,
+				portage.localization._('subprocess failure: %s') % \
+				wait_retval[1]), level=logging.ERROR, noiselevel=-1)
 			return retval
 
 		if not self._daemon_is_alive():
