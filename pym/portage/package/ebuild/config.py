@@ -33,7 +33,7 @@ from portage.const import _SANDBOX_COMPAT_LEVEL
 from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
 from portage.dbapi.vartree import vartree
-from portage.dep import Atom, isvalidatom, match_from_list, use_reduce
+from portage.dep import Atom, isvalidatom, match_from_list, use_reduce, _repo_separator, _slot_separator
 from portage.eapi import eapi_exports_AA, eapi_supports_prefix, eapi_exports_replace_vars
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.exception import InvalidDependString, PortageException
@@ -311,7 +311,7 @@ class config(object):
 			locations_manager.set_root_override(make_conf.get("ROOT"))
 			target_root = locations_manager.target_root
 			eroot = locations_manager.eroot
-			global_config_path = locations_manager.global_config_path
+			self.global_config_path = locations_manager.global_config_path
 
 			if config_incrementals is None:
 				self.incrementals = INCREMENTALS
@@ -407,7 +407,7 @@ class config(object):
 
 			self.configdict["env"] = LazyItemsDict(self.backupenv)
 
-			for x in (global_config_path,):
+			for x in (self.global_config_path,):
 				self.mygcfg = getconfig(os.path.join(x, "make.globals"),
 					expand=expand_map)
 				if self.mygcfg:
@@ -554,7 +554,8 @@ class config(object):
 			if local_config:
 				#package.properties
 				propdict = grabdict_package(os.path.join(
-					abs_user_config, "package.properties"), recursive=1, allow_wildcard=True, verify_eapi=False)
+					abs_user_config, "package.properties"), recursive=1, allow_wildcard=True, \
+					allow_repo=True, verify_eapi=False)
 				v = propdict.pop("*/*", None)
 				if v is not None:
 					if "ACCEPT_PROPERTIES" in self.configdict["conf"]:
@@ -566,7 +567,8 @@ class config(object):
 
 				#package.env
 				penvdict = grabdict_package(os.path.join(
-					abs_user_config, "package.env"), recursive=1, allow_wildcard=True, verify_eapi=False)
+					abs_user_config, "package.env"), recursive=1, allow_wildcard=True, \
+					allow_repo=True, verify_eapi=False)
 				v = penvdict.pop("*/*", None)
 				if v is not None:
 					global_wildcard_conf = {}
@@ -964,7 +966,7 @@ class config(object):
 				use = frozenset(settings['PORTAGE_USE'].split())
 
 			values['ACCEPT_LICENSE'] = settings._license_manager.get_prunned_accept_license( \
-				settings.mycpv, use, settings['LICENSE'], settings['SLOT'])
+				settings.mycpv, use, settings['LICENSE'], settings['SLOT'], settings['repository'])
 			values['PORTAGE_RESTRICT'] = self._restrict(use, settings)
 			return values
 
@@ -1423,7 +1425,7 @@ class config(object):
 		@rtype: String
 		@return: An matching atom string or None if one is not found.
 		"""
-		return self._mask_manager.getMaskAtom(cpv, metadata["SLOT"])
+		return self._mask_manager.getMaskAtom(cpv, metadata["SLOT"], metadata.get('repository'))
 
 	def _getProfileMaskAtom(self, cpv, metadata):
 		"""
@@ -1443,7 +1445,10 @@ class config(object):
 		cp = cpv_getkey(cpv)
 		profile_atoms = self.prevmaskdict.get(cp)
 		if profile_atoms:
-			pkg_list = ["%s:%s" % (cpv, metadata["SLOT"])]
+			pkg = "".join((cpv, _slot_separator, metadata["SLOT"]))
+			if 'repository' in metadata:
+				pkg = "".join((pkg, _repo_separator, metadata['repository']))
+			pkg_list = [pkg]
 			for x in profile_atoms:
 				if match_from_list(x, pkg_list):
 					continue
@@ -1451,7 +1456,8 @@ class config(object):
 		return None
 
 	def _getKeywords(self, cpv, metadata):
-		return self._keywords_manager.getKeywords(cpv, metadata["SLOT"], metadata.get("KEYWORDS", ""))
+		return self._keywords_manager.getKeywords(cpv, metadata["SLOT"], \
+			metadata.get("KEYWORDS", ""), metadata.get("repository"))
 
 	def _getMissingKeywords(self, cpv, metadata):
 		"""
@@ -1476,7 +1482,8 @@ class config(object):
 		global_accept_keywords = self["ACCEPT_KEYWORDS"]
 
 		return self._keywords_manager.getMissingKeywords(cpv, metadata["SLOT"], \
-			metadata.get("KEYWORDS", ""), global_accept_keywords, backuped_accept_keywords)
+			metadata.get("KEYWORDS", ""), metadata.get('repository'), \
+			global_accept_keywords, backuped_accept_keywords)
 
 	def _getMissingLicenses(self, cpv, metadata):
 		"""
@@ -1493,7 +1500,7 @@ class config(object):
 		@return: A list of licenses that have not been accepted.
 		"""
 		return self._license_manager.getMissingLicenses( \
-			cpv, metadata["USE"], metadata["LICENSE"], metadata["SLOT"])
+			cpv, metadata["USE"], metadata["LICENSE"], metadata["SLOT"], metadata.get('repository'))
 
 	def _getMissingProperties(self, cpv, metadata):
 		"""
@@ -1514,7 +1521,7 @@ class config(object):
 		cpdict = self._ppropertiesdict.get(cp)
 		if cpdict:
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			pproperties_list = ordered_by_atom_specificity(cpdict, cpv_slot)
+			pproperties_list = ordered_by_atom_specificity(cpdict, cpv_slot, repo=metadata.get('repository'))
 			if pproperties_list:
 				accept_properties = list(self._accept_properties)
 				for x in pproperties_list:
