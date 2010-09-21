@@ -1609,6 +1609,16 @@ _ebuild_phase_funcs() {
 
 				eval "default() { _eapi2_$phase_func \"\$@\" ; }"
 
+				case $eapi in
+					2|3)
+						;;
+					*)
+						eval "default_src_install() { _eapi4_src_install \"\$@\" ; }"
+						[[ $phase_func = src_install ]] && \
+							eval "default() { _eapi4_$phase_func \"\$@\" ; }"
+						;;
+				esac
+
 			else
 
 				for x in $default_phases ; do
