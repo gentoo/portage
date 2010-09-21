@@ -68,9 +68,5 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 		# File streams are in unbuffered mode since we do atomic
 		# read and write of whole pickles.
 		output_file = open(self.output_fifo, 'wb', 0)
-
-		# Write the whole pickle in a single atomic write() call,
-		# since the reader is in non-blocking mode and we want
-		# it to get the whole pickle at once.
 		output_file.write(pickle.dumps(reply))
 		output_file.close()
