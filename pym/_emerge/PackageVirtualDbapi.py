@@ -135,7 +135,7 @@ class PackageVirtualDbapi(dbapi):
 		del self._cpv_map[pkg.cpv]
 		self._clear_cache()
 
-	def aux_get(self, cpv, wants):
+	def aux_get(self, cpv, wants, myrepo=None):
 		metadata = self._cpv_map[cpv].metadata
 		return [metadata.get(x, "") for x in wants]
 

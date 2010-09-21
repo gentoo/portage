@@ -81,7 +81,7 @@ class FakeVartree(vartree):
 			self._aux_get_wrapper(cpv, [])
 		return matches
 
-	def _aux_get_wrapper(self, pkg, wants):
+	def _aux_get_wrapper(self, pkg, wants, myrepo=None):
 		if pkg in self._aux_get_history:
 			return self._aux_get(pkg, wants)
 		self._aux_get_history.add(pkg)

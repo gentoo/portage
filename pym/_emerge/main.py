@@ -1661,7 +1661,7 @@ def emerge_main():
 
 		for x in myfiles:
 			if x.startswith(SETPREFIX) or \
-				is_valid_package_atom(x):
+				is_valid_package_atom(x, allow_repo=True):
 				continue
 			if x[:1] == os.sep:
 				continue

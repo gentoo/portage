@@ -6,7 +6,7 @@ __all__ = ['getmaskingreason']
 import portage
 from portage import os
 from portage.const import USER_CONFIG_PATH
-from portage.dep import match_from_list
+from portage.dep import match_from_list, _slot_separator, _repo_separator
 from portage.localization import _
 from portage.util import grablines, normalize_path
 from portage.versions import catpkgsplit
@@ -22,7 +22,7 @@ def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_lo
 	if metadata is None:
 		db_keys = list(portdb._aux_cache_keys)
 		try:
-			metadata = dict(zip(db_keys, portdb.aux_get(mycpv, db_keys)))
+			metadata = dict(zip(db_keys, portdb.aux_get(mycpv, db_keys, myrepo=metadata.get('repository'))))
 		except KeyError:
 			if not portdb.cpv_exists(mycpv):
 				raise
@@ -30,7 +30,10 @@ def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_lo
 		# Can't access SLOT due to corruption.
 		cpv_slot_list = [mycpv]
 	else:
-		cpv_slot_list = ["%s:%s" % (mycpv, metadata["SLOT"])]
+		pkg = "".join((mycpv, _slot_separator, metadata["SLOT"]))
+		if 'repository' in metadata:
+			pkg = "".join((pkg, _repo_separator, metadata['repository']))
+		cpv_slot_list = [pkg]
 	mycp=mysplit[0]+"/"+mysplit[1]
 
 	# XXX- This is a temporary duplicate of code from the config constructor.

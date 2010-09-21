@@ -357,8 +357,8 @@ class portdbapi(dbapi):
 				return license_path
 		return None
 
-	def findname(self,mycpv):
-		return self.findname2(mycpv)[0]
+	def findname(self,mycpv, mytree = None, myrepo = None):
+		return self.findname2(mycpv, mytree, myrepo)[0]
 
 	def getRepositoryPath(self, repository_id):
 		"""
@@ -390,16 +390,24 @@ class portdbapi(dbapi):
 		"""
 		return [k for k in self.treemap if k]
 
-	def findname2(self, mycpv, mytree=None):
+	def findname2(self, mycpv, mytree=None, myrepo = None):
 		""" 
 		Returns the location of the CPV, and what overlay it was in.
 		Searches overlays first, then PORTDIR; this allows us to return the first
 		matching file.  As opposed to starting in portdir and then doing overlays
 		second, we would have to exhaustively search the overlays until we found
 		the file we wanted.
+		If myrepo is not None it will find packages from this repository(overlay)
 		"""
 		if not mycpv:
 			return (None, 0)
+
+		if myrepo:
+			if myrepo in self.treemap:
+				mytree = self.treemap[myrepo]
+			else:
+				return (None, 0)
+		
 		mysplit = mycpv.split("/")
 		psplit = pkgsplit(mysplit[1])
 		if psplit is None or len(mysplit) != 2:
@@ -524,11 +532,17 @@ class portdbapi(dbapi):
 
 		return (metadata, st, emtime)
 
-	def aux_get(self, mycpv, mylist, mytree=None):
+	def aux_get(self, mycpv, mylist, mytree=None, myrepo=None):
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise KeyError if error'
 		cache_me = False
+		if myrepo:
+			if myrepo in self.treemap:
+				mytree = self.treemap[myrepo]
+			else:
+				raise KeyError(myrepo)
+				
 		if not mytree:
 			cache_me = True
 		if not mytree and not self._known_keys.intersection(
@@ -657,9 +671,9 @@ class portdbapi(dbapi):
 		return _parse_uri_map(mypkg, {'EAPI':eapi,'SRC_URI':myuris},
 			use=useflags)
 
-	def getfetchsizes(self, mypkg, useflags=None, debug=0):
+	def getfetchsizes(self, mypkg, useflags=None, debug=0, myrepo=None):
 		# returns a filename:size dictionnary of remaining downloads
-		myebuild = self.findname(mypkg)
+		myebuild = self.findname(mypkg, myrepo=myrepo)
 		if myebuild is None:
 			raise AssertionError(_("ebuild not found for '%s'") % mypkg)
 		pkgdir = os.path.dirname(myebuild)
@@ -710,14 +724,22 @@ class portdbapi(dbapi):
 				filesdict[myfile] = int(checksums[myfile]["size"])
 		return filesdict
 
-	def fetch_check(self, mypkg, useflags=None, mysettings=None, all=False):
+	def fetch_check(self, mypkg, useflags=None, mysettings=None, all=False, myrepo=None):
 		if all:
 			useflags = None
 		elif useflags is None:
 			if mysettings:
 				useflags = mysettings["USE"].split()
-		myfiles = self.getFetchMap(mypkg, useflags=useflags)
-		myebuild = self.findname(mypkg)
+		if myrepo:
+			if myrepo in self.treemap:
+				mytree = self.treemap[myrepo]
+			else:
+				return False
+		else:
+			mytree = None
+
+		myfiles = self.getFetchMap(mypkg, useflags=useflags, mytree=mytree)
+		myebuild = self.findname(mypkg, myrepo=myrepo)
 		if myebuild is None:
 			raise AssertionError(_("ebuild not found for '%s'") % mypkg)
 		pkgdir = os.path.dirname(myebuild)
@@ -895,7 +917,7 @@ class portdbapi(dbapi):
 			if mydep == mykey:
 				mylist = self.cp_list(mykey)
 			else:
-				mylist = match_from_list(mydep, self.cp_list(mykey))
+				mylist = match_from_list(mydep, self.cp_list(mykey, myrepo = mydep.repo))
 			myval = ""
 			settings = self.settings
 			local_config = settings.local_config
@@ -953,15 +975,14 @@ class portdbapi(dbapi):
 		elif level == "match-visible":
 			#dep match -- find all visible matches
 			#get all visible packages, then get the matching ones
-
 			myval = list(self._iter_match(mydep,
-				self.xmatch("list-visible", mykey, mydep=mykey, mykey=mykey)))
+				self.xmatch("list-visible", mykey, mydep=mykey, mykey=mykey), myrepo=mydep.repo))
 		elif level == "match-all":
 			#match *all* visible *and* masked packages
 			if mydep == mykey:
 				myval = self.cp_list(mykey)
 			else:
-				myval = list(self._iter_match(mydep, self.cp_list(mykey)))
+				myval = list(self._iter_match(mydep, self.cp_list(mykey), myrepo = mydep.repo))
 		else:
 			raise AssertionError(
 				"Invalid level argument: '%s'" % level)

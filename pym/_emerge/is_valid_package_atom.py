@@ -3,10 +3,11 @@
 
 import re
 import portage
+import _emerge.depgraph
 
-def is_valid_package_atom(x):
+def is_valid_package_atom(x, allow_repo=False):
 	if "/" not in x:
-		alphanum = re.search(r'\w', x)
-		if alphanum:
-			x = x[:alphanum.start()] + "cat/" + x[alphanum.start():]
-	return portage.isvalidatom(x, allow_blockers=False)
+		x2 = _emerge.depgraph.insert_category_into_atom(x, 'cat')
+		if x2 != None:
+			x = x2
+	return portage.isvalidatom(x, allow_blockers=False, allow_repo=allow_repo)

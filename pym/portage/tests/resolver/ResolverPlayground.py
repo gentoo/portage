@@ -373,9 +373,16 @@ class ResolverPlayground(object):
 		f.close()
 
 	def _load_config(self):
+		portdir_overlay = []
+		for repo_name in sorted(self.repo_dirs):
+			path = self.repo_dirs[repo_name]
+			if path != self.portdir:
+				portdir_overlay.append(path)
+
 		env = {
 			"ACCEPT_KEYWORDS": "x86",
 			"PORTDIR": self.portdir,
+			"PORTDIR_OVERLAY": " ".join(portdir_overlay),
 			'PORTAGE_TMPDIR'       : os.path.join(self.eroot, 'var/tmp'),
 		}
 

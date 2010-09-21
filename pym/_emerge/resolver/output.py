@@ -186,7 +186,7 @@ class _DisplayConfig(object):
 		dynamic_config = depgraph._dynamic_config
 
 		self.mylist = mylist
-		self.favorites = InternalPackageSet(favorites)
+		self.favorites = InternalPackageSet(favorites, allow_repo=True)
 		self.verbosity = verbosity
 
 		if self.verbosity is None:
@@ -340,9 +340,9 @@ def display(depgraph, mylist, favorites=[], verbosity=None):
 			pkg = x
 			metadata = pkg.metadata
 			ebuild_path = None
-			repo_name = metadata["repository"]
+			repo_name = pkg.repo
 			if pkg.type_name == "ebuild":
-				ebuild_path = portdb.findname(pkg.cpv)
+				ebuild_path = portdb.findname(pkg.cpv, myrepo=repo_name)
 				if ebuild_path is None:
 					raise AssertionError(
 						"ebuild not found for '%s'" % pkg.cpv)
@@ -356,7 +356,7 @@ def display(depgraph, mylist, favorites=[], verbosity=None):
 				fetch = red("F")
 				if ordered:
 					counters.restrict_fetch += 1
-				if portdb.fetch_check(pkg_key, pkg_use):
+				if portdb.fetch_check(pkg_key, pkg_use, myrepo=pkg.repo):
 					fetch = green("f")
 					if ordered:
 						counters.restrict_fetch_satisfied += 1

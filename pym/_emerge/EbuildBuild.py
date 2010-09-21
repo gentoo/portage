@@ -42,7 +42,7 @@ class EbuildBuild(CompositeTask):
 		portdb = root_config.trees[tree].dbapi
 		settings.setcpv(pkg)
 		settings.configdict["pkg"]["EMERGE_FROM"] = pkg.type_name
-		ebuild_path = portdb.findname(pkg.cpv)
+		ebuild_path = portdb.findname(pkg.cpv, myrepo=pkg.repo)
 		if ebuild_path is None:
 			raise AssertionError("ebuild not found for '%s'" % pkg.cpv)
 		self._ebuild_path = ebuild_path
