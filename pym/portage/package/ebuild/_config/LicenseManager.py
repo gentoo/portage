@@ -46,6 +46,9 @@ class LicenseManager(object):
 				os.path.join(loc, "license_groups")).items():
 				self._license_groups.setdefault(k, []).extend(v)
 
+		for k, v in self._license_groups.items():
+			self._license_groups[k] = frozenset(v)
+
 	def extract_global_changes(self, old=""):
 		ret = old
 		atom_license_map = self._plicensedict.get("*/*")
