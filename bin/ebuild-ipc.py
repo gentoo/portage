@@ -110,7 +110,7 @@ class EbuildIpc(object):
 				self._no_daemon_msg()
 				try:
 					os.kill(pid, signal.SIGKILL)
-					os.wait()
+					os.waitpid(pid, 0)
 				except OSError as e:
 					portage.util.writemsg_level(
 						"ebuild-ipc: %s\n" % (e,),
