@@ -153,6 +153,8 @@ class EbuildIpc(object):
 					"ebuild-ipc: %s\n" % (e,),
 					level=logging.ERROR, noiselevel=-1)
 
+		input_file.close()
+
 		retval = 2
 
 		if not buf:
