@@ -176,11 +176,7 @@ class RepoConfigLoader(object):
 		portdir = settings.get('PORTDIR', '')
 		portdir_overlay = settings.get('PORTDIR_OVERLAY', '')
 		add_overlays(portdir, portdir_overlay, prepos, ignored_map, ignored_location_map)
-		if paths:
-			parse(paths, prepos, ignored_map, ignored_location_map)
-		else:
-			prepos['DEFAULT'] = RepoConfig("DEFAULT", {"main_repo": "gentoo"})
-
+		parse(paths, prepos, ignored_map, ignored_location_map)
 		ignored_repos = tuple((repo_name, tuple(paths)) \
 			for repo_name, paths in ignored_map.items())
 

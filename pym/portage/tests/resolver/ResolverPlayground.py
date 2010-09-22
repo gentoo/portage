@@ -296,7 +296,7 @@ class ResolverPlayground(object):
 
 		repos_conf_file = os.path.join(user_config_dir, "repos.conf")		
 		f = open(repos_conf_file, "w")
-		priority = 1
+		priority = 999
 		for repo in sorted(self.repo_dirs.keys()):
 			f.write("[%s]\n" % repo)
 			f.write("LOCATION=%s\n" % self.repo_dirs[repo])
@@ -304,7 +304,7 @@ class ResolverPlayground(object):
 				f.write("PRIORITY=%s\n" % 1000)
 			else:
 				f.write("PRIORITY=%s\n" % priority)
-				priority += 1
+				priority -= 1
 		f.close()
 
 		for config_file, lines in user_config.items():
