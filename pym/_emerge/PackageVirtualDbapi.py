@@ -83,7 +83,7 @@ class PackageVirtualDbapi(dbapi):
 		self._match_cache[origdep] = result
 		return result[:]
 
-	def cpv_exists(self, cpv):
+	def cpv_exists(self, cpv, myrepo=None):
 		return cpv in self._cpv_map
 
 	def cp_list(self, mycp, use_cache=1):

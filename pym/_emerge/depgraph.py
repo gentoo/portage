@@ -15,7 +15,7 @@ from portage import os
 from portage import _unicode_decode
 from portage.const import PORTAGE_PACKAGE_ATOM
 from portage.dbapi import dbapi
-from portage.dep import Atom, extract_affecting_use, check_required_use, human_readable_required_use
+from portage.dep import Atom, extract_affecting_use, check_required_use, human_readable_required_use, _repo_separator
 from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use
 from portage.exception import InvalidAtom
 from portage.output import colorize, create_color_func, \
@@ -2141,52 +2141,62 @@ class depgraph(object):
 				cpv_list = db.xmatch("match-all", atom.without_use)
 			else:
 				cpv_list = db.match(atom.without_use)
+
+			if atom.repo is None and hasattr(db, "getRepositories"):
+				repo_list = db.getRepositories()
+			else:
+				repo_list = [atom.repo]
+
 			# descending order
 			cpv_list.reverse()
 			for cpv in cpv_list:
-				metadata, mreasons  = get_mask_info(root_config, cpv, pkgsettings, db, pkg_type, \
-					built, installed, db_keys, myrepo=atom.repo, _pkg_use_enabled=self._pkg_use_enabled)
+				for repo in repo_list:
+					if not db.cpv_exists(cpv, myrepo=repo):
+						continue
 
-				if metadata is not None:
-					pkg = self._pkg(cpv, pkg_type, root_config,
-						installed=installed, myrepo = atom.repo)
-					# pkg.metadata contains calculated USE for ebuilds,
-					# required later for getMissingLicenses.
-					metadata = pkg.metadata
-					if pkg.cp != atom.cp:
-						# A cpv can be returned from dbapi.match() as an
-						# old-style virtual match even in cases when the
-						# package does not actually PROVIDE the virtual.
-						# Filter out any such false matches here.
-						if not atom_set.findAtomForPackage(pkg, modified_use=self._pkg_use_enabled(pkg)):
-							continue
-					if pkg in self._dynamic_config._runtime_pkg_mask:
-						backtrack_reasons = \
-							self._dynamic_config._runtime_pkg_mask[pkg]
-						mreasons.append('backtracking: %s' % \
-							', '.join(sorted(backtrack_reasons)))
-						backtrack_mask = True
-					if not mreasons and self._frozen_config.excluded_pkgs.findAtomForPackage(pkg, \
-						modified_use=self._pkg_use_enabled(pkg)):
-						mreasons = ["exclude option"]
-					if mreasons:
-						masked_pkg_instances.add(pkg)
-					if atom.unevaluated_atom.use:
-						try:
-							if not pkg.iuse.is_valid_flag(atom.unevaluated_atom.use.required) \
-								or atom.violated_conditionals(self._pkg_use_enabled(pkg), pkg.iuse.is_valid_flag).use:
-								missing_use.append(pkg)
-								if not mreasons:
-									continue
-						except InvalidAtom:
-							writemsg("violated_conditionals raised " + \
-								"InvalidAtom: '%s' parent: %s" % \
-								(atom, myparent), noiselevel=-1)
-							raise
-					if pkg.built and not mreasons:
-						mreasons = ["use flag configuration mismatch"]
-				masked_packages.append(
-					(root_config, pkgsettings, cpv, metadata, mreasons))
+					metadata, mreasons  = get_mask_info(root_config, cpv, pkgsettings, db, pkg_type, \
+						built, installed, db_keys, myrepo=repo, _pkg_use_enabled=self._pkg_use_enabled)
+
+					if metadata is not None:
+						pkg = self._pkg(cpv, pkg_type, root_config,
+							installed=installed, myrepo=repo)
+						# pkg.metadata contains calculated USE for ebuilds,
+						# required later for getMissingLicenses.
+						metadata = pkg.metadata
+						if pkg.cp != atom.cp:
+							# A cpv can be returned from dbapi.match() as an
+							# old-style virtual match even in cases when the
+							# package does not actually PROVIDE the virtual.
+							# Filter out any such false matches here.
+							if not atom_set.findAtomForPackage(pkg, modified_use=self._pkg_use_enabled(pkg)):
+								continue
+						if pkg in self._dynamic_config._runtime_pkg_mask:
+							backtrack_reasons = \
+								self._dynamic_config._runtime_pkg_mask[pkg]
+							mreasons.append('backtracking: %s' % \
+								', '.join(sorted(backtrack_reasons)))
+							backtrack_mask = True
+						if not mreasons and self._frozen_config.excluded_pkgs.findAtomForPackage(pkg, \
+							modified_use=self._pkg_use_enabled(pkg)):
+							mreasons = ["exclude option"]
+						if mreasons:
+							masked_pkg_instances.add(pkg)
+						if atom.unevaluated_atom.use:
+							try:
+								if not pkg.iuse.is_valid_flag(atom.unevaluated_atom.use.required) \
+									or atom.violated_conditionals(self._pkg_use_enabled(pkg), pkg.iuse.is_valid_flag).use:
+									missing_use.append(pkg)
+									if not mreasons:
+										continue
+							except InvalidAtom:
+								writemsg("violated_conditionals raised " + \
+									"InvalidAtom: '%s' parent: %s" % \
+									(atom, myparent), noiselevel=-1)
+								raise
+						if pkg.built and not mreasons:
+							mreasons = ["use flag configuration mismatch"]
+					masked_packages.append(
+						(root_config, pkgsettings, cpv, repo, metadata, mreasons))
 
 		if check_backtrack:
 			if backtrack_mask:
@@ -2472,6 +2482,9 @@ class depgraph(object):
 			cpv_list.reverse()
 			for cpv in cpv_list:
 				for repo in repo_list:
+					if not db.cpv_exists(cpv, myrepo=repo):
+						continue
+
 					try:
 						pkg = self._pkg(cpv, pkg_type, root_config,
 							installed=installed, onlydeps=onlydeps, myrepo=repo)
@@ -4833,7 +4846,7 @@ class depgraph(object):
 			pkgsettings = self._frozen_config.pkgsettings[pkg.root]
 			mreasons = get_masking_status(pkg, pkgsettings, root_config, use=self._pkg_use_enabled(pkg))
 			masked_packages.append((root_config, pkgsettings,
-				pkg.cpv, pkg.metadata, mreasons))
+				pkg.cpv, pkg.repo, pkg.metadata, mreasons))
 		if masked_packages:
 			writemsg("\n" + colorize("BAD", "!!!") + \
 				" The following updates are masked by LICENSE changes:\n",
@@ -4848,7 +4861,7 @@ class depgraph(object):
 			pkgsettings = self._frozen_config.pkgsettings[pkg.root]
 			mreasons = get_masking_status(pkg, pkgsettings, root_config, use=self._pkg_use_enabled)
 			masked_packages.append((root_config, pkgsettings,
-				pkg.cpv, pkg.metadata, mreasons))
+				pkg.cpv, "installed", pkg.metadata, mreasons))
 		if masked_packages:
 			writemsg("\n" + colorize("BAD", "!!!") + \
 				" The following installed packages are masked:\n",
@@ -5544,11 +5557,12 @@ def show_masked_packages(masked_packages):
 	# show one of them to avoid redundant appearance.
 	shown_cpvs = set()
 	have_eapi_mask = False
-	for (root_config, pkgsettings, cpv,
+	for (root_config, pkgsettings, cpv, repo,
 		metadata, mreasons) in masked_packages:
-		if cpv in shown_cpvs:
+		output_cpv = cpv + _repo_separator + repo
+		if output_cpv in shown_cpvs:
 			continue
-		shown_cpvs.add(cpv)
+		shown_cpvs.add(output_cpv)
 		comment, filename = None, None
 		if "package.mask" in mreasons:
 			comment, filename = \
@@ -5570,7 +5584,7 @@ def show_masked_packages(masked_packages):
 				# above via mreasons.
 				pass
 
-		writemsg_stdout("- "+cpv+" (masked by: "+", ".join(mreasons)+")\n", noiselevel=-1)
+		writemsg_stdout("- "+output_cpv+" (masked by: "+", ".join(mreasons)+")\n", noiselevel=-1)
 
 		if comment and comment not in shown_comments:
 			writemsg_stdout(filename + ":\n" + comment + "\n",

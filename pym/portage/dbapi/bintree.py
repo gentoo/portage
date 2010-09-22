@@ -75,7 +75,7 @@ class bindbapi(fakedbapi):
 			self.bintree.populate()
 		return fakedbapi.match(self, *pargs, **kwargs)
 
-	def cpv_exists(self, cpv):
+	def cpv_exists(self, cpv, myrepo=None):
 		if self.bintree and not self.bintree.populated:
 			self.bintree.populate()
 		return fakedbapi.cpv_exists(self, cpv)

@@ -764,14 +764,14 @@ class portdbapi(dbapi):
 			return False
 		return True
 
-	def cpv_exists(self, mykey):
+	def cpv_exists(self, mykey, myrepo=None):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
 		cps2 = mykey.split("/")
 		cps = catpkgsplit(mykey, silent=0)
 		if not cps:
 			#invalid cat/pkg-v
 			return 0
-		if self.findname(cps[0] + "/" + cps2[1]):
+		if self.findname(cps[0] + "/" + cps2[1], myrepo=myrepo):
 			return 1
 		else:
 			return 0

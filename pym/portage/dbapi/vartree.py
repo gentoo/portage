@@ -184,7 +184,7 @@ class vardbapi(dbapi):
 		except OSError:
 			ensure_dirs(catdir)
 
-	def cpv_exists(self, mykey):
+	def cpv_exists(self, mykey, myrepo=None):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
 		return os.path.exists(self.getpath(mykey))
 

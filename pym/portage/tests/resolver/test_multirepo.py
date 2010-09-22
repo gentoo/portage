@@ -145,6 +145,8 @@ class MultirepoTestCase(TestCase):
 			#package.mask
 			"dev-libs/E-1": { },
 			"dev-libs/E-1::repo1": { },
+			"dev-libs/H-1": { },
+			"dev-libs/H-1::repo1": { },
 
 			#package.properties
 			"dev-libs/F-1": { "PROPERTIES": "bar"},
@@ -171,6 +173,7 @@ class MultirepoTestCase(TestCase):
 			"package.mask":
 				(
 					"dev-libs/E::repo1",
+					"dev-libs/H",
 					#needed for package.unmask test
 					"dev-libs/G",
 				),
@@ -236,9 +239,12 @@ class MultirepoTestCase(TestCase):
 				success = True,
 				check_repo_names = True,
 				mergelist = ["dev-libs/G-1"]),
+			ResolverPlaygroundTestCase(
+				["dev-libs/H"],
+				success = False),
 			)
 
-		playground = ResolverPlayground(ebuilds=ebuilds, user_config=user_config)
+		playground = ResolverPlayground(ebuilds=ebuilds, user_config=user_config, debug=True)
 		try:
 			for test_case in test_cases:
 				playground.run_TestCase(test_case)
