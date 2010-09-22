@@ -114,6 +114,8 @@ class portdbapi(dbapi):
 		repository_map = {}
 		self.treemap = treemap
 		self._repository_map = repository_map
+		#Keep track of repos that lack profiles/repo_name
+		self._missing_repo_names = set()
 		identically_named_paths = {}
 		for path in porttrees:
 			if path in repository_map:
@@ -129,19 +131,22 @@ class portdbapi(dbapi):
 				# warn about missing repo_name at some other time, since we
 				# don't want to see a warning every time the portage module is
 				# imported.
-				pass
-			else:
-				identically_named_path = treemap.get(repo_name)
-				if identically_named_path is not None:
-					# The earlier one is discarded.
-					del repository_map[identically_named_path]
-					identically_named_paths[identically_named_path] = repo_name
-					if identically_named_path == porttrees[0]:
-						# Found another repo with the same name as
-						# $PORTDIR, so update porttrees[0] to match.
-						porttrees[0] = path
-				treemap[repo_name] = path
-				repository_map[path] = repo_name
+				self._missing_repo_names.add(path)
+				repo_name = "x-" + os.path.basename(path)
+
+			identically_named_path = treemap.get(repo_name)
+			if identically_named_path is not None:
+				# The earlier one is discarded.
+				del repository_map[identically_named_path]
+				identically_named_paths[identically_named_path] = repo_name
+				if identically_named_path == porttrees[0]:
+					# Found another repo with the same name as
+					# $PORTDIR, so update porttrees[0] to match.
+					porttrees[0] = path
+			treemap[repo_name] = path
+			repository_map[path] = repo_name
+
+		self._missing_repo_names = frozenset(self._missing_repo_names)
 
 		# Ensure that each repo_name is unique. Later paths override
 		# earlier ones that correspond to the same name.
@@ -392,6 +397,12 @@ class portdbapi(dbapi):
 		TreeMap = {id: path}
 		"""
 		return self._ordered_repo_name_list
+
+	def getMissingRepoNames(self):
+		"""
+		Returns a list of repository paths that lack profiles/repo_name.
+		"""
+		return self._missing_repo_names
 
 	def findname2(self, mycpv, mytree=None, myrepo = None):
 		""" 
