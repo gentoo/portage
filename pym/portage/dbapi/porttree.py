@@ -265,6 +265,9 @@ class portdbapi(dbapi):
 
 			self._repo_info[path] = _repo_info(repo_name, path, eclass_db)
 
+		#Keep a list of repo names, sorted by priority (highest priority first).
+		self._ordered_repo_name_list = tuple(self._repo_info[path].name for path in reversed(self.porttrees))
+
 		self.auxdbmodule = self.settings.load_best_module("portdbapi.auxdbmodule")
 		self.auxdb = {}
 		self._pregen_auxdb = {}
@@ -388,7 +391,7 @@ class portdbapi(dbapi):
 		repository IDs
 		TreeMap = {id: path}
 		"""
-		return [k for k in self.treemap if k]
+		return self._ordered_repo_name_list
 
 	def findname2(self, mycpv, mytree=None, myrepo = None):
 		""" 

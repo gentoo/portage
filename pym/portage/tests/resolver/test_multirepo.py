@@ -75,19 +75,19 @@ class MultirepoTestCase(TestCase):
 				check_repo_names = True,
 				mergelist = ["dev-libs/C-1::repo1"]),
 
-			#Package in repository 1 and 2, but 1 must be used
+			#Package in repository 1 and 2, but 2 must be used
 			ResolverPlaygroundTestCase(
 				["dev-libs/D"],
 				success = True,
 				check_repo_names = True,
-				mergelist = ["dev-libs/D-1::repo1"]),
+				mergelist = ["dev-libs/D-1::repo2"]),
 
 			#Atoms with slots
 			ResolverPlaygroundTestCase(
 				["dev-libs/E"],
 				success = True,
 				check_repo_names = True,
-				mergelist = ["dev-libs/E-1::repo1"]),
+				mergelist = ["dev-libs/E-1::repo2"]),
 			ResolverPlaygroundTestCase(
 				["dev-libs/E:1::repo2"],
 				success = True,
@@ -102,17 +102,17 @@ class MultirepoTestCase(TestCase):
 				["dev-libs/F:1"],
 				success = True,
 				check_repo_names = True,
-				mergelist = ["dev-libs/F-1::repo1"]),
+				mergelist = ["dev-libs/F-1::repo2"]),
 			ResolverPlaygroundTestCase(
 				["=dev-libs/F-1:1"],
 				success = True,
 				check_repo_names = True,
-				mergelist = ["dev-libs/F-1::repo1"]),
+				mergelist = ["dev-libs/F-1::repo2"]),
 			ResolverPlaygroundTestCase(
-				["=dev-libs/F-1:1::repo2"],
+				["=dev-libs/F-1:1::repo1"],
 				success = True,
 				check_repo_names = True,
-				mergelist = ["dev-libs/F-1::repo2"]),
+				mergelist = ["dev-libs/F-1::repo1"]),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, sets=sets)
