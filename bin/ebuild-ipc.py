@@ -5,6 +5,7 @@
 # This is a helper which ebuild processes can use
 # to communicate with portage's main python process.
 
+import array
 import logging
 import os
 import pickle
@@ -36,6 +37,7 @@ class EbuildIpc(object):
 	# Timeout for each individual communication attempt (we retry
 	# as long as the daemon process appears to be alive).
 	_COMMUNICATE_RETRY_TIMEOUT_SECONDS = 15
+	_BUFSIZE = 4096
 
 	def __init__(self):
 		self.fifo_dir = os.environ['PORTAGE_BUILDDIR']
@@ -138,11 +140,22 @@ class EbuildIpc(object):
 		# File streams are in unbuffered mode since we do atomic
 		# read and write of whole pickles.
 		input_file = open(self.ipc_out_fifo, 'rb', 0)
-		data = input_file.read()
+
+		# For maximum portability, us an array in order to force
+		# a single atomic read of a whole pickle (bug #337465).
+		buf = array.array('B')
+
+		try:
+			buf.fromfile(input_file, self._BUFSIZE)
+		except (EOFError, IOError) as e:
+			if not buf:
+				portage.util.writemsg_level(
+					"ebuild-ipc: %s\n" % (e,),
+					level=logging.ERROR, noiselevel=-1)
 
 		retval = 2
 
-		if not data:
+		if not buf:
 
 			portage.util.writemsg_level(
 				"ebuild-ipc: %s\n" % \
@@ -152,7 +165,7 @@ class EbuildIpc(object):
 		else:
 
 			try:
-				reply = pickle.loads(data)
+				reply = pickle.loads(buf.tostring())
 			except SystemExit:
 				raise
 			except Exception as e:
