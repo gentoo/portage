@@ -244,7 +244,7 @@ class MultirepoTestCase(TestCase):
 				success = False),
 			)
 
-		playground = ResolverPlayground(ebuilds=ebuilds, user_config=user_config, debug=True)
+		playground = ResolverPlayground(ebuilds=ebuilds, user_config=user_config)
 		try:
 			for test_case in test_cases:
 				playground.run_TestCase(test_case)

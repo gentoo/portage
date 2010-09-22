@@ -3263,9 +3263,7 @@ class depgraph(object):
 		failures for some reason (package does not exist or is
 		corrupt).
 		"""
-		if type_name == "ebuild" and myrepo is None:
-			raise ValueError("Need repository to create Package for ebuild.")
-		elif myrepo is None:
+		if type_name != "ebuild" and myrepo is None:
 			myrepo = type_name
 
 		operation = "merge"
@@ -3279,23 +3277,41 @@ class depgraph(object):
 		if pkg is None and onlydeps and not installed:
 			# Maybe it already got pulled in as a "merge" node.
 			pkg = self._dynamic_config.mydbapi[root_config.root].get(
-				(type_name, root_config.root, cpv, 'merge'))
+				(type_name, root_config.root, cpv, 'merge', myrepo))
 
 		if pkg is None:
 			tree_type = self.pkg_tree_map[type_name]
 			db = root_config.trees[tree_type].dbapi
 			db_keys = list(self._frozen_config._trees_orig[root_config.root][
 				tree_type].dbapi._aux_cache_keys)
-			try:
-				metadata = zip(db_keys, db.aux_get(cpv, db_keys, myrepo=myrepo))
-			except KeyError:
+
+			if type_name == "ebuild" and myrepo is None:
+				#We're asked to return a matching Package from any repo.
+				for repo in db.getRepositories():
+					if not db.cpv_exists(cpv, myrepo=repo):
+						continue
+					try:
+						metadata = zip(db_keys, db.aux_get(cpv, db_keys, myrepo=repo))
+					except KeyError:
+						continue
+					else:
+						break
 				raise portage.exception.PackageNotFound(cpv)
+			else:
+				try:
+					metadata = zip(db_keys, db.aux_get(cpv, db_keys, myrepo=myrepo))
+				except KeyError:
+					raise portage.exception.PackageNotFound(cpv)
+
 			pkg = Package(built=(type_name != "ebuild"), cpv=cpv,
 				installed=installed, metadata=metadata, onlydeps=onlydeps,
 				root_config=root_config, type_name=type_name)
 
 			if type_name == "ebuild":
 				self._frozen_config._pkg_cache[pkg] = pkg
+				if myrepo is None:
+					self._frozen_config._pkg_cache[
+						(pkg.type_name, pkg.root, pkg.cpv, pkg.operation, None)] = pkg
 			else:
 				#For installed and binary packages we don't care for the repo when it comes to
 				#caching, because there can only be one cpv. So overwrite the repo key with type_name.
