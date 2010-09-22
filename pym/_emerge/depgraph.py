@@ -3731,16 +3731,16 @@ class depgraph(object):
 		graph = self._dynamic_config._scheduler_graph
 		trees = self._frozen_config.trees
 		pruned_pkg_cache = {}
-		for pkg in pkg_cache:
+		for key, pkg in pkg_cache.items():
 			if pkg in graph or \
 				(pkg.installed and pkg in trees[pkg.root]['vartree'].dbapi):
-				pruned_pkg_cache[pkg] = pkg
+				pruned_pkg_cache[key] = pkg
 
 		for root in trees:
 			trees[root]['vartree']._pkg_cache = pruned_pkg_cache
 			self.break_refs(trees[root]['vartree'].dbapi)
 
-		self.break_refs(pruned_pkg_cache)
+		self.break_refs(pruned_pkg_cache.values())
 		sched_config = \
 			_scheduler_graph_config(trees, pruned_pkg_cache, graph, mergelist)
 
