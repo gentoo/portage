@@ -40,7 +40,7 @@ class Binpkg(CompositeTask):
 		self._verify = not self.opts.pretend
 
 		# Use realpath like doebuild_environment() does, since we assert
-		# that this is path is literally identical to PORTAGE_BUILDDIR.
+		# that this path is literally identical to PORTAGE_BUILDDIR.
 		dir_path = os.path.join(os.path.realpath(settings["PORTAGE_TMPDIR"]),
 			"portage", pkg.category, pkg.pf)
 		self._image_dir = os.path.join(dir_path, "image")
