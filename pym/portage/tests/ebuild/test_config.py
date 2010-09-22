@@ -76,7 +76,7 @@ class ConfigTestCase(TestCase):
 
 			self.assertEqual(lic_man._accept_license_str, None)
 			self.assertEqual(lic_man._accept_license, None)
-			self.assertEqual(lic_man._license_groups, {"EULA": ["TEST"]})
+			self.assertEqual(lic_man._license_groups, {"EULA": frozenset(["TEST"])})
 			self.assertEqual(lic_man._undef_lic_groups, set(["TEST"]))
 
 			self.assertEqual(lic_man.extract_global_changes(), "TEST TEST2")

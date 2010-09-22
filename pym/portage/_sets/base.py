@@ -19,7 +19,7 @@ class PackageSet(object):
 	_operations = ["merge"]
 	description = "generic package set"
 	
-	def __init__(self):
+	def __init__(self, allow_wildcard=False, allow_repo=False):
 		self._atoms = set()
 		self._atommap = ExtendedAtomDict(set)
 		self._loaded = False
@@ -27,6 +27,8 @@ class PackageSet(object):
 		self.errors = []
 		self._nonatoms = set()
 		self.world_candidate = False
+		self._allow_wildcard = allow_wildcard
+		self._allow_repo = allow_repo
 
 	def __contains__(self, atom):
 		self._load()
@@ -66,7 +68,7 @@ class PackageSet(object):
 		self._load()
 		return self._nonatoms.copy()
 
-	def _setAtoms(self, atoms, allow_wildcard=False):
+	def _setAtoms(self, atoms):
 		self._atoms.clear()
 		self._nonatoms.clear()
 		for a in atoms:
@@ -76,12 +78,14 @@ class PackageSet(object):
 				if not a:
 					continue
 				try:
-					a = Atom(a, allow_wildcard=True)
+					a = Atom(a, allow_wildcard=True, allow_repo=True)
 				except InvalidAtom:
 					self._nonatoms.add(a)
 					continue
-			if not allow_wildcard and a.extended_syntax:
+			if not self._allow_wildcard and a.extended_syntax:
 				raise InvalidAtom("extended atom syntax not allowed here")
+			if not self._allow_repo and a.repo:
+				raise InvalidAtom("repository specification not allowed here")
 			self._atoms.add(a)
 
 		self._updateAtomMap()
@@ -131,7 +135,7 @@ class PackageSet(object):
 			if atom.cp == pkg.cp:
 				rev_transform[atom] = atom
 			else:
-				rev_transform[Atom(atom.replace(atom.cp, pkg.cp, 1), allow_wildcard=True)] = atom
+				rev_transform[Atom(atom.replace(atom.cp, pkg.cp, 1), allow_wildcard=True, allow_repo=True)] = atom
 		best_match = best_match_to_list(pkg, iter(rev_transform))
 		if best_match:
 			return rev_transform[best_match]
@@ -170,9 +174,8 @@ class PackageSet(object):
 
 class EditablePackageSet(PackageSet):
 
-	def __init__(self, allow_wildcard=False):
-		super(EditablePackageSet, self).__init__()
-		self._allow_wildcard = allow_wildcard
+	def __init__(self, allow_wildcard=False, allow_repo=False):
+		super(EditablePackageSet, self).__init__(allow_wildcard=allow_wildcard, allow_repo=allow_repo)
 		
 	def update(self, atoms):
 		self._load()
@@ -181,13 +184,15 @@ class EditablePackageSet(PackageSet):
 		for a in atoms:
 			if not isinstance(a, Atom):
 				try:
-					a = Atom(a, allow_wildcard=True)
+					a = Atom(a, allow_wildcard=True, allow_repo=True)
 				except InvalidAtom:
 					modified = True
 					self._nonatoms.add(a)
 					continue
 			if not self._allow_wildcard and a.extended_syntax:
 				raise InvalidAtom("extended atom syntax not allowed here")
+			if not self._allow_repo and a.repo:
+				raise InvalidAtom("repository specification not allowed here")
 			normal_atoms.append(a)
 
 		if normal_atoms:
@@ -201,7 +206,7 @@ class EditablePackageSet(PackageSet):
 		self.update([atom])
 
 	def replace(self, atoms):
-		self._setAtoms(atoms, allow_wildcard=self._allow_wildcard)
+		self._setAtoms(atoms)
 		self.write()
 
 	def remove(self, atom):
@@ -223,8 +228,8 @@ class EditablePackageSet(PackageSet):
 		raise NotImplementedError()
 
 class InternalPackageSet(EditablePackageSet):
-	def __init__(self, initial_atoms=None, allow_wildcard=False):
-		super(InternalPackageSet, self).__init__(allow_wildcard=allow_wildcard)
+	def __init__(self, initial_atoms=None, allow_wildcard=False, allow_repo=False):
+		super(InternalPackageSet, self).__init__(allow_wildcard=allow_wildcard, allow_repo=allow_repo)
 		if initial_atoms != None:
 			self.update(initial_atoms)
 
