@@ -107,58 +107,19 @@ class portdbapi(dbapi):
 				os.environ["SANDBOX_WRITE"] = \
 					":".join(filter(None, sandbox_write))
 
-		porttrees = [os.path.realpath(porttree_root)]
-		porttrees.extend(os.path.realpath(x) for x in \
-			shlex_split(self.settings.get('PORTDIR_OVERLAY', '')))
-		treemap = {}
-		repository_map = {}
-		self.treemap = treemap
-		self._repository_map = repository_map
-		#Keep track of repos that lack profiles/repo_name
-		self._missing_repo_names = set()
-		identically_named_paths = {}
-		for path in porttrees:
-			if path in repository_map:
-				continue
-			repo_name_path = os.path.join(path, REPO_NAME_LOC)
-			try:
-				repo_name = codecs.open(
-					_unicode_encode(repo_name_path,
-					encoding=_encodings['fs'], errors='strict'),
-					mode='r', encoding=_encodings['repo.content'],
-					errors='replace').readline().strip()
-			except EnvironmentError:
-				# warn about missing repo_name at some other time, since we
-				# don't want to see a warning every time the portage module is
-				# imported.
-				self._missing_repo_names.add(path)
-				repo_name = "x-" + os.path.basename(path)
-
-			identically_named_path = treemap.get(repo_name)
-			if identically_named_path is not None:
-				# The earlier one is discarded.
-				del repository_map[identically_named_path]
-				identically_named_paths[identically_named_path] = repo_name
-				if identically_named_path == porttrees[0]:
-					# Found another repo with the same name as
-					# $PORTDIR, so update porttrees[0] to match.
-					porttrees[0] = path
-			treemap[repo_name] = path
-			repository_map[path] = repo_name
-
-		self._missing_repo_names = frozenset(self._missing_repo_names)
+		#adding porttress from repositories
+		porttrees = list(self.settings.repositories.repoLocationList())
+		self._missing_repo_names = self.settings.repositories.missing_repo_names
 
 		# Ensure that each repo_name is unique. Later paths override
 		# earlier ones that correspond to the same name.
-		porttrees = [x for x in porttrees if x not in identically_named_paths]
-		ignored_map = {}
-		for path, repo_name in identically_named_paths.items():
-			ignored_map.setdefault(repo_name, []).append(path)
-		self._ignored_repos = tuple((repo_name, tuple(paths)) \
-			for repo_name, paths in ignored_map.items())
+		self._ignored_repos = self.settings.repositories.ignored_repos
+
+		self._repository_map = self.settings.repositories.location_map
+		self.treemap = self.settings.repositories.treemap
 
 		self.porttrees = porttrees
-		porttree_root = porttrees[0]
+		porttree_root = self.settings.repositories.mainRepoLocation()
 		self.porttree_root = porttree_root
 
 		self.eclassdb = eclass_cache.cache(porttree_root)
@@ -178,7 +139,7 @@ class portdbapi(dbapi):
 
 		self._repo_info = {}
 		eclass_dbs = {porttree_root : self.eclassdb}
-		local_repo_configs = self.settings._local_repo_configs
+		local_repo_configs = self.settings.repositories.prepos
 		default_loc_repo_config = None
 		repo_aliases = {}
 		if local_repo_configs is not None:
@@ -193,7 +154,7 @@ class portdbapi(dbapi):
 								"'%s' alias in " \
 								"'%s'\n") % (alias, repo_name,
 								overridden_alias,
-								self.settings._local_repo_conf_path),
+								'repos.conf'),
 								level=logging.WARNING, noiselevel=-1)
 						repo_aliases[alias] = repo_name
 
@@ -252,7 +213,7 @@ class portdbapi(dbapi):
 							writemsg_level(_("Unavailable repository '%s' " \
 								"referenced by eclass-overrides entry in " \
 								"'%s'\n") % (other_name,
-								self.settings._local_repo_conf_path),
+								'repos.conf'),
 								level=logging.ERROR, noiselevel=-1)
 							continue
 						porttrees.append(other_path)

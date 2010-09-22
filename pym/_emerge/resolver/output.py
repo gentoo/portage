@@ -43,11 +43,8 @@ class _RepoDisplay(object):
 		repo_paths = set()
 		for root_config in roots.values():
 			portdir = root_config.settings.get("PORTDIR")
-			if portdir:
-				repo_paths.add(portdir)
-			overlays = root_config.settings.get("PORTDIR_OVERLAY")
-			if overlays:
-				repo_paths.update(overlays.split())
+			if root_config.settings.repositories:
+				repo_paths.update(root_config.settings.repositories.repoLocationList())
 		repo_paths = list(repo_paths)
 		self._repo_paths = repo_paths
 		self._repo_paths_real = [ os.path.realpath(repo_path) \

@@ -40,6 +40,7 @@ from portage.exception import InvalidDependString, PortageException
 from portage.localization import _
 from portage.output import colorize
 from portage.process import fakeroot_capable, sandbox_capable
+from portage.repository import load_repository_config
 from portage.util import ensure_dirs, getconfig, grabdict, \
 	grabdict_package, grabfile, grabfile_package, LazyItemsDict, \
 	normalize_path, shlex_split, stack_dictlist, stack_dicts, stack_lists, \
@@ -504,6 +505,18 @@ class config(object):
 
 			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
 			self._penvdict = portage.dep.ExtendedAtomDict(dict)
+
+			#Loading Repositories
+			self.repositories = load_repository_config(self)
+
+			#filling PORTDIR and PORTDIR_OVERLAY variable for compatibility
+			self["PORTDIR"] = self.repositories.mainRepoLocation()
+			self.backup_changes("PORTDIR")
+			portdir_overlay = list(self.repositories.repoLocationList())
+			if self["PORTDIR"] in portdir_overlay:
+				portdir_overlay.remove(self["PORTDIR"])
+			self["PORTDIR_OVERLAY"] = " ".join(portdir_overlay)
+			self.backup_changes("PORTDIR_OVERLAY")
 
 			""" repoman controls PORTDIR_OVERLAY via the environment, so no
 			special cases are needed here."""
