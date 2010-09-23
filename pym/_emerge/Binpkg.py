@@ -318,5 +318,13 @@ class Binpkg(CompositeTask):
 		finally:
 			settings.pop("PORTAGE_BINPKG_FILE", None)
 			self._unlock_builddir()
+
+		if retval == os.EX_OK and \
+			'binpkg-logs' not in self.settings.features and \
+			self.settings.get("PORTAGE_LOG_FILE"):
+			try:
+				os.unlink(self.settings["PORTAGE_LOG_FILE"])
+			except OSError:
+				pass
 		return retval
 
