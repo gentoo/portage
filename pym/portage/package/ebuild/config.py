@@ -40,7 +40,7 @@ from portage.exception import InvalidDependString, PortageException
 from portage.localization import _
 from portage.output import colorize
 from portage.process import fakeroot_capable, sandbox_capable
-from portage.repository import load_repository_config
+from portage.repository.config import load_repository_config
 from portage.util import ensure_dirs, getconfig, grabdict, \
 	grabdict_package, grabfile, grabfile_package, LazyItemsDict, \
 	normalize_path, shlex_split, stack_dictlist, stack_dicts, stack_lists, \
