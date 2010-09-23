@@ -2770,7 +2770,7 @@ class dblink(object):
 		
 		@param srcroot: Typically this is ${D}
 		@type srcroot: String (Path)
-		@param destroot: ignored, self._eroot is used instead
+		@param destroot: ignored, self.settings['ROOT'] is used instead
 		@type destroot: String (Path)
 		@param inforoot: root of the vardb entry ?
 		@type inforoot: String (Path)
@@ -3188,7 +3188,7 @@ class dblink(object):
 		self.updateprotect()
 
 		#if we have a file containing previously-merged config file md5sums, grab it.
-		conf_mem_file = os.path.join(destroot, CONFIG_MEMORY_FILE)
+		conf_mem_file = os.path.join(self._eroot, CONFIG_MEMORY_FILE)
 		cfgfiledict = grabdict(conf_mem_file)
 		cfgfiledict_orig = cfgfiledict.copy()
 		if "NOCONFMEM" in self.settings:
