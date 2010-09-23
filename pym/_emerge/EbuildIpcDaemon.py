@@ -3,7 +3,9 @@
 
 import errno
 import pickle
+from portage import os
 from _emerge.FifoIpcDaemon import FifoIpcDaemon
+from _emerge.PollConstants import PollConstants
 
 class EbuildIpcDaemon(FifoIpcDaemon):
 	"""
@@ -28,12 +30,18 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 
 	def _input_handler(self, fd, event):
 		# Read the whole pickle in a single atomic read() call.
-		buf = self._read_buf(self._files.pipe_in, event)
+		data = None
+		if event & PollConstants.POLLIN:
+			# For maximum portability, use os.read() here since
+			# array.fromfile() and file.read() are both known to
+			# erroneously return an empty string from this
+			# non-blocking fifo stream on FreeBSD (bug #337465).
+			data = os.read(fd, self._bufsize)
 
-		if buf:
+		if data:
 
 			try:
-				obj = pickle.loads(buf.tostring())
+				obj = pickle.loads(data)
 			except SystemExit:
 				raise
 			except Exception:

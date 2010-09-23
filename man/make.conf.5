@@ -209,6 +209,10 @@ existing digest, the digest will be regenerated regardless of whether or
 not \fIassume\-digests\fR is enabled. The \fBebuild\fR(1) \fBdigest\fR command
 has a \fB\-\-force\fR option that can be used to force regeneration of digests.
 .TP
+.B binpkg\-logs
+Keep logs from successful binary package merges. This is relevant only when
+\fBPORT_LOGDIR\fR is set.
+.TP
 .B buildpkg
 Binary packages will be created for all packages that are merged. Also see
 \fBquickpkg\fR(1) and \fBemerge\fR(1) \fB\-\-buildpkg\fR and
