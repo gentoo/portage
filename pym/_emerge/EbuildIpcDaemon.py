@@ -36,7 +36,13 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 			# array.fromfile() and file.read() are both known to
 			# erroneously return an empty string from this
 			# non-blocking fifo stream on FreeBSD (bug #337465).
-			data = os.read(fd, self._bufsize)
+			try:
+				data = os.read(fd, self._bufsize)
+			except OSError as e:
+				if e.errno != errno.EAGAIN:
+					raise
+				# Assume that another event will be generated
+				# if there's any relevant data.
 
 		if data:
 

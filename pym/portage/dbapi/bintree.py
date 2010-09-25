@@ -1,14 +1,17 @@
-# Copyright 1998-2009 Gentoo Foundation
+# Copyright 1998-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["bindbapi", "binarytree"]
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.checksum:hashfunc_map,perform_multiple_checksums,verify_all',
 	'portage.dbapi.dep_expand:dep_expand',
 	'portage.dep:dep_getkey,isjustname,match_from_list',
 	'portage.output:EOutput,colorize',
+	'portage.locks:lockfile,unlockfile',
 	'portage.package.ebuild.doebuild:_vdb_use_conditional_atoms',
+	'portage.package.ebuild.fetch:_check_distfile',
 	'portage.update:update_dbentries',
 	'portage.util:atomic_ofstream,ensure_dirs,normalize_path,' + \
 		'writemsg,writemsg_stdout',
@@ -17,26 +20,33 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage.cache.mappings import slot_dict_class
+from portage.const import CACHE_PATH
 from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, use_reduce, paren_enclose
 from portage.exception import InvalidPackageName, \
 	PermissionDenied, PortageException
 from portage.const import EAPI
 from portage.localization import _
-
 from portage import _movefile
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
-from portage.package.ebuild.fetch import _check_distfile
 
 import codecs
 import errno
 import re
 import stat
+import subprocess
 import sys
+import textwrap
 from itertools import chain
+try:
+	from urllib.parse import urlparse
+	from urllib.request import urlopen as urllib_request_urlopen
+except ImportError:
+	from urlparse import urlparse
+	from urllib import urlopen as urllib_request_urlopen
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -497,7 +507,7 @@ class binarytree(object):
 
 		if self._populating:
 			return
-		from portage.locks import lockfile, unlockfile
+
 		pkgindex_lock = None
 		try:
 			if os.access(self.pkgdir, os.W_OK):
@@ -642,8 +652,7 @@ class binarytree(object):
 								", ".join(missing_keys))
 						msg.append(_(" This binary package is not " \
 							"recoverable and should be deleted."))
-						from textwrap import wrap
-						for line in wrap("".join(msg), 72):
+						for line in textwrap.wrap("".join(msg), 72):
 							writemsg("!!! %s\n" % line, noiselevel=-1)
 						self.invalids.append(mypkg)
 						continue
@@ -731,11 +740,6 @@ class binarytree(object):
 
 		if getbinpkgs and 'PORTAGE_BINHOST' in self.settings:
 			base_url = self.settings["PORTAGE_BINHOST"]
-			from portage.const import CACHE_PATH
-			try:
-				from urllib.parse import urlparse
-			except ImportError:
-				from urlparse import urlparse
 			urldata = urlparse(base_url)
 			pkgindex_file = os.path.join(self.settings["EROOT"], CACHE_PATH, "binhost",
 				urldata[1] + urldata[2], "Packages")
@@ -753,16 +757,23 @@ class binarytree(object):
 				if e.errno != errno.ENOENT:
 					raise
 			local_timestamp = pkgindex.header.get("TIMESTAMP", None)
-			try:
-				from urllib.request import urlopen as urllib_request_urlopen
-			except ImportError:
-				from urllib import urlopen as urllib_request_urlopen
 			rmt_idx = self._new_pkgindex()
+			parsed_url = urlparse(base_url)
+			proc = None
 			try:
 				# urlparse.urljoin() only works correctly with recognized
 				# protocols and requires the base url to have a trailing
 				# slash, so join manually...
-				f = urllib_request_urlopen(base_url.rstrip("/") + "/Packages")
+				try:
+					f = urllib_request_urlopen(base_url.rstrip("/") + "/Packages")
+				except IOError:
+					if parsed_url.scheme != 'ssh':
+						raise
+					path = parsed_url.path.rstrip("/") + "/Packages"
+					proc = subprocess.Popen(['ssh', parsed_url.netloc, '--',
+						'cat', path], stdout=subprocess.PIPE)
+					f = proc.stdout
+
 				f_dec = codecs.iterdecode(f,
 					_encodings['repo.content'], errors='replace')
 				try:
@@ -788,6 +799,11 @@ class binarytree(object):
 				writemsg("!!! %s\n\n" % str(e))
 				del e
 				pkgindex = None
+			if proc is not None:
+				if proc.poll() is None:
+					proc.kill()
+					proc.wait()
+				proc = None
 			if pkgindex is rmt_idx:
 				pkgindex.modified = False # don't update the header
 				try:
@@ -944,7 +960,6 @@ class binarytree(object):
 
 		# Reread the Packages index (in case it's been changed by another
 		# process) and then updated it, all while holding a lock.
-		from portage.locks import lockfile, unlockfile
 		pkgindex_lock = None
 		created_symlink = False
 		try:
@@ -1022,7 +1037,6 @@ class binarytree(object):
 		"""
 
 		pkg_path = self.getname(cpv)
-		from portage.checksum import perform_multiple_checksums
 
 		d = dict(zip(self._pkgindex_aux_keys,
 			self.dbapi.aux_get(cpv, self._pkgindex_aux_keys)))
@@ -1175,10 +1189,6 @@ class binarytree(object):
 		
 		mydest = os.path.dirname(self.getname(pkgname))
 		self._ensure_dir(mydest)
-		try:
-			from urllib.parse import urlparse
-		except ImportError:
-			from urlparse import urlparse
 		# urljoin doesn't work correctly with unrecognized protocols like sftp
 		if self._remote_has_index:
 			rel_url = self._remotepkgs[pkgname].get("PATH")
@@ -1244,7 +1254,6 @@ class binarytree(object):
 			return False
 
 		digests = {}
-		from portage.checksum import hashfunc_map, verify_all
 		for k in hashfunc_map:
 			v = metadata.get(k)
 			if not v:

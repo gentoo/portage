@@ -1,6 +1,7 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from _emerge.AsynchronousLock import AsynchronousLock
 from _emerge.SpawnProcess import SpawnProcess
 try:
 	from urllib.parse import urlparse as urllib_parse_urlparse
@@ -139,8 +140,11 @@ class BinpkgFetcher(SpawnProcess):
 		if self._lock_obj is not None:
 			raise self.AlreadyLocked((self._lock_obj,))
 
-		self._lock_obj = portage.locks.lockfile(
-			self.pkg_path, wantnewlockfile=1)
+		async_lock = AsynchronousLock(path=self.pkg_path,
+			scheduler=self.scheduler)
+		async_lock.start()
+		async_lock.wait()
+		self._lock_obj = async_lock.lock_obj
 		self.locked = True
 
 	class AlreadyLocked(portage.exception.PortageException):
