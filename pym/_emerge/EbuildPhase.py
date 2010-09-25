@@ -66,7 +66,8 @@ class EbuildPhase(CompositeTask):
 
 			msg = []
 			msg.append("Package:    %s" % self.settings.mycpv)
-			msg.append("Repository: %s" % self.settings['PORTAGE_REPO_NAME'])
+			if self.settings.get('PORTAGE_REPO_NAME'):
+				msg.append("Repository: %s" % self.settings['PORTAGE_REPO_NAME'])
 			if maint_str:
 				msg.append("Maintainer: %s" % maint_str)
 			msg.append("USE:  %s" % use)
