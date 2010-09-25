@@ -43,6 +43,9 @@ RESUMECOMMAND="/usr/bin/wget -c -t 5 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FIL
 FETCHCOMMAND_RSYNC="rsync -avP \"\${URI}\" \"\${DISTDIR}/\${FILE}\""
 RESUMECOMMAND_RSYNC="rsync -avP \"\${URI}\" \"\${DISTDIR}/\${FILE}\""
 
+FETCHCOMMAND_SSH="bash -c \"x=\\\${2#ssh://} ; exec rsync -avP \\\"\\\${x%%/*}:/\\\${x#*/}\\\" \\\"\\\$1\\\"\" rsync \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
+RESUMECOMMAND_SSH=${FETCHCOMMAND_SSH}
+
 # Default user options
 FEATURES="assume-digests binpkg-logs distlocks fixpackages
           fixlafiles news parallel-fetch protect-owned
