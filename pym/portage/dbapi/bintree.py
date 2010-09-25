@@ -36,6 +36,7 @@ import codecs
 import errno
 import re
 import stat
+import subprocess
 import sys
 import textwrap
 from itertools import chain
@@ -756,11 +757,22 @@ class binarytree(object):
 					raise
 			local_timestamp = pkgindex.header.get("TIMESTAMP", None)
 			rmt_idx = self._new_pkgindex()
+			parsed_url = urlparse(base_url)
+			proc = None
 			try:
 				# urlparse.urljoin() only works correctly with recognized
 				# protocols and requires the base url to have a trailing
 				# slash, so join manually...
-				f = urllib_request_urlopen(base_url.rstrip("/") + "/Packages")
+				try:
+					f = urllib_request_urlopen(base_url.rstrip("/") + "/Packages")
+				except IOError:
+					if parsed_url.scheme != 'ssh':
+						raise
+					path = parsed_url.path.rstrip("/") + "/Packages"
+					proc = subprocess.Popen(['ssh', parsed_url.netloc, '--',
+						'cat', path], stdout=subprocess.PIPE)
+					f = proc.stdout
+
 				f_dec = codecs.iterdecode(f,
 					_encodings['repo.content'], errors='replace')
 				try:
@@ -786,6 +798,11 @@ class binarytree(object):
 				writemsg("!!! %s\n\n" % str(e))
 				del e
 				pkgindex = None
+			if proc is not None:
+				if proc.poll() is None:
+					proc.kill()
+					proc.wait()
+				proc = None
 			if pkgindex is rmt_idx:
 				pkgindex.modified = False # don't update the header
 				try:
