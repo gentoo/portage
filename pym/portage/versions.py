@@ -260,6 +260,7 @@ def _pkgsplit(mypkg):
 
 	return  (m.group('pn'), m.group('ver'), rev) 
 
+_cat_re = re.compile('^%s$' % _cat)
 _missing_cat = 'null'
 catcache={}
 def catpkgsplit(mydata,silent=1):
@@ -288,7 +289,8 @@ def catpkgsplit(mydata,silent=1):
 		p_split = _pkgsplit(mydata)
 	elif len(mysplit)==2:
 		cat = mysplit[0]
-		p_split = _pkgsplit(mysplit[1])
+		if _cat_re.match(cat) is not None:
+			p_split = _pkgsplit(mysplit[1])
 	if not p_split:
 		catcache[mydata]=None
 		return None
