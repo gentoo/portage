@@ -231,8 +231,19 @@ def stack_dicts(dicts, incremental=0, incrementals=[], ignore_none=0):
 				final_dict[k]  = v
 	return final_dict
 
+def append_repo(atom_list, repo_name, remember_source_file=False):
+	"""
+	Takes a list of valid atoms without repo spec and appends ::repo_name.
+	"""
+	if remember_source_file:
+		return [(Atom(atom + "::" + repo_name, allow_wildcard=True, allow_repo=True), source) \
+			for atom, source in atom_list]
+	else:
+		return [Atom(atom + "::" + repo_name, allow_wildcard=True, allow_repo=True) \
+			for atom in atom_list]
+
 def stack_lists(lists, incremental=1, remember_source_file=False,
-	warn_for_unmatched_removal=False, strict_warn_for_unmatched_removal=False):
+	warn_for_unmatched_removal=False, strict_warn_for_unmatched_removal=False, ignore_repo=False):
 	"""Stacks an array of list-types into one array. Optionally removing
 	distinct values using '-value' notation. Higher index is preferenced.
 
@@ -255,9 +266,25 @@ def stack_lists(lists, incremental=1, remember_source_file=False,
 				if token == "-*":
 					new_list.clear()
 				elif token[:1] == '-':
-					try:
-						new_list.pop(token[1:])
-					except KeyError:
+					matched = False
+					if ignore_repo and not "::" in token:
+						#Let -cat/pkg remove cat/pkg::repo.
+						to_be_removed = []
+						for atom in new_list:
+							if atom == token[1:] or atom.split("::")[0] == token[1:]:
+								to_be_removed.append(atom)
+						if to_be_removed:
+							matched = True
+							for atom in to_be_removed:
+								new_list.pop(atom)
+					else:
+						try:
+							new_list.pop(token[1:])
+							matched = True
+						except KeyError:
+							pass
+
+					if not matched:
 						if source_file and \
 							(strict_warn_for_unmatched_removal or \
 							token_key not in matched_removals):

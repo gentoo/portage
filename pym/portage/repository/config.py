@@ -17,7 +17,7 @@ import codecs
 class RepoConfig(object):
 	"""Stores config of one repository"""
 	__slots__ = ['aliases', 'eclass_overrides', 'location', 'masters', 'main_repo',
-		'missing_repo_name', 'name', 'priority', 'sync']
+		'missing_repo_name', 'name', 'priority', 'sync', 'format']
 	def __init__(self, name, repo_opts):
 		"""Build a RepoConfig with options in repo_opts
 		   Try to read repo_name in repository location, but if
@@ -51,6 +51,11 @@ class RepoConfig(object):
 		if sync is not None:
 			sync = sync.strip()
 		self.sync = sync
+
+		format = repo_opts.get('format')
+		if format is not None:
+			format = format.strip()
+		self.format = format
 
 		self.missing_repo_name = False
 
@@ -236,6 +241,10 @@ class RepoConfigLoader(object):
 		else:
 			return ''
 
+	def mainRepo(self):
+		"""Returns the main repo"""
+		return self.prepos[self.prepos['DEFAULT'].main_repo]
+
 	def _check_locations(self):
 		"""Check if repositories location are correct and show a warning message if not"""
 		for (name, r) in self.prepos.items():
@@ -247,6 +256,12 @@ class RepoConfigLoader(object):
 						self.prepos_order.remove(name)
 						writemsg(_("!!! Invalid Repository Location"
 							" (not a dir): '%s'\n") % r.location, noiselevel=-1)
+
+	def repos_with_profiles(self):
+		for repo_name in self.prepos_order:
+			repo = self.prepos[repo_name]
+			if repo.format != "unavailable":
+				yield repo
 
 def load_repository_config(settings):
 	#~ repoconfigpaths = [os.path.join(settings.global_config_path, "repos.conf")]

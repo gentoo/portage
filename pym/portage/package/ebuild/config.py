@@ -558,7 +558,7 @@ class config(object):
 					self.configdict["conf"].get("ACCEPT_LICENSE", ""))
 
 			#Read package.mask and package.unmask from profiles and optionally from user config
-			self._mask_manager = MaskManager(locations_manager.pmask_locations,
+			self._mask_manager = MaskManager(self.repositories, self.profiles,
 				abs_user_config, user_config=local_config,
 				strict_umatched_removal=_unmatched_removal)
 
