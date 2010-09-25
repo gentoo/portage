@@ -27,6 +27,7 @@ class BinpkgVerifier(AsynchronousTask):
 		stdout_orig = sys.stdout
 		stderr_orig = sys.stderr
 		out = portage.StringIO()
+		file_exists = True
 		try:
 			sys.stdout = out
 			sys.stderr = out
@@ -36,6 +37,7 @@ class BinpkgVerifier(AsynchronousTask):
 				writemsg("!!! Fetching Binary failed " + \
 					"for '%s'\n" % pkg.cpv, noiselevel=-1)
 				rval = 1
+				file_exists = False
 			except portage.exception.DigestException as e:
 				writemsg("\n!!! Digest verification failed:\n",
 					noiselevel=-1)
@@ -56,7 +58,7 @@ class BinpkgVerifier(AsynchronousTask):
 						os.unlink(self.logfile)
 					except OSError:
 						pass
-			else:
+			elif file_exists:
 				pkg_path = bintree.getname(pkg.cpv)
 				head, tail = os.path.split(pkg_path)
 				temp_filename = _checksum_failure_temp_file(head, tail)
