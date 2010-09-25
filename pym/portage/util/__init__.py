@@ -656,8 +656,14 @@ def varexpand(mystring, mydict=None):
 						newstring=newstring+chr(0o11)
 					elif a=='v':
 						newstring=newstring+chr(0o13)
+					elif a in ('\'', '"'):
+						# Quote removal is handled by shlex.
+						newstring = newstring + mystring[pos-2:pos]
+						continue
 					elif a!='\n':
-						#remove backslash only, as bash does: this takes care of \\ and \' and \" as well
+						# Remove backslash only, as bash does. This takes care
+						# of \\. Note that we don't handle quotes here since
+						# quote remoal is handled by shlex.
 						newstring=newstring+mystring[pos-1:pos]
 						continue
 			elif (mystring[pos]=="$") and (mystring[pos-1]!="\\"):
