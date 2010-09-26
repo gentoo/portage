@@ -46,6 +46,8 @@ RESUMECOMMAND_RSYNC="rsync -avP \"\${URI}\" \"\${DISTDIR}/\${FILE}\""
 FETCHCOMMAND_SSH="bash -c \"x=\\\${2#ssh://} ; exec rsync -avP \\\"\\\${x%%/*}:/\\\${x#*/}\\\" \\\"\\\$1\\\"\" rsync \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
 RESUMECOMMAND_SSH=${FETCHCOMMAND_SSH}
 
+FETCHCOMMAND_SFTP="bash -c \"x=\\\${2#sftp://} ; exec sftp \\\"\\\${x%%/*}:/\\\${x#*/}\\\" \\\"\\\$1\\\"\" sftp \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
+
 # Default user options
 FEATURES="assume-digests binpkg-logs distlocks fixpackages
           fixlafiles news parallel-fetch protect-owned

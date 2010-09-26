@@ -38,6 +38,7 @@ import re
 import stat
 import subprocess
 import sys
+import tempfile
 import textwrap
 from itertools import chain
 try:
@@ -759,6 +760,7 @@ class binarytree(object):
 			rmt_idx = self._new_pkgindex()
 			parsed_url = urlparse(base_url)
 			proc = None
+			tmp_filename = None
 			try:
 				# urlparse.urljoin() only works correctly with recognized
 				# protocols and requires the base url to have a trailing
@@ -766,12 +768,24 @@ class binarytree(object):
 				try:
 					f = urllib_request_urlopen(base_url.rstrip("/") + "/Packages")
 				except IOError:
-					if parsed_url.scheme != 'ssh':
-						raise
 					path = parsed_url.path.rstrip("/") + "/Packages"
-					proc = subprocess.Popen(['ssh', parsed_url.netloc, '--',
-						'cat', path], stdout=subprocess.PIPE)
-					f = proc.stdout
+					if parsed_url.scheme == 'sftp':
+						# The sftp command complains about 'Illegal seek' if
+						# we try to make it write to /dev/stdout, so use a
+						# temp file instead.
+						fd, tmp_filename = tempfile.mkstemp()
+						os.close(fd)
+						proc = subprocess.Popen(['sftp',
+							parsed_url.netloc + ":" + path, tmp_filename])
+						if proc.wait() != os.EX_OK:
+							raise
+						f = open(tmp_filename, 'rb')
+					elif parsed_url.scheme == 'ssh':
+						proc = subprocess.Popen(['ssh', parsed_url.netloc, '--',
+							'cat', path], stdout=subprocess.PIPE)
+						f = proc.stdout
+					else:
+						raise
 
 				f_dec = codecs.iterdecode(f,
 					_encodings['repo.content'], errors='replace')
@@ -803,6 +817,11 @@ class binarytree(object):
 					proc.kill()
 					proc.wait()
 				proc = None
+			if tmp_filename is not None:
+				try:
+					os.unlink(tmp_filename)
+				except OSError:
+					pass
 			if pkgindex is rmt_idx:
 				pkgindex.modified = False # don't update the header
 				try:
