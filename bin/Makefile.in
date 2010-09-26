@@ -21,6 +21,7 @@ usr_binprogs = \
 	egencache \
 	emerge \
 	portageq \
+	quickpkg \
 	repoman
 
 usr_sbinprogs = \
@@ -31,7 +32,6 @@ usr_sbinprogs = \
 	env-update \
 	etc-update \
 	fixpackages \
-	quickpkg \
 	readpecoff \
 	regenworld
 
