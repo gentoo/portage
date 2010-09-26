@@ -52,6 +52,7 @@ from _emerge.SetArg import SetArg
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 from _emerge.UnmergeDepPriority import UnmergeDepPriority
 
+from _emerge.resolver.backtracking import Backtracker, BacktrackParameter
 from _emerge.resolver.slot_collision import slot_conflict_handler
 from _emerge.resolver.circular_dependency import circular_dependency_handler
 from _emerge.resolver.output import display, filter_iuse_defaults
@@ -127,8 +128,7 @@ class _depgraph_sets(object):
 
 class _dynamic_depgraph_config(object):
 
-	def __init__(self, depgraph, myparams, allow_backtracking,
-		runtime_pkg_mask, needed_unstable_keywords, needed_use_config_changes, needed_license_changes):
+	def __init__(self, depgraph, myparams, allow_backtracking, backtrack_parameters):
 		self.myparams = myparams.copy()
 		self._vdb_loaded = False
 		self._allow_backtracking = allow_backtracking
@@ -195,33 +195,16 @@ class _dynamic_depgraph_config(object):
 		self._initially_unsatisfied_deps = []
 		self._ignored_deps = []
 		self._highest_pkg_cache = {}
-		if runtime_pkg_mask is None:
-			runtime_pkg_mask = {}
-		else:
-			runtime_pkg_mask = dict((k, v.copy()) for (k, v) in \
-				runtime_pkg_mask.items())
 
-		if needed_unstable_keywords is None:
-			self._needed_unstable_keywords = set()
-		else:
-			self._needed_unstable_keywords = needed_unstable_keywords.copy()
-
-		if needed_license_changes is None:
-			self._needed_license_changes = {}
-		else:
-			self._needed_license_changes = needed_license_changes.copy()
-
-		if needed_use_config_changes is None:
-			self._needed_use_config_changes = {}
-		else:
-			self._needed_use_config_changes = \
-				dict((k.copy(), (v[0].copy(), v[1].copy())) for (k, v) in \
-					needed_use_config_changes.items())
+		self._needed_unstable_keywords = backtrack_parameters.needed_unstable_keywords
+		self._needed_license_changes = backtrack_parameters.needed_license_changes
+		self._needed_use_config_changes = backtrack_parameters.needed_use_config_changes
+		self._runtime_pkg_mask = backtrack_parameters.runtime_pkg_mask
+		self._need_restart = False
+		self._backtrack_infos = {}
 
 		self._autounmask = depgraph._frozen_config.myopts.get('--autounmask', 'n') == True
-
-		self._runtime_pkg_mask = runtime_pkg_mask
-		self._need_restart = False
+		self._success_without_autounmask = False
 
 		for myroot in depgraph._frozen_config.trees:
 			self.sets[myroot] = _depgraph_sets()
@@ -300,15 +283,13 @@ class depgraph(object):
 	_dep_keys = ["DEPEND", "RDEPEND", "PDEPEND"]
 	
 	def __init__(self, settings, trees, myopts, myparams, spinner,
-		frozen_config=None, runtime_pkg_mask=None, needed_unstable_keywords=None, \
-			needed_use_config_changes=None, needed_license_changes=None, allow_backtracking=False):
+		frozen_config=None, backtrack_parameters=BacktrackParameter(), allow_backtracking=False):
 		if frozen_config is None:
 			frozen_config = _frozen_depgraph_config(settings, trees,
 			myopts, spinner)
 		self._frozen_config = frozen_config
 		self._dynamic_config = _dynamic_depgraph_config(self, myparams,
-			allow_backtracking, runtime_pkg_mask, needed_unstable_keywords, \
-			needed_use_config_changes, needed_license_changes)
+			allow_backtracking, backtrack_parameters)
 
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
@@ -722,16 +703,14 @@ class depgraph(object):
 							(dep.parent,
 							self._dynamic_config._runtime_pkg_mask[
 							dep.parent]), noiselevel=-1)
-				else:
+				elif not self.need_restart():
 					# Do not backtrack if only USE have to be changed in
 					# order to satisfy the dependency.
 					dep_pkg, existing_node = \
 						self._select_package(dep.root, dep.atom.without_use,
 							onlydeps=dep.onlydeps)
 					if dep_pkg is None:
-						self._dynamic_config._runtime_pkg_mask.setdefault(
-							dep.parent, {})["missing dependency"] = \
-								set([(dep.parent, dep.root, dep.atom)])
+						self._dynamic_config._backtrack_infos["missing dependency"] = dep
 						self._dynamic_config._need_restart = True
 						if "--debug" in self._frozen_config.myopts:
 							msg = []
@@ -882,47 +861,46 @@ class depgraph(object):
 								self._dynamic_config._runtime_pkg_mask[
 								existing_node]), noiselevel=-1)
 					elif self._dynamic_config._allow_backtracking and \
-						not self._accept_blocker_conflicts():
+						not self._accept_blocker_conflicts() and \
+						not self.need_restart():
+
 						self._add_slot_conflict(pkg)
 						if dep.atom is not None and dep.parent is not None:
 							self._add_parent_atom(pkg, (dep.parent, dep.atom))
+
 						if arg_atoms:
 							for parent_atom in arg_atoms:
 								parent, atom = parent_atom
 								self._add_parent_atom(pkg, parent_atom)
 						self._process_slot_conflicts()
 
-						# NOTE: We always mask existing_node since
-						# _select_package tries to avoid slot conflicts when
-						# possible and therefore a conflict typically means
-						# that existing_node was a poor choice.
-						to_be_masked = existing_node
+						backtrack_data = []
+						all_parents = set()
+						for node, other_node in (existing_node, pkg), (pkg, existing_node):
+							parent_atoms = \
+								self._dynamic_config._parent_atoms.get(node, set())
+							if parent_atoms:
+								conflict_atoms = self._dynamic_config._slot_conflict_parent_atoms.intersection(parent_atoms)
+								if conflict_atoms:
+									parent_atoms = conflict_atoms
+							all_parents.update(parent_atoms)
+							if node < other_node:
+								parent_atoms = set()
+							backtrack_data.append((node, parent_atoms))
 
-						parent_atoms = \
-							self._dynamic_config._parent_atoms.get(pkg, set())
-						if parent_atoms:
-							conflict_atoms = self._dynamic_config._slot_conflict_parent_atoms.intersection(parent_atoms)
-							if conflict_atoms:
-								parent_atoms = conflict_atoms
-
-						if pkg >= existing_node:
-							# We only care about the parent atoms
-							# when they trigger a downgrade.
-							parent_atoms = set()
-
-						self._dynamic_config._runtime_pkg_mask.setdefault(
-							to_be_masked, {})["slot conflict"] = parent_atoms
+						self._dynamic_config._backtrack_infos["slot conflict"] = backtrack_data
 						self._dynamic_config._need_restart = True
 						if "--debug" in self._frozen_config.myopts:
 							msg = []
 							msg.append("")
 							msg.append("")
 							msg.append("backtracking due to slot conflict:")
-							msg.append("   package: %s" % to_be_masked)
-							msg.append("      slot: %s" % to_be_masked.slot_atom)
+							msg.append("   first package:  %s" % existing_node)
+							msg.append("   second package: %s" % pkg)
+							msg.append("      slot: %s" % pkg.slot_atom)
 							msg.append("   parents: %s" % \
 								[(str(parent), atom) \
-								for parent, atom in parent_atoms])
+								for parent, atom in all_parents])
 							msg.append("")
 							writemsg_level("".join("%s\n" % l for l in msg),
 								noiselevel=-1, level=logging.DEBUG)
@@ -1917,6 +1895,8 @@ class depgraph(object):
 			set(self._dynamic_config.digraph).intersection( \
 			self._dynamic_config._needed_license_changes) :
 			#We failed if the user needs to change the configuration
+			if not missing:
+				self._dynamic_config._success_without_autounmask = True
 			return False, myfavorites
 
 		# We're true here unless we are missing binaries.
@@ -2631,9 +2611,18 @@ class depgraph(object):
 
 		if masked_by_unstable_keywords:
 			self._dynamic_config._needed_unstable_keywords.add(pkg)
+			backtrack_infos = self._dynamic_config._backtrack_infos
+			backtrack_infos.setdefault("config", {})
+			backtrack_infos["config"].setdefault("needed_unstable_keywords", set())
+			backtrack_infos["config"]["needed_unstable_keywords"].add(pkg)
+			
 
 		if missing_licenses:
 			self._dynamic_config._needed_license_changes.setdefault(pkg, set()).update(missing_licenses)
+			backtrack_infos = self._dynamic_config._backtrack_infos
+			backtrack_infos.setdefault("config", {})
+			backtrack_infos["config"].setdefault("needed_license_changes", set())
+			backtrack_infos["config"]["needed_license_changes"].add((pkg, frozenset(missing_licenses)))
 
 		return True
 
@@ -2709,8 +2698,12 @@ class depgraph(object):
 			if required_use and check_required_use(required_use, old_use, pkg.iuse.is_valid_flag) and \
 				not check_required_use(required_use, new_use, pkg.iuse.is_valid_flag):
 				return old_use
-			
+
 			self._dynamic_config._needed_use_config_changes[pkg] = (new_use, new_changes)
+			backtrack_infos = self._dynamic_config._backtrack_infos
+			backtrack_infos.setdefault("config", {})
+			backtrack_infos["config"].setdefault("needed_use_config_changes", [])
+			backtrack_infos["config"]["needed_use_config_changes"].append((pkg, (new_use, new_changes)))
 			if want_restart_for_use_change(pkg, new_use):
 				self._dynamic_config._need_restart = True
 		return new_use
@@ -5136,18 +5129,12 @@ class depgraph(object):
 
 	def need_restart(self):
 		return self._dynamic_config._need_restart
+	
+	def success_without_autounmask(self):
+		return self._dynamic_config._success_without_autounmask
 
-	def get_backtrack_parameters(self):
-		return {
-			"needed_unstable_keywords":
-				self._dynamic_config._needed_unstable_keywords.copy(), \
-			"runtime_pkg_mask":
-				self._dynamic_config._runtime_pkg_mask.copy(),
-			"needed_use_config_changes":
-				self._dynamic_config._needed_use_config_changes.copy(),
-			"needed_license_changes":
-				self._dynamic_config._needed_license_changes.copy(),
-			}
+	def get_backtrack_infos(self):
+		return self._dynamic_config._backtrack_infos
 			
 
 class _dep_check_composite_db(dbapi):
@@ -5375,43 +5362,41 @@ def backtrack_depgraph(settings, trees, myopts, myparams,
 	finally:
 		_spinner_stop(spinner)
 
-def _backtrack_depgraph(settings, trees, myopts, myparams, 
-	myaction, myfiles, spinner):
 
-	backtrack_max = myopts.get('--backtrack', 5)
-	backtrack_parameters = {}
-	needed_unstable_keywords = None
-	allow_backtracking = backtrack_max > 0
-	backtracked = 0
+def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, spinner):
+
+	max_depth = myopts.get('--backtrack', 5)
+	allow_backtracking = max_depth > 0
+	backtracker = Backtracker(max_depth)
+
 	frozen_config = _frozen_depgraph_config(settings, trees,
 		myopts, spinner)
-	while True:
+
+	while backtracker:
+		backtrack_parameters = backtracker.get()
+
 		mydepgraph = depgraph(settings, trees, myopts, myparams, spinner,
 			frozen_config=frozen_config,
 			allow_backtracking=allow_backtracking,
-			**backtrack_parameters)
+			backtrack_parameters=backtrack_parameters)
 		success, favorites = mydepgraph.select_files(myfiles)
-		if not success:
-			if mydepgraph.need_restart() and backtracked < backtrack_max:
-				backtrack_parameters = mydepgraph.get_backtrack_parameters()
-				backtracked += 1
-			elif backtracked and allow_backtracking:
-				if "--debug" in myopts:
-					writemsg_level(
-						"\n\nbacktracking aborted after %s tries\n\n" % \
-						backtracked, noiselevel=-1, level=logging.DEBUG)
-				# Backtracking failed, so disable it and do
-				# a plain dep calculation + error message.
-				allow_backtracking = False
-				#Don't reset needed_unstable_keywords here, since we don't want to
-				#send the user through a "one step at a time" unmasking session for
-				#no good reason.
-				backtrack_parameters.pop('runtime_pkg_mask', None)
-			else:
-				break
-		else:
+
+		if success or mydepgraph.success_without_autounmask():
 			break
+		elif mydepgraph.need_restart():
+			backtracker.feedback(mydepgraph.get_backtrack_infos())
+
+	if not (success or mydepgraph.success_without_autounmask()) and backtracker.backtracked(): 
+		backtrack_parameters = backtracker.get_best_run()
+
+		mydepgraph = depgraph(settings, trees, myopts, myparams, spinner,
+			frozen_config=frozen_config,
+			allow_backtracking=False,
+			backtrack_parameters=backtrack_parameters)
+		success, favorites = mydepgraph.select_files(myfiles)
+
 	return (success, mydepgraph, favorites)
+
 
 def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 	"""
