@@ -892,17 +892,17 @@ class depgraph(object):
 								self._add_parent_atom(pkg, parent_atom)
 						self._process_slot_conflicts()
 
-						parent_atoms = \
-							self._dynamic_config._parent_atoms.get(pkg, set())
-						if parent_atoms:
-							conflict_atoms = self._dynamic_config._slot_conflict_parent_atoms.intersection(parent_atoms)
-							if conflict_atoms:
-								parent_atoms = conflict_atoms
-
 						if pkg > existing_node:
 							to_be_masked = pkg
 						else:
 							to_be_masked = existing_node
+
+						parent_atoms = \
+							self._dynamic_config._parent_atoms.get(to_be_masked, set())
+						if parent_atoms:
+							conflict_atoms = self._dynamic_config._slot_conflict_parent_atoms.intersection(parent_atoms)
+							if conflict_atoms:
+								parent_atoms = conflict_atoms
 
 						if pkg.cpv == existing_node.cpv:
 							# We only care about the parent atoms
