@@ -116,8 +116,12 @@ class portdbapi(dbapi):
 		# earlier ones that correspond to the same name.
 		self._ignored_repos = self.settings.repositories.ignored_repos
 
-		self._repository_map = self.settings.repositories.location_map
-		self.treemap = self.settings.repositories.treemap
+		self._repository_map = {}
+		for k, v in self.settings.repositories.location_map.items():
+			self._repository_map[os.path.realpath(k)] = v
+		self.treemap = {}
+		for k, v in self.settings.repositories.treemap.items():
+			self.treemap[k] = os.path.realpath(v)
 
 		self.porttrees = porttrees
 		porttree_root = os.path.realpath(
