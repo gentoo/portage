@@ -60,6 +60,7 @@ class _RepoDisplay(object):
 	def repoStr(self, repo_path_real):
 		real_index = -1
 		if repo_path_real:
+			repo_path_real = os.path.realpath(repo_path_real)
 			real_index = self._repo_paths_real.index(repo_path_real)
 		if real_index == -1:
 			s = "?"
