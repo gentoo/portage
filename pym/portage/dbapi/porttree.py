@@ -892,7 +892,8 @@ class portdbapi(dbapi):
 			if mydep == mykey:
 				mylist = self.cp_list(mykey)
 			else:
-				mylist = match_from_list(mydep, self.cp_list(mykey, myrepo = mydep.repo))
+				mylist = match_from_list(mydep, self.cp_list(mykey,
+					mytree=self._repository_map.get(mydep.repo)))
 			myval = ""
 			settings = self.settings
 			local_config = settings.local_config
