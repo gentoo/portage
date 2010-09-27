@@ -892,10 +892,11 @@ class depgraph(object):
 								self._add_parent_atom(pkg, parent_atom)
 						self._process_slot_conflicts()
 
-						if pkg > existing_node:
-							to_be_masked = pkg
-						else:
-							to_be_masked = existing_node
+						# NOTE: We always mask existing_node since
+						# _select_package tries to avoid slot conflicts when
+						# possible and therefore a conflict typically means
+						# that existing_node was a poor choice.
+						to_be_masked = existing_node
 
 						parent_atoms = \
 							self._dynamic_config._parent_atoms.get(to_be_masked, set())
@@ -904,7 +905,7 @@ class depgraph(object):
 							if conflict_atoms:
 								parent_atoms = conflict_atoms
 
-						if pkg.cpv == existing_node.cpv:
+						if pkg >= existing_node:
 							# We only care about the parent atoms
 							# when they trigger a downgrade.
 							parent_atoms = set()
