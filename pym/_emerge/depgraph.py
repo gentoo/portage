@@ -4909,7 +4909,11 @@ class depgraph(object):
 		portdb = self._frozen_config.trees[self._frozen_config.target_root]["porttree"].dbapi
 		added_favorites = set()
 		for x in self._dynamic_config._set_nodes:
-			pkg_type, root, pkg_key, pkg_status, pkg_repo = x
+			pkg_type = x.type_name
+			root = x.root
+			pkg_key = x.cpv
+			pkg_status = x.operation
+			pkg_repo = x.repo
 			if pkg_status != "nomerge":
 				continue
 
@@ -4969,16 +4973,16 @@ class depgraph(object):
 		serialized_tasks = []
 		masked_tasks = []
 		for x in mergelist:
-			if not (isinstance(x, list) and len(x) == 5):
+			if not (isinstance(x, list) and len(x) == 4):
 				continue
-			pkg_type, myroot, pkg_key, action, pkg_repo = x
+			pkg_type, myroot, pkg_key, action = x
 			if pkg_type not in self.pkg_tree_map:
 				continue
 			if action != "merge":
 				continue
 			root_config = self._frozen_config.roots[myroot]
 			try:
-				pkg = self._pkg(pkg_key, pkg_type, root_config, myrepo=pkg_repo)
+				pkg = self._pkg(pkg_key, pkg_type, root_config)
 			except portage.exception.PackageNotFound:
 				# It does no exist or it is corrupt.
 				if skip_missing:
