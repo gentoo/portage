@@ -82,7 +82,7 @@ class Backtracker(object):
 
 	def get(self):
 		"""
-		Returns a backtrack paramater. The backtrack graph is explored with depth first.
+		Returns a backtrack parameter. The backtrack graph is explored with depth first.
 		"""
 		if self._unexplored_nodes:
 			node = self._unexplored_nodes.pop()
@@ -147,7 +147,7 @@ class Backtracker(object):
 
 	def feedback(self, infos):
 		"""
-		Takes infomration from the depgraph and computes new backtrack parameters to try.
+		Takes information from the depgraph and computes new backtrack parameters to try.
 		"""
 		assert self._current_node is not None, "call feedback() only after get() was called"
 
@@ -165,7 +165,7 @@ class Backtracker(object):
 
 	def backtracked(self):
 		"""
-		If we dind't backtrack, there is only the root.
+		If we didn't backtrack, there is only the root.
 		"""
 		return len(self._nodes) > 1
 
@@ -173,7 +173,7 @@ class Backtracker(object):
 	def get_best_run(self):
 		"""
 		Like, get() but returns the backtrack parameter that has as many config changes as possible,
-		but has no masks. This maskes --autounmask effective, but prevents confusing error messages
+		but has no masks. This makes --autounmask effective, but prevents confusing error messages
 		with "masked by backtracking".
 		"""
 		best_node = self._root

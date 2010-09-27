@@ -14,7 +14,7 @@ class MultirepoTestCase(TestCase):
 			"dev-libs/A-2::repo1": { },
 			"dev-libs/A-1::repo2": { },
 
-			#Packges in exactly one repo
+			#Packages in exactly one repo
 			"dev-libs/B-1": { },
 			"dev-libs/C-1::repo1": { },
 
@@ -63,7 +63,7 @@ class MultirepoTestCase(TestCase):
 				check_repo_names = True,
 				mergelist = ["dev-libs/A-1"]),
 
-			#Packges in exactly one repo
+			#Packages in exactly one repo
 			ResolverPlaygroundTestCase(
 				["dev-libs/B"],
 				success = True,
