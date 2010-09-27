@@ -4350,13 +4350,17 @@ class depgraph(object):
 					uninst_task = node
 				else:
 					vardb = self._frozen_config.trees[node.root]["vartree"].dbapi
-					previous_cpv = vardb.match(node.slot_atom)
-					if previous_cpv:
+					inst_pkg = vardb.match_pkgs(node.slot_atom)
+					if inst_pkg:
 						# The package will be replaced by this one, so remove
 						# the corresponding Uninstall task if necessary.
-						previous_cpv = previous_cpv[0]
-						uninst_task = \
-							("installed", node.root, previous_cpv, "uninstall")
+						inst_pkg = inst_pkg[0]
+						uninst_task = Package(built=inst_pkg.built,
+							cpv=inst_pkg.cpv, installed=inst_pkg.installed,
+							metadata=inst_pkg.metadata,
+							operation="uninstall",
+							root_config=inst_pkg.root_config,
+							type_name=inst_pkg.type_name)
 						try:
 							mygraph.remove(uninst_task)
 						except KeyError:
