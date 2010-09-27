@@ -892,20 +892,44 @@ class depgraph(object):
 								self._add_parent_atom(pkg, parent_atom)
 						self._process_slot_conflicts()
 
-						# NOTE: We always mask existing_node since
-						# _select_package tries to avoid slot conflicts when
-						# possible and therefore a conflict typically means
-						# that existing_node was a poor choice.
-						to_be_masked = existing_node
+						all_parents = set()
+						for node in (existing_node, pkg):
+							parent_atoms = \
+								self._dynamic_config._parent_atoms.get(node, set())
+							if parent_atoms:
+								conflict_atoms = self._dynamic_config._slot_conflict_parent_atoms.intersection(parent_atoms)
+								if conflict_atoms:
+									parent_atoms = conflict_atoms
+							all_parents.update(parent_atoms)
 
+						# NOTE: Generally, we mask the higher version since
+						# this solves common cases in which a lower version
+						# is needed so that all dependencies will be
+						# satisfied (bug #337178). However, if existing_node
+						# happens to be installed then we mask that since
+						# this is a common case that is triggered when
+						# --update is not enabled.
+						if existing_node.installed:
+							to_be_masked = existing_node
+							to_be_selected = pkg
+						elif pkg > existing_node:
+							to_be_masked = pkg
+							to_be_selected = existing_node
+						else:
+							to_be_masked = existing_node
+							to_be_selected = pkg
+
+						# For missed update messages, find out which
+						# atoms matched to_be_selected that did not
+						# match to_be_masked.
 						parent_atoms = \
-							self._dynamic_config._parent_atoms.get(pkg, set())
+							self._dynamic_config._parent_atoms.get(to_be_selected, set())
 						if parent_atoms:
 							conflict_atoms = self._dynamic_config._slot_conflict_parent_atoms.intersection(parent_atoms)
 							if conflict_atoms:
 								parent_atoms = conflict_atoms
 
-						if pkg >= existing_node:
+						if to_be_selected >= to_be_masked:
 							# We only care about the parent atoms
 							# when they trigger a downgrade.
 							parent_atoms = set()
@@ -918,11 +942,13 @@ class depgraph(object):
 							msg.append("")
 							msg.append("")
 							msg.append("backtracking due to slot conflict:")
-							msg.append("   package: %s" % to_be_masked)
-							msg.append("      slot: %s" % to_be_masked.slot_atom)
+							msg.append("   first package:  %s" % existing_node)
+							msg.append("   second package: %s" % pkg)
+							msg.append("  package to mask: %s" % to_be_masked)
+							msg.append("      slot: %s" % pkg.slot_atom)
 							msg.append("   parents: %s" % \
 								[(str(parent), atom) \
-								for parent, atom in parent_atoms])
+								for parent, atom in all_parents])
 							msg.append("")
 							writemsg_level("".join("%s\n" % l for l in msg),
 								noiselevel=-1, level=logging.DEBUG)
