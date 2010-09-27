@@ -154,7 +154,7 @@ class Scheduler(PollScheduler):
 		self._spinner = spinner
 		self._mtimedb = mtimedb
 		self._favorites = favorites
-		self._args_set = InternalPackageSet(favorites)
+		self._args_set = InternalPackageSet(favorites, allow_repo=True)
 		self._build_opts = self._build_opts_class()
 		for k in self._build_opts.__slots__:
 			setattr(self._build_opts, k, "--" + k.replace("_", "-") in myopts)
@@ -703,7 +703,7 @@ class Scheduler(PollScheduler):
 				'digest' not in pkgsettings.features:
 				continue
 			portdb = x.root_config.trees['porttree'].dbapi
-			ebuild_path = portdb.findname(x.cpv)
+			ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
 			if ebuild_path is None:
 				raise AssertionError("ebuild not found for '%s'" % x.cpv)
 			pkgsettings['O'] = os.path.dirname(ebuild_path)
@@ -780,7 +780,7 @@ class Scheduler(PollScheduler):
 			root_config = x.root_config
 			portdb = root_config.trees["porttree"].dbapi
 			quiet_config = quiet_settings[root_config.root]
-			ebuild_path = portdb.findname(x.cpv)
+			ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
 			if ebuild_path is None:
 				raise AssertionError("ebuild not found for '%s'" % x.cpv)
 			quiet_config["O"] = os.path.dirname(ebuild_path)
@@ -983,7 +983,7 @@ class Scheduler(PollScheduler):
 			else:
 				tree = "porttree"
 				portdb = root_config.trees["porttree"].dbapi
-				ebuild_path = portdb.findname(x.cpv)
+				ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
 				if ebuild_path is None:
 					raise AssertionError("ebuild not found for '%s'" % x.cpv)
 

@@ -176,8 +176,3 @@ class LocationsManager(object):
 
 		self.profile_locations = tuple(self.profile_locations)
 		self.profile_and_user_locations = tuple(self.profile_and_user_locations)
-
-		self.pmask_locations = (
-			tuple([os.path.join(portdir, "profiles")] + self.overlay_profiles),
-			tuple(self.profiles),
-		)

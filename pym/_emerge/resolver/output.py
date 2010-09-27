@@ -43,11 +43,8 @@ class _RepoDisplay(object):
 		repo_paths = set()
 		for root_config in roots.values():
 			portdir = root_config.settings.get("PORTDIR")
-			if portdir:
-				repo_paths.add(portdir)
-			overlays = root_config.settings.get("PORTDIR_OVERLAY")
-			if overlays:
-				repo_paths.update(overlays.split())
+			if root_config.settings.repositories:
+				repo_paths.update(root_config.settings.repositories.repoLocationList())
 		repo_paths = list(repo_paths)
 		self._repo_paths = repo_paths
 		self._repo_paths_real = [ os.path.realpath(repo_path) \
@@ -63,6 +60,7 @@ class _RepoDisplay(object):
 	def repoStr(self, repo_path_real):
 		real_index = -1
 		if repo_path_real:
+			repo_path_real = os.path.realpath(repo_path_real)
 			real_index = self._repo_paths_real.index(repo_path_real)
 		if real_index == -1:
 			s = "?"
@@ -186,7 +184,7 @@ class _DisplayConfig(object):
 		dynamic_config = depgraph._dynamic_config
 
 		self.mylist = mylist
-		self.favorites = InternalPackageSet(favorites)
+		self.favorites = InternalPackageSet(favorites, allow_repo=True)
 		self.verbosity = verbosity
 
 		if self.verbosity is None:
@@ -340,9 +338,9 @@ def display(depgraph, mylist, favorites=[], verbosity=None):
 			pkg = x
 			metadata = pkg.metadata
 			ebuild_path = None
-			repo_name = metadata["repository"]
+			repo_name = pkg.repo
 			if pkg.type_name == "ebuild":
-				ebuild_path = portdb.findname(pkg.cpv)
+				ebuild_path = portdb.findname(pkg.cpv, myrepo=repo_name)
 				if ebuild_path is None:
 					raise AssertionError(
 						"ebuild not found for '%s'" % pkg.cpv)
@@ -356,7 +354,7 @@ def display(depgraph, mylist, favorites=[], verbosity=None):
 				fetch = red("F")
 				if ordered:
 					counters.restrict_fetch += 1
-				if portdb.fetch_check(pkg_key, pkg_use):
+				if portdb.fetch_check(pkg_key, pkg_use, myrepo=pkg.repo):
 					fetch = green("f")
 					if ordered:
 						counters.restrict_fetch_satisfied += 1

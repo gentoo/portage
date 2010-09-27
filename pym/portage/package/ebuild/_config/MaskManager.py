@@ -5,38 +5,49 @@ __all__ = (
 	'MaskManager',
 )
 
-from itertools import chain
 from portage import os
-from portage.dep import ExtendedAtomDict, match_from_list
-from portage.util import grabfile_package, stack_lists
+from portage.dep import ExtendedAtomDict, match_from_list, _repo_separator, _slot_separator
+from portage.util import append_repo, grabfile_package, stack_lists
 from portage.versions import cpv_getkey
 
 class MaskManager(object):
 
-	def __init__(self, pmask_locations, abs_user_config,
+	def __init__(self, repositories, profiles, abs_user_config,
 		user_config=True, strict_umatched_removal=False):
 		self._punmaskdict = ExtendedAtomDict(list)
 		self._pmaskdict = ExtendedAtomDict(list)
 
-		repo_profiles, profiles = pmask_locations
+		#Read profile/package.mask form every repo.
+		#Repositories inherit masks from their parent profiles and
+		#are able to remove mask from them with -atoms.
+		#Such a removal affects only the current repo, but not the parent.
+		#Add ::repo specs to every atom to make sure atoms only affect
+		#packages from the current repo.
 
-		#Read profile/package.mask form every repo. Stack them immediately
-		#to make sure that -atoms don't effect other repos.
 		repo_pkgmasklines = []
-		repo_pkgunmasklines = []
-		for x in repo_profiles:
-			repo_pkgmasklines.append(stack_lists([grabfile_package(
-				os.path.join(x, "package.mask"), recursive=1, remember_source_file=True, verify_eapi=True)], \
-					incremental=1, remember_source_file=True,
-					warn_for_unmatched_removal=True,
+		for repo in repositories.repos_with_profiles():
+			lines = []
+			repo_lines = grabfile_package(os.path.join(repo.location, "profiles", "package.mask"), \
+				recursive=1, remember_source_file=True, verify_eapi=True)
+			masters = repo.masters
+			if masters is None:
+				masters = [repositories.mainRepo()]
+			for master in masters:
+				master_lines = grabfile_package(os.path.join(master.location, "profiles", "package.mask"), \
+					recursive=1, remember_source_file=True, verify_eapi=True)
+				lines.append(stack_lists([master_lines, repo_lines], incremental=1,
+					remember_source_file=True, warn_for_unmatched_removal=True,
 					strict_warn_for_unmatched_removal=strict_umatched_removal))
-			repo_pkgunmasklines.append(stack_lists([grabfile_package(
-				os.path.join(x, "package.unmask"), recursive=1, remember_source_file=True, verify_eapi=True)], \
-				incremental=1, remember_source_file=True,
-				warn_for_unmatched_removal=True,
-				strict_warn_for_unmatched_removal=strict_umatched_removal))
-		repo_pkgmasklines = list(chain.from_iterable(repo_pkgmasklines))
-		repo_pkgunmasklines = list(chain.from_iterable(repo_pkgunmasklines))
+			repo_pkgmasklines.extend(append_repo(stack_lists(lines), repo.name, remember_source_file=True))
+
+		repo_pkgunmasklines = []
+		for repo in repositories.repos_with_profiles():
+			repo_lines = grabfile_package(os.path.join(repo.location, "profiles", "package.unmask"), \
+				recursive=1, remember_source_file=True, verify_eapi=True)
+			lines = stack_lists([repo_lines], incremental=1, \
+				remember_source_file=True, warn_for_unmatched_removal=True,
+				strict_warn_for_unmatched_removal=strict_umatched_removal)
+			repo_pkgmasklines.extend(append_repo(lines, repo.name))
 
 		#Read package.mask form the user's profile. Stack them in the end
 		#to allow profiles to override masks from their parent profiles.
@@ -72,17 +83,17 @@ class MaskManager(object):
 		if user_config:
 			user_pkgmasklines = grabfile_package(
 				os.path.join(abs_user_config, "package.mask"), recursive=1, \
-				allow_wildcard=True, remember_source_file=True, verify_eapi=False)
+				allow_wildcard=True, allow_repo=True, remember_source_file=True, verify_eapi=False)
 			user_pkgunmasklines = grabfile_package(
 				os.path.join(abs_user_config, "package.unmask"), recursive=1, \
-				allow_wildcard=True, remember_source_file=True, verify_eapi=False)
+				allow_wildcard=True, allow_repo=True, remember_source_file=True, verify_eapi=False)
 
 		#Stack everything together. At this point, only user_pkgmasklines may contain -atoms.
 		#Don't warn for unmatched -atoms here, since we don't do it for any other user config file.
 		pkgmasklines = stack_lists([repo_pkgmasklines, profile_pkgmasklines, user_pkgmasklines], \
-			incremental=1, remember_source_file=True, warn_for_unmatched_removal=False)
+			incremental=1, remember_source_file=True, warn_for_unmatched_removal=False, ignore_repo=True)
 		pkgunmasklines = stack_lists([repo_pkgunmasklines, profile_pkgunmasklines, user_pkgunmasklines], \
-			incremental=1, remember_source_file=True, warn_for_unmatched_removal=False)
+			incremental=1, remember_source_file=True, warn_for_unmatched_removal=False, ignore_repo=True)
 
 		for x, source_file in pkgmasklines:
 			self._pmaskdict.setdefault(x.cp, []).append(x)
@@ -94,7 +105,7 @@ class MaskManager(object):
 			for k, v in d.items():
 				d[k] = tuple(v)
 
-	def getMaskAtom(self, cpv, slot):
+	def getMaskAtom(self, cpv, slot, repo):
 		"""
 		Take a package and return a matching package.mask atom, or None if no
 		such atom exists or it has been cancelled by package.unmask. PROVIDE
@@ -111,7 +122,10 @@ class MaskManager(object):
 		cp = cpv_getkey(cpv)
 		mask_atoms = self._pmaskdict.get(cp)
 		if mask_atoms:
-			pkg_list = ["%s:%s" % (cpv, slot)]
+			pkg = "".join((cpv, _slot_separator, slot))
+			if repo:
+				pkg = "".join((pkg, _repo_separator, repo))
+			pkg_list = [pkg]
 			unmask_atoms = self._punmaskdict.get(cp)
 			for x in mask_atoms:
 				if not match_from_list(x, pkg_list):

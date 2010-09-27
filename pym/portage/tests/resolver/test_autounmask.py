@@ -194,6 +194,11 @@ class AutounmaskTestCase(TestCase):
 			"dev-libs/A-1": { "LICENSE": "TEST" },
 			"dev-libs/B-1": { "LICENSE": "TEST", "IUSE": "foo", "KEYWORDS": "~x86"},
 			"dev-libs/C-1": { "DEPEND": "dev-libs/B[foo]", "EAPI": 2 },
+			
+			"dev-libs/D-1": { "DEPEND": "dev-libs/E dev-libs/F", "LICENSE": "TEST" },
+			"dev-libs/E-1": { "LICENSE": "TEST" },
+			"dev-libs/E-2": { "LICENSE": "TEST" },
+			"dev-libs/F-1": { "DEPEND": "=dev-libs/E-1", "LICENSE": "TEST" },
 			}
 
 		test_cases = (
@@ -217,6 +222,14 @@ class AutounmaskTestCase(TestCase):
 					license_changes = { "dev-libs/B-1": set(["TEST"]) },
 					unstable_keywords = ["dev-libs/B-1"],
 					use_changes = { "dev-libs/B-1": { "foo": True } }),
+
+				#Test license with backtracking.
+				ResolverPlaygroundTestCase(
+					["=dev-libs/D-1"],
+					options = {"--autounmask": True},
+					success = False,
+					mergelist = ["dev-libs/E-1", "dev-libs/F-1", "dev-libs/D-1"],
+					license_changes = { "dev-libs/D-1": set(["TEST"]), "dev-libs/E-1": set(["TEST"]), "dev-libs/E-2": set(["TEST"]), "dev-libs/F-1": set(["TEST"]) }),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds)

@@ -296,7 +296,7 @@ class ResolverPlayground(object):
 
 		repos_conf_file = os.path.join(user_config_dir, "repos.conf")		
 		f = open(repos_conf_file, "w")
-		priority = 1
+		priority = 999
 		for repo in sorted(self.repo_dirs.keys()):
 			f.write("[%s]\n" % repo)
 			f.write("LOCATION=%s\n" % self.repo_dirs[repo])
@@ -304,7 +304,7 @@ class ResolverPlayground(object):
 				f.write("PRIORITY=%s\n" % 1000)
 			else:
 				f.write("PRIORITY=%s\n" % priority)
-				priority += 1
+				priority -= 1
 		f.close()
 
 		for config_file, lines in user_config.items():
@@ -373,9 +373,16 @@ class ResolverPlayground(object):
 		f.close()
 
 	def _load_config(self):
+		portdir_overlay = []
+		for repo_name in sorted(self.repo_dirs):
+			path = self.repo_dirs[repo_name]
+			if path != self.portdir:
+				portdir_overlay.append(path)
+
 		env = {
 			"ACCEPT_KEYWORDS": "x86",
 			"PORTDIR": self.portdir,
+			"PORTDIR_OVERLAY": " ".join(portdir_overlay),
 			'PORTAGE_TMPDIR'       : os.path.join(self.eroot, 'var/tmp'),
 		}
 

@@ -107,53 +107,19 @@ class portdbapi(dbapi):
 				os.environ["SANDBOX_WRITE"] = \
 					":".join(filter(None, sandbox_write))
 
-		porttrees = [os.path.realpath(porttree_root)]
-		porttrees.extend(os.path.realpath(x) for x in \
-			shlex_split(self.settings.get('PORTDIR_OVERLAY', '')))
-		treemap = {}
-		repository_map = {}
-		self.treemap = treemap
-		self._repository_map = repository_map
-		identically_named_paths = {}
-		for path in porttrees:
-			if path in repository_map:
-				continue
-			repo_name_path = os.path.join(path, REPO_NAME_LOC)
-			try:
-				repo_name = codecs.open(
-					_unicode_encode(repo_name_path,
-					encoding=_encodings['fs'], errors='strict'),
-					mode='r', encoding=_encodings['repo.content'],
-					errors='replace').readline().strip()
-			except EnvironmentError:
-				# warn about missing repo_name at some other time, since we
-				# don't want to see a warning every time the portage module is
-				# imported.
-				pass
-			else:
-				identically_named_path = treemap.get(repo_name)
-				if identically_named_path is not None:
-					# The earlier one is discarded.
-					del repository_map[identically_named_path]
-					identically_named_paths[identically_named_path] = repo_name
-					if identically_named_path == porttrees[0]:
-						# Found another repo with the same name as
-						# $PORTDIR, so update porttrees[0] to match.
-						porttrees[0] = path
-				treemap[repo_name] = path
-				repository_map[path] = repo_name
+		#adding porttress from repositories
+		porttrees = list(self.settings.repositories.repoLocationList())
+		self._missing_repo_names = self.settings.repositories.missing_repo_names
 
 		# Ensure that each repo_name is unique. Later paths override
 		# earlier ones that correspond to the same name.
-		porttrees = [x for x in porttrees if x not in identically_named_paths]
-		ignored_map = {}
-		for path, repo_name in identically_named_paths.items():
-			ignored_map.setdefault(repo_name, []).append(path)
-		self._ignored_repos = tuple((repo_name, tuple(paths)) \
-			for repo_name, paths in ignored_map.items())
+		self._ignored_repos = self.settings.repositories.ignored_repos
+
+		self._repository_map = self.settings.repositories.location_map
+		self.treemap = self.settings.repositories.treemap
 
 		self.porttrees = porttrees
-		porttree_root = porttrees[0]
+		porttree_root = self.settings.repositories.mainRepoLocation()
 		self.porttree_root = porttree_root
 
 		self.eclassdb = eclass_cache.cache(porttree_root)
@@ -173,7 +139,7 @@ class portdbapi(dbapi):
 
 		self._repo_info = {}
 		eclass_dbs = {porttree_root : self.eclassdb}
-		local_repo_configs = self.settings._local_repo_configs
+		local_repo_configs = self.settings.repositories.prepos
 		default_loc_repo_config = None
 		repo_aliases = {}
 		if local_repo_configs is not None:
@@ -188,7 +154,7 @@ class portdbapi(dbapi):
 								"'%s' alias in " \
 								"'%s'\n") % (alias, repo_name,
 								overridden_alias,
-								self.settings._local_repo_conf_path),
+								'repos.conf'),
 								level=logging.WARNING, noiselevel=-1)
 						repo_aliases[alias] = repo_name
 
@@ -247,7 +213,7 @@ class portdbapi(dbapi):
 							writemsg_level(_("Unavailable repository '%s' " \
 								"referenced by eclass-overrides entry in " \
 								"'%s'\n") % (other_name,
-								self.settings._local_repo_conf_path),
+								'repos.conf'),
 								level=logging.ERROR, noiselevel=-1)
 							continue
 						porttrees.append(other_path)
@@ -264,6 +230,9 @@ class portdbapi(dbapi):
 					eclass_db.append(tree_db)
 
 			self._repo_info[path] = _repo_info(repo_name, path, eclass_db)
+
+		#Keep a list of repo names, sorted by priority (highest priority first).
+		self._ordered_repo_name_list = tuple(self._repo_info[path].name for path in reversed(self.porttrees))
 
 		self.auxdbmodule = self.settings.load_best_module("portdbapi.auxdbmodule")
 		self.auxdb = {}
@@ -357,8 +326,8 @@ class portdbapi(dbapi):
 				return license_path
 		return None
 
-	def findname(self,mycpv):
-		return self.findname2(mycpv)[0]
+	def findname(self,mycpv, mytree = None, myrepo = None):
+		return self.findname2(mycpv, mytree, myrepo)[0]
 
 	def getRepositoryPath(self, repository_id):
 		"""
@@ -388,18 +357,32 @@ class portdbapi(dbapi):
 		repository IDs
 		TreeMap = {id: path}
 		"""
-		return [k for k in self.treemap if k]
+		return self._ordered_repo_name_list
 
-	def findname2(self, mycpv, mytree=None):
+	def getMissingRepoNames(self):
+		"""
+		Returns a list of repository paths that lack profiles/repo_name.
+		"""
+		return self._missing_repo_names
+
+	def findname2(self, mycpv, mytree=None, myrepo = None):
 		""" 
 		Returns the location of the CPV, and what overlay it was in.
 		Searches overlays first, then PORTDIR; this allows us to return the first
 		matching file.  As opposed to starting in portdir and then doing overlays
 		second, we would have to exhaustively search the overlays until we found
 		the file we wanted.
+		If myrepo is not None it will find packages from this repository(overlay)
 		"""
 		if not mycpv:
 			return (None, 0)
+
+		if myrepo:
+			if myrepo in self.treemap:
+				mytree = self.treemap[myrepo]
+			else:
+				return (None, 0)
+		
 		mysplit = mycpv.split("/")
 		psplit = pkgsplit(mysplit[1])
 		if psplit is None or len(mysplit) != 2:
@@ -524,11 +507,17 @@ class portdbapi(dbapi):
 
 		return (metadata, st, emtime)
 
-	def aux_get(self, mycpv, mylist, mytree=None):
+	def aux_get(self, mycpv, mylist, mytree=None, myrepo=None):
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise KeyError if error'
 		cache_me = False
+		if myrepo:
+			if myrepo in self.treemap:
+				mytree = self.treemap[myrepo]
+			else:
+				raise KeyError(myrepo)
+				
 		if not mytree:
 			cache_me = True
 		if not mytree and not self._known_keys.intersection(
@@ -657,9 +646,9 @@ class portdbapi(dbapi):
 		return _parse_uri_map(mypkg, {'EAPI':eapi,'SRC_URI':myuris},
 			use=useflags)
 
-	def getfetchsizes(self, mypkg, useflags=None, debug=0):
+	def getfetchsizes(self, mypkg, useflags=None, debug=0, myrepo=None):
 		# returns a filename:size dictionnary of remaining downloads
-		myebuild = self.findname(mypkg)
+		myebuild = self.findname(mypkg, myrepo=myrepo)
 		if myebuild is None:
 			raise AssertionError(_("ebuild not found for '%s'") % mypkg)
 		pkgdir = os.path.dirname(myebuild)
@@ -710,14 +699,22 @@ class portdbapi(dbapi):
 				filesdict[myfile] = int(checksums[myfile]["size"])
 		return filesdict
 
-	def fetch_check(self, mypkg, useflags=None, mysettings=None, all=False):
+	def fetch_check(self, mypkg, useflags=None, mysettings=None, all=False, myrepo=None):
 		if all:
 			useflags = None
 		elif useflags is None:
 			if mysettings:
 				useflags = mysettings["USE"].split()
-		myfiles = self.getFetchMap(mypkg, useflags=useflags)
-		myebuild = self.findname(mypkg)
+		if myrepo:
+			if myrepo in self.treemap:
+				mytree = self.treemap[myrepo]
+			else:
+				return False
+		else:
+			mytree = None
+
+		myfiles = self.getFetchMap(mypkg, useflags=useflags, mytree=mytree)
+		myebuild = self.findname(mypkg, myrepo=myrepo)
 		if myebuild is None:
 			raise AssertionError(_("ebuild not found for '%s'") % mypkg)
 		pkgdir = os.path.dirname(myebuild)
@@ -742,14 +739,14 @@ class portdbapi(dbapi):
 			return False
 		return True
 
-	def cpv_exists(self, mykey):
+	def cpv_exists(self, mykey, myrepo=None):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
 		cps2 = mykey.split("/")
 		cps = catpkgsplit(mykey, silent=0)
 		if not cps:
 			#invalid cat/pkg-v
 			return 0
-		if self.findname(cps[0] + "/" + cps2[1]):
+		if self.findname(cps[0] + "/" + cps2[1], myrepo=myrepo):
 			return 1
 		else:
 			return 0
@@ -895,7 +892,7 @@ class portdbapi(dbapi):
 			if mydep == mykey:
 				mylist = self.cp_list(mykey)
 			else:
-				mylist = match_from_list(mydep, self.cp_list(mykey))
+				mylist = match_from_list(mydep, self.cp_list(mykey, myrepo = mydep.repo))
 			myval = ""
 			settings = self.settings
 			local_config = settings.local_config
@@ -953,15 +950,14 @@ class portdbapi(dbapi):
 		elif level == "match-visible":
 			#dep match -- find all visible matches
 			#get all visible packages, then get the matching ones
-
 			myval = list(self._iter_match(mydep,
-				self.xmatch("list-visible", mykey, mydep=mykey, mykey=mykey)))
+				self.xmatch("list-visible", mykey, mydep=mykey, mykey=mykey), myrepo=mydep.repo))
 		elif level == "match-all":
 			#match *all* visible *and* masked packages
 			if mydep == mykey:
 				myval = self.cp_list(mykey)
 			else:
-				myval = list(self._iter_match(mydep, self.cp_list(mykey)))
+				myval = list(self._iter_match(mydep, self.cp_list(mykey), myrepo = mydep.repo))
 		else:
 			raise AssertionError(
 				"Invalid level argument: '%s'" % level)

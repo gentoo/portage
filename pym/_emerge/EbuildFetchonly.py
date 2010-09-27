@@ -15,7 +15,7 @@ class EbuildFetchonly(SlotObject):
 		settings = self.settings
 		pkg = self.pkg
 		portdb = pkg.root_config.trees["porttree"].dbapi
-		ebuild_path = portdb.findname(pkg.cpv)
+		ebuild_path = portdb.findname(pkg.cpv, myrepo=pkg.repo)
 		if ebuild_path is None:
 			raise AssertionError("ebuild not found for '%s'" % pkg.cpv)
 		settings.setcpv(pkg)
@@ -64,7 +64,7 @@ class EbuildFetchonly(SlotObject):
 		pkg = self.pkg
 		root_config = pkg.root_config
 		portdb = root_config.trees["porttree"].dbapi
-		ebuild_path = portdb.findname(pkg.cpv)
+		ebuild_path = portdb.findname(pkg.cpv, myrepo=pkg.repo)
 		if ebuild_path is None:
 			raise AssertionError("ebuild not found for '%s'" % pkg.cpv)
 		debug = settings.get("PORTAGE_DEBUG") == "1"

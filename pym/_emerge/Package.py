@@ -8,7 +8,7 @@ from portage import _encodings, _unicode_decode, _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.const import EBUILD_PHASES
 from portage.dep import Atom, check_required_use, use_reduce, \
-	paren_enclose, _slot_re
+	paren_enclose, _slot_re, _slot_separator, _repo_separator
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 from portage.exception import InvalidDependString
 from _emerge.Task import Task
@@ -27,7 +27,7 @@ class Package(Task):
 		"category", "counter", "cp", "cpv_split",
 		"inherited", "invalid", "iuse", "masks", "mtime",
 		"pf", "pv_split", "root", "slot", "slot_atom", "visible",) + \
-	("_raw_metadata", "_use",)
+	("_raw_metadata", "_use", "_repo",)
 
 	metadata_keys = [
 		"BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "EAPI",
@@ -59,7 +59,7 @@ class Package(Task):
 			if not self.installed:
 				self._invalid_metadata('EAPI.incompatible',
 					"IUSE contains defaults, but EAPI doesn't allow them")
-		self.slot_atom = portage.dep.Atom("%s:%s" % (self.cp, slot))
+		self.slot_atom = portage.dep.Atom("%s%s%s" % (self.cp, _slot_separator, slot))
 		self.category, self.pf = portage.catsplit(self.cpv)
 		self.cpv_split = portage.catpkgsplit(self.cpv)
 		self.pv_split = self.cpv_split[1:]
@@ -294,7 +294,7 @@ class Package(Task):
 			cpv_color = "PKG_NOMERGE"
 
 		s = "(%s, %s" \
-			% (portage.output.colorize(cpv_color, self.cpv) , self.type_name)
+			% (portage.output.colorize(cpv_color, self.cpv + _repo_separator + self.repo) , self.type_name)
 
 		if self.type_name == "installed":
 			if self.root != "/":
@@ -323,6 +323,12 @@ class Package(Task):
 
 		def __init__(self, use):
 			self.enabled = frozenset(use)
+
+	@property
+	def repo(self):
+		if self._repo is None:
+			self._repo = self.metadata['repository']
+		return self._repo
 
 	@property
 	def use(self):
@@ -388,7 +394,7 @@ class Package(Task):
 				if self.onlydeps or self.installed:
 					self.operation = "nomerge"
 			self._hash_key = \
-				(self.type_name, self.root, self.cpv, self.operation)
+				(self.type_name, self.root, self.cpv, self.operation, self.metadata.get('repository', None))
 		return self._hash_key
 
 	def __lt__(self, other):

@@ -38,6 +38,7 @@ from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, \
 	PORTAGE_PACKAGE_ATOM, PRIVATE_PATH, VDB_PATH, EPREFIX, EPREFIX_LSTRIP, BASH_BINARY
 from portage.const import _ENABLE_DYN_LINK_MAP, _ENABLE_PRESERVE_LIBS
 from portage.dbapi import dbapi
+from portage.dep import _slot_separator
 from portage.exception import CommandNotFound, \
 	InvalidData, InvalidPackageName, \
 	FileNotFound, PermissionDenied, UnsupportedAPIException
@@ -197,7 +198,7 @@ class vardbapi(dbapi):
 		except OSError:
 			ensure_dirs(catdir)
 
-	def cpv_exists(self, mykey):
+	def cpv_exists(self, mykey, myrepo=None):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
 		return os.path.exists(self.getpath(mykey))
 
@@ -528,7 +529,7 @@ class vardbapi(dbapi):
 		aux_cache["modified"] = set()
 		self._aux_cache_obj = aux_cache
 
-	def aux_get(self, mycpv, wants):
+	def aux_get(self, mycpv, wants, myrepo = None):
 		"""This automatically caches selected keys that are frequently needed
 		by emerge for dependency calculations.  The cached metadata is
 		considered valid if the mtime of the package directory has not changed

@@ -76,7 +76,7 @@ class bindbapi(fakedbapi):
 			self.bintree.populate()
 		return fakedbapi.match(self, *pargs, **kwargs)
 
-	def cpv_exists(self, cpv):
+	def cpv_exists(self, cpv, myrepo=None):
 		if self.bintree and not self.bintree.populated:
 			self.bintree.populate()
 		return fakedbapi.cpv_exists(self, cpv)
@@ -89,7 +89,7 @@ class bindbapi(fakedbapi):
 		self._aux_cache.pop(cpv, None)
 		fakedbapi.cpv_remove(self, cpv)
 
-	def aux_get(self, mycpv, wants):
+	def aux_get(self, mycpv, wants, myrepo=None):
 		if self.bintree and not self.bintree.populated:
 			self.bintree.populate()
 		cache_me = False

@@ -81,7 +81,7 @@ class FakeVartree(vartree):
 			self._aux_get_wrapper(cpv, [])
 		return matches
 
-	def _aux_get_wrapper(self, pkg, wants):
+	def _aux_get_wrapper(self, pkg, wants, myrepo=None):
 		if pkg in self._aux_get_history:
 			return self._aux_get(pkg, wants)
 		self._aux_get_history.add(pkg)
@@ -200,7 +200,11 @@ class FakeVartree(vartree):
 			mycounter = 0
 			pkg.metadata["COUNTER"] = str(mycounter)
 
-		self._pkg_cache[pkg] = pkg
+		#For installed (and binary) packages we don't care for the repo when it comes to
+		#caching, because there can only be one cpv. So overwrite the repo key with type_name.
+		#Make sure that .operation is computed.
+		pkg._get_hash_key()
+		self._pkg_cache[(pkg.type_name, pkg.root, pkg.cpv, pkg.operation, pkg.type_name)] = pkg
 		return pkg
 
 def grab_global_updates(portdb):

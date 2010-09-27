@@ -20,7 +20,7 @@ class EbuildFetcher(SpawnProcess):
 
 		root_config = self.pkg.root_config
 		portdb = root_config.trees["porttree"].dbapi
-		ebuild_path = portdb.findname(self.pkg.cpv)
+		ebuild_path = portdb.findname(self.pkg.cpv, myrepo=self.pkg.repo)
 		if ebuild_path is None:
 			raise AssertionError("ebuild not found for '%s'" % self.pkg.cpv)
 

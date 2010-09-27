@@ -512,7 +512,7 @@ def action_config(settings, trees, myopts, myfiles):
 	else:
 		print("Configuring pkg...")
 	print()
-	ebuildpath = trees[settings["ROOT"]]["vartree"].dbapi.findname(pkg)
+	ebuildpath = trees[settings["ROOT"]]["vartree"].dbapi.findname(pkg, myrepo=pkg.repo)
 	mysettings = portage.config(clone=settings)
 	vardb = trees[mysettings["ROOT"]]["vartree"].dbapi
 	debug = mysettings.get("PORTAGE_DEBUG") == "1"
@@ -1544,7 +1544,7 @@ def action_info(settings, trees, myopts, myfiles):
 			if pkg_type == "installed":
 				ebuildpath = vardb.findname(pkg.cpv)
 			elif pkg_type == "ebuild":
-				ebuildpath = portdb.findname(pkg.cpv)
+				ebuildpath = portdb.findname(pkg.cpv, pkg.repo)
 			elif pkg_type == "binary":
 				tbz2_file = bindb.bintree.getname(pkg.cpv)
 				ebuild_file_name = pkg.cpv.split("/")[1] + ".ebuild"
