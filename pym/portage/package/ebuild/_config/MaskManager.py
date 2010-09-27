@@ -61,7 +61,8 @@ class MaskManager(object):
 		repo_pkgmasklines = []
 		repo_pkgunmasklines = []
 		all_profiles = []
-		all_profiles.extend(repo_profiles)
+		for repo in repositories.repos_with_profiles():
+			all_profiles.append(os.path.join(repo.location, "profiles"))
 		all_profiles.extend(profiles)
 		for x in all_profiles:
 			profile_pkgmasklines.append(grabfile_package(
