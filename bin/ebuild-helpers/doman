@@ -42,7 +42,7 @@ for x in "$@" ; do
 	fi
 
 
-	if [[ ${mandir} =~ man[0-9n](f|p|pm)?$ ]] ; then
+	if [[ ${mandir} == *man[0-9n] ]] ; then
 		if [[ -s ${x} ]] ; then
 			if [[ ! -d ${D}/usr/share/man/${mandir} ]] ; then
 				install -d "${D}/usr/share/man/${mandir}"
