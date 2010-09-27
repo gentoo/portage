@@ -899,7 +899,7 @@ class depgraph(object):
 						to_be_masked = existing_node
 
 						parent_atoms = \
-							self._dynamic_config._parent_atoms.get(to_be_masked, set())
+							self._dynamic_config._parent_atoms.get(pkg, set())
 						if parent_atoms:
 							conflict_atoms = self._dynamic_config._slot_conflict_parent_atoms.intersection(parent_atoms)
 							if conflict_atoms:
