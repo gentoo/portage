@@ -3287,6 +3287,7 @@ class depgraph(object):
 
 			if type_name == "ebuild" and myrepo is None:
 				#We're asked to return a matching Package from any repo.
+				metadata = None
 				for repo in db.getRepositories():
 					if not db.cpv_exists(cpv, myrepo=repo):
 						continue
@@ -3296,7 +3297,8 @@ class depgraph(object):
 						continue
 					else:
 						break
-				raise portage.exception.PackageNotFound(cpv)
+				if metadata is None:
+					raise portage.exception.PackageNotFound(cpv)
 			else:
 				try:
 					metadata = zip(db_keys, db.aux_get(cpv, db_keys, myrepo=myrepo))
