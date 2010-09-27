@@ -108,7 +108,8 @@ class portdbapi(dbapi):
 					":".join(filter(None, sandbox_write))
 
 		#adding porttress from repositories
-		porttrees = list(self.settings.repositories.repoLocationList())
+		porttrees = [os.path.realpath(x) for x in \
+			self.settings.repositories.repoLocationList()]
 		self._missing_repo_names = self.settings.repositories.missing_repo_names
 
 		# Ensure that each repo_name is unique. Later paths override
@@ -119,7 +120,8 @@ class portdbapi(dbapi):
 		self.treemap = self.settings.repositories.treemap
 
 		self.porttrees = porttrees
-		porttree_root = self.settings.repositories.mainRepoLocation()
+		porttree_root = os.path.realpath(
+			self.settings.repositories.mainRepoLocation())
 		self.porttree_root = porttree_root
 
 		self.eclassdb = eclass_cache.cache(porttree_root)
@@ -892,7 +894,8 @@ class portdbapi(dbapi):
 			if mydep == mykey:
 				mylist = self.cp_list(mykey)
 			else:
-				mylist = match_from_list(mydep, self.cp_list(mykey, myrepo = mydep.repo))
+				mylist = match_from_list(mydep, self.cp_list(mykey,
+					mytree=self._repository_map.get(mydep.repo)))
 			myval = ""
 			settings = self.settings
 			local_config = settings.local_config
