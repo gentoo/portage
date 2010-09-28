@@ -4974,6 +4974,14 @@ class depgraph(object):
 		if not isinstance(mergelist, list):
 			mergelist = []
 
+		favorites = resume_data.get("favorites")
+		args_set = self._dynamic_config.sets[
+			self._frozen_config.target_root].sets['__non_set_args__']
+		if isinstance(favorites, list):
+			args = self._load_favorites(favorites)
+		else:
+			args = []
+
 		fakedb = self._dynamic_config.mydbapi
 		trees = self._frozen_config.trees
 		serialized_tasks = []
@@ -4987,8 +4995,18 @@ class depgraph(object):
 			if action != "merge":
 				continue
 			root_config = self._frozen_config.roots[myroot]
+
+			# Use the resume "favorites" list to see if a repo was specified
+			# for this package.
+			depgraph_sets = self._dynamic_config.sets[root_config.root]
+			repo = None
+			for atom in depgraph_sets.atoms.getAtoms():
+				if atom.repo and portage.dep.match_from_list(atom, [pkg_key]):
+					repo = atom.repo
+					break
+
 			try:
-				pkg = self._pkg(pkg_key, pkg_type, root_config)
+				pkg = self._pkg(pkg_key, pkg_type, root_config, myrepo=repo)
 			except portage.exception.PackageNotFound:
 				# It does no exist or it is corrupt.
 				if skip_missing:
@@ -5034,14 +5052,6 @@ class depgraph(object):
 			# be cancelled. In order for this type of situation to be
 			# recognized, deep traversal of dependencies is required.
 			self._dynamic_config.myparams["deep"] = True
-
-			favorites = resume_data.get("favorites")
-			args_set = self._dynamic_config.sets[
-				self._frozen_config.target_root].sets['__non_set_args__']
-			if isinstance(favorites, list):
-				args = self._load_favorites(favorites)
-			else:
-				args = []
 
 			for task in serialized_tasks:
 				if isinstance(task, Package) and \
@@ -5142,7 +5152,7 @@ class depgraph(object):
 					root_config=root_config))
 			else:
 				try:
-					x = Atom(x)
+					x = Atom(x, allow_repo=True)
 				except portage.exception.InvalidAtom:
 					continue
 				args.append(AtomArg(arg=x, atom=x,
