@@ -3287,6 +3287,7 @@ class depgraph(object):
 
 			if type_name == "ebuild" and myrepo is None:
 				#We're asked to return a matching Package from any repo.
+				metadata = None
 				for repo in db.getRepositories():
 					if not db.cpv_exists(cpv, myrepo=repo):
 						continue
@@ -3296,7 +3297,8 @@ class depgraph(object):
 						continue
 					else:
 						break
-				raise portage.exception.PackageNotFound(cpv)
+				if metadata is None:
+					raise portage.exception.PackageNotFound(cpv)
 			else:
 				try:
 					metadata = zip(db_keys, db.aux_get(cpv, db_keys, myrepo=myrepo))
@@ -4348,13 +4350,17 @@ class depgraph(object):
 					uninst_task = node
 				else:
 					vardb = self._frozen_config.trees[node.root]["vartree"].dbapi
-					previous_cpv = vardb.match(node.slot_atom)
-					if previous_cpv:
+					inst_pkg = vardb.match_pkgs(node.slot_atom)
+					if inst_pkg:
 						# The package will be replaced by this one, so remove
 						# the corresponding Uninstall task if necessary.
-						previous_cpv = previous_cpv[0]
-						uninst_task = \
-							("installed", node.root, previous_cpv, "uninstall")
+						inst_pkg = inst_pkg[0]
+						uninst_task = Package(built=inst_pkg.built,
+							cpv=inst_pkg.cpv, installed=inst_pkg.installed,
+							metadata=inst_pkg.metadata,
+							operation="uninstall",
+							root_config=inst_pkg.root_config,
+							type_name=inst_pkg.type_name)
 						try:
 							mygraph.remove(uninst_task)
 						except KeyError:
@@ -4909,7 +4915,11 @@ class depgraph(object):
 		portdb = self._frozen_config.trees[self._frozen_config.target_root]["porttree"].dbapi
 		added_favorites = set()
 		for x in self._dynamic_config._set_nodes:
-			pkg_type, root, pkg_key, pkg_status, pkg_repo = x
+			pkg_type = x.type_name
+			root = x.root
+			pkg_key = x.cpv
+			pkg_status = x.operation
+			pkg_repo = x.repo
 			if pkg_status != "nomerge":
 				continue
 
@@ -4964,21 +4974,39 @@ class depgraph(object):
 		if not isinstance(mergelist, list):
 			mergelist = []
 
+		favorites = resume_data.get("favorites")
+		args_set = self._dynamic_config.sets[
+			self._frozen_config.target_root].sets['__non_set_args__']
+		if isinstance(favorites, list):
+			args = self._load_favorites(favorites)
+		else:
+			args = []
+
 		fakedb = self._dynamic_config.mydbapi
 		trees = self._frozen_config.trees
 		serialized_tasks = []
 		masked_tasks = []
 		for x in mergelist:
-			if not (isinstance(x, list) and len(x) == 5):
+			if not (isinstance(x, list) and len(x) == 4):
 				continue
-			pkg_type, myroot, pkg_key, action, pkg_repo = x
+			pkg_type, myroot, pkg_key, action = x
 			if pkg_type not in self.pkg_tree_map:
 				continue
 			if action != "merge":
 				continue
 			root_config = self._frozen_config.roots[myroot]
+
+			# Use the resume "favorites" list to see if a repo was specified
+			# for this package.
+			depgraph_sets = self._dynamic_config.sets[root_config.root]
+			repo = None
+			for atom in depgraph_sets.atoms.getAtoms():
+				if atom.repo and portage.dep.match_from_list(atom, [pkg_key]):
+					repo = atom.repo
+					break
+
 			try:
-				pkg = self._pkg(pkg_key, pkg_type, root_config, myrepo=pkg_repo)
+				pkg = self._pkg(pkg_key, pkg_type, root_config, myrepo=repo)
 			except portage.exception.PackageNotFound:
 				# It does no exist or it is corrupt.
 				if skip_missing:
@@ -5024,14 +5052,6 @@ class depgraph(object):
 			# be cancelled. In order for this type of situation to be
 			# recognized, deep traversal of dependencies is required.
 			self._dynamic_config.myparams["deep"] = True
-
-			favorites = resume_data.get("favorites")
-			args_set = self._dynamic_config.sets[
-				self._frozen_config.target_root].sets['__non_set_args__']
-			if isinstance(favorites, list):
-				args = self._load_favorites(favorites)
-			else:
-				args = []
 
 			for task in serialized_tasks:
 				if isinstance(task, Package) and \
@@ -5132,7 +5152,7 @@ class depgraph(object):
 					root_config=root_config))
 			else:
 				try:
-					x = Atom(x)
+					x = Atom(x, allow_repo=True)
 				except portage.exception.InvalidAtom:
 					continue
 				args.append(AtomArg(arg=x, atom=x,

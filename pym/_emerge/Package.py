@@ -397,6 +397,16 @@ class Package(Task):
 				(self.type_name, self.root, self.cpv, self.operation, self.metadata.get('repository', None))
 		return self._hash_key
 
+	def __len__(self):
+		return 4
+
+	def __iter__(self):
+		"""
+		This is used to generate mtimedb resume mergelist entries, so we
+		limit it to 4 items for backward compatibility.
+		"""
+		return iter(self._get_hash_key()[:4])
+
 	def __lt__(self, other):
 		if other.cp != self.cp:
 			return False
