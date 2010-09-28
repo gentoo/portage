@@ -569,7 +569,7 @@ repoman_settings['PORTDIR_OVERLAY'] = "%s %s" % \
 	(repoman_settings.get('PORTDIR_OVERLAY', ''), portdir_overlay)
 # We have to call the config constructor again so
 # that config.repositories is initialized correctly.
-repoman_settings = portage.config(local_config=False, env=dict(os.environ,
+repoman_settings = portage.config(local_config=False, _eprefix=EPREFIX, env=dict(os.environ,
 	PORTDIR_OVERLAY=repoman_settings['PORTDIR_OVERLAY']))
 
 root = '/'
