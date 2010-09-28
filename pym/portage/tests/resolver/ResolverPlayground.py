@@ -14,6 +14,7 @@ from portage.dep import Atom, _repo_separator
 from portage.package.ebuild.config import config
 from portage.package.ebuild.digestgen import digestgen
 from portage._sets import load_default_config
+from portage._sets.base import InternalPackageSet
 from portage.versions import catsplit
 
 import _emerge
@@ -424,7 +425,7 @@ class ResolverPlayground(object):
 			if options.get("--depclean"):
 				rval, cleanlist, ordered, req_pkg_count = \
 					calc_depclean(self.settings, self.trees, None,
-					options, "depclean", atoms, None)
+					options, "depclean", InternalPackageSet(initial_atoms=atoms), None)
 				result = ResolverPlaygroundDepcleanResult( \
 					atoms, rval, cleanlist, ordered, req_pkg_count)
 			else:
