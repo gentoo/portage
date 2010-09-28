@@ -562,7 +562,10 @@ if options.mode == 'commit' and not options.pretend and not vcs:
 repoman_settings = portage.config(local_config=False)
 repoman_settings['PORTDIR_OVERLAY'] = "%s %s" % \
 	(repoman_settings.get('PORTDIR_OVERLAY', ''), portdir_overlay)
-repoman_settings.backup_changes('PORTDIR_OVERLAY')
+# We have to call the config constructor again since so
+# that config.repositories is initialized correctly.
+repoman_settings = portage.config(local_config=False, env=dict(os.environ,
+	PORTDIR_OVERLAY=repoman_settings['PORTDIR_OVERLAY']))
 
 root = '/'
 trees = {
