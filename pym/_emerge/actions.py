@@ -623,6 +623,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	deselect = myopts.get('--deselect') != 'n'
 	required_sets = {}
 	required_sets['world'] = psets['world']
+	excluded_set = InternalPackageSet(initial_atoms=myopts.get('--exclude'))
 
 	# When removing packages, a temporary version of the world 'selected'
 	# set may be used which excludes packages that are intended to be
@@ -675,7 +676,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			# by an argument atom since we don't want to clean any
 			# package if something depends on it.
 			for pkg in vardb:
-				spinner.update()
+				if spinner:
+					spinner.update()
 
 				try:
 					if args_set.findAtomForPackage(pkg) is None:
@@ -740,6 +742,22 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				del e
 				protected_set.add("=" + pkg.cpv)
 				continue
+
+	if excluded_set:
+		required_sets['__excluded__'] = InternalPackageSet()
+
+		for pkg in vardb:
+			if spinner:
+				spinner.update()
+
+			try:
+				if excluded_set.findAtomForPackage(pkg):
+					required_sets['__excluded__'].add("=" + pkg.cpv)
+			except portage.exception.InvalidDependString as e:
+				show_invalid_depstring_notice(pkg,
+					pkg.metadata["PROVIDE"], str(e))
+				del e
+				required_sets['__excluded__'].add("=" + pkg.cpv)
 
 	success = resolver._complete_graph(required_sets={myroot:required_sets})
 	writemsg_level("\b\b... done!\n")
