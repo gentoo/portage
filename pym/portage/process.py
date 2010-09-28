@@ -16,7 +16,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:dump_traceback',
 )
 
-from portage.const import BASH_BINARY, SANDBOX_BINARY, FAKEROOT_BINARY
+from portage.const import BASH_BINARY, SANDBOX_BINARY, MACOSSANDBOX_BINARY, FAKEROOT_BINARY
 from portage.exception import CommandNotFound
 
 try:
@@ -41,6 +41,9 @@ sandbox_capable = (os.path.isfile(SANDBOX_BINARY) and
 
 fakeroot_capable = (os.path.isfile(FAKEROOT_BINARY) and
                     os.access(FAKEROOT_BINARY, os.X_OK))
+
+macossandbox_capable = (os.path.isfile(MACOSSANDBOX_BINARY) and
+                   os.access(MACOSSANDBOX_BINARY, os.X_OK))
 
 def spawn_bash(mycommand, debug=False, opt_name=None, **keywords):
 	"""
@@ -86,6 +89,19 @@ def spawn_fakeroot(mycommand, fakeroot_state=None, opt_name=None, **keywords):
 		args.append("-i")
 		args.append(fakeroot_state)
 	args.append("--")
+	args.append(BASH_BINARY)
+	args.append("-c")
+	args.append(mycommand)
+	return spawn(args, opt_name=opt_name, **keywords)
+
+def spawn_macossandbox(mycommand, profile=None, opt_name=None, **keywords):
+	if not macossandbox_capable:
+		return spawn_bash(mycommand, opt_name=opt_name, **keywords)
+	args=[MACOSSANDBOX_BINARY]
+	if not opt_name:
+		opt_name = os.path.basename(mycommand.split()[0])
+	args.append("-p")
+	args.append(profile)
 	args.append(BASH_BINARY)
 	args.append("-c")
 	args.append(mycommand)

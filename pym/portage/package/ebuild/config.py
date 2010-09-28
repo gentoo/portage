@@ -39,7 +39,7 @@ from portage.env.loaders import KeyValuePairFileLoader
 from portage.exception import InvalidDependString, PortageException
 from portage.localization import _
 from portage.output import colorize
-from portage.process import fakeroot_capable, sandbox_capable
+from portage.process import fakeroot_capable, sandbox_capable, macossandbox_capable
 from portage.repository.config import load_repository_config
 from portage.util import ensure_dirs, getconfig, grabdict, \
 	grabdict_package, grabfile, grabfile_package, LazyItemsDict, \
@@ -889,6 +889,18 @@ class config(object):
 				# to the user.
 				writemsg(colorize("BAD", _("!!! Problem with sandbox"
 					" binary. Disabling...\n\n")), noiselevel=-1)
+
+		if not macossandbox_capable and \
+			("macossandbox" in self.features or "macosusersandbox" in self.features):
+			if self.profile_path is not None and \
+				os.path.realpath(self.profile_path) == \
+				os.path.realpath(os.path.join(
+				self["PORTAGE_CONFIGROOT"], PROFILE_PATH)):
+				""" Don't show this warning when running repoman and the
+				sandbox feature came from a profile that doesn't belong to
+				the user."""
+				writemsg(colorize("BAD", "!!! Problem with macos sandbox" + \
+					" binary. Disabling...\n\n"), noiselevel=-1)
 
 		if "fakeroot" in self.features and \
 			not fakeroot_capable:

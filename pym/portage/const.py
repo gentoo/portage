@@ -80,6 +80,31 @@ FAKEROOT_BINARY          = BPREFIX + "/usr/bin/fakeroot"
 BASH_BINARY              = PORTAGE_BASH
 MOVE_BINARY              = PORTAGE_MV
 PRELINK_BINARY           = "/usr/sbin/prelink"
+MACOSSANDBOX_BINARY      = "/usr/bin/sandbox-exec"
+MACOSSANDBOX_PROFILE     = '''(version 1)
+
+(allow default)
+
+(deny file-write*)
+
+(allow file-read* file-write*
+  (literal
+    #"@@WRITEABLE_PREFIX@@"
+  )
+
+  (regex
+    #"^@@WRITEABLE_PREFIX_RE@@/"
+    #"^(/private)?/var/tmp"
+    #"^(/private)?/tmp"
+  )
+)
+
+(allow file-read-data file-write-data
+  (regex
+    #"^/dev/null$"
+    #"^(/private)?/var/run/syslog$"
+  )
+)'''
 
 PORTAGE_GROUPNAME        = portagegroup
 PORTAGE_USERNAME         = portageuser
@@ -107,6 +132,7 @@ SUPPORTED_FEATURES       = frozenset([
                            "digest", "distcc", "distlocks",
                            "fakeroot", "fail-clean", "fixpackages", "getbinpkg",
                            "installsources", "keeptemp", "keepwork", "fixlafiles", "lmirror",
+                            "macossandbox", "macosprefixsandbox", "macosusersandbox",
                            "metadata-transfer", "mirror", "multilib-strict", "news",
                            "noauto", "noclean", "nodoc", "noinfo", "noman", "nostrip",
                            "notitles", "parallel-fetch", "parse-eapi-ebuild-head",
