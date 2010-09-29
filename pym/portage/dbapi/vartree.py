@@ -2664,7 +2664,7 @@ class dblink(object):
 
 		os = _os_merge
 
-		root = self._eroot
+		root = self.settings['ROOT']
 		inode_map = {}
 		for f in path_iter:
 			path = os.path.join(root, f.lstrip(os.sep))
