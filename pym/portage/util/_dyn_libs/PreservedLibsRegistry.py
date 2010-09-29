@@ -21,16 +21,16 @@ from portage.versions import cpv_getkey
 
 class PreservedLibsRegistry(object):
 	""" This class handles the tracking of preserved library objects """
-	def __init__(self, eroot, filename, autocommit=True):
+	def __init__(self, root, filename, autocommit=True):
 		""" 
-			@param eroot: root used to check existence of paths in pruneNonExisting
-		    @type eroot: String
+			@param root: root used to check existence of paths in pruneNonExisting
+		    @type root: String
 			@param filename: absolute path for saving the preserved libs records
 		    @type filename: String
 			@param autocommit: determines if the file is written after every update
 			@type autocommit: Boolean
 		"""
-		self._eroot = eroot
+		self._root = root
 		self._filename = filename
 		self._autocommit = autocommit
 		self.load()
@@ -114,7 +114,7 @@ class PreservedLibsRegistry(object):
 		for cps in list(self._data):
 			cpv, counter, paths = self._data[cps]
 			paths = [f for f in paths \
-				if os.path.exists(os.path.join(self._eroot, f.lstrip(os.sep)))]
+				if os.path.exists(os.path.join(self._root, f.lstrip(os.sep)))]
 			if len(paths) > 0:
 				self._data[cps] = (cpv, counter, paths)
 			else:
