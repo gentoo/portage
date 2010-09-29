@@ -153,6 +153,8 @@ class LinkageMapMachO(object):
 		obj_key_cache = self._obj_key_cache
 		obj_properties = self._obj_properties
 
+		os = _os_merge
+
 		lines = []
 
 		# Data from include_file is processed first so that it

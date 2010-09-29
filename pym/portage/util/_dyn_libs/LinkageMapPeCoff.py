@@ -46,6 +46,7 @@ class LinkageMapPeCoff(LinkageMapELF):
 			@return:
 				2-tuple of boolean indicating existance, and absolut path
 			"""
+			os = _os_merge
 			abs_path = os.path.join(root, obj.lstrip(os.sep))
 			try:
 				object_stat = os.stat(abs_path)
@@ -89,6 +90,8 @@ class LinkageMapPeCoff(LinkageMapELF):
 		libs = self._libs
 		obj_key_cache = self._obj_key_cache
 		obj_properties = self._obj_properties
+
+		os = _os_merge
 
 		lines = []
 
