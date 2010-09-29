@@ -150,7 +150,7 @@ class vardbapi(dbapi):
 		self._plib_registry = None
 		if _ENABLE_PRESERVE_LIBS:
 			try:
-				self._plib_registry = PreservedLibsRegistry(self._eroot,
+				self._plib_registry = PreservedLibsRegistry(self.root,
 					os.path.join(self._eroot, PRIVATE_PATH,
 					"preserved_libs_registry"))
 			except PermissionDenied:
