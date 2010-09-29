@@ -28,7 +28,7 @@ class LinkageMapELF(object):
 
 	def __init__(self, vardbapi):
 		self._dbapi = vardbapi
-		self._eroot = self._dbapi._eroot
+		self._root = self._dbapi.settings['ROOT']
 		self._libs = {}
 		self._obj_properties = {}
 		self._obj_key_cache = {}
@@ -45,14 +45,14 @@ class LinkageMapELF(object):
 	def _path_key(self, path):
 		key = self._path_key_cache.get(path)
 		if key is None:
-			key = self._ObjectKey(path, self._eroot)
+			key = self._ObjectKey(path, self._root)
 			self._path_key_cache[path] = key
 		return key
 
 	def _obj_key(self, path):
 		key = self._obj_key_cache.get(path)
 		if key is None:
-			key = self._ObjectKey(path, self._eroot)
+			key = self._ObjectKey(path, self._root)
 			self._obj_key_cache[path] = key
 		return key
 
@@ -149,10 +149,10 @@ class LinkageMapELF(object):
 		"""
 
 		os = _os_merge
-		root = self._eroot
+		root = self._root
 		root_len = len(root) - 1
 		self._clear_cache()
-		self._defpath.update(getlibpaths(self._eroot))
+		self._defpath.update(getlibpaths(self._root))
 		libs = self._libs
 		obj_properties = self._obj_properties
 
@@ -604,7 +604,7 @@ class LinkageMapELF(object):
 		# have any consumers.
 		if not isinstance(obj, self._ObjectKey):
 			soname = self._obj_properties[obj_key][3]
-			master_link = os.path.join(self._eroot,
+			master_link = os.path.join(self._root,
 				os.path.dirname(obj).lstrip(os.path.sep), soname)
 			try:
 				master_st = os.stat(master_link)
