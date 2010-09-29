@@ -2380,7 +2380,7 @@ class dblink(object):
 		preserved_paths = set()
 		path_cpv_map = {}
 		path_node_map = {}
-		root = self._eroot
+		root = self.settings['ROOT']
 
 		def path_to_node(path):
 			node = path_node_map.get(path)
@@ -2479,7 +2479,7 @@ class dblink(object):
 			files_to_remove.update(files)
 		files_to_remove = sorted(files_to_remove)
 		showMessage = self._display_merge
-		root = self._eroot
+		root = self.settings['ROOT']
 
 		parent_dirs = set()
 		for obj in files_to_remove:
