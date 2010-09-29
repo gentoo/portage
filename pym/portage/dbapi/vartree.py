@@ -163,13 +163,13 @@ class vardbapi(dbapi):
 			if not chost:
 				chost = 'lunix?' # this happens when profiles are not available
 			if chost.find('darwin') >= 0:
-				self.linkmap = LinkageMapMachO(self)
+				self._linkmap = LinkageMapMachO(self)
 			elif chost.find('interix') >= 0 or chost.find('winnt') >= 0:
-				self.linkmap = LinkageMapPeCoff(self)
+				self._linkmap = LinkageMapPeCoff(self)
 			elif chost.find('aix') >= 0:
-				self.linkmap = LinkageMapXCoff(self)
+				self._linkmap = LinkageMapXCoff(self)
 			else:
-				self.linkmap = LinkageMap(self)
+				self._linkmap = LinkageMap(self)
 		self._owners = self._owners_db(self)
 
 	def getpath(self, mykey, filename=None):
