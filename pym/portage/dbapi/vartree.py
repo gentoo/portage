@@ -2063,7 +2063,7 @@ class dblink(object):
 			warnings.warn("The second parameter of the " + \
 				"portage.dbapi.vartree.dblink._match_contents()" + \
 				" is now unused. Instead " + \
-				"self.settings['EROOT'] will be used.",
+				"self.settings['ROOT'] will be used.",
 				DeprecationWarning, stacklevel=2)
 
 		# don't use EROOT here, image already contains EPREFIX
@@ -2230,7 +2230,7 @@ class dblink(object):
 		linkmap = self.vartree.dbapi._linkmap
 		installed_instance = self._installed_instance
 		old_contents = installed_instance.getcontents()
-		root = self._eroot
+		root = self.settings['ROOT']
 		root_len = len(root) - 1
 		lib_graph = digraph()
 		path_node_map = {}
@@ -2341,7 +2341,7 @@ class dblink(object):
 
 		os = _os_merge
 		showMessage = self._display_merge
-		root = self._eroot
+		root = self.settings['ROOT']
 
 		# Copy contents entries from the old package to the new one.
 		new_contents = self.getcontents().copy()
@@ -2398,7 +2398,7 @@ class dblink(object):
 		preserved_paths = set()
 		path_cpv_map = {}
 		path_node_map = {}
-		root = self._eroot
+		root = self.settings['ROOT']
 
 		def path_to_node(path):
 			node = path_node_map.get(path)
@@ -2505,7 +2505,7 @@ class dblink(object):
 			files_to_remove.update(files)
 		files_to_remove = sorted(files_to_remove)
 		showMessage = self._display_merge
-		root = self._eroot
+		root = self.settings['ROOT']
 
 		parent_dirs = set()
 		for obj in files_to_remove:

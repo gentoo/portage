@@ -134,11 +134,11 @@ class RepoConfigLoader(object):
 		def add_overlays(portdir, portdir_overlay, prepos, ignored_map, ignored_location_map):
 			"""Add overlays in PORTDIR_OVERLAY as repositories"""
 			overlays = []
-			port_ov = [normalize_path(i) for i in shlex_split(portdir_overlay)]
-			overlays.extend(port_ov)
 			if portdir:
 				portdir = normalize_path(portdir)
 				overlays.append(portdir)
+			port_ov = [normalize_path(i) for i in shlex_split(portdir_overlay)]
+			overlays.extend(port_ov)
 			if overlays:
 				#overlay priority is negative because we want them to be looked before any other repo
 				base_priority = -1
@@ -196,6 +196,8 @@ class RepoConfigLoader(object):
 		prepos_order.sort(key=repo_priority, reverse=True)
 
 		if portdir:
+			if portdir not in location_map:
+				portdir = prepos[ignored_location_map[portdir]].location
 			portdir_repo = prepos[location_map[portdir]]
 			portdir_sync = settings.get('SYNC', '')
 			#if SYNC variable is set and not overwritten by repos.conf
