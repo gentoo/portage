@@ -277,6 +277,8 @@ class LinkageMapMachO(object):
 			corresponding libraries to fulfill the dependency.
 
 		"""
+		os = _os_merge
+
 		class _LibraryCache(object):
 
 			"""
@@ -412,6 +414,7 @@ class LinkageMapMachO(object):
 			2. False if obj is not a master link
 
 		"""
+		os = _os_merge
 		basename = os.path.basename(obj)
 		obj_key = self._obj_key(obj)
 		if obj_key not in self._obj_properties:
@@ -479,6 +482,8 @@ class LinkageMapMachO(object):
 		set-of-library-paths satisfy install_name.
 
 		"""
+		os = _os_merge
+
 		rValue = {}
 
 		if not self._libs:
