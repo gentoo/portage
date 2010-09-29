@@ -533,6 +533,8 @@ class LinkageMapMachO(object):
 		set-of-library-paths satisfy install_name.
 
 		"""
+		os = _os_merge
+
 		rValue = set()
 
 		if not self._libs:
