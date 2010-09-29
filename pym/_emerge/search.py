@@ -37,13 +37,6 @@ class search(object):
 		self.matches = {"pkg" : []}
 		self.mlen = 0
 
-		def fake_portdb():
-			pass
-		self.portdb = fake_portdb
-		for attrib in ("aux_get", "cp_all",
-			"xmatch", "findname", "getFetchMap"):
-			setattr(fake_portdb, attrib, getattr(self, "_"+attrib))
-
 		self._dbs = []
 
 		portdb = root_config.trees["porttree"].dbapi
@@ -198,7 +191,8 @@ class search(object):
 			self.searchre=re.compile(self.searchkey,re.I)
 		else:
 			self.searchre=re.compile(re.escape(self.searchkey), re.I)
-		for package in self.portdb.cp_all():
+
+		for package in self._cp_all():
 			self._spinner_update()
 
 			if match_category:
@@ -208,21 +202,21 @@ class search(object):
 
 			masked=0
 			if self.searchre.search(match_string):
-				if not self.portdb.xmatch("match-visible", package):
+				if not self._xmatch("match-visible", package):
 					masked=1
 				self.matches["pkg"].append([package,masked])
 			elif self.searchdesc: # DESCRIPTION searching
-				full_package = self.portdb.xmatch("bestmatch-visible", package)
+				full_package = self._xmatch("bestmatch-visible", package)
 				if not full_package:
 					#no match found; we don't want to query description
 					full_package = portage.best(
-						self.portdb.xmatch("match-all", package))
+						self._xmatch("match-all", package))
 					if not full_package:
 						continue
 					else:
 						masked=1
 				try:
-					full_desc = self.portdb.aux_get(
+					full_desc = self._aux_get(
 						full_package, ["DESCRIPTION"])[0]
 				except KeyError:
 					print("emerge: search: aux_get() failed, skipping")
@@ -251,10 +245,10 @@ class search(object):
 			self.mlen += len(self.matches[mtype])
 
 	def addCP(self, cp):
-		if not self.portdb.xmatch("match-all", cp):
+		if not self._xmatch("match-all", cp):
 			return
 		masked = 0
-		if not self.portdb.xmatch("bestmatch-visible", cp):
+		if not self._xmatch("bestmatch-visible", cp):
 			masked = 1
 		self.matches["pkg"].append([cp, masked])
 		self.mlen += 1
@@ -272,13 +266,13 @@ class search(object):
 				full_package = None
 				if mtype == "pkg":
 					catpack = match
-					full_package = self.portdb.xmatch(
+					full_package = self._xmatch(
 						"bestmatch-visible", match)
 					if not full_package:
 						#no match found; we don't want to query description
 						masked=1
 						full_package = portage.best(
-							self.portdb.xmatch("match-all",match))
+							self._xmatch("match-all",match))
 				elif mtype == "desc":
 					full_package = match
 					match        = portage.cpv_getkey(match)
@@ -291,7 +285,7 @@ class search(object):
 							+ "\n\n")
 				if full_package:
 					try:
-						desc, homepage, license = self.portdb.aux_get(
+						desc, homepage, license = self._aux_get(
 							full_package, ["DESCRIPTION","HOMEPAGE","LICENSE"])
 					except KeyError:
 						msg.append("emerge: search: aux_get() failed, skipping\n")
@@ -308,14 +302,14 @@ class search(object):
 					mycat = match.split("/")[0]
 					mypkg = match.split("/")[1]
 					mycpv = match + "-" + myversion
-					myebuild = self.portdb.findname(mycpv)
+					myebuild = self._findname(mycpv)
 					if myebuild:
 						pkgdir = os.path.dirname(myebuild)
 						from portage import manifest
 						mf = manifest.Manifest(
 							pkgdir, self.settings["DISTDIR"])
 						try:
-							uri_map = self.portdb.getFetchMap(mycpv)
+							uri_map = self._getFetchMap(mycpv)
 						except portage.exception.InvalidDependString as e:
 							file_size_str = "Unknown (%s)" % (e,)
 							del e
