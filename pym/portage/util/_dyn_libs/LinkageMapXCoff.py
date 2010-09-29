@@ -129,8 +129,8 @@ class LinkageMapXCoff(LinkageMapELF):
 		# have to call scanelf for preserved libs here as they aren't 
 		# registered in NEEDED.XCOFF.1 files
 		plibs = set()
-		if self._dbapi.plib_registry and self._dbapi.plib_registry.getPreservedLibs():
-			for items in self._dbapi.plib_registry.getPreservedLibs().values():
+		if self._dbapi._plib_registry and self._dbapi._plib_registry.getPreservedLibs():
+			for items in self._dbapi._plib_registry.getPreservedLibs().values():
 				plibs.update(items)
 				for x in items:
 					args = [BASH_BINARY, "-c", ':'

@@ -107,9 +107,9 @@ class LinkageMapPeCoff(LinkageMapELF):
 
 		# have to call readpecoff for preserved libs here as they aren't 
 		# registered in NEEDED.PECOFF.1 files
-		if self._dbapi.plib_registry and self._dbapi.plib_registry.getPreservedLibs():
+		if self._dbapi._plib_registry and self._dbapi._plib_registry.getPreservedLibs():
 			args = ["readpecoff", self._dbapi.settings.get('CHOST')]
-			for items in self._dbapi.plib_registry.getPreservedLibs().values():
+			for items in self._dbapi._plib_registry.getPreservedLibs().values():
 				args.extend(os.path.join(root, x.lstrip("." + os.path.sep)) \
 					for x in items)
 			try:
