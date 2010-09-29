@@ -245,7 +245,10 @@ class RepoConfigLoader(object):
 
 	def mainRepo(self):
 		"""Returns the main repo"""
-		return self.prepos[self.prepos['DEFAULT'].main_repo]
+		maid_repo = self.prepos['DEFAULT'].main_repo
+		if maid_repo is None:
+			return None
+		return self.prepos[maid_repo]
 
 	def _check_locations(self):
 		"""Check if repositories location are correct and show a warning message if not"""

@@ -31,7 +31,10 @@ class MaskManager(object):
 				recursive=1, remember_source_file=True, verify_eapi=True)
 			masters = repo.masters
 			if masters is None:
-				masters = [repositories.mainRepo()]
+				masters = []
+				main_repo = repositories.mainRepo()
+				if main_repo is not None:
+					masters.append(main_repo)
 			for master in masters:
 				master_lines = grabfile_package(os.path.join(master.location, "profiles", "package.mask"), \
 					recursive=1, remember_source_file=True, verify_eapi=True)
