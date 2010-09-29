@@ -2168,6 +2168,8 @@ class depgraph(object):
 		xinfo = '"%s"' % atom.unevaluated_atom
 		if arg:
 			xinfo='"%s"' % arg
+		if isinstance(myparent, AtomArg):
+			xinfo = _unicode_decode('"%s"') % (myparent,)
 		# Discard null/ from failed cpv_expand category expansion.
 		xinfo = xinfo.replace("null/", "")
 		masked_packages = []
@@ -2411,6 +2413,12 @@ class depgraph(object):
 		# Show parent nodes and the argument that pulled them in.
 		traversed_nodes = set()
 		node = myparent
+		if isinstance(myparent, AtomArg):
+			# It's redundant to show parent for AtomArg since
+			# it's the same as 'xinfo' displayed above.
+			node = None
+		else:
+			node = myparent
 		msg = []
 		while node is not None:
 			traversed_nodes.add(node)
@@ -2444,8 +2452,9 @@ class depgraph(object):
 				else:
 					selected_parent = parent
 			node = selected_parent
-		writemsg_stdout("\n".join(msg), noiselevel=-1)
-		writemsg_stdout("\n", noiselevel=-1)
+		if msg:
+			writemsg_stdout("\n".join(msg), noiselevel=-1)
+			writemsg_stdout("\n", noiselevel=-1)
 
 		if mask_docs:
 			show_mask_docs()
