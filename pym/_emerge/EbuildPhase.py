@@ -73,6 +73,12 @@ class EbuildPhase(CompositeTask):
 			msg.append("USE:  %s" % use)
 			self._elog('einfo', msg)
 
+		if self.phase == 'package':
+			if 'PORTAGE_BINPKG_TMPFILE' not in self.settings:
+				self.settings['PORTAGE_BINPKG_TMPFILE'] = \
+					os.path.join(self.settings['PKGDIR'],
+					self.settings['CATEGORY'], self.settings['PF']) + '.tbz2'
+
 		if self.phase == 'prerm':
 			env_extractor = BinpkgEnvExtractor(background=self.background,
 				scheduler=self.scheduler, settings=self.settings)
