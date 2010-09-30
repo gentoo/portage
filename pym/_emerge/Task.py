@@ -12,14 +12,10 @@ class Task(SlotObject):
 			raise NotImplementedError(self)
 
 	def __eq__(self, other):
-		if self.__class__ is not other.__class__:
-			return False
-		return self._get_hash_key() == other._get_hash_key()
+		return self._get_hash_key() == other
 
 	def __ne__(self, other):
-		if self.__class__ is not other.__class__:
-			return True
-		return self._get_hash_key() != other._get_hash_key()
+		return self._get_hash_key() != other
 
 	def __hash__(self):
 		hash_value = getattr(self, "_hash_value", None)
