@@ -316,6 +316,14 @@ class RepoConfigLoader(object):
 			self._prepos_changed = False
 		return self._repo_location_list
 
+	def repoUserLocationList(self):
+		"""Get a list of repositories location. Replaces PORTDIR_OVERLAY"""
+		user_location_list = []
+		for repo in self.prepos_order:
+			if self.prepos[repo].location is not None:
+				user_location_list.append(self.prepos[repo].user_location)
+		return tuple(user_location_list)
+
 	def mainRepoLocation(self):
 		"""Returns the location of main repo"""
 		main_repo = self.prepos['DEFAULT'].main_repo
