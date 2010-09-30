@@ -226,7 +226,7 @@ class portdbapi(dbapi):
 			x.sync()
 
 	def findLicensePath(self, license_name):
-		for x in porttrees:
+		for x in self.porttrees:
 			license_path = os.path.join(x, "licenses", license_name)
 			if os.access(license_path, os.R_OK):
 				return license_path
