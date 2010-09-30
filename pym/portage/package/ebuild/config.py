@@ -5,25 +5,18 @@ __all__ = [
 	'autouse', 'best_from_dict', 'check_config_instance', 'config',
 ]
 
-import codecs
 import copy
-import errno
 import logging
 import re
 import sys
 import warnings
-
-try:
-	from configparser import SafeConfigParser, ParsingError
-except ImportError:
-	from ConfigParser import SafeConfigParser, ParsingError
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.data:portage_gid',
 )
 from portage import bsd_chflags, \
-	load_mod, os, selinux, _encodings, _unicode_encode, _unicode_decode
+	load_mod, os, selinux, _unicode_decode
 from portage.const import CACHE_PATH, \
 	DEPCACHE_PATH, INCREMENTALS, MAKE_CONF_FILE, \
 	MODULES_FILE_PATH, PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, \
@@ -113,26 +106,6 @@ class _iuse_implicit_match_cache(object):
 			self._cache[flag] = m
 			return m
 
-class _local_repo_config(object):
-	__slots__ = ('aliases', 'eclass_overrides', 'masters', 'name',)
-	def __init__(self, name, repo_opts):
-		self.name = name
-
-		aliases = repo_opts.get('aliases')
-		if aliases is not None:
-			aliases = tuple(aliases.split())
-		self.aliases = aliases
-
-		eclass_overrides = repo_opts.get('eclass-overrides')
-		if eclass_overrides is not None:
-			eclass_overrides = tuple(eclass_overrides.split())
-		self.eclass_overrides = eclass_overrides
-
-		masters = repo_opts.get('masters')
-		if masters is not None:
-			masters = tuple(masters.split())
-		self.masters = masters
-
 class config(object):
 	"""
 	This class encompasses the main portage configuration.  Data is pulled from
@@ -216,8 +189,6 @@ class config(object):
 
 		self.local_config = local_config
 
-		self._local_repo_configs = None
-		
 		if clone:
 			# For immutable attributes, use shallow copy for
 			# speed and memory conservation.
@@ -601,41 +572,6 @@ class config(object):
 
 				for k, v in penvdict.items():
 					self._penvdict.setdefault(k.cp, {})[k] = v
-
-				self._local_repo_configs = {}
-				self._local_repo_conf_path = \
-					os.path.join(abs_user_config, 'repos.conf')
-
-				repo_conf_parser = SafeConfigParser()
-				try:
-					repo_conf_parser.readfp(
-						codecs.open(
-						_unicode_encode(self._local_repo_conf_path,
-						encoding=_encodings['fs'], errors='strict'),
-						mode='r', encoding=_encodings['content'], errors='replace')
-					)
-				except EnvironmentError as e:
-					if e.errno != errno.ENOENT:
-						raise
-					del e
-				except ParsingError as e:
-					writemsg_level(
-						_("!!! Error parsing '%s': %s\n")  % \
-						(self._local_repo_conf_path, e),
-						level=logging.ERROR, noiselevel=-1)
-					del e
-				else:
-					repo_defaults = repo_conf_parser.defaults()
-					if repo_defaults:
-						self._local_repo_configs['DEFAULT'] = \
-							_local_repo_config('DEFAULT', repo_defaults)
-					for repo_name in repo_conf_parser.sections():
-						repo_opts = repo_defaults.copy()
-						for opt_name in repo_conf_parser.options(repo_name):
-							repo_opts[opt_name] = \
-								repo_conf_parser.get(repo_name, opt_name)
-						self._local_repo_configs[repo_name] = \
-							_local_repo_config(repo_name, repo_opts)
 
 			#getting categories from an external file now
 			self.categories = [grabfile(os.path.join(x, "categories")) \
