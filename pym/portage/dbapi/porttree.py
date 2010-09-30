@@ -65,10 +65,6 @@ class portdbapi(dbapi):
 		return self.settings.categories
 
 	@property
-	def porttrees(self):
-		return list(reversed(self.settings.repositories.repoLocationList()))
-
-	@property
 	def porttree_root(self):
 		return self.settings.repositories.mainRepoLocation()
 
@@ -107,6 +103,7 @@ class portdbapi(dbapi):
 				os.environ["SANDBOX_WRITE"] = \
 					":".join(filter(None, sandbox_write))
 
+		self.porttrees = list(reversed(self.settings.repositories.repoLocationList()))
 		self.eclassdb = eclass_cache.cache(self.settings.repositories.mainRepoLocation())
 
 		# This is used as sanity check for aux_get(). If there is no
@@ -166,7 +163,7 @@ class portdbapi(dbapi):
 		filtered_auxdbkeys.sort()
 		from portage.cache import metadata_overlay, volatile
 		if not depcachedir_w_ok:
-			for x in reversed(self.repositories.repoLocationList()):
+			for x in self.porttrees:
 				db_ro = self.auxdbmodule(self.depcachedir, x,
 					filtered_auxdbkeys, gid=portage_gid, readonly=True)
 				self.auxdb[x] = metadata_overlay.database(
@@ -174,7 +171,7 @@ class portdbapi(dbapi):
 					gid=portage_gid, db_rw=volatile.database,
 					db_ro=db_ro)
 		else:
-			for x in reversed(self.repositories.repoLocationList()):
+			for x in self.porttrees:
 				if x in self.auxdb:
 					continue
 				# location, label, auxdbkeys
@@ -183,7 +180,7 @@ class portdbapi(dbapi):
 				if self.auxdbmodule is metadata_overlay.database:
 					self.auxdb[x].db_ro.ec = self._repo_info[x].eclass_db
 		if "metadata-transfer" not in self.settings.features:
-			for x in reversed(self.repositories.repoLocationList()):
+			for x in self.porttrees:
 				if x in self._pregen_auxdb:
 					continue
 				if os.path.isdir(os.path.join(x, "metadata", "cache")):
@@ -229,7 +226,7 @@ class portdbapi(dbapi):
 			x.sync()
 
 	def findLicensePath(self, license_name):
-		for x in reversed(self.repositories.repoLocationList()):
+		for x in porttrees:
 			license_path = os.path.join(x, "licenses", license_name)
 			if os.access(license_path, os.R_OK):
 				return license_path
@@ -315,7 +312,7 @@ class portdbapi(dbapi):
 		if mytree:
 			mytrees = [mytree]
 		else:
-			mytrees = reversed(self.repositories.repoLocationList())
+			mytrees = self.porttrees
 
 		relative_path = mysplit[0] + _os.sep + psplit[0] + _os.sep + \
 			mysplit[1] + ".ebuild"
@@ -681,7 +678,7 @@ class portdbapi(dbapi):
 		if categories is None:
 			categories = self.settings.categories
 		if trees is None:
-			trees = reversed(self.repositories.repoLocationList())
+			trees = self.porttrees
 		for x in categories:
 			for oroot in trees:
 				for y in listdir(oroot+"/"+x, EmptyOnError=1, ignorecvs=1, dirsonly=1):
@@ -714,7 +711,7 @@ class portdbapi(dbapi):
 				# assume it's iterable
 				mytrees = mytree
 		else:
-			mytrees = reversed(self.repositories.repoLocationList())
+			mytrees = self.porttrees
 		for oroot in mytrees:
 			try:
 				file_list = os.listdir(os.path.join(oroot, mycp))
