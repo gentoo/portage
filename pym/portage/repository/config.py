@@ -1,23 +1,27 @@
 # Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import codecs
+import logging
+
 try:
 	from configparser import SafeConfigParser
 except ImportError:
 	from ConfigParser import SafeConfigParser
 from portage import os
 from portage.const import USER_CONFIG_PATH, GLOBAL_CONFIG_PATH, REPO_NAME_LOC
-from portage.util import normalize_path, writemsg, shlex_split
+from portage.env.loaders import KeyValuePairFileLoader
+from portage.util import normalize_path, writemsg, writemsg_level, shlex_split
 from portage.localization import _
 from portage import _unicode_encode
 from portage import _encodings
 
-import codecs
-
 class RepoConfig(object):
 	"""Stores config of one repository"""
-	__slots__ = ['aliases', 'eclass_overrides', 'location', 'masters', 'main_repo',
+
+	__slots__ = ['aliases', 'eclass_overrides', 'eclass_locations', 'location', 'user_location', 'masters', 'main_repo',
 		'missing_repo_name', 'name', 'priority', 'sync', 'format']
+
 	def __init__(self, name, repo_opts):
 		"""Build a RepoConfig with options in repo_opts
 		   Try to read repo_name in repository location, but if
@@ -31,12 +35,13 @@ class RepoConfig(object):
 		if eclass_overrides is not None:
 			eclass_overrides = tuple(eclass_overrides.split())
 		self.eclass_overrides = eclass_overrides
+		#Locations are computed later.
+		self.eclass_locations = None
 
-		masters = repo_opts.get('masters')
-		if masters is not None:
-			masters = tuple(masters.split())
-		self.masters = masters
+		#Masters are only read from layout.conf.
+		self.masters = None
 
+		#The main-repo key makes only sense for the 'DEFAULT' section.
 		self.main_repo = repo_opts.get('main-repo')
 
 		priority = repo_opts.get('priority')
@@ -57,17 +62,20 @@ class RepoConfig(object):
 			format = format.strip()
 		self.format = format
 
-		self.missing_repo_name = False
-
 		location = repo_opts.get('location')
+		self.user_location = location
 		if location is not None:
-			location = normalize_path(location)
 			if os.path.isdir(location):
-				repo_name = self._get_repo_name(location)
-				if repo_name:
-					name = repo_name
-		self.name = name
+				location = os.path.realpath(location)
 		self.location = location
+
+		missing = True
+		if self.location is not None:
+			name, missing = self._read_repo_name(self.location)
+		elif name == "DEFAULT": 
+			missing = False
+		self.name = name
+		self.missing_repo_name = missing
 
 	def update(self, new_repo):
 		"""Update repository with options in another RepoConfig"""
@@ -86,18 +94,20 @@ class RepoConfig(object):
 		if new_repo.sync is not None:
 			self.sync = new_repo.sync
 
-	def _get_repo_name(self, repo_path):
-		"""Read repo_name from repo_path"""
+	def _read_repo_name(self, repo_path):
+		"""
+		Read repo_name from repo_path.
+		Returns repo_name, missing.
+		"""
 		repo_name_path = os.path.join(repo_path, REPO_NAME_LOC)
 		try:
 			return codecs.open(
 				_unicode_encode(repo_name_path,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
-				errors='replace').readline().strip()
+				errors='replace').readline().strip(), False
 		except EnvironmentError:
-			self.missing_repo_name = True
-			return "x-" + os.path.basename(repo_path)
+			return "x-" + os.path.basename(repo_path), True
 
 class RepoConfigLoader(object):
 	"""Loads and store config of several repositories, loaded from PORTDIR_OVERLAY or repos.conf"""
@@ -145,7 +155,6 @@ class RepoConfigLoader(object):
 				for ov in overlays:
 					if os.path.isdir(ov):
 						repo = RepoConfig(None, {'location' : ov})
-
 						if repo.name in prepos:
 							old_location = prepos[repo.name].location
 							if old_location is not None and old_location != repo.location:
@@ -187,6 +196,35 @@ class RepoConfigLoader(object):
 
 		self.missing_repo_names = frozenset(repo.location for repo in prepos.values() if repo.missing_repo_name)
 
+		#Parse layout.conf and read masters key.
+		for repo in prepos.values():
+			if not repo.location:
+				continue
+			layout_filename = os.path.join(repo.location, "metadata", "layout.conf")
+			layout_file = KeyValuePairFileLoader(layout_filename, None, None)
+			layout_data, layout_errors = layout_file.load()
+
+			masters = layout_data.get('masters')
+			if masters:
+				master = masters.plit()
+			repo.masters = masters
+
+		#Take aliases into account.
+		new_prepos = {}
+		for repo_name, repo in prepos.items():
+			names = set()
+			names.add(repo_name)
+			if repo.aliases:
+				names.update(repo.aliases)
+
+			for name in names:
+				if name in new_prepos:
+					writemsg_level(_("!!! Repository name or alias '%s', " + \
+						"defined for repository '%s', overrides " + \
+						"existing alias or repository.\n") % (name, repo_name), level=logging.WARNING, noiselevel=-1)
+				new_prepos[name] = repo
+		prepos = new_prepos
+
 		for (name, r) in prepos.items():
 			if r.location is not None:
 				location_map[r.location] = name
@@ -221,6 +259,49 @@ class RepoConfigLoader(object):
 		self._prepos_changed = True
 		self._repo_location_list = []
 
+		#The 'masters' key currently contains repo names. Replace them with the matching RepoConfig.
+		for repo_name, repo in prepos.items():
+			if repo_name == "DEFAULT":
+				continue
+			if repo.masters is None:
+				if self.mainRepo() and repo_name != self.mainRepo().name:
+					repo.masters = self.mainRepo(),
+				else:
+					repo.masters = ()
+			else:
+				master_repos = []
+				for master_name in repo.masters:
+					if master_name not in prepos:
+						writemsg_level(_("Unavailable repository '%s' " \
+							"referenced by masters entry in '%s'\n") % \
+							(master_name, layout_filename),
+							level=logging.ERROR, noiselevel=-1)
+					else:
+						master_repos.append(prepos[master_name])
+				repo.masters = tuple(master_repos)
+
+		#The 'eclass_overrides' key currently contains repo names. Replace them with the matching repo paths.
+		for repo_name, repo in prepos.items():
+			if repo_name == "DEFAULT":
+				continue
+
+			eclass_locations = []
+			eclass_locations.extend(master_repo.location for master_repo in repo.masters)
+			eclass_locations.append(repo.location)
+
+			if repo.eclass_overrides:
+				for other_repo_name in eclass_overrides:
+					if other_repo_name in self.prepos:
+						eclass_locations.append(self.get_location_for_name(other_repo_name))
+					else:
+						writemsg_level(_("Unavailable repository '%s' " \
+							"referenced by eclass-overrides entry for " \
+							"'%s'\n") % (other_name, repo_name), level=logging.ERROR, noiselevel=-1)
+			repo.eclass_locations = tuple(eclass_locations)
+
+		self._prepos_changed = True
+		self._repo_location_list = []
+
 		self._check_locations()
 
 	def repoLocationList(self):
@@ -231,7 +312,7 @@ class RepoConfigLoader(object):
 				if self.prepos[repo].location is not None:
 					_repo_location_list.append(self.prepos[repo].location)
 			self._repo_location_list = tuple(_repo_location_list)
-				
+
 			self._prepos_changed = False
 		return self._repo_location_list
 
@@ -267,6 +348,21 @@ class RepoConfigLoader(object):
 			repo = self.prepos[repo_name]
 			if repo.format != "unavailable":
 				yield repo
+
+	def get_name_for_location(self, location):
+		return self.location_map[location]
+
+	def get_location_for_name(self, repo_name):
+		if repo_name is None:
+			# This simplifies code in places where
+			# we want to be able to pass in Atom.repo
+			# even if it is None.
+			return None
+		return self.treemap[repo_name]
+
+	def __iter__(self):
+		for repo_name in self.prepos_order:
+			yield self.prepos[repo_name]
 
 def load_repository_config(settings):
 	#~ repoconfigpaths = [os.path.join(settings.global_config_path, "repos.conf")]
