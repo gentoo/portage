@@ -5014,14 +5014,28 @@ class depgraph(object):
 					repo = atom.repo
 					break
 
+			atom = "=" + pkg_key
+			if repo:
+				atom = atom + _repo_separator + repo
+
 			try:
-				pkg = self._pkg(pkg_key, pkg_type, root_config, myrepo=repo)
-			except portage.exception.PackageNotFound:
+				atom = Atom(atom, allow_repo=True)
+			except InvalidAtom:
+				continue
+
+			pkg = None
+			for pkg in self._iter_match_pkgs(root_config, pkg_type, atom):
+				if not pkg.visible or \
+					self._frozen_config.excluded_pkgs.findAtomForPackage(pkg,
+						modified_use=self._pkg_use_enabled(pkg)):
+					continue
+
+			if pkg is None:
 				# It does no exist or it is corrupt.
 				if skip_missing:
 					# TODO: log these somewhere
 					continue
-				raise
+				raise portage.exception.PackageNotFound(pkg_key)
 
 			if "merge" == pkg.operation and \
 				self._frozen_config.excluded_pkgs.findAtomForPackage(pkg, \
