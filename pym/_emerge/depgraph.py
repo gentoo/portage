@@ -5024,7 +5024,7 @@ class depgraph(object):
 
 			pkg = None
 			for pkg in self._iter_match_pkgs(root_config, pkg_type, atom):
-				if not pkg.visible or \
+				if not self._pkg_visibility_check(pkg) or \
 					self._frozen_config.excluded_pkgs.findAtomForPackage(pkg,
 						modified_use=self._pkg_use_enabled(pkg)):
 					continue
