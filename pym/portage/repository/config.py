@@ -151,12 +151,36 @@ class RepoConfigLoader(object):
 				overlays.append(portdir)
 			port_ov = [normalize_path(i) for i in shlex_split(portdir_overlay)]
 			overlays.extend(port_ov)
+			default_repo_opts = {}
+			if prepos['DEFAULT'].aliases is not None:
+				default_repo_opts['aliases'] = \
+					' '.join(prepos['DEFAULT'].aliases)
+			if prepos['DEFAULT'].eclass_overrides is not None:
+				default_repo_opts['eclass-overrides'] = \
+					' '.join(prepos['DEFAULT'].eclass_overrides)
+			if prepos['DEFAULT'].masters is not None:
+				default_repo_opts['masters'] = \
+					' '.join(prepos['DEFAULT'].masters)
 			if overlays:
 				#overlay priority is negative because we want them to be looked before any other repo
 				base_priority = -1
 				for ov in overlays:
 					if os.path.isdir(ov):
-						repo = RepoConfig(None, {'location' : ov})
+						repo_opts = default_repo_opts.copy()
+						repo_opts['location'] = ov
+						repo = RepoConfig(None, repo_opts)
+						repo_conf_opts = prepos.get(repo.name)
+						if repo_conf_opts is not None:
+							if repo_conf_opts.aliases is not None:
+								repo_opts['aliases'] = \
+									' '.join(repo_conf_opts.aliases)
+							if repo_conf_opts.eclass_overrides is not None:
+								repo_opts['eclass-overrides'] = \
+									' '.join(repo_conf_opts.eclass_overrides)
+							if repo_conf_opts.masters is not None:
+								repo_opts['masters'] = \
+									' '.join(repo_conf_opts.masters)
+						repo = RepoConfig(repo.name, repo_opts)
 						if repo.name in prepos:
 							old_location = prepos[repo.name].location
 							if old_location is not None and old_location != repo.location:
@@ -191,8 +215,8 @@ class RepoConfigLoader(object):
 
 		portdir = settings.get('PORTDIR', '')
 		portdir_overlay = settings.get('PORTDIR_OVERLAY', '')
-		add_overlays(portdir, portdir_overlay, prepos, ignored_map, ignored_location_map)
 		parse(paths, prepos, ignored_map, ignored_location_map)
+		add_overlays(portdir, portdir_overlay, prepos, ignored_map, ignored_location_map)
 		ignored_repos = tuple((repo_name, tuple(paths)) \
 			for repo_name, paths in ignored_map.items())
 
@@ -294,13 +318,14 @@ class RepoConfigLoader(object):
 			eclass_locations.append(repo.location)
 
 			if repo.eclass_overrides:
-				for other_repo_name in eclass_overrides:
+				for other_repo_name in repo.eclass_overrides:
 					if other_repo_name in self.prepos:
 						eclass_locations.append(self.get_location_for_name(other_repo_name))
 					else:
 						writemsg_level(_("Unavailable repository '%s' " \
 							"referenced by eclass-overrides entry for " \
-							"'%s'\n") % (other_name, repo_name), level=logging.ERROR, noiselevel=-1)
+							"'%s'\n") % (other_repo_name, repo_name), \
+							level=logging.ERROR, noiselevel=-1)
 			repo.eclass_locations = tuple(eclass_locations)
 
 		self._prepos_changed = True
@@ -378,7 +403,7 @@ class RepoConfigLoader(object):
 
 def load_repository_config(settings):
 	#~ repoconfigpaths = [os.path.join(settings.global_config_path, "repos.conf")]
-	#~ repoconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
-		#~ USER_CONFIG_PATH, "repos.conf"))
 	repoconfigpaths = []
+	repoconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
+		USER_CONFIG_PATH, "repos.conf"))
 	return RepoConfigLoader(repoconfigpaths, settings)
