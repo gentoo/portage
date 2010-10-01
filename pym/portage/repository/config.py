@@ -87,6 +87,8 @@ class RepoConfig(object):
 			self.masters = new_repo.masters
 		if new_repo.name is not None:
 			self.name = new_repo.name
+		if new_repo.user_location is not None:
+			self.user_location = new_repo.user_location
 		if new_repo.location is not None:
 			self.location = new_repo.location
 		if new_repo.priority is not None:
