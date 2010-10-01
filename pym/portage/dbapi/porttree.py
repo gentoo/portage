@@ -103,7 +103,7 @@ class portdbapi(dbapi):
 				os.environ["SANDBOX_WRITE"] = \
 					":".join(filter(None, sandbox_write))
 
-		self.porttrees = list(reversed(self.settings.repositories.repoLocationList()))
+		self.porttrees = list(self.settings.repositories.repoLocationList())
 		self.eclassdb = eclass_cache.cache(self.settings.repositories.mainRepoLocation())
 
 		# This is used as sanity check for aux_get(). If there is no
