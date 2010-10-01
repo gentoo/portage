@@ -206,7 +206,7 @@ class RepoConfigLoader(object):
 
 			masters = layout_data.get('masters')
 			if masters:
-				master = masters.plit()
+				master = masters.split()
 			repo.masters = masters
 
 		#Take aliases into account.
