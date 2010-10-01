@@ -623,7 +623,6 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	deselect = myopts.get('--deselect') != 'n'
 	required_sets = {}
 	required_sets['world'] = psets['world']
-	excluded_set = InternalPackageSet(initial_atoms=myopts.get('--exclude'))
 
 	# When removing packages, a temporary version of the world 'selected'
 	# set may be used which excludes packages that are intended to be
@@ -743,7 +742,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				protected_set.add("=" + pkg.cpv)
 				continue
 
-	if excluded_set:
+	if resolver._frozen_config.excluded_pkgs:
+		excluded_set = resolver._frozen_config.excluded_pkgs
 		required_sets['__excluded__'] = InternalPackageSet()
 
 		for pkg in vardb:
