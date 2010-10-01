@@ -120,7 +120,7 @@ class DepcleanWithInstalledMaskedTestCase(TestCase):
 
 class DepcleanWithExcludeTestCase(TestCase):
 
-	def testepcleanWithExclude(self):
+	def testDepcleanWithExclude(self):
 
 		installed = {
 			"dev-libs/A-1": {},
@@ -168,7 +168,7 @@ class DepcleanWithExcludeTestCase(TestCase):
 
 class DepcleanWithExcludeAndSlotsTestCase(TestCase):
 
-	def testepcleanWithExcludeAndSlots(self):
+	def testDepcleanWithExcludeAndSlots(self):
 
 		installed = {
 			"dev-libs/Z-1": { "SLOT": 1},
