@@ -297,6 +297,10 @@ class RepoConfigLoader(object):
 				else:
 					repo.masters = ()
 			else:
+				if repo.masters and isinstance(repo.masters[0], RepoConfig):
+					# This one has already been processed
+					# because it has an alias.
+					continue
 				master_repos = []
 				for master_name in repo.masters:
 					if master_name not in prepos:
