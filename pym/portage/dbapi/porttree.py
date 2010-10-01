@@ -226,7 +226,7 @@ class portdbapi(dbapi):
 			x.sync()
 
 	def findLicensePath(self, license_name):
-		for x in self.porttrees:
+		for x in reversed(self.porttrees):
 			license_path = os.path.join(x, "licenses", license_name)
 			if os.access(license_path, os.R_OK):
 				return license_path
@@ -312,7 +312,7 @@ class portdbapi(dbapi):
 		if mytree:
 			mytrees = [mytree]
 		else:
-			mytrees = self.porttrees
+			mytrees = reversed(self.porttrees)
 
 		relative_path = mysplit[0] + _os.sep + psplit[0] + _os.sep + \
 			mysplit[1] + ".ebuild"
