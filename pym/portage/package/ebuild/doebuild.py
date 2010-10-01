@@ -1147,6 +1147,13 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 # parse actionmap to spawn ebuild with the appropriate args
 def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 	logfile=None, fd_pipes=None, returnpid=False):
+
+	if returnpid:
+		warnings.warn("portage.spawnebuild() called " + \
+			"with returnpid parameter enabled. This usage will " + \
+			"not be supported in the future.",
+			DeprecationWarning, stacklevel=2)
+
 	if not returnpid and \
 		(alwaysdep or "noauto" not in mysettings.features):
 		# process dependency first
