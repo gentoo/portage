@@ -327,8 +327,7 @@ class depgraph(object):
 		for myroot in self._frozen_config.trees:
 
 			preload_installed_pkgs = \
-				"--nodeps" not in self._frozen_config.myopts and \
-				"--buildpkgonly" not in self._frozen_config.myopts
+				"--nodeps" not in self._frozen_config.myopts
 
 			fake_vartree = self._frozen_config.trees[myroot]["vartree"]
 			if not fake_vartree.dbapi:
