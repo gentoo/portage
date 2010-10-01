@@ -205,8 +205,10 @@ class RepoConfigLoader(object):
 			layout_data, layout_errors = layout_file.load()
 
 			masters = layout_data.get('masters')
-			if masters:
-				master = masters.split()
+			if masters and masters.strip():
+				masters = masters.split()
+			else:
+				masters = None
 			repo.masters = masters
 
 		#Take aliases into account.
