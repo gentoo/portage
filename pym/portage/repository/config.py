@@ -5,9 +5,9 @@ import codecs
 import logging
 
 try:
-	from configparser import SafeConfigParser
+	from configparser import SafeConfigParser, ParsingError
 except ImportError:
-	from ConfigParser import SafeConfigParser
+	from ConfigParser import SafeConfigParser, ParsingError
 from portage import os
 from portage.const import USER_CONFIG_PATH, GLOBAL_CONFIG_PATH, REPO_NAME_LOC
 from portage.env.loaders import KeyValuePairFileLoader
@@ -120,7 +120,7 @@ class RepoConfigLoader(object):
 			parser = SafeConfigParser()
 			try:
 				parser.read(paths)
-			except SafeConfigParser.Error as e:
+			except ParsingError as e:
 				writemsg(_("!!! Error while reading repo config file: %s\n") % e, noiselevel=-1)
 			prepos['DEFAULT'] = RepoConfig("DEFAULT", parser.defaults())
 			for sname in parser.sections():
