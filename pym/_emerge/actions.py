@@ -512,7 +512,7 @@ def action_config(settings, trees, myopts, myfiles):
 	else:
 		print("Configuring pkg...")
 	print()
-	ebuildpath = trees[settings["ROOT"]]["vartree"].dbapi.findname(pkg, myrepo=pkg.repo)
+	ebuildpath = trees[settings["ROOT"]]["vartree"].dbapi.findname(pkg)
 	mysettings = portage.config(clone=settings)
 	vardb = trees[mysettings["ROOT"]]["vartree"].dbapi
 	debug = mysettings.get("PORTAGE_DEBUG") == "1"
