@@ -1503,7 +1503,7 @@ _slot_re = re.compile('^' + _slot + '$', re.VERBOSE)
 _use = r'\[.*\]'
 _op = r'([=~]|[><]=?)'
 _repo_separator = "::"
-_repo_name = r'[\w+][\w+.-]*'
+_repo_name = r'[\w][\w-]*'
 _repo = r'(?:' + _repo_separator + '(' + _repo_name + ')' + ')?'
 
 _atom_re = re.compile('^(?P<without_use>(?:' +
