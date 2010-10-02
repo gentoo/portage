@@ -3,6 +3,7 @@
 
 import codecs
 import logging
+import re
 
 try:
 	from configparser import SafeConfigParser, ParsingError
@@ -15,6 +16,8 @@ from portage.util import normalize_path, writemsg, writemsg_level, shlex_split
 from portage.localization import _
 from portage import _unicode_encode
 from portage import _encodings
+
+_repo_name_sub_re = re.compile(r'[^\w-]')
 
 class RepoConfig(object):
 	"""Stores config of one repository"""
@@ -72,7 +75,21 @@ class RepoConfig(object):
 		missing = True
 		if self.location is not None:
 			name, missing = self._read_repo_name(self.location)
+			# We must ensure that the name conforms to PMS 3.1.5
+			# in order to avoid InvalidAtom exceptions when we
+			# use it to generate atoms.
+			name = _repo_name_sub_re.sub(' ', name.strip())
 			name = '-'.join(name.split())
+			name = name.lstrip('-')
+			if not name:
+				# name only contains invalid characters
+				name = "x-" + os.path.basename(self.location)
+				name = _repo_name_sub_re.sub(' ', name.strip())
+				name = '-'.join(name.split())
+				name = name.lstrip('-')
+				# If basename only contains whitespace then the
+				# end result is name = 'x'.
+
 		elif name == "DEFAULT": 
 			missing = False
 		self.name = name
