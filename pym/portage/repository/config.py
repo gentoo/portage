@@ -72,6 +72,7 @@ class RepoConfig(object):
 		missing = True
 		if self.location is not None:
 			name, missing = self._read_repo_name(self.location)
+			name = '-'.join(name.split())
 		elif name == "DEFAULT": 
 			missing = False
 		self.name = name
