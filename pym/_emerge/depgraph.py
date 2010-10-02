@@ -3800,11 +3800,26 @@ class depgraph(object):
 				and node.operation == 'merge'], scheduler_graph)
 
 		mygraph=self._dynamic_config.digraph.copy()
+
+		removed_nodes = set()
+
+		# Prune off all DependencyArg instances since they aren't
+		# needed, and because of nested sets this is faster than doing
+		# it with multiple digraph.root_nodes() calls below. This also
+		# takes care of nested sets that have circular references,
+		# which wouldn't be matched by digraph.root_nodes().
+		for node in mygraph:
+			if isinstance(node, DependencyArg):
+				removed_nodes.add(node)
+		if removed_nodes:
+			mygraph.difference_update(removed_nodes)
+			removed_nodes.clear()
+
 		# Prune "nomerge" root nodes if nothing depends on them, since
 		# otherwise they slow down merge order calculation. Don't remove
 		# non-root nodes since they help optimize merge order in some cases
 		# such as revdep-rebuild.
-		removed_nodes = set()
+
 		while True:
 			for node in mygraph.root_nodes():
 				if not isinstance(node, Package) or \
