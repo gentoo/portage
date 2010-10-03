@@ -82,6 +82,15 @@ def _elog_base(level, msg, phase="other", key=None, color=None, out=None):
 	    directly.
 	"""
 
+	# TODO: Have callers pass in a more unique 'key' parameter than a plain
+	# cpv, in order to ensure that messages are properly grouped together
+	# for a given package instance, and also to ensure that each elog module's
+	# process() function is only called once for each unique package. This is
+	# needed not only when building packages in parallel, but also to preserve
+	# continuity in messages when a package is simply updated, since we don't
+	# want the elog_process() call from the uninstall of the old version to
+	# cause discontinuity in the elog messages of the new one being installed.
+
 	global _msgbuffer
 
 	if out is None:
