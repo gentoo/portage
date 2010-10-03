@@ -527,7 +527,7 @@ class GenChangeLogs(object):
 			changed = []
 			for n, l in enumerate(reversed(cinfo)):
 				if not l:
-					body = cinfo[1:-n]
+					body = cinfo[1:-n-1]
 					break
 				else:
 					f = l.split()
@@ -563,17 +563,28 @@ class GenChangeLogs(object):
 			if wroteheader:
 				output.write('\n')
 
-			# XXX: strip the repoman suffix note from the commit message
-
 			# strip '<cp>: ', '[<cp>] ', and similar
 			body[0] = re.sub(r'^\W*' + re.escape(cp) + r'\W+', '', body[0])
+			# strip trailing newline
+			if not body[-1]:
+				body = body[:-1]
+			# strip git-svn id
+			if body[-1].startswith('git-svn-id:') and not body[-2]:
+				body = body[:-2]
+			# strip the repoman version/manifest note
+			if body[-1] == ' (Signed Manifest commit)' or body[-1] == ' (Unsigned Manifest commit)':
+				body = body[:-1]
+			if body[-1].startswith('(Portage version:') and body[-1].endswith(')'):
+				body = body[:-1]
+				if not body[-1]:
+					body = body[:-1]
 
 			# don't break filenames on hyphens
 			self._wrapper.break_on_hyphens = False
 			output.write(self._wrapper.fill('%s; %s %s:' % (date, author, ', '.join(changed))))
 			# but feel free to break commit messages there
 			self._wrapper.break_on_hyphens = True
-			output.write('\n'.join([''] + [self._wrapper.fill(x) for x in body]))
+			output.write('\n%s\n\n' % '\n'.join([self._wrapper.fill(x) for x in body]))
 
 		output.close()
 	
