@@ -1355,6 +1355,11 @@ def action_info(settings, trees, myopts, myfiles):
 
 	libtool_vers = ",".join(trees["/"]["vartree"].dbapi.match("sys-devel/libtool"))
 
+	repos = portdb.settings.repositories
+	writemsg_stdout("Repositories:\n\n")
+	for repo in repos:
+		writemsg_stdout(repo.info_string())
+
 	if "--verbose" in myopts:
 		myvars = list(settings)
 	else:

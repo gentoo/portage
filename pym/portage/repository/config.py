@@ -129,6 +129,31 @@ class RepoConfig(object):
 		except EnvironmentError:
 			return "x-" + os.path.basename(repo_path), True
 
+	def info_string(self):
+		"""
+		Returns a formatted string containing informations about the repository.
+		Used by emerge --info.
+		"""
+		indent = " " * 4
+		repo_msg = []
+		repo_msg.append(self.name)
+		if self.format:
+			repo_msg.append(indent + "format: " + self.format)
+		if self.user_location:
+			repo_msg.append(indent + "location: " + self.user_location)
+		if self.sync:
+			repo_msg.append(indent + "sync: " + self.sync)
+		if self.masters:
+			repo_msg.append(indent + "masters: " + " ".join(master.name for master in self.masters))
+		if self.priority:
+			repo_msg.append(indent + "priority: " + str(self.priority))
+		if self.aliases:
+			repo_msg.append(indent + "aliases: " + self.aliases)
+		if self.eclass_overrides:
+			repo_msg.append(indent + "eclass_overrides: " + self.eclass_overrides)
+		repo_msg.append("")
+		return "\n".join(repo_msg) + "\n"
+
 class RepoConfigLoader(object):
 	"""Loads and store config of several repositories, loaded from PORTDIR_OVERLAY or repos.conf"""
 	def __init__(self, paths, settings):
