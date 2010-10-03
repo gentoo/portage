@@ -22,7 +22,7 @@ def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_lo
 	if metadata is None:
 		db_keys = list(portdb._aux_cache_keys)
 		try:
-			metadata = dict(zip(db_keys, portdb.aux_get(mycpv, db_keys, myrepo=metadata.get('repository'))))
+			metadata = dict(zip(db_keys, portdb.aux_get(mycpv, db_keys)))
 		except KeyError:
 			if not portdb.cpv_exists(mycpv):
 				raise
