@@ -256,7 +256,7 @@ class RepoConfigLoader(object):
 		ignored_map = {}
 		ignored_location_map = {}
 
-		portdir = settings.get('PORTDIR', '')
+		portdir = os.path.realpath(settings.get('PORTDIR', ''))
 		portdir_overlay = settings.get('PORTDIR_OVERLAY', '')
 		parse(paths, prepos, ignored_map, ignored_location_map)
 		add_overlays(portdir, portdir_overlay, prepos, ignored_map, ignored_location_map)
@@ -304,22 +304,22 @@ class RepoConfigLoader(object):
 		prepos_order = [repo.name for repo in prepos.values() if repo.location is not None]
 		prepos_order.sort(key=repo_priority, reverse=True)
 
-		if portdir:
-			if portdir not in location_map:
-				portdir = prepos[ignored_location_map[portdir]].location
+		if portdir in location_map:
 			portdir_repo = prepos[location_map[portdir]]
 			portdir_sync = settings.get('SYNC', '')
 			#if SYNC variable is set and not overwritten by repos.conf
 			if portdir_sync and not portdir_repo.sync:
 				portdir_repo.sync = portdir_sync
 
-		if prepos['DEFAULT'].main_repo is None:
+		if prepos['DEFAULT'].main_repo is None or \
+			prepos['DEFAULT'].main_repo not in prepos:
 			#setting main_repo if it was not set in repos.conf
 			if portdir in location_map:
 				prepos['DEFAULT'].main_repo = location_map[portdir]
 			elif portdir in ignored_location_map:
 				prepos['DEFAULT'].main_repo = ignored_location_map[portdir]
 			else:
+				prepos['DEFAULT'].main_repo = None
 				writemsg(_("!!! main-repo not set in DEFAULT and PORTDIR is empty. \n"), noiselevel=-1)
 
 		self.prepos = prepos
