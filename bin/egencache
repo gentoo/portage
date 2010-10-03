@@ -473,6 +473,12 @@ class GenChangeLogs(object):
 				subsequent_indent = '  '
 			)
 
+	@staticmethod
+	def grab(cmd):
+		p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+		return _unicode_decode(p.communicate()[0],
+				encoding=_encodings['stdio'], errors='strict')
+
 	def generate_changelog(self, cp):
 		try:
 			output = codecs.open('ChangeLog',
@@ -492,13 +498,8 @@ class GenChangeLogs(object):
 
 ''' % (cp, time.strftime('%Y'))).lstrip())
 
-		def grab(cmd):
-			p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-			return _unicode_decode(p.communicate()[0],
-					encoding=_encodings['stdio'], errors='strict')
-
 		# now grab all the commits
-		commits = grab(['git', 'rev-list', 'HEAD', '--', '.']).split()
+		commits = self.grab(['git', 'rev-list', 'HEAD', '--', '.']).split()
 
 		for c in commits:
 			# Explaining the arguments:
@@ -510,7 +511,7 @@ class GenChangeLogs(object):
 			# -r (recursive) to get per-file changes
 			# then the commit-id and path.
 
-			cinfo = grab(['git', 'diff-tree', '--name-status', '--no-renames',
+			cinfo = self.grab(['git', 'diff-tree', '--name-status', '--no-renames',
 					'--format=%ct %cN <%cE>%n%B', '--root', '--relative', '-r',
 					c, '--', '.']).rstrip('\n').split('\n')
 
@@ -600,8 +601,16 @@ class GenChangeLogs(object):
 
 		for cp in self._portdb.cp_all():
 			os.chdir(os.path.join(repo_path, cp))
-			# XXX: support checking somehow whether the ChangeLog is up-to-date.
-			if 1:
+
+			# Determine whether ChangeLog is up-to-date by comparing
+			# the newest commit timestamp with the ChangeLog timestamp.
+			lmod = self.grab(['git', 'log', '--format=%ct', '-1', '.'])
+			try:
+				cmod = os.stat('ChangeLog').st_mtime
+			except OSError:
+				cmod = 0
+
+			if float(cmod) < float(lmod):
 				self.generate_changelog(cp)
 
 def egencache_main(args):
