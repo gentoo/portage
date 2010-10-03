@@ -566,7 +566,7 @@ class GenChangeLogs(object):
 			# XXX: strip the repoman suffix note from the commit message
 
 			# strip '<cp>: ', '[<cp>] ', and similar
-			body[0] = re.sub(r'^\W*' + cp + '\W+', '', body[0])
+			body[0] = re.sub(r'^\W*' + re.escape(cp) + r'\W+', '', body[0])
 
 			# don't break filenames on hyphens
 			self._wrapper.break_on_hyphens = False
