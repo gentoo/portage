@@ -1116,7 +1116,8 @@ class Atom(_atom_base):
 	def without_repo(self):
 		if self.repo is None:
 			return self
-		return Atom(self.replace(_repo_separator + self.repo, '', 1))
+		return Atom(self.replace(_repo_separator + self.repo, '', 1),
+			allow_wildcard=True)
 
 	def __setattr__(self, name, value):
 		raise AttributeError("Atom instances are immutable",
