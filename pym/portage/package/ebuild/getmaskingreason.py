@@ -6,7 +6,8 @@ __all__ = ['getmaskingreason']
 import portage
 from portage import os
 from portage.const import USER_CONFIG_PATH
-from portage.dep import match_from_list
+from portage.dep import Atom, match_from_list, _slot_separator, _repo_separator
+from portage.exception import InvalidAtom
 from portage.localization import _
 from portage.util import grablines, normalize_path
 from portage.versions import catpkgsplit
@@ -49,19 +50,25 @@ def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_lo
 	if mycp in pmaskdict:
 		for x in pmaskdict[mycp]:
 			if match_from_list(x, cpv_slot_list):
+				x = x.without_repo
 				for pmask in pmasklists:
 					comment = ""
 					comment_valid = -1
 					pmask_filename = os.path.join(pmask[0], "package.mask")
 					for i in range(len(pmask[1])):
 						l = pmask[1][i].strip()
+						try:
+							l_atom = Atom(l, allow_repo=True,
+								allow_wildcard=True).without_repo
+						except InvalidAtom:
+							l_atom = None
 						if l == "":
 							comment = ""
 							comment_valid = -1
 						elif l[0] == "#":
 							comment += (l+"\n")
 							comment_valid = i + 1
-						elif l == x:
+						elif l_atom == x:
 							if comment_valid != i:
 								comment = ""
 							if return_location:

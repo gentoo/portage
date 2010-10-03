@@ -1112,6 +1112,12 @@ class Atom(_atom_base):
 					_("Strong blocks are not allowed in EAPI %s: '%s'") \
 						% (eapi, self), category='EAPI.incompatible')
 
+	@property
+	def without_repo(self):
+		if self.repo is None:
+			return self
+		return Atom(self.replace(_repo_separator + self.repo, '', 1))
+
 	def __setattr__(self, name, value):
 		raise AttributeError("Atom instances are immutable",
 			self.__class__, name, value)
