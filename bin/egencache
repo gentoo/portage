@@ -568,8 +568,12 @@ class GenChangeLogs(object):
 			# strip '<cp>: ', '[<cp>] ', and similar
 			body[0] = re.sub(r'^\W*' + cp + '\W+', '', body[0])
 
-			body.insert(0, '%s; %s %s:' % (date, author, ', '.join(changed)))
-			output.write('\n'.join([self._wrapper.fill(x) for x in body]))
+			# don't break filenames on hyphens
+			self._wrapper.break_on_hyphens = False
+			output.write(self._wrapper.fill('%s; %s %s:' % (date, author, ', '.join(changed))))
+			# but feel free to break commit messages there
+			self._wrapper.break_on_hyphens = True
+			output.write('\n'.join([''] + [self._wrapper.fill(x) for x in body]))
 
 		output.close()
 	
