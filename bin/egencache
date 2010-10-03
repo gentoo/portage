@@ -26,6 +26,7 @@ import optparse
 import subprocess
 import time
 import textwrap
+import re
 
 try:
 	import portage
@@ -562,8 +563,10 @@ class GenChangeLogs(object):
 			if wroteheader:
 				output.write('\n')
 
-			# XXX: strip '<CP>: ' and '[<CP>] ' from the commit message
 			# XXX: strip the repoman suffix note from the commit message
+
+			# strip '<cp>: ', '[<cp>] ', and similar
+			body[0] = re.sub(r'^\W*' + cp + '\W+', '', body[0])
 
 			body.insert(0, '%s; %s %s:' % (date, author, ', '.join(changed)))
 			output.write('\n'.join([self._wrapper.fill(x) for x in body]))
