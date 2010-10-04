@@ -365,7 +365,7 @@ class GenUseLocalDesc(object):
 						errors='replace')
 			except IOError as e:
 				writemsg_level(
-					"ERROR: failed to open output file %s: %s\n" % (output_mode,e,),
+					"ERROR: failed to open output file %s: %s\n" % (desc_path,e,),
 					level=logging.ERROR, noiselevel=-1)
 				self.returncode |= 2
 				return
