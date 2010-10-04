@@ -88,7 +88,7 @@ PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS="5"
 PORTAGE_FETCH_RESUME_MIN_SIZE="350K"
 
 # Number of times 'emerge --sync' will run before giving up.
-PORTAGE_RSYNC_RETRIES="3"
+PORTAGE_RSYNC_RETRIES="-1"
 
 # Number of seconds rsync will wait before timing out.
 #RSYNC_TIMEOUT="180"

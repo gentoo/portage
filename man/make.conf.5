@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Aug 2010" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Oct 2010" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -703,9 +703,10 @@ Defaults to "\-\-recursive \-\-links \-\-safe\-links \-\-perms \-\-times
 .TP
 \fBPORTAGE_RSYNC_RETRIES\fR = \fI[NUMBER]\fR
 The number of times rsync should retry on failed connections before
-giving up.
+giving up. If set to a negative number, then retry until all possible
+addresses are exhausted.
 .br
-Defaults to 3.
+Defaults to -1.
 .TP
 \fBPORTAGE_SYNC_STALE\fR = \fI[NUMBER]\fR
 Defines the number of days after the last `emerge \-\-sync` that a warning
