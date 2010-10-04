@@ -382,8 +382,14 @@ class Package(Task):
 				self.operation = "merge"
 				if self.onlydeps or self.installed:
 					self.operation = "nomerge"
+			# For installed (and binary) packages we don't care for the repo
+			# when it comes to hashing, because there can only be one cpv.
+			# So overwrite the repo_key with type_name.
+			repo_key = self.metadata.get('repository')
+			if self.type_name != 'ebuild':
+				repo_key = self.type_name
 			self._hash_key = \
-				(self.type_name, self.root, self.cpv, self.operation, self.metadata.get('repository', None))
+				(self.type_name, self.root, self.cpv, self.operation, repo_key)
 		return self._hash_key
 
 	def __len__(self):

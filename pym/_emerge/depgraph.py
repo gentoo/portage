@@ -1573,7 +1573,8 @@ class depgraph(object):
 					raise portage.exception.PackageNotFound(
 						"%s is not in a valid portage tree hierarchy or does not exist" % x)
 				pkg = self._pkg(mykey, "ebuild", root_config,
-					onlydeps=onlydeps)
+					onlydeps=onlydeps, myrepo=portdb.getRepositoryName(
+					os.path.dirname(os.path.dirname(os.path.dirname(ebuild_path)))))
 				args.append(PackageArg(arg=x, package=pkg,
 					root_config=root_config))
 			elif x.startswith(os.path.sep):
@@ -2898,7 +2899,7 @@ class depgraph(object):
 								else:
 									try:
 										pkg_eb = self._pkg(
-											pkg.cpv, "ebuild", root_config, myrepo=atom.repo)
+											pkg.cpv, "ebuild", root_config, myrepo=pkg.repo)
 									except portage.exception.PackageNotFound:
 										continue
 									else:
@@ -3297,8 +3298,14 @@ class depgraph(object):
 		failures for some reason (package does not exist or is
 		corrupt).
 		"""
-		if type_name != "ebuild" and myrepo is None:
+		if type_name != "ebuild":
+			# For installed (and binary) packages we don't care for the repo
+			# when it comes to hashing, because there can only be one cpv.
+			# So overwrite the repo_key with type_name.
 			myrepo = type_name
+		elif myrepo is None:
+			raise AssertionError(
+				"depgraph._pkg() called without 'myrepo' argument")
 
 		operation = "merge"
 		if installed or onlydeps:
@@ -3319,42 +3326,16 @@ class depgraph(object):
 			db_keys = list(self._frozen_config._trees_orig[root_config.root][
 				tree_type].dbapi._aux_cache_keys)
 
-			if type_name == "ebuild" and myrepo is None:
-				#We're asked to return a matching Package from any repo.
-				metadata = None
-				for repo in db.getRepositories():
-					if not db.cpv_exists(cpv, myrepo=repo):
-						continue
-					try:
-						metadata = zip(db_keys, db.aux_get(cpv, db_keys, myrepo=repo))
-					except KeyError:
-						continue
-					else:
-						break
-				if metadata is None:
-					raise portage.exception.PackageNotFound(cpv)
-			else:
-				try:
-					metadata = zip(db_keys, db.aux_get(cpv, db_keys, myrepo=myrepo))
-				except KeyError:
-					raise portage.exception.PackageNotFound(cpv)
+			try:
+				metadata = zip(db_keys, db.aux_get(cpv, db_keys, myrepo=myrepo))
+			except KeyError:
+				raise portage.exception.PackageNotFound(cpv)
 
 			pkg = Package(built=(type_name != "ebuild"), cpv=cpv,
 				installed=installed, metadata=metadata, onlydeps=onlydeps,
 				root_config=root_config, type_name=type_name)
 
-			if type_name == "ebuild":
-				self._frozen_config._pkg_cache[pkg] = pkg
-				if myrepo is None:
-					self._frozen_config._pkg_cache[
-						(pkg.type_name, pkg.root, pkg.cpv, pkg.operation, None)] = pkg
-			else:
-				#For installed and binary packages we don't care for the repo when it comes to
-				#caching, because there can only be one cpv. So overwrite the repo key with type_name.
-				#Make sure that .operation is computed.
-				pkg._get_hash_key()
-				self._frozen_config._pkg_cache[
-					(pkg.type_name, pkg.root, pkg.cpv, pkg.operation, pkg.type_name)] = pkg
+			self._frozen_config._pkg_cache[pkg] = pkg
 
 			if not self._pkg_visibility_check(pkg) and \
 				'LICENSE' in pkg.masks and len(pkg.masks) == 1:
@@ -5658,7 +5639,9 @@ def show_masked_packages(masked_packages):
 	have_eapi_mask = False
 	for (root_config, pkgsettings, cpv, repo,
 		metadata, mreasons) in masked_packages:
-		output_cpv = cpv + _repo_separator + repo
+		output_cpv = cpv
+		if repo:
+			output_cpv += _repo_separator + repo
 		if output_cpv in shown_cpvs:
 			continue
 		shown_cpvs.add(output_cpv)
