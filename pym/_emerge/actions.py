@@ -2063,7 +2063,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		except SystemExit as e:
 			raise # Needed else can't exit
 		except:
-			maxretries=3 #default number of retries
+			maxretries = -1 #default number of retries
 
 		retries=0
 		user_name, hostname, port = re.split(
@@ -2259,9 +2259,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 			retries=retries+1
 
-			if retries<=maxretries:
+			if maxretries < 0 or retries <= maxretries:
 				print(">>> Retrying...")
-				time.sleep(11)
 			else:
 				# over retries
 				# exit loop
