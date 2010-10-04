@@ -899,6 +899,19 @@ class depgraph(object):
 								parent_atoms = set()
 							backtrack_data.append((to_be_masked, parent_atoms))
 
+						# NOTE: Generally, we prefer to mask the higher
+						# version since this solves common cases in which a
+						# lower version is needed so that all dependencies
+						# will be satisfied (bug #337178). However, if
+						# existing_node happens to be installed then we
+						# mask that since this is a common case that is
+						# triggered when --update is not enabled.
+						if existing_node.installed:
+							pass
+						elif pkg > existing_node:
+							backtrack_data.reverse()
+						to_be_masked = backtrack_data[0][0]
+
 						self._dynamic_config._backtrack_infos["slot conflict"] = backtrack_data
 						self._dynamic_config._need_restart = True
 						if "--debug" in self._frozen_config.myopts:
@@ -908,6 +921,7 @@ class depgraph(object):
 							msg.append("backtracking due to slot conflict:")
 							msg.append("   first package:  %s" % existing_node)
 							msg.append("   second package: %s" % pkg)
+							msg.append("  package to mask: %s" % to_be_masked)
 							msg.append("      slot: %s" % pkg.slot_atom)
 							msg.append("   parents: %s" % \
 								[(str(parent), atom) \
