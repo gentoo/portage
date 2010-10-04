@@ -2079,12 +2079,19 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			settings.get("PORTAGE_RSYNC_EXTRA_OPTS",""))
 		all_rsync_opts.update(extra_rsync_opts)
 
+		family = socket.AF_UNSPEC
+		if "-4" in all_rsync_opts or "--ipv4" in all_rsync_opts:
+			family = socket.AF_INET
+		elif socket.has_ipv6 and \
+			("-6" in all_rsync_opts or "--ipv6" in all_rsync_opts):
+			family = socket.AF_INET6
+
 		ips_v4 = []
 		ips_v6 = []
 
 		try:
 			addrinfos = socket.getaddrinfo(hostname, None,
-				socket.AF_UNSPEC, socket.SOCK_STREAM)
+				family, socket.SOCK_STREAM)
 		except socket.error as e:
 			writemsg("!!! getaddrinfo failed: %s\n" % (e,), noiselevel=-1)
 			return 1
