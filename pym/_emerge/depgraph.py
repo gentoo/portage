@@ -875,17 +875,29 @@ class depgraph(object):
 
 						backtrack_data = []
 						all_parents = set()
-						for node, other_node in (existing_node, pkg), (pkg, existing_node):
+						# HACK: The ordering of backtrack_data can make
+						# a difference here. We choose an order such that
+						# the backtracker will first explore the choice with
+						# existing_node masked. The backtracker reverses the
+						# order twice, so the order it uses is the order shown
+						# here (the net result of two reversals is the same as
+						# no reversal). See bug #339606.
+						for to_be_selected, to_be_masked in (pkg, existing_node), (existing_node, pkg):
+							# For missed update messages, find out which
+							# atoms matched to_be_selected that did not
+							# match to_be_masked.
 							parent_atoms = \
-								self._dynamic_config._parent_atoms.get(node, set())
+								self._dynamic_config._parent_atoms.get(to_be_selected, set())
 							if parent_atoms:
 								conflict_atoms = self._dynamic_config._slot_conflict_parent_atoms.intersection(parent_atoms)
 								if conflict_atoms:
 									parent_atoms = conflict_atoms
 							all_parents.update(parent_atoms)
-							if node < other_node:
+							if to_be_selected >= to_be_masked:
+								# We only care about the parent atoms
+								# when they trigger a downgrade.
 								parent_atoms = set()
-							backtrack_data.append((node, parent_atoms))
+							backtrack_data.append((to_be_masked, parent_atoms))
 
 						self._dynamic_config._backtrack_infos["slot conflict"] = backtrack_data
 						self._dynamic_config._need_restart = True
