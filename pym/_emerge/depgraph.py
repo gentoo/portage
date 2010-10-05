@@ -2468,7 +2468,14 @@ class depgraph(object):
 		db = root_config.trees[self.pkg_tree_map[pkg_type]].dbapi
 
 		if hasattr(db, "xmatch"):
-			cpv_list = db.xmatch("match-all", atom)
+			# For portdbapi we match only against the cpv, in order
+			# to bypass unecessary cache access for things like IUSE
+			# and SLOT. Later, we cache the metadata in a Package
+			# instance, and use that for further matching. This
+			# optimization is especially relevant since
+			# pordbapi.aux_get() does not cache calls that have
+			# myrepo or mytree arguments.
+			cpv_list = db.xmatch("match-all-cpv-only", atom)
 		else:
 			cpv_list = db.match(atom)
 
