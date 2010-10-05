@@ -11,6 +11,7 @@ from portage.dep import Atom, check_required_use, use_reduce, \
 	paren_enclose, _slot_re, _slot_separator, _repo_separator
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 from portage.exception import InvalidDependString
+from portage.repository.config import _gen_valid_repo
 from _emerge.Task import Task
 
 if sys.hexversion >= 0x3000000:
@@ -316,7 +317,9 @@ class Package(Task):
 	@property
 	def repo(self):
 		if self._repo is None:
-			self._repo = self.metadata['repository']
+			self._repo = _gen_valid_repo(self.metadata['repository'])
+			if not self._repo:
+				self._repo = '__unknown__'
 		return self._repo
 
 	@property
