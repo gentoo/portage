@@ -1568,7 +1568,7 @@ def action_info(settings, trees, myopts, myfiles):
 			if pkg_type == "installed":
 				ebuildpath = vardb.findname(pkg.cpv)
 			elif pkg_type == "ebuild":
-				ebuildpath = portdb.findname(pkg.cpv, pkg.repo)
+				ebuildpath = portdb.findname(pkg.cpv, myrepo=pkg.repo)
 			elif pkg_type == "binary":
 				tbz2_file = bindb.bintree.getname(pkg.cpv)
 				ebuild_file_name = pkg.cpv.split("/")[1] + ".ebuild"
