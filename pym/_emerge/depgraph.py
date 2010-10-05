@@ -2508,6 +2508,8 @@ class depgraph(object):
 				break
 
 		if cpv_list:
+			atom_set = InternalPackageSet(initial_atoms=(atom,),
+				allow_repo=True, allow_wildcard=True)
 			if atom.repo is None and hasattr(db, "getRepositories"):
 				repo_list = db.getRepositories()
 			else:
@@ -2534,8 +2536,8 @@ class depgraph(object):
 						# Make sure that cpv from the current repo satisfies the atom.
 						# This might not be the case if there are several repos with
 						# the same cpv, but different metadata keys, like SLOT.
-						if not InternalPackageSet(initial_atoms=(atom,), allow_repo=True,
-							).findAtomForPackage(pkg, modified_use=self._pkg_use_enabled(pkg)):
+						if not atom_set.findAtomForPackage(pkg,
+							modified_use=self._pkg_use_enabled(pkg)):
 							continue
 						yield pkg
 
