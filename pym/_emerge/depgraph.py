@@ -2520,7 +2520,7 @@ class depgraph(object):
 
 		if cpv_list:
 			atom_set = InternalPackageSet(initial_atoms=(atom,),
-				allow_repo=True, allow_wildcard=True)
+				allow_repo=True)
 			if atom.repo is None and hasattr(db, "getRepositories"):
 				repo_list = db.getRepositories()
 			else:
