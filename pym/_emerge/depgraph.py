@@ -2519,8 +2519,6 @@ class depgraph(object):
 			cpv_list.reverse()
 			for cpv in cpv_list:
 				for repo in repo_list:
-					if not db.cpv_exists(cpv, myrepo=repo):
-						continue
 
 					try:
 						pkg = self._pkg(cpv, pkg_type, root_config,
