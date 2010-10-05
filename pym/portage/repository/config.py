@@ -19,6 +19,19 @@ from portage import _encodings
 
 _repo_name_sub_re = re.compile(r'[^\w-]')
 
+def _gen_valid_repo(name):
+	"""
+	Substitute hyphen in place of characters that don't conform to PMS 3.1.5,
+	and strip hyphen from left side if necessary. This returns None if the
+	given name contains no valid characters.
+	"""
+	name = _repo_name_sub_re.sub(' ', name.strip())
+	name = '-'.join(name.split())
+	name = name.lstrip('-')
+	if not name:
+		name = None
+	return name
+
 class RepoConfig(object):
 	"""Stores config of one repository"""
 
@@ -78,17 +91,13 @@ class RepoConfig(object):
 			# We must ensure that the name conforms to PMS 3.1.5
 			# in order to avoid InvalidAtom exceptions when we
 			# use it to generate atoms.
-			name = _repo_name_sub_re.sub(' ', name.strip())
-			name = '-'.join(name.split())
-			name = name.lstrip('-')
+			name = _gen_valid_repo(name)
 			if not name:
 				# name only contains invalid characters
 				name = "x-" + os.path.basename(self.location)
-				name = _repo_name_sub_re.sub(' ', name.strip())
-				name = '-'.join(name.split())
-				name = name.lstrip('-')
+				name = _gen_valid_repo(name)
 				# If basename only contains whitespace then the
-				# end result is name = 'x'.
+				# end result is name = 'x-'.
 
 		elif name == "DEFAULT": 
 			missing = False
