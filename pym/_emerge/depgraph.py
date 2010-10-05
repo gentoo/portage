@@ -2186,6 +2186,8 @@ class depgraph(object):
 						built, installed, db_keys, myrepo=repo, _pkg_use_enabled=self._pkg_use_enabled)
 
 					if metadata is not None:
+						if not repo:
+							repo = metadata.get('repository')
 						pkg = self._pkg(cpv, pkg_type, root_config,
 							installed=installed, myrepo=repo)
 						# pkg.metadata contains calculated USE for ebuilds,
