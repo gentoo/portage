@@ -875,8 +875,11 @@ class depgraph(object):
 
 						backtrack_data = []
 						all_parents = set()
-						# HACK: The ordering of backtrack_data can make
-						# a difference here. We choose an order such that
+						# The ordering of backtrack_data can make
+						# a difference here, because both mask actions may lead
+						# to valid, but different, solutions and the one with
+						# 'existing_node' masked is usually the better one. Because
+						# of that, we choose an order such that
 						# the backtracker will first explore the choice with
 						# existing_node masked. The backtracker reverses the
 						# order twice, so the order it uses is the order shown
@@ -892,25 +895,26 @@ class depgraph(object):
 								conflict_atoms = self._dynamic_config._slot_conflict_parent_atoms.intersection(parent_atoms)
 								if conflict_atoms:
 									parent_atoms = conflict_atoms
+
 							all_parents.update(parent_atoms)
+
+							all_match = True
+							for ppkg, atom in parent_atoms:
+								i = InternalPackageSet(initial_atoms=(atom,))
+								if not i.findAtomForPackage(to_be_masked):
+									all_match = False
+									break
+
+							if all_match:
+								# 'to_be_masked' does not violate any parent atom, which means
+								# there is no point in masking it.
+								continue
+
 							if to_be_selected >= to_be_masked:
 								# We only care about the parent atoms
 								# when they trigger a downgrade.
 								parent_atoms = set()
 							backtrack_data.append((to_be_masked, parent_atoms))
-
-						# NOTE: Generally, we prefer to mask the higher
-						# version since this solves common cases in which a
-						# lower version is needed so that all dependencies
-						# will be satisfied (bug #337178). However, if
-						# existing_node happens to be installed then we
-						# mask that since this is a common case that is
-						# triggered when --update is not enabled.
-						if existing_node.installed:
-							pass
-						elif pkg > existing_node:
-							backtrack_data.reverse()
-						to_be_masked = backtrack_data[0][0]
 
 						self._dynamic_config._backtrack_infos["slot conflict"] = backtrack_data
 						self._dynamic_config._need_restart = True
@@ -921,11 +925,9 @@ class depgraph(object):
 							msg.append("backtracking due to slot conflict:")
 							msg.append("   first package:  %s" % existing_node)
 							msg.append("   second package: %s" % pkg)
-							msg.append("  package to mask: %s" % to_be_masked)
 							msg.append("      slot: %s" % pkg.slot_atom)
-							msg.append("   parents: %s" % \
-								[(str(parent), atom) \
-								for parent, atom in all_parents])
+							msg.append("   parents: %s" % ", ".join( \
+								"(%s, '%s')" % (ppkg, atom) for ppkg, atom in all_parents))
 							msg.append("")
 							writemsg_level("".join("%s\n" % l for l in msg),
 								noiselevel=-1, level=logging.DEBUG)

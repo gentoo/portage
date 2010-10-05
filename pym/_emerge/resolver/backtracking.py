@@ -102,11 +102,8 @@ class Backtracker(object):
 			new_node.depth += 1
 			new_node.mask_steps += 1
 			new_node.terminal = False
-			for other_pkg, other_parent_atoms in conflict_data:
-				if other_pkg is pkg:
-					continue
-				new_node.parameter.runtime_pkg_mask.setdefault(
-					other_pkg, {})["slot conflict"] = other_parent_atoms
+			new_node.parameter.runtime_pkg_mask.setdefault(
+				pkg, {})["slot conflict"] = parent_atoms
 			self._add(new_node)
 
 

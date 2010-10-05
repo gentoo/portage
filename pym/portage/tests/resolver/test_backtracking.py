@@ -137,11 +137,6 @@ class BacktrackingTestCase(TestCase):
 		An update is missed due to a dependency on an older version.
 		"""
 
-		# NOTE: This test fails if the order of slot conflict
-		# backtrack_data is reversed inside depgraph._add_pkg().
-		# This may indicate that Backtracker is failing to generate
-		# the appropriate nodes to explore in this case.
-
 		ebuilds = {
 			"dev-libs/A-1": { },
 			"dev-libs/A-2": { },
