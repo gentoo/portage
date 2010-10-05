@@ -2541,6 +2541,9 @@ class depgraph(object):
 						# Make sure that cpv from the current repo satisfies the atom.
 						# This might not be the case if there are several repos with
 						# the same cpv, but different metadata keys, like SLOT.
+						# Also, for portdbapi, parts of the match that require
+						# metadata access are deferred until we have cached the
+						# metadata in a Package instance.
 						if not atom_set.findAtomForPackage(pkg,
 							modified_use=self._pkg_use_enabled(pkg)):
 							continue
