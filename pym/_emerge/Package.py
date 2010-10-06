@@ -65,7 +65,7 @@ class Package(Task):
 		self.pv_split = self.cpv_split[1:]
 		if self.inherited is None:
 			self.inherited = frozenset()
-		repo = _gen_valid_repo(self.metadata['repository'])
+		repo = _gen_valid_repo(self.metadata.get('repository', ''))
 		if not repo:
 			repo = '__unknown__'
 		self.metadata['repository'] = repo
