@@ -149,9 +149,12 @@ if ebuild_portdir != vdb_path and \
 	print("Appending %s to PORTDIR_OVERLAY..." % ebuild_portdir)
 	portage.close_portdbapi_caches()
 	imp.reload(portage)
-del portage.portdb.porttrees[1:]
-if ebuild_portdir != portage.portdb.porttree_root:
-	portage.portdb.porttrees.append(ebuild_portdir)
+
+# Constrain eclass resolution to the master(s)
+# that are specified in layout.conf (using an
+# approach similar to repoman's).
+repo_info = portage.portdb._repo_info[ebuild_portdir]
+portage.portdb.porttrees = list(repo_info.eclass_db.porttrees)
 
 if not os.path.exists(ebuild):
 	print("'%s' does not exist." % ebuild)
