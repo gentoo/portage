@@ -2488,7 +2488,6 @@ class depgraph(object):
 		# Therefore, assume that such SLOT dependencies are already
 		# satisfied rather than forcing a rebuild.
 		installed = pkg_type == 'installed'
-		ignore_installed_slot = False
 		if installed and not cpv_list and atom.slot:
 			for cpv in db.match(atom.cp):
 				slot_available = False
