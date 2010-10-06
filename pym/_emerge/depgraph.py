@@ -2168,7 +2168,7 @@ class depgraph(object):
 				continue
 			match = db.match
 			if hasattr(db, "xmatch"):
-				cpv_list = db.xmatch("match-all", atom.without_use)
+				cpv_list = db.xmatch("match-all-cpv-only", atom.without_use)
 			else:
 				cpv_list = db.match(atom.without_use)
 
@@ -2192,16 +2192,12 @@ class depgraph(object):
 							repo = metadata.get('repository')
 						pkg = self._pkg(cpv, pkg_type, root_config,
 							installed=installed, myrepo=repo)
+						if not atom_set.findAtomForPackage(pkg,
+							modified_use=self._pkg_use_enabled(pkg)):
+							continue
 						# pkg.metadata contains calculated USE for ebuilds,
 						# required later for getMissingLicenses.
 						metadata = pkg.metadata
-						if pkg.cp != atom.cp:
-							# A cpv can be returned from dbapi.match() as an
-							# old-style virtual match even in cases when the
-							# package does not actually PROVIDE the virtual.
-							# Filter out any such false matches here.
-							if not atom_set.findAtomForPackage(pkg, modified_use=self._pkg_use_enabled(pkg)):
-								continue
 						if pkg in self._dynamic_config._runtime_pkg_mask:
 							backtrack_reasons = \
 								self._dynamic_config._runtime_pkg_mask[pkg]
