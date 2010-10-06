@@ -2547,7 +2547,9 @@ else:
 		# strip the closing parenthesis
 		mymsg.write(_unicode_encode(commitmessage[:-1]))
 		if signed:
-			mymsg.write(b", signed Manifest commit)")
+			mymsg.write(_unicode_encode(
+				", signed Manifest commit with key %s)" % \
+				repoman_settings["PORTAGE_GPG_KEY"]))
 		else:
 			mymsg.write(b", unsigned Manifest commit)")
 		mymsg.close()
