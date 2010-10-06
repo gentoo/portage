@@ -924,6 +924,19 @@ class depgraph(object):
 							# behavior if this gets triggered somehow.
 							backtrack_data = fallback_data
 
+						if len(backtrack_data) > 1:
+							# NOTE: Generally, we prefer to mask the higher
+							# version since this solves common cases in which a
+							# lower version is needed so that all dependencies
+							# will be satisfied (bug #337178). However, if
+							# existing_node happens to be installed then we
+							# mask that since this is a common case that is
+							# triggered when --update is not enabled.
+							if existing_node.installed:
+								pass
+							elif pkg > existing_node:
+								backtrack_data.reverse()
+
 						to_be_masked = backtrack_data[-1][0]
 
 						self._dynamic_config._backtrack_infos["slot conflict"] = backtrack_data
