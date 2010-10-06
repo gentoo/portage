@@ -1119,6 +1119,13 @@ class Atom(_atom_base):
 		return Atom(self.replace(_repo_separator + self.repo, '', 1),
 			allow_wildcard=True)
 
+	@property
+	def without_slot(self):
+		if self.slot is None:
+			return self
+		return Atom(self.replace(_slot_separator + self.slot, '', 1),
+			allow_repo=True, allow_wildcard=True)
+
 	def __setattr__(self, name, value):
 		raise AttributeError("Atom instances are immutable",
 			self.__class__, name, value)
