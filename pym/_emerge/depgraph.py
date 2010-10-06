@@ -882,10 +882,9 @@ class depgraph(object):
 						# of that, we choose an order such that
 						# the backtracker will first explore the choice with
 						# existing_node masked. The backtracker reverses the
-						# order twice, so the order it uses is the order shown
-						# here (the net result of two reversals is the same as
-						# no reversal). See bug #339606.
-						for to_be_selected, to_be_masked in (pkg, existing_node), (existing_node, pkg):
+						# order, so the order it uses is the reverse of the
+						# order shown here. See bug #339606.
+						for to_be_selected, to_be_masked in (existing_node, pkg), (pkg, existing_node):
 							# For missed update messages, find out which
 							# atoms matched to_be_selected that did not
 							# match to_be_masked.
