@@ -56,15 +56,7 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 				pass
 			else:
 
-				# Re-open the input stream, in order to suppress
-				# POLLHUP events (bug #339976).
-				self._files.pipe_in.close()
-				input_fd = os.open(self.input_fifo, os.O_RDONLY|os.O_NONBLOCK)
-				self._files.pipe_in = os.fdopen(input_fd, 'rb', 0)
-				self.scheduler.unregister(self._reg_id)
-				self._reg_id = self.scheduler.register(
-					self._files.pipe_in.fileno(),
-					self._registered_events, self._input_handler)
+				self._reopen_input()
 
 				cmd_key = obj[0]
 				cmd_handler = self.commands[cmd_key]
