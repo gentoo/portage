@@ -920,7 +920,7 @@ class depgraph(object):
 								backtrack_data.append((to_be_masked, parent_atoms))
 
 						if not backtrack_data:
-							# This shouldn't happen, but fall back to th old
+							# This shouldn't happen, but fall back to the old
 							# behavior if this gets triggered somehow.
 							backtrack_data = fallback_data
 
