@@ -149,9 +149,13 @@ if ebuild_portdir != vdb_path and \
 	print("Appending %s to PORTDIR_OVERLAY..." % ebuild_portdir)
 	portage.close_portdbapi_caches()
 	imp.reload(portage)
-del portage.portdb.porttrees[1:]
-if ebuild_portdir != portage.portdb.porttree_root:
-	portage.portdb.porttrees.append(ebuild_portdir)
+
+# Constrain eclass resolution to the master(s)
+# that are specified in layout.conf (using an
+# approach similar to repoman's).
+myrepo = portage.portdb.getRepositoryName(ebuild_portdir)
+repo_info = portage.portdb._repo_info[ebuild_portdir]
+portage.portdb.porttrees = list(repo_info.eclass_db.porttrees)
 
 if not os.path.exists(ebuild):
 	print("'%s' does not exist." % ebuild)
@@ -167,7 +171,7 @@ if not portage.catpkgsplit(cpv):
 if ebuild.startswith(vdb_path):
 	mytree = "vartree"
 
-	portage_ebuild = portage.db[portage.root][mytree].dbapi.findname(cpv)
+	portage_ebuild = portage.db[portage.root][mytree].dbapi.findname(cpv, myrepo=myrepo)
 
 	if os.path.realpath(portage_ebuild) != ebuild:
 		print("!!! Portage seems to think that %s is at %s" % (cpv, portage_ebuild))
@@ -176,7 +180,7 @@ if ebuild.startswith(vdb_path):
 else:
 	mytree = "porttree"
 
-	portage_ebuild = portage.portdb.findname(cpv)
+	portage_ebuild = portage.portdb.findname(cpv, myrepo=myrepo)
 
 	if not portage_ebuild or portage_ebuild != ebuild:
 		print("!!! %s does not seem to have a valid PORTDIR structure." % ebuild)
