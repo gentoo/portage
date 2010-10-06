@@ -2163,7 +2163,7 @@ class depgraph(object):
 		a matching package has been masked by backtracking.
 		"""
 		backtrack_mask = False
-		atom_set = InternalPackageSet(initial_atoms=(atom,))
+		atom_set = InternalPackageSet(initial_atoms=(atom.without_use,))
 		xinfo = '"%s"' % atom.unevaluated_atom
 		if arg:
 			xinfo='"%s"' % arg
