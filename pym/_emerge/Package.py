@@ -27,7 +27,7 @@ class Package(Task):
 		"category", "counter", "cp", "cpv_split",
 		"inherited", "invalid", "iuse", "masks", "mtime",
 		"pf", "pv_split", "root", "slot", "slot_atom", "visible",) + \
-	("_raw_metadata", "_use", "_repo",)
+	("_raw_metadata", "_use",)
 
 	metadata_keys = [
 		"BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "EAPI",
@@ -65,6 +65,11 @@ class Package(Task):
 		self.pv_split = self.cpv_split[1:]
 		if self.inherited is None:
 			self.inherited = frozenset()
+		repo = _gen_valid_repo(self.metadata['repository'])
+		if not repo:
+			repo = '__unknown__'
+		self.metadata['repository'] = repo
+
 		self._validate_deps()
 		self.masks = self._masks()
 		self.visible = self._visible(self.masks)
@@ -316,11 +321,7 @@ class Package(Task):
 
 	@property
 	def repo(self):
-		if self._repo is None:
-			self._repo = _gen_valid_repo(self.metadata['repository'])
-			if not self._repo:
-				self._repo = '__unknown__'
-		return self._repo
+		return self.metadata['repository']
 
 	@property
 	def use(self):
