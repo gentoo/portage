@@ -787,13 +787,23 @@ class portdbapi(dbapi):
 			# match *all* packages, only against the cpv, in order
 			# to bypass unecessary cache access for things like IUSE
 			# and SLOT.
-			if mydep == mykey:
-				# Share cache with match-all/cp_list
-				# when the result is the same.
-				level = "match-all"
-				myval = self.cp_list(mykey)
-			else:
-				myval = match_from_list(mydep, self.cp_list(mykey))
+			myval = None
+			mytree = None
+			if mydep.repo is not None:
+				mytree = self.treemap.get(mydep.repo)
+				if mytree is None:
+					myval = []
+
+			if myval is None:
+				if mydep == mykey:
+					# Share cache with match-all/cp_list
+					# when the result is the same.
+					level = "match-all"
+					myval = self.cp_list(mykey, mytree=mytree)
+				else:
+					myval = match_from_list(mydep,
+						self.cp_list(mykey, mytree=mytree))
+
 		elif level == "list-visible":
 			#a list of all visible packages, not called directly (just by xmatch())
 			#myval = self.visible(self.cp_list(mykey))
