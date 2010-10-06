@@ -874,6 +874,7 @@ class depgraph(object):
 						self._process_slot_conflicts()
 
 						backtrack_data = []
+						fallback_data = []
 						all_parents = set()
 						# The ordering of backtrack_data can make
 						# a difference here, because both mask actions may lead
@@ -904,16 +905,26 @@ class depgraph(object):
 									all_match = False
 									break
 
-							if all_match:
-								# 'to_be_masked' does not violate any parent atom, which means
-								# there is no point in masking it.
-								continue
-
 							if to_be_selected >= to_be_masked:
 								# We only care about the parent atoms
 								# when they trigger a downgrade.
 								parent_atoms = set()
-							backtrack_data.append((to_be_masked, parent_atoms))
+
+							fallback_data.append((to_be_masked, parent_atoms))
+
+							if all_match:
+								# 'to_be_masked' does not violate any parent atom, which means
+								# there is no point in masking it.
+								pass
+							else:
+								backtrack_data.append((to_be_masked, parent_atoms))
+
+						if not backtrack_data:
+							# This shouldn't happen, but fall back to th old
+							# behavior if this gets triggered somehow.
+							backtrack_data = fallback_data
+
+						to_be_masked = backtrack_data[-1][0]
 
 						self._dynamic_config._backtrack_infos["slot conflict"] = backtrack_data
 						self._dynamic_config._need_restart = True
@@ -922,8 +933,11 @@ class depgraph(object):
 							msg.append("")
 							msg.append("")
 							msg.append("backtracking due to slot conflict:")
+							if backtrack_data is fallback_data:
+								msg.append("!!! backtrack_data fallback")
 							msg.append("   first package:  %s" % existing_node)
 							msg.append("   second package: %s" % pkg)
+							msg.append("  package to mask: %s" % to_be_masked)
 							msg.append("      slot: %s" % pkg.slot_atom)
 							msg.append("   parents: %s" % ", ".join( \
 								"(%s, '%s')" % (ppkg, atom) for ppkg, atom in all_parents))
