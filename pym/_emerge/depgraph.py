@@ -891,47 +891,71 @@ class depgraph(object):
 								self._add_parent_atom(pkg, parent_atom)
 						self._process_slot_conflicts()
 
+						backtrack_data = []
+						fallback_data = []
 						all_parents = set()
-						for node in (existing_node, pkg):
+						# The ordering of backtrack_data can make
+						# a difference here, because both mask actions may lead
+						# to valid, but different, solutions and the one with
+						# 'existing_node' masked is usually the better one. Because
+						# of that, we choose an order such that
+						# the backtracker will first explore the choice with
+						# existing_node masked. The backtracker reverses the
+						# order, so the order it uses is the reverse of the
+						# order shown here. See bug #339606.
+						for to_be_selected, to_be_masked in (existing_node, pkg), (pkg, existing_node):
+							# For missed update messages, find out which
+							# atoms matched to_be_selected that did not
+							# match to_be_masked.
 							parent_atoms = \
-								self._dynamic_config._parent_atoms.get(node, set())
+								self._dynamic_config._parent_atoms.get(to_be_selected, set())
 							if parent_atoms:
 								conflict_atoms = self._dynamic_config._slot_conflict_parent_atoms.intersection(parent_atoms)
 								if conflict_atoms:
 									parent_atoms = conflict_atoms
+
 							all_parents.update(parent_atoms)
 
-						# NOTE: Generally, we mask the higher version since
-						# this solves common cases in which a lower version
-						# is needed so that all dependencies will be
-						# satisfied (bug #337178). However, if existing_node
-						# happens to be installed then we mask that since
-						# this is a common case that is triggered when
-						# --update is not enabled.
-						if existing_node.installed:
-							to_be_masked = existing_node
-							to_be_selected = pkg
-						elif pkg > existing_node:
-							to_be_masked = pkg
-							to_be_selected = existing_node
-						else:
-							to_be_masked = existing_node
-							to_be_selected = pkg
+							all_match = True
+							for parent, atom in parent_atoms:
+								i = InternalPackageSet(initial_atoms=(atom,))
+								if not i.findAtomForPackage(to_be_masked):
+									all_match = False
+									break
 
-						# For missed update messages, find out which
-						# atoms matched to_be_selected that did not
-						# match to_be_masked.
-						parent_atoms = \
-							self._dynamic_config._parent_atoms.get(to_be_selected, set())
-						if parent_atoms:
-							conflict_atoms = self._dynamic_config._slot_conflict_parent_atoms.intersection(parent_atoms)
-							if conflict_atoms:
-								parent_atoms = conflict_atoms
+							if to_be_selected >= to_be_masked:
+								# We only care about the parent atoms
+								# when they trigger a downgrade.
+								parent_atoms = set()
 
-						if to_be_selected >= to_be_masked:
-							# We only care about the parent atoms
-							# when they trigger a downgrade.
-							parent_atoms = set()
+							fallback_data.append((to_be_masked, parent_atoms))
+
+							if all_match:
+								# 'to_be_masked' does not violate any parent atom, which means
+								# there is no point in masking it.
+								pass
+							else:
+								backtrack_data.append((to_be_masked, parent_atoms))
+
+						if not backtrack_data:
+							# This shouldn't happen, but fall back to the old
+							# behavior if this gets triggered somehow.
+							backtrack_data = fallback_data
+
+						if len(backtrack_data) > 1:
+							# NOTE: Generally, we prefer to mask the higher
+							# version since this solves common cases in which a
+							# lower version is needed so that all dependencies
+							# will be satisfied (bug #337178). However, if
+							# existing_node happens to be installed then we
+							# mask that since this is a common case that is
+							# triggered when --update is not enabled.
+							if existing_node.installed:
+								pass
+							elif pkg > existing_node:
+								backtrack_data.reverse()
+
+						to_be_masked, parent_atoms = backtrack_data[-1]
 
 						self._dynamic_config._runtime_pkg_mask.setdefault(
 							to_be_masked, {})["slot conflict"] = parent_atoms
@@ -941,13 +965,14 @@ class depgraph(object):
 							msg.append("")
 							msg.append("")
 							msg.append("backtracking due to slot conflict:")
+							if backtrack_data is fallback_data:
+								msg.append("!!! backtrack_data fallback")
 							msg.append("   first package:  %s" % existing_node)
 							msg.append("   second package: %s" % pkg)
 							msg.append("  package to mask: %s" % to_be_masked)
 							msg.append("      slot: %s" % pkg.slot_atom)
-							msg.append("   parents: %s" % \
-								[(str(parent), atom) \
-								for parent, atom in all_parents])
+							msg.append("   parents: %s" % ", ".join( \
+								"(%s, '%s')" % (ppkg, atom) for ppkg, atom in all_parents))
 							msg.append("")
 							writemsg_level("".join("%s\n" % l for l in msg),
 								noiselevel=-1, level=logging.DEBUG)
