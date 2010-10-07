@@ -83,9 +83,9 @@ def remove_listener(listener):
 	_elog_listeners.remove(listener)
 
 _elog_atexit_handlers = []
-_preserve_logentries = {}
+
 def elog_process(cpv, mysettings, phasefilter=None):
-	global _elog_atexit_handlers, _preserve_logentries
+	global _elog_atexit_handlers
 	
 	logsystems = mysettings.get("PORTAGE_ELOG_SYSTEM","").split()
 	for s in logsystems:
@@ -116,13 +116,6 @@ def elog_process(cpv, mysettings, phasefilter=None):
 			_merge_logentries(all_logentries[cpv], ebuild_logentries)
 	else:
 		all_logentries[cpv] = ebuild_logentries
-
-	for key in list(_preserve_logentries):
-		if key in all_logentries:
-			all_logentries[key] = _merge_logentries(_preserve_logentries[key], all_logentries[key])
-		else:
-			all_logentries[key] = _preserve_logentries[key]
-		del _preserve_logentries[key]
 
 	my_elog_classes = set(mysettings.get("PORTAGE_ELOG_CLASSES", "").split())
 	logsystems = {}
