@@ -60,16 +60,12 @@ def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_lo
 					pmask_filename = os.path.join(pmask[0], "package.mask")
 					for i in range(len(pmask[1])):
 						l = pmask[1][i].strip()
-						negated_atom = False
 						try:
 							l_atom = Atom(l, allow_repo=True,
 								allow_wildcard=True).without_repo
 						except InvalidAtom:
 							l_atom = None
-							if l[:1] == '-':
-								negated_atom = True
-
-						if negated_atom or not l:
+						if l == "":
 							comment = ""
 							comment_valid = -1
 						elif l[0] == "#":
