@@ -566,7 +566,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	root_config = trees[settings['ROOT']]['root_config']
 	vardb = root_config.trees['vartree'].dbapi
 
-	args_set = InternalPackageSet()
+	args_set = InternalPackageSet(allow_repo=True)
 	if myfiles:
 		args_set.update(myfiles)
 		matched_packages = False
@@ -2427,7 +2427,7 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 	# Ensure atoms are valid before calling unmerge().
 	# For backward compat, leading '=' is not required.
 	for x in files:
-		if is_valid_package_atom(x) or \
+		if is_valid_package_atom(x, allow_repo=True) or \
 			(ignore_missing_eq and is_valid_package_atom('=' + x)):
 
 			try:
