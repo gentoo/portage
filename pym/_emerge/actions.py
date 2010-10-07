@@ -1228,7 +1228,8 @@ def action_deselect(settings, trees, opts, atoms):
 				else:
 					if not atom.startswith(SETPREFIX) and \
 						arg_atom.intersects(atom) and \
-						not (arg_atom.slot and not atom.slot):
+						not (arg_atom.slot and not atom.slot) and \
+						not (arg_atom.repo and not atom.repo):
 						discard_atoms.add(atom)
 						break
 		if discard_atoms:
