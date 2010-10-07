@@ -549,7 +549,7 @@ class depgraph(object):
 					# PROVIDE when necessary, while match_from_list does not.
 					parent, atom = parent_atom
 					atom_set = InternalPackageSet(
-						initial_atoms=(atom,))
+						initial_atoms=(atom,), allow_repo=True)
 					if atom_set.findAtomForPackage(pkg, modified_use=self._pkg_use_enabled(pkg)):
 						parent_atoms.add(parent_atom)
 					else:
@@ -821,7 +821,8 @@ class depgraph(object):
 					dep.atom is not None:
 					# Use package set for matching since it will match via
 					# PROVIDE when necessary, while match_from_list does not.
-					atom_set = InternalPackageSet(initial_atoms=[dep.atom])
+					atom_set = InternalPackageSet(initial_atoms=[dep.atom],
+						allow_repo=True)
 					if not atom_set.findAtomForPackage(existing_node, \
 						modified_use=self._pkg_use_enabled(existing_node)):
 						existing_node_matches = False
@@ -1371,7 +1372,8 @@ class depgraph(object):
 				for atom in pkg_atom_map[pkg1]:
 					cp_atoms.add(atom)
 					atom_pkg_graph.add(pkg1, atom)
-					atom_set = InternalPackageSet(initial_atoms=(atom,))
+					atom_set = InternalPackageSet(initial_atoms=(atom,),
+						allow_repo=True)
 					for pkg2 in pkgs:
 						if pkg2 is pkg1:
 							continue
