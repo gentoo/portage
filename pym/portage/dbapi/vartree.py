@@ -1640,7 +1640,8 @@ class dblink(object):
 							self._eerror(ebuild_phase, msg_lines)
 
 						# process logs created during pre/postrm
-						elog_process(self.mycpv, self.settings)
+						elog_process(self.mycpv, self.settings,
+							phasefilter=('prerm', 'postrm'))
 
 					if retval == os.EX_OK:
 						# myebuildpath might be None, so ensure
