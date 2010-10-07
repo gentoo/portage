@@ -899,8 +899,9 @@ class depgraph(object):
 							all_parents.update(parent_atoms)
 
 							all_match = True
-							for ppkg, atom in parent_atoms:
-								i = InternalPackageSet(initial_atoms=(atom,))
+							for parent, atom in parent_atoms:
+								i = InternalPackageSet(initial_atoms=(atom,),
+									allow_repo=True)
 								if not i.findAtomForPackage(to_be_masked):
 									all_match = False
 									break
