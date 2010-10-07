@@ -798,7 +798,7 @@ def parse_opts(tmpcmdline, silent=False):
 					exclude.append(atom)
 
 		if bad_atoms and not silent:
-			parser.error("Invalid Atom(s) in --exclude parameter: '%s' (only package names and slot atoms (with widlcards) allowed)\n" % \
+			parser.error("Invalid Atom(s) in --exclude parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n" % \
 				(",".join(bad_atoms),))
 
 	if myoptions.fail_clean == "True":
