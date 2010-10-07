@@ -460,6 +460,7 @@ class RepoConfigLoader(object):
 def load_repository_config(settings):
 	#~ repoconfigpaths = [os.path.join(settings.global_config_path, "repos.conf")]
 	repoconfigpaths = []
-	repoconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
-		USER_CONFIG_PATH, "repos.conf"))
+	if settings.local_config:
+		repoconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
+			USER_CONFIG_PATH, "repos.conf"))
 	return RepoConfigLoader(repoconfigpaths, settings)
