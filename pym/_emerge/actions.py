@@ -1884,12 +1884,6 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		os.makedirs(myportdir,0o755)
 		st = os.stat(myportdir)
 
-	# PORTAGE_TMPDIR is used below, so validate it and
-	# bail out if necessary.
-	rval = _check_temp_dir(settings)
-	if rval != os.EX_OK:
-		return rval
-
 	usersync_uid = None
 	spawn_kwargs = {}
 	spawn_kwargs["env"] = settings.environ()
@@ -1913,6 +1907,13 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			if not st.st_mode & 0o020:
 				umask = umask | 0o020
 			spawn_kwargs["umask"] = umask
+
+	if usersync_uid is not None:
+		# PORTAGE_TMPDIR is used below, so validate it and
+		# bail out if necessary.
+		rval = _check_temp_dir(settings)
+		if rval != os.EX_OK:
+			return rval
 
 	syncuri = settings.get("SYNC", "").strip()
 	if not syncuri:
@@ -2173,8 +2174,13 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				# user. We assume that PORTAGE_TMPDIR will satisfy this
 				# requirement, since that's not necessarily true for the
 				# default directory used by the tempfile module.
+				if usersync_uid is not None:
+					tmpdir = settings['PORTAGE_TMPDIR']
+				else:
+					# use default dir from tempfile module
+					tmpdir = None
 				fd, tmpservertimestampfile = \
-					tempfile.mkstemp(dir=settings['PORTAGE_TMPDIR'])
+					tempfile.mkstemp(dir=tmpdir)
 				os.close(fd)
 				if usersync_uid is not None:
 					portage.util.apply_permissions(tmpservertimestampfile,
