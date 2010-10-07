@@ -375,7 +375,7 @@ class RepoConfigLoader(object):
 
 			if repo.eclass_overrides:
 				for other_repo_name in repo.eclass_overrides:
-					if other_repo_name in self.prepos:
+					if other_repo_name in self.treemap:
 						eclass_locations.append(self.get_location_for_name(other_repo_name))
 					else:
 						writemsg_level(_("Unavailable repository '%s' " \
