@@ -2117,6 +2117,10 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		# reverse, for use with pop()
 		ips.reverse()
 
+		effective_maxretries = maxretries
+		if effective_maxretries < 0:
+			effective_maxretries = len(ips)
+
 		SERVER_OUT_OF_DATE = -1
 		EXCEEDED_MAX_RETRIES = -2
 		while (1):
@@ -2142,9 +2146,6 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				if "--quiet" not in myopts:
 					print(">>> Starting rsync with "+dosyncuri+"...")
 			else:
-				effective_maxretries = maxretries
-				if effective_maxretries < 0:
-					effective_maxretries = len(ips)
 				emergelog(xterm_titles,
 					">>> Starting retry %d of %d with %s" % \
 						(retries, effective_maxretries, dosyncuri))
