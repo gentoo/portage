@@ -3826,7 +3826,7 @@ class dblink(object):
 				os.chmod(var_new, dir_perms)
 			os.chmod(base_path_tmp, dir_perms)
 			# This serves so pre-load the modules.
-			_preload_elog_modules()
+			_preload_elog_modules(self.settings)
 
 		return self._merge(mergeroot, inforoot,
 				myebuild=myebuild, cleanup=cleanup,
