@@ -442,8 +442,6 @@ live_eclasses = frozenset([
 	"tla",
 ])
 
-_git_snapshot_re = re.compile('^\s*EGIT_COMMIT=')
-
 suspect_rdepend = frozenset([
 	"app-arch/cabextract",
 	"app-arch/rpm2targz",
@@ -1468,19 +1466,6 @@ for x in scanlist:
 		eapi = myaux["EAPI"]
 		inherited = pkg.inherited
 		live_ebuild = live_eclasses.intersection(inherited)
-		if len(live_ebuild) == 1 and next(iter(live_ebuild)) == 'git':
-			is_snapshot = False
-			f = codecs.open(_unicode_encode(full_path,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['repo.content'],
-				errors='replace')
-			for line in f:
-				if _git_snapshot_re.match(line) is not None:
-					is_snapshot = True
-					break
-			f.close()
-			if is_snapshot:
-				live_ebuild = frozenset()
 
 		for k, v in myaux.items():
 			if not isinstance(v, basestring):
