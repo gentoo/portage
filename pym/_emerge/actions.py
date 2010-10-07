@@ -2141,10 +2141,15 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				if "--quiet" not in myopts:
 					print(">>> Starting rsync with "+dosyncuri+"...")
 			else:
+				effective_maxretries = maxretries
+				if effective_maxretries < 0:
+					effective_maxretries = len(ips)
 				emergelog(xterm_titles,
 					">>> Starting retry %d of %d with %s" % \
-						(retries,maxretries,dosyncuri))
-				print("\n\n>>> Starting retry %d of %d with %s" % (retries,maxretries,dosyncuri))
+						(retries, effective_maxretries, dosyncuri))
+				writemsg_stdout(
+					"\n\n>>> Starting retry %d of %d with %s\n" % \
+					(retries, effective_maxretries, dosyncuri), noiselevel=-1)
 
 			if mytimestamp != 0 and "--quiet" not in myopts:
 				print(">>> Checking server timestamp ...")
