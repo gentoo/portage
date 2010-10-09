@@ -80,7 +80,7 @@ def has_version(argv):
 		print("ERROR: insufficient parameters!")
 		sys.exit(2)
 	try:
-		atom = portage.dep.Atom(argv[1])
+		atom = portage.dep.Atom(argv[1], eapi=eapi)
 	except portage.exception.InvalidAtom:
 		if atom_validate_strict:
 			portage.writemsg("ERROR: Invalid atom: '%s'\n" % argv[1],
@@ -114,7 +114,7 @@ def best_version(argv):
 		print("ERROR: insufficient parameters!")
 		sys.exit(2)
 	try:
-		atom = portage.dep.Atom(argv[1])
+		atom = portage.dep.Atom(argv[1], eapi=eapi)
 	except portage.exception.InvalidAtom:
 		if atom_validate_strict:
 			portage.writemsg("ERROR: Invalid atom: '%s'\n" % argv[1],
@@ -617,6 +617,9 @@ def usage(argv):
 		print("\nRun portageq with --help for info")
 
 atom_validate_strict = "EBUILD_PHASE" in os.environ
+eapi = None
+if atom_validate_strict:
+	eapi = os.environ.get('EAPI')
 
 def main():
 	if "-h" in sys.argv or "--help" in sys.argv:
