@@ -52,7 +52,7 @@ if sys.hexversion >= 0x3000000:
 options=[
 "--ask",          "--alphabetical",
 "--ask-enter-invalid",
-"--buildpkg",     "--buildpkgonly",
+"--buildpkgonly",
 "--changed-use",
 "--changelog",    "--columns",
 "--debug",
@@ -80,7 +80,7 @@ options=[
 shortmapping={
 "1":"--oneshot",
 "a":"--ask",
-"b":"--buildpkg",  "B":"--buildpkgonly",
+"B":"--buildpkgonly",
 "c":"--depclean",
 "C":"--unmerge",
 "d":"--debug",
@@ -395,6 +395,7 @@ def insert_optional_args(args):
 
 	default_arg_opts = {
 		'--autounmask'           : ('n',),
+		'--buildpkg'             : ('n',),
 		'--complete-graph' : ('n',),
 		'--deep'       : valid_integers,
 		'--deselect'   : ('n',),
@@ -542,6 +543,13 @@ def parse_opts(tmpcmdline, silent=False):
 				"calculation fails ",
 
 			"action" : "store"
+		},
+
+		"--buildpkg": {
+			"shortopt" : "-b",
+			"help"     : "build binary packages",
+			"type"     : "choice",
+			"choices"  : ("True", "n")
 		},
 
 		"--config-root": {
@@ -754,6 +762,11 @@ def parse_opts(tmpcmdline, silent=False):
 
 	if myoptions.autounmask in ("True",):
 		myoptions.autounmask = True
+
+	if myoptions.buildpkg in ("True",):
+		myoptions.buildpkg = True
+	else:
+		myoptions.buildpkg = None
 
 	if myoptions.changed_use is not False:
 		myoptions.reinstall = "changed-use"
