@@ -325,7 +325,7 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
-		print("       "+green("--buildpkg")+" ("+green("-b")+" short option)")
+		print("       "+green("--buildpkg") + "[=%s]" % turquoise("n") + " ("+green("-b")+" short option)")
 		desc = "Tells emerge to build binary packages for all ebuilds processed in" + \
 			" addition to actually merging the packages. Useful for maintainers" + \
 			" or if you administrate multiple Gentoo Linux systems (build once," + \
