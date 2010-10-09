@@ -1696,12 +1696,14 @@ class depgraph(object):
 				if expanded_atoms:
 					atom = expanded_atoms[0]
 				else:
-					null_atom = Atom(insert_category_into_atom(x, "null"))
+					null_atom = Atom(insert_category_into_atom(x, "null"),
+						allow_repo=True)
 					cat, atom_pn = portage.catsplit(null_atom.cp)
 					virts_p = root_config.settings.get_virts_p().get(atom_pn)
 					if virts_p:
 						# Allow the depgraph to choose which virtual.
-						atom = Atom(null_atom.replace('null/', 'virtual/', 1))
+						atom = Atom(null_atom.replace('null/', 'virtual/', 1),
+							allow_repo=True)
 					else:
 						atom = null_atom
 
@@ -5415,12 +5417,14 @@ class _dep_check_composite_db(dbapi):
 		if expanded_atoms:
 			atom = expanded_atoms[0]
 		else:
-			null_atom = Atom(insert_category_into_atom(atom, "null"))
+			null_atom = Atom(insert_category_into_atom(atom, "null"),
+				allow_repo=True)
 			cat, atom_pn = portage.catsplit(null_atom.cp)
 			virts_p = root_config.settings.get_virts_p().get(atom_pn)
 			if virts_p:
 				# Allow the resolver to choose which virtual.
-				atom = Atom(null_atom.replace('null/', 'virtual/', 1))
+				atom = Atom(null_atom.replace('null/', 'virtual/', 1),
+					allow_repo=True)
 			else:
 				atom = null_atom
 		return atom
