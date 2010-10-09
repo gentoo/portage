@@ -27,7 +27,7 @@ class QueryCommand(IpcCommand):
 		cmd, root, atom = argv
 
 		try:
-			atom = Atom(atom)
+			atom = Atom(atom, eapi=self.settings.get('EAPI'))
 		except InvalidAtom:
 			return ('', 'invalid atom: %s\n' % atom, 2)
 
