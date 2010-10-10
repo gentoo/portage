@@ -701,7 +701,7 @@ class depgraph(object):
 
 		if not dep_pkg:
 			if dep.priority.optional:
-				# This could be an unecessary build-time dep
+				# This could be an unnecessary build-time dep
 				# pulled in by --with-bdeps=y.
 				return 1
 			if allow_unsatisfied:
