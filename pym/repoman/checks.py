@@ -334,7 +334,7 @@ class ImplicitRuntimeDeps(LineCheck):
 	"""
 
 	repoman_check_name = 'RDEPEND.implicit'
-	_assignment_re = re.compile(r'^\s*(R?DEPEND)=')
+	_assignment_re = re.compile(r'^\s*(R?DEPEND)\+?=')
 
 	def new(self, pkg):
 		self._rdepend = False
