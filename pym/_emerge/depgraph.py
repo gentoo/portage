@@ -1931,17 +1931,6 @@ class depgraph(object):
 		if not self._create_graph():
 			return 0, myfavorites
 
-		missing=0
-		if "--usepkgonly" in self._frozen_config.myopts:
-			for xs in self._dynamic_config.digraph.all_nodes():
-				if not isinstance(xs, Package):
-					continue
-				if len(xs) >= 4 and xs[0] != "binary" and xs[3] == "merge":
-					if missing == 0:
-						writemsg("\n", noiselevel=-1)
-					missing += 1
-					writemsg("Missing binary for: %s\n" % xs[2], noiselevel=-1)
-
 		try:
 			self.altlist()
 		except self._unknown_internal_error:
@@ -1954,12 +1943,11 @@ class depgraph(object):
 			set(self._dynamic_config.digraph).intersection( \
 			self._dynamic_config._needed_license_changes) :
 			#We failed if the user needs to change the configuration
-			if not missing:
-				self._dynamic_config._success_without_autounmask = True
+			self._dynamic_config._success_without_autounmask = True
 			return False, myfavorites
 
 		# We're true here unless we are missing binaries.
-		return (not missing,myfavorites)
+		return (True, myfavorites)
 
 	def _set_args(self, args):
 		"""
