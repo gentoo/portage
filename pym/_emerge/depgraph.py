@@ -5515,14 +5515,12 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
 	max_depth = myopts.get('--backtrack', 5)
 	allow_backtracking = max_retries > 0
 	backtracker = Backtracker(max_depth)
-	backtracked = False
-	tries = 0
+	backtracked = 0
 
 	frozen_config = _frozen_depgraph_config(settings, trees,
 		myopts, spinner)
 
 	while backtracker:
-		tries += 1
 		backtrack_parameters = backtracker.get()
 
 		mydepgraph = depgraph(settings, trees, myopts, myparams, spinner,
@@ -5533,10 +5531,10 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
 
 		if success or mydepgraph.success_without_autounmask():
 			break
-		elif tries > max_retries:
+		elif backtracked > max_retries:
 			break
 		elif mydepgraph.need_restart():
-			backtracked = True
+			backtracked += 1
 			backtracker.feedback(mydepgraph.get_backtrack_infos())	
 
 	if not (success or mydepgraph.success_without_autounmask()) and backtracked:
@@ -5544,7 +5542,7 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
 		if "--debug" in myopts:
 			writemsg_level(
 				"\n\nbacktracking aborted after %s tries\n\n" % \
-				tries, noiselevel=-1, level=logging.DEBUG)
+				backtracked, noiselevel=-1, level=logging.DEBUG)
 
 		mydepgraph = depgraph(settings, trees, myopts, myparams, spinner,
 			frozen_config=frozen_config,
