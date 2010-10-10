@@ -5533,7 +5533,7 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
 			break
 		elif not allow_backtracking:
 			break
-		elif backtracked > max_retries:
+		elif backtracked >= max_retries:
 			break
 		elif mydepgraph.need_restart():
 			backtracked += 1
