@@ -36,7 +36,7 @@ RPMDIR=/usr/portage/rpm
 # Temporary build directory
 PORTAGE_TMPDIR=/var/tmp
 
-# Fetching command (5 tries, passive ftp for firewall compatibility)
+# Fetching command (3 tries, passive ftp for firewall compatibility)
 FETCHCOMMAND="/usr/bin/wget -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
 RESUMECOMMAND="/usr/bin/wget -c -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
 
