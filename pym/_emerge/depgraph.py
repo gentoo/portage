@@ -5531,11 +5531,15 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
 
 		if success or mydepgraph.success_without_autounmask():
 			break
+		elif not allow_backtracking:
+			break
 		elif backtracked > max_retries:
 			break
 		elif mydepgraph.need_restart():
 			backtracked += 1
-			backtracker.feedback(mydepgraph.get_backtrack_infos())	
+			backtracker.feedback(mydepgraph.get_backtrack_infos())
+		else:
+			break
 
 	if not (success or mydepgraph.success_without_autounmask()) and backtracked:
 
