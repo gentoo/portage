@@ -13,7 +13,7 @@ class GetConfigTestCase(TestCase):
 	"""
 
 	_cases = {
-		'FETCHCOMMAND'             : '/usr/bin/wget -t 5 -T 60 --passive-ftp -O "${DISTDIR}/${FILE}" "${URI}"',
+		'FETCHCOMMAND'             : '/usr/bin/wget -t 3 -T 60 --passive-ftp -O "${DISTDIR}/${FILE}" "${URI}"',
 		'FETCHCOMMAND_RSYNC'       : 'rsync -avP "${URI}" "${DISTDIR}/${FILE}"',
 		'FETCHCOMMAND_SFTP'        : 'bash -c "x=\\${2#sftp://} ; exec sftp \\"\\${x%%/*}:/\\${x#*/}\\" \\"\\$1\\"" sftp "${DISTDIR}/${FILE}" "${URI}"',
 		'FETCHCOMMAND_SSH'         : 'bash -c "x=\\${2#ssh://} ; exec rsync -avP \\"\\${x%%/*}:/\\${x#*/}\\" \\"\\$1\\"" rsync "${DISTDIR}/${FILE}" "${URI}"',
