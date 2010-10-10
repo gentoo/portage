@@ -682,7 +682,7 @@ class depgraph(object):
 
 		if not dep_pkg:
 			if dep.priority.optional:
-				# This could be an unecessary build-time dep
+				# This could be an unnecessary build-time dep
 				# pulled in by --with-bdeps=y.
 				return 1
 			if allow_unsatisfied:
@@ -2501,7 +2501,7 @@ class depgraph(object):
 
 		if hasattr(db, "xmatch"):
 			# For portdbapi we match only against the cpv, in order
-			# to bypass unecessary cache access for things like IUSE
+			# to bypass unnecessary cache access for things like IUSE
 			# and SLOT. Later, we cache the metadata in a Package
 			# instance, and use that for further matching. This
 			# optimization is especially relevant since

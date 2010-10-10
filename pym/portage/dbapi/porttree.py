@@ -785,7 +785,7 @@ class portdbapi(dbapi):
 
 		if level == "match-all-cpv-only":
 			# match *all* packages, only against the cpv, in order
-			# to bypass unecessary cache access for things like IUSE
+			# to bypass unnecessary cache access for things like IUSE
 			# and SLOT.
 			myval = None
 			mytree = None
