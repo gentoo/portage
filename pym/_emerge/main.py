@@ -426,6 +426,7 @@ def insert_optional_args(args):
 	# Don't make things like "-kn" expand to "-k n"
 	# since existence of -n makes it too ambiguous.
 	short_arg_opts_n = {
+		'b' : ('n',),
 		'g' : ('n',),
 		'G' : ('n',),
 		'k' : ('n',),
