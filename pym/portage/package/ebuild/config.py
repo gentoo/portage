@@ -483,7 +483,7 @@ class config(object):
 			#filling PORTDIR and PORTDIR_OVERLAY variable for compatibility
 			self["PORTDIR"] = self.repositories.mainRepoLocation()
 			self.backup_changes("PORTDIR")
-			portdir_overlay = list(self.repositories.repoLocationList())
+			portdir_overlay = list(self.repositories.repoUserLocationList())
 			if self["PORTDIR"] in portdir_overlay:
 				portdir_overlay.remove(self["PORTDIR"])
 			self["PORTDIR_OVERLAY"] = " ".join(portdir_overlay)
