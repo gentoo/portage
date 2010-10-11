@@ -2214,23 +2214,6 @@ else:
 	mymanifests = list(mymanifests)
 	myheaders = []
 	mydirty = []
-	headerstring = "'\$(Header|Id)"
-	headerstring += ".*\$'"
-	for myfile in myupdates:
-
-		# for CVS, no_expansion contains files that are excluded from expansion
-		if vcs == "cvs":
-			if myfile in no_expansion:
-				continue
-
-		# for SVN, expansion contains files that are included in expansion
-		elif vcs == "svn":
-			if myfile not in expansion:
-				continue
-
-		myout = subprocess_getstatusoutput("egrep -q "+headerstring+" "+myfile)
-		if myout[0] == 0:
-			myheaders.append(myfile)
 
 	print("* %s files being committed..." % green(str(len(myupdates))), end=' ')
 	if vcs in ('git', 'bzr', 'hg'):
@@ -2239,9 +2222,32 @@ else:
 		# committed in one big commit at the end.
 		print()
 	else:
+		if vcs == 'cvs':
+			headerstring = "'\$(Header|Id)"
+		elif vcs == 'svn':
+			headerstring = "'\$Id"
+		headerstring += ".*\$'"
+
+		for myfile in myupdates:
+
+			# for CVS, no_expansion contains files that are excluded from expansion
+			if vcs == "cvs":
+				if myfile in no_expansion:
+					continue
+
+			# for SVN, expansion contains files that are included in expansion
+			elif vcs == "svn":
+				if myfile not in expansion:
+					continue
+
+		myout = subprocess_getstatusoutput("egrep -q "+headerstring+" "+myfile)
+		if myout[0] == 0:
+			myheaders.append(myfile)
+
 		print("%s have headers that will change." % green(str(len(myheaders))))
 		print("* Files with headers will cause the " + \
 			"manifests to be made and recommited.")
+
 	logging.info("myupdates: %s", myupdates)
 	logging.info("myheaders: %s", myheaders)
 
