@@ -21,7 +21,7 @@ except KeyboardInterrupt:
 	sys.exit(1)
 
 import os
-
+import subprocess
 import types
 
 # Avoid sandbox violations after python upgrade.
@@ -79,8 +79,11 @@ def has_version(argv):
 	if (len(argv) < 2):
 		print("ERROR: insufficient parameters!")
 		sys.exit(2)
+
+	warnings = []
+
 	try:
-		atom = portage.dep.Atom(argv[1], eapi=eapi)
+		atom = portage.dep.Atom(argv[1])
 	except portage.exception.InvalidAtom:
 		if atom_validate_strict:
 			portage.writemsg("ERROR: Invalid atom: '%s'\n" % argv[1],
@@ -89,7 +92,17 @@ def has_version(argv):
 		else:
 			atom = argv[1]
 	else:
+		if atom_validate_strict:
+			try:
+				atom = portage.dep.Atom(argv[1], eapi=eapi)
+			except portage.exception.InvalidAtom as e:
+				warnings.append(
+					portage._unicode_decode("QA Notice: %s: %s") % \
+					('has_version', e))
 		atom = eval_atom_use(atom)
+
+	if warnings:
+		elog('eqawarn', warnings)
 
 	try:
 		mylist = portage.db[argv[0]]["vartree"].dbapi.match(atom)
@@ -113,8 +126,11 @@ def best_version(argv):
 	if (len(argv) < 2):
 		print("ERROR: insufficient parameters!")
 		sys.exit(2)
+
+	warnings = []
+
 	try:
-		atom = portage.dep.Atom(argv[1], eapi=eapi)
+		atom = portage.dep.Atom(argv[1])
 	except portage.exception.InvalidAtom:
 		if atom_validate_strict:
 			portage.writemsg("ERROR: Invalid atom: '%s'\n" % argv[1],
@@ -123,7 +139,18 @@ def best_version(argv):
 		else:
 			atom = argv[1]
 	else:
+		if atom_validate_strict:
+			try:
+				atom = portage.dep.Atom(argv[1], eapi=eapi)
+			except portage.exception.InvalidAtom as e:
+				warnings.append(
+					portage._unicode_decode("QA Notice: %s: %s") % \
+					('best_version', e))
 		atom = eval_atom_use(atom)
+
+	if warnings:
+		elog('eqawarn', warnings)
+
 	try:
 		mylist = portage.db[argv[0]]["vartree"].dbapi.match(atom)
 		print(portage.best(mylist))
@@ -578,7 +605,7 @@ list_preserved_libs.uses_root = True
 if not portage.const._ENABLE_PRESERVE_LIBS:
 	del list_preserved_libs
 
-non_commands = frozenset(['eval_atom_use', 'exithandler', 'main',
+non_commands = frozenset(['elog', 'eval_atom_use', 'exithandler', 'main',
 	'usage', 'writemsg', 'writemsg_stdout'])
 commands = sorted(k for k, v in globals().items() \
 	if type(v) is types.FunctionType and k not in non_commands)
@@ -620,6 +647,17 @@ atom_validate_strict = "EBUILD_PHASE" in os.environ
 eapi = None
 if atom_validate_strict:
 	eapi = os.environ.get('EAPI')
+
+	def elog(elog_funcname, lines):
+		cmd = "source '%s/isolated-functions.sh' ; " % \
+			os.environ["PORTAGE_BIN_PATH"]
+		for line in lines:
+			cmd += "%s %s ; " % (elog_funcname, portage._shell_quote(line))
+		subprocess.call([portage.const.BASH_BINARY, "-c", cmd])
+
+else:
+	def elog(elog_funcname, lines):
+		pass
 
 def main():
 	if "-h" in sys.argv or "--help" in sys.argv:
