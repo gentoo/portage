@@ -149,7 +149,7 @@ class slot_conflict_handler(object):
 				self.solutions.extend(new_solutions)
 				if first_config:
 					#If the "all ebuild"-config gives a solution, use it.
-					#Otherwise enumerate all other soultions.
+					#Otherwise enumerate all other solutions.
 					if self.debug:
 						writemsg("All-ebuild configuration has a solution. Aborting search.\n", noiselevel=-1)
 					break
