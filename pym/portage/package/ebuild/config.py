@@ -481,8 +481,11 @@ class config(object):
 			self.repositories = load_repository_config(self)
 
 			#filling PORTDIR and PORTDIR_OVERLAY variable for compatibility
-			self["PORTDIR"] = self.repositories.mainRepoLocation()
-			self.backup_changes("PORTDIR")
+			main_repo = self.repositories.mainRepo()
+			if main_repo is not None:
+				main_repo = main_repo.user_location
+				self["PORTDIR"] = main_repo
+				self.backup_changes("PORTDIR")
 			portdir_overlay = list(self.repositories.repoUserLocationList())
 			if self["PORTDIR"] in portdir_overlay:
 				portdir_overlay.remove(self["PORTDIR"])
