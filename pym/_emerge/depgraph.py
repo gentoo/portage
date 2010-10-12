@@ -4942,7 +4942,7 @@ class depgraph(object):
 			pkgsettings = self._frozen_config.pkgsettings[pkg.root]
 			mreasons = get_masking_status(pkg, pkgsettings, root_config, use=self._pkg_use_enabled)
 			masked_packages.append((root_config, pkgsettings,
-				pkg.cpv, "installed", pkg.metadata, mreasons))
+				pkg.cpv, pkg.repo, pkg.metadata, mreasons))
 		if masked_packages:
 			writemsg("\n" + colorize("BAD", "!!!") + \
 				" The following installed packages are masked:\n",
