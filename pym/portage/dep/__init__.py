@@ -1010,7 +1010,7 @@ class Atom(_atom_base):
 				if cpv.find("**") != -1:
 					raise InvalidAtom(self)
 				slot = gdict['slot']
-				repo = None
+				repo = gdict['repo']
 				use_str = None
 				extended_syntax = True
 			else:
@@ -1529,7 +1529,7 @@ _atom_re = re.compile('^(?P<without_use>(?:' +
 _extended_cat = r'[\w+*][\w+.*-]*'
 _extended_pkg = r'[\w+*][\w+*-]*?'
 
-_atom_wildcard_re = re.compile('(?P<simple>(' + _extended_cat + ')/(' + _extended_pkg + '))(:(?P<slot>' + _slot + '))?$')
+_atom_wildcard_re = re.compile('(?P<simple>(' + _extended_cat + ')/(' + _extended_pkg + '))(:(?P<slot>' + _slot + '))?(' + _repo_separator + '(?P<repo>' + _repo_name + '))?$')
 
 _valid_use_re = re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@-]*$')
 
