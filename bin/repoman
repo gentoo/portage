@@ -2240,9 +2240,9 @@ else:
 				if myfile not in expansion:
 					continue
 
-		myout = subprocess_getstatusoutput("egrep -q "+headerstring+" "+myfile)
-		if myout[0] == 0:
-			myheaders.append(myfile)
+			myout = subprocess_getstatusoutput("egrep -q "+headerstring+" "+myfile)
+			if myout[0] == 0:
+				myheaders.append(myfile)
 
 		print("%s have headers that will change." % green(str(len(myheaders))))
 		print("* Files with headers will cause the " + \
