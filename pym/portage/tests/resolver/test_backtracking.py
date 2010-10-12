@@ -148,10 +148,12 @@ class BacktrackingTestCase(TestCase):
 			"dev-libs/B-1": { "USE": "", "RDEPEND": "<=dev-libs/A-1" },
 			}
 
+		options = {'--update' : True, '--deep' : True, '--selective' : True}
+
 		test_cases = (
 				ResolverPlaygroundTestCase(
 					["dev-libs/A", "dev-libs/B"],
-					options = {'--update' : True, '--deep' : True},
+					options = options,
 					all_permutations = True,
 					mergelist = [],
 					success = True),
