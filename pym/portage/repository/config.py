@@ -80,9 +80,11 @@ class RepoConfig(object):
 
 		location = repo_opts.get('location')
 		self.user_location = location
-		if location is not None:
+		if location is not None and location.strip():
 			if os.path.isdir(location):
 				location = os.path.realpath(location)
+		else:
+			location = None
 		self.location = location
 
 		missing = True
@@ -265,7 +267,9 @@ class RepoConfigLoader(object):
 		ignored_map = {}
 		ignored_location_map = {}
 
-		portdir = os.path.realpath(settings.get('PORTDIR', ''))
+		portdir = settings.get('PORTDIR', '')
+		if portdir and portdir.strip():
+			portdir = os.path.realpath(portdir)
 		portdir_overlay = settings.get('PORTDIR_OVERLAY', '')
 		parse(paths, prepos, ignored_map, ignored_location_map)
 		add_overlays(portdir, portdir_overlay, prepos, ignored_map, ignored_location_map)
