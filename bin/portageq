@@ -660,6 +660,11 @@ else:
 		pass
 
 def main():
+
+	nocolor = os.environ.get('NOCOLOR')
+	if nocolor in ('yes', 'true'):
+		portage.output.nocolor()
+
 	if "-h" in sys.argv or "--help" in sys.argv:
 		usage(sys.argv)
 		sys.exit(os.EX_OK)
