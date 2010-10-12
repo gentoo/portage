@@ -34,7 +34,9 @@ class MetadataRegen(PollScheduler):
 		self._error_count = 0
 
 	def _iter_every_cp(self):
+		portage.writemsg_stdout("Listing available packages...\n")
 		every_cp = self._portdb.cp_all()
+		portage.writemsg_stdout("Regenerating cache entries...\n")
 		every_cp.sort(reverse=True)
 		try:
 			while True:

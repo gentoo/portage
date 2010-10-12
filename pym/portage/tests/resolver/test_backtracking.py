@@ -131,3 +131,39 @@ class BacktrackingTestCase(TestCase):
 				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
 		finally:
 			playground.cleanup()
+
+	def testBacktrackMissedUpdates(self):
+		"""
+		An update is missed due to a dependency on an older version.
+		"""
+
+		ebuilds = {
+			"dev-libs/A-1": { },
+			"dev-libs/A-2": { },
+			"dev-libs/B-1": { "RDEPEND": "<=dev-libs/A-1" },
+			}
+
+		installed = {
+			"dev-libs/A-1": { "USE": "" },
+			"dev-libs/B-1": { "USE": "", "RDEPEND": "<=dev-libs/A-1" },
+			}
+
+		options = {'--update' : True, '--deep' : True, '--selective' : True}
+
+		test_cases = (
+				ResolverPlaygroundTestCase(
+					["dev-libs/A", "dev-libs/B"],
+					options = options,
+					all_permutations = True,
+					mergelist = [],
+					success = True),
+			)
+
+		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)
+
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()

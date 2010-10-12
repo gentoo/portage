@@ -11,6 +11,7 @@ from portage.dep import Atom, check_required_use, use_reduce, \
 	paren_enclose, _slot_re, _slot_separator, _repo_separator
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 from portage.exception import InvalidDependString
+from portage.repository.config import _gen_valid_repo
 from _emerge.Task import Task
 from portage.const import EPREFIX
 
@@ -27,7 +28,7 @@ class Package(Task):
 		"category", "counter", "cp", "cpv_split",
 		"inherited", "invalid", "iuse", "masks", "mtime",
 		"pf", "pv_split", "root", "slot", "slot_atom", "visible",) + \
-	("_raw_metadata", "_use", "_repo",)
+	("_raw_metadata", "_use",)
 
 	metadata_keys = [
 		"BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "EAPI",
@@ -65,6 +66,11 @@ class Package(Task):
 		self.pv_split = self.cpv_split[1:]
 		if self.inherited is None:
 			self.inherited = frozenset()
+		repo = _gen_valid_repo(self.metadata.get('repository', ''))
+		if not repo:
+			repo = '__unknown__'
+		self.metadata['repository'] = repo
+
 		self._validate_deps()
 		self.masks = self._masks()
 		self.visible = self._visible(self.masks)
@@ -326,9 +332,7 @@ class Package(Task):
 
 	@property
 	def repo(self):
-		if self._repo is None:
-			self._repo = self.metadata['repository']
-		return self._repo
+		return self.metadata['repository']
 
 	@property
 	def use(self):
@@ -393,8 +397,14 @@ class Package(Task):
 				self.operation = "merge"
 				if self.onlydeps or self.installed:
 					self.operation = "nomerge"
+			# For installed (and binary) packages we don't care for the repo
+			# when it comes to hashing, because there can only be one cpv.
+			# So overwrite the repo_key with type_name.
+			repo_key = self.metadata.get('repository')
+			if self.type_name != 'ebuild':
+				repo_key = self.type_name
 			self._hash_key = \
-				(self.type_name, self.root, self.cpv, self.operation, self.metadata.get('repository', None))
+				(self.type_name, self.root, self.cpv, self.operation, repo_key)
 		return self._hash_key
 
 	def __len__(self):

@@ -155,6 +155,9 @@ class MultirepoTestCase(TestCase):
 			#package.unmask
 			"dev-libs/G-1": { },
 			"dev-libs/G-1::repo1": { },
+
+			#package.mask with wildcards
+			"dev-libs/Z-1::repo3": { },
 			}
 
 		user_config = {
@@ -176,6 +179,8 @@ class MultirepoTestCase(TestCase):
 					"dev-libs/H",
 					#needed for package.unmask test
 					"dev-libs/G",
+					#wildcard test
+					"*/*::repo3",
 				),
 			"package.properties":
 				(
@@ -241,6 +246,11 @@ class MultirepoTestCase(TestCase):
 				mergelist = ["dev-libs/G-1"]),
 			ResolverPlaygroundTestCase(
 				["dev-libs/H"],
+				success = False),
+
+			#package.mask with wildcards
+			ResolverPlaygroundTestCase(
+				["dev-libs/Z"],
 				success = False),
 			)
 

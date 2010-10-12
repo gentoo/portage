@@ -11,6 +11,7 @@ import errno
 import logging
 import platform
 import pwd
+import random
 import re
 import shutil
 import signal
@@ -512,7 +513,7 @@ def action_config(settings, trees, myopts, myfiles):
 	else:
 		print("Configuring pkg...")
 	print()
-	ebuildpath = trees[settings["ROOT"]]["vartree"].dbapi.findname(pkg, myrepo=pkg.repo)
+	ebuildpath = trees[settings["ROOT"]]["vartree"].dbapi.findname(pkg)
 	mysettings = portage.config(clone=settings)
 	vardb = trees[mysettings["ROOT"]]["vartree"].dbapi
 	debug = mysettings.get("PORTAGE_DEBUG") == "1"
@@ -565,7 +566,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	root_config = trees[settings['ROOT']]['root_config']
 	vardb = root_config.trees['vartree'].dbapi
 
-	args_set = InternalPackageSet()
+	args_set = InternalPackageSet(allow_repo=True)
 	if myfiles:
 		args_set.update(myfiles)
 		matched_packages = False
@@ -623,7 +624,6 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	deselect = myopts.get('--deselect') != 'n'
 	required_sets = {}
 	required_sets['world'] = psets['world']
-	excluded_set = InternalPackageSet(initial_atoms=myopts.get('--exclude'))
 
 	# When removing packages, a temporary version of the world 'selected'
 	# set may be used which excludes packages that are intended to be
@@ -743,7 +743,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				protected_set.add("=" + pkg.cpv)
 				continue
 
-	if excluded_set:
+	if resolver._frozen_config.excluded_pkgs:
+		excluded_set = resolver._frozen_config.excluded_pkgs
 		required_sets['__excluded__'] = InternalPackageSet()
 
 		for pkg in vardb:
@@ -1227,7 +1228,8 @@ def action_deselect(settings, trees, opts, atoms):
 				else:
 					if not atom.startswith(SETPREFIX) and \
 						arg_atom.intersects(atom) and \
-						not (arg_atom.slot and not atom.slot):
+						not (arg_atom.slot and not atom.slot) and \
+						not (arg_atom.repo and not atom.repo):
 						discard_atoms.add(atom)
 						break
 		if discard_atoms:
@@ -1354,6 +1356,15 @@ def action_info(settings, trees, myopts, myfiles):
 				noiselevel=-1)
 
 	libtool_vers = ",".join(trees["/"]["vartree"].dbapi.match("sys-devel/libtool"))
+
+	repos = portdb.settings.repositories
+	if "--verbose" in myopts:
+		writemsg_stdout("Repositories:\n\n")
+		for repo in repos:
+			writemsg_stdout(repo.info_string())
+	else:
+		writemsg_stdout("Repositories: %s\n" % \
+			" ".join(repo.name for repo in repos))
 
 	if "--verbose" in myopts:
 		myvars = list(settings)
@@ -1562,7 +1573,7 @@ def action_info(settings, trees, myopts, myfiles):
 			if pkg_type == "installed":
 				ebuildpath = vardb.findname(pkg.cpv)
 			elif pkg_type == "ebuild":
-				ebuildpath = portdb.findname(pkg.cpv, pkg.repo)
+				ebuildpath = portdb.findname(pkg.cpv, myrepo=pkg.repo)
 			elif pkg_type == "binary":
 				tbz2_file = bindb.bintree.getname(pkg.cpv)
 				ebuild_file_name = pkg.cpv.split("/")[1] + ".ebuild"
@@ -1827,7 +1838,6 @@ def action_regen(settings, portdb, max_jobs, max_load):
 	xterm_titles = "notitles" not in settings.features
 	emergelog(xterm_titles, " === regen")
 	#regenerate cache entries
-	portage.writemsg_stdout("Regenerating cache entries...\n")
 	try:
 		os.close(sys.stdin.fileno())
 	except SystemExit as e:
@@ -1884,12 +1894,6 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		os.makedirs(myportdir,0o755)
 		st = os.stat(myportdir)
 
-	# PORTAGE_TMPDIR is used below, so validate it and
-	# bail out if necessary.
-	rval = _check_temp_dir(settings)
-	if rval != os.EX_OK:
-		return rval
-
 	usersync_uid = None
 	spawn_kwargs = {}
 	spawn_kwargs["env"] = settings.environ()
@@ -1913,6 +1917,13 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			if not st.st_mode & 0o020:
 				umask = umask | 0o020
 			spawn_kwargs["umask"] = umask
+
+	if usersync_uid is not None:
+		# PORTAGE_TMPDIR is used below, so validate it and
+		# bail out if necessary.
+		rval = _check_temp_dir(settings)
+		if rval != os.EX_OK:
+			return rval
 
 	syncuri = settings.get("SYNC", "").strip()
 	if not syncuri:
@@ -2063,7 +2074,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		except SystemExit as e:
 			raise # Needed else can't exit
 		except:
-			maxretries=3 #default number of retries
+			maxretries = -1 #default number of retries
 
 		retries=0
 		user_name, hostname, port = re.split(
@@ -2077,45 +2088,60 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		extra_rsync_opts = portage.util.shlex_split(
 			settings.get("PORTAGE_RSYNC_EXTRA_OPTS",""))
 		all_rsync_opts.update(extra_rsync_opts)
-		family = socket.AF_INET
+
+		family = socket.AF_UNSPEC
 		if "-4" in all_rsync_opts or "--ipv4" in all_rsync_opts:
 			family = socket.AF_INET
 		elif socket.has_ipv6 and \
 			("-6" in all_rsync_opts or "--ipv6" in all_rsync_opts):
 			family = socket.AF_INET6
-		ips=[]
+
+		ips_v4 = []
+		ips_v6 = []
+
+		try:
+			addrinfos = socket.getaddrinfo(hostname, None,
+				family, socket.SOCK_STREAM)
+		except socket.error as e:
+			writemsg("!!! getaddrinfo failed: %s\n" % (e,), noiselevel=-1)
+			return 1
+
+		for addrinfo in addrinfos:
+			if socket.has_ipv6 and addrinfo[0] == socket.AF_INET6:
+				# IPv6 addresses need to be enclosed in square brackets
+				ips_v6.append("[%s]" % addrinfo[4][0])
+			else:
+				ips_v4.append(addrinfo[4][0])
+
+		random.shuffle(ips_v4)
+		random.shuffle(ips_v6)
+
+		# Give priority to the address family that
+		# getaddrinfo() returned first.
+		if socket.has_ipv6 and addrinfos and \
+			addrinfos[0][0] == socket.AF_INET6:
+			ips = ips_v6 + ips_v4
+		else:
+			ips = ips_v4 + ips_v6
+
+		# reverse, for use with pop()
+		ips.reverse()
+
+		effective_maxretries = maxretries
+		if effective_maxretries < 0:
+			effective_maxretries = len(ips) - 1
+
 		SERVER_OUT_OF_DATE = -1
 		EXCEEDED_MAX_RETRIES = -2
 		while (1):
 			if ips:
-				del ips[0]
-			if ips==[]:
-				try:
-					for addrinfo in socket.getaddrinfo(
-						hostname, None, family, socket.SOCK_STREAM):
-						if socket.has_ipv6 and addrinfo[0] == socket.AF_INET6:
-							# IPv6 addresses need to be enclosed in square brackets
-							ips.append("[%s]" % addrinfo[4][0])
-						else:
-							ips.append(addrinfo[4][0])
-					from random import shuffle
-					shuffle(ips)
-				except SystemExit as e:
-					raise # Needed else can't exit
-				except Exception as e:
-					print("Notice:",str(e))
-					dosyncuri=syncuri
-
-			if ips:
-				try:
-					dosyncuri = syncuri.replace(
-						"//" + user_name + hostname + port + "/",
-						"//" + user_name + ips[0] + port + "/", 1)
-				except SystemExit as e:
-					raise # Needed else can't exit
-				except Exception as e:
-					print("Notice:",str(e))
-					dosyncuri=syncuri
+				dosyncuri = syncuri.replace(
+					"//" + user_name + hostname + port + "/",
+					"//" + user_name + ips.pop() + port + "/", 1)
+			else:
+				writemsg("!!! Exhausted addresses for %s\n" % \
+					hostname, noiselevel=-1)
+				return 1
 
 			if (retries==0):
 				if "--ask" in myopts:
@@ -2132,8 +2158,10 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			else:
 				emergelog(xterm_titles,
 					">>> Starting retry %d of %d with %s" % \
-						(retries,maxretries,dosyncuri))
-				print("\n\n>>> Starting retry %d of %d with %s" % (retries,maxretries,dosyncuri))
+						(retries, effective_maxretries, dosyncuri))
+				writemsg_stdout(
+					"\n\n>>> Starting retry %d of %d with %s\n" % \
+					(retries, effective_maxretries, dosyncuri), noiselevel=-1)
 
 			if mytimestamp != 0 and "--quiet" not in myopts:
 				print(">>> Checking server timestamp ...")
@@ -2157,8 +2185,13 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				# user. We assume that PORTAGE_TMPDIR will satisfy this
 				# requirement, since that's not necessarily true for the
 				# default directory used by the tempfile module.
+				if usersync_uid is not None:
+					tmpdir = settings['PORTAGE_TMPDIR']
+				else:
+					# use default dir from tempfile module
+					tmpdir = None
 				fd, tmpservertimestampfile = \
-					tempfile.mkstemp(dir=settings['PORTAGE_TMPDIR'])
+					tempfile.mkstemp(dir=tmpdir)
 				os.close(fd)
 				if usersync_uid is not None:
 					portage.util.apply_permissions(tmpservertimestampfile,
@@ -2259,9 +2292,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 			retries=retries+1
 
-			if retries<=maxretries:
+			if maxretries < 0 or retries <= maxretries:
 				print(">>> Retrying...")
-				time.sleep(11)
 			else:
 				# over retries
 				# exit loop
@@ -2456,7 +2488,7 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 	# Ensure atoms are valid before calling unmerge().
 	# For backward compat, leading '=' is not required.
 	for x in files:
-		if is_valid_package_atom(x) or \
+		if is_valid_package_atom(x, allow_repo=True) or \
 			(ignore_missing_eq and is_valid_package_atom('=' + x)):
 
 			try:

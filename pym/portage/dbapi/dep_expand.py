@@ -30,12 +30,12 @@ def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
 				mydep = orig_dep[:alphanum.start()] + "null/" + \
 					orig_dep[alphanum.start():]
 		try:
-			mydep = Atom(mydep)
+			mydep = Atom(mydep, allow_repo=True)
 		except InvalidAtom:
 			# Missing '=' prefix is allowed for backward compatibility.
-			if not isvalidatom("=" + mydep):
+			if not isvalidatom("=" + mydep, allow_repo=True):
 				raise
-			mydep = Atom('=' + mydep)
+			mydep = Atom('=' + mydep, allow_repo=True)
 			orig_dep = '=' + orig_dep
 		if not has_cat:
 			null_cat, pn = catsplit(mydep.cp)

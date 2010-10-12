@@ -149,11 +149,20 @@ class slot_conflict_handler(object):
 				self.solutions.extend(new_solutions)
 				if first_config:
 					#If the "all ebuild"-config gives a solution, use it.
-					#Otherwise enumerate all other soultions.
+					#Otherwise enumerate all other solutions.
 					if self.debug:
 						writemsg("All-ebuild configuration has a solution. Aborting search.\n", noiselevel=-1)
 					break
 			first_config = False
+
+			if len(conflict_pkgs) > 4:
+				# The number of configurations to check grows exponentially in the number of conflict_pkgs.
+				# To prevent excessive running times, only check the "all-ebuild" configuration,
+				# if the number of conflict packages is too large.
+				if self.debug:
+					writemsg("\nAborting search due to excessive number of configurations.\n", noiselevel=-1)
+				break
+
 
 	def get_conflict(self):
 		return "".join(self.conflict_msg)

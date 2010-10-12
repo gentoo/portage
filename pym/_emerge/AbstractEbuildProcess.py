@@ -130,7 +130,7 @@ class AbstractEbuildProcess(SpawnProcess):
 	def _start_ipc_daemon(self):
 		self._exit_command = ExitCommand()
 		self._exit_command.reply_hook = self._exit_command_callback
-		query_command = QueryCommand(self.settings)
+		query_command = QueryCommand(self.settings, self.phase)
 		commands = {
 			'best_version' : query_command,
 			'exit'         : self._exit_command,

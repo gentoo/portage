@@ -522,7 +522,7 @@ you know exactly what you're doing!**
 PORTAGE_RSYNC_RETRIES
 ---------------------
 
-:default: 3
+:default: -1
 :valdesc: integer
 
 The number of times rsync should retry on failed connections before giving up.

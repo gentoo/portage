@@ -23,6 +23,10 @@ except KeyboardInterrupt:
 import codecs
 import logging
 import optparse
+import subprocess
+import time
+import textwrap
+import re
 
 try:
 	import portage
@@ -31,13 +35,14 @@ except ImportError:
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
 
-from portage import os, _encodings, _unicode_encode
+from portage import os, _encodings, _unicode_encode, _unicode_decode
 from _emerge.MetadataRegen import MetadataRegen
 from portage.cache.cache_errors import CacheError, StatCollision
+from portage.manifest import guessManifestFileType
 from portage.util import cmp_sort_key, writemsg_level
 from portage import cpv_getkey
 from portage.dep import Atom, isjustname
-from portage.versions import pkgcmp, pkgsplit
+from portage.versions import pkgcmp, pkgsplit, vercmp
 
 try:
 	import xml.etree.ElementTree
@@ -46,6 +51,8 @@ except ImportError:
 else:
 	from repoman.utilities import parse_metadata_use
 	from xml.parsers.expat import ExpatError
+
+from repoman.utilities import FindVCS
 
 if sys.hexversion >= 0x3000000:
 	long = int
@@ -61,6 +68,9 @@ def parse_args(args):
 	actions.add_option("--update-use-local-desc",
 		action="store_true",
 		help="update the use.local.desc file from metadata.xml")
+	actions.add_option("--update-changelogs",
+		action="store_true",
+		help="update the ChangeLog files from SCM logs")
 	parser.add_option_group(actions)
 
 	common = optparse.OptionGroup(parser, 'Common options')
@@ -355,7 +365,7 @@ class GenUseLocalDesc(object):
 						errors='replace')
 			except IOError as e:
 				writemsg_level(
-					"ERROR: failed to open output file %s: %s\n" % (output_mode,e,),
+					"ERROR: failed to open output file %s: %s\n" % (desc_path,e,),
 					level=logging.ERROR, noiselevel=-1)
 				self.returncode |= 2
 				return
@@ -454,6 +464,225 @@ class GenUseLocalDesc(object):
 
 		output.close()
 
+if sys.hexversion < 0x3000000:
+	_filename_base = unicode
+else:
+	_filename_base = str
+
+class _special_filename(_filename_base):
+	"""
+	Helps to sort file names by file type and other criteria.
+	"""
+	def __new__(cls, status_change, file_name):
+		return _filename_base.__new__(cls, status_change + file_name)
+
+	def __init__(self, status_change, file_name):
+		_filename_base.__init__(status_change + file_name)
+		self.status_change = status_change
+		self.file_name = file_name
+		self.file_type = guessManifestFileType(file_name)
+
+	def file_type_lt(self, a, b):
+		"""
+		Defines an ordering between file types.
+		"""
+		first = a.file_type
+		second = b.file_type
+		if first == second:
+			return False
+
+		if first == "EBUILD":
+			return True
+		elif first == "MISC":
+			return second in ("EBUILD",)
+		elif first == "AUX":
+			return second in ("EBUILD", "MISC")
+		elif first == "DIST":
+			return second in ("EBUILD", "MISC", "AUX")
+		elif first is None:
+			return False
+		else:
+			raise ValueError("Unknown file type '%s'" % first)
+
+	def __lt__(self, other):
+		"""
+		Compare different file names, first by file type and then
+		for ebuilds by version and lexicographically for others.
+		EBUILD < MISC < AUX < DIST < None
+		"""
+		if self.__class__ != other.__class__:
+			raise NotImplementedError
+
+		# Sort by file type as defined by file_type_lt().
+		if self.file_type_lt(self, other):
+			return True
+		elif self.file_type_lt(other, self):
+			return False
+
+		# Files have the same type.
+		if self.file_type == "EBUILD":
+			# Sort by version. Lowest first.
+			ver = "-".join(pkgsplit(self.file_name[:-7])[1:3])
+			other_ver = "-".join(pkgsplit(other.file_name[:-7])[1:3])
+			return vercmp(ver, other_ver) < 0
+		else:
+			# Sort lexicographically.
+			return self.file_name < other.file_name
+
+class GenChangeLogs(object):
+	def __init__(self, portdb):
+		self.returncode = os.EX_OK
+		self._portdb = portdb
+		self._wrapper = textwrap.TextWrapper(
+				width = 78,
+				initial_indent = '  ',
+				subsequent_indent = '  '
+			)
+
+	@staticmethod
+	def grab(cmd):
+		p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+		return _unicode_decode(p.communicate()[0],
+				encoding=_encodings['stdio'], errors='strict')
+
+	def generate_changelog(self, cp):
+		try:
+			output = codecs.open('ChangeLog',
+				mode='w', encoding=_encodings['repo.content'],
+				errors='replace')
+		except IOError as e:
+			writemsg_level(
+				"ERROR: failed to open ChangeLog for %s: %s\n" % (cp,e,),
+				level=logging.ERROR, noiselevel=-1)
+			self.returncode |= 2
+			return
+
+		output.write(('''
+# ChangeLog for %s
+# Copyright 1999-%s Gentoo Foundation; Distributed under the GPL v2
+# $Header: $
+
+''' % (cp, time.strftime('%Y'))).lstrip())
+
+		# now grab all the commits
+		commits = self.grab(['git', 'rev-list', 'HEAD', '--', '.']).split()
+
+		for c in commits:
+			# Explaining the arguments:
+			# --name-status to get a list of added/removed files
+			# --no-renames to avoid getting more complex records on the list
+			# --format to get the timestamp, author and commit description
+			# --root to make it work fine even with the initial commit
+			# --relative to get paths relative to ebuilddir
+			# -r (recursive) to get per-file changes
+			# then the commit-id and path.
+
+			cinfo = self.grab(['git', 'diff-tree', '--name-status', '--no-renames',
+					'--format=%ct %cN <%cE>%n%B', '--root', '--relative', '-r',
+					c, '--', '.']).rstrip('\n').split('\n')
+
+			# Expected output:
+			# timestamp Author Name <author@email>
+			# commit message l1
+			# ...
+			# commit message ln
+			#
+			# status1	filename1
+			# ...
+			# statusn	filenamen
+
+			changed = []
+			for n, l in enumerate(reversed(cinfo)):
+				if not l:
+					body = cinfo[1:-n-1]
+					break
+				else:
+					f = l.split()
+					if f[1] == 'Manifest':
+						pass # XXX: remanifest commits?
+					elif f[1] == 'ChangeLog':
+						pass
+					elif f[0].startswith('A'):
+						changed.append(_special_filename("+", f[1]))
+					elif f[0].startswith('D'):
+						changed.append(_special_filename("-", f[1]))
+					elif f[0].startswith('M'):
+						changed.append(_special_filename("", f[1]))
+					else:
+						writemsg_level(
+							"ERROR: unexpected git file status for %s: %s\n" % (cp,f,),
+							level=logging.ERROR, noiselevel=-1)
+						self.returncode |= 1
+
+			if not changed:
+				continue
+
+			(ts, author) = cinfo[0].split(' ', 1)
+			date = time.strftime('%d %b %Y', time.gmtime(float(ts)))
+
+			changed = [str(x) for x in sorted(changed)]
+
+			wroteheader = False
+			for c in changed:
+				if c.startswith('+') and c.endswith('.ebuild'):
+					output.write('*%s (%s)\n' % (c[1:-7], date))
+					wroteheader = True
+			if wroteheader:
+				output.write('\n')
+
+			# strip '<cp>: ', '[<cp>] ', and similar
+			body[0] = re.sub(r'^\W*' + re.escape(cp) + r'\W+', '', body[0])
+			# strip trailing newline
+			if not body[-1]:
+				body = body[:-1]
+			# strip git-svn id
+			if body[-1].startswith('git-svn-id:') and not body[-2]:
+				body = body[:-2]
+			# strip the repoman version/manifest note
+			if body[-1] == ' (Signed Manifest commit)' or body[-1] == ' (Unsigned Manifest commit)':
+				body = body[:-1]
+			if body[-1].startswith('(Portage version:') and body[-1].endswith(')'):
+				body = body[:-1]
+				if not body[-1]:
+					body = body[:-1]
+
+			# don't break filenames on hyphens
+			self._wrapper.break_on_hyphens = False
+			output.write(self._wrapper.fill('%s; %s %s:' % (date, author, ', '.join(changed))))
+			# but feel free to break commit messages there
+			self._wrapper.break_on_hyphens = True
+			output.write('\n%s\n\n' % '\n'.join([self._wrapper.fill(x) for x in body]))
+
+		output.close()
+	
+	def run(self):
+		repo_path = self._portdb.porttrees[0]
+		os.chdir(repo_path)
+
+		if 'git' not in FindVCS():
+			writemsg_level(
+				"ERROR: --update-changelogs supported only in git repos\n",
+				level=logging.ERROR, noiselevel=-1)
+			self.returncode = 127
+			return
+
+		for cp in self._portdb.cp_all():
+			os.chdir(os.path.join(repo_path, cp))
+			# Determine whether ChangeLog is up-to-date by comparing
+			# the newest commit timestamp with the ChangeLog timestamp.
+			lmod = self.grab(['git', 'log', '--format=%ct', '-1', '.'])
+			if not lmod:
+				# This cp has not been added to the repo.
+				continue
+
+			try:
+				cmod = os.stat('ChangeLog').st_mtime
+			except OSError:
+				cmod = 0
+
+			if float(cmod) < float(lmod):
+				self.generate_changelog(cp)
+
 def egencache_main(args):
 	parser, options, atoms = parse_args(args)
 
@@ -493,9 +722,9 @@ def egencache_main(args):
 		settings = portage.config(config_root=config_root,
 			target_root='/', local_config=False, env=env)
 
-	if not options.update and not options.update_use_local_desc:
-		parser.error('No action specified (--update ' + \
-			'and/or --update-use-local-desc)')
+	if not options.update and not options.update_use_local_desc \
+			and not options.update_changelogs:
+		parser.error('No action specified')
 		return 1
 
 	if options.update and 'metadata-transfer' not in settings.features:
@@ -537,6 +766,11 @@ def egencache_main(args):
 			preserve_comments=options.preserve_comments)
 		gen_desc.run()
 		ret.append(gen_desc.returncode)
+
+	if options.update_changelogs:
+		gen_clogs = GenChangeLogs(portdb)
+		gen_clogs.run()
+		ret.append(gen_clogs.returncode)
 
 	if options.tolerant:
 		return ret[0]

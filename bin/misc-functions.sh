@@ -1587,7 +1587,7 @@ dyn_package() {
 	# for $PKGDIR and/or $PKGDIR/All.
 	export SANDBOX_ON="0"
 	[ -z "${PORTAGE_BINPKG_TMPFILE}" ] && \
-		PORTAGE_BINPKG_TMPFILE="${PKGDIR}/${CATEGORY}/${PF}.tbz2"
+		die "PORTAGE_BINPKG_TMPFILE is unset"
 	mkdir -p "${PORTAGE_BINPKG_TMPFILE%/*}" || die "mkdir failed"
 	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${D}" . | \
 		$PORTAGE_BZIP2_COMMAND -c > "$PORTAGE_BINPKG_TMPFILE"

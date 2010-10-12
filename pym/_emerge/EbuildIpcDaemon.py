@@ -55,6 +55,9 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 				# any exception when given corrupt data.
 				pass
 			else:
+
+				self._reopen_input()
+
 				cmd_key = obj[0]
 				cmd_handler = self.commands[cmd_key]
 				reply = cmd_handler(obj)

@@ -3,7 +3,11 @@
 
 import portage
 from portage import os
+from portage import StringIO
+from portage import _encodings
+from portage import _unicode_decode
 from portage.dep import Atom
+from portage.elog import messages as elog_messages
 from portage.exception import InvalidAtom
 from portage.package.ebuild._ipc.IpcCommand import IpcCommand
 from portage.util import normalize_path
@@ -11,25 +15,32 @@ from portage.versions import best
 
 class QueryCommand(IpcCommand):
 
-	__slots__ = ('settings',)
+	__slots__ = ('phase', 'settings',)
 
 	_db = None
 
-	def __init__(self, settings):
+	def __init__(self, settings, phase):
 		IpcCommand.__init__(self)
 		self.settings = settings
+		self.phase = phase
 
 	def __call__(self, argv):
 		"""
 		@returns: tuple of (stdout, stderr, returncode)
 		"""
 
-		cmd, root, atom = argv
+		cmd, root, atom_str = argv
 
 		try:
-			atom = Atom(atom)
+			atom = Atom(atom_str)
 		except InvalidAtom:
-			return ('', 'invalid atom: %s\n' % atom, 2)
+			return ('', 'invalid atom: %s\n' % atom_str, 2)
+
+		warnings = []
+		try:
+			atom = Atom(atom_str, eapi=self.settings.get('EAPI'))
+		except InvalidAtom as e:
+			warnings.append(_unicode_decode("QA Notice: %s: %s") % (cmd, e))
 
 		use = self.settings.get('PORTAGE_BUILT_USE')
 		if use is None:
@@ -42,6 +53,10 @@ class QueryCommand(IpcCommand):
 		if db is None:
 			db = portage.db
 
+		warnings_str = ''
+		if warnings:
+			warnings_str = self._elog('eqawarn', warnings)
+
 		root = normalize_path(root).rstrip(os.path.sep) + os.path.sep
 		if root not in db:
 			return ('', 'invalid ROOT: %s\n' % root, 2)
@@ -53,9 +68,32 @@ class QueryCommand(IpcCommand):
 				returncode = 0
 			else:
 				returncode = 1
-			return ('', '', returncode)
+			return ('', warnings_str, returncode)
 		elif cmd == 'best_version':
 			m = best(vardb.match(atom))
-			return ('%s\n' % m, '', 0)
+			return ('%s\n' % m, warnings_str, 0)
 		else:
 			return ('', 'invalid command: %s\n' % cmd, 2)
+
+	def _elog(self, elog_funcname, lines):
+		"""
+		This returns a string, to be returned via ipc and displayed at the
+		appropriate place in the build output. We wouldn't want to open the
+		log here since it is already opened by AbstractEbuildProcess and we
+		don't want to corrupt it, especially if it is being written with
+		compression.
+		"""
+		out = StringIO()
+		phase = self.phase
+		elog_func = getattr(elog_messages, elog_funcname)
+		global_havecolor = portage.output.havecolor
+		try:
+			portage.output.havecolor = \
+				self.settings.get('NOCOLOR', 'false').lower() in ('no', 'false')
+			for line in lines:
+				elog_func(line, phase=phase, key=self.settings.mycpv, out=out)
+		finally:
+			portage.output.havecolor = global_havecolor
+		msg = _unicode_decode(out.getvalue(),
+			encoding=_encodings['content'], errors='replace')
+		return msg

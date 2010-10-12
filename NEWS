@@ -7,6 +7,15 @@ portage-2.2
   in order to protect against uninstallation of required libraries.
 * Add support for generic package sets (also see RELEASE-NOTES)
 
+portage-2.1.9
+-------------
+
+* There is a new ipc (inter-process communication) USE flag which is enabled
+  by default. This allows portage to communicate with running ebuild processes,
+  for things like best_version, has_version, and die calls in nested processes.
+  This flag should remain enabled unless it is found to be incompatible with a
+  specific profile or environment.
+
 portage-2.1.8
 -------------
 * The top-level __init__.py for the portage python package has been split into

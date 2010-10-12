@@ -1010,7 +1010,7 @@ class Atom(_atom_base):
 				if cpv.find("**") != -1:
 					raise InvalidAtom(self)
 				slot = gdict['slot']
-				repo = None
+				repo = gdict['repo']
 				use_str = None
 				extended_syntax = True
 			else:
@@ -1111,6 +1111,20 @@ class Atom(_atom_base):
 				raise InvalidAtom(
 					_("Strong blocks are not allowed in EAPI %s: '%s'") \
 						% (eapi, self), category='EAPI.incompatible')
+
+	@property
+	def without_repo(self):
+		if self.repo is None:
+			return self
+		return Atom(self.replace(_repo_separator + self.repo, '', 1),
+			allow_wildcard=True)
+
+	@property
+	def without_slot(self):
+		if self.slot is None:
+			return self
+		return Atom(self.replace(_slot_separator + self.slot, '', 1),
+			allow_repo=True, allow_wildcard=True)
 
 	def __setattr__(self, name, value):
 		raise AttributeError("Atom instances are immutable",
@@ -1503,7 +1517,7 @@ _slot_re = re.compile('^' + _slot + '$', re.VERBOSE)
 _use = r'\[.*\]'
 _op = r'([=~]|[><]=?)'
 _repo_separator = "::"
-_repo_name = r'[\w+][\w+.-]*'
+_repo_name = r'[\w][\w-]*'
 _repo = r'(?:' + _repo_separator + '(' + _repo_name + ')' + ')?'
 
 _atom_re = re.compile('^(?P<without_use>(?:' +
@@ -1515,7 +1529,7 @@ _atom_re = re.compile('^(?P<without_use>(?:' +
 _extended_cat = r'[\w+*][\w+.*-]*'
 _extended_pkg = r'[\w+*][\w+*-]*?'
 
-_atom_wildcard_re = re.compile('(?P<simple>(' + _extended_cat + ')/(' + _extended_pkg + '))(:(?P<slot>' + _slot + '))?$')
+_atom_wildcard_re = re.compile('(?P<simple>(' + _extended_cat + ')/(' + _extended_pkg + '))(:(?P<slot>' + _slot + '))?(' + _repo_separator + '(?P<repo>' + _repo_name + '))?$')
 
 _valid_use_re = re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@-]*$')
 

@@ -44,7 +44,7 @@ class _RepoDisplay(object):
 		for root_config in roots.values():
 			portdir = root_config.settings.get("PORTDIR")
 			if root_config.settings.repositories:
-				repo_paths.update(root_config.settings.repositories.repoLocationList())
+				repo_paths.update(root_config.settings.repositories.repoUserLocationList())
 		repo_paths = list(repo_paths)
 		self._repo_paths = repo_paths
 		self._repo_paths_real = [ os.path.realpath(repo_path) \
@@ -60,7 +60,6 @@ class _RepoDisplay(object):
 	def repoStr(self, repo_path_real):
 		real_index = -1
 		if repo_path_real:
-			repo_path_real = os.path.realpath(repo_path_real)
 			real_index = self._repo_paths_real.index(repo_path_real)
 		if real_index == -1:
 			s = "?"

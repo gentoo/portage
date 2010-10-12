@@ -1,4 +1,4 @@
-.TH "EGENCACHE" "1" "March 2009" "Portage VERSION" "Portage"
+.TH "EGENCACHE" "1" "Oct 2010" "Portage VERSION" "Portage"
 .SH "NAME"
 egencache \- generate metadata cache for ebuild repositories
 .SH "SYNOPSIS"
@@ -14,6 +14,9 @@ for distribution.
 Update the \fImetadata/cache/\fR directory (generate metadata as necessary).
 If no package atoms are specified then all will be updated. See ebuild(5)
 for the details on package atom syntax.
+.TP
+.BR "\-\-update\-changelogs"
+Update the ChangeLog files from SCM logs (supported only in git repos).
 .TP
 .BR "\-\-update\-use\-local\-desc"
 Update the \fIprofiles/use.local.desc\fR file from metadata.xml.

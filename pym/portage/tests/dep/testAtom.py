@@ -47,6 +47,15 @@ class TestAtom(TestCase):
 				('=*',  'sys-apps/portage', '2.1-r1', '0', '[doc]', 'repo_name'), False, True ),
 			( "sys-apps/portage:0::repo_name[doc]",
 				(None,  'sys-apps/portage', None, '0', '[doc]', 'repo_name'), False, True ),
+
+			( "*/*::repo_name",
+				(None,  '*/*', None, None, None, 'repo_name'), True, True ),
+			( "sys-apps/*::repo_name",
+				(None,  'sys-apps/*', None, None, None, 'repo_name'), True, True ),
+			( "*/portage::repo_name",
+				(None,  '*/portage', None, None, None, 'repo_name'), True, True ),
+			( "s*s-*/portage:1::repo_name",
+				(None,  's*s-*/portage', None, '1', None, 'repo_name'), True, True ),
 		)
 		
 		tests_xfail = (
@@ -103,6 +112,7 @@ class TestAtom(TestCase):
 			( "=sys-apps/portage-2.1-r1:0::repo_name[doc,a=,!b=,c?,!d?,-e]", False, False ),
 			( "=sys-apps/portage-2.1-r1*:0::repo_name[doc]", False, False ),
 			( "sys-apps/portage:0::repo_name[doc]", False, False ),
+			( "*/*::repo_name", True, False ),
 		)
 
 		for atom, parts, allow_wildcard, allow_repo in tests:

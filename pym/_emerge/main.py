@@ -53,7 +53,7 @@ if sys.hexversion >= 0x3000000:
 options=[
 "--ask",          "--alphabetical",
 "--ask-enter-invalid",
-"--buildpkg",     "--buildpkgonly",
+"--buildpkgonly",
 "--changed-use",
 "--changelog",    "--columns",
 "--debug",
@@ -81,7 +81,7 @@ options=[
 shortmapping={
 "1":"--oneshot",
 "a":"--ask",
-"b":"--buildpkg",  "B":"--buildpkgonly",
+"B":"--buildpkgonly",
 "c":"--depclean",
 "C":"--unmerge",
 "d":"--debug",
@@ -396,6 +396,7 @@ def insert_optional_args(args):
 
 	default_arg_opts = {
 		'--autounmask'           : ('n',),
+		'--buildpkg'             : ('n',),
 		'--complete-graph' : ('n',),
 		'--deep'       : valid_integers,
 		'--deselect'   : ('n',),
@@ -426,6 +427,7 @@ def insert_optional_args(args):
 	# Don't make things like "-kn" expand to "-k n"
 	# since existence of -n makes it too ambiguous.
 	short_arg_opts_n = {
+		'b' : ('n',),
 		'g' : ('n',),
 		'G' : ('n',),
 		'k' : ('n',),
@@ -543,6 +545,13 @@ def parse_opts(tmpcmdline, silent=False):
 				"calculation fails ",
 
 			"action" : "store"
+		},
+
+		"--buildpkg": {
+			"shortopt" : "-b",
+			"help"     : "build binary packages",
+			"type"     : "choice",
+			"choices"  : ("True", "n")
 		},
 
 		"--config-root": {
@@ -756,6 +765,11 @@ def parse_opts(tmpcmdline, silent=False):
 	if myoptions.autounmask in ("True",):
 		myoptions.autounmask = True
 
+	if myoptions.buildpkg in ("True",):
+		myoptions.buildpkg = True
+	else:
+		myoptions.buildpkg = None
+
 	if myoptions.changed_use is not False:
 		myoptions.reinstall = "changed-use"
 		myoptions.changed_use = False
@@ -799,7 +813,7 @@ def parse_opts(tmpcmdline, silent=False):
 					exclude.append(atom)
 
 		if bad_atoms and not silent:
-			parser.error("Invalid Atom(s) in --exclude parameter: '%s' (only package names and slot atoms (with widlcards) allowed)\n" % \
+			parser.error("Invalid Atom(s) in --exclude parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n" % \
 				(",".join(bad_atoms),))
 
 	if myoptions.fail_clean == "True":
@@ -1208,7 +1222,7 @@ def repo_name_duplicate_check(trees):
 		if 'porttree' in root_trees:
 			portdb = root_trees['porttree'].dbapi
 			if portdb.settings.get('PORTAGE_REPO_DUPLICATE_WARN') != '0':
-				for repo_name, paths in portdb._ignored_repos:
+				for repo_name, paths in portdb.getIgnoredRepos():
 					k = (root, repo_name, portdb.getRepositoryPath(repo_name))
 					ignored_repos.setdefault(k, []).extend(paths)
 

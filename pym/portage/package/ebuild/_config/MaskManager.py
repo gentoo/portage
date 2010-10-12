@@ -29,13 +29,14 @@ class MaskManager(object):
 			lines = []
 			repo_lines = grabfile_package(os.path.join(repo.location, "profiles", "package.mask"), \
 				recursive=1, remember_source_file=True, verify_eapi=True)
-			masters = repo.masters
-			if masters is None:
-				masters = [repositories.mainRepo()]
-			for master in masters:
+			for master in repo.masters:
 				master_lines = grabfile_package(os.path.join(master.location, "profiles", "package.mask"), \
 					recursive=1, remember_source_file=True, verify_eapi=True)
 				lines.append(stack_lists([master_lines, repo_lines], incremental=1,
+					remember_source_file=True, warn_for_unmatched_removal=True,
+					strict_warn_for_unmatched_removal=strict_umatched_removal))
+			if not repo.masters:
+				lines.append(stack_lists([repo_lines], incremental=1,
 					remember_source_file=True, warn_for_unmatched_removal=True,
 					strict_warn_for_unmatched_removal=strict_umatched_removal))
 			repo_pkgmasklines.extend(append_repo(stack_lists(lines), repo.name, remember_source_file=True))

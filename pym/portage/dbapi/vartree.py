@@ -12,7 +12,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dbapi.dep_expand:dep_expand',
 	'portage.dep:dep_getkey,isjustname,match_from_list,' + \
 	 	'use_reduce,_slot_re',
-	'portage.elog:elog_process',
+	'portage.elog:elog_process,_preload_elog_modules',
 	'portage.locks:lockdir,unlockdir',
 	'portage.output:bold,colorize',
 	'portage.package.ebuild.doebuild:doebuild_environment,' + \
@@ -1654,7 +1654,8 @@ class dblink(object):
 							self._eerror(ebuild_phase, msg_lines)
 
 						# process logs created during pre/postrm
-						elog_process(self.mycpv, self.settings)
+						elog_process(self.mycpv, self.settings,
+							phasefilter=('prerm', 'postrm'))
 
 					if retval == os.EX_OK:
 						# myebuildpath might be None, so ensure
@@ -3851,7 +3852,7 @@ class dblink(object):
 				os.chmod(var_new, dir_perms)
 			os.chmod(base_path_tmp, dir_perms)
 			# This serves so pre-load the modules.
-			elog_process(self.mycpv, self.settings)
+			_preload_elog_modules(self.settings)
 
 		return self._merge(mergeroot, inforoot,
 				myebuild=myebuild, cleanup=cleanup,
