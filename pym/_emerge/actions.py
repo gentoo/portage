@@ -2096,36 +2096,45 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			("-6" in all_rsync_opts or "--ipv6" in all_rsync_opts):
 			family = socket.AF_INET6
 
-		ips_v4 = []
-		ips_v6 = []
+		uris = []
 
 		try:
 			addrinfos = socket.getaddrinfo(hostname, None,
 				family, socket.SOCK_STREAM)
 		except socket.error as e:
 			writemsg("!!! getaddrinfo failed: %s\n" % (e,), noiselevel=-1)
-			return 1
-
-		for addrinfo in addrinfos:
-			if socket.has_ipv6 and addrinfo[0] == socket.AF_INET6:
-				# IPv6 addresses need to be enclosed in square brackets
-				ips_v6.append("[%s]" % addrinfo[4][0])
-			else:
-				ips_v4.append(addrinfo[4][0])
-
-		random.shuffle(ips_v4)
-		random.shuffle(ips_v6)
-
-		# Give priority to the address family that
-		# getaddrinfo() returned first.
-		if socket.has_ipv6 and addrinfos and \
-			addrinfos[0][0] == socket.AF_INET6:
-			ips = ips_v6 + ips_v4
+			# With some configurations we need to use the plain hostname
+			# rather than try to resolve the ip addresses (bug #340817).
+			uris.append(syncuri)
 		else:
-			ips = ips_v4 + ips_v6
+			ips_v4 = []
+			ips_v6 = []
+
+			for addrinfo in addrinfos:
+				if socket.has_ipv6 and addrinfo[0] == socket.AF_INET6:
+					# IPv6 addresses need to be enclosed in square brackets
+					ips_v6.append("[%s]" % addrinfo[4][0])
+				else:
+					ips_v4.append(addrinfo[4][0])
+
+			random.shuffle(ips_v4)
+			random.shuffle(ips_v6)
+
+			# Give priority to the address family that
+			# getaddrinfo() returned first.
+			if socket.has_ipv6 and addrinfos and \
+				addrinfos[0][0] == socket.AF_INET6:
+				ips = ips_v6 + ips_v4
+			else:
+				ips = ips_v4 + ips_v6
+
+			for ip in ips:
+				uris.append(syncuri.replace(
+					"//" + user_name + hostname + port + "/",
+					"//" + user_name + ip + port + "/", 1))
 
 		# reverse, for use with pop()
-		ips.reverse()
+		uris.reverse()
 
 		effective_maxretries = maxretries
 		if effective_maxretries < 0:
@@ -2134,10 +2143,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		SERVER_OUT_OF_DATE = -1
 		EXCEEDED_MAX_RETRIES = -2
 		while (1):
-			if ips:
-				dosyncuri = syncuri.replace(
-					"//" + user_name + hostname + port + "/",
-					"//" + user_name + ips.pop() + port + "/", 1)
+			if uris:
+				dosyncuri = uris.pop()
 			else:
 				writemsg("!!! Exhausted addresses for %s\n" % \
 					hostname, noiselevel=-1)
