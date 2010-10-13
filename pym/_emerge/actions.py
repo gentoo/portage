@@ -2102,7 +2102,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			addrinfos = socket.getaddrinfo(hostname, None,
 				family, socket.SOCK_STREAM)
 		except socket.error as e:
-			writemsg("!!! getaddrinfo failed: %s\n" % (e,), noiselevel=-1)
+			writemsg("!!! getaddrinfo failed for '%s': %s\n" % (hostname, e), noiselevel=-1)
 			# With some configurations we need to use the plain hostname
 			# rather than try to resolve the ip addresses (bug #340817).
 			uris.append(syncuri)
