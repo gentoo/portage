@@ -2138,7 +2138,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 		effective_maxretries = maxretries
 		if effective_maxretries < 0:
-			effective_maxretries = len(ips) - 1
+			effective_maxretries = len(uris) - 1
 
 		SERVER_OUT_OF_DATE = -1
 		EXCEEDED_MAX_RETRIES = -2
