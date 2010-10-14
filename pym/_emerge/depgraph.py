@@ -1405,13 +1405,13 @@ class depgraph(object):
 				if eliminate_pkg:
 					atom_pkg_graph.remove(pkg)
 
-			# Yield < and <= atoms first, since those are more likely to
+			# Yield ~, =*, < and <= atoms first, since those are more likely to
 			# cause slot conflicts, and we want those atoms to be displayed
 			# in the resulting slot conflict message (see bug #291142).
 			less_than = []
 			not_less_than = []
 			for atom in cp_atoms:
-				if atom.operator in ('<', '<='):
+				if atom.operator in ('~', '=*', '<', '<='):
 					less_than.append(atom)
 				else:
 					not_less_than.append(atom)
