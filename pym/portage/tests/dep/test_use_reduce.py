@@ -342,12 +342,11 @@ class UseReduce(TestCase):
 				uselist = ["foo"],
 				opconvert = True,
 				expected_result = ["A", "B"]),
-			# FIXME: Bug #340973: [['||', '||', 'A', 'B']] != ["||", "A", "B"]
-			#UseReduceTestCase(
-			#	"|| ( foo? ( || ( A B ) ) )",
-			#	uselist = ["foo"],
-			#	opconvert = True,
-			#	expected_result = ["||", "A", "B"]),
+			UseReduceTestCase(
+				"|| ( foo? ( || ( A B ) ) )",
+				uselist = ["foo"],
+				opconvert = True,
+				expected_result = ["||", "A", "B"]),
 
 			#flat test
 			UseReduceTestCase(
