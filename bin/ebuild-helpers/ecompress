@@ -132,6 +132,7 @@ case $1 in
 		i=0
 		for x in "$@" ; do
 			[[ ${x##*.} =~ $mask_ext_re ]] && continue
+			[[ -s ${x} ]] || continue
 			filtered_args[$i]=$x
 			((i++))
 		done
