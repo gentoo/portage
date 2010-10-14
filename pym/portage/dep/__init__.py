@@ -441,8 +441,11 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 						if opconvert and ends_in_any_of_dep(level):
 							#In opconvert mode, we have to move the operator from the level
 							#above into the current list.
-							stack[level].pop()
-							stack[level].append(["||"] + l)
+							if l[0] == '||':
+								stack[level].extend(l[1:])
+							else:
+								stack[level].pop()
+								stack[level].append(["||"] + l)
 						else:
 							special_append()
 
