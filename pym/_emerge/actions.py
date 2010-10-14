@@ -2099,11 +2099,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				"!!! getaddrinfo failed for '%s': %s\n" % (hostname, e),
 				noiselevel=-1, level=logging.ERROR)
 
-		if not addrinfos:
-			# With some configurations we need to use the plain hostname
-			# rather than try to resolve the ip addresses (bug #340817).
-			uris.append(syncuri)
-		else:
+		if addrinfos:
 
 			AF_INET = socket.AF_INET
 			AF_INET6 = None
@@ -2135,6 +2131,11 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				uris.append(syncuri.replace(
 					"//" + user_name + hostname + port + "/",
 					"//" + user_name + ip + port + "/", 1))
+
+		if not uris:
+			# With some configurations we need to use the plain hostname
+			# rather than try to resolve the ip addresses (bug #340817).
+			uris.append(syncuri)
 
 		# reverse, for use with pop()
 		uris.reverse()
