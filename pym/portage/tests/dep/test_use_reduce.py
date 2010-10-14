@@ -362,6 +362,11 @@ class UseReduce(TestCase):
 			#	opconvert = False,
 			#	expected_result = ['||', [['A', 'B'], 'C', 'D']]),
 
+			# ['||', [['A', 'B'], '||', ['C', 'D']]] != ['||', [['A', 'B'], 'C', 'D']]
+			#UseReduceTestCase(
+			#	"|| ( ( A B ) || ( C D ) )",
+			#	expected_result = ['||', [['A', 'B'], 'C', 'D']]),
+
 			#flat test
 			UseReduceTestCase(
 				"A",
