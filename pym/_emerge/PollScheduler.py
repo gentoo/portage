@@ -244,7 +244,8 @@ class PollScheduler(object):
 
 		return event_handled
 
-	def _task_output(self, msg, log_path=None, level=0, noiselevel=-1):
+	def _task_output(self, msg, log_path=None, background=None,
+		level=0, noiselevel=-1):
 		"""
 		Output msg to stdout if not self._background. If log_path
 		is not None then append msg to the log (appends with
@@ -252,7 +253,12 @@ class PollScheduler(object):
 		corresponds to a supported compression type).
 		"""
 
-		if not self._background:
+		if background is None:
+			# If the task does not have a local background value
+			# (like for parallel-fetch), then use the global value.
+			background = self._background
+
+		if not background:
 			writemsg_level(msg, level=level, noiselevel=noiselevel)
 
 		if log_path is not None:
