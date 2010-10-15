@@ -447,7 +447,11 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 							# l = [[...]]
 							last = last_any_of_operator_level(level)
 							if last == -1:
-								stack[level].extend(l[0])
+								if opconvert and isinstance(l[0], list) \
+									and l[0] and l[0][0] == '||':
+									stack[level].append(l[0])
+								else:
+									stack[level].extend(l[0])
 							else:
 								stack[level].append(l[0])
 						else:
