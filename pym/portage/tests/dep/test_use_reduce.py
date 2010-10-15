@@ -24,10 +24,13 @@ class UseReduceTestCase(object):
 		self.expected_result = expected_result
 
 	def run(self):
-		return use_reduce(self.deparray, self.uselist, self.masklist, \
-			self.matchall, self.excludeall, self.is_src_uri, self.eapi, \
+		try:
+			return use_reduce(self.deparray, self.uselist, self.masklist, \
+				self.matchall, self.excludeall, self.is_src_uri, self.eapi, \
 				self.opconvert, self.flat, self.is_valid_flag, self.token_class)
-				
+		except InvalidDependString as e:
+			raise InvalidDependString("%s: %s" % (e, self.deparray))
+
 class UseReduce(TestCase):
 
 	def always_true(self, ununsed_parameter):
