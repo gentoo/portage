@@ -4301,7 +4301,7 @@ class depgraph(object):
 						if min_parent_deps is not None and \
 							len(parent_deps) >= min_parent_deps:
 							# This task is no better than a previously selected
-							# task, so abort search now in order avoid wasting
+							# task, so abort search now in order to avoid wasting
 							# any more cpu time on this task. This increases
 							# performance dramatically in cases when there are
 							# hundreds of blockers to solve, like when
@@ -4323,7 +4323,7 @@ class depgraph(object):
 
 					if uninst_task is not None and min_parent_deps == 1:
 						# This is the best possible result, so so abort search
-						# now in order avoid wasting any more cpu time.
+						# now in order to avoid wasting any more cpu time.
 						break
 
 				if uninst_task is not None:

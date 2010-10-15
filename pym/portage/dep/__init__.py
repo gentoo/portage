@@ -419,7 +419,7 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 					return k>=0 and stack[k] and stack[k][0] == "||"
 
 				def last_any_of_operator_level(k):
-					#Returns the level of the last || operator if it is ineffect for
+					#Returns the level of the last || operator if it is in effect for
 					#the current level. It is not in effect, if there is a level, that
 					#ends in a non-operator. This is almost equivalent to stack[level][-1]=="||",
 					#expect that it skips empty levels.
