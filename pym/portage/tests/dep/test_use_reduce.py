@@ -180,13 +180,13 @@ class UseReduce(TestCase):
 				expected_result = [ "||", [ ["A", "B"], "C"] ]),
 			UseReduceTestCase(
 				"|| ( A || ( B C ) )",
-				expected_result = [ "||", ["A", "||", ["B", "C"]]]),
+				expected_result = [ "||", ["A", "B", "C"]]),
 			UseReduceTestCase(
 				"|| ( A || ( B C D ) )",
-				expected_result = [ "||", ["A", "||", ["B", "C", "D"]] ]),
+				expected_result = [ "||", ["A", "B", "C", "D"] ]),
 			UseReduceTestCase(
 				"|| ( A || ( B || ( C D ) E ) )",
-				expected_result = [ "||", ["A", "||", ["B", "||", ["C", "D"], "E"]] ]),
+				expected_result = [ "||", ["A", "B", "C", "D", "E"] ]),
 			UseReduceTestCase(
 				"( || ( ( ( A ) B ) ) )",
 				expected_result = ["A", "B"] ),
@@ -276,22 +276,22 @@ class UseReduce(TestCase):
 			UseReduceTestCase(
 				"|| ( A B )",
 				opconvert = True,
-				expected_result = [ ["||", "A", "B"] ]),
+				expected_result = ["||", "A", "B"]),
 			UseReduceTestCase(
 				"|| ( ( A B ) C )",
 				opconvert = True,
-				expected_result = [ [ "||", ["A", "B"], "C" ] ]),
+				expected_result = [ "||", ["A", "B"], "C" ]),
 			UseReduceTestCase(
 				"|| ( A || ( B C ) )",
 				opconvert = True,
-				expected_result = [ ["||", "A", ["||", "B", "C"]] ]),
+				expected_result = ["||", "A", "B", "C"]),
 			UseReduceTestCase(
 				"|| ( A || ( B C D ) )",
 				opconvert = True,
-				expected_result = [ ["||", "A", ["||", "B", "C", "D"]] ]),
+				expected_result = ["||", "A", "B", "C", "D"]),
 			UseReduceTestCase(
 				"|| ( A || ( B || ( C D ) E ) )",
-				expected_result = [ "||", ["A", "||", ["B", "||", ["C", "D"], "E"]] ]),
+				expected_result = [ "||", ["A", "B", "C", "D", "E"] ]),
 			UseReduceTestCase(
 				"( || ( ( ( A ) B ) ) )",
 				opconvert = True,
@@ -348,24 +348,72 @@ class UseReduce(TestCase):
 				opconvert = True,
 				expected_result = ["||", "A", "B"]),
 
-			# [['||', ['A', 'B'], '||', 'C', 'D']] != ['||', ['A', 'B'], 'C', 'D']
-			#UseReduceTestCase(
-			#	"|| ( ( A B ) foo? ( || ( C D ) ) )",
-			#	uselist = ["foo"],
-			#	opconvert = True,
-			#	expected_result = ['||', ['A', 'B'], 'C', 'D']),
+			UseReduceTestCase(
+				"|| ( ( A B ) foo? ( || ( C D ) ) )",
+				uselist = ["foo"],
+				opconvert = True,
+				expected_result = ['||', ['A', 'B'], 'C', 'D']),
 
-			# ['||', [['A', 'B'], '||', ['C', 'D']]] != ['||', [['A', 'B'], 'C', 'D']]
-			#UseReduceTestCase(
-			#	"|| ( ( A B ) foo? ( || ( C D ) ) )",
-			#	uselist = ["foo"],
-			#	opconvert = False,
-			#	expected_result = ['||', [['A', 'B'], 'C', 'D']]),
+			UseReduceTestCase(
+				"|| ( ( A B ) foo? ( || ( C D ) ) )",
+				uselist = ["foo"],
+				opconvert = False,
+				expected_result = ['||', [['A', 'B'], 'C', 'D']]),
 
-			# ['||', [['A', 'B'], '||', ['C', 'D']]] != ['||', [['A', 'B'], 'C', 'D']]
-			#UseReduceTestCase(
-			#	"|| ( ( A B ) || ( C D ) )",
-			#	expected_result = ['||', [['A', 'B'], 'C', 'D']]),
+			UseReduceTestCase(
+				"|| ( ( A B ) || ( C D ) )",
+				expected_result = ['||', [['A', 'B'], 'C', 'D']]),
+
+			UseReduceTestCase(
+				"|| ( ( A B ) || ( C D || ( E ( F G ) || ( H ) ) ) )",
+				expected_result = ['||', [['A', 'B'], 'C', 'D', 'E', ['F', 'G'], 'H']]),
+
+			UseReduceTestCase(
+				"|| ( foo? ( A B ) )",
+				uselist = ["foo"],
+				expected_result = ['A', 'B']),
+
+			UseReduceTestCase(
+				"|| ( || ( foo? ( A B ) ) )",
+				uselist = ["foo"],
+				expected_result = ['A', 'B']),
+
+			UseReduceTestCase(
+				"|| ( || ( || ( a? ( b? ( c? ( || ( || ( || ( d? ( e? ( f? ( A B ) ) ) ) ) ) ) ) ) ) ) )",
+				uselist = ["a", "b", "c", "d", "e", "f"],
+				expected_result = ['A', 'B']),
+
+			UseReduceTestCase(
+				"|| ( || ( ( || ( a? ( ( b? ( c? ( || ( || ( || ( ( d? ( e? ( f? ( A B ) ) ) ) ) ) ) ) ) ) ) ) ) ) )",
+				uselist = ["a", "b", "c", "d", "e", "f"],
+				expected_result = ['A', 'B']),
+
+			UseReduceTestCase(
+				"|| ( ( A ( || ( B ) ) ) )",
+				expected_result = ['A', 'B']),
+
+			UseReduceTestCase(
+				"|| ( ( A B ) || ( foo? ( bar? ( ( C D || ( baz? ( E ) ( F G ) || ( H ) ) ) ) ) ) )",
+				uselist = ["foo", "bar", "baz"],
+				expected_result = ['||', [['A', 'B'], 'C', 'D', '||', ['E', ['F', 'G'], 'H']]]),
+
+			UseReduceTestCase(
+				"|| ( foo? ( A B ) )",
+				uselist = ["foo"],
+				opconvert=True,
+				expected_result = ['A', 'B']),
+
+			UseReduceTestCase(
+				"|| ( || ( foo? ( A B ) ) )",
+				uselist = ["foo"],
+				opconvert=True,
+				expected_result = ['A', 'B']),
+
+			UseReduceTestCase(
+				"|| ( || ( || ( a? ( b? ( c? ( || ( || ( || ( d? ( e? ( f? ( A B ) ) ) ) ) ) ) ) ) ) ) )",
+				uselist = ["a", "b", "c", "d", "e", "f"],
+				opconvert=True,
+				expected_result = ['A', 'B']),
 
 			#flat test
 			UseReduceTestCase(
