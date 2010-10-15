@@ -453,7 +453,10 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 						else:
 							stack[level].extend(l)
 					else:
-						stack[level].append(l)
+						if opconvert and stack[level] and stack[level][-1] == '||':
+							stack[level][-1] = ['||'] + l
+						else:
+							stack[level].append(l)
 
 				if l and not ignore:
 					#The current list is not empty and we don't want to ignore it because

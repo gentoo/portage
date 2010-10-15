@@ -304,12 +304,10 @@ class UseReduce(TestCase):
 				"|| ( A B ) C",
 				opconvert = True,
 				expected_result = [['||', 'A', 'B'], 'C']),
-
-			# ['A', '||', ['B', 'C']] != ['A', ['||', 'B', 'C']]
-			#UseReduceTestCase(
-			#	"A || ( B C )",
-			#	opconvert = True,
-			#	expected_result = ['A', ['||', 'B', 'C']]),
+			UseReduceTestCase(
+				"A || ( B C )",
+				opconvert = True,
+				expected_result = ['A', ['||', 'B', 'C']]),
 
 			UseReduceTestCase(
 				"|| ( A )",
