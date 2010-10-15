@@ -276,19 +276,19 @@ class UseReduce(TestCase):
 			UseReduceTestCase(
 				"|| ( A B )",
 				opconvert = True,
-				expected_result = ["||", "A", "B"]),
+				expected_result = [['||', 'A', 'B']]),
 			UseReduceTestCase(
 				"|| ( ( A B ) C )",
 				opconvert = True,
-				expected_result = [ "||", ["A", "B"], "C" ]),
+				expected_result = [['||', ['A', 'B'], 'C']]),
 			UseReduceTestCase(
 				"|| ( A || ( B C ) )",
 				opconvert = True,
-				expected_result = ["||", "A", "B", "C"]),
+				expected_result = [['||', 'A', 'B', 'C']]),
 			UseReduceTestCase(
 				"|| ( A || ( B C D ) )",
 				opconvert = True,
-				expected_result = ["||", "A", "B", "C", "D"]),
+				expected_result = [['||', 'A', 'B', 'C', 'D']]),
 			UseReduceTestCase(
 				"|| ( A || ( B || ( C D ) E ) )",
 				expected_result = [ "||", ["A", "B", "C", "D", "E"] ]),
@@ -299,17 +299,11 @@ class UseReduce(TestCase):
 			UseReduceTestCase(
 				"( || ( || ( ( A ) B ) ) )",
 				opconvert = True,
-				expected_result = ["||", "A", "B"]),
+				expected_result = [['||', 'A', 'B']]),
 			UseReduceTestCase(
-				"( || ( || ( ( A ) B ) ) )",
+				"|| ( A B ) C",
 				opconvert = True,
-				expected_result = ["||", "A", "B"]),
-
-			# ['||', 'A', 'B', 'C'] != [['||', 'A', 'B'], 'C']
-			#UseReduceTestCase(
-			#	"|| ( A B ) C",
-			#	opconvert = True,
-			#	expected_result = [['||', 'A', 'B'], 'C']),
+				expected_result = [['||', 'A', 'B'], 'C']),
 
 			# ['A', '||', ['B', 'C']] != ['A', ['||', 'B', 'C']]
 			#UseReduceTestCase(
@@ -328,7 +322,7 @@ class UseReduce(TestCase):
 				"( || ( || ( || ( A ) foo? ( B ) ) ) )",
 				uselist = ["foo"],
 				opconvert = True,
-				expected_result = ["||", "A", "B"]),
+				expected_result = [['||', 'A', 'B']]),
 			UseReduceTestCase(
 				"( || ( || ( bar? ( A ) || ( foo? ( B ) ) ) ) )",
 				opconvert = True,
@@ -337,7 +331,7 @@ class UseReduce(TestCase):
 				"( || ( || ( bar? ( A ) || ( foo? ( B ) ) ) ) )",
 				uselist = ["foo", "bar"],
 				opconvert = True,
-				expected_result = ["||", "A", "B"]),
+				expected_result = [['||', 'A', 'B']]),
 			UseReduceTestCase(
 				"A || ( ) foo? ( ) B",
 				opconvert = True,
@@ -365,7 +359,7 @@ class UseReduce(TestCase):
 				"|| ( ( A B ) foo? ( || ( C D ) ) )",
 				uselist = ["foo"],
 				opconvert = True,
-				expected_result = ['||', ['A', 'B'], 'C', 'D']),
+				expected_result = [['||', ['A', 'B'], '||', 'C', 'D']]),
 
 			UseReduceTestCase(
 				"|| ( ( A B ) foo? ( || ( C D ) ) )",
