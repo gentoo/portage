@@ -1189,7 +1189,7 @@ class config(object):
 		if previous_features:
 			# The package from the previous setcpv call had package.env
 			# settings which modified FEATURES. Therefore, trigger a
-			# regenerate() call in order ensure that self.features
+			# regenerate() call in order to ensure that self.features
 			# is accurate.
 			has_changed = True
 

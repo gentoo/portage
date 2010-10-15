@@ -1181,7 +1181,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 					raise AssertionError("no root nodes")
 				if ignore_priority is not None:
 					# Some deps have been dropped due to circular dependencies,
-					# so only pop one node in order do minimize the number that
+					# so only pop one node in order to minimize the number that
 					# are dropped.
 					del nodes[1:]
 				for node in nodes:
