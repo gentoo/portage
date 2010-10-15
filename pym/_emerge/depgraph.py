@@ -4275,6 +4275,11 @@ class depgraph(object):
 						min_parent_deps = len(parent_deps)
 						uninst_task = task
 
+					if uninst_task is not None and min_parent_deps == 1:
+						# This is the best possible result, so so abort search
+						# now in order avoid wasting any more cpu time.
+						break
+
 				if uninst_task is not None:
 					# The uninstall is performed only after blocking
 					# packages have been merged on top of it. File
