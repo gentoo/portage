@@ -226,7 +226,13 @@ class UseReduce(TestCase):
 				"foo? ( A ) foo? ( B )",
 				uselist = ["foo"],
 				expected_result = ["A", "B"]),
-			
+			UseReduceTestCase(
+				"|| ( A B ) C",
+				expected_result = ['||', ['A', 'B'], 'C']),
+			UseReduceTestCase(
+				"A || ( B C )",
+				expected_result = ['A', '||', ['B', 'C']]),
+
 			#SRC_URI stuff
 			UseReduceTestCase(
 				"http://foo/bar -> blah.tbz2",
