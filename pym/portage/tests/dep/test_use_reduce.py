@@ -317,6 +317,12 @@ class UseReduce(TestCase):
 				"A || ( B C )",
 				opconvert = True,
 				expected_result = ['A', ['||', 'B', 'C']]),
+			# ['A', ['||', 'B', '||', 'C', 'D', 'E'], 'G'] != ['A', ['||', 'B', 'C', 'D', 'E'], 'G']
+			#UseReduceTestCase(
+			#	"A foo? ( || ( B || ( bar? ( || ( C D E ) ) !bar? ( F ) ) ) ) G",
+			#	uselist = ["foo", "bar"],
+			#	opconvert = True,
+			#	expected_result = ['A', ['||', 'B', 'C', 'D', 'E'], 'G']),
 
 			UseReduceTestCase(
 				"|| ( A )",
