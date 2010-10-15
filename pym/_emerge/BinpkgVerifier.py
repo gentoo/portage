@@ -71,7 +71,8 @@ class BinpkgVerifier(AsynchronousTask):
 		msg = _unicode_decode(out.getvalue(),
 			encoding=_encodings['content'], errors='replace')
 		if msg:
-			self.scheduler.output(msg, log_path=self.logfile)
+			self.scheduler.output(msg, log_path=self.logfile,
+				background=self.background)
 
 		self.returncode = rval
 		self.wait()
