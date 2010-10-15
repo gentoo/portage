@@ -4259,7 +4259,7 @@ class depgraph(object):
 							# any more cpu time on this task. This increases
 							# performance dramatically in cases when there are
 							# hundreds of blockers to solve, like when
-							# when upgrading to a new slot of kde-meta.
+							# upgrading to a new slot of kde-meta.
 							mergeable_parent = None
 							break
 						if parent in mergeable_nodes and \
