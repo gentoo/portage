@@ -445,7 +445,7 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 								stack[level].extend(l[1])
 						elif len(l) == 1 and isinstance(l[0], list):
 							# l = [[...]]
-							last = last_any_of_operator_level(level)
+							last = last_any_of_operator_level(level-1)
 							if last == -1:
 								if opconvert and isinstance(l[0], list) \
 									and l[0] and l[0][0] == '||':
@@ -453,7 +453,10 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 								else:
 									stack[level].extend(l[0])
 							else:
-								stack[level].append(l[0])
+								if opconvert and l[0] and l[0][0] == "||":
+									stack[level].extend(l[0][1:])
+								else:
+									stack[level].append(l[0])
 						else:
 							stack[level].extend(l)
 					else:
@@ -480,7 +483,7 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 						stack[level].pop()
 						stack[level].extend(l)
 					else:
-						if opconvert and starts_with_any_of_dep(level):
+						if opconvert and ends_in_any_of_dep(level):
 							#In opconvert mode, we have to move the operator from the level
 							#above into the current list.
 							stack[level].pop()
