@@ -4122,9 +4122,6 @@ class depgraph(object):
 				min_parent_deps = None
 				uninst_task = None
 
-				# FIXME: This loop can be extremely slow when
-				#        there of lots of blockers to solve
-				#        (especially the gather_deps part).
 				for task in myblocker_uninstalls.leaf_nodes():
 					# Do some sanity checks so that system or world packages
 					# don't get uninstalled inappropriately here (only really
@@ -4251,9 +4248,20 @@ class depgraph(object):
 					self._spinner_update()
 					mergeable_parent = False
 					parent_deps = set()
+					parent_deps.add(task)
 					for parent in mygraph.parent_nodes(task):
 						parent_deps.update(mygraph.child_nodes(parent,
 							ignore_priority=priority_range.ignore_medium_soft))
+						if min_parent_deps is not None and \
+							len(parent_deps) >= min_parent_deps:
+							# This task is no better than a previously selected
+							# task, so abort search now in order avoid wasting
+							# any more cpu time on this task. This increases
+							# performance dramatically in cases when there are
+							# hundreds of blockers to solve, like when
+							# when upgrading to a new slot of kde-meta.
+							mergeable_parent = None
+							break
 						if parent in mergeable_nodes and \
 							gather_deps(ignore_uninst_or_med_soft,
 							mergeable_nodes, set(), parent):
@@ -4262,7 +4270,6 @@ class depgraph(object):
 					if not mergeable_parent:
 						continue
 
-					parent_deps.remove(task)
 					if min_parent_deps is None or \
 						len(parent_deps) < min_parent_deps:
 						min_parent_deps = len(parent_deps)
