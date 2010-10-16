@@ -161,7 +161,8 @@ class RepoConfig(object):
 		if self.aliases:
 			repo_msg.append(indent + "aliases: " + self.aliases)
 		if self.eclass_overrides:
-			repo_msg.append(indent + "eclass_overrides: " + self.eclass_overrides)
+			repo_msg.append(indent + "eclass_overrides: " + \
+				" ".join(self.eclass_overrides))
 		repo_msg.append("")
 		return "\n".join(repo_msg) + "\n"
 
