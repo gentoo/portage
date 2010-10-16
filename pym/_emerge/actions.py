@@ -618,6 +618,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	myopts, action, args_set, spinner):
 	allow_missing_deps = bool(args_set)
 
+	debug = '--debug' in myopts
 	xterm_titles = "notitles" not in settings.features
 	myroot = settings["ROOT"]
 	root_config = trees[myroot]["root_config"]
@@ -1102,6 +1103,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			clean_set = set(cleanlist)
 
 	if clean_set:
+		writemsg_level(">>> Calculating removal order...\n")
 		# Use a topological sort to create an unmerge order such that
 		# each package is unmerged before it's dependencies. This is
 		# necessary to avoid breaking things that may need to run
@@ -1130,6 +1132,15 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				if not depstr:
 					continue
 				priority = priority_map[dep_type]
+
+				if debug:
+					writemsg_level(_unicode_decode("\nParent:    %s\n") \
+						% (node,), noiselevel=-1, level=logging.DEBUG)
+					writemsg_level(_unicode_decode(  "Depstring: %s\n") \
+						% (depstr,), noiselevel=-1, level=logging.DEBUG)
+					writemsg_level(_unicode_decode(  "Priority:  %s\n") \
+						% (priority,), noiselevel=-1, level=logging.DEBUG)
+
 				try:
 					atoms = resolver._select_atoms(myroot, depstr,
 						myuse=node.use.enabled, parent=node,
@@ -1138,6 +1149,11 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 					# Ignore invalid deps of packages that will
 					# be uninstalled anyway.
 					continue
+
+				if debug:
+					writemsg_level("Candidates: [%s]\n" % \
+						', '.join(_unicode_decode("'%s'") % (x,) for x in atoms),
+						noiselevel=-1, level=logging.DEBUG)
 
 				for atom in atoms:
 					if not isinstance(atom, portage.dep.Atom):
@@ -1151,6 +1167,12 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 					for child_node in matches:
 						if child_node in clean_set:
 							graph.add(child_node, node, priority=priority)
+
+		if debug:
+			writemsg_level("\nunmerge digraph:\n\n",
+				noiselevel=-1, level=logging.DEBUG)
+			graph.debug_print()
+			writemsg_level("\n", noiselevel=-1, level=logging.DEBUG)
 
 		ordered = True
 		if len(graph.order) == len(graph.root_nodes()):
