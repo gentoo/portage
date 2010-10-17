@@ -116,6 +116,7 @@ class RepoConfig(object):
 			self.masters = new_repo.masters
 		if new_repo.name is not None:
 			self.name = new_repo.name
+			self.missing_repo_name = new_repo.missing_repo_name
 		if new_repo.user_location is not None:
 			self.user_location = new_repo.user_location
 		if new_repo.location is not None:
