@@ -244,12 +244,16 @@ class RepoConfigLoader(object):
 								ignored_location_map[old_location] = repo.name
 							prepos[repo.name].update(repo)
 						else:
+							prepos[repo.name] = repo
+
+						repo = prepos[repo.name]
+						if repo.priority is None:
 							if ov == portdir and portdir not in port_ov:
 								repo.priority = 1000
 							else:
 								repo.priority = base_priority
 								base_priority -= 1
-							prepos[repo.name] = repo
+
 					else:
 						writemsg(_("!!! Invalid PORTDIR_OVERLAY"
 							" (not a dir): '%s'\n") % ov, noiselevel=-1)
