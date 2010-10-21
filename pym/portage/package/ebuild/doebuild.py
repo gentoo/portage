@@ -1420,6 +1420,9 @@ def _post_src_install_uid_fix(mysettings, out):
 					f = open(_unicode_encode(fpath,
 						encoding=_encodings['merge'], errors='strict'),
 						mode='rb')
+					has_lafile_header = b'.la - a libtool library file' \
+						in f.readline()
+					f.seek(0)
 					contents = f.read()
 					f.close()
 					try:
@@ -1429,10 +1432,17 @@ def _post_src_install_uid_fix(mysettings, out):
 						if not fixlafiles_announced:
 							fixlafiles_announced = True
 							writemsg("Fixing .la files\n", fd=out)
+
+						# Suppress warnings if the file does not have the
+						# expected header (bug #340725). Even if the header is
+						# missing, we still call rewrite_lafile() since some
+						# valid libtool archives may not have the header.
 						msg = "   %s is not a valid libtool archive, skipping\n" % fpath[len(destdir):]
 						qa_msg = "QA Notice: invalid .la file found: %s, %s" % (fpath[len(destdir):], e)
-						writemsg(msg, fd=out)
-						eqawarn(qa_msg, key=mysettings.mycpv, out=out)
+						if has_lafile_header:
+							writemsg(msg, fd=out)
+							eqawarn(qa_msg, key=mysettings.mycpv, out=out)
+
 					if needs_update:
 						if not fixlafiles_announced:
 							fixlafiles_announced = True
