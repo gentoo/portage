@@ -988,9 +988,8 @@ class Scheduler(PollScheduler):
 					raise AssertionError("ebuild not found for '%s'" % x.cpv)
 
 			portage.package.ebuild.doebuild.doebuild_environment(ebuild_path,
-				"pretend", root_config.root, settings,
-				debug=(settings.get("PORTAGE_DEBUG", "") == 1),
-				mydbapi=self.trees[settings["ROOT"]][tree].dbapi, use_cache=1)
+				"pretend", settings=settings,
+				db=self.trees[settings["ROOT"]][tree].dbapi)
 			prepare_build_dirs(root_config.root, settings, cleanup=0)
 
 			vardb = root_config.trees['vartree'].dbapi
