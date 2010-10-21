@@ -6,6 +6,7 @@ portage-2.2
 * Add link level dependency awareness to emerge --depclean and --prune actions
   in order to protect against uninstallation of required libraries.
 * Add support for generic package sets (also see RELEASE-NOTES)
+* Add EAPI 4_pre1 support, for testing purposes.
 
 portage-2.1.9
 -------------
