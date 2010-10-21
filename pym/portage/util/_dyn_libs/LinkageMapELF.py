@@ -161,13 +161,17 @@ class LinkageMapELF(object):
 		# Data from include_file is processed first so that it
 		# overrides any data from previously installed files.
 		if include_file is not None:
-			lines += grabfile(include_file)
+			for line in grabfile(include_file):
+				lines.append((include_file, line))
 
 		aux_keys = [self._needed_aux_key]
 		for cpv in self._dbapi.cpv_all():
 			if exclude_pkgs is not None and cpv in exclude_pkgs:
 				continue
-			lines += self._dbapi.aux_get(cpv, aux_keys)[0].split('\n')
+			needed_file = self._dbapi.getpath(cpv,
+				filename=self._needed_aux_key)
+			for line in self._dbapi.aux_get(cpv, aux_keys)[0].splitlines():
+				lines.append((needed_file, line))
 		# Cache NEEDED.* files avoid doing excessive IO for every rebuild.
 		self._dbapi.flush_cache()
 
@@ -208,7 +212,7 @@ class LinkageMapELF(object):
 						continue
 					fields[1] = fields[1][root_len:]
 					plibs.discard(fields[1])
-					lines.append(";".join(fields))
+					lines.append(("scanelf", ";".join(fields)))
 				proc.wait()
 
 		if plibs:
@@ -219,16 +223,16 @@ class LinkageMapELF(object):
 			# is important in order to prevent findConsumers from raising
 			# an unwanted KeyError.
 			for x in plibs:
-				lines.append(";".join(['', x, '', '', '']))
+				lines.append(("plibs", ";".join(['', x, '', '', ''])))
 
-		for l in lines:
+		for location, l in lines:
 			l = l.rstrip("\n")
 			if not l:
 				continue
 			fields = l.split(";")
 			if len(fields) < 5:
 				writemsg_level(_("\nWrong number of fields " \
-					"in %s: %s\n\n") % (self._needed_aux_key, l),
+					"in %s: %s\n\n") % (location, l),
 					level=logging.ERROR, noiselevel=-1)
 				continue
 			arch = fields[0]
