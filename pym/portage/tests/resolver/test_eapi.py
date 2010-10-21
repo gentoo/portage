@@ -92,6 +92,7 @@ class EAPITestCase(TestCase):
 			ResolverPlaygroundTestCase(["=dev-libs/A-5.1"], success = False),
 			ResolverPlaygroundTestCase(["=dev-libs/A-5.2"], success = False),
 			ResolverPlaygroundTestCase(["=dev-libs/A-5.3"], success = False),
+			# not implemented: EAPI-4: slot operator deps
 			#~ ResolverPlaygroundTestCase(["=dev-libs/A-5.4"], success = True, mergelist = ["dev-libs/B-1", "dev-libs/A-5.4"]),
 
 			ResolverPlaygroundTestCase(["=dev-libs/A-6.0"], success = False),
