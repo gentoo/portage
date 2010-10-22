@@ -299,6 +299,16 @@ class RepoConfigLoader(object):
 				masters = None
 			repo.masters = masters
 
+			aliases = layout_data.get('aliases')
+			if aliases and aliases.strip():
+				aliases = aliases.split()
+			else:
+				aliases = None
+			if aliases:
+				if repo.aliases:
+					aliases.extend(repo.aliases)
+				repo.aliases = tuple(sorted(set(aliases)))
+
 		#Take aliases into account.
 		new_prepos = {}
 		for repo_name, repo in prepos.items():
