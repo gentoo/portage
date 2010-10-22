@@ -27,7 +27,7 @@ class AsynchronousLock(AsynchronousTask):
 
 	__slots__ = ('path', 'scheduler',) + \
 		('_imp', '_force_async', '_force_dummy', '_force_process', \
-		'_force_thread')
+		'_force_thread', '_waiting')
 
 	def _start(self):
 
@@ -55,12 +55,15 @@ class AsynchronousLock(AsynchronousTask):
 
 	def _imp_exit(self, imp):
 		# call exit listeners
-		self.wait()
+		if not self._waiting:
+			self.wait()
 
 	def _wait(self):
 		if self.returncode is not None:
 			return self.returncode
-		self.returncode = self._imp._wait()
+		self._waiting = True
+		self.returncode = self._imp.wait()
+		self._waiting = False
 		return self.returncode
 
 	def unlock(self):
