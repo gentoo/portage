@@ -85,16 +85,7 @@ class EbuildFetcher(SpawnProcess):
 			portage.process.spawned_pids.append(pid)
 			return [pid]
 
-		# Set up the command's pipes.
-		my_fds = {}
-		# To protect from cases where direct assignment could
-		# clobber needed fds ({1:2, 2:1}) we first dupe the fds
-		# into unused fds.
-		for fd in fd_pipes:
-			my_fds[fd] = os.dup(fd_pipes[fd])
-		# Then assign them to what they should be.
-		for fd in my_fds:
-			os.dup2(my_fds[fd], fd)
+		portage.process._setup_pipes(fd_pipes)
 
 		# Force consistent color output, in case we are capturing fetch
 		# output through a normal pipe due to unavailability of ptys.
