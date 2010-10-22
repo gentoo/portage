@@ -46,6 +46,8 @@ class EbuildFetcher(SpawnProcess):
 
 		settings = self.config_pool.allocate()
 		settings.setcpv(self.pkg)
+		portage.doebuild_environment(ebuild_path, 'fetch',
+			settings=settings, db=portdb)
 
 		if self.prefetch and \
 			self._prefetch_size_ok(uri_map, settings, ebuild_path):
