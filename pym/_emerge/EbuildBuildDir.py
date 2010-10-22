@@ -5,6 +5,7 @@ from _emerge.AsynchronousLock import AsynchronousLock
 from _emerge.SlotObject import SlotObject
 import portage
 from portage import os
+from portage.exception import PortageException
 import errno
 
 class EbuildBuildDir(SlotObject):
@@ -32,16 +33,24 @@ class EbuildBuildDir(SlotObject):
 		catdir = os.path.dirname(dir_path)
 		self._catdir = catdir
 
-		portage.util.ensure_dirs(os.path.dirname(catdir),
-			gid=portage.portage_gid,
-			mode=0o70, mask=0)
+		try:
+			portage.util.ensure_dirs(os.path.dirname(catdir),
+				gid=portage.portage_gid,
+				mode=0o70, mask=0)
+		except PortageException:
+			if not os.path.isdir(os.path.dirname(catdir)):
+				raise
 		catdir_lock = AsynchronousLock(path=catdir, scheduler=self.scheduler)
 		catdir_lock.start()
 		catdir_lock.wait()
 		try:
-			portage.util.ensure_dirs(catdir,
-				gid=portage.portage_gid,
-				mode=0o70, mask=0)
+			try:
+				portage.util.ensure_dirs(catdir,
+					gid=portage.portage_gid,
+					mode=0o70, mask=0)
+			except PortageException:
+				if not os.path.isdir(catdir):
+					raise
 			builddir_lock = AsynchronousLock(path=dir_path,
 				scheduler=self.scheduler)
 			builddir_lock.start()
