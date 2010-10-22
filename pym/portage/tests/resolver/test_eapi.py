@@ -40,13 +40,13 @@ class EAPITestCase(TestCase):
 			"dev-libs/A-4.4": { "EAPI": EAPI_4, "DEPEND": "!!dev-libs/B" }, 
 
 			#EAPI-4: slot operator deps
-			"dev-libs/A-5.0": { "EAPI": 0, "DEPEND": "dev-libs/B:*" }, 
-			"dev-libs/A-5.1": { "EAPI": 1, "DEPEND": "dev-libs/B:*" }, 
-			"dev-libs/A-5.2": { "EAPI": 2, "DEPEND": "dev-libs/B:*" }, 
-			"dev-libs/A-5.3": { "EAPI": 3, "DEPEND": "dev-libs/B:*" }, 
-			"dev-libs/A-5.4": { "EAPI": EAPI_4, "DEPEND": "dev-libs/B:*" }, 
+			#~ "dev-libs/A-5.0": { "EAPI": 0, "DEPEND": "dev-libs/B:*" }, 
+			#~ "dev-libs/A-5.1": { "EAPI": 1, "DEPEND": "dev-libs/B:*" }, 
+			#~ "dev-libs/A-5.2": { "EAPI": 2, "DEPEND": "dev-libs/B:*" }, 
+			#~ "dev-libs/A-5.3": { "EAPI": 3, "DEPEND": "dev-libs/B:*" }, 
+			#~ "dev-libs/A-5.4": { "EAPI": EAPI_4, "DEPEND": "dev-libs/B:*" }, 
 
-			#EAPI-4: slot operator deps
+			#EAPI-4: use dep defaults
 			"dev-libs/A-6.0": { "EAPI": 0, "DEPEND": "dev-libs/B[bar(+)]" }, 
 			"dev-libs/A-6.1": { "EAPI": 1, "DEPEND": "dev-libs/B[bar(+)]" }, 
 			"dev-libs/A-6.2": { "EAPI": 2, "DEPEND": "dev-libs/B[bar(+)]" }, 
