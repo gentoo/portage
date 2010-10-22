@@ -171,7 +171,7 @@ class _LockProcess(AbstractPollTask):
 		self._proc = SpawnProcess(
 			args=[portage._python_interpreter,
 				os.path.join(portage._bin_path, 'lock-helper.py'), self.path],
-				env=os.environ,
+				env=dict(os.environ, PORTAGE_PYM_PATH=portage._pym_path),
 				fd_pipes={0:out_pr, 1:in_pw, 2:sys.stderr.fileno()},
 				scheduler=self.scheduler)
 		self._proc.addExitListener(self._proc_exit)

@@ -2,7 +2,9 @@
 # Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import sys
+sys.path.insert(0, os.environ['PORTAGE_PYM_PATH'])
 import portage
 
 def main(args):
