@@ -10,11 +10,13 @@ from portage import _unicode_encode
 from portage import _unicode_decode
 import codecs
 from portage.elog.messages import eerror
+from portage.package.ebuild.fetch import fetch
 from portage.util._pty import _create_pty_or_pipe
 
 class EbuildFetcher(SpawnProcess):
 
-	__slots__ = ("config_pool", "fetchonly", "fetchall", "pkg", "prefetch")
+	__slots__ = ("config_pool", "fetchonly", "fetchall", "pkg", "prefetch") + \
+		("_settings", "_uri_map")
 
 	def _start(self):
 
@@ -52,50 +54,58 @@ class EbuildFetcher(SpawnProcess):
 			self.wait()
 			return
 
-		phase = "fetch"
-		if self.fetchall:
-			phase = "fetchall"
-
-		# If any incremental variables have been overridden
-		# via the environment, those values need to be passed
-		# along here so that they are correctly considered by
-		# the config instance in the subproccess.
-		fetch_env = os.environ.copy()
-		fetch_env['PORTAGE_CONFIGROOT'] = settings['PORTAGE_CONFIGROOT']
-
 		nocolor = settings.get("NOCOLOR")
 
 		if self.prefetch:
-			fetch_env["PORTAGE_PARALLEL_FETCHONLY"] = "1"
-			# prefetch always outputs to a log, so
-			# always disable color
+			settings["PORTAGE_PARALLEL_FETCHONLY"] = "1"
+
+		if self.background:
 			nocolor = "true"
 
 		if nocolor is not None:
-			fetch_env["NOCOLOR"] = nocolor
+			settings["NOCOLOR"] = nocolor
 
-		fetch_env["PORTAGE_NICENESS"] = "0"
+		self._settings = settings
+		self._uri_map = uri_map
+		SpawnProcess._start(self)
 
-		ebuild_binary = os.path.join(
-			settings["PORTAGE_BIN_PATH"], "ebuild")
-
-		fetch_args = [ebuild_binary, ebuild_path, phase]
-		debug = settings.get("PORTAGE_DEBUG") == "1"
-		if debug:
-			fetch_args.append("--debug")
-
-		# Free settings now since we only have a local reference.
+		# Free settings now since it's no longer needed in
+		# this process (the subprocess has a private copy).
 		self.config_pool.deallocate(settings)
 		settings = None
+		self._settings = None
 
-		if not self.background and nocolor not in ('yes', 'true'):
-			# Force consistent color output, in case we are capturing fetch
-			# output through a normal pipe due to unavailability of ptys.
-			fetch_args.append('--color=y')
+	def _spawn(self, args, fd_pipes=None, **kwargs):
+		"""
+		Fork a subprocess, apply local settings, and call fetch().
+		"""
 
-		self.args = fetch_args
-		self.env = fetch_env
-		SpawnProcess._start(self)
+		pid = os.fork()
+		if pid != 0:
+			portage.process.spawned_pids.append(pid)
+			return [pid]
+
+		# Set up the command's pipes.
+		my_fds = {}
+		# To protect from cases where direct assignment could
+		# clobber needed fds ({1:2, 2:1}) we first dupe the fds
+		# into unused fds.
+		for fd in fd_pipes:
+			my_fds[fd] = os.dup(fd_pipes[fd])
+		# Then assign them to what they should be.
+		for fd in my_fds:
+			os.dup2(my_fds[fd], fd)
+
+		# Force consistent color output, in case we are capturing fetch
+		# output through a normal pipe due to unavailability of ptys.
+		portage.output.havecolor = self._settings.get('NOCOLOR') \
+			not in ('yes', 'true')
+
+		rval = 1
+		if fetch(self._uri_map, self._settings, fetchonly=self.fetchonly):
+			rval = os.EX_OK
+
+		os._exit(rval)
 
 	def _get_uri_map(self, portdb, ebuild_path):
 		"""
