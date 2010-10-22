@@ -778,6 +778,21 @@ class depgraph(object):
 			return 0
 		return 1
 
+	def _check_slot_conflict(self, pkg, atom):
+		existing_node = self._dynamic_config._slot_pkg_map[pkg.root].get(pkg.slot_atom)
+		matches = None
+		if existing_node:
+			matches = pkg.cpv == existing_node.cpv
+			if pkg != existing_node and \
+				atom is not None:
+				# Use package set for matching since it will match via
+				# PROVIDE when necessary, while match_from_list does not.
+				matches = bool(InternalPackageSet(initial_atoms=(atom,),
+					).findAtomForPackage(existing_node,
+					modified_use=self._pkg_use_enabled(existing_node)))
+
+		return (existing_node, matches)
+
 	def _add_pkg(self, pkg, dep):
 		myparent = None
 		priority = None
@@ -833,19 +848,10 @@ class depgraph(object):
 				# are being merged in that case.
 				priority.rebuild = True
 
-			existing_node = self._dynamic_config._slot_pkg_map[pkg.root].get(pkg.slot_atom)
+			existing_node, existing_node_matches = \
+				self._check_slot_conflict(pkg, dep.atom)
 			slot_collision = False
 			if existing_node:
-				existing_node_matches = pkg.cpv == existing_node.cpv
-				if existing_node_matches and \
-					pkg != existing_node and \
-					dep.atom is not None:
-					# Use package set for matching since it will match via
-					# PROVIDE when necessary, while match_from_list does not.
-					atom_set = InternalPackageSet(initial_atoms=[dep.atom])
-					if not atom_set.findAtomForPackage(existing_node, \
-						modified_use=self._pkg_use_enabled(existing_node)):
-						existing_node_matches = False
 				if existing_node_matches:
 					# The existing node can be reused.
 					if arg_atoms:
@@ -1408,15 +1414,22 @@ class depgraph(object):
 			# Yield ~, =*, < and <= atoms first, since those are more likely to
 			# cause slot conflicts, and we want those atoms to be displayed
 			# in the resulting slot conflict message (see bug #291142).
-			less_than = []
-			not_less_than = []
+			conflict_atoms = []
+			normal_atoms = []
 			for atom in cp_atoms:
-				if atom.operator in ('~', '=*', '<', '<='):
-					less_than.append(atom)
+				conflict = False
+				for child_pkg in atom_pkg_graph.child_nodes(atom):
+					existing_node, matches = \
+						self._check_slot_conflict(child_pkg, atom)
+					if existing_node and not matches:
+						conflict = True
+						break
+				if conflict:
+					conflict_atoms.append(atom)
 				else:
-					not_less_than.append(atom)
+					normal_atoms.append(atom)
 
-			for atom in chain(less_than, not_less_than):
+			for atom in chain(conflict_atoms, normal_atoms):
 				child_pkgs = atom_pkg_graph.child_nodes(atom)
 				yield (atom, child_pkgs[0])
 
