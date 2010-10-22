@@ -314,7 +314,7 @@ def help(myopts, havecolor=1):
 		print("       " + green("--backtrack") + " " + turquoise("COUNT"))
 		desc = "Specifies an integer number of times to backtrack if " + \
 			"dependency calculation fails due to a conflict or an " + \
-			"unsatisfied dependency (default: '5')."
+			"unsatisfied dependency (default: '10')."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()

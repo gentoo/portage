@@ -5466,7 +5466,7 @@ def backtrack_depgraph(settings, trees, myopts, myparams,
 def _backtrack_depgraph(settings, trees, myopts, myparams, 
 	myaction, myfiles, spinner):
 
-	backtrack_max = myopts.get('--backtrack', 5)
+	backtrack_max = myopts.get('--backtrack', 10)
 	backtrack_parameters = {}
 	needed_unstable_keywords = None
 	allow_backtracking = backtrack_max > 0
