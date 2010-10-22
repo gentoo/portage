@@ -13,6 +13,9 @@ def main(args):
 		for i, x in enumerate(args):
 			args[i] = portage._unicode_decode(x, errors='strict')
 
+	# Make locks quiet since unintended locking messages displayed on
+	# stdout would corrupt the intended output of this program.
+	portage.locks._quiet = True
 	lock_obj = portage.locks.lockfile(args[0], wantnewlockfile=True)
 	sys.stdout.write('\0')
 	sys.stdout.flush()
