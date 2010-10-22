@@ -30,25 +30,3 @@ class EbuildFetchonly(SlotObject):
 			eerror(msg, phase="unpack", key=pkg.cpv)
 
 		return rval
-
-	def _execute(self):
-		settings = self.settings
-		pkg = self.pkg
-		root_config = pkg.root_config
-		portdb = root_config.trees["porttree"].dbapi
-		ebuild_path = portdb.findname(pkg.cpv)
-		if ebuild_path is None:
-			raise AssertionError("ebuild not found for '%s'" % pkg.cpv)
-		debug = settings.get("PORTAGE_DEBUG") == "1"
-		retval = portage.doebuild(ebuild_path, "fetch",
-			self.settings["ROOT"], self.settings, debug=debug,
-			listonly=self.pretend, fetchonly=1, fetchall=self.fetch_all,
-			mydbapi=portdb, tree="porttree")
-
-		if retval != os.EX_OK:
-			msg = "Fetch failed for '%s'" % (pkg.cpv,)
-			eerror(msg, phase="unpack", key=pkg.cpv)
-
-		portage.elog.elog_process(self.pkg.cpv, self.settings)
-		return retval
-
