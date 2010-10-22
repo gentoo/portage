@@ -126,6 +126,8 @@ class _LockThread(AbstractPollTask):
 	def unlock(self):
 		if self.lock_obj is None:
 			raise AssertionError('not locked')
+		if self.returncode is None:
+			raise AssertionError('lock not acquired yet')
 		unlockfile(self.lock_obj)
 		self.lock_obj = None
 
@@ -217,6 +219,8 @@ class _LockProcess(AbstractPollTask):
 	def unlock(self):
 		if self._proc is None:
 			raise AssertionError('not locked')
+		if self.returncode is None:
+			raise AssertionError('lock not acquired yet')
 		self._files['pipe_out'].write(b'\0')
 		self._files['pipe_out'].close()
 		self._files = None
