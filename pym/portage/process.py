@@ -352,7 +352,25 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	# Quiet killing of subprocesses by SIGPIPE (see bug #309001).
 	signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
-	# Set up the command's pipes.
+	_setup_pipes(fd_pipes)
+
+	# Set requested process permissions.
+	if gid:
+		os.setgid(gid)
+	if groups:
+		os.setgroups(groups)
+	if uid:
+		os.setuid(uid)
+	if umask:
+		os.umask(umask)
+	if pre_exec:
+		pre_exec()
+
+	# And switch to the new process.
+	os.execve(binary, myargs, env)
+
+def _setup_pipes(fd_pipes):
+	"""Setup pipes for a forked process."""
 	my_fds = {}
 	# To protect from cases where direct assignment could
 	# clobber needed fds ({1:2, 2:1}) we first dupe the fds
@@ -370,21 +388,6 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 				os.close(fd)
 			except OSError:
 				pass
-
-	# Set requested process permissions.
-	if gid:
-		os.setgid(gid)
-	if groups:
-		os.setgroups(groups)
-	if uid:
-		os.setuid(uid)
-	if umask:
-		os.umask(umask)
-	if pre_exec:
-		pre_exec()
-
-	# And switch to the new process.
-	os.execve(binary, myargs, env)
 
 def find_binary(binary):
 	"""
