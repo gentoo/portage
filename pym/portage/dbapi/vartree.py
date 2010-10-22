@@ -3829,6 +3829,7 @@ class dblink(object):
 				shutil.copytree(var_orig, var_new, symlinks=True)
 				os.chmod(var_new, dir_perms)
 			portage._bin_path = settings['PORTAGE_BIN_PATH']
+			portage._pym_path = settings['PORTAGE_PYM_PATH']
 			os.chmod(base_path_tmp, dir_perms)
 			# This serves so pre-load the modules.
 			_preload_elog_modules(self.settings)
