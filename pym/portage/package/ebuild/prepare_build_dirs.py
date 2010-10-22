@@ -72,8 +72,12 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
 	try:
 		for mydir in mydirs:
 			ensure_dirs(mydir)
-			apply_secpass_permissions(mydir,
-				gid=portage_gid, uid=portage_uid, mode=0o70, mask=0)
+			try:
+				apply_secpass_permissions(mydir,
+					gid=portage_gid, uid=portage_uid, mode=0o70, mask=0)
+			except PortageException:
+				if not os.path.isdir(mydir):
+					raise
 		for dir_key in ("PORTAGE_BUILDDIR", "HOME", "PKG_LOGDIR", "T"):
 			"""These directories don't necessarily need to be group writable.
 			However, the setup phase is commonly run as a privileged user prior
