@@ -366,6 +366,8 @@ class RepoConfigLoader(object):
 				master_repos = []
 				for master_name in repo.masters:
 					if master_name not in prepos:
+						layout_filename = os.path.join(repo.user_location,
+							"metadata", "layout.conf")
 						writemsg_level(_("Unavailable repository '%s' " \
 							"referenced by masters entry in '%s'\n") % \
 							(master_name, layout_filename),
