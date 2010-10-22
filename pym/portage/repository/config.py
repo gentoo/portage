@@ -160,7 +160,7 @@ class RepoConfig(object):
 		if self.priority:
 			repo_msg.append(indent + "priority: " + str(self.priority))
 		if self.aliases:
-			repo_msg.append(indent + "aliases: " + self.aliases)
+			repo_msg.append(indent + "aliases: " + " ".join(self.aliases))
 		if self.eclass_overrides:
 			repo_msg.append(indent + "eclass_overrides: " + \
 				" ".join(self.eclass_overrides))
