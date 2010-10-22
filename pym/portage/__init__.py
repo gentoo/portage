@@ -327,6 +327,7 @@ except (ImportError, OSError) as e:
 # ===========================================================================
 
 _python_interpreter = os.path.realpath(sys.executable)
+_bin_path = PORTAGE_BIN_PATH
 
 def _ensure_default_encoding():
 
