@@ -16,14 +16,24 @@ class AsynchronousLockTestCase(TestCase):
 		tempdir = tempfile.mkdtemp()
 		try:
 			path = os.path.join(tempdir, 'lock_me')
-			for force_thread in (True, False):
+			for force_async in (True, False):
 				for force_dummy in (True, False):
 					async_lock = AsynchronousLock(path=path,
-						scheduler=scheduler, _force_dummy=force_dummy,
-						_force_thread=force_thread)
+						scheduler=scheduler, _force_async=force_async,
+						_force_thread=True,
+						_force_dummy=force_dummy)
 					async_lock.start()
 					async_lock.wait()
 					async_lock.unlock()
 					self.assertEqual(async_lock.returncode, os.EX_OK)
+
+				async_lock = AsynchronousLock(path=path,
+					scheduler=scheduler, _force_async=force_async,
+					_force_process=True)
+				async_lock.start()
+				async_lock.wait()
+				async_lock.unlock()
+				self.assertEqual(async_lock.returncode, os.EX_OK)
+
 		finally:
 			shutil.rmtree(tempdir)

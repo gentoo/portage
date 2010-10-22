@@ -1299,11 +1299,14 @@ class dblink(object):
 				scheduler=self._scheduler)
 			async_lock.start()
 			async_lock.wait()
-			self._lock_vdb = async_lock.lock_obj
+			self._lock_vdb = async_lock
 
 	def unlockdb(self):
-		if self._lock_vdb:
-			unlockdir(self._lock_vdb)
+		if self._lock_vdb is not None:
+			if isinstance(self._lock_vdb, AsynchronousLock):
+				self._lock_vdb.unlock()
+			else:
+				unlockdir(self._lock_vdb)
 			self._lock_vdb = None
 
 	def getpath(self):
@@ -3824,6 +3827,7 @@ class dblink(object):
 				settings.backup_changes(var_name)
 				shutil.copytree(var_orig, var_new, symlinks=True)
 				os.chmod(var_new, dir_perms)
+			portage._bin_path = settings['PORTAGE_BIN_PATH']
 			os.chmod(base_path_tmp, dir_perms)
 			# This serves so pre-load the modules.
 			_preload_elog_modules(self.settings)
