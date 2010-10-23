@@ -2154,19 +2154,10 @@ else:
 		mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and (elem[0] in "MR" or elem[1] in "M")]
 		mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A")]
 		myremoved = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("D")]
-		# in contrast to CVS, SVN expands nothing by default.
-		# bin_blobs historically
-		# were just there to see what files need to be checked for
-		# keyword expansion, which is exactly what we do here, so
-		# slightly change the semantic meaning of "bin_blob"...  In the
-		# future we could store which keyword is expanded.
-		props = os.popen("svn propget -R svn:keywords").readlines()
 
-		# For files with multiple props set, props are delimited by newlines,
-		# so exclude lines that don't contain " - " since each of those lines
-		# only a contain props for a file listed on a previous line.
-		expansion = set("./" + prop.split(" - ")[0] \
-			for prop in props if " - " in prop)
+		# Subversion expands keywords specified in svn:keywords properties.
+		props = os.popen("svn propget -R svn:keywords").readlines()
+		expansion = dict(("./" + prop.split(" - ")[0], prop.split(" - ")[1].split()) for prop in props)
 
 	elif vcs == "git":
 		mychanged = os.popen("git diff-index --name-only --relative --diff-filter=M HEAD").readlines()
@@ -2226,10 +2217,19 @@ else:
 		print()
 	else:
 		if vcs == 'cvs':
-			headerstring = "'\$(Header|Id)"
-		elif vcs == 'svn':
-			headerstring = "'\$Id"
-		headerstring += ".*\$'"
+			headerstring = "'\$(Header|Id).*\$'"
+		elif vcs == "svn":
+			svn_keywords = ["Rev",
+					"Revision",
+					"LastChangedRevision",
+					"Date",
+					"LastChangedDate",
+					"Author",
+					"LastChangedBy",
+					"URL",
+					"HeadURL",
+					"Id",
+					"Header"]
 
 		for myfile in myupdates:
 
@@ -2242,6 +2242,14 @@ else:
 			elif vcs == "svn":
 				if myfile not in expansion:
 					continue
+				
+				# Subversion keywords are case-insensitive in svn:keywords properties, but case-sensitive in contents of files.
+				enabled_keywords = []
+				for keyword in svn_keywords:
+					if keyword.lower() in (k.lower() for k in expansion[myfile]):
+						enabled_keywords.append(keyword)
+
+				headerstring = "'\$(%s).*\$'" % "|".join(enabled_keywords)
 
 			myout = subprocess_getstatusoutput("egrep -q "+headerstring+" "+myfile)
 			if myout[0] == 0:
