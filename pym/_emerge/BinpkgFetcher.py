@@ -144,7 +144,7 @@ class BinpkgFetcher(SpawnProcess):
 			scheduler=self.scheduler)
 		async_lock.start()
 		async_lock.wait()
-		self._lock_obj = async_lock.lock_obj
+		self._lock_obj = async_lock
 		self.locked = True
 
 	class AlreadyLocked(portage.exception.PortageException):
@@ -153,7 +153,7 @@ class BinpkgFetcher(SpawnProcess):
 	def unlock(self):
 		if self._lock_obj is None:
 			return
-		portage.locks.unlockfile(self._lock_obj)
+		self._lock_obj.unlock()
 		self._lock_obj = None
 		self.locked = False
 

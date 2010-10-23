@@ -116,6 +116,7 @@ class RepoConfig(object):
 			self.masters = new_repo.masters
 		if new_repo.name is not None:
 			self.name = new_repo.name
+			self.missing_repo_name = new_repo.missing_repo_name
 		if new_repo.user_location is not None:
 			self.user_location = new_repo.user_location
 		if new_repo.location is not None:
@@ -159,9 +160,10 @@ class RepoConfig(object):
 		if self.priority:
 			repo_msg.append(indent + "priority: " + str(self.priority))
 		if self.aliases:
-			repo_msg.append(indent + "aliases: " + self.aliases)
+			repo_msg.append(indent + "aliases: " + " ".join(self.aliases))
 		if self.eclass_overrides:
-			repo_msg.append(indent + "eclass_overrides: " + self.eclass_overrides)
+			repo_msg.append(indent + "eclass_overrides: " + \
+				" ".join(self.eclass_overrides))
 		repo_msg.append("")
 		return "\n".join(repo_msg) + "\n"
 
@@ -242,12 +244,16 @@ class RepoConfigLoader(object):
 								ignored_location_map[old_location] = repo.name
 							prepos[repo.name].update(repo)
 						else:
+							prepos[repo.name] = repo
+
+						repo = prepos[repo.name]
+						if repo.priority is None:
 							if ov == portdir and portdir not in port_ov:
 								repo.priority = 1000
 							else:
 								repo.priority = base_priority
 								base_priority -= 1
-							prepos[repo.name] = repo
+
 					else:
 						writemsg(_("!!! Invalid PORTDIR_OVERLAY"
 							" (not a dir): '%s'\n") % ov, noiselevel=-1)
@@ -292,6 +298,16 @@ class RepoConfigLoader(object):
 			else:
 				masters = None
 			repo.masters = masters
+
+			aliases = layout_data.get('aliases')
+			if aliases and aliases.strip():
+				aliases = aliases.split()
+			else:
+				aliases = None
+			if aliases:
+				if repo.aliases:
+					aliases.extend(repo.aliases)
+				repo.aliases = tuple(sorted(set(aliases)))
 
 		#Take aliases into account.
 		new_prepos = {}
@@ -360,6 +376,8 @@ class RepoConfigLoader(object):
 				master_repos = []
 				for master_name in repo.masters:
 					if master_name not in prepos:
+						layout_filename = os.path.join(repo.user_location,
+							"metadata", "layout.conf")
 						writemsg_level(_("Unavailable repository '%s' " \
 							"referenced by masters entry in '%s'\n") % \
 							(master_name, layout_filename),

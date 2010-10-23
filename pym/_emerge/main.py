@@ -1481,6 +1481,7 @@ def emerge_main():
 	if settings.get("PORTAGE_DEBUG", "") == "1":
 		spinner.update = spinner.update_quiet
 		portage.debug=1
+		portage.util.noiselimit = 0
 		if "python-trace" in settings.features:
 			import portage.debug
 			portage.debug.set_trace(True)

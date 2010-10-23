@@ -3,6 +3,8 @@
 
 from __future__ import print_function
 
+import sys
+
 from _emerge.AtomArg import AtomArg
 from _emerge.Package import Package
 from _emerge.PackageArg import PackageArg
@@ -11,6 +13,9 @@ from portage.output import colorize
 from portage._sets.base import InternalPackageSet
 from portage.util import writemsg
 from portage.versions import cpv_getversion, vercmp
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 class slot_conflict_handler(object):
 	"""This class keeps track of all slot conflicts and provides

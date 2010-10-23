@@ -68,7 +68,7 @@ class portdbapi(dbapi):
 	def porttree_root(self):
 		return self.settings.repositories.mainRepoLocation()
 
-	def __init__(self, mysettings=None):
+	def __init__(self, _unused_param=None, mysettings=None):
 		"""
 		@param _unused_param: deprecated, use mysettings['PORTDIR'] instead
 		@type _unused_param: None
@@ -83,6 +83,14 @@ class portdbapi(dbapi):
 		else:
 			from portage import settings
 			self.settings = config(clone=settings)
+
+		if _unused_param is not None and \
+			_unused_param != self.settings['PORTDIR']:
+			warnings.warn("The first parameter of the " + \
+				"portage.dbapi.porttree.portdbapi" + \
+				" constructor is now unused. " + \
+				"mysettings['PORTDIR'] will be used instead.",
+				DeprecationWarning, stacklevel=2)
 
 		self.repositories = self.settings.repositories
 		self.treemap = self.repositories.treemap

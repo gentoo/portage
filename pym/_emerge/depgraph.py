@@ -757,6 +757,21 @@ class depgraph(object):
 			return 0
 		return 1
 
+	def _check_slot_conflict(self, pkg, atom):
+		existing_node = self._dynamic_config._slot_pkg_map[pkg.root].get(pkg.slot_atom)
+		matches = None
+		if existing_node:
+			matches = pkg.cpv == existing_node.cpv
+			if pkg != existing_node and \
+				atom is not None:
+				# Use package set for matching since it will match via
+				# PROVIDE when necessary, while match_from_list does not.
+				matches = bool(InternalPackageSet(initial_atoms=(atom,),
+					allow_repo=True).findAtomForPackage(existing_node,
+					modified_use=self._pkg_use_enabled(existing_node)))
+
+		return (existing_node, matches)
+
 	def _add_pkg(self, pkg, dep):
 		myparent = None
 		priority = None
@@ -812,20 +827,10 @@ class depgraph(object):
 				# are being merged in that case.
 				priority.rebuild = True
 
-			existing_node = self._dynamic_config._slot_pkg_map[pkg.root].get(pkg.slot_atom)
+			existing_node, existing_node_matches = \
+				self._check_slot_conflict(pkg, dep.atom)
 			slot_collision = False
 			if existing_node:
-				existing_node_matches = pkg.cpv == existing_node.cpv
-				if existing_node_matches and \
-					pkg != existing_node and \
-					dep.atom is not None:
-					# Use package set for matching since it will match via
-					# PROVIDE when necessary, while match_from_list does not.
-					atom_set = InternalPackageSet(initial_atoms=[dep.atom],
-						allow_repo=True)
-					if not atom_set.findAtomForPackage(existing_node, \
-						modified_use=self._pkg_use_enabled(existing_node)):
-						existing_node_matches = False
 				if existing_node_matches:
 					# The existing node can be reused.
 					if arg_atoms:
@@ -1389,20 +1394,30 @@ class depgraph(object):
 				if eliminate_pkg:
 					atom_pkg_graph.remove(pkg)
 
-			# Yield < and <= atoms first, since those are more likely to
+			# Yield ~, =*, < and <= atoms first, since those are more likely to
 			# cause slot conflicts, and we want those atoms to be displayed
 			# in the resulting slot conflict message (see bug #291142).
-			less_than = []
-			not_less_than = []
+			conflict_atoms = []
+			normal_atoms = []
 			for atom in cp_atoms:
-				if atom.operator in ('<', '<='):
-					less_than.append(atom)
+				conflict = False
+				for child_pkg in atom_pkg_graph.child_nodes(atom):
+					existing_node, matches = \
+						self._check_slot_conflict(child_pkg, atom)
+					if existing_node and not matches:
+						conflict = True
+						break
+				if conflict:
+					conflict_atoms.append(atom)
 				else:
-					not_less_than.append(atom)
+					normal_atoms.append(atom)
 
-			for atom in chain(less_than, not_less_than):
+			for atom in chain(conflict_atoms, normal_atoms):
 				child_pkgs = atom_pkg_graph.child_nodes(atom)
-				yield (atom, child_pkgs[0])
+				# if more than one child, yield highest version
+				if len(child_pkgs) > 1:
+					child_pkgs.sort()
+				yield (atom, child_pkgs[-1])
 
 	def _queue_disjunctive_deps(self, pkg, dep_root, dep_priority, dep_struct):
 		"""
@@ -4168,9 +4183,6 @@ class depgraph(object):
 				min_parent_deps = None
 				uninst_task = None
 
-				# FIXME: This loop can be extremely slow when
-				#        there of lots of blockers to solve
-				#        (especially the gather_deps part).
 				for task in myblocker_uninstalls.leaf_nodes():
 					# Do some sanity checks so that system or world packages
 					# don't get uninstalled inappropriately here (only really
@@ -4297,9 +4309,20 @@ class depgraph(object):
 					self._spinner_update()
 					mergeable_parent = False
 					parent_deps = set()
+					parent_deps.add(task)
 					for parent in mygraph.parent_nodes(task):
 						parent_deps.update(mygraph.child_nodes(parent,
 							ignore_priority=priority_range.ignore_medium_soft))
+						if min_parent_deps is not None and \
+							len(parent_deps) >= min_parent_deps:
+							# This task is no better than a previously selected
+							# task, so abort search now in order to avoid wasting
+							# any more cpu time on this task. This increases
+							# performance dramatically in cases when there are
+							# hundreds of blockers to solve, like when
+							# upgrading to a new slot of kde-meta.
+							mergeable_parent = None
+							break
 						if parent in mergeable_nodes and \
 							gather_deps(ignore_uninst_or_med_soft,
 							mergeable_nodes, set(), parent):
@@ -4308,11 +4331,15 @@ class depgraph(object):
 					if not mergeable_parent:
 						continue
 
-					parent_deps.remove(task)
 					if min_parent_deps is None or \
 						len(parent_deps) < min_parent_deps:
 						min_parent_deps = len(parent_deps)
 						uninst_task = task
+
+					if uninst_task is not None and min_parent_deps == 1:
+						# This is the best possible result, so so abort search
+						# now in order to avoid wasting any more cpu time.
+						break
 
 				if uninst_task is not None:
 					# The uninstall is performed only after blocking
@@ -5511,8 +5538,8 @@ def backtrack_depgraph(settings, trees, myopts, myparams,
 
 def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, spinner):
 
-	max_retries = myopts.get('--backtrack', 5)
-	max_depth = myopts.get('--backtrack', 5)
+	max_retries = myopts.get('--backtrack', 10)
+	max_depth = max(1, (max_retries + 1) / 2)
 	allow_backtracking = max_retries > 0
 	backtracker = Backtracker(max_depth)
 	backtracked = 0

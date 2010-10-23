@@ -59,6 +59,7 @@ from _emerge.Scheduler import Scheduler
 from _emerge.search import search
 from _emerge.SetArg import SetArg
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
+from _emerge.sync.getaddrinfo_validate import getaddrinfo_validate
 from _emerge.sync.old_tree_timestamp import old_tree_timestamp_warn
 from _emerge.unmerge import unmerge
 from _emerge.UnmergeDepPriority import UnmergeDepPriority
@@ -617,6 +618,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	myopts, action, args_set, spinner):
 	allow_missing_deps = bool(args_set)
 
+	debug = '--debug' in myopts
 	xterm_titles = "notitles" not in settings.features
 	myroot = settings["ROOT"]
 	root_config = trees[myroot]["root_config"]
@@ -1101,6 +1103,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			clean_set = set(cleanlist)
 
 	if clean_set:
+		writemsg_level(">>> Calculating removal order...\n")
 		# Use a topological sort to create an unmerge order such that
 		# each package is unmerged before it's dependencies. This is
 		# necessary to avoid breaking things that may need to run
@@ -1129,6 +1132,15 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				if not depstr:
 					continue
 				priority = priority_map[dep_type]
+
+				if debug:
+					writemsg_level(_unicode_decode("\nParent:    %s\n") \
+						% (node,), noiselevel=-1, level=logging.DEBUG)
+					writemsg_level(_unicode_decode(  "Depstring: %s\n") \
+						% (depstr,), noiselevel=-1, level=logging.DEBUG)
+					writemsg_level(_unicode_decode(  "Priority:  %s\n") \
+						% (priority,), noiselevel=-1, level=logging.DEBUG)
+
 				try:
 					atoms = resolver._select_atoms(myroot, depstr,
 						myuse=node.use.enabled, parent=node,
@@ -1137,6 +1149,11 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 					# Ignore invalid deps of packages that will
 					# be uninstalled anyway.
 					continue
+
+				if debug:
+					writemsg_level("Candidates: [%s]\n" % \
+						', '.join(_unicode_decode("'%s'") % (x,) for x in atoms),
+						noiselevel=-1, level=logging.DEBUG)
 
 				for atom in atoms:
 					if not isinstance(atom, portage.dep.Atom):
@@ -1150,6 +1167,12 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 					for child_node in matches:
 						if child_node in clean_set:
 							graph.add(child_node, node, priority=priority)
+
+		if debug:
+			writemsg_level("\nunmerge digraph:\n\n",
+				noiselevel=-1, level=logging.DEBUG)
+			graph.debug_print()
+			writemsg_level("\n", noiselevel=-1, level=logging.DEBUG)
 
 		ordered = True
 		if len(graph.order) == len(graph.root_nodes()):
@@ -1180,7 +1203,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 					raise AssertionError("no root nodes")
 				if ignore_priority is not None:
 					# Some deps have been dropped due to circular dependencies,
-					# so only pop one node in order do minimize the number that
+					# so only pop one node in order to minimize the number that
 					# are dropped.
 					del nodes[1:]
 				for node in nodes:
@@ -2096,34 +2119,42 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			("-6" in all_rsync_opts or "--ipv6" in all_rsync_opts):
 			family = socket.AF_INET6
 
+		addrinfos = None
 		uris = []
 
 		try:
-			addrinfos = socket.getaddrinfo(hostname, None,
-				family, socket.SOCK_STREAM)
+			addrinfos = getaddrinfo_validate(
+				socket.getaddrinfo(hostname, None,
+				family, socket.SOCK_STREAM))
 		except socket.error as e:
-			writemsg("!!! getaddrinfo failed: %s\n" % (e,), noiselevel=-1)
-			# With some configurations we need to use the plain hostname
-			# rather than try to resolve the ip addresses (bug #340817).
-			uris.append(syncuri)
-		else:
+			writemsg_level(
+				"!!! getaddrinfo failed for '%s': %s\n" % (hostname, e),
+				noiselevel=-1, level=logging.ERROR)
+
+		if addrinfos:
+
+			AF_INET = socket.AF_INET
+			AF_INET6 = None
+			if socket.has_ipv6:
+				AF_INET6 = socket.AF_INET6
+
 			ips_v4 = []
 			ips_v6 = []
 
 			for addrinfo in addrinfos:
-				if socket.has_ipv6 and addrinfo[0] == socket.AF_INET6:
+				if addrinfo[0] == AF_INET:
+					ips_v4.append("%s" % addrinfo[4][0])
+				elif AF_INET6 is not None and addrinfo[0] == AF_INET6:
 					# IPv6 addresses need to be enclosed in square brackets
 					ips_v6.append("[%s]" % addrinfo[4][0])
-				else:
-					ips_v4.append(addrinfo[4][0])
 
 			random.shuffle(ips_v4)
 			random.shuffle(ips_v6)
 
 			# Give priority to the address family that
 			# getaddrinfo() returned first.
-			if socket.has_ipv6 and addrinfos and \
-				addrinfos[0][0] == socket.AF_INET6:
+			if AF_INET6 is not None and addrinfos and \
+				addrinfos[0][0] == AF_INET6:
 				ips = ips_v6 + ips_v4
 			else:
 				ips = ips_v4 + ips_v6
@@ -2132,6 +2163,11 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				uris.append(syncuri.replace(
 					"//" + user_name + hostname + port + "/",
 					"//" + user_name + ip + port + "/", 1))
+
+		if not uris:
+			# With some configurations we need to use the plain hostname
+			# rather than try to resolve the ip addresses (bug #340817).
+			uris.append(syncuri)
 
 		# reverse, for use with pop()
 		uris.reverse()

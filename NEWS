@@ -6,6 +6,7 @@ portage-2.2
 * Add link level dependency awareness to emerge --depclean and --prune actions
   in order to protect against uninstallation of required libraries.
 * Add support for generic package sets (also see RELEASE-NOTES)
+* Add EAPI 4_pre1 support, for testing purposes.
 
 portage-2.1.9
 -------------
@@ -14,7 +15,9 @@ portage-2.1.9
   by default. This allows portage to communicate with running ebuild processes,
   for things like best_version, has_version, and die calls in nested processes.
   This flag should remain enabled unless it is found to be incompatible with a
-  specific profile or environment.
+  specific profile or environment. When enabled, it fixes bug #278895,
+  bug #315615, and makes subshell die support more robust (so that repoman's
+  ebuild.nesteddie check is irrelevant).
 
 portage-2.1.8
 -------------

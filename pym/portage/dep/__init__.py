@@ -378,7 +378,10 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 			if level > 0:
 				level -= 1
 				l = stack.pop()
-				is_single = (len(l) == 1 or (len(l)==2 and l[0] == "||"))
+
+				is_single = len(l) == 1 or \
+					(opconvert and l and l[0] == "||") or \
+					(not opconvert and len(l)==2 and l[0] == "||")
 				ignore = False
 
 				if flat:
@@ -411,18 +414,56 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 				def ends_in_any_of_dep(k):
 					return k>=0 and stack[k] and stack[k][-1] == "||"
 
+				def starts_with_any_of_dep(k):
+					#'ends_in_any_of_dep' for opconvert
+					return k>=0 and stack[k] and stack[k][0] == "||"
+
+				def last_any_of_operator_level(k):
+					#Returns the level of the last || operator if it is in effect for
+					#the current level. It is not in effect, if there is a level, that
+					#ends in a non-operator. This is almost equivalent to stack[level][-1]=="||",
+					#expect that it skips empty levels.
+					while k>=0:
+						if stack[k]:
+							if stack[k][-1] == "||":
+								return k
+							elif stack[k][-1][-1] != "?":
+								return -1
+						k -= 1
+					return -1
+
 				def special_append():
 					"""
 					Use extend instead of append if possible. This kills all redundant brackets.
 					"""
 					if is_single:
-						if len(l) == 1 and isinstance(l[0], list):
+						#Either [A], [[...]] or [|| [...]]
+						if l[0] == "||" and ends_in_any_of_dep(level-1):
+							if opconvert:
+								stack[level].extend(l[1:])
+							else:
+								stack[level].extend(l[1])
+						elif len(l) == 1 and isinstance(l[0], list):
 							# l = [[...]]
-							stack[level].extend(l[0])
+							last = last_any_of_operator_level(level-1)
+							if last == -1:
+								if opconvert and isinstance(l[0], list) \
+									and l[0] and l[0][0] == '||':
+									stack[level].append(l[0])
+								else:
+									stack[level].extend(l[0])
+							else:
+								if opconvert and l[0] and l[0][0] == "||":
+									stack[level].extend(l[0][1:])
+								else:
+									stack[level].append(l[0])
 						else:
 							stack[level].extend(l)
-					else:	
-						stack[level].append(l)
+					else:
+						if opconvert and stack[level] and stack[level][-1] == '||':
+							stack[level][-1] = ['||'] + l
+						else:
+							stack[level].append(l)
 
 				if l and not ignore:
 					#The current list is not empty and we don't want to ignore it because
@@ -437,6 +478,10 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 						#Optimize: || ( A ) -> A,  || ( || ( ... ) ) -> || ( ... )
 						stack[level].pop()
 						special_append()
+					elif ends_in_any_of_dep(level) and ends_in_any_of_dep(level-1):
+						#Optimize: || ( A || ( B C ) ) -> || ( A B C )
+						stack[level].pop()
+						stack[level].extend(l)
 					else:
 						if opconvert and ends_in_any_of_dep(level):
 							#In opconvert mode, we have to move the operator from the level
