@@ -1414,7 +1414,10 @@ class depgraph(object):
 
 			for atom in chain(conflict_atoms, normal_atoms):
 				child_pkgs = atom_pkg_graph.child_nodes(atom)
-				yield (atom, child_pkgs[0])
+				# if more than one child, yield highest version
+				if len(child_pkgs) > 1:
+					child_pkgs.sort()
+				yield (atom, child_pkgs[-1])
 
 	def _queue_disjunctive_deps(self, pkg, dep_root, dep_priority, dep_struct):
 		"""
