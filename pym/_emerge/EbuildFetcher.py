@@ -156,7 +156,9 @@ class EbuildFetcher(SpawnProcess):
 			# When the output only goes to a log file,
 			# there's no point in creating a pty.
 			return os.pipe()
-		stdout_pipe = fd_pipes.get(1)
+		stdout_pipe = None
+		if not self.background:
+			stdout_pipe = fd_pipes.get(1)
 		got_pty, master_fd, slave_fd = \
 			_create_pty_or_pipe(copy_term_size=stdout_pipe)
 		return (master_fd, slave_fd)
