@@ -615,7 +615,7 @@ repolevel = len(reposplit)
 if options.mode == 'commit' and repolevel not in [1,2,3]:
 	print(red("***")+" Commit attempts *must* be from within a vcs co, category, or package directory.")
 	print(red("***")+" Attempting to commit from a packages files directory will be blocked for instance.")
-	print(red("***")+" This is intended behaviour, to ensure the manifest is recommited for a package.")
+	print(red("***")+" This is intended behaviour, to ensure the manifest is recommitted for a package.")
 	print(red("***"))
 	err("Unable to identify level we're commiting from for %s" % '/'.join(reposplit))
 
@@ -2041,7 +2041,7 @@ else:
 			myvcstree=portage.cvstree.getentries("./",recursive=1)
 			myunadded=portage.cvstree.findunadded(myvcstree,recursive=1,basedir="./")
 		except SystemExit as e:
-			raise  # TODO propogate this
+			raise  # TODO propagate this
 		except:
 			err("Error retrieving CVS tree; exiting.")
 	if vcs == "svn":
@@ -2049,7 +2049,7 @@ else:
 			svnstatus=os.popen("svn status --no-ignore").readlines()
 			myunadded = [ "./"+elem.rstrip().split()[1] for elem in svnstatus if elem.startswith("?") or elem.startswith("I") ]
 		except SystemExit as e:
-			raise  # TODO propogate this
+			raise  # TODO propagate this
 		except:
 			err("Error retrieving SVN info; exiting.")
 	if vcs == "git":
@@ -2062,7 +2062,7 @@ else:
 			bzrstatus=os.popen("bzr status -S .").readlines()
 			myunadded = [ "./"+elem.rstrip().split()[1].split('/')[-1:][0] for elem in bzrstatus if elem.startswith("?") or elem[0:2] == " D" ]
 		except SystemExit as e:
-			raise  # TODO propogate this
+			raise  # TODO propagate this
 		except:
 			err("Error retrieving bzr info; exiting.")
 	if vcs == "hg":
@@ -2253,8 +2253,7 @@ else:
 				myheaders.append(myfile)
 
 		print("%s have headers that will change." % green(str(len(myheaders))))
-		print("* Files with headers will cause the " + \
-			"manifests to be made and recommited.")
+		print("* Files with headers will cause the manifests to be changed and committed separately.")
 
 	logging.info("myupdates: %s", myupdates)
 	logging.info("myheaders: %s", myheaders)

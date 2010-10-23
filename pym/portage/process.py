@@ -209,7 +209,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 			raise CommandNotFound(mycommand[0])
 
 	# If we haven't been told what file descriptors to use
-	# default to propogating our stdin, stdout and stderr.
+	# default to propagating our stdin, stdout and stderr.
 	if fd_pipes is None:
 		fd_pipes = {
 			0:sys.stdin.fileno(),
@@ -252,7 +252,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 			raise
 		except Exception as e:
 			# We need to catch _any_ exception so that it doesn't
-			# propogate out of this function and cause exiting
+			# propagate out of this function and cause exiting
 			# with anything other than os._exit()
 			sys.stderr.write("%s:\n   %s\n" % (e, " ".join(mycommand)))
 			traceback.print_exc()
