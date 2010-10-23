@@ -62,6 +62,9 @@ if sys.hexversion >= 0x3000000:
 
 class Scheduler(PollScheduler):
 
+	# max time between display status updates (milliseconds)
+	_max_display_latency = 3000
+
 	_opts_ignore_blockers = \
 		frozenset(["--buildpkgonly",
 		"--fetchonly", "--fetch-all-uri",
@@ -317,8 +320,40 @@ class Scheduler(PollScheduler):
 		gc.collect()
 
 	def _poll(self, timeout=None):
+
 		self._schedule()
-		PollScheduler._poll(self, timeout=timeout)
+
+		if timeout is None:
+			while True:
+				previous_count = len(self._poll_event_queue)
+				PollScheduler._poll(self, timeout=self._max_display_latency)
+				self._status_display.display()
+				if previous_count != len(self._poll_event_queue):
+					break
+
+		elif timeout <= self._max_display_latency:
+			PollScheduler._poll(self, timeout=timeout)
+			self._status_display.display()
+
+		else:
+			remaining_timeout = timeout
+			start_time = time.time()
+			while True:
+				previous_count = len(self._poll_event_queue)
+				PollScheduler._poll(self,
+					timeout=min(self._max_display_latency, remaining_timeout))
+				self._status_display.display()
+				if previous_count != len(self._poll_event_queue):
+					break
+				elapsed_time = time.time() - start_time
+				if elapsed_time < 0:
+					# The system clock has changed such that start_time
+					# is now in the future, so just assume that the
+					# timeout has already elapsed.
+					break
+				remaining_timeout = timeout - 1000 * elapsed_time
+				if remaining_timeout <= 0:
+					break
 
 	def _set_max_jobs(self, max_jobs):
 		self._max_jobs = max_jobs
