@@ -188,11 +188,8 @@ has_version() {
 	fi
 	local retval=$?
 	case "${retval}" in
-		0)
-			return 0
-			;;
-		1)
-			return 1
+		0|1)
+			return ${retval}
 			;;
 		*)
 			die "unexpected portageq exit code: ${retval}"
@@ -230,11 +227,8 @@ best_version() {
 	fi
 	local retval=$?
 	case "${retval}" in
-		0)
-			return 0
-			;;
-		1)
-			return 1
+		0|1)
+			return ${retval}
 			;;
 		*)
 			die "unexpected portageq exit code: ${retval}"
