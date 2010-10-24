@@ -46,7 +46,13 @@ class QueueScheduler(PollScheduler):
 			self._schedule_wait(timeout=remaining_timeout)
 			if timeout is not None:
 				elapsed_time = time.time() - start_time
-				remaining_timeout = (timeout - 1000 * elapsed_time)
+				if elapsed_time < 0:
+					# The system clock has changed such that start_time
+					# is now in the future, so just assume that the
+					# timeout has already elapsed.
+					timed_out = True
+					break
+				remaining_timeout = timeout - 1000 * elapsed_time
 				if remaining_timeout <= 0:
 					timed_out = True
 					break
@@ -56,7 +62,13 @@ class QueueScheduler(PollScheduler):
 				self._schedule_wait(timeout=remaining_timeout)
 				if timeout is not None:
 					elapsed_time = time.time() - start_time
-					remaining_timeout = (timeout - 1000 * elapsed_time)
+					if elapsed_time < 0:
+						# The system clock has changed such that start_time
+						# is now in the future, so just assume that the
+						# timeout has already elapsed.
+						timed_out = True
+						break
+					remaining_timeout = timeout - 1000 * elapsed_time
 					if remaining_timeout <= 0:
 						timed_out = True
 						break

@@ -623,7 +623,7 @@ repolevel = len(reposplit)
 if options.mode == 'commit' and repolevel not in [1,2,3]:
 	print(red("***")+" Commit attempts *must* be from within a vcs co, category, or package directory.")
 	print(red("***")+" Attempting to commit from a packages files directory will be blocked for instance.")
-	print(red("***")+" This is intended behaviour, to ensure the manifest is recommited for a package.")
+	print(red("***")+" This is intended behaviour, to ensure the manifest is recommitted for a package.")
 	print(red("***"))
 	err("Unable to identify level we're commiting from for %s" % '/'.join(reposplit))
 
@@ -2050,7 +2050,7 @@ else:
 			myvcstree=portage.cvstree.getentries("./",recursive=1)
 			myunadded=portage.cvstree.findunadded(myvcstree,recursive=1,basedir="./")
 		except SystemExit as e:
-			raise  # TODO propogate this
+			raise  # TODO propagate this
 		except:
 			err("Error retrieving CVS tree; exiting.")
 	if vcs == "svn":
@@ -2058,7 +2058,7 @@ else:
 			svnstatus=os.popen("svn status --no-ignore").readlines()
 			myunadded = [ "./"+elem.rstrip().split()[1] for elem in svnstatus if elem.startswith("?") or elem.startswith("I") ]
 		except SystemExit as e:
-			raise  # TODO propogate this
+			raise  # TODO propagate this
 		except:
 			err("Error retrieving SVN info; exiting.")
 	if vcs == "git":
@@ -2071,7 +2071,7 @@ else:
 			bzrstatus=os.popen("bzr status -S .").readlines()
 			myunadded = [ "./"+elem.rstrip().split()[1].split('/')[-1:][0] for elem in bzrstatus if elem.startswith("?") or elem[0:2] == " D" ]
 		except SystemExit as e:
-			raise  # TODO propogate this
+			raise  # TODO propagate this
 		except:
 			err("Error retrieving bzr info; exiting.")
 	if vcs == "hg":
@@ -2157,22 +2157,13 @@ else:
 
 	if vcs == "svn":
 		svnstatus = os.popen("svn status").readlines()
-		mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and elem[:1] in "MR" ]
-		mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A") ]
-		myremoved = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("D") ]
-		# in contrast to CVS, SVN expands nothing by default.
-		# bin_blobs historically
-		# were just there to see what files need to be checked for
-		# keyword expansion, which is exactly what we do here, so
-		# slightly change the semantic meaning of "bin_blob"...  In the
-		# future we could store which keyword is expanded.
-		props = os.popen("svn propget -R svn:keywords").readlines()
+		mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and (elem[0] in "MR" or elem[1] in "M")]
+		mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A")]
+		myremoved = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("D")]
 
-		# For files with multiple props set, props are delimited by newlines,
-		# so exclude lines that don't contain " - " since each of those lines
-		# only a contain props for a file listed on a previous line.
-		expansion = set("./" + prop.split(" - ")[0] \
-			for prop in props if " - " in prop)
+		# Subversion expands keywords specified in svn:keywords properties.
+		props = os.popen("svn propget -R svn:keywords").readlines()
+		expansion = dict(("./" + prop.split(" - ")[0], prop.split(" - ")[1].split()) for prop in props)
 
 	elif vcs == "git":
 		mychanged = os.popen("git diff-index --name-only --relative --diff-filter=M HEAD").readlines()
@@ -2232,10 +2223,19 @@ else:
 		print()
 	else:
 		if vcs == 'cvs':
-			headerstring = "'\$(Header|Id)"
-		elif vcs == 'svn':
-			headerstring = "'\$Id"
-		headerstring += ".*\$'"
+			headerstring = "'\$(Header|Id).*\$'"
+		elif vcs == "svn":
+			svn_keywords = ["Rev",
+					"Revision",
+					"LastChangedRevision",
+					"Date",
+					"LastChangedDate",
+					"Author",
+					"LastChangedBy",
+					"URL",
+					"HeadURL",
+					"Id",
+					"Header"]
 
 		for myfile in myupdates:
 
@@ -2248,14 +2248,21 @@ else:
 			elif vcs == "svn":
 				if myfile not in expansion:
 					continue
+				
+				# Subversion keywords are case-insensitive in svn:keywords properties, but case-sensitive in contents of files.
+				enabled_keywords = []
+				for keyword in svn_keywords:
+					if keyword.lower() in (k.lower() for k in expansion[myfile]):
+						enabled_keywords.append(keyword)
+
+				headerstring = "'\$(%s).*\$'" % "|".join(enabled_keywords)
 
 			myout = subprocess_getstatusoutput("egrep -q "+headerstring+" "+myfile)
 			if myout[0] == 0:
 				myheaders.append(myfile)
 
 		print("%s have headers that will change." % green(str(len(myheaders))))
-		print("* Files with headers will cause the " + \
-			"manifests to be made and recommited.")
+		print("* Files with headers will cause the manifests to be changed and committed separately.")
 
 	logging.info("myupdates: %s", myupdates)
 	logging.info("myheaders: %s", myheaders)

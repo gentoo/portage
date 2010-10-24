@@ -1,5 +1,5 @@
 # repoman: Utilities
-# Copyright 2007 Gentoo Foundation
+# Copyright 2007-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """This module contains utility functions to help repoman find ebuilds to
@@ -75,7 +75,7 @@ def detect_vcs_conflicts(options, vcs):
 		for line in mylines:
 			if not line:
 				continue
-			if line[0] not in "UPMARD": # Updates,Patches,Modified,Added,Removed/Replaced(svn),Deleted(svn)
+			if line[0] not in " UPMARD": # unmodified(svn),Updates,Patches,Modified,Added,Removed/Replaced(svn),Deleted(svn)
 				# Stray Manifest is fine, we will readd it anyway.
 				if line[0] == '?' and line[1:].lstrip() == 'Manifest':
 					continue
