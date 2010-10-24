@@ -917,7 +917,10 @@ install_qa_check_macho() {
 		# this is ugly, paths with spaces won't work
 		reevaluate=0
 		for lib in ${needed//,/ } ; do
-			if [[ ! -e ${lib} && ! -e ${D}${lib} && ${lib} != "@executable_path/"* && ${lib} != "@loader_path/"* ]] ; then
+			if [[ ${lib} == ${D}* ]] ; then
+				eqawarn "QA Notice: install_name references \${D}: ${lib} in ${obj}"
+				touch "${T}"/.install_name_check_failed
+			elif [[ ! -e ${lib} && ! -e ${D}${lib} && ${lib} != "@executable_path/"* && ${lib} != "@loader_path/"* ]] ; then
 				# try to "repair" this if possible, happens because of
 				# gen_usr_ldscript tactics
 				s=${lib%usr/*}${lib##*/usr/}
