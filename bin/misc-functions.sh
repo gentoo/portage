@@ -920,6 +920,9 @@ install_qa_check_macho() {
 			if [[ ${lib} == ${D}* ]] ; then
 				eqawarn "QA Notice: install_name references \${D}: ${lib} in ${obj}"
 				touch "${T}"/.install_name_check_failed
+			elif [[ ${lib} == ${S}* ]] ; then
+				eqawarn "QA Notice: install_name references \${S}: ${lib} in ${obj}"
+				touch "${T}"/.install_name_check_failed
 			elif [[ ! -e ${lib} && ! -e ${D}${lib} && ${lib} != "@executable_path/"* && ${lib} != "@loader_path/"* ]] ; then
 				# try to "repair" this if possible, happens because of
 				# gen_usr_ldscript tactics
