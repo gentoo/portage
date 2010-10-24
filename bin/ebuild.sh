@@ -1273,36 +1273,28 @@ dyn_help() {
 debug-print() {
 	# if $T isn't defined, we're in dep calculation mode and
 	# shouldn't do anything
-	[ ! -d "$T" ] && return 0
+	[[ ! -d ${T} || ${#} -eq 0 ]] && return 0
 
-	while [ "$1" ]; do
+	if [[ ${ECLASS_DEBUG_OUTPUT} == on ]]; then
+		printf 'debug: %s\n' "${@}" >&2
+	elif [[ -n ${ECLASS_DEBUG_OUTPUT} ]]; then
+		printf 'debug: %s\n' "${@}" >> "${ECLASS_DEBUG_OUTPUT}"
+	fi
 
-		# extra user-configurable targets
-		if [ "$ECLASS_DEBUG_OUTPUT" == "on" ]; then
-			echo "debug: $1" >&2
-		elif [ -n "$ECLASS_DEBUG_OUTPUT" ]; then
-			echo "debug: $1" >> $ECLASS_DEBUG_OUTPUT
-		fi
-
-		# default target
-		echo "$1" 2>/dev/null >> "${T}/eclass-debug.log"
-		# let the portage user own/write to this file
-		chmod g+w "${T}/eclass-debug.log" &>/dev/null
-
-		shift
-	done
+	# default target
+	printf '%s\n' "${@}" >> "${T}/eclass-debug.log"
+	# let the portage user own/write to this file
+	chmod g+w "${T}/eclass-debug.log" &>/dev/null
 }
 
 # The following 2 functions are debug-print() wrappers
 
 debug-print-function() {
-	str="$1: entering function"
-	shift
-	debug-print "$str, parameters: $*"
+	debug-print "${1}, parameters: ${*:2}"
 }
 
 debug-print-section() {
-	debug-print "now in section $*"
+	debug-print "now in section ${*}"
 }
 
 # Sources all eclasses in parameters
