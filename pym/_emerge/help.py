@@ -306,15 +306,15 @@ def help(myopts, havecolor=1):
 			"abort. If the displayed configuration changes are " + \
 			"satisfactory, you should copy and paste them into " + \
 			"the specified configuration file(s). Currently, " + \
-			"this only works for unstable KEYWORDS masks and " + \
-			"package.use settings."
+			"this only works for unstable KEYWORDS masks, " + \
+			"LICENSE masks, and package.use settings."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
 		print("       " + green("--backtrack") + " " + turquoise("COUNT"))
 		desc = "Specifies an integer number of times to backtrack if " + \
 			"dependency calculation fails due to a conflict or an " + \
-			"unsatisfied dependency (default: '5')."
+			"unsatisfied dependency (default: '10')."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
@@ -325,7 +325,7 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
-		print("       "+green("--buildpkg")+" ("+green("-b")+" short option)")
+		print("       "+green("--buildpkg") + "[=%s]" % turquoise("n") + " ("+green("-b")+" short option)")
 		desc = "Tells emerge to build binary packages for all ebuilds processed in" + \
 			" addition to actually merging the packages. Useful for maintainers" + \
 			" or if you administrate multiple Gentoo Linux systems (build once," + \

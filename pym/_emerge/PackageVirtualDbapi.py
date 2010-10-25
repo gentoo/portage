@@ -83,7 +83,7 @@ class PackageVirtualDbapi(dbapi):
 		self._match_cache[origdep] = result
 		return result[:]
 
-	def cpv_exists(self, cpv):
+	def cpv_exists(self, cpv, myrepo=None):
 		return cpv in self._cpv_map
 
 	def cp_list(self, mycp, use_cache=1):
@@ -135,7 +135,7 @@ class PackageVirtualDbapi(dbapi):
 		del self._cpv_map[pkg.cpv]
 		self._clear_cache()
 
-	def aux_get(self, cpv, wants):
+	def aux_get(self, cpv, wants, myrepo=None):
 		metadata = self._cpv_map[cpv].metadata
 		return [metadata.get(x, "") for x in wants]
 

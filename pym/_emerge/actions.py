@@ -11,6 +11,7 @@ import errno
 import logging
 import platform
 import pwd
+import random
 import re
 import shutil
 import signal
@@ -58,6 +59,7 @@ from _emerge.Scheduler import Scheduler
 from _emerge.search import search
 from _emerge.SetArg import SetArg
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
+from _emerge.sync.getaddrinfo_validate import getaddrinfo_validate
 from _emerge.sync.old_tree_timestamp import old_tree_timestamp_warn
 from _emerge.unmerge import unmerge
 from _emerge.UnmergeDepPriority import UnmergeDepPriority
@@ -565,7 +567,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	root_config = trees[settings['ROOT']]['root_config']
 	vardb = root_config.trees['vartree'].dbapi
 
-	args_set = InternalPackageSet()
+	args_set = InternalPackageSet(allow_repo=True)
 	if myfiles:
 		args_set.update(myfiles)
 		matched_packages = False
@@ -616,38 +618,24 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	myopts, action, args_set, spinner):
 	allow_missing_deps = bool(args_set)
 
+	debug = '--debug' in myopts
 	xterm_titles = "notitles" not in settings.features
 	myroot = settings["ROOT"]
 	root_config = trees[myroot]["root_config"]
 	psets = root_config.setconfig.psets
 	deselect = myopts.get('--deselect') != 'n'
-
-	required_set_stack = ["world"]
 	required_sets = {}
-	set_args = []
+	required_sets['world'] = psets['world']
 
-	# Recursively create InternalPackageSet instances for world
-	# and any sets nested within it.
-	while required_set_stack:
-		s = required_set_stack.pop()
-		if s in required_sets:
-			continue
-		pset = psets.get(s)
-		if pset is not None:
-			required_sets[s] = InternalPackageSet(
-				initial_atoms=pset.getAtoms())
-			for n in pset.getNonAtoms():
-				if n.startswith(SETPREFIX):
-					required_set_stack.append(n[len(SETPREFIX):])
-
-	# When removing packages, use a temporary version of world 'selected'
-	# set which excludes packages that are intended to be eligible for
-	# removal.
-	selected_set = required_sets["selected"]
+	# When removing packages, a temporary version of the world 'selected'
+	# set may be used which excludes packages that are intended to be
+	# eligible for removal.
+	selected_set = psets['selected']
+	required_sets['selected'] = selected_set
 	protected_set = InternalPackageSet()
 	protected_set_name = '____depclean_protected_set____'
 	required_sets[protected_set_name] = protected_set
-	system_set = required_sets.get("system")
+	system_set = psets["system"]
 
 	if not system_set or not selected_set:
 
@@ -680,13 +668,18 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		if args_set:
 
 			if deselect:
-				selected_set.clear()
+				# Start with an empty set.
+				selected_set = InternalPackageSet()
+				required_sets['selected'] = selected_set
+				# Pull in any sets nested within the selected set.
+				selected_set.update(psets['selected'].getNonAtoms())
 
 			# Pull in everything that's installed but not matched
 			# by an argument atom since we don't want to clean any
 			# package if something depends on it.
 			for pkg in vardb:
-				spinner.update()
+				if spinner:
+					spinner.update()
 
 				try:
 					if args_set.findAtomForPackage(pkg) is None:
@@ -702,7 +695,11 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	elif action == "prune":
 
 		if deselect:
-			selected_set.clear()
+			# Start with an empty set.
+			selected_set = InternalPackageSet()
+			required_sets['selected'] = selected_set
+			# Pull in any sets nested within the selected set.
+			selected_set.update(psets['selected'].getNonAtoms())
 
 		# Pull in everything that's installed since we don't
 		# to prune a package if something depends on it.
@@ -748,6 +745,23 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				protected_set.add("=" + pkg.cpv)
 				continue
 
+	if resolver._frozen_config.excluded_pkgs:
+		excluded_set = resolver._frozen_config.excluded_pkgs
+		required_sets['__excluded__'] = InternalPackageSet()
+
+		for pkg in vardb:
+			if spinner:
+				spinner.update()
+
+			try:
+				if excluded_set.findAtomForPackage(pkg):
+					required_sets['__excluded__'].add("=" + pkg.cpv)
+			except portage.exception.InvalidDependString as e:
+				show_invalid_depstring_notice(pkg,
+					pkg.metadata["PROVIDE"], str(e))
+				del e
+				required_sets['__excluded__'].add("=" + pkg.cpv)
+
 	success = resolver._complete_graph(required_sets={myroot:required_sets})
 	writemsg_level("\b\b... done!\n")
 
@@ -768,6 +782,12 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			return False
 
 		if unresolvable and not allow_missing_deps:
+
+			if "--debug" in myopts:
+				writemsg("\ndigraph:\n\n", noiselevel=-1)
+				resolver._dynamic_config.digraph.debug_print()
+				writemsg("\n", noiselevel=-1)
+
 			prefix = bad(" * ")
 			msg = []
 			msg.append("Dependencies could not be completely resolved due to")
@@ -832,6 +852,11 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			return -1
 
 	def create_cleanlist():
+
+		if "--debug" in myopts:
+			writemsg("\ndigraph:\n\n", noiselevel=-1)
+			graph.debug_print()
+			writemsg("\n", noiselevel=-1)
 
 		# Never display the special internal protected_set.
 		for node in graph:
@@ -1078,6 +1103,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			clean_set = set(cleanlist)
 
 	if clean_set:
+		writemsg_level(">>> Calculating removal order...\n")
 		# Use a topological sort to create an unmerge order such that
 		# each package is unmerged before it's dependencies. This is
 		# necessary to avoid breaking things that may need to run
@@ -1106,6 +1132,15 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				if not depstr:
 					continue
 				priority = priority_map[dep_type]
+
+				if debug:
+					writemsg_level(_unicode_decode("\nParent:    %s\n") \
+						% (node,), noiselevel=-1, level=logging.DEBUG)
+					writemsg_level(_unicode_decode(  "Depstring: %s\n") \
+						% (depstr,), noiselevel=-1, level=logging.DEBUG)
+					writemsg_level(_unicode_decode(  "Priority:  %s\n") \
+						% (priority,), noiselevel=-1, level=logging.DEBUG)
+
 				try:
 					atoms = resolver._select_atoms(myroot, depstr,
 						myuse=node.use.enabled, parent=node,
@@ -1114,6 +1149,11 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 					# Ignore invalid deps of packages that will
 					# be uninstalled anyway.
 					continue
+
+				if debug:
+					writemsg_level("Candidates: [%s]\n" % \
+						', '.join(_unicode_decode("'%s'") % (x,) for x in atoms),
+						noiselevel=-1, level=logging.DEBUG)
 
 				for atom in atoms:
 					if not isinstance(atom, portage.dep.Atom):
@@ -1127,6 +1167,12 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 					for child_node in matches:
 						if child_node in clean_set:
 							graph.add(child_node, node, priority=priority)
+
+		if debug:
+			writemsg_level("\nunmerge digraph:\n\n",
+				noiselevel=-1, level=logging.DEBUG)
+			graph.debug_print()
+			writemsg_level("\n", noiselevel=-1, level=logging.DEBUG)
 
 		ordered = True
 		if len(graph.order) == len(graph.root_nodes()):
@@ -1157,7 +1203,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 					raise AssertionError("no root nodes")
 				if ignore_priority is not None:
 					# Some deps have been dropped due to circular dependencies,
-					# so only pop one node in order do minimize the number that
+					# so only pop one node in order to minimize the number that
 					# are dropped.
 					del nodes[1:]
 				for node in nodes:
@@ -1205,7 +1251,8 @@ def action_deselect(settings, trees, opts, atoms):
 				else:
 					if not atom.startswith(SETPREFIX) and \
 						arg_atom.intersects(atom) and \
-						not (arg_atom.slot and not atom.slot):
+						not (arg_atom.slot and not atom.slot) and \
+						not (arg_atom.repo and not atom.repo):
 						discard_atoms.add(atom)
 						break
 		if discard_atoms:
@@ -1332,6 +1379,15 @@ def action_info(settings, trees, myopts, myfiles):
 				noiselevel=-1)
 
 	libtool_vers = ",".join(trees["/"]["vartree"].dbapi.match("sys-devel/libtool"))
+
+	repos = portdb.settings.repositories
+	if "--verbose" in myopts:
+		writemsg_stdout("Repositories:\n\n")
+		for repo in repos:
+			writemsg_stdout(repo.info_string())
+	else:
+		writemsg_stdout("Repositories: %s\n" % \
+			" ".join(repo.name for repo in repos))
 
 	if "--verbose" in myopts:
 		myvars = list(settings)
@@ -1507,6 +1563,7 @@ def action_info(settings, trees, myopts, myfiles):
 					f not in use_expand_flags:
 					use_disabled['USE'].append(f)
 
+			flag_displays = []
 			for varname in var_order:
 				if varname in use_expand_hidden:
 					continue
@@ -1519,8 +1576,11 @@ def action_info(settings, trees, myopts, myfiles):
 					flags.sort(key=UseFlagDisplay.sort_combined)
 				else:
 					flags.sort(key=UseFlagDisplay.sort_separated)
-				print('%s="%s"' % (varname, ' '.join(str(f) for f in flags)), end=' ')
-			print()
+				# Use _unicode_decode() to force unicode format string so
+				# that UseFlagDisplay.__unicode__() is called in python2.
+				flag_displays.append('%s="%s"' % (varname,
+					' '.join(_unicode_decode("%s") % (f,) for f in flags)))
+			writemsg_stdout('%s\n' % ' '.join(flag_displays), noiselevel=-1)
 			if pkg_type == "installed":
 				for myvar in mydesiredvars:
 					if metadata[myvar].split() != settings.get(myvar, '').split():
@@ -1536,7 +1596,7 @@ def action_info(settings, trees, myopts, myfiles):
 			if pkg_type == "installed":
 				ebuildpath = vardb.findname(pkg.cpv)
 			elif pkg_type == "ebuild":
-				ebuildpath = portdb.findname(pkg.cpv)
+				ebuildpath = portdb.findname(pkg.cpv, myrepo=pkg.repo)
 			elif pkg_type == "binary":
 				tbz2_file = bindb.bintree.getname(pkg.cpv)
 				ebuild_file_name = pkg.cpv.split("/")[1] + ".ebuild"
@@ -1801,7 +1861,6 @@ def action_regen(settings, portdb, max_jobs, max_load):
 	xterm_titles = "notitles" not in settings.features
 	emergelog(xterm_titles, " === regen")
 	#regenerate cache entries
-	portage.writemsg_stdout("Regenerating cache entries...\n")
 	try:
 		os.close(sys.stdin.fileno())
 	except SystemExit as e:
@@ -1858,12 +1917,6 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		os.makedirs(myportdir,0o755)
 		st = os.stat(myportdir)
 
-	# PORTAGE_TMPDIR is used below, so validate it and
-	# bail out if necessary.
-	rval = _check_temp_dir(settings)
-	if rval != os.EX_OK:
-		return rval
-
 	usersync_uid = None
 	spawn_kwargs = {}
 	spawn_kwargs["env"] = settings.environ()
@@ -1887,6 +1940,13 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			if not st.st_mode & 0o020:
 				umask = umask | 0o020
 			spawn_kwargs["umask"] = umask
+
+	if usersync_uid is not None:
+		# PORTAGE_TMPDIR is used below, so validate it and
+		# bail out if necessary.
+		rval = _check_temp_dir(settings)
+		if rval != os.EX_OK:
+			return rval
 
 	syncuri = settings.get("SYNC", "").strip()
 	if not syncuri:
@@ -2037,7 +2097,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		except SystemExit as e:
 			raise # Needed else can't exit
 		except:
-			maxretries=3 #default number of retries
+			maxretries = -1 #default number of retries
 
 		retries=0
 		user_name, hostname, port = re.split(
@@ -2051,45 +2111,80 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		extra_rsync_opts = portage.util.shlex_split(
 			settings.get("PORTAGE_RSYNC_EXTRA_OPTS",""))
 		all_rsync_opts.update(extra_rsync_opts)
-		family = socket.AF_INET
+
+		family = socket.AF_UNSPEC
 		if "-4" in all_rsync_opts or "--ipv4" in all_rsync_opts:
 			family = socket.AF_INET
 		elif socket.has_ipv6 and \
 			("-6" in all_rsync_opts or "--ipv6" in all_rsync_opts):
 			family = socket.AF_INET6
-		ips=[]
+
+		addrinfos = None
+		uris = []
+
+		try:
+			addrinfos = getaddrinfo_validate(
+				socket.getaddrinfo(hostname, None,
+				family, socket.SOCK_STREAM))
+		except socket.error as e:
+			writemsg_level(
+				"!!! getaddrinfo failed for '%s': %s\n" % (hostname, e),
+				noiselevel=-1, level=logging.ERROR)
+
+		if addrinfos:
+
+			AF_INET = socket.AF_INET
+			AF_INET6 = None
+			if socket.has_ipv6:
+				AF_INET6 = socket.AF_INET6
+
+			ips_v4 = []
+			ips_v6 = []
+
+			for addrinfo in addrinfos:
+				if addrinfo[0] == AF_INET:
+					ips_v4.append("%s" % addrinfo[4][0])
+				elif AF_INET6 is not None and addrinfo[0] == AF_INET6:
+					# IPv6 addresses need to be enclosed in square brackets
+					ips_v6.append("[%s]" % addrinfo[4][0])
+
+			random.shuffle(ips_v4)
+			random.shuffle(ips_v6)
+
+			# Give priority to the address family that
+			# getaddrinfo() returned first.
+			if AF_INET6 is not None and addrinfos and \
+				addrinfos[0][0] == AF_INET6:
+				ips = ips_v6 + ips_v4
+			else:
+				ips = ips_v4 + ips_v6
+
+			for ip in ips:
+				uris.append(syncuri.replace(
+					"//" + user_name + hostname + port + "/",
+					"//" + user_name + ip + port + "/", 1))
+
+		if not uris:
+			# With some configurations we need to use the plain hostname
+			# rather than try to resolve the ip addresses (bug #340817).
+			uris.append(syncuri)
+
+		# reverse, for use with pop()
+		uris.reverse()
+
+		effective_maxretries = maxretries
+		if effective_maxretries < 0:
+			effective_maxretries = len(uris) - 1
+
 		SERVER_OUT_OF_DATE = -1
 		EXCEEDED_MAX_RETRIES = -2
 		while (1):
-			if ips:
-				del ips[0]
-			if ips==[]:
-				try:
-					for addrinfo in socket.getaddrinfo(
-						hostname, None, family, socket.SOCK_STREAM):
-						if socket.has_ipv6 and addrinfo[0] == socket.AF_INET6:
-							# IPv6 addresses need to be enclosed in square brackets
-							ips.append("[%s]" % addrinfo[4][0])
-						else:
-							ips.append(addrinfo[4][0])
-					from random import shuffle
-					shuffle(ips)
-				except SystemExit as e:
-					raise # Needed else can't exit
-				except Exception as e:
-					print("Notice:",str(e))
-					dosyncuri=syncuri
-
-			if ips:
-				try:
-					dosyncuri = syncuri.replace(
-						"//" + user_name + hostname + port + "/",
-						"//" + user_name + ips[0] + port + "/", 1)
-				except SystemExit as e:
-					raise # Needed else can't exit
-				except Exception as e:
-					print("Notice:",str(e))
-					dosyncuri=syncuri
+			if uris:
+				dosyncuri = uris.pop()
+			else:
+				writemsg("!!! Exhausted addresses for %s\n" % \
+					hostname, noiselevel=-1)
+				return 1
 
 			if (retries==0):
 				if "--ask" in myopts:
@@ -2106,8 +2201,10 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			else:
 				emergelog(xterm_titles,
 					">>> Starting retry %d of %d with %s" % \
-						(retries,maxretries,dosyncuri))
-				print("\n\n>>> Starting retry %d of %d with %s" % (retries,maxretries,dosyncuri))
+						(retries, effective_maxretries, dosyncuri))
+				writemsg_stdout(
+					"\n\n>>> Starting retry %d of %d with %s\n" % \
+					(retries, effective_maxretries, dosyncuri), noiselevel=-1)
 
 			if mytimestamp != 0 and "--quiet" not in myopts:
 				print(">>> Checking server timestamp ...")
@@ -2131,8 +2228,13 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				# user. We assume that PORTAGE_TMPDIR will satisfy this
 				# requirement, since that's not necessarily true for the
 				# default directory used by the tempfile module.
+				if usersync_uid is not None:
+					tmpdir = settings['PORTAGE_TMPDIR']
+				else:
+					# use default dir from tempfile module
+					tmpdir = None
 				fd, tmpservertimestampfile = \
-					tempfile.mkstemp(dir=settings['PORTAGE_TMPDIR'])
+					tempfile.mkstemp(dir=tmpdir)
 				os.close(fd)
 				if usersync_uid is not None:
 					portage.util.apply_permissions(tmpservertimestampfile,
@@ -2169,7 +2271,10 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				except portage.exception.AlarmSignal:
 					# timed out
 					print('timed out')
-					if mypids and os.waitpid(mypids[0], os.WNOHANG) == (0,0):
+					# With waitpid and WNOHANG, only check the
+					# first element of the tuple since the second
+					# element may vary (bug #337465).
+					if mypids and os.waitpid(mypids[0], os.WNOHANG)[0] == 0:
 						os.kill(mypids[0], signal.SIGTERM)
 						os.waitpid(mypids[0], 0)
 					# This is the same code rsync uses for timeout.
@@ -2230,9 +2335,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 			retries=retries+1
 
-			if retries<=maxretries:
+			if maxretries < 0 or retries <= maxretries:
 				print(">>> Retrying...")
-				time.sleep(11)
 			else:
 				# over retries
 				# exit loop
@@ -2292,7 +2396,10 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 						"!!! existing '%s' directory; exiting.\n" % myportdir)
 					sys.exit(1)
 				del e
-			if portage.spawn("cd "+cvsdir+"; cvs -z0 -d "+cvsroot+" co -P gentoo-x86",settings,free=1):
+			if portage.process.spawn_bash(
+					"cd %s; exec cvs -z0 -d %s co -P gentoo-x86" % \
+					(portage._shell_quote(cvsdir), portage._shell_quote(cvsroot)),
+					**spawn_kwargs) != os.EX_OK:
 				print("!!! cvs checkout error; exiting.")
 				sys.exit(1)
 			os.rename(os.path.join(cvsdir, "gentoo-x86"), myportdir)
@@ -2300,7 +2407,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			#cvs update
 			print(">>> Starting cvs update with "+syncuri+"...")
 			retval = portage.process.spawn_bash(
-				"cd %s; cvs -z0 -q update -dP" % \
+				"cd %s; exec cvs -z0 -q update -dP" % \
 				(portage._shell_quote(myportdir),), **spawn_kwargs)
 			if retval != os.EX_OK:
 				sys.exit(retval)
@@ -2379,7 +2486,7 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 	# Ensure atoms are valid before calling unmerge().
 	# For backward compat, leading '=' is not required.
 	for x in files:
-		if is_valid_package_atom(x) or \
+		if is_valid_package_atom(x, allow_repo=True) or \
 			(ignore_missing_eq and is_valid_package_atom('=' + x)):
 
 			try:

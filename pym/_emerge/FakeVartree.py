@@ -9,6 +9,7 @@ from _emerge.Package import Package
 from _emerge.PackageVirtualDbapi import PackageVirtualDbapi
 from portage.const import VDB_PATH
 from portage.dbapi.vartree import vartree
+from portage.repository.config import _gen_valid_repo
 from portage.update import grab_updates, parse_updates, update_dbentries
 
 if sys.hexversion >= 0x3000000:
@@ -81,14 +82,16 @@ class FakeVartree(vartree):
 			self._aux_get_wrapper(cpv, [])
 		return matches
 
-	def _aux_get_wrapper(self, pkg, wants):
+	def _aux_get_wrapper(self, pkg, wants, myrepo=None):
 		if pkg in self._aux_get_history:
 			return self._aux_get(pkg, wants)
 		self._aux_get_history.add(pkg)
 		try:
 			# Use the live ebuild metadata if possible.
+			repo = self._aux_get(pkg, ["repository"])[0]
+			repo = _gen_valid_repo(repo)
 			live_metadata = dict(zip(self._portdb_keys,
-				self._portdb.aux_get(pkg, self._portdb_keys)))
+				self._portdb.aux_get(pkg, self._portdb_keys, myrepo=repo)))
 			if not portage.eapi_is_supported(live_metadata["EAPI"]):
 				raise KeyError(pkg)
 			self.dbapi.aux_update(pkg, live_metadata)

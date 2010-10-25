@@ -28,7 +28,7 @@ class LinkageMapELF(object):
 
 	def __init__(self, vardbapi):
 		self._dbapi = vardbapi
-		self._eroot = self._dbapi._eroot
+		self._root = self._dbapi.settings['ROOT']
 		self._libs = {}
 		self._obj_properties = {}
 		self._obj_key_cache = {}
@@ -45,14 +45,14 @@ class LinkageMapELF(object):
 	def _path_key(self, path):
 		key = self._path_key_cache.get(path)
 		if key is None:
-			key = self._ObjectKey(path, self._eroot)
+			key = self._ObjectKey(path, self._root)
 			self._path_key_cache[path] = key
 		return key
 
 	def _obj_key(self, path):
 		key = self._obj_key_cache.get(path)
 		if key is None:
-			key = self._ObjectKey(path, self._eroot)
+			key = self._ObjectKey(path, self._root)
 			self._obj_key_cache[path] = key
 		return key
 
@@ -149,10 +149,10 @@ class LinkageMapELF(object):
 		"""
 
 		os = _os_merge
-		root = self._eroot
+		root = self._root
 		root_len = len(root) - 1
 		self._clear_cache()
-		self._defpath.update(getlibpaths(self._eroot))
+		self._defpath.update(getlibpaths(self._root))
 		libs = self._libs
 		obj_properties = self._obj_properties
 
@@ -161,13 +161,17 @@ class LinkageMapELF(object):
 		# Data from include_file is processed first so that it
 		# overrides any data from previously installed files.
 		if include_file is not None:
-			lines += grabfile(include_file)
+			for line in grabfile(include_file):
+				lines.append((include_file, line))
 
 		aux_keys = [self._needed_aux_key]
 		for cpv in self._dbapi.cpv_all():
 			if exclude_pkgs is not None and cpv in exclude_pkgs:
 				continue
-			lines += self._dbapi.aux_get(cpv, aux_keys)[0].split('\n')
+			needed_file = self._dbapi.getpath(cpv,
+				filename=self._needed_aux_key)
+			for line in self._dbapi.aux_get(cpv, aux_keys)[0].splitlines():
+				lines.append((needed_file, line))
 		# Cache NEEDED.* files avoid doing excessive IO for every rebuild.
 		self._dbapi.flush_cache()
 
@@ -208,7 +212,7 @@ class LinkageMapELF(object):
 						continue
 					fields[1] = fields[1][root_len:]
 					plibs.discard(fields[1])
-					lines.append(";".join(fields))
+					lines.append(("scanelf", ";".join(fields)))
 				proc.wait()
 
 		if plibs:
@@ -219,16 +223,16 @@ class LinkageMapELF(object):
 			# is important in order to prevent findConsumers from raising
 			# an unwanted KeyError.
 			for x in plibs:
-				lines.append(";".join(['', x, '', '', '']))
+				lines.append(("plibs", ";".join(['', x, '', '', ''])))
 
-		for l in lines:
+		for location, l in lines:
 			l = l.rstrip("\n")
 			if not l:
 				continue
 			fields = l.split(";")
 			if len(fields) < 5:
 				writemsg_level(_("\nWrong number of fields " \
-					"in %s: %s\n\n") % (self._needed_aux_key, l),
+					"in %s: %s\n\n") % (location, l),
 					level=logging.ERROR, noiselevel=-1)
 				continue
 			arch = fields[0]
@@ -604,7 +608,7 @@ class LinkageMapELF(object):
 		# have any consumers.
 		if not isinstance(obj, self._ObjectKey):
 			soname = self._obj_properties[obj_key][3]
-			master_link = os.path.join(self._eroot,
+			master_link = os.path.join(self._root,
 				os.path.dirname(obj).lstrip(os.path.sep), soname)
 			try:
 				master_st = os.stat(master_link)

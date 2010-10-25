@@ -11,7 +11,9 @@ from portage.const import PORTAGE_BIN_PATH
 from portage.const import PORTAGE_PYM_PATH
 from portage.const import BASH_BINARY
 from portage.package.ebuild._ipc.ExitCommand import ExitCommand
+from portage.util import ensure_dirs
 from _emerge.SpawnProcess import SpawnProcess
+from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
 from _emerge.TaskScheduler import TaskScheduler
 
@@ -21,6 +23,7 @@ class IpcDaemonTestCase(TestCase):
 
 	def testIpcDaemon(self):
 		tmpdir = tempfile.mkdtemp()
+		build_dir = None
 		try:
 			env = {}
 
@@ -34,13 +37,20 @@ class IpcDaemonTestCase(TestCase):
 			env['PORTAGE_PYTHON'] = _python_interpreter
 			env['PORTAGE_BIN_PATH'] = PORTAGE_BIN_PATH
 			env['PORTAGE_PYM_PATH'] = PORTAGE_PYM_PATH
-			env['PORTAGE_BUILDDIR'] = tmpdir
+			env['PORTAGE_BUILDDIR'] = os.path.join(tmpdir, 'cat', 'pkg-1')
 
-			input_fifo = os.path.join(tmpdir, '.ipc_in')
-			output_fifo = os.path.join(tmpdir, '.ipc_out')
+			task_scheduler = TaskScheduler(max_jobs=2)
+			build_dir = EbuildBuildDir(
+				scheduler=task_scheduler.sched_iface,
+				settings=env)
+			build_dir.lock()
+			ensure_dirs(env['PORTAGE_BUILDDIR'])
+
+			input_fifo = os.path.join(env['PORTAGE_BUILDDIR'], '.ipc_in')
+			output_fifo = os.path.join(env['PORTAGE_BUILDDIR'], '.ipc_out')
 			os.mkfifo(input_fifo)
 			os.mkfifo(output_fifo)
-			task_scheduler = TaskScheduler(max_jobs=2)
+
 			for exitcode in (0, 1, 2):
 				exit_command = ExitCommand()
 				commands = {'exit' : exit_command}
@@ -109,4 +119,6 @@ class IpcDaemonTestCase(TestCase):
 				self.assertEqual(proc.returncode == os.EX_OK, False)
 
 		finally:
+			if build_dir is not None:
+				build_dir.unlock()
 			shutil.rmtree(tmpdir)

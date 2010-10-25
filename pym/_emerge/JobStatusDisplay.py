@@ -47,11 +47,6 @@ class JobStatusDisplay(object):
 		object.__setattr__(self, "_displayed", False)
 		object.__setattr__(self, "_last_display_time", 0)
 
-		width = portage.output.get_term_size()[1]
-		if width <= 0 or width > 80:
-			width = 80
-		object.__setattr__(self, "width", width)
-		object.__setattr__(self, "_jobs_column_width", width - 32)
 		self.reset()
 
 		isatty = os.environ.get('TERM') != 'dumb' and \
@@ -67,6 +62,20 @@ class JobStatusDisplay(object):
 		for k, v in self._term_codes.items():
 			if not isinstance(v, basestring):
 				self._term_codes[k] = v.decode(encoding, 'replace')
+
+		if self._isatty:
+			width = portage.output.get_term_size()[1]
+		else:
+			width = 80
+		self._set_width(width)
+
+	def _set_width(self, width):
+		if width == getattr(self, 'width', None):
+			return
+		if width <= 0 or width > 80:
+			width = 80
+		object.__setattr__(self, "width", width)
+		object.__setattr__(self, "_jobs_column_width", width - 32)
 
 	@property
 	def out(self):

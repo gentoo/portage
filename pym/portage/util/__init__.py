@@ -231,14 +231,29 @@ def stack_dicts(dicts, incremental=0, incrementals=[], ignore_none=0):
 				final_dict[k]  = v
 	return final_dict
 
-def stack_lists(lists, incremental=1, remember_source_file=False, warn_for_unmatched_removal=False):
+def append_repo(atom_list, repo_name, remember_source_file=False):
+	"""
+	Takes a list of valid atoms without repo spec and appends ::repo_name.
+	"""
+	if remember_source_file:
+		return [(Atom(atom + "::" + repo_name, allow_wildcard=True, allow_repo=True), source) \
+			for atom, source in atom_list]
+	else:
+		return [Atom(atom + "::" + repo_name, allow_wildcard=True, allow_repo=True) \
+			for atom in atom_list]
+
+def stack_lists(lists, incremental=1, remember_source_file=False,
+	warn_for_unmatched_removal=False, strict_warn_for_unmatched_removal=False, ignore_repo=False):
 	"""Stacks an array of list-types into one array. Optionally removing
 	distinct values using '-value' notation. Higher index is preferenced.
 
 	all elements must be hashable."""
+	matched_removals = set()
+	unmatched_removals = {}
 	new_list = {}
 	for sub_list in lists:
 		for token in sub_list:
+			token_key = token
 			if remember_source_file:
 				token, source_file = token
 			else:
@@ -251,16 +266,46 @@ def stack_lists(lists, incremental=1, remember_source_file=False, warn_for_unmat
 				if token == "-*":
 					new_list.clear()
 				elif token[:1] == '-':
-					try:
-						new_list.pop(token[1:])
-					except KeyError:
-						if warn_for_unmatched_removal:
-							writemsg(_("--- Unmatch removal atom in %s: %s\n") % (source_file, token),
-								noiselevel=-1)
+					matched = False
+					if ignore_repo and not "::" in token:
+						#Let -cat/pkg remove cat/pkg::repo.
+						to_be_removed = []
+						for atom in new_list:
+							if atom == token[1:] or atom.split("::")[0] == token[1:]:
+								to_be_removed.append(atom)
+						if to_be_removed:
+							matched = True
+							for atom in to_be_removed:
+								new_list.pop(atom)
+					else:
+						try:
+							new_list.pop(token[1:])
+							matched = True
+						except KeyError:
+							pass
+
+					if not matched:
+						if source_file and \
+							(strict_warn_for_unmatched_removal or \
+							token_key not in matched_removals):
+							unmatched_removals.setdefault(source_file, set()).add(token)
+					else:
+						matched_removals.add(token_key)
 				else:
 					new_list[token] = source_file
 			else:
 				new_list[token] = source_file
+
+	if warn_for_unmatched_removal:
+		for source_file, tokens in unmatched_removals.items():
+			if len(tokens) > 3:
+				selected = [tokens.pop(), tokens.pop(), tokens.pop()]
+				writemsg(_("--- Unmatch removal atoms in %s: %s and %s more\n") % \
+					(source_file, ", ".join(selected), len(tokens)),
+					noiselevel=-1)
+			else:
+				writemsg(_("--- Unmatch removal atom(s) in %s: %s\n") % (source_file, ", ".join(tokens)),
+					noiselevel=-1)
 
 	if remember_source_file:
 		return list(new_list.items())
@@ -309,26 +354,57 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 			newdict[k] = " ".join(v)
 	return newdict
 
-def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=False):
+def read_corresponding_eapi_file(filename):
+	"""
+	Read the 'eapi' file from the directory 'filename' is in.
+	Returns "0" if the file is not present or invalid.
+	"""
+	default = "0"
+	eapi_file = os.path.join(os.path.dirname(filename), "eapi")
+	try:
+		f = open(eapi_file, "r")
+		lines = f.readlines()
+		if len(lines) == 1:
+			eapi = lines[0]
+		else:
+			writemsg(_("--- Invalid 'eapi' file (doesn't contain exactly one line): %s\n") % (eapi_file),
+				noiselevel=-1)
+			eapi = default
+		f.close()
+	except IOError:
+		eapi = default
+
+	return eapi
+
+def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=False, allow_repo=False, verify_eapi=False):
 	""" Does the same thing as grabdict except it validates keys
 	    with isvalidatom()"""
 	pkgs=grabdict(myfilename, juststrings, empty=1, recursive=recursive)
+	eapi = None
+	if verify_eapi:
+		eapi = read_corresponding_eapi_file(myfilename)
+
 	# We need to call keys() here in order to avoid the possibility of
 	# "RuntimeError: dictionary changed size during iteration"
 	# when an invalid atom is deleted.
 	atoms = {}
 	for k, v in pkgs.items():
 		try:
-			k = Atom(k, allow_wildcard=allow_wildcard)
-		except InvalidAtom:
-			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, k),
+			k = Atom(k, allow_wildcard=allow_wildcard, allow_repo=allow_repo, eapi=eapi)
+		except InvalidAtom as e:
+			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, e),
 				noiselevel=-1)
 		else:
 			atoms[k] = v
 	return atoms
 
-def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=False, remember_source_file=False):
+def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=False, allow_repo=False, \
+	remember_source_file=False, verify_eapi=False):
+
 	pkgs=grabfile(myfilename, compatlevel, recursive=recursive, remember_source_file=True)
+	eapi = None
+	if verify_eapi:
+		eapi = read_corresponding_eapi_file(myfilename)
 	mybasename = os.path.basename(myfilename)
 	atoms = []
 	for pkg, source_file in pkgs:
@@ -339,9 +415,9 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=Fals
 		if pkg[:1] == '*' and mybasename == 'packages':
 			pkg = pkg[1:]
 		try:
-			pkg = Atom(pkg, allow_wildcard=allow_wildcard)
-		except InvalidAtom:
-			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, pkg),
+			pkg = Atom(pkg, allow_wildcard=allow_wildcard, allow_repo=allow_repo, eapi=eapi)
+		except InvalidAtom as e:
+			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, e),
 				noiselevel=-1)
 		else:
 			if pkg_orig == str(pkg):
@@ -607,8 +683,14 @@ def varexpand(mystring, mydict=None):
 						newstring=newstring+chr(0o11)
 					elif a=='v':
 						newstring=newstring+chr(0o13)
+					elif a in ('\'', '"'):
+						# Quote removal is handled by shlex.
+						newstring = newstring + mystring[pos-2:pos]
+						continue
 					elif a!='\n':
-						#remove backslash only, as bash does: this takes care of \\ and \' and \" as well
+						# Remove backslash only, as bash does. This takes care
+						# of \\. Note that we don't handle quotes here since
+						# quote removal is handled by shlex.
 						newstring=newstring+mystring[pos-1:pos]
 						continue
 			elif (mystring[pos]=="$") and (mystring[pos-1]!="\\"):

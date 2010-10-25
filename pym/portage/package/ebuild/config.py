@@ -5,25 +5,18 @@ __all__ = [
 	'autouse', 'best_from_dict', 'check_config_instance', 'config',
 ]
 
-import codecs
 import copy
-import errno
 import logging
 import re
 import sys
 import warnings
-
-try:
-	from configparser import SafeConfigParser, ParsingError
-except ImportError:
-	from ConfigParser import SafeConfigParser, ParsingError
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.data:portage_gid',
 )
 from portage import bsd_chflags, \
-	load_mod, os, selinux, _encodings, _unicode_encode, _unicode_decode
+	load_mod, os, selinux, _unicode_decode
 from portage.const import CACHE_PATH, \
 	DEPCACHE_PATH, INCREMENTALS, MAKE_CONF_FILE, \
 	MODULES_FILE_PATH, PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, \
@@ -33,13 +26,14 @@ from portage.const import _SANDBOX_COMPAT_LEVEL
 from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
 from portage.dbapi.vartree import vartree
-from portage.dep import Atom, isvalidatom, match_from_list, use_reduce
+from portage.dep import Atom, isvalidatom, match_from_list, use_reduce, _repo_separator, _slot_separator
 from portage.eapi import eapi_exports_AA, eapi_supports_prefix, eapi_exports_replace_vars
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.exception import InvalidDependString, PortageException
 from portage.localization import _
 from portage.output import colorize
 from portage.process import fakeroot_capable, sandbox_capable
+from portage.repository.config import load_repository_config
 from portage.util import ensure_dirs, getconfig, grabdict, \
 	grabdict_package, grabfile, grabfile_package, LazyItemsDict, \
 	normalize_path, shlex_split, stack_dictlist, stack_dicts, stack_lists, \
@@ -49,6 +43,7 @@ from portage.versions import catpkgsplit, catsplit, cpv_getkey
 from portage.package.ebuild._config import special_env_vars
 from portage.package.ebuild._config.env_var_validation import validate_cmd_var
 from portage.package.ebuild._config.features_set import features_set
+from portage.package.ebuild._config.KeywordsManager import KeywordsManager
 from portage.package.ebuild._config.LicenseManager import LicenseManager
 from portage.package.ebuild._config.UseManager import UseManager
 from portage.package.ebuild._config.LocationsManager import LocationsManager
@@ -111,26 +106,6 @@ class _iuse_implicit_match_cache(object):
 			self._cache[flag] = m
 			return m
 
-class _local_repo_config(object):
-	__slots__ = ('aliases', 'eclass_overrides', 'masters', 'name',)
-	def __init__(self, name, repo_opts):
-		self.name = name
-
-		aliases = repo_opts.get('aliases')
-		if aliases is not None:
-			aliases = tuple(aliases.split())
-		self.aliases = aliases
-
-		eclass_overrides = repo_opts.get('eclass-overrides')
-		if eclass_overrides is not None:
-			eclass_overrides = tuple(eclass_overrides.split())
-		self.eclass_overrides = eclass_overrides
-
-		masters = repo_opts.get('masters')
-		if masters is not None:
-			masters = tuple(masters.split())
-		self.masters = masters
-
 class config(object):
 	"""
 	This class encompasses the main portage configuration.  Data is pulled from
@@ -156,7 +131,7 @@ class config(object):
 
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
-		_eprefix=None, local_config=True, env=None):
+		_eprefix=None, local_config=True, env=None, _unmatched_removal=False):
 		"""
 		@param clone: If provided, init will use deepcopy to copy by value the instance.
 		@type clone: Instance of config class.
@@ -180,6 +155,9 @@ class config(object):
 		@param env: The calling environment which is used to override settings.
 			Defaults to os.environ if unspecified.
 		@type env: dict
+		@param _unmatched_removal: Enabled by repoman when the
+			--unmatched-removal option is given.
+		@type _unmatched_removal: Boolean
 		"""
 
 		# rename local _eprefix variable for convenience
@@ -211,8 +189,6 @@ class config(object):
 
 		self.local_config = local_config
 
-		self._local_repo_configs = None
-		
 		if clone:
 			# For immutable attributes, use shallow copy for
 			# speed and memory conservation.
@@ -236,8 +212,7 @@ class config(object):
 			self._setcpv_args_hash = clone._setcpv_args_hash
 
 			# immutable attributes (internal policy ensures lack of mutation)
-			self._pkeywords_list = clone._pkeywords_list
-			self._p_accept_keywords = clone._p_accept_keywords
+			self._keywords_manager = clone._keywords_manager
 			self._use_manager = clone._use_manager
 			self._mask_manager = clone._mask_manager
 
@@ -261,7 +236,6 @@ class config(object):
 			self.lookuplist.reverse()
 			self._use_expand_dict = copy.deepcopy(clone._use_expand_dict)
 			self.backupenv  = self.configdict["backupenv"]
-			self.pkeywordsdict = copy.deepcopy(clone.pkeywordsdict)
 			self.prevmaskdict = copy.deepcopy(clone.prevmaskdict)
 			self.pprovideddict = copy.deepcopy(clone.pprovideddict)
 			self.features = features_set(self)
@@ -309,7 +283,7 @@ class config(object):
 			locations_manager.set_root_override(make_conf.get("ROOT"))
 			target_root = locations_manager.target_root
 			eroot = locations_manager.eroot
-			global_config_path = locations_manager.global_config_path
+			self.global_config_path = locations_manager.global_config_path
 
 			if config_incrementals is None:
 				self.incrementals = INCREMENTALS
@@ -343,7 +317,7 @@ class config(object):
 			self.configlist.append({})
 			self.configdict["pkginternal"] = self.configlist[-1]
 
-			self.packages_list = [grabfile_package(os.path.join(x, "packages")) for x in self.profiles]
+			self.packages_list = [grabfile_package(os.path.join(x, "packages"), verify_eapi=True) for x in self.profiles]
 			self.packages      = tuple(stack_lists(self.packages_list, incremental=1))
 			del self.packages_list
 			#self.packages = grab_stacked("packages", self.profiles, grabfile, incremental_lines=1)
@@ -355,38 +329,6 @@ class config(object):
 				if not isinstance(x, Atom):
 					x = Atom(x.lstrip('*'))
 				self.prevmaskdict.setdefault(x.cp, []).append(x)
-
-			self._pkeywords_list = []
-			rawpkeywords = [grabdict_package(
-				os.path.join(x, "package.keywords"), recursive=1) \
-				for x in self.profiles]
-			for pkeyworddict in rawpkeywords:
-				if not pkeyworddict:
-					# Omit non-existent files from the stack. This isn't
-					# feasible for package.use (among other package.*
-					# files such as package.use.mask) since it is stacked
-					# in layers with make.defaults USE, and the layer
-					# indices need to align.
-					continue
-				cpdict = {}
-				for k, v in pkeyworddict.items():
-					cpdict.setdefault(k.cp, {})[k] = v
-				self._pkeywords_list.append(cpdict)
-			self._pkeywords_list = tuple(self._pkeywords_list)
-
-			self._p_accept_keywords = []
-			raw_p_accept_keywords = [grabdict_package(
-				os.path.join(x, "package.accept_keywords"), recursive=1) \
-				for x in self.profiles]
-			for d in raw_p_accept_keywords:
-				if not d:
-					# Omit non-existent files from the stack.
-					continue
-				cpdict = {}
-				for k, v in d.items():
-					cpdict.setdefault(k.cp, {})[k] = tuple(v)
-				self._p_accept_keywords.append(cpdict)
-			self._p_accept_keywords = tuple(self._p_accept_keywords)
 
 			# The expand_map is used for variable substitution
 			# in getconfig() calls, and the getconfig() calls
@@ -437,7 +379,7 @@ class config(object):
 
 			self.configdict["env"] = LazyItemsDict(self.backupenv)
 
-			for x in (global_config_path,):
+			for x in (self.global_config_path,):
 				self.mygcfg = getconfig(os.path.join(x, "make.globals"),
 					expand=expand_map)
 				if self.mygcfg:
@@ -532,9 +474,23 @@ class config(object):
 			self["PORTAGE_SANDBOX_COMPAT_LEVEL"] = _SANDBOX_COMPAT_LEVEL
 			self.backup_changes("PORTAGE_SANDBOX_COMPAT_LEVEL")
 
-			self.pkeywordsdict = portage.dep.ExtendedAtomDict(dict)
 			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
 			self._penvdict = portage.dep.ExtendedAtomDict(dict)
+
+			#Loading Repositories
+			self.repositories = load_repository_config(self)
+
+			#filling PORTDIR and PORTDIR_OVERLAY variable for compatibility
+			main_repo = self.repositories.mainRepo()
+			if main_repo is not None:
+				main_repo = main_repo.user_location
+				self["PORTDIR"] = main_repo
+				self.backup_changes("PORTDIR")
+			portdir_overlay = list(self.repositories.repoUserLocationList())
+			if self["PORTDIR"] in portdir_overlay:
+				portdir_overlay.remove(self["PORTDIR"])
+			self["PORTDIR_OVERLAY"] = " ".join(portdir_overlay)
+			self.backup_changes("PORTDIR_OVERLAY")
 
 			""" repoman controls PORTDIR_OVERLAY via the environment, so no
 			special cases are needed here."""
@@ -554,6 +510,10 @@ class config(object):
 
 			locations_manager.set_port_dirs(self["PORTDIR"], self["PORTDIR_OVERLAY"])
 
+			#Read package.keywords and package.accept_keywords.
+			self._keywords_manager = KeywordsManager(self.profiles, abs_user_config, \
+				local_config, global_accept_keywords=self.configdict["defaults"].get("ACCEPT_KEYWORDS", ""))
+
 			#Read all USE related files from profiles and optionally from user config.
 			self._use_manager = UseManager(self.profiles, abs_user_config, user_config=local_config)
 			#Initialize all USE related variables we track ourselves.
@@ -572,34 +532,17 @@ class config(object):
 					self.configdict["conf"].get("ACCEPT_LICENSE", ""))
 
 			#Read package.mask and package.unmask from profiles and optionally from user config
-			self._mask_manager = MaskManager(locations_manager.pmask_locations, abs_user_config, user_config=local_config)
+			self._mask_manager = MaskManager(self.repositories, self.profiles,
+				abs_user_config, user_config=local_config,
+				strict_umatched_removal=_unmatched_removal)
 
 			self._virtuals_manager = VirtualsManager(self.profiles)
 
 			if local_config:
-				# package.accept_keywords and package.keywords
-				pkgdict = grabdict_package(
-					os.path.join(abs_user_config, "package.keywords"),
-					recursive=1, allow_wildcard=True)
-
-				for k, v in grabdict_package(
-					os.path.join(abs_user_config, "package.accept_keywords"),
-					recursive=1, allow_wildcard=True).items():
-					pkgdict.setdefault(k, []).extend(v)
-
-				accept_keywords_defaults = \
-					self.configdict["defaults"].get("ACCEPT_KEYWORDS", "").split()
-				accept_keywords_defaults = tuple('~' + keyword for keyword in \
-					accept_keywords_defaults if keyword[:1] not in "~-")
-				for k, v in pkgdict.items():
-					# default to ~arch if no specific keyword is given
-					if not v:
-						v = accept_keywords_defaults
-					self.pkeywordsdict.setdefault(k.cp, {})[k] = v
-
 				#package.properties
 				propdict = grabdict_package(os.path.join(
-					abs_user_config, "package.properties"), recursive=1, allow_wildcard=True)
+					abs_user_config, "package.properties"), recursive=1, allow_wildcard=True, \
+					allow_repo=True, verify_eapi=False)
 				v = propdict.pop("*/*", None)
 				if v is not None:
 					if "ACCEPT_PROPERTIES" in self.configdict["conf"]:
@@ -611,7 +554,8 @@ class config(object):
 
 				#package.env
 				penvdict = grabdict_package(os.path.join(
-					abs_user_config, "package.env"), recursive=1, allow_wildcard=True)
+					abs_user_config, "package.env"), recursive=1, allow_wildcard=True, \
+					allow_repo=True, verify_eapi=False)
 				v = penvdict.pop("*/*", None)
 				if v is not None:
 					global_wildcard_conf = {}
@@ -631,41 +575,6 @@ class config(object):
 
 				for k, v in penvdict.items():
 					self._penvdict.setdefault(k.cp, {})[k] = v
-
-				self._local_repo_configs = {}
-				self._local_repo_conf_path = \
-					os.path.join(abs_user_config, 'repos.conf')
-
-				repo_conf_parser = SafeConfigParser()
-				try:
-					repo_conf_parser.readfp(
-						codecs.open(
-						_unicode_encode(self._local_repo_conf_path,
-						encoding=_encodings['fs'], errors='strict'),
-						mode='r', encoding=_encodings['content'], errors='replace')
-					)
-				except EnvironmentError as e:
-					if e.errno != errno.ENOENT:
-						raise
-					del e
-				except ParsingError as e:
-					writemsg_level(
-						_("!!! Error parsing '%s': %s\n")  % \
-						(self._local_repo_conf_path, e),
-						level=logging.ERROR, noiselevel=-1)
-					del e
-				else:
-					repo_defaults = repo_conf_parser.defaults()
-					if repo_defaults:
-						self._local_repo_configs['DEFAULT'] = \
-							_local_repo_config('DEFAULT', repo_defaults)
-					for repo_name in repo_conf_parser.sections():
-						repo_opts = repo_defaults.copy()
-						for opt_name in repo_conf_parser.options(repo_name):
-							repo_opts[opt_name] = \
-								repo_conf_parser.get(repo_name, opt_name)
-						self._local_repo_configs[repo_name] = \
-							_local_repo_config(repo_name, repo_opts)
 
 			#getting categories from an external file now
 			self.categories = [grabfile(os.path.join(x, "categories")) \
@@ -854,6 +763,13 @@ class config(object):
 					noiselevel=-1)
 
 	@property
+	def pkeywordsdict(self):
+		result = self._keywords_manager.pkeywordsdict.copy()
+		for k, v in result.items():
+			result[k] = v.copy()
+		return result
+
+	@property
 	def pmaskdict(self):
 		return self._mask_manager._pmaskdict.copy()
 
@@ -886,9 +802,9 @@ class config(object):
 
 		abs_profile_path = os.path.join(self["PORTAGE_CONFIGROOT"],
 			PROFILE_PATH)
-		if not self.profile_path or (not os.path.islink(abs_profile_path) and \
-			not os.path.exists(os.path.join(abs_profile_path, "parent")) and \
-			os.path.exists(os.path.join(self["PORTDIR"], "profiles"))):
+		if (not self.profile_path or \
+			not os.path.exists(os.path.join(self.profile_path, "parent"))) and \
+			os.path.exists(os.path.join(self["PORTDIR"], "profiles")):
 			writemsg(_("\n\n!!! %s is not a symlink and will probably prevent most merges.\n") % abs_profile_path,
 				noiselevel=-1)
 			writemsg(_("!!! It should point into a profile within %s/profiles/\n") % self["PORTDIR"])
@@ -924,14 +840,14 @@ class config(object):
 		try:
 			mod = load_mod(best_mod)
 		except ImportError:
-			if best_mod.startswith("cache."):
+			if not best_mod.startswith("cache."):
+				raise
+			else:
 				best_mod = "portage." + best_mod
 				try:
 					mod = load_mod(best_mod)
 				except ImportError:
-					pass
-		if mod is None:
-			raise
+					raise
 		return mod
 
 	def lock(self):
@@ -1002,7 +918,7 @@ class config(object):
 				use = frozenset(settings['PORTAGE_USE'].split())
 
 			values['ACCEPT_LICENSE'] = settings._license_manager.get_prunned_accept_license( \
-				settings.mycpv, use, settings['LICENSE'], settings['SLOT'])
+				settings.mycpv, use, settings['LICENSE'], settings['SLOT'], settings['repository'])
 			values['PORTAGE_RESTRICT'] = self._restrict(use, settings)
 			return values
 
@@ -1227,7 +1143,7 @@ class config(object):
 		if previous_features:
 			# The package from the previous setcpv call had package.env
 			# settings which modified FEATURES. Therefore, trigger a
-			# regenerate() call in order ensure that self.features
+			# regenerate() call in order to ensure that self.features
 			# is accurate.
 			has_changed = True
 
@@ -1461,7 +1377,7 @@ class config(object):
 		@rtype: String
 		@return: An matching atom string or None if one is not found.
 		"""
-		return self._mask_manager.getMaskAtom(cpv, metadata["SLOT"])
+		return self._mask_manager.getMaskAtom(cpv, metadata["SLOT"], metadata.get('repository'))
 
 	def _getProfileMaskAtom(self, cpv, metadata):
 		"""
@@ -1481,7 +1397,10 @@ class config(object):
 		cp = cpv_getkey(cpv)
 		profile_atoms = self.prevmaskdict.get(cp)
 		if profile_atoms:
-			pkg_list = ["%s:%s" % (cpv, metadata["SLOT"])]
+			pkg = "".join((cpv, _slot_separator, metadata["SLOT"]))
+			if 'repository' in metadata:
+				pkg = "".join((pkg, _repo_separator, metadata['repository']))
+			pkg_list = [pkg]
 			for x in profile_atoms:
 				if match_from_list(x, pkg_list):
 					continue
@@ -1489,24 +1408,15 @@ class config(object):
 		return None
 
 	def _getKeywords(self, cpv, metadata):
-		cp = cpv_getkey(cpv)
-		pkg = "%s:%s" % (cpv, metadata["SLOT"])
-		keywords = [[x for x in metadata.get("KEYWORDS", "").split() \
-			if x != "-*"]]
-		for pkeywords_dict in self._pkeywords_list:
-			cpdict = pkeywords_dict.get(cp)
-			if cpdict:
-				pkg_keywords = ordered_by_atom_specificity(cpdict, pkg)
-				if pkg_keywords:
-					keywords.extend(pkg_keywords)
-		return stack_lists(keywords, incremental=True)
+		return self._keywords_manager.getKeywords(cpv, metadata["SLOT"], \
+			metadata.get("KEYWORDS", ""), metadata.get("repository"))
 
 	def _getMissingKeywords(self, cpv, metadata):
 		"""
 		Take a package and return a list of any KEYWORDS that the user may
-		may need to accept for the given package. If the KEYWORDS are empty
+		need to accept for the given package. If the KEYWORDS are empty
 		and the the ** keyword has not been accepted, the returned list will
-		contain ** alone (in order to distiguish from the case of "none
+		contain ** alone (in order to distinguish from the case of "none
 		missing").
 
 		@param cpv: The package name (for package.keywords support)
@@ -1520,88 +1430,16 @@ class config(object):
 		# Hack: Need to check the env directly here as otherwise stacking 
 		# doesn't work properly as negative values are lost in the config
 		# object (bug #139600)
-		egroups = self.configdict["backupenv"].get(
-			"ACCEPT_KEYWORDS", "").split()
-		mygroups = self._getKeywords(cpv, metadata)
-		# Repoman may modify this attribute as necessary.
-		pgroups = self["ACCEPT_KEYWORDS"].split()
-		matches = False
-		cp = cpv_getkey(cpv)
+		backuped_accept_keywords = self.configdict["backupenv"].get("ACCEPT_KEYWORDS", "")
+		global_accept_keywords = self["ACCEPT_KEYWORDS"]
 
-		if self._p_accept_keywords:
-			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			accept_keywords_defaults = tuple('~' + keyword for keyword in \
-				pgroups if keyword[:1] not in "~-")
-			for d in self._p_accept_keywords:
-				cpdict = d.get(cp)
-				if cpdict:
-					pkg_accept_keywords = \
-						ordered_by_atom_specificity(cpdict, cpv_slot)
-					if pkg_accept_keywords:
-						for x in pkg_accept_keywords:
-							if not x:
-								x = accept_keywords_defaults
-							pgroups.extend(x)
-						matches = True
-
-		pkgdict = self.pkeywordsdict.get(cp)
-		if pkgdict:
-			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			pkg_accept_keywords = \
-				ordered_by_atom_specificity(pkgdict, cpv_slot)
-			if pkg_accept_keywords:
-				for x in pkg_accept_keywords:
-					pgroups.extend(x)
-				matches = True
-
-		if matches or egroups:
-			pgroups.extend(egroups)
-			inc_pgroups = set()
-			for x in pgroups:
-				if x.startswith("-"):
-					if x == "-*":
-						inc_pgroups.clear()
-					else:
-						inc_pgroups.discard(x[1:])
-				else:
-					inc_pgroups.add(x)
-			pgroups = inc_pgroups
-			del inc_pgroups
-
-		match = False
-		hasstable = False
-		hastesting = False
-		for gp in mygroups:
-			if gp == "*" or (gp == "-*" and len(mygroups) == 1):
-				writemsg(_("--- WARNING: Package '%(cpv)s' uses"
-					" '%(keyword)s' keyword.\n") % {"cpv": cpv, "keyword": gp}, noiselevel=-1)
-				if gp == "*":
-					match = 1
-					break
-			elif gp in pgroups:
-				match=1
-				break
-			elif gp.startswith("~"):
-				hastesting = True
-			elif not gp.startswith("-"):
-				hasstable = True
-		if not match and \
-			((hastesting and "~*" in pgroups) or \
-			(hasstable and "*" in pgroups) or "**" in pgroups):
-			match=1
-		if match:
-			missing = []
-		else:
-			if not mygroups:
-				# If KEYWORDS is empty then we still have to return something
-				# in order to distiguish from the case of "none missing".
-				mygroups.append("**")
-			missing = mygroups
-		return missing
+		return self._keywords_manager.getMissingKeywords(cpv, metadata["SLOT"], \
+			metadata.get("KEYWORDS", ""), metadata.get('repository'), \
+			global_accept_keywords, backuped_accept_keywords)
 
 	def _getMissingLicenses(self, cpv, metadata):
 		"""
-		Take a LICENSE string and return a list any licenses that the user may
+		Take a LICENSE string and return a list of any licenses that the user
 		may need to accept for the given package.  The returned list will not
 		contain any licenses that have already been accepted.  This method
 		can throw an InvalidDependString exception.
@@ -1614,11 +1452,11 @@ class config(object):
 		@return: A list of licenses that have not been accepted.
 		"""
 		return self._license_manager.getMissingLicenses( \
-			cpv, metadata["USE"], metadata["LICENSE"], metadata["SLOT"])
+			cpv, metadata["USE"], metadata["LICENSE"], metadata["SLOT"], metadata.get('repository'))
 
 	def _getMissingProperties(self, cpv, metadata):
 		"""
-		Take a PROPERTIES string and return a list of any properties the user may
+		Take a PROPERTIES string and return a list of any properties the user
 		may need to accept for the given package.  The returned list will not
 		contain any properties that have already been accepted.  This method
 		can throw an InvalidDependString exception.
@@ -1635,7 +1473,7 @@ class config(object):
 		cpdict = self._ppropertiesdict.get(cp)
 		if cpdict:
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
-			pproperties_list = ordered_by_atom_specificity(cpdict, cpv_slot)
+			pproperties_list = ordered_by_atom_specificity(cpdict, cpv_slot, repo=metadata.get('repository'))
 			if pproperties_list:
 				accept_properties = list(self._accept_properties)
 				for x in pproperties_list:
@@ -1754,6 +1592,9 @@ class config(object):
 			myuse = mydbapi.aux_get(mycpv, ["USE"])[0]
 		virts = use_reduce(provides, uselist=myuse.split(), flat=True)
 
+		# Ensure that we don't trigger the _treeVirtuals
+		# assertion in VirtualsManager._compile_virtuals().
+		self.getvirtuals()
 		self._virtuals_manager.add_depgraph_virtuals(mycpv, virts)
 
 	def reload(self):
@@ -2001,6 +1842,9 @@ class config(object):
 		return self.getvirtuals()
 
 	def get_virts_p(self):
+		# Ensure that we don't trigger the _treeVirtuals
+		# assertion in VirtualsManager._compile_virtuals().
+		self.getvirtuals()
 		return self._virtuals_manager.get_virts_p()
 
 	def getvirtuals(self):

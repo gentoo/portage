@@ -5,9 +5,9 @@ __all__ = (
 	'ordered_by_atom_specificity', 'prune_incremental',
 )
 
-from portage.dep import best_match_to_list
+from portage.dep import best_match_to_list, _repo_separator
 
-def ordered_by_atom_specificity(cpdict, pkg):
+def ordered_by_atom_specificity(cpdict, pkg, repo=None):
 	"""
 	Return a list of matched values from the given cpdict,
 	in ascending order by atom specificity. The rationale
@@ -23,6 +23,8 @@ def ordered_by_atom_specificity(cpdict, pkg):
 	order to achieve desired results (and thus corrupting
 	the ChangeLog like ordering of the file).
 	"""
+	if repo is not None:
+		pkg = pkg + _repo_separator + repo
 
 	results = []
 	keys = list(cpdict)

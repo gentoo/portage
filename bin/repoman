@@ -216,6 +216,9 @@ def ParseArgs(argv, qahelp):
 	parser.add_option('-d', '--include-dev', dest='include_dev', action='store_true',
 		default=False, help='include dev profiles in dependency checks')
 
+	parser.add_option('--unmatched-removal', dest='unmatched_removal', action='store_true',
+		default=False, help='enable strict checking of package.mask and package.unmask files for unmatched removal atoms')
+
 	parser.add_option('--without-mask', dest='without_mask', action='store_true',
 		default=False, help='behave as if no package.mask entries exist (not allowed with commit mode)')
 
@@ -469,6 +472,7 @@ suspect_rdepend = frozenset([
 	"sys-devel/flex",
 	"sys-devel/m4",
 	"sys-devel/pmake",
+	"virtual/linux-sources",
 	"x11-misc/bdftopcf",
 	"x11-misc/imake",
 ])
@@ -558,7 +562,10 @@ if options.mode == 'commit' and not options.pretend and not vcs:
 repoman_settings = portage.config(local_config=False)
 repoman_settings['PORTDIR_OVERLAY'] = "%s %s" % \
 	(repoman_settings.get('PORTDIR_OVERLAY', ''), portdir_overlay)
-repoman_settings.backup_changes('PORTDIR_OVERLAY')
+# We have to call the config constructor again so
+# that config.repositories is initialized correctly.
+repoman_settings = portage.config(local_config=False, env=dict(os.environ,
+	PORTDIR_OVERLAY=repoman_settings['PORTDIR_OVERLAY']))
 
 root = '/'
 trees = {
@@ -611,7 +618,7 @@ repolevel = len(reposplit)
 if options.mode == 'commit' and repolevel not in [1,2,3]:
 	print(red("***")+" Commit attempts *must* be from within a vcs co, category, or package directory.")
 	print(red("***")+" Attempting to commit from a packages files directory will be blocked for instance.")
-	print(red("***")+" This is intended behaviour, to ensure the manifest is recommited for a package.")
+	print(red("***")+" This is intended behaviour, to ensure the manifest is recommitted for a package.")
 	print(red("***"))
 	err("Unable to identify level we're commiting from for %s" % '/'.join(reposplit))
 
@@ -672,7 +679,7 @@ for path in portdb.porttrees:
 					uselist.add(use_prefix + x[0])
 
 	global_pmasklines.append(portage.util.grabfile_package(
-		os.path.join(path, 'profiles', 'package.mask'), recursive=1))
+		os.path.join(path, 'profiles', 'package.mask'), recursive=1, verify_eapi=True))
 
 	desc_path = os.path.join(path, 'profiles', 'profiles.desc')
 	try:
@@ -903,8 +910,15 @@ def fetch_metadata_dtd():
 				local_f.write(url_f.read())
 				local_f.close()
 				if last_modified is not None:
-					os.utime(metadata_dtd_tmp,
-						(int(last_modified), int(last_modified)))
+					try:
+						os.utime(metadata_dtd_tmp,
+							(int(last_modified), int(last_modified)))
+					except OSError:
+						# This fails on some odd non-unix-like filesystems.
+						# We don't really need the mtime to be preserved
+						# anyway here (currently we use ctime to trigger
+						# fetch), so just ignore it.
+						pass
 				os.rename(metadata_dtd_tmp, metadata_dtd)
 			finally:
 				try:
@@ -1818,6 +1832,7 @@ for x in scanlist:
 						config_profile_path=prof.abs_path,
 						config_incrementals=repoman_incrementals,
 						local_config=False,
+						_unmatched_removal=options.unmatched_removal,
 						env=env)
 					if options.without_mask:
 						dep_settings._mask_manager = \
@@ -2029,7 +2044,7 @@ else:
 			myvcstree=portage.cvstree.getentries("./",recursive=1)
 			myunadded=portage.cvstree.findunadded(myvcstree,recursive=1,basedir="./")
 		except SystemExit as e:
-			raise  # TODO propogate this
+			raise  # TODO propagate this
 		except:
 			err("Error retrieving CVS tree; exiting.")
 	if vcs == "svn":
@@ -2037,7 +2052,7 @@ else:
 			svnstatus=os.popen("svn status --no-ignore").readlines()
 			myunadded = [ "./"+elem.rstrip().split()[1] for elem in svnstatus if elem.startswith("?") or elem.startswith("I") ]
 		except SystemExit as e:
-			raise  # TODO propogate this
+			raise  # TODO propagate this
 		except:
 			err("Error retrieving SVN info; exiting.")
 	if vcs == "git":
@@ -2050,7 +2065,7 @@ else:
 			bzrstatus=os.popen("bzr status -S .").readlines()
 			myunadded = [ "./"+elem.rstrip().split()[1].split('/')[-1:][0] for elem in bzrstatus if elem.startswith("?") or elem[0:2] == " D" ]
 		except SystemExit as e:
-			raise  # TODO propogate this
+			raise  # TODO propagate this
 		except:
 			err("Error retrieving bzr info; exiting.")
 	if vcs == "hg":
@@ -2136,22 +2151,13 @@ else:
 
 	if vcs == "svn":
 		svnstatus = os.popen("svn status").readlines()
-		mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and elem[:1] in "MR" ]
-		mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A") ]
-		myremoved = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("D") ]
-		# in contrast to CVS, SVN expands nothing by default.
-		# bin_blobs historically
-		# were just there to see what files need to be checked for
-		# keyword expansion, which is exactly what we do here, so
-		# slightly change the semantic meaning of "bin_blob"...  In the
-		# future we could store which keyword is expanded.
-		props = os.popen("svn propget -R svn:keywords").readlines()
+		mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and (elem[0] in "MR" or elem[1] in "M")]
+		mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A")]
+		myremoved = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("D")]
 
-		# For files with multiple props set, props are delimited by newlines,
-		# so exclude lines that don't contain " - " since each of those lines
-		# only a contain props for a file listed on a previous line.
-		expansion = set("./" + prop.split(" - ")[0] \
-			for prop in props if " - " in prop)
+		# Subversion expands keywords specified in svn:keywords properties.
+		props = os.popen("svn propget -R svn:keywords").readlines()
+		expansion = dict(("./" + prop.split(" - ")[0], prop.split(" - ")[1].split()) for prop in props)
 
 	elif vcs == "git":
 		mychanged = os.popen("git diff-index --name-only --relative --diff-filter=M HEAD").readlines()
@@ -2202,34 +2208,56 @@ else:
 	mymanifests = list(mymanifests)
 	myheaders = []
 	mydirty = []
-	headerstring = "'\$(Header|Id)"
-	headerstring += ".*\$'"
-	for myfile in myupdates:
-
-		# for CVS, no_expansion contains files that are excluded from expansion
-		if vcs == "cvs":
-			if myfile in no_expansion:
-				continue
-
-		# for SVN, expansion contains files that are included in expansion
-		elif vcs == "svn":
-			if myfile not in expansion:
-				continue
-
-		myout = subprocess_getstatusoutput("egrep -q "+headerstring+" "+myfile)
-		if myout[0] == 0:
-			myheaders.append(myfile)
 
 	print("* %s files being committed..." % green(str(len(myupdates))), end=' ')
-	if vcs in ('git', 'bzr', 'hg'):
+	if vcs not in ('cvs', 'svn'):
 		# With git, bzr and hg, there's never any keyword expansion, so
 		# there's no need to regenerate manifests and all files will be
 		# committed in one big commit at the end.
 		print()
 	else:
+		if vcs == 'cvs':
+			headerstring = "'\$(Header|Id).*\$'"
+		elif vcs == "svn":
+			svn_keywords = ["Rev",
+					"Revision",
+					"LastChangedRevision",
+					"Date",
+					"LastChangedDate",
+					"Author",
+					"LastChangedBy",
+					"URL",
+					"HeadURL",
+					"Id",
+					"Header"]
+
+		for myfile in myupdates:
+
+			# for CVS, no_expansion contains files that are excluded from expansion
+			if vcs == "cvs":
+				if myfile in no_expansion:
+					continue
+
+			# for SVN, expansion contains files that are included in expansion
+			elif vcs == "svn":
+				if myfile not in expansion:
+					continue
+				
+				# Subversion keywords are case-insensitive in svn:keywords properties, but case-sensitive in contents of files.
+				enabled_keywords = []
+				for keyword in svn_keywords:
+					if keyword.lower() in (k.lower() for k in expansion[myfile]):
+						enabled_keywords.append(keyword)
+
+				headerstring = "'\$(%s).*\$'" % "|".join(enabled_keywords)
+
+			myout = subprocess_getstatusoutput("egrep -q "+headerstring+" "+myfile)
+			if myout[0] == 0:
+				myheaders.append(myfile)
+
 		print("%s have headers that will change." % green(str(len(myheaders))))
-		print("* Files with headers will cause the " + \
-			"manifests to be made and recommited.")
+		print("* Files with headers will cause the manifests to be changed and committed separately.")
+
 	logging.info("myupdates: %s", myupdates)
 	logging.info("myheaders: %s", myheaders)
 
@@ -2535,7 +2563,9 @@ else:
 		# strip the closing parenthesis
 		mymsg.write(_unicode_encode(commitmessage[:-1]))
 		if signed:
-			mymsg.write(b", signed Manifest commit)")
+			mymsg.write(_unicode_encode(
+				", signed Manifest commit with key %s)" % \
+				repoman_settings["PORTAGE_GPG_KEY"]))
 		else:
 			mymsg.write(b", unsigned Manifest commit)")
 		mymsg.close()

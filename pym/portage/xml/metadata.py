@@ -323,16 +323,18 @@ class MetaDataXML(object):
 		"""
 		maintainers = []
 		for maintainer in self.maintainers():
-			if maintainer.email is None:
-				maintainers.append(maintainer.name)
+			if maintainer.email is None or not maintainer.email.strip():
+				if maintainer.name and maintainer.name.strip():
+					maintainers.append(maintainer.name)
 			else:
 				maintainers.append(maintainer.email)
 
 		for herd, email in self.herds(include_email=True):
 			if herd == "no-herd":
 				continue
-			if email is None:
-				maintainers.append(herd)
+			if email is None or not email.strip():
+				if herd and herd.strip():
+					maintainers.append(herd)
 			else:
 				maintainers.append(email)
 

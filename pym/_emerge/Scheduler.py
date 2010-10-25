@@ -19,7 +19,7 @@ import portage
 from portage import StringIO
 from portage import os
 from portage import _encodings
-from portage import _unicode_encode
+from portage import _unicode_decode, _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.const import LIBC_PACKAGE_ATOM
 from portage.elog.messages import eerror
@@ -61,6 +61,9 @@ if sys.hexversion >= 0x3000000:
 	basestring = str
 
 class Scheduler(PollScheduler):
+
+	# max time between display status updates (milliseconds)
+	_max_display_latency = 3000
 
 	_opts_ignore_blockers = \
 		frozenset(["--buildpkgonly",
@@ -154,7 +157,7 @@ class Scheduler(PollScheduler):
 		self._spinner = spinner
 		self._mtimedb = mtimedb
 		self._favorites = favorites
-		self._args_set = InternalPackageSet(favorites)
+		self._args_set = InternalPackageSet(favorites, allow_repo=True)
 		self._build_opts = self._build_opts_class()
 		for k in self._build_opts.__slots__:
 			setattr(self._build_opts, k, "--" + k.replace("_", "-") in myopts)
@@ -317,8 +320,40 @@ class Scheduler(PollScheduler):
 		gc.collect()
 
 	def _poll(self, timeout=None):
+
 		self._schedule()
-		PollScheduler._poll(self, timeout=timeout)
+
+		if timeout is None:
+			while True:
+				previous_count = len(self._poll_event_queue)
+				PollScheduler._poll(self, timeout=self._max_display_latency)
+				self._status_display.display()
+				if previous_count != len(self._poll_event_queue):
+					break
+
+		elif timeout <= self._max_display_latency:
+			PollScheduler._poll(self, timeout=timeout)
+			self._status_display.display()
+
+		else:
+			remaining_timeout = timeout
+			start_time = time.time()
+			while True:
+				previous_count = len(self._poll_event_queue)
+				PollScheduler._poll(self,
+					timeout=min(self._max_display_latency, remaining_timeout))
+				self._status_display.display()
+				if previous_count != len(self._poll_event_queue):
+					break
+				elapsed_time = time.time() - start_time
+				if elapsed_time < 0:
+					# The system clock has changed such that start_time
+					# is now in the future, so just assume that the
+					# timeout has already elapsed.
+					break
+				remaining_timeout = timeout - 1000 * elapsed_time
+				if remaining_timeout <= 0:
+					break
 
 	def _set_max_jobs(self, max_jobs):
 		self._max_jobs = max_jobs
@@ -703,7 +738,7 @@ class Scheduler(PollScheduler):
 				'digest' not in pkgsettings.features:
 				continue
 			portdb = x.root_config.trees['porttree'].dbapi
-			ebuild_path = portdb.findname(x.cpv)
+			ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
 			if ebuild_path is None:
 				raise AssertionError("ebuild not found for '%s'" % x.cpv)
 			pkgsettings['O'] = os.path.dirname(ebuild_path)
@@ -780,7 +815,7 @@ class Scheduler(PollScheduler):
 			root_config = x.root_config
 			portdb = root_config.trees["porttree"].dbapi
 			quiet_config = quiet_settings[root_config.root]
-			ebuild_path = portdb.findname(x.cpv)
+			ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
 			if ebuild_path is None:
 				raise AssertionError("ebuild not found for '%s'" % x.cpv)
 			quiet_config["O"] = os.path.dirname(ebuild_path)
@@ -983,14 +1018,13 @@ class Scheduler(PollScheduler):
 			else:
 				tree = "porttree"
 				portdb = root_config.trees["porttree"].dbapi
-				ebuild_path = portdb.findname(x.cpv)
+				ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
 				if ebuild_path is None:
 					raise AssertionError("ebuild not found for '%s'" % x.cpv)
 
 			portage.package.ebuild.doebuild.doebuild_environment(ebuild_path,
-				"pretend", root_config.root, settings,
-				debug=(settings.get("PORTAGE_DEBUG", "") == 1),
-				mydbapi=self.trees[settings["ROOT"]][tree].dbapi, use_cache=1)
+				"pretend", settings=settings,
+				db=self.trees[settings["ROOT"]][tree].dbapi)
 			prepare_build_dirs(root_config.root, settings, cleanup=0)
 
 			vardb = root_config.trees['vartree'].dbapi
@@ -1203,7 +1237,9 @@ class Scheduler(PollScheduler):
 				printer.eerror(line)
 			printer.eerror("")
 			for failed_pkg in self._failed_pkgs_all:
-				msg = " %s" % (colorize('INFORM', failed_pkg.pkg.__str__()),)
+				# Use _unicode_decode() to force unicode format string so
+				# that Package.__unicode__() is called in python2.
+				msg = _unicode_decode(" %s") % (failed_pkg.pkg,)
 				log_path = self._locate_failure_log(failed_pkg)
 				if log_path is not None:
 					msg += ", Log file:"

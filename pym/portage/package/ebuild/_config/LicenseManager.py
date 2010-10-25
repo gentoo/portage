@@ -35,7 +35,7 @@ class LicenseManager(object):
 
 	def _read_user_config(self, abs_user_config):
 		licdict = grabdict_package(os.path.join(
-			abs_user_config, "package.license"), recursive=1, allow_wildcard=True)
+			abs_user_config, "package.license"), recursive=1, allow_wildcard=True, allow_repo=True, verify_eapi=False)
 		for k, v in licdict.items():
 			self._plicensedict.setdefault(k.cp, {})[k] = \
 				self.expandLicenseTokens(v)
@@ -45,6 +45,9 @@ class LicenseManager(object):
 			for k, v in grabdict(
 				os.path.join(loc, "license_groups")).items():
 				self._license_groups.setdefault(k, []).extend(v)
+
+		for k, v in self._license_groups.items():
+			self._license_groups[k] = frozenset(v)
 
 	def extract_global_changes(self, old=""):
 		ret = old
@@ -108,7 +111,7 @@ class LicenseManager(object):
 			rValue = ["-" + token for token in rValue]
 		return rValue
 
-	def _getPkgAcceptLicense(self, cpv, slot):
+	def _getPkgAcceptLicense(self, cpv, slot, repo):
 		"""
 		Get an ACCEPT_LICENSE list, accounting for package.license.
 		"""
@@ -117,14 +120,14 @@ class LicenseManager(object):
 		cpdict = self._plicensedict.get(cp)
 		if cpdict:
 			cpv_slot = "%s:%s" % (cpv, slot)
-			plicence_list = ordered_by_atom_specificity(cpdict, cpv_slot)
+			plicence_list = ordered_by_atom_specificity(cpdict, cpv_slot, repo)
 			if plicence_list:
 				accept_license = list(self._accept_license)
 				for x in plicence_list:
 					accept_license.extend(x)
 		return accept_license
 
-	def get_prunned_accept_license(self, cpv, use, lic, slot):
+	def get_prunned_accept_license(self, cpv, use, lic, slot, repo):
 		"""
 		Generate a pruned version of ACCEPT_LICENSE, by intersection with
 		LICENSE. This is required since otherwise ACCEPT_LICENSE might be
@@ -137,7 +140,7 @@ class LicenseManager(object):
 			licenses = set()
 		licenses.discard('||')
 
-		accept_license = self._getPkgAcceptLicense(cpv, slot)
+		accept_license = self._getPkgAcceptLicense(cpv, slot, repo)
 
 		if accept_license:
 			acceptable_licenses = set()
@@ -154,9 +157,9 @@ class LicenseManager(object):
 			licenses = acceptable_licenses
 		return ' '.join(sorted(licenses))
 
-	def getMissingLicenses(self, cpv, use, lic, slot):
+	def getMissingLicenses(self, cpv, use, lic, slot, repo):
 		"""
-		Take a LICENSE string and return a list any licenses that the user may
+		Take a LICENSE string and return a list of any licenses that the user
 		may need to accept for the given package.  The returned list will not
 		contain any licenses that have already been accepted.  This method
 		can throw an InvalidDependString exception.
@@ -177,7 +180,7 @@ class LicenseManager(object):
 		licenses.discard('||')
 
 		acceptable_licenses = set()
-		for x in self._getPkgAcceptLicense(cpv, slot):
+		for x in self._getPkgAcceptLicense(cpv, slot, repo):
 			if x == '*':
 				acceptable_licenses.update(licenses)
 			elif x == '-*':

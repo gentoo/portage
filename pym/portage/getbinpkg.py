@@ -16,6 +16,8 @@ import time
 import tempfile
 import base64
 
+_all_errors = [ValueError, socket.error]
+
 try:
 	from html.parser import HTMLParser as html_parser_HTMLParser
 except ImportError:
@@ -35,6 +37,8 @@ try:
 	import ftplib
 except ImportError as e:
 	sys.stderr.write(colorize("BAD","!!! CANNOT IMPORT FTPLIB: ")+str(e)+"\n")
+else:
+	_all_errors.extend(ftplib.all_errors)
 
 try:
 	try:
@@ -42,13 +46,19 @@ try:
 		from http.client import HTTPSConnection as http_client_HTTPSConnection
 		from http.client import BadStatusLine as http_client_BadStatusLine
 		from http.client import ResponseNotReady as http_client_ResponseNotReady
+		from http.client import error as http_client_error
 	except ImportError:
 		from httplib import HTTPConnection as http_client_HTTPConnection
 		from httplib import HTTPSConnection as http_client_HTTPSConnection
 		from httplib import BadStatusLine as http_client_BadStatusLine
 		from httplib import ResponseNotReady as http_client_ResponseNotReady
+		from httplib import error as http_client_error
 except ImportError as e:
 	sys.stderr.write(colorize("BAD","!!! CANNOT IMPORT HTTP.CLIENT: ")+str(e)+"\n")
+else:
+	_all_errors.append(http_client_error)
+
+_all_errors = tuple(_all_errors)
 
 if sys.hexversion >= 0x3000000:
 	long = int
@@ -500,7 +510,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 
 	try:
 		conn, protocol, address, params, headers = create_conn(baseurl, conn)
-	except socket.error as e:
+	except _all_errors as e:
 		# ftplib.FTP(host) can raise errors like this:
 		#   socket.error: (111, 'Connection refused')
 		sys.stderr.write("!!! %s\n" % (e,))

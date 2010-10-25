@@ -21,7 +21,7 @@ except KeyboardInterrupt:
 	sys.exit(1)
 
 import os
-
+import subprocess
 import types
 
 # Avoid sandbox violations after python upgrade.
@@ -79,6 +79,9 @@ def has_version(argv):
 	if (len(argv) < 2):
 		print("ERROR: insufficient parameters!")
 		sys.exit(2)
+
+	warnings = []
+
 	try:
 		atom = portage.dep.Atom(argv[1])
 	except portage.exception.InvalidAtom:
@@ -89,7 +92,17 @@ def has_version(argv):
 		else:
 			atom = argv[1]
 	else:
+		if atom_validate_strict:
+			try:
+				atom = portage.dep.Atom(argv[1], eapi=eapi)
+			except portage.exception.InvalidAtom as e:
+				warnings.append(
+					portage._unicode_decode("QA Notice: %s: %s") % \
+					('has_version', e))
 		atom = eval_atom_use(atom)
+
+	if warnings:
+		elog('eqawarn', warnings)
 
 	try:
 		mylist = portage.db[argv[0]]["vartree"].dbapi.match(atom)
@@ -113,6 +126,9 @@ def best_version(argv):
 	if (len(argv) < 2):
 		print("ERROR: insufficient parameters!")
 		sys.exit(2)
+
+	warnings = []
+
 	try:
 		atom = portage.dep.Atom(argv[1])
 	except portage.exception.InvalidAtom:
@@ -123,7 +139,18 @@ def best_version(argv):
 		else:
 			atom = argv[1]
 	else:
+		if atom_validate_strict:
+			try:
+				atom = portage.dep.Atom(argv[1], eapi=eapi)
+			except portage.exception.InvalidAtom as e:
+				warnings.append(
+					portage._unicode_decode("QA Notice: %s: %s") % \
+					('best_version', e))
 		atom = eval_atom_use(atom)
+
+	if warnings:
+		elog('eqawarn', warnings)
+
 	try:
 		mylist = portage.db[argv[0]]["vartree"].dbapi.match(atom)
 		print(portage.best(mylist))
@@ -550,21 +577,21 @@ def get_repo_path(argv):
 def list_preserved_libs(argv):
 	"""<root>
 	Print a list of libraries preserved during a package update in the form
-	package: path. Returns 0 if no preserved libraries could be found, 
-	1 otherwise.
+	package: path. Returns 1 if no preserved libraries could be found,
+	0 otherwise.
 	"""
 
 	if len(argv) != 1:
 		print("ERROR: wrong number of arguments")
 		sys.exit(2)
 	mylibs = portage.db[argv[0]]["vartree"].dbapi._plib_registry.getPreservedLibs()
-	rValue = 0
+	rValue = 1
 	msg = []
 	for cpv in sorted(mylibs):
 		msg.append(cpv)
 		for path in mylibs[cpv]:
 			msg.append(' ' + path)
-			rValue = 1
+			rValue = 0
 		msg.append('\n')
 	writemsg_stdout(''.join(msg), noiselevel=-1)
 	return rValue
@@ -578,7 +605,7 @@ list_preserved_libs.uses_root = True
 if not portage.const._ENABLE_PRESERVE_LIBS:
 	del list_preserved_libs
 
-non_commands = frozenset(['eval_atom_use', 'exithandler', 'main',
+non_commands = frozenset(['elog', 'eval_atom_use', 'exithandler', 'main',
 	'usage', 'writemsg', 'writemsg_stdout'])
 commands = sorted(k for k, v in globals().items() \
 	if type(v) is types.FunctionType and k not in non_commands)
@@ -617,8 +644,27 @@ def usage(argv):
 		print("\nRun portageq with --help for info")
 
 atom_validate_strict = "EBUILD_PHASE" in os.environ
+eapi = None
+if atom_validate_strict:
+	eapi = os.environ.get('EAPI')
+
+	def elog(elog_funcname, lines):
+		cmd = "source '%s/isolated-functions.sh' ; " % \
+			os.environ["PORTAGE_BIN_PATH"]
+		for line in lines:
+			cmd += "%s %s ; " % (elog_funcname, portage._shell_quote(line))
+		subprocess.call([portage.const.BASH_BINARY, "-c", cmd])
+
+else:
+	def elog(elog_funcname, lines):
+		pass
 
 def main():
+
+	nocolor = os.environ.get('NOCOLOR')
+	if nocolor in ('yes', 'true'):
+		portage.output.nocolor()
+
 	if "-h" in sys.argv or "--help" in sys.argv:
 		usage(sys.argv)
 		sys.exit(os.EX_OK)

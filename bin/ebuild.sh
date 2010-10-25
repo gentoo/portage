@@ -188,11 +188,8 @@ has_version() {
 	fi
 	local retval=$?
 	case "${retval}" in
-		0)
-			return 0
-			;;
-		1)
-			return 1
+		0|1)
+			return ${retval}
 			;;
 		*)
 			die "unexpected portageq exit code: ${retval}"
@@ -230,11 +227,8 @@ best_version() {
 	fi
 	local retval=$?
 	case "${retval}" in
-		0)
-			return 0
-			;;
-		1)
-			return 1
+		0|1)
+			return ${retval}
 			;;
 		*)
 			die "unexpected portageq exit code: ${retval}"
@@ -1273,36 +1267,28 @@ dyn_help() {
 debug-print() {
 	# if $T isn't defined, we're in dep calculation mode and
 	# shouldn't do anything
-	[ ! -d "$T" ] && return 0
+	[[ ! -d ${T} || ${#} -eq 0 ]] && return 0
 
-	while [ "$1" ]; do
+	if [[ ${ECLASS_DEBUG_OUTPUT} == on ]]; then
+		printf 'debug: %s\n' "${@}" >&2
+	elif [[ -n ${ECLASS_DEBUG_OUTPUT} ]]; then
+		printf 'debug: %s\n' "${@}" >> "${ECLASS_DEBUG_OUTPUT}"
+	fi
 
-		# extra user-configurable targets
-		if [ "$ECLASS_DEBUG_OUTPUT" == "on" ]; then
-			echo "debug: $1" >&2
-		elif [ -n "$ECLASS_DEBUG_OUTPUT" ]; then
-			echo "debug: $1" >> $ECLASS_DEBUG_OUTPUT
-		fi
-
-		# default target
-		echo "$1" 2>/dev/null >> "${T}/eclass-debug.log"
-		# let the portage user own/write to this file
-		chmod g+w "${T}/eclass-debug.log" &>/dev/null
-
-		shift
-	done
+	# default target
+	printf '%s\n' "${@}" >> "${T}/eclass-debug.log"
+	# let the portage user own/write to this file
+	chmod g+w "${T}/eclass-debug.log" &>/dev/null
 }
 
 # The following 2 functions are debug-print() wrappers
 
 debug-print-function() {
-	str="$1: entering function"
-	shift
-	debug-print "$str, parameters: $*"
+	debug-print "${1}, parameters: ${*:2}"
 }
 
 debug-print-section() {
-	debug-print "now in section $*"
+	debug-print "now in section ${*}"
 }
 
 # Sources all eclasses in parameters
@@ -1599,6 +1585,16 @@ _ebuild_phase_funcs() {
 
 				eval "default() { _eapi2_$phase_func \"\$@\" ; }"
 
+				case $eapi in
+					2|3)
+						;;
+					*)
+						eval "default_src_install() { _eapi4_src_install \"\$@\" ; }"
+						[[ $phase_func = src_install ]] && \
+							eval "default() { _eapi4_$phase_func \"\$@\" ; }"
+						;;
+				esac
+
 			else
 
 				for x in $default_phases ; do
@@ -1674,15 +1670,26 @@ source_all_bashrcs() {
 # of ebuild.sh will work for pkg_postinst, pkg_prerm, and pkg_postrm
 # when portage is upgrading itself.
 
-READONLY_EBUILD_METADATA="DEFINED_PHASES DEPEND DESCRIPTION
+PORTAGE_READONLY_METADATA="DEFINED_PHASES DEPEND DESCRIPTION
 	EAPI HOMEPAGE INHERITED IUSE REQUIRED_USE KEYWORDS LICENSE
 	PDEPEND PROVIDE RDEPEND RESTRICT SLOT SRC_URI"
 
-READONLY_PORTAGE_VARS="D EBUILD EBUILD_PHASE \
-	EBUILD_SH_ARGS EMERGE_FROM FILESDIR \
-	PORTAGE_BINPKG_FILE PORTAGE_BIN_PATH PORTAGE_IUSE \
-	PORTAGE_PYM_PATH PORTAGE_MUTABLE_FILTERED_VARS \
-	PORTAGE_SAVED_READONLY_VARS PORTAGE_TMPDIR T WORKDIR"
+PORTAGE_READONLY_VARS="D EBUILD EBUILD_PHASE \
+	EBUILD_SH_ARGS ECLASSDIR EMERGE_FROM FILESDIR PM_EBUILD_HOOK_DIR \
+	PORTAGE_ACTUAL_DISTDIR PORTAGE_ARCHLIST PORTAGE_BASHRC  \
+	PORTAGE_BINPKG_FILE PORTAGE_BINPKG_TAR_OPTS PORTAGE_BINPKG_TMPFILE \
+	PORTAGE_BIN_PATH PORTAGE_BUILDDIR PORTAGE_BUNZIP2_COMMAND \
+	PORTAGE_BZIP2_COMMAND PORTAGE_COLORMAP PORTAGE_CONFIGROOT \
+	PORTAGE_DEBUG PORTAGE_DEPCACHEDIR PORTAGE_EBUILD_EXIT_FILE \
+	PORTAGE_GID PORTAGE_GRPNAME PORTAGE_INST_GID PORTAGE_INST_UID \
+	PORTAGE_IPC_DAEMON PORTAGE_IUSE PORTAGE_LOG_FILE \
+	PORTAGE_MUTABLE_FILTERED_VARS PORTAGE_PYM_PATH PORTAGE_PYTHON \
+	PORTAGE_READONLY_METADATA PORTAGE_READONLY_VARS \
+	PORTAGE_REPO_NAME PORTAGE_RESTRICT PORTAGE_SANDBOX_COMPAT_LEVEL \
+	PORTAGE_SAVED_READONLY_VARS PORTAGE_SIGPIPE_STATUS \
+	PORTAGE_TMPDIR PORTAGE_UPDATE_ENV PORTAGE_USERNAME \
+	PORTAGE_VERBOSE PORTAGE_WORKDIR_MODE PORTDIR PORTDIR_OVERLAY \
+	PROFILE_PATHS REPLACING_VERSIONS REPLACED_BY_VERSION T WORKDIR"
 
 PORTAGE_SAVED_READONLY_VARS="A CATEGORY P PF PN PR PV PVR"
 
@@ -1745,7 +1752,7 @@ filter_readonly_variables() {
 		SANDBOX_LOG SANDBOX_ON"
 	local misc_garbage_vars="_portage_filter_opts"
 	filtered_vars="$readonly_bash_vars $bash_misc_vars
-		$READONLY_PORTAGE_VARS $misc_garbage_vars"
+		$PORTAGE_READONLY_VARS $misc_garbage_vars"
 
 	# Don't filter/interfere with prefix variables unless they are
 	# supported by the current EAPI.
@@ -2094,7 +2101,7 @@ fi
 # Note: readonly variables interfere with preprocess_ebuild_env(), so
 # declare them only after it has already run.
 if [ "${EBUILD_PHASE}" != "depend" ] ; then
-	declare -r ${READONLY_EBUILD_METADATA} ${READONLY_PORTAGE_VARS}
+	declare -r $PORTAGE_READONLY_METADATA $PORTAGE_READONLY_VARS
 	case "$EAPI" in
 		0|1|2)
 			;;

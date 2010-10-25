@@ -117,3 +117,91 @@ class DepcleanWithInstalledMaskedTestCase(TestCase):
 				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
 		finally:
 			playground.cleanup()
+
+class DepcleanWithExcludeTestCase(TestCase):
+
+	def testDepcleanWithExclude(self):
+
+		installed = {
+			"dev-libs/A-1": {},
+			"dev-libs/B-1": { "RDEPEND": "dev-libs/A" },
+			}
+
+		test_cases = (
+			#Without --exclude.
+			ResolverPlaygroundTestCase(
+				[],
+				options = {"--depclean": True},
+				success = True,
+				cleanlist = ["dev-libs/B-1", "dev-libs/A-1"]),
+			ResolverPlaygroundTestCase(
+				["dev-libs/A"],
+				options = {"--depclean": True},
+				success = True,
+				cleanlist = []),
+			ResolverPlaygroundTestCase(
+				["dev-libs/B"],
+				options = {"--depclean": True},
+				success = True,
+				cleanlist = ["dev-libs/B-1"]),
+
+			#With --exclude
+			ResolverPlaygroundTestCase(
+				[],
+				options = {"--depclean": True, "--exclude": ["dev-libs/A"]},
+				success = True,
+				cleanlist = ["dev-libs/B-1"]),
+			ResolverPlaygroundTestCase(
+				["dev-libs/B"],
+				options = {"--depclean": True, "--exclude": ["dev-libs/B"]},
+				success = True,
+				cleanlist = []),
+			)
+
+		playground = ResolverPlayground(installed=installed)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
+class DepcleanWithExcludeAndSlotsTestCase(TestCase):
+
+	def testDepcleanWithExcludeAndSlots(self):
+
+		installed = {
+			"dev-libs/Z-1": { "SLOT": 1},
+			"dev-libs/Z-2": { "SLOT": 2},
+			"dev-libs/Y-1": { "RDEPEND": "=dev-libs/Z-1", "SLOT": 1 },
+			"dev-libs/Y-2": { "RDEPEND": "=dev-libs/Z-2", "SLOT": 2 },
+			}
+
+		world = [ "dev-libs/Y" ]
+
+		test_cases = (
+			#Without --exclude.
+			ResolverPlaygroundTestCase(
+				[],
+				options = {"--depclean": True},
+				success = True,
+				cleanlist = ["dev-libs/Y-1", "dev-libs/Z-1"]),
+			ResolverPlaygroundTestCase(
+				[],
+				options = {"--depclean": True, "--exclude": ["dev-libs/Z"]},
+				success = True,
+				cleanlist = ["dev-libs/Y-1"]),
+			ResolverPlaygroundTestCase(
+				[],
+				options = {"--depclean": True, "--exclude": ["dev-libs/Y"]},
+				success = True,
+				cleanlist = []),
+			)
+
+		playground = ResolverPlayground(installed=installed, world=world)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()

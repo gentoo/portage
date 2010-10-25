@@ -7,7 +7,7 @@ import sys
 
 import portage
 from portage import eapi_is_supported, _eapi_is_deprecated
-from portage.dep import match_from_list
+from portage.dep import match_from_list, _slot_separator, _repo_separator
 from portage.localization import _
 from portage.package.ebuild.config import config
 from portage.versions import catpkgsplit, cpv_getkey
@@ -32,16 +32,16 @@ class _MaskReason(object):
 		self.message = message
 		self.unmask_hint = unmask_hint
 
-def getmaskingstatus(mycpv, settings=None, portdb=None):
+def getmaskingstatus(mycpv, settings=None, portdb=None, myrepo=None):
 	if settings is None:
 		settings = config(clone=portage.settings)
 	if portdb is None:
 		portdb = portage.portdb
 
 	return [mreason.message for \
-		mreason in _getmaskingstatus(mycpv, settings, portdb)]
+		mreason in _getmaskingstatus(mycpv, settings, portdb,myrepo)]
 
-def _getmaskingstatus(mycpv, settings, portdb):
+def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 
 	metadata = None
 	installed = False
@@ -58,7 +58,7 @@ def _getmaskingstatus(mycpv, settings, portdb):
 	if metadata is None:
 		db_keys = list(portdb._aux_cache_keys)
 		try:
-			metadata = dict(zip(db_keys, portdb.aux_get(mycpv, db_keys)))
+			metadata = dict(zip(db_keys, portdb.aux_get(mycpv, db_keys, myrepo=myrepo)))
 		except KeyError:
 			if not portdb.cpv_exists(mycpv):
 				raise
@@ -100,10 +100,13 @@ def _getmaskingstatus(mycpv, settings, portdb):
 		myarch = pgroups[0].lstrip("~")
 
 	cp = cpv_getkey(mycpv)
-	pkgdict = settings.pkeywordsdict.get(cp)
+	pkgdict = settings._keywords_manager.pkeywordsdict.get(cp)
 	matches = False
 	if pkgdict:
-		cpv_slot_list = ["%s:%s" % (mycpv, metadata["SLOT"])]
+		pkg = "".join((mycpv, _slot_separator, metadata["SLOT"]))
+		if 'repository' in metadata:
+			pkg = "".join((pkg, _repo_separator, metadata['repository']))
+		cpv_slot_list = [pkg]
 		for atom, pkgkeywords in pkgdict.items():
 			if match_from_list(atom, cpv_slot_list):
 				matches = True
@@ -156,7 +159,7 @@ def _getmaskingstatus(mycpv, settings, portdb):
 				if x in allowed_tokens]
 			msg = license_split[:]
 			msg.append("license(s)")
-			rValue.append(_MaskReason("LICENSE", " ".join(msg)))
+			rValue.append(_MaskReason("LICENSE", " ".join(msg), _UnmaskHint("license", set(missing_licenses))))
 	except portage.exception.InvalidDependString as e:
 		rValue.append(_MaskReason("invalid", "LICENSE: "+str(e)))
 

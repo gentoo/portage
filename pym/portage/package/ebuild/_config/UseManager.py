@@ -52,7 +52,7 @@ class UseManager(object):
 		ret = ExtendedAtomDict(dict)
 		if user_config:
 			pusedict = grabdict_package(
-				os.path.join(location, file_name), recursive=1, allow_wildcard=True)
+				os.path.join(location, file_name), recursive=1, allow_wildcard=True, allow_repo=True, verify_eapi=False)
 			for k, v in pusedict.items():
 				ret.setdefault(k.cp, {})[k] = v
 
@@ -66,7 +66,7 @@ class UseManager(object):
 	def _parse_profile_files_to_dict(self, file_name, locations, juststrings=False):
 		ret = []
 		raw = [grabdict_package(os.path.join(x, file_name),
-			juststrings=juststrings, recursive=1) for x in locations]
+			juststrings=juststrings, recursive=1, verify_eapi=True) for x in locations]
 		for rawdict in raw:
 			cpdict = {}
 			for k, v in rawdict.items():

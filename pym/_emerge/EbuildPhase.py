@@ -65,12 +65,19 @@ class EbuildPhase(CompositeTask):
 					maint_str = "<invalid metadata.xml>"
 
 			msg = []
-			msg.append("CPV:  %s" % self.settings.mycpv)
-			msg.append("REPO: %s" % self.settings['PORTAGE_REPO_NAME'])
+			msg.append("Package:    %s" % self.settings.mycpv)
+			if self.settings.get('PORTAGE_REPO_NAME'):
+				msg.append("Repository: %s" % self.settings['PORTAGE_REPO_NAME'])
 			if maint_str:
 				msg.append("Maintainer: %s" % maint_str)
 			msg.append("USE:  %s" % use)
 			self._elog('einfo', msg)
+
+		if self.phase == 'package':
+			if 'PORTAGE_BINPKG_TMPFILE' not in self.settings:
+				self.settings['PORTAGE_BINPKG_TMPFILE'] = \
+					os.path.join(self.settings['PKGDIR'],
+					self.settings['CATEGORY'], self.settings['PF']) + '.tbz2'
 
 		if self.phase == 'prerm':
 			env_extractor = BinpkgEnvExtractor(background=self.background,

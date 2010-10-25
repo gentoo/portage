@@ -282,7 +282,7 @@ install_qa_check() {
 		fi
 
 		# Check for files built without respecting LDFLAGS
-		if [[ "${LDFLAGS}" == *--hash-style=gnu* ]] && [[ "${PN}" != *-bin ]] ; then
+		if [[ "${LDFLAGS}" == *,--hash-style=gnu* ]] && [[ "${PN}" != *-bin ]] ; then
 			qa_var="QA_DT_HASH_${ARCH/-/_}"
 			eval "[[ -n \${!qa_var} ]] && QA_DT_HASH=(\"\${${qa_var}[@]}\")"
 			f=$(scanelf -qyRF '%k %p' -k .hash "${D}" | sed -e "s:\.hash ::")
@@ -596,9 +596,10 @@ install_qa_check() {
 			f=$(LC_ALL=C $grep_cmd "${m}" "${PORTAGE_LOG_FILE}")
 			if [[ -n ${f} ]] ; then
 				abort="yes"
-				case "$m" in
-					": warning: call to .* will always overflow destination buffer$") always_overflow=yes ;;
-				esac
+				# for now, don't make this fatal (see bug #337031)
+				#case "$m" in
+				#	": warning: call to .* will always overflow destination buffer$") always_overflow=yes ;;
+				#esac
 				if [[ $always_overflow = yes ]] ; then
 					eerror
 					eerror "QA Notice: Package has poor programming practices which may compile"
@@ -876,7 +877,7 @@ dyn_package() {
 	# for $PKGDIR and/or $PKGDIR/All.
 	export SANDBOX_ON="0"
 	[ -z "${PORTAGE_BINPKG_TMPFILE}" ] && \
-		PORTAGE_BINPKG_TMPFILE="${PKGDIR}/${CATEGORY}/${PF}.tbz2"
+		die "PORTAGE_BINPKG_TMPFILE is unset"
 	mkdir -p "${PORTAGE_BINPKG_TMPFILE%/*}" || die "mkdir failed"
 	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${D}" . | \
 		$PORTAGE_BZIP2_COMMAND -c > "$PORTAGE_BINPKG_TMPFILE"

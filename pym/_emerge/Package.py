@@ -4,12 +4,14 @@
 import sys
 from itertools import chain
 import portage
+from portage import _encodings, _unicode_decode, _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.const import EBUILD_PHASES
 from portage.dep import Atom, check_required_use, use_reduce, \
-	paren_enclose, _slot_re
+	paren_enclose, _slot_re, _slot_separator, _repo_separator
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 from portage.exception import InvalidDependString
+from portage.repository.config import _gen_valid_repo
 from _emerge.Task import Task
 
 if sys.hexversion >= 0x3000000:
@@ -57,10 +59,17 @@ class Package(Task):
 			if not self.installed:
 				self._invalid_metadata('EAPI.incompatible',
 					"IUSE contains defaults, but EAPI doesn't allow them")
-		self.slot_atom = portage.dep.Atom("%s:%s" % (self.cp, slot))
+		self.slot_atom = portage.dep.Atom("%s%s%s" % (self.cp, _slot_separator, slot))
 		self.category, self.pf = portage.catsplit(self.cpv)
 		self.cpv_split = portage.catpkgsplit(self.cpv)
 		self.pv_split = self.cpv_split[1:]
+		if self.inherited is None:
+			self.inherited = frozenset()
+		repo = _gen_valid_repo(self.metadata.get('repository', ''))
+		if not repo:
+			repo = '__unknown__'
+		self.metadata['repository'] = repo
+
 		self._validate_deps()
 		self.masks = self._masks()
 		self.visible = self._visible(self.masks)
@@ -122,8 +131,11 @@ class Package(Task):
 					check_required_use(v, (),
 						self.iuse.is_valid_flag)
 				except InvalidDependString as e:
+					# Force unicode format string for python-2.x safety,
+					# ensuring that PortageException.__unicode__() is used
+					# when necessary.
 					self._invalid_metadata(k + ".syntax",
-						"%s: %s" % (k, e))
+						_unicode_decode("%s: %s") % (k, e))
 
 		k = 'SRC_URI'
 		v = self.metadata.get(k)
@@ -219,6 +231,16 @@ class Package(Task):
 		return True
 
 	def _metadata_exception(self, k, e):
+
+		# For unicode safety with python-2.x we need to avoid
+		# using the string format operator with a non-unicode
+		# format string, since that will result in the
+		# PortageException.__str__() method being invoked,
+		# followed by unsafe decoding that may result in a
+		# UnicodeDecodeError. Therefore, use _unicode_decode()
+		# to ensure that format strings are unicode, so that
+		# PortageException.__unicode__() is used when necessary
+		# in python-2.x.
 		if not self.installed:
 			categorized_error = False
 			if e.errors:
@@ -227,11 +249,11 @@ class Package(Task):
 						continue
 					categorized_error = True
 					self._invalid_metadata(error.category,
-						"%s: %s" % (k, error))
+						_unicode_decode("%s: %s") % (k, error))
 
 			if not categorized_error:
 				self._invalid_metadata(k + ".syntax",
-					"%s: %s" % (k, e))
+					_unicode_decode("%s: %s") % (k, e))
 		else:
 			# For installed packages, show the path of the file
 			# containing the invalid metadata, since the user may
@@ -239,7 +261,7 @@ class Package(Task):
 			vardb = self.root_config.trees['vartree'].dbapi
 			path = vardb.getpath(self.cpv, filename=k)
 			self._invalid_metadata(k + ".syntax",
-				"%s: %s in '%s'" % (k, e, path))
+				_unicode_decode("%s: %s in '%s'") % (k, e, path))
 
 	def _invalid_metadata(self, msg_type, msg):
 		if self.invalid is None:
@@ -267,7 +289,7 @@ class Package(Task):
 			cpv_color = "PKG_NOMERGE"
 
 		s = "(%s, %s" \
-			% (portage.output.colorize(cpv_color, self.cpv) , self.type_name)
+			% (portage.output.colorize(cpv_color, self.cpv + _repo_separator + self.repo) , self.type_name)
 
 		if self.type_name == "installed":
 			if self.root != "/":
@@ -282,12 +304,24 @@ class Package(Task):
 		s += ")"
 		return s
 
+	if sys.hexversion < 0x3000000:
+
+		__unicode__ = __str__
+
+		def __str__(self):
+			return _unicode_encode(self.__unicode__(),
+				encoding=_encodings['content'])
+
 	class _use_class(object):
 
 		__slots__ = ("__weakref__", "enabled")
 
 		def __init__(self, use):
 			self.enabled = frozenset(use)
+
+	@property
+	def repo(self):
+		return self.metadata['repository']
 
 	@property
 	def use(self):
@@ -352,9 +386,25 @@ class Package(Task):
 				self.operation = "merge"
 				if self.onlydeps or self.installed:
 					self.operation = "nomerge"
+			# For installed (and binary) packages we don't care for the repo
+			# when it comes to hashing, because there can only be one cpv.
+			# So overwrite the repo_key with type_name.
+			repo_key = self.metadata.get('repository')
+			if self.type_name != 'ebuild':
+				repo_key = self.type_name
 			self._hash_key = \
-				(self.type_name, self.root, self.cpv, self.operation)
+				(self.type_name, self.root, self.cpv, self.operation, repo_key)
 		return self._hash_key
+
+	def __len__(self):
+		return 4
+
+	def __iter__(self):
+		"""
+		This is used to generate mtimedb resume mergelist entries, so we
+		limit it to 4 items for backward compatibility.
+		"""
+		return iter(self._get_hash_key()[:4])
 
 	def __lt__(self, other):
 		if other.cp != self.cp:

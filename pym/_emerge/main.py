@@ -52,7 +52,7 @@ if sys.hexversion >= 0x3000000:
 options=[
 "--ask",          "--alphabetical",
 "--ask-enter-invalid",
-"--buildpkg",     "--buildpkgonly",
+"--buildpkgonly",
 "--changed-use",
 "--changelog",    "--columns",
 "--debug",
@@ -80,7 +80,7 @@ options=[
 shortmapping={
 "1":"--oneshot",
 "a":"--ask",
-"b":"--buildpkg",  "B":"--buildpkgonly",
+"B":"--buildpkgonly",
 "c":"--depclean",
 "C":"--unmerge",
 "d":"--debug",
@@ -395,6 +395,7 @@ def insert_optional_args(args):
 
 	default_arg_opts = {
 		'--autounmask'           : ('n',),
+		'--buildpkg'             : ('n',),
 		'--complete-graph' : ('n',),
 		'--deep'       : valid_integers,
 		'--deselect'   : ('n',),
@@ -425,6 +426,7 @@ def insert_optional_args(args):
 	# Don't make things like "-kn" expand to "-k n"
 	# since existence of -n makes it too ambiguous.
 	short_arg_opts_n = {
+		'b' : ('n',),
 		'g' : ('n',),
 		'G' : ('n',),
 		'k' : ('n',),
@@ -542,6 +544,13 @@ def parse_opts(tmpcmdline, silent=False):
 				"calculation fails ",
 
 			"action" : "store"
+		},
+
+		"--buildpkg": {
+			"shortopt" : "-b",
+			"help"     : "build binary packages",
+			"type"     : "choice",
+			"choices"  : ("True", "n")
 		},
 
 		"--config-root": {
@@ -755,6 +764,11 @@ def parse_opts(tmpcmdline, silent=False):
 	if myoptions.autounmask in ("True",):
 		myoptions.autounmask = True
 
+	if myoptions.buildpkg in ("True",):
+		myoptions.buildpkg = True
+	else:
+		myoptions.buildpkg = None
+
 	if myoptions.changed_use is not False:
 		myoptions.reinstall = "changed-use"
 		myoptions.changed_use = False
@@ -798,7 +812,7 @@ def parse_opts(tmpcmdline, silent=False):
 					exclude.append(atom)
 
 		if bad_atoms and not silent:
-			parser.error("Invalid Atom(s) in --exclude parameter: '%s' (only package names and slot atoms (with widlcards) allowed)\n" % \
+			parser.error("Invalid Atom(s) in --exclude parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n" % \
 				(",".join(bad_atoms),))
 
 	if myoptions.fail_clean == "True":
@@ -1172,13 +1186,11 @@ def expand_set_arguments(myfiles, myaction, root_config):
 
 def repo_name_check(trees):
 	missing_repo_names = set()
-	for root, root_trees in trees.items():
-		if "porttree" in root_trees:
-			portdb = root_trees["porttree"].dbapi
-			missing_repo_names.update(portdb.porttrees)
-			repos = portdb.getRepositories()
-			for r in repos:
-				missing_repo_names.discard(portdb.getRepositoryPath(r))
+	for root_trees in trees.values():
+		porttree = root_trees.get("porttree")
+		if porttree:
+			portdb = porttree.dbapi
+			missing_repo_names.update(portdb.getMissingRepoNames())
 			if portdb.porttree_root in missing_repo_names and \
 				not os.path.exists(os.path.join(
 				portdb.porttree_root, "profiles")):
@@ -1197,6 +1209,7 @@ def repo_name_check(trees):
 		msg.extend(textwrap.wrap("NOTE: Each repo_name entry " + \
 			"should be a plain text file containing a unique " + \
 			"name for the repository on the first line.", 70))
+		msg.append("\n")
 		writemsg_level("".join("%s\n" % l for l in msg),
 			level=logging.WARNING, noiselevel=-1)
 
@@ -1208,7 +1221,7 @@ def repo_name_duplicate_check(trees):
 		if 'porttree' in root_trees:
 			portdb = root_trees['porttree'].dbapi
 			if portdb.settings.get('PORTAGE_REPO_DUPLICATE_WARN') != '0':
-				for repo_name, paths in portdb._ignored_repos:
+				for repo_name, paths in portdb.getIgnoredRepos():
 					k = (root, repo_name, portdb.getRepositoryPath(repo_name))
 					ignored_repos.setdefault(k, []).extend(paths)
 
@@ -1219,7 +1232,7 @@ def repo_name_duplicate_check(trees):
 		msg.append('  profiles/repo_name entries:')
 		msg.append('')
 		for k in sorted(ignored_repos):
-			msg.append('  %s overrides' % (k,))
+			msg.append('  %s overrides' % ", ".join(k))
 			for path in ignored_repos[k]:
 				msg.append('    %s' % (path,))
 			msg.append('')
@@ -1228,6 +1241,7 @@ def repo_name_duplicate_check(trees):
 			"to avoid having duplicates ignored. " + \
 			"Set PORTAGE_REPO_DUPLICATE_WARN=\"0\" in " + \
 			"/etc/make.conf if you would like to disable this warning."))
+		msg.append("\n")
 		writemsg_level(''.join('%s\n' % l for l in msg),
 			level=logging.WARNING, noiselevel=-1)
 
@@ -1466,6 +1480,7 @@ def emerge_main():
 	if settings.get("PORTAGE_DEBUG", "") == "1":
 		spinner.update = spinner.update_quiet
 		portage.debug=1
+		portage.util.noiselimit = 0
 		if "python-trace" in settings.features:
 			import portage.debug
 			portage.debug.set_trace(True)
@@ -1661,7 +1676,7 @@ def emerge_main():
 
 		for x in myfiles:
 			if x.startswith(SETPREFIX) or \
-				is_valid_package_atom(x):
+				is_valid_package_atom(x, allow_repo=True):
 				continue
 			if x[:1] == os.sep:
 				continue

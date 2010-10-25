@@ -76,30 +76,30 @@ class ConfigTestCase(TestCase):
 
 			self.assertEqual(lic_man._accept_license_str, None)
 			self.assertEqual(lic_man._accept_license, None)
-			self.assertEqual(lic_man._license_groups, {"EULA": ["TEST"]})
+			self.assertEqual(lic_man._license_groups, {"EULA": frozenset(["TEST"])})
 			self.assertEqual(lic_man._undef_lic_groups, set(["TEST"]))
 
 			self.assertEqual(lic_man.extract_global_changes(), "TEST TEST2")
 			self.assertEqual(lic_man.extract_global_changes(), "")
 
 			lic_man.set_accept_license_str("TEST TEST2")
-			self.assertEqual(lic_man._getPkgAcceptLicense("dev-libs/B-1", "0"), ["TEST", "TEST2", "TEST"])
-			self.assertEqual(lic_man._getPkgAcceptLicense("dev-libs/A-1", "0"), ["TEST", "TEST2", "TEST", "-TEST2"])
-			self.assertEqual(lic_man._getPkgAcceptLicense("dev-libs/A-2", "0"), ["TEST", "TEST2", "TEST", "-TEST2", "TEST3", "@TEST"])
+			self.assertEqual(lic_man._getPkgAcceptLicense("dev-libs/B-1", "0", None), ["TEST", "TEST2", "TEST"])
+			self.assertEqual(lic_man._getPkgAcceptLicense("dev-libs/A-1", "0", None), ["TEST", "TEST2", "TEST", "-TEST2"])
+			self.assertEqual(lic_man._getPkgAcceptLicense("dev-libs/A-2", "0", None), ["TEST", "TEST2", "TEST", "-TEST2", "TEST3", "@TEST"])
 
-			self.assertEqual(lic_man.get_prunned_accept_license("dev-libs/B-1", [], "TEST", "0"), "TEST")
-			self.assertEqual(lic_man.get_prunned_accept_license("dev-libs/A-1", [], "-TEST2", "0"), "")
-			self.assertEqual(lic_man.get_prunned_accept_license("dev-libs/A-2", [], "|| ( TEST TEST2 )", "0"), "TEST")
-			self.assertEqual(lic_man.get_prunned_accept_license("dev-libs/C-1", [], "TEST5", "0"), "TEST5")
-			self.assertEqual(lic_man.get_prunned_accept_license("dev-libs/C-2", [], "TEST2", "0"), "")
+			self.assertEqual(lic_man.get_prunned_accept_license("dev-libs/B-1", [], "TEST", "0", None), "TEST")
+			self.assertEqual(lic_man.get_prunned_accept_license("dev-libs/A-1", [], "-TEST2", "0", None), "")
+			self.assertEqual(lic_man.get_prunned_accept_license("dev-libs/A-2", [], "|| ( TEST TEST2 )", "0", None), "TEST")
+			self.assertEqual(lic_man.get_prunned_accept_license("dev-libs/C-1", [], "TEST5", "0", None), "TEST5")
+			self.assertEqual(lic_man.get_prunned_accept_license("dev-libs/C-2", [], "TEST2", "0", None), "")
 
-			self.assertEqual(lic_man.getMissingLicenses("dev-libs/B-1", [], "TEST", "0"), [])
-			self.assertEqual(lic_man.getMissingLicenses("dev-libs/A-1", [], "-TEST2", "0"), ["-TEST2"])
-			self.assertEqual(lic_man.getMissingLicenses("dev-libs/A-2", [], "|| ( TEST TEST2 )", "0"), [])
-			self.assertEqual(lic_man.getMissingLicenses("dev-libs/A-3", [], "|| ( TEST2 || ( TEST3 TEST4 ) )", "0"), ["TEST2", "TEST3", "TEST4"])
-			self.assertEqual(lic_man.getMissingLicenses("dev-libs/C-1", [], "TEST5", "0"), [])
-			self.assertEqual(lic_man.getMissingLicenses("dev-libs/C-2", [], "TEST2", "0"), ["TEST2"])
-			self.assertEqual(lic_man.getMissingLicenses("dev-libs/D-1", [], "", "0"), [])
+			self.assertEqual(lic_man.getMissingLicenses("dev-libs/B-1", [], "TEST", "0", None), [])
+			self.assertEqual(lic_man.getMissingLicenses("dev-libs/A-1", [], "-TEST2", "0", None), ["-TEST2"])
+			self.assertEqual(lic_man.getMissingLicenses("dev-libs/A-2", [], "|| ( TEST TEST2 )", "0", None), [])
+			self.assertEqual(lic_man.getMissingLicenses("dev-libs/A-3", [], "|| ( TEST2 || ( TEST3 TEST4 ) )", "0", None), ["TEST2", "TEST3", "TEST4"])
+			self.assertEqual(lic_man.getMissingLicenses("dev-libs/C-1", [], "TEST5", "0", None), [])
+			self.assertEqual(lic_man.getMissingLicenses("dev-libs/C-2", [], "TEST2", "0", None), ["TEST2"])
+			self.assertEqual(lic_man.getMissingLicenses("dev-libs/D-1", [], "", "0", None), [])
 		finally:
 			portage.util.noiselimit = 0
 			playground.cleanup()
@@ -114,12 +114,14 @@ class ConfigTestCase(TestCase):
 			"dev-libs/E-1": { },
 		}
 
-		repo_config = {
-			"package.mask":
-				(
-					"dev-libs/A",
-					"dev-libs/C",
-				),
+		repo_configs = {
+			"test_repo": {
+				"package.mask":
+					(
+						"dev-libs/A",
+						"dev-libs/C",
+					),
+			}
 		}
 
 		profile = {
@@ -162,7 +164,7 @@ class ConfigTestCase(TestCase):
 					success = False),
 		)
 
-		playground = ResolverPlayground(ebuilds=ebuilds, repo_config=repo_config, \
+		playground = ResolverPlayground(ebuilds=ebuilds, repo_configs=repo_configs, \
 			profile=profile, user_config=user_config)
 		try:
 			for test_case in test_cases:

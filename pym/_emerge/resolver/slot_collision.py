@@ -1,4 +1,9 @@
+# Copyright 2010 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+
 from __future__ import print_function
+
+import sys
 
 from _emerge.AtomArg import AtomArg
 from _emerge.Package import Package
@@ -8,6 +13,9 @@ from portage.output import colorize
 from portage._sets.base import InternalPackageSet
 from portage.util import writemsg
 from portage.versions import cpv_getversion, vercmp
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 class slot_conflict_handler(object):
 	"""This class keeps track of all slot conflicts and provides
@@ -146,11 +154,20 @@ class slot_conflict_handler(object):
 				self.solutions.extend(new_solutions)
 				if first_config:
 					#If the "all ebuild"-config gives a solution, use it.
-					#Otherwise enumerate all other soultions.
+					#Otherwise enumerate all other solutions.
 					if self.debug:
 						writemsg("All-ebuild configuration has a solution. Aborting search.\n", noiselevel=-1)
 					break
 			first_config = False
+
+			if len(conflict_pkgs) > 4:
+				# The number of configurations to check grows exponentially in the number of conflict_pkgs.
+				# To prevent excessive running times, only check the "all-ebuild" configuration,
+				# if the number of conflict packages is too large.
+				if self.debug:
+					writemsg("\nAborting search due to excessive number of configurations.\n", noiselevel=-1)
+				break
+
 
 	def get_conflict(self):
 		return "".join(self.conflict_msg)
@@ -281,6 +298,11 @@ class slot_conflict_handler(object):
 							op = atom.operator
 							ver = cpv_getversion(atom.cpv)
 							slot = atom.slot
+
+							if op == "=*":
+								op = "="
+								ver += "*"
+
 							atom_str = atom_str.replace(op, colorize("BAD", op), 1)
 							
 							start = atom_str.rfind(ver)

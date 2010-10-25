@@ -205,7 +205,7 @@ class PollScheduler(object):
 		del self._poll_event_handlers[f]
 		del self._poll_event_handler_ids[reg_id]
 
-	def _schedule_wait(self, wait_ids=None, timeout=None):
+	def _schedule_wait(self, wait_ids=None, timeout=None, condition=None):
 		"""
 		Schedule until wait_id is not longer registered
 		for poll() events.
@@ -231,9 +231,17 @@ class PollScheduler(object):
 				handler, reg_id = event_handlers[f]
 				handler(f, event)
 				event_handled = True
+				if condition is not None and condition():
+					break
 				if timeout is not None:
 					elapsed_time = time.time() - start_time
-					remaining_timeout = (timeout - 1000 * elapsed_time)
+					if elapsed_time < 0:
+						# The system clock has changed such that start_time
+						# is now in the future, so just assume that the
+						# timeout has already elapsed.
+						timed_out = True
+						break
+					remaining_timeout = timeout - 1000 * elapsed_time
 					if remaining_timeout <= 0:
 						timed_out = True
 						break
@@ -242,7 +250,8 @@ class PollScheduler(object):
 
 		return event_handled
 
-	def _task_output(self, msg, log_path=None, level=0, noiselevel=-1):
+	def _task_output(self, msg, log_path=None, background=None,
+		level=0, noiselevel=-1):
 		"""
 		Output msg to stdout if not self._background. If log_path
 		is not None then append msg to the log (appends with
@@ -250,7 +259,12 @@ class PollScheduler(object):
 		corresponds to a supported compression type).
 		"""
 
-		if not self._background:
+		if background is None:
+			# If the task does not have a local background value
+			# (like for parallel-fetch), then use the global value.
+			background = self._background
+
+		if not background:
 			writemsg_level(msg, level=level, noiselevel=noiselevel)
 
 		if log_path is not None:

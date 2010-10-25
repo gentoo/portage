@@ -7,6 +7,9 @@ from portage.tests.resolver.ResolverPlayground import ResolverPlayground, Resolv
 class AutounmaskTestCase(TestCase):
 
 	def testAutounmask(self):
+
+		EAPI_4 = '4_pre1'
+
 		ebuilds = {
 			#ebuilds to test use changes
 			"dev-libs/A-1": { "SLOT": 1, "DEPEND": "dev-libs/B[foo]", "EAPI": 2}, 
@@ -42,10 +45,10 @@ class AutounmaskTestCase(TestCase):
 			"dev-util/R-1": { "IUSE": "bar" },
 
 			#ebuilds to test interaction with REQUIRED_USE
-			#~ "app-portage/A-1": { "DEPEND": "app-portage/B[foo]", "EAPI": 2 }, 
-			#~ "app-portage/A-2": { "DEPEND": "app-portage/B[foo=]", "IUSE": "+foo", "REQUIRED_USE": "foo", "EAPI": 4 }, 
-#~ 
-			#~ "app-portage/B-1": { "IUSE": "foo +bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": 4 }, 
+			"app-portage/A-1": { "DEPEND": "app-portage/B[foo]", "EAPI": 2 }, 
+			"app-portage/A-2": { "DEPEND": "app-portage/B[foo=]", "IUSE": "+foo", "REQUIRED_USE": "foo", "EAPI": EAPI_4 }, 
+
+			"app-portage/B-1": { "IUSE": "foo +bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": EAPI_4 }, 
 			}
 
 		test_cases = (
@@ -168,16 +171,68 @@ class AutounmaskTestCase(TestCase):
 					use_changes = { "dev-util/R-1": { "bar": True } }),
 
 				#Test interaction with REQUIRED_USE.
-				#~ ResolverPlaygroundTestCase(
-					#~ ["=app-portage/A-1"],
-					#~ options = { "--autounmask": True },
-					#~ use_changes = None,
-					#~ success = False),
-				#~ ResolverPlaygroundTestCase(
-					#~ ["=app-portage/A-2"],
-					#~ options = { "--autounmask": True },
-					#~ use_changes = None,
-					#~ success = False),
+				ResolverPlaygroundTestCase(
+					["=app-portage/A-1"],
+					options = { "--autounmask": True },
+					use_changes = None,
+					success = False),
+				ResolverPlaygroundTestCase(
+					["=app-portage/A-2"],
+					options = { "--autounmask": True },
+					use_changes = None,
+					success = False),
+			)
+
+		playground = ResolverPlayground(ebuilds=ebuilds)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
+	def testAutounmaskForLicenses(self):
+
+		ebuilds = {
+			"dev-libs/A-1": { "LICENSE": "TEST" },
+			"dev-libs/B-1": { "LICENSE": "TEST", "IUSE": "foo", "KEYWORDS": "~x86"},
+			"dev-libs/C-1": { "DEPEND": "dev-libs/B[foo]", "EAPI": 2 },
+			
+			"dev-libs/D-1": { "DEPEND": "dev-libs/E dev-libs/F", "LICENSE": "TEST" },
+			"dev-libs/E-1": { "LICENSE": "TEST" },
+			"dev-libs/E-2": { "LICENSE": "TEST" },
+			"dev-libs/F-1": { "DEPEND": "=dev-libs/E-1", "LICENSE": "TEST" },
+			}
+
+		test_cases = (
+				ResolverPlaygroundTestCase(
+					["=dev-libs/A-1"],
+					options = {"--autounmask": False},
+					success = False),
+				ResolverPlaygroundTestCase(
+					["=dev-libs/A-1"],
+					options = {"--autounmask": True},
+					success = False,
+					mergelist = ["dev-libs/A-1"],
+					license_changes = { "dev-libs/A-1": set(["TEST"]) }),
+
+				#Test license+keyword+use change at once.
+				ResolverPlaygroundTestCase(
+					["=dev-libs/C-1"],
+					options = {"--autounmask": True},
+					success = False,
+					mergelist = ["dev-libs/B-1", "dev-libs/C-1"],
+					license_changes = { "dev-libs/B-1": set(["TEST"]) },
+					unstable_keywords = ["dev-libs/B-1"],
+					use_changes = { "dev-libs/B-1": { "foo": True } }),
+
+				#Test license with backtracking.
+				ResolverPlaygroundTestCase(
+					["=dev-libs/D-1"],
+					options = {"--autounmask": True},
+					success = False,
+					mergelist = ["dev-libs/E-1", "dev-libs/F-1", "dev-libs/D-1"],
+					license_changes = { "dev-libs/D-1": set(["TEST"]), "dev-libs/E-1": set(["TEST"]), "dev-libs/E-2": set(["TEST"]), "dev-libs/F-1": set(["TEST"]) }),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds)

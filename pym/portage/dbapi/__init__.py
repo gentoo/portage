@@ -89,11 +89,12 @@ class dbapi(object):
 		"""
 		return NotImplementedError
 
-	def aux_get(self, mycpv, mylist):
+	def aux_get(self, mycpv, mylist, myrepo=None):
 		"""Return the metadata keys in mylist for mycpv
 		Args:
 			mycpv - "sys-apps/foo-1.0"
 			mylist - ["SLOT","DEPEND","HOMEPAGE"]
+			myrepo - The repository name.
 		Returns: 
 			a list of results, in order of keys in mylist, such as:
 			["0",">=sys-libs/bar-1.0","http://www.foo.com"] or [] if mycpv not found'
@@ -123,23 +124,33 @@ class dbapi(object):
 		return list(self._iter_match(mydep,
 			self.cp_list(mydep.cp, use_cache=use_cache)))
 
-	def _iter_match(self, atom, cpv_iter):
+	def _iter_match(self, atom, cpv_iter, myrepo=None):
 		cpv_iter = iter(match_from_list(atom, cpv_iter))
 		if atom.slot:
-			cpv_iter = self._iter_match_slot(atom, cpv_iter)
+			cpv_iter = self._iter_match_slot(atom, cpv_iter, myrepo)
 		if atom.use:
-			cpv_iter = self._iter_match_use(atom, cpv_iter)
+			cpv_iter = self._iter_match_use(atom, cpv_iter, myrepo)
+		if atom.repo:
+			cpv_iter = self._iter_match_repo(atom, cpv_iter, myrepo)
 		return cpv_iter
 
-	def _iter_match_slot(self, atom, cpv_iter):
+	def _iter_match_repo(self, atom, cpv_iter, myrepo=None):
 		for cpv in cpv_iter:
 			try:
-				if self.aux_get(cpv, ["SLOT"])[0] == atom.slot:
+				if self.aux_get(cpv, ["repository"], myrepo=myrepo)[0] == atom.repo:
 					yield cpv
 			except KeyError:
 				continue
 
-	def _iter_match_use(self, atom, cpv_iter):
+	def _iter_match_slot(self, atom, cpv_iter, myrepo=None):
+		for cpv in cpv_iter:
+			try:
+				if self.aux_get(cpv, ["SLOT"], myrepo=myrepo)[0] == atom.slot:
+					yield cpv
+			except KeyError:
+				continue
+
+	def _iter_match_use(self, atom, cpv_iter, myrepo = None):
 		"""
 		1) Check for required IUSE intersection (need implicit IUSE here).
 		2) Check enabled/disabled flag states.
@@ -148,7 +159,7 @@ class dbapi(object):
 		iuse_implicit_match = self.settings._iuse_implicit_match
 		for cpv in cpv_iter:
 			try:
-				iuse, slot, use = self.aux_get(cpv, ["IUSE", "SLOT", "USE"])
+				iuse, slot, use = self.aux_get(cpv, ["IUSE", "SLOT", "USE"], myrepo=myrepo)
 			except KeyError:
 				continue
 			use = use.split()

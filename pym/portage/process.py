@@ -135,7 +135,10 @@ def cleanup():
 	while spawned_pids:
 		pid = spawned_pids.pop()
 		try:
-			if os.waitpid(pid, os.WNOHANG) == (0, 0):
+			# With waitpid and WNOHANG, only check the
+			# first element of the tuple since the second
+			# element may vary (bug #337465).
+			if os.waitpid(pid, os.WNOHANG)[0] == 0:
 				os.kill(pid, signal.SIGTERM)
 				os.waitpid(pid, 0)
 		except OSError:
@@ -206,7 +209,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 			raise CommandNotFound(mycommand[0])
 
 	# If we haven't been told what file descriptors to use
-	# default to propogating our stdin, stdout and stderr.
+	# default to propagating our stdin, stdout and stderr.
 	if fd_pipes is None:
 		fd_pipes = {
 			0:sys.stdin.fileno(),
@@ -249,7 +252,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 			raise
 		except Exception as e:
 			# We need to catch _any_ exception so that it doesn't
-			# propogate out of this function and cause exiting
+			# propagate out of this function and cause exiting
 			# with anything other than os._exit()
 			sys.stderr.write("%s:\n   %s\n" % (e, " ".join(mycommand)))
 			traceback.print_exc()
@@ -289,7 +292,10 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 			# If it failed, kill off anything else that
 			# isn't dead yet.
 			for pid in mypids:
-				if os.waitpid(pid, os.WNOHANG) == (0,0):
+				# With waitpid and WNOHANG, only check the
+				# first element of the tuple since the second
+				# element may vary (bug #337465).
+				if os.waitpid(pid, os.WNOHANG)[0] == 0:
 					os.kill(pid, signal.SIGTERM)
 					os.waitpid(pid, 0)
 				spawned_pids.remove(pid)
@@ -346,7 +352,25 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	# Quiet killing of subprocesses by SIGPIPE (see bug #309001).
 	signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
-	# Set up the command's pipes.
+	_setup_pipes(fd_pipes)
+
+	# Set requested process permissions.
+	if gid:
+		os.setgid(gid)
+	if groups:
+		os.setgroups(groups)
+	if uid:
+		os.setuid(uid)
+	if umask:
+		os.umask(umask)
+	if pre_exec:
+		pre_exec()
+
+	# And switch to the new process.
+	os.execve(binary, myargs, env)
+
+def _setup_pipes(fd_pipes):
+	"""Setup pipes for a forked process."""
 	my_fds = {}
 	# To protect from cases where direct assignment could
 	# clobber needed fds ({1:2, 2:1}) we first dupe the fds
@@ -364,21 +388,6 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 				os.close(fd)
 			except OSError:
 				pass
-
-	# Set requested process permissions.
-	if gid:
-		os.setgid(gid)
-	if groups:
-		os.setgroups(groups)
-	if uid:
-		os.setuid(uid)
-	if umask:
-		os.umask(umask)
-	if pre_exec:
-		pre_exec()
-
-	# And switch to the new process.
-	os.execve(binary, myargs, env)
 
 def find_binary(binary):
 	"""

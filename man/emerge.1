@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Aug 2008" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Oct 2010" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -291,19 +291,19 @@ after the merge list and emerge will immediately
 abort. If the displayed configuration changes are
 satisfactory, you should copy and paste them into
 the specified configuration file(s). Currently,
-this only works for unstable KEYWORDS masks and
-package.use settings.
+this only works for unstable KEYWORDS masks,
+LICENSE masks, and package.use settings.
 .TP
 .BR \-\-backtrack=COUNT
 Specifies an integer number of times to backtrack if
 dependency calculation fails due to a conflict or an
-unsatisfied dependency (default: \'5\').
+unsatisfied dependency (default: \'10\').
 .TP
 .BR "\-\-binpkg\-respect\-use < y | n >"
 Tells emerge to ignore binary packages if their use flags
 don't match the current configuration. (default: \'n\')
 .TP
-.BR "\-\-buildpkg " (\fB\-b\fR)
+.BR "\-\-buildpkg[=n] " (\fB\-b\fR)
 Tells emerge to build binary packages for all ebuilds processed in
 addition to actually merging the packages.  Useful for maintainers
 or if you administrate multiple Gentoo Linux systems (build once,

@@ -29,7 +29,7 @@ class StaticFileSet(EditablePackageSet):
 	_repopath_sub = re.compile(r'\$\{repository:(?P<reponame>.+)\}')
 		
 	def __init__(self, filename, greedy=False, dbapi=None):
-		super(StaticFileSet, self).__init__()
+		super(StaticFileSet, self).__init__(allow_repo=True)
 		self._filename = filename
 		self._mtime = None
 		self.description = "Package set loaded from file %s" % self._filename
@@ -60,7 +60,7 @@ class StaticFileSet(EditablePackageSet):
 				setattr(self, key, " ".join(value))
 
 	def _validate(self, atom):
-		return bool(atom[:1] == SETPREFIX or ValidAtomValidator(atom))
+		return bool(atom[:1] == SETPREFIX or ValidAtomValidator(atom, allow_repo=True))
 
 	def write(self):
 		write_atomic(self._filename, "".join("%s\n" % (atom,) \

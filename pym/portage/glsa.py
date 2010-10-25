@@ -21,6 +21,7 @@ from portage.versions import pkgsplit, catpkgsplit, pkgcmp, best
 from portage.util import grabfile
 from portage.const import CACHE_PATH
 from portage.localization import _
+from portage.dep import _slot_separator
 
 # Note: the space for rgt and rlt is important !!
 # FIXME: use slot deps instead, requires GLSA format versioning
@@ -199,7 +200,7 @@ def getText(node, format):
 	if format == "strip":
 		rValue = rValue.strip(" \n\t")
 		rValue = re.sub("[\s]{2,}", " ", rValue)
-	return rValue.encode("utf_8")
+	return rValue
 
 def getMultiTagsText(rootnode, tagname, format):
 	"""
@@ -242,7 +243,7 @@ def makeAtom(pkgname, versionNode):
 		pass
 	else:
 		if slot and slot != "*":
-			rValue += ":" + slot
+			rValue += _slot_separator + slot
 	return str(rValue)
 
 def makeVersion(versionNode):
@@ -264,7 +265,7 @@ def makeVersion(versionNode):
 		pass
 	else:
 		if slot and slot != "*":
-			rValue += ":" + slot
+			rValue += _slot_separator + slot
 	return rValue
 
 def match(atom, dbapi, match_type="default"):

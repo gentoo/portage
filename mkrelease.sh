@@ -73,7 +73,11 @@ rm -rf "$SOURCE_DIR" || die "directory cleanup failed"
 
 echo ">>> Creating Changelog"
 git_log_opts=""
-[ -n "$CHANGELOG_REVISION" ] && git_log_opts+=" $CHANGELOG_REVISION^.."
+if [ -n "$CHANGELOG_REVISION" ] ; then
+	git_log_opts+=" $CHANGELOG_REVISION^..$TREE_ISH"
+else
+	git_log_opts+=" $TREE_ISH"
+fi
 skip_next=false
 git log $git_log_opts | fmt -w 80 -p "    " | while read ; do
 	if [[ $skip_next = true ]] ; then

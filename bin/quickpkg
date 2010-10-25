@@ -22,7 +22,8 @@ from portage import os
 from portage import xpak
 from portage.dbapi.dep_expand import dep_expand
 from portage.dep import use_reduce
-from portage.exception import InvalidAtom, InvalidData, InvalidDependString, PackageSetNotFound
+from portage.exception import InvalidAtom, InvalidData, InvalidDependString, \
+	PackageSetNotFound, PermissionDenied
 from portage.util import ConfigProtect, ensure_dirs, shlex_split
 from portage.dbapi.vartree import dblink, tar_contents
 from portage.checksum import perform_md5
@@ -68,7 +69,12 @@ def quickpkg_atom(options, infos, arg, eout):
 		dblnk = dblink(cat, pkg, root,
 			vartree.settings, treetype="vartree",
 			vartree=vartree)
-		dblnk.lockdb()
+		have_lock = False
+		try:
+			dblnk.lockdb()
+			have_lock = True
+		except PermissionDenied:
+			pass
 		try:
 			if not dblnk.exists():
 				# unmerged by a concurrent process
@@ -131,7 +137,8 @@ def quickpkg_atom(options, infos, arg, eout):
 			tar.close()
 			xpak.tbz2(binpkg_tmpfile).recompose_mem(xpdata)
 		finally:
-			dblnk.unlockdb()
+			if have_lock:
+				dblnk.unlockdb()
 		bintree.inject(cpv, filename=binpkg_tmpfile)
 		binpkg_path = bintree.getname(cpv)
 		try:

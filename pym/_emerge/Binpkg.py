@@ -39,17 +39,21 @@ class Binpkg(CompositeTask):
 		self._bintree = self.pkg.root_config.trees[self._tree]
 		self._verify = not self.opts.pretend
 
-		dir_path = os.path.join(settings["PORTAGE_TMPDIR"],
+		# Use realpath like doebuild_environment() does, since we assert
+		# that this path is literally identical to PORTAGE_BUILDDIR.
+		dir_path = os.path.join(os.path.realpath(settings["PORTAGE_TMPDIR"]),
 			"portage", pkg.category, pkg.pf)
-		self._build_dir = EbuildBuildDir(dir_path=dir_path,
-			pkg=pkg, settings=settings)
 		self._image_dir = os.path.join(dir_path, "image")
 		self._infloc = os.path.join(dir_path, "build-info")
 		self._ebuild_path = os.path.join(self._infloc, pkg.pf + ".ebuild")
 		settings["EBUILD"] = self._ebuild_path
-		debug = settings.get("PORTAGE_DEBUG") == "1"
-		portage.doebuild_environment(self._ebuild_path, "setup",
-			settings["ROOT"], settings, debug, 1, self._bintree.dbapi)
+		portage.doebuild_environment(self._ebuild_path, 'setup',
+			settings=self.settings, db=self._bintree.dbapi)
+		if dir_path != self.settings['PORTAGE_BUILDDIR']:
+			raise AssertionError("'%s' != '%s'" % \
+				(dir_path, self.settings['PORTAGE_BUILDDIR']))
+		self._build_dir = EbuildBuildDir(
+			scheduler=self.scheduler, settings=settings)
 		settings.configdict["pkg"]["EMERGE_FROM"] = pkg.type_name
 
 		# The prefetcher has already completed or it
@@ -191,7 +195,7 @@ class Binpkg(CompositeTask):
 			self.wait()
 			return
 
-		dir_path = self._build_dir.dir_path
+		dir_path = self.settings['PORTAGE_BUILDDIR']
 
 		infloc = self._infloc
 		pkg = self.pkg
@@ -314,5 +318,13 @@ class Binpkg(CompositeTask):
 		finally:
 			settings.pop("PORTAGE_BINPKG_FILE", None)
 			self._unlock_builddir()
+
+		if retval == os.EX_OK and \
+			'binpkg-logs' not in self.settings.features and \
+			self.settings.get("PORTAGE_LOG_FILE"):
+			try:
+				os.unlink(self.settings["PORTAGE_LOG_FILE"])
+			except OSError:
+				pass
 		return retval
 

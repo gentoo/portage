@@ -30,8 +30,8 @@ HARDLINK_FD = -2
 # so that it doesn't interfere with the status display.
 _quiet = False
 
-def lockdir(mydir):
-	return lockfile(mydir,wantnewlockfile=1)
+def lockdir(mydir, flags=0):
+	return lockfile(mydir, wantnewlockfile=1, flags=flags)
 def unlockdir(mylock):
 	return unlockfile(mylock)
 
@@ -118,6 +118,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 		if e.errno in (errno.EACCES, errno.EAGAIN):
 			# resource temp unavailable; eg, someone beat us to the lock.
 			if flags & os.O_NONBLOCK:
+				os.close(myfd)
 				raise TryAgain(mypath)
 
 			global _quiet

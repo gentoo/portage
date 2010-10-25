@@ -42,10 +42,12 @@ class EbuildBuild(CompositeTask):
 		portdb = root_config.trees[tree].dbapi
 		settings.setcpv(pkg)
 		settings.configdict["pkg"]["EMERGE_FROM"] = pkg.type_name
-		ebuild_path = portdb.findname(pkg.cpv)
+		ebuild_path = portdb.findname(pkg.cpv, myrepo=pkg.repo)
 		if ebuild_path is None:
 			raise AssertionError("ebuild not found for '%s'" % pkg.cpv)
 		self._ebuild_path = ebuild_path
+		portage.doebuild_environment(ebuild_path, 'setup',
+			settings=self.settings, db=portdb)
 
 		# Check the manifest here since with --keep-going mode it's
 		# currently possible to get this far with a broken manifest.
@@ -114,7 +116,8 @@ class EbuildBuild(CompositeTask):
 				self.wait()
 				return
 
-		self._build_dir = EbuildBuildDir(pkg=pkg, settings=settings)
+		self._build_dir = EbuildBuildDir(
+			scheduler=self.scheduler, settings=settings)
 		self._build_dir.lock()
 
 		# Cleaning needs to happen before fetch, since the build dir

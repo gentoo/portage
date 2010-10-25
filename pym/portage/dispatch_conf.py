@@ -83,11 +83,13 @@ def rcs_archive(archive, curconf, newconf, mrgconf):
     except OSError:
         pass
 
-    try:
-        shutil.copy2(curconf, archive)
-    except(IOError, os.error) as why:
-        print(_('dispatch-conf: Error copying %(curconf)s to %(archive)s: %(reason)s; fatal') % \
-              {"curconf": curconf, "archive": archive, "reason": str(why)}, file=sys.stderr)
+    if os.path.isfile(curconf):
+        try:
+            shutil.copy2(curconf, archive)
+        except(IOError, os.error) as why:
+            print(_('dispatch-conf: Error copying %(curconf)s to %(archive)s: %(reason)s; fatal') % \
+                {"curconf": curconf, "archive": archive, "reason": str(why)}, file=sys.stderr)
+
     if os.path.exists(archive + ',v'):
         os.system(RCS_LOCK + ' ' + archive)
     os.system(RCS_PUT + ' ' + archive)
@@ -142,11 +144,12 @@ def file_archive(archive, curconf, newconf, mrgconf):
 
         os.rename(archive, archive + '.1')
 
-    try:
-        shutil.copy2(curconf, archive)
-    except(IOError, os.error) as why:
-        print(_('dispatch-conf: Error copying %(curconf)s to %(archive)s: %(reason)s; fatal') % \
-              {"curconf": curconf, "archive": archive, "reason": str(why)}, file=sys.stderr)
+    if os.path.isfile(curconf):
+        try:
+            shutil.copy2(curconf, archive)
+        except(IOError, os.error) as why:
+            print(_('dispatch-conf: Error copying %(curconf)s to %(archive)s: %(reason)s; fatal') % \
+                {"curconf": curconf, "archive": archive, "reason": str(why)}, file=sys.stderr)
 
     if newconf != '':
         # Save off new config file in the archive dir with .dist.new suffix

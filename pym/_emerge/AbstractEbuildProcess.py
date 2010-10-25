@@ -1,9 +1,11 @@
 # Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import platform
 import stat
 import textwrap
 from _emerge.SpawnProcess import SpawnProcess
+from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
 import portage
 from portage.elog import messages as elog_messages
@@ -20,7 +22,7 @@ from portage.util import apply_secpass_permissions
 class AbstractEbuildProcess(SpawnProcess):
 
 	__slots__ = ('phase', 'settings',) + \
-		('_ipc_daemon', '_exit_command',)
+		('_build_dir', '_ipc_daemon', '_exit_command',)
 	_phases_without_builddir = ('clean', 'cleanrm', 'depend', 'help',)
 
 	# Number of milliseconds to allow natural exit of the ebuild
@@ -67,6 +69,10 @@ class AbstractEbuildProcess(SpawnProcess):
 		if self._enable_ipc_daemon:
 			self.settings.pop('PORTAGE_EBUILD_EXIT_FILE', None)
 			if self.phase not in self._phases_without_builddir:
+				if 'PORTAGE_BUILDIR_LOCKED' not in self.settings:
+					self._build_dir = EbuildBuildDir(
+						scheduler=self.scheduler, settings=self.settings)
+					self._build_dir.lock()
 				self.settings['PORTAGE_IPC_DAEMON'] = "1"
 				self._start_ipc_daemon()
 			else:
@@ -124,7 +130,7 @@ class AbstractEbuildProcess(SpawnProcess):
 	def _start_ipc_daemon(self):
 		self._exit_command = ExitCommand()
 		self._exit_command.reply_hook = self._exit_command_callback
-		query_command = QueryCommand(self.settings)
+		query_command = QueryCommand(self.settings, self.phase)
 		commands = {
 			'best_version' : query_command,
 			'exit'         : self._exit_command,
@@ -158,7 +164,9 @@ class AbstractEbuildProcess(SpawnProcess):
 		self._eerror(textwrap.wrap(msg, 72))
 
 	def _pipe(self, fd_pipes):
-		stdout_pipe = fd_pipes.get(1)
+		stdout_pipe = None
+		if not self.background:
+			stdout_pipe = fd_pipes.get(1)
 		got_pty, master_fd, slave_fd = \
 			_create_pty_or_pipe(copy_term_size=stdout_pipe)
 		return (master_fd, slave_fd)
@@ -230,6 +238,9 @@ class AbstractEbuildProcess(SpawnProcess):
 			else:
 				self.returncode = 1
 				self._unexpected_exit()
+			if self._build_dir is not None:
+				self._build_dir.unlock()
+				self._build_dir = None
 		else:
 			exit_file = self.settings.get('PORTAGE_EBUILD_EXIT_FILE')
 			if exit_file and not os.path.exists(exit_file):

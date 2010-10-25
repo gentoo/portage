@@ -1,11 +1,11 @@
-# Copyright 1999-2009 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.DependencyArg import DependencyArg
 from portage._sets import SETPREFIX
 class SetArg(DependencyArg):
-	def __init__(self, set=None, **kwargs):
+	def __init__(self, pset=None, **kwargs):
 		DependencyArg.__init__(self, **kwargs)
-		self.set = set
+		self.pset = pset
 		self.name = self.arg[len(SETPREFIX):]
 
