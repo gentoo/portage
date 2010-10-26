@@ -153,8 +153,9 @@ if ebuild_portdir != vdb_path and \
 # Constrain eclass resolution to the master(s)
 # that are specified in layout.conf (using an
 # approach similar to repoman's).
-repo_info = portage.portdb._repo_info[ebuild_portdir]
-portage.portdb.porttrees = list(repo_info.eclass_db.porttrees)
+if ebuild_portdir != vdb_path:
+	repo_info = portage.portdb._repo_info[ebuild_portdir]
+	portage.portdb.porttrees = list(repo_info.eclass_db.porttrees)
 
 if not os.path.exists(ebuild):
 	print("'%s' does not exist." % ebuild)
