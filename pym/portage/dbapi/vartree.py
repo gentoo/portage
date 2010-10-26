@@ -421,7 +421,7 @@ class vardbapi(dbapi):
 			self.matchcache[mycat][mydep] = mymatch
 		return self.matchcache[mycat][mydep][:]
 
-	def findname(self, mycpv):
+	def findname(self, mycpv, myrepo=None):
 		return self.getpath(str(mycpv), filename=catsplit(mycpv)[1]+".ebuild")
 
 	def flush_cache(self):
