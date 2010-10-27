@@ -78,9 +78,6 @@ source "${PORTAGE_BIN_PATH}/isolated-functions.sh"  &>/dev/null
 
 [[ $PORTAGE_QUIET != "" ]] && export PORTAGE_QUIET
 
-# the sandbox is disabled by default except when overridden in the relevant stages
-export SANDBOX_ON="0"
-
 # sandbox support functions; defined prior to profile.bashrc srcing, since the profile might need to add a default exception (/usr/lib64/conftest fex)
 _sb_append_var() {
 	local _v=$1 ; shift
@@ -112,6 +109,9 @@ elif [[ $SANDBOX_ON = 1 ]] ; then
 	done
 	unset x
 fi
+
+# the sandbox is disabled by default except when overridden in the relevant stages
+export SANDBOX_ON=0
 
 lchown() {
 	chown -h "$@"
