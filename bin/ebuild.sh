@@ -1287,7 +1287,7 @@ debug-print() {
 # The following 2 functions are debug-print() wrappers
 
 debug-print-function() {
-	debug-print "${1}, parameters: ${*:2}"
+	debug-print "${1}: entering function, parameters: ${*:2}"
 }
 
 debug-print-section() {
