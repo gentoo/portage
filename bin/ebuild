@@ -131,7 +131,7 @@ ebuild = portage.normalize_path(ebuild)
 ebuild_portdir = os.path.realpath(
 	os.path.dirname(os.path.dirname(os.path.dirname(ebuild))))
 ebuild = os.path.join(ebuild_portdir, *ebuild.split(os.path.sep)[-3:])
-vdb_path = os.path.join(portage.settings['EROOT'], VDB_PATH)
+vdb_path = os.path.realpath(os.path.join(portage.settings['EROOT'], VDB_PATH))
 
 # Make sure that portdb.findname() returns the correct ebuild.
 if ebuild_portdir != vdb_path and \
