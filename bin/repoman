@@ -2151,7 +2151,7 @@ else:
 
 	if vcs == "svn":
 		svnstatus = os.popen("svn status").readlines()
-		mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem and (elem[0] in "MR" or elem[1] in "M")]
+		mychanged = [ "./" + elem.split()[-1:][0] for elem in svnstatus if (elem[:1] in "MR" or elem[1:2] in "M")]
 		mynew     = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("A")]
 		myremoved = [ "./" + elem.split()[-1:][0] for elem in svnstatus if elem.startswith("D")]
 
