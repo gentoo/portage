@@ -106,7 +106,7 @@ if [[ -w $T ]] ; then
 	export TEMP=$T
 	export TMP=$T
 	export TMPDIR=$T
-else
+elif [[ $SANDBOX_ON = 1 ]] ; then
 	for x in TEMP TMP TMPDIR ; do
 		[[ -n ${!x} ]] && addwrite "${!x}"
 	done
