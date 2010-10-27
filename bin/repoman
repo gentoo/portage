@@ -2154,7 +2154,8 @@ else:
 
 		# Subversion expands keywords specified in svn:keywords properties.
 		props = os.popen("svn propget -R svn:keywords").readlines()
-		expansion = dict(("./" + prop.split(" - ")[0], prop.split(" - ")[1].split()) for prop in props)
+		expansion = dict(("./" + prop.split(" - ")[0], prop.split(" - ")[1].split()) \
+			for prop in props if " - " in prop)
 
 	elif vcs == "git":
 		mychanged = os.popen("git diff-index --name-only --relative --diff-filter=M HEAD").readlines()
