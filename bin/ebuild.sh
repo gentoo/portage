@@ -1275,10 +1275,13 @@ debug-print() {
 		printf 'debug: %s\n' "${@}" >> "${ECLASS_DEBUG_OUTPUT}"
 	fi
 
-	# default target
-	printf '%s\n' "${@}" >> "${T}/eclass-debug.log"
-	# let the portage user own/write to this file
-	chmod g+w "${T}/eclass-debug.log" &>/dev/null
+	if [[ -w $T ]] ; then
+		# default target
+		printf '%s\n' "${@}" >> "${T}/eclass-debug.log"
+		# let the portage user own/write to this file
+		chgrp portage "${T}/eclass-debug.log" &>/dev/null
+		chmod g+w "${T}/eclass-debug.log" &>/dev/null
+	fi
 }
 
 # The following 2 functions are debug-print() wrappers
