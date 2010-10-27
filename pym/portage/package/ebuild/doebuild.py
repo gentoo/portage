@@ -1241,7 +1241,7 @@ def _check_build_log(mysettings, out=None):
 	#  Automake:                   ${SHELL} /var/tmp/portage/dev-libs/yaz-3.0.47/work/yaz-3.0.47/config/missing --run automake-1.10
 	am_maintainer_mode_re = re.compile(r'/missing --run ')
 	am_maintainer_mode_exclude_re = \
-		re.compile(r'(/missing --run (autoheader|makeinfo)|^\s*Automake:\s)')
+		re.compile(r'(/missing --run (autoheader|autotest|help2man|makeinfo)|^\s*Automake:\s)')
 
 	make_jobserver_re = \
 		re.compile(r'g?make\[\d+\]: warning: jobserver unavailable:')
