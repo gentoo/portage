@@ -2220,7 +2220,8 @@ else:
 		if vcs == 'cvs':
 			headerstring = "'\$(Header|Id).*\$'"
 		elif vcs == "svn":
-			svn_keywords = ["Rev",
+			svn_keywords = dict((k.lower(), k) for k in [
+					"Rev",
 					"Revision",
 					"LastChangedRevision",
 					"Date",
@@ -2230,7 +2231,8 @@ else:
 					"URL",
 					"HeadURL",
 					"Id",
-					"Header"]
+					"Header",
+			])
 
 		for myfile in myupdates:
 
@@ -2246,8 +2248,9 @@ else:
 				
 				# Subversion keywords are case-insensitive in svn:keywords properties, but case-sensitive in contents of files.
 				enabled_keywords = []
-				for keyword in svn_keywords:
-					if keyword.lower() in (k.lower() for k in expansion[myfile]):
+				for k in expansion[myfile]:
+					keyword = svn_keywords.get(k.lower())
+					if keyword is not None:
 						enabled_keywords.append(keyword)
 
 				headerstring = "'\$(%s).*\$'" % "|".join(enabled_keywords)
