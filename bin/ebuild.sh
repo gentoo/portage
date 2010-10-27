@@ -1267,7 +1267,7 @@ dyn_help() {
 debug-print() {
 	# if $T isn't defined, we're in dep calculation mode and
 	# shouldn't do anything
-	[[ ! -d ${T} || ${#} -eq 0 ]] && return 0
+	[[ $EBUILD_PHASE = depend || ! -d ${T} || ${#} -eq 0 ]] && return 0
 
 	if [[ ${ECLASS_DEBUG_OUTPUT} == on ]]; then
 		printf 'debug: %s\n' "${@}" >&2
