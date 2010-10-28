@@ -623,7 +623,8 @@ class GenChangeLogs(object):
 			changed = [str(x) for x in sorted(changed)]
 
 			wroteheader = False
-			for c in changed:
+			# Reverse the sort order for headers.
+			for c in reversed(changed):
 				if c.startswith('+') and c.endswith('.ebuild'):
 					output.write('*%s (%s)\n' % (c[1:-7], date))
 					wroteheader = True
@@ -654,7 +655,7 @@ class GenChangeLogs(object):
 			output.write('\n%s\n\n' % '\n'.join([self._wrapper.fill(x) for x in body]))
 
 		output.close()
-	
+
 	def run(self):
 		repo_path = self._portdb.porttrees[0]
 		os.chdir(repo_path)

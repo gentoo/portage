@@ -325,6 +325,11 @@ class Scheduler(PollScheduler):
 
 		if timeout is None:
 			while True:
+				if not self._poll_event_handlers:
+					self._schedule()
+					if not self._poll_event_handlers:
+						raise StopIteration(
+							"timeout is None and there are no poll() event handlers")
 				previous_count = len(self._poll_event_queue)
 				PollScheduler._poll(self, timeout=self._max_display_latency)
 				self._status_display.display()
@@ -333,7 +338,12 @@ class Scheduler(PollScheduler):
 
 		elif timeout <= self._max_display_latency:
 			PollScheduler._poll(self, timeout=timeout)
-			self._status_display.display()
+			if timeout == 0:
+				# The display is updated by _schedule() above, so it would be
+				# redundant to update it here when timeout is 0.
+				pass
+			else:
+				self._status_display.display()
 
 		else:
 			remaining_timeout = timeout

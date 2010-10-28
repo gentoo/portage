@@ -2396,7 +2396,10 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 						"!!! existing '%s' directory; exiting.\n" % myportdir)
 					sys.exit(1)
 				del e
-			if portage.spawn("cd "+cvsdir+"; cvs -z0 -d "+cvsroot+" co -P gentoo-x86",settings,free=1):
+			if portage.process.spawn_bash(
+					"cd %s; exec cvs -z0 -d %s co -P gentoo-x86" % \
+					(portage._shell_quote(cvsdir), portage._shell_quote(cvsroot)),
+					**spawn_kwargs) != os.EX_OK:
 				print("!!! cvs checkout error; exiting.")
 				sys.exit(1)
 			os.rename(os.path.join(cvsdir, "gentoo-x86"), myportdir)
@@ -2404,7 +2407,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			#cvs update
 			print(">>> Starting cvs update with "+syncuri+"...")
 			retval = portage.process.spawn_bash(
-				"cd %s; cvs -z0 -q update -dP" % \
+				"cd %s; exec cvs -z0 -q update -dP" % \
 				(portage._shell_quote(myportdir),), **spawn_kwargs)
 			if retval != os.EX_OK:
 				sys.exit(retval)
