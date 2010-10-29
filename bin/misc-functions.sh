@@ -907,8 +907,10 @@ dyn_package() {
 dyn_spec() {
 	local sources_dir=/usr/src/rpm/SOURCES
 	mkdir -p "${sources_dir}"
+	declare -a tar_args=("${EBUILD}")
+	[[ -d ${FILESDIR} ]] && tar_args=("${EBUILD}" "${FILESDIR}")
 	tar czf "${sources_dir}/${PF}.tar.gz" \
-		"${EBUILD}" "${FILESDIR}" || \
+		"${tar_args[@]}" || \
 		die "Failed to create base rpm tarball."
 
 	cat <<__END1__ > ${PF}.spec
