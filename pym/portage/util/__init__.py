@@ -1299,8 +1299,8 @@ class LazyItemsDict(UserDict):
 		memo[id(self)] = result
 		for k in self:
 			k_copy = deepcopy(k, memo)
-			if k in self.lazy_items:
-				lazy_item = self.lazy_items[k]
+			lazy_item = self.lazy_items.get(k)
+			if lazy_item is not None:
 				if not lazy_item.singleton:
 					raise TypeError(_unicode_decode("LazyItemsDict " + \
 						"deepcopy is unsafe with lazy items that are " + \
