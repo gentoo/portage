@@ -1315,23 +1315,10 @@ class LazyItemsDict(UserDict):
 
 	def __deepcopy__(self, memo=None):
 		"""
-		WARNING: If any of the lazy items contains a bound method then it's
-		typical for deepcopy() to raise an exception like this:
-
-			File "/usr/lib/python2.5/copy.py", line 189, in deepcopy
-				y = _reconstruct(x, rv, 1, memo)
-			File "/usr/lib/python2.5/copy.py", line 322, in _reconstruct
-				y = callable(*args)
-			File "/usr/lib/python2.5/copy_reg.py", line 92, in __newobj__
-				return cls.__new__(cls, *args)
-			TypeError: instancemethod expected at least 2 arguments, got 0
-
-		If deepcopy() needs to work, this problem can be avoided by
-		implementing lazy items with normal (non-bound) functions.
-
-		If deepcopy() raises a TypeError for a lazy item that has been added
-		via a call to addLazySingleton(), the singleton will be automatically
-		evaluated and deepcopy() will instead be called on the result.
+		This forces evaluation of each contained lazy item, and deepcopy of
+		the result. A TypeError is raised if any contained lazy item is not
+		a singleton, since it is not necessarily possible for the behavior
+		of this type of item to be safely preserved.
 		"""
 		if memo is None:
 			memo = {}
