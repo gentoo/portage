@@ -1329,13 +1329,10 @@ class LazyItemsDict(UserDict):
 			if k in self.lazy_items:
 				lazy_item = self.lazy_items[k]
 				if not lazy_item.singleton:
-					raise TypeError("LazyItemsDict deepcopy is " + \
-						"unsafe with lazy items that " + \
-						"are not singletons: %s" % (lazy_item,))
-				UserDict.__setitem__(result,
-					k_copy, deepcopy(self[k], memo))
-			else:
-				UserDict.__setitem__(result, k_copy, deepcopy(self[k], memo))
+					raise TypeError(_unicode_decode("LazyItemsDict " + \
+						"deepcopy is unsafe with lazy items that are " + \
+						"not singletons: key=%s value=%s") % (k, lazy_item,))
+			UserDict.__setitem__(result, k_copy, deepcopy(self[k], memo))
 		return result
 
 	class _LazyItem(object):
