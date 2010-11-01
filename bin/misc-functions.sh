@@ -807,8 +807,11 @@ install_qa_check_prefix() {
 			rf=$(readlink ${fn})
 			[[ ${rf} != /* ]] && rf=${fn%/*}/${rf}
 		fi
+		# need to have both absolutised paths, bug #342929
+		line=$(canonicalize ${line[0]})
+		local eprefix=$(canonicalize ${EPREFIX})
 		# does the shebang start with ${EPREFIX}, and does it exist?
-		if [[ ${line[0]} == ${EPREFIX}/* ]] ; then
+		if [[ ${line} == ${eprefix}/* ]] ; then
 			if [[ ! -e ${ROOT%/}${line[0]} && ! -e ${D%/}${line[0]} ]] ; then
 				# hmm, refers explicitly to $EPREFIX, but doesn't exist,
 				# if it's in PATH that's wrong in any case
