@@ -535,7 +535,7 @@ def display(depgraph, mylist, favorites=[], verbosity=None):
 				if pkg_type == "ebuild" and pkg_merge:
 					try:
 						myfilesdict = portdb.getfetchsizes(pkg_key,
-							useflags=pkg_use, debug=conf.edebug)
+							useflags=pkg_use, myrepo=pkg.repo)
 					except InvalidDependString:
 						# should have been masked before it was selected
 						raise
