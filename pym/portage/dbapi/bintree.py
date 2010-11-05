@@ -769,20 +769,32 @@ class binarytree(object):
 					f = urllib_request_urlopen(base_url.rstrip("/") + "/Packages")
 				except IOError:
 					path = parsed_url.path.rstrip("/") + "/Packages"
+					host = parsed_url.netloc
+					port = parsed_url.port
+					port_args = []
+					if port is not None:
+						port_str = ":%s" % (port,)
+						if host.endswith(port_str):
+							host = host[:-len(port_str)]
+
 					if parsed_url.scheme == 'sftp':
 						# The sftp command complains about 'Illegal seek' if
 						# we try to make it write to /dev/stdout, so use a
 						# temp file instead.
 						fd, tmp_filename = tempfile.mkstemp()
 						os.close(fd)
-						proc = subprocess.Popen(['sftp',
-							parsed_url.netloc + ":" + path, tmp_filename])
+						if port is not None:
+							port_args = ['-P', port]
+						proc = subprocess.Popen(['sftp'] + port_args + \
+							[host + ":" + path, tmp_filename])
 						if proc.wait() != os.EX_OK:
 							raise
 						f = open(tmp_filename, 'rb')
 					elif parsed_url.scheme == 'ssh':
-						proc = subprocess.Popen(['ssh', parsed_url.netloc, '--',
-							'cat', path], stdout=subprocess.PIPE)
+						if port is not None:
+							port_args = ['-p', port]
+						proc = subprocess.Popen(['ssh'] + port_args + \
+							[host, '--', 'cat', path], stdout=subprocess.PIPE)
 						f = proc.stdout
 					else:
 						raise
