@@ -740,9 +740,16 @@ class binarytree(object):
 
 		if getbinpkgs and 'PORTAGE_BINHOST' in self.settings:
 			base_url = self.settings["PORTAGE_BINHOST"]
-			urldata = urlparse(base_url)
+			parsed_url = urlparse(base_url)
+			host = parsed_url.netloc
+			port = parsed_url.port
+			port_args = []
+			if port is not None:
+				port_str = ":%s" % (port,)
+				if host.endswith(port_str):
+					host = host[:-len(port_str)]
 			pkgindex_file = os.path.join(self.settings["EROOT"], CACHE_PATH, "binhost",
-				urldata[1] + urldata[2], "Packages")
+				host, parsed_url.path.lstrip("/"), "Packages")
 			pkgindex = self._new_pkgindex()
 			try:
 				f = codecs.open(_unicode_encode(pkgindex_file,
@@ -758,7 +765,6 @@ class binarytree(object):
 					raise
 			local_timestamp = pkgindex.header.get("TIMESTAMP", None)
 			rmt_idx = self._new_pkgindex()
-			parsed_url = urlparse(base_url)
 			proc = None
 			tmp_filename = None
 			try:
@@ -769,13 +775,6 @@ class binarytree(object):
 					f = urllib_request_urlopen(base_url.rstrip("/") + "/Packages")
 				except IOError:
 					path = parsed_url.path.rstrip("/") + "/Packages"
-					host = parsed_url.netloc
-					port = parsed_url.port
-					port_args = []
-					if port is not None:
-						port_str = ":%s" % (port,)
-						if host.endswith(port_str):
-							host = host[:-len(port_str)]
 
 					if parsed_url.scheme == 'sftp':
 						# The sftp command complains about 'Illegal seek' if
@@ -784,7 +783,7 @@ class binarytree(object):
 						fd, tmp_filename = tempfile.mkstemp()
 						os.close(fd)
 						if port is not None:
-							port_args = ['-P', port]
+							port_args = ['-P', "%s" % (port,)]
 						proc = subprocess.Popen(['sftp'] + port_args + \
 							[host + ":" + path, tmp_filename])
 						if proc.wait() != os.EX_OK:
@@ -792,7 +791,7 @@ class binarytree(object):
 						f = open(tmp_filename, 'rb')
 					elif parsed_url.scheme == 'ssh':
 						if port is not None:
-							port_args = ['-p', port]
+							port_args = ['-p', "%s" % (port,)]
 						proc = subprocess.Popen(['ssh'] + port_args + \
 							[host, '--', 'cat', path], stdout=subprocess.PIPE)
 						f = proc.stdout
