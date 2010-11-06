@@ -952,9 +952,9 @@ Every time you emerge a package, the package that you requested is
 recorded here.  Then when you run `emerge world \-up`, the list of 
 packages is read from this file.  Note that this does not mean that the 
 packages that were installed as dependencies are listed here.  For 
-example, if you run `emerge mod_php` and you do not have apache 
-already, then "dev\-php/mod_php" is recorded in the world file but 
-"net\-www/apache" is not.  For more information, review \fBemerge\fR(1).
+example, if you run `emerge mod_wsgi` and you do not have apache 
+already, then "www\-apache/mod_wsgi" is recorded in the world file but 
+"www\-servers/apache" is not.  For more information, review \fBemerge\fR(1).
 
 .I Format:
 .nf
