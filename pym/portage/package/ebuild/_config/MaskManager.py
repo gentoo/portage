@@ -48,7 +48,7 @@ class MaskManager(object):
 			lines = stack_lists([repo_lines], incremental=1, \
 				remember_source_file=True, warn_for_unmatched_removal=True,
 				strict_warn_for_unmatched_removal=strict_umatched_removal)
-			repo_pkgmasklines.extend(append_repo(lines, repo.name, remember_source_file=True))
+			repo_pkgunmasklines.extend(append_repo(lines, repo.name, remember_source_file=True))
 
 		#Read package.mask from the user's profile. Stack them in the end
 		#to allow profiles to override masks from their parent profiles.
