@@ -1138,6 +1138,9 @@ class Atom(_atom_base):
 			self.__dict__['unevaluated_atom'] = self
 
 		if eapi is not None:
+			if not isinstance(eapi, basestring):
+				raise TypeError('expected eapi argument of ' + \
+					'%s, got %s: %s' % (basestring, type(eapi), eapi,))
 			if self.slot and not eapi_has_slot_deps(eapi):
 				raise InvalidAtom(
 					_("Slot deps are not allowed in EAPI %s: '%s'") \
