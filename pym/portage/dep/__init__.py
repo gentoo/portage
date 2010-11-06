@@ -31,6 +31,7 @@ import re, sys
 import warnings
 from itertools import chain
 import portage.exception
+from portage.const import EAPI
 from portage.eapi import eapi_has_slot_deps, eapi_has_src_uri_arrows, \
 	eapi_has_use_deps, eapi_has_strong_blocks, eapi_has_use_dep_defaults
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString
@@ -319,7 +320,7 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 				e = InvalidData(msg, category='IUSE.missing')
 				raise InvalidDependString(msg, errors=(e,))
 		else:
-			if _get_useflag_re("0" if eapi is None else eapi).match(flag) is None:
+			if _get_useflag_re(eapi).match(flag) is None:
 				raise InvalidDependString(
 					_("invalid use flag '%s' in conditional '%s'") % (flag, conditional))
 
@@ -633,6 +634,9 @@ _usedep_re = {
 }
 
 def _get_usedep_re(eapi):
+	if eapi is None:
+		eapi = str(EAPI)
+
 	return _usedep_re["0"]
 #	if eapi in ("0", "1", "2_pre1", "2_pre2", "2_pre3", "2", "3_pre1", "3_pre2", "3", "4_pre1"):
 #		return _usedep_re["0"]
@@ -670,6 +674,8 @@ class _use_dep(object):
 	def __init__(self, use, eapi, enabled_flags=None, disabled_flags=None, missing_enabled=None, \
 		missing_disabled=None, conditional=None, required=None):
 
+		if eapi is None:
+			eapi = str(EAPI)
 		self.eapi = eapi
 
 		if enabled_flags is not None:
@@ -1117,7 +1123,7 @@ class Atom(_atom_base):
 			if _use is not None:
 				use = _use
 			else:
-				use = _use_dep(use_str[1:-1].split(","), "0" if eapi is None else eapi)
+				use = _use_dep(use_str[1:-1].split(","), eapi)
 			without_use = Atom(m.group('without_use'), allow_repo=allow_repo)
 		else:
 			use = None
@@ -1594,6 +1600,9 @@ _useflag_re = {
 }
 
 def _get_useflag_re(eapi):
+	if eapi is None:
+		eapi = str(EAPI)
+
 	return _useflag_re["0"]
 #	if eapi in ("0", "1", "2_pre1", "2_pre2", "2_pre3", "2", "3_pre1", "3_pre2", "3", "4_pre1"):
 #		return _useflag_re["0"]
