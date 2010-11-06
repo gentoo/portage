@@ -17,7 +17,7 @@ class MaskManager(object):
 		self._punmaskdict = ExtendedAtomDict(list)
 		self._pmaskdict = ExtendedAtomDict(list)
 
-		#Read profile/package.mask form every repo.
+		#Read profile/package.mask from every repo.
 		#Repositories inherit masks from their parent profiles and
 		#are able to remove mask from them with -atoms.
 		#Such a removal affects only the current repo, but not the parent.
@@ -50,7 +50,7 @@ class MaskManager(object):
 				strict_warn_for_unmatched_removal=strict_umatched_removal)
 			repo_pkgmasklines.extend(append_repo(lines, repo.name, remember_source_file=True))
 
-		#Read package.mask form the user's profile. Stack them in the end
+		#Read package.mask from the user's profile. Stack them in the end
 		#to allow profiles to override masks from their parent profiles.
 		profile_pkgmasklines = []
 		profile_pkgunmasklines = []
@@ -106,7 +106,7 @@ class MaskManager(object):
 		@param slot: The package's slot
 		@type slot: String
 		@rtype: String
-		@return: An matching atom string or None if one is not found.
+		@return: A matching atom string or None if one is not found.
 		"""
 
 		cp = cpv_getkey(cpv)
