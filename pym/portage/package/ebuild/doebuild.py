@@ -217,13 +217,8 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	if noiselimit < 0:
 		mysettings["PORTAGE_QUIET"] = "1"
 
-	if mydo == 'depend' and \
-		'EAPI' not in mysettings.configdict['pkg']:
-
-		if eapi is not None:
-			# From parse-eapi-glep-55 above.
-			pass
-		elif 'parse-eapi-ebuild-head' in mysettings.features:
+	if mydo == 'depend' and 'EAPI' not in mysettings.configdict['pkg']:
+		if eapi is None and 'parse-eapi-ebuild-head' in mysettings.features:
 			eapi = _parse_eapi_ebuild_head(
 				codecs.open(_unicode_encode(ebuild_path,
 				encoding=_encodings['fs'], errors='strict'),

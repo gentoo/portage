@@ -94,7 +94,7 @@ SUPPORTED_FEATURES       = frozenset([
                            "metadata-transfer", "mirror", "multilib-strict", "news",
                            "noauto", "noclean", "nodoc", "noinfo", "noman", "nostrip",
                            "notitles", "parallel-fetch", "parse-eapi-ebuild-head",
-                           "parse-eapi-glep-55", "prelink-checksums", "preserve-libs",
+                           "prelink-checksums", "preserve-libs",
                            "protect-owned", "python-trace", "sandbox",
                            "selinux", "sesandbox", "severe", "sfperms",
                            "sign", "skiprocheck", "split-elog", "split-log", "splitdebug",
