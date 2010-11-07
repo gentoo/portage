@@ -301,6 +301,8 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 	if matchall and matchnone:
 		raise ValueError("portage.dep.use_reduce: 'matchall' and 'matchnone' are mutually exclusive")
 
+	useflag_re = _get_useflag_re(eapi)
+
 	def is_active(conditional):
 		"""
 		Decides if a given use conditional is active.
@@ -320,7 +322,7 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 				e = InvalidData(msg, category='IUSE.missing')
 				raise InvalidDependString(msg, errors=(e,))
 		else:
-			if _get_useflag_re(eapi).match(flag) is None:
+			if useflag_re.match(flag) is None:
 				raise InvalidDependString(
 					_("invalid use flag '%s' in conditional '%s'") % (flag, conditional))
 
@@ -705,9 +707,10 @@ class _use_dep(object):
 		no_default = set()
 
 		conditional = {}
+		usedep_re = _get_usedep_re(self.eapi)
 
 		for x in use:
-			m = _get_usedep_re(self.eapi).match(x)
+			m = usedep_re.match(x)
 			if m is None:
 				raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
 
@@ -807,9 +810,10 @@ class _use_dep(object):
 		disabled_flags = set(self.disabled)
 
 		tokens = []
+		usedep_re = _get_usedep_re(self.eapi)
 
 		for x in self.tokens:
-			m = _get_usedep_re(self.eapi).match(x)
+			m = usedep_re.match(x)
 
 			operator = m.group("prefix") + m.group("suffix")
 			flag = m.group("flag")
@@ -864,9 +868,10 @@ class _use_dep(object):
 		def validate_flag(flag):
 			return is_valid_flag(flag) or flag in all_defaults
 
+		usedep_re = _get_usedep_re(self.eapi)
 
 		for x in self.tokens:
-			m = _get_usedep_re(self.eapi).match(x)
+			m = usedep_re.match(x)
 
 			operator = m.group("prefix") + m.group("suffix")
 			flag = m.group("flag")
@@ -975,9 +980,10 @@ class _use_dep(object):
 		missing_disabled = self.missing_disabled
 
 		tokens = []
+		usedep_re = _get_usedep_re(self.eapi)
 
 		for x in self.tokens:
-			m = _get_usedep_re(self.eapi).match(x)
+			m = usedep_re.match(x)
 
 			operator = m.group("prefix") + m.group("suffix")
 			flag = m.group("flag")
