@@ -31,6 +31,7 @@ import re, sys
 import warnings
 from itertools import chain
 import portage.exception
+from portage.const import EAPI
 from portage.eapi import eapi_has_slot_deps, eapi_has_src_uri_arrows, \
 	eapi_has_use_deps, eapi_has_strong_blocks, eapi_has_use_dep_defaults
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString
@@ -319,7 +320,7 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 				e = InvalidData(msg, category='IUSE.missing')
 				raise InvalidDependString(msg, errors=(e,))
 		else:
-			if _valid_use_re.match(flag) is None:
+			if _get_useflag_re(eapi).match(flag) is None:
 				raise InvalidDependString(
 					_("invalid use flag '%s' in conditional '%s'") % (flag, conditional))
 
@@ -627,11 +628,24 @@ def flatten(mylist):
 	return newlist
 
 
-_useflag_re = re.compile("^(?P<prefix>[!-]?)(?P<flag>[A-Za-z0-9][A-Za-z0-9+_@-]*)(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$")
+_usedep_re = {
+	"0": re.compile("^(?P<prefix>[!-]?)(?P<flag>[A-Za-z0-9][A-Za-z0-9+_@-]*)(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$"),
+#	"4": re.compile("^(?P<prefix>[!-]?)(?P<flag>[A-Za-z0-9][A-Za-z0-9+_@.-]*)(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$"),
+}
+
+def _get_usedep_re(eapi):
+	if eapi is None:
+		eapi = str(EAPI)
+
+	return _usedep_re["0"]
+#	if eapi in ("0", "1", "2_pre1", "2_pre2", "2_pre3", "2", "3_pre1", "3_pre2", "3", "4_pre1"):
+#		return _usedep_re["0"]
+#	else:
+#		return _usedep_re["4"]
 
 class _use_dep(object):
 
-	__slots__ = ("__weakref__", "conditional", "missing_enabled", "missing_disabled",
+	__slots__ = ("__weakref__", "eapi", "conditional", "missing_enabled", "missing_disabled",
 		"disabled", "enabled", "tokens", "required")
 
 	class _conditionals_class(object):
@@ -657,8 +671,12 @@ class _use_dep(object):
 		'not_equal':   '!%s=',
 	}
 
-	def __init__(self, use, enabled_flags=None, disabled_flags=None, missing_enabled=None, \
+	def __init__(self, use, eapi, enabled_flags=None, disabled_flags=None, missing_enabled=None, \
 		missing_disabled=None, conditional=None, required=None):
+
+		if eapi is None:
+			eapi = str(EAPI)
+		self.eapi = eapi
 
 		if enabled_flags is not None:
 			#A shortcut for the classe's own methods.
@@ -689,7 +707,7 @@ class _use_dep(object):
 		conditional = {}
 
 		for x in use:
-			m = _useflag_re.match(x)
+			m = _get_usedep_re(self.eapi).match(x)
 			if m is None:
 				raise InvalidAtom(_("Invalid use dep: '%s'") % (x,))
 
@@ -791,7 +809,7 @@ class _use_dep(object):
 		tokens = []
 
 		for x in self.tokens:
-			m = _useflag_re.match(x)
+			m = _get_usedep_re(self.eapi).match(x)
 
 			operator = m.group("prefix") + m.group("suffix")
 			flag = m.group("flag")
@@ -824,7 +842,7 @@ class _use_dep(object):
 			else:
 				tokens.append(x)
 
-		return _use_dep(tokens, enabled_flags=enabled_flags, disabled_flags=disabled_flags, \
+		return _use_dep(tokens, self.eapi, enabled_flags=enabled_flags, disabled_flags=disabled_flags, \
 			missing_enabled=self.missing_enabled, missing_disabled=self.missing_disabled, required=self.required)
 
 	def violated_conditionals(self, other_use, is_valid_flag, parent_use=None):
@@ -848,7 +866,7 @@ class _use_dep(object):
 
 
 		for x in self.tokens:
-			m = _useflag_re.match(x)
+			m = _get_usedep_re(self.eapi).match(x)
 
 			operator = m.group("prefix") + m.group("suffix")
 			flag = m.group("flag")
@@ -937,7 +955,7 @@ class _use_dep(object):
 						tokens.append(x)
 						conditional.setdefault("disabled", set()).add(flag)
 
-		return _use_dep(tokens, enabled_flags=enabled_flags, disabled_flags=disabled_flags, \
+		return _use_dep(tokens, self.eapi, enabled_flags=enabled_flags, disabled_flags=disabled_flags, \
 			missing_enabled=self.missing_enabled, missing_disabled=self.missing_disabled, \
 			conditional=conditional, required=self.required)
 
@@ -959,7 +977,7 @@ class _use_dep(object):
 		tokens = []
 
 		for x in self.tokens:
-			m = _useflag_re.match(x)
+			m = _get_usedep_re(self.eapi).match(x)
 
 			operator = m.group("prefix") + m.group("suffix")
 			flag = m.group("flag")
@@ -992,7 +1010,7 @@ class _use_dep(object):
 			else:
 				tokens.append(x)
 
-		return _use_dep(tokens, enabled_flags=enabled_flags, disabled_flags=disabled_flags, \
+		return _use_dep(tokens, self.eapi, enabled_flags=enabled_flags, disabled_flags=disabled_flags, \
 			missing_enabled=missing_enabled, missing_disabled=missing_disabled, required=self.required)
 
 if sys.hexversion < 0x3000000:
@@ -1105,7 +1123,7 @@ class Atom(_atom_base):
 			if _use is not None:
 				use = _use
 			else:
-				use = _use_dep(use_str[1:-1].split(","))
+				use = _use_dep(use_str[1:-1].split(","), eapi)
 			without_use = Atom(m.group('without_use'), allow_repo=allow_repo)
 		else:
 			use = None
@@ -1120,6 +1138,9 @@ class Atom(_atom_base):
 			self.__dict__['unevaluated_atom'] = self
 
 		if eapi is not None:
+			if not isinstance(eapi, basestring):
+				raise TypeError('expected eapi argument of ' + \
+					'%s, got %s: %s' % (basestring, type(eapi), eapi,))
 			if self.slot and not eapi_has_slot_deps(eapi):
 				raise InvalidAtom(
 					_("Slot deps are not allowed in EAPI %s: '%s'") \
@@ -1576,7 +1597,20 @@ _extended_pkg = r'[\w+*][\w+*-]*?'
 
 _atom_wildcard_re = re.compile('(?P<simple>(' + _extended_cat + ')/(' + _extended_pkg + '))(:(?P<slot>' + _slot + '))?(' + _repo_separator + '(?P<repo>' + _repo_name + '))?$')
 
-_valid_use_re = re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@-]*$')
+_useflag_re = {
+	"0": re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@-]*$'),
+#	"4": re.compile(r'^[A-Za-z0-9][A-Za-z0-9+_@.-]*$'),
+}
+
+def _get_useflag_re(eapi):
+	if eapi is None:
+		eapi = str(EAPI)
+
+	return _useflag_re["0"]
+#	if eapi in ("0", "1", "2_pre1", "2_pre2", "2_pre3", "2", "3_pre1", "3_pre2", "3", "4_pre1"):
+#		return _useflag_re["0"]
+#	else:
+#		return _useflag_re["4"]
 
 def isvalidatom(atom, allow_blockers=False, allow_wildcard=False, allow_repo=False):
 	"""

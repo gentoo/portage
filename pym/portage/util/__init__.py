@@ -377,12 +377,12 @@ def read_corresponding_eapi_file(filename):
 
 	return eapi
 
-def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=False, allow_repo=False, verify_eapi=False):
+def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=False, allow_repo=False,
+	verify_eapi=False, eapi=None):
 	""" Does the same thing as grabdict except it validates keys
 	    with isvalidatom()"""
 	pkgs=grabdict(myfilename, juststrings, empty=1, recursive=recursive)
-	eapi = None
-	if verify_eapi:
+	if verify_eapi and eapi is None:
 		eapi = read_corresponding_eapi_file(myfilename)
 
 	# We need to call keys() here in order to avoid the possibility of
@@ -399,12 +399,11 @@ def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=Fals
 			atoms[k] = v
 	return atoms
 
-def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=False, allow_repo=False, \
-	remember_source_file=False, verify_eapi=False):
+def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=False, allow_repo=False,
+	remember_source_file=False, verify_eapi=False, eapi=None):
 
 	pkgs=grabfile(myfilename, compatlevel, recursive=recursive, remember_source_file=True)
-	eapi = None
-	if verify_eapi:
+	if verify_eapi and eapi is None:
 		eapi = read_corresponding_eapi_file(myfilename)
 	mybasename = os.path.basename(myfilename)
 	atoms = []
